@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        include.h
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 *******************************************************************************/
 #ifndef __INCLUDES_H__
@@ -73,7 +73,7 @@ Agreement between Telechips and Company.
 
 // HDMI CLOCKS
 #define HDMI_CLK_INDEX_PERI     0
-#define HDMI_CLK_INDEX_SPDIF    1        
+#define HDMI_CLK_INDEX_SPDIF    1
 #define HDMI_CLK_INDEX_APB      2
 #define HDMI_CLK_INDEX_CEC      3
 #define HDMI_CLK_INDEX_HDCP14   4
@@ -90,10 +90,10 @@ Agreement between Telechips and Company.
 // CLOCK FREQ
 #define HDMI_PHY_REF_CLK_RATE   (24000000)
 #define HDMI_HDCP14_CLK_RATE    (36000000)
-/** 
+/**
  * DDC_SFRCLK is HDMI_HDCP14_CLK_RATE divided by 20000.
  */
-#define HDMI_DDC_SFRCLK         (1800) 
+#define HDMI_DDC_SFRCLK         (1800)
 #define HDMI_HDCP22_CLK_RATE    (50000000)
 #define HDMI_SPDIF_REF_CLK_RATE (44100*64*2)
 
@@ -143,14 +143,14 @@ struct hdmi_tx_ctrl {
         unsigned char cec_on;
         unsigned char hdcp_on;
         unsigned char data_enable_polarity;
-        
-        /* 
-         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than 
+
+        /*
+         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
          * 340 MHz or when HDCP is enabled.
          * When HDCP Keepout is set to 1, the control period configuration is changed.
-         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem 
+         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
          * of swinging HPD.
-         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1 
+         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
          * if this SINK is a VIZIO TV. */
         unsigned char sink_is_vizio;
 
@@ -167,11 +167,11 @@ struct drv_enable_entry
 /** HDMI Status */
 #define HDMI_TX_STATUS_POWER_ON         0
 #define HDMI_TX_STATUS_OUTPUT_ON        1
-#define HDMI_TX_STATUS_STARTUP          2       // tcc_output_starter_hdmi_v2_0 
+#define HDMI_TX_STATUS_STARTUP          2       // tcc_output_starter_hdmi_v2_0
 #define HDMI_TX_PRE_API_CONFIG          3
 #define HDMI_TX_INTERRUPT_HANDLER_ON    4
 
-#define HDMI_TX_HDR_VALID               5       
+#define HDMI_TX_HDR_VALID               5
 #define HDMI_TX_HLG_VALID               6
 
 #define HDMI_TX_HOTPLUG_STATUS_LOCK     7
@@ -182,7 +182,7 @@ struct drv_enable_entry
 #define HDMI_TX_STATUS_SUSPEND_L0      10       // Level 0) Runtime Suspend.
 #define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Suspend/Resume
 
-#define HDMI_TX_STATUS_SCDC_CHECK      20 
+#define HDMI_TX_STATUS_SCDC_CHECK      20
 
 
 struct irq_dev_id {
@@ -224,7 +224,7 @@ struct hdmi_tx_dev{
         int                     display_clock_enable_count;
 
         struct drv_enable_entry irq_enable_entry;
-                
+
         #if defined(CONFIG_REGULATOR)
         struct regulator        *regulator;
         #endif
@@ -232,7 +232,7 @@ struct hdmi_tx_dev{
         /** Spinlock */
         spinlock_t 		slock;
         spinlock_t 		slock_power;
-        
+
         /** Mutex - future use*/
         struct mutex 		mutex;
 
@@ -259,12 +259,12 @@ struct hdmi_tx_dev{
         /** HDMIRX and TX Channel Mux Selection Register  */
         unsigned int	        hdmi_rx_tx_chmux;
 
-        
+
         /** hdmi phy type  */
         unsigned int            hdmi_phy_type;  // 0 8980, 1 8985
 
         /** hdmi reference source clock */
-        unsigned int            hdmi_ref_src_clk; 
+        unsigned int            hdmi_ref_src_clk;
 
         /** Proc file system */
         struct proc_dir_entry	*hdmi_proc_dir;
@@ -274,7 +274,7 @@ struct hdmi_tx_dev{
 	struct proc_dir_entry   *hdmi_proc_hdcp_status;
         struct proc_dir_entry   *hdmi_proc_scdc_check;
         struct proc_dir_entry   *hdmi_proc_ddc_check;
-        
+
         #if defined(CONFIG_TCC_RUNTIME_DRM_TEST)
         struct proc_dir_entry   *hdmi_proc_drm;
         #endif
@@ -287,28 +287,28 @@ struct hdmi_tx_dev{
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         struct proc_dir_entry   *hdmi_proc_phy_regs;
         #endif
-                
+
 
         /** Hot Plug */
         int                     hotplug_gpio;
         int                     hotplug_irq;
-        /* Debugging purpose 
-         * If this value set to 1 then hotplug_status is 
+        /* Debugging purpose
+         * If this value set to 1 then hotplug_status is
          * fixed with hotplug_real_status of that moment */
         int                     hotplug_locked;
         /* This variable represent real hotplug status */
         int                     hotplug_real_status;
-        /* This variable represent virtual hotplug status 
+        /* This variable represent virtual hotplug status
          * If hotplug_locked was 0, It represent hotplug_real_status
-         * On the other hand, If hotplug_locked was 1, it represent 
+         * On the other hand, If hotplug_locked was 1, it represent
          * hotplug_real_status at the time of hotplug_locked was set to 1 */
         int                     hotplug_status;
 
 	/* This variable used only Hotplug detect by HDMI Link mode */
 	int 			hotplug_irq_enable;
 
-	/*  
-	 * This variable used only Hotplug detect by Gpio mode 
+	/*
+	 * This variable used only Hotplug detect by Gpio mode
 	 * This variable represents enable status of the hotplug interrupt */
         int                     hotplug_irq_enabled;
 
@@ -323,7 +323,7 @@ struct hdmi_tx_dev{
          * In such cases, you should set this variable to 1 to disable ddc communication */
         int                     ddc_disable;
 
-        // Controller Information. 
+        // Controller Information.
         struct hdmi_tx_ctrl     hdmi_tx_ctrl;
 
         void                    *videoParam;
@@ -336,7 +336,7 @@ struct hdmi_tx_dev{
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         struct delayed_work      hdmi_restore_hotpug_work;
         #endif
-                
+
         /** Interrupt Work */
         struct work_struct      tx_handler;
         struct work_struct      tx_hdcp_handler;
@@ -346,7 +346,7 @@ struct hdmi_tx_dev{
         wait_queue_head_t       poll_wq;
 
         /** Supports variable PHY settings */
-        int                     edid_machine_id;  
+        int                     edid_machine_id;
 
         /* Source Product Description */
         char                    vendor_name[8];
@@ -385,7 +385,7 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 
 
 /**
- * hdmi misc api 
- */ 
+ * hdmi misc api
+ */
 void dwc_hdmi_set_hdcp_keepout(struct hdmi_tx_dev *dev);
 #endif /* __INCLUDES_H__ */

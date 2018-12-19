@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        irq_handler.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 *******************************************************************************/
 
@@ -42,13 +42,13 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
         struct hdmi_tx_dev *dev;
 
         dev = container_of(work, struct hdmi_tx_dev, tx_handler);
-        
+
         if(dev->verbose >= VERBOSE_IRQ)
                 pr_info("dwc_hdmi_tx_handler_thread\r\n");
 
         // Read HDMI TX IRQ
         decode = hdmi_read_interrupt_decode(dev);
-        
+
         // precess irq
         if((decode & IH_DECODE_IH_FC_STAT0_MASK) ? 1 : 0){
                 hdmi_irq_clear_source(dev, AUDIO_PACKETS);
@@ -123,7 +123,7 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
                 pr_info("dwc_hdmi_tx_hdcp_handler_thread\r\n");
         hdcp_irq = hdcp_interrupt_status(dev);
         hdcp22_irq = _HDCP22RegReadStat(dev);
- 
+
         if(hdcp_irq != 0){
                 hdcp_event_handler(dev, &temp);
         }
@@ -166,11 +166,11 @@ static void dwc_hdmi_tx_hotplug_thread(struct work_struct *work)
         }
 }
 
-static irqreturn_t 
+static irqreturn_t
 dwc_hdmi_tx_hpd_irq_handler(int irq, void *dev_id)
 {
         struct hdmi_tx_dev *dev =  (struct hdmi_tx_dev *)dev_id;
-        
+
         if(dev == NULL) {
                 pr_err("%s: irq_dev is NULL\r\n", __func__);
                 goto end_handler;
@@ -178,11 +178,11 @@ dwc_hdmi_tx_hpd_irq_handler(int irq, void *dev_id)
         /* disable hpd irq */
         disable_irq_nosync(dev->hotplug_irq);
         dev->hotplug_irq_enabled = 0;
-        
-        schedule_work(&dev->tx_hotplug_handler);     
-        
+
+        schedule_work(&dev->tx_hotplug_handler);
+
         return IRQ_HANDLED;
-        
+
 end_handler:
         return IRQ_NONE;
 }
@@ -193,12 +193,12 @@ dwc_hdmi_tx_handler(int irq, void *dev_id)
         struct irq_dev_id *irq_dev = (struct irq_dev_id *)dev_id;
 	struct hdmi_tx_dev *dev;
         uint32_t decode;
-        
+
         if(irq_dev == NULL) {
                 pr_err("%s: irq_dev is NULL\r\n", FUNC_NAME);
                 goto end_handler;
         }
-                
+
         dev = (struct hdmi_tx_dev *)irq_dev->dev;
         if(dev == NULL) {
                 pr_err("%s: dev is NULL\r\n", FUNC_NAME);
@@ -208,12 +208,12 @@ dwc_hdmi_tx_handler(int irq, void *dev_id)
 	if(dev->verbose >= VERBOSE_BASIC)
 		pr_info("%s\n", FUNC_NAME);
 
-        decode = hdmi_read_interrupt_decode(dev);         
+        decode = hdmi_read_interrupt_decode(dev);
         if(!decode) {
                 goto end_handler;
-        }	
+        }
         hdmi_irq_mute(dev);
-        schedule_work(&dev->tx_handler);     
+        schedule_work(&dev->tx_handler);
         return IRQ_HANDLED;
 
 end_handler:
@@ -226,12 +226,12 @@ hdcp_handler(int irq, void *dev_id){
         struct irq_dev_id *irq_dev = (struct irq_dev_id *)dev_id;
         struct hdmi_tx_dev *dev;
         uint32_t hdcp_irq, hdcp22_irq;
-        
+
         if(irq_dev == NULL) {
                 pr_err("%s: irq_dev is NULL\r\n", FUNC_NAME);
                 goto end_handler;
         }
-                
+
         dev = (struct hdmi_tx_dev *)irq_dev->dev;
         if(dev == NULL){
                 pr_err("%s: dev is NULL\r\n", FUNC_NAME);
@@ -243,16 +243,16 @@ hdcp_handler(int irq, void *dev_id){
         hdcp_irq = hdcp_interrupt_status(dev);
         hdcp22_irq = _HDCP22RegReadStat(dev);
         if(hdcp_irq){
-                _InterruptMask(dev, hdcp_irq | _InterruptMaskStatus(dev)); 
+                _InterruptMask(dev, hdcp_irq | _InterruptMaskStatus(dev));
         }
         if(hdcp22_irq){
                 _HDCP22RegMask(dev, hdcp22_irq | _HDCP22RegMaskRead(dev));
                 _HDCP22RegMute(dev, hdcp22_irq | _HDCP22RegMuteRead(dev));
-        }           
+        }
         if(!hdcp_irq && !hdcp22_irq) {
                 goto end_handler;
-        }       
-        schedule_work(&dev->tx_hdcp_handler);  
+        }
+        schedule_work(&dev->tx_hdcp_handler);
         return IRQ_HANDLED;
 
 end_handler:
@@ -303,8 +303,8 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                 /* Disable IRQ auto enable */
                                 irq_set_status_flags(dev->hotplug_irq, IRQ_NOAUTOEN);
                                 flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
-                                ret = devm_request_irq(dev->parent_dev, dev->hotplug_irq,  
-                                        dwc_hdmi_tx_hpd_irq_handler, flag, 
+                                ret = devm_request_irq(dev->parent_dev, dev->hotplug_irq,
+                                        dwc_hdmi_tx_hpd_irq_handler, flag,
                                         "hpd_irq_handler", dev);
 
                                 dwc_hdmi_tx_set_hotplug_interrupt(dev, 1);
@@ -314,7 +314,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                         }
                 }
         }
-        
+
         dev->irq_dev[HDMI_IRQ_TX_CORE].dev = dev;
         ret = devm_request_irq(dev->parent_dev, dev->irq[HDMI_IRQ_TX_CORE],
                                dwc_hdmi_tx_handler, IRQF_SHARED,
@@ -343,14 +343,14 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                         FUNC_NAME);
         }
         #endif
-        
+
         // Disable irq handler
         disable_irq(dev->irq[HDMI_IRQ_TX_CORE]);
         #if defined(CONFIG_HDMI_USE_CEC_IRQ)
         disable_irq(dev->irq[HDMI_IRQ_TX_CEC]);
         #endif
         clear_bit(HDMI_TX_INTERRUPT_HANDLER_ON, &dev->status);
-        
+
         return ret;
 }
 
@@ -396,7 +396,7 @@ void dwc_hdmi_enable_interrupt(struct hdmi_tx_dev *dev){
         }
 }
 
-void dwc_hdmi_disable_interrupt(struct hdmi_tx_dev *dev){    
+void dwc_hdmi_disable_interrupt(struct hdmi_tx_dev *dev){
         if(test_bit(HDMI_TX_INTERRUPT_HANDLER_ON, &dev->status)) {
                 // Disable irq handler
                 disable_irq(dev->irq[HDMI_IRQ_TX_CORE]);
@@ -410,11 +410,11 @@ void dwc_hdmi_disable_interrupt(struct hdmi_tx_dev *dev){
                 // Mask and clear tx Interrupt
                 hdmi_irq_mask_all(dev);
                 hdmi_irq_clear_all(dev);
-                
+
                 // Mask and clear hdcp1.4 Interrupt
                 _InterruptMask(dev, 0xFF);
                 hdcp_interrupt_clear(dev, 0xFF);
-                
+
                 // Mask and clear hdcp2.2 Interrupt
                 _HDCP22RegMask(dev, 0x3F);
                 _HDCP22RegMute(dev, 0x3F);
@@ -428,7 +428,7 @@ void dwc_hdmi_tx_set_hotplug_interrupt(struct hdmi_tx_dev *dev, int enable)
         int flag;
 
 	if(dev != NULL) {
-	        if(enable) { 
+	        if(enable) {
 	                flag = (dev->hotplug_real_status?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH)|IRQF_ONESHOT;
 	                irq_set_irq_type(dev->hotplug_irq, flag);
 			if(!dev->hotplug_irq_enabled) {

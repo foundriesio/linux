@@ -2,7 +2,7 @@
  * hdcp_reg.h
  *
  *  Created on: Jan 6, 2015
- *      Author: 
+ *      Author:
  */
 
 #ifndef SRC_HDCP_HDCP_REG_H_

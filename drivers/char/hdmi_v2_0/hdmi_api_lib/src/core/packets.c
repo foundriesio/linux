@@ -1,30 +1,30 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 
- 
+
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -62,7 +62,7 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
 {
         int mc_timeout = 100;
         unsigned int mc_reg_val;
-        
+
         videoParams_t * video = NULL;
         productParams_t * prod = NULL;
 
@@ -83,10 +83,10 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                                 pr_info("%s mVendorPayloadLength is over 24\r\n", __func__);
                                 productParams->mVendorPayloadLength = 24;
                         }
-                        packets_VendorSpecificInfoFrame(dev, productParams->mOUI, 
+                        packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
                         hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
-                        /* wait main controller to resume */ 
+                        /* wait main controller to resume */
                         do {
                                 usleep_range(10, 20);
                                 mc_reg_val = hdmi_dev_read(dev, MC_SWRSTZREQ);
@@ -96,10 +96,10 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         memcpy(prod, productParams, sizeof(productParams_t));
                 }
         } while(0);
-        
+
         return 0;
 }
- 
+
 int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productParams_t * prod)
 {
 	LOG_TRACE();
@@ -108,7 +108,7 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productPar
 		LOGGER(SNPS_WARN, "DVI mode selected: packets not configured\r\n");
 		return TRUE;
 	}
-        
+
 	if (prod != 0) {
 		fc_spd_info_t spd_data = {
                         .vName = prod->mVendorName,
@@ -124,7 +124,7 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productPar
 		u8 payload_length = prod->mVendorPayloadLength;
 
 		fc_spd_config(dev, &spd_data);
-                
+
                 if(payload_length > 0)
 		        packets_VendorSpecificInfoFrame(dev, oui, vendor_payload, payload_length, 1);
 
@@ -162,7 +162,7 @@ void packets_AudioContentProtection(struct hdmi_tx_dev *dev, u8 type, const u8 *
         if(length > ACP_PACKET_SIZE) {
                 length = ACP_PACKET_SIZE;
         }
-        
+
 	for (i = 0; i < length; i++) {
 		newFields[i] = fields[i];
 	}

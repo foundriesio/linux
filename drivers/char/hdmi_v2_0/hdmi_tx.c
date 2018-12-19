@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        hdmi_tx.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 */
 #include "include/hdmi_includes.h"
@@ -94,7 +94,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         const char *dt_string;
         unsigned int of_loop;
         struct device_node *ddibus_np;
-        
+
 	// Map DWC HDMI TX Core
 	dev->dwc_hdmi_tx_core_io = of_iomap(node, PROTO_HDMI_TX_CORE);
 	if(!dev->dwc_hdmi_tx_core_io){
@@ -111,7 +111,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 		ret = -ENODEV;
                 goto end_process;
 	}
-        
+
 	// Map HDMI TX PHY interface
 	dev->hdmi_tx_phy_if_io = of_iomap(node, PROTO_HDMI_TX_PHY); // TXPHY_IF_ADDRESS,
 	if(!dev->hdmi_tx_phy_if_io){
@@ -121,14 +121,14 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
                 goto end_process;
 
 	}
-        
+
 	dev->io_bus = of_iomap(node, PROTO_HDMI_TX_IO_BASE);
 	if(!dev->io_bus){
 	    pr_err("%s:Unable to map io_bus base address resource\n",
 	                    __func__);
 	    ret = -ENODEV;
 	    goto end_process;
-	}    
+	}
 
         // Find DDI_BUS Node
         ddibus_np = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
@@ -139,7 +139,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
                 goto end_process;
         }
 
-        // Map DDI_Bus interface                
+        // Map DDI_Bus interface
         dev->ddibus_io = of_iomap(ddibus_np, 0);
         if(!dev->ddibus_io){
                 pr_err("%s:Unable to map ddibus_io base address resource\n",
@@ -147,18 +147,18 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
                 ret = -ENODEV;
                 goto end_process;
         }
-		
-		
+
+
 		// Parse Interrupt
         for(of_loop = HDMI_IRQ_TX_CORE; of_loop < HDMI_IRQ_TX_MAX; of_loop++) {
                 dev->irq[of_loop] = of_irq_to_resource(node, of_loop, NULL);
         }
 
-        // Parse Clock 
+        // Parse Clock
         for(of_loop = HDMI_CLK_INDEX_PERI; of_loop < HDMI_CLK_INDEX_MAX; of_loop++) {
                 dev->clk[of_loop] = of_clk_get(node, of_loop);
                 if (IS_ERR(dev->clk[of_loop])) {
-                        pr_err("%s:Unable to map hdmi clock (%d)\n", 
+                        pr_err("%s:Unable to map hdmi clock (%d)\n",
                                 __func__, of_loop);
                         ret = -ENODEV;
                         goto end_process;
@@ -187,22 +187,22 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         of_property_read_u32(node, "hdmi_phy_type", &dev->hdmi_phy_type);
         if(dev->hdmi_phy_type >= hdmi_phy_type_max) {
                 pr_info("%s: Invalide hdmi phy type. set default phy type\r\n", __func__);
-                dev->hdmi_phy_type = 0; 
+                dev->hdmi_phy_type = 0;
         }
 
         if(of_property_read_u32(node, "hdmi_ref_src_clock", &dev->hdmi_ref_src_clk) < 0) {
                 pr_info("%s: Invalide hdmi reference source clock. set xin clock to reference source clock\r\n", __func__);
                 dev->hdmi_ref_src_clk = 0;
         }
-        
+
         // Update the verbose level
         of_property_read_u32(node, "verbose", &dev->verbose);
         if(dev->verbose >= VERBOSE_BASIC)
                         pr_info("%s: verbose level is %d\n", __func__, dev->verbose);
-        // Find the hotplug gpio.. 
-        dev->hotplug_gpio = of_get_gpio(node, 0);       
+        // Find the hotplug gpio..
+        dev->hotplug_gpio = of_get_gpio(node, 0);
 
-        
+
         /* Source Product Description */
         dt_string = NULL;
         if(of_property_read_string(node, "vendor_name", &dt_string) == 0 && dt_string != NULL) {
@@ -220,7 +220,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         if(of_property_read_u32(node, "source_information", &dev->source_information) < 0) {
                 dev->source_information = 1;
         }
-        
+
 end_process:
 	return ret;
 }
@@ -228,7 +228,7 @@ end_process:
 static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
         int ret = 0;
         volatile unsigned int val;
-        struct device_node *node = NULL;        
+        struct device_node *node = NULL;
         volatile void __iomem   *io_i2c_map = NULL;
         unsigned int i2c_mapping_offset, i2c_mapping_mask, i2c_mapping_val;
 
@@ -248,7 +248,7 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                         pr_err("%s of_node is NULL\r\n", __func__);
                         break;
                 }
-                
+
                 /* Get whether to use DDC */
                 if(of_property_read_u32(node, "hdmi_i2c_port_disable", &dev->ddc_disable) < 0) {
                         dev->ddc_disable = 0;
@@ -258,7 +258,7 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                         pr_info("%s ddc is disabled.. \r\n", __func__);
                         break;
                 }
-                
+
                 // Map HDMI TX PHY interface
                 io_i2c_map = of_iomap(node, PROTO_HDMI_TX_I2C_MAP);
                 if(!io_i2c_map){
@@ -291,18 +291,18 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                 val &= ~i2c_mapping_mask;
                 val |= i2c_mapping_val;
                 iowrite32(val, (void*)(io_i2c_map + i2c_mapping_offset));
-                pr_info("hdmi i2c mapping offset(0x%x), mask(0x%x), val(0x%x), read_val(0x%x)\r\n", 
-                                i2c_mapping_offset, 
-                                i2c_mapping_mask, 
-                                i2c_mapping_val, 
+                pr_info("hdmi i2c mapping offset(0x%x), mask(0x%x), val(0x%x), read_val(0x%x)\r\n",
+                                i2c_mapping_offset,
+                                i2c_mapping_mask,
+                                i2c_mapping_val,
                                 ioread32((void*)(io_i2c_map + i2c_mapping_offset)));
         }while(0);
-        
+
 end_process:
 
         if(io_i2c_map != NULL)
                 iounmap(io_i2c_map);
-      
+
         return ret;
 }
 
@@ -426,7 +426,7 @@ int hdmi_tx_suspend(struct device *dev)
         struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
 
 	if(hdmi_tx_dev != NULL) {
-                pr_info("### hdmi_tx_suspend \r\n"); 
+                pr_info("### hdmi_tx_suspend \r\n");
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status)) {
                         if(gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
                                 hdmi_tx_dev->hotplug_status = 0;
@@ -435,8 +435,8 @@ int hdmi_tx_suspend(struct device *dev)
                                 /* Backup enable val */
                                 backups[0] = hdmi_tx_dev->hotplug_irq_enable;
                                 hdmi_tx_dev->hotplug_irq_enable = 0;
-                                hdmi_hpd_enable(hdmi_tx_dev);   
-        
+                                hdmi_hpd_enable(hdmi_tx_dev);
+
                                 /* Restore enable val */
                                 hdmi_tx_dev->hotplug_irq_enable = backups[0];
                         }
@@ -453,7 +453,7 @@ int hdmi_tx_suspend(struct device *dev)
                         dwc_hdmi_power_off(hdmi_tx_dev);
 			/* Restore enable counts */
                         hdmi_tx_dev->hdmi_clock_enable_count = backups[0];
-                        hdmi_tx_dev->display_clock_enable_count = backups[1];                    
+                        hdmi_tx_dev->display_clock_enable_count = backups[1];
                         set_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status);
                 } else {
 			pr_err("%s already suspended\r\n", __func__);
@@ -466,7 +466,7 @@ int hdmi_tx_resume(struct device *dev)
 {
         int backups[3];
         struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-        
+
         // Nothing..!!
         printk("### %s \n", __func__);
         if(hdmi_tx_dev != NULL) {
@@ -478,7 +478,7 @@ int hdmi_tx_resume(struct device *dev)
                                 } else {
 					hdmi_hpd_enable(hdmi_tx_dev);
 				}
-                                
+
 
                                 of_parse_i2c_mapping(hdmi_tx_dev);
 
@@ -499,7 +499,7 @@ int hdmi_tx_resume(struct device *dev)
                                                 backups[2] = 0;
                                         }
                                         clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status);
-                        
+
                                         hdmi_tx_dev->display_clock_enable_count = 0;
                                         if(hdmi_tx_dev->hdmi_clock_enable_count == 0) {
 						/* HDMI Link was disabled */
@@ -509,10 +509,10 @@ int hdmi_tx_resume(struct device *dev)
                                                 hdmi_tx_dev->hdmi_clock_enable_count = 0;
                                         }
                                         dwc_hdmi_power_on(hdmi_tx_dev);
-					
+
                                         /* Restore enable counts */
 		                        hdmi_tx_dev->hdmi_clock_enable_count = backups[0];
-		                        hdmi_tx_dev->display_clock_enable_count = backups[1];    
+		                        hdmi_tx_dev->display_clock_enable_count = backups[1];
 
                                         /* Restore phy alive */
                                         if(backups[2]) {
@@ -520,7 +520,7 @@ int hdmi_tx_resume(struct device *dev)
                                         } else {
                                                 clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_tx_dev->status);
                                         }
-                                                
+
                                 }
                         }
                 }
@@ -610,28 +610,28 @@ hdmi_tx_init(struct platform_device *pdev){
 
         // Zero the device
         memset(dev, 0, sizeof(struct hdmi_tx_dev));
-       
+
         // Update the device node
-        dev->parent_dev = &pdev->dev;        
+        dev->parent_dev = &pdev->dev;
         dev->device_name = "HDMI_TX";
         pr_info("%s:Driver's name '%s'\n", __func__, dev->device_name);
 
         spin_lock_init(&dev->slock);
         spin_lock_init(&dev->slock_power);
-        
+
         mutex_init(&dev->mutex);
 
         INIT_WORK(&dev->hdmi_output_event_work, send_hdmi_output_event);
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         INIT_DELAYED_WORK(&dev->hdmi_restore_hotpug_work, hdmi_tx_restore_hotpug_work);
         #endif
-        
+
         dev->videoParam = (void*)devm_kzalloc(dev->parent_dev, sizeof(videoParams_t), GFP_KERNEL);
         dev->audioParam = (void*)devm_kzalloc(dev->parent_dev, sizeof(audioParams_t), GFP_KERNEL);
         dev->productParam = (void*)devm_kzalloc(dev->parent_dev, sizeof(productParams_t), GFP_KERNEL);
-        dev->drmParm = (void*)devm_kzalloc(dev->parent_dev, sizeof(DRM_Packet_t), GFP_KERNEL);	
+        dev->drmParm = (void*)devm_kzalloc(dev->parent_dev, sizeof(DRM_Packet_t), GFP_KERNEL);
 
-        // always data enable polarity is 1. 
+        // always data enable polarity is 1.
         dev->hdmi_tx_ctrl.data_enable_polarity = 1;
         dev->hdmi_tx_ctrl.csc_on = 1;
         dev->hdmi_tx_ctrl.audio_on = 1;
@@ -641,7 +641,7 @@ hdmi_tx_init(struct platform_device *pdev){
 
         // wait queue of poll
         init_waitqueue_head(&dev->poll_wq);
-        
+
         // Map memory blocks
         if(of_parse_hdmi_dt(dev, pdev->dev.of_node) < 0){
                 pr_info("%s:Map memory blocks failed\n", __func__);
@@ -657,7 +657,7 @@ hdmi_tx_init(struct platform_device *pdev){
 
         // Enable All Interrupts
         dwc_init_interrupts(dev);
-        
+
         // Proc file system
         pr_info("%s:Init proc file system @ /proc/hdmi_tx\n", __func__);
         proc_interface_init(dev);
@@ -667,12 +667,12 @@ hdmi_tx_init(struct platform_device *pdev){
 
         dwc_hdmi_api_register(dev);
 
-        // Register MISC Driver. 
+        // Register MISC Driver.
         dwc_hdmi_misc_register(dev);
 
         #if defined(CONFIG_PM)
-        pm_runtime_set_active(dev->parent_dev);       
-        pm_runtime_enable(dev->parent_dev);     
+        pm_runtime_set_active(dev->parent_dev);
+        pm_runtime_enable(dev->parent_dev);
         pm_runtime_get_noresume(dev->parent_dev);
         #endif
 
@@ -683,7 +683,7 @@ hdmi_tx_init(struct platform_device *pdev){
         #if defined(CONFIG_TCC_OUTPUT_STARTER)
         if(dev->ddibus_io)
         {
-        	unsigned int val = ioread32(dev->ddibus_io+0x10); 
+        	unsigned int val = ioread32(dev->ddibus_io+0x10);
         	if(val & (1 << 15)) {
         		//pr_info("HDMI already Enabled\r\n");
         		dwc_hdmi_power_on_core(dev, 0);
@@ -754,12 +754,12 @@ hdmi_tx_exit(struct platform_device *pdev){
                         devm_kfree(dev->parent_dev, dev->audioParam);
                         dev->audioParam = NULL;
                 }
-                
+
                 if(dev->productParam) {
                         devm_kfree(dev->parent_dev, dev->productParam);
                         dev->productParam = NULL;
                 }
-                
+
                 #if defined(CONFIG_PM)
                 pm_runtime_disable(dev->parent_dev);
                 #endif
@@ -770,7 +770,7 @@ hdmi_tx_exit(struct platform_device *pdev){
 
                 dwc_deinit_interrupts(dev);
 
-                // Deregister HDMI Misc driver. 
+                // Deregister HDMI Misc driver.
                 dwc_hdmi_misc_deregister(dev);
 
                 // Release memory blocks
@@ -782,7 +782,7 @@ hdmi_tx_exit(struct platform_device *pdev){
         return 0;
 }
 
-/** 
+/**
  * @short of_device_id structure
  */
 static const struct of_device_id dw_hdmi_tx[] = {
@@ -791,7 +791,7 @@ static const struct of_device_id dw_hdmi_tx[] = {
 };
 MODULE_DEVICE_TABLE(of, dw_hdmi_tx);
 
-/** 
+/**
  * @short Platform driver structure
  */
 static struct platform_driver __refdata dwc_hdmi_tx_pdrv = {

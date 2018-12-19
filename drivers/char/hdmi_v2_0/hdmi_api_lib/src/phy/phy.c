@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        phy.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 
@@ -137,15 +137,15 @@ u8 hdmi_phy_get_rx_sense_status(struct hdmi_tx_dev *dev)
 unsigned int hdmi_phy_get_actual_tmds_bit_ratio(struct hdmi_tx_dev *dev, unsigned int pixelclock, color_depth_t color_depth)
 {
         unsigned int tmds_clock = 0;
-        
+
         if(pixelclock) {
                 pixelclock /= 1000;
-                switch(color_depth) 
+                switch(color_depth)
                 {
                         case COLOR_DEPTH_8:
                                 tmds_clock = pixelclock;
                                 break;
-                                
+
                         case COLOR_DEPTH_10:
                                 // 1.25x
                                 tmds_clock = (pixelclock * 125)/100;
@@ -158,12 +158,12 @@ unsigned int hdmi_phy_get_actual_tmds_bit_ratio(struct hdmi_tx_dev *dev, unsigne
                                 // noghing.
                                 break;
                 }
-                
+
                 if(tmds_clock > 0) {
                         tmds_clock *= 1000;
                 }
         }
-        
+
         //printf("\r\n >>actual tmds clock is %dHz\r\n", tmds_clock);
         return tmds_clock;
 }
@@ -195,7 +195,7 @@ int dwc_hdmi_phy_config(struct hdmi_tx_dev *dev, videoParams_t * videoParams)
                 tcc_hdmi_phy_config(dev, pixel_clock, tmds_clock, color_depth, videoParams->mScdcPresent, videoParams->mScrambling);
                 ret = 0;
         }
-        
+
         return ret;
 }
 
@@ -214,7 +214,7 @@ void dwc_hdmi_phy_standby(struct hdmi_tx_dev *dev)
         tcc_hdmi_phy_standby(dev);
 }
 
-void dwc_hdmi_phy_clear_status_ready(struct hdmi_tx_dev *dev) 
+void dwc_hdmi_phy_clear_status_ready(struct hdmi_tx_dev *dev)
 {
         tcc_hdmi_phy_clear_status_ready(dev);
 }
@@ -224,7 +224,7 @@ int dwc_hdmi_phy_status_ready(struct hdmi_tx_dev *dev)
         return tcc_hdmi_phy_status_ready(dev);
 }
 
-void dwc_hdmi_phy_clear_status_clock_ready(struct hdmi_tx_dev *dev) 
+void dwc_hdmi_phy_clear_status_clock_ready(struct hdmi_tx_dev *dev)
 {
         tcc_hdmi_phy_clear_status_clock_ready(dev);
 }
@@ -234,7 +234,7 @@ int dwc_hdmi_phy_status_clock_ready(struct hdmi_tx_dev *dev)
         return tcc_hdmi_phy_status_clock_ready(dev);
 }
 
-void dwc_hdmi_phy_clear_status_pll_lock(struct hdmi_tx_dev *dev) 
+void dwc_hdmi_phy_clear_status_pll_lock(struct hdmi_tx_dev *dev)
 {
         tcc_hdmi_phy_clear_status_pll_lock(dev);
 }
@@ -243,7 +243,7 @@ int dwc_hdmi_phy_status_pll_lock(struct hdmi_tx_dev *dev)
 {
         return tcc_hdmi_phy_status_pll_lock(dev);
 }
-       
+
 int dwc_hdmi_phy_use_peri_clock(struct hdmi_tx_dev *dev)
 {
        return tcc_hdmi_phy_use_peri_clock(dev);

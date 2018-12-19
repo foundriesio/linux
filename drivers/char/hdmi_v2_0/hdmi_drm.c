@@ -25,13 +25,13 @@ static void hdmi_reset_drmparm(DRM_Packet_t * drmparm)
 {
         memset(drmparm, 0, sizeof(DRM_Packet_t));
         drmparm->mInfoFrame.version = 1;
-        drmparm->mInfoFrame.length = 0x1A; // 26 
+        drmparm->mInfoFrame.length = 0x1A; // 26
 }
 
 static int drm_infoframe_verification(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 {
         int valid = 0;
-                
+
         if(drmparm->mInfoFrame.version != 1) {
                 printk("drm_infoframe_verification: versio is mismatch\r\n");
                 goto end_process;
@@ -46,10 +46,10 @@ static int drm_infoframe_verification(struct hdmi_tx_dev *dev, DRM_Packet_t * dr
         }
         if(drmparm->mDescriptor_type1.Descriptor_ID > 0) {
                 printk("drm_infoframe_verification: id is mismatch\r\n");
-             goto end_process;   
+             goto end_process;
         }
         valid = 1;
-        
+
 end_process:
         return valid;
 }
@@ -80,7 +80,7 @@ static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 	hdmi_dev_write(dev,FC_DRM_HB1_DATA_BYTE,drmparm->mInfoFrame.length);
 
 	hdmi_dev_write(dev,FC_DRM_PB0_DATA_BYTE,(drmparm->mDescriptor_type1.EOTF & 0x0007));
-	hdmi_dev_write(dev,FC_DRM_PB1_DATA_BYTE,(drmparm->mDescriptor_type1.Descriptor_ID & 0x0007));	
+	hdmi_dev_write(dev,FC_DRM_PB1_DATA_BYTE,(drmparm->mDescriptor_type1.Descriptor_ID & 0x0007));
 
 	if(drmparm->mDescriptor_type1.EOTF < 3) {
 		// HDR-10
@@ -88,17 +88,17 @@ static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 		hdmi_dev_write(dev,FC_DRM_PB3_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_x[0] & 0xFF00) >> DRM_BIT_OFFSET);
 		hdmi_dev_write(dev,FC_DRM_PB4_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[0] & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB5_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[0] & 0xFF00) >> DRM_BIT_OFFSET);
-		
+
 		hdmi_dev_write(dev,FC_DRM_PB6_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_x[1] & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB7_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_x[1] & 0xFF00) >> DRM_BIT_OFFSET);
 		hdmi_dev_write(dev,FC_DRM_PB8_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[1] & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB9_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[1] & 0xFF00) >> DRM_BIT_OFFSET);
-		
+
 		hdmi_dev_write(dev,FC_DRM_PB10_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_x[2] & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB11_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_x[2] & 0xFF00) >> DRM_BIT_OFFSET);
 		hdmi_dev_write(dev,FC_DRM_PB12_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[2] & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB13_DATA_BYTE,(drmparm->mDescriptor_type1.disp_primaries_y[2] & 0xFF00) >> DRM_BIT_OFFSET);
-		
+
 		hdmi_dev_write(dev,FC_DRM_PB14_DATA_BYTE,(drmparm->mDescriptor_type1.white_point_x & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB15_DATA_BYTE,(drmparm->mDescriptor_type1.white_point_x & 0xFF00) >> DRM_BIT_OFFSET);
 		hdmi_dev_write(dev,FC_DRM_PB16_DATA_BYTE,(drmparm->mDescriptor_type1.white_point_y & 0x00FF));
@@ -106,7 +106,7 @@ static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 
 		hdmi_dev_write(dev,FC_DRM_PB18_DATA_BYTE,(drmparm->mDescriptor_type1.max_disp_mastering_luminance & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB19_DATA_BYTE,(drmparm->mDescriptor_type1.max_disp_mastering_luminance & 0xFF00) >> DRM_BIT_OFFSET);
-		
+
 		hdmi_dev_write(dev,FC_DRM_PB20_DATA_BYTE,(drmparm->mDescriptor_type1.min_disp_mastering_luminance & 0x00FF));
 		hdmi_dev_write(dev,FC_DRM_PB21_DATA_BYTE,(drmparm->mDescriptor_type1.min_disp_mastering_luminance & 0xFF00) >> DRM_BIT_OFFSET);
 
@@ -120,7 +120,7 @@ static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 
 
 /**
- * @short  Change the drm packet to sdr mode while keeping the devparam of hdmi device. 
+ * @short  Change the drm packet to sdr mode while keeping the devparam of hdmi device.
  * return int
  */
 int hdmi_clear_drm(struct hdmi_tx_dev *dev)
@@ -129,7 +129,7 @@ int hdmi_clear_drm(struct hdmi_tx_dev *dev)
         hdmi_reset_drmparm(&drmparm);
         if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        // This Code is required to CTS HDMI2.0                                                                                 
+                        // This Code is required to CTS HDMI2.0
                         drm_configure(dev,(DRM_Packet_t*)&drmparm);
                         drm_tx_enable(dev);
                         drm_update(dev);
@@ -146,7 +146,7 @@ int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 {
         if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        // This Code is required to CTS HDMI2.0                                                                                 
+                        // This Code is required to CTS HDMI2.0
                         drm_configure(dev,(DRM_Packet_t*)dev->drmParm);
                         drm_tx_enable(dev);
                         drm_update(dev);
@@ -176,8 +176,8 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
                         //pr_info("%s clean poll \r\n",__func__);
                 }
                 else
-                {                        
-                        // Initialize Valid bit. 
+                {
+                        // Initialize Valid bit.
                         clear_bit(HDMI_TX_HDR_VALID, &dev->status);
                         clear_bit(HDMI_TX_HLG_VALID, &dev->status);
 

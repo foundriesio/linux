@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 
@@ -38,7 +38,7 @@ Agreement between Telechips and Company.
 
 #include <hdmi_api_lib/src/core/audio/audio_packetizer_reg.h>
 
-#include <linux/clk.h> 
+#include <linux/clk.h>
 #include <dt-bindings/clock/tcc898x-clks.h>
 
 typedef struct audio_n_computation {
@@ -70,17 +70,17 @@ audio_n_computation_t n_values_32kHz_24bit[] = {
 audio_n_computation_t n_values_32kHz_30bit[] = {
 	/** for 30bits/Pixel **/
 	{0,      4096,  0     },
-	{31468,  9152,  70312 }, 
-	{31500,  4096,  31500 }, 
-	{33750,  4096,  33750 }, 
-	{33783,  8192,  67567 }, 
-	{67500,  4096,  67500 }, 
-	{67567,  8192,  135135}, 
-	{92719,  11648, 263671}, 
-	{92812,  8192,  185625}, 
-	{185439, 11648, 527343}, 
-	{185625, 4096,  185625}, 
-	{370879, 5824,  527343}, 
+	{31468,  9152,  70312 },
+	{31500,  4096,  31500 },
+	{33750,  4096,  33750 },
+	{33783,  8192,  67567 },
+	{67500,  4096,  67500 },
+	{67567,  8192,  135135},
+	{92719,  11648, 263671},
+	{92812,  8192,  185625},
+	{185439, 11648, 527343},
+	{185625, 4096,  185625},
+	{370879, 5824,  527343},
 	{371250, 6144,  556875},
 	{0,      0,     0     }
 };
@@ -88,18 +88,18 @@ audio_n_computation_t n_values_32kHz_30bit[] = {
 audio_n_computation_t n_values_32kHz_36bit[] = {
 	/** for 36bits/Pixel **/
 	{0,      4096,  0     },
-	{37762,  9152,  84375 }, 
-	{37800,  4096,  37800 }, 
-	{40500,  4096,  40500 }, 
-	{40540,  8192,  81081 }, 
-	{81000,  4096,  81000 }, 
-	{81081,  4096,  81081 }, 
-	{111263, 11648, 316406}, 
-	{111375, 4096,  111375}, 
-	{222527, 11648, 632812}, 
-	{222750, 4096,  222750}, 
-	{445054, 5824,  632812}, 
-	{445500, 4096,  445500}, 
+	{37762,  9152,  84375 },
+	{37800,  4096,  37800 },
+	{40500,  4096,  40500 },
+	{40540,  8192,  81081 },
+	{81000,  4096,  81000 },
+	{81081,  4096,  81081 },
+	{111263, 11648, 316406},
+	{111375, 4096,  111375},
+	{222527, 11648, 632812},
+	{222750, 4096,  222750},
+	{445054, 5824,  632812},
+	{445500, 4096,  445500},
 	{0,      0,     0     }
 };
 
@@ -125,17 +125,17 @@ audio_n_computation_t n_values_44p1kHz_24bit[] = {
 audio_n_computation_t n_values_44p1kHz_30bit[] = {
 	/** for 30bits/Pixel **/
 	{0,      6272,  0     },
-	{31468,  14014, 78125 }, 
-	{31500,  6272,  35000 }, 
-	{33750,  6272,  37500 }, 
-	{33783,  12544, 75075 }, 
-	{67500,  6272,  75000 }, 
-	{67567,  6272,  75075 }, 
-	{92719,  17836, 292968}, 
-	{92812,  6272,  103125}, 
-	{185439, 17836, 585937}, 
-	{185625, 6272,  206250}, 
-	{370879, 8918,  585937}, 
+	{31468,  14014, 78125 },
+	{31500,  6272,  35000 },
+	{33750,  6272,  37500 },
+	{33783,  12544, 75075 },
+	{67500,  6272,  75000 },
+	{67567,  6272,  75075 },
+	{92719,  17836, 292968},
+	{92812,  6272,  103125},
+	{185439, 17836, 585937},
+	{185625, 6272,  206250},
+	{370879, 8918,  585937},
 	{371250, 4704,  309375},
 	{0,      0,     0     }
 };
@@ -143,18 +143,18 @@ audio_n_computation_t n_values_44p1kHz_30bit[] = {
 audio_n_computation_t n_values_44p1kHz_36bit[] = {
 	/** for 36bits/Pixel **/
 	{0,      6272,  0     },
-	{37762,  7007,  46875 }, 
-	{37800,  6272,  42000 }, 
-	{40500,  6272,  45000 }, 
-	{40540,  6272,  45045 }, 
-	{81000,  6272,  90000 }, 
-	{81081,  6272,  90090 }, 
-	{111263, 17836, 351562}, 
-	{111375, 6272,  123750}, 
-	{222527, 17836, 703125}, 
-	{222750, 6272,  247500}, 
-	{445054, 8918,  703125}, 
-	{445500, 4704,  371250}, 
+	{37762,  7007,  46875 },
+	{37800,  6272,  42000 },
+	{40500,  6272,  45000 },
+	{40540,  6272,  45045 },
+	{81000,  6272,  90000 },
+	{81081,  6272,  90090 },
+	{111263, 17836, 351562},
+	{111375, 6272,  123750},
+	{222527, 17836, 703125},
+	{222750, 6272,  247500},
+	{445054, 8918,  703125},
+	{445500, 4704,  371250},
 	{0,      0,     0     }
 };
 
@@ -180,17 +180,17 @@ audio_n_computation_t n_values_48kHz_24bit[] = {
 audio_n_computation_t n_values_48kHz_30bit[] = {
 	/** for 30bits/Pixel **/
 	{0,      6144,  0     },
-	{31468,  9152,  46875 }, 
-	{31500,  6144,  31500 }, 
-	{33750,  6144,  33750 }, 
-	{33783,  8192,  45045 }, 
-	{67500,  6144,  67500 }, 
-	{67567,  8192,  90090 }, 
-	{92719,  11648, 175781}, 
-	{92812,  12288, 185625}, 
-	{185439, 11648, 351562}, 
-	{185625, 6144,  185625}, 
-	{370879, 11648, 703125}, 
+	{31468,  9152,  46875 },
+	{31500,  6144,  31500 },
+	{33750,  6144,  33750 },
+	{33783,  8192,  45045 },
+	{67500,  6144,  67500 },
+	{67567,  8192,  90090 },
+	{92719,  11648, 175781},
+	{92812,  12288, 185625},
+	{185439, 11648, 351562},
+	{185625, 6144,  185625},
+	{370879, 11648, 703125},
 	{371250, 5120,  309375},
 	{0,      0,     0     }
 };
@@ -198,18 +198,18 @@ audio_n_computation_t n_values_48kHz_30bit[] = {
 audio_n_computation_t n_values_48kHz_36bit[] = {
 	/** for 36bits/Pixel **/
 	{0,      6144,  0     },
-	{37762,  9152,  56250 }, 
-	{37800,  6144,  37800 }, 
-	{40500,  6144,  40500 }, 
-	{40540,  8192,  54054 }, 
-	{81000,  6144,  81000 }, 
-	{81081,  6144,  81081 }, 
-	{111263, 11648, 210937}, 
-	{111375, 6144,  111375}, 
-	{222527, 11648, 421875}, 
-	{222750, 6144,  222750}, 
-	{445054, 5824,  421875}, 
-	{445500, 5120,  371250}, 
+	{37762,  9152,  56250 },
+	{37800,  6144,  37800 },
+	{40500,  6144,  40500 },
+	{40540,  8192,  54054 },
+	{81000,  6144,  81000 },
+	{81081,  6144,  81081 },
+	{111263, 11648, 210937},
+	{111375, 6144,  111375},
+	{222527, 11648, 421875},
+	{222750, 6144,  222750},
+	{445054, 5824,  421875},
+	{445500, 5120,  371250},
 	{0,      0,     0     }
 };
 
@@ -224,7 +224,7 @@ void _audio_clock_n(struct hdmi_tx_dev *dev, u32 value)
 	hdmi_dev_write_mask(dev, AUD_N3, AUD_N3_AUDN_MASK, (u8)(value >> 16));
 	hdmi_dev_write(dev, AUD_N2, (u8)(value >> 8));
 	hdmi_dev_write(dev, AUD_N1, (u8)(value >> 0));
-	
+
 
 	/* no shift */
 	hdmi_dev_write_mask(dev, AUD_CTS3, AUD_CTS3_N_SHIFT_MASK, 0);
@@ -325,11 +325,11 @@ void tcc_hdmi_audio_select_source(struct hdmi_tx_dev *dev, audioParams_t * audio
 
 
 	if(dev->hdmi_audio_if_sel_ofst != 0xff) {
-	    iowrite32(audio->mIecSourceNumber, (void*)(tcc_io_bus + dev->hdmi_audio_if_sel_ofst));	
+	    iowrite32(audio->mIecSourceNumber, (void*)(tcc_io_bus + dev->hdmi_audio_if_sel_ofst));
 	}
 
 	if(dev->hdmi_rx_tx_chmux != 0xff && audio->mInterfaceType == SPDIF) {
-	    iowrite32(1 << (audio->mIecSourceNumber*8), (void*)(tcc_io_bus + dev->hdmi_rx_tx_chmux));	
+	    iowrite32(1 << (audio->mIecSourceNumber*8), (void*)(tcc_io_bus + dev->hdmi_rx_tx_chmux));
 	}
 
 }
@@ -342,12 +342,12 @@ extern int tcc_ckc_set_hdmi_audio_src(unsigned int src_id);
 void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
 {
     unsigned int clk_rate;
-	
+
 	if(dev->clk[HDMI_CLK_INDEX_SPDIF])
 	{
 		clk_rate = audio->mSamplingFrequency*audio->mClockFsFactor;
 	    clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_SPDIF]);
-		
+
 		if(audio->mIecSourceNumber)
 		{
 			#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -358,18 +358,18 @@ void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
 			printk("%s : clock config is spdif1 \n",__func__);
 		}
 		else
-		{        
+		{
 			#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 			#warning This device should impliment a tcc_ckc_set_hdmi_audio_src
 			#else
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF0);
 			#endif
-			printk("%s : clock config is spdif0 \n",__func__);			
+			printk("%s : clock config is spdif0 \n",__func__);
 		}
-		
+
 	    clk_set_rate(dev->clk[HDMI_CLK_INDEX_SPDIF],clk_rate);
 	    clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_SPDIF]);
-		
+
 		printk("%s: HDMI SPDIF clk =  %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_SPDIF]));
 	}
 }
@@ -408,7 +408,7 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 		LOGGER(SNPS_WARN, "DVI mode selected: audio not configured");
 		return TRUE;
 	}
-        pixel_clock = (dev->hdmi_tx_ctrl.pixel_clock > 1000)?(dev->hdmi_tx_ctrl.pixel_clock / 1000):dev->hdmi_tx_ctrl.pixel_clock; 
+        pixel_clock = (dev->hdmi_tx_ctrl.pixel_clock > 1000)?(dev->hdmi_tx_ctrl.pixel_clock / 1000):dev->hdmi_tx_ctrl.pixel_clock;
 	LOGGER(SNPS_DEBUG, "Audio interface type = %s\n", audio->mInterfaceType == I2S ? "I2S" :
 							audio->mInterfaceType == SPDIF ? "SPDIF" :
 							audio->mInterfaceType == HBR ? "HBR" :
@@ -467,7 +467,7 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 	}
 
 	cts = audio_ComputeCts(dev, audio->mSamplingFrequency, pixel_clock);
-	n = audio_ComputeN(dev, audio->mSamplingFrequency, pixel_clock);	
+	n = audio_ComputeN(dev, audio->mSamplingFrequency, pixel_clock);
 #if CTS_AUTO
 	_audio_clock_cts_auto(dev, n);
 	printk("<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(auto) \r\n",

@@ -68,7 +68,7 @@ u32 videoParams_GetPixelClock(struct hdmi_tx_dev *dev, videoParams_t * params);
  */
 u16 videoParams_GetTmdsClock(struct hdmi_tx_dev *dev, videoParams_t * params);
 
-/** 
+/**
  * @param params pointer to the video parameters structure
  * @return Ration clock x 100 (struct hdmi_tx_dev *dev, should be multiplied by x 0.01 afterwards)
  */

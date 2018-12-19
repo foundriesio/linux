@@ -1,29 +1,29 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
- 
+
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -227,20 +227,20 @@ void fc_video_timing_dump(struct hdmi_tx_dev *dev)
         reg = hdmi_dev_read(dev, (FC_INVACTIV1));
         reg &= 0x3F;
         val |= (reg <<  8) ;
-        
+
         // VSYNC EDGE DELAY
         val1 = hdmi_dev_read(dev, (FC_VSYNCINDELAY));
-        
+
         // VSYNC WIDTH
         val2 = hdmi_dev_read(dev, (FC_VSYNCINWIDTH));
         val2 &= FC_VSYNCINWIDTH_V_IN_WIDTH_MASK;
-        
+
         // BLANK
         val3 = hdmi_dev_read(dev, (FC_INVBLANK));
 
         printk("VSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val, val1, val2, val3);
 }
-       
+
 int fc_video_config_timing(struct hdmi_tx_dev *dev, videoParams_t *video)
 {
         const dtd_t *dtd;
@@ -299,7 +299,7 @@ int fc_video_config_timing(struct hdmi_tx_dev *dev, videoParams_t *video)
         fc_video_VBlank(dev, dtd->mVBlanking);
         fc_video_VSyncEdgeDelay(dev, dtd->mVSyncOffset);
         fc_video_VSyncPulseWidth(dev, dtd->mVSyncPulseWidth);
-        
+
         fc_video_PixelRepetitionInput(dev, dtd->mPixelRepetitionInput + 1);
 
         return TRUE;
@@ -308,7 +308,7 @@ int fc_video_config_timing(struct hdmi_tx_dev *dev, videoParams_t *video)
 
 int fc_video_config_default(struct hdmi_tx_dev *dev)
 {
-        
+
         u16 i;
         fc_video_ControlPeriodMinDuration(dev, 12);
         fc_video_ExtendedControlPeriodMinDuration(dev, 32);
@@ -329,12 +329,12 @@ int fc_video_config(struct hdmi_tx_dev *dev, videoParams_t *video)
                 pr_err("%s Invalid arguments: dev=%p; video=%p", __func__, dev, video);
                 return FALSE;
         }
-        
+
         fc_video_config_timing(dev, video);
-        
+
         fc_video_config_default(dev);
-        
+
         return TRUE;
 }
-       
+
 

@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 #include <include/hdmi_includes.h>
@@ -53,9 +53,9 @@ int videoParams_GetCeaVicCode(int hdmi_vic_code)
 
 int videoParams_GetHdmiVicCode(int cea_code)
 {
-        
+
         int vic_code = -1;
-        
+
 	switch(cea_code)
 	{
 	case 95:
@@ -83,7 +83,7 @@ void video_params_reset(struct hdmi_tx_dev *dev, videoParams_t * params)
         if(params != NULL) {
         	hdmi_dtd_fill(&dtd, 1, 60000);
         	memset(params, 0, sizeof(videoParams_t));
-        	
+
         	params->mColorResolution = COLOR_DEPTH_8;
         	params->mActiveFormatAspectRatio = 8;
         	params->mEndTopBar = (u16)-1;
@@ -95,7 +95,7 @@ void video_params_reset(struct hdmi_tx_dev *dev, videoParams_t * params)
         }
 }
 
-#if 0 
+#if 0
 /*
  * This API is deprecated
  */
@@ -185,14 +185,14 @@ unsigned videoParams_GetRatioClock(struct hdmi_tx_dev *dev, videoParams_t * para
 		} else if (params->mColorResolution == 16) {
 			ratio = 200;
 		}
-	} 
+	}
 	return ratio * (params->mPixelRepetitionFactor + 1);
 }
 
 int videoParams_IsColorSpaceConversion(struct hdmi_tx_dev *dev, videoParams_t * params)
 {
 	return params->mEncodingIn != params->mEncodingOut;
-}        
+}
 
 int videoParams_IsColorSpaceDecimation(struct hdmi_tx_dev *dev, videoParams_t * params)
 {
@@ -212,7 +212,7 @@ int videoParams_IsPixelRepetition(struct hdmi_tx_dev *dev, videoParams_t * param
 {
 	return (params->mPixelRepetitionFactor > 0) || (params->mDtd.mPixelRepetitionInput > 0);
 }
-#if 0 
+#if 0
 /*
  * This API is deprecated
  */

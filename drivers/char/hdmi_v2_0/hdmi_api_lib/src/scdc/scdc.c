@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
  */
 #include <include/hdmi_includes.h>
@@ -38,7 +38,7 @@ Agreement between Telechips and Company.
 
 #include <linux/timer.h>
 
-static struct hdmi_scdc_error_data prev_hdmi_scdc_error_data; 
+static struct hdmi_scdc_error_data prev_hdmi_scdc_error_data;
 
 
 
@@ -193,7 +193,7 @@ static unsigned int scdc_time_diff_ms(struct timeval *pre_timeval, struct timeva
 }
 
 int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_data *hdmi_scdc_error_data, int stage)
-{        
+{
         int ret = 0;
         int scdc_support = 1;
         u8 reg_value, regl_value, regh_value;
@@ -215,56 +215,56 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                 }
         }
 
-  
+
         if(scdc_support) {
                 if(scdc_read(dev, SCDC_SCRAMBLER_STAT, 1, &reg_value)) {
                         reg_value = 0;
                 }
                 if(reg_value & 1)
                         set_bit(SCDC_STATUS_SCRAMBLED, &hdmi_scdc_error_data->status);
-                
+
                 if(scdc_read(dev, SCDC_TMDS_CONFIG, 1, &reg_value)){
                         reg_value = 0;
                 }
                 if(reg_value & 1)
                         set_bit(SCDC_STATUS_SET_SCRAMBLE, &hdmi_scdc_error_data->status);
-                
+
                 if(reg_value & 2)
                         set_bit(SCDC_STATUS_SET_TMDS, &hdmi_scdc_error_data->status);
 
                 if(scdc_read(dev, SCDC_UPDATE_0, 1, &reg_value)){
-                      reg_value = 0;  
+                      reg_value = 0;
                 }
                 if((reg_value >> 1) & 1) {
-                      set_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);  
+                      set_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);
                 }
                 if((reg_value >> 0) & 1) {
-                      set_bit(SCDC_STATUS_CHANGE, &hdmi_scdc_error_data->status);  
+                      set_bit(SCDC_STATUS_CHANGE, &hdmi_scdc_error_data->status);
                 }
 
 		// Clear SCDC UPDATE_0
-		reg_value &= 0x3;                
+		reg_value &= 0x3;
 		scdc_write(dev, SCDC_UPDATE_0, 1, &reg_value);
-		        
+
 		if(scdc_read(dev, SCDC_ERR_DET_0_L, 8, scdc_errors) == 0){
 		regl_value = scdc_errors[0];
 		regh_value = scdc_errors[1];
 		if(regh_value >> 7) {
-			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch0);  
+			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch0);
 		}
 		hdmi_scdc_error_data->ch0 &= ~(SCDC_CHANNEL_ERROR_MASK << SCDC_CHANNEL_ERROR_SHIFT);
-		hdmi_scdc_error_data->ch0 |= ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);				 
+		hdmi_scdc_error_data->ch0 |= ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
 		regl_value = scdc_errors[2];
 		regh_value = scdc_errors[3];
 		if(regh_value >> 7) {
-			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch1);  
+			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch1);
 		}
 		hdmi_scdc_error_data->ch1 &= ~(SCDC_CHANNEL_ERROR_MASK << SCDC_CHANNEL_ERROR_SHIFT);
-		hdmi_scdc_error_data->ch1 |= ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);      
+		hdmi_scdc_error_data->ch1 |= ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
 		regl_value = scdc_errors[4];
 		regh_value = scdc_errors[5];
 		if(regh_value >> 7) {
-			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch2);  
+			set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch2);
 		}
 		hdmi_scdc_error_data->ch2 &= ~(SCDC_CHANNEL_ERROR_MASK << SCDC_CHANNEL_ERROR_SHIFT);
 		hdmi_scdc_error_data->ch2 |= ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
@@ -275,18 +275,18 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
 		}
 
 		if((reg_value >> 0) & 1) {
-		      set_bit(SCDC_STATUS_CLK_LOCK, &hdmi_scdc_error_data->status);  
+		      set_bit(SCDC_STATUS_CLK_LOCK, &hdmi_scdc_error_data->status);
 		}
 		if((reg_value >> 1) & 1) {
-		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch0);  
+		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch0);
 		}
 		if((reg_value >> 2) & 1) {
-		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch1);  
+		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch1);
 		}
 		if((reg_value >> 3) & 1) {
-		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch2);  
+		        set_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch2);
 		}
-                    
+
                 if(test_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status)) {
                         if(stage < SCDC_STAGE_UNMUTE || memcmp(&prev_hdmi_scdc_error_data, hdmi_scdc_error_data, sizeof(struct hdmi_scdc_error_data))) {
                                 memcpy(&prev_hdmi_scdc_error_data, hdmi_scdc_error_data, sizeof(struct hdmi_scdc_error_data));
@@ -316,7 +316,7 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                                                 (unsigned int)test_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch2),
                                                 (unsigned int)test_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch2),
                                                 (unsigned int)((hdmi_scdc_error_data->ch2 >> SCDC_CHANNEL_ERROR_SHIFT) & SCDC_CHANNEL_ERROR_MASK),
-                                                diff_ms); 
+                                                diff_ms);
                                 }
                                 else {
                                         printk("\x1b[33mT%d S%d E%d ST%d "
@@ -339,19 +339,19 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                                                 (unsigned int)test_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch2),
                                                 (unsigned int)test_bit(SCDC_CHANNEL_LOCK, &hdmi_scdc_error_data->ch2),
                                                 (unsigned int)((hdmi_scdc_error_data->ch2 >> SCDC_CHANNEL_ERROR_SHIFT) & SCDC_CHANNEL_ERROR_MASK),
-                                                diff_ms);   
+                                                diff_ms);
 
                                 }
                         }
                 }
-        }        
+        }
         return ret;
 }
 
 int scdc_error_detection(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_data *hdmi_scdc_error_data)
 {
         int ret = 0;
-        
+
         if(hdmi_dev_read_mask(dev, FC_GCP, FC_GCP_SET_AVMUTE_MASK)) {
                 scdc_error_detection_core(dev, hdmi_scdc_error_data, SCDC_STAGE_MUTE);
         }else {
@@ -370,7 +370,7 @@ int scdc_read_sink_version(struct hdmi_tx_dev *dev, unsigned int *version)
 		        return -1;
                 }
 	}
-        if(version) 
+        if(version)
                 *version = read_value;
 	return 0;
 }
@@ -384,7 +384,7 @@ int scdc_read_source_version(struct hdmi_tx_dev *dev, unsigned int *version)
 		        return -1;
                 }
 	}
-	if(version) 
+	if(version)
 		*version = read_value;
 	return 0;
 }

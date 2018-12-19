@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        hdmi_ioctls.h
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 *******************************************************************************/
 
@@ -251,7 +251,7 @@ typedef struct {
 
 	codingType_t mCodingType; /** (audioParams_t *params, see InfoFrame) */
 
-	u8 mChannelAllocation; /** channel allocation (audioParams_t *params, 
+	u8 mChannelAllocation; /** channel allocation (audioParams_t *params,
 						   see InfoFrame) */
 
 	u8 mSampleSize;	/**  sample size (audioParams_t *params, 16 to 24) */
@@ -260,10 +260,10 @@ typedef struct {
 
 	u32 mSamplingFrequency;	/** sampling frequency (audioParams_t *params, Hz) */
 
-	u8 mLevelShiftValue; /** level shift value (audioParams_t *params, 
+	u8 mLevelShiftValue; /** level shift value (audioParams_t *params,
 						 see InfoFrame) */
 
-	u8 mDownMixInhibitFlag;	/** down-mix inhibit flag (audioParams_t *params, 
+	u8 mDownMixInhibitFlag;	/** down-mix inhibit flag (audioParams_t *params,
 							see InfoFrame) */
 
 	u8 mIecCopyright; /** IEC copyright */
@@ -278,7 +278,7 @@ typedef struct {
 
 	u8 mIecClockAccuracy; /** IEC clock accuracy */
 
-	packet_t mPacketType; /** packet type. currently only Audio Sample (AUDS) 
+	packet_t mPacketType; /** packet type. currently only Audio Sample (AUDS)
 						  and High Bit Rate (HBR) are supported */
 
 	u16 mClockFsFactor; /** Input audio clock Fs factor used at the audio
@@ -296,7 +296,7 @@ typedef struct {
 	u8 mDmaHlock; /** Master burst lock mechanism */
 
 	u8 mGpaInsertPucv;	/* discard incoming (Parity, Channel status, User bit,
-				   Valid and B bit) data and insert data configured in 
+				   Valid and B bit) data and insert data configured in
 				   controller instead */
 	audioMetaDataPacket_t mAudioMetaDataPacket; /** Audio Multistream variables, to be written to the Audio Metadata Packet */
 
@@ -343,7 +343,7 @@ typedef struct {
 
         /** Enable HDCP1.4 - 2:HDCP 2.2 Enable 1:Enable, 0:Disable */
 	int mHdcp14Enable;
-        
+
         /** Bypass encryption */
         int bypass;
 
@@ -456,7 +456,7 @@ typedef struct {
 
 typedef struct {
         uint32_t code;
-        uint32_t refreshRate;                
+        uint32_t refreshRate;
         dtd_t dtd;
 }dwc_hdmi_dtd_data;
 
@@ -520,7 +520,7 @@ struct hdmi_scdc_error_data{
   * SOC_FEATURE_HDR
   * @short Support HDR/HLG output */
 #define SOC_FEATURE_HDR                 (1 << 4)
-/** 
+/**
   * SOC_FEATURE_HPD_LINK_MODE
   * @short Support hotplug detection from hdmi link */
 #define SOC_FEATURE_HPD_LINK_MODE       (1 << 3)
@@ -539,35 +539,35 @@ struct hdmi_scdc_error_data{
 
 typedef struct hdmi_soc_features{
         unsigned int max_tmds_mhz;      // Mhz
-        unsigned int support_feature_1; /* 
+        unsigned int support_feature_1; /*
                                                 [05:--] : Soc has dolbyvision limitation
                                                           0 - no
                                                           1 - yes (480p)
-                                                [04:--] : Soc can support HDR 
+                                                [04:--] : Soc can support HDR
                                                           0 - not support
                                                           1 - support HDR
                                                 [03:--] : HPD interrupt model
-                                                          00 - gpio 
-                                                          01 - hdi link 
+                                                          00 - gpio
+                                                          01 - hdi link
                                                 [02:01] : Maximum depth that Soc can support.
-                                                          00 - reserved 
+                                                          00 - reserved
                                                           01 - 30-bit
                                                           10 - 36-bit
                                                 [00:--] : Soc can support YCbCr420
                                                           0 - not support
                                                           1 - support
                                         */
-        unsigned int support_feature_2;        // reserved for future use 
-        unsigned int support_feature_3;        // reserved for future use 
-        unsigned int support_feature_4;        // reserved for future use 
+        unsigned int support_feature_2;        // reserved for future use
+        unsigned int support_feature_3;        // reserved for future use
+        unsigned int support_feature_4;        // reserved for future use
 }hdmi_soc_features;
 
 
 typedef struct hdmi_board_features{
         unsigned int support_feature_1;         // fixed video identification code
-        unsigned int support_feature_2;         // reserved for future use 
-        unsigned int support_feature_3;         // reserved for future use 
-        unsigned int support_feature_4;         // reserved for future use 
+        unsigned int support_feature_2;         // reserved for future use
+        unsigned int support_feature_3;         // reserved for future use
+        unsigned int support_feature_4;         // reserved for future use
 }hdmi_board_features;
 
 
@@ -577,7 +577,7 @@ typedef struct hdmi_board_features{
 /**
  * IOCTL defines
  */
- 
+
 /**
  * @short IOCTL to read a byte from HDMI TX CORE
  * - fb_data->address -> address to read
@@ -719,7 +719,7 @@ typedef struct hdmi_board_features{
 
 /**
  * @short IOCTL get validation of drmparam
- 
+
  */
 #define HDMI_API_DRM_GET_VALID                  _IOR( IOCTL_HDMI_MAGIC, 0x288, int)
 

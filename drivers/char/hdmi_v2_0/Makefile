@@ -3,7 +3,7 @@
 #
 EXTRA_CFLAGS += -I$(srctree)/drivers/char/hdmi_v2_0 \
  		-I$(srctree)/drivers/char/hdmi_v2_0/hdmi_api_lib/include
- 		
+
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0) +=\
 	hdmi_api_lib/ \
 	hdmi_access.o \

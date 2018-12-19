@@ -1,6 +1,6 @@
 #
 # HDMI Configuration
-# 
+#
 
 config TCC_HDMI_DRIVER_V2_0
 	bool "Use TCC HDMI V2.0 drivers"

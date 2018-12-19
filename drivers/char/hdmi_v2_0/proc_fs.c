@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        proc_fs.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 *******************************************************************************/
 #include <include/hdmi_includes.h>
@@ -123,8 +123,8 @@ ssize_t proc_write_hdcp22(struct file *filp, const char __user *buffer, size_t c
 ssize_t proc_read_hpd(struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
 {
         ssize_t size;
-        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));     
-        
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+
         char *hpd_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
         size = sprintf(hpd_buf, "%d\n", dev->hotplug_status);
         size = simple_read_from_buffer(usr_buf, cnt,  off_set, hpd_buf, size);
@@ -140,7 +140,7 @@ ssize_t proc_write_hpd_lock(struct file *filp, const char __user *buffer, size_t
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
         char *hpd_lock_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
-        
+
         if (hpd_lock_buf == NULL)
                 return -ENOMEM;
 
@@ -155,7 +155,7 @@ ssize_t proc_write_hpd_lock(struct file *filp, const char __user *buffer, size_t
         devm_kfree(dev->parent_dev, hpd_lock_buf);
         if (ret < 0)
                 return ret;
-        
+
         mutex_lock(&dev->mutex);
         if(hpd_lock) {
                 set_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status);
@@ -166,7 +166,7 @@ ssize_t proc_write_hpd_lock(struct file *filp, const char __user *buffer, size_t
         /* update hotplug_status */
         dev->hotplug_status = dev->hotplug_real_status;
         mutex_unlock(&dev->mutex);
-        
+
         if(dev->verbose >= VERBOSE_IO)
                 pr_info("%s:HPD LOCK = %d\n", FUNC_NAME, hpd_lock);
 
@@ -180,13 +180,13 @@ ssize_t proc_read_hpd_lock(struct file *filp, char __user *usr_buf, size_t cnt, 
 {
         ssize_t size;
         unsigned int hpd_lock;
-        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));     
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
         char *hpd_lock_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
-        
+
         mutex_lock(&dev->mutex);
         hpd_lock = test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status);
         mutex_unlock(&dev->mutex);
-        
+
         size = sprintf(hpd_lock_buf, "%u\n", hpd_lock);
         size = simple_read_from_buffer(usr_buf, cnt,  off_set, hpd_lock_buf, size);
         devm_kfree(dev->parent_dev, hpd_lock_buf);
@@ -200,7 +200,7 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
         char *scdc_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
-        
+
         if (scdc_buf == NULL)
                 return -ENOMEM;
 
@@ -215,7 +215,7 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
         devm_kfree(dev->parent_dev, scdc_buf);
         if (ret < 0)
                 return ret;
-        
+
         mutex_lock(&dev->mutex);
         if(scdc_check) {
                 set_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
@@ -224,7 +224,7 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
                 clear_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
         }
         mutex_unlock(&dev->mutex);
-        
+
         if(dev->verbose >= VERBOSE_IO)
                 pr_info("%s:SCDC CHECK = %d\n", FUNC_NAME, scdc_check);
 
@@ -238,13 +238,13 @@ ssize_t proc_read_scdc_check(struct file *filp, char __user *usr_buf, size_t cnt
 {
         ssize_t size;
         unsigned int scdc_check;
-        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));     
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
         char *scdc_check_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
-        
+
         mutex_lock(&dev->mutex);
         scdc_check = test_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
         mutex_unlock(&dev->mutex);
-        
+
         size = sprintf(scdc_check_buf, "%u\n", scdc_check);
         size = simple_read_from_buffer(usr_buf, cnt,  off_set, scdc_check_buf, size);
         devm_kfree(dev->parent_dev, scdc_check_buf);
@@ -259,11 +259,11 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
         unsigned int ddc_addr, ddc_len;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
-        if(dev == NULL || dev->parent_dev == NULL) 
+        if(dev == NULL || dev->parent_dev == NULL)
                 return -ENOMEM;
-        
+
         ddc_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
-        
+
         if (ddc_buf == NULL)
                 return -ENOMEM;
 
@@ -279,7 +279,7 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
         if (ret < 0) {
                 return ret;
         }
-        
+
         mutex_lock(&dev->mutex);
         if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
@@ -287,8 +287,8 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
                 }else {
                         pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                 }
-        } else { 
-                pr_err("##%s Failed to hdmi_ddc_check because hdmi linke was suspended \r\n", __func__);  
+        } else {
+                pr_err("##%s Failed to hdmi_ddc_check because hdmi linke was suspended \r\n", __func__);
         }
         mutex_unlock(&dev->mutex);
 
@@ -303,7 +303,7 @@ ssize_t proc_write_edid_machine_id(struct file *filp, const char __user *buffer,
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
         char *edid_machine_id_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
-        
+
         if (edid_machine_id_buf == NULL)
                 return -ENOMEM;
 
@@ -318,11 +318,11 @@ ssize_t proc_write_edid_machine_id(struct file *filp, const char __user *buffer,
         devm_kfree(dev->parent_dev, edid_machine_id_buf);
         if (ret < 0)
                 return ret;
-        
+
         mutex_lock(&dev->mutex);
         dev->edid_machine_id = edid_machine_id;
         mutex_unlock(&dev->mutex);
-        
+
         if(dev->verbose >= VERBOSE_IO)
                 pr_info("[%s] edid_machine_id = %d\n", FUNC_NAME, edid_machine_id);
 
@@ -333,13 +333,13 @@ ssize_t proc_read_edid_machine_id(struct file *filp, char __user *usr_buf, size_
 {
         ssize_t size;
         unsigned int edid_machine_id;
-        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));     
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
         char *edid_machine_id_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
-        
+
         mutex_lock(&dev->mutex);
         edid_machine_id = dev->edid_machine_id;
         mutex_unlock(&dev->mutex);
-        
+
         size = sprintf(edid_machine_id_buf, "%u\n", edid_machine_id);
         size = simple_read_from_buffer(usr_buf, cnt,  off_set, edid_machine_id_buf, size);
         devm_kfree(dev->parent_dev, edid_machine_id_buf);
@@ -357,7 +357,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
         char *drm_test_run_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
-        
+
         if (drm_test_run_buf == NULL)
                 return -ENOMEM;
 
@@ -418,7 +418,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 6:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.disp_primaries_x[2] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -428,7 +428,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 7:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.disp_primaries_y[0] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -438,7 +438,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 8:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.disp_primaries_y[1] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -448,7 +448,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 9:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.disp_primaries_y[2] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -459,7 +459,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
 
                         case 10:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.white_point_x = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -469,7 +469,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 11:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.white_point_y = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -479,7 +479,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 12:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.max_disp_mastering_luminance = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -489,7 +489,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 13:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.min_disp_mastering_luminance = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -499,17 +499,17 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 break;
                         case 14:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.max_content_light_level = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
                                 pr_info("%s max_content_light_level = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
-                                break;  
+                                break;
                         case 15:
                                 drm_param.mDescriptor_type1.EOTF = 2;
-                                for(i=0; i< 16; i++) { 
+                                for(i=0; i< 16; i++) {
                                 drm_param.mDescriptor_type1.max_frame_avr_light_level = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
@@ -518,7 +518,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 }
                                 break;
                 }
-                
+
         } else {
                 stage = 0;
         }
@@ -543,7 +543,7 @@ ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t
 
                 size = simple_write_to_buffer(phy_regs_buf, cnt, off_set, buffer, cnt);
                 if (size != cnt) {
-                        
+
                         if(size >= 0) {
                                 size = -EIO;
                                 break;
@@ -556,7 +556,7 @@ ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t
                         if(test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)){
                                 pr_info("%s hpd is locked\r\n", __func__);
                         } else {
-                                
+
                                 dev->hotplug_status = 0;
                                 wake_up_interruptible(&dev->poll_wq);
                                 pr_info("%s set hotplug_status swing\r\n", __func__);
@@ -567,7 +567,7 @@ ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t
                 }
         }
         while(0);
-        
+
         if(phy_regs_buf != NULL);
                 devm_kfree(dev->parent_dev, phy_regs_buf);
         return size;
@@ -579,8 +579,8 @@ ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t
 ssize_t proc_read_phy_regs(struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
 {
         ssize_t size = -EINVAL;
-        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));     
-        char *phy_regs_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);   
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+        char *phy_regs_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
         if(phy_regs_buf != NULL) {
                 size = dwc_hdmi_proc_read_phy_regs(dev, phy_regs_buf, DEBUGFS_BUF_SIZE);
                 if(size > 0) {
@@ -755,7 +755,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                           " /proc/hdmi_tx/edid_machine_id\n", FUNC_NAME);
         }
         #endif
-        
+
         #if defined(CONFIG_TCC_RUNTIME_DRM_TEST)
         //pr_info("%s:Installing /proc/hdmi_tx/drm file\n", FUNC_NAME);
         dev->hdmi_proc_drm = proc_create_data("drm", S_IFREG | S_IRUGO | S_IWUGO,
@@ -801,12 +801,12 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
         if(dev->hdmi_proc_edid_machine_id != NULL)
                 proc_remove(dev->hdmi_proc_edid_machine_id);
         #endif
-        
+
         #if defined(CONFIG_TCC_RUNTIME_DRM_TEST)
         if(dev->hdmi_proc_drm != NULL)
                 proc_remove(dev->hdmi_proc_drm);
         #endif
-        
+
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         if(dev->hdmi_proc_phy_regs != NULL)
                 proc_remove(dev->hdmi_proc_phy_regs);

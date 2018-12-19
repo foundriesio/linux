@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 #include <include/hdmi_includes.h>
@@ -86,16 +86,16 @@ void fc_QuantizationRange(struct hdmi_tx_dev *dev, u8 rgb_range, u8 yuv_range)
 {
 	LOG_TRACE1(range);
         if(rgb_range > 2) {
-                /* 
+                /*
                  * 0 : depend on video format
-                 * 1 : Limited Range 
+                 * 1 : Limited Range
                  * 2 : Full Range */
                 rgb_range = 0;
         }
 	hdmi_dev_write_mask(dev, FC_AVICONF2, FC_AVICONF2_QUANTIZATION_RANGE_MASK, rgb_range);
         if(yuv_range > 1) {
-                /* 
-                 * 0 : Limited Range 
+                /*
+                 * 0 : Limited Range
                  * 1 : Full Range */
                 yuv_range = 0;
         }
@@ -113,7 +113,7 @@ void fc_VideoCode(struct hdmi_tx_dev *dev, u8 code)
 	LOG_TRACE1(code);
 	hdmi_dev_write(dev, FC_AVIVID, code);
         //hdmi_dev_write_mask(dev, FC_AVIVID, FC_AVIVID_FC_AVIVID_7_MASK, 1);
-        //Source Device shall always transmit a version 2 AVI infoFrame. 
+        //Source Device shall always transmit a version 2 AVI infoFrame.
 }
 
 void fc_HorizontalBarsValid(struct hdmi_tx_dev *dev, u8 validity)
@@ -170,7 +170,7 @@ int fc_colorimetry_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
                                 fc_Colorimetry(dev, videoParams->mColorimetry); /* EXT-3 */
                                 break;
                         default:
-                                fc_ExtendedColorimetry(dev, 0); 
+                                fc_ExtendedColorimetry(dev, 0);
                                 fc_Colorimetry(dev, 0); /* No Data */
                                 break;
                 }
@@ -204,7 +204,7 @@ void fc_avi_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
                 if((videoParams->mDolbyVision & 0x7) == 2) {
                         fc_RgbYcc(dev, 0);
                 }
-                else {  
+                else {
                         fc_RgbYcc(dev, 1);
                 }
 		#endif
@@ -261,7 +261,7 @@ void fc_avi_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
 	}
 
 	fc_colorimetry_config(dev, videoParams);
-        
+
 	if (videoParams->mActiveFormatAspectRatio != 0) {
 		fc_ActiveFormatAspectRatio(dev, videoParams->mActiveFormatAspectRatio);
 		fc_ActiveAspectRatioValid(dev, 1);

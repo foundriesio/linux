@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 #include <include/hdmi_includes.h>
@@ -57,7 +57,7 @@ static int hdmi_find_irq_enable_entry(struct hdmi_tx_dev *dev)
 {
         struct list_head* next;
         struct drv_enable_entry *irq_enable_entry = NULL;
-        
+
         list_for_each(next, &dev->irq_enable_entry.list) {
             irq_enable_entry = list_entry(next, struct drv_enable_entry, list);
             if(dev->verbose >= VERBOSE_IO)
@@ -73,7 +73,7 @@ static struct drv_enable_entry* hdmi_find_irq_enable_entry_by_id(struct hdmi_tx_
 {
     struct list_head* next;
     struct drv_enable_entry *irq_enable_entry;
-    
+
     list_for_each(next, &dev->irq_enable_entry.list) {
         irq_enable_entry = list_entry(next, struct drv_enable_entry, list);
         if(irq_enable_entry->id == id) break;
@@ -238,7 +238,7 @@ static int irq_unmask_bit(struct hdmi_tx_dev *dev, hdmi_irq_sources_t irq_source
 int hdmi_irq_mute(struct hdmi_tx_dev *dev)
 {
         hdmi_dev_write(dev, IH_MUTE,  0x3);
-        return 0;        
+        return 0;
 }
 
 void hdmi_irq_unmute(struct hdmi_tx_dev *dev)
@@ -298,7 +298,7 @@ void un_mask_i2c_interrupt(struct hdmi_tx_dev *dev)
 */
 
 static void hdmi_irq_hpd_sense_enable(struct hdmi_tx_dev *dev)
-{        
+{
         // Un-mask the HPD sense
         irq_unmask_bit(dev, PHY, IH_MUTE_PHY_STAT0_HPD_MASK);
 
@@ -326,7 +326,7 @@ u32 hdmi_read_interrupt_decode(struct hdmi_tx_dev *dev)
 }
 
 int hdmi_hpd_enable(struct hdmi_tx_dev *dev)
-{        
+{
         if(dev != NULL) {
                 /*
                  * You can use hpd interrupts of the hdmi link only if you do not use gpio interrupts */
@@ -334,12 +334,12 @@ int hdmi_hpd_enable(struct hdmi_tx_dev *dev)
                         if(dev->hotplug_irq_enable) {
                                 // Setting HPD Polarity
                                 hdmi_phy_hot_plug_detected(dev);
-                                
+
                                 // Enable HPD Interrupt
                                 hdmi_irq_hpd_sense_enable(dev);
                                 msleep_interruptible(10); // This delay for 10ms is necessary to catch hpd interrupt.!!
-                        }   
-                        else {              
+                        }
+                        else {
                                 // Disable HPD Interrupt
                                 hdmi_irq_hpd_sense_disable(dev);
                         }

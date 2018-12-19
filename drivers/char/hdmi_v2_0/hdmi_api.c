@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        hdmi_api.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 *******************************************************************************/
 
@@ -64,7 +64,7 @@ EXPORT_SYMBOL(dwc_hdmi_api_get_dev);
 
 
 int dwc_hdmi_get_video_dtd(dtd_t *hdmi_dtd, uint32_t code, uint32_t hz){
-        return hdmi_dtd_fill(hdmi_dtd, code, hz); 
+        return hdmi_dtd_fill(hdmi_dtd, code, hz);
 }
 EXPORT_SYMBOL(dwc_hdmi_get_video_dtd);
 
@@ -97,10 +97,10 @@ end_process:
 EXPORT_SYMBOL(hdmi_get_VBlank);
 
 unsigned int hdmi_get_refreshrate(void) {
-        
+
         videoParams_t *videoParams;
         unsigned int refreshrate = 0;
-        
+
         if(!api_dev) {
                 pr_err("hdmi driver is not ready..!!\r\n");
                 goto end_process;
@@ -114,7 +114,7 @@ unsigned int hdmi_get_refreshrate(void) {
                 refreshrate /= 1000;
 end_process:
         return refreshrate;
-        
+
 }
 EXPORT_SYMBOL(hdmi_get_refreshrate);
 
@@ -169,7 +169,7 @@ void hdmi_clear_drm(void)
                                 drm_tx_disable(api_dev);
                         }
                 }
-                mutex_unlock(&api_dev->mutex);        
+                mutex_unlock(&api_dev->mutex);
         }
 }
 EXPORT_SYMBOL(hdmi_clear_drm);
@@ -188,7 +188,7 @@ EXPORT_SYMBOL(hdmi_get_hotplug_status);
 unsigned int hdmi_get_pixel_clock(void)
 {
         unsigned int pixel_clock = 0;
-        
+
         if(api_dev != NULL) {
                 pixel_clock = api_dev->hdmi_tx_ctrl.pixel_clock;
         }

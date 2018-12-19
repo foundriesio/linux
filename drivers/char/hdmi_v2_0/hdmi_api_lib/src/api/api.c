@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 
@@ -69,7 +69,7 @@ static void hdmi_api_wait_phylock(struct hdmi_tx_dev *dev)
                         phy_lock |= (1 << 0);
                         break;
                 }
-                mdelay(10);              
+                mdelay(10);
         }
         if(!val)
         goto END_PROCESS;
@@ -82,7 +82,7 @@ static void hdmi_api_wait_phylock(struct hdmi_tx_dev *dev)
                         phy_lock |= (1 << 1);
                         break;
                 }
-                mdelay(10);              
+                mdelay(10);
         }
         if(!val)
         goto END_PROCESS;
@@ -95,7 +95,7 @@ static void hdmi_api_wait_phylock(struct hdmi_tx_dev *dev)
                         phy_lock |= (1 << 2);
                         break;
                 }
-                mdelay(10);              
+                mdelay(10);
         }
         if(!val)
         goto END_PROCESS;
@@ -116,9 +116,9 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
         productParams_t * product;
 
         do {
-                
+
                 if(dev == NULL) {
-                        break;        
+                        break;
                 }
                 video = (videoParams_t*)dev->videoParam;
                 audio = (audioParams_t*)dev->audioParam;
@@ -132,34 +132,34 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 // Reset HDMI
                 dwc_hdmi_hw_reset(dev, 1);
                 dwc_hdmi_hw_reset(dev, 0);
-                           
-                mc_disable_all_clocks(dev);      
+
+                mc_disable_all_clocks(dev);
                 if(dev->hdmi_tx_ctrl.sink_is_vizio == 1) {
-                        /* 
-                         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than 
+                        /*
+                         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
                          * 340 MHz or when HDCP is enabled.
                          * When HDCP Keepout is set to 1, the control period configuration is changed.
-                         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem 
+                         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
                          * of swinging HPD.
-                         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1 
+                         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
                          * if this SINK is a VIZIO TV. */
-                        fc_video_hdcp_keepout(dev, 1);     
+                        fc_video_hdcp_keepout(dev, 1);
                         pr_info("NOTIFY: VIZIO TV\r\n");
                 } else {
                         dwc_hdmi_set_hdcp_keepout(dev);
                 }
-                
+
                 hdmi_api_avmute(dev, TRUE);
-                
+
                 ret = video_Configure(dev, video);
                 if (ret < 0) {
                         pr_err("%s:Could not configure video", __func__);
                         break;
                 }
-                
+
                 /* Setting audio_on through hdmi mode */
                 dev->hdmi_tx_ctrl.audio_on = (video->mHdmi == DVI)?0:1;
-                        
+
                 if(audio == NULL) {
                         pr_info("%s there is no audio packet\r\n", __func__);
                 }else {
@@ -171,26 +171,26 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                                 break;
                         }
                 }
-                
-                /** 
-                  * Source Product Description 
+
+                /**
+                  * Source Product Description
                   * If the vendor and product names are not set, the kernel uses predefined names. */
                 if(product->mVendorNameLength == 0 && product->mProductNameLength == 0) {
                         strncpy(product->mVendorName, dev->vendor_name, sizeof(product->mVendorName));
                         product->mVendorNameLength = strlen(product->mVendorName);
                         if(product->mVendorNameLength > 8) product->mVendorNameLength = 8;
-                        
+
                         strncpy(product->mProductName, dev->product_description, sizeof(product->mProductName));
                         product->mProductNameLength = strlen(product->mProductName);
                         if(product->mProductNameLength > 16) product->mProductNameLength = 16;
-                
+
                         product->mSourceType = dev->source_information;
                 }
-                
+
                 // Packets
                 ret = packets_Configure(dev, video, product);
                 if (ret == FALSE) {
-                        pr_err("%s Could not configure packets\r\n", __func__);  
+                        pr_err("%s Could not configure packets\r\n", __func__);
                         ret = -1;
                         break;
                 }
@@ -202,9 +202,9 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                         break;
                 }
                 hdmi_api_wait_phylock(dev);
-                
+
                 hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
-                /* wait main controller to resume */ 
+                /* wait main controller to resume */
                 do {
                         usleep_range(10, 20);
                         mc_reg_val = hdmi_dev_read(dev, MC_SWRSTZREQ);
@@ -213,27 +213,27 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 		if(mc_timeout < 1) {
 			pr_info("%s main controller timeout \r\n",__func__);
 		}
-		
+
                 fc_video_VSyncPulseWidth(dev, video->mDtd.mVSyncPulseWidth);
-                
+
                 hdmi_hpd_enable(dev);
-                
+
                 set_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
-                
+
                 // Initialize the drm info frame.
                 hdmi_clear_drm(dev);
 
                 ret = 0;
         }while(0);
-        
 
-        return ret;                
+
+        return ret;
 }
 
 int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 {
         int ret = -1;
-        
+
         videoParams_t *videoParams = (videoParams_t *)(dev!=NULL)?dev->videoParam:NULL;
 
         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
@@ -241,15 +241,15 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
                 dwc_hdmi_phy_standby(dev);
 
                 mdelay(50);
-                
-                /** 
-                * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of 
-                * SCDC are 0xA8/0xA9. 
-                * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV 
-                * that responding to the SCDC address. The 2k tv initializes some of the edids when 
+
+                /**
+                * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of
+                * SCDC are 0xA8/0xA9.
+                * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV
+                * that responding to the SCDC address. The 2k tv initializes some of the edids when
                 * it receives the tmds character ratio or scramble command through the scdc address.
                 * Then an edid checksum error will occur when the source reads edid.
-                * To prevent this, i changed the source to use scdc address only if the sink 
+                * To prevent this, i changed the source to use scdc address only if the sink
                 * supports scdc address. */
                 if(dev->hotplug_status && videoParams->mScdcPresent) {
                         scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
@@ -260,7 +260,7 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 	ret = 0;
 
         hdcp_statusinit(dev);
-        
+
         return ret ;
 }
 

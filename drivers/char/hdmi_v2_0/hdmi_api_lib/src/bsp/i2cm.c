@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        extenddisplay.cpp
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
 Agreement between Telechips and Company.
 */
 
@@ -49,10 +49,10 @@ Agreement between Telechips and Company.
 #define I2C_DELAY(us)		usleep_range(us, us *2)
 //#define DBG_I2C
 
-#if defined(DBG_I2C) 
+#if defined(DBG_I2C)
 #define dpr_info(args...) pr_info(args)
 #else
-#define dpr_info(args...) 
+#define dpr_info(args...)
 #endif
 
 /*********************  PRIVATE FUNCTIONS ***********************/
@@ -113,7 +113,7 @@ static int _write(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 addr, u8 data)
         u32 status = 0;
         int result = -1;
 	int timeout = I2CDDC_TIMEOUT;
-	
+
 	LOG_TRACE1(addr);
         do {
                 if(dev->ddc_disable) {
@@ -148,7 +148,7 @@ static int _write(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 addr, u8 data)
 
 static int _read(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u8 addr,   u8 * value)
 {
-        
+
         u32 status = 0;
         int result = -1;
 	int timeout = I2CDDC_TIMEOUT;
@@ -187,7 +187,7 @@ static int _read(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u8
         		result = 0;
         	}
         }while(0);
-        
+
 	//LOGGER(SNPS_ERROR, "%s: ASSERT I2C DDC Read timeout - check system - exiting\r\n",__func__);
 	return result;
 }
@@ -208,7 +208,7 @@ static int _read8(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u
                 hdmi_dev_write(dev, I2CM_SEGPTR, pointer);
                 hdmi_dev_write(dev, I2CM_ADDRESS, addr);
                 hdmi_dev_write(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
-                
+
                 #if defined(DBG_I2C)
                 pr_info("I2CM_SLAVE = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SLAVE));
                 pr_info("I2CM_SEGADDR = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SEGADDR));
@@ -216,29 +216,29 @@ static int _read8(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u
                 pr_info("I2CM_ADDRESS = 0x%x\r\n", hdmi_dev_read(dev, I2CM_ADDRESS));
                 pr_info("IH_I2CM_STAT0 = 0x%x\r\n", hdmi_dev_read(dev, IH_I2CM_STAT0));
                 #endif
-                
+
                 if(pointer)
                         hdmi_dev_write(dev, I2CM_OPERATION, I2CM_OPERATION_READ_SEQ_EXT);
                 else
                         hdmi_dev_write(dev, I2CM_OPERATION, I2CM_OPERATION_READ_SEQ);
-                
+
                 // wait 64bit * 11us
                 I2C_DELAY(800);
                 status = hdmi_dev_read_mask(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
-                
+
                 while (status == 0 && (timeout--)) {
                         I2C_DELAY(100);
                         status = hdmi_dev_read_mask(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
                 }
-                
+
                 hdmi_dev_write(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
-                
+
                 if(status & IH_I2CM_STAT0_I2CMASTERERROR_MASK){
                 //LOGGER(SNPS_ERROR, "%s: I2C DDC Read8 extended failed for i2cAddr 0x%x seg 0x%x pointer 0x%x addr 0x%x",__func__,
                         //i2cAddr, segment, pointer, addr);
                         break;
                 }
-                
+
                 if(status & IH_I2CM_STAT0_I2CMASTERDONE_MASK){
                         int i = 0;
                         while(i < 8){ //read 8 bytes
@@ -248,7 +248,7 @@ static int _read8(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u
                         result = 0;
                 }
         } while(0);
-        
+
 	return result;
 }
 
@@ -270,10 +270,10 @@ void hdmi_i2cddc_bus_clear(struct hdmi_tx_dev *dev)
                 /*clear interrupt status */
                 hdmi_dev_write(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
 
-                /* bus clear */        
+                /* bus clear */
                 hdmi_dev_write_mask(dev,  I2CM_OPERATION, I2CM_OPERATION_BUSCLEAR, 1);
 
-                /* Wait maximum 200 us for finish bus clear */ 
+                /* Wait maximum 200 us for finish bus clear */
                 do {
                         I2C_DELAY(10);
                         status = hdmi_dev_read_mask(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
@@ -302,7 +302,7 @@ void hdmi_i2cddc_fast_mode(struct hdmi_tx_dev *dev, u8 value)
         }
 }
 
-void hdmi_i2cddc_sda_hold(struct hdmi_tx_dev *dev, int hold) 
+void hdmi_i2cddc_sda_hold(struct hdmi_tx_dev *dev, int hold)
 {
         if(dev != NULL && !dev->ddc_disable) {
                 hdmi_dev_write_mask(dev, I2CM_SDA_HOLD, I2CM_SDA_HOLD_OSDA_HOLD_MASK, hold);
@@ -374,7 +374,7 @@ int hdmi_ddc_check(struct hdmi_tx_dev *dev, int addr, int len)
 
                 if(len > 0) {
                         ret = hdmi_ddc_read(dev, (0xA0) >> 1, 0x0, 0x0, addr, len, data);
-                        
+
                         printk("[0x%03x] ", addr);
                         for(i = 0;i<len;i++) {
                                 printk("0x%02x ", data[i]);

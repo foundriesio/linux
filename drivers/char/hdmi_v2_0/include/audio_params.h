@@ -2,7 +2,7 @@
  * core/audio_params.h
  *
  *  Created on: Jul 2, 2010
- * 
+ *
  * Synopsys Inc.
  * SG DWC PT02
  */
