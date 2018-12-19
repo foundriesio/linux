@@ -79,6 +79,8 @@ int scdc_tmds_config_status(struct hdmi_tx_dev *dev);
 
 int scdc_tmds_bit_clock_ratio_enable_flag(struct hdmi_tx_dev *dev, u8 enable);
 
+int scdc_set_tmds_bit_clock_ratio_and_scrambling(struct hdmi_tx_dev *dev, int tmds_enable, int scramble_enable);
+
 void scdc_set_rr_flag(struct hdmi_tx_dev *dev, u8 enable);
 
 int scdc_get_rr_flag(struct hdmi_tx_dev *dev, u8 * flag);

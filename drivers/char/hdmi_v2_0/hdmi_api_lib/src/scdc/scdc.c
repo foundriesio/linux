@@ -84,15 +84,12 @@ int scdc_scrambling_enable_flag(struct hdmi_tx_dev *dev, u8 enable)
 {
         u8 read_value = 0;
         if(scdc_read(dev, SCDC_TMDS_CONFIG, 1 , &read_value)){
-                //LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x read failed ",__func__, SCDC_TMDS_CONFIG);
                 return -1;
         }
-        //printk("1) scdc_scrambling_enable_flag read_value=0x%x\r\n", read_value);
-        // 7-bit of tmds_config is must set 0. 
-        read_value = (read_value & ~0xFD) | (enable ? 0x1 : 0x0);
-        //printk("2) scdc_scrambling_enable_flag read_value=0x%x\r\n", read_value);
+	/* 7-bit of tmds_config is must set 0.  */
+        read_value &= ~(0xFC | (1 << 0));
+        read_value |= ((enable?1:0) << 0);
         if(scdc_write(dev, SCDC_TMDS_CONFIG, 1, &read_value)){
-                //LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x write failed ",__func__, SCDC_TMDS_CONFIG);
                 return -1;
         }
         return 0;
@@ -116,10 +113,9 @@ int scdc_tmds_bit_clock_ratio_enable_flag(struct hdmi_tx_dev *dev, u8 enable)
                 //LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x read failed ",__func__, SCDC_TMDS_CONFIG);
                 return -1;
         }
-        //printk("1) scdc_tmds_bit_clock_ratio_enable_flag read_value=0x%x\r\n", read_value);
-        // 7-bit of tmds_config is must set 0. 
-        read_value = (read_value & ~0xFE) | (enable ? 0x2 : 0x0);
-        //printk("2) scdc_tmds_bit_clock_ratio_enable_flag read_value=0x%x\r\n", read_value);
+	/* 7-bit of tmds_config is must set 0. */
+        read_value &= ~(0xFC | ( 1 << 1));
+        read_value |= ((enable?1:0) << 1);
         if(scdc_write(dev, SCDC_TMDS_CONFIG, 1, &read_value)){
                 //LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x write failed ",__func__, SCDC_TMDS_CONFIG);
                 return -1;
@@ -127,6 +123,19 @@ int scdc_tmds_bit_clock_ratio_enable_flag(struct hdmi_tx_dev *dev, u8 enable)
         return 0;
 }
 
+int scdc_set_tmds_bit_clock_ratio_and_scrambling(struct hdmi_tx_dev *dev, int tmds_enable, int scramble_enable)
+{
+        int ret = -1;
+        unsigned char scdc_val = 0;
+        do {
+		scdc_val = (((tmds_enable?1:0) << 1) | ((scramble_enable?1:0) << 0));
+                if(scdc_write(dev, SCDC_TMDS_CONFIG, 1, &scdc_val)){
+                        break;
+                }
+                ret = 0;
+        }while(0);
+        return ret;
+}
 
 void scdc_set_rr_flag(struct hdmi_tx_dev *dev, u8 enable)
 {

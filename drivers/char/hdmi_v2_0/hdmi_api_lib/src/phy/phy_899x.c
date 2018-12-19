@@ -1620,18 +1620,16 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
          * To prevent this, i changed the source to use scdc address only if the sink 
          * supports scdc address. */
         if(scdc_present) {
+		int enable_tmds_clock_ratio = 0;
                 if(tmds_clock >= 340000000) {
-                        scdc_tmds_bit_clock_ratio_enable_flag(dev, 1);
-                } else {
-                        scdc_tmds_bit_clock_ratio_enable_flag(dev, 0);
+                        enable_tmds_clock_ratio = 1;
                 }
+                scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, enable_tmds_clock_ratio, enable_scramble);
                 if(enable_scramble) {
                         scrambling(dev, 1);
-                } else {
-                        scrambling(dev, 0);
-                }               
-                //msleep(85);
-                msleep(10);
+                }
+		/* This is required for compatible with specific SINK (eg LG 49UH7600, 49UH9300) */
+                mdelay(85);
         } 
         
 

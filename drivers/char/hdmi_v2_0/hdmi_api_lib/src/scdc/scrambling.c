@@ -49,25 +49,11 @@ Agreement between Telechips and Company.
  */
 void scrambling(struct hdmi_tx_dev *dev, u8 enable){
 	if (enable == 1) {
-		scdc_scrambling_enable_flag(dev, 1);
-		udelay(100);
-
-		/* Start/stop HDCP keep-out window generation not needed because it's always on */
-		/* TMDS software reset request */
-		mc_tmds_clock_reset(dev, 0);
-
 		/* Enable/Disable Scrambling */
 		scrambling_Enable(dev, 1);
-
 	} else {
-                /* TMDS software reset request */
-                mc_tmds_clock_reset(dev, 0);
-
 		/* Enable/Disable Scrambling */
 		scrambling_Enable(dev, 0);
-                udelay(100);
-		/* Write on RX the bit Scrambling_Enable, register 0x20 */
-		scdc_scrambling_enable_flag(dev, 0);
 	}
 }
 

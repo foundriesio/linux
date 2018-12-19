@@ -196,8 +196,6 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 }
 
                 mc_enable_all_clocks(dev);
-                mdelay(10);
-                
                 if(dwc_hdmi_phy_config(dev, video) < 0) {
                         pr_err("%s Cann't settig HDMI PHY\r\n", __func__);
                         ret = -1;
@@ -212,6 +210,10 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                         mc_reg_val = hdmi_dev_read(dev, MC_SWRSTZREQ);
                 }
                 while(mc_timeout-- && mc_reg_val != 0xDF);
+		if(mc_timeout < 1) {
+			pr_info("%s main controller timeout \r\n",__func__);
+		}
+		
                 fc_video_VSyncPulseWidth(dev, video->mDtd.mVSyncPulseWidth);
                 
                 hdmi_hpd_enable(dev);
@@ -250,8 +252,8 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
                 * To prevent this, i changed the source to use scdc address only if the sink 
                 * supports scdc address. */
                 if(dev->hotplug_status && videoParams->mScdcPresent) {
-                        scdc_tmds_bit_clock_ratio_enable_flag(dev, 0);
-                        scrambling(dev, 0);
+                        scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
+			scrambling(dev, 0);
                 }
                 clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
         }
