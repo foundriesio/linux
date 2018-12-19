@@ -2,6 +2,7 @@
  * Copyright (c) 2006 ARM Ltd.
  * Copyright (c) 2010 ST-Ericsson SA
  * Copyirght (c) 2017 Linaro Ltd.
+ * Copyright (C) 2018 Telechips Inc.
  *
  * Author: Peter Pearse <peter.pearse@arm.com>
  * Author: Linus Walleij <linus.walleij@linaro.org>
@@ -93,6 +94,19 @@
 
 #include "dmaengine.h"
 #include "virt-dma.h"
+
+#define CONFIG_TCC_PL08X
+#ifdef CONFIG_TCC_PL08X
+#include <linux/of_address.h>
+#define UDMA_AC0_START	(0x00)
+#define UDMA_AC0_LIMIT	(0x04)
+#define UDMA_AC1_START	(0x08)
+#define UDMA_AC1_LIMIT	(0x0C)
+#define UDMA_AC2_START	(0x10)
+#define UDMA_AC2_LIMIT	(0x14)
+#define UDMA_AC3_START	(0x18)
+#define UDMA_AC3_LIMIT	(0x1C)
+#endif /* CONFIG_TCC_PL08X */
 
 #define DRIVER_NAME	"pl08xdmac"
 
@@ -2575,6 +2589,56 @@ static struct dma_chan *pl08x_of_xlate(struct of_phandle_args *dma_spec,
 	return dma_get_slave_channel(dma_chan);
 }
 
+#ifdef CONFIG_TCC_PL08X
+static int tcc_pl08x_of_probe(struct amba_device *adev,
+			 struct pl08x_driver_data *pl08x,
+			 struct device_node *np)
+{
+	struct device_node *ac_np;
+	void __iomem *ac_base;
+	unsigned int ac_val[2] = {0x0};
+	u32 base;
+	int ret = 0;
+
+	/* Get UDMA Access Control base address */
+	ac_np = of_parse_phandle(np, "access-control", 0);
+	if (ac_np != NULL) {
+		if (of_property_read_u32(ac_np, "reg", &base))
+			return -EINVAL;
+		ac_base = of_iomap(ac_np, 0);
+		if (IS_ERR(ac_base)) {
+			return PTR_ERR(ac_base);
+		}
+
+		if (!of_property_read_u32_array(ac_np, "access-control0", ac_val, 2)) {
+			dev_info(&adev->dev, "access-control0 start:0x%08X limit:0x%08X\n",
+				ac_val[0], ac_val[1]);
+			writel(ac_val[0], ac_base + UDMA_AC0_START);
+			writel(ac_val[1], ac_base + UDMA_AC0_LIMIT);
+		}
+		if (!of_property_read_u32_array(ac_np, "access-control1", ac_val, 2)) {
+			dev_info(&adev->dev, "access-control1 start:0x%08X limit:0x%08X\n",
+				ac_val[0], ac_val[1]);
+			writel(ac_val[0], ac_base + UDMA_AC1_START);
+			writel(ac_val[1], ac_base + UDMA_AC1_LIMIT);
+		}
+		if (!of_property_read_u32_array(ac_np, "access-control2", ac_val, 2)) {
+			dev_info(&adev->dev, "access-control2 start:0x%08X limit:0x%08X\n",
+				ac_val[0], ac_val[1]);
+			writel(ac_val[0], ac_base + UDMA_AC2_START);
+			writel(ac_val[1], ac_base + UDMA_AC2_LIMIT);
+		}
+		if (!of_property_read_u32_array(ac_np, "access-control3", ac_val, 2)) {
+			dev_info(&adev->dev, "access-control3 start:0x%08X limit:0x%08X\n",
+				ac_val[0], ac_val[1]);
+			writel(ac_val[0], ac_base + UDMA_AC3_START);
+			writel(ac_val[1], ac_base + UDMA_AC3_LIMIT);
+		}
+	}
+	return ret;
+}
+#endif /* CONFIG_TCC_PL08X */
+
 static int pl08x_of_probe(struct amba_device *adev,
 			  struct pl08x_driver_data *pl08x,
 			  struct device_node *np)
@@ -2691,6 +2755,12 @@ static int pl08x_of_probe(struct amba_device *adev,
 	}
 
 	pl08x->pd = pd;
+
+#ifdef CONFIG_TCC_PL08X
+	ret = tcc_pl08x_of_probe(adev, pl08x, np);
+	if (ret)
+		dev_err(&adev->dev, "udma access-control value probe failed %d\n", ret);
+#endif /* CONFIG_TCC_PL08X */
 
 	return of_dma_controller_register(adev->dev.of_node, pl08x_of_xlate,
 					  pl08x);
