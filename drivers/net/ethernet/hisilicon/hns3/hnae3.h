@@ -344,8 +344,6 @@ struct hnae3_ae_ops {
 	void (*get_mac_addr)(struct hnae3_handle *handle, u8 *p);
 	int (*set_mac_addr)(struct hnae3_handle *handle, void *p,
 			    bool is_first);
-	int (*do_ioctl)(struct hnae3_handle *handle,
-			struct ifreq *ifr, int cmd);
 	int (*add_uc_addr)(struct hnae3_handle *handle,
 			   const unsigned char *addr);
 	int (*rm_uc_addr)(struct hnae3_handle *handle,
@@ -418,6 +416,10 @@ struct hnae3_ae_ops {
 			      unsigned long *supported,
 			      unsigned long *advertising);
 	void (*get_port_type)(struct hnae3_handle *handle, u8 *port_type);
+#ifndef __GENKSYMS__
+	int (*do_ioctl)(struct hnae3_handle *handle,
+			struct ifreq *ifr, int cmd);
+#endif
 };
 
 struct hnae3_dcb_ops {
