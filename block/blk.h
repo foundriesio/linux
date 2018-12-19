@@ -413,4 +413,6 @@ static inline void blk_queue_bounce(struct request_queue *q, struct bio **bio)
 
 extern void blk_drain_queue(struct request_queue *q);
 
+struct bio *blk_next_bio(struct bio *bio, unsigned int nr_pages, gfp_t gfp);
+
 #endif /* BLK_INTERNAL_H */
