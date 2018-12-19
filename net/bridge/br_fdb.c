@@ -25,6 +25,7 @@
 #include <asm/unaligned.h>
 #include <linux/if_vlan.h>
 #include <net/switchdev.h>
+#include <trace/events/bridge.h>
 #include "br_private.h"
 
 static struct kmem_cache *br_fdb_cache __read_mostly;
@@ -210,6 +211,8 @@ static void fdb_del_external_learn(struct net_bridge_fdb_entry *f)
 
 static void fdb_delete(struct net_bridge *br, struct net_bridge_fdb_entry *f)
 {
+	trace_fdb_delete(br, f);
+
 	if (f->is_static)
 		fdb_del_hw_addr(br, f->addr.addr);
 
@@ -622,8 +625,10 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
 				fdb->updated = now;
 			if (unlikely(added_by_user))
 				fdb->added_by_user = 1;
-			if (unlikely(fdb_modified))
+			if (unlikely(fdb_modified)) {
+				trace_br_fdb_update(br, source, addr, vid, added_by_user);
 				fdb_notify(br, fdb, RTM_NEWNEIGH);
+			}
 		}
 	} else {
 		spin_lock(&br->hash_lock);
@@ -632,6 +637,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
 			if (fdb) {
 				if (unlikely(added_by_user))
 					fdb->added_by_user = 1;
+				trace_br_fdb_update(br, source, addr, vid, added_by_user);
 				fdb_notify(br, fdb, RTM_NEWNEIGH);
 			}
 		}
@@ -912,6 +918,8 @@ int br_fdb_add(struct ndmsg *ndm, struct nlattr *tb[],
 	struct net_bridge *br = NULL;
 	int err = 0;
 
+	trace_br_fdb_add(ndm, dev, addr, vid, nlh_flags);
+
 	if (!(ndm->ndm_state & (NUD_PERMANENT|NUD_NOARP|NUD_REACHABLE))) {
 		pr_info("bridge: RTM_NEWNEIGH with invalid state %#x\n", ndm->ndm_state);
 		return -EINVAL;
@@ -1108,6 +1116,8 @@ int br_fdb_external_learn_add(struct net_bridge *br, struct net_bridge_port *p,
 	bool modified = false;
 	int err = 0;
 
+	trace_br_fdb_external_learn_add(br, p, addr, vid);
+
 	spin_lock_bh(&br->hash_lock);
 
 	head = &br->hash[br_mac_hash(addr, vid)];
@@ -1167,7 +1177,7 @@ int br_fdb_external_learn_del(struct net_bridge *br, struct net_bridge_port *p,
 }
 
 void br_fdb_offloaded_set(struct net_bridge *br, struct net_bridge_port *p,
-			  const unsigned char *addr, u16 vid)
+			  const unsigned char *addr, u16 vid, bool offloaded)
 {
 	struct net_bridge_fdb_entry *fdb;
 
@@ -1175,7 +1185,7 @@ void br_fdb_offloaded_set(struct net_bridge *br, struct net_bridge_port *p,
 
 	fdb = br_fdb_find(br, addr, vid);
 	if (fdb)
-		fdb->offloaded = 1;
+		fdb->offloaded = offloaded;
 
 	spin_unlock_bh(&br->hash_lock);
 }

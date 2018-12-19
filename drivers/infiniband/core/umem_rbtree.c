@@ -50,7 +50,7 @@ static inline u64 node_start(struct umem_odp_node *n)
 	struct ib_umem_odp *umem_odp =
 			container_of(n, struct ib_umem_odp, interval_tree);
 
-	return ib_umem_start(umem_odp->umem);
+	return ib_umem_start(&umem_odp->umem);
 }
 
 /* Note that the representation of the intervals in the interval tree
@@ -63,7 +63,7 @@ static inline u64 node_last(struct umem_odp_node *n)
 	struct ib_umem_odp *umem_odp =
 			container_of(n, struct ib_umem_odp, interval_tree);
 
-	return ib_umem_end(umem_odp->umem) - 1;
+	return ib_umem_end(&umem_odp->umem) - 1;
 }
 
 INTERVAL_TREE_DEFINE(struct umem_odp_node, rb, u64, __subtree_last,
@@ -88,7 +88,7 @@ int rbt_ib_umem_for_each_in_range(struct rb_root *root,
 			node; node = next) {
 		next = rbt_ib_umem_iter_next(node, start, last - 1);
 		umem = container_of(node, struct ib_umem_odp, interval_tree);
-		ret_val = cb(umem->umem, start, last, cookie) || ret_val;
+		ret_val = cb(umem, start, last, cookie) || ret_val;
 	}
 
 	return ret_val;

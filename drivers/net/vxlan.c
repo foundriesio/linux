@@ -102,22 +102,6 @@ bool vxlan_addr_equal(const union vxlan_addr *a, const union vxlan_addr *b)
 		return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
 }
 
-static inline bool vxlan_addr_any(const union vxlan_addr *ipa)
-{
-	if (ipa->sa.sa_family == AF_INET6)
-		return ipv6_addr_any(&ipa->sin6.sin6_addr);
-	else
-		return ipa->sin.sin_addr.s_addr == htonl(INADDR_ANY);
-}
-
-static inline bool vxlan_addr_multicast(const union vxlan_addr *ipa)
-{
-	if (ipa->sa.sa_family == AF_INET6)
-		return ipv6_addr_is_multicast(&ipa->sin6.sin6_addr);
-	else
-		return IN_MULTICAST(ntohl(ipa->sin.sin_addr.s_addr));
-}
-
 static int vxlan_nla_get_addr(union vxlan_addr *ip, struct nlattr *nla)
 {
 	if (nla_len(nla) >= sizeof(struct in6_addr)) {
@@ -148,16 +132,6 @@ static inline
 bool vxlan_addr_equal(const union vxlan_addr *a, const union vxlan_addr *b)
 {
 	return a->sin.sin_addr.s_addr == b->sin.sin_addr.s_addr;
-}
-
-static inline bool vxlan_addr_any(const union vxlan_addr *ipa)
-{
-	return ipa->sin.sin_addr.s_addr == htonl(INADDR_ANY);
-}
-
-static inline bool vxlan_addr_multicast(const union vxlan_addr *ipa)
-{
-	return IN_MULTICAST(ntohl(ipa->sin.sin_addr.s_addr));
 }
 
 static int vxlan_nla_get_addr(union vxlan_addr *ip, struct nlattr *nla)
@@ -286,6 +260,8 @@ static int vxlan_fdb_info(struct sk_buff *skb, struct vxlan_dev *vxlan,
 	ndm->ndm_state = fdb->state;
 	ndm->ndm_ifindex = vxlan->dev->ifindex;
 	ndm->ndm_flags = fdb->flags;
+	if (rdst->offloaded)
+		ndm->ndm_flags |= NTF_OFFLOADED;
 	ndm->ndm_type = RTN_UNICAST;
 
 	if (!net_eq(dev_net(vxlan->dev), vxlan->net) &&
@@ -341,8 +317,8 @@ static inline size_t vxlan_nlmsg_size(void)
 		+ nla_total_size(sizeof(struct nda_cacheinfo));
 }
 
-static void vxlan_fdb_notify(struct vxlan_dev *vxlan, struct vxlan_fdb *fdb,
-			     struct vxlan_rdst *rd, int type)
+static void __vxlan_fdb_notify(struct vxlan_dev *vxlan, struct vxlan_fdb *fdb,
+			       struct vxlan_rdst *rd, int type)
 {
 	struct net *net = dev_net(vxlan->dev);
 	struct sk_buff *skb;
@@ -365,6 +341,49 @@ static void vxlan_fdb_notify(struct vxlan_dev *vxlan, struct vxlan_fdb *fdb,
 errout:
 	if (err < 0)
 		rtnl_set_sk_err(net, RTNLGRP_NEIGH, err);
+}
+
+static void vxlan_fdb_switchdev_call_notifiers(struct vxlan_dev *vxlan,
+					       struct vxlan_fdb *fdb,
+					       struct vxlan_rdst *rd,
+					       bool adding)
+{
+	struct switchdev_notifier_vxlan_fdb_info info;
+	enum switchdev_notifier_type notifier_type;
+
+	if (WARN_ON(!rd))
+		return;
+
+	notifier_type = adding ? SWITCHDEV_VXLAN_FDB_ADD_TO_DEVICE
+			       : SWITCHDEV_VXLAN_FDB_DEL_TO_DEVICE;
+
+	info = (struct switchdev_notifier_vxlan_fdb_info){
+		.remote_ip = rd->remote_ip,
+		.remote_port = rd->remote_port,
+		.remote_vni = rd->remote_vni,
+		.remote_ifindex = rd->remote_ifindex,
+		.vni = fdb->vni,
+		.offloaded = rd->offloaded,
+	};
+	memcpy(info.eth_addr, fdb->eth_addr, ETH_ALEN);
+
+	call_switchdev_notifiers(notifier_type, vxlan->dev,
+				 &info.info);
+}
+
+static void vxlan_fdb_notify(struct vxlan_dev *vxlan, struct vxlan_fdb *fdb,
+			     struct vxlan_rdst *rd, int type)
+{
+	switch (type) {
+	case RTM_NEWNEIGH:
+		vxlan_fdb_switchdev_call_notifiers(vxlan, fdb, rd, true);
+		break;
+	case RTM_DELNEIGH:
+		vxlan_fdb_switchdev_call_notifiers(vxlan, fdb, rd, false);
+		break;
+	}
+
+	__vxlan_fdb_notify(vxlan, fdb, rd, type);
 }
 
 static void vxlan_ip_miss(struct net_device *dev, union vxlan_addr *ipa)
@@ -476,6 +495,47 @@ static struct vxlan_rdst *vxlan_fdb_find_rdst(struct vxlan_fdb *f,
 	return NULL;
 }
 
+int vxlan_fdb_find_uc(struct net_device *dev, const u8 *mac, __be32 vni,
+		      struct switchdev_notifier_vxlan_fdb_info *fdb_info)
+{
+	struct vxlan_dev *vxlan = netdev_priv(dev);
+	u8 eth_addr[ETH_ALEN + 2] = { 0 };
+	struct vxlan_rdst *rdst;
+	struct vxlan_fdb *f;
+	int rc = 0;
+
+	if (is_multicast_ether_addr(mac) ||
+	    is_zero_ether_addr(mac))
+		return -EINVAL;
+
+	ether_addr_copy(eth_addr, mac);
+
+	rcu_read_lock();
+
+	f = __vxlan_find_mac(vxlan, eth_addr, vni);
+	if (!f) {
+		rc = -ENOENT;
+		goto out;
+	}
+
+	rdst = first_remote_rcu(f);
+
+	memset(fdb_info, 0, sizeof(*fdb_info));
+	fdb_info->info.dev = dev;
+	fdb_info->remote_ip = rdst->remote_ip;
+	fdb_info->remote_port = rdst->remote_port;
+	fdb_info->remote_vni = rdst->remote_vni;
+	fdb_info->remote_ifindex = rdst->remote_ifindex;
+	fdb_info->vni = vni;
+	fdb_info->offloaded = rdst->offloaded;
+	ether_addr_copy(fdb_info->eth_addr, mac);
+
+out:
+	rcu_read_unlock();
+	return rc;
+}
+EXPORT_SYMBOL_GPL(vxlan_fdb_find_uc);
+
 /* Replace destination of unicast mac */
 static int vxlan_fdb_replace(struct vxlan_fdb *f,
 			     union vxlan_addr *ip, __be16 port, __be32 vni,
@@ -521,6 +581,7 @@ static int vxlan_fdb_append(struct vxlan_fdb *f,
 
 	rd->remote_ip = *ip;
 	rd->remote_port = port;
+	rd->offloaded = false;
 	rd->remote_vni = vni;
 	rd->remote_ifindex = ifindex;
 
@@ -2112,9 +2173,13 @@ static void vxlan_xmit_one(struct sk_buff *skb, struct net_device *dev,
 		local_ip = vxlan->cfg.saddr;
 		dst_cache = &rdst->dst_cache;
 		md->gbp = skb->mark;
-		ttl = vxlan->cfg.ttl;
-		if (!ttl && vxlan_addr_multicast(dst))
-			ttl = 1;
+		if (flags & VXLAN_F_TTL_INHERIT) {
+			ttl = ip_tunnel_get_ttl(old_iph, skb);
+		} else {
+			ttl = vxlan->cfg.ttl;
+			if (!ttl && vxlan_addr_multicast(dst))
+				ttl = 1;
+		}
 
 		tos = vxlan->cfg.tos;
 		if (tos == 1)
@@ -2720,6 +2785,7 @@ static const struct nla_policy vxlan_policy[IFLA_VXLAN_MAX + 1] = {
 	[IFLA_VXLAN_GBP]	= { .type = NLA_FLAG, },
 	[IFLA_VXLAN_GPE]	= { .type = NLA_FLAG, },
 	[IFLA_VXLAN_REMCSUM_NOPARTIAL]	= { .type = NLA_FLAG },
+	[IFLA_VXLAN_TTL_INHERIT]	= { .type = NLA_FLAG },
 };
 
 static int vxlan_validate(struct nlattr *tb[], struct nlattr *data[],
@@ -3154,6 +3220,12 @@ static int vxlan_nl2conf(struct nlattr *tb[], struct nlattr *data[],
 	if (data[IFLA_VXLAN_TTL])
 		conf->ttl = nla_get_u8(data[IFLA_VXLAN_TTL]);
 
+	if (data[IFLA_VXLAN_TTL_INHERIT]) {
+		if (changelink)
+			return -EOPNOTSUPP;
+		conf->flags |= VXLAN_F_TTL_INHERIT;
+	}
+
 	if (data[IFLA_VXLAN_LABEL])
 		conf->label = nla_get_be32(data[IFLA_VXLAN_LABEL]) &
 			     IPV6_FLOWLABEL_MASK;
@@ -3383,6 +3455,7 @@ static size_t vxlan_get_size(const struct net_device *dev)
 		nla_total_size(sizeof(__u32)) +	/* IFLA_VXLAN_LINK */
 		nla_total_size(sizeof(struct in6_addr)) + /* IFLA_VXLAN_LOCAL{6} */
 		nla_total_size(sizeof(__u8)) +	/* IFLA_VXLAN_TTL */
+		nla_total_size(sizeof(__u8)) +	/* IFLA_VXLAN_TTL_INHERIT */
 		nla_total_size(sizeof(__u8)) +	/* IFLA_VXLAN_TOS */
 		nla_total_size(sizeof(__be32)) + /* IFLA_VXLAN_LABEL */
 		nla_total_size(sizeof(__u8)) +	/* IFLA_VXLAN_LEARNING */
@@ -3447,6 +3520,8 @@ static int vxlan_fill_info(struct sk_buff *skb, const struct net_device *dev)
 	}
 
 	if (nla_put_u8(skb, IFLA_VXLAN_TTL, vxlan->cfg.ttl) ||
+	    nla_put_u8(skb, IFLA_VXLAN_TTL_INHERIT,
+		       !!(vxlan->cfg.flags & VXLAN_F_TTL_INHERIT)) ||
 	    nla_put_u8(skb, IFLA_VXLAN_TOS, vxlan->cfg.tos) ||
 	    nla_put_be32(skb, IFLA_VXLAN_LABEL, vxlan->cfg.label) ||
 	    nla_put_u8(skb, IFLA_VXLAN_LEARNING,
@@ -3592,6 +3667,51 @@ static struct notifier_block vxlan_notifier_block __read_mostly = {
 	.notifier_call = vxlan_netdevice_event,
 };
 
+static void
+vxlan_fdb_offloaded_set(struct net_device *dev,
+			struct switchdev_notifier_vxlan_fdb_info *fdb_info)
+{
+	struct vxlan_dev *vxlan = netdev_priv(dev);
+	struct vxlan_rdst *rdst;
+	struct vxlan_fdb *f;
+
+	spin_lock_bh(&vxlan->hash_lock);
+
+	f = vxlan_find_mac(vxlan, fdb_info->eth_addr, fdb_info->vni);
+	if (!f)
+		goto out;
+
+	rdst = vxlan_fdb_find_rdst(f, &fdb_info->remote_ip,
+				   fdb_info->remote_port,
+				   fdb_info->remote_vni,
+				   fdb_info->remote_ifindex);
+	if (!rdst)
+		goto out;
+
+	rdst->offloaded = fdb_info->offloaded;
+
+out:
+	spin_unlock_bh(&vxlan->hash_lock);
+}
+
+static int vxlan_switchdev_event(struct notifier_block *unused,
+				 unsigned long event, void *ptr)
+{
+	struct net_device *dev = switchdev_notifier_info_to_dev(ptr);
+
+	switch (event) {
+	case SWITCHDEV_VXLAN_FDB_OFFLOADED:
+		vxlan_fdb_offloaded_set(dev, ptr);
+		break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block vxlan_switchdev_notifier_block __read_mostly = {
+	.notifier_call = vxlan_switchdev_event,
+};
+
 static __net_init int vxlan_init_net(struct net *net)
 {
 	struct vxlan_net *vn = net_generic(net, vxlan_net_id);
@@ -3653,11 +3773,17 @@ static int __init vxlan_init_module(void)
 	if (rc)
 		goto out2;
 
-	rc = rtnl_link_register(&vxlan_link_ops);
+	rc = register_switchdev_notifier(&vxlan_switchdev_notifier_block);
 	if (rc)
 		goto out3;
 
+	rc = rtnl_link_register(&vxlan_link_ops);
+	if (rc)
+		goto out4;
+
 	return 0;
+out4:
+	unregister_switchdev_notifier(&vxlan_switchdev_notifier_block);
 out3:
 	unregister_netdevice_notifier(&vxlan_notifier_block);
 out2:
@@ -3670,6 +3796,7 @@ late_initcall(vxlan_init_module);
 static void __exit vxlan_cleanup_module(void)
 {
 	rtnl_link_unregister(&vxlan_link_ops);
+	unregister_switchdev_notifier(&vxlan_switchdev_notifier_block);
 	unregister_netdevice_notifier(&vxlan_notifier_block);
 	unregister_pernet_subsys(&vxlan_net_ops);
 	/* rcu_barrier() is called by netns */

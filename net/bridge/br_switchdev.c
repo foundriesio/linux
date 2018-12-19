@@ -101,13 +101,16 @@ int br_switchdev_set_port_flag(struct net_bridge_port *p,
 
 static void
 br_switchdev_fdb_call_notifiers(bool adding, const unsigned char *mac,
-				u16 vid, struct net_device *dev)
+				u16 vid, struct net_device *dev,
+				bool added_by_user, bool offloaded)
 {
 	struct switchdev_notifier_fdb_info info;
 	unsigned long notifier_type;
 
 	info.addr = mac;
 	info.vid = vid;
+	info.added_by_user = added_by_user;
+	info.offloaded = offloaded;
 	notifier_type = adding ? SWITCHDEV_FDB_ADD_TO_DEVICE : SWITCHDEV_FDB_DEL_TO_DEVICE;
 	call_switchdev_notifiers(notifier_type, dev, &info.info);
 }
@@ -122,12 +125,16 @@ br_switchdev_fdb_notify(const struct net_bridge_fdb_entry *fdb, int type)
 	case RTM_DELNEIGH:
 		br_switchdev_fdb_call_notifiers(false, fdb->addr.addr,
 						fdb->vlan_id,
-						fdb->dst->dev);
+						fdb->dst->dev,
+						fdb->added_by_user,
+						fdb->offloaded);
 		break;
 	case RTM_NEWNEIGH:
 		br_switchdev_fdb_call_notifiers(true, fdb->addr.addr,
 						fdb->vlan_id,
-						fdb->dst->dev);
+						fdb->dst->dev,
+						fdb->added_by_user,
+						fdb->offloaded);
 		break;
 	}
 }

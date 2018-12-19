@@ -3275,7 +3275,7 @@ static struct bpf_test tests[] = {
 			BPF_ST_MEM(BPF_DW, BPF_REG_1, offsetof(struct __sk_buff, mark), 0),
 			BPF_EXIT_INSN(),
 		},
-		.errstr = "BPF_ST stores into R1 context is not allowed",
+		.errstr = "BPF_ST stores into R1 ctx is not allowed",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
 	},
@@ -3287,7 +3287,7 @@ static struct bpf_test tests[] = {
 				     BPF_REG_0, offsetof(struct __sk_buff, mark), 0),
 			BPF_EXIT_INSN(),
 		},
-		.errstr = "BPF_XADD stores into R1 context is not allowed",
+		.errstr = "BPF_XADD stores into R1 ctx is not allowed",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
 	},
@@ -3637,7 +3637,7 @@ static struct bpf_test tests[] = {
 			BPF_MOV64_IMM(BPF_REG_0, 0),
 			BPF_EXIT_INSN(),
 		},
-		.errstr = "R3 pointer arithmetic on PTR_TO_PACKET_END",
+		.errstr = "R3 pointer arithmetic on pkt_end",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
 	},
@@ -4642,6 +4642,8 @@ static struct bpf_test tests[] = {
 		},
 		.fixup_cgroup_storage = { 1 },
 		.result = ACCEPT,
+		.result_unpriv = REJECT,
+		.errstr_unpriv = "R3 pointer comparison prohibited",
 		.prog_type = BPF_PROG_TYPE_CGROUP_SKB,
 	},
 	{
@@ -4724,6 +4726,7 @@ static struct bpf_test tests[] = {
 		.fixup_cgroup_storage = { 1 },
 		.result = REJECT,
 		.errstr = "get_local_storage() doesn't support non-zero flags",
+		.errstr_unpriv = "R2 leaks addr into helper function",
 		.prog_type = BPF_PROG_TYPE_CGROUP_SKB,
 	},
 	{
@@ -4741,6 +4744,7 @@ static struct bpf_test tests[] = {
 		.fixup_cgroup_storage = { 1 },
 		.result = REJECT,
 		.errstr = "get_local_storage() doesn't support non-zero flags",
+		.errstr_unpriv = "R2 leaks addr into helper function",
 		.prog_type = BPF_PROG_TYPE_CGROUP_SKB,
 	},
 	{
@@ -4780,7 +4784,7 @@ static struct bpf_test tests[] = {
 			BPF_EXIT_INSN(),
 		},
 		.fixup_map1 = { 4 },
-		.errstr = "R4 pointer arithmetic on PTR_TO_MAP_VALUE_OR_NULL",
+		.errstr = "R4 pointer arithmetic on map_value_or_null",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS
 	},
@@ -4801,7 +4805,7 @@ static struct bpf_test tests[] = {
 			BPF_EXIT_INSN(),
 		},
 		.fixup_map1 = { 4 },
-		.errstr = "R4 pointer arithmetic on PTR_TO_MAP_VALUE_OR_NULL",
+		.errstr = "R4 pointer arithmetic on map_value_or_null",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS
 	},
@@ -4822,7 +4826,7 @@ static struct bpf_test tests[] = {
 			BPF_EXIT_INSN(),
 		},
 		.fixup_map1 = { 4 },
-		.errstr = "R4 pointer arithmetic on PTR_TO_MAP_VALUE_OR_NULL",
+		.errstr = "R4 pointer arithmetic on map_value_or_null",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS
 	},
@@ -5150,7 +5154,7 @@ static struct bpf_test tests[] = {
 		.errstr_unpriv = "R2 leaks addr into mem",
 		.result_unpriv = REJECT,
 		.result = REJECT,
-		.errstr = "BPF_XADD stores into R1 context is not allowed",
+		.errstr = "BPF_XADD stores into R1 ctx is not allowed",
 	},
 	{
 		"leak pointer into ctx 2",
@@ -5165,7 +5169,7 @@ static struct bpf_test tests[] = {
 		.errstr_unpriv = "R10 leaks addr into mem",
 		.result_unpriv = REJECT,
 		.result = REJECT,
-		.errstr = "BPF_XADD stores into R1 context is not allowed",
+		.errstr = "BPF_XADD stores into R1 ctx is not allowed",
 	},
 	{
 		"leak pointer into ctx 3",
@@ -7137,7 +7141,7 @@ static struct bpf_test tests[] = {
 			BPF_EXIT_INSN(),
 		},
 		.fixup_map_in_map = { 3 },
-		.errstr = "R1 pointer arithmetic on CONST_PTR_TO_MAP prohibited",
+		.errstr = "R1 pointer arithmetic on map_ptr prohibited",
 		.result = REJECT,
 	},
 	{
@@ -8919,7 +8923,7 @@ static struct bpf_test tests[] = {
 			BPF_MOV64_IMM(BPF_REG_0, 0),
 			BPF_EXIT_INSN(),
 		},
-		.errstr = "R1 offset is outside of the packet",
+		.errstr = "R3 pointer arithmetic on pkt_end",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_XDP,
 	},
@@ -8938,7 +8942,7 @@ static struct bpf_test tests[] = {
 			BPF_MOV64_IMM(BPF_REG_0, 0),
 			BPF_EXIT_INSN(),
 		},
-		.errstr = "R1 offset is outside of the packet",
+		.errstr = "R3 pointer arithmetic on pkt_end",
 		.result = REJECT,
 		.prog_type = BPF_PROG_TYPE_XDP,
 	},
@@ -12026,7 +12030,7 @@ static struct bpf_test tests[] = {
 			BPF_EXIT_INSN(),
 		},
 		.result = REJECT,
-		.errstr = "BPF_XADD stores into R2 packet",
+		.errstr = "BPF_XADD stores into R2 pkt is not allowed",
 		.prog_type = BPF_PROG_TYPE_XDP,
 	},
 	{
@@ -12511,6 +12515,25 @@ static struct bpf_test tests[] = {
 		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
 		.result = ACCEPT,
 	},
+	{
+		"calls: ctx read at start of subprog",
+		.insns = {
+			BPF_MOV64_REG(BPF_REG_6, BPF_REG_1),
+			BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 1, 0, 5),
+			BPF_JMP_REG(BPF_JSGT, BPF_REG_0, BPF_REG_0, 0),
+			BPF_MOV64_REG(BPF_REG_1, BPF_REG_6),
+			BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 1, 0, 2),
+			BPF_MOV64_REG(BPF_REG_1, BPF_REG_0),
+			BPF_EXIT_INSN(),
+			BPF_LDX_MEM(BPF_B, BPF_REG_9, BPF_REG_1, 0),
+			BPF_MOV64_IMM(BPF_REG_0, 0),
+			BPF_EXIT_INSN(),
+		},
+		.prog_type = BPF_PROG_TYPE_SOCKET_FILTER,
+		.errstr_unpriv = "function calls to other bpf functions are allowed for root only",
+		.result_unpriv = REJECT,
+		.result = ACCEPT,
+	},
 };
 
 static int probe_filter_length(const struct bpf_insn *fp)
@@ -12746,7 +12769,7 @@ static void do_test_single(struct bpf_test *test, bool unpriv,
 
 	reject_from_alignment = fd_prog < 0 &&
 				(test->flags & F_NEEDS_EFFICIENT_UNALIGNED_ACCESS) &&
-				strstr(bpf_vlog, "Unknown alignment.");
+				strstr(bpf_vlog, "misaligned");
 #ifdef CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS
 	if (reject_from_alignment) {
 		printf("FAIL\nFailed due to alignment despite having efficient unaligned access: '%s'!\n",
@@ -12871,6 +12894,13 @@ static void get_unpriv_disabled()
 	fclose(fd);
 }
 
+static bool test_as_unpriv(struct bpf_test *test)
+{
+	return !test->prog_type ||
+	       test->prog_type == BPF_PROG_TYPE_SOCKET_FILTER ||
+	       test->prog_type == BPF_PROG_TYPE_CGROUP_SKB;
+}
+
 static int do_test(bool unpriv, unsigned int from, unsigned int to)
 {
 	int i, passes = 0, errors = 0, skips = 0;
@@ -12881,10 +12911,10 @@ static int do_test(bool unpriv, unsigned int from, unsigned int to)
 		/* Program types that are not supported by non-root we
 		 * skip right away.
 		 */
-		if (!test->prog_type && unpriv_disabled) {
+		if (test_as_unpriv(test) && unpriv_disabled) {
 			printf("#%d/u %s SKIP\n", i, test->descr);
 			skips++;
-		} else if (!test->prog_type) {
+		} else if (test_as_unpriv(test)) {
 			if (!unpriv)
 				set_admin(false);
 			printf("#%d/u %s ", i, test->descr);
