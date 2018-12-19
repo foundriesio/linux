@@ -311,7 +311,6 @@ static int __meminit __add_section(int nid, unsigned long phys_start_pfn,
 		struct vmem_altmap *altmap, bool want_memblock)
 {
 	int ret;
-	int i;
 
 	if (pfn_valid(phys_start_pfn))
 		return -EEXIST;
@@ -320,27 +319,10 @@ static int __meminit __add_section(int nid, unsigned long phys_start_pfn,
 	if (ret < 0)
 		return ret;
 
-	/*
-	 * Make all the pages reserved so that nobody will stumble over half
-	 * initialized state.
-	 * FIXME: We also have to associate it with a node because pfn_to_node
-	 * relies on having page with the proper node.
-	 */
-	for (i = 0; i < PAGES_PER_SECTION; i++) {
-		unsigned long pfn = phys_start_pfn + i;
-		struct page *page;
-		if (!pfn_valid(pfn))
-			continue;
-
-		page = pfn_to_page(pfn);
-		set_page_node(page, nid);
-		SetPageReserved(page);
-	}
-
 	if (!want_memblock)
 		return 0;
 
-	return register_new_memory(nid, __pfn_to_section(phys_start_pfn));
+	return hotplug_memory_register(nid, __pfn_to_section(phys_start_pfn));
 }
 
 /*
@@ -1006,8 +988,15 @@ int __ref online_pages(unsigned long pfn, unsigned long nr_pages, int online_typ
 	int nid;
 	int ret;
 	struct memory_notify arg;
+	struct memory_block *mem;
 
-	nid = pfn_to_nid(pfn);
+	/*
+	 * We can't use pfn_to_nid() because nid might be stored in struct page
+	 * which is not yet initialized. Instead, we find nid from memory block.
+	 */
+	mem = find_memory_block(__pfn_to_section(pfn));
+	nid = mem->nid;
+
 	if (!allow_online_pfn_range(nid, pfn, nr_pages, online_type))
 		return -EINVAL;
 
@@ -1283,7 +1272,7 @@ int __ref add_memory_resource(int nid, struct resource *res, bool online)
 		 * nodes have to go through register_node.
 		 * TODO clean up this mess.
 		 */
-		ret = link_mem_sections(nid, start_pfn, nr_pages);
+		ret = link_mem_sections(nid, start_pfn, nr_pages, false);
 register_fail:
 		/*
 		 * If sysfs file of new node can't create, cpu on the node
