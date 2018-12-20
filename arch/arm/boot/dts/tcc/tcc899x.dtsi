@@ -401,6 +401,14 @@
 			telechips,pmap-secured = <4>;
 		};
 
+                pmap_ion_carveout_cam: ion_carveout_cam {
+                        compatible = "telechips,pmap";
+                        telechips,pmap-name = "ion_carveout_cam";
+                        alloc-ranges = <SECURE_AREA_4_BASE SECURE_AREA_4_SIZE>;
+                        size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
+                        telechips,pmap-secured = <4>;
+                };
+
 		/*-----------------------------------------------------------
 		 * Shared Memory with pmap_viqe
 		 *-----------------------------------------------------------

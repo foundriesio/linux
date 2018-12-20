@@ -29,6 +29,12 @@ config ION_CARVEOUT_HEAP
 	  typically faster at the cost of memory not being used. Unless you
 	  know your system has these regions, you should say N here.
 
+config ION_CARVEOUT_CAM_HEAP
+        bool "Ion carveout camera heap support"
+        depends on ION
+        help
+          Choose this option to enable carveout camera heaps with Ion.
+
 config ION_CHUNK_HEAP
 	bool "Ion chunk heap support"
 	depends on ION

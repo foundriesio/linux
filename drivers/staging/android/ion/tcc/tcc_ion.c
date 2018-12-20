@@ -36,6 +36,9 @@ int num_heaps;
 struct ion_heap **heaps;
 
 extern struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data);
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+extern struct ion_heap *ion_carveout_cam_heap_create(struct ion_platform_heap *heap_data);
+#endif
 extern struct ion_heap *ion_chunk_heap_create(struct ion_platform_heap *heap_data);
 
 static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
@@ -82,13 +85,21 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 
 			heap->base = pmap_ump_reserved.base;
 			heap->size = pmap_ump_reserved.size;
-			printk("base:0x%x\n", heap->base);
+			printk("ump_reserved base:0x%x\n", heap->base);
 	 	}
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+		else if(heap->type == ION_HEAP_TYPE_CARVEOUT_CAM)
+		{
+			pmap_t pmap_ion_carveout_cam;
+			pmap_get_info("ion_carveout_cam", &pmap_ion_carveout_cam);
 
+			heap->base = pmap_ion_carveout_cam.base;
+			heap->size = pmap_ion_carveout_cam.size;
+			printk("ion_carveout_cam base:0x%x\n", heap->base);
+	 	}
+#endif		
 		++index;
 	}
-
-
 
 	pdata->nr = num_heaps;
 
@@ -103,6 +114,11 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 #ifdef CONFIG_ION_CARVEOUT_HEAP
 	case ION_HEAP_TYPE_CARVEOUT:
 		heap = ion_carveout_heap_create(heap_data);
+		break;
+#endif		
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+	case ION_HEAP_TYPE_CARVEOUT_CAM:
+		heap = ion_carveout_cam_heap_create(heap_data);
 		break;
 #endif
 #ifdef CONFIG_ION_CHUNK_HEAP

@@ -168,6 +168,13 @@
 			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 		};
 
+                pmap_ion_carveout_cam: ion_carveout_cam {
+                        compatible = "telechips,pmap";
+                        telechips,pmap-name = "ion_carveout_cam";
+                        alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+                        size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
+                };
+
 		rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";

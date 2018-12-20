@@ -1,5 +1,6 @@
 /*
  *
+ * Copyright (C) 2018 Telechips Inc.
  * Copyright (C) 2011 Google, Inc.
  *
  * This software is licensed under the terms of the GNU General Public

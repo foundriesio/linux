@@ -226,6 +226,7 @@ static int ion_heap_deferred_free(void *data)
 {
 	struct ion_heap *heap = data;
 
+pr_info("%s name:%s size:%d\n", __func__, heap->name, heap->free_list_size);
 	while (true) {
 		struct ion_buffer *buffer;
 

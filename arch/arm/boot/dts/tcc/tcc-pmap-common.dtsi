@@ -204,13 +204,20 @@
 #ifdef CONFIG_ANDROID
 #define PMAP_SIZE_UMP_RESERVED		(ARRAY_MBYTE((ARRAY_256KBYTE((SUPPORT_VIDEO_MAX_WIDTH * SUPPORT_VIDEO_MAX_HEIGHT * 3) / 2)) * 12) + (1*SZ_1MB)) // 1MB for specific streaming case!!
 #define PMAP_SIZE_UMP_RESERVED_SW	0x00040000 //256KB = 2KB * 128
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+#define PMAP_SIZE_ION_CARVEOUT_CAM	(12*SZ_1MB)
+#else
+#define PMAP_SIZE_ION_CARVEOUT_CAM      0x00000000
+#endif
 #else
 #define PMAP_SIZE_UMP_RESERVED		0x00000000
 #define PMAP_SIZE_UMP_RESERVED_SW	0x00000000
+#define PMAP_SIZE_ION_CARVEOUT_CAM      0x00000000
 #endif
 
 #define PMAP_SIZE_SECURE_AREA_4		( 0x0 \
 									+ PMAP_SIZE_UMP_RESERVED \
+									+ PMAP_SIZE_ION_CARVEOUT_CAM \
 									)
 
 /*-----------------------------------------------------------

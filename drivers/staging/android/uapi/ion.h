@@ -1,6 +1,7 @@
 /*
  * drivers/staging/android/uapi/ion.h
  *
+ * Copyright (C) 2018 Telechips Inc.
  * Copyright (C) 2011 Google, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -36,6 +37,7 @@ enum ion_heap_type {
 	ION_HEAP_TYPE_SYSTEM,
 	ION_HEAP_TYPE_SYSTEM_CONTIG,
 	ION_HEAP_TYPE_CARVEOUT,
+        ION_HEAP_TYPE_CARVEOUT_CAM,
 	ION_HEAP_TYPE_CHUNK,
 	ION_HEAP_TYPE_DMA,
 	ION_HEAP_TYPE_CUSTOM, /*
