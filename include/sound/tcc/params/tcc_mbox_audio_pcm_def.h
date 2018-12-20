@@ -36,13 +36,21 @@
 /* unsigned int cmd[4] = 32bit buffer address */
 /* unsigned int cmd[5] = buffer size */
 
-/* example 3 : for position command (A7S -> A53) */
+/* example 3 : for position command (A7S -> A53) for each playback or capture */
 /* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (3) ; 8bit | 8bit | 8bit | 8bit */
 /* unsigned int cmd[1] = ASRC_PCM_POSITION_DATA */
 /* unsigned int cmd[2] = ASRC_PCM_VALUE_DEVICE_0_1 */
 /* unsigned int cmd[3] = 32bit buffer address or offset */
 
-/* example 4 : for volume command */
+/* example 4 : for position command (A7S -> A53) for all playbacks concurrently*/
+/* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (3) ; 8bit | 8bit | 8bit | 8bit */
+/* unsigned int cmd[1] = ASRC_PCM_POSITION_DATA */
+/* unsigned int cmd[2] = must use ASRC_PCM_VALUE_DEVICE_0_0 or ASRC_PCM_VALUE_DEVICE_1_0 (device 0)*/
+/* unsigned int cmd[3] = 32bit buffer address or offset for device 0 */
+/* unsigned int cmd[4] = 32bit buffer address or offset for device 1 */
+/* unsigned int cmd[5] = 32bit buffer address or offset for device 2 */
+
+/* example 5 : for volume command */
 /* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (3) ; 8bit | 8bit | 8bit | 8bit */
 /* unsigned int cmd[1] = ASRC_PCM_VOLUME */
 /* unsigned int cmd[2] = ASRC_PCM_VALUE_DEVICE_0_1 */
@@ -50,7 +58,7 @@
 /*                       value to set , if using MBOX_AUDIO_USAGE_REQUEST, do not use it */
 /*                       reply value is set here */
 
-/* example 5 : for balance/fade command */
+/* example 6 : for balance/fade command */
 /* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (2) ; 8bit | 8bit | 8bit | 8bit */
 /* unsigned int cmd[1] = ASRC_PCM_FADER */
 /* unsigned int cmd[2] = balance | fade ; 16bit | 16bit ; balance, fade is short*/
