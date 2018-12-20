@@ -429,7 +429,7 @@ static void nvmet_execute_identify_ns(struct nvmet_req *req)
 	id->nmic = (1 << 0);
 	id->anagrpid = cpu_to_le32(ns->anagrpid);
 
-	memcpy(&id->nguid, &ns->nguid, sizeof(uuid_le));
+	memcpy(&id->nguid, &ns->nguid, sizeof(id->nguid));
 
 	id->lbaf[0].ds = ns->blksize_shift;
 
