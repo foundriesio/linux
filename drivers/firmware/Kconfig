@@ -82,6 +82,10 @@ config ARM_SCPI_POWER_DOMAIN
 	  This enables support for the SCPI power domains which can be
 	  enabled or disabled via the SCP firmware
 
+config ARM_SCPI_PROTOCOL_TEST
+	tristate "Test code for SCPI Message Protocol"
+	default ARM_SCPI_PROTOCOL
+
 config ARM_SDE_INTERFACE
 	bool "ARM Software Delegated Exception Interface (SDEI)"
 	depends on ARM64
