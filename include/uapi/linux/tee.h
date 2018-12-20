@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2018, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  * All rights reserved.
  *
@@ -118,23 +119,6 @@ struct tee_ioctl_shm_alloc_data {
 				     struct tee_ioctl_shm_alloc_data)
 
 /**
- * struct tee_ioctl_shm_sdp_register_data - SDP Shared memory register argument
- *
- */
-struct tee_ioctl_shm_sdp_register_data {
-	void * ptr;
-	__u64 size;
-	__u32 flags;
-	__s32 id;
-};
-
-/**
- * TEE_IOC_SHM_REGISTER_SDP - register sdp shared memory
- */
-#define TEE_IOC_SHM_REGISTER_SDP	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
-					struct tee_ioctl_shm_sdp_register_data)
-
-/**
  * struct tee_ioctl_shm_register_fd_data - Shared memory registering argument
  * @fd:		[in] file descriptor identifying the shared memory
  * @size:	[out] Size of shared memory to allocate
@@ -192,6 +176,51 @@ struct tee_ioctl_shm_register_data {
  */
 #define TEE_IOC_SHM_REGISTER   _IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 9, \
 				     struct tee_ioctl_shm_register_data)
+
+/**
+ * TEE_IOC_SHM_REGISTER_SDP - register sdp shared memory
+ */
+#define TEE_IOC_SHM_REGISTER_SDP	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
+						struct tee_ioctl_shm_register_data)
+
+/**
+ * struct tee_ioctl_version_tcc - send sdk version to kernel
+ * @major:	[in] Major revision
+ * @minor:	[in] Minor revision
+ * @rev0:	[in] reserved0
+ * @rev1:	[in] reserved1
+ */
+struct tee_ioctl_version_tcc {
+	__u32 major;
+	__u32 minor;
+	__u32 tcc_rev;
+	__u64 date;
+};
+
+/**
+ * TEE_IOC_CALIB_VERSION - calib libranry version
+ */
+#define TEE_IOC_OS_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 21, \
+				     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_SUPP_VERSION - tee supplicant version
+ */
+#define TEE_IOC_SUPP_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 22, \
+				     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_CLIENT_VERSION - tee client library version
+ */
+#define TEE_IOC_CLIENT_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 23, \
+					     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_CALIB_VERSION - calib libranry version
+ */
+#define TEE_IOC_CALIB_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 24, \
+				     struct tee_ioctl_version_tcc)
+
 
 /**
  * struct tee_ioctl_buf_data - Variable sized buffer

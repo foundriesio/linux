@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2018, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  *
  * This software is licensed under the terms of the GNU General Public
@@ -325,7 +326,7 @@ struct tee_shm *tee_shm_alloc(struct tee_context *ctx, size_t size, u32 flags);
  *
  * @returns a pointer to 'struct tee_shm'
  */
-struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, phys_addr_t * ptr,
+struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr,
                                      size_t size, u32 flags);
 /**
  * tee_shm_register_fd() - Register shared memory from file descriptor

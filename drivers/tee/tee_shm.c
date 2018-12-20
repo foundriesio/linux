@@ -140,7 +140,8 @@ static const struct dma_buf_ops tee_shm_dma_buf_ops = {
  * @size:	Requested size of shared memory
  * @flags:	Flags setting properties for the requested shared memory.
  */
-struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, phys_addr_t * ptr, size_t size, u32 flags)
+struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr,
+				     size_t size, u32 flags)
 {
 	struct tee_device *teedev = ctx->teedev;
 	struct tee_shm *shm;
@@ -169,7 +170,7 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, phys_addr_t * ptr,
 	shm->flags = flags;
 	shm->teedev = teedev;
 	shm->ctx = ctx;
-	shm->paddr = (phys_addr_t)ptr;
+	shm->paddr = addr;
 	shm->size = size;
 
 	mutex_lock(&teedev->mutex);

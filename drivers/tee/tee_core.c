@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2018, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  *
  * This software is licensed under the terms of the GNU General Public
@@ -206,10 +207,10 @@ tee_ioctl_shm_register(struct tee_context *ctx,
 }
 
 static int tee_ioctl_shm_sdp_register(struct tee_context *ctx,
-			       struct tee_ioctl_shm_sdp_register_data __user *udata)
+			       struct tee_ioctl_shm_register_data __user *udata)
 {
 	long ret;
-	struct tee_ioctl_shm_sdp_register_data data;
+	struct tee_ioctl_shm_register_data data;
 	struct tee_shm *shm;
 
 	if (copy_from_user(&data, udata, sizeof(data)))
@@ -221,13 +222,13 @@ static int tee_ioctl_shm_sdp_register(struct tee_context *ctx,
 
 	data.id = -1;
 
-	shm = tee_shm_sdp_register(ctx, data.ptr, data.size, TEE_SHM_SDP_MEM);
+	shm = tee_shm_sdp_register(ctx, data.addr, data.length, TEE_SHM_SDP_MEM);
 	if (IS_ERR(shm))
 		return PTR_ERR(shm);
 
 	data.id = shm->id;
 	data.flags = shm->flags;
-	data.size = shm->size;
+	data.length = shm->size;
 
 	if (copy_to_user(udata, &data, sizeof(data))) {
 		ret = -EFAULT;
@@ -709,6 +710,24 @@ out:
 	return rc;
 }
 
+static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
+			      struct tee_ioctl_version_tcc __user *uver)
+{
+	extern void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver);
+	struct tee_ioctl_version_tcc ver;
+
+	if (copy_from_user(&ver, uver, sizeof(ver)))
+		return -EFAULT;
+
+	switch (cmd) {
+	case TEE_IOC_SUPP_VERSION:
+	case TEE_IOC_CLIENT_VERSION:
+	case TEE_IOC_CALIB_VERSION:
+		tee_set_version(cmd, &ver);
+	}
+	return 0;
+}
+
 static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct tee_context *ctx = filp->private_data;
@@ -737,6 +756,10 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return tee_ioctl_supp_recv(ctx, uarg);
 	case TEE_IOC_SUPPL_SEND:
 		return tee_ioctl_supp_send(ctx, uarg);
+	case TEE_IOC_SUPP_VERSION:
+	case TEE_IOC_CLIENT_VERSION:
+	case TEE_IOC_CALIB_VERSION:
+		return tee_ioctl_user_version(cmd, ctx, uarg);
 	default:
 		return -EINVAL;
 	}

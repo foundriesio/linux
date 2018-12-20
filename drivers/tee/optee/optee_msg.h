@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2018, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  * All rights reserved.
  *
@@ -288,6 +289,11 @@ struct optee_msg_arg {
  * OPTEE_MSG_CALLS_REVISION described above.
  */
 #define OPTEE_MSG_FUNCID_GET_OS_REVISION	0x0001
+
+/*
+ * Get build date of Trusted OS.
+ */
+#define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1
 
 /*
  * Do a secure call with struct optee_msg_arg as argument
