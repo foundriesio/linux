@@ -18,6 +18,7 @@
 
 #include "nvmet.h"
 
+struct workqueue_struct *buffered_io_wq;
 static const struct nvmet_fabrics_ops *nvmet_transports[NVMF_TRTYPE_MAX];
 static DEFINE_IDA(cntlid_ida);
 
@@ -179,7 +180,7 @@ out_unlock:
 	mutex_unlock(&ctrl->lock);
 }
 
-static void nvmet_ns_changed(struct nvmet_subsys *subsys, u32 nsid)
+void nvmet_ns_changed(struct nvmet_subsys *subsys, u32 nsid)
 {
 	struct nvmet_ctrl *ctrl;
 
@@ -271,6 +272,10 @@ int nvmet_enable_port(struct nvmet_port *port)
 		module_put(ops->owner);
 		return ret;
 	}
+
+	/* If the transport didn't set inline_data_size, then disable it. */
+	if (port->inline_data_size < 0)
+		port->inline_data_size = 0;
 
 	port->enabled = true;
 	return 0;
@@ -484,6 +489,7 @@ struct nvmet_ns *nvmet_ns_alloc(struct nvmet_subsys *subsys, u32 nsid)
 	up_write(&nvmet_ana_sem);
 
 	uuid_gen(&ns->uuid);
+	ns->buffered_io = false;
 
 	return ns;
 }
@@ -603,6 +609,21 @@ static inline u16 nvmet_check_ana_state(struct nvmet_port *port,
 	return 0;
 }
 
+static inline u16 nvmet_io_cmd_check_access(struct nvmet_req *req)
+{
+	if (unlikely(req->ns->readonly)) {
+		switch (req->cmd->common.opcode) {
+		case nvme_cmd_read:
+		case nvme_cmd_flush:
+			break;
+		default:
+			return NVME_SC_NS_WRITE_PROTECTED;
+		}
+	}
+
+	return 0;
+}
+
 static u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 {
 	struct nvme_command *cmd = req->cmd;
@@ -616,6 +637,9 @@ static u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 	if (unlikely(!req->ns))
 		return NVME_SC_INVALID_NS | NVME_SC_DNR;
 	ret = nvmet_check_ana_state(req->port, req->ns);
+	if (unlikely(ret))
+		return ret;
+	ret = nvmet_io_cmd_check_access(req);
 	if (unlikely(ret))
 		return ret;
 
@@ -1081,8 +1105,7 @@ static struct nvmet_subsys *nvmet_find_get_subsys(struct nvmet_port *port,
 	if (!port)
 		return NULL;
 
-	if (!strncmp(NVME_DISC_SUBSYS_NAME, subsysnqn,
-			NVMF_NQN_SIZE)) {
+	if (!strcmp(NVME_DISC_SUBSYS_NAME, subsysnqn)) {
 		if (!kref_get_unless_zero(&nvmet_disc_subsys->ref))
 			return NULL;
 		return nvmet_disc_subsys;
@@ -1177,10 +1200,16 @@ static int __init nvmet_init(void)
 
 	nvmet_ana_group_enabled[NVMET_DEFAULT_ANA_GRPID] = 1;
 
+	buffered_io_wq = alloc_workqueue("nvmet-buffered-io-wq",
+			WQ_MEM_RECLAIM, 0);
+	if (!buffered_io_wq) {
+		error = -ENOMEM;
+		goto out;
+	}
 
 	error = nvmet_init_discovery();
 	if (error)
-		goto out;
+		goto out_free_work_queue;
 
 	error = nvmet_init_configfs();
 	if (error)
@@ -1189,6 +1218,8 @@ static int __init nvmet_init(void)
 
 out_exit_discovery:
 	nvmet_exit_discovery();
+out_free_work_queue:
+	destroy_workqueue(buffered_io_wq);
 out:
 	return error;
 }
@@ -1198,6 +1229,7 @@ static void __exit nvmet_exit(void)
 	nvmet_exit_configfs();
 	nvmet_exit_discovery();
 	ida_destroy(&cntlid_ida);
+	destroy_workqueue(buffered_io_wq);
 
 	BUILD_BUG_ON(sizeof(struct nvmf_disc_rsp_page_entry) != 1024);
 	BUILD_BUG_ON(sizeof(struct nvmf_disc_rsp_page_hdr) != 1024);

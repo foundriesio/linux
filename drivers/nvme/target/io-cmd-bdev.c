@@ -58,7 +58,7 @@ static void nvmet_bio_done(struct bio *bio)
 static void nvmet_bdev_execute_rw(struct nvmet_req *req)
 {
 	int sg_cnt = req->sg_cnt;
-	struct bio *bio = &req->b.inline_bio;
+	struct bio *bio;
 	struct scatterlist *sg;
 	sector_t sector;
 	blk_qc_t cookie;
@@ -81,7 +81,12 @@ static void nvmet_bdev_execute_rw(struct nvmet_req *req)
 	sector = le64_to_cpu(req->cmd->rw.slba);
 	sector <<= (req->ns->blksize_shift - 9);
 
-	bio_init(bio, req->inline_bvec, ARRAY_SIZE(req->inline_bvec));
+	if (req->data_len <= NVMET_MAX_INLINE_DATA_LEN) {
+		bio = &req->b.inline_bio;
+		bio_init(bio, req->inline_bvec, ARRAY_SIZE(req->inline_bvec));
+	} else {
+		bio = bio_alloc(GFP_KERNEL, min(sg_cnt, BIO_MAX_PAGES));
+	}
 	bio_set_dev(bio, req->ns->bdev);
 	bio->bi_iter.bi_sector = sector;
 	bio->bi_private = req;
@@ -122,6 +127,13 @@ static void nvmet_bdev_execute_flush(struct nvmet_req *req)
 	bio->bi_opf = REQ_OP_WRITE | REQ_PREFLUSH;
 
 	submit_bio(bio);
+}
+
+u16 nvmet_bdev_flush(struct nvmet_req *req)
+{
+	if (blkdev_issue_flush(req->ns->bdev, GFP_KERNEL, NULL))
+		return NVME_SC_INTERNAL | NVME_SC_DNR;
+	return 0;
 }
 
 static u16 nvmet_bdev_discard_range(struct nvmet_ns *ns,

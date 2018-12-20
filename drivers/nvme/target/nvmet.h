@@ -58,6 +58,7 @@ struct nvmet_ns {
 	struct percpu_ref	ref;
 	struct block_device	*bdev;
 	struct file		*file;
+	bool			readonly;
 	u32			nsid;
 	u32			blksize_shift;
 	loff_t			size;
@@ -65,6 +66,7 @@ struct nvmet_ns {
 	uuid_t			uuid;
 	u32			anagrpid;
 
+	bool			buffered_io;
 	bool			enabled;
 	struct nvmet_subsys	*subsys;
 	const char		*device_path;
@@ -131,6 +133,7 @@ struct nvmet_port {
 	enum nvme_ana_state		*ana_state;
 	void				*priv;
 	bool				enabled;
+	int				inline_data_size;
 };
 
 static inline struct nvmet_port *to_nvmet_port(struct config_item *item)
@@ -250,7 +253,6 @@ struct nvmet_req;
 struct nvmet_fabrics_ops {
 	struct module *owner;
 	unsigned int type;
-	unsigned int sqe_inline_size;
 	unsigned int msdbd;
 	bool has_keyed_sgls : 1;
 	void (*queue_response)(struct nvmet_req *req);
@@ -262,6 +264,7 @@ struct nvmet_fabrics_ops {
 };
 
 #define NVMET_MAX_INLINE_BIOVEC	8
+#define NVMET_MAX_INLINE_DATA_LEN NVMET_MAX_INLINE_BIOVEC * PAGE_SIZE
 
 struct nvmet_req {
 	struct nvme_command	*cmd;
@@ -293,6 +296,8 @@ struct nvmet_req {
 	void (*execute)(struct nvmet_req *req);
 	const struct nvmet_fabrics_ops *ops;
 };
+
+extern struct workqueue_struct *buffered_io_wq;
 
 static inline void nvmet_set_status(struct nvmet_req *req, u16 status)
 {
@@ -426,6 +431,9 @@ int nvmet_bdev_ns_enable(struct nvmet_ns *ns);
 int nvmet_file_ns_enable(struct nvmet_ns *ns);
 void nvmet_bdev_ns_disable(struct nvmet_ns *ns);
 void nvmet_file_ns_disable(struct nvmet_ns *ns);
+u16 nvmet_bdev_flush(struct nvmet_req *req);
+u16 nvmet_file_flush(struct nvmet_req *req);
+void nvmet_ns_changed(struct nvmet_subsys *subsys, u32 nsid);
 
 static inline u32 nvmet_rw_len(struct nvmet_req *req)
 {

@@ -109,7 +109,7 @@ typedef __u32 __bitwise req_flags_t;
 #define RQF_QUIET		((__force req_flags_t)(1 << 11))
 /* elevator private data attached */
 #define RQF_ELVPRIV		((__force req_flags_t)(1 << 12))
-/* account I/O stat */
+/* account into disk and partition IO statistics */
 #define RQF_IO_STAT		((__force req_flags_t)(1 << 13))
 /* request came from our alloc pool */
 #define RQF_ALLOCED		((__force req_flags_t)(1 << 14))
@@ -117,7 +117,7 @@ typedef __u32 __bitwise req_flags_t;
 #define RQF_PM			((__force req_flags_t)(1 << 15))
 /* on IO scheduler merge hash */
 #define RQF_HASHED		((__force req_flags_t)(1 << 16))
-/* IO stats tracking on */
+/* track IO completion time */
 #define RQF_STATS		((__force req_flags_t)(1 << 17))
 /* Look at ->special_vec for the actual data payload instead of the
    bio chain. */
@@ -402,6 +402,7 @@ struct blk_zone_report_hdr {
 	u8		padding[60];
 };
 
+extern unsigned int blkdev_nr_zones(struct block_device *bdev);
 extern int blkdev_report_zones(struct block_device *bdev,
 			       sector_t sector, struct blk_zone *zones,
 			       unsigned int *nr_zones, gfp_t gfp_mask);
@@ -415,6 +416,10 @@ extern int blkdev_reset_zones_ioctl(struct block_device *bdev, fmode_t mode,
 
 #else /* CONFIG_BLK_DEV_ZONED */
 
+static inline unsigned int blkdev_nr_zones(struct block_device *bdev)
+{
+	return 0;
+}
 static inline int blkdev_report_zones_ioctl(struct block_device *bdev,
 					    fmode_t mode, unsigned int cmd,
 					    unsigned long arg)
@@ -601,6 +606,11 @@ struct request_queue {
 	 * initialized by the low level device driver (e.g. scsi/sd.c).
 	 * Stacking drivers (device mappers) may or may not initialize
 	 * these fields.
+	 *
+	 * Reads of this information must be protected with blk_queue_enter() /
+	 * blk_queue_exit(). Modifying this information is only allowed while
+	 * no requests are being processed. See also blk_mq_freeze_queue() and
+	 * blk_mq_unfreeze_queue().
 	 */
 	unsigned int		nr_zones;
 	unsigned long		*seq_zones_bitmap;
@@ -675,7 +685,7 @@ struct request_queue {
 #define QUEUE_FLAG_FAIL_IO	7	/* fake timeout */
 #define QUEUE_FLAG_NONROT	9	/* non-rotational device (SSD) */
 #define QUEUE_FLAG_VIRT        QUEUE_FLAG_NONROT /* paravirt device */
-#define QUEUE_FLAG_IO_STAT     10	/* do IO stats */
+#define QUEUE_FLAG_IO_STAT     10	/* do disk/partitions IO accounting */
 #define QUEUE_FLAG_DISCARD     11	/* supports DISCARD */
 #define QUEUE_FLAG_NOXMERGES   12	/* No extended merges */
 #define QUEUE_FLAG_ADD_RANDOM  13	/* Contributes to random pool */
@@ -689,7 +699,7 @@ struct request_queue {
 #define QUEUE_FLAG_FUA	       21	/* device supports FUA writes */
 #define QUEUE_FLAG_FLUSH_NQ    22	/* flush not queueuable */
 #define QUEUE_FLAG_DAX         23	/* device supports DAX */
-#define QUEUE_FLAG_STATS       24	/* track rq completion times */
+#define QUEUE_FLAG_STATS       24	/* track IO start and completion times */
 #define QUEUE_FLAG_POLL_STATS  25	/* collecting stats for hybrid polling */
 #define QUEUE_FLAG_REGISTERED  26	/* queue has been registered to a disk */
 #define QUEUE_FLAG_SCSI_PASSTHROUGH 27	/* queue supports SCSI commands */
@@ -795,6 +805,11 @@ static inline unsigned int blk_queue_zone_sectors(struct request_queue *q)
 }
 
 #ifdef CONFIG_BLK_DEV_ZONED
+static inline unsigned int blk_queue_nr_zones(struct request_queue *q)
+{
+	return blk_queue_is_zoned(q) ? q->nr_zones : 0;
+}
+
 static inline unsigned int blk_queue_zone_no(struct request_queue *q,
 					     sector_t sector)
 {
@@ -809,6 +824,11 @@ static inline bool blk_queue_zone_is_seq(struct request_queue *q,
 	if (!blk_queue_is_zoned(q) || !q->seq_zones_bitmap)
 		return false;
 	return test_bit(blk_queue_zone_no(q, sector), q->seq_zones_bitmap);
+}
+#else /* CONFIG_BLK_DEV_ZONED */
+static inline unsigned int blk_queue_nr_zones(struct request_queue *q)
+{
+	return 0;
 }
 #endif /* CONFIG_BLK_DEV_ZONED */
 
