@@ -728,11 +728,10 @@ free_rproc:
 static int stm32_rproc_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
-	struct device *dev = &pdev->dev;
 	struct stm32_rproc *ddata = rproc->priv;
 
 	if (atomic_read(&rproc->power) > 0)
-		dev_warn(dev, "Releasing rproc while firmware running!\n");
+		rproc_shutdown(rproc);
 
 	rproc_del(rproc);
 	stm32_rproc_free_mbox(rproc);
