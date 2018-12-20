@@ -27,7 +27,6 @@
 #include <linux/seq_file.h>
 
 #define MAX_TCC_PLL 5
-#define MAX_TCC_VPLL 2
 #define MEMBUS_PLL 4
 
 struct ckc_backup_sts {
@@ -37,7 +36,6 @@ struct ckc_backup_sts {
 
 struct ckc_backup_reg {
 	struct ckc_backup_sts	pll[MAX_TCC_PLL];
-	struct ckc_backup_sts   vpll[MAX_TCC_VPLL];
 	struct ckc_backup_sts	clk[FBUS_MAX];
 	struct ckc_backup_sts	peri[PERI_MAX];
 	unsigned long	ddi_sub[DDIBUS_MAX];
@@ -111,11 +109,6 @@ void tcc_ckc_save(unsigned int clk_down)
 		ckc_backup->pll[i].rate = res.a0;
 	}
 
-	for (i = 0; i < MAX_TCC_VPLL; i++) {
-		        arm_smccc_smc(SIP_CLK_GET_PLL, PLL_VIDEO_0 + i, 0, 0, 0, 0, 0, 0, &res);
-				        ckc_backup->vpll[i].rate = res.a0;
-	}
-
 	for (i = 0; i < ISOIP_TOP_MAX; i++) {
 		arm_smccc_smc(SIP_CLK_IS_ISOTOP, i, 0, 0, 0, 0, 0, 0, &res);
 		ckc_backup->isoip_top[i] = res.a0;
@@ -151,21 +144,11 @@ void tcc_ckc_restore(void)
 		if (i == FBUS_MEM || i == FBUS_MEM_PHY)
 			continue;
 
-		if(i == FBUS_VBUS) {
-			arm_smccc_smc(SIP_CLK_ENABLE_CLKCTRL, i, 0, 0, 0, 0, 0, 0, &res);
-			ckc_backup->clk[i].en = 1;
-		} else {
-			arm_smccc_smc(SIP_CLK_SET_CLKCTRL, i, ckc_backup->clk[i].en, ckc_backup->clk[i].rate, 0, 0, 0, 0, &res);
-		}
+		arm_smccc_smc(SIP_CLK_SET_CLKCTRL, i, ckc_backup->clk[i].en, ckc_backup->clk[i].rate, 0, 0, 0, 0, &res);
 
 		if (ckc_backup->clk[i].en == 1) {
 			switch(i) {
 			case FBUS_VBUS:
-				for (j = 0; j < MAX_TCC_VPLL; j++) {
-					arm_smccc_smc(SIP_CLK_SET_PLL, PLL_VIDEO_0 + j, ckc_backup->vpll[j].rate, 2, 0, 0, 0, 0, &res);
-				}
-
-				arm_smccc_smc(SIP_CLK_SET_CLKCTRL, i, 1, ckc_backup->clk[i].rate, 0, 0, 0, 0, &res);
 				for (j = 0; j < VIDEOBUS_MAX; j++) {
 					if (ckc_backup->video_sub[j] == 1) {
 						arm_smccc_smc(SIP_CLK_DISABLE_VPUBUS, j, 0, 0, 0, 0, 0, 0, &res);
