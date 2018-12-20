@@ -37,7 +37,7 @@
 #include <subdev/vga.h>
 
 #define bioslog(lvl, fmt, args...) do {                                        \
-	nvkm_printk(init->subdev, lvl, info, "0x%08x[%c]: "fmt,                \
+	nvkm_printk(init->subdev, lvl, info, "0x%04x[%c]: "fmt,                \
 		    init->offset, init_exec(init) ?                            \
 		    '0' + (init->nested - 1) : ' ', ##args);                   \
 } while(0)
@@ -87,8 +87,8 @@ static inline int
 init_or(struct nvbios_init *init)
 {
 	if (init_exec(init)) {
-		if (init->or >= 0)
-			return init->or;
+		if (init->outp)
+			return ffs(init->outp->or) - 1;
 		error("script needs OR!!\n");
 	}
 	return 0;
@@ -98,20 +98,20 @@ static inline int
 init_link(struct nvbios_init *init)
 {
 	if (init_exec(init)) {
-		if (init->link)
-			return init->link == 2;
+		if (init->outp)
+			return !(init->outp->sorconf.link & 1);
 		error("script needs OR link\n");
 	}
 	return 0;
 }
 
 static inline int
-init_head(struct nvbios_init *init)
+init_crtc(struct nvbios_init *init)
 {
 	if (init_exec(init)) {
-		if (init->head >= 0)
-			return init->head;
-		error("script needs head\n");
+		if (init->crtc >= 0)
+			return init->crtc;
+		error("script needs crtc\n");
 	}
 	return 0;
 }
@@ -119,7 +119,7 @@ init_head(struct nvbios_init *init)
 static u8
 init_conn(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	struct nvbios_connE connE;
 	u8  ver, hdr;
 	u32 conn;
@@ -141,7 +141,7 @@ init_conn(struct nvbios_init *init)
 static inline u32
 init_nvreg(struct nvbios_init *init, u32 reg)
 {
-	struct nvkm_devinit *devinit = init->subdev->device->devinit;
+	struct nvkm_devinit *devinit = init->bios->subdev.device->devinit;
 
 	/* C51 (at least) sometimes has the lower bits set which the VBIOS
 	 * interprets to mean that access needs to go through certain IO
@@ -154,9 +154,9 @@ init_nvreg(struct nvbios_init *init, u32 reg)
 	/* GF8+ display scripts need register addresses mangled a bit to
 	 * select a specific CRTC/OR
 	 */
-	if (init->subdev->device->card_type >= NV_50) {
+	if (init->bios->subdev.device->card_type >= NV_50) {
 		if (reg & 0x80000000) {
-			reg += init_head(init) * 0x800;
+			reg += init_crtc(init) * 0x800;
 			reg &= ~0x80000000;
 		}
 
@@ -179,7 +179,7 @@ init_nvreg(struct nvbios_init *init, u32 reg)
 static u32
 init_rd32(struct nvbios_init *init, u32 reg)
 {
-	struct nvkm_device *device = init->subdev->device;
+	struct nvkm_device *device = init->bios->subdev.device;
 	reg = init_nvreg(init, reg);
 	if (reg != ~0 && init_exec(init))
 		return nvkm_rd32(device, reg);
@@ -189,7 +189,7 @@ init_rd32(struct nvbios_init *init, u32 reg)
 static void
 init_wr32(struct nvbios_init *init, u32 reg, u32 val)
 {
-	struct nvkm_device *device = init->subdev->device;
+	struct nvkm_device *device = init->bios->subdev.device;
 	reg = init_nvreg(init, reg);
 	if (reg != ~0 && init_exec(init))
 		nvkm_wr32(device, reg, val);
@@ -198,7 +198,7 @@ init_wr32(struct nvbios_init *init, u32 reg, u32 val)
 static u32
 init_mask(struct nvbios_init *init, u32 reg, u32 mask, u32 val)
 {
-	struct nvkm_device *device = init->subdev->device;
+	struct nvkm_device *device = init->bios->subdev.device;
 	reg = init_nvreg(init, reg);
 	if (reg != ~0 && init_exec(init)) {
 		u32 tmp = nvkm_rd32(device, reg);
@@ -212,7 +212,7 @@ static u8
 init_rdport(struct nvbios_init *init, u16 port)
 {
 	if (init_exec(init))
-		return nvkm_rdport(init->subdev->device, init->head, port);
+		return nvkm_rdport(init->subdev->device, init->crtc, port);
 	return 0x00;
 }
 
@@ -220,7 +220,7 @@ static void
 init_wrport(struct nvbios_init *init, u16 port, u8 value)
 {
 	if (init_exec(init))
-		nvkm_wrport(init->subdev->device, init->head, port, value);
+		nvkm_wrport(init->subdev->device, init->crtc, port, value);
 }
 
 static u8
@@ -228,7 +228,7 @@ init_rdvgai(struct nvbios_init *init, u16 port, u8 index)
 {
 	struct nvkm_subdev *subdev = init->subdev;
 	if (init_exec(init)) {
-		int head = init->head < 0 ? 0 : init->head;
+		int head = init->crtc < 0 ? 0 : init->crtc;
 		return nvkm_rdvgai(subdev->device, head, port, index);
 	}
 	return 0x00;
@@ -242,25 +242,25 @@ init_wrvgai(struct nvbios_init *init, u16 port, u8 index, u8 value)
 	/* force head 0 for updates to cr44, it only exists on first head */
 	if (device->card_type < NV_50) {
 		if (port == 0x03d4 && index == 0x44)
-			init->head = 0;
+			init->crtc = 0;
 	}
 
 	if (init_exec(init)) {
-		int head = init->head < 0 ? 0 : init->head;
+		int head = init->crtc < 0 ? 0 : init->crtc;
 		nvkm_wrvgai(device, head, port, index, value);
 	}
 
 	/* select head 1 if cr44 write selected it */
 	if (device->card_type < NV_50) {
 		if (port == 0x03d4 && index == 0x44 && value == 3)
-			init->head = 1;
+			init->crtc = 1;
 	}
 }
 
 static struct i2c_adapter *
 init_i2c(struct nvbios_init *init, int index)
 {
-	struct nvkm_i2c *i2c = init->subdev->device->i2c;
+	struct nvkm_i2c *i2c = init->bios->subdev.device->i2c;
 	struct nvkm_i2c_bus *bus;
 
 	if (index == 0xff) {
@@ -300,7 +300,7 @@ init_wri2cr(struct nvbios_init *init, u8 index, u8 addr, u8 reg, u8 val)
 static struct nvkm_i2c_aux *
 init_aux(struct nvbios_init *init)
 {
-	struct nvkm_i2c *i2c = init->subdev->device->i2c;
+	struct nvkm_i2c *i2c = init->bios->subdev.device->i2c;
 	if (!init->outp) {
 		if (init_exec(init))
 			error("script needs output for aux\n");
@@ -341,7 +341,7 @@ init_wrauxr(struct nvbios_init *init, u32 addr, u8 data)
 static void
 init_prog_pll(struct nvbios_init *init, u32 id, u32 freq)
 {
-	struct nvkm_devinit *devinit = init->subdev->device->devinit;
+	struct nvkm_devinit *devinit = init->bios->subdev.device->devinit;
 	if (init_exec(init)) {
 		int ret = nvkm_devinit_pll_set(devinit, id, freq);
 		if (ret)
@@ -374,7 +374,7 @@ init_table(struct nvkm_bios *bios, u16 *len)
 static u16
 init_table_(struct nvbios_init *init, u16 offset, const char *name)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 len, data = init_table(bios, &len);
 	if (data) {
 		if (len >= offset + 2) {
@@ -406,7 +406,7 @@ init_table_(struct nvbios_init *init, u16 offset, const char *name)
 static u16
 init_script(struct nvkm_bios *bios, int index)
 {
-	struct nvbios_init init = { .subdev = &bios->subdev };
+	struct nvbios_init init = { .bios = bios };
 	u16 bmp_ver = bmp_version(bios), data;
 
 	if (bmp_ver && bmp_ver < 0x0510) {
@@ -436,7 +436,7 @@ init_unknown_script(struct nvkm_bios *bios)
 static u8
 init_ram_restrict_group_count(struct nvbios_init *init)
 {
-	return nvbios_ramcfg_count(init->subdev->device->bios);
+	return nvbios_ramcfg_count(init->bios);
 }
 
 static u8
@@ -450,7 +450,7 @@ init_ram_restrict(struct nvbios_init *init)
 	 * Preserving the non-caching behaviour on earlier chipsets just
 	 * in case *not* re-reading the strap causes similar breakage.
 	 */
-	if (!init->ramcfg || init->subdev->device->bios->version.major < 0x70)
+	if (!init->ramcfg || init->bios->version.major < 0x70)
 		init->ramcfg = 0x80000000 | nvbios_ramcfg_index(init->subdev);
 	return (init->ramcfg & 0x7fffffff);
 }
@@ -458,7 +458,7 @@ init_ram_restrict(struct nvbios_init *init)
 static u8
 init_xlat_(struct nvbios_init *init, u8 index, u8 offset)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 table = init_xlat_table(init);
 	if (table) {
 		u16 data = nvbios_rd16(bios, table + (index * 2));
@@ -476,7 +476,7 @@ init_xlat_(struct nvbios_init *init, u8 index, u8 offset)
 static bool
 init_condition_met(struct nvbios_init *init, u8 cond)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 table = init_condition_table(init);
 	if (table) {
 		u32 reg = nvbios_rd32(bios, table + (cond * 12) + 0);
@@ -492,7 +492,7 @@ init_condition_met(struct nvbios_init *init, u8 cond)
 static bool
 init_io_condition_met(struct nvbios_init *init, u8 cond)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 table = init_io_condition_table(init);
 	if (table) {
 		u16 port = nvbios_rd16(bios, table + (cond * 5) + 0);
@@ -509,7 +509,7 @@ init_io_condition_met(struct nvbios_init *init, u8 cond)
 static bool
 init_io_flag_condition_met(struct nvbios_init *init, u8 cond)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 table = init_io_flag_condition_table(init);
 	if (table) {
 		u16 port = nvbios_rd16(bios, table + (cond * 9) + 0);
@@ -580,8 +580,7 @@ init_tmds_reg(struct nvbios_init *init, u8 tmds)
 static void
 init_reserved(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
-	u8 opcode = nvbios_rd08(bios, init->offset);
+	u8 opcode = nvbios_rd08(init->bios, init->offset);
 	u8 length, i;
 
 	switch (opcode) {
@@ -595,7 +594,7 @@ init_reserved(struct nvbios_init *init)
 
 	trace("RESERVED 0x%02x\t", opcode);
 	for (i = 1; i < length; i++)
-		cont(" 0x%02x", nvbios_rd08(bios, init->offset + i));
+		cont(" 0x%02x", nvbios_rd08(init->bios, init->offset + i));
 	cont("\n");
 	init->offset += length;
 }
@@ -618,7 +617,7 @@ init_done(struct nvbios_init *init)
 static void
 init_io_restrict_prog(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8 index = nvbios_rd08(bios, init->offset + 3);
 	u8  mask = nvbios_rd08(bios, init->offset + 4);
@@ -655,7 +654,7 @@ init_io_restrict_prog(struct nvbios_init *init)
 static void
 init_repeat(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 count = nvbios_rd08(bios, init->offset + 1);
 	u16 repeat = init->repeat;
 
@@ -681,7 +680,7 @@ init_repeat(struct nvbios_init *init)
 static void
 init_io_restrict_pll(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8 index = nvbios_rd08(bios, init->offset + 3);
 	u8  mask = nvbios_rd08(bios, init->offset + 4);
@@ -737,7 +736,7 @@ init_end_repeat(struct nvbios_init *init)
 static void
 init_copy(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u8 shift = nvbios_rd08(bios, init->offset + 5);
 	u8 smask = nvbios_rd08(bios, init->offset + 6);
@@ -776,7 +775,7 @@ init_not(struct nvbios_init *init)
 static void
 init_io_flag_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 cond = nvbios_rd08(bios, init->offset + 1);
 
 	trace("IO_FLAG_CONDITION\t0x%02x\n", cond);
@@ -793,7 +792,7 @@ init_io_flag_condition(struct nvbios_init *init)
 static void
 init_generic_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	struct nvbios_dpout info;
 	u8  cond = nvbios_rd08(bios, init->offset + 1);
 	u8  size = nvbios_rd08(bios, init->offset + 2);
@@ -842,7 +841,7 @@ init_generic_condition(struct nvbios_init *init)
 static void
 init_io_mask_or(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8    or = init_or(init);
 	u8  data;
@@ -861,7 +860,7 @@ init_io_mask_or(struct nvbios_init *init)
 static void
 init_io_or(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8    or = init_or(init);
 	u8  data;
@@ -880,7 +879,7 @@ init_io_or(struct nvbios_init *init)
 static void
 init_andn_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u32 mask = nvbios_rd32(bios, init->offset + 5);
 
@@ -897,7 +896,7 @@ init_andn_reg(struct nvbios_init *init)
 static void
 init_or_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u32 mask = nvbios_rd32(bios, init->offset + 5);
 
@@ -914,7 +913,7 @@ init_or_reg(struct nvbios_init *init)
 static void
 init_idx_addr_latched(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 creg = nvbios_rd32(bios, init->offset + 1);
 	u32 dreg = nvbios_rd32(bios, init->offset + 5);
 	u32 mask = nvbios_rd32(bios, init->offset + 9);
@@ -944,7 +943,7 @@ init_idx_addr_latched(struct nvbios_init *init)
 static void
 init_io_restrict_pll2(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8 index = nvbios_rd08(bios, init->offset + 3);
 	u8  mask = nvbios_rd08(bios, init->offset + 4);
@@ -979,7 +978,7 @@ init_io_restrict_pll2(struct nvbios_init *init)
 static void
 init_pll2(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u32 freq = nvbios_rd32(bios, init->offset + 5);
 
@@ -996,7 +995,7 @@ init_pll2(struct nvbios_init *init)
 static void
 init_i2c_byte(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8  addr = nvbios_rd08(bios, init->offset + 2) >> 1;
 	u8 count = nvbios_rd08(bios, init->offset + 3);
@@ -1027,7 +1026,7 @@ init_i2c_byte(struct nvbios_init *init)
 static void
 init_zm_i2c_byte(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8  addr = nvbios_rd08(bios, init->offset + 2) >> 1;
 	u8 count = nvbios_rd08(bios, init->offset + 3);
@@ -1053,7 +1052,7 @@ init_zm_i2c_byte(struct nvbios_init *init)
 static void
 init_zm_i2c(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8  addr = nvbios_rd08(bios, init->offset + 2) >> 1;
 	u8 count = nvbios_rd08(bios, init->offset + 3);
@@ -1087,7 +1086,7 @@ init_zm_i2c(struct nvbios_init *init)
 static void
 init_tmds(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 tmds = nvbios_rd08(bios, init->offset + 1);
 	u8 addr = nvbios_rd08(bios, init->offset + 2);
 	u8 mask = nvbios_rd08(bios, init->offset + 3);
@@ -1113,7 +1112,7 @@ init_tmds(struct nvbios_init *init)
 static void
 init_zm_tmds_group(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8  tmds = nvbios_rd08(bios, init->offset + 1);
 	u8 count = nvbios_rd08(bios, init->offset + 2);
 	u32  reg = init_tmds_reg(init, tmds);
@@ -1140,7 +1139,7 @@ init_zm_tmds_group(struct nvbios_init *init)
 static void
 init_cr_idx_adr_latch(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 addr0 = nvbios_rd08(bios, init->offset + 1);
 	u8 addr1 = nvbios_rd08(bios, init->offset + 2);
 	u8  base = nvbios_rd08(bios, init->offset + 3);
@@ -1170,7 +1169,7 @@ init_cr_idx_adr_latch(struct nvbios_init *init)
 static void
 init_cr(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 addr = nvbios_rd08(bios, init->offset + 1);
 	u8 mask = nvbios_rd08(bios, init->offset + 2);
 	u8 data = nvbios_rd08(bios, init->offset + 3);
@@ -1190,7 +1189,7 @@ init_cr(struct nvbios_init *init)
 static void
 init_zm_cr(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 addr = nvbios_rd08(bios, init->offset + 1);
 	u8 data = nvbios_rd08(bios, init->offset + 2);
 
@@ -1207,7 +1206,7 @@ init_zm_cr(struct nvbios_init *init)
 static void
 init_zm_cr_group(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 count = nvbios_rd08(bios, init->offset + 1);
 
 	trace("ZM_CR_GROUP\n");
@@ -1231,7 +1230,7 @@ init_zm_cr_group(struct nvbios_init *init)
 static void
 init_condition_time(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8  cond = nvbios_rd08(bios, init->offset + 1);
 	u8 retry = nvbios_rd08(bios, init->offset + 2);
 	u8  wait = min((u16)retry * 50, 100);
@@ -1258,7 +1257,7 @@ init_condition_time(struct nvbios_init *init)
 static void
 init_ltime(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 msec = nvbios_rd16(bios, init->offset + 1);
 
 	trace("LTIME\t0x%04x\n", msec);
@@ -1275,7 +1274,7 @@ init_ltime(struct nvbios_init *init)
 static void
 init_zm_reg_sequence(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 base = nvbios_rd32(bios, init->offset + 1);
 	u8 count = nvbios_rd08(bios, init->offset + 5);
 
@@ -1300,7 +1299,7 @@ init_zm_reg_sequence(struct nvbios_init *init)
 static void
 init_pll_indirect(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u16 addr = nvbios_rd16(bios, init->offset + 5);
 	u32 freq = (u32)nvbios_rd16(bios, addr) * 1000;
@@ -1319,7 +1318,7 @@ init_pll_indirect(struct nvbios_init *init)
 static void
 init_zm_reg_indirect(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u16 addr = nvbios_rd16(bios, init->offset + 5);
 	u32 data = nvbios_rd32(bios, addr);
@@ -1338,7 +1337,7 @@ init_zm_reg_indirect(struct nvbios_init *init)
 static void
 init_sub_direct(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 addr = nvbios_rd16(bios, init->offset + 1);
 	u16 save;
 
@@ -1364,7 +1363,7 @@ init_sub_direct(struct nvbios_init *init)
 static void
 init_jump(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 offset = nvbios_rd16(bios, init->offset + 1);
 
 	trace("JUMP\t0x%04x\n", offset);
@@ -1382,7 +1381,7 @@ init_jump(struct nvbios_init *init)
 static void
 init_i2c_if(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8  addr = nvbios_rd08(bios, init->offset + 2);
 	u8   reg = nvbios_rd08(bios, init->offset + 3);
@@ -1409,7 +1408,7 @@ init_i2c_if(struct nvbios_init *init)
 static void
 init_copy_nv_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  sreg = nvbios_rd32(bios, init->offset + 1);
 	u8  shift = nvbios_rd08(bios, init->offset + 5);
 	u32 smask = nvbios_rd32(bios, init->offset + 6);
@@ -1435,7 +1434,7 @@ init_copy_nv_reg(struct nvbios_init *init)
 static void
 init_zm_index_io(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8 index = nvbios_rd08(bios, init->offset + 3);
 	u8  data = nvbios_rd08(bios, init->offset + 4);
@@ -1453,7 +1452,7 @@ init_zm_index_io(struct nvbios_init *init)
 static void
 init_compute_mem(struct nvbios_init *init)
 {
-	struct nvkm_devinit *devinit = init->subdev->device->devinit;
+	struct nvkm_devinit *devinit = init->bios->subdev.device->devinit;
 
 	trace("COMPUTE_MEM\n");
 	init->offset += 1;
@@ -1471,7 +1470,7 @@ init_compute_mem(struct nvbios_init *init)
 static void
 init_reset(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32   reg = nvbios_rd32(bios, init->offset + 1);
 	u32 data1 = nvbios_rd32(bios, init->offset + 5);
 	u32 data2 = nvbios_rd32(bios, init->offset + 9);
@@ -1498,7 +1497,7 @@ init_reset(struct nvbios_init *init)
 static u16
 init_configure_mem_clk(struct nvbios_init *init)
 {
-	u16 mdata = bmp_mem_init_table(init->subdev->device->bios);
+	u16 mdata = bmp_mem_init_table(init->bios);
 	if (mdata)
 		mdata += (init_rdvgai(init, 0x03d4, 0x3c) >> 4) * 66;
 	return mdata;
@@ -1507,7 +1506,7 @@ init_configure_mem_clk(struct nvbios_init *init)
 static void
 init_configure_mem(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 mdata, sdata;
 	u32 addr, data;
 
@@ -1557,7 +1556,7 @@ init_configure_mem(struct nvbios_init *init)
 static void
 init_configure_clk(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 mdata, clock;
 
 	trace("CONFIGURE_CLK\n");
@@ -1591,7 +1590,7 @@ init_configure_clk(struct nvbios_init *init)
 static void
 init_configure_preinit(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 strap;
 
 	trace("CONFIGURE_PREINIT\n");
@@ -1617,7 +1616,7 @@ init_configure_preinit(struct nvbios_init *init)
 static void
 init_io(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8  mask = nvbios_rd16(bios, init->offset + 3);
 	u8  data = nvbios_rd16(bios, init->offset + 4);
@@ -1657,7 +1656,7 @@ init_io(struct nvbios_init *init)
 static void
 init_sub(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u16 addr, save;
 
@@ -1684,7 +1683,7 @@ init_sub(struct nvbios_init *init)
 static void
 init_ram_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8  mask = nvbios_rd08(bios, init->offset + 1);
 	u8 value = nvbios_rd08(bios, init->offset + 2);
 
@@ -1703,7 +1702,7 @@ init_ram_condition(struct nvbios_init *init)
 static void
 init_nv_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u32 mask = nvbios_rd32(bios, init->offset + 5);
 	u32 data = nvbios_rd32(bios, init->offset + 9);
@@ -1721,7 +1720,7 @@ init_nv_reg(struct nvbios_init *init)
 static void
 init_macro(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8  macro = nvbios_rd08(bios, init->offset + 1);
 	u16 table;
 
@@ -1757,7 +1756,7 @@ init_resume(struct nvbios_init *init)
 static void
 init_strap_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 mask = nvbios_rd32(bios, init->offset + 1);
 	u32 value = nvbios_rd32(bios, init->offset + 5);
 
@@ -1775,7 +1774,7 @@ init_strap_condition(struct nvbios_init *init)
 static void
 init_time(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 usec = nvbios_rd16(bios, init->offset + 1);
 
 	trace("TIME\t0x%04x\n", usec);
@@ -1796,7 +1795,7 @@ init_time(struct nvbios_init *init)
 static void
 init_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 cond = nvbios_rd08(bios, init->offset + 1);
 
 	trace("CONDITION\t0x%02x\n", cond);
@@ -1813,7 +1812,7 @@ init_condition(struct nvbios_init *init)
 static void
 init_io_condition(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 cond = nvbios_rd08(bios, init->offset + 1);
 
 	trace("IO_CONDITION\t0x%02x\n", cond);
@@ -1830,7 +1829,7 @@ init_io_condition(struct nvbios_init *init)
 static void
 init_zm_reg16(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u16 data = nvbios_rd16(bios, init->offset + 5);
 
@@ -1847,7 +1846,7 @@ init_zm_reg16(struct nvbios_init *init)
 static void
 init_index_io(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u16 port = nvbios_rd16(bios, init->offset + 1);
 	u8 index = nvbios_rd16(bios, init->offset + 3);
 	u8  mask = nvbios_rd08(bios, init->offset + 4);
@@ -1869,7 +1868,7 @@ init_index_io(struct nvbios_init *init)
 static void
 init_pll(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32  reg = nvbios_rd32(bios, init->offset + 1);
 	u32 freq = nvbios_rd16(bios, init->offset + 5) * 10;
 
@@ -1886,7 +1885,7 @@ init_pll(struct nvbios_init *init)
 static void
 init_zm_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u32 data = nvbios_rd32(bios, init->offset + 5);
 
@@ -1906,7 +1905,7 @@ init_zm_reg(struct nvbios_init *init)
 static void
 init_ram_restrict_pll(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8  type = nvbios_rd08(bios, init->offset + 1);
 	u8 count = init_ram_restrict_group_count(init);
 	u8 strap = init_ram_restrict(init);
@@ -1936,7 +1935,7 @@ init_ram_restrict_pll(struct nvbios_init *init)
 static void
 init_gpio(struct nvbios_init *init)
 {
-	struct nvkm_gpio *gpio = init->subdev->device->gpio;
+	struct nvkm_gpio *gpio = init->bios->subdev.device->gpio;
 
 	trace("GPIO\n");
 	init->offset += 1;
@@ -1952,7 +1951,7 @@ init_gpio(struct nvbios_init *init)
 static void
 init_ram_restrict_zm_reg_group(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u8  incr = nvbios_rd08(bios, init->offset + 5);
 	u8   num = nvbios_rd08(bios, init->offset + 6);
@@ -1990,7 +1989,7 @@ init_ram_restrict_zm_reg_group(struct nvbios_init *init)
 static void
 init_copy_zm_reg(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 sreg = nvbios_rd32(bios, init->offset + 1);
 	u32 dreg = nvbios_rd32(bios, init->offset + 5);
 
@@ -2007,7 +2006,7 @@ init_copy_zm_reg(struct nvbios_init *init)
 static void
 init_zm_reg_group(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u8 count = nvbios_rd08(bios, init->offset + 5);
 
@@ -2029,7 +2028,7 @@ init_zm_reg_group(struct nvbios_init *init)
 static void
 init_xlat(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 saddr = nvbios_rd32(bios, init->offset + 1);
 	u8 sshift = nvbios_rd08(bios, init->offset + 5);
 	u8  smask = nvbios_rd08(bios, init->offset + 6);
@@ -2057,7 +2056,7 @@ init_xlat(struct nvbios_init *init)
 static void
 init_zm_mask_add(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u32 mask = nvbios_rd32(bios, init->offset + 5);
 	u32  add = nvbios_rd32(bios, init->offset + 9);
@@ -2078,7 +2077,7 @@ init_zm_mask_add(struct nvbios_init *init)
 static void
 init_auxch(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u8 count = nvbios_rd08(bios, init->offset + 5);
 
@@ -2102,7 +2101,7 @@ init_auxch(struct nvbios_init *init)
 static void
 init_zm_auxch(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u32 addr = nvbios_rd32(bios, init->offset + 1);
 	u8 count = nvbios_rd08(bios, init->offset + 5);
 
@@ -2124,7 +2123,7 @@ init_zm_auxch(struct nvbios_init *init)
 static void
 init_i2c_long_if(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	u8 index = nvbios_rd08(bios, init->offset + 1);
 	u8  addr = nvbios_rd08(bios, init->offset + 2) >> 1;
 	u8 reglo = nvbios_rd08(bios, init->offset + 3);
@@ -2163,7 +2162,7 @@ init_i2c_long_if(struct nvbios_init *init)
 static void
 init_gpio_ne(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
+	struct nvkm_bios *bios = init->bios;
 	struct nvkm_gpio *gpio = bios->subdev.device->gpio;
 	struct dcb_gpio_func func;
 	u8 count = nvbios_rd08(bios, init->offset + 1);
@@ -2276,11 +2275,9 @@ static struct nvbios_init_opcode {
 int
 nvbios_exec(struct nvbios_init *init)
 {
-	struct nvkm_bios *bios = init->subdev->device->bios;
-
 	init->nested++;
 	while (init->offset) {
-		u8 opcode = nvbios_rd08(bios, init->offset);
+		u8 opcode = nvbios_rd08(init->bios, init->offset);
 		if (opcode >= init_opcode_nr || !init_opcode[opcode].exec) {
 			error("unknown opcode 0x%02x\n", opcode);
 			return -EINVAL;
@@ -2293,7 +2290,7 @@ nvbios_exec(struct nvbios_init *init)
 }
 
 int
-nvbios_post(struct nvkm_subdev *subdev, bool execute)
+nvbios_init(struct nvkm_subdev *subdev, bool execute)
 {
 	struct nvkm_bios *bios = subdev->device->bios;
 	int ret = 0;
@@ -2303,18 +2300,32 @@ nvbios_post(struct nvkm_subdev *subdev, bool execute)
 	if (execute)
 		nvkm_debug(subdev, "running init tables\n");
 	while (!ret && (data = (init_script(bios, ++i)))) {
-		ret = nvbios_init(subdev, data,
-			init.execute = execute ? 1 : 0;
-		      );
+		struct nvbios_init init = {
+			.subdev = subdev,
+			.bios = bios,
+			.offset = data,
+			.outp = NULL,
+			.crtc = -1,
+			.execute = execute ? 1 : 0,
+		};
+
+		ret = nvbios_exec(&init);
 	}
 
 	/* the vbios parser will run this right after the normal init
 	 * tables, whereas the binary driver appears to run it later.
 	 */
 	if (!ret && (data = init_unknown_script(bios))) {
-		ret = nvbios_init(subdev, data,
-			init.execute = execute ? 1 : 0;
-		      );
+		struct nvbios_init init = {
+			.subdev = subdev,
+			.bios = bios,
+			.offset = data,
+			.outp = NULL,
+			.crtc = -1,
+			.execute = execute ? 1 : 0,
+		};
+
+		ret = nvbios_exec(&init);
 	}
 
 	return ret;

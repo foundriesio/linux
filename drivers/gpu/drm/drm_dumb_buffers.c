@@ -24,7 +24,6 @@
  */
 
 #include <drm/drmP.h>
-#include <drm/drm_gem.h>
 
 #include "drm_crtc_internal.h"
 
@@ -43,10 +42,9 @@
  * create dumb buffers suitable for scanout, which can then be used to create
  * KMS frame buffers.
  *
- * To support dumb objects drivers must implement the &drm_driver.dumb_create
- * operation. &drm_driver.dumb_destroy defaults to drm_gem_dumb_destroy() if
- * not set and &drm_driver.dumb_map_offset defaults to
- * drm_gem_dumb_map_offset(). See the callbacks for further details.
+ * To support dumb objects drivers must implement the &drm_driver.dumb_create,
+ * &drm_driver.dumb_destroy and &drm_driver.dumb_map_offset operations. See
+ * there for further details.
  *
  * Note that dumb objects may not be used for gpu acceleration, as has been
  * attempted on some ARM embedded platforms. Such drivers really must have
@@ -65,13 +63,12 @@ int drm_mode_create_dumb_ioctl(struct drm_device *dev,
 		return -EINVAL;
 
 	/* overflow checks for 32bit size calculations */
-	if (args->bpp > U32_MAX - 8)
-		return -EINVAL;
+	/* NOTE: DIV_ROUND_UP() can overflow */
 	cpp = DIV_ROUND_UP(args->bpp, 8);
-	if (cpp > U32_MAX / args->width)
+	if (!cpp || cpp > 0xffffffffU / args->width)
 		return -EINVAL;
 	stride = cpp * args->width;
-	if (args->height > U32_MAX / stride)
+	if (args->height > 0xffffffffU / stride)
 		return -EINVAL;
 
 	/* test for wrap-around */
@@ -111,16 +108,11 @@ int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 {
 	struct drm_mode_map_dumb *args = data;
 
-	if (!dev->driver->dumb_create)
+	/* call driver ioctl to get mmap offset */
+	if (!dev->driver->dumb_map_offset)
 		return -ENOSYS;
 
-	if (dev->driver->dumb_map_offset)
-		return dev->driver->dumb_map_offset(file_priv, dev,
-						    args->handle,
-						    &args->offset);
-	else
-		return drm_gem_dumb_map_offset(file_priv, dev, args->handle,
-					       &args->offset);
+	return dev->driver->dumb_map_offset(file_priv, dev, args->handle, &args->offset);
 }
 
 int drm_mode_destroy_dumb_ioctl(struct drm_device *dev,
@@ -128,12 +120,9 @@ int drm_mode_destroy_dumb_ioctl(struct drm_device *dev,
 {
 	struct drm_mode_destroy_dumb *args = data;
 
-	if (!dev->driver->dumb_create)
+	if (!dev->driver->dumb_destroy)
 		return -ENOSYS;
 
-	if (dev->driver->dumb_destroy)
-		return dev->driver->dumb_destroy(file_priv, dev, args->handle);
-	else
-		return drm_gem_dumb_destroy(file_priv, dev, args->handle);
+	return dev->driver->dumb_destroy(file_priv, dev, args->handle);
 }
 

@@ -88,8 +88,9 @@ int psp_wait_for(struct psp_context *psp, uint32_t reg_index,
 	int i;
 	struct amdgpu_device *adev = psp->adev;
 
+	val = RREG32(reg_index);
+
 	for (i = 0; i < adev->usec_timeout; i++) {
-		val = RREG32(reg_index);
 		if (check_changed) {
 			if (val != reg_val)
 				return 0;
@@ -131,11 +132,6 @@ psp_cmd_submit_buf(struct psp_context *psp,
 
 	while (*((unsigned int *)psp->fence_buf) != index) {
 		msleep(1);
-	}
-
-	if (ucode) {
-		ucode->tmr_mc_addr_lo = cmd_buf_mem->resp.fw_addr_lo;
-		ucode->tmr_mc_addr_hi = cmd_buf_mem->resp.fw_addr_hi;
 	}
 
 	amdgpu_bo_free_kernel(&cmd_buf_bo,

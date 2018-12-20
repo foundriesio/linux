@@ -113,7 +113,8 @@ static int msm_fbdev_create(struct drm_fb_helper *helper,
 		 * to unref the bo:
 		 */
 		drm_gem_object_unreference_unlocked(fbdev->bo);
-		return PTR_ERR(fb);
+		ret = PTR_ERR(fb);
+		goto fail;
 	}
 
 	mutex_lock(&dev->struct_mutex);

@@ -1,5 +1,4 @@
-mediatek-drm-y := mtk_disp_color.o \
-		  mtk_disp_ovl.o \
+mediatek-drm-y := mtk_disp_ovl.o \
 		  mtk_disp_rdma.o \
 		  mtk_drm_crtc.o \
 		  mtk_drm_ddp.o \

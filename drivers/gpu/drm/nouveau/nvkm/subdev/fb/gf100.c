@@ -60,12 +60,12 @@ gf100_fb_oneinit(struct nvkm_fb *base)
 	size = min(size, 0x1000);
 
 	ret = nvkm_memory_new(device, NVKM_MEM_TARGET_INST, size, 0x1000,
-			      true, &fb->base.mmu_rd);
+			      false, &fb->base.mmu_rd);
 	if (ret)
 		return ret;
 
 	ret = nvkm_memory_new(device, NVKM_MEM_TARGET_INST, size, 0x1000,
-			      true, &fb->base.mmu_wr);
+			      false, &fb->base.mmu_wr);
 	if (ret)
 		return ret;
 

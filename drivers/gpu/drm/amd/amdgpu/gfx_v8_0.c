@@ -1564,11 +1564,10 @@ static const u32 sgpr_init_compute_shader[] =
 static const u32 vgpr_init_regs[] =
 {
 	mmCOMPUTE_STATIC_THREAD_MGMT_SE0, 0xffffffff,
-	mmCOMPUTE_RESOURCE_LIMITS, 0x1000000, /* CU_GROUP_COUNT=1 */
+	mmCOMPUTE_RESOURCE_LIMITS, 0,
 	mmCOMPUTE_NUM_THREAD_X, 256*4,
 	mmCOMPUTE_NUM_THREAD_Y, 1,
 	mmCOMPUTE_NUM_THREAD_Z, 1,
-	mmCOMPUTE_PGM_RSRC1, 0x100004f, /* VGPRS=15 (64 logical VGPRs), SGPRS=1 (16 SGPRs), BULKY=1 */
 	mmCOMPUTE_PGM_RSRC2, 20,
 	mmCOMPUTE_USER_DATA_0, 0xedcedc00,
 	mmCOMPUTE_USER_DATA_1, 0xedcedc01,
@@ -1585,11 +1584,10 @@ static const u32 vgpr_init_regs[] =
 static const u32 sgpr1_init_regs[] =
 {
 	mmCOMPUTE_STATIC_THREAD_MGMT_SE0, 0x0f,
-	mmCOMPUTE_RESOURCE_LIMITS, 0x1000000, /* CU_GROUP_COUNT=1 */
+	mmCOMPUTE_RESOURCE_LIMITS, 0x1000000,
 	mmCOMPUTE_NUM_THREAD_X, 256*5,
 	mmCOMPUTE_NUM_THREAD_Y, 1,
 	mmCOMPUTE_NUM_THREAD_Z, 1,
-	mmCOMPUTE_PGM_RSRC1, 0x240, /* SGPRS=9 (80 GPRS) */
 	mmCOMPUTE_PGM_RSRC2, 20,
 	mmCOMPUTE_USER_DATA_0, 0xedcedc00,
 	mmCOMPUTE_USER_DATA_1, 0xedcedc01,
@@ -1610,7 +1608,6 @@ static const u32 sgpr2_init_regs[] =
 	mmCOMPUTE_NUM_THREAD_X, 256*5,
 	mmCOMPUTE_NUM_THREAD_Y, 1,
 	mmCOMPUTE_NUM_THREAD_Z, 1,
-	mmCOMPUTE_PGM_RSRC1, 0x240, /* SGPRS=9 (80 GPRS) */
 	mmCOMPUTE_PGM_RSRC2, 20,
 	mmCOMPUTE_USER_DATA_0, 0xedcedc00,
 	mmCOMPUTE_USER_DATA_1, 0xedcedc01,
@@ -3759,7 +3756,7 @@ static void gfx_v8_0_setup_rb(struct amdgpu_device *adev)
 /**
  * gfx_v8_0_init_compute_vmid - gart enable
  *
- * @adev: amdgpu_device pointer
+ * @rdev: amdgpu_device pointer
  *
  * Initialize compute vmid sh_mem registers
  *
@@ -5807,11 +5804,6 @@ static int gfx_v8_0_set_powergating_state(void *handle,
 	if (amdgpu_sriov_vf(adev))
 		return 0;
 
-	if (adev->pg_flags & (AMD_PG_SUPPORT_GFX_SMG |
-				AMD_PG_SUPPORT_RLC_SMU_HS |
-				AMD_PG_SUPPORT_CP |
-				AMD_PG_SUPPORT_GFX_DMG))
-		adev->gfx.rlc.funcs->enter_safe_mode(adev);
 	switch (adev->asic_type) {
 	case CHIP_CARRIZO:
 	case CHIP_STONEY:
@@ -5860,11 +5852,7 @@ static int gfx_v8_0_set_powergating_state(void *handle,
 	default:
 		break;
 	}
-	if (adev->pg_flags & (AMD_PG_SUPPORT_GFX_SMG |
-				AMD_PG_SUPPORT_RLC_SMU_HS |
-				AMD_PG_SUPPORT_CP |
-				AMD_PG_SUPPORT_GFX_DMG))
-		adev->gfx.rlc.funcs->exit_safe_mode(adev);
+
 	return 0;
 }
 

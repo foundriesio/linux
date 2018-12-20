@@ -42,7 +42,6 @@ struct nouveau_encoder {
 
 	struct dcb_output *dcb;
 	int or;
-	int link;
 
 	struct i2c_adapter *i2c;
 	struct nvkm_i2c_aux *aux;

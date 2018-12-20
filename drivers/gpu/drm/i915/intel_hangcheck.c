@@ -27,9 +27,13 @@
 static bool
 ipehr_is_semaphore_wait(struct intel_engine_cs *engine, u32 ipehr)
 {
-	ipehr &= ~MI_SEMAPHORE_SYNC_MASK;
-	return ipehr == (MI_SEMAPHORE_MBOX | MI_SEMAPHORE_COMPARE |
-			 MI_SEMAPHORE_REGISTER);
+	if (INTEL_GEN(engine->i915) >= 8) {
+		return (ipehr >> 23) == 0x1c;
+	} else {
+		ipehr &= ~MI_SEMAPHORE_SYNC_MASK;
+		return ipehr == (MI_SEMAPHORE_MBOX | MI_SEMAPHORE_COMPARE |
+				 MI_SEMAPHORE_REGISTER);
+	}
 }
 
 static struct intel_engine_cs *
@@ -37,20 +41,31 @@ semaphore_wait_to_signaller_ring(struct intel_engine_cs *engine, u32 ipehr,
 				 u64 offset)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
-	u32 sync_bits = ipehr & MI_SEMAPHORE_SYNC_MASK;
 	struct intel_engine_cs *signaller;
 	enum intel_engine_id id;
 
-	for_each_engine(signaller, dev_priv, id) {
-		if (engine == signaller)
-			continue;
+	if (INTEL_GEN(dev_priv) >= 8) {
+		for_each_engine(signaller, dev_priv, id) {
+			if (engine == signaller)
+				continue;
 
-		if (sync_bits == signaller->semaphore.mbox.wait[engine->hw_id])
-			return signaller;
+			if (offset == signaller->semaphore.signal_ggtt[engine->hw_id])
+				return signaller;
+		}
+	} else {
+		u32 sync_bits = ipehr & MI_SEMAPHORE_SYNC_MASK;
+
+		for_each_engine(signaller, dev_priv, id) {
+			if(engine == signaller)
+				continue;
+
+			if (sync_bits == signaller->semaphore.mbox.wait[engine->hw_id])
+				return signaller;
+		}
 	}
 
-	DRM_DEBUG_DRIVER("No signaller ring found for %s, ipehr 0x%08x\n",
-			 engine->name, ipehr);
+	DRM_DEBUG_DRIVER("No signaller ring found for %s, ipehr 0x%08x, offset 0x%016llx\n",
+			 engine->name, ipehr, offset);
 
 	return ERR_PTR(-ENODEV);
 }
@@ -120,6 +135,11 @@ semaphore_waits_for(struct intel_engine_cs *engine, u32 *seqno)
 		return NULL;
 
 	*seqno = ioread32(vaddr + head + 4) + 1;
+	if (INTEL_GEN(dev_priv) >= 8) {
+		offset = ioread32(vaddr + head + 12);
+		offset <<= 32;
+		offset |= ioread32(vaddr + head + 8);
+	}
 	return semaphore_wait_to_signaller_ring(engine, ipehr, offset);
 }
 
@@ -246,19 +266,19 @@ engine_stuck(struct intel_engine_cs *engine, u64 acthd)
 	 */
 	tmp = I915_READ_CTL(engine);
 	if (tmp & RING_WAIT) {
-		i915_handle_error(dev_priv, BIT(engine->id),
+		i915_handle_error(dev_priv, 0,
 				  "Kicking stuck wait on %s",
 				  engine->name);
 		I915_WRITE_CTL(engine, tmp);
 		return ENGINE_WAIT_KICK;
 	}
 
-	if (IS_GEN(dev_priv, 6, 7) && tmp & RING_WAIT_SEMAPHORE) {
+	if (INTEL_GEN(dev_priv) >= 6 && tmp & RING_WAIT_SEMAPHORE) {
 		switch (semaphore_passed(engine)) {
 		default:
 			return ENGINE_DEAD;
 		case 1:
-			i915_handle_error(dev_priv, ALL_ENGINES,
+			i915_handle_error(dev_priv, 0,
 					  "Kicking stuck semaphore on %s",
 					  engine->name);
 			I915_WRITE_CTL(engine, tmp);
@@ -304,7 +324,7 @@ hangcheck_get_action(struct intel_engine_cs *engine,
 	if (engine->hangcheck.seqno != hc->seqno)
 		return ENGINE_ACTIVE_SEQNO;
 
-	if (intel_engine_is_idle(engine))
+	if (i915_seqno_passed(hc->seqno, intel_engine_last_submit(engine)))
 		return ENGINE_IDLE;
 
 	return engine_stuck(engine, hc->acthd);
@@ -387,7 +407,7 @@ static void hangcheck_declare_hang(struct drm_i915_private *i915,
 				 "%s, ", engine->name);
 	msg[len-2] = '\0';
 
-	return i915_handle_error(i915, hung, "%s", msg);
+	return i915_handle_error(i915, hung, msg);
 }
 
 /*
@@ -406,8 +426,9 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
 	unsigned int hung = 0, stuck = 0;
+	int busy_count = 0;
 
-	if (!i915_modparams.enable_hangcheck)
+	if (!i915.enable_hangcheck)
 		return;
 
 	if (!READ_ONCE(dev_priv->gt.awake))
@@ -423,26 +444,30 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 	intel_uncore_arm_unclaimed_mmio_detection(dev_priv);
 
 	for_each_engine(engine, dev_priv, id) {
-		struct intel_engine_hangcheck hc;
+		struct intel_engine_hangcheck cur_state, *hc = &cur_state;
+		const bool busy = intel_engine_has_waiter(engine);
 
 		semaphore_clear_deadlocks(dev_priv);
 
-		hangcheck_load_sample(engine, &hc);
-		hangcheck_accumulate_sample(engine, &hc);
-		hangcheck_store_sample(engine, &hc);
+		hangcheck_load_sample(engine, hc);
+		hangcheck_accumulate_sample(engine, hc);
+		hangcheck_store_sample(engine, hc);
 
 		if (engine->hangcheck.stalled) {
 			hung |= intel_engine_flag(engine);
-			if (hc.action != ENGINE_DEAD)
+			if (hc->action != ENGINE_DEAD)
 				stuck |= intel_engine_flag(engine);
 		}
+
+		busy_count += busy;
 	}
 
 	if (hung)
 		hangcheck_declare_hang(dev_priv, hung, stuck);
 
 	/* Reset timer in case GPU hangs without another request being added */
-	i915_queue_hangcheck(dev_priv);
+	if (busy_count)
+		i915_queue_hangcheck(dev_priv);
 }
 
 void intel_engine_init_hangcheck(struct intel_engine_cs *engine)

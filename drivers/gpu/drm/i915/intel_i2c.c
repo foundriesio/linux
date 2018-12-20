@@ -68,20 +68,11 @@ static const struct gmbus_pin gmbus_pins_bxt[] = {
 	[GMBUS_PIN_3_BXT] = { "misc", GPIOD },
 };
 
-static const struct gmbus_pin gmbus_pins_cnp[] = {
-	[GMBUS_PIN_1_BXT] = { "dpb", GPIOB },
-	[GMBUS_PIN_2_BXT] = { "dpc", GPIOC },
-	[GMBUS_PIN_3_BXT] = { "misc", GPIOD },
-	[GMBUS_PIN_4_CNP] = { "dpd", GPIOE },
-};
-
 /* pin is expected to be valid */
 static const struct gmbus_pin *get_gmbus_pin(struct drm_i915_private *dev_priv,
 					     unsigned int pin)
 {
-	if (HAS_PCH_CNP(dev_priv))
-		return &gmbus_pins_cnp[pin];
-	else if (IS_GEN9_LP(dev_priv))
+	if (IS_GEN9_LP(dev_priv))
 		return &gmbus_pins_bxt[pin];
 	else if (IS_GEN9_BC(dev_priv))
 		return &gmbus_pins_skl[pin];
@@ -96,9 +87,7 @@ bool intel_gmbus_is_valid_pin(struct drm_i915_private *dev_priv,
 {
 	unsigned int size;
 
-	if (HAS_PCH_CNP(dev_priv))
-		size = ARRAY_SIZE(gmbus_pins_cnp);
-	else if (IS_GEN9_LP(dev_priv))
+	if (IS_GEN9_LP(dev_priv))
 		size = ARRAY_SIZE(gmbus_pins_bxt);
 	else if (IS_GEN9_BC(dev_priv))
 		size = ARRAY_SIZE(gmbus_pins_skl);
@@ -128,44 +117,20 @@ intel_i2c_reset(struct drm_i915_private *dev_priv)
 	I915_WRITE(GMBUS4, 0);
 }
 
-static void pnv_gmbus_clock_gating(struct drm_i915_private *dev_priv,
-				   bool enable)
+static void intel_i2c_quirk_set(struct drm_i915_private *dev_priv, bool enable)
 {
 	u32 val;
 
 	/* When using bit bashing for I2C, this bit needs to be set to 1 */
+	if (!IS_PINEVIEW(dev_priv))
+		return;
+
 	val = I915_READ(DSPCLK_GATE_D);
-	if (!enable)
-		val |= PNV_GMBUSUNIT_CLOCK_GATE_DISABLE;
+	if (enable)
+		val |= DPCUNIT_CLOCK_GATE_DISABLE;
 	else
-		val &= ~PNV_GMBUSUNIT_CLOCK_GATE_DISABLE;
+		val &= ~DPCUNIT_CLOCK_GATE_DISABLE;
 	I915_WRITE(DSPCLK_GATE_D, val);
-}
-
-static void pch_gmbus_clock_gating(struct drm_i915_private *dev_priv,
-				   bool enable)
-{
-	u32 val;
-
-	val = I915_READ(SOUTH_DSPCLK_GATE_D);
-	if (!enable)
-		val |= PCH_GMBUSUNIT_CLOCK_GATE_DISABLE;
-	else
-		val &= ~PCH_GMBUSUNIT_CLOCK_GATE_DISABLE;
-	I915_WRITE(SOUTH_DSPCLK_GATE_D, val);
-}
-
-static void bxt_gmbus_clock_gating(struct drm_i915_private *dev_priv,
-				   bool enable)
-{
-	u32 val;
-
-	val = I915_READ(GEN9_CLKGATE_DIS_4);
-	if (!enable)
-		val |= BXT_GMBUS_GATING_DIS;
-	else
-		val &= ~BXT_GMBUS_GATING_DIS;
-	I915_WRITE(GEN9_CLKGATE_DIS_4, val);
 }
 
 static u32 get_reserved(struct intel_gmbus *bus)
@@ -245,10 +210,7 @@ intel_gpio_pre_xfer(struct i2c_adapter *adapter)
 	struct drm_i915_private *dev_priv = bus->dev_priv;
 
 	intel_i2c_reset(dev_priv);
-
-	if (IS_PINEVIEW(dev_priv))
-		pnv_gmbus_clock_gating(dev_priv, false);
-
+	intel_i2c_quirk_set(dev_priv, true);
 	set_data(bus, 1);
 	set_clock(bus, 1);
 	udelay(I2C_RISEFALL_TIME);
@@ -265,9 +227,7 @@ intel_gpio_post_xfer(struct i2c_adapter *adapter)
 
 	set_data(bus, 1);
 	set_clock(bus, 1);
-
-	if (IS_PINEVIEW(dev_priv))
-		pnv_gmbus_clock_gating(dev_priv, true);
+	intel_i2c_quirk_set(dev_priv, false);
 }
 
 static void
@@ -467,9 +427,7 @@ static bool
 gmbus_is_index_read(struct i2c_msg *msgs, int i, int num)
 {
 	return (i + 1 < num &&
-		msgs[i].addr == msgs[i + 1].addr &&
-		!(msgs[i].flags & I2C_M_RD) &&
-		(msgs[i].len == 1 || msgs[i].len == 2) &&
+		!(msgs[i].flags & I2C_M_RD) && msgs[i].len <= 2 &&
 		(msgs[i + 1].flags & I2C_M_RD));
 }
 
@@ -509,13 +467,6 @@ do_gmbus_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 	struct drm_i915_private *dev_priv = bus->dev_priv;
 	int i = 0, inc, try = 0;
 	int ret = 0;
-
-	/* Display WA #0868: skl,bxt,kbl,cfl,glk,cnl */
-	if (IS_GEN9_LP(dev_priv))
-		bxt_gmbus_clock_gating(dev_priv, false);
-	else if (HAS_PCH_SPT(dev_priv) ||
-		 HAS_PCH_KBP(dev_priv) || HAS_PCH_CNP(dev_priv))
-		pch_gmbus_clock_gating(dev_priv, false);
 
 retry:
 	I915_WRITE_FW(GMBUS0, bus->reg0);
@@ -618,13 +569,6 @@ timeout:
 	ret = -EAGAIN;
 
 out:
-	/* Display WA #0868: skl,bxt,kbl,cfl,glk,cnl */
-	if (IS_GEN9_LP(dev_priv))
-		bxt_gmbus_clock_gating(dev_priv, true);
-	else if (HAS_PCH_SPT(dev_priv) ||
-		 HAS_PCH_KBP(dev_priv) || HAS_PCH_CNP(dev_priv))
-		pch_gmbus_clock_gating(dev_priv, true);
-
 	return ret;
 }
 
@@ -637,6 +581,7 @@ gmbus_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 	int ret;
 
 	intel_display_power_get(dev_priv, POWER_DOMAIN_GMBUS);
+	mutex_lock(&dev_priv->gmbus_mutex);
 
 	if (bus->force_bit) {
 		ret = i2c_bit_algo.master_xfer(adapter, msgs, num);
@@ -648,6 +593,7 @@ gmbus_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
 			bus->force_bit |= GMBUS_FORCE_BIT_RETRY;
 	}
 
+	mutex_unlock(&dev_priv->gmbus_mutex);
 	intel_display_power_put(dev_priv, POWER_DOMAIN_GMBUS);
 
 	return ret;
@@ -665,39 +611,6 @@ static u32 gmbus_func(struct i2c_adapter *adapter)
 static const struct i2c_algorithm gmbus_algorithm = {
 	.master_xfer	= gmbus_xfer,
 	.functionality	= gmbus_func
-};
-
-static void gmbus_lock_bus(struct i2c_adapter *adapter,
-			   unsigned int flags)
-{
-	struct intel_gmbus *bus = to_intel_gmbus(adapter);
-	struct drm_i915_private *dev_priv = bus->dev_priv;
-
-	mutex_lock(&dev_priv->gmbus_mutex);
-}
-
-static int gmbus_trylock_bus(struct i2c_adapter *adapter,
-			     unsigned int flags)
-{
-	struct intel_gmbus *bus = to_intel_gmbus(adapter);
-	struct drm_i915_private *dev_priv = bus->dev_priv;
-
-	return mutex_trylock(&dev_priv->gmbus_mutex);
-}
-
-static void gmbus_unlock_bus(struct i2c_adapter *adapter,
-			     unsigned int flags)
-{
-	struct intel_gmbus *bus = to_intel_gmbus(adapter);
-	struct drm_i915_private *dev_priv = bus->dev_priv;
-
-	mutex_unlock(&dev_priv->gmbus_mutex);
-}
-
-static const struct i2c_lock_operations gmbus_lock_ops = {
-	.lock_bus =    gmbus_lock_bus,
-	.trylock_bus = gmbus_trylock_bus,
-	.unlock_bus =  gmbus_unlock_bus,
 };
 
 /**
@@ -741,7 +654,6 @@ int intel_setup_gmbus(struct drm_i915_private *dev_priv)
 		bus->dev_priv = dev_priv;
 
 		bus->adapter.algo = &gmbus_algorithm;
-		bus->adapter.lock_ops = &gmbus_lock_ops;
 
 		/*
 		 * We wish to retry with bit banging

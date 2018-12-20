@@ -26,7 +26,6 @@
  */
 
 #include "i915_drv.h"
-#include "intel_ringbuffer.h"
 
 /**
  * DOC: batch buffer command parser
@@ -799,15 +798,22 @@ struct cmd_node {
  */
 static inline u32 cmd_header_key(u32 x)
 {
+	u32 shift;
+
 	switch (x >> INSTR_CLIENT_SHIFT) {
 	default:
 	case INSTR_MI_CLIENT:
-		return x >> STD_MI_OPCODE_SHIFT;
+		shift = STD_MI_OPCODE_SHIFT;
+		break;
 	case INSTR_RC_CLIENT:
-		return x >> STD_3D_OPCODE_SHIFT;
+		shift = STD_3D_OPCODE_SHIFT;
+		break;
 	case INSTR_BC_CLIENT:
-		return x >> STD_2D_OPCODE_SHIFT;
+		shift = STD_2D_OPCODE_SHIFT;
+		break;
 	}
+
+	return x >> shift;
 }
 
 static int init_hash_table(struct intel_engine_cs *engine,
@@ -941,7 +947,7 @@ void intel_engine_init_cmd_parser(struct intel_engine_cs *engine)
 		return;
 	}
 
-	engine->flags |= I915_ENGINE_NEEDS_CMD_PARSER;
+	engine->needs_cmd_parser = true;
 }
 
 /**
@@ -953,7 +959,7 @@ void intel_engine_init_cmd_parser(struct intel_engine_cs *engine)
  */
 void intel_engine_cleanup_cmd_parser(struct intel_engine_cs *engine)
 {
-	if (!intel_engine_needs_cmd_parser(engine))
+	if (!engine->needs_cmd_parser)
 		return;
 
 	fini_hash_table(engine);
@@ -1032,7 +1038,7 @@ find_reg(const struct intel_engine_cs *engine, bool is_master, u32 addr)
 	const struct drm_i915_reg_table *table = engine->reg_tables;
 	int count = engine->reg_table_count;
 
-	for (; count > 0; ++table, --count) {
+	do {
 		if (!table->master || is_master) {
 			const struct drm_i915_reg_descriptor *reg;
 
@@ -1040,7 +1046,7 @@ find_reg(const struct intel_engine_cs *engine, bool is_master, u32 addr)
 			if (reg != NULL)
 				return reg;
 		}
-	}
+	} while (table++, --count);
 
 	return NULL;
 }
@@ -1067,7 +1073,7 @@ static u32 *copy_batch(struct drm_i915_gem_object *dst_obj,
 		goto unpin_src;
 	}
 
-	dst = i915_gem_object_pin_map(dst_obj, I915_MAP_FORCE_WB);
+	dst = i915_gem_object_pin_map(dst_obj, I915_MAP_WB);
 	if (IS_ERR(dst))
 		goto unpin_dst;
 
@@ -1160,8 +1166,8 @@ static bool check_cmd(const struct intel_engine_cs *engine,
 				find_reg(engine, is_master, reg_addr);
 
 			if (!reg) {
-				DRM_DEBUG_DRIVER("CMD: Rejected register 0x%08X in command: 0x%08X (%s)\n",
-						 reg_addr, *cmd, engine->name);
+				DRM_DEBUG_DRIVER("CMD: Rejected register 0x%08X in command: 0x%08X (exec_id=%d)\n",
+						 reg_addr, *cmd, engine->exec_id);
 				return false;
 			}
 
@@ -1212,21 +1218,15 @@ static bool check_cmd(const struct intel_engine_cs *engine,
 					continue;
 			}
 
-			if (desc->bits[i].offset >= length) {
-				DRM_DEBUG_DRIVER("CMD: Rejected command 0x%08X, too short to check bitmask (%s)\n",
-						 *cmd, engine->name);
-				return false;
-			}
-
 			dword = cmd[desc->bits[i].offset] &
 				desc->bits[i].mask;
 
 			if (dword != desc->bits[i].expected) {
-				DRM_DEBUG_DRIVER("CMD: Rejected command 0x%08X for bitmask 0x%08X (exp=0x%08X act=0x%08X) (%s)\n",
+				DRM_DEBUG_DRIVER("CMD: Rejected command 0x%08X for bitmask 0x%08X (exp=0x%08X act=0x%08X) (exec_id=%d)\n",
 						 *cmd,
 						 desc->bits[i].mask,
 						 desc->bits[i].expected,
-						 dword, engine->name);
+						 dword, engine->exec_id);
 				return false;
 			}
 		}
@@ -1284,7 +1284,7 @@ int intel_engine_cmd_parser(struct intel_engine_cs *engine,
 
 		if (*cmd == MI_BATCH_BUFFER_END) {
 			if (needs_clflush_after) {
-				void *ptr = page_mask_bits(shadow_batch_obj->mm.mapping);
+				void *ptr = ptr_mask_bits(shadow_batch_obj->mm.mapping);
 				drm_clflush_virt_range(ptr,
 						       (void *)(cmd + 1) - ptr);
 			}
@@ -1357,7 +1357,7 @@ int i915_cmd_parser_get_version(struct drm_i915_private *dev_priv)
 
 	/* If the command parser is not enabled, report 0 - unsupported */
 	for_each_engine(engine, dev_priv, id) {
-		if (intel_engine_needs_cmd_parser(engine)) {
+		if (engine->needs_cmd_parser) {
 			active = true;
 			break;
 		}

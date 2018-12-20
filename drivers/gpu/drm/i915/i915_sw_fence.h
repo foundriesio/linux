@@ -23,6 +23,7 @@ struct reservation_object;
 struct i915_sw_fence {
 	wait_queue_head_t wait;
 	unsigned long flags;
+	struct kref kref;
 	atomic_t pending;
 };
 

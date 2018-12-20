@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Intel Corporation
+ * Copyright(c) 2011-2016 Intel Corporation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -16,23 +16,28 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * Authors:
+ *    Eddie Dong <eddie.dong@intel.com>
+ *    Kevin Tian <kevin.tian@intel.com>
+ *
+ * Contributors:
+ *    Zhi Wang <zhi.a.wang@intel.com>
+ *    Changbin Du <changbin.du@intel.com>
+ *    Zhenyu Wang <zhenyuw@linux.intel.com>
+ *    Tina Zhang <tina.zhang@intel.com>
+ *    Bing Niu <bing.niu@intel.com>
  *
  */
 
-#ifndef __I915_SYNCMAP_H__
-#define __I915_SYNCMAP_H__
+#ifndef __GVT_RENDER_H__
+#define __GVT_RENDER_H__
 
-#include <linux/types.h>
+void intel_gvt_load_render_mmio(struct intel_vgpu *vgpu, int ring_id);
 
-struct i915_syncmap;
-#define KSYNCMAP 16 /* radix of the tree, how many slots in each layer */
+void intel_gvt_restore_render_mmio(struct intel_vgpu *vgpu, int ring_id);
 
-void i915_syncmap_init(struct i915_syncmap **root);
-int i915_syncmap_set(struct i915_syncmap **root, u64 id, u32 seqno);
-bool i915_syncmap_is_later(struct i915_syncmap **root, u64 id, u32 seqno);
-void i915_syncmap_free(struct i915_syncmap **root);
-
-#endif /* __I915_SYNCMAP_H__ */
+#endif
