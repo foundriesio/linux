@@ -1,9 +1,10 @@
 /*
- * jpu_devices.c
+ *   jpu_devices.c
+ *   Author:  <linux@telechips.com>
+ *   Created: June 10, 2008
+ *   Description: TCC VPU h/w block
  *
- * TCC JPU DEVICES driver
- *
- * Copyright (C) 2013 Telechips, Inc.
+ *   Copyright (C) 2008-2009 Telechips
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
