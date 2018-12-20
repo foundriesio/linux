@@ -652,9 +652,9 @@ static int hwahc_security_create(struct hwahc *hwahc)
 	itr = usb_dev->rawdescriptors[index];
 	itr_size = le16_to_cpu(usb_dev->actconfig->desc.wTotalLength);
 	top = itr + itr_size;
-	result = __usb_get_extra_descriptor(usb_dev->rawdescriptors[index],
+	result = __usb_suse_get_extra_descriptor(usb_dev->rawdescriptors[index],
 			le16_to_cpu(usb_dev->actconfig->desc.wTotalLength),
-			USB_DT_SECURITY, (void **) &secd);
+			USB_DT_SECURITY, (void **) &secd, sizeof(*secd));
 	if (result == -1) {
 		dev_warn(dev, "BUG? WUSB host has no security descriptors\n");
 		return 0;
