@@ -416,6 +416,10 @@ struct hnae3_ae_ops {
 			      unsigned long *supported,
 			      unsigned long *advertising);
 	void (*get_port_type)(struct hnae3_handle *handle, u8 *port_type);
+#ifndef __GENKSYMS__
+	int (*do_ioctl)(struct hnae3_handle *handle,
+			struct ifreq *ifr, int cmd);
+#endif
 };
 
 struct hnae3_dcb_ops {
