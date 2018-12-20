@@ -2178,7 +2178,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				#if defined(CONFIG_SYNC_FB)
 				if(pdp_data)
 				{
-					printk("fb disable cmd \n");
+		
 					if(pdp_data->rdma_info[RDMA_FB].virt_addr)
 					{
 						int sc_num = 0;
