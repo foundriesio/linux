@@ -1,22 +1,21 @@
-/*********************************************************************************
- * 
- * (C) Copyright All Rights Reserved by Telechips Inc.
+/* 
  *
- * *  This material is confidential and shall remain as such.
- * *  Any unauthorized use, distribution, reproduction is strictly prohibited.
- * *
- * *******************************************************************************
- * *
- * *  File Name   : tcc_qb_fb.c
- * *
- * *  Description : fb display for Quickboot system
- * *
- * *******************************************************************************
- * *
- * *  yyyy/mm/dd     ver            descriptions                Author
- * *	---------	--------   ---------------       -----------------
- * *  2013/08/21     0.1            created                     KCMin
- * *******************************************************************************/
+ * Show Logo in RLE 565 format
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ * Copyright (C) 2008 Google Incorporated
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+ 
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/fb.h>

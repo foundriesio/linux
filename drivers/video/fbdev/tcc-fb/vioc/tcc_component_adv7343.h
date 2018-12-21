@@ -1,6 +1,7 @@
 /*
  * ADV7343 encoder related structure and register definitions
  *
+ * Copyright (C) 2013 Telechips Inc
  * Copyright (C) 2009 Texas Instruments Incorporated - http://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or

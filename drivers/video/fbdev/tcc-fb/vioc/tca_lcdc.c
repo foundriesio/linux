@@ -1,11 +1,10 @@
-/****************************************************************************
- * linux/drivers/video/tca_lcdc.c
+/*
+*   tca_lcdc.c
+ *   Author:  <linux@telechips.com>
+ *   Created: June 10, 2008
+ *   Description: TCC lcd Driver
  *
- * Author:  <linux@telechips.com>
- * Created: March 18, 2012
- * Description: TCC lcd Driver
- *
- * Copyright (C) 20010-2011 Telechips
+ *   Copyright (C) 2008-2009 Telechips
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +20,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *****************************************************************************/
+*/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
