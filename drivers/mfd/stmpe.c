@@ -546,6 +546,35 @@ static int stmpe811_enable(struct stmpe *stmpe, unsigned int blocks,
 				enable ? 0 : mask);
 }
 
+int stmpe811_adc_common_init(struct stmpe *stmpe)
+{
+	int ret;
+	u8 adc_ctrl1, adc_ctrl1_mask;
+
+	adc_ctrl1 = STMPE_SAMPLE_TIME(stmpe->sample_time) |
+		    STMPE_MOD_12B(stmpe->mod_12b) |
+		    STMPE_REF_SEL(stmpe->ref_sel);
+	adc_ctrl1_mask = STMPE_SAMPLE_TIME(0xff) | STMPE_MOD_12B(0xff) |
+			 STMPE_REF_SEL(0xff);
+
+	ret = stmpe_set_bits(stmpe, STMPE811_REG_ADC_CTRL1,
+			adc_ctrl1_mask, adc_ctrl1);
+	if (ret) {
+		dev_err(stmpe->dev, "Could not setup ADC\n");
+		return ret;
+	}
+
+	ret = stmpe_set_bits(stmpe, STMPE811_REG_ADC_CTRL2,
+			STMPE_ADC_FREQ(0xff), STMPE_ADC_FREQ(stmpe->adc_freq));
+	if (ret) {
+		dev_err(stmpe->dev, "Could not setup ADC\n");
+		return ret;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(stmpe811_adc_common_init);
+
 static int stmpe811_get_altfunc(struct stmpe *stmpe, enum stmpe_block block)
 {
 	/* 0 for touchscreen, 1 for GPIO */
@@ -1335,6 +1364,7 @@ int stmpe_probe(struct stmpe_client_info *ci, enum stmpe_partnum partnum)
 	struct device_node *np = ci->dev->of_node;
 	struct stmpe *stmpe;
 	int ret;
+	u32 val;
 
 	pdata = devm_kzalloc(ci->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
@@ -1367,6 +1397,15 @@ int stmpe_probe(struct stmpe_client_info *ci, enum stmpe_partnum partnum)
 			stmpe->blocks |= STMPE_BLOCK_ROTATOR;
 		}
 	}
+
+	if (!of_property_read_u32(np, "st,sample-time", &val))
+		stmpe->sample_time = val;
+	if (!of_property_read_u32(np, "st,mod-12b", &val))
+		stmpe->mod_12b = val;
+	if (!of_property_read_u32(np, "st,ref-sel", &val))
+		stmpe->ref_sel = val;
+	if (!of_property_read_u32(np, "st,adc-freq", &val))
+		stmpe->adc_freq = val;
 
 	stmpe->dev = ci->dev;
 	stmpe->client = ci->client;
@@ -1458,6 +1497,8 @@ int stmpe_remove(struct stmpe *stmpe)
 		regulator_disable(stmpe->vio);
 	if (!IS_ERR(stmpe->vcc))
 		regulator_disable(stmpe->vcc);
+
+	__stmpe_disable(stmpe, STMPE_BLOCK_ADC);
 
 	mfd_remove_devices(stmpe->dev);
 
