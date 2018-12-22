@@ -2225,7 +2225,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 		unsigned			port1 = udev->portnum;
 
 		/* descriptor may appear anywhere in config */
-		err = __usb_suse_extra_descriptor(udev->rawdescriptors[0],
+		err = __usb_suse_get_extra_descriptor(udev->rawdescriptors[0],
 				le16_to_cpu(udev->config[0].desc.wTotalLength),
 				USB_DT_OTG, (void **) &desc, sizeof(*desc));
 		if (err || !(desc->bmAttributes & USB_OTG_HNP))
