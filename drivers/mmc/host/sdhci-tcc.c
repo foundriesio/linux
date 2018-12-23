@@ -434,8 +434,10 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 		}
 
 		/* Configure CLK TX TAPDLY */
-		vals = TCC803X_SDHC_MK_TX_CLKDLY(ch, tcc->clk_tx_tap);
-		writew((u16)vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+		vals = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+		vals &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
+		vals |= TCC803X_SDHC_MK_TX_CLKDLY(ch, tcc->clk_tx_tap);
+		writel(vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
 		pr_debug(DRIVER_NAME "%d: set clk-tx-tap 0x%08x @0x%p\n",
 				ch, vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
 	} else {
@@ -462,7 +464,7 @@ static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 	if(tcc->channel_mux_base) {
 		vals = (0x1 << tcc->channel_mux) & 0x3;
 		writel(vals, tcc->channel_mux_base);
-		pr_debug(DRIVER_NAME, "%d: set channel mux 0x%x\n",
+		pr_debug(DRIVER_NAME "%d: set channel mux 0x%x\n",
 			tcc->controller_id, readl(tcc->channel_mux_base));
 	}
 
@@ -647,6 +649,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 
 	tcc->soc_data = soc_data;
 	tcc->version = system_rev;
+	dev_dbg(&pdev->dev, "system version 0x%x\n", tcc->version);
 
 	if (of_property_read_u32(pdev->dev.of_node, "controller-id", &tcc->controller_id) < 0) {
 		dev_err(&pdev->dev, "controller-id not found\n");
@@ -820,11 +823,17 @@ static int sdhci_tcc_runtime_resume(struct device *dev)
 	return sdhci_runtime_resume_host(host);
 }
 
+#if 0
 const struct dev_pm_ops sdhci_tcc_pmops = {
 	SET_SYSTEM_SLEEP_PM_OPS(sdhci_pltfm_suspend, sdhci_pltfm_resume)
 	SET_RUNTIME_PM_OPS(sdhci_tcc_runtime_suspend,
 		sdhci_tcc_runtime_resume, NULL)
 };
+#else
+const struct dev_pm_ops sdhci_tcc_pmops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sdhci_tcc_runtime_suspend, sdhci_tcc_runtime_resume)
+};
+#endif
 
 #define SDHCI_TCC_PMOPS (&sdhci_tcc_pmops)
 

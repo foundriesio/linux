@@ -39,7 +39,7 @@
 	| TCC897X_SDHC_FBEN(0))
 
 /* Telechips SDHC Specific Registers for TCC803x rev. 1*/
-#define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x4E))
+#define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
 #define TCC803X_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
 #define TCC803X_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
@@ -47,12 +47,12 @@
 #define TCC803X_SDHC_CMDDLY(ch)		TCC803X_SDHC_TAPDLY_OFFSET(ch)
 #define TCC803X_SDHC_DATADLY(ch, x)	TCC803X_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
 
-#define TCC803X_SDHC_TAPDLY_IN(x)	((x & 0xF) << 0)
-#define TCC803X_SDHC_TAPDLY_OUT(x)	((x & 0xF) << 8)
-#define TCC803X_SDHC_TAPDLY_OEN(x)	((x & 0xF) << 16)
+#define TCC803X_SDHC_TAPDLY_IN(x)	((x & 0x1F) << 0)
+#define TCC803X_SDHC_TAPDLY_OUT(x)	((x & 0x1F) << 8)
+#define TCC803X_SDHC_TAPDLY_OEN(x)	((x & 0x1F) << 16)
 
 #define TCC803X_SDHC_MK_TX_CLKDLY(ch, x) (ch != 2 ? \
-	(x & 0x1F) : \
+	((x & 0x1F) << (ch * 16)) : \
 	(((x & 0x1E) << 16) | (x & 0x1)) )
 #define TCC803X_SDHC_MK_RX_CLKTA_VAL(x) ((x & 0x3) << 0)
 #define TCC803X_SDHC_MK_TAPDLY(x)	(TCC803X_SDHC_TAPDLY_IN(x) \
