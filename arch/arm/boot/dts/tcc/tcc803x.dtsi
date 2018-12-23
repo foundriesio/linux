@@ -1410,48 +1410,60 @@
 
 	/* eMMC Boot */
 	sdhc0: sdhc@16440000 {
-		compatible = "telechips,tcc-sdhc";
-		reg = <0x16440000 0x100>, <0x16470000 0x50>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
+		compatible = "telechips,tcc803x-sdhci";
+		reg = <0x16440000 0x100>, <0x16470000 0x200>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC0 &clk_io IOBUS_SDMMC0>;
 		clock-names = "mmc_fclk", "mmc_hclk";
 		max-frequency = <50000000>;
 		bus-width = <4>;
+		controller-id = <0>;
 		status = "disabled";
 
+		/* for rev. 0 */
 		tcc-mmc-clk-out-tap = <0>;
 		tcc-mmc-cmd-tap = <0>;
 		tcc-mmc-data-tap = <0>;
+		/* for rev. 1 */
+		tcc-mmc-taps = <15 15 15 15>;
 	};
 
 	sdhc1: sdhc@16450000 {
-		compatible = "telechips,tcc-sdhc";
-		reg = <0x16450000 0x100>, <0x16470050 0x50>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
+		compatible = "telechips,tcc803x-sdhci";
+		reg = <0x16450000 0x100>, <0x16470050 0x200>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC1 &clk_io IOBUS_SDMMC1>;
 		clock-names = "mmc_fclk", "mmc_hclk";
 		max-frequency = <50000000>;
 		bus-width = <4>;
+		controller-id = <1>;
 		status = "disabled";
 
+		/* for rev. 0 */
 		tcc-mmc-clk-out-tap = <0>;
 		tcc-mmc-cmd-tap = <0>;
 		tcc-mmc-data-tap = <0>;
+		/* for rev. 1 */
+		tcc-mmc-taps = <15 15 15 15>;
 	};
 
 	sdhc2: sdhc@16460000 {
-		compatible = "telechips,tcc-sdhc";
-		reg = <0x16460000 0x100>, <0x164700a0 0x50>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
+		compatible = "telechips,tcc803x-sdhci";
+		reg = <0x16460000 0x100>, <0x164700a0 0x200>, <0x0 0>/* dummy */, <0x164700FC 0x4>;
 		interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
 		clock-names = "mmc_fclk", "mmc_hclk";
 		max-frequency = <50000000>;
 		bus-width = <4>;
+		controller-id = <2>;
 		status = "disabled";
 
+		/* for rev. 0 */
 		tcc-mmc-clk-out-tap = <0>;
 		tcc-mmc-cmd-tap = <0>;
 		tcc-mmc-data-tap = <0>;
+		/* for rev. 1 */
+		tcc-mmc-taps = <15 15 15 15>;
 	};
 
 	vqmmc_emmc: vqmmc_emmc {};

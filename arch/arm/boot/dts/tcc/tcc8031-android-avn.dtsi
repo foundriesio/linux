@@ -663,8 +663,6 @@
 
 &sdhc0 {
 	status = "okay";
-	compatible = "telechips,tcc-sdhci";
-	controller-id = <0>;
 	bus-width = <8>;
 	max-frequency = <200000000>;
 	pinctrl-names = "default";
@@ -691,7 +689,7 @@
 	 * In order to reduce boot time,
 	 * we use the driver as module not built-in.
 	 */
-	compatible = "telechips,tcc-sdhci,module-only";
+	compatible = "telechips,tcc803x-sdhci,module-only";
 #endif
 	controller-id = <1>;
 	bus-width = <4>;
@@ -705,7 +703,6 @@
 &sdhc2 {
 	status = "okay";
 	compatible = "telechips,tcc-sdhc";
-	controller-id = <2>;
 	bus-width = <4>;
 	max-frequency = <200000000>;
 	pinctrl-names = "default", "active";

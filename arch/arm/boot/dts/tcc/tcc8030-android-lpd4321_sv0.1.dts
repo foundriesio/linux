@@ -112,8 +112,6 @@
 };
 
 &sdhc2 {
-	compatible = "telechips,tcc-sdhci";
-	controller-id = <2>;
 	//non-removable;
 	keep-power-in-suspend;
 	cap-sdio-irq;

@@ -697,8 +697,6 @@
 
 	sdhc@16440000 {
 		status = "okay";
-		compatible = "telechips,tcc-sdhci";
-		controller-id = <0>;
 		bus-width = <8>;
 		max-frequency = <200000000>;
 		pinctrl-names = "default";
@@ -718,17 +716,13 @@
 	/* SD CARD */
 	sdhc@16450000 {
 		status = "okay";
-
-#ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
-		compatible = "telechips,tcc-sdhci";
-#else
+#ifdef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
 		/*
 		 * In order to reduce boot time,
 		 * we use the driver as module not built-in.
 		 */
-		compatible = "telechips,tcc-sdhci,module-only";
+		compatible = "telechips,tcc803x-sdhci,module-only";
 #endif
-		controller-id = <1>;
 		bus-width = <4>;
 		max-frequency = <200000000>;
 		pinctrl-names = "default";
