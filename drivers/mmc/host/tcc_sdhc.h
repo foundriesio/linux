@@ -312,6 +312,31 @@ static int tcc_sdhc_dbg_channel=CONFIG_TCC_MMC_SDHC_DEBUG_CHANNEL;
 #define TCCSDHC_DATADLY_OUT(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 4))
 #define TCCSDHC_DATADLY_EN(n, x)		((x & 0xF) << (((n & 0x1) * 12) + 8))
 
+#define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
+#define TCC803X_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
+/* (0x128 - (ch * 0x50) + (ch * 0x8)) */
+#define TCC803X_SDHC_TAPDLY_OFFSET(ch)		(0x12C - (ch * 0x2C))
+
+#define TCC803X_SDHC_CMDDLY(ch)		TCC803X_SDHC_TAPDLY_OFFSET(ch)
+#define TCC803X_SDHC_DATADLY(ch, x)	TCC803X_SDHC_TAPDLY_OFFSET(ch) + (0x4 + (x * 0x4))
+
+#define TCC803X_SDHC_TAPDLY_IN(x)	((x & 0x1F) << 0)
+#define TCC803X_SDHC_TAPDLY_OUT(x)	((x & 0x1F) << 8)
+#define TCC803X_SDHC_TAPDLY_OEN(x)	((x & 0x1F) << 16)
+
+#define TCC803X_SDHC_MK_TX_CLKDLY(ch, x) (ch != 2 ? \
+	((x & 0x1F) << (ch * 16)) : \
+	(((x & 0x1E) << 16) | (x & 0x1)) )
+#define TCC803X_SDHC_MK_RX_CLKTA_VAL(x) ((x & 0x3) << 0)
+#define TCC803X_SDHC_MK_TAPDLY(x)	(TCC803X_SDHC_TAPDLY_IN(x) \
+	| TCC803X_SDHC_TAPDLY_OUT(x) \
+	| TCC803X_SDHC_TAPDLY_OEN(x) )
+
+#define TCC803X_SDHC_CLKOUTDLY_DEF_TAP	15
+#define TCC803X_SDHC_CMDDLY_DEF_TAP		15
+#define TCC803X_SDHC_DATADLY_DEF_TAP	15
+#define TCC803X_SDHC_CLK_TXDLY_DEF_TAP	15
+
 #define TCCSDHC_TAPDLY_DEF				(TCCSDHC_TAPDLY_TUNE_CNT(0x20) \
 	| TCCSDHC_TAPDLY_OTAP_SEL(0x1) \
 	| TCCSDHC_TAPDLY_OTAP_EN(1) \
@@ -342,6 +367,7 @@ struct mmc_direct_req {
 struct tcc_mmc_tap_delays {
 	u8	clk_delay_unit;
 	u32	clk_tap_delay;
+	u32	clk_tx_tap_delay;
 	u32	cmd_tap_delay;
 	u32	data01_tap_delay;
 	u32	data23_tap_delay;
