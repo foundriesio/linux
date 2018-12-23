@@ -61,9 +61,9 @@
 
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-#ifndef CONFIG_ARM64
+//#ifndef CONFIG_ARM64
 #include <asm/system_info.h>
-#endif
+//#endif
 
 #include "tcc_sdhc.h"
 
@@ -2021,6 +2021,8 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 				mmc_regulator_set_vqmmc(host->mmc, ios);
 				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: set vqmmc as 1.8v\n",
 						mmc_hostname(host->mmc));
+			} else {
+				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
 			}
 		}
 
@@ -2035,6 +2037,8 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 				mmc_regulator_set_vqmmc(host->mmc, ios);
 				TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: set vqmmc as 3.3v\n",
 						mmc_hostname(host->mmc));
+			} else {
+				mdelay(15); // [Timing] Host keeps SDCLK low at least 5 ms.
 			}
 		}
 
@@ -2313,12 +2317,49 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 	writel(0xEDFF9970, host->chctrl_base + TCCSDHC_CHCTRL_CAP0);
 	writel(0x00000007, host->chctrl_base + TCCSDHC_CHCTRL_CAP1);
 
-	writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-	writel(tap_delays->cmd_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
-	writel(tap_delays->data01_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
-	writel(tap_delays->data23_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
-	writel(tap_delays->data45_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
-	writel(tap_delays->data67_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+#ifdef CONFIG_ARCH_TCC803X
+	if(system_rev == 0)
+#endif
+	{
+		writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+		writel(tap_delays->cmd_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
+		writel(tap_delays->data01_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
+		writel(tap_delays->data23_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY2);
+		writel(tap_delays->data45_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY3);
+		writel(tap_delays->data67_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_DLY4);
+	}
+#ifdef CONFIG_ARCH_TCC803X
+	else {
+		u8 ch = host->controller_id;
+		u32 vals, i;
+
+		writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+		pr_debug(DRIVER_NAME "%d: set clk-out-tap 0x%08x @0x%p\n",
+			ch, vals, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
+
+		/* Configure CMD TAPDLY */
+		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->cmd_tap_delay);
+		writel(vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
+		pr_debug(DRIVER_NAME "%d: set cmd-tap 0x%08x @0x%p\n",
+			ch, vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
+
+		/* Configure DATA TAPDLY */
+		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->data01_tap_delay);
+		for(i = 0; i < 8; i++) {
+			writel(vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
+			pr_debug(DRIVER_NAME "%d: set data%d-tap 0x%08x @0x%p\n",
+				ch, i, vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
+		}
+
+		/* Configure CLK TX TAPDLY */
+		vals = readl(host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+		vals &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
+		vals |= TCC803X_SDHC_MK_TX_CLKDLY(ch, tap_delays->clk_tx_tap_delay);
+		writel(vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+		pr_debug(DRIVER_NAME "%d: set clk-tx-tap 0x%08x @0x%p\n",
+				ch, vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	}
+#endif
 
 	{
 		temp_val = 0x00000002;
@@ -2338,28 +2379,52 @@ static int tcc_mmc_tap_delay_parse_dt(struct tcc_mmc_host *host, struct device_n
 	struct mmc_host *mmc = host->mmc;
 	u32 taps;
 
-	if(!of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
-		tap_delays->clk_tap_delay &= ~TCCSDHC_TAPDLY_OTAP_SEL_MASK;
-		tap_delays->clk_tap_delay |= TCCSDHC_TAPDLY_OTAP_SEL(taps);
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "tap-delay 0x%x\n", tap_delays->clk_tap_delay);
-	}
+#ifdef CONFIG_ARCH_TCC803X
+	if(system_rev == 0)
+#endif
+	{
+		if(!of_property_read_u32(np, "tcc-mmc-clk-out-tap", &taps)) {
+			tap_delays->clk_tap_delay &= ~TCCSDHC_TAPDLY_OTAP_SEL_MASK;
+			tap_delays->clk_tap_delay |= TCCSDHC_TAPDLY_OTAP_SEL(taps);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "tap-delay 0x%x\n", tap_delays->clk_tap_delay);
+		}
 
-	if(!of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
-		tap_delays->cmd_tap_delay = TCCSDHC_MK_CMDDLY(taps);
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "cmd-delay 0x%x\n", tap_delays->cmd_tap_delay);
-	}
+		if(!of_property_read_u32(np, "tcc-mmc-cmd-tap", &taps)) {
+			tap_delays->cmd_tap_delay = TCCSDHC_MK_CMDDLY(taps);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "cmd-delay 0x%x\n", tap_delays->cmd_tap_delay);
+		}
 
-	if(!of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
-		tap_delays->data01_tap_delay = TCCSDHC_MK_DATADLY(taps);
-		tap_delays->data23_tap_delay = TCCSDHC_MK_DATADLY(taps);
-		tap_delays->data45_tap_delay = TCCSDHC_MK_DATADLY(taps);
-		tap_delays->data67_tap_delay = TCCSDHC_MK_DATADLY(taps);
+		if(!of_property_read_u32(np, "tcc-mmc-data-tap", &taps)) {
+			tap_delays->data01_tap_delay = TCCSDHC_MK_DATADLY(taps);
+			tap_delays->data23_tap_delay = TCCSDHC_MK_DATADLY(taps);
+			tap_delays->data45_tap_delay = TCCSDHC_MK_DATADLY(taps);
+			tap_delays->data67_tap_delay = TCCSDHC_MK_DATADLY(taps);
 
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data01-delay 0x%x\n", tap_delays->data01_tap_delay);
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data23-delay 0x%x\n", tap_delays->data23_tap_delay);
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data45-delay 0x%x\n", tap_delays->data45_tap_delay);
-		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data67-delay 0x%x\n", tap_delays->data67_tap_delay);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data01-delay 0x%x\n", tap_delays->data01_tap_delay);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data23-delay 0x%x\n", tap_delays->data23_tap_delay);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data45-delay 0x%x\n", tap_delays->data45_tap_delay);
+			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "data67-delay 0x%x\n", tap_delays->data67_tap_delay);
+		}
 	}
+#ifdef CONFIG_ARCH_TCC803X
+	else {
+		u32 taps[4] = {TCC803X_SDHC_CLKOUTDLY_DEF_TAP,
+			TCC803X_SDHC_CMDDLY_DEF_TAP,
+			TCC803X_SDHC_DATADLY_DEF_TAP,
+			TCC803X_SDHC_CLK_TXDLY_DEF_TAP };
+
+		if(!of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4)) {
+			/* in case of tcc803x, tcc-mmc-taps is for rev. 1 */
+			tap_delays->clk_tap_delay = taps[0];
+			tap_delays->cmd_tap_delay = taps[1];
+			tap_delays->data01_tap_delay = taps[2];
+			tap_delays->clk_tx_tap_delay = taps[3]; /* only for tcc803x rev. 1 */
+		}
+
+		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "default taps 0x%x 0x%x 0x%x 0x%x\n",
+			tap_delays->clk_tap_delay, tap_delays->cmd_tap_delay, tap_delays->data01_tap_delay, tap_delays->clk_tx_tap_delay);
+	}
+#endif
 
 
 	return 0;
