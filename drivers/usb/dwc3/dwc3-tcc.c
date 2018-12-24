@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2013 Telechips, Inc.
  *
@@ -22,9 +23,9 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/cpufreq.h>
+#include <asm/system_info.h>
 #include "core.h"
 #include "io.h"
-//#include <asm/system_info.h>
 
 typedef struct _USBPHYCFG
 {
@@ -45,6 +46,51 @@ typedef struct _USBPHYCFG
 	volatile unsigned int		U30_PCR2;				//   0x38  USB 3.0 PHY Parameter Control Register Set 2 
 	volatile unsigned int 		U30_SWUTMI;				//   0x3C  USB 3.0 UTMI Software Control Register
 } USBPHYCFG, *PUSBPHYCFG;
+
+#if defined(CONFIG_ARCH_TCC803X)
+typedef struct _USBSSPHYCFG
+{
+	volatile unsigned int       U30_CLKMASK;			// 0x0
+	volatile unsigned int       U30_SWRESETN;			// 0x4
+	volatile unsigned int       U30_PWRCTRL;			// 0x8
+	volatile unsigned int       U30_OVERCRNT;			// 0xC
+    volatile unsigned int       U30_PCFG0;              // 0x10  R/W    USB PHY Configuration Register0
+    volatile unsigned int       U30_PCFG1;              // 0x14  R/W    USB PHY Configuration Register1
+    volatile unsigned int       U30_PCFG2;              // 0x18  R/W    USB PHY Configuration Register2
+    volatile unsigned int       U30_PCFG3;              // 0x1c  R/W    USB PHY Configuration Register3
+    volatile unsigned int       U30_PCFG4;              // 0x20  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG5;              // 0x24  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG6;              // 0x28  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG7;              // 0x2C  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG8;              // 0x30  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG9;              // 0x34  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG10;              // 0x38  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG11;              // 0x3C  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG12;              // 0x40  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG13;              // 0x44  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG14;              // 0x48  R/W    USB PHY Configuration Register4
+    volatile unsigned int       U30_PCFG15;              // 0x4C  R/W    USB PHY Configuration Register4
+    volatile unsigned int       reserved0[10];           // 0x50~74  R/W    USB PHY Configuration Register4
+	volatile unsigned int 		U30_PFLT;				// 0x78  R/W 	 USB PHY Filter Configuration Register
+	volatile unsigned int 		U30_PINT;				// 0x7C  R/W 	 USB PHY Interrupt Register
+	volatile unsigned int       U30_LCFG;               // 0x80  R/W    USB 3.0 LINK Controller Configuration Register Set 0 
+	volatile unsigned int 		U30_PCR0;				//   0x84  USB 3.0 PHY Parameter Control Register Set 0 
+	volatile unsigned int   	U30_PCR1;				//   0x88  USB 3.0 PHY Parameter Control Register Set 1 
+	volatile unsigned int		U30_PCR2;				//   0x8C  USB 3.0 PHY Parameter Control Register Set 2 
+	volatile unsigned int 		U30_SWUTMI;				//   0x90  USB 3.0 UTMI Software Control Register
+	volatile unsigned int 		U30_DBG0;				//   0x94  USB 3.0 UTMI Software Control Register
+	volatile unsigned int 		U30_DBG1;				//   0x98  USB 3.0 UTMI Software Control Register
+	volatile unsigned int 		reserved[1];			//   0x9C  USB 3.0 UTMI Software Control Register
+    volatile unsigned int       FPHY_PCFG0;              // 0xA0  R/W    USB PHY Configuration Register0
+    volatile unsigned int       FPHY_PCFG1;              // 0xA4  R/W    USB PHY Configuration Register1
+    volatile unsigned int       FPHY_PCFG2;              // 0xA8  R/W    USB PHY Configuration Register2
+    volatile unsigned int       FPHY_PCFG3;              // 0xAc  R/W    USB PHY Configuration Register3
+    volatile unsigned int       FPHY_PCFG4;              // 0xB0  R/W    USB PHY Configuration Register4
+    volatile unsigned int       FPHY_LCFG0;              // 0xB4  R/W    USB PHY Configuration Register4
+    volatile unsigned int       FPHY_LCFG1;              // 0xB8  R/W    USB PHY Configuration Register4
+} USBSSPHYCFG, *PUSBSSPHYCFG;
+#endif
+
 
 #define PMU_ISOL		0x09C
 #define U30_PHY_ISOL	(1<<6)
@@ -336,11 +382,144 @@ unsigned int dwc3_tcc_write_u30phy_reg(struct dwc3_tcc	*tcc, unsigned int addres
 	else return(0); // fail
 }
 
+//After Rev_1
+unsigned int dwc3_tcc_read_ss_u30phy_reg(struct dwc3_tcc *tcc, unsigned int address)
+{
+    PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+    unsigned int tmp;
+    unsigned int read_data;
+
+    // address capture phase
+    USBPHYCFG->U30_PCR0 = address;// write addr
+    USBPHYCFG->U30_PCR2 |= 0x1; // capture addr
+
+    while (1) {
+        tmp = USBPHYCFG->U30_PCR2;
+        tmp = (tmp>>16)&0x1;
+        if (tmp==1) break; // check ack == 1
+    }
+
+    USBPHYCFG->U30_PCR2 &= ~0x1; // clear capture addr
+
+    while (1) {
+        tmp = USBPHYCFG->U30_PCR2;
+        tmp = (tmp>>16)&0x1;
+        if (tmp==0) break; // check ack == 0
+    }
+
+    // read phase
+    USBPHYCFG->U30_PCR2 |= 0x1<<8; // set read
+    while (1) {
+        tmp = USBPHYCFG->U30_PCR2;
+        tmp = (tmp>>16)&0x1;
+        if (tmp==1) break; // check ack == 1
+    }
+
+    read_data = USBPHYCFG->U30_PCR1;    // read data
+
+    USBPHYCFG->U30_PCR2 &= ~(0x1<<8); // clear read
+    while (1) {
+        tmp = USBPHYCFG->U30_PCR2;
+        tmp = (tmp>>16)&0x1;
+        if (tmp==0) break; // check ack == 0
+    }
+
+    return(read_data);
+}
+
+void dwc3_tcc_read_ss_u30phy_reg_all (struct dwc3_tcc	*tcc) {
+	unsigned int read_data;
+	unsigned int i;
+
+	for (i=0;i<0x37;i++) {
+		read_data = dwc3_tcc_read_ss_u30phy_reg(tcc,i);
+		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+	}
+	
+	for (i=0x1000;i<0x1030;i++) {
+		read_data = dwc3_tcc_read_ss_u30phy_reg(tcc,i);
+		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+	}
+}
+
+unsigned int dwc3_tcc_write_ss_u30phy_reg(struct dwc3_tcc	*tcc, unsigned int address, 
+	unsigned int write_data)
+{
+	PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+	unsigned int tmp;
+	unsigned int read_data;
+
+	// address capture phase
+	USBPHYCFG->U30_PCR0 = address; // write addr
+	USBPHYCFG->U30_PCR2 |= 0x1; // capture addr
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==1) break; // check ack == 1
+	}
+	USBPHYCFG->U30_PCR2 &= ~(0x1); // clear capture addr
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==0) break; // check ack == 0
+	}
+
+	// write phase
+	USBPHYCFG->U30_PCR0 = write_data; // write data
+	USBPHYCFG->U30_PCR2 |= 0x1<<4; // set capture data
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==1) break; // check ack == 1
+	}
+	USBPHYCFG->U30_PCR2 &= ~(0x1<<4); // clear capture data
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==0) break; // check ack == 0
+	}
+	USBPHYCFG->U30_PCR2 |= 0x1<<12; // set write
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==1) break; // check ack == 1
+	}
+	USBPHYCFG->U30_PCR2 &= ~(0x1<<12); // clear write
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==0) break; // check ack == 0
+	}
+
+	// read phase
+	USBPHYCFG->U30_PCR2 |= 0x1<<8; // set read
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==1) break; // check ack == 1
+	}
+	read_data = USBPHYCFG->U30_PCR1; // read data
+	USBPHYCFG->U30_PCR2 &= ~(0x1<<8); // clear read
+	while (1) {
+	  tmp = USBPHYCFG->U30_PCR2;
+	  tmp = (tmp>>16)&0x1;
+	  if (tmp==0) break; // check ack == 0
+	}
+	if (read_data==write_data) return(1); // success
+	else return(0); // fail
+}
+
 static ssize_t dwc3_tcc_phy_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-
-	dwc3_tcc_read_u30phy_reg_all(tcc);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_read_u30phy_reg_all(tcc);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_read_ss_u30phy_reg_all(tcc);
+	#endif
 
 	return 0;
 }
@@ -349,9 +528,14 @@ static ssize_t dwc3_tcc_phy_store(struct device *dev, struct device_attribute *a
 	const char *buf, size_t count)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-
-	dwc3_tcc_read_u30phy_reg_all(tcc);
-
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_read_u30phy_reg_all(tcc);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_read_ss_u30phy_reg_all(tcc);
+	#endif
 	return count;
 }
 
@@ -360,7 +544,16 @@ static DEVICE_ATTR(phydump, S_IRUGO | S_IWUSR, dwc3_tcc_phy_show, dwc3_tcc_phy_s
 static ssize_t dwc3_tcc_ssc_ovrd_in_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+	unsigned int read_data = 0;
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif	
+		read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		read_data = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x13);
+	#endif
+
 
 	return sprintf(buf, "ssc_ovrd_in:0x%08x\n",read_data);
 }
@@ -369,12 +562,27 @@ static ssize_t dwc3_tcc_ssc_ovrd_in_store(struct device *dev, struct device_attr
 	const char *buf, size_t count)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+	unsigned int uTmp = 0;
 	uint32_t val = simple_strtoul(buf, NULL, 16);
 
-	BITCSET(uTmp, 0xFF, val);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+	#endif
 
-	dwc3_tcc_write_u30phy_reg(tcc, 0x13, uTmp);
+	BITCSET(uTmp, 0xFF, val);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_write_u30phy_reg(tcc, 0x13, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_write_ss_u30phy_reg(tcc, 0x13, uTmp);
+	#endif
 
 	return count;
 }
@@ -384,7 +592,15 @@ static DEVICE_ATTR(ssc_ovrd_in, 0644, dwc3_tcc_ssc_ovrd_in_show, dwc3_tcc_ssc_ov
 static ssize_t dwc3_tcc_ssc_asic_in_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x16);
+	unsigned int read_data = 0;
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_read_u30phy_reg(tcc, 0x16);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_read_ss_u30phy_reg(tcc, 0x16);
+	#endif
 
 	return sprintf(buf, "ssc_ovrd_in:0x%08x\n",read_data);
 }
@@ -393,12 +609,27 @@ static ssize_t dwc3_tcc_ssc_asic_in_store(struct device *dev, struct device_attr
 	const char *buf, size_t count)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x16);
+	unsigned int uTmp = 0;
 	uint32_t val = simple_strtoul(buf, NULL, 16);
 
-	BITCSET(uTmp, 0xFF, val);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x16);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x16);
+	#endif	
 
-	dwc3_tcc_write_u30phy_reg(tcc, 0x16, uTmp);
+	BITCSET(uTmp, 0xFF, val);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_write_u30phy_reg(tcc, 0x16, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_write_u30phy_reg(tcc, 0x16, uTmp);
+	#endif
 
 	return count;
 }
@@ -408,7 +639,16 @@ static DEVICE_ATTR(ssc_asic_in, 0644, dwc3_tcc_ssc_asic_in_show, dwc3_tcc_ssc_as
 static ssize_t dwc3_tcc_rxboost_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+	unsigned int read_data = 0;
+	
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+	#endif	
 
 	return sprintf(buf, "dwc3 tcc: PHY cfg - RX BOOST: 0x%x\n", ((read_data & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
 }
@@ -420,15 +660,36 @@ static ssize_t dwc3_tcc_rxboost_store(struct device *dev, struct device_attribut
 	unsigned int uTmp, tmp;
 	uint32_t val = simple_strtoul(buf, NULL, 16);
 
-	uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);	// get the rx_boost value
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);	// get the rx_boost value
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		uTmp = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x1024);	// get the rx_boost value
+	#endif
 	tmp = uTmp;
 
 	BITCSET(uTmp, RX_BOOST_MASK, val << RX_BOOST_SHIFT);    // set rx_boost value
 	uTmp |= Hw5;
 
-	dwc3_tcc_write_u30phy_reg(tcc, 0x1024, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_write_u30phy_reg(tcc, 0x1024, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_write_ss_u30phy_reg(tcc, 0x1024, uTmp);
+	#endif
 
-	uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);	// get the rx_boost value
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		uTmp = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x1024);	// get the rx_boost value
+	#endif
 
 	printk("dwc3 tcc: PHY cfg - RX BOOST: 0x%x -> [0x%x]\n"
 		, ((tmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT)
@@ -442,7 +703,16 @@ static DEVICE_ATTR(rx_boost, 0644, dwc3_tcc_rxboost_show, dwc3_tcc_rxboost_store
 static ssize_t dwc3_tcc_rx_eq_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
-	unsigned int read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	unsigned int read_data = 0;
+
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif	
+		read_data = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		read_data = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x1006);
+	#endif
 
 	return sprintf(buf, "dwc3 tcc: PHY cfg - RX EQ: 0x%x\n", ((read_data & RX_EQ_MASK ) >> RX_EQ_SHIFT));
 }
@@ -454,15 +724,36 @@ static ssize_t dwc3_tcc_rx_eq_store(struct device *dev, struct device_attribute 
 	unsigned int uTmp, tmp;
 	uint32_t val = simple_strtoul(buf, NULL, 16);
 
-	uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif	
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		uTmp = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x1006);
+	#endif
 	tmp = uTmp;
 
 	BITCSET(uTmp, RX_EQ_MASK, val << RX_EQ_SHIFT);
 	uTmp |= Hw11;
 
-	dwc3_tcc_write_u30phy_reg(tcc, 0x1006, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif
+		dwc3_tcc_write_u30phy_reg(tcc, 0x1006, uTmp);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		dwc3_tcc_write_ss_u30phy_reg(tcc, 0x1006, uTmp);
+	#endif
 
-	uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev==0)
+	#endif	
+		uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+	#if defined(CONFIG_ARCH_TCC803X)
+	else 
+		uTmp = dwc3_tcc_read_ss_u30phy_reg(tcc, 0x1006);
+	#endif
 
 	printk("dwc3 tcc: PHY cfg - RX EQ: 0x%x -> [0x%x]\n"
 		, ((tmp & RX_EQ_MASK) >> RX_EQ_SHIFT)
@@ -706,7 +997,8 @@ int dwc3_tcc_phy_ctrl(struct dwc3_tcc *tcc, int on_off)
 
 	unsigned int uTmp = 0;
 	int tmp_cnt;
-
+	
+	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
 	if(on_off== ON) {
 		//======================================================
 	    // 1.Power-on Reset
@@ -1045,6 +1337,302 @@ int dwc3_tcc_phy_ctrl(struct dwc3_tcc *tcc, int on_off)
 	return 0;
 }
 
+#if defined(CONFIG_ARCH_TCC803X)
+int dwc3_tcc_ss_phy_ctrl(struct dwc3_tcc *tcc, int on_off)
+{
+	PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+
+	unsigned int uTmp = 0;
+	unsigned int tmp_data = 0;
+	int tmp_cnt;
+
+	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
+	if(on_off== ON) {
+		//======================================================
+	    // 1.Power-on Reset
+		//======================================================
+		writel((readl(&USBPHYCFG->U30_PCFG4) | (Hw0)), &USBPHYCFG->U30_PCFG4); // PHY external Clock Configuration mode selection
+		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31), &USBPHYCFG->U30_LCFG); //vcc_reset_n
+		writel((readl(&USBPHYCFG->U30_PCFG0) & ~(Hw30)), &USBPHYCFG->U30_PCFG0); // phy_reset
+		writel((readl(&USBPHYCFG->FPHY_PCFG0) | (Hw31)), &USBPHYCFG->FPHY_PCFG0); // USB 2.0 PHY POR Set
+
+		uTmp = readl(&USBPHYCFG->U30_PCFG0);
+		uTmp &= ~(Hw25); // turn off SS circuits
+		uTmp &= ~(Hw24); // turn on HS circuits
+		writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		msleep(1);
+
+		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)), &USBPHYCFG->U30_PCFG0); // phy_reset
+		
+		//External SRAM Init Done Wait		
+		tmp_data = readl(&USBPHYCFG->U30_PCFG0);
+		tmp_data &= (Hw5);
+		while(tmp_data == 0)
+		{
+			tmp_data = readl(&USBPHYCFG->U30_PCFG0); 
+			tmp_data &= (Hw5);
+		}
+		
+		// External SRAM LD Done Set
+		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw3)), &USBPHYCFG->U30_PCFG0);
+
+		// USB 2.0 PHY POR Release
+		writel((readl(&USBPHYCFG->FPHY_PCFG0) & ~(Hw24)), &USBPHYCFG->FPHY_PCFG0);
+		writel((readl(&USBPHYCFG->FPHY_PCFG0) & ~(Hw31)), &USBPHYCFG->FPHY_PCFG0);
+
+		// LINK Reset Release
+		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)), &USBPHYCFG->U30_LCFG); // vcc_reset_n
+		
+		//printk("PHY = 0x%x \n", USBPHYCFG->U30_PCFG0);
+		tmp_cnt = 0;
+		while( tmp_cnt < 10000)
+		{
+			if(readl(&USBPHYCFG->U30_PCFG0) & 0x00000004)
+			{
+				break;
+			}
+
+			tmp_cnt++;
+			udelay(5);
+		}
+		printk("XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
+
+		//======================================================
+		// Initialize all registers
+		//======================================================
+		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw27 | Hw26 | Hw19 | Hw18 | Hw17 | Hw7)), &USBPHYCFG->U30_LCFG);
+
+#if defined(DWC3_SQ_TEST_MODE)		/* 016.02.22 */
+		//BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_MASK, dm << TX_DEEMPH_SHIFT);
+		//BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_MASK, dm_device<< TX_DEEMPH_SHIFT);
+		BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_MASK, dm_host<< TX_DEEMPH_SHIFT);
+
+		BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_6DB_MASK, dm_6db<< TX_DEEMPH_6DB_SHIFT);
+		BITCSET(USBPHYCFG->U30_PCFG3, TX_SWING_MASK, sw << TX_SWING_SHIFT);
+		printk("dwc3 tcc: PHY cfg - TX_DEEMPH 3.5dB: 0x%02x, TX_DEEMPH 6dB: 0x%02x, TX_SWING: 0x%02x\n", dm, dm_6db, sw);
+
+		USBPHYCFG->U30_PCFG4 	= 0x00200000;
+		USBPHYCFG->U30_PFLT  	= 0x00000351;
+		USBPHYCFG->U30_PINT  	= 0x00000000;
+		USBPHYCFG->U30_LCFG  	= 0x00C20018;
+		USBPHYCFG->U30_PCR0  	= 0x00000000;
+		USBPHYCFG->U30_PCR1  	= 0x00000000;
+		USBPHYCFG->U30_PCR2  	= 0x00000000;
+		USBPHYCFG->U30_SWUTMI	= 0x00000000;
+#endif
+		// Link global Reset
+		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31), &USBPHYCFG->U30_LCFG); // CoreRSTN (Cold Reset), active low
+
+#if defined(DWC3_SQ_TEST_MODE)		/* 016.02.22 */
+		//*(volatile unsigned long *)tcc_p2v(HwU30GCTL) |= (Hw11); // Link soft reset, active high
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GUSB3PIPECTL) |= (Hw31); // Phy SS soft reset, active high
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GUSB2PHYCFG) |= (Hw31); //Phy HS soft resetactive high
+		dwc3_bit_set(tcc->regs, DWC3_GCTL, DWC3_GCTL_CORESOFTRESET);
+		dwc3_bit_set(tcc->regs, DWC3_GUSB3PIPECTL(0), DWC3_GUSB3PIPECTL_PHYSOFTRST);
+		dwc3_bit_set(tcc->regs, DWC3_GUSB2PHYCFG(0), DWC3_GUSB2PHYCFG_PHYSOFTRST);
+#endif
+
+		if (!strncmp("high", maximum_speed, 4)) {
+			// USB20 Only Mode
+			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp |= Hw25; // turn off SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		} else if (!strncmp("super", maximum_speed, 5)) {
+			// USB 3.0
+			writel((readl(&USBPHYCFG->U30_LCFG) & ~(Hw28)), &USBPHYCFG->U30_LCFG); // disable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
+			uTmp = USBPHYCFG->U30_PCFG0;
+			uTmp &= ~(Hw25); // turn on SS circuits
+			uTmp &= ~(Hw24); // turn on HS circuits
+			uTmp &= ~(Hw30); // release PHY reset
+			writel(uTmp, &USBPHYCFG->U30_PCFG0);
+		}
+		mdelay(1);
+		// Release Reset Link global
+		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw30)), &USBPHYCFG->U30_PCFG0);
+		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw31)), &USBPHYCFG->U30_LCFG);
+
+#if defined(DWC3_SQ_TEST_MODE)		/* 016.02.22 */
+		//*(volatile unsigned long *)tcc_p2v(HwU30GCTL) &= ~(Hw11); //Release CoreSoftReset
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GUSB3PIPECTL) &= ~(Hw31); //Release Phy SS soft reset
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GUSB2PHYCFG) &= ~(Hw31); // Release Phy HS soft reset
+		//*(volatile unsigned long *)tcc_p2v(HwPMUU30PHY) |= (Hw9); //Release Phy reset
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GUSB2PHYCFG) &= ~(Hw6); // Disable Suspend
+		dwc3_bit_clear(tcc->regs, DWC3_GCTL, DWC3_GCTL_CORESOFTRESET);
+		dwc3_bit_clear(tcc->regs, DWC3_GUSB3PIPECTL(0), DWC3_GUSB3PIPECTL_PHYSOFTRST);
+		dwc3_bit_clear(tcc->regs, DWC3_GUSB2PHYCFG(0), DWC3_GUSB2PHYCFG_PHYSOFTRST);
+		dwc3_tcc898x_swreset(tcc, OFF);
+		dwc3_bit_clear(tcc->regs, DWC3_GUSB2PHYCFG(0), DWC3_GUSB2PHYCFG_SUSPHY);
+
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GCTL) &= ~(Hw11); // Release CoreSoftReset
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GSBUSCFG0) &= ~0xff;
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GSBUSCFG0) |= Hw1; // INCR4 Burst Enable
+	    //*(volatile unsigned long *)tcc_p2v(HwU30GSBUSCFG1) |= 0xf<<8; // 16 burst request limit
+		dwc3_bit_clear(tcc->regs, DWC3_GCTL, DWC3_GCTL_CORESOFTRESET);
+		dwc3_bit_clear(tcc->regs, DWC3_GSBUSCFG0, 0xff);
+		dwc3_bit_set(tcc->regs, DWC3_GSBUSCFG0, Hw1); // INCR4 Burst Enable
+		dwc3_bit_set(tcc->regs, DWC3_GSBUSCFG1, (0xf<<8)); // 6 burst request limit
+
+	    // GCTL
+	    uTmp = dwc3_readl(tcc->regs, DWC3_GCTL);
+	    uTmp &= ~(Hw7|Hw6|Hw5|Hw4|Hw3);
+	    uTmp &= ~0xfff80000; // clear 31:19
+	    uTmp |= 3<<19; // PwrDnScale = 46.875 / 16 = 3
+	//    uTmp |= Hw10; // SOFITPSYNC enable
+	    uTmp &= ~Hw10; // SOFITPSYNC disable
+	    dwc3_writel(tcc->regs, DWC3_GCTL, uTmp);
+
+	    // Set REFCLKPER
+	    uTmp = dwc3_readl(tcc->regs, DWC3_GUCTL);
+	    uTmp &= ~0xffc00000; // clear REFCLKPER
+	    uTmp |= 41<<22; // REFCLKPER
+	    uTmp |= Hw15|Hw14;
+	    dwc3_writel(tcc->regs, DWC3_GUCTL, uTmp);
+
+	    // GFLADJ
+	    uTmp = dwc3_readl(tcc->regs, 0xc630/*GFLADJ*/);
+	    uTmp &= ~0xff7fff80;
+	    uTmp |= 10<<24;
+	    uTmp |= Hw23; // GFLADJ_REFCLK_LPM_SEL
+	    uTmp |= 2032<<8; // GFLADJ_REFCLK_FLADJ
+	    uTmp |= Hw7; // GFLADJ_30MHZ_REG_SEL
+	    dwc3_writel(tcc->regs, 0xc630/*GFLADJ*/, uTmp);
+
+	    // GUSB2PHYCFG
+	    uTmp = dwc3_readl(tcc->regs, DWC3_GUSB2PHYCFG(0));
+	    uTmp |= Hw30; // U2_FREECLK_EXISTS
+	    uTmp &= ~(Hw4); // UTMI+
+	    uTmp &= ~(Hw3); // UTMI+ 8bit
+	    uTmp |= 9<<10; // USBTrdTim = 9
+	    uTmp |= Hw8; // EnblSlpM
+	    dwc3_writel(tcc->regs, DWC3_GUSB2PHYCFG(0), uTmp);
+
+#if 0
+		// Set Host mode
+		uTmp = *(volatile unsigned long *)tcc_p2v(HwU30GCTL);
+		uTmp &= ~(Hw13|Hw12);
+		uTmp |= 0x1<<12; // PrtCapDir
+		*(volatile unsigned long *)tcc_p2v(HwU30GCTL) = uTmp;
+#endif
+
+		//USBPHYCFG->U30_PCFG0 |= Hw30;
+
+	    // Set REFCLKPER
+	    uTmp = dwc3_readl(tcc->regs, DWC3_GUCTL);
+	    uTmp &= ~0xffc00000; // clear REFCLKPER
+	    uTmp |= 41<<22; // REFCLKPER
+	    uTmp &= ~(Hw15);
+	    dwc3_writel(tcc->regs, DWC3_GUCTL, uTmp);
+
+		//=====================================================================
+		// Tx Deemphasis setting
+		// Global USB3 PIPE Control Register (GUSB3PIPECTL0): 0x1100C2C0
+		//=====================================================================
+		dwc3_bit_clear(tcc->regs, DWC3_GUSB3PIPECTL(0), TX_DEEMPH_SET_MASK);
+		dwc3_bit_set(tcc->regs, DWC3_GUSB3PIPECTL(0), sel_dm << TX_DEEMPH_SET_SHIFT);
+
+		if(sel_dm == 0)
+			printk("dwc3 tcc: PHY cfg - 6dB de-emphasis\n");
+		else if (sel_dm == 1)
+			printk("dwc3 tcc: PHY cfg - 3.5dB de-emphasis (default)\n");
+		else if (sel_dm == 2)
+			printk("dwc3 tcc: PHY cfg - de-emphasis\n");
+
+		//=====================================================================
+		// Rx EQ setting
+		//=====================================================================
+		if ( rx_eq != 0xFF)
+		{
+			//printk("dwc3 tcc: phy cfg - EQ Setting\n");
+			//========================================
+			//	Read RX_OVER_IN_HI
+			//========================================
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+			//printk("Reset value - RX-OVRD: 0x%08X\n", uTmp);
+			//printk("Reset value - RX_EQ: 0x%X\n", ((uTmp & 0x00000700 ) >> 8));
+			//printk("\x1b[1;33m[%s:%d]rx_eq: %d\x1b[0m\n", __func__, __LINE__, rx_eq);
+			
+			BITCSET(uTmp, RX_EQ_MASK, rx_eq << RX_EQ_SHIFT);    
+			uTmp |= Hw11;
+			//printk("Set value - RX-OVRD: 0x%08X\n", uTmp);
+			//printk("Set value - RX_EQ: 0x%X\n", ((uTmp & 0x00000700 ) >> 8));
+
+			dwc3_tcc_write_u30phy_reg(tcc, 0x1006, uTmp);
+
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1006);
+			//printk("    Reload - RX-OVRD: 0x%08X\n", uTmp);
+			//printk("    Reload - RX_EQ: 0x%X\n", ((uTmp & 0x00000700 ) >> 8));
+			printk("dwc3 tcc: PHY cfg - RX EQ: 0x%x\n", ((uTmp & 0x00000700 ) >> 8));
+	    }
+		
+		//=====================================================================
+		// Rx Boost setting
+		//=====================================================================
+		if ( rx_boost != 0xFF)
+		{
+			//printk("dwc3 tcc: phy cfg - Rx Boost Setting\n");
+			//========================================
+			//	Read RX_OVER_IN_HI
+			//========================================
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+			//printk("Reset value - RX-ENPWR1: 0x%08X\n", uTmp);
+			//printk("Reset value - RX_BOOST: 0x%X\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
+			//printk("\x1b[1;33m[%s:%d]rx_boost: %d\x1b[0m\n", __func__, __LINE__, rx_boost);
+			
+			BITCSET(uTmp, RX_BOOST_MASK, rx_boost << RX_BOOST_SHIFT);    
+			uTmp |= Hw5;
+			//printk("Reset value - RX-ENPWR1: 0x%08X\n", uTmp);
+			//printk("Reset value - RX_BOOST: 0x%X\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
+
+			dwc3_tcc_write_u30phy_reg(tcc, 0x1024, uTmp);
+
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x1024);
+			//printk("    Reload value - RX-ENPWR1: 0x%08X\n", uTmp);
+			//printk("    Reload value - RX_BOOST: 0x%X\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
+			printk("dwc3 tcc: PHY cfg - RX BOOST: 0x%x\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
+	   	}
+
+		if ( ssc != 0xFF)
+		{
+			//printk("dwc3 tcc: phy cfg - TSSC Setting\n");
+			//========================================
+			//	Read SSC_OVER_IN
+			//========================================
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+
+			BITCSET(uTmp, SSC_REF_CLK_SEL_MASK, ssc);
+
+			dwc3_tcc_write_u30phy_reg(tcc, 0x13, uTmp);
+
+			uTmp = dwc3_tcc_read_u30phy_reg(tcc, 0x13);
+			printk("dwc3 tcc: PHY cfg - SSC_REF_CLK_SEL: 0x%x\n", uTmp & SSC_REF_CLK_SEL_MASK);
+		}
+#endif /* 0 */
+		
+		mdelay(10);
+
+	    //while(1) {
+		   // uTmp = USBPHYCFG->U30_PCFG0;
+		   // uTmp = (uTmp>>31)&0x1;
+	    //
+		   // if (uTmp){
+				//printk("dwc3 tcc: PHY init ok - %s speed support\n", maximum_speed);
+				//break;
+		   // }
+	    //}
+	} else if (on_off == OFF) {
+		// USB 3.0 PHY Power down
+		printk("dwc3 tcc: PHY power down\n");
+		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
+		mdelay(10);
+		uTmp = USBPHYCFG->U30_PCFG0;
+	}
+
+	return 0;
+}
+#endif
+
 int dwc3_tcc_power_ctrl(struct dwc3_tcc *tcc, int on_off)
 {
 	int err = 0;
@@ -1170,7 +1758,14 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 	tcc->dwc3	= dwc3;
 	tcc->dev	= &pdev->dev;
 	/* PHY initialization */
-	dwc3_tcc_phy_ctrl(tcc, ON);
+#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+#endif
+		dwc3_tcc_phy_ctrl(tcc, ON);
+#if defined(CONFIG_ARCH_TCC803X)
+	else
+		dwc3_tcc_ss_phy_ctrl(tcc, ON);
+#endif
 #ifdef DWC3_SQ_TEST_MODE		/* 016.08.26 */
 	devm_iounmap(&pdev->dev, tcc->regs);
 #endif /* DWC3_SQ_TEST_MODE */
@@ -1265,7 +1860,14 @@ static int dwc3_tcc_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(tcc->phy_clk);
 
-	dwc3_tcc_phy_ctrl(tcc, OFF);
+#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+#endif
+		dwc3_tcc_phy_ctrl(tcc, OFF);
+#if defined(CONFIG_ARCH_TCC803X)
+	else
+		dwc3_tcc_ss_phy_ctrl(tcc, OFF);
+#endif
 
 	clk_disable_unprepare(tcc->hclk);
 
@@ -1291,7 +1893,14 @@ static int dwc3_tcc_suspend(struct device *dev)
 	struct dwc3_tcc	*tcc =	platform_get_drvdata(to_platform_device(dev));
 
 	// usb phy power down
-	dwc3_tcc_phy_ctrl(tcc, OFF);
+#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+#endif
+		dwc3_tcc_phy_ctrl(tcc, OFF);
+#if defined(CONFIG_ARCH_TCC803X)
+	else
+		dwc3_tcc_ss_phy_ctrl(tcc, OFF);
+#endif
 	clk_disable_unprepare(tcc->phy_clk);
 
 	// vbus current status backup
@@ -1318,7 +1927,14 @@ static int dwc3_tcc_resume(struct device *dev)
 
 	clk_prepare_enable(tcc->phy_clk);
 
-	dwc3_tcc_phy_ctrl(tcc, ON);
+#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+#endif
+		dwc3_tcc_phy_ctrl(tcc, ON);
+#if defined(CONFIG_ARCH_TCC803X)
+	else
+		dwc3_tcc_ss_phy_ctrl(tcc, ON);
+#endif
 
 //   writel(0x1, tcc_p2v(0x16370004)); // uart: suspend debug
    return 0;
