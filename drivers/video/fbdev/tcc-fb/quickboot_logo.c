@@ -1,7 +1,8 @@
-/* drivers/video/msm/logo.c
+/* 
  *
  * Show Logo in RLE 565 format
  *
+ * Copyright (C) 2013 Telechips Inc.
  * Copyright (C) 2008 Google Incorporated
  *
  * This software is licensed under the terms of the GNU General Public
@@ -14,6 +15,7 @@
  * GNU General Public License for more details.
  *
  */
+ 
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/fb.h>
