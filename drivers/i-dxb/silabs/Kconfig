@@ -1,0 +1,8 @@
+# 
+# SiLabs devices
+#
+
+comment "SiLabs devices"
+	depends on iDxB_SUPPORT
+
+source "drivers/i-dxb/silabs/si2166/Kconfig"

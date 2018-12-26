@@ -1,0 +1,14 @@
+#
+# iDxB configuration
+#
+
+menu "iDxB support"
+
+comment "iDxB support"
+
+config iDxB_SUPPORT
+	bool "iDxB support"
+
+source "drivers/i-dxb/silabs/Kconfig"
+
+endmenu
