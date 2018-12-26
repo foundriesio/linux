@@ -90,6 +90,7 @@ patches-*
 
 # quilt's files
 patches
+!drivers/i-dxb/silabs/si2166/patches
 series
 
 # cscope files
