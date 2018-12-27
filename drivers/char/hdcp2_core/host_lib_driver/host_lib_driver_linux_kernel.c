@@ -46,11 +46,11 @@
 #define MAX_ESM_DEVICES 16
 #define	USE_RESERVED_MEMORY
 
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) && defined(CONFIG_ANDROID)
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_HOST_DRV_VERSION "4.14_1.0.4"
+#define HDCP_HOST_DRV_VERSION "4.14_1.0.5"
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
@@ -798,6 +798,37 @@ int tcc_hdcp_misc_register(esm_device *dev)
 		dev->misc->fops = &tcc_hdcp_fops;
 		dev->misc->parent = dev->parent_dev;
 		ret = misc_register(dev->misc);
+#ifndef OPTEE_BASE_HDCP
+		if (unlikely(ret)) {
+			printk(KERN_ERR " %s - failed to register !!!\n", __func__);
+			return ret;
+		}
+		g_esm_dev = dev->misc->this_device;
+		of_dma_configure(g_esm_dev, NULL);
+		_dev_info(g_esm_dev, "registered.\n");
+
+#ifdef USE_RESERVED_MEMORY
+		g_rev_mem.code_size = 0x30000;
+		g_rev_mem.data_size = 0x20000;
+		g_rev_mem.code =
+		dma_alloc_coherent(g_esm_dev, g_rev_mem.code_size, &g_rev_mem.code_base, GFP_KERNEL);
+		if (!g_rev_mem.code) {
+			printk(
+				KERN_ERR " %s[%d] - no code memory : %d !!!\n", __func__, __LINE__,
+				g_rev_mem.code_size);
+			return -ENOMEM;
+		}
+
+		g_rev_mem.data =
+			dma_alloc_coherent(g_esm_dev, g_rev_mem.data_size, &g_rev_mem.data_base, GFP_KERNEL);
+		if (!g_rev_mem.data) {
+			printk(
+				KERN_ERR " %s[%d] - no data memory : %d !!!\n", __func__, __LINE__,
+				g_rev_mem.data_size);
+			return -ENOMEM;
+		}
+#endif
+#endif
 	}
 
 	if(ret < 0) {
@@ -820,6 +851,18 @@ end_process:
 int tcc_hdcp_misc_deregister(esm_device *dev)
 {
 	if(dev->misc) {
+#ifndef OPTEE_BASE_HDCP
+#ifdef	USE_RESERVED_MEMORY
+		if (!g_rev_mem.code) {
+			dma_free_coherent(g_esm_dev, g_rev_mem.code_size, g_rev_mem.code, g_rev_mem.code_base);
+			g_rev_mem.code = NULL;
+		}
+		if (!g_rev_mem.data) {
+			dma_free_coherent(g_esm_dev, g_rev_mem.data_size, g_rev_mem.data, g_rev_mem.data_base);
+			g_rev_mem.data = NULL;
+		}
+#endif
+#endif
 		misc_deregister(dev->misc);
 		kfree(dev->misc);
 		dev->misc = 0;
