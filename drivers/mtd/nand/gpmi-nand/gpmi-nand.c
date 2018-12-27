@@ -900,6 +900,10 @@ static int acquire_resources(struct gpmi_nand_data *this)
 	if (ret)
 		goto exit_regs;
 
+	ret = acquire_dma_channels(this);
+	if (ret)
+		goto exit_regs;
+
 	ret = gpmi_get_clks(this);
 	if (ret)
 		goto exit_clock;
@@ -2468,12 +2472,11 @@ static int gpmi_nand_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int gpmi_pm_suspend(struct device *dev)
 {
-	int ret;
+	struct gpmi_nand_data *this = dev_get_drvdata(dev);
 
+	release_dma_channels(this);
 	pinctrl_pm_select_sleep_state(dev);
-	ret = pm_runtime_force_suspend(dev);
-
-	return ret;
+	return 0;
 }
 
 static int gpmi_pm_resume(struct device *dev)
@@ -2481,14 +2484,11 @@ static int gpmi_pm_resume(struct device *dev)
 	struct gpmi_nand_data *this = dev_get_drvdata(dev);
 	int ret;
 
-	/* enable clock, acquire dma */
-	ret = pm_runtime_force_resume(dev);
-	if (ret) {
-		dev_err(this->dev, "Error in resume: %d\n", ret);
-		return ret;
-	}
-
 	pinctrl_pm_select_default_state(dev);
+
+	ret = acquire_dma_channels(this);
+	if (ret < 0)
+		return ret;
 
 	/* re-init the GPMI registers */
 	this->flags &= ~GPMI_TIMING_INIT_OK;
@@ -2521,8 +2521,6 @@ int gpmi_runtime_suspend(struct device *dev)
 
 	gpmi_disable_clk(this);
 	release_bus_freq(BUS_FREQ_HIGH);
-	release_dma_channels(this);
-
 	return 0;
 }
 
@@ -2536,11 +2534,6 @@ int gpmi_runtime_resume(struct device *dev)
 		return ret;
 
 	request_bus_freq(BUS_FREQ_HIGH);
-
-	ret = acquire_dma_channels(this);
-	if (ret < 0)
-		return ret;
-
 	return 0;
 }
 
