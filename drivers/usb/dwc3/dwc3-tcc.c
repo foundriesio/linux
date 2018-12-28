@@ -50,44 +50,44 @@ typedef struct _USBPHYCFG
 #if defined(CONFIG_ARCH_TCC803X)
 typedef struct _USBSSPHYCFG
 {
-	volatile unsigned int       U30_CLKMASK;			// 0x0
-	volatile unsigned int       U30_SWRESETN;			// 0x4
-	volatile unsigned int       U30_PWRCTRL;			// 0x8
-	volatile unsigned int       U30_OVERCRNT;			// 0xC
-    volatile unsigned int       U30_PCFG0;              // 0x10  R/W    USB PHY Configuration Register0
-    volatile unsigned int       U30_PCFG1;              // 0x14  R/W    USB PHY Configuration Register1
-    volatile unsigned int       U30_PCFG2;              // 0x18  R/W    USB PHY Configuration Register2
-    volatile unsigned int       U30_PCFG3;              // 0x1c  R/W    USB PHY Configuration Register3
-    volatile unsigned int       U30_PCFG4;              // 0x20  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG5;              // 0x24  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG6;              // 0x28  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG7;              // 0x2C  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG8;              // 0x30  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG9;              // 0x34  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG10;              // 0x38  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG11;              // 0x3C  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG12;              // 0x40  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG13;              // 0x44  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG14;              // 0x48  R/W    USB PHY Configuration Register4
-    volatile unsigned int       U30_PCFG15;              // 0x4C  R/W    USB PHY Configuration Register4
-    volatile unsigned int       reserved0[10];           // 0x50~74  R/W    USB PHY Configuration Register4
-	volatile unsigned int 		U30_PFLT;				// 0x78  R/W 	 USB PHY Filter Configuration Register
-	volatile unsigned int 		U30_PINT;				// 0x7C  R/W 	 USB PHY Interrupt Register
-	volatile unsigned int       U30_LCFG;               // 0x80  R/W    USB 3.0 LINK Controller Configuration Register Set 0 
-	volatile unsigned int 		U30_PCR0;				//   0x84  USB 3.0 PHY Parameter Control Register Set 0 
-	volatile unsigned int   	U30_PCR1;				//   0x88  USB 3.0 PHY Parameter Control Register Set 1 
-	volatile unsigned int		U30_PCR2;				//   0x8C  USB 3.0 PHY Parameter Control Register Set 2 
-	volatile unsigned int 		U30_SWUTMI;				//   0x90  USB 3.0 UTMI Software Control Register
-	volatile unsigned int 		U30_DBG0;				//   0x94  USB 3.0 UTMI Software Control Register
-	volatile unsigned int 		U30_DBG1;				//   0x98  USB 3.0 UTMI Software Control Register
-	volatile unsigned int 		reserved[1];			//   0x9C  USB 3.0 UTMI Software Control Register
-    volatile unsigned int       FPHY_PCFG0;              // 0xA0  R/W    USB PHY Configuration Register0
-    volatile unsigned int       FPHY_PCFG1;              // 0xA4  R/W    USB PHY Configuration Register1
-    volatile unsigned int       FPHY_PCFG2;              // 0xA8  R/W    USB PHY Configuration Register2
-    volatile unsigned int       FPHY_PCFG3;              // 0xAc  R/W    USB PHY Configuration Register3
-    volatile unsigned int       FPHY_PCFG4;              // 0xB0  R/W    USB PHY Configuration Register4
-    volatile unsigned int       FPHY_LCFG0;              // 0xB4  R/W    USB PHY Configuration Register4
-    volatile unsigned int       FPHY_LCFG1;              // 0xB8  R/W    USB PHY Configuration Register4
+	volatile unsigned int       U30_CLKMASK;			// 0x0   USB 3.0 Clock Mask Register 
+	volatile unsigned int       U30_SWRESETN;			// 0x4   USB 3.0 S/W Reset Register
+	volatile unsigned int       U30_PWRCTRL;			// 0x8   USB 3.0 Power Control Register
+	volatile unsigned int       U30_OVERCRNT;			// 0xC   USB 3.0 Overcurrent Selection Register
+    volatile unsigned int       U30_PCFG0;              // 0x10  USB 3.0 PHY Configuration Register0
+    volatile unsigned int       U30_PCFG1;              // 0x14  USB 3.0 PHY Configuration Register1
+    volatile unsigned int       U30_PCFG2;              // 0x18  USB 3.0 PHY Configuration Register2
+    volatile unsigned int       U30_PCFG3;              // 0x1c  USB 3.0 PHY Configuration Register3
+    volatile unsigned int       U30_PCFG4;              // 0x20  USB 3.0 PHY Configuration Register4
+    volatile unsigned int       U30_PCFG5;              // 0x24  USB 3.0 PHY Configuration Register5
+    volatile unsigned int       U30_PCFG6;              // 0x28  USB 3.0 PHY Configuration Register6
+    volatile unsigned int       U30_PCFG7;              // 0x2C  USB 3.0 PHY Configuration Register7
+    volatile unsigned int       U30_PCFG8;              // 0x30  USB 3.0 PHY Configuration Register8
+    volatile unsigned int       U30_PCFG9;              // 0x34  USB 3.0 PHY Configuration Register9
+    volatile unsigned int       U30_PCFG10;             // 0x38  USB 3.0 PHY Configuration Register10
+    volatile unsigned int       U30_PCFG11;             // 0x3C  USB 3.0 PHY Configuration Register11
+    volatile unsigned int       U30_PCFG12;             // 0x40  USB 3.0 PHY Configuration Register12
+    volatile unsigned int       U30_PCFG13;             // 0x44  USB 3.0 PHY Configuration Register13
+    volatile unsigned int       U30_PCFG14;             // 0x48  USB 3.0 PHY Configuration Register14
+    volatile unsigned int       U30_PCFG15;             // 0x4C  USB 3.0 PHY Configuration Register15
+    volatile unsigned int       reserved0[10];          // 0x50~74 
+	volatile unsigned int 		U30_PFLT;				// 0x78  USB 3.0 PHY Filter Configuration Register
+	volatile unsigned int 		U30_PINT;				// 0x7C  USB 3.0 PHY Interrupt Register
+	volatile unsigned int       U30_LCFG;               // 0x80  USB 3.0 LINK Controller Configuration Register Set 0 
+	volatile unsigned int 		U30_PCR0;				// 0x84  USB 3.0 PHY Parameter Control Register Set 0 
+	volatile unsigned int   	U30_PCR1;				// 0x88  USB 3.0 PHY Parameter Control Register Set 1 
+	volatile unsigned int		U30_PCR2;				// 0x8C  USB 3.0 PHY Parameter Control Register Set 2 
+	volatile unsigned int 		U30_SWUTMI;				// 0x90  USB 3.0 PHY Software Control Register
+	volatile unsigned int 		U30_DBG0;				// 0x94  USB 3.0 LINK Controller debug Signal 0
+	volatile unsigned int 		U30_DBG1;				// 0x98  USB 3.0 LINK Controller debug Signal 0
+	volatile unsigned int 		reserved[1];			// 0x9C  
+    volatile unsigned int       FPHY_PCFG0;             // 0xA0  USB 3.0 High-speed PHY Configuration Register0
+    volatile unsigned int       FPHY_PCFG1;             // 0xA4  USB 3.0 High-speed PHY Configuration Register1
+    volatile unsigned int       FPHY_PCFG2;             // 0xA8  USB 3.0 High-speed PHY Configuration Register2
+    volatile unsigned int       FPHY_PCFG3;             // 0xAc  USB 3.0 High-speed PHY Configuration Register3
+    volatile unsigned int       FPHY_PCFG4;             // 0xB0  USB 3.0 High-speed PHY Configuration Register4
+    volatile unsigned int       FPHY_LCFG0;             // 0xB4  USB 3.0 High-speed LINK Controller Configuration Register0
+    volatile unsigned int       FPHY_LCFG1;             // 0xB8  USB 3.0 High-speed LINK Controller Configuration Register1
 } USBSSPHYCFG, *PUSBSSPHYCFG;
 #endif
 
@@ -135,6 +135,7 @@ struct dwc3_tcc {
 #define TXVRT_MASK (0xF << TXVRT_SHIFT)
 #define TXRISE_SHIFT 10
 #define TXRISE_MASK (0x3 << TXRISE_SHIFT)
+#define ISSET(X, MASK) ((unsigned long)(X)&((unsigned long)(MASK)))
 
 
 //#define DWC3_SQ_TEST_MODE
@@ -369,6 +370,7 @@ unsigned int dwc3_tcc_write_u30phy_reg(struct dwc3_tcc	*tcc, unsigned int addres
 }
 
 //After Rev_1
+#if defined(CONFIG_ARCH_TCC803X)
 unsigned int dwc3_tcc_read_ss_u30phy_reg(struct dwc3_tcc *tcc, unsigned int address)
 {
     PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
@@ -494,6 +496,7 @@ unsigned int dwc3_tcc_write_ss_u30phy_reg(struct dwc3_tcc	*tcc, unsigned int add
 	if (read_data==write_data) return(1); // success
 	else return(0); // fail
 }
+#endif
 
 static ssize_t dwc3_tcc_phy_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -1618,6 +1621,109 @@ int dwc3_tcc_ss_phy_ctrl(struct dwc3_tcc *tcc, int on_off)
 	return 0;
 }
 #endif
+/**
+ * Show the current value of the USB30 PHY Configuration Register2 (U30_PCFG2)
+ */
+static ssize_t dwc3_eyep_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+	struct dwc3_tcc *tcc =  platform_get_drvdata(to_platform_device(dev));
+    uint32_t val;
+    uint32_t reg;
+    char str[256]={0};
+
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+	#endif
+	{
+    	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)tcc->phy_regs;
+    	reg = readl(&pUSBPHYCFG->U30_PCFG2);
+    	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
+	}
+	#if defined(CONFIG_ARCH_TCC803X)
+	else
+	{
+    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+    	reg = readl(&pUSBPHYCFG->FPHY_PCFG2);
+    	val = reg & 0xF;
+	}
+	#endif
+
+    if( 0x0 <= val && val <= 0xF) {
+        sprintf(str, "%ld%ld%ld%ld",
+                ISSET(val, 0x8) >> 3,
+                ISSET(val, 0x4) >> 2,
+                ISSET(val, 0x2) >> 1,
+                ISSET(val, 0x1) >> 0);
+    }
+
+    return sprintf(buf,
+            "U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+}
+
+/**
+ * HS DC Voltage Level is set
+ */
+static ssize_t dwc3_eyep_store(struct device *dev,
+        struct device_attribute *attr,
+        const char *buf, size_t count)
+{
+	struct dwc3_tcc *tcc =  platform_get_drvdata(to_platform_device(dev));
+    uint32_t val = simple_strtoul(buf, NULL, 2);
+    uint32_t reg = 0;
+
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+	#endif
+	{
+    	PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)tcc->phy_regs;
+		reg = readl(&pUSBPHYCFG->U30_PCFG2);
+	}
+	#if defined(CONFIG_ARCH_TCC803X)
+	else
+	{
+    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+    	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
+	}
+	#endif
+
+    if(count - 1 < 4 || 4 < count - 1 ) {
+        printk("\nThis argument length is \x1b[1;33mnot 4\x1b[0m\n\n");
+        printk("\tUsage : echo \x1b[1;31mxxxx\x1b[0m > xhci_eyep\n\n");
+        printk("\t\t1) length of \x1b[1;32mxxxx\x1b[0m is 4\n");
+        printk("\t\t2) \x1b[1;32mx\x1b[0m is binary number(\x1b[1;31m0\x1b[0m or \x1b[1;31m1\x1b[0m)\n\n");
+        return count;
+    }
+    if(((buf[0] != '0') && (buf[0] != '1'))
+            || ((buf[1] != '0') && (buf[1] != '1'))
+            || ((buf[2] != '0') && (buf[2] != '1'))
+            || ((buf[3] != '0') && (buf[3] != '1'))) {
+        printk("\necho %c%c%c%c is \x1b[1;33mnot binary value\x1b[0m\n\n", buf[0], buf[1], buf[2], buf[3]);
+        printk("\tUsage : echo \x1b[1;31mxxxx\x1b[0m > xhci_eyep\n\n");
+        printk("\t\t1) \x1b[1;32mx\x1b[0m is binary number(\x1b[1;31m0\x1b[0m or \x1b[1;31m1\x1b[0m)\n\n");
+        return count;
+    }
+
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+	#endif
+	{
+		PUSBPHYCFG pUSBPHYCFG = (PUSBPHYCFG)tcc->phy_regs;
+    	BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
+    	writel(reg, &pUSBPHYCFG->U30_PCFG2);
+	}
+	#if defined(CONFIG_ARCH_TCC803X)
+	else
+	{
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)tcc->phy_regs;
+    	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
+		writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
+	}
+	#endif
+
+    return count;
+}
+static DEVICE_ATTR(dwc3_eyep, S_IRUGO | S_IWUSR, dwc3_eyep_show, dwc3_eyep_store);
 
 int dwc3_tcc_power_ctrl(struct dwc3_tcc *tcc, int on_off)
 {
@@ -1825,6 +1931,12 @@ static int  dwc3_tcc_probe(struct platform_device *pdev)
 		goto err1;
 	}
 #endif
+	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_eyep);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to create dwc3_eyep\n");
+		goto err1;
+	}
+
 	printk("%s:%d end\n", __func__, __LINE__);
 	return 0;
 
