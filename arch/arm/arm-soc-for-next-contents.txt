@@ -34,6 +34,8 @@ next/soc
 		https://git.kernel.org/pub/scm/linux/kernel/git/khilman/linux-amlogic tags/amlogic-soc
 	patch
 		ARM: omap2: avoid section mismatch warning
+	fixes
+		Merge branch 'fixes' into next/soc
 
 next/dt
 	sprd/dt
@@ -194,7 +196,7 @@ next/drivers
 		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.21/driver-part2-signed
 	drivers/pl353
 		https://github.com/Xilinx/linux-xlnx tags/zynq-soc-for-v5.0
-	qcom/drivers-2
+	qcom/drivers-3
 		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-drivers-for-4.21-2
 
 next/defconfig
@@ -221,10 +223,41 @@ next/defconfig
 		Revert "arm64: defconfig: Enable FSL_MC_BUS and FSL_MC_DPIO"
 
 next/late
+	drivers/tee-fix
+		https://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-subsys-fix-for-4.21
+	drivers/tee-devel
+		https://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-subsys-optee-for-4.21
+	imx/dt-8mq
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx8mq-4.21
+		contains imx/dt64
+	patch
+		dt-bindings: Add RDA Micro vendor prefix
+		dt-bindings: arm: Document RDA8810PL and reference boards
+		ARM: Prepare RDA8810PL SoC
+		ARM: dts: Add devicetree for RDA8810PL SoC
+		ARM: dts: Add devicetree for OrangePi 2G IoT board
+		ARM: dts: Add devicetree for OrangePi i96 board
+		ARM: dts: rda8810pl: Add timer support
+		dt-bindings: serial: Document RDA Micro UART
+		ARM: dts: rda8810pl: Add interrupt support for UART
+		tty: serial: Add RDA8810PL UART driver
+		MAINTAINERS: Add entry for RDA Micro SoC architecture
+	samsung/dt-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-4.21-2
+		contains samsung/dt
+	samsung/dt64-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt64-4.21-2
+		contains samsung/dt64
+	sti/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/pchotard/sti tags/sti-soc-for-v4.21-round1
+	patch
+		arm64: defconfig: Re-enable bcm2835-thermal driver
 
 fixes
 	<no branch> (84fb6c7feb1494ebb7d1ec8b95cfb7ada0264465)
 		git://git.kernel.org/pub/scm/linux/kernel/git/tmlind/linux-omap tags/omap-for-v4.20/fixes-rc6
 	<no branch> (690e16bada6029694740d5501025faf483d14339)
 		git://git.kernel.org/pub/scm/linux/kernel/git/mmind/linux-rockchip tags/v4.20-rockchip-dts64fixes-2
+	<no branch> (6f61a2c8f1f6163c7e08c77c5f71df0427e4d2f6)
+		git://git.kernel.org/pub/scm/linux/kernel/git/horms/renesas tags/renesas-fixes2-for-v4.20
 
