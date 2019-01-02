@@ -2354,7 +2354,7 @@ static void migrate_vma_collect(struct migrate_vma *migrate)
 	mm_walk.private = migrate;
 
 	mmu_notifier_range_init(&range, mm_walk.mm, migrate->start,
-				migrate->end);
+				migrate->end, MMU_NOTIFY_CLEAR);
 	mmu_notifier_invalidate_range_start(&range);
 	walk_page_range(migrate->start, migrate->end, &mm_walk);
 	mmu_notifier_invalidate_range_end(&range);
@@ -2762,7 +2762,8 @@ static void migrate_vma_pages(struct migrate_vma *migrate)
 
 				mmu_notifier_range_init(&range,
 							migrate->vma->vm_mm,
-							addr, migrate->end);
+							addr, migrate->end,
+							MMU_NOTIFY_CLEAR);
 				mmu_notifier_invalidate_range_start(&range);
 			}
 			migrate_vma_insert_page(migrate, addr, newpage,
