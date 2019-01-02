@@ -391,6 +391,7 @@ EXPORT_SYMBOL(vfs_dup_fs_context);
  */
 void logfc(struct fs_context *fc, const char *fmt, ...)
 {
+#ifdef CONFIG_PRINTK
 	va_list va;
 
 	va_start(va, fmt);
@@ -409,6 +410,7 @@ void logfc(struct fs_context *fc, const char *fmt, ...)
 
 	pr_cont("\n");
 	va_end(va);
+#endif
 }
 EXPORT_SYMBOL(logfc);
 
