@@ -669,7 +669,6 @@ struct se_dev_attrib {
 	int		emulate_caw;
 	int		emulate_3pc;
 	int		emulate_pr;
-	int		pi_prot_format;
 	enum target_prot_type pi_prot_type;
 	enum target_prot_type hw_pi_prot_type;
 	int		pi_prot_verify;
