@@ -1377,7 +1377,8 @@
 		interrupt-map = <0 0 0 0 &gic GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
 		num-lanes = <1>;
 		num-viewport = <4>;
-
+		using_ext_ref_clk = <1>;
+		for_si_test = <0>;
 
 		status = "disabled";
 	};
