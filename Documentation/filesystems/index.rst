@@ -360,6 +360,17 @@ encryption of files and directories.
 
     fscrypt
 
+Verity API
+==========
+
+A library which filesystems can hook into to support transparent
+authentication of read-only files.
+
+.. toctree::
+    :maxdepth: 2
+
+    fsverity
+
 Pathname lookup
 ===============
 
