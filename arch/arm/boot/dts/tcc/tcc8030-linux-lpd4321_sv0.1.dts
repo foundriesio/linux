@@ -163,7 +163,9 @@
 	tcc-drm-lcd {
 	        compatible = "telechips,tcc-drm-lcd";
 	        display-port-num = <0>;
-	        reg = <0x12000000 0x100 0x12000400 0x100 0x12001800 0x100>;
+	        reg = <0x12000000 0x100 0x12000400 0x100 0x12001800 0x100>,
+				/* VIOC_REMAP */
+				  <0x12000000 0x100 0x12004000 0x100 0x12018000 0x100>;
 	        reg-names = "ddc", "rdma", "wmix";
 	        interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
 	        interrupt-names = "vsync";
@@ -189,7 +191,9 @@
 	tcc-drm-ext {
 	        compatible = "telechips,tcc-drm-ext";
 	        display-port-num = <1>;
-	        reg = <0x12000100 0x100 0x12000800 0x100 0x12001900 0x100>;
+	        reg = <0x12000100 0x100 0x12000800 0x100 0x12001900 0x100>,
+				/* VIOC_REMAP */
+				  <0x12001000 0x100 0x12008000 0x100 0x12019000 0x100>;
 	        reg-names = "ddc", "rdma", "wmix";
 	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
 	        interrupt-names = "vsync";
@@ -215,7 +219,9 @@
 	tcc-drm-third {
 	        compatible = "telechips,tcc-drm-third";
 	        display-port-num = <2>;
-	        reg = <0x12000200 0x100 0x12000C00 0x100 0x12001A00 0x100>;
+	        reg = <0x12000200 0x100 0x12000C00 0x100 0x12001A00 0x100>,
+				/* VIOC_REMAP */
+				  <0x12002000 0x100 0x1200C000 0x100 0x1201A000 0x100>;
 	        reg-names = "ddc", "rdma", "wmix";
 	        interrupts = <GIC_SPI VIOC2_IRQI IRQ_TYPE_LEVEL_HIGH>;
 	        interrupt-names = "vsync";

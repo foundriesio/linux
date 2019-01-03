@@ -29,6 +29,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <media/v4l2-common.h>
 
 #include <video/tcc/tcc_gpu_align.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 #include "tccvin_dev.h"
 
@@ -587,8 +588,8 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 	if(!(hdl_np = of_parse_phandle(main_node, "viqe_set", 0))) {
 		printk("could not find cam_viqe_set node!! \n");
 	} else {
-		viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, 0);
-		viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, 1);
+		viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 2 : 0);
+		viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 3 : 1);
 
 		BITCSET(*viqe_set_reg1,1<<3,1<<3);
 		BITCSET(*viqe_set_reg2,1<<8 | 1<<9 , 1<<8 | 1<<9);

@@ -27,6 +27,7 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_scaler.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_viqe.h>
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -2094,7 +2095,7 @@ static int __init vioc_config_init(void)
 	if (ViocConfig_np == NULL) {
 		pr_info("vioc-config: disabled [this is mandatory for vioc display]\n");
 	} else {
-		pIREQ_reg = of_iomap(ViocConfig_np, 0);
+		pIREQ_reg = of_iomap(ViocConfig_np, is_VIOC_REMAP ? 1 : 0);
 
 		if (pIREQ_reg) {
 			pr_info("vioc-config: 0x%p\n", pIREQ_reg);

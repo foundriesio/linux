@@ -25,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/of_address.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_afbcdec.h>
 
 #define AFBCDec_MAX_N 2
@@ -390,7 +391,8 @@ static int __init vioc_afbc_dec_init(void)
 		pr_info("vioc-afbc_dec: disabled\n");
 	} else {
 		for (i = 0; i < AFBCDec_MAX_N; i++) {
-			pAFBCDec_reg[i] = (volatile void __iomem *)of_iomap(pViocAFBCDec_np, i);
+			pAFBCDec_reg[i] = (volatile void __iomem *)of_iomap(pViocAFBCDec_np,
+								is_VIOC_REMAP ? (i + AFBCDec_MAX_N) : i);
 
 			if (pAFBCDec_reg[i])
 				pr_info("vioc-afbc_dec%d: 0x%p\n", i, pAFBCDec_reg[i]);

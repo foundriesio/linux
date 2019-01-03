@@ -478,4 +478,19 @@ extern void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit);
 extern void VIOC_DDICONFIG_Set_BVO(unsigned int enable);
 #endif
 
+/*
+ * VIOC_REMAP (VIOC Register Address Remap Enable Register)
+ * --------------------------------------------------------
+ * If SoC supports VIOC_REMAP then you need the is_VIOC_REMAP function
+ * otherwise, the is_VIOC_REMAP is 0.
+ * Refer to vioc_ddicfg.c (tcc803x SoC)
+ */
+#if 0
+extern int VIOC_DDICONFIG_GetViocRemap(void);
+extern int VIOC_DDICONFIG_SetViocRemap(int enable);
+#define is_VIOC_REMAP VIOC_DDICONFIG_GetViocRemap()
+#else
+#define is_VIOC_REMAP (0)
+#endif
+
 #endif	/*__VIOC_DDI_CONFIG_H__*/

@@ -23,6 +23,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_deintls.h>
 
 volatile void __iomem *pDEINTLS_reg = NULL;
@@ -42,7 +43,8 @@ static int __init vioc_deintls_init(void)
 	if (dev_np == NULL) {
 		pr_info("vioc-deintls: disabled\n");
 	} else {
-		pDEINTLS_reg = (volatile void __iomem *)of_iomap(dev_np, 0);
+		pDEINTLS_reg = (volatile void __iomem *)of_iomap(dev_np,
+						(is_VIOC_REMAP ? 1 : 0));
 
 		if (pDEINTLS_reg)
 			pr_info("vioc-deintls: 0x%p\n", pDEINTLS_reg);

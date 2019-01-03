@@ -212,12 +212,12 @@
 /* VIOC_V_DV : 0x1FXX */
 #define VIOC_V_DV				(0x1F00)
 
-
 /* VIOC Interrupt sources */
 #define VIOC0_IRQI			(115)
 #define VIOC1_IRQI			(116)
 #define VIOC2_IRQI			(117)
 #define VIOC3_IRQI			(118)
+#define VIOC_IRQ_MAX		(4)
 
 /* Configuration & Interrupt */
 #define VIOC_EDR_WMIX0			(0)
