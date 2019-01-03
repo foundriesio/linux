@@ -248,6 +248,13 @@ static inline u64 get_delta(u64 t1, u64 t0)
 	return (u32)t1 - (u32)t0;
 }
 
+/* Build fix since CPPCv3 supoort is not included */
+static unsigned int cppc_cpufreq_perf_to_khz(struct cppc_cpudata *cpu,
+                                       unsigned int perf)
+{
+	return (u64)perf * cppc_dmi_max_khz / cpu->perf_caps.highest_perf;
+}
+
 static int cppc_get_rate_from_fbctrs(struct cppc_cpudata *cpu,
 				     struct cppc_perf_fb_ctrs fb_ctrs_t0,
 				     struct cppc_perf_fb_ctrs fb_ctrs_t1)
