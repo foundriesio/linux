@@ -91,6 +91,9 @@ config HID_GENERIC
 menu "Special HID drivers"
 	depends on HID
 
+config HID_ILITEK_TOUCH
+	tristate "ILITEK USB touch screen driver"
+
 config HID_A4TECH
 	tristate "A4 tech mice"
 	depends on HID

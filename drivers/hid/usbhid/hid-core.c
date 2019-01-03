@@ -627,7 +627,7 @@ static void __usbhid_submit_report(struct hid_device *hid, struct hid_report *re
 	}
 }
 
-static void usbhid_submit_report(struct hid_device *hid, struct hid_report *report, unsigned char dir)
+void usbhid_submit_report(struct hid_device *hid, struct hid_report *report, unsigned char dir)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
 	unsigned long flags;
