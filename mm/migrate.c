@@ -742,24 +742,23 @@ int buffer_migrate_page(struct address_space *mapping,
 {
 	struct buffer_head *bh, *head;
 	int rc;
+	int expected_count;
 
 	if (!page_has_buffers(page))
 		return migrate_page(mapping, newpage, page, mode);
 
+	/* Check whether page does not have extra refs before we do more work */
+	expected_count = expected_page_refs(page);
+	if (page_count(page) != expected_count)
+		return -EAGAIN;
+
 	head = page_buffers(page);
+	if (!buffer_migrate_lock_buffers(head, mode))
+		return -EAGAIN;
 
-	rc = migrate_page_move_mapping(mapping, newpage, page, head, mode, 0);
-
+	rc = migrate_page_move_mapping(mapping, newpage, page, NULL, mode, 0);
 	if (rc != MIGRATEPAGE_SUCCESS)
-		return rc;
-
-	/*
-	 * In the async case, migrate_page_move_mapping locked the buffers
-	 * with an IRQ-safe spinlock held. In the sync case, the buffers
-	 * need to be locked now
-	 */
-	if (mode != MIGRATE_ASYNC)
-		BUG_ON(!buffer_migrate_lock_buffers(head, mode));
+		goto unlock_buffers;
 
 	ClearPagePrivate(page);
 	set_page_private(newpage, page_private(page));
@@ -781,6 +780,8 @@ int buffer_migrate_page(struct address_space *mapping,
 	else
 		migrate_page_states(newpage, page);
 
+	rc = MIGRATEPAGE_SUCCESS;
+unlock_buffers:
 	bh = head;
 	do {
 		unlock_buffer(bh);
@@ -789,7 +790,7 @@ int buffer_migrate_page(struct address_space *mapping,
 
 	} while (bh != head);
 
-	return MIGRATEPAGE_SUCCESS;
+	return rc;
 }
 EXPORT_SYMBOL(buffer_migrate_page);
 #endif
