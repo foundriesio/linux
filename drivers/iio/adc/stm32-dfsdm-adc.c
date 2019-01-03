@@ -569,8 +569,9 @@ static int dfsdm_adc_set_samp_freq(struct iio_dev *indio_dev,
 
 	oversamp = DIV_ROUND_CLOSEST(spi_freq, sample_freq);
 	if (spi_freq % sample_freq)
-		dev_warn(&indio_dev->dev, "Sampling rate not accurate (%d)\n",
-			 spi_freq / oversamp);
+		dev_dbg(&indio_dev->dev,
+			"Rate not accurate. requested (%u), actual (%u)\n",
+			sample_freq, spi_freq / oversamp);
 
 	ret = stm32_dfsdm_set_osrs(fl, 0, oversamp);
 	if (ret < 0) {
