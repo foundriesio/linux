@@ -968,57 +968,53 @@
 	};
 
 	i2c0: i2c@16300000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc899x-i2c";
 		reg = <0x16300000 0x1c 0x163C0000 0x10>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c1: i2c@16310000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc899x-i2c";
 		reg = <0x16310000 0x1c 0x163C0000 0x10>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c2: i2c@16320000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc899x-i2c";
 		reg = <0x16320000 0x1c 0x163C0000 0x10>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c3: i2c@16330000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc899x-i2c";
 		reg = <0x16330000 0x1c 0x163C0000 0x10>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3>;
-		clock-frequency = <4000000>;
 		/*Set HDMI I2C frequency to 80Khz*/
-		scl-clock-frequency = <80000>;
+		clock-frequency = <80000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;

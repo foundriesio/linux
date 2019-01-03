@@ -903,117 +903,108 @@
 	};
 
 	i2c0: i2c@16300000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16300000 0x1c 0x163c0000 0x010>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c1: i2c@16310000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16310000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c2: i2c@16320000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16320000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2>;
-		clock-frequency = <4000000>;
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c3: i2c@16330000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16330000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3>;
-		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
+		clock-frequency = <100000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c4: i2c@16340000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16340000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4>;
-		clock-frequency = <4000000>;
-		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <400000>;
+		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c5: i2c@16350000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16350000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5>;
-		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
+		clock-frequency = <100000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c6: i2c@16360000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16360000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6>;
-		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
+		clock-frequency = <100000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;
 	};
 
 	i2c7: i2c@16370000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16370000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7>;
-		clock-frequency = <4000000>;
 		/*Set CP I2C frequency to 100Khz*/
-		scl-clock-frequency = <100000>;
+		clock-frequency = <100000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
 		interrupt_mode = <0>;

@@ -600,8 +600,12 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 #ifdef CONFIG_OF
 static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 {
-	of_property_read_u32(np, "clock-frequency", &i2c->core_clk_rate);
-	of_property_read_u32(np, "scl-clock-frequency", &i2c->i2c_clk_rate);
+	if (of_property_read_u32(np, "peri-clock-frequency",
+				&i2c->core_clk_rate))
+		i2c->core_clk_rate = 4000000;
+	if (of_property_read_u32(np, "clock-frequency", &i2c->i2c_clk_rate))
+		i2c->i2c_clk_rate = 100000;
+
 #ifdef TCC_USE_GFB_PORT
 	/* Port array order : [0]SCL [1]SDA */
 	of_property_read_u32_array(np, "port-mux", i2c->port_mux,
@@ -800,6 +804,9 @@ static SIMPLE_DEV_PM_OPS(tcc_i2c_pm, tcc_i2c_suspend, tcc_i2c_resume);
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_i2c_of_match[] = {
 	{ .compatible = "telechips,i2c" },
+	{ .compatible = "telechips,tcc803x-i2c" },
+	{ .compatible = "telechips,tcc897x-i2c" },
+	{ .compatible = "telechips,tcc899x-i2c" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, tcc_i2c_of_match);
