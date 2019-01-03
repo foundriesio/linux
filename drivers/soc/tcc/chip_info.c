@@ -41,4 +41,4 @@ static int __init chip_info_init(void)
 	printk("%s, system_rev = %d\n", __func__, system_rev);
 	return 0;
 }
-arch_initcall(chip_info_init);
+pure_initcall(chip_info_init);
