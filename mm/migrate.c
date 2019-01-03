@@ -391,6 +391,22 @@ static inline bool buffer_migrate_lock_buffers(struct buffer_head *head,
 }
 #endif /* CONFIG_BLOCK */
 
+static int expected_page_refs(struct page *page)
+{
+	int expected_count = 1;
+
+	/*
+	 * Device public or private pages have an extra refcount as they are
+	 * ZONE_DEVICE pages.
+	 */
+	expected_count += is_device_private_page(page);
+	expected_count += is_device_public_page(page);
+	if (page_mapping(page))
+		expected_count += 1 + page_has_private(page);
+
+	return expected_count;
+}
+
 /*
  * Replace the page in the mapping.
  *
@@ -406,15 +422,8 @@ int migrate_page_move_mapping(struct address_space *mapping,
 {
 	struct zone *oldzone, *newzone;
 	int dirty;
-	int expected_count = 1 + extra_count;
+	int expected_count = expected_page_refs(page) + extra_count;
 	void **pslot;
-
-	/*
-	 * Device public or private pages have an extra refcount as they are
-	 * ZONE_DEVICE pages.
-	 */
-	expected_count += is_device_private_page(page);
-	expected_count += is_device_public_page(page);
 
 	if (!mapping) {
 		/* Anonymous page without mapping */
@@ -438,7 +447,6 @@ int migrate_page_move_mapping(struct address_space *mapping,
 	pslot = radix_tree_lookup_slot(&mapping->page_tree,
  					page_index(page));
 
-	expected_count += 1 + page_has_private(page);
 	if (page_count(page) != expected_count ||
 		radix_tree_deref_slot_protected(pslot, &mapping->tree_lock) != page) {
 		spin_unlock_irq(&mapping->tree_lock);
