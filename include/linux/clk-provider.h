@@ -411,7 +411,7 @@ extern const struct clk_ops clk_divider_ro_ops;
 
 unsigned long divider_recalc_rate(struct clk_hw *hw, unsigned long parent_rate,
 		unsigned int val, const struct clk_div_table *table,
-		unsigned long flags);
+		unsigned long flags, unsigned long width);
 long divider_round_rate(struct clk_hw *hw, unsigned long rate,
 		unsigned long *prate, const struct clk_div_table *table,
 		u8 width, unsigned long flags);

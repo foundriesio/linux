@@ -30,7 +30,8 @@ static unsigned long ccu_div_round_rate(struct ccu_mux_internal *mux,
 			      cd->div.flags);
 
 	return divider_recalc_rate(&cd->common.hw, parent_rate, val,
-				   cd->div.table, cd->div.flags);
+				   cd->div.table, cd->div.flags,
+				   cd->div.width);
 }
 
 static void ccu_div_disable(struct clk_hw *hw)
@@ -69,7 +70,7 @@ static unsigned long ccu_div_recalc_rate(struct clk_hw *hw,
 						&parent_rate);
 
 	return divider_recalc_rate(hw, parent_rate, val, cd->div.table,
-				   cd->div.flags);
+				   cd->div.flags, cd->div.width);
 }
 
 static int ccu_div_determine_rate(struct clk_hw *hw,
