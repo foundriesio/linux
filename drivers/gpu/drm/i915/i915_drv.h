@@ -2622,7 +2622,6 @@ struct drm_i915_private {
 
 			bool periodic;
 			int period_exponent;
-			int timestamp_frequency;
 
 			struct i915_oa_config test_config;
 
