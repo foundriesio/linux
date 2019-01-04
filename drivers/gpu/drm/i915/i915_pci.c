@@ -424,6 +424,7 @@ static const struct intel_device_info intel_cherryview_info = {
 
 #define GEN9_FEATURES \
 	GEN8_FEATURES, \
+	.has_logical_ring_preemption = 1, \
 	.has_csr = 1, \
 	.has_guc = 1, \
 	.has_ipc = 1, \
@@ -477,6 +478,7 @@ static const struct intel_device_info intel_skylake_gt4_info = {
 	.has_rc6 = 1, \
 	.has_dp_mst = 1, \
 	.has_logical_ring_contexts = 1, \
+	.has_logical_ring_preemption = 1, \
 	.has_guc = 1, \
 	.has_aliasing_ppgtt = 1, \
 	.has_full_ppgtt = 1, \
