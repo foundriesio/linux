@@ -599,6 +599,12 @@
 			>;
 		};
 
+		pinctrl_snvs_cd_usdhc1_sleep: snvs-usdhc1-cd-grp-slp {
+			fsl,pins = <
+				MX6ULL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x0
+			>;
+		};
+
 		pinctrl_wifi_pdn: wifi-pdn {
 			fsl,pins = <
 				MX6ULL_PAD_BOOT_MODE1__GPIO5_IO11	0x14
