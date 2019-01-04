@@ -39,6 +39,21 @@
 	| TCC897X_SDHC_FBEN(0))
 
 /* Telechips SDHC Specific Registers for TCC803x rev. 1*/
+#define TCC803X_SDHC_CORE_CLK_REG0			(0x100)
+#define TCC803X_SDHC_CORE_CLK_REG1			(0x104)
+#define TCC803X_SDHC_CORE_CLK_REG2			(0x108)
+
+#define TCC803X_SDHC_CORE_CLK_DIV_EN(x)			((x & 0x1) << 0)
+#define TCC803X_SDHC_CORE_CLK_CLK_SEL(x)		((x & 0x1) << 1)
+#define TCC803X_SDHC_CORE_CLK_DIV_VAL_OFFSET	(8)
+#define TCC803X_SDHC_CORE_CLK_DIV_VAL(x)		((x & 0xFF) << TCC803X_SDHC_CORE_CLK_DIV_VAL_OFFSET)
+
+#define TCC803X_SDHC_CORE_CLK_MASK_EN(x)	((x & 0x1) << 0)
+#define TCC803X_SDHC_CORE_CLK_GATE_DIS(x)	((x & 0x1) << 16)
+
+#define TCC803X_SDHC_DQS_POS_DETECT_DLY(x)	((x & 0xF) << 4)
+#define TCC803X_SDHC_DQS_NEG_DETECT_DLY(x)	((x & 0xF) << 20)
+
 #define TCC803X_SDHC_TX_CLKDLY_OFFSET(ch)	(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
 #define TCC803X_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
@@ -125,6 +140,7 @@ struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
 	void (*set_channel_configs)(struct sdhci_host *);
+	int (*set_core_clock)(struct sdhci_host *);
 	u32 sdhci_tcc_quirks;
 };
 
@@ -143,6 +159,8 @@ struct sdhci_tcc {
 	u32 cmd_tap;
 	u32 data_tap;
 	u32 clk_tx_tap;
+	u32 hs400_pos_tap;
+	u32 hs400_neg_tap;
 	int controller_id;
 
 	int hw_reset;
