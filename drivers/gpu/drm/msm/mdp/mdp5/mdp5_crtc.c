@@ -445,6 +445,9 @@ static void mdp5_crtc_atomic_enable(struct drm_crtc *crtc,
 		return;
 
 	pm_runtime_get_sync(dev);
+
+	mdp5_crtc_mode_set_nofb(crtc);
+
 	mdp_irq_register(&mdp5_kms->base, &mdp5_crtc->err);
 
 	if (mdp5_cstate->cmd_mode)
@@ -951,7 +954,6 @@ static const struct drm_crtc_funcs mdp5_crtc_no_lm_cursor_funcs = {
 };
 
 static const struct drm_crtc_helper_funcs mdp5_crtc_helper_funcs = {
-	.mode_set_nofb = mdp5_crtc_mode_set_nofb,
 	.atomic_check = mdp5_crtc_atomic_check,
 	.atomic_begin = mdp5_crtc_atomic_begin,
 	.atomic_flush = mdp5_crtc_atomic_flush,
