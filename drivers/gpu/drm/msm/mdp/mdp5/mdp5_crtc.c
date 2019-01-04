@@ -954,6 +954,7 @@ static const struct drm_crtc_funcs mdp5_crtc_no_lm_cursor_funcs = {
 };
 
 static const struct drm_crtc_helper_funcs mdp5_crtc_helper_funcs = {
+	.mode_set_nofb = mdp5_crtc_mode_set_nofb,
 	.atomic_check = mdp5_crtc_atomic_check,
 	.atomic_begin = mdp5_crtc_atomic_begin,
 	.atomic_flush = mdp5_crtc_atomic_flush,
