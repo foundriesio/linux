@@ -1462,7 +1462,6 @@ static int vmw_pm_freeze(struct device *kdev)
 		DRM_ERROR("Failed to freeze modesetting.\n");
 		return ret;
 	}
-	dev_priv->suspended = true;
 	if (dev_priv->enable_fb)
 		vmw_fb_off(dev_priv);
 
@@ -1484,7 +1483,6 @@ static int vmw_pm_freeze(struct device *kdev)
 			vmw_kms_resume(dev);
 		if (dev_priv->enable_fb)
 			vmw_fb_on(dev_priv);
-		dev_priv->suspended = false;
 		vmw_fb_refresh(dev_priv);
 		return -EBUSY;
 	}
@@ -1525,7 +1523,6 @@ static int vmw_pm_restore(struct device *kdev)
 	if (dev_priv->enable_fb)
 		vmw_fb_on(dev_priv);
 
-	dev_priv->suspended = false;
 	vmw_fb_refresh(dev_priv);
 
 	return 0;
