@@ -3267,11 +3267,11 @@ void i915_gem_close_object(struct drm_gem_object *gem, struct drm_file *file)
 		struct i915_gem_context *ctx = lut->ctx;
 		struct i915_vma *vma;
 
+		GEM_BUG_ON(ctx->file_priv == ERR_PTR(-EBADF));
 		if (ctx->file_priv != fpriv)
 			continue;
 
 		vma = radix_tree_delete(&ctx->handles_vma, lut->handle);
-
 		GEM_BUG_ON(vma->obj != obj);
 
 		/* We allow the process to have multiple handles to the same
