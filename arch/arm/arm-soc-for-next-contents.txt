@@ -40,6 +40,27 @@ next/late
 		git://git.kernel.org/pub/scm/linux/kernel/git/pchotard/sti tags/sti-soc-for-v4.21-round1
 	patch
 		arm64: defconfig: Re-enable bcm2835-thermal driver
+		ARM: multi_v7_defconfig: enable CONFIG_UNIPHIER_MDMAC
+	next/drivers
+		Merge branch 'next/drivers' into next/late
+		contains amlogic/drivers
+		contains amlogic/drivers-2
+		contains at91/soc
+		contains broadcom/drivers
+		contains drivers/pl353
+		contains imx/drivers
+		contains mediatek/soc
+		contains omap/drivers
+		contains omap/drivers-2
+		contains pxa/devel
+		contains qcom/drivers
+		contains qcom/drivers-3
+		contains renesas/drivers
+		contains rockchip/drivers
+		contains sunxi/drivers
+		contains tegra/firmware
+		contains tegra/memory
+		contains tegra/soc
 
 fixes
 
