@@ -880,7 +880,7 @@ static struct snd_pcm_ops fsl_dma_ops = {
 };
 
 static int fsl_soc_dma_probe(struct platform_device *pdev)
- {
+{
 	struct dma_object *dma;
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *ssi_np;
