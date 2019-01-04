@@ -108,6 +108,7 @@ amdgpu-y += \
 # add amdkfd interfaces
 amdgpu-y += \
 	 amdgpu_amdkfd.o \
+	 amdgpu_amdkfd_fence.o \
 	 amdgpu_amdkfd_gfx_v8.o
 
 # add cgs
