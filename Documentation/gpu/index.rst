@@ -14,6 +14,7 @@ Linux GPU Driver Developer's Guide
    meson
    pl111
    tinydrm
+   tve200
    vc4
    vga-switcheroo
    vgaarbiter
