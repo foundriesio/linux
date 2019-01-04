@@ -13,6 +13,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
+#include <drm/drm_atomic_helper.h>
 #include "armada_crtc.h"
 #include "armada_drm.h"
 #include "armada_fb.h"
@@ -1205,8 +1206,8 @@ static int armada_drm_primary_update(struct drm_plane *plane,
 	};
 	int ret;
 
-	ret = drm_plane_helper_check_state(&state, &clip, 0, INT_MAX, true,
-					    false);
+	ret = drm_atomic_helper_check_plane_state(&state, crtc->state, &clip, 0,
+						  INT_MAX, true, false);
 	if (ret)
 		return ret;
 

@@ -7,7 +7,7 @@
  * published by the Free Software Foundation.
  */
 #include <drm/drmP.h>
-#include <drm/drm_plane_helper.h>
+#include <drm/drm_atomic_helper.h>
 #include "armada_crtc.h"
 #include "armada_drm.h"
 #include "armada_fb.h"
@@ -215,8 +215,8 @@ armada_ovl_plane_update(struct drm_plane *plane, struct drm_crtc *crtc,
 				 crtc_x, crtc_y, crtc_w, crtc_h,
 				 src_x, src_y, src_w, src_h);
 
-	ret = drm_plane_helper_check_state(&state, &clip, 0, INT_MAX, true,
-					    false);
+	ret = drm_atomic_helper_check_plane_state(&state, crtc->state, &clip, 0,
+						  INT_MAX, true, false);
 	if (ret)
 		return ret;
 
