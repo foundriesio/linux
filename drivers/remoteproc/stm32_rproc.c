@@ -84,7 +84,7 @@ static int stm32_rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da)
 		    pa >= p_mem->bus_addr + p_mem->size)
 			continue;
 		*da = pa - p_mem->bus_addr + p_mem->dev_addr;
-		dev_dbg(rproc->dev.parent, "da %llx to pa %#x\n", *da, pa);
+		dev_dbg(rproc->dev.parent, "pa %#x to da %llx\n", pa, *da);
 		return 0;
 	}
 
