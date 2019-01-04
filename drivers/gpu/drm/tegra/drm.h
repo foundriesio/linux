@@ -16,6 +16,7 @@
 #include <linux/of_gpio.h>
 
 #include <drm/drmP.h>
+#include <drm/drm_atomic.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_encoder.h>
@@ -23,6 +24,7 @@
 #include <drm/drm_fixed.h>
 
 #include "gem.h"
+#include "hub.h"
 #include "trace.h"
 
 struct reset_control;
@@ -39,6 +41,20 @@ struct tegra_fbdev {
 	struct tegra_fb *fb;
 };
 #endif
+
+struct tegra_atomic_state {
+	struct drm_atomic_state base;
+
+	struct clk *clk_disp;
+	struct tegra_dc *dc;
+	unsigned long rate;
+};
+
+static inline struct tegra_atomic_state *
+to_tegra_atomic_state(struct drm_atomic_state *state)
+{
+	return container_of(state, struct tegra_atomic_state, base);
+}
 
 struct tegra_drm {
 	struct drm_device *drm;
@@ -61,6 +77,8 @@ struct tegra_drm {
 #endif
 
 	unsigned int pitch_align;
+
+	struct tegra_display_hub *hub;
 
 	struct drm_atomic_state *state;
 };
@@ -183,6 +201,7 @@ void tegra_drm_fb_exit(struct drm_device *drm);
 void tegra_drm_fb_suspend(struct drm_device *drm);
 void tegra_drm_fb_resume(struct drm_device *drm);
 
+extern struct platform_driver tegra_display_hub_driver;
 extern struct platform_driver tegra_dc_driver;
 extern struct platform_driver tegra_hdmi_driver;
 extern struct platform_driver tegra_dsi_driver;
