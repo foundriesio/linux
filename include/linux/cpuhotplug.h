@@ -4,7 +4,8 @@
 #include <linux/types.h>
 
 enum cpuhp_state {
-	CPUHP_OFFLINE,
+	CPUHP_INVALID = -1,
+	CPUHP_OFFLINE = 0,
 	CPUHP_CREATE_THREADS,
 	CPUHP_PERF_PREPARE,
 	CPUHP_PERF_X86_PREPARE,
