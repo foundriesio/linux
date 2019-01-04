@@ -72,6 +72,12 @@ static inline struct sdhci_tcc *to_tcc(struct sdhci_host *host)
 	return sdhci_pltfm_priv(pltfm_host);
 }
 
+static inline int is_tcc803x_support_hs400(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	return ((tcc->controller_id == 0) && (host->mmc->caps2 & MMC_CAP2_HS400));
+}
+
 static void sdhci_tcc897x_dumpregs(struct sdhci_host *host)
 {
 	struct sdhci_tcc *tcc = to_tcc(host);
@@ -265,6 +271,22 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 		dev_dbg(&pdev->dev, "default taps 0x%x 0x%x 0x%x 0x%x\n",
 			tcc->clk_out_tap, tcc->cmd_tap, tcc->data_tap, tcc->clk_tx_tap);
 
+		if(is_tcc803x_support_hs400(host)) {
+			if(of_property_read_u32(np, "tcc-mmc-hs400-pos-tap", &tcc->hs400_pos_tap)) {
+				tcc->hs400_pos_tap = 0;
+			}
+			if(of_property_read_u32(np, "tcc-mmc-hs400-neg-tap", &tcc->hs400_neg_tap)) {
+				tcc->hs400_neg_tap = 0;
+			}
+
+			dev_dbg(&pdev->dev, "default hs400 tap pos 0x%x neg 0x%x\n", tcc->hs400_pos_tap, tcc->hs400_neg_tap);
+		} else {
+			if(host->mmc->caps2 & MMC_CAP2_HS400) {
+				dev_warn(&pdev->dev, "do not support hs400\n");
+				host->mmc->caps2 &= ~(MMC_CAP2_HS400);
+			}
+		}
+
 		ret = 0;
 	} else {
 		dev_err(&pdev->dev, "unsupported version 0x%x\n", tcc->version);
@@ -440,6 +462,19 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 		writel(vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
 		pr_debug(DRIVER_NAME "%d: set clk-tx-tap 0x%08x @0x%p\n",
 				ch, vals, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+
+		/* only channel 0 supports hs400 */
+		if(is_tcc803x_support_hs400(host)) {
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG2);
+			vals &=  ~(TCC803X_SDHC_DQS_POS_DETECT_DLY(0xF) |
+				TCC803X_SDHC_DQS_NEG_DETECT_DLY(0xF));
+			vals |= TCC803X_SDHC_DQS_POS_DETECT_DLY(tcc->hs400_pos_tap) |
+				TCC803X_SDHC_DQS_NEG_DETECT_DLY(tcc->hs400_neg_tap);
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG2);
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG2);
+			pr_debug(DRIVER_NAME "%d: set hs400 taps 0x%08x @0x%p\n",
+					ch, vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG2);
+		}
 	} else {
 		pr_err(DRIVER_NAME "%d: unsupported version 0x%x\n", ch, tcc->version);
 	}
@@ -495,6 +530,122 @@ static void sdhci_tcc_set_channel_configs(struct sdhci_host *host)
 	sdhci_tcc_dumpregs(host);
 }
 
+static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host =
+		(struct sdhci_pltfm_host *)sdhci_priv(host);
+	struct sdhci_tcc *tcc = to_tcc(host);
+	int ret;
+	u8 ch = tcc->controller_id;
+
+	if(tcc->version == 0) {
+		ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
+	} else if(tcc->version == 1){
+		if(!is_tcc803x_support_hs400(host)) {
+			ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
+		} else {
+			unsigned int peri_clock, core_clock, vals;
+			u8 div = 0;
+
+			peri_clock = pltfm_host->clock;
+			core_clock = host->mmc->f_max;
+			div = ((peri_clock / core_clock) - 1);
+			pr_debug(DRIVER_NAME "%d: try peri %uHz core %uHz div %d\n", ch,
+				pltfm_host->clock, host->mmc->f_max, div);
+
+			if(div == 0) {
+				pr_err(DRIVER_NAME "%d: error, div is zero. peri %uHz core %uHz\n", ch,
+					pltfm_host->clock, host->mmc->f_max);
+
+				return -EINVAL;
+			}
+
+			ret = clk_set_rate(pltfm_host->clk, peri_clock);
+			if(ret) {
+				pr_err(DRIVER_NAME "%d: failed to set peri %uHz\n", ch,
+					pltfm_host->clock);
+				return ret;
+			}
+
+			/* re-calculate divider and core clock */
+			peri_clock = clk_get_rate(pltfm_host->clk);
+			div = 1;
+			while(1) {
+				if(core_clock < (peri_clock / (div + 1))) {
+					div = div + 3;
+				}
+				else {
+					break;
+				}
+
+				if(div > 0xFF) {
+					pr_err(DRIVER_NAME "%d: error, failed to find div\n", ch);
+					return -EINVAL;
+				}
+			}
+			core_clock = (peri_clock / (div + 1));
+
+			/* disable peri clock */
+			clk_disable_unprepare(pltfm_host->clk);
+
+			/* sdcore clock masking enable */
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG1);
+			vals |= TCC803X_SDHC_CORE_CLK_MASK_EN(1);
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG1);
+
+			/* set div */
+			/* select sdcore clock */
+			/* enable div */
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
+			vals &= ~(TCC803X_SDHC_CORE_CLK_DIV_VAL(0xFF));
+			vals |= TCC803X_SDHC_CORE_CLK_DIV_VAL(div);
+			vals |= TCC803X_SDHC_CORE_CLK_CLK_SEL(1);
+			vals |= TCC803X_SDHC_CORE_CLK_DIV_EN(1);
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
+
+			/* disable shifter clk gating */
+			/* disable sdcore clock masking */
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG1);
+			vals |= TCC803X_SDHC_CORE_CLK_GATE_DIS(1);
+			vals &= ~(TCC803X_SDHC_CORE_CLK_MASK_EN(1));
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG1);
+
+			/* enable peri clock */
+			clk_prepare_enable(pltfm_host->clk);
+
+			pltfm_host->clock = peri_clock;
+			host->mmc->f_max = core_clock;
+			pr_debug(DRIVER_NAME "%d: set peri %uHz core %uHz div %d\n", ch,
+				pltfm_host->clock, host->mmc->f_max, div);
+		}
+	} else {
+		pr_err(DRIVER_NAME "%d: unsupported version 0x%x\n", ch, tcc->version);
+		return -ENOTSUPP;
+	}
+
+	return ret;
+}
+
+unsigned int sdhci_tcc803x_clk_get_max_clock(struct sdhci_host *host)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u8 ch = tcc->controller_id;
+
+	if(tcc->version == 0) {
+		return sdhci_pltfm_clk_get_max_clock(host);
+	} else if(tcc->version == 1) {
+		if(is_tcc803x_support_hs400(host))
+			return host->mmc->f_max;
+		else
+			return sdhci_pltfm_clk_get_max_clock(host);
+	} else {
+		pr_err(DRIVER_NAME "%d: unsupported version 0x%x\n", ch, tcc->version);
+		return -ENOTSUPP;
+	}
+
+	return -ENOTSUPP;
+}
+
 static void sdhci_tcc_set_clock(struct sdhci_host *host, unsigned int clock)
 {
 	/*
@@ -535,8 +686,25 @@ static const struct sdhci_ops sdhci_tcc_ops = {
 	.get_ro = sdhci_tcc_get_ro,
 };
 
+static const struct sdhci_ops sdhci_tcc803x_ops = {
+	.get_max_clock = sdhci_tcc803x_clk_get_max_clock,
+	.set_clock = sdhci_tcc_set_clock,
+	.set_bus_width = sdhci_set_bus_width,
+	.reset = sdhci_reset,
+	.hw_reset = sdhci_tcc_hw_reset,
+	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	.get_ro = sdhci_tcc_get_ro,
+};
+
 static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
 	.ops	= &sdhci_tcc_ops,
+	.quirks	= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
+			SDHCI_QUIRK2_STOP_WITH_TC,
+};
+
+static const struct sdhci_pltfm_data sdhci_tcc803x_pdata = {
+	.ops	= &sdhci_tcc803x_ops,
 	.quirks	= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
 			SDHCI_QUIRK2_STOP_WITH_TC,
@@ -546,13 +714,15 @@ static const struct sdhci_tcc_soc_data soc_data_tcc897x = {
 	.pdata = &sdhci_tcc_pdata,
 	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc897x_set_channel_configs,
+	.set_core_clock = NULL,
 	.sdhci_tcc_quirks = 0,
 };
 
 static const struct sdhci_tcc_soc_data soc_data_tcc803x = {
-	.pdata = &sdhci_tcc_pdata,
+	.pdata = &sdhci_tcc803x_pdata,
 	.parse_channel_configs = sdhci_tcc803x_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc803x_set_channel_configs,
+	.set_core_clock = sdhci_tcc803x_set_core_clock,
 	.sdhci_tcc_quirks = 0,
 };
 
@@ -560,6 +730,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc = {
 	.pdata = &sdhci_tcc_pdata,
 	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc_set_channel_configs,
+	.set_core_clock = NULL,
 	.sdhci_tcc_quirks = 0,
 };
 
@@ -720,9 +891,16 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		goto err_pclk_disable;
 	}
 
-	clk_set_rate(pltfm_host->clk, host->mmc->f_max);
+	if(!tcc->soc_data->set_core_clock)
+		ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
+	else
+		ret = tcc->soc_data->set_core_clock(host);
 
-	tcc->soc_data->set_channel_configs(host);
+	if(ret)
+		goto err_pclk_disable;
+
+	if(tcc->soc_data->set_channel_configs)
+		tcc->soc_data->set_channel_configs(host);
 
 	ret = sdhci_add_host(host);
 	if (ret)
@@ -818,7 +996,18 @@ static int sdhci_tcc_runtime_resume(struct device *dev)
 		return ret;
 	}
 
-	tcc->soc_data->set_channel_configs(host);
+	if(tcc->soc_data->set_core_clock) {
+		ret = tcc->soc_data->set_core_clock(host);
+		if (ret) {
+			dev_err(&pdev->dev, "Unable to set core clock.\n");
+			clk_disable(pltfm_host->clk);
+			clk_disable(tcc->hclk);
+			return ret;
+		}
+	}
+
+	if(tcc->soc_data->set_channel_configs)
+		tcc->soc_data->set_channel_configs(host);
 
 	return sdhci_runtime_resume_host(host);
 }
