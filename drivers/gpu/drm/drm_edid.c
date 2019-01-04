@@ -3846,7 +3846,7 @@ static void clear_eld(struct drm_connector *connector)
 	connector->audio_latency[1] = 0;
 }
 
-/**
+/*
  * drm_edid_to_eld - build ELD from EDID
  * @connector: connector corresponding to the HDMI/DP sink
  * @edid: EDID to parse
@@ -3854,7 +3854,7 @@ static void clear_eld(struct drm_connector *connector)
  * Fill the ELD (EDID-Like Data) buffer for passing to the audio driver. The
  * HDCP and Port_ID ELD fields are left for the graphics driver to fill in.
  */
-void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
+static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 {
 	uint8_t *eld = connector->eld;
 	u8 *cea;
@@ -3939,7 +3939,6 @@ void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 	DRM_DEBUG_KMS("ELD size %d, SAD count %d\n",
 		      drm_eld_size(eld), total_sad_count);
 }
-EXPORT_SYMBOL(drm_edid_to_eld);
 
 /**
  * drm_edid_to_sad - extracts SADs from EDID
