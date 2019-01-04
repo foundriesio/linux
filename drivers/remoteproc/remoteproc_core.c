@@ -1456,6 +1456,9 @@ static int rproc_stop(struct rproc *rproc, bool crashed)
 	struct device *dev = &rproc->dev;
 	int ret;
 
+	if (rproc->state == RPROC_OFFLINE)
+		return 0;
+
 	/* Stop any subdevices for the remote processor */
 	rproc_stop_subdevices(rproc, crashed);
 
@@ -1613,6 +1616,13 @@ int rproc_trigger_recovery(struct rproc *rproc)
 
 	/* generate coredump */
 	rproc_coredump(rproc);
+
+	if (!rproc->firmware) {
+		/* we don't know how to recover it, so try to shutdown it*/
+		mutex_unlock(&rproc->lock);
+		rproc_shutdown(rproc);
+		return 0;
+	}
 
 	/* load firmware */
 	ret = request_firmware(&firmware_p, rproc->firmware, dev);
