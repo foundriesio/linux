@@ -223,21 +223,21 @@ static bool inode_still_linked(struct ubifs_info *c, struct replay_entry *rino)
 {
 	struct replay_entry *r;
 
-	ubifs_assert(c, rino->deletion);
-	ubifs_assert(c, key_type(c, &rino->key) == UBIFS_INO_KEY);
+	ubifs_assert(rino->deletion);
+	ubifs_assert(key_type(c, &rino->key) == UBIFS_INO_KEY);
 
 	/*
 	 * Find the most recent entry for the inode behind @rino and check
 	 * whether it is a deletion.
 	 */
 	list_for_each_entry_reverse(r, &c->replay_list, list) {
-		ubifs_assert(c, r->sqnum >= rino->sqnum);
+		ubifs_assert(r->sqnum >= rino->sqnum);
 		if (key_inum(c, &r->key) == key_inum(c, &rino->key))
 			return r->deletion == 0;
 
 	}
 
-	ubifs_assert(c, 0);
+	ubifs_assert(0);
 	return false;
 }
 
