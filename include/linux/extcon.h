@@ -187,6 +187,7 @@ extern int devm_extcon_dev_register(struct device *dev,
 extern void devm_extcon_dev_unregister(struct device *dev,
 				       struct extcon_dev *edev);
 extern struct extcon_dev *extcon_get_extcon_dev(const char *extcon_name);
+extern struct extcon_dev *extcon_find_edev_by_node(struct device_node *node);
 
 /*
  * Following APIs control the memory of extcon device.
@@ -365,6 +366,11 @@ static inline int extcon_set_property_capability(struct extcon_dev *edev,
 static inline struct extcon_dev *extcon_get_extcon_dev(const char *extcon_name)
 {
 	return NULL;
+}
+
+static inline struct extcon_dev *extcon_find_edev_by_node(struct device_node *node)
+{
+	return ERR_PTR(-ENODEV);
 }
 
 static inline int extcon_register_notifier(struct extcon_dev *edev,
