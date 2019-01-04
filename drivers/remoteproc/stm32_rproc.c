@@ -67,7 +67,7 @@ struct stm32_rproc {
 	struct stm32_rproc_mem *rmems;
 	struct stm32_mbox mb[MBOX_NB_MBX];
 	bool secured_soc;
-	u32 rsc_addr;
+	void __iomem *rsc_va;
 	u32 rsc_len;
 };
 
@@ -85,6 +85,26 @@ static int stm32_rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da)
 			continue;
 		*da = pa - p_mem->bus_addr + p_mem->dev_addr;
 		dev_dbg(rproc->dev.parent, "pa %#x to da %llx\n", pa, *da);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int stm32_rproc_da_to_pa(struct rproc *rproc, u64 da, phys_addr_t *pa)
+{
+	unsigned int i;
+	struct stm32_rproc *ddata = rproc->priv;
+	struct stm32_rproc_mem *p_mem;
+
+	for (i = 0; i < ddata->nb_rmems; i++) {
+		p_mem = &ddata->rmems[i];
+
+		if (da < p_mem->dev_addr ||
+		    da >= p_mem->dev_addr + p_mem->size)
+			continue;
+		*pa = da - p_mem->dev_addr + p_mem->bus_addr;
+		dev_err(rproc->dev.parent, "da %llx to pa %#x\n", da, *pa);
 		return 0;
 	}
 
@@ -209,11 +229,9 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 		return 0;
 	}
 
-	if (ddata->rsc_addr) {
+	if (ddata->rsc_va) {
 		tablesz = ddata->rsc_len;
-		table = (struct resource_table *)
-				rproc_da_to_va(rproc, (u64)ddata->rsc_addr,
-					       ddata->rsc_len);
+		table = (struct resource_table *)ddata->rsc_va;
 		rproc->cached_table = kmemdup(table, tablesz, GFP_KERNEL);
 		if (!rproc->cached_table)
 			return -ENOMEM;
@@ -297,12 +315,7 @@ stm32_rproc_elf_find_loaded_rsc_table(struct rproc *rproc,
 	if (!rproc->early_boot)
 		return rproc_elf_find_loaded_rsc_table(rproc, fw);
 
-	if (ddata->rsc_addr)
-		return (struct resource_table *)
-				rproc_da_to_va(rproc, (u64)ddata->rsc_addr,
-					       ddata->rsc_len);
-
-	return NULL;
+	return (struct resource_table *)ddata->rsc_va;
 }
 
 static int stm32_rproc_elf_sanity_check(struct rproc *rproc,
@@ -582,6 +595,8 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct stm32_rproc *ddata = rproc->priv;
 	struct stm32_syscon tz;
+	phys_addr_t rsc_pa;
+	u32 rsc_da;
 	unsigned int tzen;
 	int err, irq;
 
@@ -636,10 +651,14 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	rproc->auto_boot = of_property_read_bool(np, "auto_boot");
 	rproc->recovery_disabled = !of_property_read_bool(np, "recovery");
 
+	err = stm32_rproc_of_memory_translations(rproc);
+	if (err)
+		return err;
+
 	if (of_property_read_bool(np, "early-booted")) {
 		rproc->early_boot = true;
 
-		err = of_property_read_u32(np, "rsc-address", &ddata->rsc_addr);
+		err = of_property_read_u32(np, "rsc-address", &rsc_da);
 		if (!err) {
 			err = of_property_read_u32(np, "rsc-size",
 						   &ddata->rsc_len);
@@ -649,9 +668,19 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 				return err;
 			}
 		}
+		err = stm32_rproc_da_to_pa(rproc, rsc_da, &rsc_pa);
+		if (err)
+			return err;
+		ddata->rsc_va = ioremap_wc(rsc_pa, ddata->rsc_len);
+		if (IS_ERR_OR_NULL(ddata->rsc_va)) {
+			dev_err(dev, "Unable to map memory region: %pa+%zx\n",
+				&rsc_pa,  ddata->rsc_len);
+			ddata->rsc_va = NULL;
+			return -ENOMEM;
+		}
 	}
 
-	return stm32_rproc_of_memory_translations(rproc);
+	return 0;
 }
 
 static int stm32_rproc_probe(struct platform_device *pdev)
@@ -700,12 +729,15 @@ static int stm32_rproc_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
+	struct stm32_rproc *ddata = rproc->priv;
 
 	if (atomic_read(&rproc->power) > 0)
 		dev_warn(dev, "Releasing rproc while firmware running!\n");
 
 	rproc_del(rproc);
 	stm32_rproc_free_mbox(rproc);
+	if (ddata->rsc_va)
+		iounmap(ddata->rsc_va);
 	rproc_free(rproc);
 
 	return 0;
