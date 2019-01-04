@@ -328,7 +328,7 @@ err_scan:
 	return ret;
 }
 
-int intel_gvt_generate_request(struct intel_vgpu_workload *workload)
+static int intel_gvt_generate_request(struct intel_vgpu_workload *workload)
 {
 	int ring_id = workload->ring_id;
 	struct drm_i915_private *dev_priv = workload->vgpu->gvt->dev_priv;
