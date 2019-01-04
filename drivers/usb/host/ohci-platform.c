@@ -29,6 +29,7 @@
 #include <linux/usb/ohci_pdriver.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
+#include <linux/of_device.h>
 
 #include "ohci.h"
 
@@ -146,6 +147,8 @@ static int ohci_platform_probe(struct platform_device *dev)
 	 */
 	if (!pdata)
 		pdata = &ohci_platform_defaults;
+
+	of_dma_configure(&dev->dev, NULL); ////fix issue - failed to alloc dma buffer
 
 	err = dma_coerce_mask_and_coherent(&dev->dev, DMA_BIT_MASK(32));
 	if (err)

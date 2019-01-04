@@ -35,6 +35,7 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/of.h>
+#include <linux/of_device.h>
 
 #include "ehci.h"
 
@@ -162,6 +163,8 @@ static int ehci_platform_probe(struct platform_device *dev)
 	 */
 	if (!pdata)
 		pdata = &ehci_platform_defaults;
+
+	of_dma_configure(&dev->dev, NULL); //fix issue - failed to alloc dma buffer
 
 	err = dma_coerce_mask_and_coherent(&dev->dev,
 		pdata->dma_mask_64 ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32));
