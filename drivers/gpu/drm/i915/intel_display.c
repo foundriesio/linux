@@ -12142,6 +12142,9 @@ static void intel_update_crtc(struct drm_crtc *crtc,
 	if (modeset) {
 		update_scanline_offset(intel_crtc);
 		dev_priv->display.crtc_enable(pipe_config, state);
+
+		/* vblanks work again, re-enable pipe CRC. */
+		intel_crtc_enable_pipe_crc(intel_crtc);
 	} else {
 		intel_pre_plane_update(to_intel_crtc_state(old_crtc_state),
 				       pipe_config);
@@ -12322,6 +12325,13 @@ static void intel_atomic_commit_tail(struct drm_atomic_state *state)
 
 		if (old_crtc_state->active) {
 			intel_crtc_disable_planes(crtc, old_crtc_state->plane_mask);
+
+			/*
+			 * We need to disable pipe CRC before disabling the pipe,
+			 * or we race against vblank off.
+			 */
+			intel_crtc_disable_pipe_crc(intel_crtc);
+
 			dev_priv->display.crtc_disable(to_intel_crtc_state(old_crtc_state), state);
 			intel_crtc->active = false;
 			intel_fbc_disable(intel_crtc);
