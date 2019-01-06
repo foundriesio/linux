@@ -1745,6 +1745,10 @@ static int gen8_init_render_ring(struct intel_engine_cs *engine)
 	if (ret)
 		return ret;
 
+	ret = intel_whitelist_workarounds_apply(engine);
+	if (ret)
+		return ret;
+
 	/* We need to disable the AsyncFlip performance optimisations in order
 	 * to use MI_WAIT_FOR_EVENT within the CS. It should already be
 	 * programmed to '1' on all products.
@@ -1755,7 +1759,7 @@ static int gen8_init_render_ring(struct intel_engine_cs *engine)
 
 	I915_WRITE(INSTPM, _MASKED_BIT_ENABLE(INSTPM_FORCE_ORDERING));
 
-	return init_workarounds_ring(engine);
+	return 0;
 }
 
 static int gen9_init_render_ring(struct intel_engine_cs *engine)
@@ -1766,7 +1770,11 @@ static int gen9_init_render_ring(struct intel_engine_cs *engine)
 	if (ret)
 		return ret;
 
-	return init_workarounds_ring(engine);
+	ret = intel_whitelist_workarounds_apply(engine);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static void reset_common_ring(struct intel_engine_cs *engine,
@@ -2091,7 +2099,7 @@ static int gen8_init_rcs_context(struct i915_request *rq)
 {
 	int ret;
 
-	ret = intel_ring_workarounds_emit(rq);
+	ret = intel_ctx_workarounds_emit(rq);
 	if (ret)
 		return ret;
 
