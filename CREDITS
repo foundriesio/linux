@@ -842,10 +842,9 @@ D: ax25-utils maintainer.
 
 N: Helge Deller
 E: deller@gmx.de
-E: hdeller@redhat.de
-D: PA-RISC Linux hacker, LASI-, ASP-, WAX-, LCD/LED-driver
-S: Schimmelsrain 1
-S: D-69231 Rauenberg
+W: http://www.parisc-linux.org/
+D: PA-RISC Linux architecture maintainer
+D: LASI-, ASP-, WAX-, LCD/LED-driver
 S: Germany
 
 N: Jean Delvare
