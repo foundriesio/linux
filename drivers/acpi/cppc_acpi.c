@@ -227,7 +227,8 @@ static int check_pcc_chan(int pcc_ss_id, bool chk_err_bit)
 	if (likely(!ret))
 		pcc_ss_data->platform_owns_pcc = false;
 	else
-		pr_err("PCC check channel failed. Status=%x\n", status);
+		pr_err("PCC check channel failed for ss: %d. Status=%x\n",
+		       pcc_ss_id, status);
 
 	return ret;
 }
@@ -291,7 +292,8 @@ static int send_pcc_cmd(int pcc_ss_id, u16 cmd)
 			time_delta = ktime_ms_delta(ktime_get(),
 						    pcc_ss_data->last_mpar_reset);
 			if ((time_delta < 60 * MSEC_PER_SEC) && pcc_ss_data->last_mpar_reset) {
-				pr_debug("PCC cmd not sent due to MPAR limit");
+				pr_debug("PCC cmd for subspace %d not sent due to MPAR limit",
+					 pcc_ss_id);
 				ret = -EIO;
 				goto end;
 			}
@@ -312,8 +314,8 @@ static int send_pcc_cmd(int pcc_ss_id, u16 cmd)
 	/* Ring doorbell */
 	ret = mbox_send_message(pcc_ss_data->pcc_channel, &cmd);
 	if (ret < 0) {
-		pr_err("Err sending PCC mbox message. cmd:%d, ret:%d\n",
-				cmd, ret);
+		pr_err("Err sending PCC mbox message. ss: %d cmd:%d, ret:%d\n",
+		       pcc_ss_id, cmd, ret);
 		goto end;
 	}
 
@@ -553,7 +555,8 @@ static int register_pcc_channel(int pcc_ss_idx)
 			pcc_mbox_request_channel(&cppc_mbox_cl,	pcc_ss_idx);
 
 		if (IS_ERR(pcc_data[pcc_ss_idx]->pcc_channel)) {
-			pr_err("Failed to find PCC communication channel\n");
+			pr_err("Failed to find PCC channel for subspace %d\n",
+			       pcc_ss_idx);
 			return -ENODEV;
 		}
 
@@ -566,7 +569,8 @@ static int register_pcc_channel(int pcc_ss_idx)
 		cppc_ss = (pcc_data[pcc_ss_idx]->pcc_channel)->con_priv;
 
 		if (!cppc_ss) {
-			pr_err("No PCC subspace found for CPPC\n");
+			pr_err("No PCC subspace found for %d CPPC\n",
+			       pcc_ss_idx);
 			return -ENODEV;
 		}
 
@@ -584,7 +588,8 @@ static int register_pcc_channel(int pcc_ss_idx)
 		pcc_data[pcc_ss_idx]->pcc_comm_addr =
 			acpi_os_ioremap(cppc_ss->base_address, cppc_ss->length);
 		if (!pcc_data[pcc_ss_idx]->pcc_comm_addr) {
-			pr_err("Failed to ioremap PCC comm region mem\n");
+			pr_err("Failed to ioremap PCC comm region mem for %d\n",
+			       pcc_ss_idx);
 			return -ENOMEM;
 		}
 
@@ -973,8 +978,8 @@ static int cpc_read(int cpu, struct cpc_register_resource *reg_res, u64 *val)
 			*val = readq_relaxed(vaddr);
 			break;
 		default:
-			pr_debug("Error: Cannot read %u bit width from PCC\n",
-					reg->bit_width);
+			pr_debug("Error: Cannot read %u bit width from PCC for ss: %d\n",
+				 reg->bit_width, pcc_ss_id);
 			ret_val = -EFAULT;
 	}
 
@@ -1012,8 +1017,8 @@ static int cpc_write(int cpu, struct cpc_register_resource *reg_res, u64 val)
 			writeq_relaxed(val, vaddr);
 			break;
 		default:
-			pr_debug("Error: Cannot write %u bit width to PCC\n",
-					reg->bit_width);
+			pr_debug("Error: Cannot write %u bit width to PCC for ss: %d\n",
+				 reg->bit_width, pcc_ss_id);
 			ret_val = -EFAULT;
 			break;
 	}
@@ -1035,15 +1040,14 @@ int cppc_get_perf_caps(int cpunum, struct cppc_perf_caps *perf_caps)
 		*lowest_non_linear_reg, *nominal_reg;
 	u64 high, low, nom, min_nonlinear;
 	int pcc_ss_id = per_cpu(cpu_pcc_subspace_idx, cpunum);
-	struct cppc_pcc_data *pcc_ss_data;
+	struct cppc_pcc_data *pcc_ss_data = NULL;
 	int ret = 0, regs_in_pcc = 0;
 
-	if (!cpc_desc || pcc_ss_id < 0) {
+	if (!cpc_desc) {
 		pr_debug("No CPC descriptor for CPU:%d\n", cpunum);
 		return -ENODEV;
 	}
 
-	pcc_ss_data = pcc_data[pcc_ss_id];
 	highest_reg = &cpc_desc->cpc_regs[HIGHEST_PERF];
 	lowest_reg = &cpc_desc->cpc_regs[LOWEST_PERF];
 	lowest_non_linear_reg = &cpc_desc->cpc_regs[LOW_NON_LINEAR_PERF];
@@ -1052,6 +1056,11 @@ int cppc_get_perf_caps(int cpunum, struct cppc_perf_caps *perf_caps)
 	/* Are any of the regs PCC ?*/
 	if (CPC_IN_PCC(highest_reg) || CPC_IN_PCC(lowest_reg) ||
 		CPC_IN_PCC(lowest_non_linear_reg) || CPC_IN_PCC(nominal_reg)) {
+		if (pcc_ss_id < 0) {
+			pr_debug("Invalid pcc_ss_id\n");
+			return -ENODEV;
+		}
+		pcc_ss_data = pcc_data[pcc_ss_id];
 		regs_in_pcc = 1;
 		down_write(&pcc_ss_data->pcc_lock);
 		/* Ring doorbell once to update PCC subspace */
@@ -1096,16 +1105,15 @@ int cppc_get_perf_ctrs(int cpunum, struct cppc_perf_fb_ctrs *perf_fb_ctrs)
 	struct cpc_register_resource *delivered_reg, *reference_reg,
 		*ref_perf_reg, *ctr_wrap_reg;
 	int pcc_ss_id = per_cpu(cpu_pcc_subspace_idx, cpunum);
-	struct cppc_pcc_data *pcc_ss_data;
+	struct cppc_pcc_data *pcc_ss_data = NULL;
 	u64 delivered, reference, ref_perf, ctr_wrap_time;
 	int ret = 0, regs_in_pcc = 0;
 
-	if (!cpc_desc || pcc_ss_id < 0) {
+	if (!cpc_desc) {
 		pr_debug("No CPC descriptor for CPU:%d\n", cpunum);
 		return -ENODEV;
 	}
 
-	pcc_ss_data = pcc_data[pcc_ss_id];
 	delivered_reg = &cpc_desc->cpc_regs[DELIVERED_CTR];
 	reference_reg = &cpc_desc->cpc_regs[REFERENCE_CTR];
 	ref_perf_reg = &cpc_desc->cpc_regs[REFERENCE_PERF];
@@ -1121,6 +1129,11 @@ int cppc_get_perf_ctrs(int cpunum, struct cppc_perf_fb_ctrs *perf_fb_ctrs)
 	/* Are any of the regs PCC ?*/
 	if (CPC_IN_PCC(delivered_reg) || CPC_IN_PCC(reference_reg) ||
 		CPC_IN_PCC(ctr_wrap_reg) || CPC_IN_PCC(ref_perf_reg)) {
+		if (pcc_ss_id < 0) {
+			pr_debug("Invalid pcc_ss_id\n");
+			return -ENODEV;
+		}
+		pcc_ss_data = pcc_data[pcc_ss_id];
 		down_write(&pcc_ss_data->pcc_lock);
 		regs_in_pcc = 1;
 		/* Ring doorbell once to update PCC subspace */
@@ -1171,15 +1184,14 @@ int cppc_set_perf(int cpu, struct cppc_perf_ctrls *perf_ctrls)
 	struct cpc_desc *cpc_desc = per_cpu(cpc_desc_ptr, cpu);
 	struct cpc_register_resource *desired_reg;
 	int pcc_ss_id = per_cpu(cpu_pcc_subspace_idx, cpu);
-	struct cppc_pcc_data *pcc_ss_data;
+	struct cppc_pcc_data *pcc_ss_data = NULL;
 	int ret = 0;
 
-	if (!cpc_desc || pcc_ss_id < 0) {
+	if (!cpc_desc) {
 		pr_debug("No CPC descriptor for CPU:%d\n", cpu);
 		return -ENODEV;
 	}
 
-	pcc_ss_data = pcc_data[pcc_ss_id];
 	desired_reg = &cpc_desc->cpc_regs[DESIRED_PERF];
 
 	/*
@@ -1190,6 +1202,11 @@ int cppc_set_perf(int cpu, struct cppc_perf_ctrls *perf_ctrls)
 	 * achieve that goal here
 	 */
 	if (CPC_IN_PCC(desired_reg)) {
+		if (pcc_ss_id < 0) {
+			pr_debug("Invalid pcc_ss_id\n");
+			return -ENODEV;
+		}
+		pcc_ss_data = pcc_data[pcc_ss_id];
 		down_read(&pcc_ss_data->pcc_lock); /* BEGIN Phase-I */
 		if (pcc_ss_data->platform_owns_pcc) {
 			ret = check_pcc_chan(pcc_ss_id, false);
