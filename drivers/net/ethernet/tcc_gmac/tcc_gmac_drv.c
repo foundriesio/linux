@@ -1270,7 +1270,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 		// for kernel-v4.14
 		if (bus->mdio_map[phy_addr]) {
-			phy = bus->mdio_map[phy_addr];
+			phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
 			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
 			break;
 		} 
@@ -1288,14 +1288,12 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 			return -1;
 	}
 
-
-
 //	snprintf(bus_id, MII_BUS_ID_SIZE, "tcc_gmac-%x", priv->bus_id);
 //	snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id, priv->phy_addr);
 //	printk("priv->bus_id : %d \n" , priv->bus_id);
 //	printk("%s: trying to attach to %s\n", __func__,	phy_id);
 
-	phy = phy_connect(dev, dev_name(&phy->mdio), &tcc_gmac_adjust_link, tca_gmac_get_phy_interface(&priv->dt_info));
+	phy = phy_connect(dev, dev_name(&phy->mdio.dev), &tcc_gmac_adjust_link, tca_gmac_get_phy_interface(&priv->dt_info));
 #if 0
 	/* Attach the MAC to the Phy */
 	phy = phy_connect(dev, 
