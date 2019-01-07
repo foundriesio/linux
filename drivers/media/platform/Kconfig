@@ -640,3 +640,23 @@ config VIDEO_RCAR_DRIF
 	  will be called rcar_drif.
 
 endif # SDR_PLATFORM_DRIVERS
+
+config PLATFORM_HWDEMUX
+	tristate "Telechips hardware demux"
+	depends on (ARCH_TCC899X || ARCH_TCC803X) && TCC_SECURE_PROCESSOR
+	default y
+	help
+	  Say Y here if you want Telechips hardware demux, using ARM
+	  cortex M series to be accessible as /dev/hwdemux device.
+
+config HWDEMUX_ADAPTOR
+	tristate "Telechips hardware demux adaptor for Linux TV"
+	depends on PLATFORM_HWDEMUX
+	help
+	  Say Y here if you want Telechips hardware demux via Linux TV
+	  interface. Say N if you want Telechips hardware demux directly.
+
+config ISDBT_CONTROL 
+	tristate "Telechips isdbt control driver"
+	help
+	  Say Y here if you want Telechips isdbt control drivers.  

@@ -268,7 +268,7 @@
 &tcc_hwdmx_tsif1 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
 	tsif-port = <2>;
-	inctrl-names = "idle", "active";
+	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&tsrx2_idle>;
 	pinctrl-1 = <&tsrx2_active>;
 	clocks = <&clk_peri PERI_TSRX2>;

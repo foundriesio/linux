@@ -299,19 +299,23 @@
 	};
 	tcc_hwdmx_tsif@0 {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-port = <2>;
-		port-mux = <2>;
+		tsif-port = <1>;
 		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-		clocks = <&clk_peri PERI_TSRX0>;
-		clock-names = "tsrx0";
+		pinctrl-0 = <&tsrx1_idle>;
+		pinctrl-1 = <&tsrx1_active>;
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+		status = "okay";
 	};
 
 	tcc_hwdmx_tsif@1 {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		clocks = <&clk_peri PERI_TSRX1>;
-		clock-names = "tsrx1";
+		tsif-port = <2>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&tsrx2_idle>;
+		pinctrl-1 = <&tsrx2_active>;
+		clocks = <&clk_peri PERI_TSRX2>;
+		clock-names = "tsrx2";
 	};
 
 	tcc_dxb_ctrl {
