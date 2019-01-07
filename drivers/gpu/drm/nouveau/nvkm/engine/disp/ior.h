@@ -15,6 +15,7 @@ struct nvkm_ior {
 	char name[8];
 
 	struct list_head head;
+	bool identity;
 
 	struct nvkm_ior_state {
 		struct nvkm_outp *outp;
