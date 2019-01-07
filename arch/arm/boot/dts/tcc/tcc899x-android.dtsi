@@ -25,7 +25,7 @@
 };
 #endif
 
-&firmware_android {
+ &firmware_android {
 	compatible = "android,firmware";
 	fstab {
 		compatible = "android,fstab";

@@ -11,4 +11,6 @@ config iDxB_SUPPORT
 
 source "drivers/i-dxb/silabs/Kconfig"
 
+source "drivers/i-dxb/availink/Kconfig"
+
 endmenu

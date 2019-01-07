@@ -256,19 +256,23 @@
 
 &tcc_hwdmx_tsif0 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
-	tsif-port = <2>;
-	port-mux = <2>;
+	tsif-port = <1>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&tsrx2_idle>;
-	pinctrl-1 = <&tsrx2_active>;
-	clocks = <&clk_peri PERI_TSRX0>;
-	clock-names = "tsrx0";
+	pinctrl-0 = <&tsrx1_idle>;
+	pinctrl-1 = <&tsrx1_active>;
+	clocks = <&clk_peri PERI_TSRX1>;
+	clock-names = "tsrx1";
+	status = "okay";
 };
 
 &tcc_hwdmx_tsif1 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
-	clocks = <&clk_peri PERI_TSRX1>;
-	clock-names = "tsrx1";
+	tsif-port = <2>;
+	inctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx2_idle>;
+	pinctrl-1 = <&tsrx2_active>;
+	clocks = <&clk_peri PERI_TSRX2>;
+	clock-names = "tsrx2";
 };
 
 &tcc_dxb_ctrl {
@@ -278,6 +282,27 @@
 	dxb1-gpios = <>, <>, <>, <>;
 	ant-gpios  = <>, <>;
 };
+
+&si_power {
+	compatible = "telechips,si_power";
+	pw-gpios = <0>;
+	/*PD, RST, IRQ, SDO*/
+	si0-gpios = <0>, <&gpe 12 0>, <0>, <0>;
+	/*PD, RST, IRQ, SDO*/
+	si1-gpios = <0>, <&gpe 28 0>, <0>, <0>;
+};
+
+&avl62x1_power {
+	compatible = "availink,avl62x1";
+	i2c-parent = <&i2c1>;
+	i2c-lnb-ctrl = <&i2c1>;
+	/* LNB_SLP, DVB_LOCK, DVB_RST LNB_SEL */
+	gpios = <&gpa 18 0>, <&gpa 17 0>, <&gpe 12 0>, <&gpe 11 0>;
+	config-idx = <0>;
+	/* LNB_IRQ */
+	int-gpios = <&gpd 2 0>;
+};
+
 
 /* I2C */
 

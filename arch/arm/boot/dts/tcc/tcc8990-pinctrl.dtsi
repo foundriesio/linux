@@ -286,6 +286,19 @@
 		telechips,pin-function = <5>;
 	};
 
+
+	tsrx1_idle: tsrx1_idle {
+		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	tsrx1_active: tsrx1_active {
+		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
+	};
+
 	tsrx2_idle: tsrx2_idle {
 		telechips,pins = "gpe-16", "gpe-17", "gpe-18", "gpe-19";
 		telechips,pin-function = <0>;
