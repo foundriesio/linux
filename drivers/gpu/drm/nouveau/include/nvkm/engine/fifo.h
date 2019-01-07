@@ -3,6 +3,7 @@
 #include <core/engine.h>
 #include <core/object.h>
 #include <core/event.h>
+struct nvkm_fault_data;
 
 #define NVKM_FIFO_CHID_NR 4096
 
@@ -44,6 +45,7 @@ struct nvkm_fifo {
 	struct nvkm_event kevent; /* channel killed */
 };
 
+void nvkm_fifo_fault(struct nvkm_fifo *, struct nvkm_fault_data *);
 void nvkm_fifo_pause(struct nvkm_fifo *, unsigned long *);
 void nvkm_fifo_start(struct nvkm_fifo *, unsigned long *);
 
