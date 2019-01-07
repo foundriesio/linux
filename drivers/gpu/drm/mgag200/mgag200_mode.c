@@ -1673,8 +1673,14 @@ static enum drm_mode_status mga_vga_mode_valid(struct drm_connector *connector,
 {
 	struct drm_device *dev = connector->dev;
 	struct mga_device *mdev = (struct mga_device*)dev->dev_private;
-	int bpp = 32;
+	int bpp;
 	int lace;
+
+	bpp = mdev->preferred_bpp;
+	/* Validate the mode input by the user */
+	if (connector->cmdline_mode.specified &&
+	    connector->cmdline_mode.bpp_specified)
+		bpp = connector->cmdline_mode.bpp;
 
 	lace = (mode->flags & DRM_MODE_FLAG_INTERLACE) ? 2 : 1;
 	if (IS_G200_SE(mdev)) {
@@ -1733,12 +1739,6 @@ static enum drm_mode_status mga_vga_mode_valid(struct drm_connector *connector,
 	    mode->vsync_end > 4096 * lace ||
 	    mode->vtotal > 4096 * lace) {
 		return MODE_BAD;
-	}
-
-	/* Validate the mode input by the user */
-	if (connector->cmdline_mode.specified) {
-		if (connector->cmdline_mode.bpp_specified)
-			bpp = connector->cmdline_mode.bpp;
 	}
 
 	if ((mode->hdisplay * mode->vdisplay * (bpp/8)) > mdev->mc.vram_size) {
