@@ -2122,6 +2122,7 @@ err:
 			ret = VM_FAULT_SIGBUS;
 			break;
 		}
+		/* else: fall through */
 	case -EAGAIN:
 		/*
 		 * EAGAIN means the gpu is hung and we'll wait for the error
