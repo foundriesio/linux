@@ -1,0 +1,66 @@
+next/soc
+
+next/dt
+
+next/drivers
+	drivers/pl353
+		https://github.com/Xilinx/linux-xlnx tags/zynq-soc-for-v5.0
+	qcom/drivers-3
+		git://git.kernel.org/pub/scm/linux/kernel/git/agross/linux tags/qcom-drivers-for-4.21-2
+
+next/defconfig
+
+next/late
+	drivers/tee-fix
+		https://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-subsys-fix-for-4.21
+	drivers/tee-devel
+		https://git.linaro.org/people/jens.wiklander/linux-tee tags/tee-subsys-optee-for-4.21
+	imx/dt-8mq
+		git://git.kernel.org/pub/scm/linux/kernel/git/shawnguo/linux tags/imx8mq-4.21
+		contains imx/dt64
+	patch
+		dt-bindings: Add RDA Micro vendor prefix
+		dt-bindings: arm: Document RDA8810PL and reference boards
+		ARM: Prepare RDA8810PL SoC
+		ARM: dts: Add devicetree for RDA8810PL SoC
+		ARM: dts: Add devicetree for OrangePi 2G IoT board
+		ARM: dts: Add devicetree for OrangePi i96 board
+		ARM: dts: rda8810pl: Add timer support
+		dt-bindings: serial: Document RDA Micro UART
+		ARM: dts: rda8810pl: Add interrupt support for UART
+		tty: serial: Add RDA8810PL UART driver
+		MAINTAINERS: Add entry for RDA Micro SoC architecture
+	samsung/dt-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt-4.21-2
+		contains samsung/dt
+	samsung/dt64-2
+		https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux tags/samsung-dt64-4.21-2
+		contains samsung/dt64
+	sti/soc
+		git://git.kernel.org/pub/scm/linux/kernel/git/pchotard/sti tags/sti-soc-for-v4.21-round1
+	patch
+		arm64: defconfig: Re-enable bcm2835-thermal driver
+		ARM: multi_v7_defconfig: enable CONFIG_UNIPHIER_MDMAC
+	next/drivers
+		Merge branch 'next/drivers' into next/late
+		contains amlogic/drivers
+		contains amlogic/drivers-2
+		contains at91/soc
+		contains broadcom/drivers
+		contains drivers/pl353
+		contains imx/drivers
+		contains mediatek/soc
+		contains omap/drivers
+		contains omap/drivers-2
+		contains pxa/devel
+		contains qcom/drivers
+		contains qcom/drivers-3
+		contains renesas/drivers
+		contains rockchip/drivers
+		contains sunxi/drivers
+		contains tegra/firmware
+		contains tegra/memory
+		contains tegra/soc
+
+fixes
+
