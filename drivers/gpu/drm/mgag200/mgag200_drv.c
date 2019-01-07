@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/console.h>
 #include <drm/drmP.h>
+#include <drm/drm_crtc_helper.h>
 
 #include "mgag200_drv.h"
 
@@ -81,6 +82,45 @@ static void mga_pci_remove(struct pci_dev *pdev)
 	drm_put_dev(dev);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int mgag200_pm_suspend(struct device *dev)
+{
+	struct drm_device *drm_dev = dev_get_drvdata(dev);
+	struct mga_device *mdev = drm_dev->dev_private;
+
+	drm_kms_helper_poll_disable(drm_dev);
+
+	if (mdev->mfbdev) {
+		console_lock();
+		drm_fb_helper_set_suspend(&mdev->mfbdev->helper, 1);
+		console_unlock();
+	}
+
+	return 0;
+}
+
+static int mgag200_pm_resume(struct device *dev)
+{
+	struct drm_device *drm_dev = dev_get_drvdata(dev);
+	struct mga_device *mdev = drm_dev->dev_private;
+
+	drm_helper_resume_force_mode(drm_dev);
+
+	if (mdev->mfbdev) {
+		console_lock();
+		drm_fb_helper_set_suspend(&mdev->mfbdev->helper, 0);
+		console_unlock();
+	}
+
+	drm_kms_helper_poll_enable(drm_dev);
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops mgag200_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(mgag200_pm_suspend, mgag200_pm_resume)
+};
+
 static const struct file_operations mgag200_driver_fops = {
 	.owner = THIS_MODULE,
 	.open = drm_open,
@@ -114,6 +154,7 @@ static struct pci_driver mgag200_pci_driver = {
 	.id_table = pciidlist,
 	.probe = mga_pci_probe,
 	.remove = mga_pci_remove,
+	.driver.pm = &mgag200_pm_ops,
 };
 
 static int __init mgag200_init(void)
