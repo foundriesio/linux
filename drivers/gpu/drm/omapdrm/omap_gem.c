@@ -156,7 +156,7 @@ static u64 mmap_offset(struct drm_gem_object *obj)
 	return drm_vma_node_offset_addr(&obj->vma_node);
 }
 
-static bool is_contiguous(struct omap_gem_object *omap_obj)
+static bool omap_gem_is_contiguous(struct omap_gem_object *omap_obj)
 {
 	if (omap_obj->flags & OMAP_BO_MEM_DMA_API)
 		return true;
@@ -171,7 +171,7 @@ static bool is_contiguous(struct omap_gem_object *omap_obj)
  * Eviction
  */
 
-static void evict_entry(struct drm_gem_object *obj,
+static void omap_gem_evict_entry(struct drm_gem_object *obj,
 		enum tiler_fmt fmt, struct omap_drm_usergart_entry *entry)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
@@ -199,7 +199,7 @@ static void evict_entry(struct drm_gem_object *obj,
 }
 
 /* Evict a buffer from usergart, if it is mapped there */
-static void evict(struct drm_gem_object *obj)
+static void omap_gem_evict(struct drm_gem_object *obj)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
 	struct omap_drm_private *priv = obj->dev->dev_private;
@@ -213,7 +213,7 @@ static void evict(struct drm_gem_object *obj)
 				&priv->usergart[fmt].entry[i];
 
 			if (entry->obj == obj)
-				evict_entry(obj, fmt, entry);
+				omap_gem_evict_entry(obj, fmt, entry);
 		}
 	}
 }
@@ -291,7 +291,8 @@ free_pages:
 /* acquire pages when needed (for example, for DMA where physically
  * contiguous buffer is not required
  */
-static int get_pages(struct drm_gem_object *obj, struct page ***pages)
+static int __omap_gem_get_pages(struct drm_gem_object *obj,
+				struct page ***pages)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
 	int ret = 0;
@@ -371,7 +372,7 @@ size_t omap_gem_mmap_size(struct drm_gem_object *obj)
  */
 
 /* Normal handling for the case of faulting in non-tiled buffers */
-static int fault_1d(struct drm_gem_object *obj,
+static int omap_gem_fault_1d(struct drm_gem_object *obj,
 		struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
@@ -385,7 +386,7 @@ static int fault_1d(struct drm_gem_object *obj,
 		omap_gem_cpu_sync_page(obj, pgoff);
 		pfn = page_to_pfn(omap_obj->pages[pgoff]);
 	} else {
-		BUG_ON(!is_contiguous(omap_obj));
+		BUG_ON(!omap_gem_is_contiguous(omap_obj));
 		pfn = (omap_obj->dma_addr >> PAGE_SHIFT) + pgoff;
 	}
 
@@ -396,7 +397,7 @@ static int fault_1d(struct drm_gem_object *obj,
 }
 
 /* Special handling for the case of faulting in 2d tiled buffers */
-static int fault_2d(struct drm_gem_object *obj,
+static int omap_gem_fault_2d(struct drm_gem_object *obj,
 		struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
@@ -443,7 +444,7 @@ static int fault_2d(struct drm_gem_object *obj,
 
 	/* evict previous buffer using this usergart entry, if any: */
 	if (entry->obj)
-		evict_entry(entry->obj, fmt, entry);
+		omap_gem_evict_entry(entry->obj, fmt, entry);
 
 	entry->obj = obj;
 	entry->obj_pgoff = base_pgoff;
@@ -524,7 +525,7 @@ int omap_gem_fault(struct vm_fault *vmf)
 	mutex_lock(&dev->struct_mutex);
 
 	/* if a shmem backed object, make sure we have pages attached now */
-	ret = get_pages(obj, &pages);
+	ret = __omap_gem_get_pages(obj, &pages);
 	if (ret)
 		goto fail;
 
@@ -535,9 +536,9 @@ int omap_gem_fault(struct vm_fault *vmf)
 	 */
 
 	if (omap_obj->flags & OMAP_BO_TILED)
-		ret = fault_2d(obj, vma, vmf);
+		ret = omap_gem_fault_2d(obj, vma, vmf);
 	else
-		ret = fault_1d(obj, vma, vmf);
+		ret = omap_gem_fault_1d(obj, vma, vmf);
 
 
 fail:
@@ -694,7 +695,8 @@ int omap_gem_roll(struct drm_gem_object *obj, u32 roll)
 	/* if we aren't mapped yet, we don't need to do anything */
 	if (omap_obj->block) {
 		struct page **pages;
-		ret = get_pages(obj, &pages);
+
+		ret = __omap_gem_get_pages(obj, &pages);
 		if (ret)
 			goto fail;
 		ret = tiler_pin(omap_obj->block, pages, npages, roll, true);
@@ -722,7 +724,7 @@ fail:
  * the omap_obj->dma_addrs[i] is set to the DMA address, and the page is
  * unmapped from the CPU.
  */
-static inline bool is_cached_coherent(struct drm_gem_object *obj)
+static inline bool omap_gem_is_cached_coherent(struct drm_gem_object *obj)
 {
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
 
@@ -738,7 +740,7 @@ void omap_gem_cpu_sync_page(struct drm_gem_object *obj, int pgoff)
 	struct drm_device *dev = obj->dev;
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
 
-	if (is_cached_coherent(obj))
+	if (omap_gem_is_cached_coherent(obj))
 		return;
 
 	if (omap_obj->dma_addrs[pgoff]) {
@@ -758,7 +760,7 @@ void omap_gem_dma_sync_buffer(struct drm_gem_object *obj,
 	struct page **pages = omap_obj->pages;
 	bool dirty = false;
 
-	if (is_cached_coherent(obj))
+	if (omap_gem_is_cached_coherent(obj))
 		return;
 
 	for (i = 0; i < npages; i++) {
@@ -806,7 +808,7 @@ int omap_gem_pin(struct drm_gem_object *obj, dma_addr_t *dma_addr)
 
 	mutex_lock(&obj->dev->struct_mutex);
 
-	if (!is_contiguous(omap_obj) && priv->has_dmm) {
+	if (!omap_gem_is_contiguous(omap_obj) && priv->has_dmm) {
 		if (omap_obj->dma_addr_cnt == 0) {
 			struct page **pages;
 			u32 npages = obj->size >> PAGE_SHIFT;
@@ -815,7 +817,7 @@ int omap_gem_pin(struct drm_gem_object *obj, dma_addr_t *dma_addr)
 
 			BUG_ON(omap_obj->block);
 
-			ret = get_pages(obj, &pages);
+			ret = __omap_gem_get_pages(obj, &pages);
 			if (ret)
 				goto fail;
 
@@ -853,7 +855,7 @@ int omap_gem_pin(struct drm_gem_object *obj, dma_addr_t *dma_addr)
 		omap_obj->dma_addr_cnt++;
 
 		*dma_addr = omap_obj->dma_addr;
-	} else if (is_contiguous(omap_obj)) {
+	} else if (omap_gem_is_contiguous(omap_obj)) {
 		*dma_addr = omap_obj->dma_addr;
 	} else {
 		ret = -EINVAL;
@@ -953,7 +955,7 @@ int omap_gem_get_pages(struct drm_gem_object *obj, struct page ***pages,
 		return 0;
 	}
 	mutex_lock(&obj->dev->struct_mutex);
-	ret = get_pages(obj, pages);
+	ret = __omap_gem_get_pages(obj, pages);
 	mutex_unlock(&obj->dev->struct_mutex);
 	return ret;
 }
@@ -979,7 +981,9 @@ void *omap_gem_vaddr(struct drm_gem_object *obj)
 	WARN_ON(!mutex_is_locked(&obj->dev->struct_mutex));
 	if (!omap_obj->vaddr) {
 		struct page **pages;
-		int ret = get_pages(obj, &pages);
+		int ret;
+
+		ret = __omap_gem_get_pages(obj, &pages);
 		if (ret)
 			return ERR_PTR(ret);
 		omap_obj->vaddr = vmap(pages, obj->size >> PAGE_SHIFT,
@@ -1081,7 +1085,7 @@ void omap_gem_free_object(struct drm_gem_object *obj)
 	struct omap_drm_private *priv = dev->dev_private;
 	struct omap_gem_object *omap_obj = to_omap_bo(obj);
 
-	evict(obj);
+	omap_gem_evict(obj);
 
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
