@@ -39,8 +39,8 @@ struct tcc_pcie {
 	struct clk		*clk_hsio;
 	struct clk		*clk_phy;
 	bool				using_phy;
-	bool				using_ext_ref_clk;
-	bool				for_si_test;
+	unsigned int		using_ext_ref_clk;
+	unsigned int		for_si_test;
 	struct phy		*phy;
 	unsigned 		*suspend_regs;
 };
@@ -365,7 +365,7 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 			printk("PLL Locked: 0x%x\n", val);
 
 			/* power off phy */
-			tcc_pcie_power_off_phy(pp, 0);
+			tcc_pcie_power_off_phy(tp, 0);
 
 			printk("PCIe Link Fail\n");
 			return -EINVAL;
