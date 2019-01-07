@@ -53,6 +53,11 @@ int nv50_disp_oimm_new_(const struct nv50_disp_chan_func *,
 			struct nv50_disp *, int ctrl, int user,
 			const struct nvkm_oclass *, void *argv, u32 argc,
 			struct nvkm_object **);
+int nv50_disp_base_new_(const struct nv50_disp_dmac_func *,
+			const struct nv50_disp_chan_mthd *,
+			struct nv50_disp *, int chid,
+			const struct nvkm_oclass *, void *argv, u32 argc,
+			struct nvkm_object **);
 int nv50_disp_ovly_new_(const struct nv50_disp_dmac_func *,
 			const struct nv50_disp_chan_mthd *,
 			struct nv50_disp *, int chid,
@@ -61,9 +66,13 @@ int nv50_disp_ovly_new_(const struct nv50_disp_dmac_func *,
 
 int nv50_disp_oimm_new(const struct nvkm_oclass *, void *, u32,
 		       struct nv50_disp *, struct nvkm_object **);
+int nv50_disp_base_new(const struct nvkm_oclass *, void *, u32,
+		       struct nv50_disp *, struct nvkm_object **);
 int nv50_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 		       struct nv50_disp *, struct nvkm_object **);
 
+int g84_disp_base_new(const struct nvkm_oclass *, void *, u32,
+		      struct nv50_disp *, struct nvkm_object **);
 int g84_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 		      struct nv50_disp *, struct nvkm_object **);
 
@@ -72,6 +81,8 @@ int gt200_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 
 int gf119_disp_oimm_new(const struct nvkm_oclass *, void *, u32,
 			struct nv50_disp *, struct nvkm_object **);
+int gf119_disp_base_new(const struct nvkm_oclass *, void *, u32,
+			struct nv50_disp *, struct nvkm_object **);
 int gf119_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 			struct nv50_disp *, struct nvkm_object **);
 
@@ -79,6 +90,8 @@ int gk104_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 			struct nv50_disp *, struct nvkm_object **);
 
 int gp102_disp_oimm_new(const struct nvkm_oclass *, void *, u32,
+			struct nv50_disp *, struct nvkm_object **);
+int gp102_disp_base_new(const struct nvkm_oclass *, void *, u32,
 			struct nv50_disp *, struct nvkm_object **);
 int gp102_disp_ovly_new(const struct nvkm_oclass *, void *, u32,
 			struct nv50_disp *, struct nvkm_object **);
@@ -114,7 +127,6 @@ extern const struct nv50_disp_mthd_list nv50_disp_base_mthd_image;
 extern const struct nv50_disp_chan_mthd g84_disp_core_chan_mthd;
 extern const struct nv50_disp_mthd_list g84_disp_core_mthd_dac;
 extern const struct nv50_disp_mthd_list g84_disp_core_mthd_head;
-extern const struct nv50_disp_chan_mthd g84_disp_base_chan_mthd;
 
 extern const struct nv50_disp_chan_mthd g94_disp_core_chan_mthd;
 
@@ -122,7 +134,7 @@ extern const struct nv50_disp_mthd_list gf119_disp_core_mthd_base;
 extern const struct nv50_disp_mthd_list gf119_disp_core_mthd_dac;
 extern const struct nv50_disp_mthd_list gf119_disp_core_mthd_sor;
 extern const struct nv50_disp_mthd_list gf119_disp_core_mthd_pior;
-extern const struct nv50_disp_chan_mthd gf119_disp_base_chan_mthd;
+extern const struct nv50_disp_chan_mthd gf119_disp_base_mthd;
 
 extern const struct nv50_disp_chan_mthd gk104_disp_core_chan_mthd;
 extern const struct nv50_disp_chan_mthd gk104_disp_ovly_mthd;
