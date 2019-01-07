@@ -245,6 +245,7 @@ void mgag200_modeset_fini(struct mga_device *mdev);
 				/* mgag200_fb.c */
 int mgag200_fbdev_init(struct mga_device *mdev);
 void mgag200_fbdev_fini(struct mga_device *mdev);
+void mgag200_fbdev_set_base(struct mga_device *mdev, unsigned long gpu_addr);
 
 				/* mgag200_main.c */
 int mgag200_framebuffer_init(struct drm_device *dev,

@@ -312,3 +312,10 @@ void mgag200_fbdev_fini(struct mga_device *mdev)
 
 	mga_fbdev_destroy(mdev->dev, mdev->mfbdev);
 }
+
+void mgag200_fbdev_set_base(struct mga_device *mdev, unsigned long gpu_addr)
+{
+	mdev->mfbdev->helper.fbdev->fix.smem_start =
+		mdev->mfbdev->helper.fbdev->apertures->ranges[0].base + gpu_addr;
+	mdev->mfbdev->helper.fbdev->fix.smem_len = mdev->mc.vram_size - gpu_addr;
+}
