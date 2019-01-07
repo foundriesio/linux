@@ -1779,7 +1779,7 @@ static int hdmi_codec_probe(struct snd_soc_codec *codec)
 		return ret;
 
 	aops.audio_ptr = edev;
-	ret = snd_hdac_i915_register_notifier(&aops);
+	ret = snd_hdac_i915_register_notifier(edev->hdac.bus, &aops);
 	if (ret < 0) {
 		dev_err(&edev->hdac.dev, "notifier register failed: err: %d\n",
 				ret);
