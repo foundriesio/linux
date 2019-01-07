@@ -1592,7 +1592,9 @@ static enum drm_mode_status mga_vga_mode_valid(struct drm_connector *connector,
 	struct drm_device *dev = connector->dev;
 	struct mga_device *mdev = (struct mga_device*)dev->dev_private;
 	int bpp = 32;
+	int lace;
 
+	lace = (mode->flags & DRM_MODE_FLAG_INTERLACE) ? 2 : 1;
 	if (IS_G200_SE(mdev)) {
 		if (mdev->unique_rev_id == 0x01) {
 			if (mode->hdisplay > 1600)
@@ -1644,8 +1646,10 @@ static enum drm_mode_status mga_vga_mode_valid(struct drm_connector *connector,
 
 	if (mode->crtc_hdisplay > 2048 || mode->crtc_hsync_start > 4096 ||
 	    mode->crtc_hsync_end > 4096 || mode->crtc_htotal > 4096 ||
-	    mode->crtc_vdisplay > 2048 || mode->crtc_vsync_start > 4096 ||
-	    mode->crtc_vsync_end > 4096 || mode->crtc_vtotal > 4096) {
+	    mode->crtc_vdisplay > 2048 * lace ||
+	    mode->crtc_vsync_start > 4096 * lace ||
+	    mode->crtc_vsync_end > 4096 * lace ||
+	    mode->crtc_vtotal > 4096 * lace) {
 		return MODE_BAD;
 	}
 
@@ -1704,6 +1708,9 @@ static struct drm_connector *mga_vga_init(struct drm_device *dev)
 		return NULL;
 
 	connector = &mga_connector->base;
+
+	connector->interlace_allowed = true;
+	connector->doublescan_allowed = true;
 
 	drm_connector_init(dev, connector,
 			   &mga_vga_connector_funcs, DRM_MODE_CONNECTOR_VGA);
