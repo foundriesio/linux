@@ -1011,6 +1011,7 @@ intel_check_sprite_plane(struct intel_plane *plane,
 		src->y2 = (src_y + src_h) << 16;
 
 		if (intel_format_is_yuv(fb->format->format) &&
+		    fb->format->format != DRM_FORMAT_NV12 &&
 		    (src_x % 2 || src_w % 2)) {
 			DRM_DEBUG_KMS("src x/w (%u, %u) must be a multiple of 2 for YUV planes\n",
 				      src_x, src_w);
