@@ -15,6 +15,7 @@ Linux GPU Driver Developer's Guide
    pl111
    tinydrm
    tve200
+   v3d
    vc4
    vga-switcheroo
    vgaarbiter
