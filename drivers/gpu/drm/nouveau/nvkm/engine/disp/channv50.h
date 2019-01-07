@@ -18,6 +18,7 @@ struct nv50_disp_chan {
 
 	struct nvkm_object object;
 
+	struct nvkm_memory *memory;
 	u64 push;
 };
 
