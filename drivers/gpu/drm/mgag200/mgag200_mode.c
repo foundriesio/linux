@@ -1702,6 +1702,7 @@ static struct drm_connector *mga_vga_init(struct drm_device *dev)
 {
 	struct drm_connector *connector;
 	struct mga_connector *mga_connector;
+	struct mga_device *mdev = dev->dev_private;
 
 	mga_connector = kzalloc(sizeof(struct mga_connector), GFP_KERNEL);
 	if (!mga_connector)
@@ -1710,7 +1711,7 @@ static struct drm_connector *mga_vga_init(struct drm_device *dev)
 	connector = &mga_connector->base;
 
 	connector->interlace_allowed = true;
-	connector->doublescan_allowed = true;
+	connector->doublescan_allowed = (mdev->type == G200_WB) ? false : true;
 
 	drm_connector_init(dev, connector,
 			   &mga_vga_connector_funcs, DRM_MODE_CONNECTOR_VGA);
