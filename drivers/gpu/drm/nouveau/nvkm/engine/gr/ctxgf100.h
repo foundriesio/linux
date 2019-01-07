@@ -20,6 +20,7 @@ void gf100_grctx_mmio_item(struct gf100_grctx *, u32 addr, u32 data, int s, int)
 #define mmio_wr32(a,b,c) mmio_refn((a), (b), (c),  0, -1)
 
 struct gf100_grctx_func {
+	void (*unkn88c)(struct gf100_gr *, bool on);
 	/* main context generation function */
 	void  (*main)(struct gf100_gr *, struct gf100_grctx *);
 	/* context-specific modify-on-first-load list generation function */
@@ -34,6 +35,7 @@ struct gf100_grctx_func {
 	/* indirect context data, generated with icmds/mthds */
 	const struct gf100_gr_pack *icmd;
 	const struct gf100_gr_pack *mthd;
+	const struct gf100_gr_pack *sw_veid_bundle_init;
 	/* bundle circular buffer */
 	void (*bundle)(struct gf100_grctx *);
 	u32 bundle_size;
@@ -65,6 +67,7 @@ struct gf100_grctx_func {
 	void (*tpc_mask)(struct gf100_gr *);
 	void (*smid_config)(struct gf100_gr *);
 	/* misc other things */
+	void (*r400088)(struct gf100_gr *, bool);
 	void (*r419cb8)(struct gf100_gr *);
 	void (*r418800)(struct gf100_gr *);
 	void (*r419eb0)(struct gf100_gr *);
@@ -146,6 +149,8 @@ void gp102_grctx_generate_attrib(struct gf100_grctx *);
 extern const struct gf100_grctx_func gp104_grctx;
 
 extern const struct gf100_grctx_func gp107_grctx;
+
+extern const struct gf100_grctx_func gv100_grctx;
 
 /* context init value lists */
 
