@@ -20,7 +20,7 @@ static void mga_user_framebuffer_destroy(struct drm_framebuffer *fb)
 
 	drm_gem_object_put_unlocked(mga_fb->obj);
 	drm_framebuffer_cleanup(fb);
-	kfree(fb);
+	kfree(mga_fb);
 }
 
 static const struct drm_framebuffer_funcs mga_fb_funcs = {
