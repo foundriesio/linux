@@ -22,9 +22,12 @@
  * functions
  */
 int mgag200_modeset = -1;
+int mgag200_preferred_depth __read_mostly;
 
 MODULE_PARM_DESC(modeset, "Disable/Enable modesetting");
 module_param_named(modeset, mgag200_modeset, int, 0400);
+MODULE_PARM_DESC(preferreddepth, "Set preferred bpp");
+module_param_named(preferreddepth, mgag200_preferred_depth, int, 0400);
 
 static struct drm_driver driver;
 
@@ -120,6 +123,14 @@ static int __init mgag200_init(void)
 
 	if (mgag200_modeset == 0)
 		return -EINVAL;
+	switch (mgag200_preferred_depth) {
+	case 0: /* driver default */
+	case 16:
+	case 24:
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	return pci_register_driver(&mgag200_pci_driver);
 }

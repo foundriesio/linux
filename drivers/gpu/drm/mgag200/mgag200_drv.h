@@ -313,4 +313,6 @@ int mga_crtc_cursor_set(struct drm_crtc *crtc, struct drm_file *file_priv,
 						uint32_t handle, uint32_t width, uint32_t height);
 int mga_crtc_cursor_move(struct drm_crtc *crtc, int x, int y);
 
+extern int mgag200_preferred_depth __read_mostly;
+
 #endif				/* __MGAG200_DRV_H__ */
