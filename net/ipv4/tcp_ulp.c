@@ -105,6 +105,8 @@ void tcp_cleanup_ulp(struct sock *sk)
 	if (icsk->icsk_ulp_ops->release)
 		icsk->icsk_ulp_ops->release(sk);
 	module_put(icsk->icsk_ulp_ops->owner);
+
+	icsk->icsk_ulp_ops = NULL;
 }
 
 static int __tcp_set_ulp(struct sock *sk, const struct tcp_ulp_ops *ulp_ops)
