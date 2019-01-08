@@ -543,7 +543,12 @@ void * __meminit alloc_pages_exact_nid(int nid, size_t size, gfp_t gfp_mask);
 extern void __free_pages(struct page *page, unsigned int order);
 extern void free_pages(unsigned long addr, unsigned int order);
 extern void free_unref_page(struct page *page);
-extern void free_unref_page_list(struct list_head *list);
+extern void __free_page_list(struct list_head *list, bool dropref, unsigned long *highest_pfn);
+
+static inline void free_unref_page_list(struct list_head *list)
+{
+	return __free_page_list(list, false, NULL);
+}
 
 struct page_frag_cache;
 extern void __page_frag_cache_drain(struct page *page, unsigned int count);

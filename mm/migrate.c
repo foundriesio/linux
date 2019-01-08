@@ -916,7 +916,7 @@ static int fallback_migrate_page(struct address_space *mapping,
 	 */
 	if (page_has_private(page) &&
 	    !try_to_release_page(page, GFP_KERNEL))
-		return -EAGAIN;
+		return mode == MIGRATE_SYNC ? -EAGAIN : -EBUSY;
 
 	return migrate_page(mapping, newpage, page, mode);
 }
@@ -1289,7 +1289,7 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 	struct anon_vma *anon_vma = NULL;
 
 	/*
-	 * Movability of hugepages depends on architectures and hugepage size.
+	 * Migratability of hugepages depends on architectures and their size.
 	 * This check is necessary because some callers of hugepage migration
 	 * like soft offline and memory hotremove don't walk through page
 	 * tables or check whether the hugepage is pmd-based or not before
@@ -1324,19 +1324,8 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 		goto put_anon;
 
 	if (page_mapped(hpage)) {
-		struct address_space *mapping = page_mapping(hpage);
-
-		/*
-		 * try_to_unmap could potentially call huge_pmd_unshare.
-		 * Because of this, take semaphore in write mode here and
-		 * set TTU_RMAP_LOCKED to let lower levels know we have
-		 * taken the lock.
-		 */
-		i_mmap_lock_write(mapping);
 		try_to_unmap(hpage,
-			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS|
-			TTU_RMAP_LOCKED);
-		i_mmap_unlock_write(mapping);
+			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS);
 		page_was_mapped = 1;
 	}
 
@@ -2354,7 +2343,7 @@ static void migrate_vma_collect(struct migrate_vma *migrate)
 	mm_walk.private = migrate;
 
 	mmu_notifier_range_init(&range, mm_walk.mm, migrate->start,
-				migrate->end);
+				migrate->end, MMU_NOTIFY_CLEAR);
 	mmu_notifier_invalidate_range_start(&range);
 	walk_page_range(migrate->start, migrate->end, &mm_walk);
 	mmu_notifier_invalidate_range_end(&range);
@@ -2762,7 +2751,8 @@ static void migrate_vma_pages(struct migrate_vma *migrate)
 
 				mmu_notifier_range_init(&range,
 							migrate->vma->vm_mm,
-							addr, migrate->end);
+							addr, migrate->end,
+							MMU_NOTIFY_CLEAR);
 				mmu_notifier_invalidate_range_start(&range);
 			}
 			migrate_vma_insert_page(migrate, addr, newpage,

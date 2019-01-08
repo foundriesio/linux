@@ -50,6 +50,7 @@
 #include <linux/random.h>
 #include <linux/jhash.h>
 #include <linux/nmi.h>
+#include <linux/rwsem.h>
 
 #include <asm/sections.h>
 
@@ -3550,6 +3551,24 @@ static int __lock_downgrade(struct lockdep_map *lock, unsigned long ip)
 	curr->lockdep_depth = i;
 	curr->curr_chain_key = hlock->prev_chain_key;
 
+#if defined(CONFIG_RWSEM_XCHGADD_ALGORITHM) && defined(CONFIG_DEBUG_AID_FOR_SYZBOT)
+	if (hlock->read && curr->mm) {
+		struct rw_semaphore *sem = container_of(lock,
+							struct rw_semaphore,
+							dep_map);
+
+		if (sem == &curr->mm->mmap_sem) {
+#if defined(CONFIG_RWSEM_SPIN_ON_OWNER)
+			pr_warn("mmap_sem: hlock->read=%d count=%ld current=%px, owner=%px\n",
+				hlock->read, atomic_long_read(&sem->count),
+				curr, READ_ONCE(sem->owner));
+#else
+			pr_warn("mmap_sem: hlock->read=%d count=%ld\n",
+				hlock->read, atomic_long_read(&sem->count));
+#endif
+		}
+	}
+#endif
 	WARN(hlock->read, "downgrading a read lock");
 	hlock->read = 1;
 	hlock->acquire_ip = ip;

@@ -664,9 +664,6 @@ static void forget_original_parent(struct task_struct *father,
 {
 	struct task_struct *p, *t, *reaper;
 
-	if (unlikely(!list_empty(&father->ptraced)))
-		exit_ptrace(father, dead);
-
 	/* Can drop and reacquire tasklist_lock */
 	reaper = find_child_reaper(father);
 	if (list_empty(&father->children))
@@ -705,8 +702,18 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 	LIST_HEAD(dead);
 
 	write_lock_irq(&tasklist_lock);
-	forget_original_parent(tsk, &dead);
+	if (unlikely(!list_empty(&tsk->ptraced)))
+		exit_ptrace(tsk, &dead);
+	write_unlock_irq(&tasklist_lock);
 
+	/* Ptraced tasks have to be released before zap_pid_ns_processes(). */
+	list_for_each_entry_safe(p, n, &dead, ptrace_entry) {
+		list_del_init(&p->ptrace_entry);
+		release_task(p);
+	}
+
+	write_lock_irq(&tasklist_lock);
+	forget_original_parent(tsk, &dead);
 	if (group_dead)
 		kill_orphaned_pgrp(tsk->group_leader, NULL);
 

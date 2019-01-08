@@ -47,6 +47,7 @@ struct pid_namespace;
 struct pipe_inode_info;
 struct rcu_node;
 struct reclaim_state;
+struct capture_control;
 struct robust_list_head;
 struct sched_attr;
 struct sched_param;
@@ -964,6 +965,9 @@ struct task_struct {
 
 	struct io_context		*io_context;
 
+#ifdef CONFIG_COMPACTION
+	struct capture_control		*capture_control;
+#endif
 	/* Ptrace state: */
 	unsigned long			ptrace_message;
 	kernel_siginfo_t		*last_siginfo;
@@ -1206,6 +1210,13 @@ struct task_struct {
 #ifdef CONFIG_GCC_PLUGIN_STACKLEAK
 	unsigned long			lowest_stack;
 	unsigned long			prev_lowest_stack;
+#endif
+
+#ifdef CONFIG_DEBUG_AID_FOR_SYZBOT
+	unsigned long			getblk_stamp;
+	unsigned int			getblk_executed;
+	unsigned int			getblk_bh_count;
+	unsigned long			getblk_bh_state;
 #endif
 
 	/*

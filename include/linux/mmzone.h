@@ -480,6 +480,8 @@ struct zone {
 	unsigned long		compact_cached_free_pfn;
 	/* pfn where async and sync compaction migration scanner should start */
 	unsigned long		compact_cached_migrate_pfn[2];
+	unsigned long		compact_init_migrate_pfn;
+	unsigned long		compact_init_free_pfn;
 #endif
 
 #ifdef CONFIG_COMPACTION
@@ -518,6 +520,12 @@ enum pgdat_flags {
 					 * many pages under writeback
 					 */
 	PGDAT_RECLAIM_LOCKED,		/* prevents concurrent reclaim */
+};
+
+enum zone_flags {
+	ZONE_BOOSTED_WATERMARK,		/* zone recently boosted watermarks.
+					 * Cleared when kswapd is woken.
+					 */
 };
 
 static inline unsigned long zone_managed_pages(struct zone *zone)

@@ -47,7 +47,7 @@
  * and restore_online_page_callback() for generic callback restore.
  */
 
-static void generic_online_page(struct page *page);
+static int generic_online_page(struct page *page, unsigned int order);
 
 static online_page_callback_t online_page_callback = generic_online_page;
 static DEFINE_MUTEX(online_page_callback_lock);
@@ -656,26 +656,44 @@ void __online_page_free(struct page *page)
 }
 EXPORT_SYMBOL_GPL(__online_page_free);
 
-static void generic_online_page(struct page *page)
+static int generic_online_page(struct page *page, unsigned int order)
 {
-	__online_page_set_limits(page);
-	__online_page_increment_counters(page);
-	__online_page_free(page);
+	__free_pages_core(page, order);
+	totalram_pages_add(1UL << order);
+#ifdef CONFIG_HIGHMEM
+	if (PageHighMem(page))
+		totalhigh_pages_add(1UL << order);
+#endif
+	return 0;
+}
+
+static int online_pages_blocks(unsigned long start, unsigned long nr_pages)
+{
+	unsigned long end = start + nr_pages;
+	int order, ret, onlined_pages = 0;
+
+	while (start < end) {
+		order = min(MAX_ORDER - 1,
+			get_order(PFN_PHYS(end) - PFN_PHYS(start)));
+
+		ret = (*online_page_callback)(pfn_to_page(start), order);
+		if (!ret)
+			onlined_pages += (1UL << order);
+		else if (ret > 0)
+			onlined_pages += ret;
+
+		start += (1UL << order);
+	}
+	return onlined_pages;
 }
 
 static int online_pages_range(unsigned long start_pfn, unsigned long nr_pages,
 			void *arg)
 {
-	unsigned long i;
 	unsigned long onlined_pages = *(unsigned long *)arg;
-	struct page *page;
 
 	if (PageReserved(pfn_to_page(start_pfn)))
-		for (i = 0; i < nr_pages; i++) {
-			page = pfn_to_page(start_pfn + i);
-			(*online_page_callback)(page);
-			onlined_pages++;
-		}
+		onlined_pages = online_pages_blocks(start_pfn, nr_pages);
 
 	online_mem_sections(start_pfn, start_pfn + nr_pages);
 
@@ -689,9 +707,9 @@ static void node_states_check_changes_online(unsigned long nr_pages,
 {
 	int nid = zone_to_nid(zone);
 
-	arg->status_change_nid = -1;
-	arg->status_change_nid_normal = -1;
-	arg->status_change_nid_high = -1;
+	arg->status_change_nid = NUMA_NO_NODE;
+	arg->status_change_nid_normal = NUMA_NO_NODE;
+	arg->status_change_nid_high = NUMA_NO_NODE;
 
 	if (!node_state(nid, N_MEMORY))
 		arg->status_change_nid = nid;
@@ -1344,7 +1362,6 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 {
 	unsigned long pfn;
 	struct page *page;
-	int not_managed = 0;
 	int ret = 0;
 	LIST_HEAD(source);
 
@@ -1392,7 +1409,6 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 		else
 			ret = isolate_movable_page(page, ISOLATE_UNEVICTABLE);
 		if (!ret) { /* Success */
-			put_page(page);
 			list_add_tail(&page->lru, &source);
 			if (!__PageMovable(page))
 				inc_node_page_state(page, NR_ISOLATED_ANON +
@@ -1401,22 +1417,10 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 		} else {
 			pr_warn("failed to isolate pfn %lx\n", pfn);
 			dump_page(page, "isolation failed");
-			put_page(page);
-			/* Because we don't have big zone->lock. we should
-			   check this again here. */
-			if (page_count(page)) {
-				not_managed++;
-				ret = -EBUSY;
-				break;
-			}
 		}
+		put_page(page);
 	}
 	if (!list_empty(&source)) {
-		if (not_managed) {
-			putback_movable_pages(&source);
-			goto out;
-		}
-
 		/* Allocate a new page from the nearest neighbor node */
 		ret = migrate_pages(&source, new_node_page, NULL, 0,
 					MIGRATE_SYNC, MR_MEMORY_HOTPLUG);
@@ -1429,7 +1433,7 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 			putback_movable_pages(&source);
 		}
 	}
-out:
+
 	return ret;
 }
 
@@ -1499,9 +1503,9 @@ static void node_states_check_changes_offline(unsigned long nr_pages,
 	unsigned long present_pages = 0;
 	enum zone_type zt;
 
-	arg->status_change_nid = -1;
-	arg->status_change_nid_normal = -1;
-	arg->status_change_nid_high = -1;
+	arg->status_change_nid = NUMA_NO_NODE;
+	arg->status_change_nid_normal = NUMA_NO_NODE;
+	arg->status_change_nid_high = NUMA_NO_NODE;
 
 	/*
 	 * Check whether node_states[N_NORMAL_MEMORY] will be changed.
@@ -1617,7 +1621,6 @@ static int __ref __offline_pages(unsigned long start_pfn,
 
 			cond_resched();
 			lru_add_drain_all();
-			drain_all_pages(zone);
 
 			pfn = scan_movable_pages(pfn, end_pfn);
 			if (pfn) {
