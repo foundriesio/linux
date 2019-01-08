@@ -348,7 +348,7 @@ static struct test_case_desc test_case_array[] = {
 struct test_case_data {
 	int test_failed;
 	int test_passed;
-	s64 time;
+	u64 time;
 };
 
 /* Split it to get rid of: WARNING: line over 80 characters */
@@ -387,6 +387,7 @@ static int test_func(void *private)
 	int random_array[ARRAY_SIZE(test_case_array)];
 	int index, i, j, ret;
 	ktime_t kt;
+	u64 delta;
 
 	cpumask_set_cpu(t->cpu, &newmask);
 	set_cpus_allowed_ptr(current, &newmask);
@@ -424,8 +425,10 @@ static int test_func(void *private)
 		/*
 		 * Take an average time that test took.
 		 */
-		per_cpu_test_data[t->cpu][index].time =
-			ktime_us_delta(ktime_get(), kt) / test_repeat_count;
+		delta = (u64) ktime_us_delta(ktime_get(), kt);
+		do_div(delta, (u32) test_repeat_count);
+
+		per_cpu_test_data[t->cpu][index].time = delta;
 	}
 	t->stop = get_cycles();
 
