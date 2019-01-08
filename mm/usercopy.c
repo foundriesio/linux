@@ -262,9 +262,6 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 	/* Check for invalid addresses. */
 	check_bogus_address((const unsigned long)ptr, n, to_user);
 
-	/* Check for bad heap object. */
-	check_heap_object(ptr, n, to_user);
-
 	/* Check for bad stack object. */
 	switch (check_stack_object(ptr, n)) {
 	case NOT_STACK:
@@ -281,6 +278,9 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 	default:
 		usercopy_abort("process stack", NULL, to_user, 0, n);
 	}
+
+	/* Check for bad heap object. */
+	check_heap_object(ptr, n, to_user);
 
 	/* Check for object in kernel to avoid text exposure. */
 	check_kernel_text_object((const unsigned long)ptr, n, to_user);
