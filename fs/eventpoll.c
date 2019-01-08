@@ -1124,13 +1124,18 @@ struct file *get_epoll_tfile_raw_ptr(struct file *file, int tfd,
 static int ep_poll_callback(wait_queue_entry_t *wait, unsigned mode, int sync, void *key)
 {
 	int pwake = 0;
-	unsigned long flags;
 	struct epitem *epi = ep_item_from_wait(wait);
 	struct eventpoll *ep = epi->ep;
 	__poll_t pollflags = key_to_poll(key);
 	int ewake = 0;
 
-	spin_lock_irqsave(&ep->wq.lock, flags);
+	/*
+	 * Called by irq context or interrupts are disabled by the wake_up_*poll
+	 * callers.
+	 */
+	lockdep_assert_irqs_disabled();
+
+	spin_lock(&ep->wq.lock);
 
 	ep_set_busy_poll_napi_id(epi);
 
@@ -1207,7 +1212,7 @@ static int ep_poll_callback(wait_queue_entry_t *wait, unsigned mode, int sync, v
 		pwake++;
 
 out_unlock:
-	spin_unlock_irqrestore(&ep->wq.lock, flags);
+	spin_unlock(&ep->wq.lock);
 
 	/* We have to call this outside the lock */
 	if (pwake)
