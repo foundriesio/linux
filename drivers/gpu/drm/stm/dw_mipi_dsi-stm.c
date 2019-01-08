@@ -227,7 +227,6 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, struct drm_display_mode *mode,
 	u32 val;
 
 	/* Update lane capabilities according to hw version */
-	dsi->hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
 	dsi->lane_min_kbps = LANE_MIN_KBPS;
 	dsi->lane_max_kbps = LANE_MAX_KBPS;
 	if (dsi->hw_version == HWVER_131) {
@@ -345,6 +344,14 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 		dev_err(dev, "%s: Failed to enable pllref_clk\n", __func__);
 		regulator_disable(dsi->vdd_supply);
 		return ret;
+	}
+
+	dsi->hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
+	if (dsi->hw_version != HWVER_130 && dsi->hw_version != HWVER_131) {
+		dev_err(dev, "bad dsi hardware version\n");
+		clk_disable_unprepare(dsi->pllref_clk);
+		regulator_disable(dsi->vdd_supply);
+		return -ENODEV;
 	}
 
 	dw_mipi_dsi_stm_plat_data.base = dsi->base;
