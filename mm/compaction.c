@@ -398,19 +398,11 @@ static bool compact_lock_irqsave(spinlock_t *lock, unsigned long *flags,
 	return true;
 }
 
-/*
- * Aside from avoiding lock contention, compaction also periodically checks
- * need_resched() and records async compaction as contended if necessary.
- */
+/* Avoid soft-lockups due to long scan times */
 static inline void compact_check_resched(struct compact_control *cc)
 {
-	/* async compaction aborts if contended */
-	if (need_resched()) {
-		if (cc->mode == MIGRATE_ASYNC)
-			cc->contended = true;
-
+	if (need_resched())
 		cond_resched();
-	}
 }
 
 /*
