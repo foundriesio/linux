@@ -2026,6 +2026,7 @@ static pci_power_t pci_target_state(struct pci_dev *dev)
 		case PCI_D2:
 			if (pci_no_d1d2(dev))
 				break;
+			/* else: fall through */
 		default:
 			target_state = state;
 		}
