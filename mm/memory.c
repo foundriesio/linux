@@ -2997,17 +2997,17 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
 	/*
 	 * Preallocate pte before we take page_lock because this might lead to
 	 * deadlocks for memcg reclaim which waits for pages under writeback:
-	 * 				lock_page(A)
-	 * 				SetPageWriteback(A)
-	 * 				unlock_page(A)
+	 *				lock_page(A)
+	 *				SetPageWriteback(A)
+	 *				unlock_page(A)
 	 * lock_page(B)
-	 * 				lock_page(B)
+	 *				lock_page(B)
 	 * pte_alloc_pne
 	 *   shrink_page_list
 	 *     wait_on_page_writeback(A)
-	 *     				SetPageWriteback(B)
-	 *     				unlock_page(B)
-	 *     				# flush A, B to clear the writeback
+	 *				SetPageWriteback(B)
+	 *				unlock_page(B)
+	 *				# flush A, B to clear the writeback
 	 */
 	if (pmd_none(*vmf->pmd) && !vmf->prealloc_pte) {
 		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm_mm, vmf->address);
