@@ -2348,6 +2348,16 @@ enum compact_result try_to_compact_pages(gfp_t gfp_mask, unsigned int order,
 			continue;
 		}
 
+		/*
+		 * Do not compact remote memory. It's expensive and high-order
+		 * small allocations are expected to prefer or require local
+		 * memory. Similarly, larger requests such as THP can fallback
+		 * to base pages in preference to remote huge pages if
+		 * __GFP_THISNODE is not specified
+		 */
+		if (zone_to_nid(zone) != zone_to_nid(ac->preferred_zoneref->zone))
+			continue;
+
 		status = compact_zone_order(zone, order, gfp_mask, prio,
 				alloc_flags, ac_classzone_idx(ac), capture);
 		rc = max(status, rc);
