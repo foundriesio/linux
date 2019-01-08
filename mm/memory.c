@@ -4119,7 +4119,8 @@ static int __follow_pte_pmd(struct mm_struct *mm, unsigned long address,
 
 	if (range) {
 		mmu_notifier_range_init(range, mm, address & PAGE_MASK,
-				     (address & PAGE_MASK) + PAGE_SIZE);
+					(address & PAGE_MASK) + PAGE_SIZE,
+					range->event);
 		mmu_notifier_invalidate_range_start(range);
 	}
 	ptep = pte_offset_map_lock(mm, pmd, address, ptlp);
