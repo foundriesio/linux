@@ -40,7 +40,7 @@ static struct net *get_proc_net(const struct inode *inode)
 
 static void pde_force_lookup(struct proc_dir_entry *pde)
 {
-	/* /proc/net/* can be changed under us by setns(CLONE_NEWNET) */
+	/* /proc/net/ entries can be changed under us by setns(CLONE_NEWNET) */
 	pde->proc_dops = &simple_dentry_operations;
 }
 
