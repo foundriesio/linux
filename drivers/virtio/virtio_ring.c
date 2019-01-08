@@ -676,6 +676,7 @@ static void *virtqueue_get_buf_ctx_split(struct virtqueue *_vq,
 	void *ret;
 	unsigned int i;
 	u16 last_used;
+	bool more;
 
 	START_USE(vq);
 
@@ -684,14 +685,15 @@ static void *virtqueue_get_buf_ctx_split(struct virtqueue *_vq,
 		return NULL;
 	}
 
-	if (!more_used_split(vq)) {
+	more = more_used_split(vq);
+	if (!more) {
 		pr_debug("No more buffers in queue\n");
 		END_USE(vq);
 		return NULL;
 	}
 
 	/* Only get used array entries after they have been exposed by host. */
-	virtio_rmb(vq->weak_barriers);
+	vq = dependent_ptr_mb(vq, more);
 
 	last_used = (vq->last_used_idx & (vq->split.vring.num - 1));
 	i = virtio32_to_cpu(_vq->vdev,
@@ -1340,6 +1342,7 @@ static void *virtqueue_get_buf_ctx_packed(struct virtqueue *_vq,
 	struct vring_virtqueue *vq = to_vvq(_vq);
 	u16 last_used, id;
 	void *ret;
+	bool more;
 
 	START_USE(vq);
 
@@ -1348,14 +1351,15 @@ static void *virtqueue_get_buf_ctx_packed(struct virtqueue *_vq,
 		return NULL;
 	}
 
-	if (!more_used_packed(vq)) {
+	more = more_used_packed(vq);
+	if (!more) {
 		pr_debug("No more buffers in queue\n");
 		END_USE(vq);
 		return NULL;
 	}
 
 	/* Only get used elements after they have been exposed by host. */
-	virtio_rmb(vq->weak_barriers);
+	vq = dependent_ptr_mb(vq, more);
 
 	last_used = vq->last_used_idx;
 	id = le16_to_cpu(vq->packed.vring.desc[last_used].id);
