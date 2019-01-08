@@ -485,10 +485,6 @@ ifneq ($(KBUILD_SRC),)
 	    $(srctree) $(objtree) $(VERSION) $(PATCHLEVEL)
 endif
 
-RETPOLINE_VDSO_CFLAGS_GCC := -mindirect-branch=thunk-inline -mindirect-branch-register
-RETPOLINE_VDSO_CFLAGS := $(call cc-option,$(RETPOLINE_VDSO_CFLAGS_GCC))
-export RETPOLINE_VDSO_CFLAGS
-
 # Support for using generic headers in asm-generic
 PHONY += asm-generic
 asm-generic:

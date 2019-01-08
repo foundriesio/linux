@@ -230,9 +230,7 @@ KBUILD_AFLAGS += $(mflags-y)
 # Avoid indirect branches in kernel to deal with Spectre
 ifdef CONFIG_RETPOLINE
     RETPOLINE_CFLAGS += $(call cc-option,-mindirect-branch=thunk-extern -mindirect-branch-register)
-    ifneq ($(RETPOLINE_CFLAGS),)
-        KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
-    endif
+  KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
 endif
 
 archscripts: scripts_basic
@@ -307,8 +305,17 @@ install:
 	$(Q)$(MAKE) $(build)=$(boot) $@
 
 PHONY += vdso_install
+
 vdso_install:
 	$(Q)$(MAKE) $(build)=arch/x86/entry/vdso $@
+
+ifdef CONFIG_RETPOLINE
+ifeq ($(RETPOLINE_CFLAGS),)
+	@echo "You are building kernel with non-retpoline compiler." >&2
+	@echo "Please update your compiler." >&2
+	@false
+endif
+endif
 
 archclean:
 	$(Q)rm -rf $(objtree)/arch/i386

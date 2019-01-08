@@ -532,9 +532,9 @@ DEF_CONFIGFS_ATTRIB_SHOW(emulate_tpu);
 DEF_CONFIGFS_ATTRIB_SHOW(emulate_tpws);
 DEF_CONFIGFS_ATTRIB_SHOW(emulate_caw);
 DEF_CONFIGFS_ATTRIB_SHOW(emulate_3pc);
+DEF_CONFIGFS_ATTRIB_SHOW(emulate_pr);
 DEF_CONFIGFS_ATTRIB_SHOW(pi_prot_type);
 DEF_CONFIGFS_ATTRIB_SHOW(hw_pi_prot_type);
-DEF_CONFIGFS_ATTRIB_SHOW(pi_prot_format);
 DEF_CONFIGFS_ATTRIB_SHOW(pi_prot_verify);
 DEF_CONFIGFS_ATTRIB_SHOW(enforce_pr_isids);
 DEF_CONFIGFS_ATTRIB_SHOW(is_nonrot);
@@ -592,6 +592,7 @@ static ssize_t _name##_store(struct config_item *item, const char *page,	\
 DEF_CONFIGFS_ATTRIB_STORE_BOOL(emulate_fua_write);
 DEF_CONFIGFS_ATTRIB_STORE_BOOL(emulate_caw);
 DEF_CONFIGFS_ATTRIB_STORE_BOOL(emulate_3pc);
+DEF_CONFIGFS_ATTRIB_STORE_BOOL(emulate_pr);
 DEF_CONFIGFS_ATTRIB_STORE_BOOL(enforce_pr_isids);
 DEF_CONFIGFS_ATTRIB_STORE_BOOL(is_nonrot);
 
@@ -1116,9 +1117,10 @@ CONFIGFS_ATTR(, emulate_tpu);
 CONFIGFS_ATTR(, emulate_tpws);
 CONFIGFS_ATTR(, emulate_caw);
 CONFIGFS_ATTR(, emulate_3pc);
+CONFIGFS_ATTR(, emulate_pr);
 CONFIGFS_ATTR(, pi_prot_type);
 CONFIGFS_ATTR_RO(, hw_pi_prot_type);
-CONFIGFS_ATTR(, pi_prot_format);
+CONFIGFS_ATTR_WO(, pi_prot_format);
 CONFIGFS_ATTR(, pi_prot_verify);
 CONFIGFS_ATTR(, enforce_pr_isids);
 CONFIGFS_ATTR(, is_nonrot);
@@ -1156,6 +1158,7 @@ struct configfs_attribute *sbc_attrib_attrs[] = {
 	&attr_emulate_tpws,
 	&attr_emulate_caw,
 	&attr_emulate_3pc,
+	&attr_emulate_pr,
 	&attr_pi_prot_type,
 	&attr_hw_pi_prot_type,
 	&attr_pi_prot_format,
@@ -1478,6 +1481,9 @@ static ssize_t target_pr_res_holder_show(struct config_item *item, char *page)
 	struct se_device *dev = pr_to_dev(item);
 	int ret;
 
+	if (!dev->dev_attrib.emulate_pr)
+		return sprintf(page, "SPC_RESERVATIONS_DISABLED\n");
+
 	if (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR)
 		return sprintf(page, "Passthrough\n");
 
@@ -1618,12 +1624,14 @@ static ssize_t target_pr_res_type_show(struct config_item *item, char *page)
 {
 	struct se_device *dev = pr_to_dev(item);
 
+	if (!dev->dev_attrib.emulate_pr)
+		return sprintf(page, "SPC_RESERVATIONS_DISABLED\n");
 	if (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR)
 		return sprintf(page, "SPC_PASSTHROUGH\n");
-	else if (dev->dev_reservation_flags & DRF_SPC2_RESERVATIONS)
+	if (dev->dev_reservation_flags & DRF_SPC2_RESERVATIONS)
 		return sprintf(page, "SPC2_RESERVATIONS\n");
-	else
-		return sprintf(page, "SPC3_PERSISTENT_RESERVATIONS\n");
+
+	return sprintf(page, "SPC3_PERSISTENT_RESERVATIONS\n");
 }
 
 static ssize_t target_pr_res_aptpl_active_show(struct config_item *item,
@@ -1631,7 +1639,8 @@ static ssize_t target_pr_res_aptpl_active_show(struct config_item *item,
 {
 	struct se_device *dev = pr_to_dev(item);
 
-	if (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR)
+	if (!dev->dev_attrib.emulate_pr ||
+	    (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR))
 		return 0;
 
 	return sprintf(page, "APTPL Bit Status: %s\n",
@@ -1643,7 +1652,8 @@ static ssize_t target_pr_res_aptpl_metadata_show(struct config_item *item,
 {
 	struct se_device *dev = pr_to_dev(item);
 
-	if (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR)
+	if (!dev->dev_attrib.emulate_pr ||
+	    (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR))
 		return 0;
 
 	return sprintf(page, "Ready to process PR APTPL metadata..\n");
@@ -1689,7 +1699,8 @@ static ssize_t target_pr_res_aptpl_metadata_store(struct config_item *item,
 	u16 tpgt = 0;
 	u8 type = 0;
 
-	if (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR)
+	if (!dev->dev_attrib.emulate_pr ||
+	    (dev->transport->transport_flags & TRANSPORT_FLAG_PASSTHROUGH_PGR))
 		return count;
 	if (dev->dev_reservation_flags & DRF_SPC2_RESERVATIONS)
 		return count;

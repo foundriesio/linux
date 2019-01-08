@@ -186,8 +186,17 @@ struct tlb_state {
 
 	u16 loaded_mm_asid;
 	u16 next_asid;
+
+#ifndef __GENKSYMS__
+	/* Last user mm for optimizing IBPB */
+	union {
+		struct mm_struct	*last_user_mm;
+		unsigned long		last_user_mm_ibpb;
+	};
+#else
 	/* last user mm's ctx id */
 	u64 last_ctx_id;
+#endif
 
 	/*
 	 * We can be in one of several states:
@@ -250,6 +259,7 @@ struct tlb_state {
 	 * context 0.
 	 */
 	struct tlb_context ctxs[TLB_NR_DYN_ASIDS];
+
 };
 DECLARE_PER_CPU_SHARED_ALIGNED(struct tlb_state, cpu_tlbstate);
 
