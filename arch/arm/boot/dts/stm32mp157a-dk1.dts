@@ -287,6 +287,19 @@
 	/delete-property/dmas;
 	/delete-property/dma-names;
 
+	typec: stusb1600@28 {
+		compatible = "st,stusb1600";
+		reg = <0x28>;
+		status = "okay";
+
+		typec_con: connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			power-role = "sink";
+			power-opmode = "default";
+		};
+	};
+
 	pmic: stpmic@33 {
 		compatible = "st,stpmic1";
 		reg = <0x33>;
