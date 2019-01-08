@@ -2318,19 +2318,23 @@ done_restock:
 	 * reclaim on returning to userland.  We can perform reclaim here
 	 * if __GFP_RECLAIM but let's always punt for simplicity and so that
 	 * GFP_KERNEL can consistently be used during reclaim.  @memcg is
-	 * not recorded as it most likely matches current's and won't
-	 * change in the meantime.  As high limit is checked again before
-	 * reclaim, the cost of mismatch is negligible.
+	 * not recorded as the return-to-userland high reclaim will only reclaim
+	 * from current's memcg (or its ancestor). For other memcgs we punt them
+	 * to work queue.
 	 */
 	do {
 		if (page_counter_read(&memcg->memory) > memcg->high) {
-			/* Don't bother a random interrupted task */
-			if (in_interrupt()) {
+			/*
+			 * Don't bother a random interrupted task or if the
+			 * memcg is not current's memcg's ancestor.
+			 */
+			if (in_interrupt() ||
+			    !mm_match_cgroup(current->mm, memcg)) {
 				schedule_work(&memcg->high_work);
-				break;
+			} else {
+				current->memcg_nr_pages_over_high += batch;
+				set_notify_resume(current);
 			}
-			current->memcg_nr_pages_over_high += batch;
-			set_notify_resume(current);
 			break;
 		}
 	} while ((memcg = parent_mem_cgroup(memcg)));
