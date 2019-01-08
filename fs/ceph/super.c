@@ -219,8 +219,7 @@ static int parse_fsopt_token(char *c, void *private)
 	if (token < Opt_last_int) {
 		ret = match_int(&argstr[0], &intval);
 		if (ret < 0) {
-			pr_err("bad mount option arg (not int) "
-			       "at '%s'\n", c);
+			pr_err("bad option arg (not int) at '%s'\n", c);
 			return ret;
 		}
 		dout("got int token %d val %d\n", token, intval);
@@ -259,12 +258,12 @@ static int parse_fsopt_token(char *c, void *private)
 		break;
 		/* misc */
 	case Opt_wsize:
-		if (intval < PAGE_SIZE || intval > CEPH_MAX_WRITE_SIZE)
+		if (intval < (int)PAGE_SIZE || intval > CEPH_MAX_WRITE_SIZE)
 			return -EINVAL;
 		fsopt->wsize = ALIGN(intval, PAGE_SIZE);
 		break;
 	case Opt_rsize:
-		if (intval < PAGE_SIZE || intval > CEPH_MAX_READ_SIZE)
+		if (intval < (int)PAGE_SIZE || intval > CEPH_MAX_READ_SIZE)
 			return -EINVAL;
 		fsopt->rsize = ALIGN(intval, PAGE_SIZE);
 		break;
@@ -289,7 +288,7 @@ static int parse_fsopt_token(char *c, void *private)
 		fsopt->max_readdir = intval;
 		break;
 	case Opt_readdir_max_bytes:
-		if (intval < PAGE_SIZE && intval != 0)
+		if (intval < (int)PAGE_SIZE && intval != 0)
 			return -EINVAL;
 		fsopt->max_readdir_bytes = intval;
 		break;
@@ -340,7 +339,6 @@ static int parse_fsopt_token(char *c, void *private)
 		break;
 	case Opt_poolperm:
 		fsopt->flags &= ~CEPH_MOUNT_OPT_NOPOOLPERM;
-		printk ("pool perm");
 		break;
 	case Opt_nopoolperm:
 		fsopt->flags |= CEPH_MOUNT_OPT_NOPOOLPERM;
@@ -538,6 +536,8 @@ static int ceph_show_options(struct seq_file *m, struct dentry *root)
 		seq_puts(m, ",noasyncreaddir");
 	if ((fsopt->flags & CEPH_MOUNT_OPT_DCACHE) == 0)
 		seq_puts(m, ",nodcache");
+	if (fsopt->flags & CEPH_MOUNT_OPT_INO32)
+		seq_puts(m, ",ino32");
 	if (fsopt->flags & CEPH_MOUNT_OPT_FSCACHE) {
 		seq_show_option(m, "fsc", fsopt->fscache_uniq);
 	}
@@ -555,7 +555,7 @@ static int ceph_show_options(struct seq_file *m, struct dentry *root)
 
 	if (fsopt->mds_namespace)
 		seq_show_option(m, "mds_namespace", fsopt->mds_namespace);
-	if (fsopt->wsize)
+	if (fsopt->wsize != CEPH_MAX_WRITE_SIZE)
 		seq_printf(m, ",wsize=%d", fsopt->wsize);
 	if (fsopt->rsize != CEPH_MAX_READ_SIZE)
 		seq_printf(m, ",rsize=%d", fsopt->rsize);
@@ -627,6 +627,7 @@ static struct ceph_fs_client *create_fs_client(struct ceph_mount_options *fsopt,
 	opt = NULL; /* fsc->client now owns this */
 
 	fsc->client->extra_mon_dispatch = extra_mon_dispatch;
+	fsc->client->osdc.abort_on_full = true;
 
 	if (!fsopt->mds_namespace) {
 		ceph_monc_want_map(&fsc->client->monc, CEPH_SUB_MDSMAP,
@@ -685,6 +686,13 @@ fail:
 		ceph_destroy_options(opt);
 	destroy_mount_options(fsopt);
 	return ERR_PTR(err);
+}
+
+static void flush_fs_workqueues(struct ceph_fs_client *fsc)
+{
+	flush_workqueue(fsc->wb_wq);
+	flush_workqueue(fsc->pg_inv_wq);
+	flush_workqueue(fsc->trunc_wq);
 }
 
 static void destroy_fs_client(struct ceph_fs_client *fsc)
@@ -806,6 +814,7 @@ static void ceph_umount_begin(struct super_block *sb)
 	if (!fsc)
 		return;
 	fsc->mount_state = CEPH_MOUNT_SHUTDOWN;
+	ceph_osdc_abort_requests(&fsc->client->osdc, -EIO);
 	ceph_mdsc_force_umount(fsc->mdsc);
 	return;
 }
@@ -939,11 +948,12 @@ static int ceph_set_super(struct super_block *s, void *data)
 	dout("set_super %p data %p\n", s, data);
 
 	s->s_flags = fsc->mount_options->sb_flags;
-	s->s_maxbytes = 1ULL << 40;  /* temp value until we get mdsmap */
+	s->s_maxbytes = MAX_LFS_FILESIZE;
 
 	s->s_xattr = ceph_xattr_handlers;
 	s->s_fs_info = fsc;
 	fsc->sb = s;
+	fsc->max_file_size = 1ULL << 40; /* temp value until we get mdsmap */
 
 	s->s_op = &ceph_super_ops;
 	s->s_d_op = &ceph_dentry_ops;
@@ -1099,6 +1109,8 @@ static void ceph_kill_sb(struct super_block *s)
 	dout("kill_sb %p\n", s);
 
 	ceph_mdsc_pre_umount(fsc->mdsc);
+	flush_fs_workqueues(fsc);
+
 	generic_shutdown_super(s);
 
 	fsc->client->extra_mon_dispatch = NULL;

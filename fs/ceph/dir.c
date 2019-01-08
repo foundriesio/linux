@@ -450,7 +450,7 @@ more:
 				dfi->dir_ordered_count = req->r_dir_ordered_cnt;
 			}
 		} else {
-			dout("readdir !did_prepopulate");
+			dout("readdir !did_prepopulate\n");
 			/* disable readdir cache */
 			dfi->readdir_cache_idx = -1;
 			/* preclude from marking dir complete */
@@ -827,12 +827,14 @@ static int ceph_mknod(struct inode *dir, struct dentry *dentry,
 	if (ceph_snap(dir) != CEPH_NOSNAP)
 		return -EROFS;
 
-	if (ceph_quota_is_max_files_exceeded(dir))
-		return -EDQUOT;
+	if (ceph_quota_is_max_files_exceeded(dir)) {
+		err = -EDQUOT;
+		goto out;
+	}
 
 	err = ceph_pre_init_acls(dir, &mode, &acls);
 	if (err < 0)
-		return err;
+		goto out;
 
 	dout("mknod in dir %p dentry %p mode 0%ho rdev %d\n",
 	     dir, dentry, mode, rdev);
@@ -883,8 +885,10 @@ static int ceph_symlink(struct inode *dir, struct dentry *dentry,
 	if (ceph_snap(dir) != CEPH_NOSNAP)
 		return -EROFS;
 
-	if (ceph_quota_is_max_files_exceeded(dir))
-		return -EDQUOT;
+	if (ceph_quota_is_max_files_exceeded(dir)) {
+		err = -EDQUOT;
+		goto out;
+	}
 
 	dout("symlink in dir %p dentry %p to '%s'\n", dir, dentry, dest);
 	req = ceph_mdsc_create_request(mdsc, CEPH_MDS_OP_SYMLINK, USE_AUTH_MDS);

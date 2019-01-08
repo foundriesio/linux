@@ -864,7 +864,7 @@ retry:
 	last_snapc = snapc;
 
 	stop = false;
-	while (!stop && index <= end) {
+	while (!stop && !done && index <= end) {
 		int num_ops = 0, op_idx;
 		unsigned i, pvec_pages, max_pages, locked_pages = 0;
 		struct page **pages = NULL, **data_pages;
@@ -912,29 +912,6 @@ get_more_pages:
 				unlock_page(page);
 				break;
 			}
-			if (strip_unit_end && (page->index > strip_unit_end)) {
-				dout("end of strip unit %p\n", page);
-				unlock_page(page);
-				break;
-			}
-			if (page_offset(page) >= ceph_wbc.i_size) {
-				dout("%p page eof %llu\n",
-				     page, ceph_wbc.i_size);
-				/* not done if range_cyclic */
-				stop = true;
-				unlock_page(page);
-				break;
-			}
-			if (PageWriteback(page)) {
-				if (wbc->sync_mode == WB_SYNC_NONE) {
-					dout("%p under writeback\n", page);
-					unlock_page(page);
-					continue;
-				}
-				dout("waiting on writeback %p\n", page);
-				wait_on_page_writeback(page);
-			}
-
 			/* only if matching snap context */
 			pgsnapc = page_snap_context(page);
 			if (pgsnapc != snapc) {
@@ -946,6 +923,30 @@ get_more_pages:
 					should_loop = true;
 				unlock_page(page);
 				continue;
+			}
+			if (page_offset(page) >= ceph_wbc.i_size) {
+				dout("%p page eof %llu\n",
+				     page, ceph_wbc.i_size);
+				if (ceph_wbc.size_stable ||
+				    page_offset(page) >= i_size_read(inode))
+					mapping->a_ops->invalidatepage(page,
+								0, PAGE_SIZE);
+				unlock_page(page);
+				continue;
+			}
+			if (strip_unit_end && (page->index > strip_unit_end)) {
+				dout("end of strip unit %p\n", page);
+				unlock_page(page);
+				break;
+			}
+			if (PageWriteback(page)) {
+				if (wbc->sync_mode == WB_SYNC_NONE) {
+					dout("%p under writeback\n", page);
+					unlock_page(page);
+					continue;
+				}
+				dout("waiting on writeback %p\n", page);
+				wait_on_page_writeback(page);
 			}
 
 			if (!clear_page_dirty_for_io(page)) {
@@ -963,19 +964,15 @@ get_more_pages:
 			if (locked_pages == 0) {
 				u64 objnum;
 				u64 objoff;
+				u32 xlen;
 
 				/* prepare async write request */
 				offset = (u64)page_offset(page);
-				len = wsize;
-
-				rc = ceph_calc_file_object_mapping(&ci->i_layout,
-								offset, len,
-								&objnum, &objoff,
-								&len);
-				if (rc < 0) {
-					unlock_page(page);
-					break;
-				}
+				ceph_calc_file_object_mapping(&ci->i_layout,
+							      offset, wsize,
+							      &objnum, &objoff,
+							      &xlen);
+				len = xlen;
 
 				num_ops = 1;
 				strip_unit_end = page->index +
@@ -1164,7 +1161,7 @@ new_request:
 		 * we tagged for writeback prior to entering this loop.
 		 */
 		if (wbc->nr_to_write <= 0 && wbc->sync_mode == WB_SYNC_NONE)
-			done = stop = true;
+			done = true;
 
 release_pvec_pages:
 		dout("pagevec_release on %d pages (%p)\n", (int)pvec.nr,
@@ -1953,7 +1950,6 @@ static int __ceph_pool_perm_get(struct ceph_inode_info *ci,
 	err = ceph_osdc_start_request(&fsc->client->osdc, rd_req, false);
 
 	wr_req->r_mtime = ci->vfs_inode.i_mtime;
-	wr_req->r_abort_on_full = true;
 	err2 = ceph_osdc_start_request(&fsc->client->osdc, wr_req, false);
 
 	if (!err)
