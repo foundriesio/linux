@@ -384,10 +384,10 @@ struct attribute_group nvdimm_attribute_group = {
 };
 EXPORT_SYMBOL_GPL(nvdimm_attribute_group);
 
-struct nvdimm *nvdimm_create(struct nvdimm_bus *nvdimm_bus, void *provider_data,
-		const struct attribute_group **groups, unsigned long flags,
-		unsigned long cmd_mask, int num_flush,
-		struct resource *flush_wpq)
+struct nvdimm *__nvdimm_create(struct nvdimm_bus *nvdimm_bus,
+		void *provider_data, const struct attribute_group **groups,
+		unsigned long flags, unsigned long cmd_mask, int num_flush,
+		struct resource *flush_wpq, const char *dimm_id)
 {
 	struct nvdimm *nvdimm = kzalloc(sizeof(*nvdimm), GFP_KERNEL);
 	struct device *dev;
@@ -400,6 +400,8 @@ struct nvdimm *nvdimm_create(struct nvdimm_bus *nvdimm_bus, void *provider_data,
 		kfree(nvdimm);
 		return NULL;
 	}
+
+	nvdimm->dimm_id = dimm_id;
 	nvdimm->provider_data = provider_data;
 	nvdimm->flags = flags;
 	nvdimm->cmd_mask = cmd_mask;
@@ -416,7 +418,7 @@ struct nvdimm *nvdimm_create(struct nvdimm_bus *nvdimm_bus, void *provider_data,
 
 	return nvdimm;
 }
-EXPORT_SYMBOL_GPL(nvdimm_create);
+EXPORT_SYMBOL_GPL(__nvdimm_create);
 
 int alias_dpa_busy(struct device *dev, void *data)
 {
