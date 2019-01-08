@@ -2876,18 +2876,26 @@ void free_unref_page(struct page *page)
 /*
  * Free a list of 0-order pages
  */
-void free_unref_page_list(struct list_head *list)
+void __free_page_list(struct list_head *list, bool dropref,
+				unsigned long *highest_pfn)
 {
 	struct page *page, *next;
 	unsigned long flags, pfn;
 	int batch_count = 0;
 
+	if (highest_pfn)
+		*highest_pfn = 0;
+
 	/* Prepare pages for freeing */
 	list_for_each_entry_safe(page, next, list, lru) {
+		if (dropref)
+			WARN_ON_ONCE(!put_page_testzero(page));
 		pfn = page_to_pfn(page);
 		if (!free_unref_page_prepare(page, pfn))
 			list_del(&page->lru);
 		set_page_private(page, pfn);
+		if (highest_pfn && pfn > *highest_pfn)
+			*highest_pfn = pfn;
 	}
 
 	local_irq_save(flags);

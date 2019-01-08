@@ -52,16 +52,10 @@ static inline void count_compact_events(enum vm_event_item item, long delta)
 
 static unsigned long release_freepages(struct list_head *freelist)
 {
-	struct page *page, *next;
-	unsigned long high_pfn = 0;
+	unsigned long high_pfn;
 
-	list_for_each_entry_safe(page, next, freelist, lru) {
-		unsigned long pfn = page_to_pfn(page);
-		list_del(&page->lru);
-		__free_page(page);
-		if (pfn > high_pfn)
-			high_pfn = pfn;
-	}
+	__free_page_list(freelist, true, &high_pfn);
+	INIT_LIST_HEAD(freelist);
 
 	return high_pfn;
 }
