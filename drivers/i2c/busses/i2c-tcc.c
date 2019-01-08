@@ -423,6 +423,10 @@ static int tcc_i2c_doxfer(struct tcc_i2c *i2c, struct i2c_msg *msgs, int num)
 				goto fail;
 			}
 		}
+
+		if (i2c->msg->flags & I2C_M_STOP) {
+			tcc_i2c_stop(i2c);
+		}
 	}
 
 	if(i2c->msg->flags & I2C_M_NO_STOP)
