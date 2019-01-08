@@ -359,6 +359,8 @@ int rproc_add_virtio_dev(struct rproc_vdev *rvdev, int id)
 		}
 	}
 
+	/* Reset vdev struct as you don't know how it has been previously allocated */
+	memset(vdev, 0, sizeof(struct virtio_device));
 	vdev->id.device	= id,
 	vdev->config = &rproc_virtio_config_ops,
 	vdev->dev.parent = dev;
