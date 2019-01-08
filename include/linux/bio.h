@@ -21,12 +21,8 @@
 #include <linux/highmem.h>
 #include <linux/mempool.h>
 #include <linux/ioprio.h>
-#include <linux/bug.h>
 
 #ifdef CONFIG_BLOCK
-
-#include <asm/io.h>
-
 /* struct bio, bio_vec and BIO_* flags are defined in blk_types.h */
 #include <linux/blk_types.h>
 
@@ -118,32 +114,6 @@ static inline void *bio_data(struct bio *bio)
 
 	return NULL;
 }
-
-/*
- * will die
- */
-#define bvec_to_phys(bv)	(page_to_phys((bv)->bv_page) + (unsigned long) (bv)->bv_offset)
-
-/*
- * merge helpers etc
- */
-
-/* Default implementation of BIOVEC_PHYS_MERGEABLE */
-#define __BIOVEC_PHYS_MERGEABLE(vec1, vec2)	\
-	((bvec_to_phys((vec1)) + (vec1)->bv_len) == bvec_to_phys((vec2)))
-
-/*
- * allow arch override, for eg virtualized architectures (put in asm/io.h)
- */
-#ifndef BIOVEC_PHYS_MERGEABLE
-#define BIOVEC_PHYS_MERGEABLE(vec1, vec2)	\
-	__BIOVEC_PHYS_MERGEABLE(vec1, vec2)
-#endif
-
-#define __BIO_SEG_BOUNDARY(addr1, addr2, mask) \
-	(((addr1) | (mask)) == (((addr2) - 1) | (mask)))
-#define BIOVEC_SEG_BOUNDARY(q, b1, b2) \
-	__BIO_SEG_BOUNDARY(bvec_to_phys((b1)), bvec_to_phys((b2)) + (b2)->bv_len, queue_segment_boundary((q)))
 
 /*
  * drivers should _never_ use the all version - the bio may have been split
@@ -731,6 +701,11 @@ struct biovec_slab {
 	char *name;
 	struct kmem_cache *slab;
 };
+
+static inline bool bioset_initialized(struct bio_set *bs)
+{
+	return bs->bio_slab != NULL;
+}
 
 /*
  * a small number of entries is fine, not going to be performance critical.

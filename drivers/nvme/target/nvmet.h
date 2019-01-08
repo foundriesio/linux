@@ -35,6 +35,8 @@
  */
 #define NVMET_AEN_CFG_OPTIONAL \
 	(NVME_AEN_CFG_NS_ATTR | NVME_AEN_CFG_ANA_CHANGE)
+#define NVMET_DISC_AEN_CFG_OPTIONAL \
+	(NVME_AEN_CFG_DISC_CHANGE)
 
 /*
  * Plus mandatory SMART AENs (we'll never send them, but allow enabling them):
@@ -95,6 +97,7 @@ struct nvmet_sq {
 	u16			qid;
 	u16			size;
 	u32			sqhd;
+	bool			sqhd_disabled;
 	struct completion	free_done;
 	struct completion	confirm_done;
 };
@@ -128,6 +131,7 @@ struct nvmet_port {
 	struct list_head		subsystems;
 	struct config_group		referrals_group;
 	struct list_head		referrals;
+	struct list_head		global_entry;
 	struct config_group		ana_groups_group;
 	struct nvmet_ana_group		ana_default_group;
 	enum nvme_ana_state		*ana_state;
@@ -153,6 +157,8 @@ struct nvmet_ctrl {
 	struct nvmet_subsys	*subsys;
 	struct nvmet_cq		**cqs;
 	struct nvmet_sq		**sqs;
+
+	bool			cmd_seen;
 
 	struct mutex		lock;
 	u64			cap;
@@ -325,6 +331,27 @@ struct nvmet_async_event {
 	u8			log_page;
 };
 
+static inline void nvmet_clear_aen_bit(struct nvmet_req *req, u32 bn)
+{
+	int rae = le32_to_cpu(req->cmd->common.cdw10[0]) & 1 << 15;
+
+	if (!rae)
+		clear_bit(bn, &req->sq->ctrl->aen_masked);
+}
+
+static inline bool nvmet_aen_bit_disabled(struct nvmet_ctrl *ctrl, u32 bn)
+{
+	if (!(READ_ONCE(ctrl->aen_enabled) & (1 << bn)))
+		return true;
+	return test_and_set_bit(bn, &ctrl->aen_masked);
+}
+
+void nvmet_get_feat_kato(struct nvmet_req *req);
+void nvmet_get_feat_async_event(struct nvmet_req *req);
+u16 nvmet_set_feat_kato(struct nvmet_req *req);
+u16 nvmet_set_feat_async_event(struct nvmet_req *req, u32 mask);
+void nvmet_execute_async_event(struct nvmet_req *req);
+
 u16 nvmet_parse_connect_cmd(struct nvmet_req *req);
 u16 nvmet_bdev_parse_io_cmd(struct nvmet_req *req);
 u16 nvmet_file_parse_io_cmd(struct nvmet_req *req);
@@ -337,6 +364,8 @@ bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
 void nvmet_req_uninit(struct nvmet_req *req);
 void nvmet_req_execute(struct nvmet_req *req);
 void nvmet_req_complete(struct nvmet_req *req, u16 status);
+
+void nvmet_execute_keep_alive(struct nvmet_req *req);
 
 void nvmet_cq_setup(struct nvmet_ctrl *ctrl, struct nvmet_cq *cq, u16 qid,
 		u16 size);
@@ -378,7 +407,7 @@ int nvmet_enable_port(struct nvmet_port *port);
 void nvmet_disable_port(struct nvmet_port *port);
 
 void nvmet_referral_enable(struct nvmet_port *parent, struct nvmet_port *port);
-void nvmet_referral_disable(struct nvmet_port *port);
+void nvmet_referral_disable(struct nvmet_port *parent, struct nvmet_port *port);
 
 u16 nvmet_copy_to_sgl(struct nvmet_req *req, off_t off, const void *buf,
 		size_t len);
@@ -387,6 +416,14 @@ u16 nvmet_copy_from_sgl(struct nvmet_req *req, off_t off, void *buf,
 u16 nvmet_zero_sgl(struct nvmet_req *req, off_t off, size_t len);
 
 u32 nvmet_get_log_page_len(struct nvme_command *cmd);
+
+extern struct list_head *nvmet_ports;
+void nvmet_port_disc_changed(struct nvmet_port *port,
+		struct nvmet_subsys *subsys);
+void nvmet_subsys_disc_changed(struct nvmet_subsys *subsys,
+		struct nvmet_host *host);
+void nvmet_add_async_event(struct nvmet_ctrl *ctrl, u8 event_type,
+		u8 event_info, u8 log_page);
 
 #define NVMET_QUEUE_SIZE	1024
 #define NVMET_NR_QUEUES		128
@@ -408,7 +445,7 @@ u32 nvmet_get_log_page_len(struct nvme_command *cmd);
 #define NVMET_DEFAULT_ANA_GRPID	1
 
 #define NVMET_KAS		10
-#define NVMET_DISC_KATO		120
+#define NVMET_DISC_KATO_MS		120000
 
 int __init nvmet_init_configfs(void);
 void __exit nvmet_exit_configfs(void);
@@ -417,15 +454,13 @@ int __init nvmet_init_discovery(void);
 void nvmet_exit_discovery(void);
 
 extern struct nvmet_subsys *nvmet_disc_subsys;
-extern u64 nvmet_genctr;
 extern struct rw_semaphore nvmet_config_sem;
 
 extern u32 nvmet_ana_group_enabled[NVMET_MAX_ANAGRPS + 1];
 extern u64 nvmet_ana_chgcnt;
 extern struct rw_semaphore nvmet_ana_sem;
 
-bool nvmet_host_allowed(struct nvmet_req *req, struct nvmet_subsys *subsys,
-		const char *hostnqn);
+bool nvmet_host_allowed(struct nvmet_subsys *subsys, const char *hostnqn);
 
 int nvmet_bdev_ns_enable(struct nvmet_ns *ns);
 int nvmet_file_ns_enable(struct nvmet_ns *ns);
