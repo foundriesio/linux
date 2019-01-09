@@ -56,5 +56,5 @@ struct ovl_entry *ovl_alloc_entry(unsigned int numlower);
 
 static inline struct dentry *ovl_upperdentry_dereference(struct ovl_entry *oe)
 {
-	return lockless_dereference(oe->__upperdentry);
+	return READ_ONCE(oe->__upperdentry);
 }

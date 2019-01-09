@@ -185,9 +185,11 @@ static void fscache_attr_changed_op(struct fscache_operation *op)
 		fscache_stat_d(&fscache_n_cop_attr_changed);
 		if (ret < 0)
 			fscache_abort_object(object);
+		fscache_op_complete(op, ret < 0);
+	} else {
+		fscache_op_complete(op, true);
 	}
 
-	fscache_op_complete(op, true);
 	_leave("");
 }
 
@@ -781,11 +783,12 @@ again:
 	cookie = object->cookie;
 
 	if (!fscache_object_is_active(object)) {
-		/* If we get here, then the on-disk cache object likely longer
-		 * exists, so we should just cancel this write operation.
+		/* If we get here, then the on-disk cache object likely no
+		 * longer exists, so we should just cancel this write
+		 * operation.
 		 */
 		spin_unlock(&object->lock);
-		fscache_op_complete(&op->op, false);
+		fscache_op_complete(&op->op, true);
 		_leave(" [inactive]");
 		return;
 	}
@@ -798,7 +801,7 @@ again:
 		 * cancel this write operation.
 		 */
 		spin_unlock(&object->lock);
-		fscache_op_complete(&op->op, false);
+		fscache_op_complete(&op->op, true);
 		_leave(" [cancel] op{f=%lx s=%u} obj{s=%s f=%lx}",
 		       _op->flags, _op->state, object->state->short_name,
 		       object->flags);
@@ -856,7 +859,7 @@ superseded:
 	spin_unlock(&cookie->stores_lock);
 	clear_bit(FSCACHE_OBJECT_PENDING_WRITE, &object->flags);
 	spin_unlock(&object->lock);
-	fscache_op_complete(&op->op, true);
+	fscache_op_complete(&op->op, false);
 	_leave("");
 }
 

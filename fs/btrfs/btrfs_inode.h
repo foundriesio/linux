@@ -32,17 +32,17 @@
  * ordered operations list so that we make sure to flush out any
  * new data the application may have written before commit.
  */
-#define BTRFS_INODE_ORDERED_DATA_CLOSE		0
-#define BTRFS_INODE_ORPHAN_META_RESERVED	1
-#define BTRFS_INODE_DUMMY			2
-#define BTRFS_INODE_IN_DEFRAG			3
-#define BTRFS_INODE_HAS_ORPHAN_ITEM		4
-#define BTRFS_INODE_HAS_ASYNC_EXTENT		5
-#define BTRFS_INODE_NEEDS_FULL_SYNC		6
-#define BTRFS_INODE_COPY_EVERYTHING		7
-#define BTRFS_INODE_IN_DELALLOC_LIST		8
-#define BTRFS_INODE_READDIO_NEED_LOCK		9
-#define BTRFS_INODE_HAS_PROPS		        10
+enum {
+	BTRFS_INODE_ORDERED_DATA_CLOSE = 0,
+	BTRFS_INODE_DUMMY,
+	BTRFS_INODE_IN_DEFRAG,
+	BTRFS_INODE_HAS_ASYNC_EXTENT,
+	BTRFS_INODE_NEEDS_FULL_SYNC,
+	BTRFS_INODE_COPY_EVERYTHING,
+	BTRFS_INODE_IN_DELALLOC_LIST,
+	BTRFS_INODE_READDIO_NEED_LOCK,
+	BTRFS_INODE_HAS_PROPS,
+};
 
 /* in memory btrfs inode */
 struct btrfs_inode {
@@ -158,6 +158,12 @@ struct btrfs_inode {
 	 * details
 	 */
 	u64 last_unlink_trans;
+
+	/*
+	 * Track the transaction id of the last transaction used to create a
+	 * hard link for the inode. This is used by the log tree (fsync).
+	 */
+	u64 last_link_trans;
 
 	/*
 	 * Number of bytes outstanding that are going to need csums.  This is

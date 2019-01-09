@@ -61,6 +61,9 @@ static inline void reset_hung_task_detector(void)
 #define NMI_WATCHDOG_ENABLED      (1 << NMI_WATCHDOG_ENABLED_BIT)
 #define SOFT_WATCHDOG_ENABLED     (1 << SOFT_WATCHDOG_ENABLED_BIT)
 
+int watchdog_nmi_enable(unsigned int cpu);
+void watchdog_nmi_disable(unsigned int cpu);
+
 /**
  * touch_nmi_watchdog - restart NMI watchdog timeout.
  * 

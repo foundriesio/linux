@@ -227,7 +227,8 @@ static inline void *unlock_slot(struct address_space *mapping, void **slot)
  * put_locked_mapping_entry() when he locked the entry and now wants to
  * unlock it.
  *
- * The function must be called with mapping->tree_lock held.
+ * The function must be called with mapping->tree_lock held. When -EAGAIN is
+ * reported, the tree_lock is dropped.
  */
 static void *__get_unlocked_mapping_entry(struct address_space *mapping,
 		pgoff_t index, void ***slotp, bool (*wait_fn)(void))
@@ -258,9 +259,18 @@ static void *__get_unlocked_mapping_entry(struct address_space *mapping,
 		spin_unlock_irq(&mapping->tree_lock);
 		revalidate = wait_fn();
 		finish_wait(wq, &ewait.wait);
-		spin_lock_irq(&mapping->tree_lock);
-		if (revalidate)
+		if (revalidate) {
+			/*
+			 * Entry lock waits are exclusive. Wake up the next
+			 * waiter since we aren't sure we will acquire the
+			 * entry lock and thus wake the next waiter up on
+			 * unlock.
+			 */
+			if (waitqueue_active(wq))
+				__wake_up(wq, TASK_NORMAL, 1, &ewait.key);
 			return ERR_PTR(-EAGAIN);
+		}
+		spin_lock_irq(&mapping->tree_lock);
 	}
 }
 
@@ -421,7 +431,7 @@ bool dax_lock_mapping_entry(struct page *page)
 	for (;;) {
 		mapping = READ_ONCE(page->mapping);
 
-		if (!dax_mapping(mapping))
+		if (!mapping || !dax_mapping(mapping))
 			break;
 
 		/*
@@ -450,8 +460,8 @@ bool dax_lock_mapping_entry(struct page *page)
 			spin_unlock_irq(&mapping->tree_lock);
 			break;
 		} else if (IS_ERR(entry)) {
-			spin_unlock_irq(&mapping->tree_lock);
 			WARN_ON_ONCE(PTR_ERR(entry) != -EAGAIN);
+			/* tree_lock gets unlocked on error return */
 			continue;
 		}
 		lock_slot(mapping, slot);
