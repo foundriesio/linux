@@ -40,7 +40,7 @@
 #define get_vioc_type(x)		(x >> 8)
 #define get_vioc_index(x)		(x & 0xFF)
 
-/* DISP : 0x00XX */
+/* DISP : 0x01XX */
 #define VIOC_DISP			(0x0100)
 #define VIOC_DISP0			(0x0100)
 #define VIOC_DISP1			(0x0101)
@@ -240,6 +240,12 @@
 /* VIOC_V_DV : 0x1FXX */
 #define VIOC_V_DV				(0x1F00)
 
+/* VIOC Interrupt sources */
+#define VIOC0_IRQI			(115)
+#define VIOC1_IRQI			(116)
+#define VIOC2_IRQI			(117)
+#define VIOC3_IRQI			(118)
+#define VIOC_IRQ_MAX		(0x4)
 
 /* Display Device : PXDW FORMAT */
 #define VIOC_PXDW_FMT_04_STN			(0)

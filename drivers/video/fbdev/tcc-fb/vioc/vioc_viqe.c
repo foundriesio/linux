@@ -26,6 +26,7 @@
 #include <linux/of_address.h>
 
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_viqe.h>
 
 static struct device_node *pViocVIQE_np;
@@ -612,7 +613,8 @@ static int __init vioc_viqe_init(void)
 		pr_info("vioc-viqe: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIQE_MAX; i++) {
-			pVIQE_reg[i] = (volatile void __iomem *)of_iomap(pViocVIQE_np, i);
+			pVIQE_reg[i] = (volatile void __iomem *)of_iomap(pViocVIQE_np,
+							is_VIOC_REMAP ? (i + VIOC_VIQE_MAX) : i);
 
 			if (pVIQE_reg[i])
 				pr_info("vioc-viqe%d: 0x%p\n", i, pVIQE_reg[i]);

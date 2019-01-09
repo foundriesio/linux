@@ -95,6 +95,7 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_wmixer_ioctrl.h>
 #include <video/tcc/vioc_outcfg.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 #include <video/tcc/tca_display_config.h>
 
@@ -2873,7 +2874,7 @@ static int tcc_vioc_set_rdma_arbitor(struct device_node *np)
 	}
 	
 	for(i = 0; i < num_of_arbitor; i++) {
-		virt_addr = of_iomap(np, i);
+		virt_addr = of_iomap(np, is_VIOC_REMAP ? (i + num_of_arbitor) : i);
 		*(volatile uint *)virt_addr = ((1<<31) | (0<<28) | (2<<16) | (0<<12) | (10<<0));
 	}
 

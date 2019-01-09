@@ -26,6 +26,7 @@
 #include <linux/of_address.h>
 
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_vin.h>
 
 #define VIOC_VIN_IREQ_UPD_MASK 0x00000001UL
@@ -267,7 +268,8 @@ static int __init vioc_vin_init(void)
 		pr_info("vioc-vin: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIN_MAX; i++) {
-			pVIN_reg[i] = (volatile void __iomem *)of_iomap(ViocVin_np, i);
+			pVIN_reg[i] = (volatile void __iomem *)of_iomap(ViocVin_np,
+							is_VIOC_REMAP ? (i + VIOC_VIN_MAX) : i);
 
 			if (pVIN_reg[i])
 				pr_info("vioc-vin%d: 0x%p\n", i, pVIN_reg[i]);

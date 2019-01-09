@@ -24,6 +24,7 @@
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 #include <video/tcc/vioc_v_dv.h>
@@ -444,7 +445,8 @@ static int __init vioc_wmixer_init(void)
 		pr_info("vioc-wmix: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WMIX_MAX; i++) {
-			pWMIX_reg[i] = (volatile void __iomem *)of_iomap(ViocWmixer_np, i);
+			pWMIX_reg[i] = (volatile void __iomem *)of_iomap(ViocWmixer_np,
+							is_VIOC_REMAP ? (i + VIOC_WMIX_MAX) : i);
 
 			if (pWMIX_reg[i])
 				pr_info("vioc-wmix%d: 0x%p\n", i, pWMIX_reg[i]);

@@ -27,6 +27,7 @@
 #include <linux/of_address.h>
 
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_fifo.h>
 
 static struct device_node *ViocFifo_np;
@@ -108,7 +109,8 @@ static int __init vioc_fifo_init(void)
 		pr_info("vioc-fifo: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_FIFO_MAX; i++) {
-			pFIFO_reg[i] = (volatile void __iomem *)of_iomap(ViocFifo_np, i);
+			pFIFO_reg[i] = (volatile void __iomem *)of_iomap(ViocFifo_np,
+							is_VIOC_REMAP ? (i + VIOC_FIFO_MAX) : i);
 
 			if(pFIFO_reg[i])
 				pr_info("vioc-fifo%d: 0x%p\n", i, pFIFO_reg[i]);

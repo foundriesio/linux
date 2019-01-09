@@ -31,6 +31,7 @@
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/tcc_gpu_align.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 static struct device_node *ViocWdma_np;
 static volatile void __iomem *pWDMA_reg[VIOC_WDMA_MAX] = {0};
@@ -431,7 +432,8 @@ static int __init vioc_wdma_init(void)
 		pr_info("vioc-wdma: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WDMA_MAX; i++) {
-			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocWdma_np, i);
+			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocWdma_np,
+							is_VIOC_REMAP ? (i + VIOC_WDMA_MAX) : i);
 
 			if (pWDMA_reg[i])
 				pr_info("vioc-wdma%d: 0x%p\n", i, pWDMA_reg[i]);

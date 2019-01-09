@@ -26,6 +26,7 @@
 
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/tcc_types.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_lut.h>
 
 static volatile void __iomem *pLUT_reg;
@@ -394,7 +395,8 @@ static int __init vioc_lut_init(void)
 	if (ViocLUT_np == NULL) {
 		pr_info("vioc-lut: disabled\n");
 	} else {
-		pLUT_reg = (volatile void __iomem *)of_iomap(ViocLUT_np, 0);
+		pLUT_reg = (volatile void __iomem *)of_iomap(ViocLUT_np,
+					is_VIOC_REMAP ? 1 : 0);
 
 		if (pLUT_reg)
 			pr_info("vioc-lut: 0x%p\n", pLUT_reg);

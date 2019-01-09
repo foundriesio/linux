@@ -516,6 +516,7 @@ static int ext_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct ext_context *ctx;
 	struct resource *res;
+	struct resource *res_ddc, *res_rdma, *res_wmix;
 	int ret;
 
 	if (!dev->of_node) {
@@ -549,21 +550,25 @@ static int ext_probe(struct platform_device *pdev)
 		return PTR_ERR(ctx->ext_clk);
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!is_VIOC_REMAP) {
+		res_ddc = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		res_rdma = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		res_wmix = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	} else {
+		res_ddc = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+		res_rdma = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+		res_wmix = platform_get_resource(pdev, IORESOURCE_MEM, 5);
+	}
 
-	ctx->ddc_reg = devm_ioremap_resource(dev, res);
+	ctx->ddc_reg = devm_ioremap_resource(dev, res_ddc);
 	if (IS_ERR(ctx->ddc_reg))
 		return PTR_ERR(ctx->ddc_reg);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-
-	ctx->planes[0].virt_addr = devm_ioremap_resource(dev, res);
+	ctx->planes[0].virt_addr = devm_ioremap_resource(dev, res_rdma);
 	if (IS_ERR(ctx->planes[0].virt_addr))
 		return PTR_ERR(ctx->planes[0].virt_addr);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-
-	ctx->virt_addr = devm_ioremap_resource(dev, res);
+	ctx->virt_addr = devm_ioremap_resource(dev, res_wmix);
 	if (IS_ERR(ctx->virt_addr))
 		return PTR_ERR(ctx->virt_addr);
 

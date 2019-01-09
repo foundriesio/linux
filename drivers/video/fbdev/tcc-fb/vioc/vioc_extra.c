@@ -23,6 +23,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_extra.h>
 
 static volatile void __iomem *pr_reg; // playready register variable
@@ -217,15 +218,16 @@ static int __init vioc_extra_init(void)
 	vioc_vin_demux_np =
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_vin_demux");
 	if (vioc_vin_demux_np) {
-		pr_reg =
-			(volatile void __iomem *)of_iomap(vioc_vin_demux_np, 0);
+		pr_reg = (volatile void __iomem *)of_iomap(vioc_vin_demux_np,
+					is_VIOC_REMAP ? 1 : 0);
 		if (pr_reg)
 			__raw_writel(0xFFFFFFFF, pr_reg + 0x08);
 	}
 
 	vioc_vin_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_vin");
 	if (vioc_vin_np) {
-		pr_size_reg = (volatile void __iomem *)of_iomap(vioc_vin_np, 0);
+		pr_size_reg = (volatile void __iomem *)of_iomap(vioc_vin_np,
+						is_VIOC_REMAP ? 0 + VIOC_VIN_MAX : 0);
 		if (pr_size_reg)
 			__raw_writel(0x00000000, pr_reg + 0x10);
 	}
