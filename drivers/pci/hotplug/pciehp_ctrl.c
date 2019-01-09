@@ -335,7 +335,7 @@ int pciehp_enable_slot(struct controller *ctrl)
 		pciehp_green_led_off(ctrl); /* may be blinking */
 
 	mutex_lock(&ctrl->lock);
-	ctrl->state = ON_STATE;
+	ctrl->state = ret ? OFF_STATE : ON_STATE;
 	mutex_unlock(&ctrl->lock);
 
 	return ret;
@@ -347,9 +347,6 @@ int pciehp_enable_slot(struct controller *ctrl)
 static int __pciehp_disable_slot(struct controller *ctrl, bool safe_removal)
 {
 	u8 getstatus = 0;
-
-	if (ctrl)
-		return 1;
 
 	if (POWER_CTRL(ctrl)) {
 		pciehp_get_power_status(ctrl, &getstatus);
