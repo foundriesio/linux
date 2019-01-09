@@ -348,9 +348,6 @@ static int __pciehp_disable_slot(struct controller *ctrl, bool safe_removal)
 {
 	u8 getstatus = 0;
 
-	if (ctrl)
-		return 1;
-
 	if (POWER_CTRL(ctrl)) {
 		pciehp_get_power_status(ctrl, &getstatus);
 		if (!getstatus) {
