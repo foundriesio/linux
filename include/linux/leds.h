@@ -444,4 +444,24 @@ static inline void led_classdev_notify_brightness_hw_changed(
 	struct led_classdev *led_cdev, enum led_brightness brightness) { }
 #endif
 
+enum led_audio {
+	LED_AUDIO_MUTE,		/* master mute LED */
+	LED_AUDIO_MICMUTE,	/* mic mute LED */
+	NUM_AUDIO_LEDS
+};
+
+#if IS_ENABLED(CONFIG_LEDS_TRIGGER_AUDIO)
+enum led_brightness ledtrig_audio_get(enum led_audio type);
+void ledtrig_audio_set(enum led_audio type, enum led_brightness state);
+#else
+static inline enum led_brightness ledtrig_audio_get(enum led_audio type)
+{
+	return LED_OFF;
+}
+static inline void ledtrig_audio_set(enum led_audio type,
+				     enum led_brightness state)
+{
+}
+#endif
+
 #endif		/* __LINUX_LEDS_H_INCLUDED */
