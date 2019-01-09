@@ -337,7 +337,15 @@
 
 	sdhc@76020000 {
 		status = "okay";
+#ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
 		compatible = "telechips,tcc897x-sdhci";
+#else
+		/*
+		 * In order to reduce boot time,
+		 * we use the driver as module not built-in.
+		 */
+		compatible = "telechips,tcc897x-sdhci,module-only";
+#endif
 		controller-id = <0>;
 		bus-width = <4>;
 		max-frequency = <50000000>;
