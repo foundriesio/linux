@@ -335,7 +335,7 @@ int pciehp_enable_slot(struct controller *ctrl)
 		pciehp_green_led_off(ctrl); /* may be blinking */
 
 	mutex_lock(&ctrl->lock);
-	ctrl->state = ON_STATE;
+	ctrl->state = ret ? OFF_STATE : ON_STATE;
 	mutex_unlock(&ctrl->lock);
 
 	return ret;
