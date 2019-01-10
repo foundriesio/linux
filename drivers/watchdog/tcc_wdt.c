@@ -18,6 +18,7 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
+#include <linux/bitops.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
@@ -217,7 +218,7 @@ static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout
 	struct device_node *np = tcc_wdd->wdd_timer.dev->of_node;
 #endif
 
-	reset_cnt = ((timeout * tcc_wdd->pmu.rate) >> 1);
+	reset_cnt = (timeout * tcc_wdd->pmu.rate);
 
 #ifdef WDT_SIP
 	arm_smccc_smc( SIP_WATCHDOG_SETUP,
@@ -306,6 +307,8 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 #endif
 	spin_unlock(&tcc_wdd->lock);
 
+	test_and_set_bit(WDOG_ACTIVE, &wdd->status);
+
 	tcc_pr_info("%s", __func__);
 
 	return 0;
@@ -335,6 +338,8 @@ static int tcc_wdt_stop(struct watchdog_device *wdd)
 			tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));  // disable pmu watchdog
 #endif
 	spin_unlock(&tcc_wdd->lock);
+
+	clear_bit(WDOG_ACTIVE, &wdd->status);
 
 	tcc_pr_info("%s", __func__);
 
@@ -667,8 +672,8 @@ static int tcc_wdt_resume(struct platform_device *dev)
 		tcc_pr_err("%s: tcc_wdd is NULL", __func__);
 		return -1;
 	}
-	if (watchdog_active(&tcc_wdd->wdd)) {
-		tcc_wdt_stop(&tcc_wdd->wdd);
+	if (!watchdog_active(&tcc_wdd->wdd)) {
+		tcc_wdt_start(&tcc_wdd->wdd);
 	}
 
 	return 0;

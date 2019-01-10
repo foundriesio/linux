@@ -698,11 +698,11 @@
 	watchdog@74400008 {
 		compatible = "telechips,wdt";
 		reg = <0x74400008 0x4>,	/* wdt_ctrl */
-					<0x74400008 0x4>,	/* wdt_cnt */
-					<0x74400008 0x4>,	/* wdt_clear */
-					<0x74300070 0xC>,	/* wdt_timer */
-					<0x74300060 0x4>;	/* wdt_int_sts */
-		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCT>;
+			  <0x74400008 0x4>,	/* wdt_cnt */
+			  <0x74400008 0x4>,	/* wdt_clear */
+			  <0x74300070 0xC>,	/* wdt_timer */
+			  <0x74300060 0x4>;	/* wdt_int_sts */
+		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCX>;
 		clock-frequency = <366>; /* 24000000/65536 */
 		interrupts = <GIC_SPI 0 0>;
 		int-offset = <6>;
