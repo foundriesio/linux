@@ -1493,6 +1493,12 @@ static inline bool cpu_has_vmx_vmfunc(void)
 		SECONDARY_EXEC_ENABLE_VMFUNC;
 }
 
+static bool vmx_umip_emulated(void)
+{
+	return vmcs_config.cpu_based_2nd_exec_ctrl &
+		SECONDARY_EXEC_DESC;
+}
+
 static inline bool report_flexpriority(void)
 {
 	return flexpriority_enabled;
@@ -3934,6 +3940,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf)
 			SECONDARY_EXEC_ENABLE_EPT |
 			SECONDARY_EXEC_UNRESTRICTED_GUEST |
 			SECONDARY_EXEC_PAUSE_LOOP_EXITING |
+			SECONDARY_EXEC_DESC |
 			SECONDARY_EXEC_RDTSCP |
 			SECONDARY_EXEC_ENABLE_INVPCID |
 			SECONDARY_EXEC_APIC_REGISTER_VIRT |
@@ -4664,6 +4671,17 @@ static int vmx_set_cr4(struct kvm_vcpu *vcpu, unsigned long cr4)
 		(cr4 & ~X86_CR4_MCE) |
 		(to_vmx(vcpu)->rmode.vm86_active ?
 		 KVM_RMODE_VM_CR4_ALWAYS_ON : KVM_PMODE_VM_CR4_ALWAYS_ON);
+
+	if (!boot_cpu_has(X86_FEATURE_UMIP) && vmx_umip_emulated()) {
+		if (cr4 & X86_CR4_UMIP) {
+			vmcs_set_bits(SECONDARY_VM_EXEC_CONTROL,
+				SECONDARY_EXEC_DESC);
+			hw_cr4 &= ~X86_CR4_UMIP;
+		} else if (!is_guest_mode(vcpu) ||
+			!nested_cpu_has2(get_vmcs12(vcpu), SECONDARY_EXEC_DESC))
+			vmcs_clear_bits(SECONDARY_VM_EXEC_CONTROL,
+					SECONDARY_EXEC_DESC);
+	}
 
 	if (cr4 & X86_CR4_VMXE) {
 		/*
@@ -5688,6 +5706,7 @@ static void vmx_compute_secondary_exec_control(struct vcpu_vmx *vmx)
 	struct kvm_vcpu *vcpu = &vmx->vcpu;
 
 	u32 exec_control = vmcs_config.cpu_based_2nd_exec_ctrl;
+
 	if (!cpu_need_virtualize_apic_accesses(vcpu))
 		exec_control &= ~SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES;
 	if (vmx->vpid == 0)
@@ -5706,6 +5725,11 @@ static void vmx_compute_secondary_exec_control(struct vcpu_vmx *vmx)
 		exec_control &= ~(SECONDARY_EXEC_APIC_REGISTER_VIRT |
 				  SECONDARY_EXEC_VIRTUAL_INTR_DELIVERY);
 	exec_control &= ~SECONDARY_EXEC_VIRTUALIZE_X2APIC_MODE;
+
+	/* SECONDARY_EXEC_DESC is enabled/disabled on writes to CR4.UMIP,
+	 * in vmx_set_cr4.  */
+	exec_control &= ~SECONDARY_EXEC_DESC;
+
 	/* SECONDARY_EXEC_SHADOW_VMCS is enabled when L1 executes VMPTRLD
 	   (handle_vmptrld).
 	   We can NOT enable shadow_vmcs here because we don't have yet
@@ -6480,6 +6504,12 @@ static int handle_set_cr4(struct kvm_vcpu *vcpu, unsigned long val)
 		return 0;
 	} else
 		return kvm_set_cr4(vcpu, val);
+}
+
+static int handle_desc(struct kvm_vcpu *vcpu)
+{
+	WARN_ON(!(vcpu->arch.cr4 & X86_CR4_UMIP));
+	return emulate_instruction(vcpu, 0) == EMULATE_DONE;
 }
 
 static int handle_cr(struct kvm_vcpu *vcpu)
@@ -8425,6 +8455,8 @@ static int (*const kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_XSETBV]                  = handle_xsetbv,
 	[EXIT_REASON_TASK_SWITCH]             = handle_task_switch,
 	[EXIT_REASON_MCE_DURING_VMENTRY]      = handle_machine_check,
+	[EXIT_REASON_GDTR_IDTR]		      = handle_desc,
+	[EXIT_REASON_LDTR_TR]		      = handle_desc,
 	[EXIT_REASON_EPT_VIOLATION]	      = handle_ept_violation,
 	[EXIT_REASON_EPT_MISCONFIG]           = handle_ept_misconfig,
 	[EXIT_REASON_PAUSE_INSTRUCTION]       = handle_pause,
@@ -10149,7 +10181,8 @@ static void vmcs_set_secondary_exec_control(u32 new_ctl)
 	u32 mask =
 		SECONDARY_EXEC_SHADOW_VMCS |
 		SECONDARY_EXEC_VIRTUALIZE_X2APIC_MODE |
-		SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES;
+		SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES |
+		SECONDARY_EXEC_DESC;
 
 	u32 cur_ctl = vmcs_read32(SECONDARY_VM_EXEC_CONTROL);
 
@@ -12642,6 +12675,7 @@ static struct kvm_x86_ops vmx_x86_ops __ro_after_init = {
 	.handle_external_intr = vmx_handle_external_intr,
 	.mpx_supported = vmx_mpx_supported,
 	.xsaves_supported = vmx_xsaves_supported,
+	.umip_emulated = vmx_umip_emulated,
 
 	.check_nested_events = vmx_check_nested_events,
 
