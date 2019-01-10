@@ -40,6 +40,9 @@
 
 #include "pcm_local.h"
 
+#define CREATE_TRACE_POINTS
+#include "pcm_param_trace.h"
+
 /*
  *  Compatibility
  */
@@ -280,6 +283,9 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 	unsigned int stamp = 2;
 	int changed, again;
 
+	struct snd_mask __maybe_unused old_mask;
+	struct snd_interval __maybe_unused old_interval;
+
 	params->info = 0;
 	params->fifo_size = 0;
 	if (params->rmask & (1 << SNDRV_PCM_HW_PARAM_SAMPLE_BITS))
@@ -295,6 +301,9 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		if (!(params->rmask & (1 << k)))
 			continue;
+
+		if (trace_hw_mask_param_enabled())
+			old_mask = *m;
 #ifdef RULES_DEBUG
 		pr_debug("%s = ", snd_pcm_hw_param_names[k]);
 		pr_cont("%04x%04x%04x%04x -> ", m->bits[3], m->bits[2], m->bits[1], m->bits[0]);
@@ -303,6 +312,8 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 #ifdef RULES_DEBUG
 		pr_cont("%04x%04x%04x%04x\n", m->bits[3], m->bits[2], m->bits[1], m->bits[0]);
 #endif
+		trace_hw_mask_param(substream, k, 0, &old_mask, m);
+
 		if (changed)
 			params->cmask |= 1 << k;
 		if (changed < 0)
@@ -315,6 +326,9 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		if (!(params->rmask & (1 << k)))
 			continue;
+
+		if (trace_hw_interval_param_enabled())
+			old_interval = *i;
 #ifdef RULES_DEBUG
 		pr_debug("%s = ", snd_pcm_hw_param_names[k]);
 		if (i->empty)
@@ -334,6 +348,8 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 			       i->openmin ? '(' : '[', i->min,
 			       i->max, i->openmax ? ')' : ']');
 #endif
+		trace_hw_interval_param(substream, k, 0, &old_interval, i);
+
 		if (changed)
 			params->cmask |= 1 << k;
 		if (changed < 0)
@@ -360,6 +376,15 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 			}
 			if (!doit)
 				continue;
+
+			if (trace_hw_mask_param_enabled()) {
+				if (hw_is_mask(r->var))
+					old_mask = *hw_param_mask(params, r->var);
+			}
+			if (trace_hw_interval_param_enabled()) {
+				if (hw_is_interval(r->var))
+					old_interval = *hw_param_interval(params, r->var);
+			}
 #ifdef RULES_DEBUG
 			pr_debug("Rule %d [%p]: ", k, r->func);
 			if (r->var >= 0) {
@@ -395,6 +420,14 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 			}
 			pr_cont("\n");
 #endif
+			if (hw_is_mask(r->var)) {
+				trace_hw_mask_param(substream, r->var, k + 1,
+					&old_mask, hw_param_mask(params, r->var));
+			}
+			if (hw_is_interval(r->var)) {
+				trace_hw_interval_param(substream, r->var, k + 1,
+					&old_interval, hw_param_interval(params, r->var));
+			}
 			rstamps[k] = stamp;
 			if (changed && r->var >= 0) {
 				params->cmask |= (1 << r->var);
