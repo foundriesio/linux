@@ -1048,7 +1048,17 @@ static void ade_drm_cleanup(struct platform_device *pdev)
 {
 }
 
-const struct kirin_dc_ops ade_dc_ops = {
+static void kirin_drm_mode_config_init_size(struct drm_device *dev)
+{
+	dev->mode_config.min_width = 0;
+	dev->mode_config.min_height = 0;
+	dev->mode_config.max_width = 2048;
+	dev->mode_config.max_height = 2048;
+
+}
+const struct kirin_dc_ops dss_dc_ops = {
+	.version = DRM_KIRIN620,
+	.init_size = kirin_drm_mode_config_init_size,
 	.init = ade_drm_init,
 	.cleanup = ade_drm_cleanup
 };
