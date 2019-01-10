@@ -3332,10 +3332,12 @@ int snd_usb_create_mixer(struct snd_usb_audio *chip, int ctrlif,
 		err = snd_usb_mixer_controls(mixer);
 		if (err < 0)
 			goto _error;
-		err = snd_usb_mixer_status_create(mixer);
-		if (err < 0)
-			goto _error;
 	}
+
+	err = snd_usb_mixer_status_create(mixer);
+	if (err < 0)
+		goto _error;
+
 	err = create_keep_iface_ctl(mixer);
 	if (err < 0)
 		goto _error;
