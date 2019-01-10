@@ -721,8 +721,6 @@ int intel_psr_wait_for_idle(const struct intel_crtc_state *new_crtc_state)
 {
 	struct intel_crtc *crtc = to_intel_crtc(new_crtc_state->base.crtc);
 	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
-	i915_reg_t reg;
-	u32 mask;
 
 	if (!new_crtc_state->has_psr)
 		return 0;
@@ -737,21 +735,19 @@ int intel_psr_wait_for_idle(const struct intel_crtc_state *new_crtc_state)
 	 * not needed and will induce latencies in the atomic
 	 * update path.
 	 */
-	if (dev_priv->psr.psr2_enabled) {
-		reg = EDP_PSR2_STATUS;
-		mask = EDP_PSR2_STATUS_STATE_MASK;
-	} else {
-		reg = EDP_PSR_STATUS;
-		mask = EDP_PSR_STATUS_STATE_MASK;
-	}
+
+	/* FIXME: Update this for PSR2 if we need to wait for idle */
+	if (READ_ONCE(dev_priv->psr.psr2_enabled))
+		return 0;
 
 	/*
 	 * Max time for PSR to idle = Inverse of the refresh rate +
 	 * 6 ms of exit training time + 1.5 ms of aux channel
 	 * handshake. 50 msec is defesive enough to cover everything.
 	 */
-	return intel_wait_for_register(dev_priv, reg, mask,
-				       EDP_PSR_STATUS_STATE_IDLE, 50);
+	return __intel_wait_for_register(dev_priv, EDP_PSR_STATUS,
+					 EDP_PSR_STATUS_STATE_MASK,
+					 EDP_PSR_STATUS_STATE_IDLE, 50);
 }
 
 static bool __psr_wait_for_idle_locked(struct drm_i915_private *dev_priv)
