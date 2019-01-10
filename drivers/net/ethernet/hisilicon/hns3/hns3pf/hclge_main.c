@@ -4212,6 +4212,13 @@ static int hclge_add_fd_entry(struct hnae3_handle *handle,
 		u8 vf = ethtool_get_flow_spec_ring_vf(fs->ring_cookie);
 		u16 tqps;
 
+		if (vf > hdev->num_req_vfs) {
+			dev_err(&hdev->pdev->dev,
+				"Error: vf id (%d) > max vf num (%d)\n",
+				vf, hdev->num_req_vfs);
+			return -EINVAL;
+		}
+
 		dst_vport_id = vf ? hdev->vport[vf].vport_id : vport->vport_id;
 		tqps = vf ? hdev->vport[vf].alloc_tqps : vport->alloc_tqps;
 
@@ -4219,13 +4226,6 @@ static int hclge_add_fd_entry(struct hnae3_handle *handle,
 			dev_err(&hdev->pdev->dev,
 				"Error: queue id (%d) > max tqp num (%d)\n",
 				ring, tqps - 1);
-			return -EINVAL;
-		}
-
-		if (vf > hdev->num_req_vfs) {
-			dev_err(&hdev->pdev->dev,
-				"Error: vf id (%d) > max vf num (%d)\n",
-				vf, hdev->num_req_vfs);
 			return -EINVAL;
 		}
 
@@ -4338,6 +4338,10 @@ static int hclge_restore_fd_entries(struct hnae3_handle *handle)
 
 	if (!hnae3_dev_fd_supported(hdev))
 		return -EOPNOTSUPP;
+
+	/* if fd is disabled, should not restore it when reset */
+	if (!hdev->fd_cfg.fd_en)
+		return 0;
 
 	hlist_for_each_entry_safe(rule, node, &hdev->fd_rule_list, rule_node) {
 		ret = hclge_config_action(hdev, HCLGE_FD_STAGE_1, rule);

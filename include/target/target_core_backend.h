@@ -92,6 +92,7 @@ struct target_backend_ops {
 	struct target_pr_ops *pr_ops;
 
 	struct configfs_attribute **tb_dev_attrib_attrs;
+	struct configfs_attribute **tb_dev_action_attrs;
 };
 
 struct sbc_ops {
@@ -154,6 +155,10 @@ sector_t target_to_linux_sector(struct se_device *dev, sector_t lb);
 bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
 				       struct request_queue *q);
 
+static inline bool target_dev_configured(struct se_device *se_dev)
+{
+	return !!(se_dev->dev_flags & DF_CONFIGURED);
+}
 
 /* Only use get_unaligned_be24() if reading p - 1 is allowed. */
 static inline uint32_t get_unaligned_be24(const uint8_t *const p)
