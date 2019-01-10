@@ -81,7 +81,7 @@ static void rpi_ts_poll(struct input_polled_dev *dev)
 
 	if (regs.num_points == RPI_TS_NPOINTS_REG_INVALIDATE ||
 	    (regs.num_points == 0 && ts->known_ids == 0))
-	    return;
+		return;
 
 	for (i = 0; i < regs.num_points; i++) {
 		x = (((int)regs.point[i].xh & 0xf) << 8) + regs.point[i].xl;
@@ -130,9 +130,8 @@ static int rpi_ts_probe(struct platform_device *pdev)
 	struct rpi_ts *ts;
 	u32 touchbuf;
 	int error;
- 	int val;
 
-	fw_node = of_parse_phandle(np, "firmware", 0);
+	fw_node = of_get_parent(np);
 	if (!fw_node) {
 		dev_err(dev, "Missing firmware node\n");
 		return -ENOENT;
@@ -191,18 +190,6 @@ static int rpi_ts_probe(struct platform_device *pdev)
 			     RPI_TS_DEFAULT_HEIGHT, 0, 0);
 	touchscreen_parse_properties(input, true, &ts->prop);
 
-	if (of_property_read_u32(np, "touchscreen-inverted-x", &val) >= 0)
-		ts->prop.invert_x = val;
-
-	if (of_property_read_u32(np, "touchscreen-inverted-y", &val) >= 0)
-		ts->prop.invert_y = val;
-
-	if (of_property_read_u32(np, "touchscreen-swapped-x-y", &val) >= 0) {
-		ts->prop.swap_x_y = val;
-		if (!ts->prop.swap_x_y)
-			swap(input->absinfo[ABS_MT_POSITION_X], input->absinfo[ABS_MT_POSITION_X + 1]);
-	}
-
 	error = input_mt_init_slots(input, RPI_TS_MAX_SUPPORTED_POINTS,
 				    INPUT_MT_DIRECT);
 	if (error) {
@@ -221,7 +208,6 @@ static int rpi_ts_probe(struct platform_device *pdev)
 
 static const struct of_device_id rpi_ts_match[] = {
 	{ .compatible = "raspberrypi,firmware-ts", },
-	{ .compatible = "rpi,rpi-ft5406", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, rpi_ts_match);
