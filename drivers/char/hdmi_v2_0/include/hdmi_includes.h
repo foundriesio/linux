@@ -51,7 +51,7 @@ Agreement between Telechips and Company.
 #include <linux/device.h> // dev_xet_drv_data
 #include <asm/io.h>
 
-#define HDMI_DRV_VERSION        "4.14_1.0.6"
+#define HDMI_DRV_VERSION        "4.14_1.0.7"
 
 // HDMI COMPONENTS
 #define PROTO_HDMI_TX_CORE      0
@@ -288,6 +288,9 @@ struct hdmi_tx_dev{
         struct proc_dir_entry   *hdmi_proc_phy_regs;
         #endif
 
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        struct proc_dir_entry   *hdmi_proc_dv_vsif;
+        #endif
 
         /** Hot Plug */
         int                     hotplug_gpio;
@@ -355,6 +358,12 @@ struct hdmi_tx_dev{
 
         #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
         struct timeval          time_backup;
+        #endif
+
+        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+        /**
+          * Pointer to store the dolbyvision_vsif list */
+        unsigned char *dolbyvision_visf_list;
         #endif
 };
 

@@ -31,6 +31,7 @@ Agreement between Telechips and Company.
 #include <include/video_params.h>
 #include <include/audio_params.h>
 #include <include/hdmi_drm.h>
+#include <core/packets.h>
 #include <api/api.h>
 #include <phy/phy.h>
 #include <linux/of_gpio.h>
@@ -196,4 +197,105 @@ unsigned int hdmi_get_pixel_clock(void)
         return pixel_clock;
 }
 EXPORT_SYMBOL(hdmi_get_pixel_clock);
+
+void hdmi_api_AvMute(int enable)
+{
+        do {
+                if(api_dev == NULL) {
+                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        break;
+                }
+                mutex_lock(&api_dev->mutex);
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &api_dev->status)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &api_dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                mutex_unlock(&api_dev->mutex);
+                                break;
+                        }
+                        hdmi_api_avmute(api_dev, enable);
+                } else {
+                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                }
+                mutex_unlock(&api_dev->mutex);
+        } while(0);
+}
+
+int hdmi_api_vsif_update_by_index(int index)
+{
+        int ret = -1;
+        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+        videoParams_t *videoParams;
+
+        unsigned char* base_vsif = NULL;
+        productParams_t productParams;
+        do {
+                if(api_dev == NULL) {
+                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        break;
+                }
+
+                videoParams = (videoParams_t*)api_dev->videoParam;
+
+                if(videoParams == NULL) {
+                        pr_err("%s videoParams is NULL\r\n", __func__);
+                        break;
+                }
+
+                if(api_dev->dolbyvision_visf_list == NULL) {
+                        pr_err("%s dolbyvision vsif is empty\r\n", __func__);
+                        break;
+                }
+
+                if(index < 0 || index > 5) {
+                        pr_err("%s index(%d) is out of range\r\n", __func__, index);
+                        break;
+                }
+
+                base_vsif = (api_dev->dolbyvision_visf_list + (50 * index));
+
+                mutex_lock(&api_dev->mutex);
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &api_dev->status)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &api_dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                mutex_unlock(&api_dev->mutex);
+                                break;
+                        }
+                        /* Copy VSIF Packet */
+                        productParams.mOUI = base_vsif[0] | (base_vsif[1] << 8) | (base_vsif[2] << 16);
+                        productParams.mVendorPayloadLength = base_vsif[3];
+                        memcpy(productParams.mVendorPayload, &base_vsif[4], productParams.mVendorPayloadLength);
+
+                        if(productParams.mOUI == 0x00030C00) {
+                                switch(videoParams->mDtd.mCode) {
+                                        case 93: // 3840x2160p24Hz
+                                                productParams.mVendorPayload[1] = 3;
+                                                break;
+                                        case 94: // 3840x2160p25Hz
+                                                productParams.mVendorPayload[1] = 2;
+                                                break;
+                                        case 95: // 3840x2160p30Hz
+                                                productParams.mVendorPayload[1] = 1;
+                                                break;
+                                        case 98: // 4096x2160p24Hz
+                                                productParams.mVendorPayload[1] = 4;
+                                                break;
+                                }
+
+                                if(productParams.mVendorPayload[1] > 0) {
+                                        if(productParams.mVendorPayloadLength == 1) {
+                                                productParams.mVendorPayloadLength = 2;
+                                        }
+                                        productParams.mVendorPayload[0] = 1 << 5;
+                                }
+                        }
+                        ret = vendor_Configure(api_dev, &productParams);
+                } else {
+                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                }
+                mutex_unlock(&api_dev->mutex);
+        }while(0);
+        #endif
+        return ret;
+}
+EXPORT_SYMBOL(hdmi_api_vsif_update_by_index);
 

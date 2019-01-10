@@ -571,6 +571,14 @@ typedef struct hdmi_board_features{
 }hdmi_board_features;
 
 
+typedef struct {
+        /** size buffer size of vsif_list. it must set to 350*/
+        int size;
+
+        /** pointer to store vsif list */
+        unsigned char vsif_list[300];
+}hdmi_dolbyvision_vsif_transfer_data;
+
 #define HDCP_SUPPORT	1
 
 #define IOCTL_HDMI_MAGIC            'H'
@@ -636,6 +644,10 @@ typedef struct hdmi_board_features{
 
 #define HDMI_GET_SOC_FEATURES                   _IOR( IOCTL_HDMI_MAGIC, 0x121, hdmi_soc_features)
 #define HDMI_GET_BOARD_FEATURES                 _IOR( IOCTL_HDMI_MAGIC, 0x122, hdmi_board_features)
+
+/**
+ * @short IOCTL to stores Vendor Specific Info Frames */
+#define HDMI_STORE_DOLBYVISION_VSIF_LIST        _IOW( IOCTL_HDMI_MAGIC, 0x140, hdmi_dolbyvision_vsif_transfer_data)
 
 /**
  * @short IOCTL to get the device base address

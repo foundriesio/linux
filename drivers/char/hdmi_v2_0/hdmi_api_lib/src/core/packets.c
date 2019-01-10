@@ -85,14 +85,6 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
-                        hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
-                        /* wait main controller to resume */
-                        do {
-                                usleep_range(10, 20);
-                                mc_reg_val = hdmi_dev_read(dev, MC_SWRSTZREQ);
-                        }
-                        while(mc_timeout-- && mc_reg_val != 0xDF);
-                        fc_video_VSyncPulseWidth(dev, video->mDtd.mVSyncPulseWidth);
                         memcpy(prod, productParams, sizeof(productParams_t));
                 }
         } while(0);

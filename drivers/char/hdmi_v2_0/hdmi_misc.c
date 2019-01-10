@@ -737,6 +737,35 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
                         break;
 
+        case HDMI_STORE_DOLBYVISION_VSIF_LIST:
+                {
+                        hdmi_dolbyvision_vsif_transfer_data transfer_data;
+
+                        if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
+                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                break;
+                        }
+
+                        if(transfer_data.size != 300) {
+                                break;
+                        }
+
+                        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+                        if(dev->dolbyvision_visf_list != NULL) {
+                                devm_kfree(dev->parent_dev, dev->dolbyvision_visf_list);
+                        }
+                        dev->dolbyvision_visf_list = devm_kmalloc(dev->parent_dev, transfer_data.size, GFP_KERNEL);
+                        if (IS_ERR_OR_NULL(dev->dolbyvision_visf_list)) {
+                                ret = PTR_ERR(dev->dolbyvision_visf_list);
+                                dev->dolbyvision_visf_list = NULL;
+                                pr_err("HDMI_STORE_DOLBYVISION_VSIF_LIST memdup_user failed (ret=%d)\r\n", (int)ret);
+                                break;
+                        }
+                        memcpy(dev->dolbyvision_visf_list, transfer_data.vsif_list, transfer_data.size);
+                        #endif // CONFIG_VIOC_DOLBY_VISION_EDR
+                        ret = 0;
+                }
+                break;
 	case HDMI_GET_DTD_INFO:
                 {
                         dwc_hdmi_dtd_data dtd_param;

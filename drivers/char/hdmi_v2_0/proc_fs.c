@@ -592,6 +592,46 @@ ssize_t proc_read_phy_regs(struct file *filp, char __user *usr_buf, size_t cnt, 
 }
 #endif
 
+
+#if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+extern int hdmi_api_vsif_update_by_index(int index);
+ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set){
+        ssize_t size;
+        int dv_vsif_index;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+        char *dv_vsfi_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+
+        do {
+                if (dv_vsfi_buf == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+
+                size = simple_write_to_buffer(dv_vsfi_buf, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                dv_vsfi_buf[cnt] = '\0';
+
+                sscanf(dv_vsfi_buf, "%u", &dv_vsif_index);
+                devm_kfree(dev->parent_dev, dv_vsfi_buf);
+
+                if(dv_vsif_index < 0 || dv_vsif_index > 6) {
+                        pr_err("invalid index %d\r\n", dv_vsif_index);
+                        break;
+                }
+                hdmi_api_vsif_update_by_index(dv_vsif_index);
+        }
+        while(0);
+
+        return size;
+}
+#endif
+
+
 static const struct file_operations proc_fops_hdcp_status = {
         .owner   = THIS_MODULE,
         .open    = proc_open,
@@ -662,6 +702,15 @@ static const struct file_operations proc_fops_phy_regs = {
         .release = proc_close,
         .write   = proc_write_phy_regs,
         .read    = proc_read_phy_regs,
+};
+#endif
+
+#if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+static const struct file_operations proc_fops_dv_vsif = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_dv_vsif,
 };
 #endif
 
@@ -775,6 +824,15 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/phy_regs\n", FUNC_NAME);
         }
         #endif
+
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        dev->hdmi_proc_dv_vsif = proc_create_data("dv_vsif", S_IFREG | S_IWUGO,
+                        dev->hdmi_proc_dir, &proc_fops_dv_vsif, dev);
+        if(dev->hdmi_proc_dv_vsif == NULL){
+                pr_err("%s:Could not create file system @"
+                                " /proc/hdmi_tx/dv_vsif\n", FUNC_NAME);
+        }
+        #endif
 }
 
 void proc_interface_remove(struct hdmi_tx_dev *dev){
@@ -810,6 +868,10 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         if(dev->hdmi_proc_phy_regs != NULL)
                 proc_remove(dev->hdmi_proc_phy_regs);
+        #endif
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        if(dev->hdmi_proc_dv_vsif != NULL)
+                proc_remove(dev->hdmi_proc_dv_vsif);
         #endif
         if(dev->hdmi_proc_dir != NULL)
                 proc_remove(dev->hdmi_proc_dir);
