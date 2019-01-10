@@ -63,6 +63,7 @@ struct cpuidle_state {
 
 /* Idle State Flags */
 #define CPUIDLE_FLAG_NONE       (0x00)
+#define CPUIDLE_FLAG_POLLING	(0x01) /* polling state */
 #define CPUIDLE_FLAG_COUPLED	(0x02) /* state applies to multiple cpus */
 #define CPUIDLE_FLAG_TIMER_STOP (0x04)  /* timer is stopped on this state */
 
@@ -250,12 +251,6 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
 {return 0;}
 #endif
 
-#if defined(CONFIG_CPU_IDLE) && defined(CONFIG_ARCH_HAS_CPU_RELAX)
-#define CPUIDLE_DRIVER_STATE_START	1
-#else
-#define CPUIDLE_DRIVER_STATE_START	0
-#endif
-
 #define __CPU_PM_CPU_IDLE_ENTER(low_level_idle_enter, idx, is_retention) \
 ({									\
 	int __ret = 0;							\
@@ -275,7 +270,7 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
 									\
 	__ret ? -1 : idx;						\
 })
- 
+
 #define CPU_PM_CPU_IDLE_ENTER(low_level_idle_enter, idx)	\
 	__CPU_PM_CPU_IDLE_ENTER(low_level_idle_enter, idx, 0)
 
