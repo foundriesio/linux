@@ -38,6 +38,8 @@
 #include <linux/uio.h>
 #include <linux/delay.h>
 
+#include "pcm_local.h"
+
 /*
  *  Compatibility
  */
