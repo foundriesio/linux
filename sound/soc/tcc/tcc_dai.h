@@ -441,7 +441,14 @@ static inline void tcc_dai_set_master_mode(void __iomem *base_addr, bool mclk_ma
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+static inline uint32_t tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
+#else
 static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
+#endif
 {
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
@@ -510,6 +517,14 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 #endif
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
+
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	return dclkdiv;
+#endif
+
 }
 
 static inline void tcc_dai_set_tx_format(void __iomem *base_addr, TCC_DAI_FMT fmt)
