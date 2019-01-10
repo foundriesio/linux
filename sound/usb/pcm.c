@@ -1227,8 +1227,9 @@ rep_err:
 	return err;
 }
 
-static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
+static int snd_usb_pcm_open(struct snd_pcm_substream *substream)
 {
+	int direction = substream->stream;
 	struct snd_usb_stream *as = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_usb_substream *subs = &as->substream[direction];
@@ -1248,8 +1249,9 @@ static int snd_usb_pcm_open(struct snd_pcm_substream *substream, int direction)
 	return setup_hw_info(runtime, subs);
 }
 
-static int snd_usb_pcm_close(struct snd_pcm_substream *substream, int direction)
+static int snd_usb_pcm_close(struct snd_pcm_substream *substream)
 {
+	int direction = substream->stream;
 	struct snd_usb_stream *as = snd_pcm_substream_chip(substream);
 	struct snd_usb_substream *subs = &as->substream[direction];
 
@@ -1611,26 +1613,6 @@ static void retire_playback_urb(struct snd_usb_substream *subs,
 	spin_unlock_irqrestore(&subs->lock, flags);
 }
 
-static int snd_usb_playback_open(struct snd_pcm_substream *substream)
-{
-	return snd_usb_pcm_open(substream, SNDRV_PCM_STREAM_PLAYBACK);
-}
-
-static int snd_usb_playback_close(struct snd_pcm_substream *substream)
-{
-	return snd_usb_pcm_close(substream, SNDRV_PCM_STREAM_PLAYBACK);
-}
-
-static int snd_usb_capture_open(struct snd_pcm_substream *substream)
-{
-	return snd_usb_pcm_open(substream, SNDRV_PCM_STREAM_CAPTURE);
-}
-
-static int snd_usb_capture_close(struct snd_pcm_substream *substream)
-{
-	return snd_usb_pcm_close(substream, SNDRV_PCM_STREAM_CAPTURE);
-}
-
 static int snd_usb_substream_playback_trigger(struct snd_pcm_substream *substream,
 					      int cmd)
 {
@@ -1691,9 +1673,9 @@ static int snd_usb_substream_capture_trigger(struct snd_pcm_substream *substream
 	return -EINVAL;
 }
 
-static struct snd_pcm_ops snd_usb_playback_ops = {
-	.open =		snd_usb_playback_open,
-	.close =	snd_usb_playback_close,
+static const struct snd_pcm_ops snd_usb_playback_ops = {
+	.open =		snd_usb_pcm_open,
+	.close =	snd_usb_pcm_close,
 	.ioctl =	snd_pcm_lib_ioctl,
 	.hw_params =	snd_usb_hw_params,
 	.hw_free =	snd_usb_hw_free,
@@ -1704,9 +1686,9 @@ static struct snd_pcm_ops snd_usb_playback_ops = {
 	.mmap =		snd_pcm_lib_mmap_vmalloc,
 };
 
-static struct snd_pcm_ops snd_usb_capture_ops = {
-	.open =		snd_usb_capture_open,
-	.close =	snd_usb_capture_close,
+static const struct snd_pcm_ops snd_usb_capture_ops = {
+	.open =		snd_usb_pcm_open,
+	.close =	snd_usb_pcm_close,
 	.ioctl =	snd_pcm_lib_ioctl,
 	.hw_params =	snd_usb_hw_params,
 	.hw_free =	snd_usb_hw_free,
