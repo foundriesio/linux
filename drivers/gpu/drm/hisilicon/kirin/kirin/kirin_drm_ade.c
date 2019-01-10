@@ -31,7 +31,7 @@
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fb_cma_helper.h>
 
-#include "kirin_drm_drv.h"
+#include "../kirin_drm_drv.h"
 #include "kirin_ade_reg.h"
 
 #define PRIMARY_CH	ADE_CH1 /* primary plane */

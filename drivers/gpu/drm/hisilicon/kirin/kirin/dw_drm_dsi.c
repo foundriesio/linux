@@ -24,7 +24,7 @@
 #include <drm/drm_encoder_slave.h>
 #include <drm/drm_atomic_helper.h>
 
-#include "dw_dsi_reg.h"
+#include "../dw_dsi_reg.h"
 
 #define MAX_TX_ESC_CLK		10
 #define ROUND(x, y)		((x) / (y) + \
