@@ -3073,6 +3073,7 @@ enum blk_eh_timer_return dasd_times_out(struct request *req)
 	struct dasd_ccw_req *cqr = req->completion_data;
 	struct dasd_block *block = req->q->queuedata;
 	struct dasd_device *device;
+	unsigned long flags;
 	int rc = 0;
 
 	if (!cqr)
@@ -3085,7 +3086,7 @@ enum blk_eh_timer_return dasd_times_out(struct request *req)
 		      " dasd_times_out cqr %p status %x",
 		      cqr, cqr->status);
 
-	spin_lock(&block->queue_lock);
+	spin_lock_irqsave(&block->queue_lock, flags);
 	spin_lock(get_ccwdev_lock(device->cdev));
 	cqr->retries = -1;
 	cqr->intrc = -ETIMEDOUT;
@@ -3125,7 +3126,7 @@ enum blk_eh_timer_return dasd_times_out(struct request *req)
 	}
 	spin_unlock(get_ccwdev_lock(device->cdev));
 	dasd_schedule_block_bh(block);
-	spin_unlock(&block->queue_lock);
+	spin_unlock_irqrestore(&block->queue_lock, flags);
 
 	return rc ? BLK_EH_RESET_TIMER : BLK_EH_NOT_HANDLED;
 }
