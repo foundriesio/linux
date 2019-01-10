@@ -1752,7 +1752,7 @@ static struct ib_ucontext *mlx5_ib_alloc_ucontext(struct ib_device *ibdev,
 #endif
 
 	if (req.flags & MLX5_IB_ALLOC_UCTX_DEVX) {
-		err = mlx5_ib_devx_create(dev);
+		err = mlx5_ib_devx_create(dev, true);
 		if (err < 0)
 			goto out_uars;
 		context->devx_uid = err;
@@ -5563,8 +5563,7 @@ static int populate_specs_root(struct mlx5_ib_dev *dev)
 	if (MLX5_CAP_DEV_MEM(dev->mdev, memic))
 		trees[num_trees++] = &mlx5_ib_dm;
 
-	if (MLX5_CAP_GEN_64(dev->mdev, general_obj_types) &
-	    MLX5_GENERAL_OBJ_TYPES_CAP_UCTX)
+	if (MLX5_CAP_GEN(dev->mdev, log_max_uctx))
 		trees[num_trees++] = mlx5_ib_get_devx_tree();
 
 	num_trees += mlx5_ib_get_flow_trees(trees + num_trees);
@@ -6152,6 +6151,22 @@ static void mlx5_ib_stage_rep_reg_cleanup(struct mlx5_ib_dev *dev)
 	mlx5_ib_unregister_vport_reps(dev);
 }
 
+static int mlx5_ib_stage_devx_init(struct mlx5_ib_dev *dev)
+{
+	int uid;
+
+	uid = mlx5_ib_devx_create(dev, false);
+	if (uid > 0)
+		dev->devx_whitelist_uid = uid;
+
+	return 0;
+}
+static void mlx5_ib_stage_devx_cleanup(struct mlx5_ib_dev *dev)
+{
+	if (dev->devx_whitelist_uid)
+		mlx5_ib_devx_destroy(dev, dev->devx_whitelist_uid);
+}
+
 void __mlx5_ib_remove(struct mlx5_ib_dev *dev,
 		      const struct mlx5_ib_profile *profile,
 		      int stage)
@@ -6163,8 +6178,6 @@ void __mlx5_ib_remove(struct mlx5_ib_dev *dev,
 			profile->stage[stage].cleanup(dev);
 	}
 
-	if (dev->devx_whitelist_uid)
-		mlx5_ib_devx_destroy(dev, dev->devx_whitelist_uid);
 	ib_dealloc_device((struct ib_device *)dev);
 }
 
@@ -6173,7 +6186,6 @@ void *__mlx5_ib_add(struct mlx5_ib_dev *dev,
 {
 	int err;
 	int i;
-	int uid;
 
 	for (i = 0; i < MLX5_IB_STAGE_MAX; i++) {
 		if (profile->stage[i].init) {
@@ -6182,10 +6194,6 @@ void *__mlx5_ib_add(struct mlx5_ib_dev *dev,
 				goto err_out;
 		}
 	}
-
-	uid = mlx5_ib_devx_create(dev);
-	if (uid > 0)
-		dev->devx_whitelist_uid = uid;
 
 	dev->profile = profile;
 	dev->ib_active = true;
@@ -6238,6 +6246,9 @@ static const struct mlx5_ib_profile pf_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_SPECS,
 		     mlx5_ib_stage_populate_specs,
 		     NULL),
+	STAGE_CREATE(MLX5_IB_STAGE_WHITELIST_UID,
+		     mlx5_ib_stage_devx_init,
+		     mlx5_ib_stage_devx_cleanup),
 	STAGE_CREATE(MLX5_IB_STAGE_IB_REG,
 		     mlx5_ib_stage_ib_reg_init,
 		     mlx5_ib_stage_ib_reg_cleanup),
