@@ -1384,38 +1384,41 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	tccspi->pcfg = of_iomap(pdev->dev.of_node, 1); //devm_ioremap_resource(dev,regs);
 
-	/* Get TCC GPSB SPI Access Control base address */
+	/* Configure the AHB Access Filter */
 	tccspi->ac = of_iomap(pdev->dev.of_node, 2);
-	if (IS_ERR(tccspi->ac)) {
-		return PTR_ERR(tccspi->ac);
-	}
-	if (!of_property_read_u32_array(
-				pdev->dev.of_node, "access-control0", ac_val, 2)) {
-		dev_dbg(&pdev->dev, "access-control0 start:0x%x limit:0x%x\n",
+	if (!IS_ERR(tccspi->ac)) {
+		if (!of_property_read_u32_array(pdev->dev.of_node,
+					"access-control0", ac_val, 2)) {
+			dev_dbg(&pdev->dev,
+				"access-control0 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
-		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
-		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
-	}
-	if (!of_property_read_u32_array(
-				pdev->dev.of_node, "access-control1", ac_val, 2)) {
-		dev_dbg(&pdev->dev, "access-control1 start:0x%x limit:0x%x\n",
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
+		}
+		if (!of_property_read_u32_array(pdev->dev.of_node,
+					"access-control1", ac_val, 2)) {
+			dev_dbg(&pdev->dev,
+				"access-control1 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
-		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
-		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
-	}
-	if (!of_property_read_u32_array(
-				pdev->dev.of_node, "access-control2", ac_val, 2)) {
-		dev_dbg(&pdev->dev, "access-control2 start:0x%x limit:0x%x\n",
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
+		}
+		if (!of_property_read_u32_array(pdev->dev.of_node,
+					"access-control2", ac_val, 2)) {
+			dev_dbg(&pdev->dev,
+				"access-control2 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
-		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
-		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
-	}
-	if (!of_property_read_u32_array(
-				pdev->dev.of_node, "access-control3", ac_val, 2)) {
-		dev_dbg(&pdev->dev, "access-control3 start:0x%x limit:0x%x\n",
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
+		}
+		if (!of_property_read_u32_array(pdev->dev.of_node,
+					"access-control3", ac_val, 2)) {
+			dev_dbg(&pdev->dev,
+				"access-control3 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
-		writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
-		writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
+			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
+			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
+		}
 	}
 
 	/* Check CONTM support */

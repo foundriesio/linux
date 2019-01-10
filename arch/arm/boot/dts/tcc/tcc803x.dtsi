@@ -1549,7 +1549,7 @@
 		status = "disabled";
 
 		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		//access-control1 = <0x16900000 0x16900001>; /* PORT register */
+		//access-control1 = <0x00000000 0x00000000>;
 		//access-control2 = <0x00000000 0x00000000>;
 		//access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1566,7 +1566,7 @@
 		status = "disabled";
 
 		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		//access-control1 = <0x16910000 0x16910001>; /* PORT register */
+		//access-control1 = <0x00000000 0x00000000>;
 		//access-control2 = <0x00000000 0x00000000>;
 		//access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1583,7 +1583,7 @@
 		status = "disabled";
 
 		//access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		//access-control1 = <0x16920000 0x16920001>; /* PORT register */
+		//access-control1 = <0x00000000 0x00000000>;
 		//access-control2 = <0x00000000 0x00000000>;
 		//access-control3 = <0x00000000 0x00000000>;
 	};
