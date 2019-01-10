@@ -164,11 +164,11 @@ static int qeth_l2_send_setgroupmac(struct qeth_card *card, __u8 *mac)
 	QETH_CARD_TEXT(card, 2, "L2Sgmac");
 	rc = qeth_l2_send_setdelmac(card, mac, IPA_CMD_SETGMAC);
 	if (rc == -EEXIST)
-		QETH_DBF_MESSAGE(2, "Group MAC %pM already existing on %s\n",
-			mac, QETH_CARD_IFNAME(card));
+		QETH_DBF_MESSAGE(2, "MAC already registered on device %x\n",
+				 CARD_DEVID(card));
 	else if (rc)
-		QETH_DBF_MESSAGE(2, "Could not set group MAC %pM on %s: %d\n",
-			mac, QETH_CARD_IFNAME(card), rc);
+		QETH_DBF_MESSAGE(2, "Failed to register MAC on device %x: %d\n",
+				 CARD_DEVID(card), rc);
 	return rc;
 }
 
@@ -179,9 +179,8 @@ static int qeth_l2_send_delgroupmac(struct qeth_card *card, __u8 *mac)
 	QETH_CARD_TEXT(card, 2, "L2Dgmac");
 	rc = qeth_l2_send_setdelmac(card, mac, IPA_CMD_DELGMAC);
 	if (rc)
-		QETH_DBF_MESSAGE(2,
-			"Could not delete group MAC %pM on %s: %d\n",
-			mac, QETH_CARD_IFNAME(card), rc);
+		QETH_DBF_MESSAGE(2, "Failed to delete MAC on device %u: %d\n",
+				 CARD_DEVID(card), rc);
 	return rc;
 }
 
@@ -304,9 +303,9 @@ static int qeth_l2_send_setdelvlan_cb(struct qeth_card *card,
 
 	QETH_CARD_TEXT(card, 2, "L2sdvcb");
 	if (cmd->hdr.return_code) {
-		QETH_DBF_MESSAGE(2, "Error in processing VLAN %i on %s: 0x%x.\n",
+		QETH_DBF_MESSAGE(2, "Error in processing VLAN %u on device %x: %#x.\n",
 				 cmd->data.setdelvlan.vlan_id,
-				 QETH_CARD_IFNAME(card), cmd->hdr.return_code);
+				 CARD_DEVID(card), cmd->hdr.return_code);
 		QETH_CARD_TEXT_(card, 2, "L2VL%4x", cmd->hdr.command);
 		QETH_CARD_TEXT_(card, 2, "err%d", cmd->hdr.return_code);
 	}
@@ -518,8 +517,8 @@ static int qeth_l2_request_initial_mac(struct qeth_card *card)
 		rc = qeth_vm_request_mac(card);
 		if (!rc)
 			goto out;
-		QETH_DBF_MESSAGE(2, "z/VM MAC Service failed on device %s: x%x\n",
-				 CARD_BUS_ID(card), rc);
+		QETH_DBF_MESSAGE(2, "z/VM MAC Service failed on device %x: %#x\n",
+				 CARD_DEVID(card), rc);
 		QETH_DBF_TEXT_(SETUP, 2, "err%04x", rc);
 		/* fall back to alternative mechanism: */
 	}
@@ -530,8 +529,8 @@ static int qeth_l2_request_initial_mac(struct qeth_card *card)
 	    card->info.guestlan) {
 		rc = qeth_setadpparms_change_macaddr(card);
 		if (rc) {
-			QETH_DBF_MESSAGE(2, "couldn't get MAC address on "
-				"device %s: x%x\n", CARD_BUS_ID(card), rc);
+			QETH_DBF_MESSAGE(2, "READ_MAC Assist failed on device %x: %#x\n",
+					 CARD_DEVID(card), rc);
 			QETH_DBF_TEXT_(SETUP, 2, "1err%04x", rc);
 			return rc;
 		}
