@@ -34,9 +34,9 @@
 //define: Playback/Capture by hw:0,0
 //#define TEST_BY_ALSA
 
-#define FILE_PCM_PLAYBACK   "/dev/snd/pcmC0D0p"
-#define FILE_PCM_CAPTURE    "/dev/snd/pcmC0D0c"
-#define FILE_CONTROL        "/dev/snd/controlC0"
+//#define FILE_PCM_PLAYBACK   "/dev/snd/pcmC0D0p"
+//#define FILE_PCM_CAPTURE    "/dev/snd/pcmC0D0c"
+//#define FILE_CONTROL        "/dev/snd/controlC0"
 
 //TCC803x ASRC block has 4 pairs.
 //Only 1 pair of TCC803x ASRC block supports multichannel.
@@ -71,19 +71,6 @@ typedef enum {
 	TCC_ASRC_M2M_TYPE_MAX,
 } TCC_ASRC_DEV_TYPE;
 
-#ifdef TEST_BY_ALSA
-struct tcc_snd_dev_for_test {
-	struct file *filp;
-	struct snd_pcm_substream *substream;
-	struct snd_pcm_runtime *runtime;
-	char *dev_name;
-	int access;
-	int format;
-	int channels;
-	int rate;
-};
-#endif
-
 struct tcc_mid_buf {
 	unsigned char *ptemp_buf;
 	unsigned int cur_pos;
@@ -109,6 +96,19 @@ struct tcc_app_buffer_info {
 //	snd_pcm_uframes_t periods;	//for TX
 };
 
+typedef struct _Node {
+	unsigned int print_pos;
+	ssize_t input_byte;	//bytes
+	struct _Node *next;
+	struct _Node *prev;
+} Node;
+
+typedef struct _List {
+	Node *head;
+	Node *tail;
+	int list_len;
+} List;
+
 struct tcc_asrc_m2m_pcm {
 	struct device *dev;
 	unsigned int pair_id;
@@ -119,11 +119,7 @@ struct tcc_asrc_m2m_pcm {
 	struct tcc_param_info *src;
 	struct tcc_param_info *dst;
 	struct tcc_app_buffer_info *app;
-#ifdef TEST_BY_ALSA
-	struct tcc_snd_dev_for_test *test_dev;
-#endif
-	struct task_struct *kth_id_ptr_check;
-	struct task_struct *kth_id_ptr_update;
+	struct task_struct *kth_id;
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 	struct mbox_audio_device *mbox_audio_dev;
     unsigned short mbox_cmd_type;
@@ -135,8 +131,8 @@ struct tcc_asrc_m2m_pcm {
 	bool is_asrc_running;
 	unsigned int interval; //ms
 	ssize_t Bwrote; //Bytes 
-	wait_queue_head_t check_wq;
-	wait_queue_head_t update_wq;
+	List *asrc_footprint;	//for TX
+	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;
 };
