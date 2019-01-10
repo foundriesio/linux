@@ -528,7 +528,9 @@ static int snd_pcm_stream_proc_init(struct snd_pcm_str *pstr)
 
 	sprintf(name, "pcm%i%c", pcm->device, 
 		pstr->stream == SNDRV_PCM_STREAM_PLAYBACK ? 'p' : 'c');
-	if ((entry = snd_info_create_card_entry(pcm->card, name, pcm->card->proc_root)) == NULL)
+	entry = snd_info_create_card_entry(pcm->card, name,
+					   pcm->card->proc_root);
+	if (!entry)
 		return -ENOMEM;
 	entry->mode = S_IFDIR | S_IRUGO | S_IXUGO;
 	if (snd_info_register(entry) < 0) {
@@ -536,8 +538,8 @@ static int snd_pcm_stream_proc_init(struct snd_pcm_str *pstr)
 		return -ENOMEM;
 	}
 	pstr->proc_root = entry;
-
-	if ((entry = snd_info_create_card_entry(pcm->card, "info", pstr->proc_root)) != NULL) {
+	entry = snd_info_create_card_entry(pcm->card, "info", pstr->proc_root);
+	if (entry) {
 		snd_info_set_text_ops(entry, pstr, snd_pcm_stream_proc_info_read);
 		if (snd_info_register(entry) < 0) {
 			snd_info_free_entry(entry);
@@ -547,8 +549,9 @@ static int snd_pcm_stream_proc_init(struct snd_pcm_str *pstr)
 	pstr->proc_info_entry = entry;
 
 #ifdef CONFIG_SND_PCM_XRUN_DEBUG
-	if ((entry = snd_info_create_card_entry(pcm->card, "xrun_debug",
-						pstr->proc_root)) != NULL) {
+	entry = snd_info_create_card_entry(pcm->card, "xrun_debug",
+					   pstr->proc_root);
+	if (entry) {
 		entry->c.text.read = snd_pcm_xrun_debug_read;
 		entry->c.text.write = snd_pcm_xrun_debug_write;
 		entry->mode |= S_IWUSR;
@@ -585,7 +588,9 @@ static int snd_pcm_substream_proc_init(struct snd_pcm_substream *substream)
 	card = substream->pcm->card;
 
 	sprintf(name, "sub%i", substream->number);
-	if ((entry = snd_info_create_card_entry(card, name, substream->pstr->proc_root)) == NULL)
+	entry = snd_info_create_card_entry(card, name,
+					   substream->pstr->proc_root);
+	if (!entry)
 		return -ENOMEM;
 	entry->mode = S_IFDIR | S_IRUGO | S_IXUGO;
 	if (snd_info_register(entry) < 0) {
@@ -593,8 +598,8 @@ static int snd_pcm_substream_proc_init(struct snd_pcm_substream *substream)
 		return -ENOMEM;
 	}
 	substream->proc_root = entry;
-
-	if ((entry = snd_info_create_card_entry(card, "info", substream->proc_root)) != NULL) {
+	entry = snd_info_create_card_entry(card, "info", substream->proc_root);
+	if (entry) {
 		snd_info_set_text_ops(entry, substream,
 				      snd_pcm_substream_proc_info_read);
 		if (snd_info_register(entry) < 0) {
@@ -603,8 +608,9 @@ static int snd_pcm_substream_proc_init(struct snd_pcm_substream *substream)
 		}
 	}
 	substream->proc_info_entry = entry;
-
-	if ((entry = snd_info_create_card_entry(card, "hw_params", substream->proc_root)) != NULL) {
+	entry = snd_info_create_card_entry(card, "hw_params",
+					   substream->proc_root);
+	if (entry) {
 		snd_info_set_text_ops(entry, substream,
 				      snd_pcm_substream_proc_hw_params_read);
 		if (snd_info_register(entry) < 0) {
@@ -613,8 +619,9 @@ static int snd_pcm_substream_proc_init(struct snd_pcm_substream *substream)
 		}
 	}
 	substream->proc_hw_params_entry = entry;
-
-	if ((entry = snd_info_create_card_entry(card, "sw_params", substream->proc_root)) != NULL) {
+	entry = snd_info_create_card_entry(card, "sw_params",
+					   substream->proc_root);
+	if (entry) {
 		snd_info_set_text_ops(entry, substream,
 				      snd_pcm_substream_proc_sw_params_read);
 		if (snd_info_register(entry) < 0) {
@@ -623,8 +630,8 @@ static int snd_pcm_substream_proc_init(struct snd_pcm_substream *substream)
 		}
 	}
 	substream->proc_sw_params_entry = entry;
-
-	if ((entry = snd_info_create_card_entry(card, "status", substream->proc_root)) != NULL) {
+	entry = snd_info_create_module_entry(THIS_MODULE, "pcm", NULL);
+	if (entry) {
 		snd_info_set_text_ops(entry, substream,
 				      snd_pcm_substream_proc_status_read);
 		if (snd_info_register(entry) < 0) {
@@ -1240,7 +1247,8 @@ static void snd_pcm_proc_init(void)
 {
 	struct snd_info_entry *entry;
 
-	if ((entry = snd_info_create_module_entry(THIS_MODULE, "pcm", NULL)) != NULL) {
+	entry = snd_info_create_module_entry(THIS_MODULE, "pcm", NULL);
+	if (entry) {
 		snd_info_set_text_ops(entry, NULL, snd_pcm_proc_read);
 		if (snd_info_register(entry) < 0) {
 			snd_info_free_entry(entry);
