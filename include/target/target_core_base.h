@@ -186,6 +186,7 @@ enum tcm_sense_reason_table {
 	TCM_UNSUPPORTED_TARGET_DESC_TYPE_CODE	= R(0x1a),
 	TCM_TOO_MANY_SEGMENT_DESCS		= R(0x1b),
 	TCM_UNSUPPORTED_SEGMENT_DESC_TYPE_CODE	= R(0x1c),
+	TCM_LUN_BUSY				= R(0x1e),
 #undef R
 };
 
