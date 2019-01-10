@@ -92,6 +92,7 @@ struct target_backend_ops {
 	struct target_pr_ops *pr_ops;
 
 	struct configfs_attribute **tb_dev_attrib_attrs;
+	struct configfs_attribute **tb_dev_action_attrs;
 };
 
 struct sbc_ops {
