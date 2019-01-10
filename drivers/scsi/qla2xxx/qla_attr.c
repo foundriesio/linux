@@ -218,7 +218,7 @@ qla2x00_sysfs_write_nvram(struct file *filp, struct kobject *kobj,
 
 	mutex_lock(&ha->optrom_mutex);
 	if (qla2x00_chip_is_down(vha)) {
-		mutex_unlock(&vha->hw->optrom_mutex);
+		mutex_unlock(&ha->optrom_mutex);
 		return -EAGAIN;
 	}
 
@@ -2711,6 +2711,8 @@ qla24xx_vport_delete(struct fc_vport *fc_vport)
 	while (test_bit(LOOP_RESYNC_ACTIVE, &vha->dpc_flags) ||
 	    test_bit(FCPORT_UPDATE_NEEDED, &vha->dpc_flags))
 		msleep(1000);
+
+	qla_nvme_delete(vha);
 
 	qla24xx_disable_vp(vha);
 	qla2x00_wait_for_sess_deletion(vha);

@@ -1511,7 +1511,6 @@ qla2x00_abort_target(struct fc_port *fcport, uint64_t l, int tag)
 	struct req_que *req;
 	struct rsp_que *rsp;
 
-	l = l;
 	vha = fcport->vha;
 
 	ql_dbg(ql_dbg_mbx + ql_dbg_verbose, vha, 0x103e,
@@ -3479,9 +3478,9 @@ qla8044_read_serdes_word(scsi_qla_host_t *vha, uint32_t addr, uint32_t *data)
 /**
  * qla2x00_set_serdes_params() -
  * @vha: HA context
- * @sw_em_1g:
- * @sw_em_2g:
- * @sw_em_4g:
+ * @sw_em_1g: serial link options
+ * @sw_em_2g: serial link options
+ * @sw_em_4g: serial link options
  *
  * Returns
  */

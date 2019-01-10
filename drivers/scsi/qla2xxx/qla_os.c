@@ -67,7 +67,7 @@ module_param(ql2xplogiabsentdevice, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(ql2xplogiabsentdevice,
 		"Option to enable PLOGI to devices that are not present after "
 		"a Fabric scan.  This is needed for several broken switches. "
-		"Default is 0 - no PLOGI. 1 - perfom PLOGI.");
+		"Default is 0 - no PLOGI. 1 - perform PLOGI.");
 
 int ql2xloginretrycount = 0;
 module_param(ql2xloginretrycount, int, S_IRUGO);
@@ -1744,10 +1744,45 @@ qla2x00_loop_reset(scsi_qla_host_t *vha)
 	return QLA_SUCCESS;
 }
 
+static void qla2x00_abort_srb(struct qla_qpair *qp, srb_t *sp, const int res,
+			      unsigned long *flags)
+	__releases(qp->qp_lock_ptr)
+	__acquires(qp->qp_lock_ptr)
+{
+	scsi_qla_host_t *vha = qp->vha;
+	struct qla_hw_data *ha = vha->hw;
+
+	if (sp->type == SRB_NVME_CMD || sp->type == SRB_NVME_LS) {
+		if (!sp_get(sp)) {
+			/* got sp */
+			spin_unlock_irqrestore(qp->qp_lock_ptr, *flags);
+			qla_nvme_abort(ha, sp, res);
+			spin_lock_irqsave(qp->qp_lock_ptr, *flags);
+		}
+	} else if (GET_CMD_SP(sp) && !ha->flags.eeh_busy &&
+		   !test_bit(ABORT_ISP_ACTIVE, &vha->dpc_flags) &&
+		   !qla2x00_isp_reg_stat(ha) && sp->type == SRB_SCSI_CMD) {
+		/*
+		 * Don't abort commands in adapter during EEH recovery as it's
+		 * not accessible/responding.
+		 *
+		 * Get a reference to the sp and drop the lock. The reference
+		 * ensures this sp->done() call and not the call in
+		 * qla2xxx_eh_abort() ends the SCSI cmd (with result 'res').
+		 */
+		if (!sp_get(sp)) {
+			spin_unlock_irqrestore(qp->qp_lock_ptr, *flags);
+			qla2xxx_eh_abort(GET_CMD_SP(sp));
+			spin_lock_irqsave(qp->qp_lock_ptr, *flags);
+		}
+	}
+	sp->done(sp, res);
+}
+
 static void
 __qla2x00_abort_all_cmds(struct qla_qpair *qp, int res)
 {
-	int cnt, status;
+	int cnt;
 	unsigned long flags;
 	srb_t *sp;
 	scsi_qla_host_t *vha = qp->vha;
@@ -1766,44 +1801,7 @@ __qla2x00_abort_all_cmds(struct qla_qpair *qp, int res)
 			req->outstanding_cmds[cnt] = NULL;
 			switch (sp->cmd_type) {
 			case TYPE_SRB:
-				if (sp->type == SRB_NVME_CMD ||
-				    sp->type == SRB_NVME_LS) {
-					if (!sp_get(sp)) {
-						/* got sp */
-						spin_unlock_irqrestore
-							(qp->qp_lock_ptr,
-							 flags);
-						qla_nvme_abort(ha, sp, res);
-						spin_lock_irqsave
-							(qp->qp_lock_ptr, flags);
-					}
-				} else if (GET_CMD_SP(sp) &&
-				    !ha->flags.eeh_busy &&
-				    (!test_bit(ABORT_ISP_ACTIVE,
-					&vha->dpc_flags)) &&
-				    !qla2x00_isp_reg_stat(ha) &&
-				    (sp->type == SRB_SCSI_CMD)) {
-					/*
-					 * Don't abort commands in adapter
-					 * during EEH recovery as it's not
-					 * accessible/responding.
-					 *
-					 * Get a reference to the sp and drop
-					 * the lock. The reference ensures this
-					 * sp->done() call and not the call in
-					 * qla2xxx_eh_abort() ends the SCSI cmd
-					 * (with result 'res').
-					 */
-					if (!sp_get(sp)) {
-						spin_unlock_irqrestore
-							(qp->qp_lock_ptr, flags);
-						status = qla2xxx_eh_abort(
-						    GET_CMD_SP(sp));
-						spin_lock_irqsave
-							(qp->qp_lock_ptr, flags);
-					}
-				}
-				sp->done(sp, res);
+				qla2x00_abort_srb(qp, sp, res, &flags);
 				break;
 			case TYPE_TGT_CMD:
 				if (!vha->hw->tgt.tgt_ops || !tgt ||
@@ -3562,6 +3560,8 @@ qla2x00_delete_all_vps(struct qla_hw_data *ha, scsi_qla_host_t *base_vha)
 		spin_unlock_irqrestore(&ha->vport_slock, flags);
 		mutex_unlock(&ha->vport_lock);
 
+		qla_nvme_delete(vha);
+
 		fc_vport_terminate(vha->fc_vport);
 		scsi_host_put(vha->host);
 
@@ -4167,12 +4167,10 @@ fail_free_nvram:
 	kfree(ha->nvram);
 	ha->nvram = NULL;
 fail_free_ctx_mempool:
-	if (ha->ctx_mempool)
-		mempool_destroy(ha->ctx_mempool);
+	mempool_destroy(ha->ctx_mempool);
 	ha->ctx_mempool = NULL;
 fail_free_srb_mempool:
-	if (ha->srb_mempool)
-		mempool_destroy(ha->srb_mempool);
+	mempool_destroy(ha->srb_mempool);
 	ha->srb_mempool = NULL;
 fail_free_gid_list:
 	dma_free_coherent(&ha->pdev->dev, qla2x00_gid_list_size(ha),
@@ -4474,8 +4472,7 @@ qla2x00_mem_free(struct qla_hw_data *ha)
 		dma_free_coherent(&ha->pdev->dev, MCTP_DUMP_SIZE, ha->mctp_dump,
 		    ha->mctp_dump_dma);
 
-	if (ha->srb_mempool)
-		mempool_destroy(ha->srb_mempool);
+	mempool_destroy(ha->srb_mempool);
 
 	if (ha->dcbx_tlv)
 		dma_free_coherent(&ha->pdev->dev, DCBX_TLV_DATA_SIZE,
@@ -4507,8 +4504,7 @@ qla2x00_mem_free(struct qla_hw_data *ha)
 	if (ha->async_pd)
 		dma_pool_free(ha->s_dma_pool, ha->async_pd, ha->async_pd_dma);
 
-	if (ha->s_dma_pool)
-		dma_pool_destroy(ha->s_dma_pool);
+	dma_pool_destroy(ha->s_dma_pool);
 
 	if (ha->gid_list)
 		dma_free_coherent(&ha->pdev->dev, qla2x00_gid_list_size(ha),
@@ -4529,14 +4525,11 @@ qla2x00_mem_free(struct qla_hw_data *ha)
 		}
 	}
 
-	if (ha->dl_dma_pool)
-		dma_pool_destroy(ha->dl_dma_pool);
+	dma_pool_destroy(ha->dl_dma_pool);
 
-	if (ha->fcp_cmnd_dma_pool)
-		dma_pool_destroy(ha->fcp_cmnd_dma_pool);
+	dma_pool_destroy(ha->fcp_cmnd_dma_pool);
 
-	if (ha->ctx_mempool)
-		mempool_destroy(ha->ctx_mempool);
+	mempool_destroy(ha->ctx_mempool);
 
 	qlt_mem_free(ha);
 
@@ -4862,10 +4855,10 @@ void qla24xx_create_new_sess(struct scsi_qla_host *vha, struct qla_work_evt *e)
 			fcport->d_id = e->u.new_sess.id;
 			fcport->flags |= FCF_FABRIC_DEVICE;
 			fcport->fw_login_state = DSC_LS_PLOGI_PEND;
-			if (e->u.new_sess.fc4_type & FS_FC4TYPE_FCP)
+			if (e->u.new_sess.fc4_type == FS_FC4TYPE_FCP)
 				fcport->fc4_type = FC4_TYPE_FCP_SCSI;
 
-			if (e->u.new_sess.fc4_type & FS_FC4TYPE_NVME) {
+			if (e->u.new_sess.fc4_type == FS_FC4TYPE_NVME) {
 				fcport->fc4_type = FC4_TYPE_OTHER;
 				fcport->fc4f_nvme = FC4_TYPE_NVME;
 			}
@@ -7097,8 +7090,7 @@ qla2x00_module_exit(void)
 	qla2x00_release_firmware();
 	kmem_cache_destroy(srb_cachep);
 	qlt_exit();
-	if (ctx_cachep)
-		kmem_cache_destroy(ctx_cachep);
+	kmem_cache_destroy(ctx_cachep);
 	fc_release_transport(qla2xxx_transport_template);
 	fc_release_transport(qla2xxx_transport_vport_template);
 }
