@@ -747,7 +747,8 @@ int intel_psr_wait_for_idle(const struct intel_crtc_state *new_crtc_state)
 	 */
 	return __intel_wait_for_register(dev_priv, EDP_PSR_STATUS,
 					 EDP_PSR_STATUS_STATE_MASK,
-					 EDP_PSR_STATUS_STATE_IDLE, 50);
+					 EDP_PSR_STATUS_STATE_IDLE, 2, 50,
+					 NULL);
 }
 
 static bool __psr_wait_for_idle_locked(struct drm_i915_private *dev_priv)
