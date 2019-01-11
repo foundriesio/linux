@@ -2639,6 +2639,13 @@ repeat:
 		}
 
 		head = compound_head(page);
+
+		/*
+		 * Check for a locked page first, as a speculative
+		 * reference may adversely influence page migration.
+		 */
+		if (PageLocked(head))
+			goto next;
 		if (!page_cache_get_speculative(head))
 			goto repeat;
 
