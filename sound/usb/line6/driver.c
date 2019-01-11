@@ -199,9 +199,9 @@ static int line6_send_raw_message_async_part(struct message *msg,
 	Setup and start timer.
 */
 void line6_start_timer(struct timer_list *timer, unsigned long msecs,
-		       void (*function)(struct timer_list *t))
+		       void (*function)(unsigned long), unsigned long data)
 {
-	timer->function = (TIMER_FUNC_TYPE)function;
+	setup_timer(timer, function, data);
 	mod_timer(timer, jiffies + msecs_to_jiffies(msecs));
 }
 EXPORT_SYMBOL_GPL(line6_start_timer);

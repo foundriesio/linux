@@ -55,6 +55,7 @@ void *snd_lookup_oss_minor_data(unsigned int minor, int type)
 	mutex_unlock(&sound_oss_mutex);
 	return private_data;
 }
+
 EXPORT_SYMBOL(snd_lookup_oss_minor_data);
 
 static int snd_oss_kernel_minor(int type, struct snd_card *card, int dev)
@@ -158,6 +159,7 @@ int snd_register_oss_device(int type, struct snd_card *card, int dev,
 	kfree(preg);
       	return -EBUSY;
 }
+
 EXPORT_SYMBOL(snd_register_oss_device);
 
 int snd_unregister_oss_device(int type, struct snd_card *card, int dev)
@@ -198,6 +200,7 @@ int snd_unregister_oss_device(int type, struct snd_card *card, int dev)
 	kfree(mptr);
 	return 0;
 }
+
 EXPORT_SYMBOL(snd_unregister_oss_device);
 
 /*

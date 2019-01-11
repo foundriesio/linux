@@ -74,6 +74,7 @@ void snd_request_card(int card)
 		return;
 	request_module("snd-card-%i", card);
 }
+
 EXPORT_SYMBOL(snd_request_card);
 
 static void snd_request_other(int minor)
@@ -123,6 +124,7 @@ void *snd_lookup_minor_data(unsigned int minor, int type)
 	mutex_unlock(&sound_mutex);
 	return private_data;
 }
+
 EXPORT_SYMBOL(snd_lookup_minor_data);
 
 #ifdef CONFIG_MODULES

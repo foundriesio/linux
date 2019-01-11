@@ -311,9 +311,10 @@ static int snd_seq_open(struct inode *inode, struct file *file)
 	if (err < 0)
 		return err;
 
-	mutex_lock(&register_mutex);
+	if (mutex_lock_interruptible(&register_mutex))
+		return -ERESTARTSYS;
 	client = seq_create_client1(-1, SNDRV_SEQ_DEFAULT_EVENTS);
-	if (!client) {
+	if (client == NULL) {
 		mutex_unlock(&register_mutex);
 		return -ENOMEM;	/* failure code */
 	}
@@ -802,10 +803,6 @@ static int snd_seq_deliver_event(struct snd_seq_client *client, struct snd_seq_e
 		return -EMLINK;
 	}
 
-	if (snd_seq_ev_is_variable(event) &&
-	    snd_BUG_ON(atomic && (event->data.ext.len & SNDRV_SEQ_EXT_USRPTR)))
-		return -EINVAL;
-
 	if (event->queue == SNDRV_SEQ_ADDRESS_SUBSCRIBERS ||
 	    event->dest.client == SNDRV_SEQ_ADDRESS_SUBSCRIBERS)
 		result = deliver_to_subscribers(client, event, atomic, hop);
@@ -1100,7 +1097,7 @@ static unsigned int snd_seq_poll(struct file *file, poll_table * wait)
 
 	/* check client structures are in place */
 	if (snd_BUG_ON(!client))
-		return POLLERR;
+		return -ENXIO;
 
 	if ((snd_seq_file_flags(file) & SNDRV_SEQ_LFLG_INPUT) &&
 	    client->data.user.fifo) {
@@ -1678,6 +1675,7 @@ int snd_seq_set_queue_tempo(int client, struct snd_seq_queue_tempo *tempo)
 		return -EPERM;
 	return snd_seq_queue_timer_set_tempo(tempo->queue, client, tempo);
 }
+
 EXPORT_SYMBOL(snd_seq_set_queue_tempo);
 
 static int snd_seq_ioctl_set_queue_tempo(struct snd_seq_client *client,
@@ -1703,7 +1701,10 @@ static int snd_seq_ioctl_get_queue_timer(struct snd_seq_client *client,
 	if (queue == NULL)
 		return -EINVAL;
 
-	mutex_lock(&queue->timer_mutex);
+	if (mutex_lock_interruptible(&queue->timer_mutex)) {
+		queuefree(queue);
+		return -ERESTARTSYS;
+	}
 	tmr = queue->timer;
 	memset(timer, 0, sizeof(*timer));
 	timer->queue = queue->queue;
@@ -1737,7 +1738,10 @@ static int snd_seq_ioctl_set_queue_timer(struct snd_seq_client *client,
 		q = queueptr(timer->queue);
 		if (q == NULL)
 			return -ENXIO;
-		mutex_lock(&q->timer_mutex);
+		if (mutex_lock_interruptible(&q->timer_mutex)) {
+			queuefree(q);
+			return -ERESTARTSYS;
+		}
 		tmr = q->timer;
 		snd_seq_queue_timer_close(timer->queue);
 		tmr->type = timer->type;
@@ -2173,7 +2177,8 @@ int snd_seq_create_kernel_client(struct snd_card *card, int client_index,
 	if (card == NULL && client_index >= SNDRV_SEQ_GLOBAL_CLIENTS)
 		return -EINVAL;
 
-	mutex_lock(&register_mutex);
+	if (mutex_lock_interruptible(&register_mutex))
+		return -ERESTARTSYS;
 
 	if (card) {
 		client_index += SNDRV_SEQ_GLOBAL_CLIENTS
@@ -2207,6 +2212,7 @@ int snd_seq_create_kernel_client(struct snd_card *card, int client_index,
 	/* return client number to caller */
 	return client->number;
 }
+
 EXPORT_SYMBOL(snd_seq_create_kernel_client);
 
 /* exported to kernel modules */
@@ -2225,6 +2231,7 @@ int snd_seq_delete_kernel_client(int client)
 	kfree(ptr);
 	return 0;
 }
+
 EXPORT_SYMBOL(snd_seq_delete_kernel_client);
 
 /* skeleton to enqueue event, called from snd_seq_kernel_client_enqueue
@@ -2275,6 +2282,7 @@ int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event * ev,
 {
 	return kernel_client_enqueue(client, ev, NULL, 0, atomic, hop);
 }
+
 EXPORT_SYMBOL(snd_seq_kernel_client_enqueue);
 
 /*
@@ -2288,6 +2296,7 @@ int snd_seq_kernel_client_enqueue_blocking(int client, struct snd_seq_event * ev
 {
 	return kernel_client_enqueue(client, ev, file, 1, atomic, hop);
 }
+
 EXPORT_SYMBOL(snd_seq_kernel_client_enqueue_blocking);
 
 /* 
@@ -2325,6 +2334,7 @@ int snd_seq_kernel_client_dispatch(int client, struct snd_seq_event * ev,
 	snd_seq_client_unlock(cptr);
 	return result;
 }
+
 EXPORT_SYMBOL(snd_seq_kernel_client_dispatch);
 
 /**
@@ -2357,6 +2367,7 @@ int snd_seq_kernel_client_ctl(int clientid, unsigned int cmd, void *arg)
 		 cmd, _IOC_TYPE(cmd), _IOC_NR(cmd));
 	return -ENOTTY;
 }
+
 EXPORT_SYMBOL(snd_seq_kernel_client_ctl);
 
 /* exported (for OSS emulator) */
@@ -2374,6 +2385,7 @@ int snd_seq_kernel_client_write_poll(int clientid, struct file *file, poll_table
 		return 1;
 	return 0;
 }
+
 EXPORT_SYMBOL(snd_seq_kernel_client_write_poll);
 
 /*---------------------------------------------------------------------------*/
@@ -2514,15 +2526,19 @@ int __init snd_sequencer_device_init(void)
 	snd_device_initialize(&seq_dev, NULL);
 	dev_set_name(&seq_dev, "seq");
 
-	mutex_lock(&register_mutex);
+	if (mutex_lock_interruptible(&register_mutex))
+		return -ERESTARTSYS;
+
 	err = snd_register_device(SNDRV_DEVICE_TYPE_SEQUENCER, NULL, 0,
 				  &snd_seq_f_ops, NULL, &seq_dev);
-	mutex_unlock(&register_mutex);
 	if (err < 0) {
+		mutex_unlock(&register_mutex);
 		put_device(&seq_dev);
 		return err;
 	}
 	
+	mutex_unlock(&register_mutex);
+
 	return 0;
 }
 
@@ -2531,7 +2547,7 @@ int __init snd_sequencer_device_init(void)
 /* 
  * unregister sequencer device 
  */
-void snd_sequencer_device_done(void)
+void __exit snd_sequencer_device_done(void)
 {
 	snd_unregister_device(&seq_dev);
 	put_device(&seq_dev);

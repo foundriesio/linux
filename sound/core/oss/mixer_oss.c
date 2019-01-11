@@ -395,7 +395,6 @@ int snd_mixer_oss_ioctl_card(struct snd_card *card, unsigned int cmd, unsigned l
 	fmixer.mixer = card->mixer_oss;
 	return snd_mixer_oss_ioctl1(&fmixer, cmd, arg);
 }
-EXPORT_SYMBOL(snd_mixer_oss_ioctl_card);
 
 #ifdef CONFIG_COMPAT
 /* all compatible */
@@ -1426,3 +1425,5 @@ static void __exit alsa_mixer_oss_exit(void)
 
 module_init(alsa_mixer_oss_init)
 module_exit(alsa_mixer_oss_exit)
+
+EXPORT_SYMBOL(snd_mixer_oss_ioctl_card);

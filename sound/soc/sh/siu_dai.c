@@ -441,7 +441,7 @@ static int siu_dai_put_volume(struct snd_kcontrol *kctrl,
 	return 0;
 }
 
-static const struct snd_kcontrol_new playback_controls = {
+static struct snd_kcontrol_new playback_controls = {
 	.iface		= SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name		= "PCM Playback Volume",
 	.index		= 0,
@@ -451,7 +451,7 @@ static const struct snd_kcontrol_new playback_controls = {
 	.private_value	= VOLUME_PLAYBACK,
 };
 
-static const struct snd_kcontrol_new capture_controls = {
+static struct snd_kcontrol_new capture_controls = {
 	.iface		= SNDRV_CTL_ELEM_IFACE_MIXER,
 	.name		= "PCM Capture Volume",
 	.index		= 0,

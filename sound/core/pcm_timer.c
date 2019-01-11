@@ -25,8 +25,6 @@
 #include <sound/pcm.h>
 #include <sound/timer.h>
 
-#include "pcm_local.h"
-
 /*
  *  Timer functions
  */
@@ -35,8 +33,8 @@ void snd_pcm_timer_resolution_change(struct snd_pcm_substream *substream)
 {
 	unsigned long rate, mult, fsize, l, post;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	mult = 1000000000;
+	
+        mult = 1000000000;
 	rate = runtime->rate;
 	if (snd_BUG_ON(!rate))
 		return;
@@ -67,7 +65,7 @@ void snd_pcm_timer_resolution_change(struct snd_pcm_substream *substream)
 static unsigned long snd_pcm_timer_resolution(struct snd_timer * timer)
 {
 	struct snd_pcm_substream *substream;
-
+	
 	substream = timer->private_data;
 	return substream->runtime ? substream->runtime->timer_resolution : 0;
 }
@@ -75,7 +73,7 @@ static unsigned long snd_pcm_timer_resolution(struct snd_timer * timer)
 static int snd_pcm_timer_start(struct snd_timer * timer)
 {
 	struct snd_pcm_substream *substream;
-
+	
 	substream = snd_timer_chip(timer);
 	substream->timer_running = 1;
 	return 0;
@@ -84,7 +82,7 @@ static int snd_pcm_timer_start(struct snd_timer * timer)
 static int snd_pcm_timer_stop(struct snd_timer * timer)
 {
 	struct snd_pcm_substream *substream;
-
+	
 	substream = snd_timer_chip(timer);
 	substream->timer_running = 0;
 	return 0;
@@ -114,7 +112,7 @@ void snd_pcm_timer_init(struct snd_pcm_substream *substream)
 {
 	struct snd_timer_id tid;
 	struct snd_timer *timer;
-
+	
 	tid.dev_sclass = SNDRV_TIMER_SCLASS_NONE;
 	tid.dev_class = SNDRV_TIMER_CLASS_PCM;
 	tid.card = substream->pcm->card->number;
