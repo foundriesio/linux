@@ -1837,6 +1837,7 @@ struct xhci_hcd {
 #define XHCI_ASMEDIA_MODIFY_FLOWCONTROL	BIT_ULL(28)
 #define XHCI_RESET_PLL_ON_DISCONNECT	BIT_ULL(29)
 #define XHCI_SUSPEND_DELAY		BIT_ULL(30)
+#define XHCI_ZERO_64B_REGS		BIT_ULL(32)
 #define XHCI_SNPS_BROKEN_SUSPEND	BIT_ULL(35)
 
 	unsigned int		num_active_eps;
@@ -1857,6 +1858,8 @@ struct xhci_hcd {
 	unsigned		sw_lpm_support:1;
 	/* support xHCI 1.0 spec USB2 hardware LPM */
 	unsigned		hw_lpm_support:1;
+	/* Broken Suspend flag for SNPS Suspend resume issue */
+	unsigned		broken_suspend:1;
 	/* cached usb2 extened protocol capabilites */
 	u32                     *ext_caps;
 	unsigned int            num_ext_caps;
@@ -1869,8 +1872,6 @@ struct xhci_hcd {
 
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
-	/* Broken Suspend flag for SNPS Suspend resume issue */
-	u8			broken_suspend;
 };
 
 /* Platform specific overrides to generic XHCI hc_driver ops */
