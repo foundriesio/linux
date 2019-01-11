@@ -1352,6 +1352,13 @@
 		clock-names = "gmac-pclk", "hsio-clk", "ptp-pclk", "gmac-hclk";
 	};
 
+	trng@71EB0100 {
+		compatible = "telechips,tcc-rng";
+		reg = <0x71EB0100 0x100>;
+		clocks = <&clk_hsio HSIOBUS_TRNG>;
+		status = "okay";
+	};
+
 	dwc_otg_phy:dwc_otg_phy@71EA0100 {
 		compatible = "telechips,tcc_dwc_otg_phy";
 		reg = <0x71EA0100 0x20>;
