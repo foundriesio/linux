@@ -17,6 +17,9 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include <linux/printk.h>
 #include <linux/delay.h>
+#include <linux/mutex.h>
+#include <video/tcc/tcc_fb.h>
+#include <media/v4l2-common.h>
 
 #include "tccvin_switchmanager.h"
 #include "../videosource/videosource_if.h"
@@ -27,6 +30,8 @@ static int debug		= 0;
 #define dlog(msg...)	if(debug) { printk(TAG ": %s - ", __func__); printk(msg); }
 #define FUNCTION_IN		dlog("IN\n");
 #define FUNCTION_OUT	dlog("OUT\n");
+
+extern struct lcd_panel *tccfb_get_panel(void);
 
 int tccvin_switchmanager_start_preview(tccvin_dev_t * vdev) {
 #ifdef VIDEO_TCCVIN_PRESET_VIDEOSOURCE
@@ -189,8 +194,13 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 	// open a videoinput path
 	dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
 	if(vdev->is_dev_opened == DISABLE) {
+		struct lcd_panel * lcd_panel_info;
+		lcd_panel_info = tccfb_get_panel();
+
 		// init the v4l2 data
 		tccvin_v4l2_init(vdev);
+		log("pannel size is %d x %d \n", lcd_panel_info->xres, lcd_panel_info->yres);
+		tccvin_cif_set_resolution(vdev, lcd_panel_info->xres, lcd_panel_info->yres, V4L2_PIX_FMT_RGB32);
 
 		vdev->is_dev_opened  = ENABLE;
 	}

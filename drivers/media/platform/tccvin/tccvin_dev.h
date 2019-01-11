@@ -185,6 +185,7 @@ extern int	tccvin_v4l2_try_fmt(struct v4l2_format * fmt);
 extern int tccvin_set_wmixer_out(tccvin_cif_t * cif, unsigned int ovp);
 extern int tccvin_set_ovp_value(tccvin_cif_t * cif);
 extern void	tccvin_check_path_status(tccvin_dev_t * vdev, int * status);
+extern int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned int height, unsigned int pixelformat);
 
 #endif//TCCVIN_DEV_H
 
