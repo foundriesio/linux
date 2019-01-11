@@ -70,19 +70,6 @@ static void stm32_pwr_irq_unmask(struct irq_data *d)
 	SMC(STM32_SVC_PWR, STM32_SET_BITS, MPUWKUPENR, BIT(d->hwirq));
 }
 
-static int stm32_pwr_irq_set_wake(struct irq_data *d, unsigned int on)
-{
-	struct stm32_pwr_data *priv = d->domain->host_data;
-
-	pr_debug("irq:%lu on:%d\n", d->hwirq, on);
-	if (on)
-		enable_irq_wake(priv->irq);
-	else
-		disable_irq_wake(priv->irq);
-
-	return 0;
-}
-
 static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 {
 	struct stm32_pwr_data *priv = d->domain->host_data;
@@ -125,7 +112,6 @@ static struct irq_chip stm32_pwr_irq_chip = {
 	.irq_mask = stm32_pwr_irq_mask,
 	.irq_unmask = stm32_pwr_irq_unmask,
 	.irq_set_type = stm32_pwr_irq_set_type,
-	.irq_set_wake = stm32_pwr_irq_set_wake,
 };
 
 static int stm32_pwr_irq_set_pull_config(struct irq_domain *d, int pin_id,
