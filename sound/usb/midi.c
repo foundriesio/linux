@@ -281,15 +281,16 @@ static void snd_usbmidi_out_urb_complete(struct urb *urb)
 	struct out_urb_context *context = urb->context;
 	struct snd_usb_midi_out_endpoint *ep = context->ep;
 	unsigned int urb_index;
+	unsigned long flags;
 
-	spin_lock(&ep->buffer_lock);
+	spin_lock_irqsave(&ep->buffer_lock, flags);
 	urb_index = context - ep->urbs;
 	ep->active_urbs &= ~(1 << urb_index);
 	if (unlikely(ep->drain_urbs)) {
 		ep->drain_urbs &= ~(1 << urb_index);
 		wake_up(&ep->drain_wait);
 	}
-	spin_unlock(&ep->buffer_lock);
+	spin_unlock_irqrestore(&ep->buffer_lock, flags);
 	if (urb->status < 0) {
 		int err = snd_usbmidi_urb_error(urb);
 		if (err < 0) {
@@ -352,9 +353,9 @@ static void snd_usbmidi_out_tasklet(unsigned long data)
 }
 
 /* called after transfers had been interrupted due to some USB error */
-static void snd_usbmidi_error_timer(unsigned long data)
+static void snd_usbmidi_error_timer(struct timer_list *t)
 {
-	struct snd_usb_midi *umidi = (struct snd_usb_midi *)data;
+	struct snd_usb_midi *umidi = from_timer(umidi, t, error_timer);
 	unsigned int i, j;
 
 	spin_lock(&umidi->disc_lock);
@@ -1174,8 +1175,7 @@ static void snd_usbmidi_output_trigger(struct snd_rawmidi_substream *substream,
 		if (port->ep->umidi->disconnected) {
 			/* gobble up remaining bytes to prevent wait in
 			 * snd_rawmidi_drain_output */
-			while (!snd_rawmidi_transmit_empty(substream))
-				snd_rawmidi_transmit_ack(substream, 1);
+			snd_rawmidi_proceed(substream);
 			return;
 		}
 		tasklet_schedule(&port->ep->tasklet);
@@ -2369,8 +2369,7 @@ int __snd_usbmidi_create(struct snd_card *card,
 		usb_id = USB_ID(le16_to_cpu(umidi->dev->descriptor.idVendor),
 			       le16_to_cpu(umidi->dev->descriptor.idProduct));
 	umidi->usb_id = usb_id;
-	setup_timer(&umidi->error_timer, snd_usbmidi_error_timer,
-		    (unsigned long)umidi);
+	timer_setup(&umidi->error_timer, snd_usbmidi_error_timer, 0);
 
 	/* detect the endpoint(s) to use */
 	memset(endpoints, 0, sizeof(endpoints));
