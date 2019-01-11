@@ -25,6 +25,7 @@
 #include <linux/sched.h>
 #include <linux/ktime.h>
 #include <linux/mm.h>
+#include <linux/nvme.h>
 #include <asm/dma.h>	/* isa_dma_bridge_buggy */
 #include "pci.h"
 
@@ -1953,6 +1954,7 @@ static void quirk_netmos(struct pci_dev *dev)
 		if (dev->subsystem_vendor == PCI_VENDOR_ID_IBM &&
 				dev->subsystem_device == 0x0299)
 			return;
+		/* else: fall through */
 	case PCI_DEVICE_ID_NETMOS_9735:
 	case PCI_DEVICE_ID_NETMOS_9745:
 	case PCI_DEVICE_ID_NETMOS_9845:
@@ -2297,6 +2299,9 @@ static void quirk_paxc_bridge(struct pci_dev *pdev)
 }
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0x16cd, quirk_paxc_bridge);
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0x16f0, quirk_paxc_bridge);
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0xd750, quirk_paxc_bridge);
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0xd802, quirk_paxc_bridge);
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0xd804, quirk_paxc_bridge);
 #endif
 
 /* Originally in EDAC sources for i82875P:
@@ -3217,6 +3222,8 @@ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_CHELSIO, 0x0030,
 			quirk_broken_intx_masking);
 DECLARE_PCI_FIXUP_FINAL(0x1814, 0x0601, /* Ralink RT2800 802.11n PCI */
 			quirk_broken_intx_masking);
+DECLARE_PCI_FIXUP_FINAL(0x1b7c, 0x0004, /* Ceton InfiniTV4 */
+			quirk_broken_intx_masking);
 
 /*
  * Realtek RTL8169 PCI Gigabit Ethernet Controller (rev 10)
@@ -3252,6 +3259,10 @@ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x1587,
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x1588,
 			quirk_broken_intx_masking);
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x1589,
+			quirk_broken_intx_masking);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x158a,
+			quirk_broken_intx_masking);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x158b,
 			quirk_broken_intx_masking);
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, 0x37d0,
 			quirk_broken_intx_masking);
@@ -3822,6 +3833,108 @@ static int reset_chelsio_generic_dev(struct pci_dev *dev, int probe)
 #define PCI_DEVICE_ID_INTEL_IVB_M_VGA      0x0156
 #define PCI_DEVICE_ID_INTEL_IVB_M2_VGA     0x0166
 
+/*
+ * The Samsung SM961/PM961 controller can sometimes enter a fatal state after
+ * FLR where config space reads from the device return -1.  We seem to be
+ * able to avoid this condition if we disable the NVMe controller prior to
+ * FLR.  This quirk is generic for any NVMe class device requiring similar
+ * assistance to quiesce the device prior to FLR.
+ *
+ * NVMe specification: https://nvmexpress.org/resources/specifications/
+ * Revision 1.0e:
+ *    Chapter 2: Required and optional PCI config registers
+ *    Chapter 3: NVMe control registers
+ *    Chapter 7.3: Reset behavior
+ */
+static int nvme_disable_and_flr(struct pci_dev *dev, int probe)
+{
+	void __iomem *bar;
+	u16 cmd;
+	u32 cfg;
+
+	if (dev->class != PCI_CLASS_STORAGE_EXPRESS ||
+	    !pcie_has_flr(dev) || !pci_resource_start(dev, 0))
+		return -ENOTTY;
+
+	if (probe)
+		return 0;
+
+	bar = pci_iomap(dev, 0, NVME_REG_CC + sizeof(cfg));
+	if (!bar)
+		return -ENOTTY;
+
+	pci_read_config_word(dev, PCI_COMMAND, &cmd);
+	pci_write_config_word(dev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
+
+	cfg = readl(bar + NVME_REG_CC);
+
+	/* Disable controller if enabled */
+	if (cfg & NVME_CC_ENABLE) {
+		u32 cap = readl(bar + NVME_REG_CAP);
+		unsigned long timeout;
+
+		/*
+		 * Per nvme_disable_ctrl() skip shutdown notification as it
+		 * could complete commands to the admin queue.  We only intend
+		 * to quiesce the device before reset.
+		 */
+		cfg &= ~(NVME_CC_SHN_MASK | NVME_CC_ENABLE);
+
+		writel(cfg, bar + NVME_REG_CC);
+
+		/*
+		 * Some controllers require an additional delay here, see
+		 * NVME_QUIRK_DELAY_BEFORE_CHK_RDY.  None of those are yet
+		 * supported by this quirk.
+		 */
+
+		/* Cap register provides max timeout in 500ms increments */
+		timeout = ((NVME_CAP_TIMEOUT(cap) + 1) * HZ / 2) + jiffies;
+
+		for (;;) {
+			u32 status = readl(bar + NVME_REG_CSTS);
+
+			/* Ready status becomes zero on disable complete */
+			if (!(status & NVME_CSTS_RDY))
+				break;
+
+			msleep(100);
+
+			if (time_after(jiffies, timeout)) {
+				dev_warn(&dev->dev, "Timeout waiting for NVMe ready status to clear after disable\n");
+				break;
+			}
+		}
+	}
+
+	pci_iounmap(dev, bar);
+
+	pcie_flr(dev);
+
+	return 0;
+}
+
+/*
+ * Intel DC P3700 NVMe controller will timeout waiting for ready status
+ * to change after NVMe enable if the driver starts interacting with the
+ * device too soon after FLR.  A 250ms delay after FLR has heuristically
+ * proven to produce reliably working results for device assignment cases.
+ */
+static int delay_250ms_after_flr(struct pci_dev *dev, int probe)
+{
+	if (!pcie_has_flr(dev))
+		return -ENOTTY;
+
+	if (probe)
+		return 0;
+
+	pcie_flr(dev);
+
+	msleep(250);
+
+	return 0;
+}
+
 static const struct pci_dev_reset_methods pci_dev_reset_methods[] = {
 	{ PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82599_SFP_VF,
 		 reset_intel_82599_sfp_virtfn },
@@ -3829,6 +3942,8 @@ static const struct pci_dev_reset_methods pci_dev_reset_methods[] = {
 		reset_ivb_igd },
 	{ PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_IVB_M2_VGA,
 		reset_ivb_igd },
+	{ PCI_VENDOR_ID_SAMSUNG, 0xa804, nvme_disable_and_flr },
+	{ PCI_VENDOR_ID_INTEL, 0x0953, delay_250ms_after_flr },
 	{ PCI_VENDOR_ID_CHELSIO, PCI_ANY_ID,
 		reset_chelsio_generic_dev },
 	{ 0 }
@@ -4288,6 +4403,18 @@ static int pci_quirk_cavium_acs(struct pci_dev *dev, u16 acs_flags)
 	return acs_flags ? 0 : 1;
 }
 
+static int pci_quirk_xgene_acs(struct pci_dev *dev, u16 acs_flags)
+{
+	/*
+	 * X-Gene root matching this quirk do not allow peer-to-peer
+	 * transactions with others, allowing masking out these bits as if they
+	 * were unimplemented in the ACS capability.
+	 */
+	acs_flags &= ~(PCI_ACS_SV | PCI_ACS_RR | PCI_ACS_CR | PCI_ACS_UF);
+
+	return acs_flags ? 0 : 1;
+}
+
 /*
  * Many Intel PCH root ports do provide ACS-like features to disable peer
  * transactions and validate bus numbers in requests, but do not provide an
@@ -4550,6 +4677,17 @@ static const struct pci_dev_acs_enabled {
 	{ 0x10df, 0x720, pci_quirk_mf_endpoint_acs }, /* Emulex Skyhawk-R */
 	/* Cavium ThunderX */
 	{ PCI_VENDOR_ID_CAVIUM, PCI_ANY_ID, pci_quirk_cavium_acs },
+	/* APM X-Gene */
+	{ PCI_VENDOR_ID_AMCC, 0xE004, pci_quirk_xgene_acs },
+	/* Ampere Computing */
+	{ PCI_VENDOR_ID_AMPERE, 0xE005, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE006, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE007, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE008, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE009, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE00A, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE00B, pci_quirk_xgene_acs },
+	{ PCI_VENDOR_ID_AMPERE, 0xE00C, pci_quirk_xgene_acs },
 	{ 0 }
 };
 
@@ -4715,20 +4853,20 @@ static const struct pci_dev_enable_acs {
 } pci_dev_enable_acs[] = {
 	{ PCI_VENDOR_ID_INTEL, PCI_ANY_ID, pci_quirk_enable_intel_pch_acs },
 	{ PCI_VENDOR_ID_INTEL, PCI_ANY_ID, pci_quirk_enable_intel_spt_pch_acs },
-	{ 0 }
 };
 
 int pci_dev_specific_enable_acs(struct pci_dev *dev)
 {
-	const struct pci_dev_enable_acs *i;
-	int ret;
+	const struct pci_dev_enable_acs *p;
+	int i, ret;
 
-	for (i = pci_dev_enable_acs; i->enable_acs; i++) {
-		if ((i->vendor == dev->vendor ||
-		     i->vendor == (u16)PCI_ANY_ID) &&
-		    (i->device == dev->device ||
-		     i->device == (u16)PCI_ANY_ID)) {
-			ret = i->enable_acs(dev);
+	for (i = 0; i < ARRAY_SIZE(pci_dev_enable_acs); i++) {
+		p = &pci_dev_enable_acs[i];
+		if ((p->vendor == dev->vendor ||
+		     p->vendor == (u16)PCI_ANY_ID) &&
+		    (p->device == dev->device ||
+		     p->device == (u16)PCI_ANY_ID)) {
+			ret = p->enable_acs(dev);
 			if (ret >= 0)
 				return ret;
 		}
@@ -4821,23 +4959,6 @@ static void quirk_intel_qat_vf_cap(struct pci_dev *pdev)
 	}
 }
 DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x443, quirk_intel_qat_vf_cap);
-
-/*
- * VMD-enabled root ports will change the source ID for all messages
- * to the VMD device. Rather than doing device matching with the source
- * ID, the AER driver should traverse the child device tree, reading
- * AER registers to find the faulting device.
- */
-static void quirk_no_aersid(struct pci_dev *pdev)
-{
-	/* VMD Domain */
-	if (pdev->bus->sysdata && pci_domain_nr(pdev->bus) >= 0x10000)
-		pdev->bus->bus_flags |= PCI_BUS_FLAGS_NO_AERSID;
-}
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x2030, quirk_no_aersid);
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x2031, quirk_no_aersid);
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x2032, quirk_no_aersid);
-DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x2033, quirk_no_aersid);
 
 /* FLR may cause some 82579 devices to hang. */
 static void quirk_intel_no_flr(struct pci_dev *dev)
