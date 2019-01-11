@@ -2724,52 +2724,53 @@ static struct sreg clock_gating[] = {
 };
 
 struct smux {
-	const char *name;
-	struct clk *clk;
-	struct clk *clkp;
+	u32 clk_id;
+	u32 mux_id;
+	struct clk_hw *hw;
 };
 
-#define KER_SRC(_clk_name)\
+#define KER_SRC(_clk_id, _mux_id)\
 {\
-	.name = _clk_name,\
+	.clk_id = _clk_id,\
+	.mux_id = _mux_id,\
 }
 
-struct smux _mux_kernel[] = {
-	KER_SRC("sdmmc1_k"),
-	KER_SRC("spi2_k"),
-	KER_SRC("spi4_k"),
-	KER_SRC("i2c1_k"),
-	KER_SRC("i2c3_k"),
-	KER_SRC("lptim2_k"),
-	KER_SRC("lptim3_k"),
-	KER_SRC("usart2_k"),
-	KER_SRC("usart3_k"),
-	KER_SRC("uart7_k"),
-	KER_SRC("sai1_k"),
-	KER_SRC("ethck_k"),
-	KER_SRC("i2c4_k"),
-	KER_SRC("rng2_k"),
-	KER_SRC("sdmmc3_k"),
-	KER_SRC("fmc_k"),
-	KER_SRC("qspi_k"),
-	KER_SRC("usbphy_k"),
-	KER_SRC("usbo_k"),
-	KER_SRC("spdif_k"),
-	KER_SRC("spi1_k"),
-	KER_SRC("cec_k"),
-	KER_SRC("lptim1_k"),
-	KER_SRC("uart6_k"),
-	KER_SRC("fdcan_k"),
-	KER_SRC("sai2_k"),
-	KER_SRC("sai3_k"),
-	KER_SRC("sai4_k"),
-	KER_SRC("adc12_k"),
-	KER_SRC("dsi_k"),
-	KER_SRC("ck_per"),
-	KER_SRC("rng1_k"),
-	KER_SRC("stgen_k"),
-	KER_SRC("usart1_k"),
-	KER_SRC("spi6_k"),
+struct smux _mux_kernel[M_LAST] = {
+	KER_SRC(SDMMC1_K, M_SDMMC12),
+	KER_SRC(SDMMC3_K, M_SDMMC3),
+	KER_SRC(FMC_K, M_FMC),
+	KER_SRC(QSPI_K, M_QSPI),
+	KER_SRC(RNG1_K, M_RNG1),
+	KER_SRC(RNG2_K, M_RNG2),
+	KER_SRC(USBPHY_K, M_USBPHY),
+	KER_SRC(USBO_K, M_USBO),
+	KER_SRC(STGEN_K, M_STGEN),
+	KER_SRC(SPDIF_K, M_SPDIF),
+	KER_SRC(SPI1_K, M_SPI1),
+	KER_SRC(SPI2_K, M_SPI23),
+	KER_SRC(SPI4_K, M_SPI45),
+	KER_SRC(SPI6_K, M_SPI6),
+	KER_SRC(CEC_K, M_CEC),
+	KER_SRC(I2C1_K, M_I2C12),
+	KER_SRC(I2C3_K, M_I2C35),
+	KER_SRC(I2C4_K, M_I2C46),
+	KER_SRC(LPTIM1_K, M_LPTIM1),
+	KER_SRC(LPTIM2_K, M_LPTIM23),
+	KER_SRC(LPTIM4_K, M_LPTIM45),
+	KER_SRC(USART1_K, M_USART1),
+	KER_SRC(USART2_K, M_UART24),
+	KER_SRC(USART3_K, M_UART35),
+	KER_SRC(USART6_K, M_USART6),
+	KER_SRC(UART7_K, M_UART78),
+	KER_SRC(SAI1_K, M_SAI1),
+	KER_SRC(SAI2_K, M_SAI2),
+	KER_SRC(SAI3_K, M_SAI3),
+	KER_SRC(SAI4_K, M_SAI4),
+	KER_SRC(DSI_K, M_DSI),
+	KER_SRC(FDCAN_K, M_FDCAN),
+	KER_SRC(ADC12_K, M_ADC12),
+	KER_SRC(ETHCK_K, M_ETHCK),
+	KER_SRC(CK_PER, M_CKPER),
 };
 
 static struct sreg pll_clock[] = {
@@ -2861,22 +2862,52 @@ static void stm32mp1_restore_pll(struct sreg *sreg, int size)
 	}
 }
 
-static void stm32mp1_backup_mux(struct smux *smux, int size)
+static void stm32mp1_backup_mux(struct device_node *np,
+				struct smux *smux, int size)
 {
 	int i;
+	struct of_phandle_args clkspec;
+
+	clkspec.np = np;
+	clkspec.args_count = 1;
 
 	for (i = 0; i < size; i++) {
-		smux[i].clk = __clk_lookup(smux[i].name);
-		smux[i].clkp = clk_get_parent(smux[i].clk);
+		clkspec.args[0] = smux[i].clk_id;
+		smux[i].hw = __clk_get_hw(of_clk_get_from_provider(&clkspec));
 	}
 }
 
 static void stm32mp1_restore_mux(struct smux *smux, int size)
 {
 	int i;
+	struct clk_hw *hw, *hwp1, *hwp2;
+	struct mux_cfg *mux;
+	u8 idx;
 
-	for (i = 0; i < size; i++)
-		clk_set_parent_force(smux[i].clk, smux[i].clkp);
+	/* These MUX are glitch free.
+	 * Then we have to restore mux thru clock framework
+	 * to be sure that CLK_OPS_PARENT_ENABLE will be exploited
+	 */
+	for (i = 0; i < M_LAST; i++) {
+		/* get parent strored in clock framework */
+		hw = smux[i].hw;
+		hwp1 = clk_hw_get_parent(hw);
+
+		/* Get parent corresponding to mux register */
+		mux = ker_mux_cfg[smux[i].mux_id].mux;
+		idx = readl_relaxed(rcc_base + mux->reg_off) >> mux->shift;
+		idx &= (BIT(mux->width) - 1);
+		hwp2 = clk_hw_get_parent_by_index(hw, idx);
+
+		/* check if parent from mux & clock framework are differents */
+		if (hwp1 != hwp2) {
+			/* update first clock framework with the true parent */
+			clk_set_parent(hw->clk, hwp2->clk);
+
+			/* Restore now new parent */
+			clk_set_parent(hw->clk, hwp1->clk);
+		}
+	}
 }
 
 #define RCC_BIT_HSI	0
@@ -2899,9 +2930,6 @@ static int stm32mp1_clk_suspend(void)
 
 	/* Save clock gating regs */
 	stm32mp1_backup_sreg(clock_gating, ARRAY_SIZE(clock_gating));
-
-	/* Save kernel clock regs */
-	stm32mp1_backup_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 
 	/* Enable ck_xxx_ker clocks if ck_xxx was on */
 	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
@@ -2969,6 +2997,9 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
 
 	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_SREQCLRR, RCC_STOP_MASK);
+
+	/* Prepare kernel clock source backup */
+	stm32mp1_backup_mux(np, _mux_kernel, ARRAY_SIZE(_mux_kernel));
 
 	register_syscore_ops(&stm32mp1_clk_ops);
 
