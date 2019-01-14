@@ -1617,6 +1617,8 @@ int vmgr_probe(struct platform_device *pdev)
     dprintk("============> VPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vmgr_data.base_addr, vmgr_data.irq - 32);
 
     vmgr_get_clock(pdev->dev.of_node);
+    vmgr_enable_clock();
+    vmgr_disable_clock();
 
     spin_lock_init(&(vmgr_data.oper_lock));
     //  spin_lock_init(&(vmgr_data.comm_data.lock));

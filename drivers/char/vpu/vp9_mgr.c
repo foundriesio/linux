@@ -1120,6 +1120,8 @@ int vp9mgr_probe(struct platform_device *pdev)
     dprintk("============> VP9 base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vp9mgr_data.base_addr, vp9mgr_data.irq - 32);
 
     vp9mgr_get_clock(pdev->dev.of_node);
+    vp9mgr_enable_clock();
+    vp9mgr_disable_clock();
 
     spin_lock_init(&(vp9mgr_data.oper_lock));
 //  spin_lock_init(&(vp9mgr_data.comm_data.lock));
