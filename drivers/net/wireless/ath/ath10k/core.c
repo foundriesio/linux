@@ -1411,12 +1411,21 @@ static void ath10k_core_get_fw_name(struct ath10k *ar, char *fw_name,
 static int ath10k_core_fetch_firmware_files(struct ath10k *ar)
 {
 	int ret, i;
+	int api_max;
 	char fw_name[100];
 
 	/* calibration file is optional, don't check for any errors */
 	ath10k_fetch_cal_file(ar);
 
-	for (i = ATH10K_FW_API_MAX; i >= ATH10K_FW_API_MIN; i--) {
+	api_max = ATH10K_FW_API_MAX;
+	/* XXX: SLE15/Leap-15.0 version of ath10k doesn't work with the latest
+	 * FW API for some chips.
+	 */
+	if (ar->hw_params.dev_id == QCA9377_1_0_DEVICE_ID ||
+	    ar->hw_params.dev_id == QCA6174_2_1_DEVICE_ID)
+		api_max = 5;
+
+	for (i = api_max; i >= ATH10K_FW_API_MIN; i--) {
 		ar->fw_api = i;
 		ath10k_dbg(ar, ATH10K_DBG_BOOT, "trying fw api %d\n",
 			   ar->fw_api);
