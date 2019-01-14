@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline bool init_done(struct zram *zram)
  {
-@@ -898,6 +923,8 @@ static DEVICE_ATTR_RO(io_stat);
+@@ -900,6 +925,8 @@ static DEVICE_ATTR_RO(io_stat);
  static DEVICE_ATTR_RO(mm_stat);
  static DEVICE_ATTR_RO(debug_stat);
  
@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void zram_meta_free(struct zram *zram, u64 disksize)
  {
  	size_t num_pages = disksize >> PAGE_SHIFT;
-@@ -928,6 +955,7 @@ static bool zram_meta_alloc(struct zram
+@@ -930,6 +957,7 @@ static bool zram_meta_alloc(struct zram
  
  	if (!huge_class_size)
  		huge_class_size = zs_huge_class_size(zram->mem_pool);

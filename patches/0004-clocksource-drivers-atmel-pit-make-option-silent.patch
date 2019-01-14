@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/clocksource/Kconfig
 +++ b/drivers/clocksource/Kconfig
-@@ -392,8 +392,11 @@ config ARMV7M_SYSTICK
+@@ -393,8 +393,11 @@ config ARMV7M_SYSTICK
  	  This options enables support for the ARMv7M system timer unit
  
  config ATMEL_PIT
