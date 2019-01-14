@@ -17,11 +17,12 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
-static int				debug = 0;
-#define log(msg...)		{ printk(KERN_INFO "%s - ", __func__); printk(msg); }
-#define dlog(msg...)	{ if(debug) { printk(KERN_INFO "%s - ", __func__); printk(msg); } }
-#define FUNCTION_IN		dlog("IN\n");
-#define FUNCTION_OUT	dlog("OUT\n");
+static int					debug = 0;
+#define TAG					"switch_reverse"
+#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
+#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define FUNCTION_IN			dlog("IN\n");
+#define FUNCTION_OUT		dlog("OUT\n");
 
 #define MODULE_NAME			"switch_gpio_reverse"
 
@@ -84,7 +85,7 @@ int switch_reverse_check_state(void) {
 	gear_value = !!gpio_get_value(data->switch_gpio);
 	ret = (gear_value == data->switch_active);
 	atomic_set(&switch_reverse_attr, ret);
-	dlog("%s - gpio: %d, value: %d, active: %d, result: %d\n", __FUNCTION__, data->switch_gpio, gear_value, data->switch_active, ret);
+	dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
 
 	switch_reverse_set_state(ret);
 #endif//CONFIG_PMAP_CA7S
@@ -101,27 +102,27 @@ long switch_reverse_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 	switch(cmd) {
 	case SWITCH_IOCTL_CMD_ENABLE:
 		data->enabled		= 1;
-		dlog("%s - enabled: %d\n", __func__, data->enabled);
+		dlog("enabled: %d\n", data->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_DISABLE:
 		data->enabled		= 0;
-		dlog("%s - enabled: %d\n", __func__, data->enabled);
+		dlog("enabled: %d\n", data->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_GET_STATE:
 		state = switch_reverse_check_state();
-		dlog("%s - switch_reverse_check_state: %d\n", __func__, state);
+		dlog("state: %d\n", state);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&state, sizeof(state))) < 0) {
-			printk("%s - FAILED: copy_to_user\n", __func__);
+			log("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
 		}
 		break;
 
 	default:
-		printk("%s - FAILED: Unsupported command.\n", __FUNCTION__);
+		log("FAILED: Unsupported command\n");
 		ret = -1;
 		break;
 	}
@@ -195,7 +196,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// pinctrl
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
 	if(IS_ERR(pinctrl))
-		printk("%s: pinctrl select failed\n", MODULE_NAME);
+		log("%s: pinctrl select failed\n", MODULE_NAME);
 	else
 		pinctrl_put(pinctrl);
 
@@ -208,7 +209,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Create the switchmanager sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
 	if(ret < 0)
-		printk("failed create sysfs\r\n");
+		log("failed create sysfs\r\n");
 
 	FUNCTION_OUT
 	return 0;

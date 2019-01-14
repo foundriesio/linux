@@ -59,9 +59,9 @@ typedef struct vioc_path {
 } vioc_path_t;
 
 typedef struct buf_addr {
-    unsigned int	y;
-    unsigned int	u;
-    unsigned int	v;
+	unsigned int	y;
+	unsigned int	u;
+	unsigned int	v;
 } buf_addr_t;
 
 typedef struct tccvin_cif {
@@ -70,7 +70,7 @@ typedef struct tccvin_cif {
 
 	// cif port
 	unsigned int				cif_port;
-	volatile void __iomem       * cifport_addr;
+	volatile void __iomem		* cifport_addr;
 
 	// vioc
 	struct clk					* vioc_clk;
@@ -97,28 +97,28 @@ enum cifoper_mode {
 	OPER_CAPTURE,
 };
 
-#define PREVIEW_METHOD_SHIFT        0
-#define PREVIEW_DD_HANDOVER_SHIFT   1
+#define PREVIEW_METHOD_SHIFT		0
+#define PREVIEW_DD_HANDOVER_SHIFT	1
 
-#define PREVIEW_METHOD_MASK         (1 << PREVIEW_METHOD_SHIFT)
-#define PREVIEW_DD_HANDOVER_MASK    (1 << PREVIEW_DD_HANDOVER_SHIFT)
+#define PREVIEW_METHOD_MASK 		(1 << PREVIEW_METHOD_SHIFT)
+#define PREVIEW_DD_HANDOVER_MASK	(1 << PREVIEW_DD_HANDOVER_SHIFT)
 
-#define PREVIEW_V4L2                (0 << PREVIEW_METHOD_SHIFT)
-#define PREVIEW_DD                  (1 << PREVIEW_METHOD_SHIFT)
-#define PREVIEW_DD_HANDOVER         (1 << PREVIEW_DD_HANDOVER_SHIFT)
+#define PREVIEW_V4L2				(0 << PREVIEW_METHOD_SHIFT)
+#define PREVIEW_DD					(1 << PREVIEW_METHOD_SHIFT)
+#define PREVIEW_DD_HANDOVER 		(1 << PREVIEW_DD_HANDOVER_SHIFT)
 
 #if 0
 enum PREVIEW_METHOD {
-	PREVIEW_V4L2            = (0 << PREVIEW_METHOD_SHIFT),
-	PREVIEW_DD              = (1 << PREVIEW_METHOD_SHIFT),
-	PREVIEW_DD_HANDOVER     = ((1 << PREVIEW_DD_HANDOVER_SHIFT) | (1 << PREVIEW_METHOD_SHIFT)),
+	PREVIEW_V4L2			= (0 << PREVIEW_METHOD_SHIFT),
+	PREVIEW_DD				= (1 << PREVIEW_METHOD_SHIFT),
+	PREVIEW_DD_HANDOVER 	= ((1 << PREVIEW_DD_HANDOVER_SHIFT) | (1 << PREVIEW_METHOD_SHIFT)),
 };
 #endif
 
-#define PGL_FORMAT          (VIOC_IMG_FMT_ARGB8888)
-#define PGL_BG_R            (0xff)
-#define PGL_BG_G            (0xff)
-#define PGL_BG_B            (0xff)
+#define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
+#define PGL_BG_R			(0xff)
+#define PGL_BG_G			(0xff)
+#define PGL_BG_B			(0xff)
 
 struct tccvin_buf {
 	struct v4l2_buffer			buf;
@@ -135,18 +135,18 @@ typedef struct tccvin_v4l2 {
 	struct mutex				lock;
 
 	struct tccvin_buf			static_buf[MAX_BUFFERRS];
-	unsigned int 	      	    pp_num;
+	unsigned int				pp_num;
 
 	// buffering
-	struct list_head 			capture_buf_list;
-	struct list_head 			display_buf_list;
+	struct list_head			capture_buf_list;
+	struct list_head			display_buf_list;
 
 	struct work_struct			wdma_work;
 
-	wait_queue_head_t 			frame_wait;	/* Waiting on frame data */
-	unsigned int 				wakeup_int;
+	wait_queue_head_t			frame_wait;	/* Waiting on frame data */
+	unsigned int				wakeup_int;
 
-	struct task_struct		    * threadRecovery;
+	struct task_struct			* threadRecovery;
 } tccvin_v4l2_t;
 
 typedef struct tcc_dev {

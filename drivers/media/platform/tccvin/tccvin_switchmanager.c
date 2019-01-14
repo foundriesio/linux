@@ -24,12 +24,12 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tccvin_switchmanager.h"
 #include "../videosource/videosource_if.h"
 
-static int debug		= 0;
-#define TAG				"tccvin_switchmanager"
-#define log(msg...)		{ printk(TAG ": %s - ", __func__); printk(msg); }
-#define dlog(msg...)	if(debug) { printk(TAG ": %s - ", __func__); printk(msg); }
-#define FUNCTION_IN		dlog("IN\n");
-#define FUNCTION_OUT	dlog("OUT\n");
+static int					debug = 0;
+#define TAG					"tccvin_switchmanager"
+#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
+#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define FUNCTION_IN			dlog("IN\n");
+#define FUNCTION_OUT		dlog("OUT\n");
 
 extern struct lcd_panel *tccfb_get_panel(void);
 
@@ -129,7 +129,7 @@ int tcc_cam_swtichmanager_start_monitor(tccvin_dev_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->threadSwitching != NULL) {
-		printk(KERN_ERR "%s - FAILED: thread(0x%x) is not null\n", __func__, (unsigned)vdev->threadSwitching);
+		printk(KERN_ERR "%s - FAILED: thread(0x%p) is not null\n", __func__, vdev->threadSwitching);
 		return -1;
 	} else {
 		vdev->threadSwitching = kthread_run(tccvin_switchmanager_monitor_thread, (void *)vdev, "threadSwitching");
@@ -148,7 +148,7 @@ int tccvin_switchmanager_stop_monitor(tccvin_dev_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->threadSwitching == NULL) {
-		printk(KERN_ERR "%s - FAILED: thread(0x%x) is null\n", __func__, (unsigned)vdev->threadSwitching);
+		printk(KERN_ERR "%s - FAILED: thread(0x%p) is null\n", __func__, vdev->threadSwitching);
 		return -1;
 	} else {
 		if(kthread_stop(vdev->threadSwitching) != 0) {
@@ -201,6 +201,9 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 		tccvin_v4l2_init(vdev);
 		log("pannel size is %d x %d \n", lcd_panel_info->xres, lcd_panel_info->yres);
 		tccvin_cif_set_resolution(vdev, lcd_panel_info->xres, lcd_panel_info->yres, V4L2_PIX_FMT_RGB32);
+
+		// set preview method as direct display
+		vdev->v4l2.preview_method = PREVIEW_DD;
 
 		vdev->is_dev_opened  = ENABLE;
 	}
