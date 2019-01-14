@@ -118,7 +118,6 @@ int snd_seq_dump_var_event(const struct snd_seq_event *event,
 	}
 	return 0;
 }
-
 EXPORT_SYMBOL(snd_seq_dump_var_event);
 
 
@@ -169,7 +168,6 @@ int snd_seq_expand_var_event(const struct snd_seq_event *event, int count, char 
 				     &buf);
 	return err < 0 ? err : newlen;
 }
-
 EXPORT_SYMBOL(snd_seq_expand_var_event);
 
 /*
@@ -504,18 +502,6 @@ int snd_seq_pool_delete(struct snd_seq_pool **ppool)
 	kfree(pool);
 	return 0;
 }
-
-/* initialize sequencer memory */
-int __init snd_sequencer_memory_init(void)
-{
-	return 0;
-}
-
-/* release sequencer memory */
-void __exit snd_sequencer_memory_done(void)
-{
-}
-
 
 /* exported to seq_clientmgr.c */
 void snd_seq_info_pool(struct snd_info_buffer *buffer,

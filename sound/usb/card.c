@@ -7,6 +7,7 @@
  *	    Alan Cox (alan@lxorguk.ukuu.org.uk)
  *	    Thomas Sailer (sailer@ife.ee.ethz.ch)
  *
+ *   Audio Class 3.0 support by Ruslan Bilovol <ruslan.bilovol@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -44,6 +45,7 @@
 #include <linux/mutex.h>
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
+#include <linux/usb/audio-v3.h>
 #include <linux/module.h>
 
 #include <sound/control.h>
@@ -84,6 +86,8 @@ static bool ignore_ctl_error;
 static bool autoclock = true;
 static char *quirk_alias[SNDRV_CARDS];
 
+bool snd_usb_use_vmalloc = true;
+
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the USB audio adapter.");
 module_param_array(id, charp, NULL, 0444);
@@ -103,6 +107,8 @@ module_param(autoclock, bool, 0444);
 MODULE_PARM_DESC(autoclock, "Enable auto-clock selection for UAC2 devices (default: yes).");
 module_param_array(quirk_alias, charp, NULL, 0444);
 MODULE_PARM_DESC(quirk_alias, "Quirk aliases, e.g. 0123abcd:5678beef.");
+module_param_named(use_vmalloc, snd_usb_use_vmalloc, bool, 0444);
+MODULE_PARM_DESC(use_vmalloc, "Use vmalloc for PCM intermediate buffers (default: yes).");
 
 /*
  * we keep the snd_usb_audio_t instances by ourselves for merging
@@ -219,31 +225,12 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 	struct usb_device *dev = chip->dev;
 	struct usb_host_interface *host_iface;
 	struct usb_interface_descriptor *altsd;
-	void *control_header;
 	int i, protocol;
-	int rest_bytes;
 
 	/* find audiocontrol interface */
 	host_iface = &usb_ifnum_to_if(dev, ctrlif)->altsetting[0];
-	control_header = snd_usb_find_csint_desc(host_iface->extra,
-						 host_iface->extralen,
-						 NULL, UAC_HEADER);
 	altsd = get_iface_desc(host_iface);
 	protocol = altsd->bInterfaceProtocol;
-
-	if (!control_header) {
-		dev_err(&dev->dev, "cannot find UAC_HEADER\n");
-		return -EINVAL;
-	}
-
-	rest_bytes = (void *)(host_iface->extra + host_iface->extralen) -
-		control_header;
-
-	/* just to be sure -- this shouldn't hit at all */
-	if (rest_bytes <= 0) {
-		dev_err(&dev->dev, "invalid control header\n");
-		return -EINVAL;
-	}
 
 	switch (protocol) {
 	default:
@@ -253,7 +240,25 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 		/* fall through */
 
 	case UAC_VERSION_1: {
-		struct uac1_ac_header_descriptor *h1 = control_header;
+		struct uac1_ac_header_descriptor *h1;
+		int rest_bytes;
+
+		h1 = snd_usb_find_csint_desc(host_iface->extra,
+							 host_iface->extralen,
+							 NULL, UAC_HEADER);
+		if (!h1 || h1->bLength < sizeof(*h1)) {
+			dev_err(&dev->dev, "cannot find UAC_HEADER\n");
+			return -EINVAL;
+		}
+
+		rest_bytes = (void *)(host_iface->extra +
+				host_iface->extralen) - (void *)h1;
+
+		/* just to be sure -- this shouldn't hit at all */
+		if (rest_bytes <= 0) {
+			dev_err(&dev->dev, "invalid control header\n");
+			return -EINVAL;
+		}
 
 		if (rest_bytes < sizeof(*h1)) {
 			dev_err(&dev->dev, "too short v1 buffer descriptor\n");
@@ -281,7 +286,8 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 		break;
 	}
 
-	case UAC_VERSION_2: {
+	case UAC_VERSION_2:
+	case UAC_VERSION_3: {
 		struct usb_interface_assoc_descriptor *assoc =
 			usb_ifnum_to_if(dev, ctrlif)->intf_assoc;
 
@@ -301,8 +307,22 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 		}
 
 		if (!assoc) {
-			dev_err(&dev->dev, "Audio class v2 interfaces need an interface association\n");
+			dev_err(&dev->dev, "Audio class v2/v3 interfaces need an interface association\n");
 			return -EINVAL;
+		}
+
+		if (protocol == UAC_VERSION_3) {
+			int badd = assoc->bFunctionSubClass;
+
+			if (badd != UAC3_FUNCTION_SUBCLASS_FULL_ADC_3_0 &&
+			    (badd < UAC3_FUNCTION_SUBCLASS_GENERIC_IO ||
+			     badd > UAC3_FUNCTION_SUBCLASS_SPEAKERPHONE)) {
+				dev_err(&dev->dev,
+					"Unsupported UAC3 BADD profile\n");
+				return -EINVAL;
+			}
+
+			chip->badd_profile = badd;
 		}
 
 		for (i = 0; i < assoc->bInterfaceCount; i++) {
@@ -326,8 +346,9 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
  *
  */
 
-static int snd_usb_audio_free(struct snd_usb_audio *chip)
+static void snd_usb_audio_free(struct snd_card *card)
 {
+	struct snd_usb_audio *chip = card->private_data;
 	struct snd_usb_endpoint *ep, *n;
 
 	list_for_each_entry_safe(ep, n, &chip->ep_list, list)
@@ -336,14 +357,6 @@ static int snd_usb_audio_free(struct snd_usb_audio *chip)
 	mutex_destroy(&chip->mutex);
 	if (!atomic_read(&chip->shutdown))
 		dev_set_drvdata(&chip->dev->dev, NULL);
-	kfree(chip);
-	return 0;
-}
-
-static int snd_usb_audio_dev_free(struct snd_device *device)
-{
-	struct snd_usb_audio *chip = device->device_data;
-	return snd_usb_audio_free(chip);
 }
 
 static void usb_audio_make_shortname(struct usb_device *dev,
@@ -443,9 +456,6 @@ static int snd_usb_audio_create(struct usb_interface *intf,
 	struct snd_usb_audio *chip;
 	int err;
 	char component[14];
-	static struct snd_device_ops ops = {
-		.dev_free =	snd_usb_audio_dev_free,
-	};
 
 	*rchip = NULL;
 
@@ -463,18 +473,13 @@ static int snd_usb_audio_create(struct usb_interface *intf,
 	}
 
 	err = snd_card_new(&intf->dev, index[idx], id[idx], THIS_MODULE,
-			   0, &card);
+			   sizeof(*chip), &card);
 	if (err < 0) {
 		dev_err(&dev->dev, "cannot create card instance %d\n", idx);
 		return err;
 	}
 
-	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
-	if (! chip) {
-		snd_card_free(card);
-		return -ENOMEM;
-	}
-
+	chip = card->private_data;
 	mutex_init(&chip->mutex);
 	init_waitqueue_head(&chip->shutdown_wait);
 	chip->index = idx;
@@ -492,11 +497,7 @@ static int snd_usb_audio_create(struct usb_interface *intf,
 	INIT_LIST_HEAD(&chip->midi_list);
 	INIT_LIST_HEAD(&chip->mixer_list);
 
-	if ((err = snd_device_new(card, SNDRV_DEV_LOWLEVEL, chip, &ops)) < 0) {
-		snd_usb_audio_free(chip);
-		snd_card_free(card);
-		return err;
-	}
+	card->private_free = snd_usb_audio_free;
 
 	strcpy(card->driver, "USB-Audio");
 	sprintf(component, "USB%04x:%04x",
@@ -534,7 +535,7 @@ static bool get_alias_id(struct usb_device *dev, unsigned int *id)
 	return false;
 }
 
-static struct usb_device_id usb_audio_ids[]; /* defined below */
+static const struct usb_device_id usb_audio_ids[]; /* defined below */
 
 /* look for the corresponding quirk */
 static const struct snd_usb_audio_quirk *
@@ -811,6 +812,7 @@ static int usb_audio_suspend(struct usb_interface *intf, pm_message_t message)
 	if (!chip->num_suspended_intf++) {
 		list_for_each_entry(as, &chip->pcm_list, list) {
 			snd_pcm_suspend_all(as->pcm);
+			snd_usb_pcm_suspend(as);
 			as->substream[0].need_setup_ep =
 				as->substream[1].need_setup_ep = true;
 		}
@@ -826,6 +828,7 @@ static int usb_audio_suspend(struct usb_interface *intf, pm_message_t message)
 static int __usb_audio_resume(struct usb_interface *intf, bool reset_resume)
 {
 	struct snd_usb_audio *chip = usb_get_intfdata(intf);
+	struct snd_usb_stream *as;
 	struct usb_mixer_interface *mixer;
 	struct list_head *p;
 	int err = 0;
@@ -836,6 +839,13 @@ static int __usb_audio_resume(struct usb_interface *intf, bool reset_resume)
 		return 0;
 
 	atomic_inc(&chip->active); /* avoid autopm */
+
+	list_for_each_entry(as, &chip->pcm_list, list) {
+		err = snd_usb_pcm_resume(as);
+		if (err < 0)
+			goto err_out;
+	}
+
 	/*
 	 * ALSA leaves material resumption to user space
 	 * we just notify and restart the mixers
@@ -874,7 +884,7 @@ static int usb_audio_reset_resume(struct usb_interface *intf)
 #define usb_audio_reset_resume	NULL
 #endif		/* CONFIG_PM */
 
-static struct usb_device_id usb_audio_ids [] = {
+static const struct usb_device_id usb_audio_ids [] = {
 #include "quirks-table.h"
     { .match_flags = (USB_DEVICE_ID_MATCH_INT_CLASS | USB_DEVICE_ID_MATCH_INT_SUBCLASS),
       .bInterfaceClass = USB_CLASS_AUDIO,
