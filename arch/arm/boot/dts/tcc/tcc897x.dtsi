@@ -1406,7 +1406,7 @@
 	};
 
 	lvds@72380040 {
-		compatible = "telechips,tcc-lvds";
+		compatible = "telechips,lvds_phy";
 		reg = <0x72380040 0x64>;
 		clocks = <&clk_isoip_top ISOIP_TOP_LVDS>;
 		statue = "disable";

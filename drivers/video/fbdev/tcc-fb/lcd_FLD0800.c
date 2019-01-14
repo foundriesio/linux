@@ -48,8 +48,9 @@
 #include <video/tcc/tcc_fb.h>
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_global.h>
-#if defined(CONFIG_ARCH_TCC803X)
 #include <video/tcc/vioc_lvds.h>
+
+#if defined(CONFIG_ARCH_TCC803X)
 #include <video/tcc/vioc_pxdemux.h>
 #endif
 
@@ -64,7 +65,9 @@ static unsigned int txout_sel[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE] = {
 	{TXOUT_DUMMY, TXOUT_B_D(7), TXOUT_B_D(6), TXOUT_G_D(7), TXOUT_G_D(6), TXOUT_R_D(7), TXOUT_R_D(6)}
 };
 #endif
+
 static struct lvds_data lvds_fld0800;
+struct lcd_panel fld0800_panel;
 
 static int fld0800_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
@@ -82,8 +85,9 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 	printk("%s : %d\n", __func__, on);
 	mutex_lock(&lvds_fld0800.panel_lock);
 	fb_pdata->FbPowerState = panel->state = on;
-#if defined(CONFIG_ARCH_TCC803X)	//tt
+
 	if(on) {
+#if defined(CONFIG_ARCH_TCC803X)	//tt
 		int idx;
 		unsigned int upsample_ratio = VIOC_LVDS_PHY_GetUpsampleRatio(
 				lvds_fld0800.main_port, lvds_fld0800.sub_port,
@@ -91,6 +95,15 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		unsigned int ref_cnt = VIOC_LVDS_PHY_GetRefCnt(
 				lvds_fld0800.main_port, lvds_fld0800.sub_port,
 				panel->clk_freq, upsample_ratio);
+#else
+		unsigned int lvds_data[LVDS_MAX_LINE][LVDS_DATA_PER_LINE] = {
+			{LVDS_G_D(0), LVDS_R_D(5), LVDS_R_D(4), LVDS_R_D(3), LVDS_R_D(2), LVDS_R_D(1), LVDS_R_D(0)},
+			{LVDS_B_D(1), LVDS_B_D(0), LVDS_G_D(5), LVDS_G_D(4), LVDS_G_D(3), LVDS_G_D(2), LVDS_G_D(1)},
+			{LVDS_DE, LVDS_DUMMY, LVDS_DUMMY, LVDS_B_D(5), LVDS_B_D(4), LVDS_B_D(3), LVDS_B_D(2)},
+			{LVDS_DUMMY, LVDS_B_D(7), LVDS_B_D(6), LVDS_G_D(7), LVDS_G_D(6), LVDS_R_D(7), LVDS_R_D(6)}
+		};
+
+#endif//
 
 		if(gpio_is_valid(lvds_fld0800.gpio.power))
 			gpio_set_value_cansleep(lvds_fld0800.gpio.power, 1);
@@ -115,6 +128,9 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		if(lvds_fld0800.clk)
 			clk_prepare_enable(lvds_fld0800.clk);
 
+		lcdc_initialize(panel, fb_pdata);
+
+#if defined(CONFIG_ARCH_TCC803X)	//tt
 		VIOC_PXDEMUX_SetMuxOutput(PD_MUX5TO1_TYPE, PD_MUX5TO1_IDX2,
 				get_vioc_index(fb_pdata->ddc_info.blk_num), 1);
 		VIOC_PXDEMUX_SetDataArray(PD_MUX5TO1_IDX2, txout_sel);
@@ -156,7 +172,18 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		/* LVDS PHY Main port FIFO Enable */
 		VIOC_LVDS_PHY_FifoEnable(lvds_fld0800.main_port, 1);
 		msleep(100);
-	} else {
+#else
+		/* LVDS 6bit setting for internal dithering option. */
+		/*tcc_lcdc_dithering_setting(pdata->lcdc_num);*/
+		tcc_set_ddi_lvds_reset(1);
+		tcc_set_ddi_lvds_reset(0);
+		tcc_set_ddi_lvds_config();
+		tcc_set_ddi_lvds_data_arrary(lvds_data);
+		tcc_set_ddi_lvds_pms(get_vioc_index(fb_pdata->ddc_info.blk_num), fld0800_panel.clk_freq, 1);	
+#endif//		
+	}
+	else {
+#if defined(CONFIG_ARCH_TCC803X)
 		VIOC_LVDS_PHY_FifoEnable(lvds_fld0800.main_port, 0);
 
 		VIOC_LVDS_PHY_SWReset(lvds_fld0800.main_port, 1);
@@ -167,7 +194,10 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 
 		VIOC_PXDEMUX_SetMuxOutput(PD_MUX5TO1_TYPE, lvds_fld0800.main_port,
 			get_vioc_index(fb_pdata->ddc_info.blk_num), 0);
-
+#else 
+		tcc_set_ddi_lvds_reset(1);
+		tcc_set_ddi_lvds_reset(0);
+#endif//
 		if(lvds_fld0800.clk)
 			clk_disable_unprepare(lvds_fld0800.clk);
 
@@ -186,7 +216,7 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		if(gpio_is_valid(lvds_fld0800.gpio.power))
 			gpio_set_value_cansleep(lvds_fld0800.gpio.power, 0);
 	}
-#endif
+
 	mutex_unlock(&lvds_fld0800.panel_lock);
 	return 0;
 }
@@ -313,18 +343,15 @@ static int fld0800_probe(struct platform_device *pdev)
 	}
 	pr_info("%s lvds - sub_port: %d\n", __func__, lvds_fld0800.sub_port);
 
+#endif
+
 #ifdef CONFIG_FB_VIOC
 	#ifdef CONFIG_TCC_EXTFB
 	extfb_register_panel(&fld0800_panel);
 	#else
-	tccfb_register_panel(&tm123xdhp90_panel);
+	tccfb_register_panel(&fld0800_panel);
 	#endif
 #endif
-#endif
-#if defined(CONFIG_ARCH_TCC897X)
-	tccfb_register_panel(&fld0800_panel);
-#endif
-
 
 	return 0;
 }
