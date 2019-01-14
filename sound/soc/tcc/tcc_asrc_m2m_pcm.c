@@ -381,6 +381,8 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 	//unsigned int cmd = msg[0];	//for debug
 	unsigned int device = msg[1];	//for debug
 	unsigned int pos = msg[2];
+	unsigned long flags;
+	char Ctemp=0;
 
 	if (asrc_m2m_pcm == NULL) {
 		printk("[%s] Cannot get asrc_m2m_pcm driver data\n", __func__);
@@ -401,7 +403,10 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
             pos = msg[4];
         }
     }
-	if((asrc_m2m_pcm->is_a7s_started == true)
+	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+	Ctemp = asrc_m2m_pcm->is_flag;
+	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+	if((Ctemp & IS_A7S_STARTED)
 		&&(asrc_m2m_pcm->middle->cur_pos_from_ipc != pos)) {
 		asrc_m2m_pcm->middle->pre_pos_from_ipc = asrc_m2m_pcm->middle->cur_pos_from_ipc;
 		asrc_m2m_pcm->middle->cur_pos_from_ipc = pos;
@@ -460,10 +465,7 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 	if(asrc_m2m_pcm->middle->dma_buf->area != NULL)
 		memset(asrc_m2m_pcm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
 	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	asrc_m2m_pcm->is_closed = false;
-	asrc_m2m_pcm->is_asrc_started = false;
-	asrc_m2m_pcm->is_asrc_running = false;
-	asrc_m2m_pcm->is_a7s_started = false;
+	asrc_m2m_pcm->is_flag = 0;
 	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 	asrc_m2m_pcm->Bwrote = 0;
@@ -660,25 +662,23 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
 	unsigned long flags;
+	char Ctemp=0;
 	int ret = -1;
 
 	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
 	
 	while(1) {
 		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		if((asrc_m2m_pcm->is_asrc_running == false)
-			&&(asrc_m2m_pcm->is_asrc_started == false)) {
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		if(!(Ctemp & IS_ASRC_RUNNING)) {
 			break;
 		}
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s] ASRC is running.\n", __func__);
 		msleep(1);
 	}
 	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	asrc_m2m_pcm->is_closed = true;
-	asrc_m2m_pcm->is_asrc_started = false;
-	asrc_m2m_pcm->is_asrc_running = false;
+	asrc_m2m_pcm->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
 	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 	atomic_set(&asrc_m2m_pcm->wakeup, 1);
 	wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
@@ -699,18 +699,18 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
 	unsigned long flags;
+	char Ctemp=0;
 	int ret=0;
 
 	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
 
 	while(1) {
 		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		if((asrc_m2m_pcm->is_asrc_running == false)
-			&&(asrc_m2m_pcm->is_asrc_started == false)) {
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		if(!(Ctemp & IS_ASRC_RUNNING)) {
 			break;
 		}
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s] ASRC is running.\n", __func__);
 		msleep(1);
 	}
@@ -749,6 +749,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	struct tcc_asrc_t *pasrc = asrc_m2m_pcm->asrc;
 //	unsigned int temp=0;
 	unsigned long flags;
+	char Ctemp=0;
 	int ret=-1;
 
 	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
@@ -757,13 +758,16 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 		return -EFAULT;
 	}
 
+	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+	Ctemp = asrc_m2m_pcm->is_flag;
+	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				if(asrc_m2m_pcm->is_asrc_started == false) {
+				if(!(Ctemp & IS_ASRC_STARTED)) {
 					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START, PLAY\n");
 					if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
 						ret = tcc_asrc_m2m_start(asrc_m2m_pcm->asrc,
@@ -775,12 +779,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 					} else {
 						ret = 0;
 					}
-					spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-					asrc_m2m_pcm->is_asrc_running = false;
-					asrc_m2m_pcm->is_asrc_started = true;
-					spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-					atomic_set(&asrc_m2m_pcm->wakeup, 1);
-					wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+					Ctemp |= IS_ASRC_STARTED;
 				} else {
 					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START already, PLAY\n");
 				}
@@ -808,7 +807,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START end ret=%d, PLAY\n", ret);
 			} else {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START, CAPTURE\n");
-				if(asrc_m2m_pcm->is_asrc_started == false) {
+				if(!(Ctemp & IS_ASRC_STARTED)) {
 					if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
 						ret = tcc_asrc_m2m_start(pasrc,
 								asrc_m2m_pcm->pair_id, // Pair
@@ -819,84 +818,94 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 					} else {
 						ret = 0;
 					}
-					spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-					asrc_m2m_pcm->is_asrc_running = false;
-					asrc_m2m_pcm->is_asrc_started = true;
-					spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+					Ctemp |= IS_ASRC_STARTED;
 
-#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-					ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
-					if(ret < 0) {
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
-					} else {
-						asrc_m2m_pcm->is_a7s_started = true;
-					}
-#endif
 				} else {
 					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START already, CAPTURE\n");
 				}
-
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+				ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
+				if(ret < 0) {
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+				} else {
+					Ctemp |= IS_A7S_STARTED;
+				}
+#endif
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START end ret=%d, CAPTURE\n", ret);
 			}
+
+			Ctemp |= IS_TRIG_STARTED;
+
+			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+			asrc_m2m_pcm->is_flag |= Ctemp;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+			atomic_set(&asrc_m2m_pcm->wakeup, 1);
+			wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+
+			Ctemp &= ~IS_TRIG_STARTED;
+
+			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+			asrc_m2m_pcm->is_flag &= Ctemp;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+			//atomic_set(&asrc_m2m_pcm->wakeup, 1);
+			//wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP, PLAY\n");
 				if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
 					while(1) {
 						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						if(asrc_m2m_pcm->is_asrc_running == false) {
-							spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						Ctemp = asrc_m2m_pcm->is_flag;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						if(!(Ctemp & IS_ASRC_RUNNING)) {
 							break;
 						}
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s] ASRC is running.\n", __func__);
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
 						mdelay(1);
 					}
 					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
 				} else {
 					ret = 0;
 				}
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_asrc_started = false;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-				atomic_set(&asrc_m2m_pcm->wakeup, 1);
-				wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
-
+				Ctemp &= ~IS_ASRC_STARTED;
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP ret=%d, PLAY\n", ret);
 			} else {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP, CAPTURE\n");
 				if(asrc_m2m_pcm->src->rate != asrc_m2m_pcm->dst->rate) {
 					while(1) {
 						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						if(asrc_m2m_pcm->is_asrc_running == false) {
-							spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						Ctemp = asrc_m2m_pcm->is_flag;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						if(!(Ctemp & IS_ASRC_RUNNING)) {
 							break;
 						}
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
 						mdelay(1);
 					}
 					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
 				} else {
 					ret = 0;
 				}
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_asrc_started = false;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				Ctemp &= ~IS_ASRC_STARTED;
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP ret=%d, CAPTURE\n", ret);
 			}
-
-			//asrc_m2m_pcm->is_a7s_started = false;
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 			ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 			if(ret < 0) {
 				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 			} else {
-				asrc_m2m_pcm->is_a7s_started = false;
+				Ctemp &= ~IS_A7S_STARTED;
 			}
 #endif
+			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+			asrc_m2m_pcm->is_flag &= Ctemp;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+			atomic_set(&asrc_m2m_pcm->wakeup, 1);
+			wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
 			break;
 		default:
 			return -EINVAL;
@@ -954,7 +963,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	ssize_t read_pos=0, write_pos=0, temp_pos=0;
 	ssize_t writeable_byte=0, read_byte=0, Wtemp=0, Btemp=0;
 	unsigned long flags;
-	char *pin_buf, *pout_buf, *ptemp_buf;
+	char *pin_buf, *pout_buf, *ptemp_buf, Ctemp=0;
 
 	ptemp_buf = asrc_m2m_pcm->middle->ptemp_buf;
 	pin_buf = asrc_m2m_pcm->middle->dma_buf->area;
@@ -962,10 +971,14 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 	dst_buffer_bytes = asrc_m2m_pcm->dst->buffer_bytes;
 	dst_period_bytes = asrc_m2m_pcm->dst->period_bytes;
-
 	while(1) {
-		if((readable_byte <= 0)||(asrc_m2m_pcm->is_closed == true)||(asrc_m2m_pcm->is_asrc_started == false)) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, closed=%d, started=%d\n", readable_byte, asrc_m2m_pcm->is_closed, asrc_m2m_pcm->is_asrc_started);
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		if((readable_byte <= 0)
+			||((Ctemp & IS_TRIG_STARTED) == 0)
+			||((Ctemp & IS_ASRC_STARTED) == 0)) {
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
 			break;//return 0;
 		}
 
@@ -1016,7 +1029,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 		} else {
 			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_asrc_running = true;
+			asrc_m2m_pcm->is_flag |= IS_ASRC_RUNNING;
 			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf+read_pos, read_byte);
 			if(write_pos + writeable_byte >= dst_buffer_bytes) {
@@ -1026,7 +1039,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 					if(ptemp_buf == NULL){
 						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
 						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						asrc_m2m_pcm->is_asrc_running = false;
+						asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 						return -1;
 					}
@@ -1035,7 +1048,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				}
 				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, ptemp_buf, writeable_byte);
 				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_asrc_running = false;
+				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 				//1st part copy for out_buf
@@ -1094,7 +1107,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				//copy for out_buf
 				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, pout_buf+write_pos, writeable_byte);
 				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_asrc_running = false;
+				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 				//check ptr size for update
@@ -1141,12 +1154,16 @@ static int tcc_ptr_update_thread_for_capture(void *data)
 	snd_pcm_uframes_t temp=0;
 	unsigned int mid_buffer_bytes=0, max_cpy_byte=0;
 	unsigned int cur_pos=0, pre_pos=0;
+	unsigned long flags;
+	char Ctemp=0;
 	int readable_byte=0;
 	int ret=0;
 
 	while(!kthread_should_stop()) {
-
-		if(asrc_m2m_pcm->is_asrc_started == true) {
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		if((Ctemp & IS_TRIG_STARTED)&&(Ctemp & IS_ASRC_STARTED)) {
 			if (asrc_m2m_pcm->middle->cur_pos != asrc_m2m_pcm->middle->pre_pos) {
     			substream = asrc_m2m_pcm->asrc_substream;
     			rtd = substream->private_data;
@@ -1202,7 +1219,7 @@ static int tcc_ptr_update_thread_for_capture(void *data)
 			    atomic_set(&asrc_m2m_pcm->wakeup, 0);
 			}
 		} else { //start or closed?
-		    wait_event_interruptible(asrc_m2m_pcm->kth_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)));
+		    wait_event_interruptible(asrc_m2m_pcm->kth_wq, ((asrc_m2m_pcm->is_flag & IS_TRIG_STARTED) && (asrc_m2m_pcm->is_flag & IS_ASRC_STARTED)));
 			atomic_set(&asrc_m2m_pcm->wakeup, 0);
 		}
 	}//while
@@ -1257,7 +1274,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 		ret = read_byte;
 	} else {
 		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		asrc_m2m_pcm->is_asrc_running = true;
+		asrc_m2m_pcm->is_flag |= IS_ASRC_RUNNING;
 		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 		writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf, read_byte);
 		if(write_pos + writeable_byte >= mid_buffer_bytes) {
@@ -1267,7 +1284,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				if(ptemp_buf == NULL){
 					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
 					spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-					asrc_m2m_pcm->is_asrc_running = false;
+					asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 					spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 					return -1;
 				}
@@ -1275,7 +1292,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, ptemp_buf, writeable_byte);
 
 			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_asrc_running = false;
+			asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 			//1st part copy for out_buf
@@ -1293,7 +1310,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 		} else {
 			Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, pout_buf+write_pos, writeable_byte);
 			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_asrc_running = false;
+			asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
 			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 
 			asrc_m2m_pcm->middle->cur_pos += Wtemp;
@@ -1326,7 +1343,8 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 	snd_pcm_uframes_t pre_appl_ptr=0, cur_appl_ptr=0, pre_appl_ofs=0, cur_appl_ofs=0;
 	snd_pcm_uframes_t Ftemp=0;
 	ssize_t readable_byte=0, max_cpy_byte=0, read_pos=0, Btemp=0, ret=0;
-	char *pin_buf;
+	char *pin_buf, Ctemp=0;
+	unsigned long flags;
 #if	(CHECK_ASRC_M2M_ELAPSED_TIME == 1)
 	struct timeval start, end;
 	u64 elapsed_usecs64;
@@ -1338,23 +1356,26 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 
 wait_check_play:
 
-		if(asrc_m2m_pcm->is_asrc_started == true) {
+		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		if((Ctemp & IS_TRIG_STARTED)&&(Ctemp & IS_ASRC_STARTED)) {
 
 			substream = asrc_m2m_pcm->asrc_substream;
 			if(!substream) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] closed=%d, started=%d\n", __func__, __LINE__, asrc_m2m_pcm->is_closed, asrc_m2m_pcm->is_asrc_started);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
 				goto wait_check_play;
 			}
 
 			rtd = substream->private_data;
 			if(!rtd) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] closed=%d, started=%d\n", __func__, __LINE__, asrc_m2m_pcm->is_closed, asrc_m2m_pcm->is_asrc_started);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
 				goto wait_check_play;
 			}
 
 			runtime = substream->runtime;
 			if(!runtime) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] closed=%d, started=%d\n", __func__, __LINE__, asrc_m2m_pcm->is_closed, asrc_m2m_pcm->is_asrc_started);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
 				goto wait_check_play;
 			}
 
@@ -1454,10 +1475,10 @@ wait_check_play:
 
 					}
 
-					if(readable_byte >= max_cpy_byte) {
+					if(ret >= max_cpy_byte) {
 						goto max_cpy_tx;
 					} else {
-						readable_byte = max_cpy_byte - readable_byte;
+						readable_byte = max_cpy_byte - ret;
 					}
 
 					//2nd part copy for in_buf
@@ -1494,8 +1515,11 @@ wait_check_play:
 max_cpy_tx:
 				Ftemp=0;
 
-			    if((asrc_m2m_pcm->is_a7s_started == false)
-        			&&(asrc_m2m_pcm->is_asrc_started == true)
+				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+				Ctemp = asrc_m2m_pcm->is_flag;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+			    if((!(Ctemp & IS_A7S_STARTED))
+        			&&(Ctemp & IS_ASRC_STARTED)
 					&&(asrc_m2m_pcm->app->pre_ptr >= runtime->buffer_size)) {
         
         			substream = asrc_m2m_pcm->asrc_substream;
@@ -1505,7 +1529,9 @@ max_cpy_tx:
         			if(ret < 0) {
         				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 					} else {
-						asrc_m2m_pcm->is_a7s_started = true;
+						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
+						asrc_m2m_pcm->is_flag |= IS_A7S_STARTED;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
         			}
 #endif
         		}
@@ -1518,7 +1544,7 @@ max_cpy_tx:
 				atomic_set(&asrc_m2m_pcm->wakeup, 0);
 			}	//(cur_appl_ptr != pre_appl_ptr)? else?
 		} else { //start or closed? 
-			wait_event_interruptible(asrc_m2m_pcm->kth_wq, ((asrc_m2m_pcm->is_closed == false)&&(asrc_m2m_pcm->is_asrc_started == true)));
+			wait_event_interruptible(asrc_m2m_pcm->kth_wq, ((asrc_m2m_pcm->is_flag & IS_TRIG_STARTED) && (asrc_m2m_pcm->is_flag & IS_ASRC_STARTED)));
 			atomic_set(&asrc_m2m_pcm->wakeup, 0);
 		} //start or closed? else ? 
 	}//while
