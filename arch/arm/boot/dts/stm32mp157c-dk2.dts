@@ -14,7 +14,7 @@
 	compatible = "st,stm32mp157c-dk2", "st,stm32mp157";
 
 	aliases {
-		serial1 = &usart2;
+		serial3 = &usart2;
 	};
 
 	wifi_pwrseq: wifi-pwrseq {
