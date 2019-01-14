@@ -1213,6 +1213,8 @@ int jmgr_probe(struct platform_device *pdev)
     dprintk("============> JPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, jmgr_data.base_addr, jmgr_data.irq - 32);
 
     jmgr_get_clock(pdev->dev.of_node);
+    jmgr_enable_clock();
+    jmgr_disable_clock();
 
     spin_lock_init(&(jmgr_data.oper_lock));
 //  spin_lock_init(&(jmgr_data.comm_data.lock));
