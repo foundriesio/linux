@@ -1,29 +1,19 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        irq_handler.c
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2015
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular
-purpose or non-infringement  of  any  patent,  copyright  or  other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source  code or the  use in the
-source code.
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
-Agreement between Telechips and Company.
-*******************************************************************************/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+Copyright (C) 2018 Synopsys Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include <linux/gpio.h>
 #include "include/hdmi_includes.h"
 #include "include/hdmi_access.h"
@@ -39,76 +29,73 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
 {
         uint8_t phy_decode;
         uint32_t decode;
-        struct hdmi_tx_dev *dev;
+        struct hdmi_tx_dev *dev = (work!=NULL)?container_of(work, struct hdmi_tx_dev, tx_handler):NULL;
 
-        dev = container_of(work, struct hdmi_tx_dev, tx_handler);
+        if(dev != NULL) {
+                if(dev->verbose >= VERBOSE_IRQ)
+                        pr_info("dwc_hdmi_tx_handler_thread\r\n");
 
-        if(dev->verbose >= VERBOSE_IRQ)
-                pr_info("dwc_hdmi_tx_handler_thread\r\n");
+                // Read HDMI TX IRQ
+                decode = hdmi_read_interrupt_decode(dev);
 
-        // Read HDMI TX IRQ
-        decode = hdmi_read_interrupt_decode(dev);
-
-        // precess irq
-        if((decode & IH_DECODE_IH_FC_STAT0_MASK) ? 1 : 0){
-                hdmi_irq_clear_source(dev, AUDIO_PACKETS);
-        }
-
-        if((decode & IH_DECODE_IH_FC_STAT1_MASK) ? 1 : 0){
-                hdmi_irq_clear_source(dev, OTHER_PACKETS);
-        }
-
-        if((decode & IH_DECODE_IH_FC_STAT2_VP_MASK) ? 1 : 0){
-                hdmi_irq_mute_source(dev, PACKETS_OVERFLOW);
-                hdmi_irq_mute_source(dev, VIDEO_PACKETIZER);
-        }
-        if((decode & IH_DECODE_IH_AS_STAT0_MASK) ? 1 : 0){
-                hdmi_irq_clear_source(dev, AUDIO_SAMPLER);
-        }
-        if((decode & IH_DECODE_IH_PHY_MASK) ? 1 : 0){
-                LOGGER(SNPS_TRACE, "%s:PHY interrupt 0x%08x", __func__, decode);
-
-                hdmi_irq_read_stat(dev, PHY, &phy_decode);
-
-                if((phy_decode & IH_PHY_STAT0_TX_PHY_LOCK_MASK) ? 1 : 0){
-                        hdmi_irq_clear_bit(dev, PHY, IH_PHY_STAT0_TX_PHY_LOCK_MASK);
+                // precess irq
+                if((decode & IH_DECODE_IH_FC_STAT0_MASK) ? 1 : 0){
+                        hdmi_irq_clear_source(dev, AUDIO_PACKETS);
                 }
 
-                if((phy_decode & IH_PHY_STAT0_HPD_MASK) ? 1 : 0) {
-                        LOGGER(SNPS_DEBUG, "HPD received");
-                        dev->hotplug_real_status = hdmi_phy_hot_plug_detected(dev);
-                        hdmi_irq_clear_bit(dev, PHY, IH_PHY_STAT0_HPD_MASK);
-                        if(dev->verbose >= VERBOSE_IRQ)
-                                pr_info(" >>>HPD :%d\r\n",dev->hotplug_real_status );
-                        if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
-                                dev->hotplug_status = dev->hotplug_real_status;
+                if((decode & IH_DECODE_IH_FC_STAT1_MASK) ? 1 : 0){
+                        hdmi_irq_clear_source(dev, OTHER_PACKETS);
+                }
+
+                if((decode & IH_DECODE_IH_FC_STAT2_VP_MASK) ? 1 : 0){
+                        hdmi_irq_mute_source(dev, PACKETS_OVERFLOW);
+                        hdmi_irq_mute_source(dev, VIDEO_PACKETIZER);
+                }
+                if((decode & IH_DECODE_IH_AS_STAT0_MASK) ? 1 : 0){
+                        hdmi_irq_clear_source(dev, AUDIO_SAMPLER);
+                }
+                if((decode & IH_DECODE_IH_PHY_MASK) ? 1 : 0){
+                        hdmi_irq_read_stat(dev, PHY, &phy_decode);
+
+                        if((phy_decode & IH_PHY_STAT0_TX_PHY_LOCK_MASK) ? 1 : 0){
+                                hdmi_irq_clear_bit(dev, PHY, IH_PHY_STAT0_TX_PHY_LOCK_MASK);
                         }
-                        wake_up_interruptible(&dev->poll_wq);
-                }
-                hdmi_irq_clear_source(dev, PHY);
-        }
-        #if defined(CONFIG_HDMI_SUPPORT_SCDC_READREQ)
-        if((decode & IH_DECODE_IH_I2CM_STAT0_MASK) ? 1 : 0){
-                uint8_t state = 0;
 
-                hdmi_irq_read_stat(dev, I2C_DDC, &state);
+                        if((phy_decode & IH_PHY_STAT0_HPD_MASK) ? 1 : 0) {
+                                dev->hotplug_real_status = hdmi_phy_hot_plug_detected(dev);
+                                hdmi_irq_clear_bit(dev, PHY, IH_PHY_STAT0_HPD_MASK);
+                                if(dev->verbose >= VERBOSE_IRQ)
+                                        pr_info(" >>>HPD :%d\r\n",dev->hotplug_real_status );
+                                if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
+                                        dev->hotplug_status = dev->hotplug_real_status;
+                                }
+                                wake_up_interruptible(&dev->poll_wq);
+                        }
+                        hdmi_irq_clear_source(dev, PHY);
+                }
+                #if defined(CONFIG_HDMI_SUPPORT_SCDC_READREQ)
+                if((decode & IH_DECODE_IH_I2CM_STAT0_MASK) ? 1 : 0){
+                        uint8_t state = 0;
 
-                // I2Cmastererror - I2Cmasterdone
-                if(state & 0x3){
-                        hdmi_irq_clear_bit(dev, I2C_DDC, IH_I2CM_STAT0_I2CMASTERDONE_MASK);
-                        //The I2C communication interrupts must be masked - they will be handled by polling in the eDDC block
-                        LOGGER(SNPS_NOTICE, "%s:I2C DDC interrupt received 0x%x - mask interrupt", __func__, state);
+                        hdmi_irq_read_stat(dev, I2C_DDC, &state);
+
+                        // I2Cmastererror - I2Cmasterdone
+                        if(state & 0x3){
+                                hdmi_irq_clear_bit(dev, I2C_DDC, IH_I2CM_STAT0_I2CMASTERDONE_MASK);
+                                //The I2C communication interrupts must be masked - they will be handled by polling in the eDDC block
+                                pr_err("%s:I2C DDC interrupt received 0x%x - mask interrupt", __func__, state);
+                        }
+                        // SCDC_READREQ
+                        else if(state & 0x4){
+                                hdmi_irq_clear_bit(dev, I2C_DDC, IH_I2CM_STAT0_SCDC_READREQ_MASK);
+                        }
                 }
-                // SCDC_READREQ
-                else if(state & 0x4){
-                        hdmi_irq_clear_bit(dev, I2C_DDC, IH_I2CM_STAT0_SCDC_READREQ_MASK);
+                #endif
+                if((decode & IH_DECODE_IH_CEC_STAT0_MASK) ? 1 : 0){
+                        hdmi_irq_clear_source(dev, CEC);
                 }
+                hdmi_irq_unmute(dev);
         }
-        #endif
-        if((decode & IH_DECODE_IH_CEC_STAT0_MASK) ? 1 : 0){
-                hdmi_irq_clear_source(dev, CEC);
-        }
-        hdmi_irq_unmute(dev);
 }
 
  static void dwc_hdmi_tx_hdcp_handler_thread(struct work_struct *work)

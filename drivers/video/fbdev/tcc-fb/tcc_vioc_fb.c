@@ -1132,9 +1132,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					tca_vioc_displayblock_timing_set(VIOC_OUTCFG_HDMI, pdp_data, &lcdc_timing);
         					#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
                                                 if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
-                                                        pr_info("%s TCC_LCDC_HDMI_TIMING DV mode\r\n", __func__); 
+                                                        pr_info("%s TCC_LCDC_HDMI_TIMING DV mode\r\n", __func__);
         					        hdmi_set_activate_callback(tccfb_extoutput_activate, info->node, STAGE_FB);
-                                                } else
+                                                } else {
+                                                        /* Remove Callaback */
+                                                        hdmi_set_activate_callback(NULL, 0, 0);
+                                                }
         					#endif
         					tccfb_extoutput_activate(info->node, STAGE_FB);
 

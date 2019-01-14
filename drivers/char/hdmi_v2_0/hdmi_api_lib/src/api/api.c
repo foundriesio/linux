@@ -1,30 +1,19 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        extenddisplay.cpp
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2018
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular
-purpose or non-infringement of any patent, copyright or other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source code or the use in the
-source code.
-This source code is provided subject to the terms of a Mutual Non-Disclosure
-Agreement between Telechips and Company.
-*/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+Copyright (C) 2018 Synopsys Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
 
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -118,6 +107,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
         do {
 
                 if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
                         break;
                 }
                 video = (videoParams_t*)dev->videoParam;
@@ -236,30 +226,34 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
         videoParams_t *videoParams = (videoParams_t *)(dev!=NULL)?dev->videoParam:NULL;
 
-        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                /* Disable HDMI PHY clock */
-                dwc_hdmi_phy_standby(dev);
+        if(videoParams != NULL) {
+                if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        /* Disable HDMI PHY clock */
+                        dwc_hdmi_phy_standby(dev);
 
-                mdelay(50);
+                        mdelay(50);
 
-                /**
-                * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of
-                * SCDC are 0xA8/0xA9.
-                * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV
-                * that responding to the SCDC address. The 2k tv initializes some of the edids when
-                * it receives the tmds character ratio or scramble command through the scdc address.
-                * Then an edid checksum error will occur when the source reads edid.
-                * To prevent this, i changed the source to use scdc address only if the sink
-                * supports scdc address. */
-                if(dev->hotplug_status && videoParams->mScdcPresent) {
-                        scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
-			scrambling(dev, 0);
+                        /**
+                        * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of
+                        * SCDC are 0xA8/0xA9.
+                        * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV
+                        * that responding to the SCDC address. The 2k tv initializes some of the edids when
+                        * it receives the tmds character ratio or scramble command through the scdc address.
+                        * Then an edid checksum error will occur when the source reads edid.
+                        * To prevent this, i changed the source to use scdc address only if the sink
+                        * supports scdc address. */
+                        if(dev->hotplug_status && videoParams->mScdcPresent) {
+                                scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
+        			scrambling(dev, 0);
+                        }
+                        clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
                 }
-                clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
+        	ret = 0;
         }
-	ret = 0;
 
-        hdcp_statusinit(dev);
+        if(dev != NULL) {
+                hdcp_statusinit(dev);
+        }
 
         return ret ;
 }
@@ -267,6 +261,8 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
-        packets_AvMute(dev, enable);
+        if(dev != NULL) {
+                packets_AvMute(dev, enable);
+        }
 }
 EXPORT_SYMBOL(hdmi_api_avmute);
