@@ -46,12 +46,12 @@ struct videosource_gpio {
 	int	pwr_port;
 	int	pwd_port;
 	int	rst_port;
-    int intb_port;
+	int intb_port;
 
 	enum of_gpio_flags pwr_value;
-	enum of_gpio_flags pwd_value;	
-	enum of_gpio_flags rst_value;	
-	enum of_gpio_flags intb_value;	
+	enum of_gpio_flags pwd_value;
+	enum of_gpio_flags rst_value;
+	enum of_gpio_flags intb_value;
 };
 
 struct vcontrol {
@@ -80,10 +80,10 @@ enum camera_encode {
 };
 
 enum camera_mode {
-    MODE_INIT         = 0,
-    MODE_SERDES_FSYNC,
-    MODE_SERDES_INTERRUPT,
-    MODE_SERDES_REMOTE_SER,
+	MODE_INIT		  = 0,
+	MODE_SERDES_FSYNC,
+	MODE_SERDES_INTERRUPT,
+	MODE_SERDES_REMOTE_SER,
 };
 
 #define ACT_HIGH		1
@@ -104,15 +104,15 @@ enum camera_mode {
 #define DEF_FLASH		0
 
 typedef struct tcc_des_info {
-	unsigned int                input_ch_num;
-	unsigned int                pixel_mode;
-	unsigned int                interleave_mode;
-	unsigned int                data_lane_num;
-	unsigned int                data_format;
-    unsigned int                hssettle;
-    unsigned int                clksettlectl;
-    unsigned int                csi2_irq;
-    unsigned int                gdb_irq;
+	unsigned int				input_ch_num;
+	unsigned int				pixel_mode;
+	unsigned int				interleave_mode;
+	unsigned int				data_lane_num;
+	unsigned int				data_format;
+	unsigned int				hssettle;
+	unsigned int				clksettlectl;
+	unsigned int				csi2_irq;
+	unsigned int				gdb_irq;
 } TCC_DES_INFO;
 
 typedef struct tcc_sensor_info {
@@ -120,10 +120,10 @@ typedef struct tcc_sensor_info {
 
 	unsigned int				width;
 	unsigned int				height;
-    unsigned int                crop_x;
-    unsigned int                crop_y;
-	unsigned int                crop_w;
-	unsigned int                crop_h;
+	unsigned int				crop_x;
+	unsigned int				crop_y;
+	unsigned int				crop_w;
+	unsigned int				crop_h;
 	unsigned int				interlaced;
 	unsigned int				polarities;
 	unsigned int				data_order;			// data order for vin
@@ -146,14 +146,14 @@ typedef struct tcc_sensor_info {
 	int framerate;
 	struct capture_size *sensor_sizes;
 
-	TCC_DES_INFO                des_info;
+	TCC_DES_INFO				des_info;
 } TCC_SENSOR_INFO_TYPE;
 
 typedef struct {
 	int (* open)(void);
 	int (* close)(void);
 	int (* change_mode)(int mode);
-    int (* set_irq_handler)(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int enable);
+	int (* set_irq_handler)(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int enable);
 } SENSOR_FUNC_TYPE;
 
 extern TCC_SENSOR_INFO_TYPE videosource_info;
