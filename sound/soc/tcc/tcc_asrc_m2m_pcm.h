@@ -65,6 +65,12 @@
 #define MBOX_MSG_SIZE_FOR_POSITION  AUDIO_MBOX_PCM_POSITION_MESSAGE_SIZE
 #endif
 
+//This is for is_flag in structure of tcc_asrc_m2m_pcm
+#define IS_TRIG_STARTED 0x01
+#define IS_A7S_STARTED 0x02
+#define IS_ASRC_STARTED 0x04
+#define IS_ASRC_RUNNING 0x08
+
 typedef enum {
 	TCC_ASRC_M2M_7_1CH = 0,
 	TCC_ASRC_M2M_STEREO = 1,
@@ -125,10 +131,13 @@ struct tcc_asrc_m2m_pcm {
     unsigned short mbox_cmd_type;
 #endif
 	bool first_open;
-	bool is_closed;
-	bool is_asrc_started;
-	bool is_a7s_started;
-	bool is_asrc_running;
+	char is_flag;
+	/*
+	#define IS_TRIG_STARTED 0x01
+	#define IS_A7S_STARTED 0x02
+	#define IS_ASRC_STARTED 0x04
+	#define IS_ASRC_RUNNING 0x08
+	*/
 	unsigned int interval; //ms
 	ssize_t Bwrote; //Bytes 
 	List *asrc_footprint;	//for TX
