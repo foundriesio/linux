@@ -3040,7 +3040,7 @@ int tcc_display_ext_frame(struct tcc_lcdc_image_update *lastUpdated, char bInter
 
 		memcpy(&last_backup, &iImage, sizeof(struct tcc_lcdc_image_update));
 
-		if( (ret = tcc_move_video_last_frame(&iImage, bInterlaced, dest_addr, LAST_FRAME_FORMAT)) < 0 ){
+		if( (ret = tcc_move_video_last_frame(&iImage, bInterlaced, dest_addr, (tccvid_lastframe[type].pmapBuff.size/2), LAST_FRAME_FORMAT)) < 0 ){
 			ret = -1;
 			goto Error;
 		}
