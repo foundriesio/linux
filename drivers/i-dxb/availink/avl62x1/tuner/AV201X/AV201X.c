@@ -90,6 +90,30 @@ static void AV201X_Time_DELAY_MS(UINT32 ms)
 	AVL_IBSP_Delay(ms);
 }
 
+static AVL_uint32 AV201X_I2C_write(struct AVL_Tuner *pTuner, UINT8 reg_start,UINT8* buff,UINT8 len)
+{
+	AVL_uint32 r=0;
+	//AVL_uint16 uiTimeOut = 0;
+	AVL_uchar ucTemp[50];
+	int i = 0;
+	AVL_uint16 size;
+
+	ucTemp[0] = reg_start;
+
+	for(i=1;i<len+1;i++)
+	{
+		ucTemp[i]=*(buff+i-1);
+	}
+
+	size = len + 1;
+
+	r = AVL_IBSP_WaitSemaphore(&(gsemI2C));
+	r = AVL_IBSP_I2C_Write((AVL_uchar) pTuner->usTunerI2CAddr,ucTemp,&size);
+	r = AVL_IBSP_ReleaseSemaphore(&(gsemI2C));
+
+	return(r);
+}
+
 AVL_uint32  AV201X_Initialize(struct AVL_Tuner * pTuner)
 {
 	AVL_uint32 r = 0;
@@ -138,31 +162,6 @@ AVL_uint32  AV201X_Initialize(struct AVL_Tuner * pTuner)
 	AV201X_Time_DELAY_MS(10);
 
 	return(r);  
-}
-
-
-static AVL_uint32 AV201X_I2C_write(struct AVL_Tuner *pTuner, UINT8 reg_start,UINT8* buff,UINT8 len)
-{
-	AVL_uint32 r=0;
-	//AVL_uint16 uiTimeOut = 0;
-	AVL_uchar ucTemp[50];
-	int i = 0;
-	AVL_uint16 size;
-
-	ucTemp[0] = reg_start;
-
-	for(i=1;i<len+1;i++)
-	{
-		ucTemp[i]=*(buff+i-1);
-	}
-
-	size = len + 1;
-
-	r = AVL_IBSP_WaitSemaphore(&(gsemI2C));
-	r = AVL_IBSP_I2C_Write((AVL_uchar) pTuner->usTunerI2CAddr,ucTemp,&size);
-	r = AVL_IBSP_ReleaseSemaphore(&(gsemI2C));
-
-	return(r);
 }
 
 AVL_uint32 AV201X_Lock(struct AVL_Tuner *pTuner)

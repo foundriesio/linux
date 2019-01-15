@@ -1,7 +1,0 @@
-# 
-# SI2166 configurations
-#
-
-config iDxB_SILABS_SI2166
-	tristate "SI2166 support"
-	depends on iDxB_SUPPORT

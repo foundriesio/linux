@@ -1,8 +1,0 @@
-# 
-# SiLabs devices
-#
-
-comment "Availink Tuner devices"
-	depends on iDxB_SUPPORT
-
-source "drivers/i-dxb/availink/AVL62x1/Kconfig"

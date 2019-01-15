@@ -36,7 +36,7 @@
 #include "AV201X_MoreAPI.h"
 
 #include "tcc_gpio.h"
-#include "tcc_fe.h"
+#include "frontend.h"
 
 
 /*****************************************************************************
@@ -213,13 +213,14 @@ static struct AVL62X1_Chip g_AVL62X1_Chip1 =
 	&gTuner1,                    ///< Pointer to tuner struct
 	AVL62X1_Spectrum_Normal,        ///< Defines the spectrum polarity. Refer to enum AVL62X1_SpectrumPolarity.
 
-	AVL62X1_MPM_Parallel,             ///< The MPEG output mode. Refer to enum AVL62X1_MpegMode.
+	AVL62X1_MPM_Serial,             ///< The MPEG output mode. Refer to enum AVL62X1_MpegMode.		//TCC changed default value from AVL62X1_MPM_Parallel,
 	AVL62X1_MPCP_Rising,            ///< The MPEG output clock polarity. Refer to enum AVL62X1_MpegClockPolarity. The clock polarity should be configured to meet the back end device's requirement.
 	AVL62X1_MPF_TS,                 ///< The MPEG output format. Refer to enum AVL62X1_MpegFormat.
 	AVL62X1_MPSP_DATA0,             ///< The MPEG output pin. Refer to enum AVL62X1_MpegSerialPin. Only valid when the MPEG interface has been configured to operate in serial mode.
 	135000000,                    ///< The MPEG output clock frequency.
 };
 
+#if (AVL62X1_Chip_Count == 2)
 static struct AVL_Tuner gTuner2 = 
 {
 	0x62,
@@ -245,7 +246,6 @@ static struct AVL_Tuner gTuner2 =
 	&AV201X_GetRFFreqStepSize
 };
 
-#if (AVL62X1_Chip_Count == 2)
 static struct AVL62X1_Chip g_AVL62X1_Chip2 = 
 {
 	AVL62X1_SA_1,
@@ -263,6 +263,7 @@ static struct AVL62X1_Chip g_AVL62X1_Chip2 =
 };
 #endif
 
+/*
 static struct AVL_Frontend AVL_FE[AVL62X1_Chip_Count] = 
 {
 	{&g_AVL62X1_Chip1, &gTuner1},
@@ -270,7 +271,7 @@ static struct AVL_Frontend AVL_FE[AVL62X1_Chip_Count] =
 	{&g_AVL62X1_Chip2, &gTuner2}
 #endif
 };
-
+*/
 //BlindScan Parameters
 #define BS_Start_Freq_KHz      950*1000
 #define BS_Stop_Freq_KHz       2150*1000
@@ -343,6 +344,7 @@ DEVICE_ATTR(symbol, S_IRUGO | S_IWUSR, NULL, avl_symbol_store);
 
 DEVICE_ATTR(test, S_IRUGO | S_IWUSR, NULL, avl_test_store);
 
+#ifdef AUTO_TEST
 /* Group all the eHCI SQ attributes */
 static struct attribute *dvb_sq_attrs[] = {
 		&dev_attr_test.attr,
@@ -351,7 +353,6 @@ static struct attribute *dvb_sq_attrs[] = {
 		NULL,
 };
 
-#ifdef AUTO_TEST
 static struct attribute_group dvb_attr_group = {
 	.name = NULL,	/* we want them in the same directory */
 	.attrs = dvb_sq_attrs,
@@ -514,12 +515,16 @@ static void avl62x1_fe_release(struct dvb_frontend* fe)
 
 	if (priv)
 	{
-		//if (priv->demod.lnb_wq) destroy_workqueue(priv->demod.lnb_wq);
-		//free_irq(priv->demod.lnb_int_irq, priv);
+		tcc_gpio_free(priv->demod.gpio_fe_power);
+		tcc_gpio_free(priv->demod.gpio_fe_reset);
+		tcc_gpio_free(priv->demod.gpio_lnb_power);
+		
+		tcc_gpio_free(priv->demod.gpio_fe_lock);
+		tcc_gpio_free(priv->demod.lnb_int_port);
 		kfree(priv);
 	}
 
-	//dprintk("%s\n", __FUNCTION__);
+	dprintk("%s\n", __FUNCTION__);
 }
 
 static AVL_ErrorCode avl62x1_fe_init(struct dvb_frontend* fe)
@@ -534,54 +539,10 @@ static AVL_ErrorCode avl62x1_fe_init(struct dvb_frontend* fe)
 
 	priv->tune_mode = TUNE_MODE_NORMAL;
 	priv->demod.blindscan_state = BLINDSCAN_STATE_STOP;
-
-	/*
-	tcc_gpio_config(priv->demod.gpio_fe_lock, GPIO_FN(0));
-	gpio_request(priv->demod.gpio_fe_lock, NULL);
-	gpio_direction_input(priv->demod.gpio_fe_lock);
-	*/
-	tcc_gpio_init(priv->demod.gpio_fe_lock, GPIO_DIRECTION_INPUT);
-
-#if 0
-	tcc_gpio_config(priv->demod.gpio_fe_fault, GPIO_FN(0));
-	gpio_request(priv->demod.gpio_fe_fault, NULL);
-	gpio_direction_input(priv->demod.gpio_fe_fault);
-
-	tcc_gpio_config(priv->demod.gpio_lnb_sp1v, GPIO_FN(0));
-	gpio_request(priv->demod.gpio_lnb_sp1v, NULL);
-	gpio_direction_input(priv->demod.gpio_lnb_sp1v);
-
-	tcc_gpio_config(priv->demod.gpio_lnb_s18v, GPIO_FN(0));
-	gpio_request(priv->demod.gpio_lnb_s18v, NULL);
-	gpio_direction_input(priv->demod.gpio_lnb_s18v);
-#endif
-#if 0		
-        if (!gpio_is_valid(priv->demod.lnb_int_port)) {
-            printk("%s: err to get gpios: ret:%x\n", __func__, priv->demod.lnb_int_port);
-            priv->demod.lnb_int_port = -1;
-        }
-        else {
-            printk("%s: int gpios: ret:%x\n", __func__, priv->demod.lnb_int_port);
-            priv->demod.lnb_int_irq = gpio_to_irq(priv->demod.lnb_int_port);
-        }
-
-	priv->demod.lnb_wq = create_singlethread_workqueue("a8304_wq");
-	INIT_WORK(&priv->lnb_work, avl62x1_lnb_work);
-	r = request_irq(priv->demod.lnb_int_irq, avl62x1_lnb_isr, IRQF_TRIGGER_FALLING, "a8304-irq", priv);
-	if (r){
-		printk("IRQ request fail.\n");
-		r=-ENODEV;
-		if (priv->demod.lnb_wq) destroy_workqueue(priv->demod.lnb_wq);
-		return r;
-	}
-#else
-	/*
-	tcc_gpio_config(priv->demod.lnb_int_port, GPIO_FN(0));
-	gpio_request(priv->demod.lnb_int_port, NULL);
-	gpio_direction_input(priv->demod.lnb_int_port);
-	*/
-	tcc_gpio_init(priv->demod.lnb_int_port, GPIO_DIRECTION_INPUT);
-#endif
+	
+	//tcc_gpio_init(priv->demod.gpio_fe_lock, GPIO_DIRECTION_INPUT);
+	//tcc_gpio_init(priv->demod.lnb_int_port, GPIO_DIRECTION_INPUT);
+	
 	priv->demod.lnb_high_voltage = 0;
 	priv->demod.lnb_source22k = USM_FE_22K_FROM_DEMOD;
 	priv->demod.lnb_control = 0;
@@ -724,7 +685,7 @@ static AVL_ErrorCode avl62x1_fe_lock_tuner(struct AVL_Tuner *pTuner)
 			}
 			AVL_IBSP_Delay(20);
 		} while (i ++ <= 50);
-		dprintk("Tuner lock i=%d ucTunerLocked=%d\n", i, pTuner->ucTunerLocked);
+		dprintk("Tuner lock i=%d ucTunerLocked=%d ret %d \n", i, pTuner->ucTunerLocked, r );
 	}
 	else
 	{
@@ -769,11 +730,14 @@ AVL_ErrorCode avl62x1_fe_lock_channel(struct dvb_frontend* fe)
 	r |= AVL62X1_Optimize_Carrier(pTuner,&CarrierInfo);
 
 	r |= AVL62X1_OpenTunerI2C(pAVL_Chip);
+	
 	r |= avl62x1_fe_lock_tuner(pTuner);
+	
 	r |= AVL62X1_CloseTunerI2C(pAVL_Chip);
+	
 	if ((AVL_EC_OK != r) || (pTuner->ucTunerLocked != 1))
 	{
-		eprintk("Tuner lock failed !\n");
+		eprintk("Tuner lock failed ret(%d) !\n",r );
 		return AVL_EC_GENERAL_FAIL;
 	}
 
@@ -808,7 +772,7 @@ AVL_ErrorCode avl62x1_fe_lock_channel(struct dvb_frontend* fe)
 	}while(--uiCounter);
 	
 	AVL62X1_GetSNR(&snr, &priv->demod.AVLChip);
-//	dprintk("%s(snr = %d)\n", __FUNCTION__, snr);
+	//dprintk("%s(snr = %d)\n", __FUNCTION__, snr);
 	
 	if(uiCounter <= 0)
 	{
@@ -1128,6 +1092,7 @@ static int avl62x1_fe_read_ber(struct dvb_frontend* fe, unsigned int* ber)
 	return 0;
 }
 
+/*
 static int avl62x1_fe_read_per(struct dvb_frontend* fe, unsigned int* per)
 {
 	avl62x1_priv_t *priv = (avl62x1_priv_t *)fe->demodulator_priv;
@@ -1137,6 +1102,7 @@ static int avl62x1_fe_read_per(struct dvb_frontend* fe, unsigned int* per)
 
 	return 0;
 }
+*/
 
 static AVL_ErrorCode avl62x1_fe_read_signal_strength(struct dvb_frontend* fe, unsigned short* strength)
 {
@@ -1479,7 +1445,7 @@ static int avl62x1_fe_set_property(struct dvb_frontend* fe, struct dtv_property*
 		break;
 	}
 
-	//dprintk("%s(CMD = %d)\n", __FUNCTION__, tvp->cmd);
+	dprintk("%s(CMD = %d)\n", __FUNCTION__, tvp->cmd);
 
 	return 0;
 }
@@ -1488,7 +1454,7 @@ static int avl62x1_fe_get_property(struct dvb_frontend* fe, struct dtv_property*
 {
 	//avl62x1_priv_t *priv = (avl62x1_priv_t *)fe->demodulator_priv;
 
-	//dprintk("%s(CMD = %d)\n", __FUNCTION__, tvp->cmd);
+	dprintk("%s(CMD = %d)\n", __FUNCTION__, tvp->cmd);
 
 	return 0;
 }
@@ -1609,17 +1575,17 @@ static int avl62x1_init(struct device_node *node, avl62x1_priv_t *priv)
 		priv->demod.lnb_i2c = of_find_i2c_adapter_by_node(adapter_np);//i2c_get_adapter(TCC_I2C_CH);
 	}
 
-	//priv->demod.gpio_lnb_sp1v  = of_get_named_gpio(node, "gpios",   0); // SP1V_SELE
-	//priv->demod.gpio_lnb_s18v  = of_get_named_gpio(node, "gpios",   1); // S18V
 	priv->demod.gpio_fe_power  = of_get_named_gpio(node, "gpios",   0); // SLEEP
 	priv->demod.gpio_fe_lock   = of_get_named_gpio(node, "gpios",   1); // LOCK
 	priv->demod.gpio_fe_reset  = of_get_named_gpio(node, "gpios",   2); // RESET
-	//priv->demod.gpio_fe_fault  = of_get_named_gpio(node, "gpios",   5); // FAULT
 	priv->demod.gpio_lnb_power = of_get_named_gpio(node, "gpios",   3); // MAIN_VEN(lnb_power)
 	
 	tcc_gpio_init(priv->demod.gpio_fe_power, GPIO_DIRECTION_OUTPUT);
 	tcc_gpio_init(priv->demod.gpio_fe_reset, GPIO_DIRECTION_OUTPUT);
 	tcc_gpio_init(priv->demod.gpio_lnb_power, GPIO_DIRECTION_OUTPUT);
+	
+	tcc_gpio_init(priv->demod.gpio_fe_lock, GPIO_DIRECTION_INPUT);
+	tcc_gpio_init(priv->demod.lnb_int_port, GPIO_DIRECTION_INPUT);
 
 	of_property_read_u32(node, "config-idx", &priv->demod.config_idx);
 	
@@ -1627,9 +1593,7 @@ static int avl62x1_init(struct device_node *node, avl62x1_priv_t *priv)
 	
 	memcpy(&priv->demod.AVLChip, &g_AVL62X1_Chip1, sizeof(struct AVL62X1_Chip));
 	memcpy(&priv->demod.Tuner, &gTuner1, sizeof(struct AVL_Tuner));
-
-	dprintk("%s gpio_lnb_power=%d\n", __FUNCTION__, priv->demod.gpio_lnb_power);
-
+	
 	return 0;
 }
 
@@ -1691,8 +1655,8 @@ static struct tcc_dxb_fe_driver avl62x1_driver = {
 static int __init avl62x1_module_init(void)
 {
 	dprintk("%s \n", __FUNCTION__);
-	//if (tcc_fe_register(&avl62x1_driver) != 0)
-	//	return -EPERM;
+	if (tcc_fe_register(&avl62x1_driver) != 0)
+		return -EPERM;
 
 	return 0;
 }
@@ -1700,7 +1664,7 @@ static int __init avl62x1_module_init(void)
 static void __exit avl62x1_module_exit(void)
 {
 	dprintk("%s\n", __FUNCTION__);
-	//tcc_fe_unregister(&avl62x1_driver);
+	tcc_fe_unregister(&avl62x1_driver);
 }
 
 module_init(avl62x1_module_init);

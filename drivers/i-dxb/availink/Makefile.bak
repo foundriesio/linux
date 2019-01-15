@@ -1,4 +1,0 @@
-# 
-# Availink tuner devices
-#
-obj-y += AVL62x1/
