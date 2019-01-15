@@ -856,8 +856,6 @@ AVL_ErrorCode IBase_DownloadPatch_AVL62X1(struct AVL62X1_Chip * pAVL_Chip)
 	AVL_uint32 match_value = 0;
 	AVL_uint32 max_polls = 0;
 	AVL_uint32 polls = 0;
-	AVL_uint32 i;
-	AVL_uint32 tdata;
 
 	pPatchData = pAVL_Chip->pPatchData;
 

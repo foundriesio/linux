@@ -19,7 +19,8 @@ ccflags-y := 											\
 	-I$(srctree)/drivers/i-dxb/availink/avl62x1/tuner	\
 	-I$(srctree)/drivers/i-dxb/availink/avl62x1/tuner/AV201X	\
 	-I$(srctree)/drivers/i-dxb/availink/avl62x1/sdk_src \
-	-I$(srctree)/drivers/i-dxb/telechips
+	-I$(srctree)/drivers/i-dxb/telechips \
+	-I$(srctree)/drivers/media/platform/tcc-hwdemux/hwdmx-drv
 
 ccflags-y += 				\
 	-DTCC_KERNEL_MODULE

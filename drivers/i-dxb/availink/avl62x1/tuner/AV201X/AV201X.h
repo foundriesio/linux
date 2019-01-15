@@ -144,9 +144,6 @@ AVL_uint32 AV201X_GetLockStatus(struct AVL_Tuner * pTuner);
 AVL_uint32 AV201X_Lock(struct AVL_Tuner *pTuner);
 AVL_uint32 AV201X_CfgAnalogFilter(struct AVL_Tuner *pTuner);
 
-static void AV201X_Time_DELAY_MS(UINT32 ms);
-static AVL_uint32 AV201X_I2C_write(struct AVL_Tuner *pTuner, UINT8 reg_start,UINT8* buff,UINT8 len);
-
 #ifdef AVL_CPLUSPLUS
 }
 #endif
