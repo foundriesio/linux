@@ -110,7 +110,7 @@ tcc_video_disp tccvid_vsync[VSYNC_MAX];
 spinlock_t LastFrame_lockDisp;
 tcc_video_lastframe tccvid_lastframe[VSYNC_MAX];
 
-#define WMIXER_PATH	"/dev/wmixer1"
+#define WMIXER_PATH	"/dev/wmixer0"
 //#define USE_SCALER2_FOR_LASTFRAME
 #ifdef USE_SCALER2_FOR_LASTFRAME
 #define SCALER_PATH	"/dev/scaler2"
@@ -2112,13 +2112,14 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 
 #if  defined(CONFIG_HDMI_DISPLAY_LASTFRAME) || defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
 //will be copyed original decoded data itself.
-int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update* inFframeInfo, WMIXER_INFO_TYPE* WmixerInfo, unsigned int target_addr, unsigned int target_format)
+int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update* inFframeInfo, WMIXER_INFO_TYPE* WmixerInfo, unsigned int target_addr, unsigned int target_size, unsigned int target_format)
 {
 	int Frame_height = 0,  ret = 0;
 	unsigned int type = tcc_vsync_get_video_ch_type(inFframeInfo->Lcdc_layer);
+	unsigned int szStream = 0x00;
 
 	if(type >= VSYNC_MAX)
-		return 0;
+		return -1;
 
 	memset(WmixerInfo, 0x00, sizeof(WMIXER_INFO_TYPE));
 
@@ -2182,6 +2183,22 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 		WmixerInfo->dst_u_addr		= (unsigned int)GET_ADDR_YUV42X_spU(WmixerInfo->dst_y_addr, WmixerInfo->dst_img_width, WmixerInfo->dst_img_height);
 		WmixerInfo->dst_v_addr		= (unsigned int)GET_ADDR_YUV422_spV(WmixerInfo->dst_u_addr, WmixerInfo->dst_img_width, WmixerInfo->dst_img_height);
 	}
+
+#ifdef CONFIG_VIOC_MAP_DECOMP
+	if( ret > 0 && inFframeInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0 )
+		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 162/100);
+	else
+#endif
+#ifdef CONFIG_VIOC_DTRC_DECOMP
+	if( ret > 0 && inFframeInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] == 0x1 )
+		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 180/100);
+	else
+#endif
+		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 3/2);
+
+	if(szStream > target_size)
+		return -2;
+
 	ret = file->f_op->unlocked_ioctl(file, TCC_WMIXER_IOCTRL_KERNEL, (unsigned long)WmixerInfo);
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
@@ -2189,16 +2206,16 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 	{
 		unsigned int LumaTblSize = 0, ChromaTblSize = 0;
 		unsigned char *vSrc_addr, *vDst_addr;
-		unsigned int szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 162/100);
 		unsigned int pDst_addr = target_addr + szStream;
 
 		LumaTblSize = inFframeInfo->private_data.mapConv_info.m_uiCompressionTableLumaSize;
 		ChromaTblSize = inFframeInfo->private_data.mapConv_info.m_uiCompressionTableChromaSize;
 
-		if((szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize)) > tccvid_lastframe[type].pmapBuff.size)
+		if((szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize)) > target_size)
 		{
 			printk("Error :: should increase the size of 'fb_wmixer' pmap :: current(0x%x) -> need(0x%x) \n",
-						tccvid_lastframe[type].pmapBuff.size, szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
+						target_size, szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
+			return -3;
 		}
 
 		printk("### tcc_move_video_frame_simple pre-processing(%dx%d - BitDepth(%d) Y(0x%x-0x%x / 0x%x), Cb(0x%x-0x%x / 0x%x)\n",
@@ -2241,13 +2258,13 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 	{
 		unsigned int LumaTblSize = 0, ChromaTblSize = 0;
 		unsigned char *vSrc_addr, *vDst_addr;
-		unsigned int szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 180/100);
 		unsigned int pDst_addr = target_addr + szStream;
 
-		if((szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize)) > tccvid_lastframe[type].pmapBuff.size)
+		if((szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize)) > target_size)
 		{
 			printk("Error :: should increase the size of 'fb_wmixer' pmap :: current(0x%x) -> need(0x%x) \n",
-						tccvid_lastframe[type].pmapBuff.size, szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
+						target_size, szStream + PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
+			return -4;
 		}
 
 		LumaTblSize = inFframeInfo->private_data.dtrcConv_info.m_iCompressionTableLumaSize;
@@ -2308,15 +2325,15 @@ void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *inp
 }
 EXPORT_SYMBOL(tcc_video_info_backup);
 
-static int tcc_fill_black_lastframe(struct tcc_lcdc_image_update* lastUpdated, VSYNC_CH_TYPE type)
+static int tcc_fill_black_lastframe(struct tcc_lcdc_image_update* lastUpdated, unsigned int dest_addr, unsigned int dest_size, VSYNC_CH_TYPE type)
 {
 	unsigned char *pDest_Vaddr = NULL;
 	unsigned int nLen = lastUpdated->Image_width * lastUpdated->Image_height * 2;
 
-	if(tccvid_lastframe[type].pmapBuff.size <= 0)
+	if(dest_size <= 0)
 		return -1;
 
-	pDest_Vaddr = (unsigned char *)ioremap_nocache(tccvid_lastframe[type].pmapBuff.base, PAGE_ALIGN(nLen));
+	pDest_Vaddr = (unsigned char *)ioremap_nocache(dest_addr, PAGE_ALIGN(nLen));
 	if(pDest_Vaddr != NULL)
 	{
 		memset(pDest_Vaddr, 0x00, lastUpdated->Image_width * lastUpdated->Image_height);
@@ -2363,10 +2380,13 @@ int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo)
 	return 1;
 }
 
-int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bInterlaced, unsigned int dest_addr, int dest_fmt)
+int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bInterlaced, unsigned int dest_addr, unsigned int dest_size, int dest_fmt)
 {
 	struct file    *file;
 	int ret = 0;
+
+	if(dest_addr == 0 || dest_size == 0)
+		return -2;
 
 #ifdef USE_SCALER2_FOR_LASTFRAME
 	{
@@ -2593,6 +2613,8 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 	int ret = 0;
 	tcc_video_disp *p = (tcc_video_disp *)pVSyncDisp;
 	struct tcc_dp_device *dp_device = NULL;
+	unsigned int target_address = 0x00;
+	unsigned int target_size = 0x00;
 
 	if(!p)
 	{
@@ -2660,7 +2682,13 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 		return -1;
 	}
 
-	if(type == VSYNC_MAIN && tccvid_lastframe[type].support && tccvid_lastframe[type].pmapBuff.size)
+	if( tccvid_lastframe[type].CurrImage.addr0 == tccvid_lastframe[type].pmapBuff.base )
+		target_address = tccvid_lastframe[type].pmapBuff.base + (tccvid_lastframe[type].pmapBuff.size / 2);
+	else
+		target_address = tccvid_lastframe[type].pmapBuff.base;
+	target_size = (tccvid_lastframe[type].pmapBuff.size / 2);
+
+	if(type == VSYNC_MAIN && tccvid_lastframe[type].support && target_size)
 	{
 		if( p->outputMode == TCC_OUTPUT_HDMI || p->outputMode== TCC_OUTPUT_COMPOSITE || p->outputMode == TCC_OUTPUT_COMPONENT
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -2685,11 +2713,6 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			}
 
 			memcpy(lastUpdated, &tccvid_lastframe[type].LastImage, sizeof(struct tcc_lcdc_image_update));
-
-			if(tccvid_lastframe[type].CurrImage.addr0 == tccvid_lastframe[type].pmapBuff.base){
-				printk(" [%d]TCC_LCDC_VIDEO_KEEP_LASTFRAME :: called just after swap-frame \n", type);
-				return 0;
-			}
 
 	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 			if(lastUpdated->private_data.optional_info[VID_OPT_CONTENT_TYPE] == ATTR_DV_WITHOUT_BC){
@@ -2730,9 +2753,9 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			}
 	#endif
 			printk("---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x)!! \n",
-					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, tccvid_lastframe[type].pmapBuff.base);
+					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, target_address);
 
-			if( (ret = tcc_move_video_last_frame(lastUpdated, p->deinterlace_mode, tccvid_lastframe[type].pmapBuff.base, LAST_FRAME_FORMAT)) < 0 ){
+			if( (ret = tcc_move_video_last_frame(lastUpdated, p->deinterlace_mode, target_address, target_size, LAST_FRAME_FORMAT)) < 0 ){
 				goto Screen_off;
 			}
 
@@ -2818,12 +2841,12 @@ Screen_off:
 
 			if(0)//type == VSYNC_SUB0 && tccvid_lastframe[type].support && (p->output_toMemory && p->m2m_mode))
 			{				
-				if(0 <= tcc_fill_black_lastframe(lastUpdated, type))
+				if(0 <= tcc_fill_black_lastframe(lastUpdated, target_address, target_size, type))
 				{
 					lastUpdated->enable 		= 1;
 					lastUpdated->on_the_fly		= 0;
-					lastUpdated->addr0			= tccvid_lastframe[type].pmapBuff.base;
-					lastUpdated->addr1			= tccvid_lastframe[type].pmapBuff.base + (lastUpdated->Image_width*lastUpdated->Image_height);
+					lastUpdated->addr0			= target_address;
+					lastUpdated->addr1			= target_address + (lastUpdated->Image_width*lastUpdated->Image_height);
 					lastUpdated->one_field_only_interlace = 0;
 					lastUpdated->crop_left 		= lastUpdated->crop_top = 0;
 					lastUpdated->crop_right 	= lastUpdated->Image_width;
@@ -2855,7 +2878,7 @@ Screen_off:
 			else if( (tccvid_lastframe[type].reason.Codec)
 				|| (type == VSYNC_SUB0)
 				|| (type == VSYNC_MAIN && !tccvid_lastframe[type].support)
-				|| (tccvid_lastframe[type].pmapBuff.size == 0)
+				|| (target_size == 0)
 			)
 			{
 				spin_lock_irq(&LastFrame_lockDisp);
@@ -2870,10 +2893,10 @@ Screen_off:
 			{
 				struct file *file;
 				file = filp_open(WMIXER_PATH, O_RDWR, 0666);
-				ret = tcc_move_video_frame_simple(file, lastUpdated, &WmixerInfo, tccvid_lastframe[type].pmapBuff.base, LAST_FRAME_FORMAT);
+				ret = tcc_move_video_frame_simple(file, lastUpdated, &WmixerInfo, target_address, target_size, LAST_FRAME_FORMAT);
 				filp_close(file, 0);
 				if(ret <= 0){
-					printk(" [%d]Error :: wmixer ctrl \n", type);
+					printk(" [%d] Error[%d] :: wmixer ctrl \n", type, ret);
 					return -100;
 				}
 
@@ -3150,6 +3173,8 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 {
 	int ret = 0;
 	struct file *file = NULL;
+	unsigned int target_address = 0x00;
+	unsigned int target_size = 0x00;
 
 	if( p->outputMode == Output_SelectMode )
 	{
@@ -3168,23 +3193,26 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 			goto Error;
 		}
 
+		if(tccvid_lastframe[type].pmapBuff.size == 0)
+			goto Error;
+
 		file = filp_open(WMIXER_PATH, O_RDWR, 0666);
 		tcc_video_clear_frame(p, idx, 3);
 		msleep(p->vsync_interval*2); // wait 2 vsync based on 24hz!!
 
-		if( tccvid_lastframe[type].CurrImage.addr0 == tccvid_lastframe[type].pmapBuff.base ){
-			printk("---->[%d] already swapped frame!!", type);
-			ret = -1;
-			goto Error;
-		}
+		if( tccvid_lastframe[type].CurrImage.addr0 == tccvid_lastframe[type].pmapBuff.base )
+			target_address = tccvid_lastframe[type].pmapBuff.base + (tccvid_lastframe[type].pmapBuff.size / 2);
+		else
+			target_address = tccvid_lastframe[type].pmapBuff.base;
+		target_size = (tccvid_lastframe[type].pmapBuff.size / 2);
 
-		memcpy(TempImage, &tccvid_lastframe[type].CurrImage, sizeof(struct tcc_lcdc_image_update));
+		memcpy(TempImage, &tccvid_lastframe[type].LastImage, sizeof(struct tcc_lcdc_image_update));
 
-		ret = tcc_move_video_frame_simple(file, TempImage, WmixerInfo, tccvid_lastframe[type].pmapBuff.base, TempImage->fmt);
+		ret = tcc_move_video_frame_simple(file, TempImage, WmixerInfo, target_address, target_size, TempImage->fmt);
 		if( ret > 0 )
 		{
 			printk("%s :: ---->[%d] start tcc_video_swap_vpu_frame :: %d En:%d/%d, vsync: %d ms, I(%d)D(%d)/M(%d/%d)\n", __func__, type,
-					tccvid_lastframe[type].CurrImage.buffer_unique_id, TempImage->enable, tccvid_lastframe[type].CurrImage.enable, p->vsync_interval,
+					TempImage->buffer_unique_id, TempImage->enable, tccvid_lastframe[type].CurrImage.enable, p->vsync_interval,
 					p->deinterlace_mode, p->duplicateUseFlag, p->output_toMemory, p->m2m_mode);
 			//TempImage->buffer_unique_id = p->vsync_buffer.available_buffer_id_on_vpu;
 
@@ -3217,7 +3245,7 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 						M2mImage.private_data.optional_info[VID_OPT_BUFFER_ID], M2mImage.deinterlace_mode,
 						M2mImage.addr0, M2mImage.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO]);
 				if(M2mImage.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0){
-					ret = tcc_move_video_frame_simple(file, &M2mImage, WmixerInfo, tccvid_lastframe[type].pmapBuff.base, M2mImage.fmt);
+					ret = tcc_move_video_frame_simple(file, &M2mImage, WmixerInfo, target_address, target_size, M2mImage.fmt);
 					TCC_VIQE_DI_Run60Hz_M2M(&M2mImage,VIQE_RESET_NONE); // No need to display on M2M mode.
 				}
 			}
@@ -3256,7 +3284,7 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 		}
 		else
 		{
-			printk("---->[%d] Error :: wmixer ctrl \n", type);
+			printk("%s ---->[%d] Error[%d] :: wmixer ctrl \n", __func__, type, ret);
 		}
 		ret = tccvid_lastframe[type].CurrImage.buffer_unique_id;
 	}
@@ -3473,6 +3501,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						}
 					}
 
+					//printk("=========================> tcc_vsync_push_process :[%d]\n", input_image->buffer_unique_id);	
 					#ifdef CONFIG_USE_SUB_MULTI_FRAME
 					if(type != VSYNC_MAIN) {
 						input_image->m2m_mode = 1;
