@@ -104,9 +104,11 @@ static int stm32_rproc_da_to_pa(struct rproc *rproc, u64 da, phys_addr_t *pa)
 		    da >= p_mem->dev_addr + p_mem->size)
 			continue;
 		*pa = da - p_mem->dev_addr + p_mem->bus_addr;
-		dev_err(rproc->dev.parent, "da %llx to pa %#x\n", da, *pa);
+		dev_dbg(rproc->dev.parent, "da %llx to pa %#x\n", da, *pa);
 		return 0;
 	}
+
+	dev_err(rproc->dev.parent, "can't translate da %llx\n", da);
 
 	return -EINVAL;
 }
@@ -657,20 +659,21 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 
 	if (of_property_read_bool(np, "early-booted")) {
 		rproc->early_boot = true;
-
 		err = of_property_read_u32(np, "rsc-address", &rsc_da);
-		if (!err) {
-			err = of_property_read_u32(np, "rsc-size",
-						   &ddata->rsc_len);
+		if (err)
+			/* no optional rsc table found */
+			return 0;
 
-			if (err) {
-				dev_err(dev, "resource table size required as address defined\n");
-				return err;
-			}
+		err = of_property_read_u32(np, "rsc-size", &ddata->rsc_len);
+		if (err) {
+			dev_err(dev, "resource table size required as address defined\n");
+			return err;
 		}
+
 		err = stm32_rproc_da_to_pa(rproc, rsc_da, &rsc_pa);
 		if (err)
 			return err;
+
 		ddata->rsc_va = ioremap_wc(rsc_pa, ddata->rsc_len);
 		if (IS_ERR_OR_NULL(ddata->rsc_va)) {
 			dev_err(dev, "Unable to map memory region: %pa+%zx\n",
