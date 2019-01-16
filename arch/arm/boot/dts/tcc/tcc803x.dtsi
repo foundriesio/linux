@@ -645,14 +645,6 @@
 			status = "disabled";
 		};
 
-		quickboot: quickboot {
-		   compatible = "telechips,pmap";
-		   telechips,pmap-name = "quickboot";
-		   alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-		   size = <0x01800000>;
-		   no-map;
-	   };
-
 	};
 
 	tcc_pm {
