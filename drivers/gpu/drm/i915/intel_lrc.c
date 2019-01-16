@@ -1794,6 +1794,8 @@ static int gen8_init_common_ring(struct intel_engine_cs *engine)
 {
 	int ret;
 
+	intel_engine_apply_workarounds(engine);
+
 	ret = intel_mocs_init_engine(engine);
 	if (ret)
 		return ret;
@@ -2455,6 +2457,8 @@ static int logical_ring_init(struct intel_engine_cs *engine)
 		execlists->csb_write_reset = GEN8_CSB_ENTRIES - 1;
 	}
 	reset_csb_pointers(execlists);
+
+	intel_engine_init_workarounds(engine);
 
 	return 0;
 
