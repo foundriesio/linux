@@ -157,10 +157,10 @@ static void ion_carveout_free(struct ion_heap *heap, phys_addr_t addr,
 	struct ion_carveout_heap *carveout_heap =
 		container_of(heap, struct ion_carveout_heap, heap);
 
-	dprintk("%s-heap_name:%s, Free %p - 0x%lx \n", __func__, heap->name, addr, size);
 	if (addr == ION_CARVEOUT_ALLOCATE_FAIL)
 		return;
 	gen_pool_free(carveout_heap->pool, addr, size);
+	dprintk("%s-heap_name:%s, Free %p - 0x%lx avail_mem:0x%x\n", __func__, heap->name, addr, size, gen_pool_avail(carveout_heap->pool));
 }
 
 static int ion_carveout_heap_allocate(struct ion_heap *heap,
