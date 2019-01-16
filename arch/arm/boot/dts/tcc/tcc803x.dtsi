@@ -2848,6 +2848,8 @@
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
+
+		firmware_android: android {};
 	};
         cpu_id: cpu-id@14200290{
                 compatible = "telechips,tcc-cpu-id";
