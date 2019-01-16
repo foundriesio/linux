@@ -1579,8 +1579,6 @@ int vmgr_4k_d2_probe(struct platform_device *pdev)
     dprintk("============> VPU-4K-D2 VP9/HEVC base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vmgr_4k_d2_data.base_addr, vmgr_4k_d2_data.irq - 32);
 
     vmgr_4k_d2_get_clock(pdev->dev.of_node);
-    vmgr_4k_d2_enable_clock();
-    vmgr_4k_d2_disable_clock();
 
     spin_lock_init(&(vmgr_4k_d2_data.oper_lock));
 //  spin_lock_init(&(vmgr_4k_d2_data.comm_data.lock));
