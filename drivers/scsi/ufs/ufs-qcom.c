@@ -586,10 +586,6 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	}
 
 	err = ufs_qcom_enable_lane_clks(host);
-	if (err)
-		goto out;
-
-	hba->is_sys_suspended = false;
 
 out:
 	return err;
