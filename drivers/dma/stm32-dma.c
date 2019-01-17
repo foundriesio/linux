@@ -1242,6 +1242,7 @@ static int stm32_dma_mdma_prep_slave_sg(struct stm32_dma_chan *chan,
 				dev_err(chan2dev(chan),
 					"max buf size = %d bytes\n",
 					chan->sram_size);
+				ret = -EINVAL;
 				goto free_alloc;
 			}
 		} else {
