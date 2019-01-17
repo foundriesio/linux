@@ -1253,6 +1253,9 @@ int jmgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
+    jmgr_enable_clock();
+    jmgr_disable_clock();
+
     return 0;
 }
 EXPORT_SYMBOL(jmgr_probe);

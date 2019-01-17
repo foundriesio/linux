@@ -1349,6 +1349,9 @@ int hmgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
+    hmgr_enable_clock();
+    hmgr_disable_clock();
+
     return 0;
 }
 EXPORT_SYMBOL(hmgr_probe);

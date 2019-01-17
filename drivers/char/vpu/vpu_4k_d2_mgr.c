@@ -1184,7 +1184,7 @@ static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 
     dprintk("_vmgr_4k_d2_open In!! %d'th \n", vmgr_4k_d2_data.dev_opened);
 
-    vmgr_4k_d2_enable_clock();
+    vmgr_4k_d2_enable_clock(0);
 
     if(vmgr_4k_d2_data.dev_opened == 0)
     {
@@ -1298,7 +1298,7 @@ static int _vmgr_4k_d2_release(struct inode *inode, struct file *filp)
         vmgr_4k_d2_BusPrioritySetting(BUS_FOR_NORMAL, 0);
     }
 
-    vmgr_4k_d2_disable_clock();
+    vmgr_4k_d2_disable_clock(0);
 
     vmgr_4k_d2_data.nOpened_Count++;
     printk("_vmgr_4k_d2_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", vmgr_4k_d2_data.dev_opened, vmgr_4k_d2_data.nOpened_Count,
@@ -1414,7 +1414,7 @@ static int _vmgr_4k_d2_operation(void)
             #if 1
                     while(opened_count)
                     {
-                        vmgr_4k_d2_disable_clock();
+                        vmgr_4k_d2_disable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1423,7 +1423,7 @@ static int _vmgr_4k_d2_operation(void)
                     opened_count = vmgr_4k_d2_data.dev_opened;
                     while(opened_count)
                     {
-                        vmgr_4k_d2_enable_clock();
+                        vmgr_4k_d2_enable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1618,6 +1618,9 @@ int vmgr_4k_d2_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
+    vmgr_4k_d2_enable_clock(1);
+    vmgr_4k_d2_disable_clock(1);
+
     return 0;
 }
 EXPORT_SYMBOL(vmgr_4k_d2_probe);
@@ -1659,7 +1662,7 @@ int vmgr_4k_d2_suspend(struct platform_device *pdev, pm_message_t state)
 
         open_count = vmgr_4k_d2_data.dev_opened;
         for(i=0; i<open_count; i++) {
-            vmgr_4k_d2_disable_clock();
+            vmgr_4k_d2_disable_clock(0);
         }
         printk("vpu_4k_d2: suspend Out DEC(%d/%d/%d/%d/%d) \n\n", vmgr_4k_d2_get_close(VPU_DEC), vmgr_4k_d2_get_close(VPU_DEC_EXT),
 			vmgr_4k_d2_get_close(VPU_DEC_EXT2), vmgr_4k_d2_get_close(VPU_DEC_EXT3), vmgr_4k_d2_get_close(VPU_DEC_EXT4));
@@ -1678,7 +1681,7 @@ int vmgr_4k_d2_resume(struct platform_device *pdev)
         open_count = vmgr_4k_d2_data.dev_opened;
 
         for(i=0; i<open_count; i++) {
-            vmgr_4k_d2_enable_clock();
+            vmgr_4k_d2_enable_clock(0);
         }
         printk("\n vpu_4k_d2: resume \n\n");
     }

@@ -70,7 +70,7 @@ inline void vbus_matrix(void)
 }
 #endif
 
-void vmgr_4k_d2_enable_clock(void)
+void vmgr_4k_d2_enable_clock(int only_clk_ctrl)
 {
     dprintk("@@ vmgr_4k_d2_enable_clock \n");
     if (fbus_vbus_clk)
@@ -89,6 +89,7 @@ void vmgr_4k_d2_enable_clock(void)
 #endif
 
 #if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
+	if(!only_clk_ctrl)
     {
         int ret = vpu_optee_open();
         if (ret != 0) {
@@ -103,7 +104,7 @@ void vmgr_4k_d2_enable_clock(void)
 #endif
 }
 
-void vmgr_4k_d2_disable_clock(void)
+void vmgr_4k_d2_disable_clock(int only_clk_ctrl)
 {
     dprintk("@@ vmgr_4k_d2_disable_clock \n");
 
@@ -121,7 +122,8 @@ void vmgr_4k_d2_disable_clock(void)
 #endif
 
 #if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
-    vpu_optee_close();
+	if(!only_clk_ctrl)
+	    vpu_optee_close();
 #endif
 }
 

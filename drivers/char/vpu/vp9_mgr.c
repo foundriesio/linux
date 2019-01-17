@@ -1159,6 +1159,9 @@ int vp9mgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
+    vp9mgr_enable_clock();
+    vp9mgr_disable_clock();
+
     return 0;
 }
 EXPORT_SYMBOL(vp9mgr_probe);
