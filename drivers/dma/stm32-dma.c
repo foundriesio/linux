@@ -1939,6 +1939,8 @@ static int stm32_dma_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "SRAM pool: %zu KiB\n",
 			gen_pool_size(dmadev->sram_pool) / 1024);
 
+	dma_set_max_seg_size(&pdev->dev, STM32_DMA_ALIGNED_MAX_DATA_ITEMS);
+
 	dma_cap_set(DMA_SLAVE, dd->cap_mask);
 	dma_cap_set(DMA_PRIVATE, dd->cap_mask);
 	dma_cap_set(DMA_CYCLIC, dd->cap_mask);
