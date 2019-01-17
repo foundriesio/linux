@@ -394,6 +394,7 @@ struct regulator_config {
 	void *driver_data;
 	struct device_node *of_node;
 	struct regmap *regmap;
+	struct clk *ena_clk;
 
 	bool ena_gpio_initialized;
 	int ena_gpio;
@@ -442,6 +443,8 @@ struct regulator_dev {
 
 	struct regulator_enable_gpio *ena_pin;
 	unsigned int ena_gpio_state:1;
+	struct clk *ena_clk;
+	unsigned int ena_clk_state;
 
 	unsigned int is_switch:1;
 

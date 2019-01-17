@@ -32,6 +32,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/module.h>
+#include <linux/clk.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/regulator.h>
@@ -2134,6 +2135,11 @@ static int _regulator_do_enable(struct regulator_dev *rdev)
 		ret = rdev->desc->ops->enable(rdev);
 		if (ret < 0)
 			return ret;
+	} else if (rdev->ena_clk) {
+		ret = clk_prepare_enable(rdev->ena_clk);
+		if (ret)
+			return ret;
+		rdev->ena_clk_state++;
 	} else {
 		return -EINVAL;
 	}
@@ -2243,6 +2249,9 @@ static int _regulator_do_disable(struct regulator_dev *rdev)
 		ret = rdev->desc->ops->disable(rdev);
 		if (ret != 0)
 			return ret;
+	} else if (rdev->ena_clk) {
+		clk_disable_unprepare(rdev->ena_clk);
+		rdev->ena_clk_state--;
 	}
 
 	/* cares about last_off_jiffy only if off_on_delay is required by
@@ -2463,6 +2472,9 @@ static int _regulator_is_enabled(struct regulator_dev *rdev)
 	/* A GPIO control always takes precedence */
 	if (rdev->ena_pin)
 		return rdev->ena_gpio_state;
+
+	if (rdev->ena_clk)
+		return (rdev->ena_clk_state > 0) ? 1 : 0;
 
 	/* If we don't know then assume that the regulator is always on */
 	if (!rdev->desc->ops->is_enabled)
@@ -4093,6 +4105,9 @@ regulator_register(const struct regulator_desc *regulator_desc,
 			goto clean;
 		}
 	}
+
+	if (cfg->ena_clk)
+		rdev->ena_clk = cfg->ena_clk;
 
 	/* register with sysfs */
 	rdev->dev.class = &regulator_class;
