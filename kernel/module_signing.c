@@ -11,9 +11,9 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
-#include <linux/module.h>
 #include <linux/string.h>
 #include <linux/verification.h>
+#include <linux/module.h>
 #include <crypto/public_key.h>
 #include <crypto/hash.h>
 #include <keys/system_keyring.h>
