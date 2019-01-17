@@ -31,6 +31,7 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/clk.h>
 
 struct fixed_voltage_data {
 	struct regulator_desc desc;
@@ -92,6 +93,10 @@ of_get_fixed_voltage_config(struct device *dev,
 
 	if (of_find_property(np, "vin-supply", NULL))
 		config->input_supply = "vin";
+
+	config->ena_clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(config->ena_clk))
+		config->ena_clk = NULL;
 
 	return config;
 }
@@ -177,6 +182,7 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 	cfg.init_data = config->init_data;
 	cfg.driver_data = drvdata;
 	cfg.of_node = pdev->dev.of_node;
+	cfg.ena_clk = config->ena_clk;
 
 	drvdata->dev = devm_regulator_register(&pdev->dev, &drvdata->desc,
 					       &cfg);
