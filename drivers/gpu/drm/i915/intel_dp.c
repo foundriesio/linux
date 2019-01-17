@@ -3570,7 +3570,7 @@ intel_dp_set_signal_levels(struct intel_dp *intel_dp)
 	uint32_t signal_levels, mask = 0;
 	uint8_t train_set = intel_dp->train_set[0];
 
-	if (IS_GEN9_LP(dev_priv) || IS_CANNONLAKE(dev_priv)) {
+	if (IS_GEN9_LP(dev_priv) || INTEL_GEN(dev_priv) >= 10) {
 		signal_levels = bxt_signal_levels(intel_dp);
 	} else if (HAS_DDI(dev_priv)) {
 		signal_levels = ddi_signal_levels(intel_dp);
@@ -4739,22 +4739,22 @@ intel_dp_long_pulse(struct intel_connector *connector,
 		 */
 		status = connector_status_disconnected;
 		goto out;
-	} else {
-		/*
-		 * If display is now connected check links status,
-		 * there has been known issues of link loss triggering
-		 * long pulse.
-		 *
-		 * Some sinks (eg. ASUS PB287Q) seem to perform some
-		 * weird HPD ping pong during modesets. So we can apparently
-		 * end up with HPD going low during a modeset, and then
-		 * going back up soon after. And once that happens we must
-		 * retrain the link to get a picture. That's in case no
-		 * userspace component reacted to intermittent HPD dip.
-		 */
-		struct intel_encoder *encoder = &dp_to_dig_port(intel_dp)->base;
+	}
 
-		intel_dp_retrain_link(encoder, ctx);
+	/*
+	 * Some external monitors do not signal loss of link synchronization
+	 * with an IRQ_HPD, so force a link status check.
+	 */
+	if (!intel_dp_is_edp(intel_dp)) {
+		struct intel_encoder *encoder = &dp_to_dig_port(intel_dp)->base;
+		int ret;
+
+		ret = intel_dp_retrain_link(encoder, ctx);
+		if (ret) {
+			intel_display_power_put(dev_priv,
+						intel_dp->aux_power_domain);
+			return ret;
+		}
 	}
 
 	/*
@@ -4805,19 +4805,8 @@ intel_dp_detect(struct drm_connector *connector,
 		      connector->base.id, connector->name);
 
 	/* If full detect is not performed yet, do a full detect */
-	if (!intel_dp->detect_done) {
-		struct drm_crtc *crtc;
-		int ret;
-
-		crtc = connector->state->crtc;
-		if (crtc) {
-			ret = drm_modeset_lock(&crtc->mutex, ctx);
-			if (ret)
-				return ret;
-		}
-
+	if (!intel_dp->detect_done)
 		status = intel_dp_long_pulse(intel_dp->attached_connector, ctx);
-	}
 
 	intel_dp->detect_done = false;
 

@@ -12,6 +12,7 @@
 #include "i915_selftest.h"
 #include "i915_timeline.h"
 #include "intel_gpu_commands.h"
+#include "intel_workarounds.h"
 
 struct drm_printer;
 struct i915_sched_attr;
@@ -299,13 +300,6 @@ struct intel_engine_execlists {
 	struct rb_root_cached queue;
 
 	/**
-	 * @csb_read: control register for Context Switch buffer
-	 *
-	 * Note this register is always in mmio.
-	 */
-	u32 __iomem *csb_read;
-
-	/**
 	 * @csb_write: control register for Context Switch buffer
 	 *
 	 * Note this register may be either mmio or HWSP shadow.
@@ -323,15 +317,6 @@ struct intel_engine_execlists {
 	 * @preempt_complete_status: expected CSB upon completing preemption
 	 */
 	u32 preempt_complete_status;
-
-	/**
-	 * @csb_write_reset: reset value for CSB write pointer
-	 *
-	 * As the CSB write pointer maybe either in HWSP or as a field
-	 * inside an mmio register, we want to reprogram it slightly
-	 * differently to avoid later confusion.
-	 */
-	u32 csb_write_reset;
 
 	/**
 	 * @csb_head: context status buffer head
@@ -437,6 +422,7 @@ struct intel_engine_cs {
 
 	struct intel_hw_status_page status_page;
 	struct i915_ctx_workarounds wa_ctx;
+	struct i915_wa_list wa_list;
 	struct i915_vma *scratch;
 
 	u32             irq_keep_mask; /* always keep these interrupts */
