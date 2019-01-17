@@ -942,7 +942,7 @@
 		      <0x144000D4 0x4>, /* wdt_clear */
 		      <0x14300070 0xC>, /* wdt_timer */
 		      <0x14300060 0x4>; /* wdt_int_sts */
-		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCX>;
+		clocks = <&clk_peri PERI_TCX &clk_peri PERI_TCT>;
 		clock-frequency = <24000000>;
 		interrupts = <GIC_SPI 39 0>;
 		int-offset = <6>;

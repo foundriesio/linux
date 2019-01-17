@@ -167,7 +167,7 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 				case TWDCFG_TCKSEL_4:
 				case TWDCFG_TCKSEL_5:
 				case TWDCFG_TCKSEL_6:
-					wdd->pretimeout = TCC_WDT_BIT_16/(tcc_wdd->wdt.rate/TCK_DIV_FAC(twd_tcksel));
+					wdd->pretimeout = (TCC_WDT_BIT_16/((tcc_wdd->wdt.rate)/TCK_DIV_FAC(twd_tcksel)));
 					break;
 				default:
 					tcc_pr_err("watchdog kick time is setting failed");
@@ -186,13 +186,13 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 				case TWDCFG_TCKSEL_4:
 				case TWDCFG_TCKSEL_5:
 				case TWDCFG_TCKSEL_6:
-					wdd->pretimeout = TCC_WDT_BIT_16/(tcc_wdd->wdt.rate/TCK_DIV_FAC(twd_tcksel));
+					wdd->pretimeout = (TCC_WDT_BIT_16/((tcc_wdd->wdt.rate)/TCK_DIV_FAC(twd_tcksel)));
 					break;
 				default:
 					tcc_pr_err("watchdog kick time is setting failed");
 					break;
 			}
-			if (pretimeout > wdd->pretimeout) {
+			if (pretimeout >= wdd->pretimeout) {
 				break;
 			}
 		}
@@ -291,6 +291,8 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 	if (tcc_wdd == NULL)
 		return -ENOMEM;
 
+	tcc_wdt_ping(wdd);
+
 	spin_lock(&tcc_wdd->lock);
 
 	tcc_wdt_enable_timer(wdd);
@@ -302,7 +304,9 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 			0, 0, 0, 0, 0,
 			&res );
 #else
+#if !defined(CONFIG_ARCH_TCC897X)
 	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))|EN_BIT(WDT_PMU_RESET), tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));
+#endif
 	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL))|EN_BIT(WDT_PMU_EN), tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCTRL));  // enable pmu watchdog
 #endif
 	spin_unlock(&tcc_wdd->lock);
@@ -361,6 +365,10 @@ static int tcc_wdt_ping(struct watchdog_device *wdd)
 #else
 	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR))|(1<<tcc_wdd->pmu_clr_bit),
 		tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR));
+#if defined(CONFIG_ARCH_TCC897X)
+	wdt_writel(wdt_readl(tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR))&~(1<<tcc_wdd->pmu_clr_bit),
+		tcc_wdt_addr(&tcc_wdd->pmu,REG_WDTCLEAR));
+#endif
 #endif
 	spin_unlock(&tcc_wdd->lock);
 
@@ -536,7 +544,7 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	addr = of_get_address(np, 0, NULL, NULL);
 	if (of_property_read_u32(np, "clock-frequency", &tcc_wdd->pmu.rate)) {
 		tcc_pr_err("Can't read clock-frequency");
-		tcc_wdd->pmu.rate = 12000000;
+		tcc_wdd->pmu.rate = 24000000;
 	}
 
 	if (of_find_property(np, "have-rstcnt-reg", NULL))
@@ -583,12 +591,16 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	}
 
 	tcc_wdd->wdt.clk = of_clk_get(np, 1);
-	if (IS_ERR(tcc_wdd->wdt.clk)) {
+	if (IS_ERR(tcc_wdd->wdt.clk))
+	{
 		tcc_pr_warn("Unable to get timer clock");
 		BUG();
 	}
+	else
+	{
+		tcc_wdd->wdt.rate = clk_get_rate(tcc_wdd->wdt.clk);
+	}
 
-	tcc_wdd->wdt.rate = clk_get_rate(tcc_wdd->wdt.clk);
 	tcc_wdd->wdt.base = of_iomap(np, 4);
 	if (of_property_read_u32(np, "int-offset", &tcc_wdd->wdt_irq_bit)) {
 		tcc_pr_warn("Can't read watchdog interrupt offset");
@@ -673,6 +685,7 @@ static int tcc_wdt_resume(struct platform_device *dev)
 		return -1;
 	}
 	if (!watchdog_active(&tcc_wdd->wdd)) {
+		tcc_wdt_set_timeout(&tcc_wdd->wdd, tcc_wdd->wdd.timeout);
 		tcc_wdt_start(&tcc_wdd->wdd);
 	}
 
@@ -707,6 +720,7 @@ static int tcc_wdt_pm_resume(struct device *dev)
 		return -1;
 	}
 	if (!watchdog_active(&tcc_wdd->wdd)) {
+		tcc_wdt_set_timeout(&tcc_wdd->wdd, tcc_wdd->wdd.timeout);
 		tcc_wdt_start(&tcc_wdd->wdd);
 	}
 
