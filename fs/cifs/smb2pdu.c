@@ -3233,8 +3233,7 @@ smb2_readv_callback(struct mid_q_entry *mid)
 		credits_received = le16_to_cpu(shdr->CreditRequest);
 		/* fall through */
 	default:
-		if (rdata->result != -ENODATA)
-			rdata->result = -EIO;
+		rdata->result = -EIO;
 	}
 #ifdef CONFIG_CIFS_SMB_DIRECT
 	/*
