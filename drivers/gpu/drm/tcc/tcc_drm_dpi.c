@@ -1,6 +1,7 @@
 /*
- * Tcc DRM Parallel output support.
+ * TCC DRM Parallel output support.
  *
+ * Copyright (C) 2016 Telechips Inc.
  * Copyright (c) 2014 Samsung Electronics Co., Ltd
  *
  * Contacts: Andrzej Hajda <a.hajda@samsung.com>
@@ -15,15 +16,12 @@
 #include <drm/drm_panel.h>
 #include <drm/drm_atomic_helper.h>
 
+#include <linux/of_graph.h>
 #include <linux/regulator/consumer.h>
 
 #include <video/of_videomode.h>
 #include <video/videomode.h>
-#if defined(CONFIG_ARCH_TCC802X)
-#include <mach/tccfb.h>
-#else
-#include <video/tcc/tccfb.h>
-#endif
+
 #include "tcc_drm_crtc.h"
 
 struct tcc_dpi {
@@ -61,8 +59,7 @@ static void tcc_dpi_connector_destroy(struct drm_connector *connector)
 	drm_connector_cleanup(connector);
 }
 
-static struct drm_connector_funcs tcc_dpi_connector_funcs = {
-	.dpms = drm_atomic_helper_connector_dpms,
+static const struct drm_connector_funcs tcc_dpi_connector_funcs = {
 	.detect = tcc_dpi_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = tcc_dpi_connector_destroy,
@@ -96,17 +93,8 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 	return 0;
 }
 
-static struct drm_encoder *
-tcc_dpi_best_encoder(struct drm_connector *connector)
-{
-	struct tcc_dpi *ctx = connector_to_dpi(connector);
-
-	return &ctx->encoder;
-}
-
-static struct drm_connector_helper_funcs tcc_dpi_connector_helper_funcs = {
+static const struct drm_connector_helper_funcs tcc_dpi_connector_helper_funcs = {
 	.get_modes = tcc_dpi_get_modes,
-	.best_encoder = tcc_dpi_best_encoder,
 };
 
 static int tcc_dpi_create_connector(struct drm_encoder *encoder)
@@ -126,17 +114,9 @@ static int tcc_dpi_create_connector(struct drm_encoder *encoder)
 	}
 
 	drm_connector_helper_add(connector, &tcc_dpi_connector_helper_funcs);
-	drm_connector_register(connector);
 	drm_mode_connector_attach_encoder(connector, encoder);
 
 	return 0;
-}
-
-static bool tcc_dpi_mode_fixup(struct drm_encoder *encoder,
-				  const struct drm_display_mode *mode,
-				  struct drm_display_mode *adjusted_mode)
-{
-	return true;
 }
 
 static void tcc_dpi_mode_set(struct drm_encoder *encoder,
@@ -165,47 +145,15 @@ static void tcc_dpi_disable(struct drm_encoder *encoder)
 	}
 }
 
-static struct drm_encoder_helper_funcs tcc_dpi_encoder_helper_funcs = {
-	.mode_fixup = tcc_dpi_mode_fixup,
+static const struct drm_encoder_helper_funcs tcc_dpi_encoder_helper_funcs = {
 	.mode_set = tcc_dpi_mode_set,
 	.enable = tcc_dpi_enable,
 	.disable = tcc_dpi_disable,
 };
 
-static struct drm_encoder_funcs tcc_dpi_encoder_funcs = {
+static const struct drm_encoder_funcs tcc_dpi_encoder_funcs = {
 	.destroy = drm_encoder_cleanup,
 };
-
-
-/* TODO: how to use panel node? */
-/*
- *enum {
- *        LCD_PORT_IN0,
- *        LCD_PORT_IN1,
- *        LCD_PORT_IN2,
- *        LCD_PORT_RGB,
- *        LCD_PORT_WRB,
- *};
- *
- *static struct device_node *tcc_dpi_of_find_panel_node(struct device *dev)
- *{
- *        struct device_node *np, *ep;
- *
- *        np = of_graph_get_port_by_reg(dev->of_node, LCD_PORT_RGB);
- *        if (!np)
- *                return NULL;
- *
- *        ep = of_graph_get_endpoint_by_reg(np, 0);
- *        of_node_put(np);
- *        if (!ep)
- *                return NULL;
- *
- *        np = of_graph_get_remote_port_parent(ep);
- *        of_node_put(ep);
- *
- *        return np;
- *}
- */
 
 static int tcc_dpi_parse_dt(struct tcc_dpi *ctx)
 {
@@ -226,6 +174,7 @@ static int tcc_dpi_parse_dt(struct tcc_dpi *ctx)
 			DRM_ERROR("%s vm alloc fail\n", __FILE__);
 			return -ENOMEM;
 		}
+
 		ret = of_get_videomode(dn, vm, 0);
 		if (ret < 0) {
 			DRM_ERROR("%s of_get_videomode\n", __FILE__);
@@ -247,26 +196,24 @@ int tcc_dpi_bind(struct drm_device *dev, struct drm_encoder *encoder)
 {
 	int ret;
 
+	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs,
+			 DRM_MODE_ENCODER_TMDS, NULL);
+
+	drm_encoder_helper_add(encoder, &tcc_dpi_encoder_helper_funcs);
+
 	/* TCC_DRM_THIRD is third panel for drm driver */
-	ret = tcc_drm_crtc_get_pipe_from_type(dev, TCC_DISPLAY_TYPE_THIRD);
+	ret = tcc_drm_set_possible_crtcs(encoder, TCC_DISPLAY_TYPE_THIRD);
 	if (ret < 0) {
 		/* TCC_DRM_EXT is second panel for drm driver */
-		ret = tcc_drm_crtc_get_pipe_from_type(dev, TCC_DISPLAY_TYPE_EXT);
+		ret = tcc_drm_set_possible_crtcs(encoder, TCC_DISPLAY_TYPE_EXT);
 		if (ret < 0) {
-			ret = tcc_drm_crtc_get_pipe_from_type(dev, TCC_DISPLAY_TYPE_LCD);
+			ret = tcc_drm_set_possible_crtcs(encoder, TCC_DISPLAY_TYPE_LCD);
 			if (ret < 0)
 				return ret;
 		}
 	}
 
-	encoder->possible_crtcs = 1 << ret;
-
 	DRM_DEBUG_KMS("possible_crtcs = 0x%x\n", encoder->possible_crtcs);
-
-	drm_encoder_init(dev, encoder, &tcc_dpi_encoder_funcs,
-			 DRM_MODE_ENCODER_TMDS);
-
-	drm_encoder_helper_add(encoder, &tcc_dpi_encoder_helper_funcs);
 
 	ret = tcc_dpi_create_connector(encoder);
 	if (ret) {

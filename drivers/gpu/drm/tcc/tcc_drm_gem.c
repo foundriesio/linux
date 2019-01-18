@@ -1,6 +1,7 @@
 /* tcc_drm_gem.c
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Author: Inki Dae <inki.dae@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -14,6 +15,7 @@
 
 #include <linux/shmem_fs.h>
 #include <linux/dma-buf.h>
+#include <linux/pfn_t.h>
 #include <drm/tcc_drm.h>
 
 #include "tcc_drm_drv.h"
@@ -22,7 +24,7 @@
 static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 {
 	struct drm_device *dev = tcc_gem->base.dev;
-	enum dma_attr attr;
+	unsigned long attr;
 	unsigned int nr_pages;
 	struct sg_table sgt;
 	int ret = -ENOMEM;
@@ -32,7 +34,7 @@ static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 		return 0;
 	}
 
-	init_dma_attrs(&tcc_gem->dma_attrs);
+	tcc_gem->dma_attrs = 0;
 
 	/*
 	 * if TCC_BO_CONTIG, fully physically contiguous memory
@@ -40,7 +42,7 @@ static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 	 * as possible.
 	 */
 	if (!(tcc_gem->flags & TCC_BO_NONCONTIG))
-		dma_set_attr(DMA_ATTR_FORCE_CONTIGUOUS, &tcc_gem->dma_attrs);
+		tcc_gem->dma_attrs |= DMA_ATTR_FORCE_CONTIGUOUS;
 
 	/*
 	 * if TCC_BO_WC or TCC_BO_NONCACHABLE, writecombine mapping
@@ -52,28 +54,29 @@ static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 	else
 		attr = DMA_ATTR_NON_CONSISTENT;
 
-	dma_set_attr(attr, &tcc_gem->dma_attrs);
-	dma_set_attr(DMA_ATTR_NO_KERNEL_MAPPING, &tcc_gem->dma_attrs);
+	tcc_gem->dma_attrs |= attr;
+	tcc_gem->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 
 	nr_pages = tcc_gem->size >> PAGE_SHIFT;
 
-	tcc_gem->pages = drm_calloc_large(nr_pages, sizeof(struct page *));
+	tcc_gem->pages = kvmalloc_array(nr_pages, sizeof(struct page *),
+			GFP_KERNEL | __GFP_ZERO);
 	if (!tcc_gem->pages) {
 		DRM_ERROR("failed to allocate pages.\n");
 		return -ENOMEM;
 	}
 
-	tcc_gem->cookie = dma_alloc_attrs(dev->dev, tcc_gem->size,
+	tcc_gem->cookie = dma_alloc_attrs(to_dma_dev(dev), tcc_gem->size,
 					     &tcc_gem->dma_addr, GFP_KERNEL,
-					     &tcc_gem->dma_attrs);
+					     tcc_gem->dma_attrs);
 	if (!tcc_gem->cookie) {
 		DRM_ERROR("failed to allocate buffer.\n");
 		goto err_free;
 	}
 
-	ret = dma_get_sgtable_attrs(dev->dev, &sgt, tcc_gem->cookie,
+	ret = dma_get_sgtable_attrs(to_dma_dev(dev), &sgt, tcc_gem->cookie,
 				    tcc_gem->dma_addr, tcc_gem->size,
-				    &tcc_gem->dma_attrs);
+				    tcc_gem->dma_attrs);
 	if (ret < 0) {
 		DRM_ERROR("failed to get sgtable.\n");
 		goto err_dma_free;
@@ -96,10 +99,10 @@ static int tcc_drm_alloc_buf(struct tcc_drm_gem *tcc_gem)
 err_sgt_free:
 	sg_free_table(&sgt);
 err_dma_free:
-	dma_free_attrs(dev->dev, tcc_gem->size, tcc_gem->cookie,
-		       tcc_gem->dma_addr, &tcc_gem->dma_attrs);
+	dma_free_attrs(to_dma_dev(dev), tcc_gem->size, tcc_gem->cookie,
+		       tcc_gem->dma_addr, tcc_gem->dma_attrs);
 err_free:
-	drm_free_large(tcc_gem->pages);
+	kvfree(tcc_gem->pages);
 
 	return ret;
 }
@@ -116,11 +119,11 @@ static void tcc_drm_free_buf(struct tcc_drm_gem *tcc_gem)
 	DRM_DEBUG_KMS("dma_addr(0x%lx), size(0x%lx)\n",
 			(unsigned long)tcc_gem->dma_addr, tcc_gem->size);
 
-	dma_free_attrs(dev->dev, tcc_gem->size, tcc_gem->cookie,
+	dma_free_attrs(to_dma_dev(dev), tcc_gem->size, tcc_gem->cookie,
 			(dma_addr_t)tcc_gem->dma_addr,
-			&tcc_gem->dma_attrs);
+			tcc_gem->dma_attrs);
 
-	drm_free_large(tcc_gem->pages);
+	kvfree(tcc_gem->pages);
 }
 
 static int tcc_drm_gem_handle_create(struct drm_gem_object *obj,
@@ -175,7 +178,7 @@ unsigned long tcc_drm_gem_get_size(struct drm_device *dev,
 	struct tcc_drm_gem *tcc_gem;
 	struct drm_gem_object *obj;
 
-	obj = drm_gem_object_lookup(dev, file_priv, gem_handle);
+	obj = drm_gem_object_lookup(file_priv, gem_handle);
 	if (!obj) {
 		DRM_ERROR("failed to lookup gem object.\n");
 		return 0;
@@ -216,7 +219,7 @@ static struct tcc_drm_gem *tcc_drm_gem_init(struct drm_device *dev,
 		return ERR_PTR(ret);
 	}
 
-	DRM_DEBUG_KMS("created file object = 0x%x\n", (unsigned int)obj->filp);
+	DRM_DEBUG_KMS("created file object = %pK\n", obj->filp);
 
 	return tcc_gem;
 }
@@ -229,12 +232,12 @@ struct tcc_drm_gem *tcc_drm_gem_create(struct drm_device *dev,
 	int ret;
 
 	if (flags & ~(TCC_BO_MASK)) {
-		DRM_ERROR("invalid flags.\n");
+		DRM_ERROR("invalid GEM buffer flags: %u\n", flags);
 		return ERR_PTR(-EINVAL);
 	}
 
 	if (!size) {
-		DRM_ERROR("invalid size.\n");
+		DRM_ERROR("invalid GEM buffer size: %lu\n", size);
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -243,6 +246,15 @@ struct tcc_drm_gem *tcc_drm_gem_create(struct drm_device *dev,
 	tcc_gem = tcc_drm_gem_init(dev, size);
 	if (IS_ERR(tcc_gem))
 		return tcc_gem;
+
+	if (flags & TCC_BO_NONCONTIG) {
+		/*
+		 * when no IOMMU is available, all allocated buffers are
+		 * contiguous anyway, so drop TCC_BO_NONCONTIG flag
+		 */
+		flags &= ~TCC_BO_NONCONTIG;
+		DRM_WARN("Non-contiguous allocation is not supported without IOMMU, falling back to contiguous buffer\n");
+	}
 
 	/* set memory type and cache attribute from user side. */
 	tcc_gem->flags = flags;
@@ -283,8 +295,8 @@ int tcc_drm_gem_map_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_tcc_gem_map *args = data;
 
-	return tcc_drm_gem_dumb_map_offset(file_priv, dev, args->handle,
-					      &args->offset);
+	return drm_gem_dumb_map_offset(file_priv, dev, args->handle,
+				       &args->offset);
 }
 
 dma_addr_t *tcc_drm_gem_get_dma_addr(struct drm_device *dev,
@@ -294,7 +306,7 @@ dma_addr_t *tcc_drm_gem_get_dma_addr(struct drm_device *dev,
 	struct tcc_drm_gem *tcc_gem;
 	struct drm_gem_object *obj;
 
-	obj = drm_gem_object_lookup(dev, filp, gem_handle);
+	obj = drm_gem_object_lookup(filp, gem_handle);
 	if (!obj) {
 		DRM_ERROR("failed to lookup gem object.\n");
 		return ERR_PTR(-EINVAL);
@@ -311,7 +323,7 @@ void tcc_drm_gem_put_dma_addr(struct drm_device *dev,
 {
 	struct drm_gem_object *obj;
 
-	obj = drm_gem_object_lookup(dev, filp, gem_handle);
+	obj = drm_gem_object_lookup(filp, gem_handle);
 	if (!obj) {
 		DRM_ERROR("failed to lookup gem object.\n");
 		return;
@@ -342,9 +354,9 @@ static int tcc_drm_gem_mmap_buffer(struct tcc_drm_gem *tcc_gem,
 	if (vm_size > tcc_gem->size)
 		return -EINVAL;
 
-	ret = dma_mmap_attrs(drm_dev->dev, vma, tcc_gem->pages,
+	ret = dma_mmap_attrs(to_dma_dev(drm_dev), vma, tcc_gem->cookie,
 			     tcc_gem->dma_addr, tcc_gem->size,
-			     &tcc_gem->dma_attrs);
+			     tcc_gem->dma_attrs);
 	if (ret < 0) {
 		DRM_ERROR("failed to mmap.\n");
 		return ret;
@@ -360,12 +372,9 @@ int tcc_drm_gem_get_ioctl(struct drm_device *dev, void *data,
 	struct drm_tcc_gem_info *args = data;
 	struct drm_gem_object *obj;
 
-	mutex_lock(&dev->struct_mutex);
-
-	obj = drm_gem_object_lookup(dev, file_priv, args->handle);
+	obj = drm_gem_object_lookup(file_priv, args->handle);
 	if (!obj) {
 		DRM_ERROR("failed to lookup gem object.\n");
-		mutex_unlock(&dev->struct_mutex);
 		return -EINVAL;
 	}
 
@@ -374,36 +383,9 @@ int tcc_drm_gem_get_ioctl(struct drm_device *dev, void *data,
 	args->flags = tcc_gem->flags;
 	args->size = tcc_gem->size;
 
-	drm_gem_object_unreference(obj);
-	mutex_unlock(&dev->struct_mutex);
+	drm_gem_object_unreference_unlocked(obj);
 
 	return 0;
-}
-
-int tcc_gem_map_sgt_with_dma(struct drm_device *drm_dev,
-				struct sg_table *sgt,
-				enum dma_data_direction dir)
-{
-	int nents;
-
-	mutex_lock(&drm_dev->struct_mutex);
-
-	nents = dma_map_sg(drm_dev->dev, sgt->sgl, sgt->nents, dir);
-	if (!nents) {
-		DRM_ERROR("failed to map sgl with dma.\n");
-		mutex_unlock(&drm_dev->struct_mutex);
-		return nents;
-	}
-
-	mutex_unlock(&drm_dev->struct_mutex);
-	return 0;
-}
-
-void tcc_gem_unmap_sgt_from_dma(struct drm_device *drm_dev,
-				struct sg_table *sgt,
-				enum dma_data_direction dir)
-{
-	dma_unmap_sg(drm_dev->dev, sgt->sgl, sgt->nents, dir);
 }
 
 void tcc_drm_gem_free_object(struct drm_gem_object *obj)
@@ -450,47 +432,16 @@ int tcc_drm_gem_dumb_create(struct drm_file *file_priv,
 	return 0;
 }
 
-int tcc_drm_gem_dumb_map_offset(struct drm_file *file_priv,
-				   struct drm_device *dev, uint32_t handle,
-				   uint64_t *offset)
+int tcc_drm_gem_fault(struct vm_fault *vmf)
 {
-	struct drm_gem_object *obj;
-	int ret = 0;
-
-	mutex_lock(&dev->struct_mutex);
-
-	/*
-	 * get offset of memory allocated for drm framebuffer.
-	 * - this callback would be called by user application
-	 *	with DRM_IOCTL_MODE_MAP_DUMB command.
-	 */
-
-	obj = drm_gem_object_lookup(dev, file_priv, handle);
-	if (!obj) {
-		DRM_ERROR("failed to lookup gem object.\n");
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	*offset = drm_vma_node_offset_addr(&obj->vma_node);
-	DRM_DEBUG_KMS("offset = 0x%lx\n", (unsigned long)*offset);
-
-	drm_gem_object_unreference(obj);
-unlock:
-	mutex_unlock(&dev->struct_mutex);
-	return ret;
-}
-
-int tcc_drm_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
-{
+	struct vm_area_struct *vma = vmf->vma;
 	struct drm_gem_object *obj = vma->vm_private_data;
 	struct tcc_drm_gem *tcc_gem = to_tcc_gem(obj);
 	unsigned long pfn;
 	pgoff_t page_offset;
 	int ret;
 
-	page_offset = ((unsigned long)vmf->virtual_address -
-			vma->vm_start) >> PAGE_SHIFT;
+	page_offset = (vmf->address - vma->vm_start) >> PAGE_SHIFT;
 
 	if (page_offset >= (tcc_gem->size >> PAGE_SHIFT)) {
 		DRM_ERROR("invalid page offset\n");
@@ -499,7 +450,7 @@ int tcc_drm_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	}
 
 	pfn = page_to_pfn(tcc_gem->pages[page_offset]);
-	ret = vm_insert_mixed(vma, (unsigned long)vmf->virtual_address, pfn);
+	ret = vm_insert_mixed(vma, vmf->address, __pfn_to_pfn_t(pfn, PFN_DEV));
 
 out:
 	switch (ret) {
@@ -514,21 +465,11 @@ out:
 	}
 }
 
-int tcc_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
+static int tcc_drm_gem_mmap_obj(struct drm_gem_object *obj,
+				   struct vm_area_struct *vma)
 {
-	struct tcc_drm_gem *tcc_gem;
-	struct drm_gem_object *obj;
+	struct tcc_drm_gem *tcc_gem = to_tcc_gem(obj);
 	int ret;
-
-	/* set vm_area_struct. */
-	ret = drm_gem_mmap(filp, vma);
-	if (ret < 0) {
-		DRM_ERROR("failed to mmap.\n");
-		return ret;
-	}
-
-	obj = vma->vm_private_data;
-	tcc_gem = to_tcc_gem(obj);
 
 	DRM_DEBUG_KMS("flags = 0x%x\n", tcc_gem->flags);
 
@@ -552,6 +493,26 @@ err_close_vm:
 	drm_gem_vm_close(vma);
 
 	return ret;
+}
+
+int tcc_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	struct drm_gem_object *obj;
+	int ret;
+
+	/* set vm_area_struct. */
+	ret = drm_gem_mmap(filp, vma);
+	if (ret < 0) {
+		DRM_ERROR("failed to mmap.\n");
+		return ret;
+	}
+
+	obj = vma->vm_private_data;
+
+	if (obj->import_attach)
+		return dma_buf_mmap(obj->dma_buf, vma, 0);
+
+	return tcc_drm_gem_mmap_obj(obj, vma);
 }
 
 /* low-level interface prime helpers */
@@ -583,7 +544,7 @@ tcc_drm_gem_prime_import_sg_table(struct drm_device *dev,
 	tcc_gem->dma_addr = sg_dma_address(sgt->sgl);
 
 	npages = tcc_gem->size >> PAGE_SHIFT;
-	tcc_gem->pages = drm_malloc_ab(npages, sizeof(struct page *));
+	tcc_gem->pages = kvmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
 	if (!tcc_gem->pages) {
 		ret = -ENOMEM;
 		goto err;
@@ -612,7 +573,7 @@ tcc_drm_gem_prime_import_sg_table(struct drm_device *dev,
 	return &tcc_gem->base;
 
 err_free_large:
-	drm_free_large(tcc_gem->pages);
+	kvfree(tcc_gem->pages);
 err:
 	drm_gem_object_release(&tcc_gem->base);
 	kfree(tcc_gem);
@@ -633,12 +594,10 @@ int tcc_drm_gem_prime_mmap(struct drm_gem_object *obj,
 			      struct vm_area_struct *vma)
 {
 	int ret;
-	struct tcc_drm_gem *tcc_gem;
 
 	ret = drm_gem_mmap_obj(obj, obj->size, vma);
 	if (ret < 0)
 		return ret;
 
-	tcc_gem = to_tcc_gem(obj);
-	return tcc_drm_gem_mmap_buffer(tcc_gem, vma);
+	return tcc_drm_gem_mmap_obj(obj, vma);
 }

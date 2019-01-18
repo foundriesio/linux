@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -18,12 +19,11 @@
 
 struct drm_framebuffer *
 tcc_drm_framebuffer_init(struct drm_device *dev,
-			    struct drm_mode_fb_cmd2 *mode_cmd,
+			    const struct drm_mode_fb_cmd2 *mode_cmd,
 			    struct tcc_drm_gem **tcc_gem,
 			    int count);
 
-/* get gem object of a drm framebuffer */
-struct tcc_drm_gem *tcc_drm_fb_gem(struct drm_framebuffer *fb, int index);
+dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index);
 
 void tcc_drm_mode_config_init(struct drm_device *dev);
 

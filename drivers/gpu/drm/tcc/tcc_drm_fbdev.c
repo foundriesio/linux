@@ -1,6 +1,7 @@
 /* tcc_drm_fbdev.c
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -17,6 +18,8 @@
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/tcc_drm.h>
+
+#include <linux/console.h>
 
 #include "tcc_drm_drv.h"
 #include "tcc_drm_fb.h"
@@ -49,9 +52,9 @@ static int tcc_drm_fb_mmap(struct fb_info *info,
 	if (vm_size > tcc_gem->size)
 		return -EINVAL;
 
-	ret = dma_mmap_attrs(helper->dev->dev, vma, tcc_gem->pages,
+	ret = dma_mmap_attrs(to_dma_dev(helper->dev), vma, tcc_gem->cookie,
 			     tcc_gem->dma_addr, tcc_gem->size,
-			     &tcc_gem->dma_attrs);
+			     tcc_gem->dma_attrs);
 	if (ret < 0) {
 		DRM_ERROR("failed to mmap.\n");
 		return ret;
@@ -62,15 +65,11 @@ static int tcc_drm_fb_mmap(struct fb_info *info,
 
 static struct fb_ops tcc_drm_fb_ops = {
 	.owner		= THIS_MODULE,
+	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_mmap        = tcc_drm_fb_mmap,
 	.fb_fillrect	= drm_fb_helper_cfb_fillrect,
 	.fb_copyarea	= drm_fb_helper_cfb_copyarea,
 	.fb_imageblit	= drm_fb_helper_cfb_imageblit,
-	.fb_check_var	= drm_fb_helper_check_var,
-	.fb_set_par	= drm_fb_helper_set_par,
-	.fb_blank	= drm_fb_helper_blank,
-	.fb_pan_display	= drm_fb_helper_pan_display,
-	.fb_setcmap	= drm_fb_helper_setcmap,
 };
 
 static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
@@ -79,7 +78,7 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 {
 	struct fb_info *fbi;
 	struct drm_framebuffer *fb = helper->fb;
-	unsigned int size = fb->width * fb->height * (fb->bits_per_pixel >> 3);
+	unsigned int size = fb->width * fb->height * fb->format->cpp[0];
 	unsigned int nr_pages;
 	unsigned long offset;
 
@@ -93,7 +92,7 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 	fbi->flags = FBINFO_FLAG_DEFAULT;
 	fbi->fbops = &tcc_drm_fb_ops;
 
-	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->depth);
+	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->format->depth);
 	drm_fb_helper_fill_var(fbi, helper, sizes->fb_width, sizes->fb_height);
 
 	nr_pages = tcc_gem->size >> PAGE_SHIFT;
@@ -102,11 +101,10 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 				VM_MAP, pgprot_writecombine(PAGE_KERNEL));
 	if (!tcc_gem->kvaddr) {
 		DRM_ERROR("failed to map pages to kernel space.\n");
-		drm_fb_helper_release_fbi(helper);
 		return -EIO;
 	}
 
-	offset = fbi->var.xoffset * (fb->bits_per_pixel >> 3);
+	offset = fbi->var.xoffset * fb->format->cpp[0];
 	offset += fbi->var.yoffset * fb->pitches[0];
 
 	fbi->screen_base = tcc_gem->kvaddr + offset;
@@ -136,16 +134,12 @@ static int tcc_drm_fbdev_create(struct drm_fb_helper *helper,
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
 
-	mutex_lock(&dev->struct_mutex);
-
 	size = mode_cmd.pitches[0] * mode_cmd.height;
 
 	tcc_gem = tcc_drm_gem_create(dev, TCC_BO_CONTIG, size);
 
-	if (IS_ERR(tcc_gem)) {
-		ret = PTR_ERR(tcc_gem);
-		goto out;
-	}
+	if (IS_ERR(tcc_gem))
+		return PTR_ERR(tcc_gem);
 
 	tcc_fbdev->tcc_gem = tcc_gem;
 
@@ -161,7 +155,6 @@ static int tcc_drm_fbdev_create(struct drm_fb_helper *helper,
 	if (ret < 0)
 		goto err_destroy_framebuffer;
 
-	mutex_unlock(&dev->struct_mutex);
 	return ret;
 
 err_destroy_framebuffer:
@@ -169,13 +162,12 @@ err_destroy_framebuffer:
 err_destroy_gem:
 	tcc_drm_gem_destroy(tcc_gem);
 
-/*
- * if failed, all resources allocated above would be released by
- * drm_mode_config_cleanup() when drm_load() had been called prior
- * to any specific driver such as lcd or hdmi driver.
- */
-out:
-	mutex_unlock(&dev->struct_mutex);
+	/*
+	 * if failed, all resources allocated above would be released by
+	 * drm_mode_config_cleanup() when drm_load() had been called prior
+	 * to any specific driver such as lcd or hdmi driver.
+	 */
+
 	return ret;
 }
 
@@ -183,36 +175,14 @@ static const struct drm_fb_helper_funcs tcc_drm_fb_helper_funcs = {
 	.fb_probe =	tcc_drm_fbdev_create,
 };
 
-static bool tcc_drm_fbdev_is_anything_connected(struct drm_device *dev)
-{
-	struct drm_connector *connector;
-	bool ret = false;
-
-	mutex_lock(&dev->mode_config.mutex);
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		if (connector->status != connector_status_connected)
-			continue;
-
-		ret = true;
-		break;
-	}
-	mutex_unlock(&dev->mode_config.mutex);
-
-	return ret;
-}
-
 int tcc_drm_fbdev_init(struct drm_device *dev)
 {
 	struct tcc_drm_fbdev *fbdev;
 	struct tcc_drm_private *private = dev->dev_private;
 	struct drm_fb_helper *helper;
-	unsigned int num_crtc;
 	int ret;
 
 	if (!dev->mode_config.num_crtc || !dev->mode_config.num_connector)
-		return 0;
-
-	if (!tcc_drm_fbdev_is_anything_connected(dev))
 		return 0;
 
 	fbdev = kzalloc(sizeof(*fbdev), GFP_KERNEL);
@@ -223,9 +193,7 @@ int tcc_drm_fbdev_init(struct drm_device *dev)
 
 	drm_fb_helper_prepare(dev, helper, &tcc_drm_fb_helper_funcs);
 
-	num_crtc = dev->mode_config.num_crtc;
-
-	ret = drm_fb_helper_init(dev, helper, num_crtc, MAX_CONNECTOR);
+	ret = drm_fb_helper_init(dev, helper, MAX_CONNECTOR);
 	if (ret < 0) {
 		DRM_ERROR("failed to initialize drm fb helper.\n");
 		goto err_init;
@@ -263,20 +231,16 @@ static void tcc_drm_fbdev_destroy(struct drm_device *dev,
 	struct tcc_drm_gem *tcc_gem = tcc_fbd->tcc_gem;
 	struct drm_framebuffer *fb;
 
-	if (tcc_gem->kvaddr)
-		vunmap(tcc_gem->kvaddr);
+	vunmap(tcc_gem->kvaddr);
 
 	/* release drm framebuffer and real buffer */
 	if (fb_helper->fb && fb_helper->fb->funcs) {
 		fb = fb_helper->fb;
-		if (fb) {
-			drm_framebuffer_unregister_private(fb);
+		if (fb)
 			drm_framebuffer_remove(fb);
-		}
 	}
 
 	drm_fb_helper_unregister_fbi(fb_helper);
-	drm_fb_helper_release_fbi(fb_helper);
 
 	drm_fb_helper_fini(fb_helper);
 }
@@ -304,4 +268,30 @@ void tcc_drm_fbdev_restore_mode(struct drm_device *dev)
 		return;
 
 	drm_fb_helper_restore_fbdev_mode_unlocked(private->fb_helper);
+}
+
+void tcc_drm_output_poll_changed(struct drm_device *dev)
+{
+	struct tcc_drm_private *private = dev->dev_private;
+	struct drm_fb_helper *fb_helper = private->fb_helper;
+
+	drm_fb_helper_hotplug_event(fb_helper);
+}
+
+void tcc_drm_fbdev_suspend(struct drm_device *dev)
+{
+	struct tcc_drm_private *private = dev->dev_private;
+
+	console_lock();
+	drm_fb_helper_set_suspend(private->fb_helper, 1);
+	console_unlock();
+}
+
+void tcc_drm_fbdev_resume(struct drm_device *dev)
+{
+	struct tcc_drm_private *private = dev->dev_private;
+
+	console_lock();
+	drm_fb_helper_set_suspend(private->fb_helper, 0);
+	console_unlock();
 }

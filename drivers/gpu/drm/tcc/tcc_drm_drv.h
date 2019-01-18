@@ -1,6 +1,7 @@
 /* tcc_drm_drv.h
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -32,36 +33,55 @@ enum tcc_drm_output_type {
 	TCC_DISPLAY_TYPE_NONE,
 	/* RGB or CPU Interface. */
 	TCC_DISPLAY_TYPE_LCD,
+	/* Second display Interface. */
+	TCC_DISPLAY_TYPE_EXT,
+	/* Third display Interface. */
+	TCC_DISPLAY_TYPE_THIRD,
 	/* HDMI Interface. */
 	TCC_DISPLAY_TYPE_HDMI,
 	/* Virtual Display Interface. */
 	TCC_DISPLAY_TYPE_VIDI,
-	/* Extended display Interface. */
-	TCC_DISPLAY_TYPE_EXT,
-	/* Extended third display Interface. */
-	TCC_DISPLAY_TYPE_THIRD,
+};
+
+struct tcc_drm_rect {
+	unsigned int x, y;
+	unsigned int w, h;
 };
 
 /*
- * Tcc drm common overlay structure.
+ * TCC drm plane state structure.
  *
- * @base: plane object
- * @src_x: offset x on a framebuffer to be displayed.
- *	- the unit is screen coordinates.
- * @src_y: offset y on a framebuffer to be displayed.
- *	- the unit is screen coordinates.
- * @src_w: width of a partial image to be displayed from framebuffer.
- * @src_h: height of a partial image to be displayed from framebuffer.
- * @crtc_x: offset x on hardware screen.
- * @crtc_y: offset y on hardware screen.
- * @crtc_w: window width to be displayed (hardware screen).
- * @crtc_h: window height to be displayed (hardware screen).
+ * @base: plane_state object (contains drm_framebuffer pointer)
+ * @src: rectangle of the source image data to be displayed (clipped to
+ *       visible part).
+ * @crtc: rectangle of the target image position on hardware screen
+ *       (clipped to visible part).
  * @h_ratio: horizontal scaling ratio, 16.16 fixed point
  * @v_ratio: vertical scaling ratio, 16.16 fixed point
- * @dma_addr: array of bus(accessed by dma) address to the memory region
- *	      allocated for a overlay.
- * @virt_addr: address of telechips rdma node register
- * @zpos: order of overlay layer(z position).
+ *
+ * this structure consists plane state data that will be applied to hardware
+ * specific overlay info.
+ */
+
+struct tcc_drm_plane_state {
+	struct drm_plane_state base;
+	struct tcc_drm_rect crtc;
+	struct tcc_drm_rect src;
+	unsigned int h_ratio;
+	unsigned int v_ratio;
+};
+
+static inline struct tcc_drm_plane_state *
+to_tcc_plane_state(struct drm_plane_state *state)
+{
+	return container_of(state, struct tcc_drm_plane_state, base);
+}
+
+/*
+ * TCC drm common overlay structure.
+ *
+ * @base: plane object
+ * @index: hardware index of the overlay layer
  *
  * this structure is common to tcc SoC and its contents would be copied
  * to hardware specific overlay info.
@@ -69,127 +89,121 @@ enum tcc_drm_output_type {
 
 struct tcc_drm_plane {
 	struct drm_plane base;
-	unsigned int src_x;
-	unsigned int src_y;
-	unsigned int src_w;
-	unsigned int src_h;
-	unsigned int crtc_x;
-	unsigned int crtc_y;
-	unsigned int crtc_w;
-	unsigned int crtc_h;
-	unsigned int h_ratio;
-	unsigned int v_ratio;
-	dma_addr_t dma_addr[MAX_FB_BUFFER];
-	void __iomem *virt_addr;
+	const struct tcc_drm_plane_config *config;
+	unsigned int index;
+};
+
+#define TCC_DRM_PLANE_CAP_DOUBLE	(1 << 0)
+#define TCC_DRM_PLANE_CAP_SCALE	(1 << 1)
+#define TCC_DRM_PLANE_CAP_ZPOS	(1 << 2)
+#define TCC_DRM_PLANE_CAP_TILE	(1 << 3)
+
+/*
+ * TCC DRM plane configuration structure.
+ *
+ * @zpos: initial z-position of the plane.
+ * @type: type of the plane (primary, cursor or overlay).
+ * @pixel_formats: supported pixel formats.
+ * @num_pixel_formats: number of elements in 'pixel_formats'.
+ * @capabilities: supported features (see TCC_DRM_PLANE_CAP_*)
+ * @virt_addr: address of telechips rdma node register
+ */
+
+struct tcc_drm_plane_config {
 	unsigned int zpos;
-	struct drm_framebuffer *pending_fb;
+	enum drm_plane_type type;
+	const uint32_t *pixel_formats;
+	unsigned int num_pixel_formats;
+	unsigned int capabilities;
+	void __iomem *virt_addr;
 };
 
 /*
- * Tcc drm crtc ops
+ * TCC drm crtc ops
  *
  * @enable: enable the device
  * @disable: disable the device
- * @commit: set current hw specific display mode to hw.
  * @enable_vblank: specific driver callback for enabling vblank interrupt.
  * @disable_vblank: specific driver callback for disabling vblank interrupt.
- * @wait_for_vblank: wait for vblank interrupt to make sure that
- *	hardware overlay is updated.
+ * @mode_valid: specific driver callback for mode validation
  * @atomic_check: validate state
- * @atomic_begin: prepare a window to receive a update
- * @atomic_flush: mark the end of a window update
+ * @atomic_begin: prepare device to receive an update
+ * @atomic_flush: mark the end of device update
  * @update_plane: apply hardware specific overlay data to registers.
  * @disable_plane: disable hardware specific overlay.
  * @te_handler: trigger to transfer video image at the tearing effect
  *	synchronization signal if there is a page flip request.
- * @clock_enable: optional function enabling/disabling display domain clock,
- *	called from tcc-dp driver before powering up (with
- *	'enable' argument as true) and after powering down (with
- *	'enable' as false).
  */
 struct tcc_drm_crtc;
 struct tcc_drm_crtc_ops {
 	void (*enable)(struct tcc_drm_crtc *crtc);
 	void (*disable)(struct tcc_drm_crtc *crtc);
-	void (*commit)(struct tcc_drm_crtc *crtc);
 	int (*enable_vblank)(struct tcc_drm_crtc *crtc);
 	void (*disable_vblank)(struct tcc_drm_crtc *crtc);
-	void (*wait_for_vblank)(struct tcc_drm_crtc *crtc);
+	u32 (*get_vblank_counter)(struct tcc_drm_crtc *crtc);
+	enum drm_mode_status (*mode_valid)(struct tcc_drm_crtc *crtc,
+		const struct drm_display_mode *mode);
 	int (*atomic_check)(struct tcc_drm_crtc *crtc,
 			    struct drm_crtc_state *state);
-	void (*atomic_begin)(struct tcc_drm_crtc *crtc,
-			      struct tcc_drm_plane *plane);
+	void (*atomic_begin)(struct tcc_drm_crtc *crtc);
 	void (*update_plane)(struct tcc_drm_crtc *crtc,
 			     struct tcc_drm_plane *plane);
 	void (*disable_plane)(struct tcc_drm_crtc *crtc,
 			      struct tcc_drm_plane *plane);
-	void (*atomic_flush)(struct tcc_drm_crtc *crtc,
-			      struct tcc_drm_plane *plane);
+	void (*atomic_flush)(struct tcc_drm_crtc *crtc);
 	void (*te_handler)(struct tcc_drm_crtc *crtc);
-	void (*clock_enable)(struct tcc_drm_crtc *crtc, bool enable);
+};
+
+struct tcc_drm_clk {
+	void (*enable)(struct tcc_drm_clk *clk, bool enable);
 };
 
 /*
- * Tcc specific crtc structure.
+ * TCC specific crtc structure.
  *
  * @base: crtc object.
  * @type: one of TCC_DISPLAY_TYPE_LCD and HDMI.
- * @pipe: a crtc index created at load() with a new crtc object creation
- *	and the crtc object would be set to private->crtc array
- *	to get a crtc object corresponding to this pipe from private->crtc
- *	array when irq interrupt occurred. the reason of using this pipe is that
- *	drm framework doesn't support multiple irq yet.
- *	we can refer to the crtc to current hardware interrupt occurred through
- *	this pipe value.
- * @enabled: if the crtc is enabled or not
- * @event: vblank event that is currently queued for flip
- * @wait_update: wait all pending planes updates to finish
- * @pending_update: number of pending plane updates in this crtc
  * @ops: pointer to callbacks for tcc drm specific functionality
  * @ctx: A pointer to the crtc's implementation specific context
+ * @pipe_clk: A pointer to the crtc's pipeline clock.
  */
 struct tcc_drm_crtc {
 	struct drm_crtc			base;
 	enum tcc_drm_output_type	type;
-	unsigned int			pipe;
-	struct drm_pending_vblank_event	*event;
-	wait_queue_head_t		wait_update;
-	atomic_t			pending_update;
 	const struct tcc_drm_crtc_ops	*ops;
 	void				*ctx;
+	struct tcc_drm_clk		*pipe_clk;
 };
+
+static inline void tcc_drm_pipe_clk_enable(struct tcc_drm_crtc *crtc,
+					      bool enable)
+{
+	if (crtc->pipe_clk)
+		crtc->pipe_clk->enable(crtc->pipe_clk, enable);
+}
 
 struct drm_tcc_file_private {
 	struct device			*ipp_dev;
 };
 
 /*
- * Tcc drm private structure.
+ * TCC drm private structure.
  *
  * @da_start: start address to device address space.
  *	with iommu, device address space starts from this address
  *	otherwise default one.
  * @da_space_size: size of device address space.
  *	if 0 then default value is used for it.
- * @pipe: the pipe number for this crtc/manager.
  * @pending: the crtcs that have pending updates to finish
  * @lock: protect access to @pending
  * @wait: wait an atomic commit to finish
  */
 struct tcc_drm_private {
 	struct drm_fb_helper *fb_helper;
+	struct drm_atomic_state *suspend_state;
 
-	/*
-	 * created crtc object would be contained at this array and
-	 * this array is used to be aware of which crtc did it request vblank.
-	 */
-	struct drm_crtc *crtc[MAX_CRTC];
-	struct drm_property *plane_zpos_property;
-
-	unsigned long da_start;
-	unsigned long da_space_size;
-
-	unsigned int pipe;
+	struct device *dma_dev;
+	void *mapping;
 
 	/* for atomic commit */
 	u32			pending;
@@ -197,8 +211,15 @@ struct tcc_drm_private {
 	wait_queue_head_t	wait;
 };
 
+static inline struct device *to_dma_dev(struct drm_device *dev)
+{
+	struct tcc_drm_private *priv = dev->dev_private;
+
+	return priv->dma_dev;
+}
+
 /*
- * Tcc drm sub driver structure.
+ * TCC drm sub driver structure.
  *
  * @list: sub driver has its own list object to register to tcc drm driver.
  * @dev: pointer to device object for subdrv device driver.
@@ -254,7 +275,8 @@ static inline int tcc_dpi_bind(struct drm_device *dev,
 #endif
 
 int tcc_atomic_commit(struct drm_device *dev, struct drm_atomic_state *state,
-			 bool async);
+			 bool nonblock);
+int tcc_atomic_check(struct drm_device *dev, struct drm_atomic_state *state);
 
 
 extern struct platform_driver lcd_driver;

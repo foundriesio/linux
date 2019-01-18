@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -18,24 +19,23 @@
 #include <drm/drm_crtc_helper.h>
 
 #include <linux/component.h>
-#include <linux/of_device.h>
 
 #include <drm/tcc_drm.h>
 
 #include "tcc_drm_drv.h"
-#include "tcc_drm_crtc.h"
 #include "tcc_drm_fbdev.h"
 #include "tcc_drm_fb.h"
 #include "tcc_drm_gem.h"
 #include "tcc_drm_plane.h"
 #include "tcc_drm_vidi.h"
-#include "tcc_drm_ipp.h"
 
 #define DRIVER_NAME	"tcc-drm"
 #define DRIVER_DESC	"Telechips SoC DRM"
 #define DRIVER_DATE	"20160107"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	0
+
+static struct device *tcc_drm_get_dma_device(void);
 
 #ifdef CONFIG_DRM_UT_CORE
 unsigned int drm_ut_core = DRM_UT_CORE;
@@ -68,296 +68,25 @@ void tcc_drm_debug_set(void)
 		;
 }
 
-struct tcc_atomic_commit {
-	struct work_struct	work;
-	struct drm_device	*dev;
-	struct drm_atomic_state *state;
-	u32			crtcs;
-};
-
-static void tcc_atomic_wait_for_commit(struct drm_atomic_state *state)
+int tcc_atomic_check(struct drm_device *dev,
+			struct drm_atomic_state *state)
 {
-	struct drm_crtc_state *crtc_state;
-	struct drm_crtc *crtc;
-	int i, ret;
+	int ret;
 
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
-		struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
-
-		if (!crtc->state->enable)
-			continue;
-
-		ret = drm_crtc_vblank_get(crtc);
-		if (ret)
-			continue;
-
-		tcc_drm_crtc_wait_pending_update(tcc_crtc);
-		drm_crtc_vblank_put(crtc);
-	}
-}
-
-static void tcc_atomic_commit_complete(struct tcc_atomic_commit *commit)
-{
-	struct drm_device *dev = commit->dev;
-	struct tcc_drm_private *priv = dev->dev_private;
-	struct drm_atomic_state *state = commit->state;
-	struct drm_plane *plane;
-	struct drm_crtc *crtc;
-	struct drm_plane_state *plane_state;
-	struct drm_crtc_state *crtc_state;
-	int i;
-
-	drm_atomic_helper_commit_modeset_disables(dev, state);
-
-	drm_atomic_helper_commit_modeset_enables(dev, state);
-
-	/*
-	 * Tcc can't update planes with CRTCs and encoders disabled,
-	 * its updates routines, specially for LCD, requires the clocks
-	 * to be enabled. So it is necessary to handle the modeset operations
-	 * *before* the commit_planes() step, this way it will always
-	 * have the relevant clocks enabled to perform the update.
-	 */
-
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
-		struct tcc_drm_crtc *tcc_crtc = to_tcc_crtc(crtc);
-
-		atomic_set(&tcc_crtc->pending_update, 0);
-	}
-
-	for_each_plane_in_state(state, plane, plane_state, i) {
-		struct tcc_drm_crtc *tcc_crtc =
-						to_tcc_crtc(plane->crtc);
-
-		if (!plane->crtc)
-			continue;
-
-		atomic_inc(&tcc_crtc->pending_update);
-	}
-
-	drm_atomic_helper_commit_planes(dev, state, false);
-
-	tcc_atomic_wait_for_commit(state);
-
-	drm_atomic_helper_cleanup_planes(dev, state);
-
-	drm_atomic_state_free(state);
-
-	spin_lock(&priv->lock);
-	priv->pending &= ~commit->crtcs;
-	spin_unlock(&priv->lock);
-
-	wake_up_all(&priv->wait);
-
-	kfree(commit);
-}
-
-static void tcc_drm_atomic_work(struct work_struct *work)
-{
-	struct tcc_atomic_commit *commit = container_of(work,
-				struct tcc_atomic_commit, work);
-
-	tcc_atomic_commit_complete(commit);
-}
-
-static int tcc_drm_load(struct drm_device *dev, unsigned long flags)
-{
-	struct tcc_drm_private *private;
-	struct drm_encoder *encoder;
-	unsigned int clone_mask;
-	int cnt, ret;
-
-	private = kzalloc(sizeof(struct tcc_drm_private), GFP_KERNEL);
-	if (!private)
-		return -ENOMEM;
-
-	init_waitqueue_head(&private->wait);
-	spin_lock_init(&private->lock);
-
-	dev_set_drvdata(dev->dev, dev);
-	dev->dev_private = (void *)private;
-
-	drm_mode_config_init(dev);
-
-	tcc_drm_mode_config_init(dev);
-
-	/* setup possible_clones. */
-	cnt = 0;
-	clone_mask = 0;
-	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head)
-		clone_mask |= (1 << (cnt++));
-
-	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head)
-		encoder->possible_clones = clone_mask;
-
-	platform_set_drvdata(dev->platformdev, dev);
-
-	/* Try to bind all sub drivers. */
-	ret = component_bind_all(dev->dev, dev);
+	ret = drm_atomic_helper_check_modeset(dev, state);
 	if (ret)
-		goto err_mode_config_cleanup;
+		return ret;
 
-	ret = drm_vblank_init(dev, dev->mode_config.num_crtc);
+	ret = drm_atomic_normalize_zpos(dev, state);
 	if (ret)
-		goto err_unbind_all;
+		return ret;
 
-	/* Probe non kms sub drivers and virtual display driver. */
-	ret = tcc_drm_device_subdrv_probe(dev);
+	ret = drm_atomic_helper_check_planes(dev, state);
 	if (ret)
-		goto err_cleanup_vblank;
-
-	drm_mode_config_reset(dev);
-
-	/*
-	 * enable drm irq mode.
-	 * - with irq_enabled = true, we can use the vblank feature.
-	 *
-	 * P.S. note that we wouldn't use drm irq handler but
-	 *	just specific driver own one instead because
-	 *	drm framework supports only one irq handler.
-	 */
-	dev->irq_enabled = true;
-
-	/*
-	 * with vblank_disable_allowed = true, vblank interrupt will be disabled
-	 * by drm timer once a current process gives up ownership of
-	 * vblank event.(after drm_vblank_put function is called)
-	 */
-	dev->vblank_disable_allowed = true;
-
-	/* init kms poll for handling hpd */
-	drm_kms_helper_poll_init(dev);
-
-	/* force connectors detection */
-	drm_helper_hpd_irq_event(dev);
-
-	return 0;
-
-err_cleanup_vblank:
-	drm_vblank_cleanup(dev);
-err_unbind_all:
-	component_unbind_all(dev->dev, dev);
-err_mode_config_cleanup:
-	drm_mode_config_cleanup(dev);
-
-	kfree(private);
+		return ret;
 
 	return ret;
 }
-
-static int tcc_drm_unload(struct drm_device *dev)
-{
-	tcc_drm_device_subdrv_remove(dev);
-
-	tcc_drm_fbdev_fini(dev);
-	drm_kms_helper_poll_fini(dev);
-
-	drm_vblank_cleanup(dev);
-	component_unbind_all(dev->dev, dev);
-	drm_mode_config_cleanup(dev);
-
-	kfree(dev->dev_private);
-	dev->dev_private = NULL;
-
-	return 0;
-}
-
-static int commit_is_pending(struct tcc_drm_private *priv, u32 crtcs)
-{
-	bool pending;
-
-	spin_lock(&priv->lock);
-	pending = priv->pending & crtcs;
-	spin_unlock(&priv->lock);
-
-	return pending;
-}
-
-int tcc_atomic_commit(struct drm_device *dev, struct drm_atomic_state *state,
-			 bool async)
-{
-	struct tcc_drm_private *priv = dev->dev_private;
-	struct tcc_atomic_commit *commit;
-	int i, ret;
-
-	commit = kzalloc(sizeof(*commit), GFP_KERNEL);
-	if (!commit)
-		return -ENOMEM;
-
-	ret = drm_atomic_helper_prepare_planes(dev, state);
-	if (ret) {
-		kfree(commit);
-		return ret;
-	}
-
-	/* This is the point of no return */
-
-	INIT_WORK(&commit->work, tcc_drm_atomic_work);
-	commit->dev = dev;
-	commit->state = state;
-
-	/* Wait until all affected CRTCs have completed previous commits and
-	 * mark them as pending.
-	 */
-	for (i = 0; i < dev->mode_config.num_crtc; ++i) {
-		if (state->crtcs[i])
-			commit->crtcs |= 1 << drm_crtc_index(state->crtcs[i]);
-	}
-
-	wait_event(priv->wait, !commit_is_pending(priv, commit->crtcs));
-
-	spin_lock(&priv->lock);
-	priv->pending |= commit->crtcs;
-	spin_unlock(&priv->lock);
-
-	drm_atomic_helper_swap_state(dev, state);
-
-	if (async)
-		schedule_work(&commit->work);
-	else
-		tcc_atomic_commit_complete(commit);
-
-	return 0;
-}
-
-#ifdef CONFIG_PM_SLEEP
-static int tcc_drm_suspend(struct drm_device *dev, pm_message_t state)
-{
-	struct drm_connector *connector;
-
-	drm_modeset_lock_all(dev);
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		int old_dpms = connector->dpms;
-
-		if (connector->funcs->dpms)
-			connector->funcs->dpms(connector, DRM_MODE_DPMS_OFF);
-
-		/* Set the old mode back to the connector for resume */
-		connector->dpms = old_dpms;
-	}
-	drm_modeset_unlock_all(dev);
-
-	return 0;
-}
-
-static int tcc_drm_resume(struct drm_device *dev)
-{
-	struct drm_connector *connector;
-
-	drm_modeset_lock_all(dev);
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		if (connector->funcs->dpms) {
-			int dpms = connector->dpms;
-
-			connector->dpms = DRM_MODE_DPMS_OFF;
-			connector->funcs->dpms(connector, dpms);
-		}
-	}
-	drm_modeset_unlock_all(dev);
-
-	return 0;
-}
-#endif
 
 static int tcc_drm_open(struct drm_device *dev, struct drm_file *file)
 {
@@ -382,28 +111,9 @@ err_file_priv_free:
 	return ret;
 }
 
-static void tcc_drm_preclose(struct drm_device *dev,
-					struct drm_file *file)
-{
-	tcc_drm_subdrv_close(dev, file);
-}
-
 static void tcc_drm_postclose(struct drm_device *dev, struct drm_file *file)
 {
-	struct drm_pending_event *e, *et;
-	unsigned long flags;
-
-	if (!file->driver_priv)
-		return;
-
-	spin_lock_irqsave(&dev->event_lock, flags);
-	/* Release all events handled by page flip handler but not freed. */
-	list_for_each_entry_safe(e, et, &file->event_list, link) {
-		list_del(&e->link);
-		e->destroy(e);
-	}
-	spin_unlock_irqrestore(&dev->event_lock, flags);
-
+	tcc_drm_subdrv_close(dev, file);
 	kfree(file->driver_priv);
 	file->driver_priv = NULL;
 }
@@ -428,14 +138,6 @@ static const struct drm_ioctl_desc tcc_ioctls[] = {
 			DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TCC_VIDI_CONNECTION, vidi_connection_ioctl,
 			DRM_AUTH),
-	DRM_IOCTL_DEF_DRV(TCC_IPP_GET_PROPERTY, tcc_drm_ipp_get_property,
-			DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TCC_IPP_SET_PROPERTY, tcc_drm_ipp_set_property,
-			DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TCC_IPP_QUEUE_BUF, tcc_drm_ipp_queue_buf,
-			DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TCC_IPP_CMD_CTRL, tcc_drm_ipp_cmd_ctrl,
-			DRM_AUTH | DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations tcc_drm_driver_fops = {
@@ -445,30 +147,19 @@ static const struct file_operations tcc_drm_driver_fops = {
 	.poll		= drm_poll,
 	.read		= drm_read,
 	.unlocked_ioctl	= drm_ioctl,
-#ifdef CONFIG_COMPAT
 	.compat_ioctl = drm_compat_ioctl,
-#endif
 	.release	= drm_release,
 };
 
 static struct drm_driver tcc_drm_driver = {
 	.driver_features	= DRIVER_MODESET | DRIVER_GEM | DRIVER_PRIME
 				  | DRIVER_ATOMIC | DRIVER_RENDER,
-	.load			= tcc_drm_load,
-	.unload			= tcc_drm_unload,
 	.open			= tcc_drm_open,
-	.preclose		= tcc_drm_preclose,
 	.lastclose		= tcc_drm_lastclose,
 	.postclose		= tcc_drm_postclose,
-	.set_busid		= drm_platform_set_busid,
-	.get_vblank_counter	= drm_vblank_no_hw_counter,
-	.enable_vblank		= tcc_drm_crtc_enable_vblank,
-	.disable_vblank		= tcc_drm_crtc_disable_vblank,
-	.gem_free_object	= tcc_drm_gem_free_object,
+	.gem_free_object_unlocked = tcc_drm_gem_free_object,
 	.gem_vm_ops		= &tcc_drm_gem_vm_ops,
 	.dumb_create		= tcc_drm_gem_dumb_create,
-	.dumb_map_offset	= tcc_drm_gem_dumb_map_offset,
-	.dumb_destroy		= drm_gem_dumb_destroy,
 	.prime_handle_to_fd	= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
 	.gem_prime_export	= drm_gem_prime_export,
@@ -489,78 +180,91 @@ static struct drm_driver tcc_drm_driver = {
 };
 
 #ifdef CONFIG_PM_SLEEP
-static int tcc_drm_sys_suspend(struct device *dev)
+static int tcc_drm_suspend(struct device *dev)
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
-	pm_message_t message;
+	struct tcc_drm_private *private;
 
 	if (pm_runtime_suspended(dev) || !drm_dev)
 		return 0;
 
-	message.event = PM_EVENT_SUSPEND;
-	return tcc_drm_suspend(drm_dev, message);
+	private = drm_dev->dev_private;
+
+	drm_kms_helper_poll_disable(drm_dev);
+	tcc_drm_fbdev_suspend(drm_dev);
+	private->suspend_state = drm_atomic_helper_suspend(drm_dev);
+	if (IS_ERR(private->suspend_state)) {
+		tcc_drm_fbdev_resume(drm_dev);
+		drm_kms_helper_poll_enable(drm_dev);
+		return PTR_ERR(private->suspend_state);
+	}
+
+	return 0;
 }
 
-static int tcc_drm_sys_resume(struct device *dev)
+static int tcc_drm_resume(struct device *dev)
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
+	struct tcc_drm_private *private;
 
 	if (pm_runtime_suspended(dev) || !drm_dev)
 		return 0;
 
-	return tcc_drm_resume(drm_dev);
+	private = drm_dev->dev_private;
+	drm_atomic_helper_resume(drm_dev, private->suspend_state);
+	tcc_drm_fbdev_resume(drm_dev);
+	drm_kms_helper_poll_enable(drm_dev);
+
+	return 0;
 }
 #endif
 
 static const struct dev_pm_ops tcc_drm_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(tcc_drm_sys_suspend, tcc_drm_sys_resume)
+	SET_SYSTEM_SLEEP_PM_OPS(tcc_drm_suspend, tcc_drm_resume)
 };
 
 /* forward declaration */
 static struct platform_driver tcc_drm_platform_driver;
 
+struct tcc_drm_driver_info {
+	struct platform_driver *driver;
+	unsigned int flags;
+};
+
+#define DRM_COMPONENT_DRIVER	BIT(0)	/* supports component framework */
+#define DRM_VIRTUAL_DEVICE	BIT(1)	/* create virtual platform device */
+#define DRM_DMA_DEVICE		BIT(2)	/* can be used for dma allocations */
+
+#define DRV_PTR(drv, cond) (IS_ENABLED(cond) ? &drv : NULL)
+
 /*
  * Connector drivers should not be placed before associated crtc drivers,
  * because connector requires pipe number of its crtc during initialization.
  */
-static struct platform_driver *const tcc_drm_kms_drivers[] = {
-#ifdef CONFIG_DRM_TCC_LCD
-	&lcd_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_EXT
-	&ext_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_THIRD
-	&third_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_MIXER
-	&mixer_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_HDMI
-	&hdmi_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_VIDI
-	&vidi_driver,
-#endif
+static struct tcc_drm_driver_info tcc_drm_drivers[] = {
+	{
+		DRV_PTR(lcd_driver, CONFIG_DRM_TCC_LCD),
+		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
+	}, {
+		DRV_PTR(ext_driver, CONFIG_DRM_TCC_EXT),
+		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
+	}, {
+		DRV_PTR(third_driver, CONFIG_DRM_TCC_THIRD),
+		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
+	}, {
+		DRV_PTR(hdmi_driver, CONFIG_DRM_TCC_HDMI),
+		DRM_COMPONENT_DRIVER
+	}, {
+		DRV_PTR(vidi_driver, CONFIG_DRM_TCC_VIDI),
+		DRM_COMPONENT_DRIVER | DRM_VIRTUAL_DEVICE
+	}, {
+		DRV_PTR(ipp_driver, CONFIG_DRM_TCC_IPP),
+		DRM_VIRTUAL_DEVICE
+	}, {
+		&tcc_drm_platform_driver,
+		DRM_VIRTUAL_DEVICE
+	}
 };
-
-static struct platform_driver *const tcc_drm_non_kms_drivers[] = {
-#ifdef CONFIG_DRM_TCC_IPP
-	&ipp_driver,
-#endif
-	&tcc_drm_platform_driver,
-};
-
-static struct platform_driver *const tcc_drm_drv_with_simple_dev[] = {
-#ifdef CONFIG_DRM_TCC_VIDI
-	&vidi_driver,
-#endif
-#ifdef CONFIG_DRM_TCC_IPP
-	&ipp_driver,
-#endif
-	&tcc_drm_platform_driver,
-};
-#define PDEV_COUNT ARRAY_SIZE(tcc_drm_drv_with_simple_dev)
 
 static int compare_dev(struct device *dev, void *data)
 {
@@ -572,11 +276,15 @@ static struct component_match *tcc_drm_match_add(struct device *dev)
 	struct component_match *match = NULL;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(tcc_drm_kms_drivers); ++i) {
-		struct device_driver *drv = &tcc_drm_kms_drivers[i]->driver;
+	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 		struct device *p = NULL, *d;
 
-		while ((d = bus_find_device(&platform_bus_type, p, drv,
+		if (!info->driver || !(info->flags & DRM_COMPONENT_DRIVER))
+			continue;
+
+		while ((d = bus_find_device(&platform_bus_type, p,
+					    &info->driver->driver,
 					    (void *)platform_bus_type.match))) {
 			put_device(p);
 			component_match_add(dev, &match, compare_dev, d);
@@ -590,12 +298,127 @@ static struct component_match *tcc_drm_match_add(struct device *dev)
 
 static int tcc_drm_bind(struct device *dev)
 {
-	return drm_platform_init(&tcc_drm_driver, to_platform_device(dev));
+	struct tcc_drm_private *private;
+	struct drm_encoder *encoder;
+	struct drm_device *drm;
+	unsigned int clone_mask;
+	int cnt, ret;
+
+	drm = drm_dev_alloc(&tcc_drm_driver, dev);
+	if (IS_ERR(drm))
+		return PTR_ERR(drm);
+
+	private = kzalloc(sizeof(struct tcc_drm_private), GFP_KERNEL);
+	if (!private) {
+		ret = -ENOMEM;
+		goto err_free_drm;
+	}
+
+	init_waitqueue_head(&private->wait);
+	spin_lock_init(&private->lock);
+
+	dev_set_drvdata(dev, drm);
+	drm->dev_private = (void *)private;
+
+	/* the first real CRTC device is used for all dma mapping operations */
+	private->dma_dev = tcc_drm_get_dma_device();
+	if (!private->dma_dev) {
+		DRM_ERROR("no device found for DMA mapping operations.\n");
+		ret = -ENODEV;
+		goto err_free_private;
+	}
+	DRM_INFO("TCC DRM: using %s device for DMA mapping operations\n",
+		 dev_name(private->dma_dev));
+
+	drm_mode_config_init(drm);
+
+	tcc_drm_mode_config_init(drm);
+
+	/* setup possible_clones. */
+	cnt = 0;
+	clone_mask = 0;
+	list_for_each_entry(encoder, &drm->mode_config.encoder_list, head)
+		clone_mask |= (1 << (cnt++));
+
+	list_for_each_entry(encoder, &drm->mode_config.encoder_list, head)
+		encoder->possible_clones = clone_mask;
+
+	/* Try to bind all sub drivers. */
+	ret = component_bind_all(drm->dev, drm);
+	if (ret)
+		goto err_mode_config_cleanup;
+
+	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
+	if (ret)
+		goto err_unbind_all;
+
+	/* Probe non kms sub drivers and virtual display driver. */
+	ret = tcc_drm_device_subdrv_probe(drm);
+	if (ret)
+		goto err_unbind_all;
+
+	drm_mode_config_reset(drm);
+
+	/*
+	 * enable drm irq mode.
+	 * - with irq_enabled = true, we can use the vblank feature.
+	 *
+	 * P.S. note that we wouldn't use drm irq handler but
+	 *	just specific driver own one instead because
+	 *	drm framework supports only one irq handler.
+	 */
+	drm->irq_enabled = true;
+
+	/* init kms poll for handling hpd */
+	drm_kms_helper_poll_init(drm);
+
+	ret = tcc_drm_fbdev_init(drm);
+	if (ret)
+		goto err_cleanup_poll;
+
+	/* register the DRM device */
+	ret = drm_dev_register(drm, 0);
+	if (ret < 0)
+		goto err_cleanup_fbdev;
+
+	return 0;
+
+err_cleanup_fbdev:
+	tcc_drm_fbdev_fini(drm);
+err_cleanup_poll:
+	drm_kms_helper_poll_fini(drm);
+	tcc_drm_device_subdrv_remove(drm);
+err_unbind_all:
+	component_unbind_all(drm->dev, drm);
+err_mode_config_cleanup:
+	drm_mode_config_cleanup(drm);
+err_free_private:
+	kfree(private);
+err_free_drm:
+	drm_dev_unref(drm);
+
+	return ret;
 }
 
 static void tcc_drm_unbind(struct device *dev)
 {
-	drm_put_dev(dev_get_drvdata(dev));
+	struct drm_device *drm = dev_get_drvdata(dev);
+
+	drm_dev_unregister(drm);
+
+	tcc_drm_device_subdrv_remove(drm);
+
+	tcc_drm_fbdev_fini(drm);
+	drm_kms_helper_poll_fini(drm);
+
+	component_unbind_all(drm->dev, drm);
+	drm_mode_config_cleanup(drm);
+
+	kfree(drm->dev_private);
+	drm->dev_private = NULL;
+	dev_set_drvdata(dev, NULL);
+
+	drm_dev_unref(drm);
 }
 
 static const struct component_master_ops tcc_drm_ops = {
@@ -606,18 +429,8 @@ static const struct component_master_ops tcc_drm_ops = {
 static int tcc_drm_platform_probe(struct platform_device *pdev)
 {
 	struct component_match *match;
-	int ret;
 
-	/* Force connect arm_dma_ops in kernel 4.4 version */
-	of_dma_configure(&pdev->dev, NULL);
-
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	if (ret) {
-		dev_err(&pdev->dev, "DMA configuration failed: 0x%x\n", ret);
-		return ret;
-	}
-
-	tcc_drm_driver.num_ioctls = ARRAY_SIZE(tcc_ioctls);
+	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 
 	match = tcc_drm_match_add(&pdev->dev);
 	if (IS_ERR(match))
@@ -642,91 +455,102 @@ static struct platform_driver tcc_drm_platform_driver = {
 	},
 };
 
-static struct platform_device *tcc_drm_pdevs[PDEV_COUNT];
+static struct device *tcc_drm_get_dma_device(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
+		struct device *dev;
+
+		if (!info->driver || !(info->flags & DRM_DMA_DEVICE))
+			continue;
+
+		while ((dev = bus_find_device(&platform_bus_type, NULL,
+					    &info->driver->driver,
+					    (void *)platform_bus_type.match))) {
+			put_device(dev);
+			return dev;
+		}
+	}
+	return NULL;
+}
 
 static void tcc_drm_unregister_devices(void)
 {
-	int i = PDEV_COUNT;
+	int i;
 
-	while (--i >= 0) {
-		platform_device_unregister(tcc_drm_pdevs[i]);
-		tcc_drm_pdevs[i] = NULL;
+	for (i = ARRAY_SIZE(tcc_drm_drivers) - 1; i >= 0; --i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
+		struct device *dev;
+
+		if (!info->driver || !(info->flags & DRM_VIRTUAL_DEVICE))
+			continue;
+
+		while ((dev = bus_find_device(&platform_bus_type, NULL,
+					    &info->driver->driver,
+					    (void *)platform_bus_type.match))) {
+			put_device(dev);
+			platform_device_unregister(to_platform_device(dev));
+		}
 	}
 }
 
 static int tcc_drm_register_devices(void)
 {
+	struct platform_device *pdev;
 	int i;
 
-	for (i = 0; i < PDEV_COUNT; ++i) {
-		struct platform_driver *d = tcc_drm_drv_with_simple_dev[i];
-		struct platform_device *pdev =
-			platform_device_register_simple(d->driver.name, -1,
-							NULL, 0);
+	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
 
-		if (!IS_ERR(pdev)) {
-			tcc_drm_pdevs[i] = pdev;
+		if (!info->driver || !(info->flags & DRM_VIRTUAL_DEVICE))
 			continue;
-		}
-		while (--i >= 0) {
-			platform_device_unregister(tcc_drm_pdevs[i]);
-			tcc_drm_pdevs[i] = NULL;
-		}
 
-		return PTR_ERR(pdev);
+		pdev = platform_device_register_simple(
+					info->driver->driver.name, -1, NULL, 0);
+		if (IS_ERR(pdev))
+			goto fail;
 	}
 
 	return 0;
+fail:
+	tcc_drm_unregister_devices();
+	return PTR_ERR(pdev);
 }
 
-static void tcc_drm_unregister_drivers(struct platform_driver * const *drv,
-					  int count)
+static void tcc_drm_unregister_drivers(void)
 {
-	while (--count >= 0)
-		platform_driver_unregister(drv[count]);
+	int i;
+
+	for (i = ARRAY_SIZE(tcc_drm_drivers) - 1; i >= 0; --i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
+
+		if (!info->driver)
+			continue;
+
+		platform_driver_unregister(info->driver);
+	}
 }
 
-static int tcc_drm_register_drivers(struct platform_driver * const *drv,
-				       int count)
+static int tcc_drm_register_drivers(void)
 {
 	int i, ret;
 
-	for (i = 0; i < count; ++i) {
-		ret = platform_driver_register(drv[i]);
-		if (!ret)
+	for (i = 0; i < ARRAY_SIZE(tcc_drm_drivers); ++i) {
+		struct tcc_drm_driver_info *info = &tcc_drm_drivers[i];
+
+		if (!info->driver)
 			continue;
 
-		while (--i >= 0)
-			platform_driver_unregister(drv[i]);
-
-		return ret;
+		ret = platform_driver_register(info->driver);
+		if (ret)
+			goto fail;
 	}
-
 	return 0;
-}
-
-static inline int tcc_drm_register_kms_drivers(void)
-{
-	return tcc_drm_register_drivers(tcc_drm_kms_drivers,
-					ARRAY_SIZE(tcc_drm_kms_drivers));
-}
-
-static inline int tcc_drm_register_non_kms_drivers(void)
-{
-	return tcc_drm_register_drivers(tcc_drm_non_kms_drivers,
-					ARRAY_SIZE(tcc_drm_non_kms_drivers));
-}
-
-static inline void tcc_drm_unregister_kms_drivers(void)
-{
-	tcc_drm_unregister_drivers(tcc_drm_kms_drivers,
-					ARRAY_SIZE(tcc_drm_kms_drivers));
-}
-
-static inline void tcc_drm_unregister_non_kms_drivers(void)
-{
-	tcc_drm_unregister_drivers(tcc_drm_non_kms_drivers,
-					ARRAY_SIZE(tcc_drm_non_kms_drivers));
+fail:
+	tcc_drm_unregister_drivers();
+	return ret;
 }
 
 static int tcc_drm_init(void)
@@ -739,18 +563,11 @@ static int tcc_drm_init(void)
 	if (ret)
 		return ret;
 
-	ret = tcc_drm_register_kms_drivers();
+	ret = tcc_drm_register_drivers();
 	if (ret)
 		goto err_unregister_pdevs;
 
-	ret = tcc_drm_register_non_kms_drivers();
-	if (ret)
-		goto err_unregister_kms_drivers;
-
 	return 0;
-
-err_unregister_kms_drivers:
-	tcc_drm_unregister_kms_drivers();
 
 err_unregister_pdevs:
 	tcc_drm_unregister_devices();
@@ -760,8 +577,7 @@ err_unregister_pdevs:
 
 static void tcc_drm_exit(void)
 {
-	tcc_drm_unregister_non_kms_drivers();
-	tcc_drm_unregister_kms_drivers();
+	tcc_drm_unregister_drivers();
 	tcc_drm_unregister_devices();
 }
 

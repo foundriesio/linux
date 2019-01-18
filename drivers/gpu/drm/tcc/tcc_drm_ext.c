@@ -1,24 +1,6 @@
 /* tcc_drm_ext.c
  *
- * Copyright (c) 2017 Telechips Inc.
- *
- * Author:  Telechips Inc.
- * Created: Sep 05, 2017
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *---------------------------------------------------------------------------
+ * Copyright (c) 2016 Telechips Inc.
  * Copyright (C) 2011 Samsung Electronics Co.Ltd
  * Authors:
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -37,8 +19,6 @@
 #include <linux/clk.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/pm_runtime.h>
 #include <linux/component.h>
 #include <linux/regmap.h>
@@ -47,53 +27,52 @@
 #include <video/of_videomode.h>
 #include <drm/tcc_drm.h>
 
-#include <video/tcc/tccfb.h>
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/tccfb_ioctrl.h>
+#include <video/tcc/vioc_intr.h>
+#include <video/tcc/vioc_ddicfg.h>
 
 #include "tcc_drm_drv.h"
-#include "tcc_drm_fbdev.h"
+#include "tcc_drm_fb.h"
 #include "tcc_drm_crtc.h"
 #include "tcc_drm_plane.h"
 
 /*
- * EXT is stand for Fully Interactive Display and
+ * LCD stands for Fully Interactive Various Display and
  * as a display controller, it transfers contents drawn on memory
- * to a EXT Panel through Display Interfaces such as RGB or
+ * to a LCD Panel through Display Interfaces such as RGB or
  * CPU Interface.
  */
 
-/* TCC EXT has totally one hardware windows. */
-#define WINDOWS_NR 1
-
-struct ext_driver_data {
-	unsigned int timing_base;
-};
+/* LCD has totally four hardware windows. */
+#define WINDOWS_NR	1
 
 struct ext_context {
 	struct device			*dev;
 	struct drm_device		*drm_dev;
 	struct tcc_drm_crtc		*crtc;
 	struct tcc_drm_plane		planes[WINDOWS_NR];
+	struct tcc_drm_plane_config	configs[WINDOWS_NR];
 	struct clk			*bus_clk;
 	struct clk			*ext_clk;
-	void __iomem			*ddc_reg;	/* DDC register address */
+	void __iomem			*ddc_reg;	/* TCC DDC register address */
+	void __iomem			*vioc_reg;	/* TCC vioc config register address */
 	unsigned int			ddc_id;		/* TCC display path number */
-	void __iomem			*virt_addr; /* TCC wmixer node address */
-	int				irq;		/* TCC interrupt number */
+	void __iomem			*virt_addr;	/* TCC wmixer node address */
+	int				irq_num;	/* TCC interrupt number */
 	unsigned long			irq_flags;
 	bool				suspended;
-	int				pipe;
 	wait_queue_head_t		wait_vsync_queue;
 	atomic_t			wait_vsync_event;
 	atomic_t			win_updated;
 	atomic_t			triggering;
+	u32				clkdiv;
 
-	struct tcc_drm_panel_info panel;
-	struct ext_driver_data *driver_data;
+	const struct ext_driver_data *driver_data;
 	struct drm_encoder *encoder;
+	struct tcc_drm_clk		dp_clk;
 };
 
 static const struct of_device_id ext_driver_dt_match[] = {
@@ -102,20 +81,18 @@ static const struct of_device_id ext_driver_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, ext_driver_dt_match);
 
+static const enum drm_plane_type ext_win_types[WINDOWS_NR] = {
+	DRM_PLANE_TYPE_PRIMARY,
+	/*DRM_PLANE_TYPE_OVERLAY,*/
+	/*DRM_PLANE_TYPE_OVERLAY,*/
+	/*DRM_PLANE_TYPE_OVERLAY,*/
+};
+
 static const uint32_t ext_formats[] = {
 	DRM_FORMAT_RGB565,
 	DRM_FORMAT_XRGB8888,
 	DRM_FORMAT_ARGB8888,
 };
-
-static inline struct ext_driver_data *drm_ext_get_driver_data(
-	struct platform_device *pdev)
-{
-	const struct of_device_id *of_id =
-			of_match_device(ext_driver_dt_match, &pdev->dev);
-
-	return (struct ext_driver_data *)of_id->data;
-}
 
 static int ext_enable_vblank(struct tcc_drm_crtc *crtc)
 {
@@ -125,7 +102,7 @@ static int ext_enable_vblank(struct tcc_drm_crtc *crtc)
 		return -EPERM;
 
 	if (!test_and_set_bit(0, &ctx->irq_flags))
-		vioc_intr_enable(ctx->irq, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_enable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 
 	return 0;
 }
@@ -138,7 +115,7 @@ static void ext_disable_vblank(struct tcc_drm_crtc *crtc)
 		return;
 
 	if (test_and_clear_bit(0, &ctx->irq_flags))
-		vioc_intr_disable(ctx->irq, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
+		vioc_intr_disable(ctx->irq_num, ctx->ddc_id, VIOC_DISP_INTR_DISPLAY);
 }
 
 static void ext_wait_for_vblank(struct tcc_drm_crtc *crtc)
@@ -160,6 +137,50 @@ static void ext_wait_for_vblank(struct tcc_drm_crtc *crtc)
 		DRM_DEBUG_KMS("vblank wait timed out.\n");
 }
 
+static void ext_enable_video_output(struct ext_context *ctx, unsigned int win,
+					bool enable)
+{
+	if (enable)
+		VIOC_RDMA_SetImageEnable(ctx->configs[win].virt_addr);
+	else
+		VIOC_RDMA_SetImageDisable(ctx->configs[win].virt_addr);
+}
+
+static int ext_atomic_check(struct tcc_drm_crtc *crtc,
+		struct drm_crtc_state *state)
+{
+	struct drm_display_mode *mode = &state->adjusted_mode;
+	struct ext_context *ctx = crtc->ctx;
+	unsigned long ideal_clk, ext_rate;
+	u32 clkdiv;
+
+	if (mode->clock == 0) {
+		DRM_INFO("Mode has zero clock value.\n");
+		return -EINVAL;
+	}
+#if 0
+	ideal_clk = mode->clock * 1000;
+
+	ext_rate = clk_get_rate(ctx->ext_clk);
+	if (2 * ext_rate < ideal_clk) {
+		DRM_INFO("sclk_ext clock too low(%lu) for requested pixel clock(%lu)\n",
+			 ext_rate, ideal_clk);
+		return -EINVAL;
+	}
+
+	/* Find the clock divider value that gets us closest to ideal_clk */
+	clkdiv = DIV_ROUND_CLOSEST(ext_rate, ideal_clk);
+	if (clkdiv >= 0x200) {
+		DRM_INFO("requested pixel clock(%lu) too low\n", ideal_clk);
+		return -EINVAL;
+	}
+
+	ctx->clkdiv = (clkdiv < 0x100) ? clkdiv : 0xff;
+#endif
+
+	return 0;
+}
+
 static void ext_commit(struct tcc_drm_crtc *crtc)
 {
 	struct ext_context *ctx = crtc->ctx;
@@ -176,79 +197,59 @@ static void ext_commit(struct tcc_drm_crtc *crtc)
 }
 
 static void ext_win_set_pixfmt(struct ext_context *ctx, unsigned int win,
-				struct drm_framebuffer *fb)
+				uint32_t pixel_format, uint32_t width)
 {
-	void __iomem *pRDMA = ctx->planes[win].virt_addr;
+	void __iomem *pRDMA = ctx->configs[win].virt_addr;
 
-	switch (fb->pixel_format) {
+	switch (pixel_format) {
 	case DRM_FORMAT_RGB565:
-		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB565, fb->width);
+		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB565, width);
 		VIOC_RDMA_SetImageFormat(pRDMA, TCC_LCDC_IMG_FMT_RGB565);
 		break;
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
-		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB888, fb->width);
+		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB888, width);
 		VIOC_RDMA_SetImageFormat(pRDMA, TCC_LCDC_IMG_FMT_RGB888);
 		break;
 	default:
 		DRM_DEBUG_KMS("invalid pixel size so using unpacked 24bpp.\n");
-		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB888, fb->width);
+		VIOC_RDMA_SetImageOffset(pRDMA, TCC_LCDC_IMG_FMT_RGB888, width);
 		VIOC_RDMA_SetImageFormat(pRDMA, TCC_LCDC_IMG_FMT_RGB888);
 		break;
 	}
-
-	DRM_DEBUG_KMS("bpp = %d\n", fb->bits_per_pixel);
 }
 
-static void ext_win_set_colkey(struct ext_context *ctx, unsigned int win)
+static void ext_atomic_begin(struct tcc_drm_crtc *crtc)
 {
-	/* TODO : Setting the color key registers */
+	struct ext_context *ctx = crtc->ctx;
+
+	if (ctx->suspended)
+		return;
 }
 
-/**
- * shadow_protect_win() - disable updating values from shadow registers at vsync
- *
- * @win: window to protect registers for
- * @protect: 1 to protect (disable updates)
- */
-static void ext_shadow_protect_win(struct ext_context *ctx,
-				    unsigned int win, bool protect)
-{
-	/* TODO : check this function is need? */
-}
-
-static void ext_atomic_begin(struct tcc_drm_crtc *crtc,
-			       struct tcc_drm_plane *plane)
+static void ext_atomic_flush(struct tcc_drm_crtc *crtc)
 {
 	struct ext_context *ctx = crtc->ctx;
 
 	if (ctx->suspended)
 		return;
 
-	ext_shadow_protect_win(ctx, plane->zpos, true);
-}
-
-static void ext_atomic_flush(struct tcc_drm_crtc *crtc,
-			       struct tcc_drm_plane *plane)
-{
-	struct ext_context *ctx = crtc->ctx;
-
-	if (ctx->suspended)
-		return;
-
-	ext_shadow_protect_win(ctx, plane->zpos, false);
+	tcc_crtc_handle_event(crtc);
 }
 
 static void ext_update_plane(struct tcc_drm_crtc *crtc,
 			      struct tcc_drm_plane *plane)
 {
+	struct tcc_drm_plane_state *state =
+				to_tcc_plane_state(plane->base.state);
 	struct ext_context *ctx = crtc->ctx;
-	struct drm_plane_state *state = plane->base.state;
+	struct drm_framebuffer *fb = state->base.fb;
 	dma_addr_t dma_addr;
 	unsigned long val, size, offset;
-	unsigned int win = plane->zpos;
-	unsigned int bpp = state->fb->bits_per_pixel >> 3;
-	unsigned int pitch = state->fb->pitches[0];
+	unsigned int win = plane->index;
+	unsigned int cpp = fb->format->cpp[0];
+	unsigned int pitch = fb->pitches[0];
+
 	/* TCC specific structure */
 	void __iomem *pWMIX;
 	void __iomem *pRDMA;
@@ -257,37 +258,36 @@ static void ext_update_plane(struct tcc_drm_crtc *crtc,
 		return;
 
 	pWMIX = ctx->virt_addr;
-	pRDMA = ctx->planes[win].virt_addr;
+	pRDMA = ctx->configs[win].virt_addr;
 
-	offset = plane->src_x * bpp;
-	offset += plane->src_y * pitch;
+	offset = state->src.x * cpp;
+	offset += state->src.y * pitch;
 
-	VIOC_WMIX_SetPosition(pWMIX, win, plane->crtc_x, plane->crtc_y);
+	VIOC_WMIX_SetPosition(pWMIX, win, state->crtc.x, state->crtc.y);
 
-	/* In DRM Driver case, using the pixel alpha only for RDMA. */
+	/* Using the pixel alpha */
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, 1);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
 
 	/* buffer start address */
-	dma_addr = plane->dma_addr[0] + offset;
+	dma_addr = tcc_drm_fb_dma_addr(fb, 0) + offset;
 	val = (unsigned long)dma_addr;
 	VIOC_RDMA_SetImageBase(pRDMA, val, 0, 0);
-	VIOC_RDMA_SetImageSize(pRDMA, plane->src_w, plane->src_h);
+	VIOC_RDMA_SetImageSize(pRDMA, state->src.w, state->src.h);
 
 	/* buffer end address */
-	size = pitch * plane->crtc_h;
+	size = pitch * state->crtc.h;
 	val = (unsigned long)(dma_addr + size);
 
 	DRM_DEBUG_KMS("start addr = 0x%lx, end addr = 0x%lx, size = 0x%lx\n",
 			(unsigned long)dma_addr, val, size);
 	DRM_DEBUG_KMS("ovl_width = %d, ovl_height = %d\n",
-			plane->crtc_w, plane->crtc_h);
+			state->crtc.w, state->crtc.h);
 
-	/* buffer size */
-	/* TODO: check buffer size and osd are needed for vioc */
-	ext_win_set_pixfmt(ctx, win, state->fb);
+	ext_win_set_pixfmt(ctx, win, fb->format->format, state->src.w);
 
-	VIOC_RDMA_SetImageEnable(pRDMA);
+	ext_enable_video_output(ctx, win, true);
+
 	VIOC_WMIX_SetUpdate(pWMIX);
 }
 
@@ -295,9 +295,12 @@ static void ext_disable_plane(struct tcc_drm_crtc *crtc,
 			       struct tcc_drm_plane *plane)
 {
 	struct ext_context *ctx = crtc->ctx;
+	unsigned int win = plane->index;
 
 	if (ctx->suspended)
 		return;
+
+	ext_enable_video_output(ctx, win, false);
 }
 
 static void ext_enable(struct tcc_drm_crtc *crtc)
@@ -355,7 +358,6 @@ static void ext_disable(struct tcc_drm_crtc *crtc)
 	clk_disable_unprepare(ctx->bus_clk);
 
 	pm_runtime_put_sync(ctx->dev);
-
 	ctx->suspended = true;
 }
 
@@ -369,7 +371,7 @@ static void ext_te_handler(struct tcc_drm_crtc *crtc)
 	struct ext_context *ctx = crtc->ctx;
 
 	/* Checks the crtc is detached already from encoder */
-	if (ctx->pipe < 0 || !ctx->drm_dev)
+	if (!ctx->drm_dev)
 		return;
 
 	/*
@@ -392,14 +394,13 @@ static void ext_te_handler(struct tcc_drm_crtc *crtc)
 static const struct tcc_drm_crtc_ops ext_crtc_ops = {
 	.enable = ext_enable,
 	.disable = ext_disable,
-	.commit = ext_commit,
 	.enable_vblank = ext_enable_vblank,
 	.disable_vblank = ext_disable_vblank,
-	.wait_for_vblank = ext_wait_for_vblank,
 	.atomic_begin = ext_atomic_begin,
 	.update_plane = ext_update_plane,
 	.disable_plane = ext_disable_plane,
 	.atomic_flush = ext_atomic_flush,
+	.atomic_check = ext_atomic_check,
 	.te_handler = ext_te_handler,
 };
 
@@ -407,7 +408,6 @@ static irqreturn_t ext_irq_handler(int irq, void *dev_id)
 {
 	struct ext_context *ctx = (struct ext_context *)dev_id;
 	u32 dispblock_status = 0;
-	int win;
 
 	if (ctx == NULL) {
 		pr_err("%s irq: %d dev_id:%p \n",__func__, irq, dev_id);
@@ -417,40 +417,33 @@ static irqreturn_t ext_irq_handler(int irq, void *dev_id)
 	/* Get TCC VIOC block status register */
 	dispblock_status = vioc_intr_get_status(ctx->ddc_id);
 
-	if(dispblock_status & (1 << VIOC_DISP_INTR_RU))
-	{
+	if (dispblock_status & (1 << VIOC_DISP_INTR_RU)) {
 		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_RU));
 
 		/* check the crtc is detached already from encoder */
-		if (ctx->pipe < 0 || !ctx->drm_dev)
+		if (!ctx->drm_dev)
 			goto out;
 
 		drm_crtc_handle_vblank(&ctx->crtc->base);
-
-		/* TODO: Need to check below code */
-		for (win = 0 ; win < WINDOWS_NR ; win++) {
-			struct tcc_drm_plane *plane = &ctx->planes[win];
-
-			if (!plane->pending_fb)
-				continue;
-
-			/*start = readl(ctx->ddc_reg + VIDWx_BUF_START(win, 0));*/
-			/*start_s = readl(ctx->ddc_reg + VIDWx_BUF_START_S(win, 0));*/
-			/*if (start == start_s)*/
-			tcc_drm_crtc_finish_update(ctx->crtc, plane);
-		}
 
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
 			atomic_set(&ctx->wait_vsync_event, 0);
 			wake_up(&ctx->wait_vsync_queue);
 		}
+
+		/* Check FIFO underrun. */
+		if (dispblock_status & (1 << VIOC_DISP_INTR_FU)) {
+			vioc_intr_disable(irq, ctx->ddc_id,
+					  (1 << VIOC_DISP_INTR_FU));
+			vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_FU));
+			pr_crit("%s: FIFO UNDERRUN STATUS:0x%x \n", __func__,
+				dispblock_status);
+		}
 	}
 
-	if (dispblock_status & (1 << VIOC_DISP_INTR_DD)) {
+	if (dispblock_status & (1 << VIOC_DISP_INTR_DD))
 		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_DD));
-		/* TODO */
-	}
 
 	if (dispblock_status & (1 << VIOC_DISP_INTR_SREQ))
 		vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_SREQ));
@@ -463,29 +456,26 @@ static int ext_bind(struct device *dev, struct device *master, void *data)
 {
 	struct ext_context *ctx = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
-	struct tcc_drm_private *priv = drm_dev->dev_private;
 	struct tcc_drm_plane *tcc_plane;
-	enum drm_plane_type type;
-	unsigned int zpos;
+	unsigned int i;
 	int ret;
 
 	ctx->drm_dev = drm_dev;
-	ctx->pipe = priv->pipe++;
 
-	for (zpos = 0; zpos < WINDOWS_NR; zpos++) {
-		/* -1 For overlay plane */
-		type = tcc_plane_get_type(zpos, -1);
-		ret = tcc_plane_init(drm_dev, &ctx->planes[zpos],
-					1 << ctx->pipe, type, ext_formats,
-					ARRAY_SIZE(ext_formats), zpos);
+	for (i = 0; i < WINDOWS_NR; i++) {
+		ctx->configs[i].pixel_formats = ext_formats;
+		ctx->configs[i].num_pixel_formats = ARRAY_SIZE(ext_formats);
+		ctx->configs[i].zpos = i;
+		ctx->configs[i].type = ext_win_types[i];
+		ret = tcc_plane_init(drm_dev, &ctx->planes[i], i,
+					&ctx->configs[i]);
 		if (ret)
 			return ret;
 	}
 
 	tcc_plane = &ctx->planes[DEFAULT_WIN];
 	ctx->crtc = tcc_drm_crtc_create(drm_dev, &tcc_plane->base,
-					   ctx->pipe, TCC_DISPLAY_TYPE_EXT,
-					   &ext_crtc_ops, ctx);
+			TCC_DISPLAY_TYPE_EXT, &ext_crtc_ops, ctx);
 	if (IS_ERR(ctx->crtc))
 		return PTR_ERR(ctx->crtc);
 
@@ -530,7 +520,7 @@ static int ext_probe(struct platform_device *pdev)
 
 	ctx->dev = dev;
 	ctx->suspended = true;
-	ctx->driver_data = drm_ext_get_driver_data(pdev);
+	ctx->driver_data = of_device_get_match_data(dev);
 
 	if (of_property_read_u32(dev->of_node,
 				 "display-port-num", &ctx->ddc_id)) {
@@ -564,9 +554,9 @@ static int ext_probe(struct platform_device *pdev)
 	if (IS_ERR(ctx->ddc_reg))
 		return PTR_ERR(ctx->ddc_reg);
 
-	ctx->planes[0].virt_addr = devm_ioremap_resource(dev, res_rdma);
-	if (IS_ERR(ctx->planes[0].virt_addr))
-		return PTR_ERR(ctx->planes[0].virt_addr);
+	ctx->configs[0].virt_addr = devm_ioremap_resource(dev, res_rdma);
+	if (IS_ERR(ctx->configs[0].virt_addr))
+		return PTR_ERR(ctx->configs[0].virt_addr);
 
 	ctx->virt_addr = devm_ioremap_resource(dev, res_wmix);
 	if (IS_ERR(ctx->virt_addr))
@@ -579,8 +569,8 @@ static int ext_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	ctx->irq = res->start;
-	ret = devm_request_irq(dev, ctx->irq, ext_irq_handler,
+	ctx->irq_num = res->start;
+	ret = devm_request_irq(dev, ctx->irq_num, ext_irq_handler,
 					IRQF_SHARED, "drm_ext", ctx);
 	if (ret) {
 		dev_err(dev, "irq request failed.\n");
@@ -621,12 +611,49 @@ static int ext_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int tcc_ext_suspend(struct device *dev)
+{
+	struct ext_context *ctx = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(ctx->ext_clk);
+	clk_disable_unprepare(ctx->bus_clk);
+
+	return 0;
+}
+
+static int tcc_ext_resume(struct device *dev)
+{
+	struct ext_context *ctx = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_prepare_enable(ctx->bus_clk);
+	if (ret < 0) {
+		DRM_ERROR("Failed to prepare_enable the bus clk [%d]\n", ret);
+		return ret;
+	}
+
+	ret = clk_prepare_enable(ctx->ext_clk);
+	if  (ret < 0) {
+		DRM_ERROR("Failed to prepare_enable the ext clk [%d]\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops tcc_ext_pm_ops = {
+	SET_RUNTIME_PM_OPS(tcc_ext_suspend, tcc_ext_resume, NULL)
+};
+
 struct platform_driver ext_driver = {
 	.probe		= ext_probe,
 	.remove		= ext_remove,
 	.driver		= {
 		.name	= "tcc-drm-ext",
 		.owner	= THIS_MODULE,
+		.pm	= &tcc_ext_pm_ops,
 		.of_match_table = ext_driver_dt_match,
 	},
 };
