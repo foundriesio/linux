@@ -2623,17 +2623,17 @@ static struct i915_power_well icl_power_wells[] = {
 		.hsw.has_fuses = true,
 	},
 	{
+		.name = "DC off",
+		.domains = ICL_DISPLAY_DC_OFF_POWER_DOMAINS,
+		.ops = &gen9_dc_off_power_well_ops,
+		.id = SKL_DISP_PW_DC_OFF,
+	},
+	{
 		.name = "power well 2",
 		.domains = ICL_PW_2_POWER_DOMAINS,
 		.ops = &hsw_power_well_ops,
 		.id = ICL_DISP_PW_2,
 		.hsw.has_fuses = true,
-	},
-	{
-		.name = "DC off",
-		.domains = ICL_DISPLAY_DC_OFF_POWER_DOMAINS,
-		.ops = &gen9_dc_off_power_well_ops,
-		.id = SKL_DISP_PW_DC_OFF,
 	},
 	{
 		.name = "power well 3",
