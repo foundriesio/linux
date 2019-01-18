@@ -1,6 +1,7 @@
 /* tcc_drm_crtc.h
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -15,24 +16,24 @@
 #ifndef _TCC_DRM_CRTC_H_
 #define _TCC_DRM_CRTC_H_
 
+
 #include "tcc_drm_drv.h"
 
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 					struct drm_plane *plane,
-					int pipe,
-					enum tcc_drm_output_type type,
+					enum tcc_drm_output_type out_type,
 					const struct tcc_drm_crtc_ops *ops,
 					void *context);
-int tcc_drm_crtc_enable_vblank(struct drm_device *dev, unsigned int pipe);
-void tcc_drm_crtc_disable_vblank(struct drm_device *dev, unsigned int pipe);
 void tcc_drm_crtc_wait_pending_update(struct tcc_drm_crtc *tcc_crtc);
 void tcc_drm_crtc_finish_update(struct tcc_drm_crtc *tcc_crtc,
 				   struct tcc_drm_plane *tcc_plane);
-void tcc_drm_crtc_complete_scanout(struct drm_framebuffer *fb);
 
-/* This function gets pipe value to crtc device matched with out_type. */
-int tcc_drm_crtc_get_pipe_from_type(struct drm_device *drm_dev,
+/* This function gets crtc device matched with out_type. */
+struct tcc_drm_crtc *tcc_drm_crtc_get_by_type(struct drm_device *drm_dev,
 				       enum tcc_drm_output_type out_type);
+
+int tcc_drm_set_possible_crtcs(struct drm_encoder *encoder,
+		enum tcc_drm_output_type out_type);
 
 /*
  * This function calls the crtc device(manager)'s te_handler() callback
@@ -40,5 +41,7 @@ int tcc_drm_crtc_get_pipe_from_type(struct drm_device *drm_dev,
  * signal.
  */
 void tcc_drm_crtc_te_handler(struct drm_crtc *crtc);
+
+void tcc_crtc_handle_event(struct tcc_drm_crtc *tcc_crtc);
 
 #endif
