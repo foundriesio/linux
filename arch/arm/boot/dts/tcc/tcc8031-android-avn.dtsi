@@ -596,8 +596,8 @@
 	phyrst-gpio = <&gpc 29 0>;
 	phy-interface = "rgmii";
 	//ecid-mac-addr;
-	txclk-o-dly = <3>;
-	txclk-o-inv = <1>;
+	txclk-o-dly = <14>;
+	txclk-o-inv = <0>;
 	txclk-i-dly = <0>;
 	txclk-i-inv = <0>;
 	txen-dly = <0>;
