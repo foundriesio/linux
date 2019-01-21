@@ -305,6 +305,7 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct dw_mipi_dsi_stm *dsi;
+	struct clk *pclk;
 	struct resource *res;
 	int ret;
 
@@ -335,23 +336,13 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 	if (IS_ERR(dsi->pllref_clk)) {
 		ret = PTR_ERR(dsi->pllref_clk);
 		dev_err(dev, "Unable to get pll reference clock: %d\n", ret);
-		regulator_disable(dsi->vdd_supply);
-		return ret;
+		goto err_clk_get;
 	}
 
 	ret = clk_prepare_enable(dsi->pllref_clk);
 	if (ret) {
 		dev_err(dev, "%s: Failed to enable pllref_clk\n", __func__);
-		regulator_disable(dsi->vdd_supply);
-		return ret;
-	}
-
-	dsi->hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
-	if (dsi->hw_version != HWVER_130 && dsi->hw_version != HWVER_131) {
-		dev_err(dev, "bad dsi hardware version\n");
-		clk_disable_unprepare(dsi->pllref_clk);
-		regulator_disable(dsi->vdd_supply);
-		return -ENODEV;
+		goto err_clk_get;
 	}
 
 	dw_mipi_dsi_stm_plat_data.base = dsi->base;
@@ -361,13 +352,43 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 
 	dsi->dsi = dw_mipi_dsi_probe(pdev, &dw_mipi_dsi_stm_plat_data);
 	if (IS_ERR(dsi->dsi)) {
+		ret = PTR_ERR(dsi->dsi);
 		DRM_ERROR("Failed to initialize mipi dsi host\n");
-		regulator_disable(dsi->vdd_supply);
-		clk_disable_unprepare(dsi->pllref_clk);
-		return PTR_ERR(dsi->dsi);
+		goto err_probe;
+	}
+
+	pclk = devm_clk_get(dev, "pclk");
+	if (IS_ERR(pclk)) {
+		ret = PTR_ERR(pclk);
+		dev_err(dev, "Unable to get peripheral clock: %d\n", ret);
+		goto err_probe;
+	}
+
+	ret = clk_prepare_enable(pclk);
+	if (ret) {
+		dev_err(dev, "%s: Failed to enable peripheral clk\n", __func__);
+		goto err_probe;
+	}
+
+	dsi->hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
+	clk_disable_unprepare(pclk);
+
+	if (dsi->hw_version != HWVER_130 && dsi->hw_version != HWVER_131) {
+		ret = -ENODEV;
+		dev_err(dev, "bad dsi hardware version\n");
+		goto err_probe;
 	}
 
 	return 0;
+
+err_probe:
+	clk_disable_unprepare(dsi->pllref_clk);
+
+err_clk_get:
+	regulator_disable(dsi->vdd_supply);
+
+	return ret;
+
 }
 
 static int dw_mipi_dsi_stm_remove(struct platform_device *pdev)
