@@ -42,7 +42,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/device.h> // dev_xet_drv_data
 #include <asm/io.h>
 
-#define HDMI_DRV_VERSION        "4.14_1.0.7b"
+#define HDMI_DRV_VERSION        "4.14_1.1.0"
 
 // HDMI COMPONENTS
 #define PROTO_HDMI_TX_CORE      0
@@ -353,6 +353,10 @@ struct hdmi_tx_dev{
           * Pointer to store the dolbyvision_vsif list */
         unsigned char *dolbyvision_visf_list;
         #endif
+
+        /*
+         * Save TMDS Confgs and Scrambler Status */
+        unsigned char prev_scdc_status;
 };
 
 /**

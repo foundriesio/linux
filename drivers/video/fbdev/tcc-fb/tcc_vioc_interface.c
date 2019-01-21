@@ -6,7 +6,7 @@
  * Created: June 10, 2008
  * Description: TCC LCD Controller Frame Buffer Driver
  *
- * Copyright (C) 2008-2009 Telechips 
+ * Copyright (C) 2008-2009 Telechips
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -158,7 +158,7 @@ typedef struct dolby_layer_str_t
 /* Debugging stuff */
 static int debug = 0;
 #define dprintk(msg...)	if (debug) { printk( "VIOC_I: " msg); }
- 
+
 struct device_node *ViocScaler_np;
 struct device_node *ViocConfig_np;
 
@@ -319,7 +319,7 @@ void tca_fb_mem_scale_init(void)
 	g2d_open = tccxxx_grp_open;
 	g2d_release = tccxxx_grp_release;
 	#endif//
-	
+
 	pr_info("%s scaler buffer:0x%x 0x%x g2d buffer : 0x%x, 0x%x size:%d \n", __func__, fb_scaler_pbuf0, fb_scaler_pbuf1, fb_g2d_pbuf0, fb_g2d_pbuf1, pmap.size);
 }
 
@@ -366,8 +366,8 @@ unsigned int tca_get_main_decompressor_num(void)
 EXPORT_SYMBOL(tca_get_main_decompressor_num);
 
 #if defined(CONFIG_VIOC_RESET_FOR_UNDERRUN)
-/* 
- * TODO: Change display device reset Function 
+/*
+ * TODO: Change display device reset Function
  * there is problem about resetting components
  */
 void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pDisplayDevice)
@@ -375,7 +375,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 	#define DD0_DMA_CONNECT_CHECK(PlugInOut) 	((PlugInOut.connect_device == VIOC_SC_RDMA_00)|| (PlugInOut.connect_device == VIOC_SC_RDMA_01) \
 													||(PlugInOut.connect_device == VIOC_SC_RDMA_02) || (PlugInOut.connect_device == VIOC_SC_RDMA_03) \
 													|| (PlugInOut.connect_device == VIOC_SC_WDMA_00))
-													
+
 	#define DD1_DMA_CONNECT_CHECK(PlugInOut) 	((PlugInOut.connect_device == VIOC_SC_RDMA_04)|| (PlugInOut.connect_device == VIOC_SC_RDMA_05) \
 													||(PlugInOut.connect_device == VIOC_SC_RDMA_06) || (PlugInOut.connect_device == VIOC_SC_RDMA_07)  \
 													|| (PlugInOut.connect_device == VIOC_SC_WDMA_01))
@@ -386,7 +386,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 	volatile void __iomem  *RDMABackup[RDMA_MAX_NUM], *pRDMA_Addr[RDMA_MAX_NUM];
 
 	volatile unsigned char WMIXER_N, RDMA_N[RDMA_MAX_NUM];
-	
+
 	VIOC_PlugInOutCheck VIOC_PlugIn[VIOC_VIQE + 1];
 	volatile unsigned char VIOC_PlugIn_reset[get_vioc_index(VIOC_VIQE0) + 1];
 	volatile void __iomem *pSC_Backup[get_vioc_index(VIOC_SCALER3) + 1];
@@ -417,9 +417,9 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 	}
 
 	pDISPBackup = pDisplayDevice->ddc_info.virt_addr;
-	
+
 	pWMIX_Addr = pDisplayDevice->wmixer_info.virt_addr;
-	
+
 	WMIXER_N = pDisplayDevice->wmixer_info.blk_num;
 
 	for(i = 0; i < RDMA_MAX_NUM; i++)	{
@@ -483,7 +483,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 		else
 			pr_err("%s: ViqeBackup is null\n", __func__);
 	}
-	
+
 	// h/w block reset
 	VIOC_CONFIG_SWReset(device_num, VIOC_CONFIG_RESET);		// disp reset
 	VIOC_CONFIG_SWReset(device_num, VIOC_CONFIG_RESET);		// wdma reset
@@ -520,8 +520,8 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 	if(VIOC_PlugIn_reset[get_vioc_index(VIOC_VIQE0)])
 		VIOC_CONFIG_SWReset(VIOC_VIQE0, VIOC_CONFIG_RESET);
 
-		
-	// h/w block release reset 
+
+	// h/w block release reset
 	if(VIOC_PlugIn_reset[get_vioc_index(VIOC_VIQE0)])
 		VIOC_CONFIG_SWReset(VIOC_VIQE0, VIOC_CONFIG_CLEAR);
 
@@ -547,7 +547,7 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 		if((vioc_compress[i] >= VIOC_MC0) && (vioc_compress[i] < (VIOC_MC0 + VIOC_MC_MAX)))
 			VIOC_CONFIG_SWReset(vioc_compress[i], VIOC_CONFIG_CLEAR);		// mc reset release
 		#endif//
-		
+
 		#ifdef CONFIG_VIOC_DTRC_DECOMP
 		if((vioc_compress[i] >= VIOC_DTRC0) && (vioc_compress[i] < (VIOC_DTRC0 + VIOC_DTRC_MAX)))
 			VIOC_CONFIG_SWReset(vioc_compress[i], VIOC_CONFIG_CLEAR);		// dtrc reset release
@@ -578,11 +578,11 @@ void vioc_display_device_reset(unsigned int device_num, struct tcc_dp_device *pD
 
 	if (WMIXBackup != NULL)
 		memcpy((void *)pWMIX_Addr, (void *)WMIXBackup, 0x20);
- 
+
 	for(i = 0; i < RDMA_MAX_NUM; i++)	{
 		VIOC_RDMA_SetImageUpdate(pRDMA_Addr[i]);
 	}
- 
+
 	VIOC_WMIX_SetUpdate(pWMIX_Addr);
 
 	if (DISPBackup != NULL) {
@@ -645,7 +645,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		unsigned int status = 0;
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
-		
+
 		if(status & INT_PEND_R_TX_VE_MASK) {
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_R_TX_VE_MASK);
 
@@ -660,7 +660,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 #endif
-	
+
 	dispblock_status = vioc_intr_get_status(fbdev->pdata.lcdc_number);
 
 //	dprintk("%s  sync_struct.state:0x%x dispblock_status:0x%x, fbdev:%p \n",
@@ -729,7 +729,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 
 		}
 		#endif//
-		VIOCFifoUnderRun = 0;		
+		VIOCFifoUnderRun = 0;
 		pr_info("%s DISABEL DONE Lcdc_num:%d 0x%p  STATUS:0x%x  \n",
 			__func__,fbdev->pdata.lcdc_number, fbdev->pdata.Mdp_data.ddc_info.virt_addr, dispblock_status);
 #endif
@@ -738,7 +738,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 	if(dispblock_status & (1<<VIOC_DISP_INTR_SREQ)) {
 		vioc_intr_clear(fbdev->pdata.lcdc_number, (1<<VIOC_DISP_INTR_SREQ));
 	}
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -773,12 +773,12 @@ int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info)
 		ret = request_irq( info->pdata.Mdp_data.ddc_info.irq_num, tca_main_display_handler, IRQF_SHARED, "TCC_MAIN_D", info);
 
 		_tca_vioc_intr_onoff(ON, info->pdata.Mdp_data.ddc_info.irq_num, info->pdata.lcdc_number);
-                
+
 		#if defined(CONFIG_DUMP_DISPLAY_UNDERRUN)
 		INIT_WORK(&dump_handle, tca_fb_dump_underrun_state);
 		#endif
-                
-                
+
+
 	}
 	else {
 		#if defined(CONFIG_DUMP_DISPLAY_UNDERRUN)
@@ -786,7 +786,7 @@ int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info)
 		#endif
 
 		_tca_vioc_intr_onoff(OFF, info->pdata.Mdp_data.ddc_info.irq_num, info->pdata.lcdc_number);
-		
+
 		free_irq( info->pdata.Mdp_data.ddc_info.irq_num, info);
 	}
 
@@ -803,7 +803,7 @@ static irqreturn_t tca_sub_display_handler(int irq, void *dev_id)
 		pr_err("%s irq: %d dev_id:%p \n",__func__, irq, dev_id);
 		return IRQ_HANDLED;
 	}
-	
+
 	dispblock_status = vioc_intr_get_status(pDisplayInfo->DispNum);
 	if(dispblock_status & VIOC_DISP_IREQ_RU_MASK) {
 		vioc_intr_clear(pDisplayInfo->DispNum, (1<<VIOC_DISP_INTR_RU));
@@ -854,19 +854,19 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
         volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 
         clk_src_hdmi_phy = clk_src_hdmi_phy?1:0;
-        
-        if(pDisplayInfo != NULL && 
-                pDDICONFIG != NULL) {              
+
+        if(pDisplayInfo != NULL &&
+                pDDICONFIG != NULL) {
                 if(pDisplayInfo->DispDeviceType == TCC_OUTPUT_HDMI) {
                         if(clk_src_hdmi_phy) {
-                                pr_info("The display device uses hdmi phy clocks\r\n");
+                                //pr_info("The display device uses hdmi phy clocks\r\n");
                                 hdmi_pixel_clock = 24000000;
                         } else {
                                 hdmi_pixel_clock = hdmi_get_pixel_clock();
                                 if(hdmi_pixel_clock == 0) {
                                         hdmi_pixel_clock = 24000000;
                                 }
-                                pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
+                                //pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
                                 /* HDMI PHY -> Lx LCLK */
                                 clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
                         }
@@ -885,7 +885,7 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
                                 clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
                         }
                         hdmi_pixel_clock = clk_get_rate(pDisplayInfo->ddc_clock);
-                        pr_info("L%d_LCLK is %dHz\r\n", pDisplayInfo->DispNum, hdmi_pixel_clock);
+                        //pr_info("L%d_LCLK is %dHz\r\n", pDisplayInfo->DispNum, hdmi_pixel_clock);
                 }
         }
         #endif
@@ -907,10 +907,10 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	// get and set the value of vioc clock
 	if(pDisplayInfo->DispDeviceType == TCC_OUTPUT_HDMI)
 	{
-                #if defined(CONFIG_ARCH_TCC897X)              
+                #if defined(CONFIG_ARCH_TCC897X)
                 np_output = of_find_compatible_node(NULL, NULL, "telechips,tcc897x-hdmi");
                 #endif
-                
+
 		#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
                 if(!specific_pclk) {
                         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
@@ -947,7 +947,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	}
 
         /* Get real vioc clock value */
-        vioc_clock_value = clk_get_rate(pDisplayInfo->ddc_clock);                              
+        vioc_clock_value = clk_get_rate(pDisplayInfo->ddc_clock);
 	pr_info("%s lcdc:%d device:%d lcdc_clock:%d\n", __func__,
 		get_vioc_index(pDisplayInfo->ddc_info.blk_num), pDisplayInfo->DispDeviceType, vioc_clock_value);
 
@@ -955,7 +955,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	clk_prepare_enable(pDisplayInfo->ddc_clock);
 
 	if(pDisplayInfo->DispOrder != DD_MAIN)	{
-		ret = request_irq(pDisplayInfo->ddc_info.irq_num, tca_sub_display_handler, IRQF_SHARED, 
+		ret = request_irq(pDisplayInfo->ddc_info.irq_num, tca_sub_display_handler, IRQF_SHARED,
 				"SUB_LCDC", pDisplayInfo);
 		if(ret < 0)
 			pr_err("Error %s:%d  ret:%d \n", __func__,__LINE__ ,ret);
@@ -1009,8 +1009,8 @@ void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo)
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
-        #endif    
-        
+        #endif
+
 	pDisplayInfo->FbPowerState = false;
 
 	pr_info("%s lcdc:%d onoff:%d\n", __func__,
@@ -1032,7 +1032,7 @@ void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo)
 		VIOC_V_DV_All_Turnoff();
 	}
 #endif
-	    
+
 #ifdef CONFIG_VIDEO_TCC_VOUT
 	VIOC_RDMA_SetImageDisableNW(pDisplayInfo->rdma_info[RDMA_FB].virt_addr);
 	VIOC_RDMA_SetImageDisableNW(pDisplayInfo->rdma_info[RDMA_3D].virt_addr);
@@ -1056,7 +1056,7 @@ void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo)
 			|| (VIOC_CONFIG_DV_GET_EDR_PATH() && (pDisplayInfo->ddc_info.virt_addr != VIOC_DISP_GetAddress(0)))
 		)
 	#endif
-		{			
+		{
 	#if defined(CONFIG_VIOC_FIFO_UNDER_RUN_COMPENSATION)
 			{
 				pDisplayInfo->disp_dd_sync.state = 0;
@@ -1153,7 +1153,7 @@ static void tca_vioc_displaytiming_dump(struct tcc_dp_device *pDisplayInfo) {
         volatile unsigned int reg = __raw_readl(pDISP+DCTRL);
         volatile unsigned int val, val1, val2, val3, val4;
         printk("FB Timing Dump\r\n");
-        printk(" SYNC VSYNC(%s), HSYNC(%s), DE(%s) PCLK(%s)\r\n", 
+        printk(" SYNC VSYNC(%s), HSYNC(%s), DE(%s) PCLK(%s)\r\n",
                 (reg & (1<<13))?"Low":"High",  (reg & (1<<12))?"Low":"High", (reg & (1<<14))?"Low":"High", (reg & (1<<1))?"Low":"High");
 
         // LPC
@@ -1171,13 +1171,13 @@ static void tca_vioc_displaytiming_dump(struct tcc_dp_device *pDisplayInfo) {
         val2 = __raw_readl(pDISP+DHTIME2);
         val2 &= 0x01FF0000;
         val2 >>=16;
-        val2 += 1;              
+        val2 += 1;
 
         //LEWC - HSYNC EDGE DELAY
         val3 = __raw_readl(pDISP+DHTIME2);
         val3 &= 0x000001FF;
         val3 += 1;
-        
+
         val4 = val1 + val2 +val3;
 
         printk("HSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val,  val3, val1,  val4);
@@ -1208,7 +1208,7 @@ static void tca_vioc_displaytiming_dump(struct tcc_dp_device *pDisplayInfo) {
 
         val4 = val1 + val2 +val3;
 
-	
+
         printk("VSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val,  val3, val1,  val4);
 }
 #endif
@@ -1235,13 +1235,13 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                         /* VIOC data bus align is under 10-bit */
                         switch(tcc_fb_extra_data->pxdw) {
                                 case 21:
-                                        /* "20-bit YCbCr Format * {Y,Cb} a {Y,Cr}" to 
+                                        /* "20-bit YCbCr Format * {Y,Cb} a {Y,Cr}" to
                                                 "16-bit * YCbCr Format * {Y,Cb} a {Y,Cr}" */
-                                        tcc_fb_extra_data->pxdw = 8;         
+                                        tcc_fb_extra_data->pxdw = 8;
                                         break;
                                 case 23:
                                         /* "30-bit RGB101010 Format" to "24-bit RGB888 Format" */
-                                        tcc_fb_extra_data->pxdw = 12;         
+                                        tcc_fb_extra_data->pxdw = 12;
                                         break;
                                 case 27:
                                         /* YCbCr 420 Format * {Cb,Y0,Y1} a {Cr,Y2,Y3} is not support */
@@ -1250,7 +1250,7 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                                         break;
                         }
                 }
-                pr_info("%s pxdw(%d), swapbf(%d), r2ymd(%d), r2y(%d)\r\n", 
+                pr_info("%s pxdw(%d), swapbf(%d), r2ymd(%d), r2y(%d)\r\n",
                         __func__, tcc_fb_extra_data->pxdw, tcc_fb_extra_data->swapbf, tcc_fb_extra_data->r2ymd, tcc_fb_extra_data->r2y);
                 VIOC_DISP_SetPXDW(pDISP, tcc_fb_extra_data->pxdw);
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -1295,7 +1295,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
-        #endif 
+        #endif
 
         #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	dv_reg_phyaddr = dv_md_phyaddr = 0x00;
@@ -1366,7 +1366,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	stTimingParam.lpc= mode->lpc + 1;
 	stTimingParam.lswc= mode->lswc+ 1;
 	stTimingParam.lewc= mode->lewc+ 1;
-	
+
 	stTimingParam.vdb = mode->vdb;
 	stTimingParam.vdf = mode->vdf;
 	stTimingParam.fpw = mode->fpw;
@@ -1392,7 +1392,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	//stCtrlParam.pxdw = 12; //RGB888
 	stCtrlParam.dp = mode->dp;
 	stCtrlParam.ni = mode->ni;
-        
+
 #if defined(CONFIG_TCC_M2M_USE_INTERLACE_OUTPUT)
     if(mode->ni == 0)
             stCtrlParam.advi = 0;
@@ -1504,15 +1504,15 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 		printk(" >>FB_MVC_UPDATE\r\n");
 	}
 	else if(mode->framepacking == 2 || mode->framepacking == 3) {
-		// If mode->framepacking is 2 then SBS 
-		// If mode->framepacking is 3 then TAB 
+		// If mode->framepacking is 2 then SBS
+		// If mode->framepacking is 3 then TAB
 		divide_data.enable = 1;
 
 		// divide_data.mode is set 0 in SBS
 		// divide_data.mode is set 1 in TAB
 		divide_data.mode = mode->framepacking-2;
 		//divide_data.fbtype = FB_SC_M2M_RDMA_UPDATE;
-		
+
 		pDisplayInfo->FbUpdateType = FB_DIVIDE_UPDATE;
 
 		printk(" >>FB_DIVIDE_UPDATE\r\n");
@@ -1577,7 +1577,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 			VIOC_CONFIG_PlugIn(pDisplayInfo->sc_num1, pDisplayInfo->rdma_info[RDMA_3D].blk_num);
 		}
 	}
-		
+
 	pDisplayInfo->FbPowerState = true;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -1594,7 +1594,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 1);
-        #endif 
+        #endif
 
 	//tca_vioc_displaytiming_dump(pDisplayInfo);
 	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
@@ -1622,7 +1622,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         if(!skip_display_device) {
                 tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
         }
-        #endif 
+        #endif
 
         #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
         if(skip_display_device) {
@@ -1689,7 +1689,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_CLEAR);
-	        
+
         #if 0//defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) : pjj delete please
 	if(output_starter_state || hdmi_get_hdmimode() == DVI)
 		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
@@ -1727,7 +1727,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 #endif
             VIOC_OUTCFG_SetOutConfig(outDevice, pDisplayInfo->ddc_info.blk_num);
     }
-        
+
 	if(pDisplayInfo->FbUpdateType != FB_ATTACH_UPDATE)
 	{
 		#if	defined(CONFIG_HDMI_FB_ROTATE_90)||defined(CONFIG_HDMI_FB_ROTATE_180)||defined(CONFIG_HDMI_FB_ROTATE_270)
@@ -1795,7 +1795,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 1);
-        #endif 
+        #endif
 
         if(!skip_display_device) {
         	pr_info("%s displayN:%d non-interlaced:%d w:%d h:%d FbUpdateType:%d \n",
@@ -1907,7 +1907,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
-	
+
 	if(var->bits_per_pixel == 32) 	{
 		chroma_en = UI_CHROMA_EN;
 		alpha_type = 1;
@@ -1918,7 +1918,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 		chroma_en = 1;
 		alpha_type = 0;
 		alpha_blending_en = 0;
-		fmt = TCC_LCDC_IMG_FMT_RGB565; 
+		fmt = TCC_LCDC_IMG_FMT_RGB565;
 	}
 	else	{
 		pr_err("%s: bits_per_pixel : %d Not Supported BPP!\n", __FUNCTION__, var->bits_per_pixel);
@@ -1933,10 +1933,10 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	img_width = var->xres;
 	img_height = var->yres;
 
-	if(img_width > lcd_width)	
+	if(img_width > lcd_width)
 		img_width = lcd_width;
-	
-	if(img_height > lcd_height)	
+
+	if(img_height > lcd_height)
 		img_height = lcd_height;
 
 	/* display 3d ui : side-by-side, top-and-bottom */
@@ -1985,7 +1985,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 		tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
 	#endif
 
-	// default framebuffer 
+	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
 	//overlay setting
 	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
@@ -2000,16 +2000,16 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	#if defined(CONFIG_SUPPORT_2D_COMPRESSION)
 	tca_vioc_configure_DEC100(base_addr, var, pRDMA);
 	#endif
-	
+
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt
 
-	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset	
-	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size	
+	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset
+	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
-        
+
 	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 	VIOC_RDMA_SetImage3DMode(pRDMA, 0);
 	VIOC_RDMA_SetImageRBase(pRDMA, 0, 0, 0);
@@ -2080,7 +2080,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
-	
+
 	if(var->bits_per_pixel == 32) 	{
 		chroma_en = UI_CHROMA_EN;
 		alpha_type = 1;
@@ -2091,7 +2091,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 		chroma_en = 1;
 		alpha_type = 0;
 		alpha_blending_en = 0;
-		fmt = TCC_LCDC_IMG_FMT_RGB565; 
+		fmt = TCC_LCDC_IMG_FMT_RGB565;
 	}
 	else	{
 		pr_err("%s: bits_per_pixel : %d Not Supported BPP!\n", __FUNCTION__, var->bits_per_pixel);
@@ -2110,10 +2110,10 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 		pResize = &resize_data;
 	#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 
-	//pr_info("%s: display order:%d block:%d base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, pdp_data->DispOrder, pdp_data->ddc_info.blk_num, base_addr, var->xres, var->yres, var->yoffset, lcd_width, lcd_height);	
+	//pr_info("%s: display order:%d block:%d base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, pdp_data->DispOrder, pdp_data->ddc_info.blk_num, base_addr, var->xres, var->yres, var->yoffset, lcd_width, lcd_height);
 	//pr_info("scaler num %d  l:%d r : %d u:%d d:%d \n", pdp_data->sc_num0, pResize->resize_left , pResize->resize_right, pResize->resize_up , pResize->resize_down);
 
-	if((!lcd_height) || (!lcd_width))	
+	if((!lcd_height) || (!lcd_width))
 		return;
 
 	lcd_width	-= (pResize->resize_left + pResize->resize_right) * 8;
@@ -2126,7 +2126,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 		unsigned int w, h;
 		w = 256;
 		h = 256;
-		base_addr 	= 0x7d000000;		
+		base_addr 	= 0x7d000000;
 		img_width 	= w;
 		img_height 	= h;
 		lcd_width 	= w;
@@ -2187,17 +2187,17 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	{
 		pSC = VIOC_SC_GetAddress(pdp_data->sc_num0);
 	}
-	
+
 	if((lcd_height == img_height) && (lcd_width == img_width))
 		VIOC_SC_SetBypass (pSC, ON);
 	else
 		VIOC_SC_SetBypass (pSC, OFF);
-	
+
 	VIOC_SC_SetSrcSize(pSC, img_width, img_height);
 	VIOC_SC_SetDstSize (pSC, lcd_width, lcd_height);			// set destination size in scaler
 	VIOC_SC_SetOutSize (pSC, lcd_width, lcd_height);			// set output size in scaler
 
-	// default framebuffer 
+	// default framebuffer
 	VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, lcd_layer, lcd_pos_x, lcd_pos_y);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -2214,7 +2214,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt );				//fmt
 
-	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height  );	//size	
+	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height  );	//size
 	VIOC_RDMA_SetImageOffset(pRDMA, fmt, var->xres_virtual);		//offset
 
 #if defined(CONFIG_VIOC_AFBCDEC)
@@ -2223,7 +2223,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 #else
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
-		
+
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
@@ -2240,9 +2240,9 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 #if defined(CONFIG_SUPPORT_2D_COMPRESSION)
 	tca_vioc_configure_DEC100(base_addr, var, pRDMA);
 #endif
-	
 
-	VIOC_WMIX_SetUpdate(pWMIX);	
+
+	VIOC_WMIX_SetUpdate(pWMIX);
 #if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
 	VIOC_RDMA_SetImageY2REnable(pRDMA, 0);
 	VIOC_RDMA_SetImageR2YEnable(pRDMA, 1);
@@ -2280,8 +2280,8 @@ unsigned int tca_fb_sc_m2m(unsigned int base_addr, struct fb_var_screeninfo *var
 {
 	SCALER_TYPE fbscaler;
 	static char sc_buf_index = 0;
-	
-//	pr_info("%s: base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, base_addr, var->xres, var->yres, var->yoffset, dest_x, dest_y);	
+
+//	pr_info("%s: base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, base_addr, var->xres, var->yres, var->yoffset, dest_x, dest_y);
 
 	memset(&fbscaler, 0x00, sizeof(SCALER_TYPE));
 	fbscaler.responsetype = SCALER_POLLING;
@@ -2301,7 +2301,7 @@ unsigned int tca_fb_sc_m2m(unsigned int base_addr, struct fb_var_screeninfo *var
 	fbscaler.src_winTop = 0;
 	fbscaler.src_winRight = var->xres;
 	fbscaler.src_winBottom = var->yres;
-		
+
 	if(sc_buf_index)
 		fbscaler.dest_Yaddr = fb_scaler_pbuf1;	// destination image address
 	else
@@ -2344,7 +2344,7 @@ void tca_fb_sc_m2m_rdma_active_var(unsigned int base_addr, struct fb_var_screeni
 	#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 	lcd_width	-= (pResize->resize_left + pResize->resize_right) * 8;
 	lcd_height	-= (pResize->resize_up + pResize->resize_down) * 4;
-	
+
 	/* display 3d ui : side-by-side, top-and-bottom */
 	if(divide_data.enable)
 	{
@@ -2380,14 +2380,14 @@ unsigned int tca_fb_g2d_m2m(unsigned int base_addr, struct fb_var_screeninfo * v
 {
 	static unsigned int g2d_buf_index;
 	G2D_BITBLIT_TYPE g2d_p;
-	
+
 	memset(&g2d_p, 0x00, sizeof(G2D_BITBLIT_TYPE));
 
-//	pr_info("%s: %d \n", __func__, g2d_rotate);	
+//	pr_info("%s: %d \n", __func__, g2d_rotate);
 
 	g2d_p.responsetype = G2D_POLLING;
 	g2d_p.src0 = (unsigned int)base_addr;
-	
+
 	if(var->bits_per_pixel == 32)
 		g2d_p.srcfm.format = GE_RGB888;
 	else
@@ -2414,7 +2414,7 @@ unsigned int tca_fb_g2d_m2m(unsigned int base_addr, struct fb_var_screeninfo * v
 
 	// destinaion f
 	g2d_p.tgtfm.data_swap = 0;
-	
+
 	if((g2d_rotate == ROTATE_270) || (g2d_rotate == ROTATE_90)) 	{
 		g2d_p.dst_imgx = g2d_p.src_imgy;
 		g2d_p.dst_imgy = g2d_p.src_imgx;
@@ -2423,7 +2423,7 @@ unsigned int tca_fb_g2d_m2m(unsigned int base_addr, struct fb_var_screeninfo * v
 		g2d_p.dst_imgx = g2d_p.src_imgx;
 		g2d_p.dst_imgy = g2d_p.src_imgy;
 	}
-	
+
 	g2d_p.dst_off_x = 0;
 	g2d_p.dst_off_y = 0;
 	g2d_p.alpha_value = 255;
@@ -2447,23 +2447,23 @@ void tca_fb_sc_g2d_rdma_active_var(unsigned int base_addr, struct fb_var_screeni
 	else
 		pResize = &resize_data;
 	#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
-	
-	VIOC_DISP_GetSize(pdp_data->ddc_info.virt_addr, &lcd_width, &lcd_height);	
+
+	VIOC_DISP_GetSize(pdp_data->ddc_info.virt_addr, &lcd_width, &lcd_height);
 //	pr_info("%s: %d base_addr:0x%x w:%d h:%d offset:%d lcd:%d - %d \n", __FUNCTION__, pdp_data->ddc_info.blk_num, base_addr, var->xres, var->yres, var->yoffset, lcd_width, lcd_height);
 
 	lcd_width	-= (pResize->resize_left + pResize->resize_right) * 8;
 	lcd_height	-= (pResize->resize_up + pResize->resize_down) * 4;
-	
+
 	#if	defined(CONFIG_HDMI_FB_ROTATE_180)
 		rotate = ROTATE_180;
 	#elif defined(CONFIG_HDMI_FB_ROTATE_270)
 		rotate = ROTATE_270;
 	#elif defined(CONFIG_HDMI_FB_ROTATE_90)
 		rotate = ROTATE_90;
-	#else 
+	#else
 		rotate = 0;
 	#endif//
-		
+
 	tar_var = *var;
 
 	if((lcd_width * lcd_height) > (var->xres * var->yres))
@@ -2551,7 +2551,7 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	VIOC_SC_SetDstSize (pSC0, lcd_width, lcd_height);	// set destination size in scaler
 	VIOC_SC_SetOutSize (pSC0, lcd_width, lcd_height);	// set output size in scaler
 	VIOC_SC_SetUpdate (pSC0);							// scaler update
-	
+
 	VIOC_SC_SetSrcSize(pSC1, img_width, img_height);
 	VIOC_SC_SetDstSize (pSC1, lcd_width, lcd_height);	// set destination size in scaler
 	VIOC_SC_SetOutSize (pSC1, lcd_width, lcd_height);	// set output size in scaler
@@ -2573,7 +2573,7 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	} else {
 		VIOC_RDMA_SetImageY2REnable(pdp_data->rdma_info[RDMA_FB].virt_addr, 0);
 	}
-	
+
 	VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[RDMA_FB].virt_addr, interlace_output);
 
 	//offset
@@ -2590,7 +2590,7 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	// set RDMA for 2nd UI
 	//--------------------------------------
 	VIOC_RDMA_SetImageUVIEnable(pdp_data->rdma_info[RDMA_3D].virt_addr, true);
-			
+
 	// size
 	VIOC_RDMA_SetImageSize(pdp_data->rdma_info[RDMA_3D].virt_addr, img_width, img_height);
 
@@ -2602,7 +2602,7 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	} else {
 		VIOC_RDMA_SetImageY2REnable(pdp_data->rdma_info[RDMA_3D].virt_addr, 0);
 	}
-	
+
 	VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[RDMA_3D].virt_addr, interlace_output);
 
 	//offset
@@ -2653,13 +2653,13 @@ void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	nRDMA_Attached = RDMA_FB1;
 #endif
-	
+
 	if(attach_data.flag == 0)
 		return;
 
 	base_addr = attach_data.pbuf[attach_data.index];
 	attach_data.index = (attach_data.index+1)%MAX_ATTACH_BUFF_CNT;
-	
+
 	/* get the size of the attached output */
 	VIOC_DISP_GetSize(pSdp_data->ddc_info.virt_addr, &img_width, &img_height);
 
@@ -2672,8 +2672,8 @@ void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device 
 	VIOC_WMIX_SetChromaKey(pSdp_data->wmixer_info.virt_addr, nRDMA_Attached, 0, 0, 0, 0, 0xF8, 0xFC, 0xF8);
 	#endif//
 	VIOC_RDMA_SetImageFormat(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, TCC_LCDC_IMG_FMT_RGB888);				//fmt
-	VIOC_RDMA_SetImageOffset(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, TCC_LCDC_IMG_FMT_RGB888, img_width);	//offset	
-	VIOC_RDMA_SetImageSize(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, img_width, img_height);					//size	
+	VIOC_RDMA_SetImageOffset(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, TCC_LCDC_IMG_FMT_RGB888, img_width);	//offset
+	VIOC_RDMA_SetImageSize(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, img_width, img_height);					//size
 	VIOC_RDMA_SetImageBase(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, base_addr, 0, 0);
 
 	VIOC_RDMA_SetImageAlphaSelect(pSdp_data->rdma_info[nRDMA_Attached].virt_addr, 0);
@@ -2685,7 +2685,7 @@ void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device 
 	base_addr = attach_data.pbuf[attach_data.index];
 	VIOC_WDMA_SetImageBase(pMdp_data->wdma_info.virt_addr, base_addr+attach_posx*4+(img_width)*attach_posy*4, 0, 0);
 	VIOC_WDMA_SetImageUpdate(pMdp_data->wdma_info.virt_addr);
-	VIOC_WMIX_SetUpdate(pSdp_data->wmixer_info.virt_addr);	
+	VIOC_WMIX_SetUpdate(pSdp_data->wmixer_info.virt_addr);
 
 	if(attach_data.update_started == 0)
 	{
@@ -2737,7 +2737,7 @@ static irqreturn_t tca_fb_attach_handler(int irq, void *dev_id)
 	tca_fb_attach_update_flag();
 
 
-	
+
 	if(attach_data.flag)
 	{
 		if(attach_data.update_start)
@@ -2817,8 +2817,8 @@ void tca_fb_attach_start(struct tccfb_info *info)
 	else
 		VIOC_CONFIG_WMIXPath(VIOC_RDMA04, 0);
 
-	/* set the scaler information */		
-	scaler_num = ATTACH_SCALER;	
+	/* set the scaler information */
+	scaler_num = ATTACH_SCALER;
 
 	pSC = VIOC_SC_GetAddress(scaler_num);
 
@@ -2850,7 +2850,7 @@ void tca_fb_attach_start(struct tccfb_info *info)
 	VIOC_SC_SetOutSize(pSC, attach_wd, attach_ht);
 	VIOC_SC_SetUpdate(pSC);
 
-	/* plug the scaler in WDMA */		
+	/* plug the scaler in WDMA */
 	if(attach_data.plugin == 0)
 	{
 		VIOC_CONFIG_PlugIn(scaler_num, pMdp_data->wdma_info.blk_num);
@@ -2905,9 +2905,9 @@ void tca_fb_attach_start(struct tccfb_info *info)
 int tca_fb_attach_stop(struct tccfb_info *info)
 {
 	volatile void __iomem *pWDMA;
-	unsigned int scaler_num; 
+	unsigned int scaler_num;
 	struct tcc_dp_device *pMdp_data = &info->pdata.Mdp_data;
-	
+
 	printk("%s\n", __func__);
 
 	if(attach_data.flag == 0)
@@ -2923,9 +2923,9 @@ int tca_fb_attach_stop(struct tccfb_info *info)
 	vioc_intr_disable(pMdp_data->wdma_info.irq_num, attach_intr.vioc_intr->id, (1<<attach_intr.vioc_intr->bits));
 	free_irq(pMdp_data->wdma_info.irq_num, &attach_intr);
 
-	/* set the scaler number */		
+	/* set the scaler number */
 	scaler_num = ATTACH_SCALER;
-	
+
 	/* plug-out scaler */
 	if(attach_data.plugin)
 	{
@@ -2954,10 +2954,10 @@ int tca_fb_attach_stop(struct tccfb_info *info)
 void tca_fb_attach_stop_no_intr(struct tccfb_info *info)
 {
         volatile void __iomem *pWDMA;
-        unsigned int scaler_num; 
+        unsigned int scaler_num;
 
         struct tcc_dp_device *pMdp_data = &info->pdata.Mdp_data;
-        
+
         printk("%s\n", __func__);
 
 
@@ -2967,9 +2967,9 @@ void tca_fb_attach_stop_no_intr(struct tccfb_info *info)
         /* disable WDMA */
         VIOC_WDMA_SetImageDisable(pWDMA);
 
-        /* set the scaler number */             
+        /* set the scaler number */
         scaler_num = ATTACH_SCALER;
-        
+
         /* plug-out scaler */
         if(attach_data.plugin)
 		{
@@ -3149,12 +3149,12 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse,
 	volatile void __iomem *pDISPBase = pdp_data->ddc_info.virt_addr;
 	volatile void __iomem *pWMIXBase = pdp_data->wmixer_info.virt_addr;
 	volatile void __iomem *pRDMABase = pdp_data->rdma_info[RDMA_MOUSE].virt_addr;
-	
+
 	unsigned int lcd_width, lcd_height, lcd_w_pos,lcd_h_pos, mouse_x, mouse_y;
 	unsigned int interlace_output = 0, display_width, display_height;
 	unsigned int wmix_channel = 0;
   	tcc_display_resize *pResize = &resize_data;
-	
+
 	if((pDISPBase == NULL) || (pWMIXBase == NULL) || (pRDMABase == NULL)) {
 		//pr_err("%s - VIOC is not valid, RDMA:0x%08x, WMIX:0x%08x, DISP:0x%08x\n", __func__, pDISPBase, pWMIXBase, pRDMABase);
 		return 0;
@@ -3177,9 +3177,9 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse,
 		pResize = &resize_data;
 	#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 
-	
+
 	VIOC_DISP_GetSize(pDISPBase, &lcd_width, &lcd_height);
-	
+
 	if((!lcd_width) || (!lcd_height))
 		return -1;
 
@@ -3214,7 +3214,7 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse,
 	lcd_h_pos = mouse_y;
 
 	dprintk("%s lcd_width:%d, lcd_height:%d, lcd_w_pos:%d, lcd_h_pos:%d\n\n", __func__, lcd_width, lcd_height, lcd_w_pos, lcd_h_pos);
-	
+
 	// position
 	VIOC_WMIX_SetPosition(pWMIXBase, wmix_channel, lcd_w_pos, lcd_h_pos);
 
@@ -3237,7 +3237,7 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse,
 	// alpha & chroma key color setting
 	VIOC_RDMA_SetImageAlphaSelect(pRDMABase, 1);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMABase, 1);
-	
+
 	// image address
 	if(mouse_data.index)
 		VIOC_RDMA_SetImageBase(pRDMABase, (unsigned int)mouse_data.pbuf1, 0, 0);
@@ -3257,21 +3257,21 @@ int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse,
 
 void tca_fb_resize_set_value(tcc_display_resize resize_value, TCC_OUTPUT_TYPE output)
 {
-	printk( "%s : resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__, 
+	printk( "%s : resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__,
 			resize_value.resize_up, resize_value.resize_down, resize_value.resize_left, resize_value.resize_right );
 #ifdef CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 	if((output == TCC_OUTPUT_COMPONENT) || (output == TCC_OUTPUT_COMPOSITE))
 		memcpy((void *)&secondary_display_resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 	else
-#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB		
+#endif//CONFIG_PRESENTATION_SECONDAY_DISPLAY_RESIZE_STB
 		memcpy((void *)&resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 }
 
 void tca_fb_output_attach_resize_set_value(tcc_display_resize resize_value)
 {
-	printk( "%s : output_attach resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__, 
+	printk( "%s : output_attach resize_up = %d, resize_down = %d, resize_left = %d, resize_right = %d\n", __func__,
 			resize_value.resize_up, resize_value.resize_down, resize_value.resize_left, resize_value.resize_right );
-	
+
 	memcpy((void *)&output_attach_resize_data, (void *)&resize_value, sizeof(tcc_display_resize));
 }
 int tca_fb_divide_set_mode(struct tcc_dp_device *pdp_data, char enable, char mode)
@@ -3360,7 +3360,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 		pr_err("ERROR %s pdp_data:%p ImageInfo:%p\n", __func__, pdp_data, ImageInfo);
 		return;
 	}
-	
+
 	if(ImageInfo->MVCframeView == 1)
 	{
 		dprintk("%s is returned because of mvc frame view\n", __func__);
@@ -3371,7 +3371,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 	if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO] != 0)
 		return;
 #endif
-	
+
 	if(ImageInfo->on_the_fly)
 	{
 		iSCType = tca_get_scaler_num(pdp_data->DispDeviceType, ImageInfo->Lcdc_layer);
@@ -3382,14 +3382,14 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 			if(((ImageInfo->crop_right - ImageInfo->crop_left) != ImageInfo->Image_width) || ((ImageInfo->crop_bottom - ImageInfo->crop_top) != ImageInfo->Image_height))
 		#endif
 			{
-				pr_info(" %s Scaler-%d is plug in RDMA-%d \n", 
+				pr_info(" %s Scaler-%d is plug in RDMA-%d \n",
 					__func__, get_vioc_index(iSCType), get_vioc_index(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num));
 				VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
 				VIOC_CONFIG_PlugIn (iSCType, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			}
 
 		#ifdef CONFIG_VIOC_MAP_DECOMP
-			// HEVC MAP CONVERTER compressed data					
+			// HEVC MAP CONVERTER compressed data
 			if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 			{
 				if (VIOC_CONFIG_DMAPath_Support()) {
@@ -3410,7 +3410,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 			else
 		#endif//CONFIG_VIOC_MAP_DECOMP
 		#ifdef CONFIG_VIOC_DTRC_DECOMP
-			// VP9 DTRC CONVERTER compressed data					
+			// VP9 DTRC CONVERTER compressed data
 			if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0)
 			{
 				if (VIOC_CONFIG_DMAPath_Support()) {
@@ -3484,7 +3484,7 @@ void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image
 				{
 					volatile void __iomem *pVRDMA = VIOC_RDMA_GetAddress(component_num);
 					VIOC_RDMA_SetImageDisable(pVRDMA);
-					VIOC_CONFIG_DMAPath_UnSet(component_num);					
+					VIOC_CONFIG_DMAPath_UnSet(component_num);
 				}
 
 				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
@@ -3652,7 +3652,7 @@ int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc
 		//	El_ImageInfo->fmt = TCC_LCDC_IMG_FMT_YUV420SP;
 
 		DV_PROC_CHECK = DV_DUAL_MODE;
-		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);			
+		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);
 	}
 
 	return 1;
@@ -3666,7 +3666,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 	unsigned int iSCType = 0;
 	unsigned int lcd_width = 0, lcd_height = 0;
 	struct tcc_lcdc_image_update el_ImageInfo;
-	unsigned int ratio = 1;	
+	unsigned int ratio = 1;
 
 	dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d/%03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 			bStep_Check, DEF_DV_CHECK_NUM, nFrame, ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], ImageInfo->private_data.optional_info[VID_OPT_TIMESTAMP],
@@ -3690,7 +3690,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 
 	if((el_ImageInfo.Lcdc_layer >= RDMA_MAX_NUM) || (el_ImageInfo.fmt >TCC_LCDC_IMG_FMT_MAX)){
 		pr_err("LCD :: lcdc:%d, enable:%d, layer:%d, addr:0x%x, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d\n",
-		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0, 
+		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0,
 		       el_ImageInfo.fmt,el_ImageInfo.Frame_width, el_ImageInfo.Frame_height, el_ImageInfo.Image_width, el_ImageInfo.Image_height, el_ImageInfo.fmt, el_ImageInfo.on_the_fly);
 		return;
 	}
@@ -3750,7 +3750,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 			pr_info("Scaler-%d plug out for %d layer \n", get_vioc_index(iSCType), el_ImageInfo.Lcdc_layer);
 		}
 		return;
-	}	
+	}
 
 	iSCType = tca_get_scaler_num(pdp_data->DispDeviceType, el_ImageInfo.Lcdc_layer);
 
@@ -3785,7 +3785,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 		if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].blk_num) == -1) //scaler plug in status check
 		{
 			VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].virt_addr);
-			dprintk("%s Scaler-%d is plug in RDMA-%d \n", __func__, 
+			dprintk("%s Scaler-%d is plug in RDMA-%d \n", __func__,
 				get_vioc_index(iSCType), get_vioc_index(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].blk_num));
 			VIOC_CONFIG_PlugIn (iSCType, pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].blk_num);
 		}
@@ -3819,7 +3819,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 
 	VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].virt_addr, 0);
 
-	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 
 	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 	VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].virt_addr);
@@ -4171,7 +4171,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
@@ -4183,7 +4183,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
@@ -4198,7 +4198,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 
 			if(stDolby_OSD.frame_width!= Hactive && stDolby_OSD.frame_height != Vactive) {
@@ -4289,10 +4289,10 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 //			ImageInfo->fmt,ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->Image_width, ImageInfo->Image_height, ImageInfo->fmt, ImageInfo->on_the_fly, ImageInfo->private_data.optional_info[16]);
 	if((!pdp_data) || (!ImageInfo))
 		return;
-	
+
 	if((ImageInfo->Lcdc_layer >= RDMA_MAX_NUM) || (ImageInfo->fmt >TCC_LCDC_IMG_FMT_MAX)){
 		pr_err("LCD :: lcdc:%d, enable:%d, layer:%d, addr:0x%x, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d\n",
-		       get_vioc_index(pdp_data->ddc_info.blk_num), ImageInfo->enable, ImageInfo->Lcdc_layer, ImageInfo->addr0, 
+		       get_vioc_index(pdp_data->ddc_info.blk_num), ImageInfo->enable, ImageInfo->Lcdc_layer, ImageInfo->addr0,
 		       ImageInfo->fmt,ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->Image_width, ImageInfo->Image_height, ImageInfo->fmt, ImageInfo->on_the_fly);
 		return;
 	}
@@ -4362,7 +4362,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 		VIOC_RDMA_PreventEnable_for_UI(0, 0);
 #endif
 
-		//map converter 
+		//map converter
 		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			pr_info(" %s  for layer-disable: blk_num:  0x%x \n", __func__, component_num);
@@ -4383,7 +4383,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 			{
 				tca_dtrc_convter_onoff(component_num, 0, 1);
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
-				//tca_dtrc_convter_swreset(component_num); //disable it to prevent system-hang!!	
+				//tca_dtrc_convter_swreset(component_num); //disable it to prevent system-hang!!
 			}
 			#endif
 			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
@@ -4410,9 +4410,9 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 		VIOC_CONFIG_SWReset(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_CONFIG_RESET);
 		VIOC_CONFIG_SWReset(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_CONFIG_CLEAR);
 		#endif
-	
+
 		if(ImageInfo->MVCframeView != 1){
-			
+
 			if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num) != -1) //scaler plug in status check
 			{
 				iSCType = VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
@@ -4423,7 +4423,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 			}
 		}
 		return;
-	}	
+	}
 
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0) && defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
 	set_hdmi_drm(DRM_ON, ImageInfo, ImageInfo->Lcdc_layer);
@@ -4434,7 +4434,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 	pSC = VIOC_SC_GetAddress(iSCType);
 
 	VIOC_DISP_GetSize(pdp_data->ddc_info.virt_addr, &lcd_width, &lcd_height);
-	
+
 	if((!lcd_width) || (!lcd_height)){
 		pr_err("%s LCD :: Error :: lcd_width %d, lcd_height %d \n", __func__,lcd_width, lcd_height);
 		return;
@@ -4524,13 +4524,13 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 	VIOC_RDMA_SetImageSize(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, lcd_width, lcd_height);
 	VIOC_RDMA_SetImageFormat(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, ImageInfo->fmt);
 
-	VIOC_RDMA_SetImageBase(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, ImageInfo->addr0, ImageInfo->addr1, ImageInfo->addr2);		
-	
+	VIOC_RDMA_SetImageBase(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, ImageInfo->addr0, ImageInfo->addr1, ImageInfo->addr2);
+
 	VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, 0);
 
-	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 
-	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);			
+	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
  	VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
 
 
@@ -4540,7 +4540,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 	VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, ImageInfo->offset_x, ImageInfo->offset_y);
 	VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 
-	//map converter 
+	//map converter
 	#ifdef CONFIG_VIOC_MAP_DECOMP
 	if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 	{
@@ -4585,7 +4585,7 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 	}
 	else
 	#endif//
-	{	
+	{
 		if(VIOC_CONFIG_DMAPath_Support()) {
 			#if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
 			int component_num = VIOC_CONFIG_DMAPath_Select(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
@@ -4632,9 +4632,9 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 #endif
 		}
 
-		if(ImageInfo->one_field_only_interlace 
+		if(ImageInfo->one_field_only_interlace
 	#ifdef CONFIG_VIOC_10BIT
-			|| (ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)	
+			|| (ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)
 	#endif//CONFIG_VIOC_10BIT
 		)		{
 			VIOC_RDMA_SetImageOffset(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, ImageInfo->fmt, ImageInfo->Frame_width*2);
@@ -4766,7 +4766,7 @@ void tca_mvc_display_update(char hdmi_lcdc, struct tcc_lcdc_image_update *ImageI
 	}
 
 	VIOC_DISP_GetSize(pDISPBase, &lcd_width, &lcd_height);
-	
+
 	if((!lcd_width) || (!lcd_height))
 	{
 		printk("%s - lcd width and hight is not normal!!!!\n", __func__);
@@ -4810,7 +4810,7 @@ void tca_mvc_display_update(char hdmi_lcdc, struct tcc_lcdc_image_update *ImageI
 	VIOC_WMIX_SetPosition(pWMIXBase, 3, 0, 0);
 
 	VIOC_RDMA_SetImageSize(pRDMABase0, ImageInfo->Image_width, ImageInfo->Image_height);
-	VIOC_RDMA_SetImageBase(pRDMABase0, ImageInfo->addr0, ImageInfo->addr1, ImageInfo->addr2);		
+	VIOC_RDMA_SetImageBase(pRDMABase0, ImageInfo->addr0, ImageInfo->addr1, ImageInfo->addr2);
 
 	VIOC_RDMA_SetImageIntl(pRDMABase0, false);
 
@@ -4857,7 +4857,7 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[layer].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
-	
+
 	if(var->bits_per_pixel == 32) 	{
 		chroma_en = UI_CHROMA_EN;
 		alpha_type = 1;
@@ -4868,7 +4868,7 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 		chroma_en = 1;
 		alpha_type = 0;
 		alpha_blending_en = 0;
-		fmt = TCC_LCDC_IMG_FMT_RGB565; 
+		fmt = TCC_LCDC_IMG_FMT_RGB565;
 	}
 	else	{
 		pr_err("%s: bits_per_pixel : %d Not Supported BPP!\n", __FUNCTION__, var->bits_per_pixel);
@@ -4884,10 +4884,10 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	scN = VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[layer].blk_num);
 
 	if(scN < 0)	{
-		if(img_width > lcd_width)	
+		if(img_width > lcd_width)
 			img_width = lcd_width;
-		
-		if(img_height > lcd_height)	
+
+		if(img_height > lcd_height)
 			img_height = lcd_height;
 	}
 	else
@@ -4905,7 +4905,7 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	}
 
 
-	// default framebuffer 
+	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, layer, 0, 0);
 	//overlay setting
 	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
@@ -4920,8 +4920,8 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt
 
-	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset	
-	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size	
+	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset
+	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
@@ -4982,10 +4982,10 @@ void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var)
 void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo, int outputMode, int interlaced)
 {
 	unsigned int iSCType = 0;
-	
+
 	iSCType = tca_get_scaler_num(pdp_data->DispDeviceType, ImageInfo->Lcdc_layer);
 
-	VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);	
+	VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
 
 	if(VIOC_CONFIG_DMAPath_Support()) {
 		int component_num = VIOC_CONFIG_DMAPath_Select(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
@@ -4998,7 +4998,7 @@ void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_up
 			VIOC_CONFIG_DMAPath_UnSet(component_num);
 			tca_map_convter_swreset(component_num); //disable it to prevent system-hang!!
 	 	}
-		else 
+		else
 		#endif
 		#ifdef CONFIG_VIOC_DTRC_DECOMP
 		if((component_num >= VIOC_DTRC0) && (component_num <= (VIOC_DTRC0 + VIOC_DTRC_MAX)))
@@ -5006,9 +5006,9 @@ void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_up
 			pr_info("tcc_video_rdma[%d]_off for last-frame :: dtrc_num %u plug out \n", ImageInfo->Lcdc_layer, get_vioc_index(component_num));
 			tca_dtrc_convter_onoff(component_num, 0, 1);
 			VIOC_CONFIG_DMAPath_UnSet(component_num);
-			//tca_dtrc_convter_swreset(component_num);	 //disable it to prevent system-hang!!	
+			//tca_dtrc_convter_swreset(component_num);	 //disable it to prevent system-hang!!
 	 	}
-		else 
+		else
 		#endif
 		if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 			VIOC_CONFIG_DMAPath_UnSet(component_num);
@@ -5024,7 +5024,7 @@ void tcc_video_rdma_off(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_up
 		}
 		#endif
 	}
-	
+
 	if( !interlaced && (outputMode == TCC_OUTPUT_LCD || outputMode == TCC_OUTPUT_HDMI) )
 	{
 //		VIOC_CONFIG_SWReset(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_CONFIG_RESET);
@@ -5136,15 +5136,15 @@ void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, 
 		case FB_DIVIDE_UPDATE:
 			tca_fb_divide_active_var(dma_addr, var, pdp_data);
 			break;
-			
+
 		case FB_MVC_UPDATE:
 			tca_fb_mvc_active_var(dma_addr, var, pdp_data);
 			break;
-			
+
 		default:
 			break;
 	}
-	
+
 	pdp_data->FbBaseAddr = dma_addr;
 
 #if 0//def CONFIG_VIOC_DOLBY_VISION_EDR
@@ -5214,7 +5214,7 @@ int tca_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 			#endif
 		)
 		{
-		
+
 			tcafb_activate_var(fbi, var);
 			tca_fb_vsync_activate(&fbi->pdata.Mdp_data);
 
@@ -5265,9 +5265,9 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 		return 0;
 	#endif//
 
-        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4) || defined(CONFIG_TCC_HDMI_DRIVER_V2_0) 
+        #if defined(CONFIG_TCC_HDMI_DRIVER_V1_4) || defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         if(info != NULL) {
-                if(info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI || 
+                if(info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI ||
                         info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) {
                         pr_info("%s disable hdmi \r\n", __func__);
                         /* Disable HDMI Output */
@@ -5280,7 +5280,7 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 
 
 	info->pdata.Mdp_data.FbPowerState = 0;
-		
+
 	if (disp_panel->set_power)
 		disp_panel->set_power(disp_panel, 0, &info->pdata.Mdp_data);
 
@@ -5306,10 +5306,10 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 	#endif
 
 	_tca_vioc_intr_onoff(OFF, pdp_data->ddc_info.irq_num, info->pdata.lcdc_number);
-	
+
 	clk_disable_unprepare(pdp_data->vioc_clock);
 	clk_disable_unprepare(pdp_data->ddc_clock);
-	
+
 	return ret;
 }
 EXPORT_SYMBOL(tca_fb_suspend);
@@ -5327,7 +5327,7 @@ int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
 	if(do_hibernation)
 		return 0;
 	#endif//
-	
+
 	clk_prepare_enable(pdp_data->vioc_clock);
 	clk_prepare_enable(pdp_data->ddc_clock);
 
@@ -5336,7 +5336,7 @@ int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
 
 	 if(fbi->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_LCD)
 		fbi->pdata.Mdp_data.FbPowerState = 1;
- 
+
 	_tca_vioc_intr_onoff(ON, pdp_data->ddc_info.irq_num, fbi->pdata.lcdc_number);
 
 	tca_fb_vsync_activate(pdp_data);
@@ -5364,15 +5364,15 @@ int tca_fb_init(struct tccfb_info *fbi)
 	ViocScaler_np = of_find_compatible_node(NULL, NULL, "telechips,scaler");
 	if(ViocScaler_np == NULL)
 		pr_err("cann't find scaler\n");
-	
+
 	ViocConfig_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_config");
 	if(ViocConfig_np == NULL)
 		pr_err("cann't find vioc config \n");
-		
+
 	clk_prepare_enable(fbi->pdata.Mdp_data.vioc_clock);
 	clk_prepare_enable(fbi->pdata.Mdp_data.ddc_clock);
 
-        
+
 	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
 	clk_prepare_enable(fbi->pdata.Sdp_data.vioc_clock);
 	clk_prepare_enable(fbi->pdata.Sdp_data.ddc_clock);

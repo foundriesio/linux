@@ -1,28 +1,19 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved 
-*  \file        output_starter_hdmi_edid.c
-*  \brief       HDMI TX controller driver
-*  \details   
-*  \version     1.0
-*  \date        2014-2019
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company.
-*/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+Copyright (C) 2018 Synopsys Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -57,6 +48,7 @@ Agreement between Telechips and Company.
 #define PRINT_EDID(...) do { if(hdmi_print_log) { pr_info(__VA_ARGS__); } } while(0);
 
 #define EDID_LENGTH 128
+#define EDID_4BLOCK_LENGTH      512
 
 struct est_timings {
         u8 t1;
@@ -202,9 +194,20 @@ struct edid {
         u8 checksum;
 } __attribute__((packed));
 
+
 struct shortVideoDesc_t{
         unsigned vic;
         unsigned ycc420;
+} ;
+
+
+struct sink_edid_simple_t{
+        int parse_done;
+        int edid_scdc_present;
+
+        /**
+         * edid raw data - it can store 4block edids */
+        unsigned char rawdata[EDID_4BLOCK_LENGTH];
 } ;
 
 struct sink_edid {
@@ -222,8 +225,9 @@ struct sink_edid {
         int edid_svd_index;
         char sink_manufacturer_name[4];
         struct shortVideoDesc_t edid_mSvd[128];
-        
-} sink_edid_t;
+
+        unsigned char rawdata[EDID_4BLOCK_LENGTH];
+};
 
 struct sink_manufacture_list_t{
        const char manufacturer_name[4];
@@ -239,8 +243,8 @@ struct hdmi_supported_list {
         int vblank;
         int interlaced;
         int no_dvi;
-        
-        // from edid 
+
+        // from edid
         int native;
         int ycc420;
         int supported;
@@ -248,13 +252,13 @@ struct hdmi_supported_list {
 
 static struct sink_edid  sink_edid;
 
-/* 
- * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than 
+/*
+ * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
  * 340 MHz or when HDCP is enabled.
  * When HDCP Keepout is set to 1, the control period configuration is changed.
- * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem 
+ * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
  * of swinging HPD.
- * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1 
+ * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
  * if this SINK is a VIZIO TV. */
 static struct sink_manufacture_list_t sink_manufacture_list[] = {
         {{"VIZ"}}, /* VIZIO TV */
@@ -309,7 +313,7 @@ static  int hdmi_read_edid(struct hdmi_tx_dev *dev, void * edid)
                 ret = -1;
                 goto end_process;
         }
-        
+
         ret = hdmi_ddc_read(dev, EDID_I2C_ADDR, EDID_I2C_SEGMENT_ADDR, 0, 8, 120, (unsigned char *)(edid+8));
         if(ret < 0){
                 //PRINT_EDID("EDID read failed\r\n");
@@ -323,11 +327,11 @@ static  int hdmi_read_edid(struct hdmi_tx_dev *dev, void * edid)
                 goto end_process;
         }
         ret = 0;
-        
+
 end_process:
         if(ret < 0)
                 hdmi_i2cddc_bus_clear(dev);
-	
+
         return ret;
 }
 
@@ -337,7 +341,7 @@ static int hdmi_edid_extension_read(struct hdmi_tx_dev *dev, int block, unsigned
         /*to incorporate extensions we have to include the following - see VESA E-DDC spec. P 11 */
         unsigned char start_pointer = block / 2; // pointer to segments of 256 bytes
         unsigned char start_address = ((block % 2) * 0x80); //offset in segment; first block 0-127; second 128-255
-                
+
         ret = hdmi_ddc_read(dev, EDID_I2C_ADDR, EDID_I2C_SEGMENT_ADDR, start_pointer, start_address, 128, edid_ext);
 
         if(ret < 0){
@@ -357,7 +361,7 @@ end_process:
 
 
 static void edid_parse(struct edid *edid)
-{       
+{
         unsigned char tmp;
         int width, height, hz, ar = 0;
         int hblank, vblank, interlaced;
@@ -370,7 +374,7 @@ static void edid_parse(struct edid *edid)
                 PRINT_EDID("%s parameter is NULL\r\n", __func__);
                 return;
         }
-     
+
         /* manufacture properties */
         tmp = edid->mfg_id[0] >> 2;
         if(tmp > 0) {
@@ -387,7 +391,7 @@ static void edid_parse(struct edid *edid)
         }
         sink_edid.sink_product_id = edid->prod_code[0] | (edid->prod_code[1] << 8);
         sink_edid.sink_serial = edid->serial;
-        
+
 
         /* Established Timing */
         PRINT_EDID("%s established timing \r\n", __func__);
@@ -395,8 +399,8 @@ static void edid_parse(struct edid *edid)
                 for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
                         if(hdmi_supported_list[support_index].vic == 1) {
                                 hdmi_supported_list[support_index].supported = 1;
-                                PRINT_EDID("Established Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic, 
-                                                                        hdmi_supported_list[support_index].width, 
+                                PRINT_EDID("Established Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic,
+                                                                        hdmi_supported_list[support_index].width,
                                                                         hdmi_supported_list[support_index].height,
                                                                         hdmi_supported_list[support_index].interlaced?"i":"p",
                                                                         hdmi_supported_list[support_index].hz);
@@ -407,7 +411,7 @@ static void edid_parse(struct edid *edid)
 
         /* Standard Timing */
         PRINT_EDID("%s Standard timing \r\n", __func__);
-        for (loop_index = 0; loop_index < 8; loop_index++) {      
+        for (loop_index = 0; loop_index < 8; loop_index++) {
                 if(edid->standard_timings[loop_index].hsize == 0) {
                         continue;
                 }
@@ -416,10 +420,10 @@ static void edid_parse(struct edid *edid)
                 }
                 height = 0;
                 width = (edid->standard_timings[loop_index].hsize * 8) + 248;
-                
+
                 /* Value Stored (in binary) = Field Refresh Rate (in Hz) - 60 */
                 hz = (edid->standard_timings[loop_index].vfreq_aspect & 0x3F) + 60;
-                
+
                 switch(edid->standard_timings[loop_index].vfreq_aspect >> 6) {
                         case 1:
                                 // 4:3
@@ -434,7 +438,7 @@ static void edid_parse(struct edid *edid)
                         default:
                                 break;
                 }
-        
+
                 if(height > 0) {
                         find_index = 0;
                         for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
@@ -444,7 +448,7 @@ static void edid_parse(struct edid *edid)
                                         find_vic_index[find_index++] = support_index;
                                 }
                         }
-                        
+
                         switch(find_index) {
                                 case 0:
                                 default:
@@ -459,15 +463,15 @@ static void edid_parse(struct edid *edid)
                         }
                         if(support_index >= 0) {
                                 hdmi_supported_list[support_index].supported = 1;
-                                PRINT_EDID("Standard Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic, 
-                                                                        hdmi_supported_list[support_index].width, 
+                                PRINT_EDID("Standard Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic,
+                                                                        hdmi_supported_list[support_index].width,
                                                                         hdmi_supported_list[support_index].height,
                                                                         hdmi_supported_list[support_index].interlaced?"i":"p",
-                                                                        hdmi_supported_list[support_index].hz);                                
+                                                                        hdmi_supported_list[support_index].hz);
                         }
                 }
         }
-        
+
 
         /* detailed timings */
         PRINT_EDID("%s detailed timing \r\n", __func__);
@@ -475,27 +479,27 @@ static void edid_parse(struct edid *edid)
                 if(edid->detailed_timings[loop_index].pixel_clock > 0){
                         width = (edid->detailed_timings[loop_index].data.pixel_data.hblank_lo |
                                         ((edid->detailed_timings[loop_index].data.pixel_data.vactive_lo & 0xF0) << 4));
-                        height = (edid->detailed_timings[loop_index].data.pixel_data.vblank_lo | 
+                        height = (edid->detailed_timings[loop_index].data.pixel_data.vblank_lo |
                                         ((edid->detailed_timings[loop_index].data.pixel_data.hsync_offset_lo & 0xF0) << 4));
                         hblank = (edid->detailed_timings[loop_index].data.pixel_data.hactive_hblank_hi |
                                         ((edid->detailed_timings[loop_index].data.pixel_data.vactive_lo & 0x0F) << 8));
                         vblank =  (edid->detailed_timings[loop_index].data.pixel_data.vactive_vblank_hi |
                                         ((edid->detailed_timings[loop_index].data.pixel_data.hsync_offset_lo & 0x0F) << 8));
                         interlaced = (edid->detailed_timings[loop_index].data.pixel_data.misc >> 7);
-                        
+
                         find_index = 0;
                         for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
-                                if(hdmi_supported_list[support_index].pixel_clock == edid->detailed_timings[support_index].pixel_clock && 
+                                if(hdmi_supported_list[support_index].pixel_clock == edid->detailed_timings[support_index].pixel_clock &&
                                         hdmi_supported_list[support_index].width == width &&
                                         hdmi_supported_list[support_index].height == height &&
                                         hdmi_supported_list[support_index].hblank == hblank &&
                                         hdmi_supported_list[support_index].vblank == vblank &&
                                         hdmi_supported_list[support_index].interlaced == interlaced) {
-                                        
+
                                         find_vic_index[find_index++] = support_index;
                                 }
                         }
-                        
+
                         switch(find_index) {
                                 case 0:
                                 default:
@@ -510,11 +514,11 @@ static void edid_parse(struct edid *edid)
                         }
                         if(support_index >= 0) {
                                 hdmi_supported_list[support_index].supported = 1;
-                                PRINT_EDID("Detailed Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic, 
-                                                                        hdmi_supported_list[support_index].width, 
+                                PRINT_EDID("Detailed Timing vic_%03d %dx%d%s %dhz\r\n", hdmi_supported_list[support_index].vic,
+                                                                        hdmi_supported_list[support_index].width,
                                                                         hdmi_supported_list[support_index].height,
                                                                         hdmi_supported_list[support_index].interlaced?"i":"p",
-                                                                        hdmi_supported_list[support_index].hz);                                
+                                                                        hdmi_supported_list[support_index].hz);
                         }
 
                 }
@@ -527,7 +531,7 @@ static int edid_parse_extension(unsigned char * data)
 {
         int length, loop_index;
         int result = -1;
-        
+
         do {
                 if(data == NULL) {
                         PRINT_EDID("%s input paramter is NULL\r\n", __func__);
@@ -535,8 +539,8 @@ static int edid_parse_extension(unsigned char * data)
                 }
                 result = data[0];
                 switch((data[0] >> 0x5) & 0x7) {
-                        case 2: 
-                                length = data[0] & 0x1F;                                
+                        case 2:
+                                length = data[0] & 0x1F;
                                 for (loop_index = 1; loop_index < length; loop_index++) {
                                         sink_edid.edid_mSvd[sink_edid.edid_svd_index++].vic = data[loop_index];
                                         //PRINT_EDID("%s vic[%d]\r\n", __func__, data[loop_index]);
@@ -546,7 +550,7 @@ static int edid_parse_extension(unsigned char * data)
                                 if(data[1] == 0x03 && data[2] == 0x0C && data[3] == 0x00) {
                                         sink_edid.edid_hdmi_support = 1;
                                         PRINT_EDID("%s find VSDB\r\n", __func__);
-                                } 
+                                }
                                 if(data[1] == 0xD8 && data[2] == 0x5D && data[3] == 0xC4) {
                                         sink_edid.edid_hdmi_support = 1;
                                         sink_edid.edid_m20Sink = 1;
@@ -555,7 +559,7 @@ static int edid_parse_extension(unsigned char * data)
                                         PRINT_EDID("%s find HF_VSDB\r\n", __func__);
                                 }
                                 break;
-                        case 7: 
+                        case 7:
                                 switch(data[1]) {
                                         case 0xe:
                                                         /** If it is a YCC420 VDB then VICs can ONLY be displayed in YCC 4:2:0 */
@@ -563,11 +567,11 @@ static int edid_parse_extension(unsigned char * data)
                                                         /** If Sink has YCC Datablocks it is HDMI 2.0 */
                                                         sink_edid.edid_m20Sink = 1;
                                                         length = data[0] & 0x1F;
-                                
+
                                                         for (loop_index = 0; loop_index < (length - 1); loop_index++) {
                                                                 /** Lenght includes the tag byte*/
                                                                 int svd_index, svd_applyed = 0;
-                      
+
                                                                 for (svd_index = 0;svd_index < sink_edid.edid_svd_index ;svd_index++) {
                                                                         if((sink_edid.edid_mSvd[svd_index].vic & 0x7F) == data[2 + loop_index]) {
                                                                            sink_edid.edid_mSvd[svd_index].ycc420 = SINK_LIMITED_TO_YCC420;
@@ -580,7 +584,7 @@ static int edid_parse_extension(unsigned char * data)
                                                                         sink_edid.edid_mSvd[sink_edid.edid_svd_index].ycc420 = SINK_LIMITED_TO_YCC420;
                                                                         sink_edid.edid_mSvd[sink_edid.edid_svd_index++].vic = data[2 + loop_index];
                                                                         PRINT_EDID("%s add new vic (%d)\r\n", __func__, data[2 + loop_index]);
-                                                                } 
+                                                                }
                                                         }
                                                         break;
 
@@ -591,7 +595,7 @@ static int edid_parse_extension(unsigned char * data)
                                                                 sink_edid.edid_m20Sink = 1;
                                                                 length = data[0] & 0x1F;
 
-                                                                if(length > 0) {
+                                                                if(length > 1) {
                                                                         /* If YCC420 CMDB is bigger than 1, then there is SVD info to parse */
                                                                         for(loop_index = 0; loop_index < (length-1); loop_index++) {
                                                                                 for (bit_index = 0; bit_index < 8; bit_index++) {
@@ -603,18 +607,27 @@ static int edid_parse_extension(unsigned char * data)
                                                                                         }
                                                                                 }
                                                                         }
-                                                                } else {
+                                                                } else if(length == 1) {
+                                                                        /* Otherwise, all SVDs present at the Video Data Block support YCC420*/
                                                                         for (svd_index = 0;svd_index < sink_edid.edid_svd_index ;svd_index++) {
-                                                                                sink_edid.edid_mSvd[svd_index].ycc420 = SINK_ACCEPT_YCC420;
-                                                                                PRINT_EDID("%s vic(%d) accept to ycc420\r\n", __func__, sink_edid.edid_mSvd[svd_index].vic & 0x7F);
-                                                                        }     
+                                                                                switch(sink_edid.edid_mSvd[svd_index].vic & 0x7F) {
+                                                                                        case 96:
+                                                                        		case 97:
+                                                                        		case 101:
+                                                                        		case 102:
+                                                                        		case 106:
+                                                                        		case 107:
+                                                                                                sink_edid.edid_mSvd[svd_index].ycc420 = SINK_ACCEPT_YCC420;
+                                                                                                PRINT_EDID("%s vic(%d) accept to ycc420\r\n", __func__, sink_edid.edid_mSvd[svd_index].vic & 0x7F);
+                                                                                                break;
+                                                                                }
+                                                                        }
                                                                 }
                                                         }
                                                         break;
                                 }
-
                                 break;
-                                
+
                 }
         } while(0);
 
@@ -622,67 +635,218 @@ static int edid_parse_extension(unsigned char * data)
 }
 
 
+static int edid_parser_SimpleParseDataBlock(unsigned char* rawdata, struct sink_edid_simple_t *sink_edid_simple)
+{
+        unsigned char tag, length = 0;
+
+        do {
+                //pr_info("edid_parser_SimpleParseDataBlock");
+                if(rawdata == NULL) {
+                        pr_info("%s rawdata is NULL\r\n", __func__);
+                        break;
+                }
+
+                if(sink_edid_simple == NULL) {
+                        pr_info("%s sink_edid_simple is NULL\r\n", __func__);
+                        break;
+                }
+                tag = ((rawdata[0] >> 5) & 0x7);
+                length = (rawdata[0] & 0x1F);
+                if(tag == 0x3) {
+                        PRINT_EDID("%s %02x %02x %02x", __func__, rawdata[3], rawdata[2], rawdata[1]);
+                        if(rawdata[3] ==  0xC4 && rawdata[2] == 0x5D && rawdata[1] == 0xD8) {
+                                sink_edid_simple->edid_scdc_present = ((rawdata[6] >> 7) & 1);
+                                sink_edid_simple->parse_done = 1;
+                        }
+                }
+        } while(0);
+        return length + 1;
+}
+
+static int edid_parser_simple_exension(unsigned char* rawdata, struct sink_edid_simple_t * sink_edid_simple)
+{
+        int i, offset;
+        int ret = -1;
+
+        do {
+                //pr_info("edid_parser_simple_exension");
+                if(rawdata == NULL) {
+                        pr_info("%s rawdata is NULL", __func__);
+                        break;
+                }
+
+                if(sink_edid_simple == NULL) {
+                        pr_info("%s sink_edid_simple is NULL", __func__);
+                        break;
+                }
+
+                /* Version */
+                if (rawdata[1] < 0x03){
+                        pr_info("Invalid version for CEA Extension block, only rev 3 or higher is supported");
+                        break;
+                }
+
+                /* Offset */
+                offset = rawdata[2];
+                //pr_info("edid_parser_simple_exension offset = %d", offset);
+                if (offset > 4) {
+                        for (i = 4; i < offset; ) {
+                                i += edid_parser_SimpleParseDataBlock(rawdata + i, sink_edid_simple);
+                                if(sink_edid_simple->parse_done) {
+                                        break;
+                                }
+                        }
+                }
+                ret = 0;
+        } while(0);
+
+        return ret;
+}
+
+static int edid_read_simple(struct hdmi_tx_dev *dev, struct sink_edid_simple_t * sink_edid_simple)
+{
+        int block;
+        int ret = -1;
+        int edid_tries = 3;
+        int number_of_extension_blocks = 0;
+
+        unsigned char *edid_base;
+        unsigned char *edid_extension;
+
+        do {
+                if(sink_edid_simple == NULL) {
+                        pr_info("%s sink_edid_simple is NULL\r\n", __func__);
+                        break;
+                }
+
+                /* Clear Sink Data */
+                memset(sink_edid_simple, 0, sizeof(struct sink_edid_simple_t));
+
+                edid_base = sink_edid_simple->rawdata;
+
+                /* Read EDID Base 0-127*/
+                do{
+                        ret = hdmi_read_edid(dev, edid_base);
+                        if(ret == 0) {
+                                number_of_extension_blocks = edid_base[126];
+                                break;
+                        }
+                }while(edid_tries--);
+
+                if(ret < 0) {
+                        pr_info( "[%s] Failed read edid base\r\n", __func__);
+                        break;
+                }
+
+                /* Support 4block only */
+                if(number_of_extension_blocks > 3) {
+                        pr_info("EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
+                        number_of_extension_blocks = 3;
+                }
+
+                //ALOGI("[%s] number_of_extension_blocks = %d", __func__, number_of_extension_blocks);
+                for(block = 0; block < number_of_extension_blocks; block++) {
+                        edid_tries = 3;
+                        edid_extension = &sink_edid_simple->rawdata[128 + (128 * block)];
+                        do{
+                                ret = hdmi_edid_extension_read(dev, block+1, edid_extension);
+                                if(ret == 0) {
+                                        ret = edid_parser_simple_exension(edid_extension, sink_edid_simple);
+                                        break;
+                                }
+                        }while(edid_tries--);
+
+                        if(ret < 0) {
+                             pr_info( "[%s] Failed read edid extension [%d] block", __func__, block+1);
+                             break;
+                        }
+                }
+        } while(0);
+        return ret;
+}
+
 static void hdmi_read_edid_and_parse(struct hdmi_tx_dev *dev)
 {
-        int read_bytes;          
-	int edid_tries = 3;
-        int loop_index, support_index;
-        
-        struct edid edid;
-	unsigned char edid_ext[128];
 
-        PRINT_EDID("%s \r\n", __func__);
+        int ret = -1;
+        int block = 0;
+        int read_bytes;
+        int edid_tries = 3;
+        int number_of_extension_blocks = 0;
+        int loop_index, support_index, edid_extension_loop;
+
+        struct edid *edid_base;
+        unsigned char *edid_extension;
+
         memset(&sink_edid, 0, sizeof(struct sink_edid));
-                
-	do {
-		if(0 == hdmi_read_edid(dev, &edid)) {
-                        edid_parse(&edid);
-                        break;
-		}
-	}while(edid_tries--);
+        do {
+                edid_base = (struct edid *)sink_edid.rawdata;
 
-        PRINT_EDID("sink_edid.edid_done = %d , edid.extensions = %d\r\n", sink_edid.edid_done,  edid.extensions);
-	if(sink_edid.edid_done && edid.extensions > 0) {
-		int edid_ext_loop, edid_ext_cnt = 1;
-		while(edid_ext_cnt <= edid.extensions){
-			edid_tries = 3;
-			do{
-				memset(edid_ext, 0, sizeof(128));
-				if(0 == hdmi_edid_extension_read(dev, edid_ext_cnt, edid_ext)) {	
-                                        PRINT_EDID("%s read extension edid_ext[0]=%d, edid_ext[2]=%d \r\n", __func__, edid_ext[0], edid_ext[2]);
+                /* Read EDID Base 0-127*/
+                do{
+                        ret = hdmi_read_edid(dev, edid_base);
+                        if(ret == 0) {
+                                number_of_extension_blocks = edid_base->extensions;
+                                edid_parse(edid_base);
+                                if(sink_edid.edid_done) {
+                                        break;
+                                } else {
+                                        pr_info( "Failed to parse EDID\r\n");
+                                        ret = -1;
+                                }
+                        }
+                }while(edid_tries--);
+
+                if(ret < 0) {
+                        pr_info( "Failed read edid base\r\n");
+                        break;
+                }
+
+                /* Support 4block only */
+                if(number_of_extension_blocks > 3) {
+                        pr_info("EDID limited to 4Block (%d)\r\n", number_of_extension_blocks);
+                        number_of_extension_blocks = 3;
+                }
+
+                for(block = 0; block < number_of_extension_blocks; block++) {
+                        edid_tries = 3;
+                        edid_extension = &sink_edid.rawdata[128 + (128 * block)];
+                        do{
+                                ret = hdmi_edid_extension_read(dev, block+1, edid_extension);
+                                if(ret == 0) {
                                         /* Check edid extension tag */
-                                        if(edid_ext[0] == 2) {
+                                        if(edid_extension[0] == 2) {
                                                 /* Check edid extension version */
-        					if (edid_ext[1] < 0x03){
+        					if (edid_extension[1] < 0x03){
         						continue;
         					}
                                                 /* supported color format */
-                                                if(edid_ext[3] & (1 << 4)) {
+                                                if(edid_extension[3] & (1 << 4)) {
                                                         sink_edid.edid_mYcc422Support = 1;
                                                         PRINT_EDID("support YCC422\r\n");
                                                 }
-                                                if(edid_ext[3] & (1 << 5)) {
+                                                if(edid_extension[3] & (1 << 5)) {
                                                         sink_edid.edid_mYcc444Support = 1;
                                                         PRINT_EDID("support YCC444\r\n");
                                                 }
 
-						for (edid_ext_loop = 4; edid_ext_loop < edid_ext[2];edid_ext_loop += read_bytes) {
-                                                        read_bytes = edid_parse_extension(edid_ext + edid_ext_loop);        
+						for (edid_extension_loop = 4; edid_extension_loop < edid_extension[2];edid_extension_loop += read_bytes) {
+                                                        read_bytes = edid_parse_extension(edid_extension + edid_extension_loop);
                                                         if(read_bytes < 0) {
                                                                 PRINT_EDID("%s edid_parse_extension failed\r\n", __func__);
                                                                 break;
                                                         }
         					}
-                                                
+
                                                 for(loop_index = 0; loop_index < sink_edid.edid_svd_index ; loop_index++) {
                                                         for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
                                                                 if(hdmi_supported_list[support_index].vic == (int)((sink_edid.edid_mSvd[loop_index].vic & 0x7F))) {
                                                                         hdmi_supported_list[support_index].supported = 1;
                                                                         hdmi_supported_list[support_index].native = (sink_edid.edid_mSvd[loop_index].vic >> 7);
                                                                         hdmi_supported_list[support_index].ycc420 = sink_edid.edid_mSvd[loop_index].ycc420;
-                                                                        
-                                                                        PRINT_EDID("vic_%03d %dx%d%s %dhz %s %s\r\n", hdmi_supported_list[support_index].vic, 
-                                                                                                                hdmi_supported_list[support_index].width, 
+
+                                                                        PRINT_EDID("vic_%03d %dx%d%s %dhz %s %s\r\n", hdmi_supported_list[support_index].vic,
+                                                                                                                hdmi_supported_list[support_index].width,
                                                                                                                 hdmi_supported_list[support_index].height,
                                                                                                                 hdmi_supported_list[support_index].interlaced?"i":"p",
                                                                                                                 hdmi_supported_list[support_index].hz,
@@ -696,24 +860,21 @@ static void hdmi_read_edid_and_parse(struct hdmi_tx_dev *dev)
 
                                                 break;
                                         }
-				}
-			}while(edid_tries--);
-			edid_ext_cnt++;
-		}
-	}
+                                }
+                        }while(edid_tries--);
 
-	PRINT_EDID(" EDID(%d), hdmi20(%d), scdc(%d), lts340_scramble(%d)\r\n", sink_edid.edid_done, sink_edid.edid_m20Sink, sink_edid.edid_scdc_present, sink_edid.edid_lts_340mcs_scramble);
-}
+                        if(ret < 0) {
+                             pr_info( "[%s] Failed read and parse EXTENSION Blocks [%d]", __func__, block+1);
+                             break;
+                        }
+                }
+        } while(0);
 
-
-void edid_get_manufacturer_info(char* manufacturer_name) 
-{
-        if(manufacturer_name != NULL && sink_edid.edid_done) {
-                memcpy(manufacturer_name, sink_edid.sink_manufacturer_name, 4);
+        if(ret < 0) {
+                pr_info( "[%s] Failed read edid extension [%d] block", __func__, block);
+                sink_edid.edid_done = 0;
         }
 }
-
-
 
 static int edid_get_sink_manufacture(void)
 {
@@ -724,40 +885,47 @@ static int edid_get_sink_manufacture(void)
                 if(!sink_edid.edid_done) {
                         break;
                 }
-                
+
                 list_max = sizeof(sink_manufacture_list)/sizeof(struct sink_manufacture_list_t);
-                
+
                 for(list_loop = 0; list_loop < list_max; list_loop++) {
                         if(!memcmp(sink_edid.sink_manufacturer_name, sink_manufacture_list[list_loop].manufacturer_name, 3)) {
-                                sink_manufacture = (1 << list_loop);
+                                sink_manufacture = list_loop;
                                 break;
                         }
                 }
         }while(0);
 
         return sink_manufacture;
-}      
+}
 
-/* 
- * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than 
+void edid_get_manufacturer_info(char* manufacturer_name)
+{
+        if(manufacturer_name != NULL && sink_edid.edid_done) {
+                memcpy(manufacturer_name, sink_edid.sink_manufacturer_name, 4);
+        }
+}
+
+/*
+ * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
  * 340 MHz or when HDCP is enabled.
  * When HDCP Keepout is set to 1, the control period configuration is changed.
- * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem 
+ * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
  * of swinging HPD.
- * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1 
+ * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
  * if this SINK is a VIZIO TV. */
 int edid_is_sink_vizio(void)
 {
         int sink_manufacture = edid_get_sink_manufacture();
-        return (sink_manufacture & (1 << 0))?1:0;
+        return (sink_manufacture == 1)?1:0;
 }
 
-int edid_get_product_id(void) 
+int edid_get_product_id(void)
 {
         return sink_edid.sink_product_id;
 }
 
-int  edid_get_serial(void) 
+int  edid_get_serial(void)
 {
         return sink_edid.sink_serial;
 }
@@ -774,7 +942,7 @@ int edid_get_lts_340mcs_scramble(void)
 
 int edid_get_hdmi20(void)
 {
-        return sink_edid.edid_m20Sink;       
+        return sink_edid.edid_m20Sink;
 }
 
 void edid_set_print_enable(int enable)
@@ -782,14 +950,15 @@ void edid_set_print_enable(int enable)
         hdmi_print_log = enable;
 }
 
-int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic, encoding_t *encoding) 
+int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic, encoding_t *encoding, int optimal_phase)
 {
-        int scdc_support = 0;
+        int retry = 1;
         int support_index;
         int optimal_index = -1;
         int hotplug_loop = 3;
 
         hdmi_soc_features soc_feature;
+        struct sink_edid_simple_t sink_edid_simple;
 
         PRINT_EDID("%s\r\n", __func__);
         if(hdmi_mode == NULL || vic == NULL || encoding == NULL) {
@@ -799,7 +968,7 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
         /* default setting - 1280x720p@60Hz RGB HDMI*/
         *hdmi_mode = HDMI;
         *vic = 4;
-        *encoding = RGB;   
+        *encoding = RGB;
 
         /* check hdmi hotplug */
         while(hotplug_loop--) {
@@ -808,26 +977,31 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                 }
                 msleep(100);
         }
+
         if(hotplug_loop > 0) {
-                hdmi_read_edid_and_parse(dev);
+                if(optimal_phase) {
+                        hdmi_read_edid_and_parse(dev);
+                } else {
+			do {
+	                        edid_read_simple(dev, &sink_edid_simple);
+	                        if(sink_edid_simple.parse_done && sink_edid_simple.edid_scdc_present) {
+	                                scdc_write_source_version(dev, 1);
+	                                scdc_tmds_config_status(dev);
+	                                scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
+	                                scdc_tmds_config_status(dev);
+	                                scdc_scrambling_status(dev);
+	                        }
+                                if(!memcmp(sink_edid_simple.rawdata, sink_edid.rawdata, EDID_4BLOCK_LENGTH)) {
+                                        break;
+                                }
+        			pr_info(" EDID was unmatched \r\n");
+                                hdmi_read_edid_and_parse(dev);
+                        }while(retry--);
+                }
         }
+
         hdmi_get_soc_features(dev, &soc_feature);
         if(sink_edid.edid_done) {
-                /* process scdc version */
-                if(sink_edid.edid_m20Sink && sink_edid.edid_scdc_present) {
-                        unsigned int version;
-                        if(scdc_read_sink_version(dev, &version) < 0) {
-                                PRINT_EDID("%s HDMI sink not support scdc\r\n", __func__);
-                        }
-                        else  {
-                                scdc_support = 1;
-                                PRINT_EDID("%s HDMI SINK SCDC VERSION is %d\r\n", __func__, version);
-                        }
-                        /* Update Source Version - source version must be 1 */
-                        scdc_write_source_version(dev, 1);
-                }
-
-                        
                 *hdmi_mode = sink_edid.edid_hdmi_support;
                 /* find biggest vic */
                 for(support_index = 0; (hdmi_supported_list[support_index].vic > 0); support_index++) {
@@ -836,13 +1010,13 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                                         if(soc_feature.max_tmds_mhz > 0 && soc_feature.max_tmds_mhz <= 340) {
                                                 continue;
                                         }
-                                        if(scdc_support == 0 && hdmi_supported_list[support_index].ycc420 == 0) {
+                                        if(sink_edid.edid_scdc_present == 0 && hdmi_supported_list[support_index].ycc420 == 0) {
                                                 continue;
                                         }
                                 }
                                 if(*hdmi_mode == DVI && hdmi_supported_list[support_index].no_dvi) {
                                         continue;
-                                } 
+                                }
                                 optimal_index = support_index;
                                 break;
                         }
@@ -855,28 +1029,29 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
                                         if(soc_feature.max_tmds_mhz > 0 && soc_feature.max_tmds_mhz <= 340) {
                                                 continue;
                                         }
-                                        if(scdc_support == 0 && hdmi_supported_list[support_index].ycc420 == 0) {
+                                        if(sink_edid.edid_scdc_present == 0 && hdmi_supported_list[support_index].ycc420 == 0) {
                                                 continue;
                                         }
                                 }
                                 if(*hdmi_mode == DVI && hdmi_supported_list[support_index].no_dvi) {
                                         continue;
-                                } 
+                                }
                                 optimal_index = support_index;
                                 break;
                         }
                 }
-                
-        } 
+
+        }
+
         if(optimal_index >= 0) {
-                *vic = hdmi_supported_list[optimal_index].vic;   
+                *vic = hdmi_supported_list[optimal_index].vic;
                 if(*hdmi_mode == HDMI) /* HDMI */ {
                         PRINT_EDID("%s hdmi is hdmi mode \r\n", __func__);
         		switch(hdmi_supported_list[optimal_index].vic) {
                                 case 96:
                                 case 97:
-                                        if(!scdc_support) {
-                                               *encoding = YCC420; 
+                                        if(!sink_edid.edid_scdc_present) {
+                                               *encoding = YCC420;
                                         }
 					#if defined(CONFIG_HDMI_YCC420_PREFERRED)
                                         /* The YCC420 is preferred to YCC444 on the output-starter */
@@ -888,21 +1063,19 @@ int edid_get_optimal_settings(struct hdmi_tx_dev *dev, int *hdmi_mode, int *vic,
         		}
                         if(*encoding == RGB) {
                                 if(sink_edid.edid_mYcc444Support) {
-                                        *encoding = YCC444;       
+                                        *encoding = YCC444;
                                 } else if(sink_edid.edid_mYcc422Support) {
-                                        *encoding = YCC422;       
+                                        *encoding = YCC422;
                                 }
                         }
                 }else {
-                         PRINT_EDID("%s hdmi is dvi mode \r\n", __func__); 
+                         PRINT_EDID("%s hdmi is dvi mode \r\n", __func__);
                 }
-                
+
         }
 
         return 0;
 }
-
-
 
 
 

@@ -1309,34 +1309,101 @@ static int hdmi_phy_write(struct hdmi_tx_dev *dev, uint32_t offset, uint8_t data
         if(offset & 0x3){
                 return -EIO;
         }
-        iowrite32(data, (void*)(dev->hdmi_tx_phy_if_io + offset));
+        iowrite32(data & 0xFF, (void*)(dev->hdmi_tx_phy_if_io + offset));
         return 0;
 }
 
 static uint8_t hdmi_phy_read(struct hdmi_tx_dev *dev, uint32_t offset){
-        uint8_t data = 0;
+        uint32_t data = 0;
         if(offset & 0x3){
                 return 0;
         }
         data = ioread32((void*)(dev->hdmi_tx_phy_if_io + offset));
-
-        return data;
+	return (uint8_t)(data & 0xFF);
 }
 
 static struct phy_parameters phy_parameters[] = {
+         /*
+         @@ Description - 2018.11.20ver
+		
+                @.min_hz
+                    Minimum of the actual pixel clocks
+                @.max_hz
+                    Maximum of the actual pixel clocks
+                @.clock_amplitude
+                    Range : 4000 ~ 19500
+                    ex) 17000, (17000 - 4000) / 500 = 26, b`11010`
+                @.data_amplitude
+                    Range : 4000 ~ 19500
+                    ex) 17000, (17000 - 4000) / 500 = 26, b`11010`
+                @.pre_emphasis
+                    Range : 0 ~ 7500
+                    ex) 500, 500/500 = 1, b`
+                @.termination
+                    00 : OPEN
+                    01 : 300 Ohm
+                    10 : 150 Ohm
+                    11 : 100 Ohm
+        */
         {
-		/*
+                .min_hz          = 25175000,
+                .max_hz          = 74174999,
+                .clock_amplitude = 11000,
+                .data_amplitude  = 11000,
+                .pre_emphasis    = 0,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 74175000,
+                .max_hz          = 148349999,
+                .clock_amplitude = 11000,
+                .data_amplitude  = 11000,
+                .pre_emphasis    = 0,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 148350000,
+                .max_hz          = 185437499,
+                .clock_amplitude = 11500,
+                .data_amplitude  = 12000,
+                .pre_emphasis    = 500,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 185437500,
+                .max_hz          = 222524999,
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 222525000,
+                .max_hz          = 296699999,
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
                 .min_hz          = 296700000,
                 .max_hz          = 593399999,
-		*/
-                .clock_amplitude = 17000, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-                .data_amplitude  = 17000, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-                .pre_emphasis    = 500,   /* [0mA ~ 7.5mA]  500nA, 500/500 = 1, b` */
-                .termination     = 300,   /* 00 : OPEN, 01 :300Ohm, 10 : 150Ohm, 11 : 100Ohm */
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 593400000,
+                .max_hz          = 594000000,
+                .clock_amplitude = 18500,
+                .data_amplitude  = 18500,
+                .pre_emphasis    = 500,
+                .termination     = 100,
         }
 };
 
-void tcc_hdmi_phy_tuning(int hz, color_depth_t color_depth, char *phy_regs)
+void tcc_hdmi_phy_tuning(int hz, color_depth_t color_depth, unsigned char *phy_regs)
 {
         int phy_loop;
         int phy_tmp_val =0;
@@ -1497,9 +1564,9 @@ void tcc_hdmi_phy_dump(struct hdmi_tx_dev *dev)
         pr_info("[0x5C] 0x%02x\r\n", phy_val[0]);
         pr_info("[0x60] 0x%02x\r\n", phy_val[1]);
         pr_info("--------------------------\r\n");
-        pr_info("Clock Amplitude   = (%d) nA\r\n", clock_amplitude);
-        pr_info("Data Amplitude    = (%d) nA\r\n", data_amplitude);
-        pr_info("Data Pre Emphasis = (%d) nA\r\n", pre_emphasis);
+        pr_info("Clock Amplitude   = (%d) uA\r\n", clock_amplitude);
+        pr_info("Data Amplitude    = (%d) uA\r\n", data_amplitude);
+        pr_info("Data Pre Emphasis = (%d) uA\r\n", pre_emphasis);
         pr_info("Termination       = (%d) Ohm\r\n", termination);
         pr_info("--------------------------\r\n");
 }

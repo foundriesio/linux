@@ -67,7 +67,7 @@ int dwc_hdmi_get_time(struct timeval *prev_val, struct timeval *curr_val)
 }
 #endif
 
-
+/* Reset HDMI Link and PHY */
 void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on)
 {
         #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
@@ -144,7 +144,7 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
 
         if(++dev->display_clock_enable_count == 1 &&
                 !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                //if(dev->verbose >= VERBOSE_IO)
+                if(dev->verbose >= VERBOSE_IO)
                         printk("%s enable display clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_DDIBUS])) {
@@ -192,7 +192,7 @@ static void dwc_hdmi_phy_power_off(struct hdmi_tx_dev *dev)
 		/* Clear pixel clock information */
 		dev->hdmi_tx_ctrl.pixel_clock = 0;
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        //if(dev->verbose >= VERBOSE_IO)
+                        if(dev->verbose >= VERBOSE_IO)
                                 printk("%s disable display clock\r\n", __func__);
                         if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_ISOIP])) {
                                 clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_ISOIP]);
@@ -229,7 +229,7 @@ static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_r
 
         if(++dev->hdmi_clock_enable_count == 1 &&
                 !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                //if(dev->verbose >= VERBOSE_IO)
+                if(dev->verbose >= VERBOSE_IO)
                         printk("%s enable hdmi clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) {
@@ -289,7 +289,7 @@ static void dwc_hdmi_link_power_off(struct hdmi_tx_dev *dev)
         if(dev->hdmi_clock_enable_count == 1) {
                 clear_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        //if(dev->verbose >= VERBOSE_IO)
+                        if(dev->verbose >= VERBOSE_IO)
                                 printk("dwc_hdmi_link_power_off\r\n");
                         dwc_hdmi_hw_reset(dev, 1);
 
@@ -779,7 +779,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 mutex_lock(&dev->mutex);
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                u8 __user *data_ptrs;
+                                unsigned char *data_ptrs;
                                 dwc_hdmi_ddc_transfer_data transfer_data;
                                 if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -787,16 +787,15 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         break;
 
                                 }
-                                data_ptrs = (u8 __user *)transfer_data.data;
-                                transfer_data.data = memdup_user(data_ptrs, transfer_data.len);
-                                if (IS_ERR_OR_NULL(transfer_data.data)) {
-                                        ret = PTR_ERR(transfer_data.data);
+                                data_ptrs = memdup_user((u8 __user *)transfer_data.data, transfer_data.len);
+                                if (IS_ERR_OR_NULL(data_ptrs)) {
+                                        ret = PTR_ERR(data_ptrs);
                                         pr_err("HDMI_DDC_WRITE_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
-                                ret = hdmi_ddc_write(dev, transfer_data.i2cAddr, transfer_data.addr, transfer_data.len, data_ptrs);
-                                kfree(transfer_data.data);
+                                ret = hdmi_ddc_write(dev, transfer_data.i2cAddr, transfer_data.addr, transfer_data.len, transfer_data.data);
+                                kfree(data_ptrs);
                         }else {
                                 pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
                         }
@@ -810,23 +809,21 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 mutex_lock(&dev->mutex);
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                u8 __user *data_ptrs;
+                                unsigned char* data_ptrs;
                                 dwc_hdmi_ddc_transfer_data transfer_data;
                                 if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
-
                                 }
-                                data_ptrs = (u8 __user *)transfer_data.data;
-                                transfer_data.data = memdup_user(data_ptrs, transfer_data.len);
-                                if (IS_ERR_OR_NULL(transfer_data.data)) {
-                                        ret = PTR_ERR(transfer_data.data);
+                                data_ptrs = devm_kmalloc(dev->parent_dev, transfer_data.len, GFP_KERNEL);
+                                if (IS_ERR_OR_NULL(data_ptrs)) {
+                                        ret = PTR_ERR(data_ptrs);
                                         pr_err("HDMI_DDC_READ_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
-                                ret = hdmi_ddc_read(dev, transfer_data.i2cAddr, transfer_data.segment, transfer_data.pointer, transfer_data.addr, transfer_data.len, transfer_data.data);
+                                ret = hdmi_ddc_read(dev, transfer_data.i2cAddr, transfer_data.segment, transfer_data.pointer, transfer_data.addr, transfer_data.len, data_ptrs);
                                 if (ret < 0) {
                                         switch(transfer_data.i2cAddr) {
                                                 case 0x50:
@@ -841,17 +838,17 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                                         pr_err("## Failed to i2c unknown(0x%x) read\r\n", transfer_data.i2cAddr);
                                                         break;
                                         }
-                                        kfree(transfer_data.data);
+                                        devm_kfree(dev->parent_dev, data_ptrs);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
-                                if(copy_to_user(data_ptrs, transfer_data.data, transfer_data.len)) {
+                                if(copy_to_user(transfer_data.data, data_ptrs, transfer_data.len)) {
                                         pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
-                                        kfree(transfer_data.data);
+                                        devm_kfree(dev->parent_dev, data_ptrs);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
-                                kfree(transfer_data.data);
+                                devm_kfree(dev->parent_dev, data_ptrs);
                                 ret = 0;
                         }else {
                                 pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
@@ -949,6 +946,17 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 mutex_unlock(&dev->mutex);
                 break;
 
+        case HDMI_VIDEO_SET_TMDS_CONFIG_INIT:
+                mutex_lock(&dev->mutex);
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                                ret = scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
+                        }else {
+                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                        }
+                }
+                mutex_unlock(&dev->mutex);
+                break;
 
         case HDMI_VIDEO_SET_SCRAMBLING:
                 mutex_lock(&dev->mutex);
@@ -998,6 +1006,24 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         break;
                                 }
                                 ret = 0;
+                        }
+                }
+                mutex_unlock(&dev->mutex);
+                break;
+
+        case HDMI_VIDEO_GET_TMDS_CONFIG_STATUS:
+                mutex_lock(&dev->mutex);
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                                int tmds_config_status = scdc_tmds_config_status(dev);
+                                if(copy_to_user((void __user *)arg, &tmds_config_status, sizeof(tmds_config_status))) {
+                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        mutex_unlock(&dev->mutex);
+                                        break;
+                                }
+                                ret = 0;
+                        }else {
+                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
