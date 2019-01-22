@@ -1069,7 +1069,6 @@ struct intel_dp {
 	bool has_audio;
 	bool detect_done;
 	bool reset_link_params;
-	enum aux_ch aux_ch;
 	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
 	uint8_t psr_dpcd[EDP_PSR_RECEIVER_CAP_SIZE];
 	uint8_t downstream_ports[DP_MAX_DOWNSTREAM_PORTS];
@@ -1167,6 +1166,8 @@ struct intel_digital_port {
 	enum irqreturn (*hpd_pulse)(struct intel_digital_port *, bool);
 	bool release_cl2_override;
 	uint8_t max_lanes;
+	/* Used for DP and ICL+ TypeC/DP and TypeC/HDMI ports. */
+	enum aux_ch aux_ch;
 	enum intel_display_power_domain ddi_io_power_domain;
 	enum tc_port_type tc_type;
 
