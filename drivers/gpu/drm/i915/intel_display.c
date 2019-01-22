@@ -519,6 +519,13 @@ skl_wa_528(struct drm_i915_private *dev_priv, int pipe, bool enable)
 static void
 skl_wa_clkgate(struct drm_i915_private *dev_priv, int pipe, bool enable)
 {
+	/*
+	 * FIXME: ICL requires two hardware planes for scanning out NV12
+	 * framebuffers. Do not advertize support until this is implemented.
+	 */
+	if (INTEL_GEN(dev_priv) >= 11)
+		return false;
+
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))
 		return;
 
@@ -14576,7 +14583,7 @@ static int intel_framebuffer_init(struct intel_framebuffer *intel_fb,
 		break;
 	case DRM_FORMAT_NV12:
 		if (INTEL_GEN(dev_priv) < 9 || IS_SKYLAKE(dev_priv) ||
-		    IS_BROXTON(dev_priv)) {
+		    IS_BROXTON(dev_priv) || INTEL_GEN(dev_priv) >= 11) {
 			DRM_DEBUG_KMS("unsupported pixel format: %s\n",
 				      drm_get_format_name(mode_cmd->pixel_format,
 							  &format_name));
