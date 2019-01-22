@@ -1735,6 +1735,18 @@ config DEFERRED_CONSOLE_OUTPUT
 	bool "Enable deferred console output"
 	depends on SERIAL_TCC_CONSOLE
 
+config TCC_NSK_SC
+        bool "TCC Smartcard driver support for NSK"
+        default n
+        help
+          Support for NSK Smartcard driver interface using the on-chip uart on the Telechips TCC series CPUs
+
+config SERIAL_TCC_SC
+        bool "Telechips Smartcard driver support"
+        default n
+        help
+          Support for Smartcard driver using the on-chip UARTs on the Telechips TCC series CPUs,
+
 endmenu
 
 config SERIAL_MCTRL_GPIO

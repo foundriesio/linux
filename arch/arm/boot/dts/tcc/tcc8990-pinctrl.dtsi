@@ -1765,11 +1765,31 @@
 * NSK Smartcard Interface
 ******************************************************/
 
-	nsk_sc_ctrl: nsk_sc_ctrl{
-		telechips,pins = "gpd-11", "gpd-12", "gpd-13", "gpd-14";
+    nsk_sc_ctrl: nsk_sc_ctrl{
+        telechips,pins = "gpd-11", "gpd-12", "gpd-13", "gpd-14";
 		telechips,pin-function = <6>;
-	};
+    };
+	
+	nsk_sc_gpio_C4: nsk_sc_gpio_C4 {
+        telechips,pins = "gpd-13";
+        telechips,pin-function = <0>;
+    };
 
+	nsk_sc_gpio_C8: nsk_sc_cpio_C8 {
+        telechips,pins = "gpd-14";
+        telechips,pin-function = <0>;
+    };
+
+	nsk_sc_gpio_C7: nsk_sc_gpio_C7 {
+        telechips,pins = "gpd-11";
+        telechips,pin-function = <0>;
+    };
+
+	nsk_sc_gpio_C3: nsk_sc_gpio_C3 {
+        telechips,pins = "gpd-12";
+        telechips,pin-function = <0>;
+    };
+	
 	nsk_sc_io_clk: nsk_sc_io_clk {
 		telechips,pins = "gpa-26";
 		telechips,pin-function = <7>;
