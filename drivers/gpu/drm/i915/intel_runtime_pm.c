@@ -770,7 +770,7 @@ static void bxt_verify_ddi_phy_power_wells(struct drm_i915_private *dev_priv)
 	if (power_well->count > 0)
 		bxt_ddi_phy_verify_state(dev_priv, power_well->bxt.phy);
 
-	power_well = lookup_power_well(dev_priv, BXT_DPIO_CMN_BC);
+	power_well = lookup_power_well(dev_priv, VLV_DISP_PW_DPIO_CMN_BC);
 	if (power_well->count > 0)
 		bxt_ddi_phy_verify_state(dev_priv, power_well->bxt.phy);
 
@@ -2466,7 +2466,7 @@ static struct i915_power_well bxt_power_wells[] = {
 		.name = "dpio-common-bc",
 		.domains = BXT_DPIO_CMN_BC_POWER_DOMAINS,
 		.ops = &bxt_dpio_cmn_power_well_ops,
-		.id = BXT_DPIO_CMN_BC,
+		.id = VLV_DISP_PW_DPIO_CMN_BC,
 		{
 			.bxt.phy = DPIO_PHY0,
 		},
@@ -2525,7 +2525,7 @@ static struct i915_power_well glk_power_wells[] = {
 		.name = "dpio-common-b",
 		.domains = GLK_DPIO_CMN_B_POWER_DOMAINS,
 		.ops = &bxt_dpio_cmn_power_well_ops,
-		.id = BXT_DPIO_CMN_BC,
+		.id = VLV_DISP_PW_DPIO_CMN_BC,
 		{
 			.bxt.phy = DPIO_PHY0,
 		},
@@ -2774,7 +2774,7 @@ static struct i915_power_well icl_power_wells[] = {
 		/* Handled by the DMC firmware */
 		.domains = 0,
 		.ops = &hsw_power_well_ops,
-		.id = ICL_DISP_PW_1,
+		.id = SKL_DISP_PW_1,
 		{
 			.hsw.regs = &hsw_power_well_regs,
 			.hsw.idx = ICL_PW_CTL_IDX_PW_1,
@@ -2791,7 +2791,7 @@ static struct i915_power_well icl_power_wells[] = {
 		.name = "power well 2",
 		.domains = ICL_PW_2_POWER_DOMAINS,
 		.ops = &hsw_power_well_ops,
-		.id = ICL_DISP_PW_2,
+		.id = SKL_DISP_PW_2,
 		{
 			.hsw.regs = &hsw_power_well_regs,
 			.hsw.idx = ICL_PW_CTL_IDX_PW_2,
@@ -3596,7 +3596,7 @@ static void icl_display_core_init(struct drm_i915_private *dev_priv,
 	 *    The AUX IO power wells will be enabled on demand.
 	 */
 	mutex_lock(&power_domains->lock);
-	well = lookup_power_well(dev_priv, ICL_DISP_PW_1);
+	well = lookup_power_well(dev_priv, SKL_DISP_PW_1);
 	intel_power_well_enable(dev_priv, well);
 	mutex_unlock(&power_domains->lock);
 
@@ -3633,7 +3633,7 @@ static void icl_display_core_uninit(struct drm_i915_private *dev_priv)
 	 *    disabled at this point.
 	 */
 	mutex_lock(&power_domains->lock);
-	well = lookup_power_well(dev_priv, ICL_DISP_PW_1);
+	well = lookup_power_well(dev_priv, SKL_DISP_PW_1);
 	intel_power_well_disable(dev_priv, well);
 	mutex_unlock(&power_domains->lock);
 
