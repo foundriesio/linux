@@ -92,4 +92,17 @@ config USB_DWC2_DEBUG_PERIODIC
 	  non-periodic transfers, but of course the debug logs will be
 	  incomplete. Note that this also disables some debug messages
 	  for which the transfer type cannot be deduced.
+
+config USB_DWC2_TCC
+	bool "Enable TCC SoC dwc2"
+	depends on USB_DWC2
+
+config USB_DWC2_TCC_MUX
+	depends on USB_DWC2_TCC && (ARCH_TCC898X || ARCH_TCC802X || ARCH_TCC899X || ARCH_TCC803X)
+	select USB_EHCI_HCD_PLATFORM
+	select USB_OHCI_HCD_PLATFORM
+	select TCC_EHCI_PHY
+	bool "DWC2 Host Mux mode"
+	help
+	  Telechips DWC2 Device driver & EHCI Host driver.
 endif

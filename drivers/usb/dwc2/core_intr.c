@@ -564,6 +564,20 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 			dwc2_handle_usb_port_intr(hsotg);
 			retval = IRQ_HANDLED;
 		}
+#ifdef CONFIG_USB_DWC2_TCC
+		else if (dwc2_is_host_mode(hsotg)) {
+			u32 hprt0 = dwc2_readl(hsotg->regs + HPRT0);
+			dev_dbg(hsotg->dev,
+				" --Port interrupt received in Host mode, hprt0 : %08X--\n", hprt0);
+			if(!(hprt0 & HPRT0_PWR)) {
+				hprt0 |= HPRT0_PWR;
+				dev_dbg(hsotg->dev,
+					" --HPRT0_PWR is %08X\n", hprt0);
+				dwc2_writel(hprt0, hsotg->regs + HPRT0);
+				retval = IRQ_HANDLED;
+			}
+		}
+#endif
 	}
 
 out:
