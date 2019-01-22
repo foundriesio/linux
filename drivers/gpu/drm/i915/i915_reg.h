@@ -8915,6 +8915,8 @@ enum skl_power_gate {
 	SKL_PG0,
 	SKL_PG1,
 	SKL_PG2,
+	ICL_PG3,
+	ICL_PG4,
 };
 
 #define SKL_FUSE_STATUS				_MMIO(0x42000)
