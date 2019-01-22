@@ -697,7 +697,8 @@ static void pps_lock(struct intel_dp *intel_dp)
 	 * See intel_power_sequencer_reset() why we need
 	 * a power domain reference here.
 	 */
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv,
+				intel_aux_power_domain(dp_to_dig_port(intel_dp)));
 
 	mutex_lock(&dev_priv->pps_mutex);
 }
@@ -708,7 +709,8 @@ static void pps_unlock(struct intel_dp *intel_dp)
 
 	mutex_unlock(&dev_priv->pps_mutex);
 
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv,
+				intel_aux_power_domain(dp_to_dig_port(intel_dp)));
 }
 
 static void
@@ -1512,29 +1514,6 @@ intel_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 	return ret;
 }
 
-static enum intel_display_power_domain
-intel_aux_power_domain(struct intel_dp *intel_dp)
-{
-	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
-
-	switch (dig_port->aux_ch) {
-	case AUX_CH_A:
-		return POWER_DOMAIN_AUX_A;
-	case AUX_CH_B:
-		return POWER_DOMAIN_AUX_B;
-	case AUX_CH_C:
-		return POWER_DOMAIN_AUX_C;
-	case AUX_CH_D:
-		return POWER_DOMAIN_AUX_D;
-	case AUX_CH_E:
-		return POWER_DOMAIN_AUX_E;
-	case AUX_CH_F:
-		return POWER_DOMAIN_AUX_F;
-	default:
-		MISSING_CASE(dig_port->aux_ch);
-		return POWER_DOMAIN_AUX_A;
-	}
-}
 
 static i915_reg_t g4x_aux_ctl_reg(struct intel_dp *intel_dp)
 {
@@ -1660,8 +1639,6 @@ intel_dp_aux_init(struct intel_dp *intel_dp)
 	struct drm_i915_private *dev_priv = to_i915(intel_dp_to_dev(intel_dp));
 	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
 	struct intel_encoder *encoder = &dig_port->base;
-
-	intel_dp->aux_power_domain = intel_aux_power_domain(intel_dp);
 
 	if (INTEL_GEN(dev_priv) >= 9) {
 		intel_dp->aux_ch_ctl_reg = skl_aux_ctl_reg;
@@ -2307,7 +2284,8 @@ static bool edp_panel_vdd_on(struct intel_dp *intel_dp)
 	if (edp_have_panel_vdd(intel_dp))
 		return need_to_disable;
 
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv,
+				intel_aux_power_domain(intel_dig_port));
 
 	DRM_DEBUG_KMS("Turning eDP port %c VDD on\n",
 		      port_name(intel_dig_port->base.port));
@@ -2393,7 +2371,8 @@ static void edp_panel_vdd_off_sync(struct intel_dp *intel_dp)
 	if ((pp & PANEL_POWER_ON) == 0)
 		intel_dp->panel_power_off_time = ktime_get_boottime();
 
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv,
+				intel_aux_power_domain(intel_dig_port));
 }
 
 static void edp_panel_vdd_work(struct work_struct *__work)
@@ -2506,6 +2485,7 @@ void intel_edp_panel_on(struct intel_dp *intel_dp)
 static void edp_panel_off(struct intel_dp *intel_dp)
 {
 	struct drm_i915_private *dev_priv = to_i915(intel_dp_to_dev(intel_dp));
+	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
 	u32 pp;
 	i915_reg_t pp_ctrl_reg;
 
@@ -2515,10 +2495,10 @@ static void edp_panel_off(struct intel_dp *intel_dp)
 		return;
 
 	DRM_DEBUG_KMS("Turn eDP port %c panel power off\n",
-		      port_name(dp_to_dig_port(intel_dp)->base.port));
+		      port_name(dig_port->base.port));
 
 	WARN(!intel_dp->want_panel_vdd, "Need eDP port %c VDD to turn off panel\n",
-	     port_name(dp_to_dig_port(intel_dp)->base.port));
+	     port_name(dig_port->base.port));
 
 	pp = ironlake_get_pp_control(intel_dp);
 	/* We need to switch off panel power _and_ force vdd, for otherwise some
@@ -2537,7 +2517,7 @@ static void edp_panel_off(struct intel_dp *intel_dp)
 	intel_dp->panel_power_off_time = ktime_get_boottime();
 
 	/* We got a reference when we enabled the VDD. */
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv, intel_aux_power_domain(dig_port));
 }
 
 void intel_edp_panel_off(struct intel_dp *intel_dp)
@@ -5018,7 +4998,7 @@ intel_dp_long_pulse(struct intel_connector *connector,
 
 	WARN_ON(!drm_modeset_is_locked(&dev_priv->drm.mode_config.connection_mutex));
 
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv, intel_aux_power_domain(dp_to_dig_port(intel_dp)));
 
 	/* Can't disconnect eDP */
 	if (intel_dp_is_edp(intel_dp))
@@ -5081,7 +5061,7 @@ intel_dp_long_pulse(struct intel_connector *connector,
 		ret = intel_dp_retrain_link(encoder, ctx);
 		if (ret) {
 			intel_display_power_put(dev_priv,
-						intel_dp->aux_power_domain);
+						intel_aux_power_domain(dp_to_dig_port(intel_dp)));
 			return ret;
 		}
 	}
@@ -5118,7 +5098,7 @@ out:
 	if (status != connector_status_connected && !intel_dp->is_mst)
 		intel_dp_unset_edid(intel_dp);
 
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv, intel_aux_power_domain(dp_to_dig_port(intel_dp)));
 	return status;
 }
 
@@ -5146,8 +5126,11 @@ static void
 intel_dp_force(struct drm_connector *connector)
 {
 	struct intel_dp *intel_dp = intel_attached_dp(connector);
-	struct intel_encoder *intel_encoder = &dp_to_dig_port(intel_dp)->base;
+	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
+	struct intel_encoder *intel_encoder = &dig_port->base;
 	struct drm_i915_private *dev_priv = to_i915(intel_encoder->base.dev);
+	enum intel_display_power_domain aux_domain =
+		intel_aux_power_domain(dig_port);
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
 		      connector->base.id, connector->name);
@@ -5156,11 +5139,11 @@ intel_dp_force(struct drm_connector *connector)
 	if (connector->status != connector_status_connected)
 		return;
 
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv, aux_domain);
 
 	intel_dp_set_edid(intel_dp);
 
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv, aux_domain);
 }
 
 static int intel_dp_get_modes(struct drm_connector *connector)
@@ -5526,6 +5509,7 @@ static const struct intel_hdcp_shim intel_dp_hdcp_shim = {
 static void intel_edp_panel_vdd_sanitize(struct intel_dp *intel_dp)
 {
 	struct drm_i915_private *dev_priv = to_i915(intel_dp_to_dev(intel_dp));
+	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
 
 	lockdep_assert_held(&dev_priv->pps_mutex);
 
@@ -5539,7 +5523,7 @@ static void intel_edp_panel_vdd_sanitize(struct intel_dp *intel_dp)
 	 * indefinitely.
 	 */
 	DRM_DEBUG_KMS("VDD left on by BIOS, adjusting state tracking\n");
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv, intel_aux_power_domain(dig_port));
 
 	edp_panel_vdd_schedule_off(intel_dp);
 }
@@ -5638,7 +5622,8 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 		return IRQ_NONE;
 	}
 
-	intel_display_power_get(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_get(dev_priv,
+				intel_aux_power_domain(intel_dig_port));
 
 	if (intel_dp->is_mst) {
 		if (intel_dp_check_mst_status(intel_dp) == -EINVAL) {
@@ -5673,7 +5658,8 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 	ret = IRQ_HANDLED;
 
 put_power:
-	intel_display_power_put(dev_priv, intel_dp->aux_power_domain);
+	intel_display_power_put(dev_priv,
+				intel_aux_power_domain(intel_dig_port));
 
 	return ret;
 }
