@@ -13,7 +13,7 @@
  */
 
 /dts-v1/;
-#define IS_A0_SILICON
+//#define IS_A0_SILICON
 
 #include "fsl-imx8qxp.dtsi"
 
