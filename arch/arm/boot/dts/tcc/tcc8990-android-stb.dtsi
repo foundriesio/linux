@@ -769,6 +769,52 @@
 	};
 };
 
+&tcc_nsk_sc {
+		compatible = "telechips,tcc-nsk-sc";
+		reg = <0x16671000 0xFF>,
+			<0x16684000 0x1F>,
+			<0x16051000 0x70>,
+			<0x16020200 0x2F>;
+		/*interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;*/
+		/*interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;*/
+		interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
+		clock-names = "uartclk", "apb_pclk";
+		/*clock-frequency = <50000000>;*/
+		clock-frequency = <108000000>;
+
+		iobus_dmareqsel_offset = <0x24>;
+		iobus_dmareqsel_value = <0x40000000>;
+		iobus_hrsten_offset = <0xc>;
+		iobus_hrsten_value = <0x200>;
+
+		dma_extreq_value = <0x40000000>;
+
+		uart_chnum = <7>;
+		uart_port = <2>;
+		uart_datmux_use = <1>;
+
+		tda8024_use = <1>;
+                rst_gpios =  <&gpd 22 0>;
+                detect_gpios = <&gpe 31 0>;
+                pwren_gpios = <&gpd 21 0>;
+		/*pwren_gpios = <&gpd 23 0>;*/
+		vccsel_gpios = <&gpd 23 0>;
+		clk_gpios = <&gpd 12 0>;
+		data_c7_gpios = <&gpd 11 0>;
+		data_c4_gpios = <&gpd 13 0>;
+		data_c8_gpios = <&gpd 14 0>;
+		pinctrl-names = "default", "gpio_C4", "gpio_C8", "gpio_C7", "gpio_C3";
+		pinctrl-0 = <&nsk_sc_ctrl>;
+		pinctrl-1 = <&nsk_sc_gpio_C4>;
+		pinctrl-2 = <&nsk_sc_gpio_C8>;
+		pinctrl-3 = <&nsk_sc_gpio_C7>;
+		pinctrl-4 = <&nsk_sc_gpio_C3>;	
+                status = "okay";
+};
+
+
+
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart2_data>;
