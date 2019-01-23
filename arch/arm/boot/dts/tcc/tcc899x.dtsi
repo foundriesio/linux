@@ -161,7 +161,7 @@
 	cpu_opp_table: cpu_opp_table {
 		compatible = "operating-points-v2";
 		opp-shared;
-		
+
 		opp0 {
 			opp-hz = /bits/ 64 <1400000000>;
 			opp-microvolt = <1000000>;
@@ -1130,7 +1130,7 @@
 		clock-frequency = <32000>; //HDMI initial clock base 32kHz
 		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		have-fifo-clear=<1>;
-		block-type = <1>;  //1: 7.1CH 
+		block-type = <1>;  //1: 7.1CH
 		adma = <&adma0>;
 		status = "disabled";
 	};
@@ -1143,7 +1143,7 @@
 		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		adma = <&adma1>;
 		have-fifo-clear=<1>;
-		block-type = <2>; //1: 9.1CH 
+		block-type = <2>; //1: 9.1CH
 		status = "disabled";
 	};
 
@@ -1400,7 +1400,7 @@
 	gpu_opp_table: opp_table0 {
 		compatible = "operating-points-v2", "operating-points-v2-mali";
 	};
-	
+
 	telechips,ion {
 		compatible = "telechips,tcc-ion";
 		#address-cells = <1>;
@@ -2085,7 +2085,7 @@
 		vendor_name = "TCC";
 		product_description = "TCC8xxx";
 		source_information = <1>; /* Digital STB */
-		
+
 		audio_if_selection_ofst = <0x58>;
 		verbose = <0>; // 0 disable, 1 basic, 2 io
 		status = "disabled";
@@ -2158,7 +2158,7 @@
 	vqmmc_sd: vqmmc_sd {};
 
 	vqmmc_sdio: vqmmc_sdio {};
-	
+
 	nand: nand@16400000 {
 		compatible = "telechips,nand-v8";
 		reg = <0x16400000 0x13ff>;
@@ -2233,55 +2233,26 @@
 		status = "disabled";
 	};
 
-	tcc_nsk_sc: tcc_nsk_sc@16671000 {
-		compatible = "telechips,tcc-nsk-sc";
-		reg = <0x16671000 0xFF>,
-			<0x16684000 0x1F>,
-			<0x16051000 0x70>,
-			<0x16020200 0x2F>;
-		interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
-		clock-names = "uartclk", "apb_pclk";
-		clock-frequency = <50000000>;
-
-		iobus_dmareqsel_offset = <0x24>;
-		iobus_dmareqsel_value = <0x40000000>;
-		iobus_hrsten_offset = <0xc>;
-		iobus_hrsten_value = <0x200>;
-
-		dma_extreq_value = <0x40000000>;
-
-		uart_chnum = <7>;
-		uart_port = <2>;
-		uart_datmux_use = <1>;
-
-		tda8024_use = <1>;
-		rst_gpios =  <&gpd 22 0>;
-		detect_gpios = <&gpe 31 0>;
-		pwren_gpios = <&gpd 21 0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&nsk_sc_ctrl>;
-		status = "okay";
-	};
-	pwm:pwm@16050000 { /* pwm */
-		compatible = "telechips,pwm";
-		reg = <0x16030000 0x70 0x1605104C 0x4>;
-		tcc,pwm-number = <4>;
-		#pwm-cells = <2>;
-		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM >;
-		clock-frequency = <400000000>; /* Hz */
-		status = "okay";
-	};
+	tcc_nsk_sc: tcc_nsk_sc@16671000 {};
+        pwm:pwm@16050000 { /* pwm */
+                compatible = "telechips,pwm";
+                reg = <0x16030000 0x70 0x1605104C 0x4>;
+                tcc,pwm-number = <4>;
+                #pwm-cells = <2>;
+                clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM >;
+				clock-frequency = <400000000>; /* Hz */
+				status = "okay";
+        };
 
 
-	pwm_led_a {
-		pinctrl-names = "default";
+		pwm_led_a {
+			pinctrl-names = "default";
 
-		led_a {
-			pwms = <&pwm 0 500000000>;
-			max-brightness = <255>;
-			linux,default-trigger = "default-on";
-		};
+			led_a {
+					pwms = <&pwm 0 500000000>;
+					max-brightness = <255>;
+					linux,default-trigger = "default-on";
+			};
 	 };
 
 
