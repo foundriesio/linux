@@ -250,8 +250,16 @@ static void stm32_receive_chars(struct uart_port *port, bool threaded)
 						       ofs->icr);
 				port->icount.overrun++;
 			} else if (sr & USART_SR_PE) {
+				if (ofs->icr != UNDEF_REG)
+					writel_relaxed(USART_ICR_PECF,
+						       port->membase +
+						       ofs->icr);
 				port->icount.parity++;
 			} else if (sr & USART_SR_FE) {
+				if (ofs->icr != UNDEF_REG)
+					writel_relaxed(USART_ICR_FECF,
+						       port->membase +
+						       ofs->icr);
 				port->icount.frame++;
 			}
 
