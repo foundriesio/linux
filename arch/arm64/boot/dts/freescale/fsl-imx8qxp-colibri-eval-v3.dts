@@ -535,13 +535,11 @@
 			>;
 		};
 
-#if 0
 		pinctrl_wifi: wifigrp {
 			fsl,pins = <
-				SC_P_SCU_BOOT_MODE3_SCU_DSC_RTC_CLOCK_OUTPUT_32K	0x06000021 /* Wi-Fi_SUSCLK_32k */
+				SC_P_SCU_BOOT_MODE3_SCU_DSC_RTC_CLOCK_OUTPUT_32K 0x00000020
 			>;
 		};
-#endif
 	};
 };
 
@@ -872,7 +870,7 @@
 
 &pcieb{
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcieb /*&pinctrl_wifi*/>;
+	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
 
 	ext_osc = <1>;
 
