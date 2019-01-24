@@ -338,6 +338,20 @@ smb2_plain_req_init(__le16 smb2_command, struct cifs_tcon *tcon,
 		return rc;
 
 	/* BB eventually switch this to SMB2 specific small buf size */
+	if (smb2_command == SMB2_SET_INFO) {
+		struct smb2_pdu *pdu;
+
+		*request_buf = cifs_buf_get();
+		if (!*request_buf)
+			return -ENOMEM;
+
+		pdu = *request_buf;
+		fill_small_buf(smb2_command, tcon, get_sync_hdr(pdu),
+			       total_len);
+		pdu->hdr.smb2_buf_length = cpu_to_be32(*total_len);
+		goto out;
+	}
+
 	*request_buf = cifs_small_buf_get();
 	if (*request_buf == NULL) {
 		/* BB should we add a retry in here if not a writepage? */
@@ -347,7 +361,7 @@ smb2_plain_req_init(__le16 smb2_command, struct cifs_tcon *tcon,
 	shdr = (struct smb2_sync_hdr *)(*request_buf);
 
 	fill_small_buf(smb2_command, tcon, shdr, total_len);
-
+out:
 	if (tcon != NULL) {
 #ifdef CONFIG_CIFS_STATS2
 		uint16_t com_code = le16_to_cpu(smb2_command);
@@ -3128,6 +3142,7 @@ send_set_info(const unsigned int xid, struct cifs_tcon *tcon,
 	struct TCP_Server_Info *server;
 	struct cifs_ses *ses = tcon->ses;
 	int flags = 0;
+	unsigned int total_len;
 
 	if (ses && (ses->server))
 		server = ses->server;
@@ -3141,7 +3156,7 @@ send_set_info(const unsigned int xid, struct cifs_tcon *tcon,
 	if (!iov)
 		return -ENOMEM;
 
-	rc = small_smb2_init(SMB2_SET_INFO, tcon, (void **) &req);
+	rc = smb2_plain_req_init(SMB2_SET_INFO, tcon, (void **) &req, &total_len);
 	if (rc) {
 		kfree(iov);
 		return rc;
@@ -3179,7 +3194,7 @@ send_set_info(const unsigned int xid, struct cifs_tcon *tcon,
 	}
 
 	rc = SendReceive2(xid, ses, iov, num, &resp_buftype, flags, &rsp_iov);
-	cifs_small_buf_release(req);
+	cifs_buf_release(req);
 	rsp = (struct smb2_set_info_rsp *)rsp_iov.iov_base;
 
 	if (rc != 0)
