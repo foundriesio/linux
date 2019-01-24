@@ -1233,7 +1233,6 @@
 			g-tx-fifo-size = <128 128 64 64 64 64 32 32>;
 			dr_mode = "otg";
 			usb33d-supply = <&usb33>;
-			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
