@@ -201,7 +201,7 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 	struct kbase_dma_fence_resv_info info = {
 		.dma_fence_resv_count = 0,
 	};
-#ifdef CONFIG_SYNC
+#if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 	/*
 	 * When both dma-buf fence and Android native sync is enabled, we
 	 * disable dma-buf fence for contexts that are using Android native
@@ -209,9 +209,9 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 	 */
 	const bool implicit_sync = !kbase_ctx_flag(katom->kctx,
 						   KCTX_NO_IMPLICIT_SYNC);
-#else /* CONFIG_SYNC */
+#else /* CONFIG_SYNC || CONFIG_SYNC_FILE*/
 	const bool implicit_sync = true;
-#endif /* CONFIG_SYNC */
+#endif /* CONFIG_SYNC || CONFIG_SYNC_FILE */
 #endif /* CONFIG_MALI_DMA_FENCE */
 	struct base_external_resource *input_extres;
 
@@ -686,13 +686,7 @@ bool jd_done_nolock(struct kbase_jd_atom *katom,
 						continue;
 				} else if (node->core_req &
 							BASE_JD_REQ_SOFT_JOB) {
-					/* If this is a fence wait soft job
-					 * then remove it from the list of sync
-					 * waiters.
-					 */
-					if (BASE_JD_REQ_SOFT_FENCE_WAIT == node->core_req)
-						kbasep_remove_waiting_soft_job(node);
-
+					WARN_ON(!list_empty(&node->queue));
 					kbase_finish_soft_job(node);
 				}
 				node->status = KBASE_JD_ATOM_STATE_COMPLETED;
@@ -810,7 +804,6 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 	katom->extres = NULL;
 	katom->device_nr = user_atom->device_nr;
 	katom->jc = user_atom->jc;
-	katom->coreref_state = KBASE_ATOM_COREREF_STATE_NO_CORES_REQUESTED;
 	katom->core_req = user_atom->core_req;
 	katom->atom_flags = 0;
 	katom->retry_count = 0;
@@ -827,6 +820,7 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 
 	katom->age = kctx->age_count++;
 
+	INIT_LIST_HEAD(&katom->queue);
 	INIT_LIST_HEAD(&katom->jd_item);
 #ifdef CONFIG_MALI_DMA_FENCE
 	kbase_fence_dep_count_set(katom, -1);
@@ -971,32 +965,13 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 		sched_prio = KBASE_JS_ATOM_SCHED_PRIO_DEFAULT;
 	katom->sched_priority = sched_prio;
 
-	/* Create a new atom recording all dependencies it was set up with. */
+	/* Create a new atom. */
 	KBASE_TLSTREAM_TL_NEW_ATOM(
 			katom,
 			kbase_jd_atom_id(kctx, katom));
 	KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(katom, TL_ATOM_STATE_IDLE);
 	KBASE_TLSTREAM_TL_ATTRIB_ATOM_PRIORITY(katom, katom->sched_priority);
 	KBASE_TLSTREAM_TL_RET_ATOM_CTX(katom, kctx);
-	for (i = 0; i < 2; i++)
-		if (BASE_JD_DEP_TYPE_INVALID != kbase_jd_katom_dep_type(
-					&katom->dep[i])) {
-			KBASE_TLSTREAM_TL_DEP_ATOM_ATOM(
-					(void *)kbase_jd_katom_dep_atom(
-						&katom->dep[i]),
-					(void *)katom);
-		} else if (BASE_JD_DEP_TYPE_INVALID !=
-				user_atom->pre_dep[i].dependency_type) {
-			/* Resolved dependency. */
-			int dep_atom_number =
-				user_atom->pre_dep[i].atom_id;
-			struct kbase_jd_atom *dep_atom =
-				&jctx->atoms[dep_atom_number];
-
-			KBASE_TLSTREAM_TL_RDEP_ATOM_ATOM(
-					(void *)dep_atom,
-					(void *)katom);
-		}
 
 	/* Reject atoms with job chain = NULL, as these cause issues with soft-stop */
 	if (!katom->jc && (katom->core_req & BASE_JD_REQ_ATOM_TYPE) != BASE_JD_REQ_DEP) {
@@ -1243,7 +1218,6 @@ void kbase_jd_done_worker(struct work_struct *data)
 	struct kbasep_js_atom_retained_state katom_retained_state;
 	bool context_idle;
 	base_jd_core_req core_req = katom->core_req;
-	enum kbase_atom_coreref_state coreref_state = katom->coreref_state;
 
 	/* Soft jobs should never reach this function */
 	KBASE_DEBUG_ASSERT((katom->core_req & BASE_JD_REQ_SOFT_JOB) == 0);
@@ -1389,7 +1363,7 @@ void kbase_jd_done_worker(struct work_struct *data)
 		mutex_unlock(&jctx->lock);
 	}
 
-	kbase_backend_complete_wq_post_sched(kbdev, core_req, coreref_state);
+	kbase_backend_complete_wq_post_sched(kbdev, core_req);
 
 	if (context_idle)
 		kbase_pm_context_idle(kbdev);
@@ -1575,6 +1549,10 @@ void kbase_jd_zap_context(struct kbase_context *kctx)
 	 * been queued are done before continuing.
 	 */
 	flush_workqueue(kctx->dma_fence.wq);
+#endif
+
+#ifdef CONFIG_DEBUG_FS
+	kbase_debug_job_fault_kctx_unblock(kctx);
 #endif
 
 	kbase_jm_wait_for_zero_jobs(kctx);

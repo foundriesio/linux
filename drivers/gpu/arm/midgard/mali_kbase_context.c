@@ -115,7 +115,7 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 	spin_lock_init(&kctx->waiting_soft_jobs_lock);
 	err = kbase_dma_fence_init(kctx);
 	if (err)
-		goto free_event;
+		goto free_kcpu_wq;
 
 	err = kbase_mmu_init(kbdev, &kctx->mmu, kctx);
 	if (err)
@@ -149,7 +149,7 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 
 	kctx->id = atomic_add_return(1, &(kbdev->ctx_num)) - 1;
 
-	mutex_init(&kctx->vinstr_cli_lock);
+	mutex_init(&kctx->legacy_hwcnt_lock);
 
 	kbase_timer_setup(&kctx->soft_job_timeout,
 			  kbasep_soft_job_timeout_worker);
@@ -168,7 +168,7 @@ no_sink_page:
 	kbase_mmu_term(kbdev, &kctx->mmu);
 term_dma_fence:
 	kbase_dma_fence_term(kctx);
-free_event:
+free_kcpu_wq:
 	kbase_event_cleanup(kctx);
 free_jd:
 	/* Safe to call this one even when didn't initialize (assuming kctx was sufficiently zeroed) */
@@ -220,11 +220,22 @@ void kbase_destroy_context(struct kbase_context *kctx)
 
 	kbase_jd_zap_context(kctx);
 
+	/* We have already waited for the jobs to complete (and hereafter there
+	 * can be no more submissions for the context). However the wait could
+	 * have timedout and there could still be work items in flight that
+	 * would do the completion processing of jobs.
+	 * kbase_jd_exit() will destroy the 'job_done_wq'. And destroying the wq
+	 * will cause it do drain and implicitly wait for those work items to
+	 * complete.
+	 */
+	kbase_jd_exit(kctx);
+
 #ifdef CONFIG_DEBUG_FS
 	/* Removing the rest of the debugfs entries here as we want to keep the
 	 * atom debugfs interface alive until all atoms have completed. This
 	 * is useful for debugging hung contexts. */
 	debugfs_remove_recursive(kctx->kctx_dentry);
+	kbase_debug_job_fault_context_term(kctx);
 #endif
 
 	kbase_event_cleanup(kctx);
@@ -265,8 +276,6 @@ void kbase_destroy_context(struct kbase_context *kctx)
 
 	/* Safe to call this one even when didn't initialize (assuming kctx was sufficiently zeroed) */
 	kbasep_js_kctx_term(kctx);
-
-	kbase_jd_exit(kctx);
 
 	kbase_dma_fence_term(kctx);
 
@@ -315,9 +324,6 @@ int kbase_context_set_create_flags(struct kbase_context *kctx, u32 flags)
 	/* Translate the flags */
 	if ((flags & BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED) == 0)
 		kbase_ctx_flag_clear(kctx, KCTX_SUBMIT_DISABLED);
-
-	/* Latch the initial attributes into the Job Scheduler */
-	kbasep_js_ctx_attr_set_initial_attrs(kctx->kbdev, kctx);
 
 	spin_unlock_irqrestore(&kctx->kbdev->hwaccess_lock, irq_flags);
 	mutex_unlock(&js_kctx_info->ctx.jsctx_mutex);

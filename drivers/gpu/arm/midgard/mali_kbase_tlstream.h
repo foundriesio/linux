@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2015-2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2015-2018 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -141,7 +141,12 @@ void __kbase_tlstream_tl_attrib_atom_priority(void *atom, u32 prio);
 void __kbase_tlstream_tl_attrib_atom_state(void *atom, u32 state);
 void __kbase_tlstream_tl_attrib_atom_prioritized(void *atom);
 void __kbase_tlstream_tl_attrib_atom_jit(
-		void *atom, u64 edit_addr, u64 new_addr);
+		void *atom, u64 edit_addr, u64 new_addr, u64 va_pages);
+void __kbase_tlstream_tl_attrib_atom_jitallocinfo(
+		void *atom, u64 va_pages, u64 commit_pages, u64 extent,
+		u32 jit_id, u32 bin_id, u32 max_allocations, u32 flags,
+		u32 usage_id);
+void __kbase_tlstream_tl_attrib_atom_jitfreeinfo(void *atom, u32 jit_id);
 void __kbase_tlstream_tl_attrib_as_config(
 		void *as, u64 transtab, u64 memattr, u64 transcfg);
 void __kbase_tlstream_tl_event_atom_softstop_ex(void *atom);
@@ -158,6 +163,9 @@ void __kbase_tlstream_aux_protected_enter_start(void *gpu);
 void __kbase_tlstream_aux_protected_enter_end(void *gpu);
 void __kbase_tlstream_aux_protected_leave_start(void *gpu);
 void __kbase_tlstream_aux_protected_leave_end(void *gpu);
+void __kbase_tlstream_aux_jit_stats(u32 ctx_nr, u32 bin_id,
+		u32 max_allocations, u32 allocations,
+		u32 va_pages_nr, u32 ph_pages_nr);
 
 #define TLSTREAM_ENABLED (1 << 31)
 
@@ -422,39 +430,6 @@ extern atomic_t kbase_tlstream_enabled;
 	__TRACE_IF_ENABLED(tl_nret_atom_as, atom, as)
 
 /**
- * KBASE_TLSTREAM_TL_DEP_ATOM_ATOM - parent atom depends on child atom
- * @atom1: name of the child atom object
- * @atom2: name of the parent atom object that depends on child atom
- *
- * Function emits a timeline message informing that parent atom waits for
- * child atom object to be completed before start its execution.
- */
-#define KBASE_TLSTREAM_TL_DEP_ATOM_ATOM(atom1, atom2) \
-	__TRACE_IF_ENABLED(tl_dep_atom_atom, atom1, atom2)
-
-/**
- * KBASE_TLSTREAM_TL_NDEP_ATOM_ATOM - dependency between atoms resolved
- * @atom1: name of the child atom object
- * @atom2: name of the parent atom object that depended on child atom
- *
- * Function emits a timeline message informing that parent atom execution
- * dependency on child atom has been resolved.
- */
-#define KBASE_TLSTREAM_TL_NDEP_ATOM_ATOM(atom1, atom2) \
-	__TRACE_IF_ENABLED(tl_ndep_atom_atom, atom1, atom2)
-
-/**
- * KBASE_TLSTREAM_TL_RDEP_ATOM_ATOM - information about already resolved dependency between atoms
- * @atom1: name of the child atom object
- * @atom2: name of the parent atom object that depended on child atom
- *
- * Function emits a timeline message informing that parent atom execution
- * dependency on child atom has been resolved.
- */
-#define KBASE_TLSTREAM_TL_RDEP_ATOM_ATOM(atom1, atom2) \
-	__TRACE_IF_ENABLED(tl_rdep_atom_atom, atom1, atom2)
-
-/**
  * KBASE_TLSTREAM_TL_ATTRIB_ATOM_CONFIG - atom job slot attributes
  * @atom:     name of the atom object
  * @jd:       job descriptor address
@@ -500,9 +475,51 @@ extern atomic_t kbase_tlstream_enabled;
  * @atom:       atom identifier
  * @edit_addr:  address edited by jit
  * @new_addr:   address placed into the edited location
+ * @va_pages:   maximum number of pages this jit can allocate
  */
-#define KBASE_TLSTREAM_TL_ATTRIB_ATOM_JIT(atom, edit_addr, new_addr) \
-	__TRACE_IF_ENABLED_JD(tl_attrib_atom_jit, atom, edit_addr, new_addr)
+#define KBASE_TLSTREAM_TL_ATTRIB_ATOM_JIT(atom, edit_addr, new_addr, va_pages) \
+	__TRACE_IF_ENABLED_JD(tl_attrib_atom_jit, atom, edit_addr, \
+		new_addr, va_pages)
+
+/**
+ * Information about the JIT allocation atom.
+ *
+ * @atom:            Atom identifier.
+ * @va_pages:        The minimum number of virtual pages required.
+ * @commit_pages:    The minimum number of physical pages which
+ *                   should back the allocation.
+ * @extent:          Granularity of physical pages to grow the
+ *                   allocation by during a fault.
+ * @jit_id:          Unique ID provided by the caller, this is used
+ *                   to pair allocation and free requests.
+ * @bin_id:          The JIT allocation bin, used in conjunction with
+ *                   @max_allocations to limit the number of each
+ *                   type of JIT allocation.
+ * @max_allocations: The maximum number of allocations allowed within
+ *                   the bin specified by @bin_id. Should be the same
+ *                   for all JIT allocations within the same bin.
+ * @jit_flags:       Flags specifying the special requirements for
+ *                   the JIT allocation.
+ * @usage_id:        A hint about which allocation should be reused.
+ *                   The kernel should attempt to use a previous
+ *                   allocation with the same usage_id
+ */
+#define KBASE_TLSTREAM_TL_ATTRIB_ATOM_JITALLOCINFO(atom, va_pages,\
+		commit_pages, extent, jit_id, bin_id,\
+		max_allocations, jit_flags, usage_id) \
+	__TRACE_IF_ENABLED(tl_attrib_atom_jitallocinfo, atom, va_pages,\
+		commit_pages, extent, jit_id, bin_id,\
+		max_allocations, jit_flags, usage_id)
+
+/**
+ * Information about the JIT free atom.
+ *
+ * @atom:   Atom identifier.
+ * @jit_id: Unique ID provided by the caller, this is used
+ *          to pair allocation and free requests.
+ */
+#define KBASE_TLSTREAM_TL_ATTRIB_ATOM_JITFREEINFO(atom, jit_id) \
+	__TRACE_IF_ENABLED(tl_attrib_atom_jitfreeinfo, atom, jit_id)
 
 /**
  * KBASE_TLSTREAM_TL_ATTRIB_AS_CONFIG - address space attributes
@@ -640,5 +657,24 @@ extern atomic_t kbase_tlstream_enabled;
 #define KBASE_TLSTREAM_AUX_PROTECTED_LEAVE_END(gpu) \
 	__TRACE_IF_ENABLED_LATENCY(aux_protected_leave_end, gpu)
 
+/**
+ * KBASE_TLSTREAM_AUX_JIT_STATS - JIT allocations per bin statistics
+ *
+ * @ctx_nr:      kernel context number
+ * @bid:         JIT bin id
+ * @max_allocs:  maximum allocations allowed in this bin.
+ *               UINT_MAX is a special value. It denotes that
+ *               the parameter was not changed since the last time.
+ * @allocs:      number of active allocations in this bin
+ * @va_pages:    number of virtual pages allocated in this bin
+ * @ph_pages:    number of physical pages allocated in this bin
+ *
+ * Function emits a timeline message indicating the JIT statistics
+ * for a given bin have chaned.
+ */
+#define KBASE_TLSTREAM_AUX_JIT_STATS(ctx_nr, bid, max_allocs, allocs, va_pages, ph_pages) \
+	__TRACE_IF_ENABLED(aux_jit_stats, ctx_nr, bid, \
+			max_allocs, allocs, \
+			va_pages, ph_pages)
 #endif /* _KBASE_TLSTREAM_H */
 
