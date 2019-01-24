@@ -312,6 +312,30 @@
 			>;
 		};
 
+		pinctrl_pwm0: pwm0grp {
+			fsl,pins = <
+				SC_P_UART0_RTS_B_LSIO_PWM0_OUT		0x00000020
+			>;
+		};
+
+		pinctrl_pwm1: pwm1grp {
+			fsl,pins = <
+				SC_P_UART0_CTS_B_LSIO_PWM1_OUT		0x00000020
+			>;
+		};
+
+		pinctrl_pwm2: pwm2grp {
+			fsl,pins = <
+				SC_P_GPT1_COMPARE_LSIO_PWM2_OUT		0x00000020
+			>;
+		};
+
+		pinctrl_pwm3: pwm3grp {
+			fsl,pins = <
+				SC_P_GPT0_COMPARE_LSIO_PWM3_OUT		0x00000020
+			>;
+		};
+
 		pinctrl_pwm_bkl: pwmbklgrp {
 			fsl,pins = <
 				SC_P_LVDS1_GPIO00_LVDS1_PWM0_OUT	0x00000020
@@ -523,6 +547,34 @@
 };
 
 &gpio5 {
+	status = "okay";
+};
+
+/* PWM3, MXM3 pin 6 */
+&pwm0  {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm0>;
+	status = "okay";
+};
+
+/* PWM4, MXM3 pin 8 */
+&pwm1  {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm1>;
+	status = "okay";
+};
+
+/* PWM1, MXM3 pin 2 */
+&pwm2  {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm2>;
+	status = "okay";
+};
+
+/* PWM2, MXM3 pin 4 */
+&pwm3  {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm3>;
 	status = "okay";
 };
 
