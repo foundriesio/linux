@@ -176,7 +176,6 @@
 		always-on;
 	};
 
-	/*
 	pmu_a7 {
 		compatible = "arm,cortex-a7-pmu";
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
@@ -184,7 +183,6 @@
 		             <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
 	};
-	*/
 
 	ckc@74000000 {
 		compatible = "telechips,ckc";
