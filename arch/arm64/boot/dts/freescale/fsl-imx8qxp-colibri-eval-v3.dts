@@ -249,8 +249,6 @@
 		pinctrl_gpio_bl_on: gpio-bl-on {
 			fsl,pins = <
 				SC_P_QSPI0A_DATA3_LSIO_GPIO3_IO12	0x00000040
-				SC_P_CSI_D05_CI_PI_D07			0x00000061
-				SC_P_SPI0_CS1_LSIO_GPIO1_IO07		0x00000060
 			>;
 		};
 
@@ -850,6 +848,7 @@
 &pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
+	status = "okay";
 };
 
 &lpspi2 {
