@@ -1102,6 +1102,8 @@
 
 	tcc_dxb_ctrl: tcc_dxb_ctrl {};
 
+	tcc_isdbt_ctrl: tcc_isdbt_ctrl{};
+
 	si_power: si_power {};
 	avl62x1_power: avl62x1_power {};
 

@@ -560,6 +560,7 @@ int hwdmx_set_algo_cmd(struct tcc_tsif_handle *h, int algo,
 out:
 	return result;
 }
+EXPORT_SYMBOL(hwdmx_set_algo_cmd);
 
 int hwdmx_set_key_cmd(struct tcc_tsif_handle *h, int keytype, int keymode, int size, void *key)
 {
@@ -589,6 +590,7 @@ int hwdmx_set_key_cmd(struct tcc_tsif_handle *h, int keytype, int keymode, int s
 out:
 	return result;
 }
+EXPORT_SYMBOL(hwdmx_set_key_cmd);
 
 int hwdmx_set_iv_cmd(struct tcc_tsif_handle *h, int ividx, int size, void *iv)
 {
@@ -617,6 +619,7 @@ int hwdmx_set_iv_cmd(struct tcc_tsif_handle *h, int ividx, int size, void *iv)
 out:
 	return result;
 }
+EXPORT_SYMBOL(hwdmx_set_iv_cmd);
 
 int  hwdmx_setCw(struct tcc_tsif_handle *h/*unsigned int _tunerId*/, unsigned int _descramblingAlgorithm,
 		unsigned int _opt, unsigned char *_evenKey, unsigned char *_oddKey,
@@ -657,6 +660,7 @@ int hwdmx_set_data_cmd(
 out:
 	return result;
 }
+EXPORT_SYMBOL(hwdmx_set_data_cmd);
 
 int hwdmx_run_cipher_cmd(int dmxid, int encmode, int cwsel, int klidx, int keymode)
 {
@@ -685,3 +689,4 @@ int hwdmx_run_cipher_cmd(int dmxid, int encmode, int cwsel, int klidx, int keymo
 out:
 	return result;
 }
+EXPORT_SYMBOL(hwdmx_run_cipher_cmd);
