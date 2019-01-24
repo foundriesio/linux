@@ -884,7 +884,6 @@
 	status = "okay";
 };
 
-#if 0 //TODO
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_b>;
@@ -894,13 +893,14 @@
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_c>;
+	status = "okay";
 };
 
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_d>;
+	status = "okay";
 };
-#endif
 
 &rpmsg{
 	/*
