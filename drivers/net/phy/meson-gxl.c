@@ -57,6 +57,7 @@ static struct phy_driver meson_gxl_phy[] = {
 		.name		= "Meson GXL Internal PHY",
 		.features	= PHY_BASIC_FEATURES,
 		.flags		= PHY_IS_INTERNAL,
+		.soft_reset     = genphy_soft_reset,
 		.config_init	= meson_gxl_config_init,
 		.aneg_done      = genphy_aneg_done,
 		.suspend        = genphy_suspend,
