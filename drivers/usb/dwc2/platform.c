@@ -568,12 +568,16 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	struct dwc2_hsotg *dwc2 = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if (dwc2_is_device_mode(dwc2))
-		dwc2_hsotg_suspend(dwc2);
-
 	if (dwc2->params.activate_stm_id_vb_detection &&
 	    !dwc2->params.force_b_session_valid) {
 		u32 ggpio;
+
+		/*
+		 * Need to force the mode to the current mode to avoid Mode
+		 * Mismatch Interrupt when ID and VBUS detection will be
+		 * disabled
+		 */
+		dwc2_force_mode(dwc2, dwc2_is_host_mode(dwc2));
 
 		ggpio = dwc2_readl(dwc2, GGPIO);
 		ggpio &= ~GGPIO_STM32_OTG_GCCFG_IDEN;
@@ -582,6 +586,9 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 
 		regulator_disable(dwc2->usb33d);
 	}
+
+	if (dwc2_is_device_mode(dwc2))
+		dwc2_hsotg_suspend(dwc2);
 
 	if (dwc2->ll_hw_enabled)
 		ret = __dwc2_lowlevel_hw_disable(dwc2);
