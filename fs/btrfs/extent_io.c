@@ -4130,8 +4130,10 @@ int extent_writepages(struct address_space *mapping,
 
 	ret = extent_write_cache_pages(mapping, wbc, &epd);
 	flush_ret = flush_write_bio(&epd);
-	BUG_ON(flush_ret < 0);
-	return ret;
+	ASSERT(ret <= 0);
+	if (ret)
+		return ret;
+	return flush_ret;
 }
 
 int extent_readpages(struct address_space *mapping, struct list_head *pages,
