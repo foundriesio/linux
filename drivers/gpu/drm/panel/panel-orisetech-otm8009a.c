@@ -284,7 +284,9 @@ static int otm8009a_unprepare(struct drm_panel *panel)
 	if (ret)
 		return ret;
 
-	msleep(120);
+	msleep(10);
+
+	regulator_disable(ctx->supply);
 
 	ctx->prepared = false;
 
@@ -298,6 +300,26 @@ static int otm8009a_prepare(struct drm_panel *panel)
 
 	if (ctx->prepared)
 		return 0;
+
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+	}
+
+	msleep(20);
+
+	ret = regulator_enable(ctx->supply);
+	if (ret < 0) {
+		DRM_ERROR("failed to enable supply: %d\n", ret);
+		return ret;
+	}
+
+	msleep(120);
+
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+		msleep(20);
+	}
 
 	ret = otm8009a_init_sequence(ctx);
 	if (ret)
@@ -454,20 +476,6 @@ static int otm8009a_probe(struct mipi_dsi_device *dsi)
 		drm_panel_remove(&ctx->panel);
 		backlight_device_unregister(ctx->bl_dev);
 		return ret;
-	}
-
-	ret = regulator_enable(ctx->supply);
-	if (ret < 0) {
-		DRM_ERROR("failed to enable supply: %d\n", ret);
-		return ret;
-	}
-
-	if (ctx->reset_gpio) {
-		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-		msleep(20);
-		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-		msleep(100);
 	}
 
 	return 0;
