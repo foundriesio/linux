@@ -3424,6 +3424,9 @@ done:
  * records are inserted to lock ranges in the tree, and as dirty areas
  * are found, they are marked writeback.  Then the lock bits are removed
  * and the end_io handler clears the writeback ranges
+ *
+ * Return 0 if everything goes well.
+ * Return <0 for error.
  */
 static int __extent_writepage(struct page *page, struct writeback_control *wbc,
 			      struct extent_page_data *epd)
@@ -3493,6 +3496,7 @@ done:
 		end_extent_writepage(page, ret, start, page_end);
 	}
 	unlock_page(page);
+	ASSERT(ret <= 0);
 	return ret;
 
 done_unlocked:
@@ -4044,8 +4048,10 @@ int extent_write_full_page(struct page *page, struct writeback_control *wbc)
 	ret = __extent_writepage(page, wbc, &epd);
 
 	flush_ret = flush_write_bio(&epd);
-	BUG_ON(flush_ret < 0);
-	return ret;
+	ASSERT(ret <= 0);
+	if (ret)
+		return ret;
+	return flush_ret;
 }
 
 int extent_write_locked_range(struct inode *inode, u64 start, u64 end,
