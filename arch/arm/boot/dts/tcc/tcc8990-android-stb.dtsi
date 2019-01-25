@@ -303,6 +303,9 @@
 	int-gpios = <&gpd 2 0>;
 };
 
+&tcc_isdbt_ctrl {
+	compatible = "telechips,tcc_isdbt_ctrl";
+};
 
 /* I2C */
 
