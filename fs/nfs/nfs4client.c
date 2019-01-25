@@ -565,6 +565,9 @@ int nfs40_walk_client_list(struct nfs_client *new,
 		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
 		 * if new and pos point to the same server:
 		 */
+
+		if (pos->cl_xprt_id != new->cl_xprt_id)
+			continue;
 found:
 		atomic_inc(&pos->cl_count);
 		spin_unlock(&nn->nfs_client_lock);
@@ -707,6 +710,9 @@ int nfs41_walk_client_list(struct nfs_client *new,
 		if (pos == new)
 			goto found;
 
+		if (pos->cl_xprt_id != new->cl_xprt_id)
+			continue;
+
 		status = nfs4_match_client(pos, new, &prev, nn);
 		if (status < 0)
 			goto out;
@@ -840,7 +846,7 @@ static int nfs4_set_client(struct nfs_server *server,
 		const char *ip_addr,
 		int proto, const struct rpc_timeout *timeparms,
 		u32 minorversion, unsigned int nconnect,
-		struct net *net)
+		struct net *net, unsigned int xprt_id)
 {
 	struct nfs_client_initdata cl_init = {
 		.hostname = hostname,
@@ -852,6 +858,7 @@ static int nfs4_set_client(struct nfs_server *server,
 		.minorversion = minorversion,
 		.net = net,
 		.timeparms = timeparms,
+		.xprt_id = xprt_id,
 	};
 	struct nfs_client *clp;
 
@@ -912,6 +919,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
 		.minorversion = minor_version,
 		.net = mds_clp->cl_net,
 		.timeparms = &ds_timeout,
+		.xprt_id = mds_clp->cl_xprt_id,
 	};
 	char buf[INET6_ADDRSTRLEN + 1];
 
@@ -1056,7 +1064,8 @@ static int nfs4_init_server(struct nfs_server *server,
 			&timeparms,
 			data->minorversion,
 			data->nfs_server.nconnect,
-			data->net);
+			data->net,
+			data->xprt_id);
 	if (error < 0)
 		return error;
 
@@ -1141,7 +1150,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
 				parent_server->client->cl_timeout,
 				parent_client->cl_mvops->minor_version,
 				parent_client->cl_nconnect,
-				parent_client->cl_net);
+				parent_client->cl_net,
+				parent_client->cl_xprt_id);
 	if (error < 0)
 		goto error;
 
@@ -1233,7 +1243,7 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
 	error = nfs4_set_client(server, hostname, sap, salen, buf,
 				clp->cl_proto, clnt->cl_timeout,
 				clp->cl_minorversion,
-				clp->cl_nconnect, net);
+				clp->cl_nconnect, net, clp->cl_xprt_id);
 	if (error != 0) {
 		nfs_server_insert_lists(server);
 		return error;

@@ -59,6 +59,7 @@ struct nfs_client {
 	unsigned int		cl_nconnect;	/* Number of connections */
 	struct rpc_cred		*cl_machine_cred;
 
+	unsigned int		cl_xprt_id;
 #if IS_ENABLED(CONFIG_NFS_V4)
 	struct list_head	cl_ds_clients; /* auth flavor data servers */
 	u64			cl_clientid;	/* constant */

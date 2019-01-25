@@ -182,6 +182,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
 	clp->cl_proto = cl_init->proto;
 	clp->cl_nconnect = cl_init->nconnect;
 	clp->cl_net = get_net(cl_init->net);
+	clp->cl_xprt_id = cl_init->xprt_id;
 
 	cred = rpc_lookup_machine_cred("*");
 	if (!IS_ERR(cred))
@@ -299,6 +300,8 @@ again:
 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
 		if (test_bit(NFS_CS_NO_SHARE,&clp->cl_flags))
+			continue;
+		if (clp->cl_xprt_id != data->xprt_id)
 			continue;
 		/* Don't match clients that failed to initialise properly */
 		if (clp->cl_cons_state < 0)
