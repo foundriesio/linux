@@ -4089,8 +4089,10 @@ int extent_write_locked_range(struct inode *inode, u64 start, u64 end,
 	}
 
 	flush_ret = flush_write_bio(&epd);
-	BUG_ON(flush_ret < 0);
-	return ret;
+	ASSERT(ret <= 0);
+	if (ret)
+		return ret;
+	return flush_ret;
 }
 
 int extent_writepages(struct address_space *mapping,
