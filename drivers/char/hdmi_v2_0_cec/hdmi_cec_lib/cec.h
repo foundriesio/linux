@@ -1,13 +1,8 @@
-/**
- * @file cec.h
- * Generic configuration, OS abstraction and logging
- *
- * @author David Lopo
- *
- * Synopsys Inc.
- * SG DWC PT02
- *
- *****************************************************************************/
+/****************************************************************************
+hdmi_cec
+
+Copyright (C) 2018 Telechips Inc.
+****************************************************************************/
 #ifndef __HDMI_CEC_H__
 #define __HDMI_CEC_H__
 
