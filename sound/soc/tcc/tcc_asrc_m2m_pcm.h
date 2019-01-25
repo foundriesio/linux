@@ -46,6 +46,7 @@
 #define ASRC_SRC_RATE 48000	//For RX
 
 #define TCC_ASRC_MAX_SIZE (32768)	//From m2m driver
+#define TCC_ASRC_UNIT_SIZE (256)	//Bytes for frequently cur_ptr update when TX. 
 
 #define MAX_BUFFER_BYTES		(65536)
 
@@ -105,8 +106,7 @@ struct tcc_app_buffer_info {
 typedef struct _Node {
 	unsigned int print_pos;
 	ssize_t input_byte;	//bytes
-	struct _Node *next;
-	struct _Node *prev;
+	struct _Node* next;
 } Node;
 
 typedef struct _List {
@@ -140,10 +140,12 @@ struct tcc_asrc_m2m_pcm {
 	*/
 	unsigned int interval; //ms
 	ssize_t Bwrote; //Bytes 
+	ssize_t Btail; //Bytes 
 	List *asrc_footprint;	//for TX
 	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;
+	spinlock_t foot_locked;
 };
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_
