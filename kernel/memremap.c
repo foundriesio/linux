@@ -338,9 +338,9 @@ void *devm_memremap_pages(struct device *dev, struct dev_pagemap *pgmap)
 	resource_size_t align_start, align_size, align_end;
 	struct vmem_altmap *altmap = pgmap->altmap_valid ?
 			&pgmap->altmap : NULL;
-	unsigned long pfn, pgoff, order;
+	unsigned long pgoff, order;
 	pgprot_t pgprot = PAGE_KERNEL;
-	int error, nid, is_ram, i = 0;
+	int error, nid, is_ram;
 	struct resource *res = &pgmap->res;
 
 	align_start = res->start & ~(SECTION_SIZE - 1);
