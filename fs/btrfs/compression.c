@@ -1008,9 +1008,9 @@ int btrfs_compress_pages(unsigned int type_level, struct address_space *mapping,
 	struct list_head *workspace;
 	int ret;
 
-	workspace = get_workspace(type, level);
+	level = btrfs_compress_op[type]->set_level(level);
 
-	btrfs_compress_op[type]->set_level(workspace, level);
+	workspace = get_workspace(type, level);
 	ret = btrfs_compress_op[type]->compress_pages(workspace, mapping,
 						      start, pages,
 						      out_pages,
@@ -1563,14 +1563,21 @@ out:
 	return ret;
 }
 
-unsigned int btrfs_compress_str2level(const char *str)
+unsigned int btrfs_compress_str2level(unsigned int type, const char *str)
 {
-	if (strncmp(str, "zlib", 4) != 0)
+	unsigned int level;
+	int ret;
+
+	if (!type)
 		return 0;
 
-	/* Accepted form: zlib:1 up to zlib:9 and nothing left after the number */
-	if (str[4] == ':' && '1' <= str[5] && str[5] <= '9' && str[6] == 0)
-		return str[5] - '0';
+	if (str[0] == ':') {
+		ret = kstrtouint(str + 1, 10, &level);
+		if (ret)
+			level = 0;
+	}
 
-	return BTRFS_ZLIB_DEFAULT_LEVEL;
+	level = btrfs_compress_op[type]->set_level(level);
+
+	return level;
 }
