@@ -1036,9 +1036,9 @@ int btrfs_compress_pages(unsigned int type_level, struct address_space *mapping,
 			 unsigned long *total_in,
 			 unsigned long *total_out)
 {
+	int type = BTRFS_COMPRESS_TYPE(type_level);
 	struct list_head *workspace;
 	int ret;
-	int type = type_level & 0xF;
 
 	workspace = find_workspace(type);
 

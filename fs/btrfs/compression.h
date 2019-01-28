@@ -25,6 +25,9 @@
 
 #define	BTRFS_ZLIB_DEFAULT_LEVEL		3
 
+#define BTRFS_COMPRESS_TYPE(type_level)		(type_level & 0xF)
+#define BTRFS_COMPRESS_LEVEL(type_level)	((type_level & 0xF0) >> 4)
+
 struct compressed_bio {
 	/* number of bios pending for this compressed extent */
 	refcount_t pending_bios;
