@@ -61,6 +61,7 @@
 #include <net/xfrm.h>
 #include <linux/bpf_trace.h>
 #include <net/xdp_sock.h>
+#include <linux/nospec.h>
 
 /**
  *	sk_filter_trim_cap - run a packet through a socket filter
@@ -1026,6 +1027,7 @@ static int bpf_check_classic(const struct sock_filter *filter,
 	bool anc_found;
 	int pc;
 
+	flen = array_index_nospec(flen, BPF_MAXINSNS + 1);
 	/* Check the filter code now */
 	for (pc = 0; pc < flen; pc++) {
 		const struct sock_filter *ftest = &filter[pc];
