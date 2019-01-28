@@ -1675,37 +1675,81 @@ static struct dma_async_tx_descriptor *stm32_dma_prep_dma_memcpy(
 	return vchan_tx_prep(&chan->vchan, &desc->vdesc, flags);
 }
 
+static bool stm32_dma_is_current_sg(struct stm32_dma_chan *chan)
+{
+	struct stm32_dma_device *dmadev = stm32_dma_get_dev(chan);
+	struct stm32_dma_sg_req *sg_req;
+	u32 dma_scr, dma_smar, id;
+
+	id = chan->id;
+	dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(id));
+
+	if (!(dma_scr & STM32_DMA_SCR_DBM))
+		return true;
+
+	sg_req = &chan->desc->sg_req[chan->next_sg];
+
+	if (dma_scr & STM32_DMA_SCR_CT) {
+		dma_smar = stm32_dma_read(dmadev, STM32_DMA_SM0AR(id));
+		return (dma_smar == sg_req->chan_reg.dma_sm0ar);
+	}
+
+	dma_smar = stm32_dma_read(dmadev, STM32_DMA_SM1AR(id));
+
+	return (dma_smar == sg_req->chan_reg.dma_sm1ar);
+}
+
 static size_t stm32_dma_desc_residue(struct stm32_dma_chan *chan,
 				     struct stm32_dma_desc *desc,
 				     u32 next_sg)
 {
 	u32 modulo, burst_size;
-	u32 residue = 0;
+	u32 residue;
+	u32 n_sg = next_sg;
+	struct stm32_dma_sg_req *sg_req = &chan->desc->sg_req[chan->next_sg];
 	int i;
 
 	/* Drain case */
 	if (chan->residue_after_drain)
 		return chan->residue_after_drain;
 
+	residue = stm32_dma_get_remaining_bytes(chan);
+
 	/*
-	 * In cyclic mode, for the last period, residue = remaining bytes from
-	 * NDTR
+	 * Calculate the residue means compute the descriptors
+	 * information:
+	 * - the sg currently transferred
+	 * - the remaining position in this sg (NDTR).
+	 *
+	 * The issue is that a race condition can occur if DMA is
+	 * running. DMA can have started to transfer the next sg before
+	 * the position in sg is read. In this case the remaing position
+	 * can correspond to the new sg position.
+	 * The strategy implemented in the stm32 driver is to check the
+	 * sg transition. If detected we can not trust the SxNDTR register value
+	 * this register can not be up to date during the transition.
+	 * in this case we can assume that the dma is at the beginning of next
+	 * sg so we calculate the residue in consequence.
 	 */
-	if (chan->desc->cyclic && next_sg == 0) {
-		residue = stm32_dma_get_remaining_bytes(chan);
-		goto end;
+
+	if (!stm32_dma_is_current_sg(chan)) {
+		n_sg++;
+		if (n_sg == chan->desc->num_sgs)
+			n_sg = 0;
+		residue = sg_dma_len(&sg_req->stm32_sgl_req);
 	}
 
 	/*
-	 * For all other periods in cyclic mode, and in sg mode,
-	 * residue = remaining bytes from NDTR + remaining periods/sg to be
-	 * transferred
+	 * In cyclic mode, for the last period, residue = remaining bytes
+	 * from NDTR
+	 * else for all other periods in cyclic mode, and in sg mode,
+	 * residue = remaining bytes from NDTR + remaining
+	 * periods/sg to be transferred
 	 */
-	for (i = next_sg; i < desc->num_sgs; i++)
-		residue += sg_dma_len(&desc->sg_req[i].stm32_sgl_req);
-	residue += stm32_dma_get_remaining_bytes(chan);
+	if (!chan->desc->cyclic || n_sg != 0)
+		for (i = n_sg; i < desc->num_sgs; i++)
+			residue += sg_dma_len(&desc->sg_req[i].stm32_sgl_req);
 
-end:
 	if (!chan->mem_burst)
 		return residue;
 
