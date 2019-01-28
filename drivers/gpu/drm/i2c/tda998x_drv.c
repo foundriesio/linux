@@ -1674,7 +1674,8 @@ static int tda998x_create(struct device *dev)
 	mutex_init(&priv->edid_mutex);
 	INIT_LIST_HEAD(&priv->bridge.list);
 	init_waitqueue_head(&priv->edid_delay_waitq);
-	timer_setup(&priv->edid_delay_timer, tda998x_edid_delay_done, 0);
+	setup_timer(&priv->edid_delay_timer, tda998x_edid_delay_done,
+		    (unsigned long)priv);
 	INIT_WORK(&priv->detect_work, tda998x_detect_work);
 
 	priv->vip_cntrl_0 = VIP_CNTRL_0_SWAP_A(2) | VIP_CNTRL_0_SWAP_B(3);
