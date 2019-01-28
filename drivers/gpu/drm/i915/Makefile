@@ -111,6 +111,7 @@ i915-y += intel_audio.o \
 	  intel_bios.o \
 	  intel_cdclk.o \
 	  intel_color.o \
+	  intel_combo_phy.o \
 	  intel_display.o \
 	  intel_dpio_phy.o \
 	  intel_dpll_mgr.o \

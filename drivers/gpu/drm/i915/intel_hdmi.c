@@ -1597,6 +1597,8 @@ static bool hdmi_deep_color_possible(const struct intel_crtc_state *crtc_state,
 	struct drm_atomic_state *state = crtc_state->base.state;
 	struct drm_connector_state *connector_state;
 	struct drm_connector *connector;
+	const struct drm_display_mode *adjusted_mode =
+		&crtc_state->base.adjusted_mode;
 	int i;
 
 	if (HAS_GMCH_DISPLAY(dev_priv))
@@ -1645,7 +1647,14 @@ static bool hdmi_deep_color_possible(const struct intel_crtc_state *crtc_state,
 
 	/* Display WA #1139: glk */
 	if (bpc == 12 && IS_GLK_REVID(dev_priv, 0, GLK_REVID_A1) &&
-	    crtc_state->base.adjusted_mode.htotal > 5460)
+	    adjusted_mode->htotal > 5460)
+		return false;
+
+	/* Display Wa_1405510057:icl */
+	if (crtc_state->ycbcr420 &&
+	    bpc == 10 && IS_ICELAKE(dev_priv) &&
+	    (adjusted_mode->crtc_hblank_end -
+	     adjusted_mode->crtc_hblank_start) % 8 == 2)
 		return false;
 
 	return true;
@@ -1911,22 +1920,26 @@ intel_hdmi_set_edid(struct drm_connector *connector)
 static enum drm_connector_status
 intel_hdmi_detect(struct drm_connector *connector, bool force)
 {
-	enum drm_connector_status status;
+	enum drm_connector_status status = connector_status_disconnected;
 	struct drm_i915_private *dev_priv = to_i915(connector->dev);
 	struct intel_hdmi *intel_hdmi = intel_attached_hdmi(connector);
+	struct intel_encoder *encoder = &hdmi_to_dig_port(intel_hdmi)->base;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
 		      connector->base.id, connector->name);
 
 	intel_display_power_get(dev_priv, POWER_DOMAIN_GMBUS);
 
+	if (IS_ICELAKE(dev_priv) &&
+	    !intel_digital_port_connected(encoder))
+		goto out;
+
 	intel_hdmi_unset_edid(connector);
 
 	if (intel_hdmi_set_edid(connector))
 		status = connector_status_connected;
-	else
-		status = connector_status_disconnected;
 
+out:
 	intel_display_power_put(dev_priv, POWER_DOMAIN_GMBUS);
 
 	if (status != connector_status_connected)
@@ -2481,5 +2494,6 @@ void intel_hdmi_init(struct drm_i915_private *dev_priv,
 
 	intel_infoframe_init(intel_dig_port);
 
+	intel_dig_port->aux_ch = intel_aux_ch(dev_priv, port);
 	intel_hdmi_init_connector(intel_dig_port, intel_connector);
 }

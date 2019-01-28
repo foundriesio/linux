@@ -519,6 +519,13 @@ skl_wa_528(struct drm_i915_private *dev_priv, int pipe, bool enable)
 static void
 skl_wa_clkgate(struct drm_i915_private *dev_priv, int pipe, bool enable)
 {
+	/*
+	 * FIXME: ICL requires two hardware planes for scanning out NV12
+	 * framebuffers. Do not advertize support until this is implemented.
+	 */
+	if (INTEL_GEN(dev_priv) >= 11)
+		return false;
+
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))
 		return;
 
@@ -5873,6 +5880,8 @@ static void haswell_crtc_disable(struct intel_crtc_state *old_crtc_state,
 
 	if (INTEL_GEN(dev_priv) >= 11)
 		icl_unmap_plls_to_ports(crtc, old_crtc_state, old_state);
+
+	intel_encoders_post_pll_disable(crtc, old_crtc_state, old_state);
 }
 
 static void i9xx_pfit_enable(struct intel_crtc *crtc)
@@ -5944,6 +5953,28 @@ enum intel_display_power_domain intel_port_to_power_domain(enum port port)
 	default:
 		MISSING_CASE(port);
 		return POWER_DOMAIN_PORT_OTHER;
+	}
+}
+
+enum intel_display_power_domain
+intel_aux_power_domain(struct intel_digital_port *dig_port)
+{
+	switch (dig_port->aux_ch) {
+	case AUX_CH_A:
+		return POWER_DOMAIN_AUX_A;
+	case AUX_CH_B:
+		return POWER_DOMAIN_AUX_B;
+	case AUX_CH_C:
+		return POWER_DOMAIN_AUX_C;
+	case AUX_CH_D:
+		return POWER_DOMAIN_AUX_D;
+	case AUX_CH_E:
+		return POWER_DOMAIN_AUX_E;
+	case AUX_CH_F:
+		return POWER_DOMAIN_AUX_F;
+	default:
+		MISSING_CASE(dig_port->aux_ch);
+		return POWER_DOMAIN_AUX_A;
 	}
 }
 
@@ -9010,7 +9041,7 @@ static void assert_can_disable_lcpll(struct drm_i915_private *dev_priv)
 		I915_STATE_WARN(crtc->active, "CRTC for pipe %c enabled\n",
 		     pipe_name(crtc->pipe));
 
-	I915_STATE_WARN(I915_READ(HSW_PWR_WELL_CTL_DRIVER(HSW_DISP_PW_GLOBAL)),
+	I915_STATE_WARN(I915_READ(HSW_PWR_WELL_CTL2),
 			"Display power well on\n");
 	I915_STATE_WARN(I915_READ(SPLL_CTL) & SPLL_PLL_ENABLE, "SPLL enabled\n");
 	I915_STATE_WARN(I915_READ(WRPLL_CTL(0)) & WRPLL_PLL_ENABLE, "WRPLL1 enabled\n");
@@ -9265,30 +9296,17 @@ static void icelake_get_ddi_pll(struct drm_i915_private *dev_priv,
 	u32 temp;
 
 	/* TODO: TBT pll not implemented. */
-	switch (port) {
-	case PORT_A:
-	case PORT_B:
+	if (intel_port_is_combophy(dev_priv, port)) {
 		temp = I915_READ(DPCLKA_CFGCR0_ICL) &
 		       DPCLKA_CFGCR0_DDI_CLK_SEL_MASK(port);
 		id = temp >> DPCLKA_CFGCR0_DDI_CLK_SEL_SHIFT(port);
 
-		if (WARN_ON(id != DPLL_ID_ICL_DPLL0 && id != DPLL_ID_ICL_DPLL1))
+		if (WARN_ON(!intel_dpll_is_combophy(id)))
 			return;
-		break;
-	case PORT_C:
-		id = DPLL_ID_ICL_MGPLL1;
-		break;
-	case PORT_D:
-		id = DPLL_ID_ICL_MGPLL2;
-		break;
-	case PORT_E:
-		id = DPLL_ID_ICL_MGPLL3;
-		break;
-	case PORT_F:
-		id = DPLL_ID_ICL_MGPLL4;
-		break;
-	default:
-		MISSING_CASE(port);
+	} else if (intel_port_is_tc(dev_priv, port)) {
+		id = icl_port_to_mg_pll_id(port);
+	} else {
+		WARN(1, "Invalid port %x\n", port);
 		return;
 	}
 
@@ -14576,7 +14594,7 @@ static int intel_framebuffer_init(struct intel_framebuffer *intel_fb,
 		break;
 	case DRM_FORMAT_NV12:
 		if (INTEL_GEN(dev_priv) < 9 || IS_SKYLAKE(dev_priv) ||
-		    IS_BROXTON(dev_priv)) {
+		    IS_BROXTON(dev_priv) || INTEL_GEN(dev_priv) >= 11) {
 			DRM_DEBUG_KMS("unsupported pixel format: %s\n",
 				      drm_get_format_name(mode_cmd->pixel_format,
 							  &format_name));
@@ -15518,6 +15536,7 @@ static void intel_sanitize_crtc(struct intel_crtc *crtc,
 
 static void intel_sanitize_encoder(struct intel_encoder *encoder)
 {
+	struct drm_i915_private *dev_priv = to_i915(encoder->base.dev);
 	struct intel_connector *connector;
 
 	/* We need to check both for a crtc link (meaning that the
@@ -15558,6 +15577,9 @@ static void intel_sanitize_encoder(struct intel_encoder *encoder)
 
 	/* notify opregion of the sanitized encoder state */
 	intel_opregion_notify_encoder(encoder, connector && has_active_crtc);
+
+	if (INTEL_GEN(dev_priv) >= 11)
+		icl_sanitize_encoder_pll_mapping(encoder);
 }
 
 void i915_redisable_vga_power_on(struct drm_i915_private *dev_priv)
@@ -16107,8 +16129,7 @@ intel_display_capture_error_state(struct drm_i915_private *dev_priv)
 		return NULL;
 
 	if (IS_HASWELL(dev_priv) || IS_BROADWELL(dev_priv))
-		error->power_well_driver =
-			I915_READ(HSW_PWR_WELL_CTL_DRIVER(HSW_DISP_PW_GLOBAL));
+		error->power_well_driver = I915_READ(HSW_PWR_WELL_CTL2);
 
 	for_each_pipe(dev_priv, i) {
 		error->pipe[i].power_domain_on =

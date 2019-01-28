@@ -3602,7 +3602,7 @@ static bool
 intel_has_sagv(struct drm_i915_private *dev_priv)
 {
 	if (IS_KABYLAKE(dev_priv) || IS_COFFEELAKE(dev_priv) ||
-	    IS_CANNONLAKE(dev_priv))
+	    IS_CANNONLAKE(dev_priv) || IS_ICELAKE(dev_priv))
 		return true;
 
 	if (IS_SKYLAKE(dev_priv) &&
@@ -3909,7 +3909,12 @@ skl_ddb_get_hw_plane_state(struct drm_i915_private *dev_priv,
 				      val & PLANE_CTL_ALPHA_MASK);
 
 	val = I915_READ(PLANE_BUF_CFG(pipe, plane_id));
-	val2 = I915_READ(PLANE_NV12_BUF_CFG(pipe, plane_id));
+	/*
+	 * FIXME: add proper NV12 support for ICL. Avoid reading unclaimed
+	 * registers for now.
+	 */
+	if (INTEL_GEN(dev_priv) < 11)
+		val2 = I915_READ(PLANE_NV12_BUF_CFG(pipe, plane_id));
 
 	if (fourcc == DRM_FORMAT_NV12) {
 		skl_ddb_entry_init_from_hw(dev_priv,
@@ -4977,6 +4982,7 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 
 	skl_ddb_entry_write(dev_priv, PLANE_BUF_CFG(pipe, plane_id),
 			    &ddb->plane[pipe][plane_id]);
+	/* FIXME: add proper NV12 support for ICL. */
 	if (INTEL_GEN(dev_priv) >= 11)
 		return skl_ddb_entry_write(dev_priv,
 					   PLANE_BUF_CFG(pipe, plane_id),
@@ -8700,6 +8706,10 @@ static void icl_init_clock_gating(struct drm_i915_private *dev_priv)
 	/* This is not an Wa. Enable to reduce Sampler power */
 	I915_WRITE(GEN10_DFR_RATIO_EN_AND_CHICKEN,
 		   I915_READ(GEN10_DFR_RATIO_EN_AND_CHICKEN) & ~DFR_DISABLE);
+
+	/* WaEnable32PlaneMode:icl */
+	I915_WRITE(GEN9_CSFE_CHICKEN1_RCS,
+		   _MASKED_BIT_ENABLE(GEN11_ENABLE_32_PLANE_MODE));
 }
 
 static void cnp_init_clock_gating(struct drm_i915_private *dev_priv)
