@@ -101,7 +101,7 @@ int ceph_set_acl(struct inode *inode, struct posix_acl *acl, int type)
 	const char *name = NULL;
 	char *value = NULL;
 	struct iattr newattrs;
-	struct timespec64 old_ctime = inode->i_ctime;
+	struct timespec old_ctime = inode->i_ctime;
 	umode_t new_mode = inode->i_mode, old_mode = inode->i_mode;
 
 	if (ceph_snap(inode) != CEPH_NOSNAP) {
