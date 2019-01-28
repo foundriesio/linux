@@ -777,6 +777,7 @@ const struct btrfs_compress_op btrfs_heuristic_compress = {
 };
 
 struct workspace_manager {
+	const struct btrfs_compress_op *ops;
 	struct list_head idle_ws;
 	spinlock_t ws_lock;
 	/* Number of free workspaces */
@@ -802,6 +803,8 @@ void __init btrfs_init_compress(void)
 	int i;
 
 	for (i = 0; i < BTRFS_COMPRESS_TYPES; i++) {
+		wsm[i].ops = btrfs_compress_op[i];
+
 		INIT_LIST_HEAD(&wsm[i].idle_ws);
 		spin_lock_init(&wsm[i].ws_lock);
 		atomic_set(&wsm[i].total_ws, 0);
@@ -811,7 +814,7 @@ void __init btrfs_init_compress(void)
 		 * Preallocate one workspace for each compression type so
 		 * we can guarantee forward progress in the worst case
 		 */
-		workspace = btrfs_compress_op[i]->alloc_workspace();
+		workspace = wsm[i].ops->alloc_workspace();
 		if (IS_ERR(workspace)) {
 			pr_warn("BTRFS: cannot preallocate compression workspace, will try later\n");
 		} else {
@@ -874,7 +877,7 @@ again:
 	 * context of btrfs_compress_bio/btrfs_compress_pages
 	 */
 	nofs_flag = memalloc_nofs_save();
-	workspace = btrfs_compress_op[type]->alloc_workspace();
+	workspace = wsm[type].ops->alloc_workspace();
 	memalloc_nofs_restore(nofs_flag);
 
 	if (IS_ERR(workspace)) {
@@ -932,7 +935,7 @@ static void free_workspace(int type, struct list_head *workspace)
 	}
 	spin_unlock(ws_lock);
 
-	btrfs_compress_op[type]->free_workspace(workspace);
+	wsm[type].ops->free_workspace(workspace);
 	atomic_dec(total_ws);
 wake:
 	cond_wake_up(ws_wait);
@@ -950,7 +953,7 @@ static void free_workspaces(void)
 		while (!list_empty(&wsm[i].idle_ws)) {
 			workspace = wsm[i].idle_ws.next;
 			list_del(workspace);
-			btrfs_compress_op[i]->free_workspace(workspace);
+			wsm[i].ops->free_workspace(workspace);
 			atomic_dec(&wsm[i].total_ws);
 		}
 	}
