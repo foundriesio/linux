@@ -133,9 +133,9 @@ static int check_extent_data_item(struct btrfs_fs_info *fs_info,
 	 * Support for new compression/encryption must introduce incompat flag,
 	 * and must be caught in open_ctree().
 	 */
-	if (btrfs_file_extent_compression(leaf, fi) > BTRFS_COMPRESS_TYPES) {
+	if (btrfs_file_extent_compression(leaf, fi) >= BTRFS_COMPRESS_TYPES) {
 		file_extent_err(fs_info, leaf, slot,
-	"invalid compression for file extent, have %u expect range [0, %u]",
+	"invalid compression for file extent, have %u expect range [0, %u)",
 			btrfs_file_extent_compression(leaf, fi),
 			BTRFS_COMPRESS_TYPES);
 		return -EUCLEAN;
