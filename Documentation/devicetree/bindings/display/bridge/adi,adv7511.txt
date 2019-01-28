@@ -78,7 +78,6 @@ graph bindings specified in Documentation/devicetree/bindings/graph.txt.
   remote endpoint phandle should be a reference to a valid mipi_dsi_host device
   node.
 - Video port 1 for the HDMI output
-- Audio port 2 for the HDMI audio input
 
 
 Example
@@ -111,13 +110,6 @@ Example
 				reg = <1>;
 				adv7511_out: endpoint {
 					remote-endpoint = <&hdmi_connector_in>;
-				};
-			};
-
-			port@2 {
-				reg = <2>;
-				codec_endpoint: endpoint {
-					remote-endpoint = <&i2s0_cpu_endpoint>;
 				};
 			};
 		};
