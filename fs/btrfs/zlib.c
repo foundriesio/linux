@@ -39,9 +39,9 @@ static void zlib_cleanup_workspace_manager(void)
 	btrfs_cleanup_workspace_manager(&wsm);
 }
 
-static struct list_head *zlib_get_workspace(void)
+static struct list_head *zlib_get_workspace(unsigned int level)
 {
-	return btrfs_get_workspace(&wsm);
+	return btrfs_get_workspace(&wsm, level);
 }
 
 static void zlib_put_workspace(struct list_head *ws)
@@ -58,7 +58,7 @@ static void zlib_free_workspace(struct list_head *ws)
 	kfree(workspace);
 }
 
-static struct list_head *zlib_alloc_workspace(void)
+static struct list_head *zlib_alloc_workspace(unsigned int level)
 {
 	struct workspace *workspace;
 	int workspacesize;
@@ -71,6 +71,7 @@ static struct list_head *zlib_alloc_workspace(void)
 			zlib_inflate_workspacesize());
 	workspace->strm.workspace = kvmalloc(workspacesize, GFP_KERNEL);
 	workspace->buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	workspace->level = level;
 	if (!workspace->strm.workspace || !workspace->buf)
 		goto fail;
 
