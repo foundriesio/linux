@@ -1388,6 +1388,28 @@ static const struct panel_desc lg_lp129qe = {
 	},
 };
 
+static const struct drm_display_mode lg_lp156wf1_mode = {
+	.clock = 138500,
+	.hdisplay = 1920,
+	.hsync_start = 1920 + 48,
+	.hsync_end = 1920 + 48 + 32,
+	.htotal = 1920 + 48 + 32 + 80,
+	.vdisplay = 1080,
+	.vsync_start = 1080 + 3,
+	.vsync_end =  1080 + 3 + 5,
+	.vtotal =  1080 + 3 + 5 + 23,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc lg_lp156wf1 = {
+	.modes = &lg_lp156wf1_mode,
+	.num_modes = 1,
+	.size = {
+		.width = 345,
+		.height = 194,
+	},
+};
+
 static const struct display_timing nec_nl12880bc20_05_timing = {
 	.pixelclock = { 67000000, 71000000, 75000000 },
 	.hactive = { 1280, 1280, 1280 },
@@ -2096,6 +2118,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "lg,lp129qe",
 		.data = &lg_lp129qe,
+	}, {
+		.compatible = "lg,lp156wf1",
+		.data = &lg_lp156wf1,
 	}, {
 		.compatible = "nec,nl12880bc20-05",
 		.data = &nec_nl12880bc20_05,
