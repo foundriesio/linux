@@ -1815,53 +1815,31 @@ static int hdmi_codec_remove(struct snd_soc_codec *codec)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int hdmi_codec_prepare(struct device *dev)
-{
-	struct hdac_ext_device *edev = to_hda_ext_device(dev);
-	struct hdac_device *hdac = &edev->hdac;
-
-	pm_runtime_get_sync(&edev->hdac.dev);
-
-	/*
-	 * Power down afg.
-	 * codec_read is preferred over codec_write to set the power state.
-	 * This way verb is send to set the power state and response
-	 * is received. So setting power state is ensured without using loop
-	 * to read the state.
-	 */
-	snd_hdac_codec_read(hdac, hdac->afg, 0,	AC_VERB_SET_POWER_STATE,
-							AC_PWRST_D3);
-
-	return 0;
-}
-
-static void hdmi_codec_complete(struct device *dev)
+#ifdef CONFIG_PM_SLEEP
+static int hdmi_codec_resume(struct device *dev)
 {
 	struct hdac_ext_device *edev = to_hda_ext_device(dev);
 	struct hdac_hdmi_priv *hdmi = edev->private_data;
-	struct hdac_device *hdac = &edev->hdac;
+	int ret;
 
-	/* Power up afg */
-	snd_hdac_codec_read(hdac, hdac->afg, 0,	AC_VERB_SET_POWER_STATE,
-							AC_PWRST_D0);
-
-	hdac_hdmi_skl_enable_all_pins(&edev->hdac);
-	hdac_hdmi_skl_enable_dp12(&edev->hdac);
-
+	ret = pm_runtime_force_resume(dev);
+	if (ret < 0)
+		return ret;
 	/*
 	 * As the ELD notify callback request is not entertained while the
 	 * device is in suspend state. Need to manually check detection of
 	 * all pins here. pin capablity change is not support, so use the
 	 * already set pin caps.
+	 *
+	 * NOTE: this is safe to call even if the codec doesn't actually resume.
+	 * The pin check involves only with DRM audio component hooks, so it
+	 * works even if the HD-audio side is still dreaming peacefully.
 	 */
 	hdac_hdmi_present_sense_all_pins(edev, hdmi, false);
-
-	pm_runtime_put_sync(&edev->hdac.dev);
+	return 0;
 }
 #else
-#define hdmi_codec_prepare NULL
-#define hdmi_codec_complete NULL
+#define hdmi_codec_resume NULL
 #endif
 
 static struct snd_soc_codec_driver hdmi_hda_codec = {
@@ -2125,8 +2103,7 @@ static int hdac_hdmi_runtime_resume(struct device *dev)
 
 static const struct dev_pm_ops hdac_hdmi_pm = {
 	SET_RUNTIME_PM_OPS(hdac_hdmi_runtime_suspend, hdac_hdmi_runtime_resume, NULL)
-	.prepare = hdmi_codec_prepare,
-	.complete = hdmi_codec_complete,
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend, hdmi_codec_resume)
 };
 
 static const struct hda_device_id hdmi_list[] = {
