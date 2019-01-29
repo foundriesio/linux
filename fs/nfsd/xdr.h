@@ -71,6 +71,7 @@ struct nfsd_symlinkargs {
 	char *			tname;
 	unsigned int		tlen;
 	struct iattr		attrs;
+	struct kvec		first;
 };
 
 struct nfsd_readdirargs {
