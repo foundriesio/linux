@@ -243,15 +243,11 @@ static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
 {
 	return tcc_ehci_phy_isolation(phy,on_off);
 }
-
-static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_dev)
+#ifdef CONFIG_ARCH_TCC803X
+static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 {
-	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
-	if (!phy_dev->phy.otg)
-		return -ENOMEM;
-
-	phy_dev->mux_port = of_find_property(dev->of_node, "mux_port", 0)?1:0;
-
+	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+	struct device *dev = phy_dev->dev;
 	//===============================================
 	// Check vbus enable pin	
 	//===============================================
@@ -264,6 +260,33 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	} else {
 		phy_dev->vbus_gpio = 0;	// can not control vbus
 	}
+
+	return 0;
+}
+#endif
+static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_dev)
+{
+	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
+	if (!phy_dev->phy.otg)
+		return -ENOMEM;
+
+	phy_dev->mux_port = of_find_property(dev->of_node, "mux_port", 0)?1:0;
+#ifndef CONFIG_ARCH_TCC803X
+	//===============================================
+	// Check vbus enable pin	
+	//===============================================
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
+		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
+			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			return -ENODEV;
+		}
+	} else {
+		phy_dev->vbus_gpio = 0;	// can not control vbus
+	}
+#else
+	phy_dev->vbus_gpio = 1;
+#endif
 
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
@@ -284,7 +307,9 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	phy_dev->phy.init 			= tcc_ehci_phy_init;
 	phy_dev->phy.set_phy_isol	= tcc_ehci_phy_isolation;
 	phy_dev->phy.set_phy_state 	= tcc_ehci_phy_state_set;
-
+#ifdef CONFIG_ARCH_TCC803X
+	phy_dev->phy.set_vbus_resource	= tcc_ehci_phy_set_vbus_resource;
+#endif
 	if (phy_dev->vbus_gpio)
 		phy_dev->phy.set_vbus		= tcc_ehci_vbus_set;
 
