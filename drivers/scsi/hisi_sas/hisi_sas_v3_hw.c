@@ -870,7 +870,7 @@ static void phys_init_v3_hw(struct hisi_hba *hisi_hba)
 	}
 }
 
-static void sl_notify_v3_hw(struct hisi_hba *hisi_hba, int phy_no)
+static void sl_notify_ssp_v3_hw(struct hisi_hba *hisi_hba, int phy_no)
 {
 	u32 sl_control;
 
@@ -1035,8 +1035,8 @@ static void prep_ssp_v3_hw(struct hisi_hba *hisi_hba,
 	struct sas_ssp_task *ssp_task = &task->ssp_task;
 	struct scsi_cmnd *scsi_cmnd = ssp_task->cmd;
 	struct hisi_sas_tmf_task *tmf = slot->tmf;
-	unsigned char prot_op = scsi_get_prot_op(scsi_cmnd);
 	int has_data = 0, priority = !!tmf;
+	unsigned char prot_op;
 	u8 *buf_cmd;
 	u32 dw1 = 0, dw2 = 0, len = 0;
 
@@ -1051,6 +1051,7 @@ static void prep_ssp_v3_hw(struct hisi_hba *hisi_hba,
 		dw1 |= 2 << CMD_HDR_FRAME_TYPE_OFF;
 		dw1 |= DIR_NO_DATA << CMD_HDR_DIR_OFF;
 	} else {
+		prot_op = scsi_get_prot_op(scsi_cmnd);
 		dw1 |= 1 << CMD_HDR_FRAME_TYPE_OFF;
 		switch (scsi_cmnd->sc_data_direction) {
 		case DMA_TO_DEVICE:
@@ -1290,6 +1291,7 @@ static irqreturn_t phy_up_v3_hw(int phy_no, struct hisi_hba *hisi_hba)
 	struct device *dev = hisi_hba->dev;
 	unsigned long flags;
 
+	del_timer(&phy->timer);
 	hisi_sas_phy_write32(hisi_hba, phy_no, PHYCTRL_PHY_ENA_MSK, 1);
 
 	port_id = hisi_sas_read32(hisi_hba, PHY_PORT_NUM_MA);
@@ -1383,9 +1385,11 @@ end:
 
 static irqreturn_t phy_down_v3_hw(int phy_no, struct hisi_hba *hisi_hba)
 {
+	struct hisi_sas_phy *phy = &hisi_hba->phy[phy_no];
 	u32 phy_state, sl_ctrl, txid_auto;
 	struct device *dev = hisi_hba->dev;
 
+	del_timer(&phy->timer);
 	hisi_sas_phy_write32(hisi_hba, phy_no, PHYCTRL_NOT_RDY_MSK, 1);
 
 	phy_state = hisi_sas_read32(hisi_hba, PHY_STATE);
@@ -1554,6 +1558,19 @@ static void handle_chl_int2_v3_hw(struct hisi_hba *hisi_hba, int phy_no)
 	hisi_sas_phy_write32(hisi_hba, phy_no, CHL_INT2, irq_value);
 }
 
+static void handle_chl_int0_v3_hw(struct hisi_hba *hisi_hba, int phy_no)
+{
+	u32 irq_value0 = hisi_sas_phy_read32(hisi_hba, phy_no, CHL_INT0);
+
+	if (irq_value0 & CHL_INT0_PHY_RDY_MSK)
+		hisi_sas_phy_oob_ready(hisi_hba, phy_no);
+
+	hisi_sas_phy_write32(hisi_hba, phy_no, CHL_INT0,
+			     irq_value0 & (~CHL_INT0_SL_RX_BCST_ACK_MSK)
+			     & (~CHL_INT0_SL_PHY_ENABLE_MSK)
+			     & (~CHL_INT0_NOT_RDY_MSK));
+}
+
 static irqreturn_t int_chnl_int_v3_hw(int irq_no, void *p)
 {
 	struct hisi_hba *hisi_hba = p;
@@ -1564,8 +1581,8 @@ static irqreturn_t int_chnl_int_v3_hw(int irq_no, void *p)
 				& 0xeeeeeeee;
 
 	while (irq_msk) {
-		u32 irq_value0 = hisi_sas_phy_read32(hisi_hba, phy_no,
-						     CHL_INT0);
+		if (irq_msk & (2 << (phy_no * 4)))
+			handle_chl_int0_v3_hw(hisi_hba, phy_no);
 
 		if (irq_msk & (4 << (phy_no * 4)))
 			handle_chl_int1_v3_hw(hisi_hba, phy_no);
@@ -1573,13 +1590,6 @@ static irqreturn_t int_chnl_int_v3_hw(int irq_no, void *p)
 		if (irq_msk & (8 << (phy_no * 4)))
 			handle_chl_int2_v3_hw(hisi_hba, phy_no);
 
-		if (irq_msk & (2 << (phy_no * 4)) && irq_value0) {
-			hisi_sas_phy_write32(hisi_hba, phy_no,
-					CHL_INT0, irq_value0
-					& (~CHL_INT0_SL_RX_BCST_ACK_MSK)
-					& (~CHL_INT0_SL_PHY_ENABLE_MSK)
-					& (~CHL_INT0_NOT_RDY_MSK));
-		}
 		irq_msk &= ~(0xe << (phy_no * 4));
 		phy_no++;
 	}
@@ -1646,6 +1656,7 @@ static irqreturn_t fatal_axi_int_v3_hw(int irq_no, void *p)
 	u32 irq_value, irq_msk;
 	struct hisi_hba *hisi_hba = p;
 	struct device *dev = hisi_hba->dev;
+	struct pci_dev *pdev = hisi_hba->pci_dev;
 	int i;
 
 	irq_msk = hisi_sas_read32(hisi_hba, ENT_INT_SRC_MSK3);
@@ -1676,6 +1687,17 @@ static irqreturn_t fatal_axi_int_v3_hw(int irq_no, void *p)
 			dev_err(dev, "%s error (0x%x) found!\n",
 				error->msg, irq_value);
 			queue_work(hisi_hba->wq, &hisi_hba->rst_work);
+		}
+
+		if (pdev->revision < 0x21) {
+			u32 reg_val;
+
+			reg_val = hisi_sas_read32(hisi_hba,
+						  AXI_MASTER_CFG_BASE +
+						  AM_CTRL_GLOBAL);
+			reg_val |= AM_CTRL_SHUTDOWN_REQ_MSK;
+			hisi_sas_write32(hisi_hba, AXI_MASTER_CFG_BASE +
+					 AM_CTRL_GLOBAL, reg_val);
 		}
 	}
 
@@ -2520,7 +2542,7 @@ static const struct hisi_sas_hw hisi_sas_v3_hw = {
 	.get_wideport_bitmap = get_wideport_bitmap_v3_hw,
 	.complete_hdr_size = sizeof(struct hisi_sas_complete_v3_hdr),
 	.clear_itct = clear_itct_v3_hw,
-	.sl_notify = sl_notify_v3_hw,
+	.sl_notify_ssp = sl_notify_ssp_v3_hw,
 	.prep_ssp = prep_ssp_v3_hw,
 	.prep_smp = prep_smp_v3_hw,
 	.prep_stp = prep_ata_v3_hw,
@@ -2579,7 +2601,7 @@ hisi_sas_shost_alloc_pci(struct pci_dev *pdev)
 	if (hisi_sas_get_fw_info(hisi_hba) < 0)
 		goto err_out;
 
-	if (hisi_sas_alloc(hisi_hba, shost)) {
+	if (hisi_sas_alloc(hisi_hba)) {
 		hisi_sas_free(hisi_hba);
 		goto err_out;
 	}
