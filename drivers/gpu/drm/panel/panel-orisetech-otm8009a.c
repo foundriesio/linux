@@ -278,13 +278,13 @@ static int otm8009a_unprepare(struct drm_panel *panel)
 	if (ret)
 		return ret;
 
-	msleep(10);
+	mdelay(10);
 
 	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
 	if (ret)
 		return ret;
 
-	msleep(10);
+	mdelay(10);
 
 	regulator_disable(ctx->supply);
 
@@ -306,7 +306,7 @@ static int otm8009a_prepare(struct drm_panel *panel)
 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 	}
 
-	msleep(20);
+	mdelay(20);
 
 	ret = regulator_enable(ctx->supply);
 	if (ret < 0) {
@@ -314,11 +314,11 @@ static int otm8009a_prepare(struct drm_panel *panel)
 		return ret;
 	}
 
-	msleep(120);
+	mdelay(120);
 
 	if (ctx->reset_gpio) {
 		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-		msleep(20);
+		mdelay(20);
 	}
 
 	ret = otm8009a_init_sequence(ctx);
@@ -490,7 +490,7 @@ static int otm8009a_remove(struct mipi_dsi_device *dsi)
 
 	if (ctx->reset_gpio) {
 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-		msleep(20);
+		mdelay(20);
 	}
 
 	regulator_disable(ctx->supply);
