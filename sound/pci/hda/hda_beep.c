@@ -339,3 +339,10 @@ int snd_hda_mixer_amp_switch_put_beep(struct snd_kcontrol *kcontrol,
 	return snd_hda_mixer_amp_switch_put(kcontrol, ucontrol);
 }
 EXPORT_SYMBOL_GPL(snd_hda_mixer_amp_switch_put_beep);
+
+/* only for kABI compatibility */
+int snd_hda_register_beep_device(struct hda_codec *codec)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_hda_register_beep_device);
