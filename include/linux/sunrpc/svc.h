@@ -246,7 +246,7 @@ struct svc_rqst {
 	size_t			rq_xprt_hlen;	/* xprt header len */
 	struct xdr_buf		rq_arg;
 	struct xdr_buf		rq_res;
-	struct page *		rq_pages[RPCSVC_MAXPAGES];
+	struct page		*rq_pages[RPCSVC_MAXPAGES + 1];
 	struct page *		*rq_respages;	/* points into rq_pages */
 	struct page *		*rq_next_page; /* next reply page to use */
 	struct page *		*rq_page_end;  /* one past the last page */
@@ -493,6 +493,8 @@ struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
 char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
 unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
 					 struct kvec *first, size_t total);
+char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
+					     struct kvec *first, size_t total);
 
 #define	RPC_MAX_ADDRBUFLEN	(63U)
 
