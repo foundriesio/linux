@@ -568,16 +568,35 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	struct dwc2_hsotg *dwc2 = dev_get_drvdata(dev);
 	int ret = 0;
 
+	if (dwc2_is_device_mode(dwc2))
+		dwc2_hsotg_suspend(dwc2);
+
 	if (dwc2->params.activate_stm_id_vb_detection &&
 	    !dwc2->params.force_b_session_valid) {
-		u32 ggpio;
+		u32 ggpio, gotgctl;
+		int is_host = dwc2_is_host_mode(dwc2);
 
 		/*
 		 * Need to force the mode to the current mode to avoid Mode
-		 * Mismatch Interrupt when ID and VBUS detection will be
-		 * disabled
+		 * Mismatch Interrupt when ID detection will be disabled.
 		 */
-		dwc2_force_mode(dwc2, dwc2_is_host_mode(dwc2));
+		dwc2_force_mode(dwc2, is_host);
+
+		if (!is_host) {
+			gotgctl = dwc2_readl(dwc2, GOTGCTL);
+			/*
+			 * We're about to disable Vbus detection hw before low
+			 * power mode entry. Then an undesired disconnect
+			 * interrupt may occur which is racy with low power
+			 * (low-level hw disable). Then check valid session
+			 * to force B-peripheral session value.
+			 */
+			if (gotgctl & GOTGCTL_BSESVLD) {
+				gotgctl |= GOTGCTL_BVALOVAL;
+				gotgctl |= GOTGCTL_BVALOEN;
+				dwc2_writel(dwc2, gotgctl, GOTGCTL);
+			}
+		}
 
 		ggpio = dwc2_readl(dwc2, GGPIO);
 		ggpio &= ~GGPIO_STM32_OTG_GCCFG_IDEN;
@@ -586,9 +605,6 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 
 		regulator_disable(dwc2->usb33d);
 	}
-
-	if (dwc2_is_device_mode(dwc2))
-		dwc2_hsotg_suspend(dwc2);
 
 	if (dwc2->ll_hw_enabled)
 		ret = __dwc2_lowlevel_hw_disable(dwc2);
@@ -612,7 +628,7 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 
 	if (dwc2->params.activate_stm_id_vb_detection &&
 	    !dwc2->params.force_b_session_valid) {
-		u32 ggpio;
+		u32 ggpio, gotgctl;
 
 		ret = regulator_enable(dwc2->usb33d);
 		if (ret)
@@ -625,6 +641,12 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 
 		/* ID/VBUS detection startup time */
 		usleep_range(5000, 7000);
+
+		/* Unconditionally clear B-Session Valid override */
+		gotgctl = dwc2_readl(dwc2, GOTGCTL);
+		gotgctl &= ~GOTGCTL_BVALOVAL;
+		gotgctl &= ~GOTGCTL_BVALOEN;
+		dwc2_writel(dwc2, gotgctl, GOTGCTL);
 	}
 
 	if (dwc2->params.force_b_session_valid) {
