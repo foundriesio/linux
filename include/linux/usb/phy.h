@@ -167,6 +167,10 @@ struct usb_phy {
 	int (*get_dc_voltage_level)(struct usb_phy *phy);
 	int (*set_dc_voltage_level)(struct usb_phy *phy, unsigned int level);
 #endif
+#if defined (CONFIG_ARCH_TCC803X)
+	/* For PMIC gpio, Need to configuration after da9063 intializing */
+	int (*set_vbus_resource)(struct usb_phy *phy);
+#endif
 };
 
 /**
