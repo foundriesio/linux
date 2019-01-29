@@ -1211,9 +1211,10 @@ static void free_one_page(struct zone *zone,
 }
 
 static void __meminit __init_single_page(struct page *page, unsigned long pfn,
-				unsigned long zone, int nid)
+				unsigned long zone, int nid, bool zero)
 {
-	memset(page, 0, sizeof(*page));
+	if (zero)
+		memset(page, 0, sizeof(*page));
 	set_page_links(page, zone, nid, pfn);
 	init_page_count(page);
 	page_mapcount_reset(page);
@@ -1230,7 +1231,7 @@ static void __meminit __init_single_page(struct page *page, unsigned long pfn,
 static void __meminit __init_single_pfn(unsigned long pfn, unsigned long zone,
 					int nid)
 {
-	return __init_single_page(pfn_to_page(pfn), pfn, zone, nid);
+	return __init_single_page(pfn_to_page(pfn), pfn, zone, nid, false);
 }
 
 #ifdef CONFIG_DEFERRED_STRUCT_PAGE_INIT
@@ -1573,7 +1574,7 @@ static int __init deferred_init_memmap(void *data)
 				goto free_range;
 			}
 
-			__init_single_page(page, pfn, zid, nid);
+			__init_single_page(page, pfn, zid, nid, false);
 			if (!free_base_page) {
 				free_base_page = page;
 				free_base_pfn = pfn;
@@ -5586,7 +5587,7 @@ void __meminit memmap_init_zone(unsigned long size, int nid, unsigned long zone,
 
 not_early:
 		page = pfn_to_page(pfn);
-		__init_single_page(page, pfn, zone, nid);
+		__init_single_page(page, pfn, zone, nid, context == MEMMAP_HOTPLUG);
 		if (context == MEMMAP_HOTPLUG)
 			SetPageReserved(page);
 
@@ -5639,7 +5640,7 @@ void __ref memmap_init_zone_device(struct zone *zone,
 	for (pfn = start_pfn; pfn < end_pfn; pfn++) {
 		struct page *page = pfn_to_page(pfn);
 
-		__init_single_page(page, pfn, zone_idx, nid);
+		__init_single_page(page, pfn, zone_idx, nid, true);
 
 		/*
 		 * ZONE_DEVICE pages union ->lru with a ->pgmap back
