@@ -351,8 +351,7 @@ int apalis_tk1_k20_irq_request(struct apalis_tk1_k20_regmap *apalis_tk1_k20,
 	} else {
 		virq = (irq == APALIS_TK1_K20_CAN0_IRQ) ?
 			apalis_tk1_k20->can0_irq:apalis_tk1_k20->can1_irq;
-		irq_flags = IRQF_ONESHOT | IRQF_TRIGGER_FALLING |
-				IRQF_TRIGGER_RISING;
+		irq_flags = IRQF_ONESHOT | IRQF_TRIGGER_HIGH;
 	}
 	return devm_request_threaded_irq(apalis_tk1_k20->dev, virq,
 			 NULL, handler, irq_flags, name, dev);

@@ -125,8 +125,6 @@ static void apalis_tk1_k20_can_hw_tx_frame(struct net_device *net, u8 *buf,
 				      + APALIS_TK1_K20_CAN_DEV_OFFSET(
 				      priv->pdata->id), buf, len);
 	apalis_tk1_k20_unlock(priv->apalis_tk1_k20);
-
-	priv->tx_frame = 1;
 }
 
 static void apalis_tk1_k20_can_hw_tx(struct net_device *net,
@@ -142,7 +140,7 @@ static void apalis_tk1_k20_can_hw_tx(struct net_device *net,
 			+ CAN_HEADER_MAX_LEN, tx_buf_idx);
 }
 
-static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
+static int apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 {
 	struct apalis_tk1_k20_priv *priv = netdev_priv(net);
 	struct sk_buff *skb;
@@ -168,7 +166,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 		if (!skb) {
 			dev_err(&net->dev, "cannot allocate RX skb\n");
 			priv->net->stats.rx_dropped++;
-			return;
+			return -ENOMEM;
 		}
 		memcpy(&frame->can_id, &buf[i * CAN_TRANSFER_BUF_LEN]
 				 + MB_EID_OFF, MB_EID_LEN);
@@ -186,6 +184,7 @@ static void apalis_tk1_k20_can_hw_rx(struct net_device *net, int buf_idx)
 		netif_rx_ni(skb);
 	}
 
+	return frame_available;
 
 }
 
@@ -435,6 +434,7 @@ static void apalis_tk1_k20_can_tx_work_handler(struct work_struct *ws)
 			priv->tx_len = 1 + frame->can_dlc;
 			can_put_echo_skb(priv->tx_skb, net, 0);
 			priv->tx_skb = NULL;
+			priv->tx_frame = 1;
 		}
 	}
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
@@ -545,7 +545,7 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 	mutex_lock(&priv->apalis_tk1_k20_can_lock);
 	while (!priv->force_quit) {
 		enum can_state new_state;
-		int ret;
+		int ret, rx_cnt = 0;
 		u32 intf, eflag;
 		u8 clear_intf = 0;
 		int can_id = 0, data1 = 0;
@@ -565,31 +565,31 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 
 		intf &= CANCTRL_INTMASK;
 
-		if (!(intf & CANINTF_TX) &&
+		if (intf == 0)
+			break;
+
+		/* TX complete */
+		if ((intf & CANINTF_TX) &&
 				(priv->tx_frame == 1)) {
 			priv->tx_frame = 0;
 			net->stats.tx_packets++;
-			net->stats.tx_bytes += priv->tx_len - 1;
-			can_led_event(net, CAN_LED_EVENT_TX);
 			if (priv->tx_len) {
+				net->stats.tx_bytes += priv->tx_len - 1;
+				can_led_event(net, CAN_LED_EVENT_TX);
 				can_get_echo_skb(net, 0);
 				priv->tx_len = 0;
 			}
 			netif_wake_queue(net);
-			if (!(intf & (CANINTF_RX | CANINTF_ERR)))
-				break;
+			clear_intf |= CANINTF_TX;
 		}
-
-		if (intf == 0)
-			break;
-
 		/* receive */
 		if (intf & CANINTF_RX)
-			apalis_tk1_k20_can_hw_rx(net, 0);
+			rx_cnt = apalis_tk1_k20_can_hw_rx(net, 0);
 
 		/* any error interrupt we need to clear? */
 		if (intf & CANINTF_ERR)
-			clear_intf |= intf & CANINTF_ERR;
+			clear_intf |= CANINTF_ERR;
+
 		apalis_tk1_k20_lock(priv->apalis_tk1_k20);
 		if (clear_intf)
 			ret = apalis_tk1_k20_reg_write(priv->apalis_tk1_k20,
@@ -676,6 +676,9 @@ static irqreturn_t apalis_tk1_k20_can_ist(int irq, void *dev_id)
 			break;
 		}
 
+		if (priv->tx_skb != NULL) {
+			break;
+		}
 
 	}
 	mutex_unlock(&priv->apalis_tk1_k20_can_lock);
