@@ -89,7 +89,6 @@
 #define CAMERA_INPUT_HEIGHT			480
 #define SVM_CAMERA_INPUT_WIDTH		5120
 #define SVM_CAMERA_INPUT_HEIGHT		720
-#define SUPPORT_CAMERA_CAPTURE		0
 
 
 //***************************** VPU/HEVC ******************************/

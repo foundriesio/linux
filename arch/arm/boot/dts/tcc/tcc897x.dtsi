@@ -113,7 +113,7 @@
 		scaler_drv3 = &scaler_drv3;
 		vout_drv0 = &vout_drv0;
 		vout_drv1 = &vout_drv1;
-		wdma_drv0 = &wdma_drv0;		
+		wdma_drv0 = &wdma_drv0;
 		videoinput0 = &videoinput0;
 		fb0 = &fb0;
 		fb1 = &fb1;
@@ -469,6 +469,34 @@
 		};
 
 		/*-----------------------------------------------------------
+		 * Early/RearCamera Area
+		 *-----------------------------------------------------------
+		 */
+		rearcamera_viqe: rearcamera_viqe {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera_viqe";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			no-map;
+		};
+
+		rearcamera: rearcamera {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_REARCAMERA_SIZE>;
+			no-map;
+		};
+
+		parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_PARKING_GUI_SIZE>;
+			no-map;
+		};
+
+		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
 		 */
@@ -583,30 +611,6 @@
 			reusable;
 		};
 		*/
-
-		rearcamera_viqe: rearcamera_viqe {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera_viqe";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_VIQE_SIZE>;
-			no-map;
-		};
-
-		rearcamera: rearcamera {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_SIZE>;
-			no-map;
-		};
-
-		parking_gui: parking_gui {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_PARKING_GUI_SIZE>;
-			no-map;
-		};
 
 		/*-----------------------------------------------------------
 		 * Shared Memory with pmap_video :: only for enc_main pmap.
@@ -1415,7 +1419,7 @@
 	 * Display Bus Block
 	 */
 	cifport: cifport@7238000c {
-		compatible = "telechips,cif-port";	
+		compatible = "telechips,cif-port";
 		reg = <0x7238000c 0x4>;
 		statue = "okay";
 	};
@@ -1476,11 +1480,11 @@
 
 	vioc_rdma:vioc_rdma@72000400{
 		compatible = "telechips,vioc_rdma";
-		reg = <0x72000400 0x100 0x72000500 0x100 0x72000600 0x100 0x72000700 0x100 
+		reg = <0x72000400 0x100 0x72000500 0x100 0x72000600 0x100 0x72000700 0x100
 		       0x72000800 0x100 0x72000900 0x100 0x72000a00 0x100 0x72000b00 0x100
 		       0x72000c00 0x100 0x72000d00 0x100 0x72000e00 0x100 0x72000f00 0x100
 		       0x72001000 0x100 0x72001100 0x100 0x72001200 0x100 0x72001300 0x100
-		       0x72001400 0x100 0x72001500 0x100>;	
+		       0x72001400 0x100 0x72001500 0x100>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1503,7 +1507,7 @@
 
 	vioc_wmix:vioc_wmix@72001800{
 		compatible = "telechips,vioc_wmix";
-		reg = <0x72001800 0x100 0x72001900 0x100 0x72001a00 0x100 0x72001b00 0x100 
+		reg = <0x72001800 0x100 0x72001900 0x100 0x72001a00 0x100 0x72001b00 0x100
 				0x72001c00 0x100 0x72001d00 0x100 0x72001e00 0x100>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1522,9 +1526,9 @@
 
 	vioc_wdma:vioc_wdma@72002800{
 		compatible = "telechips,vioc_wdma";
-		reg = <0x72002800 0x700 0x72002900 0x100 0x72002a00 0x100 0x72002b00 0x100 
+		reg = <0x72002800 0x700 0x72002900 0x100 0x72002a00 0x100 0x72002b00 0x100
 		       0x72002c00 0x100 0x72002d00 0x100 0x72002e00 0x100 0x72002f00 0x100
-		       0x72003000 0x100 >;	
+		       0x72003000 0x100 >;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1540,7 +1544,7 @@
 		compatible = "telechips,vioc_vin";
 		reg = < 0x72004000 0x400 0x72004400 0x600
 			0x72005000 0x400 0x72005400 0x600
-			0x72006000 0x400 0x72006400 0x600 
+			0x72006000 0x400 0x72006400 0x600
 			0x72007000 0x400 0x72007400 0x600>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
 		             <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>,
@@ -1974,7 +1978,7 @@
 		wdmas = <&vioc_wdma VIOC_WDMA00>, <&vioc_wdma VIOC_WDMA01>;   /* id:1, path: wmix output mixed pah */
 		wmixs = <&vioc_wmix VIOC_WMIX0>, <&vioc_wmix VIOC_WMIX1>;      /* id:1, path: input rdma mixed path */
 		status = "okay";
-	};	
+	};
 
 	tcc_dsp: tcc_dsp@0 {
 		compatible = "telechips,tcc_dsp";
@@ -1983,7 +1987,7 @@
 
 	tcc_nsk_sc: tcc_nsk_sc@763E0000 {
 		compatible = "telechips,tcc-nsk-sc";
-		reg = <0x763E0000 0xFF>, 
+		reg = <0x763E0000 0xFF>,
 		      <0x763F0000 0x1F>,
 		      <0x76066000 0x70>,
 		      <0x76040100 0x2F>;

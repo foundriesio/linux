@@ -45,6 +45,29 @@
 #include "tcc-pmap-video.dtsi"
 
 #define TCC_ALIGN(value, base)   (((value)+((base)-1))&~((base)-1))
+
+/*-----------------------------------------------------------
+ * Early/RearCamera Area
+ *-----------------------------------------------------------
+ */
+
+#ifdef CONFIG_PLATFORM_AVN
+#define PMAP_REARCAMERA_VIQE_SIZE	ARRAY_MBYTE((CAMERA_INPUT_WIDTH * (CAMERA_INPUT_HEIGHT / 2 ) * 4 * 4 * 3) / 2)
+#define PMAP_REARCAMERA_SIZE		ARRAY_MBYTE(PRIMARY_TARGET_WIDTH * PRIMARY_TARGET_HEIGHT * 4 * 4)
+#define PMAP_PARKING_GUI_SIZE		ARRAY_MBYTE(PRIMARY_TARGET_WIDTH * PRIMARY_TARGET_HEIGHT * 4)
+#else
+#define PMAP_REARCAMERA_VIQE_SIZE	0x00000000
+#define PMAP_REARCAMERA_SIZE		0x00000000
+#define PMAP_PARKING_GUI_SIZE		0x00000000
+#endif
+
+#define PMAP_SIZE_EARLY_REARCAM	( 0x0 \
+					+ PMAP_REARCAMERA_VIQE_SIZE \
+					+ PMAP_REARCAMERA_SIZE \
+					+ PMAP_PARKING_GUI_SIZE \
+					)
+
+
 /*-----------------------------------------------------------
  * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
  *-----------------------------------------------------------
@@ -342,19 +365,13 @@
 
 #ifdef CONFIG_PLATFORM_AVN
 #define PMAP_MICOM_IPC_SIZE			0x00200000
-#define PMAP_REARCAMERA_VIQE_SIZE	ARRAY_MBYTE((CAMERA_INPUT_WIDTH * (CAMERA_INPUT_HEIGHT / 2 ) * 4 * 4 * 3) / 2)
-#define PMAP_REARCAMERA_SIZE		ARRAY_MBYTE(PRIMARY_TARGET_WIDTH * PRIMARY_TARGET_HEIGHT * 4 * (4 + SUPPORT_CAMERA_CAPTURE))
-#define PMAP_PARKING_GUI_SIZE		ARRAY_MBYTE(PRIMARY_TARGET_WIDTH * PRIMARY_TARGET_HEIGHT * 4)
 #ifdef CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964
 #define PMAP_SVM_SIZE			ARRAY_MBYTE(SVM_CAMERA_INPUT_WIDTH * SVM_CAMERA_INPUT_HEIGHT * 4 * 4)
 #else
 #define PMAP_SVM_SIZE			0x00000000
 #endif
 #else
-#define PMAP_MICOM_IPC_SIZE			0x00000000
-#define PMAP_REARCAMERA_VIQE_SIZE	0x00000000
-#define PMAP_REARCAMERA_SIZE		0x00000000
-#define PMAP_PARKING_GUI_SIZE		0x00000000
+#define PMAP_MICOM_IPC_SIZE		0x00000000
 #define PMAP_SVM_SIZE			0x00000000
 #endif
 
@@ -363,19 +380,32 @@
 #define SPACE	0x00100000
 
 #ifdef CONFIG_ARCH_TCC897X
-#define SECURE_AREA_1_BASE	(0x87800000)
+#define PMAP_BASE	(0x87800000)
 #else
 #ifdef CONFIG_ANDROID
-#define SECURE_AREA_1_BASE	(0x40000000) // In case of Android, Most significant bit should be zero. otherwise mmap operation is failed because mmap will recognize it into negative value.
+#define PMAP_BASE	(0x40000000) // In case of Android, Most significant bit should be zero. otherwise mmap operation is failed because mmap will recognize it into negative value.
 #else
 #ifdef CONFIG_PLATFORM_AVN
-#define SECURE_AREA_1_BASE	(0x40800000)
+#define PMAP_BASE	(0x40800000)
 #else
-#define SECURE_AREA_1_BASE	(0x60000000)
+#define PMAP_BASE	(0x60000000)
+#endif
 #endif
 #endif
 
+#define EARLY_REARCAM_BASE	(PMAP_BASE)
+
+#ifdef CONFIG_PLATFORM_AVN
+#ifdef CONFIG_PMAP_CA7S
+#define EARLY_REARCAM_SIZE	(0)
+#else
+#define EARLY_REARCAM_SIZE	(PMAP_SIZE_EARLY_REARCAM + SPACE)
 #endif
+#else
+#define EARLY_REARCAM_SIZE	(0)
+#endif
+
+#define SECURE_AREA_1_BASE  	(EARLY_REARCAM_BASE+EARLY_REARCAM_SIZE)
 #define SECURE_AREA_1_SIZE	(PMAP_SIZE_SECURE_AREA_1 + SPACE)
 
 #define SECURE_AREA_2_BASE	(SECURE_AREA_1_BASE + SECURE_AREA_1_SIZE)
@@ -396,9 +426,6 @@
 							+ PMAP_V4L2_VIDEO3_SIZE \
 							+ PMAP_V4L2_VIDEO4_SIZE \
 							+ PMAP_MICOM_IPC_SIZE \
-							+ PMAP_REARCAMERA_VIQE_SIZE \
-							+ PMAP_REARCAMERA_SIZE \
-							+ PMAP_PARKING_GUI_SIZE \
 							+ PMAP_SVM_SIZE \
 							+ PMAP_SIZE_UMP_RESERVED_SW \
 							)
