@@ -1289,17 +1289,16 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR1_OFFSET));
 #else /* CONFIG_ARCH_TCC803X */
-		value = (__raw_readl(reg + (component > VIOC_WDMA08
-						    ? PWR_BLK_SWR4_OFFSET
-						    : PWR_BLK_SWR1_OFFSET)) &
-			 ~((component > VIOC_WDMA08 ? PWR_BLK_SWR4_WD_MASK
-						    : PWR_BLK_SWR1_WDMA_MASK)));
-		value |= (mode
-			  << (component > VIOC_WDMA08
-				      ? PWR_BLK_SWR4_WD_SHIFT +
-						(get_vioc_index((component -
-								 VIOC_WDMA08)))
-				      : PWR_BLK_SWR1_WDMA_SHIFT +
+		value = (__raw_readl(reg + (component > VIOC_WDMA08 ? \
+							PWR_BLK_SWR4_OFFSET : \
+							PWR_BLK_SWR1_OFFSET)) & \
+				~((component > VIOC_WDMA08 ? \
+				PWR_BLK_SWR4_WD_MASK : \
+				PWR_BLK_SWR1_WDMA_MASK)));
+		value |= (mode << (component > VIOC_WDMA08 ? \
+				  PWR_BLK_SWR4_WD_SHIFT + \
+				  (get_vioc_index(component - VIOC_WDMA09)) : \
+				  PWR_BLK_SWR1_WDMA_SHIFT + \
 						get_vioc_index(component)));
 		__raw_writel(value, reg + (component > VIOC_WDMA08
 						   ? PWR_BLK_SWR4_OFFSET
@@ -1372,22 +1371,20 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 				   get_vioc_index(component)));
 		__raw_writel(value, (reg + PWR_BLK_SWR0_OFFSET));
 #else /* CONFIG_ARCH_TCC803X */
-		value = (__raw_readl(reg + (component > VIOC_VIN30
-						    ? PWR_BLK_SWR4_OFFSET
-						    : PWR_BLK_SWR0_OFFSET)) &
-			 ~(component > VIOC_VIN30 ? PWR_BLK_SWR4_VIN_MASK
-						  : PWR_BLK_SWR0_VIN_MASK));
-		value |= (mode
-			  << (component > VIOC_VIN30
-				      ? PWR_BLK_SWR4_VIN_SHIFT +
-						(get_vioc_index(((component -
-						        VIOC_VIN40)/2)))
-				      : PWR_BLK_SWR0_VIN_SHIFT +
-						get_vioc_index((component -
-						        VIOC_VIN00)/2)));
-		__raw_writel(value, reg + (component > VIOC_VIN30
-						   ? PWR_BLK_SWR4_OFFSET
-						   : PWR_BLK_SWR0_OFFSET));
+		value = (__raw_readl(reg + (component > VIOC_VIN30 ? \
+							PWR_BLK_SWR4_OFFSET : \
+							PWR_BLK_SWR0_OFFSET)) & \
+				~(component > VIOC_VIN30 ? \
+				PWR_BLK_SWR4_VIN_MASK : \
+				PWR_BLK_SWR0_VIN_MASK));
+		value |= (mode << (component > VIOC_VIN30 ? \
+				PWR_BLK_SWR4_VIN_SHIFT + \
+					(get_vioc_index(component - VIOC_VIN40) / 2) : \
+				PWR_BLK_SWR0_VIN_SHIFT + \
+					(get_vioc_index(component) / 2)));
+		__raw_writel(value, reg + (component > VIOC_VIN30 ? \
+					PWR_BLK_SWR4_OFFSET : \
+					PWR_BLK_SWR0_OFFSET));
 #endif
 		break;
 

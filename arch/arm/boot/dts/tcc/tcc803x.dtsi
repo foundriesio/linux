@@ -448,6 +448,37 @@
 		};
 
 		/*-----------------------------------------------------------
+		 * Early/RearCamera Area
+		 *-----------------------------------------------------------
+		 */
+		/*
+		 * The camera solution operates in a7s. So a53 doesn't need reserved memory
+		rearcamera_viqe: rearcamera_viqe {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera_viqe";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			no-map;
+		};
+
+		rearcamera: rearcamera {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "rearcamera";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_REARCAMERA_SIZE>;
+			no-map;
+		};
+
+		parking_gui: parking_gui {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "parking_gui";
+			alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+			size = <PMAP_PARKING_GUI_SIZE>;
+			no-map;
+		};
+		*/
+
+		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
 		 */
@@ -562,32 +593,6 @@
 			reusable;
 		};
 		*/
-
-		/*
-		rearcamera_viqe: rearcamera_viqe {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera_viqe";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_VIQE_SIZE>;
-			no-map;
-		};
-
-		rearcamera: rearcamera {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_SIZE>;
-			no-map;
-		};
-		*/
-
-		parking_gui: parking_gui {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_PARKING_GUI_SIZE>;
-			no-map;
-		};
 
 		/*-----------------------------------------------------------
 		 * Shared Memory with pmap_video :: only for enc_main pmap.
@@ -2150,7 +2155,7 @@
 			   0x12007000 0x400 0x12007400 0x600
 			   0x12018000 0x400 0x12018400 0x600
 			   0x12019000 0x400 0x12019400 0x600
-			   0x12020000 0x400 0x12020400 0x600>,
+			   0x1201a000 0x400 0x1201a400 0x600>,
 			/* VIOC_REMAP */
 			  <0x12040000 0x400 0x12040400 0x600
 			   0x12041000 0x400 0x12041400 0x600
