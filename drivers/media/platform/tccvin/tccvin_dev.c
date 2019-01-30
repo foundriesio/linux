@@ -1534,6 +1534,7 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	struct tccvin_buf	* cif_buf	= &vdev->v4l2.static_buf[buf->index];
 
 	FUNCTION_IN
+	mutex_lock(&vdev->v4l2.lock);
 
 	// Check the buffer index is valid.
 	if(!((0 <= buf->index) && (buf->index < vdev->v4l2.pp_num))) {
@@ -1557,6 +1558,7 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	// clear the flag V4L2_BUF_FLAG_DONE
 	cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
+	mutex_unlock(&vdev->v4l2.lock);
 	FUNCTION_OUT
 	return 0;
 }
@@ -1569,6 +1571,7 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 
 	FUNCTION_IN
 
+	mutex_lock(&vdev->v4l2.lock);
 	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
 	dlog("disp count: %d\n", display_buf_entry_count);
 
@@ -1586,7 +1589,11 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 		cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
 		memcpy(buf, &(cif_buf->buf), sizeof(struct v4l2_buffer));
-	} else {
+	}
+
+	mutex_unlock(&vdev->v4l2.lock);
+
+	if(1 >= display_buf_entry_count) {
 		dlog("The display buffer list is EMPTY!!\n");
 		vdev->v4l2.wakeup_int = 0;
 		if(wait_event_interruptible_timeout(vdev->v4l2.frame_wait, vdev->v4l2.wakeup_int == 1, msecs_to_jiffies(500)) <= 0) {
