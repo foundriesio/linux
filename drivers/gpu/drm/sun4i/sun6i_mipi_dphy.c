@@ -85,7 +85,7 @@ int sun6i_dphy_init(struct sun6i_dphy *dphy, unsigned int lanes)
 {
 	reset_control_deassert(dphy->reset);
 	clk_prepare_enable(dphy->mod_clk);
-	clk_set_rate_exclusive(dphy->mod_clk, 150000000);
+	clk_set_rate(dphy->mod_clk, 150000000);
 
 	regmap_write(dphy->regs, SUN6I_DPHY_TX_CTL_REG,
 		     SUN6I_DPHY_TX_CTL_HS_TX_CLK_CONT);
@@ -191,7 +191,6 @@ int sun6i_dphy_power_off(struct sun6i_dphy *dphy)
 
 int sun6i_dphy_exit(struct sun6i_dphy *dphy)
 {
-	clk_rate_exclusive_put(dphy->mod_clk);
 	clk_disable_unprepare(dphy->mod_clk);
 	reset_control_assert(dphy->reset);
 

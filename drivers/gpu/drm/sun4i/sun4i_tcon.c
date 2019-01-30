@@ -103,13 +103,10 @@ static void sun4i_tcon_channel_set_status(struct sun4i_tcon *tcon, int channel,
 		return;
 	}
 
-	if (enabled) {
+	if (enabled)
 		clk_prepare_enable(clk);
-		clk_rate_exclusive_get(clk);
-	} else {
-		clk_rate_exclusive_put(clk);
+	else
 		clk_disable_unprepare(clk);
-	}
 }
 
 static void sun4i_tcon_lvds_set_status(struct sun4i_tcon *tcon,
