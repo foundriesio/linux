@@ -467,6 +467,8 @@ cifs_show_options(struct seq_file *s, struct dentry *root)
 		seq_puts(s, ",persistenthandles");
 	else if (tcon->use_resilient)
 		seq_puts(s, ",resilienthandles");
+	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NO_DFS)
+		seq_puts(s, ",nodfs");
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_POSIX_PATHS)
 		seq_puts(s, ",posixpaths");
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SET_UID)
