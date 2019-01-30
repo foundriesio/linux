@@ -17,11 +17,6 @@
 	compatible = "telechips,tcc8031", "telechips,tcc803x";
 };
 
-&chosen {
-	bootargs = "vmalloc=480M console=ttyAMA0,115200n8";
-	stdout-path = "serial0:115200n8";
-};
-
 &pcie {
 	reset-gpio = <&gpc 30 0>;
 	//status = "okay";
