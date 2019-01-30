@@ -413,7 +413,6 @@ int tcf_idr_create(struct tc_action_net *tn, u32 index, struct nlattr *est,
 
 	p->idrinfo = idrinfo;
 	p->ops = ops;
-	get_net(idrinfo->net);
 	*a = p;
 	return 0;
 err4:
