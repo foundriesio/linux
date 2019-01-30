@@ -50,11 +50,16 @@
 1:
 
 #ifdef CONFIG_ISA_ARCV2
+	lr	r5, [status32]
+#ifdef CONFIG_ARC_USE_UNALIGNED_MEM_ACCESS
 	; Unaligned access is disabled at reset, so re-enable early
 	; gcc 8.1.0 onwards (ARC GNU 2018.03) generates unaligned access
 	; as default too
-	lr	r5, [status32]
 	bset	r5, r5, STATUS_AD_BIT
+#else
+	; Although disabled at reset, bootloader might have enabled it
+	bclr	r5, r5, STATUS_AD_BIT
+#endif
 	kflag	r5
 #endif
 .endm
