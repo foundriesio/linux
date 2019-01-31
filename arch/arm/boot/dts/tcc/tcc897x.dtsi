@@ -164,7 +164,8 @@
 		interrupt-controller;
 		reg = <0x77101000 0x1000>,
 		      <0x77102000 0x1000>,
-		      <0x74100000 0x260>;
+		      <0x74100000 0x260>,
+		      <0x7460000c 0x8>;
 	};
 
 	timer {
@@ -178,10 +179,10 @@
 
 	pmu_a7 {
 		compatible = "arm,cortex-a7-pmu";
-		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
-		             <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,
-		             <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
-		             <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_LOW>,
+		             <GIC_SPI 65 IRQ_TYPE_LEVEL_LOW>,
+		             <GIC_SPI 66 IRQ_TYPE_LEVEL_LOW>,
+		             <GIC_SPI 67 IRQ_TYPE_LEVEL_LOW>;
 	};
 
 	ckc@74000000 {
