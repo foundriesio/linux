@@ -81,6 +81,13 @@ static int bsg_scsi_fill_hdr(struct request *rq, struct sg_io_v4 *hdr,
 			return -ENOMEM;
 	}
 
+	if (hdr->response) {
+		sreq->sense = kzalloc(hdr->max_response_len, GFP_KERNEL);
+		if (!sreq->sense)
+			return -ENOMEM;
+	} else
+		sreq->sense = NULL;
+
 	if (copy_from_user(sreq->cmd, uptr64(hdr->request), sreq->cmd_len))
 		return -EFAULT;
 	if (blk_verify_command(sreq->cmd, mode))
@@ -128,7 +135,10 @@ static int bsg_scsi_complete_rq(struct request *rq, struct sg_io_v4 *hdr)
 
 static void bsg_scsi_free_rq(struct request *rq)
 {
-	scsi_req_free_cmd(scsi_req(rq));
+	struct scsi_request *sreq = scsi_req(rq);
+
+	kfree(sreq->sense);
+	scsi_req_free_cmd(sreq);
 }
 
 static const struct bsg_ops bsg_scsi_ops = {
