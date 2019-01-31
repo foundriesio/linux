@@ -108,6 +108,9 @@ struct smc_link {
 	int			llc_testlink_time; /* testlink interval */
 	struct completion	llc_confirm_rkey; /* wait 4 rx of cnf rkey */
 	int			llc_confirm_rkey_rc; /* rc from cnf rkey msg */
+};
+
+struct smc_link_extra {
 	struct completion	llc_delete_rkey; /* wait 4 rx of del rkey */
 	int			llc_delete_rkey_rc; /* rc from del rkey msg */
 	struct mutex		llc_delete_rkey_mutex; /* serialize usage */
@@ -206,6 +209,10 @@ struct smc_link_group {
 						/* ISM device for VLAN reg. */
 		};
 	};
+#ifndef __GENKSYMS__
+	struct smc_link_extra	lnk_extra[SMC_LINKS_PER_LGR_MAX];
+				/* smc_link fields added after kABI freeze */
+#endif
 };
 
 /* Find the connection associated with the given alert token in the link group.
