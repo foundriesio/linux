@@ -556,6 +556,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x1>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x1>;
 			status = "disabled";
 		};
 
@@ -575,6 +576,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x2>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x2>;
 			status = "disabled";
 		};
 
@@ -594,6 +596,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x4>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x4>;
 			status = "disabled";
 		};
 
@@ -613,6 +616,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x10>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x10>;
 			status = "disabled";
 		};
 
@@ -1890,6 +1894,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x8>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x8>;
 			status = "disabled";
 		};
 
@@ -1932,6 +1937,7 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x20>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x20>;
 			status = "disabled";
 		};
 
