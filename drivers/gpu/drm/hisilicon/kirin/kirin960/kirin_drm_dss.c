@@ -238,11 +238,6 @@ static irqreturn_t dss_irq_handler(int irq, void *data)
 	isr_s2 &= ~(inp32(dss_base + DSS_LDI0_OFFSET + LDI_CPU_ITF_INT_MSK));
 	isr_s2_dpp &= ~(inp32(dss_base + DSS_DPP_OFFSET + DPP_INT_MSK));
 
-	if (isr_s2 & BIT_VACTIVE0_END) {
-		ctx->vactive0_end_flag++;
-		wake_up_interruptible_all(&ctx->vactive0_end_wq);
-	}
-
 	if (isr_s2 & BIT_VSYNC) {
 		ctx->vsync_timestamp = ktime_get();
 		drm_crtc_handle_vblank(crtc);
@@ -634,9 +629,6 @@ static int dss_drm_init(struct platform_device *pdev)
 	ctx->screen_base = 0;
 	ctx->screen_size = 0;
 	ctx->smem_start = 0;
-
-	ctx->vactive0_end_flag = 0;
-	init_waitqueue_head(&ctx->vactive0_end_wq);
 
 	/*
 	 * plane init
