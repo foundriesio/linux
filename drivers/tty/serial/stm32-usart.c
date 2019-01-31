@@ -760,6 +760,8 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 
 		if (cflag & CSTOPB)
 			bits++; /* 2 stop bits */
+		if (cflag & PARENB)
+			bits++; /* parity bit */
 
 		/* RX timeout irq to occur after last stop bit + bits */
 		stm32_port->cr1_irq = USART_CR1_RTOIE;
