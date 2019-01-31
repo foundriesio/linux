@@ -67,6 +67,16 @@
 		rtc1 = &snvs_rtc;
 	};
 
+	aliases {
+		/*
+		 * the following, together with kernel patches, forces a fixed
+		 * assignment between device id and usdhc controller
+		 * i.e. the eMMC on usdhc3 will be /dev/mmcblk0
+		 */
+		mmc0 = &usdhc3; /* eMMC */
+		mmc1 = &usdhc1; /* MMC 4bit slot */
+	};
+
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
