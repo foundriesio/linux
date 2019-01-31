@@ -130,7 +130,7 @@ static unsigned long f_extend(unsigned long address)
 			return 0xf0f0f0f000000000UL | (u32)address;
 
 		if((address & 0xf0000000) == 0xf0000000)
-			return 0xffffffff00000000UL | (u32)address;
+			return F_EXTEND((u32)address);
 	}
 #endif
 	return address;
