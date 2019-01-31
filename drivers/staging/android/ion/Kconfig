@@ -32,6 +32,7 @@ config ION_CARVEOUT_HEAP
 config ION_CARVEOUT_CAM_HEAP
         bool "Ion carveout camera heap support"
         depends on ION
+	default y if ARCH_TCC897X || ARCH_TCC803X
         help
           Choose this option to enable carveout camera heaps with Ion.
 
