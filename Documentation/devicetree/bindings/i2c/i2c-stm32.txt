@@ -35,6 +35,12 @@ Optional properties:
 	2nd cell: register offset within SYSCFG
 	3rd cell: register bitmask for FMP bit
   For STM32F7, STM32H7 and STM32MP1 only.
+- st,syscfg-fmp-clr: Use to clear Fast Mode Plus bit within SYSCFG when Fast
+  Mode Plus speed is selected by slave.
+	1st cell: phandle to syscfg
+	2nd cell: clear register offset within SYSCFG
+	3rd cell: register bitmask for FMP clear bit
+  For STM32MP1 family only.
 
 Example:
 
@@ -64,4 +70,5 @@ Example:
 		pinctrl-1 =  <&i2c1_sda_pin_sleep>, <&i2c1_scl_pin_sleep>;
 		pinctrl-names = "default", "sleep";
 		st,syscfg-fmp = <&syscfg 0x4 0x1>;
+		st,syscfg-fmp-clr = <&syscfg 0x44 0x1>;
 	};
