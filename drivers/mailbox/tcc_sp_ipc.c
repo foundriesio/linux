@@ -548,7 +548,7 @@ static int sp_get_evt_ioctl(unsigned long arg)
 	if (result != 0) {
 		dev_err(device, "%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
 	}
-	pr_info("recv_event: %p\n", recv_event);
+	pr_debug("recv_event: %p\n", recv_event);
 
 	recv_event = 0;
 
