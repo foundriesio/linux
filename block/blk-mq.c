@@ -364,7 +364,7 @@ static struct request *blk_mq_get_request(struct request_queue *q,
 	}
 	if (likely(!data->hctx))
 		data->hctx = blk_mq_map_queue(q, data->cmd_flags,
-						data->ctx->cpu);
+						data->ctx);
 	if (data->cmd_flags & REQ_NOWAIT)
 		data->flags |= BLK_MQ_REQ_NOWAIT;
 
@@ -2431,11 +2431,14 @@ static void blk_mq_map_swqueue(struct request_queue *q)
 
 		ctx = per_cpu_ptr(q->queue_ctx, i);
 		for (j = 0; j < set->nr_maps; j++) {
-			if (!set->map[j].nr_queues)
+			if (!set->map[j].nr_queues) {
+				ctx->hctxs[j] = blk_mq_map_queue_type(q,
+						HCTX_TYPE_DEFAULT, i);
 				continue;
+			}
 
 			hctx = blk_mq_map_queue_type(q, j, i);
-
+			ctx->hctxs[j] = hctx;
 			/*
 			 * If the CPU is already set in the mask, then we've
 			 * mapped this one already. This can happen if
@@ -2455,6 +2458,10 @@ static void blk_mq_map_swqueue(struct request_queue *q)
 			 */
 			BUG_ON(!hctx->nr_ctx);
 		}
+
+		for (; j < HCTX_MAX_TYPES; j++)
+			ctx->hctxs[j] = blk_mq_map_queue_type(q,
+					HCTX_TYPE_DEFAULT, i);
 	}
 
 	mutex_unlock(&q->sysfs_lock);
