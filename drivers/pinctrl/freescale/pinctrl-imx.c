@@ -27,24 +27,13 @@
 #include <linux/regmap.h>
 
 #include "../core.h"
+#include "../pinconf.h"
 #include "../pinmux.h"
 #include "pinctrl-imx.h"
 
 /* The bits in CONFIG cell defined in binding doc*/
 #define IMX_NO_PAD_CTL	0x80000000	/* no pin config need */
 #define IMX_PAD_SION 0x40000000		/* set SION */
-
-/**
- * @dev: a pointer back to containing device
- * @base: the offset to the controller in virtual memory
- */
-struct imx_pinctrl {
-	struct device *dev;
-	struct pinctrl_dev *pctl;
-	void __iomem *base;
-	void __iomem *input_sel_base;
-	struct imx_pinctrl_soc_info *info;
-};
 
 static inline const struct group_desc *imx_pinctrl_find_group_by_name(
 				struct pinctrl_dev *pctldev,
@@ -73,10 +62,11 @@ static int imx_dt_node_to_map(struct pinctrl_dev *pctldev,
 			struct pinctrl_map **map, unsigned *num_maps)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
 	const struct group_desc *grp;
 	struct pinctrl_map *new_map;
 	struct device_node *parent;
+	struct imx_pin *pin;
 	int map_num = 1;
 	int i, j;
 
@@ -86,16 +76,19 @@ static int imx_dt_node_to_map(struct pinctrl_dev *pctldev,
 	 */
 	grp = imx_pinctrl_find_group_by_name(pctldev, np->name);
 	if (!grp) {
-		dev_err(info->dev, "unable to find group for node %s\n",
+		dev_err(ipctl->dev, "unable to find group for node %s\n",
 			np->name);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < grp->num_pins; i++) {
-		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
-
-		if (!(pin->config & IMX_NO_PAD_CTL))
-			map_num++;
+	if (info->flags & IMX_USE_SCU) {
+		map_num += grp->num_pins;
+	} else {
+		for (i = 0; i < grp->num_pins; i++) {
+			pin = &((struct imx_pin *)(grp->data))[i];
+			if (!(pin->conf.mmio.config & IMX_NO_PAD_CTL))
+				map_num++;
+		}
 	}
 
 	new_map = kmalloc(sizeof(struct pinctrl_map) * map_num, GFP_KERNEL);
@@ -119,16 +112,35 @@ static int imx_dt_node_to_map(struct pinctrl_dev *pctldev,
 	/* create config map */
 	new_map++;
 	for (i = j = 0; i < grp->num_pins; i++) {
-		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
+		pin = &((struct imx_pin *)(grp->data))[i];
 
-		if (!(pin->config & IMX_NO_PAD_CTL)) {
-			new_map[j].type = PIN_MAP_TYPE_CONFIGS_PIN;
-			new_map[j].data.configs.group_or_pin =
+		/*
+		 * We only create config maps for SCU pads or MMIO pads that
+		 * are not using the default config(a.k.a IMX_NO_PAD_CTL)
+		 */
+		if (!(info->flags & IMX_USE_SCU) &&
+		    (pin->conf.mmio.config & IMX_NO_PAD_CTL))
+			continue;
+
+		new_map[j].type = PIN_MAP_TYPE_CONFIGS_PIN;
+		new_map[j].data.configs.group_or_pin =
 					pin_get_name(pctldev, pin->pin);
-			new_map[j].data.configs.configs = &pin->config;
+
+		if (info->flags & IMX_USE_SCU) {
+			/*
+			 * For SCU case, we set mux and conf together
+			 * in one IPC call
+			 */
+			new_map[j].data.configs.configs =
+					(unsigned long *)&pin->conf.scu;
+			new_map[j].data.configs.num_configs = 2;
+		} else {
+			new_map[j].data.configs.configs =
+					&pin->conf.mmio.config;
 			new_map[j].data.configs.num_configs = 1;
-			j++;
 		}
+
+		j++;
 	}
 
 	dev_dbg(pctldev->dev, "maps: function %s group %s num %d\n",
@@ -150,19 +162,96 @@ static const struct pinctrl_ops imx_pctrl_ops = {
 	.pin_dbg_show = imx_pin_dbg_show,
 	.dt_node_to_map = imx_dt_node_to_map,
 	.dt_free_map = imx_dt_free_map,
-
 };
+
+static int imx_pmx_set_one_pin_mmio(struct imx_pinctrl *ipctl,
+				    struct imx_pin *pin)
+{
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct imx_pin_mmio *pin_mmio = &pin->conf.mmio;
+	const struct imx_pin_reg *pin_reg;
+	unsigned int pin_id;
+
+	pin_id = pin->pin;
+	pin_reg = &ipctl->pin_regs[pin_id];
+
+	if (pin_reg->mux_reg == -1) {
+		dev_dbg(ipctl->dev, "Pin(%s) does not support mux function\n",
+			info->pins[pin_id].name);
+		return 0;
+	}
+
+	if (info->flags & SHARE_MUX_CONF_REG) {
+		u32 reg;
+
+		reg = readl(ipctl->base + pin_reg->mux_reg);
+		reg &= ~info->mux_mask;
+		reg |= (pin_mmio->mux_mode << info->mux_shift);
+		writel(reg, ipctl->base + pin_reg->mux_reg);
+		dev_dbg(ipctl->dev, "write: offset 0x%x val 0x%x\n",
+			pin_reg->mux_reg, reg);
+	} else {
+		writel(pin_mmio->mux_mode, ipctl->base + pin_reg->mux_reg);
+		dev_dbg(ipctl->dev, "write: offset 0x%x val 0x%x\n",
+			pin_reg->mux_reg, pin_mmio->mux_mode);
+	}
+
+	/*
+	 * If the select input value begins with 0xff, it's a quirky
+	 * select input and the value should be interpreted as below.
+	 *     31     23      15      7        0
+	 *     | 0xff | shift | width | select |
+	 * It's used to work around the problem that the select
+	 * input for some pin is not implemented in the select
+	 * input register but in some general purpose register.
+	 * We encode the select input value, width and shift of
+	 * the bit field into input_val cell of pin function ID
+	 * in device tree, and then decode them here for setting
+	 * up the select input bits in general purpose register.
+	 */
+	if (pin_mmio->input_val >> 24 == 0xff) {
+		u32 val = pin_mmio->input_val;
+		u8 select = val & 0xff;
+		u8 width = (val >> 8) & 0xff;
+		u8 shift = (val >> 16) & 0xff;
+		u32 mask = ((1 << width) - 1) << shift;
+		/*
+		 * The input_reg[i] here is actually some IOMUXC general
+		 * purpose register, not regular select input register.
+		 */
+		val = readl(ipctl->base + pin_mmio->input_reg);
+		val &= ~mask;
+		val |= select << shift;
+		writel(val, ipctl->base + pin_mmio->input_reg);
+	} else if (pin_mmio->input_reg) {
+		/*
+		 * Regular select input register can never be at offset
+		 * 0, and we only print register value for regular case.
+		 */
+		if (ipctl->input_sel_base)
+			writel(pin_mmio->input_val, ipctl->input_sel_base +
+					pin_mmio->input_reg);
+		else
+			writel(pin_mmio->input_val, ipctl->base +
+					pin_mmio->input_reg);
+		dev_dbg(ipctl->dev,
+			"==>select_input: offset 0x%x val 0x%x\n",
+			pin_mmio->input_reg, pin_mmio->input_val);
+	}
+
+	return 0;
+}
 
 static int imx_pmx_set(struct pinctrl_dev *pctldev, unsigned selector,
 		       unsigned group)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg;
-	unsigned int npins, pin_id;
-	int i;
-	struct group_desc *grp = NULL;
-	struct function_desc *func = NULL;
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct function_desc *func;
+	struct group_desc *grp;
+	struct imx_pin *pin;
+	unsigned int npins;
+	int i, err;
 
 	/*
 	 * Configure the mux mode for each pin in the group for a specific
@@ -182,194 +271,94 @@ static int imx_pmx_set(struct pinctrl_dev *pctldev, unsigned selector,
 		func->name, grp->name);
 
 	for (i = 0; i < npins; i++) {
-		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
-
-		pin_id = pin->pin;
-		pin_reg = &info->pin_regs[pin_id];
-
-		if (pin_reg->mux_reg == -1) {
-			dev_dbg(ipctl->dev, "Pin(%s) does not support mux function\n",
-				info->pins[pin_id].name);
-			continue;
-		}
-
-		if (info->flags & SHARE_MUX_CONF_REG) {
-			u32 reg;
-			reg = readl(ipctl->base + pin_reg->mux_reg);
-			reg &= ~(0x7 << 20);
-			reg |= (pin->mux_mode << 20);
-			writel(reg, ipctl->base + pin_reg->mux_reg);
-			dev_dbg(ipctl->dev, "write: offset 0x%x val 0x%x\n",
-				pin_reg->mux_reg, reg);
-		} else {
-			writel(pin->mux_mode, ipctl->base + pin_reg->mux_reg);
-			dev_dbg(ipctl->dev, "write: offset 0x%x val 0x%x\n",
-				pin_reg->mux_reg, pin->mux_mode);
-		}
-
 		/*
-		 * If the select input value begins with 0xff, it's a quirky
-		 * select input and the value should be interpreted as below.
-		 *     31     23      15      7        0
-		 *     | 0xff | shift | width | select |
-		 * It's used to work around the problem that the select
-		 * input for some pin is not implemented in the select
-		 * input register but in some general purpose register.
-		 * We encode the select input value, width and shift of
-		 * the bit field into input_val cell of pin function ID
-		 * in device tree, and then decode them here for setting
-		 * up the select input bits in general purpose register.
+		 * For IMX_USE_SCU case, we postpone the mux setting
+		 * until config is set as we can set them together
+		 * in one IPC call
 		 */
-		if (pin->input_val >> 24 == 0xff) {
-			u32 val = pin->input_val;
-			u8 select = val & 0xff;
-			u8 width = (val >> 8) & 0xff;
-			u8 shift = (val >> 16) & 0xff;
-			u32 mask = ((1 << width) - 1) << shift;
-			/*
-			 * The input_reg[i] here is actually some IOMUXC general
-			 * purpose register, not regular select input register.
-			 */
-			val = readl(ipctl->base + pin->input_reg);
-			val &= ~mask;
-			val |= select << shift;
-			writel(val, ipctl->base + pin->input_reg);
-		} else if (pin->input_reg) {
-			/*
-			 * Regular select input register can never be at offset
-			 * 0, and we only print register value for regular case.
-			 */
-			if (ipctl->input_sel_base)
-				writel(pin->input_val, ipctl->input_sel_base +
-						pin->input_reg);
-			else
-				writel(pin->input_val, ipctl->base +
-						pin->input_reg);
-			dev_dbg(ipctl->dev,
-				"==>select_input: offset 0x%x val 0x%x\n",
-				pin->input_reg, pin->input_val);
+		pin = &((struct imx_pin *)(grp->data))[i];
+		if (!(info->flags & IMX_USE_SCU)) {
+			err = imx_pmx_set_one_pin_mmio(ipctl, pin);
+			if (err)
+				return err;
 		}
 	}
 
 	return 0;
 }
 
-static int imx_pmx_gpio_request_enable(struct pinctrl_dev *pctldev,
-			struct pinctrl_gpio_range *range, unsigned offset)
-{
-	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg;
-	struct group_desc *grp;
-	struct imx_pin *imx_pin;
-	unsigned int pin, group;
-	u32 reg;
-
-	/* Currently implementation only for shared mux/conf register */
-	if (!(info->flags & SHARE_MUX_CONF_REG))
-		return 0;
-
-	pin_reg = &info->pin_regs[offset];
-	if (pin_reg->mux_reg == -1)
-		return -EINVAL;
-
-	/* Find the pinctrl config with GPIO mux mode for the requested pin */
-	for (group = 0; group < pctldev->num_groups; group++) {
-		grp = pinctrl_generic_get_group(pctldev, group);
-		if (!grp)
-			continue;
-		for (pin = 0; pin < grp->num_pins; pin++) {
-			imx_pin = &((struct imx_pin *)(grp->data))[pin];
-			if (imx_pin->pin == offset && !imx_pin->mux_mode)
-				goto mux_pin;
-		}
-	}
-
-	return -EINVAL;
-
-mux_pin:
-	reg = readl(ipctl->base + pin_reg->mux_reg);
-	reg &= ~(0x7 << 20);
-	reg |= imx_pin->config;
-	writel(reg, ipctl->base + pin_reg->mux_reg);
-
-	return 0;
-}
-
-static void imx_pmx_gpio_disable_free(struct pinctrl_dev *pctldev,
-			struct pinctrl_gpio_range *range, unsigned offset)
-{
-	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg;
-	u32 reg;
-
-	/*
-	 * Only Vybrid has the input/output buffer enable flags (IBE/OBE)
-	 * They are part of the shared mux/conf register.
-	 */
-	if (!(info->flags & SHARE_MUX_CONF_REG))
-		return;
-
-	pin_reg = &info->pin_regs[offset];
-	if (pin_reg->mux_reg == -1)
-		return;
-
-	/* Clear IBE/OBE/PUE to disable the pin (Hi-Z) */
-	reg = readl(ipctl->base + pin_reg->mux_reg);
-	reg &= ~0x7;
-	writel(reg, ipctl->base + pin_reg->mux_reg);
-}
-
-static int imx_pmx_gpio_set_direction(struct pinctrl_dev *pctldev,
-	   struct pinctrl_gpio_range *range, unsigned offset, bool input)
-{
-	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg;
-	u32 reg;
-
-	/*
-	 * Only Vybrid has the input/output buffer enable flags (IBE/OBE)
-	 * They are part of the shared mux/conf register.
-	 */
-	if (!(info->flags & SHARE_MUX_CONF_REG))
-		return 0;
-
-	pin_reg = &info->pin_regs[offset];
-	if (pin_reg->mux_reg == -1)
-		return -EINVAL;
-
-	/* IBE always enabled allows us to read the value "on the wire" */
-	reg = readl(ipctl->base + pin_reg->mux_reg);
-	if (input)
-		reg &= ~0x2;
-	else
-		reg |= 0x2;
-	writel(reg, ipctl->base + pin_reg->mux_reg);
-
-	return 0;
-}
-
-static const struct pinmux_ops imx_pmx_ops = {
+struct pinmux_ops imx_pmx_ops = {
 	.get_functions_count = pinmux_generic_get_function_count,
 	.get_function_name = pinmux_generic_get_function_name,
 	.get_function_groups = pinmux_generic_get_function_groups,
 	.set_mux = imx_pmx_set,
-	.gpio_request_enable = imx_pmx_gpio_request_enable,
-	.gpio_disable_free = imx_pmx_gpio_disable_free,
-	.gpio_set_direction = imx_pmx_gpio_set_direction,
 };
 
-static int imx_pinconf_get(struct pinctrl_dev *pctldev,
-			     unsigned pin_id, unsigned long *config)
+/* decode generic config into raw register values */
+static u32 imx_pinconf_decode_generic_config(struct imx_pinctrl *ipctl,
+					      unsigned long *configs,
+					      unsigned int num_configs)
+{
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct imx_cfg_params_decode *decode;
+	enum pin_config_param param;
+	u32 raw_config = 0;
+	u32 param_val;
+	int i, j;
+
+	WARN_ON(num_configs > info->num_decodes);
+
+	for (i = 0; i < num_configs; i++) {
+		param = pinconf_to_config_param(configs[i]);
+		param_val = pinconf_to_config_argument(configs[i]);
+		decode = info->decodes;
+		for (j = 0; j < info->num_decodes; j++) {
+			if (param == decode->param) {
+				if (decode->invert)
+					param_val = !param_val;
+				raw_config |= (param_val << decode->shift)
+					      & decode->mask;
+				break;
+			}
+			decode++;
+		}
+	}
+
+	if (info->fixup)
+		info->fixup(configs, num_configs, &raw_config);
+
+	return raw_config;
+}
+
+static u32 imx_pinconf_parse_generic_config(struct device_node *np,
+					    struct imx_pinctrl *ipctl)
+{
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct pinctrl_dev *pctl = ipctl->pctl;
+	unsigned int num_configs;
+	unsigned long *configs;
+	int ret;
+
+	if (!info->generic_pinconf)
+		return 0;
+
+	ret = pinconf_generic_parse_dt_config(np, pctl, &configs,
+					      &num_configs);
+	if (ret)
+		return 0;
+
+	return imx_pinconf_decode_generic_config(ipctl, configs, num_configs);
+}
+
+static int imx_pinconf_get_mmio(struct pinctrl_dev *pctldev, unsigned pin_id,
+				unsigned long *config)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg = &info->pin_regs[pin_id];
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	const struct imx_pin_reg *pin_reg = &ipctl->pin_regs[pin_id];
 
 	if (pin_reg->conf_reg == -1) {
-		dev_err(info->dev, "Pin(%s) does not support config function\n",
+		dev_err(ipctl->dev, "Pin(%s) does not support config function\n",
 			info->pins[pin_id].name);
 		return -EINVAL;
 	}
@@ -377,22 +366,34 @@ static int imx_pinconf_get(struct pinctrl_dev *pctldev,
 	*config = readl(ipctl->base + pin_reg->conf_reg);
 
 	if (info->flags & SHARE_MUX_CONF_REG)
-		*config &= 0xffff;
+		*config &= ~info->mux_mask;
 
 	return 0;
 }
 
-static int imx_pinconf_set(struct pinctrl_dev *pctldev,
-			     unsigned pin_id, unsigned long *configs,
-			     unsigned num_configs)
+static int imx_pinconf_get(struct pinctrl_dev *pctldev,
+			   unsigned pin_id, unsigned long *config)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg = &info->pin_regs[pin_id];
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+
+	if (info->flags & IMX_USE_SCU)
+		return imx_pinconf_get_scu(pctldev, pin_id, config);
+	else
+		return imx_pinconf_get_mmio(pctldev, pin_id, config);
+}
+
+static int imx_pinconf_set_mmio(struct pinctrl_dev *pctldev,
+				unsigned pin_id, unsigned long *configs,
+				unsigned num_configs)
+{
+	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	const struct imx_pin_reg *pin_reg = &ipctl->pin_regs[pin_id];
 	int i;
 
 	if (pin_reg->conf_reg == -1) {
-		dev_err(info->dev, "Pin(%s) does not support config function\n",
+		dev_err(ipctl->dev, "Pin(%s) does not support config function\n",
 			info->pins[pin_id].name);
 		return -EINVAL;
 	}
@@ -404,7 +405,7 @@ static int imx_pinconf_set(struct pinctrl_dev *pctldev,
 		if (info->flags & SHARE_MUX_CONF_REG) {
 			u32 reg;
 			reg = readl(ipctl->base + pin_reg->conf_reg);
-			reg &= ~0xffff;
+			reg &= info->mux_mask;
 			reg |= configs[i];
 			writel(reg, ipctl->base + pin_reg->conf_reg);
 			dev_dbg(ipctl->dev, "write: offset 0x%x val 0x%x\n",
@@ -419,20 +420,48 @@ static int imx_pinconf_set(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
+static int imx_pinconf_set(struct pinctrl_dev *pctldev,
+			   unsigned pin_id, unsigned long *configs,
+			   unsigned num_configs)
+{
+	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+
+	if (info->flags & IMX_USE_SCU)
+		return imx_pinconf_set_scu(pctldev, pin_id,
+					   configs, num_configs);
+	else
+		return imx_pinconf_set_mmio(pctldev, pin_id,
+					    configs, num_configs);
+}
+
 static void imx_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 				   struct seq_file *s, unsigned pin_id)
 {
 	struct imx_pinctrl *ipctl = pinctrl_dev_get_drvdata(pctldev);
-	struct imx_pinctrl_soc_info *info = ipctl->info;
-	const struct imx_pin_reg *pin_reg = &info->pin_regs[pin_id];
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	const struct imx_pin_reg *pin_reg;
 	unsigned long config;
+	int ret;
 
-	if (!pin_reg || pin_reg->conf_reg == -1) {
-		seq_printf(s, "N/A");
-		return;
-	}
+	if (info->flags & IMX_USE_SCU) {
+		ret = imx_pinconf_get_scu(pctldev, pin_id, &config);
+		if (ret) {
+			dev_err(ipctl->dev, "failed to get %s pinconf\n",
+				pin_get_name(pctldev, pin_id));
+			seq_puts(s, "N/A");
+			return;
+		}
+	} else {
+		pin_reg = &ipctl->pin_regs[pin_id];
+		if (!pin_reg || pin_reg->conf_reg == -1) {
+			seq_puts(s, "N/A");
+			return;
+		}
 
-	config = readl(ipctl->base + pin_reg->conf_reg);
+		config = readl(ipctl->base + pin_reg->conf_reg);
+ 	}
+
 	seq_printf(s, "0x%lx", config);
 }
 
@@ -471,91 +500,144 @@ static const struct pinconf_ops imx_pinconf_ops = {
 };
 
 /*
- * Each pin represented in fsl,pins consists of 5 u32 PIN_FUNC_ID and
- * 1 u32 CONFIG, so 24 types in total for each pin.
+ * Each pin represented in fsl,pins consists of a number of u32 PIN_FUNC_ID
+ * and 1 u32 CONFIG, the total size is PIN_FUNC_ID + CONFIG for each pin.
+ * For generic_pinconf case, there's no extra u32 CONFIG.
+ *
+ * PIN_FUNC_ID format:
+ * Default:
+ *     <mux_reg conf_reg input_reg mux_mode input_val>
+ * SHARE_MUX_CONF_REG:
+ *     <mux_conf_reg input_reg mux_mode input_val>
+ * IMX_USE_SCU:
+ *	<pin_id mux_mode>
  */
 #define FSL_PIN_SIZE 24
-#define SHARE_FSL_PIN_SIZE 20
+#define FSL_PIN_SHARE_SIZE 20
+#define FSL_SCU_PIN_SIZE 12
+
+static void imx_pinctrl_parse_pin_mmio(struct imx_pinctrl *ipctl,
+				       unsigned int *pin_id, struct imx_pin *pin,
+				       const __be32 **list_p,
+				       struct device_node *np)
+{
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct imx_pin_mmio *pin_mmio = &pin->conf.mmio;
+	struct imx_pin_reg *pin_reg;
+	const __be32 *list = *list_p;
+	u32 mux_reg, conf_reg;
+	u32 config;
+
+	mux_reg = be32_to_cpu(*list++);
+
+	if (!(info->flags & ZERO_OFFSET_VALID) && !mux_reg)
+		mux_reg = -1;
+
+	if (info->flags & SHARE_MUX_CONF_REG) {
+		conf_reg = mux_reg;
+	} else {
+		conf_reg = be32_to_cpu(*list++);
+		if (!conf_reg)
+			conf_reg = -1;
+	}
+
+	*pin_id = (mux_reg != -1) ? mux_reg / 4 : conf_reg / 4;
+	pin_reg = &ipctl->pin_regs[*pin_id];
+	pin->pin = *pin_id;
+	pin_reg->mux_reg = mux_reg;
+	pin_reg->conf_reg = conf_reg;
+	pin_mmio->input_reg = be32_to_cpu(*list++);
+	pin_mmio->mux_mode = be32_to_cpu(*list++);
+	pin_mmio->input_val = be32_to_cpu(*list++);
+
+	if (info->generic_pinconf) {
+		/* generic pin config decoded */
+		pin_mmio->config = imx_pinconf_parse_generic_config(np, ipctl);
+	} else {
+		/* legacy pin config read from devicetree */
+		config = be32_to_cpu(*list++);
+
+		/* SION bit is in mux register */
+		if (config & IMX_PAD_SION)
+			pin_mmio->mux_mode |= IOMUXC_CONFIG_SION;
+		pin_mmio->config = config & ~IMX_PAD_SION;
+	}
+
+	*list_p = list;
+
+	dev_dbg(ipctl->dev, "%s: 0x%x 0x%08lx", info->pins[*pin_id].name,
+			     pin_mmio->mux_mode, pin_mmio->config);
+}
 
 static int imx_pinctrl_parse_groups(struct device_node *np,
 				    struct group_desc *grp,
-				    struct imx_pinctrl_soc_info *info,
+				    struct imx_pinctrl *ipctl,
 				    u32 index)
 {
+	const struct imx_pinctrl_soc_info *info = ipctl->info;
+	struct imx_pin *pin;
 	int size, pin_size;
 	const __be32 *list;
 	int i;
-	u32 config;
 
-	dev_dbg(info->dev, "group(%d): %s\n", index, np->name);
+	dev_dbg(ipctl->dev, "group(%d): %s\n", index, np->name);
 
-	if (info->flags & SHARE_MUX_CONF_REG)
-		pin_size = SHARE_FSL_PIN_SIZE;
+	if (info->flags & IMX_USE_SCU)
+		pin_size = FSL_SCU_PIN_SIZE;
+	else if (info->flags & SHARE_MUX_CONF_REG)
+		pin_size = FSL_PIN_SHARE_SIZE;
 	else
 		pin_size = FSL_PIN_SIZE;
+
+	if (info->generic_pinconf)
+		pin_size -= 4;
+
 	/* Initialise group */
 	grp->name = np->name;
 
 	/*
 	 * the binding format is fsl,pins = <PIN_FUNC_ID CONFIG ...>,
 	 * do sanity check and calculate pins number
+	 *
+	 * First try legacy 'fsl,pins' property, then fall back to the
+	 * generic 'pinmux'.
+	 *
+	 * Note: for generic 'pinmux' case, there's no CONFIG part in
+	 * the binding format.
 	 */
 	list = of_get_property(np, "fsl,pins", &size);
 	if (!list) {
-		dev_err(info->dev, "no fsl,pins property in node %s\n", np->full_name);
-		return -EINVAL;
+		list = of_get_property(np, "pinmux", &size);
+		if (!list) {
+			dev_err(ipctl->dev,
+				"no fsl,pins and pins property in node %s\n",
+				np->full_name);
+			return -EINVAL;
+		}
 	}
 
 	/* we do not check return since it's safe node passed down */
 	if (!size || size % pin_size) {
-		dev_err(info->dev, "Invalid fsl,pins property in node %s\n", np->full_name);
+		dev_err(ipctl->dev, "Invalid fsl,pins or pins property in node %pOF\n", np);
 		return -EINVAL;
 	}
 
 	grp->num_pins = size / pin_size;
-	grp->data = devm_kzalloc(info->dev, grp->num_pins *
+	grp->data = devm_kzalloc(ipctl->dev, grp->num_pins *
 				 sizeof(struct imx_pin), GFP_KERNEL);
-	grp->pins = devm_kzalloc(info->dev, grp->num_pins *
+	grp->pins = devm_kzalloc(ipctl->dev, grp->num_pins *
 				 sizeof(unsigned int), GFP_KERNEL);
 	if (!grp->pins || !grp->data)
 		return -ENOMEM;
 
 	for (i = 0; i < grp->num_pins; i++) {
-		u32 mux_reg = be32_to_cpu(*list++);
-		u32 conf_reg;
-		unsigned int pin_id;
-		struct imx_pin_reg *pin_reg;
-		struct imx_pin *pin = &((struct imx_pin *)(grp->data))[i];
-
-		if (!(info->flags & ZERO_OFFSET_VALID) && !mux_reg)
-			mux_reg = -1;
-
-		if (info->flags & SHARE_MUX_CONF_REG) {
-			conf_reg = mux_reg;
-		} else {
-			conf_reg = be32_to_cpu(*list++);
-			if (!conf_reg)
-				conf_reg = -1;
-		}
-
-		pin_id = (mux_reg != -1) ? mux_reg / 4 : conf_reg / 4;
-		pin_reg = &info->pin_regs[pin_id];
-		pin->pin = pin_id;
-		grp->pins[i] = pin_id;
-		pin_reg->mux_reg = mux_reg;
-		pin_reg->conf_reg = conf_reg;
-		pin->input_reg = be32_to_cpu(*list++);
-		pin->mux_mode = be32_to_cpu(*list++);
-		pin->input_val = be32_to_cpu(*list++);
-
-		/* SION bit is in mux register */
-		config = be32_to_cpu(*list++);
-		if (config & IMX_PAD_SION)
-			pin->mux_mode |= IOMUXC_CONFIG_SION;
-		pin->config = config & ~IMX_PAD_SION;
-
-		dev_dbg(info->dev, "%s: 0x%x 0x%08lx", info->pins[pin_id].name,
-				pin->mux_mode, pin->config);
+		pin = &((struct imx_pin *)(grp->data))[i];
+		if (info->flags & IMX_USE_SCU)
+			imx_pinctrl_parse_pin_scu(ipctl, &grp->pins[i],
+						  pin, &list);
+		else
+			imx_pinctrl_parse_pin_mmio(ipctl, &grp->pins[i],
+						   pin, &list, np);
 	}
 
 	return 0;
@@ -566,13 +648,12 @@ static int imx_pinctrl_parse_functions(struct device_node *np,
 				       u32 index)
 {
 	struct pinctrl_dev *pctl = ipctl->pctl;
-	struct imx_pinctrl_soc_info *info = ipctl->info;
 	struct device_node *child;
 	struct function_desc *func;
 	struct group_desc *grp;
 	u32 i = 0;
 
-	dev_dbg(info->dev, "parse function(%d): %s\n", index, np->name);
+	dev_dbg(pctl->dev, "parse function(%d): %s\n", index, np->name);
 
 	func = pinmux_generic_get_function(pctl, index);
 	if (!func)
@@ -582,27 +663,28 @@ static int imx_pinctrl_parse_functions(struct device_node *np,
 	func->name = np->name;
 	func->num_group_names = of_get_child_count(np);
 	if (func->num_group_names == 0) {
-		dev_err(info->dev, "no groups defined in %s\n", np->full_name);
+		dev_err(ipctl->dev, "no groups defined in %pOF\n", np);
 		return -EINVAL;
 	}
-	func->group_names = devm_kzalloc(info->dev,
-					 func->num_group_names *
+	func->group_names = devm_kcalloc(ipctl->dev, func->num_group_names,
 					 sizeof(char *), GFP_KERNEL);
+	if (!func->group_names)
+		return -ENOMEM;
 
 	for_each_child_of_node(np, child) {
 		func->group_names[i] = child->name;
 
-		grp = devm_kzalloc(info->dev, sizeof(struct group_desc),
+		grp = devm_kzalloc(ipctl->dev, sizeof(struct group_desc),
 				   GFP_KERNEL);
 		if (!grp)
 			return -ENOMEM;
 
-		mutex_lock(&info->mutex);
+		mutex_lock(&ipctl->mutex);
 		radix_tree_insert(&pctl->pin_group_tree,
-				  info->group_index++, grp);
-		mutex_unlock(&info->mutex);
+				  ipctl->group_index++, grp);
+		mutex_unlock(&ipctl->mutex);
 
-		imx_pinctrl_parse_groups(child, grp, info, i++);
+		imx_pinctrl_parse_groups(child, grp, ipctl, i++);
 	}
 
 	return 0;
@@ -637,7 +719,6 @@ static int imx_pinctrl_probe_dt(struct platform_device *pdev,
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *child;
 	struct pinctrl_dev *pctl = ipctl->pctl;
-	struct imx_pinctrl_soc_info *info = ipctl->info;
 	u32 nfuncs = 0;
 	u32 i = 0;
 	bool flat_funcs;
@@ -664,13 +745,13 @@ static int imx_pinctrl_probe_dt(struct platform_device *pdev,
 		if (!function)
 			return -ENOMEM;
 
-		mutex_lock(&info->mutex);
+		mutex_lock(&ipctl->mutex);
 		radix_tree_insert(&pctl->pin_function_tree, i, function);
-		mutex_unlock(&info->mutex);
+		mutex_unlock(&ipctl->mutex);
 	}
 	pctl->num_functions = nfuncs;
 
-	info->group_index = 0;
+	ipctl->group_index = 0;
 	if (flat_funcs) {
 		pctl->num_groups = of_get_child_count(np);
 	} else {
@@ -701,7 +782,7 @@ static void imx_free_resources(struct imx_pinctrl *ipctl)
 }
 
 int imx_pinctrl_probe(struct platform_device *pdev,
-		      struct imx_pinctrl_soc_info *info)
+		      const struct imx_pinctrl_soc_info *info)
 {
 	struct regmap_config config = { .name = "gpr" };
 	struct device_node *dev_np = pdev->dev.of_node;
@@ -716,7 +797,6 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 		dev_err(&pdev->dev, "wrong pinctrl info\n");
 		return -EINVAL;
 	}
-	info->dev = &pdev->dev;
 
 	if (info->gpr_compatible) {
 		gpr = syscon_regmap_lookup_by_compatible(info->gpr_compatible);
@@ -729,34 +809,36 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 	if (!ipctl)
 		return -ENOMEM;
 
-	info->pin_regs = devm_kmalloc(&pdev->dev, sizeof(*info->pin_regs) *
-				      info->npins, GFP_KERNEL);
-	if (!info->pin_regs)
-		return -ENOMEM;
+	if (!(info->flags & IMX_USE_SCU)) {
+		ipctl->pin_regs = devm_kmalloc(&pdev->dev, sizeof(*ipctl->pin_regs) *
+					      info->npins, GFP_KERNEL);
+		if (!ipctl->pin_regs)
+			return -ENOMEM;
 
-	for (i = 0; i < info->npins; i++) {
-		info->pin_regs[i].mux_reg = -1;
-		info->pin_regs[i].conf_reg = -1;
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	ipctl->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(ipctl->base))
-		return PTR_ERR(ipctl->base);
-
-	if (of_property_read_bool(dev_np, "fsl,input-sel")) {
-		np = of_parse_phandle(dev_np, "fsl,input-sel", 0);
-		if (!np) {
-			dev_err(&pdev->dev, "iomuxc fsl,input-sel property not found\n");
-			return -EINVAL;
+		for (i = 0; i < info->npins; i++) {
+			ipctl->pin_regs[i].mux_reg = -1;
+			ipctl->pin_regs[i].conf_reg = -1;
 		}
 
-		ipctl->input_sel_base = of_iomap(np, 0);
-		of_node_put(np);
-		if (!ipctl->input_sel_base) {
-			dev_err(&pdev->dev,
-				"iomuxc input select base address not found\n");
-			return -ENOMEM;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		ipctl->base = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(ipctl->base))
+			return PTR_ERR(ipctl->base);
+
+		if (of_property_read_bool(dev_np, "fsl,input-sel")) {
+			np = of_parse_phandle(dev_np, "fsl,input-sel", 0);
+			if (!np) {
+				dev_err(&pdev->dev, "iomuxc fsl,input-sel property not found\n");
+				return -EINVAL;
+			}
+
+			ipctl->input_sel_base = of_iomap(np, 0);
+			of_node_put(np);
+			if (!ipctl->input_sel_base) {
+				dev_err(&pdev->dev,
+					"iomuxc input select base address not found\n");
+				return -ENOMEM;
+			}
 		}
 	}
 
@@ -773,10 +855,17 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 	imx_pinctrl_desc->confops = &imx_pinconf_ops;
 	imx_pinctrl_desc->owner = THIS_MODULE;
 
-	mutex_init(&info->mutex);
+	/* for generic pinconf */
+	imx_pinctrl_desc->custom_params = info->custom_params;
+	imx_pinctrl_desc->num_custom_params = info->num_custom_params;
+
+	/* platform specific callback */
+	imx_pmx_ops.gpio_set_direction = info->gpio_set_direction;
+
+	mutex_init(&ipctl->mutex);
 
 	ipctl->info = info;
-	ipctl->dev = info->dev;
+	ipctl->dev = &pdev->dev;
 	platform_set_drvdata(pdev, ipctl);
 	ret = devm_pinctrl_register_and_init(&pdev->dev,
 					     imx_pinctrl_desc, ipctl,

@@ -48,6 +48,7 @@ struct genpd_power_state {
 struct genpd_lock_ops;
 
 struct generic_pm_domain {
+	struct device dev;
 	struct dev_pm_domain domain;	/* PM domain operations */
 	struct list_head gpd_list_node;	/* Node in the global PM domains list */
 	struct list_head master_links;	/* Links with PM domain as a master */
@@ -204,9 +205,13 @@ static inline void pm_genpd_syscore_poweron(struct device *dev) {}
 /* OF PM domain providers */
 struct of_device_id;
 
+typedef struct generic_pm_domain *(*genpd_xlate_t)(struct of_phandle_args *args,
+						   void *data);
+
 struct genpd_onecell_data {
 	struct generic_pm_domain **domains;
 	unsigned int num_domains;
+	genpd_xlate_t xlate;
 };
 
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
