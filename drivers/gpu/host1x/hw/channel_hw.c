@@ -89,6 +89,16 @@ static inline void synchronize_syncpt_base(struct host1x_job *job)
 			 HOST1X_UCLASS_LOAD_SYNCPT_BASE_VALUE_F(value));
 }
 
+static void host1x_channel_set_streamid(struct host1x_channel *channel)
+{
+#if HOST1X_HW >= 6
+	struct iommu_fwspec *spec = dev_iommu_fwspec_get(channel->dev->parent);
+	u32 sid = spec->ids[0] & 0xffff;
+
+	host1x_ch_writel(channel, sid, HOST1X_CHANNEL_SMMU_STREAMID);
+#endif
+}
+
 static int channel_submit(struct host1x_job *job)
 {
 	struct host1x_channel *ch = job->channel;
@@ -119,6 +129,8 @@ static int channel_submit(struct host1x_job *job)
 		err = -ENOMEM;
 		goto error;
 	}
+
+	host1x_channel_set_streamid(ch);
 
 	/* begin a CDMA submit */
 	err = host1x_cdma_begin(&ch->cdma, job);
