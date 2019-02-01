@@ -134,9 +134,6 @@ tconInfoFree(struct cifs_tcon *buf_to_free)
 	atomic_dec(&tconInfoAllocCount);
 	kfree(buf_to_free->nativeFileSystem);
 	kzfree(buf_to_free->password);
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	kfree(buf_to_free->dfs_path);
-#endif
 	kfree(buf_to_free);
 }
 
@@ -514,17 +511,9 @@ void
 cifs_autodisable_serverino(struct cifs_sb_info *cifs_sb)
 {
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) {
-		struct cifs_tcon *tcon = NULL;
-
-		if (cifs_sb->master_tlink)
-			tcon = cifs_sb_master_tcon(cifs_sb);
-
 		cifs_sb->mnt_cifs_flags &= ~CIFS_MOUNT_SERVER_INUM;
-		cifs_dbg(VFS, "Autodisabling the use of server inode numbers on %s.\n",
-			 tcon ? tcon->treeName : "new server");
-		cifs_dbg(VFS, "The server doesn't seem to support them properly or the files might be on different servers (DFS).\n");
-		cifs_dbg(VFS, "Hardlinks will not be recognized on this mount. Consider mounting with the \"noserverino\" option to silence this message.\n");
-
+		cifs_dbg(VFS, "Autodisabling the use of server inode numbers on %s. This server doesn't seem to support them properly. Hardlinks will not be recognized on this mount. Consider mounting with the \"noserverino\" option to silence this message.\n",
+			 cifs_sb_master_tcon(cifs_sb)->treeName);
 	}
 }
 
@@ -729,8 +718,6 @@ parse_dfs_referrals(struct get_dfs_referral_rsp *rsp, u32 rsp_size,
 			goto parse_DFS_referrals_exit;
 		}
 
-		node->ttl = le32_to_cpu(ref->TimeToLive);
-
 		ref++;
 	}
 
@@ -860,21 +847,4 @@ setup_aio_ctx_iter(struct cifs_aio_ctx *ctx, struct iov_iter *iter, int rw)
 	ctx->npages = npages;
 	iov_iter_bvec(&ctx->iter, ITER_BVEC | rw, ctx->bv, npages, ctx->len);
 	return 0;
-}
-
-void extract_unc_hostname(const char *unc, const char **h, size_t *len)
-{
-	const char *end;
-
-	/* skip initial slashes */
-	while (*unc && (*unc == '\\' || *unc == '/'))
-		unc++;
-
-	end = unc;
-
-	while (*end && !(*end == '\\' || *end == '/'))
-		end++;
-
-	*h = unc;
-	*len = end - unc;
 }

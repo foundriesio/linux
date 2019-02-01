@@ -665,13 +665,6 @@ struct TCP_Server_Info {
 	struct delayed_work reconnect; /* reconnect workqueue job */
 	struct mutex reconnect_mutex; /* prevent simultaneous reconnects */
 	unsigned long echo_interval;
-
-	/*
-	 * Number of targets available for reconnect. The more targets
-	 * the more tasks have to wait to let the demultiplex thread
-	 * reconnect.
-	 */
-	int nr_targets;
 };
 
 static inline unsigned int
@@ -967,11 +960,6 @@ struct cifs_tcon {
 #endif
 	struct list_head pending_opens;	/* list of incomplete opens */
 	/* BB add field for back pointer to sb struct(s)? */
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	char *dfs_path;
-	int remap:2;
-	struct list_head ulist; /* cache update list */
-#endif
 };
 
 /*
@@ -993,12 +981,6 @@ struct tcon_link {
 };
 
 extern struct tcon_link *cifs_sb_tlink(struct cifs_sb_info *cifs_sb);
-
-static inline struct tcon_link *
-cifs_sb_master_tlink(struct cifs_sb_info *cifs_sb)
-{
-	return cifs_sb->master_tlink;
-}
 
 static inline struct cifs_tcon *
 tlink_tcon(struct tcon_link *tlink)
@@ -1454,7 +1436,6 @@ struct dfs_info3_param {
 	int ref_flag;
 	char *path_name;
 	char *node_name;
-	int ttl;
 };
 
 /*
@@ -1491,6 +1472,7 @@ static inline void free_dfs_info_param(struct dfs_info3_param *param)
 	if (param) {
 		kfree(param->path_name);
 		kfree(param->node_name);
+		kfree(param);
 	}
 }
 
