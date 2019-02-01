@@ -192,7 +192,7 @@ static int is_mbox_timeout(struct timeval *ts_old, unsigned long *remain_time)
 		}
 		else
 		{
-			int diff_usec;
+			unsigned int diff_usec;
 			if(ts_cur.tv_usec >= ts_old->tv_usec)
 			{
 				diff_usec = (ts_cur.tv_usec - ts_old->tv_usec);
@@ -215,7 +215,7 @@ static int is_mbox_timeout(struct timeval *ts_old, unsigned long *remain_time)
 	}
 	else if(ts_old->tv_sec == ts_cur.tv_sec)
 	{
-		int diff_usec = (ts_old->tv_usec - ts_cur.tv_usec);
+		unsigned int diff_usec = (ts_cur.tv_usec - ts_old->tv_usec);
 		if(diff_usec >= MBOX_TIMEOUT)
 		{
 			timeout =1;
