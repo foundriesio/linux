@@ -289,7 +289,8 @@ static void divvy_up_power(u32 *req_power, u32 *max_power, int num_actors,
 			   u32 total_req_power, u32 power_range,
 			   u32 *granted_power, u32 *extra_actor_power)
 {
-	u32 extra_power, capped_extra_power;
+	u32 extra_power = 0, capped_extra_power = 0;
+	bool has_requested_power = !!total_req_power;
 	int i;
 
 	/*
@@ -298,8 +299,6 @@ static void divvy_up_power(u32 *req_power, u32 *max_power, int num_actors,
 	if (!total_req_power)
 		total_req_power = 1;
 
-	capped_extra_power = 0;
-	extra_power = 0;
 	for (i = 0; i < num_actors; i++) {
 		u64 req_range = (u64)req_power[i] * power_range;
 
@@ -314,6 +313,13 @@ static void divvy_up_power(u32 *req_power, u32 *max_power, int num_actors,
 		extra_actor_power[i] = max_power[i] - granted_power[i];
 		capped_extra_power += extra_actor_power[i];
 	}
+
+	/*
+	 * If nobody has requested any power, and therefore nobody was granted
+	 * any power, split the power_range between all the actors.
+	 */
+	if (!has_requested_power)
+		extra_power = power_range;
 
 	if (!extra_power)
 		return;
