@@ -15,6 +15,17 @@ config RPMSG_CHAR
 	  in /dev. They make it possible for user-space programs to send and
 	  receive rpmsg packets.
 
+config RPMSG_ARM
+	tristate "ARM RPMSG driver"
+	select     RPMSG
+	depends on HAS_IOMEM
+	depends on MAILBOX
+	help
+	  Say y here to enable support for rpmsg lient driver which is built
+	  around mailbox client using Arm MHUv2.1 as physical medium.This
+	  driver enables communication which remote processor using MHU.
+
+
 config RPMSG_QCOM_GLINK_NATIVE
 	tristate
 	select RPMSG
