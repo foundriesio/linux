@@ -6,6 +6,16 @@ menu "Rpmsg drivers"
 config RPMSG
 	tristate
 
+config RPMSG_ARM
+	tristate "ARM RPMSG driver"
+	select     RPMSG
+	depends on HAS_IOMEM
+	depends on MAILBOX
+	help
+	  Say y here to enable support for rpmsg lient driver which is built
+	  around mailbox client using Arm MHUv2.1 as physical medium.This
+	  driver enables communication which remote processor using MHU.
+
 config RPMSG_CHAR
 	tristate "RPMSG device interface"
 	depends on RPMSG
