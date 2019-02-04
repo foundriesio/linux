@@ -56,6 +56,10 @@
 #include "rfc1002pdu.h"
 #include "fscache.h"
 #include "smb2proto.h"
+#include "dns_resolve.h"
+#ifdef CONFIG_CIFS_DFS_UPCALL
+#include "dfs_cache.h"
+#endif
 
 #define CIFS_PORT 445
 #define RFC1001_PORT 139
@@ -3068,25 +3072,6 @@ out:
 	return rc;
 }
 
-int
-get_dfs_path(const unsigned int xid, struct cifs_ses *ses, const char *old_path,
-	     const struct nls_table *nls_codepage, unsigned int *num_referrals,
-	     struct dfs_info3_param **referrals, int remap)
-{
-	int rc = 0;
-
-	if (!ses->server->ops->get_dfs_refer)
-		return -ENOSYS;
-
-	*num_referrals = 0;
-	*referrals = NULL;
-
-	rc = ses->server->ops->get_dfs_refer(xid, ses, old_path,
-					     referrals, num_referrals,
-					     nls_codepage, remap);
-	return rc;
-}
-
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 static struct lock_class_key cifs_key[2];
 static struct lock_class_key cifs_slock_key[2];
@@ -3731,8 +3716,9 @@ build_unc_path_to_root(const struct smb_vol *vol,
 	return full_path;
 }
 
-/*
- * Perform a dfs referral query for a share and (optionally) prefix
+/**
+ * expand_dfs_referral - Perform a dfs referral query and update the cifs_sb
+ *
  *
  * If a referral is found, cifs_sb->mountdata will be (re-)allocated
  * to a string containing updated options for the submount.  Otherwise it
@@ -3747,8 +3733,7 @@ expand_dfs_referral(const unsigned int xid, struct cifs_ses *ses,
 		    int check_prefix)
 {
 	int rc;
-	unsigned int num_referrals = 0;
-	struct dfs_info3_param *referrals = NULL;
+	struct dfs_info3_param referral = {0};
 	char *full_path = NULL, *ref_path = NULL, *mdata = NULL;
 
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NO_DFS)
@@ -3761,17 +3746,15 @@ expand_dfs_referral(const unsigned int xid, struct cifs_ses *ses,
 	/* For DFS paths, skip the first '\' of the UNC */
 	ref_path = check_prefix ? full_path + 1 : volume_info->UNC + 1;
 
-	rc = get_dfs_path(xid, ses, ref_path, cifs_sb->local_nls,
-			  &num_referrals, &referrals, cifs_remap(cifs_sb));
-
-	if (!rc && num_referrals > 0) {
+	rc = dfs_cache_find(xid, ses, cifs_sb->local_nls, cifs_remap(cifs_sb),
+			    ref_path, &referral, NULL);
+	if (!rc) {
 		char *fake_devname = NULL;
 
 		mdata = cifs_compose_mount_options(cifs_sb->mountdata,
-						   full_path + 1, referrals,
+						   full_path + 1, &referral,
 						   &fake_devname);
-
-		free_dfs_info_array(referrals, num_referrals);
+		free_dfs_info_param(&referral);
 
 		if (IS_ERR(mdata)) {
 			rc = PTR_ERR(mdata);
