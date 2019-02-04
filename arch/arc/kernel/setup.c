@@ -247,7 +247,7 @@ static char *arc_cpu_mumbojumbo(int cpu_id, char *buf, int len)
 {
 	struct cpuinfo_arc *cpu = &cpuinfo_arc700[cpu_id];
 	struct bcr_identity *core = &cpu->core;
-	int i, n = 0, ua = 0;
+	int n = 0;
 
 	FIX_PTR(cpu);
 
@@ -267,16 +267,24 @@ static char *arc_cpu_mumbojumbo(int cpu_id, char *buf, int len)
 		       IS_AVAIL2(cpu->extn.rtc, "RTC [UP 64-bit] ", CONFIG_ARC_TIMERS_64BIT),
 		       IS_AVAIL2(cpu->extn.gfrc, "GFRC [SMP 64-bit] ", CONFIG_ARC_TIMERS_64BIT));
 
-#ifdef __ARC_UNALIGNED__
-	ua = 1;
-#endif
-	n += i = scnprintf(buf + n, len - n, "%s%s%s%s%s%s",
-			   IS_AVAIL2(cpu->isa.atomic, "atomic ", CONFIG_ARC_HAS_LLSC),
-			   IS_AVAIL2(cpu->isa.ldd, "ll64 ", CONFIG_ARC_HAS_LL64),
-			   IS_AVAIL1(cpu->isa.unalign, "unalign "), IS_USED_RUN(ua));
+	n += scnprintf(buf + n, len - n, "%s%s%s%s%s%s",
+		       IS_AVAIL2(cpu->isa.atomic, "atomic ", CONFIG_ARC_HAS_LLSC),
+		       IS_AVAIL2(cpu->isa.ldd, "ll64 ", CONFIG_ARC_HAS_LL64),
+		       IS_AVAIL2(cpu->isa.unalign, "unalign ", CONFIG_ARC_USE_UNALIGNED_MEM_ACCESS));
 
-	if (i)
-		n += scnprintf(buf + n, len - n, "\n\t\t: ");
+#if defined(__ARC_UNALIGNED__) && !defined(CONFIG_ARC_USE_UNALIGNED_MEM_ACCESS)
+		/*
+		 * gcc 7.3.1 (GNU 2018.03) generated unaligned accesses by
+		 * default but -mno-unaligned-access to disable it didn't work
+		 * until gcc 8.2.1 (GNU 2019.03).
+		 * So landing here implies the interim period, when despite
+		 * Kconfig being off, gcc anyways generating unaligned accesses
+		 * which we print to tell user exactly what's going on
+		 */
+	BUILD_BUG_ON_MSG(1, "gcc doesn't support -mno-unaligned-access");
+#endif
+
+	n += scnprintf(buf + n, len - n, "\n\t\t: ");
 
 	if (cpu->extn_mpy.ver) {
 		if (cpu->extn_mpy.ver <= 0x2) {	/* ARCompact */
