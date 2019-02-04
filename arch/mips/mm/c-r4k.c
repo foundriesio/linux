@@ -540,6 +540,9 @@ static inline int has_valid_asid(const struct mm_struct *mm, unsigned int type)
 	unsigned int i;
 	const cpumask_t *mask = cpu_present_mask;
 
+	if (cpu_has_mmid)
+		return cpu_context(0, mm) != 0;
+
 	/* cpu_sibling_map[] undeclared when !CONFIG_SMP */
 #ifdef CONFIG_SMP
 	/*
@@ -697,10 +700,7 @@ static inline void local_r4k_flush_cache_page(void *args)
 	}
 	if (exec) {
 		if (vaddr && cpu_has_vtag_icache && mm == current->active_mm) {
-			int cpu = smp_processor_id();
-
-			if (cpu_context(cpu, mm) != 0)
-				drop_mmu_context(mm, cpu);
+			drop_mmu_context(mm);
 		} else
 			vaddr ? r4k_blast_icache_page(addr) :
 				r4k_blast_icache_user_page(addr);
