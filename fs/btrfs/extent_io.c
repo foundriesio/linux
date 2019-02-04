@@ -4103,8 +4103,7 @@ int extent_readpages(struct address_space *mapping, struct list_head *pages,
 
 	while (!list_empty(pages)) {
 		for (nr = 0; nr < ARRAY_SIZE(pagepool) && !list_empty(pages);) {
-			struct page *page = list_entry(pages->prev,
-						       struct page, lru);
+			struct page *page = lru_to_page(pages);
 
 			prefetchw(&page->flags);
 			list_del(&page->lru);
@@ -4260,8 +4259,7 @@ static struct extent_map *get_extent_skip_holes(struct inode *inode,
 		if (len == 0)
 			break;
 		len = ALIGN(len, sectorsize);
-		em = btrfs_get_extent_fiemap(BTRFS_I(inode), NULL, 0, offset,
-				len, 0);
+		em = btrfs_get_extent_fiemap(BTRFS_I(inode), offset, len);
 		if (IS_ERR_OR_NULL(em))
 			return em;
 
