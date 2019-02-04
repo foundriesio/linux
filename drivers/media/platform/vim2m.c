@@ -41,6 +41,11 @@ static unsigned debug;
 module_param(debug, uint, 0644);
 MODULE_PARM_DESC(debug, "activates debug info");
 
+/* Default transaction time in msec */
+static unsigned int default_transtime = 40; /* Max 25 fps */
+module_param(default_transtime, uint, 0644);
+MODULE_PARM_DESC(default_transtime, "default transaction time in ms");
+
 #define MIN_W 32
 #define MIN_H 32
 #define MAX_W 640
@@ -57,11 +62,6 @@ MODULE_PARM_DESC(debug, "activates debug info");
 #define MEM2MEM_DEF_NUM_BUFS	VIDEO_MAX_FRAME
 /* In bytes, per queue */
 #define MEM2MEM_VID_MEM_LIMIT	(16 * 1024 * 1024)
-
-/* Default transaction time in msec */
-#define MEM2MEM_DEF_TRANSTIME	40
-#define MEM2MEM_COLOR_STEP	(0xff >> 4)
-#define MEM2MEM_NUM_TILES	8
 
 /* Flags that indicate processing mode */
 #define MEM2MEM_HFLIP	(1 << 0)
@@ -82,22 +82,24 @@ static struct platform_device vim2m_pdev = {
 struct vim2m_fmt {
 	u32	fourcc;
 	int	depth;
-	/* Types the format can be used for */
-	u32	types;
 };
 
 static struct vim2m_fmt formats[] = {
 	{
-		.fourcc	= V4L2_PIX_FMT_RGB565X, /* rrrrrggg gggbbbbb */
+		.fourcc	= V4L2_PIX_FMT_RGB565,  /* rrrrrggg gggbbbbb */
 		.depth	= 16,
-		/* Both capture and output format */
-		.types	= MEM2MEM_CAPTURE | MEM2MEM_OUTPUT,
-	},
-	{
+	}, {
+		.fourcc	= V4L2_PIX_FMT_RGB565X, /* gggbbbbb rrrrrggg */
+		.depth	= 16,
+	}, {
+		.fourcc	= V4L2_PIX_FMT_RGB24,
+		.depth	= 24,
+	}, {
+		.fourcc	= V4L2_PIX_FMT_BGR24,
+		.depth	= 24,
+	}, {
 		.fourcc	= V4L2_PIX_FMT_YUYV,
 		.depth	= 16,
-		/* Output-only format */
-		.types	= MEM2MEM_OUTPUT,
 	},
 };
 
@@ -146,9 +148,6 @@ struct vim2m_dev {
 
 	atomic_t		num_inst;
 	struct mutex		dev_mutex;
-	spinlock_t		irqlock;
-
-	struct delayed_work	work_run;
 
 	struct v4l2_m2m_dev	*m2m_dev;
 };
@@ -166,6 +165,10 @@ struct vim2m_ctx {
 	u32			translen;
 	/* Transaction time (i.e. simulated processing time) in milliseconds */
 	u32			transtime;
+
+	struct mutex		vb_mutex;
+	struct delayed_work	work_run;
+	spinlock_t		irqlock;
 
 	/* Abort requested by m2m */
 	int			aborting;
@@ -201,23 +204,222 @@ static struct vim2m_q_data *get_q_data(struct vim2m_ctx *ctx,
 	return NULL;
 }
 
+#define CLIP(__color) \
+	(u8)(((__color) > 0xff) ? 0xff : (((__color) < 0) ? 0 : (__color)))
+
+static void copy_two_pixels(struct vim2m_fmt *in, struct vim2m_fmt *out,
+			    u8 **src, u8 **dst, bool reverse)
+{
+	u8 _r[2], _g[2], _b[2], *r, *g, *b;
+	int i, step;
+
+	// If format is the same just copy the data, respecting the width
+	if (in->fourcc == out->fourcc) {
+		int depth = out->depth >> 3;
+
+		if (reverse) {
+			if (in->fourcc == V4L2_PIX_FMT_YUYV) {
+				int u, v, y, y1;
+
+				*src -= 2;
+
+				y1 = (*src)[0]; /* copy as second point */
+				u  = (*src)[1];
+				y  = (*src)[2]; /* copy as first point */
+				v  = (*src)[3];
+
+				*src -= 2;
+
+				*(*dst)++ = y;
+				*(*dst)++ = u;
+				*(*dst)++ = y1;
+				*(*dst)++ = v;
+				return;
+			}
+
+			memcpy(*dst, *src, depth);
+			memcpy(*dst + depth, *src - depth, depth);
+			*src -= depth << 1;
+		} else {
+			memcpy(*dst, *src, depth << 1);
+			*src += depth << 1;
+		}
+		*dst += depth << 1;
+		return;
+	}
+
+	/* Step 1: read two consecutive pixels from src pointer */
+
+	r = _r;
+	g = _g;
+	b = _b;
+
+	if (reverse)
+		step = -1;
+	else
+		step = 1;
+
+	switch (in->fourcc) {
+	case V4L2_PIX_FMT_RGB565: /* rrrrrggg gggbbbbb */
+		for (i = 0; i < 2; i++) {
+			u16 pix = *(u16 *)*src;
+
+			*r++ = (u8)(((pix & 0xf800) >> 11) << 3) | 0x07;
+			*g++ = (u8)((((pix & 0x07e0) >> 5)) << 2) | 0x03;
+			*b++ = (u8)((pix & 0x1f) << 3) | 0x07;
+
+			*src += step << 1;
+		}
+		break;
+	case V4L2_PIX_FMT_RGB565X: /* gggbbbbb rrrrrggg */
+		for (i = 0; i < 2; i++) {
+			u16 pix = *(u16 *)*src;
+
+			*r++ = (u8)(((0x00f8 & pix) >> 3) << 3) | 0x07;
+			*g++ = (u8)(((pix & 0x7) << 2) |
+				    ((pix & 0xe000) >> 5)) | 0x03;
+			*b++ = (u8)(((pix & 0x1f00) >> 8) << 3) | 0x07;
+
+			*src += step << 1;
+		}
+		break;
+	case V4L2_PIX_FMT_RGB24:
+		for (i = 0; i < 2; i++) {
+			*r++ = (*src)[0];
+			*g++ = (*src)[1];
+			*b++ = (*src)[2];
+
+			*src += step * 3;
+		}
+		break;
+	case V4L2_PIX_FMT_BGR24:
+		for (i = 0; i < 2; i++) {
+			*b++ = (*src)[0];
+			*g++ = (*src)[1];
+			*r++ = (*src)[2];
+
+			*src += step * 3;
+		}
+		break;
+	default: /* V4L2_PIX_FMT_YUYV */
+	{
+		int u, v, y, y1, u1, v1, tmp;
+
+		if (reverse) {
+			*src -= 2;
+
+			y1 = (*src)[0]; /* copy as second point */
+			u  = (*src)[1];
+			y  = (*src)[2]; /* copy as first point */
+			v  = (*src)[3];
+
+			*src -= 2;
+		} else {
+			y  = *(*src)++;
+			u  = *(*src)++;
+			y1 = *(*src)++;
+			v  = *(*src)++;
+		}
+
+		u1 = (((u - 128) << 7) +  (u - 128)) >> 6;
+		tmp = (((u - 128) << 1) + (u - 128) +
+		       ((v - 128) << 2) + ((v - 128) << 1)) >> 3;
+		v1 = (((v - 128) << 1) +  (v - 128)) >> 1;
+
+		*r++ = CLIP(y + v1);
+		*g++ = CLIP(y - tmp);
+		*b++ = CLIP(y + u1);
+
+		*r = CLIP(y1 + v1);
+		*g = CLIP(y1 - tmp);
+		*b = CLIP(y1 + u1);
+		break;
+	}
+	}
+
+	/* Step 2: store two consecutive points, reversing them if needed */
+
+	r = _r;
+	g = _g;
+	b = _b;
+
+	switch (out->fourcc) {
+	case V4L2_PIX_FMT_RGB565: /* rrrrrggg gggbbbbb */
+		for (i = 0; i < 2; i++) {
+			u16 *pix = (u16 *)*dst;
+
+			*pix = ((*r << 8) & 0xf800) | ((*g << 3) & 0x07e0) |
+			       (*b >> 3);
+
+			*dst += 2;
+		}
+		return;
+	case V4L2_PIX_FMT_RGB565X: /* gggbbbbb rrrrrggg */
+		for (i = 0; i < 2; i++) {
+			u16 *pix = (u16 *)*dst;
+			u8 green = *g++ >> 2;
+
+			*pix = ((green << 8) & 0xe000) | (green & 0x07) |
+			       ((*b++ << 5) & 0x1f00) | ((*r++ & 0xf8));
+
+			*dst += 2;
+		}
+		return;
+	case V4L2_PIX_FMT_RGB24:
+		for (i = 0; i < 2; i++) {
+			*(*dst)++ = *r++;
+			*(*dst)++ = *g++;
+			*(*dst)++ = *b++;
+		}
+		return;
+	case V4L2_PIX_FMT_BGR24:
+		for (i = 0; i < 2; i++) {
+			*(*dst)++ = *b++;
+			*(*dst)++ = *g++;
+			*(*dst)++ = *r++;
+		}
+		return;
+	default: /* V4L2_PIX_FMT_YUYV */
+	{
+		u8 y, y1, u, v;
+
+		y = ((8453  * (*r) + 16594 * (*g) +  3223 * (*b)
+		     + 524288) >> 15);
+		u = ((-4878 * (*r) - 9578  * (*g) + 14456 * (*b)
+		     + 4210688) >> 15);
+		v = ((14456 * (*r++) - 12105 * (*g++) - 2351 * (*b++)
+		     + 4210688) >> 15);
+		y1 = ((8453 * (*r) + 16594 * (*g) +  3223 * (*b)
+		     + 524288) >> 15);
+
+		*(*dst)++ = y;
+		*(*dst)++ = u;
+
+		*(*dst)++ = y1;
+		*(*dst)++ = v;
+		return;
+	}
+	}
+}
 
 static int device_process(struct vim2m_ctx *ctx,
 			  struct vb2_v4l2_buffer *in_vb,
 			  struct vb2_v4l2_buffer *out_vb)
 {
 	struct vim2m_dev *dev = ctx->dev;
-	struct vim2m_q_data *q_data;
-	u8 *p_in, *p_out;
-	int x, y, t, w;
-	int tile_w, bytes_left;
-	int width, height, bytesperline;
+	struct vim2m_q_data *q_data_in, *q_data_out;
+	u8 *p_in, *p, *p_out;
+	int width, height, bytesperline, x, y, start, end, step;
+	struct vim2m_fmt *in, *out;
 
-	q_data = get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
+	q_data_in = get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
+	in = q_data_in->fmt;
+	width = q_data_in->width;
+	height = q_data_in->height;
+	bytesperline = (q_data_in->width * q_data_in->fmt->depth) >> 3;
 
-	width	= q_data->width;
-	height	= q_data->height;
-	bytesperline	= (q_data->width * q_data->fmt->depth) >> 3;
+	q_data_out = get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+	out = q_data_out->fmt;
 
 	p_in = vb2_plane_vaddr(&in_vb->vb2_buf, 0);
 	p_out = vb2_plane_vaddr(&out_vb->vb2_buf, 0);
@@ -227,110 +429,28 @@ static int device_process(struct vim2m_ctx *ctx,
 		return -EFAULT;
 	}
 
-	if (vb2_plane_size(&in_vb->vb2_buf, 0) >
-			vb2_plane_size(&out_vb->vb2_buf, 0)) {
-		v4l2_err(&dev->v4l2_dev, "Output buffer is too small\n");
-		return -EINVAL;
+	out_vb->sequence = get_q_data(ctx,
+				      V4L2_BUF_TYPE_VIDEO_CAPTURE)->sequence++;
+	in_vb->sequence = q_data_in->sequence++;
+	v4l2_m2m_buf_copy_data(in_vb, out_vb, true);
+
+	if (ctx->mode & MEM2MEM_VFLIP) {
+		start = height - 1;
+		end = -1;
+		step = -1;
+	} else {
+		start = 0;
+		end = height;
+		step = 1;
 	}
+	for (y = start; y != end; y += step) {
+		p = p_in + (y * bytesperline);
+		if (ctx->mode & MEM2MEM_HFLIP)
+			p += bytesperline - (q_data_in->fmt->depth >> 3);
 
-	tile_w = (width * (q_data[V4L2_M2M_DST].fmt->depth >> 3))
-		/ MEM2MEM_NUM_TILES;
-	bytes_left = bytesperline - tile_w * MEM2MEM_NUM_TILES;
-	w = 0;
-
-	out_vb->sequence =
-		get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE)->sequence++;
-	in_vb->sequence = q_data->sequence++;
-	out_vb->vb2_buf.timestamp = in_vb->vb2_buf.timestamp;
-
-	if (in_vb->flags & V4L2_BUF_FLAG_TIMECODE)
-		out_vb->timecode = in_vb->timecode;
-	out_vb->field = in_vb->field;
-	out_vb->flags = in_vb->flags &
-		(V4L2_BUF_FLAG_TIMECODE |
-		 V4L2_BUF_FLAG_KEYFRAME |
-		 V4L2_BUF_FLAG_PFRAME |
-		 V4L2_BUF_FLAG_BFRAME |
-		 V4L2_BUF_FLAG_TSTAMP_SRC_MASK);
-
-	switch (ctx->mode) {
-	case MEM2MEM_HFLIP | MEM2MEM_VFLIP:
-		p_out += bytesperline * height - bytes_left;
-		for (y = 0; y < height; ++y) {
-			for (t = 0; t < MEM2MEM_NUM_TILES; ++t) {
-				if (w & 0x1) {
-					for (x = 0; x < tile_w; ++x)
-						*--p_out = *p_in++ +
-							MEM2MEM_COLOR_STEP;
-				} else {
-					for (x = 0; x < tile_w; ++x)
-						*--p_out = *p_in++ -
-							MEM2MEM_COLOR_STEP;
-				}
-				++w;
-			}
-			p_in += bytes_left;
-			p_out -= bytes_left;
-		}
-		break;
-
-	case MEM2MEM_HFLIP:
-		for (y = 0; y < height; ++y) {
-			p_out += MEM2MEM_NUM_TILES * tile_w;
-			for (t = 0; t < MEM2MEM_NUM_TILES; ++t) {
-				if (w & 0x01) {
-					for (x = 0; x < tile_w; ++x)
-						*--p_out = *p_in++ +
-							MEM2MEM_COLOR_STEP;
-				} else {
-					for (x = 0; x < tile_w; ++x)
-						*--p_out = *p_in++ -
-							MEM2MEM_COLOR_STEP;
-				}
-				++w;
-			}
-			p_in += bytes_left;
-			p_out += bytesperline;
-		}
-		break;
-
-	case MEM2MEM_VFLIP:
-		p_out += bytesperline * (height - 1);
-		for (y = 0; y < height; ++y) {
-			for (t = 0; t < MEM2MEM_NUM_TILES; ++t) {
-				if (w & 0x1) {
-					for (x = 0; x < tile_w; ++x)
-						*p_out++ = *p_in++ +
-							MEM2MEM_COLOR_STEP;
-				} else {
-					for (x = 0; x < tile_w; ++x)
-						*p_out++ = *p_in++ -
-							MEM2MEM_COLOR_STEP;
-				}
-				++w;
-			}
-			p_in += bytes_left;
-			p_out += bytes_left - 2 * bytesperline;
-		}
-		break;
-
-	default:
-		for (y = 0; y < height; ++y) {
-			for (t = 0; t < MEM2MEM_NUM_TILES; ++t) {
-				if (w & 0x1) {
-					for (x = 0; x < tile_w; ++x)
-						*p_out++ = *p_in++ +
-							MEM2MEM_COLOR_STEP;
-				} else {
-					for (x = 0; x < tile_w; ++x)
-						*p_out++ = *p_in++ -
-							MEM2MEM_COLOR_STEP;
-				}
-				++w;
-			}
-			p_in += bytes_left;
-			p_out += bytes_left;
-		}
+		for (x = 0; x < width >> 1; x++)
+			copy_two_pixels(in, out, &p, &p_out,
+					ctx->mode & MEM2MEM_HFLIP);
 	}
 
 	return 0;
@@ -373,7 +493,6 @@ static void job_abort(void *priv)
 static void device_run(void *priv)
 {
 	struct vim2m_ctx *ctx = priv;
-	struct vim2m_dev *dev = ctx->dev;
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 
 	src_buf = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
@@ -390,18 +509,18 @@ static void device_run(void *priv)
 				   &ctx->hdl);
 
 	/* Run delayed work, which simulates a hardware irq  */
-	schedule_delayed_work(&dev->work_run, msecs_to_jiffies(ctx->transtime));
+	schedule_delayed_work(&ctx->work_run, msecs_to_jiffies(ctx->transtime));
 }
 
 static void device_work(struct work_struct *w)
 {
-	struct vim2m_dev *vim2m_dev =
-		container_of(w, struct vim2m_dev, work_run.work);
 	struct vim2m_ctx *curr_ctx;
+	struct vim2m_dev *vim2m_dev;
 	struct vb2_v4l2_buffer *src_vb, *dst_vb;
 	unsigned long flags;
 
-	curr_ctx = v4l2_m2m_get_curr_priv(vim2m_dev->m2m_dev);
+	curr_ctx = container_of(w, struct vim2m_ctx, work_run.work);
+	vim2m_dev = curr_ctx->dev;
 
 	if (NULL == curr_ctx) {
 		pr_err("Instance released before the end of transaction\n");
@@ -413,10 +532,10 @@ static void device_work(struct work_struct *w)
 
 	curr_ctx->num_processed++;
 
-	spin_lock_irqsave(&vim2m_dev->irqlock, flags);
+	spin_lock_irqsave(&curr_ctx->irqlock, flags);
 	v4l2_m2m_buf_done(src_vb, VB2_BUF_STATE_DONE);
 	v4l2_m2m_buf_done(dst_vb, VB2_BUF_STATE_DONE);
-	spin_unlock_irqrestore(&vim2m_dev->irqlock, flags);
+	spin_unlock_irqrestore(&curr_ctx->irqlock, flags);
 
 	if (curr_ctx->num_processed == curr_ctx->translen
 	    || curr_ctx->aborting) {
@@ -443,25 +562,11 @@ static int vidioc_querycap(struct file *file, void *priv,
 
 static int enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 {
-	int i, num;
 	struct vim2m_fmt *fmt;
 
-	num = 0;
-
-	for (i = 0; i < NUM_FORMATS; ++i) {
-		if (formats[i].types & type) {
-			/* index-th format of type type found ? */
-			if (num == f->index)
-				break;
-			/* Correct type but haven't reached our index yet,
-			 * just increment per-type index */
-			++num;
-		}
-	}
-
-	if (i < NUM_FORMATS) {
+	if (f->index < NUM_FORMATS) {
 		/* Format found */
-		fmt = &formats[i];
+		fmt = &formats[f->index];
 		f->pixelformat = fmt->fourcc;
 		return 0;
 	}
@@ -552,12 +657,6 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 		f->fmt.pix.pixelformat = formats[0].fourcc;
 		fmt = find_format(f);
 	}
-	if (!(fmt->types & MEM2MEM_CAPTURE)) {
-		v4l2_err(&ctx->dev->v4l2_dev,
-			 "Fourcc format (0x%08x) invalid.\n",
-			 f->fmt.pix.pixelformat);
-		return -EINVAL;
-	}
 	f->fmt.pix.colorspace = ctx->colorspace;
 	f->fmt.pix.xfer_func = ctx->xfer_func;
 	f->fmt.pix.ycbcr_enc = ctx->ycbcr_enc;
@@ -570,18 +669,11 @@ static int vidioc_try_fmt_vid_out(struct file *file, void *priv,
 				  struct v4l2_format *f)
 {
 	struct vim2m_fmt *fmt;
-	struct vim2m_ctx *ctx = file2ctx(file);
 
 	fmt = find_format(f);
 	if (!fmt) {
 		f->fmt.pix.pixelformat = formats[0].fourcc;
 		fmt = find_format(f);
-	}
-	if (!(fmt->types & MEM2MEM_OUTPUT)) {
-		v4l2_err(&ctx->dev->v4l2_dev,
-			 "Fourcc format (0x%08x) invalid.\n",
-			 f->fmt.pix.pixelformat);
-		return -EINVAL;
 	}
 	if (!f->fmt.pix.colorspace)
 		f->fmt.pix.colorspace = V4L2_COLORSPACE_REC709;
@@ -674,6 +766,8 @@ static int vim2m_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	case V4L2_CID_TRANS_TIME_MSEC:
 		ctx->transtime = ctrl->val;
+		if (ctx->transtime < 1)
+			ctx->transtime = 1;
 		break;
 
 	case V4L2_CID_TRANS_NUM_BUFS:
@@ -753,25 +847,29 @@ static int vim2m_queue_setup(struct vb2_queue *vq,
 	return 0;
 }
 
-static int vim2m_buf_prepare(struct vb2_buffer *vb)
+static int vim2m_buf_out_validate(struct vb2_buffer *vb)
 {
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+	struct vim2m_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
+
+	if (vbuf->field == V4L2_FIELD_ANY)
+		vbuf->field = V4L2_FIELD_NONE;
+	if (vbuf->field != V4L2_FIELD_NONE) {
+		dprintk(ctx->dev, "%s field isn't supported\n", __func__);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int vim2m_buf_prepare(struct vb2_buffer *vb)
+{
 	struct vim2m_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct vim2m_q_data *q_data;
 
 	dprintk(ctx->dev, "type: %d\n", vb->vb2_queue->type);
 
 	q_data = get_q_data(ctx, vb->vb2_queue->type);
-	if (V4L2_TYPE_IS_OUTPUT(vb->vb2_queue->type)) {
-		if (vbuf->field == V4L2_FIELD_ANY)
-			vbuf->field = V4L2_FIELD_NONE;
-		if (vbuf->field != V4L2_FIELD_NONE) {
-			dprintk(ctx->dev, "%s field isn't supported\n",
-					__func__);
-			return -EINVAL;
-		}
-	}
-
 	if (vb2_plane_size(vb, 0) < q_data->sizeimage) {
 		dprintk(ctx->dev, "%s data will not fit into plane (%lu < %lu)\n",
 				__func__, vb2_plane_size(vb, 0), (long)q_data->sizeimage);
@@ -803,13 +901,10 @@ static int vim2m_start_streaming(struct vb2_queue *q, unsigned count)
 static void vim2m_stop_streaming(struct vb2_queue *q)
 {
 	struct vim2m_ctx *ctx = vb2_get_drv_priv(q);
-	struct vim2m_dev *dev = ctx->dev;
 	struct vb2_v4l2_buffer *vbuf;
 	unsigned long flags;
 
-	if (v4l2_m2m_get_curr_priv(dev->m2m_dev) == ctx)
-		cancel_delayed_work_sync(&dev->work_run);
-
+	cancel_delayed_work_sync(&ctx->work_run);
 	for (;;) {
 		if (V4L2_TYPE_IS_OUTPUT(q->type))
 			vbuf = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
@@ -819,9 +914,9 @@ static void vim2m_stop_streaming(struct vb2_queue *q)
 			return;
 		v4l2_ctrl_request_complete(vbuf->vb2_buf.req_obj.req,
 					   &ctx->hdl);
-		spin_lock_irqsave(&ctx->dev->irqlock, flags);
+		spin_lock_irqsave(&ctx->irqlock, flags);
 		v4l2_m2m_buf_done(vbuf, VB2_BUF_STATE_ERROR);
-		spin_unlock_irqrestore(&ctx->dev->irqlock, flags);
+		spin_unlock_irqrestore(&ctx->irqlock, flags);
 	}
 }
 
@@ -834,6 +929,7 @@ static void vim2m_buf_request_complete(struct vb2_buffer *vb)
 
 static const struct vb2_ops vim2m_qops = {
 	.queue_setup	 = vim2m_queue_setup,
+	.buf_out_validate	 = vim2m_buf_out_validate,
 	.buf_prepare	 = vim2m_buf_prepare,
 	.buf_queue	 = vim2m_buf_queue,
 	.start_streaming = vim2m_start_streaming,
@@ -855,7 +951,7 @@ static int queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *ds
 	src_vq->ops = &vim2m_qops;
 	src_vq->mem_ops = &vb2_vmalloc_memops;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
-	src_vq->lock = &ctx->dev->dev_mutex;
+	src_vq->lock = &ctx->vb_mutex;
 	src_vq->supports_requests = true;
 
 	ret = vb2_queue_init(src_vq);
@@ -869,17 +965,16 @@ static int queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *ds
 	dst_vq->ops = &vim2m_qops;
 	dst_vq->mem_ops = &vb2_vmalloc_memops;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
-	dst_vq->lock = &ctx->dev->dev_mutex;
+	dst_vq->lock = &ctx->vb_mutex;
 
 	return vb2_queue_init(dst_vq);
 }
 
-static const struct v4l2_ctrl_config vim2m_ctrl_trans_time_msec = {
+static struct v4l2_ctrl_config vim2m_ctrl_trans_time_msec = {
 	.ops = &vim2m_ctrl_ops,
 	.id = V4L2_CID_TRANS_TIME_MSEC,
 	.name = "Transaction Time (msec)",
 	.type = V4L2_CTRL_TYPE_INTEGER,
-	.def = MEM2MEM_DEF_TRANSTIME,
 	.min = 1,
 	.max = 10001,
 	.step = 1,
@@ -921,6 +1016,8 @@ static int vim2m_open(struct file *file)
 	v4l2_ctrl_handler_init(hdl, 4);
 	v4l2_ctrl_new_std(hdl, &vim2m_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
 	v4l2_ctrl_new_std(hdl, &vim2m_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
+
+	vim2m_ctrl_trans_time_msec.def = default_transtime;
 	v4l2_ctrl_new_custom(hdl, &vim2m_ctrl_trans_time_msec, NULL);
 	v4l2_ctrl_new_custom(hdl, &vim2m_ctrl_trans_num_bufs, NULL);
 	if (hdl->error) {
@@ -943,6 +1040,10 @@ static int vim2m_open(struct file *file)
 	ctx->colorspace = V4L2_COLORSPACE_REC709;
 
 	ctx->fh.m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev, ctx, &queue_init);
+
+	mutex_init(&ctx->vb_mutex);
+	spin_lock_init(&ctx->irqlock);
+	INIT_DELAYED_WORK(&ctx->work_run, device_work);
 
 	if (IS_ERR(ctx->fh.m2m_ctx)) {
 		rc = PTR_ERR(ctx->fh.m2m_ctx);
@@ -1024,8 +1125,6 @@ static int vim2m_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
-	spin_lock_init(&dev->irqlock);
-
 	ret = v4l2_device_register(&pdev->dev, &dev->v4l2_dev);
 	if (ret)
 		return ret;
@@ -1037,7 +1136,6 @@ static int vim2m_probe(struct platform_device *pdev)
 	vfd = &dev->vfd;
 	vfd->lock = &dev->dev_mutex;
 	vfd->v4l2_dev = &dev->v4l2_dev;
-	INIT_DELAYED_WORK(&dev->work_run, device_work);
 
 	ret = video_register_device(vfd, VFL_TYPE_GRABBER, 0);
 	if (ret) {
