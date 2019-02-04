@@ -327,7 +327,7 @@ struct ib_ucontext *pvrdma_alloc_ucontext(struct ib_device *ibdev,
 	if (!vdev->ib_active)
 		return ERR_PTR(-EAGAIN);
 
-	context = kmalloc(sizeof(*context), GFP_KERNEL);
+	context = kzalloc(sizeof(*context), GFP_KERNEL);
 	if (!context)
 		return ERR_PTR(-ENOMEM);
 
@@ -340,7 +340,12 @@ struct ib_ucontext *pvrdma_alloc_ucontext(struct ib_device *ibdev,
 
 	/* get ctx_handle from host */
 	memset(cmd, 0, sizeof(*cmd));
-	cmd->pfn = context->uar.pfn;
+
+	if (vdev->dsr_version < PVRDMA_PPN64_VERSION)
+		cmd->pfn = context->uar.pfn;
+	else
+		cmd->pfn64 = context->uar.pfn;
+
 	cmd->hdr.cmd = PVRDMA_CMD_CREATE_UC;
 	ret = pvrdma_cmd_post(vdev, &req, &rsp, PVRDMA_CMD_CREATE_UC_RESP);
 	if (ret < 0) {
@@ -457,7 +462,7 @@ struct ib_pd *pvrdma_alloc_pd(struct ib_device *ibdev,
 	if (!atomic_add_unless(&dev->num_pds, 1, dev->dsr->caps.max_pd))
 		return ERR_PTR(-ENOMEM);
 
-	pd = kmalloc(sizeof(*pd), GFP_KERNEL);
+	pd = kzalloc(sizeof(*pd), GFP_KERNEL);
 	if (!pd) {
 		ptr = ERR_PTR(-ENOMEM);
 		goto err;

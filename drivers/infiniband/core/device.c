@@ -121,13 +121,12 @@ static int ib_device_check_mandatory(struct ib_device *device)
 	};
 	int i;
 
+	device->kverbs_provider = true;
 	for (i = 0; i < ARRAY_SIZE(mandatory_table); ++i) {
 		if (!*(void **) ((void *) &device->ops +
 				 mandatory_table[i].offset)) {
-			dev_warn(&device->dev,
-				 "Device is missing mandatory function %s\n",
-				 mandatory_table[i].name);
-			return -EINVAL;
+			device->kverbs_provider = false;
+			break;
 		}
 	}
 
@@ -190,18 +189,15 @@ static struct ib_device *__ib_device_get_by_name(const char *name)
 
 int ib_device_rename(struct ib_device *ibdev, const char *name)
 {
-	struct ib_device *device;
 	int ret = 0;
 
 	if (!strcmp(name, dev_name(&ibdev->dev)))
 		return ret;
 
 	mutex_lock(&device_mutex);
-	list_for_each_entry(device, &device_list, core_list) {
-		if (!strcmp(name, dev_name(&device->dev))) {
-			ret = -EEXIST;
-			goto out;
-		}
+	if (__ib_device_get_by_name(name)) {
+		ret = -EEXIST;
+		goto out;
 	}
 
 	ret = device_rename(&ibdev->dev, name);
@@ -278,7 +274,7 @@ static struct class ib_class = {
 };
 
 /**
- * ib_alloc_device - allocate an IB device struct
+ * _ib_alloc_device - allocate an IB device struct
  * @size:size of structure to allocate
  *
  * Low-level drivers should use ib_alloc_device() to allocate &struct
@@ -287,7 +283,7 @@ static struct class ib_class = {
  * ib_dealloc_device() must be used to free structures allocated with
  * ib_alloc_device().
  */
-struct ib_device *ib_alloc_device(size_t size)
+struct ib_device *_ib_alloc_device(size_t size)
 {
 	struct ib_device *device;
 
@@ -298,12 +294,10 @@ struct ib_device *ib_alloc_device(size_t size)
 	if (!device)
 		return NULL;
 
-	rdma_restrack_init(&device->res);
+	rdma_restrack_init(device);
 
 	device->dev.class = &ib_class;
 	device_initialize(&device->dev);
-
-	dev_set_drvdata(&device->dev, device);
 
 	INIT_LIST_HEAD(&device->event_handler_list);
 	spin_lock_init(&device->event_handler_lock);
@@ -314,7 +308,7 @@ struct ib_device *ib_alloc_device(size_t size)
 
 	return device;
 }
-EXPORT_SYMBOL(ib_alloc_device);
+EXPORT_SYMBOL(_ib_alloc_device);
 
 /**
  * ib_dealloc_device - free an IB device struct
@@ -327,7 +321,7 @@ void ib_dealloc_device(struct ib_device *device)
 	WARN_ON(!list_empty(&device->client_data_list));
 	WARN_ON(device->reg_state != IB_DEV_UNREGISTERED &&
 		device->reg_state != IB_DEV_UNINITIALIZED);
-	rdma_restrack_clean(&device->res);
+	rdma_restrack_clean(device);
 	put_device(&device->dev);
 }
 EXPORT_SYMBOL(ib_dealloc_device);
@@ -335,6 +329,9 @@ EXPORT_SYMBOL(ib_dealloc_device);
 static int add_client_context(struct ib_device *device, struct ib_client *client)
 {
 	struct ib_client_data *context;
+
+	if (!device->kverbs_provider && !client->no_kverbs_req)
+		return -EOPNOTSUPP;
 
 	context = kmalloc(sizeof(*context), GFP_KERNEL);
 	if (!context)
@@ -580,9 +577,7 @@ port_cleanup:
  * callback for each device that is added. @device must be allocated
  * with ib_alloc_device().
  */
-int ib_register_device(struct ib_device *device, const char *name,
-		       int (*port_callback)(struct ib_device *, u8,
-					    struct kobject *))
+int ib_register_device(struct ib_device *device, const char *name)
 {
 	int ret;
 	struct ib_client *client;
@@ -612,14 +607,9 @@ int ib_register_device(struct ib_device *device, const char *name,
 
 	device->index = __dev_new_index();
 
-	ret = ib_device_register_rdmacg(device);
-	if (ret) {
-		dev_warn(&device->dev,
-			 "Couldn't register device with rdma cgroup\n");
-		goto dev_cleanup;
-	}
+	ib_device_register_rdmacg(device);
 
-	ret = ib_device_register_sysfs(device, port_callback);
+	ret = ib_device_register_sysfs(device);
 	if (ret) {
 		dev_warn(&device->dev,
 			 "Couldn't register device with driver model\n");
@@ -641,7 +631,6 @@ int ib_register_device(struct ib_device *device, const char *name,
 
 cg_cleanup:
 	ib_device_unregister_rdmacg(device);
-dev_cleanup:
 	cleanup_device(device);
 out:
 	mutex_unlock(&device_mutex);
@@ -1281,6 +1270,7 @@ void ib_set_device_ops(struct ib_device *dev, const struct ib_device_ops *ops)
 	SET_DEVICE_OP(dev_ops, disassociate_ucontext);
 	SET_DEVICE_OP(dev_ops, drain_rq);
 	SET_DEVICE_OP(dev_ops, drain_sq);
+	SET_DEVICE_OP(dev_ops, fill_res_entry);
 	SET_DEVICE_OP(dev_ops, get_dev_fw_str);
 	SET_DEVICE_OP(dev_ops, get_dma_mr);
 	SET_DEVICE_OP(dev_ops, get_hw_stats);
@@ -1290,6 +1280,7 @@ void ib_set_device_ops(struct ib_device *dev, const struct ib_device_ops *ops)
 	SET_DEVICE_OP(dev_ops, get_vector_affinity);
 	SET_DEVICE_OP(dev_ops, get_vf_config);
 	SET_DEVICE_OP(dev_ops, get_vf_stats);
+	SET_DEVICE_OP(dev_ops, init_port);
 	SET_DEVICE_OP(dev_ops, map_mr_sg);
 	SET_DEVICE_OP(dev_ops, map_phys_fmr);
 	SET_DEVICE_OP(dev_ops, mmap);

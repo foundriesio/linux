@@ -12,16 +12,15 @@
 
 #include "cma_priv.h"
 
-static int fill_res_noop(struct sk_buff *msg,
-			 struct rdma_restrack_entry *entry)
+/**
+ * rdma_restrack_init() - initialize resource tracking
+ * @dev:  IB device
+ */
+void rdma_restrack_init(struct ib_device *dev)
 {
-	return 0;
-}
+	struct rdma_restrack_root *res = &dev->res;
 
-void rdma_restrack_init(struct rdma_restrack_root *res)
-{
 	init_rwsem(&res->rwsem);
-	res->fill_res_entry = fill_res_noop;
 }
 
 static const char *type2str(enum rdma_restrack_type type)
@@ -38,11 +37,15 @@ static const char *type2str(enum rdma_restrack_type type)
 	return names[type];
 };
 
-void rdma_restrack_clean(struct rdma_restrack_root *res)
+/**
+ * rdma_restrack_clean() - clean resource tracking
+ * @dev:  IB device
+ */
+void rdma_restrack_clean(struct ib_device *dev)
 {
+	struct rdma_restrack_root *res = &dev->res;
 	struct rdma_restrack_entry *e;
 	char buf[TASK_COMM_LEN];
-	struct ib_device *dev;
 	const char *owner;
 	int bkt;
 
@@ -72,10 +75,16 @@ void rdma_restrack_clean(struct rdma_restrack_root *res)
 	pr_err("restrack: %s", CUT_HERE);
 }
 
-int rdma_restrack_count(struct rdma_restrack_root *res,
-			enum rdma_restrack_type type,
+/**
+ * rdma_restrack_count() - the current usage of specific object
+ * @dev:  IB device
+ * @type: actual type of object to operate
+ * @ns:   PID namespace
+ */
+int rdma_restrack_count(struct ib_device *dev, enum rdma_restrack_type type,
 			struct pid_namespace *ns)
 {
+	struct rdma_restrack_root *res = &dev->res;
 	struct rdma_restrack_entry *e;
 	u32 cnt = 0;
 
@@ -161,17 +170,6 @@ static void rdma_restrack_add(struct rdma_restrack_entry *res)
 	if (!dev)
 		return;
 
-	if (res->type != RDMA_RESTRACK_CM_ID || rdma_is_kernel_res(res))
-		res->task = NULL;
-
-	if (!rdma_is_kernel_res(res)) {
-		if (!res->task)
-			rdma_restrack_set_task(res, NULL);
-		res->kern_name = NULL;
-	} else {
-		set_kern_name(res);
-	}
-
 	kref_init(&res->kref);
 	init_completion(&res->comp);
 	res->valid = true;
@@ -187,6 +185,8 @@ static void rdma_restrack_add(struct rdma_restrack_entry *res)
  */
 void rdma_restrack_kadd(struct rdma_restrack_entry *res)
 {
+	res->task = NULL;
+	set_kern_name(res);
 	res->user = false;
 	rdma_restrack_add(res);
 }
@@ -198,6 +198,13 @@ EXPORT_SYMBOL(rdma_restrack_kadd);
  */
 void rdma_restrack_uadd(struct rdma_restrack_entry *res)
 {
+	if (res->type != RDMA_RESTRACK_CM_ID)
+		res->task = NULL;
+
+	if (!res->task)
+		rdma_restrack_set_task(res, NULL);
+	res->kern_name = NULL;
+
 	res->user = true;
 	rdma_restrack_add(res);
 }

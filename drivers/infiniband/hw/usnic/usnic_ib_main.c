@@ -333,32 +333,25 @@ static void usnic_get_dev_fw_str(struct ib_device *device, char *str)
 static const struct ib_device_ops usnic_dev_ops = {
 	.alloc_pd = usnic_ib_alloc_pd,
 	.alloc_ucontext = usnic_ib_alloc_ucontext,
-	.create_ah = usnic_ib_create_ah,
 	.create_cq = usnic_ib_create_cq,
 	.create_qp = usnic_ib_create_qp,
 	.dealloc_pd = usnic_ib_dealloc_pd,
 	.dealloc_ucontext = usnic_ib_dealloc_ucontext,
 	.dereg_mr = usnic_ib_dereg_mr,
-	.destroy_ah = usnic_ib_destroy_ah,
 	.destroy_cq = usnic_ib_destroy_cq,
 	.destroy_qp = usnic_ib_destroy_qp,
 	.get_dev_fw_str = usnic_get_dev_fw_str,
-	.get_dma_mr = usnic_ib_get_dma_mr,
 	.get_link_layer = usnic_ib_port_link_layer,
 	.get_netdev = usnic_get_netdev,
 	.get_port_immutable = usnic_port_immutable,
 	.mmap = usnic_ib_mmap,
 	.modify_qp = usnic_ib_modify_qp,
-	.poll_cq = usnic_ib_poll_cq,
-	.post_recv = usnic_ib_post_recv,
-	.post_send = usnic_ib_post_send,
 	.query_device = usnic_ib_query_device,
 	.query_gid = usnic_ib_query_gid,
 	.query_pkey = usnic_ib_query_pkey,
 	.query_port = usnic_ib_query_port,
 	.query_qp = usnic_ib_query_qp,
 	.reg_user_mr = usnic_ib_reg_mr,
-	.req_notify_cq = usnic_ib_req_notify_cq,
 };
 
 /* Start of PF discovery section */
@@ -372,7 +365,7 @@ static void *usnic_ib_device_add(struct pci_dev *dev)
 	usnic_dbg("\n");
 	netdev = pci_get_drvdata(dev);
 
-	us_ibdev = (struct usnic_ib_dev *)ib_alloc_device(sizeof(*us_ibdev));
+	us_ibdev = ib_alloc_device(usnic_ib_dev, ib_dev);
 	if (!us_ibdev) {
 		usnic_err("Device %s context alloc failed\n",
 				netdev_name(pci_get_drvdata(dev)));
@@ -422,7 +415,7 @@ static void *usnic_ib_device_add(struct pci_dev *dev)
 	us_ibdev->ib_dev.driver_id = RDMA_DRIVER_USNIC;
 	rdma_set_device_sysfs_group(&us_ibdev->ib_dev, &usnic_attr_group);
 
-	if (ib_register_device(&us_ibdev->ib_dev, "usnic_%d", NULL))
+	if (ib_register_device(&us_ibdev->ib_dev, "usnic_%d"))
 		goto err_fwd_dealloc;
 
 	usnic_fwd_set_mtu(us_ibdev->ufdev, us_ibdev->netdev->mtu);

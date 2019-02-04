@@ -449,7 +449,7 @@ struct net_device *usnic_get_netdev(struct ib_device *device, u8 port_num)
 int usnic_ib_query_pkey(struct ib_device *ibdev, u8 port, u16 index,
 				u16 *pkey)
 {
-	if (index > 1)
+	if (index > 0)
 		return -EINVAL;
 
 	*pkey = 0xffff;
@@ -683,7 +683,7 @@ struct ib_ucontext *usnic_ib_alloc_ucontext(struct ib_device *ibdev,
 	struct usnic_ib_dev *us_ibdev = to_usdev(ibdev);
 	usnic_dbg("\n");
 
-	context = kmalloc(sizeof(*context), GFP_KERNEL);
+	context = kzalloc(sizeof(*context), GFP_KERNEL);
 	if (!context)
 		return ERR_PTR(-ENOMEM);
 
@@ -760,57 +760,4 @@ int usnic_ib_mmap(struct ib_ucontext *context,
 	return -EINVAL;
 }
 
-/* In ib callbacks section -  Start of stub funcs */
-struct ib_ah *usnic_ib_create_ah(struct ib_pd *pd,
-				 struct rdma_ah_attr *ah_attr,
-				 u32 flags,
-				 struct ib_udata *udata)
-
-{
-	usnic_dbg("\n");
-	return ERR_PTR(-EPERM);
-}
-
-int usnic_ib_destroy_ah(struct ib_ah *ah, u32 flags)
-{
-	usnic_dbg("\n");
-	return -EINVAL;
-}
-
-int usnic_ib_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
-		       const struct ib_send_wr **bad_wr)
-{
-	usnic_dbg("\n");
-	return -EINVAL;
-}
-
-int usnic_ib_post_recv(struct ib_qp *ibqp, const struct ib_recv_wr *wr,
-		       const struct ib_recv_wr **bad_wr)
-{
-	usnic_dbg("\n");
-	return -EINVAL;
-}
-
-int usnic_ib_poll_cq(struct ib_cq *ibcq, int num_entries,
-				struct ib_wc *wc)
-{
-	usnic_dbg("\n");
-	return -EINVAL;
-}
-
-int usnic_ib_req_notify_cq(struct ib_cq *cq,
-					enum ib_cq_notify_flags flags)
-{
-	usnic_dbg("\n");
-	return -EINVAL;
-}
-
-struct ib_mr *usnic_ib_get_dma_mr(struct ib_pd *pd, int acc)
-{
-	usnic_dbg("\n");
-	return ERR_PTR(-ENOMEM);
-}
-
-
-/* In ib callbacks section - End of stub funcs */
 /* End of ib callbacks section */

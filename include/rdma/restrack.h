@@ -49,6 +49,7 @@ enum rdma_restrack_type {
 };
 
 #define RDMA_RESTRACK_HASH_BITS	8
+struct ib_device;
 struct rdma_restrack_entry;
 
 /**
@@ -64,13 +65,6 @@ struct rdma_restrack_root {
 	 * @hash: global database for all resources per-device
 	 */
 	DECLARE_HASHTABLE(hash, RDMA_RESTRACK_HASH_BITS);
-	/**
-	 * @fill_res_entry: driver-specific fill function
-	 *
-	 * Allows rdma drivers to add their own restrack attributes.
-	 */
-	int (*fill_res_entry)(struct sk_buff *msg,
-			      struct rdma_restrack_entry *entry);
 };
 
 /**
@@ -122,25 +116,9 @@ struct rdma_restrack_entry {
 	bool			user;
 };
 
-/**
- * rdma_restrack_init() - initialize resource tracking
- * @res:  resource tracking root
- */
-void rdma_restrack_init(struct rdma_restrack_root *res);
-
-/**
- * rdma_restrack_clean() - clean resource tracking
- * @res:  resource tracking root
- */
-void rdma_restrack_clean(struct rdma_restrack_root *res);
-
-/**
- * rdma_restrack_count() - the current usage of specific object
- * @res:  resource entry
- * @type: actual type of object to operate
- * @ns:   PID namespace
- */
-int rdma_restrack_count(struct rdma_restrack_root *res,
+void rdma_restrack_init(struct ib_device *dev);
+void rdma_restrack_clean(struct ib_device *dev);
+int rdma_restrack_count(struct ib_device *dev,
 			enum rdma_restrack_type type,
 			struct pid_namespace *ns);
 

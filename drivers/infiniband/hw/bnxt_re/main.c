@@ -538,7 +538,8 @@ static struct bnxt_en_dev *bnxt_re_dev_probe(struct net_device *netdev)
 static ssize_t hw_rev_show(struct device *device, struct device_attribute *attr,
 			   char *buf)
 {
-	struct bnxt_re_dev *rdev = to_bnxt_re_dev(device, ibdev.dev);
+	struct bnxt_re_dev *rdev =
+		rdma_device_to_drv_device(device, struct bnxt_re_dev, ibdev);
 
 	return scnprintf(buf, PAGE_SIZE, "0x%x\n", rdev->en_dev->pdev->vendor);
 }
@@ -547,7 +548,8 @@ static DEVICE_ATTR_RO(hw_rev);
 static ssize_t hca_type_show(struct device *device,
 			     struct device_attribute *attr, char *buf)
 {
-	struct bnxt_re_dev *rdev = to_bnxt_re_dev(device, ibdev.dev);
+	struct bnxt_re_dev *rdev =
+		rdma_device_to_drv_device(device, struct bnxt_re_dev, ibdev);
 
 	return scnprintf(buf, PAGE_SIZE, "%s\n", rdev->ibdev.node_desc);
 }
@@ -662,7 +664,7 @@ static int bnxt_re_register_ib(struct bnxt_re_dev *rdev)
 	rdma_set_device_sysfs_group(ibdev, &bnxt_re_dev_attr_group);
 	ibdev->driver_id = RDMA_DRIVER_BNXT_RE;
 	ib_set_device_ops(ibdev, &bnxt_re_dev_ops);
-	return ib_register_device(ibdev, "bnxt_re%d", NULL);
+	return ib_register_device(ibdev, "bnxt_re%d");
 }
 
 static void bnxt_re_dev_remove(struct bnxt_re_dev *rdev)
@@ -686,7 +688,7 @@ static struct bnxt_re_dev *bnxt_re_dev_add(struct net_device *netdev,
 	struct bnxt_re_dev *rdev;
 
 	/* Allocate bnxt_re_dev instance here */
-	rdev = (struct bnxt_re_dev *)ib_alloc_device(sizeof(*rdev));
+	rdev = ib_alloc_device(bnxt_re_dev, ibdev);
 	if (!rdev) {
 		dev_err(NULL, "%s: bnxt_re_dev allocation failure!",
 			ROCE_DRV_MODULE_NAME);

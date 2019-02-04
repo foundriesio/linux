@@ -2411,7 +2411,7 @@ static ssize_t dev_id_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(dev_id);
 
-int ipoib_intercept_dev_id_attr(struct net_device *dev)
+static int ipoib_intercept_dev_id_attr(struct net_device *dev)
 {
 	device_remove_file(&dev->dev, &dev_attr_dev_id);
 	return device_create_file(&dev->dev, &dev_attr_dev_id);
@@ -2577,9 +2577,7 @@ static int __init ipoib_init_module(void)
 	 */
 	BUILD_BUG_ON(IPOIB_CM_COPYBREAK > IPOIB_CM_HEAD_SIZE);
 
-	ret = ipoib_register_debugfs();
-	if (ret)
-		return ret;
+	ipoib_register_debugfs();
 
 	/*
 	 * We create a global workqueue here that is used for all flush

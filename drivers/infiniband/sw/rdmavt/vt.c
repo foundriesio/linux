@@ -91,7 +91,7 @@ struct rvt_dev_info *rvt_alloc_device(size_t size, int nports)
 {
 	struct rvt_dev_info *rdi;
 
-	rdi = (struct rvt_dev_info *)ib_alloc_device(size);
+	rdi = container_of(_ib_alloc_device(size), struct rvt_dev_info, ibdev);
 	if (!rdi)
 		return rdi;
 
@@ -304,7 +304,7 @@ static struct ib_ucontext *rvt_alloc_ucontext(struct ib_device *ibdev,
 {
 	struct rvt_ucontext *context;
 
-	context = kmalloc(sizeof(*context), GFP_KERNEL);
+	context = kzalloc(sizeof(*context), GFP_KERNEL);
 	if (!context)
 		return ERR_PTR(-ENOMEM);
 	return &context->ibucontext;
@@ -446,7 +446,7 @@ static noinline int check_support(struct rvt_dev_info *rdi, int verb)
 		 * These functions are not part of verbs specifically but are
 		 * required for rdmavt to function.
 		 */
-		if ((!rdi->driver_f.port_callback) ||
+		if ((!rdi->ibdev.ops.init_port) ||
 		    (!rdi->driver_f.get_pci_dev))
 			return -EINVAL;
 		break;
@@ -644,8 +644,7 @@ int rvt_register_device(struct rvt_dev_info *rdi, u32 driver_id)
 
 	rdi->ibdev.driver_id = driver_id;
 	/* We are now good to announce we exist */
-	ret = ib_register_device(&rdi->ibdev, dev_name(&rdi->ibdev.dev),
-				 rdi->driver_f.port_callback);
+	ret = ib_register_device(&rdi->ibdev, dev_name(&rdi->ibdev.dev));
 	if (ret) {
 		rvt_pr_err(rdi, "Failed to register driver with ib core.\n");
 		goto bail_wss;

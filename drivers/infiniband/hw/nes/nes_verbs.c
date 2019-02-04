@@ -2134,7 +2134,7 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	u8 stag_key;
 	int first_page = 1;
 
-	region = ib_umem_get(pd->uobject->context, start, length, acc, 0);
+	region = ib_umem_get(udata, start, length, acc, 0);
 	if (IS_ERR(region)) {
 		return (struct ib_mr *)region;
 	}
@@ -2560,7 +2560,7 @@ static ssize_t hw_rev_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
 	struct nes_ib_device *nesibdev =
-			container_of(dev, struct nes_ib_device, ibdev.dev);
+		rdma_device_to_drv_device(dev, struct nes_ib_device, ibdev);
 	struct nes_vnic *nesvnic = nesibdev->nesvnic;
 
 	nes_debug(NES_DBG_INIT, "\n");
@@ -3669,7 +3669,7 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
 	struct nes_vnic *nesvnic = netdev_priv(netdev);
 	struct nes_device *nesdev = nesvnic->nesdev;
 
-	nesibdev = (struct nes_ib_device *)ib_alloc_device(sizeof(struct nes_ib_device));
+	nesibdev = ib_alloc_device(nes_ib_device, ibdev);
 	if (nesibdev == NULL) {
 		return NULL;
 	}
@@ -3801,7 +3801,7 @@ int nes_register_ofa_device(struct nes_ib_device *nesibdev)
 
 	rdma_set_device_sysfs_group(&nesvnic->nesibdev->ibdev, &nes_attr_group);
 	nesvnic->nesibdev->ibdev.driver_id = RDMA_DRIVER_NES;
-	ret = ib_register_device(&nesvnic->nesibdev->ibdev, "nes%d", NULL);
+	ret = ib_register_device(&nesvnic->nesibdev->ibdev, "nes%d");
 	if (ret) {
 		return ret;
 	}

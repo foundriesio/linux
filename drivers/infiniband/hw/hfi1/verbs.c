@@ -553,11 +553,7 @@ static noinline int build_verbs_ulp_payload(
 	int ret = 0;
 
 	while (length) {
-		len = ss->sge.length;
-		if (len > length)
-			len = length;
-		if (len > ss->sge.sge_length)
-			len = ss->sge.sge_length;
+		len = rvt_get_sge_length(&ss->sge, length);
 		WARN_ON_ONCE(len == 0);
 		ret = sdma_txadd_kvaddr(
 			sde->dd,
@@ -914,12 +910,8 @@ int hfi1_verbs_send_pio(struct rvt_qp *qp, struct hfi1_pkt_state *ps,
 		if (ss) {
 			while (len) {
 				void *addr = ss->sge.vaddr;
-				u32 slen = ss->sge.length;
+				u32 slen = rvt_get_sge_length(&ss->sge, len);
 
-				if (slen > len)
-					slen = len;
-				if (slen > ss->sge.sge_length)
-					slen = ss->sge.sge_length;
 				rvt_update_sge(ss, slen, false);
 				seg_pio_copy_mid(pbuf, addr, slen);
 				len -= slen;
@@ -1622,6 +1614,7 @@ static const struct ib_device_ops hfi1_dev_ops = {
 	.alloc_rdma_netdev = hfi1_vnic_alloc_rn,
 	.get_dev_fw_str = hfi1_get_dev_fw_str,
 	.get_hw_stats = get_hw_stats,
+	.init_port = hfi1_create_port_files,
 	.modify_device = modify_device,
 	/* keep process mad in the driver */
 	.process_mad = hfi1_process_mad,
@@ -1679,7 +1672,6 @@ int hfi1_register_ib_device(struct hfi1_devdata *dd)
 	/*
 	 * Fill in rvt info object.
 	 */
-	dd->verbs_dev.rdi.driver_f.port_callback = hfi1_create_port_files;
 	dd->verbs_dev.rdi.driver_f.get_pci_dev = get_pci_dev;
 	dd->verbs_dev.rdi.driver_f.check_ah = hfi1_check_ah;
 	dd->verbs_dev.rdi.driver_f.notify_new_ah = hfi1_notify_new_ah;
