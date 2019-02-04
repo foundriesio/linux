@@ -134,6 +134,9 @@ tconInfoFree(struct cifs_tcon *buf_to_free)
 	atomic_dec(&tconInfoAllocCount);
 	kfree(buf_to_free->nativeFileSystem);
 	kzfree(buf_to_free->password);
+#ifdef CONFIG_CIFS_DFS_UPCALL
+	kfree(buf_to_free->dfs_path);
+#endif
 	kfree(buf_to_free);
 }
 
