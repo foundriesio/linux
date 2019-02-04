@@ -915,3 +915,20 @@ cifs_free_hash(struct crypto_shash **shash, struct sdesc **sdesc)
 		crypto_free_shash(*shash);
 	*shash = NULL;
 }
+
+void extract_unc_hostname(const char *unc, const char **h, size_t *len)
+{
+	const char *end;
+
+	/* skip initial slashes */
+	while (*unc && (*unc == '\\' || *unc == '/'))
+		unc++;
+
+	end = unc;
+
+	while (*end && !(*end == '\\' || *end == '/'))
+		end++;
+
+	*h = unc;
+	*len = end - unc;
+}
