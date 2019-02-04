@@ -23,6 +23,7 @@ intc node bindings definition
 		Definition: must be "csky,apb-intc"
 				    "csky,dual-apb-intc"
 				    "csky,gx6605s-intc"
+				    "csky,dh7k-intc"
 	- #interrupt-cells
 		Usage: required
 		Value type: <u32>
@@ -36,6 +37,9 @@ intc node bindings definition
 	- csky,support-pulse-signal:
 		Usage: select
 		Description: to support pulse signal flag
+	- csky,support-vector-irq:
+		Usage: select
+		Description: to support vector irq mode
 
 Examples:
 ---------
