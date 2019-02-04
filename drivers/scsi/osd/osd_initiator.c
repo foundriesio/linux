@@ -1849,6 +1849,7 @@ int osd_req_decode_sense_full(struct osd_request *or,
 					32, 1, dump, sizeof(dump), true);
 			OSD_SENSE_PRINT2("response_integrity [%s]\n", dump);
 		}
+		/* fall through */
 		case osd_sense_attribute_identification:
 		{
 			struct osd_sense_attributes_data_descriptor
@@ -1879,7 +1880,7 @@ int osd_req_decode_sense_full(struct osd_request *or,
 					attr_page, attr_id);
 			}
 		}
-		/*These are not legal for OSD*/
+		/* fall through - These are not legal for OSD */
 		case scsi_sense_field_replaceable_unit:
 			OSD_SENSE_PRINT2("scsi_sense_field_replaceable_unit\n");
 			break;
