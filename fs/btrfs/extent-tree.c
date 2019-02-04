@@ -3013,8 +3013,7 @@ again:
 	}
 
 	if (run_all) {
-		if (!list_empty(&trans->new_bgs))
-			btrfs_create_pending_block_groups(trans);
+		btrfs_create_pending_block_groups(trans);
 
 		spin_lock(&delayed_refs->lock);
 		node = rb_first_cached(&delayed_refs->href_root);
@@ -4741,7 +4740,7 @@ static void shrink_delalloc(struct btrfs_fs_info *fs_info, u64 to_reclaim,
 	struct btrfs_space_info *space_info;
 	struct btrfs_trans_handle *trans;
 	u64 delalloc_bytes;
-	u64 max_reclaim;
+	u64 async_pages;
 	u64 items;
 	long time_left;
 	unsigned long nr_pages;
@@ -4766,25 +4765,36 @@ static void shrink_delalloc(struct btrfs_fs_info *fs_info, u64 to_reclaim,
 
 	loops = 0;
 	while (delalloc_bytes && loops < 3) {
-		max_reclaim = min(delalloc_bytes, to_reclaim);
-		nr_pages = max_reclaim >> PAGE_SHIFT;
-		btrfs_writeback_inodes_sb_nr(fs_info, nr_pages, items);
+		nr_pages = min(delalloc_bytes, to_reclaim) >> PAGE_SHIFT;
+
 		/*
-		 * We need to wait for the async pages to actually start before
-		 * we do anything.
+		 * Triggers inode writeback for up to nr_pages. This will invoke
+		 * ->writepages callback and trigger delalloc filling
+		 *  (btrfs_run_delalloc_range()).
 		 */
-		max_reclaim = atomic_read(&fs_info->async_delalloc_pages);
-		if (!max_reclaim)
+		btrfs_writeback_inodes_sb_nr(fs_info, nr_pages, items);
+
+		/*
+		 * We need to wait for the compressed pages to start before
+		 * we continue.
+		 */
+		async_pages = atomic_read(&fs_info->async_delalloc_pages);
+		if (!async_pages)
 			goto skip_async;
 
-		if (max_reclaim <= nr_pages)
-			max_reclaim = 0;
+		/*
+		 * Calculate how many compressed pages we want to be written
+		 * before we continue. I.e if there are more async pages than we
+		 * require wait_event will wait until nr_pages are written.
+		 */
+		if (async_pages <= nr_pages)
+			async_pages = 0;
 		else
-			max_reclaim -= nr_pages;
+			async_pages -= nr_pages;
 
 		wait_event(fs_info->async_submit_wait,
 			   atomic_read(&fs_info->async_delalloc_pages) <=
-			   (int)max_reclaim);
+			   (int)async_pages);
 skip_async:
 		spin_lock(&space_info->lock);
 		if (list_empty(&space_info->tickets) &&
@@ -8492,7 +8502,7 @@ btrfs_init_new_buffer(struct btrfs_trans_handle *trans, struct btrfs_root *root,
 	clean_tree_block(fs_info, buf);
 	clear_bit(EXTENT_BUFFER_STALE, &buf->bflags);
 
-	btrfs_set_lock_blocking(buf);
+	btrfs_set_lock_blocking_write(buf);
 	set_extent_buffer_uptodate(buf);
 
 	memzero_extent_buffer(buf, 0, sizeof(struct btrfs_header));
@@ -8917,7 +8927,7 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 		reada = 1;
 	}
 	btrfs_tree_lock(next);
-	btrfs_set_lock_blocking(next);
+	btrfs_set_lock_blocking_write(next);
 
 	ret = btrfs_lookup_extent_info(trans, fs_info, bytenr, level - 1, 1,
 				       &wc->refs[level - 1],
@@ -8977,7 +8987,7 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 			return -EIO;
 		}
 		btrfs_tree_lock(next);
-		btrfs_set_lock_blocking(next);
+		btrfs_set_lock_blocking_write(next);
 	}
 
 	level--;
@@ -9089,7 +9099,7 @@ static noinline int walk_up_proc(struct btrfs_trans_handle *trans,
 		if (!path->locks[level]) {
 			BUG_ON(level == 0);
 			btrfs_tree_lock(eb);
-			btrfs_set_lock_blocking(eb);
+			btrfs_set_lock_blocking_write(eb);
 			path->locks[level] = BTRFS_WRITE_LOCK_BLOCKING;
 
 			ret = btrfs_lookup_extent_info(trans, fs_info,
@@ -9131,7 +9141,7 @@ static noinline int walk_up_proc(struct btrfs_trans_handle *trans,
 		if (!path->locks[level] &&
 		    btrfs_header_generation(eb) == trans->transid) {
 			btrfs_tree_lock(eb);
-			btrfs_set_lock_blocking(eb);
+			btrfs_set_lock_blocking_write(eb);
 			path->locks[level] = BTRFS_WRITE_LOCK_BLOCKING;
 		}
 		clean_tree_block(fs_info, eb);
@@ -9298,7 +9308,7 @@ int btrfs_drop_snapshot(struct btrfs_root *root,
 	if (btrfs_disk_key_objectid(&root_item->drop_progress) == 0) {
 		level = btrfs_header_level(root->node);
 		path->nodes[level] = btrfs_lock_root_node(root);
-		btrfs_set_lock_blocking(path->nodes[level]);
+		btrfs_set_lock_blocking_write(path->nodes[level]);
 		path->slots[level] = 0;
 		path->locks[level] = BTRFS_WRITE_LOCK_BLOCKING;
 		memset(&wc->update_progress, 0,
@@ -9328,7 +9338,7 @@ int btrfs_drop_snapshot(struct btrfs_root *root,
 		level = btrfs_header_level(root->node);
 		while (1) {
 			btrfs_tree_lock(path->nodes[level]);
-			btrfs_set_lock_blocking(path->nodes[level]);
+			btrfs_set_lock_blocking_write(path->nodes[level]);
 			path->locks[level] = BTRFS_WRITE_LOCK_BLOCKING;
 
 			ret = btrfs_lookup_extent_info(trans, fs_info,
@@ -9595,6 +9605,7 @@ static int inc_block_group_ro(struct btrfs_block_group_cache *cache, int force)
 {
 	struct btrfs_space_info *sinfo = cache->space_info;
 	u64 num_bytes;
+	u64 sinfo_used;
 	u64 min_allocable_bytes;
 	int ret = -ENOSPC;
 
@@ -9621,9 +9632,10 @@ static int inc_block_group_ro(struct btrfs_block_group_cache *cache, int force)
 
 	num_bytes = cache->key.offset - cache->reserved - cache->pinned -
 		    cache->bytes_super - btrfs_block_group_used(&cache->item);
+	sinfo_used = btrfs_space_info_used(sinfo, true);
 
-	if (btrfs_space_info_used(sinfo, true) + num_bytes +
-	    min_allocable_bytes <= sinfo->total_bytes) {
+	if (sinfo_used + num_bytes + min_allocable_bytes <=
+	    sinfo->total_bytes) {
 		sinfo->bytes_readonly += num_bytes;
 		cache->ro++;
 		list_add_tail(&cache->ro_list, &sinfo->ro_bgs);
@@ -9632,6 +9644,15 @@ static int inc_block_group_ro(struct btrfs_block_group_cache *cache, int force)
 out:
 	spin_unlock(&cache->lock);
 	spin_unlock(&sinfo->lock);
+	if (ret == -ENOSPC && btrfs_test_opt(cache->fs_info, ENOSPC_DEBUG)) {
+		btrfs_info(cache->fs_info,
+			"unable to make block group %llu ro",
+			cache->key.objectid);
+		btrfs_info(cache->fs_info,
+			"sinfo_used=%llu bg_num_bytes=%llu min_allocable=%llu",
+			sinfo_used, num_bytes, min_allocable_bytes);
+		dump_space_info(cache->fs_info, cache->space_info, 0, 0);
+	}
 	return ret;
 }
 
