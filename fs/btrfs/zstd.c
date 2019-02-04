@@ -6,25 +6,32 @@
  */
 
 #include <linux/bio.h>
+#include <linux/bitmap.h>
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
+#include <linux/sched/mm.h>
 #include <linux/pagemap.h>
 #include <linux/refcount.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/zstd.h>
 #include "compression.h"
+#include "ctree.h"
 
 #define ZSTD_BTRFS_MAX_WINDOWLOG 17
 #define ZSTD_BTRFS_MAX_INPUT (1 << ZSTD_BTRFS_MAX_WINDOWLOG)
 #define ZSTD_BTRFS_DEFAULT_LEVEL 3
+#define ZSTD_BTRFS_MAX_LEVEL 15
+#define ZSTD_BTRFS_RECLAIM_NS (45 * NSEC_PER_SEC)
+/* 67s to avoid clashing with transaction commit (every 30s) */
+#define ZSTD_BTRFS_RECLAIM_JIFFIES (67 * HZ)
 
-static ZSTD_parameters zstd_get_btrfs_parameters(size_t src_len)
+static ZSTD_parameters zstd_get_btrfs_parameters(unsigned int level,
+						 size_t src_len)
 {
-	ZSTD_parameters params = ZSTD_getParams(ZSTD_BTRFS_DEFAULT_LEVEL,
-						src_len, 0);
+	ZSTD_parameters params = ZSTD_getParams(level, src_len, 0);
 
 	if (params.cParams.windowLog > ZSTD_BTRFS_MAX_WINDOWLOG)
 		params.cParams.windowLog = ZSTD_BTRFS_MAX_WINDOWLOG;
@@ -36,10 +43,235 @@ struct workspace {
 	void *mem;
 	size_t size;
 	char *buf;
+	unsigned int level;
+	unsigned int req_level;
+	u64 last_used;
 	struct list_head list;
+	struct list_head lru_list;
 	ZSTD_inBuffer in_buf;
 	ZSTD_outBuffer out_buf;
 };
+
+struct zstd_workspace_manager {
+	const struct btrfs_compress_op *ops;
+	spinlock_t lock;
+	struct list_head lru_list;
+	struct list_head idle_ws[ZSTD_BTRFS_MAX_LEVEL];
+	unsigned long active_map;
+	wait_queue_head_t wait;
+	struct timer_list timer;
+};
+
+static struct zstd_workspace_manager wsm;
+
+static inline struct workspace *list_to_workspace(struct list_head *list)
+{
+	return container_of(list, struct workspace, list);
+}
+
+/*
+ * zstd_reclaim_timer_fn - reclaim timer
+ * @t: timer
+ *
+ * This is scheduled every ZSTD_BTRFS_RECLAIM_JIFFIES and checks if a workspace
+ * has not been used by the corresponding level for ZSTD_BTRFS_RECLAIM_NS.
+ */
+static void zstd_reclaim_timer_fn(struct timer_list *t)
+{
+	u64 now = ktime_get_ns();
+	struct list_head *pos, *next;
+
+	spin_lock(&wsm.lock);
+
+	if (list_empty(&wsm.lru_list)) {
+		spin_unlock(&wsm.lock);
+		return;
+	}
+
+	list_for_each_prev_safe(pos, next, &wsm.lru_list) {
+		struct workspace *victim = container_of(pos, struct workspace,
+							lru_list);
+		unsigned int level;
+
+		if (now < victim->last_used + ZSTD_BTRFS_RECLAIM_NS)
+			break;
+
+		/* workspace is in use */
+		if (victim->req_level)
+			continue;
+
+		level = victim->level;
+		list_del(&victim->lru_list);
+		list_del(&victim->list);
+		wsm.ops->free_workspace(&victim->list);
+
+		if (list_empty(&wsm.idle_ws[level - 1]))
+			clear_bit(level - 1, &wsm.active_map);
+
+	}
+
+	if (!list_empty(&wsm.lru_list))
+		mod_timer(&wsm.timer, jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+
+	spin_unlock(&wsm.lock);
+}
+
+static void zstd_init_workspace_manager(void)
+{
+	struct list_head *ws;
+	int i;
+
+	wsm.ops = &btrfs_zstd_compress;
+	spin_lock_init(&wsm.lock);
+	init_waitqueue_head(&wsm.wait);
+	timer_setup(&wsm.timer, zstd_reclaim_timer_fn, 0);
+
+	INIT_LIST_HEAD(&wsm.lru_list);
+	for (i = 0; i < ZSTD_BTRFS_MAX_LEVEL; i++)
+		INIT_LIST_HEAD(&wsm.idle_ws[i]);
+
+	ws = wsm.ops->alloc_workspace(ZSTD_BTRFS_MAX_LEVEL);
+	if (IS_ERR(ws)) {
+		pr_warn("BTRFS: cannot preallocate zstd compression workspace\n");
+	} else {
+		set_bit(ZSTD_BTRFS_MAX_LEVEL - 1, &wsm.active_map);
+		list_add(ws, &wsm.idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1]);
+	}
+}
+
+static void zstd_cleanup_workspace_manager(void)
+{
+	struct workspace *workspace;
+	int i;
+
+	for (i = 0; i < ZSTD_BTRFS_MAX_LEVEL; i++) {
+		while (!list_empty(&wsm.idle_ws[i])) {
+			workspace = container_of(wsm.idle_ws[i].next,
+						 struct workspace, list);
+			list_del(&workspace->list);
+			list_del(&workspace->lru_list);
+			wsm.ops->free_workspace(&workspace->list);
+		}
+	}
+}
+
+/*
+ * zstd_find_workspace - find workspace
+ * @level: compression level
+ *
+ * This iterates over the set bits in the active_map beginning at the requested
+ * compression level.  This lets us utilize already allocated workspaces before
+ * allocating a new one.  If the workspace is of a larger size, it is used, but
+ * the place in the lru_list and last_used times are not updated.  This is to
+ * offer the opportunity to reclaim the workspace in favor of allocating an
+ * appropriately sized one in the future.
+ */
+static struct list_head *zstd_find_workspace(unsigned int level)
+{
+	struct list_head *ws;
+	struct workspace *workspace;
+	int i = level - 1;
+
+	spin_lock(&wsm.lock);
+	for_each_set_bit_from(i, &wsm.active_map, ZSTD_BTRFS_MAX_LEVEL) {
+		if (!list_empty(&wsm.idle_ws[i])) {
+			ws = wsm.idle_ws[i].next;
+			workspace = list_to_workspace(ws);
+			list_del_init(ws);
+			/* keep its place if it's a lower level using this */
+			workspace->req_level = level;
+			if (level == workspace->level)
+				list_del(&workspace->lru_list);
+			if (list_empty(&wsm.idle_ws[i]))
+				clear_bit(i, &wsm.active_map);
+			spin_unlock(&wsm.lock);
+			return ws;
+		}
+	}
+	spin_unlock(&wsm.lock);
+
+	return NULL;
+}
+
+/*
+ * zstd_get_workspace - zstd's get_workspace
+ * @level: compression level
+ *
+ * If @level is 0, then any compression level can be used.  Therefore, we begin
+ * scanning from 1.  We first scan through possible workspaces and then after
+ * attempt to allocate a new workspace.  If we fail to allocate one due to
+ * memory pressure, go to sleep waiting for the max level workspace to free up.
+ */
+static struct list_head *zstd_get_workspace(unsigned int level)
+{
+	struct list_head *ws;
+	unsigned long nofs_flag;
+
+	/* level == 0 means we can use any workspace */
+	if (!level)
+		level = 1;
+
+again:
+	ws = zstd_find_workspace(level);
+	if (ws)
+		return ws;
+
+	nofs_flag = memalloc_nofs_save();
+	ws = wsm.ops->alloc_workspace(level);
+	memalloc_nofs_restore(nofs_flag);
+
+	if (IS_ERR(ws)) {
+		DEFINE_WAIT(wait);
+
+		prepare_to_wait(&wsm.wait, &wait, TASK_UNINTERRUPTIBLE);
+		schedule();
+		finish_wait(&wsm.wait, &wait);
+
+		goto again;
+	}
+
+	return ws;
+}
+
+/*
+ * zstd_put_workspace - zstd put_workspace
+ * @ws: list_head for the workspace
+ *
+ * When putting back a workspace, we only need to update the LRU if we are of
+ * the requested compression level.  Here is where we continue to protect the
+ * max level workspace or update last_used accordingly.  If the reclaim timer
+ * isn't set, it is also set here.  Only the max level workspace tries and wakes
+ * up waiting workspaces.
+ */
+static void zstd_put_workspace(struct list_head *ws)
+{
+	struct workspace *workspace = list_to_workspace(ws);
+
+	spin_lock(&wsm.lock);
+
+	/* a node is only taken off the lru if we are the corresponding level */
+	if (workspace->req_level == workspace->level) {
+		/* hide a max level workspace from reclaim */
+		if (list_empty(&wsm.idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1])) {
+			INIT_LIST_HEAD(&workspace->lru_list);
+		} else {
+			workspace->last_used = ktime_get_ns();
+			list_add(&workspace->lru_list, &wsm.lru_list);
+			if (!timer_pending(&wsm.timer))
+				mod_timer(&wsm.timer,
+					  jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+		}
+	}
+
+	set_bit(workspace->level - 1, &wsm.active_map);
+	list_add(&workspace->list, &wsm.idle_ws[workspace->level - 1]);
+	workspace->req_level = 0;
+
+	spin_unlock(&wsm.lock);
+
+	if (workspace->level == ZSTD_BTRFS_MAX_LEVEL)
+		cond_wake_up(&wsm.wait);
+}
 
 static void zstd_free_workspace(struct list_head *ws)
 {
@@ -50,10 +282,10 @@ static void zstd_free_workspace(struct list_head *ws)
 	kfree(workspace);
 }
 
-static struct list_head *zstd_alloc_workspace(void)
+static struct list_head *zstd_alloc_workspace(unsigned int level)
 {
 	ZSTD_parameters params =
-			zstd_get_btrfs_parameters(ZSTD_BTRFS_MAX_INPUT);
+			zstd_get_btrfs_parameters(level, ZSTD_BTRFS_MAX_INPUT);
 	struct workspace *workspace;
 
 	workspace = kzalloc(sizeof(*workspace), GFP_KERNEL);
@@ -65,10 +297,14 @@ static struct list_head *zstd_alloc_workspace(void)
 			ZSTD_DStreamWorkspaceBound(ZSTD_BTRFS_MAX_INPUT));
 	workspace->mem = kvmalloc(workspace->size, GFP_KERNEL);
 	workspace->buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	workspace->level = level;
+	workspace->req_level = level;
+	workspace->last_used = ktime_get_ns();
 	if (!workspace->mem || !workspace->buf)
 		goto fail;
 
 	INIT_LIST_HEAD(&workspace->list);
+	INIT_LIST_HEAD(&workspace->lru_list);
 
 	return &workspace->list;
 fail:
@@ -95,7 +331,8 @@ static int zstd_compress_pages(struct list_head *ws,
 	unsigned long len = *total_out;
 	const unsigned long nr_dest_pages = *out_pages;
 	unsigned long max_out = nr_dest_pages * PAGE_SIZE;
-	ZSTD_parameters params = zstd_get_btrfs_parameters(len);
+	ZSTD_parameters params = zstd_get_btrfs_parameters(workspace->req_level,
+							   len);
 
 	*out_pages = 0;
 	*total_out = 0;
@@ -419,11 +656,21 @@ finish:
 	return ret;
 }
 
-static void zstd_set_level(struct list_head *ws, unsigned int type)
+static unsigned int zstd_set_level(unsigned int level)
 {
+	if (!level)
+		level = ZSTD_BTRFS_DEFAULT_LEVEL;
+	else if (level > ZSTD_BTRFS_MAX_LEVEL)
+		level = ZSTD_BTRFS_MAX_LEVEL;
+
+	return level;
 }
 
 const struct btrfs_compress_op btrfs_zstd_compress = {
+	.init_workspace_manager = zstd_init_workspace_manager,
+	.cleanup_workspace_manager = zstd_cleanup_workspace_manager,
+	.get_workspace = zstd_get_workspace,
+	.put_workspace = zstd_put_workspace,
 	.alloc_workspace = zstd_alloc_workspace,
 	.free_workspace = zstd_free_workspace,
 	.compress_pages = zstd_compress_pages,

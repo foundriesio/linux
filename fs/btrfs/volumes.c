@@ -1172,8 +1172,9 @@ void btrfs_free_extra_devids(struct btrfs_fs_devices *fs_devices, int step)
 {
 	struct btrfs_device *device, *next;
 	struct btrfs_device *latest_dev = NULL;
+	struct btrfs_fs_devices *parent_fs_devices = fs_devices;
 
-	mutex_lock(&uuid_mutex);
+	mutex_lock(&parent_fs_devices->device_list_mutex);
 again:
 	/* This is the initialized path, it is safe to release the devices. */
 	list_for_each_entry_safe(device, next, &fs_devices->devices, dev_list) {
@@ -1227,8 +1228,7 @@ again:
 	}
 
 	fs_devices->latest_bdev = latest_dev->bdev;
-
-	mutex_unlock(&uuid_mutex);
+	mutex_unlock(&parent_fs_devices->device_list_mutex);
 }
 
 static void free_device_rcu(struct rcu_head *head)
@@ -1444,6 +1444,17 @@ static int btrfs_read_disk_super(struct block_device *bdev, u64 bytenr,
 		(*disk_super)->label[BTRFS_LABEL_SIZE - 1] = '\0';
 
 	return 0;
+}
+
+int btrfs_forget_devices(const char *path)
+{
+	int ret;
+
+	mutex_lock(&uuid_mutex);
+	ret = btrfs_free_stale_devices(strlen(path) ? path : NULL, NULL);
+	mutex_unlock(&uuid_mutex);
+
+	return ret;
 }
 
 /*
