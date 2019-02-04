@@ -25,6 +25,9 @@
 #include <asm/bootparam.h>
 #include <asm/bootparam_utils.h>
 
+#define BOOT_CTYPE_H
+#include <linux/acpi.h>
+
 #define BOOT_BOOT_H
 #include "../ctype.h"
 
@@ -69,6 +72,10 @@ int cmdline_find_option(const char *option, char *buffer, int bufsize);
 int cmdline_find_option_bool(const char *option);
 #endif
 
+struct mem_vector {
+	unsigned long long start;
+	unsigned long long size;
+};
 
 #if CONFIG_RANDOMIZE_BASE
 /* kaslr.c */
@@ -115,4 +122,18 @@ static inline void console_init(void)
 
 void set_sev_encryption_mask(void);
 
+#endif
+
+/* acpi.c */
+#ifdef CONFIG_ACPI
+acpi_physical_address get_rsdp_addr(void);
+#else
+static inline acpi_physical_address get_rsdp_addr(void) { return 0; }
+#endif
+
+#if defined(CONFIG_RANDOMIZE_BASE) && defined(CONFIG_MEMORY_HOTREMOVE)
+extern struct mem_vector immovable_mem[MAX_NUMNODES*2];
+int count_immovable_mem_regions(void);
+#else
+static inline int count_immovable_mem_regions(void) { return 0; }
 #endif
