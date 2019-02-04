@@ -959,6 +959,11 @@ struct cifs_tcon {
 #endif
 	struct list_head pending_opens;	/* list of incomplete opens */
 	/* BB add field for back pointer to sb struct(s)? */
+#ifdef CONFIG_CIFS_DFS_UPCALL
+	char *dfs_path;
+	int remap:2;
+	struct list_head ulist; /* cache update list */
+#endif
 };
 
 /*
