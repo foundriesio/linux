@@ -592,6 +592,7 @@ cifs_reconnect(struct TCP_Server_Info *server)
 			msleep(3000);
 		} else {
 			atomic_inc(&tcpSesReconnectCount);
+			set_credits(server, 1);
 			spin_lock(&GlobalMid_Lock);
 			if (server->tcpStatus != CifsExiting)
 				server->tcpStatus = CifsNeedNegotiate;
@@ -1053,7 +1054,7 @@ cifs_handle_standard(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 	}
 
 	if (server->ops->is_status_pending &&
-	    server->ops->is_status_pending(buf, server, length))
+	    server->ops->is_status_pending(buf, server))
 		return -1;
 
 	if (!mid)
@@ -1485,6 +1486,11 @@ cifs_parse_devname(const char *devname, struct smb_vol *vol)
 	char *pos;
 	const char *delims = "/\\";
 	size_t len;
+
+	if (unlikely(!devname || !*devname)) {
+		cifs_dbg(VFS, "Device name not specified.\n");
+		return -EINVAL;
+	}
 
 	/* make sure we have a valid UNC double delimiter prefix */
 	len = strspn(devname, delims);
@@ -2609,7 +2615,7 @@ cifs_get_tcp_session(struct smb_vol *volume_info)
 		volume_info->target_rfc1001_name, RFC1001_NAME_LEN_WITH_NULL);
 	tcp_ses->session_estab = false;
 	tcp_ses->sequence_number = 0;
-	tcp_ses->reconnect_instance = 0;
+	tcp_ses->reconnect_instance = 1;
 	tcp_ses->lstrp = jiffies;
 	spin_lock_init(&tcp_ses->req_lock);
 	INIT_LIST_HEAD(&tcp_ses->tcp_ses_list);
@@ -4901,8 +4907,6 @@ cifs_negotiate_protocol(const unsigned int xid, struct cifs_ses *ses)
 	/* only send once per connect */
 	if (!server->ops->need_neg(server))
 		return 0;
-
-	set_credits(server, 1);
 
 	rc = server->ops->negotiate(xid, ses);
 	if (rc == 0) {
