@@ -39,15 +39,12 @@ struct tx_complete_data {
 	struct sk_buff *skb;
 };
 
-typedef void (*wilc_tx_complete_func_t)(void *, int);
-
 /********************************************
  *
  *      Wlan Configuration ID
  *
  ********************************************/
 #define WILC_MULTICAST_TABLE_SIZE	8
-#define MAX_SSID_LEN            33
 #define MAX_RATES_SUPPORTED     12
 
 enum bss_types {

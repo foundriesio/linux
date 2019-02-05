@@ -274,7 +274,8 @@ static int wilc_wlan_txq_add_cfg_pkt(struct wilc_vif *vif, u8 *buffer,
 }
 
 int wilc_wlan_txq_add_net_pkt(struct net_device *dev, void *priv, u8 *buffer,
-			      u32 buffer_size, wilc_tx_complete_func_t func)
+			      u32 buffer_size,
+			      void (*tx_complete_fn)(void *, int))
 {
 	struct txq_entry_t *tqe;
 	struct wilc_vif *vif = netdev_priv(dev);
@@ -292,7 +293,7 @@ int wilc_wlan_txq_add_net_pkt(struct net_device *dev, void *priv, u8 *buffer,
 	tqe->type = WILC_NET_PKT;
 	tqe->buffer = buffer;
 	tqe->buffer_size = buffer_size;
-	tqe->tx_complete_func = func;
+	tqe->tx_complete_func = tx_complete_fn;
 	tqe->priv = priv;
 
 	tqe->ack_idx = NOT_TCP_ACK;
@@ -303,7 +304,8 @@ int wilc_wlan_txq_add_net_pkt(struct net_device *dev, void *priv, u8 *buffer,
 }
 
 int wilc_wlan_txq_add_mgmt_pkt(struct net_device *dev, void *priv, u8 *buffer,
-			       u32 buffer_size, wilc_tx_complete_func_t func)
+			       u32 buffer_size,
+			       void (*tx_complete_fn)(void *, int))
 {
 	struct txq_entry_t *tqe;
 	struct wilc_vif *vif = netdev_priv(dev);
@@ -321,7 +323,7 @@ int wilc_wlan_txq_add_mgmt_pkt(struct net_device *dev, void *priv, u8 *buffer,
 	tqe->type = WILC_MGMT_PKT;
 	tqe->buffer = buffer;
 	tqe->buffer_size = buffer_size;
-	tqe->tx_complete_func = func;
+	tqe->tx_complete_func = tx_complete_fn;
 	tqe->priv = priv;
 	tqe->ack_idx = NOT_TCP_ACK;
 	wilc_wlan_txq_add_to_tail(dev, tqe);
@@ -1092,24 +1094,19 @@ static int wilc_wlan_cfg_commit(struct wilc_vif *vif, int type,
 {
 	struct wilc *wilc = vif->wilc;
 	struct wilc_cfg_frame *cfg = &wilc->cfg_frame;
-	int total_len = wilc->cfg_frame_offset + 4 + DRIVER_HANDLER_SIZE;
-	int seq_no = wilc->cfg_seq_no % 256;
-	int driver_handler = (u32)drv_handler;
+	int t_len = wilc->cfg_frame_offset + sizeof(struct wilc_cfg_cmd_hdr);
 
 	if (type == WILC_CFG_SET)
-		cfg->wid_header[0] = 'W';
+		cfg->hdr.cmd_type = 'W';
 	else
-		cfg->wid_header[0] = 'Q';
-	cfg->wid_header[1] = seq_no;
-	cfg->wid_header[2] = (u8)total_len;
-	cfg->wid_header[3] = (u8)(total_len >> 8);
-	cfg->wid_header[4] = (u8)driver_handler;
-	cfg->wid_header[5] = (u8)(driver_handler >> 8);
-	cfg->wid_header[6] = (u8)(driver_handler >> 16);
-	cfg->wid_header[7] = (u8)(driver_handler >> 24);
-	wilc->cfg_seq_no = seq_no;
+		cfg->hdr.cmd_type = 'Q';
 
-	if (!wilc_wlan_txq_add_cfg_pkt(vif, &cfg->wid_header[0], total_len))
+	cfg->hdr.seq_no = wilc->cfg_seq_no % 256;
+	cfg->hdr.total_len = cpu_to_le16(t_len);
+	cfg->hdr.driver_handler = cpu_to_le32(drv_handler);
+	wilc->cfg_seq_no = cfg->hdr.seq_no;
+
+	if (!wilc_wlan_txq_add_cfg_pkt(vif, (u8 *)&cfg->hdr, t_len))
 		return -1;
 
 	return 0;

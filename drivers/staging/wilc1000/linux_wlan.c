@@ -198,7 +198,11 @@ void wilc_wlan_set_bssid(struct net_device *wilc_netdev, u8 *bssid, u8 mode)
 {
 	struct wilc_vif *vif = netdev_priv(wilc_netdev);
 
-	memcpy(vif->bssid, bssid, 6);
+	if (bssid)
+		ether_addr_copy(vif->bssid, bssid);
+	else
+		eth_zero_addr(vif->bssid);
+
 	vif->mode = mode;
 }
 
@@ -807,12 +811,12 @@ static void wilc_set_multicast_list(struct net_device *dev)
 
 	if (dev->flags & IFF_ALLMULTI ||
 	    dev->mc.count > WILC_MULTICAST_TABLE_SIZE) {
-		wilc_setup_multicast_filter(vif, false, 0, NULL);
+		wilc_setup_multicast_filter(vif, 0, 0, NULL);
 		return;
 	}
 
 	if (dev->mc.count == 0) {
-		wilc_setup_multicast_filter(vif, true, 0, NULL);
+		wilc_setup_multicast_filter(vif, 1, 0, NULL);
 		return;
 	}
 
@@ -829,7 +833,7 @@ static void wilc_set_multicast_list(struct net_device *dev)
 		cur_mc += ETH_ALEN;
 	}
 
-	if (wilc_setup_multicast_filter(vif, true, dev->mc.count, mc_list))
+	if (wilc_setup_multicast_filter(vif, 1, dev->mc.count, mc_list))
 		kfree(mc_list);
 }
 
