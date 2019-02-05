@@ -2647,9 +2647,14 @@ bool reuse_ksm_page(struct page *page,
 		    struct vm_area_struct *vma,
 		    unsigned long address)
 {
-	VM_BUG_ON_PAGE(is_zero_pfn(page_to_pfn(page)), page);
-	VM_BUG_ON_PAGE(!page_mapped(page), page);
-	VM_BUG_ON_PAGE(!PageLocked(page), page);
+#ifdef CONFIG_DEBUG_VM
+	if (WARN_ON(is_zero_pfn(page_to_pfn(page))) ||
+			WARN_ON(!page_mapped(page)) ||
+			WARN_ON(!PageLocked(page))) {
+		dump_page(page, "reuse_ksm_page");
+		return false;
+	}
+#endif
 
 	if (PageSwapCache(page) || !page_stable_node(page))
 		return false;
