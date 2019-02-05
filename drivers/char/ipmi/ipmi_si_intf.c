@@ -1060,10 +1060,13 @@ static void request_events(void *send_info)
 	atomic_set(&smi_info->req_events, 1);
 }
 
-static void set_need_watch(void *send_info, bool enable)
+static void set_need_watch(void *send_info, unsigned int watch_mask)
 {
 	struct smi_info *smi_info = send_info;
 	unsigned long flags;
+	int enable;
+
+	enable = !!watch_mask;
 
 	atomic_set(&smi_info->need_watch, enable);
 	spin_lock_irqsave(&smi_info->si_lock, flags);
@@ -2085,6 +2088,11 @@ static int try_smi_init(struct smi_info *new_smi)
 	WARN_ON(new_smi->io.dev->init_name != NULL);
 
  out_err:
+	if (rv && new_smi->io.io_cleanup) {
+		new_smi->io.io_cleanup(&new_smi->io);
+		new_smi->io.io_cleanup = NULL;
+	}
+
 	kfree(init_name);
 	return rv;
 }
