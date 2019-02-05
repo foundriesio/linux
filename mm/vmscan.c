@@ -488,7 +488,7 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 		 * them aggressively under memory pressure to keep
 		 * them from causing refetches in the IO caches.
 		 */
-		delta = (freeable + 1)/ 2;
+		delta = (freeable + 1) / 2;
 	}
 
 	/*
@@ -508,7 +508,6 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 
 		delta *= 4;
 		do_div(delta, shrinker->seeks);
-
 	}
 
 	total_scan += delta;
