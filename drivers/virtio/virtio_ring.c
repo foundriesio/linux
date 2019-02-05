@@ -676,6 +676,7 @@ static void *virtqueue_get_buf_ctx_split(struct virtqueue *_vq,
 	void *ret;
 	unsigned int i;
 	u16 last_used;
+	bool nomore;
 
 	START_USE(vq);
 
@@ -684,14 +685,15 @@ static void *virtqueue_get_buf_ctx_split(struct virtqueue *_vq,
 		return NULL;
 	}
 
-	if (!more_used_split(vq)) {
+	nomore = !more_used_split(vq);
+	if (nomore) {
 		pr_debug("No more buffers in queue\n");
 		END_USE(vq);
 		return NULL;
 	}
 
 	/* Only get used array entries after they have been exposed by host. */
-	virtio_rmb(vq->weak_barriers);
+	vq = dependent_ptr_mb(vq, nomore);
 
 	last_used = (vq->last_used_idx & (vq->split.vring.num - 1));
 	i = virtio32_to_cpu(_vq->vdev,
@@ -1339,7 +1341,9 @@ static void *virtqueue_get_buf_ctx_packed(struct virtqueue *_vq,
 {
 	struct vring_virtqueue *vq = to_vvq(_vq);
 	u16 last_used, id;
+	bool nomore;
 	void *ret;
+
 
 	START_USE(vq);
 
@@ -1348,14 +1352,15 @@ static void *virtqueue_get_buf_ctx_packed(struct virtqueue *_vq,
 		return NULL;
 	}
 
-	if (!more_used_packed(vq)) {
+	nomore = !more_used_packed(vq);
+	if (nomore) {
 		pr_debug("No more buffers in queue\n");
 		END_USE(vq);
 		return NULL;
 	}
 
 	/* Only get used elements after they have been exposed by host. */
-	virtio_rmb(vq->weak_barriers);
+	vq = dependent_ptr_mb(vq, nomore);
 
 	last_used = vq->last_used_idx;
 	id = le16_to_cpu(vq->packed.vring.desc[last_used].id);
@@ -1608,6 +1613,9 @@ static struct virtqueue *vring_create_virtqueue_packed(
 	vq->indirect = virtio_has_feature(vdev, VIRTIO_RING_F_INDIRECT_DESC) &&
 		!context;
 	vq->event = virtio_has_feature(vdev, VIRTIO_RING_F_EVENT_IDX);
+
+	if (virtio_has_feature(vdev, VIRTIO_F_ORDER_PLATFORM))
+		vq->weak_barriers = false;
 
 	vq->packed.ring_dma_addr = ring_dma_addr;
 	vq->packed.driver_event_dma_addr = driver_event_dma_addr;
@@ -2079,6 +2087,9 @@ struct virtqueue *__vring_new_virtqueue(unsigned int index,
 		!context;
 	vq->event = virtio_has_feature(vdev, VIRTIO_RING_F_EVENT_IDX);
 
+	if (virtio_has_feature(vdev, VIRTIO_F_ORDER_PLATFORM))
+		vq->weak_barriers = false;
+
 	vq->split.queue_dma_addr = 0;
 	vq->split.queue_size_in_bytes = 0;
 
@@ -2212,6 +2223,8 @@ void vring_transport_features(struct virtio_device *vdev)
 		case VIRTIO_F_IOMMU_PLATFORM:
 			break;
 		case VIRTIO_F_RING_PACKED:
+			break;
+		case VIRTIO_F_ORDER_PLATFORM:
 			break;
 		default:
 			/* We don't understand this bit. */
