@@ -488,6 +488,9 @@ static void dw_mipi_dsi_video_mode_config(struct dw_mipi_dsi *dsi)
 static void dw_mipi_dsi_set_mode(struct dw_mipi_dsi *dsi,
 				 unsigned long mode_flags)
 {
+	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
+	void *priv_data = dsi->plat_data->priv_data;
+
 	dsi_write(dsi, DSI_PWR_UP, RESET);
 
 	if (mode_flags & MIPI_DSI_MODE_VIDEO) {
@@ -497,6 +500,9 @@ static void dw_mipi_dsi_set_mode(struct dw_mipi_dsi *dsi,
 	} else {
 		dsi_write(dsi, DSI_MODE_CFG, ENABLE_CMD_MODE);
 	}
+
+	if (phy_ops->post_set_mode)
+		phy_ops->post_set_mode(priv_data, mode_flags);
 
 	dsi_write(dsi, DSI_PWR_UP, POWERUP);
 }
@@ -588,6 +594,9 @@ static void dw_mipi_dsi_video_packet_config(struct dw_mipi_dsi *dsi,
 
 static void dw_mipi_dsi_command_mode_config(struct dw_mipi_dsi *dsi)
 {
+	const struct dw_mipi_dsi_phy_ops *phy_ops = dsi->plat_data->phy_ops;
+	void *priv_data = dsi->plat_data->priv_data;
+
 	/*
 	 * TODO dw drv improvements
 	 * compute high speed transmission counter timeout according
@@ -601,6 +610,9 @@ static void dw_mipi_dsi_command_mode_config(struct dw_mipi_dsi *dsi)
 	 */
 	dsi_write(dsi, DSI_BTA_TO_CNT, 0xd00);
 	dsi_write(dsi, DSI_MODE_CFG, ENABLE_CMD_MODE);
+
+	if (phy_ops->post_set_mode)
+		phy_ops->post_set_mode(priv_data, 0);
 }
 
 /* Get lane byte clock cycles. */
