@@ -109,6 +109,9 @@
 #define SLAB_KASAN		0
 #endif
 
+/* WARN_ON slab error */
+#define SLAB_WARN_ON_ERROR	((slab_flags_t __force)0x10000000U)
+
 /* The following flags affect the page allocator grouping pages by mobility */
 /* Objects are reclaimable */
 #define SLAB_RECLAIM_ACCOUNT	((slab_flags_t __force)0x00020000U)
