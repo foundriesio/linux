@@ -150,6 +150,7 @@ struct pca953x_chip {
 	u8 irq_stat[MAX_BANK];
 	u8 irq_trig_raise[MAX_BANK];
 	u8 irq_trig_fall[MAX_BANK];
+	struct irq_chip irq_chip;
 #endif
 
 	struct i2c_client *client;
@@ -594,16 +595,6 @@ static void pca953x_irq_shutdown(struct irq_data *d)
 	chip->irq_trig_fall[d->hwirq / BANK_SZ] &= ~mask;
 }
 
-static struct irq_chip pca953x_irq_chip = {
-	.name			= "pca953x",
-	.irq_mask		= pca953x_irq_mask,
-	.irq_unmask		= pca953x_irq_unmask,
-	.irq_bus_lock		= pca953x_irq_bus_lock,
-	.irq_bus_sync_unlock	= pca953x_irq_bus_sync_unlock,
-	.irq_set_type		= pca953x_irq_set_type,
-	.irq_shutdown		= pca953x_irq_shutdown,
-};
-
 static bool pca953x_irq_pending(struct pca953x_chip *chip, u8 *pending)
 {
 	u8 cur_stat[MAX_BANK];
@@ -699,55 +690,63 @@ static int pca953x_irq_setup(struct pca953x_chip *chip,
 			     int irq_base)
 {
 	struct i2c_client *client = chip->client;
+	struct irq_chip *irq_chip = &chip->irq_chip;
 	int reg_direction[MAX_BANK];
 	int ret, i;
 
-	if (client->irq && irq_base != -1
-			&& (chip->driver_data & PCA_INT)) {
-		ret = pca953x_read_regs(chip,
-					chip->regs->input, chip->irq_stat);
-		if (ret)
-			return ret;
+	if (!client->irq)
+		return 0;
 
-		/*
-		 * There is no way to know which GPIO line generated the
-		 * interrupt.  We have to rely on the previous read for
-		 * this purpose.
-		 */
-		regmap_bulk_read(chip->regmap, chip->regs->direction,
-				 reg_direction, NBANK(chip));
-		for (i = 0; i < NBANK(chip); i++)
-			chip->irq_stat[i] &= reg_direction[i];
-		mutex_init(&chip->irq_lock);
+	if (irq_base == -1)
+		return 0;
 
-		ret = devm_request_threaded_irq(&client->dev,
-					client->irq,
-					   NULL,
-					   pca953x_irq_handler,
-					   IRQF_TRIGGER_LOW | IRQF_ONESHOT |
-						   IRQF_SHARED,
-					   dev_name(&client->dev), chip);
-		if (ret) {
-			dev_err(&client->dev, "failed to request irq %d\n",
-				client->irq);
-			return ret;
-		}
+	if (!(chip->driver_data & PCA_INT))
+		return 0;
 
-		ret =  gpiochip_irqchip_add_nested(&chip->gpio_chip,
-						   &pca953x_irq_chip,
-						   irq_base,
-						   handle_simple_irq,
-						   IRQ_TYPE_NONE);
-		if (ret) {
-			dev_err(&client->dev,
-				"could not connect irqchip to gpiochip\n");
-			return ret;
-		}
+	ret = pca953x_read_regs(chip, chip->regs->input, chip->irq_stat);
+	if (ret)
+		return ret;
 
-		gpiochip_set_nested_irqchip(&chip->gpio_chip,
-					    &pca953x_irq_chip,
-					    client->irq);
+	/*
+	 * There is no way to know which GPIO line generated the
+	 * interrupt.  We have to rely on the previous read for
+	 * this purpose.
+	 */
+	regmap_bulk_read(chip->regmap, chip->regs->direction, reg_direction,
+			 NBANK(chip));
+	for (i = 0; i < NBANK(chip); i++)
+		chip->irq_stat[i] &= reg_direction[i];
+	mutex_init(&chip->irq_lock);
+
+	ret = devm_request_threaded_irq(&client->dev, client->irq,
+					NULL, pca953x_irq_handler,
+					IRQF_TRIGGER_LOW | IRQF_ONESHOT |
+					IRQF_SHARED,
+					dev_name(&client->dev), chip);
+	if (ret) {
+		dev_err(&client->dev, "failed to request irq %d\n",
+			client->irq);
+		return ret;
 	}
+
+	irq_chip->name = dev_name(&chip->client->dev);
+	irq_chip->irq_mask = pca953x_irq_mask;
+	irq_chip->irq_unmask = pca953x_irq_unmask;
+	irq_chip->irq_bus_lock = pca953x_irq_bus_lock;
+	irq_chip->irq_bus_sync_unlock = pca953x_irq_bus_sync_unlock;
+	irq_chip->irq_set_type = pca953x_irq_set_type;
+	irq_chip->irq_shutdown = pca953x_irq_shutdown;
+
+	ret =  gpiochip_irqchip_add_nested(&chip->gpio_chip, irq_chip,
+					   irq_base, handle_simple_irq,
+					   IRQ_TYPE_NONE);
+	if (ret) {
+		dev_err(&client->dev,
+			"could not connect irqchip to gpiochip\n");
+		return ret;
+	}
+
+	gpiochip_set_nested_irqchip(&chip->gpio_chip, irq_chip, client->irq);
 
 	return 0;
 }
