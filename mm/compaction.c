@@ -1062,7 +1062,7 @@ move_freelist_tail(struct list_head *freelist, struct page *freepage)
 {
 	LIST_HEAD(sublist);
 
-	if (!list_is_last(freelist, &freepage->lru)) {
+	if (!list_is_first(freelist, &freepage->lru)) {
 		list_cut_position(&sublist, freelist, &freepage->lru);
 		if (!list_empty(&sublist))
 			list_splice_tail(&sublist, freelist);
@@ -1238,14 +1238,16 @@ update_fast_start_pfn(struct compact_control *cc, unsigned long pfn)
 	cc->fast_start_pfn = min(cc->fast_start_pfn, pfn);
 }
 
-static inline void
+static inline unsigned long
 reinit_migrate_pfn(struct compact_control *cc)
 {
 	if (!cc->fast_start_pfn || cc->fast_start_pfn == ULONG_MAX)
-		return;
+		return cc->migrate_pfn;
 
 	cc->migrate_pfn = cc->fast_start_pfn;
 	cc->fast_start_pfn = ULONG_MAX;
+
+	return cc->migrate_pfn;
 }
 
 /*
@@ -1361,7 +1363,7 @@ static unsigned long fast_find_migrateblock(struct compact_control *cc)
 	 * that had free pages as the basis for starting a linear scan.
 	 */
 	if (pfn == cc->migrate_pfn)
-		reinit_migrate_pfn(cc);
+		pfn = reinit_migrate_pfn(cc);
 
 	return pfn;
 }
