@@ -100,10 +100,10 @@ extern nodemask_t _unused_nodemask_arg_;
 
 #if MAX_NUMNODES > 1
 extern unsigned int nr_node_ids;
-extern int nr_online_nodes;
+extern unsigned int nr_online_nodes;
 #else
 #define nr_node_ids	1U
-#define nr_online_nodes	1
+#define nr_online_nodes	1U
 #endif
 
 /**
