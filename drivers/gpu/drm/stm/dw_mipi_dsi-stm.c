@@ -210,10 +210,24 @@ static int dw_mipi_dsi_phy_init(void *priv_data)
 	if (ret)
 		DRM_DEBUG_DRIVER("!TIMEOUT! waiting PLL, let's continue\n");
 
-	/* Enable the DSI wrapper */
-	dsi_set(dsi, DSI_WCR, WCR_DSIEN);
-
 	return 0;
+}
+
+static void dw_mipi_dsi_phy_post_set_mode(void *priv_data, unsigned long mode_flags)
+{
+	struct dw_mipi_dsi_stm *dsi = priv_data;
+
+	DRM_DEBUG_DRIVER("\n");
+
+	/*
+	 * DSI wrapper must be enabled in video mode & disabled in command mode.
+	 * If wrapper is enabled in command mode, the display controller
+	 * register access will hang.
+	 */
+	if (mode_flags & MIPI_DSI_MODE_VIDEO)
+		dsi_set(dsi, DSI_WCR, WCR_DSIEN);
+	else
+		dsi_clear(dsi, DSI_WCR, WCR_DSIEN);
 }
 
 static int
@@ -288,6 +302,7 @@ dw_mipi_dsi_get_lane_mbps(void *priv_data, struct drm_display_mode *mode,
 static const struct dw_mipi_dsi_phy_ops dw_mipi_dsi_stm_phy_ops = {
 	.init = dw_mipi_dsi_phy_init,
 	.get_lane_mbps = dw_mipi_dsi_get_lane_mbps,
+	.post_set_mode = dw_mipi_dsi_phy_post_set_mode,
 };
 
 static struct dw_mipi_dsi_plat_data dw_mipi_dsi_stm_plat_data = {
