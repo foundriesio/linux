@@ -5586,6 +5586,15 @@ static int memory_stat_show(struct seq_file *m, void *v)
 	seq_printf(m, "file_writeback %llu\n",
 		   (u64)acc.stat[NR_WRITEBACK] * PAGE_SIZE);
 
+	/*
+	 * TODO: We should eventually replace our own MEMCG_RSS_HUGE counter
+	 * with the NR_ANON_THP vm counter, but right now it's a pain in the
+	 * arse because it requires migrating the work out of rmap to a place
+	 * where the page->mem_cgroup is set up and stable.
+	 */
+	seq_printf(m, "anon_thp %llu\n",
+		   (u64)acc.stat[MEMCG_RSS_HUGE] * PAGE_SIZE);
+
 	for (i = 0; i < NR_LRU_LISTS; i++)
 		seq_printf(m, "%s %llu\n", mem_cgroup_lru_names[i],
 			   (u64)acc.lru_pages[i] * PAGE_SIZE);
@@ -5616,6 +5625,10 @@ static int memory_stat_show(struct seq_file *m, void *v)
 	seq_printf(m, "pgdeactivate %lu\n", acc.events[PGDEACTIVATE]);
 	seq_printf(m, "pglazyfree %lu\n", acc.events[PGLAZYFREE]);
 	seq_printf(m, "pglazyfreed %lu\n", acc.events[PGLAZYFREED]);
+
+	seq_printf(m, "thp_fault_alloc %lu\n", acc.events[THP_FAULT_ALLOC]);
+	seq_printf(m, "thp_collapse_alloc %lu\n",
+		   acc.events[THP_COLLAPSE_ALLOC]);
 
 	return 0;
 }

@@ -1195,6 +1195,10 @@ PAGE_SIZE multiple when read back.
 		Amount of cached filesystem data that was modified and
 		is currently being written back to disk
 
+	  anon_thp
+		Amount of memory used in anonymous mappings backed by
+		transparent hugepages
+
 	  inactive_anon, active_anon, inactive_file, active_file, unevictable
 		Amount of memory, swap-backed and filesystem-backed,
 		on the internal memory management lists used by the
@@ -1253,6 +1257,16 @@ PAGE_SIZE multiple when read back.
 	  pglazyfreed
 
 		Amount of reclaimed lazyfree pages
+
+	  thp_fault_alloc
+
+		Number of transparent hugepages which were allocated to satisfy
+		a page fault, including COW faults
+
+	  thp_collapse_alloc
+
+		Number of transparent hugepages which were allocated to
+		allow collapsing an existing range of pages
 
   memory.swap.current
 	A read-only single value file which exists on non-root
