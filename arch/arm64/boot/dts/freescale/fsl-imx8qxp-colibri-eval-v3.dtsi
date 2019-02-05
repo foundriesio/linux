@@ -12,15 +12,9 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-//#define IS_A0_SILICON
-
 #include "fsl-imx8qxp.dtsi"
 
 / {
-	model = "Toradex Colibri iMX8QXP";
-	compatible = "toradex,imx8qxp-colibri", "fsl,imx8qxp";
-
 	aliases {
 		rtc0 = &rtc_i2c;
 		rtc1 = &rtc;
@@ -29,18 +23,6 @@
 	chosen {
 		bootargs = "console=ttyLP3,115200 earlycon=lpuart32,0x5a090000,115200";
 		stdout-path = &lpuart3;
-	};
-
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-		pwms = <&pwm_adma_lcdif 0 100000 0>;
-
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
-		status = "okay";
 	};
 
 	extcon_usbc_det: usbc_det {
@@ -105,16 +87,6 @@
 			clocks = <&clk IMX8QXP_AUD_MCLKOUT0>;
 		};
 	};
-
-	lvds1_panel {
-		compatible = "lg,lp156wf1";
-
-		port {
-			panel_lvds1_in: endpoint {
-				remote-endpoint = <&lvds1_out>;
-			};
-		};
-	};
 };
 
 &iomuxc {
@@ -164,7 +136,7 @@
 				SC_P_ENET0_MDC_CONN_ENET0_MDC			0x06000020
 				SC_P_ENET0_MDIO_CONN_ENET0_MDIO			0x06000020
 				SC_P_ENET0_RGMII_TX_CTL_CONN_ENET0_RGMII_TX_CTL 0x00000061
-				SC_P_ENET0_RGMII_TXC_CONN_ENET0_RCLK50M_OUT	0x00000061
+				SC_P_ENET0_RGMII_TXC_CONN_ENET0_RCLK50M_OUT	0x06000061
 				SC_P_ENET0_RGMII_TXD0_CONN_ENET0_RGMII_TXD0	0x00000061
 				SC_P_ENET0_RGMII_TXD1_CONN_ENET0_RGMII_TXD1	0x00000061
 				SC_P_ENET0_RGMII_RX_CTL_CONN_ENET0_RGMII_RX_CTL	0x00000061
@@ -756,91 +728,6 @@
 	};
 };
 
-/* DSI/LVDS port 0 */
-&i2c0_mipi_lvds0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
-	clock-frequency = <100000>;
-	status = "disabled";
-};
-
-&ldb1_phy {
-	status = "okay";
-};
-
-&ldb1 {
-	status = "okay";
-	fsl,dual-channel;
-	power-domains = <&pd_mipi_dsi_1_dual_lvds>;
-
-	lvds-channel@0 {
-		fsl,data-mapping = "jeida";
-		fsl,data-width = <24>; /* Actually would need 18 but isn't supported by the driver */
-		status = "okay";
-
-		port@1 {
-			reg = <1>;
-
-			lvds1_out: endpoint {
-				remote-endpoint = <&panel_lvds1_in>;
-			};
-		};
-	};
-};
-
-&mipi_dsi_phy1 {
-	status = "okay";
-};
-
-&mipi_dsi1 {
-	pwr-delay = <10>;
-	status = "okay";
-};
-
-&mipi_dsi_bridge1 {
-	status = "disabled";
-};
-
-/* DSI/LVDS port 1 */
-&i2c0_mipi_lvds1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds1>;
-	clock-frequency = <100000>;
-	status = "disabled";
-};
-
-&ldb2_phy {
-	status = "okay";
-};
-
-&ldb2 {
-	status = "disabled";
-};
-
-&mipi_dsi_phy2 {
-	status = "okay";
-};
-
-&mipi_dsi2 {
-	pwr-delay = <10>;
-	status = "okay";
-};
-
-&mipi_dsi_bridge2 {
-	status = "disabled";
-};
-
-
-&pwm_adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm_a>;
-	status = "okay";
-};
-
 &lpspi2 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -871,6 +758,12 @@
 
 	fsl,max-link-speed = <1>;
 
+	status = "okay";
+};
+
+&pwm_adma_lcdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_a>;
 	status = "okay";
 };
 
@@ -990,11 +883,12 @@
 };
 #else
 &vpu_decoder {
+	core_type = <1>;
 	status = "okay";
 };
 
 &vpu_encoder {
+	core_type = <1>;
 	status = "okay";
 };
 #endif
-

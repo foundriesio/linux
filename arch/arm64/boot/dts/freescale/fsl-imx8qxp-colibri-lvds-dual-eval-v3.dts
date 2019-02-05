@@ -15,71 +15,32 @@
 /dts-v1/;
 //#define IS_A0_SILICON
 
-#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
+
 / {
-	model = "Toradex Colibri iMX8QXP";
-	compatible = "toradex,imx8qxp-colibri", "fsl,imx8qxp";
+	model = "Toradex Colibri iMX8QXP with dual channel lvds";
+	compatible = "toradex,imx8qxp-colibri-lvds-dual", "toradex,imx8qxp-colibri", "fsl,imx8qxp";
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-		pwms = <&pwm_adma_lcdif 0 100000 PWM_POLARITY_INVERTED>;
+		pwms = <&pwm_adma_lcdif 0 100000 0>;
 
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
 		status = "okay";
 	};
 
-	display-subsystem {
-		status = "disabled";
-	};
 
-	panel {
-		compatible = "edt,et070080dh6";
-		backlight = <&backlight>;
+	lvds1_panel {
+		compatible = "lg,lp156wf1";
 
 		port {
-			lcd_panel_in: endpoint {
-//				remote-endpoint = <&lcdif_out>;
-				remote-endpoint = <&lcd_panel_in>;
+			panel_lvds1_in: endpoint {
+				remote-endpoint = <&lvds1_out>;
 			};
-		};
-	};
-#if 1
-	lcd_display: disp0 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "fsl,imx-parallel-display";
-		interface-pix-fmt = "bgr666";
-
-		port@0 {
-			reg = <0>;
-			lcd_display_in: endpoint {
-				remote-endpoint = <&lcdif_out>;
-			};
-		};
-		port@1 {
-			reg = <1>;
-			lcd_display_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-	};
-#endif
-
-};
-
-&adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lcdif>;
-	status = "okay";
-
-	port@0 {
-		lcdif_out: lcdif-endpoint {
-			remote-endpoint = <&lcd_panel_in>;
 		};
 	};
 };
@@ -95,20 +56,36 @@
 };
 
 &ldb1_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &ldb1 {
-	status = "disabled";
+	status = "okay";
+	fsl,dual-channel;
+	power-domains = <&pd_mipi_dsi_1_dual_lvds>;
+
+	lvds-channel@0 {
+		fsl,data-mapping = "jeida";
+		fsl,data-width = <24>; /* Actually would need 18 but isn't supported by the driver */
+		status = "okay";
+
+		port@1 {
+			reg = <1>;
+
+			lvds1_out: endpoint {
+				remote-endpoint = <&panel_lvds1_in>;
+			};
+		};
+	};
 };
 
 &mipi_dsi_phy1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &mipi_dsi1 {
 	pwr-delay = <10>;
-	status = "disabled";
+	status = "okay";
 };
 
 &mipi_dsi_bridge1 {
@@ -126,35 +103,23 @@
 };
 
 &ldb2_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &ldb2 {
 	status = "disabled";
-
-	lvds-channel@0 {
-		fsl,data-mapping = "jeida";
-		fsl,data-width = <24>;
-		status = "okay";
-	};
 };
 
 &mipi_dsi_phy2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &mipi_dsi2 {
 	pwr-delay = <10>;
-	status = "disabled ";
+	status = "okay";
 };
 
 &mipi_dsi_bridge2 {
 	status = "disabled";
-};
-
-&pwm_adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm_a>;
-	status = "okay";
 };
 
