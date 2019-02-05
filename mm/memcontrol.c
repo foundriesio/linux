@@ -5627,9 +5627,11 @@ static int memory_stat_show(struct seq_file *m, void *v)
 	seq_printf(m, "pglazyfree %lu\n", acc.events[PGLAZYFREE]);
 	seq_printf(m, "pglazyfreed %lu\n", acc.events[PGLAZYFREED]);
 
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	seq_printf(m, "thp_fault_alloc %lu\n", acc.events[THP_FAULT_ALLOC]);
 	seq_printf(m, "thp_collapse_alloc %lu\n",
 		   acc.events[THP_COLLAPSE_ALLOC]);
+#endif /* CONFIG_TRANSPARENT_HUGEPAGE */
 
 	return 0;
 }

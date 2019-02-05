@@ -1261,12 +1261,14 @@ PAGE_SIZE multiple when read back.
 	  thp_fault_alloc
 
 		Number of transparent hugepages which were allocated to satisfy
-		a page fault, including COW faults
+		a page fault, including COW faults. This counter is not present
+		when CONFIG_TRANSPARENT_HUGEPAGE is not set.
 
 	  thp_collapse_alloc
 
-		Number of transparent hugepages which were allocated to
-		allow collapsing an existing range of pages
+		Number of transparent hugepages which were allocated to allow
+		collapsing an existing range of pages. This counter is not
+		present when CONFIG_TRANSPARENT_HUGEPAGE is not set.
 
   memory.swap.current
 	A read-only single value file which exists on non-root
