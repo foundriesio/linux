@@ -500,14 +500,17 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 	 * corresponding structures like per-cpu stats and kmem caches
 	 * can be really big, so it may lead to a significant waste of memory.
 	 */
-	if (!delta) {
+	if (!delta && shrinker->seeks) {
+		unsigned long nr_considered;
+
 		shrinker->small_scan += freeable;
+		nr_considered = shrinker->small_scan >> priority;
 
-		delta = shrinker->small_scan >> priority;
-		shrinker->small_scan -= delta << priority;
-
-		delta *= 4;
+		delta = 4 * nr_considered;
 		do_div(delta, shrinker->seeks);
+
+		if (delta)
+			shrinker->small_scan -= nr_considered << priority;
 	}
 
 	total_scan += delta;
