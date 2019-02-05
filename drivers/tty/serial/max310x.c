@@ -1197,8 +1197,7 @@ static int max310x_probe(struct device *dev, struct max310x_devtype *devtype,
 		return PTR_ERR(regmap);
 
 	/* Alloc port structure */
-	s = devm_kzalloc(dev, sizeof(*s) +
-			 sizeof(struct max310x_one) * devtype->nr, GFP_KERNEL);
+	s = devm_kzalloc(dev, struct_size(s, p, devtype->nr), GFP_KERNEL);
 	if (!s) {
 		dev_err(dev, "Error allocating port structure\n");
 		return -ENOMEM;
@@ -1467,10 +1466,10 @@ static int __init max310x_uart_init(void)
 		return ret;
 
 #ifdef CONFIG_SPI_MASTER
-	spi_register_driver(&max310x_spi_driver);
+	ret = spi_register_driver(&max310x_spi_driver);
 #endif
 
-	return 0;
+	return ret;
 }
 module_init(max310x_uart_init);
 
