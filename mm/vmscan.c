@@ -2466,32 +2466,36 @@ out:
 
 		if (protection > 0) {
 			/*
-			 * Scale a cgroup's reclaim pressure by proportioning its current
-			 * usage to its memory.low or memory.min setting.
+			 * Scale a cgroup's reclaim pressure by proportioning
+			 * its current usage to its memory.low or memory.min
+			 * setting.
 			 *
-			 * This is important, as otherwise scanning aggression becomes
-			 * extremely binary -- from nothing as we approach the memory
-			 * protection threshold, to totally nominal as we exceed it. This
-			 * results in requiring setting extremely liberal protection
-			 * thresholds. It also means we simply get no protection at all if
-			 * we set it too low, which is not ideal.
+			 * This is important, as otherwise scanning aggression
+			 * becomes extremely binary -- from nothing as we
+			 * approach the memory protection threshold, to totally
+			 * nominal as we exceed it.  This results in requiring
+			 * setting extremely liberal protection thresholds. It
+			 * also means we simply get no protection at all if we
+			 * set it too low, which is not ideal.
 			 */
 			unsigned long cgroup_size = mem_cgroup_size(memcg);
 			unsigned long baseline = 0;
 
 			/*
-			 * During the reclaim first pass, we only consider cgroups in
-			 * excess of their protection setting, but if that doesn't produce
-			 * free pages, we come back for a second pass where we reclaim from
-			 * all groups.
+			 * During the reclaim first pass, we only consider
+			 * cgroups in excess of their protection setting, but if
+			 * that doesn't produce free pages, we come back for a
+			 * second pass where we reclaim from all groups.
 			 *
-			 * To maintain fairness in both cases, the first pass targets
-			 * groups in proportion to their overage, and the second pass
-			 * targets groups in proportion to their protection utilization.
+			 * To maintain fairness in both cases, the first pass
+			 * targets groups in proportion to their overage, and
+			 * the second pass targets groups in proportion to their
+			 * protection utilization.
 			 *
-			 * So on the first pass, a group whose size is 130% of its
-			 * protection will be targeted at 30% of its size. On the second
-			 * pass, a group whose size is at 40% of its protection will be
+			 * So on the first pass, a group whose size is 130% of
+			 * its protection will be targeted at 30% of its size.
+			 * On the second pass, a group whose size is at 40% of
+			 * its protection will be
 			 * targeted at 40% of its size.
 			 */
 			if (!sc->memcg_low_reclaim)
@@ -2499,18 +2503,20 @@ out:
 			scan = lruvec_size * cgroup_size / protection - baseline;
 
 			/*
-			 * Don't allow the scan target to exceed the lruvec size, which
-			 * otherwise could happen if we have >200% overage in the normal
-			 * case, or >100% overage when sc->memcg_low_reclaim is set.
+			 * Don't allow the scan target to exceed the lruvec
+			 * size, which otherwise could happen if we have >200%
+			 * overage in the normal case, or >100% overage when
+			 * sc->memcg_low_reclaim is set.
 			 *
-			 * This is important because other cgroups without memory.low have
-			 * their scan target initially set to their lruvec size, so
-			 * allowing values >100% of the lruvec size here could result in
-			 * penalising cgroups with memory.low set even *more* than their
-			 * peers in some cases in the case of large overages.
+			 * This is important because other cgroups without
+			 * memory.low have their scan target initially set to
+			 * their lruvec size, so allowing values >100% of the
+			 * lruvec size here could result in penalising cgroups
+			 * with memory.low set even *more* than their peers in
+			 * some cases in the case of large overages.
 			 *
-			 * Also, minimally target SWAP_CLUSTER_MAX pages to keep reclaim
-			 * moving forwards.
+			 * Also, minimally target SWAP_CLUSTER_MAX pages to keep
+			 * reclaim moving forwards.
 			 */
 			scan = clamp(scan, SWAP_CLUSTER_MAX, lruvec_size);
 		} else {
