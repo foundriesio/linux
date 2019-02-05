@@ -669,7 +669,7 @@ static void generic_online_page(struct page *page, unsigned int order)
 static int online_pages_blocks(unsigned long start, unsigned long nr_pages)
 {
 	unsigned long end = start + nr_pages;
-	int order, ret, onlined_pages = 0;
+	int order, onlined_pages = 0;
 
 	while (start < end) {
 		order = min(MAX_ORDER - 1,
