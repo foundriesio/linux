@@ -99,10 +99,10 @@ typedef struct { DECLARE_BITMAP(bits, MAX_NUMNODES); } nodemask_t;
 extern nodemask_t _unused_nodemask_arg_;
 
 #if MAX_NUMNODES > 1
-extern int nr_node_ids;
+extern unsigned int nr_node_ids;
 extern int nr_online_nodes;
 #else
-#define nr_node_ids	1
+#define nr_node_ids	1U
 #define nr_online_nodes	1
 #endif
 
