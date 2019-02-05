@@ -498,7 +498,11 @@ nocache:
 	}
 
 found:
-	if (addr + size > vend)
+	/*
+	 * Check also calculated address against the vstart,
+	 * because it can be 0 because of big align request.
+	 */
+	if (addr + size > vend || addr < vstart)
 		goto overflow;
 
 	va->va_start = addr;
@@ -628,7 +632,7 @@ static unsigned long lazy_max_pages(void)
 	return log * (32UL * 1024 * 1024 / PAGE_SIZE);
 }
 
-static atomic_t vmap_lazy_nr = ATOMIC_INIT(0);
+static atomic_long_t vmap_lazy_nr = ATOMIC_LONG_INIT(0);
 
 /*
  * Serialize vmap purging.  There is no actual criticial section protected
@@ -646,7 +650,7 @@ static void purge_fragmented_blocks_allcpus(void);
  */
 void set_iounmap_nonlazy(void)
 {
-	atomic_set(&vmap_lazy_nr, lazy_max_pages()+1);
+	atomic_long_set(&vmap_lazy_nr, lazy_max_pages()+1);
 }
 
 /*
@@ -654,34 +658,40 @@ void set_iounmap_nonlazy(void)
  */
 static bool __purge_vmap_area_lazy(unsigned long start, unsigned long end)
 {
+	unsigned long resched_threshold;
 	struct llist_node *valist;
 	struct vmap_area *va;
 	struct vmap_area *n_va;
-	bool do_free = false;
 
 	lockdep_assert_held(&vmap_purge_lock);
 
 	valist = llist_del_all(&vmap_purge_list);
+	if (unlikely(valist == NULL))
+		return false;
+
+	/*
+	 * TODO: to calculate a flush range without looping.
+	 * The list can be up to lazy_max_pages() elements.
+	 */
 	llist_for_each_entry(va, valist, purge_list) {
 		if (va->va_start < start)
 			start = va->va_start;
 		if (va->va_end > end)
 			end = va->va_end;
-		do_free = true;
 	}
 
-	if (!do_free)
-		return false;
-
 	flush_tlb_kernel_range(start, end);
+	resched_threshold = lazy_max_pages() << 1;
 
 	spin_lock(&vmap_area_lock);
 	llist_for_each_entry_safe(va, n_va, valist, purge_list) {
-		int nr = (va->va_end - va->va_start) >> PAGE_SHIFT;
+		unsigned long nr = (va->va_end - va->va_start) >> PAGE_SHIFT;
 
 		__free_vmap_area(va);
-		atomic_sub(nr, &vmap_lazy_nr);
-		cond_resched_lock(&vmap_area_lock);
+		atomic_long_sub(nr, &vmap_lazy_nr);
+
+		if (atomic_long_read(&vmap_lazy_nr) < resched_threshold)
+			cond_resched_lock(&vmap_area_lock);
 	}
 	spin_unlock(&vmap_area_lock);
 	return true;
@@ -717,10 +727,10 @@ static void purge_vmap_area_lazy(void)
  */
 static void free_vmap_area_noflush(struct vmap_area *va)
 {
-	int nr_lazy;
+	unsigned long nr_lazy;
 
-	nr_lazy = atomic_add_return((va->va_end - va->va_start) >> PAGE_SHIFT,
-				    &vmap_lazy_nr);
+	nr_lazy = atomic_long_add_return((va->va_end - va->va_start) >>
+				PAGE_SHIFT, &vmap_lazy_nr);
 
 	/* After this point, we may free va at any time */
 	llist_add(&va->purge_list, &vmap_purge_list);
@@ -1505,7 +1515,7 @@ static void __vunmap(const void *addr, int deallocate_pages)
 			addr))
 		return;
 
-	area = find_vmap_area((unsigned long)addr)->vm;
+	area = find_vm_area(addr);
 	if (unlikely(!area)) {
 		WARN(1, KERN_ERR "Trying to vfree() nonexistent vm area (%p)\n",
 				addr);
@@ -1565,6 +1575,14 @@ void vfree_atomic(const void *addr)
 	__vfree_deferred(addr);
 }
 
+static void __vfree(const void *addr)
+{
+	if (unlikely(in_interrupt()))
+		__vfree_deferred(addr);
+	else
+		__vunmap(addr, 1);
+}
+
 /**
  *	vfree  -  release memory allocated by vmalloc()
  *	@addr:		memory base address
@@ -1591,10 +1609,8 @@ void vfree(const void *addr)
 
 	if (!addr)
 		return;
-	if (unlikely(in_interrupt()))
-		__vfree_deferred(addr);
-	else
-		__vunmap(addr, 1);
+
+	__vfree(addr);
 }
 EXPORT_SYMBOL(vfree);
 
@@ -1709,7 +1725,7 @@ fail:
 	warn_alloc(gfp_mask, NULL,
 			  "vmalloc: allocation failure, allocated %ld of %ld bytes",
 			  (area->nr_pages*PAGE_SIZE), area->size);
-	vfree(area->addr);
+	__vfree(area->addr);
 	return NULL;
 }
 
@@ -1767,6 +1783,15 @@ fail:
 			  "vmalloc: allocation failure: %lu bytes", real_size);
 	return NULL;
 }
+
+/*
+ * This is only for performance analysis of vmalloc and stress purpose.
+ * It is required by vmalloc test module, therefore do not use it other
+ * than that.
+ */
+#ifdef CONFIG_TEST_VMALLOC_MODULE
+EXPORT_SYMBOL_GPL(__vmalloc_node_range);
+#endif
 
 /**
  *	__vmalloc_node  -  allocate virtually contiguous memory
@@ -1859,18 +1884,10 @@ EXPORT_SYMBOL(vzalloc);
  */
 void *vmalloc_user(unsigned long size)
 {
-	struct vm_struct *area;
-	void *ret;
-
-	ret = __vmalloc_node(size, SHMLBA,
-			     GFP_KERNEL | __GFP_ZERO,
-			     PAGE_KERNEL, NUMA_NO_NODE,
-			     __builtin_return_address(0));
-	if (ret) {
-		area = find_vm_area(ret);
-		area->flags |= VM_USERMAP;
-	}
-	return ret;
+	return __vmalloc_node_range(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
+				    GFP_KERNEL | __GFP_ZERO, PAGE_KERNEL,
+				    VM_USERMAP, NUMA_NO_NODE,
+				    __builtin_return_address(0));
 }
 EXPORT_SYMBOL(vmalloc_user);
 
@@ -1964,16 +1981,10 @@ EXPORT_SYMBOL(vmalloc_32);
  */
 void *vmalloc_32_user(unsigned long size)
 {
-	struct vm_struct *area;
-	void *ret;
-
-	ret = __vmalloc_node(size, 1, GFP_VMALLOC32 | __GFP_ZERO, PAGE_KERNEL,
-			     NUMA_NO_NODE, __builtin_return_address(0));
-	if (ret) {
-		area = find_vm_area(ret);
-		area->flags |= VM_USERMAP;
-	}
-	return ret;
+	return __vmalloc_node_range(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
+				    GFP_VMALLOC32 | __GFP_ZERO, PAGE_KERNEL,
+				    VM_USERMAP, NUMA_NO_NODE,
+				    __builtin_return_address(0));
 }
 EXPORT_SYMBOL(vmalloc_32_user);
 
@@ -2248,7 +2259,7 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 	if (!(area->flags & VM_USERMAP))
 		return -EINVAL;
 
-	if (kaddr + size > area->addr + area->size)
+	if (kaddr + size > area->addr + get_vm_area_size(area))
 		return -EINVAL;
 
 	do {

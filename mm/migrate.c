@@ -100,7 +100,7 @@ int isolate_movable_page(struct page *page, isolate_mode_t mode)
 	/*
 	 * Check PageMovable before holding a PG_lock because page's owner
 	 * assumes anybody doesn't touch PG_lock of newly allocated page
-	 * so unconditionally grapping the lock ruins page's owner side.
+	 * so unconditionally grabbing the lock ruins page's owner side.
 	 */
 	if (unlikely(!__PageMovable(page)))
 		goto out_putpage;
@@ -641,8 +641,14 @@ void migrate_page_states(struct page *newpage, struct page *page)
 	 */
 	if (PageSwapCache(page))
 		ClearPageSwapCache(page);
-	ClearPagePrivate(page);
-	set_page_private(page, 0);
+	/*
+	 * Unlikely, but PagePrivate and page_private could potentially
+	 * contain information needed at hugetlb free page time.
+	 */
+	if (!PageHuge(page)) {
+		ClearPagePrivate(page);
+		set_page_private(page, 0);
+	}
 
 	/*
 	 * If any waiters have accumulated on the new page then
@@ -911,7 +917,7 @@ static int fallback_migrate_page(struct address_space *mapping,
 	 */
 	if (page_has_private(page) &&
 	    !try_to_release_page(page, GFP_KERNEL))
-		return -EAGAIN;
+		return mode == MIGRATE_SYNC ? -EAGAIN : -EBUSY;
 
 	return migrate_page(mapping, newpage, page, mode);
 }
@@ -1287,7 +1293,7 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 	struct anon_vma *anon_vma = NULL;
 
 	/*
-	 * Movability of hugepages depends on architectures and hugepage size.
+	 * Migratability of hugepages depends on architectures and their size.
 	 * This check is necessary because some callers of hugepage migration
 	 * like soft offline and memory hotremove don't walk through page
 	 * tables or check whether the hugepage is pmd-based or not before
