@@ -335,6 +335,9 @@ static inline bool mem_cgroup_disabled(void)
 
 static inline unsigned long mem_cgroup_protection(struct mem_cgroup *memcg)
 {
+	if (mem_cgroup_disabled())
+		return 0;
+
 	return max(READ_ONCE(memcg->memory.emin), READ_ONCE(memcg->memory.elow));
 }
 
