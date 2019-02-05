@@ -124,10 +124,10 @@ ENTRY(crc_t10dif_pmull)
 	vext.8		q10, qzr, q0, #4
 
 	// receive the initial 64B data, xor the initial crc value
-	vld1.64		{q0-q1}, [arg2, :128]!
-	vld1.64		{q2-q3}, [arg2, :128]!
-	vld1.64		{q4-q5}, [arg2, :128]!
-	vld1.64		{q6-q7}, [arg2, :128]!
+	vld1.64		{q0-q1}, [arg2]!
+	vld1.64		{q2-q3}, [arg2]!
+	vld1.64		{q4-q5}, [arg2]!
+	vld1.64		{q6-q7}, [arg2]!
 CPU_LE(	vrev64.8	q0, q0			)
 CPU_LE(	vrev64.8	q1, q1			)
 CPU_LE(	vrev64.8	q2, q2			)
@@ -167,7 +167,7 @@ CPU_LE(	vrev64.8	q7, q7			)
 _fold_64_B_loop:
 
 	.macro		fold64, reg1, reg2
-	vld1.64		{q11-q12}, [arg2, :128]!
+	vld1.64		{q11-q12}, [arg2]!
 
 	vmull.p64	q8, \reg1\()h, d21
 	vmull.p64	\reg1, \reg1\()l, d20
@@ -238,7 +238,7 @@ _16B_reduction_loop:
 	vmull.p64	q7, d15, d21
 	veor.8		q7, q7, q8
 
-	vld1.64		{q0}, [arg2, :128]!
+	vld1.64		{q0}, [arg2]!
 CPU_LE(	vrev64.8	q0, q0		)
 	vswp		d0, d1
 	veor.8		q7, q7, q0
@@ -335,14 +335,13 @@ _less_than_128:
 	vmov.i8		q0, #0
 	vmov		s3, arg1_low32		// get the initial crc value
 
-	vld1.64		{q7}, [arg2, :128]!
+	vld1.64		{q7}, [arg2]!
 CPU_LE(	vrev64.8	q7, q7		)
 	vswp		d14, d15
 	veor.8		q7, q7, q0
 
 	cmp		arg3, #16
 	beq		_128_done		// exactly 16 left
-	blt		_less_than_16_left
 
 	// now if there is, load the constants
 	vldr		d20, rk1
@@ -353,18 +352,6 @@ CPU_LE(	vrev64.8	q7, q7		)
 	addlt		arg3, arg3, #16
 	blt		_get_last_two_regs
 	b		_16B_reduction_loop
-
-_less_than_16_left:
-	// shl r9, 4
-	adr		ip, tbl_shf_table + 16
-	sub		ip, ip, arg3
-	vld1.8		{q0}, [ip]
-	vmov.i8		q9, #0x80
-	veor.8		q0, q0, q9
-	vtbl.8		d18, {d14-d15}, d0
-	vtbl.8		d15, {d14-d15}, d1
-	vmov		d14, d18
-	b		_128_done
 ENDPROC(crc_t10dif_pmull)
 
 // precomputed constants

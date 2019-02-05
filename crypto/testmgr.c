@@ -77,10 +77,8 @@ int alg_test(const char *driver, const char *alg, u32 type, u32 mask)
 #define DECRYPT 0
 
 struct aead_test_suite {
-	struct {
-		const struct aead_testvec *vecs;
-		unsigned int count;
-	} enc, dec;
+	const struct aead_testvec *vecs;
+	unsigned int count;
 };
 
 struct cipher_test_suite {
@@ -616,9 +614,6 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 	const char *e, *d;
 	struct crypto_wait wait;
 	unsigned int authsize, iv_len;
-	void *input;
-	void *output;
-	void *assoc;
 	char *iv;
 	char *xbuf[XBUFSIZE];
 	char *xoutbuf[XBUFSIZE];
@@ -669,25 +664,41 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 	iv_len = crypto_aead_ivsize(tfm);
 
 	for (i = 0, j = 0; i < tcount; i++) {
+		const char *input, *expected_output;
+		unsigned int inlen, outlen;
+		char *inbuf, *outbuf, *assocbuf;
+
 		if (template[i].np)
 			continue;
+		if (enc) {
+			if (template[i].novrfy)
+				continue;
+			input = template[i].ptext;
+			inlen = template[i].plen;
+			expected_output = template[i].ctext;
+			outlen = template[i].clen;
+		} else {
+			input = template[i].ctext;
+			inlen = template[i].clen;
+			expected_output = template[i].ptext;
+			outlen = template[i].plen;
+		}
 
 		j++;
 
 		/* some templates have no input data but they will
 		 * touch input
 		 */
-		input = xbuf[0];
-		input += align_offset;
-		assoc = axbuf[0];
+		inbuf = xbuf[0] + align_offset;
+		assocbuf = axbuf[0];
 
 		ret = -EINVAL;
-		if (WARN_ON(align_offset + template[i].ilen >
-			    PAGE_SIZE || template[i].alen > PAGE_SIZE))
+		if (WARN_ON(align_offset + template[i].clen > PAGE_SIZE ||
+			    template[i].alen > PAGE_SIZE))
 			goto out;
 
-		memcpy(input, template[i].input, template[i].ilen);
-		memcpy(assoc, template[i].assoc, template[i].alen);
+		memcpy(inbuf, input, inlen);
+		memcpy(assocbuf, template[i].assoc, template[i].alen);
 		if (template[i].iv)
 			memcpy(iv, template[i].iv, iv_len);
 		else
@@ -695,7 +706,8 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 		crypto_aead_clear_flags(tfm, ~0);
 		if (template[i].wk)
-			crypto_aead_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
+			crypto_aead_set_flags(tfm,
+					      CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
 
 		if (template[i].klen > MAX_KEYLEN) {
 			pr_err("alg: aead%s: setkey failed on test %d for %s: key size %d > %d\n",
@@ -714,7 +726,7 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 		} else if (ret)
 			continue;
 
-		authsize = abs(template[i].rlen - template[i].ilen);
+		authsize = template[i].clen - template[i].plen;
 		ret = crypto_aead_setauthsize(tfm, authsize);
 		if (ret) {
 			pr_err("alg: aead%s: Failed to set authsize to %u on test %d for %s\n",
@@ -724,23 +736,20 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 		k = !!template[i].alen;
 		sg_init_table(sg, k + 1);
-		sg_set_buf(&sg[0], assoc, template[i].alen);
-		sg_set_buf(&sg[k], input,
-			   template[i].ilen + (enc ? authsize : 0));
-		output = input;
+		sg_set_buf(&sg[0], assocbuf, template[i].alen);
+		sg_set_buf(&sg[k], inbuf, template[i].clen);
+		outbuf = inbuf;
 
 		if (diff_dst) {
 			sg_init_table(sgout, k + 1);
-			sg_set_buf(&sgout[0], assoc, template[i].alen);
+			sg_set_buf(&sgout[0], assocbuf, template[i].alen);
 
-			output = xoutbuf[0];
-			output += align_offset;
-			sg_set_buf(&sgout[k], output,
-				   template[i].rlen + (enc ? 0 : authsize));
+			outbuf = xoutbuf[0] + align_offset;
+			sg_set_buf(&sgout[k], outbuf, template[i].clen);
 		}
 
-		aead_request_set_crypt(req, sg, (diff_dst) ? sgout : sg,
-				       template[i].ilen, iv);
+		aead_request_set_crypt(req, sg, (diff_dst) ? sgout : sg, inlen,
+				       iv);
 
 		aead_request_set_ad(req, template[i].alen);
 
@@ -769,23 +778,39 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 			goto out;
 		}
 
-		q = output;
-		if (memcmp(q, template[i].result, template[i].rlen)) {
+		if (memcmp(outbuf, expected_output, outlen)) {
 			pr_err("alg: aead%s: Test %d failed on %s for %s\n",
 			       d, j, e, algo);
-			hexdump(q, template[i].rlen);
+			hexdump(outbuf, outlen);
 			ret = -EINVAL;
 			goto out;
 		}
 	}
 
 	for (i = 0, j = 0; i < tcount; i++) {
+		const char *input, *expected_output;
+		unsigned int inlen, outlen;
+
 		/* alignment tests are only done with continuous buffers */
 		if (align_offset != 0)
 			break;
 
 		if (!template[i].np)
 			continue;
+
+		if (enc) {
+			if (template[i].novrfy)
+				continue;
+			input = template[i].ptext;
+			inlen = template[i].plen;
+			expected_output = template[i].ctext;
+			outlen = template[i].clen;
+		} else {
+			input = template[i].ctext;
+			inlen = template[i].clen;
+			expected_output = template[i].ptext;
+			outlen = template[i].plen;
+		}
 
 		j++;
 
@@ -796,7 +821,8 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 		crypto_aead_clear_flags(tfm, ~0);
 		if (template[i].wk)
-			crypto_aead_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
+			crypto_aead_set_flags(tfm,
+					      CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
 		if (template[i].klen > MAX_KEYLEN) {
 			pr_err("alg: aead%s: setkey failed on test %d for %s: key size %d > %d\n",
 			       d, j, algo, template[i].klen, MAX_KEYLEN);
@@ -813,7 +839,7 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 		} else if (ret)
 			continue;
 
-		authsize = abs(template[i].rlen - template[i].ilen);
+		authsize = template[i].clen - template[i].plen;
 
 		ret = -EINVAL;
 		sg_init_table(sg, template[i].anp + template[i].np);
@@ -840,32 +866,32 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 		}
 
 		for (k = 0, temp = 0; k < template[i].np; k++) {
-			if (WARN_ON(offset_in_page(IDX[k]) +
-				    template[i].tap[k] > PAGE_SIZE))
+			n = template[i].tap[k];
+			if (k == template[i].np - 1 && !enc)
+				n += authsize;
+
+			if (WARN_ON(offset_in_page(IDX[k]) + n > PAGE_SIZE))
 				goto out;
 
 			q = xbuf[IDX[k] >> PAGE_SHIFT] + offset_in_page(IDX[k]);
-			memcpy(q, template[i].input + temp, template[i].tap[k]);
-			sg_set_buf(&sg[template[i].anp + k],
-				   q, template[i].tap[k]);
+			memcpy(q, input + temp, n);
+			sg_set_buf(&sg[template[i].anp + k], q, n);
 
 			if (diff_dst) {
 				q = xoutbuf[IDX[k] >> PAGE_SHIFT] +
 				    offset_in_page(IDX[k]);
 
-				memset(q, 0, template[i].tap[k]);
+				memset(q, 0, n);
 
-				sg_set_buf(&sgout[template[i].anp + k],
-					   q, template[i].tap[k]);
+				sg_set_buf(&sgout[template[i].anp + k], q, n);
 			}
 
-			n = template[i].tap[k];
 			if (k == template[i].np - 1 && enc)
 				n += authsize;
 			if (offset_in_page(q) + n < PAGE_SIZE)
 				q[n] = 0;
 
-			temp += template[i].tap[k];
+			temp += n;
 		}
 
 		ret = crypto_aead_setauthsize(tfm, authsize);
@@ -890,8 +916,7 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 		}
 
 		aead_request_set_crypt(req, sg, (diff_dst) ? sgout : sg,
-				       template[i].ilen,
-				       iv);
+				       inlen, iv);
 
 		aead_request_set_ad(req, template[i].alen);
 
@@ -930,10 +955,10 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 				    offset_in_page(IDX[k]);
 
 			n = template[i].tap[k];
-			if (k == template[i].np - 1)
-				n += enc ? authsize : -authsize;
+			if (k == template[i].np - 1 && enc)
+				n += authsize;
 
-			if (memcmp(q, template[i].result + temp, n)) {
+			if (memcmp(q, expected_output + temp, n)) {
 				pr_err("alg: aead%s: Chunk test %d failed on %s at page %u for %s\n",
 				       d, j, e, k, algo);
 				hexdump(q, n);
@@ -942,9 +967,8 @@ static int __test_aead(struct crypto_aead *tfm, int enc,
 
 			q += n;
 			if (k == template[i].np - 1 && !enc) {
-				if (!diff_dst &&
-					memcmp(q, template[i].input +
-					      temp + n, authsize))
+				if (!diff_dst && memcmp(q, input + temp + n,
+							authsize))
 					n = authsize;
 				else
 					n = 0;
@@ -1056,7 +1080,7 @@ static int test_cipher(struct crypto_cipher *tfm, int enc,
 
 		crypto_cipher_clear_flags(tfm, ~0);
 		if (template[i].wk)
-			crypto_cipher_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
+			crypto_cipher_set_flags(tfm, CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
 
 		ret = crypto_cipher_setkey(tfm, template[i].key,
 					   template[i].klen);
@@ -1172,8 +1196,7 @@ static int __test_skcipher(struct crypto_skcipher *tfm, int enc,
 
 		crypto_skcipher_clear_flags(tfm, ~0);
 		if (template[i].wk)
-			crypto_skcipher_set_flags(tfm,
-						  CRYPTO_TFM_REQ_WEAK_KEY);
+			crypto_skcipher_set_flags(tfm, CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
 
 		ret = crypto_skcipher_setkey(tfm, template[i].key,
 					     template[i].klen);
@@ -1243,8 +1266,7 @@ static int __test_skcipher(struct crypto_skcipher *tfm, int enc,
 		j++;
 		crypto_skcipher_clear_flags(tfm, ~0);
 		if (template[i].wk)
-			crypto_skcipher_set_flags(tfm,
-						  CRYPTO_TFM_REQ_WEAK_KEY);
+			crypto_skcipher_set_flags(tfm, CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
 
 		ret = crypto_skcipher_setkey(tfm, template[i].key,
 					     template[i].klen);
@@ -1716,8 +1738,9 @@ out:
 static int alg_test_aead(const struct alg_test_desc *desc, const char *driver,
 			 u32 type, u32 mask)
 {
+	const struct aead_test_suite *suite = &desc->suite.aead;
 	struct crypto_aead *tfm;
-	int err = 0;
+	int err;
 
 	tfm = crypto_alloc_aead(driver, type, mask);
 	if (IS_ERR(tfm)) {
@@ -1726,18 +1749,10 @@ static int alg_test_aead(const struct alg_test_desc *desc, const char *driver,
 		return PTR_ERR(tfm);
 	}
 
-	if (desc->suite.aead.enc.vecs) {
-		err = test_aead(tfm, ENCRYPT, desc->suite.aead.enc.vecs,
-				desc->suite.aead.enc.count);
-		if (err)
-			goto out;
-	}
+	err = test_aead(tfm, ENCRYPT, suite->vecs, suite->count);
+	if (!err)
+		err = test_aead(tfm, DECRYPT, suite->vecs, suite->count);
 
-	if (!err && desc->suite.aead.dec.vecs)
-		err = test_aead(tfm, DECRYPT, desc->suite.aead.dec.vecs,
-				desc->suite.aead.dec.count);
-
-out:
 	crypto_free_aead(tfm);
 	return err;
 }
@@ -1889,19 +1904,26 @@ static int alg_test_crc32c(const struct alg_test_desc *desc,
 			   const char *driver, u32 type, u32 mask)
 {
 	struct crypto_shash *tfm;
-	u32 val;
+	__le32 val;
 	int err;
 
 	err = alg_test_hash(desc, driver, type, mask);
 	if (err)
-		goto out;
+		return err;
 
 	tfm = crypto_alloc_shash(driver, type, mask);
 	if (IS_ERR(tfm)) {
+		if (PTR_ERR(tfm) == -ENOENT) {
+			/*
+			 * This crc32c implementation is only available through
+			 * ahash API, not the shash API, so the remaining part
+			 * of the test is not applicable to it.
+			 */
+			return 0;
+		}
 		printk(KERN_ERR "alg: crc32c: Failed to load transform for %s: "
 		       "%ld\n", driver, PTR_ERR(tfm));
-		err = PTR_ERR(tfm);
-		goto out;
+		return PTR_ERR(tfm);
 	}
 
 	do {
@@ -1911,7 +1933,7 @@ static int alg_test_crc32c(const struct alg_test_desc *desc,
 		shash->tfm = tfm;
 		shash->flags = 0;
 
-		*ctx = le32_to_cpu(420553207);
+		*ctx = 420553207;
 		err = crypto_shash_final(shash, (u8 *)&val);
 		if (err) {
 			printk(KERN_ERR "alg: crc32c: Operation failed for "
@@ -1919,16 +1941,15 @@ static int alg_test_crc32c(const struct alg_test_desc *desc,
 			break;
 		}
 
-		if (val != ~420553207) {
-			printk(KERN_ERR "alg: crc32c: Test failed for %s: "
-			       "%d\n", driver, val);
+		if (val != cpu_to_le32(~420553207)) {
+			pr_err("alg: crc32c: Test failed for %s: %u\n",
+			       driver, le32_to_cpu(val));
 			err = -EINVAL;
 		}
 	} while (0);
 
 	crypto_free_shash(tfm);
 
-out:
 	return err;
 }
 
@@ -2238,6 +2259,9 @@ static int test_akcipher_one(struct crypto_akcipher *tfm,
 	unsigned int out_len_max, out_len = 0;
 	int err = -ENOMEM;
 	struct scatterlist src, dst, src_tab[2];
+	const char *m, *c;
+	unsigned int m_size, c_size;
+	const char *op;
 
 	if (testmgr_alloc_buf(xbuf))
 		return err;
@@ -2259,46 +2283,72 @@ static int test_akcipher_one(struct crypto_akcipher *tfm,
 
 	err = -ENOMEM;
 	out_len_max = crypto_akcipher_maxsize(tfm);
+
+	/*
+	 * First run test which do not require a private key, such as
+	 * encrypt or verify.
+	 */
 	outbuf_enc = kzalloc(out_len_max, GFP_KERNEL);
 	if (!outbuf_enc)
 		goto free_req;
 
-	if (WARN_ON(vecs->m_size > PAGE_SIZE))
-		goto free_all;
+	if (!vecs->siggen_sigver_test) {
+		m = vecs->m;
+		m_size = vecs->m_size;
+		c = vecs->c;
+		c_size = vecs->c_size;
+		op = "encrypt";
+	} else {
+		/* Swap args so we could keep plaintext (digest)
+		 * in vecs->m, and cooked signature in vecs->c.
+		 */
+		m = vecs->c; /* signature */
+		m_size = vecs->c_size;
+		c = vecs->m; /* digest */
+		c_size = vecs->m_size;
+		op = "verify";
+	}
 
-	memcpy(xbuf[0], vecs->m, vecs->m_size);
+	if (WARN_ON(m_size > PAGE_SIZE))
+		goto free_all;
+	memcpy(xbuf[0], m, m_size);
 
 	sg_init_table(src_tab, 2);
 	sg_set_buf(&src_tab[0], xbuf[0], 8);
-	sg_set_buf(&src_tab[1], xbuf[0] + 8, vecs->m_size - 8);
+	sg_set_buf(&src_tab[1], xbuf[0] + 8, m_size - 8);
 	sg_init_one(&dst, outbuf_enc, out_len_max);
-	akcipher_request_set_crypt(req, src_tab, &dst, vecs->m_size,
+	akcipher_request_set_crypt(req, src_tab, &dst, m_size,
 				   out_len_max);
 	akcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG,
 				      crypto_req_done, &wait);
 
 	err = crypto_wait_req(vecs->siggen_sigver_test ?
-			      /* Run asymmetric signature generation */
-			      crypto_akcipher_sign(req) :
+			      /* Run asymmetric signature verification */
+			      crypto_akcipher_verify(req) :
 			      /* Run asymmetric encrypt */
 			      crypto_akcipher_encrypt(req), &wait);
 	if (err) {
-		pr_err("alg: akcipher: encrypt test failed. err %d\n", err);
+		pr_err("alg: akcipher: %s test failed. err %d\n", op, err);
 		goto free_all;
 	}
-	if (req->dst_len != vecs->c_size) {
-		pr_err("alg: akcipher: encrypt test failed. Invalid output len\n");
+	if (req->dst_len != c_size) {
+		pr_err("alg: akcipher: %s test failed. Invalid output len\n",
+		       op);
 		err = -EINVAL;
 		goto free_all;
 	}
 	/* verify that encrypted message is equal to expected */
-	if (memcmp(vecs->c, outbuf_enc, vecs->c_size)) {
-		pr_err("alg: akcipher: encrypt test failed. Invalid output\n");
-		hexdump(outbuf_enc, vecs->c_size);
+	if (memcmp(c, outbuf_enc, c_size)) {
+		pr_err("alg: akcipher: %s test failed. Invalid output\n", op);
+		hexdump(outbuf_enc, c_size);
 		err = -EINVAL;
 		goto free_all;
 	}
-	/* Don't invoke decrypt for vectors with public key */
+
+	/*
+	 * Don't invoke (decrypt or sign) test which require a private key
+	 * for vectors with only a public key.
+	 */
 	if (vecs->public_key_vec) {
 		err = 0;
 		goto free_all;
@@ -2309,37 +2359,36 @@ static int test_akcipher_one(struct crypto_akcipher *tfm,
 		goto free_all;
 	}
 
-	if (WARN_ON(vecs->c_size > PAGE_SIZE))
+	op = vecs->siggen_sigver_test ? "sign" : "decrypt";
+	if (WARN_ON(c_size > PAGE_SIZE))
 		goto free_all;
+	memcpy(xbuf[0], c, c_size);
 
-	memcpy(xbuf[0], vecs->c, vecs->c_size);
-
-	sg_init_one(&src, xbuf[0], vecs->c_size);
+	sg_init_one(&src, xbuf[0], c_size);
 	sg_init_one(&dst, outbuf_dec, out_len_max);
 	crypto_init_wait(&wait);
-	akcipher_request_set_crypt(req, &src, &dst, vecs->c_size, out_len_max);
+	akcipher_request_set_crypt(req, &src, &dst, c_size, out_len_max);
 
 	err = crypto_wait_req(vecs->siggen_sigver_test ?
-			      /* Run asymmetric signature verification */
-			      crypto_akcipher_verify(req) :
+			      /* Run asymmetric signature generation */
+			      crypto_akcipher_sign(req) :
 			      /* Run asymmetric decrypt */
 			      crypto_akcipher_decrypt(req), &wait);
 	if (err) {
-		pr_err("alg: akcipher: decrypt test failed. err %d\n", err);
+		pr_err("alg: akcipher: %s test failed. err %d\n", op, err);
 		goto free_all;
 	}
 	out_len = req->dst_len;
-	if (out_len < vecs->m_size) {
-		pr_err("alg: akcipher: decrypt test failed. "
-		       "Invalid output len %u\n", out_len);
+	if (out_len < m_size) {
+		pr_err("alg: akcipher: %s test failed. Invalid output len %u\n",
+		       op, out_len);
 		err = -EINVAL;
 		goto free_all;
 	}
 	/* verify that decrypted message is equal to the original msg */
-	if (memchr_inv(outbuf_dec, 0, out_len - vecs->m_size) ||
-	    memcmp(vecs->m, outbuf_dec + out_len - vecs->m_size,
-		   vecs->m_size)) {
-		pr_err("alg: akcipher: decrypt test failed. Invalid output\n");
+	if (memchr_inv(outbuf_dec, 0, out_len - m_size) ||
+	    memcmp(m, outbuf_dec + out_len - m_size, m_size)) {
+		pr_err("alg: akcipher: %s test failed. Invalid output\n", op);
 		hexdump(outbuf_dec, out_len);
 		err = -EINVAL;
 	}
@@ -2419,28 +2468,19 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "aegis128",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aegis128_enc_tv_template),
-				.dec = __VECS(aegis128_dec_tv_template),
-			}
+			.aead = __VECS(aegis128_tv_template)
 		}
 	}, {
 		.alg = "aegis128l",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aegis128l_enc_tv_template),
-				.dec = __VECS(aegis128l_dec_tv_template),
-			}
+			.aead = __VECS(aegis128l_tv_template)
 		}
 	}, {
 		.alg = "aegis256",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aegis256_enc_tv_template),
-				.dec = __VECS(aegis256_dec_tv_template),
-			}
+			.aead = __VECS(aegis256_tv_template)
 		}
 	}, {
 		.alg = "ansi_cprng",
@@ -2452,36 +2492,27 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "authenc(hmac(md5),ecb(cipher_null))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_md5_ecb_cipher_null_enc_tv_template),
-				.dec = __VECS(hmac_md5_ecb_cipher_null_dec_tv_template)
-			}
+			.aead = __VECS(hmac_md5_ecb_cipher_null_tv_template)
 		}
 	}, {
 		.alg = "authenc(hmac(sha1),cbc(aes))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha1_aes_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha1_aes_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha1),cbc(des))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha1_des_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha1_des_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha1),cbc(des3_ede))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha1_des3_ede_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha1_des3_ede_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha1),ctr(aes))",
@@ -2491,10 +2522,7 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "authenc(hmac(sha1),ecb(cipher_null))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha1_ecb_cipher_null_enc_tv_temp),
-				.dec = __VECS(hmac_sha1_ecb_cipher_null_dec_tv_temp)
-			}
+			.aead = __VECS(hmac_sha1_ecb_cipher_null_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha1),rfc3686(ctr(aes)))",
@@ -2504,44 +2532,34 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "authenc(hmac(sha224),cbc(des))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha224_des_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha224_des_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha224),cbc(des3_ede))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha224_des3_ede_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha224_des3_ede_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha256),cbc(aes))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha256_aes_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha256_aes_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha256),cbc(des))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha256_des_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha256_des_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha256),cbc(des3_ede))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha256_des3_ede_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha256_des3_ede_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha256),ctr(aes))",
@@ -2555,18 +2573,14 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "authenc(hmac(sha384),cbc(des))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha384_des_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha384_des_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha384),cbc(des3_ede))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha384_des3_ede_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha384_des3_ede_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha384),ctr(aes))",
@@ -2581,26 +2595,20 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.fips_allowed = 1,
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha512_aes_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha512_aes_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha512),cbc(des))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha512_des_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha512_des_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha512),cbc(des3_ede))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(hmac_sha512_des3_ede_cbc_enc_tv_temp)
-			}
+			.aead = __VECS(hmac_sha512_des3_ede_cbc_tv_temp)
 		}
 	}, {
 		.alg = "authenc(hmac(sha512),ctr(aes))",
@@ -2697,10 +2705,7 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aes_ccm_enc_tv_template),
-				.dec = __VECS(aes_ccm_dec_tv_template)
-			}
+			.aead = __VECS(aes_ccm_tv_template)
 		}
 	}, {
 		.alg = "cfb(aes)",
@@ -2735,6 +2740,7 @@ static const struct alg_test_desc alg_test_descs[] = {
 	}, {
 		.alg = "crc32",
 		.test = alg_test_hash,
+		.fips_allowed = 1,
 		.suite = {
 			.hash = __VECS(crc32_tv_template)
 		}
@@ -3111,10 +3117,7 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aes_gcm_enc_tv_template),
-				.dec = __VECS(aes_gcm_dec_tv_template)
-			}
+			.aead = __VECS(aes_gcm_tv_template)
 		}
 	}, {
 		.alg = "ghash",
@@ -3309,19 +3312,13 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.alg = "morus1280",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(morus1280_enc_tv_template),
-				.dec = __VECS(morus1280_dec_tv_template),
-			}
+			.aead = __VECS(morus1280_tv_template)
 		}
 	}, {
 		.alg = "morus640",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(morus640_enc_tv_template),
-				.dec = __VECS(morus640_dec_tv_template),
-			}
+			.aead = __VECS(morus640_tv_template)
 		}
 	}, {
 		.alg = "nhpoly1305",
@@ -3386,47 +3383,32 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aes_gcm_rfc4106_enc_tv_template),
-				.dec = __VECS(aes_gcm_rfc4106_dec_tv_template)
-			}
+			.aead = __VECS(aes_gcm_rfc4106_tv_template)
 		}
 	}, {
 		.alg = "rfc4309(ccm(aes))",
 		.test = alg_test_aead,
 		.fips_allowed = 1,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aes_ccm_rfc4309_enc_tv_template),
-				.dec = __VECS(aes_ccm_rfc4309_dec_tv_template)
-			}
+			.aead = __VECS(aes_ccm_rfc4309_tv_template)
 		}
 	}, {
 		.alg = "rfc4543(gcm(aes))",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(aes_gcm_rfc4543_enc_tv_template),
-				.dec = __VECS(aes_gcm_rfc4543_dec_tv_template),
-			}
+			.aead = __VECS(aes_gcm_rfc4543_tv_template)
 		}
 	}, {
 		.alg = "rfc7539(chacha20,poly1305)",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(rfc7539_enc_tv_template),
-				.dec = __VECS(rfc7539_dec_tv_template),
-			}
+			.aead = __VECS(rfc7539_tv_template)
 		}
 	}, {
 		.alg = "rfc7539esp(chacha20,poly1305)",
 		.test = alg_test_aead,
 		.suite = {
-			.aead = {
-				.enc = __VECS(rfc7539esp_enc_tv_template),
-				.dec = __VECS(rfc7539esp_dec_tv_template),
-			}
+			.aead = __VECS(rfc7539esp_tv_template)
 		}
 	}, {
 		.alg = "rmd128",

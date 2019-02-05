@@ -352,7 +352,8 @@ static int cc_cipher_setkey(struct crypto_skcipher *sktfm, const u8 *key,
 			dev_dbg(dev, "weak 3DES key");
 			return -EINVAL;
 		} else if (!des_ekey(tmp, key) &&
-		    (crypto_tfm_get_flags(tfm) & CRYPTO_TFM_REQ_WEAK_KEY)) {
+			   (crypto_tfm_get_flags(tfm) &
+			    CRYPTO_TFM_REQ_FORBID_WEAK_KEYS)) {
 			tfm->crt_flags |= CRYPTO_TFM_RES_WEAK_KEY;
 			dev_dbg(dev, "weak DES key");
 			return -EINVAL;
@@ -652,6 +653,8 @@ static void cc_cipher_complete(struct device *dev, void *cc_req, int err)
 	unsigned int ivsize = crypto_skcipher_ivsize(sk_tfm);
 	unsigned int len;
 
+	cc_unmap_cipher_request(dev, req_ctx, ivsize, src, dst);
+
 	switch (ctx_p->cipher_mode) {
 	case DRV_CIPHER_CBC:
 		/*
@@ -681,7 +684,6 @@ static void cc_cipher_complete(struct device *dev, void *cc_req, int err)
 		break;
 	}
 
-	cc_unmap_cipher_request(dev, req_ctx, ivsize, src, dst);
 	kzfree(req_ctx->iv);
 
 	skcipher_request_complete(req, err);
@@ -799,7 +801,8 @@ static int cc_cipher_decrypt(struct skcipher_request *req)
 
 	memset(req_ctx, 0, sizeof(*req_ctx));
 
-	if (ctx_p->cipher_mode == DRV_CIPHER_CBC) {
+	if ((ctx_p->cipher_mode == DRV_CIPHER_CBC) &&
+	    (req->cryptlen >= ivsize)) {
 
 		/* Allocate and save the last IV sized bytes of the source,
 		 * which will be lost in case of in-place decryption.

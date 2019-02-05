@@ -303,6 +303,9 @@ static bool chcr_ipsec_offload_ok(struct sk_buff *skb, struct xfrm_state *x)
 		if (ipv6_ext_hdr(ipv6_hdr(skb)->nexthdr))
 			return false;
 	}
+	/* Inline single pdu */
+	if (skb_shinfo(skb)->gso_size)
+		return false;
 	return true;
 }
 
@@ -415,12 +418,12 @@ inline void *copy_esn_pktxt(struct sk_buff *skb,
 	iv = skb_transport_header(skb) + sizeof(struct ip_esp_hdr);
 	memcpy(aadiv->iv, iv, 8);
 
-	if (sa_entry->imm) {
+	if (is_eth_imm(skb, sa_entry)) {
 		sc_imm = (struct ulptx_idata *)(pos +
 			  (DIV_ROUND_UP(sizeof(struct chcr_ipsec_aadiv),
 					sizeof(__be64)) << 3));
-		sc_imm->cmd_more = FILL_CMD_MORE(!sa_entry->imm);
-		sc_imm->len = cpu_to_be32(sa_entry->imm);
+		sc_imm->cmd_more = FILL_CMD_MORE(0);
+		sc_imm->len = cpu_to_be32(skb->len);
 	}
 	pos += len;
 	return pos;
@@ -548,10 +551,8 @@ inline void *chcr_crypto_wreq(struct sk_buff *skb,
 	if (sa_entry->esn)
 		ivdrop = 1;
 
-	if (is_eth_imm(skb, sa_entry)) {
+	if (is_eth_imm(skb, sa_entry))
 		immdatalen = skb->len;
-		sa_entry->imm = immdatalen;
-	}
 
 	if (sa_entry->esn)
 		esnlen = sizeof(struct chcr_ipsec_aadiv);
