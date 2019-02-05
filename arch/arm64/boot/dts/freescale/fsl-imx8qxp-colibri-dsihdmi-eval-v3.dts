@@ -1,0 +1,146 @@
+/*
+ * Copyright (C) 2018, Toradex AG
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+//#define IS_A0_SILICON
+
+#include "fsl-imx8qxp-colibri-eval-v3.dtsi"
+
+/ {
+	model = "Toradex Colibri iMX8QXP with LT8912 MIPI-DSI 2 HDMI bridge";
+	compatible = "toradex,imx8qxp-colibri-dsihdmi", "toradex,imx8qxp-colibri", "fsl,imx8qxp";
+
+};
+
+/* DSI/LVDS port 0 */
+&i2c0_mipi_lvds0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
+	clock-frequency = <100000>;
+	status = "okay";
+
+	lt8912@48 {
+		compatible = "lontium,lt8912";
+		reg = <0x48>;
+
+		port {
+			lt8912_1_in: endpoint {
+				remote-endpoint = <&mipi_dsi_bridge1_out>;
+			};
+		};
+
+		display-timings {
+			native-mode = <&timing1>;
+
+			timing0: timing0 {
+				clock-frequency = <74250000>;
+				hactive = <1280>;
+				vactive = <720>;
+				hfront-porch = <110>;
+				hsync-len = <40>;
+				hback-porch = <220>;
+				vfront-porch = <5>;
+				vsync-len = <5>;
+				vback-porch = <20>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+			timing1: timing1 {
+				clock-frequency = <148500000>;
+				hactive = <1920>;
+				vactive = <1080>;
+				hfront-porch = <88>;
+				hsync-len = <44>;
+				hback-porch = <148>;
+				vfront-porch = <36>;
+				vsync-len = <5>;
+				vback-porch = <4>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+	};
+
+};
+
+&ldb1_phy {
+	status = "disabled";
+};
+
+&ldb1 {
+	status = "disabled";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "jeida";
+		fsl,data-width = <24>;
+		status = "disabled";
+	};
+};
+
+&mipi_dsi_phy1 {
+	status = "okay";
+};
+
+&mipi_dsi1 {
+	pwr-delay = <10>;
+	status = "okay";
+};
+
+&mipi_dsi_bridge1 {
+	status = "okay";
+
+	port@1 {
+		mipi_dsi_bridge1_out: endpoint {
+			remote-endpoint = <&lt8912_1_in>;
+		};
+	};
+};
+
+/* DSI/LVDS port 1 */
+&i2c0_mipi_lvds1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds1>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&ldb2_phy {
+	status = "disabled";
+};
+
+&ldb2 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy2 {
+	status = "disabled";
+};
+
+&mipi_dsi2 {
+	pwr-delay = <10>;
+	status = "disabled ";
+};
+
+&mipi_dsi_bridge2 {
+	status = "disabled";
+};
+
