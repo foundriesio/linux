@@ -753,7 +753,8 @@ static int tasks_print(struct report *rep, FILE *fp)
 	for (i = 0; i < THREADS__TABLE_SIZE; i++) {
 		struct threads *threads = &machine->threads[i];
 
-		for (nd = rb_first(&threads->entries); nd; nd = rb_next(nd)) {
+		for (nd = rb_first_cached(&threads->entries); nd;
+		     nd = rb_next(nd)) {
 			task = tasks + itask++;
 
 			task->thread = rb_entry(nd, struct thread, rb_node);
@@ -956,9 +957,9 @@ int cmd_report(int argc, const char **argv)
 	int branch_mode = -1;
 	bool branch_call_mode = false;
 #define CALLCHAIN_DEFAULT_OPT  "graph,0.5,caller,function,percent"
-	const char report_callchain_help[] = "Display call graph (stack chain/backtrace):\n\n"
-					     CALLCHAIN_REPORT_HELP
-					     "\n\t\t\t\tDefault: " CALLCHAIN_DEFAULT_OPT;
+	static const char report_callchain_help[] = "Display call graph (stack chain/backtrace):\n\n"
+						    CALLCHAIN_REPORT_HELP
+						    "\n\t\t\t\tDefault: " CALLCHAIN_DEFAULT_OPT;
 	char callchain_default_opt[] = CALLCHAIN_DEFAULT_OPT;
 	const char * const report_usage[] = {
 		"perf report [<options>]",
