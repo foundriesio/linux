@@ -1128,16 +1128,9 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 {
 	LIST_HEAD(ret_pages);
 	LIST_HEAD(free_pages);
-	int pgactivate = 0;
-	unsigned nr_unqueued_dirty = 0;
-	unsigned nr_dirty = 0;
-	unsigned nr_congested = 0;
 	unsigned nr_reclaimed = 0;
-	unsigned nr_writeback = 0;
-	unsigned nr_immediate = 0;
-	unsigned nr_ref_keep = 0;
-	unsigned nr_unmap_fail = 0;
 
+	memset(stat, 0, sizeof(*stat));
 	cond_resched();
 
 	while (!list_empty(page_list)) {
@@ -1181,10 +1174,10 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		 */
 		page_check_dirty_writeback(page, &dirty, &writeback);
 		if (dirty || writeback)
-			nr_dirty++;
+			stat->nr_dirty++;
 
 		if (dirty && !writeback)
-			nr_unqueued_dirty++;
+			stat->nr_unqueued_dirty++;
 
 		/*
 		 * Treat this page as congested if the underlying BDI is or if
@@ -1196,7 +1189,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		if (((dirty || writeback) && mapping &&
 		     inode_write_congested(mapping->host)) ||
 		    (writeback && PageReclaim(page)))
-			nr_congested++;
+			stat->nr_congested++;
 
 		/*
 		 * If a page at the tail of the LRU is under writeback, there
@@ -1245,7 +1238,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			if (current_is_kswapd() &&
 			    PageReclaim(page) &&
 			    test_bit(PGDAT_WRITEBACK, &pgdat->flags)) {
-				nr_immediate++;
+				stat->nr_immediate++;
 				goto activate_locked;
 
 			/* Case 2 above */
@@ -1263,7 +1256,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 				 * and it's also appropriate in global reclaim.
 				 */
 				SetPageReclaim(page);
-				nr_writeback++;
+				stat->nr_writeback++;
 				goto activate_locked;
 
 			/* Case 3 above */
@@ -1283,7 +1276,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		case PAGEREF_ACTIVATE:
 			goto activate_locked;
 		case PAGEREF_KEEP:
-			nr_ref_keep++;
+			stat->nr_ref_keep++;
 			goto keep_locked;
 		case PAGEREF_RECLAIM:
 		case PAGEREF_RECLAIM_CLEAN:
@@ -1348,7 +1341,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			if (unlikely(PageTransHuge(page)))
 				flags |= TTU_SPLIT_HUGE_PMD;
 			if (!try_to_unmap(page, flags)) {
-				nr_unmap_fail++;
+				stat->nr_unmap_fail++;
 				goto activate_locked;
 			}
 		}
@@ -1496,7 +1489,7 @@ activate_locked:
 		VM_BUG_ON_PAGE(PageActive(page), page);
 		if (!PageMlocked(page)) {
 			SetPageActive(page);
-			pgactivate++;
+			stat->nr_activate++;
 			count_memcg_page_event(page, PGACTIVATE);
 		}
 keep_locked:
@@ -1511,18 +1504,8 @@ keep:
 	free_unref_page_list(&free_pages);
 
 	list_splice(&ret_pages, page_list);
-	count_vm_events(PGACTIVATE, pgactivate);
+	count_vm_events(PGACTIVATE, stat->nr_activate);
 
-	if (stat) {
-		stat->nr_dirty = nr_dirty;
-		stat->nr_congested = nr_congested;
-		stat->nr_unqueued_dirty = nr_unqueued_dirty;
-		stat->nr_writeback = nr_writeback;
-		stat->nr_immediate = nr_immediate;
-		stat->nr_activate = pgactivate;
-		stat->nr_ref_keep = nr_ref_keep;
-		stat->nr_unmap_fail = nr_unmap_fail;
-	}
 	return nr_reclaimed;
 }
 
@@ -1534,6 +1517,7 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 		.priority = DEF_PRIORITY,
 		.may_unmap = 1,
 	};
+	struct reclaim_stat dummy_stat;
 	unsigned long ret;
 	struct page *page, *next;
 	LIST_HEAD(clean_pages);
@@ -1547,7 +1531,7 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 	}
 
 	ret = shrink_page_list(&clean_pages, zone->zone_pgdat, &sc,
-			TTU_IGNORE_ACCESS, NULL, true);
+			TTU_IGNORE_ACCESS, &dummy_stat, true);
 	list_splice(&clean_pages, page_list);
 	mod_node_page_state(zone->zone_pgdat, NR_ISOLATED_FILE, -ret);
 	return ret;
@@ -1922,7 +1906,7 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	unsigned long nr_scanned;
 	unsigned long nr_reclaimed = 0;
 	unsigned long nr_taken;
-	struct reclaim_stat stat = {};
+	struct reclaim_stat stat;
 	int file = is_file_lru(lru);
 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
 	struct zone_reclaim_stat *reclaim_stat = &lruvec->reclaim_stat;
