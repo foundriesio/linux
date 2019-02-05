@@ -543,7 +543,8 @@ struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t gfp_mask,
 	if (!mask)
 		goto skip;
 
-	if (si->flags & (SWP_BLKDEV | SWP_FS)) {
+	/* Test swap type to make sure the dereference is safe */
+	if (likely(si->flags & (SWP_BLKDEV | SWP_FS))) {
 		struct inode *inode = si->swap_file->f_mapping->host;
 		if (inode_read_congested(inode))
 			goto skip;
