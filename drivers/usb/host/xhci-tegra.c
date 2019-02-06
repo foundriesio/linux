@@ -4132,7 +4132,7 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 
 static void tegra_xusb_read_calib_data(struct tegra_xhci_hcd *tegra)
 {
-	u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
+	u32 usb_calib0 = readl(IO_ADDRESS(TEGRA_FUSE_BASE + FUSE_SKU_USB_CALIB_0));
 	struct tegra_xusb_chip_calib *cdata = tegra->cdata;
 
 	pr_info("tegra_xusb_read_usb_calib: usb_calib0 = 0x%08x\n", usb_calib0);
