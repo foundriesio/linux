@@ -156,8 +156,8 @@
 			spi-max-frequency = <6120000>;
 			interrupt-parent =<&gpio>;
 			interrupts = <TEGRA_GPIO(K, 2) IRQ_TYPE_EDGE_FALLING>,
-							<TEGRA_GPIO(I, 5) IRQ_TYPE_EDGE_FALLING>, /* INT3 CAN0 */
-							<TEGRA_GPIO(J, 0) IRQ_TYPE_EDGE_FALLING>; /* INT4 CAN1 */
+				<TEGRA_GPIO(I, 5) IRQ_TYPE_LEVEL_HIGH>, /* INT3 CAN0 */
+				<TEGRA_GPIO(J, 0) IRQ_TYPE_LEVEL_HIGH>; /* INT4 CAN1 */
 			rst-gpio = <&gpio TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;
 
 			/* GPIO based CS used to enter K20 EzPort mode */
