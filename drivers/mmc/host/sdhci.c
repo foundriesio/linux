@@ -716,7 +716,7 @@ static u32 sdhci_sdma_address(struct sdhci_host *host)
 static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 {
 	u8 count;
-	struct mmc_data *data = cmd->data;
+	struct mmc_data *data;
 	unsigned target_timeout, current_timeout;
 
 	/*
@@ -728,6 +728,11 @@ static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 	if (host->quirks & SDHCI_QUIRK_BROKEN_TIMEOUT_VAL)
 		return 0xE;
 
+	/* Unspecified command, asume max */
+	if (cmd == NULL)
+		return 0xE;
+
+	data = cmd->data;
 	/* Unspecified timeout, assume max */
 	if (!data && !cmd->busy_timeout)
 		return 0xE;
@@ -1693,19 +1698,20 @@ void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
 
-	if ((ios->timing == MMC_TIMING_SD_HS ||
-	     ios->timing == MMC_TIMING_MMC_HS ||
-	     ios->timing == MMC_TIMING_MMC_HS400 ||
-	     ios->timing == MMC_TIMING_MMC_HS200 ||
-	     ios->timing == MMC_TIMING_MMC_DDR52 ||
-	     ios->timing == MMC_TIMING_UHS_SDR50 ||
-	     ios->timing == MMC_TIMING_UHS_SDR104 ||
-	     ios->timing == MMC_TIMING_UHS_DDR50 ||
-	     ios->timing == MMC_TIMING_UHS_SDR25)
-	    && !(host->quirks & SDHCI_QUIRK_NO_HISPD_BIT))
-		ctrl |= SDHCI_CTRL_HISPD;
-	else
-		ctrl &= ~SDHCI_CTRL_HISPD;
+	if (!(host->quirks & SDHCI_QUIRK_NO_HISPD_BIT)) {
+		if (ios->timing == MMC_TIMING_SD_HS ||
+		     ios->timing == MMC_TIMING_MMC_HS ||
+		     ios->timing == MMC_TIMING_MMC_HS400 ||
+		     ios->timing == MMC_TIMING_MMC_HS200 ||
+		     ios->timing == MMC_TIMING_MMC_DDR52 ||
+		     ios->timing == MMC_TIMING_UHS_SDR50 ||
+		     ios->timing == MMC_TIMING_UHS_SDR104 ||
+		     ios->timing == MMC_TIMING_UHS_DDR50 ||
+		     ios->timing == MMC_TIMING_UHS_SDR25)
+			ctrl |= SDHCI_CTRL_HISPD;
+		else
+			ctrl &= ~SDHCI_CTRL_HISPD;
+	}
 
 	if (host->version >= SDHCI_SPEC_300) {
 		u16 clk, ctrl_2;
@@ -2153,6 +2159,10 @@ static int __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
 			return -ETIMEDOUT;
 		}
 
+		/* Spec does not require a delay between tuning cycles */
+		if (host->tuning_delay > 0)
+			mdelay(host->tuning_delay);
+
 		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 		if (!(ctrl & SDHCI_CTRL_EXEC_TUNING)) {
 			if (ctrl & SDHCI_CTRL_TUNED_CLK)
@@ -2160,9 +2170,6 @@ static int __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
 			break;
 		}
 
-		/* Spec does not require a delay between tuning cycles */
-		if (host->tuning_delay > 0)
-			mdelay(host->tuning_delay);
 	}
 
 	pr_info("%s: Tuning failed, falling back to fixed sampling clock\n",
@@ -3098,7 +3105,7 @@ void sdhci_cqe_enable(struct mmc_host *mmc)
 		     SDHCI_BLOCK_SIZE);
 
 	/* Set maximum timeout */
-	sdhci_writeb(host, 0xE, SDHCI_TIMEOUT_CONTROL);
+	sdhci_set_timeout(host, NULL);
 
 	host->ier = host->cqe_ier;
 
