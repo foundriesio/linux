@@ -354,6 +354,24 @@
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15 PAD_CTRL_HYS_PU
 		>;
 	};
+
+	pinctrl_mmc_cd_sleep: gpiommccdgrpslp {
+		fsl,pins = <
+			 /* MMC1 CD */
+			MX6QDL_PAD_DI0_PIN4__GPIO4_IO20 0x0
+		>;
+	};
+
+	pinctrl_usdhc1_4bit_sleep: usdhc1grp_4bit_sleep {
+		fsl,pins = <
+			MX6QDL_PAD_SD1_CMD__SD1_CMD	0x3000
+			MX6QDL_PAD_SD1_CLK__SD1_CLK	0x3000
+			MX6QDL_PAD_SD1_DAT0__SD1_DATA0	0x3000
+			MX6QDL_PAD_SD1_DAT1__SD1_DATA1	0x3000
+			MX6QDL_PAD_SD1_DAT2__SD1_DATA2	0x3000
+			MX6QDL_PAD_SD1_DAT3__SD1_DATA3	0x3000
+		>;
+	};
 };
 
 &lcd {
@@ -466,9 +484,11 @@
 
 /* MMC1 */
 &usdhc1 {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pinctrl_usdhc1_4bit &pinctrl_mmc_cd>;
+	pinctrl-1 = <&pinctrl_usdhc1_4bit_sleep &pinctrl_mmc_cd_sleep>;
 	bus-width = <4>;
 	status = "okay";
+	cap-power-off-card;
 	vmmc-supply = <&reg_3v3_vmmc>;
 };
