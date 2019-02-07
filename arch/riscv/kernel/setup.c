@@ -62,7 +62,7 @@ unsigned long boot_cpu_hartid;
 
 void __init parse_dtb(unsigned int hartid, void *dtb)
 {
-	if (!early_init_dt_scan(__va(dtb)))
+	if (early_init_dt_scan(__va(dtb)))
 		return;
 
 	pr_err("No DTB passed to the kernel\n");
