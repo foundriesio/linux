@@ -21,6 +21,7 @@
 
 #include <linux/usb/composite.h>
 
+#define TCC_UAC2_WQ
 struct uac_params {
 	/* playback */
 	int p_chmask;	/* channel mask */
@@ -91,5 +92,12 @@ int u_audio_start_capture(struct g_audio *g_audio);
 void u_audio_stop_capture(struct g_audio *g_audio);
 int u_audio_start_playback(struct g_audio *g_audio);
 void u_audio_stop_playback(struct g_audio *g_audio);
+
+#ifdef CONFIG_UAC20_DEBUG_ENABLE
+extern int complete_count;
+extern unsigned int ringbuff_offset;
+extern int capture_pcm;
+extern char* pdump_path;
+#endif
 
 #endif /* __U_AUDIO_H */
