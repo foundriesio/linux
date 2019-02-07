@@ -814,7 +814,7 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 
 	if (intf == uac2->as_out_intf) {
 		uac2->as_out_alt = alt;
-		printk("[KJS] %s : ALT=%d\n", __func__, alt);
+		printk("[UAC2] %s : ALT=%d\n", __func__, alt);
 		if (alt)
 			ret = u_audio_start_capture(&uac2->g_audio);
 		else

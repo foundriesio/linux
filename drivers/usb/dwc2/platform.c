@@ -547,7 +547,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	 */
 	hsotg->phy = devm_phy_get(hsotg->dev, "usb2-phy");
 	if (IS_ERR(hsotg->phy)) {
-		dev_err(hsotg->dev, "[KJS]usb-2phy is ERR %s\n", __func__);	
+		dev_err(hsotg->dev, "[dwc2]usb-2phy is ERR %s\n", __func__);	
 		ret = PTR_ERR(hsotg->phy);
 		switch (ret) {
 		case -ENODEV:
@@ -563,14 +563,14 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	}
 
 	if (!hsotg->phy) {
-		dev_err(hsotg->dev, "[KJS]hsotg->phy is NULL %s\n", __func__);
+		dev_err(hsotg->dev, "[dwc2]hsotg->phy is NULL %s\n", __func__);
 #ifndef CONFIG_USB_DWC2_TCC
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
 		hsotg->uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "phy", 0);
 #endif
 		if (IS_ERR(hsotg->uphy)) {
-			dev_err(hsotg->dev, "[KJS]hsotg->uphy is NULL %s\n", __func__);
+			dev_err(hsotg->dev, "[dwc2]hsotg->uphy is NULL %s\n", __func__);
 			ret = PTR_ERR(hsotg->uphy);
 			switch (ret) {
 			case -ENODEV:
@@ -589,7 +589,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->mhst_uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "telechips,mhst_phy", 0);
 	if (IS_ERR(hsotg->mhst_uphy)) {
-		dev_err(hsotg->dev, "[KJS]hsotg->mhst_uphy is NULL %s\n", __func__);
+		dev_err(hsotg->dev, "[dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
 		ret = PTR_ERR(hsotg->uphy);
 		switch (ret) {
 		case -ENODEV:

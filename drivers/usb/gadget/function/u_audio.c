@@ -131,7 +131,7 @@ static void f_uac2_work_reset(struct work_struct *data)
 	int ret;
 	u_audio_stop_capture(uac2->audio_dev);
 	u_audio_start_capture(uac2->audio_dev);
-	printk("[KJS] %s : reset!!\n", __func__);
+	printk("[UAC2] %s : reset!!\n", __func__);
 }
 #endif
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
@@ -236,7 +236,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
     }
 	if (complete_count % 5000 == 0 || complete_count == 1) {
 		tmp_pkt = (int *)req->buf;
-		//printk("[KJS]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n", __func__, tmp_pkt[0], req->actual);
+		//printk("[UAC2]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n", __func__, tmp_pkt[0], req->actual);
 	}
 #endif
 	/* i/f shutting down */
@@ -303,7 +303,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	//if (complete_count % 1000 == 0 || complete_count == 1) {
 	if (1) {
 		tmp_pkt = (int *)req->buf;
-		printk(KERN_DEBUG "[KJS] %s : prm->hw_ptr - %d, prm->period_size - %d , req->actual - %d, pending - %d, period_size - %d, tmp_pkt = 0x%08x, req->length = %d\n", 
+		printk(KERN_DEBUG "[UAC2] %s : prm->hw_ptr - %d, prm->period_size - %d , req->actual - %d, pending - %d, period_size - %d, tmp_pkt = 0x%08x, req->length = %d\n", 
 					 __func__, prm->hw_ptr, prm->period_size, req->actual, pending, prm->period_size, tmp_pkt[0], req->length);
 	}
 #endif
@@ -341,7 +341,7 @@ exit:
 
 	if (update_alsa) {
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
-		printk(KERN_DEBUG "[KJS] %s : hw_ptr = %d\n", __func__, hw_ptr);
+		printk(KERN_DEBUG "[UAC2] %s : hw_ptr = %d\n", __func__, hw_ptr);
 #endif
 		snd_pcm_period_elapsed(substream);
 	}
@@ -365,7 +365,7 @@ static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	else
 		prm = &uac->c_prm;
 
-	printk("[KJS]%s : cmd = %d\n", __func__, cmd);
+	printk("[UAC2]%s : cmd = %d\n", __func__, cmd);
 	spin_lock_irqsave(&prm->lock, flags);
 
 	/* Reset */

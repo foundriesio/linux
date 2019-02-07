@@ -558,7 +558,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 			void * addr = ioremap(0x11d90010, 0x4);
 			writel((readl(addr) | 0x02000000), addr);
 			iounmap(addr);
-			printk("KJS : %s\n", __func__);
+			printk("%s : request ioremap!\n", __func__);
 			ss_down_control_first = 1;
 		}
 	}
