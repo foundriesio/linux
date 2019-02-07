@@ -36,6 +36,7 @@
 };
 
 &m4_dac {
+	vref-supply = <&vrefbuf>;
 	status = "okay";
 };
 
