@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017-2018 Broadcom. All Rights Reserved. The term *
+ * Copyright (C) 2017-2019 Broadcom. All Rights Reserved. The term *
  * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.  *
  * Copyright (C) 2009-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
@@ -194,7 +194,7 @@ struct lpfc_sli_intf {
 #define LPFC_ACT_INTR_CNT	4
 
 /* Algrithmns for scheduling FCP commands to WQs */
-#define	LPFC_FCP_SCHED_ROUND_ROBIN	0
+#define	LPFC_FCP_SCHED_BY_HDWQ		0
 #define	LPFC_FCP_SCHED_BY_CPU		1
 
 /* Algrithmns for NameServer Query after RSCN */
@@ -208,12 +208,18 @@ struct lpfc_sli_intf {
 /* Configuration of Interrupts / sec for entire HBA port */
 #define LPFC_MIN_IMAX          5000
 #define LPFC_MAX_IMAX          5000000
-#define LPFC_DEF_IMAX          150000
+#define LPFC_DEF_IMAX          0
+
+#define LPFC_IMAX_THRESHOLD    1000
+#define LPFC_MAX_AUTO_EQ_DELAY 120
+#define LPFC_EQ_DELAY_STEP     15
+#define LPFC_EQD_ISR_TRIGGER   20000
+/* 1s intervals */
+#define LPFC_EQ_DELAY_MSECS    1000
 
 #define LPFC_MIN_CPU_MAP       0
-#define LPFC_MAX_CPU_MAP       2
+#define LPFC_MAX_CPU_MAP       1
 #define LPFC_HBA_CPU_MAP       1
-#define LPFC_DRIVER_CPU_MAP    2  /* Default */
 
 /* PORT_CAPABILITIES constants. */
 #define LPFC_MAX_SUPPORTED_PAGES	8
@@ -3850,6 +3856,9 @@ struct lpfc_mbx_wr_object {
 #define lpfc_wr_object_eof_SHIFT		31
 #define lpfc_wr_object_eof_MASK			0x00000001
 #define lpfc_wr_object_eof_WORD			word4
+#define lpfc_wr_object_eas_SHIFT		29
+#define lpfc_wr_object_eas_MASK			0x00000001
+#define lpfc_wr_object_eas_WORD			word4
 #define lpfc_wr_object_write_length_SHIFT	0
 #define lpfc_wr_object_write_length_MASK	0x00FFFFFF
 #define lpfc_wr_object_write_length_WORD	word4
@@ -3860,6 +3869,15 @@ struct lpfc_mbx_wr_object {
 		} request;
 		struct {
 			uint32_t actual_write_length;
+			uint32_t word5;
+#define lpfc_wr_object_change_status_SHIFT	0
+#define lpfc_wr_object_change_status_MASK	0x000000FF
+#define lpfc_wr_object_change_status_WORD	word5
+#define LPFC_CHANGE_STATUS_NO_RESET_NEEDED	0x00
+#define LPFC_CHANGE_STATUS_PHYS_DEV_RESET	0x01
+#define LPFC_CHANGE_STATUS_FW_RESET		0x02
+#define LPFC_CHANGE_STATUS_PORT_MIGRATION	0x04
+#define LPFC_CHANGE_STATUS_PCI_RESET		0x05
 		} response;
 	} u;
 };

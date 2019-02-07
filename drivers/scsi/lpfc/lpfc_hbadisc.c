@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017-2018 Broadcom. All Rights Reserved. The term *
+ * Copyright (C) 2017-2019 Broadcom. All Rights Reserved. The term *
  * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.     *
  * Copyright (C) 2004-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
@@ -638,8 +638,6 @@ lpfc_work_done(struct lpfc_hba *phba)
 	if (phba->pci_dev_grp == LPFC_PCI_DEV_OC) {
 		if (phba->hba_flag & HBA_RRQ_ACTIVE)
 			lpfc_handle_rrq_active(phba);
-		if (phba->hba_flag & FCP_XRI_ABORT_EVENT)
-			lpfc_sli4_fcp_xri_abort_event_proc(phba);
 		if (phba->hba_flag & ELS_XRI_ABORT_EVENT)
 			lpfc_sli4_els_xri_abort_event_proc(phba);
 		if (phba->hba_flag & ASYNC_EVENT)
@@ -859,10 +857,9 @@ lpfc_port_link_failure(struct lpfc_vport *vport)
 void
 lpfc_linkdown_port(struct lpfc_vport *vport)
 {
-	struct lpfc_hba  *phba = vport->phba;
 	struct Scsi_Host  *shost = lpfc_shost_from_vport(vport);
 
-	if (phba->cfg_enable_fc4_type != LPFC_ENABLE_NVME)
+	if (vport->cfg_enable_fc4_type != LPFC_ENABLE_NVME)
 		fc_host_post_event(shost, fc_get_event_number(),
 				   FCH_EVT_LINKDOWN, 0);
 
@@ -888,9 +885,15 @@ lpfc_linkdown(struct lpfc_hba *phba)
 	LPFC_MBOXQ_t          *mb;
 	int i;
 
-	if (phba->link_state == LPFC_LINK_DOWN)
+	if (phba->link_state == LPFC_LINK_DOWN) {
+		if (phba->sli4_hba.conf_trunk) {
+			phba->trunk_link.link0.state = 0;
+			phba->trunk_link.link1.state = 0;
+			phba->trunk_link.link2.state = 0;
+			phba->trunk_link.link3.state = 0;
+		}
 		return 0;
-
+	}
 	/* Block all SCSI stack I/Os */
 	lpfc_scsi_dev_block(phba);
 
@@ -901,6 +904,12 @@ lpfc_linkdown(struct lpfc_hba *phba)
 	spin_unlock_irq(&phba->hbalock);
 	if (phba->link_state > LPFC_LINK_DOWN) {
 		phba->link_state = LPFC_LINK_DOWN;
+		if (phba->sli4_hba.conf_trunk) {
+			phba->trunk_link.link0.state = 0;
+			phba->trunk_link.link1.state = 0;
+			phba->trunk_link.link2.state = 0;
+			phba->trunk_link.link3.state = 0;
+		}
 		spin_lock_irq(shost->host_lock);
 		phba->pport->fc_flag &= ~FC_LBIT;
 		spin_unlock_irq(shost->host_lock);
@@ -913,8 +922,8 @@ lpfc_linkdown(struct lpfc_hba *phba)
 
 			vports[i]->fc_myDID = 0;
 
-			if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-			    (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
+			if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+			    (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
 				if (phba->nvmet_support)
 					lpfc_nvmet_update_targetport(phba);
 				else
@@ -1000,7 +1009,7 @@ lpfc_linkup_port(struct lpfc_vport *vport)
 		(vport != phba->pport))
 		return;
 
-	if (phba->cfg_enable_fc4_type != LPFC_ENABLE_NVME)
+	if (vport->cfg_enable_fc4_type != LPFC_ENABLE_NVME)
 		fc_host_post_event(shost, fc_get_event_number(),
 				   FCH_EVT_LINKUP, 0);
 
@@ -3648,8 +3657,8 @@ lpfc_mbx_cmpl_reg_vpi(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb)
 		spin_unlock_irq(shost->host_lock);
 		vport->fc_myDID = 0;
 
-		if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-		    (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
+		if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+		    (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
 			if (phba->nvmet_support)
 				lpfc_nvmet_update_targetport(phba);
 			else
@@ -3911,11 +3920,9 @@ lpfc_mbx_cmpl_fabric_reg_login(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb)
 int
 lpfc_issue_gidft(struct lpfc_vport *vport)
 {
-	struct lpfc_hba *phba = vport->phba;
-
 	/* Good status, issue CT Request to NameServer */
-	if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-	    (phba->cfg_enable_fc4_type == LPFC_ENABLE_FCP)) {
+	if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+	    (vport->cfg_enable_fc4_type == LPFC_ENABLE_FCP)) {
 		if (lpfc_ns_cmd(vport, SLI_CTNS_GID_FT, 0, SLI_CTPT_FCP)) {
 			/* Cannot issue NameServer FCP Query, so finish up
 			 * discovery
@@ -3930,8 +3937,8 @@ lpfc_issue_gidft(struct lpfc_vport *vport)
 		vport->gidft_inp++;
 	}
 
-	if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-	    (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
+	if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+	    (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME)) {
 		if (lpfc_ns_cmd(vport, SLI_CTNS_GID_FT, 0, SLI_CTPT_NVME)) {
 			/* Cannot issue NameServer NVME Query, so finish up
 			 * discovery
@@ -4047,12 +4054,12 @@ out:
 		lpfc_ns_cmd(vport, SLI_CTNS_RSPN_ID, 0, 0);
 		lpfc_ns_cmd(vport, SLI_CTNS_RFT_ID, 0, 0);
 
-		if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-		    (phba->cfg_enable_fc4_type == LPFC_ENABLE_FCP))
+		if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+		    (vport->cfg_enable_fc4_type == LPFC_ENABLE_FCP))
 			lpfc_ns_cmd(vport, SLI_CTNS_RFF_ID, 0, FC_TYPE_FCP);
 
-		if ((phba->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
-		    (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME))
+		if ((vport->cfg_enable_fc4_type == LPFC_ENABLE_BOTH) ||
+		    (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME))
 			lpfc_ns_cmd(vport, SLI_CTNS_RFF_ID, 0,
 				    FC_TYPE_NVME);
 
@@ -4088,7 +4095,7 @@ lpfc_register_remote_port(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp)
 	struct fc_rport_identifiers rport_ids;
 	struct lpfc_hba  *phba = vport->phba;
 
-	if (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME)
+	if (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME)
 		return;
 
 	/* Remote port has reappeared. Re-register w/ FC transport */
@@ -4163,9 +4170,8 @@ lpfc_unregister_remote_port(struct lpfc_nodelist *ndlp)
 {
 	struct fc_rport *rport = ndlp->rport;
 	struct lpfc_vport *vport = ndlp->vport;
-	struct lpfc_hba  *phba = vport->phba;
 
-	if (phba->cfg_enable_fc4_type == LPFC_ENABLE_NVME)
+	if (vport->cfg_enable_fc4_type == LPFC_ENABLE_NVME)
 		return;
 
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_RPORT,
@@ -4791,6 +4797,8 @@ lpfc_nlp_logo_unreg(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb)
 		ndlp->nlp_flag &= ~NLP_UNREG_INP;
 		ndlp->nlp_defer_did = NLP_EVT_NOTHING_PENDING;
 		lpfc_issue_els_plogi(vport, ndlp->nlp_DID, 0);
+	} else {
+		ndlp->nlp_flag &= ~NLP_UNREG_INP;
 	}
 }
 
