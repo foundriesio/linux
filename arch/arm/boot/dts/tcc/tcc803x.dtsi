@@ -1174,6 +1174,11 @@
 			reg = <2>;
 			telechips,ion-heap-name = "ion_carveout_heap";
 		};
+
+                ion-heap@3 {
+                         reg = <3>;
+                         telechips,ion-heap-name = "ion_carveout_cam_heap";
+                };
 	};
 
 	overlaymixer: overlaymixer@1A100000 {};
