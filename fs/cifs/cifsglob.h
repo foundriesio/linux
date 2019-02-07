@@ -130,10 +130,12 @@ struct cifs_secmech {
 	struct crypto_shash *md5; /* md5 hash function */
 	struct crypto_shash *hmacsha256; /* hmac-sha256 hash function */
 	struct crypto_shash *cmacaes; /* block-cipher based MAC function */
+	struct crypto_shash *sha512; /* sha512 hash function */
 	struct sdesc *sdeschmacmd5;  /* ctxt to generate ntlmv2 hash, CR1 */
 	struct sdesc *sdescmd5; /* ctxt to generate cifs/smb signature */
 	struct sdesc *sdeschmacsha256;  /* ctxt to generate smb2 signature */
 	struct sdesc *sdesccmacaes;  /* ctxt to generate smb3 signature */
+	struct sdesc *sdescsha512; /* ctxt to generate smb3.11 signing key */
 	struct crypto_aead *ccmaesencrypt; /* smb3 encryption aead */
 	struct crypto_aead *ccmaesdecrypt; /* smb3 decryption aead */
 };
@@ -185,9 +187,9 @@ enum smb_version {
 	Smb_21,
 	Smb_30,
 	Smb_302,
-#ifdef CONFIG_CIFS_SMB311
 	Smb_311,
-#endif /* SMB311 */
+	Smb_3any,
+	Smb_default,
 	Smb_version_err
 };
 
@@ -421,7 +423,7 @@ struct smb_version_operations {
 			size_t, struct cifs_sb_info *);
 	int (*set_EA)(const unsigned int, struct cifs_tcon *, const char *,
 			const char *, const void *, const __u16,
-			const struct nls_table *, int);
+			const struct nls_table *, struct cifs_sb_info *);
 	struct cifs_ntsd * (*get_acl)(struct cifs_sb_info *, struct inode *,
 			const char *, u32 *);
 	struct cifs_ntsd * (*get_acl_by_fid)(struct cifs_sb_info *,
@@ -659,9 +661,8 @@ struct TCP_Server_Info {
 #endif
 	unsigned int	max_read;
 	unsigned int	max_write;
-#ifdef CONFIG_CIFS_SMB311
-	__u8	preauth_sha_hash[64]; /* save initital negprot hash */
-#endif /* 3.1.1 */
+	 /* save initital negprot hash */
+	__u8	preauth_sha_hash[SMB2_PREAUTH_HASH_SIZE];
 	struct delayed_work reconnect; /* reconnect workqueue job */
 	struct mutex reconnect_mutex; /* prevent simultaneous reconnects */
 	unsigned long echo_interval;
@@ -855,9 +856,7 @@ struct cifs_ses {
 	__u8 smb3signingkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3encryptionkey[SMB3_SIGN_KEY_SIZE];
 	__u8 smb3decryptionkey[SMB3_SIGN_KEY_SIZE];
-#ifdef CONFIG_CIFS_SMB311
-	__u8 preauth_sha_hash[64];
-#endif /* 3.1.1 */
+	__u8 preauth_sha_hash[SMB2_PREAUTH_HASH_SIZE];
 };
 
 static inline bool
@@ -993,12 +992,6 @@ struct tcon_link {
 };
 
 extern struct tcon_link *cifs_sb_tlink(struct cifs_sb_info *cifs_sb);
-
-static inline struct tcon_link *
-cifs_sb_master_tlink(struct cifs_sb_info *cifs_sb)
-{
-	return cifs_sb->master_tlink;
-}
 
 static inline struct cifs_tcon *
 tlink_tcon(struct tcon_link *tlink)
@@ -1467,6 +1460,7 @@ struct dfs_info3_param {
 #define CIFS_FATTR_NEED_REVAL		0x4
 #define CIFS_FATTR_INO_COLLISION	0x8
 #define CIFS_FATTR_UNKNOWN_NLINK	0x10
+#define CIFS_FATTR_FAKE_ROOT_INO	0x20
 
 struct cifs_fattr {
 	u32		cf_flags;
@@ -1724,6 +1718,10 @@ extern struct smb_version_values smb20_values;
 #define SMB21_VERSION_STRING	"2.1"
 extern struct smb_version_operations smb21_operations;
 extern struct smb_version_values smb21_values;
+#define SMBDEFAULT_VERSION_STRING "default"
+extern struct smb_version_values smbdefault_values;
+#define SMB3ANY_VERSION_STRING "3"
+extern struct smb_version_values smb3any_values;
 #define SMB30_VERSION_STRING	"3.0"
 extern struct smb_version_operations smb30_operations;
 extern struct smb_version_values smb30_values;

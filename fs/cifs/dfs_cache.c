@@ -382,8 +382,7 @@ static int copy_ref_data(const struct dfs_info3_param *refs, int numrefs,
 			free_tgts(ce);
 			return PTR_ERR(t);
 		}
-		if (tgthint && !strncasecmp(t->t_name, tgthint,
-					    strlen(tgthint))) {
+		if (tgthint && !strcasecmp(t->t_name, tgthint)) {
 			list_add(&t->t_list, &ce->ce_tlist);
 			tgthint = NULL;
 		} else {
@@ -412,7 +411,7 @@ alloc_cache_entry(const char *path, const struct dfs_info3_param *refs,
 
 	ce->ce_path = kstrdup_const(path, GFP_KERNEL);
 	if (!ce->ce_path) {
-		kfree(ce);
+		kmem_cache_free(dfs_cache_slab, ce);
 		return ERR_PTR(-ENOMEM);
 	}
 	INIT_HLIST_NODE(&ce->ce_hlist);
@@ -421,7 +420,7 @@ alloc_cache_entry(const char *path, const struct dfs_info3_param *refs,
 	rc = copy_ref_data(refs, numrefs, ce, NULL);
 	if (rc) {
 		kfree(ce->ce_path);
-		kfree(ce);
+		kmem_cache_free(dfs_cache_slab, ce);
 		ce = ERR_PTR(rc);
 	}
 	return ce;
@@ -479,14 +478,14 @@ add_cache_entry(unsigned int hash, const char *path,
 }
 
 static struct dfs_cache_entry *__find_cache_entry(unsigned int hash,
-						  const char *path, int len)
+						  const char *path)
 {
 	struct dfs_cache_entry *ce;
 	bool found = false;
 
 	rcu_read_lock();
 	hlist_for_each_entry_rcu(ce, &dfs_cache_htable[hash], ce_hlist) {
-		if (!strncasecmp(ce->ce_path, path, len)) {
+		if (!strcasecmp(path, ce->ce_path)) {
 #ifdef CONFIG_CIFS_DEBUG2
 			char *name = get_tgt_name(ce);
 
@@ -514,10 +513,8 @@ static struct dfs_cache_entry *__find_cache_entry(unsigned int hash,
 static inline struct dfs_cache_entry *find_cache_entry(const char *path,
 						       unsigned int *hash)
 {
-	int len = strlen(path);
-
-	*hash = cache_entry_hash(path, len);
-	return __find_cache_entry(*hash, path, len);
+	*hash = cache_entry_hash(path, strlen(path));
+	return __find_cache_entry(*hash, path);
 }
 
 static inline void destroy_slab_cache(void)
@@ -663,7 +660,7 @@ do_dfs_cache_find(const unsigned int xid, struct cifs_ses *ses,
 		 * new cache entry.
 		 */
 		if (!ses || !ses->server || !ses->server->ops->get_dfs_refer) {
-			ce = ERR_PTR(-ENOSYS);
+			ce = ERR_PTR(-EOPNOTSUPP);
 			return ce;
 		}
 		if (unlikely(!nls_codepage)) {
@@ -777,6 +774,7 @@ static int get_tgt_list(const struct dfs_cache_entry *ce,
 		it->it_name = kstrndup(t->t_name, strlen(t->t_name),
 				       GFP_KERNEL);
 		if (!it->it_name) {
+			kfree(it);
 			rc = -ENOMEM;
 			goto err_free_it;
 		}
@@ -950,11 +948,11 @@ int dfs_cache_update_tgthint(const unsigned int xid, struct cifs_ses *ses,
 
 	t = ce->ce_tgthint;
 
-	if (likely(!strncasecmp(it->it_name, t->t_name, strlen(t->t_name))))
+	if (likely(!strcasecmp(it->it_name, t->t_name)))
 		goto out;
 
 	list_for_each_entry(t, &ce->ce_tlist, t_list) {
-		if (!strncasecmp(t->t_name, it->it_name, strlen(it->it_name))) {
+		if (!strcasecmp(t->t_name, it->it_name)) {
 			ce->ce_tgthint = t;
 			cifs_dbg(FYI, "%s: new target hint: %s\n", __func__,
 				 it->it_name);
@@ -1011,11 +1009,11 @@ int dfs_cache_noreq_update_tgthint(const char *path,
 
 	t = ce->ce_tgthint;
 
-	if (unlikely(!strncasecmp(it->it_name, t->t_name, strlen(t->t_name))))
+	if (unlikely(!strcasecmp(it->it_name, t->t_name)))
 		goto out;
 
 	list_for_each_entry(t, &ce->ce_tlist, t_list) {
-		if (!strncasecmp(t->t_name, it->it_name, strlen(it->it_name))) {
+		if (!strcasecmp(t->t_name, it->it_name)) {
 			ce->ce_tgthint = t;
 			cifs_dbg(FYI, "%s: new target hint: %s\n", __func__,
 				 it->it_name);
@@ -1128,7 +1126,7 @@ err_free_domainname:
 err_free_unc:
 	kfree(new->UNC);
 err_free_password:
-	kfree(new->password);
+	kzfree(new->password);
 err_free_username:
 	kfree(new->username);
 	kfree(new);
@@ -1187,8 +1185,7 @@ static inline struct dfs_cache_vol_info *find_vol(const char *fullpath)
 	list_for_each_entry(vi, &dfs_cache.dc_vol_list, vi_list) {
 		cifs_dbg(FYI, "%s: vi->vi_fullpath: %s\n", __func__,
 			 vi->vi_fullpath);
-		if (!strncasecmp(vi->vi_fullpath, fullpath,
-				 strlen(vi->vi_fullpath)))
+		if (!strcasecmp(vi->vi_fullpath, fullpath))
 			return vi;
 	}
 	return ERR_PTR(-ENOENT);
@@ -1234,8 +1231,6 @@ out:
  * dfs_cache_del_vol - remove volume info in DFS cache during umount()
  *
  * @fullpath: fullpath to look up in volume list.
- *
- * Return zero if volume was deleted, otherwise non-zero.
  */
 void dfs_cache_del_vol(const char *fullpath)
 {
@@ -1293,8 +1288,6 @@ static void do_refresh_tcon(struct dfs_cache *dc, struct cifs_tcon *tcon)
 
 	path = tcon->dfs_path + 1;
 
-	cifs_dbg(FYI, "%s: dfs path: %s\n", __func__, path);
-
 	rc = get_normalized_path(path, &npath);
 	if (rc)
 		goto out;
@@ -1312,7 +1305,7 @@ static void do_refresh_tcon(struct dfs_cache *dc, struct cifs_tcon *tcon)
 		goto out;
 
 	if (unlikely(!tcon->ses->server->ops->get_dfs_refer)) {
-		rc = -ENOSYS;
+		rc = -EOPNOTSUPP;
 	} else {
 		rc = tcon->ses->server->ops->get_dfs_refer(xid, tcon->ses, path,
 							   &refs, &numrefs,
@@ -1351,16 +1344,12 @@ static void refresh_cache_worker(struct work_struct *work)
 	LIST_HEAD(list);
 	struct cifs_tcon *tcon, *ntcon;
 
-	cifs_dbg(FYI, "%s: refreshing DFS referral cache\n", __func__);
-
 	mutex_lock(&dc->dc_lock);
 
 	list_for_each_entry(vi, &dc->dc_vol_list, vi_list) {
-		cifs_dbg(FYI, "%s: vol path: %s\n", __func__, vi->vi_fullpath);
 		server = cifs_find_tcp_session(&vi->vi_vol);
-		if (IS_ERR(server))
+		if (IS_ERR_OR_NULL(server))
 			continue;
-		cifs_dbg(FYI, "%s: found a tcp ses: %p\n", __func__, server);
 		if (server->tcpStatus != CifsGood)
 			goto next;
 		get_tcons(server, &list);
@@ -1374,6 +1363,4 @@ next:
 	}
 	queue_delayed_work(cifsiod_wq, &dc->dc_refresh, dc->dc_ttl * HZ);
 	mutex_unlock(&dc->dc_lock);
-
-	cifs_dbg(FYI, "%s: finished refreshing DFS referral cache\n", __func__);
 }

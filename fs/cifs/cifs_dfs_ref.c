@@ -305,7 +305,6 @@ static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
 	int len;
 	int rc;
 	struct vfsmount *mnt;
-	char sep;
 
 	cifs_dbg(FYI, "in %s\n", __func__);
 	BUG_ON(IS_ROOT(mntpt));
@@ -318,17 +317,20 @@ static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
 	 */
 	mnt = ERR_PTR(-ENOMEM);
 
-	sep = CIFS_DIR_SEP(cifs_sb);
+	cifs_sb = CIFS_SB(mntpt->d_sb);
+	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NO_DFS) {
+		mnt = ERR_PTR(-EREMOTE);
+		goto cdda_exit;
+	}
 
 	/* always use tree name prefix */
 	full_path = build_path_from_dentry_optional_prefix(mntpt, true);
 	if (full_path == NULL)
 		goto cdda_exit;
 
-	cifs_sb = CIFS_SB(mntpt->d_sb);
 	cifs_dbg(FYI, "%s: full_path: %s\n", __func__, full_path);
 
-	if (!cifs_sb_master_tlink(cifs_sb)) {
+	if (!cifs_sb->master_tlink) {
 		cifs_dbg(FYI, "%s: master tlink is NULL\n", __func__);
 		goto free_full_path;
 	}
