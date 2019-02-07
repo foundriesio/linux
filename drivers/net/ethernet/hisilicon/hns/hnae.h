@@ -87,7 +87,7 @@ do { \
 
 #define HNAE_AE_REGISTER 0x1
 
-#define RCB_RING_NAME_LEN 16
+#define RCB_RING_NAME_LEN (IFNAMSIZ + 4)
 
 #define HNAE_LOWEST_LATENCY_COAL_PARAM	30
 #define HNAE_LOW_LATENCY_COAL_PARAM	80
@@ -220,10 +220,10 @@ struct hnae_desc_cb {
 
 	/* priv data for the desc, e.g. skb when use with ip stack*/
 	void *priv;
-	u16 page_offset;
-	u16 reuse_flag;
+	u32 page_offset;
+	u32 length;     /* length of the buffer */
 
-	u16 length;     /* length of the buffer */
+	u16 reuse_flag;
 
        /* desc type, used by the ring user to mark the type of the priv data */
 	u16 type;
