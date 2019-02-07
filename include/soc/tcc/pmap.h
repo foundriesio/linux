@@ -19,17 +19,25 @@
 
 #define PMAP_FLAG_SECURED	(1 << 1)
 #define PMAP_FLAG_SHARED	(1 << 2)
+#define PMAP_FLAG_CMA_ALLOC	(1 << 3)
+
+#define pmap_is_secured(pmap) ( (pmap)->flags & PMAP_FLAG_SECURED )
+#define pmap_is_shared(pmap) ( (pmap)->flags & PMAP_FLAG_SHARED )
+#define pmap_is_cma_alloc(pmap) ( (pmap)->flags & PMAP_FLAG_CMA_ALLOC )
 
 typedef struct {
 	char name[TCC_PMAP_NAME_LEN];
 	__u32 base;
 	__u32 size;
 	__u32 groups;
+	__u32 v_base;
+	__u32 rc;
 	unsigned int flags;
 } pmap_t;
 
 
 int pmap_get_info(const char *name, pmap_t *mem);
+int pmap_release_info(const char *name);
 int pmap_check_region(__u32 base, __u32 size);
 
 #endif  /* __PLAT_PMAP_H */
