@@ -2964,6 +2964,11 @@ static void alc282_init(struct hda_codec *codec)
 	bool hp_pin_sense;
 	int coef78;
 
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
+
 	alc282_restore_default_value(codec);
 
 	if (!hp_pin)
@@ -3000,6 +3005,11 @@ static void alc282_shutup(struct hda_codec *codec)
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp_pin_sense;
 	int coef78;
+
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
 
 	if (!hp_pin) {
 		alc269_shutup(codec);
@@ -3160,6 +3170,11 @@ static void alc256_init(struct hda_codec *codec)
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp_pin_sense;
 
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
+
 	if (!hp_pin)
 		return;
 
@@ -3196,6 +3211,11 @@ static void alc256_shutup(struct hda_codec *codec)
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp_pin_sense;
 
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
+
 	if (!hp_pin) {
 		alc269_shutup(codec);
 		return;
@@ -3231,6 +3251,11 @@ static void alc225_init(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp1_pin_sense, hp2_pin_sense;
+
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
 
 	if (!hp_pin)
 		return;
@@ -3274,6 +3299,11 @@ static void alc225_shutup(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp1_pin_sense, hp2_pin_sense;
+
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
 
 	if (!hp_pin) {
 		alc269_shutup(codec);
@@ -3319,6 +3349,11 @@ static void alc_default_init(struct hda_codec *codec)
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp_pin_sense;
 
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
+
 	if (!hp_pin)
 		return;
 
@@ -3347,6 +3382,11 @@ static void alc_default_shutup(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	bool hp_pin_sense;
+
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
 
 	if (!hp_pin) {
 		alc269_shutup(codec);
@@ -3379,6 +3419,11 @@ static void alc294_hp_init(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
 	int i, val;
+
+	if (!spec->gen.autocfg.hp_outs && spec->gen.suppress_auto_mute) {
+		if (spec->gen.autocfg.line_out_type == AC_JACK_HP_OUT)
+			hp_pin = spec->gen.autocfg.line_out_pins[0];
+	}
 
 	if (!hp_pin)
 		return;
