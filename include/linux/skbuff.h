@@ -1355,6 +1355,17 @@ static inline void skb_zcopy_abort(struct sk_buff *skb)
 	}
 }
 
+static inline void skb_mark_not_on_list(struct sk_buff *skb)
+{
+	skb->next = NULL;
+}
+
+static inline void skb_list_del_init(struct sk_buff *skb)
+{
+	__list_del_entry(&skb->list);
+	skb_mark_not_on_list(skb);
+}
+
 /**
  *	skb_queue_empty - check if a queue is empty
  *	@list: queue head
@@ -3167,6 +3178,7 @@ int pskb_trim_rcsum_slow(struct sk_buff *skb, unsigned int len);
  *
  *	This is exactly the same as pskb_trim except that it ensures the
  *	checksum of received packets are still valid after the operation.
+ *	It can change skb pointers.
  */
 
 static inline int pskb_trim_rcsum(struct sk_buff *skb, unsigned int len)

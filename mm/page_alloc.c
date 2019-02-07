@@ -5733,8 +5733,10 @@ void __meminit init_currently_empty_zone(struct zone *zone,
 					unsigned long size)
 {
 	struct pglist_data *pgdat = zone->zone_pgdat;
+	int zone_idx = zone_idx(zone) + 1;
 
-	pgdat->nr_zones = zone_idx(zone) + 1;
+	if (zone_idx > pgdat->nr_zones)
+		pgdat->nr_zones = zone_idx;
 
 	zone->zone_start_pfn = zone_start_pfn;
 
@@ -7702,11 +7704,14 @@ bool has_unmovable_pages(struct zone *zone, struct page *page, int count,
 		 * handle each tail page individually in migration.
 		 */
 		if (PageHuge(page)) {
+			struct page *head = compound_head(page);
+			unsigned int skip_pages;
 
-			if (!hugepage_migration_supported(page_hstate(page)))
+			if (!hugepage_migration_supported(page_hstate(head)))
 				goto unmovable;
 
-			iter = round_up(iter + 1, 1<<compound_order(page)) - 1;
+			skip_pages = (1 << compound_order(head)) - (page - head);
+			iter += skip_pages - 1;
 			continue;
 		}
 
