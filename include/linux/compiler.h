@@ -275,6 +275,10 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 # define __attribute_const__	/* unimplemented */
 #endif
 
+#ifndef __copy
+# define __copy(symbol)
+#endif
+
 /*
  * Tell gcc if a function is cold. The compiler will assume any path
  * directly leading to the call is unlikely.
