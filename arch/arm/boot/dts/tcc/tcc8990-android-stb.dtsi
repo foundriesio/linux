@@ -82,6 +82,11 @@
     };
 };
 
+&tcc_pm {
+        wakeup,powerkey = <PMU_WKUP_GP_D20 WAKEUP_ACT_LO>;
+        //gpio-powers = <&gpd 31 0>;              /* SLP_PWRCTL */
+};
+
 &panel {
 	status = "okay";
 	compatible = "telechips,hdmi1920x1080";
