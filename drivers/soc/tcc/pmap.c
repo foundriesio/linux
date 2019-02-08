@@ -165,13 +165,12 @@ int pmap_get_info(const char *name, pmap_t *mem)
 		goto err;
 
 #ifdef CONFIG_DMA_CMA
-	if (pmap_is_cma_alloc(info)) {
-		if (!info->rc)
-			if (!pmap_cma_alloc(info))
-				goto err;
-
-		++info->rc;
+	if (!info->rc && pmap_is_cma_alloc(info)) {
+		if (!pmap_cma_alloc(info))
+			goto err;
 	}
+
+	++info->rc;
 #endif
 
 	memcpy(mem, info, sizeof(pmap_t));
@@ -193,14 +192,13 @@ int pmap_release_info(const char *name)
 		return 0;
 
 #ifdef CONFIG_DMA_CMA
-	if (pmap_is_cma_alloc(info)) {
-		if (info->rc == 1)
-			if (!pmap_cma_release(info))
-				return 0;
-
-		if (info->rc > 0)
-			--info->rc;
+	if (info->rc == 1 && pmap_is_cma_alloc(info)) {
+		if (!pmap_cma_release(info))
+			return 0;
 	}
+
+	if (info->rc > 0)
+		--info->rc;
 #endif
 
 	return 1;
