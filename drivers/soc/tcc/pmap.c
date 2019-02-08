@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/uaccess.h>
 #include <soc/tcc/pmap.h>
 
 #ifdef CONFIG_PROC_FS
@@ -32,6 +33,17 @@
 
 #define MAX_PMAPS 64
 #define MAX_PMAP_GROUPS 4
+
+#ifdef CONFIG_PROC_FS
+#define PROC_PMAP_CMD_GET		0x501
+#define PROC_PMAP_CMD_RELEASE	0x502
+
+typedef struct {
+	char name[TCC_PMAP_NAME_LEN];
+	unsigned long base;
+	unsigned long size;
+} user_pmap_t;
+#endif
 
 typedef struct {
 	__u32 base;
@@ -335,70 +347,43 @@ static int proc_pmap_open(struct inode *inode, struct file *file)
 	return single_open(file, proc_pmap_show, PDE_DATA(inode));
 }
 
-static const struct file_operations proc_pmap_info_fops = {
-	.open		= proc_pmap_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= seq_release,
-};
-
-#ifdef CONFIG_DMA_CMA
-static ssize_t proc_pmap_alloc(struct file *f, const char __user *name, size_t size, loff_t *off)
+long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
+	user_pmap_t pmap;
 	pmap_t info;
-	char pmap_name[size];
 
-	memcpy(pmap_name, name, size);
-	pmap_name[size-1] = '\0';
+	if (copy_from_user(&pmap, (void __user *) arg, sizeof(user_pmap_t)))
+		return -EFAULT;
 
-	if (!pmap_get_info(pmap_name, &info))
+	switch (cmd) {
+	case PROC_PMAP_CMD_GET:
+		if (!pmap_get_info(pmap.name, &info))
+			return -EINVAL;
+		break;
+	case PROC_PMAP_CMD_RELEASE:
+		if (!pmap_release_info(pmap.name))
+			return -EINVAL;
+		break;
+	default:
 		return -EINVAL;
+	}
 
-	return size;
+	pmap.base = info.base;
+	pmap.size = info.size;
+
+	if (copy_to_user((void __user *) arg, &pmap, sizeof(user_pmap_t)))
+		return -EFAULT;
+
+	return 0;
 }
 
-static const struct file_operations proc_pmap_alloc_fops = {
-	.write		= proc_pmap_alloc,
+static const struct file_operations proc_pmap_fops = {
+	.open			= proc_pmap_open,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= seq_release,
+	.unlocked_ioctl	= proc_pmap_ioctl,
 };
-
-static ssize_t proc_pmap_release(struct file *f, const char __user *name, size_t size, loff_t *off)
-{
-	char pmap_name[size];
-
-	memcpy(pmap_name, name, size);
-	pmap_name[size-1] = '\0';
-
-	if (!pmap_release_info(pmap_name))
-		return -EINVAL;
-
-	return size;
-}
-
-static const struct file_operations proc_pmap_release_fops = {
-	.write		= proc_pmap_release,
-};
-#endif
-
-static int pmap_create_proc(void)
-{
-	struct proc_dir_entry * dir = proc_mkdir("pmap",NULL);
-
-	if (!dir)
-		return 0;
-
-	if (!proc_create("info", S_IRUGO, dir, &proc_pmap_info_fops))
-		return 0;
-
-#ifdef CONFIG_DMA_CMA
-	if (!proc_create("alloc", S_IWUGO, dir, &proc_pmap_alloc_fops))
-		return 0;
-
-	if (!proc_create("release", S_IWUGO, dir, &proc_pmap_release_fops))
-		return 0;
-#endif
-
-	return 1;
-}
 #endif
 
 static int __init tcc_pmap_init(void)
@@ -410,7 +395,7 @@ static int __init tcc_pmap_init(void)
 	struct pmap_entry *entry = NULL;
 
 #ifdef CONFIG_PROC_FS
-	if (!pmap_create_proc()) {
+	if (!proc_create("pmap", S_IRUGO, NULL, &proc_pmap_fops)) {
 		return -ENOMEM;
 	}
 #endif
