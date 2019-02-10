@@ -264,7 +264,7 @@ compound_page_dtor * const compound_page_dtors[] = {
 
 int min_free_kbytes = 1024;
 int user_min_free_kbytes = -1;
-int watermark_boost_factor __read_mostly = 15000;
+int watermark_boost_factor __read_mostly = 10000;
 int watermark_scale_factor = 10;
 
 static unsigned long __meminitdata nr_kernel_pages;
