@@ -192,7 +192,7 @@ static int mali_driver_runtime_idle(struct device *dev);
 #endif
 
 #if defined(MALI_FAKE_PLATFORM_DEVICE)
-extern _mali_osk_errcode_t mali_platform_power_mode_change(mali_bool power_on);	//TCC
+extern _mali_osk_errcode_t mali_platform_power_mode_change(struct device *dev, mali_bool power_on);	//TCC
 
 #if defined(CONFIG_MALI_DT)
 extern int mali_platform_device_init(struct platform_device *device);
@@ -723,13 +723,13 @@ static int mali_driver_suspend_scheduler(struct device *dev)
 				      0,
 				      0,
 				      0, 0, 0);
-	mali_platform_power_mode_change(MALI_FALSE);	//TCC
+	mali_platform_power_mode_change(dev, MALI_FALSE);	//TCC
 	return 0;
 }
 
 static int mali_driver_resume_scheduler(struct device *dev)
 {
-	mali_platform_power_mode_change(MALI_TRUE);	//TCC
+	mali_platform_power_mode_change(dev, MALI_TRUE);	//TCC
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)
@@ -777,7 +777,7 @@ static int mali_driver_runtime_suspend(struct device *dev)
 					      0,
 					      0,
 					      0, 0, 0);
-		mali_platform_power_mode_change(MALI_FALSE);	//TCC
+		mali_platform_power_mode_change(dev, MALI_FALSE);	//TCC
 #if defined(CONFIG_MALI_DEVFREQ) && \
                 (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 		MALI_DEBUG_PRINT(4, ("devfreq_suspend_device: stop devfreq monitor\n"));
@@ -792,7 +792,7 @@ static int mali_driver_runtime_suspend(struct device *dev)
 
 static int mali_driver_runtime_resume(struct device *dev)
 {
-	mali_platform_power_mode_change(MALI_TRUE);	//TCC
+	mali_platform_power_mode_change(dev, MALI_TRUE);	//TCC
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)

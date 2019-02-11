@@ -1696,14 +1696,14 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 
 	/* clock control register */
 #if defined(CONFIG_ARCH_TCC)
-//	clk_enable(dwc_otg_device->core_if->pclk);
+//	clk_prepare_enable(dwc_otg_device->core_if->pclk);
 #else
 	dwc_otg_device->clk[0] = clk_get(NULL, "usb_otg");
 	if (IS_ERR(dwc_otg_device->clk[0])){
 		printk("ERR - usb_otg clk_get fail.\n");
 		goto fail;
 	}
-	clk_enable(dwc_otg_device->clk[0]);
+	clk_prepare_enable(dwc_otg_device->clk[0]);
 #endif
 	/*
 	 * Initialize driver data to point to the global DWC_otg
@@ -1733,7 +1733,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	/*
 	 * Turn on DWC_otg core.
 	 */
-	clk_enable(dwc_otg_device->hclk); // HSIO BUS CLK
+	clk_prepare_enable(dwc_otg_device->hclk); // HSIO BUS CLK
 	clk_set_rate(dwc_otg_device->pclk, dwc_otg_device->core_clk_rate);
 	printk("dwc_otg tcc: clk rate %lu\n", clk_get_rate(dwc_otg_device->pclk));
 
@@ -1741,7 +1741,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	 * Turn on DWC_otg phy clk
 	 */
 	if(dwc_otg_device->phy_clk)
-		clk_enable(dwc_otg_device->phy_clk);
+		clk_prepare_enable(dwc_otg_device->phy_clk);
 
 	dwc_otg_device->core_if = dwc_otg_cil_init(dwc_otg_device->os_dep.base, dwc_otg_device->core_if);
 	if (!dwc_otg_device->core_if) {
@@ -1992,7 +1992,7 @@ static int dwc_otg_driver_resume(struct platform_device *pdev)
 
 	tcc_otg_vbus_init();
 
-	clk_enable(dwc_otg_device->hclk);
+	clk_prepare_enable(dwc_otg_device->hclk);
 	clk_set_rate(dwc_otg_device->pclk, dwc_otg_device->core_clk_rate);
 
 	tcc_otg_phy_init(dwc_otg_device);
