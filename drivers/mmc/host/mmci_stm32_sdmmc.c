@@ -303,19 +303,16 @@ static void mmci_sdmmc_set_pwrreg(struct mmci_host *host, unsigned int pwr)
 static void sdmmc_dlyb_set_cfgr(struct sdmmc_dlyb *dlyb,
 				int unit, int phase, bool sampler)
 {
-	u32 cr, cfgr;
+	u32 cfgr;
 
-	writel_relaxed(DLYB_CR_SEN, dlyb->base + DLYB_CR);
+	writel_relaxed(DLYB_CR_SEN | DLYB_CR_DEN, dlyb->base + DLYB_CR);
 
 	cfgr = FIELD_PREP(DLYB_CFGR_UNIT_MASK, unit) |
 	       FIELD_PREP(DLYB_CFGR_SEL_MASK, phase);
 	writel_relaxed(cfgr, dlyb->base + DLYB_CFGR);
 
-	cr = DLYB_CR_DEN;
-	if (sampler)
-		cr |= DLYB_CR_SEN;
-
-	writel_relaxed(cr, dlyb->base + DLYB_CR);
+	if (!sampler)
+		writel_relaxed(DLYB_CR_DEN, dlyb->base + DLYB_CR);
 }
 
 static int sdmmc_dlyb_lng_tuning(struct mmci_host *host)
