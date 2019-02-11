@@ -45,8 +45,12 @@
 #define ASRC_DST_RATE 48000	//For TX
 #define ASRC_SRC_RATE 48000	//For RX
 
+#define PERFORM_ASRC_MULTIPLE_TIME
 #define TCC_ASRC_MAX_SIZE (32768)	//From m2m driver
-#define TCC_ASRC_UNIT_SIZE (256)	//Bytes for frequently cur_ptr update when TX. 
+
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
+#define TCC_ASRC_UNIT_SIZE (256)	//Bytes for frequently cur_ptr update when TX.
+#endif
 
 #define MAX_BUFFER_BYTES		(65536)
 
@@ -57,8 +61,8 @@
 #define CAPTURE_MAX_PERIOD_BYTES		(MAX_BUFFER_BYTES/4)
 
 #define MID_BUFFER_CONST 4
-#define TCC_APP_PTR_CHECK_INTERVAL_TX 5 //msec
-#define TCC_APP_PTR_CHECK_INTERVAL_RX 5 //msec
+#define TCC_APP_PTR_CHECK_INTERVAL_TX 100 //usec
+#define TCC_APP_PTR_CHECK_INTERVAL_RX 1000 //usec
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 #define MBOX_MSG_SIZE_FOR_ACTION    AUDIO_MBOX_PCM_ACTION_MESSAGE_SIZE
@@ -103,6 +107,8 @@ struct tcc_app_buffer_info {
 //	snd_pcm_uframes_t periods;	//for TX
 };
 
+//#define FOOTPRINT_LINKED_LIST
+#ifdef FOOTPRINT_LINKED_LIST
 typedef struct _Node {
 	unsigned int print_pos;
 	ssize_t input_byte;	//bytes
@@ -114,6 +120,16 @@ typedef struct _List {
 	Node *tail;
 	int list_len;
 } List;
+#else
+#define FOOTPRINT_LENGTH 300
+struct footprint {
+	unsigned int print_pos[FOOTPRINT_LENGTH];
+	ssize_t input_byte[FOOTPRINT_LENGTH]; 
+	unsigned int head;
+	unsigned int tail;
+	unsigned int list_len;
+};
+#endif
 
 struct tcc_asrc_m2m_pcm {
 	struct device *dev;
@@ -141,7 +157,11 @@ struct tcc_asrc_m2m_pcm {
 	unsigned int interval; //ms
 	ssize_t Bwrote; //Bytes 
 	ssize_t Btail; //Bytes 
+#ifdef FOOTPRINT_LINKED_LIST
 	List *asrc_footprint;	//for TX
+#else
+	struct footprint *asrc_footprint;	//for TX
+#endif
 	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;

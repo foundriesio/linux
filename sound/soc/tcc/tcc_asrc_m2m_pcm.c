@@ -104,6 +104,7 @@ static const struct snd_pcm_hardware tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_TYPE_MAX] 
 	},
 };
 
+#ifdef FOOTPRINT_LINKED_LIST
 static void tcc_asrc_footprint_init(List *list)
 {
 	list->head = NULL;
@@ -170,7 +171,57 @@ static int tcc_asrc_footprint_delete(List *list, bool all)
 	}
 	return list->list_len;
 }
+#else
+static void tcc_asrc_footprint_init(struct footprint *list)
+{
+	list->head = 0;
+	list->tail = 0;
+	list->list_len = 0;
+}
 
+//From tail insert
+static int tcc_asrc_footprint_insert(struct footprint *list, unsigned int pos, ssize_t size)
+{
+	if((list->list_len > 0) && (list->list_len < FOOTPRINT_LENGTH)) {
+		list->tail ++;
+	} else if(list->list_len >= FOOTPRINT_LENGTH) {
+		printk("[%s][%d]There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
+	}
+	if(list->tail >= FOOTPRINT_LENGTH) {
+		list->tail = list->tail - FOOTPRINT_LENGTH;
+	}
+	list->print_pos[list->tail] = pos;
+	list->input_byte[list->tail] = size;
+	list->list_len ++;
+
+	return list->list_len;
+}
+
+//From head delete.
+static int tcc_asrc_footprint_delete(struct footprint *list, bool all)
+{
+	if(all == false) {
+		if(list->list_len <= 0) {
+			printk("[%s][%d]There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
+			return -EFAULT;
+		} else if(list->list_len == 1) {
+			goto list_delete_all;	
+		} else {
+			list->head ++;
+			if(list->head >= FOOTPRINT_LENGTH) {
+				list->head = list->head - FOOTPRINT_LENGTH;
+			}
+			list->list_len--;
+		}
+	} else {	//delete all
+list_delete_all:
+		memset(list->print_pos, 0x0, FOOTPRINT_LENGTH);
+		memset(list->input_byte, 0x0, FOOTPRINT_LENGTH);
+		tcc_asrc_footprint_init(list);
+	}
+	return list->list_len;
+}
+#endif
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_audio_dev, struct snd_pcm_substream *substream, int cmd)
 {
@@ -311,11 +362,22 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 */	
 	asrc_m2m_pcm->middle->pre_pos = mix_pos;
 	cur_pos = asrc_m2m_pcm->middle->cur_pos;
-	len = asrc_m2m_pcm->asrc_footprint->list_len;
 	elapsed_en = false;
-	while (len > 0) {
+	while (1) {
+		spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
+		len = asrc_m2m_pcm->asrc_footprint->list_len;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
+		if(len <= 0){
+			//printk("[%s][%d]len=%d\n", __func__, __LINE__, len);
+			break;
+		}
+#ifdef FOOTPRINT_LINKED_LIST
 		head_pos = asrc_m2m_pcm->asrc_footprint->head->print_pos;
-		mix_byte = asrc_m2m_pcm->asrc_footprint->head->input_byte;	
+		mix_byte = asrc_m2m_pcm->asrc_footprint->head->input_byte;
+#else
+		head_pos = asrc_m2m_pcm->asrc_footprint->print_pos[asrc_m2m_pcm->asrc_footprint->head];
+		mix_byte = asrc_m2m_pcm->asrc_footprint->input_byte[asrc_m2m_pcm->asrc_footprint->head];
+#endif
 		if(cur_pos > mix_pos) {
 			if((head_pos <= mix_pos)||(head_pos >= cur_pos)) {
 				asrc_m2m_pcm->Bwrote += mix_byte;
@@ -326,7 +388,6 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 				elapsed_en = true;
 			} else {
-			//	printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
 				break;
 			}
 		} else {
@@ -339,7 +400,7 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 				elapsed_en = true;
 			} else {
-			//	printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
+				//	printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
 				break;
 			}
 		}
@@ -347,6 +408,32 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 playback_callback_end:
 	if(elapsed_en == true) {
 		snd_pcm_period_elapsed(substream);
+		atomic_set(&asrc_m2m_pcm->wakeup, 1);
+		wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+	} else {
+		//This is for snd_pcm_drain
+		if(substream->runtime->status->state == SNDRV_PCM_STATE_DRAINING) {
+			while(len > 0) {
+#ifdef FOOTPRINT_LINKED_LIST
+				mix_byte = asrc_m2m_pcm->asrc_footprint->head->input_byte;
+#else
+				mix_byte = asrc_m2m_pcm->asrc_footprint->input_byte[asrc_m2m_pcm->asrc_footprint->head];
+#endif
+
+				asrc_m2m_pcm->Bwrote += mix_byte;
+				if(asrc_m2m_pcm->Bwrote >= asrc_m2m_pcm->src->buffer_bytes)
+					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote - asrc_m2m_pcm->src->buffer_bytes;
+				spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
+				len = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, false);
+				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
+				if(substream) {
+					snd_pcm_period_elapsed(substream);
+				} else {
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "ERROR!! asrc_m2m_pcm->asrc_substream set to null during drain!!\n");
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -1250,7 +1337,7 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				}
     			} //(cur_pos > pre_pos)?
 			} else {
-				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), msecs_to_jiffies(asrc_m2m_pcm->interval));
+				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), usecs_to_jiffies(asrc_m2m_pcm->interval));
 			    atomic_set(&asrc_m2m_pcm->wakeup, 0);
 			}
 		} else { //start or closed?
@@ -1275,7 +1362,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 	ptemp_buf = asrc_m2m_pcm->middle->ptemp_buf;
 	pout_buf = asrc_m2m_pcm->middle->dma_buf->area;
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
 	while(1) {
+#endif
 		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
 		Ctemp = asrc_m2m_pcm->is_flag;
 		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
@@ -1283,7 +1372,11 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				||((Ctemp & IS_TRIG_STARTED) == 0)
 				||((Ctemp & IS_ASRC_STARTED) == 0)) {
 			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
-			break;//return 0;
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
+			break;
+#else
+			return 0;
+#endif
 		}
 		if(readable_byte > max_asrc_byte) {
 			read_byte = max_asrc_byte;
@@ -1388,7 +1481,9 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->middle->cur_pos);
 		}
 #endif
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
 	}
+#endif
 	return ret;
 }
 
@@ -1469,7 +1564,11 @@ wait_check_play:
 #if	(CHECK_ASRC_M2M_ELAPSED_TIME == 1)
 						do_gettimeofday(&start);
 #endif
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, (ssize_t)TCC_ASRC_UNIT_SIZE, pin_buf+read_pos);
+#else
+						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
+#endif
 						if(ret < 0) {
 							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
@@ -1510,7 +1609,11 @@ wait_check_play:
 					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->app->pre_pos);
 
 					if(readable_byte > 0) {
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, (ssize_t)TCC_ASRC_UNIT_SIZE, pin_buf+read_pos);
+#else
+						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
+#endif
 						if(ret < 0) {
 							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
@@ -1546,7 +1649,11 @@ wait_check_play:
 					}
 
 					if(readable_byte > 0) {
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, (ssize_t)TCC_ASRC_UNIT_SIZE, pin_buf);
+#else
+						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf);
+#endif
 						if(ret < 0) {
 							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
@@ -1597,7 +1704,7 @@ max_cpy_tx:
 				/*
 				 * This kthread check the appl_ptr in every interval (default 5ms).
 				 */
-				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), msecs_to_jiffies(asrc_m2m_pcm->interval));
+				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), usecs_to_jiffies(asrc_m2m_pcm->interval));
 				atomic_set(&asrc_m2m_pcm->wakeup, 0);
 			}	//(cur_appl_ptr != pre_appl_ptr)? else?
 		} else { //start or closed? 
@@ -1835,7 +1942,11 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 		goto error_mailbox;
     }
 #endif
+#ifdef FOOTPRINT_LINKED_LIST
 	asrc_m2m_pcm->asrc_footprint = (List *)kzalloc(sizeof(List), GFP_KERNEL);
+#else
+	asrc_m2m_pcm->asrc_footprint = (struct footprint *)kzalloc(sizeof(struct footprint), GFP_KERNEL);
+#endif
 	if(!asrc_m2m_pcm->asrc_footprint) {
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
