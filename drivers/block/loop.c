@@ -1144,6 +1144,15 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
 	if ((unsigned int) info->lo_encrypt_key_size > LO_KEY_SIZE)
 		return -EINVAL;
 
+	if (lo->lo_offset != info->lo_offset ||
+	    lo->lo_sizelimit != info->lo_sizelimit ||
+	    lo->lo_flags != lo_flags ||
+	    ((lo->lo_flags & LO_FLAGS_BLOCKSIZE) &&
+	     lo->lo_logical_blocksize != LO_INFO_BLOCKSIZE(info))) {
+		sync_blockdev(lo->lo_device);
+		kill_bdev(lo->lo_device);
+	}
+
 	/* I/O need to be drained during transfer transition */
 	blk_mq_freeze_queue(lo->lo_queue);
 
@@ -1200,6 +1209,14 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
 	    lo->lo_flags != lo_flags ||
 	    ((lo->lo_flags & LO_FLAGS_BLOCKSIZE) &&
 	     lo->lo_logical_blocksize != LO_INFO_BLOCKSIZE(info))) {
+		/* kill_bdev should have truncated all the pages */
+		if (lo->lo_device->bd_inode->i_mapping->nrpages) {
+			err = -EAGAIN;
+			pr_warn("%s: loop%d (%s) has still dirty pages (nrpages=%lu)\n",
+				__func__, lo->lo_number, lo->lo_file_name,
+				lo->lo_device->bd_inode->i_mapping->nrpages);
+			goto exit;
+		}
 		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit,
 				     LO_INFO_BLOCKSIZE(info))) {
 			err = -EFBIG;
