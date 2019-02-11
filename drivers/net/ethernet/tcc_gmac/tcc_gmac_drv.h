@@ -49,6 +49,11 @@
 
 #define IOCTL_AVB_CONFIG	SIOCDEVPRIVATE+1
 
+enum gmac_misc_cmd {
+	CMD_PHY_READ	=	0x10,
+	CMD_PHY_WRITE	=	0x11,
+};
+
 enum avb_cmd_t {
 	AVB_CMD_SET_CLASS_A_PRIORITY = 0x00000001,
 	AVB_CMD_SET_CLASS_B_PRIORITY = 0x00000002,
@@ -366,6 +371,7 @@ struct tcc_gmac_priv {
 	struct sk_buff_head rx_recycle;
 
 	struct net_device *dev;
+	struct miscdevice *misc;
 	int rx_csum;
 	unsigned int dma_buf_sz;
 	struct device *device;
