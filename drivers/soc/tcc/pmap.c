@@ -316,26 +316,29 @@ static int proc_pmap_show(struct seq_file *m, void *v)
 	struct pmap_entry *entry = NULL;
 	int shared_info = 0, secured_info = 0;
 
-	seq_printf(m, "%-10s %-10s %-3s %s\n", "base_addr", "size", "ref", "name");
+	seq_printf(m, "%-10s %-10s %-3s %-3s %s\n", "base_addr", "size", "cma", "ref", "name");
 
 	list_for_each_entry(entry, &pmap_list_head, list) {
-		if (!shared_info && pmap_is_shared(&entry->info)) {
+		pmap_t *info = &entry->info;
+		char is_cma = pmap_is_cma_alloc(info) ? '*' : ' ';
+
+		if (!shared_info && pmap_is_shared(info)) {
 			seq_printf(m, " ======= Shared Area Info. ======= \n");
 			shared_info = 1;
 		}
 
-		if (!secured_info && !strncmp("secure_area", entry->info.name, 11)) {
+		if (!secured_info && !strncmp("secure_area", info->name, 11)) {
 			seq_printf(m, " ======= Secured Area Info. ======= \n");
 			secured_info = 1;
 		}
 
 		if (entry->info.size && entry->info.base != ~(0))
-			seq_printf(m, "0x%8.8x 0x%8.8x %-3u %s\n", entry->info.base,
-					entry->info.size, entry->info.rc, entry->info.name);
+			seq_printf(m, "0x%8.8x 0x%8.8x  %c  %-3u %s\n", info->base,
+					info->size, is_cma, info->rc, info->name);
 	}
 
 	seq_printf(m, " ======= Total Area Info. ======= \n");
-	seq_printf(m, "0x00000000 0x%8.8x     total\n", pmap_total_size);
+	seq_printf(m, "0x00000000 0x%8.8x         total\n", pmap_total_size);
 
 	return 0;
 }
