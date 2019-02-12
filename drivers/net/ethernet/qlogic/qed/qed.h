@@ -55,7 +55,7 @@ extern const struct qed_common_ops qed_common_ops_pass;
 #define QED_MAJOR_VERSION		8
 #define QED_MINOR_VERSION		37
 #define QED_REVISION_VERSION		0
-#define QED_ENGINEERING_VERSION		55
+#define QED_ENGINEERING_VERSION		20
 
 #define QED_VERSION						 \
 	((QED_MAJOR_VERSION << 24) | (QED_MINOR_VERSION << 16) | \
