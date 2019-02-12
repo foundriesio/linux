@@ -1020,7 +1020,8 @@ struct cifsLockInfo {
 	__u64 offset;
 	__u64 length;
 	__u32 pid;
-	__u32 type;
+	__u16 type;
+	__u16 flags;
 };
 
 /*
