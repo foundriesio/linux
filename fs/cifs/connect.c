@@ -1286,9 +1286,9 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 
 	vol->actimeo = CIFS_DEF_ACTIMEO;
 
-	/* FIXME: add autonegotiation for SMB3 or later rather than just SMB3 */
-	vol->ops = &smb30_operations; /* both secure and accepted widely */
-	vol->vals = &smb30_values;
+	/* offer SMB2.1 and later (SMB3 etc). Secure and widely accepted */
+	vol->ops = &smb30_operations;
+	vol->vals = &smbdefault_values;
 
 	vol->echo_interval = SMB_ECHO_INTERVAL_DEFAULT;
 
