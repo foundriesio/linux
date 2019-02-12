@@ -519,13 +519,6 @@ skl_wa_528(struct drm_i915_private *dev_priv, int pipe, bool enable)
 static void
 skl_wa_clkgate(struct drm_i915_private *dev_priv, int pipe, bool enable)
 {
-	/*
-	 * FIXME: ICL requires two hardware planes for scanning out NV12
-	 * framebuffers. Do not advertize support until this is implemented.
-	 */
-	if (INTEL_GEN(dev_priv) >= 11)
-		return false;
-
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))
 		return;
 
@@ -13715,6 +13708,13 @@ static bool skl_plane_has_fbc(struct drm_i915_private *dev_priv,
 bool skl_plane_has_planar(struct drm_i915_private *dev_priv,
 			  enum pipe pipe, enum plane_id plane_id)
 {
+	/*
+	 * FIXME: ICL requires two hardware planes for scanning out NV12
+	 * framebuffers. Do not advertize support until this is implemented.
+	 */
+	if (INTEL_GEN(dev_priv) >= 11)
+		return false;
+
 	if (IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv))
 		return false;
 
