@@ -1431,6 +1431,11 @@ SMB2_tcon(const unsigned int xid, struct cifs_ses *ses, const char *tree,
 	iov[1].iov_base = unc_path;
 	iov[1].iov_len = unc_path_len;
 
+	/* 3.11 tcon req must be signed if not encrypted. See MS-SMB2 3.2.4.1.1 */
+	if ((ses->server->dialect == SMB311_PROT_ID) &&
+	    !encryption_required(tcon))
+		req->hdr.sync_hdr.Flags |= SMB2_FLAGS_SIGNED;
+
 	inc_rfc1001_len(req, unc_path_len - 1 /* pad */);
 
 	rc = SendReceive2(xid, ses, iov, 2, &resp_buftype, flags, &rsp_iov);
