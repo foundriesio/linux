@@ -6085,7 +6085,7 @@ struct ata_host *ata_host_alloc(struct device *dev, int max_ports)
 	DPRINTK("ENTER\n");
 
 	if (!devres_open_group(dev, NULL, GFP_KERNEL))
-		goto err_free;
+		return NULL;
 
 	/* alloc a container for our list of ATA ports (buses) */
 	sz = sizeof(struct ata_host) + (max_ports + 1) * sizeof(void *);
@@ -6119,8 +6119,6 @@ struct ata_host *ata_host_alloc(struct device *dev, int max_ports)
 
  err_out:
 	devres_release_group(dev, NULL);
- err_free:
-	kfree(host);
 	return NULL;
 }
 
