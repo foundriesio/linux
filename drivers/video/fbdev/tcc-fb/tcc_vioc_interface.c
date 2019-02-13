@@ -2780,9 +2780,15 @@ void tca_fb_attach_start(struct tccfb_info *info)
 
 	/* set the buffer for attached output */
 	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	pmap_get_info("fb_duplicate", &pmap);
+	if(0 > pmap_get_info("fb_duplicate", &pmap)){
+		printk("%s-%d : fb_duplicate allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
 	#else //if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_ALL)|| defined(CONFIG_TCC_DISPLAY_LCD_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
-	pmap_get_info("output_attach", &pmap);
+	if(0 > pmap_get_info("output_attach", &pmap)){
+		printk("%s-%d : output_attach allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
 	#endif
 
 	if(pmap.size == 0)      {
@@ -2946,6 +2952,12 @@ int tca_fb_attach_stop(struct tccfb_info *info)
 
 		attach_data.plugin = 0;
 	}
+
+	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
+	pmap_release_info("fb_duplicate");
+	#else //if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_ALL)|| defined(CONFIG_TCC_DISPLAY_LCD_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
+	pmap_release_info("output_attach");
+	#endif
 
 	memset((void*)&attach_data, 0x00, sizeof(tcc_display_attach));
 	return 0;

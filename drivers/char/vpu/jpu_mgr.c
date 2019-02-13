@@ -806,6 +806,8 @@ static int _jmgr_proc_exit_by_external(struct VpuList *list, int *result, unsign
 
 static int _jmgr_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!jmgr_data.irq_reged) {
         err("not registered jpu-mgr-irq \n");
     }
@@ -830,7 +832,11 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
 
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
-        vmem_reinit();
+        if(0 > vmem_init())
+	    {
+	        err("failed to allocate memory for JPU!! %d \n", ret);
+	        return -ENOMEM;
+	    }
     }
     jmgr_data.dev_opened++;
 

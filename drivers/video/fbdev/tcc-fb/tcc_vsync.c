@@ -1005,6 +1005,8 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 				reset_frmCnt = VIQE_RESET_RECOVERY;
 			}
 
+			dprintk("Readable[%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", readable_buff_cnt, p->pIntlNextImage->buffer_unique_id, p->pIntlNextImage->time_stamp, current_time, p->pIntlNextImage->time_stamp - current_time);	
+
 			if(pPrevImage->addr0 == p->pIntlNextImage->addr0)
 				p->pIntlNextImage->bSize_Changed = 1;
 			else
@@ -2111,6 +2113,52 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 }
 
 #if  defined(CONFIG_HDMI_DISPLAY_LASTFRAME) || defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
+static void* _tcc_vsync_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
+{
+	void *cma_virt_address = NULL;
+	unsigned int end_phyaddr = start_phyaddr + length -1;
+	int type = 0;
+
+	for(type = VSYNC_MAIN; type < VSYNC_MAX; type++)
+	{
+		if(tccvid_lastframe[type].pmapBuff.v_base != NULL){
+			if( (start_phyaddr >= tccvid_lastframe[type].pmapBuff.base) && (end_phyaddr <= (tccvid_lastframe[type].pmapBuff.base+tccvid_lastframe[type].pmapBuff.size-1))){
+				cma_virt_address = tccvid_lastframe[type].pmapBuff.v_base + (start_phyaddr - tccvid_lastframe[type].pmapBuff.base);
+				return cma_virt_address;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+static void* _tcc_vsync_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
+{
+	void *virt_address = NULL;
+
+	virt_address = _tcc_vsync_check_region_for_cma(start_phyaddr, length);
+
+	if(!virt_address){
+		virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
+		if (virt_address == NULL) {
+			pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
+			return NULL;
+		}
+	}
+
+	return virt_address;
+}
+
+static void _tcc_vsync_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
+{
+	void *cma_virt_address = NULL;
+
+	cma_virt_address = _tcc_vsync_check_region_for_cma(start_phyaddr, length);
+
+	if(target_virtaddr != cma_virt_address)
+		iounmap((void*)target_virtaddr);
+}
+
 //will be copyed original decoded data itself.
 int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update* inFframeInfo, WMIXER_INFO_TYPE* WmixerInfo, unsigned int target_addr, unsigned int target_size, unsigned int target_format)
 {
@@ -2223,7 +2271,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 					inFframeInfo->addr0, inFframeInfo->private_data.mapConv_info.m_CompressedY[PA], inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA],
 					inFframeInfo->addr1, inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA], inFframeInfo->private_data.mapConv_info.m_FbcCOffsetAddr[PA]);				
 
-		vDst_addr = (unsigned char *)ioremap_nocache(pDst_addr, PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
+		vDst_addr = (unsigned char *)_tcc_vsync_get_virtaddr(pDst_addr, PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
 		if(vDst_addr != NULL)
 		{
 			vSrc_addr = (unsigned char *)ioremap_nocache(inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA], PAGE_ALIGN(LumaTblSize));
@@ -2238,7 +2286,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 				iounmap((void*)vSrc_addr);
 			}
 
-			iounmap((void*)vDst_addr);
+			_tcc_vsync_release_virtaddr((void*)vDst_addr, pDst_addr, PAGE_ALIGN(LumaTblSize) + PAGE_ALIGN(ChromaTblSize));
 			inFframeInfo->addr0 = inFframeInfo->private_data.mapConv_info.m_CompressedY[PA] = WmixerInfo->dst_y_addr;
 			inFframeInfo->addr1 = inFframeInfo->private_data.mapConv_info.m_CompressedCb[PA] = WmixerInfo->dst_u_addr;
 			inFframeInfo->private_data.mapConv_info.m_FbcYOffsetAddr[PA] = pDst_addr;
@@ -2275,7 +2323,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 					inFframeInfo->addr0, inFframeInfo->private_data.dtrcConv_info.m_CompressedY[PA], inFframeInfo->private_data.dtrcConv_info.m_CompressionTableLuma[PA],
 					inFframeInfo->addr1, inFframeInfo->private_data.dtrcConv_info.m_CompressedCb[PA], inFframeInfo->private_data.dtrcConv_info.m_CompressionTableChroma[PA]);				
 
-		vDst_addr = (unsigned char *)ioremap_nocache(pDst_addr, PAGE_ALIGN(512*1024));
+		vDst_addr = (unsigned char *)_tcc_vsync_get_virtaddr(pDst_addr, PAGE_ALIGN(512*1024));
 		if(vDst_addr != NULL)
 		{
 			vSrc_addr = (unsigned char *)ioremap_nocache(inFframeInfo->private_data.dtrcConv_info.m_CompressionTableLuma[PA], PAGE_ALIGN(LumaTblSize));
@@ -2290,7 +2338,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 				iounmap((void*)vSrc_addr);
 			}
 
-			iounmap((void*)vDst_addr);
+			_tcc_vsync_release_virtaddr((void*)vDst_addr, pDst_addr, PAGE_ALIGN(512*1024));
 			inFframeInfo->addr0 = inFframeInfo->private_data.dtrcConv_info.m_CompressedY[PA] = WmixerInfo->dst_y_addr;
 			inFframeInfo->addr1 = inFframeInfo->private_data.dtrcConv_info.m_CompressedCb[PA] = WmixerInfo->dst_u_addr;
 			inFframeInfo->private_data.dtrcConv_info.m_CompressionTableLuma[PA] = pDst_addr;
@@ -4664,6 +4712,11 @@ static int tcc_vsync1_release(struct inode *inode, struct file *filp)
 				tcc_timer_disable(vsync_timer);
 	#endif
 		}
+
+		if(tccvid_lastframe[VSYNC_SUB0].pmapBuff.base){
+			pmap_release_info("fb_wmixer1");
+	        tccvid_lastframe[VSYNC_SUB0].pmapBuff.base = 0x00;
+	    }
 	}
 
 	return 0;
@@ -4682,6 +4735,14 @@ static int tcc_vsync1_open(struct inode *inode, struct file *filp)
 		msleep(0);
 	}
 	#endif
+
+	if(0 > pmap_get_info("fb_wmixer1", &tccvid_lastframe[VSYNC_SUB0].pmapBuff)){
+		printk("%s-%d : fb_wmixer1 allocation is failed.\n", __func__, __LINE__);
+		//return -ENOMEM;
+	}
+	dprintk("%s :: Sub LastFrame(%d/%d) - wmixer base:0x%08x/0x%x \n", __func__,
+				tccvid_lastframe[VSYNC_SUB0].support, tccvid_lastframe[VSYNC_SUB0].enabled,
+				tccvid_lastframe[VSYNC_SUB0].pmapBuff.base, tccvid_lastframe[VSYNC_SUB0].pmapBuff.size );
 
 	return 0;
 }
@@ -4730,6 +4791,11 @@ static int tcc_vsync0_release(struct inode *inode, struct file *filp)
 				tcc_timer_disable(vsync_timer);
 	#endif
 		}
+
+		if(tccvid_lastframe[VSYNC_MAIN].pmapBuff.base){
+			pmap_release_info("fb_wmixer");
+	        tccvid_lastframe[VSYNC_MAIN].pmapBuff.base = 0x00;
+	    }
 	}
 	dprintk("%s(%d) Out \n", __func__, g_is_vsync0_opened);
 
@@ -4749,6 +4815,14 @@ static int tcc_vsync0_open(struct inode *inode, struct file *filp)
 		msleep(0);
 	}
 	#endif
+
+	if(0 > pmap_get_info("fb_wmixer", &tccvid_lastframe[VSYNC_MAIN].pmapBuff)){
+		printk("%s-%d : fb_wmixer allocation is failed.\n", __func__, __LINE__);
+		//return -ENOMEM;
+	}
+	dprintk("%s :: Main LastFrame(%d/%d) - wmixer base:0x%08x/0x%x \n", __func__,
+				tccvid_lastframe[VSYNC_MAIN].support, tccvid_lastframe[VSYNC_MAIN].enabled,
+				tccvid_lastframe[VSYNC_MAIN].pmapBuff.base, tccvid_lastframe[VSYNC_MAIN].pmapBuff.size );
 
 	return 0;
 }
@@ -5064,22 +5138,14 @@ static int __init tcc_vsync_init(void)
 	memset(&tccvid_lastframe[0], 0x00, sizeof(tcc_video_lastframe));
 	memset(&tccvid_lastframe[1], 0x00, sizeof(tcc_video_lastframe));
 
-	pmap_get_info("fb_wmixer", &tccvid_lastframe[type].pmapBuff);
 	tcc_video_ctrl_last_frame(type, 0);
-	printk("%s :: Main LastFrame(%d/%d) - wmixer base:0x%08x/0x%x \n", __func__,
-				tccvid_lastframe[type].support, tccvid_lastframe[type].enabled,
-				tccvid_lastframe[type].pmapBuff.base, tccvid_lastframe[type].pmapBuff.size );
 
 	type = VSYNC_SUB0;
 	#ifdef CONFIG_USE_SUB_MULTI_FRAME
 	for(type = VSYNC_SUB0; type < VSYNC_MAX; type++)
 	#endif
 	{
-		pmap_get_info("fb_wmixer1", &tccvid_lastframe[type].pmapBuff);
 		tcc_video_ctrl_last_frame(type, 0);
-		printk("%s :: Sub LastFrame(%d/%d) - wmixer base:0x%08x/0x%x \n", __func__,
-				tccvid_lastframe[type].support, tccvid_lastframe[type].enabled,
-				tccvid_lastframe[type].pmapBuff.base, tccvid_lastframe[type].pmapBuff.size );
 	}
 	spin_lock_init(&LastFrame_lockDisp);
 #endif

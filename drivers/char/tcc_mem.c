@@ -259,7 +259,13 @@ static stUmp_sw_buffer ump_sw_buf[UMP_SW_BLOCK_MAX_CNT]; //physical address
 
 static void ump_sw_mgmt_init(void)
 {
-	pmap_get_info("ump_reserved_sw", &pmap_ump_reserved_sw);
+	if(bInited_ump_reserved_sw)
+		return;
+
+	if(0 > pmap_get_info("ump_reserved_sw", &pmap_ump_reserved_sw)){
+		printk("%s-%d : ump_reserved_sw allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
 
 	if( (pmap_ump_reserved_sw.size == 0) ||
 		(pmap_ump_reserved_sw.size < (UMP_SW_BLOCK_SIZE*UMP_SW_BLOCK_MAX_CNT))
@@ -277,12 +283,19 @@ static void ump_sw_mgmt_init(void)
             ump_sw_buf[i].ref_count = 0x00;
 		}
 
-    	remap_ump_reserved_sw = (void *)ioremap_nocache(pmap_ump_reserved_sw.base, PAGE_ALIGN(pmap_ump_reserved_sw.size/*-PAGE_SIZE*/));
+		if(pmap_ump_reserved_sw.v_base)
+			remap_ump_reserved_sw = pmap_ump_reserved_sw.v_base;
+		else
+			remap_ump_reserved_sw = (void *)ioremap_nocache(pmap_ump_reserved_sw.base, PAGE_ALIGN(pmap_ump_reserved_sw.size/*-PAGE_SIZE*/));
+
     	if(remap_ump_reserved_sw == NULL) {
 			ump_printk_err("phy[0x%x - 0x%x] mmap failed.\n", pmap_ump_reserved_sw.base, pmap_ump_reserved_sw.size );
 		}
 		else {
-			memset_io(remap_ump_reserved_sw, 0x00, pmap_ump_reserved_sw.size);
+			if(pmap_ump_reserved_sw.v_base)
+				memset(remap_ump_reserved_sw, 0x00, pmap_ump_reserved_sw.size);
+			else
+				memset_io(remap_ump_reserved_sw, 0x00, pmap_ump_reserved_sw.size);
 		}
 		bInited_ump_reserved_sw = 1;
 	}
@@ -292,23 +305,36 @@ static void ump_sw_mgmt_init(void)
 
 static void ump_sw_mgmt_deinit(void)
 {
-	if(remap_ump_reserved_sw)
+	if(!bInited_ump_reserved_sw)
+		return;
+
+	if(remap_ump_reserved_sw && !pmap_ump_reserved_sw.v_base)
 		iounmap((void*)remap_ump_reserved_sw);
     remap_ump_reserved_sw = NULL;
 
+	if(pmap_ump_reserved_sw.base){
+		pmap_release_info("ump_reserved_sw");
+        pmap_ump_reserved_sw.base = 0x00;
+    }
+
+	bInited_ump_reserved_sw = 0;
 	ump_printk_info("%s \n", __func__);
 }
 
-static void ump_sw_mgmt_check_status(void)
+static int ump_sw_mgmt_check_status(void)
 {
 	int i = 0;
+	int used_cnt = 0;
 
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
 		if( ump_sw_buf[i].ref_count != 0 ){
 			ump_printk_check("%s :: [%d] = 0x%x/%d \n", __func__, i, ump_sw_buf[i].phy_addr, ump_sw_buf[i].ref_count);
+			used_cnt++;
 		}
 	}
+
+	return used_cnt;
 }
 
 static void ump_sw_mgmt_write_recognition_addr(unsigned int index, unsigned int addr)
@@ -330,8 +356,7 @@ static void ump_sw_mgmt_register(unsigned int phy_addr)
     int bFound = 0;
 	ump_printk_info("%s with 0x%x \n", __func__, phy_addr);
 
-	if(!bInited_ump_reserved_sw)
-		return;
+	ump_sw_mgmt_init();
 
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
@@ -400,6 +425,9 @@ static void ump_sw_mgmt_deregister(unsigned int phy_addr)
     }
 
 	ump_printk_info("%s :: [%d] = 0x%x/%d \n", __func__, i, phy_addr, ump_sw_buf[i].ref_count);
+
+	if(0 == ump_sw_mgmt_check_status())
+		ump_sw_mgmt_deinit();
 
 }
 #endif
@@ -709,10 +737,6 @@ static int __init tmem_init(void)
     device_create(tmem_class, NULL, MKDEV(DEV_MAJOR, DEV_MINOR), NULL, DEV_NAME);
 
     mutex_init(&io_mutex);
-
-#ifdef USE_UMP_RESERVED_SW_PMAP
-	ump_sw_mgmt_init();
-#endif
 
     return 0;
 }

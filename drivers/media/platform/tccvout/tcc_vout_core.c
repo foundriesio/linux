@@ -3416,7 +3416,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 
 		/* get destination address */
 		ret = pmap_get_info("fb_wmixer", &lastframe_pbuf);
-		if(ret == 0) {
+		if(ret <= 0) {
 			printk("Error :: %s - Does not exist fb_wmixer pmap \n", __func__);
 			ret = -1;
 			goto ERR_CAPTURE_PROCESS;

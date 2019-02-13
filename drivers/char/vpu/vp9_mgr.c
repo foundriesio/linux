@@ -713,6 +713,8 @@ static int _vp9mgr_proc_exit_by_external(struct VpuList *list, int *result, unsi
 
 static int _vp9mgr_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!vp9mgr_data.irq_reged) {
         err("not registered vp9-mgr-irq \n");
     }
@@ -745,7 +747,11 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
             }
         }
         vetc_reg_init(vp9mgr_data.base_addr);
-        vmem_reinit();
+        if(0 > vmem_init())
+	    {
+	        err("failed to allocate memory for VP9!! %d \n", ret);
+	        return -ENOMEM;
+	    }
     }
     vp9mgr_data.dev_opened++;
 

@@ -138,6 +138,10 @@ static unsigned int sz_ext2_front_used_mem;
 static unsigned int sz_ext2_remained_mem;
 #endif
 
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+static pmap_t pmap_enc;
+#endif
+
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 static pmap_t pmap_enc_ext[3];
 static phys_addr_t ptr_enc_ext_addr_mem[3];
@@ -148,6 +152,7 @@ static unsigned int sz_enc_ext_remained_mem[3];
 static int vmem_allocated_count[VPU_MAX] = {0,};
 static MEM_ALLOC_INFO_t vmem_alloc_info[VPU_MAX][20];
 struct mutex mem_mutex;
+static int cntMem_Reference = 0;
 static int only_decmode = 0;
 
 static int vdec_used[VPU_INST_MAX] = {0,};
@@ -251,6 +256,34 @@ pgprot_t vmem_get_pgprot(pgprot_t ulOldProt, unsigned long ulPageOffset)
 }
 EXPORT_SYMBOL(vmem_get_pgprot);
 /////////////////////////////////////////
+
+extern void* _vmem_check_region_for_cma(unsigned int start_phyaddr, unsigned int length);
+static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
+{
+	void *virt_address = NULL;
+
+	virt_address = _vmem_check_region_for_cma(start_phyaddr, length);
+
+	if(!virt_address){
+		virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
+		if (virt_address == NULL) {
+			pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
+			return NULL;
+		}
+	}
+
+	return virt_address;
+}
+
+static void _vmem_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
+{
+	void *cma_virt_address = NULL;
+
+	cma_virt_address = _vmem_check_region_for_cma(start_phyaddr, length);
+
+	if(target_virtaddr != cma_virt_address)
+		iounmap((void*)target_virtaddr);
+}
 
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 static phys_addr_t _vmem_request_phyaddr_dec_ext23(unsigned int request_size, vputype type)
@@ -686,8 +719,8 @@ int _vmem_alloc_dedicated_buffer(void)
         gsVpu4KD2Work_memInfo.request_size = WAVExxx_WORK_BUF_SIZE;
         if (gsVpu4KD2Work_memInfo.request_size)
         {
-            gsVpu4KD2Work_memInfo.phy_addr          = ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-            gsVpu4KD2Work_memInfo.kernel_remap_addr = (unsigned int*)ioremap_nocache((phys_addr_t)gsVpu4KD2Work_memInfo.phy_addr, PAGE_ALIGN(gsVpu4KD2Work_memInfo.request_size/*-PAGE_SIZE*/));
+            gsVpu4KD2Work_memInfo.phy_addr = ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
+			gsVpu4KD2Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpu4KD2Work_memInfo.phy_addr, PAGE_ALIGN(gsVpu4KD2Work_memInfo.request_size/*-PAGE_SIZE*/));
 
             dprintk_mem("alloc VPU_4K_D2 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpu4KD2Work_memInfo.phy_addr, gsVpu4KD2Work_memInfo.kernel_remap_addr, gsVpu4KD2Work_memInfo.request_size);
 
@@ -713,7 +746,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsWave410_Work_memInfo.request_size )
 		{
 			gsWave410_Work_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsWave410_Work_memInfo.kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsWave410_Work_memInfo.phy_addr, PAGE_ALIGN(gsWave410_Work_memInfo.request_size/*-PAGE_SIZE*/));
+			gsWave410_Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsWave410_Work_memInfo.phy_addr, PAGE_ALIGN(gsWave410_Work_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc HEVC workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsWave410_Work_memInfo.phy_addr, gsWave410_Work_memInfo.kernel_remap_addr, gsWave410_Work_memInfo.request_size);
 
@@ -739,7 +772,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsG2V2_Vp9Work_memInfo.request_size )
 		{
 			gsG2V2_Vp9Work_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsG2V2_Vp9Work_memInfo.kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsG2V2_Vp9Work_memInfo.phy_addr, PAGE_ALIGN(gsG2V2_Vp9Work_memInfo.request_size/*-PAGE_SIZE*/));
+			gsG2V2_Vp9Work_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsG2V2_Vp9Work_memInfo.phy_addr, PAGE_ALIGN(gsG2V2_Vp9Work_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VP9 workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsG2V2_Vp9Work_memInfo.phy_addr, gsG2V2_Vp9Work_memInfo.kernel_remap_addr, gsG2V2_Vp9Work_memInfo.request_size);
 
@@ -765,7 +798,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsJpuWork_memInfo.request_size )
 		{
 			gsJpuWork_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsJpuWork_memInfo.kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsJpuWork_memInfo.phy_addr, PAGE_ALIGN(gsJpuWork_memInfo.request_size/*-PAGE_SIZE*/));
+			gsJpuWork_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsJpuWork_memInfo.phy_addr, PAGE_ALIGN(gsJpuWork_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc JPU workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsJpuWork_memInfo.phy_addr, gsJpuWork_memInfo.kernel_remap_addr, gsJpuWork_memInfo.request_size);
 
@@ -790,7 +823,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsVpuWork_memInfo.request_size )
 		{
 			gsVpuWork_memInfo.phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-			gsVpuWork_memInfo.kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsVpuWork_memInfo.phy_addr, PAGE_ALIGN(gsVpuWork_memInfo.request_size/*-PAGE_SIZE*/));
+			gsVpuWork_memInfo.kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuWork_memInfo.phy_addr, PAGE_ALIGN(gsVpuWork_memInfo.request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU workbuffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpuWork_memInfo.phy_addr, gsVpuWork_memInfo.kernel_remap_addr, gsVpuWork_memInfo.request_size);
 
@@ -817,8 +850,7 @@ int _vmem_alloc_dedicated_buffer(void)
 			if( gsVpuEncSeqheader_memInfo[type].request_size )
 			{
 				gsVpuEncSeqheader_memInfo[type].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-
-				gsVpuEncSeqheader_memInfo[type].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsVpuEncSeqheader_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuEncSeqheader_memInfo[type].request_size/*-PAGE_SIZE*/));
+				gsVpuEncSeqheader_memInfo[type].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuEncSeqheader_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuEncSeqheader_memInfo[type].request_size/*-PAGE_SIZE*/));
 
 				dprintk_mem("alloc VPU seqheader_mem[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuEncSeqheader_memInfo[type].phy_addr, gsVpuEncSeqheader_memInfo[type].kernel_remap_addr, gsVpuEncSeqheader_memInfo[type].request_size);
 
@@ -845,8 +877,7 @@ int _vmem_alloc_dedicated_buffer(void)
 			if( gsVpuUserData_memInfo[type].request_size )
 			{
 				gsVpuUserData_memInfo[type].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size;
-
-				gsVpuUserData_memInfo[type].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsVpuUserData_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuUserData_memInfo[type].request_size/*-PAGE_SIZE*/));
+				gsVpuUserData_memInfo[type].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsVpuUserData_memInfo[type].phy_addr, PAGE_ALIGN(gsVpuUserData_memInfo[type].request_size/*-PAGE_SIZE*/));
 
 				dprintk_mem("alloc VPU userdata_mem[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuUserData_memInfo[type].phy_addr, gsVpuUserData_memInfo[type].kernel_remap_addr, gsVpuUserData_memInfo[type].request_size);
 
@@ -870,8 +901,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsPs_memInfo[VPU_DEC_EXT2].request_size )
 		{
 			gsPs_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
-
-			gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsPs_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
+			gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsPs_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Ps[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsPs_memInfo[VPU_DEC_EXT2].phy_addr, gsPs_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsPs_memInfo[VPU_DEC_EXT2].request_size);
 
@@ -893,8 +923,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsSlice_memInfo[VPU_DEC_EXT2].request_size )
 		{
 			gsSlice_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
-
-			gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsSlice_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
+			gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsSlice_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Slice[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsSlice_memInfo[VPU_DEC_EXT2].phy_addr, gsSlice_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsSlice_memInfo[VPU_DEC_EXT2].request_size);
 
@@ -916,8 +945,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsStream_memInfo[VPU_DEC_EXT2].request_size )
 		{
 			gsStream_memInfo[VPU_DEC_EXT2].phy_addr 			= ptr_sw_addr_mem + vpu_4k_d2_alloc_size + hevc_alloc_size + jpu_alloc_size + vpu_alloc_size + vp9_alloc_size + seq_alloc_size + user_alloc_size + alloc_ps_size + alloc_slice_size;
-
-			gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsStream_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
+			gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsStream_memInfo[VPU_DEC_EXT2].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC_EXT2].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Stream[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC_EXT2, gsStream_memInfo[VPU_DEC_EXT2].phy_addr, gsStream_memInfo[VPU_DEC_EXT2].kernel_remap_addr, gsStream_memInfo[VPU_DEC_EXT2].request_size);
 
@@ -940,8 +968,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsPs_memInfo[VPU_DEC].request_size )
 		{
 			gsPs_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
-
-			gsPs_memInfo[VPU_DEC].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsPs_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
+			gsPs_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsPs_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsPs_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Ps[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsPs_memInfo[VPU_DEC].phy_addr, gsPs_memInfo[VPU_DEC].kernel_remap_addr, gsPs_memInfo[VPU_DEC].request_size);
 
@@ -963,8 +990,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsSlice_memInfo[VPU_DEC].request_size )
 		{
 			gsSlice_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
-
-			gsSlice_memInfo[VPU_DEC].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsSlice_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
+			gsSlice_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsSlice_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsSlice_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Slice[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsSlice_memInfo[VPU_DEC].phy_addr, gsSlice_memInfo[VPU_DEC].kernel_remap_addr, gsSlice_memInfo[VPU_DEC].request_size);
 
@@ -986,8 +1012,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		if( gsStream_memInfo[VPU_DEC].request_size )
 		{
 			gsStream_memInfo[VPU_DEC].phy_addr 			= ptr_ext_rear_addr_mem + alloc_ps_size + alloc_slice_size;
-
-			gsStream_memInfo[VPU_DEC].kernel_remap_addr	= (unsigned int*)ioremap_nocache((phys_addr_t)gsStream_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
+			gsStream_memInfo[VPU_DEC].kernel_remap_addr = _vmem_get_virtaddr((phys_addr_t)gsStream_memInfo[VPU_DEC].phy_addr, PAGE_ALIGN(gsStream_memInfo[VPU_DEC].request_size/*-PAGE_SIZE*/));
 
 			dprintk_mem("alloc VPU Stream[%d] Info buffer :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", VPU_DEC, gsStream_memInfo[VPU_DEC].phy_addr, gsStream_memInfo[VPU_DEC].kernel_remap_addr, gsStream_memInfo[VPU_DEC].request_size);
 
@@ -1016,7 +1041,7 @@ void _vmem_free_dedicated_buffer(void)
 	if( gsJpuWork_memInfo.kernel_remap_addr != 0 )
 	{
 		dprintk("free JPU workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsJpuWork_memInfo.phy_addr, gsJpuWork_memInfo.kernel_remap_addr, gsJpuWork_memInfo.request_size);
-		iounmap((void*)gsJpuWork_memInfo.kernel_remap_addr);
+		_vmem_release_virtaddr(((void*)gsJpuWork_memInfo.kernel_remap_addr), gsJpuWork_memInfo.phy_addr, gsJpuWork_memInfo.request_size);
 		memset(&gsJpuWork_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 	}
 #endif
@@ -1024,7 +1049,7 @@ void _vmem_free_dedicated_buffer(void)
 	if( gsVpu4KD2Work_memInfo.kernel_remap_addr != 0 )
 	{
 		dprintk("free VPU_4K_D2 workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpu4KD2Work_memInfo.phy_addr, gsVpu4KD2Work_memInfo.kernel_remap_addr, gsVpu4KD2Work_memInfo.request_size);
-		iounmap((void*)gsVpu4KD2Work_memInfo.kernel_remap_addr);
+		_vmem_release_virtaddr(((void*)gsVpu4KD2Work_memInfo.kernel_remap_addr), gsVpu4KD2Work_memInfo.phy_addr, gsVpu4KD2Work_memInfo.request_size);
 		memset(&gsVpu4KD2Work_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 	}
 #endif
@@ -1032,7 +1057,7 @@ void _vmem_free_dedicated_buffer(void)
 	if( gsWave410_Work_memInfo.kernel_remap_addr != 0 )
 	{
 		dprintk("free HEVC workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsWave410_Work_memInfo.phy_addr, gsWave410_Work_memInfo.kernel_remap_addr, gsWave410_Work_memInfo.request_size);
-		iounmap((void*)gsWave410_Work_memInfo.kernel_remap_addr);
+		_vmem_release_virtaddr(((void*)gsWave410_Work_memInfo.kernel_remap_addr), gsWave410_Work_memInfo.phy_addr, gsWave410_Work_memInfo.request_size);
 		memset(&gsWave410_Work_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 	}
 #endif
@@ -1040,7 +1065,7 @@ void _vmem_free_dedicated_buffer(void)
 	if( gsG2V2_Vp9Work_memInfo.kernel_remap_addr != 0 )
 	{
 		dprintk("free VP9 workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsG2V2_Vp9Work_memInfo.phy_addr, gsG2V2_Vp9Work_memInfo.kernel_remap_addr, gsG2V2_Vp9Work_memInfo.request_size);
-		iounmap((void*)gsG2V2_Vp9Work_memInfo.kernel_remap_addr);
+		_vmem_release_virtaddr(((void*)gsG2V2_Vp9Work_memInfo.kernel_remap_addr), gsG2V2_Vp9Work_memInfo.phy_addr, gsG2V2_Vp9Work_memInfo.request_size);
 		memset(&gsG2V2_Vp9Work_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 	}
 #endif
@@ -1050,7 +1075,7 @@ void _vmem_free_dedicated_buffer(void)
 		if( gsVpuEncSeqheader_memInfo[type].kernel_remap_addr != 0 )
 		{
 			dprintk("free SeqHeader[%d] :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuEncSeqheader_memInfo[type].phy_addr, gsVpuEncSeqheader_memInfo[type].kernel_remap_addr, gsVpuEncSeqheader_memInfo[type].request_size);
-			iounmap((void*)gsVpuEncSeqheader_memInfo[type].kernel_remap_addr);
+			_vmem_release_virtaddr(((void*)gsVpuEncSeqheader_memInfo[type].kernel_remap_addr), gsVpuEncSeqheader_memInfo[type].phy_addr, gsVpuEncSeqheader_memInfo[type].request_size);
 			memset(&gsVpuEncSeqheader_memInfo[type], 0x00, sizeof(MEM_ALLOC_INFO_t));
 		}
 	}
@@ -1059,7 +1084,7 @@ void _vmem_free_dedicated_buffer(void)
 	if( gsVpuWork_memInfo.kernel_remap_addr != 0 )
 	{
 		dprintk("free workbuffer:: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsVpuWork_memInfo.phy_addr, gsVpuWork_memInfo.kernel_remap_addr, gsVpuWork_memInfo.request_size);
-		iounmap((void*)gsVpuWork_memInfo.kernel_remap_addr);
+		_vmem_release_virtaddr(((void*)gsVpuWork_memInfo.kernel_remap_addr), gsVpuWork_memInfo.phy_addr, gsVpuWork_memInfo.request_size);
 		memset(&gsVpuWork_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 	}
 
@@ -1067,7 +1092,7 @@ void _vmem_free_dedicated_buffer(void)
 		if( gsVpuUserData_memInfo[type].kernel_remap_addr != 0 )
 		{
 			dprintk("free UserData[%d] :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", type, gsVpuUserData_memInfo[type].phy_addr, gsVpuUserData_memInfo[type].kernel_remap_addr, gsVpuUserData_memInfo[type].request_size);
-			iounmap((void*)gsVpuUserData_memInfo[type].kernel_remap_addr);
+			_vmem_release_virtaddr(((void*)gsVpuUserData_memInfo[type].kernel_remap_addr), gsVpuUserData_memInfo[type].phy_addr, gsVpuUserData_memInfo[type].request_size);
 			memset(&gsVpuUserData_memInfo[type], 0x00, sizeof(MEM_ALLOC_INFO_t));
 		}
 	}
@@ -1081,19 +1106,19 @@ void _vmem_free_dedicated_buffer(void)
 			if( gsPs_memInfo[type].kernel_remap_addr != 0 )
 			{
 				dprintk("free PS :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsPs_memInfo[type].phy_addr, gsPs_memInfo[type].kernel_remap_addr, gsPs_memInfo[type].request_size);
-				iounmap((void*)gsPs_memInfo[type].kernel_remap_addr);
+				_vmem_release_virtaddr(((void*)gsPs_memInfo[type].kernel_remap_addr), gsPs_memInfo[type].phy_addr, gsPs_memInfo[type].request_size);
 				memset(&gsPs_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 			}
 			if( gsSlice_memInfo[type].kernel_remap_addr != 0 )
 			{
 				dprintk("free Slice :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsSlice_memInfo[type].phy_addr, gsSlice_memInfo[type].kernel_remap_addr, gsSlice_memInfo[type].request_size);
-				iounmap((void*)gsSlice_memInfo[type].kernel_remap_addr);
+				_vmem_release_virtaddr(((void*)gsSlice_memInfo[type].kernel_remap_addr), gsSlice_memInfo[type].phy_addr, gsSlice_memInfo[type].request_size);
 				memset(&gsSlice_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 			}
 			if( gsStream_memInfo[type].kernel_remap_addr != 0 )
 			{
 				dprintk("free Stream :: phy = 0x%x, remap = 0x%p, size = 0x%x !! \n", gsStream_memInfo[type].phy_addr, gsStream_memInfo[type].kernel_remap_addr, gsStream_memInfo[type].request_size);
-				iounmap((void*)gsStream_memInfo[type].kernel_remap_addr);
+				_vmem_release_virtaddr(((void*)gsStream_memInfo[type].kernel_remap_addr), gsStream_memInfo[type].phy_addr, gsStream_memInfo[type].request_size);
 				memset(&gsStream_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 			}
 		}
@@ -1212,8 +1237,17 @@ static phys_addr_t _vmem_request_stream_buff_phyaddr(int type, void **remapped_a
 
 int _vmem_init_memory_info(void)
 {
-	pmap_get_info("video", &pmap_video);
-	pmap_get_info("video_sw", &pmap_video_sw);
+	int ret = 0;
+
+	if(0 > pmap_get_info("video", &pmap_video)){
+		ret = -10;
+		goto Error;
+	}
+
+	if(0 > pmap_get_info("video_sw", &pmap_video_sw)){
+		ret = -11;
+		goto Error;
+	}
 
 	ptr_front_addr_mem = (phys_addr_t)pmap_video.base;
 	sz_remained_mem = pmap_video.size;
@@ -1221,7 +1255,8 @@ int _vmem_init_memory_info(void)
 
 	if( pmap_video_sw.size < VPU_SW_ACCESS_REGION_SIZE){
 		printk("%s-%d :: video_sw is not enough => 0x%x < 0x%x \n", __func__, __LINE__, pmap_video_sw.size, VPU_SW_ACCESS_REGION_SIZE);
-		return -1;
+		ret = -1;
+		goto Error;
 	}
 	ptr_sw_addr_mem = pmap_video_sw.base;
 	sz_sw_mem = pmap_video_sw.size;
@@ -1230,8 +1265,10 @@ int _vmem_init_memory_info(void)
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 	{
-		pmap_t pmap_enc;
-		pmap_get_info("enc_main", &pmap_enc);
+		if(0 > pmap_get_info("enc_main", &pmap_enc)){
+			ret = -12;
+			goto Error;
+		}
 		sz_enc_mem = pmap_enc.size;
 		printk("%s :: enc_main 0x%x \n", __func__, sz_enc_mem);
 	}
@@ -1241,22 +1278,31 @@ int _vmem_init_memory_info(void)
 	only_decmode = 1;
 #endif
 
-	if( sz_remained_mem < sz_enc_mem)
-		return -2;
+	if( sz_remained_mem < sz_enc_mem){
+		ret = -2;
+		goto Error;
+	}
 	ptr_ext_addr_mem = ptr_rear_addr_mem - sz_enc_mem;
 
-	if( ptr_front_addr_mem < pmap_video.base || (ptr_front_addr_mem > (pmap_video.base + pmap_video.size)))
-		return -3;
+	if( ptr_front_addr_mem < pmap_video.base || (ptr_front_addr_mem > (pmap_video.base + pmap_video.size))){
+		ret = -3;
+		goto Error;
+	}
 
-	if( ptr_rear_addr_mem < pmap_video.base || (ptr_rear_addr_mem > (pmap_video.base + pmap_video.size)))
-		return -4;
+	if( ptr_rear_addr_mem < pmap_video.base || (ptr_rear_addr_mem > (pmap_video.base + pmap_video.size))){
+		ret = -4;
+		goto Error;
+	}
 
 	sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
 	dprintk_mem("%s :: 0x%x / 0x%x / 0x%x !! \n", __func__, ptr_front_addr_mem, ptr_ext_addr_mem, ptr_rear_addr_mem);
 
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 // Additional decoder :: ext2,3
-	pmap_get_info("video_ext", &pmap_video_ext);
+	if(0 > pmap_get_info("video_ext", &pmap_video_ext)){
+		ret = -13;
+		goto Error;
+	}
 
 	ptr_ext_front_addr_mem = (phys_addr_t)pmap_video_ext.base;
 	sz_ext_remained_mem = pmap_video_ext.size;
@@ -1268,37 +1314,53 @@ int _vmem_init_memory_info(void)
 #endif
 	sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
 
-	if( ptr_ext_front_addr_mem < pmap_video_ext.base || (ptr_ext_front_addr_mem > (pmap_video_ext.base + pmap_video_ext.size)))
-		return -5;
+	if( ptr_ext_front_addr_mem < pmap_video_ext.base || (ptr_ext_front_addr_mem > (pmap_video_ext.base + pmap_video_ext.size))){
+		ret = -5;
+		goto Error;
+	}
 #endif
 
 #if defined(CONFIG_VDEC_CNT_5)
 // Additional decoder :: ext4
-	pmap_get_info("video_ext2", &pmap_video_ext2);
+	if(0 > pmap_get_info("video_ext2", &pmap_video_ext2)){
+		ret = -14;
+		goto Error;
+	}
 
 	ptr_ext2_front_addr_mem = (phys_addr_t)pmap_video_ext2.base;
 	sz_ext2_remained_mem = pmap_video_ext2.size;
 	sz_ext2_front_used_mem = 0;
 
-	if( ptr_ext2_front_addr_mem < pmap_video_ext2.base || (ptr_ext2_front_addr_mem > (pmap_video_ext2.base + pmap_video_ext2.size)))
-		return -6;
+	if( ptr_ext2_front_addr_mem < pmap_video_ext2.base || (ptr_ext2_front_addr_mem > (pmap_video_ext2.base + pmap_video_ext2.size))){
+		ret = -6;
+		goto Error;
+	}
 #endif
 
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 // Additional encoder :: ext, ext2, ext3
-	pmap_get_info("enc_ext", &pmap_enc_ext[0]);
+	if(0 > pmap_get_info("enc_ext", &pmap_enc_ext[0])){
+		ret = -15;
+		goto Error;
+	}
 	ptr_enc_ext_addr_mem[0] = (phys_addr_t)pmap_enc_ext[0].base;
 	sz_enc_ext_remained_mem[0] = pmap_enc_ext[0].size;
 	sz_enc_ext_used_mem[0] = 0;
 #endif
 #if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	pmap_get_info("enc_ext2", &pmap_enc_ext[1]);
+	if(0 > pmap_get_info("enc_ext2", &pmap_enc_ext[1])){
+		ret = -16;
+		goto Error;
+	}
 	ptr_enc_ext_addr_mem[1] = (phys_addr_t)pmap_enc_ext[1].base;
 	sz_enc_ext_remained_mem[1] = pmap_enc_ext[1].size;
 	sz_enc_ext_used_mem[1] = 0;
 #endif
 #if defined(CONFIG_VENC_CNT_4)
-	pmap_get_info("enc_ext3", &pmap_enc_ext[2]);
+	if(0 > pmap_get_info("enc_ext3", &pmap_enc_ext[2])){
+		ret = -17;
+		goto Error;
+	}
 	ptr_enc_ext_addr_mem[2] = (phys_addr_t)pmap_enc_ext[2].base;
 	sz_enc_ext_remained_mem[2] = pmap_enc_ext[2].size;
 	sz_enc_ext_used_mem[2] = 0;
@@ -1310,6 +1372,147 @@ int _vmem_init_memory_info(void)
 	memset(venc_used, 0x00, sizeof(venc_used));
 
 	return 0;
+
+Error:
+
+	return ret;
+}
+
+int _vmem_deinit_memory_info(void)
+{
+	if(pmap_video.base){
+		pmap_release_info("video");		// pmap_video
+		pmap_video.base = 0;
+	}
+	if(pmap_video_sw.base){
+		pmap_release_info("video_sw");	// pmap_video_sw
+		pmap_video_sw.base = 0;
+	}
+
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc.base){
+		pmap_release_info("enc_main");	// pmap_enc
+		pmap_enc.base = 0;
+	}
+#endif
+
+#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext.base){
+		pmap_release_info("video_ext");	// pmap_video_ext
+		pmap_video_ext.base = 0;
+	}
+#endif
+
+#if defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext2.base){
+		pmap_release_info("video_ext2");// pmap_video_ext2
+		pmap_video_ext2.base = 0;
+	}
+#endif
+
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[0].base){
+		pmap_release_info("enc_ext");	// pmap_enc_ext[0]
+		pmap_enc_ext[0].base = 0;
+	}
+#endif
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[1].base){
+		pmap_release_info("enc_ext2");	// pmap_enc_ext[1]
+		pmap_enc_ext[1].base = 0;
+	}
+#endif
+#if defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[2].base){
+		pmap_release_info("enc_ext3");	// pmap_enc_ext[2]
+		pmap_enc_ext[2].base = 0;
+	}
+#endif
+	return 0;
+}
+
+void* _vmem_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
+{
+	void *cma_virt_address = NULL;
+	unsigned int end_phyaddr = start_phyaddr + length -1;
+
+// pmap_video
+	if(pmap_video.v_base != NULL){
+		if( (start_phyaddr >= pmap_video.base) && (end_phyaddr <= (pmap_video.base+pmap_video.size-1))){
+			cma_virt_address = pmap_video.v_base + (start_phyaddr - pmap_video.base);
+			return cma_virt_address;
+		}
+	}
+
+// pmap_video_sw
+	if(pmap_video_sw.v_base != NULL){
+		if( (start_phyaddr >= pmap_video_sw.base) && (end_phyaddr <= (pmap_video_sw.base+pmap_video_sw.size-1))){
+			cma_virt_address = pmap_video_sw.v_base + (start_phyaddr - pmap_video_sw.base);
+			return cma_virt_address;
+		}
+	}
+
+// pmap_enc
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc.v_base != NULL){
+		if( (start_phyaddr >= pmap_enc.base) && (end_phyaddr <= (pmap_enc.base+pmap_enc.size-1))){
+			cma_virt_address = pmap_enc.v_base + (start_phyaddr - pmap_enc.base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+// pmap_video_ext
+#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext.v_base != NULL){
+		if( (start_phyaddr >= pmap_video_ext.base) && (end_phyaddr <= (pmap_video_ext.base+pmap_video_ext.size-1))){
+			cma_virt_address = pmap_video_ext.v_base + (start_phyaddr - pmap_video_ext.base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+// pmap_video_ext2
+#if defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext2.v_base != NULL){
+		if( (start_phyaddr >= pmap_video_ext2.base) && (end_phyaddr <= (pmap_video_ext2.base+pmap_video_ext2.size-1))){
+			cma_virt_address = pmap_video_ext2.v_base + (start_phyaddr - pmap_video_ext2.base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+// pmap_enc_ext[0]
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[0].v_base != NULL){
+		if( (start_phyaddr >= pmap_enc_ext[0].base) && (end_phyaddr <= (pmap_enc_ext[0].base+pmap_enc_ext[0].size-1))){
+			cma_virt_address = pmap_enc_ext[0].v_base + (start_phyaddr - pmap_enc_ext[0].base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+//pmap_enc_ext[1]
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[1].v_base != NULL){
+		if( (start_phyaddr >= pmap_enc_ext[1].base) && (end_phyaddr <= (pmap_enc_ext[1].base+pmap_enc_ext[1].size-1))){
+			cma_virt_address = pmap_enc_ext[1].v_base + (start_phyaddr - pmap_enc_ext[1].base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+// pmap_enc_ext[2]
+#if defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[2].v_base != NULL){
+		if( (start_phyaddr >= pmap_enc_ext[2].base) && (end_phyaddr <= (pmap_enc_ext[2].base+pmap_enc_ext[2].size-1))){
+			cma_virt_address = pmap_enc_ext[2].v_base + (start_phyaddr - pmap_enc_ext[2].base);
+			return cma_virt_address;
+		}
+	}
+#endif
+
+	return NULL;
 }
 
 int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info, vputype type)
@@ -1423,7 +1626,7 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info, vputype
 		alloc_info->kernel_remap_addr = 0x0;
 		if( alloc_info->buffer_type != BUFFER_FRAMEBUFFER )
 		{
-			alloc_info->kernel_remap_addr = (unsigned int*)ioremap_nocache((phys_addr_t)alloc_info->phy_addr, PAGE_ALIGN(alloc_info->request_size/*-PAGE_SIZE*/));
+			alloc_info->kernel_remap_addr = _vmem_get_virtaddr(alloc_info->phy_addr, alloc_info->request_size);
 			if (alloc_info->kernel_remap_addr == 0) {
 				err("type[%d]-buffer[%d] : phy[0x%x - 0x%x] remap ALLOC_MEMORY failed.\n", type, alloc_info->buffer_type, alloc_info->phy_addr, PAGE_ALIGN(alloc_info->request_size/*-PAGE_SIZE*/) );
 				memcpy(&(vmem_alloc_info[type][vmem_allocated_count[type]]), alloc_info, sizeof(MEM_ALLOC_INFO_t));
@@ -1464,7 +1667,7 @@ int vmem_proc_free_memory(vputype type)
 			//if(vmem_alloc_info[type][i-1].kernel_remap_addr != 0)
 			{
 				if( vmem_alloc_info[type][i-1].kernel_remap_addr != 0 )
-					iounmap((void*)vmem_alloc_info[type][i-1].kernel_remap_addr);
+					_vmem_release_virtaddr(((void*)vmem_alloc_info[type][i-1].kernel_remap_addr), vmem_alloc_info[type][i-1].phy_addr, vmem_alloc_info[type][i-1].request_size);
 #ifdef CONFIG_VPU_ALLOC_MEM_IN_SPECIFIC_SEQUENCE
 				_vmem_release_phyaddr(vmem_alloc_info[type][i-1].phy_addr, vmem_alloc_info[type][i-1].request_size, type);
 #else
@@ -1632,32 +1835,45 @@ unsigned int vmem_get_freemem_size(vputype type)
 	return vmem_get_free_memory(type);
 }
 
-void vmem_reinit(void)
+void _vmem_config_zero(void)
 {
-	mutex_lock(&mem_mutex);
-	if((vmgr_opened() == 0)
-#ifdef CONFIG_SUPPORT_TCC_JPU
-		&& (jmgr_opened() == 0)
+	pmap_video.base = 0;
+	pmap_video_sw.base = 0;
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	pmap_enc.base = 0;
 #endif
-#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
-		&& (vmgr_4k_d2_opened() == 0)
+#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+	pmap_video_ext.base = 0;
 #endif
-#ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC // HEVC
-		&& (hmgr_opened() == 0)
+#if defined(CONFIG_VDEC_CNT_5)
+	pmap_video_ext2.base = 0;
 #endif
-#ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
-		&& (vp9mgr_opened() == 0)
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	pmap_enc_ext[0].base = 0;
 #endif
-	){
-		_vmem_init_memory_info();
-	}
-	mutex_unlock(&mem_mutex);
-}
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	pmap_enc_ext[1].base = 0;
+#endif
+#if defined(CONFIG_VENC_CNT_4)
+	pmap_enc_ext[2].base = 0;
+#endif
 
-int vmem_init(void)
-{
-	int ret = 0;
-	mutex_init(&mem_mutex);
+	sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
+	sz_remained_mem = sz_enc_mem = 0;
+
+#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+	sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
+	sz_ext_remained_mem = 0;
+#endif
+#if defined(CONFIG_VDEC_CNT_5)
+	sz_ext2_front_used_mem = 0;
+	sz_ext2_remained_mem = 0;
+#endif
+
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	sz_enc_ext_used_mem[0] = sz_enc_ext_used_mem[1] = sz_enc_ext_used_mem[2] = 0;
+	sz_enc_ext_remained_mem[0] = sz_enc_ext_remained_mem[1] = sz_enc_ext_remained_mem[2] = 0;
+#endif
 
 //////////////////////////////////////
 // Memory Management!!
@@ -1683,20 +1899,48 @@ int vmem_init(void)
 	memset(&gsSlice_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t)*VPU_INST_MAX);
 	memset(&gsStream_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t)*VPU_INST_MAX);
 #endif
+}
 
-	dprintk("_vmem_init_memory_info (work_total : 0x%x) \n", VPU_SW_ACCESS_REGION_SIZE);
-	if(0 > (ret = _vmem_init_memory_info())){
-		err("%s :: _vmem_init_memory_info() is failure with %d error \n", __func__, ret);
-		goto Error;
-	}
-	if(0 > (ret = _vmem_alloc_dedicated_buffer())){
-		err("%s :: _vmem_alloc_dedicated_buffer() is failure with %d error \n", __func__, ret);
-		goto Error;
-	}
+int vmem_init(void)
+{
+	mutex_lock(&mem_mutex);
+	{
+		int ret = 0;
 
-	return ret;
+		if((vmgr_opened() == 0)
+#ifdef CONFIG_SUPPORT_TCC_JPU
+			&& (jmgr_opened() == 0)
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
+			&& (vmgr_4k_d2_opened() == 0)
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC // HEVC
+			&& (hmgr_opened() == 0)
+#endif
+#ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
+			&& (vp9mgr_opened() == 0)
+#endif
+		){
+			if(!cntMem_Reference)
+			{
+				dprintk("_vmem_init_memory_info (work_total : 0x%x) \n", VPU_SW_ACCESS_REGION_SIZE);
+				if(0 > (ret = _vmem_init_memory_info())){
+					err("%s :: _vmem_init_memory_info() is failure with %d error \n", __func__, ret);
+					goto Error1;
+				}
+				if(0 > (ret = _vmem_alloc_dedicated_buffer())){
+					err("%s :: _vmem_alloc_dedicated_buffer() is failure with %d error \n", __func__, ret);
+					goto Error0;
+				}
+			}
+			cntMem_Reference++;
+			goto Success;
+		}
+Error0:
+	_vmem_free_dedicated_buffer();
+Error1:
+	_vmem_deinit_memory_info();
 
-Error:
 	sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
 	sz_remained_mem = sz_enc_mem = 0;
 
@@ -1714,13 +1958,40 @@ Error:
 	sz_enc_ext_remained_mem[0] = sz_enc_ext_remained_mem[1] = sz_enc_ext_remained_mem[2] = 0;
 #endif
 
+Success:
+		mutex_unlock(&mem_mutex);
+
+		return ret;
+	}
+
+	return 0;
+}
+
+int vmem_config(void)
+{
+	int ret = 0;
+	mutex_init(&mem_mutex);
+	_vmem_config_zero();
+
 	return ret;
 //////////////////////////////////////
 }
 
 void vmem_deinit(void)
 {
-	_vmem_free_dedicated_buffer();
+	mutex_lock(&mem_mutex);
+	if(cntMem_Reference > 0)
+		cntMem_Reference--;
+	else
+		printk("%s :: strange ref-count :: %d\n", cntMem_Reference);
+
+	if(!cntMem_Reference){
+		_vmem_free_dedicated_buffer();
+		_vmem_deinit_memory_info();
+		_vmem_config_zero();
+		printk("%s :: all memory for VPU were released. ref-count :: %d\n", cntMem_Reference);
+	}
+	mutex_unlock(&mem_mutex);
 }
 
 void vmem_set_only_decode_mode(int bDec_only)

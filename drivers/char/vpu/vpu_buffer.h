@@ -35,8 +35,8 @@ extern int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info, 
 extern int vmem_proc_free_memory(vputype type);
 extern unsigned int vmem_get_free_memory(vputype type);
 extern unsigned int vmem_get_freemem_size(vputype type);
+extern int vmem_config(void);
 extern int vmem_init(void);
-extern void vmem_reinit(void);
 extern void vmem_deinit(void);
 extern void vmem_set_only_decode_mode(int bDec_only);
 

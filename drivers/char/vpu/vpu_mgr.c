@@ -1095,6 +1095,8 @@ static int _vmgr_proc_exit_by_external(struct VpuList *list, int *result, unsign
 
 static int _vmgr_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!vmgr_data.irq_reged) {
         err("not registered vpu-mgr-irq \n");
     }
@@ -1119,7 +1121,7 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
 
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
-        vmem_reinit();
+        vmem_init();
 		cntInt_vpu = 0;
     }
     vmgr_data.dev_opened++;
@@ -1213,6 +1215,8 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
 
         vmgr_disable_irq(vmgr_data.irq);
         vmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
     }
 
     vmgr_disable_clock(0);
@@ -1630,9 +1634,9 @@ int vmgr_probe(struct platform_device *pdev)
     INIT_LIST_HEAD(&vmgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&vmgr_data.comm_data.wait_list);
 
-    if( 0 > (ret = vmem_init()))
+    if( 0 > (ret = vmem_config()))
     {
-        err("unable to allocate memory for VPU!! %d \n", ret);
+        err("unable to configure memory for VPU!! %d \n", ret);
         return -ENOMEM;
     }
 

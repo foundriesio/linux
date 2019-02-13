@@ -911,6 +911,8 @@ static int _hmgr_proc_exit_by_external(struct VpuList *list, int *result, unsign
 
 static int _hmgr_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!hmgr_data.irq_reged) {
         err("not registered hevc-mgr-irq \n");
     }
@@ -935,7 +937,11 @@ static int _hmgr_open(struct inode *inode, struct file *filp)
 
         hmgr_enable_irq(hmgr_data.irq);
         vetc_reg_init(hmgr_data.base_addr);
-        vmem_reinit();
+        if(0 > vmem_init())
+	    {
+	        err("failed to allocate memory for VPU!! %d \n", ret);
+	        return -ENOMEM;
+	    }
     }
     hmgr_data.dev_opened++;
 
@@ -1026,6 +1032,8 @@ static int _hmgr_release(struct inode *inode, struct file *filp)
 
         hmgr_disable_irq(hmgr_data.irq);
         hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
     }
 
     hmgr_disable_clock();

@@ -767,7 +767,10 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 
 static int tcc_output_starter_remove(struct platform_device *pdev)
 {
-
+	if(pmap_fb.base){
+		pmap_release_info("fb_video");
+        pmap_fb.base = 0x00;
+    }
 	return 0;
 }
 

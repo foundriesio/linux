@@ -82,10 +82,14 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 		{
 			pmap_t pmap_ump_reserved;
 			pmap_get_info("ump_reserved", &pmap_ump_reserved);
+			printk("@@@@@@@@@@@@@@@@@@@@ %s - 0x%x - 0x%x - %d - %d - %d - %d\n", 
+						pmap_ump_reserved.name, pmap_ump_reserved.base, pmap_ump_reserved.size,
+						pmap_ump_reserved.groups, pmap_ump_reserved.v_base, pmap_ump_reserved.rc,
+						pmap_ump_reserved.flags);
 
 			heap->base = pmap_ump_reserved.base;
 			heap->size = pmap_ump_reserved.size;
-			printk("ump_reserved base:0x%x\n", heap->base);
+			printk("ump_reserved base:0x%x 0x%x\n", heap->base, pmap_ump_reserved.base);
 	 	}
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
 		else if(heap->type == ION_HEAP_TYPE_CARVEOUT_CAM)

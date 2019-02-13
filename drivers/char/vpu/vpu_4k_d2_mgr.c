@@ -1178,6 +1178,8 @@ static int _vmgr_4k_d2_proc_exit_by_external(struct VpuList *list, int *result, 
 
 static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!vmgr_4k_d2_data.irq_reged) {
         err("not registered vpu-4k-d2 vp9/hevc-mgr-irq \n");
     }
@@ -1202,7 +1204,11 @@ static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 
         vmgr_4k_d2_enable_irq(vmgr_4k_d2_data.irq);
         //vetc_reg_init(vmgr_4k_d2_data.base_addr);
-        vmem_reinit();
+        if(0 > vmem_init())
+	    {
+	        err("failed to allocate memory for VPU_4K_D2!! %d \n", ret);
+	        return -ENOMEM;
+	    }
 
 		cntInt_4kd2 = 0;
     }
@@ -1296,6 +1302,8 @@ static int _vmgr_4k_d2_release(struct inode *inode, struct file *filp)
 
         vmgr_4k_d2_disable_irq(vmgr_4k_d2_data.irq);
         vmgr_4k_d2_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
     }
 
     vmgr_4k_d2_disable_clock(0);

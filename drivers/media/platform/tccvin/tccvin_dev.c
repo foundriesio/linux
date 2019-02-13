@@ -953,7 +953,7 @@ int tccvin_set_direct_display_buffer(tccvin_dev_t * vdev) {
     strcpy(vdev->cif.pmap_rcam_pgl.name, "parking_gui");
 
 
-    if (pmap_get_info(vdev->cif.pmap_rcam_preview.name, &(vdev->cif.pmap_rcam_preview)) == 1) {
+    if (pmap_get_info(vdev->cif.pmap_rcam_preview.name, &(vdev->cif.pmap_rcam_preview)) == 1)) {
         dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
             vdev->cif.pmap_rcam_preview.name, \
             vdev->cif.pmap_rcam_preview.base, \
@@ -964,7 +964,7 @@ int tccvin_set_direct_display_buffer(tccvin_dev_t * vdev) {
         return -1;
     }
 
-    if (pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
+    if (pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1)) {
         dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
             vdev->cif.pmap_viqe.name, \
             vdev->cif.pmap_viqe.base, \
@@ -975,7 +975,7 @@ int tccvin_set_direct_display_buffer(tccvin_dev_t * vdev) {
         return -1;
     }
 
-    if (pmap_get_info(vdev->cif.pmap_rcam_pgl.name, &(vdev->cif.pmap_rcam_pgl)) == 1) {
+    if (pmap_get_info(vdev->cif.pmap_rcam_pgl.name, &(vdev->cif.pmap_rcam_pgl)) == 1)) {
         dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
             vdev->cif.pmap_rcam_pgl.name, \
             vdev->cif.pmap_rcam_pgl.base, \

@@ -837,7 +837,7 @@ int tcc_hwdmx_tsif_rx_init(void)
 
 #ifdef USE_REV_MEMORY
 	/* This function returns 1 on success, and 0 on failure. Weird function design. */
-	if (pmap_get_info("tsif", &tsif_ex_pri.pmap_tsif) != 1) {
+	if (pmap_get_info("tsif", &tsif_ex_pri.pmap_tsif) < 0) {
 		ret = -EFAULT;
 		goto out;
 	}
