@@ -1723,12 +1723,13 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 		dwc_otg_device->core_if->ehci_phy_regs = dwc_otg_device->mhst_phy->base;
 		dwc_otg_device->mhst_phy->otg->mux_cfg_addr = &dwc_otg_device->core_if->tcc_phy_config->otgmux;
 	}
+#else
+	tcc_otg_phy_init(dwc_otg_device);
 #endif
 	/*
 	 * Initialize Dwc_otg VBUS and PHY.
 	 */
 	tcc_otg_vbus_init();
-	tcc_otg_phy_init(dwc_otg_device);
 
 	/*
 	 * Turn on DWC_otg core.
