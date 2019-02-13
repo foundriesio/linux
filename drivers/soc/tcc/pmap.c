@@ -161,13 +161,18 @@ int pmap_get_info(const char *name, pmap_t *mem)
 {
 	pmap_t *info = pmap_find_info_by_name(name);
 
-	if (!info)
-		goto err;
+	if (mem) {
+		mem->base = 0;
+		mem->size = 0;
+	}
+
+	if (!mem || !info)
+		return 0;
 
 #ifdef CONFIG_DMA_CMA
 	if (!info->rc && pmap_is_cma_alloc(info)) {
 		if (!pmap_cma_alloc(info))
-			goto err;
+			return -1;
 	}
 
 	++info->rc;
@@ -175,12 +180,6 @@ int pmap_get_info(const char *name, pmap_t *mem)
 
 	memcpy(mem, info, sizeof(pmap_t));
 	return 1;
-
-err:
-	mem->base = 0;
-	mem->size = 0;
-
-	return 0;
 }
 EXPORT_SYMBOL(pmap_get_info);
 
@@ -194,7 +193,7 @@ int pmap_release_info(const char *name)
 #ifdef CONFIG_DMA_CMA
 	if (info->rc == 1 && pmap_is_cma_alloc(info)) {
 		if (!pmap_cma_release(info))
-			return 0;
+			return -1;
 	}
 
 	if (info->rc > 0)
@@ -350,32 +349,31 @@ static int proc_pmap_open(struct inode *inode, struct file *file)
 
 long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
-	user_pmap_t pmap;
+	user_pmap_t ret_info;
 	pmap_t info;
+	int ret;
 
-	if (copy_from_user(&pmap, (void __user *) arg, sizeof(user_pmap_t)))
-		return -EFAULT;
+	if (copy_from_user(&ret_info, (void __user *) arg, sizeof(user_pmap_t)))
+		return -1;
 
 	switch (cmd) {
 	case PROC_PMAP_CMD_GET:
-		if (!pmap_get_info(pmap.name, &info))
-			return -EINVAL;
+		ret = pmap_get_info(ret_info.name, &info);
 		break;
 	case PROC_PMAP_CMD_RELEASE:
-		if (!pmap_release_info(pmap.name))
-			return -EINVAL;
+		ret = pmap_release_info(ret_info.name);
 		break;
 	default:
-		return -EINVAL;
+		ret = -1;
 	}
 
-	pmap.base = info.base;
-	pmap.size = info.size;
+	ret_info.base = info.base;
+	ret_info.size = info.size;
 
-	if (copy_to_user((void __user *) arg, &pmap, sizeof(user_pmap_t)))
-		return -EFAULT;
+	if (copy_to_user((void __user *) arg, &ret_info, sizeof(user_pmap_t)))
+		return -1;
 
-	return 0;
+	return ret;
 }
 
 static const struct file_operations proc_pmap_fops = {
