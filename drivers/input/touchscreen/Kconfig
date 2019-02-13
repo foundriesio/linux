@@ -1253,4 +1253,37 @@ config TOUCHSCREEN_TCC_SSD253X
 	help
 	  say Y here if you have a touchscreen interface using the
 	  i2c device.
+
+config TOUCHSCREEN_GA657X
+	bool "Goodix touchpanel GA657X series"
+	depends on I2C
+	help
+	  Say Y here if you have a Goodix GA657X touchscreen
+	  controller.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_GA657X_UPDATE
+	tristate "Goodix GA657X touch controller auto update support"
+	depends on TOUCHSCREEN_GA657X
+	default y
+	help
+	  Enable this for support firmware update.
+
+	  Say Y here if you want update touch controller firmware.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_GA657X_TOOL
+	tristate "Goodix GA657X Tools for debuging"
+	depends on TOUCHSCREEN_GA657X
+	default y
+	help
+	  This implement interface support for Goodix GA657X
+	  touchscreen debug.
+
+	  Say Y here if you want to have a Android app debug interface
+	  to your system.
+
+	  If unsure, say N.
 endif
