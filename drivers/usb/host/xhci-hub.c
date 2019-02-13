@@ -551,6 +551,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 	port_status = readl(addr);
 	xhci_dbg(xhci, "clear port %s change, actual port %d status  = 0x%x\n",
 			port_change_bit, wIndex, port_status);
+#if 0
 #if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X)
 	if(!ss_down_control_first && system_rev == 0) { /* MPW 1 case*/
 		struct usb_hcd *hcd = xhci_to_hcd(xhci);	
@@ -558,12 +559,12 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 			void * addr = ioremap(0x11d90010, 0x4);
 			writel((readl(addr) | 0x02000000), addr);
 			iounmap(addr);
-			printk("%s : request ioremap!\n", __func__);
+			printk("KJS : %s\n", __func__);
 			ss_down_control_first = 1;
 		}
 	}
 #endif
-
+#endif
 }
 
 static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)

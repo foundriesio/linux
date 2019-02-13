@@ -217,6 +217,11 @@
 };
 
 /* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpd 19 0>;
+};
 &dwc3 {
 	status = "okay";
 	//usb3en-ctrl-able;

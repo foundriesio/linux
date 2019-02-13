@@ -347,7 +347,12 @@
 */
 
 	/* USB 3.0 DRD */
-	dwc3@11B00000 {
+	dwc3_phy@11D90000 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpd 19 0>;
+	};
+	dwc3_platform {
 		status = "okay";
 		//usb3en-ctrl-able;
 		//usb3en-gpio = <&gpc 20 0>;

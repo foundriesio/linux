@@ -49,7 +49,7 @@
 / {
 	/* Describe here after remove this statement if you have something to be override. */
 
-	dwc3@11B00000 {
+	dwc3_platform {
 		status = "disabled";
 	};
 

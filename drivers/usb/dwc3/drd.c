@@ -33,8 +33,8 @@ static void dwc3_drd_update(struct dwc3 *dwc)
 		id = 0;
 
 	dwc3_set_mode(dwc, id ?
-		      DWC3_GCTL_PRTCAP_HOST :
-		      DWC3_GCTL_PRTCAP_DEVICE);
+		      DWC3_GCTL_PRTCAP_DEVICE :
+		      DWC3_GCTL_PRTCAP_HOST);
 }
 
 static int dwc3_drd_notifier(struct notifier_block *nb,
@@ -52,7 +52,7 @@ static int dwc3_drd_notifier(struct notifier_block *nb,
 int dwc3_drd_init(struct dwc3 *dwc)
 {
 	int ret;
-
+/*
 	if (dwc->dev->of_node) {
 		if (of_property_read_bool(dwc->dev->of_node, "extcon"))
 			dwc->edev = extcon_get_edev_by_phandle(dwc->dev, 0);
@@ -68,7 +68,7 @@ int dwc3_drd_init(struct dwc3 *dwc)
 			return ret;
 		}
 	}
-
+*/
 	dwc3_drd_update(dwc);
 
 	return 0;

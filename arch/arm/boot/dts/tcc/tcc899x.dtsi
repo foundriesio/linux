@@ -1692,15 +1692,30 @@
 	/*
 	 * HSIO Bus Block
 	 */
-	dwc3: dwc3@11B00000 {
-		compatible = "telechips,tcc-dwc3";
-		reg = <0x11B00000 0xCFFF 0x11D90000 0x48>;
-		/* clock-frequency = <48000000>; */
-		interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_fbus FBUS_HSIO &clk_isoip_top ISOIP_TOP_U30>;
+
+	dwc3_phy: dwc3_phy@11D90000 {
+        compatible = "telechips,tcc_dwc3_phy";
+        reg = <0x11D90000 0x48>;
+        clocks = <&clk_isoip_top ISOIP_TOP_U30>;
+        status = "disabled";
+    };
+
+	dwc3: dwc3_platform {
+        compatible = "telechips,tcc-dwc3";
+        clocks = <&clk_fbus FBUS_HSIO>;
+        telechips,dwc3_phy = <&dwc3_phy>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
 		status = "disabled";
-	    tpl-support;   // Support TPL
-	};
+
+        dwc3 {
+            compatible = "snps,dwc3";
+            reg = <0x11B00000 0xCFFF>;
+            interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
+            telechips,dwc3_phy = <&dwc3_phy>;
+        };
+    };
 
 	trng@11DB0100 {
 		compatible = "telechips,tcc-rng";

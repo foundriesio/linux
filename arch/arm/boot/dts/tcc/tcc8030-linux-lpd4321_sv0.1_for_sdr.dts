@@ -48,9 +48,9 @@
 
 / {
 	/* USB 3.0 DRD */                      
-	dwc3@11B00000 {                        
-		vbus-gpio = <&da9063_gpio 4 0>;           
-	}; 
+	dwc3_platform { 
+		vbus-gpio = <&da9063_gpio 4 0>;
+	};
 
 	/* USB 2.0 OTG */
 	ehci_phy@11DA0010 {

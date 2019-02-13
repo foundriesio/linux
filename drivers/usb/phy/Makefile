@@ -5,6 +5,7 @@
 obj-$(CONFIG_USB_PHY)			+= phy.o
 obj-$(CONFIG_TCC_EHCI_PHY)		+= phy-tcc-ehci.o
 obj-$(CONFIG_TCC_DWC_OTG_PHY)	+= phy-tcc-dwc_otg.o
+obj-$(CONFIG_TCC_DWC3_PHY)		+= phy-tcc-dwc3.o
 obj-$(CONFIG_OF)			+= of.o
 obj-$(CONFIG_USB_OTG_WAKELOCK)		+= otg-wakelock.o
 obj-$(CONFIG_DUAL_ROLE_USB_INTF)	+= class-dual-role.o

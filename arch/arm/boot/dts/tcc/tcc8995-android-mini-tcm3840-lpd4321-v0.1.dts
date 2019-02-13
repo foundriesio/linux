@@ -125,6 +125,9 @@
 #endif
 
 /* USB 3.0 DRD */
+&dwc3_phy {
+	status = "disable";
+};
 &dwc3 {
 	status = "disable";
 	//usb3en-ctrl-able;

@@ -160,18 +160,21 @@ static void __dwc3_set_mode(struct work_struct *work)
 		if (ret) {
 			dev_err(dwc->dev, "failed to initialize host\n");
 		} else {
-			if (dwc->usb2_phy)
+			if (dwc->usb2_phy) {
+				dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
 				otg_set_vbus(dwc->usb2_phy->otg, true);
+			}
 			if (dwc->usb2_generic_phy)
 				phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
-
 		}
 		break;
 	case DWC3_GCTL_PRTCAP_DEVICE:
 		dwc3_event_buffers_setup(dwc);
 
-		if (dwc->usb2_phy)
+		if (dwc->usb2_phy) {
+			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 0);
 			otg_set_vbus(dwc->usb2_phy->otg, false);
+		}
 		if (dwc->usb2_generic_phy)
 			phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_DEVICE);
 
@@ -219,17 +222,17 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 	int		retries = 1000;
 	int		ret;
 
-	//usb_phy_init(dwc->usb2_phy);
-	//usb_phy_init(dwc->usb3_phy);
-	//ret = phy_init(dwc->usb2_generic_phy);
-	//if (ret < 0)
-	//	return ret;
+	usb_phy_init(dwc->usb2_phy);
+	usb_phy_init(dwc->usb3_phy);
+	ret = phy_init(dwc->usb2_generic_phy);
+	if (ret < 0)
+		return ret;
 
-	//ret = phy_init(dwc->usb3_generic_phy);
-	//if (ret < 0) {
-	//	phy_exit(dwc->usb2_generic_phy);
-	//	return ret;
-	//}
+	ret = phy_init(dwc->usb3_generic_phy);
+	if (ret < 0) {
+		phy_exit(dwc->usb2_generic_phy);
+		return ret;
+	}
 
 	/*
 	 * We're resetting only the device side because, if we're in host mode,
@@ -251,8 +254,8 @@ static int dwc3_core_soft_reset(struct dwc3 *dwc)
 		udelay(1);
 	} while (--retries);
 
-	//phy_exit(dwc->usb3_generic_phy);
-	//phy_exit(dwc->usb2_generic_phy);
+	phy_exit(dwc->usb3_generic_phy);
+	phy_exit(dwc->usb2_generic_phy);
 
 	return -ETIMEDOUT;
 
@@ -541,8 +544,8 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * will be '0' when the core is reset. Application needs to set it
 	 * to '1' after the core initialization is completed.
 	 */
-	//if (dwc->revision > DWC3_REVISION_194A)
-		//reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+	if (dwc->revision > DWC3_REVISION_194A)
+		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->u2ss_inp3_quirk)
 		reg |= DWC3_GUSB3PIPECTL_U2SSINP3OK;
@@ -568,8 +571,8 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	if (dwc->tx_de_emphasis_quirk)
 		reg |= DWC3_GUSB3PIPECTL_TX_DEEPH(dwc->tx_de_emphasis);
 
-	//if (dwc->dis_u3_susphy_quirk)
-		//reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
+	if (dwc->dis_u3_susphy_quirk)
+		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->dis_del_phy_power_chg_quirk)
 		reg &= ~DWC3_GUSB3PIPECTL_DEPOCHANGE;
@@ -627,11 +630,11 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * be '0' when the core is reset. Application needs to set it to
 	 * '1' after the core initialization is completed.
 	 */
-	//if (dwc->revision > DWC3_REVISION_194A)
-		//reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+	if (dwc->revision > DWC3_REVISION_194A)
+		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
 
-	//if (dwc->dis_u2_susphy_quirk)
-		//reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+	if (dwc->dis_u2_susphy_quirk)
+		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
 
 	if (dwc->dis_enblslpm_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
@@ -647,7 +650,7 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 static void dwc3_core_exit(struct dwc3 *dwc)
 {
 	dwc3_event_buffers_cleanup(dwc);
-/*
+
 	usb_phy_shutdown(dwc->usb2_phy);
 	usb_phy_shutdown(dwc->usb3_phy);
 	phy_exit(dwc->usb2_generic_phy);
@@ -657,7 +660,7 @@ static void dwc3_core_exit(struct dwc3 *dwc)
 	usb_phy_set_suspend(dwc->usb3_phy, 1);
 	phy_power_off(dwc->usb2_generic_phy);
 	phy_power_off(dwc->usb3_generic_phy);
-*/
+
 }
 
 static bool dwc3_core_is_valid(struct dwc3 *dwc)
@@ -791,7 +794,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	if (ret)
 		goto err0;
 
-	//ret = dwc3_core_soft_reset(dwc);
+	ret = dwc3_core_soft_reset(dwc);
 	if (ret)
 		goto err0;
 
@@ -809,15 +812,15 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	/* Adjust Frame Length */
 	dwc3_frame_length_adjustment(dwc);
 
-	//usb_phy_set_suspend(dwc->usb2_phy, 0);
-	//usb_phy_set_suspend(dwc->usb3_phy, 0);
-	//ret = phy_power_on(dwc->usb2_generic_phy);
-	//if (ret < 0)
-	//	goto err2;
+	usb_phy_set_suspend(dwc->usb2_phy, 0);
+	usb_phy_set_suspend(dwc->usb3_phy, 0);
+	ret = phy_power_on(dwc->usb2_generic_phy);
+	if (ret < 0)
+		goto err2;
 
-	//ret = phy_power_on(dwc->usb3_generic_phy);
-	//if (ret < 0)
-	//	goto err3;
+	ret = phy_power_on(dwc->usb3_generic_phy);
+	if (ret < 0)
+		goto err3;
 
 	ret = dwc3_event_buffers_setup(dwc);
 	if (ret) {
@@ -855,20 +858,20 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	return 0;
 
 err4:
-	//phy_power_off(dwc->usb3_generic_phy);
+	phy_power_off(dwc->usb3_generic_phy);
 
 err3:
-	//phy_power_off(dwc->usb2_generic_phy);
+	phy_power_off(dwc->usb2_generic_phy);
 
 err2:
-	//usb_phy_set_suspend(dwc->usb2_phy, 1);
-	//usb_phy_set_suspend(dwc->usb3_phy, 1);
+	usb_phy_set_suspend(dwc->usb2_phy, 1);
+	usb_phy_set_suspend(dwc->usb3_phy, 1);
 
 err1:
-	//usb_phy_shutdown(dwc->usb2_phy);
-	//usb_phy_shutdown(dwc->usb3_phy);
-	//phy_exit(dwc->usb2_generic_phy);
-	//phy_exit(dwc->usb3_generic_phy);
+	usb_phy_shutdown(dwc->usb2_phy);
+	usb_phy_shutdown(dwc->usb3_phy);
+	phy_exit(dwc->usb2_generic_phy);
+	phy_exit(dwc->usb3_generic_phy);
 
 err0:
 	return ret;
@@ -881,10 +884,14 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 	int ret;
 
 	if (node) {
+		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
+		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
+#if 0
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
 		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 1);
+#endif
 	} else {
-		dwc->usb2_phy = devm_usb_get_phy(dev, USB_PHY_TYPE_USB2);
+		dwc->usb2_phy = devm_usb_get_phy(dev, USB_PHY_TYPE_USB3);
 		dwc->usb3_phy = devm_usb_get_phy(dev, USB_PHY_TYPE_USB3);
 	}
 
@@ -950,8 +957,10 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 	case USB_DR_MODE_PERIPHERAL:
 		dwc3_set_prtcap(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 
-		if (dwc->usb2_phy)
+		if (dwc->usb2_phy) {
+			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 0);
 			otg_set_vbus(dwc->usb2_phy->otg, false);
+		}
 		if (dwc->usb2_generic_phy)
 			phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_DEVICE);
 
@@ -965,8 +974,10 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 	case USB_DR_MODE_HOST:
 		dwc3_set_prtcap(dwc, DWC3_GCTL_PRTCAP_HOST);
 
-		if (dwc->usb2_phy)
+		if (dwc->usb2_phy) {
+			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
 			otg_set_vbus(dwc->usb2_phy->otg, true);
+		}
 		if (dwc->usb2_generic_phy)
 			phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
 
@@ -1182,7 +1193,7 @@ static int dwc3_probe(struct platform_device *pdev)
 		dev_err(dev, "missing memory resource\n");
 		return -ENODEV;
 	}
-#if 1
+#if 0
 	if (!pdev->dev.dma_mask)
 	{
 		ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
@@ -1217,7 +1228,6 @@ static int dwc3_probe(struct platform_device *pdev)
 		ret = PTR_ERR(regs);
 		goto err0;
 	}
-
 	dwc->regs	= regs;
 	dwc->regs_size	= resource_size(res);
 
@@ -1345,7 +1355,7 @@ static int dwc3_suspend_common(struct dwc3 *dwc)
 		break;
 	}
 
-	//dwc3_core_exit(dwc);
+	dwc3_core_exit(dwc);
 	dwc->gctl = dwc3_readl(dwc->regs, DWC3_GCTL);
 	dwc3_event_buffers_cleanup(dwc);
 	return 0;
@@ -1356,9 +1366,9 @@ static int dwc3_resume_common(struct dwc3 *dwc)
 	unsigned long	flags;
 	int		ret;
 
-	//ret = dwc3_core_init(dwc);
-	//if (ret)
-	//	return ret;
+	ret = dwc3_core_init(dwc);
+	if (ret)
+		return ret;
 
 	dwc3_event_buffers_setup(dwc);
 	dwc3_writel(dwc->regs, DWC3_GCTL, dwc->gctl);
