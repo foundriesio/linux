@@ -31,7 +31,9 @@
 #define GPE		0x100
 #define GPF		0x140
 #define GPG		0x180
-//#define GPSD0		0x240
+#define GPSD0		0x200
+#define GPSD1       0x240
+#define GPSD2       0x600
 #define EINTSEL		0x280
 #define ECLKSEL		0x2B0
 #define GPH			0x640
@@ -138,6 +140,17 @@ static struct extintr_ extintr [] = {
 	{ GPMA,  8 }, { GPMA,  9 }, { GPMA, 10 }, { GPMA, 11 }, { GPMA, 12 }, { GPMA, 13 }, { GPMA, 14 }, { GPMA, 15 },
 	{ GPMA, 16 }, { GPMA, 17 }, { GPMA, 18 }, { GPMA, 19 }, { GPMA, 20 }, { GPMA, 21 }, { GPMA, 22 }, { GPMA, 23 },
 	{ GPMA, 24 }, { GPMA, 25 }, { GPMA, 26 }, { GPMA, 27 }, { GPMA, 28 }, { GPMA, 29 },   
+
+	{ 0,    0}, // RTC source
+
+	{ GPSD0,  0 }, { GPSD0,  1 }, { GPSD0,  2 }, { GPSD0,  3 }, { GPSD0,  4 }, { GPSD0,  5 }, { GPSD0,  6 }, { GPSD0,  7 }, //166 ~ 180
+	{ GPSD0,  8 }, { GPSD0,  9 }, { GPSD0, 10 }, { GPSD0, 11 }, { GPSD0, 12 }, { GPSD0, 13 }, { GPSD0, 14 },
+
+	{ GPSD1,  0 }, { GPSD1,  1 }, { GPSD1,  2 }, { GPSD1,  3 }, { GPSD1,  4 }, { GPSD1,  5 }, { GPSD1,  6 }, { GPSD1,  7 }, //181 ~ 191
+	{ GPSD1,  8 }, { GPSD1,  9 }, { GPSD1, 10 },
+
+	{ GPSD2,  0 }, { GPSD2,  1 }, { GPSD2,  2 }, { GPSD2,  3 }, { GPSD2,  4 }, { GPSD2,  5 }, { GPSD2,  6 }, { GPSD2,  7 }, //192 ~ 201
+	{ GPSD2,  8 }, { GPSD2,  9 },
 };
 
 static struct tcc_pinctrl_soc_data tcc803x_pinctrl_soc_data;
