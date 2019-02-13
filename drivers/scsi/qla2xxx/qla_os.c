@@ -5005,14 +5005,14 @@ qla2x00_do_work(struct scsi_qla_host *vha)
 	struct qla_work_evt *e, *tmp;
 	unsigned long flags;
 	LIST_HEAD(work);
+	int rc;
 
 	spin_lock_irqsave(&vha->work_lock, flags);
 	list_splice_init(&vha->work_list, &work);
 	spin_unlock_irqrestore(&vha->work_lock, flags);
 
 	list_for_each_entry_safe(e, tmp, &work, list) {
-		list_del_init(&e->list);
-
+		rc = QLA_SUCCESS;
 		switch (e->type) {
 		case QLA_EVT_AEN:
 			fc_host_post_event(vha->host, fc_get_event_number(),
@@ -5026,7 +5026,7 @@ qla2x00_do_work(struct scsi_qla_host *vha)
 			    e->u.logio.data);
 			break;
 		case QLA_EVT_ASYNC_LOGOUT:
-			qla2x00_async_logout(vha, e->u.logio.fcport);
+			rc = qla2x00_async_logout(vha, e->u.logio.fcport);
 			break;
 		case QLA_EVT_ASYNC_LOGOUT_DONE:
 			qla2x00_async_logout_done(vha, e->u.logio.fcport,
@@ -5071,7 +5071,7 @@ qla2x00_do_work(struct scsi_qla_host *vha)
 			qla24xx_do_nack_work(vha, e);
 			break;
 		case QLA_EVT_ASYNC_PRLO:
-			qla2x00_async_prlo(vha, e->u.logio.fcport);
+			rc = qla2x00_async_prlo(vha, e->u.logio.fcport);
 			break;
 		case QLA_EVT_ASYNC_PRLO_DONE:
 			qla2x00_async_prlo_done(vha, e->u.logio.fcport,
@@ -5104,6 +5104,15 @@ qla2x00_do_work(struct scsi_qla_host *vha)
 			    e->u.fcport.fcport, false);
 			break;
 		}
+
+		if (rc == EAGAIN) {
+			/* put 'work' at head of 'vha->work_list' */
+			spin_lock_irqsave(&vha->work_lock, flags);
+			list_splice(&work, &vha->work_list);
+			spin_unlock_irqrestore(&vha->work_lock, flags);
+			break;
+		}
+		list_del_init(&e->list);
 		if (e->flags & QLA_EVT_FLAG_FREE)
 			kfree(e);
 
@@ -6932,6 +6941,57 @@ qla2xxx_pci_resume(struct pci_dev *pdev)
 	ha->flags.eeh_busy = 0;
 }
 
+static void
+qla_pci_reset_prepare(struct pci_dev *pdev)
+{
+	scsi_qla_host_t *base_vha = pci_get_drvdata(pdev);
+	struct qla_hw_data *ha = base_vha->hw;
+	struct qla_qpair *qpair;
+
+	ql_log(ql_log_warn, base_vha, 0xffff,
+	    "%s.\n", __func__);
+
+	/*
+	 * PCI FLR/function reset is about to reset the
+	 * slot. Stop the chip to stop all DMA access.
+	 * It is assumed that pci_reset_done will be called
+	 * after FLR to resume Chip operation.
+	 */
+	ha->flags.eeh_busy = 1;
+	mutex_lock(&ha->mq_lock);
+	list_for_each_entry(qpair, &base_vha->qp_list, qp_list_elem)
+		qpair->online = 0;
+	mutex_unlock(&ha->mq_lock);
+
+	set_bit(ABORT_ISP_ACTIVE, &base_vha->dpc_flags);
+	qla2x00_abort_isp_cleanup(base_vha);
+	qla2x00_abort_all_cmds(base_vha, DID_RESET << 16);
+}
+
+static void
+qla_pci_reset_done(struct pci_dev *pdev)
+{
+	scsi_qla_host_t *base_vha = pci_get_drvdata(pdev);
+	struct qla_hw_data *ha = base_vha->hw;
+	struct qla_qpair *qpair;
+
+	ql_log(ql_log_warn, base_vha, 0xffff,
+	    "%s.\n", __func__);
+
+	/*
+	 * FLR just completed by PCI layer. Resume adapter
+	 */
+	ha->flags.eeh_busy = 0;
+	mutex_lock(&ha->mq_lock);
+	list_for_each_entry(qpair, &base_vha->qp_list, qp_list_elem)
+		qpair->online = 1;
+	mutex_unlock(&ha->mq_lock);
+
+	base_vha->flags.online = 1;
+	ha->isp_ops->abort_isp(base_vha);
+	clear_bit(ABORT_ISP_ACTIVE, &base_vha->dpc_flags);
+}
+
 static int qla2xxx_map_queues(struct Scsi_Host *shost)
 {
 	int rc;
@@ -6949,6 +7009,8 @@ static const struct pci_error_handlers qla2xxx_err_handler = {
 	.mmio_enabled = qla2xxx_pci_mmio_enabled,
 	.slot_reset = qla2xxx_pci_slot_reset,
 	.resume = qla2xxx_pci_resume,
+	.reset_prepare = qla_pci_reset_prepare,
+	.reset_done = qla_pci_reset_done,
 };
 
 static struct pci_device_id qla2xxx_pci_tbl[] = {
