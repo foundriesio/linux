@@ -2484,7 +2484,7 @@
 		compatible = "telechips,dw-hdmi-tx";
 		/* Register */
 		reg = <0x12400000 0x20000 0x12440000 0x1000 0x12480000 0x1000 0x163C0000 0x10 0x16051000 0x000018>;
-		reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg";
+		reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg", "hdmi_iob_cec";
 		/* Interrupt */
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>,
@@ -2522,7 +2522,7 @@
 
 		audio_if_selection_ofst = <0x58>;
 		verbose = <0>; // 0 disable, 1 basic, 2 io
-		status = "disabled";
+		status = "okay";
 	};
 
 	hdmi_cec_20: hdmi_cec_20@16053000 {

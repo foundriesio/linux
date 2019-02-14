@@ -1,9 +1,8 @@
-/****************************************************************************
-fc_avi.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
-
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include <include/hdmi_includes.h>
 
 #include <include/hdmi_access.h>
@@ -178,17 +177,13 @@ void fc_avi_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
 		fc_RgbYcc(dev, 0);
 	}
 	else if (videoParams->mEncodingOut == YCC422) {
-                LOGGER(SNPS_NOTICE,"%s:ycc422", __func__);
-		#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+        LOGGER(SNPS_NOTICE,"%s:ycc422", __func__);
+        if((videoParams->mDolbyVision & 0x7) == 2) {
                 fc_RgbYcc(dev, 0);
-		#else
-                if((videoParams->mDolbyVision & 0x7) == 2) {
-                        fc_RgbYcc(dev, 0);
-                }
-                else {
-                        fc_RgbYcc(dev, 1);
-                }
-		#endif
+        }
+        else {
+                fc_RgbYcc(dev, 1);
+        }
 	}
 	else if (videoParams->mEncodingOut == YCC444) {
 		LOGGER(SNPS_NOTICE,"%s:ycc444", __func__);

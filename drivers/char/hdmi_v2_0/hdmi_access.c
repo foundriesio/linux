@@ -1,8 +1,8 @@
-/****************************************************************************
-hdmi_access.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include "include/hdmi_includes.h"
 
 static u8 hdmi_lowestBitSet(u8 x)

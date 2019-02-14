@@ -1,8 +1,8 @@
-/****************************************************************************
-api.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -189,7 +189,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
 		/* Reset the main controller */
 		hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
-		
+
                 /* wait main controller to resume */
                 do {
                         usleep_range(10, 20);

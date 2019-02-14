@@ -1,8 +1,8 @@
-/****************************************************************************
-fc_packets.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -63,7 +63,11 @@ void fc_packets_disable_all(struct hdmi_tx_dev *dev)
 
 void fc_packets_metadata_config(struct hdmi_tx_dev *dev)
 {
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST	
+	fc_packets_MetadataFrameInterpolation(dev, 0);
+#else
 	fc_packets_MetadataFrameInterpolation(dev, 1);
+#endif
 	fc_packets_MetadataFramesPerPacket(dev, 1);
 	fc_packets_MetadataLineSpacing(dev, 1);
 }

@@ -1,8 +1,8 @@
-/****************************************************************************
-i2cm.h
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __HDMI_I2CM_H__
 #define __HDMI_I2CM_H__
 

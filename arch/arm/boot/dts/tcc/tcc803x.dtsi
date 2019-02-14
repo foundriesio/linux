@@ -3246,7 +3246,7 @@
 
 	hdmi_cec_20: hdmi_cec_20@16053000 {
 		compatible = "telechips,dw-hdmi-cec";
-		reg = <0x16053000 0x1000>;
+		reg = <0x16053000 0x1000 0x16051054 0x4>;
 		interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>, 		/* CEC1 Interrupt */
 				<GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;	/* CEC1 WAKEUP Interrupt */
 		clocks = <&clk_peri PERI_CEC1_CORE>, <&clk_peri PERI_CEC1_SFR>,<&clk_io IOBUS_CEC1>;

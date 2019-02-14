@@ -1,8 +1,8 @@
-/****************************************************************************
-identification.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include "../../include/identification/identification.h"
 #include "../../include/identification/identification_reg.h"
 #include "../../../include/hdmi_log.h"

@@ -1,7 +1,17 @@
 /****************************************************************************
-hdmi_tx.c
-
 Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
 ****************************************************************************/
 #include "include/hdmi_includes.h"
 #include "include/hdmi_log.h"
@@ -390,6 +400,32 @@ free_all_mem(void){
         }
 }
 
+
+static void send_hdmi_output_event(struct work_struct *work)
+{
+        char *u_events[2];
+        char u_event_name[16];
+        struct hdmi_tx_dev *dev = container_of(work, struct hdmi_tx_dev, hdmi_output_event_work);
+        if(dev != NULL) {
+                snprintf(u_event_name, sizeof(u_event_name), "SWITCH_STATE=%d", test_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status)?1:0);
+                u_events[0] = u_event_name;
+                u_events[1] = NULL;
+                pr_info("%s u_event(%s)\r\n", __func__, u_event_name);
+                kobject_uevent_env(&dev->parent_dev->kobj, KOBJ_CHANGE, u_events);
+        }
+}
+
+#if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
+static void hdmi_tx_restore_hotpug_work(struct work_struct *work)
+{
+        struct hdmi_tx_dev *dev = container_of((struct delayed_work *)work, struct hdmi_tx_dev, hdmi_restore_hotpug_work);
+        if(dev != NULL) {
+                pr_info("%s restore hotplug_status\r\n", __func__);
+                dev->hotplug_status = dev->hotplug_real_status;
+        }
+}
+#endif
+
 #if defined(CONFIG_PM)
 int hdmi_tx_suspend(struct device *dev)
 {
@@ -527,30 +563,7 @@ int hdmi_tx_runtime_resume(struct device *dev)
         return 0;
 }
 
-static void send_hdmi_output_event(struct work_struct *work)
-{
-        char *u_events[2];
-        char u_event_name[16];
-        struct hdmi_tx_dev *dev = container_of(work, struct hdmi_tx_dev, hdmi_output_event_work);
-        if(dev != NULL) {
-                snprintf(u_event_name, sizeof(u_event_name), "SWITCH_STATE=%d", test_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status)?1:0);
-                u_events[0] = u_event_name;
-                u_events[1] = NULL;
-                pr_info("%s u_event(%s)\r\n", __func__, u_event_name);
-                kobject_uevent_env(&dev->parent_dev->kobj, KOBJ_CHANGE, u_events);
-        }
-}
 
-#if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
-static void hdmi_tx_restore_hotpug_work(struct work_struct *work)
-{
-        struct hdmi_tx_dev *dev = container_of((struct delayed_work *)work, struct hdmi_tx_dev, hdmi_restore_hotpug_work);
-        if(dev != NULL) {
-                pr_info("%s restore hotplug_status\r\n", __func__);
-                dev->hotplug_status = dev->hotplug_real_status;
-        }
-}
-#endif
 
 static const struct dev_pm_ops hdmi_tx_pm_ops = {
         .suspend = hdmi_tx_suspend,
