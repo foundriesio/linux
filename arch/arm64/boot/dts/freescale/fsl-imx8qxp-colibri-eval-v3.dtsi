@@ -663,7 +663,6 @@
 		clock-names = "refclk";
 		power-domains = <&pd_mclk_out0>;
 		bypass-gpios = <&gpio_expander_43 5 GPIO_ACTIVE_LOW>;
-		connect-gpios = <&gpio0 31 GPIO_ACTIVE_LOW>;
 		intn-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio_expander_43 4 GPIO_ACTIVE_LOW>;
 		disabled-ports = <2>;
