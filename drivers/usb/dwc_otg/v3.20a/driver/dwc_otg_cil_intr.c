@@ -1714,7 +1714,30 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			retval |= dwc_otg_handle_lpm_intr(core_if);
 		}
 #endif
+#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+		{
+			gotgint_data_t gotgint;
+			gotgint.d32 = DWC_READ_REG32(&core_if->core_global_regs->gotgint);
 
+			if(gotgint.b.mvic != 0) {
+				DWC_DEBUGPL(DBG_ANY, "[%s:%d]GOTGINT.mvic change is set. (0x%x)\n",__func__,__LINE__,gotgint.d32);
+				gotgint.d32 = 0;
+				gotgint.b.mvic = 1;
+				DWC_WRITE_REG32(&core_if->core_global_regs->gotgint, gotgint.d32);
+
+				gotgint.d32 = DWC_READ_REG32(&core_if->core_global_regs->gotgint);
+				if(gotgint.b.mvic != 0)
+					DWC_DEBUGPL(DBG_ANY, "[%s:%d]Warning!! GOTGINT.mvic is not cleared.\n",__func__,__LINE__);
+				else
+				{
+					DWC_WRITE_REG32(&core_if->core_global_regs->gotgint, gotgint.d32);
+					DWC_DEBUGPL(DBG_ANY, "[%s:%d]GOTGINT.mvic is cleared. (0x%x)\n",__func__,__LINE__,gotgint.d32);
+					retval |= 1;
+				}
+
+			}
+		}
+#endif
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 		{
 			gotgint_data_t gotgint;
