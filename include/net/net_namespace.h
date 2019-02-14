@@ -38,7 +38,7 @@ struct net_device;
 struct sock;
 struct ctl_table_header;
 struct net_generic;
-struct sock;
+struct uevent_sock;
 struct netns_ipvs;
 
 
@@ -76,6 +76,8 @@ struct net {
 
 	struct sock 		*rtnl;			/* rtnetlink socket */
 	struct sock		*genl_sock;
+
+	struct uevent_sock	*uevent_sock;		/* uevent socket */
 
 	struct list_head 	dev_base_head;
 	struct hlist_head 	*dev_name_head;
