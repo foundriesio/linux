@@ -91,6 +91,7 @@
 
 &iomuxc {
 	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog1>, <&pinctrl_hog2>;
 	imx8qxp-colibri {
 
 		pinctrl_ad7879_int: ad7879-int { /* TOUCH Interrupt */
@@ -166,6 +167,57 @@
 		pinctrl_gpio_bl_on: gpio-bl-on {
 			fsl,pins = <
 				SC_P_QSPI0A_DATA3_LSIO_GPIO3_IO12	0x00000040
+			>;
+		};
+
+		pinctrl_hog1: hog1grp {
+			fsl,pins = <
+				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10	0x00000020 /*  45 */
+				SC_P_ENET0_RGMII_TXD3_LSIO_GPIO5_IO02	0x06000020 /*  65 */
+					SC_P_CSI_D07_CI_PI_D09		0x00000061
+				SC_P_QSPI0A_DATA2_LSIO_GPIO3_IO11	0x00000020 /*  69 */
+				SC_P_QSPI0A_DQS_LSIO_GPIO3_IO13		0x00000020 /*  73 */
+				SC_P_SAI0_TXC_LSIO_GPIO0_IO26		0x00000020 /*  79 */
+					SC_P_CSI_D02_CI_PI_D04		0x00000061
+				SC_P_ENET0_RGMII_RXC_LSIO_GPIO5_IO03	0x06000020 /*  85 */
+					SC_P_CSI_D06_CI_PI_D08		0x00000061
+				SC_P_QSPI0B_SCLK_LSIO_GPIO3_IO17	0x00000020 /*  95 */
+				SC_P_SAI0_RXD_LSIO_GPIO0_IO27		0x00000020 /*  97 */
+					SC_P_CSI_D03_CI_PI_D05		0x00000061
+				SC_P_QSPI0B_DATA0_LSIO_GPIO3_IO18	0x00000020 /*  99 */
+				SC_P_SAI0_TXFS_LSIO_GPIO0_IO28		0x00000020 /* 101 */
+					SC_P_CSI_D00_CI_PI_D02          0x00000061
+				SC_P_SAI0_TXD_LSIO_GPIO0_IO25		0x00000020 /* 103 */
+					SC_P_CSI_D01_CI_PI_D03          0x00000061
+				SC_P_QSPI0B_DATA1_LSIO_GPIO3_IO19	0x00000020 /* 105 */
+				SC_P_QSPI0B_DATA2_LSIO_GPIO3_IO20	0x00000020 /* 107 */
+				SC_P_USB_SS3_TC2_LSIO_GPIO4_IO05	0x00000020 /* 127 */
+				SC_P_USB_SS3_TC3_LSIO_GPIO4_IO06	0x00000020 /* 131 */
+				SC_P_USB_SS3_TC1_LSIO_GPIO4_IO04	0x00000020 /* 133 */
+				SC_P_CSI_PCLK_LSIO_GPIO3_IO00		0x00000020 /*  96 */
+				SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21	0x00000020 /*  98 */
+				SC_P_SAI1_RXFS_LSIO_GPIO0_IO31		0x00000020 /* 100 */
+				SC_P_QSPI0B_DQS_LSIO_GPIO3_IO22		0x00000020 /* 102 */
+				SC_P_QSPI0B_SS0_B_LSIO_GPIO3_IO23	0x00000020 /* 104 */
+				SC_P_QSPI0B_SS1_B_LSIO_GPIO3_IO24	0x00000020 /* 106 */
+			>;
+		};
+
+		pinctrl_hog2: hog2grp {
+			fsl,pins = <
+				SC_P_CSI_MCLK_LSIO_GPIO3_IO01		0x00000020 /*  75 */
+				SC_P_QSPI0A_SS0_B_LSIO_GPIO3_IO14	0x00000020 /*  77 */
+				SC_P_QSPI0A_SS1_B_LSIO_GPIO3_IO15	0x00000020 /*  89 */
+				SC_P_QSPI0A_SCLK_LSIO_GPIO3_IO16	0x00000020 /*  93 */
+			>;
+		};
+
+		/* This pin is used in the SCFW as a UART. Using it from
+		 * Linux would require rewritting the SCFW board file.
+		 */
+		pinctrl_hog_scfw: hogscfwgrp {
+			fsl,pins = <
+				SC_P_SCU_GPIO0_00_LSIO_GPIO2_IO03	0x00000020 /* 144 */
 			>;
 		};
 
