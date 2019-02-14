@@ -77,8 +77,6 @@ struct net {
 	struct sock 		*rtnl;			/* rtnetlink socket */
 	struct sock		*genl_sock;
 
-	struct uevent_sock	*uevent_sock;		/* uevent socket */
-
 	struct list_head 	dev_base_head;
 	struct hlist_head 	*dev_name_head;
 	struct hlist_head	*dev_index_head;
@@ -155,6 +153,7 @@ struct net {
 		spinlock_t	lock;
 		u32		seq;
 	} ip6addrlbl_table;
+	struct uevent_sock	*uevent_sock;		/* uevent socket */
 #endif
 };
 
