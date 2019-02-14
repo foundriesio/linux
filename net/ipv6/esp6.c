@@ -350,7 +350,7 @@ int esp6_output_tail(struct xfrm_state *x, struct sk_buff *skb, struct esp_info 
 		           (unsigned char *)esph - skb->data,
 		           assoclen + ivlen + esp->clen + alen);
 	if (unlikely(err < 0))
-		goto error;
+		goto error_free;
 
 	if (!esp->inplace) {
 		int allocsize;
@@ -361,7 +361,7 @@ int esp6_output_tail(struct xfrm_state *x, struct sk_buff *skb, struct esp_info 
 		spin_lock_bh(&x->lock);
 		if (unlikely(!skb_page_frag_refill(allocsize, pfrag, GFP_ATOMIC))) {
 			spin_unlock_bh(&x->lock);
-			goto error;
+			goto error_free;
 		}
 
 		skb_shinfo(skb)->nr_frags = 1;
@@ -378,7 +378,7 @@ int esp6_output_tail(struct xfrm_state *x, struct sk_buff *skb, struct esp_info 
 			           (unsigned char *)esph - skb->data,
 			           assoclen + ivlen + esp->clen + alen);
 		if (unlikely(err < 0))
-			goto error;
+			goto error_free;
 	}
 
 	if ((x->props.flags & XFRM_STATE_ESN))
@@ -411,8 +411,9 @@ int esp6_output_tail(struct xfrm_state *x, struct sk_buff *skb, struct esp_info 
 
 	if (sg != dsg)
 		esp_ssg_unref(x, tmp);
-	kfree(tmp);
 
+error_free:
+	kfree(tmp);
 error:
 	return err;
 }
