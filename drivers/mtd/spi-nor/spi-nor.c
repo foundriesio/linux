@@ -88,6 +88,8 @@ struct flash_info {
 					 */
 #define NO_CHIP_ERASE		BIT(12) /* Chip does not support chip erase */
 #define SPI_NOR_SKIP_SFDP	BIT(13)	/* Skip parsing of SFDP tables */
+
+	int	(*quad_enable)(struct spi_nor *nor);
 };
 
 #define JEDEC_MFR(info)	((info)->id[0])
@@ -2410,6 +2412,15 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			params->quad_enable = spansion_quad_enable;
 			break;
 		}
+
+		/*
+		 * Some manufacturer like GigaDevice may use different
+		 * bit to set QE on different memories, so the MFR can't
+		 * indicate the quad_enable method for this case, we need
+		 * set it in flash info list.
+		 */
+		if (info->quad_enable)
+			params->quad_enable = info->quad_enable;
 	}
 
 	/* Override the parameters with data read from SFDP tables. */
