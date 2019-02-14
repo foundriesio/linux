@@ -1,8 +1,8 @@
-/****************************************************************************
-irq_handlers.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include <linux/gpio.h>
 #include "include/hdmi_includes.h"
 #include "include/hdmi_access.h"

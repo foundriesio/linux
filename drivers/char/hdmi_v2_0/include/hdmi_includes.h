@@ -1,8 +1,8 @@
-/****************************************************************************
-hdmi_include.h
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __INCLUDES_H__
 #define __INCLUDES_H__
 
@@ -34,9 +34,9 @@ Copyright (C) 2018 Telechips Inc.
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.1.0d"
+#define HDMI_DRV_VERSION        "4.14_1.2.0d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.1.0"
+#define HDMI_DRV_VERSION        "4.14_1.2.0"
 #endif
 
 // HDMI COMPONENTS

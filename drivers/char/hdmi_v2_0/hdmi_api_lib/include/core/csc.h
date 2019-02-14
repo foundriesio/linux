@@ -1,8 +1,8 @@
-/****************************************************************************
-csc.h
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef HALCOLORSPACECONVERTER_H_
 #define HALCOLORSPACECONVERTER_H_
 

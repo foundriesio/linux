@@ -1,8 +1,8 @@
-/****************************************************************************
-audio_sample_spdif_reg.h
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */ 
+/* 
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates. 
+* Synopsys DesignWare HDMI driver 
+*/ 
 #ifndef INCLUDE_CORE_AUDIO_AUDIO_SPDIF_H_
 #define INCLUDE_CORE_AUDIO_AUDIO_SPDIF_H_
 

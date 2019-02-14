@@ -1,8 +1,8 @@
-/****************************************************************************
-video.h
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef VIDEO_H_
 #define VIDEO_H_
 /**

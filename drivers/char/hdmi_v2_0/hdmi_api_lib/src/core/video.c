@@ -1,8 +1,8 @@
-/****************************************************************************
-video.c
-
-Copyright (C) 2018 Telechips Inc.
-****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -164,16 +164,12 @@ int video_VideoSampler(struct hdmi_tx_dev *dev, videoParams_t * video)
                 case YCC422:
                         if (video->mColorResolution == COLOR_DEPTH_12)
                         {
-				#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-								map_code = 0x1B;
-				#else
-                                if((video->mDolbyVision & 0x7) > 0) {
-                                        map_code = 0x1B;
-                                }
-                                else  {
-                                        map_code = 0x12;
-                                }
-				#endif
+                            if((video->mDolbyVision & 0x7) > 0) {
+                                map_code = 0x1B;
+                            }
+                            else  {
+                                map_code = 0x12;
+                            }
                         }
                         else if (video->mColorResolution == COLOR_DEPTH_10)
                                 map_code = 0x14;
