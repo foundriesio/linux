@@ -86,6 +86,11 @@ struct netns_ipv6 {
 	atomic_t		dev_addr_genid;
 	atomic_t		fib6_sernum;
 	struct seg6_pernet_data *seg6_data;
+	struct {
+		struct hlist_head head;
+		spinlock_t	lock;
+		u32		seq;
+	} ip6addrlbl_table;
 };
 
 #if IS_ENABLED(CONFIG_NF_DEFRAG_IPV6)
