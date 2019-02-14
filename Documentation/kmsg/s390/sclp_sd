@@ -1,0 +1,39 @@
+/*?
+ * Text: "A %zu-byte %s data entity was retrieved\n"
+ * Severity: Informational
+ * Parameter:
+ *   @1: Number of bytes
+ *   @2: Name of data entity
+ * Description:
+ * The firmware can hold data entities. For example, the config data entity
+ * contains configuration data for I/O devices that are required early in the
+ * boot process of a Linux instance. A data entity has been retrieved and is
+ * available at /sys/firmware/sclp_sd.
+ * User action:
+ * None.
+ */
+
+/*?
+ * Text: "No data is available for the %s data entity\n"
+ * Severity: Informational
+ * Parameter:
+ *   @1: Name of data entity
+ * Description:
+ * The firmware can hold data entities, for example, for configuring I/O
+ * devices. No data has been found for the requested data entity.
+ * User action:
+ * Ensure that the specified firmware data entity is supported by the
+ * installed firmware level and mode of operation.
+ */
+
+/*?
+ * Text: "Store Data request failed (eq=%d, di=%d, response=0x%04x, flags=0x%02x, status=%d, rc=%d)\n"
+ * Severity: Warning
+ * Parameter:
+ * Description:
+ * The firmware can hold data entities, for example, for configuring I/O
+ * devices. An attempt to access a specific firmware data entity failed.
+ * User action:
+ * Note the error information provided with this message and contact your
+ * support organization.
+ */

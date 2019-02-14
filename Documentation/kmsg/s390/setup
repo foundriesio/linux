@@ -117,24 +117,6 @@
  */
 
 /*?
- * Text: "Saving the Linux kernel NSS failed with rc=%d\n"
- * Severity: Error
- * Parameter:
- *   @1: return code
- * Description:
- * The Linux kernel could not save the named saved system (NSS) with
- * the z/VM CP SAVESYS command. The return code represents the numeric
- * portion of the CP SAVESYS error message.
- * User action:
- * For return code 1, the z/VM guest virtual machine is not authorized
- * to save named saved systems.
- * Ensure that the z/VM guest virtual machine is authorized to issue
- * the CP SAVESYS command (typically privilege class E).
- * For other return codes, see the help and message documentation for
- * the CP SAVESYS command.
- */
-
-/*?
  * Text: "crashkernel reservation failed: %s\n"
  * Severity: Informational
  * Parameter:
@@ -163,3 +145,4 @@
  * None.
  */
 /*? Text: "%s: %d output lines suppressed due to ratelimiting\n" */
+/*? Text: "%s: SME is active, device will require DMA bounce buffers\n" */

@@ -102,23 +102,6 @@
  */
 
 /*?
- * Text: "%s: The adapter hardware is of an unknown type\n"
- * Severity: Error
- * Parameter:
- *   @1: bus ID of the qeth device
- * Description:
- * The qeth device driver does not recognize the adapter hardware. The cause
- * of this problem could be a hardware error or a Linux level that does not
- * support your adapter hardware.
- * User action:
- * i) Investigate if your adapter hardware is supported by your Linux level.
- * Consider using hardware that is supported by your Linux level or upgrading
- * to a Linux level that supports your hardware. ii) Install the latest
- * firmware on your adapter hardware. iii) If the problem persists and is not
- * caused by a version mismatch, contact IBM support.
- */
-
-/*?
  * Text: "%s: The adapter is used exclusively by another host\n"
  * Severity: Error
  * Parameter:
@@ -208,21 +191,6 @@
  *   @2: network interface name
  * Description:
  * The qeth device driver could not start ARP support on the network adapter.
- * User action:
- * Ungroup and regroup the subchannel triplet of the device. If this does not
- * resolve the problem, reboot Linux. If the problem persists, gather Linux
- * debug data and report the problem to your support organization.
- */
-
-/*?
- * Text: "%s: Starting IP fragmentation support for %s failed\n"
- * Severity: Warning
- * Parameter:
- *   @1: bus ID of the qeth device
- *   @2: network interface name
- * Description:
- * The qeth device driver could not start IP fragmentation support on the
- * network adapter.
  * User action:
  * Ungroup and regroup the subchannel triplet of the device. If this does not
  * resolve the problem, reboot Linux. If the problem persists, gather Linux
@@ -325,6 +293,26 @@
  */
 
 /*?
+ * Text: "%s: Starting HW IPv%d checksumming for %s failed, using SW checksumming\n"
+ * Severity: Warning
+ * Parameter:
+ *   @1: bus ID of the qeth device
+ *   @2: IP version
+ *   @3: network interface name
+ * Description:
+ * The network adapter supports hardware checksumming for IP packages
+ * but the qeth device driver could not start hardware checksumming on the
+ * adapter. The qeth device driver continues to use software checksumming for
+ * IP packages.
+ * User action:
+ * None if you do not require hardware checksumming for network
+ * traffic. If you want to enable hardware checksumming, ungroup and regroup
+ * the subchannel triplet of the device. If this does not resolve the problem,
+ * reboot Linux. If the problem persists, gather Linux debug data and report
+ * the problem to your support organization.
+ */
+
+/*?
  * Text: "%s: Setting up broadcast echo filtering for %s failed\n"
  * Severity: Warning
  * Parameter:
@@ -337,25 +325,6 @@
  * Ungroup and regroup the subchannel triplet of the device. If this does not
  * resolve the problem, reboot Linux. If the problem persists, gather Linux
  * debug data and report the problem to your support organization.
- */
-
-/*?
- * Text: "%s: Starting HW checksumming for %s failed, using SW checksumming\n"
- * Severity: Warning
- * Parameter:
- *   @1: bus ID of the qeth device
- *   @2: network interface name
- * Description:
- * The network adapter supports hardware checksumming for IP packages
- * but the qeth device driver could not start hardware checksumming on the
- * adapter. The qeth device driver continues to use software checksumming for
- * IP packages.
- * User action:
- * None if you do not require hardware checksumming for network
- * traffic. If you want to enable hardware checksumming, ungroup and regroup
- * the subchannel triplet of the device. If this does not resolve the problem,
- * reboot Linux. If the problem persists, gather Linux debug data and report
- * the problem to your support organization.
  */
 
 /*?
@@ -381,11 +350,12 @@
  */
 
 /*?
- * Text: "%s: Enabling HW checksumming for %s failed, using SW checksumming\n"
+ * Text: "%s: Enabling HW IPv%d checksumming for %s failed, using SW checksumming\n"
  * Severity: Warning
  * Parameter:
  *   @1: bus ID of the qeth device
- *   @2: network interface name
+ *   @2: IP version
+ *   @3: network interface name
  * Description:
  * The network adapter supports hardware checksumming for IP packages
  * but the qeth device driver could not enable hardware checksumming on the
@@ -397,23 +367,6 @@
  * the subchannel triplet of the device. If this does not resolve the problem,
  * reboot Linux. If the problem persists, gather Linux debug data and report
  * the problem to your support organization.
- */
-
-/*?
- * Text: "%s: Starting outbound TCP segmentation offload for %s failed\n"
- * Severity: Warning
- * Parameter:
- *   @1: bus ID of the qeth device
- *   @2: network interface name
- * Description:
- * The network adapter supports TCP segmentation offload, but the qeth device
- * driver could not start this support on the adapter.
- * User action:
- * None if you do not require TCP segmentation offload. If you want to
- * enable TCP segmentation offload, ungroup and regroup the subchannel triplet
- * of the device. If this does not resolve the problem, reboot Linux. If the
- * problem persists, gather Linux debug data and report the problem to your
- * support organization.
  */
 
 /*?
@@ -430,19 +383,6 @@
  * User action:
  * Install the latest firmware on the adapter hardware. Manually, configure
  * an IPv6 link local address for this device.
- */
-
-/*?
- * Text: "There is no IPv6 support for the layer 3 discipline\n"
- * Severity: Warning
- * Description:
- * If you want to use IPv6 with the layer 3 discipline, you need a Linux kernel
- * with IPv6 support. Because your Linux kernel has not been compiled with
- * IPv6 support, you cannot use IPv6 with the layer 3 discipline, even if your
- * adapter supports IPv6.
- * User action:
- * Use a Linux kernel that has been complied to include IPv6 support if you
- * want to use IPv6 with layer 3 qeth devices.
  */
 
 /*?
@@ -625,6 +565,21 @@
  * network configuration.
  */
 
+/*?
+ * Text: "%s: TSOv%u enabled (MSS: %u)\n"
+ * Severity: Informational
+ * Parameter:
+ *   @1: bus ID of the qeth device
+ *   @2: Protocol Version that TSO has been enabled for
+ *   @3: Maximum Segment Size that is supported for TSO packets
+ * Description:
+ * TCP Segmentation Offload is now enabled on the indicated network device.
+ * The network stack may send large-size packets to the device, which are then
+ * segmented in hardware.
+ * User action:
+ * None.
+ */
+
 /*? Text: "core functions removed\n" */
 /*? Text: "%s: Device is a%s card%s%s%s\nwith link type %s.\n" */
 /*? Text: "%s: issue_next_read failed: no iob available!\n" */
@@ -635,25 +590,20 @@
 /*? Text: "%s: Device successfully recovered!\n" */
 /*? Text: "register layer 2 discipline\n" */
 /*? Text: "unregister layer 2 discipline\n" */
-/*? Text: "%s: Hardware IP fragmentation not supported on %s\n" */
 /*? Text: "%s: IPv6 not supported on %s\n" */
 /*? Text: "%s: VLAN not supported on %s\n" */
 /*? Text: "%s: Inbound source MAC-address not supported on %s\n" */
 /*? Text: "%s: IPV6 enabled\n" */
 /*? Text: "%s: ARP processing not supported on %s!\n" */
-/*? Text: "%s: Hardware IP fragmentation enabled \n" */
-/*? Text: "%s: set adapter parameters not supported.\n" */
 /*? Text: "%s: VLAN enabled\n" */
 /*? Text: "register layer 3 discipline\n" */
-/*? Text: "%s: Outbound TSO enabled\n" */
 /*? Text: "%s: Broadcast not supported on %s\n" */
-/*? Text: "%s: Outbound TSO not supported on %s\n" */
 /*? Text: "%s: Inbound HW Checksumming not supported on %s,\ncontinuing using Inbound SW Checksumming\n" */
 /*? Text: "%s: Using no checksumming on %s.\n" */
 /*? Text: "%s: Broadcast enabled\n" */
 /*? Text: "%s: Multicast not supported on %s\n" */
 /*? Text: "%s: Using SW checksumming on %s.\n" */
-/*? Text: "%s: HW Checksumming (%sbound) enabled\n" */
+/*? Text: "%s: HW Checksumming (%sbound IPv%d) enabled\n" */
 /*? Text: "unregister layer 3 discipline\n" */
 /*? Text: "%s: Multicast enabled\n" */
 /*? Text: "%s: QDIO data connection isolation is deactivated\n" */
@@ -966,3 +916,4 @@
  * sysfs attribute of the device.
  */
 /*? Text: "%s: %d output lines suppressed due to ratelimiting\n" */
+/*? Text: "%s: SME is active, device will require DMA bounce buffers\n" */

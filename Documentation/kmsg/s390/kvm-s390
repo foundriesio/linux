@@ -1,0 +1,41 @@
+/*?
+ * Text: "SIE is not available\n"
+ * Severity: Informational
+ * Description:
+ * The Linux instance does not support the Start Interpretive Execution
+ * (SIE) instruction. KVM hosts require this instruction.
+ * User action:
+ * If you need to set up a KVM host, use a Linux instance that supports
+ * SIE. The kvm.nested=1 kernel parameter is required for KVM guests
+ * that are to act as KVM hosts.
+ */
+
+/*?
+ * Text: "Nested KVM hosts cannot provide huge pages\n"
+ * Severity: Informational
+ * Description:
+ * The kvm.nested=1 kernel parameter is required for KVM guests that are
+ * to act as KVM hosts. Such nested KVM hosts cannot provide huge memory
+ * pages for their guests.
+ * Therefore, the kvm.hpage=1 kernel parameter cannot be used for nested
+ * KVM hosts.
+ * User action:
+ * Do not combine the kernel parameters kvm.nested=1 and kvm.hpage=1.
+ */
+
+/*?
+ * Text: "A FLIC registration call failed with rc=%d\n"
+ * Severity: Error
+ * Parameter:
+ *   @1: return code of the FLIC registration call
+ * Description:
+ * The registration of the Floating Interrupt Controller Interface (FLIC)
+ * was not successful.
+ * User action:
+ * Reload the kvm kernel module. If the problem persists, gather Linux debug
+ * data and contact your support organization.
+ */
+
+/*? Text: "failed to commit memory region\n" */
+/*? Text: "%s: %d output lines suppressed due to ratelimiting\n" */
+/*? Text: "%s: SME is active, device will require DMA bounce buffers\n" */

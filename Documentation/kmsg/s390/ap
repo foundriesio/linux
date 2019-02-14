@@ -5,7 +5,8 @@
  *   @1: AP  domain index
  * Description:
  * The cryptographic domain specified for the 'domain=' module or kernel
- * parameter must be an integer in the range 0 to 15.
+ * parameter must be an integer in the range 0 to upper_limit.
+ * The upper_limit is machine dependent but at least 15.
  * User action:
  * Reload the cryptographic device driver with a correct module parameter.
  * If the device driver has been compiled into the kernel, correct the value

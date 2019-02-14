@@ -101,4 +101,69 @@
  * Consider assigning more memory
  * to your Linux instance.
  */
+
+/*?
+* Text: "The AUX buffer with %lu pages for the diagnostic-sampling mode is full\n"
+* Severity: Error
+ * Parameter:
+ *   @1: Current AUX buffer size in num of pages
+* Description:
+* The diagnostic-sampling mode of the CPU-measurement sampling facility uses an AUX buffer
+* to hold sampling data until it is consumed by an application, for example, perf.
+* Sample data accumulated faster than the application could consume it until the buffer was full.
+* The current measurements are incomplete.
+* User action:
+* End all performance measurement sessions and discard the measurement data.
+* Repeat your measurements with a larger AUX buffer or a lower sampling frequency.
+* If you are using perf, you can set the buffer size with the -m option and the sampling frequency
+* with the -F option.
+*/
+
+/*?
+* Text: "Sample data caused the AUX buffer with %lu pages to overflow\n"
+* Severity: Error
+ * Parameter:
+ *   @1: Current AUX buffer size in num of pages
+* Description:
+* The CPU-measurement sampling facility uses an AUX buffer
+* to hold sampling data until it is consumed by an application, for example, perf.
+* The remaining buffer space is not sufficient for the current sample.
+* The overflowing sample was dropped. The current measurements are incomplete.
+* User action:
+* End all performance measurement sessions and discard the measurement data.
+* Repeat your measurements with a larger AUX buffer or a lower sampling frequency.
+* If you are using perf, you can set the buffer size with the -m option and the sampling frequency
+* with the -F option.
+*/
+
+/*?
+* Text: "AUX buffer size (%i pages) is larger than the maximum sampling buffer limit\n"
+* Severity: Error
+ * Parameter:
+ *   @1: Current AUX buffer size in num of pages
+* Description:
+* The CPU-measurement sampling facility uses an AUX buffer
+* to hold sampling data until it is consumed by an application, for example, perf.
+* The AUX buffer size must not exceed the maximum sampling buffer limit.
+* User action:
+* Repeat your measurements with a smaller AUX buffer.
+* If you are using perf, you can set the buffer size with the -m option.
+* Use lscpumf to see the maximum sampling buffer size.
+*/
+
+/*?
+* Text: "AUX buffer size (%i pages) is less than the minimum sampling buffer limit\n"
+* Severity: Error
+ * Parameter:
+ *   @1: Current AUX buffer size in num of pages
+* Description:
+* The CPU-measurement sampling facility uses an AUX buffer
+* to hold sampling data until it is consumed by an application, for example, perf.
+* The AUX buffer size must not be smaller than the minimum sampling buffer
+* limit.
+* User action:
+* Repeat your measurements with a larger AUX buffer.
+* If you are using perf, you can set the buffer size with the -m option.
+* Use lscpumf to see the minimum sampling buffer size.
+*/
 /*? Text: "%s: %d output lines suppressed due to ratelimiting\n" */

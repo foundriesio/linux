@@ -1,0 +1,5 @@
+/*? Text: "Running on CPU %d\n" */
+/*? Text: "exit time (%s): min %llu avg: %llu max: %llu\n" */
+/*? Text: "--------- TIMING TEST MODULE STARTED ------------\n" */
+/*? Text: "--------- TIMING TEST MODULE ENDED ------------\n" */
+/*? Text: "--------- TIMING TEST MODULE STOPPED ------------\n" */

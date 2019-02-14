@@ -605,6 +605,24 @@
  */
 
 /*?
+ * Text: "%s: LUN 0x%016Lx on port 0x%016Lx is already in use by CSS%d, MIF Image ID %x\n"
+ * Severity: Warning
+ * Parameter:
+ *   @1: bus ID of the zfcp device
+ *   @2: LUN
+ *   @3: remote port WWPN
+ *   @4: channel subsystem ID
+ *   @5: MIF Image ID of the LPAR
+ * Description:
+ * The SCSI device at the indicated LUN is already in use by another system.
+ * Your setup is not using NPIV, so only one system at a time can use the
+ * SCSI device.
+ * User action:
+ * Ensure that the other system stops using the device before trying to use it.
+ * If you really want to share a SCSI device, use NPIV.
+ */
+
+/*?
  * Text: "%s: No handle is available for LUN 0x%016Lx on port 0x%016Lx\n"
  * Severity: Warning
  * Parameter:
@@ -652,6 +670,20 @@
  * The control-data-block (CDB) length field in a SCSI request is not valid or
  * too large for the FCP adapter. The zfcp device driver closed down the SCSI
  * device at the indicated LUN.
+ * User action:
+ * Gather Linux debug data and report this problem to your support organization.
+ */
+
+/*?
+ * Text: "%s: Incorrect FCP_CMND length %d, FCP device closed\n"
+ * Severity: Error
+ * Parameter:
+ *   @1: bus ID of the zfcp device
+ *   @2: value in length field
+ * Description:
+ * The FCP command length field in an FCP request is not valid or
+ * too large for the FCP adapter. The zfcp device driver closed down the FCP
+ * device.
  * User action:
  * Gather Linux debug data and report this problem to your support organization.
  */
@@ -707,3 +739,16 @@
  * support organization of the storage system.
  */
 /*? Text: "%s: %d output lines suppressed due to ratelimiting\n" */
+/*? Text: "%s: SME is active, device will require DMA bounce buffers\n" */
+/*? Text: "Invalid address limit on user-mode return" */
+
+/*?
+ * Text: "DIX is enabled. It is experimental and might cause problems\n"
+ * Severity: Warning
+ * Description:
+ * DIX (data integrity extensions) is enabled and can cause
+ * I/O stalls, endless loops, kernel panics, or I/O errors.
+ * User action:
+ * If you encounter I/O problems, try disabling DIX by setting the
+ * zfcp.dix kernel parameter or dix module parameter to 0.
+ */
