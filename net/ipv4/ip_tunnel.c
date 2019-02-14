@@ -1062,6 +1062,17 @@ static void ip_tunnel_destroy(struct ip_tunnel_net *itn, struct list_head *head,
 	}
 }
 
+void ip_tunnel_delete_net(struct ip_tunnel_net *itn, struct rtnl_link_ops *ops)
+{
+	LIST_HEAD(list);
+
+	rtnl_lock();
+	ip_tunnel_destroy(itn, &list, ops);
+	unregister_netdevice_many(&list);
+	rtnl_unlock();
+}
+EXPORT_SYMBOL_GPL(ip_tunnel_delete_net);
+
 void ip_tunnel_delete_nets(struct list_head *net_list, unsigned int id,
 			   struct rtnl_link_ops *ops)
 {
