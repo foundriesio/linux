@@ -3010,7 +3010,7 @@
 		reg-names = "mbox_0", "mbox_1", "code_mem", "data_mem", "config";
 		clocks = <&clk_fbus FBUS_CMBUS>;
 		tcc_cm_bus = <&cm_bus>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	videoinput0: videoinput@0 {
@@ -3026,7 +3026,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "okay";
+		status		= "disabled";
 	};
 
 	videoinput1: videoinput@1 {
