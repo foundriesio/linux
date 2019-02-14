@@ -285,6 +285,10 @@ int __init of_setup_earlycon(const struct earlycon_id *match,
 		}
 	}
 
+	val = of_get_flat_dt_prop(node, "clock-frequency", NULL);
+	if (val)
+		port->uartclk = be32_to_cpu(*val);
+
 	if (options) {
 		strlcpy(early_console_dev.options, options,
 			sizeof(early_console_dev.options));
