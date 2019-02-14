@@ -104,10 +104,7 @@
 #define RADIX_VMALLOC_START	RADIX_KERN_VIRT_START
 #define RADIX_VMALLOC_SIZE	(RADIX_KERN_VIRT_SIZE >> 2)
 #define RADIX_VMALLOC_END	(RADIX_VMALLOC_START + RADIX_VMALLOC_SIZE)
-/*
- * Defines the address of the vmemap area, in its own region on
- * hash table CPUs.
- */
+
 #define RADIX_VMEMMAP_BASE		(RADIX_VMALLOC_END)
 
 #define RADIX_KERN_IO_START	(RADIX_KERN_VIRT_START + (RADIX_KERN_VIRT_SIZE >> 1))
