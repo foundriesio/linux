@@ -131,6 +131,16 @@
 				SC_P_FLEXCAN2_TX_ADMA_UART3_TX	0x06000020
 			>;
 		};
+		pinctrl_lpuart3_ctrl: lpuart3ctrlgrp {
+			fsl,pins = <
+				SC_P_MIPI_DSI1_GPIO0_01_LSIO_GPIO2_IO00 0x00000020 /* DTR */
+				SC_P_SAI1_RXD_LSIO_GPIO0_IO29		0x00000020 /* CTS */
+				SC_P_SAI1_RXC_LSIO_GPIO0_IO30		0x00000020 /* RTS */
+				SC_P_CSI_RESET_LSIO_GPIO3_IO03		0x00000020 /* DSR */
+				SC_P_USDHC1_CD_B_LSIO_GPIO4_IO22	0x00000020 /* DCD */
+				SC_P_CSI_EN_LSIO_GPIO3_IO02		0x00000020 /* RI */
+			>;
+		};
 
 		pinctrl_fec1: fec1grp {
 			fsl,pins = <
@@ -552,7 +562,7 @@
 
 &lpuart3 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpuart3>;
+	pinctrl-0 = <&pinctrl_lpuart3>, <&pinctrl_lpuart3_ctrl>;
 	status = "okay";
 };
 
