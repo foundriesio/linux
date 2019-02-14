@@ -147,6 +147,13 @@ struct net {
 #endif
 	struct sock		*diag_nlsk;
 	atomic_t		fnhe_genid;
+#ifndef __GENKSYMS__
+	struct {
+		struct hlist_head head;
+		spinlock_t	lock;
+		u32		seq;
+	} ip6addrlbl_table;
+#endif
 };
 
 #include <linux/seq_file_net.h>

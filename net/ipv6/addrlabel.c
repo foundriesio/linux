@@ -152,7 +152,7 @@ static struct ip6addrlbl_entry *__ipv6_addr_label(struct net *net,
 {
 	struct ip6addrlbl_entry *p;
 
-	hlist_for_each_entry_rcu(p, &net->ipv6.ip6addrlbl_table.head, list) {
+	hlist_for_each_entry_rcu(p, &net->ip6addrlbl_table.head, list) {
 		if (__ip6addrlbl_match(p, addr, type, ifindex))
 			return p;
 	}
@@ -233,7 +233,7 @@ static int __ip6addrlbl_add(struct net *net, struct ip6addrlbl_entry *newp,
 	ADDRLABEL(KERN_DEBUG "%s(newp=%p, replace=%d)\n", __func__, newp,
 		  replace);
 
-	hlist_for_each_entry_safe(p, n,	&net->ipv6.ip6addrlbl_table.head, list) {
+	hlist_for_each_entry_safe(p, n,	&net->ip6addrlbl_table.head, list) {
 		if (p->prefixlen == newp->prefixlen &&
 		    p->ifindex == newp->ifindex &&
 		    ipv6_addr_equal(&p->prefix, &newp->prefix)) {
@@ -254,10 +254,10 @@ static int __ip6addrlbl_add(struct net *net, struct ip6addrlbl_entry *newp,
 	if (last)
 		hlist_add_behind_rcu(&newp->list, &last->list);
 	else
-		hlist_add_head_rcu(&newp->list, &net->ipv6.ip6addrlbl_table.head);
+		hlist_add_head_rcu(&newp->list, &net->ip6addrlbl_table.head);
 out:
 	if (!ret)
-		net->ipv6.ip6addrlbl_table.seq++;
+		net->ip6addrlbl_table.seq++;
 	return ret;
 }
 
@@ -276,9 +276,9 @@ static int ip6addrlbl_add(struct net *net,
 	newp = ip6addrlbl_alloc(prefix, prefixlen, ifindex, label);
 	if (IS_ERR(newp))
 		return PTR_ERR(newp);
-	spin_lock(&net->ipv6.ip6addrlbl_table.lock);
+	spin_lock(&net->ip6addrlbl_table.lock);
 	ret = __ip6addrlbl_add(net, newp, replace);
-	spin_unlock(&net->ipv6.ip6addrlbl_table.lock);
+	spin_unlock(&net->ip6addrlbl_table.lock);
 	if (ret)
 		ip6addrlbl_free(newp);
 	return ret;
@@ -296,7 +296,7 @@ static int __ip6addrlbl_del(struct net *net,
 	ADDRLABEL(KERN_DEBUG "%s(prefix=%pI6, prefixlen=%d, ifindex=%d)\n",
 		  __func__, prefix, prefixlen, ifindex);
 
-	hlist_for_each_entry_safe(p, n, &net->ipv6.ip6addrlbl_table.head, list) {
+	hlist_for_each_entry_safe(p, n, &net->ip6addrlbl_table.head, list) {
 		if (p->prefixlen == prefixlen &&
 		    p->ifindex == ifindex &&
 		    ipv6_addr_equal(&p->prefix, prefix)) {
@@ -320,9 +320,9 @@ static int ip6addrlbl_del(struct net *net,
 		  __func__, prefix, prefixlen, ifindex);
 
 	ipv6_addr_prefix(&prefix_buf, prefix, prefixlen);
-	spin_lock(&net->ipv6.ip6addrlbl_table.lock);
+	spin_lock(&net->ip6addrlbl_table.lock);
 	ret = __ip6addrlbl_del(net, &prefix_buf, prefixlen, ifindex);
-	spin_unlock(&net->ipv6.ip6addrlbl_table.lock);
+	spin_unlock(&net->ip6addrlbl_table.lock);
 	return ret;
 }
 
@@ -334,8 +334,8 @@ static int __net_init ip6addrlbl_net_init(struct net *net)
 
 	ADDRLABEL(KERN_DEBUG "%s\n", __func__);
 
-	spin_lock_init(&net->ipv6.ip6addrlbl_table.lock);
-	INIT_HLIST_HEAD(&net->ipv6.ip6addrlbl_table.head);
+	spin_lock_init(&net->ip6addrlbl_table.lock);
+	INIT_HLIST_HEAD(&net->ip6addrlbl_table.head);
 
 	for (i = 0; i < ARRAY_SIZE(ip6addrlbl_init_table); i++) {
 		int ret = ip6addrlbl_add(net,
@@ -356,12 +356,12 @@ static void __net_exit ip6addrlbl_net_exit(struct net *net)
 	struct hlist_node *n;
 
 	/* Remove all labels belonging to the exiting net */
-	spin_lock(&net->ipv6.ip6addrlbl_table.lock);
-	hlist_for_each_entry_safe(p, n, &net->ipv6.ip6addrlbl_table.head, list) {
+	spin_lock(&net->ip6addrlbl_table.lock);
+	hlist_for_each_entry_safe(p, n, &net->ip6addrlbl_table.head, list) {
 		hlist_del_rcu(&p->list);
 		ip6addrlbl_put(p);
 	}
-	spin_unlock(&net->ipv6.ip6addrlbl_table.lock);
+	spin_unlock(&net->ip6addrlbl_table.lock);
 }
 
 static struct pernet_operations ipv6_addr_label_ops = {
@@ -477,10 +477,10 @@ static int ip6addrlbl_dump(struct sk_buff *skb, struct netlink_callback *cb)
 	int err;
 
 	rcu_read_lock();
-	hlist_for_each_entry_rcu(p, &net->ipv6.ip6addrlbl_table.head, list) {
+	hlist_for_each_entry_rcu(p, &net->ip6addrlbl_table.head, list) {
 		if (idx >= s_idx) {
 			err = ip6addrlbl_fill(skb, p,
-					      net->ipv6.ip6addrlbl_table.seq,
+					      net->ip6addrlbl_table.seq,
 					      NETLINK_CB(cb->skb).portid,
 					      cb->nlh->nlmsg_seq,
 					      RTM_NEWADDRLABEL,
@@ -537,7 +537,7 @@ static int ip6addrlbl_get(struct sk_buff *in_skb, struct nlmsghdr *nlh,
 	p = __ipv6_addr_label(net, addr, ipv6_addr_type(addr), ifal->ifal_index);
 	if (p && !ip6addrlbl_hold(p))
 		p = NULL;
-	lseq = net->ipv6.ip6addrlbl_table.seq;
+	lseq = net->ip6addrlbl_table.seq;
 	rcu_read_unlock();
 
 	if (!p) {
