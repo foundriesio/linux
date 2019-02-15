@@ -29,6 +29,7 @@
 
 #ifdef CONFIG_DMA_CMA
 #include <linux/cma.h>
+#include <linux/highmem.h>
 #endif
 
 #define MAX_PMAPS 64
@@ -111,8 +112,9 @@ extern struct cma *dma_contiguous_default_area;
 static __u32 pmap_cma_alloc(pmap_t *info)
 {
 	size_t count = info->size >> PAGE_SHIFT;
-	unsigned int align = get_order(info->size);
-	struct page *page = cma_alloc(dma_contiguous_default_area, count, align, GFP_KERNEL);
+	struct page *page = cma_alloc(dma_contiguous_default_area, count, 0, GFP_USER);
+	struct page **pages = kmalloc(sizeof(struct page *) * count, GFP_KERNEL);
+	int i;
 
 	if (!page) {
 		pr_err("%s: cma alloc failed for %s\n", __func__, info->name);
@@ -120,7 +122,11 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 	}
 
 	info->base = (__u32) page_to_phys(page);
-	info->v_base = (__u32) page_to_virt(page);
+	for (i = 0; i < count; i++) {
+		pages[i] = nth_page(page, i);
+	}
+	info->v_base = (__u32) vmap(pages, count, VM_MAP, PAGE_KERNEL);
+	kfree(pages);
 
 	{
 		struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
@@ -144,6 +150,8 @@ static int pmap_cma_release(pmap_t *info)
 {
 	unsigned int count = info->size >> PAGE_SHIFT;
 	struct page *page = phys_to_page(info->base);
+
+	vunmap((const void *) info->v_base);
 
 	if (!cma_release(dma_contiguous_default_area, page, count)) {
 		pr_err("%s: cma release failed for %s\n", __func__, info->name);
