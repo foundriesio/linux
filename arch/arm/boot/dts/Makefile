@@ -1099,7 +1099,7 @@ dtb-$(CONFIG_ARCH_TCC897X) += \
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1.dtb \
 	tcc/tcc8030-linux-lpd4321_sv0.1_for_t-sound.dtb \
-	tcc/tcc8030-linux-lpd4321_sv0.1_for_sdr.dtb \
+	tcc/tcc8030-linux-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc/tcc8030-linux-dual-lpd4321-cluster_sv0.1.dtb \
 	tcc/tcc8030-linux-dual-lpd4321-ivi_sv0.1.dtb
 dtb-$(CONFIG_TCC803X_CA7S) += \
