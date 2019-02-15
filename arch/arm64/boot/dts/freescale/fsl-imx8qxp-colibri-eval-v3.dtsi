@@ -91,7 +91,7 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog1>, <&pinctrl_hog2>;
+	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>;
 	imx8qxp-colibri {
 
 		pinctrl_ad7879_int: ad7879-int { /* TOUCH Interrupt */
@@ -144,8 +144,8 @@
 
 		pinctrl_fec1: fec1grp {
 			fsl,pins = <
-				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETB0_PAD      0x000014a0
-				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETB1_PAD      0x000014a0
+				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETB0_PAD      0x000014a0 /* Use pads in 3.3V mode */
+				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETB1_PAD      0x000014a0 /* Use pads in 3.3V mode */
 				SC_P_ENET0_MDC_CONN_ENET0_MDC			0x06000020
 				SC_P_ENET0_MDIO_CONN_ENET0_MDIO			0x06000020
 				SC_P_ENET0_RGMII_TX_CTL_CONN_ENET0_RGMII_TX_CTL 0x00000061
@@ -177,6 +177,12 @@
 		pinctrl_gpio_bl_on: gpio-bl-on {
 			fsl,pins = <
 				SC_P_QSPI0A_DATA3_LSIO_GPIO3_IO12	0x00000040
+			>;
+		};
+
+		pinctrl_hog0: hog0grp {
+			fsl,pins = <
+				SC_P_COMP_CTL_GPIO_1V8_3V3_GPIORHB_PAD  0x000514a0 /* Use pads in 3.3V mode */
 			>;
 		};
 
