@@ -112,20 +112,24 @@ extern struct cma *dma_contiguous_default_area;
 static __u32 pmap_cma_alloc(pmap_t *info)
 {
 	size_t count = info->size >> PAGE_SHIFT;
-	struct page *page = cma_alloc(dma_contiguous_default_area, count, 0, GFP_USER);
-	struct page **pages = kmalloc(sizeof(struct page *) * count, GFP_KERNEL);
+	struct page **pages, *page;
 	int i;
+
+	page = cma_alloc(dma_contiguous_default_area, count, 0, GFP_USER);
 
 	if (!page) {
 		pr_err("%s: cma alloc failed for %s\n", __func__, info->name);
 		return 0;
 	}
 
-	info->base = (__u32) page_to_phys(page);
-	for (i = 0; i < count; i++) {
+	pages = kmalloc(sizeof(struct page *) * count, GFP_KERNEL);
+
+	for (i = 0; i < count; i++)
 		pages[i] = nth_page(page, i);
-	}
+
+	info->base = (__u32) page_to_phys(page);
 	info->v_base = (__u32) vmap(pages, count, VM_MAP, PAGE_KERNEL);
+
 	kfree(pages);
 
 	{
