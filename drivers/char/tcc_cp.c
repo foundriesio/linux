@@ -270,7 +270,7 @@ static int tcc_cp_ctrl_probe(struct platform_device *pdev)
         if (temp == 2)
         {
 			cp_dbg("3.0 type\n");
-			gCpVersion = 0x300;
+			gCpVersion = 0x30;
         }
 		else if (temp == 1) 
         {
@@ -285,7 +285,7 @@ static int tcc_cp_ctrl_probe(struct platform_device *pdev)
 		else
 			cp_dbg("bad Auth CP type!\n");
 	} else {
-		gCpVersion = 0x300;	// default 2.0C type
+		gCpVersion = 0x30;	// default 3.0 type
 		cp_dbg("default 3.0 type\n");
 	}
 
