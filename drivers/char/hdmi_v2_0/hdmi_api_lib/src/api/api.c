@@ -108,6 +108,17 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                         break;
                 }
 
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                }
+
                 // Reset HDMI
                 dwc_hdmi_hw_reset(dev, 1);
                 dwc_hdmi_hw_reset(dev, 0);
@@ -220,18 +231,33 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 {
         int ret = -1;
 
-        videoParams_t *videoParams = (videoParams_t *)(dev!=NULL)?dev->videoParam:NULL;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
 
-        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                ret = 0;
+
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        break;
+                }
+
                 /* Disable HDMI PHY clock */
                 dwc_hdmi_phy_standby(dev);
                 clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
-        }
-	ret = 0;
 
-        if(dev != NULL) {
+                /* HDCP */
                 hdcp_statusinit(dev);
-        }
+        } while(0);
 
         return ret ;
 }
@@ -239,8 +265,25 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
-        if(dev != NULL) {
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
+
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        break;
+                }
+
                 packets_AvMute(dev, enable);
-        }
+        } while(0);
 }
 EXPORT_SYMBOL(hdmi_api_avmute);

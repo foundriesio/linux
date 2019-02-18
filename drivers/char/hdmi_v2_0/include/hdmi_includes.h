@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.2.0d"
+#define HDMI_DRV_VERSION        "4.14_1.2.1d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.2.0"
+#define HDMI_DRV_VERSION        "4.14_1.2.1"
 #endif
 
 // HDMI COMPONENTS
@@ -169,7 +169,6 @@ struct drv_enable_entry
 #define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Suspend/Resume
 
 #define HDMI_TX_STATUS_SCDC_CHECK      20
-
 
 struct irq_dev_id {
         void *dev;
@@ -383,5 +382,8 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 /**
  * hdmi misc api
  */
+int dwc_hdmi_is_suspended(struct hdmi_tx_dev *dev);
+void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on);
 void dwc_hdmi_set_hdcp_keepout(struct hdmi_tx_dev *dev);
+
 #endif /* __INCLUDES_H__ */
