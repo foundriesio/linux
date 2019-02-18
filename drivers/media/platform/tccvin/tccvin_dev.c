@@ -228,7 +228,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		val_cifport0 &= ~(0xF << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
 		val_cifport0 |= (vdev->cif.cif_port << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
 
-		dlog("val_cifport0: %ld\n", val_cifport0);
+		dlog("val_cifport0: 0x%lx\n", val_cifport0);
 	} else {
 		log("ERROR: The CIF port node is NULL\n");
 		return -ENODEV;
@@ -306,6 +306,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 
 	// WDMA
 	vdev->cif.vioc_path.wdma = -1;
+	vdev->cif.vioc_irq_num   = -1;
 	vioc_node = of_parse_phandle(main_node, "wdma", 0);
 	if(vioc_node != NULL) {
 		of_property_read_u32_index(main_node, "wdma", 1, &vdev->cif.vioc_path.wdma);
@@ -313,6 +314,10 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 			address = VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 			dlog("%10s[%2d]: 0x%p\n", "WDMA", get_vioc_index(vdev->cif.vioc_path.wdma), address);
 		}
+
+		// WDMA interrupt
+		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(vioc_node, get_vioc_index(vdev->cif.vioc_path.wdma));
+		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 	} else {
 		log("ERROR: \"wdma\" node is not found.\n");
 		return -ENODEV;
@@ -486,7 +491,7 @@ int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 	volatile void __iomem * cifport_addr	= vdev->cif.cifport_addr;
 	unsigned int			cifport_num 	= vdev->cif.cif_port;
 
-	dlog("cifport address: 0x%p value : 0x%lu, index: %d\n", cifport_addr, val_cifport0, cifport_num);
+	dlog("cifport address: 0x%p value : 0x%lx, index: %d\n", cifport_addr, val_cifport0, cifport_num);
 
 	__raw_writel(val_cifport0, cifport_addr);
 
@@ -1191,16 +1196,13 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 }
 
 int tccvin_request_irq(tccvin_dev_t * vdev) {
-	struct device_node	* main_node	= vdev->plt_dev->dev.of_node;
-	struct device_node	* irq_node	= NULL;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	irq_node = of_parse_phandle(main_node, "wdma", 0);
-	if(irq_node) {
-		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(irq_node, get_vioc_index(vdev->cif.vioc_path.wdma));
-		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == DISABLE)) {
+		vdev->cif.vioc_intr.id   = -1;
+		vdev->cif.vioc_intr.bits = -1;
 
 #ifdef CONFIG_ARCH_TCC803X
 		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
@@ -1213,9 +1215,7 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFF_MASK;
 
 		if(vdev->cif.vioc_irq_reg == DISABLE) {
-			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			ret = request_irq(vdev->cif.vioc_irq_num, tccvin_wdma_isr, IRQF_SHARED, vdev->vid_dev->name, vdev);
-			vioc_intr_enable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vdev->cif.vioc_irq_reg = ENABLE;
 		} else {
 			log("ERROR: The irq(%d) is already registered.\n", vdev->cif.vioc_irq_num);
@@ -1231,21 +1231,13 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 }
 
 int tccvin_free_irq(tccvin_dev_t * vdev) {
-	struct device_node * main_node	= vdev->plt_dev->dev.of_node;
-	struct device_node * irq_node	= NULL;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	irq_node = of_parse_phandle(main_node, "wdma", 0);
-	if(irq_node) {
-		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(irq_node, get_vioc_index(vdev->cif.vioc_path.wdma));
-		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
-
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == ENABLE)) {
 		if(vdev->cif.vioc_irq_reg == ENABLE) {
 			free_irq(vdev->cif.vioc_irq_num, vdev);
-			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
-			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vdev->cif.vioc_irq_reg = DISABLE;
 		} else {
 			log("ERROR: The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
@@ -1253,6 +1245,40 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 		}
 	} else {
 		log("ERROR: The irq node is NOT found.\n");
+		return -1;
+	}
+
+	FUNCTION_OUT
+	return ret;
+}
+
+int tccvin_enable_irq(tccvin_dev_t * vdev) {
+	int					ret			= 0;
+
+	FUNCTION_IN
+
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == ENABLE)) {
+		vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+		vioc_intr_enable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+	} else {
+		log("ERROR: The irq node is NOT found or the interrupt is not registered.\n");
+		return -1;
+	}
+
+	FUNCTION_OUT
+	return ret;
+}
+
+int tccvin_disable_irq(tccvin_dev_t * vdev) {
+	int					ret			= 0;
+
+	FUNCTION_IN
+
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == ENABLE)) {
+		vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+		vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+	} else {
+		log("ERROR: The irq node is NOT found or the interrupt is not registered.\n");
 		return -1;
 	}
 
@@ -1371,12 +1397,26 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	// init v4l2 resources
 	mutex_init(&vdev->v4l2.lock);
 
+	ret = tccvin_request_irq(vdev);
+	if(ret < 0) {
+		log("ERROR: Request IRQ\n");
+		return ret;
+	}
+
 	FUNCTION_OUT
 	return ret;
 }
 
 int tccvin_v4l2_deinit(tccvin_dev_t * vdev) {
+	int		ret = 0;
+
 	FUNCTION_IN
+
+	ret = tccvin_free_irq(vdev);
+	if(ret < 0) {
+		log("ERROR: Free IRQ\n");
+		return ret;
+	}
 
 	// deinit v4l2 resources
 	mutex_destroy(&(vdev->v4l2.lock));
@@ -1388,7 +1428,7 @@ int tccvin_v4l2_deinit(tccvin_dev_t * vdev) {
 	tccvin_put_clock(vdev);
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
 
 void tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap) {
@@ -1569,9 +1609,10 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 	int					display_buf_entry_count	= 0;
 	int					ret			= 0;
 
-	FUNCTION_IN
+//	FUNCTION_IN
 
 	mutex_lock(&vdev->v4l2.lock);
+
 	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
 	dlog("disp count: %d\n", display_buf_entry_count);
 
@@ -1603,7 +1644,7 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 		ret = -ENOMEM;
 	}
 
-	FUNCTION_OUT
+//	FUNCTION_OUT
 	return ret;
 }
 
@@ -1647,7 +1688,7 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 		init_waitqueue_head(&vdev->v4l2.frame_wait);
 		INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
 
-		ret = tccvin_request_irq(vdev);
+		ret = tccvin_enable_irq(vdev);
 		if(ret < 0) {
 			log("ERROR: Request IRQ\n");
 			return ret;
@@ -1671,7 +1712,7 @@ int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int * preview_method) {
 	FUNCTION_IN
 
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
-		ret = tccvin_free_irq(vdev);
+		ret = tccvin_disable_irq(vdev);
 		if(ret < 0) {
 			log("ERROR: Free IRQ\n");
 			return ret;
