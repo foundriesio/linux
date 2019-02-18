@@ -58,7 +58,6 @@ extern int dwc_hdmi_get_video_dtd(dtd_t *hdmi_dtd, uint32_t code, uint32_t hz);
 // HDMI_V2 MISC
 extern void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
 extern void dwc_hdmi_power_off(struct hdmi_tx_dev *dev);
-extern void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on);
 
 extern encoding_t hdmi_get_current_output_encoding(struct hdmi_tx_dev *dev);
 extern color_depth_t hdmi_get_current_output_depth(struct hdmi_tx_dev *dev, encoding_t encoding);
