@@ -22,7 +22,6 @@
 
 irqchip-gic-v3-its-Move-pending-table-allocation-to-.patch
 kthread-convert-worker-lock-to-raw-spinlock.patch
-pinctrl-bcm2835-Use-raw-spinlock-for-RT-compatibilit.patch
 crypto-caam-qi-simplify-CGR-allocation-freeing.patch
 sched-fair-Robustify-CFS-bandwidth-timer-locking.patch
 
@@ -37,7 +36,6 @@ cgroup-use-irqsave-in-cgroup_rstat_flush_locked.patch
 fscache-initialize-cookie-hash-table-raw-spinlocks.patch
 Drivers-hv-vmbus-include-header-for-get_irq_regs.patch
 percpu-include-irqflags.h-for-raw_local_irq_save.patch
-perf-x86-intel-Delay-memory-deallocation-until-cpu_d.patch
 
 ############################################################
 # Ready for posting
