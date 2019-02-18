@@ -1670,7 +1670,6 @@
 		clock-names = "otg";
 		phy = <&dwc_otg_phy>;
 		phy-names = "usb2-phy";
-		telechips,mhst_phy = <&mhst_phy>;
 		dr_mode = "host";
 		status= "disabled";
 	};
