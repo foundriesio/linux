@@ -28,9 +28,13 @@
 #endif
 
 #ifdef CONFIG_DMA_CMA
-#include <linux/cma.h>
+#include <linux/dma-mapping.h>
 #include <linux/highmem.h>
 #endif
+
+#define PMAP_DEV_NAME "pmap"
+
+struct device *pmap_device;
 
 #define MAX_PMAPS 64
 #define MAX_PMAP_GROUPS 4
@@ -107,30 +111,19 @@ static pmap_t *pmap_find_info_by_name(const char *name)
 }
 
 #ifdef CONFIG_DMA_CMA
-extern struct cma *dma_contiguous_default_area;
-
 static __u32 pmap_cma_alloc(pmap_t *info)
 {
-	size_t count = info->size >> PAGE_SHIFT;
-	struct page **pages, *page;
-	int i;
+	dma_addr_t phys;
+	void *virt = dma_alloc_attrs(pmap_device, info->size, &phys, GFP_KERNEL,
+			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
 
-	page = cma_alloc(dma_contiguous_default_area, count, 0, GFP_USER);
-
-	if (!page) {
+	if (!virt) {
 		pr_err("%s: cma alloc failed for %s\n", __func__, info->name);
 		return 0;
 	}
 
-	pages = kmalloc(sizeof(struct page *) * count, GFP_KERNEL);
-
-	for (i = 0; i < count; i++)
-		pages[i] = nth_page(page, i);
-
-	info->base = (__u32) page_to_phys(page);
-	info->v_base = (__u32) vmap(pages, count, VM_MAP, PAGE_KERNEL);
-
-	kfree(pages);
+	info->base = (__u32) phys;
+	info->v_base = (__u32) virt;
 
 	{
 		struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
@@ -152,15 +145,8 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 
 static int pmap_cma_release(pmap_t *info)
 {
-	unsigned int count = info->size >> PAGE_SHIFT;
-	struct page *page = phys_to_page(info->base);
-
-	vunmap((const void *) info->v_base);
-
-	if (!cma_release(dma_contiguous_default_area, page, count)) {
-		pr_err("%s: cma release failed for %s\n", __func__, info->name);
-		return 0;
-	}
+	dma_free_attrs(pmap_device, info->size, info->v_base, info->base,
+			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
 
 	info->base = ~(0);
 	info->v_base = 0;
@@ -397,6 +383,32 @@ static const struct file_operations proc_pmap_fops = {
 };
 #endif
 
+static const struct file_operations pmap_fops = {
+	.owner = THIS_MODULE,
+};
+
+static int pmap_device_create(void) {
+	int major, ret;
+	struct class *class;
+
+	major = register_chrdev(0, PMAP_DEV_NAME, &pmap_fops);
+	if (major < 0)
+		return major;
+
+	class = class_create(THIS_MODULE, PMAP_DEV_NAME);
+
+	pmap_device = device_create(class, NULL, MKDEV(major, 0), NULL, PMAP_DEV_NAME);
+	if (IS_ERR(pmap_device)) {
+		class_destroy(class);
+		unregister_chrdev(major, PMAP_DEV_NAME);
+		return PTR_ERR(pmap_device);
+	}
+
+	ret = dma_set_coherent_mask(pmap_device, DMA_BIT_MASK(32));
+
+	return ret;
+}
+
 static int __init tcc_pmap_init(void)
 {
 	struct device_node *np;
@@ -404,12 +416,15 @@ static int __init tcc_pmap_init(void)
 	int i, groups = 0;
 	pmap_secured_groups_t secured_groups[MAX_PMAP_GROUPS];
 	struct pmap_entry *entry = NULL;
+	int ret;
 
 #ifdef CONFIG_PROC_FS
-	if (!proc_create("pmap", S_IRUGO, NULL, &proc_pmap_fops)) {
+	if (!proc_create("pmap", S_IRUGO, NULL, &proc_pmap_fops))
 		return -ENOMEM;
-	}
 #endif
+
+	if ((ret = pmap_device_create()) < 0)
+		return ret;
 
 	/*
 	 * Calculate total size for ...
