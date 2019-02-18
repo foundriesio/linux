@@ -51,6 +51,13 @@ config SPI_MASTER
 
 if SPI_MASTER
 
+config SPI_MEM
+	bool "SPI memory extension"
+	help
+	  Enable this option if you want to enable the SPI memory extension.
+	  This extension is meant to simplify interaction with SPI memories
+	  by providing an high-level interface to send memory-like commands.
+
 comment "SPI Master Controller Drivers"
 
 config SPI_ALTERA
@@ -277,6 +284,16 @@ config SPI_FSL_LPSPI
 	depends on ARCH_MXC || COMPILE_TEST
 	help
 	  This enables Freescale i.MX LPSPI controllers in master mode.
+
+config SPI_NXP_FLEXSPI
+	tristate "NXP Flex SPI controller"
+	depends on ARCH_LAYERSCAPE || HAS_IOMEM
+	help
+	  This enables support for the Flex SPI controller in master mode.
+	  Up to four slave devices can be connected on two buses with two
+	  chipselects each.
+	  This controller does not support generic SPI messages and only
+	  supports the high-level SPI memory interface.
 
 config SPI_GPIO
 	tristate "GPIO-based bitbanging SPI Master"
@@ -784,6 +801,18 @@ config SPI_TLE62X0
 
 endif # SPI_MASTER
 
-# (slave support would go here)
+#
+# SLAVE side ... listening to other SPI masters
+#
+
+config SPI_SLAVE
+	bool "SPI slave protocol handlers"
+	help
+	  If your system has a slave-capable SPI controller, you can enable
+	  slave protocol handlers.
+
+if SPI_SLAVE
+
+endif # SPI_SLAVE
 
 endif # SPI
