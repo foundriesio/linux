@@ -165,6 +165,7 @@ struct device_node *ViocConfig_np;
 #if defined(CONFIG_VIOC_AFBCDEC)
 static unsigned int afbc_dec_1st_cfg = 0;
 static unsigned int afbc_dec_vioc_id = VIOC_AFBCDEC0;
+static unsigned int afbc_wdma_need_on = 0; /* 0: no, 1: need */
 #define AFBC_MAX_SURFACE (2)
 #endif
 
@@ -1855,17 +1856,24 @@ static void tca_vioc_configure_DEC100(unsigned int base_addr, struct fb_var_scre
 #endif
 
 #if defined(CONFIG_VIOC_AFBCDEC)
-static void tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
-										volatile void __iomem *pRDMA,
-										unsigned int fmt, unsigned int rdmaPath,
-										unsigned char bSet_Comp, unsigned int bSplitMode, unsigned int bWideMode,
-										unsigned int width, unsigned int height)
+static void
+tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
+			   volatile void __iomem *pRDMA,
+			   volatile void __iomem *pWDMA, unsigned int fmt,
+			   unsigned int rdmaPath, unsigned char bSet_Comp,
+			   unsigned int bSplitMode, unsigned int bWideMode,
+			   unsigned int width, unsigned int height)
 {
 	volatile void __iomem *pAFBC_Dec = VIOC_AFBCDec_GetAddress(vioc_dec_id);
 
 	if(bSet_Comp)
 	{
 		if(!afbc_dec_1st_cfg){
+			if (VIOC_WDMA_IsImageEnable(pWDMA) && VIOC_WDMA_IsContinuousMode(pWDMA)) {
+				attach_data.flag = 0;
+				afbc_wdma_need_on = 1;
+				VIOC_WDMA_SetImageDisable(pWDMA);
+			}
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_CONFIG_AFBCDECPath(vioc_dec_id, rdmaPath, 1);
 			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 1);
@@ -1883,6 +1891,11 @@ static void tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int ba
 	}
 	else {
 		if(afbc_dec_1st_cfg){
+			if (VIOC_WDMA_IsImageEnable(pWDMA) && VIOC_WDMA_IsContinuousMode(pWDMA)) {
+				attach_data.flag = 0;
+				afbc_wdma_need_on = 1;
+				VIOC_WDMA_SetImageDisable(pWDMA);
+			}
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_AFBCDec_TurnOFF(pAFBC_Dec);
 			VIOC_CONFIG_AFBCDECPath(vioc_dec_id, rdmaPath, 0);
@@ -1907,6 +1920,9 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	volatile void __iomem *pWDMA = pdp_data->wdma_info.virt_addr;
+	#endif
 
 	if(var->bits_per_pixel == 32) 	{
 		chroma_en = UI_CHROMA_EN;
@@ -1981,8 +1997,17 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	}
 
 	#if defined(CONFIG_VIOC_AFBCDEC) // to disable
-	if( var->reserved[3] == 0)
-		tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
+    if (var->reserved[3] == 0) {
+        tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, pWDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
+       //TCC803X Android - change UI layer to layer1, disable layer0, AFBCDec enable - prevent FIFO under-run
+            #if defined(CONFIG_ARCH_TCC803X) && defined (CONFIG_ANDROID)
+            pRDMA           = pdp_data->rdma_info[RDMA_FB1].virt_addr;
+            blk_num         = pdp_data->rdma_info[RDMA_FB1].blk_num;
+            lcd_layer       = RDMA_FB1;
+
+            VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[RDMA_FB].virt_addr);
+            #endif
+       }
 	#endif
 
 	// default framebuffer
@@ -2005,7 +2030,12 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset
 	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size
-	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#if defined(CONFIG_VIOC_AFBCDEC)
+    if(!afbc_dec_1st_cfg)
+        VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#else
+    VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#endif
 
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
@@ -2026,7 +2056,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	#endif
 
 	#if defined(CONFIG_VIOC_AFBCDEC)
-	tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
+	tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, pWDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
 
 	if(var->reserved[3] != 0 )
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
@@ -2044,6 +2074,13 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	VIOC_RDMA_SetImageEnable(pRDMA);
 
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	if (afbc_wdma_need_on) {
+		VIOC_WDMA_SetImageEnable(pWDMA, 1);
+		attach_data.flag = 1;
+		afbc_wdma_need_on = 0;
+	}
+	#endif
 //temp pjj because fifo under have to enable rdma before display device on.
 //	if(pdp_data->DispOrder == DD_MAIN)
 //		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
@@ -2080,6 +2117,9 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	unsigned int blk_num=pdp_data->rdma_info[RDMA_FB].blk_num;
 	volatile void __iomem *pRDMA = pdp_data->rdma_info[RDMA_FB].virt_addr;
 	volatile void __iomem *pWMIX = pdp_data->wmixer_info.virt_addr;
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	volatile void __iomem *pWDMA = pdp_data->wdma_info.virt_addr;
+	#endif
 
 	if(var->bits_per_pixel == 32) 	{
 		chroma_en = UI_CHROMA_EN;
@@ -2139,7 +2179,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 
 #if defined(CONFIG_VIOC_AFBCDEC) // to disable
 	if( var->reserved[3] == 0)
-		tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
+		tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, pWDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
 #endif
 
 	/* display 3d ui : side-by-side, top-and-bottom */
@@ -2253,7 +2293,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 #endif
 
 #if defined(CONFIG_VIOC_AFBCDEC)
-	tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
+	tca_vioc_configure_AFBCDEC(afbc_dec_vioc_id, base_addr, pRDMA, pWDMA, fmt, blk_num, var->reserved[3], 1, 0, img_width, img_height);
 
 	if(var->reserved[3] != 0 )
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
@@ -2274,6 +2314,14 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	}
 	VIOC_SC_SetUpdate (pSC);
 	VIOC_RDMA_SetImageEnable(pRDMA);
+
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	if (afbc_wdma_need_on) {
+		VIOC_WDMA_SetImageEnable(pWDMA, 1);
+		attach_data.flag = 1;
+		afbc_wdma_need_on = 0;
+	}
+	#endif
 }
 
 unsigned int tca_fb_sc_m2m(unsigned int base_addr, struct fb_var_screeninfo *var, unsigned int dest_x, unsigned int dest_y)
