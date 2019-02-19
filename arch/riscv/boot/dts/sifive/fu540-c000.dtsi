@@ -166,6 +166,22 @@
 			reg = <0x0 0x10011000 0x0 0x1000>;
 			clocks = <&prci PRCI_CLK_TLCLK>;
 		};
+		pwm0: pwm@10020000 {
+			compatible = "sifive,fu540-c000-pwm", "sifive,pwm0";
+			reg = <0x0 0x10020000 0x0 0x1000>;
+			clocks = <&prci PRCI_CLK_TLCLK>;
+			interrupt-parent = <&plic0>;
+			interrupts = <42 43 44 45>;
+			#pwm-cells = <2>;
+		};
+		pwm1: pwm@10021000 {
+			compatible = "sifive,fu540-c000-pwm", "sifive,pwm0";
+			reg = <0x0 0x10021000 0x0 0x1000>;
+			clocks = <&prci PRCI_CLK_TLCLK>;
+			interrupt-parent = <&plic0>;
+			interrupts = <46 47 48 49>;
+			#pwm-cells = <2>;
+		};
 		plic0: interrupt-controller@c000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
