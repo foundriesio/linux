@@ -70,7 +70,8 @@ described below.
                 Value type: <stringlist>
                 Definition: must contain "riscv", may contain one or
 			    more of "sifive,rocket0", "sifive,e51",
-			    "sifive,e5"
+			    "sifive,e5", "sifive,u54-mc", "sifive,u54",
+			    "sifive,u5"
         - mmu-type:
                 Usage: optional
                 Value type: <string>
