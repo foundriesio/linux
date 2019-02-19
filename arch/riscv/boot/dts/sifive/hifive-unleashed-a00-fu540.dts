@@ -35,5 +35,28 @@
 			clock-frequency = <1000000>;
 			clock-output-names = "rtcclk";
 		};
+		pwmleds {
+			compatible = "pwm-leds";
+			heartbeat {
+				pwms = <&pwm0 0 0>;
+				max-brightness = <255>;
+				linux,default-trigger = "heartbeat";
+			};
+			mtd {
+				pwms = <&pwm0 1 0>;
+				max-brightness = <255>;
+				linux,default-trigger = "mtd";
+			};
+			netdev {
+				pwms = <&pwm0 2 0>;
+				max-brightness = <255>;
+				linux,default-trigger = "netdev";
+			};
+			panic {
+				pwms = <&pwm0 3 0>;
+				max-brightness = <255>;
+				linux,default-trigger = "panic";
+			};
+		};
 	};
 };
