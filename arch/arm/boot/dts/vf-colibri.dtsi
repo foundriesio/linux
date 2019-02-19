@@ -91,9 +91,20 @@
 
 &fec1 {
 	phy-mode = "rmii";
+	phy-handle = <&ethphy>;
 	phy-supply = <&reg_module_3v3>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec1>;
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy: ethernet-phy@0  {
+			reg = <0>;
+			micrel,led-mode = <0>;
+		};
+	};
 };
 
 &i2c0 {
