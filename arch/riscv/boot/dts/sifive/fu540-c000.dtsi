@@ -193,6 +193,39 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
+		qspi0: spi@10040000 {
+			compatible = "sifive,fu540-c000-spi", "sifive,spi0";
+			reg = <0x0 0x10040000 0x0 0x1000 0x0 0x20000000 0x0 0x10000000>;
+			interrupt-parent = <&plic0>;
+			interrupts = <51>;
+			clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			sifive,buffer-size = <8>;
+			sifive,bits-per-word = <8>;
+		};
+		qspi1: spi@10041000 {
+			compatible = "sifive,fu540-c000-spi", "sifive,spi0";
+			reg = <0x0 0x10041000 0x0 0x1000 0x0 0x30000000 0x0 0x10000000>;
+			interrupt-parent = <&plic0>;
+			interrupts = <52>;
+			clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			sifive,buffer-size = <8>;
+			sifive,bits-per-word = <8>;
+		};
+		qspi2: spi@10050000 {
+			compatible = "sifive,fu540-c000-spi", "sifive,spi0";
+			reg = <0x0 0x10050000 0x0 0x1000>;
+			interrupt-parent = <&plic0>;
+			interrupts = <6>;
+			clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			sifive,buffer-size = <8>;
+			sifive,bits-per-word = <8>;
+		};
 		gpio0: gpio@10060000 {
 			compatible = "sifive,fu540-c000-gpio", "sifive,gpio0";
 			reg = <0x0 0x10060000 0x0 0x1000>;
@@ -201,6 +234,7 @@
 			interrupts = <7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22>;
 			gpio-controller;
 			interrupt-controller;
+			#gpio-cells = <2>;
 			#interrupt-cells = <2>;
 		};
 		plic0: interrupt-controller@c000000 {
