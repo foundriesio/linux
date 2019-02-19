@@ -237,6 +237,11 @@
 			#gpio-cells = <2>;
 			#interrupt-cells = <2>;
 		};
+		gemgxlmgmt0: cadence-gemgxl-mgmt@100a0000 {
+			compatible = "sifive,cadencegemgxlmgmt0";
+			#clock-cells = <0>;
+			reg = <0x0 0x100a0000 0x0 0x1000>;
+		};
 		plic0: interrupt-controller@c000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
