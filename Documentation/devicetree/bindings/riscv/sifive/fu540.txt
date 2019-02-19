@@ -1,0 +1,14 @@
+SiFive FU540 SoC architecture device tree bindings
+--------------------------------------------------
+
+Platforms based on the SiFive FU540 RISC-V SoC should follow the
+scheme described below:
+
+SoCs
+----
+
+Each device tree root node must specify one of the following
+compatible-string values:
+
+- Freedom Unleashed 540 rev. C000, or "FU540"
+  compatible = "sifive,fu540-c000", "sifive,fu540"
