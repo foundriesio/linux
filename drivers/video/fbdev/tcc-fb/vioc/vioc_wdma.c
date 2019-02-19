@@ -361,10 +361,20 @@ void VIOC_WDMA_GetStatus(volatile void __iomem *reg, unsigned int *status)
 	*status = __raw_readl(reg + WDMAIRQSTS_OFFSET);
 }
 
-unsigned int VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
+bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
 {
 	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_IEN_MASK) >>
-		WDMACTRL_IEN_SHIFT);
+		WDMACTRL_IEN_SHIFT)
+		       ? true
+		       : false;
+}
+
+bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg)
+{
+	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_CONT_MASK) >>
+		WDMACTRL_CONT_SHIFT)
+		       ? true
+		       : false;
 }
 
 unsigned int VIOC_WDMA_Get_CAddress(volatile void __iomem *reg)

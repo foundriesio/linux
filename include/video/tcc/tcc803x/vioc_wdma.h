@@ -373,7 +373,8 @@ extern void VIOC_WDMA_ClearEOFR(volatile void __iomem *reg);
 extern void VIOC_WDMA_ClearEOFF(volatile void __iomem *reg);
 
 extern void VIOC_WDMA_GetStatus(volatile void __iomem *reg, unsigned int *status);
-extern unsigned int VIOC_WDMA_IsImageEnable(volatile void __iomem *reg);
+extern bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg);
+extern bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg);
 extern unsigned int VIOC_WDMA_Get_CAddress(volatile void __iomem *reg);
 
 extern volatile void __iomem* VIOC_WDMA_GetAddress(unsigned int vioc_id);
