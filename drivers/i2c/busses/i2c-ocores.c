@@ -41,6 +41,7 @@ struct ocores_i2c {
 	int bus_clock_khz;
 	void (*setreg)(struct ocores_i2c *i2c, int reg, u8 value);
 	u8 (*getreg)(struct ocores_i2c *i2c, int reg);
+	int (*xfer)(struct i2c_adapter *adap, struct i2c_msg *msgs, int num);
 };
 
 /* registers */
@@ -76,6 +77,7 @@ struct ocores_i2c {
 
 #define TYPE_OCORES		0
 #define TYPE_GRLIB		1
+#define TYPE_SIFIVE		2
 
 static void oc_setreg_8(struct ocores_i2c *i2c, int reg, u8 value)
 {
@@ -213,6 +215,35 @@ static irqreturn_t ocores_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int ocores_xfer_poll(struct i2c_adapter *adap, struct i2c_msg *msgs,
+			    int num)
+{
+	struct ocores_i2c *i2c = i2c_get_adapdata(adap);
+
+	while (i2c->state != STATE_ERROR && i2c->state != STATE_DONE) {
+		/* XXX Add a timeout here */
+		while (oc_getreg(i2c, OCI2C_STATUS) & OCI2C_STAT_TIP) { }
+		ocores_process(i2c);
+	}
+	/* XXX Add a timeout here */
+	while (oc_getreg(i2c, OCI2C_STATUS) & OCI2C_STAT_BUSY) { }
+	ocores_process(i2c);
+
+	return (i2c->state == STATE_DONE) ? num : -EIO;
+}
+
+static int ocores_xfer_irq(struct i2c_adapter *adap, struct i2c_msg *msgs,
+			   int num)
+{
+	struct ocores_i2c *i2c = i2c_get_adapdata(adap);
+
+	if (wait_event_timeout(i2c->wait, (i2c->state == STATE_ERROR) ||
+			       (i2c->state == STATE_DONE), HZ))
+		return (i2c->state == STATE_DONE) ? num : -EIO;
+	else
+		return -ETIMEDOUT;
+}
+
 static int ocores_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 {
 	struct ocores_i2c *i2c = i2c_get_adapdata(adap);
@@ -225,11 +256,7 @@ static int ocores_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 	oc_setreg(i2c, OCI2C_DATA, i2c_8bit_addr_from_msg(i2c->msg));
 	oc_setreg(i2c, OCI2C_CMD, OCI2C_CMD_START);
 
-	if (wait_event_timeout(i2c->wait, (i2c->state == STATE_ERROR) ||
-			       (i2c->state == STATE_DONE), HZ))
-		return (i2c->state == STATE_DONE) ? num : -EIO;
-	else
-		return -ETIMEDOUT;
+	return i2c->xfer(adap, msgs, num);
 }
 
 static int ocores_init(struct device *dev, struct ocores_i2c *i2c)
@@ -288,6 +315,10 @@ static const struct of_device_id ocores_i2c_match[] = {
 	{
 		.compatible = "aeroflexgaisler,i2cmst",
 		.data = (void *)TYPE_GRLIB,
+	},
+	{
+		.compatible = "sifive,i2c0",
+		.data = (void *)TYPE_SIFIVE,
 	},
 	{},
 };
@@ -399,6 +430,11 @@ static int ocores_i2c_of_probe(struct platform_device *pdev,
 		i2c->getreg = oc_getreg_grlib;
 	}
 
+	if (match && (long)match->data == TYPE_SIFIVE) {
+		dev_dbg(&pdev->dev, "SiFive variant of i2c-ocores\n");
+		i2c->xfer = ocores_xfer_poll;
+	}
+
 	return 0;
 }
 #else
@@ -421,6 +457,8 @@ static int ocores_i2c_probe(struct platform_device *pdev)
 	i2c = devm_kzalloc(&pdev->dev, sizeof(*i2c), GFP_KERNEL);
 	if (!i2c)
 		return -ENOMEM;
+
+	i2c->xfer = ocores_xfer_irq;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	i2c->base = devm_ioremap_resource(&pdev->dev, res);
