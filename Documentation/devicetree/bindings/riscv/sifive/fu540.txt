@@ -12,3 +12,13 @@ compatible-string values:
 
 - Freedom Unleashed 540 rev. C000, or "FU540"
   compatible = "sifive,fu540-c000", "sifive,fu540"
+
+Boards
+------
+
+Boards based on the FU540 SoC should specify the following
+compatible-string values:
+
+- HiFive-Unleashed rev. A00 board
+  compatible = "sifive,hifive-unleashed-a00-fu540",
+	       "sifive,hifive-unleashed-fu540"
