@@ -68,8 +68,9 @@ described below.
         - compatible:
                 Usage: required
                 Value type: <stringlist>
-                Definition: must contain "riscv", may contain one of
-                            "sifive,rocket0"
+                Definition: must contain "riscv", may contain one or
+			    more of "sifive,rocket0", "sifive,e51",
+			    "sifive,e5"
         - mmu-type:
                 Usage: optional
                 Value type: <string>
