@@ -35,6 +35,10 @@
 			clock-frequency = <1000000>;
 			clock-output-names = "rtcclk";
 		};
+		gpio-restart {
+			compatible = "gpio-restart";
+			gpios = <&gpio0 10 1>;
+		};
 		pwmleds {
 			compatible = "pwm-leds";
 			heartbeat {
