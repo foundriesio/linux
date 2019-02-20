@@ -26,7 +26,7 @@
 		timebase-frequency = <1000000>;
 		cpu0: cpu@0 {
 			clock-frequency = <0>;
-			compatible = "sifive,e51", "sifive,rocket0";
+			compatible = "sifive,e51", "sifive,rocket0", "riscv";
 			device_type = "cpu";
 			i-cache-block-size = <64>;
 			i-cache-sets = <128>;
@@ -42,7 +42,7 @@
 		};
 		cpu1: cpu@1 {
 			clock-frequency = <0>;
-			compatible = "sifive,u54-mc", "sifive,rocket0";
+			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
 			d-cache-block-size = <64>;
 			d-cache-sets = <64>;
 			d-cache-size = <32768>;
@@ -67,7 +67,7 @@
 		};
 		cpu2: cpu@2 {
 			clock-frequency = <0>;
-			compatible = "sifive,u54-mc", "sifive,rocket0";
+			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
 			d-cache-block-size = <64>;
 			d-cache-sets = <64>;
 			d-cache-size = <32768>;
@@ -92,7 +92,7 @@
 		};
 		cpu3: cpu@3 {
 			clock-frequency = <0>;
-			compatible = "sifive,u54-mc", "sifive,rocket0";
+			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
 			d-cache-block-size = <64>;
 			d-cache-sets = <64>;
 			d-cache-size = <32768>;
@@ -117,7 +117,7 @@
 		};
 		cpu4: cpu@4 {
 			clock-frequency = <0>;
-			compatible = "sifive,u54-mc", "sifive,rocket0";
+			compatible = "sifive,u54-mc", "sifive,rocket0", "riscv";
 			d-cache-block-size = <64>;
 			d-cache-sets = <64>;
 			d-cache-size = <32768>;
@@ -268,6 +268,17 @@
 				&cpu3_intc 11 &cpu3_intc 9
 				&cpu4_intc 11 &cpu4_intc 9>;
 			reg = <0x0 0xc000000 0x0 0x4000000>;
+			riscv,ndev = <53>;
 		};
+
+                clint@2000000 {
+			 compatible = "riscv,clint0";
+			 interrupts-extended = < &cpu0_intc 0x03 &cpu0_intc 0x07
+				&cpu1_intc 0x03 &cpu1_intc 0x07
+				&cpu2_intc 0x03 &cpu2_intc 0x07
+				&cpu3_intc 0x03 &cpu3_intc 0x07
+				&cpu4_intc 0x03 &cpu4_intc 0x07 >;
+			 reg = < 0x00 0x2000000 0x00 0x10000 >;
+                };
 	};
 };
