@@ -234,6 +234,10 @@ struct nvme_ctrl {
 	u16 maxcmd;
 	int nr_reconnects;
 	struct nvmf_ctrl_options *opts;
+
+#ifndef __GENKSYMS__
+	struct mutex scan_lock;
+#endif
 };
 
 #ifdef CONFIG_NVME_MULTIPATH
