@@ -569,6 +569,11 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	if (!name)
 		return -EINVAL;
 
+#ifdef CONFIG_PMAP_SECURED
+	/*
+	 * When CONFIG_PMAP_SECURED is not set, simply ignore "telechips,
+	 * pmap-secured" property.
+	 */
 	prop = of_get_flat_dt_prop(node, "telechips,pmap-secured", &len);
 
 	if (prop) {
@@ -580,6 +585,7 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 			pr_err("pmap: Invalid group %u for %s\n",
 					(unsigned int) groups, name);
 	}
+#endif
 
 	prop = of_get_flat_dt_prop(node, "telechips,pmap-shared", NULL);
 
