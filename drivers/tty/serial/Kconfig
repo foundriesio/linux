@@ -73,6 +73,15 @@ config SERIAL_AMBA_PL011_CONSOLE
 	  your boot loader (lilo or loadlin) about how to pass options to the
 	  kernel at boot time.)
 
+config SERIAL_AMBA_PL011_HS_CONSOLE
+	bool "Support for high speed console on AMBA serial port"
+	depends on SERIAL_AMBA_PL011=y
+	select SERIAL_AMBA_PL011_CONSOLE
+	---help---
+	  Say Y here if you wish to use to high speed on PL011 UART as the
+	  system console.
+	  If set this feature serial console speed is set to 921600 bps.
+
 config DEFERRED_CONSOLE_OUTPUT
 	bool "Enable deferred console output"
 	depends on SERIAL_AMBA_PL011=y
