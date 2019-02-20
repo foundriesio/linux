@@ -75,6 +75,10 @@
 #define UART_DR_ERROR		(UART011_DR_OE|UART011_DR_BE|UART011_DR_PE|UART011_DR_FE)
 #define UART_DUMMY_DR_RX	(1 << 16)
 
+#ifdef CONFIG_SERIAL_AMBA_PL011_HS_CONSOLE
+#define HS_CONSOLE_BAUD	921600
+#endif
+
 #ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
 #define CONSOLE_BUF_LEN		(1 << CONFIG_LOG_BUF_SHIFT)
 
@@ -2428,7 +2432,9 @@ static int __init pl011_console_setup(struct console *co, char *options)
 		else
 			pl011_console_get_options(uap, &baud, &parity, &bits);
 	}
-
+#ifdef CONFIG_SERIAL_AMBA_PL011_HS_CONSOLE
+	baud = HS_CONSOLE_BAUD;
+#endif
 	return uart_set_options(&uap->port, co, baud, parity, bits, flow);
 }
 
