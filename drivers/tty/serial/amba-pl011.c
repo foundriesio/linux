@@ -75,6 +75,15 @@
 #define UART_DR_ERROR		(UART011_DR_OE|UART011_DR_BE|UART011_DR_PE|UART011_DR_FE)
 #define UART_DUMMY_DR_RX	(1 << 16)
 
+#ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
+#define CONSOLE_BUF_LEN		(1 << CONFIG_LOG_BUF_SHIFT)
+
+static char console_buffer[CONSOLE_BUF_LEN];
+static int buffer_head;
+static int buffer_tail;
+static struct tasklet_struct console_tasklet;
+#endif
+
 static u16 pl011_std_offsets[REG_ARRAY_SIZE] = {
 	[REG_DR] = UART01x_DR,
 	[REG_FR] = UART01x_FR,
@@ -344,6 +353,23 @@ static void pl011_write(unsigned int val, const struct uart_amba_port *uap,
 	else
 		writew_relaxed(val, addr);
 }
+
+#ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
+static void tcc_console_tasklet(unsigned long data)
+{
+	struct uart_amba_port *uap = (struct uart_amba_port *) data;
+
+	while (buffer_head != buffer_tail) {
+		if (pl011_read(uap, REG_FR) & UART01x_FR_TXFF) {
+			tasklet_schedule(&console_tasklet);
+			break;
+		}
+		pl011_write(console_buffer[buffer_tail++], uap, REG_DR);
+		if (buffer_tail == CONSOLE_BUF_LEN)
+			buffer_tail = 0;
+	}
+}
+#endif
 
 /*
  * Reads up to 256 characters from the FIFO or until it's empty and
@@ -2249,10 +2275,22 @@ static void pl011_console_putchar(struct uart_port *port, int ch)
 {
 	struct uart_amba_port *uap =
 	    container_of(port, struct uart_amba_port, port);
-
+#ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
+	if (oops_in_progress) {
+		while (pl011_read(uap, REG_FR) & UART01x_FR_TXFF)
+		cpu_relax();
+		pl011_write(ch, uap, REG_DR);
+	} else {
+		console_buffer[buffer_head++] = ch;
+		if (buffer_head == CONSOLE_BUF_LEN)
+			buffer_head = 0;
+		tasklet_schedule(&console_tasklet);
+	}
+#else
 	while (pl011_read(uap, REG_FR) & UART01x_FR_TXFF)
 		cpu_relax();
 	pl011_write(ch, uap, REG_DR);
+#endif
 }
 
 static void
@@ -2290,9 +2328,11 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 	 *	TCR. Allow feature register bits to be inverted to work around
 	 *	errata.
 	 */
+#ifndef CONFIG_DEFERRED_CONSOLE_OUTPUT
 	while ((pl011_read(uap, REG_FR) ^ uap->vendor->inv_fr)
 						& uap->vendor->fr_busy)
 		cpu_relax();
+#endif
 	if (!uap->vendor->always_enabled)
 		pl011_write(old_cr, uap, REG_CR);
 
@@ -2358,6 +2398,10 @@ static int __init pl011_console_setup(struct console *co, char *options)
 	if (!uap)
 		return -ENODEV;
 
+#ifdef CONFIG_DEFERRED_CONSOLE_OUTPUT
+	buffer_head = buffer_tail = 0;
+	tasklet_init(&console_tasklet, tcc_console_tasklet,(unsigned long) uap);
+#endif
 	/* Allow pins to be muxed in and configured */
 	pinctrl_pm_select_default_state(uap->port.dev);
 
