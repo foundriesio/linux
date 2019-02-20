@@ -21,9 +21,9 @@
 #define PMAP_FLAG_SHARED	(1 << 2)
 #define PMAP_FLAG_CMA_ALLOC	(1 << 3)
 
-#define pmap_is_secured(pmap) ( (pmap)->flags & PMAP_FLAG_SECURED )
-#define pmap_is_shared(pmap) ( (pmap)->flags & PMAP_FLAG_SHARED )
-#define pmap_is_cma_alloc(pmap) ( (pmap)->flags & PMAP_FLAG_CMA_ALLOC )
+#define pmap_is_secured(pmap)	( (pmap)->flags & PMAP_FLAG_SECURED )
+#define pmap_is_shared(pmap)	( (pmap)->flags & PMAP_FLAG_SHARED )
+#define pmap_is_cma_alloc(pmap)	( (pmap)->flags & PMAP_FLAG_CMA_ALLOC )
 
 typedef struct {
 	char name[TCC_PMAP_NAME_LEN];
