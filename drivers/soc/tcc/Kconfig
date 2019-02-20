@@ -18,6 +18,16 @@ config PMAP
 	help
 	  Say Y here if you want to use PMAP driver for Telechips SoCs.
 
+if PMAP
+
+config PMAP_SECURED
+	bool "Secured PMAP (Physical memory MAP) support"
+	default y
+	help
+	  Say N here to ignore "telechips,pmap-secured" property.
+
+endif # PMAP
+
 config PMAP_CA7S
 	bool "Cortex-A7 Single PMAP (Physical memory MAP) Allocation"
 	depends on !(ARCH_TCC897X) &&  (ARCH_TCC803X)
