@@ -654,8 +654,6 @@ static int qcom_qmp_phy_com_init(struct qcom_qmp *qmp)
 		if (ret) {
 			dev_err(qmp->dev, "%s reset deassert failed\n",
 				qmp->cfg->reset_list[i]);
-			while (--i >= 0)
-				reset_control_assert(qmp->resets[i]);
 			goto err_rst;
 		}
 	}
@@ -684,7 +682,7 @@ static int qcom_qmp_phy_com_init(struct qcom_qmp *qmp)
 		if (ret) {
 			dev_err(qmp->dev,
 				"phy common block init timed-out\n");
-			goto err_com_init;
+			goto err_rst;
 		}
 	}
 
@@ -692,11 +690,11 @@ static int qcom_qmp_phy_com_init(struct qcom_qmp *qmp)
 
 	return 0;
 
-err_com_init:
+err_rst:
 	while (--i >= 0)
 		reset_control_assert(qmp->resets[i]);
-err_rst:
 	mutex_unlock(&qmp->phy_mutex);
+
 	return ret;
 }
 
@@ -749,14 +747,13 @@ static int qcom_qmp_phy_init(struct phy *phy)
 		if (ret) {
 			dev_err(qmp->dev, "failed to enable %s clk, err=%d\n",
 				qmp->cfg->clk_list[i], ret);
-			while (--i >= 0)
-				clk_disable_unprepare(qmp->clks[i]);
+			goto err_clk;
 		}
 	}
 
 	ret = qcom_qmp_phy_com_init(qmp);
 	if (ret)
-		goto err_com_init;
+		goto err_clk;
 
 	if (cfg->has_lane_rst) {
 		ret = reset_control_deassert(qphy->lane_rst);
@@ -804,7 +801,7 @@ err_pcs_ready:
 		reset_control_assert(qphy->lane_rst);
 err_lane_rst:
 	qcom_qmp_phy_com_exit(qmp);
-err_com_init:
+err_clk:
 	while (--i >= 0)
 		clk_disable_unprepare(qmp->clks[i]);
 
