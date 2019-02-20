@@ -253,7 +253,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 		case 0:
 			reg = (pIREQ_reg + CFG_PATH_VIQE0_OFFSET);
 			break;
-	#if !(defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC897X))
+	#if !(defined(CONFIG_ARCH_TCC897X))
 		case 1:
 			reg = (pIREQ_reg + CFG_PATH_VIQE1_OFFSET);
 			break;
