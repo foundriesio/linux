@@ -124,7 +124,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 dwc_hdmi_hw_reset(dev, 0);
 
                 /* Initialize scdc status */
-                dev->prev_scdc_status = -1;
+                dev->prev_scdc_status = (unsigned char)-1;
 
                 mc_disable_all_clocks(dev);
                 if(dev->hdmi_tx_ctrl.sink_is_vizio == 1) {
