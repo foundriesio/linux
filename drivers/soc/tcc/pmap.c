@@ -597,7 +597,9 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 
 	if (prop) {
 		alloc_size = of_read_number(prop, len/4);
-		flags |= PMAP_FLAG_CMA_ALLOC;
+
+		if (alloc_size)
+			flags |= PMAP_FLAG_CMA_ALLOC;
 	}
 
 	/* Initialize pmap and register it into pmap list */
