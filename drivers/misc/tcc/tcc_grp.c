@@ -987,11 +987,15 @@ static int g2d_drv_probe(struct platform_device *pdev)
  	/* register g2d discdevice */
 	g2d->misc->minor = MISC_DYNAMIC_MINOR;
 	g2d->misc->fops = &g2d_drv_fops;
-	g2d->misc->name = pdev->name;
+	g2d->misc->name = "g2d";
 	g2d->misc->parent = &pdev->dev;
 	ret = misc_register(g2d->misc);
 	if (ret)
 		goto err_misc_register;
+
+        g2d->irq = platform_get_irq(pdev, 0);
+
+        dprintk("%s: irq: %d \n", g2d->misc->name, g2d->irq);
 
 	spin_lock_init(&(g2d->data->g2d_spin_lock));
 	mutex_init(&g2d->data->io_mutex);
@@ -999,8 +1003,13 @@ static int g2d_drv_probe(struct platform_device *pdev)
 	init_waitqueue_head(&g2d->data->poll_wq);
 	init_waitqueue_head(&g2d->data->cmd_wq);
 
+	platform_set_drvdata(pdev, g2d);
+
 	g2d->data->block_waiting = 0;
 	g2d->data->block_operating = 0;
+
+        dprintk("%s: G2D Driver Initialized\n", __func__);
+        return 0;
 
 	misc_deregister(g2d->misc);
 
@@ -1013,8 +1022,6 @@ err_misc_alloc:
 
 	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
-
-	return 0;
 }
 
 static int g2d_drv_suspend(struct platform_device *pdev, pm_message_t state)
