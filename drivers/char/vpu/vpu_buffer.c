@@ -257,29 +257,33 @@ pgprot_t vmem_get_pgprot(pgprot_t ulOldProt, unsigned long ulPageOffset)
 EXPORT_SYMBOL(vmem_get_pgprot);
 /////////////////////////////////////////
 
-extern void* _vmem_check_region_for_cma(unsigned int start_phyaddr, unsigned int length);
+extern void* _vmem_phy_check_region_for_cma(unsigned int start_phyaddr, unsigned int length);
 static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 {
-	void *virt_address = NULL;
+	void *cma_virt_address = NULL;
 
-	virt_address = _vmem_check_region_for_cma(start_phyaddr, length);
+	cma_virt_address = _vmem_phy_check_region_for_cma(start_phyaddr, length);
 
-	if(!virt_address){
-		virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
-		if (virt_address == NULL) {
+	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address);
+
+	if(!cma_virt_address){
+		cma_virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
+		if (cma_virt_address == NULL) {
 			pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
 			return NULL;
 		}
 	}
 
-	return virt_address;
+	return cma_virt_address;
 }
 
 static void _vmem_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
 {
 	void *cma_virt_address = NULL;
 
-	cma_virt_address = _vmem_check_region_for_cma(start_phyaddr, length);
+	cma_virt_address = _vmem_phy_check_region_for_cma(start_phyaddr, length);
+
+	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p =? %p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address, target_virtaddr);
 
 	if(target_virtaddr != cma_virt_address)
 		iounmap((void*)target_virtaddr);
@@ -1431,7 +1435,83 @@ int _vmem_deinit_memory_info(void)
 	return 0;
 }
 
-void* _vmem_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
+int _vmem_virt_check_region_for_cma(unsigned int start_virtaddr, unsigned int length)
+{
+	void *cma_virt_address = NULL;
+	unsigned int end_virtaddr = start_virtaddr + length -1;
+
+// pmap_video
+	if(pmap_video.v_base != NULL){
+		if( (start_virtaddr >= pmap_video.v_base) && (end_virtaddr <= (pmap_video.v_base+pmap_video.size-1))){
+			return 1;
+		}
+	}
+
+// pmap_video_sw
+	if(pmap_video_sw.v_base != NULL){
+		if( (start_virtaddr >= pmap_video_sw.v_base) && (end_virtaddr <= (pmap_video_sw.v_base+pmap_video_sw.size-1))){
+			return 1;
+		}
+	}
+
+// pmap_enc
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc.v_base != NULL){
+		if( (start_virtaddr >= pmap_enc.v_base) && (end_virtaddr <= (pmap_enc.v_base+pmap_enc.size-1))){
+			return 1;
+		}
+	}
+#endif
+
+// pmap_video_ext
+#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext.v_base != NULL){
+		if( (start_virtaddr >= pmap_video_ext.v_base) && (end_virtaddr <= (pmap_video_ext.v_base+pmap_video_ext.size-1))){
+			return 1;
+		}
+	}
+#endif
+
+// pmap_video_ext2
+#if defined(CONFIG_VDEC_CNT_5)
+	if(pmap_video_ext2.v_base != NULL){
+		if( (start_virtaddr >= pmap_video_ext2.v_base) && (end_virtaddr <= (pmap_video_ext2.v_base+pmap_video_ext2.size-1))){
+			return 1;
+		}
+	}
+#endif
+
+// pmap_enc_ext[0]
+#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[0].v_base != NULL){
+		if( (start_virtaddr >= pmap_enc_ext[0].v_base) && (end_virtaddr <= (pmap_enc_ext[0].v_base+pmap_enc_ext[0].size-1))){
+			return 1;
+		}
+	}
+#endif
+
+//pmap_enc_ext[1]
+#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[1].v_base != NULL){
+		if( (start_virtaddr >= pmap_enc_ext[1].v_base) && (end_virtaddr <= (pmap_enc_ext[1].v_base+pmap_enc_ext[1].size-1))){
+			return 1;
+		}
+	}
+#endif
+
+// pmap_enc_ext[2]
+#if defined(CONFIG_VENC_CNT_4)
+	if(pmap_enc_ext[2].v_base != NULL){
+		if( (start_virtaddr >= pmap_enc_ext[2].v_base) && (end_virtaddr <= (pmap_enc_ext[2].v_base+pmap_enc_ext[2].size-1))){
+			return 1;
+		}
+	}
+#endif
+
+	return 0;
+}
+
+void* _vmem_phy_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
 {
 	void *cma_virt_address = NULL;
 	unsigned int end_phyaddr = start_phyaddr + length -1;
@@ -1983,13 +2063,13 @@ void vmem_deinit(void)
 	if(cntMem_Reference > 0)
 		cntMem_Reference--;
 	else
-		printk("%s :: strange ref-count :: %d\n", cntMem_Reference);
+		printk("%s :: strange ref-count :: %d\n", __func__, cntMem_Reference);
 
 	if(!cntMem_Reference){
 		_vmem_free_dedicated_buffer();
 		_vmem_deinit_memory_info();
 		_vmem_config_zero();
-		printk("%s :: all memory for VPU were released. ref-count :: %d\n", cntMem_Reference);
+		printk("%s :: all memory for VPU were released. ref-count :: %d\n", __func__, cntMem_Reference);
 	}
 	mutex_unlock(&mem_mutex);
 }

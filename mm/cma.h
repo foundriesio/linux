@@ -2,6 +2,8 @@
 #ifndef __MM_CMA_H__
 #define __MM_CMA_H__
 
+//#define CMA_LATENCY_DEBUG
+
 struct cma {
 	unsigned long   base_pfn;
 	unsigned long   count;
@@ -11,6 +13,10 @@ struct cma {
 #ifdef CONFIG_CMA_DEBUGFS
 	struct hlist_head mem_head;
 	spinlock_t mem_head_lock;
+#endif
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	struct list_head buffers_list;
+	struct mutex	list_lock;
 #endif
 	const char *name;
 };

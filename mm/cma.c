@@ -39,6 +39,24 @@
 
 #include "cma.h"
 
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+#include <linux/list.h>
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
+#include <linux/time.h>
+
+struct cma_buffer {
+	unsigned long pfn;
+	unsigned long count;
+	pid_t pid;
+	char comm[TASK_COMM_LEN];
+	unsigned int latency;
+	unsigned long trace_entries[16];
+	unsigned int nr_entries;
+	struct list_head list;
+};
+#endif
+	
 struct cma cma_areas[MAX_CMA_AREAS];
 unsigned cma_area_count;
 static DEFINE_MUTEX(cma_mutex);
@@ -135,7 +153,10 @@ static int __init cma_activate_area(struct cma *cma)
 	INIT_HLIST_HEAD(&cma->mem_head);
 	spin_lock_init(&cma->mem_head_lock);
 #endif
-
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	INIT_LIST_HEAD(&cma->buffers_list);
+	mutex_init(&cma->list_lock);
+#endif
 	return 0;
 
 not_in_zone:
@@ -144,6 +165,86 @@ not_in_zone:
 	cma->count = 0;
 	return -EINVAL;
 }
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+/**
+ * cma_buffer_list_add() - add a new entry to a list of allocated buffers
+ * @cma:     Contiguous memory region for which the allocation is performed.
+ * @pfn:     Base PFN of the allocated buffer.
+ * @count:   Number of allocated pages.
+ * @latency: Nanoseconds spent to allocate the buffer.
+ *
+ * This function adds a new entry to the list of allocated contiguous memory
+ * buffers in a CMA area. It uses the CMA area specificated by the device
+ * if available or the default global one otherwise.
+ */
+static int cma_buffer_list_add(struct cma *cma, unsigned long pfn,
+			       int count, s64 latency)
+{
+	struct cma_buffer *cmabuf;
+	struct stack_trace trace;
+
+	cmabuf = kmalloc(sizeof(struct cma_buffer), GFP_KERNEL);
+	if (!cmabuf)
+		return -ENOMEM;
+
+	trace.nr_entries = 0;
+	trace.max_entries = ARRAY_SIZE(cmabuf->trace_entries);
+	trace.entries = &cmabuf->trace_entries[0];
+	trace.skip = 2;
+	save_stack_trace(&trace);
+
+	cmabuf->pfn = pfn;
+	cmabuf->count = count;
+	cmabuf->pid = task_pid_nr(current);
+	cmabuf->nr_entries = trace.nr_entries;
+	get_task_comm(cmabuf->comm, current);
+	cmabuf->latency = (unsigned int) div_s64(latency, NSEC_PER_USEC);
+
+	mutex_lock(&cma->list_lock);
+	list_add_tail(&cmabuf->list, &cma->buffers_list);
+	mutex_unlock(&cma->list_lock);
+
+	return 0;
+}
+
+/**
+ * cma_buffer_list_del() - delete an entry from a list of allocated buffers
+ * @cma:   Contiguous memory region for which the allocation was performed.
+ * @pfn:   Base PFN of the released buffer.
+ *
+ * This function deletes a list entry added by cma_buffer_list_add().
+ */
+static void cma_buffer_list_del(struct cma *cma, unsigned long pfn)
+{
+	struct cma_buffer *cmabuf;
+
+	mutex_lock(&cma->list_lock);
+
+	list_for_each_entry(cmabuf, &cma->buffers_list, list)
+		if (cmabuf->pfn == pfn) {
+			list_del(&cmabuf->list);
+			kfree(cmabuf);
+			goto out;
+		}
+
+	pr_err("%s(pfn %lu): couldn't find buffers list entry\n",
+	       __func__, pfn);
+
+out:
+	mutex_unlock(&cma->list_lock);
+}
+#else
+static int cma_buffer_list_add(struct cma *cma, unsigned long pfn,
+			       int count, s64 latency)
+{
+	return 0;
+}
+
+static void cma_buffer_list_del(struct cma *cma, unsigned long pfn)
+{
+}
+#endif /* CONFIG_CMA_DEBUG */
 
 static int __init cma_init_reserved_areas(void)
 {
@@ -402,10 +503,20 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 	unsigned long start = 0;
 	unsigned long bitmap_maxno, bitmap_no, bitmap_count;
 	struct page *page = NULL;
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)	
+	struct timespec ts1, ts2;
+	s64 latency;
+#endif
+
 	int ret = -ENOMEM;
 
 	if (!cma || !cma->count)
 		return NULL;
+	
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	getnstimeofday(&ts1);
+#endif
 
 	pr_debug("%s(cma %p, count %zu, align %d)\n", __func__, (void *)cma,
 		 count, align);
@@ -466,6 +577,21 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 		cma_debug_show_areas(cma);
 	}
 
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	getnstimeofday(&ts2);
+	latency = timespec_to_ns(&ts2) - timespec_to_ns(&ts1);
+
+	if (page) {
+		ret = cma_buffer_list_add(cma, pfn, count, latency);
+		if (ret) {
+			pr_warn("%s(): cma_buffer_list_add() returned %d\n",
+				__func__, ret);
+			cma_release(cma, page, count);
+			page = NULL;
+		}
+	}
+#endif
+
 	pr_debug("%s(): returned %p\n", __func__, page);
 	return page;
 }
@@ -516,3 +642,82 @@ int cma_for_each_area(int (*it)(struct cma *cma, void *data), void *data)
 
 	return 0;
 }
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+static void *s_start(struct seq_file *m, loff_t *pos)
+{
+	struct cma *cma = 0;
+
+	if (*pos == 0 && cma_area_count > 0)
+		cma = &cma_areas[0];
+	else
+		*pos = 0;
+
+	return cma;
+}
+
+static int s_show(struct seq_file *m, void *p)
+{
+	struct cma *cma = p;
+	struct cma_buffer *cmabuf;
+	struct stack_trace trace;
+
+	mutex_lock(&cma->list_lock);
+
+	list_for_each_entry(cmabuf, &cma->buffers_list, list) {
+		seq_printf(m, "0x%llx - 0x%llx (%lu kB), allocated by pid %u (%s), latency %u us\n",
+			   (unsigned long long)PFN_PHYS(cmabuf->pfn),
+			   (unsigned long long)PFN_PHYS(cmabuf->pfn +
+							cmabuf->count),
+			   (cmabuf->count * PAGE_SIZE) >> 10, cmabuf->pid,
+			   cmabuf->comm, cmabuf->latency);
+
+		trace.nr_entries = cmabuf->nr_entries;
+		trace.entries = &cmabuf->trace_entries[0];
+
+		//seq_print_stack_trace(m, &trace, 0);
+		seq_putc(m, '\n');
+	}
+
+	mutex_unlock(&cma->list_lock);
+	return 0;
+}
+
+static void *s_next(struct seq_file *m, void *p, loff_t *pos)
+{
+	struct cma *cma = (struct cma *)p + 1;
+
+	return (cma < &cma_areas[cma_area_count]) ? cma : 0;
+}
+
+static void s_stop(struct seq_file *m, void *p)
+{
+}
+
+static const struct seq_operations cmainfo_op = {
+	.start = s_start,
+	.show = s_show,
+	.next = s_next,
+	.stop = s_stop,
+};
+
+static int cmainfo_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &cmainfo_op);
+}
+
+static const struct file_operations proc_cmainfo_operations = {
+	.open = cmainfo_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release_private,
+};
+
+static int __init proc_cmainfo_init(void)
+{
+	proc_create("cmainfo", S_IRUSR, NULL, &proc_cmainfo_operations);
+	return 0;
+}
+
+late_initcall(proc_cmainfo_init);
+#endif /* CONFIG_CMA_DEBUG */

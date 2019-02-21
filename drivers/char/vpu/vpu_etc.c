@@ -29,6 +29,8 @@
 #define vpu_writel writel
 #define vpu_readl  readl
 
+extern int _vmem_virt_check_region_for_cma(unsigned int start_virtaddr, unsigned int length);
+
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 int vetc_GetTimediff_ms(struct timeval time1, struct timeval time2)
 {
@@ -107,6 +109,9 @@ EXPORT_SYMBOL(vetc_iounmap);
 
 void * vetc_memcpy( void *dest, const void *src, unsigned int count, unsigned int type )
 {
+	if(_vmem_virt_check_region_for_cma(src, count) > 0)
+		type = 0;
+
     if ( type == 1 )
         memcpy_fromio(dest, src, count);
     else if ( type == 2 )
@@ -118,6 +123,9 @@ EXPORT_SYMBOL(vetc_memcpy);
 
 void vetc_memset(void *ptr, int value, unsigned  num, unsigned int type )
 {
+	if(_vmem_virt_check_region_for_cma(ptr, num) > 0)
+		type = 0;
+
     if ( type == 1 )
         memset_io(ptr, value, num);
     else
