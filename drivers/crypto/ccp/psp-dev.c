@@ -972,14 +972,14 @@ void psp_pci_init(void)
 
 	psp_master = sp->psp_data;
 
+	psp_timeout = psp_probe_timeout;
+
 	if (sev_get_api_version())
 		goto err;
 
 	if (SEV_VERSION_GREATER_OR_EQUAL(0, 15) &&
 	    sev_update_firmware(psp_master->dev) == 0)
 		sev_get_api_version();
-
-	psp_timeout = psp_probe_timeout;
 
 	/* Initialize the platform */
 	rc = sev_platform_init(&error);
