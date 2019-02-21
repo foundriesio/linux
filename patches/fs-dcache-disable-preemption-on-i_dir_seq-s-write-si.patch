@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2404,9 +2404,10 @@ EXPORT_SYMBOL(d_rehash);
+@@ -2400,9 +2400,10 @@ EXPORT_SYMBOL(d_rehash);
  static inline unsigned start_dir_add(struct inode *dir)
  {
  
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			return n;
  		cpu_relax();
  	}
-@@ -2414,7 +2415,8 @@ static inline unsigned start_dir_add(str
+@@ -2410,7 +2411,8 @@ static inline unsigned start_dir_add(str
  
  static inline void end_dir_add(struct inode *dir, unsigned n)
  {
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void d_wait_lookup(struct dentry *dentry)
-@@ -2447,7 +2449,7 @@ struct dentry *d_alloc_parallel(struct d
+@@ -2443,7 +2445,7 @@ struct dentry *d_alloc_parallel(struct d
  
  retry:
  	rcu_read_lock();
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	r_seq = read_seqbegin(&rename_lock);
  	dentry = __d_lookup_rcu(parent, name, &d_seq);
  	if (unlikely(dentry)) {
-@@ -2475,7 +2477,7 @@ struct dentry *d_alloc_parallel(struct d
+@@ -2471,7 +2473,7 @@ struct dentry *d_alloc_parallel(struct d
  	}
  
  	hlist_bl_lock(b);

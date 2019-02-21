@@ -142,7 +142,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  		hrtimer_set_expires(&to->timer, *time);
  	}
  
-@@ -3201,10 +3199,9 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3209,10 +3207,9 @@ static int futex_wait_requeue_pi(u32 __u
  
  	if (abs_time) {
  		to = &timeout;

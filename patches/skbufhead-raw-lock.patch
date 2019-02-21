@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2967,6 +2967,7 @@ struct softnet_data {
+@@ -2970,6 +2970,7 @@ struct softnet_data {
  	unsigned int		dropped;
  	struct sk_buff_head	input_pkt_queue;
  	struct napi_struct	backlog;
@@ -133,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {
  		struct napi_struct *n;
  
-@@ -9304,10 +9317,13 @@ static int dev_cpu_dead(unsigned int old
+@@ -9307,10 +9320,13 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
@@ -148,7 +148,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return 0;
  }
-@@ -9616,8 +9632,9 @@ static int __init net_dev_init(void)
+@@ -9619,8 +9635,9 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  

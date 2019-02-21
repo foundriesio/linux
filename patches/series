@@ -223,6 +223,8 @@ softirq-split-locks.patch
 net-core-use-local_bh_disable-in-netif_rx_ni.patch
 irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
 softirq-split-timer-softirqs-out-of-ksoftirqd.patch
+softirq-Avoid-local_softirq_pending-messages-if-ksof.patch
+softirq-Avoid-local_softirq_pending-messages-if-task.patch
 rtmutex-trylock-is-okay-on-RT.patch
 
 # compile fix due to rtmutex locks
@@ -298,6 +300,7 @@ md-raid5-percpu-handling-rt-aware.patch
 
 # CPU CHILL
 rt-introduce-cpu-chill.patch
+hrtimer-Don-t-lose-state-in-cpu_chill.patch
 
 # block
 block-blk-mq-move-blk_queue_usage_counter_release-in.patch
@@ -395,6 +398,7 @@ lockdep-selftest-fix-warnings-due-to-missing-PREEMPT.patch
 preempt-lazy-support.patch
 ftrace-Fix-trace-header-alignment.patch
 x86-preempt-lazy.patch
+x86-lazy-preempt-properly-check-against-preempt-mask.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
 arch-arm64-Add-lazy-preempt-support.patch
