@@ -77,7 +77,8 @@ struct tcc_spdif_t {
 	void __iomem *pcfg_reg;
 	struct tcc_gfb_spdif_port portcfg;
 #endif
-
+	bool data_format;
+	bool copyright;
 	//status
 	struct tcc_adma_info dma_info;
 
@@ -202,13 +203,16 @@ static int tcc_spdif_hw_params(struct snd_pcm_substream *substream,
 		tcc_spdif_tx_swap_enable(spdif->reg, false);
 
 		if(params->reserved[0] & 0x01) {
-			spdif_dai_dbg("~~~!!! tcc_pcm_hw_params() SPDIF DATA Mode !!!~~~\n");
+			spdif_dai_dbg("%s - data format : DATA mode\n", __func__);
 			tcc_spdif_tx_format(spdif->reg, TCC_SPDIF_TX_FORMAT_DATA);
 		} else {
-			spdif_dai_dbg("~~~!!! tcc_pcm_hw_params() SPDIF PCM mode !!!~~~\n");
-			tcc_spdif_tx_format(spdif->reg, TCC_SPDIF_TX_FORMAT_AUDIO);
+			spdif_dai_dbg("%s - data format : %d\n", __func__, spdif->data_format);
+			tcc_spdif_tx_format(spdif->reg, spdif->data_format);
 		}
-
+		
+		spdif_dai_dbg("%s - copyright : %d\n", __func__, spdif->copyright);
+		tcc_spdif_tx_copyright(spdif->reg, spdif->copyright);
+		
 		switch (format) {
 			case SNDRV_PCM_FORMAT_S16_LE:
 				tcc_spdif_tx_readaddr_mode(spdif->reg, TCC_SPDIF_TX_16BIT);
@@ -358,8 +362,73 @@ static struct snd_soc_dai_ops tcc_spdif_ops = {
 	.trigger    = tcc_spdif_trigger,
 };
 
+static const char *spdif_copyright_texts[] = {
+	"Inhibited",
+	"Permitted",
+};
+
+static const struct soc_enum spdif_copyright_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spdif_copyright_texts), spdif_copyright_texts),
+};
+
+static const char *spdif_data_format_texts[] = {
+	"Audio",
+	"Data",
+};
+
+static const struct soc_enum spdif_data_format_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spdif_data_format_texts), spdif_data_format_texts),
+};
+
+static int get_spdif_copyright(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = spdif->copyright;
+
+	return 0;
+}
+
+static int set_spdif_copyright(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_component_get_drvdata(component);
+
+	spdif->copyright = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int get_spdif_data_format(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = spdif->data_format;
+
+	return 0;
+}
+
+static int set_spdif_data_format(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_component_get_drvdata(component);
+
+	spdif->data_format = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static const struct snd_kcontrol_new tcc_spdif_snd_controls[] = {
+	SOC_ENUM_EXT("Data Format", spdif_data_format_enum[0], get_spdif_data_format, set_spdif_data_format),
+	SOC_ENUM_EXT("Copyright", spdif_copyright_enum[0], get_spdif_copyright, set_spdif_copyright),
+};
+
 struct snd_soc_component_driver tcc_spdif_component_drv = {
 	.name = "tcc-spdif",
+	.controls = tcc_spdif_snd_controls,
+	.num_controls = ARRAY_SIZE(tcc_spdif_snd_controls),
 };
 
 static int tcc_spdif_suspend(struct snd_soc_dai *dai)
@@ -467,6 +536,13 @@ static void spdif_initialize(struct tcc_spdif_t *spdif)
 #endif
 }
 
+static void set_default_configrations(struct tcc_spdif_t *spdif)
+{
+	// these values will be updated by device tree or another functions
+	spdif->data_format = false; //Copy inhibited
+	spdif->copyright = false; // Audio Format
+}
+
 static int parse_spdif_dt(struct platform_device *pdev, struct tcc_spdif_t *spdif)
 {
 	spdif->pdev = pdev;
@@ -538,6 +614,9 @@ static int tcc_spdif_probe(struct platform_device *pdev)
 	}
 
 	spdif_dai_dbg("%s\n", __func__);
+	spdif_dai_dbg("%s - spdif : %p\n", __func__, spdif);
+
+	set_default_configrations(spdif);
 
 	if ((ret = parse_spdif_dt(pdev, spdif)) < 0) {
 		printk("%s : Fail to parse spdif dt\n", __func__);
