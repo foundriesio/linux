@@ -1065,7 +1065,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         struct hdmi_scdc_error_data hdmi_scdc_error_data;
                                         memset(&hdmi_scdc_error_data, 0, sizeof(hdmi_scdc_error_data));
                                         ret = scdc_error_detection(dev, &hdmi_scdc_error_data);
-                                        if(!ret && arg) {
+                                        if(!ret && arg != NULL) {
                                                 if(copy_to_user((void __user *)arg, &hdmi_scdc_error_data, sizeof(struct hdmi_scdc_error_data))) {
                                                         pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                         mutex_unlock(&dev->mutex);

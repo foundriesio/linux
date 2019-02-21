@@ -183,6 +183,12 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
 
         memset(hdmi_scdc_error_data, 0, sizeof(struct hdmi_scdc_error_data));
 
+        if(dev->prev_scdc_status == (unsigned char)-1) {
+                /* update time value */
+                do_gettimeofday(&prev_status_timeval);
+                do_gettimeofday(&prev_ced_timeval);
+        }
+
         if(scdc_read(dev, SCDC_SINK_VER, 1, &reg_value) < 0){
                 msleep_interruptible(10);
                 if(scdc_read(dev, SCDC_SINK_VER, 1, &reg_value) < 0){
