@@ -1304,6 +1304,13 @@
 		max-channel = <TCC_MBOX0_CH_MAX>;
 	};
 
+	suspend_mbox0: suspend_mbox@0 {
+	   compatible = "telechips,mailbox-suspend";
+	   device-name = "suspend-mbox-dev-a53";
+	   mbox-names ="suspend-mbox-a53";
+	   mboxes = <&mbox0 TCC_MBOX0_CH_SUSPEND>;
+   };
+
 	/* A53 <-> A7S */
 	mbox1: mbox@0x17A00000 {
 		compatible = "telechips,multichannel-mailbox";
