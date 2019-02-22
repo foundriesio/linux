@@ -433,6 +433,17 @@ static int otm8009a_probe(struct mipi_dsi_device *dsi)
 		return PTR_ERR(ctx->reset_gpio);
 	}
 
+	/*
+	 * Due to a common reset between panel & touchscreen, the reset pin
+	 * must be set to low level first and leave at high level at the
+	 * end of probe
+	 */
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+		mdelay(1);
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+	}
+
 	ctx->supply = devm_regulator_get(dev, "power");
 	if (IS_ERR(ctx->supply)) {
 		ret = PTR_ERR(ctx->supply);
