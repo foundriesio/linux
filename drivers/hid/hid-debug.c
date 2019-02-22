@@ -30,7 +30,6 @@
 
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/kfifo.h>
 #include <linux/sched/signal.h>
 #include <linux/export.h>
 #include <linux/slab.h>
