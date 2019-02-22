@@ -43,17 +43,11 @@ void hid_debug_exit(void);
 void hid_debug_event(struct hid_device *, char *);
 
 struct hid_debug_list {
-	/* the following three fields are merely placeholders for kABI compatibility */
-	char *hid_debug_buf;
-	int head;
-	int tail;
+	DECLARE_KFIFO_PTR(hid_debug_fifo, char);
 	struct fasync_struct *fasync;
 	struct hid_device *hdev;
 	struct list_head node;
 	struct mutex read_mutex;
-#ifndef __GENKSYSMS__
-	DECLARE_KFIFO_PTR(hid_debug_fifo, char);
-#endif
 };
 
 #else
