@@ -9,6 +9,10 @@ Optional properties:
  - vsys-supply: low power supply [3.0V;5.5V].
  - vconn-supply: power supply [2.7;5.5V] used to supply VConn on CC pin in
    source or dual power role.
+ - interrupts: interrupt specifier triggered by ALERT# signal.
+   Please refer to ../interrupt-controller/interrupt.txt
+ - pinctrl state named "default" may be defined to configure pin for #ALERT
+   signal
 
 USB-C connector attached to STUSB Type-C port controller can be described in
 an optional connector sub-node. Refer to ../connector/usb-connector.txt.
@@ -20,6 +24,10 @@ Example :
 		reg = <0x28>;
 		vdd-supply = <&vbus_drd>;
 		vsys-supply = <&vdd_usb>;
+		interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-parent = <&gpioi>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&stusb1600_pins_a>;
 
 		usb_con: connector {
 			compatible = "usb-c-connector";
