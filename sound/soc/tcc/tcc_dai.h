@@ -332,7 +332,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(void __iomem *base_addr, uint32_t
 	mccr0 |= MCCR0_TDM_MODE_0;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	if(system_rev == 0) { //MPW1
+	if(system_rev == 0) { //ES
 		mccr0 |= MCCR0_FRAME_BEGIN_NORMAL_MODE;
 	} else {
 		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
@@ -377,7 +377,7 @@ static inline void tcc_dai_set_dsp_tdm_mode(void __iomem *base_addr, uint32_t sl
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	if(system_rev == 0) { //MPW1
+	if(system_rev == 0) { //ES
 		mccr0 |= MCCR0_TDM_MODE_1;
 		if(late == true)
 			mccr0 |= MCCR0_FRAME_BEGIN_MODE2; //DSP-B
