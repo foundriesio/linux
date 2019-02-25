@@ -1110,7 +1110,7 @@ struct hv_ring_buffer_debug_info {
 };
 
 
-int hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
 				struct hv_ring_buffer_debug_info *debug_info);
 
 /* Vmbus interface */

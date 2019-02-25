@@ -164,7 +164,7 @@ hv_get_ringbuffer_availbytes(const struct hv_ring_buffer_info *rbi,
 }
 
 /* Get various debug metrics for the specified ring buffer. */
-int hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+int suse_hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
 				struct hv_ring_buffer_debug_info *debug_info)
 {
 	u32 bytes_avail_towrite;
@@ -183,6 +183,11 @@ int hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
 	debug_info->current_interrupt_mask
 		= ring_info->ring_buffer->interrupt_mask;
 	return 0;
+}
+void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+				struct hv_ring_buffer_debug_info *debug_info)
+{
+	suse_hv_ringbuffer_get_debuginfo(ring_info, debug_info);
 }
 EXPORT_SYMBOL_GPL(hv_ringbuffer_get_debuginfo);
 

@@ -47,6 +47,7 @@
 #include <linux/random.h>
 #include "hyperv_vmbus.h"
 
+#define hv_ringbuffer_get_debuginfo suse_hv_ringbuffer_get_debuginfo
 struct vmbus_dynid {
 	struct list_head node;
 	struct hv_vmbus_device_id id;
