@@ -1243,9 +1243,9 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 
 		if(vdev->cif.vioc_irq_reg == ENABLE) {
-			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vdev->cif.vioc_irq_reg = DISABLE;
 		} else {
 			log("ERROR: The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
@@ -1370,6 +1370,10 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 
 	// init v4l2 resources
 	mutex_init(&vdev->v4l2.lock);
+
+	// init wait queue head and work thread
+	init_waitqueue_head(&vdev->v4l2.frame_wait);
+	INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
 
 	FUNCTION_OUT
 	return ret;
@@ -1643,10 +1647,6 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 	}
 
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
-		mutex_init(&vdev->v4l2.lock);
-		init_waitqueue_head(&vdev->v4l2.frame_wait);
-		INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
-
 		ret = tccvin_request_irq(vdev);
 		if(ret < 0) {
 			log("ERROR: Request IRQ\n");

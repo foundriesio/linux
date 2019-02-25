@@ -30,6 +30,8 @@ static int					debug = 0;
 #define SWITCH_IOCTL_CMD_DISABLE		0x11
 #define SWITCH_IOCTL_CMD_GET_STATE		0x50
 
+//#define ON_OFF_TEST
+
 atomic_t switch_reverse_attr;
 
 long switch_reverse_get_state(void) {
@@ -74,6 +76,38 @@ int switch_reverse_is_enabled(void) {
 	return data->enabled;
 }
 
+#ifdef ON_OFF_TEST
+#include <linux/kthread.h>
+#include <linux/sched.h>
+#include <linux/mutex.h>
+
+struct task_struct			* threadSwitching;
+struct mutex				switchmanager_lock;
+int							super_switch;
+
+int tccvin_switchmanager_monitor_thread(void * data) {
+	FUNCTION_IN
+
+	// switching
+	while(1) {
+		msleep(2000);
+
+		if(kthread_should_stop())
+			break;
+
+		mutex_lock(&switchmanager_lock);
+
+		super_switch ^= 1;
+		dlog("super_switch: %d\n", super_switch);
+
+		mutex_unlock(&switchmanager_lock);
+	}
+
+	FUNCTION_OUT
+	return 0;
+}
+#endif//ON_OFF_TEST
+
 int switch_reverse_check_state(void) {
 #ifndef CONFIG_PMAP_CA7S
 	struct switch_reverse_data * data = pdata;
@@ -91,6 +125,10 @@ int switch_reverse_check_state(void) {
 #endif//CONFIG_PMAP_CA7S
 
 	ret = switch_reverse_get_state();
+#ifdef ON_OFF_TEST
+	if(ret == 1)
+		ret = super_switch;
+#endif//ON_OFF_TEST
 
 	return ret;
 }
@@ -210,6 +248,11 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
 	if(ret < 0)
 		log("failed create sysfs\r\n");
+
+#ifdef ON_OFF_TEST
+	mutex_init(&switchmanager_lock);
+	threadSwitching = kthread_run(tccvin_switchmanager_monitor_thread, (void *)data, "threadSwitching");
+#endif//ON_OFF_TEST
 
 	FUNCTION_OUT
 	return 0;
