@@ -49,7 +49,6 @@ extern int dwc_hdmi_misc_register(struct hdmi_tx_dev *dev);
 extern int dwc_hdmi_misc_deregister(struct hdmi_tx_dev *dev);
 #if defined(CONFIG_TCC_OUTPUT_STARTER)
 extern void dwc_hdmi_power_on_core(struct hdmi_tx_dev *dev, int need_link_reset);
-extern void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
 #endif
 
 // API Functions

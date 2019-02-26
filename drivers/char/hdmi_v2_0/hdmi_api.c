@@ -48,9 +48,13 @@ static struct {
         .callback_hdmi_fbi = 0,
 };
 
+extern void dwc_hdmi_power_on(struct hdmi_tx_dev *dev);
+extern void dwc_hdmi_power_off(struct hdmi_tx_dev *dev);
+
 void dwc_hdmi_api_register(struct hdmi_tx_dev *dev){
         hdmi_apis.dev = dev;
 }
+EXPORT_SYMBOL(dwc_hdmi_api_register);
 
 struct hdmi_tx_dev *dwc_hdmi_api_get_dev(void){
         return hdmi_apis.dev;
@@ -245,4 +249,26 @@ int hdmi_api_vsif_update_by_index(int index)
         return ret;
 }
 EXPORT_SYMBOL(hdmi_api_vsif_update_by_index);
+
+/**
+ * @short This api is controls the hdmi power.
+ * @param[in] enable Parameter to enable or disable hdmi power.
+ *            0: disable, 1: enable
+ * @return none
+ */
+void hdmi_api_power_control(int enable)
+{
+        if(hdmi_apis.dev != NULL) {
+                mutex_lock(&hdmi_apis.dev->mutex);
+                if(enable) {
+                        clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_apis.dev->status);
+                        dwc_hdmi_power_on(hdmi_apis.dev);
+                } else {
+                        clear_bit(HDMI_TX_STATUS_PHY_ALIVE, &hdmi_apis.dev->status);
+                        dwc_hdmi_power_off(hdmi_apis.dev);
+                }
+                mutex_unlock(&hdmi_apis.dev->mutex);
+        }
+}
+EXPORT_SYMBOL(hdmi_api_power_control);
 
