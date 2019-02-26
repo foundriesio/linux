@@ -50,12 +50,14 @@
  * mappings.
  */
 #define H_KERN_VIRT_START ASM_CONST(0xD000000000000000)
+
 /*
  * Allow virtual mapping of one context size.
  * 512TB for 64K page size
  * 64TB for 4K page size
  */
 #define H_KERN_VIRT_SIZE (1UL << MAX_EA_BITS_PER_CONTEXT)
+
 /*
  * 8TB IO mapping size
  */
@@ -67,7 +69,7 @@
  */
 #define H_VMALLOC_START H_KERN_VIRT_START
 #define H_VMALLOC_SIZE (H_KERN_VIRT_SIZE - H_KERN_IO_SIZE)
-#define H_VMALLOC_END (H_VMALLOC_START + H_VMALLOC_SIZE)
+#define H_VMALLOC_END  (H_VMALLOC_START + H_VMALLOC_SIZE)
 
 #define H_KERN_IO_START H_VMALLOC_END
 
