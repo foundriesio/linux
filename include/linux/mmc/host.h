@@ -164,6 +164,12 @@ struct mmc_host_ops {
 	void	(*card_event)(struct mmc_host *host);
 
 	/*
+	 * Optional callback, if your host is in deadlock after a command and
+	 * must done specific action before sent new command.
+	 */
+	void	(*hw_unstuck)(struct mmc_host *host);
+
+	/*
 	 * Optional callback to support controllers with HW issues for multiple
 	 * I/O. Returns the number of supported blocks for the request.
 	 */

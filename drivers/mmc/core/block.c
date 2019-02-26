@@ -1763,6 +1763,17 @@ static void mmc_blk_mq_rw_recovery(struct mmc_queue *mq, struct request *req)
 	int err;
 
 	/*
+	 * the host is in a bad state, and can't sent a new command
+	 * without be unstuck
+	 */
+	if (brq->sbc.error == -EDEADLK || brq->cmd.error == -EDEADLK ||
+	    brq->stop.error == -EDEADLK || brq->data.error == -EDEADLK) {
+		pr_err("%s: host is in bad state, must be unstuck\n",
+		       req->rq_disk->disk_name);
+		mmc_hw_unstuck(card->host);
+	}
+
+	/*
 	 * Some errors the host driver might not have seen. Set the number of
 	 * bytes transferred to zero in that case.
 	 */

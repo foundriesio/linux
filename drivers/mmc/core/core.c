@@ -397,6 +397,7 @@ static int __mmc_start_req(struct mmc_host *host, struct mmc_request *mrq)
 void mmc_wait_for_req_done(struct mmc_host *host, struct mmc_request *mrq)
 {
 	struct mmc_command *cmd;
+	int sbc_err, stop_err, data_err;
 
 	while (1) {
 		wait_for_completion(&mrq->completion);
@@ -420,8 +421,20 @@ void mmc_wait_for_req_done(struct mmc_host *host, struct mmc_request *mrq)
 				       mmc_hostname(host), __func__);
 			}
 		}
-		if (!cmd->error || !cmd->retries ||
-		    mmc_card_removed(host->card))
+
+		sbc_err =  mrq->sbc ? mrq->sbc->error : 0;
+		stop_err = mrq->stop ? mrq->stop->error : 0;
+		data_err =  mrq->data ? mrq->data->error : 0;
+
+		if (cmd->error == -EDEADLK || sbc_err == -EDEADLK ||
+		    stop_err == -EDEADLK || data_err == -EDEADLK) {
+			pr_debug("%s: host is in bad state, must be unstuck\n",
+				 mmc_hostname(host));
+			mmc_hw_unstuck(host);
+		}
+
+		if ((!cmd->error && !sbc_err && !stop_err && !data_err) ||
+		    !cmd->retries || mmc_card_removed(host->card))
 			break;
 
 		mmc_retune_recheck(host);
@@ -430,6 +443,12 @@ void mmc_wait_for_req_done(struct mmc_host *host, struct mmc_request *mrq)
 			 mmc_hostname(host), cmd->opcode, cmd->error);
 		cmd->retries--;
 		cmd->error = 0;
+		if (mrq->sbc)
+			mrq->sbc->error = 0;
+		if (mrq->stop)
+			mrq->stop->error = 0;
+		if (mrq->data)
+			mrq->data->error = 0;
 		__mmc_start_request(host, mrq);
 	}
 
@@ -2162,6 +2181,14 @@ int mmc_sw_reset(struct mmc_host *host)
 	return ret;
 }
 EXPORT_SYMBOL(mmc_sw_reset);
+
+void mmc_hw_unstuck(struct mmc_host *host)
+{
+	if (!host->ops->hw_unstuck)
+		return;
+	host->ops->hw_unstuck(host);
+}
+EXPORT_SYMBOL(mmc_hw_unstuck);
 
 static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
