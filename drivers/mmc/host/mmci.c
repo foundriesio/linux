@@ -360,6 +360,24 @@ static void mmci_write_datactrlreg(struct mmci_host *host, u32 datactrl)
 	}
 }
 
+static void mmci_restore(struct mmci_host *host)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&host->lock, flags);
+
+	if (host->variant->pwrreg_nopower) {
+		writel(host->clk_reg, host->base + MMCICLOCK);
+		writel(host->datactrl_reg, host->base + MMCIDATACTRL);
+		writel(host->pwr_reg, host->base + MMCIPOWER);
+	}
+	writel(MCI_IRQENABLE | host->variant->start_err,
+	       host->base + MMCIMASK0);
+	mmci_reg_delay(host);
+
+	spin_unlock_irqrestore(&host->lock, flags);
+}
+
 /*
  * This must be called with host->lock held
  */
@@ -1318,7 +1336,7 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 		cmd->error = -EILSEQ;
 	} else if (host->variant->busy_timeout && busy_resp &&
 		   status & MCI_DATATIMEOUT) {
-		cmd->error = -ETIMEDOUT;
+		cmd->error = -EDEADLK;
 	} else {
 		cmd->resp[0] = readl(base + MMCIRESPONSE0);
 		cmd->resp[1] = readl(base + MMCIRESPONSE1);
@@ -1330,7 +1348,6 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 		if (host->data) {
 			/* Terminate the DMA transfer */
 			mmci_dma_error(host);
-
 			mmci_stop_data(host);
 			if (host->variant->cmdreg_stop && cmd->error) {
 				mmci_stop_command(host);
@@ -1785,6 +1802,19 @@ static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 	return ret;
 }
 
+static void mmci_hw_unstuck(struct mmc_host *mmc)
+{
+	struct mmci_host *host = mmc_priv(mmc);
+
+	if (host->rst) {
+		reset_control_assert(host->rst);
+		udelay(2);
+		reset_control_deassert(host->rst);
+	}
+
+	mmci_restore(host);
+}
+
 static struct mmc_host_ops mmci_ops = {
 	.request	= mmci_request,
 	.pre_req	= mmci_pre_request,
@@ -1793,6 +1823,7 @@ static struct mmc_host_ops mmci_ops = {
 	.get_ro		= mmc_gpio_get_ro,
 	.get_cd		= mmci_get_cd,
 	.start_signal_voltage_switch = mmci_sig_volt_switch,
+	.hw_unstuck	= mmci_hw_unstuck,
 };
 
 static int mmci_of_parse(struct device_node *np, struct mmc_host *mmc)
@@ -2154,24 +2185,6 @@ static void mmci_save(struct mmci_host *host)
 		writel(0, host->base + MMCIPOWER);
 		writel(0, host->base + MMCICLOCK);
 	}
-	mmci_reg_delay(host);
-
-	spin_unlock_irqrestore(&host->lock, flags);
-}
-
-static void mmci_restore(struct mmci_host *host)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&host->lock, flags);
-
-	if (host->variant->pwrreg_nopower) {
-		writel(host->clk_reg, host->base + MMCICLOCK);
-		writel(host->datactrl_reg, host->base + MMCIDATACTRL);
-		writel(host->pwr_reg, host->base + MMCIPOWER);
-	}
-	writel(MCI_IRQENABLE | host->variant->start_err,
-	       host->base + MMCIMASK0);
 	mmci_reg_delay(host);
 
 	spin_unlock_irqrestore(&host->lock, flags);
