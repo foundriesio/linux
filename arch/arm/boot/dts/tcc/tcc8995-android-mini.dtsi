@@ -197,10 +197,6 @@
 	status = "okay";
 };
 
-&hdmi_hdcp {
-	status = "okay";
-};
-
 /* I2C */
 
 // Default set

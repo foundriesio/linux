@@ -2572,7 +2572,6 @@
 
 	hdmi_hdcp: hdmi_hdcp@12440000 {
 		compatible = "telechips,esm";
-		status = "disabled";
 	};
 
 	/* eMMC Boot */

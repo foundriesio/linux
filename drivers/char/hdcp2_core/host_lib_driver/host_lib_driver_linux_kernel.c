@@ -43,6 +43,10 @@
 #include <linux/pm_runtime.h>
 #endif
 
+#ifdef CONFIG_ANDROID
+#include <linux/wakelock.h>
+#endif
+
 #define MAX_ESM_DEVICES 16
 #define	USE_RESERVED_MEMORY
 
@@ -50,7 +54,9 @@
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_HOST_DRV_VERSION "4.14_1.0.5"
+#define HDCP_HOST_DRV_VERSION "4.14_1.0.6"
+
+#define USE_HDMI_PWR_CTRL
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
@@ -86,12 +92,16 @@ typedef struct {
 	struct miscdevice *misc;
 
 	/** Device Open Count */
-	int open_cs;
+	uint32_t open_cs;
 
 	/** Device list **/
 	struct list_head devlist;
 
 	int hdcp_suspend;
+
+#ifdef CONFIG_ANDROID
+	struct wake_lock wakelock;
+#endif
 } esm_device;
 
 #ifndef OPTEE_BASE_HDCP
@@ -120,6 +130,10 @@ static LIST_HEAD(devlist_global);
 
 extern void * alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 extern void free_all_mem(void);
+
+#ifdef USE_HDMI_PWR_CTRL
+extern void hdmi_api_power_control(int enable);
+#endif
 
 /* ESM_IOC_MEMINFO implementation */
 static long get_meminfo(esm_device *esm, void __user *arg)
@@ -673,7 +687,8 @@ static const struct dev_pm_ops tcc_hdcp_pm_ops = {
 
 static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
-	esm_device *esm = f->private_data;
+	struct miscdevice *dev = (struct miscdevice *)f->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 	void __user *data = (void __user *)arg;
 
 	if (cmd == ESM_IOC_INIT) {
@@ -683,7 +698,7 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	}
 
 	if (esm->hdcp_suspend == 1) {
-		printk("[hdcp driver] suspend mode is set. \n");
+		dev_info(dev->parent, "[hdcp driver] suspend mode is set. \n");
 		return -EBUSY;
 	}
 
@@ -726,24 +741,47 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 static int
 tcc_hdcp_open(struct inode *inode, struct file *file)
 {
-	struct miscdevice *misc = (struct miscdevice *)file->private_data;
-	esm_device *dev = dev_get_drvdata(misc->parent);
+	struct miscdevice *dev = (struct miscdevice *)file->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 
-	file->private_data = dev;
+	if (!esm->open_cs) {
+#ifdef CONFIG_ANDROID
+		wake_lock_init(&esm->wakelock, WAKE_LOCK_SUSPEND, "hdcp_wake_lock");
+#endif
+#ifdef USE_HDMI_PWR_CTRL
+	hdmi_api_power_control(1);
+#endif
+		dev_info(dev->parent, "%s\n", __func__);
+	}
 
-
-	dev->open_cs++;
-
+	esm->open_cs++;
 	return 0;
 }
 
 static int
 tcc_hdcp_release(struct inode *inode, struct file *file)
 {
-	esm_device *dev = (esm_device *)file->private_data;
+	struct miscdevice *dev = (struct miscdevice *)file->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 
-	dev->open_cs--;
+	//esm_device *dev = (esm_device *)file->private_data;
 
+	if (!esm->open_cs) {
+		dev_err(dev->parent, "%s\n", __func__);
+		return -1;
+	}
+
+	esm->open_cs--;
+
+	if (!esm->open_cs) {
+		dev_info(dev->parent, "%s\n", __func__);
+#ifdef USE_HDMI_PWR_CTRL
+	hdmi_api_power_control(0);
+#endif
+#ifdef CONFIG_ANDROID
+		wake_lock_destroy(&esm->wakelock);
+#endif
+	}
 	return 0;
 }
 
@@ -771,11 +809,11 @@ static const struct file_operations tcc_hdcp_fops =
 {
 	.owner			= THIS_MODULE,
 	.open			= tcc_hdcp_open,
-	.release			= tcc_hdcp_release,
+	.release		= tcc_hdcp_release,
 	.read			= tcc_hdcp_read,
 	.write			= tcc_hdcp_write,
-	.unlocked_ioctl	= tcc_hdcp_ioctl,
-	.poll				= tcc_hdcp_poll,
+	.unlocked_ioctl		= tcc_hdcp_ioctl,
+	.poll			= tcc_hdcp_poll,
 };
 
 
