@@ -96,6 +96,7 @@ static const struct regulator_desc stm32_pwr_reg11 = {
 	.enable_reg = REG_PWR_CR3,
 	.enable_mask = REG_1_1_EN,
 	.owner = THIS_MODULE,
+	.supply_name = "vdd",
 };
 
 static const struct regulator_desc stm32_pwr_reg18 = {
@@ -109,6 +110,7 @@ static const struct regulator_desc stm32_pwr_reg18 = {
 	.enable_reg = REG_PWR_CR3,
 	.enable_mask = REG_1_8_EN,
 	.owner = THIS_MODULE,
+	.supply_name = "vdd",
 };
 
 static const struct regulator_desc stm32_pwr_usb33 = {
@@ -122,6 +124,7 @@ static const struct regulator_desc stm32_pwr_usb33 = {
 	.enable_reg = REG_PWR_CR3,
 	.enable_mask = USB_3_3_EN,
 	.owner = THIS_MODULE,
+	.supply_name = "vdd_3v3_usbfs",
 };
 
 static struct of_regulator_match stm32_pwr_reg_matches[] = {
