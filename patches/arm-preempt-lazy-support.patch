@@ -139,7 +139,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/arch/arm/kernel/signal.c
 +++ b/arch/arm/kernel/signal.c
-@@ -644,7 +644,8 @@ do_work_pending(struct pt_regs *regs, un
+@@ -652,7 +652,8 @@ do_work_pending(struct pt_regs *regs, un
  	 */
  	trace_hardirqs_off();
  	do {

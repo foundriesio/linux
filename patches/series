@@ -301,6 +301,7 @@ md-raid5-percpu-handling-rt-aware.patch
 # CPU CHILL
 rt-introduce-cpu-chill.patch
 hrtimer-Don-t-lose-state-in-cpu_chill.patch
+hrtimer-cpu_chill-save-task-state-in-saved_state.patch
 
 # block
 block-blk-mq-move-blk_queue_usage_counter_release-in.patch
@@ -399,6 +400,7 @@ preempt-lazy-support.patch
 ftrace-Fix-trace-header-alignment.patch
 x86-preempt-lazy.patch
 x86-lazy-preempt-properly-check-against-preempt-mask.patch
+x86-lazy-preempt-use-proper-return-label-on-32bit-x8.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
 arch-arm64-Add-lazy-preempt-support.patch
