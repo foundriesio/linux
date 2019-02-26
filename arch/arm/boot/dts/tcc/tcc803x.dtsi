@@ -1350,7 +1350,7 @@
 		compatible = "telechips,switch_reverse_ipc";
 		device-name = "switch_reverse_ipc";
 		mbox-names ="switch_reverse_ipc";
-		mboxes = <&mbox1 TCC_MBOX1_CH_4>;
+		mboxes = <&mbox1 TCC_MBOX1_CH_SWITCH>;
 	};
 
 	i2c0: i2c@16300000 {
