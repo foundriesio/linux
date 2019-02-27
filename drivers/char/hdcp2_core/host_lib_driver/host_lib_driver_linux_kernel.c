@@ -85,9 +85,6 @@ typedef struct {
 	/** Device node */
 	struct device *parent_dev;
 
-	/** Device Tree Information */
-	char *device_name;
-
 	/** Misc Device */
 	struct miscdevice *misc;
 
@@ -412,12 +409,12 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 {
 	struct hdcp_ioc_data data;
 	int ret = 0;
-	struct device *pdev_hdcp;
+
+	if (!esm)
+		return -EFAULT;
 
 	if (!esm->dev)
 		return -ENOSPC;
-
-	pdev_hdcp = esm->parent_dev;
 
 	if (copy_from_user(&data, arg, sizeof data) != 0) {
 		pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -426,17 +423,17 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 
 	pr_info("%s : blank(mode=%d)\n",__func__, data.status);
 
-	if (pdev_hdcp !=  NULL) {
+	if (esm->parent_dev !=  NULL) {
 		switch(data.status)
 		{
 			case FB_BLANK_POWERDOWN:
 			case FB_BLANK_NORMAL:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_put_sync(pdev_hdcp);
+				pm_runtime_put_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_UNBLANK:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_get_sync(pdev_hdcp);
+				pm_runtime_get_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_HSYNC_SUSPEND:
 			case FB_BLANK_VSYNC_SUSPEND:
@@ -630,49 +627,40 @@ static void free_esm_slot(esm_device *slot)
 #if defined(CONFIG_PM)
 int tcc_hdcp_suspend(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 1;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 1;
 
 	return 0;
 }
 
 int tcc_hdcp_resume(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm= (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 0;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 0;
 
 	return 0;
 }
 
 int tcc_hdcp_runtime_suspend(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 1;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 1;
 
 	return 0;
 }
 
 int tcc_hdcp_runtime_resume(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	printk("[%s] \n", __func__);
-
-	hdcp_dev->hdcp_suspend = 0;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 0;
 
 	return 0;
 }
@@ -911,40 +899,30 @@ int tcc_hdcp_misc_deregister(esm_device *dev)
 
 static int tcc_hdcp_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	esm_device *dev = NULL;
+	esm_device *esm = NULL;
 
-	printk("%s:Device registration\n", __func__);
-	dev = alloc_mem("HDCP Device", sizeof(esm_device), NULL);
-	if(!dev){
+	esm = kzalloc(sizeof(esm_device), GFP_KERNEL);
+	if(!esm){
 		pr_err("%s:Could not allocated hdcp device driver\n", __func__);
 		return -ENOMEM;
 	}
 
-	// Zero the device
-	memset(dev, 0, sizeof(esm_device));
-
 	// Update the device node
-	dev->parent_dev = &pdev->dev;
-
-	dev->device_name = "TCC_HDCP";
-
-	printk("%s:Driver's name '%s' \n", __func__, dev->device_name);
-
-	tcc_hdcp_misc_register(dev);
-
-	dev->hdcp_suspend = 0;
+	esm->parent_dev = &pdev->dev;
+	esm->hdcp_suspend = 0;
 
 	#ifdef CONFIG_PM
-	pm_runtime_set_active(dev->parent_dev);
-	pm_runtime_enable(dev->parent_dev);
-	pm_runtime_get_noresume(dev->parent_dev);  //increase usage_count
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);  //increase usage_count
 	#endif
 
-	// Now that everything is fine, let's add it to device list
-	list_add_tail(&dev->devlist, &devlist_global);
+	tcc_hdcp_misc_register(esm);
+	platform_set_drvdata(pdev, esm);
 
-	return ret;
+	dev_info(&pdev->dev, "driver probed\n");
+
+	return 0;
 }
 
 /**
@@ -955,25 +933,14 @@ static int tcc_hdcp_probe(struct platform_device *pdev)
  */
 static int tcc_hdcp_remove(struct platform_device *pdev)
 {
-	esm_device *dev;
-	struct list_head *list;
+	esm_device *esm = platform_get_drvdata(pdev);
 
-	while(!list_empty(&devlist_global)){
-		list = devlist_global.next;
-		list_del(list);
-		dev = list_entry(list, esm_device , devlist);
-
-		if(dev == NULL) {
-			continue;
-		}
-
-		#if defined(CONFIG_PM)
-		pm_runtime_disable(dev->parent_dev);
-		#endif
-
-		tcc_hdcp_misc_deregister(dev);
-
-		free_all_mem();
+	if (esm) {
+		tcc_hdcp_misc_deregister(esm);
+#if defined(CONFIG_PM)
+		pm_runtime_disable(&pdev->dev);
+#endif
+		kfree(esm);
 	}
 
 	return 0;
