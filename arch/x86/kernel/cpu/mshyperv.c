@@ -340,8 +340,10 @@ static void __init ms_hyperv_init_platform(void)
 	 * and Hyper-V IOMMU driver makes sure cpus assigned with IO-APIC irqs
 	 * have 8-bit APIC id.
 	 */
-	if (IS_ENABLED(CONFIG_X86_X2APIC) && x2apic_supported())
+# ifdef CONFIG_X86_X2APIC
+	if (x2apic_supported())
 		x2apic_phys = 1;
+# endif
 
 #endif
 }

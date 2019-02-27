@@ -14,6 +14,8 @@
 #include <linux/iommu.h>
 #include <linux/module.h>
 
+#include <asm/apic.h>
+#include <asm/cpu.h>
 #include <asm/hw_irq.h>
 #include <asm/io_apic.h>
 #include <asm/irq_remapping.h>
@@ -137,7 +139,7 @@ static int __init hyperv_prepare_irq_remapping(void)
 	struct fwnode_handle *fn;
 	int i;
 
-	if (!hypervisor_is_type(x86_hyper_type) ||
+	if (!hypervisor_is_type(X86_HYPER_MS_HYPERV) ||
 	    !x2apic_supported())
 		return -ENODEV;
 
@@ -162,7 +164,7 @@ static int __init hyperv_prepare_irq_remapping(void)
 	 * max cpu affinity for IOAPIC irqs. Scan cpu 0-255 and set cpu
 	 * into ioapic_max_cpumask if its APIC ID is less than 256.
 	 */
-	for (i = 0; i < 256; i++)
+	for (i = min_t(unsigned int, num_possible_cpus() - 1, 255); i >= 0; i--)
 		if (cpu_physical_id(i) < 256)
 			cpumask_set_cpu(i, &ioapic_max_cpumask);
 
