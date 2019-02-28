@@ -8,6 +8,12 @@
  * published by the Free Software Foundation.
  */
 
+#ifdef CONFIG_PMAP_DEBUG
+#ifndef DEBUG
+#  define DEBUG
+#endif
+#endif
+
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/memblock.h>
@@ -33,7 +39,7 @@
 #include <linux/highmem.h>
 #endif
 
-#define PMAP_DEV_NAME "pmap"
+#define PMAP_DEV_NAME		"pmap"
 
 struct device *pmap_device;
 
@@ -149,16 +155,23 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 	dma_addr_t phys;
 	void *virt;
 
+	pr_debug("pmap: cma: request to alloc %s for size 0x%08x\n",
+			info->name, info->size);
+
 	virt = dma_alloc_attrs(pmap_device, info->size, &phys, GFP_KERNEL,
 			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
 
 	if (!virt) {
-		pr_err("pmap: cma alloc failed for %s\n", info->name);
+		pr_err("\x1b[31m" "pmap: cma: failed to alloc %s" "\x1b[0m\n",
+				info->name);
 		return 0;
 	}
 
 	info->base = (__u32) phys;
 	info->v_base = (__u32) virt;
+
+	pr_debug("pmap: cma: %s is allocated at 0x%08x (virt: 0x%08x)\n",
+			info->name, info->base, info->v_base);
 
 	return 1;
 }
@@ -170,6 +183,9 @@ static int pmap_cma_release(pmap_t *info)
 
 	dma_free_attrs(pmap_device, info->size, virt, phys,
 			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
+
+	pr_debug("pmap: cma: %s is released from 0x%08x (virt: 0x%08x)\n",
+			info->name, info->base, info->v_base);
 
 	info->base = PMAP_DATA_NA;
 	info->v_base = PMAP_DATA_NA;
@@ -544,7 +560,7 @@ static int __init tcc_pmap_init(void)
 			list_add_tail(&entry->list, &pmap_list_head);
 	}
 
-	pr_info("pmap: Total reserved %u bytes (%u KiB, %u MiB)\n",
+	pr_info("pmap: total reserved %u bytes (%u KiB, %u MiB)\n",
 			pmap_total_size, pmap_total_size >> 10,
 			pmap_total_size >> 20);
 
@@ -562,8 +578,8 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	u64 groups = 0, alloc_size = 0;
 	struct pmap_entry *entry;
 
-	pr_debug("pmap: Reserved %ld MiB\t[%pa-%pa]\n",
-		(unsigned long) rmem->size >> 20, &rmem->base, &end);
+	pr_debug("pmap: reserved %ld MiB\t[%pa-%pa]\n",
+			(unsigned long) rmem->size >> 20, &rmem->base, &end);
 
 	name = of_get_flat_dt_prop(node, "telechips,pmap-name", NULL);
 	if (!name)
@@ -581,9 +597,6 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 
 		if (1 <= groups && groups <= MAX_PMAP_GROUPS)
 			flags |= PMAP_FLAG_SECURED;
-		else
-			pr_err("pmap: Invalid group %u for %s\n",
-					(unsigned int) groups, name);
 	}
 #endif
 
@@ -593,6 +606,11 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 		flags |= PMAP_FLAG_SHARED;
 	}
 
+#ifdef CONFIG_PMAP_TO_CMA
+	/*
+	 * When CONFIG_PMAP_TO_CMA is not set, simply ignore "telechips,
+	 * cma-alloc-size" property.
+	 */
 	prop = of_get_flat_dt_prop(node, "telechips,cma-alloc-size", &len);
 
 	if (prop) {
@@ -601,6 +619,7 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 		if (alloc_size)
 			flags |= PMAP_FLAG_CMA_ALLOC;
 	}
+#endif
 
 	/* Initialize pmap and register it into pmap list */
 	if (num_pmaps >= MAX_PMAPS)
