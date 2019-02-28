@@ -26,6 +26,8 @@
 #include <linux/marvell_phy.h>
 #include <linux/phy.h>
 
+#define MDIO_AN_10GBT_CTRL_ADV_NBT_MASK	0x01e0
+
 enum {
 	MV_PCS_BASE_T		= 0x0000,
 	MV_PCS_BASE_R		= 0x1000,
@@ -385,8 +387,10 @@ static int mv3310_config_aneg(struct phy_device *phydev)
 		changed = true;
 
 	/* 10G control register */
+	/* Make sure we clear unsupported 2.5G/5G advertising */
 	ret = mv3310_modify(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
-			    MDIO_AN_10GBT_CTRL_ADV10G,
+			    MDIO_AN_10GBT_CTRL_ADV10G |
+			    MDIO_AN_10GBT_CTRL_ADV_NBT_MASK,
 			    advertising & ADVERTISED_10000baseT_Full ?
 				MDIO_AN_10GBT_CTRL_ADV10G : 0);
 	if (ret < 0)
