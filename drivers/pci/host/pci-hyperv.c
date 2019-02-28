@@ -421,7 +421,7 @@ struct retarget_msi_interrupt {
 	struct hv_interrupt_entry int_entry;
 	u64	reserved2;
 	struct hv_device_interrupt_target int_target;
-} __packed;
+} __packed __aligned(8);
 
 /*
  * Driver specific state.
@@ -961,7 +961,7 @@ static void hv_irq_unmask(struct irq_data *data)
 		params->int_target.flags |=
 			HV_DEVICE_INTERRUPT_TARGET_PROCESSOR_SET;
 
-		if (!alloc_cpumask_var(&tmp, GFP_KERNEL)) {
+		if (!alloc_cpumask_var(&tmp, GFP_ATOMIC)) {
 			res = 1;
 			goto exit_unlock;
 		}
