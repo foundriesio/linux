@@ -429,7 +429,7 @@ void intel_hpd_irq_handler(struct drm_i915_private *dev_priv,
 		DRM_DEBUG_DRIVER("digital hpd port %c - %s\n", port_name(port),
 				 long_hpd ? "long" : "short");
 		queue_dig = true;
- 
+
 		if (long_hpd) {
 			long_hpd_pulse_mask |= BIT(pin);
 			dev_priv->hotplug.long_port_mask |= BIT(port);
@@ -473,6 +473,9 @@ void intel_hpd_irq_handler(struct drm_i915_private *dev_priv,
 			long_hpd = true;
 			queue_hp = true;
 		}
+
+		if (!long_hpd)
+			continue;
 
 		if (intel_hpd_irq_storm_detect(dev_priv, pin)) {
 			dev_priv->hotplug.event_bits &= ~BIT(pin);
