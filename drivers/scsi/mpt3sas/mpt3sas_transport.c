@@ -146,8 +146,7 @@ _transport_set_identify(struct MPT3SAS_ADAPTER *ioc, u16 handle,
 	u32 ioc_status;
 
 	if (ioc->shost_recovery || ioc->pci_error_recovery) {
-		pr_info(MPT3SAS_FMT "%s: host reset in progress!\n",
-		    __func__, ioc->name);
+		ioc_info(ioc, "%s: host reset in progress!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -308,8 +307,7 @@ _transport_expander_report_manufacture(struct MPT3SAS_ADAPTER *ioc,
 	u16 wait_state_count;
 
 	if (ioc->shost_recovery || ioc->pci_error_recovery) {
-		pr_info(MPT3SAS_FMT "%s: host reset in progress!\n",
-		    __func__, ioc->name);
+		ioc_info(ioc, "%s: host reset in progress!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -1088,8 +1086,7 @@ _transport_get_expander_phy_error_log(struct MPT3SAS_ADAPTER *ioc,
 	u16 wait_state_count;
 
 	if (ioc->shost_recovery || ioc->pci_error_recovery) {
-		pr_info(MPT3SAS_FMT "%s: host reset in progress!\n",
-		    __func__, ioc->name);
+		ioc_info(ioc, "%s: host reset in progress!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -1393,8 +1390,7 @@ _transport_expander_phy_control(struct MPT3SAS_ADAPTER *ioc,
 	u16 wait_state_count;
 
 	if (ioc->shost_recovery || ioc->pci_error_recovery) {
-		pr_info(MPT3SAS_FMT "%s: host reset in progress!\n",
-		    __func__, ioc->name);
+		ioc_info(ioc, "%s: host reset in progress!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -1870,8 +1866,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 	}
 
 	if (ioc->shost_recovery || ioc->pci_error_recovery) {
-		pr_info(MPT3SAS_FMT "%s: host reset in progress!\n",
-		    __func__, ioc->name);
+		ioc_info(ioc, "%s: host reset in progress!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -1992,7 +1987,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 	wait_for_completion_timeout(&ioc->transport_cmds.done, 10*HZ);
 
 	if (!(ioc->transport_cmds.status & MPT3_CMD_COMPLETE)) {
-		ioc_err(ioc,  "%s : timeout\n", __func__);
+		ioc_err(ioc, "%s: timeout\n", __func__);
 		_debug_dump_mf(mpi_request,
 		    sizeof(Mpi2SmpPassthroughRequest_t)/4);
 		if (!(ioc->transport_cmds.status & MPT3_CMD_RESET))
