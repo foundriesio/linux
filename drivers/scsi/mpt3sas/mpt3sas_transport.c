@@ -717,9 +717,9 @@ mpt3sas_transport_port_add(struct MPT3SAS_ADAPTER *ioc, u16 handle,
 		sas_device = mpt3sas_get_sdev_by_addr(ioc,
 				    mpt3sas_port->remote_identify.sas_address);
 		if (!sas_device) {
-			dfailprintk(ioc, printk(MPT3SAS_FMT
-				"failure at %s:%d/%s()!\n",
-				ioc->name, __FILE__, __LINE__, __func__));
+			dfailprintk(ioc,
+				    ioc_info(ioc, "failure at %s:%d/%s()!\n",
+					     __FILE__, __LINE__, __func__));
 			goto out_fail;
 		}
 		sas_device->pend_sas_rphy_add = 1;
@@ -1890,8 +1890,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 		pci_addr_out = pci_alloc_consistent(ioc->pdev,
 		    blk_rq_bytes(req), &pci_dma_out);
 		if (!pci_addr_out) {
-			pr_info(MPT3SAS_FMT "%s(): PCI Addr out = NULL\n",
-			    ioc->name, __func__);
+			ioc_info(ioc, "%s(): PCI Addr out = NULL\n", __func__);
 			rc = -ENOMEM;
 			goto out;
 		}
@@ -1906,8 +1905,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 		dma_addr_out = pci_map_single(ioc->pdev, bio_data(req->bio),
 		    blk_rq_bytes(req), PCI_DMA_BIDIRECTIONAL);
 		if (pci_dma_mapping_error(ioc->pdev, dma_addr_out)) {
-			pr_info(MPT3SAS_FMT "%s(): DMA Addr out = NULL\n",
-			    ioc->name, __func__);
+			ioc_info(ioc, "%s(): DMA Addr out = NULL\n", __func__);
 			rc = -ENOMEM;
 			goto free_pci;
 		}
@@ -1919,8 +1917,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 		pci_addr_in = pci_alloc_consistent(ioc->pdev, blk_rq_bytes(rsp),
 		    &pci_dma_in);
 		if (!pci_addr_in) {
-			pr_info(MPT3SAS_FMT "%s(): PCI Addr in = NULL\n",
-			    ioc->name, __func__);
+			ioc_info(ioc, "%s(): PCI Addr in = NULL\n", __func__);
 			rc = -ENOMEM;
 			goto unmap;
 		}
@@ -1928,8 +1925,7 @@ _transport_smp_handler(struct Scsi_Host *shost, struct sas_rphy *rphy,
 		dma_addr_in =  pci_map_single(ioc->pdev, bio_data(rsp->bio),
 		    blk_rq_bytes(rsp), PCI_DMA_BIDIRECTIONAL);
 		if (pci_dma_mapping_error(ioc->pdev, dma_addr_in)) {
-			pr_info(MPT3SAS_FMT "%s(): DMA Addr in = NULL\n",
-			    ioc->name, __func__);
+			ioc_info(ioc, "%s(): DMA Addr in = NULL\n", __func__);
 			rc = -ENOMEM;
 			goto unmap;
 		}
