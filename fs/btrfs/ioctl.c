@@ -3287,7 +3287,7 @@ static int btrfs_extent_same(struct inode *src, u64 loff, u64 olen,
 		ret = btrfs_extent_same_range(src, loff, BTRFS_MAX_DEDUPE_LEN,
 					      dst, dst_loff, &cmp);
 		if (ret)
-			goto out_unlock;
+			goto out_free;
 
 		loff += BTRFS_MAX_DEDUPE_LEN;
 		dst_loff += BTRFS_MAX_DEDUPE_LEN;
@@ -3297,15 +3297,15 @@ static int btrfs_extent_same(struct inode *src, u64 loff, u64 olen,
 		ret = btrfs_extent_same_range(src, loff, tail_len, dst,
 					      dst_loff, &cmp);
 
+out_free:
+	kvfree(cmp.src_pages);
+	kvfree(cmp.dst_pages);
+
 out_unlock:
 	if (same_inode)
 		inode_unlock(src);
 	else
 		btrfs_double_inode_unlock(src, dst);
-
-out_free:
-	kvfree(cmp.src_pages);
-	kvfree(cmp.dst_pages);
 
 	return ret;
 }
