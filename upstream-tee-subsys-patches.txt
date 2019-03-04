@@ -5,7 +5,9 @@ This is a list of all the patches that relates to the TEE subsystem. The
 text inside the brackets are the kernel version where it was introduced,
 followed by the sha1 hash in the upstream kernel tree.
 
-
+[v5.0] c7c0d8df0b94 tee: optee: add missing of_node_put after of_device_is_available
+[v5.0-rc1] 3c15ddb97c77 tee: optee: log message if dynamic shm is enabled
+[v5.0-rc1] b2d102bd0146 tee: optee: avoid possible double list_del()
 [v4.20-rc1] 25559c22cef8 tee: add kernel internal client interface
 [v4.20-rc1] db878f76b9ff tee: optee: take DT status property into account
 [v4.19] 3249527f19d6 tee: optee: making OPTEE_SHM_NUM_PRIV_PAGES configurable via Kconfig
