@@ -119,16 +119,13 @@ static void hyperv_irq_remapping_free(struct irq_domain *domain,
 	irq_domain_free_irqs_common(domain, virq, nr_irqs);
 }
 
-static int hyperv_irq_remapping_activate(struct irq_domain *domain,
-			  struct irq_data *irq_data, bool reserve)
+static void hyperv_irq_remapping_activate(struct irq_domain *domain, struct irq_data *irq_data)
 {
 	struct irq_cfg *cfg = irqd_cfg(irq_data);
 	struct IO_APIC_route_entry *entry = irq_data->chip_data;
 
 	entry->dest = cfg->dest_apicid;
 	entry->vector = cfg->vector;
-
-	return 0;
 }
 
 static struct irq_domain_ops hyperv_ir_domain_ops = {
