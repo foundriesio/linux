@@ -546,6 +546,12 @@ config TCC_BT_DEV
 	help
 	  If you say Y here, you can contorl the power of the BT H/W Module
 
+config TCC_TCM_LPO
+	tristate "TCM Low Power Oscillator clock driver for TCM38XX(BT/WIFI Combo Module)"
+	default y
+	help
+	  If you say Y here, you can contorl LPO clock of the TCM38XX H/W Module
+
 config TCC_ECID
         bool "Support CPU ECID"
         default y
