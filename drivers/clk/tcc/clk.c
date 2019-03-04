@@ -23,6 +23,7 @@
 
 struct tcc_clk {
 	struct clk_hw hw;
+	struct clk_ops *ops;
 	int id;
 	int clk_src;
 	struct list_head list;
@@ -39,20 +40,36 @@ static struct tcc_ckc_ops *ckc_ops = NULL;
 #define IGNORE_CLK_DISABLE
 #endif
 
+static int tcc_debugfs_clk_enabled(void *data, u64 *val)
+{
+	struct tcc_clk *tcc = (struct tcc_clk *) data;
+
+	if (!tcc->ops->is_enabled)
+		return -ENOENT;
+
+	*val = tcc->ops->is_enabled(&tcc->hw);
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(tcc_clk_enabled_fops, tcc_debugfs_clk_enabled,
+		NULL, "%llu\n");
+
 static int debugfs_clk_src_get(void *data, u64 *val)
 {
-	struct tcc_clk *tcc_clk = (struct tcc_clk *) data;
+	struct tcc_clk *tcc = (struct tcc_clk *) data;
 
-	*val = tcc_clk->clk_src;
+	*val = tcc->clk_src;
 	return 0;
 }
 DEFINE_DEBUGFS_ATTRIBUTE(clk_src_fops, debugfs_clk_src_get, NULL, "%llu\n");
 
 static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
 {
-	struct tcc_clk *tcc_clk = to_tcc_clk(hw);
+	struct tcc_clk *tcc = to_tcc_clk(hw);
 
-	clk_debugfs_add_file(hw, "clk_source", S_IRUGO, tcc_clk,
+	clk_debugfs_add_file(hw, "clk_enabled", S_IRUGO, tcc,
+			&tcc_clk_enabled_fops);
+
+	clk_debugfs_add_file(hw, "clk_source", S_IRUGO, tcc,
 			&clk_src_fops);
 	return 0;
 }
@@ -142,6 +159,7 @@ static int tcc_clk_register(struct device_node *np, struct clk_ops *ops)
 #endif
 		init.ops = ops;
 		tcc_clk->hw.init = &init;
+		tcc_clk->ops = ops;
 		tcc_clk->id = index;
 
 		clk = clk_register(NULL, &tcc_clk->hw);
@@ -289,6 +307,7 @@ static struct clk_ops tcc_clkctrl_ops = {
 	.recalc_rate	= tcc_clkctrl_recalc_rate,
 	.round_rate	= tcc_round_rate,
 	.set_rate	= tcc_clkctrl_set_rate,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_fbus_init(struct device_node *np)
@@ -382,6 +401,7 @@ static struct clk_ops tcc_peri_ops = {
 	.round_rate	= tcc_round_rate,
 	.set_rate	= tcc_peri_set_rate,
 	.is_enabled	= tcc_peri_is_enabled,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_peri_init(struct device_node *np)
@@ -442,6 +462,7 @@ static struct clk_ops tcc_isoip_top_ops = {
 	.disable	= tcc_isoip_top_disable,
 #endif
 	.is_enabled	= tcc_isoip_top_is_enabled,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_isoip_top_init(struct device_node *np)
@@ -503,6 +524,7 @@ static struct clk_ops tcc_isoip_ddi_ops = {
 	.disable	= tcc_isoip_ddi_disable,
 #endif
 	.is_enabled	= tcc_isoip_ddi_is_enabled,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_isoip_ddi_init(struct device_node *np)
@@ -582,6 +604,7 @@ static struct clk_ops tcc_ddibus_ops = {
 	.disable	= tcc_ddibus_disable,
 	.is_enabled	= tcc_ddibus_is_enabled,
 	//.reset		= tcc_ddibus_reset,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_ddibus_init(struct device_node *np)
@@ -662,6 +685,7 @@ static struct clk_ops tcc_iobus_ops = {
 	.disable	= tcc_iobus_disable,
 	.is_enabled	= tcc_iobus_is_enabled,
 	//.reset		= tcc_iobus_reset,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_iobus_init(struct device_node *np)
@@ -699,8 +723,7 @@ static void tcc_vpubus_disable(struct clk_hw *hw)
 			ckc_ops->ckc_vpubus_swreset(tcc->id, true);
 		if (ckc_ops->ckc_vpubus_pwdn)
 			ckc_ops->ckc_vpubus_pwdn(tcc->id, true);
-	}
-	else {
+	} else {
 		arm_smccc_smc(SIP_CLK_DISABLE_VPUBUS, tcc->id, 0, 0, 0, 0, 0, 0, &res);
 	}
 }
@@ -740,6 +763,7 @@ static struct clk_ops tcc_vpubus_ops = {
 	.enable		= tcc_vpubus_enable,
 	.disable	= tcc_vpubus_disable,
 	.is_enabled	= tcc_vpubus_is_enabled,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_vpubus_init(struct device_node *np)
@@ -828,6 +852,21 @@ static void __init tcc_hsiobus_init(struct device_node *np)
 }
 CLK_OF_DECLARE(tcc_clk_hsiobus, "telechips,clk-hsiobus", tcc_hsiobus_init);
 
+static int tcc_pll_is_enabled(struct clk_hw *hw)
+{
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = to_tcc_clk(hw);
+
+	if (ckc_ops != NULL) {
+		if (ckc_ops->ckc_is_pll_enabled)
+			return ckc_ops->ckc_is_pll_enabled(tcc->id) ? 0 : 1;
+	} else {
+		arm_smccc_smc(SIP_CLK_IS_PLL_ENABLED, tcc->id,
+				0, 0, 0, 0, 0, 0, &res);
+		return res.a0;
+	}
+	return 0;
+}
 
 static unsigned long tcc_pll_recalc_rate(struct clk_hw *hw,
 		unsigned long parent_rate)
@@ -848,7 +887,9 @@ static unsigned long tcc_pll_recalc_rate(struct clk_hw *hw,
 }
 
 static struct clk_ops tcc_pll_ops = {
+	.is_enabled	= tcc_pll_is_enabled,
 	.recalc_rate	= tcc_pll_recalc_rate,
+	.debug_init	= tcc_clk_debug_init,
 };
 
 static void __init tcc_pll_init(struct device_node *np)
