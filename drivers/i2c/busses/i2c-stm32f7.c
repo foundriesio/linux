@@ -1100,6 +1100,7 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 		break;
 	case I2C_SMBUS_BLOCK_DATA:
 	case I2C_SMBUS_BLOCK_PROC_CALL:
+	case I2C_SMBUS_I2C_BLOCK_DATA:
 		f7_msg->count = 1;
 		cr2 |= STM32F7_I2C_CR2_RELOAD;
 		break;
@@ -1124,8 +1125,8 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 
 	/*
 	 * Configure DMA or enable RX/TX interrupt:
-	 * For I2C_SMBUS_BLOCK_DATA and I2C_SMBUS_BLOCK_PROC_CALL we don't use
-	 * dma as we don't know in advance how many data will be received
+	 * For all BLOCK transactions we don't use dma as we don't know in
+	 * advance how many data will be received
 	 */
 	cr1 &= ~(STM32F7_I2C_CR1_RXIE | STM32F7_I2C_CR1_TXIE |
 		 STM32F7_I2C_CR1_RXDMAEN | STM32F7_I2C_CR1_TXDMAEN);
@@ -1133,7 +1134,8 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 	i2c_dev->use_dma = false;
 	if (i2c_dev->dma && f7_msg->count >= STM32F7_I2C_DMA_LEN_MIN &&
 	    f7_msg->size != I2C_SMBUS_BLOCK_DATA &&
-	    f7_msg->size != I2C_SMBUS_BLOCK_PROC_CALL) {
+	    f7_msg->size != I2C_SMBUS_BLOCK_PROC_CALL &&
+	    f7_msg->size != I2C_SMBUS_I2C_BLOCK_DATA) {
 		ret = stm32_i2c_prep_dma_xfer(i2c_dev->dev, i2c_dev->dma,
 					      cr2 & STM32F7_I2C_CR2_RD_WRN,
 					      f7_msg->count, f7_msg->buf,
