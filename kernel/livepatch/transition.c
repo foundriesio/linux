@@ -35,8 +35,6 @@ struct klp_patch *klp_transition_patch;
 
 static int klp_target_state = KLP_UNDEFINED;
 
-static bool klp_forced = false;
-
 /*
  * This work can be performed periodically to finish patching or unpatching any
  * "straggler" tasks which failed to transition in the first attempt.
@@ -90,15 +88,8 @@ static void klp_complete_transition(void)
 		 klp_target_state == KLP_PATCHED ? "patching" : "unpatching");
 
 	if (klp_transition_patch->replace && klp_target_state == KLP_PATCHED) {
-		klp_discard_replaced_patches(klp_transition_patch, klp_forced);
-
-		/*
-		 * There is no need to synchronize the transition after removing
-		 * nops. They must be the last on the func_stack. Ftrace
-		 * guarantees that nobody will stay in the trampoline after
-		 * the ftrace handler is unregistered.
-		 */
-		klp_unpatch_objects_dynamic(klp_transition_patch);
+		klp_discard_replaced_patches(klp_transition_patch);
+		klp_discard_nops(klp_transition_patch);
 	}
 
 	if (klp_target_state == KLP_UNPATCHED) {
@@ -149,28 +140,6 @@ static void klp_complete_transition(void)
 
 	pr_notice("'%s': %s complete\n", klp_transition_patch->mod->name,
 		  klp_target_state == KLP_PATCHED ? "patching" : "unpatching");
-
-	/*
-	 * klp_forced set implies unbounded increase of module's ref count if
-	 * the module is disabled/enabled in a loop.
-	 */
-	if (!klp_forced && klp_target_state == KLP_UNPATCHED)
-		module_put(klp_transition_patch->mod);
-
-	if (klp_transition_patch->replace && klp_target_state == KLP_PATCHED) {
-		/*
-		 * We do not need to wait until the objects are really freed.
-		 * We will never need them again because the patch must be on
-		 * the bottom of the stack now.
-		 */
-		klp_free_objects_dynamic(klp_transition_patch);
-		/*
-		 * Replace behavior will not longer be needed. Avoid the related
-		 * code when disabling and enabling again.
-		 */
-		klp_transition_patch->replace = false;
-	}
-
 
 	klp_target_state = KLP_UNDEFINED;
 	klp_transition_patch = NULL;
@@ -253,11 +222,11 @@ static int klp_check_stack_func(struct klp_func *func,
 			 * Check for the to-be-patched function
 			 * (the previous func).
 			 */
-			ops = klp_find_ops(func->old_addr);
+			ops = klp_find_ops(func->old_func);
 
 			if (list_is_singular(&ops->func_stack)) {
 				/* original function */
-				func_addr = func->old_addr;
+				func_addr = (unsigned long)func->old_func;
 				func_size = func->old_size;
 			} else {
 				/* previously patched function */
@@ -388,6 +357,7 @@ void klp_try_complete_transition(void)
 {
 	unsigned int cpu;
 	struct task_struct *g, *task;
+	struct klp_patch *patch;
 	bool complete = true;
 	static unsigned int signals_cnt = 0;
 
@@ -436,13 +406,23 @@ void klp_try_complete_transition(void)
 		 */
 		schedule_delayed_work(&klp_transition_work,
 				      round_jiffies_relative(HZ));
-
 		return;
 	}
 
 	/* we're done, now cleanup the data structures */
+	patch = klp_transition_patch;
 	signals_cnt = 0;
 	klp_complete_transition();
+
+	/*
+	 * It would make more sense to free the patch in
+	 * klp_complete_transition() but it is called also
+	 * from klp_cancel_transition().
+	 */
+	if (!patch->enabled) {
+		klp_free_patch_start(patch);
+		schedule_work(&patch->free_work);
+	}
 }
 
 /*
@@ -655,6 +635,7 @@ void klp_send_signals(void)
  */
 void klp_force_transition(void)
 {
+	struct klp_patch *patch;
 	struct task_struct *g, *task;
 	unsigned int cpu;
 
@@ -668,5 +649,6 @@ void klp_force_transition(void)
 	for_each_possible_cpu(cpu)
 		klp_update_patch_state(idle_task(cpu));
 
-	klp_forced = true;
+	list_for_each_entry(patch, &klp_patches, list)
+		patch->forced = true;
 }
