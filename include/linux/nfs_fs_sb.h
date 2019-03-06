@@ -42,6 +42,7 @@ struct nfs_client {
 #define NFS_CS_MIGRATION	2		/* - transparent state migr */
 #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
 #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
+#define NFS_CS_NO_SHARE		5		/* - don't share across mounts */
 	struct sockaddr_storage	cl_addr;	/* server identifier */
 	size_t			cl_addrlen;
 	char *			cl_hostname;	/* hostname of server */
@@ -119,6 +120,9 @@ struct nfs_client {
 #endif
 
 	struct net		*cl_net;
+#ifndef __GENKSYMS__
+	unsigned int		cl_xprt_id;
+#endif
 };
 
 /*

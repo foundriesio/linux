@@ -5370,6 +5370,8 @@ nfs4_init_nonuniform_client_string(struct nfs_client *clp)
 		1 +
 		strlen(rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO)) +
 		1;
+	if (clp->cl_xprt_id != 0)
+		len += ilog2(clp->cl_xprt_id)/3 + 2;
 	rcu_read_unlock();
 
 	if (len > NFS4_OPAQUE_LIMIT + 1)
@@ -5385,10 +5387,17 @@ nfs4_init_nonuniform_client_string(struct nfs_client *clp)
 		return -ENOMEM;
 
 	rcu_read_lock();
-	scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
-			clp->cl_ipaddr,
-			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
-			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO));
+	if (clp->cl_xprt_id != 0)
+		scnprintf(str, len, "Linux NFSv4.0 %s/%s %s %d",
+			  clp->cl_ipaddr,
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO),
+			  clp->cl_xprt_id);
+	else
+		scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
+			  clp->cl_ipaddr,
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO));
 	rcu_read_unlock();
 
 	clp->cl_owner_id = str;
@@ -5404,6 +5413,8 @@ nfs4_init_uniquifier_client_string(struct nfs_client *clp)
 	len = 10 + 10 + 1 + 10 + 1 +
 		strlen(nfs4_client_id_uniquifier) + 1 +
 		strlen(clp->cl_rpcclient->cl_nodename) + 1;
+	if (clp->cl_xprt_id != 0)
+		len += ilog2(clp->cl_xprt_id)/3 + 2;
 
 	if (len > NFS4_OPAQUE_LIMIT + 1)
 		return -EINVAL;
@@ -5417,10 +5428,17 @@ nfs4_init_uniquifier_client_string(struct nfs_client *clp)
 	if (!str)
 		return -ENOMEM;
 
-	scnprintf(str, len, "Linux NFSv%u.%u %s/%s",
-			clp->rpc_ops->version, clp->cl_minorversion,
-			nfs4_client_id_uniquifier,
-			clp->cl_rpcclient->cl_nodename);
+	if (clp->cl_xprt_id != 0)
+		scnprintf(str, len, "Linux NFSv%u.%u %s/%s %d",
+			  clp->rpc_ops->version, clp->cl_minorversion,
+			  nfs4_client_id_uniquifier,
+			  clp->cl_rpcclient->cl_nodename,
+			  clp->cl_xprt_id);
+	else
+		scnprintf(str, len, "Linux NFSv%u.%u %s/%s",
+			  clp->rpc_ops->version, clp->cl_minorversion,
+			  nfs4_client_id_uniquifier,
+			  clp->cl_rpcclient->cl_nodename);
 	clp->cl_owner_id = str;
 	return 0;
 }
