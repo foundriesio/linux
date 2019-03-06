@@ -19,6 +19,7 @@ struct cma {
 	struct mutex	list_lock;
 #endif
 	const char *name;
+	struct gcma	*gcma;
 };
 
 extern struct cma cma_areas[MAX_CMA_AREAS];
