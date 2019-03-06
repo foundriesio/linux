@@ -81,7 +81,9 @@ struct nfs_client_initdata {
 	unsigned int nconnect;
 	struct net *net;
 	const struct rpc_timeout *timeparms;
+#ifndef __GENKSYMS__
 	unsigned int xprt_id;
+#endif
 };
 
 /*
@@ -103,7 +105,6 @@ struct nfs_parsed_mount_data {
 	unsigned int		minorversion;
 	char			*fscache_uniq;
 	bool			need_mount;
-	unsigned int		xprt_id;
 
 	struct {
 		struct sockaddr_storage	address;
@@ -126,6 +127,9 @@ struct nfs_parsed_mount_data {
 
 	struct security_mnt_opts lsm_opts;
 	struct net		*net;
+#ifndef __GENKSYMS__
+	unsigned int		xprt_id;
+#endif
 };
 
 /* mount_clnt.c */
