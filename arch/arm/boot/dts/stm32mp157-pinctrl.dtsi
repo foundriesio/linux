@@ -248,7 +248,7 @@
 					pinmux = <STM32_PINMUX('B', 13, AF3)>; /* DFSDM_CKOUT */
 					bias-disable;
 					drive-push-pull;
-					slew-rate = <1>;
+					slew-rate = <0>;
 				};
 			};
 
