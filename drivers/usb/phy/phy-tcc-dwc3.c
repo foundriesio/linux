@@ -420,6 +420,9 @@ unsigned int dwc3_tcc_write_ss_u30phy_reg(struct usb_phy *phy, unsigned int addr
 }
 #endif
 #endif
+
+static int is_suspend = 1;
+
 void dwc3_tcc898x_swreset(PUSBPHYCFG USBPHYCFG, int on_off)
 {
 	if(on_off == ON)
@@ -438,7 +441,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	int tmp_cnt;
 	
 	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
-	if(on_off== ON) {
+	if(on_off== ON && is_suspend) {
 		//clk_reset(dwc3_phy_dev->hclk, 1);
 		//======================================================
 	    // 1.Power-on Reset
@@ -770,13 +773,15 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
            dev_err(dwc3_phy_dev->dev,
                  "can't do xhci phy clk enable\n");
         }
-	} else if (on_off == OFF) {
+		is_suspend = 0;
+	} else if (on_off == OFF && !is_suspend) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		printk("dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
+		is_suspend = 1;
 	}
 	return 0;
 }
@@ -792,7 +797,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	int tmp_cnt;
 
 	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
-	if(on_off== ON) {
+	if(on_off== ON && is_suspend) {
 		//======================================================
 	    // 1.Power-on Reset
 		//======================================================
@@ -1069,13 +1074,15 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
            dev_err(dwc3_phy_dev->dev,
                  "can't do xhci phy clk enable\n");
         }
-	} else if (on_off == OFF) {
+		is_suspend = 0;
+	} else if (on_off == OFF && !is_suspend) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		printk("dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
+		is_suspend = 1;
 	}
 
 	return 0;
