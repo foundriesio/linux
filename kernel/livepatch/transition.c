@@ -29,11 +29,13 @@
 #define MAX_STACK_ENTRIES  100
 #define STACK_ERR_BUF_SIZE 128
 
-#define SIGNALS_TIMEOUT 10
+#define SIGNALS_TIMEOUT 15
 
 struct klp_patch *klp_transition_patch;
 
 static int klp_target_state = KLP_UNDEFINED;
+
+static unsigned int klp_signals_cnt;
 
 /*
  * This work can be performed periodically to finish patching or unpatching any
@@ -359,7 +361,6 @@ void klp_try_complete_transition(void)
 	struct task_struct *g, *task;
 	struct klp_patch *patch;
 	bool complete = true;
-	static unsigned int signals_cnt = 0;
 
 	WARN_ON_ONCE(klp_target_state == KLP_UNDEFINED);
 
@@ -396,8 +397,9 @@ void klp_try_complete_transition(void)
 	put_online_cpus();
 
 	if (!complete) {
-		if (!(++signals_cnt % SIGNALS_TIMEOUT))
+		if (klp_signals_cnt && !(klp_signals_cnt % SIGNALS_TIMEOUT))
 			klp_send_signals();
+		klp_signals_cnt++;
 
 		/*
 		 * Some tasks weren't able to be switched over.  Try again
@@ -411,7 +413,6 @@ void klp_try_complete_transition(void)
 
 	/* we're done, now cleanup the data structures */
 	patch = klp_transition_patch;
-	signals_cnt = 0;
 	klp_complete_transition();
 
 	/*
@@ -461,6 +462,8 @@ void klp_start_transition(void)
 		if (task->patch_state != klp_target_state)
 			set_tsk_thread_flag(task, TIF_PATCH_PENDING);
 	}
+
+	klp_signals_cnt = 0;
 }
 
 /*
@@ -585,14 +588,14 @@ void klp_copy_process(struct task_struct *child)
 
 /*
  * Sends a fake signal to all non-kthread tasks with TIF_PATCH_PENDING set.
- * Kthreads with TIF_PATCH_PENDING set are woken up. Only admin can request this
- * action currently.
+ * Kthreads with TIF_PATCH_PENDING set are woken up.
  */
 void klp_send_signals(void)
 {
 	struct task_struct *g, *task;
 
-	pr_notice("signaling remaining tasks\n");
+	if (klp_signals_cnt == SIGNALS_TIMEOUT)
+		pr_notice("signaling remaining tasks\n");
 
 	read_lock(&tasklist_lock);
 	for_each_process_thread(g, task) {
