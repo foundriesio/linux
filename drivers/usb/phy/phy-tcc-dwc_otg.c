@@ -167,7 +167,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #if defined(CONFIG_ARCH_TCC897X)
 	dwc_otg_pcfg->pcfg1 = 0x0330d643;
 #elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-	writel(0xE31C2433, &dwc_otg_pcfg->pcfg1);
+	writel(0xE31C243A, &dwc_otg_pcfg->pcfg1);
 #else
 	dwc_otg_pcfg->pcfg1 = 0x0330d645;
 #endif

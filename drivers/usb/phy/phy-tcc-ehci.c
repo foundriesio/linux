@@ -157,6 +157,8 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	uint32_t mux_cfg_val;
 	int i;
 
+	printk("%s:ehci_pcfg=%p\n ", __func__, ehci_pcfg);
+
 	if (ehci_phy_dev->mux_port) {
 		mux_cfg_val = readl(phy->otg->mux_cfg_addr); /* get otg control cfg register */
 		BITCSET(mux_cfg_val, TCC_MUX_OPSEL, TCC_MUX_H_SELECT);
@@ -171,7 +173,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Reset PHY Registers
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 	writel(0x83000025, &ehci_pcfg->pcfg0);
-	writel(0xE31C2433, &ehci_pcfg->pcfg1);
+	writel(0xE31C243A, &ehci_pcfg->pcfg1);
 	#else
 	writel(0x03000115, &ehci_pcfg->pcfg0);
 	writel(0x0334D175, &ehci_pcfg->pcfg1);
