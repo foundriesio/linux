@@ -792,7 +792,7 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 	#if defined(CONFIG_ARCH_TCC803X)
 	else
 	{
-		PUSBSSPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+		PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
     	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
 		writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
 	}
@@ -965,6 +965,9 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	struct device_node	*node = dev->of_node;
 
 	int ret;
+#if defined(DWC3_SQ_TEST_MODE)
+	struct resource *res;
+#endif
 /*
 	ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
 	if (ret)
@@ -992,7 +995,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 
 	tcc->dev = dev;
 
-#if defined(DWC3_SQ_TEST_MODE)
+#if 0//defined(DWC3_SQ_TEST_MODE)
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (!res) {
         dev_err(&pdev->dev, "missing phy memory resource\n");
