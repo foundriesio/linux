@@ -561,7 +561,6 @@ struct frag_queue {
 	struct in6_addr		daddr;
 
 	int			iif;
-	unsigned int		csum;
 	__u16			nhoffset;
 	u8			ecn;
 };
