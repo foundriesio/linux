@@ -40,9 +40,6 @@ static int lowpan_frag_reasm(struct lowpan_frag_queue *fq,
 static void lowpan_frag_init(struct inet_frag_queue *q, const void *a)
 {
 	const struct frag_lowpan_compare_key *key = a;
-	struct lowpan_frag_queue *fq;
-
-	fq = container_of(q, struct lowpan_frag_queue, q);
 
 	BUILD_BUG_ON(sizeof(*key) > sizeof(q->key));
 	memcpy(&q->key, key, sizeof(*key));
@@ -51,10 +48,8 @@ static void lowpan_frag_init(struct inet_frag_queue *q, const void *a)
 static void lowpan_frag_expire(unsigned long data)
 {
 	struct frag_queue *fq;
-	struct net *net;
 
 	fq = container_of((struct inet_frag_queue *)data, struct frag_queue, q);
-	net = container_of(fq->q.net, struct net, ieee802154_lowpan.frags);
 
 	spin_lock(&fq->q.lock);
 
