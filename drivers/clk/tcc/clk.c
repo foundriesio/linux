@@ -7,6 +7,7 @@
 
 #define pr_fmt(fmt)	"tcc_clk: " fmt
 
+#include <linux/version.h>
 #include <linux/clkdev.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
@@ -20,6 +21,10 @@
 #include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
 #include <linux/clk/tcc.h>
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0))
+#define DEFINE_DEBUGFS_ATTRIBUTE DEFINE_SIMPLE_ATTRIBUTE
+#endif
 
 struct tcc_clk {
 	struct clk_hw hw;
