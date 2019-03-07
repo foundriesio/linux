@@ -23,6 +23,7 @@
 #define ISZERO(X, MASK)            	(!(((unsigned int)(X))&((unsigned int)(MASK))))
 #define ISSET(X, MASK)          	((unsigned long)(X)&((unsigned long)(MASK)))
 #endif
+
 char *maximum_speed = "super";
 typedef enum {
 	USBPHY_MODE_RESET = 0,
@@ -38,6 +39,9 @@ struct tcc_dwc3_device {
 	struct device	*dev;
 	void __iomem	*base;
 	void __iomem	*h_base;
+#if defined(CONFIG_ARCH_TCC803X)
+	void __iomem	*ref_base;
+#endif
 	struct usb_phy 	phy;
 	struct clk 		*phy_clk;
 
@@ -790,10 +794,10 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
-	PUSBSSPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
-
+	PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)dwc3_phy_dev->base;
 	unsigned int uTmp = 0;
 	unsigned int tmp_data = 0;
+	unsigned int cal_value = 0;
 	int tmp_cnt;
 
 	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
@@ -826,6 +830,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		// External SRAM LD Done Set
 		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw3)), &USBPHYCFG->U30_PCFG0);
 
+		writel(0xE31C243A, &USBPHYCFG->FPHY_PCFG1);
 		// USB 2.0 PHY POR Release
 		writel((readl(&USBPHYCFG->FPHY_PCFG0) & ~(Hw24)), &USBPHYCFG->FPHY_PCFG0);
 		writel((readl(&USBPHYCFG->FPHY_PCFG0) & ~(Hw31)), &USBPHYCFG->FPHY_PCFG0);
@@ -851,6 +856,50 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		// Initialize all registers
 		//======================================================
 		writel((readl(&USBPHYCFG->U30_LCFG) | (Hw27 | Hw26 | Hw19 | Hw18 | Hw17 | Hw7)), &USBPHYCFG->U30_LCFG);
+		/* Set 2.0phy REXT */
+		tmp_cnt = 0;
+
+		do
+		{
+			//Read calculated value
+			writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
+			uTmp = readl(dwc3_phy_dev->ref_base);
+			printk("2.0H status bus = 0x%08x\n", uTmp);
+			cal_value = 0x0000F000&uTmp;
+			//printk("Cal_value = 0x%08x\n", cal_value);
+
+			cal_value = cal_value<<4; //set TESTDATAIN
+
+			//Read Status Bus
+			writel(Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3); 
+			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+			//printk("2.0 status bus = 0x%08x\n", uTmp);
+
+			//Read Override Bus
+			writel(Hw29|Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3);
+			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+			//printk("2.0 override bus = 0x%08x\n", uTmp);
+
+			//Write Override Bus
+			writel(Hw29|Hw26|Hw25|Hw23|Hw22|Hw21|Hw20|cal_value, &USBPHYCFG->FPHY_PCFG3);
+			udelay(1);
+			writel(Hw29|Hw28|Hw26|Hw25|Hw23|Hw22|Hw21|Hw20|cal_value, &USBPHYCFG->FPHY_PCFG3);
+			udelay(1);
+			writel(Hw29|Hw26|Hw25|Hw23|Hw22|Hw21|Hw20|cal_value, &USBPHYCFG->FPHY_PCFG3);
+			udelay(1);
+
+			//Read Status Bus
+			writel(Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3);
+			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+			//printk("2.0 status bus = 0x%08x\n", uTmp);
+
+			//Read Override Bus
+			writel(Hw29|Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3);
+			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+			printk("2.0 REXT = 0x%08x\n", (0x0000F000&uTmp));
+
+			tmp_cnt ++;
+		} while(((uTmp&0x0000F000) == 0) && (tmp_cnt < 5));
 
 #if defined(DWC3_SQ_TEST_MODE)		/* 016.02.22 */
 		//BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_MASK, dm << TX_DEEMPH_SHIFT);
@@ -1204,6 +1253,11 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 				 pdev->resource[0].end - pdev->resource[0].start+1);
 
 	phy_dev->phy.base = phy_dev->base;
+
+#if defined(CONFIG_ARCH_TCC803X)
+	phy_dev->ref_base = (void __iomem*)ioremap_nocache(pdev->resource[1].start, pdev->resource[1].end - pdev->resource[1].start+1);
+	phy_dev->phy.ref_base = phy_dev->ref_base;
+#endif
 
 	platform_set_drvdata(pdev, phy_dev);
 

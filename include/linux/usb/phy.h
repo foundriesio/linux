@@ -180,6 +180,7 @@ struct usb_phy {
 	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address);
 	void (*read_ss_u30phy_reg_all)(struct usb_phy *phy);
 	unsigned int (*write_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);	
+	void __iomem		*ref_base;
 #endif
 #endif
 };

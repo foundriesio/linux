@@ -2375,7 +2375,7 @@
 
     dwc3_phy: dwc3_phy@11D90000 {
         compatible = "telechips,tcc_dwc3_phy";
-        reg = <0x11D90000 0x48>;
+        reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
         clocks = <&clk_isoip_top ISOIP_TOP_U30>;
         status = "disabled";
     };
