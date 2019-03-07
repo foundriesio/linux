@@ -1,6 +1,8 @@
 #ifndef __NET_FRAG_H__
 #define __NET_FRAG_H__
 
+#include <linux/refcount.h>
+
 struct netns_frags {
 	/* Keep atomic mem on separate cachelines in structs that include it */
 	atomic_t		mem ____cacheline_aligned_in_smp;
@@ -45,7 +47,7 @@ struct inet_frag_queue {
 	spinlock_t		lock;
 	struct timer_list	timer;
 	struct hlist_node	list;
-	atomic_t		refcnt;
+	refcount_t		refcnt;
 	struct sk_buff		*fragments;
 	struct sk_buff		*fragments_tail;
 	ktime_t			stamp;
@@ -119,7 +121,7 @@ void inet_frag_maybe_warn_overflow(struct inet_frag_queue *q,
 
 static inline void inet_frag_put(struct inet_frag_queue *q, struct inet_frags *f)
 {
-	if (atomic_dec_and_test(&q->refcnt))
+	if (refcount_dec_and_test(&q->refcnt))
 		inet_frag_destroy(q, f);
 }
 
