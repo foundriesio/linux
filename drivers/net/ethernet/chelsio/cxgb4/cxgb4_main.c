@@ -433,6 +433,60 @@ static int set_rxmode(struct net_device *dev, int mtu, bool sleep_ok)
 }
 
 /**
+ *	cxgb4_change_mac - Update match filter for a MAC address.
+ *	@pi: the port_info
+ *	@viid: the VI id
+ *	@tcam_idx: TCAM index of existing filter for old value of MAC address,
+ *		   or -1
+ *	@addr: the new MAC address value
+ *	@persist: whether a new MAC allocation should be persistent
+ *	@add_smt: if true also add the address to the HW SMT
+ *
+ *	Modifies an MPS filter and sets it to the new MAC address if
+ *	@tcam_idx >= 0, or adds the MAC address to a new filter if
+ *	@tcam_idx < 0. In the latter case the address is added persistently
+ *	if @persist is %true.
+ *	Addresses are programmed to hash region, if tcam runs out of entries.
+ *
+ */
+static int cxgb4_change_mac(struct port_info *pi, unsigned int viid,
+			    int *tcam_idx, const u8 *addr, bool persist,
+			    u8 *smt_idx)
+{
+	struct adapter *adapter = pi->adapter;
+	struct hash_mac_addr *entry, *new_entry;
+	int ret;
+
+	ret = t4_change_mac(adapter, adapter->mbox, viid,
+			    *tcam_idx, addr, persist, smt_idx);
+	/* We ran out of TCAM entries. try programming hash region. */
+	if (ret == -ENOMEM) {
+		/* If the MAC address to be updated is in the hash addr
+		 * list, update it from the list
+		 */
+		list_for_each_entry(entry, &adapter->mac_hlist, list) {
+			if (entry->iface_mac) {
+				ether_addr_copy(entry->addr, addr);
+				goto set_hash;
+			}
+		}
+		new_entry = kzalloc(sizeof(*new_entry), GFP_KERNEL);
+		if (!new_entry)
+			return -ENOMEM;
+		ether_addr_copy(new_entry->addr, addr);
+		new_entry->iface_mac = true;
+		list_add_tail(&new_entry->list, &adapter->mac_hlist);
+set_hash:
+		ret = cxgb4_set_addr_hash(pi);
+	} else if (ret >= 0) {
+		*tcam_idx = ret;
+		ret = 0;
+	}
+
+	return ret;
+}
+
+/*
  *	link_start - enable a port
  *	@dev: the port to enable
  *
@@ -450,15 +504,9 @@ static int link_start(struct net_device *dev)
 	 */
 	ret = t4_set_rxmode(pi->adapter, mb, pi->viid, dev->mtu, -1, -1, -1,
 			    !!(dev->features & NETIF_F_HW_VLAN_CTAG_RX), true);
-	if (ret == 0) {
-		ret = t4_change_mac(pi->adapter, mb, pi->viid,
-				    pi->xact_addr_filt, dev->dev_addr, true,
-				    true);
-		if (ret >= 0) {
-			pi->xact_addr_filt = ret;
-			ret = 0;
-		}
-	}
+	if (ret == 0)
+		ret = cxgb4_change_mac(pi, pi->viid, &pi->xact_addr_filt,
+				       dev->dev_addr, true, &pi->smt_idx);
 	if (ret == 0)
 		ret = t4_link_l1cfg(pi->adapter, mb, pi->tx_chan,
 				    &pi->link_cfg);
@@ -527,7 +575,7 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 			struct sge_eth_txq *eq;
 
 			eq = container_of(txq, struct sge_eth_txq, q);
-			netif_tx_wake_queue(eq->txq);
+			t4_sge_eth_txq_egress_update(q->adap, eq, -1);
 		} else {
 			struct sge_uld_txq *oq;
 
@@ -885,10 +933,13 @@ static int setup_sge_queues(struct adapter *adap)
 			q->rspq.idx = j;
 			memset(&q->stats, 0, sizeof(q->stats));
 		}
-		for (j = 0; j < pi->nqsets; j++, t++) {
+
+		q = &s->ethrxq[pi->first_qset];
+		for (j = 0; j < pi->nqsets; j++, t++, q++) {
 			err = t4_sge_alloc_eth_txq(adap, t, dev,
 					netdev_get_tx_queue(dev, j),
-					s->fw_evtq.cntxt_id);
+					q->rspq.cntxt_id,
+					!!(adap->flags & SGE_DBQ_TIMER));
 			if (err)
 				goto freeout;
 		}
@@ -910,7 +961,7 @@ static int setup_sge_queues(struct adapter *adap)
 	if (!is_t4(adap->params.chip)) {
 		err = t4_sge_alloc_eth_txq(adap, &s->ptptxq, adap->port[0],
 					   netdev_get_tx_queue(adap->port[0], 0)
-					   , s->fw_evtq.cntxt_id);
+					   , s->fw_evtq.cntxt_id, false);
 		if (err)
 			goto freeout;
 	}
@@ -1583,28 +1634,6 @@ unsigned int cxgb4_best_aligned_mtu(const unsigned short *mtus,
 	return mtus[mtu_idx];
 }
 EXPORT_SYMBOL(cxgb4_best_aligned_mtu);
-
-/**
- *	cxgb4_tp_smt_idx - Get the Source Mac Table index for this VI
- *	@chip: chip type
- *	@viid: VI id of the given port
- *
- *	Return the SMT index for this VI.
- */
-unsigned int cxgb4_tp_smt_idx(enum chip_type chip, unsigned int viid)
-{
-	/* In T4/T5, SMT contains 256 SMAC entries organized in
-	 * 128 rows of 2 entries each.
-	 * In T6, SMT contains 256 SMAC entries in 256 rows.
-	 * TODO: The below code needs to be updated when we add support
-	 * for 256 VFs.
-	 */
-	if (CHELSIO_CHIP_VERSION(chip) <= CHELSIO_T5)
-		return ((viid & 0x7f) << 1);
-	else
-		return (viid & 0x7f);
-}
-EXPORT_SYMBOL(cxgb4_tp_smt_idx);
 
 /**
  *	cxgb4_port_chan - get the HW channel of a port
@@ -2280,8 +2309,6 @@ static int cxgb_up(struct adapter *adap)
 #if IS_ENABLED(CONFIG_IPV6)
 	update_clip(adap);
 #endif
-	/* Initialize hash mac addr list*/
-	INIT_LIST_HEAD(&adap->mac_hlist);
 	return err;
 
  irq_err:
@@ -2669,7 +2696,7 @@ static void cxgb4_mgmt_fill_vf_station_mac_addr(struct adapter *adap)
 
 	for (vf = 0, nvfs = pci_sriov_get_totalvfs(adap->pdev);
 		vf < nvfs; vf++) {
-		macaddr[5] = adap->pf * 16 + vf;
+		macaddr[5] = adap->pf * nvfs + vf;
 		ether_addr_copy(adap->vfinfo[vf].vf_mac_addr, macaddr);
 	}
 }
@@ -2862,8 +2889,8 @@ static int cxgb_set_mac_addr(struct net_device *dev, void *p)
 	if (!is_valid_ether_addr(addr->sa_data))
 		return -EADDRNOTAVAIL;
 
-	ret = t4_change_mac(pi->adapter, pi->adapter->pf, pi->viid,
-			    pi->xact_addr_filt, addr->sa_data, true, true);
+	ret = cxgb4_change_mac(pi, pi->viid, &pi->xact_addr_filt,
+			       addr->sa_data, true, &pi->smt_idx);
 	if (ret < 0)
 		return ret;
 
@@ -4300,6 +4327,24 @@ static int adap_init0(struct adapter *adap)
 	if (ret < 0)
 		goto bye;
 
+	/* Grab the SGE Doorbell Queue Timer values.  If successful, that
+	 * indicates that the Firmware and Hardware support this.
+	 */
+	params[0] = (FW_PARAMS_MNEM_V(FW_PARAMS_MNEM_DEV) |
+		    FW_PARAMS_PARAM_X_V(FW_PARAMS_PARAM_DEV_DBQ_TIMERTICK));
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
+			      1, params, val);
+
+	if (!ret) {
+		adap->sge.dbqtimer_tick = val[0];
+		ret = t4_read_sge_dbqtimers(adap,
+					    ARRAY_SIZE(adap->sge.dbqtimer_val),
+					    adap->sge.dbqtimer_val);
+	}
+
+	if (!ret)
+		adap->flags |= SGE_DBQ_TIMER;
+
 	if (is_bypass_device(adap->pdev->device))
 		adap->params.bypass = 1;
 
@@ -4466,6 +4511,15 @@ static int adap_init0(struct adapter *adap)
 				      1, params, val);
 		adap->params.filter2_wr_support = (ret == 0 && val[0] != 0);
 	}
+
+	/* Check if FW supports returning vin and smt index.
+	 * If this is not supported, driver will interpret
+	 * these values from viid.
+	 */
+	params[0] = FW_PARAM_DEV(OPAQUE_VIID_SMT_EXTN);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
+			      1, params, val);
+	adap->params.viid_smt_extn_support = (ret == 0 && val[0] != 0);
 
 	/*
 	 * Get device capabilities so we can determine what resources we need
@@ -4778,14 +4832,26 @@ static pci_ers_result_t eeh_slot_reset(struct pci_dev *pdev)
 		return PCI_ERS_RESULT_DISCONNECT;
 
 	for_each_port(adap, i) {
-		struct port_info *p = adap2pinfo(adap, i);
+		struct port_info *pi = adap2pinfo(adap, i);
+		u8 vivld = 0, vin = 0;
 
-		ret = t4_alloc_vi(adap, adap->mbox, p->tx_chan, adap->pf, 0, 1,
-				  NULL, NULL);
+		ret = t4_alloc_vi(adap, adap->mbox, pi->tx_chan, adap->pf, 0, 1,
+				  NULL, NULL, &vivld, &vin);
 		if (ret < 0)
 			return PCI_ERS_RESULT_DISCONNECT;
-		p->viid = ret;
-		p->xact_addr_filt = -1;
+		pi->viid = ret;
+		pi->xact_addr_filt = -1;
+		/* If fw supports returning the VIN as part of FW_VI_CMD,
+		 * save the returned values.
+		 */
+		if (adap->params.viid_smt_extn_support) {
+			pi->vivld = vivld;
+			pi->vin = vin;
+		} else {
+			/* Retrieve the values from VIID */
+			pi->vivld = FW_VIID_VIVLD_G(pi->viid);
+			pi->vin = FW_VIID_VIN_G(pi->viid);
+		}
 	}
 
 	t4_load_mtus(adap, adap->params.mtus, adap->params.a_wnd,
@@ -5622,6 +5688,9 @@ static int init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 			     (is_t5(adapter->params.chip) ? STATMODE_V(0) :
 			      T6_STATMODE_V(0)));
 
+	/* Initialize hash mac addr list */
+	INIT_LIST_HEAD(&adapter->mac_hlist);
+
 	for_each_port(adapter, i) {
 		netdev = alloc_etherdev_mq(sizeof(struct port_info),
 					   MAX_ETH_QSETS);
@@ -5900,6 +5969,7 @@ fw_attach_fail:
 static void remove_one(struct pci_dev *pdev)
 {
 	struct adapter *adapter = pci_get_drvdata(pdev);
+	struct hash_mac_addr *entry, *tmp;
 
 	if (!adapter) {
 		pci_release_regions(pdev);
@@ -5949,6 +6019,12 @@ static void remove_one(struct pci_dev *pdev)
 		if (adapter->num_uld || adapter->num_ofld_uld)
 			t4_uld_mem_free(adapter);
 		free_some_resources(adapter);
+		list_for_each_entry_safe(entry, tmp, &adapter->mac_hlist,
+					 list) {
+			list_del(&entry->list);
+			kfree(entry);
+		}
+
 #if IS_ENABLED(CONFIG_IPV6)
 		t4_cleanup_clip_tbl(adapter);
 #endif
