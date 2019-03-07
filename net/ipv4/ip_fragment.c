@@ -56,14 +56,6 @@
  */
 static const char ip_frag_cache_name[] = "ip4-frags";
 
-struct ipfrag_skb_cb
-{
-	struct inet_skb_parm	h;
-	int			offset;
-};
-
-#define FRAG_CB(skb)	((struct ipfrag_skb_cb *)((skb)->cb))
-
 /* Describe an entry in the "incomplete datagrams" queue. */
 struct ipq {
 	struct inet_frag_queue q;
@@ -352,13 +344,13 @@ static int ip_frag_queue(struct ipq *qp, struct sk_buff *skb)
 	 * this fragment, right?
 	 */
 	prev = qp->q.fragments_tail;
-	if (!prev || FRAG_CB(prev)->offset < offset) {
+	if (!prev || prev->ip_defrag_offset < offset) {
 		next = NULL;
 		goto found;
 	}
 	prev = NULL;
 	for (next = qp->q.fragments; next != NULL; next = next->next) {
-		if (FRAG_CB(next)->offset >= offset)
+		if (next->ip_defrag_offset >= offset)
 			break;	/* bingo! */
 		prev = next;
 	}
@@ -375,14 +367,20 @@ found:
 
 	/* Is there an overlap with the previous fragment? */
 	if (prev &&
-	    (FRAG_CB(prev)->offset + prev->len) > offset)
+	    (prev->ip_defrag_offset + prev->len) > offset)
 		goto discard_qp;
 
 	/* Is there an overlap with the next fragment? */
-	if (next && FRAG_CB(next)->offset < end)
+	if (next && next->ip_defrag_offset < end)
 		goto discard_qp;
 
-	FRAG_CB(skb)->offset = offset;
+	/* Note : skb->ip_defrag_offset and skb->dev share the same location */
+	dev = skb->dev;
+	if (dev)
+		qp->iif = dev->ifindex;
+	/* Makes sure compiler wont do silly aliasing games */
+	barrier();
+	skb->ip_defrag_offset = offset;
 
 	/* Insert this fragment in the chain of fragments. */
 	skb->next = next;
@@ -393,11 +391,6 @@ found:
 	else
 		qp->q.fragments = skb;
 
-	dev = skb->dev;
-	if (dev) {
-		qp->iif = dev->ifindex;
-		skb->dev = NULL;
-	}
 	qp->q.stamp = skb->tstamp;
 	qp->q.meat += skb->len;
 	qp->ecn |= ecn;
@@ -428,7 +421,7 @@ found:
 	return -EINPROGRESS;
 
 discard_qp:
-	inet_frag_kill(&qp->q, &ip4_frags);
+	inet_frag_kill(&qp->q);
 	err = -EINVAL;
 	__IP_INC_STATS(net, IPSTATS_MIB_REASM_OVERLAPS);
 err:
@@ -478,7 +471,7 @@ static int ip_frag_reasm(struct ipq *qp, struct sk_buff *prev,
 	}
 
 	WARN_ON(!head);
-	WARN_ON(FRAG_CB(head)->offset != 0);
+	WARN_ON(head->ip_defrag_offset != 0);
 
 	/* Allocate a new buffer for the datagram. */
 	ihlen = ip_hdrlen(head);
