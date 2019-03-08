@@ -720,7 +720,7 @@ static ssize_t dwc3_eyep_show(struct device *dev,
 	#if defined(CONFIG_ARCH_TCC803X)
 	else
 	{
-    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
     	reg = readl(&pUSBPHYCFG->FPHY_PCFG2);
     	val = reg & 0xF;
 	}
@@ -759,7 +759,7 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 	#if defined(CONFIG_ARCH_TCC803X)
 	else
 	{
-    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
+    	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
     	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
 	}
 	#endif
