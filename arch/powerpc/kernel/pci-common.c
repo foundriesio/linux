@@ -73,6 +73,14 @@ const struct dma_map_ops *get_pci_dma_ops(void)
 }
 EXPORT_SYMBOL(get_pci_dma_ops);
 
+static bool disable_fixed_phb;
+static int __init parse_disable_fixed_phb(char *p)
+{
+	disable_fixed_phb = true;
+	return 0;
+}
+early_param("disable_fixed_phb", parse_disable_fixed_phb);
+
 /*
  * This function should run under locking protection, specifically
  * hose_spinlock.
@@ -82,6 +90,9 @@ static int get_phb_number(struct device_node *dn)
 	int ret, phb_id = -1;
 	u32 prop_32;
 	u64 prop;
+
+	if (disable_fixed_phb)
+		goto dynamic;
 
 	/*
 	 * Try fixed PHB numbering first, by checking archs and reading
@@ -101,6 +112,7 @@ static int get_phb_number(struct device_node *dn)
 	if ((phb_id >= 0) && !test_and_set_bit(phb_id, phb_bitmap))
 		return phb_id;
 
+ dynamic:
 	/*
 	 * If not pseries nor powernv, or if fixed PHB numbering tried to add
 	 * the same PHB number twice, then fallback to dynamic PHB numbering.
