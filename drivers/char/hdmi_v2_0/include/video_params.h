@@ -1,16 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * video_params.h
- *
- * Synopsys Inc.
- * SG DWC PT02
- */
- /**
- * @file
- * Define video parameters structure and functions to manipulate the
- * information held by the structure.
- * Video encoding and colorimetry are also defined here
- */
-
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __HDMI_VIDEOPARAMS_H_
 #define __HDMI_VIDEOPARAMS_H_
 

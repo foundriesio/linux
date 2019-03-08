@@ -17,11 +17,6 @@
 	compatible = "telechips,tcc8031", "telechips,tcc803x";
 };
 
-&chosen {
-	bootargs = "vmalloc=480M console=ttyAMA0,115200n8";
-	stdout-path = "serial0:115200n8";
-};
-
 &pcie {
 	reset-gpio = <&gpc 30 0>;
 	//status = "okay";
@@ -38,8 +33,13 @@
 };
 */
 
-/* USB 3.0 DRD */                      
-&dwc3 {                        
+/* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpa 29 0>;
+};
+&dwc3 {
 	status = "okay";                   
 	//usb3en-ctrl-able;                
 	//usb3en-gpio = <&gpc 20 0>;       
@@ -90,6 +90,14 @@
 	vbus-gpio = <&gpa 27 0>;
 };
 
+&dwc2 {
+	status = "okay";
+	phy-type = <1>; //pico phy = 1, nano phy = 0
+
+	vbus-ctrl-able;
+	vbus-gpio = <&gpa 27 0>;
+};
+
 &dwc_otg {
 	status = "okay";
 	phy-type = <1>;     //pico phy = 1, nano phy = 0
@@ -109,7 +117,7 @@
 
 &videosource {
 	compatible = "telechips,videosource";
-	status = "okay";
+	status = "disabled";
 
 	pinctrl-names = "idle", "active";
 /* dm5886
@@ -143,7 +151,7 @@
 
 &switch_reverse {
 	compatible = "telechips,switch_reverse";
-	status = "okay";
+	status = "disabled";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&switch_reverse_ma15>;
@@ -596,8 +604,8 @@
 	phyrst-gpio = <&gpc 29 0>;
 	phy-interface = "rgmii";
 	//ecid-mac-addr;
-	txclk-o-dly = <3>;
-	txclk-o-inv = <1>;
+	txclk-o-dly = <18>;
+	txclk-o-inv = <0>;
 	txclk-i-dly = <0>;
 	txclk-i-inv = <0>;
 	txen-dly = <0>;
@@ -610,7 +618,7 @@
 	txd5-dly = <0>;
 	txd6-dly = <0>;
 	txd7-dly = <0>;
-	rxclk-i-dly = <19>;
+	rxclk-i-dly = <0>;
 	rxclk-i-inv = <0>;
 	rxdv-dly = <0>;
 	rxer-dly = <0>;
@@ -645,7 +653,7 @@
 /* CP */
 &auth_cp {
 	compatible = "telechips, tcc-cp";
-	cp-type = <1>;	    /* 2.0C = 1, 2.0B = 0 */
+	cp-type = <1>;	    /* 2.0C = 1, 2.0B = 0, 3.0 = 2 */
 	i2c-channel = <3>;	/* 0 ~ 3 */
 	/*	power-ctrl-able; */
 	/* cp_power-gpio = <&gpk 14 0>; */

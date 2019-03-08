@@ -118,6 +118,7 @@ struct gic_chip_data {
 #define PIC_ALLMASK	0x218
 #endif
 static void __iomem *pic_base;
+static void __iomem *gic_pol_base;
 #endif
 
 #ifdef CONFIG_BL_SWITCHER
@@ -320,6 +321,43 @@ static int gic_irq_get_irqchip_state(struct irq_data *d,
 }
 
 #ifdef CONFIG_ARCH_TCC
+#if defined(CONFIG_ARCH_TCC897X)
+static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
+{
+	void __iomem *pol;
+	u32 mask;
+	int ret = 0;
+	int hwirq;
+	unsigned long flags;
+
+	if(d->hwirq < 32)
+		return 0;
+
+	hwirq = d->hwirq - 32;
+	if(hwirq < 64){
+		pol = pic_base + PIC_POL + (hwirq / 32) * 4;
+	} else {
+		pol = gic_pol_base + ((hwirq-64)/32) * 4;
+	}
+	mask = 1 << (hwirq % 32);
+
+	gic_lock_irqsave(flags);
+
+	if (type == IRQ_TYPE_LEVEL_HIGH || type == IRQ_TYPE_EDGE_RISING) {
+		writel_relaxed(readl_relaxed(pol) & ~mask, pol);
+	}
+	else if (type == IRQ_TYPE_LEVEL_LOW || type == IRQ_TYPE_EDGE_FALLING) {
+		writel_relaxed(readl_relaxed(pol) | mask, pol);
+	}
+	else {
+		ret = -EINVAL;
+	}
+
+	gic_unlock_irqrestore(flags);
+
+	return ret;
+}
+#else	// !defined(CONFIG_ARCH_TCC897X)
 static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
 {
 	void __iomem *ien;
@@ -388,6 +426,7 @@ static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
 
 	return ret;
 }
+#endif
 #endif
 
 static int gic_set_type(struct irq_data *d, unsigned int type)
@@ -1509,6 +1548,7 @@ gic_of_init(struct device_node *node, struct device_node *parent)
 		pic_base = of_iomap(node, 4);
 	} else if (of_device_is_compatible(node, "telechips,tcc897x-vpic")) {
 		pic_base = of_iomap(node, 2);
+		gic_pol_base = of_iomap(node, 3);
 	} else if (of_device_is_compatible(node, "telechips,tcc898x-vpic")) {
 		pic_base = of_iomap(node, 4);
 	} else if (of_device_is_compatible(node, "telechips,tcc899x-vpic")) {

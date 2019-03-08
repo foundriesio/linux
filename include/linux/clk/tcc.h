@@ -53,6 +53,7 @@ struct tcc_ckc_ops {
 	/* pll */
 	int (*ckc_pll_set_rate)(int id, unsigned long rate);
 	unsigned long (*ckc_pll_get_rate)(int id);
+	int (*ckc_is_pll_enabled)(int id);
 
 	/* clkctrl */
 	int (*ckc_clkctrl_enable)(int id);

@@ -1,28 +1,18 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        proc_fs.c
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2015
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular
-purpose or non-infringement  of  any  patent,  copyright  or  other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source  code or the  use in the
-source code.
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
-Agreement between Telechips and Company.
-*******************************************************************************/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include <include/hdmi_includes.h>
 #include <include/proc_fs.h>
 #include <include/hdmi_ioctls.h>
@@ -592,6 +582,46 @@ ssize_t proc_read_phy_regs(struct file *filp, char __user *usr_buf, size_t cnt, 
 }
 #endif
 
+
+#if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+extern int hdmi_api_vsif_update_by_index(int index);
+ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set){
+        ssize_t size;
+        int dv_vsif_index;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+        char *dv_vsfi_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+
+        do {
+                if (dv_vsfi_buf == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+
+                size = simple_write_to_buffer(dv_vsfi_buf, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                dv_vsfi_buf[cnt] = '\0';
+
+                sscanf(dv_vsfi_buf, "%u", &dv_vsif_index);
+                devm_kfree(dev->parent_dev, dv_vsfi_buf);
+
+                if(dv_vsif_index < 0 || dv_vsif_index > 6) {
+                        pr_err("invalid index %d\r\n", dv_vsif_index);
+                        break;
+                }
+                hdmi_api_vsif_update_by_index(dv_vsif_index);
+        }
+        while(0);
+
+        return size;
+}
+#endif
+
+
 static const struct file_operations proc_fops_hdcp_status = {
         .owner   = THIS_MODULE,
         .open    = proc_open,
@@ -662,6 +692,15 @@ static const struct file_operations proc_fops_phy_regs = {
         .release = proc_close,
         .write   = proc_write_phy_regs,
         .read    = proc_read_phy_regs,
+};
+#endif
+
+#if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+static const struct file_operations proc_fops_dv_vsif = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_dv_vsif,
 };
 #endif
 
@@ -775,6 +814,15 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/phy_regs\n", FUNC_NAME);
         }
         #endif
+
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        dev->hdmi_proc_dv_vsif = proc_create_data("dv_vsif", S_IFREG | S_IWUGO,
+                        dev->hdmi_proc_dir, &proc_fops_dv_vsif, dev);
+        if(dev->hdmi_proc_dv_vsif == NULL){
+                pr_err("%s:Could not create file system @"
+                                " /proc/hdmi_tx/dv_vsif\n", FUNC_NAME);
+        }
+        #endif
 }
 
 void proc_interface_remove(struct hdmi_tx_dev *dev){
@@ -810,6 +858,10 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         if(dev->hdmi_proc_phy_regs != NULL)
                 proc_remove(dev->hdmi_proc_phy_regs);
+        #endif
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        if(dev->hdmi_proc_dv_vsif != NULL)
+                proc_remove(dev->hdmi_proc_dv_vsif);
         #endif
         if(dev->hdmi_proc_dir != NULL)
                 proc_remove(dev->hdmi_proc_dir);

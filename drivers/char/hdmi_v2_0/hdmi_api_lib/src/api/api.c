@@ -1,30 +1,8 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        extenddisplay.cpp
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2018
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular
-purpose or non-infringement of any patent, copyright or other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source code or the use in the
-source code.
-This source code is provided subject to the terms of a Mutual Non-Disclosure
-Agreement between Telechips and Company.
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
 */
-
-
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -118,6 +96,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
         do {
 
                 if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
                         break;
                 }
                 video = (videoParams_t*)dev->videoParam;
@@ -129,9 +108,23 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                         break;
                 }
 
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                }
+
                 // Reset HDMI
                 dwc_hdmi_hw_reset(dev, 1);
                 dwc_hdmi_hw_reset(dev, 0);
+
+                /* Initialize scdc status */
+                dev->prev_scdc_status = (unsigned char)-1;
 
                 mc_disable_all_clocks(dev);
                 if(dev->hdmi_tx_ctrl.sink_is_vizio == 1) {
@@ -196,6 +189,8 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 }
 
                 mc_enable_all_clocks(dev);
+
+		/* Configure the hdmi phy */
                 if(dwc_hdmi_phy_config(dev, video) < 0) {
                         pr_err("%s Cann't settig HDMI PHY\r\n", __func__);
                         ret = -1;
@@ -203,7 +198,9 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 }
                 hdmi_api_wait_phylock(dev);
 
-                hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
+		/* Reset the main controller */
+		hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
+
                 /* wait main controller to resume */
                 do {
                         usleep_range(10, 20);
@@ -234,32 +231,33 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 {
         int ret = -1;
 
-        videoParams_t *videoParams = (videoParams_t *)(dev!=NULL)?dev->videoParam:NULL;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
 
-        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                ret = 0;
+
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        break;
+                }
+
                 /* Disable HDMI PHY clock */
                 dwc_hdmi_phy_standby(dev);
-
-                mdelay(50);
-
-                /**
-                * The 8-bit I2C slave addresses of the EDID are 0xA0/0xA1 and the address of
-                * SCDC are 0xA8/0xA9.
-                * I thought that 2k TV would not respond to SCDC address, but I found the 2k TV
-                * that responding to the SCDC address. The 2k tv initializes some of the edids when
-                * it receives the tmds character ratio or scramble command through the scdc address.
-                * Then an edid checksum error will occur when the source reads edid.
-                * To prevent this, i changed the source to use scdc address only if the sink
-                * supports scdc address. */
-                if(dev->hotplug_status && videoParams->mScdcPresent) {
-                        scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
-			scrambling(dev, 0);
-                }
                 clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
-        }
-	ret = 0;
 
-        hdcp_statusinit(dev);
+                /* HDCP */
+                hdcp_statusinit(dev);
+        } while(0);
 
         return ret ;
 }
@@ -267,6 +265,25 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
-        packets_AvMute(dev, enable);
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
+
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        break;
+                }
+
+                packets_AvMute(dev, enable);
+        } while(0);
 }
 EXPORT_SYMBOL(hdmi_api_avmute);

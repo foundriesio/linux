@@ -19,7 +19,6 @@
 #include <linux/of_irq.h>
 
 #include <video/tcc/tcc_types.h>
-#include <video/tcc/tcc_video_regs.h>
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_rdma.h>
@@ -648,7 +647,7 @@ static int __init vioc_intr_init(void)
 	} else {
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 		int i = 0;
-		for(i=0; i<4; i++){
+		for(i = 0; i < VIOC_IRQ_MAX; i++) {
 			vioc_base_irq_num[i] = irq_of_parse_and_map(ViocIntr_np, i);
 			pr_info("vioc-intr%d: irq %d\n", i, vioc_base_irq_num[i]);
 		}

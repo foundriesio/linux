@@ -141,11 +141,18 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 	if(system_rev == 0x1)
 	{
 		printk("TCC899X GMAC] Set tunning value for tcc899x_mpw2!!\n");
-		of_property_read_u32(np, "txclk-o-dly_mpw2", &dt_info->txclk_o_dly);
-		of_property_read_u32(np, "txclk-o-inv_mpw2", &dt_info->txclk_o_inv);
-		of_property_read_u32(np, "rxclk-i-dly_mpw2", &dt_info->rxclk_i_dly);
-		of_property_read_u32(np, "rxclk-i-inv_mpw2", &dt_info->rxclk_i_inv);
+		of_property_read_u32(np, "txclk-o-dly_es", &dt_info->txclk_o_dly);
+		of_property_read_u32(np, "txclk-o-inv_es", &dt_info->txclk_o_inv);
+		of_property_read_u32(np, "rxclk-i-dly_es", &dt_info->rxclk_i_dly);
+		of_property_read_u32(np, "rxclk-i-inv_es", &dt_info->rxclk_i_inv);
+	}else if(system_rev == 0x2)
+	{
+		of_property_read_u32(np, "txclk-o-dly_cs", &dt_info->txclk_o_dly);
+		of_property_read_u32(np, "txclk-o-inv_cs", &dt_info->txclk_o_inv);
+		of_property_read_u32(np, "rxclk-i-dly_cs", &dt_info->rxclk_i_dly);
+		of_property_read_u32(np, "rxclk-i-inv_cs", &dt_info->rxclk_i_inv);
 	}
+
 #endif
 #endif
 	printk("txc_dly : %d , txc_inv : %d\n", dt_info->txclk_o_dly, dt_info->txclk_o_inv);

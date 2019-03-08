@@ -33,12 +33,33 @@
 #include <linux/slab.h>
 #include <linux/log2.h>
 #include <linux/cma.h>
+#include <linux/gcma.h>
 #include <linux/highmem.h>
 #include <linux/io.h>
 #include <trace/events/cma.h>
 
+#define IS_GCMA ((struct gcma *)(void *)0xFF)
+
 #include "cma.h"
 
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+#include <linux/list.h>
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
+#include <linux/time.h>
+
+struct cma_buffer {
+	unsigned long pfn;
+	unsigned long count;
+	pid_t pid;
+	char comm[TASK_COMM_LEN];
+	unsigned int latency;
+	unsigned long trace_entries[16];
+	unsigned int nr_entries;
+	struct list_head list;
+};
+#endif
+	
 struct cma cma_areas[MAX_CMA_AREAS];
 unsigned cma_area_count;
 static DEFINE_MUTEX(cma_mutex);
@@ -102,6 +123,7 @@ static int __init cma_activate_area(struct cma *cma)
 	unsigned long base_pfn = cma->base_pfn, pfn = base_pfn;
 	unsigned i = cma->count >> pageblock_order;
 	struct zone *zone;
+	int fail;
 
 	cma->bitmap = kzalloc(bitmap_size, GFP_KERNEL);
 
@@ -111,23 +133,32 @@ static int __init cma_activate_area(struct cma *cma)
 	WARN_ON_ONCE(!pfn_valid(pfn));
 	zone = page_zone(pfn_to_page(pfn));
 
-	do {
-		unsigned j;
+	if (cma->gcma == IS_GCMA) {
+		fail = gcma_init(cma->base_pfn, cma->count, &cma->gcma);
 
-		base_pfn = pfn;
-		for (j = pageblock_nr_pages; j; --j, pfn++) {
-			WARN_ON_ONCE(!pfn_valid(pfn));
-			/*
-			 * alloc_contig_range requires the pfn range
-			 * specified to be in the same zone. Make this
-			 * simple by forcing the entire CMA resv range
-			 * to be in the same zone.
-			 */
-			if (page_zone(pfn_to_page(pfn)) != zone)
-				goto not_in_zone;
+		if (fail != 0) {
+			kfree(cma->bitmap);
+			return -EINVAL;
 		}
-		init_cma_reserved_pageblock(pfn_to_page(base_pfn));
-	} while (--i);
+	} else {
+		do {
+			unsigned j;
+
+			base_pfn = pfn;
+			for (j = pageblock_nr_pages; j; --j, pfn++) {
+				WARN_ON_ONCE(!pfn_valid(pfn));
+				/*
+				 * alloc_contig_range requires the pfn range
+				 * specified to be in the same zone. Make this
+				 * simple by forcing the entire CMA resv range
+				 * to be in the same zone.
+				 */
+				if (page_zone(pfn_to_page(pfn)) != zone)
+					goto not_in_zone;
+			}
+			init_cma_reserved_pageblock(pfn_to_page(base_pfn));
+		} while (--i);
+	}
 
 	mutex_init(&cma->lock);
 
@@ -135,7 +166,10 @@ static int __init cma_activate_area(struct cma *cma)
 	INIT_HLIST_HEAD(&cma->mem_head);
 	spin_lock_init(&cma->mem_head_lock);
 #endif
-
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	INIT_LIST_HEAD(&cma->buffers_list);
+	mutex_init(&cma->list_lock);
+#endif
 	return 0;
 
 not_in_zone:
@@ -144,6 +178,86 @@ not_in_zone:
 	cma->count = 0;
 	return -EINVAL;
 }
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+/**
+ * cma_buffer_list_add() - add a new entry to a list of allocated buffers
+ * @cma:     Contiguous memory region for which the allocation is performed.
+ * @pfn:     Base PFN of the allocated buffer.
+ * @count:   Number of allocated pages.
+ * @latency: Nanoseconds spent to allocate the buffer.
+ *
+ * This function adds a new entry to the list of allocated contiguous memory
+ * buffers in a CMA area. It uses the CMA area specificated by the device
+ * if available or the default global one otherwise.
+ */
+static int cma_buffer_list_add(struct cma *cma, unsigned long pfn,
+			       int count, s64 latency)
+{
+	struct cma_buffer *cmabuf;
+	struct stack_trace trace;
+
+	cmabuf = kmalloc(sizeof(struct cma_buffer), GFP_KERNEL);
+	if (!cmabuf)
+		return -ENOMEM;
+
+	trace.nr_entries = 0;
+	trace.max_entries = ARRAY_SIZE(cmabuf->trace_entries);
+	trace.entries = &cmabuf->trace_entries[0];
+	trace.skip = 2;
+	save_stack_trace(&trace);
+
+	cmabuf->pfn = pfn;
+	cmabuf->count = count;
+	cmabuf->pid = task_pid_nr(current);
+	cmabuf->nr_entries = trace.nr_entries;
+	get_task_comm(cmabuf->comm, current);
+	cmabuf->latency = (unsigned int) div_s64(latency, NSEC_PER_USEC);
+
+	mutex_lock(&cma->list_lock);
+	list_add_tail(&cmabuf->list, &cma->buffers_list);
+	mutex_unlock(&cma->list_lock);
+
+	return 0;
+}
+
+/**
+ * cma_buffer_list_del() - delete an entry from a list of allocated buffers
+ * @cma:   Contiguous memory region for which the allocation was performed.
+ * @pfn:   Base PFN of the released buffer.
+ *
+ * This function deletes a list entry added by cma_buffer_list_add().
+ */
+static void cma_buffer_list_del(struct cma *cma, unsigned long pfn)
+{
+	struct cma_buffer *cmabuf;
+
+	mutex_lock(&cma->list_lock);
+
+	list_for_each_entry(cmabuf, &cma->buffers_list, list)
+		if (cmabuf->pfn == pfn) {
+			list_del(&cmabuf->list);
+			kfree(cmabuf);
+			goto out;
+		}
+
+	pr_err("%s(pfn %lu): couldn't find buffers list entry\n",
+	       __func__, pfn);
+
+out:
+	mutex_unlock(&cma->list_lock);
+}
+#else
+static int cma_buffer_list_add(struct cma *cma, unsigned long pfn,
+			       int count, s64 latency)
+{
+	return 0;
+}
+
+static void cma_buffer_list_del(struct cma *cma, unsigned long pfn)
+{
+}
+#endif /* CONFIG_CMA_DEBUG */
 
 static int __init cma_init_reserved_areas(void)
 {
@@ -245,6 +359,11 @@ int __init cma_declare_contiguous(phys_addr_t base,
 	phys_addr_t memblock_end = memblock_end_of_DRAM();
 	phys_addr_t highmem_start;
 	int ret = 0;
+
+#ifdef CONFIG_GCMA_DEFAULT
+	return gcma_declare_contiguous(base, size, limit, alignment,
+			order_per_bit, fixed, name, res_cma);
+#endif
 
 	/*
 	 * We can't use __pa(high_memory) directly, since high_memory
@@ -359,6 +478,152 @@ err:
 	return ret;
 }
 
+
+/**
+ * __declare_contiguous() - reserve custom contiguous area
+ * @base: Base address of the reserved area optional, use 0 for any
+ * @size: Size of the reserved area (in bytes),
+ * @limit: End address of the reserved memory (optional, 0 for any).
+ * @alignment: Alignment for the CMA area, should be power of 2 or zero
+ * @order_per_bit: Order of pages represented by one bit on bitmap.
+ * @fixed: hint about where to place the reserved area
+ * @res_cma: Pointer to store the created cma region.
+ *
+ * This function reserves memory from early allocator. It should be
+ * called by arch specific code once the early allocator (memblock or bootmem)
+ * has been activated and all other subsystems have already allocated/reserved
+ * memory. This function allows to create custom reserved areas.
+ *
+ * If @fixed is true, reserve contiguous area at exactly @base.  If false,
+ * reserve in range from @base to @limit.
+ */
+int __init __declare_contiguous(phys_addr_t base,
+			phys_addr_t size, phys_addr_t limit,
+			phys_addr_t alignment, unsigned int order_per_bit,
+			bool fixed,const char *name, struct cma **res_cma)
+{
+	phys_addr_t memblock_end = memblock_end_of_DRAM();
+	phys_addr_t highmem_start = __pa(high_memory);
+	int ret = 0;
+
+	pr_debug("%s(size %pa, base %pa, limit %pa alignment %pa)\n",
+		__func__, &size, &base, &limit, &alignment);
+
+	if (cma_area_count == ARRAY_SIZE(cma_areas)) {
+		pr_err("Not enough slots for CMA reserved regions!\n");
+		return -ENOSPC;
+	}
+
+	if (!size)
+		return -EINVAL;
+
+	if (alignment && !is_power_of_2(alignment))
+		return -EINVAL;
+
+	/*
+	 * Sanitise input arguments.
+	 * Pages both ends in CMA area could be merged into adjacent unmovable
+	 * migratetype page by page allocator's buddy algorithm. In the case,
+	 * you couldn't get a contiguous memory, which is not what we want.
+	 */
+	alignment = max(alignment,
+		(phys_addr_t)PAGE_SIZE << max(MAX_ORDER - 1, pageblock_order));
+	base = ALIGN(base, alignment);
+	size = ALIGN(size, alignment);
+	limit &= ~(alignment - 1);
+
+	if (!base)
+		fixed = false;
+
+	/* size should be aligned with order_per_bit */
+	if (!IS_ALIGNED(size >> PAGE_SHIFT, 1 << order_per_bit))
+		return -EINVAL;
+
+	/*
+	 * If allocating at a fixed base the request region must not cross the
+	 * low/high memory boundary.
+	 */
+	if (fixed && base < highmem_start && base + size > highmem_start) {
+		ret = -EINVAL;
+		pr_err("Region at %pa defined on low/high memory boundary (%pa)\n",
+			&base, &highmem_start);
+		goto err;
+	}
+
+	/*
+	 * If the limit is unspecified or above the memblock end, its effective
+	 * value will be the memblock end. Set it explicitly to simplify further
+	 * checks.
+	 */
+	if (limit == 0 || limit > memblock_end)
+		limit = memblock_end;
+
+	/* Reserve memory */
+	if (fixed) {
+		if (memblock_is_region_reserved(base, size) ||
+		    memblock_reserve(base, size) < 0) {
+			ret = -EBUSY;
+			goto err;
+		}
+	} else {
+		phys_addr_t addr = 0;
+
+		/*
+		 * All pages in the reserved area must come from the same zone.
+		 * If the requested region crosses the low/high memory boundary,
+		 * try allocating from high memory first and fall back to low
+		 * memory in case of failure.
+		 */
+		if (base < highmem_start && limit > highmem_start) {
+			addr = memblock_alloc_range(size, alignment,
+						    highmem_start, limit,MEMBLOCK_NONE);
+			limit = highmem_start;
+		}
+
+		if (!addr) {
+			addr = memblock_alloc_range(size, alignment, base,
+						    limit, MEMBLOCK_NONE);
+			if (!addr) {
+				ret = -ENOMEM;
+				goto err;
+			}
+		}
+
+		base = addr;
+	}
+
+	ret = cma_init_reserved_mem(base, size, order_per_bit,name, res_cma);
+	if (ret)
+		goto err;
+
+	pr_info("Reserved %ld MiB at %pa\n", (unsigned long)size / SZ_1M,
+			&base);
+	return 0;
+
+err:
+	pr_err("Failed to reserve %ld MiB\n", (unsigned long)size / SZ_1M);
+	return ret;
+}
+
+
+/**
+ * gcma_declare_contiguous() - same as cma_declare_contiguous() except result
+ * cma's is_gcma field setting.
+ */
+int __init gcma_declare_contiguous(phys_addr_t base,
+			phys_addr_t size, phys_addr_t limit,
+			phys_addr_t alignment, unsigned int order_per_bit,
+			bool fixed,const char *name, struct cma **res_cma)
+{
+	int ret = 0;
+
+	ret = __declare_contiguous(base, size, limit, alignment,order_per_bit, fixed, name,res_cma);
+	if (ret >= 0)
+		(*res_cma)->gcma = IS_GCMA;
+
+	return ret;
+}
+
 #ifdef CONFIG_CMA_DEBUG
 static void cma_debug_show_areas(struct cma *cma)
 {
@@ -402,10 +667,20 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 	unsigned long start = 0;
 	unsigned long bitmap_maxno, bitmap_no, bitmap_count;
 	struct page *page = NULL;
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)	
+	struct timespec ts1, ts2;
+	s64 latency;
+#endif
+
 	int ret = -ENOMEM;
 
 	if (!cma || !cma->count)
 		return NULL;
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	getnstimeofday(&ts1);
+#endif
 
 	pr_debug("%s(cma %p, count %zu, align %d)\n", __func__, (void *)cma,
 		 count, align);
@@ -440,8 +715,12 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 
 		pfn = cma->base_pfn + (bitmap_no << cma->order_per_bit);
 		mutex_lock(&cma_mutex);
-		ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA,
-					 gfp_mask);
+		if (cma->gcma) {
+			ret = gcma_alloc_contig(cma->gcma, pfn, count);
+		} else {
+			ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA,
+					gfp_mask);
+		}
 		mutex_unlock(&cma_mutex);
 		if (ret == 0) {
 			page = pfn_to_page(pfn);
@@ -465,6 +744,21 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 			__func__, count, ret);
 		cma_debug_show_areas(cma);
 	}
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+	getnstimeofday(&ts2);
+	latency = timespec_to_ns(&ts2) - timespec_to_ns(&ts1);
+
+	if (page) {
+		ret = cma_buffer_list_add(cma, pfn, count, latency);
+		if (ret) {
+			pr_warn("%s(): cma_buffer_list_add() returned %d\n",
+				__func__, ret);
+			cma_release(cma, page, count);
+			page = NULL;
+		}
+	}
+#endif
 
 	pr_debug("%s(): returned %p\n", __func__, page);
 	return page;
@@ -495,8 +789,10 @@ bool cma_release(struct cma *cma, const struct page *pages, unsigned int count)
 		return false;
 
 	VM_BUG_ON(pfn + count > cma->base_pfn + cma->count);
-
-	free_contig_range(pfn, count);
+	if (cma->gcma)
+		gcma_free_contig(cma->gcma, pfn, count);
+	else
+		free_contig_range(pfn, count);
 	cma_clear_bitmap(cma, pfn, count);
 	trace_cma_release(pfn, pages, count);
 
@@ -516,3 +812,82 @@ int cma_for_each_area(int (*it)(struct cma *cma, void *data), void *data)
 
 	return 0;
 }
+
+#if defined(CONFIG_CMA_DEBUG) && defined(CMA_LATENCY_DEBUG)
+static void *s_start(struct seq_file *m, loff_t *pos)
+{
+	struct cma *cma = 0;
+
+	if (*pos == 0 && cma_area_count > 0)
+		cma = &cma_areas[0];
+	else
+		*pos = 0;
+
+	return cma;
+}
+
+static int s_show(struct seq_file *m, void *p)
+{
+	struct cma *cma = p;
+	struct cma_buffer *cmabuf;
+	struct stack_trace trace;
+
+	mutex_lock(&cma->list_lock);
+
+	list_for_each_entry(cmabuf, &cma->buffers_list, list) {
+		seq_printf(m, "0x%llx - 0x%llx (%lu kB), allocated by pid %u (%s), latency %u us\n",
+			   (unsigned long long)PFN_PHYS(cmabuf->pfn),
+			   (unsigned long long)PFN_PHYS(cmabuf->pfn +
+							cmabuf->count),
+			   (cmabuf->count * PAGE_SIZE) >> 10, cmabuf->pid,
+			   cmabuf->comm, cmabuf->latency);
+
+		trace.nr_entries = cmabuf->nr_entries;
+		trace.entries = &cmabuf->trace_entries[0];
+
+		//seq_print_stack_trace(m, &trace, 0);
+		seq_putc(m, '\n');
+	}
+
+	mutex_unlock(&cma->list_lock);
+	return 0;
+}
+
+static void *s_next(struct seq_file *m, void *p, loff_t *pos)
+{
+	struct cma *cma = (struct cma *)p + 1;
+
+	return (cma < &cma_areas[cma_area_count]) ? cma : 0;
+}
+
+static void s_stop(struct seq_file *m, void *p)
+{
+}
+
+static const struct seq_operations cmainfo_op = {
+	.start = s_start,
+	.show = s_show,
+	.next = s_next,
+	.stop = s_stop,
+};
+
+static int cmainfo_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &cmainfo_op);
+}
+
+static const struct file_operations proc_cmainfo_operations = {
+	.open = cmainfo_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release_private,
+};
+
+static int __init proc_cmainfo_init(void)
+{
+	proc_create("cmainfo", S_IRUSR, NULL, &proc_cmainfo_operations);
+	return 0;
+}
+
+late_initcall(proc_cmainfo_init);
+#endif /* CONFIG_CMA_DEBUG */

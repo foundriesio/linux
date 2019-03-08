@@ -1,4 +1,8 @@
-
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __TCC_HDMI_V_2_0_CEC_ACCESS_H__
 #define __TCC_HDMI_V_2_0_CEC_ACCESS_H__
 

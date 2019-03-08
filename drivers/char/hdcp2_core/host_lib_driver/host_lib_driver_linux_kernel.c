@@ -43,6 +43,10 @@
 #include <linux/pm_runtime.h>
 #endif
 
+#ifdef CONFIG_ANDROID
+#include <linux/wakelock.h>
+#endif
+
 #define MAX_ESM_DEVICES 16
 #define	USE_RESERVED_MEMORY
 
@@ -50,7 +54,9 @@
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_HOST_DRV_VERSION "4.14_1.0.5"
+#define HDCP_HOST_DRV_VERSION "4.14_1.0.6"
+
+#define USE_HDMI_PWR_CTRL
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
@@ -79,19 +85,20 @@ typedef struct {
 	/** Device node */
 	struct device *parent_dev;
 
-	/** Device Tree Information */
-	char *device_name;
-
 	/** Misc Device */
 	struct miscdevice *misc;
 
 	/** Device Open Count */
-	int open_cs;
+	uint32_t open_cs;
 
 	/** Device list **/
 	struct list_head devlist;
 
 	int hdcp_suspend;
+
+#ifdef CONFIG_ANDROID
+	struct wake_lock wakelock;
+#endif
 } esm_device;
 
 #ifndef OPTEE_BASE_HDCP
@@ -120,6 +127,10 @@ static LIST_HEAD(devlist_global);
 
 extern void * alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 extern void free_all_mem(void);
+
+#ifdef USE_HDMI_PWR_CTRL
+extern void hdmi_api_power_control(int enable);
+#endif
 
 /* ESM_IOC_MEMINFO implementation */
 static long get_meminfo(esm_device *esm, void __user *arg)
@@ -398,12 +409,12 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 {
 	struct hdcp_ioc_data data;
 	int ret = 0;
-	struct device *pdev_hdcp;
+
+	if (!esm)
+		return -EFAULT;
 
 	if (!esm->dev)
 		return -ENOSPC;
-
-	pdev_hdcp = esm->parent_dev;
 
 	if (copy_from_user(&data, arg, sizeof data) != 0) {
 		pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -412,17 +423,17 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 
 	pr_info("%s : blank(mode=%d)\n",__func__, data.status);
 
-	if (pdev_hdcp !=  NULL) {
+	if (esm->parent_dev !=  NULL) {
 		switch(data.status)
 		{
 			case FB_BLANK_POWERDOWN:
 			case FB_BLANK_NORMAL:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_put_sync(pdev_hdcp);
+				pm_runtime_put_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_UNBLANK:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_get_sync(pdev_hdcp);
+				pm_runtime_get_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_HSYNC_SUSPEND:
 			case FB_BLANK_VSYNC_SUSPEND:
@@ -616,49 +627,40 @@ static void free_esm_slot(esm_device *slot)
 #if defined(CONFIG_PM)
 int tcc_hdcp_suspend(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 1;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 1;
 
 	return 0;
 }
 
 int tcc_hdcp_resume(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm= (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 0;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 0;
 
 	return 0;
 }
 
 int tcc_hdcp_runtime_suspend(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
-	printk("[%s] \n", __func__);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	hdcp_dev->hdcp_suspend = 1;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 1;
 
 	return 0;
 }
 
 int tcc_hdcp_runtime_resume(struct device *dev)
 {
-	esm_device *hdcp_dev = (esm_device *)dev_get_drvdata(dev);
+	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
 
-	printk("[%s] \n", __func__);
-
-	hdcp_dev->hdcp_suspend = 0;
-
-	printk("[%s]: finish \n", __func__);
+	if (esm)
+		esm->hdcp_suspend = 0;
 
 	return 0;
 }
@@ -673,7 +675,8 @@ static const struct dev_pm_ops tcc_hdcp_pm_ops = {
 
 static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
-	esm_device *esm = f->private_data;
+	struct miscdevice *dev = (struct miscdevice *)f->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 	void __user *data = (void __user *)arg;
 
 	if (cmd == ESM_IOC_INIT) {
@@ -683,7 +686,7 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	}
 
 	if (esm->hdcp_suspend == 1) {
-		printk("[hdcp driver] suspend mode is set. \n");
+		dev_info(dev->parent, "[hdcp driver] suspend mode is set. \n");
 		return -EBUSY;
 	}
 
@@ -726,24 +729,47 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 static int
 tcc_hdcp_open(struct inode *inode, struct file *file)
 {
-	struct miscdevice *misc = (struct miscdevice *)file->private_data;
-	esm_device *dev = dev_get_drvdata(misc->parent);
+	struct miscdevice *dev = (struct miscdevice *)file->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 
-	file->private_data = dev;
+	if (!esm->open_cs) {
+#ifdef CONFIG_ANDROID
+		wake_lock_init(&esm->wakelock, WAKE_LOCK_SUSPEND, "hdcp_wake_lock");
+#endif
+#ifdef USE_HDMI_PWR_CTRL
+	hdmi_api_power_control(1);
+#endif
+		dev_info(dev->parent, "%s\n", __func__);
+	}
 
-
-	dev->open_cs++;
-
+	esm->open_cs++;
 	return 0;
 }
 
 static int
 tcc_hdcp_release(struct inode *inode, struct file *file)
 {
-	esm_device *dev = (esm_device *)file->private_data;
+	struct miscdevice *dev = (struct miscdevice *)file->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
 
-	dev->open_cs--;
+	//esm_device *dev = (esm_device *)file->private_data;
 
+	if (!esm->open_cs) {
+		dev_err(dev->parent, "%s\n", __func__);
+		return -1;
+	}
+
+	esm->open_cs--;
+
+	if (!esm->open_cs) {
+		dev_info(dev->parent, "%s\n", __func__);
+#ifdef USE_HDMI_PWR_CTRL
+	hdmi_api_power_control(0);
+#endif
+#ifdef CONFIG_ANDROID
+		wake_lock_destroy(&esm->wakelock);
+#endif
+	}
 	return 0;
 }
 
@@ -771,11 +797,11 @@ static const struct file_operations tcc_hdcp_fops =
 {
 	.owner			= THIS_MODULE,
 	.open			= tcc_hdcp_open,
-	.release			= tcc_hdcp_release,
+	.release		= tcc_hdcp_release,
 	.read			= tcc_hdcp_read,
 	.write			= tcc_hdcp_write,
-	.unlocked_ioctl	= tcc_hdcp_ioctl,
-	.poll				= tcc_hdcp_poll,
+	.unlocked_ioctl		= tcc_hdcp_ioctl,
+	.poll			= tcc_hdcp_poll,
 };
 
 
@@ -873,40 +899,30 @@ int tcc_hdcp_misc_deregister(esm_device *dev)
 
 static int tcc_hdcp_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	esm_device *dev = NULL;
+	esm_device *esm = NULL;
 
-	printk("%s:Device registration\n", __func__);
-	dev = alloc_mem("HDCP Device", sizeof(esm_device), NULL);
-	if(!dev){
+	esm = kzalloc(sizeof(esm_device), GFP_KERNEL);
+	if(!esm){
 		pr_err("%s:Could not allocated hdcp device driver\n", __func__);
 		return -ENOMEM;
 	}
 
-	// Zero the device
-	memset(dev, 0, sizeof(esm_device));
-
 	// Update the device node
-	dev->parent_dev = &pdev->dev;
-
-	dev->device_name = "TCC_HDCP";
-
-	printk("%s:Driver's name '%s' \n", __func__, dev->device_name);
-
-	tcc_hdcp_misc_register(dev);
-
-	dev->hdcp_suspend = 0;
+	esm->parent_dev = &pdev->dev;
+	esm->hdcp_suspend = 0;
 
 	#ifdef CONFIG_PM
-	pm_runtime_set_active(dev->parent_dev);
-	pm_runtime_enable(dev->parent_dev);
-	pm_runtime_get_noresume(dev->parent_dev);  //increase usage_count
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);  //increase usage_count
 	#endif
 
-	// Now that everything is fine, let's add it to device list
-	list_add_tail(&dev->devlist, &devlist_global);
+	tcc_hdcp_misc_register(esm);
+	platform_set_drvdata(pdev, esm);
 
-	return ret;
+	dev_info(&pdev->dev, "driver probed\n");
+
+	return 0;
 }
 
 /**
@@ -917,25 +933,14 @@ static int tcc_hdcp_probe(struct platform_device *pdev)
  */
 static int tcc_hdcp_remove(struct platform_device *pdev)
 {
-	esm_device *dev;
-	struct list_head *list;
+	esm_device *esm = platform_get_drvdata(pdev);
 
-	while(!list_empty(&devlist_global)){
-		list = devlist_global.next;
-		list_del(list);
-		dev = list_entry(list, esm_device , devlist);
-
-		if(dev == NULL) {
-			continue;
-		}
-
-		#if defined(CONFIG_PM)
-		pm_runtime_disable(dev->parent_dev);
-		#endif
-
-		tcc_hdcp_misc_deregister(dev);
-
-		free_all_mem();
+	if (esm) {
+		tcc_hdcp_misc_deregister(esm);
+#if defined(CONFIG_PM)
+		pm_runtime_disable(&pdev->dev);
+#endif
+		kfree(esm);
 	}
 
 	return 0;

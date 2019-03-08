@@ -36,7 +36,6 @@ typedef struct base_mem_handle {
 } base_mem_handle;
 
 #include "mali_base_mem_priv.h"
-#include "mali_kbase_profiling_gator_api.h"
 #include "mali_midg_coherency.h"
 #include "mali_kbase_gpu_id.h"
 
@@ -347,15 +346,6 @@ struct base_mem_import_user_buffer {
 /* Maximum size allowed in a single KBASE_IOCTL_MEM_ALLOC call */
 #define KBASE_MEM_ALLOC_MAX_SIZE ((8ull << 30) >> PAGE_SHIFT) /* 8 GB */
 
-
-/**
- * @brief Result codes of changing the size of the backing store allocated to a tmem region
- */
-typedef enum base_backing_threshold_status {
-	BASE_BACKING_THRESHOLD_OK = 0,			    /**< Resize successful */
-	BASE_BACKING_THRESHOLD_ERROR_OOM = -2,		    /**< Increase failed due to an out-of-memory condition */
-	BASE_BACKING_THRESHOLD_ERROR_INVALID_ARGUMENTS = -4 /**< Invalid arguments (not tmem, illegal size request, etc.) */
-} base_backing_threshold_status;
 
 /**
  * @addtogroup base_user_api_memory_defered User-side Base Defered Memory Coherency APIs
@@ -798,24 +788,6 @@ typedef u32 base_jd_core_req;
 	((core_req & BASE_JD_REQ_SOFT_JOB) || \
 	(core_req & BASE_JD_REQ_ATOM_TYPE) == BASE_JD_REQ_DEP)
 
-/**
- * enum kbase_atom_coreref_state - States to model state machine processed by
- * kbasep_js_job_check_ref_cores(), which handles retaining cores for power
- * management.
- *
- * @KBASE_ATOM_COREREF_STATE_NO_CORES_REQUESTED: Starting state: Cores must be
- * requested.
- * @KBASE_ATOM_COREREF_STATE_WAITING_FOR_REQUESTED_CORES: Cores requested, but
- * waiting for them to be powered
- * @KBASE_ATOM_COREREF_STATE_READY: Cores are powered, atom can be submitted to
- * HW
- */
-enum kbase_atom_coreref_state {
-	KBASE_ATOM_COREREF_STATE_NO_CORES_REQUESTED,
-	KBASE_ATOM_COREREF_STATE_WAITING_FOR_REQUESTED_CORES,
-	KBASE_ATOM_COREREF_STATE_READY
-};
-
 /*
  * Base Atom priority
  *
@@ -823,15 +795,16 @@ enum kbase_atom_coreref_state {
  * BASE_JD_PRIO_<...> definitions below. It is undefined to use a priority
  * level that is not one of those defined below.
  *
- * Priority levels only affect scheduling between atoms of the same type within
- * a base context, and only after the atoms have had dependencies resolved.
- * Fragment atoms does not affect non-frament atoms with lower priorities, and
- * the other way around. For example, a low priority atom that has had its
- * dependencies resolved might run before a higher priority atom that has not
- * had its dependencies resolved.
+ * Priority levels only affect scheduling after the atoms have had dependencies
+ * resolved. For example, a low priority atom that has had its dependencies
+ * resolved might run before a higher priority atom that has not had its
+ * dependencies resolved.
  *
- * The scheduling between base contexts/processes and between atoms from
- * different base contexts/processes is unaffected by atom priority.
+ * In general, fragment atoms do not affect non-fragment atoms with
+ * lower priorities, and vice versa. One exception is that there is only one
+ * priority value for each context. So a high-priority (e.g.) fragment atom
+ * could increase its context priority, causing its non-fragment atoms to also
+ * be scheduled sooner.
  *
  * The atoms are scheduled as follows with respect to their priorities:
  * - Let atoms 'X' and 'Y' be for the same job slot who have dependencies
@@ -843,6 +816,14 @@ enum kbase_atom_coreref_state {
  * - Any two atoms that have the same priority could run in any order with
  *   respect to each other. That is, there is no ordering constraint between
  *   atoms of the same priority.
+ *
+ * The sysfs file 'js_ctx_scheduling_mode' is used to control how atoms are
+ * scheduled between contexts. The default value, 0, will cause higher-priority
+ * atoms to be scheduled first, regardless of their context. The value 1 will
+ * use a round-robin algorithm when deciding which context's atoms to schedule
+ * next, so higher-priority atoms can only preempt lower priority atoms within
+ * the same context. See KBASE_JS_SYSTEM_PRIORITY_MODE and
+ * KBASE_JS_PROCESS_LOCAL_PRIORITY_MODE for more details.
  */
 typedef u8 base_jd_prio;
 
@@ -1766,10 +1747,6 @@ typedef struct base_jd_replay_jc {
 #define BASE_JD_REPLAY_F_CHAIN_JOB_LIMIT 256
 
 /** @} end group base_api */
-
-typedef struct base_profiling_controls {
-	u32 profiling_controls[FBDUMP_CONTROL_MAX];
-} base_profiling_controls;
 
 /* Enable additional tracepoints for latency measurements (TL_ATOM_READY,
  * TL_ATOM_DONE, TL_ATOM_PRIO_CHANGE, TL_ATOM_EVENT_POST) */

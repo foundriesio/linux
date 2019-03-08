@@ -1,29 +1,8 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        hdmi_ioctls.h
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2015
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular
-purpose or non-infringement  of  any  patent,  copyright  or  other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source  code or the  use in the
-source code.
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
-Agreement between Telechips and Company.
-*******************************************************************************/
-
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __HDMI_V2_0_H__
 #define __HDMI_V2_0_H__
 
@@ -571,6 +550,14 @@ typedef struct hdmi_board_features{
 }hdmi_board_features;
 
 
+typedef struct {
+        /** size buffer size of vsif_list. it must set to 350*/
+        int size;
+
+        /** pointer to store vsif list */
+        unsigned char vsif_list[300];
+}hdmi_dolbyvision_vsif_transfer_data;
+
 #define HDCP_SUPPORT	1
 
 #define IOCTL_HDMI_MAGIC            'H'
@@ -638,6 +625,10 @@ typedef struct hdmi_board_features{
 #define HDMI_GET_BOARD_FEATURES                 _IOR( IOCTL_HDMI_MAGIC, 0x122, hdmi_board_features)
 
 /**
+ * @short IOCTL to stores Vendor Specific Info Frames */
+#define HDMI_STORE_DOLBYVISION_VSIF_LIST        _IOW( IOCTL_HDMI_MAGIC, 0x140, hdmi_dolbyvision_vsif_transfer_data)
+
+/**
  * @short IOCTL to get the device base address
  * fb_data->value -> base address
  */
@@ -660,12 +651,12 @@ typedef struct hdmi_board_features{
 #define HDMI_SCDC_SET_SOURCE_VERSION            _IOW( IOCTL_HDMI_MAGIC, 0x226, unsigned int)
 #define HDMI_DDC_BUS_CLEAR			_IO( IOCTL_HDMI_MAGIC, 0x227)
 
-
+#define HDMI_VIDEO_SET_TMDS_CONFIG_INIT         _IO( IOCTL_HDMI_MAGIC, 0x231)
 #define HDMI_VIDEO_SET_SCRAMBLING               _IOW( IOCTL_HDMI_MAGIC, 0x232, int)
 #define HDMI_VIDEO_GET_ERROR_DETECTION          _IO( IOCTL_HDMI_MAGIC, 0x234)
 #define HDMI_VIDEO_GET_SCRAMBLE_STATUS          _IOR( IOCTL_HDMI_MAGIC, 0x235, int)
 #define HDMI_VIDEO_GET_SCRAMBLE_WAIT_TIME       _IOR( IOCTL_HDMI_MAGIC, 0x236, int)
-
+#define HDMI_VIDEO_GET_TMDS_CONFIG_STATUS       _IOR( IOCTL_HDMI_MAGIC, 0x237, int)
 
 /**
  * @short IOCTL to control HDMI Audio Interface

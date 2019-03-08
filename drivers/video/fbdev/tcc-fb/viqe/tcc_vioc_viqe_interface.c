@@ -185,6 +185,9 @@ static int debug = 0;
 extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
 					unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
 
+extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
+extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);
+
 #if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
 extern unsigned char hdmi_get_hdmimode(void);
 #endif
@@ -327,6 +330,12 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	int nRDMA = 0, nVIQE = 0;
 
 	bool y2r_on = false;
+
+	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
+	{
+		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
 
 	if(viqe_arg->nRDMA != 0) {
 		nRDMA = VIOC_RDMA00 + viqe_arg->nRDMA;
@@ -602,6 +611,8 @@ void TCC_VIQE_DI_DeInit(VIQE_DI_TYPE *viqe_arg)
 #endif
 	}
 
+	TCC_VIQE_Scaler_DeInit_Buffer_M2M();
+
 	gVIQE_Init_State = 0;
 }
 
@@ -679,6 +690,12 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_INIT, input_image, input_image->Lcdc_layer);
 #endif
+
+	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
+	{
+		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
 
 	gOutputMode = outputMode;
 	gUse_sDeintls = 0;
@@ -1089,6 +1106,9 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 	#ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_OFF, NULL, layer);
 	#endif
+
+	TCC_VIQE_Scaler_DeInit_Buffer_M2M();
+
 	printk("%s - Layer:%d -\n", __func__, layer);
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_DeInit60Hz_M2M);
@@ -1105,6 +1125,12 @@ void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_im
 	if(atomic_read(&viqe_sub_m2m_init) == 0) {
 		gOutputMode = outputMode;
 		gUse_sDeintls = 0;
+
+		if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
+		{
+			printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+			goto m2m_init_scaler;
+		}
 
 		if (!input_image->deinterlace_mode)
 			goto m2m_init_scaler;
@@ -1203,24 +1229,33 @@ void TCC_VIQE_DI_Sub_DeInit60Hz_M2M(int layer)
 
 			TCC_VIQE_Scaler_Sub_Release60Hz_M2M();
 		}
+		TCC_VIQE_Scaler_DeInit_Buffer_M2M();
+
 		atomic_set(&viqe_sub_m2m_init, 0);
 	}
+
 	printk("%s - Layer:%d -\n", __func__, layer);
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_Sub_DeInit60Hz_M2M);
 
-void TCC_VIQE_Scaler_Init_Buffer_M2M(void)
+int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 {
 	pmap_t pmap_info;
 	unsigned int szBuffer = 0;
 	int buffer_cnt = 0;
 
-	pmap_get_info("viqe", &pmap_info);
+	if(0 > pmap_get_info("viqe", &pmap_info)){
+		printk("%s-%d : viqe allocation is failed.\n", __func__, __LINE__);
+		return -1;
+	}
 	gPMEM_VIQE_BASE = pmap_info.base;
 	gPMEM_VIQE_SIZE = pmap_info.size;
 
 #ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
-	pmap_get_info("viqe1", &pmap_info);
+	if(0 > pmap_get_info("viqe1", &pmap_info)){
+		printk("%s-%d : viqe1 allocation is failed.\n", __func__, __LINE__);
+		return -2;
+	}
 	gPMEM_VIQE_SUB_BASE = pmap_info.base;
 	gPMEM_VIQE_SUB_SIZE = pmap_info.size;
 	printk("VIQE pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, gPMEM_VIQE_SUB_BASE, gPMEM_VIQE_SUB_SIZE);
@@ -1228,8 +1263,10 @@ void TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 	printk("VIQE pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, 0, 0);
 #endif
 
-
-	pmap_get_info("overlay", &pmap_info);
+	if(0 > pmap_get_info("overlay", &pmap_info)){
+		printk("%s-%d : overlay allocation is failed.\n", __func__, __LINE__);
+		return -3;
+	}
 
 	if(pmap_info.size)
 	{
@@ -1243,6 +1280,10 @@ void TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 	}
 
 	pmap_get_info("overlay1", &pmap_info);
+	if(0 > pmap_get_info("overlay1", &pmap_info)){
+		printk("%s-%d : overlay1 allocation is failed.\n", __func__, __LINE__);
+		return -4;
+	}
 	if(pmap_info.size)
 	{
 		szBuffer = pmap_info.size / BUFFER_CNT_FOR_M2M_MODE;
@@ -1256,6 +1297,18 @@ void TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 
 	current_buffer_idx[0] = 0;
 	current_buffer_idx[1] = 0;
+
+	return 0;
+}
+
+void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void)
+{
+	pmap_release_info("viqe");
+#ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
+	pmap_release_info("viqe1");
+#endif
+	pmap_release_info("overlay");
+	pmap_release_info("overlay1");
 }
 
 unsigned int TCC_VIQE_Scaler_Get_Buffer_M2M(struct tcc_lcdc_image_update* input_image)
@@ -2301,6 +2354,12 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 
 	bool y2r_on = false;
 
+	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
+	{
+		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		return;
+	}
+
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_INIT, input_image, input_image->Lcdc_layer);
 #endif
@@ -2569,6 +2628,8 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 
 	bool y2r_on = false;
 
+	unsigned int frmCnt_60hz = 0;
+
 	if(gOutputMode == TCC_OUTPUT_LCD){
 		pVIQE_Info = viqe_common_info.pVIQE0;
 		nVIOC_VIQE = viqe_common_info.gVIOC_VIQE0;
@@ -2678,87 +2739,91 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 		dprintk("VIQE%d 3D -> 2D :: %d -> %dx%d \n", get_vioc_index(nVIOC_VIQE), reset_frmCnt, (crop_right - crop_left), (crop_bottom - crop_top));
 	}
 
+	if(input_image->Lcdc_layer == RDMA_VIDEO)
+		frmCnt_60hz = atomic_read(&gFrmCnt_60Hz);
+#ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
+	else if(input_image->Lcdc_layer == RDMA_VIDEO_SUB)
+		frmCnt_60hz = atomic_read(&gFrmCnt_Sub_60Hz);
+#endif
+
+	crop_top = (crop_top >> 1) << 1;
+	crop_left = (crop_left >> 1) << 1;
+	cropWidth = ((crop_right - crop_left) >> 3) << 3;		//8bit align
+	cropHeight = ((crop_bottom - crop_top) >> 2) << 2;		//4bit align
+
 	//Prevent Display Block from FIFO under-run, when current_crop size is smaller than prev_crop size(screen mode: PANSCAN<->BOX)
 	//So, Soc team suggested VIQE block resetting
-	if(gDeintlS_Use_60Hz == 0)
-	{
-		unsigned int frmCnt_60hz = 0;
-		if(input_image->Lcdc_layer == RDMA_VIDEO)
-			frmCnt_60hz = atomic_read(&gFrmCnt_60Hz);
+	if(frmCnt_60hz == 0 && (gDeintlS_Use_60Hz == 0)) {
+		unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
+		int top_size_dont_use = OFF;		//If this value is OFF, The size information is get from VIOC modules.
+		int imgSize;
+
+		dprintk("VIQE%d reset 3D -> 2D :: %dx%d \n", get_vioc_index(nVIOC_VIQE), (crop_right - crop_left), (crop_bottom - crop_top));
+		VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
+		VIOC_CONFIG_PlugOut(nVIOC_VIQE);
+
+		tcc_viqe_swreset(nVIOC_VIQE);
+
+		// If you use 3D(temporal) De-interlace mode, you have to set physical address for using DMA register.
+		//If 2D(spatial) mode, these registers are ignored
+		imgSize = (input_image->Frame_width * (input_image->Frame_height / 2 ) * 4 * 3 / 2);
+		if (input_image->Lcdc_layer == RDMA_VIDEO)
+			deintl_dma_base0	= gPMEM_VIQE_BASE;
 #ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
 		else if(input_image->Lcdc_layer == RDMA_VIDEO_SUB)
-			frmCnt_60hz = atomic_read(&gFrmCnt_Sub_60Hz);
+			deintl_dma_base0	= gPMEM_VIQE_SUB_BASE;
 #endif
+		deintl_dma_base1	= deintl_dma_base0 + imgSize;
+		deintl_dma_base2	= deintl_dma_base1 + imgSize;
+		deintl_dma_base3	= deintl_dma_base2 + imgSize;
 
-		crop_top = (crop_top >> 1) << 1;
-		crop_left = (crop_left >> 1) << 1;
-		cropWidth = ((crop_right - crop_left) >> 3) << 3;		//8bit align
-		cropHeight = ((crop_bottom - crop_top) >> 2) << 2;		//4bit align
+		VIOC_VIQE_IgnoreDecError(pVIQE_Info, ON, ON, ON);
+		VIOC_VIQE_SetControlRegister(pVIQE_Info, input_image->Frame_width, input_image->Frame_height, gViqe_fmt_60Hz);
+		VIOC_VIQE_SetDeintlRegister(pVIQE_Info, gViqe_fmt_60Hz, top_size_dont_use, input_image->Frame_width, input_image->Frame_height, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
+		//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, srcWidth, srcHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
 
-		if(frmCnt_60hz == 0) {
-			unsigned int deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3;
-			int top_size_dont_use = OFF;		//If this value is OFF, The size information is get from VIOC modules.
-			int imgSize;
-
-			dprintk("VIQE%d reset 3D -> 2D :: %dx%d \n", get_vioc_index(nVIOC_VIQE), (crop_right - crop_left), (crop_bottom - crop_top));
-			VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
-			VIOC_CONFIG_PlugOut(nVIOC_VIQE);
-
-			tcc_viqe_swreset(nVIOC_VIQE);
-
-			// If you use 3D(temporal) De-interlace mode, you have to set physical address for using DMA register.
-			//If 2D(spatial) mode, these registers are ignored
-			imgSize = (input_image->Frame_width * (input_image->Frame_height / 2 ) * 4 * 3 / 2);
-			if (input_image->Lcdc_layer == RDMA_VIDEO)
-				deintl_dma_base0	= gPMEM_VIQE_BASE;
-#ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
-			else if(input_image->Lcdc_layer == RDMA_VIDEO_SUB)
-				deintl_dma_base0	= gPMEM_VIQE_SUB_BASE;
-#endif
-			deintl_dma_base1	= deintl_dma_base0 + imgSize;
-			deintl_dma_base2	= deintl_dma_base1 + imgSize;
-			deintl_dma_base3	= deintl_dma_base2 + imgSize;
-
-			VIOC_VIQE_IgnoreDecError(pVIQE_Info, ON, ON, ON);
-			VIOC_VIQE_SetControlRegister(pVIQE_Info, input_image->Frame_width, input_image->Frame_height, gViqe_fmt_60Hz);
-			VIOC_VIQE_SetDeintlRegister(pVIQE_Info, gViqe_fmt_60Hz, top_size_dont_use, input_image->Frame_width, input_image->Frame_height, gDI_mode_60Hz, deintl_dma_base0, deintl_dma_base1, deintl_dma_base2, deintl_dma_base3);
-			//VIOC_VIQE_SetDenoise(pVIQE_Info, gViqe_fmt_60Hz, srcWidth, srcHeight, 1, 0, deintl_dma_base0, deintl_dma_base1); 	//for bypass path on progressive frame
-
-			y2r_on = viqe_y2r_mode_check();
-			VIOC_VIQE_SetImageY2RMode(pVIQE_Info, 0x02);
+		y2r_on = viqe_y2r_mode_check();
+		VIOC_VIQE_SetImageY2RMode(pVIQE_Info, 0x02);
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-		if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) && (input_image->Lcdc_layer == RDMA_VIDEO))
-			y2r_on = false;
+	if ((VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF) && (input_image->Lcdc_layer == RDMA_VIDEO))
+		y2r_on = false;
 #endif
 
-			VIOC_VIQE_SetImageY2REnable(pVIQE_Info, y2r_on);
-			VIOC_CONFIG_PlugIn(nVIOC_VIQE, pViqe_60hz_info->gVIQE_RDMA_num_60Hz);
-		}
+		VIOC_VIQE_SetImageY2REnable(pVIQE_Info, y2r_on);
+		VIOC_CONFIG_PlugIn(nVIOC_VIQE, pViqe_60hz_info->gVIQE_RDMA_num_60Hz);
+	}
 
-		tccxxx_GetAddress(gImg_fmt_60Hz, (unsigned int)input_image->addr0, input_image->Frame_width, input_image->Frame_height, crop_left, crop_top, &addr_Y, &addr_U, &addr_V);
-		VIOC_RDMA_SetImageSize(pViqe_60hz_info->pRDMABase_60Hz, cropWidth, cropHeight);
-		VIOC_RDMA_SetImageBase(pViqe_60hz_info->pRDMABase_60Hz, addr_Y, addr_U, addr_V);
+	tccxxx_GetAddress(gImg_fmt_60Hz, (unsigned int)input_image->addr0, input_image->Frame_width, input_image->Frame_height, crop_left, crop_top, &addr_Y, &addr_U, &addr_V);
+	VIOC_RDMA_SetImageSize(pViqe_60hz_info->pRDMABase_60Hz, cropWidth, cropHeight);
+	VIOC_RDMA_SetImageBase(pViqe_60hz_info->pRDMABase_60Hz, addr_Y, addr_U, addr_V);
 
 #ifdef CONFIG_VIOC_10BIT
-		if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)
-			VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x1, 0x1);	/* YUV 10bit support */
-		else if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11)
-			VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x3, 0x0);	/* YUV real 10bit support */
-		else
-			VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x0, 0x0);	/* YUV 8bit support */
+	if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)
+		VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x1, 0x1);	/* YUV 10bit support */
+	else if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11)
+		VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x3, 0x0);	/* YUV real 10bit support */
+	else
+		VIOC_RDMA_SetDataFormat(pViqe_60hz_info->pRDMABase_60Hz, 0x0, 0x0);	/* YUV 8bit support */
 
-		if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)
-			VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width * 2);
-		else if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11)
-			VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width * 125 / 100);
-		else
+	if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 10)
+		VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width * 2);
+	else if(input_image->private_data.optional_info[VID_OPT_BIT_DEPTH] == 11)
+		VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width * 125 / 100);
+	else
 #endif
-			VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width);
-	}
+		VIOC_RDMA_SetImageOffset(pViqe_60hz_info->pRDMABase_60Hz, gImg_fmt_60Hz, input_image->Frame_width);
+
 	VIOC_RDMA_SetImageBfield(pViqe_60hz_info->pRDMABase_60Hz, input_image->odd_first_flag);
 
-	dprintk(" Image Crop left=[%d], right=[%d], top=[%d], bottom=[%d], W:%d, H:%d odd:%d\n", crop_left, crop_right, crop_top, crop_bottom, cropWidth, cropHeight, input_image->odd_first_flag);
+	if(input_image->odd_first_flag)
+		dprintk("ID[%03d] Layer[%d] Otf:%d, Addr:0x%x/0x%x, Crop[l:%d, r:%d, t:%d, b:%d], Res[W:%d, H:%d] odd:%d frm-I:%d bpp:%d \n",
+				input_image->private_data.optional_info[VID_OPT_BUFFER_ID],
+				input_image->Lcdc_layer, input_image->on_the_fly, addr_Y, addr_U,
+				crop_left, crop_right, crop_top, crop_bottom, cropWidth, cropHeight,
+				input_image->odd_first_flag, input_image->frameInfo_interlace,
+				input_image->private_data.optional_info[VID_OPT_BIT_DEPTH]);
+
 	if(gDeintlS_Use_60Hz)
 	{
 		//VIOC_RDMA_SetImageY2REnable(pViqe_60hz_info->pRDMABase_60Hz, false);
@@ -2970,6 +3035,8 @@ void TCC_VIQE_DI_DeInit60Hz(void)
 
 	VIOC_CONFIG_SWReset(pViqe_60hz_info->gVIQE_RDMA_num_60Hz, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pViqe_60hz_info->gVIQE_RDMA_num_60Hz, VIOC_CONFIG_CLEAR);
+
+	TCC_VIQE_Scaler_DeInit_Buffer_M2M();
 
 	gVIQE_Init_State = 0;
 }
@@ -3393,8 +3460,6 @@ static int tcc_viqe_probe(struct platform_device *pdev)
 
 	tcc_viqe_m2m_dt_parse(m2m_deintl_main_node, m2m_deintl_sub_node, m2m_scaler_main_node, m2m_scaler_sub_node, &main_m2m_info, &sub_m2m_info);
 #endif
-
-	TCC_VIQE_Scaler_Init_Buffer_M2M();
 
 	return 0;
 }

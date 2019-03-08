@@ -41,7 +41,7 @@ extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
 //////////////////////////////////////////////////////////////////////////////
-void vmgr_enable_clock(void)
+void vmgr_enable_clock(int only_clk_ctrl)
 {
     if (fbus_vbus_clk)
         clk_prepare_enable(fbus_vbus_clk);
@@ -55,6 +55,7 @@ void vmgr_enable_clock(void)
         clk_prepare_enable(vbus_xoda_clk);
 
 #if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
+	if(!only_clk_ctrl)
     {
         int ret = vpu_optee_open();
         if (ret != 0) {
@@ -69,7 +70,7 @@ void vmgr_enable_clock(void)
 #endif
 }
 
-void vmgr_disable_clock(void)
+void vmgr_disable_clock(int only_clk_ctrl)
 {
 #if defined(VBUS_CODA_CORE_CLK_CTRL)
     if (vbus_core_clk)
@@ -84,7 +85,8 @@ void vmgr_disable_clock(void)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
 #if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
-    vpu_optee_close();
+	if(!only_clk_ctrl)
+	    vpu_optee_close();
 #endif
 }
 

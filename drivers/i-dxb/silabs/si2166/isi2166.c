@@ -299,6 +299,8 @@ struct file_operations isi2166_fops = {
 	.release 		= idxb_si2166_release
 };
 
+static struct class *si2166_class;
+
 static int __init idxb_si2166_init(void)
 {
 	int retval;
@@ -309,6 +311,9 @@ static int __init idxb_si2166_init(void)
 		printk("register_chrdev() failed!\n");
 		goto out;
 	}
+	
+	si2166_class = class_create(THIS_MODULE, SI2166_DEV_NAME);
+	device_create(si2166_class, NULL, MKDEV(SI2166_DEV_MAJOR, 0), NULL, SI2166_DEV_NAME);
 
 	dprintk("iDxB SI2166 init success\n");
 

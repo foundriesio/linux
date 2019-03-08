@@ -1,6 +1,7 @@
 /* tcc_drm_gem.h
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authoer: Inki Dae <inki.dae@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -50,12 +51,10 @@ struct tcc_drm_gem {
 	void			*cookie;
 	void __iomem		*kvaddr;
 	dma_addr_t		dma_addr;
-	struct dma_attrs	dma_attrs;
+	unsigned long		dma_attrs;
 	struct page		**pages;
 	struct sg_table		*sgt;
 };
-
-struct page **tcc_gem_get_pages(struct drm_gem_object *obj, gfp_t gfpmask);
 
 /* destroy a buffer with gem object */
 void tcc_drm_gem_destroy(struct tcc_drm_gem *tcc_gem);
@@ -95,10 +94,6 @@ void tcc_drm_gem_put_dma_addr(struct drm_device *dev,
 					unsigned int gem_handle,
 					struct drm_file *filp);
 
-/* map user space allocated by malloc to pages. */
-int tcc_drm_gem_userptr_ioctl(struct drm_device *dev, void *data,
-				      struct drm_file *file_priv);
-
 /* get buffer information to memory region allocated by gem. */
 int tcc_drm_gem_get_ioctl(struct drm_device *dev, void *data,
 				      struct drm_file *file_priv);
@@ -116,48 +111,11 @@ int tcc_drm_gem_dumb_create(struct drm_file *file_priv,
 			       struct drm_device *dev,
 			       struct drm_mode_create_dumb *args);
 
-/* map memory region for drm framebuffer to user space. */
-int tcc_drm_gem_dumb_map_offset(struct drm_file *file_priv,
-				   struct drm_device *dev, uint32_t handle,
-				   uint64_t *offset);
-
 /* page fault handler and mmap fault address(virtual) to physical memory. */
-int tcc_drm_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
+int tcc_drm_gem_fault(struct vm_fault *vmf);
 
 /* set vm_flags and we can change the vm attribute to other one at here. */
 int tcc_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma);
-
-static inline int vma_is_io(struct vm_area_struct *vma)
-{
-	return !!(vma->vm_flags & (VM_IO | VM_PFNMAP));
-}
-
-/* get a copy of a virtual memory region. */
-struct vm_area_struct *tcc_gem_get_vma(struct vm_area_struct *vma);
-
-/* release a userspace virtual memory area. */
-void tcc_gem_put_vma(struct vm_area_struct *vma);
-
-/* get pages from user space. */
-int tcc_gem_get_pages_from_userptr(unsigned long start,
-						unsigned int npages,
-						struct page **pages,
-						struct vm_area_struct *vma);
-
-/* drop the reference to pages. */
-void tcc_gem_put_pages_to_userptr(struct page **pages,
-					unsigned int npages,
-					struct vm_area_struct *vma);
-
-/* map sgt with dma region. */
-int tcc_gem_map_sgt_with_dma(struct drm_device *drm_dev,
-				struct sg_table *sgt,
-				enum dma_data_direction dir);
-
-/* unmap sgt from dma region. */
-void tcc_gem_unmap_sgt_from_dma(struct drm_device *drm_dev,
-				struct sg_table *sgt,
-				enum dma_data_direction dir);
 
 /* low-level interface prime helpers */
 struct sg_table *tcc_drm_gem_prime_get_sg_table(struct drm_gem_object *obj);

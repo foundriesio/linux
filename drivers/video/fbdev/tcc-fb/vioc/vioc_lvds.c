@@ -2,7 +2,7 @@
  * linux/drivers/video/fbdev/tcc-fb/vioc/vioc_lvds.c
  * Author:  <linux@telechips.com>
  * Created: June 10, 2008
- * Description: TCC VIOC h/w block
+ * Description: TCC VIOC LVDS 803X h/w block
  *
  * Copyright (C) 2008-2009 Telechips
  *

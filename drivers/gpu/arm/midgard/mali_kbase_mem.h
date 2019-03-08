@@ -127,7 +127,11 @@ struct kbase_mem_phy_alloc {
 	/* type of buffer */
 	enum kbase_memory_type type;
 
-	/* Kernel side mapping of the alloc */
+	/* Kernel side mapping of the alloc, shall never be referred directly.
+	 * kbase_phy_alloc_mapping_get() & kbase_phy_alloc_mapping_put() pair
+	 * should be used around access to the kernel-side CPU mapping so that
+	 * mapping doesn't disappear whilst it is being accessed.
+	 */
 	struct kbase_vmap_struct *permanent_map;
 
 	unsigned long properties;
@@ -323,6 +327,13 @@ struct kbase_va_region {
 #define KBASE_REG_ZONE_CUSTOM_VA_BASE    (0x100000000ULL >> PAGE_SHIFT)
 #define KBASE_REG_ZONE_CUSTOM_VA_SIZE    (((1ULL << 44) >> PAGE_SHIFT) - KBASE_REG_ZONE_CUSTOM_VA_BASE)
 /* end 32-bit clients only */
+
+/* The starting address and size of the GPU-executable zone are dynamic
+ * and depend on the platform and the number of pages requested by the
+ * user process, with an upper limit of 4 GB.
+ */
+#define KBASE_REG_ZONE_EXEC_VA           KBASE_REG_ZONE(2)
+#define KBASE_REG_ZONE_EXEC_VA_MAX_PAGES ((1ULL << 32) >> PAGE_SHIFT) /* 4 GB */
 
 
 	unsigned long flags;
@@ -788,9 +799,40 @@ void kbase_mem_pool_mark_dying(struct kbase_mem_pool *pool);
  */
 struct page *kbase_mem_alloc_page(struct kbase_mem_pool *pool);
 
+/**
+ * kbase_region_tracker_init - Initialize the region tracker data structure
+ * @kctx: kbase context
+ *
+ * Return: 0 if success, negative error code otherwise.
+ */
 int kbase_region_tracker_init(struct kbase_context *kctx);
+
+/**
+ * kbase_region_tracker_init_jit - Initialize the JIT region
+ * @kctx: kbase context
+ * @jit_va_pages: Size of the JIT region in pages
+ * @max_allocations: Maximum number of allocations allowed for the JIT region
+ * @trim_level: Trim level for the JIT region
+ *
+ * Return: 0 if success, negative error code otherwise.
+ */
 int kbase_region_tracker_init_jit(struct kbase_context *kctx, u64 jit_va_pages,
 		u8 max_allocations, u8 trim_level);
+
+/**
+ * kbase_region_tracker_init_exec - Initialize the EXEC_VA region
+ * @kctx: kbase context
+ * @exec_va_pages: Size of the JIT region in pages.
+ *                 It must not be greater than 4 GB.
+ *
+ * Return: 0 if success, negative error code otherwise.
+ */
+int kbase_region_tracker_init_exec(struct kbase_context *kctx, u64 exec_va_pages);
+
+/**
+ * kbase_region_tracker_term - Terminate the JIT region
+ * @kctx: kbase context
+ */
 void kbase_region_tracker_term(struct kbase_context *kctx);
 
 /**
@@ -1228,17 +1270,17 @@ static inline void kbase_clear_dma_addr(struct page *p)
 }
 
 /**
-* @brief Process a bus or page fault.
-*
-* This function will process a fault on a specific address space
-*
-* @param[in] kbdev   The @ref kbase_device the fault happened on
-* @param[in] kctx    The @ref kbase_context for the faulting address space if
-*                    one was found.
-* @param[in] as      The address space that has the fault
-*/
+ * kbase_mmu_interrupt_process - Process a bus or page fault.
+ * @kbdev   The kbase_device the fault happened on
+ * @kctx    The kbase_context for the faulting address space if one was found.
+ * @as      The address space that has the fault
+ * @fault   Data relating to the fault
+ *
+ * This function will process a fault on a specific address space
+ */
 void kbase_mmu_interrupt_process(struct kbase_device *kbdev,
-		struct kbase_context *kctx, struct kbase_as *as);
+		struct kbase_context *kctx, struct kbase_as *as,
+		struct kbase_fault *fault);
 
 /**
  * @brief Process a page fault.
@@ -1343,6 +1385,18 @@ bool kbase_jit_evict(struct kbase_context *kctx);
  * @kctx: kbase context
  */
 void kbase_jit_term(struct kbase_context *kctx);
+
+/**
+ * kbase_has_exec_va_zone - EXEC_VA zone predicate
+ *
+ * Determine whether an EXEC_VA zone has been created for the GPU address space
+ * of the given kbase context.
+ *
+ * @kctx: kbase context
+ *
+ * Return: True if the kbase context has an EXEC_VA zone.
+ */
+bool kbase_has_exec_va_zone(struct kbase_context *kctx);
 
 /**
  * kbase_map_external_resource - Map an external resource to the GPU.

@@ -1,28 +1,8 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        include.h
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2015
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular
-purpose or non-infringement  of  any  patent,  copyright  or  other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source  code or the  use in the
-source code.
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
-Agreement between Telechips and Company.
-*******************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef __INCLUDES_H__
 #define __INCLUDES_H__
 
@@ -51,7 +31,13 @@ Agreement between Telechips and Company.
 #include <linux/device.h> // dev_xet_drv_data
 #include <asm/io.h>
 
-#define HDMI_DRV_VERSION        "4.14_1.0.6"
+//#define HDMI_DEV_SCDC_DEBUG
+
+#if defined(HDMI_DEV_SCDC_DEBUG)
+#define HDMI_DRV_VERSION        "4.14_1.2.3d"
+#else
+#define HDMI_DRV_VERSION        "4.14_1.2.3"
+#endif
 
 // HDMI COMPONENTS
 #define PROTO_HDMI_TX_CORE      0
@@ -184,7 +170,6 @@ struct drv_enable_entry
 
 #define HDMI_TX_STATUS_SCDC_CHECK      20
 
-
 struct irq_dev_id {
         void *dev;
 };
@@ -241,9 +226,6 @@ struct hdmi_tx_dev{
         /** HDMI TX Controller */
         volatile void __iomem   *dwc_hdmi_tx_core_io;
 
-        /** HDCP */
-        volatile void __iomem   *hdcp_io;
-
         /** HDMI TX PHY interface */
         volatile void __iomem   *hdmi_tx_phy_if_io;
 
@@ -288,6 +270,9 @@ struct hdmi_tx_dev{
         struct proc_dir_entry   *hdmi_proc_phy_regs;
         #endif
 
+        #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
+        struct proc_dir_entry   *hdmi_proc_dv_vsif;
+        #endif
 
         /** Hot Plug */
         int                     hotplug_gpio;
@@ -356,6 +341,16 @@ struct hdmi_tx_dev{
         #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
         struct timeval          time_backup;
         #endif
+
+        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+        /**
+          * Pointer to store the dolbyvision_vsif list */
+        unsigned char *dolbyvision_visf_list;
+        #endif
+
+        /*
+         * Save TMDS Confgs and Scrambler Status */
+        unsigned char prev_scdc_status;
 };
 
 /**
@@ -387,5 +382,8 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 /**
  * hdmi misc api
  */
+int dwc_hdmi_is_suspended(struct hdmi_tx_dev *dev);
+void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on);
 void dwc_hdmi_set_hdcp_keepout(struct hdmi_tx_dev *dev);
+
 #endif /* __INCLUDES_H__ */

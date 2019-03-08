@@ -30,6 +30,7 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/vioc_config.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 static struct device_node *ViocSC_np;
 static volatile void __iomem *pScale[VIOC_SCALER_MAX];
@@ -177,8 +178,8 @@ static int __init vioc_sc_init(void)
 		pr_err("cann't find vioc_scaler \n");
 	} else {
 		for (i = 0; i < VIOC_SCALER_MAX; i++)
-			pScale[i] =
-				(volatile void __iomem *)of_iomap(ViocSC_np, i);
+			pScale[i] = (volatile void __iomem *)of_iomap(ViocSC_np,
+						is_VIOC_REMAP ? (i + VIOC_SCALER_MAX) : i);
 	}
 
 	return 0;

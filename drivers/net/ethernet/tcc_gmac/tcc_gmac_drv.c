@@ -34,6 +34,7 @@
 #include <linux/phy.h>
 #include <linux/interrupt.h>
 #include <linux/mii.h>
+#include <linux/miscdevice.h>
 
 #if defined (CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
 	#include <mach/bsp.h>
@@ -204,6 +205,14 @@ static char *g_board_mac = NULL;
 static int gmac_suspended = 0;
 #endif
 
+struct net_device *netdev;
+
+struct semaphore	sema;
+struct iodata
+{
+	unsigned short	addr;
+	unsigned short	data;
+};
 static int __init board_mac_setup(char *mac)
 {
 	g_board_mac = mac;
@@ -1119,6 +1128,7 @@ static int tcc_gmac_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 	u32 addr;
 	int data = 0;
 
+	up(&sema);
 	addr = ((mii_id<< GMII_ADDR_SHIFT) & GPHY_ADDR_MASK) |
 		((regnum<< GMII_REG_SHIFT) & GMII_REG_MSK);
 
@@ -1128,6 +1138,7 @@ static int tcc_gmac_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 
 	//printk("%s - id : %d, regnum : 0x%02x, data : 0x%02x\n", __func__, mii_id, regnum, data);
 
+	down(&sema);
 	return data;
 }
 
@@ -1149,6 +1160,7 @@ static int tcc_gmac_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 
 	void __iomem *ioaddr = (void __iomem *)dev->base_addr;
 	u32 addr;
 
+	up(&sema);
 	writel((unsigned int )value, ioaddr + mii_data);
 
 	addr = ((mii_id<< GMII_ADDR_SHIFT) & GPHY_ADDR_MASK) |
@@ -1158,6 +1170,7 @@ static int tcc_gmac_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 
 
 	while(readl(ioaddr + mii_address) & GMAC_MII_ADDR_BUSY); // Wait for Busy Cleared
 
+	down(&sema);
 	//printk("%s - id : %d, regnum : 0x%02x, value : 0x%02x\n", __func__, mii_id, regnum, value);
 
 	return 0;
@@ -1272,7 +1285,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 		if (bus->mdio_map[phy_addr]) {
 			phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
 			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
-			break;
+			break;    
 		} 
 #if 0
 		if (bus->phy_map[phy_addr]) {
@@ -2387,6 +2400,56 @@ out_resume:
 	return 0;
 }
 
+
+int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
+{
+	int ret=0;
+	unsigned int rev_value;
+	unsigned int send_value;
+	struct miscdevice *misc = (struct miscdevice *) flip->private_data;
+	struct tcc_gmac_priv *priv = netdev_priv(netdev);
+
+	struct mii_bus *mii_bus = priv->mii;
+	struct iodata iodata;
+
+	int data = 0;
+	u32	addr;
+
+	iodata.addr=(arg&0xffff);
+	iodata.data=(arg>>16);
+
+	//printk("USERDATA ] addr : 0x%08x , data : 0x%08x \n", iodata.addr , iodata.data);
+
+	switch(cmd)
+	{
+		case CMD_PHY_READ:
+			data = phy_read(priv->phydev, iodata.addr);
+			//printk("Read addr : 0x%08x value : 0x%08x \n", iodata.addr, data);
+			return data;
+
+		case CMD_PHY_WRITE:
+			phy_write(priv->phydev, iodata.addr , iodata.data);
+			//printk("Write addr : 0x%08x , data : 0x%08x , read_data : 0x%08x\n", iodata.addr ,iodata.data , phy_read(priv->phydev, iodata.addr));
+
+			break;
+
+		default:
+			printk("not support IOCTL cmd : %x\n", cmd);
+			break;
+	}
+	return ret;
+}
+static int tcc_gmac_misc_open(struct inode *inode, struct file *filp)
+{
+//	printk("%s !\n", __func__);
+	return 0;
+}
+static int tcc_gmac_misc_release(struct inode *inode, struct file *flip)
+{
+//	printk("%s !\n", __func__);
+	return 0;		
+}
+
 static const struct net_device_ops tcc_gmac_netdev_ops = {
 	.ndo_open = tcc_gmac_open,
 	.ndo_stop = tcc_gmac_stop,
@@ -2401,6 +2464,11 @@ static const struct net_device_ops tcc_gmac_netdev_ops = {
 //	.ndo_vlan_rx_register = tcc_gmac_vlan_rx_register,
 #endif
 	.ndo_set_mac_address = eth_mac_addr,
+};
+static struct file_operations tcc_gmac_misc_fops = {
+    .unlocked_ioctl     = tcc_gmac_misc_ioctl,
+    .open               = tcc_gmac_misc_open,
+    .release            = tcc_gmac_misc_release,
 };
 
 static int tcc_gmac_probe(struct platform_device *pdev)
@@ -2432,7 +2500,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 
 	strcpy(dev->name, ETHERNET_DEV_NAME);
 
-	platform_set_drvdata(pdev, dev);
+
 
 	tca_gmac_init(np, &priv->dt_info);
 
@@ -2444,6 +2512,23 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 
 	dev->base_addr = (unsigned long)devm_ioremap_resource(&pdev->dev, res);
 
+	priv->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
+
+	if(priv->misc == 0)
+		printk("[%s] Fail alloc misc device. \n", __func__);
+
+	priv->misc->minor		= MISC_DYNAMIC_MINOR;
+	priv->misc->fops		= &tcc_gmac_misc_fops;
+	priv->misc->name		= "tcc_gmac";
+	priv->misc->parent		= &pdev->dev;
+
+	ret = misc_register(priv->misc);
+	
+	if(ret)
+		printk("[%s] Fail register misc device.\n", __func__);
+
+	platform_set_drvdata(pdev, dev);
+	netdev = dev;
 	priv->hw = tcc_gmac_setup((void __iomem*)dev->base_addr, tca_gmac_get_hsio_clk(&priv->dt_info));
 	if (!priv->hw) {
 		return -ENOMEM;
@@ -2526,6 +2611,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 
 
 	spin_lock_init(&priv->lock);
+	sema_init(&sema, 1);
 
 	
 	return ret;

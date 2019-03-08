@@ -89,13 +89,17 @@
 #define CAMERA_INPUT_HEIGHT			480
 #define SVM_CAMERA_INPUT_WIDTH		5120
 #define SVM_CAMERA_INPUT_HEIGHT		720
-#define SUPPORT_CAMERA_CAPTURE		0
 
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
+#ifdef CONFIG_SUPPORT_4K_VIDEO
 #define SUPPORT_VIDEO_MAX_WIDTH		4096
 #define SUPPORT_VIDEO_MAX_HEIGHT	2160
+#else
+#define SUPPORT_VIDEO_MAX_WIDTH     1920
+#define SUPPORT_VIDEO_MAX_HEIGHT    1088
+#endif
 
 #define SUPPORT_VIQE_MAX_WIDTH		1920
 #define SUPPORT_VIQE_MAX_HEIGHT		1088
@@ -103,9 +107,15 @@
 // DECODER on VPU
 #define INST_1ST_USE				(1)
 #define INST_1ST_IS_HEVC_TYPE		(1)		// please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC
+#ifdef CONFIG_SUPPORT_4K_VIDEO
 #define INST_1ST_VIDEO_WIDTH		(4096)	// HEVC: 32x alignment, Other: 16x alignment
 #define INST_1ST_VIDEO_HEIGHT		(2160)	// HEVC: 32x alignment, Other: 16x alignment
-#define INST_1ST_MAX_FRAMEBUFFERS	(7)	// HEVC-4K: 7, Others: 1~24
+#define INST_1ST_MAX_FRAMEBUFFERS	(7)		// HEVC-4K: 7, Others: 1~24
+#else
+#define INST_1ST_VIDEO_WIDTH        (1920)  // 2K HEVC: 32x alignment, Other: 16x alignment
+#define INST_1ST_VIDEO_HEIGHT       (1088)  // 2K HEVC: 32x alignment, Other: 16x alignment
+#define INST_1ST_MAX_FRAMEBUFFERS	(24)	// To support VPU and HEVC    HEVC-4K: 7, Others: 1~24
+#endif
 
 #define INST_2ND_USE				(0)
 #define INST_2ND_IS_HEVC_TYPE		(0)		// please check "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable HEVC

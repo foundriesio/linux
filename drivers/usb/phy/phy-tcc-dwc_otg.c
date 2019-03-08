@@ -123,7 +123,7 @@ static int tcc_dwc_otg_set_dc_level(struct usb_phy *phy, unsigned int level)
 }
 #endif
 
-#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX		/* 017.02.28 */
+#if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)		/* 017.02.28 */
 #define TCC_MUX_H_SWRST				(1<<4)		/* Host Controller in OTG MUX S/W Reset */
 #define TCC_MUX_H_CLKMSK			(1<<3)		/* Host Controller in OTG MUX Clock Enable */
 #define TCC_MUX_O_SWRST				(1<<2)		/* OTG Controller in OTG MUX S/W Reset */
@@ -150,7 +150,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 
 	printk("dwc_otg PHY init\n");
 	clk_reset(dwc_otg_phy_dev->hclk, 1);
-#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+#if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined (CONFIG_USB_DWC2_TCC_MUX)
 	{
 		uint32_t mux_cfg_val;
 		mux_cfg_val = readl(&dwc_otg_pcfg->otgmux); /* get otg control cfg register */
@@ -167,7 +167,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #if defined(CONFIG_ARCH_TCC897X)
 	dwc_otg_pcfg->pcfg1 = 0x0330d643;
 #elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-	writel(0xE31C2433, &dwc_otg_pcfg->pcfg1);
+	writel(0xE31C243A, &dwc_otg_pcfg->pcfg1);
 #else
 	dwc_otg_pcfg->pcfg1 = 0x0330d645;
 #endif
@@ -272,14 +272,11 @@ static int tcc_dwc_otg_set_phy_state(struct usb_phy *phy, int state)
 
 	return state;
 }
-
-/* create phy struct */
-static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device *phy_dev)
+#ifdef CONFIG_ARCH_TCC803X
+static int tcc_dwc_otg_set_vbus_resource(struct usb_phy *phy)
 {
-	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
-	if (!phy_dev->phy.otg)
-		return -ENOMEM;
-
+	struct tcc_dwc_otg_device *phy_dev = container_of(phy, struct tcc_dwc_otg_device, phy);
+	struct device *dev = phy_dev->dev;
 	//===============================================
 	// Check vbus enable pin	
 	//===============================================
@@ -293,6 +290,31 @@ static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device 
 		phy_dev->vbus_gpio = 0;	// can not control vbus
 	}
 
+	return 0;
+}
+#endif
+/* create phy struct */
+static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device *phy_dev)
+{
+	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
+	if (!phy_dev->phy.otg)
+		return -ENOMEM;
+#ifndef CONFIG_ARCH_TCC803X
+	//===============================================
+	// Check vbus enable pin	
+	//===============================================
+	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
+		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
+			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			return -ENODEV;
+		}
+	} else {
+		phy_dev->vbus_gpio = 0;	// can not control vbus
+	}
+#else
+	phy_dev->vbus_gpio = 1;
+#endif
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
 	if (IS_ERR(phy_dev->hclk))
@@ -311,6 +333,9 @@ static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device 
 	phy_dev->phy.type			= USB_PHY_TYPE_USB2;
 	phy_dev->phy.init 			= tcc_dwc_otg_phy_init;
 	phy_dev->phy.set_phy_state 	= tcc_dwc_otg_set_phy_state;
+#ifdef CONFIG_ARCH_TCC803X
+	phy_dev->phy.set_vbus_resource	= tcc_dwc_otg_set_vbus_resource;
+#endif
 
 	if (phy_dev->vbus_gpio)
 		phy_dev->phy.set_vbus		= dwc_otg_vbus_set;

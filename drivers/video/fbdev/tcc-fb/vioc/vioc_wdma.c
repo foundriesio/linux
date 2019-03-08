@@ -31,6 +31,7 @@
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/tcc_gpu_align.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 static struct device_node *ViocWdma_np;
 static volatile void __iomem *pWDMA_reg[VIOC_WDMA_MAX] = {0};
@@ -360,10 +361,20 @@ void VIOC_WDMA_GetStatus(volatile void __iomem *reg, unsigned int *status)
 	*status = __raw_readl(reg + WDMAIRQSTS_OFFSET);
 }
 
-unsigned int VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
+bool VIOC_WDMA_IsImageEnable(volatile void __iomem *reg)
 {
 	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_IEN_MASK) >>
-		WDMACTRL_IEN_SHIFT);
+		WDMACTRL_IEN_SHIFT)
+		       ? true
+		       : false;
+}
+
+bool VIOC_WDMA_IsContinuousMode(volatile void __iomem *reg)
+{
+	return ((__raw_readl(reg + WDMACTRL_OFFSET) & WDMACTRL_CONT_MASK) >>
+		WDMACTRL_CONT_SHIFT)
+		       ? true
+		       : false;
 }
 
 unsigned int VIOC_WDMA_Get_CAddress(volatile void __iomem *reg)
@@ -431,7 +442,8 @@ static int __init vioc_wdma_init(void)
 		pr_info("vioc-wdma: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WDMA_MAX; i++) {
-			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocWdma_np, i);
+			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocWdma_np,
+							is_VIOC_REMAP ? (i + VIOC_WDMA_MAX) : i);
 
 			if (pWDMA_reg[i])
 				pr_info("vioc-wdma%d: 0x%p\n", i, pWDMA_reg[i]);

@@ -263,22 +263,30 @@ static int tcc_cp_ctrl_probe(struct platform_device *pdev)
 		of_property_read_u32(dev->of_node, "cp-type", &temp);
 
 		/*
-		* Auth CP type 1 = 2.0C
+        * Auth CP type 2 = 3.0
+        * Auth CP type 1 = 2.0C
 		* Auth CP type 0 = 2.0B
 		*/
-		if (temp == 1) {
+        if (temp == 2)
+        {
+			cp_dbg("3.0 type\n");
+			gCpVersion = 0x30;
+        }
+		else if (temp == 1) 
+        {
 			cp_dbg("2.0C type\n");
 			gCpVersion = 0x20C;
 		}
-		else if (temp == 0) {
+		else if (temp == 0) 
+        {
 			cp_dbg("2.0B type\n");
 			gCpVersion = 0x20B;
 		}
 		else
 			cp_dbg("bad Auth CP type!\n");
 	} else {
-		gCpVersion = 0x20C;	// default 2.0C type
-		cp_dbg("default 2.0C type\n");
+		gCpVersion = 0x30;	// default 3.0 type
+		cp_dbg("default 3.0 type\n");
 	}
 
 	if (of_find_property(dev->of_node, "i2c-channel", 0)) {

@@ -73,6 +73,24 @@ config SERIAL_AMBA_PL011_CONSOLE
 	  your boot loader (lilo or loadlin) about how to pass options to the
 	  kernel at boot time.)
 
+config SERIAL_AMBA_PL011_HS_CONSOLE
+	bool "Support for high speed console on AMBA serial port"
+	depends on SERIAL_AMBA_PL011=y
+	select SERIAL_AMBA_PL011_CONSOLE
+	---help---
+	  Say Y here if you wish to use to high speed on PL011 UART as the
+	  system console.
+	  If set this feature serial console speed is set to 921600 bps.
+
+config DEFERRED_CONSOLE_OUTPUT
+	bool "Enable deferred console output"
+	depends on SERIAL_AMBA_PL011=y
+	select SERIAL_AMBA_PL011_CONSOLE
+	---help---
+	  Say Y here if you wish to use an this feature as delegates console
+	  output to the console tasklet.
+	  It deferred ouput to prevent console latency on console output.
+
 config SERIAL_EARLYCON_ARM_SEMIHOST
 	bool "Early console using ARM semihosting"
 	depends on ARM64 || ARM
@@ -1731,9 +1749,17 @@ config SERIAL_TCC_CONSOLE
 	  your boot loader about how to pass options to the kernel at
 	  boot time.)
 
-config DEFERRED_CONSOLE_OUTPUT
-	bool "Enable deferred console output"
-	depends on SERIAL_TCC_CONSOLE
+config TCC_NSK_SC
+        bool "TCC Smartcard driver support for NSK"
+        default n
+        help
+          Support for NSK Smartcard driver interface using the on-chip uart on the Telechips TCC series CPUs
+
+config SERIAL_TCC_SC
+        bool "Telechips Smartcard driver support"
+        default n
+        help
+          Support for Smartcard driver using the on-chip UARTs on the Telechips TCC series CPUs,
 
 endmenu
 

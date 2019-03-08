@@ -25,7 +25,9 @@ static struct i2c_client * videosource_i2c_client = NULL;
 
 int DDI_I2C_Write(unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
 	unsigned short bytes = reg_bytes + data_bytes;
+#ifdef CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
 	static int try = 0;
+#endif//CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
 
 	if(i2c_master_send(videosource_i2c_client, data, bytes) != bytes) {
 		printk("write error!!!! \n");
@@ -42,12 +44,12 @@ int DDI_I2C_Write(unsigned char* data, unsigned short reg_bytes, unsigned short 
 
 int DDI_I2C_Write_Remote(unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
 	unsigned short bytes = reg_bytes + data_bytes;
-    unsigned short source_addr;
+	unsigned short source_addr;
 	static int try = 0;
 
-    source_addr = videosource_i2c_client->addr;
+	source_addr = videosource_i2c_client->addr;
 
-    videosource_i2c_client->addr = remote_addr;
+	videosource_i2c_client->addr = remote_addr;
 
 	if(i2c_master_send(videosource_i2c_client, data, bytes) != bytes) {
 		printk("write error!!!! \n");
@@ -55,12 +57,12 @@ int DDI_I2C_Write_Remote(unsigned short remote_addr, unsigned char* data, unsign
 		try = (try + 1) % 4;
 		videosource_i2c_client->addr = 0x60 + (0x01 * try);
 
-        videosource_i2c_client->addr = source_addr;
+		videosource_i2c_client->addr = source_addr;
 
 		return -EIO;
 	}
 
-    videosource_i2c_client->addr = source_addr;
+	videosource_i2c_client->addr = source_addr;
 
 	return 0;
 }
@@ -94,14 +96,14 @@ int cam_i2c_read(const struct i2c_client * client, unsigned char * cmd, unsigned
 
 int DDI_I2C_Read(unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
 	unsigned char data[2];
-	
+
 	if(reg_bytes == 2) {
 		data[0]= reg>>8;
 		data[1]= (u8)reg&0xff;
 	} else {
 		data[0]= (u8)reg&0xff;
 	}
-	
+
 	if(i2c_master_send(videosource_i2c_client, data, reg_bytes) != reg_bytes) {
 		printk("write error for read!!!! \n");
 		return -EIO;
@@ -112,12 +114,12 @@ int DDI_I2C_Read(unsigned short reg, unsigned char reg_bytes, unsigned char * va
 		return -EIO;
 	}
 
-    return 0;
+	return 0;
 }
 
 int DDI_I2C_Read_Remote(unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
 	unsigned char data[2];
-    unsigned short source_addr;
+	unsigned short source_addr;
 
 	if(reg_bytes == 2) {
 		data[0]= reg>>8;
@@ -126,25 +128,25 @@ int DDI_I2C_Read_Remote(unsigned short remote_addr, unsigned short reg, unsigned
 		data[0]= (u8)reg&0xff;
 	}
 
-    source_addr = videosource_i2c_client->addr;
+	source_addr = videosource_i2c_client->addr;
 
-    videosource_i2c_client->addr = remote_addr;
+	videosource_i2c_client->addr = remote_addr;
 
 	if(i2c_master_send(videosource_i2c_client, data, reg_bytes) != reg_bytes) {
 		printk("write error for read!!!! \n");
-        videosource_i2c_client->addr = source_addr;
+		videosource_i2c_client->addr = source_addr;
 		return -EIO;
 	}
 
 	if(i2c_master_recv(videosource_i2c_client, val, val_bytes) != val_bytes) {
 		printk("read error!!!! \n");
-        videosource_i2c_client->addr = source_addr;
+		videosource_i2c_client->addr = source_addr;
 		return -EIO;
 	}
 
-    videosource_i2c_client->addr = source_addr;
+	videosource_i2c_client->addr = source_addr;
 
-    return 0;
+	return 0;
 }
 
 static const struct i2c_device_id videosource_i2c_id[] = {
@@ -169,7 +171,7 @@ static int videosource_i2c_probe(struct i2c_client * client, const struct i2c_de
 
 static int videosource_i2c_remove(struct i2c_client * client) {
 	videosource_i2c_client = NULL;
-	
+
 	return 0;
 }
 

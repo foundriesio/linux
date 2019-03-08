@@ -1095,13 +1095,15 @@ static int _vmgr_proc_exit_by_external(struct VpuList *list, int *result, unsign
 
 static int _vmgr_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
+
     if (!vmgr_data.irq_reged) {
         err("not registered vpu-mgr-irq \n");
     }
 
     dprintk("_vmgr_open In!! %d'th \n", vmgr_data.dev_opened);
 
-    vmgr_enable_clock();
+    vmgr_enable_clock(0);
 
     if(vmgr_data.dev_opened == 0)
     {
@@ -1119,7 +1121,7 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
 
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
-        vmem_reinit();
+        vmem_init();
 		cntInt_vpu = 0;
     }
     vmgr_data.dev_opened++;
@@ -1213,9 +1215,11 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
 
         vmgr_disable_irq(vmgr_data.irq);
         vmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
     }
 
-    vmgr_disable_clock();
+    vmgr_disable_clock(0);
 
     vmgr_data.nOpened_Count++;
 
@@ -1442,7 +1446,7 @@ static int _vmgr_operation(void)
                 #if 1
                     while(opened_count)
                     {
-                        vmgr_disable_clock();
+                        vmgr_disable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1451,7 +1455,7 @@ static int _vmgr_operation(void)
                     opened_count = vmgr_data.dev_opened;
                     while(opened_count)
                     {
-                        vmgr_enable_clock();
+                        vmgr_enable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1630,9 +1634,9 @@ int vmgr_probe(struct platform_device *pdev)
     INIT_LIST_HEAD(&vmgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&vmgr_data.comm_data.wait_list);
 
-    if( 0 > (ret = vmem_init()))
+    if( 0 > (ret = vmem_config()))
     {
-        err("unable to allocate memory for VPU!! %d \n", ret);
+        err("unable to configure memory for VPU!! %d \n", ret);
         return -ENOMEM;
     }
 
@@ -1659,6 +1663,9 @@ int vmgr_probe(struct platform_device *pdev)
         printk(KERN_WARNING "VPU Manager: Couldn't register device.\n");
         return -EBUSY;
     }
+
+    vmgr_enable_clock(1);
+    vmgr_disable_clock(1);
 
     return 0;
 }
@@ -1703,7 +1710,7 @@ int vmgr_suspend(struct platform_device *pdev, pm_message_t state)
         open_count = vmgr_data.dev_opened;
 
         for (i = 0; i < open_count; i++) {
-            vmgr_disable_clock();
+            vmgr_disable_clock(0);
         }
         printk("vpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n",
                 vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4),
@@ -1723,7 +1730,7 @@ int vmgr_resume(struct platform_device *pdev)
         open_count = vmgr_data.dev_opened;
 
         for (i=0; i<open_count; i++) {
-            vmgr_enable_clock();
+            vmgr_enable_clock(0);
         }
         printk("\n vpu: resume \n\n");
     }

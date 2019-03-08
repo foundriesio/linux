@@ -513,7 +513,8 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 	dmabuf = dma_buf_get(dmabuf_fd);
 	buffer = dmabuf->priv;
 	if (!buffer) {
-		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",	__func__);	
+		pr_err("%s: there is no dmabuf associated with dmabuf_fd.\n",	__func__);
+		dma_buf_put(dmabuf);
 		return -ENODEV;
 	}
 	
@@ -522,12 +523,13 @@ int ion_phys(int dmabuf_fd, phys_addr_t *addr, size_t *len)
 	*addr = PFN_PHYS(page_to_pfn(page));
 	*len = buffer->size;
 	up_read(&dev->lock);
+	dma_buf_put(dmabuf);
 
 	if(!addr) {
 		pr_err("%s: failed to get physical address.\n",	__func__);	
 		return -ENODEV;
 	}
-
+	
 	return ret;
 }
 static const struct file_operations ion_fops = {

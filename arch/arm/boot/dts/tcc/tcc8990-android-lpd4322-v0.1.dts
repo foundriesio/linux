@@ -155,18 +155,6 @@
 	vqmmc-supply = <&vqmmc_sd>;
 };
 
-&gpio_keys {
-	compatible = "gpio-keys";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	autorepeat;
-	button@0 {
-		label = "Power Key";
-		linux,code = <116>;
-		gpios = <&gpd 20 1>;
-	};
-};
-
 &gpio_keys_polled {
         compatible = "gpio-keys-polled";
         #address-cells = <1>;
@@ -177,5 +165,10 @@
                 label = "BT Auto Pair Key";
                 linux,code = <218>;
                 gpios = <&gpg 11 1>;
+        };
+        button@1 {
+                label = "Power Key";
+                linux,code = <116>;
+                gpios = <&gpd 20 1>;
         };
 };

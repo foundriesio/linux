@@ -80,6 +80,6 @@ config TCC_DWC_IRQ_AFFINITY
 
 config DWC_INCOMP_ISOC
 	bool "Enable handling incompleted isoc interrupt"
-	default n
+	default y
 	help
 		To handle incompleted isoc interrupt

@@ -19,6 +19,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <asm/system_info.h>
 #include <video/tcc/vioc_outcfg.h>
 #include <video/tcc/vioc_ddicfg.h>
 
@@ -487,6 +488,42 @@ void VIOC_DDICONFIG_MIPI_Reset_GEN(volatile void __iomem *reg, unsigned int rese
 }
 #endif
 
+#ifdef CONFIG_ARCH_TCC803X
+/*
+ * VIOC_REMAP (VIOC Register Address Remap Enable Register)
+ */
+int VIOC_DDICONFIG_GetViocRemap(void)
+{
+	unsigned int val;
+
+	if (system_rev) {
+		val = __raw_readl(pDDICFG_reg + VIOC_REMAP);
+	} else {
+		val = 0;
+	}
+
+#if 0
+	printk("%s: chip(%s) remap(%s)\n", __func__,
+		system_rev ? "single-run" : "mpw1",
+		val ? "on" : "off");
+#endif
+
+	return val;
+}
+
+int VIOC_DDICONFIG_SetViocRemap(int enable)
+{
+	unsigned int val = 0;
+
+	if (system_rev) {
+		__raw_writel((enable & VIOC_REMAP_MASK), pDDICFG_reg + VIOC_REMAP);
+		val = __raw_readl(pDDICFG_reg + VIOC_REMAP);
+	}
+
+	return val;
+}
+#endif
+
 void VIOC_DDICONFIG_DUMP(void)
 {
 	unsigned int cnt = 0;
@@ -525,4 +562,4 @@ static int __init vioc_ddicfg_init(void)
 	}
 	return 0;
 }
-arch_initcall(vioc_ddicfg_init);
+postcore_initcall(vioc_ddicfg_init);

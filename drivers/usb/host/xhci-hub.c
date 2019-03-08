@@ -551,6 +551,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 	port_status = readl(addr);
 	xhci_dbg(xhci, "clear port %s change, actual port %d status  = 0x%x\n",
 			port_change_bit, wIndex, port_status);
+#if 0
 #if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X)
 	if(!ss_down_control_first && system_rev == 0) { /* MPW 1 case*/
 		struct usb_hcd *hcd = xhci_to_hcd(xhci);	
@@ -563,7 +564,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 		}
 	}
 #endif
-
+#endif
 }
 
 static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)
@@ -1060,9 +1061,6 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 timeout = 0;
 	u16 test_mode = 0;
 /* TCC Embedded Host Electrical Test */
-#ifdef CONFIG_TCC_EH_ELECT_TST
-    u16 test_mode;
-#endif
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -1422,8 +1420,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				goto error;
 			}
 			break;
-#endif /* CONFIG_TCC_EH_ELECT_TST */
-
+#else
 		case USB_PORT_FEAT_TEST:
 			/* 4.19.6 Port Test Modes (USB2 Test Mode) */
 			if (hcd->speed != HCD_USB2)
@@ -1433,6 +1430,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			retval = xhci_enter_test_mode(xhci, test_mode, wIndex,
 						      &flags);
 			break;
+#endif /* CONFIG_TCC_EH_ELECT_TST */
 		default:
 			goto error;
 		}

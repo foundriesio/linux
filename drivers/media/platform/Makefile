@@ -95,3 +95,9 @@ obj-$(CONFIG_VIDEO_QCOM_CAMSS)		+= qcom/camss-8x16/
 obj-$(CONFIG_VIDEO_QCOM_VENUS)		+= qcom/venus/
 
 obj-y					+= meson/
+
+obj-$(CONFIG_PLATFORM_HWDEMUX) += tcc-hwdemux/hwdmx-core/
+
+obj-$(CONFIG_HWDEMUX_ADAPTOR) += tcc-hwdemux/hwdmx-drv/
+
+obj-$(CONFIG_ISDBT_CONTROL) += tcc-hwdemux/isdbt-ctrl/

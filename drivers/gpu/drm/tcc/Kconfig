@@ -1,11 +1,7 @@
 config DRM_TCC
 	tristate "DRM Support for Telechips SoC Series"
-	depends on OF && DRM
+	depends on OF && DRM && ARCH_TCC
 	select DRM_KMS_HELPER
-	select DRM_KMS_FB_HELPER
-	select FB_CFB_FILLRECT
-	select FB_CFB_COPYAREA
-	select FB_CFB_IMAGEBLIT
 	select VIDEOMODE_HELPERS
 	help
 	  Choose this option if you have a Telechips SoC chipset.
@@ -17,7 +13,6 @@ comment "CRTCs"
 
 config DRM_TCC_LCD
 	bool "LCD"
-	select FB_MODE_HELPERS
 	select DRM_TCC_DPI
 	help
 	  Choose this option if you want to use LCD/LVDS I/F for DRM.
@@ -34,11 +29,6 @@ config DRM_TCC_THIRD
         help
           Choose this option if you want to use third display for DRM.
 
-#config DRM_TCC_MIXER
-#	bool "Mixer"
-#	help
-#	  Choose this option if you want to use TCC Mixer for DRM.
-
 config DRM_TCC_VIDI
 	bool "Virtual Display"
 	select DRM_TCC_DPI
@@ -51,26 +41,7 @@ config DRM_TCC_DPI
 	bool "Parallel output"
 	select DRM_PANEL
 	help
-	  This enables support for Tcc parallel output.
-
-#config DRM_TCC_HDMI
-#	bool "HDMI"
-#	depends on DRM_TCC_MIXER && ARCH_TCC899X
-#	help
-#	  Choose this option if you want to use TCC HDMI for DRM.
-
-#config DRM_TCC_VIOC
-#        bool "Telechips DRM VIOC"
-#        depends on DRM_TCC_IPP
-#        help
-#          Choose this option if you want to use TCC VIOC for DRM.
-
-#comment "Sub-drivers"
-#
-#config DRM_TCC_IPP
-#	bool "Image Post Processor"
-#	help
-#	  Choose this option if you want to use IPP feature for DRM.
+	  This enables support for TCC parallel output.
 
 endif
 

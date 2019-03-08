@@ -85,6 +85,7 @@ enum {
 	SIP_CLK_PWDN_DDIBUS,
 	SIP_CLK_PWDN_IOBUS,
 	SIP_CLK_PWDN_HSIOBUS,
+	SIP_CLK_IS_PLL_ENABLED,
 };
 
 /* TCC SiP Service for Watchdog */

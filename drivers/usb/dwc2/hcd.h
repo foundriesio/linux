@@ -453,6 +453,7 @@ static inline void disable_hc_int(struct dwc2_hsotg *hsotg, int chnum, u32 intr)
 	dwc2_writel(mask, hsotg->regs + HCINTMSK(chnum));
 }
 
+void dwc2_manual_change(struct dwc2_hsotg *hsotg);
 void dwc2_hc_cleanup(struct dwc2_hsotg *hsotg, struct dwc2_host_chan *chan);
 void dwc2_hc_halt(struct dwc2_hsotg *hsotg, struct dwc2_host_chan *chan,
 		  enum dwc2_halt_status halt_status);

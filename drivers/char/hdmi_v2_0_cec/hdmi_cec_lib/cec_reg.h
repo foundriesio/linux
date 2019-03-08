@@ -1,4 +1,8 @@
-
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef TCC_HDMI_V_2_0_CEC_REG_H_
 #define TCC_HDMI_V_2_0_CEC_REG_H_
 
@@ -82,7 +86,7 @@
                          CEC_WAKEUPCTRL_OPCODE0X41EN_MASK | CEC_WAKEUPCTRL_OPCODE0X42EN_MASK | \
                          CEC_WAKEUPCTRL_OPCODE0X44EN_MASK | CEC_WAKEUPCTRL_OPCODE0X70EN_MASK | \
                          CEC_WAKEUPCTRL_OPCODE0X82EN_MASK | CEC_WAKEUPCTRL_OPCODE0X86EN_MASK
-                         
+
 //CEC Interrupt Status Register (Functional Operation Interrupts)
 #define IO_IH_CEC_STAT0  0x00000418
 

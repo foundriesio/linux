@@ -171,8 +171,11 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 			pDISPBase + DCTRL);
 
 	val = (__raw_readl(pDISPBase + DCTRL) &
-	       ~(DCTRL_Y2RMD_MASK | DCTRL_DP_MASK));
-	val |= ((0x1 << DCTRL_Y2RMD_SHIFT) | (0x1 << DCTRL_DP_SHIFT));
+	       ~(DCTRL_Y2RMD_MASK | DCTRL_DP_MASK | DCTRL_NI_MASK));
+	val |= ((0x1 << DCTRL_Y2RMD_SHIFT) | (0x0 << DCTRL_DP_SHIFT) | (0x1 << DCTRL_NI_SHIFT));
+
+	__raw_writel(val, pDISPBase + DCTRL);
+
 
 	__raw_writel((lcd_spec->clk_div / 2) << DCLKDIV_PXCLKDIV_SHIFT,
 		     pDISPBase + DCLKDIV);

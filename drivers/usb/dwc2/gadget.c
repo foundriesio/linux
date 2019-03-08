@@ -3432,7 +3432,7 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *hsotg,
 		dwc2_readl(hsotg->regs + DOEPCTL0));
 }
 
-static void dwc2_hsotg_core_disconnect(struct dwc2_hsotg *hsotg)
+void dwc2_hsotg_core_disconnect(struct dwc2_hsotg *hsotg)
 {
 	/* set the soft-disconnect bit */
 	__orr32(hsotg->regs + DCTL, DCTL_SFTDISCON);
@@ -3987,7 +3987,7 @@ error2:
  * dwc2_hsotg_ep_disable - disable given endpoint
  * @ep: The endpoint to disable.
  */
-static int dwc2_hsotg_ep_disable(struct usb_ep *ep)
+int dwc2_hsotg_ep_disable(struct usb_ep *ep)
 {
 	struct dwc2_hsotg_ep *hs_ep = our_ep(ep);
 	struct dwc2_hsotg *hsotg = hs_ep->parent;

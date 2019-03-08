@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * cec.c
- *
- *  Created on: Jan 8, 2015
- *      Author: 
- */
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #include "../include/hdmi_cec.h"
 #include "cec_reg.h"
 #include "cec.h"
@@ -56,7 +55,7 @@ static int cec_msgRx(struct cec_device * dev, char *buf, unsigned size,
 static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
 		 unsigned retry)
 {
-	int i, retval = 0; 
+	int i, retval = 0;
 
 	if (size > 0) {
 		if (cec_CfgTxBuf(dev, buf, size) == (int)size) {
@@ -67,7 +66,7 @@ static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
 				cec_IntClear(dev, CEC_MASK_DONE_MASK|CEC_MASK_NACK_MASK|CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
 				cec_SetSend(dev);
 				while (cec_GetSend(dev) != 0);
-				
+
 #if 0 // for debuging
 				printk("CEC interrupt status = 0x%08x \r\n",cec_dev_read(dev,IO_IH_CEC_STAT0));
 #endif
@@ -101,7 +100,7 @@ int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup)
     	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
 		cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
 				CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
-	
+
 		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
 		cec_dev_write(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG);
 		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
@@ -207,7 +206,7 @@ int cec_CfgLogicAddr(struct cec_device * dev, unsigned addr, int enable)
 		cec_dev_write(dev, regs, cec_dev_read(dev, regs) |  (1 << addr));
 	else
 		cec_dev_write(dev, regs, cec_dev_read(dev, regs) & ~(1 << addr));
-	
+
 	return 0;
 }
 
@@ -329,7 +328,7 @@ int cec_IntStatus(struct cec_device * dev, unsigned char mask)
  */
 int cec_CfgTxBuf(struct cec_device * dev, const char *buf, unsigned size)
 {
-	int index;	
+	int index;
 
 	if (size > CEC_TX_DATA_SIZE) {
 		printk("%s: invalid parameter\n",__func__);
@@ -359,7 +358,7 @@ int cec_CfgRxBuf(struct cec_device * dev, char *buf, unsigned size)
 	cnt = cec_dev_read(dev, CEC_RX_CNT);   /* mask 7-5? */
 	cnt = (cnt > size) ? size : cnt;
 	if (cnt > CEC_RX_DATA_SIZE) {
-		printk("%s: wrong byte count\n",__func__);		
+		printk("%s: wrong byte count\n",__func__);
 		return -1;
 	}
 
@@ -398,7 +397,7 @@ int cec_SetLocked(struct cec_device * dev)
  */
 int cec_CfgBroadcastNAK(struct cec_device * dev, int enable)
 {
-//	printk("%s: %i\n",__func__,enable);	
+//	printk("%s: %i\n",__func__,enable);
 	if (enable)
 		cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) |  CEC_CTRL_BC_NACK_MASK);
 	else
@@ -436,7 +435,7 @@ int cec_ctrlReceiveFrame(struct cec_device * dev, char *buf, unsigned size)
 int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size)
 {
 	if (buf == NULL || size >= CEC_TX_DATA_SIZE) {
-		printk("%s: invalid parameter\n",__func__);		
+		printk("%s: invalid parameter\n",__func__);
 		return -1;
 	}
 

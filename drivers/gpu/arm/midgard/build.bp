@@ -19,9 +19,6 @@ bob_defaults {
     no_mali: {
         kbuild_options: ["CONFIG_MALI_NO_MALI=y"],
     },
-    mali_corestack: {
-        kbuild_options: ["CONFIG_MALI_CORESTACK=y"],
-    },
     mali_devfreq: {
         kbuild_options: ["CONFIG_MALI_DEVFREQ=y"],
     },
@@ -36,6 +33,12 @@ bob_defaults {
     },
     cinstr_job_dump: {
         kbuild_options: ["CONFIG_MALI_JOB_DUMP=y"],
+    },
+    cinstr_vector_dump: {
+        kbuild_options: ["CONFIG_MALI_VECTOR_DUMP=y"],
+    },
+    cinstr_gwt: {
+        kbuild_options: ["CONFIG_MALI_CINSTR_GWT=y"],
     },
     mali_gator_support: {
         kbuild_options: ["CONFIG_MALI_GATOR_SUPPORT=y"],
@@ -78,8 +81,15 @@ bob_kernel_module {
         "CONFIG_MALI_MIDGARD=m",
         "CONFIG_MALI_NO_MALI_DEFAULT_GPU={{.gpu}}",
         "CONFIG_MALI_PLATFORM_NAME={{.mali_platform_name}}",
-        "MALI_MOCK_TEST={{.mali_mock_test}}",
     ],
+    mali_fpga_bus_logger: {
+        extra_symbols: [
+            "bus_logger",
+        ],
+    },
+    mali_corestack: {
+        kbuild_options: ["CONFIG_MALI_CORESTACK=y"],
+    },
     mali_error_inject: {
         kbuild_options: ["CONFIG_MALI_ERROR_INJECT=y"],
     },
@@ -92,9 +102,6 @@ bob_kernel_module {
     mali_2mb_alloc: {
         kbuild_options: ["CONFIG_MALI_2MB_ALLOC=y"],
     },
-    mali_mock_test: {
-        srcs: ["tests/internal/src/mock/mali_kbase_pm_driver_mock.c"],
-    },
     gpu_has_csf: {
         srcs: [
             "csf/*.c",
@@ -104,5 +111,3 @@ bob_kernel_module {
     },
     defaults: ["mali_kbase_shared_config_defaults"],
 }
-
-optional_subdirs = ["tests"]

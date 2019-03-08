@@ -15,6 +15,9 @@
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/moduleparam.h>
+#include <linux/device.h>
+#include <linux/delay.h>
 
 #include "u_audio.h"
 #include "u_uac2.h"
@@ -48,10 +51,10 @@
 #define UNFLW_CTRL	8
 #define OVFLW_CTRL	10
 
-#define TCC_UAC2_WQ
 #ifdef TCC_UAC2_WQ
 static const char *uac2_name = "snd_uac2";
 #endif
+
 struct f_uac2 {
 	struct g_audio g_audio;
 	u8 ac_intf, as_in_intf, as_out_intf;
@@ -66,13 +69,108 @@ struct f_uac2 {
 
 };
 #ifdef TCC_UAC2_WQ
+#ifdef CONFIG_UAC20_DEBUG_ENABLE
+static ssize_t uac20_complete_count_show(struct device *pdev, struct device_attribute *attr,
+               char *buf)
+{
+    return sprintf(buf, "count = %d / ringbuff = 0x%x\n", complete_count, ringbuff_offset);
+}
+static ssize_t uac20_complete_count_store(struct device *pdev, struct device_attribute *attr,
+                const char *buff, size_t size)
+{
+    sscanf(buff, "%d", &complete_count);
+
+    return size;
+}
+
+static ssize_t uac20_capture_pcm_show(struct device *pdev, struct device_attribute *attr,
+               char *buf)
+{
+    return sprintf(buf, "dump pcm (%s)\n", (capture_pcm) ? "on":"off");
+}
+static ssize_t uac20_capture_pcm_store(struct device *pdev, struct device_attribute *attr,
+                const char *buff, size_t size)
+{
+    if (!strncmp(buff, "1", 1)) {
+        printk("[UAC2 debug]start dump pcm\n");
+        sscanf(buff, "%d %s", &capture_pcm, pdump_path);
+    }
+    else if (!strncmp(buff, "0", 1)) {
+        printk("[UAC2 debug] pcm dump is disabled\n");
+        sscanf(buff, "%d", &capture_pcm);
+    }
+    else
+    {
+        printk("[UAC2 debug] Wrong parm\n ex)echo 1 /data/data/ > uac20_capture_pcm (or) echo 0 > uac20_capture_pcm\n");
+    }
+
+    return size;
+}
+static ssize_t uac20_alt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct f_uac2 *uac = container_of(pdev, struct f_uac2, pdev);
+	return sprintf(buf, "alt = %d\n", uac->alt);
+}
+static ssize_t uac20_alt_store(struct device *dev, struct device_attribute *attr, char *buff, size_t size)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct f_uac2 *uac = container_of(pdev, struct f_uac2, pdev);
+    if (!strncmp(buff, "1", 1)) {
+        printk("[UAC2 debug]alt = 1\n");
+		u_audio_start_capture(&uac->g_audio);
+		uac->alt = 1;
+		schedule_work(&uac->work);
+
+    }
+    else if (!strncmp(buff, "0", 1)) {
+        printk("[UAC2 debug]]alt = 0\n");
+		u_audio_stop_capture(&uac->g_audio);
+		uac->alt = 0;
+		schedule_work(&uac->work);
+    }
+    else
+    {
+        //printk("[UAC2 debug] Wrong parm\n ex)echo 1 /data/data/ > uac20_capture_pcm (or) echo 0 > uac20_capture_pcm\n");
+    }
+
+    return size;
+
+}
+static DEVICE_ATTR(complete_count,  S_IRUGO | S_IWUSR, uac20_complete_count_show, uac20_complete_count_store);
+static DEVICE_ATTR(capture_pcm,  S_IRUGO | S_IWUSR, uac20_capture_pcm_show, uac20_capture_pcm_store);
+static DEVICE_ATTR(alt, S_IRUGO | S_IWUSR, uac20_alt_show, uac20_alt_store);
+
+
+#endif
+
+
 static int snd_uac2_plat_probe(struct platform_device *pdev)
 {
+#ifdef CONFIG_UAC20_DEBUG_ENABLE
+	int retval;
+#endif
 	platform_set_drvdata(pdev, NULL);
+#ifdef CONFIG_UAC20_DEBUG_ENABLE
+	retval = device_create_file(&pdev->dev, &dev_attr_complete_count);
+	if (retval) {
+	}
+	retval = device_create_file(&pdev->dev, &dev_attr_capture_pcm);
+	if (retval) {
+	}
+	retval = device_create_file(&pdev->dev, &dev_attr_alt);
+	if (retval) {
+	}
+#endif
 	return 0;
 }
 static int snd_uac2_plat_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_UAC20_DEBUG_ENABLE
+	device_remove_file(&pdev->dev, &dev_attr_complete_count);
+	device_remove_file(&pdev->dev, &dev_attr_capture_pcm);
+	device_remove_file(&pdev->dev, &dev_attr_alt);
+#endif
 	platform_set_drvdata(pdev, NULL);
 	return 0;
 
@@ -516,7 +614,7 @@ static void uac2_work(struct work_struct *data)
 	char *set_alt1[2] = { "UAC2_ALT=ALT1", NULL };
 	char **uevent_envp = NULL;
 
-	if(uac2->alt == 0)
+	if (uac2->alt == 0)
 		uevent_envp = set_alt0;
 	else
 		uevent_envp = set_alt1;
@@ -716,7 +814,7 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 
 	if (intf == uac2->as_out_intf) {
 		uac2->as_out_alt = alt;
-
+		printk("[UAC2] %s : ALT=%d\n", __func__, alt);
 		if (alt)
 			ret = u_audio_start_capture(&uac2->g_audio);
 		else

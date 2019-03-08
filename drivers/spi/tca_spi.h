@@ -146,6 +146,18 @@
 #define TCC_GPSB_MAX_CH	6
 #endif
 
+/*
+ * GPSB Access Control Register
+ */
+#define TCC_GPSB_AC0_START 0x00
+#define TCC_GPSB_AC0_LIMIT 0x04
+#define TCC_GPSB_AC1_START 0x08
+#define TCC_GPSB_AC1_LIMIT 0x0C
+#define TCC_GPSB_AC2_START 0x10
+#define TCC_GPSB_AC2_LIMIT 0x14
+#define TCC_GPSB_AC3_START 0x18
+#define TCC_GPSB_AC3_LIMIT 0x1C
+
 typedef struct {
 	unsigned CH0            :8;
 	unsigned CH1            :8;

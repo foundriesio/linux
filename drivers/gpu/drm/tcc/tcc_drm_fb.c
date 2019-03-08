@@ -1,6 +1,7 @@
 /* tcc_drm_fb.c
  *
- * Copyright (c) 2011 Telechips Electronics Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Authors:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -36,6 +37,7 @@
 struct tcc_drm_fb {
 	struct drm_framebuffer	fb;
 	struct tcc_drm_gem	*tcc_gem[MAX_FB_BUFFER];
+	dma_addr_t		dma_addr[MAX_FB_BUFFER];
 };
 
 static int check_fb_gem_memory_type(struct drm_device *drm_dev,
@@ -46,11 +48,11 @@ static int check_fb_gem_memory_type(struct drm_device *drm_dev,
 	flags = tcc_gem->flags;
 
 	/*
-	 * without iommu support, not support physically non-continuous memory
-	 * for framebuffer.
+	 * Physically non-contiguous memory type for framebuffer is not
+	 * supported without IOMMU.
 	 */
 	if (IS_NONCONTIG_BUFFER(flags)) {
-		DRM_ERROR("cannot use this gem memory type for fb.\n");
+		DRM_ERROR("Non-contiguous GEM memory is not supported.\n");
 		return -EINVAL;
 	}
 
@@ -61,9 +63,6 @@ static void tcc_drm_fb_destroy(struct drm_framebuffer *fb)
 {
 	struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
 	unsigned int i;
-
-	/* make sure that overlay data are updated before relesing fb. */
-	tcc_drm_crtc_complete_scanout(fb);
 
 	drm_framebuffer_cleanup(fb);
 
@@ -91,25 +90,14 @@ static int tcc_drm_fb_create_handle(struct drm_framebuffer *fb,
 				     &tcc_fb->tcc_gem[0]->base, handle);
 }
 
-static int tcc_drm_fb_dirty(struct drm_framebuffer *fb,
-				struct drm_file *file_priv, unsigned flags,
-				unsigned color, struct drm_clip_rect *clips,
-				unsigned num_clips)
-{
-	/* TODO */
-
-	return 0;
-}
-
-static struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
+static const struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
 	.destroy	= tcc_drm_fb_destroy,
 	.create_handle	= tcc_drm_fb_create_handle,
-	.dirty		= tcc_drm_fb_dirty,
 };
 
 struct drm_framebuffer *
 tcc_drm_framebuffer_init(struct drm_device *dev,
-			    struct drm_mode_fb_cmd2 *mode_cmd,
+			    const struct drm_mode_fb_cmd2 *mode_cmd,
 			    struct tcc_drm_gem **tcc_gem,
 			    int count)
 {
@@ -127,9 +115,11 @@ tcc_drm_framebuffer_init(struct drm_device *dev,
 			goto err;
 
 		tcc_fb->tcc_gem[i] = tcc_gem[i];
+		tcc_fb->dma_addr[i] = tcc_gem[i]->dma_addr
+						+ mode_cmd->offsets[i];
 	}
 
-	drm_helper_mode_fill_fb_struct(&tcc_fb->fb, mode_cmd);
+	drm_helper_mode_fill_fb_struct(dev, &tcc_fb->fb, mode_cmd);
 
 	ret = drm_framebuffer_init(dev, &tcc_fb->fb, &tcc_drm_fb_funcs);
 	if (ret < 0) {
@@ -146,17 +136,22 @@ err:
 
 static struct drm_framebuffer *
 tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
-		      struct drm_mode_fb_cmd2 *mode_cmd)
+		      const struct drm_mode_fb_cmd2 *mode_cmd)
 {
+	const struct drm_format_info *info = drm_get_format_info(dev, mode_cmd);
 	struct tcc_drm_gem *tcc_gem[MAX_FB_BUFFER];
 	struct drm_gem_object *obj;
 	struct drm_framebuffer *fb;
 	int i;
 	int ret;
 
-	for (i = 0; i < drm_format_num_planes(mode_cmd->pixel_format); i++) {
-		obj = drm_gem_object_lookup(dev, file_priv,
-					    mode_cmd->handles[i]);
+	for (i = 0; i < info->num_planes; i++) {
+		unsigned int height = (i == 0) ? mode_cmd->height :
+				     DIV_ROUND_UP(mode_cmd->height, info->vsub);
+		unsigned long size = height * mode_cmd->pitches[i] +
+				     mode_cmd->offsets[i];
+
+		obj = drm_gem_object_lookup(file_priv, mode_cmd->handles[i]);
 		if (!obj) {
 			DRM_ERROR("failed to lookup gem object\n");
 			ret = -ENOENT;
@@ -164,6 +159,12 @@ tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
 		}
 
 		tcc_gem[i] = to_tcc_gem(obj);
+
+		if (size > tcc_gem[i]->size) {
+			i++;
+			ret = -EINVAL;
+			goto err;
+		}
 	}
 
 	fb = tcc_drm_framebuffer_init(dev, mode_cmd, tcc_gem, i);
@@ -181,39 +182,25 @@ err:
 	return ERR_PTR(ret);
 }
 
-struct tcc_drm_gem *tcc_drm_fb_gem(struct drm_framebuffer *fb, int index)
+dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index)
 {
 	struct tcc_drm_fb *tcc_fb = to_tcc_fb(fb);
-	struct tcc_drm_gem *tcc_gem;
 
-	if (index >= MAX_FB_BUFFER)
-		return NULL;
+	if (WARN_ON_ONCE(index >= MAX_FB_BUFFER))
+		return 0;
 
-	tcc_gem = tcc_fb->tcc_gem[index];
-	if (!tcc_gem)
-		return NULL;
-
-	DRM_DEBUG_KMS("dma_addr: 0x%lx\n", (unsigned long)tcc_gem->dma_addr);
-
-	return tcc_gem;
+	return tcc_fb->dma_addr[index];
 }
 
-static void tcc_drm_output_poll_changed(struct drm_device *dev)
-{
-	struct tcc_drm_private *private = dev->dev_private;
-	struct drm_fb_helper *fb_helper = private->fb_helper;
-
-	if (fb_helper)
-		drm_fb_helper_hotplug_event(fb_helper);
-	else
-		tcc_drm_fbdev_init(dev);
-}
+static struct drm_mode_config_helper_funcs tcc_drm_mode_config_helpers = {
+	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
+};
 
 static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
 	.fb_create = tcc_user_fb_create,
 	.output_poll_changed = tcc_drm_output_poll_changed,
-	.atomic_check = drm_atomic_helper_check,
-	.atomic_commit = tcc_atomic_commit,
+	.atomic_check = tcc_atomic_check,
+	.atomic_commit = drm_atomic_helper_commit,
 };
 
 void tcc_drm_mode_config_init(struct drm_device *dev)
@@ -230,4 +217,7 @@ void tcc_drm_mode_config_init(struct drm_device *dev)
 	dev->mode_config.max_height = 4096;
 
 	dev->mode_config.funcs = &tcc_drm_mode_config_funcs;
+	dev->mode_config.helper_private = &tcc_drm_mode_config_helpers;
+
+	dev->mode_config.allow_fb_modifiers = true;
 }

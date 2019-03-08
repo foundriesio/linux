@@ -1,10 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * hdcp_14.h
- *
- *  Created on: Jan 7, 2015
- *      Author:
- */
-
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef SRC_HDCP_HDCP_14_H_
 #define SRC_HDCP_HDCP_14_H_
 

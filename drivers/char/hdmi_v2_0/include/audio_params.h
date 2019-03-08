@@ -1,17 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * core/audio_params.h
- *
- *  Created on: Jul 2, 2010
- *
- * Synopsys Inc.
- * SG DWC PT02
- */
-/**
- * @file
- * Define audio parameters structure and functions to manipulate the
- * information held by the structure.
- * Audio interfaces, packet types and coding types are also defined here
- */
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef AUDIOPARAMS_H_
 #define AUDIOPARAMS_H_
 

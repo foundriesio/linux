@@ -48,8 +48,11 @@ ump_memory_backend* ump_memory_backend_create ( int ump_backend  )
 	if (0 == ump_backend)
 	{
 		pmap_t pmap_ump_reserved;
-		pmap_get_info("ump_reserved", &pmap_ump_reserved);
 
+		if(0 > pmap_get_info("ump_reserved", &pmap_ump_reserved)){
+			printk("%s-%d : ump_reserved allocation is failed.\n", __func__, __LINE__);
+			return NULL;
+		}
 		ump_memory_address = pmap_ump_reserved.base;
 		ump_memory_size = pmap_ump_reserved.size;
 		DBG_MSG(2, ("Using dedicated memory backend\n"));
@@ -78,5 +81,6 @@ void ump_memory_backend_destroy( int ump_backend )
 	{
 		DBG_MSG(2, ("Releasing dedicated memory: 0x%08x\n", ump_memory_address));
 		release_mem_region(ump_memory_address, ump_memory_size);
+		pmap_release_info("ump_reserved");
 	}
 }

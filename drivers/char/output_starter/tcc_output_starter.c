@@ -1,8 +1,5 @@
 /****************************************************************************
-FileName    : kernel/drivers/char/tcc_output_starter.c
-Description : 
-
-Copyright (C) 2013 Telechips Inc.
+Copyright (C) 2018 Telechips Inc.
 
 This program is free software; you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation;
@@ -16,7 +13,6 @@ You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
 ****************************************************************************/
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -95,7 +91,7 @@ enum
         STARTER_HDMI_720x576P_50Hz = 6,
         STARTER_HDMI_720x480P_60Hz = 7,
         STARTER_HDMI_640x480P_60Hz = 8,
-        STARTER_HDMI_1920x720P_60Hz = 9,        
+        STARTER_HDMI_1920x720P_60Hz = 9,
         STARTER_HDMI_MAX
 };
 
@@ -367,7 +363,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 
 	unsigned int align_swap;
 	align_swap = 0;
-	
+
 	printk("%s, lcdc_num=%d, type=%d\n", __func__, Output_Starter_LCDC_Num, type);
 
 	if(type >= STARTER_COMPONENT_MAX)
@@ -569,7 +565,7 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 		//printk("%s, persist_display_mode(%d)\n", __func__, persist_display_mode);
 	}
 
-        
+
 	#if defined(CONFIG_FB_TCC_COMPONENT)
 	/* get the information of output_starter device node*/
 	np_fb_child = of_parse_phandle(np, "scaler", 0);
@@ -691,7 +687,7 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	pmap_get_info("fb_video", &pmap_fb);
 	pmap_get_info("output_attach", &pmap_attach);
 
-	if(Output_Starter_LCDC_Num) { 
+	if(Output_Starter_LCDC_Num) {
 		lcdc_1st = STARTER_LCDC_1; /* LCDC0: HDMI/Component/CVBS */
 		lcdc_2nd = STARTER_LCDC_0; /* LCDC1: Attached CVBS */
 	}
@@ -699,7 +695,7 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		lcdc_1st = STARTER_LCDC_0; /* LCDC0: HDMI/Component/CVBS */
 		lcdc_2nd = STARTER_LCDC_1; /* LCDC1: Attached CVBS */
 	}
-        
+
         if (output_starter_display_mode == 1 || output_starter_display_mode == 3) {
                 hdmi_detect = tcc_hdmi_detect_cable();
                 printk("%s hdmi cable = %d\r\n", __func__, hdmi_detect);
@@ -781,7 +777,10 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 
 static int tcc_output_starter_remove(struct platform_device *pdev)
 {
-
+	if(pmap_fb.base){
+		pmap_release_info("fb_video");
+        pmap_fb.base = 0x00;
+    }
 	return 0;
 }
 

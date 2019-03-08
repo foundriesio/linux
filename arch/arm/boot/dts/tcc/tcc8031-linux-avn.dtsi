@@ -69,9 +69,15 @@
 	};
 */
 
-	/* USB 3.0 DRD */                      
-	dwc3@11B00000 {                        
-		status = "okay";                   
+	/* USB 3.0 DRD */
+	dwc3_phy@11D90000 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpa 29 0>;
+	};
+
+	dwc3_platform {
+		status = "okay"; 
 		//usb3en-ctrl-able;                
 		//usb3en-gpio = <&gpc 20 0>;       
 		//vbus-source-ctrl;                
@@ -121,6 +127,14 @@
 		vbus-gpio = <&gpa 27 0>;
 	};
 
+	dwc2@11980000 {
+		status = "okay";
+		phy-type = <1>;		//pico phy = 1, nano phy = 0
+
+		vbus-ctrl-able;
+		vbus-gpio = <&gpa 27 0>;
+	};
+
 	dwc_otg@11980000 {
 	    status = "okay";
 	    phy-type = <1>;     //pico phy = 1, nano phy = 0
@@ -131,7 +145,7 @@
 
 	videosource {
 		compatible = "telechips,videosource";
-		status = "okay";
+		status = "disabled";
 
 		pinctrl-names = "idle", "active";
 /* dm5886
@@ -165,7 +179,7 @@
 
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
-		status = "okay";
+		status = "disabled";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&switch_reverse_ma15>;
@@ -630,8 +644,8 @@
 		phyrst-gpio = <&gpa 24 0>;
 		phy-interface = "rgmii";
 		//ecid-mac-addr;
-		txclk-o-dly = <3>;
-		txclk-o-inv = <1>;
+		txclk-o-dly = <18>;
+		txclk-o-inv = <0>;
 		txclk-i-dly = <0>;
 		txclk-i-inv = <0>;
 		txen-dly = <0>;
@@ -644,7 +658,7 @@
 		txd5-dly = <0>;
 		txd6-dly = <0>;
 		txd7-dly = <0>;
-		rxclk-i-dly = <23>;
+		rxclk-i-dly = <0>;
 		rxclk-i-inv = <0>;
 		rxdv-dly = <0>;
 		rxer-dly = <0>;

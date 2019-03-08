@@ -16,7 +16,7 @@
 
 #include <asm/io.h>
 #include <linux/clk/tcc.h>
-#include <linux/clocksource.h>
+#include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/mm.h> // for PAGE_ALIGN
@@ -505,6 +505,13 @@ static unsigned long tcc_ckc_plldiv_get_rate(int id)
 		return 0;
 	fpll = tcc_ckc_pll_get_rate(id);
 	return (unsigned int)fpll/(pdiv+1);
+}
+
+static int tcc_ckc_is_pll_enabled(int id)
+{
+	void __iomem	*reg = ckc_base+CKC_PLL+id*4;
+
+	return (ckc_readl(reg) & (1<<PLL_EN_SHIFT)) ? 1 : 0;
 }
 
 static inline int tcc_find_clkctrl(tCLKCTRL *CLKCTRL)
@@ -2300,6 +2307,7 @@ static struct tcc_ckc_ops tcc897x_ops = {
 	.ckc_is_isoip_top_pwdn		= &tcc_ckc_is_ip_pwdn,
 	.ckc_pll_set_rate		= &tcc_ckc_pll_set_rate,
 	.ckc_pll_get_rate		= &tcc_ckc_pll_get_rate,
+	.ckc_is_pll_enabled		= &tcc_ckc_is_pll_enabled,
 	.ckc_clkctrl_enable		= &tcc_ckc_clkctrl_enable,
 	.ckc_clkctrl_disable		= &tcc_ckc_clkctrl_disable,
 	.ckc_clkctrl_set_rate		= &tcc_ckc_clkctrl_set_rate,
@@ -2333,7 +2341,7 @@ static struct tcc_ckc_ops tcc897x_ops = {
 	.ckc_cmbus_swreset		= NULL,
 };
 
-int __init tcc897x_ckc_init(struct device_node *np)
+static void __init tcc897x_ckc_init(struct device_node *np)
 {
 	int i;
 	unsigned clk_src=0;
@@ -2419,11 +2427,8 @@ int __init tcc897x_ckc_init(struct device_node *np)
 	printk("XTIN     : %10u Hz\n", stClockSource[i++]);
 
 	tcc_ckc_set_ops(&tcc897x_ops);
-
-	return 0;
 }
-
-CLOCKSOURCE_OF_DECLARE(tcc_ckc, "telechips,ckc", tcc897x_ckc_init);
+CLK_OF_DECLARE(tcc_ckc, "telechips,ckc", tcc897x_ckc_init);
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>

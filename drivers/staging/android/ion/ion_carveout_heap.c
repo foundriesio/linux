@@ -30,8 +30,8 @@
 static int autofree_debug = 0;
 #define dprintk(msg...)	if (autofree_debug) { printk( "autofree: " msg); }
 
-#define AUTO_FREE_BUF_LENGTH 50
 #define AUTO_FREE_BLK_LENGTH 6
+static int AUTO_FREE_BUF_LENGTH=50;
 
 typedef struct af_desc {
 	struct ion_buffer *buffer;
@@ -50,21 +50,40 @@ struct ion_carveout_heap {
 static void af_alloc(struct ion_buffer *buffer, struct ion_heap *heap)
 {
 	struct sg_table *table;
-	struct page *page;
-	phys_addr_t paddr;
+	struct scatterlist *sg;
+	unsigned long paddr;
+	int index_check_cnt = 0;
 	struct ion_carveout_heap *carveout_heap =
 		container_of(heap, struct ion_carveout_heap, heap);
 	struct af_desc *af_bufinfo = carveout_heap->af_buf;
 	
 	table = buffer->sg_table;
-	page = sg_page(table->sgl);
-	paddr = PFN_PHYS(page_to_pfn(page));
+	sg = table->sgl;
+	paddr = page_to_phys(sg_page(sg));
 
-	af_bufinfo[carveout_heap->af_alloc_index].buffer = buffer;
-	af_bufinfo[carveout_heap->af_alloc_index].valid = 1;
-	af_bufinfo[carveout_heap->af_alloc_index].buffer->size = table->sgl->length;
-	dprintk("%s af_alloc_index=%d, af_free_index=%d, addr:%p, size:0x%x\n",__func__, carveout_heap->af_alloc_index,  carveout_heap->af_free_index, paddr, buffer->size);
-	carveout_heap->af_alloc_index = (carveout_heap->af_alloc_index + 1) % AUTO_FREE_BUF_LENGTH;
+	while(index_check_cnt <= (AUTO_FREE_BUF_LENGTH-1))
+	{
+		if(af_bufinfo[carveout_heap->af_alloc_index].valid == 0)
+		{
+			af_bufinfo[carveout_heap->af_alloc_index].buffer = buffer;
+			af_bufinfo[carveout_heap->af_alloc_index].valid = 1;
+			af_bufinfo[carveout_heap->af_alloc_index].buffer->size = table->sgl->length;
+			dprintk("%s af_alloc_index=%d, af_free_index=%d, addr:0x%lx, size:0x%x, index_check_cnt:%d\n",__func__, carveout_heap->af_alloc_index,  carveout_heap->af_free_index, paddr, buffer->size, index_check_cnt);
+			carveout_heap->af_alloc_index = (carveout_heap->af_alloc_index + 1) % AUTO_FREE_BUF_LENGTH;
+			break;
+		}
+		else
+		{
+			carveout_heap->af_alloc_index = (carveout_heap->af_alloc_index + 1) % AUTO_FREE_BUF_LENGTH;
+			index_check_cnt++;
+		}
+		
+	}
+	if(index_check_cnt == AUTO_FREE_BUF_LENGTH)
+	{
+		AUTO_FREE_BUF_LENGTH += 10;		
+		dprintk("%s avail_size=0x%x but, autofree index is full. You have to increase AUTO_FREE_BUF_LENGTH AUTO_FREE_BUF_LENGTH:%d\n",__func__, gen_pool_avail(carveout_heap->pool), AUTO_FREE_BUF_LENGTH);
+	}
 
 }
 
@@ -82,9 +101,10 @@ static int af_free(struct ion_buffer *buffer)
 	{
 		if (af_bufinfo[i].valid && af_bufinfo[i].buffer == buffer) 
 		{
-			dprintk("%s Now Free i=%d, buffer:%p\n", __func__, i, af_bufinfo[i].buffer);
+			dprintk("%s, buffer:%p is now free af_free_index=%d\n", __func__, af_bufinfo[i].buffer, i);
 			af_bufinfo[i].buffer = NULL;
 			af_bufinfo[i].valid = 0;
+			carveout_heap->af_free_index = i;
 			return 0;
 		}
 		i = (i + 1) % AUTO_FREE_BUF_LENGTH;
@@ -92,52 +112,72 @@ static int af_free(struct ion_buffer *buffer)
 		if(i==buffer_start_index)
 			buffer_end = 1;
 	}
-	dprintk("%s Already Free buffer:%p\n", __func__, buffer);
+	dprintk("%s buffer:%p is already free or can not be freed because af_alloc_index is full, \n", __func__, buffer);
 	return 1;	/* already free  */
 }
 
 static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap, unsigned long size)
 
 {
+	int i, j, buffer_start_index;
+	int buffer_end = 0;
 	struct sg_table *table;
-	struct page *page;
-	phys_addr_t paddr;
-	int i;
+	struct scatterlist *sg;
+	unsigned long paddr;
 	struct ion_carveout_heap *carveout_heap =
 		container_of(heap, struct ion_carveout_heap, heap);
 	struct af_desc *af_bufinfo = carveout_heap->af_buf;
 
 	if(gen_pool_avail(carveout_heap->pool) >= size)
 	{
-		for(i=0; i<AUTO_FREE_BLK_LENGTH; i++)
+		i = AUTO_FREE_BLK_LENGTH;
+		j = buffer_start_index = carveout_heap->af_free_index;
+		while(buffer_end==0 || i>0)
 		{
-			table = af_bufinfo[carveout_heap->af_free_index].buffer->sg_table;
-			page = sg_page(table->sgl);
-			paddr = PFN_PHYS(page_to_pfn(page));
-			gen_pool_free(carveout_heap->pool, paddr, af_bufinfo[carveout_heap->af_free_index].buffer->size);
-			af_bufinfo[carveout_heap->af_free_index].buffer = NULL;
-			af_bufinfo[carveout_heap->af_free_index].valid = 0;
-			carveout_heap->af_free_index = (carveout_heap->af_free_index + 1) % AUTO_FREE_BUF_LENGTH;
+			if (af_bufinfo[j].valid) 
+			{
+				table = af_bufinfo[j].buffer->sg_table;
+				sg = table->sgl;
+				paddr = page_to_phys(sg_page(sg));
+				gen_pool_free(carveout_heap->pool, paddr, af_bufinfo[j].buffer->size);
+				af_bufinfo[j].buffer = NULL;
+				af_bufinfo[j].valid = 0;
+				i--;
+			}
+			j = (j + 1) % AUTO_FREE_BUF_LENGTH;
+			
+			if(j==buffer_start_index)
+				buffer_end = 1;
 		}
 	}
 	else
 	{
+		j = buffer_start_index = carveout_heap->af_free_index;
 		while (gen_pool_avail(carveout_heap->pool) <= size)
 		{
-			table = af_bufinfo[carveout_heap->af_free_index].buffer->sg_table;
-			page = sg_page(table->sgl);
-			paddr = PFN_PHYS(page_to_pfn(page));
-			gen_pool_free(carveout_heap->pool, paddr, af_bufinfo[carveout_heap->af_free_index].buffer->size);
-			af_bufinfo[carveout_heap->af_free_index].buffer = NULL;
-			af_bufinfo[carveout_heap->af_free_index].valid = 0;
-			carveout_heap->af_free_index = (carveout_heap->af_free_index + 1) % AUTO_FREE_BUF_LENGTH;
+			if (af_bufinfo[j].valid) 
+			{
+				table = af_bufinfo[j].buffer->sg_table;
+				sg = table->sgl;
+				paddr = page_to_phys(sg_page(sg));
+				gen_pool_free(carveout_heap->pool, paddr, af_bufinfo[j].buffer->size);
+				af_bufinfo[j].buffer = NULL;
+				af_bufinfo[j].valid = 0;
+			}
+			j = (j + 1) % AUTO_FREE_BUF_LENGTH;
+
+			if(j==buffer_start_index)
+			{
+				pr_err("%s The requested size is larger than ion_carveout_heap size. avail_size:0x%x, size:0x%lx\n", __func__, gen_pool_avail(carveout_heap->pool), size);
+				break;
+			}				
 		}
 	}
 	dprintk("%s Success. af_alloc_index=%d, af_free_index=%d, size=0x%lx, avail_size=0x%x\n", __func__, carveout_heap->af_alloc_index, carveout_heap->af_free_index, size, gen_pool_avail(carveout_heap->pool));
 	return 1;
 }
 
-static phys_addr_t ion_carveout_allocate(struct ion_heap *heap,
+static unsigned long ion_carveout_allocate(struct ion_heap *heap,
 					 unsigned long size)
 {
 	struct ion_carveout_heap *carveout_heap =
@@ -146,21 +186,24 @@ static phys_addr_t ion_carveout_allocate(struct ion_heap *heap,
 
 	dprintk("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%x\n", __func__, heap->name, offset, size, gen_pool_avail(carveout_heap->pool));
 	if (!offset)
+	{
+		pr_err("%s-heap_name:%s Alloc %lx - 0x%lx avail_mem:0x%x\n", __func__, heap->name, offset, size, gen_pool_avail(carveout_heap->pool));
 		return ION_CARVEOUT_ALLOCATE_FAIL;
+	}
 
 	return offset;
 }
 
-static void ion_carveout_free(struct ion_heap *heap, phys_addr_t addr,
+static void ion_carveout_free(struct ion_heap *heap, unsigned long addr,
 			      unsigned long size)
 {
 	struct ion_carveout_heap *carveout_heap =
 		container_of(heap, struct ion_carveout_heap, heap);
 
-	dprintk("%s-heap_name:%s, Free %p - 0x%lx \n", __func__, heap->name, addr, size);
 	if (addr == ION_CARVEOUT_ALLOCATE_FAIL)
 		return;
 	gen_pool_free(carveout_heap->pool, addr, size);
+	dprintk("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%x\n", __func__, heap->name, addr, size, gen_pool_avail(carveout_heap->pool));
 }
 
 static int ion_carveout_heap_allocate(struct ion_heap *heap,
@@ -169,7 +212,7 @@ static int ion_carveout_heap_allocate(struct ion_heap *heap,
 				      unsigned long flags)
 {
 	struct sg_table *table;
-	phys_addr_t paddr;
+	unsigned long paddr;
 	int ret;
 
 #if 0//!defined(CONFIG_SUPPORT_TCC_HEVC_4K)
@@ -215,14 +258,10 @@ static void ion_carveout_heap_free(struct ion_buffer *buffer)
 	int already_free = 0;
 	struct ion_heap *heap = buffer->heap;
 	struct sg_table *table = buffer->sg_table;
-	struct page *page = sg_page(table->sgl);
-	phys_addr_t paddr = PFN_PHYS(page_to_pfn(page));
+	struct scatterlist *sg = table->sgl;
+	unsigned long paddr = page_to_phys(sg_page(sg));
 
 	ion_heap_buffer_zero(buffer);
-
-	if (ion_buffer_cached(buffer))
-		dma_sync_sg_for_device(NULL, table->sgl, table->nents,
-							DMA_BIDIRECTIONAL);
 
 	if(buffer->flags == ION_FLAG_AUTOFREE_ENABLE)
 		already_free = af_free(buffer);

@@ -158,6 +158,19 @@
 #define TCC_GPSB_PCFG1	0x04	// Port configuration register 1
 #define TCC_GPSB_CIRQST	0x0C	// Channel IRQ status register
 
+/*
+ * GPSB Access Control Register
+ */
+#define TCC_GPSB_AC0_START 0x00
+#define TCC_GPSB_AC0_LIMIT 0x04
+#define TCC_GPSB_AC1_START 0x08
+#define TCC_GPSB_AC1_LIMIT 0x0C
+#define TCC_GPSB_AC2_START 0x10
+#define TCC_GPSB_AC2_LIMIT 0x14
+#define TCC_GPSB_AC3_START 0x18
+#define TCC_GPSB_AC3_LIMIT 0x1C
+
+
 #define TCC_GPSB_MAX_CH	6
 #endif
 
@@ -233,6 +246,8 @@ struct tcc_spi{
 	void __iomem		*base;
 	/* GPSB pcfg re-mapped address */
 	void __iomem		*pcfg;
+	/* GPSB Access Control re-mapped address */
+	void __iomem		*ac;
 
 	/* IRQ number */
 	int 				irq;

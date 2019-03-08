@@ -23,6 +23,7 @@
 
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/vioc_disp.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_global.h>
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 #include <video/tcc/vioc_v_dv.h>
@@ -890,7 +891,8 @@ static int __init vioc_disp_init(void)
 		pr_info("vioc-disp: disabled [this is mandatory for vioc display]\n");
 	} else {
 		for (i = 0; i < VIOC_DISP_MAX; i++) {
-			pDISP_reg[i] = (volatile void __iomem *)of_iomap(ViocDisp_np, i);
+			pDISP_reg[i] = (volatile void __iomem *)of_iomap(ViocDisp_np,
+							is_VIOC_REMAP ? (i + VIOC_DISP_MAX) : i);
 
 			if (pDISP_reg[i])
 				pr_info("vioc-disp%d: 0x%p\n", i, pDISP_reg[i]);

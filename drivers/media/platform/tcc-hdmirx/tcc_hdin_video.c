@@ -663,8 +663,16 @@ void hdin_video_irq_free(struct tcc_hdin_device *vdev)
 int hdin_video_open(struct tcc_hdin_device *vdev)
 {
     struct tcc_hdin_device *dev = vdev;
+	pmap_t viqe_area;
     int ret = 0;
-    
+
+	if(0 > pmap_get_info("video", &viqe_area)){
+		printk("%s-%d : viqe_area allocation is failed.\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
+
+    dev->viqe_area = viqe_area.base;
+
     if(!dev->hdin_irq) {
         if((ret = hdin_video_irq_request(dev)) < 0) {
             printk("FAILED to aquire hdin irq(%d).\n", ret);
@@ -689,6 +697,7 @@ int hdin_video_close(struct file *file)
         hdin_video_irq_free(dev);
     }
     dev->hdin_irq = 0;
+	pmap_release_info("video");
     return 0;
 }
 
@@ -696,13 +705,11 @@ int  hdin_video_init(struct tcc_hdin_device *vdev)
 {
     struct tcc_hdin_device *dev = vdev;
     struct TCC_HDIN *data = &dev->data;
-    pmap_t viqe_area;
-    
+
     dprintk("hdin_video_init!! \n");
     if(dev->hdin_opend == OFF) {
         memset(data,0x00,sizeof(struct TCC_HDIN));
-        pmap_get_info("video", &viqe_area);
-        dev->viqe_area = viqe_area.base;
+        dev->viqe_area = 0x00;
         dev->hdin_opend = ON;
         dev->current_resolution = -1;
         dev->interrupt_status = 0;

@@ -1507,9 +1507,15 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 
 static int __init _vioc_v_dv_init(void)
 {
-	pmap_get_info("dolby_regs", &pmap_dv_regs);
+	if(0 > pmap_get_info("dolby_regs", &pmap_dv_regs)){
+		printk("%s-%d : pmap_dv_regs allocation is failed.\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
 
-	pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base, PAGE_ALIGN(pmap_dv_regs.size));
+	if(pmap_dv_regs.v_base)
+		pBase_vAddr = pmap_dv_regs.v_base;
+	else
+		pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base, PAGE_ALIGN(pmap_dv_regs.size));
 	if(pBase_vAddr == NULL){
 		pr_err("Regs ioremap failed \n");
 	}

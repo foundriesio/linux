@@ -1,12 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * hdcp_verify.h
- *
- *  Created on: Jul 20, 2010
- *
- *  Synopsys Inc.
- *  SG DWC PT02
- */
-
+* Copyright (c) 2019 -present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
+*/
 #ifndef HDCPVERIFY_H_
 #define HDCPVERIFY_H_
 

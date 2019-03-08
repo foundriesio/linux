@@ -2415,7 +2415,8 @@ static int tcc_mmc_tap_delay_parse_dt(struct tcc_mmc_host *host, struct device_n
 
 		if(!of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4)) {
 			/* in case of tcc803x, tcc-mmc-taps is for rev. 1 */
-			tap_delays->clk_tap_delay = taps[0];
+			tap_delays->clk_tap_delay &= ~TCCSDHC_TAPDLY_OTAP_SEL_MASK;
+			tap_delays->clk_tap_delay |= TCCSDHC_TAPDLY_OTAP_SEL(taps[0]);
 			tap_delays->cmd_tap_delay = taps[1];
 			tap_delays->data01_tap_delay = taps[2];
 			tap_delays->clk_tx_tap_delay = taps[3]; /* only for tcc803x rev. 1 */

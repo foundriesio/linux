@@ -28,14 +28,14 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tccvin_switchmanager.h"
 #endif//CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 
-static int debug		= 0;
-#define TAG				"tccvin_core"
-#define log(msg...)		{ printk(KERN_INFO TAG ": %s - ", __func__); printk(msg); }
-#define dlog(msg...)	if(debug) { printk(KERN_INFO TAG ": %s - ", __func__); printk(msg); }
-#define FUNCTION_IN		dlog("IN\n");
-#define FUNCTION_OUT	dlog("OUT\n");
+static int					debug = 0;
+#define TAG					"tccvin_core"
+#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
+#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define FUNCTION_IN			dlog("IN\n");
+#define FUNCTION_OUT		dlog("OUT\n");
 
-#define MODULE_NAME "telechips,video-input"
+#define MODULE_NAME			"telechips,video-input"
 
 long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 	tccvin_dev_t	* vdev	= video_drvdata(file);
@@ -262,8 +262,8 @@ int tccvin_core_mmap(struct file * file, struct vm_area_struct * vma) {
 	}
 
 	vma->vm_ops 	= NULL;
-	vma->vm_flags 	|= VM_IO;
-	vma->vm_flags 	|= VM_DONTEXPAND | VM_DONTDUMP;
+	vma->vm_flags	|= VM_IO;
+	vma->vm_flags	|= VM_DONTEXPAND | VM_DONTDUMP;
 
 	return 0;
 }
@@ -321,12 +321,12 @@ int tccvin_core_release(struct file * file) {
 }
 
 struct v4l2_file_operations tccvin_core_fops = {
-	.owner          = THIS_MODULE,
-	.poll           = tccvin_core_poll,
+	.owner			= THIS_MODULE,
+	.poll			= tccvin_core_poll,
 	.unlocked_ioctl = tccvin_core_ioctl,
-	.mmap           = tccvin_core_mmap,
-	.open           = tccvin_core_open,
-	.release        = tccvin_core_release
+	.mmap			= tccvin_core_mmap,
+	.open			= tccvin_core_open,
+	.release		= tccvin_core_release
 };
 
 int tccvin_core_probe(struct platform_device * pdev) {
@@ -365,7 +365,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	}
 
 	// set the device ops
- 	vdev->vid_dev->fops = &tccvin_core_fops;
+	vdev->vid_dev->fops = &tccvin_core_fops;
 
 	// allocate and clear memory for a v4l2 device
 	vdev->vid_dev->v4l2_dev = kzalloc(sizeof(struct v4l2_device), GFP_KERNEL);
@@ -375,7 +375,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	}
 
 	// set the name of the video device as the platform device's one
- 	strlcpy(vdev->vid_dev->name, pdev->name, sizeof(vdev->vid_dev->name));
+	strlcpy(vdev->vid_dev->name, pdev->name, sizeof(vdev->vid_dev->name));
 
 	// register a v4l2 device
 	ret = v4l2_device_register(&pdev->dev, vdev->vid_dev->v4l2_dev);
@@ -387,11 +387,11 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	}
 
 	// set the video device's minor as -1 (when failed)
- 	vdev->vid_dev->minor = -1;
+	vdev->vid_dev->minor = -1;
 
 	// set the release function
 	// it must be set for the failure to register a video device
- 	vdev->vid_dev->release = video_device_release;
+	vdev->vid_dev->release = video_device_release;
 
 	// register a video device
 	ret = video_register_device(vdev->vid_dev, VFL_TYPE_GRABBER, vdev->vid_dev->minor);
@@ -445,6 +445,7 @@ int tccvin_core_suspend(struct platform_device * pdev, pm_message_t state) {
 
 	// DO NOT anything because the context was saved already, so it won't be affected whatever do you.
 	// If you print any data in context, you can see strange data. I don't know why.
+	log("");
 
 	FUNCTION_OUT
 	return 0;
@@ -452,6 +453,8 @@ int tccvin_core_suspend(struct platform_device * pdev, pm_message_t state) {
 
 int tccvin_core_resume(struct platform_device * pdev) {
 	FUNCTION_IN
+
+	log("");
 
 	FUNCTION_OUT
 	return 0;

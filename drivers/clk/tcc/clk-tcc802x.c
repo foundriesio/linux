@@ -698,6 +698,13 @@ static unsigned long tcc_ckc_plldiv_get_rate(int id)
 	return (unsigned int)fpll/(pdiv+1);
 }
 
+static int tcc_ckc_is_pll_enabled(int id)
+{
+	void __iomem	*reg = ckc_base+CKC_PLL+id*4;
+
+	return (ckc_readl(reg) & (1<<PLL_EN_SHIFT)) ? 1 : 0;
+}
+
 static inline int tcc_find_clkctrl(tCLKCTRL *CLKCTRL)
 {
 	unsigned int i, div[MAX_CLK_SRC], err[MAX_CLK_SRC], searchsrc, clk_rate;
@@ -2473,6 +2480,7 @@ static struct tcc_ckc_ops tcc802x_ops = {
 	.ckc_is_isoip_ddi_pwdn		= &tcc_ckc_is_isoip_ddi_pwdn,
 	.ckc_pll_set_rate		= &tcc_ckc_pll_set_rate,
 	.ckc_pll_get_rate		= &tcc_ckc_pll_get_rate,
+	.ckc_is_pll_enabled		= &tcc_ckc_is_pll_enabled,
 	.ckc_clkctrl_enable		= &tcc_ckc_clkctrl_enable,
 	.ckc_clkctrl_disable		= &tcc_ckc_clkctrl_disable,
 	.ckc_clkctrl_set_rate		= &tcc_ckc_clkctrl_set_rate,

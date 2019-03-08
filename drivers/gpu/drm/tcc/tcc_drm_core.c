@@ -1,6 +1,7 @@
 /* tcc_drm_core.c
  *
- * Copyright (c) 2011 Telechips Co., Ltd.
+ * Copyright (C) 2016 Telechips Inc.
+ * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  * Author:
  *	Inki Dae <inki.dae@samsung.com>
  *	Joonyoung Shim <jy0922.shim@samsung.com>
@@ -13,9 +14,9 @@
  */
 
 #include <drm/drmP.h>
+
 #include "tcc_drm_drv.h"
 #include "tcc_drm_crtc.h"
-#include "tcc_drm_fbdev.h"
 
 static LIST_HEAD(tcc_drm_subdrv_list);
 

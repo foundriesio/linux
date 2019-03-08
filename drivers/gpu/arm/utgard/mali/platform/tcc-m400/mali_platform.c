@@ -167,7 +167,7 @@ static struct platform_device mali_gpu_device =
 };
 #endif
 
-_mali_osk_errcode_t mali_platform_power_mode_change(mali_bool power_on)
+_mali_osk_errcode_t mali_platform_power_mode_change(struct device *dev, mali_bool power_on)
 {
 	if(power_on == MALI_TRUE)
 	{
@@ -175,8 +175,8 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_bool power_on)
 		{
 			MALI_DEBUG_PRINT(2, ("mali_platform_power_mode_change() clk_enable\n"));
 			if (mali_clk == NULL)
-				mali_clk = clk_get(NULL, "mali_clk");	
-			clk_enable(mali_clk);
+				mali_clk = clk_get(dev, NULL);
+			clk_prepare_enable(mali_clk);
 #if defined(CONFIG_CLOCK_TABLE)
 		if (mali_clktbl == NULL) {
 			mali_clktbl = clocktable_get("mali_clktbl");
@@ -254,7 +254,7 @@ int mali_platform_device_register(void)
 	if(!init_mali_dvfs_staus())
 		MALI_DEBUG_PRINT(1, ("mali_platform_init failed\n"));        
 #endif		
-		mali_platform_power_mode_change(MALI_TRUE);
+		mali_platform_power_mode_change(&mali_gpu_device.dev, MALI_TRUE);
 		
 #ifdef CONFIG_PM
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
@@ -314,7 +314,7 @@ int mali_platform_device_init(struct platform_device *device)
 	if(!init_mali_dvfs_staus())
 		MALI_DEBUG_PRINT(1, ("mali_platform_init failed\n"));        
 #endif	
-		mali_platform_power_mode_change(MALI_TRUE);
+		mali_platform_power_mode_change(&device->dev, MALI_TRUE);
 		
 #ifdef CONFIG_PM
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))

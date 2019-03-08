@@ -62,9 +62,13 @@ extern "C" {
  *   with one softjob.
  * 11.11:
  * - Added BASE_MEM_GPU_VA_SAME_4GB_PAGE under base_mem_alloc_flags
+ * 11.12:
+ * - Removed ioctl: KBASE_IOCTL_GET_PROFILING_CONTROLS
+ * 11.13:
+ * - New ioctl: KBASE_IOCTL_MEM_EXEC_INIT
  */
 #define BASE_UK_VERSION_MAJOR 11
-#define BASE_UK_VERSION_MINOR 11
+#define BASE_UK_VERSION_MINOR 13
 
 /**
  * struct kbase_ioctl_version_check - Check version compatibility with kernel
@@ -543,21 +547,6 @@ struct kbase_ioctl_fence_validate {
 	_IOW(KBASE_IOCTL_TYPE, 25, struct kbase_ioctl_fence_validate)
 
 /**
- * struct kbase_ioctl_get_profiling_controls - Get the profiling controls
- * @count: The size of @buffer in u32 words
- * @buffer: The buffer to receive the profiling controls
- * @padding: Padding
- */
-struct kbase_ioctl_get_profiling_controls {
-	__u64 buffer;
-	__u32 count;
-	__u32 padding;
-};
-
-#define KBASE_IOCTL_GET_PROFILING_CONTROLS \
-	_IOW(KBASE_IOCTL_TYPE, 26, struct kbase_ioctl_get_profiling_controls)
-
-/**
  * struct kbase_ioctl_mem_profile_add - Provide profiling information to kernel
  * @buffer: Pointer to the information
  * @len: Length
@@ -686,6 +675,19 @@ union kbase_ioctl_cinstr_gwt_dump {
 	_IOWR(KBASE_IOCTL_TYPE, 35, union kbase_ioctl_cinstr_gwt_dump)
 
 
+/**
+ * struct kbase_ioctl_mem_exec_init - Initialise the EXEC_VA memory zone
+ *
+ * @va_pages: Number of VA pages to reserve for EXEC_VA
+ */
+struct kbase_ioctl_mem_exec_init {
+	__u64 va_pages;
+};
+
+#define KBASE_IOCTL_MEM_EXEC_INIT \
+	_IOW(KBASE_IOCTL_TYPE, 38, struct kbase_ioctl_mem_exec_init)
+
+
 /***************
  * test ioctls *
  ***************/
@@ -759,6 +761,21 @@ union kbase_ioctl_cs_event_memory_read {
 };
 
 #endif
+
+/* Customer extension range */
+#define KBASE_IOCTL_EXTRA_TYPE (KBASE_IOCTL_TYPE + 2)
+
+/* If the integration needs extra ioctl add them there
+ * like this:
+ *
+ * struct my_ioctl_args {
+ *  ....
+ * }
+ *
+ * #define KBASE_IOCTL_MY_IOCTL \
+ *         _IOWR(KBASE_IOCTL_EXTRA_TYPE, 0, struct my_ioctl_args)
+ */
+
 
 /**********************************
  * Definitions for GPU properties *

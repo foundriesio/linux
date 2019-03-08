@@ -17,17 +17,20 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
-static int				debug = 0;
-#define log(msg...)		{ printk(KERN_INFO "%s - ", __func__); printk(msg); }
-#define dlog(msg...)	{ if(debug) { printk(KERN_INFO "%s - ", __func__); printk(msg); } }
-#define FUNCTION_IN		dlog("IN\n");
-#define FUNCTION_OUT	dlog("OUT\n");
+static int					debug = 0;
+#define TAG					"switch_reverse"
+#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
+#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define FUNCTION_IN			dlog("IN\n");
+#define FUNCTION_OUT		dlog("OUT\n");
 
 #define MODULE_NAME			"switch_gpio_reverse"
 
 #define SWITCH_IOCTL_CMD_ENABLE			0x10
 #define SWITCH_IOCTL_CMD_DISABLE		0x11
 #define SWITCH_IOCTL_CMD_GET_STATE		0x50
+
+//#define ON_OFF_TEST
 
 atomic_t switch_reverse_attr;
 
@@ -73,6 +76,38 @@ int switch_reverse_is_enabled(void) {
 	return data->enabled;
 }
 
+#ifdef ON_OFF_TEST
+#include <linux/kthread.h>
+#include <linux/sched.h>
+#include <linux/mutex.h>
+
+struct task_struct			* threadSwitching;
+struct mutex				switchmanager_lock;
+int							super_switch;
+
+int tccvin_switchmanager_monitor_thread(void * data) {
+	FUNCTION_IN
+
+	// switching
+	while(1) {
+		msleep(2000);
+
+		if(kthread_should_stop())
+			break;
+
+		mutex_lock(&switchmanager_lock);
+
+		super_switch ^= 1;
+		dlog("super_switch: %d\n", super_switch);
+
+		mutex_unlock(&switchmanager_lock);
+	}
+
+	FUNCTION_OUT
+	return 0;
+}
+#endif//ON_OFF_TEST
+
 int switch_reverse_check_state(void) {
 #ifndef CONFIG_PMAP_CA7S
 	struct switch_reverse_data * data = pdata;
@@ -84,12 +119,16 @@ int switch_reverse_check_state(void) {
 	gear_value = !!gpio_get_value(data->switch_gpio);
 	ret = (gear_value == data->switch_active);
 	atomic_set(&switch_reverse_attr, ret);
-	dlog("%s - gpio: %d, value: %d, active: %d, result: %d\n", __FUNCTION__, data->switch_gpio, gear_value, data->switch_active, ret);
+	dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
 
 	switch_reverse_set_state(ret);
 #endif//CONFIG_PMAP_CA7S
 
 	ret = switch_reverse_get_state();
+#ifdef ON_OFF_TEST
+	if(ret == 1)
+		ret = super_switch;
+#endif//ON_OFF_TEST
 
 	return ret;
 }
@@ -101,27 +140,27 @@ long switch_reverse_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 	switch(cmd) {
 	case SWITCH_IOCTL_CMD_ENABLE:
 		data->enabled		= 1;
-		dlog("%s - enabled: %d\n", __func__, data->enabled);
+		dlog("enabled: %d\n", data->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_DISABLE:
 		data->enabled		= 0;
-		dlog("%s - enabled: %d\n", __func__, data->enabled);
+		dlog("enabled: %d\n", data->enabled);
 		break;
 
 	case SWITCH_IOCTL_CMD_GET_STATE:
 		state = switch_reverse_check_state();
-		dlog("%s - switch_reverse_check_state: %d\n", __func__, state);
+		dlog("state: %d\n", state);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&state, sizeof(state))) < 0) {
-			printk("%s - FAILED: copy_to_user\n", __func__);
+			log("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
 		}
 		break;
 
 	default:
-		printk("%s - FAILED: Unsupported command.\n", __FUNCTION__);
+		log("FAILED: Unsupported command\n");
 		ret = -1;
 		break;
 	}
@@ -195,7 +234,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// pinctrl
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
 	if(IS_ERR(pinctrl))
-		printk("%s: pinctrl select failed\n", MODULE_NAME);
+		log("%s: pinctrl select failed\n", MODULE_NAME);
 	else
 		pinctrl_put(pinctrl);
 
@@ -208,7 +247,12 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Create the switchmanager sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
 	if(ret < 0)
-		printk("failed create sysfs\r\n");
+		log("failed create sysfs\r\n");
+
+#ifdef ON_OFF_TEST
+	mutex_init(&switchmanager_lock);
+	threadSwitching = kthread_run(tccvin_switchmanager_monitor_thread, (void *)data, "threadSwitching");
+#endif//ON_OFF_TEST
 
 	FUNCTION_OUT
 	return 0;

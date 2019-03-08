@@ -1,28 +1,18 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        phy_803x.c
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2018
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular
-purpose or non-infringement of any patent, copyright or other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source code or the use in the
-source code.
-This source code is provided subject to the terms of a Mutual Non-Disclosure
-Agreement between Telechips and Company.
-*/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include <linux/clk.h>  // clk (example clk_set_rate)
 #include <asm/bitops.h> // bit macros
 #include <linux/regulator/consumer.h> // regulator_enable
@@ -1347,55 +1337,101 @@ static int hdmi_phy_write(struct hdmi_tx_dev *dev, uint32_t offset, uint8_t data
         if(offset & 0x3){
                 return -EIO;
         }
-        iowrite32(data, (void*)(dev->hdmi_tx_phy_if_io + offset));
+        iowrite32(data & 0xFF, (void*)(dev->hdmi_tx_phy_if_io + offset));
         return 0;
 }
 
 static uint8_t hdmi_phy_read(struct hdmi_tx_dev *dev, uint32_t offset){
-        uint8_t data = 0;
+        uint32_t data = 0;
         if(offset & 0x3){
                 return 0;
         }
         data = ioread32((void*)(dev->hdmi_tx_phy_if_io + offset));
-
-        return data;
+	return (uint8_t)(data & 0xFF);
 }
 
 static struct phy_parameters phy_parameters[] = {
-        {
-        /*
-         * 640 x 480p, 60Hz - 25.175
-         * 720 x 480p, 60Hz - 27.000MHz
-         * 720 x 576p, 50Hz - 27.000MHz
-         * 1280 x 720p, 50Hz - 74.250MHz
-         * 1920 x 1080i 50Hz - 74.250MHz
-         * VAL: 14 14 0 1
-         */
-        .min_hz         = 25175000,
-        .max_hz         = 144000000,
-        .clock_amplitude = 11000, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-        .data_amplitude  = 11000, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-        .pre_emphasis    = 0,   /* [0mA ~ 7.5mA]  500nA, 500/500 = 1, b` */
-        .termination     = 300,   /* 00 : OPEN, 01 :300Ohm, 10 : 150Ohm, 11 : 100Ohm */
-        },
-        {
-        /*
-         * 1920 x 1080p, 60Hz 148.500MHz
-         * 3840 x 2160p, 30Hz - 297.000MHz
-         * VAL: 16 17 2 1
+         /*
+         @@ Description - 2018.11.20ver
+
+                @.min_hz
+                    Minimum of the actual pixel clocks
+                @.max_hz
+                    Maximum of the actual pixel clocks
+                @.clock_amplitude
+                    Range : 4000 ~ 19500
+                    ex) 17000, (17000 - 4000) / 500 = 26, b`11010`
+                @.data_amplitude
+                    Range : 4000 ~ 19500
+                    ex) 17000, (17000 - 4000) / 500 = 26, b`11010`
+                @.pre_emphasis
+                    Range : 0 ~ 7500
+                    ex) 500, 500/500 = 1, b`
+                @.termination
+                    00 : OPEN
+                    01 : 300 Ohm
+                    10 : 150 Ohm
+                    11 : 100 Ohm
         */
-        .min_hz         = 148350000,
-        .max_hz         = 297000000,
-        .clock_amplitude = 12000, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-        .data_amplitude  = 12500, /* [4mA ~ 19.5mA] 17000nA, (17000 - 4000) / 500 = 26, b`11010` */
-        .pre_emphasis    = 1000,   /* [0mA ~ 7.5mA]  500nA, 500/500 = 1, b` */
-        .termination     = 300,   /* 00 : OPEN, 01 :300Ohm, 10 : 150Ohm, 11 : 100Ohm */
+        {
+                .min_hz          = 25175000,
+                .max_hz          = 74174999,
+                .clock_amplitude = 11000,
+                .data_amplitude  = 11000,
+                .pre_emphasis    = 0,
+                .termination     = 300,
         },
+        {
+                .min_hz          = 74175000,
+                .max_hz          = 148349999,
+                .clock_amplitude = 11000,
+                .data_amplitude  = 11000,
+                .pre_emphasis    = 0,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 148350000,
+                .max_hz          = 185437499,
+                .clock_amplitude = 11500,
+                .data_amplitude  = 12000,
+                .pre_emphasis    = 500,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 185437500,
+                .max_hz          = 222524999,
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 222525000,
+                .max_hz          = 296699999,
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 296700000,
+                .max_hz          = 593399999,
+                .clock_amplitude = 12000,
+                .data_amplitude  = 12500,
+                .pre_emphasis    = 1000,
+                .termination     = 300,
+        },
+        {
+                .min_hz          = 593400000,
+                .max_hz          = 594000000,
+                .clock_amplitude = 18500,
+                .data_amplitude  = 18500,
+                .pre_emphasis    = 500,
+                .termination     = 100,
+        }
 };
 
-
-
-void tcc_hdmi_phy_tuning(int hz, color_depth_t color_depth, char *phy_regs)
+void tcc_hdmi_phy_tuning(int hz, color_depth_t color_depth, unsigned char *phy_regs)
 {
         int phy_loop;
         int phy_tmp_val =0;
@@ -1556,9 +1592,9 @@ void tcc_hdmi_phy_dump(struct hdmi_tx_dev *dev)
         pr_info("[0x5C] 0x%02x\r\n", phy_val[0]);
         pr_info("[0x60] 0x%02x\r\n", phy_val[1]);
         pr_info("--------------------------\r\n");
-        pr_info("Clock Amplitude   = (%d) nA\r\n", clock_amplitude);
-        pr_info("Data Amplitude    = (%d) nA\r\n", data_amplitude);
-        pr_info("Data Pre Emphasis = (%d) nA\r\n", pre_emphasis);
+        pr_info("Clock Amplitude   = (%d) uA\r\n", clock_amplitude);
+        pr_info("Data Amplitude    = (%d) uA\r\n", data_amplitude);
+        pr_info("Data Pre Emphasis = (%d) uA\r\n", pre_emphasis);
         pr_info("Termination       = (%d) Ohm\r\n", termination);
         pr_info("--------------------------\r\n");
 }

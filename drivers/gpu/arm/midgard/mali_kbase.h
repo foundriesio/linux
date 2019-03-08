@@ -68,7 +68,7 @@
 #include "mali_kbase_jd_debugfs.h"
 #include "mali_kbase_gpuprops.h"
 #include "mali_kbase_jm.h"
-#include "mali_kbase_vinstr.h"
+#include "mali_kbase_ioctl.h"
 
 #include "ipa/mali_kbase_ipa.h"
 
@@ -108,8 +108,6 @@ int kbase_device_has_feature(struct kbase_device *kbdev, u32 feature);
 /* Needed for gator integration and for reporting vsync information */
 struct kbase_device *kbase_find_device(int minor);
 void kbase_release_device(struct kbase_device *kbdev);
-
-void kbase_set_profiling_control(struct kbase_device *kbdev, u32 control, u32 value);
 
 
 /**
@@ -251,6 +249,32 @@ void kbase_event_wakeup(struct kbase_context *kctx);
 int kbasep_jit_alloc_validate(struct kbase_context *kctx,
 					struct base_jit_alloc_info *info);
 /**
+ * kbase_free_user_buffer() - Free memory allocated for struct
+ *		@kbase_debug_copy_buffer.
+ *
+ * @buffer:	Pointer to the memory location allocated for the object
+ *		of the type struct @kbase_debug_copy_buffer.
+ */
+static inline void kbase_free_user_buffer(
+		struct kbase_debug_copy_buffer *buffer)
+{
+	struct page **pages = buffer->extres_pages;
+	int nr_pages = buffer->nr_extres_pages;
+
+	if (pages) {
+		int i;
+
+		for (i = 0; i < nr_pages; i++) {
+			struct page *pg = pages[i];
+
+			if (pg)
+				put_page(pg);
+		}
+		kfree(pages);
+	}
+}
+
+/**
  * kbase_mem_copy_from_extres_page() - Copy pages from external resources.
  *
  * @kctx:		kbase context within which the copying is to take place.
@@ -261,8 +285,8 @@ int kbasep_jit_alloc_validate(struct kbase_context *kctx,
  * @nr_pages:		Number of pages to copy.
  * @target_page_nr:	Number of target pages which will be used for copying.
  * @offset:		Offset into the target pages from which the copying
- *			is to be performed. 
- * @to_copy:		Size of the chunk to be copied, in bytes. 
+ *			is to be performed.
+ * @to_copy:		Size of the chunk to be copied, in bytes.
  */
 void kbase_mem_copy_from_extres_page(struct kbase_context *kctx,
 		void *extres_page, struct page **pages, unsigned int nr_pages,
@@ -329,22 +353,13 @@ static inline bool kbase_pm_is_suspending(struct kbase_device *kbdev)
  *
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
  *
- * This takes into account the following
- *
- * - whether there is an active context reference
- *
- * - whether any of the shader cores or the tiler are needed
- *
- * It should generally be preferred against checking just
- * kbdev->pm.active_count on its own, because some code paths drop their
- * reference on this whilst still having the shader cores/tiler in use.
+ * This takes into account whether there is an active context reference.
  *
  * Return: true if the GPU is active, false otherwise
  */
 static inline bool kbase_pm_is_active(struct kbase_device *kbdev)
 {
-	return (kbdev->pm.active_count > 0 || kbdev->shader_needed_cnt ||
-			kbdev->tiler_needed_cnt);
+	return kbdev->pm.active_count > 0;
 }
 
 /**
@@ -689,6 +704,3 @@ int kbase_io_history_resize(struct kbase_io_history *h, u16 new_size);
 
 
 #endif
-
-
-

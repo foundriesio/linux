@@ -34,9 +34,9 @@
 //define: Playback/Capture by hw:0,0
 //#define TEST_BY_ALSA
 
-#define FILE_PCM_PLAYBACK   "/dev/snd/pcmC0D0p"
-#define FILE_PCM_CAPTURE    "/dev/snd/pcmC0D0c"
-#define FILE_CONTROL        "/dev/snd/controlC0"
+//#define FILE_PCM_PLAYBACK   "/dev/snd/pcmC0D0p"
+//#define FILE_PCM_CAPTURE    "/dev/snd/pcmC0D0c"
+//#define FILE_CONTROL        "/dev/snd/controlC0"
 
 //TCC803x ASRC block has 4 pairs.
 //Only 1 pair of TCC803x ASRC block supports multichannel.
@@ -45,7 +45,12 @@
 #define ASRC_DST_RATE 48000	//For TX
 #define ASRC_SRC_RATE 48000	//For RX
 
+#define PERFORM_ASRC_MULTIPLE_TIME
 #define TCC_ASRC_MAX_SIZE (32768)	//From m2m driver
+
+#ifdef PERFORM_ASRC_MULTIPLE_TIME
+#define TCC_ASRC_UNIT_SIZE (256)	//Bytes for frequently cur_ptr update when TX.
+#endif
 
 #define MAX_BUFFER_BYTES		(65536)
 
@@ -56,8 +61,8 @@
 #define CAPTURE_MAX_PERIOD_BYTES		(MAX_BUFFER_BYTES/4)
 
 #define MID_BUFFER_CONST 4
-#define TCC_APP_PTR_CHECK_INTERVAL_TX 5 //msec
-#define TCC_APP_PTR_CHECK_INTERVAL_RX 5 //msec
+#define TCC_APP_PTR_CHECK_INTERVAL_TX 100 //usec
+#define TCC_APP_PTR_CHECK_INTERVAL_RX 1000 //usec
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 #define MBOX_MSG_SIZE_FOR_ACTION    AUDIO_MBOX_PCM_ACTION_MESSAGE_SIZE
@@ -65,24 +70,17 @@
 #define MBOX_MSG_SIZE_FOR_POSITION  AUDIO_MBOX_PCM_POSITION_MESSAGE_SIZE
 #endif
 
+//This is for is_flag in structure of tcc_asrc_m2m_pcm
+#define IS_TRIG_STARTED 0x01
+#define IS_A7S_STARTED 0x02
+#define IS_ASRC_STARTED 0x04
+#define IS_ASRC_RUNNING 0x08
+
 typedef enum {
 	TCC_ASRC_M2M_7_1CH = 0,
 	TCC_ASRC_M2M_STEREO = 1,
 	TCC_ASRC_M2M_TYPE_MAX,
 } TCC_ASRC_DEV_TYPE;
-
-#ifdef TEST_BY_ALSA
-struct tcc_snd_dev_for_test {
-	struct file *filp;
-	struct snd_pcm_substream *substream;
-	struct snd_pcm_runtime *runtime;
-	char *dev_name;
-	int access;
-	int format;
-	int channels;
-	int rate;
-};
-#endif
 
 struct tcc_mid_buf {
 	unsigned char *ptemp_buf;
@@ -109,6 +107,30 @@ struct tcc_app_buffer_info {
 //	snd_pcm_uframes_t periods;	//for TX
 };
 
+//#define FOOTPRINT_LINKED_LIST
+#ifdef FOOTPRINT_LINKED_LIST
+typedef struct _Node {
+	unsigned int print_pos;
+	ssize_t input_byte;	//bytes
+	struct _Node* next;
+} Node;
+
+typedef struct _List {
+	Node *head;
+	Node *tail;
+	int list_len;
+} List;
+#else
+#define FOOTPRINT_LENGTH 300
+struct footprint {
+	unsigned int print_pos[FOOTPRINT_LENGTH];
+	ssize_t input_byte[FOOTPRINT_LENGTH]; 
+	unsigned int head;
+	unsigned int tail;
+	unsigned int list_len;
+};
+#endif
+
 struct tcc_asrc_m2m_pcm {
 	struct device *dev;
 	unsigned int pair_id;
@@ -119,26 +141,31 @@ struct tcc_asrc_m2m_pcm {
 	struct tcc_param_info *src;
 	struct tcc_param_info *dst;
 	struct tcc_app_buffer_info *app;
-#ifdef TEST_BY_ALSA
-	struct tcc_snd_dev_for_test *test_dev;
-#endif
-	struct task_struct *kth_id_ptr_check;
-	struct task_struct *kth_id_ptr_update;
+	struct task_struct *kth_id;
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 	struct mbox_audio_device *mbox_audio_dev;
     unsigned short mbox_cmd_type;
 #endif
 	bool first_open;
-	bool is_closed;
-	bool is_asrc_started;
-	bool is_a7s_started;
-	bool is_asrc_running;
+	char is_flag;
+	/*
+	#define IS_TRIG_STARTED 0x01
+	#define IS_A7S_STARTED 0x02
+	#define IS_ASRC_STARTED 0x04
+	#define IS_ASRC_RUNNING 0x08
+	*/
 	unsigned int interval; //ms
 	ssize_t Bwrote; //Bytes 
-	wait_queue_head_t check_wq;
-	wait_queue_head_t update_wq;
+	ssize_t Btail; //Bytes 
+#ifdef FOOTPRINT_LINKED_LIST
+	List *asrc_footprint;	//for TX
+#else
+	struct footprint *asrc_footprint;	//for TX
+#endif
+	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;
+	spinlock_t foot_locked;
 };
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_

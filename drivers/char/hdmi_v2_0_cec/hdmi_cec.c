@@ -1,28 +1,18 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved 
-*  \file        hdmi_cec.c
-*  \brief       HDMI CEC controller driver
-*  \details   
-*  \version     1.0
-*  \date        2016
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
-Agreement between Telechips and Company.
-*******************************************************************************/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include"include/hdmi_cec.h"
 #include"include/hdmi_cec_misc.h"
 #include"include/tcc_cec_interface.h"
@@ -74,7 +64,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
         dev->parent_dev = &pdev->dev;
 
         dev->device_name = "HDMI_CEC";
-		
+
         printk("%s:Driver's name '%s'\n", __func__, dev->device_name);
 
 
@@ -84,7 +74,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 		dev->cec_clk_sel = of_iomap(pdev->dev.of_node, 1);
 		dev->cec_irq = irq_of_parse_and_map(pdev->dev.of_node,0);
 		dev->cec_wake_up_irq = irq_of_parse_and_map(pdev->dev.of_node,1);
-		
+
 		for(i = HDMI_CLK_CEC_INDEX_CORE; i < HDMI_CLK_CEC_INDEX_MAX; i++)
 			dev->clk[i] = of_clk_get(pdev->dev.of_node,i);
 
@@ -117,9 +107,9 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 	//TccCECInterface_Init();
 
 	#ifdef CONFIG_PM
-	pm_runtime_set_active(dev->parent_dev);	
-	pm_runtime_enable(dev->parent_dev);  
-	pm_runtime_get_noresume(dev->parent_dev);  //increase usage_count 
+	pm_runtime_set_active(dev->parent_dev);
+	pm_runtime_enable(dev->parent_dev);
+	pm_runtime_get_noresume(dev->parent_dev);  //increase usage_count
 	#endif
 
 	if(dev->clk[HDMI_CLK_CEC_INDEX_CORE])
@@ -132,7 +122,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 
 	// Now that everything is fine, let's add it to device list
 	list_add_tail(&dev->devlist, &devlist_global);
-		
+
         return ret;
 
 free_mem:
@@ -179,7 +169,7 @@ static int hdmi_cec_remove(struct platform_device *pdev){
 }
 
 
-/** 
+/**
  * @short of_device_id structure
  */
 static const struct of_device_id dw_hdmi_cec[] = {
@@ -193,7 +183,7 @@ MODULE_DEVICE_TABLE(of, dw_hdmi_cec);
 
 int hdmi_cec_suspend(struct device *dev)
 {
-   
+
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
 	printk("### %s \n", __func__);
 
@@ -215,7 +205,7 @@ int hdmi_cec_suspend(struct device *dev)
 		if(hdmi_cec_dev->clk[HDMI_CLK_CEC_INDEX_IOBUS]) {
 			clk_prepare_enable(hdmi_cec_dev->clk[HDMI_CLK_CEC_INDEX_IOBUS]);
 		}
-		
+
 		//TV OFF
 		if (hdmi_cec_dev->l_address< 0)
 			return 0;
@@ -228,14 +218,14 @@ int hdmi_cec_suspend(struct device *dev)
 		hdmi_cec_dev->buf.send_buf[3] = hdmi_cec_dev->p_address & 0xFF;
 		hdmi_cec_dev->buf.size = 4;
 		cec_ctrlSendFrame(hdmi_cec_dev, hdmi_cec_dev->buf.send_buf, hdmi_cec_dev->buf.size);
-#endif	
+#endif
 
 		hdmi_cec_dev->buf.send_buf[0] = (hdmi_cec_dev->l_address << 4) | CEC_MSG_BROADCAST;
 		hdmi_cec_dev->buf.send_buf[1] = CEC_OPCODE_STANDBY;
 		hdmi_cec_dev->buf.size = 2;
-		
+
 		cec_ctrlSendFrame(hdmi_cec_dev, hdmi_cec_dev->buf.send_buf, hdmi_cec_dev->buf.size);
-		
+
 
 		if(hdmi_cec_dev->clk[HDMI_CLK_CEC_INDEX_CORE])
 			clk_disable(hdmi_cec_dev->clk[HDMI_CLK_CEC_INDEX_CORE]);
@@ -265,7 +255,7 @@ int hdmi_cec_runtime_suspend(struct device *dev)
 {
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
 	printk("### %s \n", __func__);
-		
+
 	hdmi_cec_dev->standby_status = 1;
 #if 0 // CTS CECT 11.2.3-4
 	if(hdmi_cec_dev->cec_enable)
@@ -277,7 +267,7 @@ int hdmi_cec_runtime_suspend(struct device *dev)
 		hdmi_cec_dev->buf.send_buf[0] = (hdmi_cec_dev->l_address << 4) | CEC_MSG_BROADCAST;
 		hdmi_cec_dev->buf.send_buf[1] = CEC_OPCODE_STANDBY;
 		hdmi_cec_dev->buf.size = 2;
-		
+
 		cec_ctrlSendFrame(hdmi_cec_dev, hdmi_cec_dev->buf.send_buf, hdmi_cec_dev->buf.size);
 	}
 #endif
@@ -308,7 +298,7 @@ static const struct dev_pm_ops hdmi_cec_pm_ops = {
 };
 #endif // CONFIG_PM
 
-/** 
+/**
  * @short Platform driver structure
  */
 static struct platform_driver __refdata dwc_hdmi_cec_pdrv = {
@@ -320,7 +310,7 @@ static struct platform_driver __refdata dwc_hdmi_cec_pdrv = {
                 .of_match_table = dw_hdmi_cec,
                 #if defined(CONFIG_PM)
                 .pm = &hdmi_cec_pm_ops,
-                #endif                
+                #endif
         },
 };
 

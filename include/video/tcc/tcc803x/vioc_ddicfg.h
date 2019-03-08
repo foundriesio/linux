@@ -47,6 +47,7 @@
 #define	CIFPORT0		(0x08)
 #define CIFPORT1		(0x0C)
 #define	HDMI_CTRL		(0x10)
+#define VIOC_REMAP		(0x2C)
 #define	X2X_CFG_0		(0x80)
 #define	X2X_CFG_1		(0x84)
 #define	X2X_CFG_2		(0x88)
@@ -205,6 +206,12 @@
 #define HDMI_CTRL_SEL_PHY_READY         (0x1)
 #define HDMI_CTRL_SEL_PHY_CLK_READY     (0x2)
 #define HDMI_CTRL_SEL_PLL_LOCK          (0x4)
+
+/*
+ * VIOC_REMAP (VIOC Register Address Remap Enable Register)
+ */
+#define VIOC_REMAP_SHIFT	(0)
+#define VIOC_REMAP_MASK		(0x1 << VIOC_REMAP_SHIFT)
 
 /*
  * X2X CFG 0, 1, 2 Register
@@ -519,4 +526,20 @@ extern void VIOC_DDICONFIG_MIPI_Reset_DPHY(volatile void __iomem *reg, unsigned 
 extern void VIOC_DDICONFIG_MIPI_Reset_GEN(volatile void __iomem *reg, unsigned int reset);
 extern void VIOC_DDICONFIG_DUMP(void);
 extern volatile void __iomem* VIOC_DDICONFIG_GetAddress(void);
+
+/*
+ * VIOC_REMAP (VIOC Register Address Remap Enable Register)
+ * --------------------------------------------------------
+ * If SoC supports VIOC_REMAP then you need the is_VIOC_REMAP function
+ * otherwise, the is_VIOC_REMAP is 0.
+ * Refer to vioc_ddicfg.c (tcc803x SoC)
+ */
+#if 1
+extern int VIOC_DDICONFIG_GetViocRemap(void);
+extern int VIOC_DDICONFIG_SetViocRemap(int enable);
+#define is_VIOC_REMAP VIOC_DDICONFIG_GetViocRemap()
+#else
+#define is_VIOC_REMAP (0)
+#endif
+
 #endif

@@ -294,24 +294,25 @@
 		status = "okay";
 	};
 
-	hdmi_hdcp@12440000 {
-		status = "okay";
-	};
 	tcc_hwdmx_tsif@0 {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-port = <2>;
-		port-mux = <2>;
+		tsif-port = <1>;
 		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-		clocks = <&clk_peri PERI_TSRX0>;
-		clock-names = "tsrx0";
+		pinctrl-0 = <&tsrx1_idle>;
+		pinctrl-1 = <&tsrx1_active>;
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+		status = "okay";
 	};
 
 	tcc_hwdmx_tsif@1 {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		clocks = <&clk_peri PERI_TSRX1>;
-		clock-names = "tsrx1";
+		tsif-port = <2>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&tsrx2_idle>;
+		pinctrl-1 = <&tsrx2_active>;
+		clocks = <&clk_peri PERI_TSRX2>;
+		clock-names = "tsrx2";
 	};
 
 	tcc_dxb_ctrl {
@@ -466,7 +467,12 @@
 	};
 
 	/* USB 3.0 DRD */
-	dwc3@11B00000 {
+	dwc3_phy@11D90000 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpd 19 0>;
+	};
+	dwc3_platform {
 		status = "okay";
 		//usb3en-ctrl-able;
 		//usb3en-gpio = <&gpc 20 0>;
@@ -525,6 +531,14 @@
 	};
 
 	/* USB 2.0 OTG */
+	dwc2@11980000 {
+		status = "okay";
+		phy-type = <1>;		//pico phy = 1, nano phy = 0
+
+		vbus-ctrl-able;
+		vbus-gpio = <&gpd 18 0>;
+	};
+
 	dwc_otg@11980000 {
 	    status = "okay";
 	    phy-type = <1>;     //pico phy = 1, nano phy = 0
@@ -636,8 +650,10 @@
 		txclk-o-inv = <1>;
 		txclk-o-dly_mpw2_sk = <31>;
 		txclk-o-inv_mpw2_sk = <0>;
-		txclk-o-dly_mpw2 = <18>;
-		txclk-o-inv_mpw2 = <0>;
+		txclk-o-dly_cs = <18>;
+		txclk-o-inv_cs = <0>;
+		txclk-o-dly_es = <18>;
+		txclk-o-inv_es = <0>;
 		txclk-i-dly = <0>;
 		txclk-i-inv = <0>;
 		txen-dly = <0>;
@@ -654,8 +670,10 @@
 		rxclk-i-inv = <1>;
 		rxclk-i-dly_mpw2_sk = <29>;
 		rxclk-i-inv_mpw2_sk = <0>;
-		rxclk-i-dly_mpw2 = <19>;
-		rxclk-i-inv_mpw2 = <0>;
+		rxclk-i-dly_cs = <8>;
+		rxclk-i-inv_cs = <0>;
+		rxclk-i-dly_es = <19>;
+		rxclk-i-inv_es = <0>;
 		rxdv-dly = <0>;
 		rxer-dly = <0>;
 		rxd0-dly = <0>;

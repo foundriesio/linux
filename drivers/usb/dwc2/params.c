@@ -154,6 +154,7 @@ const struct of_device_id dwc2_of_match_table[] = {
 	{ .compatible = "st,stm32f4x9-fsotg",
 	  .data = dwc2_set_stm32f4x9_fsotg_params },
 	{ .compatible = "st,stm32f4x9-hsotg" },
+	{ .compatible = "telechips,dwc2" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, dwc2_of_match_table);

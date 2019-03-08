@@ -722,8 +722,16 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev, struct tcc_ehci_hcd *
 	//===============================================
 	if (of_find_property(pdev->dev.of_node, "telechips,ehci_phy", 0)) {
 		tcc_ehci->transceiver = devm_usb_get_phy_by_phandle(&pdev->dev, "telechips,ehci_phy", 0);
-		if (IS_ERR(tcc_ehci->transceiver))
+#ifdef CONFIG_ARCH_TCC803X
+		err = tcc_ehci->transceiver->set_vbus_resource(tcc_ehci->transceiver);
+		if (err) {
+			dev_err(&pdev->dev, "failed to set a vbus resource\n");
+		}
+#endif 
+		if (IS_ERR(tcc_ehci->transceiver)) {
 			tcc_ehci->transceiver = NULL;
+			return -ENODEV;
+		}
 		tcc_ehci->phy_regs = tcc_ehci->transceiver->base;
 	}
 

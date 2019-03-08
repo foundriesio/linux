@@ -319,6 +319,13 @@
 		vbus-gpio = <&gphdmi 3 0>;
 	};
 
+	dwc2@71B00000 {
+		status = "okay";
+		phy-type = <1>;		//pci phy = 1, nano phy = 0
+		vbus-ctrl-able;
+		vbus-gpio = <&gphdmi 3 0>;
+	};
+
 	dwc_otg@71B00000 {
 		status = "okay";
 		phy-type = <1>;     //pico phy = 1, nano phy = 0
@@ -337,7 +344,15 @@
 
 	sdhc@76020000 {
 		status = "okay";
+#ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
 		compatible = "telechips,tcc897x-sdhci";
+#else
+		/*
+		 * In order to reduce boot time,
+		 * we use the driver as module not built-in.
+		 */
+		compatible = "telechips,tcc897x-sdhci,module-only";
+#endif
 		controller-id = <0>;
 		bus-width = <4>;
 		max-frequency = <50000000>;
@@ -353,7 +368,7 @@
 
 		vqmmc-supply = <&vqmmc_sd>;
 	};
-#if 1 // 0 : force detect, 1 : not force detect
+#if 0 // 0 : force detect, 1 : not force detect
 	sdhc@76020400 { // Wi-Fi tcm3840
 		status = "okay";
 		controller-id = <2>;
@@ -418,14 +433,19 @@
 		wifi_pwr-gpio = <&gpc 21 0>; /* BTWIFI_VBAT_EN */
 	};
 #else
-	/* for pwrseq */
-	sdhc2_pwrseq: sdhc2_pwrseq {
-		compatible = "mmc-pwrseq-simple-ext-clock";
+	/* for BT/WIFI LPO (32.768KHz) */
+	tcm_lpo: tcm_lpo {
+		compatible = "telechips,tcm-lpo";
 		clocks = <&clk_peri PERI_OUT0>;
 		clock-names = "ext_clock";
 		ext_clock_speed = <32768>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&out0_clk>;
+	};
+
+	/* for pwrseq */
+	sdhc2_pwrseq: sdhc2_pwrseq {
+		//compatible = "mmc-pwrseq-simple-ext-clock";
 	};
 
 	vqmmc_sdio: vqmmc_sdio {
@@ -450,7 +470,7 @@
 		keep-power-in-suspend;
 		cap-sdio-irq;
 
-		mmc-pwrseq = <&sdhc2_pwrseq>;
+		//mmc-pwrseq = <&sdhc2_pwrseq>;
 		vqmmc-supply = <&vqmmc_sdio>;
 
 		cd-force-presence-change;

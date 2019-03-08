@@ -24,6 +24,7 @@
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 #include <video/tcc/vioc_v_dv.h>
@@ -31,6 +32,7 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/tccfb.h>
 #endif
+
 
 #define VIOC_RDMA_IREQ_SRC_MAX 7
 
@@ -631,7 +633,8 @@ static int __init vioc_rdma_init(void)
 		pr_info("vioc-rdma: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_RDMA_MAX; i++) {
-			pRDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocRdma_np, i);
+			pRDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocRdma_np,
+							is_VIOC_REMAP ? (i + VIOC_RDMA_MAX) : i);
 
 			if (pRDMA_reg[i])
 				pr_info("vioc-rdma%d: 0x%p\n", i, pRDMA_reg[i]);

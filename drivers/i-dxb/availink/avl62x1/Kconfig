@@ -1,0 +1,7 @@
+# 
+# AVL62X1 configurations
+#
+
+config iDxB_AVAILINK_AVL62X1
+	tristate "AVL62X1 support"
+	depends on iDxB_SUPPORT

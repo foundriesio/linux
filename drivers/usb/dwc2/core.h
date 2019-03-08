@@ -1054,6 +1054,20 @@ struct dwc2_hsotg {
 	struct dwc2_hsotg_ep *eps_in[MAX_EPS_CHANNELS];
 	struct dwc2_hsotg_ep *eps_out[MAX_EPS_CHANNELS];
 #endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+#ifdef CONFIG_USB_DWC2_TCC
+	int vbus_source_ctrl;
+	struct regulator *vbus_source;
+	int vbus_status;
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+	struct usb_mux_hcd_device *mhst_dev;
+	struct usb_phy *mhst_uphy;
+	void __iomem *ehci_regs;
+	int ehci_regs_size;
+	void __iomem *ohci_regs;
+	int ohci_regs_size;
+	int ehci_irq;
+#endif
+#endif
 };
 
 /* Reasons for halting a host channel */
@@ -1166,6 +1180,7 @@ void dwc2_dump_global_registers(struct dwc2_hsotg *hsotg);
 /* Gadget defines */
 #if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
 	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+int dwc2_hsotg_ep_disable(struct usb_ep *ep);
 int dwc2_hsotg_remove(struct dwc2_hsotg *hsotg);
 int dwc2_hsotg_suspend(struct dwc2_hsotg *dwc2);
 int dwc2_hsotg_resume(struct dwc2_hsotg *dwc2);
@@ -1174,6 +1189,7 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *dwc2,
 				       bool reset);
 void dwc2_hsotg_core_connect(struct dwc2_hsotg *hsotg);
 void dwc2_hsotg_disconnect(struct dwc2_hsotg *dwc2);
+void dwc2_hsotg_core_disconnect(struct dwc2_hsotg *dwc2);
 int dwc2_hsotg_set_test_mode(struct dwc2_hsotg *hsotg, int testmode);
 #define dwc2_is_device_connected(hsotg) (hsotg->connected)
 int dwc2_backup_device_registers(struct dwc2_hsotg *hsotg);

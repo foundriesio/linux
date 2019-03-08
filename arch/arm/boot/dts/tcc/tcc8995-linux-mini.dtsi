@@ -252,10 +252,6 @@
 		status = "okay";
 	};
 
-	hdmi_hdcp@12440000 {
-		status = "okay";
-	};
-
 	/* I2C */
 
 	// Default set
@@ -347,7 +343,12 @@
 */
 
 	/* USB 3.0 DRD */
-	dwc3@11B00000 {
+	dwc3_phy@11D90000 {
+		status = "okay";
+		vbus-ctrl-able;
+		vbus-gpio = <&gpd 19 0>;
+	};
+	dwc3_platform {
 		status = "okay";
 		//usb3en-ctrl-able;
 		//usb3en-gpio = <&gpc 20 0>;
@@ -406,6 +407,14 @@
 	};
 
 	/* USB 2.0 OTG */
+	dwc2@11980000 {
+	    status = "okay";
+	    phy-type = <1>;     //pico phy = 1, nano phy = 0
+
+	    //vbus-ctrl-able;
+	    //vbus-gpio = <&gpd 18 0>;
+	};
+
 	dwc_otg@11980000 {
 	    status = "okay";
 	    phy-type = <1>;     //pico phy = 1, nano phy = 0

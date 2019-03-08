@@ -120,7 +120,10 @@
 	};
 
 	/* USB 3.0 DRD */
-	dwc3@11B00000 {
+	dwc3_phy@11D90000{
+		status = "disable";
+	};
+	dwc3_platform {
 		status = "disable";
 		//usb3en-ctrl-able;
 		//usb3en-gpio = <&gpc 22 0>;

@@ -82,6 +82,11 @@
     };
 };
 
+&tcc_pm {
+        wakeup,powerkey = <PMU_WKUP_GP_D20 WAKEUP_ACT_LO>;
+        //gpio-powers = <&gpd 31 0>;              /* SLP_PWRCTL */
+};
+
 &panel {
 	status = "okay";
 	compatible = "telechips,hdmi1920x1080";
@@ -250,25 +255,25 @@
 	status = "okay";
 };
 
-&hdmi_hdcp {
-	status = "okay";
-};
-
 &tcc_hwdmx_tsif0 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
-	tsif-port = <2>;
-	port-mux = <2>;
+	tsif-port = <1>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&tsrx2_idle>;
-	pinctrl-1 = <&tsrx2_active>;
-	clocks = <&clk_peri PERI_TSRX0>;
-	clock-names = "tsrx0";
+	pinctrl-0 = <&tsrx1_idle>;
+	pinctrl-1 = <&tsrx1_active>;
+	clocks = <&clk_peri PERI_TSRX1>;
+	clock-names = "tsrx1";
+	status = "okay";
 };
 
 &tcc_hwdmx_tsif1 {
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
-	clocks = <&clk_peri PERI_TSRX1>;
-	clock-names = "tsrx1";
+	tsif-port = <2>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx2_idle>;
+	pinctrl-1 = <&tsrx2_active>;
+	clocks = <&clk_peri PERI_TSRX2>;
+	clock-names = "tsrx2";
 };
 
 &tcc_dxb_ctrl {
@@ -277,6 +282,30 @@
 	dxb0-gpios = <&gpe 22 0>, <&gpe 21>, <&gpd 2 0>, <>;
 	dxb1-gpios = <>, <>, <>, <>;
 	ant-gpios  = <>, <>;
+};
+
+&si_power {
+	compatible = "telechips,si_power";
+	pw-gpios = <0>;
+	/*PD, RST, IRQ, SDO*/
+	si0-gpios = <0>, <&gpe 12 0>, <0>, <0>;
+	/*PD, RST, IRQ, SDO*/
+	si1-gpios = <0>, <&gpe 28 0>, <0>, <0>;
+};
+
+&avl62x1_power {
+	compatible = "availink,avl62x1";
+	i2c-parent = <&i2c1>;
+	i2c-lnb-ctrl = <&i2c1>;
+	/* LNB_SLP, DVB_LOCK, DVB_RST LNB_SEL */
+	gpios = <&gpa 18 0>, <&gpa 17 0>, <&gpe 12 0>, <&gpe 11 0>;
+	config-idx = <0>;
+	/* LNB_IRQ */
+	int-gpios = <&gpd 2 0>;
+};
+
+&tcc_isdbt_ctrl {
+	compatible = "telechips,tcc_isdbt_ctrl";
 };
 
 /* I2C */
@@ -444,6 +473,11 @@
 };
 
 /* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpd 19 0>;
+};
 &dwc3 {
 	status = "okay";
 	//usb3en-ctrl-able;
@@ -503,6 +537,14 @@
 };
 
 /* USB 2.0 OTG */
+&dwc2 {
+	status = "okay";
+	phy-type = <1>;		//pico phy = 1, nano phy = 0
+
+	vbus-ctrl-able;
+	vbus-gpio = <&gpd 18 0>;
+};
+
 &dwc_otg {
 	status = "okay";
 	phy-type = <1>;     //pico phy = 1, nano phy = 0
@@ -612,8 +654,10 @@
 	txclk-o-inv = <1>;
 	txclk-o-dly_mpw2_sk = <31>;
 	txclk-o-inv_mpw2_sk = <0>;
-	txclk-o-dly_mpw2 = <18>;
-	txclk-o-inv_mpw2 = <0>;
+	txclk-o-dly_cs = <18>;
+	txclk-o-inv_cs = <0>;
+	txclk-o-dly_es = <18>;
+	txclk-o-inv_es = <0>;
 	txclk-i-dly = <0>;
 	txclk-i-inv = <0>;
 	txen-dly = <0>;
@@ -630,8 +674,10 @@
 	rxclk-i-inv = <1>;
 	rxclk-i-dly_mpw2_sk = <29>;
 	rxclk-i-inv_mpw2_sk = <0>;
-	rxclk-i-dly_mpw2 = <19>;
-	rxclk-i-inv_mpw2 = <0>;
+	rxclk-i-dly_cs = <8>;
+	rxclk-i-inv_cs = <0>;
+	rxclk-i-dly_es = <19>;
+	rxclk-i-inv_es = <0>;
 	rxdv-dly = <0>;
 	rxer-dly = <0>;
 	rxd0-dly = <0>;
@@ -743,6 +789,52 @@
 		default-state = "on";
 	};
 };
+
+&tcc_nsk_sc {
+		compatible = "telechips,tcc-nsk-sc";
+		reg = <0x16671000 0xFF>,
+			<0x16684000 0x1F>,
+			<0x16051000 0x70>,
+			<0x16020200 0x2F>;
+		/*interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;*/
+		/*interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;*/
+		interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
+		clock-names = "uartclk", "apb_pclk";
+		/*clock-frequency = <50000000>;*/
+		clock-frequency = <108000000>;
+
+		iobus_dmareqsel_offset = <0x24>;
+		iobus_dmareqsel_value = <0x40000000>;
+		iobus_hrsten_offset = <0xc>;
+		iobus_hrsten_value = <0x200>;
+
+		dma_extreq_value = <0x40000000>;
+
+		uart_chnum = <7>;
+		uart_port = <2>;
+		uart_datmux_use = <1>;
+
+		tda8024_use = <1>;
+                rst_gpios =  <&gpd 22 0>;
+                detect_gpios = <&gpe 31 0>;
+                pwren_gpios = <&gpd 21 0>;
+		/*pwren_gpios = <&gpd 23 0>;*/
+		vccsel_gpios = <&gpd 23 0>;
+		clk_gpios = <&gpd 12 0>;
+		data_c7_gpios = <&gpd 11 0>;
+		data_c4_gpios = <&gpd 13 0>;
+		data_c8_gpios = <&gpd 14 0>;
+		pinctrl-names = "default", "gpio_C4", "gpio_C8", "gpio_C7", "gpio_C3";
+		pinctrl-0 = <&nsk_sc_ctrl>;
+		pinctrl-1 = <&nsk_sc_gpio_C4>;
+		pinctrl-2 = <&nsk_sc_gpio_C8>;
+		pinctrl-3 = <&nsk_sc_gpio_C7>;
+		pinctrl-4 = <&nsk_sc_gpio_C3>;	
+                status = "okay";
+};
+
+
 
 &uart0 {
 	pinctrl-names = "default";

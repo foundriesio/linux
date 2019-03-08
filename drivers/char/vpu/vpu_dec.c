@@ -2557,6 +2557,12 @@ int vdec_open(struct inode *inode, struct file *filp)
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     vpu_decoder_data *vdata = dev_get_drvdata(misc->parent);
 
+    if( vmem_get_free_memory(vdata->gsDecType) == 0 )
+    {
+        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
+        return -ENOMEM;
+    }
+
     dprintk("%s :: open(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
 
     if( vdata->vComm_data.dev_opened == 0 )
@@ -2625,12 +2631,6 @@ int vdec_probe(struct platform_device *pdev)
 {
     vpu_decoder_data *vdata;
     int ret = -ENODEV;
-
-    if( vmem_get_free_memory(pdev->id) == 0 )
-    {
-        printk(KERN_WARNING "VPU %s: Couldn't register device because of no-reserved memory.\n", pdev->name);
-        return -ENOMEM;
-    }
 
     vdata = kzalloc(sizeof(vpu_decoder_data), GFP_KERNEL);
     if (!vdata)

@@ -1,29 +1,18 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved 
-*  \file        hdmi_cec_misc.c
-*  \brief       HDMI CEC controller driver
-*  \details   
-*  \version     1.0
-*  \date        2016
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
-Agreement between Telechips and Company.
-*******************************************************************************/
+/****************************************************************************
+Copyright (C) 2018 Telechips Inc.
 
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
 #include "include/hdmi_cec.h"
 #include "include/hdmi_cec_misc.h"
 #include "include/hdmi_cec_ioctl.h"
@@ -54,8 +43,8 @@ static int hdmi_cec_blank(struct cec_device *dev, int blank_mode)
 	if( (pdev_cec->power.usage_count.counter==1) && (blank_mode == 0))
 	{
 		// usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) is stable state when booting
-		// don't call runtime_suspend or resume state 
-	        //printk("%s ### state = [%d] count =[%d] power_cnt=[%d] \n",__func__,blank_mode, pdev_cec->power.usage_count, pdev_cec->power.usage_count.counter);		  
+		// don't call runtime_suspend or resume state
+	        //printk("%s ### state = [%d] count =[%d] power_cnt=[%d] \n",__func__,blank_mode, pdev_cec->power.usage_count, pdev_cec->power.usage_count.counter);
 		return 0;
 	}
 
@@ -81,7 +70,7 @@ static int hdmi_cec_blank(struct cec_device *dev, int blank_mode)
 static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         long ret = 0;
-        struct cec_device *dev = (struct cec_device *)file->private_data; 
+        struct cec_device *dev = (struct cec_device *)file->private_data;
 
 	switch (cmd) {
 		case CEC_IOC_START:
@@ -101,13 +90,13 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		case CEC_IOC_SETLADDR:
 		{
 			unsigned int laddr, enable = 1;
-			
+
 			if (get_user(laddr, (unsigned int __user *) arg))
 				return -EFAULT;
 		#ifdef CEC_KERNEL_DEBUG
-			printk("%s: ioctl(CEC_IOC_SETLADDR)\n",__func__);				
+			printk("%s: ioctl(CEC_IOC_SETLADDR)\n",__func__);
 			printk("%s: logical address = 0x%02x\n", __func__, laddr);
-		#endif					
+		#endif
 			dev->l_address = laddr;
 			cec_CfgLogicAddr(dev,laddr, enable);
 		}
@@ -116,13 +105,13 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		case CEC_IOC_CLEARLADDR:
 		{
 			unsigned int laddr, enable = 0;
-			
+
 			if (get_user(laddr, (unsigned int __user *) arg))
 				return -EFAULT;
 		#ifdef CEC_KERNEL_DEBUG
-			printk("%s: ioctl(CEC_IOC_CLEARLADDR)\n",__func__);				
+			printk("%s: ioctl(CEC_IOC_CLEARLADDR)\n",__func__);
 			printk("%s: logical address = 0x%02x\n", __func__, laddr);
-		#endif					
+		#endif
 			cec_CfgLogicAddr(dev,laddr, enable);
 		}
 		break;
@@ -167,7 +156,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 			if(size > 0)
 			{
-		#ifdef CEC_KERNEL_DEBUG						
+		#ifdef CEC_KERNEL_DEBUG
 				printk("\nCEC Rx Data Count = %d\n",size);
 				for(i = 0; i < size; i++)
 				printk("CEC Rx Buffer[%d] = 0x%x \n",i,dev->buf.recv_buf[i]);
@@ -178,7 +167,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 				//TccCECInterface_ParseMessage(dev, dev->buf.recv_buf, size);
 
-				return size;						
+				return size;
 			}
 		}
 		break;
@@ -186,7 +175,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		case CEC_IOC_BLANK:
 		{
 		#ifdef CONFIG_PM
-			unsigned int data ;                       
+			unsigned int data ;
 			ret = copy_from_user(&data, (void __user *)arg, sizeof(unsigned int));
 
 			hdmi_cec_blank(dev, data);
@@ -253,7 +242,7 @@ int hdmi_cec_request_irq(struct cec_device *dev) {
 	    hdmi_cec_misc_deregister(dev);
 	    return -1;
 	}
-	
+
 	if (request_irq(dev->cec_wake_up_irq, cec_wake_up_irq_handler, IRQF_SHARED, "hdmi_wake_up_cec", dev))
 	{
 	    printk(KERN_WARNING "CEC: IRQ %d is not free.\n", dev->cec_wake_up_irq);
@@ -268,10 +257,10 @@ static int hdmi_cec_open(struct inode *inode, struct file *file) {
 
         struct miscdevice *misc = (struct miscdevice *)file->private_data;
         struct cec_device *dev = dev_get_drvdata(misc->parent);
-#ifdef CEC_KERNEL_DEBUG        
+#ifdef CEC_KERNEL_DEBUG
         printk("### %s \n", __func__);
 #endif
-        file->private_data = dev;        
+        file->private_data = dev;
 
 	if(dev->clk[HDMI_CLK_CEC_INDEX_CORE]) {
 		clk_set_rate(dev->clk[HDMI_CLK_CEC_INDEX_CORE], HDMI_CEC_CORE_CLK_RATE);
@@ -287,12 +276,12 @@ static int hdmi_cec_open(struct inode *inode, struct file *file) {
 		clk_prepare_enable(dev->clk[HDMI_CLK_CEC_INDEX_IOBUS]);
 	}
 
-        
+
 	return 0;
 }
 
 static int hdmi_cec_release(struct inode *inode, struct file *file){
-        struct cec_device *dev = (struct cec_device *)file->private_data;   
+        struct cec_device *dev = (struct cec_device *)file->private_data;
 #ifdef CEC_KERNEL_DEBUG
         printk("### %s \n", __func__);
 #endif
@@ -310,20 +299,20 @@ static int hdmi_cec_release(struct inode *inode, struct file *file){
 }
 
 static ssize_t hdmi_cec_read( struct file *file, char *buf, size_t count, loff_t *f_pos ){
-//        struct cec_device *dev = (struct cec_device *)file->private_data;   
+//        struct cec_device *dev = (struct cec_device *)file->private_data;
 
 	return 0;
 }
 
 static ssize_t hdmi_cec_write( struct file *file, const char *buf, size_t count, loff_t *f_pos ){
-//        struct cec_device *dev = (struct cec_device *)file->private_data;   
+//        struct cec_device *dev = (struct cec_device *)file->private_data;
 
 	return count;
 }
 
 static unsigned int hdmi_cec_poll(struct file *file, poll_table *wait){
         unsigned int mask = 0;
-//        struct cec_device *dev = (struct cec_device *)file->private_data;   
+//        struct cec_device *dev = (struct cec_device *)file->private_data;
 
    return mask;
 }
@@ -347,7 +336,7 @@ static const struct file_operations hdmi_cec_fops =
  */
 int hdmi_cec_misc_register(struct cec_device *dev) {
         int ret = 0;
-        
+
         dev->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
         dev->misc->minor = MISC_DYNAMIC_MINOR;
         dev->misc->name = "dw-hdmi-cec";

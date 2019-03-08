@@ -1,27 +1,7 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        extenddisplay.cpp
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2018
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular
-purpose or non-infringement of any patent, copyright or other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source code or the use in the
-source code.
-This source code is provided subject to the terms of a Mutual Non-Disclosure
-Agreement between Telechips and Company.
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
 */
 #include <include/hdmi_includes.h>
 
@@ -197,17 +177,13 @@ void fc_avi_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
 		fc_RgbYcc(dev, 0);
 	}
 	else if (videoParams->mEncodingOut == YCC422) {
-                LOGGER(SNPS_NOTICE,"%s:ycc422", __func__);
-		#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+        LOGGER(SNPS_NOTICE,"%s:ycc422", __func__);
+        if((videoParams->mDolbyVision & 0x7) == 2) {
                 fc_RgbYcc(dev, 0);
-		#else
-                if((videoParams->mDolbyVision & 0x7) == 2) {
-                        fc_RgbYcc(dev, 0);
-                }
-                else {
-                        fc_RgbYcc(dev, 1);
-                }
-		#endif
+        }
+        else {
+                fc_RgbYcc(dev, 1);
+        }
 	}
 	else if (videoParams->mEncodingOut == YCC444) {
 		LOGGER(SNPS_NOTICE,"%s:ycc444", __func__);

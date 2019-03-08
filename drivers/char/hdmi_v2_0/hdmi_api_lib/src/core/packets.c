@@ -1,30 +1,8 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        extenddisplay.cpp
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2018
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not
-limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source
-code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular
-purpose or non-infringement of any patent, copyright or other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source code or the use in the
-source code.
-This source code is provided subject to the terms of a Mutual Non-Disclosure
-Agreement between Telechips and Company.
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
+* Synopsys DesignWare HDMI driver
 */
-
-
 #include <include/hdmi_includes.h>
 #include <include/hdmi_access.h>
 #include <include/hdmi_log.h>
@@ -60,9 +38,6 @@ int packets_Initialize(struct hdmi_tx_dev *dev)
 
 int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
 {
-        int mc_timeout = 100;
-        unsigned int mc_reg_val;
-
         videoParams_t * video = NULL;
         productParams_t * prod = NULL;
 
@@ -85,14 +60,6 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
-                        hdmi_dev_write(dev, MC_SWRSTZREQ, 0);
-                        /* wait main controller to resume */
-                        do {
-                                usleep_range(10, 20);
-                                mc_reg_val = hdmi_dev_read(dev, MC_SWRSTZREQ);
-                        }
-                        while(mc_timeout-- && mc_reg_val != 0xDF);
-                        fc_video_VSyncPulseWidth(dev, video->mDtd.mVSyncPulseWidth);
                         memcpy(prod, productParams, sizeof(productParams_t));
                 }
         } while(0);

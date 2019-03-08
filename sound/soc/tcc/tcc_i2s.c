@@ -45,7 +45,7 @@
 #include "tcc_dai.h"
 #include "tcc_audio_chmux.h"
 
-#define MPW1_SLAVE_WORKAROUND // MPW1 Chip Error, We do not recommend using it.
+#define ES_SLAVE_WORKAROUND // ES Chip Error, We do not recommend using it.
 
 #undef i2s_dai_dbg
 #if 0
@@ -80,7 +80,7 @@ struct tcc_i2s_t {
 	uint32_t have_fifo_clear_bit;
 	uint32_t block_type;
 
-#if defined(MPW1_SLAVE_WORKAROUND)
+#if defined(ES_SLAVE_WORKAROUND)
 	void __iomem *gint_reg;
 	uint32_t gint;
 #endif
@@ -164,14 +164,14 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			i2s->frame_invert = false;
 			break;
 		case SND_SOC_DAIFMT_NB_IF:
-			if (i2s->tdm_mode == true && system_rev !=0) { // MPW1 not supported 
+			if (i2s->tdm_mode == true && system_rev !=0) { // ES not supported 
 				i2s_dai_dbg("(%d) CLK TDM NB_IF\n", i2s->blk_no);
 				tcc_dai_set_bitclk_polarity(i2s->dai_reg, true);
 				i2s->frame_invert = true;
 				break;
 			}
 		case SND_SOC_DAIFMT_IB_IF:
-			if (i2s->tdm_mode == true && system_rev !=0) { // MPW1 not supported 
+			if (i2s->tdm_mode == true && system_rev !=0) { // ES not supported 
 				i2s_dai_dbg("(%d) CLK TDM IB_IF\n", i2s->blk_no);
 				tcc_dai_set_bitclk_polarity(i2s->dai_reg, false);
 				i2s->frame_invert = true;
@@ -273,8 +273,8 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 		case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & FRM master */
 			i2s_dai_dbg("(%d) CBM_CFM\n", i2s->blk_no);
-#if defined(MPW1_SLAVE_WORKAROUND) 			
-			if(system_rev == 0) { //MPW1
+#if defined(ES_SLAVE_WORKAROUND) 			
+			if(system_rev == 0) { //ES
 				tcc_dai_set_master_mode(i2s->dai_reg, true, true, true, i2s->tdm_mode, i2s->is_pinctrl_export);
 				tcc_dai_tx_gint_enable(i2s->gint_reg, true);
 			} else {
@@ -282,31 +282,31 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			}
 #else
 			tcc_dai_set_master_mode(i2s->dai_reg, true, false, false, i2s->tdm_mode, i2s->is_pinctrl_export);
-#endif//MPW1_SLAVE_WORKAROUND
+#endif//ES_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
 			i2s_dai_dbg("(%d) CBS_CFM\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, true, false, i2s->tdm_mode, i2s->is_pinctrl_export);
-#if defined(MPW1_SLAVE_WORKAROUND) 			
-			if(system_rev == 0) //MPW1
+#if defined(ES_SLAVE_WORKAROUND) 			
+			if(system_rev == 0) //ES
 				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
-#endif//MPW1_SLAVE_WORKAROUND
+#endif//ES_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBM_CFS: /* codec clk master & frame slave */
 			i2s_dai_dbg("(%d) CBM_CFS\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, false, true, i2s->tdm_mode, i2s->is_pinctrl_export);
-#if defined(MPW1_SLAVE_WORKAROUND)
-			if(system_rev == 0) //MPW1
+#if defined(ES_SLAVE_WORKAROUND)
+			if(system_rev == 0) //ES
 				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
-#endif//MPW1_SLAVE_WORKAROUND
+#endif//ES_SLAVE_WORKAROUND
 			break;
 		case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
 			i2s_dai_dbg("(%d) CBS_CFS\n", i2s->blk_no);
 			tcc_dai_set_master_mode(i2s->dai_reg, true, true, true, i2s->tdm_mode, i2s->is_pinctrl_export);
-#if defined(MPW1_SLAVE_WORKAROUND)
-			if(system_rev == 0) //MPW1
+#if defined(ES_SLAVE_WORKAROUND)
+			if(system_rev == 0) //ES
 				tcc_dai_tx_gint_enable(i2s->gint_reg, false);
-#endif//MPW1_SLAVE_WORKAROUND
+#endif//ES_SLAVE_WORKAROUND
 			break;
 		default:
 			pr_err("(%d) does not supported\n", i2s->blk_no);
@@ -317,7 +317,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	switch(fmt & SND_SOC_DAIFMT_CLOCK_MASK) {
 		case SND_SOC_DAIFMT_CONT:
 			i2s_dai_dbg("(%d) SND_SOC_DAIFMT_CONT\n", i2s->blk_no);
-			if ((i2s->tdm_mode == true) && (system_rev == 0)) { //MPW1
+			if ((i2s->tdm_mode == true) && (system_rev == 0)) { //ES
 				printk("TCC_I2S can't use TDM Mode when clk continuous mode\n");
 				ret = -ENOTSUPP;
 				goto dai_fmt_end;
@@ -341,12 +341,28 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 
 	if (i2s->tdm_mode == true) {
 		if (i2s->clk_continuous == true) {
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+			if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+				i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
+			} else
+#endif
 			tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode); 
 		} else {
 			struct dai_reg_t regs = {0};
 
 			tcc_dai_reg_backup(i2s->dai_reg, &regs);
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+			if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+				regs.dclkdiv = i2s->regs_backup.dclkdiv;
+			}
+#endif
 			clk_disable_unprepare(i2s->dai_hclk);
 			clk_prepare_enable(i2s->dai_hclk);
 
@@ -502,7 +518,7 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 		goto hw_params_end;
 	}
 
-	if(system_rev == 0) { //MPW1
+	if(system_rev == 0) { //ES
 		if ((i2s->tdm_mode == true) && (dai->active > 1)) {
 			pr_err("TDM Mode supports only uni-direction");
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -575,6 +591,14 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 		}
 	}
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+		i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
+	} else
+#endif
 	tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
 
 	i2s_dai_dbg("(%d) %s - mclk : %d\n", i2s->blk_no, __func__, mclk);
@@ -604,6 +628,14 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 			struct dai_reg_t regs = {0};
 
 			tcc_dai_reg_backup(i2s->dai_reg, &regs);
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+			if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+				regs.dclkdiv = i2s->regs_backup.dclkdiv;
+			}
+#endif
 			clk_disable_unprepare(i2s->dai_hclk);
 			clk_prepare_enable(i2s->dai_hclk);
 			tcc_dai_reg_restore(i2s->dai_reg, &regs);
@@ -614,7 +646,7 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (i2s->clk_continuous == false) {
-		if((system_rev == 0) && (i2s->tdm_mode == true)) //MPW1
+		if((system_rev == 0) && (i2s->tdm_mode == true)) //ES
 			goto hw_params_end;
 		tcc_dai_enable(i2s->dai_reg, true);
 	}
@@ -684,7 +716,7 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-			if((system_rev == 0) && (i2s->tdm_mode == true)) { //MPW1
+			if((system_rev == 0) && (i2s->tdm_mode == true)) { //ES
 				tcc_dai_damr_enable(i2s->dai_reg, true);
 				tcc_dai_set_dao_mask(i2s->dai_reg, false, false, false, false, false);
 			} else {
@@ -715,7 +747,7 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:			
-			if((system_rev == 0) && (i2s->tdm_mode == true)) { //MPW1
+			if((system_rev == 0) && (i2s->tdm_mode == true)) { //ES
 				tcc_dai_damr_enable(i2s->dai_reg, false);
 				tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 			} else {
@@ -931,6 +963,9 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	uint32_t dclkdiv_backup = 0;
+#endif
 
 	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
@@ -938,8 +973,24 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 	if(IS_ERR(pinctrl))
 		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+		dclkdiv_backup = i2s->regs_backup.dclkdiv;
+	}
+#endif
 	tcc_dai_reg_backup(i2s->dai_reg, &i2s->regs_backup);
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+		i2s->regs_backup.dclkdiv = dclkdiv_backup;
+	}
+#endif
     return 0;
 }
 
@@ -1056,6 +1107,14 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 	tcc_dai_damr_enable(i2s->dai_reg, false);
 	tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 
+/** Workaround Code for TCC803X and TCC899X **/
+/** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
+/** So, we should always restore DCLKDIV value while write that value to register **/
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	if (i2s->block_type == DAI_BLOCK_STEREO_TYPE || i2s->block_type == DAI_BLOCK_9_1CH_TYPE) {
+		i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
+	} else
+#endif
 	tcc_dai_set_clk_mode(i2s->dai_reg, i2s->mclk_div, i2s->bclk_ratio, i2s->tdm_mode);
 	tcc_dai_set_tx_format(i2s->dai_reg, TCC_DAI_LSB_16);
 	tcc_dai_set_rx_format(i2s->dai_reg, TCC_DAI_LSB_16);
@@ -1131,8 +1190,8 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	}
 	i2s_dai_dbg("(%d) is_pinctrl_export: %d\n", i2s->blk_no, i2s->is_pinctrl_export);
 
-#if defined(MPW1_SLAVE_WORKAROUND)
-	if(system_rev == 0) { //MPW1
+#if defined(ES_SLAVE_WORKAROUND)
+	if(system_rev == 0) { //ES
 	    i2s->gint_reg = of_iomap(pdev->dev.of_node, 1);
 	    if (IS_ERR((void *)i2s->gint_reg)) {
 	        i2s->gint_reg = NULL;
@@ -1182,7 +1241,7 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	return 0;
 }
 
-#if defined(MPW1_SLAVE_WORKAROUND)
+#if defined(ES_SLAVE_WORKAROUND)
 static irqreturn_t tcc_i2s_handler(int irq, void *dev_id)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)dev_id;
@@ -1241,8 +1300,8 @@ static int tcc_i2s_probe(struct platform_device *pdev)
 
 	i2s_initialize(i2s);
 
-#if defined(MPW1_SLAVE_WORKAROUND)
-	if(system_rev == 0) { //MPW1
+#if defined(ES_SLAVE_WORKAROUND)
+	if(system_rev == 0) { //ES
 		ret = devm_request_irq(&pdev->dev, i2s->gint, tcc_i2s_handler, IRQF_TRIGGER_HIGH | IRQF_SHARED, "i2s", i2s);
 		if (ret) {
 			printk("%s - devm_request_irq failed\n", __func__);

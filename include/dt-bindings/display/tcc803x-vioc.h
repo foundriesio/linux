@@ -191,6 +191,7 @@
 #define VIOC1_IRQI			(120)
 #define VIOC2_IRQI			(121)
 #define VIOC3_IRQI			(122)
+#define VIOC_IRQ_MAX		(4)
 
 /* Configuration & Interrupt */
 #define VIOC_EDR_WMIX0			(0)

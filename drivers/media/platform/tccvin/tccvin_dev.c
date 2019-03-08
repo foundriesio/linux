@@ -29,15 +29,16 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <media/v4l2-common.h>
 
 #include <video/tcc/tcc_gpu_align.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
 #include "tccvin_dev.h"
 
-static int debug		= 0;
-#define TAG				"tccvin_dev"
-#define log(msg...)		{ printk(KERN_INFO TAG ": %s - ", __func__); printk(msg); }
-#define dlog(msg...)	if(debug) { printk(KERN_INFO TAG ": %s - ", __func__); printk(msg); }
-#define FUNCTION_IN		dlog("IN\n");
-#define FUNCTION_OUT	dlog("OUT\n");
+static int					debug = 0;
+#define TAG					"tccvin_dev"
+#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
+#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define FUNCTION_IN			dlog("IN\n");
+#define FUNCTION_OUT		dlog("OUT\n");
 
 #define	DRIVER_NAME		"avn-camera"
 
@@ -51,8 +52,8 @@ static unsigned long val_cifport0 = 0;
 
 #define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
 
-#define ROUND_UP_2(num)     (((num)+1)&~1)
-#define ROUND_UP_4(num)     (((num)+3)&~3)
+#define ROUND_UP_2(num) 	(((num)+1)&~1)
+#define ROUND_UP_4(num) 	(((num)+3)&~3)
 
 enum format_conversion_type {
 	FORMAT_TYPE_VIOC,
@@ -102,10 +103,10 @@ struct format_conversion format_conversion_table[] = {
 		.format[FORMAT_TYPE_VIOC] = VIOC_IMG_FMT_YUV420SEP,	// YCbCr 4:2:0 separated
 		.format[FORMAT_TYPE_V4L2] = V4L2_PIX_FMT_YVU420,	// 'YV12' 12 YVU 4:2:0
 	},
-    {
-        .format[FORMAT_TYPE_VIOC] = VIOC_IMG_FMT_YUV420SEP, // YCbCr 4:2:0 separated
-        .format[FORMAT_TYPE_V4L2] = V4L2_PIX_FMT_YUV420,    // 'YU12' 12 YUV 4:2:0
-    },
+	{
+		.format[FORMAT_TYPE_VIOC] = VIOC_IMG_FMT_YUV420SEP, // YCbCr 4:2:0 separated
+		.format[FORMAT_TYPE_V4L2] = V4L2_PIX_FMT_YUV420,	// 'YU12' 12 YUV 4:2:0
+	},
 	{
 		.format[FORMAT_TYPE_VIOC] = VIOC_IMG_FMT_YUV422SEP,	// YCbCr 4:2:2 separated
 		.format[FORMAT_TYPE_V4L2] = V4L2_PIX_FMT_YUV422P,	// '422P' 16 YVU422 Planar
@@ -220,17 +221,17 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	// cif port
 	vioc_node = of_parse_phandle(main_node, "cifport", 0);
 	if(vioc_node != NULL) {
-        vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
-        of_property_read_u32_index(main_node, "cifport", 1, &vdev->cif.cif_port);
-        dlog("cifport index: %d\n", vdev->cif.cif_port);
+		vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
+		of_property_read_u32_index(main_node, "cifport", 1, &vdev->cif.cif_port);
+		dlog("cifport index: %d\n", vdev->cif.cif_port);
 
-        val_cifport0 &= ~(0xF << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
-        val_cifport0 |= (vdev->cif.cif_port << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
+		val_cifport0 &= ~(0xF << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
+		val_cifport0 |= (vdev->cif.cif_port << ((get_vioc_index(vdev->cif.vioc_path.vin) / 2) * 4));
 
-        dlog("val_cifport0: %ld\n", val_cifport0);
+		dlog("val_cifport0: %ld\n", val_cifport0);
 	} else {
 		log("ERROR: The CIF port node is NULL\n");
-        return -ENODEV;
+		return -ENODEV;
 	}
 
     // Parking Guide Line
@@ -482,10 +483,10 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 }
 
 int tccvin_set_cif_port(tccvin_dev_t * vdev) {
-	volatile void __iomem * cifport_addr    = vdev->cif.cifport_addr;
-	unsigned int			cifport_num     = vdev->cif.cif_port;
+	volatile void __iomem * cifport_addr	= vdev->cif.cifport_addr;
+	unsigned int			cifport_num 	= vdev->cif.cif_port;
 
-    dlog("cifport address: 0x%p value : 0x%lu, index: %d\n", cifport_addr, val_cifport0, cifport_num);
+	dlog("cifport address: 0x%p value : 0x%lu, index: %d\n", cifport_addr, val_cifport0, cifport_num);
 
 	__raw_writel(val_cifport0, cifport_addr);
 
@@ -494,7 +495,7 @@ int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 
 void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 //	struct v4l2_pix_format	* pix_format = &vdev->v4l2.pix_format;
-	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;
+	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
 
 	for(idxBuf=0; idxBuf<nBuf; idxBuf++) {
 //		memset(vdev->cif.preview_buf_addr, 0x00, req->count * sizeof(struct tccvin_buf));
@@ -535,16 +536,16 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
 	if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-	    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
-        ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
-        (vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
+		(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
+		((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
+		(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
 
-        if(!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED))
-            VIOC_VIN_SetY2REnable(pVIN, ON);
-    }
-    else {
-        VIOC_VIN_SetY2REnable(pVIN, OFF);
-    }
+		if(!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED))
+			VIOC_VIN_SetY2REnable(pVIN, ON);
+	}
+	else {
+		VIOC_VIN_SetY2REnable(pVIN, OFF);
+	}
 
 	VIOC_VIN_SetEnable(pVIN, ON);
 
@@ -559,8 +560,8 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pVIQE	= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
 
 	unsigned int	interlaced		= !!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED);
-	unsigned int	width 			= vdev->cif.videosource_info->width;
-	unsigned int	height 			= vdev->cif.videosource_info->height >> interlaced;
+	unsigned int	width			= vdev->cif.videosource_info->width;
+	unsigned int	height			= vdev->cif.videosource_info->height >> interlaced;
 
 	unsigned int	viqe_width		= 0;
 	unsigned int	viqe_height		= 0;
@@ -587,30 +588,30 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 	if(!(hdl_np = of_parse_phandle(main_node, "viqe_set", 0))) {
 		printk("could not find cam_viqe_set node!! \n");
 	} else {
-		viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, 0);
-		viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, 1);
+		viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 2 : 0);
+		viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 3 : 1);
 
 		BITCSET(*viqe_set_reg1,1<<3,1<<3);
 		BITCSET(*viqe_set_reg2,1<<8 | 1<<9 , 1<<8 | 1<<9);
 	}
 #endif
 
-    if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
-    	VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.deintl, vdev->cif.vioc_path.vin);
+	if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
+		VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.deintl, vdev->cif.vioc_path.vin);
 
-    	if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-    	    (vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
-    	   ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
-    	    (vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
-    		VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
-    		VIOC_VIQE_SetImageY2REnable(pVIQE, ON);
-    	}
-    	VIOC_VIQE_SetControlRegister(pVIQE, viqe_width, viqe_height, format);
-    	VIOC_VIQE_SetDeintlRegister(pVIQE, format, OFF, viqe_width, viqe_height, bypass_deintl,	\
-    		deintl_base0, deintl_base1, deintl_base2, deintl_base3);
-    	VIOC_VIQE_SetControlEnable(pVIQE, cdf_lut_en, his_en, gamut_en, d3d_en, deintl_en);
-        VIOC_VIQE_SetDeintlModeWeave(pVIQE);
-    }
+		if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
+			(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
+		   ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
+			(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
+			VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
+			VIOC_VIQE_SetImageY2REnable(pVIQE, ON);
+		}
+		VIOC_VIQE_SetControlRegister(pVIQE, viqe_width, viqe_height, format);
+		VIOC_VIQE_SetDeintlRegister(pVIQE, format, OFF, viqe_width, viqe_height, bypass_deintl,	\
+			deintl_base0, deintl_base1, deintl_base2, deintl_base3);
+		VIOC_VIQE_SetControlEnable(pVIQE, cdf_lut_en, his_en, gamut_en, d3d_en, deintl_en);
+		VIOC_VIQE_SetDeintlModeWeave(pVIQE);
+	}
 
 	FUNCTION_OUT
 	return 0;
@@ -622,27 +623,27 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct v4l2_pix_format * pix_format) {
 	unsigned int	width	= pix_format->width;
 	unsigned int	height	= pix_format->height;
 
-    unsigned int    crop_x  = cif->videosource_info->crop_x;
-    unsigned int    crop_y  = cif->videosource_info->crop_y;
+	unsigned int	crop_x	= cif->videosource_info->crop_x;
+	unsigned int	crop_y	= cif->videosource_info->crop_y;
 
-    unsigned int    crop_w  = cif->videosource_info->crop_w;
-    unsigned int    crop_h  = cif->videosource_info->crop_h;
+	unsigned int	crop_w	= cif->videosource_info->crop_w;
+	unsigned int	crop_h	= cif->videosource_info->crop_h;
 
 	FUNCTION_IN
 	dlog("SC: 0x%p, Output Size - width: %d, height: %d\n", pSC, width, height);
 
-    if((cif->videosource_info->width != pix_format->width || cif->videosource_info->height != pix_format->height) || \
-            (crop_w != 0 || crop_h != 0)) {
-            // Plug the scaler in
-            VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
+	if((cif->videosource_info->width != pix_format->width || cif->videosource_info->height != pix_format->height) || \
+			(crop_w != 0 || crop_h != 0)) {
+			// Plug the scaler in
+			VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
 
-            // Configure the scaler
-            VIOC_SC_SetBypass(pSC, OFF);
-            VIOC_SC_SetDstSize(pSC, width + crop_w, height + crop_h + 1);		// workaround: scaler margin
-            VIOC_SC_SetOutPosition(pSC, crop_x, crop_y);
-            VIOC_SC_SetOutSize(pSC, width, height);
-            VIOC_SC_SetUpdate(pSC);
-    }
+			// Configure the scaler
+			VIOC_SC_SetBypass(pSC, OFF);
+			VIOC_SC_SetDstSize(pSC, width + crop_w, height + crop_h + 1);		// workaround: scaler margin
+			VIOC_SC_SetOutPosition(pSC, crop_x, crop_y);
+			VIOC_SC_SetOutSize(pSC, width, height);
+			VIOC_SC_SetUpdate(pSC);
+	}
 
 	FUNCTION_OUT
 	return 0;
@@ -714,7 +715,7 @@ int tccvin_set_ovp_value(tccvin_cif_t * cif) {
     tccvin_set_wmixer_out(cif, RCAM_OVP);
 
 	FUNCTION_OUT
-    return 0;
+	return 0;
 }
 
 int tccvin_set_wdma(tccvin_dev_t * vdev) {
@@ -732,7 +733,7 @@ int tccvin_set_wdma(tccvin_dev_t * vdev) {
 
 #if 0
 	if((((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_YVU420) || (vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_YUV420)) && \
-	    ((width/2)%C_STRIDE_ALIGN!=0))) {// && (vdev->v4l2.oper_mode == OPER_PREVIEW)) {
+		((width/2)%C_STRIDE_ALIGN!=0))) {// && (vdev->v4l2.oper_mode == OPER_PREVIEW)) {
 		VIOC_WDMA_SetImageOffset_withYV12(pWDMA, width);
 	}
 	else
@@ -829,11 +830,11 @@ unsigned int list_get_entry_count(struct list_head * head) {
 int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 	struct tccvin_buf	* buf	= NULL;
 
-	int idxBuf, nBuf = vdev->v4l2.pp_num;
+	int idxBuf, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
 
 	int capture_buf_entry_count	= 0;
 	int display_buf_entry_count = 0;
-	
+
 	// Initialize the incoming and outgoing buffer list.
 	INIT_LIST_HEAD(&vdev->v4l2.capture_buf_list);
 	INIT_LIST_HEAD(&vdev->v4l2.display_buf_list);
@@ -859,15 +860,15 @@ int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 static unsigned int skip_frame = 0;
 
 unsigned int tccvin_set_skip_frame(unsigned int num) {
-    FUNCTION_IN
+	FUNCTION_IN
 
-    skip_frame = num;
+	skip_frame = num;
 
-    log("skip_frame : %d \n", skip_frame);
+	log("skip_frame : %d \n", skip_frame);
 
-    FUNCTION_OUT
+	FUNCTION_OUT
 
-    return skip_frame;
+	return skip_frame;
 }
 
 EXPORT_SYMBOL(tccvin_set_skip_frame);
@@ -1008,7 +1009,7 @@ int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 		stride = ALIGNED_BUFF(vdev->v4l2.pix_format.width, L_STRIDE_ALIGN);
 		y_offset = stride * vdev->v4l2.pix_format.height;
 #else
-        y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
+		y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
 #endif
 
 		if(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_YUYV)
@@ -1024,13 +1025,13 @@ int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 
 //	INIT_LIST_HEAD(&buf->buf_list);
 
-	buf->buf.index 	= req->count;
-	buf->buf.type 	= V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	buf->buf.field 	= V4L2_FIELD_NONE;
-	buf->buf.memory 	= V4L2_MEMORY_MMAP;
-	buf->buf.length 	= buff_size;
+	buf->buf.index	= req->count;
+	buf->buf.type	= V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	buf->buf.field	= V4L2_FIELD_NONE;
+	buf->buf.memory = V4L2_MEMORY_MMAP;
+	buf->buf.length = buff_size;
 #ifdef CONFIG_ION
-	buf->buf.memory 	= V4L2_MEMORY_DMABUF;
+	buf->buf.memory = V4L2_MEMORY_DMABUF;
 	buf->buf.m.fd	= req->reserved[1];
 #endif//CONFIG_ION
 
@@ -1040,8 +1041,8 @@ int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 
 	uv_offset = ALIGNED_BUFF((stride/2), C_STRIDE_ALIGN) * (vdev->v4l2.pix_format.height/2);
 #else
-    y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
-    uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
+	y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
+	uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
 #endif
 
 	vdev->cif.preview_buf_addr[req->count].y = (unsigned int)req->reserved[0];
@@ -1076,7 +1077,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);
 
-    // set rdma for Parking Guide Line
+	// set rdma for Parking Guide Line
 #ifdef CONFIG_OVERLAY_PGL
 	if(vdev->v4l2.preview_method == PREVIEW_DD) {
         tccvin_direct_display_set_pgl(vdev);
@@ -1094,13 +1095,13 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 
 	// set scaler
 	if(cif->vioc_path.vin <= VIOC_VIN30) {
-    	tccvin_set_scaler(cif, &vdev->v4l2.pix_format);
-    }
+		tccvin_set_scaler(cif, &vdev->v4l2.pix_format);
+	}
 
 	// set wmixer
-    if(cif->vioc_path.vin <= VIOC_VIN30) {
-	    tccvin_set_wmixer(vdev);
-    }
+	if(cif->vioc_path.vin <= VIOC_VIN30) {
+		tccvin_set_wmixer(vdev);
+	}
 
 	// set wdma
 	tccvin_set_wdma(vdev);
@@ -1162,18 +1163,18 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 	}
 
 	if(cif->vioc_path.vin <= VIOC_VIN30) {
-    	VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.scaler, &vioc_plug_state);
-    	if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
-    		VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.scaler);
-    	}
+		VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.scaler, &vioc_plug_state);
+		if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
+			VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.scaler);
+		}
 
-    	if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
-    		VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.deintl, &vioc_plug_state);
-	    	if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
-    			VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl);
-    		}
-    	}
-    }
+		if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+			VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.deintl, &vioc_plug_state);
+			if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
+				VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl);
+			}
+		}
+	}
 
 	VIOC_VIN_SetEnable(VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin), OFF); // disable VIN
 
@@ -1202,12 +1203,12 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 
 #ifdef CONFIG_ARCH_TCC803X
-        if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
-    		vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
-    	else
-    	    vdev->cif.vioc_intr.id		= VIOC_INTR_WD9 + (get_vioc_index(vdev->cif.vioc_path.wdma) - get_vioc_index(VIOC_WDMA09));
+		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
+			vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
+		else
+			vdev->cif.vioc_intr.id		= VIOC_INTR_WD9 + (get_vioc_index(vdev->cif.vioc_path.wdma) - get_vioc_index(VIOC_WDMA09));
 #else
-		vdev->cif.vioc_intr.id      = VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
+		vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
 #endif
 		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFF_MASK;
 
@@ -1242,9 +1243,9 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 
 		if(vdev->cif.vioc_irq_reg == ENABLE) {
-			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vdev->cif.vioc_irq_reg = DISABLE;
 		} else {
 			log("ERROR: The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
@@ -1365,10 +1366,14 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	vdev->v4l2.pix_format.pixelformat		= V4L2_PIX_FMT_RGB32;	//V4L2_PIX_FMT_YUYV;	// YUV422 is default
 
 	// preview method
-	vdev->v4l2.preview_method				= PREVIEW_V4L2;			//PREVIEW_DD;			// v4l2 buffering is default
+	vdev->v4l2.preview_method				= PREVIEW_V4L2;	//PREVIEW_DD;	// v4l2 buffering is default
 
 	// init v4l2 resources
- 	mutex_init(&vdev->v4l2.lock);
+	mutex_init(&vdev->v4l2.lock);
+
+	// init wait queue head and work thread
+	init_waitqueue_head(&vdev->v4l2.frame_wait);
+	INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
 
 	FUNCTION_OUT
 	return ret;
@@ -1494,8 +1499,8 @@ int tccvin_v4l2_assign_allocated_buf(tccvin_dev_t * vdev, struct v4l2_buffer * r
 	y_offset = stride * vdev->v4l2.pix_format.height;
 	uv_offset = ALIGNED_BUFF((stride/2), C_STRIDE_ALIGN) * (vdev->v4l2.pix_format.height/2);
 #else
-    y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
-    uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
+	y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
+	uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
 #endif
 
 	dlog("%s - allocated addr: 0x%08x\n", __func__, (unsigned long)req->reserved);
@@ -1533,6 +1538,7 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	struct tccvin_buf	* cif_buf	= &vdev->v4l2.static_buf[buf->index];
 
 	FUNCTION_IN
+	mutex_lock(&vdev->v4l2.lock);
 
 	// Check the buffer index is valid.
 	if(!((0 <= buf->index) && (buf->index < vdev->v4l2.pp_num))) {
@@ -1556,6 +1562,7 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	// clear the flag V4L2_BUF_FLAG_DONE
 	cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
+	mutex_unlock(&vdev->v4l2.lock);
 	FUNCTION_OUT
 	return 0;
 }
@@ -1568,6 +1575,7 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 
 	FUNCTION_IN
 
+	mutex_lock(&vdev->v4l2.lock);
 	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
 	dlog("disp count: %d\n", display_buf_entry_count);
 
@@ -1585,7 +1593,11 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 		cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
 		memcpy(buf, &(cif_buf->buf), sizeof(struct v4l2_buffer));
-	} else {
+	}
+
+	mutex_unlock(&vdev->v4l2.lock);
+
+	if(1 >= display_buf_entry_count) {
 		dlog("The display buffer list is EMPTY!!\n");
 		vdev->v4l2.wakeup_int = 0;
 		if(wait_event_interruptible_timeout(vdev->v4l2.frame_wait, vdev->v4l2.wakeup_int == 1, msecs_to_jiffies(500)) <= 0) {
@@ -1635,10 +1647,6 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 	}
 
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
-		mutex_init(&vdev->v4l2.lock);
-		init_waitqueue_head(&vdev->v4l2.frame_wait);
-		INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
-
 		ret = tccvin_request_irq(vdev);
 		if(ret < 0) {
 			log("ERROR: Request IRQ\n");
@@ -1673,8 +1681,8 @@ int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int * preview_method) {
 	    ret = tccvin_direct_display_stop_monitor(vdev);
         if(ret < 0) {
             log("ERROR: FAILED direct_display_stop_monitor\n");
-            return ret;
-        }
+			return ret;
+		}
 	}
 
 	ret = tccvin_stop_stream(vdev);

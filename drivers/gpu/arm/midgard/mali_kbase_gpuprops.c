@@ -33,6 +33,8 @@
 #include <mali_kbase_hwaccess_gpuprops.h>
 #include "mali_kbase_ioctl.h"
 #include <linux/clk.h>
+#include <linux/arm-smccc.h>
+#include <soc/tcc/tcc-sip.h>
 
 /**
  * KBASE_UBFX32 - Extracts bits from a 32-bit bitfield.
@@ -146,9 +148,29 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
 #if ONLY_USE_MP2  //TCC
 	gpu_props->raw_props.shader_present =0x1;
 #else
+#if CONFIG_ARCH_TCC803X
+/*
+ * TCC8030, TCC8031 - MP3/MP1
+ * TCC8032, TCC8035 - MP3
+ * TCC8033 - MP2/MP1
+ * TCC8034, TCC8036 - MP2
+ */
+        struct arm_smccc_res res;
+        arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
+        //printk("%s %08X\n",__func__, res.a0);    // chip id
+
+	if(res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 || res.a0 == 0x8035)	// MP3
+		gpu_props->raw_props.shader_present =
+			((u64) regdump.shader_present_hi << 32) +
+			regdump.shader_present_lo;
+	else	//TCC8033, TCC8034, TCC8036 - MP2
+		gpu_props->raw_props.shader_present = 0x2;
+#else
 	gpu_props->raw_props.shader_present =
-		((u64) regdump.shader_present_hi << 32) +
-		regdump.shader_present_lo;
+        	((u64) regdump.shader_present_hi << 32) +
+                regdump.shader_present_lo;
+
+#endif
 #endif
 //	printk("%s shader_present:0x%llu\n", __func__, gpu_props->raw_props.shader_present);
 	gpu_props->raw_props.tiler_present =

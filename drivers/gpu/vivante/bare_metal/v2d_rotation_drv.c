@@ -212,7 +212,10 @@ static int _v2dTest_set_source(stRot_Info stRotInfo)
 	WMIXER_INFO_TYPE WmixerInfo;
 	VIOC_RDMA *pRDMA = VIOC_RDMA_GetAddress(NUM_FB_RDMA);
 
-	pmap_get_info("fb_video", &fb_pmap);
+	if( 0 > pmap_get_info("fb_video", &fb_pmap)){
+		printk("%s-%d : fb_wmixer allocation is failed.\n", __func__, __LINE__);
+		return -1;
+	}
 
 	file = filp_open(WMIXER_PATH, O_RDWR, 0666);
 

@@ -1,22 +1,19 @@
 /****************************************************************************
- * FileName    : kernel/drivers/char/hdmi_v1_3/cec/tcc_cec_interface.c
- * Description : hdmi cec driver
- *
- * Copyright (C) 2013 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- * ****************************************************************************/
-#include <linux/input.h>    
+Copyright (C) 2018 Telechips Inc.
+
+This program is free software; you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation;
+either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
+#include <linux/input.h>
 #include "include/tcc_cec_interface.h"
 
 #define CEC_INTERFACE_DEBUG 0
@@ -32,11 +29,11 @@
 
 struct tcc_remote
 {
-	struct input_dev *dev;  
+	struct input_dev *dev;
 	struct work_struct work_q;
 };
 
-static SCANCODE_MAPPING key_mapping[] = 
+static SCANCODE_MAPPING key_mapping[] =
 {
 	{SCAN_PWR, 		KEY_POWER	/*116*/	},
 
@@ -127,14 +124,14 @@ int TccCECInterface_Init(void)
 	}
 
 	ret = input_register_device(rem->dev);
-	if (ret) 
+	if (ret)
 	{
 		DPRINTK(KERN_INFO "%s input_register_device fail\n", __FUNCTION__);
 		return -1;
 	}
 
 	DPRINTK(KERN_INFO "%s End\n", __FUNCTION__);
-	
+
 	return 1;
 
 }
@@ -143,7 +140,7 @@ int TccCECInterface_GetKeyCode(unsigned short kc)
 {
 	int i;
 	for (i = 0;i < sizeof(key_mapping)/sizeof(SCANCODE_MAPPING);i++)
-		if (kc == key_mapping[i].rcode) 
+		if (kc == key_mapping[i].rcode)
 			return key_mapping[i].vkcode;
 	return -1;
 }
@@ -156,11 +153,11 @@ int TccCECInterface_SendData(unsigned int uiOpcode, unsigned int uiData)
 	unsigned int uiKeyCode;
 
 	DPRINTK(KERN_INFO "%s\n", __FUNCTION__);
-	
+
 	uiKeyCode = TccCECInterface_ConvertKeyCode(uiOpcode, uiData);
 
 	DPRINTK(KERN_INFO "uiKeyCode = 0x%x\n", uiKeyCode);
-	
+
 	nRem = TccCECInterface_GetKeyCode(uiKeyCode);
 	if(nRem == -1)
 		return -1;
@@ -296,7 +293,7 @@ unsigned int TccCECInterface_ConvertKeyCode(unsigned int uiOpcode, unsigned int 
 				break;
 		}
 	}
-	
+
 	return uiKeyCode;
 }
 
@@ -313,7 +310,7 @@ int TccCECInterface_IgnoreMessage(unsigned char opcode, unsigned char lsrc)
 		case CEC_OPCODE_DECK_CONTROL:
 		case CEC_OPCODE_PLAY:
 			retval = 1;
-		
+
 		default:
 			break;
         }
@@ -336,16 +333,16 @@ int TccCECInterface_CheckMessageSize(unsigned char opcode, int size)
 		case CEC_OPCODE_SET_MENU_LANGUAGE:
 			if (size != 3) retval = 0;
 			break;
-		    
+
 		case CEC_OPCODE_USER_CONTROL_RELEASED:
 			if (size != 2) retval = 0;
 			break;
-		    
+
 		case CEC_OPCODE_SET_STREAM_PATH:
 		case CEC_OPCODE_FEATURE_ABORT:
 			if (size != 4) retval = 0;
 			break;
-		    
+
 		default:
 		    break;
 	}
@@ -366,7 +363,7 @@ int TccCECInterface_CheckMessageMode(unsigned char opcode, int broadcast)
 		case CEC_OPCODE_ROUTING_INFORMATION:
 		    if (!broadcast) retval = 0;
 		    break;
-		    
+
 		case CEC_OPCODE_GIVE_PHYSICAL_ADDRESS:
 		case CEC_OPCODE_DECK_CONTROL:
 		case CEC_OPCODE_PLAY:
@@ -380,7 +377,7 @@ int TccCECInterface_CheckMessageMode(unsigned char opcode, int broadcast)
 		case CEC_OPCODE_REPORT_POWER_STATUS:
 		    if (broadcast) retval = 0;
 		    break;
-		    
+
 		default:
 		    break;
 	}
@@ -432,7 +429,7 @@ int TccCECInterface_ParseMessage(struct cec_device * dev, char *buffer, int size
 			DPRINTK(KERN_INFO "### GIVE PHYSICAL ADDRESS ###\n");
 			break;
 		}
-		
+
 		case CEC_OPCODE_SET_MENU_LANGUAGE:
 		{
 			DPRINTK(KERN_INFO "the menu language will be changed!!!\n");
@@ -464,15 +461,15 @@ int TccCECInterface_ParseMessage(struct cec_device * dev, char *buffer, int size
 				case CEC_PLAY_MODE_PLAY_REWIND:
 					TccCECInterface_SendData(CEC_OPCODE_PLAY, buffer[2]);
 					break;
-					
+
 				default:
-					break;					
+					break;
 			}
 			break;
 
 		case CEC_OPCODE_STANDBY:
 			DPRINTK(KERN_INFO "### switching device into standby... ###\n");
-	
+
 			if(!dev->standby_status) {
 				TccCECInterface_SendData(CEC_OPCODE_STANDBY, 0);
 				dev->standby_status = 1;
@@ -510,7 +507,7 @@ int TccCECInterface_ParseMessage(struct cec_device * dev, char *buffer, int size
 				case CEC_USER_CONTROL_MODE_DOT:
 					TccCECInterface_SendData(CEC_OPCODE_USER_CONTROL_PRESSED, buffer[2]);
 					break;
-					
+
 				default:
 					break;
 

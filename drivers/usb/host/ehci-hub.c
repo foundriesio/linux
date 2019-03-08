@@ -1318,7 +1318,7 @@ int ehci_hub_control(
                 mdelay(15000);
 
                 /* Drive resume on the root port */
-                hsetp_dbg(" 2.Drive resume on the root port\n");
+                hhsetp_dbg(" 2.Drive resume on the root port\n");
                 temp = ehci_readl(ehci, status_reg);
                 temp &= ~PORT_SUSPEND;
                 temp |= PORT_RESUME;

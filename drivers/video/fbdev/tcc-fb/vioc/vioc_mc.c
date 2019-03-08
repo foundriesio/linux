@@ -32,6 +32,7 @@
 
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/tcc_types.h>
+#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_mc.h>
 
 #define MC_MAX_N 2
@@ -238,7 +239,8 @@ static int __init vioc_mc_init(void)
 		pr_info("vioc-mc: disabled\n");
 	} else {
 		for (i = 0; i < MC_MAX_N; i++) {
-			pMC_reg[i] = (volatile void __iomem *)of_iomap(ViocMC_np, i);
+			pMC_reg[i] = (volatile void __iomem *)of_iomap(ViocMC_np,
+							is_VIOC_REMAP ? (i + MC_MAX_N) : i);
 
 			if (pMC_reg[i])
 				pr_info("vioc-mc%d: 0x%p\n", i, pMC_reg[i]);
