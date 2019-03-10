@@ -128,7 +128,7 @@ endif
 
 CHECKFLAGS	+= -D__aarch64__
 
-ifeq ($(CONFIG_EVENLESS),y)
+ifeq ($(CONFIG_EVL),y)
 KBUILD_CFLAGS += -Iarch/$(SRCARCH)/evenless/include -Iinclude/evenless
 endif
 
