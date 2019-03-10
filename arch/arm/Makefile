@@ -250,7 +250,7 @@ KBUILD_CPPFLAGS += $(patsubst %,-I$(srctree)/%include,$(machdirs) $(platdirs))
 endif
 endif
 
-ifeq ($(CONFIG_EVENLESS),y)
+ifeq ($(CONFIG_EVL),y)
 KBUILD_CFLAGS += -Iarch/$(SRCARCH)/evenless/include -Iinclude/evenless
 endif
 
