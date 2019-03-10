@@ -251,7 +251,7 @@ endif
 endif
 
 ifeq ($(CONFIG_EVL),y)
-KBUILD_CFLAGS += -Iarch/$(SRCARCH)/evenless/include -Iinclude/evenless
+KBUILD_CFLAGS += -Iarch/$(SRCARCH)/evl/include -Iinclude/evl
 endif
 
 export	TEXT_OFFSET GZFLAGS MMUEXT
