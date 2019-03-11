@@ -60,7 +60,6 @@ static const struct dma_map_ops swiotlb_dma_ops = {
 	.map_page = swiotlb_map_page,
 	.unmap_page = swiotlb_unmap_page,
 	.dma_supported = NULL,
-	.max_mapping_size = swiotlb_max_mapping_size,
 };
 
 /*

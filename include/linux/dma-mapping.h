@@ -11,6 +11,7 @@
 #include <linux/kmemcheck.h>
 #include <linux/bug.h>
 #include <linux/mem_encrypt.h>
+#include <linux/swiotlb.h>
 
 /**
  * List of possible attributes associated with a DMA mapping. The semantics
@@ -129,7 +130,6 @@ struct dma_map_ops {
 	int (*mapping_error)(struct device *dev, dma_addr_t dma_addr);
 	int (*dma_supported)(struct device *dev, u64 mask);
 	int (*set_dma_mask)(struct device *dev, u64 mask);
-	size_t (*max_mapping_size)(struct device *dev);
 #ifdef ARCH_HAS_DMA_GET_REQUIRED_MASK
 	u64 (*get_required_mask)(struct device *dev);
 #endif
@@ -604,11 +604,10 @@ static inline u64 dma_get_mask(struct device *dev)
 
 static inline size_t dma_max_mapping_size(struct device *dev)
 {
-	const struct dma_map_ops *ops = get_dma_ops(dev);
 	size_t size = SIZE_MAX;
 
-	if (ops->max_mapping_size)
-		size = ops->max_mapping_size(dev);
+	if (is_swiotlb_active())
+		size = swiotlb_max_mapping_size(dev);
 
 	return size;
 }
