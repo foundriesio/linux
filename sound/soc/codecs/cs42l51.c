@@ -31,32 +31,13 @@
 #include <sound/pcm_params.h>
 #include <sound/pcm.h>
 #include <linux/gpio/consumer.h>
-#include <linux/regmap.h>
-#include <linux/regulator/consumer.h>
-
 #include "cs42l51.h"
 
-enum master_slave_mode {
-	MODE_SLAVE,
-	MODE_SLAVE_AUTO,
-	MODE_MASTER,
-};
-
-#define CS42L51_NUM_SUPPLIES 4
 static const char *cs42l51_supply_names[CS42L51_NUM_SUPPLIES] = {
 	"VL",
 	"VD",
 	"VA",
 	"VAHP",
-};
-
-struct cs42l51_private {
-	unsigned int mclk;
-	struct clk *mclk_handle;
-	unsigned int audio_mode;	/* The mode (I2S or left-justified) */
-	enum master_slave_mode func;
-	struct regulator_bulk_data supplies[CS42L51_NUM_SUPPLIES];
-	struct gpio_desc *reset_gpio;
 };
 
 #define CS42L51_FORMATS ( \
@@ -576,7 +557,106 @@ static const struct snd_soc_component_driver soc_component_device_cs42l51 = {
 	.non_legacy_dai_naming	= 1,
 };
 
+static bool cs42l51_writeable_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case CS42L51_POWER_CTL1:
+	case CS42L51_MIC_POWER_CTL:
+	case CS42L51_INTF_CTL:
+	case CS42L51_MIC_CTL:
+	case CS42L51_ADC_CTL:
+	case CS42L51_ADC_INPUT:
+	case CS42L51_DAC_OUT_CTL:
+	case CS42L51_DAC_CTL:
+	case CS42L51_ALC_PGA_CTL:
+	case CS42L51_ALC_PGB_CTL:
+	case CS42L51_ADCA_ATT:
+	case CS42L51_ADCB_ATT:
+	case CS42L51_ADCA_VOL:
+	case CS42L51_ADCB_VOL:
+	case CS42L51_PCMA_VOL:
+	case CS42L51_PCMB_VOL:
+	case CS42L51_BEEP_FREQ:
+	case CS42L51_BEEP_VOL:
+	case CS42L51_BEEP_CONF:
+	case CS42L51_TONE_CTL:
+	case CS42L51_AOUTA_VOL:
+	case CS42L51_AOUTB_VOL:
+	case CS42L51_PCM_MIXER:
+	case CS42L51_LIMIT_THRES_DIS:
+	case CS42L51_LIMIT_REL:
+	case CS42L51_LIMIT_ATT:
+	case CS42L51_ALC_EN:
+	case CS42L51_ALC_REL:
+	case CS42L51_ALC_THRES:
+	case CS42L51_NOISE_CONF:
+	case CS42L51_CHARGE_FREQ:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool cs42l51_volatile_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case CS42L51_STATUS:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool cs42l51_readable_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case CS42L51_CHIP_REV_ID:
+	case CS42L51_POWER_CTL1:
+	case CS42L51_MIC_POWER_CTL:
+	case CS42L51_INTF_CTL:
+	case CS42L51_MIC_CTL:
+	case CS42L51_ADC_CTL:
+	case CS42L51_ADC_INPUT:
+	case CS42L51_DAC_OUT_CTL:
+	case CS42L51_DAC_CTL:
+	case CS42L51_ALC_PGA_CTL:
+	case CS42L51_ALC_PGB_CTL:
+	case CS42L51_ADCA_ATT:
+	case CS42L51_ADCB_ATT:
+	case CS42L51_ADCA_VOL:
+	case CS42L51_ADCB_VOL:
+	case CS42L51_PCMA_VOL:
+	case CS42L51_PCMB_VOL:
+	case CS42L51_BEEP_FREQ:
+	case CS42L51_BEEP_VOL:
+	case CS42L51_BEEP_CONF:
+	case CS42L51_TONE_CTL:
+	case CS42L51_AOUTA_VOL:
+	case CS42L51_AOUTB_VOL:
+	case CS42L51_PCM_MIXER:
+	case CS42L51_LIMIT_THRES_DIS:
+	case CS42L51_LIMIT_REL:
+	case CS42L51_LIMIT_ATT:
+	case CS42L51_ALC_EN:
+	case CS42L51_ALC_REL:
+	case CS42L51_ALC_THRES:
+	case CS42L51_NOISE_CONF:
+	case CS42L51_STATUS:
+	case CS42L51_CHARGE_FREQ:
+		return true;
+	default:
+		return false;
+	}
+}
+
 const struct regmap_config cs42l51_regmap = {
+	.reg_bits = 8,
+	.reg_stride = 1,
+	.val_bits = 8,
+	.use_single_rw = true,
+	.readable_reg = cs42l51_readable_reg,
+	.volatile_reg = cs42l51_volatile_reg,
+	.writeable_reg = cs42l51_writeable_reg,
 	.max_register = CS42L51_CHARGE_FREQ,
 	.cache_type = REGCACHE_RBTREE,
 };
@@ -597,6 +677,7 @@ int cs42l51_probe(struct device *dev, struct regmap *regmap)
 		return -ENOMEM;
 
 	dev_set_drvdata(dev, cs42l51);
+	cs42l51->regmap = regmap;
 
 	cs42l51->mclk_handle = devm_clk_get(dev, "MCLK");
 	if (IS_ERR(cs42l51->mclk_handle)) {
