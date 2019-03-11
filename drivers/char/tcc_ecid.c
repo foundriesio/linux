@@ -45,6 +45,12 @@
 //#define USER    (~Hw16)
 
 
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#define SEL	  14
+#else
+#define SEL	  15
+#endif
+
 // ECID Code
 // -------- 31 ------------- 15 ----------- 0 --------
 // [0]     |****************|****************|    : '*' is valid
@@ -67,18 +73,18 @@ static void IO_UTIL_ReadECID (struct ecid_platform_data *pdata, int iA)
 	int ecid_num, ecid_addr;
 	unsigned int ecid_data_parallel[4][2];
 
-	for(ecid_num=0;ecid_num<4;ecid_num++) { // 0: USER, 1: USER, 2:SEC, 3:SEC
-		writel(MODE | (ecid_num<<15), pdata->ecid0);
-		writel(MODE | (ecid_num<<15) | CS, pdata->ecid0) ;
+	for(ecid_num=0;ecid_num<4;ecid_num++) { // 0: USER0, 1: SEC, 2:USR1, 3:SEC
+		writel(MODE | (ecid_num<<SEL), pdata->ecid0);
+		writel(MODE | (ecid_num<<SEL) | CS, pdata->ecid0) ;
 
 		for(ecid_addr=0;ecid_addr<8;ecid_addr++) {
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15), pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15) | SIGDEV, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15) | SIGDEV | PRCHG, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15) | SIGDEV | PRCHG | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15) | PRCHG  | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15) | FSET, pdata->ecid0);
-			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<15), pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL), pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV, pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV | PRCHG, pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | SIGDEV | PRCHG | FSET, pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | PRCHG  | FSET, pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL) | FSET, pdata->ecid0);
+			writel(MODE | CS | (ecid_addr<<17) | (ecid_num<<SEL), pdata->ecid0);
 		}
 
 		ecid_data_parallel[ecid_num][1] = readl_relaxed(pdata->ecid3);    // High 16 Bit
