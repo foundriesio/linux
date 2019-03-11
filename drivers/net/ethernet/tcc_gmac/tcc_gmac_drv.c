@@ -2401,7 +2401,7 @@ out_resume:
 }
 
 
-int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
+static long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 {
 	int ret=0;
 	unsigned int rev_value;
