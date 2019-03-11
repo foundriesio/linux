@@ -1714,7 +1714,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			retval |= dwc_otg_handle_lpm_intr(core_if);
 		}
 #endif
-#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+//#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
 		{
 			gotgint_data_t gotgint;
 			gotgint.d32 = DWC_READ_REG32(&core_if->core_global_regs->gotgint);
@@ -1737,7 +1737,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 
 			}
 		}
-#endif
+//#endif
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 		{
 			gotgint_data_t gotgint;

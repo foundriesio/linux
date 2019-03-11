@@ -8,6 +8,7 @@
 #include <linux/of_gpio.h>
 #include "../dwc3/core.h"
 #include "../dwc3/io.h"
+#include <asm/system_info.h>
 //#include <plat/globals.h>
 //#include <linux/err.h>
 //#include <linux/of_device.h>
@@ -1140,7 +1141,10 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 static int tcc_dwc3_init_phy(struct usb_phy *phy)
 {
 #ifdef CONFIG_ARCH_TCC803X
-	return dwc3_tcc_ss_phy_ctrl_native(phy, 1);
+	if(system_rev == 0)
+		return dwc3_tcc_phy_ctrl_native(phy, 1);
+	else
+		return dwc3_tcc_ss_phy_ctrl_native(phy, 1);
 #else
 	return dwc3_tcc_phy_ctrl_native(phy, 1);
 #endif
