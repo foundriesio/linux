@@ -1269,6 +1269,9 @@ static SIMPLE_DEV_PM_OPS(tcc_i2c_slave_pm, tcc_i2c_slave_suspend, tcc_i2c_slave_
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_i2c_slave_of_match[] = {
 	{ .compatible = "telechips,i2c-slave" },
+	{ .compatible = "telechips,tcc803x-i2c-slave" },
+	{ .compatible = "telechips,tcc897x-i2c-slave" },
+	{ .compatible = "telechips,tcc899x-i2c-slave" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, tcc_i2c_slave_of_match);

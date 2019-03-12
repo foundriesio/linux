@@ -292,7 +292,7 @@
 	};
 
 	i2c0: i2c@16300000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16300000 0x1c 0x163c0000 0x010>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -325,7 +325,7 @@
 	};
 
 	i2c1: i2c@16310000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16310000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -342,7 +342,7 @@
 	};
 
 	i2c2: i2c@16320000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16320000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -356,7 +356,7 @@
 	};
 
 	i2c3: i2c@16330000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16330000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -371,7 +371,7 @@
 	};
 
 	i2c4: i2c@16340000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16340000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -386,7 +386,7 @@
 	};
 
 	i2c5: i2c@16350000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16350000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -401,7 +401,7 @@
 	};
 
 	i2c6: i2c@16360000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16360000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -416,7 +416,7 @@
 	};
 
 	i2c7: i2c@16370000 {
-		compatible = "telechips,i2c";
+		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16370000 0x1c 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -431,7 +431,7 @@
 	};
 
 	i2cslave0: i2cslave@16380000 {
-		compatible = "telechips,i2c-slave";
+		compatible = "telechips,tcc803x-i2c-slave";
 		reg = <0x16380000 0x28 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -446,7 +446,7 @@
 	};
 
 	i2cslave1: i2cslave@16390000 {
-		compatible = "telechips,i2c-slave";
+		compatible = "telechips,tcc803x-i2c-slave";
 		reg = <0x16390000 0x28 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -461,7 +461,7 @@
 	};
 
 	i2cslave2: i2cslave@163a0000 {
-		compatible = "telechips,i2c-slave";
+		compatible = "telechips,tcc803x-i2c-slave";
 		reg = <0x163a0000 0x28 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
@@ -476,7 +476,7 @@
 	};
 
 	i2cslave3: i2cslave@163b0000 {
-		compatible = "telechips,i2c-slave";
+		compatible = "telechips,tcc803x-i2c-slave";
 		reg = <0x163b0000 0x28 0x163c0000 0x10>;
 		interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
