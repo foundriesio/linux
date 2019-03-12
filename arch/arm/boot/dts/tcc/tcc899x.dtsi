@@ -1459,7 +1459,7 @@
 	};
 
 	gpsb0: gpsb0@16900000 {
-		compatible = "telechips,tcc-spi";
+		compatible = "telechips,tcc899x-spi";
 		reg = <0x16900000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSB0 &clk_io IOBUS_GPSB0>;
@@ -1468,7 +1468,7 @@
 	};
 
 	gpsb1: gpsb1@16910000 {
-		compatible = "telechips,tcc89xx-tsif";
+		compatible = "telechips,tcc899x-tsif";
 		reg = <0x16910000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSB1 &clk_io IOBUS_GPSB1>;
@@ -1477,7 +1477,7 @@
 	};
 
 	gpsb2: gpsb2@16920000 {
-		compatible = "telechips,tcc89xx-tsif";
+		compatible = "telechips,tcc899x-tsif";
 		reg = <0x16920000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSB2 &clk_io IOBUS_GPSB2>;
@@ -1486,7 +1486,7 @@
 	};
 
 	gpsb3: gpsb3@16930000 {
-		compatible = "telechips,tcc-spi";
+		compatible = "telechips,tcc899x-spi";
 		reg = <0x16930000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSBMS0 &clk_io IOBUS_GPSB3>;
@@ -1499,7 +1499,7 @@
 	};
 
 	gpsb4: gpsb4@16940000 {
-		compatible = "telechips,tcc89xx-tsif";
+		compatible = "telechips,tcc899x-tsif";
 		reg = <0x16940000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSBMS1 &clk_io IOBUS_GPSB4>;
@@ -1512,7 +1512,7 @@
 	};
 
 	gpsb5: gpsb5@16950000 {
-		compatible = "telechips,tcc89xx-tsif";
+		compatible = "telechips,tcc899x-tsif";
 		reg = <0x16950000 0x38 0x16960000 0x20 0x16970000 0x84>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_GPSBMS2 &clk_io IOBUS_GPSB5>;
