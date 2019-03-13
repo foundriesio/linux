@@ -154,7 +154,7 @@ void bt_sock_unlink(struct bt_sock_list *l, struct sock *sk)
 }
 EXPORT_SYMBOL(bt_sock_unlink);
 
-void bt_accept_enqueue(struct sock *parent, struct sock *sk, bool bh)
+void __bt_accept_enqueue(struct sock *parent, struct sock *sk, bool bh)
 {
 	BT_DBG("parent %p, sk %p", parent, sk);
 
@@ -174,6 +174,12 @@ void bt_accept_enqueue(struct sock *parent, struct sock *sk, bool bh)
 		release_sock(sk);
 
 	parent->sk_ack_backlog++;
+}
+EXPORT_SYMBOL(__bt_accept_enqueue);
+
+void bt_accept_enqueue(struct sock *parent, struct sock *sk)
+{
+	__bt_accept_enqueue(parent, sk, false);
 }
 EXPORT_SYMBOL(bt_accept_enqueue);
 
