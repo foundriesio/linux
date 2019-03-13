@@ -34,6 +34,11 @@ struct ion_platform_data {
 struct ion_mapper *tcc_user_mapper;
 int num_heaps;
 struct ion_heap **heaps;
+static pmap_t pmap_ump_reserved;
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+static pmap_t pmap_ion_carveout_cam;
+#endif
+
 
 extern struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data);
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
@@ -80,8 +85,10 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 
 		if(heap->type == ION_HEAP_TYPE_CARVEOUT)
 		{
-			pmap_t pmap_ump_reserved;
-			pmap_get_info("ump_reserved", &pmap_ump_reserved);
+			if(0 > pmap_get_info("ump_reserved", &pmap_ump_reserved)){
+				printk("%s-%d : ump_reserved allocation is failed.\n", __func__, __LINE__);
+				return ERR_PTR(-ENOMEM);
+			}
 			printk("@@@@@@@@@@@@@@@@@@@@ %s - 0x%x - 0x%x - %d - %d - %d - %d\n", 
 						pmap_ump_reserved.name, pmap_ump_reserved.base, pmap_ump_reserved.size,
 						pmap_ump_reserved.groups, pmap_ump_reserved.v_base, pmap_ump_reserved.rc,
@@ -94,9 +101,10 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 #ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
 		else if(heap->type == ION_HEAP_TYPE_CARVEOUT_CAM)
 		{
-			pmap_t pmap_ion_carveout_cam;
-			pmap_get_info("ion_carveout_cam", &pmap_ion_carveout_cam);
-
+			if(0 > pmap_get_info("ion_carveout_cam", &pmap_ion_carveout_cam)){
+				printk("%s-%d : ion_carveout_cam allocation is failed.\n", __func__, __LINE__);
+				return ERR_PTR(-ENOMEM);
+			}
 			heap->base = pmap_ion_carveout_cam.base;
 			heap->size = pmap_ion_carveout_cam.size;
 			printk("ion_carveout_cam base:0x%x\n", heap->base);
@@ -188,7 +196,16 @@ out:
 
 int tcc_ion_remove(struct platform_device *pdev)
 {
-
+	if(pmap_ump_reserved.base) {
+		pmap_release_info("ump_reserved");
+		pmap_ump_reserved.base = 0;
+	}
+#ifdef CONFIG_ION_CARVEOUT_CAM_HEAP
+	if(pmap_ion_carveout_cam.base) {
+        pmap_release_info("ion_carveout_cam");
+		pmap_ion_carveout_cam.base = 0;
+	}
+#endif
 	kfree(heaps);
 	return 0;
 }
