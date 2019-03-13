@@ -353,6 +353,12 @@ static int ep_queue(struct usb_ep *usb_ep, struct usb_request *usb_req,
 	usb_req->actual = 0;
 
 	ep = ep_from_handle(pcd, usb_ep);
+
+	if(unlikely(!is_valid_address(ep, __func__, __LINE__))) {
+		DWC_WARN("ep is NULL\n");
+		return -EINVAL;
+	}
+
 	if (ep == NULL)
 		is_isoc_ep = 0;
 	else
@@ -989,9 +995,15 @@ static int _complete(dwc_otg_pcd_t *pcd, void *ep_handle,
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,27)
 		ep = ep_from_handle(pcd, ep_handle);
-	if (GET_CORE_IF(pcd)->dma_enable) {
 
-		usb_gadget_unmap_request(&gadget_wrapper->gadget,req,ep->dwc_ep.is_in);
+		if(unlikely(!is_valid_address(ep, __func__, __LINE__))) {
+			DWC_WARN("ep is NULL\n");
+			return -EINVAL;
+		}
+
+		if (GET_CORE_IF(pcd)->dma_enable) {
+
+			usb_gadget_unmap_request(&gadget_wrapper->gadget,req,ep->dwc_ep.is_in);
 #if 0
 		if (req->length != 0) {
 			dwc_otg_device_t *otg_dev = gadget_wrapper->pcd->otg_dev;
@@ -1003,7 +1015,7 @@ static int _complete(dwc_otg_pcd_t *pcd, void *ep_handle,
 			dma_unmap_single(dev, req->dma, req->length,ep->dwc_ep.is_in ?DMA_TO_DEVICE: DMA_FROM_DEVICE);
 		}
 #endif
-	}
+		}
 #endif
 
 		req->actual = actual;
