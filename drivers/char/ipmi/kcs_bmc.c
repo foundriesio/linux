@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (c) 2015-2018, Intel Corporation.
- */
+// Copyright (c) 2015-2018, Intel Corporation.
 
 #define pr_fmt(fmt) "kcs-bmc: " fmt
 
@@ -235,14 +233,14 @@ int kcs_bmc_handle_event(struct kcs_bmc *kcs_bmc)
 }
 EXPORT_SYMBOL(kcs_bmc_handle_event);
 
-static inline struct kcs_bmc *to_kcs_bmc(struct file *filp)
+static inline struct kcs_bmc *file_to_kcs_bmc(struct file *filp)
 {
 	return container_of(filp->private_data, struct kcs_bmc, miscdev);
 }
 
 static int kcs_bmc_open(struct inode *inode, struct file *filp)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
 	int ret = 0;
 
 	spin_lock_irq(&kcs_bmc->lock);
@@ -255,25 +253,25 @@ static int kcs_bmc_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static __poll_t kcs_bmc_poll(struct file *filp, poll_table *wait)
+static unsigned int kcs_bmc_poll(struct file *filp, poll_table *wait)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
-	__poll_t mask = 0;
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
+	unsigned int mask = 0;
 
 	poll_wait(filp, &kcs_bmc->queue, wait);
 
 	spin_lock_irq(&kcs_bmc->lock);
 	if (kcs_bmc->data_in_avail)
-		mask |= EPOLLIN;
+		mask |= POLLIN;
 	spin_unlock_irq(&kcs_bmc->lock);
 
 	return mask;
 }
 
-static ssize_t kcs_bmc_read(struct file *filp, char __user *buf,
-			    size_t count, loff_t *ppos)
+static ssize_t kcs_bmc_read(struct file *filp, char *buf,
+			    size_t count, loff_t *offset)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
 	bool data_avail;
 	size_t data_len;
 	ssize_t ret;
@@ -332,10 +330,10 @@ out_unlock:
 	return ret;
 }
 
-static ssize_t kcs_bmc_write(struct file *filp, const char __user *buf,
-			     size_t count, loff_t *ppos)
+static ssize_t kcs_bmc_write(struct file *filp, const char *buf,
+			     size_t count, loff_t *offset)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
 	ssize_t ret;
 
 	/* a minimum response size '3' : netfn + cmd + ccode */
@@ -371,7 +369,7 @@ out_unlock:
 static long kcs_bmc_ioctl(struct file *filp, unsigned int cmd,
 			  unsigned long arg)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
 	long ret = 0;
 
 	spin_lock_irq(&kcs_bmc->lock);
@@ -403,7 +401,7 @@ static long kcs_bmc_ioctl(struct file *filp, unsigned int cmd,
 
 static int kcs_bmc_release(struct inode *inode, struct file *filp)
 {
-	struct kcs_bmc *kcs_bmc = to_kcs_bmc(filp);
+	struct kcs_bmc *kcs_bmc = file_to_kcs_bmc(filp);
 
 	spin_lock_irq(&kcs_bmc->lock);
 	kcs_bmc->running = 0;
