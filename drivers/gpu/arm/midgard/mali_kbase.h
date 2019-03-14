@@ -1,5 +1,6 @@
 /*
  *
+ * (C) COPYRIGHT 2018 Telechips Inc.
  * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
@@ -702,5 +703,8 @@ int kbase_io_history_resize(struct kbase_io_history *h, u16 new_size);
 
 #endif /* CONFIG_DEBUG_FS */
 
+#ifdef CONFIG_TCC803X_CA7S
+#define CAL_GPU0_REG 0x100000
+#endif
 
 #endif
