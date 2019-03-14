@@ -504,7 +504,7 @@ int VIOC_DDICONFIG_GetViocRemap(void)
 
 #if 0
 	printk("%s: chip(%s) remap(%s)\n", __func__,
-		system_rev ? "single-run" : "mpw1",
+		system_rev ? "CS" : "ES",
 		val ? "on" : "off");
 #endif
 

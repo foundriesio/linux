@@ -28,11 +28,11 @@ config VIOC_MAP_DECOMP
 
 if VIOC_MAP_DECOMP
 config MC_WORKAROUND
-	bool"MC Work-Around until single-run chip"
+	bool"MC Work-Around until CS chip"
     depends on (ARCH_TCC899X)
     default y
     help
-        MC Work-Around until single-run chip
+        MC Work-Around until CS chip
 endif
 
 config VIOC_DTRC_DECOMP
