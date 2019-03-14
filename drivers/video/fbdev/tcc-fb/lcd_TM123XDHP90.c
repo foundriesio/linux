@@ -61,10 +61,6 @@ static unsigned int txout_sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE] = {
 };
 static struct lvds_data lvds_tm123xdhp90;
 
-#ifdef CONFIG_TCC_DISPLAY_HDMI_LVDS
-extern int tccfb_register_second_panel(struct lcd_panel *panel);
-#endif
-
 static int tm123xdhp90_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
 	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
@@ -348,12 +344,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	clk_prepare_enable(lvds_tm123xdhp90.clk);
 	of_property_read_u32(pdev->dev.of_node, "second-display", &second_display);
 #ifdef CONFIG_FB_VIOC
-	#ifdef CONFIG_TCC_DISPLAY_HDMI_LVDS
-	if(second_display)
-		tccfb_register_second_panel(&tm123xdhp90_panel);
-	else
-	#endif
-		tccfb_register_panel(&tm123xdhp90_panel);
+        tccfb_register_panel(&tm123xdhp90_panel);
 #endif
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "ports", 0, &lvds_tm123xdhp90.main_port) < 0) {

@@ -47,13 +47,7 @@ static int hdmi1920x720_panel_init(struct lcd_panel *panel, struct tcc_dp_device
 	clk_prepare_enable(hdmi_peri_clk);
 	clk_prepare_enable(hdmi_ddi_clk);
 	clk_prepare_enable(hdmi_isoip_clk);
-
-        #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-        pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
-        fb_pdata->FbPowerState = true;
-        fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
-        fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
-        #endif
+        
 	return 0;
 }
 

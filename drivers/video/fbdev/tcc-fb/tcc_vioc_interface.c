@@ -1119,7 +1119,7 @@ void tca_vioc_displayblock_disable(struct tcc_dp_device *pDisplayInfo)
 		}
 	}
 
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)\
+#if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)\
 	|| defined(CONFIG_TCC_DISPLAY_MODE_DUAL_ALL)|| defined(CONFIG_TCC_DISPLAY_LCD_CVBS)\
 	|| defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CC)
 		if(pDisplayInfo->FbUpdateType == FB_DIVIDE_UPDATE)
@@ -2833,23 +2833,11 @@ void tca_fb_attach_start(struct tccfb_info *info)
 
 	printk("%s\n", __func__);
 
-	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	if(attach_data.flag == 1)
-		return;
-	#endif
-
 	/* set the buffer for attached output */
-	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	if(0 > pmap_get_info("fb_duplicate", &pmap)){
-		printk("%s-%d : fb_duplicate allocation is failed.\n", __func__, __LINE__);
-		return;
-	}
-	#else //if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_ALL)|| defined(CONFIG_TCC_DISPLAY_LCD_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
 	if(0 > pmap_get_info("output_attach", &pmap)){
 		printk("%s-%d : output_attach allocation is failed.\n", __func__, __LINE__);
 		return;
 	}
-	#endif
 
 	if(pmap.size == 0)      {
 		printk("attach buffer cann't alloc from pmap : \n");
@@ -3012,12 +3000,7 @@ int tca_fb_attach_stop(struct tccfb_info *info)
 
 		attach_data.plugin = 0;
 	}
-
-	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	pmap_release_info("fb_duplicate");
-	#else //if defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_ALL)|| defined(CONFIG_TCC_DISPLAY_LCD_CVBS) || defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
 	pmap_release_info("output_attach");
-	#endif
 
 	memset((void*)&attach_data, 0x00, sizeof(tcc_display_attach));
 	return 0;
@@ -5443,12 +5426,6 @@ int tca_fb_init(struct tccfb_info *fbi)
 
 	clk_prepare_enable(fbi->pdata.Mdp_data.vioc_clock);
 	clk_prepare_enable(fbi->pdata.Mdp_data.ddc_clock);
-
-
-	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-	clk_prepare_enable(fbi->pdata.Sdp_data.vioc_clock);
-	clk_prepare_enable(fbi->pdata.Sdp_data.ddc_clock);
-	#endif
 
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
 	//initialize the buffers for mouse cursor

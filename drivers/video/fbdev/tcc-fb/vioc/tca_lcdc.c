@@ -107,9 +107,7 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	unsigned long val;
 
 	if (pdata->DispOrder == DD_SUB) {
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-		default_ovp = 20; // T: 1-2-3-0 :B
-#endif
+                /* Nothing */
 	}
 #if defined(CONFIG_TCC_VIOCMG)
 	else

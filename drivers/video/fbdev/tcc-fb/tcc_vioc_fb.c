@@ -259,10 +259,6 @@ static ump_dd_handle ump_wrapped_buffer[CONFIG_FB_TCC_DEVS_MAX][3];
 static struct lcd_panel *lcd_panel;
 static struct lcd_panel *hdmi_ext_panel = NULL;
 
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-static struct lcd_panel *second_lcd_pandl;
-#endif
-
 static int lcd_video_started = 0;
 
 TCC_OUTPUT_TYPE	Output_SelectMode =  TCC_OUTPUT_NONE;
@@ -281,9 +277,6 @@ extern int vta_cmd_notify_change_status(const char *);
 
 extern void tca_fb_wait_for_vsync(struct tcc_dp_device *pdata);
 extern void tca_fb_vsync_activate(struct tcc_dp_device *pdata);
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-static unsigned int output_second_attached = -1;
-#endif
 
 #if defined(CONFIG_SYNC_FB)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
@@ -480,10 +473,8 @@ void tccfb_extoutput_activate(int fb, int stage)
             #endif
         }
         else {
-    #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-            tca_fb_activate_var(ptccfb_info->map_dma, &ptccfb_info->fb->var, pdp_data);
-    #elif defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
-            BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
+    #if defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
+            	BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
             tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
     #else
             BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres * ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
@@ -509,10 +500,6 @@ void tccfb_extoutput_activate(int fb, int stage)
         #endif // CONFIG_ANDROID
     #endif // TCC_VIDEO_DISPLAY_BY_VSYNC_INT
 
-    #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-            if(output_second_attached)
-                tca_fb_attach_start(ptccfb_info);
-    #endif // CONFIG_TCC_DISPLAY_HDMI_LVDS
     #ifdef CONFIG_VOUT_USE_VSYNC_INT
             if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) == TCC_VOUT_RUNNING)
                 tcc_vout_hdmi_start(pdp_data->ddc_info.blk_num);
@@ -628,30 +615,6 @@ error_null_pointer:
         pr_err("%s cannot find data struct fbinfo:%p pdata:%p \n", __func__, ptccfb_info, pdp_data);
 }
 #endif
-
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-void tccfb_output_starter_set_attach(int start)
-{
-        struct fb_info *info;
-        struct tccfb_info *ptccfb_info =NULL;
-
-        info = registered_fb[0];
-        ptccfb_info = info->par;
-
-
-        if(start) {
-                tca_fb_attach_start(ptccfb_info);
-        }
-        else {
-
-                void tca_fb_attach_stop_no_intr(struct tccfb_info *info);
-                tca_fb_attach_stop_no_intr(ptccfb_info);
-        }
-
-        output_second_attached = start;
-}
-#endif
-
 
 unsigned int tccfb_output_get_mode(void)
 {
@@ -1109,6 +1072,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 		case TCC_LCDC_HDMI_TIMING:
 			{
+                                int skip_activate = 0;
 				struct tcc_dp_device *pdp_data = NULL;
 				struct lcdc_timimg_parms_t lcdc_timing;
 
@@ -1124,23 +1088,29 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					pdp_data = &ptccfb_info->pdata.Sdp_data;
 
         				if(pdp_data != NULL) {
-        					#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-        					tca_vioc_displayblock_disable(pdp_data);
-        					if(output_second_attached)
-        						tca_fb_attach_stop(ptccfb_info);
-        					#endif
         					tca_vioc_displayblock_timing_set(VIOC_OUTCFG_HDMI, pdp_data, &lcdc_timing);
-        					#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+        					#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+						#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
                                                 if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
+                                                        skip_activate = 1;
                                                         pr_info("%s TCC_LCDC_HDMI_TIMING DV mode\r\n", __func__);
         					        hdmi_set_activate_callback(tccfb_extoutput_activate, info->node, STAGE_FB);
                                                 } else {
                                                         /* Remove Callaback */
                                                         hdmi_set_activate_callback(NULL, 0, 0);
                                                 }
-        					#endif
-        					tccfb_extoutput_activate(info->node, STAGE_FB);
+        					#endif /* CONFIG_VIOC_DOLBY_VISION_EDR */
+                                                #if defined(CONFIG_DRM_TCC)
+                                                skip_activate = 1;
+                                                if(pdp_data->FbPowerState){
+                                        		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
+                                        	}
+                                                #endif /*CONFIG_DRM_TCC */
+                                                #endif /* CONFIG_TCC_HDMI_DRIVER_V2_0 */
 
+                                                if(!skip_activate) {
+        					        tccfb_extoutput_activate(info->node, STAGE_FB);
+                                                }
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL)
                                                                 hdmi_ext_panel->set_power(hdmi_ext_panel, 1, pdp_data);
@@ -2049,43 +2019,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 			break;
 
-                #ifdef CONFIG_TCC_DISPLAY_HDMI_LVDS
-                case TCC_LCDC_ATTACH_SET_STATE:
-                        {
-                                unsigned int attach_state;
-
-                                if(copy_from_user((void *)&attach_state, (const void *)arg, sizeof(unsigned int)))
-                                        return -EFAULT;
-
-                                if(output_second_attached != attach_state) {
-                                        if(attach_state) {
-                                                if(second_lcd_pandl){
-                                                        if(second_lcd_pandl->init)
-                                                                second_lcd_pandl->init(second_lcd_pandl, &ptccfb_info->pdata.Sdp_data);
-                                                        if(second_lcd_pandl->set_power)
-                                                                second_lcd_pandl->set_power(second_lcd_pandl, 1, &ptccfb_info->pdata.Sdp_data);
-                                                        clk_set_rate(ptccfb_info->pdata.Sdp_data.ddc_clock, second_lcd_pandl->clk_freq * second_lcd_pandl->clk_div);
-                                                        clk_prepare_enable(ptccfb_info->pdata.Sdp_data.vioc_clock);
-                                                        clk_prepare_enable(ptccfb_info->pdata.Sdp_data.ddc_clock);
-                                                        tca_fb_attach_start(ptccfb_info);
-                                                }
-                                        }
-                                        else {
-                                                tca_fb_attach_stop(ptccfb_info);
-                                                if(second_lcd_pandl){
-                                                        if(second_lcd_pandl->set_power)
-                                                                second_lcd_pandl->set_power(second_lcd_pandl, 0, &ptccfb_info->pdata.Sdp_data);
-                                                        clk_disable_unprepare(ptccfb_info->pdata.Sdp_data.vioc_clock);
-                                                        clk_disable_unprepare(ptccfb_info->pdata.Sdp_data.ddc_clock);
-                                                }
-                                        }
-                                        output_second_attached = attach_state;
-                                }
-                        }
-                        break;
-                #endif
-
-
 
 		case TCC_LCDC_GET_DISPLAY_TYPE:
 			{
@@ -2103,9 +2036,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                     display_type = 2; /* Support HDMI output */
                             #endif
 
-                            #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-                                    display_type = 2;
-                            #endif
 
 				if (copy_to_user((void *)arg, &display_type, sizeof(unsigned int)))
 					return -EFAULT;
@@ -3255,25 +3185,6 @@ struct lcd_panel *tccfb_get_hdmi_ext_panel(void)
         return hdmi_ext_panel;
 }
 EXPORT_SYMBOL(tccfb_get_hdmi_ext_panel);
-
-#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
-int tccfb_register_second_panel(struct lcd_panel *panel)
-{
-        dprintk(" %s  name:%s \n", __func__, panel->name);
-
-        second_lcd_pandl = panel;
-        return 1;
-}
-EXPORT_SYMBOL(tccfb_register_second_panel);
-
-
-struct lcd_panel *tccfb_get_second_panel(void)
-{
-        printk("tccfb_get_panel\r\n");
-        return second_lcd_pandl;
-}
-EXPORT_SYMBOL(tccfb_get_second_panel);
-#endif
 
 #ifdef CONFIG_PM
 int tcc_fb_runtime_suspend(struct device *dev)
