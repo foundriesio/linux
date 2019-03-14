@@ -16,6 +16,9 @@
  * YOU _SHOULD_ CHANGE THIS LIST TO MATCH YOUR PRODUCT AND ITS TESTING!
  */
 
+#define USB_INTERFACE_CLASS_INFO(cl) \
+	.match_flags = USB_DEVICE_ID_MATCH_INT_CLASS, \
+		.bInterfaceClass = (cl)
 static struct usb_device_id whitelist_table[] = {
 
 /* hubs are optional in OTG, but very handy ... */
@@ -44,9 +47,37 @@ static struct usb_device_id whitelist_table[] = {
 /* gadget zero, for testing */
 { USB_DEVICE(0x0525, 0xa4a0), },
 #endif
-
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+{ USB_INTERFACE_CLASS_INFO(USB_CLASS_MASS_STORAGE) },
+{ USB_INTERFACE_CLASS_INFO(USB_CLASS_HID) },
+{ USB_VENDOR_AND_INTERFACE_INFO(0x05ac, USB_CLASS_AUDIO, 0, 0) }, //apple device
+#endif
 { }	/* Terminating entry */
 };
+
+static bool match_int_class(struct usb_device_id *id, struct usb_device *udev)
+{
+	struct usb_host_config *c;
+	int num_configs, i;
+
+	/* Copy the code from generic.c */
+	c = udev->config;
+	num_configs = udev->descriptor.bNumConfigurations;
+	for (i = 0; i < num_configs; (i++, c++)) {
+		struct usb_interface_descriptor	*desc = NULL;
+
+		/* It's possible that a config has no interfaces! */
+		if (c->desc.bNumInterfaces > 0)
+			desc = &c->intf_cache[0]->altsetting->desc;
+
+		printk("%s : desc->bInterfaceClass = 0x%x / id->bInterfaceClass = 0x%x\n", __func__, desc->bInterfaceClass, id->bInterfaceClass);
+		if (desc && (desc->bInterfaceClass == id->bInterfaceClass))
+			return true;
+	}
+
+	return false;
+}
+
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 #include <linux/usb.h>
@@ -68,23 +99,22 @@ static int is_targeted(struct usb_device *dev)
 	/* OTG PET device is always targeted (see OTG 2.0 ECN 6.4.2) */
 	if ((le16_to_cpu(dev->descriptor.idVendor) == 0x1a0a &&
 	     le16_to_cpu(dev->descriptor.idProduct) == 0x0200))
-		return 1;
-
-    {
+	{
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 		if(dev->descriptor.bcdDevice & 0x1)
-        {
-           	printk("\x1b[1;33m[%s:%d] 'otg_vbus_off' is set (bcdDevice : %x)\x1b[0m\n", __func__, __LINE__,dev->descriptor.bcdDevice);
-               	dev->bus->otg_vbus_off = 1;
-        }
-        else
-        {
-        	dev->bus->otg_vbus_off = 0;
-        }
+		{
+			printk("\x1b[1;33m[%s:%d] 'otg_vbus_off' is set (bcdDevice : %x)\x1b[0m\n", __func__, __LINE__,dev->descriptor.bcdDevice);
+			dev->bus->otg_vbus_off = 1;
+		}
+		else
+		{
+			dev->bus->otg_vbus_off = 0;
+		}
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
-               return 1;
-       }
+		printk("%s:%d\n", __func__, __LINE__);
+		return 1;
+	}
 
 // For OPT Test
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
@@ -136,12 +166,14 @@ static int is_targeted(struct usb_device *dev)
 		    (id->bDeviceProtocol != dev->descriptor.bDeviceProtocol))
 			continue;
 
-#ifdef CONFIG_TCC_DWC_HS_ELECT_TSdev_emerg(&dev->dev, "Attached device (v%04x p%04x)\n",
+		if ((id->match_flags & USB_DEVICE_ID_MATCH_INT_CLASS) &&
+		    (!match_int_class(id, dev)))
+			continue;
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
         dev_emerg(&dev->dev, "Attached device (v%04x p%04x)\n",
         	le16_to_cpu(dev->descriptor.idVendor),
             le16_to_cpu(dev->descriptor.idProduct));
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
-
 
 		return 1;
 	}
@@ -150,7 +182,7 @@ static int is_targeted(struct usb_device *dev)
 
 
 	/* OTG MESSAGE: report errors here, customize to match your product */
-#if 1//def CONFIG_TCC_DWC_HS_ELECT_TST
+#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
         dev_emerg(&dev->dev, "\x1b[1;31mdevice v%04x p%04x is not supported\x1b[0m\n",
 			le16_to_cpu(dev->descriptor.idVendor),
             le16_to_cpu(dev->descriptor.idProduct));
@@ -160,6 +192,8 @@ static int is_targeted(struct usb_device *dev)
 		le16_to_cpu(dev->descriptor.idVendor),
 		le16_to_cpu(dev->descriptor.idProduct));
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
+
+
 
 	return 0;
 }

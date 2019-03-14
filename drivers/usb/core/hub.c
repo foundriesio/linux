@@ -115,6 +115,7 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 #ifdef HCI_TPL_SUPPORT
 #include "otg_whitelist.h"     /* if only the EHCI/XHCI Host */
 #endif
+int hub_level = 1;
 
 #undef MAX_TOPO_LEVEL
 #define MAX_TOPO_LEVEL 1       /* # of hub topology: 0 is rh, 1 is external hub */
@@ -264,6 +265,16 @@ End:
         return retval;
 }
 #endif
+int get_hub_level(void)
+{
+	return hub_level;
+}
+EXPORT_SYMBOL(get_hub_level);
+void set_hub_level(int level)
+{
+	hub_level = level;
+}
+EXPORT_SYMBOL(set_hub_level);
 
 #endif /* CONFIG_TCC_EH_ELECT_TST */
 
@@ -1941,12 +1952,12 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 			usb_enable_autosuspend(hdev);
 	}
 
-	if (hdev->level == MAX_TOPO_LEVEL) {
 #ifdef CONFIG_TCC_EH_ELECT_TST
+	if (hdev->level == hub_level) {
         dev_emerg(&intf->dev,
             "\x1b[1;31mUnsupported bus topology: hub nested too deep\x1b[0m\n");
 #else
-
+	if (hdev->level == MAX_TOPO_LEVEL) {
 		dev_err(&intf->dev,
 			"Unsupported bus topology: hub nested too deep\n");
 #endif /* CONFIG_TCC_EH_ELECT_TST */
@@ -4796,7 +4807,7 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 #ifdef CONFIG_TCC_EH_ELECT_TST
 	            if(r == -ETIMEDOUT)
     	            dev_info(&udev->dev,
-        	            "\x1b[1;33mDevice Not Connected/Responding (GetDescriptor timed out)\x1b[0m\n");
+						"\x1b[1;31mDevice Not Connected/Responding (GetDescriptor timed out)\x1b[0m\n");
 #endif
 
 				retval = -EMSGSIZE;

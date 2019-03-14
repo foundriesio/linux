@@ -305,6 +305,40 @@ static int debug_registers_open(struct inode *, struct file *);
 
 static ssize_t debug_output(struct file*, char __user*, size_t, loff_t*);
 static int debug_close(struct inode *, struct file *);
+#ifdef CONFIG_TCC_EH_ELECT_TST
+extern int get_hub_level(void);
+extern void set_hub_level(int level);
+static int ehci_hub_level_show(struct seq_file *s, void *unused)
+{
+	unsigned int level;
+
+	level = get_hub_level();
+	seq_printf(s, "hub level = %d\n", level);
+
+	return 0;
+}
+static int ehci_hub_level_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ehci_hub_level_show, inode->i_private);
+}
+static ssize_t ehci_hub_level_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file     *s = file->private_data;
+	struct ehci_hcd     *ehci = s->private;
+	char            buf[32];
+	int level	= 0;
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	sscanf(buf, "%d", &level);
+	set_hub_level(level);
+
+	return count;
+
+}
+#endif
 
 static int ehci_testmode_show(struct seq_file *s, void *unused)
 {
@@ -377,6 +411,16 @@ static ssize_t ehci_testmode_write(struct file *file,
 
        return count;
 }
+#ifdef CONFIG_TCC_EH_ELECT_TST
+static const struct file_operations ehci_hub_level_fops = {
+	.owner		= THIS_MODULE,
+	.open		= ehci_hub_level_open,
+	.write		= ehci_hub_level_write,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif
 
 static const struct file_operations ehci_testmode_fops = {
        .owner          = THIS_MODULE,
@@ -1122,6 +1166,12 @@ static inline void create_debug_files(struct ehci_hcd *ehci)
 	ehci->debug_dir = debugfs_create_dir(bus->bus_name, ehci_debug_root);
 	if (!ehci->debug_dir)
 		return;
+
+#ifdef CONFIG_TCC_EH_ELECT_TST
+   if (!debugfs_create_file("hub_level", S_IRUGO, ehci->debug_dir, ehci,
+                           &ehci_hub_level_fops))
+       goto file_error;
+#endif
 
     if (!debugfs_create_file("testmode", S_IRUGO, ehci->debug_dir, ehci,
  	   &ehci_testmode_fops))

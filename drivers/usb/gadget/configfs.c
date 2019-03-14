@@ -699,7 +699,11 @@ static struct config_group *config_desc_make(
 	}
 	cfg->c.bConfigurationValue = num;
 	cfg->c.MaxPower = CONFIG_USB_GADGET_VBUS_DRAW;
+	#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+	cfg->c.bmAttributes = USB_CONFIG_ATT_ONE|USB_CONFIG_ATT_SELFPOWER;
+	#else
 	cfg->c.bmAttributes = USB_CONFIG_ATT_ONE;
+	#endif
 	INIT_LIST_HEAD(&cfg->string_list);
 	INIT_LIST_HEAD(&cfg->func_list);
 
