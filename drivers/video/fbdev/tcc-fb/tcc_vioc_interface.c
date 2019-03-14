@@ -863,13 +863,18 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
                                 //pr_info("The display device uses hdmi phy clocks\r\n");
                                 hdmi_pixel_clock = 24000000;
                         } else {
-                                hdmi_pixel_clock = hdmi_get_pixel_clock();
-                                if(hdmi_pixel_clock == 0) {
-                                        hdmi_pixel_clock = 24000000;
-                                }
-                                //pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
-                                /* HDMI PHY -> Lx LCLK */
-                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+				/* HDMI PHY -> Lx LCLK */
+				if(!IS_ERR(pDisplayInfo->ddc_clock)) {
+					clk_disable_unprepare(pDisplayInfo->ddc_clock);
+	                                hdmi_pixel_clock = hdmi_get_pixel_clock();
+	                                if(hdmi_pixel_clock == 0) {
+	                                        hdmi_pixel_clock = 24000000;
+	                                }
+	                                //pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
+	                                
+	                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+					clk_prepare_enable(pDisplayInfo->ddc_clock);
+				}
                         }
 
                         /* Set LCDx clock source is Lx_LCLK */
@@ -877,16 +882,23 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
                         #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
                         /* Set DV clock source is L0_LCLK */
                         if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
-                                pr_info(" DV clk src is %d\r\n", clk_src_hdmi_phy);
+                                pr_info(" dv select %s clock\r\n", clk_src_hdmi_phy?"hdmiphy":"periclk");
+                                VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, clk_src_hdmi_phy);
+                        } else if(VIOC_DDICONFIG_GetPeriClock(pDDICONFIG, 3) && clk_src_hdmi_phy == 0) {
+                                pr_info(" dv select periclk clock!!\r\n");
                                 VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, clk_src_hdmi_phy);
                         }
                         #endif
                         if(clk_src_hdmi_phy == 1) {
                                 /* Lx LCLK -> HDMI PHY */
-                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+				if(!IS_ERR(pDisplayInfo->ddc_clock)) {
+                                        clk_disable_unprepare(pDisplayInfo->ddc_clock);
+                                	clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
+					clk_prepare_enable(pDisplayInfo->ddc_clock);
+				}
                         }
                         hdmi_pixel_clock = clk_get_rate(pDisplayInfo->ddc_clock);
-                        //pr_info("L%d_LCLK is %dHz\r\n", pDisplayInfo->DispNum, hdmi_pixel_clock);
+                        //pr_info("L%d_LCLK is %luHz\r\n", pDisplayInfo->DispNum, hdmi_pixel_clock);
                 }
         }
         #endif

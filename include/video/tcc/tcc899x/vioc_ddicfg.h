@@ -460,6 +460,7 @@ enum dac_pwdn_status {
 
 extern void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type, unsigned int set);
 extern void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type, unsigned int set);
+extern int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num);
 extern void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num, unsigned int set);
 extern void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg, unsigned int enable);
 extern void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable);

@@ -109,12 +109,12 @@
 #endif
 
 #if defined(CONFIG_SYNC_FB)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 #include <sw_sync.h>
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 #include <linux/fence.h>
-#else 
+#else
 #include <linux/dma-fence.h>
 #endif
 #include <linux/sync_file.h>
@@ -297,13 +297,13 @@ static void tcc_fd_fence_wait(struct fence *fence)
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	int err = fence_default_wait(fence, 1, 1000);
 #else
-	int err = dma_fence_default_wait(fence, 1, 1000);	
+	int err = dma_fence_default_wait(fence, 1, 1000);
 #endif
  	if (err >= 0)
  		return;
- 
+
  	if (err == -ETIME)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
  		err = sync_fence_wait(fence, 10 * MSEC_PER_SEC);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 	       err = fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
@@ -319,12 +319,12 @@ static void tcc_fb_update_regs(struct tccfb_info *tccfb, struct tcc_fenc_reg_dat
 
 	if ((regs->fence_fd > 0) && (regs->fence))	{
 		tcc_fd_fence_wait(regs->fence);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
  		sync_fence_put(regs->fence);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 		fence_put(regs->fence);
 #else
-		dma_fence_put(regs->fence);		
+		dma_fence_put(regs->fence);
 #endif
 	}
 #if defined(CONFIG_VIOC_AFBCDEC)
@@ -346,7 +346,7 @@ static void tcc_fb_update_regs(struct tccfb_info *tccfb, struct tcc_fenc_reg_dat
 
 	pm_runtime_put_sync(tccfb->fb->dev);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	sw_sync_timeline_inc(tccfb->fb_timeline, 1);
 #else
 	sw_sync_timeline_inc((struct sync_timeline *)tccfb->fb_timeline, 1);
@@ -388,11 +388,11 @@ static void ext_fence_handler(struct kthread_work *work)
 	mutex_unlock(&tccfb->ext_timeline_lock);
 
 	pr_info("ext_fence_handler");
-	
+
 	tca_fb_vsync_activate(&tccfb->pdata.Sdp_data);
 //	TCC_OUTPUT_FB_UpdateSync(Output_SelectMode);
 	for(i=save_timeline_value; i<save_timeline_fb_max; i++){
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 		sw_sync_timeline_inc(tccfb->fb_timeline, 1);
 #else
 		sw_sync_timeline_inc((struct sync_timeline *)tccfb->ext_timeline, 1);
@@ -474,12 +474,12 @@ void tccfb_extoutput_activate(int fb, int stage)
         if(stage == STAGE_OUTPUTSTARTER) {
             BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
             tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
-            
+
             #if defined(TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
             tcc_vsync_reset_all();
             #endif
         }
-        else {        
+        else {
     #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
             tca_fb_activate_var(ptccfb_info->map_dma, &ptccfb_info->fb->var, pdp_data);
     #elif defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
@@ -491,8 +491,8 @@ void tccfb_extoutput_activate(int fb, int stage)
                 tca_fb_activate_var(pdp_data->FbBaseAddr, &ptccfb_info->fb->var, pdp_data);
             else
                 tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
-    #endif//                                        
-            
+    #endif//
+
     #ifdef TCC_VIDEO_DISPLAY_BY_VSYNC_INT
             //Disable video path of main display.
             pdp_data = &ptccfb_info->pdata.Mdp_data;
@@ -508,7 +508,7 @@ void tccfb_extoutput_activate(int fb, int stage)
             }
         #endif // CONFIG_ANDROID
     #endif // TCC_VIDEO_DISPLAY_BY_VSYNC_INT
-    
+
     #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
             if(output_second_attached)
                 tca_fb_attach_start(ptccfb_info);
@@ -518,7 +518,7 @@ void tccfb_extoutput_activate(int fb, int stage)
                 tcc_vout_hdmi_start(pdp_data->ddc_info.blk_num);
     #endif // CONFIG_VOUT_USE_VSYNC_INT
         }
-    }	
+    }
 }
 EXPORT_SYMBOL(tccfb_extoutput_activate);
 
@@ -532,7 +532,7 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         unsigned int vioc_clock_value;
         #endif
-        
+
 	info = registered_fb[0];
 	ptccfb_info = info->par;
 
@@ -549,7 +549,7 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 		pdp_data = &ptccfb_info->pdata.Sdp_data;
 	else
 		goto error_null_pointer;
-	
+
 	switch(output_type)
 	{
 		case TCC_OUTPUT_HDMI:
@@ -590,7 +590,7 @@ void tccfb_output_starter_extra_data(char output_type, struct tcc_fb_extra_data 
         struct fb_info *info;
         struct tccfb_info *ptccfb_info =NULL;
         struct tcc_dp_device *pdp_data =NULL;
-        
+
         info = registered_fb[0];
         ptccfb_info = info->par;
 
@@ -602,12 +602,12 @@ void tccfb_output_starter_extra_data(char output_type, struct tcc_fb_extra_data 
                 printk("%s tcc_fb_extra_data is NULL\r\n", __func__);
                 goto error_null_pointer;
         }
-                
-        if(ptccfb_info->pdata.Mdp_data.DispDeviceType == output_type) 
+
+        if(ptccfb_info->pdata.Mdp_data.DispDeviceType == output_type)
                 pdp_data = &ptccfb_info->pdata.Mdp_data;
-        else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == output_type) 
+        else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == output_type)
                 pdp_data = &ptccfb_info->pdata.Sdp_data;
-        else  
+        else
                 goto error_null_pointer;
 
         switch(output_type)
@@ -634,7 +634,7 @@ void tccfb_output_starter_set_attach(int start)
 {
         struct fb_info *info;
         struct tccfb_info *ptccfb_info =NULL;
-        
+
         info = registered_fb[0];
         ptccfb_info = info->par;
 
@@ -643,11 +643,11 @@ void tccfb_output_starter_set_attach(int start)
                 tca_fb_attach_start(ptccfb_info);
         }
         else {
-                
+
                 void tca_fb_attach_stop_no_intr(struct tccfb_info *info);
                 tca_fb_attach_stop_no_intr(ptccfb_info);
         }
-        
+
         output_second_attached = start;
 }
 #endif
@@ -717,7 +717,7 @@ static int tccfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info
 	sprintk("%s addr:0x%x Yoffset:%d \n", __func__, base_addr, var->yoffset);
 
 	tca_fb_pan_display(var, info);
-	
+
 	return 0;
 }
 
@@ -747,10 +747,10 @@ static int tccfb_set_par(struct fb_info *info)
 		pr_info("fb rotation not support \n");
 		return -1;
 	}
-	
+
 	if(info->node == 1)
 		tccfb1_set_par(fbi, var);
-	
+
 	return 0;
 }
 
@@ -871,7 +871,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 #endif
 			mutex_lock(&ptccfb_info->output_lock);
-		
+
 			if (!ptccfb_info->output_on) {
 				ptccfb_info->fb_timeline_max++;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
@@ -886,16 +886,16 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					mutex_unlock(&ptccfb_info->output_lock);
 					break;
 				}
-#endif				
+#endif
 				var_info.reserved[2] = fd;
 				var_info.reserved[3] = 0xf;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
 #else
 				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->fb_timeline, 1);
 #endif
 				printk("lcd display update on power off state \n");
-		
+
 				if (copy_to_user((struct fb_var_screeninfo __user *)arg,
 						 &var_info,
 						 sizeof(struct fb_var_screeninfo))) {
@@ -911,7 +911,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				pr_err("fb fence sync could not allocate \n");
 				mutex_unlock(&ptccfb_info->output_lock);
 				return -ENOMEM;
-			}				
+			}
 
 			mutex_lock(&ptccfb_info->fb_timeline_lock);
 			regs->screen_cpu = ptccfb_info->screen_cpu;
@@ -929,11 +929,11 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				if (!regs->fence ) {
 					printk("failed to import fence fd\n");
 				}
-			}	
+			}
 			list_add_tail(&regs->list, &ptccfb_info->fb_update_regs_list);
 
 			ptccfb_info->fb_timeline_max++;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 			pt = sw_sync_pt_create(ptccfb_info->fb_timeline, ptccfb_info->fb_timeline_max);
 			fence = sync_fence_create("display", pt);
 			sync_fence_install(fence, fd);
@@ -950,7 +950,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			var_info.reserved[2] = fd;
 			var_info.reserved[3] = 0xf;
 			mutex_unlock(&ptccfb_info->fb_timeline_lock);
-				
+
 			#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 			queue_kthread_work(&ptccfb_info->fb_update_regs_worker,
 									&ptccfb_info->fb_update_regs_work);
@@ -958,7 +958,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			kthread_queue_work(&ptccfb_info->fb_update_regs_worker,
 									&ptccfb_info->fb_update_regs_work);
 			#endif
-				
+
 
 			mutex_unlock(&ptccfb_info->output_lock);
 
@@ -982,10 +982,10 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 				tca_fb_resize_set_value(resize_value, TCC_OUTPUT_MAX);
 
-				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT))
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
-				else if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				else if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT))
 					pdp_data = &ptccfb_info->pdata.Sdp_data;
 				//else
@@ -1014,7 +1014,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				printk("TCC_SECONDARY_OUTPUT_RESIZE_MODE_STB, mode=left:%d, right:%d, up:%d, down:%d\n",resize_value.resize_left, resize_value.resize_right, resize_value.resize_up, resize_value.resize_down);
 
 				tca_fb_resize_set_value(resize_value, TCC_OUTPUT_COMPONENT);
-				
+
 				if(ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT)
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
 				else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT)
@@ -1029,7 +1029,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 				#else
 					pr_info("TCC_SECONDARY_OUTPUT_RESIZE_MODE_STB function Not Use \n");
-				#endif//				
+				#endif//
 			}
 			break;
 		case TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE:
@@ -1045,16 +1045,16 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 				//dprintk("%s : TCC_LCDC_SET_OUTPUT_ATTACH_RESIZE_MODE, mode=%d\n", __func__, mode);
 
-				tca_fb_output_attach_resize_set_value(resize_value);	
+				tca_fb_output_attach_resize_set_value(resize_value);
 				if(ptccfb_info){
 					ret = tca_fb_attach_stop(ptccfb_info);
 					if(ret >= 0)
 						tca_fb_attach_start(ptccfb_info);
-				}			
+				}
 			}
 			break;
 
-                
+
 		#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 		case TCC_LCDC_SET_HDMI_R2YMD:
 			{
@@ -1071,9 +1071,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 						pdp_data = &ptccfb_info->pdata.Sdp_data;
 					else
 						pr_err("hdmi power on  : can't find HDMI voic display block \n");
-                        
+
 					if(pdp_data && ((r2ymd >> 16) == TCC_LCDC_SET_HDMI_R2YMD_MAGIC)) {
-						VIOC_DISP_SetR2YMD(pdp_data->ddc_info.virt_addr, (unsigned char)(r2ymd & 0xFF));   
+						VIOC_DISP_SetR2YMD(pdp_data->ddc_info.virt_addr, (unsigned char)(r2ymd & 0xFF));
 					}
 			}
 			break;
@@ -1088,7 +1088,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					pdp_data = &ptccfb_info->pdata.Mdp_data;
         				else if((ptccfb_info->pdata.Sdp_data.FbPowerState != true) || (ptccfb_info->pdata.Sdp_data.DispDeviceType ==TCC_OUTPUT_HDMI))
         					pdp_data = &ptccfb_info->pdata.Sdp_data;
-        		
+
         				if(pdp_data != NULL)
         				{
         					if(pdp_data->FbPowerState == true)
@@ -1163,16 +1163,16 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					pdp_data = &ptccfb_info->pdata.Mdp_data;
         				else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
         					pdp_data = &ptccfb_info->pdata.Sdp_data;
-                                        
+
         				if(pdp_data != NULL){
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL) {
                                                                 hdmi_ext_panel->set_power(hdmi_ext_panel, 0, &ptccfb_info->pdata.Sdp_data);
-                                                        }                                                 
+                                                        }
                                                 }
                                                 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
                                                 tca_vioc_displayblock_clock_select(pdp_data, 0);
-                                                #endif  
+                                                #endif
 
         					#if defined(CONFIG_TCC_VTA)
         					vta_cmd_notify_change_status(__func__);
@@ -1196,7 +1196,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) == TCC_VOUT_RUNNING)
         						tcc_vout_hdmi_end(pdp_data->ddc_info.blk_num);
         					#endif
-        	
+
         					tca_vioc_displayblock_disable(pdp_data);
         					tca_vioc_displayblock_powerOff(pdp_data);
         					pdp_data->DispDeviceType = TCC_OUTPUT_NONE;
@@ -1206,7 +1206,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                 }
 			}
 			break;
-			
+
 
 
 		case TCC_LCDC_HDMI_DISPLAY:
@@ -1223,7 +1223,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					pdp_data = &ptccfb_info->pdata.Sdp_data;
 				//else
 				//	pr_err("TCC_LCDC_HDMI_DISPLAY Can't find HDMI output , Main:%d, Sub :%d \n", ptccfb_info->pdata.Mdp_data.DispDeviceType, ptccfb_info->pdata.Sdp_data.DispDeviceType);
-					
+
 				if(pdp_data && Output_SelectMode == TCC_OUTPUT_HDMI)
 				{
 		#ifdef TCC_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -1249,7 +1249,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 
 				return 0;
-				
+
 			}
 			break;
 
@@ -1276,7 +1276,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					return -EFAULT;
 
 				dprintk("%s: TCC_LCDC_HDMI_MODE_SET [%d] video_M:%d Output_SelectMode:%d   \n", __func__ , uiHdmi , HDMI_video_mode, Output_SelectMode);
-				
+
 				switch(uiHdmi)
 				{
 					case TCC_HDMI_SUSEPNED:
@@ -1305,7 +1305,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
  			}
 			break;
-			
+
 
 		case TCC_LCDC_HDMI_GET_SIZE:
 			{
@@ -1344,33 +1344,33 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                         {
                                 struct tcc_dp_device *pdp_data = NULL;
                                 struct tcc_fb_extra_data tcc_fb_extra_data;
-                        
+
                                 dprintk(" TCC_LCDC_HDMI_EXTRA_SET: \n");
-                        
+
                                 if (copy_from_user((void*)&tcc_fb_extra_data, (const void*)arg, sizeof(struct tcc_fb_extra_data)))
                                         return -EFAULT;
-                        
+
                                 if(ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
                                         pdp_data = &ptccfb_info->pdata.Mdp_data;
                                 else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
                                         pdp_data = &ptccfb_info->pdata.Sdp_data;
                                 else
                                         pr_err("hdmi timing setting : can't find HDMI voic display block \n");
-                        
+
                                 if(pdp_data != NULL) {
                                         tca_vioc_displayblock_extra_set(pdp_data, &tcc_fb_extra_data);
                                 }
                         }
                         break;
                 #endif
-                        
+
 	case TCC_HDMI_FBIOPUT_VSCREENINFO:
 		{
 			unsigned int BaseAddr = 0;
 			external_fbioput_vscreeninfo sc_info;
 			struct fb_var_screeninfo var;
 			struct tcc_dp_device *pdp_data = &ptccfb_info->pdata.Sdp_data;
-					
+
 			if(pdp_data == NULL)
 				return 0;
 
@@ -1388,10 +1388,10 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			var.xres_virtual= sc_info.xres_virtual;
 		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
 			tca_fb_activate_var(BaseAddr,  &var, pdp_data);
-			
+
 			if(pdp_data->FbPowerState)
 				tca_fb_vsync_activate(pdp_data);
-		
+
 			#if defined(CONFIG_SYNC_FB)
 			mutex_lock(&ptccfb_info->ext_timeline_lock);
 			{
@@ -1407,7 +1407,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 #else
 				fd = get_unused_fd_flags(0);
 #endif
-				
+
 				if(fd< 0){
 					pr_err(" fb fence sync get fd error : %d \n", fd);
 					break;
@@ -1431,7 +1431,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 #endif
 				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
 #else
 				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
@@ -1439,12 +1439,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 			}
 //			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);		
+//									&ptccfb_info->ext_update_regs_work);
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
-			
+
 			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
 				return -EFAULT;
-			
+
 			#endif
 		}
 		break;
@@ -1455,7 +1455,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				external_fbioput_vscreeninfo sc_info;
 				struct tcc_dp_device *pdp_data = NULL;
 				pdp_data = &ptccfb_info->pdata.Sdp_data;
-				
+
 				if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
 					return -EFAULT;
 
@@ -1463,7 +1463,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				printk("Base address : 0x%08x, width:%d, height:%d \n", BaseAddr, sc_info.width, sc_info.height);
 		}
 		break;
-		
+
 	case TCC_CVBS_FBIOPUT_VSCREENINFO:
 		{
 			unsigned int BaseAddr = 0;
@@ -1514,7 +1514,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				fd = get_unused_fd();
 #else
 				fd = get_unused_fd_flags(0);
-#endif				
+#endif
 
 				if(fd< 0){
 					pr_err(" fb fence sync get fd error : %d \n", fd);
@@ -1539,7 +1539,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 #endif
 				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
 #else
 				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
@@ -1547,12 +1547,12 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 			}
 //			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);		
+//									&ptccfb_info->ext_update_regs_work);
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
-			
+
 			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
 				return -EFAULT;
-			
+
 			#endif
 		}
 		break;
@@ -1563,7 +1563,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				external_fbioput_vscreeninfo sc_info;
 				struct fb_var_screeninfo var;
 				struct tcc_dp_device *pdp_data = NULL;
-	
+
 				pdp_data = &ptccfb_info->pdata.Sdp_data;
 				if(pdp_data == NULL) {
 					pr_err("%s: pdp_data is null\n", __func__);
@@ -1574,22 +1574,22 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 				if(!pdp_data->FbPowerState)
 					return 0;
-	
+
 				if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
 					return -EFAULT;
-	
+
 				var.xres = sc_info.width;
 				var.yres = sc_info.height;
 				var.bits_per_pixel = sc_info.bits_per_pixel;
 				var.yoffset = sc_info.offset;
-	
+
 				BaseAddr = ptccfb_info->map_dma + sc_info.offset;
 				//pr_err(" #####TCC_COMPONENT_FBIOPUT_VSCREENINFO\n");
 			tca_fb_activate_var(BaseAddr,  &var, pdp_data);
-			
+
 			if(pdp_data->FbPowerState)
 				tca_fb_vsync_activate(pdp_data);
-		
+
 			#if defined(CONFIG_SYNC_FB)
 			mutex_lock(&ptccfb_info->ext_timeline_lock);
 			{
@@ -1598,13 +1598,13 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				struct sync_fence *fence;
 #endif
 				int fd;
-				
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 				fd = get_unused_fd();
 #else
 				fd = get_unused_fd_flags(0);
-#endif				
+#endif
 
  				if(fd< 0){
  					pr_err(" fb fence sync get fd error : %d \n", fd);
@@ -1629,7 +1629,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 #endif
 				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)		
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
 #else
 				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
@@ -1637,17 +1637,17 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 			}
 //			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);		
+//									&ptccfb_info->ext_update_regs_work);
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
-			
+
 			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
 				return -EFAULT;
-			
+
 			#endif
 		}
 		break;
 
-		
+
 		case TCC_LCDC_COMPOSITE_CHECK:
 			{
 				unsigned int composite_detect = 1;
@@ -1660,7 +1660,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					return -EFAULT;
 			}
 			break;
-			
+
 		case TCC_LCDC_COMPOSITE_MODE_SET:
 			{
 				struct tcc_dp_device *pdp_data = NULL;
@@ -1768,7 +1768,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					return -EFAULT;
 			}
 			break;
-			
+
 		case TCC_LCDC_COMPONENT_MODE_SET:
 			{
 				struct tcc_dp_device *pdp_data = NULL;
@@ -1780,7 +1780,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 				if(component_mode == LCDC_COMPONENT_UI_MODE)
 				{
-				
+
 				#if defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_STB)
 					//Don't change output mode.
 				#else
@@ -1878,14 +1878,14 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			{
 				unsigned int onOff;
 				struct tcc_dp_device *pdp_data = NULL;
-			
+
 				if(copy_from_user((void *)&onOff, (const void *)arg, sizeof(unsigned int)))
 					return -EFAULT;
 
-				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
-				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Sdp_data;
 
@@ -1904,21 +1904,21 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				#endif
 			}
 			break;
-			
+
 		case TCC_LCDC_MOUSE_SHOW:
 			{
 				unsigned int enable;
 				struct tcc_dp_device *pdp_data = NULL;
 
-				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
-				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Sdp_data;
 				else
 					pr_err("TCC_LCDC_MOUSE_SHOW Can't find output , Main:%d, Sub :%d \n", ptccfb_info->pdata.Mdp_data.DispDeviceType, ptccfb_info->pdata.Sdp_data.DispDeviceType);
-				
+
 				if(copy_from_user((void *)&enable, (const void *)arg, sizeof(unsigned int)))
 					return -EFAULT;
 
@@ -1938,10 +1938,10 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				if (copy_from_user((void *)&mouse, (const void *)arg, sizeof(tcc_mouse)))
 					return -EFAULT;
 
-				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
-				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI) 
+				else	 if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  || (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) )
 					pdp_data = &ptccfb_info->pdata.Sdp_data;
 				else
@@ -1994,11 +1994,11 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                         default:
                                                                 break;
                                                 }
-                                        }  
-                                                        
+                                        }
+
                                         if(pdp_data != NULL) {
                                                 tca_fb_divide_set_mode(pdp_data, true, mode);
-                                                
+
                                                 if(pdp_data->FbPowerState) {
                                                         tca_fb_activate_var(pdp_data->FbBaseAddr, &ptccfb_info->fb->var, pdp_data);
                                                 }
@@ -2008,7 +2008,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                 }
 			}
 			break;
-			
+
 		case TCC_LCDC_3D_UI_DISABLE:
 			{
 				struct tcc_dp_device *pdp_data = NULL;
@@ -2034,11 +2034,11 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                 default:
                                                         break;
                                               }
-                                        }  
-                                                        
+                                        }
+
         				if(pdp_data != NULL) {
         					tca_fb_divide_set_mode(pdp_data, false, 0);
-                                                
+
                                                 if(pdp_data->FbPowerState) {
                                                         tca_fb_activate_var(pdp_data->FbBaseAddr, &ptccfb_info->fb->var, pdp_data);
                                                 }
@@ -2055,9 +2055,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                 unsigned int attach_state;
 
                                 if(copy_from_user((void *)&attach_state, (const void *)arg, sizeof(unsigned int)))
-                                        return -EFAULT;  
-                                
-                                if(output_second_attached != attach_state) {                                       
+                                        return -EFAULT;
+
+                                if(output_second_attached != attach_state) {
                                         if(attach_state) {
                                                 if(second_lcd_pandl){
                                                         if(second_lcd_pandl->init)
@@ -2077,16 +2077,16 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                                 second_lcd_pandl->set_power(second_lcd_pandl, 0, &ptccfb_info->pdata.Sdp_data);
                                                         clk_disable_unprepare(ptccfb_info->pdata.Sdp_data.vioc_clock);
                                                         clk_disable_unprepare(ptccfb_info->pdata.Sdp_data.ddc_clock);
-                                                }                                                 
+                                                }
                                         }
                                         output_second_attached = attach_state;
                                 }
                         }
                         break;
                 #endif
-			
-			
-			
+
+
+
 		case TCC_LCDC_GET_DISPLAY_TYPE:
 			{
 				unsigned int display_type = 0; /* Support HDMI/CVBS/COMPONENT output */
@@ -2106,7 +2106,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                             #if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
                                     display_type = 2;
                             #endif
-                                
+
 				if (copy_to_user((void *)arg, &display_type, sizeof(unsigned int)))
 					return -EFAULT;
 
@@ -2145,7 +2145,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		case TCC_LCDC_DISPLAY_UPDATE:
 			{
 				struct tcc_lcdc_image_update ImageInfo;
-				
+
 				if (copy_from_user((void *)&ImageInfo, (const void *)arg, sizeof(struct tcc_lcdc_image_update))){
 					return -EFAULT;
 				}
@@ -2174,7 +2174,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				if (copy_from_user((void *)&type, (const void *)arg, sizeof(unsigned int ))) {
 					return -EFAULT;
 				}
-				
+
 				if(type == DD_MAIN)
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
 				else
@@ -2182,7 +2182,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				#if defined(CONFIG_SYNC_FB)
 				if(pdp_data)
 				{
-		
+
 					if(pdp_data->rdma_info[RDMA_FB].virt_addr)
 					{
 						int sc_num = 0;
@@ -2200,7 +2200,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 						#else
 						VIOC_RDMA_SetImageAlpha(pdp_data->rdma_info[RDMA_FB].virt_addr, 0x0, 0x0);
 						#endif//
-						#else // 
+						#else //
 						VIOC_RDMA_SetImageSize(pdp_data->rdma_info[RDMA_FB].virt_addr, 0, 0);
 
 						if(pscale_addr){
@@ -2216,7 +2216,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 			break;
 
-			
+
 	// VSYNC PART
 		case TCC_LCDC_REFER_VSYNC_ENABLE:
 			tca_vsync_enable(ptccfb_info, 1);
@@ -2304,17 +2304,17 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			#ifdef CONFIG_ARCH_TCC803X
 			if(pdp_data)
 			{
-				if(pdp_data->ddc_info.virt_addr) 
+				if(pdp_data->ddc_info.virt_addr)
 				{
 					pr_info("lcdc:%d contrast:%d , brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
-					VIOC_DISP_SetColorEnhancement(pdp_data->ddc_info.virt_addr, 
+					VIOC_DISP_SetColorEnhancement(pdp_data->ddc_info.virt_addr,
 						(signed char)params.contrast, (signed char)params.brightness, (signed char)params.hue);
 				}
 			}
 			#endif
 		}
 		break;
-		
+
 	default:
 		dprintk("ioctl: Unknown [%d/0x%X]", cmd, cmd);
 		break;
@@ -2405,16 +2405,16 @@ static int tccfb_setcolreg(unsigned regno,
  */
 #ifdef CONFIG_PM
 static int tcc_fb_enable(struct fb_info *info)
-{		
+{
 	int ret = 0;
-	struct tccfb_info *fbi =(struct tccfb_info *) info->par;		
+	struct tccfb_info *fbi =(struct tccfb_info *) info->par;
 
 	mutex_lock(&fbi->output_lock);
 	if(fbi->output_on) {
 		ret = -EBUSY;
 		goto err;
 	}
-	
+
 	fbi->output_on = true;
 	pm_runtime_get_sync(fbi->dev);
 
@@ -2430,7 +2430,7 @@ static int tcc_fb_disable(struct fb_info *info)
 
 	mutex_lock(&fbi->output_lock);
 
-#if defined(CONFIG_SYNC_FB)	
+#if defined(CONFIG_SYNC_FB)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	flush_kthread_worker(&fbi->fb_update_regs_worker);
 	flush_kthread_worker(&fbi->ext_update_regs_worker);
@@ -2444,9 +2444,9 @@ static int tcc_fb_disable(struct fb_info *info)
 		goto err;
 	}
 	fbi->output_on = false;
-	pm_runtime_put_sync(fbi->dev);	
-	
-err:	
+	pm_runtime_put_sync(fbi->dev);
+
+err:
 	mutex_unlock(&fbi->output_lock);
 	return ret;
 }
@@ -2746,7 +2746,7 @@ static struct fb_ops tccfb_ops = {
 	.fb_pan_display = tccfb_pan_display,
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	.fb_dmabuf_export = tccfb_dmabuf_export,
-#endif	
+#endif
 };
 
 /*
@@ -2869,13 +2869,13 @@ static int tcc_vioc_set_rdma_arbitor(struct device_node *np)
 	int num_of_arbitor;
 	int ret=0;
 	int i;
-	
+
 	if (of_property_read_u32(np, "arbitor_num", &num_of_arbitor)){
 	   pr_err( "could not find num_of_arbitor nubmer\n");
 	   ret = -ENODEV;
 	   return ret;
 	}
-	
+
 	for(i = 0; i < num_of_arbitor; i++) {
 		virt_addr = of_iomap(np, is_VIOC_REMAP ? (i + num_of_arbitor) : i);
 		*(volatile uint *)virt_addr = ((1<<31) | (0<<28) | (2<<16) | (0<<12) | (10<<0));
@@ -2889,9 +2889,9 @@ static int tcc_dp_dt_parse_data(struct tccfb_info *info)
 	int ret = 0;
 	struct device_node *main_np, *extend_np;
 	struct device_node *rdma_arbitor_np=NULL;
-		
+
 	if (info->dev->of_node) {
-		// Get default display number.					 
+		// Get default display number.
 		if (of_property_read_u32(info->dev->of_node, "telechips,fbdisplay_num", &info->pdata.lcdc_number)){
 			pr_err( "could not find  telechips,fbdisplay_nubmer\n");
 			ret = -ENODEV;
@@ -2915,7 +2915,7 @@ static int tcc_dp_dt_parse_data(struct tccfb_info *info)
 		tcc_vioc_display_dt_parse(main_np, &info->pdata.Mdp_data);
 		info->pdata.lcdc_number = info->pdata.Mdp_data.DispNum;
 
-		
+
 		// Sub displayblock
 		tcc_vioc_display_dt_parse(extend_np, &info->pdata.Sdp_data);
 
@@ -2931,7 +2931,7 @@ static int tcc_dp_dt_parse_data(struct tccfb_info *info)
 	return ret;
 
 }
-	
+
 static char tccfb_driver_name[]="tccfb";
 static int tccfb_probe(struct platform_device *pdev)
 {
@@ -2947,9 +2947,9 @@ static int tccfb_probe(struct platform_device *pdev)
 	}
 
 // 	const struct of_device_id *of_id = of_match_device(tccfb_of_match, &pdev->dev);
-		
+
 	pr_info("\x1b[1;38m   LCD panel is %s %s %d x %d \x1b[0m \n", lcd_panel->manufacturer, lcd_panel->name, lcd_panel->xres, lcd_panel->yres);
-	
+
     screen_width      = lcd_panel->xres;
     screen_height     = lcd_panel->yres;
 
@@ -2973,16 +2973,16 @@ static int tccfb_probe(struct platform_device *pdev)
 	{
 		struct tccfb_info *info_reg;
 		struct fb_info *fbinfo_reg;
-		
+
 		fbinfo_reg = framebuffer_alloc(sizeof(struct tccfb_info), &pdev->dev);
 		info_reg = fbinfo_reg->par;
 		info_reg->fb = fbinfo_reg;
 		info_reg->dev = &pdev->dev;
-		
+
 		if(plane ==0){
 			info = info_reg;
 			fbinfo = fbinfo_reg;
-			
+
 		}
 		platform_set_drvdata(pdev, info_reg);
 
@@ -2999,7 +2999,7 @@ static int tccfb_probe(struct platform_device *pdev)
 		fbinfo_reg->fix.accel			= FB_ACCEL_NONE;
 		fbinfo_reg->fix.visual = FB_VISUAL_TRUECOLOR;
 		fbinfo_reg->fix.type = FB_TYPE_PACKED_PIXELS;
-		
+
 		fbinfo_reg->var.nonstd			= 0;
 		fbinfo_reg->var.activate		= FB_ACTIVATE_VBL;		// 160614 inbest
 		fbinfo_reg->var.accel_flags		= 0;
@@ -3037,7 +3037,7 @@ static int tccfb_probe(struct platform_device *pdev)
 		info_reg->pdata.Mdp_data.FbPowerState = true;
 		info_reg->pdata.Mdp_data.FbUpdateType = FB_RDMA_UPDATE;
 		info_reg->pdata.Mdp_data.DispDeviceType = TCC_OUTPUT_LCD;
-		
+
 		tccfb_check_var(&fbinfo_reg->var, fbinfo_reg);
 
 		/* Initialize video memory */
@@ -3077,12 +3077,12 @@ static int tccfb_probe(struct platform_device *pdev)
 		spin_lock_init(&info_reg->spin_lockDisp);
 		pr_info("fb%d: %s frame buffer device info->dev:0x%p  \n", fbinfo->node, fbinfo->fix.id, info->dev);
 	}
-	
+
 	#ifdef CONFIG_PM
-	pm_runtime_set_active(info->dev);	
-	pm_runtime_enable(info->dev);  
-	pm_runtime_get_noresume(info->dev);  //increase usage_count 
-	#endif		
+	pm_runtime_set_active(info->dev);
+	pm_runtime_enable(info->dev);
+	pm_runtime_get_noresume(info->dev);  //increase usage_count
+	#endif
 
 	mutex_init(&info->output_lock);
 
@@ -3096,10 +3096,10 @@ static int tccfb_probe(struct platform_device *pdev)
 	init_waitqueue_head(&info->pdata.Sdp_data.pandisp_sync.waitq);
 
 	info->pdata.Sdp_data.disp_dd_sync.state = 1;
-	init_waitqueue_head(&info->pdata.Sdp_data.disp_dd_sync.waitq);	
-		
+	init_waitqueue_head(&info->pdata.Sdp_data.disp_dd_sync.waitq);
+
 	INIT_WORK(&info->vsync_work, send_vsync_event);
-	
+
 #if defined(CONFIG_SYNC_FB)
 	INIT_LIST_HEAD(&info->fb_update_regs_list);
 	mutex_init(&info->fb_timeline_lock);
@@ -3156,7 +3156,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	#else
 	kthread_init_work(&info->ext_update_regs_work, ext_fence_handler);
 	#endif
-	
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	info->ext_timeline = sw_sync_timeline_create("tccfb-ext");
 	info->ext_timeline_max	=  0;
@@ -3192,7 +3192,7 @@ free_palette:
         devm_kfree(&pdev->dev, fbinfo->pseudo_palette);
 free_framebuffer:
         framebuffer_release(fbinfo);
-		
+
 free_video_memory:
 	tccfb_unmap_video_memory(info);
 	pr_err("TCC89xx fb init failed.\n");
@@ -3278,8 +3278,8 @@ EXPORT_SYMBOL(tccfb_get_second_panel);
 #ifdef CONFIG_PM
 int tcc_fb_runtime_suspend(struct device *dev)
 {
-	printk(" %s \n",__func__);   
-	
+	printk(" %s \n",__func__);
+
 	tca_fb_suspend(dev, lcd_panel);
 
 	return 0;
@@ -3298,7 +3298,7 @@ int tcc_fb_runtime_resume(struct device *dev)
 /* suspend and resume support for the lcd controller */
 static int tccfb_suspend(struct device *dev)
 {
-	printk(" %s \n",__func__);   
+	printk(" %s \n",__func__);
 #ifndef CONFIG_PM
 	tca_fb_suspend(dev, lcd_panel);
 #endif//
@@ -3309,7 +3309,7 @@ static int tccfb_resume(struct device *dev)
 {
 #ifndef CONFIG_PM
 	tca_fb_resume(dev, lcd_panel);
-#endif//	
+#endif//
 	return 0;
 }
 static int tccfb_thaw(struct device *dev)

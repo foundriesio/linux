@@ -159,6 +159,15 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 }
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
+{
+        unsigned int val;
+
+        val = __raw_readl(reg + DDI_PWDN);
+        val >>= (PWDN_L0S_SHIFT + num);
+        return (val & 1)?1:0;
+}
+
 void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 				 unsigned int set)
 {

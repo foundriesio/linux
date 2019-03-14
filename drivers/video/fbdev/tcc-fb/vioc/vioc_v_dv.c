@@ -349,12 +349,12 @@ void VIOC_V_DV_Power(char on)
 	#endif
 
 		if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
-			//VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 1);
+			/* nothing to do */
 		}
 		else
 		{
 			// DV_IN :: 0x1200A128(PWDN)/0x1200A12C(SW-Reset)
-	#ifdef DV_CLK_CTRL
+		#ifdef DV_CLK_CTRL
 			if ( DV_PATH_VIN_DISP & vioc_get_path_type() )
 			{
 				if(vioc_v_dv_check_hdmi_out())
@@ -371,8 +371,7 @@ void VIOC_V_DV_Power(char on)
 				if (peri_lcd0_clk)
 					clk_prepare_enable(peri_lcd0_clk);
 			}
-	#endif
-			VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 0);
+		#endif
 		}
 #endif
 
