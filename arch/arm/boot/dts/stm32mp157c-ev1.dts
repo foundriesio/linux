@@ -330,7 +330,7 @@
 		compatible = "raydium,rm68200";
 		reg = <0>;
 		reset-gpios = <&gpiof 15 GPIO_ACTIVE_LOW>;
-		power-supply = <&v1v8>;
+		power-supply = <&v3v3>;
 		backlight = <&panel_backlight>;
 		status = "okay";
 
