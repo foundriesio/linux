@@ -532,7 +532,8 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                     mInfo_Hdmi.out_type = vioc_get_out_type();
                     mInfo_Hdmi.width = Hactive;
                     mInfo_Hdmi.height = Vactive;
-                    mInfo_Hdmi.dv_vsvdb_size = vioc_v_dv_get_vsvdb((unsigned char*)mInfo_Hdmi.dv_vsvdb);
+					mInfo_Hdmi.dv_vsvdb_size = vioc_v_dv_get_vsvdb((unsigned char*)mInfo_Hdmi.dv_vsvdb);
+					mInfo_Hdmi.dv_ll_mode = vioc_v_dv_get_mode();
                     //printk("@@@@@@@@@@@@@@@@@@@@@@ hdmi info DV_path(%d)/out(%d), %d x %d \n", mInfo_Hdmi.dv_path, mInfo_Hdmi.out_type, mInfo_Hdmi.width, mInfo_Hdmi.height);
                 }
                 else
@@ -557,6 +558,21 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
         }
         break;
+
+	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+		case TCC_SET_HDMI_OUT_TYPE:
+		{
+			unsigned int out_type;
+
+			if(copy_from_user(&out_type, (const void*)arg, sizeof(unsigned int))){
+                ret = -EFAULT;
+            }
+			else{
+				vioc_set_out_type(out_type);
+			}
+		}
+		break;
+	#endif
 
 #ifdef USE_UMP_RESERVED_SW_PMAP
 		case TCC_REGISTER_UMP_SW_INFO:

@@ -64,7 +64,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 		VIOC_V_DV_SetInterruptEnable(pDV_Cfg,
 					     (mask & VIOC_V_DV_INT_MASK), 1);
 
-		dprintk_dv_sequence("### V_DV INT On \n");
+		//dprintk_dv_sequence("### V_DV INT On \n");
 	}
 	break;
 #endif
@@ -204,7 +204,7 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 					     (mask & VIOC_V_DV_INT_MASK), 0);
 		if (!(__raw_readl(pDV_Cfg) & (mask & VIOC_V_DV_INT_MASK)))
 			do_irq_mask = 0;
-		dprintk_dv_sequence("### V_DV INT Off \n");
+		//dprintk_dv_sequence("### V_DV INT Off \n");
 	}
 	break;
 #endif

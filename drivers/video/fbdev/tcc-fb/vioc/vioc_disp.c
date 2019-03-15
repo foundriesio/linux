@@ -82,7 +82,7 @@ void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf)
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
 	{
-		if(vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422)
+		if((vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422) && ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type())))
 			swapbf = 0;
 	}
 #endif
@@ -109,7 +109,7 @@ void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
 	{
-		if(vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422)
+		if((vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422) && ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type())))
 			swapaf = 0;
 	}
 #endif
@@ -513,7 +513,7 @@ void VIOC_DISP_SetPXDW(volatile void __iomem *reg, unsigned char PXDW)
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
     {
-		if(vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422 && vioc_v_dv_check_hdmi_out())
+		if(vioc_v_dv_get_output_color_format() == DV_OUT_FMT_YUV422 && ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type())))//vioc_v_dv_check_hdmi_out())
 			PXDW = VIOC_PXDW_FMT_30_RGB101010;
 	}
 #endif
@@ -541,7 +541,7 @@ void VIOC_DISP_SetR2Y(volatile void __iomem *reg, unsigned char R2Y)
 	    && ( DV_PATH_VIN_DISP & vioc_get_path_type() )
     )
     {
-		R2Y = 0;
+		R2Y = 0; // DV_IN output is YUV444
 	}
 #endif
 
@@ -569,7 +569,7 @@ void VIOC_DISP_SetY2R(volatile void __iomem *reg, unsigned char Y2R)
     )
     {
 		if(vioc_v_dv_get_output_color_format() == DV_OUT_FMT_RGB)
-			Y2R = 1;
+			Y2R = 1; // DV_IN output is YUV444
 		else
 			Y2R = 0;
 	}
@@ -642,7 +642,7 @@ void VIOC_DISP_TurnOn(volatile void __iomem *reg)
 			VIOC_DISP_GetSize(reg, &main_wd, &main_ht);
 
 			VIOC_DV_IN_Configure(main_wd, main_ht, FMT_DV_IN_RGB444_24BIT,
-					(/*(DV_PATH_VIN_DISP & vioc_get_path_type()) &&*/ (DOVI == vioc_get_out_type())) ? DV_IN_ON : DV_IN_OFF);
+					(/*(DV_PATH_VIN_DISP & vioc_get_path_type()) &&*/ ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type()))) ? DV_IN_ON : DV_IN_OFF);
 			VIOC_DV_IN_SetEnable(DV_IN_ON);
 		}
 	}
@@ -685,7 +685,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 	value |= (0x0 << DCTRL_LEN_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#if defined(CONFIG_TCC_DV_IN) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (( VIOC_CONFIG_DV_GET_EDR_PATH() || vioc_v_dv_get_stage() != DV_OFF )
 	    && ( reg == VIOC_DISP_GetAddress(0) )
     )

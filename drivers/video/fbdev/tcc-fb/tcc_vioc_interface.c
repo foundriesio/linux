@@ -334,9 +334,11 @@ unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer)
 		return VIOC_SCALER3;
 	else if(Output == TCC_OUTPUT_HDMI || Output == TCC_OUTPUT_COMPOSITE || Output == TCC_OUTPUT_COMPONENT)
 	{
-		if (Layer == RDMA_VIDEO)
+		if (Layer == RDMA_FB)
+			return VIOC_SCALER2;
+		else if (Layer == RDMA_VIDEO)
 			return VIOC_SCALER1;
-		else
+		else // RDMA_VIDEO_SUB
 			return VIOC_SCALER3;
 	}
 #else
@@ -646,9 +648,9 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		unsigned int status = 0;
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
-
-		if(status & INT_PEND_R_TX_VE_MASK) {
-			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_R_TX_VE_MASK);
+		
+		if(status & DV_FB_INT) {
+			VIOC_V_DV_ClearInterrupt(pDV_Cfg, DV_FB_INT);
 
 			if (fbdev->active_vsync)
 				schedule_work(&fbdev->vsync_work);
@@ -749,9 +751,9 @@ static void _tca_vioc_intr_onoff(char on, int irq, char lcdc_num)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH() && lcdc_num == 0)
 	{
 		if(on)
-			vioc_intr_enable(irq, VIOC_INTR_V_DV, 1<<RISE_HDMITX_VDE);
+			vioc_intr_enable(irq, VIOC_INTR_V_DV, DV_FB_INT);
 		else
-			vioc_intr_disable(irq, VIOC_INTR_V_DV, 1<<RISE_HDMITX_VDE);
+			vioc_intr_disable(irq, VIOC_INTR_V_DV, DV_FB_INT);
 	}
 	else
 #endif
@@ -1319,10 +1321,11 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	{
 		if(mode->dv_reg_phyaddr)
 		{
-			pr_info("#### DV EDR Mode(%d)!!! format(%d) phy(0x%x) noYUV422(%d) vsvdb(0x%x)\n", mode->dv_ll_mode, mode->format, mode->dv_reg_phyaddr, mode->dv_noYUV422_SDR, mode->dv_vsvdb_size);
+			pr_info("#### DV EDR Mode!!! format(%d) phy(0x%x) noYUV422(%d) vsvdb(0x%x) LL(%d)\n",
+						mode->format, mode->dv_reg_phyaddr, mode->dv_noYUV422_SDR, mode->dv_vsvdb_size, mode->dv_ll_mode);
 			voic_v_dv_set_hdmi_timming(mode, 1, mode->dv_hdmi_clk_khz);
 			vioc_v_dv_set_stage(DV_STANDBY);
-			vioc_v_dv_set_mode(mode->dv_ll_mode > 0 ? DV_LL : DV_STD, mode->dv_vsvdb, mode->dv_vsvdb_size);
+			vioc_v_dv_set_mode(mode->dv_ll_mode, (unsigned char*)mode->dv_vsvdb, mode->dv_vsvdb_size);
 			VIOC_V_DV_Power(1);
 		}
 		else
@@ -1429,9 +1432,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	#endif
 
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 	VIOC_DISP_SetSwapbf(pDISP, 0);
-#endif
 	VIOC_DISP_SetSize (pDISP, width, height);
 	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
 
@@ -2933,11 +2934,11 @@ void tca_fb_attach_start(struct tccfb_info *info)
 	else
 		VIOC_WDMA_SetImageUpdate(pWDMA);
 
-#if defined(CONFIG_TCC_DV_IN)&& defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#if defined(CONFIG_TCC_DV_IN) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH() && (DV_PATH_VIN_WDMA & vioc_get_path_type()) && !(DV_PATH_VIN_DISP & vioc_get_path_type()))
 	{
 		VIOC_DV_IN_Configure(main_wd, main_ht, FMT_DV_IN_RGB444_24BIT,
-				(/*(DV_PATH_VIN_DISP & vioc_get_path_type()) &&*/ (DOVI == vioc_get_out_type())) ? DV_IN_ON : DV_IN_OFF);
+				(/*(DV_PATH_VIN_DISP & vioc_get_path_type()) &&*/ ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type()))) ? DV_IN_ON : DV_IN_OFF);
 		VIOC_DV_IN_SetEnable(DV_IN_ON);
 
 		printk("### DV-ATTACH : %d => %dx%d -> %dx%d, 0x%x\n",
@@ -3624,7 +3625,7 @@ int tca_edr_path_configure(void)
 
 		vioc_v_dv_prog(dv_md_phyaddr, dv_reg_phyaddr, ATTR_SDR, 0);
 		bUse_GAlpha = 1;
-		pr_info("### V_DV On :: (0x%x - 0x%x)\n", dv_reg_phyaddr, dv_md_phyaddr);
+		pr_info("### V_DV 1st Configuration :: (0x%x - 0x%x)\n", dv_reg_phyaddr, dv_md_phyaddr);
 		vioc_v_dv_set_stage(DV_RUN);
 	}
 	else
@@ -3664,7 +3665,7 @@ int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc
 
 		if(Src_ImageInfo->private_data.dolbyVision_info.el_frame_width == 0)
 		{
-			printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+			printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 					0, 0, Src_ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], Src_ImageInfo->private_data.optional_info[VID_OPT_TIMESTAMP],
 					Src_ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH],
 					Src_ImageInfo->addr0, //Src_ImageInfo->private_data.offset[0],
@@ -3675,7 +3676,7 @@ int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc
 					Src_ImageInfo->private_data.dolbyVision_info.el_offset[0],
 					Src_ImageInfo->private_data.dolbyVision_info.el_buffer_width, Src_ImageInfo->private_data.dolbyVision_info.el_buffer_height,
 					Src_ImageInfo->private_data.dolbyVision_info.el_frame_width, Src_ImageInfo->private_data.dolbyVision_info.el_frame_height,
-					Src_ImageInfo->private_data.dolbyVision_info.osd_addr,
+					Src_ImageInfo->private_data.dolbyVision_info.osd_addr[0], Src_ImageInfo->private_data.dolbyVision_info.osd_addr[1],
 					Src_ImageInfo->private_data.dolbyVision_info.reg_addr, Src_ImageInfo->private_data.dolbyVision_info.md_hdmi_addr);
 		}
 		*ratio = ((Src_ImageInfo->crop_right - Src_ImageInfo->crop_left)/Src_ImageInfo->private_data.dolbyVision_info.el_frame_width);
@@ -3707,7 +3708,7 @@ int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc
 		//	El_ImageInfo->fmt = TCC_LCDC_IMG_FMT_YUV420SP;
 
 		DV_PROC_CHECK = DV_DUAL_MODE;
-		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);
+		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);			
 	}
 
 	return 1;
@@ -3721,9 +3722,9 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 	unsigned int iSCType = 0;
 	unsigned int lcd_width = 0, lcd_height = 0;
 	struct tcc_lcdc_image_update el_ImageInfo;
-	unsigned int ratio = 1;
+	unsigned int ratio = 1;	
 
-	dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d/%03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+	dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d/%03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 			bStep_Check, DEF_DV_CHECK_NUM, nFrame, ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], ImageInfo->private_data.optional_info[VID_OPT_TIMESTAMP],
 			ImageInfo->private_data.optional_info[VID_OPT_BIT_DEPTH],
 			ImageInfo->addr0, //ImageInfo->private_data.offset[0],
@@ -3734,7 +3735,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 			ImageInfo->private_data.dolbyVision_info.el_offset[0],
 			ImageInfo->private_data.dolbyVision_info.el_frame_width, ImageInfo->private_data.dolbyVision_info.el_frame_height,
 			ImageInfo->private_data.dolbyVision_info.el_buffer_width, ImageInfo->private_data.dolbyVision_info.el_buffer_height,
-			ImageInfo->private_data.dolbyVision_info.osd_addr,
+			ImageInfo->private_data.dolbyVision_info.osd_addr[0], ImageInfo->private_data.dolbyVision_info.osd_addr[1],
 			ImageInfo->private_data.dolbyVision_info.reg_addr, ImageInfo->private_data.dolbyVision_info.md_hdmi_addr);
 
 	if(0 > tca_edr_el_configure(ImageInfo, &el_ImageInfo, &ratio))
@@ -3745,7 +3746,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 
 	if((el_ImageInfo.Lcdc_layer >= RDMA_MAX_NUM) || (el_ImageInfo.fmt >TCC_LCDC_IMG_FMT_MAX)){
 		pr_err("LCD :: lcdc:%d, enable:%d, layer:%d, addr:0x%x, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d\n",
-		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0,
+		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0, 
 		       el_ImageInfo.fmt,el_ImageInfo.Frame_width, el_ImageInfo.Frame_height, el_ImageInfo.Image_width, el_ImageInfo.Image_height, el_ImageInfo.fmt, el_ImageInfo.on_the_fly);
 		return;
 	}
@@ -4058,11 +4059,31 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 }
 
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI
+#define USE_OWN_FB 0x12345678
+extern void VIOC_RDMA_SetImageUpdate_for_CertiTest(volatile void __iomem *reg, unsigned int sw, unsigned int sh, unsigned int nBase0);
+#endif
 #define ALIGNED_WIDTH(w, mul) ( ( (unsigned int)w + (mul-1) ) & ~(mul-1) )
 void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_layer_str_t stDolby_Layer,
 						struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo,
-						unsigned int width, unsigned int height, DV_DISP_TYPE type)
+						unsigned int width, unsigned int height, DV_DISP_TYPE type, unsigned int el_ratio)
 {
+	unsigned int iSCType;
+	volatile void __iomem *pSC;
+	unsigned int target_width, target_height;
+
+	if(type == EDR_EL){
+		target_width = Hactive / el_ratio;
+		target_height = Vactive / el_ratio;
+	}
+	else {
+		target_width = Hactive;
+		target_height = Vactive;
+	}
+
+	iSCType = tca_get_scaler_num(TCC_OUTPUT_HDMI, ImageInfo->Lcdc_layer);
+	pSC = VIOC_SC_GetAddress(iSCType);
+	
 	if(!ImageInfo->enable) {
 		bStep_Check = DEF_DV_CHECK_NUM;
 		if (VIOC_CONFIG_DMAPath_Support()) {
@@ -4093,6 +4114,14 @@ void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_la
 
 		VIOC_RDMA_SetImageDisable(pRDMA);
 
+		if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num) != -1) //scaler plug in status check
+		{
+			iSCType = VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
+			VIOC_CONFIG_PlugOut(iSCType);
+			VIOC_CONFIG_SWReset(iSCType, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(iSCType, VIOC_CONFIG_CLEAR);
+			pr_info("scaler %d plug out for %d layer \n", get_vioc_index(iSCType), ImageInfo->Lcdc_layer);
+		}
 		return;
 	}
 
@@ -4103,7 +4132,7 @@ void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_la
 		if (VIOC_CONFIG_DMAPath_Support()) {
 			int component_num = VIOC_CONFIG_DMAPath_Select(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			if((component_num < VIOC_MC0 ) || (component_num > (VIOC_MC0 + VIOC_MC_MAX))){
-				pr_info("%s Map converter  %d \n",__func__, get_vioc_index(pdp_data->ddc_info.blk_num));
+				//pr_info("%s Map converter  %d \n",__func__, get_vioc_index(pdp_data->ddc_info.blk_num));
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 				tca_map_convter_swreset(VIOC_MC0);
 				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_MC0);
@@ -4154,39 +4183,166 @@ void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_la
 		VIOC_RDMA_SetImageSize(pRDMA, stDolby_Layer.frame_width, stDolby_Layer.frame_height);
 		VIOC_RDMA_SetImageBase(pRDMA, stDolby_Layer.offset[0], stDolby_Layer.offset[1], stDolby_Layer.offset[2]);
 		dvprintk(" =============> Set 0x%x address for 0x%x RDMA \n", stDolby_Layer.offset[0], pRDMA);
-		VIOC_V_DV_SetSize(NULL, pRDMA, 0, 0, Hactive, Vactive);
 
-		//if(ImageInfo->Lcdc_layer == RDMA_FB)
+	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI
+		if(ImageInfo->Lcdc_layer == RDMA_FB)
+			VIOC_RDMA_SetImageUpdate_for_CertiTest(pRDMA, stDolby_Layer.frame_width, stDolby_Layer.frame_height, stDolby_Layer.offset[0]);
+		else
+	#endif
+		{
 			VIOC_RDMA_SetImageUpdate(pRDMA);
+		}
 	}
+
+	if(VIOC_CONFIG_GetScaler_PluginToRDMA(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num) == -1)
+	{
+		//pr_info(" %s Scaler-%d is plug in RDMA-%d \n", __func__, get_vioc_index(iSCType), get_vioc_index(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num));
+		//VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+		VIOC_CONFIG_PlugIn (iSCType, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
+	}
+
+	VIOC_SC_SetDstSize (pSC, target_width, target_height);			// set destination size in scaler
+	VIOC_SC_SetOutSize (pSC, target_width, target_height);			// set output size in scaler
+
+	if(width != target_width && height != target_height)
+		VIOC_SC_SetBypass (pSC, OFF);
+	else
+		VIOC_SC_SetBypass (pSC, ON);
+	VIOC_SC_SetUpdate (pSC);
+	
+	VIOC_V_DV_SetSize(NULL, pRDMA, 0, 0, target_width, target_height);
+
+}
+
+static struct tcc_lcdc_image_update nAccumulated_ImageInfo[240];
+static unsigned int nINT_Total = 0, nDisp_Try = 0, nDisp_Proc = 0, nDV_Updated = 0;
+static unsigned int nCopyed_Max = 0;
+static struct timeval t1;
+
+void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all)
+{
+	if(bInit_all)
+	{
+		nINT_Total = nDisp_Try = nDisp_Proc = nDV_Updated = 0;
+	}
+	else
+	{
+		if(nInt)
+			nINT_Total++;
+		if(nTry)
+			nDisp_Try++;
+		if(nProc)
+			nDisp_Proc++;
+		if(nUpdated)
+			nDV_Updated++;
+	}
+}
+EXPORT_SYMBOL(tca_edr_inc_check_count);
+
+int tca_edr_GetTimediff_ms(struct timeval time1, struct timeval time2)
+{
+    int time_diff_ms = 0;
+
+    time_diff_ms = (time2.tv_sec- time1.tv_sec)*1000;
+    time_diff_ms += (time2.tv_usec-time1.tv_usec)/1000;
+
+    return time_diff_ms;
 }
 
 void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo)
 {
 	volatile void __iomem *pRDMA = NULL;
 	unsigned int nRDMA = 0;
-	dolby_layer_str_t stDolby_BL, stDolby_EL, stDolby_OSD;
+	dolby_layer_str_t stDolby_BL, stDolby_EL, stDolby_OSD, stDolby_OSD_1;
+	unsigned int ratio = 1;
 
 	if(!ImageInfo->enable)
 	{
+		int i = 0;
 		ImageInfo->Lcdc_layer = RDMA_VIDEO;
 		nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 		pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
-		tca_edr_vioc_set(nRDMA, pRDMA, stDolby_BL, pdp_data, ImageInfo, Hactive, Vactive, EDR_BL);
+		tca_edr_vioc_set(nRDMA, pRDMA, stDolby_BL, pdp_data, ImageInfo, Hactive, Vactive, EDR_BL, ratio);
+	#ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
+		set_hdmi_drm(DRM_OFF, &ImageInfo, ImageInfo->Lcdc_layer);
+	#endif
 
 		ImageInfo->Lcdc_layer = RDMA_VIDEO_SUB;
 		nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 		pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
-		tca_edr_vioc_set(nRDMA, pRDMA, stDolby_EL, pdp_data, ImageInfo, Hactive, Vactive, EDR_EL);
+		tca_edr_vioc_set(nRDMA, pRDMA, stDolby_EL, pdp_data, ImageInfo, Hactive, Vactive, EDR_EL, ratio);
 		pr_info("%s @ :: RDMA for EDR is diabled\n", __func__);
+
+		ImageInfo->Lcdc_layer = RDMA_FB1;
+		nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
+		pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
+		tca_edr_vioc_set(nRDMA, pRDMA, stDolby_OSD_1, pdp_data, ImageInfo, Hactive, Vactive, /*EDR_OSD1*/RDMA_FB1, ratio);
+
+		pr_info("%s @ :: Finish Proc => nINT_Total(%03d) nDisp_Try(%03d) nDisp_Proc(%03d) nDV_Updated(%03d) \n", __func__, nINT_Total, nDisp_Try, nDisp_Proc, nDV_Updated);
+
+		for(i = 0; i < nCopyed_Max; i++){
+			if(nAccumulated_ImageInfo[i].private_data.dolbyVision_info.osd_addr[0] != USE_OWN_FB)
+			{
+				if( i != nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_ID])
+				{
+					printk("^@ ID[%03d] Gap[---] :######################: is not displayed!!!! \n", i);
+				}
+				else
+				{
+					printk("^@ ID[%03d] Gap[%03d] F[%01d/%01d] TS[%04ld/%04ld] %d bpp #Type[%d/%d] #BL(MC(%d), 0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_ID],
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_1], 
+							(nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_2] >> 16) & 0xFF, //readable buffer
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_2] & 0xFF, // valid buffer
+							//nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_TIMESTAMP], nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_SYNC_TIME],
+							nAccumulated_ImageInfo[i].time_stamp, nAccumulated_ImageInfo[i].sync_time,
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BIT_DEPTH],
+							vioc_get_out_type(), nAccumulated_ImageInfo[i].private_data.dolbyVision_info.reg_out_type,
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_HAVE_MC_INFO],
+							nAccumulated_ImageInfo[i].addr0, //nAccumulated_ImageInfo[i].private_data.offset[0],
+							nAccumulated_ImageInfo[i].crop_right - nAccumulated_ImageInfo[i].crop_left, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_FRAME_WIDTH], 
+							nAccumulated_ImageInfo[i].crop_bottom - nAccumulated_ImageInfo[i].crop_top, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_FRAME_HEIGHT],
+							nAccumulated_ImageInfo[i].Frame_width, nAccumulated_ImageInfo[i].Frame_height, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_WIDTH], nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
+							nAccumulated_ImageInfo[i].fmt, //nAccumulated_ImageInfo[i].private_data.format,
+							nAccumulated_ImageInfo[i].private_data.dolbyVision_info.el_offset[0],
+							nAccumulated_ImageInfo[i].private_data.dolbyVision_info.el_frame_width, nAccumulated_ImageInfo[i].private_data.dolbyVision_info.el_frame_height,
+							nAccumulated_ImageInfo[i].private_data.dolbyVision_info.el_buffer_width, nAccumulated_ImageInfo[i].private_data.dolbyVision_info.el_buffer_height,
+							nAccumulated_ImageInfo[i].private_data.dolbyVision_info.osd_addr[0], nAccumulated_ImageInfo[i].private_data.dolbyVision_info.osd_addr[1],
+							nAccumulated_ImageInfo[i].private_data.dolbyVision_info.reg_addr, nAccumulated_ImageInfo[i].private_data.dolbyVision_info.md_hdmi_addr);
+				}
+			}
+		}
+		nCopyed_Max = 0;
+		for(i = 0; i < 240; i++){
+			nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_ID] = 0xffff;
+		}
 		return;
 	}
 	else
 	{
+	    int time_gap_ms = 0;
+		struct timeval t0;
+
+		t0 = t1;
+		do_gettimeofday( &t1 );
+
+		if(nCopyed_Max == 0)
+			time_gap_ms = 0;
+		else
+		    time_gap_ms = tca_edr_GetTimediff_ms(t0, t1);
+		ImageInfo->private_data.optional_info[VID_OPT_RESERVED_1] = time_gap_ms;
+
+		if(ImageInfo->private_data.dolbyVision_info.osd_addr[0] != USE_OWN_FB){
+			if(ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID] < 240){
+				memcpy(&nAccumulated_ImageInfo[ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID]], ImageInfo, sizeof(struct tcc_lcdc_image_update));
+				nCopyed_Max = ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID] + 1;
+			}
+		}
+
 		stDolby_BL.offset[0]		= ImageInfo->private_data.offset[0];
 		stDolby_BL.offset[1]		= ImageInfo->private_data.offset[1];
 		stDolby_BL.offset[2]		= ImageInfo->private_data.offset[2];
-		stDolby_BL.format			= ImageInfo->private_data.format;
+		stDolby_BL.format			= ImageInfo->fmt;
 		stDolby_BL.buffer_width 	= ImageInfo->private_data.optional_info[VID_OPT_BUFFER_WIDTH];
 		stDolby_BL.buffer_height	= ImageInfo->private_data.optional_info[VID_OPT_BUFFER_HEIGHT];
 		stDolby_BL.frame_width 		= ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH];
@@ -4196,20 +4352,40 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 		stDolby_EL.offset[0]		= ImageInfo->private_data.dolbyVision_info.el_offset[0];
 		stDolby_EL.offset[1]		= ImageInfo->private_data.dolbyVision_info.el_offset[1];
 		stDolby_EL.offset[2]		= ImageInfo->private_data.dolbyVision_info.el_offset[2];
-		stDolby_EL.format			= TCC_LCDC_IMG_FMT_YUV420SP;
+		stDolby_EL.format			= TCC_LCDC_IMG_FMT_YUV420ITL0;
 		stDolby_EL.buffer_width 	= ImageInfo->private_data.dolbyVision_info.el_buffer_width;
 		stDolby_EL.buffer_height	= ImageInfo->private_data.dolbyVision_info.el_buffer_height;
 		stDolby_EL.frame_width 		= ImageInfo->private_data.dolbyVision_info.el_frame_width;
 		stDolby_EL.frame_height		= ImageInfo->private_data.dolbyVision_info.el_frame_height;
 		stDolby_EL.bit10			= stDolby_BL.bit10;
 
-		stDolby_OSD.offset[0]		= ImageInfo->private_data.dolbyVision_info.osd_addr;
+		stDolby_OSD.offset[0]		= ImageInfo->private_data.dolbyVision_info.osd_addr[0];
 		stDolby_OSD.format			= TCC_LCDC_IMG_FMT_RGB888;
-		stDolby_OSD.buffer_width 	= stDolby_BL.frame_width;
-		stDolby_OSD.buffer_height	= stDolby_BL.frame_height;
-		stDolby_OSD.frame_width 	= stDolby_BL.frame_width;
-		stDolby_OSD.frame_height	= stDolby_BL.frame_height;
+		stDolby_OSD.buffer_width 	= ImageInfo->private_data.dolbyVision_info.osd_width;
+		stDolby_OSD.buffer_height	= ImageInfo->private_data.dolbyVision_info.osd_height;
+		stDolby_OSD.frame_width 	= ImageInfo->private_data.dolbyVision_info.osd_width;
+		stDolby_OSD.frame_height	= ImageInfo->private_data.dolbyVision_info.osd_height;
 		stDolby_OSD.bit10			= 0;
+
+		stDolby_OSD_1.offset[0]		= ImageInfo->private_data.dolbyVision_info.osd_addr[1];
+		stDolby_OSD_1.format		= TCC_LCDC_IMG_FMT_RGB888;
+		stDolby_OSD_1.buffer_width 	= ImageInfo->private_data.dolbyVision_info.osd_width;
+		stDolby_OSD_1.buffer_height	= ImageInfo->private_data.dolbyVision_info.osd_height;
+		stDolby_OSD_1.frame_width 	= ImageInfo->private_data.dolbyVision_info.osd_width;
+		stDolby_OSD_1.frame_height	= ImageInfo->private_data.dolbyVision_info.osd_height;
+		stDolby_OSD_1.bit10			= 0;
+
+		if(stDolby_EL.offset[0] != 0x00 && stDolby_EL.frame_width != 0 && stDolby_EL.frame_height != 0)
+			ratio = (stDolby_BL.frame_width/stDolby_EL.frame_width);
+		else
+			ratio = 1;
+
+		if(ratio == 0)
+		{
+			printk("@@@@@@@@@@@@@@@@@@ ID[%d] BL(%dx%d) EL(0x%x %dx%d)\n", ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
+						stDolby_BL.frame_width, stDolby_BL.frame_height, stDolby_EL.offset[0], stDolby_EL.frame_width, stDolby_EL.frame_height);
+			return;
+		}
 
 		dvprintk("%s @1 sc(%d), reg(0x%x), md(0x%x) %d bpp @BL(0x%x, %d x %d)	@EL(0x%x, %d x %d) @OSD(0x%x)\n",
 				__func__,
@@ -4221,64 +4397,76 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 				stDolby_EL.offset[0], stDolby_EL.frame_width, stDolby_EL.frame_height,
 				stDolby_OSD.offset[0]);
 
-		if(stDolby_BL.offset[0] != 0x00 && stDolby_BL.frame_width!= 0 && stDolby_BL.frame_height != 0){
+		if(stDolby_BL.offset[0] != 0x00 && stDolby_BL.frame_width != 0 && stDolby_BL.frame_height != 0){
 			ImageInfo->Lcdc_layer = RDMA_VIDEO;
+	#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
+			set_hdmi_drm(DRM_ON, ImageInfo, ImageInfo->Lcdc_layer);
+	#endif
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
-			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_BL, pdp_data, ImageInfo, stDolby_BL.frame_width, stDolby_BL.frame_height, EDR_BL);
+			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_BL, pdp_data, ImageInfo, stDolby_BL.frame_width, stDolby_BL.frame_height, EDR_BL, ratio);
 		}
 
-		if(stDolby_EL.offset[0] != 0x00 && stDolby_EL.frame_width!= 0 && stDolby_EL.frame_height != 0) {
+		if(stDolby_EL.offset[0] != 0x00 && stDolby_EL.frame_width != 0 && stDolby_EL.frame_height != 0) {
 			ImageInfo->Lcdc_layer = RDMA_VIDEO_SUB;
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
-			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_EL, pdp_data, ImageInfo, stDolby_EL.frame_width, stDolby_EL.frame_height, EDR_EL);
+			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_EL, pdp_data, ImageInfo, stDolby_EL.frame_width, stDolby_EL.frame_height, EDR_EL, ratio);
 		}
 	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI
-		if(stDolby_OSD.offset[0] != 0x00 && stDolby_OSD.frame_width!= 0 && stDolby_OSD.frame_height != 0) {
-			unsigned int iSCType;
-			volatile void __iomem *pSC;
-
+		if(stDolby_OSD.offset[0] != 0x00  && stDolby_OSD.offset[0] != USE_OWN_FB && stDolby_OSD.frame_width != 0 && stDolby_OSD.frame_height != 0) {
 			ImageInfo->Lcdc_layer = RDMA_FB;
+			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
+			{
+				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+			}
+
+			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
+			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
+			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_OSD, pdp_data, ImageInfo, stDolby_OSD.frame_width, stDolby_OSD.frame_height, /*EDR_OSD3*/RDMA_FB, ratio);
+		}
+
+		if(stDolby_OSD_1.offset[0] != 0x00 && stDolby_OSD_1.frame_width != 0 && stDolby_OSD_1.frame_height != 0) {
+			int enabled = 0;
+
+			ImageInfo->Lcdc_layer = RDMA_FB1;
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
 				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 
-			if(stDolby_OSD.frame_width!= Hactive && stDolby_OSD.frame_height != Vactive) {
-				iSCType = tca_get_scaler_num(TCC_OUTPUT_HDMI, ImageInfo->Lcdc_layer);
-
-				pSC = VIOC_SC_GetAddress(iSCType);
-
-				VIOC_SC_SetDstSize (pSC, Hactive, Vactive);			// set destination size in scaler
-				VIOC_SC_SetOutSize (pSC, Hactive, Vactive);			// set output size in scaler
-
-				//VIOC_SC_SetBypass (pSC, ON);
-				VIOC_SC_SetUpdate (pSC);
-			}
-
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
-			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_OSD, pdp_data, ImageInfo, Hactive, Vactive, EDR_OSD3);
+			tca_edr_vioc_set(nRDMA, pRDMA, stDolby_OSD_1, pdp_data, ImageInfo, stDolby_OSD_1.frame_width, stDolby_OSD_1.frame_height, /*EDR_OSD1*/RDMA_FB1, ratio);
+			VIOC_RDMA_GetImageEnable(pRDMA, &enabled);
+			if(!enabled){
+				VIOC_RDMA_SetImageAlphaSelect(pRDMA, 1);
+				VIOC_RDMA_SetImageAlphaEnable(pRDMA, 1);
+				VIOC_RDMA_SetImageEnable(pRDMA);
+			}
 		}
+
 	#endif
 
 		if(VIOC_CONFIG_DV_GET_EDR_PATH()){
 	#ifdef CONFIG_VIOC_MAP_DECOMP
-			unsigned int nMC = 0;
+			if(stDolby_EL.offset[0] != 0x00 && stDolby_EL.frame_width!= 0 && stDolby_EL.frame_height!= 0)
+				VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[RDMA_VIDEO_SUB].virt_addr);
 
 			ImageInfo->Lcdc_layer = RDMA_VIDEO;
+
 			if(ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 			{
 		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
@@ -4292,19 +4480,21 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			{
 				if(vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type)
 				{
+					if(stDolby_BL.offset[0] != 0x00 && stDolby_BL.frame_width != 0 && stDolby_BL.frame_height != 0)
+						VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[RDMA_VIDEO].virt_addr);
+
 					vioc_v_dv_prog( ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
 										ImageInfo->private_data.dolbyVision_info.reg_addr,
 										ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
 										1);
-
-					if(stDolby_BL.offset[0] != 0x00 && stDolby_BL.frame_width != 0 && stDolby_BL.frame_height != 0)
-						VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[RDMA_VIDEO].virt_addr);
+				}
+				else
+				{
+					pr_err("0 Dolby Out type mismatch (%d != %d)\n", vioc_get_out_type(), ImageInfo->private_data.dolbyVision_info.reg_out_type);
 				}
 			}
 		}
 
-		if(stDolby_EL.offset[0] != 0x00 && stDolby_EL.frame_width!= 0 && stDolby_EL.frame_height!= 0)
-			VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[RDMA_VIDEO_SUB].virt_addr);
 		dvprintk("@2 \n");
 	}
 }
@@ -4358,12 +4548,11 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 		bStep_Check = DEF_DV_CHECK_NUM;
 	#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 		if(VIOC_CONFIG_DV_GET_EDR_PATH()){
-			tca_edr_display_update(pdp_data, ImageInfo);
 		#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
 			VIOC_RDMA_PreventEnable_for_UI(0, 0);
 		#endif
-			voic_v_dv_osd_ctrl(EDR_OSD3, 1);
-			//vioc_v_dv_prog(dv_md_phyaddr, dv_reg_phyaddr, 1);
+			tca_edr_display_update(pdp_data, ImageInfo);
+			vioc_v_dv_prog(dv_md_phyaddr, dv_reg_phyaddr, ATTR_SDR, 1);
 			return;
 		}
 	#endif
@@ -4393,9 +4582,11 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 			}
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+			tca_edr_inc_check_count(0, 0, 1, 0, 0);
 			tca_edr_display_update(pdp_data, ImageInfo);
 		#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-			VIOC_RDMA_PreventEnable_for_UI(1, ImageInfo->private_data.dolbyVision_info.osd_addr == 0x00 ? 1 : 0);
+			if(ImageInfo->private_data.dolbyVision_info.osd_addr[0] != USE_OWN_FB)
+				VIOC_RDMA_PreventEnable_for_UI(1, ImageInfo->private_data.dolbyVision_info.osd_addr[0] == 0x00 ? 1 : 0);
 		#endif
 			return;
 	#endif
@@ -5458,6 +5649,15 @@ int tca_fb_init(struct tccfb_info *fbi)
 			//VIOC_DISP_TurnOff(pDISP);
 			//VIOC_RDMA_SetImageDisable(pRDMA);
 		}
+#endif
+
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+	{
+		int i = 0;
+		for(i = 0; i < 150; i++){
+			nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_ID] = 0xffff;
+		}
+	}
 #endif
 
 	return 0;

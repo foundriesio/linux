@@ -34,6 +34,9 @@
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 #include <video/tcc/vioc_mc.h>
+#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+#include <video/tcc/vioc_v_dv.h>
+#endif
 
 #define MC_MAX_N 2
 
@@ -49,6 +52,15 @@ void VIOC_MC_Get_OnOff(volatile void __iomem *reg, uint *enable)
 void VIOC_MC_Start_OnOff(volatile void __iomem *reg, uint OnOff)
 {
 	unsigned long val;
+
+#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+	VIOC_MC_Get_OnOff(reg, &val);
+	if(val != OnOff)
+	{
+		dprintk_dv_sequence("### ====> %d MC %s \n", (reg == VIOC_MC_GetAddress(0)) ? 0 : 1, OnOff ? "On" : "Off");
+	}
+#endif
+
 	val = (__raw_readl(reg + MC_CTRL) & ~(MC_CTRL_START_MASK));
 	val |= ((OnOff & 0x1) << MC_CTRL_START_SHIFT);
 	val |= (0x1 << MC_CTRL_UPD_SHIFT);

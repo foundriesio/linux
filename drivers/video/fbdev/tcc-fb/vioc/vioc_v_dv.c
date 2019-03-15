@@ -74,7 +74,7 @@ static volatile void __iomem *get_v_dv_reg(volatile void __iomem *pRDMA)
 		nRdma--;
 	}
 
-	if (nRdma < EDR_OSD1)
+	if (nRdma < 0)
 		return NULL;
 	else
 		return VIOC_DV_GetAddress((DV_DISP_TYPE)nRdma);
@@ -210,8 +210,8 @@ static int _Set_BG_Color(volatile void __iomem *pDISP_DV)
 {
 	int off = 0;
 
-	if (pDISP_DV == VIOC_DV_GetAddress(EDR_OSD1) ||
-	    pDISP_DV == VIOC_DV_GetAddress(EDR_OSD3)) {
+	if (pDISP_DV == VIOC_DV_GetAddress(/*EDR_OSD1*/RDMA_FB1) ||
+	    pDISP_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
 		VIOC_V_DV_SetBGColor(pDISP_DV, NULL, 0, 0, 0, 0); // Black RGB
 		off = 1;
 	} else {
@@ -221,6 +221,11 @@ static int _Set_BG_Color(volatile void __iomem *pDISP_DV)
 	}
 
 	return off;
+}
+
+static unsigned int VIOC_V_DV_Get_TurnOn(volatile void __iomem *reg)
+{
+	return (__raw_readl(reg + DCTRL) & DCTRL_LEN_MASK) ? 1 : 0;
 }
 
 void VIOC_V_DV_Turnon(volatile void __iomem *pDISP,
@@ -237,17 +242,31 @@ void VIOC_V_DV_Turnon(volatile void __iomem *pDISP,
 	if (pDisp_DV && VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		unsigned long val;
 
-		dprintk("%s-%d\n", __func__, __LINE__);
-		if (pDisp_DV == VIOC_DV_GetAddress(EDR_OSD1)) {
+		if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
 			if (!pRDMA)
-				pRDMA = VIOC_RDMA_GetAddress(EDR_OSD1);
+				pRDMA = VIOC_RDMA_GetAddress(/*EDR_OSD1*/RDMA_FB1);
 			VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x4); // BRG
-		} else if (pDisp_DV == VIOC_DV_GetAddress(EDR_OSD3)) {
+		} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
 			if (!pRDMA)
-				pRDMA = VIOC_RDMA_GetAddress(EDR_OSD3);
+				pRDMA = VIOC_RDMA_GetAddress(/*EDR_OSD3*/RDMA_FB);
 			VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x4); // BRG
 		}
 		_Set_BG_Color(pDisp_DV);
+
+	#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+		if(!VIOC_V_DV_Get_TurnOn(pDisp_DV))
+		{
+			if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F On \n", RDMA_FB1);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F On \n", RDMA_FB);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_BL*/RDMA_VIDEO)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F On \n", RDMA_VIDEO);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_EL*/RDMA_VIDEO_SUB)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F On \n", RDMA_VIDEO_SUB);
+			}
+		}
+	#endif
 
 		val = (__raw_readl(pDisp_DV + DCTRL) & ~(DCTRL_SRST_MASK));
 		val |= ((0x1 << DCTRL_SRST_SHIFT) | ((0x1 << DCTRL_LEN_SHIFT)));
@@ -265,18 +284,26 @@ void VIOC_V_DV_Turnoff(volatile void __iomem *pDISP,
 	else
 		pDisp_DV = get_v_dv_reg(pRDMA);
 
-	if (pDisp_DV && VIOC_CONFIG_DV_GET_EDR_PATH()) {
-		dprintk("%s-%d\n", __func__, __LINE__);
-		if (0 < _Set_BG_Color(pDisp_DV))
+	if (pDisp_DV && VIOC_CONFIG_DV_GET_EDR_PATH())
+	{
+	#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+		if(VIOC_V_DV_Get_TurnOn(pDisp_DV))
+		{
+			if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F Off \n", RDMA_FB1);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F Off \n", RDMA_FB);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_VIDEO)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F Off \n", RDMA_VIDEO);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_VIDEO_SUB)) {
+				dprintk_dv_sequence("### ====> %d Stream I/F Off \n", RDMA_VIDEO_SUB);
+			}
+		}
+	#endif
+
+		//if (0 < _Set_BG_Color(pDisp_DV))
 			VIOC_DISP_TurnOff(pDisp_DV);
 	}
-}
-
-static unsigned int
-VIOC_V_DV_StreamIF_Get_TurnOnOff(volatile void __iomem *pDISP)
-{
-	return ((__raw_readl(pDISP + DCTRL) & DCTRL_LEN_MASK)
-		<< DCTRL_LEN_SHIFT);
 }
 
 void VIOC_V_DV_All_Turnoff()
@@ -286,6 +313,7 @@ void VIOC_V_DV_All_Turnoff()
 	int bDisp_On[EDR_MAX] = {
 		0,
 	};
+	unsigned int enabled = 0;
 	volatile void __iomem *pDisp_DV = NULL;
 	volatile void __iomem *pRdma_DV = NULL;
 
@@ -297,23 +325,37 @@ void VIOC_V_DV_All_Turnoff()
 	if (!VIOC_CONFIG_DV_GET_EDR_PATH())
 		return;
 
-	dprintk_dv_sequence("### RDMA Off \n");
+	dprintk_dv_sequence("### All Stream I/F  =>  RDMA Off \n");
 
 	while (nRdma >= 0) {
 		unsigned long val;
 		pRdma_DV = VIOC_RDMA_GetAddress(nRdma);
 		pDisp_DV = get_v_dv_reg(pRdma_DV);
 
-		bDisp_On[nRdma] = VIOC_V_DV_StreamIF_Get_TurnOnOff(pDisp_DV);
+		bDisp_On[nRdma] = VIOC_V_DV_Get_TurnOn(pDisp_DV);
 		val = (__raw_readl(pDisp_DV + DSTATUS) &
 		       ~(VIOC_DISP_IREQ_DD_MASK));
 		val |= (VIOC_DISP_IREQ_DD_MASK);
 		__raw_writel(val, pDisp_DV + DSTATUS); // clear DD status!!
-		VIOC_RDMA_SetImageDisable(pRdma_DV);
+
+	#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+		if(VIOC_V_DV_Get_TurnOn(pDisp_DV))
+		{
+			if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
+				dprintk_dv_sequence("### ======> %d Stream I/F Off \n", RDMA_FB1);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
+				dprintk_dv_sequence("### ======> %d Stream I/F Off \n", RDMA_FB);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_BL*/RDMA_VIDEO)) {
+				dprintk_dv_sequence("### ======> %d Stream I/F Off \n", RDMA_VIDEO);
+			} else if (pDisp_DV == VIOC_DV_GetAddress(/*EDR_EL*/RDMA_VIDEO_SUB)) {
+				dprintk_dv_sequence("### ======> %d Stream I/F Off \n", RDMA_VIDEO_SUB);
+			}
+		}
+	#endif
+
 		VIOC_DISP_TurnOff(pDisp_DV);
 		nRdma--;
 	}
-	dprintk_dv_sequence("### Stream I/F Off \n");
 
 	nRdma = EDR_MAX - 1;
 	while (nRdma >= 0) {
@@ -325,6 +367,8 @@ void VIOC_V_DV_All_Turnoff()
 				printk("%s-%d DD Checking :: %d Stream-I/F (0x%x : 0-Timeout).\n",
 				       __func__, __LINE__, nRdma, ret);
 			}
+
+			VIOC_RDMA_SetImageDisable(pRdma_DV);
 		}
 		nRdma--;
 	}
@@ -338,19 +382,11 @@ void VIOC_V_DV_Power(char on)
 
 	dprintk_dv_sequence("### V_DV Power %s sequence IN ===> \n", on ? "On" : "Off");
 	if (on) {
-#if defined(CONFIG_TCC_DV_IN)
-	#if 0//Temp!!
-		{
-			volatile void __iomem *pIREQ = VIOC_IREQConfig_GetAddress();
-
-			//__raw_writel(0x00, pIREQ + PWR_AUTOPD_OFFSET);
-			__raw_writel(0x003, pIREQ + PWR_CLKCTRL_OFFSET);
-		}
-	#endif
-
 		if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
 			/* nothing to do */
+			//VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 1);
 		}
+	#if defined(CONFIG_TCC_DV_IN)
 		else
 		{
 			// DV_IN :: 0x1200A128(PWDN)/0x1200A12C(SW-Reset)
@@ -372,12 +408,20 @@ void VIOC_V_DV_Power(char on)
 					clk_prepare_enable(peri_lcd0_clk);
 			}
 		#endif
+			//VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, 3, 0);
 		}
-#endif
+	#endif
 
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 1);
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 1);
-		VIOC_V_DV_SWReset(1);
+#if 0 // specific sequence!!
+		mdelay(2);
+		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 0);
+		mdelay(2);
+		VIOC_V_DV_SWReset(1, 0);
+		mdelay(2);
+		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 1);
+#endif
 	} else {
 		volatile void __iomem *reg;
 
@@ -394,9 +438,18 @@ void VIOC_V_DV_Power(char on)
 		// disable Meta DMA.
 		dprintk_dv_sequence("### V_DV Meta-DMA Off\n");
 		VIOC_CONFIG_DV_Metadata_Disable();
-		//VIOC_V_DV_SWReset(1);
 		dprintk_dv_sequence("### V_DV NexGuard Off\n");
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 0);mdelay(50);
+
+		vioc_v_dv_swreset(1, 1, 1);
+#if 0 // specific sequence!!
+		mdelay(2);
+		VIOC_V_DV_SWReset(1, 1);
+#else
+		VIOC_V_DV_SWReset(1, 1);
+		VIOC_V_DV_SWReset(1, 0);
+#endif
+
 		dprintk_dv_sequence("### V_DV-IP Off\n");
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_DV, 0);
 
@@ -423,22 +476,25 @@ void VIOC_V_DV_Power(char on)
 	}
 }
 
-void VIOC_V_DV_SWReset(unsigned int force)
+void VIOC_V_DV_SWReset(unsigned int force, unsigned int bReset)
 {
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() || force) {
 		dprintk_dv_sequence("### V_DV Reset\n");
 
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP0, VIOC_CONFIG_RESET);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP1, VIOC_CONFIG_RESET);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP2, VIOC_CONFIG_RESET);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP3, VIOC_CONFIG_RESET);
-		VIOC_CONFIG_SWReset(VIOC_V_DV, VIOC_CONFIG_RESET);
-
-		VIOC_CONFIG_SWReset(VIOC_V_DV, VIOC_CONFIG_CLEAR);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP3, VIOC_CONFIG_CLEAR);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP2, VIOC_CONFIG_CLEAR);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP1, VIOC_CONFIG_CLEAR);
-		VIOC_CONFIG_SWReset(VIOC_DV_DISP0, VIOC_CONFIG_CLEAR);
+		if(bReset) {
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP0, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP1, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP2, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP3, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(VIOC_V_DV, VIOC_CONFIG_RESET); // strange frame issues...!!!!!
+		}
+		else{
+			VIOC_CONFIG_SWReset(VIOC_V_DV, VIOC_CONFIG_CLEAR); // strange frame issues...!!!!!
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP3, VIOC_CONFIG_CLEAR);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP2, VIOC_CONFIG_CLEAR);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP1, VIOC_CONFIG_CLEAR);
+			VIOC_CONFIG_SWReset(VIOC_DV_DISP0, VIOC_CONFIG_CLEAR);
+		}
 	}
 }
 
@@ -452,18 +508,19 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 
 	dprintk("%s-%d\n", __func__, __LINE__);
 	// reset
-	//	VIOC_V_DV_SWReset(0);
+	//VIOC_V_DV_SWReset(0, 1);
+	//VIOC_V_DV_SWReset(0, 0);
+
+//	dprintk_dv_sequence("### All Stream I/F On \n");
 
 	while (nEDR_dma >= 0) {
 		pReg = VIOC_DV_GetAddress((DV_DISP_TYPE)nEDR_dma);
 		VIOC_V_DV_SetSize(pReg, NULL, sx, sy, w, h);
 		VIOC_V_DV_SetPXDW(pReg, NULL, VIOC_PXDW_FMT_24_RGB888);
 		_Set_BG_Color(pReg);
-		VIOC_V_DV_Turnon(pReg, NULL);
+//		VIOC_V_DV_Turnon(pReg, NULL);
 		nEDR_dma--;
 	}
-
-	dprintk_dv_sequence("### Stream I/F On \n");
 
 	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
 		unsigned int val;
@@ -480,7 +537,7 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 			__raw_writel(val, pReg + TX_INV);
 		}
 
-		if (DV_PATH_DIRECT & vioc_get_path_type()) {
+		if ((DV_PATH_DIRECT & vioc_get_path_type()) && (vioc_v_dv_get_mode() != DV_LL_RGB)) {
 			// NexGuard - line swap!!
 			pReg = VIOC_DNG_GetAddress();
 			__raw_writel(0x30000000, pReg + 0x34);

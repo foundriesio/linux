@@ -71,6 +71,7 @@ static OUT_FORMAT out_color_format = DV_OUT_FMT_YUV422;
 static pmap_t pmap_dv_regs;
 static void __iomem *pBase_vAddr;
 static char bOsd1_on = 0;
+static char bOsd3_on = 0;
 static char bStart_config = 0;
 static char bShadow_context = 1;
 static char bMeta_PrevStatus = 0;
@@ -96,6 +97,12 @@ static unsigned int hdmi_sz_vsvdb = 0;
 static int debug = 0;
 #define dprintk(msg...)	 if (debug) { printk( "vioc_v_dv: " msg); }
 
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
+#endif
+
+//#define SHADOW_CONTEXT_AT_THE_SAME_TIME
+
 DV_PATH vioc_get_path_type(void)
 {
 	DV_PATH dv_out_path = 0;
@@ -116,8 +123,17 @@ DV_PATH vioc_get_path_type(void)
 	dv_out_path = dv_hdmi_path;
 #endif
 
-	dprintk("### DV_PATH = 0x%x \n", dv_out_path);
+//	dprintk("### DV_PATH = 0x%x \n", dv_out_path);
 	return dv_out_path;
+}
+
+void vioc_set_out_type(OUT_TYPE type)
+{
+	out_type = type;
+	if( out_type == DOVI_LL)
+		dv_mode = DV_LL;
+	else
+		dv_mode = DV_STD;
 }
 
 OUT_TYPE vioc_get_out_type(void)
@@ -165,7 +181,7 @@ DV_MODE vioc_v_dv_get_mode(void)
 
 unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb)
 {
-	if(out_type != DOVI)
+	if((vioc_get_out_type() != DOVI) && (vioc_get_out_type() != DOVI_LL))
 		return 0;
 
 	if(vsvdb && (hdmi_sz_vsvdb > 0)){
@@ -188,7 +204,7 @@ DV_STAGE vioc_v_dv_get_stage(void)
 
 void vioc_v_dv_reset(void)
 {
-	out_type = SDR;
+	vioc_set_out_type(SDR);
 	dv_mode = DV_OFF;
 }
 
@@ -256,10 +272,16 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out,
 	if(!bHDMI_Out)
 		out_color_format = 2;
 
-	if( mode->format == 2 )
-		out_type = DOVI;
+	if( mode->format == 2 ){
+		if(mode->dv_ll_mode == DV_STD)
+			vioc_set_out_type(DOVI);
+		else
+			vioc_set_out_type(DOVI_LL);
+	}
+	else if(mode->format == 1)
+		vioc_set_out_type(HDR10);
 	else
-		out_type = (mode->format == 1) ? HDR10 : SDR;
+		vioc_set_out_type(SDR);
 
 	DV_HDMI_noYUV422_OUT = mode->dv_noYUV422_SDR;
 
@@ -274,8 +296,8 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out,
 	VDE_VStart	= 10; //Need to fix
 	VDE_HStart	= 20; //Need to fix
 
-	pr_info("@@ Dolby-path (%d : 0-DOVI, 1-HDR10, 2-SDR(%d)) :: HDMI ? %d (%d khz):: %d / %d / %d / %d / %d / %d / %d / %d \n",
-			out_type, DV_HDMI_noYUV422_OUT,
+	pr_info("@@ Dolby-path (%d : 0-DOVI, 1-HDR10, 2-SDR(%d), 3-DOVI_LL) :: HDMI ? %d (%d khz):: %d / %d / %d / %d / %d / %d / %d / %d \n",
+			vioc_get_out_type(), DV_HDMI_noYUV422_OUT,
 			bHDMI_Out, DV_HDMI_CLK_Khz,
 			Hactive, Vactive, Hfront, Hsync, Hback, Vfront, Vsync, Vback);
 }
@@ -368,18 +390,17 @@ void _vioc_v_dv_prog_start(void) {
 	value |= (0x1<<3);
 	__dv_reg_w(value, pVPANEL+0x000b0);
 
+	value = __dv_reg_r(pVDVCFG+TX_INV) & ~(TX_INV_HS_MASK | TX_INV_VS_MASK);
 	if(Hactive == 720 && Vactive == 480){
 		//*(volatile unsigned int *)(pVDVCFG+0x00010) |= (0x1<<1 | 0x1<<0);
-		value = __dv_reg_r(pVDVCFG+TX_INV) & ~(TX_INV_HS_MASK);
-		value |= (0x1<<TX_INV_HS_SHIFT);
-		__dv_reg_w(value, pVDVCFG+TX_INV);
+		value |= ((0x1<<TX_INV_HS_SHIFT | 0x1<<TX_INV_VS_SHIFT));
 	}
 	else {
 		//*(volatile unsigned int *)(pVDVCFG+0x00010) &= ~(0x3);
-		value = __dv_reg_r(pVDVCFG+0x00010) & ~(TX_INV_HS_MASK | TX_INV_VS_MASK);
-		value |= (0x0<<TX_INV_HS_SHIFT | 0x0<<TX_INV_VS_SHIFT);
-		__dv_reg_w(value, pVDVCFG+0x00010);
+		value |= ((0x0<<TX_INV_HS_SHIFT | 0x0<<TX_INV_VS_SHIFT));
 	}
+	__dv_reg_w(value, pVDVCFG+TX_INV);
+
 }
 
 void _vioc_v_dv_prog_done(void) {
@@ -460,6 +481,51 @@ void _void_reset_edr_compnent(int ctrc, int dm, int composer)
 	value = __dv_reg_r(pVEDR+0x3c004) & ~((0x1<<0)|(0x1<<1)|(0x1<<2));
 	value = reset;
 	__dv_reg_w(value, pVEDR+0x3c004);
+}
+
+void vioc_v_dv_swreset(unsigned int edr, unsigned panel, unsigned int crtc)
+{
+	if(panel || crtc)
+	{
+		volatile void __iomem *pVPANEL = NULL;
+		unsigned int value = 0x00;
+
+		pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
+
+		if(panel)
+		{
+			value = __dv_reg_r(pVPANEL+0xC) & ~(0xFFFF);
+			__dv_reg_w(value, pVPANEL+0xC);
+
+			msleep(1);
+			dprintk_dv_sequence("### V_DV PANEL s/w reset\n");
+
+			value = __dv_reg_r(pVPANEL+0xC) & ~(0xFFFF);
+			value |= 0xFFFF;
+			__dv_reg_w(value, pVPANEL+0xC);
+		}
+
+		if(crtc)
+		{
+			value = __dv_reg_r(pVPANEL+0xC) & ~(0x1 << 31);
+			value |= (0x1 << 31);
+			__dv_reg_w(value, pVPANEL+0x0810);
+
+			msleep(1);
+			dprintk_dv_sequence("### V_DV CRTC s/w reset\n");
+
+			value = __dv_reg_r(pVPANEL+0xC) & ~(0x1 << 31);
+			__dv_reg_w(value, pVPANEL+0x0810);
+		}
+	}
+
+	if(edr)
+	{
+		_void_reset_edr_compnent(1,1,1);
+		msleep(1);
+		dprintk_dv_sequence("### V_DV EDR s/w reset\n");
+		_void_reset_edr_compnent(0,0,0);
+	}
 }
 
 void _voic_set_edr_lut(void __iomem *reg_VirtAddr)
@@ -581,6 +647,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 	//pVEDR->vedr.core.glb0 		= pReg_Src->vedr.core.glb0;    //  0
 	__dv_reg_w(pReg_Src->vedr.core.glb0.value, pVEDR+0x3c000);
     if ( frmcnt == 0 ){
+		dprintk("%s-%d :: reset DV\n", __func__, __LINE__);
 		mdelay(16);
 		_void_reset_edr_compnent(1, 1, 1); // reset all.
 		_void_reset_edr_compnent(1, 0, 0); // reset ctrc only.
@@ -736,6 +803,7 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 	//pVEDR->vedr.dm.bioKsimap25  = pReg_Src->vedr.dm.bioKsimap25; // 90
 	__dv_reg_w(pReg_Src->vedr.dm.bioKsimap25.value, pVEDR+0x3c490);
 
+#if !defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
 	if (0){// frmcnt%2 == 0 ){
 		//pVEDR->vedr.dm.bioCtrl1 	= pReg_Src->vedr.dm.bioCtrl1;    // 94
 		__dv_reg_w(pReg_Src->vedr.dm.bioCtrl1.value, pVEDR+0x3c494);
@@ -754,6 +822,8 @@ void _voic_set_edr(void __iomem *reg_VirtAddr, unsigned int frmcnt)
 		//printk("shadow edr : 0x%x \n", value);
 		__dv_reg_w(value, pVEDR+0x3c494);
 	}
+#endif
+
 	//pVEDR->vedr.dm.unk1 		= pReg_Src->vedr.dm.unk1;        // c0
 	__dv_reg_w(pReg_Src->vedr.dm.unk1.value, pVEDR+0x3c4c0);
 	//pVEDR->vedr.dm.unk2 		= pReg_Src->vedr.dm.unk2;        // c4
@@ -856,10 +926,12 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 		unsigned int yuv444to422_blend = 0x1;
 
 		value	= pReg_Src->vpanel.osd1.unkimapg03.value;
-		value	|= (osd3_blend<<23);
-		value	&= ~(osd3_blend<<22);
-		value	|= (yuv444to422_blend<<21);
-		value	&= ~(yuv444to422_blend<<20);
+		if(frmcnt != 0)
+			value	|= 0xFFFF; // soft reset of vpanel, low active
+		value	|= (osd3_blend<<23);	// clk on for blend
+		value	&= ~(osd3_blend<<22);	// clk bypass for blend
+		value	|= (yuv444to422_blend<<21);	// clk on for 444
+		value	&= ~(yuv444to422_blend<<20);// clk on for 444
 		//pVPANEL->osd1.unkimapg03.value	= value; // 0c
 		__dv_reg_w(value, pVPANEL+0x000c);
 	}
@@ -872,6 +944,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 		}
 	}
 
+#if !defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
 	if(0){//frmcnt%2 == 0){
 		//pVPANEL->osd1.unkimapg04	= pReg_Src->vpanel.osd1.unkimapg04; // 10
 		__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg04.value, pVPANEL+0x0010);
@@ -891,6 +964,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 		//pVPANEL->osd1.unkimapg04	= unK04Reg; // 10
 		__dv_reg_w(value, pVPANEL+0x0010);
 	}
+#endif
 
 	if(frmcnt == 0){
     	//pVPANEL->osd1.unkimapg05	= pReg_Src->vpanel.osd1.unkimapg05; // 14
@@ -978,6 +1052,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
     //pVPANEL->osd1.unkimapg16   = pReg_Src->vpanel.osd1.unkimapg16; // a8
 	__dv_reg_w(pReg_Src->vpanel.osd1.unkimapg16.value, pVPANEL+0x00a8);
 
+#if !defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
 //OSD3 :: 0x125400AC
 	if(0){//frmcnt%2 == 0){
 		//pVPANEL->osd3.unkimapgb04   = pReg_Src->vpanel.osd3.unkimapgb04; // ac
@@ -996,16 +1071,20 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 		value |= ((bShadow_context<<12)|(bShadow_context<<13));
 		__dv_reg_w(value, pVPANEL+0x00ac);
 	}
+#endif
 
 	if(frmcnt == 0){
 	    //pVPANEL->osd3.unkimapgb05   = pReg_Src->vpanel.osd3.unkimapgb05; // b0
 		__dv_reg_w(pReg_Src->vpanel.osd3.unkimapgb05.value, pVPANEL+0x00b0);
 	}
 
-#if 0 // osd3 off //on in ff_player case!!
+#if 1 // osd3 off //on in ff_player case!!
 	{
 		unsigned int value = pReg_Src->vpanel.osd3.bioKsimapgb00.value; // b4
-		value	|=  (0x1<<29); // osd3 off
+		if(bOsd3_on)
+			value	&=  ~(0x1<<29); // osd1 on
+		else
+			value	|=  (0x1<<29); // osd1 off
 		//pVPANEL->osd3.bioKsimapgb00.value = value;
 		__dv_reg_w(value, pVPANEL+0x00b4);
 	}
@@ -1154,7 +1233,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 
 	value 	= pReg_Src->vpanel.out.bioKsuds01.value;
 	if((frmcnt == 0 || bMeta_changed) && (meta_VirtAddr != 0x00)){
-		value	|=  (0x1<<31);
+		value	|=  (0x1<<31); //enable vs load en for YUV444 -> YUV422
 	}
 	//pVPANEL->out.bioKsuds01.value	= value;    // 1d4
 	__dv_reg_w(value, pVPANEL+0x01d4);
@@ -1165,9 +1244,11 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 	{
 		value	= pReg_Src->vpanel.out.bioKsuds16.value;
 		if((frmcnt == 0 || bMeta_changed) && (meta_VirtAddr != 0x00)){
-			value	&= ~(0x1<<31);
-			value	&= ~(0x1<<30);
-			value	&= ~(0xFFFF<<0);
+			value	&= ~(0x1<<31); // meta scrambling bypass
+			value	&= ~(0x1<<30); // uv reverse
+			value	&= ~(0xFFFF<<0); // metadata length
+			if(vioc_v_dv_get_mode() != DV_STD)
+				value |= (0x1<<31);
 			value	|= 	(((*(volatile unsigned char *)(meta_VirtAddr+3))<<4) | ((*(volatile unsigned char *)(meta_VirtAddr+4))<<0));
 		}
 		//pVPANEL->out.bioKsuds16.value	= value;		// 1d8
@@ -1374,7 +1455,7 @@ void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on)
 
 	if(bStart_config)
 	{
-		dprintk("%s-%d\n", __func__, __LINE__);
+//		dprintk("%s-%d\n", __func__, __LINE__);
 
 		pVPANEL = VIOC_DV_VEDR_GetAddress(VPANEL);
 		if(type == EDR_OSD1)
@@ -1399,6 +1480,7 @@ void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on)
 				value	|=  (0x1<<29); // osd3 off
 			//pVPANEL->osd3.bioKsimapgb00.value = value;					 // b4
 			__dv_reg_w(value, pVPANEL+0x00b4);
+			bOsd3_on = on;
 		}
 	}
 }
@@ -1423,6 +1505,34 @@ void vioc_v_dv_el_bypass(void)
 	}
 }
 
+#if defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
+static void _vioc_v_dv_set_shadow_context(void __iomem *reg_VirtAddr)
+{
+	volatile void __iomem *pVPANEL, *pVEDR;
+	unsigned int value = 0x0;
+	struct TccEdrV1Reg *pReg_Src = (struct TccEdrV1Reg *)reg_VirtAddr;
+
+	pVEDR = (struct TccEdrPanelV1Reg *)VIOC_DV_VEDR_GetAddress(VEDR);
+	pVPANEL = (struct TccEdrPanelV1Reg *)VIOC_DV_VEDR_GetAddress(VPANEL);
+
+	if(bOsd1_on){
+		value = pReg_Src->vpanel.osd1.unkimapg04.value & ~((0x1<<12)|(0x1<<13));
+		value |= ((bShadow_context<<12)|(bShadow_context<<13));
+		__dv_reg_w(value, pVPANEL+0x0010);
+	}
+	if(bOsd3_on){
+		value = pReg_Src->vpanel.osd3.unkimapgb04.value & ~((0x1<<12)|(0x1<<13));
+		value |= ((bShadow_context<<12)|(bShadow_context<<13));
+		__dv_reg_w(value, pVPANEL+0x00ac);
+	}
+
+	value = pReg_Src->vedr.dm.bioCtrl1.value & ~((0x1<<1)|(0x1<<0));
+	value |= ((bShadow_context<<1)|(bShadow_context<<0));
+	__dv_reg_w(value, pVEDR+0x3c494);
+
+}
+#endif
+
 int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned int video_attribute, unsigned int frmcnt)
 {
 	void __iomem * meta_VirtAddr = 0x00;
@@ -1431,7 +1541,10 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 
 	if(frmcnt == 0)
 	{
-		bOsd1_on = bStart_config = 0;
+		dprintk("%s-%d :: restart DV\n", __func__, __LINE__);
+		bOsd1_on = (RDMA_FB == EDR_OSD1) ? 1 : 0;
+		bOsd3_on = (RDMA_FB == EDR_OSD3) ? 1 : 0;
+		bStart_config = 0;
 		bShadow_context = 1;
 		bMeta_PrevStatus = bMeta_changed = 0;
 	}
@@ -1447,7 +1560,7 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 		return -1;
 	}
 
-	if( DOVI == vioc_get_out_type() && meta_PhyAddr == 0x00) {
+	if( ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type())) && meta_PhyAddr == 0x00) {
 		pr_err("meta_PhyAddr is NULL \n");
 		return -1;
 	}
@@ -1467,7 +1580,7 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 	if( frmcnt != 0 )
 		video_attr = (VIDEO_ATTR)video_attribute;
 
-	dprintk("%s-%d\n", __func__, __LINE__);
+//	dprintk("%s-%d\n", __func__, __LINE__);
 
 	if((bMeta_CurrStatus != bMeta_PrevStatus) || !frmcnt)
 		bMeta_changed = 1;
@@ -1484,6 +1597,10 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 	
 	_voic_set_panel_lut(reg_VirtAddr);
 
+#if defined(SHADOW_CONTEXT_AT_THE_SAME_TIME)
+	_vioc_v_dv_set_shadow_context(reg_VirtAddr);
+#endif
+
 	_voic_set_metadata(meta_PhyAddr, meta_VirtAddr, reg_VirtAddr, frmcnt);
 
     if ( frmcnt == 0 )
@@ -1494,7 +1611,7 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 
     _vioc_v_dv_prog_done();
 
-//	printk("%s :: context(%d), meta_changed(%d) =>  reg(0x%x) meta(0x%x) \n", __func__, bShadow_context, bMeta_changed, reg_PhyAddr, meta_PhyAddr);
+	dprintk("%s :: context(%d), meta_changed(%d) =>  reg(0x%x) meta(0x%x) \n", __func__, bShadow_context, bMeta_changed, reg_PhyAddr, meta_PhyAddr);
 
 	bShadow_context = bShadow_context^1;
     bStart_config = 1;
@@ -1502,20 +1619,18 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 	bMeta_PrevStatus = bMeta_CurrStatus;
 	bMeta_changed = 0;
 
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+	tca_edr_inc_check_count(0, 0, 0, 1, 0);
+#endif
+
 	return 0;
 }
 
 static int __init _vioc_v_dv_init(void)
 {
-	if(0 > pmap_get_info("dolby_regs", &pmap_dv_regs)){
-		printk("%s-%d : pmap_dv_regs allocation is failed.\n", __func__, __LINE__);
-		return -ENOMEM;
-	}
+	pmap_get_info("dolby_regs", &pmap_dv_regs);
 
-	if(pmap_dv_regs.v_base)
-		pBase_vAddr = pmap_dv_regs.v_base;
-	else
-		pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base, PAGE_ALIGN(pmap_dv_regs.size));
+	pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base, PAGE_ALIGN(pmap_dv_regs.size));
 	if(pBase_vAddr == NULL){
 		pr_err("Regs ioremap failed \n");
 	}

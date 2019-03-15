@@ -24,6 +24,7 @@ typedef enum{
 typedef enum{
 	DV_STD = 0,
 	DV_LL,
+	DV_LL_RGB
 }DV_MODE;
 
 typedef enum{
@@ -37,6 +38,7 @@ typedef enum{
 	DOVI = 0,
 	HDR10,
 	SDR,
+	DOVI_LL
 }OUT_TYPE;
 
 //0 rgb, 1 ycc444, 2 ycc422, 3 ycc420
@@ -86,7 +88,7 @@ extern void VIOC_V_DV_Turnon(volatile void __iomem *pDISP, volatile void __iomem
 extern void VIOC_V_DV_Turnoff(volatile void __iomem *pDISP, volatile void __iomem *pRDMA);
 extern void VIOC_V_DV_All_Turnoff(void);
 extern void VIOC_V_DV_Power(char on);
-extern void VIOC_V_DV_SWReset(unsigned int force);
+extern void VIOC_V_DV_SWReset(unsigned int force, unsigned int bReset);
 extern void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h);
 extern volatile void __iomem * VIOC_DNG_GetAddress(void);
 extern volatile void __iomem* VIOC_DV_GetAddress(DV_DISP_TYPE type);
@@ -99,6 +101,7 @@ extern void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHD
 extern unsigned int vioc_v_dv_get_lcd0_clk_khz(void);
 extern void vioc_v_dv_el_bypass(void);
 extern char vioc_v_dv_get_sc(void);
+extern void vioc_v_dv_swreset(unsigned int edr, unsigned panel, unsigned int crtc);
 extern void vioc_v_dv_block_off(void);
 extern void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on);
 extern int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned int video_attribute, unsigned int frmcnt);
@@ -108,6 +111,7 @@ extern unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb);
 extern void vioc_v_dv_set_stage(DV_STAGE stage);
 extern DV_STAGE vioc_v_dv_get_stage(void);
 extern DV_PATH vioc_get_path_type(void);
+extern void vioc_set_out_type(OUT_TYPE type);
 extern OUT_TYPE vioc_get_out_type(void);
 extern void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap);
 extern OUT_FORMAT vioc_v_dv_get_output_color_format(void);

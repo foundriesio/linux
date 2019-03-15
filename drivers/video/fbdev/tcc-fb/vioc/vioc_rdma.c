@@ -44,18 +44,43 @@ static volatile void __iomem *pRDMA_reg[VIOC_RDMA_MAX] = {0};
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
 #include <video/tcc/tccfb.h>
 
-static unsigned int noUpdate_RDMA0 = 0;
-static unsigned int Disable_RDMA0 = 0;
+static unsigned int noUpdate_FB_RDMA = 0;
+static unsigned int Disable_FB_RDMA = 0;
 void VIOC_RDMA_PreventEnable_for_UI(char no_update, char disabled)
 {
 	volatile void __iomem *reg = VIOC_RDMA_GetAddress(RDMA_FB);
-	noUpdate_RDMA0 = no_update;
-	Disable_RDMA0 = disabled;
+	noUpdate_FB_RDMA = no_update;
+	Disable_FB_RDMA = disabled;
 
-	// printk("%s :: %d - %d \n", __func__, noUpdate_RDMA0, Disable_RDMA0);
-	if (Disable_RDMA0) {
+	// printk("%s :: %d - %d \n", __func__, noUpdate_FB_RDMA, Disable_FB_RDMA);
+	if (Disable_FB_RDMA) {
 		VIOC_RDMA_SetImageDisable(reg);
 	}
+	else {
+		VIOC_RDMA_SetImageEnable(reg);
+	}
+}
+
+void VIOC_RDMA_SetImageUpdate_for_CertiTest(volatile void __iomem *reg, unsigned int sw, unsigned int sh, unsigned int nBase0)
+{
+	unsigned long val;
+
+// Base address
+	__raw_writel(nBase0, reg + RDMABASE0);
+
+// Size
+	val = ((sh << RDMASIZE_HEIGHT_SHIFT) | ((sw << RDMASIZE_WIDTH_SHIFT)));
+	__raw_writel(val, reg + RDMASIZE);
+
+// Offset
+	val = ((0 << RDMAOFFS_OFFSET1_SHIFT) |
+	       ((4*sw) << RDMAOFFS_OFFSET0_SHIFT));
+	__raw_writel(val, reg + RDMAOFFS);
+
+// Update
+	val = (__raw_readl(reg + RDMACTRL) & ~(RDMACTRL_UPD_MASK));
+	val |= (0x1 << RDMACTRL_UPD_SHIFT);
+	__raw_writel(val, reg + RDMACTRL);
 }
 #endif
 
@@ -63,7 +88,7 @@ void VIOC_RDMA_SetImageUpdate(volatile void __iomem *reg)
 {
 	unsigned long val;
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-	if (Disable_RDMA0 && reg == VIOC_RDMA_GetAddress(RDMA_FB)) {
+	if (Disable_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB)) {
 		VIOC_RDMA_SetImageDisable(reg);
 		return;
 	}
@@ -77,9 +102,35 @@ void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg)
 {
 	unsigned long val;
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-	if (Disable_RDMA0 && reg == VIOC_RDMA_GetAddress(RDMA_FB)) {
+	if (Disable_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB)) {
 		VIOC_RDMA_SetImageDisable(reg);
 		return;
+	}
+#endif
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+	if (VIOC_CONFIG_DV_GET_EDR_PATH()){
+		if(reg == VIOC_RDMA_GetAddress(RDMA_FB))
+			voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB, 1);
+		if(reg == VIOC_RDMA_GetAddress(RDMA_FB1))
+			voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB1, 1);
+	}
+	VIOC_V_DV_Turnon(NULL, reg);
+#endif
+
+#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+	VIOC_RDMA_GetImageEnable(reg, &val);
+	if(!val)
+	{
+		if (reg == VIOC_RDMA_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
+			dprintk_dv_sequence("### ======> %d RDMA On \n", RDMA_FB1);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
+			dprintk_dv_sequence("### ======> %d RDMA On \n", RDMA_FB);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_BL*/RDMA_VIDEO)) {
+			dprintk_dv_sequence("### ======> %d RDMA On \n", RDMA_VIDEO);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_EL*/RDMA_VIDEO_SUB)) {
+			dprintk_dv_sequence("### ======> %d RDMA On \n", RDMA_VIDEO_SUB);
+		}
 	}
 #endif
 
@@ -88,12 +139,12 @@ void VIOC_RDMA_SetImageEnable(volatile void __iomem *reg)
 	val |= ((0x1 << RDMACTRL_IEN_SHIFT) | (0x1 << RDMACTRL_UPD_SHIFT));
 	__raw_writel(val, reg + RDMACTRL);
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#if 0//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH()){
-		if(reg == VIOC_RDMA_GetAddress(RDMA_FB1))
-			voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB1, 1);
 		if(reg == VIOC_RDMA_GetAddress(RDMA_FB))
-			voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB, 1);
+			voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB, 1);
+		if(reg == VIOC_RDMA_GetAddress(RDMA_FB1))
+			voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB1, 1);
 	}
 	VIOC_V_DV_Turnon(NULL, reg);
 #endif
@@ -115,6 +166,22 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 		return;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+	#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+	VIOC_RDMA_GetImageEnable(reg, &val);
+	if(val)
+	{
+		if (reg == VIOC_RDMA_GetAddress(/*EDR_OSD1*/RDMA_FB1)) {
+			dprintk_dv_sequence("### ======> %d RDMA Off \n", RDMA_FB1);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_OSD3*/RDMA_FB)) {
+			dprintk_dv_sequence("### ======> %d RDMA Off \n", RDMA_FB);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_BL*/RDMA_VIDEO)) {
+			dprintk_dv_sequence("### ======> %d RDMA Off \n", RDMA_VIDEO);
+		} else if (reg == VIOC_RDMA_GetAddress(/*EDR_EL*/RDMA_VIDEO_SUB)) {
+			dprintk_dv_sequence("### ======> %d RDMA Off \n", RDMA_VIDEO_SUB);
+		}
+	}
+	#endif
+
 	if (reg == VIOC_RDMA_GetAddress(RDMA_VIDEO) ||
 	    reg == VIOC_RDMA_GetAddress(RDMA_VIDEO_SUB)) {
 		unsigned int nRDMA = (reg == VIOC_RDMA_GetAddress(RDMA_VIDEO))
@@ -156,9 +223,12 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
-		if (reg == VIOC_RDMA_GetAddress(RDMA_FB1))
-			voic_v_dv_osd_ctrl(EDR_OSD1, 0);
-
+		if (reg == VIOC_RDMA_GetAddress(RDMA_FB1)){
+			voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB1, 0);
+		}
+		if (reg == VIOC_RDMA_GetAddress(RDMA_FB)){
+			voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB, 0);
+		}
 		if (reg == VIOC_RDMA_GetAddress(RDMA_VIDEO_SUB))
 			vioc_v_dv_el_bypass();
 	}
@@ -181,7 +251,7 @@ void VIOC_RDMA_SetImageDisableNW(volatile void __iomem *reg)
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if (VIOC_CONFIG_DV_GET_EDR_PATH() &&
 	    reg == VIOC_RDMA_GetAddress(RDMA_FB1))
-		voic_v_dv_osd_ctrl(EDR_OSD1, 0);
+		voic_v_dv_osd_ctrl(/*EDR_OSD1*/RDMA_FB1, 0);
 	VIOC_V_DV_Turnoff(NULL, reg);
 #endif
 }
@@ -335,6 +405,11 @@ void VIOC_RDMA_SetImageSize(volatile void __iomem *reg, unsigned int sw,
 {
 	unsigned long val;
 
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
+	if (noUpdate_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB))
+		return;
+#endif
+
 	val = ((sh << RDMASIZE_HEIGHT_SHIFT) | ((sw << RDMASIZE_WIDTH_SHIFT)));
 	__raw_writel(val, reg + RDMASIZE);
 }
@@ -352,7 +427,7 @@ void VIOC_RDMA_SetImageBase(volatile void __iomem *reg, unsigned int nBase0,
 			    unsigned int nBase1, unsigned int nBase2)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-	if (noUpdate_RDMA0 && reg == VIOC_RDMA_GetAddress(RDMA_FB))
+	if (noUpdate_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB))
 		return;
 #endif
 
@@ -365,7 +440,7 @@ void VIOC_RDMA_SetImageRBase(volatile void __iomem *reg, unsigned int nBase0,
 			     unsigned int nBase1, unsigned int nBase2)
 {
 #ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-	if (noUpdate_RDMA0 && reg == VIOC_RDMA_GetAddress(RDMA_FB))
+	if (noUpdate_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB))
 		return;
 #endif
 	__raw_writel(nBase0, reg + RDMA_RBASE0);
@@ -378,6 +453,11 @@ void VIOC_RDMA_SetImageOffset(volatile void __iomem *reg, unsigned int imgFmt,
 {
 	unsigned long val;
 	unsigned long offset0 = 0, offset1 = 0;
+
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
+	if (noUpdate_FB_RDMA && reg == VIOC_RDMA_GetAddress(RDMA_FB))
+		return;
+#endif
 
 	switch (imgFmt) {
 	case TCC_LCDC_IMG_FMT_1BPP: // 1bpp indexed color

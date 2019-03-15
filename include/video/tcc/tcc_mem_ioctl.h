@@ -35,7 +35,9 @@
 
 #define TCC_8925S_IS_XX_CHIP                0x20
 
+//for DolbyVision
 #define TCC_GET_HDMI_INFO                   0x30
+#define TCC_SET_HDMI_OUT_TYPE				0x31
 
 #define USE_UMP_RESERVED_SW_PMAP
 #ifdef USE_UMP_RESERVED_SW_PMAP
@@ -54,7 +56,8 @@ typedef struct {
     unsigned int    width;
     unsigned int    height;
 	unsigned int 	dv_vsvdb[12];
-	unsigned int 	dv_vsvdb_size;	
+	unsigned int 	dv_vsvdb_size;
+	unsigned int	dv_ll_mode;
 } vHdmi_info;
 
 #endif //_TCC_MEM_IOCTL_H

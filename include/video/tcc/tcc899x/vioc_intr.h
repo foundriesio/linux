@@ -135,6 +135,7 @@ enum vioc_wdma_intr_src {
 enum vioc_v_dv_intr_src {
 	FALL_HDMITX_HDE = 0,
 	FALL_HDMITX_VS = 3,
+	RISE_HDMITX_HDE = 16,
 	RISE_HDMITX_VDE = 17,
 	VIOC_V_DV_INTR_MAX = 31
 };

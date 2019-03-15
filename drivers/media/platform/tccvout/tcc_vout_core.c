@@ -1085,7 +1085,8 @@ void vout_onthefly_convert_video_info(struct tcc_vout_device *vout, struct v4l2_
 
 	ImageInfo->private_data.dolbyVision_info.el_frame_width 	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_WIDTH];
 	ImageInfo->private_data.dolbyVision_info.el_frame_height 	= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_EL_FRAME_HEIGHT];
-	ImageInfo->private_data.dolbyVision_info.osd_addr			= NULL;
+	ImageInfo->private_data.dolbyVision_info.osd_addr[0]		= NULL;
+	ImageInfo->private_data.dolbyVision_info.osd_addr[1]		= NULL;
 	ImageInfo->private_data.dolbyVision_info.reg_out_type		= buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE];
 }
 
@@ -1138,7 +1139,8 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 			el_w = ImageInfo.private_data.dolbyVision_info.el_frame_width;
 			el_h = ImageInfo.private_data.dolbyVision_info.el_frame_height;
 		}
-		ImageInfo.private_data.dolbyVision_info.osd_addr = buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_OSD_OFFSET0];
+		ImageInfo.private_data.dolbyVision_info.osd_addr[0] = buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_OSD_OFFSET0];
+		ImageInfo.private_data.dolbyVision_info.osd_addr[1] = 0x00;
 
 		if(nIdx_copy < 120){//nTS_Prev != current_time){
 			ImageInfo.private_data.optional_info[VID_OPT_TIMESTAMP] 	= (unsigned int)current_time;
@@ -1148,7 +1150,7 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 			nTS_Prev = current_time;
 		}
 
-		dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+		dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 				bStep_Check, DEF_DV_CHECK_NUM, nFrame, current_time,
 				ImageInfo.private_data.optional_info[VID_OPT_BIT_DEPTH],
 				ImageInfo.private_data.offset[0],
@@ -1157,12 +1159,12 @@ void vout_edr_certification_display(struct tcc_vout_device *vout, struct v4l2_bu
 				ImageInfo.private_data.dolbyVision_info.el_offset[0],				
 				ImageInfo.private_data.dolbyVision_info.el_frame_width, ImageInfo.private_data.dolbyVision_info.el_frame_height,
 				ImageInfo.private_data.dolbyVision_info.el_buffer_width, ImageInfo.private_data.dolbyVision_info.el_buffer_height,
-				ImageInfo.private_data.dolbyVision_info.osd_addr,
+				ImageInfo.private_data.dolbyVision_info.osd_addr[0], ImageInfo.private_data.dolbyVision_info.osd_addr[1],
 				ImageInfo.private_data.dolbyVision_info.reg_addr, ImageInfo.private_data.dolbyVision_info.md_hdmi_addr);
 	}
 	tca_edr_display_update(pdp_data, &ImageInfo);
 	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
-	VIOC_RDMA_PreventEnable_for_UI(1, ImageInfo.private_data.dolbyVision_info.osd_addr == 0x00 ? 1 : 0);
+	VIOC_RDMA_PreventEnable_for_UI(1, ImageInfo.private_data.dolbyVision_info.osd_addr[0] == 0x00 ? 1 : 0);
 	#endif
 	if(nFrame != 1) {
 		vout->display_done = ON;
@@ -3207,7 +3209,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 	printk("&&&&&&&&&&&&&&&&&&&&&& [[[%d = %d/%d/%d]]] \n", nFrame, nFrame_t0, nFrame_t1, nFrame_t2);
 
 	for(nFrame = 0; nFrame < nIdx_copy; nFrame++){
-		printk("^@New^^^^^^^^^^^^^ @@@ available(%d), %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+		printk("^@New^^^^^^^^^^^^^ @@@ available(%d), %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_PLAYER_IDX], nFrame, nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_TIMESTAMP],
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_BIT_DEPTH],
 				nCopy_ImageInfo[nFrame].private_data.offset[0],
@@ -3216,7 +3218,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_offset[0],				
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_frame_width, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_frame_height,
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_buffer_width, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.el_buffer_height,
-				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.osd_addr,
+				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.osd_addr[0], nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.osd_addr[1],
 				nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.reg_addr, nCopy_ImageInfo[nFrame].private_data.dolbyVision_info.md_hdmi_addr);	
 	}
 	nIdx_copy = 0;
@@ -3232,7 +3234,7 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 		#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI // No UI-Blending
 		VIOC_RDMA_PreventEnable_for_UI(0, 0);
 		#endif
-		voic_v_dv_osd_ctrl(EDR_OSD3, 1);
+		voic_v_dv_osd_ctrl(/*EDR_OSD3*/RDMA_FB, 1);
 		//vioc_v_dv_prog(dv_md_phyaddr, dv_reg_phyaddr, 1);
 		return;
 	}

@@ -93,13 +93,20 @@ typedef struct dolby_vision_info_t
 {
    unsigned int reg_addr;
    unsigned int md_hdmi_addr;
+   unsigned int osd_addr[2];	// ARGB8888
+   unsigned int osd_width;
+   unsigned int osd_height;
+   unsigned int reg_out_type;	// 0: DOVI, 1: HDR10, 2: SDR
+
+   /* reference for renderer to extract dolby-reg :: from decoder*/
+   unsigned int dv_input_format; // 0: DOVI, 1: HDR10, 2: SDR
+   unsigned int dm_phy_addr;
+   unsigned int comp_phy_addr;
    unsigned int el_offset[3];
    unsigned int el_buffer_width;
    unsigned int el_buffer_height;
    unsigned int el_frame_width;
    unsigned int el_frame_height;
-   unsigned int osd_addr;
-   unsigned int reg_out_type;	// 0: DOVI, 1: HDR10, 2: SDR
 }dolby_vision_info_t;
 #endif
 

@@ -167,7 +167,12 @@ static int debug_v = 0;
 #define vprintk(msg...) if (debug_v) { printk( "tcc_vsync: " msg); }
 static int debug = 0;
 #define dprintk(msg...) if (debug) { printk( "tcc_vsync: " msg); }
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+#define dprintk_drop(msg...) if (1) { printk( "tcc_vsync: " msg); }
+#define dprintk_dv_transition(msg...) if (0) { printk( "dv_transition: " msg); }
+#else
 #define dprintk_drop(msg...) if (debug) { printk( "tcc_vsync: " msg); }
+#endif
 
 //#define DEBUG_VSYNC_FRAME
 #ifdef DEBUG_VSYNC_FRAME
@@ -175,12 +180,22 @@ static int debug = 0;
 #define GAP_CNT 60
 #endif
 
-//#define DV_CERTIFICATION_CONTENTS_TEST
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-static long long nPrevTS = 0;
-static long long nBaseTS = 0;
-#define GAP_TS_MS (33)
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+#define DV_PREVENT_FRAME_DROP_AND_DUPLICATION // To prevent frame dropping or duplicating!!
+
+//static long long nPrevTS = 0;
+//static long long nBaseTS = 0;
+//#define GAP_TS_MS (33)
 static int bStart_DV_Display = 0;
+static int b1st_frame_id = 0;
+static int b1st_frame_display_count = 0;
+extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
+
+#define DV_TRANSITION_SKIP_CNT (4)
+static int nDolbyTransition_Skipped_Count = 0;
+static int nDolbyTransition_VSIF = 0;
+extern int hdmi_api_vsif_update_by_index(int index);
+extern void hdmi_api_AvMute(int enable);
 #endif
 
 #if 0
@@ -191,15 +206,17 @@ static int testToggleBit=0;
 inline static int tcc_vsync_get_time(tcc_video_disp *p);
 inline static void tcc_vsync_set_time(tcc_video_disp *p, int time);
 #define USE_VSYNC_TIMER
-//#define USE_SOFT_IRQ_FOR_VSYNC
 
 //#define USE_VSYNC_TIMER_INT_FOR_UNPLUGED_OUTPUT
 
 // if time gab of video frame over base time is bigger than this value, that frame is skipped.
 #define VIDEO_SYNC_MARGIN_LATE		50
 // if time gap of video frame over base time is less than this value, that frame is displayed immediately
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
 #define VIDEO_SYNC_MARGIN_EARLY 	50
-
+#else
+#define VIDEO_SYNC_MARGIN_EARLY 	50
+#endif
 #define GAP_FOR_RESET_SYNC_TIME 	200
 
 #define TIME_MARK_SKIP				(-1)
@@ -211,8 +228,8 @@ int vsync_started = 0;
 
 DECLARE_WAIT_QUEUE_HEAD( wq_consume ) ;
 
-#ifdef USE_SOFT_IRQ_FOR_VSYNC
-static struct work_struct vsync_work_q;
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+static struct work_struct dolby_out_change_work_q;
 #endif
 
 #ifdef USE_VSYNC_TIMER
@@ -243,6 +260,7 @@ extern void hdmi_set_drm(DRM_Packet_t * drmparm);
 extern void hdmi_clear_drm(void);
 void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer)
 {
+#if defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC) || defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
 	DRM_Packet_t drmparm;
 	hevc_userdata_output_t *uData = NULL;
 
@@ -256,7 +274,7 @@ void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsi
 	if( pImage )
 		uData = &pImage->private_data.userData_Info;
 
-#if 0//defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH() && (HDR10 != vioc_get_out_type()))
 		return;
 #endif
@@ -312,6 +330,7 @@ void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsi
 		dprintk("===========> set_hdmi_drm(DRM_INIT) \n");
 		memset(&gDRM_packet, 0x0, sizeof(DRM_Packet_t));
 	}
+#endif
 }
 #endif
 
@@ -339,12 +358,26 @@ static int tcc_vsync_set_max_buffer(tcc_vsync_buffer_t * buffer_t, int buffer_co
 	return buffer_count;
 }
 
-static int tcc_vsync_push_buffer(tcc_vsync_buffer_t * buffer_t, struct tcc_lcdc_image_update* inputData)
+static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t * buffer_t)
+{
+	int i = 0;
+
+	for(i = 0; i < VPU_BUFFER_MANAGE_COUNT; i++)
+	{
+		printk("stImage[%d] :%s: ID(%d), TS(%d), Sync(%d) \n", i, (i == buffer_t->readIdx) ? "r" : "n",
+					buffer_t->stImage[i].buffer_unique_id, buffer_t->stImage[i].time_stamp, buffer_t->stImage[i].sync_time);
+	}
+}
+
+static int tcc_vsync_push_buffer(tcc_video_disp *p, tcc_vsync_buffer_t * buffer_t, struct tcc_lcdc_image_update* inputData)
 {
 
 	if(atomic_read(&buffer_t->valid_buff_count) >= buffer_t->max_buff_num || atomic_read( &buffer_t->readable_buff_count) >= buffer_t->max_buff_num)
 	{
-		printk("error: buffer full %d, max %d %d ts %d \n", atomic_read(&buffer_t->valid_buff_count), buffer_t->max_buff_num,atomic_read( &buffer_t->readable_buff_count),inputData->time_stamp);
+		printk("error: buffer full %d, max %d %d ts %d sync %d (%d)\n",
+				atomic_read(&buffer_t->valid_buff_count), buffer_t->max_buff_num,
+				atomic_read( &buffer_t->readable_buff_count),inputData->time_stamp, inputData->sync_time, tcc_vsync_get_time(p));
+		_tcc_vsync_print_all_buffers(buffer_t);
 		return -1;
 	}
 
@@ -637,6 +670,32 @@ static int tcc_vsync_calc_early_margin(tcc_video_disp *p)
 #endif
 }
 
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+static void tcc_video_change_dolby_out_wq_isr(struct work_struct *work)
+{
+//	struct tcc_vsync_display_info_t *vsync = container_of(work, struct tcc_vsync_display_info_t, dolby_out_change_work_q);
+
+//	dprintk_dv_transition("%s-%d :: irq(%d), lcdc(%d) :: ref_count(%d) !!!\n", __func__, __LINE__,
+//				vsync->irq_num, vsync->lcdc_num, nDolbyTransition_Skipped_Count);
+
+	if(nDolbyTransition_Skipped_Count >= 0)
+	{
+		if(nDolbyTransition_Skipped_Count == (DV_TRANSITION_SKIP_CNT - 2)){
+			hdmi_api_vsif_update_by_index(nDolbyTransition_VSIF);
+			dprintk_dv_transition("%s-%d :: ref_count(%d) vsif(%d) !!!\n", __func__, __LINE__, nDolbyTransition_Skipped_Count, nDolbyTransition_VSIF);
+		}
+		else{
+			hdmi_api_AvMute(1);
+			dprintk_dv_transition("%s-%d :: ref_count(%d) AV-mute !!!\n", __func__, __LINE__, nDolbyTransition_Skipped_Count);
+		}
+	}
+	else
+	{
+		hdmi_api_AvMute(0);
+	}
+}
+#endif
+
 static void tcc_vsync_display_update(tcc_video_disp *p)
 {
 	int current_time;
@@ -651,9 +710,14 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 	tcc_vsync_clean_buffer(&p->vsync_buffer);
 
 	readable_buff_cnt = tcc_video_get_readable_count(p);
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-	if( readable_buff_cnt < 5 && !bStart_DV_Display )
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
+	if( readable_buff_cnt < 2 && !bStart_DV_Display )
 		return;
+	if( bStart_DV_Display && b1st_frame_display_count++ < 3 && p->vsync_buffer.curr_displaying_imgInfo.buffer_unique_id == b1st_frame_id)
+	{
+		tca_scale_display_update(tca_fb_get_displayType(Output_SelectMode), &p->vsync_buffer.curr_displaying_imgInfo);
+		return;
+	}
 #endif
 
 	readable_buff_cnt--;
@@ -671,13 +735,13 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 		vprintk("[%d/%d] ID[%d] pNextImage->time_stamp : %d / %d, %d\n", i, readable_buff_cnt, pNextImage->buffer_unique_id, pNextImage->time_stamp, pNextImage->sync_time,current_time) ;
 
 		time_gap = (current_time+tcc_vsync_calc_early_margin(p)) - pNextImage->time_stamp;
-		if(time_gap >= 0)
-		{
-#if 0//defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-			if( bStart_DV_Display )
-				break;
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
+		if( !bStart_DV_Display )
+			break;
 #endif
 
+		if(time_gap >= 0)
+		{
 			if (tcc_vsync_pop_buffer(&p->vsync_buffer) < 0) {
 				if(popped_count > 0){
 					dprintk_drop("%s:0 skipped buffer(%d) and no display \n", p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count);
@@ -685,6 +749,11 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 				return;
 			}
 			popped_count++;
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
+			if( bStart_DV_Display )
+				break;
+#endif
 
 			if(p->perfect_vsync_flag == 1 && time_gap < 4 )
 			{
@@ -708,6 +777,58 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 
 	pPrevImage = &p->vsync_buffer.curr_displaying_imgInfo;
 	pNextImage = &p->vsync_buffer.stImage[p->vsync_buffer.readIdx];
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+	if(pPrevImage->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO])
+	{
+		if(nDolbyTransition_Skipped_Count >= 0)
+		{
+			nDolbyTransition_Skipped_Count--;
+
+			if(nDolbyTransition_Skipped_Count == (DV_TRANSITION_SKIP_CNT - 2))
+			{
+				//2.1 send command so that HDMI can change VSIF.
+				if (schedule_work(&dolby_out_change_work_q) == 0 ) {
+					pr_err("dolby_out :cannot schedule work !!!\n");
+				}	
+			}
+
+			if(nDolbyTransition_Skipped_Count >= 2)
+			{
+				//2.2 skip frames during several(more than 2) vsync event. ...
+				dprintk_dv_transition("[%d] FrameSkip for DV Transition!!\n", nDolbyTransition_Skipped_Count);
+				return;
+			}
+			else if(nDolbyTransition_Skipped_Count >= 0)
+			{
+				//3. on 3rd vsync event, restart displaying. ...
+				dprintk_dv_transition("[%d] Display for DV Transition!!\n", nDolbyTransition_Skipped_Count);
+			}
+			else if(nDolbyTransition_Skipped_Count < 0)
+			{
+				//4. AV Mute OFF
+				if (schedule_work(&dolby_out_change_work_q) == 0 ) {
+					pr_err("dolby_out :cannot schedule work !!!\n");
+				}
+			}
+		}
+
+		if( nDolbyTransition_Skipped_Count < 0 &&
+			(pPrevImage->private_data.dolbyVision_info.reg_out_type != pNextImage->private_data.dolbyVision_info.reg_out_type))
+		{
+			dprintk_dv_transition("[%d]-%d DOLBY Output mode(%d) is changed into %d\n", vioc_get_out_type(),
+					pNextImage->private_data.optional_info[VID_OPT_RESERVED_3],
+					pPrevImage->private_data.dolbyVision_info.reg_out_type, pNextImage->private_data.dolbyVision_info.reg_out_type);
+			//1. send command for AV mute on HDMI
+			nDolbyTransition_Skipped_Count = DV_TRANSITION_SKIP_CNT;
+			nDolbyTransition_VSIF = pNextImage->private_data.optional_info[VID_OPT_RESERVED_3];
+			if (schedule_work(&dolby_out_change_work_q) == 0 ) {
+				pr_err("dolby_out :cannot schedule work !!!\n");
+			}
+			return;
+		}
+	}
+#endif
 
 #ifdef DEBUG_VSYNC_FRAME
 	if((pNextImage->buffer_unique_id % GAP_CNT) == 0)	
@@ -739,10 +860,10 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 				pPrevImage->crop_right == pNextImage->crop_right &&
 				pPrevImage->crop_bottom == pNextImage->crop_bottom
 			){
-#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-				if(!VIOC_CONFIG_DV_GET_EDR_PATH())
-					return;
-#endif
+//#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+//				if(!VIOC_CONFIG_DV_GET_EDR_PATH())
+//					return;
+//#endif
 #ifdef CONFIG_USE_SUB_MULTI_FRAME
 				switch(p->type) {
 				case VSYNC_MAIN:
@@ -768,9 +889,13 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 			dprintk(" POP(%d) ====> [%d/%d] ID[%d] pNextImage->time_stamp : %d / %d, Gap = %d\n", popped_count, i, readable_buff_cnt, pNextImage->buffer_unique_id, pNextImage->time_stamp, current_time, pNextImage->time_stamp - current_time);	
 		}
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-		if( !bStart_DV_Display )
-			bStart_DV_Display = 1;
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
+		if( !bStart_DV_Display ){
+			bStart_DV_Display = b1st_frame_display_count = 1;
+			b1st_frame_id = pNextImage->buffer_unique_id;
+		}
+		pNextImage->private_data.optional_info[VID_OPT_RESERVED_2] = (readable_buff_cnt << 16) | tcc_video_get_valid_count(p);
+		tca_edr_inc_check_count(0, 1, 0, 0, 0);
 #endif
 
 		memcpy(pPrevImage, pNextImage, sizeof(struct tcc_lcdc_image_update));
@@ -1158,12 +1283,6 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 
 int display_vsync(tcc_video_disp *p)
 {
-#ifdef USE_SOFT_IRQ_FOR_VSYNC
-	if (schedule_work(&vsync_work_q) == 0 ) {
-		printk("vsync error:cannot schedule work !!!\n");
-	}
-#else
-
 #ifndef USE_VSYNC_TIMER
    if((++p->unVsyncCnt) &0x01)
 		   p->baseTime += 16;
@@ -1197,9 +1316,10 @@ int display_vsync(tcc_video_disp *p)
 	}
 
 	return 0;
-#endif	
 }
 
+#define USE_DOLBY_VISION_SUB_INTERRUPT
+static unsigned int dv_video_int_he_count = 0;
 static irqreturn_t tcc_vsync_handler_for_video(int irq, void *dev_id)
 {
 	struct tcc_vsync_display_info_t *vsync = (struct tcc_vsync_display_info_t *)dev_id;
@@ -1212,8 +1332,29 @@ static irqreturn_t tcc_vsync_handler_for_video(int irq, void *dev_id)
 		unsigned int status = 0;
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
 
-		if(status & INT_PEND_F_TX_VS_MASK)
-			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);
+		if(status & DV_VIDEO_INT){
+			VIOC_V_DV_ClearInterrupt(pDV_Cfg, DV_VIDEO_INT);
+	#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+			tca_edr_inc_check_count(1, 0, 0, 0, 0);
+	#endif
+	#ifdef USE_DOLBY_VISION_SUB_INTERRUPT
+			vioc_intr_enable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, DV_VIDEO_INT_SUB);
+			dv_video_int_he_count = 0;
+			return IRQ_HANDLED;
+	#endif
+		}
+	#ifdef USE_DOLBY_VISION_SUB_INTERRUPT
+		else if(status & DV_VIDEO_INT_SUB){
+			VIOC_V_DV_ClearInterrupt(pDV_Cfg, DV_VIDEO_INT_SUB);
+			if(dv_video_int_he_count++ > 2)
+			{
+				dv_video_int_he_count = 0;
+				vioc_intr_disable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, DV_VIDEO_INT_SUB);
+			}
+			else
+				return IRQ_HANDLED;
+		}
+	#endif
 		else
 			return IRQ_NONE;
 	}
@@ -1390,8 +1531,10 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 		tcc_vsync_set_time(p, tcc_vsync_get_time(p)+avgTime);
 		spin_unlock_irq(&vsync_lock) ;
 
+#if !defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 		if(!p->firstFrameFlag)
 			printk("changed base time : %d, add time: %d diffTime %d fps(%d)\n",base_time+avgTime, avgTime,diffTime, p->video_frame_rate);
+#endif
 	}
 	
 	return 0;
@@ -1682,7 +1825,6 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 {
 	if(input_image_info->output_path)
 	{
-	
 		if(p->vsync_buffer.available_buffer_id_on_vpu > input_image_info->buffer_unique_id)
 			return 0;
 
@@ -1819,7 +1961,7 @@ static int tcc_vsync_push_process(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 	
 	spin_lock_irq(&vsync_lock) ;
 	input_image_info->viqe_queued = 0;
-	if(tcc_vsync_push_buffer(&p->vsync_buffer, input_image_info) < 0)
+	if(tcc_vsync_push_buffer(p, &p->vsync_buffer, input_image_info) < 0)
 	{
 		printk("critical error: vsync buffer full by fault buffer controll\n");
 	}
@@ -1981,8 +2123,10 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 		tccvid_lastframe[type].CurrImage.buffer_unique_id = 0xFFFFFFFF;
 
 		tcc_vsync_set_output_mode(p, Output_SelectMode);
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-		nPrevTS = nBaseTS = bStart_DV_Display = 0;
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) && defined(DV_PREVENT_FRAME_DROP_AND_DUPLICATION)
+		/*nPrevTS = nBaseTS = */bStart_DV_Display = 0;
+		b1st_frame_display_count = 0;
+		tca_edr_inc_check_count(0, 0, 0, 0, 1);
 #endif
 	} else {
 		p->firstFrameFlag = 1;
@@ -3549,7 +3693,6 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						}
 					}
 
-					//printk("=========================> tcc_vsync_push_process :[%d]\n", input_image->buffer_unique_id);	
 					#ifdef CONFIG_USE_SUB_MULTI_FRAME
 					if(type != VSYNC_MAIN) {
 						input_image->m2m_mode = 1;
@@ -3564,20 +3707,6 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						kfree((const void*)input_image);
 						goto Error;
 					}
-
-			#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST) || defined(DV_CERTIFICATION_CONTENTS_TEST)
-					if(1)//input_image->time_stamp == 173 || input_image->time_stamp == 140)
-					{
-						if(nBaseTS == 0){
-							nBaseTS = input_image->sync_time;
-							input_image->time_stamp = nBaseTS + 240;
-						}
-						else{
-							input_image->time_stamp = nPrevTS + GAP_TS_MS;
-						}
-						nPrevTS = input_image->time_stamp;
-					}
-			#endif
 
 					print_vsync_input("TCC_LCDC_VIDEO_PUSH_VSYNC", input_image);
 					vprintk("%s: PUSH_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", type,
@@ -3932,12 +4061,16 @@ static void _tca_vsync_intr_onoff(char on, char vsync_disp_num)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH())
 	{
 		if(on)
-			vioc_intr_enable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
+			vioc_intr_enable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, DV_VIDEO_INT);
 		else
 		{
 			volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
-			vioc_intr_disable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, 1<<FALL_HDMITX_VS);
-			VIOC_V_DV_ClearInterrupt(pDV_Cfg, INT_CLR_F_TX_VS_MASK);
+		#ifdef USE_DOLBY_VISION_SUB_INTERRUPT
+			vioc_intr_disable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, DV_VIDEO_INT|DV_VIDEO_INT_SUB);
+		#else
+			vioc_intr_disable(vsync_vioc0_disp.irq_num, VIOC_INTR_V_DV, DV_VIDEO_INT);
+		#endif
+			VIOC_V_DV_ClearInterrupt(pDV_Cfg, DV_VIDEO_INT|DV_VIDEO_INT_SUB);
 		}
 	}
 	else
@@ -4033,8 +4166,8 @@ void tca_vsync_video_display_enable(void)
 		
 		dprintk("%s: onoff(%d) request_irq(%d) ret(%d) \n",__func__,lcdc_interrupt_onoff,lcdc_num,ret);
 		
-#ifdef USE_SOFT_IRQ_FOR_VSYNC
-		INIT_WORK(&vsync_work_q, tcc_video_display_update_isr);
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
+		INIT_WORK(&dolby_out_change_work_q, tcc_video_change_dolby_out_wq_isr);
 #endif
 		lcdc_interrupt_onoff = 1;
 		video_display_disable_check = 0;

@@ -21,6 +21,8 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+#include <video/tcc/tccfb.h>
+
 #ifdef CONFIG_ARCH_TCC898X
 #include "tcc898x/vioc_v_dv.h"
 #endif
@@ -30,5 +32,10 @@
 #include "tcc899x/vioc_dv_in.h"
 #endif
 
-#define dprintk_dv_sequence(msg...) //printk("" msg);
+//#define DOLBY_VISION_CHECK_SEQUENCE
+#if defined(DOLBY_VISION_CHECK_SEQUENCE)
+#define dprintk_dv_sequence(msg...) printk("" msg);
+#else
+#define dprintk_dv_sequence(msg...)
+#endif
 

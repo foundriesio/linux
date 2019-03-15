@@ -63,10 +63,10 @@ struct sw_sync_timeline {
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 enum {
-	RDMA_FB1		= 0, //framebuffer 1 driver
-	RDMA_3D			= 0, //Layer0
-	RDMA_LASTFRM	= 0, //Layer0
-	RDMA_FB			= 1, //Layer1	
+	RDMA_FB1		= 1, //framebuffer 1 driver
+	RDMA_3D			= 1, //Layer0
+	RDMA_LASTFRM	= 1, //Layer0
+	RDMA_FB			= 0, //Layer1	
 	RDMA_VIDEO		= 2, //Layer2
 	RDMA_MOUSE		= 3, //Layer3
 	RDMA_VIDEO_3D	= 3, //Layer3

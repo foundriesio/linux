@@ -1649,17 +1649,26 @@ void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr, unsigned int endian)
 	unsigned long value;
 	volatile void __iomem *reg = pIREQ_reg;
 
-	if(vioc_v_dv_get_mode() == DV_LL)
+	if(vioc_v_dv_get_mode() != DV_STD)
 		return;
 
 	value = (addr << DV_MD_DMA_ADDR_ADDR_SHIFT);
 	__raw_writel(value, (reg + DV_MD_DMA_ADDR_OFFSET));
 
-	value = /*value |*/ (endian << DV_MD_DMA_CTRL_ENDIAN_SHIFT)
+	value = (__raw_readl(reg + DV_MD_DMA_CTRL_OFFSET)
+				& ~(DV_MD_DMA_CTRL_ENDIAN_MASK
 #ifdef CONFIG_ARCH_TCC899X
-		 | (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT)
+						| DV_MD_DMA_CTRL_UPD_MASK
 #endif
-		 | (0x1 << DV_MD_DMA_CTRL_EN_SHIFT);
+						| DV_MD_DMA_CTRL_EN_MASK));
+
+	value |= ((endian & 0x1) << DV_MD_DMA_CTRL_ENDIAN_SHIFT);
+
+#ifdef CONFIG_ARCH_TCC899X
+	value |= (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT);
+#endif
+
+	value |= (0x1 << DV_MD_DMA_CTRL_EN_SHIFT);
 	__raw_writel(value, (reg + DV_MD_DMA_CTRL_OFFSET));
 }
 
@@ -1669,12 +1678,16 @@ void VIOC_CONFIG_DV_Metadata_Disable(void)
 	volatile void __iomem *reg = pIREQ_reg;
 
 	value = (__raw_readl(reg + DV_MD_DMA_CTRL_OFFSET) &
-		 ~(DV_MD_DMA_CTRL_EN_MASK));
-	value = value
+		 ~(DV_MD_DMA_CTRL_EN_MASK
 #ifdef CONFIG_ARCH_TCC899X
-		 | (0x0 << DV_MD_DMA_CTRL_EN_SHIFT) | (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT);
+			|  DV_MD_DMA_CTRL_UPD_MASK
+#endif
+		));
+
+#ifdef CONFIG_ARCH_TCC899X
+	value |= ((0x0 << DV_MD_DMA_CTRL_EN_SHIFT) | (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT));
 #else
-		 | (0x0 << DV_MD_DMA_CTRL_EN_SHIFT);
+	value |= (0x0 << DV_MD_DMA_CTRL_EN_SHIFT);
 #endif
 
 	__raw_writel(value, reg + DV_MD_DMA_CTRL_OFFSET);

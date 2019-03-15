@@ -346,25 +346,15 @@ void tca_dtrc_convter_set(unsigned int component_num,
 		volatile void __iomem *pDisp_DV =
 			VIOC_DV_GetAddress((DV_DISP_TYPE)EDR_BL);
 
-		if (ImageInfo->Lcdc_layer == RDMA_VIDEO ||
-		    ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
-			if (vioc_get_out_type() ==
-			    ImageInfo->private_data.dolbyVision_info
-				    .reg_out_type) {
-				vioc_v_dv_prog(
-					ImageInfo->private_data.dolbyVision_info
-						.md_hdmi_addr,
-					ImageInfo->private_data.dolbyVision_info
-						.reg_addr,
-					ImageInfo->private_data.optional_info
-						[VID_OPT_CONTENT_TYPE],
-					1);
+		if (ImageInfo->Lcdc_layer == RDMA_VIDEO || ImageInfo->Lcdc_layer == RDMA_LASTFRM) {
+			if (vioc_get_out_type() == ImageInfo->private_data.dolbyVision_info.reg_out_type) {
+				vioc_v_dv_prog(	ImageInfo->private_data.dolbyVision_info.md_hdmi_addr,
+								ImageInfo->private_data.dolbyVision_info.reg_addr,
+								ImageInfo->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+								1);
 
-				VIOC_V_DV_SetPXDW(pDisp_DV, NULL,
-						  VIOC_PXDW_FMT_24_RGB888);
-				VIOC_V_DV_SetSize(
-					pDisp_DV, NULL, ImageInfo->offset_x,
-					ImageInfo->offset_y, Hactive, Vactive);
+				VIOC_V_DV_SetPXDW(pDisp_DV, NULL, VIOC_PXDW_FMT_24_RGB888);
+				VIOC_V_DV_SetSize(pDisp_DV, NULL, ImageInfo->offset_x, ImageInfo->offset_y, Hactive, Vactive);
 				VIOC_V_DV_Turnon(pDisp_DV, NULL);
 			}
 		} else {
