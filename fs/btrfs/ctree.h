@@ -1175,6 +1175,7 @@ struct btrfs_subvolume_writers {
 #define BTRFS_ROOT_FORCE_COW		6
 #define BTRFS_ROOT_MULTI_LOG_TASKS	7
 #define BTRFS_ROOT_DIRTY		8
+#define BTRFS_ROOT_DEAD_RELOC_TREE	10
 
 /*
  * in ram representation of the tree.  extent_root is used for all allocations
@@ -1289,6 +1290,14 @@ struct btrfs_root {
 	struct list_head ordered_extents;
 	struct list_head ordered_root;
 	u64 nr_ordered_extents;
+
+	/*
+	 * Not empty if this subvolume root has gone through tree block swap
+	 * (relocation)
+	 *
+	 * Will be used by reloc_control::dirty_subvol_roots.
+	 */
+	struct list_head reloc_dirty_list;
 
 	/*
 	 * Number of currently running SEND ioctls to prevent
