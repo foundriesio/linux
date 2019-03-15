@@ -230,6 +230,11 @@ int btrfs_qgroup_trace_subtree(struct btrfs_trans_handle *trans,
 			       struct btrfs_root *root,
 			       struct extent_buffer *root_eb,
 			       u64 root_gen, int root_level);
+
+int btrfs_qgroup_trace_subtree_swap(struct btrfs_trans_handle *trans,
+				struct extent_buffer *src_parent, int src_slot,
+				struct extent_buffer *dst_parent, int dst_slot,
+				u64 last_snapshot);
 int
 btrfs_qgroup_account_extent(struct btrfs_trans_handle *trans,
 			    struct btrfs_fs_info *fs_info,
