@@ -50,10 +50,10 @@
 		status = "okay";
 		hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
 		hdmi_phy_type = <0>; // 0 8031
-		
+
 		/* Pinctrl and gpio */
 		pinctrl-0 = <&hdmi_hpd &hdmi_i2c>;
-		
+
 		/* DDC */
 		hdmi_i2c_port_disable = <0>;
 
@@ -61,14 +61,10 @@
 		product_description = "TCC8031_avn";
 	};
 
-	hdmi_cec_20@16053000 {
-		status = "okay";
-	};
-
-	/* gmac 
+	/* gmac
 		gmac1_rxer	: gpc-14
  		gmac1_rxdv	: gpc-8
-		gmac1_txer	: gpc-15 */	
+		gmac1_txer	: gpc-15 */
 	gmac@11b00000 {
 		status = "disable";
 	};

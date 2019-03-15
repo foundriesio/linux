@@ -563,6 +563,10 @@ struct lcdc_colorenhance_params
 #define TCC_LCD_BL_SET                  0x0100
 #define TCC_LCDC_SET_LUT_DVI            0x0103
 
+/*
+ * Common interface for second display */
+#define TCC_EXT_FBIOPUT_VSCREENINFO     0x0110
+
 #define TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO 0x300
 #define TCC_LCDC_MOUSE_SHOW             0x0200
 #define TCC_LCDC_MOUSE_MOVE             0x0201

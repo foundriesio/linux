@@ -78,14 +78,10 @@
 		product_description = "TCC8031_avn";
 	};
 
-	hdmi_cec_20@16053000 {
-		status = "okay";
-	};
-
-	/* gmac 
+	/* gmac
 		gmac1_rxer	: gpc-14
  		gmac1_rxdv	: gpc-8
-		gmac1_txer	: gpc-15 */	
+		gmac1_txer	: gpc-15 */
 	gmac@11b00000 {
 		status = "disable";
 	};

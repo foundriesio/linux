@@ -19,8 +19,8 @@ Suite 330, Boston, MA 02111-1307 USA
 
 hdmi_soc_features current_soc_features = {
 #if defined(CONFIG_ARCH_TCC803X)
-        .max_tmds_mhz = 340,
-        .support_feature_1 = 0,
+        .max_tmds_mhz = 594,
+        .support_feature_1 = SOC_FEATURE_HDR,
 #elif defined(CONFIG_ARCH_TCC898X)
         .max_tmds_mhz = 594,
         .support_feature_1 = SOC_FEATURE_DOLBYVISION | SOC_FEATURE_HDR |

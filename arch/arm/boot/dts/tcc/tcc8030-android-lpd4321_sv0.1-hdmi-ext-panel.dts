@@ -54,7 +54,7 @@
 
 / {
 
-	
+
 	/* hdmi override. */
 	i2c@16300000 {
 		hdmi_adv7613 {
@@ -70,7 +70,7 @@
 			hdmi-slave = <0x34>;
 			cp-slave = <0x22>;
 			lvds-slave = <0x60>;
-			backlight-on-gpios = <&gpma 27 0>; 	// BACKLIGHT ON 
+			backlight-on-gpios = <&gpma 27 0>; 	// BACKLIGHT ON
 			power-on-gpios = <&gpc 8 0>;		// LCD_ON
 			reset-gpios = <&gpc 9 0>;		// LCD_RST
 			pinctrl-0 = <&hdmi_panel>;
@@ -82,7 +82,7 @@
 		pinctrl-0 = <&hdmi_hpd>;
 		hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
 		hdmi_phy_type = <0>; // 0 8031
-		
+
 		/* Source Product Description */
 		product_description = "TCC8031_avn";
 
@@ -90,14 +90,10 @@
 		fixd_video_id_code = <1024>;
 	};
 
-	hdmi_cec_20@16053000 {
-		status = "okay";
-	};
-
-	/* gmac 
+	/* gmac
 		gmac1_rxer	: gpc-14
  		gmac1_rxdv	: gpc-8
-		gmac1_txer	: gpc-15 */	
+		gmac1_txer	: gpc-15 */
 	gmac@11b00000 {
 		status = "disable";
 	};

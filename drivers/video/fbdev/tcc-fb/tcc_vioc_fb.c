@@ -719,7 +719,7 @@ static int tccfb_set_par(struct fb_info *info)
 
 static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 {
-	struct tccfb_info *ptccfb_info = info->par;
+	struct tccfb_info *ptccfb_info = (info != NULL)?(struct tccfb_info *)info->par:NULL;
 	int screen_width = 0, screen_height = 0;
 
 #ifdef CONFIG_MALI400_UMP
@@ -1334,21 +1334,51 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                         break;
                 #endif
 
-	case TCC_HDMI_FBIOPUT_VSCREENINFO:
-		{
+        case TCC_EXT_FBIOPUT_VSCREENINFO:
+        case TCC_HDMI_FBIOPUT_VSCREENINFO:
+        case TCC_CVBS_FBIOPUT_VSCREENINFO:
+        case TCC_COMPONENT_FBIOPUT_VSCREENINFO:
+                {
 			unsigned int BaseAddr = 0;
+                        struct fb_var_screeninfo var;
+			struct tcc_dp_device *pdp_data;
 			external_fbioput_vscreeninfo sc_info;
-			struct fb_var_screeninfo var;
-			struct tcc_dp_device *pdp_data = &ptccfb_info->pdata.Sdp_data;
 
-			if(pdp_data == NULL)
+                        #if defined(CONFIG_SYNC_FB)
+                        int fd;
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+                        struct sync_pt *pt;
+			struct sync_fence *fence;
+                        #endif
+
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+			fd = get_unused_fd();
+                        #else
+			fd = get_unused_fd_flags(0);
+                        #endif // LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+                        #endif // // LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+                        #endif // CONFIG_SYNC_FB
+
+                        if(ptccfb_info == NULL) {
+                                pr_err("TCC_XXX_FBIOPUT_VSCREENINFO ptccfb_info is NULL\r\n");
 				return 0;
+                        }
 
-			if(!pdp_data->FbPowerState)
+                        pdp_data = &ptccfb_info->pdata.Sdp_data;
+			if(pdp_data == NULL) {
+                                pr_err("TCC_XXX_FBIOPUT_VSCREENINFO pdp_data is NULL\r\n");
 				return 0;
+			}
+                        pdp_data->DispOrder = DD_SUB;
 
-			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
+			if(!pdp_data->FbPowerState) {
+				return 0;
+			}
+
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo))) {
 				return -EFAULT;
+			}
 
 			memset(&var, 0, sizeof(struct fb_var_screeninfo));
 			var.xres = sc_info.width;
@@ -1356,6 +1386,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			var.bits_per_pixel = sc_info.bits_per_pixel;
 			var.yoffset = sc_info.offset;
 			var.xres_virtual= sc_info.xres_virtual;
+
 		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
 			tca_fb_activate_var(BaseAddr,  &var, pdp_data);
 
@@ -1363,53 +1394,36 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				tca_fb_vsync_activate(pdp_data);
 
 			#if defined(CONFIG_SYNC_FB)
+
 			mutex_lock(&ptccfb_info->ext_timeline_lock);
-			{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
- 				struct sync_pt *pt;
- 				struct sync_fence *fence;
-#endif
-				int fd;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-				fd = get_unused_fd();
-#else
-				fd = get_unused_fd_flags(0);
-#endif
-
-				if(fd< 0){
-					pr_err(" fb fence sync get fd error : %d \n", fd);
-					break;
-				}
-
-#endif
-				ptccfb_info->ext_timeline_max++;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				pt = sw_sync_pt_create(ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max);
-				fence = sync_fence_create("display_ext", pt);
-				sync_fence_install(fence, fd);
-#else
-				{
-					int ret = sw_sync_create_fence((struct sync_timeline *)ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max, &fd);
-					if(ret){
-						pr_err(" sw_sync_create_fence fail!!! line : %d \n", __LINE__);
-						ret = -EFAULT;
-						mutex_unlock(&ptccfb_info->ext_timeline_lock);
-						break;
-					}
-				}
-#endif
-				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
-#else
-				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
-#endif
-
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+			if(fd< 0){
+                                pr_err("TCC_XXX_FBIOPUT_VSCREENINFO fb fence sync get fd error : %d \n", fd);
+				break;
 			}
-//			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);
+                        #endif // LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+
+			ptccfb_info->ext_timeline_max++;
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+			pt = sw_sync_pt_create(ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max);
+			fence = sync_fence_create("display_ext", pt);
+			sync_fence_install(fence, fd);
+                        #else
+			{
+				int ret = sw_sync_create_fence((struct sync_timeline *)ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max, &fd);
+				if(ret){
+					pr_err(" sw_sync_create_fence fail!!! line : %d \n", __LINE__);
+					mutex_unlock(&ptccfb_info->ext_timeline_lock);
+					return  -EFAULT;
+				}
+			}
+                        #endif // LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+			sc_info.fence_fd = fd;
+                        #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+			sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
+                        #else
+			sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
+                        #endif
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
 
 			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
@@ -1434,191 +1448,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		}
 		break;
 
-	case TCC_CVBS_FBIOPUT_VSCREENINFO:
-		{
-			unsigned int BaseAddr = 0;
-			external_fbioput_vscreeninfo sc_info;
-			struct fb_var_screeninfo var;
-			struct tcc_dp_device *pdp_data = NULL;
-
-			pdp_data = &ptccfb_info->pdata.Sdp_data;
-			if(pdp_data == NULL) {
-				pr_err("%s: pdp_data is null\n", __func__);
-				return 0;
-			}
-
-			pdp_data->DispOrder = 1;
-
-			if(!pdp_data->FbPowerState)
-				return 0;
-
-			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
-				return -EFAULT;
-
-			memset(&var, 0x00, sizeof(var));
-
-			var.xres = sc_info.width;
-			var.yres = sc_info.height;
-			var.bits_per_pixel = sc_info.bits_per_pixel;
-			var.yoffset = sc_info.offset;
-
-		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
-			//pr_err(" #####TCC_CVBS_FBIOPUT_VSCREENINFO\n");
-
-			tca_fb_activate_var(BaseAddr,  &var, pdp_data);
-
-			if(pdp_data->FbPowerState)
-				tca_fb_vsync_activate(pdp_data);
-
-			#if defined(CONFIG_SYNC_FB)
-			mutex_lock(&ptccfb_info->ext_timeline_lock);
-			{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
- 				struct sync_pt *pt;
- 				struct sync_fence *fence;
-#endif
-				int fd;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-				fd = get_unused_fd();
-#else
-				fd = get_unused_fd_flags(0);
-#endif
-
-				if(fd< 0){
-					pr_err(" fb fence sync get fd error : %d \n", fd);
-					break;
-				}
-
-#endif
-				ptccfb_info->ext_timeline_max++;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				pt = sw_sync_pt_create(ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max);
-				fence = sync_fence_create("display_ext", pt);
-				sync_fence_install(fence, fd);
-#else
-				{
-					int ret = sw_sync_create_fence((struct sync_timeline *)ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max, &fd);
-					if(ret){
-						pr_err(" sw_sync_create_fence fail!!! line : %d \n", __LINE__);
-						ret = -EFAULT;
-						mutex_unlock(&ptccfb_info->ext_timeline_lock);
-						break;
-					}
-				}
-#endif
-				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
-#else
-				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
-#endif
-
-			}
-//			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);
-			mutex_unlock(&ptccfb_info->ext_timeline_lock);
-
-			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
-				return -EFAULT;
-
-			#endif
-		}
-		break;
-
-		case TCC_COMPONENT_FBIOPUT_VSCREENINFO:
-			{
-				unsigned int BaseAddr = 0;
-				external_fbioput_vscreeninfo sc_info;
-				struct fb_var_screeninfo var;
-				struct tcc_dp_device *pdp_data = NULL;
-
-				pdp_data = &ptccfb_info->pdata.Sdp_data;
-				if(pdp_data == NULL) {
-					pr_err("%s: pdp_data is null\n", __func__);
-					return 0;
-				}
-
-				pdp_data->DispOrder = 1;
-
-				if(!pdp_data->FbPowerState)
-					return 0;
-
-				if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
-					return -EFAULT;
-
-				var.xres = sc_info.width;
-				var.yres = sc_info.height;
-				var.bits_per_pixel = sc_info.bits_per_pixel;
-				var.yoffset = sc_info.offset;
-
-				BaseAddr = ptccfb_info->map_dma + sc_info.offset;
-				//pr_err(" #####TCC_COMPONENT_FBIOPUT_VSCREENINFO\n");
-			tca_fb_activate_var(BaseAddr,  &var, pdp_data);
-
-			if(pdp_data->FbPowerState)
-				tca_fb_vsync_activate(pdp_data);
-
-			#if defined(CONFIG_SYNC_FB)
-			mutex_lock(&ptccfb_info->ext_timeline_lock);
-			{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
- 				struct sync_pt *pt;
-				struct sync_fence *fence;
-#endif
-				int fd;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-				fd = get_unused_fd();
-#else
-				fd = get_unused_fd_flags(0);
-#endif
-
- 				if(fd< 0){
- 					pr_err(" fb fence sync get fd error : %d \n", fd);
- 					break;
- 				}
-#endif
-
-				ptccfb_info->ext_timeline_max++;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				pt = sw_sync_pt_create(ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max);
-				fence = sync_fence_create("display_ext", pt);
-				sync_fence_install(fence, fd);
-#else
-				{
-					int ret = sw_sync_create_fence((struct sync_timeline *)ptccfb_info->ext_timeline, ptccfb_info->ext_timeline_max, &fd);
-					if(ret){
-						pr_err(" sw_sync_create_fence fail!!! line : %d \n", __LINE__);
-						ret = -EFAULT;
-						mutex_unlock(&ptccfb_info->ext_timeline_lock);
-						break;
-					}
-				}
-#endif
-				sc_info.fence_fd = fd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-				sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
-#else
-				sw_sync_timeline_inc((struct sync_timeline *)ptccfb_info->ext_timeline, 1);
-#endif
-
-			}
-//			queue_kthread_work(&ptccfb_info->ext_update_regs_worker,
-//									&ptccfb_info->ext_update_regs_work);
-			mutex_unlock(&ptccfb_info->ext_timeline_lock);
-
-			if (copy_to_user((external_fbioput_vscreeninfo *)arg, (void*)&sc_info, sizeof(external_fbioput_vscreeninfo)))
-				return -EFAULT;
-
-			#endif
-		}
-		break;
-
-
-		case TCC_LCDC_COMPOSITE_CHECK:
+                case TCC_LCDC_COMPOSITE_CHECK:
 			{
 				unsigned int composite_detect = 1;
 

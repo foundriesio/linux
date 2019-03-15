@@ -249,7 +249,6 @@
 	product_description = "TCC8031_avn";
 };
 
-&hdmi_cec_20 {};
 
 &i2c0 {
 	status = "okay";

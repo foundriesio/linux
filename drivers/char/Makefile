@@ -48,7 +48,9 @@ obj-$(CONFIG_GPIO_TB0219)	+= tb0219.o
 obj-$(CONFIG_TELCLOCK)		+= tlclk.o
 obj-$(CONFIG_TCC_HDMI_DRIVER_V1_4)  += hdmi_v1_4/
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0/
+ifeq ($(CONFIG_ARCH_TCC803X),)
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)  += hdmi_v2_0_cec/
+endif
 # HDCP 2.2 for HDMI
 obj-$(CONFIG_TCC_HDCP2_CORE_DRIVER) += hdcp2_core/
 
