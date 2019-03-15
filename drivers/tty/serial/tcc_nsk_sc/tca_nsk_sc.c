@@ -2228,7 +2228,8 @@ void tca_nsk_sc_remove(void)
 	sDRV_UART_SC_CLK *pstClk = &gDRV_UART_SC_CLK;
 
 	dprintk("%s\n", __func__);
-
+/*Disable if both Uart and Smartcard are No 7*/
+#if 0	
 	if (pstClk->pHClk) {
 		clk_disable_unprepare(pstClk->pHClk);
 		clk_put(pstClk->pHClk);
@@ -2240,7 +2241,7 @@ void tca_nsk_sc_remove(void)
 		clk_put(pstClk->pPClk);
 		pstClk->pPClk = NULL;
 	}
-
+#endif
 #ifdef SUPPORT_RX_DMA
 	if (pstDMABuf->pPRxBuf) {
 		dma_free_coherent(0, pstDMABuf->uiRxBufSize, pstDMABuf->pVRxBuf, pstDMABuf->pPRxBuf);
