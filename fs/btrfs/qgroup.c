@@ -1684,7 +1684,8 @@ static int adjust_slots_upwards(struct btrfs_path *path, int root_level)
 static int qgroup_trace_extent_swap(struct btrfs_trans_handle* trans,
 				    struct extent_buffer *src_eb,
 				    struct btrfs_path *dst_path,
-				    int dst_level, int root_level)
+				    int dst_level, int root_level,
+				    bool trace_leaf)
 {
 	struct btrfs_key key;
 	struct btrfs_path *src_path;
@@ -1787,7 +1788,7 @@ static int qgroup_trace_extent_swap(struct btrfs_trans_handle* trans,
 		goto out;
 
 	/* Record leaf file extents */
-	if (dst_level == 0) {
+	if (dst_level == 0 && trace_leaf) {
 		ret = btrfs_qgroup_trace_leaf_items(trans, fs_info, src_path->nodes[0]);
 		if (ret < 0)
 			goto out;
@@ -1824,7 +1825,7 @@ static int qgroup_trace_new_subtree_blocks(struct btrfs_trans_handle* trans,
 					   struct extent_buffer *src_eb,
 					   struct btrfs_path *dst_path,
 					   int cur_level, int root_level,
-					   u64 last_snapshot)
+					   u64 last_snapshot, bool trace_leaf)
 {
 	struct btrfs_fs_info *fs_info = trans->fs_info;
 	struct extent_buffer *eb;
@@ -1896,7 +1897,7 @@ static int qgroup_trace_new_subtree_blocks(struct btrfs_trans_handle* trans,
 
 	/* Now record this tree block and its counter part for qgroups */
 	ret = qgroup_trace_extent_swap(trans, src_eb, dst_path, cur_level,
-				       root_level);
+				       root_level, trace_leaf);
 	if (ret < 0)
 		goto cleanup;
 
@@ -1913,7 +1914,7 @@ static int qgroup_trace_new_subtree_blocks(struct btrfs_trans_handle* trans,
 			/* Recursive call (at most 7 times) */
 			ret = qgroup_trace_new_subtree_blocks(trans, src_eb,
 					dst_path, cur_level - 1, root_level,
-					last_snapshot);
+					last_snapshot, trace_leaf);
 			if (ret < 0)
 				goto cleanup;
 		}
@@ -1952,6 +1953,7 @@ out:
  * @dst_parent, @dst_slot: pointer to dst (reloc tree) eb.
  */
 int btrfs_qgroup_trace_subtree_swap(struct btrfs_trans_handle *trans,
+				struct btrfs_block_group_cache *bg_cache,
 				struct extent_buffer *src_parent, int src_slot,
 				struct extent_buffer *dst_parent, int dst_slot,
 				u64 last_snapshot)
@@ -1961,6 +1963,7 @@ int btrfs_qgroup_trace_subtree_swap(struct btrfs_trans_handle *trans,
 	struct btrfs_key first_key;
 	struct extent_buffer *src_eb = NULL;
 	struct extent_buffer *dst_eb = NULL;
+	bool trace_leaf = false;
 	u64 child_gen;
 	u64 child_bytenr;
 	int level;
@@ -1979,6 +1982,12 @@ int btrfs_qgroup_trace_subtree_swap(struct btrfs_trans_handle *trans,
 		return -EUCLEAN;
 	}
 
+	/*
+	 * Only trace leaf if we're relocating data block groups, this could
+	 * reduce tons of data extents tracing for meta/sys bg relocation.
+	 */
+	if (bg_cache->flags & BTRFS_BLOCK_GROUP_DATA)
+		trace_leaf = true;
 	/* Read out real @src_eb, pointed by @src_parent and @src_slot */
 	child_bytenr = btrfs_node_blockptr(src_parent, src_slot);
 	child_gen = btrfs_node_ptr_generation(src_parent, src_slot);
@@ -2023,7 +2032,7 @@ int btrfs_qgroup_trace_subtree_swap(struct btrfs_trans_handle *trans,
 
 	/* Do the generation-aware breadth-first search */
 	ret = qgroup_trace_new_subtree_blocks(trans, src_eb, dst_path, level,
-					      level, last_snapshot);
+					      level, last_snapshot, trace_leaf);
 	if (ret < 0)
 		goto out;
 	ret = 0;
