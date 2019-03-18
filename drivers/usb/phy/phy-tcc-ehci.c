@@ -241,10 +241,43 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	return 0;
 }
 
+#define USB20_PCFG0_PHY_POR		(1<<31)
+#define USB20_PCFG0_PHY_SIDDQ	(1<<24)
+static void tcc_ehci_phy_shutdown(struct usb_phy *phy)
+{
+	phy->set_phy_state(phy, 0);
+}
 static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
 {
-	return tcc_ehci_phy_isolation(phy,on_off);
+	struct tcc_ehci_device *ehci_phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
+
+	if (on_off == ON) {
+		BITCLR(ehci_pcfg->pcfg0, (USB20_PCFG0_PHY_POR | USB20_PCFG0_PHY_SIDDQ));
+		printk("EHCI PHY start\n");
+	} else if (on_off == OFF) {
+		BITSET(ehci_pcfg->pcfg0, (USB20_PCFG0_PHY_POR | USB20_PCFG0_PHY_SIDDQ));
+		printk("EHCI PHY stop\n");
+	}
+	printk("EHCI PHY pcfg0 : %08X\n", ehci_pcfg->pcfg0);
+	return 0;
 }
+
+static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
+{
+	struct tcc_ehci_device *ehci_phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
+	uint32_t mux_cfg_val;
+
+	if (is_mux) {
+		if (ehci_phy_dev->mux_port) {
+			mux_cfg_val = readl(phy->otg->mux_cfg_addr); /* get otg control cfg register */
+			BITCSET(mux_cfg_val, TCC_MUX_OPSEL, TCC_MUX_H_SELECT);
+			writel(mux_cfg_val, phy->otg->mux_cfg_addr);
+		}
+	}
+}
+
 #ifdef CONFIG_ARCH_TCC803X
 static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 {
@@ -309,6 +342,7 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	phy_dev->phy.init 			= tcc_ehci_phy_init;
 	phy_dev->phy.set_phy_isol	= tcc_ehci_phy_isolation;
 	phy_dev->phy.set_phy_state 	= tcc_ehci_phy_state_set;
+	phy_dev->phy.set_phy_mux_sel = tcc_ehci_phy_mux_sel;
 #ifdef CONFIG_ARCH_TCC803X
 	phy_dev->phy.set_vbus_resource	= tcc_ehci_phy_set_vbus_resource;
 #endif

@@ -941,7 +941,7 @@ static struct platform_device *tcc_mux_hcd_create_pdev(dwc_otg_device_t *otg_dev
 	}
 	hcd->tpl_support = otg_dev->hcd_tpl_support;
 
-	if (!ohci && otg_dev->mhst_phy)
+	if (otg_dev->mhst_phy)
 		hcd->usb_phy = otg_dev->mhst_phy;
 
 	return hci_dev;
@@ -1997,7 +1997,8 @@ static int dwc_otg_driver_resume(struct platform_device *pdev)
 
 	tcc_otg_phy_init(dwc_otg_device);
 #ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
-	dwc_otg_device->mhst_phy->init(dwc_otg_device->mhst_phy);
+	//dwc_otg_device->mhst_phy->init(dwc_otg_device->mhst_phy);
+	dwc_otg_device->mhst_phy->set_phy_mux_sel(dwc_otg_device->mhst_phy, 1);
 #endif
 
 	//tcc_usb_link_reset(dwc_otg_device->core_if); // 20150924 Need to verify.

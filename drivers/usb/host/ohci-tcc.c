@@ -523,7 +523,11 @@ static int tcc_ohci_suspend(struct device *dev)
 	struct usb_hcd *hcd = tcc_ohci->hcd;
 	struct ohci_hcd *ohci = hcd_to_ohci(hcd);
 	unsigned long flags;
-
+	bool do_wakeup = device_may_wakeup(dev);
+	int ret = ohci_suspend(hcd, do_wakeup);
+	if (ret)
+		return ret;
+/*
 	spin_lock_irqsave(&ohci->lock, flags);
 	ohci->flags |= OHCI_QUIRK_TCC_SUSPEND;
 	if (time_before(jiffies, ohci->next_statechange))
@@ -531,6 +535,7 @@ static int tcc_ohci_suspend(struct device *dev)
 	ohci->next_statechange = jiffies;
 
 	hcd->state = HC_STATE_SUSPENDED;
+*/
 	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 
 	#else
@@ -538,7 +543,7 @@ static int tcc_ohci_suspend(struct device *dev)
 	tcc_ohci_clk_ctrl(tcc_ohci, OFF);
 	tcc_ohci_vbus_ctrl(tcc_ohci, OFF);
 	#endif
-	spin_unlock_irqrestore(&ohci->lock, flags);
+	//spin_unlock_irqrestore(&ohci->lock, flags);
 	
 	return 0;
 }
@@ -693,10 +698,11 @@ static int tcc_ohci_parse_dt(struct platform_device *pdev, struct tcc_ohci_hcd *
 
 MODULE_DEVICE_TABLE(of, tcc_ohci_match);
 #endif
-
-static const struct dev_pm_ops tcc_ohci_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(tcc_ohci_suspend,tcc_ohci_resume)
-};
+static SIMPLE_DEV_PM_OPS(tcc_ohci_pm_ops, tcc_ohci_suspend,
+	tcc_ohci_resume);
+//static const struct dev_pm_ops tcc_ohci_pm_ops = {
+//	SET_SYSTEM_SLEEP_PM_OPS(tcc_ohci_suspend,tcc_ohci_resume)
+//};
 
 static struct platform_driver ohci_hcd_tcc_driver =
 {

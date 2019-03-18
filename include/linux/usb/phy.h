@@ -162,6 +162,7 @@ struct usb_phy {
 	enum usb_otg_state  state;
 	/* enable/disable phy status */
 	int (*set_phy_state)(struct usb_phy *phy, int state);
+	void (*set_phy_mux_sel)(struct usb_phy *phy, int is_mux);
 #if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
 	/* USB HS DC voltage level adjustment function */
 	int (*get_dc_voltage_level)(struct usb_phy *phy);

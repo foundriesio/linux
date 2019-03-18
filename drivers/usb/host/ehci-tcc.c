@@ -488,7 +488,7 @@ static int tcc_ehci_resume(struct device *dev)
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 	tcc_ehci_vbus_ctrl(tcc_ehci, ON);
 	tcc_ehci_clk_ctrl(tcc_ehci, ON);
-	tcc_ehci_phy_init(tcc_ehci);
+	//tcc_ehci_phy_init(tcc_ehci);
 	#else
 	tcc_ehci_power_ctrl(tcc_ehci, ON);
 	#if !defined(CONFIG_USB_OHCI_HCD) && !defined(CONFIG_USB_OHCI_HCD_MODULE)
@@ -501,17 +501,19 @@ static int tcc_ehci_resume(struct device *dev)
 	#endif
 	#endif /* 0 */
 
-	ehci_reset(tcc_ehci->ehci);
+	//ehci_reset(tcc_ehci->ehci);
 	msleep(1);//for compatibility issue(suspend/resume). Some usb devices are failed to connect when resume.
 	ehci_resume(hcd, false);
 
 	return 0;
 }
-
+static SIMPLE_DEV_PM_OPS(ehci_tcc_pmops, tcc_ehci_suspend,
+	tcc_ehci_resume);
+/*
 static const struct dev_pm_ops ehci_tcc_pmops = {
 	SET_SYSTEM_SLEEP_PM_OPS(tcc_ehci_suspend,tcc_ehci_resume)
 };
-
+*/
 //void disp_ehci(unsigned int addr)
 //{
 //	unsigned int base = addr;

@@ -30,6 +30,7 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include <linux/of_device.h>
+#include <linux/usb/phy.h>
 
 #include "ohci.h"
 
@@ -354,6 +355,12 @@ static int ohci_platform_suspend(struct device *dev)
 	ret = ohci_suspend(hcd, do_wakeup);
 	if (ret)
 		return ret;
+
+#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+	if (hcd->usb_phy) {
+		hcd->usb_phy->set_phy_state(hcd->usb_phy, 0);
+	}
+#endif
 
 	if (pdata->power_suspend)
 		pdata->power_suspend(pdev);

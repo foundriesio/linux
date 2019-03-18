@@ -125,6 +125,7 @@ static void ehci_platform_power_off(struct platform_device *dev)
 	for (phy_num = 0; phy_num < priv->num_phys; phy_num++) {
 		phy_power_off(priv->phys[phy_num]);
 		phy_exit(priv->phys[phy_num]);
+		dev_info(&dev->dev, "phy_exit(priv->phys[%d]\n", phy_num);
 	}
 
 	for (clk = EHCI_MAX_CLKS - 1; clk >= 0; clk--)
@@ -386,6 +387,11 @@ static int ehci_platform_resume(struct device *dev)
 			return err;
 	}
 
+#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+	if (hcd->usb_phy) {
+		hcd->usb_phy->init(hcd->usb_phy);
+	}
+#endif
 	companion_dev = usb_of_get_companion_dev(hcd->self.controller);
 	if (companion_dev) {
 		device_pm_wait_for_dev(hcd->self.controller, companion_dev);
