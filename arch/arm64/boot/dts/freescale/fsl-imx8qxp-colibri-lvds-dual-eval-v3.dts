@@ -6,6 +6,7 @@
 /dts-v1/;
 //#define IS_A0_SILICON
 
+#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
@@ -15,22 +16,34 @@
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-		pwms = <&pwm_adma_lcdif 0 100000 0>;
-
-		brightness-levels = <0 4 8 16 32 64 128 255>;
+		pinctrl-0 = <&pinctrl_gpio_bklght_on>;
+		enable-gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>; /* Ext.Conn 25: LVDS1_GPIO0_00 */
+		pwms = <&pwm_adma_lcdif 0 5000000>; /* PWM freq. 200Hz */
+		brightness-levels = <0 8 16 32 64 128 192 255>;
 		default-brightness-level = <6>;
 		status = "okay";
 	};
 
 	lvds1_panel {
 		compatible = "lg,lp156wf1";
+		backlight = <&backlight>;
 
 		port {
 			panel_lvds1_in: endpoint {
 				remote-endpoint = <&lvds1_out>;
 			};
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+
+	colibri-imx8qxp {
+		pinctrl_gpio_bklght_on: gpio-bl-on {
+			fsl,pins = <
+				SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31		0x00000020
+			>;
 		};
 	};
 };

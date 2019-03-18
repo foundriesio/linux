@@ -6,22 +6,27 @@
 /dts-v1/;
 //#define IS_A0_SILICON
 
+#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
 	model = "Toradex Colibri iMX8QXP with single channel lvds";
 	compatible = "toradex,colibri-imx8qxp-lvds-single-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
-	my_backlight: backlight {
-		compatible = "gpio-backlight";
+	backlight: backlight {
+		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bklght_on>;
-		gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-		default-on;
+		enable-gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>; /* Ext.Conn 25: LVDS1_GPIO0_00 */
+		pwms = <&pwm_adma_lcdif 0 5000000>; /* PWM freq. 200Hz */
+		brightness-levels = <255 192 128 64 32 16 8 0>;
+		default-brightness-level = <6>;
+		status = "okay";
 	};
 
 	lvds1_panel {
 		compatible = "toradex,captouch-101-lvds";
+		backlight = <&backlight>;
 
 		port {
 			panel_lvds1_in: endpoint {
