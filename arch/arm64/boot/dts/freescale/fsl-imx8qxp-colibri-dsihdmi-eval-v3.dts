@@ -10,7 +10,7 @@
 
 / {
 	model = "Toradex Colibri iMX8QXP with LT8912 MIPI-DSI 2 HDMI bridge";
-	compatible = "toradex,imx8qxp-colibri-dsihdmi", "toradex,imx8qxp-colibri", "fsl,imx8qxp";
+	compatible = "toradex,colibri-imx8qxp-dsihdmi-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 };
 

@@ -10,7 +10,7 @@
 
 / {
 	model = "Toradex Colibri iMX8QXP with single channel lvds";
-	compatible = "toradex,imx8qxp-colibri-lvds-single", "toradex,imx8qxp-colibri", "fsl,imx8qxp";
+	compatible = "toradex,colibri-imx8qxp-lvds-single-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 	my_backlight: backlight {
 		compatible = "gpio-backlight";
@@ -34,7 +34,7 @@
 &iomuxc {
 	pinctrl-names = "default";
 
-	imx8qxp-colibri {
+	colibri-imx8qxp {
 		pinctrl_touch: touchgrp {
 			fsl,pins = <
 				SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21	0x06000040

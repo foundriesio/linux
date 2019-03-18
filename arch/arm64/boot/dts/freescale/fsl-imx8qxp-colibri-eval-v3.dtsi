@@ -85,7 +85,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>;
 
-	imx8qxp-colibri {
+	colibri-imx8qxp {
 		pinctrl_ad7879_int: ad7879-int { /* TOUCH Interrupt */
 			fsl,pins = <
 				SC_P_MIPI_CSI0_I2C0_SCL_LSIO_GPIO3_IO05	0x00000021
