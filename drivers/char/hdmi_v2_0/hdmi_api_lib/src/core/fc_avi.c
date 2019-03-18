@@ -226,7 +226,7 @@ void fc_avi_config(struct hdmi_tx_dev *dev, videoParams_t *videoParams)
 			        fc_VideoCode(dev, dtd->mCode);
                         }
 		} else {
-			if (dtd->mCode < 90) {
+			if (dtd->mCode < 93) {
 				fc_VideoCode(dev, dtd->mCode);
 			} else {
 				fc_VideoCode(dev, 0);

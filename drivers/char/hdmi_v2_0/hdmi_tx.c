@@ -430,7 +430,7 @@ int hdmi_tx_suspend(struct device *dev)
 {
 	int backups[2];
 
-        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        struct hdmi_tx_dev *hdmi_tx_dev = (dev != NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
 	if(hdmi_tx_dev != NULL) {
                 pr_info("### hdmi_tx_suspend \r\n");
@@ -472,7 +472,7 @@ int hdmi_tx_suspend(struct device *dev)
 int hdmi_tx_resume(struct device *dev)
 {
         int backups[3];
-        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
         // Nothing..!!
         printk("### %s \n", __func__);
@@ -536,7 +536,7 @@ int hdmi_tx_resume(struct device *dev)
 
 int hdmi_tx_runtime_suspend(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
         pr_info("### hdmi_tx_runtime_suspend\r\n");
         if(hdmi_tx_dev != NULL) {
@@ -549,7 +549,7 @@ int hdmi_tx_runtime_suspend(struct device *dev)
 
 int hdmi_tx_runtime_resume(struct device *dev)
 {
-        struct hdmi_tx_dev *hdmi_tx_dev = (struct hdmi_tx_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
+        struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
         pr_info("## hdmi_tx_runtime_resume\r\n");
         if(hdmi_tx_dev != NULL) {
                 mutex_lock(&hdmi_tx_dev->mutex);

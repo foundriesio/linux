@@ -313,9 +313,7 @@ void tcc_hdmi_audio_select_source(struct hdmi_tx_dev *dev, audioParams_t * audio
 
 }
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-#warning This device should impliment a tcc_ckc_set_hdmi_audio_src
-#else
+#if defined(CONFIG_ARCH_TCC898X)
 extern int tcc_ckc_set_hdmi_audio_src(unsigned int src_id);
 #endif
 void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
@@ -329,18 +327,14 @@ void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
 
 		if(audio->mIecSourceNumber)
 		{
-			#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-			#warning This device should impliment a tcc_ckc_set_hdmi_audio_src
-			#else
+			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF1);
 			#endif
 			printk("%s : clock config is spdif1 \n",__func__);
 		}
 		else
 		{
-			#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
-			#warning This device should impliment a tcc_ckc_set_hdmi_audio_src
-			#else
+			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF0);
 			#endif
 			printk("%s : clock config is spdif0 \n",__func__);
