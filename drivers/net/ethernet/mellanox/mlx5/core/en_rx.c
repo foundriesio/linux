@@ -1265,8 +1265,14 @@ static inline void mlx5i_complete_rx_cqe(struct mlx5e_rq *rq,
 
 	skb->protocol = *((__be16 *)(skb->data));
 
-	skb->ip_summed = CHECKSUM_COMPLETE;
-	skb->csum = csum_unfold((__force __sum16)cqe->check_sum);
+	if (netdev->features & NETIF_F_RXCSUM) {
+		skb->ip_summed = CHECKSUM_COMPLETE;
+		skb->csum = csum_unfold((__force __sum16)cqe->check_sum);
+		rq->stats.csum_complete++;
+	} else {
+		skb->ip_summed = CHECKSUM_NONE;
+		rq->stats.csum_none++;
+	}
 
 	if (unlikely(mlx5e_rx_hw_stamp(tstamp)))
 		skb_hwtstamps(skb)->hwtstamp =
@@ -1285,7 +1291,6 @@ static inline void mlx5i_complete_rx_cqe(struct mlx5e_rq *rq,
 
 	skb->dev = netdev;
 
-	rq->stats.csum_complete++;
 	rq->stats.packets++;
 	rq->stats.bytes += cqe_bcnt;
 }
