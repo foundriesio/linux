@@ -94,7 +94,7 @@
 	gpk: gpk {
 		gpio-controller;
 		#gpio-cells = <2>;
-		reg = <0x680 0 19>;
+		reg = <0x800 0 19>;
 	};
 
 	gpma: gpma {
