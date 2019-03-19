@@ -73,8 +73,8 @@
 			no-map;
 		};
 
-		gpu_reserved: gpu@dc000000 {
-			reg = <0xdc000000 0x4000000>;
+		gpu_reserved: gpu@d4000000 {
+			reg = <0xd4000000 0x4000000>;
 			no-map;
 		};
 	};
