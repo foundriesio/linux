@@ -121,6 +121,6 @@ struct tcc_pinctrl_soc_data {
 };
 
 int tcc_pinctrl_probe(struct platform_device *pdev,
-		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base);
+		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base);
 
 #endif

@@ -1266,7 +1266,7 @@
 
 	pinctrl: pinctrl@14200000 {
 		compatible = "telechips,tcc803x-pinctrl";
-		reg = <0x14200000 0x300 0x14800800 0x100>;	/* gpio, pmgpio */
+		reg = <0x14200000 0x300 0x1B937800 0x100>;	/* gpio, pmgpio */
 		gpio-controller;
 		#address-cells = <1>;
 		#size-cells = <0>;

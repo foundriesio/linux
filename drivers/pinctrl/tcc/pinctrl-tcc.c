@@ -28,10 +28,12 @@
 
 #include "pinctrl-tcc.h"
 
+
 struct tcc_pinctrl {
 	struct device *dev;
 
 	void __iomem *base;
+	void __iomem *pmgpio_base;
 
 	struct pinctrl_desc pinctrl_desc;
 
@@ -304,8 +306,14 @@ static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, unsigned pin,
 	while (pin >= bank->base && (bank->base + bank->npins - 1) < pin)
 		++bank;
 
-	*reg = pctl->base + bank->reg_base;
-	*offset = pin - bank->base;
+               if(!strcmp("gpk", bank->name)){
+               *reg = pctl->pmgpio_base;
+	       *offset = pin - bank->base;
+		}
+               else{
+               *reg = pctl->base + bank->reg_base;
+               *offset = pin - bank->base;
+		}
 }
 
 static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, unsigned selector,
@@ -633,18 +641,19 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 }
 
 int tcc_pinctrl_probe(struct platform_device *pdev,
-		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base)
+		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base)
 {
 	struct pinctrl_pin_desc *pindesc;
 	struct tcc_pinctrl *pctl;
 	struct device_node *node = pdev->dev.of_node;
 	struct device_node *np;
-	void __iomem *regs;
+	void __iomem *regs, *pmgpio_regs;
 	struct tcc_pin_bank *bank;
 	int ret;
 	int i;
 
 	regs = base;
+	pmgpio_regs = pmgpio_base;
 
 	/* Getting IRQs */
 	soc_data->irq = devm_kzalloc(&pdev->dev, sizeof(struct tcc_pinctrl_ext_irq), GFP_KERNEL);
@@ -735,6 +744,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		}
 	}
 	pctl->base = regs;
+	pctl->pmgpio_base = pmgpio_regs;
 	pctl->pins = pindesc;
 
 	pctl->pinctrl_desc.owner = THIS_MODULE;

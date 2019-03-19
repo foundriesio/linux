@@ -107,7 +107,7 @@ static void __iomem *gpio_base = NULL;
 static unsigned long base_offset = 0;
 static void __iomem *pmgpio_base = NULL;
 
-#define IS_GPK(addr) ((((unsigned long)addr - base_offset) == 0x14200440) ? 1 : 0)
+#define IS_GPK(addr) ((((unsigned long)addr) == ((unsigned long)pmgpio_base)) ? 1 : 0)
 
 static struct extintr_ extintr [] = {
 	{ 0,	0 },	//0: no source
@@ -218,7 +218,7 @@ static void tcc803x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int 
 static void tcc803x_gpio_input_buffer_set(void __iomem *base, unsigned offset, int value)
 {
 	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(pmgpio_base, offset, value, PMGPIO_INPUT_BUFFER_ENABLE);
+		tcc803x_gpio_pinconf_extra(base, offset, value, PMGPIO_INPUT_BUFFER_ENABLE);
 	else
 		tcc803x_gpio_pinconf_extra(base, offset, value, GPIO_INPUT_BUFFER_ENABLE);
 }
@@ -267,7 +267,7 @@ static int tcc803x_gpio_get_drive_strength(void __iomem *base, unsigned offset)
 	int data;
 
 	if (IS_GPK(base))
-		reg = pmgpio_base + PMGPIO_DRIVE_STRENGTH + (offset/16)*4;
+		reg = base + PMGPIO_DRIVE_STRENGTH + (offset/16)*4;
 	else
 		reg = base + GPIO_DRIVE_STRENGTH + (offset/16)*4;
 
@@ -287,7 +287,7 @@ static int tcc803x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 		return -EINVAL;
 
 	if (IS_GPK(base))
-		reg = pmgpio_base + PMGPIO_DRIVE_STRENGTH + (offset/16)*4;
+		reg = base + PMGPIO_DRIVE_STRENGTH + (offset/16)*4;
 	else
 		reg = base + GPIO_DRIVE_STRENGTH + (offset/16)*4;
 
@@ -301,8 +301,9 @@ static int tcc803x_gpio_set_drive_strength(void __iomem *base, unsigned offset,
 
 static void tcc803x_gpio_pull_enable(void __iomem *base, unsigned offset, int enable)
 {
+
 	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(pmgpio_base, offset, enable, PMGPIO_PULL_ENABLE);
+		tcc803x_gpio_pinconf_extra(base, offset, enable, PMGPIO_PULL_ENABLE);
 	else
 		tcc803x_gpio_pinconf_extra(base, offset, enable, GPIO_PULL_ENABLE);
 }
@@ -310,7 +311,7 @@ static void tcc803x_gpio_pull_enable(void __iomem *base, unsigned offset, int en
 static void tcc803x_gpio_pull_select(void __iomem *base, unsigned offset, int up)
 {
 	if (IS_GPK(base))
-		tcc803x_gpio_pinconf_extra(pmgpio_base, offset, up, PMGPIO_PULL_SELECT);
+		tcc803x_gpio_pinconf_extra(base, offset, up, PMGPIO_PULL_SELECT);
 	else
 		tcc803x_gpio_pinconf_extra(base, offset, up, GPIO_PULL_SELECT);
 }
@@ -505,7 +506,8 @@ static int tcc803x_pinctrl_probe(struct platform_device *pdev)
 	pmgpio_base = of_iomap(pdev->dev.of_node, 1);
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base_offset = (unsigned long)gpio_base - (unsigned long)cfg_res->start;
-	return tcc_pinctrl_probe(pdev, &tcc803x_pinctrl_soc_data, gpio_base);
+	
+	return tcc_pinctrl_probe(pdev, &tcc803x_pinctrl_soc_data, gpio_base, pmgpio_base);
 }
 
 static const struct of_device_id tcc803x_pinctrl_of_match[] = {
