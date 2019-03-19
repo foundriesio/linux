@@ -199,11 +199,12 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 
 		// init the v4l2 data
 		tccvin_v4l2_init(vdev);
-		log("pannel size is %d x %d \n", lcd_panel_info->xres, lcd_panel_info->yres);
-		tccvin_cif_set_resolution(vdev, lcd_panel_info->xres, lcd_panel_info->yres, V4L2_PIX_FMT_RGB32);
 
 		// set preview method as direct display
 		vdev->v4l2.preview_method = PREVIEW_DD;
+
+		log("pannel size is %d x %d \n", lcd_panel_info->xres, lcd_panel_info->yres);
+		tccvin_cif_set_resolution(vdev, lcd_panel_info->xres, lcd_panel_info->yres, V4L2_PIX_FMT_RGB32);
 
 		vdev->is_dev_opened  = ENABLE;
 	}
