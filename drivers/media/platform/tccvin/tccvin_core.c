@@ -196,43 +196,6 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		tccvin_check_path_status(vdev, (int *)arg);
 		break;
 
-    case VIDIOC_SET_ALPHA_BLENDING:
-        tccvin_set_ovp_value(&vdev->cif);
-        break;
-
-	case VIDIOC_USER_JPEG_CAPTURE:
-		dlog("VIDIOC_USER_JPEG_CAPTURE\n");
-		break;
-
-	case VIDIOC_USER_PROC_AUTOFOCUS:
-		dlog("VIDIOC_USER_PROC_AUTOFOCUS\n");
-		break;
-
-	case VIDIOC_USER_SET_CAMINFO_TOBEOPEN:
-		dlog("VIDIOC_USER_SET_CAMINFO_TOBEOPEN\n");
-		break;
-
-	case VIDIOC_USER_GET_MAX_RESOLUTION:
-		dlog("VIDIOC_USER_GET_MAX_RESOLUTION\n");
-		ret = XGA;
-		break;
-
-	case VIDIOC_USER_GET_SENSOR_FRAMERATE:
-		dlog("VIDIOC_USER_GET_SENSOR_FRAMERATE\n");
-		break;
-
-	case VIDIOC_USER_GET_ZOOM_SUPPORT:
-		dlog("VIDIOC_USER_GET_ZOOM_SUPPORT\n");
-		break;
-
-	case VIDIOC_USER_SET_CAMERA_ADDR:
-		dlog("VIDIOC_USER_SET_CAMERA_ADDR\n");
-		break;
-
-	case VIDIOC_USER_GET_CAM_STATUS:
-		dlog("VIDIOC_USER_GET_CAM_STATUS\n");
-		break;
-
 	default:
 		log("ERROR: VIDIOC command(0x%08x) is WRONG.\n", cmd);
 		WARN_ON(1);

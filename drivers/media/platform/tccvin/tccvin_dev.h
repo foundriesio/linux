@@ -81,10 +81,9 @@ typedef struct tccvin_cif {
 	struct vioc_intr_type		vioc_intr;
 
 	// optional pmap
+	pmap_t						pmap_pgl;
 	pmap_t						pmap_viqe;
-
-    pmap_t                      pmap_rcam_preview;
-    pmap_t                      pmap_rcam_pgl;
+    pmap_t                      pmap_preview;
 
 	// framebuffer
 	buf_addr_t					preview_buf_addr[MAX_BUFFERRS];
@@ -145,6 +144,8 @@ typedef struct tccvin_v4l2 {
 
 	wait_queue_head_t			frame_wait;	/* Waiting on frame data */
 	unsigned int				wakeup_int;
+
+	unsigned int				skip_frame;
 
 	struct task_struct			* threadRecovery;
 } tccvin_v4l2_t;
