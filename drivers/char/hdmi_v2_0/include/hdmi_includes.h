@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.2.5d"
+#define HDMI_DRV_VERSION        "4.14_1.2.6d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.2.5"
+#define HDMI_DRV_VERSION        "4.14_1.2.6"
 #endif
 
 // HDMI COMPONENTS
@@ -151,24 +151,26 @@ struct drv_enable_entry
 };
 
 /** HDMI Status */
-#define HDMI_TX_STATUS_POWER_ON         0
-#define HDMI_TX_STATUS_OUTPUT_ON        1
-#define HDMI_TX_STATUS_STARTUP          2       // tcc_output_starter_hdmi_v2_0
-#define HDMI_TX_PRE_API_CONFIG          3
-#define HDMI_TX_INTERRUPT_HANDLER_ON    4
+#define HDMI_TX_STATUS_POWER_ON          0
+#define HDMI_TX_STATUS_OUTPUT_ON         1
+#define HDMI_TX_STATUS_STARTUP           2       // tcc_output_starter_hdmi_v2_0
+#define HDMI_TX_PRE_API_CONFIG           3
+#define HDMI_TX_INTERRUPT_HANDLER_ON     4
 
-#define HDMI_TX_HDR_VALID               5
-#define HDMI_TX_HLG_VALID               6
+#define HDMI_TX_HDR_VALID                5
+#define HDMI_TX_HLG_VALID                6
 
-#define HDMI_TX_HOTPLUG_STATUS_LOCK     7
+#define HDMI_TX_HOTPLUG_STATUS_LOCK      7
 
-#define HDMI_TX_STATUS_PHY_ALIVE        8
+#define HDMI_TX_STATUS_PHY_ALIVE         8
 
 
-#define HDMI_TX_STATUS_SUSPEND_L0      10       // Level 0) Runtime Suspend.
-#define HDMI_TX_STATUS_SUSPEND_L1      11       // Level 1) Suspend/Resume
+#define HDMI_TX_STATUS_SUSPEND_L0       10       // Level 0) Runtime Suspend.
+#define HDMI_TX_STATUS_SUSPEND_L1       11       // Level 1) Suspend/Resume
 
-#define HDMI_TX_STATUS_SCDC_CHECK      20
+#define HDMI_TX_STATUS_SCDC_CHECK       20
+#define HDMI_TX_STATUS_SCDC_IGNORE      21
+#define HDMI_TX_STATUS_SCDC_FORCE_ERROR 22
 
 struct irq_dev_id {
         void *dev;

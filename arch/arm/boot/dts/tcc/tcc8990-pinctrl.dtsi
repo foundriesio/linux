@@ -702,8 +702,7 @@
 	hdmi_cec: hdmi_cec {
 		telechips,pins = "gphdmi-0";
 		telechips,pin-function = <1>;
-		telechips,pull-enable;
-		telechips,pull-up;
+		telechips,no-pull = <1>;
 	};
 	hdmi_hpd: hdmi_hpd {
 		telechips,pins = "gphdmi-1";

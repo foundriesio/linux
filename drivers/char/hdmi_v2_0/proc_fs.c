@@ -84,7 +84,8 @@ ssize_t proc_read_hdcp_status(struct file *filp, char __user *usr_buf, size_t cn
 }
 
 ssize_t proc_write_hdcp22(struct file *filp, const char __user *buffer, size_t cnt,
-		loff_t *off_set){
+		loff_t *off_set)
+{
 	uint32_t hdcp22 = 0;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 	// Check size of the input buffer
@@ -124,7 +125,8 @@ ssize_t proc_read_hpd(struct file *filp, char __user *usr_buf, size_t cnt, loff_
 
 
 ssize_t proc_write_hpd_lock(struct file *filp, const char __user *buffer, size_t cnt,
-                loff_t *off_set){
+                loff_t *off_set)
+{
         int ret;
         unsigned int hpd_lock = 0;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
@@ -184,7 +186,8 @@ ssize_t proc_read_hpd_lock(struct file *filp, char __user *usr_buf, size_t cnt, 
 }
 
 ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size_t cnt,
-                loff_t *off_set){
+                loff_t *off_set)
+{
         int ret;
         unsigned int scdc_check = 0;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
@@ -201,17 +204,27 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
         }
 
         scdc_buf[cnt] = '\0';
-        ret = sscanf(scdc_buf, "%u", &scdc_check);
+        ret = sscanf(scdc_buf, "%x", &scdc_check);
+        pr_info("scdc_check = 0x%x\r\n", scdc_check);
         devm_kfree(dev->parent_dev, scdc_buf);
         if (ret < 0)
                 return ret;
 
         mutex_lock(&dev->mutex);
-        if(scdc_check) {
+        if(scdc_check & 0x1) {
                 set_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
-        }
-        else {
+        } else {
                 clear_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
+        }
+        if(scdc_check & 0x10) {
+                set_bit(HDMI_TX_STATUS_SCDC_IGNORE, &dev->status);
+        } else {
+                clear_bit(HDMI_TX_STATUS_SCDC_IGNORE, &dev->status);
+        }
+        if(scdc_check & 0x100) {
+                set_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status);
+        } else {
+                clear_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status);
         }
         mutex_unlock(&dev->mutex);
 
@@ -232,18 +245,20 @@ ssize_t proc_read_scdc_check(struct file *filp, char __user *usr_buf, size_t cnt
         char *scdc_check_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
 
         mutex_lock(&dev->mutex);
-        scdc_check = test_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
+        scdc_check = test_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status)?0x1:0;
+        scdc_check |= test_bit(HDMI_TX_STATUS_SCDC_IGNORE, &dev->status)?0x10:0;
+        scdc_check |= test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)?0x100:0;
         mutex_unlock(&dev->mutex);
 
-        size = sprintf(scdc_check_buf, "%u\n", scdc_check);
+        size = sprintf(scdc_check_buf, "%x\n", scdc_check);
         size = simple_read_from_buffer(usr_buf, cnt,  off_set, scdc_check_buf, size);
         devm_kfree(dev->parent_dev, scdc_check_buf);
         return size;
 }
 
-
 ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_t cnt,
-                loff_t *off_set){
+                loff_t *off_set)
+{
         int ret;
         char *ddc_buf = NULL;
         unsigned int ddc_addr, ddc_len;
@@ -287,7 +302,8 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
 
 #if defined(CONFIG_TCC_RUNTIME_GET_EDID_ID)
 ssize_t proc_write_edid_machine_id(struct file *filp, const char __user *buffer, size_t cnt,
-                loff_t *off_set){
+                loff_t *off_set)
+{
         int ret;
         unsigned int edid_machine_id = 0;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
@@ -339,7 +355,8 @@ ssize_t proc_read_edid_machine_id(struct file *filp, char __user *usr_buf, size_
 
 #if defined(CONFIG_TCC_RUNTIME_DRM_TEST)
 ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
-                loff_t *off_set){
+                loff_t *off_set)
+{
 
         static int stage = 0;
         int ret;
@@ -519,7 +536,8 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
 
 
 #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
-ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set){
+ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
         ssize_t size;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
@@ -585,7 +603,8 @@ ssize_t proc_read_phy_regs(struct file *filp, char __user *usr_buf, size_t cnt, 
 
 #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
 extern int hdmi_api_vsif_update_by_index(int index);
-ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set){
+ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
         ssize_t size;
         int dv_vsif_index;
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));

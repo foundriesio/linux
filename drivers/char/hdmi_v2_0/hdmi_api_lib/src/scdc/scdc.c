@@ -18,6 +18,12 @@
 
 #include <linux/timer.h>
 
+static int scdc_force_error_stage = 0;
+
+/* Save Time Val */
+static struct timeval prev_status_timeval = {0};
+static struct timeval prev_ced_timeval = {0};
+
 static int scdc_read(struct hdmi_tx_dev *dev, u8 address, u8 size, u8 * data)
 {
 	return hdmi_ddc_read(dev, SCDC_SLAVE_ADDRESS, 0,0 , address, size, data);
@@ -177,9 +183,7 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
         struct timeval current_timeval;
         unsigned char reg_value, regl_value, regh_value;
 
-        /* Save Time Val */
-        static struct timeval prev_status_timeval = {0};
-        static struct timeval prev_ced_timeval = {0};
+
 
         memset(hdmi_scdc_error_data, 0, sizeof(struct hdmi_scdc_error_data));
 
@@ -219,11 +223,12 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                 if(scdc_read(dev, SCDC_UPDATE_0, 1, &reg_value)){
                       reg_value = 0;
                 }
-                if(reg_value & (1 << 1)) {
-                      set_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);
+                if(reg_value & (1 << 1) ||
+                        test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)){
+                        set_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);
                 }
                 if(reg_value & (1 << 0)) {
-                      set_bit(SCDC_STATUS_CHANGE, &hdmi_scdc_error_data->status);
+                        set_bit(SCDC_STATUS_CHANGE, &hdmi_scdc_error_data->status);
                 }
                 /* Clear Update Flags 0 */
                 if(reg_value != 0) {
@@ -296,6 +301,9 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
 
                                 /* Channel 0 */
                                 regl_value = scdc_errors[0]; regh_value = scdc_errors[1];
+                                if(test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)) {
+                                        regh_value |= 0x7F;
+                                }
                                 hdmi_scdc_error_data->ch0 = ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
                                 if(regh_value >> 7) {
                                         set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch0);
@@ -303,6 +311,9 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
 
                                 /* Channel 1 */
                                 regl_value = scdc_errors[2]; regh_value = scdc_errors[3];
+                                if(test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)) {
+                                        regh_value |= 0x7F;
+                                }
                                 hdmi_scdc_error_data->ch1 = ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
                                 if(regh_value >> 7) {
                                         set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch1);
@@ -310,6 +321,9 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
 
                                 /* Channel 2 */
                                 regl_value = scdc_errors[4]; regh_value = scdc_errors[5];
+                                if(test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)) {
+                                        regh_value |= 0x7F;
+                                }
                                 hdmi_scdc_error_data->ch2 = ((regl_value | ((regh_value & 0x7F) << 8)) << SCDC_CHANNEL_ERROR_SHIFT);
                                 if(regh_value >> 7) {
                                         set_bit(SCDC_CHANNEL_VALID, &hdmi_scdc_error_data->ch2);
@@ -332,6 +346,33 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                         }
 
                 }
+
+                #if defined(CONFIG_ARCH_TCC898X)
+                /* TCC898x has problem with CED detection*/
+                clear_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);
+                #else
+                if(test_bit(HDMI_TX_STATUS_SCDC_IGNORE, &dev->status)) {
+                        clear_bit(SCDC_STATUS_CED, &hdmi_scdc_error_data->status);
+                }
+                #endif
+
+                if(test_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status)) {
+                        switch(scdc_force_error_stage) {
+                                case 0:
+                                        scdc_force_error_stage = 1;
+                                        pr_info("%s start hdmi driver makes scdc error \r\n", __func__);
+                                        break;
+                                case 1:
+                                        scdc_force_error_stage = 0;
+                                        clear_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status);
+                                        pr_info("%s stop hdmi driver makes scdc error \r\n", __func__);
+                                        break;
+                                default:
+                                        scdc_force_error_stage = 0;
+                                        break;
+                        }
+                }
+
                 /* Check CED_Update Flag -- */
         }
         return ret;
