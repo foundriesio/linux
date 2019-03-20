@@ -540,6 +540,12 @@ int dwc_otg_hcd_urb_enqueue(dwc_otg_hcd_t * hcd,
 		return -DWC_E_NO_DEVICE;
 	}
 
+	if (!dwc_otg_is_host_mode(hcd->core_if))
+	{
+		DWC_ERROR("Not Host!\n");
+		return -DWC_E_NO_DEVICE;
+	}
+
 	qtd = dwc_otg_hcd_qtd_create(dwc_otg_urb, atomic_alloc);
 	if (qtd == NULL) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed creating QTD\n");
