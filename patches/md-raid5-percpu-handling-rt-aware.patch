@@ -14,9 +14,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
 
 ---
- drivers/md/raid5.c |    8 +++++---
+ drivers/md/raid5.c |    7 +++++--
  drivers/md/raid5.h |    1 +
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
@@ -41,7 +41,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  }
  
  static void free_stripe(struct kmem_cache *sc, struct stripe_head *sh)
-@@ -6803,6 +6805,7 @@ static int raid456_cpu_up_prepare(unsign
+@@ -6815,6 +6817,7 @@ static int raid456_cpu_up_prepare(unsign
  			__func__, cpu);
  		return -ENOMEM;
  	}
@@ -49,14 +49,6 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  	return 0;
  }
  
-@@ -6813,7 +6816,6 @@ static int raid5_alloc_percpu(struct r5c
- 	conf->percpu = alloc_percpu(struct raid5_percpu);
- 	if (!conf->percpu)
- 		return -ENOMEM;
--
- 	err = cpuhp_state_add_instance(CPUHP_MD_RAID5_PREPARE, &conf->node);
- 	if (!err) {
- 		conf->scribble_disks = max(conf->raid_disks,
 --- a/drivers/md/raid5.h
 +++ b/drivers/md/raid5.h
 @@ -637,6 +637,7 @@ struct r5conf {

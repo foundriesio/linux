@@ -8,8 +8,8 @@ substitutions for testing.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- kernel/Kconfig.preempt |   21 ++++++++++++++++++---
- 1 file changed, 18 insertions(+), 3 deletions(-)
+ kernel/Kconfig.preempt |   19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
 
 --- a/kernel/Kconfig.preempt
 +++ b/kernel/Kconfig.preempt
@@ -37,7 +37,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	select UNINLINE_SPIN_UNLOCK if !ARCH_INLINE_SPIN_UNLOCK
  	help
  	  This option reduces the latency of the kernel by making
-@@ -54,7 +61,15 @@ config PREEMPT
+@@ -54,6 +61,14 @@ config PREEMPT
  	  embedded system with latency requirements in the milliseconds
  	  range.
  
@@ -52,6 +52,3 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  endchoice
  
  config PREEMPT_COUNT
--       bool
-\ No newline at end of file
-+       bool

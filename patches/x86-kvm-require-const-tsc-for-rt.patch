@@ -9,22 +9,23 @@ a guest on top of a RT host.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- arch/x86/kvm/x86.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/x86/kvm/x86.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -6698,6 +6698,13 @@ int kvm_arch_init(void *opaque)
+@@ -6907,6 +6907,14 @@ int kvm_arch_init(void *opaque)
  		goto out;
  	}
  
 +#ifdef CONFIG_PREEMPT_RT_FULL
 +	if (!boot_cpu_has(X86_FEATURE_CONSTANT_TSC)) {
-+		printk(KERN_ERR "RT requires X86_FEATURE_CONSTANT_TSC\n");
-+		return -EOPNOTSUPP;
++		pr_err("RT requires X86_FEATURE_CONSTANT_TSC\n");
++		r = -EOPNOTSUPP;
++		goto out;
 +	}
 +#endif
 +
- 	r = kvm_mmu_module_init();
- 	if (r)
- 		goto out_free_percpu;
+ 	r = -ENOMEM;
+ 	x86_fpu_cache = kmem_cache_create("x86_fpu", sizeof(struct fpu),
+ 					  __alignof__(struct fpu), SLAB_ACCOUNT,

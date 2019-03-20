@@ -21,4 +21,4 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
  struct irqaction;
  struct pt_regs;
- extern void migrate_irqs(void);
+ 

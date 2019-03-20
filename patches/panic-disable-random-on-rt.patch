@@ -12,7 +12,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -479,9 +479,11 @@ static u64 oops_id;
+@@ -507,9 +507,11 @@ static u64 oops_id;
  
  static int init_oops_id(void)
  {

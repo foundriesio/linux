@@ -159,7 +159,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/net/neighbour.h
 +++ b/include/net/neighbour.h
-@@ -451,7 +451,7 @@ static inline int neigh_hh_bridge(struct
+@@ -458,7 +458,7 @@ static inline int neigh_hh_bridge(struct
  }
  #endif
  
@@ -168,7 +168,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	unsigned int hh_alen = 0;
  	unsigned int seq;
-@@ -493,7 +493,7 @@ static inline int neigh_hh_output(const
+@@ -500,7 +500,7 @@ static inline int neigh_hh_output(const
  
  static inline int neigh_output(struct neighbour *n, struct sk_buff *skb)
  {
@@ -177,7 +177,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
  		return neigh_hh_output(hh, skb);
-@@ -534,7 +534,7 @@ struct neighbour_cb {
+@@ -541,7 +541,7 @@ struct neighbour_cb {
  
  #define NEIGH_CB(skb)	((struct neighbour_cb *)(skb)->cb)
  

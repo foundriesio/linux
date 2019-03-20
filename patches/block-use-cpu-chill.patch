@@ -12,8 +12,8 @@ make progress.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- block/blk-ioc.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ block/blk-ioc.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 --- a/block/blk-ioc.c
 +++ b/block/blk-ioc.c
@@ -25,8 +25,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #include "blk.h"
  
-@@ -118,7 +119,7 @@ static void ioc_release_fn(struct work_s
- 			spin_unlock(q->queue_lock);
+@@ -115,7 +116,7 @@ static void ioc_release_fn(struct work_s
+ 			spin_unlock(&q->queue_lock);
  		} else {
  			spin_unlock_irqrestore(&ioc->lock, flags);
 -			cpu_relax();
@@ -34,12 +34,3 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			spin_lock_irqsave_nested(&ioc->lock, flags, 1);
  		}
  	}
-@@ -202,7 +203,7 @@ void put_io_context_active(struct io_con
- 				spin_unlock(icq->q->queue_lock);
- 			} else {
- 				spin_unlock_irqrestore(&ioc->lock, flags);
--				cpu_relax();
-+				cpu_chill();
- 				goto retry;
- 			}
- 		}

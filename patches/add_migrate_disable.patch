@@ -12,7 +12,7 @@ Subject: kernel/sched/core: add migrate_disable()
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -185,6 +185,22 @@ do { \
+@@ -182,6 +182,22 @@ do { \
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
  
@@ -35,7 +35,7 @@ Subject: kernel/sched/core: add migrate_disable()
  #ifdef CONFIG_PREEMPT
  #define preempt_enable() \
  do { \
-@@ -253,6 +269,13 @@ do { \
+@@ -250,6 +266,13 @@ do { \
  #define preempt_enable_notrace()		barrier()
  #define preemptible()				0
  
@@ -51,7 +51,7 @@ Subject: kernel/sched/core: add migrate_disable()
  #ifdef MODULE
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -662,6 +662,13 @@ struct task_struct {
+@@ -661,6 +661,13 @@ struct task_struct {
  	int				nr_cpus_allowed;
  	const cpumask_t			*cpus_ptr;
  	cpumask_t			cpus_mask;
@@ -67,7 +67,7 @@ Subject: kernel/sched/core: add migrate_disable()
  	int				rcu_read_lock_nesting;
 --- a/include/linux/smp.h
 +++ b/include/linux/smp.h
-@@ -202,6 +202,9 @@ static inline int get_boot_cpu_id(void)
+@@ -206,6 +206,9 @@ static inline int get_boot_cpu_id(void)
  #define get_cpu()		({ preempt_disable(); smp_processor_id(); })
  #define put_cpu()		preempt_enable()
  
@@ -79,7 +79,7 @@ Subject: kernel/sched/core: add migrate_disable()
   * boot command line:
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1006,7 +1006,15 @@ void set_cpus_allowed_common(struct task
+@@ -1025,7 +1025,15 @@ void set_cpus_allowed_common(struct task
  	p->nr_cpus_allowed = cpumask_weight(new_mask);
  }
  
@@ -96,7 +96,7 @@ Subject: kernel/sched/core: add migrate_disable()
  {
  	struct rq *rq = task_rq(p);
  	bool queued, running;
-@@ -1035,6 +1043,20 @@ void do_set_cpus_allowed(struct task_str
+@@ -1054,6 +1062,20 @@ void do_set_cpus_allowed(struct task_str
  		set_curr_task(rq, p);
  }
  
@@ -117,7 +117,7 @@ Subject: kernel/sched/core: add migrate_disable()
  /*
   * Change a given task's CPU affinity. Migrate the thread to a
   * proper CPU and schedule it away if the CPU it's executing on
-@@ -1093,9 +1115,16 @@ static int __set_cpus_allowed_ptr(struct
+@@ -1112,9 +1134,16 @@ static int __set_cpus_allowed_ptr(struct
  	}
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -135,7 +135,7 @@ Subject: kernel/sched/core: add migrate_disable()
  	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
  	if (task_running(rq, p) || p->state == TASK_WAKING) {
  		struct migration_arg arg = { p, dest_cpu };
-@@ -7058,3 +7087,100 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7071,3 +7100,100 @@ const u32 sched_prio_to_wmult[40] = {
  };
  
  #undef CREATE_TRACE_POINTS

@@ -32,7 +32,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(tracing_generic_entry_update);
  
-@@ -3349,9 +3351,10 @@ static void print_lat_help_header(struct
+@@ -3350,9 +3352,10 @@ static void print_lat_help_header(struct
  		    "#                | / _----=> need-resched    \n"
  		    "#                || / _---=> hardirq/softirq \n"
  		    "#                ||| / _--=> preempt-depth   \n"
@@ -59,7 +59,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
 --- a/kernel/trace/trace_output.c
 +++ b/kernel/trace/trace_output.c
-@@ -494,6 +494,11 @@ int trace_print_lat_fmt(struct trace_seq
+@@ -472,6 +472,11 @@ int trace_print_lat_fmt(struct trace_seq
  	else
  		trace_seq_putc(s, '.');
  

@@ -38,7 +38,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/irq.h
 +++ b/include/linux/irq.h
-@@ -69,6 +69,7 @@ enum irqchip_irq_state;
+@@ -70,6 +70,7 @@ enum irqchip_irq_state;
   * IRQ_IS_POLLED		- Always polled by another interrupt. Exclude
   *				  it from the spurious interrupt detection
   *				  mechanism and from core side polling.
@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * IRQ_DISABLE_UNLAZY		- Disable lazy irq disable
   */
  enum {
-@@ -96,13 +97,14 @@ enum {
+@@ -97,13 +98,14 @@ enum {
  	IRQ_PER_CPU_DEVID	= (1 << 17),
  	IRQ_IS_POLLED		= (1 << 18),
  	IRQ_DISABLE_UNLAZY	= (1 << 19),
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -970,7 +970,15 @@ irq_forced_thread_fn(struct irq_desc *de
+@@ -962,7 +962,15 @@ irq_forced_thread_fn(struct irq_desc *de
  		atomic_inc(&desc->threads_handled);
  
  	irq_finalize_oneshot(desc, action);
@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return ret;
  }
  
-@@ -1480,6 +1488,9 @@ static int
+@@ -1472,6 +1480,9 @@ static int
  			irqd_set(&desc->irq_data, IRQD_NO_BALANCING);
  		}
  
@@ -128,7 +128,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return desc->status_use_accessors & _IRQ_PER_CPU;
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -598,6 +598,15 @@ void __local_bh_enable(void)
+@@ -627,6 +627,15 @@ void __local_bh_enable(void)
  }
  EXPORT_SYMBOL(__local_bh_enable);
  

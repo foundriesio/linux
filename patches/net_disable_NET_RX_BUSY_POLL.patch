@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/Kconfig
 +++ b/net/Kconfig
-@@ -275,7 +275,7 @@ config CGROUP_NET_CLASSID
+@@ -279,7 +279,7 @@ config CGROUP_NET_CLASSID
  
  config NET_RX_BUSY_POLL
  	bool
