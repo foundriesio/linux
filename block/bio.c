@@ -253,9 +253,6 @@ static void bio_free(struct bio *bio)
 
 	bio_uninit(bio);
 
-	if (!bio_flagged(bio, BIO_ALLOCED))
-		return;
-
 	if (bs) {
 		bvec_free(bs->bvec_pool, bio->bi_io_vec, BVEC_POOL_IDX(bio));
 
@@ -521,7 +518,6 @@ struct bio *bio_alloc_bioset(gfp_t gfp_mask, unsigned int nr_iovecs,
 		bvl = bio->bi_inline_vecs;
 	}
 
-	bio_set_flag(bio, BIO_ALLOCED);
 	bio->bi_pool = bs;
 	bio->bi_max_vecs = nr_iovecs;
 	bio->bi_io_vec = bvl;
