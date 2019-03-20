@@ -278,6 +278,7 @@ struct stm32_port {
 	bool fifoen;
 	int wakeirq;
 	struct pinctrl_state *console_pins;
+	int rdr_mask;		/* receive data register mask */
 };
 
 static struct stm32_port stm32_ports[STM32_MAX_PORTS];
