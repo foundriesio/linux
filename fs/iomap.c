@@ -612,8 +612,8 @@ iomap_seek_hole(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
 	loff_t length = size - offset;
 	loff_t ret;
 
-	/* Nothing to be found beyond the end of the file. */
-	if (offset >= size)
+	/* Nothing to be found before or beyond the end of the file. */
+	if (offset < 0 || offset >= size)
 		return -ENXIO;
 
 	while (length > 0) {
@@ -658,8 +658,8 @@ iomap_seek_data(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
 	loff_t length = size - offset;
 	loff_t ret;
 
-	/* Nothing to be found beyond the end of the file. */
-	if (offset >= size)
+	/* Nothing to be found before or beyond the end of the file. */
+	if (offset < 0 || offset >= size)
 		return -ENXIO;
 
 	while (length > 0) {
