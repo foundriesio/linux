@@ -701,6 +701,36 @@ static void stm32_shutdown(struct uart_port *port)
 	free_irq(port->irq, port);
 }
 
+static int stm32_get_databits(struct ktermios *termios)
+{
+	unsigned int bits;
+
+	tcflag_t cflag = termios->c_cflag;
+
+	switch (cflag & CSIZE) {
+	/*
+	 * CSIZE settings are not necessarily supported in hardware.
+	 * CSIZE unsupported configurations are handled here to set word length
+	 * to 8 bits word as default configuration and to print debug message.
+	 */
+	case CS5:
+		bits = 5;
+		break;
+	case CS6:
+		bits = 6;
+		break;
+	case CS7:
+		bits = 7;
+		break;
+	/* default including CS8 */
+	default:
+		bits = 8;
+		break;
+	}
+
+	return (bits);
+}
+
 static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 			    struct ktermios *old)
 {
@@ -740,27 +770,33 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (cflag & CSTOPB)
 		cr2 |= USART_CR2_STOP_2B;
 
+	bits = stm32_get_databits(termios);
+
+	if (cflag & PARENB) {
+		bits++;
+		cr1 |= USART_CR1_PCE;
+	}
+
+	/* Word length configuration:
+	 * CS8 + parity, 9 bits word aka [M1:M0] = 0b01
+	 * CS7 or (CS6 + parity), 7 bits word aka [M1:M0] = 0b10
+	 * CS8 or (CS7 + parity), 8 bits word aka [M1:M0] = 0b00
+	 * M0 and M1 already cleared by cr1 initialization.
+	 */
+	if (bits == 9)
+		cr1 |= USART_CR1_M0;
+	else if ((bits == 7) && cfg->has_7bits_data)
+		cr1 |= USART_CR1_M1;
+	else if (bits != 8)
+		dev_dbg(port->dev, "Unsupported data bits config: %u bits\n"
+			, bits);
+
 	if (ofs->rtor != UNDEF_REG && (stm32_port->rx_ch ||
 				       stm32_port->fifoen)) {
-		switch (cflag & CSIZE) {
-			case CS5:
-				bits = 7;
-				break;
-			case CS6:
-				bits = 8;
-				break;
-			case CS7:
-				bits = 9;
-				break;
-			default:
-				bits = 10; /* CS8 */
-				break;
-		}
-
 		if (cflag & CSTOPB)
-			bits++; /* 2 stop bits */
-		if (cflag & PARENB)
-			bits++; /* parity bit */
+			bits = bits + 3; /* 1 start bit + 2 stop bits */
+		else
+			bits = bits + 2; /* 1 start bit + 1 stop bit */
 
 		/* RX timeout irq to occur after last stop bit + bits */
 		stm32_port->cr1_irq = USART_CR1_RTOIE;
@@ -771,18 +807,9 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 		if (!stm32_port->rx_ch)
 			stm32_port->cr3_irq =  USART_CR3_RXFTIE;
 	}
+
 	cr1 |= stm32_port->cr1_irq;
 	cr3 |= stm32_port->cr3_irq;
-
-	if (cflag & PARENB) {
-		cr1 |= USART_CR1_PCE;
-		if ((cflag & CSIZE) == CS8) {
-			if (cfg->has_7bits_data)
-				cr1 |= USART_CR1_M0;
-			else
-				cr1 |= USART_CR1_M;
-		}
-	}
 
 	if (cflag & PARODD)
 		cr1 |= USART_CR1_PS;
