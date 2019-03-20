@@ -162,6 +162,8 @@ struct bio {
 				 * throttling rules. Don't do it again. */
 #define BIO_TRACE_COMPLETION 10	/* bio_endio() should trace the final completion
 				 * of this bio. */
+#define BIO_ALLOCED	13	/* bio has been allocated by bio_alloc_bioset */
+
 /* See BVEC_POOL_OFFSET below before adding new flags */
 
 /*
