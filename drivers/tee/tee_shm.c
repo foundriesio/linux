@@ -64,8 +64,10 @@ static void tee_shm_release(struct tee_shm *shm)
 			dev_err(teedev->dev.parent,
 				"unregister shm %p failed: %d", shm, rc);
 
-		for (n = 0; n < shm->num_pages; n++)
-			put_page(shm->pages[n]);
+		if (!(shm->flags & TEE_SHM_REGISTER_KERN)) {
+			for (n = 0; n < shm->num_pages; n++)
+				put_page(shm->pages[n]);
+		}
 
 		kfree(shm->pages);
 	}
@@ -179,6 +181,10 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 	if (shm->id < 0) {
 		ret = ERR_PTR(shm->id);
 		goto err_kfree;
+	}
+
+	if (ctx) {
+		teedev_ctx_get(ctx);
 	}
 
 	mutex_lock(&teedev->mutex);
@@ -316,6 +322,94 @@ struct tee_shm *tee_shm_priv_alloc(struct tee_device *teedev, size_t size)
 	return __tee_shm_alloc(NULL, teedev, size, TEE_SHM_MAPPED);
 }
 EXPORT_SYMBOL_GPL(tee_shm_priv_alloc);
+
+struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long addr,
+										  size_t length, u32 flags)
+{
+	struct tee_device *teedev = ctx->teedev;
+	struct tee_shm *shm;
+	int offset = 0;
+	void *ret;
+	int rc;
+	int i;
+	int num_pages;
+	unsigned long start;
+
+	if (!tee_device_get(teedev)) {
+		dev_err(teedev->dev.parent, "invalid teedev");
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (!teedev->desc->ops->shm_register ||
+	    !teedev->desc->ops->shm_unregister) {
+		dev_err(teedev->dev.parent,
+			"register shared memory unspported by device");
+		tee_device_put(teedev);
+		return ERR_PTR(-EINVAL);
+	}
+
+	teedev_ctx_get(ctx);
+
+	shm = kzalloc(sizeof(*shm), GFP_KERNEL);
+	if (!shm) {
+		dev_err(teedev->dev.parent, "allocate failed");
+		ret = ERR_PTR(-ENOMEM);
+		goto err;
+	}
+
+	shm->flags = TEE_SHM_REGISTER | TEE_SHM_REGISTER_KERN;
+	shm->teedev = teedev;
+	shm->ctx = ctx;
+	shm->id = -1;
+	start = rounddown(addr, PAGE_SIZE);
+	shm->offset = addr - start;
+	shm->size = length;
+	num_pages = (roundup(addr + length, PAGE_SIZE) - start) / PAGE_SIZE;
+	shm->pages = kcalloc(num_pages, sizeof(struct page), GFP_KERNEL);
+	if (!shm->pages) {
+		dev_err(teedev->dev.parent, "allocate failed");
+		ret = ERR_PTR(-ENOMEM);
+		goto err;
+	}
+
+	for (i = 0; i < num_pages; i++) {
+		shm->pages[i] = virt_to_page(start + offset);
+		offset += PAGE_SIZE;
+	}
+
+	mutex_lock(&teedev->mutex);
+	shm->id = idr_alloc(&teedev->idr, shm, 1, 0, GFP_KERNEL);
+	mutex_unlock(&teedev->mutex);
+
+	shm->num_pages = num_pages;
+	rc = teedev->desc->ops->shm_register(ctx, shm, shm->pages,
+					     shm->num_pages);
+	if (rc) {
+		dev_err(teedev->dev.parent, "register shm failed, rc = %d", rc);
+		ret = ERR_PTR(rc);
+		goto err;
+	}
+
+	mutex_lock(&teedev->mutex);
+	list_add_tail(&shm->link, &ctx->list_shm);
+	mutex_unlock(&teedev->mutex);
+
+	return shm;
+err:
+	if (shm) {
+		if (shm->id >= 0) {
+			mutex_lock(&teedev->mutex);
+			idr_remove(&teedev->idr, shm->id);
+			mutex_unlock(&teedev->mutex);
+		}
+		kfree(shm->pages);
+	}
+	kfree(shm);
+	teedev_ctx_put(ctx);
+	tee_device_put(teedev);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tee_shm_register_for_kern);
 
 struct tee_shm *tee_shm_register(struct tee_context *ctx, unsigned long addr,
 				 size_t length, u32 flags)
