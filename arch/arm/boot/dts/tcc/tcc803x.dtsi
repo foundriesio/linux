@@ -3230,7 +3230,8 @@
 			 	<&clk_peri PERI_HDMI_HDCP14>, 
 			 	<&clk_peri PERI_HDMI_HDCP22>, 
 			 	<&clk_ddi DDIBUS_HDMI>, 
-			 	<&clk_isoip_ddi ISOIP_DDB_HDMI>;
+			 	<&clk_isoip_ddi ISOIP_DDB_HDMI>,
+				<&clk_ddi DDIBUS_VIOC>;
 		clock-names = "hdmi_ref_clk", 
 				"hdmi_spdif_clk", 
 				"hdmi_apb_clk", 
@@ -3238,7 +3239,8 @@
 				"hdmi_hdcp14", 
 				"hdmi_hdcp22", 
 				"hdmi_ddibus", 
-				"hdmi_isoip_ddibus";
+				"hdmi_isoip_ddibus",
+				"ddi_bus";
 		clock-frequency = <50000000>;
 		/* Pinctrl and gpio */
 		pinctrl-names = "default";

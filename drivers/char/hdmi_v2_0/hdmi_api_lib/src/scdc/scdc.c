@@ -360,12 +360,12 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                         switch(scdc_force_error_stage) {
                                 case 0:
                                         scdc_force_error_stage = 1;
-                                        pr_info("%s start hdmi driver makes scdc error \r\n", __func__);
+                                        //pr_info("%s start hdmi driver makes scdc error \r\n", __func__);
                                         break;
                                 case 1:
                                         scdc_force_error_stage = 0;
                                         clear_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status);
-                                        pr_info("%s stop hdmi driver makes scdc error \r\n", __func__);
+                                        //pr_info("%s stop hdmi driver makes scdc error \r\n", __func__);
                                         break;
                                 default:
                                         scdc_force_error_stage = 0;

@@ -13,6 +13,7 @@ You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
 ****************************************************************************/
+#include <linux/clk.h>
 #include <include/hdmi_includes.h>
 #include <include/hdmi_ioctls.h>
 #include <soc/soc.h>
@@ -20,7 +21,7 @@ Suite 330, Boston, MA 02111-1307 USA
 hdmi_soc_features current_soc_features = {
 #if defined(CONFIG_ARCH_TCC803X)
         .max_tmds_mhz = 594,
-        .support_feature_1 = SOC_FEATURE_HDR,
+        .support_feature_1 = 0,
 #elif defined(CONFIG_ARCH_TCC898X)
         .max_tmds_mhz = 594,
         .support_feature_1 = SOC_FEATURE_DOLBYVISION | SOC_FEATURE_HDR |
@@ -34,6 +35,10 @@ hdmi_soc_features current_soc_features = {
 
 int hdmi_get_soc_features(struct hdmi_tx_dev *dev, hdmi_soc_features *soc_features)
 {
+        #if defined(CONFIG_ARCH_TCC803X)
+        struct clk* clk;
+        #endif
+
         if(dev != NULL) {
                 if(soc_features != NULL) {
                         /* [03:--] : HPD interrupt model
@@ -47,6 +52,16 @@ int hdmi_get_soc_features(struct hdmi_tx_dev *dev, hdmi_soc_features *soc_featur
                                 current_soc_features.support_feature_1 &= ~SOC_FEATURE_HPD_LINK_MODE;
                         }
                         memcpy(soc_features, &current_soc_features, sizeof(hdmi_soc_features));
+			#if defined(CONFIG_ARCH_TCC803X)
+                        clk = of_clk_get_by_name(dev->parent_dev->of_node, "ddi_bus");
+                        if(IS_ERR(clk)) {
+				soc_features->max_tmds_mhz = 340;
+			} else {
+                                if(clk_get_rate(clk) < 594000000) {
+                                        soc_features->max_tmds_mhz = 340;
+                                }
+                        }
+                        #endif
                 }
         }
         return 0;

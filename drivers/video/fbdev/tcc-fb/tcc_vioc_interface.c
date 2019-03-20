@@ -45,7 +45,7 @@
 #include <linux/unistd.h>
 #include <linux/syscalls.h>
 #include <linux/of_address.h>
-#include <linux/uaccess.h>
+#include <linux/clk-provider.h> /* __clk_is_enabled */
 #include <asm/io.h>
 #include <asm/div64.h>
 #include <asm/system_info.h>
@@ -867,13 +867,15 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
                         } else {
 				/* HDMI PHY -> Lx LCLK */
 				if(!IS_ERR(pDisplayInfo->ddc_clock)) {
-					clk_disable_unprepare(pDisplayInfo->ddc_clock);
+                                        if(__clk_is_enabled(pDisplayInfo->ddc_clock)) {
+					        clk_disable_unprepare(pDisplayInfo->ddc_clock);
+                                        }
 	                                hdmi_pixel_clock = hdmi_get_pixel_clock();
 	                                if(hdmi_pixel_clock == 0) {
 	                                        hdmi_pixel_clock = 24000000;
 	                                }
 	                                //pr_info("The display device uses peri clock - %luHz \r\n", hdmi_pixel_clock);
-	                                
+
 	                                clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
 					clk_prepare_enable(pDisplayInfo->ddc_clock);
 				}
@@ -894,7 +896,9 @@ void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int 
                         if(clk_src_hdmi_phy == 1) {
                                 /* Lx LCLK -> HDMI PHY */
 				if(!IS_ERR(pDisplayInfo->ddc_clock)) {
-                                        clk_disable_unprepare(pDisplayInfo->ddc_clock);
+                                        if(__clk_is_enabled(pDisplayInfo->ddc_clock)) {
+                                                clk_disable_unprepare(pDisplayInfo->ddc_clock);
+                                        }
                                 	clk_set_rate(pDisplayInfo->ddc_clock, hdmi_pixel_clock);
 					clk_prepare_enable(pDisplayInfo->ddc_clock);
 				}
