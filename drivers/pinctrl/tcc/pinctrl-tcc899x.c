@@ -451,7 +451,7 @@ static int tcc899x_pinctrl_probe(struct platform_device *pdev)
 	tcc899x_pinctrl_soc_data.irq = NULL;
 
 	gpio_base = of_iomap(pdev->dev.of_node, 0);
-	return tcc_pinctrl_probe(pdev, &tcc899x_pinctrl_soc_data, gpio_base);
+	return tcc_pinctrl_probe(pdev, &tcc899x_pinctrl_soc_data, gpio_base, NULL);
 }
 
 static const struct of_device_id tcc899x_pinctrl_of_match[] = {
