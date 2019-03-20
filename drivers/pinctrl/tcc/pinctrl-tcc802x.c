@@ -511,7 +511,7 @@ static int tcc802x_pinctrl_probe(struct platform_device *pdev)
 	pmgpio_base = of_iomap(pdev->dev.of_node, 1);
 	cfg_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	base_offset = (unsigned long)gpio_base - (unsigned long)cfg_res->start;
-	return tcc_pinctrl_probe(pdev, &tcc802x_pinctrl_soc_data, gpio_base);
+	return tcc_pinctrl_probe(pdev, &tcc802x_pinctrl_soc_data, gpio_base, NULL);
 }
 
 static const struct of_device_id tcc802x_pinctrl_of_match[] = {
