@@ -34,6 +34,7 @@
 #define TEE_SHM_USER_MAPPED	BIT(4)  /* Memory mapped in user space */
 #define TEE_SHM_POOL		BIT(5)  /* Memory allocated from pool */
 #define TEE_SHM_SDP_MEM		BIT(20)	/* Memory for SDP */
+#define TEE_SHM_REGISTER_KERN BIT(21)  /* Memory registed kernel area */
 
 struct device;
 struct tee_device;
@@ -342,6 +343,18 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 struct tee_shm *tee_shm_priv_alloc(struct tee_device *teedev, size_t size);
 
 /**
+ * tee_shm_register_for_kern() - Register shared memory buffer of kernel memory area
+ * @ctx:	Context that registers the shared memory
+ * @addr:	Address is kernel space (kmalloc only) of the shared buffer
+ * @length:	Length of the shared buffer
+ * @flags:	Flags setting properties for the requested shared memory.
+ *
+ * @returns a pointer to 'struct tee_shm'
+ */
+struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long addr,
+										  size_t length, u32 flags);
+
+/**
  * tee_shm_register() - Register shared memory buffer
  * @ctx:	Context that registers the shared memory
  * @addr:	Address is userspace of the shared buffer
@@ -634,5 +647,15 @@ int tee_client_execute_command(tee_client_context context,
  *
  */
 void tee_client_close_ta(tee_client_context context);
+
+/**
+ * tee_client_shm_sdp_register() - Register SDP area shared memory.
+ * @ctx: TEE Driver Context
+ * @addr: SDP memory address
+ * @size: SDP memory size;
+ *
+ */
+struct tee_shm *tee_client_shm_sdp_register(struct tee_context *ctx,
+                                            unsigned long addr, size_t size);
 
 #endif /*__TEE_DRV_H*/

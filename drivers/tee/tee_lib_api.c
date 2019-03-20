@@ -46,6 +46,18 @@ static bool tee_client_is_buf_param(uint32_t type)
     }
 }
 
+static bool tee_client_is_sec_buf_param(uint32_t type)
+{
+	switch (type) {
+        case TEE_CLIENT_PARAM_SEC_BUF_IN :
+        case TEE_CLIENT_PARAM_SEC_BUF_OUT :
+        case TEE_CLIENT_PARAM_SEC_BUF_INOUT :
+            return true;
+        default :
+            return false;
+	}
+}
+
 static int tee_client_match(struct tee_ioctl_version_data *data,
 							const void *vers)
 {
@@ -72,14 +84,17 @@ static int tee_client_set_params(struct tee_context * context,
 
         switch (params->params[i].type) {
             case TEE_CLIENT_PARAM_BUF_IN :
+			case TEE_CLIENT_PARAM_SEC_BUF_IN :
 				tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT;
 				param_nums++;
                 break;
             case TEE_CLIENT_PARAM_BUF_OUT :
+			case TEE_CLIENT_PARAM_SEC_BUF_OUT :
 				tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT;
 				param_nums++;
                 break;
             case TEE_CLIENT_PARAM_BUF_INOUT :
+			case TEE_CLIENT_PARAM_SEC_BUF_INOUT :
 				tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT;
 				param_nums++;
                 break;
@@ -102,28 +117,26 @@ static int tee_client_set_params(struct tee_context * context,
 
 		if (tee_client_is_buf_param(params->params[i].type)) {
 			struct tee_shm *shm;
-			uint8_t *buf;
-			long buf_size;
 
-			buf_size = params->params[i].tee_client_memref.size;
-			shm = tee_shm_alloc(context,
-								buf_size,
-								TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
+			shm = tee_shm_register_for_kern(context,
+											(unsigned long)params->params[i].tee_client_memref.buffer,
+											params->params[i].tee_client_memref.size, 0);
 			if (IS_ERR(shm))
 				goto FREE_EXIT;
 
-			buf = tee_shm_get_va(shm, 0);
-			if (IS_ERR(buf)) {
-				tee_shm_free(shm);
-				goto FREE_EXIT;
-			}
+			tee_params[i].u.memref.shm = shm;
+			tee_params[i].u.memref.size = params->params[i].tee_client_memref.size;
+		} else if (tee_client_is_sec_buf_param(params->params[i].type)) {
+			struct tee_shm *shm;
 
-			memcpy(buf,
-				   params->params[i].tee_client_memref.buffer,
-				   buf_size);
+			shm = tee_client_shm_sdp_register(context,
+                                              (unsigned long)params->params[i].tee_client_memref.buffer,
+                                              params->params[i].tee_client_memref.size);
+			if (IS_ERR(shm))
+				goto FREE_EXIT;
 
 			tee_params[i].u.memref.shm = shm;
-			tee_params[i].u.memref.size = buf_size;
+			tee_params[i].u.memref.size = params->params[i].tee_client_memref.size;
         } else {
             tee_params[i].u.value.a = params->params[i].tee_client_value.a;
             tee_params[i].u.value.b = params->params[i].tee_client_value.b;
@@ -137,17 +150,11 @@ static int tee_client_set_params(struct tee_context * context,
     return res;
 FREE_EXIT:
     for (i = 0; i < TEE_CLIENT_PARAM_NUM; i++) {
-        switch (params->params[i].type) {
-            case TEE_CLIENT_PARAM_BUF_IN :
-            case TEE_CLIENT_PARAM_BUF_OUT :
-            case TEE_CLIENT_PARAM_BUF_INOUT :
-                if (tee_params[i].u.memref.shm) {
+		if (tee_client_is_buf_param(params->params[i].type) ||
+			tee_client_is_sec_buf_param(params->params[i].type)) {
+                if (tee_params[i].u.memref.shm)
                     tee_shm_free(tee_params[i].u.memref.shm);
-                }
-                break;
-            default :
-                break;
-        }
+		}
     }
 
     return res;
@@ -170,8 +177,10 @@ static int tee_client_get_params(struct tee_client_params *params,
 			case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT :
 			case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT :
 				buf = tee_shm_get_va(tee_params[i].u.memref.shm, 0);
-				memcpy(params->params[i].tee_client_memref.buffer, buf,
-					   tee_params[i].u.memref.size);
+				if (buf != ERR_PTR(-EINVAL)) {
+					memcpy(params->params[i].tee_client_memref.buffer, buf,
+						   tee_params[i].u.memref.size);
+				}
 				params->params[i].tee_client_memref.size = tee_params[i].u.memref.size;
 			case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT :
 				tee_shm_free(tee_params[i].u.memref.shm);

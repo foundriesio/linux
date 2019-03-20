@@ -1113,6 +1113,16 @@ int tee_client_invoke_func(struct tee_context *ctx,
 }
 EXPORT_SYMBOL_GPL(tee_client_invoke_func);
 
+struct tee_shm *tee_client_shm_sdp_register(struct tee_context *ctx,
+                                            unsigned long addr, size_t size)
+{
+	if (!ctx)
+		return ERR_PTR(-EINVAL);
+
+	return tee_shm_sdp_register(ctx, addr, size, TEE_SHM_SDP_MEM);
+}
+EXPORT_SYMBOL_GPL(tee_client_shm_sdp_register);
+
 static int __init tee_init(void)
 {
 	int rc;
