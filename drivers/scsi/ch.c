@@ -577,9 +577,11 @@ ch_release(struct inode *inode, struct file *file)
 {
 	scsi_changer *ch = file->private_data;
 
+	mutex_lock(&ch_mutex);
 	scsi_device_put(ch->device);
 	ch->device = NULL;
 	file->private_data = NULL;
+	mutex_unlock(&ch_mutex);
 	kref_put(&ch->ref, ch_destroy);
 	return 0;
 }
