@@ -882,11 +882,12 @@ int __mlxsw_sp_port_headroom_set(struct mlxsw_sp_port *mlxsw_sp_port, int mtu,
 		if (!configure)
 			continue;
 
+		lossy = !(pfc || pause_en);
 		thres_cells = mlxsw_sp_pg_buf_threshold_get(mlxsw_sp, mtu);
 		delay_cells = mlxsw_sp_pg_buf_delay_get(mlxsw_sp, mtu, delay,
-				pfc, pause_en);
+							pfc, pause_en);
 		mlxsw_sp_pg_buf_pack(pbmc_pl, i, thres_cells + delay_cells,
-				thres_cells, lossy);
+				     thres_cells, lossy);
 	}
 
 	return mlxsw_reg_write(mlxsw_sp->core, MLXSW_REG(pbmc), pbmc_pl);
