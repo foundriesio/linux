@@ -2301,10 +2301,6 @@ static int ibmvscsi_remove(struct vio_dev *vdev)
 	struct ibmvscsi_host_data *hostdata = dev_get_drvdata(&vdev->dev);
 	unsigned long flags;
 
-	spin_lock(&ibmvscsi_driver_lock);
-	list_del(&hostdata->host_list);
-	spin_unlock(&ibmvscsi_driver_lock);
-
 	srp_remove_host(hostdata->host);
 	scsi_remove_host(hostdata->host);
 
@@ -2319,6 +2315,10 @@ static int ibmvscsi_remove(struct vio_dev *vdev)
 
 	kthread_stop(hostdata->work_thread);
 	unmap_persist_bufs(hostdata);
+
+	spin_lock(&ibmvscsi_driver_lock);
+	list_del(&hostdata->host_list);
+	spin_unlock(&ibmvscsi_driver_lock);
 
 	scsi_host_put(hostdata->host);
 
