@@ -648,7 +648,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		volatile void __iomem *pDV_Cfg = VIOC_DV_VEDR_GetAddress(VDV_CFG);
 		unsigned int status = 0;
 		VIOC_V_DV_GetInterruptPending(pDV_Cfg, &status);
-		
+
 		if(status & DV_FB_INT) {
 			VIOC_V_DV_ClearInterrupt(pDV_Cfg, DV_FB_INT);
 
@@ -1436,7 +1436,10 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	#endif
 
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
+
+        #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 	VIOC_DISP_SetSwapbf(pDISP, 0);
+        #endif
 	VIOC_DISP_SetSize (pDISP, width, height);
 	VIOC_DISP_SetBGColor(pDISP, 0, 0, 0, 1);
 
@@ -3712,7 +3715,7 @@ int tca_edr_el_configure(struct tcc_lcdc_image_update *Src_ImageInfo, struct tcc
 		//	El_ImageInfo->fmt = TCC_LCDC_IMG_FMT_YUV420SP;
 
 		DV_PROC_CHECK = DV_DUAL_MODE;
-		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);			
+		dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);
 	}
 
 	return 1;
@@ -3726,7 +3729,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 	unsigned int iSCType = 0;
 	unsigned int lcd_width = 0, lcd_height = 0;
 	struct tcc_lcdc_image_update el_ImageInfo;
-	unsigned int ratio = 1;	
+	unsigned int ratio = 1;
 
 	dvprintk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d/%03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 			bStep_Check, DEF_DV_CHECK_NUM, nFrame, ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], ImageInfo->private_data.optional_info[VID_OPT_TIMESTAMP],
@@ -3750,7 +3753,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 
 	if((el_ImageInfo.Lcdc_layer >= RDMA_MAX_NUM) || (el_ImageInfo.fmt >TCC_LCDC_IMG_FMT_MAX)){
 		pr_err("LCD :: lcdc:%d, enable:%d, layer:%d, addr:0x%x, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d\n",
-		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0, 
+		       get_vioc_index(pdp_data->ddc_info.blk_num), el_ImageInfo.enable, el_ImageInfo.Lcdc_layer, el_ImageInfo.addr0,
 		       el_ImageInfo.fmt,el_ImageInfo.Frame_width, el_ImageInfo.Frame_height, el_ImageInfo.Image_width, el_ImageInfo.Image_height, el_ImageInfo.fmt, el_ImageInfo.on_the_fly);
 		return;
 	}
@@ -4087,7 +4090,7 @@ void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_la
 
 	iSCType = tca_get_scaler_num(TCC_OUTPUT_HDMI, ImageInfo->Lcdc_layer);
 	pSC = VIOC_SC_GetAddress(iSCType);
-	
+
 	if(!ImageInfo->enable) {
 		bStep_Check = DEF_DV_CHECK_NUM;
 		if (VIOC_CONFIG_DMAPath_Support()) {
@@ -4213,7 +4216,7 @@ void tca_edr_vioc_set(unsigned int nRDMA, volatile void __iomem *pRDMA, dolby_la
 	else
 		VIOC_SC_SetBypass (pSC, ON);
 	VIOC_SC_SetUpdate (pSC);
-	
+
 	VIOC_V_DV_SetSize(NULL, pRDMA, 0, 0, target_width, target_height);
 
 }
@@ -4295,7 +4298,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 				{
 					printk("^@ ID[%03d] Gap[%03d] F[%01d/%01d] TS[%04ld/%04ld] %d bpp #Type[%d/%d] #BL(MC(%d), 0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_ID],
-							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_1], 
+							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_1],
 							(nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_2] >> 16) & 0xFF, //readable buffer
 							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_RESERVED_2] & 0xFF, // valid buffer
 							//nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_TIMESTAMP], nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_SYNC_TIME],
@@ -4304,7 +4307,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 							vioc_get_out_type(), nAccumulated_ImageInfo[i].private_data.dolbyVision_info.reg_out_type,
 							nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_HAVE_MC_INFO],
 							nAccumulated_ImageInfo[i].addr0, //nAccumulated_ImageInfo[i].private_data.offset[0],
-							nAccumulated_ImageInfo[i].crop_right - nAccumulated_ImageInfo[i].crop_left, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_FRAME_WIDTH], 
+							nAccumulated_ImageInfo[i].crop_right - nAccumulated_ImageInfo[i].crop_left, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_FRAME_WIDTH],
 							nAccumulated_ImageInfo[i].crop_bottom - nAccumulated_ImageInfo[i].crop_top, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_FRAME_HEIGHT],
 							nAccumulated_ImageInfo[i].Frame_width, nAccumulated_ImageInfo[i].Frame_height, //nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_WIDTH], nAccumulated_ImageInfo[i].private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
 							nAccumulated_ImageInfo[i].fmt, //nAccumulated_ImageInfo[i].private_data.format,
@@ -4409,7 +4412,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
@@ -4421,7 +4424,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
 			pRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr;
@@ -4433,7 +4436,7 @@ void tca_edr_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_imag
 			if(!VIOC_CONFIG_DV_GET_EDR_PATH())
 			{
 				VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, ImageInfo->Lcdc_layer, 0, 0);
-				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);	
+				VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
 			}
 
 			nRDMA = pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num;
