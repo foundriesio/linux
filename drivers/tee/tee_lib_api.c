@@ -79,6 +79,7 @@ static int tee_client_set_params(struct tee_context * context,
     for (i = 0; i < TEE_CLIENT_PARAM_NUM; i++) {
         if (params->params[i].type == TEE_CLIENT_PARAM_NONE) {
 			tee_params[i].attr = TEE_IOCTL_PARAM_ATTR_TYPE_NONE;
+			param_nums++;
             continue;
         }
 
