@@ -1,6 +1,7 @@
 // ------------------------------------------------------------------------
 //
 //              (C) COPYRIGHT 2014 - 2015 SYNOPSYS, INC.
+//              (C) COPYRIGHT Telechips, INC.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2
@@ -16,20 +17,15 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 // ------------------------------------------------------------------------
-//
-// Project:
-//
-// ESM Host Library
-//
-// Description:
-//
-// ESM Host Library Driver: Linux kernel module
-//
-// ------------------------------------------------------------------------
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+//#include <linux/io.h>
+//#include <linux/of_address.h>
+#include <linux/platform_device.h>
+
 #include <linux/random.h>
+#include <linux/interrupt.h>
 #include <linux/miscdevice.h>
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
@@ -37,10 +33,10 @@
 #include <linux/of_device.h>
 #include "include/host_lib_driver_linux_if.h"
 #include "../../hdmi_v2_0/include/hdmi_includes.h"
+#include "../../hdmi_v2_0/hdmi_api_lib/include/hdcp/hdcp.h"
 
 #if defined(CONFIG_PM)
 #include <linux/pm.h>
-#include <linux/pm_runtime.h>
 #endif
 
 #ifdef CONFIG_ANDROID
@@ -54,15 +50,38 @@
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_HOST_DRV_VERSION "4.14_1.0.6"
+#define HDCP_DRV_VERSION "1.0.7"
 
 #define USE_HDMI_PWR_CTRL
+
+#define DWC_PHY_STAT0		(0x3004 * 4)
+
+#define DWC_HDCP_CFG1		(0x5001 * 4)
+#define DWC_HDCP_INTCLR		(0x5006 * 4)	/* a_apiintstat */
+#define DWC_HDCP_INTSTAT	(0x5007 * 4)	/* a_apiintstat */
+#define DWC_HDCP_INTMASK	(0x5008 * 4)	/* a_apiintstat */
+
+#define DWC_HDCP22_ID		(0x7900 * 4)	/* hdcp22reg_id */
+#define DWC_HDCP22_CTRL		(0x7904 * 4)	/* hdcp22reg_ctrl */
+#define DWC_HDCP22_CTRL1	(0x7905 * 4)	/* hdcp22reg_ctrl1 */
+#define DWC_HDCP22_INTSTS	(0x7908 * 4)	/* hdcp22reg_sts */
+#define DWC_HDCP22_INTMASK	(0x790c * 4)	/* hdcp22reg_mask */
+#define DWC_HDCP22_INTSTAT	(0x790d * 4)	/* hdcp22reg_stat */
+#define DWC_HDCP22_INTMUTE	(0x790e * 4)	/* hdcp22reg_mute */
 
 static bool randomize_mem = false;
 module_param(randomize_mem, bool, 0);
 MODULE_PARM_DESC(noverify, "Wipe memory allocations on startup (for debug)");
 
 typedef struct {
+	void __iomem	*link;
+	void __iomem	*hdcp22;
+	void __iomem	*i2c;
+
+	uint16_t	hdcp_status;
+	uint8_t		hpd_status;
+	uint8_t		rxsense_status;
+
 	int allocated, initialized;
 	int code_loaded;
 
@@ -91,11 +110,6 @@ typedef struct {
 	/** Device Open Count */
 	uint32_t open_cs;
 
-	/** Device list **/
-	struct list_head devlist;
-
-	int hdcp_suspend;
-
 #ifdef CONFIG_ANDROID
 	struct wake_lock wakelock;
 #endif
@@ -123,14 +137,148 @@ static struct esm_rev_mem g_rev_mem;
  * @short List of the devices
  * Linked list that contains the installed devices
  */
-static LIST_HEAD(devlist_global);
-
 extern void * alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
 extern void free_all_mem(void);
 
 #ifdef USE_HDMI_PWR_CTRL
 extern void hdmi_api_power_control(int enable);
 #endif
+
+
+static uint8_t dwc_get_hpd_status(esm_device *esm)
+{
+	if (!esm)
+		return 0;
+	esm->hpd_status = (ioread32(esm->link + DWC_PHY_STAT0) & (1<<1)) ? 1 : 0;
+	return esm->hpd_status;
+}
+
+static uint8_t dwc_get_rxsense_status(esm_device *esm)
+{
+	if (!esm)
+		return 0;
+	esm->rxsense_status = (ioread32(esm->link + DWC_PHY_STAT0) >> 4) & 0xF;
+	return esm->rxsense_status;
+}
+
+static irqreturn_t hdcp_irq(int irq, void *dev_id)
+{
+	esm_device *esm = dev_id;
+	if(esm) {
+		if(ioread32(esm->link + DWC_HDCP_INTSTAT) | ioread32(esm->link + DWC_HDCP22_INTSTAT)) {
+			iowrite32(0xff, esm->link + DWC_HDCP_INTMASK);
+			iowrite32(0xff, esm->link + DWC_HDCP22_INTMASK);
+			iowrite32(0xff, esm->link + DWC_HDCP22_INTMUTE);
+			return IRQ_WAKE_THREAD;
+		}
+	}
+	return IRQ_NONE;
+}
+
+static irqreturn_t hdcp_isr(int irq, void *dev_id)
+{
+	esm_device *esm = dev_id;
+	uint32_t hdcp = 0, hdcp22=0, hdcpcfg1;
+	int temp = 0;
+
+	if (!esm)
+		return IRQ_NONE;
+
+	hdcp = ioread32(esm->link + DWC_HDCP_INTSTAT);
+	hdcp22 = ioread32(esm->link + DWC_HDCP22_INTSTAT);
+
+	/* clear interrupt signals */
+	iowrite32(hdcp, esm->link + DWC_HDCP_INTCLR);
+	iowrite32(hdcp22, esm->link + DWC_HDCP22_INTSTAT);
+
+	//printk("\x1b[1;33m hdcp:%08x, hdcp22:%02x\x1b[0m\n", hdcp, hdcp22);
+
+	if (!dwc_get_hpd_status(esm) || !dwc_get_rxsense_status(esm)) {
+		printk("%s: HDCP_IDLE - hpd: %d, rxsense: %d\n", __func__, esm->hpd_status, esm->rxsense_status);
+		esm->hdcp_status = HDCP_IDLE;
+		goto hdcp_isr_exit;
+	}
+
+	if (hdcp) {
+		hdcpcfg1 = ioread32(esm->link + DWC_HDCP_CFG1);
+		if (hdcp & (1<<5)) {
+			printk(KERN_INFO "%s: INT_KSV_SHA1_DONE\n", __func__);
+			esm->hdcp_status = HDCP_KSV_LIST_READY;
+		}
+		if (hdcp & (1<<6)) {
+			if (!(hdcpcfg1 & (1<<1)))
+				iowrite32(hdcpcfg1 | (1<<1), esm->link + DWC_HDCP_CFG1);
+			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_FAILED \n", __func__);
+			esm->hdcp_status = HDCP_FAILED;
+		}
+		if (hdcp & (1<<7)) {
+			if (hdcpcfg1 & (1<<1))
+				iowrite32(hdcpcfg1 & ~(1<<1), esm->link + DWC_HDCP_CFG1);
+			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_ENGAGED \n", __func__);
+			esm->hdcp_status = HDCP_ENGAGED;
+		}
+	}
+
+	if (hdcp22) {
+		if (hdcp22 & (1<<0)) {
+			esm->hdcp_status = HDCP2_CAPABLE;
+			printk(KERN_INFO "%s: HDCP22REG_STAT_ST_HDCP2_CAPABLE\n", __func__);
+		}
+		if (hdcp22 & (1<<1)) {
+			esm->hdcp_status = HDCP2_NOT_CAPABLE;
+			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP2_NOT_CAPABLE");
+		}
+		if (hdcp22 & (1<<2)) {
+			esm->hdcp_status = HDCP2_AUTHENTICATION_LOST;
+			printk("%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
+			if (!esm->hpd_status || !esm->rxsense_status) {
+				printk(KERN_INFO
+					"%s:%s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
+					esm->rxsense_status);
+				esm->hdcp_status = HDCP_IDLE;
+			}
+		}
+		if (hdcp22 & (1<<3)) {
+			esm->hdcp_status = HDCP2_AUTHENTICATED;
+			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED");
+		}
+		if (hdcp22 & (1<<4)) {
+			esm->hdcp_status = HDCP2_AUTHENTICATION_FAIL;
+			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL");
+			if (!esm->hpd_status || !esm->rxsense_status) {
+				printk(KERN_INFO
+					"%s:%s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
+					esm->rxsense_status);
+				esm->hdcp_status = HDCP_IDLE;
+			}
+		}
+		if (hdcp22 & (1<<5)) {
+			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_DECRYPTED_CHG");
+			esm->hdcp_status = HDCP2_DECRYPTED_CHG;
+		}
+	}
+
+hdcp_isr_exit:
+	esm->dev->hdcp_status = (int)esm->hdcp_status;
+
+/* unmask insterrupt */
+	iowrite32(0, esm->link + DWC_HDCP_INTMASK);
+	iowrite32(0, esm->link + DWC_HDCP22_INTMASK);
+	iowrite32(0, esm->link + DWC_HDCP22_INTMUTE);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t hdcp22_irq(int irq, void *dev_id)
+{
+	printk("\x1b[1;33m %s \x1b[0m\n", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t hdcp22_isr(int irq, void *dev_id)
+{
+	return IRQ_HANDLED;
+}
 
 /* ESM_IOC_MEMINFO implementation */
 static long get_meminfo(esm_device *esm, void __user *arg)
@@ -274,15 +422,16 @@ static long hdcp1Initialize(esm_device *esm, void __user *arg)
 	esm->dev = dwc_hdmi_api_get_dev();
 
 	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			esm->dev->hdmi_tx_ctrl.hdcp_on = 1;
-			hdcp1p4Configure(esm->dev, esm->params);
-			hdcp1p4SwitchSet(esm->dev);
-		}
-	}
-
+	esm->dev->hdmi_tx_ctrl.hdcp_on = 1;
+	hdcp1p4Configure(esm->dev, esm->params);
+	hdcp1p4SwitchSet(esm->dev);
 	mutex_unlock(&esm->dev->mutex);
+
+	/* clear interrupt */
+	iowrite32(0xff, esm->link + DWC_HDCP_INTCLR);
+
+	/*unmask interrupt*/
+	iowrite32(0xff, esm->link + DWC_HDCP_INTMASK);
 
 	return 0;
 }
@@ -300,13 +449,9 @@ static long hdcp1Start(esm_device *esm, void __user *arg)
 
 	esm->params = &hdcpData.hdcpParam;
 	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			mc_hdcp_clock_enable(esm->dev, 0);
-			dwc_hdmi_set_hdcp_keepout(esm->dev);
-			hdcp1p4Start(esm->dev, esm->params);
-		}
-	}
+	mc_hdcp_clock_enable(esm->dev, 0);
+	dwc_hdmi_set_hdcp_keepout(esm->dev);
+	hdcp1p4Start(esm->dev, esm->params);
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -319,14 +464,10 @@ static long hdcp1Stop(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
-			hdcp1p4Stop(esm->dev);
-			mc_hdcp_clock_enable(esm->dev, 1);
-			dwc_hdmi_set_hdcp_keepout(esm->dev);
-		}
-	}
+	esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
+	hdcp1p4Stop(esm->dev);
+	mc_hdcp_clock_enable(esm->dev, 1);
+	dwc_hdmi_set_hdcp_keepout(esm->dev);
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -336,22 +477,12 @@ static long hdcp1Stop(esm_device *esm, void __user *arg)
 static long hdcpGetStatus(esm_device *esm, void __user *arg)
 {
 	struct hdcp_ioc_data data;
-	int hdcpStatus;
 
 	if (copy_from_user(&data, arg, sizeof data) != 0)
 		return -EFAULT;
 
-	if (!esm->dev)
-		return -ENOSPC;
+	data.status = esm->hdcp_status;
 
-	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			hdcpStatus = hdcpAuthGetStatus(esm->dev);
-		}
-	}
-	mutex_unlock(&esm->dev->mutex);
-	data.status = hdcpStatus;
 	if (copy_to_user(arg, &data, sizeof data) != 0)
 		return -EFAULT;
 
@@ -367,17 +498,18 @@ static long hdcp2Initialize(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			esm->dev->hdmi_tx_ctrl.hdcp_on = 2;
-			hdcp2p2SwitchSet(esm->dev);
-			mc_hdcp_clock_enable(esm->dev, 0);
-			dwc_hdmi_set_hdcp_keepout(esm->dev);
-			_HDCP22RegMute(esm->dev, 0x00);
-			_HDCP22RegMask(esm->dev, 0x00);
-		}
-	}
+	esm->dev->hdmi_tx_ctrl.hdcp_on = 2;
+	hdcp2p2SwitchSet(esm->dev);
+	mc_hdcp_clock_enable(esm->dev, 0);
+	dwc_hdmi_set_hdcp_keepout(esm->dev);
 	mutex_unlock(&esm->dev->mutex);
+
+	/* clear interrupt */
+	iowrite32(0xff, esm->link + DWC_HDCP22_INTSTAT);
+
+	/* unmask interrupt */
+	iowrite32(0x0, esm->link + DWC_HDCP22_INTMASK);
+	iowrite32(0x0, esm->link + DWC_HDCP22_INTMUTE);
 
 	return 0;
 }
@@ -389,15 +521,11 @@ static long hdcp2Stop(esm_device *esm, void __user *arg)
 		return -ENOSPC;
 
 	mutex_lock(&esm->dev->mutex);
-	if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &esm->dev->status)) {
-		if(test_bit(HDMI_TX_STATUS_POWER_ON, &esm->dev->status)) {
-			pr_info("%s[%d] \n",__func__, __LINE__);
-			esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
-			mc_hdcp_clock_enable(esm->dev, 1);
-			dwc_hdmi_set_hdcp_keepout(esm->dev);
-			hdcp2p2Stop(esm->dev);
-		}
-	}
+	pr_info("%s[%d] \n",__func__, __LINE__);
+	esm->dev->hdmi_tx_ctrl.hdcp_on = 0;
+	mc_hdcp_clock_enable(esm->dev, 1);
+	dwc_hdmi_set_hdcp_keepout(esm->dev);
+	hdcp2p2Stop(esm->dev);
 	mutex_unlock(&esm->dev->mutex);
 
 	return 0;
@@ -429,11 +557,9 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 			case FB_BLANK_POWERDOWN:
 			case FB_BLANK_NORMAL:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_put_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_UNBLANK:
 				pr_info("%s[%d] : blank(mode=%d)\n",__func__, __LINE__, data.status);
-				pm_runtime_get_sync(esm->parent_dev);
 				break;
 			case FB_BLANK_HSYNC_SUSPEND:
 			case FB_BLANK_VSYNC_SUSPEND:
@@ -591,7 +717,6 @@ static long init(struct file *f, void __user *arg)
 	}
 
 	f->private_data = esm;
-	esm->hdcp_suspend = 0;
 
 	return 0;
 
@@ -624,55 +749,6 @@ static void free_esm_slot(esm_device *slot)
 	slot->allocated = 0;
 }
 
-#if defined(CONFIG_PM)
-int tcc_hdcp_suspend(struct device *dev)
-{
-	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
-
-	if (esm)
-		esm->hdcp_suspend = 1;
-
-	return 0;
-}
-
-int tcc_hdcp_resume(struct device *dev)
-{
-	esm_device *esm= (esm_device *)dev_get_drvdata(dev);
-
-	if (esm)
-		esm->hdcp_suspend = 0;
-
-	return 0;
-}
-
-int tcc_hdcp_runtime_suspend(struct device *dev)
-{
-	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
-
-	if (esm)
-		esm->hdcp_suspend = 1;
-
-	return 0;
-}
-
-int tcc_hdcp_runtime_resume(struct device *dev)
-{
-	esm_device *esm = (esm_device *)dev_get_drvdata(dev);
-
-	if (esm)
-		esm->hdcp_suspend = 0;
-
-	return 0;
-}
-
-static const struct dev_pm_ops tcc_hdcp_pm_ops = {
-	.suspend = tcc_hdcp_suspend,
-	.resume = tcc_hdcp_resume,
-	.runtime_suspend = tcc_hdcp_runtime_suspend,
-	.runtime_resume = tcc_hdcp_runtime_resume,
-};
-#endif // CONFIG_PM
-
 static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
 	struct miscdevice *dev = (struct miscdevice *)f->private_data;
@@ -683,11 +759,6 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		return init(f, data);
 	} else if (!esm) {
 		return -EAGAIN;
-	}
-
-	if (esm->hdcp_suspend == 1) {
-		dev_info(dev->parent, "[hdcp driver] suspend mode is set. \n");
-		return -EBUSY;
 	}
 
 	switch (cmd) {
@@ -737,9 +808,18 @@ tcc_hdcp_open(struct inode *inode, struct file *file)
 		wake_lock_init(&esm->wakelock, WAKE_LOCK_SUSPEND, "hdcp_wake_lock");
 #endif
 #ifdef USE_HDMI_PWR_CTRL
-	hdmi_api_power_control(1);
+		hdmi_api_power_control(1);
 #endif
 		dev_info(dev->parent, "%s\n", __func__);
+
+		/* clear interrupts */
+		iowrite32(0xff, esm->link + DWC_HDCP_INTCLR);
+		iowrite32(0xff, esm->link + DWC_HDCP22_INTSTAT);
+
+		/* mask insterrupt */
+		iowrite32(0xff, esm->link + DWC_HDCP_INTMASK);
+		iowrite32(0xff, esm->link + DWC_HDCP22_INTMASK);
+		iowrite32(0xff, esm->link + DWC_HDCP22_INTMUTE);
 	}
 
 	esm->open_cs++;
@@ -762,9 +842,14 @@ tcc_hdcp_release(struct inode *inode, struct file *file)
 	esm->open_cs--;
 
 	if (!esm->open_cs) {
+		/* mask insterrupt */
+		iowrite32(0xff, esm->link + DWC_HDCP_INTMASK);
+		iowrite32(0xff, esm->link + DWC_HDCP22_INTMASK);
+		iowrite32(0xff, esm->link + DWC_HDCP22_INTMUTE);
+
 		dev_info(dev->parent, "%s\n", __func__);
 #ifdef USE_HDMI_PWR_CTRL
-	hdmi_api_power_control(0);
+		hdmi_api_power_control(0);
 #endif
 #ifdef CONFIG_ANDROID
 		wake_lock_destroy(&esm->wakelock);
@@ -897,106 +982,91 @@ int tcc_hdcp_misc_deregister(esm_device *dev)
 	return 0;
 }
 
-static int tcc_hdcp_probe(struct platform_device *pdev)
+static int hdcp_probe(struct platform_device *pdev)
 {
 	esm_device *esm = NULL;
+	int irq, ret = 0;
 
 	esm = kzalloc(sizeof(esm_device), GFP_KERNEL);
-	if(!esm){
-		pr_err("%s:Could not allocated hdcp device driver\n", __func__);
+	if(!esm) {
+		dev_err(&pdev->dev, "%s:Could not allocated hdcp device driver\n", __func__);
 		return -ENOMEM;
 	}
 
+	esm->link = of_iomap(pdev->dev.of_node, 0);
+	esm->hdcp22 = of_iomap(pdev->dev.of_node, 1);
+	esm->i2c = of_iomap(pdev->dev.of_node, 2);
+
 	// Update the device node
 	esm->parent_dev = &pdev->dev;
-	esm->hdcp_suspend = 0;
 
-	#ifdef CONFIG_PM
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	pm_runtime_get_noresume(&pdev->dev);  //increase usage_count
-	#endif
+	/* hdcp irq shared with hdmi */
+	ret = devm_request_threaded_irq(&pdev->dev, platform_get_irq(pdev, 0), hdcp_irq, hdcp_isr,
+			IRQF_SHARED, "hdcp", esm);
+	if (ret)
+		pr_err("Could not register hdcp interrupt\n");
+
+	ret = devm_request_threaded_irq(&pdev->dev, platform_get_irq(pdev, 1), hdcp22_irq, hdcp22_isr,
+			IRQF_ONESHOT, "hdcp22", esm);
+	if (ret)
+		pr_err("Could not register hdcp22 interrupt\n");
 
 	tcc_hdcp_misc_register(esm);
 	platform_set_drvdata(pdev, esm);
 
-	dev_info(&pdev->dev, "driver probed\n");
+	dev_info(&pdev->dev, "driver probed. ver: %s\n", HDCP_DRV_VERSION);
 
 	return 0;
 }
 
-/**
- * @short Exit routine - Exit point of the driver
- * @param[in] pdev pointer to the platform device structure
- * @return 0 on success and a negative number on failure
- * Refer to Linux errors.
- */
-static int tcc_hdcp_remove(struct platform_device *pdev)
+static int hdcp_remove(struct platform_device *pdev)
 {
 	esm_device *esm = platform_get_drvdata(pdev);
 
 	if (esm) {
 		tcc_hdcp_misc_deregister(esm);
-#if defined(CONFIG_PM)
-		pm_runtime_disable(&pdev->dev);
-#endif
 		kfree(esm);
 	}
-
-	return 0;
-}
-
-/**
- * @short of_device_id structure
- */
-static const struct of_device_id tcc_hdcp[] = {
-	{ .compatible =	"telechips,esm" },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, tcc_hdcp);
-
-
-/**
- * @short Platform driver structure
- */
-static struct platform_driver __refdata tcc_hdcp_pdrv = {
-	.remove = tcc_hdcp_remove,
-	.probe = tcc_hdcp_probe,
-	.driver = {
-		.name = "telechips,esm",
-		.owner = THIS_MODULE,
-		.of_match_table = tcc_hdcp,
-		#if defined(CONFIG_PM)
-		.pm = &tcc_hdcp_pm_ops,
-		#endif
-	},
-};
-
-static int __init hld_init(void)
-{
-	printk(KERN_INFO " HDCP Host Drv version: %s\n", HDCP_HOST_DRV_VERSION);
-
-	return platform_driver_register(&tcc_hdcp_pdrv);
-}
-
-static void __exit hld_exit(void)
-{
-	int i;
-	printk(KERN_INFO " %s\n", __func__);
-
-	platform_driver_unregister(&tcc_hdcp_pdrv);
 
 #ifndef OPTEE_BASE_HDCP
 	for (i = 0; i < MAX_ESM_DEVICES; i++) {
 		free_esm_slot(&esm_devices[i]);
 	}
 #endif
+
+	return 0;
 }
 
-module_init(hld_init);
-module_exit(hld_exit);
+static int hdcp_suspend(struct platform_device *pdev)
+{
+	esm_device *esm = platform_get_drvdata(pdev);
+	return 0;
+}
+
+static int hdcp_resume(struct platform_device *pdev)
+{
+	esm_device *esm= platform_get_drvdata(pdev);
+	return 0;
+}
+
+static const struct of_device_id hdcp_of_match[] = {
+	{ .compatible =	"telechips,dw-hdcp" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, hdcp_of_match);
+
+static struct platform_driver __refdata dw_hdcp_driver = {
+	.driver		= {
+		.name	= "telechips,dw-hdcp",
+		.of_match_table = hdcp_of_match,
+	},
+	.probe		= hdcp_probe,
+	.remove		= hdcp_remove,
+	.suspend	= hdcp_suspend,
+	.resume		= hdcp_resume,
+};
+module_platform_driver(dw_hdcp_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Telechips Inc.");
-MODULE_DESCRIPTION("ESM Linux Host Library Driver");
-MODULE_VERSION("1.0");
+MODULE_VERSION("HDCP_DRV_VERSION");

@@ -2571,7 +2571,12 @@
 	};
 
 	hdmi_hdcp: hdmi_hdcp@12440000 {
-		compatible = "telechips,esm";
+		compatible = "telechips,dw-hdcp";
+		reg = <0x12400000 0x20000 0x12440000 0x1000 0x163C0000 0x10>;
+		reg-names = "hdmi_link", "hdcp_2.2", "i2c_port_cfg";
+		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "hdmi_link", "hdcp_2.2";
 	};
 
 	/* eMMC Boot */

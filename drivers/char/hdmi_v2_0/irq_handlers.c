@@ -258,7 +258,8 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
         int flag;
         int ret = 0;
         INIT_WORK(&dev->tx_handler, dwc_hdmi_tx_handler_thread);
-        INIT_WORK(&dev->tx_hdcp_handler, dwc_hdmi_tx_hdcp_handler_thread);
+        /* hdcp irq handled in hdcp driver */
+        //INIT_WORK(&dev->tx_hdcp_handler, dwc_hdmi_tx_hdcp_handler_thread);
         INIT_WORK(&dev->tx_hotplug_handler, dwc_hdmi_tx_hotplug_thread);
 
         /* Check GPIO HPD */
@@ -300,6 +301,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                         FUNC_NAME);
         }
 
+#if (0) /* hdcp irq handled in hdcp driver */
         dev->irq_dev[HDMI_IRQ_TX_HDCP].dev = dev;
         ret = devm_request_irq(dev->parent_dev, dev->irq[HDMI_IRQ_TX_CORE],
                                hdcp_handler, IRQF_SHARED,
@@ -308,6 +310,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                 pr_err("%s:Could not register hdcp interrupt\n",
                         FUNC_NAME);
         }
+#endif
 
         #if defined(CONFIG_HDMI_USE_CEC_IRQ)
         dev->irq_dev[HDMI_IRQ_TX_CEC].dev = dev;
