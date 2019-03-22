@@ -1070,7 +1070,7 @@ struct file_operations tcc_mbox_audio_fops = {
 /*****************************************************************************
  * Module Init/Exit
  ******************************************************************************/
-static int mbox_audio_probe(struct platform_device *pdev) {
+static int multi_mbox_audio_probe(struct platform_device *pdev) {
 	int result = 0;
 
 	struct mbox_audio_device *audio_dev = NULL;
@@ -1198,7 +1198,7 @@ cdev_add_error:
 	return result;
 }
 
-static int mbox_audio_remove(struct platform_device * pdev)
+static int multi_mbox_audio_remove(struct platform_device * pdev)
 {
 	struct mbox_audio_device *audio_dev = platform_get_drvdata(pdev);
 
@@ -1220,43 +1220,43 @@ static int mbox_audio_remove(struct platform_device * pdev)
 }
 
 #if defined(CONFIG_PM)
-int mbox_audio_suspend(struct platform_device *pdev, pm_message_t state)
+int multi_mbox_audio_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	return 0;
 }
 
-int mbox_audio_resume(struct platform_device *pdev)
+int multi_mbox_audio_resume(struct platform_device *pdev)
 {
 	return 0;
 }
 #endif
 
 #ifdef CONFIG_OF
-static const struct of_device_id mbox_audio_match[] = {
+static const struct of_device_id multi_mbox_audio_match[] = {
     { .compatible = "telechips,mailbox-audio" },
     {},
 };
-MODULE_DEVICE_TABLE(of, mbox_audio_match);
+MODULE_DEVICE_TABLE(of, multi_mbox_audio_match);
 #endif
 
-static struct platform_driver mbox_audio_driver = {
+static struct platform_driver multi_mbox_audio_driver = {
     .driver = {
         .name = MBOX_AUDIO_DEV_NAME,
 		.owner	= THIS_MODULE,
 #ifdef CONFIG_OF
-        .of_match_table = mbox_audio_match,
+        .of_match_table = multi_mbox_audio_match,
 #endif
     },
-    .probe  = mbox_audio_probe,
-    .remove = mbox_audio_remove,
+    .probe  = multi_mbox_audio_probe,
+    .remove = multi_mbox_audio_remove,
 #if defined(CONFIG_PM)
-	.suspend = mbox_audio_suspend,
-	.resume = mbox_audio_resume,
+	.suspend = multi_mbox_audio_suspend,
+	.resume = multi_mbox_audio_resume,
 #endif
 
 };
 
-module_platform_driver(mbox_audio_driver);
+module_platform_driver(multi_mbox_audio_driver);
 
 MODULE_AUTHOR("Telechips Inc.");
 MODULE_DESCRIPTION("Telechips Audio H/W Multi MailBox");
