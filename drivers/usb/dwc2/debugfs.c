@@ -763,6 +763,7 @@ static int params_show(struct seq_file *seq, void *v)
 	print_param(seq, p, uframe_sched);
 	print_param(seq, p, external_id_pin_ctl);
 	print_param(seq, p, hibernation);
+	print_param(seq, p, service_interval);
 	print_param(seq, p, host_dma);
 	print_param(seq, p, g_dma);
 	print_param(seq, p, g_dma_desc);

@@ -1662,7 +1662,7 @@
 		status = "disabled";
 	};
 
-	dwc2: dwc2@11980000 {
+	dwc2: dwc2@71B00000 {
 		compatible = "telechips,dwc2";
 		reg = <0x71B00000 0xcfff>;
 		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
@@ -1670,7 +1670,6 @@
 		clock-names = "otg";
 		phy = <&dwc_otg_phy>;
 		phy-names = "usb2-phy";
-		dr_mode = "host";
 		status= "disabled";
 	};
 

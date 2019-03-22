@@ -266,6 +266,7 @@ static void dwc2_set_default_params(struct dwc2_hsotg *hsotg)
 	p->reload_ctl = (hw->snpsid >= DWC2_CORE_REV_2_92a);
 	p->uframe_sched = true;
 	p->external_id_pin_ctl = false;
+	p->service_interval = false;
 	p->hibernation = false;
 	p->max_packet_count = hw->max_packet_count;
 	p->max_transfer_size = hw->max_transfer_size;
@@ -470,8 +471,7 @@ static void dwc2_check_param_tx_fifo_sizes(struct dwc2_hsotg *hsotg)
 	}
 
 	for (fifo = 1; fifo <= fifo_count; fifo++) {
-		dptxfszn = (dwc2_readl(hsotg->regs + DPTXFSIZN(fifo)) &
-			FIFOSIZE_DEPTH_MASK) >> FIFOSIZE_DEPTH_SHIFT;
+		dptxfszn = hsotg->hw_params.g_tx_fifo_size[fifo];
 
 		if (hsotg->params.g_tx_fifo_size[fifo] < min ||
 		    hsotg->params.g_tx_fifo_size[fifo] >  dptxfszn) {
@@ -514,6 +514,7 @@ static void dwc2_check_params(struct dwc2_hsotg *hsotg)
 	CHECK_BOOL(en_multiple_tx_fifo, hw->en_multiple_tx_fifo);
 	CHECK_BOOL(i2c_enable, hw->i2c_enable);
 	CHECK_BOOL(reload_ctl, (hsotg->hw_params.snpsid > DWC2_CORE_REV_2_92a));
+	CHECK_BOOL(service_interval, hw->service_interval_mode);
 	CHECK_RANGE(max_packet_count,
 		    15, hw->max_packet_count,
 		    hw->max_packet_count);
@@ -595,6 +596,7 @@ static void dwc2_get_dev_hwparams(struct dwc2_hsotg *hsotg)
 	struct dwc2_hw_params *hw = &hsotg->hw_params;
 	bool forced;
 	u32 gnptxfsiz;
+	int fifo, fifo_count;
 
 	if (hsotg->dr_mode == USB_DR_MODE_HOST)
 		return;
@@ -602,7 +604,15 @@ static void dwc2_get_dev_hwparams(struct dwc2_hsotg *hsotg)
 	forced = dwc2_force_mode_if_needed(hsotg, false);
 
 	gnptxfsiz = dwc2_readl(hsotg->regs + GNPTXFSIZ);
+	
+	fifo_count = dwc2_hsotg_tx_fifo_count(hsotg);
 
+	for (fifo = 1; fifo <= fifo_count; fifo++) {
+		hw->g_tx_fifo_size[fifo] =
+			(dwc2_readl(hsotg->regs + DPTXFSIZN(fifo)) &
+			 FIFOSIZE_DEPTH_MASK) >> FIFOSIZE_DEPTH_SHIFT;
+	}
+	
 	if (forced)
 		dwc2_clear_force_mode(hsotg);
 
@@ -647,14 +657,6 @@ int dwc2_get_hwparams(struct dwc2_hsotg *hsotg)
 	hwcfg4 = dwc2_readl(hsotg->regs + GHWCFG4);
 	grxfsiz = dwc2_readl(hsotg->regs + GRXFSIZ);
 
-	/*
-	 * Host specific hardware parameters. Reading these parameters
-	 * requires the controller to be in host mode. The mode will
-	 * be forced, if necessary, to read these values.
-	 */
-	dwc2_get_host_hwparams(hsotg);
-	dwc2_get_dev_hwparams(hsotg);
-
 	/* hwcfg1 */
 	hw->dev_ep_dirs = hwcfg1;
 
@@ -697,14 +699,26 @@ int dwc2_get_hwparams(struct dwc2_hsotg *hsotg)
 	hw->en_multiple_tx_fifo = !!(hwcfg4 & GHWCFG4_DED_FIFO_EN);
 	hw->num_dev_perio_in_ep = (hwcfg4 & GHWCFG4_NUM_DEV_PERIO_IN_EP_MASK) >>
 				  GHWCFG4_NUM_DEV_PERIO_IN_EP_SHIFT;
-	hw->dma_desc_enable = !!(hwcfg4 & GHWCFG4_DESC_DMA);
+	hw->num_dev_in_eps = (hwcfg4 & GHWCFG4_NUM_IN_EPS_MASK) >>
+			     GHWCFG4_NUM_IN_EPS_SHIFT;
+	hw->dma_desc_enable = !!!(hwcfg4 & GHWCFG4_DESC_DMA);
+	//hw->dma_desc_enable = !!(hwcfg4 & GHWCFG4_DESC_DMA);
 	hw->power_optimized = !!(hwcfg4 & GHWCFG4_POWER_OPTIMIZ);
 	hw->utmi_phy_data_width = (hwcfg4 & GHWCFG4_UTMI_PHY_DATA_WIDTH_MASK) >>
 				  GHWCFG4_UTMI_PHY_DATA_WIDTH_SHIFT;
+	hw->service_interval_mode = !!(hwcfg4 &
+				       GHWCFG4_SERVICE_INTERVAL_SUPPORTED);
 
 	/* fifo sizes */
 	hw->rx_fifo_size = (grxfsiz & GRXFSIZ_DEPTH_MASK) >>
 				GRXFSIZ_DEPTH_SHIFT;
+	/*
+	 * Host specific hardware parameters. Reading these parameters
+	 * requires the controller to be in host mode. The mode will
+	 * be forced, if necessary, to read these values.
+	 */
+	dwc2_get_host_hwparams(hsotg);
+	dwc2_get_dev_hwparams(hsotg);
 
 	return 0;
 }

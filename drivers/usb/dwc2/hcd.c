@@ -3350,44 +3350,40 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 
 	/* B-Device connector (Device Mode) */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+		if (hsotg->uphy)
+			usb_phy_init(hsotg->uphy);
+#endif
 		/* Wait for switch to device mode */
-		dev_dbg(hsotg->dev, "connId B\n");
 		if (hsotg->bus_suspended) {
 			dev_info(hsotg->dev,
 				 "Do port resume before switching to device mode\n");
 			dwc2_port_resume(hsotg);
 		}
-		msleep(200);
-		_dwc2_hcd_stop(hcd);
 		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
 		spin_lock_irqsave(&hsotg->lock, flags);
-		dwc2_hsotg_core_init_disconnected(hsotg, true);
+		dwc2_hsotg_core_init_disconnected(hsotg, false);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
 		dwc2_hsotg_core_connect(hsotg);
-		//dwc2_reset_device(struct usb_hcd *hcd, struct usb_device *udev)
 	} else if (hsotg->dr_mode == USB_DR_MODE_HOST) {
 		/* A-Device connector (Host Mode) */
-		msleep(200);
 		spin_lock_irqsave(&hsotg->lock, flags);
-		dwc2_hsotg_core_disconnect(hsotg);
 		dwc2_hsotg_disconnect(hsotg);
-		hsotg->gadget.speed = USB_SPEED_UNKNOWN;
 		spin_unlock_irqrestore(&hsotg->lock, flags);
 
-		int ep;
-		for (ep = 0; ep < hsotg->num_of_eps; ep++) {
-		if (hsotg->eps_in[ep])
-			dwc2_hsotg_ep_disable(&hsotg->eps_in[ep]->ep);
-		if (hsotg->eps_out[ep])
-			dwc2_hsotg_ep_disable(&hsotg->eps_out[ep]->ep);
-		}		
 		/* Initialize the Core for Host mode */
 		hsotg->op_state = OTG_STATE_A_HOST;
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
+#ifndef CONFIG_USB_DWC2_TCC_MUX 
 		dwc2_hcd_start(hsotg);
+#else
+		if (hsotg->mhst_uphy)
+			usb_phy_init(hsotg->mhst_uphy);
+#endif
+
 	}
 }
 
