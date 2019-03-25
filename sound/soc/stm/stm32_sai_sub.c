@@ -936,10 +936,10 @@ static int stm32_sai_configure_clock(struct snd_soc_dai *cpu_dai,
 				     struct snd_pcm_hw_params *params)
 {
 	struct stm32_sai_sub_data *sai = snd_soc_dai_get_drvdata(cpu_dai);
-	int cr1, mask, div = 0;
+	int div = 0;
 	int sai_clk_rate, mclk_ratio, den;
 	unsigned int rate = params_rate(params);
-	int ret;
+	int ret, cr1 = 0;
 
 	if (!sai->sai_mclk) {
 		ret = stm32_sai_set_parent_clock(sai, rate);
@@ -984,7 +984,6 @@ static int stm32_sai_configure_clock(struct snd_soc_dai *cpu_dai,
 			if (sai->mclk_rate) {
 				mclk_ratio = sai->mclk_rate / rate;
 				if (mclk_ratio == 512) {
-					mask = SAI_XCR1_OSR;
 					cr1 = SAI_XCR1_OSR;
 				} else if (mclk_ratio != 256) {
 					dev_err(cpu_dai->dev,
@@ -992,6 +991,11 @@ static int stm32_sai_configure_clock(struct snd_soc_dai *cpu_dai,
 						mclk_ratio);
 					return -EINVAL;
 				}
+
+				regmap_update_bits(sai->regmap,
+						   STM_SAI_CR1_REGX,
+						   SAI_XCR1_OSR, cr1);
+
 				div = stm32_sai_get_clk_div(sai, sai_clk_rate,
 							    sai->mclk_rate);
 				if (div < 0)
