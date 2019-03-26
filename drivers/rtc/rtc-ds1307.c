@@ -681,14 +681,15 @@ static const struct rtc_class_ops ds13xx_rtc_ops = {
  * Alarm support for rx8130 devices.
  */
 
-#define RX8130_REG_ALARM_MIN		0x07
-#define RX8130_REG_ALARM_HOUR		0x08
-#define RX8130_REG_ALARM_WEEK_OR_DAY	0x09
-#define RX8130_REG_EXTENSION		0x0c
+#define RX8130_REG_ALARM_MIN		0x17
+#define RX8130_REG_ALARM_HOUR		0x18
+#define RX8130_REG_ALARM_WEEK_OR_DAY	0x19
+#define RX8130_REG_EXTENSION		0x1c
 #define RX8130_REG_EXTENSION_WADA	BIT(3)
-#define RX8130_REG_FLAG			0x0d
+#define RX8130_REG_FLAG			0x1d
+#define RX8130_REG_FLAG_VLF		BIT(1)
 #define RX8130_REG_FLAG_AF		BIT(3)
-#define RX8130_REG_CONTROL0		0x0e
+#define RX8130_REG_CONTROL0		0x1e
 #define RX8130_REG_CONTROL0_AIE		BIT(3)
 
 static irqreturn_t rx8130_irq(int irq, void *dev_id)
@@ -786,8 +787,8 @@ static int rx8130_set_alarm(struct device *dev, struct rtc_wkalrm *t)
 	if (ret < 0)
 		return ret;
 
-	ctl[0] &= ~RX8130_REG_EXTENSION_WADA;
-	ctl[1] |= RX8130_REG_FLAG_AF;
+	ctl[0] &= RX8130_REG_EXTENSION_WADA;
+	ctl[1] &= ~RX8130_REG_FLAG_AF;
 	ctl[2] &= ~RX8130_REG_CONTROL0_AIE;
 
 	ret = regmap_bulk_write(ds1307->regmap, RX8130_REG_EXTENSION, ctl,
@@ -810,8 +811,7 @@ static int rx8130_set_alarm(struct device *dev, struct rtc_wkalrm *t)
 
 	ctl[2] |= RX8130_REG_CONTROL0_AIE;
 
-	return regmap_bulk_write(ds1307->regmap, RX8130_REG_EXTENSION, ctl,
-				 sizeof(ctl));
+	return regmap_write(ds1307->regmap, RX8130_REG_CONTROL0, ctl[2]);
 }
 
 static int rx8130_alarm_irq_enable(struct device *dev, unsigned int enabled)
