@@ -230,7 +230,7 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 		}
 		break;
 	case VIOC_CMD_READY:
-		if(atomic_read(&vioc_mgr->status) == VIOC_STS_INIT) {
+		if((atomic_read(&vioc_mgr->status) == VIOC_STS_INIT) || (atomic_read(&vioc_mgr->status) == VIOC_STS_READY)) {
 			atomic_set(&vioc_mgr->status, VIOC_STS_READY);
 			if(!(msg->cmd[1] & VIOC_MGR_ACK)) {
 				msg->cmd[1] |= VIOC_MGR_ACK;
