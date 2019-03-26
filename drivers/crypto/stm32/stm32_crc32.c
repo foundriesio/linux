@@ -28,8 +28,10 @@
 
 /* Registers values */
 #define CRC_CR_RESET            BIT(0)
-#define CRC_CR_REVERSE          (BIT(7) | BIT(6) | BIT(5))
-#define CRC_INIT_DEFAULT        0xFFFFFFFF
+#define CRC_CR_REV_IN_W         (BIT(6) | BIT(5))
+#define CRC_CR_REV_IN_B         BIT(5)
+#define CRC_CR_REV_OUT		BIT(7)
+#define CRC32C_INIT_DEFAULT     0xFFFFFFFF
 
 #define CRC_AUTOSUSPEND_DELAY	50
 
@@ -66,7 +68,7 @@ static int stm32_crc32_cra_init(struct crypto_tfm *tfm)
 {
 	struct stm32_crc_ctx *mctx = crypto_tfm_ctx(tfm);
 
-	mctx->key = CRC_INIT_DEFAULT;
+	mctx->key = 0;
 	mctx->poly = CRC32_POLY_LE;
 	return 0;
 }
@@ -75,7 +77,7 @@ static int stm32_crc32c_cra_init(struct crypto_tfm *tfm)
 {
 	struct stm32_crc_ctx *mctx = crypto_tfm_ctx(tfm);
 
-	mctx->key = CRC_INIT_DEFAULT;
+	mctx->key = CRC32C_INIT_DEFAULT;
 	mctx->poly = CRC32C_POLY_LE;
 	return 0;
 }
@@ -112,7 +114,8 @@ static int stm32_crc_init(struct shash_desc *desc)
 	/* Reset, set key, poly and configure in bit reverse mode */
 	writel_relaxed(bitrev32(mctx->key), ctx->crc->regs + CRC_INIT);
 	writel_relaxed(bitrev32(mctx->poly), ctx->crc->regs + CRC_POL);
-	writel_relaxed(CRC_CR_RESET | CRC_CR_REVERSE, ctx->crc->regs + CRC_CR);
+	writel_relaxed(CRC_CR_RESET | CRC_CR_REV_IN_W | CRC_CR_REV_OUT,
+		       ctx->crc->regs + CRC_CR);
 
 	/* Store partial result */
 	ctx->partial = readl_relaxed(ctx->crc->regs + CRC_DR);
@@ -183,6 +186,25 @@ static int stm32_crc_final(struct shash_desc *desc, u8 *out)
 {
 	struct stm32_crc_desc_ctx *ctx = shash_desc_ctx(desc);
 	struct stm32_crc_ctx *mctx = crypto_shash_ctx(desc->tfm);
+	struct stm32_crc *crc = ctx->crc;
+	unsigned int i = 0;
+
+	if (unlikely(crc->nb_pending_bytes)) {
+		pm_runtime_get_sync(crc->dev);
+		/* Process pending data */
+		writel_relaxed(CRC_CR_REV_IN_B | CRC_CR_REV_OUT,
+			       ctx->crc->regs + CRC_CR);
+		while (i != crc->nb_pending_bytes) {
+			writeb_relaxed(crc->pending_data[i++],
+				       crc->regs + CRC_DR);
+		}
+
+		crc->nb_pending_bytes = 0;
+		ctx->partial = readl_relaxed(crc->regs + CRC_DR);
+
+		pm_runtime_mark_last_busy(crc->dev);
+		pm_runtime_put_autosuspend(crc->dev);
+	}
 
 	/* Send computed CRC */
 	put_unaligned_le32(mctx->poly == CRC32C_POLY_LE ?
