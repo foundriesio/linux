@@ -304,6 +304,17 @@
 	int-gpios = <&gpd 2 0>;
 };
 
+&mxl532c_power {
+        compatible = "maxlinear,mxl532c";
+        i2c-parent = <&i2c1>;
+        i2c-lnb-ctrl = <&i2c1>;
+        /* LNB_SLP, DVB_LOCK, DVB_RST LNB_SEL */
+        gpios = <&gpa 18 0>, <&gpa 17 0>, <&gpe 12 0>, <&gpe 11 0>;
+        config-idx = <0>;
+        /* LNB_IRQ */
+        int-gpios = <&gpd 2 0>;
+};
+
 &tcc_isdbt_ctrl {
 	compatible = "telechips,tcc_isdbt_ctrl";
 };

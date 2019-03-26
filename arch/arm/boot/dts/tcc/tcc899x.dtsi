@@ -1544,6 +1544,7 @@
 
 	si_power: si_power {};
 	avl62x1_power: avl62x1_power {};
+	mxl532c_power: mxl532c_power {};
 
 	adma0: adma@16100000 {
 		compatible = "telechips,adma";

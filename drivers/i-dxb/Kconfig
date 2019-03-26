@@ -13,4 +13,6 @@ source "drivers/i-dxb/silabs/Kconfig"
 
 source "drivers/i-dxb/availink/Kconfig"
 
+source "drivers/i-dxb/maxlinear/Kconfig"
+
 endmenu

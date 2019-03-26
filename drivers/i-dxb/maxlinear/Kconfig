@@ -1,0 +1,8 @@
+# 
+# SiLabs devices
+#
+
+comment "Maxlinear Tuner devices"
+	depends on iDxB_SUPPORT
+
+source "drivers/i-dxb/maxlinear/mxl532c/Kconfig"

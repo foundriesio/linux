@@ -1,0 +1,7 @@
+# 
+# MXL532C configurations
+#
+
+config iDxB_MAXLINEAR_MXL532C
+	tristate "mxl532c support"
+	depends on iDxB_SUPPORT
