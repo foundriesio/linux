@@ -272,7 +272,7 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out,
 	if(!bHDMI_Out)
 		out_color_format = 2;
 
-	if( mode->format == 2 ){
+	if( mode->format >= 2 ){
 		if(mode->dv_ll_mode == DV_STD)
 			vioc_set_out_type(DOVI);
 		else
