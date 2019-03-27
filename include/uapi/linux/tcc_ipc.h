@@ -23,9 +23,38 @@ between Telechips and Company.
 *
 ****************************************************************************************/
 
-#ifndef _TCC_IPC_H
-#define _TCC_IPC_H
+#ifndef _UAPI_TCC_IPC_H
+#define _UAPI_TCC_IPC_H
 
-#include <uapi/linux/tcc_ipc.h>
+#include <asm/ioctl.h>
 
-#endif /* _TCC_IPC_H */
+#define TCC_IPC_MAGIC 'I'
+
+#define IOCTL_IPC_SET_PARAM	_IO(TCC_IPC_MAGIC ,1)
+#define IOCTL_IPC_GET_PARAM	_IO(TCC_IPC_MAGIC ,2)
+#define IOCTL_IPC_PING_TEST	_IO(TCC_IPC_MAGIC ,3)
+#define IOCTL_IPC_FLUSH			_IO(TCC_IPC_MAGIC ,4)
+#define IOCTL_IPC_ISREADY		_IO(TCC_IPC_MAGIC ,5)
+
+typedef struct _tcc_ipc_ctl_param{
+	unsigned int vMin;			/* Timeout in deciseconds, when blocking mode*/
+	unsigned int vTime;		/* Minimum number of characters when blocking mode */
+} __attribute__((packed))tcc_ipc_ctl_param;
+
+typedef enum {
+	IPC_PING_SUCCESS = 0,				/* Ping success */
+	IPC_PING_ERR_INIT,					/* My ipc initialize failed */
+	IPC_PING_ERR_NOT_READY,			/* Other IPC not open */
+	IPC_PING_ERR_SENDER_MBOX,		/* My(sender) mbox is not set or error */
+	IPC_PING_ERR_RECEIVER_MBOX,		/* Receiver mbox is not set or error*/
+	IPC_PING_ERR_SEND,				/* Can not send data. Maybe receiver mbox interrupt is busy*/
+	IPC_PING_ERR_RESPOND,				/* Receiver does not send respond data. */
+	MAX_IPC_PING_ERR,
+}tcc_ipc_ping_error;
+
+typedef struct _tcc_ipc_ping_info{
+	tcc_ipc_ping_error pingResult;
+	unsigned int responseTime;
+}__attribute__((packed))tcc_ipc_ping_info;
+
+#endif /* _UAPI_TCC_IPC_H */
