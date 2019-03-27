@@ -148,7 +148,7 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
 #if ONLY_USE_MP2  //TCC
 	gpu_props->raw_props.shader_present =0x1;
 #else
-#if CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_TCC803X_CA7S)
 /*
  * TCC8030, TCC8031 - MP3/MP1
  * TCC8032, TCC8035 - MP3
