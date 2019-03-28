@@ -290,6 +290,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 
 	// WDMA
 	vdev->cif.vioc_path.wdma = -1;
+	vdev->cif.vioc_irq_num   = -1;
 	vioc_node = of_parse_phandle(main_node, "wdma", 0);
 	if(vioc_node != NULL) {
 		of_property_read_u32_index(main_node, "wdma", 1, &vdev->cif.vioc_path.wdma);
@@ -297,6 +298,10 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 			address = VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 			dlog("%10s[%2d]: 0x%p\n", "WDMA", get_vioc_index(vdev->cif.vioc_path.wdma), address);
 		}
+
+		// WDMA interrupt
+		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(vioc_node, get_vioc_index(vdev->cif.vioc_path.wdma));
+		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 	} else {
 		log("ERROR: \"wdma\" node is not found.\n");
 		return -ENODEV;
@@ -1132,16 +1137,13 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 }
 
 int tccvin_request_irq(tccvin_dev_t * vdev) {
-	struct device_node	* main_node	= vdev->plt_dev->dev.of_node;
-	struct device_node	* irq_node	= NULL;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	irq_node = of_parse_phandle(main_node, "wdma", 0);
-	if(irq_node) {
-		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(irq_node, get_vioc_index(vdev->cif.vioc_path.wdma));
-		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == DISABLE)) {
+		vdev->cif.vioc_intr.id   = -1;
+		vdev->cif.vioc_intr.bits = -1;
 
 #ifdef CONFIG_ARCH_TCC803X
 		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
@@ -1172,20 +1174,14 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 }
 
 int tccvin_free_irq(tccvin_dev_t * vdev) {
-	struct device_node * main_node	= vdev->plt_dev->dev.of_node;
-	struct device_node * irq_node	= NULL;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	irq_node = of_parse_phandle(main_node, "wdma", 0);
-	if(irq_node) {
-		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(irq_node, get_vioc_index(vdev->cif.vioc_path.wdma));
-		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
-
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == ENABLE)) {
 		if(vdev->cif.vioc_irq_reg == ENABLE) {
-			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
+			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vdev->cif.vioc_irq_reg = DISABLE;
 		} else {
@@ -1734,10 +1730,15 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 		return 0;
 	}
 
-	ret = tccvin_start_stream(vdev);
-	if(ret < 0) {
-		log("ERROR: Start Stream\n");
-		return -1;
+	if(tccvin_check_wdma_counter(vdev) == 0) {
+		log("Video-Input Path(%d) is already working\n", vdev->vid_dev->minor);
+	} else {
+		log("Video-Input Path(%d) is NOT working\n", vdev->vid_dev->minor);
+		ret = tccvin_start_stream(vdev);
+		if(ret < 0) {
+			log("ERROR: Start Stream\n");
+			return -1;
+		}
 	}
 
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
