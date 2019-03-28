@@ -1,7 +1,7 @@
 #ifndef __SI2166_H__
 #define __SI2166_H__
 
-#include <linux/i-dxb/silabs/silabs.h>
+#include "silabs.h"
 
 #define SI2166_DEV_NAME		"si2166"
 #define SI2166_DEV_MAJOR	220

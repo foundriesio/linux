@@ -286,7 +286,7 @@
 
 &si_power {
 	compatible = "telechips,si_power";
-	pw-gpios = <0>;
+	pw-gpios = <&gpd 4 0>;
 	/*PD, RST, IRQ, SDO*/
 	si0-gpios = <0>, <&gpe 12 0>, <0>, <0>;
 	/*PD, RST, IRQ, SDO*/

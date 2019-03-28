@@ -22,6 +22,7 @@ typedef struct tag_silabs_power_t
 {
 	int i_n_fe_gpio;
 
+	int gpio_pwrctl;
 	fe_gpio_t *p_fe_gpio;
 } silabs_power_t;
 
@@ -112,6 +113,9 @@ int tcc_power_silabs_on(void)
 		return -1;
 	}
 
+	sfn_gpio_set(p_instance->gpio_pwrctl, 1);
+	msleep(40);
+
 	for(i = 0; i < p_instance->i_n_fe_gpio; i++)
 	{
 		fe_gpio_t *p_fe_gpio = &p_instance->p_fe_gpio[i];
@@ -141,6 +145,8 @@ int tcc_power_silabs_off(void)
 		printk("[%s:%d] instance is NULL!\n", __func__, __LINE__);
 		return -1;
 	}
+
+	sfn_gpio_set(p_instance->gpio_pwrctl, 0);
 
 	for(i = 0; i < p_instance->i_n_fe_gpio; i++)
 	{
@@ -194,6 +200,10 @@ int tcc_power_silabs_init(silabs_fe_type_e e_type)
 		goto error;
 	}
 	
+	p_instance->gpio_pwrctl = of_get_named_gpio(p_dnode, "pw-gpios", 0);
+	sfn_gpio_init(p_instance->gpio_pwrctl, GPIO_DIRECTION_OUTPUT);
+	printk("[%s:%d] gpio pwrctl : [0x%x]\n", __func__, __LINE__, p_instance->gpio_pwrctl);
+
 	for(i = 0; i < p_instance->i_n_fe_gpio; i++)
 	{
 		fe_gpio_t *p_fe_gpio = &p_instance->p_fe_gpio[i];
@@ -202,7 +212,7 @@ int tcc_power_silabs_init(silabs_fe_type_e e_type)
 
 		p_fe_gpio->gpio_rst = of_get_named_gpio(p_dnode, str_name, 1);
 
-		printk("[%s:%d] gpi rst : [%d][0x%x]\n", __func__, __LINE__, i, p_fe_gpio->gpio_rst);
+		printk("[%s:%d] gpio rst : [%d][0x%x]\n", __func__, __LINE__, i, p_fe_gpio->gpio_rst);
 
 		sfn_gpio_init(p_fe_gpio->gpio_rst, GPIO_DIRECTION_OUTPUT);
 	}
@@ -237,6 +247,8 @@ int tcc_power_silabs_deinit(void)
 		printk("[%s:%d] instance is NULL!\n", __func__, __LINE__);
 		return -1;
 	}
+
+	sfn_gpio_free(p_instance->gpio_pwrctl);
 
 	for(i = 0; i < p_instance->i_n_fe_gpio; i++)
 	{

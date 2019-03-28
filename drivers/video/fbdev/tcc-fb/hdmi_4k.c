@@ -21,18 +21,28 @@
 #include <linux/gpio.h>
 #include <linux/mutex.h>
 #include <linux/module.h>
+#include <linux/clk.h>
 #ifndef CONFIG_ARM64
 #include <asm/mach-types.h>
 #endif
 
-#include <video/tcc/tccfb.h>
 #include <video/tcc/tcc_fb.h>
+#include <video/tcc/tccfb.h>
 #include <video/tcc/tca_lcdc.h>
 
 static struct mutex panel_lock;
 
+static struct clk *hdmi_peri_clk = NULL;
+static struct clk *hdmi_ddi_clk = NULL;
+static struct clk  *hdmi_isoip_clk = NULL;
+static struct clk  *hdmi_lcdc0_clk = NULL;
+static struct clk  *hdmi_lcdc1_clk = NULL;
+
 static int hdmi4k_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
+	fb_pdata->FbPowerState = true;
+	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
+	fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
 	return 0;
 }
 
@@ -54,17 +64,17 @@ static struct lcd_panel hdmi4k_panel = {
 	.clk_div		= 2,
 	.bus_width		= 24,
 	.lpw			= 2,
-	.lpc			= 1920,
+	.lpc			= 3840,
 	.lswc			= 12,
 	.lewc			= 7,
 	.vdb			= 0,
 	.vdf			= 0,
 	.fpw1			= 0,
-	.flc1			= 1080,
+	.flc1			= 2160,
 	.fswc1			= 6,
 	.fewc1			= 4,
 	.fpw2			= 0,
-	.flc2			= 1080,
+	.flc2			= 2160,
 	.fswc2			= 6,
 	.fewc2			= 4,
 	.sync_invert	= IV_INVERT | IH_INVERT,
@@ -76,12 +86,22 @@ static int hdmi4k_probe(struct platform_device *pdev)
 {
 	printk("%s\n", __func__);
 	
+	hdmi_lcdc0_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc0-clk");
+	hdmi_lcdc1_clk = of_clk_get_by_name(pdev->dev.of_node, "lcdc1-clk");
+	hdmi_peri_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-pclk");
+	hdmi_ddi_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-hclk");
+	hdmi_isoip_clk = of_clk_get_by_name(pdev->dev.of_node, "hdmi-phy");
+
 	mutex_init(&panel_lock);
 
 	hdmi4k_panel.dev = &pdev->dev;
 
 #ifdef CONFIG_FB_VIOC
+	#ifdef CONFIG_TCC_EXTFB
+	extfb_register_panel(&hdmi4k_panel);
+	#else
 	tccfb_register_panel(&hdmi4k_panel);
+	#endif
 #endif
 
 	return 0;

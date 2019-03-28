@@ -384,6 +384,8 @@ extern void tcc_remocon_set_io(void);
 
 #elif defined(CONFIG_CS_2000_IR_X_CANVAS)
 	#include "tcc_remocon_CS_2000_IR_X_CANVAS.h"
+#elif defined(CONFIG_UEI_RCU)
+	#include "tcc_remocon_UEI_RCU.h"
 #elif defined(CONFIG_VERIZON)
 	#include "tcc_remocon_Verizon.h"
 #elif defined(CONFIG_NOVATEK_IR)
