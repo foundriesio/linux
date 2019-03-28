@@ -3348,6 +3348,7 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 	unsigned long flags;
 	struct usb_hcd *hcd = dwc2_hsotg_to_hcd(hsotg);
 
+	dev_info(hsotg->dev, "%s : Role Changing Request!!\n", __func__);
 	/* B-Device connector (Device Mode) */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
 #ifdef CONFIG_USB_DWC2_TCC_MUX
@@ -3375,15 +3376,13 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 		spin_lock_irqsave(&hsotg->lock, flags);
 		dwc2_hsotg_disconnect(hsotg);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
-#ifndef CONFIG_USB_DWC2_TCC_MUX
-		dwc2_lowlevel_hw_enable(hsotg);
-#endif
-		/* Initialize the Core for Host mode */
+
+	/* Initialize the Core for Host mode */
 		hsotg->op_state = OTG_STATE_A_HOST;
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
 #ifndef CONFIG_USB_DWC2_TCC_MUX
-		dwc2_force_dr_mode(hsotg);
+		//dwc2_force_dr_mode(hsotg);
 		dwc2_hcd_start(hsotg);
 #else
 		if (hsotg->mhst_uphy)
