@@ -105,4 +105,19 @@ config USB_DWC2_TCC_MUX
 	bool "DWC2 Host Mux mode"
 	help
 	  Telechips DWC2 Device driver & EHCI Host driver.
+choice
+	bool "DWC2 First Role Mode Selection"
+	default USB_DWC2_TCC_FIRST_HOST if (USB_DWC2_TCC && USB_DWC2_DUAL_ROLE)
+	default USB_DWC2_TCC_FIRST_PERIPHERAL if (USB_DWC2_TCC && USB_DWC2_DUAL_ROLE)
+
+config USB_DWC2_TCC_FIRST_HOST
+	bool "Enable TCC SoC dwc2 first host"
+	depends on USB_DWC2_TCC && USB_DWC2_DUAL_ROLE
+
+config USB_DWC2_TCC_FIRST_PERIPHERAL
+	bool "Enable TCC SoC dwc2 first device"
+	depends on USB_DWC2_TCC && USB_DWC2_DUAL_ROLE
+
+endchoice
+
 endif

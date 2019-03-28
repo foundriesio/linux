@@ -84,8 +84,6 @@ static const char dwc2_driver_name[] = "dwc2";
 #define TCC_DWC_SOFFN_USE
 #define TCC_DWC_SUSPSTS_USE
 
-static int dwc2_set_dr_mode(struct dwc2_hsotg *hsotg, enum usb_dr_mode mode);
-
 int dwc2_tcc_power_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 {
     int err = 0;
@@ -137,7 +135,7 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 		dev_err(hsotg->dev, "[%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
-	dev_err(hsotg->dev, "why???\n");
+	dev_info(hsotg->dev, "%s : %s\n", __func__, on_off ? "on" : "off");
 	hsotg->vbus_status = on_off;
 
 	return phy->set_vbus(phy, on_off);
@@ -147,7 +145,7 @@ static ssize_t dwc2_tcc_vbus_show(struct device *dev, struct device_attribute *a
 {
     struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-    return sprintf(buf, "dwc2 vbus - %s\n",(hsotg->vbus_status) ? "on":"off");
+    return sprintf(buf, "dwc2 vbus - %s\n",(hsotg->vbus_status) ? "on" : "off");
 }
 
 static ssize_t dwc2_tcc_vbus_store(struct device *dev, struct device_attribute *attr,
@@ -201,7 +199,7 @@ error:
 		return count;
 	}
 
-	dwc2_set_dr_mode(hsotg, tmp_mode);
+	hsotg->dr_mode = tmp_mode;
 	work = &hsotg->drd_work;
 
 	if (work_pending(work))
@@ -219,46 +217,6 @@ error:
 }
 static DEVICE_ATTR(dr_mode, S_IRUGO | S_IWUSR, dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
 
-static int dwc2_set_dr_mode(struct dwc2_hsotg *hsotg, enum usb_dr_mode mode)
-{
-    hsotg->dr_mode = mode;
-    if (hsotg->dr_mode == USB_DR_MODE_UNKNOWN)
-        hsotg->dr_mode = USB_DR_MODE_OTG;
-
-    mode = hsotg->dr_mode;
-
-    if (dwc2_hw_is_device(hsotg)) {
-        if (IS_ENABLED(CONFIG_USB_DWC2_HOST)) {
-            dev_err(hsotg->dev,
-                "Controller does not support host mode.\n");
-            return -EINVAL;
-        }
-        mode = USB_DR_MODE_PERIPHERAL;
-    } else if (dwc2_hw_is_host(hsotg)) {
-        if (IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL)) {
-            dev_err(hsotg->dev,
-                "Controller does not support device mode.\n");
-            return -EINVAL;
-        }
-        mode = USB_DR_MODE_HOST;
-    } else {
-        if (IS_ENABLED(CONFIG_USB_DWC2_HOST))
-            mode = USB_DR_MODE_HOST;
-        else if (IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL))
-            mode = USB_DR_MODE_PERIPHERAL;
-    }
-
-    if (mode != hsotg->dr_mode) {
-        dev_warn(hsotg->dev,
-             "Configuration mismatch. dr_mode forced to %s\n",
-            mode == USB_DR_MODE_HOST ? "host" : "device");
-
-        hsotg->dr_mode = mode;
-    }
-
-    return 0;
-	
-}
 #ifdef TCC_DWC_SUSPSTS_USE
 static int dwc2_soffn_monitor_thread(void *w)
 {
@@ -519,6 +477,7 @@ int dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	int ret = __dwc2_lowlevel_hw_enable(hsotg);
 
+	dev_info(hsotg->dev, "%s : %d\n", __func__, __LINE__);
 	if (ret == 0)
 		hsotg->ll_hw_enabled = true;
 	return ret;
@@ -567,6 +526,7 @@ int dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 {
 	int ret = __dwc2_lowlevel_hw_disable(hsotg);
 
+	dev_info(hsotg->dev, "%s : %d\n", __func__, __LINE__);
 	if (ret == 0)
 		hsotg->ll_hw_enabled = false;
 	return ret;
@@ -987,16 +947,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		goto skip_mode_change;
 	}
 #ifdef CONFIG_USB_DWC2_TCC
-#ifndef CONFIG_USB_DWC2_TCC_MUX
-#if 1 //first host
-	hsotg->dr_mode = USB_DR_MODE_HOST;
-	dwc2_force_dr_mode(hsotg);
-	//dwc2_manual_change(hsotg);
-#else //first device
-	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
-	dwc2_manual_change(hsotg);
-#endif
-#endif
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
 	if (!hsotg->drd_wq) {
 		goto error;
@@ -1009,7 +959,38 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	retval = device_create_file(&dev->dev, &dev_attr_dr_mode);
 	if (retval)
 		dev_err(hsotg->dev, "failed to create dr_mode\n");
+
+#if CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+	//NOTHING TO DO!!
+#else
+	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+	dwc2_manual_change(hsotg);
+	hsotg->dr_mode = USB_DR_MODE_HOST;
+	dwc2_manual_change(hsotg);
 #endif
+#elif CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+	struct work_struct *work;
+	work = &hsotg->drd_work;
+
+	if (work_pending(work))
+	{
+		dev_err(hsotg->dev, "[drd_store pending]\n");
+		return count;
+	}
+
+	queue_work(hsotg->drd_wq, work);
+	/* wait for operation to complete */
+	flush_work(work);
+#else
+	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+	dwc2_manual_change(hsotg);
+#endif
+
+#endif //CONFIG_USB_DWC2_TCC_FIRST
+#endif //CONFIG_USB_DWC2_TCC
 
 skip_mode_change:
 	return 0;
