@@ -1415,6 +1415,15 @@ err_comp_cleanup:
 }
 
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
+static void android_force_disconnect_event(void)
+{
+	char *disconnected[2] = { "USB_STATE=DISCONNECTED", NULL };
+
+	kobject_uevent_env(&android_device->kobj,
+				KOBJ_CHANGE, disconnected);
+	pr_info("%s: send uevent %s\n", __func__, disconnected[0]);
+}
+
 static void android_work(struct work_struct *data)
 {
 	struct gadget_info *gi = container_of(data, struct gadget_info, work);
@@ -1567,6 +1576,7 @@ static const struct usb_gadget_driver configfs_driver_template = {
 	.setup          = android_setup,
 	.reset          = android_disconnect,
 	.disconnect     = android_disconnect,
+	.disconnect_tcc	= android_force_disconnect_event,
 #else
 	.setup          = composite_setup,
 	.reset          = composite_disconnect,
