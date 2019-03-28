@@ -1200,7 +1200,13 @@ static inline int dwc2_is_device_mode(struct dwc2_hsotg *hsotg)
 void dwc2_dump_dev_registers(struct dwc2_hsotg *hsotg);
 void dwc2_dump_host_registers(struct dwc2_hsotg *hsotg);
 void dwc2_dump_global_registers(struct dwc2_hsotg *hsotg);
-
+/* Manual Change */
+#if IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+void dwc2_manual_change(struct dwc2_hsotg *hsotg);
+#else
+static inline void dwc2_manual_change(struct dwc2_hsotg *hsotg)
+{ return; }
+#endif
 /* Gadget defines */
 #if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || \
 	IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)

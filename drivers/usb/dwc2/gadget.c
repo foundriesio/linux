@@ -1640,7 +1640,6 @@ static int dwc2_hsotg_process_req_status(struct dwc2_hsotg *hsotg,
 		ep = ep_from_windex(hsotg, le16_to_cpu(ctrl->wIndex));
 		if (!ep)
 			return -ENOENT;
-
 		reply = cpu_to_le16(ep->halted ? 1 : 0);
 		break;
 
@@ -1650,7 +1649,6 @@ static int dwc2_hsotg_process_req_status(struct dwc2_hsotg *hsotg,
 
 	if (le16_to_cpu(ctrl->wLength) != 2)
 		return -EINVAL;
-
 	ret = dwc2_hsotg_send_reply(hsotg, ep0, &reply, 2);
 	if (ret) {
 		dev_err(hsotg->dev, "%s: failed to send reply\n", __func__);
@@ -3225,6 +3223,8 @@ void dwc2_hsotg_disconnect(struct dwc2_hsotg *hsotg)
 	if (!hsotg->connected)
 		return;
 
+	dev_info(hsotg->dev, "%s : %d\n", __func__, __LINE__);
+	
 	hsotg->connected = 0;
 	hsotg->test_mode = 0;
 
@@ -3366,11 +3366,11 @@ void dwc2_hsotg_core_init_disconnected(struct dwc2_hsotg *hsotg,
 	intmsk = GINTSTS_ERLYSUSP | GINTSTS_SESSREQINT |
 		GINTSTS_GOUTNAKEFF | GINTSTS_GINNAKEFF |
 		GINTSTS_USBRST | GINTSTS_RESETDET |
-		GINTSTS_ENUMDONE |
+		GINTSTS_ENUMDONE | GINTSTS_OTGINT |
 		GINTSTS_USBSUSP | GINTSTS_WKUPINT;
 
 	if (!using_desc_dma(hsotg))
-		intmsk |= GINTSTS_INCOMPL_SOIN | GINTSTS_INCOMPL_SOOUT;
+		//intmsk |= GINTSTS_INCOMPL_SOIN | GINTSTS_INCOMPL_SOOUT;
 
 	if (!hsotg->params.external_id_pin_ctl)
 		intmsk |= GINTSTS_CONIDSTSCHNG;

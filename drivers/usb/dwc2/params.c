@@ -696,7 +696,11 @@ int dwc2_get_hwparams(struct dwc2_hsotg *hsotg)
 			      GHWCFG3_DFIFO_DEPTH_SHIFT;
 
 	/* hwcfg4 */
+#ifdef CONFIG_ARCH_TCC897X
+	hw->en_multiple_tx_fifo = !!!(hwcfg4 & GHWCFG4_DED_FIFO_EN);
+#else
 	hw->en_multiple_tx_fifo = !!(hwcfg4 & GHWCFG4_DED_FIFO_EN);
+#endif
 	hw->num_dev_perio_in_ep = (hwcfg4 & GHWCFG4_NUM_DEV_PERIO_IN_EP_MASK) >>
 				  GHWCFG4_NUM_DEV_PERIO_IN_EP_SHIFT;
 	hw->num_dev_in_eps = (hwcfg4 & GHWCFG4_NUM_IN_EPS_MASK) >>

@@ -2306,8 +2306,8 @@ static int dwc2_core_init(struct dwc2_hsotg *hsotg, bool initial_setup)
 	 * Do device or host initialization based on mode during PCD and
 	 * HCD initialization
 	 */
-	//if (dwc2_is_host_mode(hsotg)) {
-	if (hsotg->dr_mode == USB_DR_MODE_HOST) { 
+	if (dwc2_is_host_mode(hsotg)) {
+	//if (hsotg->dr_mode == USB_DR_MODE_HOST) { 
 		dev_dbg(hsotg->dev, "Host Mode\n");
 		hsotg->op_state = OTG_STATE_A_HOST;
 	} else {
@@ -3361,6 +3361,9 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 			dwc2_port_resume(hsotg);
 		}
 		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
+#ifndef CONFIG_USB_DWC2_TCC_MUX
+		_dwc2_hcd_stop(hcd);
+#endif
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
 		spin_lock_irqsave(&hsotg->lock, flags);
@@ -3368,16 +3371,19 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 		spin_unlock_irqrestore(&hsotg->lock, flags);
 		dwc2_hsotg_core_connect(hsotg);
 	} else if (hsotg->dr_mode == USB_DR_MODE_HOST) {
-		/* A-Device connector (Host Mode) */
+	/* A-Device connector (Host Mode) */
 		spin_lock_irqsave(&hsotg->lock, flags);
 		dwc2_hsotg_disconnect(hsotg);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
-
+#ifndef CONFIG_USB_DWC2_TCC_MUX
+		dwc2_lowlevel_hw_enable(hsotg);
+#endif
 		/* Initialize the Core for Host mode */
 		hsotg->op_state = OTG_STATE_A_HOST;
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
-#ifndef CONFIG_USB_DWC2_TCC_MUX 
+#ifndef CONFIG_USB_DWC2_TCC_MUX
+		dwc2_force_dr_mode(hsotg);
 		dwc2_hcd_start(hsotg);
 #else
 		if (hsotg->mhst_uphy)

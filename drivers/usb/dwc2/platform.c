@@ -282,18 +282,20 @@ static int dwc2_soffn_monitor_thread(void *w)
 		retry = 3;
 	}
 
+	dwc2_tcc_vbus_ctrl(hsotg, 0); //VBUS off
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
 		spin_lock_irqsave(&hsotg->lock, flags);
 		dwc2_hsotg_disconnect(hsotg);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
+		if (hsotg->driver && hsotg->driver->disconnect_tcc)
+			hsotg->driver->disconnect_tcc();
 	} else {
 		dev_warn(hsotg->dev,
 			"%s - mode changed (host)", __func__);
 	}
 	hsotg->soffn_thread = NULL;
 
-	//dwc2_tcc_vbus_ctrl(hsotg, 0); //VBUS off
-	//msleep(200);
+	msleep(200);
 	dev_warn(hsotg->dev, "dwc2 device - Host Disconnected\n");	
 }
 #endif
@@ -466,6 +468,7 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 
 		hsotg->dr_mode = mode;
 	}
+	dev_warn(hsotg->dev, "%s : dr_mode = %d\n", __func__, hsotg->dr_mode);
 
 	return 0;
 }
@@ -635,7 +638,6 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 			}
 		}
 	}
-	printk("[KJS]\n");
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->mhst_uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "telechips,mhst_phy", 0);
 #ifdef CONFIG_ARCH_TCC803X
@@ -927,7 +929,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	}
 	dev_info(hsotg->dev, "set the irq(%d) affinity to cpu(%d)\n", hsotg->irq, cpu);
 
-
 	retval = dwc2_get_dr_mode(hsotg);
 	if (retval)
 		return retval;
@@ -953,7 +954,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	retval = dwc2_init_params(hsotg);
 	if (retval)
 		goto error;
-
+	
 	if (hsotg->dr_mode != USB_DR_MODE_HOST) {
 		retval = dwc2_gadget_init(hsotg);
 		if (retval)
@@ -980,9 +981,21 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dwc2_debugfs_init(hsotg);
 
 	/* Gadget code manages lowlevel hw on its own */
-	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
+	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
 		dwc2_lowlevel_hw_disable(hsotg);
+		goto skip_mode_change;
+	}
 #ifdef CONFIG_USB_DWC2_TCC
+#ifndef CONFIG_USB_DWC2_TCC_MUX
+#if 1 //first host
+	hsotg->dr_mode = USB_DR_MODE_HOST;
+	dwc2_force_dr_mode(hsotg);
+	//dwc2_manual_change(hsotg);
+#else //first device
+	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+	dwc2_manual_change(hsotg);
+#endif
+#endif
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
 	if (!hsotg->drd_wq) {
 		goto error;
@@ -996,6 +1009,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval)
 		dev_err(hsotg->dev, "failed to create dr_mode\n");
 #endif
+
+skip_mode_change:
 	return 0;
 error:
 	dwc2_lowlevel_hw_disable(hsotg);
