@@ -61,6 +61,9 @@
 #include <linux/sizes.h>
 #include <linux/io.h>
 #include <linux/acpi.h>
+#ifdef CONFIG_TCC_SERIAL_UART
+#include <linux/pm_runtime.h>
+#endif
 
 #include "amba-pl011.h"
 
@@ -1395,6 +1398,42 @@ static void pl011_start_tx(struct uart_port *port)
 		pl011_start_tx_pio(uap);
 }
 
+#ifdef CONFIG_TCC_SERIAL_UART
+static void pl011_throttle(struct uart_port *port)
+{
+	struct uart_amba_port *uap =
+	    container_of(port, struct uart_amba_port, port);
+	struct device *dev = uap->port.dev;
+	unsigned long flags;
+
+	pm_runtime_get_sync(dev);
+	spin_lock_irqsave(&uap->port.lock, flags);
+	uap->im = pl011_read(uap, REG_IMSC);
+	uap->im &= ~(UART011_RTIM | UART011_RXIM);
+	pl011_write(uap->im, uap, REG_IMSC);
+	spin_unlock_irqrestore(&uap->port.lock, flags);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+}
+
+static void pl011_unthrottle(struct uart_port *port)
+{
+	struct uart_amba_port *uap =
+	    container_of(port, struct uart_amba_port, port);
+	struct device *dev = uap->port.dev;
+	unsigned long flags;
+
+	pm_runtime_get_sync(dev);
+	spin_lock_irqsave(&uap->port.lock, flags);
+	uap->im = pl011_read(uap, REG_IMSC);
+	uap->im |= (UART011_RTIM | UART011_RXIM);
+	pl011_write(uap->im, uap, REG_IMSC);
+	spin_unlock_irqrestore(&uap->port.lock, flags);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+}
+#endif /* CONFIG_TCC_SERIAL_UART */
+
 static void pl011_stop_rx(struct uart_port *port)
 {
 	struct uart_amba_port *uap =
@@ -2221,6 +2260,10 @@ static const struct uart_ops amba_pl011_pops = {
 	.get_mctrl	= pl011_get_mctrl,
 	.stop_tx	= pl011_stop_tx,
 	.start_tx	= pl011_start_tx,
+#ifdef CONFIG_TCC_SERIAL_UART
+	.throttle	= pl011_throttle,
+	.unthrottle	= pl011_unthrottle,
+#endif
 	.stop_rx	= pl011_stop_rx,
 	.enable_ms	= pl011_enable_ms,
 	.break_ctl	= pl011_break_ctl,
