@@ -171,7 +171,7 @@ extern int	tccvin_v4l2_enum_fmt(struct v4l2_fmtdesc * fmt);
 extern void	tccvin_v4l2_g_fmt(tccvin_dev_t * vdev, struct v4l2_format * format);
 extern int	tccvin_v4l2_s_fmt(tccvin_dev_t * vdev, struct v4l2_format * format);
 extern int	tccvin_v4l2_reqbufs(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req);
-extern int	tccvin_v4l2_assign_allocated_buf(tccvin_dev_t * vdev, struct v4l2_buffer * buf);
+extern int	tccvin_v4l2_set_buffer_address(tccvin_dev_t * vdev, struct v4l2_buffer * buf);
 extern int	tccvin_v4l2_querybuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf);
 extern int	tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf);
 extern int	tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf);

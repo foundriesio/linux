@@ -67,7 +67,7 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		break;
 
 	case VIDIOC_ASSIGN_ALLOCATED_BUF:
-		ret = tccvin_v4l2_assign_allocated_buf(vdev, (struct v4l2_buffer *)arg);
+		ret = tccvin_v4l2_set_buffer_address(vdev, (struct v4l2_buffer *)arg);
 		break;
 
 	case VIDIOC_QUERYBUF:

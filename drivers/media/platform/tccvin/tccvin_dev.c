@@ -42,7 +42,7 @@ static int					debug = 0;
 
 #define	DRIVER_NAME		"avn-camera"
 
-static unsigned int NORMAL_OVP = 0x18;
+static unsigned int NORMAL_OVP = 24;
 static unsigned int RCAM_OVP = 16;
 
 #define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
@@ -55,10 +55,6 @@ enum format_conversion_type {
 	FORMAT_TYPE_V4L2,
 	FORMAT_TYPE_MAX,
 };
-
-int tccvin_direct_display_start_monitor(tccvin_dev_t * vdev);
-int tccvin_direct_display_stop_monitor(tccvin_dev_t * vdev);
-int tccvin_direct_display_set_pgl(tccvin_dev_t * vdev);
 
 struct format_conversion {
 	unsigned int	format[FORMAT_TYPE_MAX];
@@ -485,7 +481,7 @@ int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 
 void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 //	struct v4l2_pix_format	* pix_format = &vdev->v4l2.pix_format;
-	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
+	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;
 
 	for(idxBuf=0; idxBuf<nBuf; idxBuf++) {
 //		memset(vdev->cif.preview_buf_addr, 0x00, req->count * sizeof(struct tccvin_buf));
@@ -723,7 +719,7 @@ int tccvin_set_ovp_value(tccvin_cif_t * cif) {
 #endif
 	FUNCTION_IN
 
-    RCAM_OVP = 24;
+    RCAM_OVP = 16;//24;
 
     dlog("set ovp %d \n", RCAM_OVP);
     tccvin_set_wmixer_out(cif, RCAM_OVP);
@@ -844,7 +840,7 @@ unsigned int list_get_entry_count(struct list_head * head) {
 int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 	struct tccvin_buf	* buf	= NULL;
 
-	int idxBuf, nBuf = vdev->v4l2.pp_num;//MAX_BUFFERRS;
+	int idxBuf, nBuf = vdev->v4l2.pp_num;
 
 	int capture_buf_entry_count	= 0;
 	int display_buf_entry_count = 0;
@@ -943,115 +939,56 @@ int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned 
 	return 0;
 }
 
-int tccvin_set_direct_display_buffer(tccvin_dev_t * vdev) {
-    struct v4l2_buffer req;
-    int idx = 0;
-    strcpy(vdev->cif.pmap_preview.name, "rearcamera");
-    strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
-    strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
+int tccvin_allocate_buffers(tccvin_dev_t * vdev) {
+	struct v4l2_buffer	req;
+	int					idxBuf = 0, nBuf = 4;
+	int					ret = 0;
 
-
-    if (pmap_get_info(vdev->cif.pmap_preview.name, &(vdev->cif.pmap_preview)) == 1) {
-        dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-            vdev->cif.pmap_preview.name, \
-            vdev->cif.pmap_preview.base, \
-            vdev->cif.pmap_preview.base + vdev->cif.pmap_preview.size, \
-            vdev->cif.pmap_preview.size);
-    }
-    else {
-        return -1;
+	strcpy(vdev->cif.pmap_preview.name, "rearcamera");
+	if(pmap_get_info(vdev->cif.pmap_preview.name, &(vdev->cif.pmap_preview)) == 1) {
+		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+			vdev->cif.pmap_preview.name, \
+			vdev->cif.pmap_preview.base, \
+			vdev->cif.pmap_preview.base + vdev->cif.pmap_preview.size, \
+			vdev->cif.pmap_preview.size);
+    } else {
+		log("ERROR: get \"rearcamera\" pmap information.\n");
+		ret = -1;
     }
 
-    if (pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
-        dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-            vdev->cif.pmap_viqe.name, \
-            vdev->cif.pmap_viqe.base, \
-            vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
-            vdev->cif.pmap_viqe.size);
-    }
-    else {
-        return -1;
-    }
-
-    if (pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
-        dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-            vdev->cif.pmap_pgl.name, \
-            vdev->cif.pmap_pgl.base, \
-            vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
-            vdev->cif.pmap_pgl.size);
-    }
-    else {
-        return -1;
-    }
-
-    for(idx = 0; idx <4; idx++) {
-        req.index = idx;
-        req.reserved = \
-            vdev->cif.pmap_preview.base + (vdev->v4l2.pix_format.width * vdev->v4l2.pix_format.height * 4 * idx);
-        tccvin_v4l2_assign_allocated_buf(vdev, &req);
-    }
-
-    return 0;
-}
-
-int tccvin_set_buf(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
-	struct tccvin_buf	* buf = NULL;
-	unsigned int		y_offset = 0, uv_offset = 0;//, stride = 0;
-	unsigned int		buff_size = 0;
-
-	// clear the static buffer
-	memset(&vdev->v4l2.static_buf[req->count], 0, sizeof(struct tccvin_buf));
-
-	if(req->count == 0) {
-#if 0
-		stride = ALIGNED_BUFF(vdev->v4l2.pix_format.width, L_STRIDE_ALIGN);
-		y_offset = stride * vdev->v4l2.pix_format.height;
-#else
-		y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
-#endif
-
-		if(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_YUYV)
-			buff_size = PAGE_ALIGN(y_offset*2);
-		else
-			buff_size = PAGE_ALIGN(y_offset + y_offset/2);
-
-		vdev->v4l2.capture_buf_list.prev	= vdev->v4l2.capture_buf_list.next	= &(vdev->v4l2.capture_buf_list);
-		vdev->v4l2.display_buf_list.prev	= vdev->v4l2.display_buf_list.next	= &(vdev->v4l2.display_buf_list);
+	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
+	if(pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
+		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+			vdev->cif.pmap_viqe.name, \
+			vdev->cif.pmap_viqe.base, \
+			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
+			vdev->cif.pmap_viqe.size);
+	} else {
+		log("ERROR: get \"rearcamera_viqe\" pmap information.\n");
+		ret = -1;
 	}
 
-	buf = &(vdev->v4l2.static_buf[req->count]);
+#ifdef CONFIG_OVERLAY_PGL
+	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
+	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
+		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+			vdev->cif.pmap_pgl.name, \
+			vdev->cif.pmap_pgl.base, \
+			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
+			vdev->cif.pmap_pgl.size);
+	} else {
+		log("ERROR: get \"parking_gui\" pmap information.\n");
+		ret = -1;
+	}
+#endif//CONFIG_OVERLAY_PGL
 
-//	INIT_LIST_HEAD(&buf->buf_list);
+	for(idxBuf=0; idxBuf<nBuf; idxBuf++) {
+		req.index = idxBuf;
+		req.reserved = vdev->cif.pmap_preview.base + (vdev->v4l2.pix_format.width * vdev->v4l2.pix_format.height * 4 * idxBuf);
+		tccvin_v4l2_set_buffer_address(vdev, &req);
+	}
 
-	buf->buf.index	= req->count;
-	buf->buf.type	= V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	buf->buf.field	= V4L2_FIELD_NONE;
-	buf->buf.memory = V4L2_MEMORY_MMAP;
-	buf->buf.length = buff_size;
-#ifdef CONFIG_ION
-	buf->buf.memory = V4L2_MEMORY_DMABUF;
-	buf->buf.m.fd	= req->reserved[1];
-#endif//CONFIG_ION
-
-#if 0
-	stride = ALIGNED_BUFF(vdev->v4l2.pix_format.width, L_STRIDE_ALIGN);
-	y_offset = stride * vdev->v4l2.pix_format.height;
-
-	uv_offset = ALIGNED_BUFF((stride/2), C_STRIDE_ALIGN) * (vdev->v4l2.pix_format.height/2);
-#else
-	y_offset = ROUND_UP_4(vdev->v4l2.pix_format.width) * ROUND_UP_2(vdev->v4l2.pix_format.height);
-	uv_offset = (ROUND_UP_4(vdev->v4l2.pix_format.width) / 2) * (ROUND_UP_2(vdev->v4l2.pix_format.height) / 2);
-#endif
-
-	vdev->cif.preview_buf_addr[req->count].y = (unsigned int)req->reserved[0];
-	vdev->cif.preview_buf_addr[req->count].u = (unsigned int)vdev->cif.preview_buf_addr[req->count].y + y_offset;
-	vdev->cif.preview_buf_addr[req->count].v = (unsigned int)vdev->cif.preview_buf_addr[req->count].u + uv_offset;
-
-	vdev->v4l2.pp_num = (req->count + 1);
-
-	dlog("buf[%2d] - Y: 0x%x, U: 0x%x, V: 0x%x\n", req->count, vdev->cif.preview_buf_addr[req->count].y, vdev->cif.preview_buf_addr[req->count].u, vdev->cif.preview_buf_addr[req->count].v);
-
-	return 0;
+    return ret;
 }
 
 int tccvin_start_stream(tccvin_dev_t * vdev) {
@@ -1264,6 +1201,140 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 	return ret;
 }
 
+void test_registers(tccvin_dev_t * vdev) {
+	struct reg_test {
+		unsigned int * reg;
+		unsigned int cnt;
+	};
+
+#ifdef CONFIG_OVERLAY_PGL
+	volatile void __iomem	* pPGL			= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
+#endif//CONFIG_OVERLAY_PGL
+	volatile void __iomem	* pVIN			= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
+	volatile void __iomem	* pVIQE 		= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
+	volatile void __iomem	* pSC			= VIOC_SC_GetAddress(vdev->cif.vioc_path.scaler);
+	volatile void __iomem	* pWMIXer		= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
+	volatile void __iomem	* pWDMA 		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
+
+	int i = 0;
+
+	struct reg_test regList[] = {
+		{ (unsigned int *)pVIN,			16 },
+#ifdef CONFIG_OVERLAY_PGL
+		{ (unsigned int *)pPGL,			12 },
+#endif//CONFIG_OVERLAY_PGL
+		{ (unsigned int *)pVIQE,		 4 },
+		{ (unsigned int *)pSC,			 8 },
+		{ (unsigned int *)pWMIXer,		28 },
+		{ (unsigned int *)pWDMA,		18 },
+#if 0
+		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_SC0 + vdev->vioc.scaler.index),  1 },
+		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_DEINTLS), 1 },
+		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_VIQE), 1 },
+#endif
+	};
+	unsigned int * addr;
+	unsigned int idxLoop, nReg, idxReg;
+
+	for(i=0; i<3; i++) {
+		printk("\n\n");
+
+		for(idxLoop=0; idxLoop<sizeof(regList)/sizeof(regList[0]); idxLoop++) {
+			addr = regList[idxLoop].reg;
+			nReg = regList[idxLoop].cnt;
+
+			for(idxReg=0; idxReg<nReg; idxReg++) {
+				if((idxReg%4) == 0)
+				printk("\n%08x: ", (unsigned int)(addr + idxReg));
+				printk("%08x ", *(addr + idxReg));
+			}
+			printk("\n");
+		}
+		printk("\n\n");
+	}
+}
+
+int tccvin_check_wdma_counter(tccvin_dev_t * vdev) {
+	volatile void __iomem	* pWDMA	= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
+
+	volatile unsigned int prev_addr, curr_addr;
+	volatile int nCheck, idxCheck, delay = 20;
+
+	curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
+	msleep(delay);
+
+	nCheck = 4;
+	for(idxCheck=0; idxCheck<nCheck; idxCheck++) {
+		prev_addr = curr_addr;
+		msleep(delay);
+		curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
+
+		if(prev_addr != curr_addr)
+			return 0;
+		else
+			dlog("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
+	}
+	return -1;
+}
+
+int tccvin_monitor_thread(void * data) {
+	tccvin_dev_t * vdev = (tccvin_dev_t *)data;
+
+	FUNCTION_IN
+
+	while(1) {
+		msleep(500);
+
+		if(kthread_should_stop())
+			break;
+
+		if(tccvin_check_wdma_counter(vdev) == -1) {
+			log("ERROR: Recovery mode will be entered\n");
+
+			test_registers(vdev);
+
+			tccvin_stop_stream(vdev);
+
+#ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
+			videosource_close();
+
+			videosource_open();
+			videosource_if_change_mode(0);
+#endif//CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
+
+			tccvin_start_stream(vdev);
+		}
+	}
+	FUNCTION_OUT
+	return 0;
+}
+
+int tccvin_start_monitor(tccvin_dev_t * vdev) {
+	vdev->v4l2.threadRecovery = kthread_run(tccvin_monitor_thread, vdev, "threadRecovery");
+	if(IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
+		log("ERROR: FAILED kthread_run\n");
+		vdev->v4l2.threadRecovery = NULL;
+
+		return -1;
+	}
+	return 0;
+}
+
+int tccvin_stop_monitor(tccvin_dev_t * vdev) {
+    int retVal = 0;
+
+	if(!IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
+	    retVal = kthread_stop(vdev->v4l2.threadRecovery);
+		if(retVal != 0) {
+			log("ERROR: FAILED kthread_stop(%d) \n", retVal);
+			return -1;
+	    }
+
+		vdev->v4l2.threadRecovery = NULL;
+	}
+	return 0;
+}
+
 
 /**************************************************
  *	PUBLIC FUNCTION LIST
@@ -1361,8 +1432,8 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 
 	vdev->cif.is_handover_needed			= 0;
 
-	vdev->v4l2.pp_num						= MAX_BUFFERRS;
-	vdev->v4l2.oper_mode 					= OPER_PREVIEW;
+	vdev->v4l2.pp_num						= 0;
+	vdev->v4l2.oper_mode					= OPER_PREVIEW;
 
 	// pixel format
 	vdev->v4l2.pix_format.width				= 1920;
@@ -1373,6 +1444,10 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 
 	// preview method
 	vdev->v4l2.preview_method				= PREVIEW_V4L2;	//PREVIEW_DD;	// v4l2 buffering is default
+
+	// Initialize the incoming and outgoing buffer list.
+	INIT_LIST_HEAD(&vdev->v4l2.capture_buf_list);
+	INIT_LIST_HEAD(&vdev->v4l2.display_buf_list);
 
 	// init v4l2 resources
 	mutex_init(&vdev->v4l2.lock);
@@ -1386,6 +1461,8 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 }
 
 int tccvin_v4l2_deinit(tccvin_dev_t * vdev) {
+	int		ret = 0;
+
 	FUNCTION_IN
 
 	// deinit v4l2 resources
@@ -1398,7 +1475,7 @@ int tccvin_v4l2_deinit(tccvin_dev_t * vdev) {
 	tccvin_put_clock(vdev);
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
 
 void tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap) {
@@ -1471,27 +1548,40 @@ int tccvin_v4l2_reqbufs(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 
 	FUNCTION_IN
 
-	if(req->memory != V4L2_MEMORY_MMAP && req->memory != V4L2_MEMORY_USERPTR \
-		&& req->memory != V4L2_MEMORY_OVERLAY && req->memory != V4L2_MEMORY_DMABUF) {
+	// check if total size asked to allocate memory is enough
+
+	if(req->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		log("reqbufs: video type invalid\n");
+		return -EINVAL;
+	}
+
+	switch(req->memory) {
+	case V4L2_MEMORY_MMAP:
+		break;
+
+	case V4L2_MEMORY_USERPTR:
+		// allocate frame buffer memory
+		tccvin_allocate_buffers(vdev);
+		break;
+
+	case V4L2_MEMORY_OVERLAY:
+		break;
+
+	case V4L2_MEMORY_DMABUF:
+		break;
+
+	default:
 		printk("reqbufs: memory type invalid\n");
 		return -EINVAL;
 	}
 
-	if(req->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		printk("reqbufs: video type invalid\n");
-		return -EINVAL;
-	}
-
-	// allocate frame buffer memory
-
-	// set the buffer address
-	ret = tccvin_set_buf(vdev, req);
+	vdev->v4l2.pp_num = req->count;
 
 	FUNCTION_OUT
 	return ret;
 }
 
-int tccvin_v4l2_assign_allocated_buf(tccvin_dev_t * vdev, struct v4l2_buffer * req) {
+int tccvin_v4l2_set_buffer_address(tccvin_dev_t * vdev, struct v4l2_buffer * req) {
 	struct tccvin_buf	* buf = NULL;
 	unsigned int		y_offset = 0, uv_offset = 0;//, stride = 0;
 
@@ -1513,7 +1603,7 @@ int tccvin_v4l2_assign_allocated_buf(tccvin_dev_t * vdev, struct v4l2_buffer * r
 	vdev->cif.preview_buf_addr[req->index].u = (unsigned long)vdev->cif.preview_buf_addr[req->index].y + y_offset;
 	vdev->cif.preview_buf_addr[req->index].v = (unsigned long)vdev->cif.preview_buf_addr[req->index].u + uv_offset;
 
-	vdev->v4l2.pp_num = MAX_BUFFERRS;//(req->index + 1);
+	vdev->v4l2.pp_num = (req->index + 1);
 
 	dlog("buf[%2d] - Y: 0x%x, U: 0x%x, V: 0x%x\n", req->index, vdev->cif.preview_buf_addr[req->index].y, vdev->cif.preview_buf_addr[req->index].u, vdev->cif.preview_buf_addr[req->index].v);
 
@@ -1624,19 +1714,15 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
     int     skip = 0;
 	FUNCTION_IN
 
-	dlog("* preview_method: 0x%08x\n", * preview_method);
-
 	// update the preview method
 	vdev->v4l2.preview_method	= * preview_method;
 
+	log("preview method: %s\n", (vdev->v4l2.preview_method == PREVIEW_V4L2) ? "PREVIEW_V4L2" : "PREVIEW_DD");
+
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
-		dlog("PREVIEW_V4L2\n");
 		// init the v4l2 buffer list
 		tccvin_v4l2_init_buffer_list(vdev);
 	} else if((vdev->v4l2.preview_method & PREVIEW_METHOD_MASK) == PREVIEW_DD) {
-		dlog("PREVIEW_DD\n");
-        tccvin_set_direct_display_buffer(vdev);
-
         // If it is handover, Skip start stream function
         if((vdev->v4l2.preview_method & PREVIEW_DD_HANDOVER_MASK) == PREVIEW_DD_HANDOVER)
         skip = 1;
@@ -1660,11 +1746,10 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 			log("ERROR: Request IRQ\n");
 			return ret;
 		}
-	}
-	else if(vdev->v4l2.preview_method == PREVIEW_DD) {
-	    ret = tccvin_direct_display_start_monitor(vdev);
-        if(ret < 0) {
-            log("ERROR: FAILED direct_display_start_monitor\n");
+	} else if(vdev->v4l2.preview_method == PREVIEW_DD) {
+		ret = tccvin_start_monitor(vdev);
+		if(ret < 0) {
+			log("ERROR: FAILED start_monitor\n");
 			return ret;
 		}
 	}
@@ -1686,9 +1771,9 @@ int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int * preview_method) {
 		}
 	}
 	else if(vdev->v4l2.preview_method == PREVIEW_DD) {
-	    ret = tccvin_direct_display_stop_monitor(vdev);
-        if(ret < 0) {
-            log("ERROR: FAILED direct_display_stop_monitor\n");
+		ret = tccvin_stop_monitor(vdev);
+		if(ret < 0) {
+			log("ERROR: FAILED stop_monitor\n");
 			return ret;
 		}
 	}
@@ -1745,82 +1830,6 @@ int tccvin_v4l2_try_fmt(struct v4l2_format * fmt) {
 	return 0;
 }
 
-void test_registers(tccvin_dev_t * vdev) {
-	struct reg_test {
-		unsigned int * reg;
-		unsigned int cnt;
-	};
-
-#ifdef CONFIG_OVERLAY_PGL
-	volatile void __iomem	* pPGL			= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
-#endif//CONFIG_OVERLAY_PGL
-	volatile void __iomem	* pVIN			= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
-	volatile void __iomem	* pVIQE 		= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
-	volatile void __iomem	* pSC			= VIOC_SC_GetAddress(vdev->cif.vioc_path.scaler);
-	volatile void __iomem	* pWMIXer		= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
-	volatile void __iomem	* pWDMA 		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-
-	int i = 0;
-
-	struct reg_test regList[] = {
-		{ (unsigned int *)pVIN,			16 },
-#ifdef CONFIG_OVERLAY_PGL
-		{ (unsigned int *)pPGL,			12 },
-#endif//CONFIG_OVERLAY_PGL
-		{ (unsigned int *)pVIQE,		 4 },
-		{ (unsigned int *)pSC,			 8 },
-		{ (unsigned int *)pWMIXer,		28 },
-		{ (unsigned int *)pWDMA,		18 },
-#if 0
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_SC0 + vdev->vioc.scaler.index),  1 },
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_DEINTLS), 1 },
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_VIQE), 1 },
-#endif
-	};
-	unsigned int * addr;
-	unsigned int idxLoop, nReg, idxReg;
-
-	for(i=0; i<3; i++) {
-		printk("\n\n");
-
-		for(idxLoop=0; idxLoop<sizeof(regList)/sizeof(regList[0]); idxLoop++) {
-			addr = regList[idxLoop].reg;
-			nReg = regList[idxLoop].cnt;
-
-			for(idxReg=0; idxReg<nReg; idxReg++) {
-				if((idxReg%4) == 0)
-				printk("\n%08x: ", (unsigned int)(addr + idxReg));
-				printk("%08x ", *(addr + idxReg));
-			}
-			printk("\n");
-		}
-		printk("\n\n");
-	}
-}
-
-int tccvin_check_wdma_counter(tccvin_dev_t * vdev) {
-	volatile void __iomem	* pWDMA	= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-
-	volatile unsigned int prev_addr, curr_addr;
-	volatile int nCheck, idxCheck, delay = 20;
-
-	curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
-	msleep(delay);
-
-	nCheck = 4;
-	for(idxCheck=0; idxCheck<nCheck; idxCheck++) {
-		prev_addr = curr_addr;
-		msleep(delay);
-		curr_addr = VIOC_WDMA_Get_CAddress(pWDMA);
-
-		if(prev_addr != curr_addr)
-			return 0;
-		else
-			dlog("[%d] prev_addr: 0x%08x, curr_addr: 0x%08x\n", idxCheck, prev_addr, curr_addr);
-	}
-	return -1;
-}
-
 void tccvin_check_path_status(tccvin_dev_t * vdev, int * status) {
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
 		* status = vdev->v4l2.wakeup_int;
@@ -1828,64 +1837,4 @@ void tccvin_check_path_status(tccvin_dev_t * vdev, int * status) {
 		* status = tccvin_check_wdma_counter(vdev);
 	}
 }
-
-int tccvin_direct_display_monitor_thread(void * data) {
-	tccvin_dev_t * vdev = (tccvin_dev_t *)data;
-
-	FUNCTION_IN
-
-	while(1) {
-		msleep(500);
-
-		if(kthread_should_stop())
-			break;
-
-		if(tccvin_check_wdma_counter(vdev) == -1) {
-			log("ERROR: Recovery mode will be entered\n");
-
-			test_registers(vdev);
-
-			tccvin_stop_stream(vdev);
-
-#ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
-			videosource_close();
-
-			videosource_open();
-			videosource_if_change_mode(0);
-#endif//CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
-
-			tccvin_start_stream(vdev);
-		}
-	}
-	FUNCTION_OUT
-	return 0;
-}
-
-
-int tccvin_direct_display_start_monitor(tccvin_dev_t * vdev) {
-	vdev->v4l2.threadRecovery = kthread_run(tccvin_direct_display_monitor_thread, vdev, "threadRecovery");
-	if(IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
-		log("ERROR: FAILED kthread_run\n");
-		vdev->v4l2.threadRecovery = NULL;
-
-		return -1;
-	}
-	return 0;
-}
-
-int tccvin_direct_display_stop_monitor(tccvin_dev_t * vdev) {
-    int retVal = 0;
-
-	if(!IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
-	    retVal = kthread_stop(vdev->v4l2.threadRecovery);
-		if(retVal != 0) {
-			log("ERROR: FAILED kthread_stop(%d) \n", retVal);
-			return -1;
-	    }
-
-		vdev->v4l2.threadRecovery = NULL;
-	}
-	return 0;
-}
-
 
