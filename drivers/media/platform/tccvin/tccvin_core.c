@@ -196,6 +196,14 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		tccvin_check_path_status(vdev, (int *)arg);
 		break;
 
+	case VIDIOC_USER_GET_SENSOR_FRAMERATE:
+		dlog("VIDIOC_USER_GET_SENSOR_FRAMERATE\n");
+		break;
+
+	case VIDIOC_USER_GET_ZOOM_SUPPORT:
+		dlog("VIDIOC_USER_GET_ZOOM_SUPPORT\n");
+		break;
+
 	default:
 		log("ERROR: VIDIOC command(0x%08x) is WRONG.\n", cmd);
 		WARN_ON(1);
