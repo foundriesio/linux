@@ -116,12 +116,13 @@ static void dwc2_tcc_vbus_exit(struct dwc2_hsotg *hsotg)
     dwc2_tcc_power_ctrl(hsotg, 0);
 }
 
-#ifdef CONFIG_VBUS_CTRL_DEF_ENABLE      /* 017.08.30 */
-static unsigned int vbus_control_enable = 1;  /* 2017/03/23, */
+#ifdef CONFIG_VBUS_CTRL_DEF_ENABLE
+static unsigned int vbus_control_enable = 1;
 #else
-static unsigned int vbus_control_enable = 1;  /* 2017/03/23, */
+static unsigned int vbus_control_enable = 0;
 #endif /* CONFIG_VBUS_CTRL_DEF_ENABLE */
-
+module_param(vbus_control_enable, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(vbus_control_enable, "dwc2 vbus control enable");
 
 
 int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
