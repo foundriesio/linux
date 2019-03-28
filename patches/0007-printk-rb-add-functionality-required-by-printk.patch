@@ -63,7 +63,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		atomic_dec(&rb->ctx);
  
  		if (atomic_long_read(&rb->reserve) == res)
-@@ -486,3 +491,93 @@ int prb_iter_wait_next(struct prb_iterat
+@@ -492,3 +497,93 @@ int prb_iter_wait_next(struct prb_iterat
  
  	return ret;
  }

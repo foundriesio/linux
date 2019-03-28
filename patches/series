@@ -5,6 +5,7 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
+tty-sysrq-Convert-show_lock-to-raw_spinlock_t.patch
 
 ############################################################
 # POSTED by others
@@ -26,6 +27,7 @@ sched-fair-Robustify-CFS-bandwidth-timer-locking.patch
 # John's printk series
 # [RFC PATCH v1 00/25] printk: new implementation
 # Date: Tue, 12 Feb 2019 15:29:38 +0100
+# Plus build fixes merged
 0001-printk-rb-add-printk-ring-buffer-documentation.patch
 0002-printk-rb-add-prb-locking-functions.patch
 0003-printk-rb-define-ring-buffer-struct-and-initializer.patch
@@ -334,6 +336,9 @@ squashfs-make-use-of-local-lock-in-multi_cpu-decompr.patch
 # X86
 thermal-Defer-thermal-wakups-to-threads.patch
 
+# POWER
+powerpc-pseries-iommu-Use-a-locallock-instead-local_ir.patch
+
 # CPU get light
 epoll-use-get-cpu-light.patch
 mm-vmalloc-use-get-cpu-light.patch
@@ -410,6 +415,7 @@ crypto-cryptd-add-a-lock-instead-preempt_disable-loc.patch
 # RANDOM
 panic-disable-random-on-rt.patch
 x86-stackprot-no-random-on-rt.patch
+powerpc-stackprotector-work-around-stack-guard-init-.patch
 random-make-it-work-on-rt.patch
 random-avoid-preempt_disable-ed-section.patch
 

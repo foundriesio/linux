@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		cont_add(ctx, cpu, facility, level, lflags, text, text_len);
 @@ -2674,7 +2674,7 @@ late_initcall(init_printk_kthread);
  
- int vprintk_deferred(const char *fmt, va_list args)
+ static int vprintk_deferred(const char *fmt, va_list args)
  {
 -	return vprintk_emit(0, LOGLEVEL_SCHED, NULL, 0, fmt, args);
 +	return vprintk_emit(0, LOGLEVEL_DEFAULT, NULL, 0, fmt, args);

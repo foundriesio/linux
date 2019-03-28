@@ -10,20 +10,46 @@ NOTE: This also removes printk flushing functionality.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/hardirq.h     |    2 
- include/linux/printk.h      |   27 --
- init/main.c                 |    1 
- kernel/kexec_core.c         |    1 
- kernel/panic.c              |    3 
- kernel/printk/Makefile      |    1 
- kernel/printk/internal.h    |   30 ---
- kernel/printk/printk.c      |   13 -
- kernel/printk/printk_safe.c |  427 --------------------------------------------
- kernel/trace/trace.c        |    2 
- lib/nmi_backtrace.c         |    6 
- 11 files changed, 7 insertions(+), 506 deletions(-)
+ arch/powerpc/kernel/traps.c    |    1 
+ arch/powerpc/kernel/watchdog.c |    5 
+ include/linux/hardirq.h        |    2 
+ include/linux/printk.h         |   27 --
+ init/main.c                    |    1 
+ kernel/kexec_core.c            |    1 
+ kernel/panic.c                 |    3 
+ kernel/printk/Makefile         |    1 
+ kernel/printk/internal.h       |   30 --
+ kernel/printk/printk.c         |   13 -
+ kernel/printk/printk_safe.c    |  427 -----------------------------------------
+ kernel/trace/trace.c           |    2 
+ lib/nmi_backtrace.c            |    6 
+ 13 files changed, 7 insertions(+), 512 deletions(-)
  delete mode 100644 kernel/printk/printk_safe.c
 
+--- a/arch/powerpc/kernel/traps.c
++++ b/arch/powerpc/kernel/traps.c
+@@ -174,7 +174,6 @@ extern void panic_flush_kmsg_start(void)
+ 
+ extern void panic_flush_kmsg_end(void)
+ {
+-	printk_safe_flush_on_panic();
+ 	kmsg_dump(KMSG_DUMP_PANIC);
+ 	bust_spinlocks(0);
+ 	debug_locks_off();
+--- a/arch/powerpc/kernel/watchdog.c
++++ b/arch/powerpc/kernel/watchdog.c
+@@ -181,11 +181,6 @@ static void watchdog_smp_panic(int cpu,
+ 
+ 	wd_smp_unlock(&flags);
+ 
+-	printk_safe_flush();
+-	/*
+-	 * printk_safe_flush() seems to require another print
+-	 * before anything actually goes out to console.
+-	 */
+ 	if (sysctl_hardlockup_all_cpu_backtrace)
+ 		trigger_allbutself_cpu_backtrace();
+ 
 --- a/include/linux/hardirq.h
 +++ b/include/linux/hardirq.h
 @@ -68,7 +68,6 @@ extern void irq_exit(void);
