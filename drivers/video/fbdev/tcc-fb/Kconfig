@@ -330,8 +330,7 @@ source "drivers/char/hdmi_v2_0/Kconfig"
 
 config TCC_HDCP2_CORE_DRIVER
 	bool "TCC HDCP 2.2 Feature Enable"
-	depends on ARCH_TCC898X || ARCH_TCC899X
-	default y
+	default y if (!ARCH_TCC897X)
 	
 source "drivers/char/hdcp2_core/Kconfig"
 

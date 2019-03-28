@@ -650,6 +650,13 @@
 			status = "disabled";
 		};
 
+		reserved_dw_esm: dw_esm {
+			compatible = "dw.esm";
+			reg = <PMAP_BASE_PROT_ESM_FW PMAP_SIZE_PROT_ESM_FW>;
+			no-map;
+			status = "disabled";
+		};
+
 	};
 
 	tcc_pm {
@@ -3263,6 +3270,17 @@
 		
 		verbose = <0>; // 0 disable, 1 basic, 2 io
 		status = "okay";
+	};
+
+	hdmi_hdcp: hdmi_hdcp@12440000 {
+		compatible = "telechips,dw-hdcp";
+		reg = <0x12400000 0x20000 0x12440000 0x1000 0x163C0000 0x10>;
+		reg-names = "hdmi_link", "hdcp_2.2", "i2c_port_cfg";
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "hdmi_link", "hdcp_2.2";
+		memory-region = <&reserved_dw_esm>;
+		status = "disabled";
 	};
 
 	/*mtadc0@16053000 {

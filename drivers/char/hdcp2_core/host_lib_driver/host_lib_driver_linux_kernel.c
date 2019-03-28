@@ -43,14 +43,11 @@
 #include <linux/wakelock.h>
 #endif
 
-#define MAX_ESM_DEVICES 16
-#define	USE_RESERVED_MEMORY
-
 #if defined(CONFIG_ARCH_TCC899X) && defined(CONFIG_ANDROID)
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_DRV_VERSION "1.0.7"
+#define HDCP_DRV_VERSION "1.0.8"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -69,8 +66,9 @@
 #define DWC_HDCP22_INTSTAT	(0x790d * 4)	/* hdcp22reg_stat */
 #define DWC_HDCP22_INTMUTE	(0x790e * 4)	/* hdcp22reg_mute */
 
-static bool randomize_mem = false;
-module_param(randomize_mem, bool, 0);
+#define DWC_HPI_SIZE		128
+#define DWC_ESM_CODE_SIZE	0x30000
+
 MODULE_PARM_DESC(noverify, "Wipe memory allocations on startup (for debug)");
 
 typedef struct {
@@ -82,21 +80,13 @@ typedef struct {
 	uint8_t		hpd_status;
 	uint8_t		rxsense_status;
 
-	int allocated, initialized;
-	int code_loaded;
-
-	int code_is_phys_mem;
-	dma_addr_t code_base;
-	uint32_t code_size;
-	uint8_t *code;
-
-	int data_is_phys_mem;
-	dma_addr_t data_base;
-	uint32_t data_size;
-	uint8_t *data;
-
-	struct resource *hpi_resource;
-	uint8_t __iomem *hpi;
+	uintptr_t	hpi_paddr;
+	uintptr_t	esm_paddr;
+	uintptr_t	esm_vaddr;
+	uint32_t	esm_size;
+	uint32_t	code_size;
+	uint32_t	data_offs;
+	uint32_t	data_size;
 
 	struct hdmi_tx_dev *dev;
 	hdcpParams_t *params;
@@ -113,32 +103,9 @@ typedef struct {
 #ifdef CONFIG_ANDROID
 	struct wake_lock wakelock;
 #endif
+	bool		initialized;
+	bool		code_loaded;
 } esm_device;
-
-#ifndef OPTEE_BASE_HDCP
-static esm_device esm_devices[MAX_ESM_DEVICES];
-static struct device *g_esm_dev;
-
-#ifdef	USE_RESERVED_MEMORY
-struct esm_rev_mem {
-	dma_addr_t code_base;
-	uint32_t code_size;
-	uint8_t *code;
-	dma_addr_t data_base;
-	uint32_t data_size;
-	uint8_t *data;
-};
-
-static struct esm_rev_mem g_rev_mem;
-#endif
-#endif
-
-/**
- * @short List of the devices
- * Linked list that contains the installed devices
- */
-extern void * alloc_mem(char *info, size_t size, struct mem_alloc *allocated);
-extern void free_all_mem(void);
 
 #ifdef USE_HDMI_PWR_CTRL
 extern void hdmi_api_power_control(int enable);
@@ -179,7 +146,6 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 {
 	esm_device *esm = dev_id;
 	uint32_t hdcp = 0, hdcp22=0, hdcpcfg1;
-	int temp = 0;
 
 	if (!esm)
 		return IRQ_NONE;
@@ -226,34 +192,34 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		}
 		if (hdcp22 & (1<<1)) {
 			esm->hdcp_status = HDCP2_NOT_CAPABLE;
-			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP2_NOT_CAPABLE");
+			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP2_NOT_CAPABLE");
 		}
 		if (hdcp22 & (1<<2)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_LOST;
-			printk("%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
+			printk("%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
-					"%s:%s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
+					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
 					esm->rxsense_status);
 				esm->hdcp_status = HDCP_IDLE;
 			}
 		}
 		if (hdcp22 & (1<<3)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATED;
-			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED");
+			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED");
 		}
 		if (hdcp22 & (1<<4)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_FAIL;
-			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL");
+			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
-					"%s:%s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
+					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
 					esm->rxsense_status);
 				esm->hdcp_status = HDCP_IDLE;
 			}
 		}
 		if (hdcp22 & (1<<5)) {
-			printk(KERN_INFO "%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_DECRYPTED_CHG");
+			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_DECRYPTED_CHG");
 			esm->hdcp_status = HDCP2_DECRYPTED_CHG;
 		}
 	}
@@ -284,10 +250,10 @@ static irqreturn_t hdcp22_isr(int irq, void *dev_id)
 static long get_meminfo(esm_device *esm, void __user *arg)
 {
 	struct esm_ioc_meminfo info = {
-		.hpi_base = esm->hpi_resource->start,
-		.code_base = esm->code_base,
+		.hpi_base = (uint32_t)esm->hpi_paddr,
+		.code_base = (uint32_t)esm->esm_paddr,
 		.code_size = esm->code_size,
-		.data_base = esm->data_base,
+		.data_base = (uint32_t)esm->esm_paddr + esm->data_offs,
 		.data_size = esm->data_size,
 	};
 
@@ -311,10 +277,11 @@ static long load_code(esm_device *esm, struct esm_ioc_code __user *arg)
 	if (esm->code_loaded)
 		return -EBUSY;
 #endif
-	if (copy_from_user(esm->code, &arg->data, head.len) != 0)
+
+	if (copy_from_user((void *)esm->esm_vaddr, &arg->data, head.len) != 0)
 		return -EFAULT;
 
-	esm->code_loaded = 1;
+	esm->code_loaded = true;
 	return 0;
 }
 
@@ -331,7 +298,7 @@ static long write_data(esm_device *esm, struct esm_ioc_data __user *arg)
 	if (esm->data_size - head.len < head.offset)
 		return -ENOSPC;
 
-	if (copy_from_user(esm->data + head.offset, &arg->data, head.len) != 0)
+	if (copy_from_user((void *)(esm->esm_vaddr + esm->data_offs + head.offset), &arg->data, head.len) != 0)
 		return -EFAULT;
 
 	return 0;
@@ -350,7 +317,7 @@ static long read_data(esm_device *esm, struct esm_ioc_data __user *arg)
 	if (esm->data_size - head.len < head.offset)
 		return -ENOSPC;
 
-	if (copy_to_user(&arg->data, esm->data + head.offset, head.len) != 0)
+	if (copy_to_user(&arg->data, (void *)(esm->esm_vaddr + esm->data_offs + head.offset), head.len) != 0)
 		return -EFAULT;
 
 	return 0;
@@ -372,7 +339,7 @@ static long set_data(esm_device *esm, void __user *arg)
 	if (esm->data_size - u.data.len < u.data.offset)
 		return -ENOSPC;
 
-	memset(esm->data + u.data.offset, u.data.data[0], u.data.len);
+	memset((void *)(esm->esm_vaddr + esm->data_offs + u.data.offset), u.data.data[0], u.data.len);
 	return 0;
 }
 
@@ -384,10 +351,10 @@ static long hpi_read(esm_device *esm, void __user *arg)
 	if (copy_from_user(&reg, arg, sizeof reg) != 0)
 		return -EFAULT;
 
-	if ((reg.offset & 3) || reg.offset >= resource_size(esm->hpi_resource))
+	if ((reg.offset & 3) || reg.offset >= DWC_HPI_SIZE)
 		return -EINVAL;
 
-	reg.value = ioread32(esm->hpi + reg.offset);
+	reg.value = ioread32(esm->hdcp22 + reg.offset);
 
 	if (copy_to_user(arg, &reg, sizeof reg) != 0)
 		return -EFAULT;
@@ -403,10 +370,10 @@ static long hpi_write(esm_device *esm, void __user *arg)
 	if (copy_from_user(&reg, arg, sizeof reg) != 0)
 		return -EFAULT;
 
-	if ((reg.offset & 3) || reg.offset >= resource_size(esm->hpi_resource))
+	if ((reg.offset & 3) || reg.offset >= DWC_HPI_SIZE)
 		return -EINVAL;
 
-	iowrite32(reg.value, esm->hpi + reg.offset);
+	iowrite32(reg.value, esm->hdcp22 + reg.offset);
 	return 0;
 }
 
@@ -574,179 +541,43 @@ static long hdcpBlank(esm_device *esm, void __user *arg)
 }
 #endif
 
-#ifndef OPTEE_BASE_HDCP
-static esm_device *alloc_esm_slot(const struct esm_ioc_meminfo *info)
-{
-	int i;
-
-	/* Check if we have a matching device (same HPI base) */
-	for (i = 0; i < MAX_ESM_DEVICES; i++) {
-		esm_device *slot = &esm_devices[i];
-		#ifndef OPTEE_BASE_HDCP
-		if (slot->allocated && info->hpi_base == slot->hpi_resource->start)
-			return slot;
-		#else
-		if (slot->allocated)
-			return slot;
-		#endif
-	}
-
-	/* Find unused slot */
-	for (i = 0; i < MAX_ESM_DEVICES; i++) {
-		esm_device *slot = &esm_devices[i];
-		if (!slot->allocated) {
-			slot->allocated = 1;
-			return slot;
-		}
-	}
-
-	return NULL;
-}
-
-static void free_dma_areas(esm_device *esm)
-{
-	if (!esm->code_is_phys_mem && esm->code) {
-		dma_free_coherent(NULL, esm->code_size, esm->code, esm->code_base);
-		esm->code = NULL;
-	}
-
-	if (!esm->data_is_phys_mem && esm->data) {
-		dma_free_coherent(NULL, esm->data_size, esm->data, esm->data_base);
-		esm->data = NULL;
-	}
-}
-
-static int alloc_dma_areas(esm_device *esm, const struct esm_ioc_meminfo *info)
-{
-	esm->code_size = info->code_size;
-	esm->code_is_phys_mem = (info->code_base != 0);
-
-	if (esm->code_is_phys_mem) {
-		/* TODO: support highmem */
-		esm->code_base = info->code_base;
-		esm->code = phys_to_virt(esm->code_base);
-	} else {
-#ifdef	USE_RESERVED_MEMORY
-		if(esm->code_size > g_rev_mem.code_size) {
-			printk(KERN_ERR " %s - no code memory : %d : %d !!!\n", __func__, esm->code_size, g_rev_mem.code_size);
-			return -ENOMEM;
-		}
-		esm->code = g_rev_mem.code;
-		esm->code_base = g_rev_mem.code_base;
-#else
-		esm->code = dma_alloc_coherent(NULL, esm->code_size, &esm->code_base, GFP_KERNEL);
-		if (!esm->code) {
-			return -ENOMEM;
-		}
-#endif
-	}
-
-	esm->data_size = info->data_size;
-	esm->data_is_phys_mem = (info->data_base != 0);
-
-	if (esm->data_is_phys_mem) {
-		esm->data_base = info->data_base;
-		esm->data = phys_to_virt(esm->data_base);
-	} else {
-#ifdef	USE_RESERVED_MEMORY
-		if(esm->data_size > g_rev_mem.data_size) {
-			printk(KERN_ERR " %s - no data memory : %d : %d !!!\n", __func__, esm->data_size, g_rev_mem.data_size);
-			return -ENOMEM;
-		}
-		esm->data = g_rev_mem.data;
-		esm->data_base = g_rev_mem.data_base;
-#else
-		esm->data = dma_alloc_coherent(NULL, esm->data_size, &esm->data_base, GFP_KERNEL);
-		if (!esm->data) {
-			free_dma_areas(esm);
-			return -ENOMEM;
-		}
-#endif
-	}
-
-	if (randomize_mem) {
-		prandom_bytes(esm->code, esm->code_size);
-		prandom_bytes(esm->data, esm->data_size);
-	}
-
-	return 0;
-}
-#endif
-
 /* ESM_IOC_INIT implementation */
-static long init(struct file *f, void __user *arg)
+static long init(esm_device *esm, void __user *arg)
 {
-#ifndef OPTEE_BASE_HDCP
-	struct resource *hpi_mem;
-	int rc;
-#endif
 	struct esm_ioc_meminfo info;
-	esm_device *esm;
+
+	if (!esm)
+		return -EMFILE;
 
 	if (copy_from_user(&info, arg, sizeof info) != 0)
 		return -EFAULT;
 
-#ifndef OPTEE_BASE_HDCP
-	esm = alloc_esm_slot(&info);
-#else
-	esm = f->private_data;
-#endif
-	if (!esm)
-		return -EMFILE;
 
 	if (!esm->initialized) {
 #ifndef OPTEE_BASE_HDCP
-		rc = alloc_dma_areas(esm, &info);
-		if (rc < 0)
-			goto err_free;
+		if (!esm->esm_vaddr && !esm->esm_size)
+			return -ENOMEM;
 
-		hpi_mem = request_mem_region(info.hpi_base, 128, "esm-hpi");
-		if (!hpi_mem) {
-			rc = -EADDRNOTAVAIL;
+		esm->code_size = (info.code_size < DWC_ESM_CODE_SIZE) ? DWC_ESM_CODE_SIZE : info.code_size;
+		esm->data_offs = (info.code_size + 0xFFF) & ~0xFFF;
+		esm->data_size = info.data_size ? info.data_size : esm->esm_size - esm->code_size;
+		if (esm->esm_size < (esm->data_offs+info.data_size))
 			goto err_free;
-		}
-
-		esm->hpi = ioremap_nocache(hpi_mem->start, resource_size(hpi_mem));
-		if (!esm->hpi) {
-			rc = -ENOMEM;
-			goto err_release_region;
-		}
-		esm->hpi_resource = hpi_mem;
 #endif
-		esm->initialized = 1;
+		esm->initialized = true;
 	}
-
-	f->private_data = esm;
 
 	return 0;
 
 #ifndef OPTEE_BASE_HDCP
-err_release_region:
-	release_resource(hpi_mem);
 err_free:
-	free_dma_areas(esm);
-	esm->initialized = 0;
-	esm->allocated = 0;
+	esm->initialized = false;
+	esm->code_size = 0;
+	esm->data_offs = 0;
+	esm->data_size = 0;
 
-	return rc;
+	return -ENOMEM;
 #endif
-}
-
-static void free_esm_slot(esm_device *slot)
-{
-	if (!slot->allocated)
-		return;
-
-#ifndef OPTEE_BASE_HDCP
-	if (slot->initialized) {
-		iounmap(slot->hpi);
-		release_resource(slot->hpi_resource);
-		free_dma_areas(slot);
-	}
-#endif
-
-	slot->initialized = 0;
-	slot->allocated = 0;
 }
 
 static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
@@ -754,47 +585,82 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	struct miscdevice *dev = (struct miscdevice *)f->private_data;
 	esm_device *esm = dev_get_drvdata(dev->parent);
 	void __user *data = (void __user *)arg;
+	char cmd_name[30];
+	long ret;
 
-	if (cmd == ESM_IOC_INIT) {
-		return init(f, data);
-	} else if (!esm) {
+	if (!esm)
 		return -EAGAIN;
-	}
 
 	switch (cmd) {
 	case ESM_IOC_INIT:
-		return init(f, data);
+		sprintf(cmd_name, "ESM_IOC_INIT");
+		ret = init(esm, data);
+		break;
 	case ESM_IOC_MEMINFO:
-		return get_meminfo(esm, data);
+		sprintf(cmd_name, "ESM_IOC_MEMINFO");
+		ret = get_meminfo(esm, data);
+		break;
 	case ESM_IOC_READ_HPI:
-		return hpi_read(esm, data);
+		sprintf(cmd_name, "ESM_IOC_READ_HPI");
+		ret = hpi_read(esm, data);
+		break;
 	case ESM_IOC_WRITE_HPI:
-		return hpi_write(esm, data);
+		sprintf(cmd_name, "ESM_IOC_WRITE_HPI");
+		ret = hpi_write(esm, data);
+		break;
 	case ESM_IOC_LOAD_CODE:
-		return load_code(esm, data);
+		sprintf(cmd_name, "ESM_IOC_LOAD_CODE");
+		ret = load_code(esm, data);
+		break;
 	case ESM_IOC_WRITE_DATA:
-		return write_data(esm, data);
+		sprintf(cmd_name, "ESM_IOC_WRITE_DATA");
+		ret = write_data(esm, data);
+		break;
 	case ESM_IOC_READ_DATA:
-		return read_data(esm, data);
+		sprintf(cmd_name, "ESM_IOC_READ_DATA");
+		ret = read_data(esm, data);
+		break;
 	case ESM_IOC_MEMSET_DATA:
-		return set_data(esm, data);
+		sprintf(cmd_name, "ESM_IOC_MEMSET_DATA");
+		ret = set_data(esm, data);
+		break;
 	case HDCP1_INIT:
-		return hdcp1Initialize(esm, data);
+		sprintf(cmd_name, "HDCP1_INIT");
+		ret = hdcp1Initialize(esm, data);
+		break;
 	case HDCP1_START:
-		return hdcp1Start(esm, data);
+		sprintf(cmd_name, "HDCP1_START");
+		ret = hdcp1Start(esm, data);
+		break;
 	case HDCP1_STOP:
-		return hdcp1Stop(esm, data);
+		sprintf(cmd_name, "HDCP1_STOP");
+		ret = hdcp1Stop(esm, data);
+		break;
 	case HDCP_GET_STATUS:
-		return hdcpGetStatus(esm, data);
+		sprintf(cmd_name, "HDCP_GET_STATUS");
+		ret = hdcpGetStatus(esm, data);
+		break;
 	case HDCP2_INIT:
-		return hdcp2Initialize(esm, data);
+		sprintf(cmd_name, "HDCP2_INIT");
+		ret = hdcp2Initialize(esm, data);
+		break;
 	case HDCP2_STOP:
-		return hdcp2Stop(esm, data);
+		sprintf(cmd_name, "HDCP2_STOP");
+		ret = hdcp2Stop(esm, data);
+		break;
 	case HDCP_IOC_BLANK:
-		return hdcpBlank(esm, data);
+		sprintf(cmd_name, "HDCP_IOC_BLANK");
+		ret = hdcpBlank(esm, data);
+		break;
+	default:
+		sprintf(cmd_name, "bad cmd");
+		ret = -ENOTTY;
 	}
 
-	return -ENOTTY;
+	if (ret)
+		printk("\x1b[1;33m cmd:0x%x(%s): ret:%ld \x1b[0m\n", cmd, cmd_name, ret);
+
+	return ret;
 }
 
 static int
@@ -914,31 +780,6 @@ int tcc_hdcp_misc_register(esm_device *dev)
 			printk(KERN_ERR " %s - failed to register !!!\n", __func__);
 			return ret;
 		}
-		g_esm_dev = dev->misc->this_device;
-		of_dma_configure(g_esm_dev, NULL);
-		_dev_info(g_esm_dev, "registered.\n");
-
-#ifdef USE_RESERVED_MEMORY
-		g_rev_mem.code_size = 0x30000;
-		g_rev_mem.data_size = 0x20000;
-		g_rev_mem.code =
-		dma_alloc_coherent(g_esm_dev, g_rev_mem.code_size, &g_rev_mem.code_base, GFP_KERNEL);
-		if (!g_rev_mem.code) {
-			printk(
-				KERN_ERR " %s[%d] - no code memory : %d !!!\n", __func__, __LINE__,
-				g_rev_mem.code_size);
-			return -ENOMEM;
-		}
-
-		g_rev_mem.data =
-			dma_alloc_coherent(g_esm_dev, g_rev_mem.data_size, &g_rev_mem.data_base, GFP_KERNEL);
-		if (!g_rev_mem.data) {
-			printk(
-				KERN_ERR " %s[%d] - no data memory : %d !!!\n", __func__, __LINE__,
-				g_rev_mem.data_size);
-			return -ENOMEM;
-		}
-#endif
 #endif
 	}
 
@@ -962,18 +803,6 @@ end_process:
 int tcc_hdcp_misc_deregister(esm_device *dev)
 {
 	if(dev->misc) {
-#ifndef OPTEE_BASE_HDCP
-#ifdef	USE_RESERVED_MEMORY
-		if (!g_rev_mem.code) {
-			dma_free_coherent(g_esm_dev, g_rev_mem.code_size, g_rev_mem.code, g_rev_mem.code_base);
-			g_rev_mem.code = NULL;
-		}
-		if (!g_rev_mem.data) {
-			dma_free_coherent(g_esm_dev, g_rev_mem.data_size, g_rev_mem.data, g_rev_mem.data_base);
-			g_rev_mem.data = NULL;
-		}
-#endif
-#endif
 		misc_deregister(dev->misc);
 		kfree(dev->misc);
 		dev->misc = 0;
@@ -985,16 +814,48 @@ int tcc_hdcp_misc_deregister(esm_device *dev)
 static int hdcp_probe(struct platform_device *pdev)
 {
 	esm_device *esm = NULL;
-	int irq, ret = 0;
+	struct device_node *mem_region;
+	struct resource res;
+	int ret = 0;
 
-	esm = kzalloc(sizeof(esm_device), GFP_KERNEL);
-	if(!esm) {
-		dev_err(&pdev->dev, "%s:Could not allocated hdcp device driver\n", __func__);
+	mem_region = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (!mem_region) {
+		dev_err(&pdev->dev, "no memory regions\n");
 		return -ENOMEM;
+	} else {
+		ret = of_address_to_resource(mem_region, 0, &res);
+		of_node_put(mem_region);
+		if (ret || resource_size(&res) == 0) {
+			dev_err(&pdev->dev, "failed to obtain protected buffer. (res = %d)\n", ret);
+		} else {
+			esm = kzalloc(sizeof(esm_device), GFP_KERNEL);
+			if(!esm) {
+				dev_err(&pdev->dev, "%s:Could not allocated hdcp device driver\n", __func__);
+				return -ENOMEM;
+			}
+			esm->esm_paddr = res.start;
+			esm->esm_size = resource_size(&res);
+			dev_info(&pdev->dev, "esm: paddr:0x%08x, size:0x%08x\n", esm->esm_paddr, esm->esm_size);
+			esm->esm_vaddr = (uintptr_t)ioremap(esm->esm_paddr, esm->esm_size);
+			if (!esm->esm_vaddr) {
+				dev_err(&pdev->dev, "error ioremap protected buffer\n");
+				kfree(esm);
+				esm = NULL;
+				return -ENOMEM;
+			}
+		}
+	}
+
+	if (of_address_to_resource(pdev->dev.of_node, 1, &res)) {
+		esm->hdcp22 = 0;
+		esm->hpi_paddr = 0;
+	}
+	else {
+		esm->hpi_paddr = res.start;
+		esm->hdcp22 = ioremap(res.start, resource_size(&res));
 	}
 
 	esm->link = of_iomap(pdev->dev.of_node, 0);
-	esm->hdcp22 = of_iomap(pdev->dev.of_node, 1);
 	esm->i2c = of_iomap(pdev->dev.of_node, 2);
 
 	// Update the device node
@@ -1025,27 +886,23 @@ static int hdcp_remove(struct platform_device *pdev)
 
 	if (esm) {
 		tcc_hdcp_misc_deregister(esm);
+		if (esm->esm_vaddr)
+			iounmap((void *)esm->esm_vaddr);
 		kfree(esm);
 	}
-
-#ifndef OPTEE_BASE_HDCP
-	for (i = 0; i < MAX_ESM_DEVICES; i++) {
-		free_esm_slot(&esm_devices[i]);
-	}
-#endif
 
 	return 0;
 }
 
 static int hdcp_suspend(struct platform_device *pdev)
 {
-	esm_device *esm = platform_get_drvdata(pdev);
+	//esm_device *esm = platform_get_drvdata(pdev);
 	return 0;
 }
 
 static int hdcp_resume(struct platform_device *pdev)
 {
-	esm_device *esm= platform_get_drvdata(pdev);
+	//esm_device *esm= platform_get_drvdata(pdev);
 	return 0;
 }
 

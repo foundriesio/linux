@@ -648,9 +648,8 @@
 			//status = "disabled";
 		};
 
-		reserved_prot_esm: prot_esm {
-			compatible = "telechips,pmap";
-			//telechips,pmap-name = "prot_esm";
+		reserved_dw_esm: dw_esm {
+			compatible = "dw.esm";
 			reg = <PMAP_BASE_PROT_ESM_FW PMAP_SIZE_PROT_ESM_FW>;
 			no-map;
 		};
@@ -2577,6 +2576,7 @@
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "hdmi_link", "hdcp_2.2";
+		memory-region = <&reserved_dw_esm>;
 	};
 
 	/* eMMC Boot */
