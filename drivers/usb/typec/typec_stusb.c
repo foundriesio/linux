@@ -149,6 +149,7 @@ struct stusb {
 	struct regulator	*vdd_supply;
 	struct regulator	*vsys_supply;
 	struct regulator	*vconn_supply;
+	struct regulator	*main_supply;
 
 	struct typec_port	*port;
 	struct typec_capability capability;
@@ -156,6 +157,7 @@ struct stusb {
 
 	enum typec_port_type	port_type;
 	enum typec_pwr_opmode	pwr_opmode;
+	bool			vbus_on;
 };
 
 static bool stusb_reg_writeable(struct device *dev, unsigned int reg)
@@ -322,14 +324,28 @@ static enum typec_role stusb_get_vconn_role(u32 status)
 static int stusb_attach(struct stusb *chip, u32 status)
 {
 	struct typec_partner_desc desc;
+	int ret;
+
+	if ((STUSB_CC_POWER_ROLE(status) == TYPEC_SOURCE) &&
+	    chip->vdd_supply) {
+		ret = regulator_enable(chip->vdd_supply);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to enable Vbus supply: %d\n", ret);
+			return ret;
+		}
+		chip->vbus_on = true;
+	}
 
 	desc.usb_pd = false;
 	desc.accessory = stusb_get_accessory(status);
 	desc.identity = NULL;
 
 	chip->partner = typec_register_partner(chip->port, &desc);
-	if (IS_ERR(chip->partner))
-		return PTR_ERR(chip->partner);
+	if (IS_ERR(chip->partner)) {
+		ret = PTR_ERR(chip->partner);
+		goto vbus_disable;
+	}
 
 	typec_set_pwr_role(chip->port, STUSB_CC_POWER_ROLE(status));
 	typec_set_pwr_opmode(chip->port, stusb_get_pwr_opmode(chip));
@@ -337,6 +353,14 @@ static int stusb_attach(struct stusb *chip, u32 status)
 	typec_set_data_role(chip->port, STUSB_CC_DATA_ROLE(status));
 
 	return 0;
+
+vbus_disable:
+	if (chip->vbus_on) {
+		regulator_disable(chip->vdd_supply);
+		chip->vbus_on = false;
+	}
+
+	return ret;
 }
 
 static void stusb_detach(struct stusb *chip, u32 status)
@@ -348,6 +372,11 @@ static void stusb_detach(struct stusb *chip, u32 status)
 	typec_set_pwr_opmode(chip->port, TYPEC_PWR_MODE_USB);
 	typec_set_vconn_role(chip->port, stusb_get_vconn_role(status));
 	typec_set_data_role(chip->port, STUSB_CC_DATA_ROLE(status));
+
+	if (chip->vbus_on) {
+		regulator_disable(chip->vdd_supply);
+		chip->vbus_on = false;
+	}
 }
 
 static irqreturn_t stusb_irq_handler(int irq, void *data)
@@ -615,54 +644,61 @@ static int stusb_probe(struct i2c_client *client,
 
 	chip->dev = &client->dev;
 
+	chip->vsys_supply = devm_regulator_get_optional(chip->dev, "vsys");
+	if (IS_ERR(chip->vsys_supply)) {
+		ret = PTR_ERR(chip->vsys_supply);
+		if (ret != -ENODEV)
+			return ret;
+		chip->vsys_supply = NULL;
+	}
+
 	chip->vdd_supply = devm_regulator_get_optional(chip->dev, "vdd");
 	if (IS_ERR(chip->vdd_supply)) {
 		ret = PTR_ERR(chip->vdd_supply);
 		if (ret != -ENODEV)
 			return ret;
 		chip->vdd_supply = NULL;
-	} else {
-		ret = regulator_enable(chip->vdd_supply);
-		if (ret) {
-			dev_err(chip->dev,
-				"Failed to enable vdd supply: %d\n", ret);
-			return ret;
-		}
-	}
-
-	chip->vsys_supply = devm_regulator_get_optional(chip->dev, "vsys");
-	if (IS_ERR(chip->vsys_supply)) {
-		ret = PTR_ERR(chip->vsys_supply);
-		if (ret != -ENODEV)
-			goto vdd_reg_disable;
-		chip->vsys_supply = NULL;
-	} else {
-		ret = regulator_enable(chip->vsys_supply);
-		if (ret) {
-			dev_err(chip->dev,
-				"Failed to enable vsys supply: %d\n", ret);
-			goto vdd_reg_disable;
-		}
 	}
 
 	chip->vconn_supply = devm_regulator_get_optional(chip->dev, "vconn");
 	if (IS_ERR(chip->vconn_supply)) {
 		ret = PTR_ERR(chip->vconn_supply);
 		if (ret != -ENODEV)
-			goto vsys_reg_disable;
+			return ret;
 		chip->vconn_supply = NULL;
+	}
+
+	/*
+	 * When both VDD and VSYS power supplies are present, the low power
+	 * supply VSYS is selected when VSYS voltage is above 3.1 V.
+	 * Otherwise VDD is selected.
+	 */
+	if (chip->vdd_supply &&
+	    (!chip->vsys_supply ||
+	     (regulator_get_voltage(chip->vsys_supply) <= 3100000)))
+		chip->main_supply = chip->vdd_supply;
+	else
+		chip->main_supply = chip->vsys_supply;
+
+	if (chip->main_supply) {
+		ret = regulator_enable(chip->main_supply);
+		if (ret) {
+			dev_err(chip->dev,
+				"Failed to enable main supply: %d\n", ret);
+			return ret;
+		}
 	}
 
 	ret = stusb_get_caps(chip, &try_role);
 	if (ret) {
-		dev_err(chip->dev, "failed to get port caps: %d\n", ret);
-		goto vsys_reg_disable;
+		dev_err(chip->dev, "Failed to get port caps: %d\n", ret);
+		goto main_reg_disable;
 	}
 
 	ret = stusb_init(chip);
 	if (ret) {
-		dev_err(chip->dev, "failed to init port: %d\n", ret);
-		goto vsys_reg_disable;
+		dev_err(chip->dev, "Failed to init port: %d\n", ret);
+		goto main_reg_disable;
 	}
 
 	chip->port = typec_register_port(chip->dev, &chip->capability);
@@ -681,6 +717,23 @@ static int stusb_probe(struct i2c_client *client,
 		ret = stusb_irq_init(chip, client->irq);
 		if (ret)
 			goto port_unregister;
+	} else {
+		/*
+		 * If Source or Dual power role, need to enable VDD supply
+		 * providing Vbus if present. In case of interrupt support,
+		 * VDD supply will be dynamically managed upon attach/detach
+		 * interrupt.
+		 */
+		if ((chip->port_type != TYPEC_PORT_SNK) && chip->vdd_supply) {
+			ret = regulator_enable(chip->vdd_supply);
+			if (ret) {
+				dev_err(chip->dev,
+					"Failed to enable VDD supply: %d\n",
+					ret);
+				goto port_unregister;
+			}
+			chip->vbus_on = true;
+		}
 	}
 
 	dev_info(chip->dev, "STUSB driver registered\n");
@@ -692,12 +745,9 @@ port_unregister:
 all_reg_disable:
 	if (stusb_get_vconn(chip))
 		stusb_set_vconn(chip, false);
-vsys_reg_disable:
-	if (chip->vsys_supply)
-		regulator_disable(chip->vsys_supply);
-vdd_reg_disable:
-	if (chip->vdd_supply)
-		regulator_disable(chip->vdd_supply);
+main_reg_disable:
+	if (chip->main_supply)
+		regulator_disable(chip->main_supply);
 
 	return ret;
 }
@@ -711,16 +761,16 @@ static int stusb_remove(struct i2c_client *client)
 		chip->partner = NULL;
 	}
 
+	if (chip->vbus_on)
+		regulator_disable(chip->vdd_supply);
+
 	typec_unregister_port(chip->port);
 
 	if (stusb_get_vconn(chip))
 		stusb_set_vconn(chip, false);
 
-	if (chip->vdd_supply)
-		regulator_disable(chip->vdd_supply);
-
-	if (chip->vsys_supply)
-		regulator_disable(chip->vsys_supply);
+	if (chip->main_supply)
+		regulator_disable(chip->main_supply);
 
 	return 0;
 }
