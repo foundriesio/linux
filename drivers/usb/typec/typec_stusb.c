@@ -243,7 +243,7 @@ static bool stusb_get_vconn(struct stusb *chip)
 		return false;
 	}
 
-	return !!FIELD_GET(STUSB_CC_VCONN_SUPPLY_EN, val);;
+	return !!FIELD_GET(STUSB_CC_VCONN_SUPPLY_EN, val);
 }
 
 static int stusb_set_vconn(struct stusb *chip, bool on)
@@ -679,7 +679,6 @@ static int stusb_probe(struct i2c_client *client,
 
 	if (client->irq) {
 		ret = stusb_irq_init(chip, client->irq);
-
 		if (ret)
 			goto port_unregister;
 	}
@@ -733,15 +732,15 @@ static int stusb_resume(struct device *dev)
 	u32 status;
 	int ret;
 
-	/* Check if attach/detach occured during low power */
+	/* Check if attach/detach occurred during low power */
 	ret = regmap_read(chip->regmap, STUSB_CC_CONNECTION_STATUS, &status);
 	if (ret)
 		return ret;
 
-	if((chip->partner) && !(status & STUSB_CC_ATTACH))
+	if (chip->partner && !(status & STUSB_CC_ATTACH))
 		stusb_detach(chip, status);
 
-	if((!chip->partner) && (status & STUSB_CC_ATTACH)) {
+	if (!chip->partner && (status & STUSB_CC_ATTACH)) {
 		ret = stusb_attach(chip, status);
 		if (ret)
 			dev_err(chip->dev, "attach failed: %d\n", ret);
