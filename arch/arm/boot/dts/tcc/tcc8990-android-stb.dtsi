@@ -685,7 +685,7 @@
 	rxclk-i-inv = <1>;
 	rxclk-i-dly_mpw2_sk = <29>;
 	rxclk-i-inv_mpw2_sk = <0>;
-	rxclk-i-dly_cs = <8>;
+	rxclk-i-dly_cs = <18>;
 	rxclk-i-inv_cs = <0>;
 	rxclk-i-dly_es = <19>;
 	rxclk-i-inv_es = <0>;
