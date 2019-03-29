@@ -25,4 +25,6 @@ Suite 330, Boston, MA 02111-1307 USA
 #define VIDIOC_USER_INT_CHECK						_IOWR ('V', BASE_VIDIOC_PRIVATE+4, int) // 20131018 swhwang, for check video frame interrupt
 #define VIDIOC_USER_AUDIO_SR_CHECK					_IOWR ('V', BASE_VIDIOC_PRIVATE+5, int) //for hdmi in sound sample rate
 #define VIDIOC_USER_AUDIO_TYPE_CHECK					_IOWR ('V', BASE_VIDIOC_PRIVATE+6, int) //for hdmi in audio type
-#define VIDIOC_USER_AUDIO_OUTPUT_CHECK				_IOWR ('V', BASE_VIDIOC_PRIVATE+7, int) 
+#define VIDIOC_USER_AUDIO_OUTPUT_CHECK				_IOWR ('V', BASE_VIDIOC_PRIVATE+7, int)
+#define VIDIOC_USER_PROC_AUTOFOCUS				_IOWR ('V', BASE_VIDIOC_PRIVATE+8, int)
+#define VIDIOC_USER_JPEG_CAPTURE				_IOWR ('V', BASE_VIDIOC_PRIVATE+9, int)
