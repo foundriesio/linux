@@ -276,8 +276,15 @@ static unsigned long pfn_end(struct dev_pagemap *pgmap)
 	return (res->start + resource_size(res)) >> PAGE_SHIFT;
 }
 
+static unsigned long pfn_next(unsigned long pfn)
+{
+	if (pfn % 1024 == 0)
+		cond_resched();
+	return pfn + 1;
+}
+
 #define for_each_device_pfn(pfn, map) \
-	for (pfn = pfn_first(map); pfn < pfn_end(map); pfn++)
+	for (pfn = pfn_first(map); pfn < pfn_end(map); pfn = pfn_next(pfn))
 
 static void devm_memremap_pages_release(void *data)
 {
@@ -340,7 +347,7 @@ void *devm_memremap_pages(struct device *dev, struct dev_pagemap *pgmap)
 			&pgmap->altmap : NULL;
 	unsigned long pfn, pgoff, order;
 	pgprot_t pgprot = PAGE_KERNEL;
-	int error, nid, is_ram, i = 0;
+	int error, nid, is_ram;
 	struct resource *res = &pgmap->res;
 
 	align_start = res->start & ~(SECTION_SIZE - 1);
@@ -410,8 +417,6 @@ void *devm_memremap_pages(struct device *dev, struct dev_pagemap *pgmap)
 		list_del(&page->lru);
 		page->pgmap = pgmap;
 		percpu_ref_get(pgmap->ref);
-		if (!(++i % 1024))
-			cond_resched();
 	}
 
 	devm_add_action(dev, devm_memremap_pages_release, pgmap);
