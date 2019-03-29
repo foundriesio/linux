@@ -259,8 +259,13 @@
 	compatible = "telechips,tcc89xx-hwdmx-tsif";
 	tsif-port = <1>;
 	pinctrl-names = "idle", "active";
+
+	/* Uncomment below two if parallel is used */
 	pinctrl-0 = <&tsrx1_idle>;
+	// pinctrl-0 = <&tsrx1_idle_parallel>;
 	pinctrl-1 = <&tsrx1_active>;
+	// pinctrl-1 = <&tsrx1_active_parallel>;
+
 	clocks = <&clk_peri PERI_TSRX1>;
 	clock-names = "tsrx1";
 	status = "okay";

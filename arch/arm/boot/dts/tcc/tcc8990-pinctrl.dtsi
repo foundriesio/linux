@@ -298,6 +298,17 @@
 		telechips,pin-function = <2>;
 		telechips,input-enable;
 	};
+	tsrx1_idle_parallel: tsrx1_idle_parallel {
+		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3", "gpe-4", "gpe-5", "gpe-6", "gpe-7", "gpe-8", "gpe-9", "gpe-10";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	tsrx1_active_parallel: tsrx1_active_parallel {
+		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3", "gpe-4", "gpe-5", "gpe-6", "gpe-7", "gpe-8", "gpe-9", "gpe-10";
+		telechips,pin-function = <2>;
+		telechips,input-enable;
+	};
 
 	tsrx2_idle: tsrx2_idle {
 		telechips,pins = "gpe-16", "gpe-17", "gpe-18", "gpe-19";
