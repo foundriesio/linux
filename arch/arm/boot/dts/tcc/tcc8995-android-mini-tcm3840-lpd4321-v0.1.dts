@@ -20,19 +20,19 @@
                 opp-microvolt = <800000>;
                 clock-latency-ns = <300000>;
         };
-
+/*
         opp1 {
-                opp-hz = /bits/ 64 <900000000>;
+                opp-hz = /bits/ 64 <890000000>;
                 opp-microvolt = <800000>;
                 clock-latency-ns = <300000>;
         };
 
         opp2 {
-                opp-hz = /bits/ 64 <900000000>;
+                opp-hz = /bits/ 64 <880000000>;
                 opp-microvolt = <800000>;
                 clock-latency-ns = <300000>;
         };
-
+*/
 };
 
 /* CPU Power Control */
@@ -212,12 +212,14 @@
 	opp-hz = /bits/ 64 <400000000>;
 	opp-core-mask = /bits/ 64 <0x3>;
     };
+/*
     opp@592000000 {
-        opp-hz = /bits/ 64 <400000000>;
+        opp-hz = /bits/ 64 <390000000>;
         opp-core-mask = /bits/ 64 <0x3>;
     };
     opp@666000000 {
-        opp-hz = /bits/ 64 <400000000>;
+        opp-hz = /bits/ 64 <380000000>;
         opp-core-mask = /bits/ 64 <0x3>;
     };
+*/
 };
