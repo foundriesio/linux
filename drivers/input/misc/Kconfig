@@ -270,6 +270,10 @@ config CS_2000_IR_X_CANVAS
 	bool "CS2000 X Canvas"
     help 
 
+config UEI_RCU
+	bool "UEI Remote"
+    help 
+
 config VERIZON
 	bool "Verizon Remote"
 	help

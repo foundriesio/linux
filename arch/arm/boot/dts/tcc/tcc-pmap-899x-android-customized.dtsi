@@ -62,8 +62,13 @@
 //#define SUPPORT_ROTATION  // Enable in case supporting the display-device or video-contents rotation (90/180/270) // have to have rotation h/w block
 
 //***************************** DISPLAY ******************************/
+#if defined(CONFIG_LCD_HDMI4K)
+#define PRIMARY_FRAMEBUFFER_WIDTH               3840
+#define PRIMARY_FRAMEBUFFER_HEIGHT              2160
+#else
 #define PRIMARY_FRAMEBUFFER_WIDTH               1920
 #define PRIMARY_FRAMEBUFFER_HEIGHT              1080
+#endif
 #define SECONDARY_FRAMEBUFFER_WIDTH             0
 #define SECONDARY_FRAMEBUFFER_HEIGHT            0
 #define TERTIARY_FRAMEBUFFER_WIDTH              0
