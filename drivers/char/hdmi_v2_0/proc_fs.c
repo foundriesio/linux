@@ -641,6 +641,104 @@ ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t 
 #endif
 
 
+#if defined(CONFIG_TCC_AUDIO_CHANNEL_MUX)
+ssize_t proc_write_audio_channel_mux(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
+        ssize_t size;
+        unsigned int i2s_channel_mux, spdif_input_port, spdif_channel_mux;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+
+        char *audio_channel_mux_buff = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+
+        do {
+                pr_info("audio_channel_mux_buff=0x%x\r\n", audio_channel_mux_buff);
+                if (audio_channel_mux_buff == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+                size = simple_write_to_buffer(audio_channel_mux_buff, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                audio_channel_mux_buff[cnt] = '\0';
+                pr_info("audio_channel_mux_buff=[%s]\r\n", audio_channel_mux_buff);
+
+                sscanf(audio_channel_mux_buff, "%u,%u,%u", &i2s_channel_mux, &spdif_input_port, &spdif_channel_mux);
+                devm_kfree(dev->parent_dev, audio_channel_mux_buff);
+
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+
+                                pr_info("i2s_channel_mux(%d) spdif_input_port(%d) spdif_channel_mux(%d)\r\n", i2s_channel_mux, spdif_input_port, spdif_channel_mux);
+                                if(dev->hdmi_audio_if_sel_ofst != 0xff) {
+                                        if(i2s_channel_mux > 2)
+                                                i2s_channel_mux = 2;
+                                        iowrite32(i2s_channel_mux, (void*)(dev->io_bus + dev->hdmi_audio_if_sel_ofst));
+                                }
+
+                                if(dev->hdmi_rx_tx_chmux != 0xff) {
+                                        if(spdif_input_port > 3)
+                                                spdif_input_port = 3;
+                                        if(spdif_channel_mux > 6)
+                                                spdif_channel_mux = 6;
+                                        iowrite32((1 << spdif_channel_mux) << (spdif_input_port*8), (void*)(dev->io_bus + dev->hdmi_rx_tx_chmux));
+                                }
+                        }
+                }
+        }
+        while(0);
+
+        return size;
+}
+
+ssize_t proc_read_audio_channel_mux(struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
+{
+        int i, j;
+        ssize_t size = -EINVAL;
+        unsigned int i2s_channel_mux = 0, spdif_input_port = 0, spdif_channel_mux = 0;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+        char *audio_channel_mux_buff = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
+        if(audio_channel_mux_buff != NULL) {
+                if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                                if(dev->hdmi_audio_if_sel_ofst != 0xff) {
+                                        i2s_channel_mux = ioread32((void*)(dev->io_bus + dev->hdmi_audio_if_sel_ofst));
+                                }
+                                if(dev->hdmi_rx_tx_chmux != 0xff) {
+                                        spdif_input_port = ioread32((void*)(dev->io_bus + dev->hdmi_rx_tx_chmux));
+                                }
+                                for(i=0;i<32;i++) {
+                                        if(spdif_input_port & (1 << i)) {
+                                                spdif_channel_mux = spdif_input_port >> (i >> 3);
+                                                for(j=0;j<32;j++) {
+                                                        if(spdif_channel_mux & (1 << j)) {
+                                                                spdif_channel_mux = j;
+                                                                break;
+                                                        }
+                                                }
+                                                if(j >= 32) {
+                                                        spdif_channel_mux = 0;
+                                                }
+
+                                                spdif_input_port = i >> 3;
+                                                break;
+                                        }
+                                }
+                        }
+                }
+
+                size = sprintf(audio_channel_mux_buff, "%u,%u,%u\n", i2s_channel_mux, spdif_input_port, spdif_channel_mux);
+                size = simple_read_from_buffer(usr_buf, cnt,  off_set, audio_channel_mux_buff, size);
+                devm_kfree(dev->parent_dev, audio_channel_mux_buff);
+        }
+        return size;
+}
+#endif
+
 static const struct file_operations proc_fops_hdcp_status = {
         .owner   = THIS_MODULE,
         .open    = proc_open,
@@ -720,6 +818,16 @@ static const struct file_operations proc_fops_dv_vsif = {
         .open    = proc_open,
         .release = proc_close,
         .write   = proc_write_dv_vsif,
+};
+#endif
+
+#if defined(CONFIG_TCC_AUDIO_CHANNEL_MUX)
+static const struct file_operations proc_fops_audio_channel_mux = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_audio_channel_mux,
+        .read    = proc_read_audio_channel_mux,
 };
 #endif
 
@@ -842,6 +950,15 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/dv_vsif\n", FUNC_NAME);
         }
         #endif
+
+        #if defined(CONFIG_TCC_AUDIO_CHANNEL_MUX)
+        dev->hdmi_proc_audio_channel_mux = proc_create_data("audio_channel_mux", S_IFREG | S_IRUGO | S_IWUGO,
+                        dev->hdmi_proc_dir, &proc_fops_audio_channel_mux, dev);
+        if(dev->hdmi_proc_audio_channel_mux == NULL){
+                pr_err("%s:Could not create file system @"
+                                " /proc/hdmi_tx/audio_channel_mux\n", FUNC_NAME);
+        }
+        #endif
 }
 
 void proc_interface_remove(struct hdmi_tx_dev *dev){
@@ -881,6 +998,10 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
         #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
         if(dev->hdmi_proc_dv_vsif != NULL)
                 proc_remove(dev->hdmi_proc_dv_vsif);
+        #endif
+        #if defined(CONFIG_TCC_AUDIO_CHANNEL_MUX)
+        if(dev->hdmi_proc_audio_channel_mux != NULL)
+                proc_remove(dev->hdmi_proc_audio_channel_mux);
         #endif
         if(dev->hdmi_proc_dir != NULL)
                 proc_remove(dev->hdmi_proc_dir);
