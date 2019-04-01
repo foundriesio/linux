@@ -269,10 +269,13 @@ static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
 	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
 	uint32_t mux_cfg_val;
 
-	if (is_mux) {
-		if (ehci_phy_dev->mux_port) {
-			mux_cfg_val = readl(phy->otg->mux_cfg_addr); /* get otg control cfg register */
+	if (ehci_phy_dev->mux_port) {
+		mux_cfg_val = readl(phy->otg->mux_cfg_addr);
+		if (is_mux) {
 			BITCSET(mux_cfg_val, TCC_MUX_OPSEL, TCC_MUX_H_SELECT);
+			writel(mux_cfg_val, phy->otg->mux_cfg_addr);
+		} else {
+			BITSET(mux_cfg_val, TCC_MUX_OPSEL|TCC_MUX_O_SELECT|TCC_MUX_H_SELECT);
 			writel(mux_cfg_val, phy->otg->mux_cfg_addr);
 		}
 	}

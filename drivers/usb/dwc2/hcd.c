@@ -3352,8 +3352,10 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 	/* B-Device connector (Device Mode) */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
 #ifdef CONFIG_USB_DWC2_TCC_MUX
-		if (hsotg->uphy)
-			usb_phy_init(hsotg->uphy);
+		//if (hsotg->uphy)
+		//	usb_phy_init(hsotg->uphy);
+		if (hsotg->mhst_uphy)
+			hsotg->mhst_uphy->set_phy_mux_sel(hsotg->mhst_uphy, 0);
 #endif
 		/* Wait for switch to device mode */
 		if (hsotg->bus_suspended) {
@@ -3382,11 +3384,11 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
 #ifndef CONFIG_USB_DWC2_TCC_MUX
-		//dwc2_force_dr_mode(hsotg);
 		dwc2_hcd_start(hsotg);
 #else
 		if (hsotg->mhst_uphy)
-			usb_phy_init(hsotg->mhst_uphy);
+			//usb_phy_init(hsotg->mhst_uphy);
+			hsotg->mhst_uphy->set_phy_mux_sel(hsotg->mhst_uphy, 1);
 #endif
 
 	}

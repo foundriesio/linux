@@ -4811,7 +4811,7 @@ int dwc2_gadget_init(struct dwc2_hsotg *hsotg)
 	hsotg->gadget.ops = &dwc2_hsotg_gadget_ops;
 	hsotg->gadget.name = dev_name(dev);
 	if (hsotg->dr_mode == USB_DR_MODE_OTG)
-		hsotg->gadget.is_otg = 1;
+		hsotg->gadget.is_otg = 0;
 	else if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
 		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
 
