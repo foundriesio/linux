@@ -335,15 +335,17 @@ static int dw_mipi_dsi_stm_probe(struct platform_device *pdev)
 		return PTR_ERR(dsi->base);
 	}
 
-	dsi->vdd_supply = devm_regulator_get(dev, "phy-dsi");
+	dsi->vdd_supply = devm_regulator_get_optional(dev, "phy-dsi");
 	if (IS_ERR(dsi->vdd_supply)) {
-		DRM_ERROR("can't get power supply\n");
-		return PTR_ERR(dsi->vdd_supply);
+		ret = PTR_ERR(dsi->vdd_supply);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "failed to request regulator: %d\n", ret);
+		return ret;
 	}
 
 	ret = regulator_enable(dsi->vdd_supply);
 	if (ret) {
-		DRM_ERROR("can't enable power supply\n");
+		dev_err(dev, "failed to enable regulator: %d\n", ret);
 		return ret;
 	}
 
