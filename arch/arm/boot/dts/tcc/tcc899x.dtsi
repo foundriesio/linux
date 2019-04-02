@@ -1095,9 +1095,9 @@
 				"ddibus_viocex", "ddibus_dolby", "ddibus_sar",
 				"ddibus_madi";
 			telechips,clock-flags =
-				<0>,	/* DDIBUS_VIOC */
+				<CLK_IS_CRITICAL>,	/* DDIBUS_VIOC */
 				<0>,	/* DDIBUS_NTSCPAL */
-				<0>,	/* DDIBUS_HDMI */
+				<CLK_IS_CRITICAL>,	/* DDIBUS_HDMI */
 				<0>,	/* DDIBUS_VIOCEX */
 				<0>,	/* DDIBUS_DOLBY */
 				<0>,	/* DDIBUS_SAR */
