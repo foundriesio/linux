@@ -301,7 +301,7 @@
 		typec_con: connector {
 			compatible = "usb-c-connector";
 			label = "USB-C";
-			power-role = "sink";
+			power-role = "dual";
 			power-opmode = "default";
 		};
 	};
@@ -703,7 +703,7 @@
 };
 
 &usbotg_hs {
-	dr_mode = "peripheral";
+	extcon = <&typec>;
 	phys = <&usbphyc_port1 0>;
 	phy-names = "usb2-phy";
 	status = "okay";
