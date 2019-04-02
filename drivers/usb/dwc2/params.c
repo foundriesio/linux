@@ -237,8 +237,18 @@ static void dwc2_set_param_tx_fifo_sizes(struct dwc2_hsotg *hsotg)
 
 	memset(p->g_tx_fifo_size, 0, sizeof(p->g_tx_fifo_size));
 	depth_average = dwc2_hsotg_tx_fifo_average_depth(hsotg);
+#ifdef CONFIG_ARCH_TCC897X
+	p->g_tx_fifo_size[1] = 256;
+	p->g_tx_fifo_size[2] = 256;
+	p->g_tx_fifo_size[3] = 512;
+	p->g_tx_fifo_size[4] = 512;
+	p->g_tx_fifo_size[5] = 512;
+	p->g_tx_fifo_size[6] = 512;
+	p->g_tx_fifo_size[7] = 256;
+#else
 	for (i = 1; i <= fifo_count; i++)
 		p->g_tx_fifo_size[i] = depth_average;
+#endif
 }
 
 /**
@@ -299,8 +309,13 @@ static void dwc2_set_default_params(struct dwc2_hsotg *hsotg)
 		 * auto-detect if the hardware does not support the
 		 * default.
 		 */
+#ifdef CONFIG_ARCH_TCC897X
+		p->g_rx_fifo_size = 768;
+		p->g_np_tx_fifo_size = 256;
+#else
 		p->g_rx_fifo_size = 2048;
 		p->g_np_tx_fifo_size = 1024;
+#endif
 		dwc2_set_param_tx_fifo_sizes(hsotg);
 	}
 }
@@ -696,11 +711,7 @@ int dwc2_get_hwparams(struct dwc2_hsotg *hsotg)
 			      GHWCFG3_DFIFO_DEPTH_SHIFT;
 
 	/* hwcfg4 */
-#ifdef CONFIG_ARCH_TCC897X
-	hw->en_multiple_tx_fifo = !!!(hwcfg4 & GHWCFG4_DED_FIFO_EN);
-#else
 	hw->en_multiple_tx_fifo = !!(hwcfg4 & GHWCFG4_DED_FIFO_EN);
-#endif
 	hw->num_dev_perio_in_ep = (hwcfg4 & GHWCFG4_NUM_DEV_PERIO_IN_EP_MASK) >>
 				  GHWCFG4_NUM_DEV_PERIO_IN_EP_SHIFT;
 	hw->num_dev_in_eps = (hwcfg4 & GHWCFG4_NUM_IN_EPS_MASK) >>
