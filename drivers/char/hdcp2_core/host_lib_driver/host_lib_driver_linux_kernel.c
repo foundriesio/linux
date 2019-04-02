@@ -47,16 +47,17 @@
 #define OPTEE_BASE_HDCP
 #endif
 
-#define HDCP_DRV_VERSION "1.0.8"
+#define HDCP_DRV_VERSION "1.0.9"
 
 #define USE_HDMI_PWR_CTRL
 
 #define DWC_PHY_STAT0		(0x3004 * 4)
 
 #define DWC_HDCP_CFG1		(0x5001 * 4)
-#define DWC_HDCP_INTCLR		(0x5006 * 4)	/* a_apiintstat */
+#define DWC_HDCP_INTCLR		(0x5006 * 4)	/* a_apiintclr */
 #define DWC_HDCP_INTSTAT	(0x5007 * 4)	/* a_apiintstat */
-#define DWC_HDCP_INTMASK	(0x5008 * 4)	/* a_apiintstat */
+#define DWC_HDCP_INTMASK	(0x5008 * 4)	/* a_apiintmask */
+#define DWC_HDCP_VIDPOLCFG	(0x5009 * 4)
 
 #define DWC_HDCP22_ID		(0x7900 * 4)	/* hdcp22reg_id */
 #define DWC_HDCP22_CTRL		(0x7904 * 4)	/* hdcp22reg_ctrl */
@@ -167,6 +168,19 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 
 	if (hdcp) {
 		hdcpcfg1 = ioread32(esm->link + DWC_HDCP_CFG1);
+		if (hdcp & (1<<2)) {
+			/*
+			 * - keepouterrorint -
+			 * We met an issue what shows the black screen at the lower resolution.
+			 * It fixed by changing VSYNC polarity.
+			 */
+			uint32_t vidpol = ioread32(esm->link + DWC_HDCP_VIDPOLCFG);
+			if (vidpol & (1<<3))
+				vidpol &= ~(1<<3);
+			else
+				vidpol |= (1<<3);
+			iowrite32(vidpol, esm->link + DWC_HDCP_VIDPOLCFG);
+		}
 		if (hdcp & (1<<5)) {
 			printk(KERN_INFO "%s: INT_KSV_SHA1_DONE\n", __func__);
 			esm->hdcp_status = HDCP_KSV_LIST_READY;
@@ -835,7 +849,7 @@ static int hdcp_probe(struct platform_device *pdev)
 			}
 			esm->esm_paddr = res.start;
 			esm->esm_size = resource_size(&res);
-			dev_info(&pdev->dev, "esm: paddr:0x%08x, size:0x%08x\n", esm->esm_paddr, esm->esm_size);
+			dev_info(&pdev->dev, "esm: paddr:%p, size:%08x\n", (void *)esm->esm_paddr, esm->esm_size);
 			esm->esm_vaddr = (uintptr_t)ioremap(esm->esm_paddr, esm->esm_size);
 			if (!esm->esm_vaddr) {
 				dev_err(&pdev->dev, "error ioremap protected buffer\n");
@@ -894,7 +908,7 @@ static int hdcp_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int hdcp_suspend(struct platform_device *pdev)
+static int hdcp_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	//esm_device *esm = platform_get_drvdata(pdev);
 	return 0;
