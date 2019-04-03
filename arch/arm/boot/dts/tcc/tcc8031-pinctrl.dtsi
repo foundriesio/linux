@@ -2241,8 +2241,9 @@
 	};
 
 	tsc_default: tsc_default {
-		telechips,pins = "gpd-8", "gpk-7";
+		telechips,pins = "gpsd1-9", "gpb-16";
 		telechips,pin-function = <0>;
+		telechips,no-pull;
 	};
 	pmic_irq: pmic_irq {
 		telechips,pins = "gpb-22";
