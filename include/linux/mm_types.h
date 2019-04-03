@@ -57,6 +57,7 @@ struct page {
 
 	/* Second double word */
 	union {
+		atomic_t pt_frag_refcount; /* powerpc */
 		pgoff_t index;		/* Our offset within mapping. */
 		void *freelist;		/* sl[aou]b first free object */
 		/* page_deferred_list().prev	-- second tail page */
