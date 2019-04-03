@@ -368,17 +368,19 @@ static unsigned long tcc_peri_recalc_rate(struct clk_hw *hw, unsigned long paren
 	return rate;
 }
 
-static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
+static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate,
+			     unsigned long parent_rate)
 {
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk(hw);
+	unsigned long flags = __clk_get_flags(hw->clk);
 
 	if (ckc_ops != NULL) {
 		if (ckc_ops->ckc_peri_set_rate)
 			ckc_ops->ckc_peri_set_rate(tcc->id, rate);
-	}
-	else {
-		arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, tcc->id, 1, rate, 0, 0, 0, 0, &res);
+	} else {
+		arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, tcc->id, 1, rate, flags,
+				0, 0, 0, &res);
 	}
 	return 0;
 }
