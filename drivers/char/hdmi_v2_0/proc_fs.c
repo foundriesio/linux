@@ -185,6 +185,21 @@ ssize_t proc_read_hpd_lock(struct file *filp, char __user *usr_buf, size_t cnt, 
         return size;
 }
 
+/**
+ * rxsense functions
+ */
+ssize_t proc_read_rxsense(struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
+{
+        ssize_t size;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+
+        char *rxsense_buf = devm_kzalloc(dev->parent_dev, DEBUGFS_BUF_SIZE, GFP_KERNEL);
+        size = sprintf(rxsense_buf, "%d\n", dev->rxsense);
+        size = simple_read_from_buffer(usr_buf, cnt,  off_set, rxsense_buf, size);
+        devm_kfree(dev->parent_dev, rxsense_buf);
+	return size;
+}
+
 ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size_t cnt,
                 loff_t *off_set)
 {
@@ -761,6 +776,13 @@ static const struct file_operations proc_fops_hpd_lock = {
         .read    = proc_read_hpd_lock,
 };
 
+static const struct file_operations proc_fops_rxsense = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .read    = proc_read_rxsense,
+};
+
 static const struct file_operations proc_fops_hdcp22 = {
         .owner   = THIS_MODULE,
         .open    = proc_open,
@@ -876,6 +898,14 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/hpd_lock\n", FUNC_NAME);
         }
 
+	// RX_Sense
+	dev->hdmi_proc_rxsense = proc_create_data("rxsense", S_IFREG | S_IRUGO,
+			dev->hdmi_proc_dir, &proc_fops_rxsense, dev);
+	if(dev->hdmi_proc_rxsense == NULL){
+		pr_err("%s:Could not create file system @"
+				" /proc/hdmi_tx/rxsense\n", FUNC_NAME);
+	}
+
 	// HDCP 2.2 status
 	//pr_info("%s:Installing /proc/hdmi_tx/hdcp2_status file\n", FUNC_NAME);
 
@@ -971,6 +1001,9 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
 
         if(dev->hdmi_proc_hpd_lock != NULL)
                         proc_remove(dev->hdmi_proc_hpd_lock);
+
+	if(dev->hdmi_proc_rxsense != NULL)
+		proc_remove(dev->hdmi_proc_rxsense);
 
 	if(dev->hdmi_proc_hdcp22 != NULL)
 		proc_remove(dev->hdmi_proc_hdcp22);

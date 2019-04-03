@@ -254,6 +254,7 @@ struct hdmi_tx_dev{
         struct proc_dir_entry	*hdmi_proc_dir;
         struct proc_dir_entry   *hdmi_proc_hpd;
         struct proc_dir_entry   *hdmi_proc_hpd_lock;
+        struct proc_dir_entry   *hdmi_proc_rxsense;
         struct proc_dir_entry   *hdmi_proc_hdcp22;
 	struct proc_dir_entry   *hdmi_proc_hdcp_status;
         struct proc_dir_entry   *hdmi_proc_scdc_check;
