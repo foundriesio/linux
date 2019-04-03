@@ -195,8 +195,8 @@ static int ft5406_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	ts->ts_base = dma_zalloc_coherent(dev, PAGE_SIZE, &ts->bus_addr,
-					  GFP_KERNEL);
+	ts->ts_base = dma_alloc_coherent(dev, PAGE_SIZE, &ts->bus_addr,
+					 GFP_KERNEL);
 	if (!ts->ts_base) {
 		pr_err("[%s]: failed to dma_alloc_coherent(%ld)\n",
 				__func__, PAGE_SIZE);
@@ -218,7 +218,7 @@ static int ft5406_probe(struct platform_device *pdev)
 
 	if (!ts->ts_base) {
 		dev_warn(dev,
-		"set failed, trying get (err:%d touchbuf:%x virt:%p bus:%x)\n",
+		"set failed, trying get(err:%d touchbuf:%x virt:%p bus:%llx)\n",
 		err, touchbuf, ts->ts_base, ts->bus_addr);
 
 		err = rpi_firmware_property(
