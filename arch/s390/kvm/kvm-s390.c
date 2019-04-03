@@ -2933,6 +2933,13 @@ int kvm_arch_vcpu_setup(struct kvm_vcpu *vcpu)
 		VCPU_EVENT(vcpu, 3, "AIV gisa format-%u enabled for cpu %03u",
 			   vcpu->arch.sie_block->gd & 0x3, vcpu->vcpu_id);
 	}
+	/*
+	 * if any of 32,33,34,40,41 is active in host AND guest,
+	 * we enable pckmo for ecc
+	 */
+	if ((vcpu->kvm->arch.model.subfuncs.pckmo[4] & kvm_s390_available_subfunc.pckmo[4] & 0xe0) ||
+	    (vcpu->kvm->arch.model.subfuncs.pckmo[5] & kvm_s390_available_subfunc.pckmo[5] & 0xc0))
+		vcpu->arch.sie_block->ecd |= ECD_ECC;
 	vcpu->arch.sie_block->sdnxo = ((unsigned long) &vcpu->run->s.regs.sdnx)
 					| SDNXC;
 	vcpu->arch.sie_block->riccbd = (unsigned long) &vcpu->run->s.regs.riccb;
