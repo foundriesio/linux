@@ -215,7 +215,7 @@ error:
 
 	return count;
 }
-static DEVICE_ATTR(dr_mode, S_IRUGO | S_IWUSR, dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
+static DEVICE_ATTR(drdmode, S_IRUGO | S_IWUSR, dwc2_tcc_drd_mode_show, dwc2_tcc_drd_mode_store);
 
 #ifdef TCC_DWC_SUSPSTS_USE
 static int dwc2_soffn_monitor_thread(void *w)
@@ -760,7 +760,7 @@ static int dwc2_driver_remove(struct platform_device *dev)
 	cancel_work_sync(&hsotg->drd_work);
 	destroy_workqueue(hsotg->drd_wq);
 
-	device_remove_file(&dev->dev, &dev_attr_dr_mode);
+	device_remove_file(&dev->dev, &dev_attr_drdmode);
 	device_remove_file(&dev->dev, &dev_attr_vbus);
 #endif
 	return 0;
@@ -956,7 +956,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (retval) 
 		dev_err(hsotg->dev, "failed to create vbus\n");
 	
-	retval = device_create_file(&dev->dev, &dev_attr_dr_mode);
+	retval = device_create_file(&dev->dev, &dev_attr_drdmode);
 	if (retval)
 		dev_err(hsotg->dev, "failed to create dr_mode\n");
 
