@@ -578,6 +578,11 @@ static int ubifs_unlink(struct inode *dir, struct dentry *dentry)
 	dbg_gen("dent '%pd' from ino %lu (nlink %d) in dir ino %lu",
 		dentry, inode->i_ino,
 		inode->i_nlink, dir->i_ino);
+
+	err = ubifs_purge_xattrs(inode);
+	if (err)
+		return err;
+
 	ubifs_assert(mutex_is_locked(&dir->i_mutex));
 	ubifs_assert(mutex_is_locked(&inode->i_mutex));
 	err = dbg_check_synced_i_size(c, inode);
@@ -670,6 +675,10 @@ static int ubifs_rmdir(struct inode *dir, struct dentry *dentry)
 	ubifs_assert(mutex_is_locked(&dir->i_mutex));
 	ubifs_assert(mutex_is_locked(&inode->i_mutex));
 	err = check_dir_empty(c, d_inode(dentry));
+	if (err)
+		return err;
+
+	err = ubifs_purge_xattrs(inode);
 	if (err)
 		return err;
 
@@ -1004,9 +1013,13 @@ static int ubifs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		new_dentry, new_dir->i_ino);
 	ubifs_assert(mutex_is_locked(&old_dir->i_mutex));
 	ubifs_assert(mutex_is_locked(&new_dir->i_mutex));
-	if (unlink)
+	if (unlink) {
 		ubifs_assert(mutex_is_locked(&new_inode->i_mutex));
 
+		err = ubifs_purge_xattrs(new_inode);
+		if (err)
+			return err;
+	}
 
 	if (unlink && is_dir) {
 		err = check_dir_empty(c, new_inode);

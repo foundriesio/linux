@@ -295,4 +295,12 @@ static inline int ubifs_next_log_lnum(const struct ubifs_info *c, int lnum)
 	return lnum;
 }
 
+static inline int ubifs_xattr_max_cnt(struct ubifs_info *c)
+{
+	int max_xattrs = (c->leb_size / 2) / UBIFS_INO_NODE_SZ;
+
+	ubifs_assert(max_xattrs < c->max_orphans);
+	return max_xattrs;
+}
+
 #endif /* __UBIFS_MISC_H__ */

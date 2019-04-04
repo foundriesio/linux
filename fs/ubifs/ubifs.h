@@ -1764,6 +1764,8 @@ int ubifs_setxattr(struct dentry *dentry, const char *name,
 ssize_t ubifs_getxattr(struct dentry *dentry, const char *name, void *buf,
 		       size_t size);
 ssize_t ubifs_listxattr(struct dentry *dentry, char *buffer, size_t size);
+int ubifs_purge_xattrs(struct inode *host);
+
 #ifdef CONFIG_UBIFS_FS_XATTR
 int ubifs_removexattr(struct dentry *dentry, const char *name);
 #endif
