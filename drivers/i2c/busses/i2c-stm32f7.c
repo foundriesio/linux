@@ -1589,7 +1589,9 @@ static irqreturn_t stm32f7_i2c_isr_error(int irq, void *data)
 		mask = STM32F7_I2C_XFER_IRQ_MASK;
 	else
 		mask = STM32F7_I2C_ALL_IRQ_MASK;
-	stm32f7_i2c_disable_irq(i2c_dev, mask);
+
+	if (!i2c_dev->slave_running)
+		stm32f7_i2c_disable_irq(i2c_dev, mask);
 
 	/* Disable dma */
 	if (i2c_dev->use_dma) {
