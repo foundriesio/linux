@@ -2980,9 +2980,9 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 
 	/* register generic irq */
 	irq = of_irq_get(np, 0);
-	if (irq < 0) {
+	if (irq <= 0) {
 		pr_err("%s: failed to get RCC generic IRQ\n", __func__);
-		return irq;
+		return irq ? irq : -ENXIO;
 	}
 
 	ret = setup_irq(irq, &rcc_irq);
