@@ -789,9 +789,11 @@ out_free:
 int ubifs_jnl_write_inode(struct ubifs_info *c, const struct inode *inode)
 {
 	int err, lnum, offs;
-	struct ubifs_ino_node *ino;
+	struct ubifs_ino_node *ino, *ino_start;
 	struct ubifs_inode *ui = ubifs_inode(inode);
-	int sync = 0, len = UBIFS_INO_NODE_SZ, last_reference = !inode->i_nlink;
+	int sync = 0, write_len = 0, ilen = UBIFS_INO_NODE_SZ;
+	int last_reference = !inode->i_nlink;
+	int kill_xattrs = ui->xattr_cnt && last_reference;
 
 	dbg_jnl("ino %lu, nlink %u", inode->i_ino, inode->i_nlink);
 
@@ -800,20 +802,60 @@ int ubifs_jnl_write_inode(struct ubifs_info *c, const struct inode *inode)
 	 * need to synchronize the write-buffer either.
 	 */
 	if (!last_reference) {
-		len += ui->data_len;
+		ilen += ui->data_len;
 		sync = IS_SYNC(inode);
+	} else if (kill_xattrs) {
+		write_len += UBIFS_INO_NODE_SZ * ui->xattr_cnt;
 	}
-	ino = kmalloc(len, GFP_NOFS);
+
+	write_len += ilen;
+
+	ino_start = ino = kmalloc(write_len, GFP_NOFS);
 	if (!ino)
 		return -ENOMEM;
 
 	/* Make reservation before allocating sequence numbers */
-	err = make_reservation(c, BASEHD, len);
+	err = make_reservation(c, BASEHD, ilen);
 	if (err)
 		goto out_free;
 
+	if (kill_xattrs) {
+		union ubifs_key key;
+		struct qstr nm = { 0 };
+		struct inode *xino;
+		struct ubifs_dent_node *xent, *pxent = NULL;
+
+		lowest_xent_key(c, &key, inode->i_ino);
+		while (1) {
+			xent = ubifs_tnc_next_ent(c, &key, &nm);
+			if (IS_ERR(xent)) {
+				err = PTR_ERR(xent);
+				if (err == -ENOENT)
+					break;
+
+				goto out_release;
+			}
+
+			nm.name = xent->name;
+			nm.len = le16_to_cpu(xent->nlen);
+
+			xino = ubifs_iget(c->vfs_sb, xent->inum);
+			ubifs_assert(ubifs_inode(xino)->xattr);
+
+			clear_nlink(xino);
+			pack_inode(c, ino, xino, 0);
+			ino = (void *)ino + UBIFS_INO_NODE_SZ;
+			iput(xino);
+
+			kfree(pxent);
+			pxent = xent;
+			key_read(c, &xent->key, &key);
+		}
+		kfree(pxent);
+	}
+
 	pack_inode(c, ino, inode, 1);
-	err = write_head(c, BASEHD, ino, len, &lnum, &offs, sync);
+	err = write_head(c, BASEHD, ino_start, write_len, &lnum, &offs, sync);
 	if (err)
 		goto out_release;
 	if (!sync)
@@ -826,12 +868,12 @@ int ubifs_jnl_write_inode(struct ubifs_info *c, const struct inode *inode)
 		if (err)
 			goto out_ro;
 		ubifs_delete_orphan(c, inode->i_ino);
-		err = ubifs_add_dirt(c, lnum, len);
+		err = ubifs_add_dirt(c, lnum, write_len);
 	} else {
 		union ubifs_key key;
 
 		ino_key_init(c, &key, inode->i_ino);
-		err = ubifs_tnc_add(c, &key, lnum, offs, len);
+		err = ubifs_tnc_add(c, &key, lnum, offs, ilen);
 	}
 	if (err)
 		goto out_ro;
@@ -840,7 +882,7 @@ int ubifs_jnl_write_inode(struct ubifs_info *c, const struct inode *inode)
 	spin_lock(&ui->ui_lock);
 	ui->synced_i_size = ui->ui_size;
 	spin_unlock(&ui->ui_lock);
-	kfree(ino);
+	kfree(ino_start);
 	return 0;
 
 out_release:
@@ -849,7 +891,7 @@ out_ro:
 	ubifs_ro_mode(c, err);
 	finish_reservation(c);
 out_free:
-	kfree(ino);
+	kfree(ino_start);
 	return err;
 }
 
@@ -889,8 +931,8 @@ int ubifs_jnl_delete_inode(struct ubifs_info *c, const struct inode *inode)
 
 	ubifs_assert(inode->i_nlink == 0);
 
-	if (ui->del_cmtno != c->cmt_no)
-		/* A commit happened for sure */
+	if (ui->xattr_cnt || ui->del_cmtno != c->cmt_no)
+		/* A commit happened for sure or inode hosts xattrs */
 		return ubifs_jnl_write_inode(c, inode);
 
 	down_read(&c->commit_sem);
