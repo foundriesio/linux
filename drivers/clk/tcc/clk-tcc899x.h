@@ -8,7 +8,7 @@
 #ifndef __CLK_TCC899X__H__
 #define __CLK_TCC899X__H__
 
-#include <dt-bindings/clock/tcc899x-clks.h>
+#include <dt-bindings/clock/telechips,tcc899x-clks.h>
 
 /************************************
  * Need for pmu&ckc register control

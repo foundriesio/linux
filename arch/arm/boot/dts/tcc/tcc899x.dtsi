@@ -6,7 +6,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/clock/tcc899x-clks.h>
+#include <dt-bindings/clock/telechips,tcc899x-clks.h>
 #include <dt-bindings/soc/tcc899x-pm.h>
 #include <dt-bindings/display/tcc899x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>

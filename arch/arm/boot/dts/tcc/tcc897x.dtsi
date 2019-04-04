@@ -6,7 +6,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/clock/tcc897x-clks.h>
+#include <dt-bindings/clock/telechips,tcc897x-clks.h>
 #include <dt-bindings/soc/tcc897x-pm.h>
 #include <dt-bindings/display/tcc897x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
