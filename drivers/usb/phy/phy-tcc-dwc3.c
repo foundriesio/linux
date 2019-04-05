@@ -14,6 +14,7 @@
 //#include <linux/of_device.h>
 #define ON      1
 #define OFF     0
+#define PHY_RESUME 2
 
 #ifndef BITSET
 #define BITSET(X, MASK)            	((X) |= (unsigned int)(MASK))
@@ -787,6 +788,15 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
+	} else if (on_off == PHY_RESUME && is_suspend) {
+		is_suspend = 0;
+		printk("dwc3 tcc: PHY resume\n");
+		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
+		mdelay(10);
+		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
+			dev_err(dwc3_phy_dev->dev,
+				"can't do xhci phy clk enable\n");
+		}
 	}
 	return 0;
 }
@@ -1133,7 +1143,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
-	}
+	} else if (on_off == RESUME
 
 	return 0;
 }
@@ -1142,27 +1152,27 @@ static int tcc_dwc3_init_phy(struct usb_phy *phy)
 {
 #ifdef CONFIG_ARCH_TCC803X
 	if(system_rev == 0)
-		return dwc3_tcc_phy_ctrl_native(phy, 1);
+		return dwc3_tcc_phy_ctrl_native(phy, ON);
 	else
-		return dwc3_tcc_ss_phy_ctrl_native(phy, 1);
+		return dwc3_tcc_ss_phy_ctrl_native(phy, ON);
 #else
-	return dwc3_tcc_phy_ctrl_native(phy, 1);
+	return dwc3_tcc_phy_ctrl_native(phy, ON);
 #endif
 }
 
 static int tcc_dwc3_suspend_phy(struct usb_phy *phy, int suspend)
 {
 	if (!suspend) {
-		return phy->set_phy_state(phy, 1);
+		return phy->set_phy_state(phy, PHY_RESUME);
 	}
 	else {
-		return phy->set_phy_state(phy, 0);
+		return phy->set_phy_state(phy, OFF);
 	}
 }
 
 static void tcc_dwc3_shutdown_phy(struct usb_phy *phy)
 {
-	phy->set_phy_state(phy, 0);
+	phy->set_phy_state(phy, OFF);
 }
 /* create phy struct */
 static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_dev)
