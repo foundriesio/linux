@@ -54,24 +54,6 @@
 		adjust-audio-clk;	/* adjust audio clock for A2DP plaing */
 	};
 
-	/* console */
-	serial@76370000 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart22_data>;
-		port-mux = <22>;
-		status = "okay";
-	};
-
-	/* bluetooth */
-	serial@76380000 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart30_data &uart30_rtscts>;
-		port-mux = <30>;
-		dmas = <&dma0 0 29 &dma0 1 30>;
-		dma-names = "tx", "rx";
-		status = "okay";
-	};
-
 	tcc_bluetooth {
 		compatible = "telechips, tcc_bluetooth";
 		bt_power-gpio = <&gpc 21 0>;
@@ -81,14 +63,6 @@
 
 	tcc_bt_dev {
 		compatible = "telechips, tcc_bt_dev";
-		status = "okay";
-	};
-
-	/* GPS */
-	serial@763a0000 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart10_data &uart10_rtscts>;
-		port-mux = <9>;
 		status = "okay";
 	};
 
@@ -812,6 +786,33 @@
 		status = "okay";
 	};
 };
+
+/* console */
+&uart0 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart22_data>;
+        port-mux = <22>;
+        status = "okay";
+};
+
+/* bluetooth */
+&uart1 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart30_data &uart30_rtscts>;
+        port-mux = <30>;
+        dmas = <&dma0 0 29 &dma0 1 30>;
+        dma-names = "tx", "rx";
+        status = "okay";
+};
+
+/* GPS */
+&uart3 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart10_data>;
+        port-mux = <10>;
+        status = "okay";
+};
+
 
 /{
 	firmware {
