@@ -1156,8 +1156,9 @@ int ltdc_load(struct drm_device *ddev)
 
 	ldev->pixel_clk = devm_clk_get(dev, "lcd");
 	if (IS_ERR(ldev->pixel_clk)) {
-		DRM_ERROR("Unable to get lcd clock\n");
-		return -ENODEV;
+		if (PTR_ERR(ldev->pixel_clk) != -EPROBE_DEFER)
+			DRM_ERROR("Unable to get lcd clock\n");
+		return PTR_ERR(ldev->pixel_clk);
 	}
 
 	ldev->power_on = false;
