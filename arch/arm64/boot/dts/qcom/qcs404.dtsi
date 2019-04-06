@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2018, Linaro Limited
 
+#include <dt-bindings/interconnect/qcom,qcs404.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,gcc-qcs404.h>
 #include <dt-bindings/clock/qcom,rpmcc.h>
@@ -225,6 +226,30 @@
 		rpm_requests: glink-channel {
 			compatible = "qcom,rpm-qcs404";
 			qcom,glink-channels = "rpm_requests";
+
+			bimc: interconnect@0 {
+				compatible = "qcom,qcs404-bimc";
+				#interconnect-cells = <1>;
+				clock-names = "bus_clk", "bus_a_clk";
+				clocks = <&rpmcc RPM_SMD_BIMC_CLK>,
+					<&rpmcc RPM_SMD_BIMC_A_CLK>;
+			};
+
+			pcnoc: interconnect@1 {
+				compatible = "qcom,qcs404-pcnoc";
+				#interconnect-cells = <1>;
+				clock-names = "bus_clk", "bus_a_clk";
+				clocks = <&rpmcc RPM_SMD_PNOC_CLK>,
+					<&rpmcc RPM_SMD_PNOC_A_CLK>;
+			};
+
+			snoc: interconnect@2 {
+				compatible = "qcom,qcs404-snoc";
+				#interconnect-cells = <1>;
+				clock-names = "bus_clk", "bus_a_clk";
+				clocks = <&rpmcc RPM_SMD_SNOC_CLK>,
+					<&rpmcc RPM_SMD_SNOC_A_CLK>;
+			};
 
 			rpmcc: clock-controller {
 				compatible = "qcom,rpmcc-qcs404";
