@@ -176,7 +176,6 @@ static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_hsotg *hsotg)
 	p->host_rx_fifo_size = 440;
 	p->host_nperio_tx_fifo_size = 256;
 	p->host_perio_tx_fifo_size = 256;
-	p->suspend_ignore_power_down = true;
 	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
 }
 
