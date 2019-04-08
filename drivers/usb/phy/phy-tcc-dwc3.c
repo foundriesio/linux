@@ -1138,12 +1138,22 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	} else if (on_off == OFF && !is_suspend) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
-		printk("dwc3 tcc: PHY power down\n");
+		dev_info(dwc3_phy_dev->dev,
+				"dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
-	} else if (on_off == RESUME
+	} else if (on_off == PHY_RESUME && is_suspend) {
+		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
+		dev_info(dwc3_phy_dev->dev,
+				"dwc3 tcc: PHY power up\n");
+		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
+			dev_err(dwc3_phy_dev->dev,
+				"can't do xhci phy clk enable\n");
+		}
+		is_suspend = 0;
+	}
 
 	return 0;
 }
