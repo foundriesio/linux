@@ -4,5 +4,5 @@
 	
 config TCC_HDCP2_CORE_DRIVER
 	bool "TCC HDCP 2.2 Feature Enable"
-	depends on ARCH_TCC803X
-	default n
+	depends on TCC_HDMI_DRIVER_V2_0
+	default y

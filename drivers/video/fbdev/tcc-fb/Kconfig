@@ -328,10 +328,6 @@ source "drivers/char/hdmi_v1_4/Kconfig"
 
 source "drivers/char/hdmi_v2_0/Kconfig"
 
-config TCC_HDCP2_CORE_DRIVER
-	bool "TCC HDCP 2.2 Feature Enable"
-	default y if (!ARCH_TCC897X)
-	
 source "drivers/char/hdcp2_core/Kconfig"
 
 config TCC_HDMI_HDCP_USED
