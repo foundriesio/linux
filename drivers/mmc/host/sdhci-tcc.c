@@ -442,13 +442,13 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 			ch, vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
 
 		/* Configure CMD TAPDLY */
-		vals = TCC803X_SDHC_MK_TAPDLY(tcc->cmd_tap);
+		vals = TCC803X_SDHC_MK_TAPDLY(TCC803X_SDHC_CMDDLY_DEF_TAP, tcc->cmd_tap);
 		writel(vals, tcc->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
 		pr_debug(DRIVER_NAME "%d: set cmd-tap 0x%08x @0x%p\n",
 			ch, vals, tcc->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
 
 		/* Configure DATA TAPDLY */
-		vals = TCC803X_SDHC_MK_TAPDLY(tcc->data_tap);
+		vals = TCC803X_SDHC_MK_TAPDLY(TCC803X_SDHC_DATADLY_DEF_TAP, tcc->data_tap);
 		for(i = 0; i < 8; i++) {
 			writel(vals, tcc->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
 			pr_debug(DRIVER_NAME "%d: set data%d-tap 0x%08x @0x%p\n",
@@ -542,6 +542,19 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 		ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
 	} else if(tcc->version == 1){
 		if(!is_tcc803x_support_hs400(host)) {
+			unsigned int vals;
+
+			/* disable peri clock */
+			clk_disable_unprepare(pltfm_host->clk);
+
+			/* select sdcore clock */
+			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
+			vals &= ~(TCC803X_SDHC_CORE_CLK_CLK_SEL(1));
+			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
+
+			/* enable peri clock */
+			clk_prepare_enable(pltfm_host->clk);
+
 			ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
 		} else {
 			unsigned int peri_clock, core_clock, vals;
