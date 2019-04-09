@@ -284,4 +284,7 @@
 /* RDA UART */
 #define PORT_RDA	118
 
+/* SiFive UART */
+#define PORT_SIFIVE_V0	118
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

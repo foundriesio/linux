@@ -1,0 +1,3 @@
+config CLK_ANALOGBITS_WRPLL_CLN28HPC
+	bool
+
