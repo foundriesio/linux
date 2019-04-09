@@ -858,12 +858,30 @@ static int stusb_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int stusb_resume(struct device *dev)
+static int __maybe_unused stusb_suspend(struct device *dev)
+{
+	struct stusb *chip = dev_get_drvdata(dev);
+
+	/* Mask interrupts */
+	return regmap_update_bits(chip->regmap, STUSB_ALERT_STATUS_MASK_CTRL,
+				  STUSB_ALL_ALERTS, STUSB_ALL_ALERTS);
+}
+
+static int __maybe_unused stusb_resume(struct device *dev)
 {
 	struct stusb *chip = dev_get_drvdata(dev);
 	u32 status;
 	int ret;
+
+	ret = regcache_sync(chip->regmap);
+	if (ret)
+		return ret;
+
+	/* Unmask CC_CONNECTION events - chip->edev implies IRQ support */
+	if (chip->edev)
+		return regmap_write_bits(chip->regmap,
+					 STUSB_ALERT_STATUS_MASK_CTRL,
+					 STUSB_CC_CONNECTION, 0);
 
 	/* Check if attach/detach occurred during low power */
 	ret = regmap_read(chip->regmap, STUSB_CC_CONNECTION_STATUS, &status);
@@ -879,11 +897,10 @@ static int stusb_resume(struct device *dev)
 			dev_err(chip->dev, "attach failed: %d\n", ret);
 	}
 
-	return regcache_sync(chip->regmap);
+	return ret;
 }
-#endif
 
-static SIMPLE_DEV_PM_OPS(stusb_pm_ops, NULL, stusb_resume);
+static SIMPLE_DEV_PM_OPS(stusb_pm_ops, stusb_suspend, stusb_resume);
 
 static struct i2c_driver stusb_driver = {
 	.driver = {
