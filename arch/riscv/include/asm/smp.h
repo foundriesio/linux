@@ -19,15 +19,24 @@
 #include <linux/thread_info.h>
 
 #define INVALID_HARTID ULONG_MAX
+
+struct seq_file;
+extern unsigned long boot_cpu_hartid;
+
+#if defined CONFIG_SMP && defined CONFIG_HOTPLUG_CPU
+void arch_send_call_wakeup_ipi(const struct cpumask *mask);
+bool can_hotplug_cpu(void);
+#else
+static inline bool can_hotplug_cpu(void) { return 0; }
+static inline void arch_send_call_wakeup_ipi(const struct cpumask *mask) { }
+#endif
+
+#ifdef CONFIG_SMP
 /*
  * Mapping between linux logical cpu index and hartid.
  */
 extern unsigned long __cpuid_to_hartid_map[NR_CPUS];
 #define cpuid_to_hartid_map(cpu)    __cpuid_to_hartid_map[cpu]
-
-struct seq_file;
-
-#ifdef CONFIG_SMP
 
 /* print IPI stats */
 void show_ipi_stats(struct seq_file *p, int prec);
@@ -50,6 +59,13 @@ void riscv_cpuid_to_hartid_mask(const struct cpumask *in, struct cpumask *out);
  */
 #define raw_smp_processor_id() (current_thread_info()->cpu)
 
+#ifdef CONFIG_HOTPLUG_CPU
+int __cpu_disable(void);
+void __cpu_die(unsigned int cpu);
+void cpu_play_dead(void);
+void boot_sec_cpu(void);
+#endif /* CONFIG_HOTPLUG_CPU */
+
 #else
 
 static inline void show_ipi_stats(struct seq_file *p, int prec)
@@ -58,7 +74,14 @@ static inline void show_ipi_stats(struct seq_file *p, int prec)
 
 static inline int riscv_hartid_to_cpuid(int hartid)
 {
-	return 0;
+	if (hartid == boot_cpu_hartid)
+		return 0;
+
+	return -1;
+}
+static inline unsigned long cpuid_to_hartid_map(int cpu)
+{
+	return boot_cpu_hartid;
 }
 
 static inline void riscv_cpuid_to_hartid_mask(const struct cpumask *in,
