@@ -2433,6 +2433,12 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		cmd->scsi_done(cmd);
 		goto out_unlock;
 	}
+
+	if (hba->is_sys_suspended) {
+		set_host_byte(cmd, DID_ERROR);
+		cmd->scsi_done(cmd);
+		goto out_unlock;
+	}
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	hba->req_abort_count = 0;
@@ -7944,10 +7950,15 @@ out:
 int ufshcd_system_suspend(struct ufs_hba *hba)
 {
 	int ret = 0;
+	unsigned long flags;
 	ktime_t start = ktime_get();
 
 	if (!hba || !hba->is_powered)
 		return 0;
+
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	hba->is_sys_suspended = true;
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	if ((ufs_get_pm_lvl_to_dev_pwr_mode(hba->spm_lvl) ==
 	     hba->curr_dev_pwr_mode) &&
@@ -7974,8 +7985,11 @@ out:
 	trace_ufshcd_system_suspend(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
 		hba->curr_dev_pwr_mode, hba->uic_link_state);
-	if (!ret)
-		hba->is_sys_suspended = true;
+	if (ret) {
+		spin_lock_irqsave(hba->host->host_lock, flags);
+		hba->is_sys_suspended = false;
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+	}
 	return ret;
 }
 EXPORT_SYMBOL(ufshcd_system_suspend);
@@ -7990,6 +8004,7 @@ EXPORT_SYMBOL(ufshcd_system_suspend);
 int ufshcd_system_resume(struct ufs_hba *hba)
 {
 	int ret = 0;
+	unsigned long flags;
 	ktime_t start = ktime_get();
 
 	if (!hba)
@@ -8007,8 +8022,11 @@ out:
 	trace_ufshcd_system_resume(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
 		hba->curr_dev_pwr_mode, hba->uic_link_state);
-	if (!ret)
+	if (!ret) {
+		spin_lock_irqsave(hba->host->host_lock, flags);
 		hba->is_sys_suspended = false;
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+	}
 	return ret;
 }
 EXPORT_SYMBOL(ufshcd_system_resume);

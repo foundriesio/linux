@@ -31,7 +31,7 @@
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fb_cma_helper.h>
 
-#include "kirin_drm_drv.h"
+#include "../kirin_drm_drv.h"
 #include "kirin_ade_reg.h"
 
 #define PRIMARY_CH	ADE_CH1 /* primary plane */
@@ -1048,7 +1048,45 @@ static void ade_drm_cleanup(struct platform_device *pdev)
 {
 }
 
-const struct kirin_dc_ops ade_dc_ops = {
+static void kirin_drm_mode_config_init_size(struct drm_device *dev)
+{
+	dev->mode_config.min_width = 0;
+	dev->mode_config.min_height = 0;
+	dev->mode_config.max_width = 2048;
+	dev->mode_config.max_height = 2048;
+
+}
+
+DEFINE_DRM_GEM_CMA_FOPS(kirin_drm_fops);
+
+static struct drm_driver kirin_drm_driver = {
+	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME |
+			  DRIVER_ATOMIC,
+	.date			= "20150718",
+	.fops				= &kirin_drm_fops,
+	.gem_free_object_unlocked	= drm_gem_cma_free_object,
+	.gem_vm_ops		= &drm_gem_cma_vm_ops,
+	.dumb_create		= drm_gem_cma_dumb_create_internal,
+	.prime_handle_to_fd	= drm_gem_prime_handle_to_fd,
+	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
+	.gem_prime_export	= drm_gem_prime_export,
+	.gem_prime_import	= drm_gem_prime_import,
+	.gem_prime_get_sg_table = drm_gem_cma_prime_get_sg_table,
+	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
+	.gem_prime_vmap		= drm_gem_cma_prime_vmap,
+	.gem_prime_vunmap	= drm_gem_cma_prime_vunmap,
+	.gem_prime_mmap		= drm_gem_cma_prime_mmap,
+
+	.name			= "kirin",
+	.desc			= "Hisilicon Kirin SoCs' DRM Driver",
+	.major			= 1,
+	.minor			= 0,
+};
+
+const struct kirin_dc_ops dss_dc_ops = {
+	.version = DRM_KIRIN620,
+	.init_size = kirin_drm_mode_config_init_size,
+	.kirin_drm_driver = &kirin_drm_driver,
 	.init = ade_drm_init,
 	.cleanup = ade_drm_cleanup
 };
