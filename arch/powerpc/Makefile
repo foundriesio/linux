@@ -156,8 +156,12 @@ CC_FLAGS_FTRACE += -mprofile-kernel
         CC_FLAGS_FTRACE := -mprofile-kernel-not-supported
     endif
 endif
-# Work around a gcc code-gen bug with -fno-omit-frame-pointer.
-CC_FLAGS_FTRACE	+= -mno-sched-epilog
+# Work around gcc code-gen bugs with -pg / -fno-omit-frame-pointer in gcc <= 4.8
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=44199
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52828
+ifneq ($(cc-name),clang)
+CC_FLAGS_FTRACE	+= $(call cc-ifversion, -lt, 0409, -mno-sched-epilog)
+endif
 endif
 
 CFLAGS-$(CONFIG_CELL_CPU) += $(call cc-option,-mcpu=cell)
