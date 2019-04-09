@@ -623,9 +623,6 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 			return ret;
 	}
 
-	/* Need to restore FORCEDEVMODE/FORCEHOSTMODE */
-	dwc2_force_dr_mode(dwc2);
-
 	if (dwc2->params.activate_stm_id_vb_detection &&
 	    !dwc2->params.force_b_session_valid) {
 		u32 ggpio, gotgctl;
@@ -657,6 +654,9 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 		gotgctl |= GOTGCTL_BVALOEN; /* B-peripheral override enable */
 		dwc2_writel(dwc2, gotgctl, GOTGCTL);
 	}
+
+	/* Need to restore FORCEDEVMODE/FORCEHOSTMODE */
+	dwc2_force_dr_mode(dwc2);
 
 	if (dwc2_is_device_mode(dwc2))
 		ret = dwc2_hsotg_resume(dwc2);
