@@ -380,7 +380,7 @@ void VIOC_V_DV_Power(char on)
 {
 	volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 
-	dprintk_dv_sequence("### V_DV Power %s sequence IN ===> \n", on ? "On" : "Off");
+	dprintk_dv_sequence("### V_DV Power %s (for path %d) sequence IN ===> \n", on ? "On" : "Off", vioc_get_path_type());
 	if (on) {
 		if ( DV_PATH_DIRECT & vioc_get_path_type() ) {
 			/* nothing to do */
@@ -441,7 +441,7 @@ void VIOC_V_DV_Power(char on)
 		dprintk_dv_sequence("### V_DV NexGuard Off\n");
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 0);mdelay(50);
 
-		vioc_v_dv_swreset(1, 1, 1);
+//		vioc_v_dv_swreset(1, 1, 1);
 #if 0 // specific sequence!!
 		mdelay(2);
 		VIOC_V_DV_SWReset(1, 1);

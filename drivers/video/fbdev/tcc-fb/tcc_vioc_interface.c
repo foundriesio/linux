@@ -2719,7 +2719,7 @@ void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device 
 	unsigned int nRDMA_Attached = RDMA_FB;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	nRDMA_Attached = RDMA_FB1;
+//	nRDMA_Attached = RDMA_FB1;
 #endif
 
 	if(attach_data.flag == 0)

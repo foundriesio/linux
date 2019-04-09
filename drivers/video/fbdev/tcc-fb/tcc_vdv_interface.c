@@ -110,10 +110,20 @@ DV_PATH vioc_get_path_type(void)
 #if defined(CONFIG_TCC_DV_IN)
 	if(DV_HDMI_OUT)
 	{
-		if(DV_HDMI_noYUV422_OUT)
-			dv_out_path = dv_hdmi_noYuv422_path;
+		if((vioc_get_out_type() == DOVI) && (dv_mode == DV_STD))
+		{
+			//In case of Standard Dolby output, the output format is ICtCp which can't be converted other color format.
+			//Lion chipset doesn't have CSC(Color Space Conversion) h/w block for ICtCp color format.
+			dv_out_path = DV_PATH_DIRECT;
+		}
 		else
-			dv_out_path = dv_hdmi_path;
+		{
+			//In case of Low-Latency or SDR/HDR10 output, the output format is YCbCr which can be converted other color format.
+			if(DV_HDMI_noYUV422_OUT)
+				dv_out_path = dv_hdmi_noYuv422_path;
+			else
+				dv_out_path = dv_hdmi_path;
+		}
 	}
 	else
 	{

@@ -325,9 +325,11 @@ void tca_map_convter_set(unsigned int component_num,
 			return;
 		}
 	}
-#else
-	VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
+	else
 #endif
+	{
+		VIOC_MC_Start_OnOff(HwVIOC_MC, 1);
+	}
 }
 EXPORT_SYMBOL(tca_map_convter_set);
 
