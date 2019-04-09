@@ -57,6 +57,7 @@ enum ahci_qoriq_type {
 	AHCI_LS2080A,
 	AHCI_LS1046A,
 	AHCI_LS1088A,
+	AHCI_LS2088A,
 	AHCI_LX2160A,
 };
 
@@ -67,12 +68,15 @@ struct ahci_qoriq_priv {
 	bool is_dmacoherent;
 };
 
+static bool ecc_initialized;
+
 static const struct of_device_id ahci_qoriq_of_match[] = {
 	{ .compatible = "fsl,ls1021a-ahci", .data = (void *)AHCI_LS1021A},
 	{ .compatible = "fsl,ls1043a-ahci", .data = (void *)AHCI_LS1043A},
 	{ .compatible = "fsl,ls2080a-ahci", .data = (void *)AHCI_LS2080A},
 	{ .compatible = "fsl,ls1046a-ahci", .data = (void *)AHCI_LS1046A},
 	{ .compatible = "fsl,ls1088a-ahci", .data = (void *)AHCI_LS1088A},
+	{ .compatible = "fsl,ls2088a-ahci", .data = (void *)AHCI_LS2088A},
 	{ .compatible = "fsl,lx2160a-ahci", .data = (void *)AHCI_LX2160A},
 	{},
 };
@@ -165,58 +169,87 @@ static int ahci_qoriq_phy_init(struct ahci_host_priv *hpriv)
 
 	switch (qpriv->type) {
 	case AHCI_LS1021A:
-		if (!qpriv->ecc_addr)
+		if (!(qpriv->ecc_addr || ecc_initialized))
 			return -EINVAL;
-		writel(SATA_ECC_DISABLE, qpriv->ecc_addr);
+		else if (qpriv->ecc_addr && !ecc_initialized)
+			writel(SATA_ECC_DISABLE, qpriv->ecc_addr);
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(LS1021A_PORT_PHY2, reg_base + PORT_PHY2);
 		writel(LS1021A_PORT_PHY3, reg_base + PORT_PHY3);
 		writel(LS1021A_PORT_PHY4, reg_base + PORT_PHY4);
 		writel(LS1021A_PORT_PHY5, reg_base + PORT_PHY5);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG,
+					reg_base + LS1021A_AXICC_ADDR);
 		break;
 
 	case AHCI_LS1043A:
-	case AHCI_LS1046A:
-		if (!qpriv->ecc_addr)
+		if (!(qpriv->ecc_addr || ecc_initialized))
 			return -EINVAL;
-		writel(readl(qpriv->ecc_addr) | ECC_DIS_ARMV8_CH2,
-				qpriv->ecc_addr);
+		else if (qpriv->ecc_addr && !ecc_initialized)
+			writel(readl(qpriv->ecc_addr) |
+			       ECC_DIS_ARMV8_CH2,
+			       qpriv->ecc_addr);
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(AHCI_PORT_PHY2_CFG, reg_base + PORT_PHY2);
 		writel(AHCI_PORT_PHY3_CFG, reg_base + PORT_PHY3);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
 		break;
 
 	case AHCI_LS2080A:
-	case AHCI_LX2160A:
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(AHCI_PORT_PHY2_CFG, reg_base + PORT_PHY2);
 		writel(AHCI_PORT_PHY3_CFG, reg_base + PORT_PHY3);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
+		break;
+
+	case AHCI_LS1046A:
+		if (!(qpriv->ecc_addr || ecc_initialized))
+			return -EINVAL;
+		else if (qpriv->ecc_addr && !ecc_initialized)
+			writel(readl(qpriv->ecc_addr) |
+			       ECC_DIS_ARMV8_CH2,
+			       qpriv->ecc_addr);
+		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
+		writel(AHCI_PORT_PHY2_CFG, reg_base + PORT_PHY2);
+		writel(AHCI_PORT_PHY3_CFG, reg_base + PORT_PHY3);
+		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
 		break;
 
 	case AHCI_LS1088A:
-		if (!qpriv->ecc_addr)
+	case AHCI_LX2160A:
+		if (!(qpriv->ecc_addr || ecc_initialized))
 			return -EINVAL;
-		writel(readl(qpriv->ecc_addr) | ECC_DIS_LS1088A,
-		       qpriv->ecc_addr);
+		else if (qpriv->ecc_addr && !ecc_initialized)
+			writel(readl(qpriv->ecc_addr) |
+			       ECC_DIS_LS1088A,
+			       qpriv->ecc_addr);
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(AHCI_PORT_PHY2_CFG, reg_base + PORT_PHY2);
 		writel(AHCI_PORT_PHY3_CFG, reg_base + PORT_PHY3);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
+		break;
+
+	case AHCI_LS2088A:
+		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
+		writel(AHCI_PORT_PHY2_CFG, reg_base + PORT_PHY2);
+		writel(AHCI_PORT_PHY3_CFG, reg_base + PORT_PHY3);
+		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
 		break;
 	}
 
-	if (qpriv->is_dmacoherent) {
-		if (qpriv->type == AHCI_LS1021A)
-			writel(AHCI_PORT_AXICC_CFG,
-			       reg_base + LS1021A_AXICC_ADDR);
-		else
-			writel(AHCI_PORT_AXICC_CFG,
-			       reg_base + PORT_AXICC);
-	}
-
+	ecc_initialized = true;
 	return 0;
 }
 
@@ -244,13 +277,18 @@ static int ahci_qoriq_probe(struct platform_device *pdev)
 
 	qoriq_priv->type = (enum ahci_qoriq_type)of_id->data;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
-			"sata-ecc");
-	if (res) {
-		qoriq_priv->ecc_addr = devm_ioremap_resource(dev, res);
-		if (IS_ERR(qoriq_priv->ecc_addr))
-			return PTR_ERR(qoriq_priv->ecc_addr);
+	if (unlikely(!ecc_initialized)) {
+		res = platform_get_resource_byname(pdev,
+						   IORESOURCE_MEM,
+						   "sata-ecc");
+		if (res) {
+			qoriq_priv->ecc_addr =
+				devm_ioremap_resource(dev, res);
+			if (IS_ERR(qoriq_priv->ecc_addr))
+				return PTR_ERR(qoriq_priv->ecc_addr);
+		}
 	}
+
 	qoriq_priv->is_dmacoherent = of_dma_is_coherent(np);
 
 	rc = ahci_platform_enable_resources(hpriv);
