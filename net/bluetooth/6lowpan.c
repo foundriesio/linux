@@ -171,26 +171,21 @@ static inline struct lowpan_peer *peer_lookup_dst(struct lowpan_btle_dev *dev,
 	struct in6_addr *nexthop;
 	struct rt6_info *rt = (struct rt6_info *)skb_dst(skb);
 	int count = atomic_read(&dev->peer_count);
+	struct neighbour *neigh;
 
 	BT_DBG("peers %d addr %pI6c rt %p", count, daddr, rt);
 
-	/* If we have multiple 6lowpan peers, then check where we should
-	 * send the packet. If only one peer exists, then we can send the
-	 * packet right away.
-	 */
-	if (count == 1) {
-		rcu_read_lock();
-		peer = list_first_or_null_rcu(&dev->peers, struct lowpan_peer,
-					      list);
-		rcu_read_unlock();
-		return peer;
-	}
-
 	if (!rt) {
-		nexthop = &lowpan_cb(skb)->gw;
-
-		if (ipv6_addr_any(nexthop))
-			return NULL;
+		if (ipv6_addr_any(&lowpan_cb(skb)->gw)) {
+			/* There is neither route nor gateway,
+			 * probably the destination is a direct peer.
+			 */
+			nexthop = daddr;
+		} else {
+			/* There is a known gateway
+			 */
+			nexthop = &lowpan_cb(skb)->gw;
+		}
 	} else {
 		nexthop = rt6_nexthop(rt, daddr);
 
@@ -214,6 +209,19 @@ static inline struct lowpan_peer *peer_lookup_dst(struct lowpan_btle_dev *dev,
 			rcu_read_unlock();
 			return peer;
 		}
+	}
+
+	// use the neighbout cache for matching addresses assigned by SLAAC
+	neigh = __ipv6_neigh_lookup(dev->netdev, nexthop);
+	if (neigh) {
+		list_for_each_entry_rcu(peer, &dev->peers, list) {
+			if (!memcmp(neigh->ha, peer->lladdr, ETH_ALEN)) {
+				neigh_release(neigh);
+				rcu_read_unlock();
+				return peer;
+			}
+		}
+		neigh_release(neigh);
 	}
 
 	rcu_read_unlock();
@@ -990,11 +998,18 @@ static int get_l2cap_conn(char *buf, bdaddr_t *addr, u8 *addr_type,
 	struct hci_conn *hcon;
 	struct hci_dev *hdev;
 	int n;
+	u8 lookup_type;
 
 	n = sscanf(buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx %hhu",
 		   &addr->b[5], &addr->b[4], &addr->b[3],
 		   &addr->b[2], &addr->b[1], &addr->b[0],
 		   addr_type);
+	/* Convert from L2CAP channel address type to HCI address type
+	*/
+	if (*addr_type == BDADDR_LE_PUBLIC)
+		lookup_type = ADDR_LE_DEV_PUBLIC;
+	else
+		lookup_type = ADDR_LE_DEV_RANDOM;
 
 	if (n < 7)
 		return -EINVAL;
@@ -1005,7 +1020,7 @@ static int get_l2cap_conn(char *buf, bdaddr_t *addr, u8 *addr_type,
 		return -ENOENT;
 
 	hci_dev_lock(hdev);
-	hcon = hci_conn_hash_lookup_le(hdev, addr, *addr_type);
+	hcon = hci_conn_hash_lookup_le(hdev, addr, lookup_type);
 	hci_dev_unlock(hdev);
 
 	if (!hcon)
