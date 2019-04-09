@@ -3421,7 +3421,7 @@ END_MMU_FTR_SECTION_IFSET(MMU_FTR_TYPE_RADIX)
 	ld	r4, PACAKMSR(r13)
 	mtspr	SPRN_SRR0, r3
 	mtspr	SPRN_SRR1, r4
-	rfid
+	RFI_TO_KERNEL
 9:	addi	r3, r1, STACK_FRAME_OVERHEAD
 	bl	kvmppc_bad_interrupt
 	b	9b
