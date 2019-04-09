@@ -1385,6 +1385,7 @@ static bool pl011_tx_char(struct uart_amba_port *uap, unsigned char c,
 		return false; /* unable to transmit character */
 
 	pl011_write(c, uap, REG_DR);
+	mb();
 	uap->port.icount.tx++;
 
 	return true;
@@ -1652,6 +1653,23 @@ static void pl011_put_poll_char(struct uart_port *port,
 
 #endif /* CONFIG_CONSOLE_POLL */
 
+unsigned long pl011_clk_round(unsigned long clk)
+{
+	unsigned long scaler;
+
+	/*
+	 * If increasing a clock by less than 0.1% changes it
+	 * from ..999.. to ..000.., round up.
+	 */
+	scaler = 1;
+	while (scaler * 100000 < clk)
+		scaler *= 10;
+	if ((clk + scaler - 1)/scaler % 1000 == 0)
+		clk = (clk/scaler + 1) * scaler;
+
+	return clk;
+}
+
 static int pl011_hwinit(struct uart_port *port)
 {
 	struct uart_amba_port *uap =
@@ -1668,7 +1686,7 @@ static int pl011_hwinit(struct uart_port *port)
 	if (retval)
 		return retval;
 
-	uap->port.uartclk = clk_get_rate(uap->clk);
+	uap->port.uartclk = pl011_clk_round(clk_get_rate(uap->clk));
 
 	/* Clear pending error and receive interrupts */
 	pl011_write(UART011_OEIS | UART011_BEIS | UART011_PEIS |
@@ -2324,7 +2342,7 @@ static int __init pl011_console_setup(struct console *co, char *options)
 			plat->init();
 	}
 
-	uap->port.uartclk = clk_get_rate(uap->clk);
+	uap->port.uartclk = pl011_clk_round(clk_get_rate(uap->clk));
 
 	if (uap->vendor->fixed_options) {
 		baud = uap->fixed_baud;
@@ -2509,6 +2527,7 @@ static struct uart_driver amba_reg = {
 	.cons			= AMBA_CONSOLE,
 };
 
+#if 0
 static int pl011_probe_dt_alias(int index, struct device *dev)
 {
 	struct device_node *np;
@@ -2540,6 +2559,7 @@ static int pl011_probe_dt_alias(int index, struct device *dev)
 
 	return ret;
 }
+#endif
 
 /* unregisters the driver also if no more ports are left */
 static void pl011_unregister_port(struct uart_amba_port *uap)
@@ -2578,7 +2598,12 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
+	/* Don't use DT serial<n> aliases - it causes the device to
+	   be renumbered to ttyAMA1 if it is the second serial port in the
+	   system, even though the other one is ttyS0. The 8250 driver
+	   doesn't use this logic, so always remains ttyS0.
 	index = pl011_probe_dt_alias(index, dev);
+	*/
 
 	uap->old_cr = 0;
 	uap->port.dev = dev;
@@ -2635,6 +2660,11 @@ static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
 	uap->clk = devm_clk_get(&dev->dev, NULL);
 	if (IS_ERR(uap->clk))
 		return PTR_ERR(uap->clk);
+
+	if (of_property_read_bool(dev->dev.of_node, "cts-event-workaround")) {
+	    vendor->cts_event_workaround = true;
+	    dev_info(&dev->dev, "cts_event_workaround enabled\n");
+	}
 
 	uap->reg_offset = vendor->reg_offset;
 	uap->vendor = vendor;
