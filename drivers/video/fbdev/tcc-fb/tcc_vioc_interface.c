@@ -150,7 +150,7 @@ typedef struct dolby_layer_str_t
 #define UI_CHROMA_EN	(0)
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X) && defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 #define DIV_FB_SC       (VIOC_SCALER4)
 #else
 #define DIV_FB_SC       (VIOC_SCALER3)
