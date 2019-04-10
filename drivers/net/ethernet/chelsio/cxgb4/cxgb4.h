@@ -358,7 +358,6 @@ struct adapter_params {
 	struct sge_params sge;
 	struct tp_params  tp;
 	struct vpd_params vpd;
-	struct pf_resources pfres;
 	struct pci_params pci;
 	struct devlog_params devlog;
 	enum pcie_memwin drv_memwin;
@@ -407,6 +406,7 @@ struct adapter_params {
 #ifndef __GENKSYMS__
 	bool write_w_imm_support;       /* FW supports WRITE_WITH_IMMEDIATE */
 	bool write_cmpl_support;        /* FW supports WRITE_CMPL */
+	struct pf_resources pfres;
 #endif
 };
 
