@@ -299,6 +299,9 @@ int nfp_repr_init(struct nfp_app *app, struct net_device *netdev,
 
 	SWITCHDEV_SET_OPS(netdev, &nfp_port_switchdev_ops);
 
+	netdev->priv_flags |= IFF_NO_QUEUE | IFF_DISABLE_NETPOLL;
+	netdev->features |= NETIF_F_LLTX;
+
 	if (nfp_app_has_tc(app)) {
 		netdev->features |= NETIF_F_HW_TC;
 		netdev->hw_features |= NETIF_F_HW_TC;
