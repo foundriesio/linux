@@ -113,10 +113,10 @@ int dwc2_restore_global_registers(struct dwc2_hsotg *hsotg)
 	gr->valid = false;
 
 	dwc2_writel(hsotg, 0xffffffff, GINTSTS);
+	dwc2_writel(hsotg, gr->gahbcfg, GAHBCFG);
+	dwc2_writel(hsotg, gr->gusbcfg, GUSBCFG);
 	dwc2_writel(hsotg, gr->gotgctl, GOTGCTL);
 	dwc2_writel(hsotg, gr->gintmsk, GINTMSK);
-	dwc2_writel(hsotg, gr->gusbcfg, GUSBCFG);
-	dwc2_writel(hsotg, gr->gahbcfg, GAHBCFG);
 	dwc2_writel(hsotg, gr->grxfsiz, GRXFSIZ);
 	dwc2_writel(hsotg, gr->gnptxfsiz, GNPTXFSIZ);
 	dwc2_writel(hsotg, gr->gdfifocfg, GDFIFOCFG);
