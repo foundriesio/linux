@@ -109,20 +109,45 @@ typedef int64_t             SINT64;
 
 typedef float               REAL32;
 typedef double              REAL64;
+
+/// TCC defines
+typedef unsigned char UINT8;
+typedef short INT16;
+typedef unsigned short UINT16;
+typedef int INT32;
+typedef unsigned int UINT32;
+
 #endif
 
-#define MXL_MODULE_DEBUG_LEVEL 3
-#define MXL_MODULE_DEBUG_OPTIONS MXLDBG_ERROR+MXLDBG_ENTER+MXLDBG_EXIT+MXLDBG_API
+#define MXL_MODULE_DEBUG_LEVEL 2
+#define MXL_MODULE_DEBUG_OPTIONS MXLDBG_ERROR	//+MXLDBG_ENTER+MXLDBG_EXIT+MXLDBG_API
 #define MXL_MODULE_DEBUG_FCT MXL_HYDRA_DEBUG
 
 #include "MaxLinearDataTypes.h"
 
 typedef struct
 {
+/*
   UINT8 drvIndex;
   UINT8 channel;
   UINT16 i2cAddress;
-} oem_data_t;
+  UINT16 i2c_cnt;
+  */
+  
+  UINT8 devId;
+  UINT8 demodId;
+  UINT8 tunerId;
+  UINT8 diseqcId;
+  UINT8 is_initialized;
+  UINT8 ref_cnt;
+  
+  UINT32 gpio_fe_reset;
+  UINT32 gpio_lnb_slp;
+  UINT32 gpio_lnb1_irq;
+  UINT32 gpio_lnb2_irq;
+
+   UINT32 gpio_fe_pwr;
+} tcc_data_t;
 
 #define not_MXL_HYDRA_WAKE_ON_WAN_ENABLED_
 

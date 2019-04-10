@@ -90,6 +90,8 @@ int tcc_fe_register(struct tcc_dxb_fe_driver *pdrv)
 		node = of_find_compatible_node(inst->dev->of_node, NULL, pdrv->compatible);
 		if (node == NULL)
 			continue;
+		
+		printk("tcc_fe_register inst->dev_num(%d) inst[%d]\n",inst->dev_num, j);
 
 		for (i = 0; i < inst->dev_num; i++) {
 			fe = &inst->fe[i];
@@ -103,13 +105,18 @@ int tcc_fe_register(struct tcc_dxb_fe_driver *pdrv)
 						pdrv->fe[j] = fe;
 						fe->isUsing = 1;
 						ret = 0;
+					}
+					else{
+						eprintk("Frontend[%d/%d] driver probe error !! \n",i,inst->dev_num);
+						dvb_unregister_frontend(&fe->fe);
+						dvb_frontend_detach(&fe->fe);
 						break;
 					}
-					dvb_unregister_frontend(&fe->fe);
+				}else{
+					eprintk("Frontend[%d/%d] registration failed!\n",i,inst->dev_num);
+					dvb_frontend_detach(&fe->fe);
+					break;
 				}
-				eprintk("Frontend registration failed!\n");
-				dvb_frontend_detach(&fe->fe);
-				break;
 			}
 		}
 	}

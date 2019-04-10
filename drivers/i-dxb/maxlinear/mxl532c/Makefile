@@ -12,7 +12,9 @@ idxb-maxlinear-mxl532c-objs := 					\
 	module/MxLWare_HYDRA_PhyCtrl.o \
 	module/MxLWare_HYDRA_TsMuxCtrlApi.o \
 	module/sample_oem/MxLWare_HYDRA_OEM_Drv.o \
-	../../telechips/tcc_gpio.o 
+	../../telechips/tcc_gpio.o \
+	../../telechips/tcc_i2c.o \
+	mxl532c.o
 
 obj-$(CONFIG_iDxB_MAXLINEAR_MXL532C) += idxb-maxlinear-mxl532c.o
 

@@ -58,7 +58,12 @@ MODULE_PARM_DESC(dev_debug, "Turn on/off device debugging (default:off).");
  ******************************************************************************/
 #define DRV_NAME "hwdmx"
 
+#ifdef CONFIG_iDxB_MAXLINEAR_MXL532C
+#define FE_DEV_COUNT 2
+#else
 #define FE_DEV_COUNT 1
+#endif
+
 #define TSIF_DEV_COUNT 1 // the number of tsif/hwdmx
 #define DMX_DEV_COUNT 2  // the number of linuxtv demux
 
