@@ -493,29 +493,23 @@ static const struct snd_soc_dai_ops cs42l51_dai_ops = {
 	.digital_mute   = cs42l51_dai_mute,
 };
 
-static struct snd_soc_dai_driver cs42l51_dai[] = {
-	{
-		.name = "cs42l51-hifi0",
-		.playback = {
-			.stream_name = "Playback",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_96000,
-			.formats = CS42L51_FORMATS,
-		},
-		.ops = &cs42l51_dai_ops,
+static struct snd_soc_dai_driver cs42l51_dai = {
+	.name = "cs42l51-hifi",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_96000,
+		.formats = CS42L51_FORMATS,
 	},
-	{
-		.name = "cs42l51-hifi1",
-		.capture = {
-			.stream_name = "Capture",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_96000,
-			.formats = CS42L51_FORMATS,
-		},
-		.ops = &cs42l51_dai_ops,
-	}
+	.capture = {
+		.stream_name = "Capture",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_96000,
+		.formats = CS42L51_FORMATS,
+	},
+	.ops = &cs42l51_dai_ops,
 };
 
 static int cs42l51_component_probe(struct snd_soc_component *component)
@@ -734,7 +728,7 @@ int cs42l51_probe(struct device *dev, struct regmap *regmap)
 		 val & CS42L51_CHIP_REV_MASK);
 
 	ret = devm_snd_soc_register_component(dev,
-			&soc_component_device_cs42l51, cs42l51_dai, 2);
+			&soc_component_device_cs42l51, &cs42l51_dai, 1);
 	if (ret < 0)
 		goto error;
 
