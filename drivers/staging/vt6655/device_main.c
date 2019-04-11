@@ -973,8 +973,6 @@ static void vnt_interrupt_process(struct vnt_private *priv)
 		return;
 	}
 
-	MACvIntDisable(priv->PortOffset);
-
 	spin_lock_irqsave(&priv->lock, flags);
 
 	/* Read low level stats */
@@ -1063,8 +1061,6 @@ static void vnt_interrupt_process(struct vnt_private *priv)
 	}
 
 	spin_unlock_irqrestore(&priv->lock, flags);
-
-	MACvIntEnable(priv->PortOffset, IMR_MASK_VALUE);
 }
 
 static void vnt_interrupt_work(struct work_struct *work)
@@ -1074,6 +1070,8 @@ static void vnt_interrupt_work(struct work_struct *work)
 
 	if (priv->vif)
 		vnt_interrupt_process(priv);
+
+	MACvIntEnable(priv->PortOffset, IMR_MASK_VALUE);
 }
 
 static irqreturn_t vnt_interrupt(int irq,  void *arg)
@@ -1082,6 +1080,8 @@ static irqreturn_t vnt_interrupt(int irq,  void *arg)
 
 	if (priv->vif)
 		schedule_work(&priv->interrupt_work);
+
+	MACvIntDisable(priv->PortOffset);
 
 	return IRQ_HANDLED;
 }
