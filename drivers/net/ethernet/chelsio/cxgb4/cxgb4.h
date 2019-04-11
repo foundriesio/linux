@@ -740,12 +740,14 @@ struct sge_eth_txq {                /* state for an SGE Ethernet Tx queue */
 #ifdef CONFIG_CHELSIO_T4_DCB
 	u8 dcb_prio;		    /* DCB Priority bound to queue */
 #endif
-	u8 dbqt;                    /* SGE Doorbell Queue Timer in use */
-	unsigned int dbqtimerix;    /* SGE Doorbell Queue Timer Index */
 	unsigned long tso;          /* # of TSO requests */
 	unsigned long tx_cso;       /* # of Tx checksum offloads */
 	unsigned long vlan_ins;     /* # of Tx VLAN insertions */
 	unsigned long mapping_err;  /* # of I/O MMU packet mapping errors */
+#ifndef __GENKSYMS__
+	u8 dbqt;                    /* SGE Doorbell Queue Timer in use */
+	unsigned int dbqtimerix;    /* SGE Doorbell Queue Timer Index */
+#endif
 } ____cacheline_aligned_in_smp;
 
 struct sge_uld_txq {               /* state for an SGE offload Tx queue */
@@ -802,7 +804,6 @@ struct sge {
 	u16 nqs_per_uld;	    /* # of Rx queues per ULD */
 	u16 timer_val[SGE_NTIMERS];
 	u8 counter_val[SGE_NCOUNTERS];
-	u16 dbqtimer_val[SGE_NDBQTIMERS];
 	u32 fl_pg_order;            /* large page allocation size */
 	u32 stat_len;               /* length of status page at ring end */
 	u32 pktshift;               /* padding between CPL & packet data */
@@ -821,6 +822,9 @@ struct sge {
 	unsigned long *blocked_fl;
 	struct timer_list rx_timer; /* refills starving FLs */
 	struct timer_list tx_timer; /* checks Tx queues */
+#ifndef __GENKSYMS__
+	u16 dbqtimer_val[SGE_NDBQTIMERS];
+#endif
 };
 
 #define for_each_ethrxq(sge, i) for (i = 0; i < (sge)->ethqsets; i++)
@@ -900,7 +904,6 @@ struct adapter {
 	unsigned int flags;
 	unsigned int adap_idx;
 	enum chip_type chip;
-	u32 eth_flags;
 
 	int msg_enable;
 	__be16 vxlan_port;
@@ -996,6 +999,8 @@ struct adapter {
 	struct ethtool_dump eth_dump;
 
 #ifndef __GENKSYMS__
+	u32 eth_flags;
+
 	struct work_struct fatal_err_notify_task;
 
 	/* HMA */
