@@ -7,6 +7,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/extcon-provider.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
@@ -158,6 +159,14 @@ struct stusb {
 	enum typec_port_type	port_type;
 	enum typec_pwr_opmode	pwr_opmode;
 	bool			vbus_on;
+	struct extcon_dev	*edev;
+	struct work_struct	wq_detcable;
+};
+
+static const unsigned int stusb_extcon_cable[] = {
+	EXTCON_USB,
+	EXTCON_USB_HOST,
+	EXTCON_NONE,
 };
 
 static bool stusb_reg_writeable(struct device *dev, unsigned int reg)
@@ -233,6 +242,54 @@ static const struct regmap_config stusb1600_regmap_config = {
 	.precious_reg	= stusb_reg_precious,
 	.cache_type	= REGCACHE_RBTREE,
 };
+
+static void stusb_extcon_detect_cable(struct work_struct *work)
+{
+	struct stusb *chip = container_of(work, struct stusb, wq_detcable);
+	u32 conn_status, vbus_status;
+	bool id, vbus;
+	int ret;
+
+	/* Check ID and Vbus to update cable state */
+	ret = regmap_read(chip->regmap, STUSB_CC_CONNECTION_STATUS,
+			  &conn_status);
+	if (ret)
+		return;
+
+	ret = regmap_read(chip->regmap, STUSB_VBUS_ENABLE_STATUS,
+			  &vbus_status);
+	if (ret)
+		return;
+
+	/* 0 = Device, 1 = Host */
+	id = STUSB_CC_DATA_ROLE(conn_status);
+
+	if (STUSB_CC_POWER_ROLE(conn_status)) /* Source */
+		vbus = !!(vbus_status & STUSB_VBUS_SOURCE_EN);
+	else /* Sink */
+		vbus = !!(vbus_status & STUSB_VBUS_SINK_EN);
+
+	dev_dbg(chip->dev, "role=%s vbus=%sable\n",
+		id ? "Host" : "Device", vbus ? "en" : "dis");
+
+	/*
+	 * !vbus = detached, so neither B-Session Valid nor A-Session Valid
+	 * !vbus = !EXTCON_USB && !EXTCON_USB_HOST
+	 * vbus = attached, so either B-Session Valid or A-Session Valid
+	 * vbus && !id = B-Session Valid = EXTCON_USB && !EXTCON_USB_HOST
+	 * vbus && id = A-Session Valid = !EXTCON_USB && EXTCON_USB_HOST
+	 */
+
+	if (!vbus || !id) /* Detached or B-Session */
+		extcon_set_state_sync(chip->edev, EXTCON_USB_HOST, false);
+	if (!vbus || id) /* Detached or A-Session */
+		extcon_set_state_sync(chip->edev, EXTCON_USB, false);
+
+	if (vbus && id) /* Attached and A-Session Valid */
+		extcon_set_state_sync(chip->edev, EXTCON_USB_HOST, true);
+	if (vbus && !id) /* Attached and B-Session Valid */
+		extcon_set_state_sync(chip->edev, EXTCON_USB, true);
+}
 
 static bool stusb_get_vconn(struct stusb *chip)
 {
@@ -352,6 +409,8 @@ static int stusb_attach(struct stusb *chip, u32 status)
 	typec_set_vconn_role(chip->port, stusb_get_vconn_role(status));
 	typec_set_data_role(chip->port, STUSB_CC_DATA_ROLE(status));
 
+	queue_work(system_power_efficient_wq, &chip->wq_detcable);
+
 	return 0;
 
 vbus_disable:
@@ -367,6 +426,8 @@ static void stusb_detach(struct stusb *chip, u32 status)
 {
 	typec_unregister_partner(chip->partner);
 	chip->partner = NULL;
+
+	queue_work(system_power_efficient_wq, &chip->wq_detcable);
 
 	typec_set_pwr_role(chip->port, STUSB_CC_POWER_ROLE(status));
 	typec_set_pwr_opmode(chip->port, TYPEC_PWR_MODE_USB);
@@ -713,11 +774,7 @@ static int stusb_probe(struct i2c_client *client,
 	 */
 	typec_set_pwr_opmode(chip->port, chip->pwr_opmode);
 
-	if (client->irq) {
-		ret = stusb_irq_init(chip, client->irq);
-		if (ret)
-			goto port_unregister;
-	} else {
+	if (!client->irq) {
 		/*
 		 * If Source or Dual power role, need to enable VDD supply
 		 * providing Vbus if present. In case of interrupt support,
@@ -734,12 +791,35 @@ static int stusb_probe(struct i2c_client *client,
 			}
 			chip->vbus_on = true;
 		}
+
+		return 0;
 	}
 
-	dev_info(chip->dev, "STUSB driver registered\n");
+	chip->edev = devm_extcon_dev_allocate(chip->dev, stusb_extcon_cable);
+	if (IS_ERR(chip->edev)) {
+		ret = PTR_ERR(chip->edev);
+		dev_err(chip->dev,
+			"Failed to allocate extcon device: %d\n", ret);
+		goto port_unregister;
+	}
+
+	ret = devm_extcon_dev_register(chip->dev, chip->edev);
+	if (ret) {
+		dev_err(chip->dev,
+			"Failed to register extcon device: %d\n", ret);
+		goto port_unregister;
+	}
+
+	INIT_WORK(&chip->wq_detcable, stusb_extcon_detect_cable);
+
+	ret = stusb_irq_init(chip, client->irq);
+	if (ret)
+		goto cancel_work_sync;
 
 	return 0;
 
+cancel_work_sync:
+	cancel_work_sync(&chip->wq_detcable);
 port_unregister:
 	typec_unregister_port(chip->port);
 all_reg_disable:
@@ -763,6 +843,9 @@ static int stusb_remove(struct i2c_client *client)
 
 	if (chip->vbus_on)
 		regulator_disable(chip->vdd_supply);
+
+	if (chip->edev)
+		cancel_work_sync(&chip->wq_detcable);
 
 	typec_unregister_port(chip->port);
 
