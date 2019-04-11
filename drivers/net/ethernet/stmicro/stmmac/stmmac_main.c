@@ -2713,6 +2713,8 @@ static int stmmac_release(struct net_device *dev)
 	struct stmmac_priv *priv = netdev_priv(dev);
 	u32 chan;
 
+	stmmac_disable_all_queues(priv);
+
 	if (priv->eee_enabled)
 		del_timer_sync(&priv->eee_ctrl_timer);
 
@@ -2723,8 +2725,6 @@ static int stmmac_release(struct net_device *dev)
 	}
 
 	stmmac_stop_all_queues(priv);
-
-	stmmac_disable_all_queues(priv);
 
 	for (chan = 0; chan < priv->plat->tx_queues_to_use; chan++)
 		del_timer_sync(&priv->tx_queue[chan].txtimer);
@@ -4479,6 +4479,8 @@ int stmmac_suspend(struct device *dev)
 	if (!ndev || !netif_running(ndev))
 		return 0;
 
+	stmmac_disable_all_queues(priv);
+
 	if (ndev->phydev)
 		phy_stop(ndev->phydev);
 
@@ -4486,8 +4488,6 @@ int stmmac_suspend(struct device *dev)
 
 	netif_device_detach(ndev);
 	stmmac_stop_all_queues(priv);
-
-	stmmac_disable_all_queues(priv);
 
 	/* Stop TX/RX DMA */
 	stmmac_stop_all_dma(priv);
