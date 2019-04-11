@@ -545,7 +545,7 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * to '1' after the core initialization is completed.
 	 */
 	if (dwc->revision > DWC3_REVISION_194A)
-		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+		//reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->u2ss_inp3_quirk)
 		reg |= DWC3_GUSB3PIPECTL_U2SSINP3OK;
@@ -631,7 +631,7 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * '1' after the core initialization is completed.
 	 */
 	if (dwc->revision > DWC3_REVISION_194A)
-		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+		//reg |= DWC3_GUSB2PHYCFG_SUSPHY;
 
 	if (dwc->dis_u2_susphy_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
