@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/pm_wakeirq.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
 #include <linux/usb.h>
@@ -45,6 +46,7 @@ struct ehci_platform_priv {
 	struct clk *clks[EHCI_MAX_CLKS];
 	struct reset_control *rsts;
 	struct regulator *vbus_supply;
+	int wakeirq;
 	bool reset_on_resume;
 };
 
@@ -277,12 +279,24 @@ static int ehci_platform_probe(struct platform_device *dev)
 	if (err)
 		goto err_power;
 
+	priv->wakeirq = platform_get_irq(dev, 1);
+	if (priv->wakeirq > 0) {
+		err = dev_pm_set_dedicated_wake_irq(hcd->self.controller,
+						    priv->wakeirq);
+		if (err)
+			goto err_hcd;
+	} else if (priv->wakeirq == -EPROBE_DEFER) {
+		goto err_hcd;
+	}
+
 	device_wakeup_enable(hcd->self.controller);
 	device_enable_async_suspend(hcd->self.controller);
 	platform_set_drvdata(dev, hcd);
 
 	return err;
 
+err_hcd:
+	usb_remove_hcd(hcd);
 err_power:
 	if (pdata->power_off)
 		pdata->power_off(dev);
@@ -306,6 +320,9 @@ static int ehci_platform_remove(struct platform_device *dev)
 	struct usb_ehci_pdata *pdata = dev_get_platdata(&dev->dev);
 	struct ehci_platform_priv *priv = hcd_to_ehci_priv(hcd);
 	int clk;
+
+	if (priv->wakeirq > 0)
+		dev_pm_clear_wake_irq(hcd->self.controller);
 
 	usb_remove_hcd(hcd);
 
@@ -331,8 +348,13 @@ static int ehci_platform_suspend(struct device *dev)
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 	struct usb_ehci_pdata *pdata = dev_get_platdata(dev);
 	struct platform_device *pdev = to_platform_device(dev);
+	struct ehci_platform_priv *priv = hcd_to_ehci_priv(hcd);
 	bool do_wakeup = device_may_wakeup(dev);
 	int ret;
+
+	if (priv->wakeirq > 0 &&
+	    (do_wakeup || dev->power.wakeup_path))
+		enable_irq_wake(priv->wakeirq);
 
 	ret = ehci_suspend(hcd, do_wakeup);
 	if (ret)
@@ -365,6 +387,11 @@ static int ehci_platform_resume(struct device *dev)
 	}
 
 	ehci_resume(hcd, priv->reset_on_resume);
+
+	if (priv->wakeirq > 0 &&
+	    (device_may_wakeup(dev) || dev->power.wakeup_path))
+		disable_irq_wake(priv->wakeirq);
+
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP */
