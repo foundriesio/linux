@@ -1193,13 +1193,16 @@ xfs_reflink_remap_blocks(
 
 	/* drange = (destoff, destoff + len); srange = (srcoff, srcoff + len) */
 	while (len) {
+		uint		lock_mode;
+
 		trace_xfs_reflink_remap_blocks_loop(src, srcoff, len,
 				dest, destoff);
+
 		/* Read extent from the source file */
 		nimaps = 1;
-		xfs_ilock(src, XFS_ILOCK_EXCL);
+		lock_mode = xfs_ilock_data_map_shared(src);
 		error = xfs_bmapi_read(src, srcoff, len, &imap, &nimaps, 0);
-		xfs_iunlock(src, XFS_ILOCK_EXCL);
+		xfs_iunlock(src, lock_mode);
 		if (error)
 			goto err;
 		ASSERT(nimaps == 1);
@@ -1251,7 +1254,7 @@ xfs_iolock_two_inodes_and_break_layout(
 
 retry:
 	if (src < dest) {
-		inode_lock(src);
+		inode_lock_shared(src);
 		inode_lock_nested(dest, I_MUTEX_NONDIR2);
 	} else {
 		/* src >= dest */
@@ -1262,7 +1265,7 @@ retry:
 	if (error == -EWOULDBLOCK) {
 		inode_unlock(dest);
 		if (src < dest)
-			inode_unlock(src);
+			inode_unlock_shared(src);
 		error = break_layout(dest, true);
 		if (error)
 			return error;
@@ -1271,11 +1274,11 @@ retry:
 	if (error) {
 		inode_unlock(dest);
 		if (src < dest)
-			inode_unlock(src);
+			inode_unlock_shared(src);
 		return error;
 	}
 	if (src > dest)
-		inode_lock_nested(src, I_MUTEX_NONDIR2);
+		inode_lock_shared_nested(src, I_MUTEX_NONDIR2);
 	return 0;
 }
 
@@ -1315,7 +1318,7 @@ xfs_reflink_remap_range(
 	if (same_inode)
 		xfs_ilock(src, XFS_MMAPLOCK_EXCL);
 	else
-		xfs_lock_two_inodes(src, XFS_MMAPLOCK_EXCL, dest,
+		xfs_lock_two_inodes(src, XFS_MMAPLOCK_SHARED, dest,
 				XFS_MMAPLOCK_EXCL);
 
 	/* Check file eligibility and prepare for block sharing. */
@@ -1384,10 +1387,12 @@ xfs_reflink_remap_range(
 			is_dedupe);
 
 out_unlock:
-	xfs_iunlock(src, XFS_MMAPLOCK_EXCL);
+	xfs_iunlock(dest, XFS_MMAPLOCK_EXCL);
 	if (!same_inode)
-		xfs_iunlock(dest, XFS_MMAPLOCK_EXCL);
-	unlock_two_nondirectories(inode_in, inode_out);
+		xfs_iunlock(src, XFS_MMAPLOCK_SHARED);
+	inode_unlock(inode_out);
+	if (!same_inode)
+		inode_unlock_shared(inode_in);
 	if (ret)
 		trace_xfs_reflink_remap_range_error(dest, ret, _RET_IP_);
 	return ret;
