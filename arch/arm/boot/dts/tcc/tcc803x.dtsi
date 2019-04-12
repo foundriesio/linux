@@ -1327,6 +1327,12 @@
 		max-channel = <TCC_MBOX1_CH_MAX>;
 	};
 
+	tctb: tcc_touch_bridge {
+	    compatible = "telechips,tcc_touch_bridge";
+	    mbox-names ="tb-mbox";
+	    mboxes = <&mbox1 TCC_MBOX1_CH_TOUCH>;
+	};
+
 	/* ipc for r5(micom) */
 	ipc0: tcc_ipc@0 {
 		 compatible = "telechips,tcc_ipc";
