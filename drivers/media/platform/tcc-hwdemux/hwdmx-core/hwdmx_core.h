@@ -24,6 +24,13 @@
 #include <linux/types.h>
 #include "tca_hwdemux_param.h"
 
+enum
+{
+	HWDMX_INPUT_EXT_SERIAL = 0,
+	HWDMX_INPUT_EXT_PALLERAL,
+	HWDMX_INPUT_INTERNAL,
+};
+
 struct tcc_demux_handle
 {
 	void *handle;
@@ -49,5 +56,8 @@ int hwdmx_input_ts(int devid, uintptr_t mmap_buf, int size);
 
 /* deprecated */
 int hwdmx_input_stream(uintptr_t mmap_buf, int size);
+
+/* HWDEMUX IOCTL */
+#define IOCTL_HWDMX_SET_INTERFACE 0
 
 #endif /* INCLUDED_HWDMX_CORE */
