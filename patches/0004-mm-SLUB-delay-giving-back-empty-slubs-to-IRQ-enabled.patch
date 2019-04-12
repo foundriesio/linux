@@ -201,7 +201,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	slab_post_alloc_hook(s, flags, i, p);
  	__kmem_cache_free_bulk(s, i, p);
  	return 0;
-@@ -4231,6 +4289,12 @@ void __init kmem_cache_init(void)
+@@ -4234,6 +4292,12 @@ void __init kmem_cache_init(void)
  {
  	static __initdata struct kmem_cache boot_kmem_cache,
  		boot_kmem_cache_node;

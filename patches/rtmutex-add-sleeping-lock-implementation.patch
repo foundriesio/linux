@@ -1121,7 +1121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # include "rtmutex-debug.h"
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -412,9 +412,15 @@ static bool set_nr_if_polling(struct tas
+@@ -413,9 +413,15 @@ static bool set_nr_if_polling(struct tas
   * This function must be used as-if it were wake_up_process(); IOW the task
   * must be ready to be woken at this location.
   */
@@ -1139,7 +1139,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Atomically grab the task, if ->wake_q is !nil already it means
-@@ -437,24 +443,32 @@ void wake_q_add(struct wake_q_head *head
+@@ -438,24 +444,32 @@ void wake_q_add(struct wake_q_head *head
  	head->lastp = &node->next;
  }
  

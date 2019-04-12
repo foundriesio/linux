@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -688,7 +688,7 @@ struct inode {
+@@ -694,7 +694,7 @@ struct inode {
  		struct block_device	*i_bdev;
  		struct cdev		*i_cdev;
  		char			*i_link;

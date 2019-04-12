@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1030,6 +1030,7 @@ int __migrate_disabled(struct task_struc
+@@ -1031,6 +1031,7 @@ int __migrate_disabled(struct task_struc
  {
  	return p->migrate_disable;
  }

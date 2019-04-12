@@ -677,7 +677,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -}
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -8364,7 +8364,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -8366,7 +8366,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -685,7 +685,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -8445,7 +8444,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -8447,7 +8446,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.trace_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

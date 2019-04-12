@@ -80,7 +80,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -314,7 +314,7 @@ static void hrtick_rq_init(struct rq *rq
+@@ -315,7 +315,7 @@ static void hrtick_rq_init(struct rq *rq
  	rq->hrtick_csd.info = rq;
  #endif
  

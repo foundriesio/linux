@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Fri, 19 Oct 2018 13:59:26 +0200
-Subject: [PATCH 13/22] x86/pkeys: Don't check if PKRU is zero before writting
+Subject: [PATCH 14/27] x86/pkeys: Don't check if PKRU is zero before writting
  it
 
 write_pkru() checks if the current value is the same as the expected

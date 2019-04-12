@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 17 Oct 2018 15:27:34 +0200
-Subject: [PATCH 04/22] x86/fpu: Always init the `state' in fpu__clear()
+Subject: [PATCH 04/27] x86/fpu: Always init the `state' in fpu__clear()
 
 fpu__clear() only initializes the `state' if the FPU is present. This
 initialisation is also required for the FPU-less system and takes place

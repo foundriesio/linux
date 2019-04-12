@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1688,7 +1688,8 @@ static void printk_write_history(struct
+@@ -1700,7 +1700,8 @@ static void printk_write_history(struct
   * The console_lock must be held.
   */
  static void call_console_drivers(u64 seq, const char *ext_text, size_t ext_len,
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct console *con;
  
-@@ -1708,13 +1709,14 @@ static void call_console_drivers(u64 seq
+@@ -1720,13 +1721,14 @@ static void call_console_drivers(u64 seq
  			con->wrote_history = 1;
  			con->printk_seq = seq - 1;
  		}
@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			/* skip emergency messages, already printed */
  			if (con->printk_seq < seq)
  				con->printk_seq = seq;
-@@ -1882,7 +1884,11 @@ asmlinkage int vprintk_emit(int facility
+@@ -1894,7 +1896,11 @@ asmlinkage int vprintk_emit(int facility
  	 * - text points to beginning of text
  	 * - there is room before text for prefix
  	 */
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if ((lflags & LOG_CONT) || !(lflags & LOG_NEWLINE)) {
  		cont_add(ctx, cpu, facility, level, lflags, text, text_len);
-@@ -2645,8 +2651,8 @@ static int printk_kthread_func(void *dat
+@@ -2657,8 +2663,8 @@ static int printk_kthread_func(void *dat
  			    &len, printk_time);
  
  		console_lock();

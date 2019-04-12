@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 17 Oct 2018 18:08:35 +0200
-Subject: [PATCH 07/22] x86/fpu: Remove fpu->initialized
+Subject: [PATCH 07/27] x86/fpu: Remove fpu->initialized
 
 The `initialized' member of the fpu struct is always set to one for user
 tasks and zero for kernel tasks. This avoids saving/restoring the FPU

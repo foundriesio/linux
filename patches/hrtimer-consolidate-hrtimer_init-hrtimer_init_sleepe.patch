@@ -26,7 +26,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -3364,10 +3364,9 @@ static bool blk_mq_poll_hybrid_sleep(str
+@@ -3373,10 +3373,9 @@ static bool blk_mq_poll_hybrid_sleep(str
  	kt = nsecs;
  
  	mode = HRTIMER_MODE_REL;

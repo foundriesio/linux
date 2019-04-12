@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * signals when all in-flight requests are done
-@@ -602,9 +603,9 @@ static void free_ioctx_reqs(struct percp
+@@ -613,9 +614,9 @@ static void free_ioctx_reqs(struct percp
   * and ctx->users has dropped to 0, so we know no more kiocbs can be submitted -
   * now it's safe to cancel any that need to be.
   */
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct aio_kiocb *req;
  
  	spin_lock_irq(&ctx->ctx_lock);
-@@ -622,6 +623,14 @@ static void free_ioctx_users(struct perc
+@@ -633,6 +634,14 @@ static void free_ioctx_users(struct perc
  	percpu_ref_put(&ctx->reqs);
  }
  

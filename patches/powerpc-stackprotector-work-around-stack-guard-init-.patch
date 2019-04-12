@@ -10,14 +10,12 @@ as the initial value.
 Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/powerpc/include/asm/stackprotector.h | 4 ++++
+ arch/powerpc/include/asm/stackprotector.h |    4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/arch/powerpc/include/asm/stackprotector.h b/arch/powerpc/include/asm/stackprotector.h
-index 1c8460e235838..e764eb4b6c284 100644
 --- a/arch/powerpc/include/asm/stackprotector.h
 +++ b/arch/powerpc/include/asm/stackprotector.h
-@@ -24,7 +24,11 @@ static __always_inline void boot_init_stack_canary(void)
+@@ -24,7 +24,11 @@ static __always_inline void boot_init_st
  	unsigned long canary;
  
  	/* Try to get a semi random initial value. */
@@ -29,6 +27,3 @@ index 1c8460e235838..e764eb4b6c284 100644
  	canary ^= mftb();
  	canary ^= LINUX_VERSION_CODE;
  	canary &= CANARY_MASK;
--- 
-2.20.1
-

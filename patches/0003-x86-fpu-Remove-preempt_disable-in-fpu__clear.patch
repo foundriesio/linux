@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 17 Oct 2018 14:58:28 +0200
-Subject: [PATCH 03/22] x86/fpu: Remove preempt_disable() in fpu__clear()
+Subject: [PATCH 03/27] x86/fpu: Remove preempt_disable() in fpu__clear()
 
 The preempt_disable() section was introduced in commit
 

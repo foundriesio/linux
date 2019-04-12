@@ -50,7 +50,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	default:
 --- a/drivers/usb/gadget/function/f_fs.c
 +++ b/drivers/usb/gadget/function/f_fs.c
-@@ -1703,7 +1703,7 @@ static void ffs_data_put(struct ffs_data
+@@ -1704,7 +1704,7 @@ static void ffs_data_put(struct ffs_data
  		pr_info("%s(): freeing\n", __func__);
  		ffs_data_clear(ffs);
  		BUG_ON(waitqueue_active(&ffs->ev.waitq) ||
@@ -299,7 +299,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  EXPORT_SYMBOL(completion_done);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7120,7 +7120,10 @@ void migrate_disable(void)
+@@ -7121,7 +7121,10 @@ void migrate_disable(void)
  		return;
  	}
  #ifdef CONFIG_SCHED_DEBUG
@@ -311,7 +311,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  	if (p->migrate_disable) {
-@@ -7150,7 +7153,10 @@ void migrate_enable(void)
+@@ -7151,7 +7154,10 @@ void migrate_enable(void)
  	}
  
  #ifdef CONFIG_SCHED_DEBUG

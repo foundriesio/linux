@@ -26,14 +26,12 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- drivers/tty/sysrq.c | 6 +++---
+ drivers/tty/sysrq.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/tty/sysrq.c b/drivers/tty/sysrq.c
-index 1f03078ec3527..8473557c7ab2a 100644
 --- a/drivers/tty/sysrq.c
 +++ b/drivers/tty/sysrq.c
-@@ -208,7 +208,7 @@ static struct sysrq_key_op sysrq_showlocks_op = {
+@@ -208,7 +208,7 @@ static struct sysrq_key_op sysrq_showloc
  #endif
  
  #ifdef CONFIG_SMP
@@ -55,6 +53,3 @@ index 1f03078ec3527..8473557c7ab2a 100644
  }
  
  static void sysrq_showregs_othercpus(struct work_struct *dummy)
--- 
-2.20.1
-

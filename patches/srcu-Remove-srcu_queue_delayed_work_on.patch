@@ -153,7 +153,7 @@ Signed-off-by: Paul E. McKenney <paulmck@linux.ibm.com>
  	spin_lock_irq_rcu_node(sdp);
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -3424,8 +3424,6 @@ int rcutree_online_cpu(unsigned int cpu)
+@@ -3433,8 +3433,6 @@ int rcutree_online_cpu(unsigned int cpu)
  	raw_spin_lock_irqsave_rcu_node(rnp, flags);
  	rnp->ffmask |= rdp->grpmask;
  	raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
@@ -162,7 +162,7 @@ Signed-off-by: Paul E. McKenney <paulmck@linux.ibm.com>
  	if (rcu_scheduler_active == RCU_SCHEDULER_INACTIVE)
  		return 0; /* Too early in boot for scheduler work. */
  	sync_sched_exp_online_cleanup(cpu);
-@@ -3450,8 +3448,6 @@ int rcutree_offline_cpu(unsigned int cpu
+@@ -3459,8 +3457,6 @@ int rcutree_offline_cpu(unsigned int cpu
  	raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
  
  	rcutree_affinity_setting(cpu, cpu);
