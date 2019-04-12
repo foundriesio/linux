@@ -172,6 +172,7 @@ static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_hsotg *hsotg)
 {
 	struct dwc2_core_params *p = &hsotg->params;
 
+	p->otg_cap = DWC2_CAP_PARAM_NO_HNP_SRP_CAPABLE;
 	p->activate_stm_id_vb_detection = true;
 	p->host_rx_fifo_size = 440;
 	p->host_nperio_tx_fifo_size = 256;
