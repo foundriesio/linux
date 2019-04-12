@@ -95,7 +95,10 @@ enum
 };
 
 static FN_UPDATECALLBACK buf_updated_cb[8] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-static int interface[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static int interface[8] = {
+	TSIF_SERIAL, TSIF_SERIAL, TSIF_SERIAL, TSIF_SERIAL,
+	TSIF_SERIAL, TSIF_SERIAL, TSIF_SERIAL, TSIF_SERIAL,
+};
 static int session_cnt = 0;
 static DECLARE_WAIT_QUEUE_HEAD(waitq_empty_bufevt);
 static int empty_bufevt_received = 0;
@@ -199,29 +202,47 @@ void hwdmx_set_evt_handler(void)
 void hwdmx_set_interface_cmd(int iDMXID, int mode)
 {
 	int mbox_data[3];
-	int i;
+	int i, tsif;
+
+	if (mode == HWDMX_INTERNAL)
+		tsif = INTERNAL;
+	else if (mode == HWDMX_EXT_PARALLEL)
+		tsif = TSIF_PARALLEL;
+	else // if (mode == HWDMX_EXT_SERIAL)
+		tsif = TSIF_SERIAL;
 
 	if (iDMXID < 0) {
 		for (i = 0; i < 8; i++) {
-			interface[i] = mode;
-			mbox_data[0] = i;
-			mbox_data[1] = mode;
+			if (interface[i] != tsif) {
+				interface[i] = tsif;
+				mbox_data[0] = i;
+				mbox_data[1] = tsif;
+				mbox_data[2] = 0;
+				sp_sendrecv_cmd(HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
+			}
+		}
+	} else if (iDMXID < 8) {
+		if (interface[iDMXID] != tsif) {
+			interface[iDMXID] = tsif;
+			mbox_data[0] = iDMXID;
+			mbox_data[1] = tsif;
 			mbox_data[2] = 0;
 			sp_sendrecv_cmd(HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
 		}
-	} else if (iDMXID < 8) {
-		interface[iDMXID] = mode;
-		mbox_data[0] = iDMXID;
-		mbox_data[1] = mode;
-		mbox_data[2] = 0;
-		sp_sendrecv_cmd(HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
 	}
 }
 EXPORT_SYMBOL(hwdmx_set_interface_cmd);
 
 int hwdmx_get_interface(int iDMXID)
 {
-	return interface[iDMXID];
+	if (interface[iDMXID] == INTERNAL) {
+		return HWDMX_INTERNAL;
+	} else if (interface[iDMXID] == TSIF_PARALLEL) {
+		return HWDMX_EXT_PARALLEL;
+	} else if (interface[iDMXID] == TSIF_SERIAL) {
+		return HWDMX_EXT_SERIAL;
+	}
+	return -1;
 }
 
 int hwdmx_start_cmd(struct tcc_tsif_handle *h)
@@ -244,12 +265,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 		break;
 
 	default: // 0x01 for tsif of isdbt & dvbt
-		if (interface[h->dmx_id] == 2)
-			tsif = INTERNAL;
-		else if (interface[h->dmx_id] == 1)
-			tsif = TSIF_PARALLEL;
-		else // if (interface[h->dmx_id] == 0)
-			tsif = TSIF_SERIAL;
+		tsif = interface[h->dmx_id];
 		break;
 	}
 

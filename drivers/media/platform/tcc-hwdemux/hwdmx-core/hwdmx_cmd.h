@@ -61,6 +61,13 @@ struct tcc_tsif_handle
 	struct tca_tsif_port_config port_cfg;
 };
 
+enum
+{
+	HWDMX_EXT_SERIAL = 0,
+	HWDMX_EXT_PARALLEL,
+	HWDMX_INTERNAL,
+};
+
 void hwdmx_set_evt_handler(void);
 void hwdmx_set_interface_cmd(int iDMXID, int mode); // mode(0: serial, 1: parallel)
 int hwdmx_get_interface(int iDMXID);

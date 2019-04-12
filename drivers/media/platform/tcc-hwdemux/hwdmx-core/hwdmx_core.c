@@ -144,7 +144,12 @@ EXPORT_SYMBOL(hwdmx_unregister);
 
 static int hwdmx_open(struct inode *inode, struct file *filp)
 {
-	hwdmx_set_interface_cmd(-1, 2);
+	int devid = MINOR(inode->i_rdev);
+
+	filp->private_data = (void*)devid;
+
+	hwdmx_set_interface_cmd(devid, HWDMX_INTERNAL);
+
 	return 0;
 }
 
@@ -166,7 +171,9 @@ EXPORT_SYMBOL(hwdmx_input_stream);
 
 static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
-	int result;
+	int result, devid;
+
+	devid = (int)filp->private_data;
 
 	if (dma_vaddr == NULL) {
 		return -EFAULT;
@@ -179,7 +186,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 	}
 
 	// dmx_id should be 1 at internal mode
-	result = hwdmx_input_stream_cmd(0, dma_paddr, count);
+	result = hwdmx_input_stream_cmd(devid, dma_paddr, count);
 	if (result != 0) {
 		return -EFAULT;
 	}
@@ -190,10 +197,23 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 	return result;
 }
 
+static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	int devid = (int)filp->private_data;
+
+	switch (cmd) {
+	case IOCTL_HWDMX_SET_INTERFACE:
+		hwdmx_set_interface_cmd(devid, arg);
+		return 0;
+	}
+	return -1;
+}
+
 static struct file_operations fops = {
 	.owner = THIS_MODULE,
 	.open = hwdmx_open,
 	.write = hwdmx_write,
+	.unlocked_ioctl = hwdmx_ioctl,
 };
 
 static int hwdmx_probe(struct platform_device *pdev)
