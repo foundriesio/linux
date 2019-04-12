@@ -659,8 +659,13 @@ static inline bool page_is_mergeable(const struct bio_vec *bv,
 		return false;
 	if (xen_domain() && !xen_biovec_phys_mergeable(bv, page))
 		return false;
-	if (same_page && (vec_end_addr & PAGE_MASK) != page_addr)
-		return false;
+
+	if ((vec_end_addr & PAGE_MASK) != page_addr) {
+		if (same_page)
+			return false;
+		if (pfn_to_page(PFN_DOWN(vec_end_addr)) + 1 != page)
+			return false;
+	}
 
 	return true;
 }
@@ -861,6 +866,26 @@ int bio_add_page(struct bio *bio, struct page *page,
 }
 EXPORT_SYMBOL(bio_add_page);
 
+static void bio_get_pages(struct bio *bio)
+{
+	struct bvec_iter_all iter_all;
+	struct bio_vec *bvec;
+	int i;
+
+	bio_for_each_segment_all(bvec, bio, i, iter_all)
+		get_page(bvec->bv_page);
+}
+
+static void bio_release_pages(struct bio *bio)
+{
+	struct bvec_iter_all iter_all;
+	struct bio_vec *bvec;
+	int i;
+
+	bio_for_each_segment_all(bvec, bio, i, iter_all)
+		put_page(bvec->bv_page);
+}
+
 static int __bio_iov_bvec_add_pages(struct bio *bio, struct iov_iter *iter)
 {
 	const struct bio_vec *bv = iter->bvec;
@@ -873,20 +898,10 @@ static int __bio_iov_bvec_add_pages(struct bio *bio, struct iov_iter *iter)
 	len = min_t(size_t, bv->bv_len - iter->iov_offset, iter->count);
 	size = bio_add_page(bio, bv->bv_page, len,
 				bv->bv_offset + iter->iov_offset);
-	if (size == len) {
-		if (!bio_flagged(bio, BIO_NO_PAGE_REF)) {
-			struct page *page;
-			int i;
-
-			mp_bvec_for_each_page(page, bv, i)
-				get_page(page);
-		}
-
-		iov_iter_advance(iter, size);
-		return 0;
-	}
-
-	return -EINVAL;
+	if (unlikely(size != len))
+		return -EINVAL;
+	iov_iter_advance(iter, size);
+	return 0;
 }
 
 #define PAGE_PTRS_PER_BVEC     (sizeof(struct bio_vec) / sizeof(struct page *))
@@ -959,29 +974,24 @@ static int __bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter)
 int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter)
 {
 	const bool is_bvec = iov_iter_is_bvec(iter);
-	unsigned short orig_vcnt = bio->bi_vcnt;
+	int ret;
 
-	/*
-	 * If this is a BVEC iter, then the pages are kernel pages. Don't
-	 * release them on IO completion, if the caller asked us to.
-	 */
-	if (is_bvec && iov_iter_bvec_no_ref(iter))
-		bio_set_flag(bio, BIO_NO_PAGE_REF);
+	if (WARN_ON_ONCE(bio->bi_vcnt))
+		return -EINVAL;
 
 	do {
-		int ret;
-
 		if (is_bvec)
 			ret = __bio_iov_bvec_add_pages(bio, iter);
 		else
 			ret = __bio_iov_iter_get_pages(bio, iter);
+	} while (!ret && iov_iter_count(iter) && !bio_full(bio));
 
-		if (unlikely(ret))
-			return bio->bi_vcnt > orig_vcnt ? 0 : ret;
+	if (iov_iter_bvec_no_ref(iter))
+		bio_set_flag(bio, BIO_NO_PAGE_REF);
+	else
+		bio_get_pages(bio);
 
-	} while (iov_iter_count(iter) && !bio_full(bio));
-
-	return 0;
+	return bio->bi_vcnt ? 0 : ret;
 }
 
 static void submit_bio_wait_endio(struct bio *bio)
@@ -1672,16 +1682,6 @@ void bio_set_pages_dirty(struct bio *bio)
 		if (!PageCompound(bvec->bv_page))
 			set_page_dirty_lock(bvec->bv_page);
 	}
-}
-
-static void bio_release_pages(struct bio *bio)
-{
-	struct bio_vec *bvec;
-	int i;
-	struct bvec_iter_all iter_all;
-
-	bio_for_each_segment_all(bvec, bio, i, iter_all)
-		put_page(bvec->bv_page);
 }
 
 /*
