@@ -327,7 +327,9 @@ static int stm32_sai_set_parent_clock(struct stm32_sai_sub_data *sai,
 
 	ret = clk_set_parent(sai->sai_ck, parent_clk);
 	if (ret)
-		dev_err(&pdev->dev, "Set parent clock returned: %d\n", ret);
+		dev_err(&pdev->dev, " Error %d setting sai_ck parent clock. %s",
+			ret, ret == -EBUSY ?
+			"Active stream rates conflict\n" : "\n");
 
 	return ret;
 }
@@ -527,7 +529,10 @@ static int stm32_sai_set_sysclk(struct snd_soc_dai *cpu_dai,
 
 		ret = clk_set_rate_exclusive(sai->sai_mclk, freq);
 		if (ret) {
-			dev_err(cpu_dai->dev, "Could not set mclk rate\n");
+			dev_err(cpu_dai->dev,
+				ret == -EBUSY ?
+				"Active streams have incompatible rates" :
+				"Could not set mclk rate\n");
 			return ret;
 		}
 
