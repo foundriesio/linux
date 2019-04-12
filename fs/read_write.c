@@ -1760,6 +1760,8 @@ int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
 		if (pos_in > isize)
 			return -EINVAL;
 		*len = isize - pos_in;
+		if (*len == 0)
+			return 0;
 	}
 
 	/* Ensure offsets don't wrap and the input is inside i_size */
