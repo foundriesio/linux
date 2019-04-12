@@ -416,6 +416,10 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                                 lcdc_timimg_parms.fewc = (video_param.mDtd.mVSyncOffset << 1);
                                 lcdc_timimg_parms.fswc2 = lcdc_timimg_parms.fswc+1;
                                 lcdc_timimg_parms.fewc2 = (lcdc_timimg_parms.fewc>0)?(lcdc_timimg_parms.fewc-1):0;
+                                if(video_param.mDtd.mCode == 39) {
+                                        /* 1920x1080@50i 1250 vtotal */
+                                        lcdc_timimg_parms.fewc -= 2;
+                                }
                         }
                         else {
                                 lcdc_timimg_parms.fpw = (video_param.mDtd.mVSyncPulseWidth>0)?(video_param.mDtd.mVSyncPulseWidth-1):0;
