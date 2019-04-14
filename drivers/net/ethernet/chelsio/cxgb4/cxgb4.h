@@ -810,7 +810,6 @@ struct sge {
 	u32 fl_align;               /* response queue message alignment */
 	u32 fl_starve_thres;        /* Free List starvation threshold */
 
-	u16 dbqtimer_tick;
 	struct sge_idma_monitor_state idma_monitor;
 	unsigned int egr_start;
 	unsigned int egr_sz;
@@ -825,6 +824,7 @@ struct sge {
 	struct timer_list tx_timer; /* checks Tx queues */
 #ifndef __GENKSYMS__
 	u16 dbqtimer_val[SGE_NDBQTIMERS];
+	u16 dbqtimer_tick;
 #endif
 };
 
