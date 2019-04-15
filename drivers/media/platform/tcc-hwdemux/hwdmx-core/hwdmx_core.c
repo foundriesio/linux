@@ -23,6 +23,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/of_device.h>
+#include "hwdmx.h"
 #include "hwdmx_core.h"
 #include "tcc_hwdemux_tsif_rx.h"
 

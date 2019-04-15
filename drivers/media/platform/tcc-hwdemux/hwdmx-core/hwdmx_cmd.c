@@ -30,6 +30,7 @@
 #include <asm/bitops.h>
 
 #include "tca_hwdemux_param.h"
+#include "hwdmx.h"
 
 // clang-format off
 /* HWDMX command range: 0x000 ~ 0xFFF*/
