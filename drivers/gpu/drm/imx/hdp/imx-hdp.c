@@ -834,7 +834,12 @@ imx_hdp_connector_detect(struct drm_connector *connector, bool force)
 
 	ret = imx_hdp_call(hdp, get_hpd_state, &hdp->state, &hpd);
 	if (ret > 0)
+#if 0
 		return connector_status_unknown;
+#else
+//TBD: make Weston happy
+		return connector_status_connected;
+#endif
 
 	if (hpd == 1)
 		/* Cable Connected */
