@@ -9,7 +9,7 @@
 
 / {
 	model = "Toradex Apalis iMX8QM";
-	compatible = "toradex,imx8qm-apalis", "fsl,imx8qm";
+	compatible = "toradex,apalis-imx8qm", "fsl,imx8qm";
 
 	aliases {
 		rtc0 = &rtc_i2c;
@@ -159,7 +159,7 @@
 };
 
 &iomuxc {
-	imx8qm-apalis {
+	apalis-imx8qm {
 		pinctrl_sgtl5000: sgtl5000grp {
 			fsl,pins = <
 				/* On-module SGTL5000 SYS_MCLK */
