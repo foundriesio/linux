@@ -662,6 +662,10 @@
 	status = "okay";
 };
 
+&irqsteer_hdmi {
+	status = "okay";
+};
+
 /* Apalis HDMI1 */
 &hdmi {
 	compatible = "fsl,imx8qm-hdmi";
@@ -673,6 +677,8 @@
 	assigned-clock-parents = <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>;
+	fsl,cec;
+	fsl,no_edid;
 	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
@@ -684,6 +690,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_lpi2c0>;
 	clock-frequency = <100000>;
+//TBD: enabling crashes clock related?
 	status = "disabled";
 };
 
@@ -1092,6 +1099,8 @@
 	status = "okay";
 };
 
+//TBD: enabling breaks HDMI
+#if 0
 &ldb2_phy {
 	status = "okay";
 };
@@ -1125,6 +1134,7 @@
 		};
 	};
 };
+#endif
 
 &spdif1 {
 	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
