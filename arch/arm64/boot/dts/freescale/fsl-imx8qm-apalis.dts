@@ -1,16 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
- * Copyright (C) 2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Copyright 2017-2019 Toradex
  */
 
 /dts-v1/;
@@ -35,12 +25,10 @@
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;  /* BKL1_ON */
+		gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
 		pwms = <&lvds1_pwm 0 100000 0>;
-
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
-
 		status = "okay";
 	};
 
@@ -87,7 +75,7 @@
 		regulator-name = "usb_host_vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-		gpio =  <&gpio4 4 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio4 4 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		regulator-always-on;
 	};
@@ -107,7 +95,8 @@
 		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&dailink_master>;
 		simple-audio-card,frame-master = <&dailink_master>;
-		/*simple-audio-card,mclk-fs = <1>;*/
+		/* simple-audio-card,mclk-fs = <1>; */
+
 		simple-audio-card,cpu {
 			sound-dai = <&sai1>;
 		};
@@ -145,23 +134,23 @@
 };
 
 &acm {
-        status = "okay";
+	status = "okay";
 };
 
 &amix {
-        status = "okay";
+	status = "okay";
 };
 
-&sai_hdmi_tx {
-	assigned-clocks =<&clk IMX8QM_ACM_HDMI_TX_SAI0_MCLK_SEL>,
-			<&clk IMX8QM_AUD_PLL0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
-			<&clk IMX8QM_AUD_SAI_HDMITX0_MCLK>;
-	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_CLK>;
-	assigned-clock-rates = <0>, <768000000>, <768000000>, <768000000>, <768000000>;
-	fsl,sai-asynchronous;
-	status = "disabled";
+&sai1 {
+	assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
+			  <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			  <&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
+			  <&clk IMX8QM_AUD_SAI_1_MCLK>;
+	assigned-clock-rates = <786432000>, <49152000>, <12288000>, <49152000>;
+	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai1>;
+	status = "okay";
 };
 
 &sai_hdmi_rx {
@@ -169,25 +158,20 @@
 	status = "disabled";
 };
 
-&spdif1 {
-	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
-	assigned-clock-rates = <786432000>, <49152000>, <12288000>;
-	status = "okay";
-};
-
 &iomuxc {
 	imx8qm-apalis {
 		pinctrl_sgtl5000: sgtl5000grp {
 			fsl,pins = <
+				/* On-module SGTL5000 SYS_MCLK */
 				SC_P_MCLK_OUT0_AUD_ACM_MCLK_OUT0	0xc600004c
 			>;
 		};
 
 		pinctrl_cam: camgrp {
 			fsl,pins = <
+				/* Apalis GPIO1 */
 				SC_P_M40_GPIO0_00_LSIO_GPIO0_IO08		0x06000021
+				/* Apalis GPIO2 */
 				SC_P_M40_GPIO0_01_LSIO_GPIO0_IO09		0x06000021
 			>;
 		};
@@ -220,13 +204,14 @@
 
 		pinctrl_hdmi_lpi2c0: hdmilpi2c0grp {
 			fsl,pins = <
-				SC_P_HDMI_TX0_TS_SCL_HDMI_TX0_I2C0_SCL  0xc600004c
-				SC_P_HDMI_TX0_TS_SDA_HDMI_TX0_I2C0_SDA  0xc600004c
+				SC_P_HDMI_TX0_TS_SCL_HDMI_TX0_I2C0_SCL	0xc600004c
+				SC_P_HDMI_TX0_TS_SDA_HDMI_TX0_I2C0_SDA	0xc600004c
 			>;
 		};
 
 		pinctrl_hdmi_ctrl: hdmictrlgrp {
 			fsl,pins = <
+				/* On-module HDMI_CTRL */
 				SC_P_MIPI_CSI1_GPIO0_00_LSIO_GPIO1_IO30 0x00000061
 			>;
 		};
@@ -240,7 +225,9 @@
 
 		pinctrl_mipi1_lpi2c0: mipi1_lpi2c0grp {
 			fsl,pins = <
+				/* Apalis CAM1_D7 */
 				SC_P_MIPI_DSI1_I2C0_SCL_MIPI_DSI1_I2C0_SCL	0xc600004c
+				/* Apalis CAM1_D6 */
 				SC_P_MIPI_DSI1_I2C0_SDA_MIPI_DSI1_I2C0_SDA	0xc600004c
 			>;
 		};
@@ -251,28 +238,30 @@
 			>;
 		};
 
-		/* I2C2 DDC */
+		/* Apalis I2C2 (DDC) */
 		pinctrl_lpi2c0: lpi2c0grp {
 			fsl,pins = <
-				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL   0xc600004c
-				SC_P_HDMI_TX0_TS_SDA_DMA_I2C0_SDA   0xc600004c
+				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL	0xc600004c
+				SC_P_HDMI_TX0_TS_SDA_DMA_I2C0_SDA	0xc600004c
 			>;
 		};
 
 		pinctrl_lpi2c1: lpi2c1grp {
 			fsl,pins = <
-				SC_P_GPT0_CLK_DMA_I2C1_SCL              0xc600004c
-				SC_P_GPT0_CAPTURE_DMA_I2C1_SDA          0xc600004c
+				SC_P_GPT0_CLK_DMA_I2C1_SCL		0xc600004c
+				SC_P_GPT0_CAPTURE_DMA_I2C1_SDA		0xc600004c
 			>;
 		};
 
+		/* Apalis I2C1 */
 		pinctrl_lpi2c2: lpi2c2grp {
 			fsl,pins = <
-				SC_P_GPT1_CLK_DMA_I2C2_SCL              0xc600004c
-				SC_P_GPT1_CAPTURE_DMA_I2C2_SDA          0xc600004c
+				SC_P_GPT1_CLK_DMA_I2C2_SCL		0xc600004c
+				SC_P_GPT1_CAPTURE_DMA_I2C2_SDA		0xc600004c
 			>;
 		};
 
+		/* Apalis I2C3 (CAM) */
 		pinctrl_lpi2c3: lpi2c3grp {
 			fsl,pins = <
 				SC_P_SIM0_PD_DMA_I2C3_SCL		0xc600004c
@@ -395,6 +384,7 @@
 
 		pinctrl_usdhc2_gpio: usdhc2grpgpio {
 			fsl,pins = <
+				/* Apalis MMC1_CD# */
 				SC_P_ESAI1_TX1_LSIO_GPIO2_IO09		0x00000021
 			>;
 		};
@@ -411,7 +401,7 @@
 				SC_P_USDHC1_DATA5_CONN_USDHC1_DATA5	0x00000021
 				SC_P_USDHC1_DATA6_CONN_USDHC1_DATA6	0x00000021
 				SC_P_USDHC1_DATA7_CONN_USDHC1_DATA7	0x00000021
-
+				/* On-module PMIC use */
 				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT	0x00000021
 			>;
 		};
@@ -428,6 +418,7 @@
 				SC_P_USDHC1_DATA5_CONN_USDHC1_DATA5	0x00000020
 				SC_P_USDHC1_DATA6_CONN_USDHC1_DATA6	0x00000020
 				SC_P_USDHC1_DATA7_CONN_USDHC1_DATA7	0x00000020
+				/* On-module PMIC use */
 				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT	0x00000020
 			>;
 		};
@@ -444,6 +435,7 @@
 				SC_P_USDHC1_DATA5_CONN_USDHC1_DATA5	0x00000020
 				SC_P_USDHC1_DATA6_CONN_USDHC1_DATA6	0x00000020
 				SC_P_USDHC1_DATA7_CONN_USDHC1_DATA7	0x00000020
+				/* On-module PMIC use */
 				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT	0x00000020
 			>;
 		};
@@ -472,6 +464,7 @@
 			fsl,pins = <
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO28		0x00000021
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO29		0x00000021
+				/* Apalis GPIO7 */
 				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
 			>;
 		};
@@ -520,15 +513,16 @@
 
 		pinctrl_gpio8: gpio8 {
 			fsl,pins = <
+				/* Apalis GPIO8 */
 				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
 			>;
 		};
 
 		pinctrl_usb3503a: usb3503agrp {
 			fsl,pins = <
-				SC_P_SCU_GPIO0_03_LSIO_GPIO0_IO31               0x00000021
+				SC_P_SCU_GPIO0_03_LSIO_GPIO0_IO31		0x00000021
 				SC_P_SCU_GPIO0_05_LSIO_GPIO1_IO01		0x00000021
-				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02               0x00000021
+				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02		0x00000021
 			>;
 		};
 
@@ -551,28 +545,28 @@
 };
 
 /* PWM3, MXM3 pin 6 */
-&pwm0  {
+&pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm0>;
 	status = "okay";
 };
 
 /* PWM4, MXM3 pin 8 */
-&pwm1  {
+&pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
 	status = "okay";
 };
 
 /* PWM1, MXM3 pin 2 */
-&pwm2  {
+&pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm2>;
 	status = "okay";
 };
 
 /* PWM2, MXM3 pin 4 */
-&pwm3  {
+&pwm3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm3>;
 	status = "okay";
@@ -584,6 +578,7 @@
 	status = "okay";
 };
 
+/* eMMC */
 &usdhc1 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc1>;
@@ -594,13 +589,14 @@
 	status = "okay";
 };
 
+/* Apalis MMC1 */
 &usdhc2 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
 	bus-width = <4>;
-	cd-gpios = <&gpio2 9 GPIO_ACTIVE_LOW>;
+	cd-gpios = <&gpio2 9 GPIO_ACTIVE_LOW>; /* Apalis MMC1_CD# */
 	status = "okay";
 };
 
@@ -655,31 +651,33 @@
 &flexcan1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
-	/*xceiver-supply = <&reg_can_stby>;*/
+	/* xceiver-supply = <&reg_can_stby>; */
 	status = "okay";
 };
 
 &flexcan2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
-	/*xceiver-supply = <&reg_can_stby>;*/
+	/* xceiver-supply = <&reg_can_stby>; */
 	status = "okay";
 };
 
+/* Apalis HDMI1 */
 &hdmi {
 	compatible = "fsl,imx8qm-hdmi";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_ctrl>;
 	assigned-clocks = <&clk IMX8QM_HDMI_PXL_SEL>,
-					<&clk IMX8QM_HDMI_PXL_LINK_SEL>,
-					<&clk IMX8QM_HDMI_PXL_MUX_SEL>;
+			  <&clk IMX8QM_HDMI_PXL_LINK_SEL>,
+			  <&clk IMX8QM_HDMI_PXL_MUX_SEL>;
 	assigned-clock-parents = <&clk IMX8QM_HDMI_AV_PLL_CLK>,
-							<&clk IMX8QM_HDMI_AV_PLL_CLK>,
-							<&clk IMX8QM_HDMI_AV_PLL_CLK>;
+				 <&clk IMX8QM_HDMI_AV_PLL_CLK>,
+				 <&clk IMX8QM_HDMI_AV_PLL_CLK>;
 	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
+/* Apalis I2C2 (DDC) */
 &i2c0_hdmi {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -688,16 +686,8 @@
 	clock-frequency = <100000>;
 	status = "disabled";
 };
-/*
-&i2c0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c0>;
-	clock-frequency = <100000>;
-	status = "okay";
-};
-*/
+
+/* On-module I2C */
 &i2c1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -716,9 +706,9 @@
 		clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
 		power-domains = <&pd_mclk_out0>;
 		assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
-				<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-				<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
-				<&clk IMX8QM_AUD_MCLKOUT0>;
+				  <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+				  <&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
+				  <&clk IMX8QM_AUD_MCLKOUT0>;
 		assigned-clock-rates = <786432000>, <49152000>, <24576000>, <24576000>;
 		VDDA-supply = <&reg_module_3v3_avdd>;
 		VDDIO-supply = <&reg_module_3v3>;
@@ -755,6 +745,7 @@
 	};
 };
 
+/* Apalis I2C3 (CAM) */
 &i2c3 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -770,7 +761,6 @@
 		reg = <0x3c>;
 		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
 		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
-
 		mclk = <24000000>;
 		mclk_source = <0>;
 		virtual-channel;
@@ -784,6 +774,10 @@
 		};
 	};
 
+};
+
+&pd_dma_lpuart1 {
+	debug_console;
 };
 
 /* Apalis UART3 */
@@ -877,6 +871,10 @@
 	status = "okay";
 };
 
+&pixel_combiner1 {
+	status = "okay";
+};
+
 &prg1 {
 	status = "okay";
 };
@@ -938,6 +936,10 @@
 };
 
 &dpu1 {
+	status = "okay";
+};
+
+&pixel_combiner2 {
 	status = "okay";
 };
 
@@ -1006,17 +1008,15 @@
 };
 
 &pciea{
+	ext_osc = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pciea>;
-
-	ext_osc = <1>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
 		 <&clk IMX8QM_HSIO_PCIE_A_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
-
 	max-link-speed = <1>;
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 	status = "okay";
@@ -1025,7 +1025,6 @@
 &pcieb{
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
-
 	ext_osc = <1>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_B_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
@@ -1033,7 +1032,6 @@
 		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
-
 	max-link-speed = <1>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
@@ -1043,10 +1041,6 @@
 
 &intmux_cm40 {
 	status = "okay";
-};
-
-&pd_dma_lpuart1 {
-       debug_console;
 };
 
 &rpmsg{
@@ -1071,18 +1065,30 @@
 	status = "okay";
 };
 
+&sai_hdmi_tx {
+	assigned-clocks =<&clk IMX8QM_ACM_HDMI_TX_SAI0_MCLK_SEL>,
+			 <&clk IMX8QM_AUD_PLL0_DIV>,
+			 <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			 <&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
+			 <&clk IMX8QM_AUD_SAI_HDMITX0_MCLK>;
+	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_CLK>;
+	assigned-clock-rates = <0>, <768000000>, <768000000>, <768000000>, <768000000>;
+	fsl,sai-asynchronous;
+	status = "disabled";
+};
+
 &sata {
 	ext_osc = <1>;
-        clocks = <&clk IMX8QM_HSIO_SATA_CLK>,
-                 <&clk IMX8QM_HSIO_PHY_X1_PCLK>,
-                 <&clk IMX8QM_HSIO_SATA_EPCS_TX_CLK>,
-                 <&clk IMX8QM_HSIO_SATA_EPCS_RX_CLK>,
-                 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
-                 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
+	clocks = <&clk IMX8QM_HSIO_SATA_CLK>,
+		 <&clk IMX8QM_HSIO_PHY_X1_PCLK>,
+		 <&clk IMX8QM_HSIO_SATA_EPCS_TX_CLK>,
+		 <&clk IMX8QM_HSIO_SATA_EPCS_RX_CLK>,
+		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
+		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
 		 <&clk IMX8QM_HSIO_PHY_X1_APB_CLK>,
 		 <&pcie_sata_refclk_gate>;
-        clock-names = "sata", "sata_ref", "epcs_tx", "epcs_rx",
-                        "phy_pclk0", "phy_pclk1", "phy_apbclk", "sata_ext";
+	clock-names = "sata", "sata_ref", "epcs_tx", "epcs_rx",
+		      "phy_pclk0", "phy_pclk1", "phy_apbclk", "sata_ext";
 	status = "okay";
 };
 
@@ -1120,23 +1126,11 @@
 	};
 };
 
-&pixel_combiner1 {
-	status = "okay";
-};
-
-&pixel_combiner2 {
-	status = "okay";
-};
-
-&sai1 {
-	assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
+&spdif1 {
+	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
 			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
-			<&clk IMX8QM_AUD_SAI_1_MCLK>;
-	assigned-clock-rates = <786432000>, <49152000>, <12288000>, <49152000>;
-	#sound-dai-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sai1>;
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
+	assigned-clock-rates = <786432000>, <49152000>, <12288000>;
 	status = "okay";
 };
 
@@ -1172,10 +1166,10 @@
 	};
 };
 
-&vpu_encoder {
-        status = "disabled";
+&vpu_decoder {
+	status = "disabled";
 };
 
-&vpu_decoder {
-        status = "disabled";
+&vpu_encoder {
+	status = "disabled";
 };
