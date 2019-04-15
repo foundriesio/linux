@@ -1301,9 +1301,11 @@
 };
 
 &vpu_decoder {
-	status = "disabled";
+	core_type = <2>;
+	status = "okay";
 };
 
 &vpu_encoder {
-	status = "disabled";
+	core_type = <2>;
+	status = "okay";
 };
