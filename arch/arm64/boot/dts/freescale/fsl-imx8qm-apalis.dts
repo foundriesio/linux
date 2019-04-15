@@ -159,6 +159,9 @@
 };
 
 &iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_gpio34>, <&pinctrl_gpio56>, <&pinctrl_sata1_act>, <&pinctrl_wake1_mico>;
+
 	apalis-imx8qm {
 		pinctrl_sgtl5000: sgtl5000grp {
 			fsl,pins = <
@@ -173,6 +176,31 @@
 				SC_P_M40_GPIO0_00_LSIO_GPIO0_IO08		0x06000021
 				/* Apalis GPIO2 */
 				SC_P_M40_GPIO0_01_LSIO_GPIO0_IO09		0x06000021
+			>;
+		};
+
+		pinctrl_gpio34: gpio34grp {
+			fsl,pins = <
+				/* Apalis GPIO3 */
+				SC_P_M41_GPIO0_00_LSIO_GPIO0_IO12		0x06000021
+				/* Apalis GPIO4 */
+				SC_P_M41_GPIO0_01_LSIO_GPIO0_IO13		0x06000021
+			>;
+		};
+
+		pinctrl_gpio56: gpio56grp {
+			fsl,pins = <
+				/* Apalis GPIO5 */
+				SC_P_FLEXCAN2_RX_LSIO_GPIO4_IO01		0x06000021
+				/* Apalis GPIO6 */
+				SC_P_FLEXCAN2_TX_LSIO_GPIO4_IO02		0x06000021
+			>;
+		};
+
+		pinctrl_wake1_mico: wake1micogrp {
+			fsl,pins = <
+				/* Apalis WAKE1_MICO */
+				SC_P_SPI3_CS0_LSIO_GPIO2_IO20		0x06000021
 			>;
 		};
 
@@ -223,12 +251,32 @@
 			>;
 		};
 
-		pinctrl_mipi1_lpi2c0: mipi1_lpi2c0grp {
+		pinctrl_cam1_gpios: cam1gpiosgrp {
 			fsl,pins = <
 				/* Apalis CAM1_D7 */
-				SC_P_MIPI_DSI1_I2C0_SCL_MIPI_DSI1_I2C0_SCL	0xc600004c
+				SC_P_MIPI_DSI1_I2C0_SCL_LSIO_GPIO1_IO20	0x00000021
 				/* Apalis CAM1_D6 */
-				SC_P_MIPI_DSI1_I2C0_SDA_MIPI_DSI1_I2C0_SDA	0xc600004c
+				SC_P_MIPI_DSI1_I2C0_SDA_LSIO_GPIO1_IO21	0x00000021
+				/* Apalis CAM1_D5 */
+				SC_P_ESAI0_TX0_LSIO_GPIO2_IO26		0x00000021
+				/* Apalis CAM1_D4 */
+				SC_P_ESAI0_TX1_LSIO_GPIO2_IO27		0x00000021
+				/* Apalis CAM1_D3 */
+				SC_P_ESAI0_TX2_RX3_LSIO_GPIO2_IO28	0x00000021
+				/* Apalis CAM1_D2 */
+				SC_P_ESAI0_TX3_RX2_LSIO_GPIO2_IO29	0x00000021
+				/* Apalis CAM1_D1 */
+				SC_P_ESAI0_TX4_RX1_LSIO_GPIO2_IO30	0x00000021
+				/* Apalis CAM1_D0 */
+				SC_P_ESAI0_TX5_RX0_LSIO_GPIO2_IO31	0x00000021
+				/* Apalis CAM1_PCLK */
+				SC_P_MCLK_IN0_LSIO_GPIO3_IO00		0x00000021
+				/* Apalis CAM1_MCLK */
+				SC_P_SPI3_SDO_LSIO_GPIO2_IO18		0x00000021
+				/* Apalis CAM1_HSYNC */
+				SC_P_ESAI0_SCKR_LSIO_GPIO2_IO24		0x00000021
+				/* Apalis CAM1_VSYNC */
+				SC_P_ESAI0_SCKT_LSIO_GPIO2_IO25		0x00000021
 			>;
 		};
 
@@ -379,6 +427,13 @@
 				SC_P_EMMC0_DATA7_CONN_EMMC0_DATA7	0x00000020
 				SC_P_EMMC0_STROBE_CONN_EMMC0_STROBE	0x06000040
 				SC_P_EMMC0_RESET_B_CONN_EMMC0_RESET_B	0x00000020
+			>;
+		};
+
+		pinctrl_sata1_act: sata1actgrp {
+			fsl,pins = <
+				/* Apalis SATA1_ACT# */
+				SC_P_ESAI1_TX0_LSIO_GPIO2_IO08		0x00000021
 			>;
 		};
 
