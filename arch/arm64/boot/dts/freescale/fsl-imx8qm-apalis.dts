@@ -317,6 +317,24 @@
 			>;
 		};
 
+		pinctrl_lpspi0: lpspi0grp {
+			fsl,pins = <
+				SC_P_SPI0_SCK_DMA_SPI0_SCK		0x0600004c
+				SC_P_SPI0_SDO_DMA_SPI0_SDO		0x0600004c
+				SC_P_SPI0_SDI_DMA_SPI0_SDI		0x0600004c
+				SC_P_SPI0_CS0_DMA_SPI0_CS0		0x0600004c
+			>;
+		};
+
+		pinctrl_lpspi2: lpspi2grp {
+			fsl,pins = <
+				SC_P_SPI2_SCK_DMA_SPI2_SCK		0x0600004c
+				SC_P_SPI2_SDO_DMA_SPI2_SDO		0x0600004c
+				SC_P_SPI2_SDI_DMA_SPI2_SDI		0x0600004c
+				SC_P_SPI2_CS0_DMA_SPI2_CS0		0x0600004c
+			>;
+		};
+
 		pinctrl_lpuart0: lpuart0grp {
 			fsl,pins = <
 				SC_P_UART0_RX_DMA_UART0_RX		0x06000020
@@ -897,6 +915,34 @@
 
 &pd_dma_lpuart1 {
 	debug_console;
+};
+
+&lpspi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpspi0>;
+	status = "okay";
+
+	spidev0: spi@0 {
+		reg = <0>;
+		compatible = "toradex,evalspi";
+		spi-max-frequency = <4000000>;
+	};
+};
+
+&lpspi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpspi2>;
+	status = "okay";
+
+	spidev2: spi@0 {
+		reg = <0>;
+		compatible = "toradex,evalspi";
+		spi-max-frequency = <4000000>;
+	};
 };
 
 /* Apalis UART3 */
