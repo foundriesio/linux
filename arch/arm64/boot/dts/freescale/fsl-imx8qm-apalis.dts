@@ -24,8 +24,8 @@
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
+		pinctrl-0 = <&pinctrl_gpio_bkl_on>;
+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
 		pwms = <&lvds1_pwm 0 100000 0>;
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
@@ -251,8 +251,9 @@
 			>;
 		};
 
-		pinctrl_gpio_bl_on: gpio-bl-on {
+		pinctrl_gpio_bkl_on: gpio-bkl-on {
 			fsl,pins = <
+				/* Apalis BKL_ON */
 				SC_P_LVDS0_GPIO00_LSIO_GPIO1_IO04	0x00000021
 			>;
 		};
