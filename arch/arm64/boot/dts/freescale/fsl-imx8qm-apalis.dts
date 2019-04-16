@@ -170,7 +170,7 @@
 			>;
 		};
 
-		pinctrl_cam: camgrp {
+		pinctrl_gpio12: gpio12grp {
 			fsl,pins = <
 				/* Apalis GPIO1 */
 				SC_P_M40_GPIO0_00_LSIO_GPIO0_IO08		0x06000021
@@ -194,6 +194,20 @@
 				SC_P_FLEXCAN2_RX_LSIO_GPIO4_IO01		0x06000021
 				/* Apalis GPIO6 */
 				SC_P_FLEXCAN2_TX_LSIO_GPIO4_IO02		0x06000021
+			>;
+		};
+
+		pinctrl_gpio7: gpio7 {
+			fsl,pins = <
+				/* Apalis GPIO7 */
+				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
+			>;
+		};
+
+		pinctrl_gpio8: gpio8 {
+			fsl,pins = <
+				/* Apalis GPIO8 */
+				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
 			>;
 		};
 
@@ -583,8 +597,6 @@
 			fsl,pins = <
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO28		0x00000021
 				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO29		0x00000021
-				/* Apalis GPIO7 */
-				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
 			>;
 		};
 
@@ -627,13 +639,6 @@
 		pinctrl_usb_hsic_active: usbh1_2 {
 			fsl,pins = <
 				SC_P_USB_HSIC0_STROBE_CONN_USB_HSIC0_STROBE	0xc60000d5
-			>;
-		};
-
-		pinctrl_gpio8: gpio8 {
-			fsl,pins = <
-				/* Apalis GPIO8 */
-				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
 			>;
 		};
 
@@ -894,7 +899,7 @@
 	ov5640_mipi@3c {
 		compatible = "ovti,ov5640_mipi";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_cam>;
+		pinctrl-0 = <&pinctrl_gpio12>;
 		reg = <0x3c>;
 		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
 		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
@@ -1175,7 +1180,7 @@
 &pciea{
 	ext_osc = <1>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pciea>;
+	pinctrl-0 = <&pinctrl_pciea &pinctrl_gpio7>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
