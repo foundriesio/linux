@@ -570,8 +570,7 @@ static void stm32_exti_h_ack(struct irq_data *d)
 		irq_chip_ack_parent(d);
 }
 
-#ifdef CONFIG_PM
-static int stm32_exti_h_suspend(void)
+static int __maybe_unused stm32_exti_h_suspend(void)
 {
 	struct stm32_exti_chip_data *chip_data;
 	int i;
@@ -586,7 +585,7 @@ static int stm32_exti_h_suspend(void)
 	return 0;
 }
 
-static void stm32_exti_h_resume(void)
+static void __maybe_unused stm32_exti_h_resume(void)
 {
 	struct stm32_exti_chip_data *chip_data;
 	int i;
@@ -600,17 +599,22 @@ static void stm32_exti_h_resume(void)
 }
 
 static struct syscore_ops stm32_exti_h_syscore_ops = {
+#ifdef CONFIG_PM_SLEEP
 	.suspend	= stm32_exti_h_suspend,
 	.resume		= stm32_exti_h_resume,
+#endif
 };
 
-static void stm32_exti_h_syscore_init(void)
+static void stm32_exti_h_syscore_init(struct stm32_exti_host_data *host_data)
 {
+	stm32_host_data = host_data;
 	register_syscore_ops(&stm32_exti_h_syscore_ops);
 }
-#else
-static inline void stm32_exti_h_syscore_init(void) {}
-#endif
+
+static void stm32_exti_h_syscore_deinit(void)
+{
+	unregister_syscore_ops(&stm32_exti_h_syscore_ops);
+}
 
 static struct irq_chip stm32_exti_h_chip = {
 	.name			= "stm32-exti-h",
@@ -830,60 +834,107 @@ static const struct irq_domain_ops stm32_exti_h_domain_ops = {
 	.translate = stm32_exti_h_translate,
 };
 
-static int
-__init stm32_exti_hierarchy_init(const struct stm32_exti_drv_data *drv_data,
-				 struct device_node *node,
-				 struct device_node *parent)
+static void stm32_exti_remove_irq(void *data)
 {
+	struct irq_domain *domain = data;
+
+	irq_domain_remove(domain);
+}
+
+static int stm32_exti_remove(struct platform_device *pdev)
+{
+	stm32_exti_h_syscore_deinit();
+	return 0;
+}
+
+static int stm32_exti_probe(struct platform_device *pdev)
+{
+	int ret, i;
+	u32 nirqs;
+	struct device *dev = &pdev->dev;
+	struct device_node *child, *np = dev->of_node;
 	struct irq_domain *parent_domain, *domain;
 	struct stm32_exti_host_data *host_data;
-	struct device_node *child;
-	int ret, i;
+	const struct stm32_exti_drv_data *drv_data;
+	struct resource *res;
 
-	parent_domain = irq_find_host(parent);
-	if (!parent_domain) {
-		pr_err("GIC interrupt-parent not found\n");
-		return -EINVAL;
-	}
-
-	host_data = stm32_exti_host_init(drv_data, node);
+	host_data = devm_kzalloc(dev, sizeof(*host_data), GFP_KERNEL);
 	if (!host_data)
 		return -ENOMEM;
 
+	/* check for optional hwspinlock which may be not available yet */
+	ret = of_hwspin_lock_get_id(np, 0);
+	if (ret == -EPROBE_DEFER)
+		/* hwspinlock framework not yet ready */
+		return ret;
+
+	if (ret >= 0) {
+		host_data->hwlock = devm_hwspin_lock_request_specific(dev, ret);
+		if (!host_data->hwlock) {
+			dev_err(dev, "Failed to request hwspinlock\n");
+			return -EINVAL;
+		}
+	} else if (ret != -ENOENT) {
+		/* note: ENOENT is a valid case (means 'no hwspinlock') */
+		dev_err(dev, "Failed to get hwspinlock\n");
+		return ret;
+	}
+
+	/* initialize host_data */
+	drv_data = of_device_get_match_data(dev);
+	if (!drv_data) {
+		dev_err(dev, "no of match data\n");
+		return -ENODEV;
+	}
+	host_data->drv_data = drv_data;
+
+	host_data->chips_data = devm_kcalloc(dev, drv_data->bank_nr,
+					     sizeof(*host_data->chips_data),
+					     GFP_KERNEL);
+	if (!host_data->chips_data)
+		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	host_data->base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(host_data->base)) {
+		dev_err(dev, "Unable to map registers\n");
+		return PTR_ERR(host_data->base);
+	}
+
 	for (i = 0; i < drv_data->bank_nr; i++)
-		stm32_exti_chip_init(host_data, i, node);
+		stm32_exti_chip_init(host_data, i, np);
+
+	parent_domain = irq_find_host(of_irq_find_parent(np));
+	if (!parent_domain) {
+		dev_err(dev, "GIC interrupt-parent not found\n");
+		return -EINVAL;
+	}
 
 	domain = irq_domain_add_hierarchy(parent_domain, 0,
 					  drv_data->bank_nr * IRQS_PER_BANK,
-					  node, &stm32_exti_h_domain_ops,
+					  np, &stm32_exti_h_domain_ops,
 					  host_data);
 
 	if (!domain) {
-		pr_err("%s: Could not register exti domain.\n", node->name);
-		ret = -ENOMEM;
-		goto out_unmap;
+		dev_err(dev, "Could not register exti domain\n");
+		return -ENOMEM;
 	}
 
-	for_each_child_of_node(node, child) {
-		struct device_node *parent_node;
-		u32 nirqs;
+	ret = devm_add_action_or_reset(dev, stm32_exti_remove_irq, domain);
+	if (ret)
+		return ret;
 
-		parent_node = of_irq_find_parent(child);
-		parent_domain = irq_find_host(parent_node);
-
+	for_each_child_of_node(np, child) {
+		parent_domain = irq_find_host(of_irq_find_parent(child));
 		if (!parent_domain) {
-			pr_err("%s: child interrupt-parent not found\n",
-			       child->name);
-			ret = -EINVAL;
-			goto out_unmap;
+			dev_err(dev, "child interrupt-parent not found\n");
+			return -EINVAL;
 		}
 
 		ret = of_property_read_u32(child, "st,irq-number", &nirqs);
-		if (ret != 0 || nirqs == 0) {
-			pr_err("%s: Missing or bad irq-number property\n"
-			       , __func__);
-			ret = -EINVAL;
-			goto out_unmap;
+		if (ret || !nirqs) {
+			dev_err(dev, "Missing or bad irq-number property\n");
+			return -EINVAL;
 		}
 
 		domain = irq_domain_add_hierarchy(parent_domain, 0, nirqs,
@@ -891,63 +942,24 @@ __init stm32_exti_hierarchy_init(const struct stm32_exti_drv_data *drv_data,
 						  &stm32_exti_h_domain_ops,
 						  host_data);
 		if (!domain) {
-			pr_err("%s: Could not register exti domain.\n",
-			       node->name);
-			ret = -ENOMEM;
-			goto out_unmap;
+			dev_err(dev, "Could not register exti domain\n");
+			return -ENOMEM;
 		}
+
+		ret = devm_add_action_or_reset(dev, stm32_exti_remove_irq,
+					       domain);
+		if (ret)
+			return ret;
 	}
 
-	stm32_exti_h_syscore_init();
-
-	return 0;
-
-out_unmap:
-	iounmap(host_data->base);
-	kfree(host_data->chips_data);
-	kfree(host_data);
-	return ret;
-}
-
-/* Note : stm32_exti_probe() is called after stm32*_exti_of_init() */
-static int stm32_exti_probe(struct platform_device *pdev)
-{
-	int id, ret = 0;
-
-	id = of_hwspin_lock_get_id(pdev->dev.of_node, 0);
-
-	if (id == -EPROBE_DEFER)
-		/* hwspinlock framework not ready */
-		return -EPROBE_DEFER;
-
-	if (id == -ENOENT)
-		/* no hwspinlock defined (not an error, it is optional) */
-		return 0;
-
-	if (id >= 0) {
-		stm32_host_data->hwlock = hwspin_lock_request_specific(id);
-		if (!stm32_host_data->hwlock) {
-			dev_err(&pdev->dev, "Failed to request hwspinlock\n");
-			ret = -EINVAL;
-		}
-	} else {
-		dev_err(&pdev->dev, "Failed to get hwspinlock\n");
-		ret = id;
-	}
-
-	return ret;
-}
-
-static int stm32_exti_remove(struct platform_device *pdev)
-{
-	if (stm32_host_data->hwlock)
-		return hwspin_lock_free(stm32_host_data->hwlock);
+	stm32_exti_h_syscore_init(host_data);
 
 	return 0;
 }
 
+/* platform driver only for MP1 */
 static const struct of_device_id stm32_exti_ids[] = {
-	{ .compatible = "st,stm32mp1-exti", },
+	{ .compatible = "st,stm32mp1-exti", .data = &stm32mp1_drv_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, stm32_exti_ids);
@@ -974,6 +986,7 @@ static void __exit stm32_exti_arch_exit(void)
 arch_initcall(stm32_exti_arch_init);
 module_exit(stm32_exti_arch_exit);
 
+/* no platform driver for F4 and H7 */
 static int __init stm32f4_exti_of_init(struct device_node *np,
 				       struct device_node *parent)
 {
@@ -989,19 +1002,3 @@ static int __init stm32h7_exti_of_init(struct device_node *np,
 }
 
 IRQCHIP_DECLARE(stm32h7_exti, "st,stm32h7-exti", stm32h7_exti_of_init);
-
-static int __init stm32mp1_exti_of_init(struct device_node *np,
-					struct device_node *parent)
-{
-	int ret;
-
-	ret = stm32_exti_hierarchy_init(&stm32mp1_drv_data, np, parent);
-
-	/* Clear the OF_POPULATED flag so that stm32_exti_probe can be called */
-	if (!ret)
-		of_node_clear_flag(np, OF_POPULATED);
-
-	return ret;
-}
-
-IRQCHIP_DECLARE(stm32mp1_exti, "st,stm32mp1-exti", stm32mp1_exti_of_init);
