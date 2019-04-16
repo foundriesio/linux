@@ -281,13 +281,6 @@
 			>;
 		};
 
-		pinctrl_mipi0_lpi2c0: mipi0_lpi2c0grp {
-			fsl,pins = <
-				SC_P_MIPI_DSI0_I2C0_SCL_MIPI_DSI0_I2C0_SCL	0xc600004c
-				SC_P_MIPI_DSI0_I2C0_SDA_MIPI_DSI0_I2C0_SDA	0xc600004c
-			>;
-		};
-
 		pinctrl_cam1_gpios: cam1gpiosgrp {
 			fsl,pins = <
 				/* Apalis CAM1_D7 */
@@ -608,14 +601,7 @@
 			>;
 		};
 
-		pinctrl_pciea: pcieagrp{
-			fsl,pins = <
-				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO28		0x00000021
-				SC_P_PCIE_CTRL0_PERST_B_LSIO_GPIO4_IO29		0x00000021
-			>;
-		};
-
-		pinctrl_pcieb: pciebgrp{
+		pinctrl_pcieb: pciebgrp {
 			fsl,pins = <
 				SC_P_PCIE_CTRL1_CLKREQ_B_LSIO_GPIO4_IO30	0x00000021
 				SC_P_PCIE_CTRL1_WAKE_B_LSIO_GPIO4_IO31		0x00000021
@@ -1195,7 +1181,7 @@
 &pciea{
 	ext_osc = <1>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pciea &pinctrl_gpio7>;
+	pinctrl-0 = <&pinctrl_gpio7>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
