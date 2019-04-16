@@ -6,6 +6,6 @@
 #
 # Licensed under GPL
 
-obj-y						+= tccvin_core.o tccvin_dev.o
+obj-y						+= tccvin_common.o tccvin_core.o tccvin_dev.o
 obj-$(CONFIG_VIDEO_TCCVIN_SWITCHMANAGER)	+= tccvin_switchmanager.o
 
