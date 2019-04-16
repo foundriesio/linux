@@ -257,10 +257,19 @@
 			>;
 		};
 
+		/* Apalis I2C2, (DDC) */
 		pinctrl_hdmi_lpi2c0: hdmilpi2c0grp {
 			fsl,pins = <
 				SC_P_HDMI_TX0_TS_SCL_HDMI_TX0_I2C0_SCL	0xc600004c
 				SC_P_HDMI_TX0_TS_SDA_HDMI_TX0_I2C0_SDA	0xc600004c
+			>;
+		};
+
+		/* Apalis I2C2 (DDC) */
+		pinctrl_lpi2c0: lpi2c0grp {
+			fsl,pins = <
+				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL	0xc600004c
+				SC_P_HDMI_TX0_TS_SDA_DMA_I2C0_SDA	0xc600004c
 			>;
 		};
 
@@ -310,14 +319,6 @@
 		pinctrl_mipi_dsi_0_1_en: mipi_dsi_0_1_en {
 			fsl,pins = <
 				SC_P_LVDS0_I2C0_SDA_LSIO_GPIO1_IO07		0x00000021
-			>;
-		};
-
-		/* Apalis I2C2 (DDC) */
-		pinctrl_lpi2c0: lpi2c0grp {
-			fsl,pins = <
-				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL	0xc600004c
-				SC_P_HDMI_TX0_TS_SDA_DMA_I2C0_SDA	0xc600004c
 			>;
 		};
 
