@@ -4576,7 +4576,6 @@ static int avic_handle_apic_id_update(struct kvm_vcpu *vcpu)
 static void avic_handle_dfr_update(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
-	struct kvm_arch *vm_data = &vcpu->kvm->arch;
 	u32 dfr = kvm_lapic_get_reg(vcpu->arch.apic, APIC_DFR);
 
 	if (svm->dfr_reg == dfr)
