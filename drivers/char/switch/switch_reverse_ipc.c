@@ -72,10 +72,30 @@ static int ipcDebugLevel = 0;
 
 typedef void (* switch_reverse_ipc_mbox_receive)(struct mbox_client *, void *);
 
+atomic_t switch_reverse_ipc_attr_debug_level;
+
 #ifndef CONFIG_TCC803X_CA7S
 extern int	switch_reverse_is_enabled(void);
 extern void	switch_reverse_set_state(long val);
 #endif//CONFIG_TCC803X_CA7S
+
+ssize_t switch_reverse_ipc_attr_debug_level_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	return sprintf(buf, "%d\n", atomic_read(&switch_reverse_ipc_attr_debug_level));
+}
+
+ssize_t switch_reverse_ipc_attr_debug_level_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+	unsigned long data;
+	int error = kstrtoul(buf, 10, &data);
+	if(error)
+		return error;
+
+	atomic_set(&switch_reverse_ipc_attr_debug_level, data);
+	ipcDebugLevel = data;
+
+	return count;
+}
+
+static DEVICE_ATTR(switch_reverse_ipc_attr_debug_level, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_ipc_attr_debug_level_show, switch_reverse_ipc_attr_debug_level_store);
 
 int switch_reverse_ipc_mailbox_send(struct switch_reverse_ipc_device * switch_reverse_ipc_dev, struct tcc_mbox_data * switch_reverse_ipc_msg) {
 	int ret = SWITCH_REVERSE_IPC_ERR_NOTREADY;
@@ -112,7 +132,7 @@ struct mbox_chan * switch_reverse_ipc_request_channel(struct platform_device * p
 	client->dev = &pdev->dev;
 	client->rx_callback = handler;
 	client->tx_done = NULL;
-	client->tx_block = false;
+	client->tx_block = true;
 	client->knows_txdone = false;
 	client->tx_tout = 100;
 
@@ -125,7 +145,7 @@ struct mbox_chan * switch_reverse_ipc_request_channel(struct platform_device * p
 	return channel;
 }
 
-#define ACK_TIMEOUT			200	//ms
+#define ACK_TIMEOUT			500	//ms
 
 unsigned int switch_reverse_ipc_get_sequential_ID(struct switch_reverse_ipc_device * switch_reverse_ipc_dev) {
 //	spin_lock(&switch_reverse_ipc_dev->ipc_handler.spinLock);
@@ -172,7 +192,6 @@ int switch_reverse_ipc_send_write(struct switch_reverse_ipc_device * switch_reve
 	ret = switch_reverse_ipc_mailbox_send(switch_reverse_ipc_dev, &sendMsg);
 	if(ret == SWITCH_REVERSE_IPC_SUCCESS) {
 		ret = switch_reverse_ipc_cmd_wait_event_timeout(switch_reverse_ipc_dev, SWITCH_REVERSE_IPC_CMD_TYPE_WRITE, sendMsg.cmd[0], ACK_TIMEOUT);
-		printk("%s - switch_reverse_ipc_cmd_wait_event_timeout - ret: %d\n", __func__, ret);
 		if(ret != SWITCH_REVERSE_IPC_SUCCESS) {
 			eprintk(switch_reverse_ipc_dev->dev,"%s : cmd ack timeout\n",__func__);
 		}
@@ -391,6 +410,11 @@ static int switch_reverse_ipc_probe(struct platform_device * pdev) {
 		eprintk(&pdev->dev, "device_create error %d\n", ret);
 		goto device_create_error;
 	}
+
+	// Create the switch_reverse_ipc_attr_debug_level sysfs
+	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_ipc_attr_debug_level);
+	if(ret < 0)
+		printk("%s - failed create sysfs: debug\n", __func__);
 
 	switch_reverse_ipc_dev->pdev =  pdev;
 
