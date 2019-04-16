@@ -173,7 +173,8 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_gpio34>, <&pinctrl_gpio56>, <&pinctrl_sata1_act>;
+	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_gpio34>, <&pinctrl_gpio56>,
+		    <&pinctrl_mipi_dsi_0_1_en>, <&pinctrl_sata1_act>;
 
 	apalis-imx8qm {
 		pinctrl_sgtl5000: sgtl5000grp {
