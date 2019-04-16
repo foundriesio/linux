@@ -710,6 +710,8 @@ struct kvm_vcpu_arch {
 #ifndef __GENKSYMS__
 	/* Flush the L1 Data cache for L1TF mitigation on VMENTER */
 	bool l1tf_flush_l1d;
+
+	u64 arch_capabilities;
 #endif
 };
 
