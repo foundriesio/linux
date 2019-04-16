@@ -2516,8 +2516,8 @@
 	hdmi_tx_20: hdmi_tx_20@12400000 {
 		compatible = "telechips,dw-hdmi-tx";
 		/* Register */
-		reg = <0x12400000 0x20000 0x12440000 0x1000 0x12480000 0x1000 0x163C0000 0x10 0x16051000 0x000018>;
-		reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg", "hdmi_iob_cec";
+		reg = <0x12400000 0x20000 0x12440000 0x1000 0x12480000 0x1000 0x163C0000 0x10 0x16051000 0x00000100>;
+		reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg", "hdmi_io_bus";
 		/* Interrupt */
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>,
@@ -2560,10 +2560,12 @@
 
 	hdmi_cec_20: hdmi_cec_20@16053000 {
 		compatible = "telechips,dw-hdmi-cec";
-		reg = <0x16053000 0x1000 0x16051054 0x4>;
+		reg = <0x16053000 0x100 0x16053400 0x400 0x16051054 0x4>;
+		reg-names = "cec_controller", "cec_irq_controller", "cec_clock_select";
 		interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>, 		/* CEC1 Interrupt */
 				<GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;	/* CEC1 WAKEUP Interrupt */
-		clocks = <&clk_peri PERI_CEC1_CORE>, <&clk_peri PERI_CEC1_SFR>,<&clk_io IOBUS_CEC1>;
+		clocks = <&clk_io IOBUS_CEC1>;
+		clock-names = "iobus_cfg_cec";
 		pinctrl-names = "default";
 		pinctrl-0 = <&hdmi_cec>;
 		status = "disabled";

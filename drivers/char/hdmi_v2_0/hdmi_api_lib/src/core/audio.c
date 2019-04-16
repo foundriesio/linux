@@ -18,8 +18,9 @@
 #include <hdmi_api_lib/src/core/audio/audio_packetizer_reg.h>
 
 #include <linux/clk.h>
+#if defined(CONFIG_ARCH_TCC898X)
 #include <dt-bindings/clock/telechips,tcc898x-clks.h>
-
+#endif
 typedef struct audio_n_computation {
 	u32 pixel_clock;
 	u32 n;

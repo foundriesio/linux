@@ -12,6 +12,8 @@ PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
+
+NOTE: Tab size is 8
 ****************************************************************************/
 //*******************************************
 //	Remote controller define
@@ -19,6 +21,8 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #ifndef	__TCC_CEC_INTERFACE_H__
 #define	__TCC_CEC_INTERFACE_H__
+
+#if defined(CONFIG_CEC_SUPPORT_KEYS)
 
 #include "hdmi_cec.h"
 
@@ -324,6 +328,16 @@ extern int TccCECInterface_IgnoreMessage(unsigned char opcode, unsigned char lsr
 extern int TccCECInterface_CheckMessageSize(unsigned char opcode, int size);
 extern int TccCECInterface_CheckMessageMode(unsigned char opcode, int broadcast);
 extern int TccCECInterface_ParseMessage(struct cec_device* dev,char *buffer, int size);
+#else
+static inline int TccCECInterface_Init(void) { return 0; }
+static inline int TccCECInterface_GetKeyCode(unsigned short kc) { return 0; }
+static inline int TccCECInterface_SendData(unsigned int uiOpcode, unsigned int uiData)  { return 0; }
+static inline unsigned int TccCECInterface_ConvertKeyCode(unsigned int uiOpcode, unsigned int uiData)  { return 0; }
+static inline  int TccCECInterface_IgnoreMessage(unsigned char opcode, unsigned char lsrc)  { return 0; }
+static inline  int TccCECInterface_CheckMessageSize(unsigned char opcode, int size) { return 0; }
+static inline  int TccCECInterface_CheckMessageMode(unsigned char opcode, int broadcast) { return 0; }
+static inline  int TccCECInterface_ParseMessage(struct cec_device* dev,char *buffer, int size) { return 0; }
+#endif // CONFIG_CEC_SUPPORT_KEYS
 
 #endif /* end of __TCC_CEC_INTERFACE_H__ */
 
