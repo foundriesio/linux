@@ -303,15 +303,16 @@
 				SC_P_MCLK_IN0_LSIO_GPIO3_IO00		0x00000021
 				/* Apalis CAM1_MCLK */
 				SC_P_SPI3_SDO_LSIO_GPIO2_IO18		0x00000021
-				/* Apalis CAM1_HSYNC */
-				SC_P_ESAI0_SCKR_LSIO_GPIO2_IO24		0x00000021
 				/* Apalis CAM1_VSYNC */
+				SC_P_ESAI0_SCKR_LSIO_GPIO2_IO24		0x00000021
+				/* Apalis CAM1_HSYNC */
 				SC_P_ESAI0_SCKT_LSIO_GPIO2_IO25		0x00000021
 			>;
 		};
 
 		pinctrl_mipi_dsi_0_1_en: mipi_dsi_0_1_en {
 			fsl,pins = <
+				/* Apalis TS_3 */
 				SC_P_LVDS0_I2C0_SDA_LSIO_GPIO1_IO07		0x00000021
 			>;
 		};
@@ -339,6 +340,7 @@
 			>;
 		};
 
+		/* Apalis SPI1 */
 		pinctrl_lpspi0: lpspi0grp {
 			fsl,pins = <
 				SC_P_SPI0_SCK_DMA_SPI0_SCK		0x0600004c
@@ -348,6 +350,7 @@
 			>;
 		};
 
+		/* Apalis SPI2 */
 		pinctrl_lpspi2: lpspi2grp {
 			fsl,pins = <
 				SC_P_SPI2_SCK_DMA_SPI2_SCK		0x0600004c
@@ -357,6 +360,7 @@
 			>;
 		};
 
+		/* Apalis UART3 */
 		pinctrl_lpuart0: lpuart0grp {
 			fsl,pins = <
 				SC_P_UART0_RX_DMA_UART0_RX		0x06000020
@@ -364,6 +368,7 @@
 			>;
 		};
 
+		/* Apalis UART1 */
 		pinctrl_lpuart1: lpuart1grp {
 			fsl,pins = <
 				SC_P_UART1_RX_DMA_UART1_RX		0x06000020
@@ -373,6 +378,7 @@
 			>;
 		};
 
+		/* Apalis UART4 */
 		pinctrl_lpuart2: lpuart2grp {
 			fsl,pins = <
 				SC_P_LVDS0_I2C1_SCL_DMA_UART2_TX	0x06000020
@@ -380,6 +386,7 @@
 			>;
 		};
 
+		/* Apalis UART2 */
 		pinctrl_lpuart3: lpuart3grp {
 			fsl,pins = <
 				SC_P_LVDS1_I2C1_SCL_DMA_UART3_TX	0x06000020
@@ -389,30 +396,35 @@
 			>;
 		};
 
+		/* Apalis PWM3 */
 		pinctrl_pwm0: pwm0grp {
 			fsl,pins = <
 				SC_P_UART0_RTS_B_LSIO_PWM0_OUT		0x00000020
 			>;
 		};
 
+		/* Apalis PWM4 */
 		pinctrl_pwm1: pwm1grp {
 			fsl,pins = <
 				SC_P_UART0_CTS_B_LSIO_PWM1_OUT		0x00000020
 			>;
 		};
 
+		/* Apalis PWM1 */
 		pinctrl_pwm2: pwm2grp {
 			fsl,pins = <
 				SC_P_GPT1_COMPARE_LSIO_PWM2_OUT		0x00000020
 			>;
 		};
 
+		/* Apalis PWM2 */
 		pinctrl_pwm3: pwm3grp {
 			fsl,pins = <
 				SC_P_GPT0_COMPARE_LSIO_PWM3_OUT		0x00000020
 			>;
 		};
 
+		/* Apalis BKL1_PWM */
 		pinctrl_pwm_bkl: pwmbklgrp {
 			fsl,pins = <
 				SC_P_LVDS1_GPIO00_LVDS1_PWM0_OUT	0x00000020
@@ -581,6 +593,7 @@
 			>;
 		};
 
+		/* Apalis CAN1 */
 		pinctrl_flexcan1: flexcan0grp {
 			fsl,pins = <
 				SC_P_FLEXCAN0_TX_DMA_FLEXCAN0_TX	0x21
@@ -588,6 +601,7 @@
 			>;
 		};
 
+		/* Apalis CAN2 */
 		pinctrl_flexcan2: flexcan1grp {
 			fsl,pins = <
 				SC_P_FLEXCAN1_TX_DMA_FLEXCAN1_TX	0x21
@@ -620,12 +634,14 @@
 
 		pinctrl_usbotg1: usbotg1 {
 			fsl,pins = <
+				/* Apalis USBO1_EN */
 				SC_P_USB_SS3_TC0_CONN_USB_OTG1_PWR		0x00000021
 			>;
 		};
 
 		pinctrl_usbh_en: usbhen {
 			fsl,pins = <
+				/* Apalis USBH_EN */
 				SC_P_USB_SS3_TC1_LSIO_GPIO4_IO04		0x00000021
 			>;
 		};
