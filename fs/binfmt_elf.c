@@ -1131,6 +1131,15 @@ out_free_interp:
 	current->mm->end_data = end_data;
 	current->mm->start_stack = bprm->p;
 
+	/*
+	 * When executing a loader directly (ET_DYN without Interp), move
+	 * the brk area out of the mmap region (since it grows up, and may
+	 * collide early with the stack growing down), and into the unused
+	 * ELF_ET_DYN_BASE region.
+	 */
+	if (!elf_interpreter)
+		current->mm->brk = current->mm->start_brk = ELF_ET_DYN_BASE;
+
 	if ((current->flags & PF_RANDOMIZE) && (randomize_va_space > 1)) {
 		current->mm->brk = current->mm->start_brk =
 			arch_randomize_brk(current->mm);
