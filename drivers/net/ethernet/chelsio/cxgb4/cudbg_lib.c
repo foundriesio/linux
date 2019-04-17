@@ -353,7 +353,7 @@ int cudbg_fill_meminfo(struct adapter *padap,
 	for (i = 0, meminfo_buff->free_rx_cnt = 0; i < 2; i++)
 		meminfo_buff->free_rx_cnt +=
 			FREERXPAGECOUNT_G(t4_read_reg(padap,
-						      TP_FLM_FREE_RX_CNT_A));
+						TP_FLM_FREE_RX_CNT_A));
 
 	meminfo_buff->rx_pages_data[0] =  PMRXMAXPAGE_G(lo);
 	meminfo_buff->rx_pages_data[1] =
@@ -365,7 +365,7 @@ int cudbg_fill_meminfo(struct adapter *padap,
 	for (i = 0, meminfo_buff->free_tx_cnt = 0; i < 4; i++)
 		meminfo_buff->free_tx_cnt +=
 			FREETXPAGECOUNT_G(t4_read_reg(padap,
-						      TP_FLM_FREE_TX_CNT_A));
+						TP_FLM_FREE_TX_CNT_A));
 
 	meminfo_buff->tx_pages_data[0] = PMTXMAXPAGE_G(lo);
 	meminfo_buff->tx_pages_data[1] =
@@ -375,6 +375,8 @@ int cudbg_fill_meminfo(struct adapter *padap,
 	meminfo_buff->tx_pages_data[3] = 1 << PMTXNUMCHN_G(lo);
 
 	meminfo_buff->p_structs = t4_read_reg(padap, TP_CMM_MM_MAX_PSTRUCT_A);
+	meminfo_buff->p_structs_free_cnt =
+			FREEPSTRUCTCOUNT_G(t4_read_reg(padap, TP_FLM_FREE_PS_CNT_A));
 
 	for (i = 0; i < 4; i++) {
 		if (CHELSIO_CHIP_VERSION(padap->params.chip) > CHELSIO_T5)
@@ -1457,14 +1459,23 @@ int cudbg_collect_meminfo(struct cudbg_init *pdbg_init,
 	struct adapter *padap = pdbg_init->adap;
 	struct cudbg_buffer temp_buff = { 0 };
 	struct cudbg_meminfo *meminfo_buff;
+	struct cudbg_ver_hdr *ver_hdr;
 	int rc;
 
-	rc = cudbg_get_buff(pdbg_init, dbg_buff, sizeof(struct cudbg_meminfo),
-			    &temp_buff);
+	rc = cudbg_get_buff(pdbg_init, dbg_buff,
+			sizeof(struct cudbg_ver_hdr) +
+			sizeof(struct cudbg_meminfo),
+			&temp_buff);
 	if (rc)
 		return rc;
 
-	meminfo_buff = (struct cudbg_meminfo *)temp_buff.data;
+	ver_hdr = (struct cudbg_ver_hdr *)temp_buff.data;
+	ver_hdr->signature = CUDBG_ENTITY_SIGNATURE;
+	ver_hdr->revision = CUDBG_MEMINFO_REV;
+	ver_hdr->size = sizeof(struct cudbg_meminfo);
+
+	meminfo_buff = (struct cudbg_meminfo *)(temp_buff.data +
+			sizeof(*ver_hdr));
 	rc = cudbg_fill_meminfo(padap, meminfo_buff);
 	if (rc) {
 		cudbg_err->sys_err = rc;
