@@ -32,6 +32,19 @@ static int cpu_subsys_match(struct device *dev, struct device_driver *drv)
 	return 0;
 }
 
+#ifdef CONFIG_TCC_WATCHDOG
+extern struct watchdog_device *wdd_saved;
+extern int tcc_wdt_disable_timer(struct watchdog_device *wdd);
+
+static ssize_t off_test_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	tcc_wdt_disable_timer(wdd_saved);
+	return count;
+}
+static DEVICE_ATTR(off_test, S_IWUSR, NULL, off_test_store);
+#endif
+
 #ifdef CONFIG_HOTPLUG_CPU
 static void change_cpu_under_node(struct cpu *cpu,
 			unsigned int from_nid, unsigned int to_nid)
@@ -460,6 +473,9 @@ static struct attribute *cpu_root_attrs[] = {
 	&dev_attr_kernel_max.attr,
 	&dev_attr_offline.attr,
 	&dev_attr_isolated.attr,
+#ifdef CONFIG_TCC_WATCHDOG
+	&dev_attr_off_test.attr,
+#endif
 #ifdef CONFIG_NO_HZ_FULL
 	&dev_attr_nohz_full.attr,
 #endif

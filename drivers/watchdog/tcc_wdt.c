@@ -133,7 +133,7 @@ struct tcc_watchdog_device {
 };
 
 static int tcc_wdt_enable_timer(struct watchdog_device *wdd);
-static int tcc_wdt_disable_timer(struct watchdog_device *wdd);
+int tcc_wdt_disable_timer(struct watchdog_device *wdd);
 static int tcc_wdt_start(struct watchdog_device * wdd);
 static int tcc_wdt_stop(struct watchdog_device *wdd);
 static int tcc_wdt_ping(struct watchdog_device *wdd);
@@ -265,7 +265,7 @@ static int tcc_wdt_enable_timer(struct watchdog_device *wdd)
 	return wdd->timeout;
 }
 
-static int tcc_wdt_disable_timer(struct watchdog_device *wdd)
+int tcc_wdt_disable_timer(struct watchdog_device *wdd)
 {
 	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
 
@@ -278,6 +278,7 @@ static int tcc_wdt_disable_timer(struct watchdog_device *wdd)
 
 	return 0;
 }
+EXPORT_SYMBOL(tcc_wdt_disable_timer);
 
 static int tcc_wdt_start(struct watchdog_device *wdd)
 {
@@ -300,7 +301,7 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 #ifdef WDT_SIP
 	arm_smccc_smc( SIP_WATCHDOG_START,
 			0,
-			(EN_BIT(WDT_PMU_EN)|EN_BIT(WDT_PMU_RESET)),
+			(EN_BIT(WDT_PMU_EN)),
 			0, 0, 0, 0, 0,
 			&res );
 #else
@@ -525,6 +526,8 @@ static const struct watchdog_ops tcc_wdt_ops = {
 	.ioctl		= tcc_wdt_ioctl,
 };
 
+struct watchdog_device *wdd_saved = NULL;
+
 static int tcc_wdt_probe(struct platform_device *pdev)
 {
 	struct tcc_watchdog_device *tcc_wdd;
@@ -618,6 +621,8 @@ static int tcc_wdt_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, tcc_wdd);
 
 	tcc_wdt_start(&tcc_wdd->wdd);
+
+	wdd_saved = wdd;
 
 	return 0;
 }
