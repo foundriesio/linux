@@ -1086,7 +1086,6 @@ static void shmem_evict_inode(struct inode *inode)
 			wait_var_event(&info->stop_eviction,
 				       !atomic_read(&info->stop_eviction));
 			mutex_lock(&shmem_swaplist_mutex);
-			list_del_init(&info->swaplist);
 			/* ...but beware of the race if we peeked too early */
 			if (!atomic_read(&info->stop_eviction))
 				list_del_init(&info->swaplist);
