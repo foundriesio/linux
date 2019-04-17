@@ -8018,7 +8018,7 @@ bool has_unmovable_pages(struct zone *zone, struct page *page, int count,
 	 * can still lead to having bootmem allocations in zone_movable.
 	 */
 
-	if (is_migrate_cma(get_pageblock_migratetype(page))) {
+	if (is_migrate_cma_page(page)) {
 		/*
 		 * CMA allocations (alloc_contig_range) really need to mark
 		 * isolate CMA pageblocks even when they are not movable in fact
