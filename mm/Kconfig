@@ -673,12 +673,13 @@ config ZONE_DEVICE
 config ARCH_HAS_HMM
 	bool
 	default y
-	depends on (X86_64 || PPC64)
-	depends on ZONE_DEVICE
 	depends on MMU && 64BIT
-	depends on MEMORY_HOTPLUG
-	depends on MEMORY_HOTREMOVE
-	depends on SPARSEMEM_VMEMMAP
+
+config ARCH_HAS_HMM_DEVICE
+	bool
+	default y
+	depends on (X86_64 || PPC64)
+	depends on ARCH_HAS_ZONE_DEVICE
 
 config MIGRATE_VMA_HELPER
 	bool
@@ -704,7 +705,8 @@ config HMM_MIRROR
 
 config DEVICE_PRIVATE
 	bool "Unaddressable device memory (GPU memory, ...)"
-	depends on ARCH_HAS_HMM
+	depends on ARCH_HAS_HMM_DEVICE
+	depends on ZONE_DEVICE
 	select HMM
 	select DEV_PAGEMAP_OPS
 
@@ -715,7 +717,8 @@ config DEVICE_PRIVATE
 
 config DEVICE_PUBLIC
 	bool "Addressable device memory (like GPU memory)"
-	depends on ARCH_HAS_HMM
+	depends on ARCH_HAS_HMM_DEVICE
+	depends on ZONE_DEVICE
 	select HMM
 	select DEV_PAGEMAP_OPS
 
