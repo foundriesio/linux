@@ -1137,7 +1137,7 @@ out_free_interp:
 	 * collide early with the stack growing down), and into the unused
 	 * ELF_ET_DYN_BASE region.
 	 */
-	if (!elf_interpreter)
+	if (!interpreter)
 		current->mm->brk = current->mm->start_brk = ELF_ET_DYN_BASE;
 
 	if ((current->flags & PF_RANDOMIZE) && (randomize_va_space > 1)) {
