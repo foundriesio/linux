@@ -7,6 +7,7 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/seq_buf.h>
+#include <linux/cpu.h>
 
 #include <asm/asm-prototypes.h>
 #include <asm/code-patching.h>
