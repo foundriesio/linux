@@ -54,33 +54,29 @@ struct mm_iommu_table_group_mem_t {
 static long mm_iommu_adjust_locked_vm(struct mm_struct *mm,
 		unsigned long npages, bool incr)
 {
-	long ret = 0, locked, lock_limit;
+	long ret = 0;
+	unsigned long lock_limit;
+	s64 locked_vm;
 
 	if (!npages)
 		return 0;
 
-	down_write(&mm->mmap_sem);
-
 	if (incr) {
-		locked = mm->locked_vm + npages;
 		lock_limit = rlimit(RLIMIT_MEMLOCK) >> PAGE_SHIFT;
-		if (locked > lock_limit && !capable(CAP_IPC_LOCK))
+		locked_vm = atomic64_add_return(npages, &mm->locked_vm);
+		if (locked_vm > lock_limit && !capable(CAP_IPC_LOCK)) {
 			ret = -ENOMEM;
-		else
-			mm->locked_vm += npages;
+			atomic64_sub(npages, &mm->locked_vm);
+		}
 	} else {
-		if (WARN_ON_ONCE(npages > mm->locked_vm))
-			npages = mm->locked_vm;
-		mm->locked_vm -= npages;
+		locked_vm = atomic64_sub_return(npages, &mm->locked_vm);
+		WARN_ON_ONCE(locked_vm < 0);
 	}
 
-	pr_debug("[%d] RLIMIT_MEMLOCK HASH64 %c%ld %ld/%ld\n",
-			current ? current->pid : 0,
-			incr ? '+' : '-',
-			npages << PAGE_SHIFT,
-			mm->locked_vm << PAGE_SHIFT,
+	pr_debug("[%d] RLIMIT_MEMLOCK HASH64 %c%lu %lld/%lu\n",
+			current ? current->pid : 0, incr ? '+' : '-',
+			npages << PAGE_SHIFT, locked_vm << PAGE_SHIFT,
 			rlimit(RLIMIT_MEMLOCK));
-	up_write(&mm->mmap_sem);
 
 	return ret;
 }
@@ -148,7 +144,8 @@ static long mm_iommu_do_alloc(struct mm_struct *mm, unsigned long ua,
 	}
 
 	down_read(&mm->mmap_sem);
-	ret = get_user_pages_longterm(ua, entries, FOLL_WRITE, mem->hpages, NULL);
+	ret = get_user_pages(ua, entries, FOLL_WRITE | FOLL_LONGTERM,
+			     mem->hpages, NULL);
 	up_read(&mm->mmap_sem);
 	if (ret != entries) {
 		/* free the reference taken */
