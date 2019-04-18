@@ -1683,8 +1683,7 @@ max_cpy_tx:
 				Ctemp = asrc_m2m_pcm->is_flag;
 				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
 			    if((!(Ctemp & IS_A7S_STARTED))
-        			&&((Ctemp & IS_ASRC_STARTED) != 0)
-					&&(asrc_m2m_pcm->app->pre_ptr >= runtime->buffer_size)) {
+					&&((Ctemp & IS_ASRC_STARTED) != 0)) {
         
         			substream = asrc_m2m_pcm->asrc_substream;
         
