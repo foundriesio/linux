@@ -794,6 +794,8 @@
 };
 
 &flexcan1 {
+	/* define the following property to disable CAN-FD mode */
+	/* disable-fd-mode; */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
 	/* xceiver-supply = <&reg_can_stby>; */
@@ -801,6 +803,8 @@
 };
 
 &flexcan2 {
+	/* define the following property to disable CAN-FD mode */
+	/* disable-fd-mode; */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
 	/* xceiver-supply = <&reg_can_stby>; */
