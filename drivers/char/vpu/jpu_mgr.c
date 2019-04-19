@@ -66,6 +66,214 @@ extern int tcc_jpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pP
 VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd);
 /////////////////////////////////////////////////////////////////////////////
 
+#if defined(CONFIG_ARCH_TCC899X)
+
+//#define DEBUG_TRACE_TA
+#ifdef DEBUG_TRACE_TA
+#define tracetee(msg...) printk( "TRACE: " msg)
+#else
+#define tracetee(msg...)
+#endif
+// kernel client application area
+#include <linux/slab.h> // kmalloc
+typedef struct JpuInstKernel {
+    uint32_t                 pRegBaseAddr; // physical addr
+    uint32_t                 u32RegBaseAddrSize; // physical addr size
+    codec_handle_t           hJpuDecHandle;
+    jpu_dec_init_t           stJpuDecInit;
+    jpu_dec_initial_info_t   stJpuDecInitialInfo;
+    jpu_dec_buffer_t         stJpuDecBuffer;
+    jpu_dec_input_t          stJpuDecInput;
+    jpu_dec_output_t         stJpuDecOutput;
+    int                      iSeqHeaderSize;
+    char                     szVersion[64];
+    char                     szBuildData[32];
+} JpuInstKernel;
+
+#define JPU_REG_BASE_ADDR 0x15180000
+static int (*gs_fpTccJpuDec) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
+
+int tcc_jpu_dec_internal(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2) {
+
+    int ret = 0;
+    JpuInstKernel *pstInst = NULL;
+
+    tracetee("[KERNEL(tcc_jpu_dec_internal)] OpCode = %d, %x, pHandle = %x, %x\n", Op, Op, pHandle, *pHandle);
+
+    if (pHandle != NULL) {
+        pstInst = (JpuInstKernel*)((codec_handle_t)*pHandle);
+    }
+
+    switch (Op) {
+    case JPU_DEC_INIT:
+        {
+            #if 0 // moved into jmgr_enable_clock
+            // connect tee
+            tracetee("jpu_optee_open: ==========> \n");
+            ret = jpu_optee_open();
+            if (ret != 0) {
+                tracetee("jpu_optee_open: failed !! - ret [%d]\n", ret);
+            } else {
+                tracetee("jpu_optee_open: success !! \n");
+            }
+            #endif
+
+            tracetee("[KERNEL(JPU_DEC_INIT) %s] pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            pstInst = (JpuInstKernel *)kmalloc(sizeof(JpuInstKernel), GFP_KERNEL);
+            if (pstInst == NULL) {
+                tracetee("[KERNEL(JPU_DEC_INIT)] pstInst is NULL\n");
+            }
+            memset(pstInst, 0, sizeof(struct JpuInstKernel));
+            memcpy(&pstInst->stJpuDecInit, (jpu_dec_init_t *)pParam1, sizeof(jpu_dec_init_t));
+
+            pstInst->pRegBaseAddr = JPU_REG_BASE_ADDR;
+            pstInst->u32RegBaseAddrSize = 16*1024;
+
+            // you need re-mapping into TA
+            pstInst->stJpuDecInit.m_Memset = NULL;
+            pstInst->stJpuDecInit.m_Memcpy = NULL;
+            pstInst->stJpuDecInit.m_reg_read = NULL;
+            pstInst->stJpuDecInit.m_reg_write = NULL;
+            // NULL
+            pstInst->stJpuDecInit.m_Interrupt = NULL;
+            pstInst->stJpuDecInit.m_Ioremap = NULL;
+            pstInst->stJpuDecInit.m_Iounmap = NULL;
+
+            if (pParam2 != NULL) {
+                tracetee("[KERNEL(JPU_DEC_INIT)] trace \n");
+                memcpy(&pstInst->stJpuDecInitialInfo, (jpu_dec_initial_info_t *)pParam2, sizeof(jpu_dec_initial_info_t));
+            }
+
+            #ifdef DEBUG_TRACE_TA
+            {
+                jpu_dec_init_t *pinit = (jpu_dec_init_t *)pParam1;
+                unsigned char *ptr = pinit->m_BitstreamBufAddr[VA];
+                tracetee("[KERNEL(JPU_DEC_INIT):%s] BITSTRAM_DATA %x %x =========================", __func__, pstInst->stJpuDecInit.m_BitstreamBufAddr[PA], pstInst->stJpuDecInit.m_BitstreamBufAddr[VA]);
+                tracetee("%02x %02x %02x %02x %02x %02x %02x %02x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]);
+            }
+            #endif
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+
+            // new instance for TA
+            tracetee("[KERNEL(JPU_DEC_INIT):%s] Instance Handle address = %p %p, pstInst = %p\n", __func__, pHandle, *pHandle, pstInst);
+            *pHandle = (codec_handle_t)pstInst;
+        }
+        break;
+#if defined(JPU_C6)
+    case JPU_DEC_SEQ_HEADER:
+        {
+            bool bDiminishInputCopy = (pstInst->stJpuDecInit.m_uiDecOptFlags & (1<<26)) ? true : false;
+
+            tracetee("[KERNEL(JPU_DEC_SEQ_HEADER) %s] 002 pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            if (bDiminishInputCopy) {
+                memcpy(&pstInst->stJpuDecInput, (jpu_dec_input_t *)pParam1, sizeof(jpu_dec_input_t));
+                pstInst->iSeqHeaderSize = (int)pstInst->stJpuDecInput.m_iBitstreamDataSize;
+                tracetee("[KERNEL(JPU_DEC_SEQ_HEADER) %s] DiminishInputCopy[O] - seq.header size = %d, %x\n", __func__, pstInst->iSeqHeaderSize, pstInst->iSeqHeaderSize);
+            } else {
+                pstInst->iSeqHeaderSize = (int)pParam1;
+                tracetee("[KERNEL(JPU_DEC_SEQ_HEADER) %s] DiminishInputCopy[X] - seq.header size = %d, %x\n", __func__, pstInst->iSeqHeaderSize, pstInst->iSeqHeaderSize);
+            }
+
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+
+            memcpy((jpu_dec_initial_info_t *)pParam2, &pstInst->stJpuDecInitialInfo, sizeof(jpu_dec_initial_info_t));
+            tracetee("[KERNEL(JPU_DEC_SEQ_HEADER) %s] [INITIAL_INFO] W x H (%d x %d) \n", __func__, pstInst->stJpuDecInitialInfo.m_iPicWidth, pstInst->stJpuDecInitialInfo.m_iPicHeight);
+        }
+        break;
+    case JPU_DEC_GET_ROI_INFO:
+        {
+        }
+        break;
+#endif
+    case JPU_DEC_REG_FRAME_BUFFER:
+        {
+            tracetee("[KERNEL(JPU_DEC_REG_FRAME_BUFFER) %s] pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            memcpy(&pstInst->stJpuDecBuffer, (jpu_dec_buffer_t *)pParam1, sizeof(jpu_dec_buffer_t));
+
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+        }
+        break;
+    case JPU_DEC_DECODE:
+        {
+            tracetee("[KERNEL(JPU_DEC_DECODE) xxxxxxxxx %s] pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            memcpy(&pstInst->stJpuDecInput, (jpu_dec_input_t *)pParam1, sizeof(jpu_dec_input_t));
+            memcpy(&pstInst->stJpuDecOutput, (jpu_dec_output_t *)pParam2, sizeof(jpu_dec_output_t));
+
+            #ifdef DEBUG_TRACE_TA
+            tracetee("[KERNEL(JPU_DEC_DECODE) BITSTRAM_DATA %x, Size = %d=========================", pstInst->stJpuDecInput.m_BitstreamDataAddr[VA], pstInst->stJpuDecInput.m_iBitstreamDataSize);
+            {
+                unsigned char *ptr = pstInst->stJpuDecInput.m_BitstreamDataAddr[VA];
+                tracetee("%02x %02x %02x %02x %02x %02x %02x %02x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]); ptr += 8;
+                tracetee("%02x %02x %02x %02x %02x %02x %02x %02x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]); ptr += 8;
+                tracetee("%02x %02x %02x %02x %02x %02x %02x %02x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]); ptr += 8;
+                tracetee("%02x %02x %02x %02x %02x %02x %02x %02x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]); ptr += 8;
+            }
+            #endif
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+
+            memcpy((jpu_dec_output_t *)pParam2, &pstInst->stJpuDecOutput, sizeof(jpu_dec_output_t));
+            tracetee("[[KERNEL(JPU_DEC_DECODE)OUT][W:%d][H:%d][DecStatus:%d][ConsumedBytes:%d][ErrMBs:%d][DispOutIdx:%d]"
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iWidth
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iHeight
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDecodingStatus
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iConsumedBytes
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iNumOfErrMBs
+                  , pstInst->stJpuDecOutput.m_DecOutInfo.m_iDispOutIdx);
+
+
+        }
+        break;
+    case JPU_DEC_CLOSE:
+        {
+            tracetee("[KERNEL(JPU_DEC_CLOSE) %s] pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+
+            kfree(pstInst);
+            pstInst = NULL;
+            pHandle = NULL;
+            tracetee("free jpu instance !! \n");
+
+            #if 0// moved into jmgr_disable_clock
+            // disconnect tee
+            jpu_optee_close();
+            tracetee("jpu_optee_open: closed !! \n");
+            #endif
+        }
+        break;
+    case JPU_CODEC_GET_VERSION:
+        {
+            tracetee("[KERNEL(JPU_CODEC_GET_VERSION) %s] pHandle = %p, %x\n", __func__, pHandle, (uint32_t)(*pHandle));
+
+            ret = jpu_optee_command(Op, (void *)pstInst, sizeof(JpuInstKernel));
+
+            if (pParam1 == NULL && pParam2 == NULL) {
+                pParam1 = pstInst->szVersion;
+                pParam2 = pstInst->szBuildData;
+            } else {
+                memcpy(pParam1, pstInst->szVersion, sizeof(pstInst->szVersion));
+                memcpy(pParam2, pstInst->szBuildData, sizeof(pstInst->szBuildData));
+            }
+
+            tracetee("[KERNEL(JPU_CODEC_GET_VERSION) %s] Version = %s, %s\n", __func__, pParam1, pstInst->szVersion);
+            tracetee("[KERNEL(JPU_CODEC_GET_VERSION) %s] BuildData = %s, %s\n", __func__, pParam2, pstInst->szBuildData);
+        }
+        break;
+    default:
+        printk("Invalid Operation = %d(0x%x)\n", __func__, Op, Op);
+        break;
+    }
+
+    return ret;
+}
+#endif //#if defined(CONFIG_ARCH_TCC899X)
+
+
+
 int jmgr_opened(void)
 {
     if(jmgr_data.dev_opened == 0)
@@ -255,6 +463,16 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     jmgr_data.check_interrupt_detection = 1;
                     jmgr_data.bDiminishInputCopy = (arg->gsJpuDecInit.m_uiDecOptFlags & (1<<26)) ? true : false;
+
+                    gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec;
+                    dprintk("@@ Dec :: loading JPU ... \n");
+                #if defined(CONFIG_ARCH_TCC899X)
+                    if (arg->gsJpuDecInit.m_uiDecOptFlags & (1<<30)) {
+                        printk("@@ Dec :: USE OPTEE_JPU \n");
+                        gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec_internal;
+                    }
+                #endif
+
                 #if defined(JPU_C5)
                     dprintk("@@ Dec :: Init In => Reg(0x%x/0x%x), Stream(0x%x/0x%x, 0x%x)\n",
                                 jmgr_data.base_addr, arg->gsJpuDecInit.m_RegBaseVirtualAddr,
@@ -264,15 +482,15 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                                 arg->gsJpuDecInit.m_iRot_angle, arg->gsJpuDecInit.m_iRot_enalbe,
                                 arg->gsJpuDecInit.m_iMirrordir, arg->gsJpuDecInit.m_iMirror_enable, arg->gsJpuDecInit.m_bCbCrInterleaveMode);
 
-                    ret = tcc_jpu_dec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)(&arg->gsJpuDecInitialInfo));
+                    ret = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)(&arg->gsJpuDecInitialInfo));
                     jmgr_data.current_resolution = arg->gsJpuDecInitialInfo.m_iPicWidth * arg->gsJpuDecInitialInfo.m_iPicHeight;
                 #else
-                    dprintk("@@ Dec :: Init In => Reg(0x%x/0x%x), Stream(0x%x/0x%x, 0x%x) Interleave: %d \n",
+                    dprintk("@@ Dec :: Init In => Handle(0x%x) Reg(0x%x/0x%x), Stream(0x%x/0x%x, 0x%x) Interleave: %d \n", arg->gsJpuDecHandle,
                                 jmgr_data.base_addr, arg->gsJpuDecInit.m_RegBaseVirtualAddr,
                                 arg->gsJpuDecInit.m_BitstreamBufAddr[PA], arg->gsJpuDecInit.m_BitstreamBufAddr[VA],
                                 arg->gsJpuDecInit.m_iBitstreamBufSize, arg->gsJpuDecInit.m_iCbCrInterleaveMode);
 
-                    ret = tcc_jpu_dec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)NULL);
+                    ret = gs_fpTccJpuDec(JPU_DEC_INIT, (void*)(&arg->gsJpuDecHandle), (void*)(&arg->gsJpuDecInit), (void*)NULL);
                 #endif
                     if( ret != RETCODE_SUCCESS){
                         printk("@@ Dec :: Init Done with ret(0x%x)\n", ret);
@@ -329,7 +547,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                     jmgr_data.check_interrupt_detection = 1;
                     jmgr_data.nDecode_Cmd = 0;
                     dprintk("@@ Dec :: JPU_DEC_SEQ_HEADER in :: Handle(0x%x) size(%d) \n", pHandle, iSize);
-                    ret = tcc_jpu_dec(JPU_DEC_SEQ_HEADER,
+                    ret = gs_fpTccJpuDec(JPU_DEC_SEQ_HEADER,
                                       (codec_handle_t*)&pHandle,
                                       (jmgr_data.bDiminishInputCopy
                                             ? (void*)(&((JPU_DECODE_t *)arg)->gsJpuDecInput) : (void*)iSize),
@@ -363,7 +581,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                     dprintk("@@ Dec :: JPU_DEC_REG_FRAME_BUFFER in :: count[%d], scale[%d], addr[0x%x/0x%x], Reserved[8] = 0x%x \n", arg->gsJpuDecBuffer.m_iFrameBufferCount, arg->gsJpuDecBuffer.m_iJPGScaleRatio,
                                 arg->gsJpuDecBuffer.m_FrameBufferStartAddr[PA], arg->gsJpuDecBuffer.m_FrameBufferStartAddr[VA], arg->gsJpuDecBuffer.m_Reserved[8]);
 #endif
-                    ret = tcc_jpu_dec(JPU_DEC_REG_FRAME_BUFFER, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecBuffer), (void*)NULL);
+                    ret = gs_fpTccJpuDec(JPU_DEC_REG_FRAME_BUFFER, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecBuffer), (void*)NULL);
                     ret = _jmgr_convert_returnType(ret);
                     dprintk("@@ Dec :: JPU_DEC_REG_FRAME_BUFFER out \n");
                 }
@@ -387,7 +605,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                             arg->gsJpuDecInput.m_iLooptogle);
 #endif
                     jmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_jpu_dec(JPU_DEC_DECODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecInput), (void*)(&arg->gsJpuDecOutput));
+                    ret = gs_fpTccJpuDec(JPU_DEC_DECODE, (codec_handle_t*)&pHandle, (void*)(&arg->gsJpuDecInput), (void*)(&arg->gsJpuDecOutput));
                     ret = _jmgr_convert_returnType(ret);
 
                     dprintk("@@ Dec :: Dec Out => %d x %d, status(%d), Consumed(%d), Err(%d) \n", arg->gsJpuDecOutput.m_DecOutInfo.m_iWidth, arg->gsJpuDecOutput.m_DecOutInfo.m_iHeight,
@@ -417,7 +635,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     //arg = (JPU_DECODE_t *)args;
                     jmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_jpu_dec(JPU_DEC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL/*(&arg->gsJpuDecOutput)*/);
+                    ret = gs_fpTccJpuDec(JPU_DEC_CLOSE, (codec_handle_t*)&pHandle, (void*)NULL, (void*)NULL/*(&arg->gsJpuDecOutput)*/);
                     ret = _jmgr_convert_returnType(ret);
                     dprintk("@@ Dec :: JPU_DEC_CLOSED !! \n");
 
@@ -432,7 +650,8 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     arg = (JPU_GET_VERSION_t *)args;
                     jmgr_data.check_interrupt_detection = 1;
-                    ret = tcc_jpu_dec(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
+
+                    ret = gs_fpTccJpuDec(JPU_CODEC_GET_VERSION, (codec_handle_t*)&pHandle, arg->pszVersion, arg->pszBuildData);
                     ret = _jmgr_convert_returnType(ret);
                     dprintk("@@ Dec :: version : %s, build : %s\n", arg->pszVersion, arg->pszBuildData);
                 }
@@ -814,7 +1033,7 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
 
     dprintk("_jmgr_open In!! %d'th \n", jmgr_data.dev_opened);
 
-    jmgr_enable_clock();
+    jmgr_enable_clock(0);
 
     if(jmgr_data.dev_opened == 0)
     {
@@ -929,7 +1148,7 @@ static int _jmgr_release(struct inode *inode, struct file *filp)
         jmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
     }
 
-    jmgr_disable_clock();
+    jmgr_disable_clock(0);
 
     jmgr_data.nOpened_Count++;
 
@@ -1053,7 +1272,7 @@ static int _jmgr_operation(void)
 
                 #if 1
                     while (opened_count) {
-                        jmgr_disable_clock();
+                        jmgr_disable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1061,7 +1280,7 @@ static int _jmgr_operation(void)
                     //msleep(1);
                     opened_count = jmgr_data.dev_opened;
                     while (opened_count) {
-                        jmgr_enable_clock();
+                        jmgr_enable_clock(0);
                         if(opened_count > 0)
                             opened_count--;
                     }
@@ -1259,8 +1478,8 @@ int jmgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
-    jmgr_enable_clock();
-    jmgr_disable_clock();
+    jmgr_enable_clock(1);
+    jmgr_disable_clock(1);
 
     return 0;
 }
@@ -1303,7 +1522,7 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
         open_count = jmgr_data.dev_opened;
         for(i=0; i<open_count; i++) {
-            jmgr_disable_clock();
+            jmgr_disable_clock(0);
         }
         printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n", jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
                                 jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
@@ -1322,7 +1541,7 @@ int jmgr_resume(struct platform_device *pdev)
         open_count = jmgr_data.dev_opened;
 
         for(i=0; i<open_count; i++) {
-            jmgr_enable_clock();
+            jmgr_enable_clock(0);
         }
         printk("\n jpu: resume \n\n");
     }
