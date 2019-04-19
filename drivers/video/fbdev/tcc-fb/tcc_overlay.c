@@ -179,6 +179,46 @@ static unsigned int tcc_overlay_poll(struct file *file, struct poll_table_struct
 	return POLLIN;
 }
 
+#if defined (CONFIG_TCC_SCREEN_SHARE)
+static int tcc_overlay_display_shared_screen(overlay_shared_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
+{
+	unsigned int layer = 0;
+	dprintk("%s addr:0x%x  fmt : 0x%x position:%d %d  size: %d %d \n", __func__, buffer_cfg.src_addr, buffer_cfg.fmt, buffer_cfg.dst_x, buffer_cfg.dst_y, buffer_cfg.dst_w, buffer_cfg.dst_h);
+	if((buffer_cfg.layer < 0) || (buffer_cfg.layer >= OVERLAY_LAYER_MAX)){
+		printk("%s error : invalid layer:%d\n", __func__, buffer_cfg.layer);
+		return -1;
+	}
+	dprintk("layer number :%d  last layer:%d  chage : %d n", overlay_drv->layer_n, overlay_drv->layer_nlast, buffer_cfg.layer);
+	layer = overlay_drv->layer_n = buffer_cfg.layer;
+	if(overlay_drv->rdma[layer].reg && overlay_drv->wmix.reg) {
+		dprintk("%s SET[%d] : %p %p \n", __func__, layer, overlay_drv->rdma[layer].reg, overlay_drv->wmix.reg);
+
+//		VIOC_RDMA_SetImageSize(overlay_drv->rdma[layer].reg, buffer_cfg.src_w, buffer_cfg.src_h);		//need to scaler
+		VIOC_RDMA_SetImageSize(overlay_drv->rdma[layer].reg, buffer_cfg.dst_w, buffer_cfg.dst_h);
+		VIOC_RDMA_SetImageFormat(overlay_drv->rdma[layer].reg, buffer_cfg.fmt);
+		VIOC_RDMA_SetImageOffset(overlay_drv->rdma[layer].reg, buffer_cfg.fmt, buffer_cfg.frm_w);
+
+		VIOC_RDMA_SetImageBase(overlay_drv->rdma[layer].reg, buffer_cfg.src_addr, buffer_cfg.src_addr, buffer_cfg.src_addr);
+
+		VIOC_WMIX_SetPosition(overlay_drv->wmix.reg, layer, buffer_cfg.dst_x, buffer_cfg.dst_y);
+		VIOC_WMIX_SetUpdate(overlay_drv->wmix.reg);
+
+		VIOC_RDMA_SetImageEnable(overlay_drv->rdma[layer].reg);
+
+		if(layer != overlay_drv->layer_nlast){
+			VIOC_RDMA_SetImageDisable(overlay_drv->rdma[overlay_drv->layer_nlast].reg);
+		}
+
+		overlay_drv->layer_nlast = overlay_drv->layer_n;
+
+		#ifdef CONFIG_DISPLAY_EXT_FRAME
+		tcc_ctrl_ext_frame(0);
+		#endif//CONFIG_DISPLAY_EXT_FRAME
+	}
+	return 0;	
+}
+#endif
+
 static int tcc_overlay_display_video_buffer(overlay_video_buffer_t buffer_cfg, struct overlay_drv_type *overlay_drv)
 {
 	unsigned int layer = 0, base0, base1, base2;
@@ -311,6 +351,20 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 
 	switch(cmd)
 	{
+#if defined (CONFIG_TCC_SCREEN_SHARE)
+		case OVERLAY_PUSH_SHARED_BUFFER:
+		{
+			overlay_shared_buffer_t overBuffCfg;
+
+			
+			if(0)//copy_from_user(&overBuffCfg, (overlay_video_buffer_t *)arg, sizeof(overlay_video_buffer_t)))
+				return -EFAULT;
+			memcpy(&overBuffCfg, (overlay_shared_buffer_t *)arg, sizeof(overlay_shared_buffer_t));
+
+			return tcc_overlay_display_shared_screen(overBuffCfg, overlay_drv);
+		}
+#endif
+		
 		case OVERLAY_PUSH_VIDEO_BUFFER:
 		{
 			overlay_video_buffer_t overBuffCfg;

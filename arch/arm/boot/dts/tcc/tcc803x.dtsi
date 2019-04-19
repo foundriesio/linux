@@ -1349,6 +1349,15 @@
 		 mboxes = <&mbox1 TCC_MBOX1_CH_IPC>;
 	 };
 
+        /* tcc_scrshare for A53 */
+        tcc_scrshare0: tcc_scrshare@0 {
+                compatible = "telechips,tcc_scrshare";
+                device-name ="tcc_scrshare_a53";
+                mbox-names ="a53-scrshare";
+                mboxes = <&mbox1 TCC_MBOX1_CH_SCRSHARE>;
+                status = "disabled";
+        };
+
 	/* vioc_mgr for A53 */
 	vioc_mgr0: vioc_mgr@0 {
 		compatible = "telechips,vioc_mgr";

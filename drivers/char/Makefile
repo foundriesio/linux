@@ -63,6 +63,7 @@ obj-$(CONFIG_TCC_ADMEM)             += tcc_admem.o
 obj-$(CONFIG_TCC_EARLY_VIEW_CM_CONTROL) += tcc_early_view_control/
 obj-$(CONFIG_SWITCH_REVERSE)        += switch/
 obj-$(CONFIG_VIOC_MGR)              += vioc_mgr.o
+obj-$(CONFIG_TCC_SCREEN_SHARE) += tcc_screen_share.o
 obj-$(CONFIG_TCC_VTA)               += vta.o
 
 obj-$(CONFIG_MWAVE)		+= mwave/
