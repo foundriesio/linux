@@ -183,9 +183,20 @@ struct t4_cqe {
 			__be32 wrid_hi;
 			__be32 wrid_low;
 		} gen;
+		struct {
+			__be32 stag;
+			__be32 msn;
+			__be32 reserved;
+			__be32 abs_rqe_idx;
+		} srcqe;
+		struct {
+			__be64 imm_data;
+		} imm_data_rcqe;
+
 		u64 drain_cookie;
+		__be64 flits[3];
 	} u;
-	__be64 reserved;
+	__be64 reserved[3];
 	__be64 bits_type_ts;
 };
 
@@ -680,6 +691,7 @@ struct t4_cq {
 	u16 cidx_inc;
 	u8 gen;
 	u8 error;
+	u8 *qp_errp;
 	unsigned long flags;
 };
 
@@ -813,12 +825,12 @@ static inline int t4_next_cqe(struct t4_cq *cq, struct t4_cqe **cqe)
 
 static inline int t4_cq_in_error(struct t4_cq *cq)
 {
-	return ((struct t4_status_page *)&cq->queue[cq->size])->qp_err;
+	return *cq->qp_errp;
 }
 
 static inline void t4_set_cq_in_error(struct t4_cq *cq)
 {
-	((struct t4_status_page *)&cq->queue[cq->size])->qp_err = 1;
+	*cq->qp_errp = 1;
 }
 #endif
 
