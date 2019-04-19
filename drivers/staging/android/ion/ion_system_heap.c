@@ -260,6 +260,7 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 							heap);
 	int i;
 	struct ion_page_pool *pool;
+	int allocted_size = 0;
 
 	for (i = 0; i < NUM_ORDERS; i++) {
 		pool = sys_heap->uncached_pools[i];
@@ -267,9 +268,12 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 		seq_printf(s, "%d order %u highmem pages uncached %lu total\n",
 			   pool->high_count, pool->order,
 			   (PAGE_SIZE << pool->order) * pool->high_count);
+		allocted_size += ((PAGE_SIZE << pool->order) * pool->high_count);
+
 		seq_printf(s, "%d order %u lowmem pages uncached %lu total\n",
 			   pool->low_count, pool->order,
 			   (PAGE_SIZE << pool->order) * pool->low_count);
+		allocted_size += ((PAGE_SIZE << pool->order) * pool->low_count);
 	}
 
 	for (i = 0; i < NUM_ORDERS; i++) {
@@ -278,10 +282,14 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 		seq_printf(s, "%d order %u highmem pages cached %lu total\n",
 			   pool->high_count, pool->order,
 			   (PAGE_SIZE << pool->order) * pool->high_count);
+		allocted_size += ((PAGE_SIZE << pool->order) * pool->high_count);
+			   
 		seq_printf(s, "%d order %u lowmem pages cached %lu total\n",
 			   pool->low_count, pool->order,
 			   (PAGE_SIZE << pool->order) * pool->low_count);
+		allocted_size += ((PAGE_SIZE << pool->order) * pool->low_count);
 	}
+	seq_printf(s, "total alloced size %lu bytes\n", allocted_size);
 	return 0;
 }
 
