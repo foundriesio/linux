@@ -66,6 +66,8 @@ extern int tcc_jpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pP
 VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd);
 /////////////////////////////////////////////////////////////////////////////
 
+static int (*gs_fpTccJpuDec) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
+
 #if defined(CONFIG_ARCH_TCC899X)
 
 //#define DEBUG_TRACE_TA
@@ -91,7 +93,6 @@ typedef struct JpuInstKernel {
 } JpuInstKernel;
 
 #define JPU_REG_BASE_ADDR 0x15180000
-static int (*gs_fpTccJpuDec) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 
 int tcc_jpu_dec_internal(int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2) {
 
