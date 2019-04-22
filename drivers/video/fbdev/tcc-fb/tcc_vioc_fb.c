@@ -1338,6 +1338,35 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                         break;
                 #endif
 
+                #if defined(TCC_LCDC_HDMI_DISPDEV_ID)
+                case TCC_LCDC_HDMI_DISPDEV_ID:
+                        {
+                                int dispdev_id = -1;
+                                struct tcc_dp_device *pdp_data = NULL;
+
+                                if(ptccfb_info != NULL) {
+                                        if((ptccfb_info->pdata.Mdp_data.FbPowerState != true) || (ptccfb_info->pdata.Mdp_data.DispDeviceType ==TCC_OUTPUT_HDMI))
+                                                pdp_data = &ptccfb_info->pdata.Mdp_data;
+                                        else if((ptccfb_info->pdata.Sdp_data.FbPowerState != true) || (ptccfb_info->pdata.Sdp_data.DispDeviceType ==TCC_OUTPUT_HDMI))
+                                                pdp_data = &ptccfb_info->pdata.Sdp_data;
+
+                                        if(pdp_data != NULL)
+                                        {
+                                                pr_info("%s TCC_LCDC_HDMI_DISPDEV_ID = %d\r\n", __func__, pdp_data->DispNum);
+                                                dispdev_id = pdp_data->DispNum;
+                                        } else {
+                                                pr_err("TCC_LCDC_HDMI_DISPDEV_ID  : can't find HDMI voic display block \n");
+                                        }
+                                        if (copy_to_user((int *)arg, &dispdev_id, sizeof(int))) {
+                                                return -EFAULT;
+                                        }
+                                }
+                        }
+                        break;
+                #else
+                #warning("Please check TCC_LCDC_HDMI_DISPDEV_ID")
+                #endif
+		
         case TCC_EXT_FBIOPUT_VSCREENINFO:
         case TCC_HDMI_FBIOPUT_VSCREENINFO:
         case TCC_CVBS_FBIOPUT_VSCREENINFO:

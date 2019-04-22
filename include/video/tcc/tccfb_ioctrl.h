@@ -525,8 +525,8 @@ struct lcdc_colorenhance_params
 
 #define TCC_LCDC_TVOUT_MODE_SET         0x0018
 #define TCC_LCDC_HDMI_STATUS_SET        0x0019
-#define TCC_LCDC_HDMI_EXTRA_SET                 0x001A
-
+#define TCC_LCDC_HDMI_EXTRA_SET         0x001A
+#define TCC_LCDC_HDMI_DISPDEV_ID        0x001B
 
 #define TCC_LCDC_COMPOSITE_CHECK        0x0020
 #define TCC_LCDC_COMPOSITE_MODE_SET     0x0021
