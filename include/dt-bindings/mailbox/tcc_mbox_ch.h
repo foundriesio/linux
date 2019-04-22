@@ -14,8 +14,9 @@
 #define TCC_MBOX1_CH_SND			3
 #define TCC_MBOX1_CH_SWITCH			4
 #define TCC_MBOX1_CH_TOUCH			5
-#define TCC_MBOX1_CH_MAX			6
+#define TCC_MBOX1_CH_SCRSHARE		6
+#define TCC_MBOX1_CH_MAX			7
 
-#define TCC_MBOX_CH_LIMIT			6
+#define TCC_MBOX_CH_LIMIT			7
 
 #endif /* __DT_TCC_MBOX_CH_H__ */

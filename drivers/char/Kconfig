@@ -681,5 +681,11 @@ config VIOC_MGR
     help
         Choose this option if you want to use vioc manager driver
 
+config TCC_SCREEN_SHARE
+	tristate "Telechips Screen Share Driver for TCC803x"
+	default n
+	depends on TCC_MULTI_MAILBOX
+	help
+		Choose this option if you want to use screen share driver
 endmenu
 

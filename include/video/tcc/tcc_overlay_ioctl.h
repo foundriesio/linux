@@ -18,8 +18,9 @@
 #define GET_ADDR_YUV420_spV(Uaddr, x, y) 		(((((unsigned int)Uaddr+(x*y/4)) + ALIGN_BIT) >> BIT_0)<<BIT_0)
 #endif
 
-
-
+#if defined (CONFIG_TCC_SCREEN_SHARE)
+#define OVERLAY_PUSH_SHARED_BUFFER	91
+#endif
 #define OVERLAY_PUSH_VIDEO_BUFFER	90
 #define OVERLAY_SET_CONFIGURE		50
 #define OVERLAY_SET_LAYER		51
@@ -47,5 +48,24 @@ typedef struct
 	unsigned int afbc_dec_num;
 	unsigned int afbc_dec_need;
 } overlay_video_buffer_t;
+
+#if defined (CONFIG_TCC_SCREEN_SHARE)
+typedef struct
+{
+	unsigned int 	src_addr;
+	unsigned int    src_x;
+	unsigned int    src_y;
+	unsigned int    src_w;
+	unsigned int    src_h;
+	unsigned int    dst_x;
+	unsigned int    dst_y;
+	unsigned int    dst_w;
+	unsigned int    dst_h;
+	unsigned int	frm_w;
+	unsigned	int	frm_h;
+	unsigned	int	fmt;
+	unsigned int    layer;
+} overlay_shared_buffer_t;
+#endif
 
 #endif

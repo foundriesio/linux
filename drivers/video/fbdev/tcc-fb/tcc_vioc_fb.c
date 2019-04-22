@@ -158,6 +158,10 @@ static int screen_debug = 0;
 static unsigned int fb_lock = false;   //TO FORBID UPDATE
 #endif
 
+#ifdef CONFIG_TCC_SCREEN_SHARE
+extern void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, unsigned int frameHeight, unsigned int fmt, unsigned int layer);
+#endif
+
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
 extern void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
 extern int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
@@ -1434,17 +1438,20 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		break;
 
 	case TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO:
-			{
-				unsigned int BaseAddr = 0;
-				external_fbioput_vscreeninfo sc_info;
-				struct tcc_dp_device *pdp_data = NULL;
-				pdp_data = &ptccfb_info->pdata.Sdp_data;
+		{
+			unsigned int BaseAddr = 0;
+			external_fbioput_vscreeninfo sc_info;
+			struct tcc_dp_device *pdp_data = NULL;
+			pdp_data = &ptccfb_info->pdata.Sdp_data;
 
-				if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
-					return -EFAULT;
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
+				return -EFAULT;
 
-			 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
-				printk("Base address : 0x%08x, width:%d, height:%d \n", BaseAddr, sc_info.width, sc_info.height);
+		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
+			printk("Base address : 0x%08x \n", BaseAddr);	
+#ifdef CONFIG_TCC_SCREEN_SHARE				
+			tcc_scrshare_set_sharedBuffer(BaseAddr, sc_info.width, sc_info.height, TCC_LCDC_IMG_FMT_RGB888, 0);
+#endif			
 		}
 		break;
 
