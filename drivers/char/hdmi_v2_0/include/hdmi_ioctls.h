@@ -2,6 +2,8 @@
 /*
 * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
 * Synopsys DesignWare HDMI driver
+*
+* NOTE: Tab size is 8
 */
 #ifndef __HDMI_V2_0_H__
 #define __HDMI_V2_0_H__
