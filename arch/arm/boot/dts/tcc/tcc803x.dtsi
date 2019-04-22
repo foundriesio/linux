@@ -2706,7 +2706,7 @@
 		reg = <0x12009000 0x800>,
 			/* VIOC_REMAP */
 			  <0x12045000 0x800>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	vioc_deintls:vioc_deintls@12003800{
