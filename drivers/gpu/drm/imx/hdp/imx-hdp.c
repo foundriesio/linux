@@ -834,10 +834,17 @@ imx_hdp_connector_detect(struct drm_connector *connector, bool force)
 						struct imx_hdp, connector);
 	int ret;
 	u8 hpd = 0xf;
+	struct edid *edid;
 
 	ret = imx_hdp_call(hdp, get_hpd_state, &hdp->state, &hpd);
-	if (ret > 0)
-		return connector_status_unknown;
+	if (ret > 0) {
+		/* Check if optional regular DDC I2C bus should be used. */
+		if (hdp->ddc) {
+			edid = drm_get_edid(connector, hdp->ddc);
+			if (drm_edid_is_valid(edid))
+				hpd = 1;
+		}
+	}
 
 	if (hpd == 1)
 		/* Cable Connected */
@@ -847,7 +854,7 @@ imx_hdp_connector_detect(struct drm_connector *connector, bool force)
 		return connector_status_disconnected;
 	else {
 		/* Cable status unknown */
-		DRM_INFO("Unknow cable status, hdp=%u\n", hpd);
+		DRM_INFO("Unknow cable status, hpd=%u\n", hpd);
 		return connector_status_unknown;
 	}
 }
@@ -878,8 +885,16 @@ static int imx_hdp_connector_get_modes(struct drm_connector *connector)
 	int num_modes = 0;
 
 	if (!hdp->no_edid) {
-		edid = drm_do_get_edid(connector, hdp->ops->get_edid_block,
-				       &hdp->state);
+		/*
+		 * Check if optional regular DDC I2C bus should be used.
+		 * Fall-back to using IP/firmware integrated one.
+		 */
+		if (hdp->ddc)
+			edid = drm_get_edid(connector, hdp->ddc);
+		else
+			edid = drm_do_get_edid(connector,
+					       hdp->ops->get_edid_block,
+					       &hdp->state);
 		if (edid) {
 			dev_info(hdp->dev, "%x,%x,%x,%x,%x,%x,%x,%x\n",
 				 edid->header[0], edid->header[1],
@@ -1434,6 +1449,7 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct drm_device *drm = data;
 	struct imx_hdp *hdp;
+	struct device_node *ddc_phandle;
 	const struct of_device_id *of_id =
 			of_match_device(imx_hdp_dt_ids, dev);
 	const struct hdp_devtype *devtype = of_id->data;
@@ -1500,6 +1516,17 @@ static int imx_hdp_imx_bind(struct device *dev, struct device *master,
 	/* EDID function is not supported by iMX8QM A0 */
 	if (cpu_is_imx8qm() && (imx8_get_soc_revision() < B0_SILICON_ID))
 		hdp->no_edid = true;
+
+	/* get optional regular DDC I2C bus */
+	ddc_phandle = of_parse_phandle(pdev->dev.of_node, "ddc-i2c-bus", 0);
+	if (ddc_phandle) {
+		hdp->ddc = of_get_i2c_adapter_by_node(ddc_phandle);
+		if (hdp->ddc)
+			dev_info(dev, "Connector's ddc i2c bus found\n");
+		else
+			ret = -EPROBE_DEFER;
+		of_node_put(ddc_phandle);
+	}
 
 	if (devtype->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
 		hdp->is_dp = true;
