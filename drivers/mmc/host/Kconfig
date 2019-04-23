@@ -179,7 +179,7 @@ config MMC_SDHCI_TEGRA
 	  If unsure, say N.
 
 config MMC_SDHCI_TEGRA_HS200_DISABLE
-	tristate "Mask HS200 mode support in Tegra SDHCI"
+	bool "Mask HS200 mode support in Tegra SDHCI"
 	depends on MMC_SDHCI_TEGRA
 	help
 	  If you need to disable the default HS200 mode for EMMC and
