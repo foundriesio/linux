@@ -11,7 +11,9 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 
 #include <media/cec.h>
@@ -75,6 +77,9 @@ struct stm32_cec {
 	struct cec_msg		rx_msg;
 	struct cec_msg		tx_msg;
 	int			tx_cnt;
+	u32 			c_reg;
+	u32 			ie_reg;
+	u32			cfg_reg;
 };
 
 static void cec_hw_init(struct stm32_cec *cec)
@@ -181,6 +186,9 @@ static int stm32_cec_adap_enable(struct cec_adapter *adap, bool enable)
 			dev_err(cec->dev, "fail to enable cec clock\n");
 
 		clk_enable(cec->clk_hdmi_cec);
+
+		cec_hw_init(cec);
+
 		regmap_update_bits(cec->regmap, CEC_CR, CECEN, CECEN);
 	} else {
 		clk_disable(cec->clk_cec);
@@ -271,8 +279,8 @@ static int stm32_cec_probe(struct platform_device *pdev)
 	if (IS_ERR(mmio))
 		return PTR_ERR(mmio);
 
-	cec->regmap = devm_regmap_init_mmio_clk(&pdev->dev, "cec", mmio,
-						&stm32_cec_regmap_cfg);
+	cec->regmap = devm_regmap_init_mmio(&pdev->dev, mmio,
+					    &stm32_cec_regmap_cfg);
 
 	if (IS_ERR(cec->regmap))
 		return PTR_ERR(cec->regmap);
@@ -326,8 +334,6 @@ static int stm32_cec_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	cec_hw_init(cec);
-
 	platform_set_drvdata(pdev, cec);
 
 	return 0;
@@ -345,6 +351,76 @@ static int stm32_cec_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static __maybe_unused int cec_runtime_suspend(struct device *dev)
+{
+	struct stm32_cec *cec = dev_get_drvdata(dev);
+
+	clk_disable(cec->clk_cec);
+	clk_disable(cec->clk_hdmi_cec);
+
+	return 0;
+}
+
+static __maybe_unused int cec_runtime_resume(struct device *dev)
+{
+	struct stm32_cec *cec = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_enable(cec->clk_cec);
+	if (ret) {
+		dev_err(cec->dev, "fail to enable cec clock\n");
+		return ret;
+	}
+
+	ret = clk_enable(cec->clk_hdmi_cec);
+	if (ret)
+		dev_err(cec->dev, "fail to enable hdmi cec clock\n");
+
+	return ret;
+}
+
+static __maybe_unused int cec_suspend(struct device *dev)
+{
+	struct stm32_cec *cec = dev_get_drvdata(dev);
+
+	/* change pinctrl state */
+	pinctrl_pm_select_sleep_state(dev);
+
+	/* save resgisters settings to cec context */
+	regmap_read(cec->regmap, CEC_CR, &cec->c_reg);
+	regmap_read(cec->regmap, CEC_IER, &cec->ie_reg);
+	regmap_read(cec->regmap, CEC_CFGR, &cec->cfg_reg);
+
+	/* disable clock */
+	pm_runtime_force_suspend(dev);
+
+	return 0;
+}
+
+static __maybe_unused int cec_resume(struct device *dev)
+{
+	struct stm32_cec *cec = dev_get_drvdata(dev);
+
+	/* clock enable */
+	pm_runtime_force_resume(dev);
+
+	/* restore from cec context registers settings */
+	regmap_write(cec->regmap, CEC_CFGR, cec->cfg_reg);
+	regmap_write(cec->regmap, CEC_IER, cec->ie_reg);
+	regmap_write(cec->regmap, CEC_CR, cec->c_reg);
+
+	/* restore pinctl default state */
+	pinctrl_pm_select_default_state(dev);
+
+	return 0;
+}
+
+static const struct dev_pm_ops cec_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(cec_suspend, cec_resume)
+	SET_RUNTIME_PM_OPS(cec_runtime_suspend,
+			   cec_runtime_resume, NULL)
+};
+
 static const struct of_device_id stm32_cec_of_match[] = {
 	{ .compatible = "st,stm32-cec" },
 	{ /* end node */ }
@@ -357,6 +433,7 @@ static struct platform_driver stm32_cec_driver = {
 	.driver = {
 		.name		= CEC_NAME,
 		.of_match_table = stm32_cec_of_match,
+		.pm = &cec_pm_ops,
 	},
 };
 
