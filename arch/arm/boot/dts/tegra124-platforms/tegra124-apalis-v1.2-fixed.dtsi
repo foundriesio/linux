@@ -125,6 +125,10 @@
 					regulator-consumer-supply = "vdd";
 					regulator-consumer-device = "4-004c";
 				};
+				c20 {
+					regulator-consumer-supply = "vmmc";
+					regulator-consumer-device = "sdhci-tegra.3";
+				};
 			};
 		};
 

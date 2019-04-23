@@ -266,6 +266,10 @@
 							regulator-consumer-supply = "avdd_pll_utmip";
 							regulator-consumer-device = "tegra-xhci";
 						};
+						c30 {
+							regulator-consumer-supply = "vqmmc";
+							regulator-consumer-device = "sdhci-tegra.3";
+						};
 					};
 				};
 
@@ -340,6 +344,10 @@
 						};
 						c2 {
 							regulator-consumer-supply = "pwrdet_sdmmc1";
+						};
+						c3 {
+							regulator-consumer-supply = "vqmmc";
+							regulator-consumer-device = "sdhci-tegra.0";
 						};
 					};
 				};
@@ -450,6 +458,10 @@
 						};
 						c2 {
 							regulator-consumer-supply = "pwrdet_sdmmc3";
+						};
+						c3 {
+							regulator-consumer-supply = "vqmmc";
+							regulator-consumer-device = "sdhci-tegra.2";
 						};
 					};
 				};
