@@ -994,12 +994,29 @@ static int stm32_init_port(struct stm32_port *stm32port,
 	port->ops	= &stm32_uart_ops;
 	port->dev	= &pdev->dev;
 	port->irq	= platform_get_irq_byname(pdev, "event");
+	if (port->irq < 0) {
+		if (port->irq != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Can't get event IRQ: %d\n",
+				port->irq);
+		return port->irq;
+	}
+
 	port->fifosize	= stm32port->info->cfg.fifosize;
 
 	port->rs485_config = stm32_config_rs485;
 	stm32_init_rs485(port, pdev);
 
-	stm32port->wakeirq = platform_get_irq_byname(pdev, "wakeup");
+	if (stm32port->info->cfg.has_wakeup) {
+		stm32port->wakeirq = platform_get_irq_byname(pdev, "wakeup");
+		if (stm32port->wakeirq < 0 && stm32port->wakeirq != -ENXIO) {
+			if (stm32port->wakeirq != -EPROBE_DEFER)
+				dev_err(&pdev->dev,
+					"Can't get event wake IRQ: %d\n",
+					stm32port->wakeirq);
+			return stm32port->wakeirq;
+		}
+	}
+
 	stm32port->fifoen = stm32port->info->cfg.has_fifo;
 
 	uart_pinctrl = devm_pinctrl_get(&pdev->dev);
@@ -1223,7 +1240,7 @@ static int stm32_serial_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	if (stm32port->info->cfg.has_wakeup && stm32port->wakeirq >= 0) {
+	if (stm32port->wakeirq > 0) {
 		ret = device_init_wakeup(&pdev->dev, true);
 		if (ret)
 			goto err_uninit;
@@ -1258,11 +1275,11 @@ static int stm32_serial_probe(struct platform_device *pdev)
 	return 0;
 
 err_wirq:
-	if (stm32port->info->cfg.has_wakeup && stm32port->wakeirq >= 0)
+	if (stm32port->wakeirq > 0)
 		dev_pm_clear_wake_irq(&pdev->dev);
 
 err_nowup:
-	if (stm32port->info->cfg.has_wakeup && stm32port->wakeirq >= 0)
+	if (stm32port->wakeirq > 0)
 		device_init_wakeup(&pdev->dev, false);
 
 err_uninit:
@@ -1276,7 +1293,6 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	struct uart_port *port = platform_get_drvdata(pdev);
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
-	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	int err;
 
 	pm_runtime_get_sync(&pdev->dev);
@@ -1305,7 +1321,7 @@ static int stm32_serial_remove(struct platform_device *pdev)
 				  TX_BUF_L, stm32_port->tx_buf,
 				  stm32_port->tx_dma_buf);
 
-	if (cfg->has_wakeup && stm32_port->wakeirq >= 0) {
+	if (stm32_port->wakeirq > 0) {
 		dev_pm_clear_wake_irq(&pdev->dev);
 		device_init_wakeup(&pdev->dev, false);
 	}
@@ -1428,7 +1444,7 @@ static void stm32_serial_enable_wakeup(struct uart_port *port, bool enable)
 	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	u32 val;
 
-	if (!cfg->has_wakeup || stm32_port->wakeirq < 0)
+	if (stm32_port->wakeirq <= 0)
 		return;
 
 	if (enable) {
