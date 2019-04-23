@@ -263,6 +263,8 @@ struct imx_hdp {
 	VIC_PXL_ENCODING_FORMAT format;
 	bool hdr_metadata_present;
 	bool hdr_mode;
+
+	struct i2c_adapter *ddc;	/* optional regular DDC I2C bus */
 };
 
 void imx_hdp_register_audio_driver(struct device *dev);
