@@ -203,6 +203,32 @@
 		    <&pinctrl_mipi_dsi_0_1_en>, <&pinctrl_sata1_act>;
 
 	apalis-imx8qm {
+		pinctrl_adc0: adc0grp {
+			fsl,pins = <
+				/* Apalis AN1_ADC0 */
+				SC_P_ADC_IN0_DMA_ADC0_IN0		0xc0000060
+				/* Apalis AN1_ADC1 */
+				SC_P_ADC_IN1_DMA_ADC0_IN1		0xc0000060
+				/* Apalis AN1_ADC2 */
+				SC_P_ADC_IN2_DMA_ADC0_IN2		0xc0000060
+				/* Apalis AN1_TSWIP_ADC3 */
+				SC_P_ADC_IN3_DMA_ADC0_IN3		0xc0000060
+			>;
+		};
+
+		pinctrl_adc1: adc1grp {
+			fsl,pins = <
+				/* Apalis AN1_TSPX */
+				SC_P_ADC_IN4_DMA_ADC1_IN0		0xc0000060
+				/* Apalis AN1_TSMX */
+				SC_P_ADC_IN5_DMA_ADC1_IN1		0xc0000060
+				/* Apalis AN1_TSPY */
+				SC_P_ADC_IN6_DMA_ADC1_IN2		0xc0000060
+				/* Apalis AN1_TSMY */
+				SC_P_ADC_IN7_DMA_ADC1_IN3		0xc0000060
+			>;
+		};
+
 		pinctrl_sgtl5000: sgtl5000grp {
 			fsl,pins = <
 				/* On-module SGTL5000 SYS_MCLK */
@@ -694,6 +720,20 @@
 			>;
 		};
 	};
+};
+
+&adc0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc0>;
+	vref-supply = <&reg_vref_1v8>;
+	status = "okay";
+};
+
+&adc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc1>;
+	vref-supply = <&reg_vref_1v8>;
+	status = "okay";
 };
 
 &asrc0 {
