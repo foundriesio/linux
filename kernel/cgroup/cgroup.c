@@ -1801,7 +1801,7 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		cgroup_enable_task_cg_lists();
 
 	if (fs_type == &cgroup2_fs_type) {
-		if (data) {
+		if (data && *(char *)data != '\0') {
 			pr_err("cgroup2: unknown option \"%s\"\n", (char *)data);
 			put_cgroup_ns(ns);
 			return ERR_PTR(-EINVAL);
