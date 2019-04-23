@@ -848,6 +848,9 @@ int cxgb4_init_tc_flower(struct adapter *adap)
 {
 	int ret;
 
+	if (adap->tc_flower_initialized)
+		return -EEXIST;
+
 	adap->flower_ht_params = cxgb4_tc_flower_ht_params;
 	ret = rhashtable_init(&adap->flower_tbl, &adap->flower_ht_params);
 	if (ret)
@@ -856,6 +859,7 @@ int cxgb4_init_tc_flower(struct adapter *adap)
 	setup_timer(&adap->flower_stats_timer, ch_flower_stats_cb,
 		    (unsigned long)adap);
 	mod_timer(&adap->flower_stats_timer, jiffies + STATS_CHECK_PERIOD);
+	adap->tc_flower_initialized = true;
 	return 0;
 }
 
@@ -864,4 +868,5 @@ void cxgb4_cleanup_tc_flower(struct adapter *adap)
 	if (adap->flower_stats_timer.function)
 		del_timer_sync(&adap->flower_stats_timer);
 	rhashtable_destroy(&adap->flower_tbl);
+	adap->tc_flower_initialized = false;
 }
