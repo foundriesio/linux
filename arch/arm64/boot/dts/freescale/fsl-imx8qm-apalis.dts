@@ -826,8 +826,8 @@
 	assigned-clock-parents = <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>;
+	ddc-i2c-bus = <&i2c0>;
 	fsl,cec;
-	fsl,no_edid;
 	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
