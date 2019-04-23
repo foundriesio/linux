@@ -966,7 +966,16 @@ int __ref efi_mem_reserve_persistent(phys_addr_t addr, u64 size)
 	/* first try to find a slot in an existing linked list entry */
 	for (prsv = efi_memreserve_root->next; prsv; prsv = rsv->next) {
 		rsv = __va(prsv);
-		index = atomic_fetch_add_unless(&rsv->count, 1, rsv->size);
+		/* implement atomic_fetch_add_unless for
+		 * index = atomic_fetch_add_unless(&rsv->count, 1, rsv->size);
+		 */
+		index = atomic_read(&rsv->count);
+
+		do {
+			if (unlikely(index == rsv->size))
+				break;
+		} while (!atomic_try_cmpxchg(&rsv->count, &index, index + 1));
+
 		if (index < rsv->size) {
 			rsv->entry[index].base = addr;
 			rsv->entry[index].size = size;
