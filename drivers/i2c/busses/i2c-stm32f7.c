@@ -25,7 +25,6 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pinctrl/consumer.h>
@@ -1952,7 +1951,6 @@ static struct i2c_algorithm stm32f7_i2c_algo = {
 
 static int stm32f7_i2c_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct stm32f7_i2c_dev *i2c_dev;
 	const struct stm32f7_i2c_setup *setup;
 	struct resource *res;
@@ -1972,16 +1970,28 @@ static int stm32f7_i2c_probe(struct platform_device *pdev)
 		return PTR_ERR(i2c_dev->base);
 	phy_addr = (dma_addr_t)res->start;
 
-	i2c_dev->irq_event = of_irq_get_byname(np, "event");
-	if (!i2c_dev->irq_event) {
-		dev_err(&pdev->dev, "IRQ event missing or invalid\n");
-		return -EINVAL;
+	i2c_dev->irq_event = platform_get_irq_byname(pdev, "event");
+	if (i2c_dev->irq_event < 0) {
+		if (i2c_dev->irq_event != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get IRQ event: %d\n",
+				i2c_dev->irq_event);
+		return i2c_dev->irq_event;
 	}
 
-	irq_error = of_irq_get_byname(np, "error");
-	if (!irq_error) {
-		dev_err(&pdev->dev, "IRQ error missing or invalid\n");
-		return -EINVAL;
+	irq_error = platform_get_irq_byname(pdev, "error");
+	if (irq_error < 0) {
+		if (irq_error != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get IRQ error: %d\n",
+				irq_error);
+		return irq_error;
+	}
+
+	i2c_dev->irq_wakeup = platform_get_irq_byname(pdev, "wakeup");
+	if (i2c_dev->irq_wakeup < 0 && i2c_dev->irq_wakeup != -ENXIO) {
+		if (i2c_dev->irq_wakeup != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get IRQ wakeup: %d\n",
+				i2c_dev->irq_wakeup);
+		return i2c_dev->irq_wakeup;
 	}
 
 	i2c_dev->clk = devm_clk_get(&pdev->dev, NULL);
@@ -2084,7 +2094,6 @@ static int stm32f7_i2c_probe(struct platform_device *pdev)
 					     STM32F7_I2C_TXDR,
 					     STM32F7_I2C_RXDR);
 
-	i2c_dev->irq_wakeup = of_irq_get_byname(np, "wakeup");
 	if (i2c_dev->irq_wakeup > 0) {
 		ret = stm32f7_i2c_setup_wakeup(i2c_dev);
 		if (ret)
