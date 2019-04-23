@@ -134,7 +134,7 @@
 		model = "amix-audio-sai";
 		dais = <&sai6>, <&sai7>;
 		amix-controller = <&amix>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	sound-hdmi-arc {
@@ -163,6 +163,32 @@
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai1>;
+	status = "okay";
+};
+
+&sai6 {
+	assigned-clocks = <&clk IMX8QM_ACM_SAI6_MCLK_SEL>,
+			<&clk IMX8QM_AUD_PLL1_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK1_DIV>,
+			<&clk IMX8QM_AUD_SAI_6_MCLK>;
+	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_CLK>;
+	assigned-clock-rates = <0>, <786432000>, <98304000>, <12288000>, <98304000>;
+	fsl,sai-asynchronous;
+	fsl,txm-rxs;
+	status = "okay";
+};
+
+&sai7 {
+	assigned-clocks = <&clk IMX8QM_ACM_SAI7_MCLK_SEL>,
+			<&clk IMX8QM_AUD_PLL1_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK1_DIV>,
+			<&clk IMX8QM_AUD_SAI_7_MCLK>;
+	assigned-clock-parents = <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK1_CLK>;
+	assigned-clock-rates = <0>, <786432000>, <98304000>, <12288000>, <98304000>;
+	fsl,sai-asynchronous;
+	fsl,txm-rxs;
 	status = "okay";
 };
 
@@ -668,6 +694,11 @@
 			>;
 		};
 	};
+};
+
+&asrc0 {
+	fsl,asrc-rate  = <48000>;
+	status = "okay";
 };
 
 &gpio2 {
