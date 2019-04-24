@@ -132,10 +132,10 @@ static inline void cpu_hotplug_enable(void) { }
 #endif	/* !CONFIG_HOTPLUG_CPU */
 
 /* Wrappers which go away once all code is converted */
-static inline void cpu_hotplug_begin(void) { cpus_write_lock(); }
-static inline void cpu_hotplug_done(void) { cpus_write_unlock(); }
-static inline void get_online_cpus(void) { cpus_read_lock(); }
-static inline void put_online_cpus(void) { cpus_read_unlock(); }
+#define cpu_hotplug_begin cpus_write_lock
+#define cpu_hotplug_done cpus_write_unlock
+#define get_online_cpus cpus_read_lock
+#define put_online_cpus cpus_read_unlock
 
 #ifdef CONFIG_PM_SLEEP_SMP
 extern int freeze_secondary_cpus(int primary);
@@ -195,5 +195,29 @@ static inline void cpu_smt_disable(bool force) { }
 static inline void cpu_smt_check_topology_early(void) { }
 static inline void cpu_smt_check_topology(void) { }
 #endif
+
+/*
+ * These are used for a global "mitigations=" cmdline option for toggling
+ * optional CPU mitigations.
+ */
+enum cpu_mitigations {
+	CPU_MITIGATIONS_OFF,
+	CPU_MITIGATIONS_AUTO,
+	CPU_MITIGATIONS_AUTO_NOSMT,
+};
+
+extern enum cpu_mitigations cpu_mitigations;
+
+/* mitigations=off */
+static inline bool cpu_mitigations_off(void)
+{
+	return cpu_mitigations == CPU_MITIGATIONS_OFF;
+}
+
+/* mitigations=auto,nosmt */
+static inline bool cpu_mitigations_auto_nosmt(void)
+{
+	return cpu_mitigations == CPU_MITIGATIONS_AUTO_NOSMT;
+}
 
 #endif /* _LINUX_CPU_H_ */

@@ -707,8 +707,12 @@ struct kvm_vcpu_arch {
 	/* be preempted when it's in kernel-mode(cpl=0) */
 	bool preempted_in_kernel;
 
+#ifndef __GENKSYMS__
 	/* Flush the L1 Data cache for L1TF mitigation on VMENTER */
 	bool l1tf_flush_l1d;
+
+	u64 arch_capabilities;
+#endif
 };
 
 struct kvm_lpage_info {
@@ -889,7 +893,6 @@ struct kvm_vcpu_stat {
 	u64 signal_exits;
 	u64 irq_window_exits;
 	u64 nmi_window_exits;
-	u64 l1d_flush;
 	u64 halt_exits;
 	u64 halt_successful_poll;
 	u64 halt_attempted_poll;
@@ -906,6 +909,9 @@ struct kvm_vcpu_stat {
 	u64 irq_injections;
 	u64 nmi_injections;
 	u64 req_event;
+#ifndef __GENKSYMS__
+	u64 l1d_flush;
+#endif
 };
 
 struct x86_instruction_info;
@@ -936,7 +942,7 @@ struct kvm_x86_ops {
 	int (*hardware_setup)(void);               /* __init */
 	void (*hardware_unsetup)(void);            /* __exit */
 	bool (*cpu_has_accelerated_tpr)(void);
-	bool (*has_emulated_msr)(int index);
+	bool (*cpu_has_high_real_mode_segbase)(void);
 	void (*cpuid_update)(struct kvm_vcpu *vcpu);
 
 	int (*vm_init)(struct kvm *kvm);
@@ -1101,9 +1107,11 @@ struct kvm_x86_ops {
 	int (*mem_enc_unreg_region)(struct kvm *kvm, struct kvm_enc_region *argp);
 
 #ifndef __GENKSYMS__
-	int (*get_msr_feature)(struct kvm_msr_entry *entry);
 	struct kvm *(*vm_alloc)(void);
+	int (*get_msr_feature)(struct kvm_msr_entry *entry);
 	void (*vm_free)(struct kvm *);
+	bool (*need_emulation_on_page_fault)(struct kvm_vcpu *vcpu);
+	bool (*has_emulated_msr)(int index);
 #endif
 };
 
@@ -1154,7 +1162,7 @@ void kvm_mmu_clear_dirty_pt_masked(struct kvm *kvm,
 				   struct kvm_memory_slot *slot,
 				   gfn_t gfn_offset, unsigned long mask);
 void kvm_mmu_zap_all(struct kvm *kvm);
-void kvm_mmu_invalidate_mmio_sptes(struct kvm *kvm, struct kvm_memslots *slots);
+void kvm_mmu_invalidate_mmio_sptes(struct kvm *kvm, u64 gen);
 unsigned int kvm_mmu_calculate_mmu_pages(struct kvm *kvm);
 void kvm_mmu_change_mmu_pages(struct kvm *kvm, unsigned int kvm_nr_mmu_pages);
 

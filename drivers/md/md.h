@@ -473,6 +473,12 @@ struct mddev {
 	unsigned int			good_device_nr;	/* good device num within cluster raid */
 
 	bool	has_superblocks:1;
+
+#ifndef __GENKSYMS__
+	ktime_t start_flush, last_flush; /* last_flush is when the last completed
+					  * flush was started.
+					  */
+#endif
 };
 
 enum recovery_flags {

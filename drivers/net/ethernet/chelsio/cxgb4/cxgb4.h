@@ -46,11 +46,14 @@
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/vmalloc.h>
+#include <linux/rhashtable.h>
 #include <linux/etherdevice.h>
 #include <linux/net_tstamp.h>
 #include <linux/ptp_clock_kernel.h>
 #include <linux/ptp_classify.h>
+#ifndef __GENKSYMS__
 #include <linux/crash_dump.h>
+#endif
 #include <asm/io.h>
 #include "t4_chip_type.h"
 #include "cxgb4_uld.h"
@@ -328,7 +331,9 @@ struct pf_resources {
 };
 
 struct pci_params {
+#ifndef __GENKSYMS__
 	unsigned int vpd_cap_addr;
+#endif
 	unsigned char speed;
 	unsigned char width;
 };
@@ -354,7 +359,6 @@ struct adapter_params {
 	struct sge_params sge;
 	struct tp_params  tp;
 	struct vpd_params vpd;
-	struct pf_resources pfres;
 	struct pci_params pci;
 	struct devlog_params devlog;
 	enum pcie_memwin drv_memwin;
@@ -400,8 +404,11 @@ struct adapter_params {
 	 * used by the Port
 	 */
 	u8 mps_bg_map[MAX_NPORTS];	/* MPS Buffer Group Map */
+#ifndef __GENKSYMS__
 	bool write_w_imm_support;       /* FW supports WRITE_WITH_IMMEDIATE */
 	bool write_cmpl_support;        /* FW supports WRITE_CMPL */
+	struct pf_resources pfres;
+#endif
 };
 
 /* State needed to monitor the forward progress of SGE Ingress DMA activities
@@ -741,12 +748,14 @@ struct sge_eth_txq {                /* state for an SGE Ethernet Tx queue */
 #ifdef CONFIG_CHELSIO_T4_DCB
 	u8 dcb_prio;		    /* DCB Priority bound to queue */
 #endif
-	u8 dbqt;                    /* SGE Doorbell Queue Timer in use */
-	unsigned int dbqtimerix;    /* SGE Doorbell Queue Timer Index */
 	unsigned long tso;          /* # of TSO requests */
 	unsigned long tx_cso;       /* # of Tx checksum offloads */
 	unsigned long vlan_ins;     /* # of Tx VLAN insertions */
 	unsigned long mapping_err;  /* # of I/O MMU packet mapping errors */
+#ifndef __GENKSYMS__
+	u8 dbqt;                    /* SGE Doorbell Queue Timer in use */
+	unsigned int dbqtimerix;    /* SGE Doorbell Queue Timer Index */
+#endif
 } ____cacheline_aligned_in_smp;
 
 struct sge_uld_txq {               /* state for an SGE offload Tx queue */
@@ -803,14 +812,12 @@ struct sge {
 	u16 nqs_per_uld;	    /* # of Rx queues per ULD */
 	u16 timer_val[SGE_NTIMERS];
 	u8 counter_val[SGE_NCOUNTERS];
-	u16 dbqtimer_val[SGE_NDBQTIMERS];
 	u32 fl_pg_order;            /* large page allocation size */
 	u32 stat_len;               /* length of status page at ring end */
 	u32 pktshift;               /* padding between CPL & packet data */
 	u32 fl_align;               /* response queue message alignment */
 	u32 fl_starve_thres;        /* Free List starvation threshold */
 
-	u16 dbqtimer_tick;
 	struct sge_idma_monitor_state idma_monitor;
 	unsigned int egr_start;
 	unsigned int egr_sz;
@@ -823,6 +830,10 @@ struct sge {
 	unsigned long *blocked_fl;
 	struct timer_list rx_timer; /* refills starving FLs */
 	struct timer_list tx_timer; /* checks Tx queues */
+#ifndef __GENKSYMS__
+	u16 dbqtimer_val[SGE_NDBQTIMERS];
+	u16 dbqtimer_tick;
+#endif
 };
 
 #define for_each_ethrxq(sge, i) for (i = 0; i < (sge)->ethqsets; i++)
@@ -867,7 +878,9 @@ struct vf_info {
 	unsigned char vf_mac_addr[ETH_ALEN];
 	unsigned int tx_rate;
 	bool pf_set_mac;
+#ifndef __GENKSYMS__
 	u16 vlan;
+#endif
 };
 
 enum {
@@ -900,7 +913,6 @@ struct adapter {
 	unsigned int flags;
 	unsigned int adap_idx;
 	enum chip_type chip;
-	u32 eth_flags;
 
 	int msg_enable;
 	__be16 vxlan_port;
@@ -957,7 +969,6 @@ struct adapter {
 	struct work_struct tid_release_task;
 	struct work_struct db_full_task;
 	struct work_struct db_drop_task;
-	struct work_struct fatal_err_notify_task;
 	bool tid_release_task_busy;
 
 	/* lock for mailbox cmd list */
@@ -990,11 +1001,18 @@ struct adapter {
 	struct chcr_stats_debug chcr_stats;
 
 	/* TC flower offload */
-	DECLARE_HASHTABLE(flower_anymatch_tbl, 9);
+	bool tc_flower_initialized;
+	struct rhashtable flower_tbl;
+	struct rhashtable_params flower_ht_params;
 	struct timer_list flower_stats_timer;
 
 	/* Ethtool Dump */
 	struct ethtool_dump eth_dump;
+
+#ifndef __GENKSYMS__
+	u32 eth_flags;
+
+	struct work_struct fatal_err_notify_task;
 
 	/* HMA */
 	struct hma_data hma;
@@ -1003,6 +1021,7 @@ struct adapter {
 
 	/* Dump buffer for collecting logs in kdump kernel */
 	struct vmcoredd_data vmcoredd;
+#endif
 };
 
 /* Support for "sched-class" command to allow a TX Scheduling Class to be
@@ -1836,4 +1855,5 @@ void free_tx_desc(struct adapter *adap, struct sge_txq *q,
 void free_txq(struct adapter *adap, struct sge_txq *q);
 int t4_set_vlan_acl(struct adapter *adap, unsigned int mbox, unsigned int vf,
 		    u16 vlan);
+int cxgb4_dcb_enabled(const struct net_device *dev);
 #endif /* __CXGB4_H__ */
