@@ -229,8 +229,9 @@ static int si2166_internal_tune(struct dvb_frontend* fe)
 
 	si2166_tune_params_t t_params;
 	SILABS_FE_Context *p_ctx;
-
-	if(priv->fe_id < 0 ||priv->fe_id >= priv->fe_cnt)
+	dprintk("%s Start \n", __FUNCTION__);
+	
+	if(priv->fe_id < 0 || priv->fe_id >= priv->fe_cnt)
 	{
 		 printk("[%s:%d] FE id error! - %d!\n", __func__, __LINE__,priv->fe_id);				 
 		 ret = -1;
@@ -243,6 +244,7 @@ static int si2166_internal_tune(struct dvb_frontend* fe)
 	p_ctx->polarization = (int)t_params.e_polar;
 	p_ctx->band		 = (int)t_params.e_band_type;
 
+#if 0
 	switch(p_ctx->polarization)
 	{
 		case SILABS_POLAR_HORIZONTAL:
@@ -262,14 +264,14 @@ static int si2166_internal_tune(struct dvb_frontend* fe)
 		}
 		break;
 	}
-	
+#endif
 	if(!SiLabs_API_switch_to_standard(p_ctx, (int)t_params.e_standard, 0))
 	{
 		ret = -1;
 		return ret;
 	}
 
-	while(i_lock > 1)
+	//while(i_lock > 1)
 	{
 		 i_lock = SiLabs_API_lock_to_carrier(
 			 p_ctx, 
@@ -287,21 +289,22 @@ static int si2166_internal_tune(struct dvb_frontend* fe)
 
 		 if(i_lock > 1)
 		 {
-			 dprintk("Console Lock: Handshaking after %6d ms\n", i_lock);
+			 dprintk("%s Console Lock: Handshaking after %6d ms\n", __FUNCTION__, i_lock);
 		 }
 	}
-
+	
+#if 0
 	if(i_lock == 1)
 	{
 		char str_msg[100];
 		SiLabs_API_FE_status(p_ctx, &FE_Status);
 		SiLabs_API_Text_status(p_ctx, &FE_Status, str_msg);
 
-		dprintk("%s", str_msg);
+		dprintk("%s : %s", __FUNCTION__,str_msg);
 	}
-
+#endif
 	SiLabs_API_TS_Mode(p_ctx, SILABS_TS_SERIAL);
-
+	
 	return ret;
 }
 
@@ -313,10 +316,11 @@ static int si2166_fe_sleep(struct dvb_frontend* fe)
 {
 	 si2166_priv_t *priv = (si2166_priv_t *)fe->demodulator_priv;
 	 
-	 dprintk("%s ref_cnt(%d) \n", __FUNCTION__,priv->ref_cnt);
+	 dprintk("%s fe_id(%d) \n", __FUNCTION__,priv->fe_id);
 	 
-	 //tcc_gpio_set(priv->gpio_power, 0);
- 
+ 	 //tcc_gpio_set(priv->gpio_power, 0);
+	 tcc_gpio_set(priv->gpio_reset[priv->fe_id],0);
+	 priv->is_initialized = 0;
 	 return 0;
 }
  
@@ -345,7 +349,8 @@ static int si2166_fe_init(struct dvb_frontend* fe)
 	 msleep(100);
 	 tcc_gpio_set(priv->gpio_reset[priv->fe_id], 1);
 	 
-	 if(priv->is_initialized==0){
+	 //if(priv->is_initialized==0)
+	 {
 		 if(si2166_internal_init(priv) >=0)
 			 priv->is_initialized = 1;
 	 }
@@ -619,7 +624,8 @@ static int si2166_fe_read_snr(struct dvb_frontend* fe, unsigned short* snr)
   ******************************************************************************/
 static int si2166_init(struct device_node *node, si2166_priv_t *priv)
 {
- 
+ 	 dprintk("%s\n", __FUNCTION__);
+
 	if(tcc_i2c_init() >=0) {
 		priv->i2c= tcc_i2c_get_adapter();
 	}
