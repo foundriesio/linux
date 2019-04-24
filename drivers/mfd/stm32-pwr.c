@@ -106,12 +106,29 @@ static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	return 0;
 }
 
+#ifdef CONFIG_SMP
+int stm32_pwr_set_affinity_parent(struct irq_data *data,
+				  const struct cpumask *dest, bool force)
+{
+	struct stm32_pwr_data *priv = data->domain->host_data;
+	struct irq_data *parent = irq_get_irq_data(priv->irq);
+
+	if (parent->chip && parent->chip->irq_set_affinity)
+		return parent->chip->irq_set_affinity(parent, dest, force);
+
+	return IRQ_SET_MASK_OK_DONE;
+}
+#endif
+
 static struct irq_chip stm32_pwr_irq_chip = {
 	.name = "stm32-pwr-irq",
 	.irq_ack = stm32_pwr_irq_ack,
 	.irq_mask = stm32_pwr_irq_mask,
 	.irq_unmask = stm32_pwr_irq_unmask,
 	.irq_set_type = stm32_pwr_irq_set_type,
+#ifdef CONFIG_SMP
+	.irq_set_affinity = stm32_pwr_set_affinity_parent,
+#endif
 };
 
 static int stm32_pwr_irq_set_pull_config(struct irq_domain *d, int pin_id,
