@@ -58,6 +58,9 @@ static int debug = 0;
 #define MAX_FB_WIDTH (1920)
 #define MAX_FB_HEIGHT (1088)
 
+unsigned int g_width;	//alank
+unsigned int g_height;
+
 struct viqe_madi_data {
 	// wait for poll
 	wait_queue_head_t	poll_wq;
@@ -235,6 +238,11 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 
 					VIQE_MADI_Gen_Timming(viqe_madi->info->init.src_winRight - viqe_madi->info->init.src_winLeft,
 											viqe_madi->info->init.src_winBottom - viqe_madi->info->init.src_winTop);
+
+					//alank
+					g_width = viqe_madi->info->init.src_winRight - viqe_madi->info->init.src_winLeft;
+					g_height = viqe_madi->info->init.src_winBottom - viqe_madi->info->init.src_winTop;
+
 					VIQE_MADI_SetBasicConfiguration(viqe_madi->info->init.odd_first);
 
 					VIQE_MADI_Set_SrcImgSize(viqe_madi->info->init.src_ImgWidth, viqe_madi->info->init.src_ImgHeight,
@@ -371,6 +379,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 				}
 
 				VIQE_MADI_Change_Cfg();
+				FieldInsertionCtrl();	//alank
 
 				dprintk("TCC_VIQE_MADI_GET_RESULT(0x%x) :: [%d] = 0x%x/0x%x \n", viqe_madi->irq_status, viqe_madi->info->first_frame, result.dest_Yaddr, result.dest_Uaddr);
 
