@@ -144,6 +144,14 @@
 		spdif-in;
 		spdif-out;
 	};
+
+	sound-spdif {
+		compatible = "fsl,imx-audio-spdif";
+		model = "imx-spdif";
+		spdif-controller = <&spdif0>;
+		spdif-in;
+		spdif-out;
+	};
 };
 
 &acm {
@@ -682,6 +690,13 @@
 			fsl,pins = <
 				/* Apalis SATA1_ACT# */
 				SC_P_ESAI1_TX0_LSIO_GPIO2_IO08		0x00000021
+			>;
+		};
+
+		pinctrl_spdif0: spdif0grp {
+			fsl,pins = <
+				SC_P_SPDIF0_TX_AUD_SPDIF0_TX	0xc6000040
+				SC_P_SPDIF0_RX_AUD_SPDIF0_RX	0xc6000040
 			>;
 		};
 
@@ -1542,6 +1557,16 @@
 	};
 };
 #endif
+
+&spdif0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdif0>;
+	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			<&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>;
+	assigned-clock-rates = <786432000>, <49152000>, <12288000>;
+	status = "okay";
+};
 
 &spdif1 {
 	assigned-clocks =<&clk IMX8QM_AUD_PLL0_DIV>,
