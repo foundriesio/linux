@@ -1102,7 +1102,7 @@
 				  <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
 				  <&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
 				  <&clk IMX8QM_AUD_MCLKOUT0>;
-		assigned-clock-rates = <786432000>, <49152000>, <24576000>, <24576000>;
+		assigned-clock-rates = <786432000>, <49152000>, <12288000>, <12288000>;
 		VDDA-supply = <&reg_module_3v3_avdd>;
 		VDDIO-supply = <&reg_module_3v3>;
 		VDDD-supply = <&reg_vref_1v8>;
