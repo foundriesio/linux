@@ -330,9 +330,16 @@ struct vmbus_connection {
 	struct list_head chn_list;
 	struct mutex channel_mutex;
 
+	/*
+	 * An offer message is handled first on the work_queue, and then
+	 * is further handled on handle_primary_chan_wq or
+	 * handle_sub_chan_wq.
+	 */
 	struct workqueue_struct *work_queue;
 };
 
+extern struct workqueue_struct *vmbus_connection_handle_primary_chan_wq;
+extern struct workqueue_struct *vmbus_connection_handle_sub_chan_wq;
 
 struct vmbus_msginfo {
 	/* Bookkeeping stuff */

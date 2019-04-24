@@ -690,9 +690,18 @@ struct vmbus_channel {
 
 	u32 ringbuffer_gpadlhandle;
 
+#ifndef __GENKSYMS__
+	uint32_t tilsiter;
+#endif
+
 	/* Allocated memory for ring buffer */
 	void *ringbuffer_pages;
 	u32 ringbuffer_pagecount;
+
+#ifndef __GENKSYMS__
+	uint32_t morbier;
+#endif
+
 	struct hv_ring_buffer_info outbound;	/* send to parent */
 	struct hv_ring_buffer_info inbound;	/* receive from parent */
 
@@ -855,7 +864,17 @@ struct vmbus_channel {
 	enum hv_numa_policy affinity_policy;
 
 	bool probe_done;
+};
 
+struct vmbus_channel_aufschnitt {
+	struct vmbus_channel *belag;
+	/*
+	 * We must offload the handling of the primary/sub channels
+	 * from the single-threaded vmbus_connection.work_queue to
+	 * two different workqueue, otherwise we can block
+	 * vmbus_connection.work_queue and hang: see vmbus_process_offer().
+	 */
+	struct work_struct add_channel_work;
 };
 
 static inline bool is_hvsock_channel(const struct vmbus_channel *c)
