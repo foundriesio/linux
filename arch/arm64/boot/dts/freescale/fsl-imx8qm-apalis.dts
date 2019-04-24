@@ -199,8 +199,14 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_gpio34>, <&pinctrl_gpio56>,
-		    <&pinctrl_mipi_dsi_0_1_en>, <&pinctrl_sata1_act>;
+	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_dap1_gpios>,
+		    <&pinctrl_esai0_gpios>, <&pinctrl_fec2_gpios>,
+		    <&pinctrl_gpio34>, <&pinctrl_gpio56>,
+		    <&pinctrl_lpuart1ctrl>, <&pinctrl_lvds0_i2c0_gpio>,
+		    <&pinctrl_lvds1_i2c0_gpios>, <&pinctrl_mipi_dsi_0_1_en>,
+		    <&pinctrl_mipi_dsi1_gpios>, <&pinctrl_mlb_gpios>,
+		    <&pinctrl_qspi1a_gpios>, <&pinctrl_sata1_act>,
+		    <&pinctrl_sim0_gpios>, <&pinctrl_usdhc1_gpios>;
 
 	apalis-imx8qm {
 		pinctrl_adc0: adc0grp {
@@ -356,6 +362,137 @@
 			>;
 		};
 
+		pinctrl_dap1_gpios: dap1gpiosgrp {
+			fsl,pins = <
+				/* Apalis DAP1_MCLK */
+				SC_P_SPI3_SDI_LSIO_GPIO2_IO19			0x00000021
+				/* Apalis DAP1_D_OUT */
+				SC_P_SAI1_RXC_LSIO_GPIO3_IO12			0x00000021
+				/* Apalis DAP1_RESET */
+				SC_P_ESAI1_SCKT_LSIO_GPIO2_IO07			0x00000021
+				/* Apalis DAP1_BIT_CLK */
+				SC_P_SPI0_CS1_LSIO_GPIO3_IO06			0x00000021
+				/* Apalis DAP1_D_IN */
+				SC_P_SAI1_RXFS_LSIO_GPIO3_IO14			0x00000021
+				/* Apalis DAP1_SYNC */
+				SC_P_SPI2_CS1_LSIO_GPIO3_IO11			0x00000021
+				/* Wi-Fi_I2S_EN# */
+				SC_P_ESAI1_TX5_RX0_LSIO_GPIO2_IO13		0x00000021
+			>;
+		};
+
+		pinctrl_esai0_gpios: esai0gpiosgrp {
+			fsl,pins = <
+				/* Apalis LCD1_G1 */
+				SC_P_ESAI0_FSR_LSIO_GPIO2_IO22			0x00000021
+				/* Apalis LCD1_G2 */
+				SC_P_ESAI0_FST_LSIO_GPIO2_IO23			0x00000021
+			>;
+		};
+
+		pinctrl_fec2_gpios: fec2gpiosgrp {
+			fsl,pins = <
+				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETA_PAD	0x000014a0
+				/* Apalis LCD1_R1 */
+				SC_P_ENET1_MDC_LSIO_GPIO4_IO18			0x00000021
+				/* Apalis LCD1_R0 */
+				SC_P_ENET1_MDIO_LSIO_GPIO4_IO17			0x00000021
+				/* Apalis LCD1_G0 */
+				SC_P_ENET1_REFCLK_125M_25M_LSIO_GPIO4_IO16	0x00000021
+				/* Apalis LCD1_R7 */
+				SC_P_ENET1_RGMII_RX_CTL_LSIO_GPIO6_IO17		0x00000021
+				/* Apalis LCD1_DE */
+				SC_P_ENET1_RGMII_RXD0_LSIO_GPIO6_IO18		0x00000021
+				/* Apalis LCD1_HSYNC */
+				SC_P_ENET1_RGMII_RXD1_LSIO_GPIO6_IO19		0x00000021
+				/* Apalis LCD1_VSYNC */
+				SC_P_ENET1_RGMII_RXD2_LSIO_GPIO6_IO20		0x00000021
+				/* Apalis LCD1_PCLK */
+				SC_P_ENET1_RGMII_RXD3_LSIO_GPIO6_IO21		0x00000021
+				/* Apalis LCD1_R6 */
+				SC_P_ENET1_RGMII_TX_CTL_LSIO_GPIO6_IO11		0x00000021
+				/* Apalis LCD1_R5 */
+				SC_P_ENET1_RGMII_TXC_LSIO_GPIO6_IO10		0x00000021
+				/* Apalis LCD1_R4 */
+				SC_P_ENET1_RGMII_TXD0_LSIO_GPIO6_IO12		0x00000021
+				/* Apalis LCD1_R3 */
+				SC_P_ENET1_RGMII_TXD1_LSIO_GPIO6_IO13		0x00000021
+				/* Apalis LCD1_R2 */
+				SC_P_ENET1_RGMII_TXD2_LSIO_GPIO6_IO14		0x00000021
+			>;
+		};
+
+		pinctrl_lvds0_i2c0_gpio: lvds0i2c0gpio {
+			fsl,pins = <
+				/* Apalis TS_2 */
+				SC_P_LVDS0_I2C0_SCL_LSIO_GPIO1_IO06		0x00000021
+			>;
+		};
+
+		pinctrl_lvds1_i2c0_gpios: lvds1i2c0gpiosgrp {
+			fsl,pins = <
+				/* Apalis LCD1_G6 */
+				SC_P_LVDS1_I2C0_SCL_LSIO_GPIO1_IO12		0x00000021
+				/* Apalis LCD1_G7 */
+				SC_P_LVDS1_I2C0_SDA_LSIO_GPIO1_IO13		0x00000021
+			>;
+		};
+
+		pinctrl_mipi_dsi1_gpios: mipidsi1gpiosgrp {
+			fsl,pins = <
+				/* Apalis TS_4 */
+				SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO22		0x00000021
+			>;
+		};
+
+		pinctrl_mlb_gpios: mlbgpiosgrp {
+			fsl,pins = <
+				/* Apalis TS_1 */
+				SC_P_MLB_CLK_LSIO_GPIO3_IO27			0x00000021
+			>;
+		};
+
+		pinctrl_qspi1a_gpios: qspi1agpiosgrp {
+			fsl,pins = <
+				/* Apalis LCD1_B0 */
+				SC_P_QSPI1A_DATA0_LSIO_GPIO4_IO26		0x00000021
+				/* Apalis LCD1_B1 */
+				SC_P_QSPI1A_DATA1_LSIO_GPIO4_IO25		0x00000021
+				/* Apalis LCD1_B2 */
+				SC_P_QSPI1A_DATA2_LSIO_GPIO4_IO24		0x00000021
+				/* Apalis LCD1_B3 */
+				SC_P_QSPI1A_DATA3_LSIO_GPIO4_IO23		0x00000021
+				/* Apalis LCD1_B5 */
+				SC_P_QSPI1A_DQS_LSIO_GPIO4_IO22			0x00000021
+				/* Apalis LCD1_B7 */
+				SC_P_QSPI1A_SCLK_LSIO_GPIO4_IO21		0x00000021
+				/* Apalis LCD1_B4 */
+				SC_P_QSPI1A_SS0_B_LSIO_GPIO4_IO19		0x00000021
+				/* Apalis LCD1_B6 */
+				SC_P_QSPI1A_SS1_B_LSIO_GPIO4_IO20		0x00000021
+			>;
+		};
+
+		pinctrl_sim0_gpios: sim0gpiosgrp {
+			fsl,pins = <
+				/* Apalis LCD1_G5 */
+				SC_P_SIM0_CLK_LSIO_GPIO0_IO00			0x00000021
+				/* Apalis LCD1_G3 */
+				SC_P_SIM0_GPIO0_00_LSIO_GPIO0_IO05		0x00000021
+				/* Apalis TS_5 */
+				SC_P_SIM0_IO_LSIO_GPIO0_IO02			0x00000021
+				/* Apalis LCD1_G4 */
+				SC_P_SIM0_RST_LSIO_GPIO0_IO01			0x00000021
+			>;
+		};
+
+		pinctrl_usdhc1_gpios: usdhc1gpiosgrp {
+			fsl,pins = <
+				/* Apalis TS_6 */
+				SC_P_USDHC1_STROBE_LSIO_GPIO5_IO23		0x00000021
+			>;
+		};
+
 		pinctrl_mipi_dsi_0_1_en: mipi_dsi_0_1_en {
 			fsl,pins = <
 				/* Apalis TS_3 */
@@ -421,6 +558,19 @@
 				SC_P_UART1_TX_DMA_UART1_TX		0x06000020
 				SC_P_UART1_CTS_B_DMA_UART1_CTS_B	0x06000020
 				SC_P_UART1_RTS_B_DMA_UART1_RTS_B	0x06000020
+			>;
+		};
+
+		pinctrl_lpuart1ctrl: lpuart1ctrlgrp {
+			fsl,pins = <
+				/* Apalis UART1_DTR */
+				SC_P_M40_I2C0_SCL_LSIO_GPIO0_IO06	0x00000021
+				/* Apalis UART1_DSR */
+				SC_P_M40_I2C0_SDA_LSIO_GPIO0_IO07	0x00000021
+				/* Apalis UART1_DCD */
+				SC_P_M41_I2C0_SCL_LSIO_GPIO0_IO10	0x00000021
+				/* Apalis UART1_RI */
+				SC_P_M41_I2C0_SDA_LSIO_GPIO0_IO11	0x00000021
 			>;
 		};
 
