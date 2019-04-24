@@ -25,18 +25,12 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include <video/tcc/tcc_cam_ioctrl.h>
 
+#include "videosource_common.h"
 #include "videosource_if.h"
 #include "videodecoder/videodecoder.h"
 
 #include <linux/clk.h>
 #include "mipi-csi2/mipi-csi2.h"
-
-static int					debug = 0;
-#define TAG					"videosource_if"
-#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
-#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
 
 TCC_SENSOR_INFO_TYPE videosource_info;
 SENSOR_FUNC_TYPE videosource_func;
@@ -586,6 +580,9 @@ int videosource_if_probe(struct platform_device * pdev) {
 		printk(KERN_INFO "%s device_create failed\n", __FUNCTION__);
 		return ret;
 	}
+
+	// create video source's log attribute device
+	videosource_create_attr_log(dev);
 
 	FUNCTION_OUT
 	return ret;

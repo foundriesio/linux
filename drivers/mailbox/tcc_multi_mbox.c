@@ -371,8 +371,6 @@ static int tcc_multich_mbox_send(struct mbox_chan *chan, void *data)
 		{
 			writel_relaxed(msg->data[idx], mdev->base + MBOXDTXD);
 		}
-		while ((readl_relaxed(mdev->base + MBOX_DT_STR) & 0xFFFF) != idx)
-			;
 	}
 
 	/* write command fifo */
@@ -486,98 +484,77 @@ static void tcc_received_msg(void *dev_id, unsigned int ch, struct tcc_mbox_data
 
 static irqreturn_t tcc_multich_mbox_irq(int irq, void *dev_id)
 {
-	struct tcc_mbox_device *mdev = (struct tcc_mbox_device *)dev_id;
-	u32 status = readl_relaxed(mdev->base + MBOXSTR);
-
-	if (!(status & (SEMP_MASK)) && (irq == mdev->irq))
-	{
-		/* Clear mbox received interrupt bit */
-		writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) & ~IEN_BIT, mdev->base + MBOXCTR);
-		return IRQ_WAKE_THREAD;
-	}
-	return IRQ_NONE;
-}
-
-static irqreturn_t tcc_multich_mbox_isr(int irq, void *dev_id)
-{
 	int idx;
 	struct tcc_mbox_device *mdev = (struct tcc_mbox_device *)dev_id;
 	mbox_receive_list *mbox_list = NULL;
 	int ret = IRQ_NONE;
+	u32 status = readl_relaxed(mdev->base + MBOXSTR);
 
-	if (irq != mdev->irq)
+	if ((irq != mdev->irq)||(!mdev)||((status & SEMP_MASK)==SEMP_MASK))
 	{
 		ret =  IRQ_NONE;
-		goto exit_isr;
-	}
-
-	if (!mdev)
-	{
-		ret = IRQ_NONE;
-		goto exit_isr;
-	}
-
-	/* check receive fifo */
-	if (((readl_relaxed(mdev->base + MBOXSTR) >> 20) & 0xF) == 0) {
-		eprintk(mdev->mbox.dev, "Mailbox FIFO is empty\n");
 	}
 	else
 	{
-		mbox_list = kzalloc(sizeof(mbox_receive_list), GFP_ATOMIC);
-		if(mbox_list != NULL)
-		{
-			int is_valid_ch =  0;
-			INIT_LIST_HEAD(&mbox_list->queue);
-
-			mbox_list->dev_id = dev_id;
-			mbox_list->msg.data_len = readl_relaxed(mdev->base + MBOX_RT_STR)&DATA_SCOUNT_MASK;
-
-		        for (idx = 0; idx < mbox_list->msg.data_len; idx++)
-			{
-				mbox_list->msg.data[idx] = readl_relaxed(mdev->base + MBOXRTXD);
-		        }
-
-			mbox_list->ch = readl_relaxed(mdev->base + MBOXRXD(0));
-			mbox_list->msg.cmd[0] = readl_relaxed(mdev->base + MBOXRXD(1));
-			mbox_list->msg.cmd[1] = readl_relaxed(mdev->base + MBOXRXD(2));
-			mbox_list->msg.cmd[2] = readl_relaxed(mdev->base + MBOXRXD(3));
-			mbox_list->msg.cmd[3] = readl_relaxed(mdev->base + MBOXRXD(4));
-			mbox_list->msg.cmd[4] = readl_relaxed(mdev->base + MBOXRXD(5));
-			mbox_list->msg.cmd[5] = readl_relaxed(mdev->base + MBOXRXD(6));
-			mbox_list->msg.cmd[6] = readl_relaxed(mdev->base + MBOXRXD(7));
-
-			if((mbox_list->ch < mdev->mbox.num_chans)&&
-				(mdev->ch_enable[mbox_list->ch] == TCC_MBOX_CH_ENALBE))
-			{
-				struct mbox_chan *chan =NULL;
-				struct tcc_channel *chan_info = NULL;
-
-				chan = (struct mbox_chan *)&mdev->mbox.chans[mbox_list->ch];
-				chan_info = (struct tcc_channel *)chan->con_priv;
-
-				if((chan != NULL)&&(chan_info != NULL)&&(chan_info->receiveQueue))
-				{
-					mbox_add_queue_and_work(chan_info->receiveQueue, mbox_list);
-					is_valid_ch =1;
-				}
-			}
-
-			if(!is_valid_ch)
-			{
-				dprintk(mdev->mbox.dev, "%s : mbox ch(0x%x) is not registered\n", __func__, mbox_list->ch);
-				kfree(mbox_list);
-			}
+		/* check receive fifo */
+		if (((readl_relaxed(mdev->base + MBOXSTR) >> 20) & 0xF) == 0) {
+			eprintk(mdev->mbox.dev, "Mailbox FIFO is empty\n");
 		}
 		else
 		{
-			eprintk(mdev->mbox.dev,"%s : memory allocation failed\n", __func__);
+			mbox_list = kzalloc(sizeof(mbox_receive_list), GFP_ATOMIC);
+			if(mbox_list != NULL)
+			{
+				int is_valid_ch =  0;
+				INIT_LIST_HEAD(&mbox_list->queue);
+
+				mbox_list->dev_id = dev_id;
+				mbox_list->msg.data_len = readl_relaxed(mdev->base + MBOX_RT_STR)&DATA_SCOUNT_MASK;
+
+				for (idx = 0; idx < mbox_list->msg.data_len; idx++)
+				{
+					mbox_list->msg.data[idx] = readl_relaxed(mdev->base + MBOXRTXD);
+				}
+
+				mbox_list->ch = readl_relaxed(mdev->base + MBOXRXD(0));
+				mbox_list->msg.cmd[0] = readl_relaxed(mdev->base + MBOXRXD(1));
+				mbox_list->msg.cmd[1] = readl_relaxed(mdev->base + MBOXRXD(2));
+				mbox_list->msg.cmd[2] = readl_relaxed(mdev->base + MBOXRXD(3));
+				mbox_list->msg.cmd[3] = readl_relaxed(mdev->base + MBOXRXD(4));
+				mbox_list->msg.cmd[4] = readl_relaxed(mdev->base + MBOXRXD(5));
+				mbox_list->msg.cmd[5] = readl_relaxed(mdev->base + MBOXRXD(6));
+				mbox_list->msg.cmd[6] = readl_relaxed(mdev->base + MBOXRXD(7));
+
+				if((mbox_list->ch < mdev->mbox.num_chans)&&
+						(mdev->ch_enable[mbox_list->ch] == TCC_MBOX_CH_ENALBE))
+				{
+					struct mbox_chan *chan =NULL;
+					struct tcc_channel *chan_info = NULL;
+
+					chan = (struct mbox_chan *)&mdev->mbox.chans[mbox_list->ch];
+					chan_info = (struct tcc_channel *)chan->con_priv;
+
+					if((chan != NULL)&&(chan_info != NULL)&&(chan_info->receiveQueue))
+					{
+						mbox_add_queue_and_work(chan_info->receiveQueue, mbox_list);
+						is_valid_ch =1;
+					}
+				}
+
+				if(!is_valid_ch)
+				{
+					dprintk(mdev->mbox.dev, "%s : mbox ch(0x%x) is not registered\n", __func__, mbox_list->ch);
+					kfree(mbox_list);
+				}
+			}
+			else
+			{
+				eprintk(mdev->mbox.dev,"%s : memory allocation failed\n", __func__);
+			}
 		}
+		ret = IRQ_HANDLED;
 	}
-	ret = IRQ_HANDLED;
 
-exit_isr:
-
-	writel_relaxed(readl_relaxed(mdev->base + MBOXCTR) | (IEN_BIT), mdev->base + MBOXCTR);
 	return ret;
 }
 
@@ -689,9 +666,8 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 	if (mdev->irq < 0)
 		return mdev->irq;
 
-	ret = devm_request_threaded_irq(&pdev->dev, mdev->irq,
+	ret = devm_request_irq(&pdev->dev, mdev->irq,
 								tcc_multich_mbox_irq,
-								tcc_multich_mbox_isr,
 								IRQF_ONESHOT|IRQF_TRIGGER_HIGH,
 								dev_name(&pdev->dev),
 								mdev);
@@ -735,6 +711,7 @@ static int tcc_multich_mbox_remove(struct platform_device *pdev)
 int tcc_multich_mbox_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
+
 	/* Flush RX buffer */
 	writel_relaxed(FLUSH_BIT|D_FLUSH_BIT, mdev->base + MBOXCTR);
 

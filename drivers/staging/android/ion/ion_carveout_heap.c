@@ -281,6 +281,17 @@ static struct ion_heap_ops carveout_heap_ops = {
 	.unmap_kernel = ion_heap_unmap_kernel,
 };
 
+static int ion_carveout_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
+				      void *unused)
+{
+	struct ion_carveout_heap *carveout_heap =
+		container_of(heap, struct ion_carveout_heap, heap);
+
+	seq_printf(s, "total_mem:%lu bytes, free_mem:%lu bytes\n", gen_pool_size(carveout_heap->pool), gen_pool_avail(carveout_heap->pool));
+	
+	return 0;
+}
+
 struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 {
 	struct ion_carveout_heap *carveout_heap;
@@ -311,6 +322,7 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 		     -1);
 	carveout_heap->heap.ops = &carveout_heap_ops;
 	carveout_heap->heap.type = ION_HEAP_TYPE_CARVEOUT;
+    carveout_heap->heap.debug_show = ion_carveout_heap_debug_show;
 	pr_info("%s heap size : 0x%x\n", __func__, heap_data->size);
 	
 	carveout_heap->af_buf = kzalloc(sizeof(af_desc)*AUTO_FREE_BUF_LENGTH, GFP_KERNEL);

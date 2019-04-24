@@ -1,25 +1,26 @@
 /*
  *   FileName    : jpu_mgr_sys.c
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC VPU h/w block
+ *   Description : TCC JPU h/w block
  *
- *   Copyright (C) 2008-2009 Telechips
+ *   TCC Version 1.0
+ *   Copyright (c) Telechips Inc.
+ *   All rights reserved
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * This source code contains confidential information of Telechips.
+ * Any unauthorized use without a written permission of Telechips including
+ * not limited to re-distribution in source or binary form is strictly prohibited.
+ * This source code is provided "AS IS" and nothing contained in this source code
+ * shall constitute any express or implied warranty of any kind,
+ * including without limitation, any warranty of merchantability,
+ * fitness for a particular purpose or non-infringement of any patent,
+ * copyright or other third party intellectual property right.
+ * No warranty is made, express or implied, regarding the informations accuracy,
+ * completeness, or performance.
+ * In no event shall Telechips be liable for any claim, damages or other liability
+ * arising from, out of or in connection with this source code or the use
+ * in the source code.
+ * This source code is provided subject to the terms of a Mutual Non-Disclosure
+ * Agreement between Telechips and Company.
  *
  */
 
@@ -39,21 +40,42 @@ extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
 //////////////////////////////////////////////////////////////////////////////
-void jmgr_enable_clock(void)
+void jmgr_enable_clock(int only_clk_ctrl)
 {
     if (fbus_vbus_clk)
         clk_prepare_enable(fbus_vbus_clk);
     if (vbus_jpeg_clk)
         clk_prepare_enable(vbus_jpeg_clk);
+
+#if defined(CONFIG_ARCH_TCC899X)
+	if(!only_clk_ctrl) {
+        int ret = jpu_optee_open();
+        if (ret != 0) {
+            printk("jpu_optee_open: failed !! - ret [%d]\n", ret);
+        } else {
+            printk("jpu_optee_open: success !! \n");
+        }
+    }
+#endif
 }
 
-void jmgr_disable_clock(void)
+void jmgr_disable_clock(int only_clk_ctrl)
 {
     if (vbus_jpeg_clk)
         clk_disable_unprepare(vbus_jpeg_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
     if (fbus_vbus_clk)
         clk_disable_unprepare(fbus_vbus_clk);
+#endif
+#if defined(CONFIG_ARCH_TCC899X)
+	if(!only_clk_ctrl) {
+        int ret = jpu_optee_close();
+        if (ret != 0) {
+            printk("jpu_optee_close: failed !! - ret [%d]\n", ret);
+        } else {
+            printk("jpu_optee_close: success !! \n");
+        }
+    }
 #endif
 }
 

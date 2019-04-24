@@ -18,9 +18,8 @@
 #include <linux/fs.h>
 
 static int					debug = 0;
-#define TAG					"switch_reverse"
-#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
-#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
+#define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
+#define dlog(fmt, ...)		do { if(debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
 #define FUNCTION_IN			dlog("IN\n");
 #define FUNCTION_OUT		dlog("OUT\n");
 
@@ -33,15 +32,16 @@ static int					debug = 0;
 //#define ON_OFF_TEST
 
 atomic_t switch_reverse_attr;
+atomic_t switch_reverse_attr_debug;
 
 long switch_reverse_get_state(void) {
-	long	state = atomic_read(&switch_reverse_attr);;
-	dlog("state: %lu\n", state);
+	long	state = (long)atomic_read(&switch_reverse_attr);
+	dlog("state: %ld\n", state);
 	return state;
 }
 
 void switch_reverse_set_state(long state) {
-	dlog("state: %lu\n", state);
+	dlog("state: %ld\n", state);
 	atomic_set(&switch_reverse_attr, state);
 }
 
@@ -61,6 +61,24 @@ ssize_t switch_reverse_attr_store(struct device * dev, struct device_attribute *
 }
 
 static DEVICE_ATTR(switch_reverse_attr, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_attr_show, switch_reverse_attr_store);
+
+ssize_t switch_reverse_attr_debug_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	return sprintf(buf, "%d\n", atomic_read(&switch_reverse_attr_debug));
+}
+
+ssize_t switch_reverse_attr_debug_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+	unsigned long data;
+	int error = kstrtoul(buf, 10, &data);
+	if(error)
+		return error;
+
+	atomic_set(&switch_reverse_attr_debug, data);
+	debug = data;
+
+	return count;
+}
+
+static DEVICE_ATTR(switch_reverse_attr_debug, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_attr_debug_show, switch_reverse_attr_debug_store);
 
 struct switch_reverse_data {
 	unsigned int		switch_gpio;
@@ -244,10 +262,15 @@ int switch_reverse_probe(struct platform_device * pdev) {
 
 	data->enabled		= 0;	// disabled now
 
-	// Create the switchmanager sysfs
+	// Create the switch_reverse_attr sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
 	if(ret < 0)
 		log("failed create sysfs\r\n");
+
+	// Create the switch_reverse_attr_debug sysfs
+	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr_debug);
+	if(ret < 0)
+		log("failed create sysfs: debug\r\n");
 
 #ifdef ON_OFF_TEST
 	mutex_init(&switchmanager_lock);
@@ -296,6 +319,24 @@ int switch_reverse_remove(struct platform_device * pdev) {
 	return 0;
 }
 
+int switch_reverse_suspend(struct platform_device * pdev, pm_message_t state) {
+	FUNCTION_IN
+
+	log("");
+
+	FUNCTION_OUT
+	return 0;
+}
+
+int switch_reverse_resume(struct platform_device * pdev) {
+	FUNCTION_IN
+
+	log("");
+
+	FUNCTION_OUT
+	return 0;
+}
+
 const struct of_device_id switch_reverse_of_match[] = {
         {.compatible = "telechips,switch_reverse", },
         { },
@@ -305,6 +346,8 @@ MODULE_DEVICE_TABLE(of, switch_reverse_of_match);
 struct platform_driver switch_reverse_driver = {
 	.probe		= switch_reverse_probe,
 	.remove		= switch_reverse_remove,
+	.suspend	= switch_reverse_suspend,
+	.resume		= switch_reverse_resume,
 	.driver		= {
 		.name			= MODULE_NAME,
 		.owner			= THIS_MODULE,

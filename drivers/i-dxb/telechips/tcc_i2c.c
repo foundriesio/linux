@@ -18,7 +18,7 @@ int tcc_i2c_read(unsigned char uc_addr, int i_byte, unsigned char *puc_buffer)
 
 	i_retval = i2c_transfer(g_p_adapter, &t_msg, 1);
 
-//	printk("[%s:%d] addr : 0x%x %d %d\n", __func__, __LINE__, uc_addr, i_byte, i_retval);
+	//printk("[%s:%d] addr : 0x%x %d %d\n", __func__, __LINE__, uc_addr, i_byte, i_retval);
 
 	return (i_retval == 1) ? i_byte : i_retval;
 }
@@ -35,11 +35,16 @@ int tcc_i2c_write(unsigned char uc_addr, int i_byte, unsigned char *puc_buffer)
 		return -1;
 	}
 
-//	printk("[%s:%d] addr : 0x%x %d\n", __func__, __LINE__, uc_addr, i_byte);
+	//printk("[%s:%d] addr : 0x%x %d\n", __func__, __LINE__, uc_addr, i_byte);
 
 	i_retval = i2c_transfer(g_p_adapter, &t_msg, 1);
 
 	return (i_retval == 1) ? i_byte : i_retval;
+}
+
+struct i2c_adapter * tcc_i2c_get_adapter()
+{
+	return g_p_adapter;
 }
 
 int tcc_i2c_init(void)

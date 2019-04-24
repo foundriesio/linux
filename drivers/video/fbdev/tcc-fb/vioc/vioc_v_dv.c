@@ -441,7 +441,7 @@ void VIOC_V_DV_Power(char on)
 		dprintk_dv_sequence("### V_DV NexGuard Off\n");
 		VIOC_DDICONFIG_SetPWDN(pDDICONFIG, DDICFG_TYPE_NG, 0);mdelay(50);
 
-//		vioc_v_dv_swreset(1, 1, 1);
+		//vioc_v_dv_swreset(1, 1, 1);
 #if 0 // specific sequence!!
 		mdelay(2);
 		VIOC_V_DV_SWReset(1, 1);
@@ -518,7 +518,7 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 		VIOC_V_DV_SetSize(pReg, NULL, sx, sy, w, h);
 		VIOC_V_DV_SetPXDW(pReg, NULL, VIOC_PXDW_FMT_24_RGB888);
 		_Set_BG_Color(pReg);
-//		VIOC_V_DV_Turnon(pReg, NULL);
+		VIOC_V_DV_Turnon(pReg, NULL);
 		nEDR_dma--;
 	}
 

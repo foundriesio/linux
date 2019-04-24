@@ -635,7 +635,7 @@ config TCC_WDMA
 config TCC_LUT_DRV
     boolean "TCC LUT Driver"
     default y
-    depends on (ARCH_TCC803X || ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X) && !ARM64
+    depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X) && !ARM64
     help
         TCC H/W look up table
 
@@ -681,5 +681,11 @@ config VIOC_MGR
     help
         Choose this option if you want to use vioc manager driver
 
+config TCC_SCREEN_SHARE
+	tristate "Telechips Screen Share Driver for TCC803x"
+	default n
+	depends on TCC_MULTI_MAILBOX
+	help
+		Choose this option if you want to use screen share driver
 endmenu
 

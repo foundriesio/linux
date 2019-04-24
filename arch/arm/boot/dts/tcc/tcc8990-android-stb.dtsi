@@ -266,8 +266,8 @@
 	pinctrl-1 = <&tsrx1_active>;
 	// pinctrl-1 = <&tsrx1_active_parallel>;
 
-	clocks = <&clk_peri PERI_TSRX1>;
-	clock-names = "tsrx1";
+	clocks = <&clk_peri PERI_TSRX0>;
+	clock-names = "tsrx0";
 	status = "okay";
 };
 
@@ -277,8 +277,8 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&tsrx2_idle>;
 	pinctrl-1 = <&tsrx2_active>;
-	clocks = <&clk_peri PERI_TSRX2>;
-	clock-names = "tsrx2";
+	clocks = <&clk_peri PERI_TSRX1>;
+	clock-names = "tsrx1";
 };
 
 &tcc_dxb_ctrl {
@@ -313,8 +313,8 @@
         compatible = "maxlinear,mxl532c";
         i2c-parent = <&i2c1>;
         i2c-lnb-ctrl = <&i2c1>;
-        /* LNB_SLP, DVB_LOCK, DVB_RST LNB_SEL */
-        gpios = <&gpa 18 0>, <&gpa 17 0>, <&gpe 12 0>, <&gpe 11 0>;
+        /*             LNB_SLP,        DVB_LOCK,  DVB_RST      */
+        gpios = <&gpa 18 0>, <&gpa 17 0>, <&gpe 12 0>;
         config-idx = <0>;
         /* LNB_IRQ */
         int-gpios = <&gpd 2 0>;

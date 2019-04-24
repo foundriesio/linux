@@ -74,6 +74,14 @@ typedef int64_t             SINT64;
 
 typedef float               REAL32;
 typedef double              REAL64;
+
+/// TCC defines
+typedef unsigned char UINT8;
+typedef short INT16;
+typedef unsigned short UINT16;
+typedef int INT32;
+typedef unsigned int UINT32;
+
 #endif
 
 #define MXL_MIN(x, y)                   (((x) < (y)) ? (x) : (y))

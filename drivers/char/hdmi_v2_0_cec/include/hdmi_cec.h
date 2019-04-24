@@ -12,6 +12,8 @@ PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
+
+NOTE: Tab size is 8
 ****************************************************************************/
 #ifndef TCC_HDMI_V_2_0_CEC_H
 #define TCC_HDMI_V_2_0_CEC_H
@@ -43,13 +45,9 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include "../hdmi_cec_lib/cec_reg.h"
 
-#define HDMI_CLK_CEC_INDEX_CORE		0
-#define HDMI_CLK_CEC_INDEX_SFR		1
-#define HDMI_CLK_CEC_INDEX_IOBUS	2
-#define HDMI_CLK_CEC_INDEX_MAX		3
 
-#define HDMI_CEC_CORE_CLK_RATE (32768)
-#define HDMI_CEC_SFR_CLK_RATE (27000000)
+#define HDMI_CLK_CEC_INDEX_IOBUS       0
+#define HDMI_CLK_CEC_INDEX_MAX         1
 
 struct cec_buffer{
 	char	send_buf[CEC_TX_DATA_SIZE];
@@ -61,40 +59,43 @@ struct cec_buffer{
  * @short Main structures to instantiate the driver
  */
 struct cec_device{
+        /** Device node */
+        struct device 		*parent_dev;
 
-	/** Device node */
-	struct device 		*parent_dev;
+        /** Device Tree Information */
+        char 			*device_name;
 
-	/** Device Tree Information */
-	char 			*device_name;
+        /** clocks **/
+        struct clk              *clk[HDMI_CLK_CEC_INDEX_MAX];
 
-	/** clocks **/
-    struct clk     *clk[HDMI_CLK_CEC_INDEX_MAX];
+        int                     clk_enable_count;
 
-	/** iobus cec base address **/
-	volatile void __iomem *cec_core_io;
-	volatile void __iomem *cec_clk_sel;
+        /** iobus cec base address **/
+        volatile void __iomem *cec_core_io;
+        volatile void __iomem *cec_irq_io;
+        volatile void __iomem *cec_clk_sel;
 
-	/** IRQ number **/
-	uint32_t		cec_irq;
-	uint32_t		cec_wake_up_irq;
+        /** IRQ number **/
+        uint32_t		cec_irq;
+        uint32_t		cec_wake_up_irq;
 
-	unsigned int 	standby_status;
+        unsigned int 	standby_status;
 
-    /** Misc Device */
-    struct miscdevice	*misc;
+        /** Misc Device */
+        struct miscdevice	*misc;
 
-	/** Device list **/
-	struct list_head	devlist;
+        /** Device list **/
+        struct list_head	devlist;
 
-	struct cec_buffer buf;
+        struct cec_buffer buf;
 
-	int			l_address;
-	int			p_address;
-	int			cec_enable;
+        int			l_address;
+        int			p_address;
+        int			cec_enable;
+        int                     cec_wakeup_enable;
 
-	struct proc_dir_entry	*cec_proc_dir;
-	struct proc_dir_entry	*cec_proc_wakeup_test;
+        struct proc_dir_entry	*cec_proc_dir;
+        struct proc_dir_entry	*cec_proc_wakeup;
 };
 
 /**

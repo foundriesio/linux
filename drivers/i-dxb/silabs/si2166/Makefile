@@ -14,14 +14,28 @@ idxb-silabs-si2166-objs := 					\
 	module/SiLabs_API_L3_Wrapper.o			\
 	../../telechips/tcc_power_silabs.o		\
 	../../telechips/tcc_i2c.o				\
-	isi2166.o
+	../../telechips/tcc_gpio.o
 
-obj-$(CONFIG_iDxB_SILABS_SI2166) += idxb-silabs-si2166.o
+ifeq ($(CONFIG_iDxB_SILABS_SI2166_LinuxFE),y)
+idxb-silabs-si2166-objs += si2166.o
+endif
+
+ifeq ($(CONFIG_iDxB_SILABS_SI2166_Device),y)
+idxb-silabs-si2166-objs += isi2166.o
+endif
+
+obj-$(CONFIG_iDxB_SILABS_SI2166_Device) += idxb-silabs-si2166.o
+
+obj-$(CONFIG_iDxB_SILABS_SI2166_LinuxFE) += idxb-silabs-si2166.o
+
 
 ccflags-y := 											\
 	-I$(srctree)/drivers/i-dxb/silabs/si2166/module		\
 	-I$(srctree)/drivers/i-dxb/silabs/si2166/patches	\
-	-I$(srctree)/drivers/i-dxb/telechips
+	-I$(srctree)/drivers/i-dxb/telechips	\
+	-I$(srctree)/drivers/media/dvb-core	\
+	-I$(srctree)/drivers/media/platform/tcc-hwdemux/hwdmx-drv	
+
 
 ccflags-y += 				\
 	-DSILABS_SUPERSET		\

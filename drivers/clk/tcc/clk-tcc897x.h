@@ -8,7 +8,7 @@
 #ifndef __CLK_TCC897X__H__
 #define __CLK_TCC897X__H__
 
-#include <dt-bindings/clock/tcc897x-clks.h>
+#include <dt-bindings/clock/telechips,tcc897x-clks.h>
 
 #define XIN_CLK_RATE	(24*1000*1000)	// 24MHz
 #define XTIN_CLK_RATE	32768	// 32.768kHz

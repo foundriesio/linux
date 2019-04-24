@@ -1,7 +1,15 @@
 # 
 # SI2166 configurations
 #
+menu "SI2166 support"
+comment "SI2166 support"
 
-config iDxB_SILABS_SI2166
-	tristate "SI2166 support"
+config iDxB_SILABS_SI2166_Device
+	tristate "SI2166 support as device"
 	depends on iDxB_SUPPORT
+
+config iDxB_SILABS_SI2166_LinuxFE
+	tristate "SI2166 support as LinuxFE"
+	depends on iDxB_SUPPORT
+
+endmenu

@@ -1362,11 +1362,12 @@ static struct phy_parameters phy_parameters[] = {
                 .termination     = 300,
         },
         {
+                /* 2018.04.22 */
                 .min_hz          = 148350000,
                 .max_hz          = 185437499,
                 .clock_amplitude = 11500,
                 .data_amplitude  = 12000,
-                .pre_emphasis    = 500,
+                .pre_emphasis    = 1000,
                 .termination     = 300,
         },
         {

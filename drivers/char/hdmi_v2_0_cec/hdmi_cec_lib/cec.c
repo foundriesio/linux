@@ -2,6 +2,8 @@
 /*
 * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
 * Synopsys DesignWare HDMI driver
+*
+* NOTE: Tab size is 8
 */
 #include "../include/hdmi_cec.h"
 #include "cec_reg.h"
@@ -12,6 +14,144 @@
 /******************************************************************************
  *
  *****************************************************************************/
+/**
+ * Read locked status
+ * @param dev: address and device information
+ * @return LOCKED status
+ */
+static int cec_GetLocked(struct cec_device * dev)
+{
+	return (cec_dev_read(dev, CEC_LOCK) & CEC_LOCK_LOCKED_BUFFER_MASK) != 0;
+}
+
+/**
+ * Set locked status
+ * @param dev: address and device information
+ * @return error code
+ */
+static int cec_SetLocked(struct cec_device * dev)
+{
+	cec_dev_write(dev, CEC_LOCK, cec_dev_read(dev, CEC_LOCK) & ~CEC_LOCK_LOCKED_BUFFER_MASK);
+	return 0;
+}
+
+
+/**
+ * Read send status
+ * @param dev:  address and device information
+ * @return SEND status
+ */
+static int cec_GetSend(struct cec_device * dev)
+{
+	return (cec_dev_read(dev, CEC_CTRL) & CEC_CTRL_SEND_MASK) != 0;
+}
+
+/**
+ * Set send status
+ * @param dev: address and device information
+ * @return error code
+ */
+static int cec_SetSend(struct cec_device * dev)
+{
+	cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) | CEC_CTRL_SEND_MASK);
+	return 0;
+}
+
+/**
+ * Read interrupts
+ * @param dev:  address and device information
+ * @param mask: interrupt mask to read
+ * @return INT content
+ */
+static int cec_IntStatus(struct cec_device * dev, unsigned char mask)
+{
+        return cec_dev_read(dev, IO_IH_CEC_STAT0) & mask;
+}
+
+/**
+ * Clear interrupts
+ * @param dev:  address and device information
+ * @param mask: interrupt mask to clear
+ * @return error code
+ */
+static int cec_IntClear(struct cec_device * dev, unsigned char mask)
+{
+	cec_dev_write(dev, IO_IH_CEC_STAT0, mask);
+	return 0;
+}
+
+/**
+ * Disable interrupts
+ * @param dev:  address and device information
+ * @param mask: interrupt mask to disable
+ * @return error code
+ */
+static int cec_IntDisable(struct cec_device * dev, unsigned char mask)
+{
+	cec_dev_write(dev, IO_IH_MUTE_CEC_STAT0, cec_dev_read(dev, IO_IH_MUTE_CEC_STAT0) | mask);
+	return 0;
+}
+
+/**
+ * Enable interrupts
+ * @param dev:  address and device information
+ * @param mask: interrupt mask to enable
+ * @return error code
+ */
+static int cec_IntEnable(struct cec_device * dev, unsigned char mask)
+{
+	cec_dev_write(dev, IO_IH_MUTE_CEC_STAT0, cec_dev_read(dev, IO_IH_MUTE_CEC_STAT0) & ~mask);
+	return 0;
+}
+
+/**
+ * Write transmission buffer
+ * @param dev:  address and device information
+ * @param buf:  data to transmit
+ * @param size: data length [byte]
+ * @return error code or bytes configured
+ */
+static int cec_CfgTxBuf(struct cec_device * dev, const char *buf, unsigned size)
+{
+	int index;
+
+	if (size > CEC_TX_DATA_SIZE) {
+		printk("%s: invalid parameter\n",__func__);
+		return -1;
+	}
+
+	for(index = 0; index < size; index++)
+		cec_dev_write(dev, CEC_TX_DATA + sizeof(u32)*index, buf[index]);
+
+	cec_dev_write(dev, CEC_TX_CNT, size);   /* mask 7-5? */
+
+	return size;
+}
+
+/**
+ * Read reception buffer
+ * @param dev:  address and device information
+ * @param buf:  buffer to hold receive data
+ * @param size: maximum data length [byte]
+ * @return error code or received bytes
+ */
+static int cec_CfgRxBuf(struct cec_device * dev, char *buf, unsigned size)
+{
+	unsigned char cnt = 0;
+	int index;
+
+	cnt = cec_dev_read(dev, CEC_RX_CNT);   /* mask 7-5? */
+	cnt = (cnt > size) ? size : cnt;
+	if (cnt > CEC_RX_DATA_SIZE) {
+		printk("%s: wrong byte count\n",__func__);
+		return -1;
+	}
+
+	for(index = 0; index < cnt; index++)
+		buf[index] = cec_dev_read(dev,CEC_RX_DATA + sizeof(u32)*index);
+
+	return cnt;
+}
 /**
  * Wait for message (quit after a given period)
  * @param dev:     address and device information
@@ -25,22 +165,25 @@ static int cec_msgRx(struct cec_device * dev, char *buf, unsigned size,
 {
 	int i, retval = -1;
 
-	if (timeout < 0) {
-		/* TO BE USED only by Receptor */
-		while (cec_GetLocked(dev) == 0)
-			;
-	} else {
-		for (i = 0; i < (timeout/100); i++) {
-			if (cec_GetLocked(dev) != 0)
-				break;
-			msleep(1);
-		}
-	}
-	if (cec_GetLocked(dev) != 0) {
-		retval = cec_CfgRxBuf(dev, buf, size);
-		cec_IntClear(dev, CEC_MASK_EOM_MASK | CEC_MASK_ERROR_FLOW_MASK);
-		cec_SetLocked(dev);
-	}
+        if(dev != NULL) {
+                retval = 0;
+        	if (timeout < 0) {
+        		/* TO BE USED only by Receptor */
+        		while (cec_GetLocked(dev) == 0)
+        			;
+        	} else {
+        		for (i = 0; i < (timeout/100); i++) {
+        			if (cec_GetLocked(dev) != 0)
+        				break;
+        			usleep_range(500, 1000);
+        		}
+        	}
+        	if (cec_GetLocked(dev) != 0) {
+        		retval = cec_CfgRxBuf(dev, buf, size);
+			cec_IntClear(dev, CEC_MASK_EOM_MASK | CEC_MASK_ERROR_FLOW_MASK);
+        		cec_SetLocked(dev);
+        	}
+        }
 	return retval;
 }
 
@@ -57,64 +200,72 @@ static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
 {
 	int i, retval = 0;
 
-	if (size > 0) {
-		if (cec_CfgTxBuf(dev, buf, size) == (int)size) {
-			for (i = 0; i < (int)retry; i++) {
-				if (cec_CfgSignalFreeTime(dev, 5))
-					break;
+       if(dev != NULL) {
+        	if (size > 0) {
+        		if (cec_CfgTxBuf(dev, buf, size) == (int)size) {
+        			for (i = 0; i < (int)retry; i++) {
+        				if (cec_CfgSignalFreeTime(dev, 5)) {
+        					break;
+        				}
 
-				cec_IntClear(dev, CEC_MASK_DONE_MASK|CEC_MASK_NACK_MASK|CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
-				cec_SetSend(dev);
-				while (cec_GetSend(dev) != 0);
+        				cec_IntClear(dev, CEC_MASK_DONE_MASK|
+                                                        CEC_MASK_NACK_MASK|
+                                                        CEC_MASK_ARB_LOST_MASK|
+                                                        CEC_MASK_ERROR_INITIATOR_MASK);
+        				cec_SetSend(dev);
+        				while (cec_GetSend(dev) != 0);
 
-#if 0 // for debuging
-				printk("CEC interrupt status = 0x%08x \r\n",cec_dev_read(dev,IO_IH_CEC_STAT0));
-#endif
+                                        #if 0 // for debuging
+        				printk("CEC interrupt status = 0x%08x \r\n",cec_dev_read(dev,IO_IH_CEC_STAT0));
+                                        #endif
 
-				if (cec_IntStatus(dev, CEC_MASK_NACK_MASK) != 0) {
-					retval = -1;
-				}
+        				if (cec_IntStatus(dev, CEC_MASK_NACK_MASK) != 0) {
+        					retval = -1;
+        				}
 
-				if (cec_IntStatus(dev, CEC_MASK_ERROR_INITIATOR_MASK) != 0) {
-					msleep(100);
-					continue;
-				}
+        				if (cec_IntStatus(dev, CEC_MASK_ERROR_INITIATOR_MASK) != 0) {
+        					msleep(100);
+        					continue;
+        				}
 
-				if (cec_IntStatus(dev, CEC_MASK_DONE_MASK) != 0) {
-					cec_IntClear(dev, CEC_MASK_DONE_MASK);
-					retval = size;
-					break;
-				}
-			}
-		}
-	}
+        				if (cec_IntStatus(dev, CEC_MASK_DONE_MASK) != 0) {
+        					cec_IntClear(dev, CEC_MASK_DONE_MASK);
+        					retval = size;
+        					break;
+        				}
+        			}
+        		}
+        	}
 
-	msleep(1);
+        	usleep_range(500, 1000);
+        }
 
 	return retval;
 }
 
-int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup)
+
+int cec_set_wakeup(struct cec_device * dev, unsigned int flag)
 {
-	if(wakeup) {
-    	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
-		cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
-				CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
+        cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
+	cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
+			CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
 
-		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
-		cec_dev_write(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG);
-		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
-		cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
-		cec_CfgStandbyMode(dev, 1);
+	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
+	cec_dev_write(dev,CEC_WAKEUPCTRL, flag);
+	cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
+	cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
+	cec_CfgStandbyMode(dev, 1);
 
-//		cec_register_dump(dev);
-//		printk("[%s] CEC1 Clock Selection = %s \n",__func__,cec_dev_sel_read(dev,0) == 0x0 ? "PERICLK":"XIN,XTIN");
-	} else {
-		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
-		cec_dev_write_mask(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG,0x0);
-		cec_IntDisable(dev, CEC_MASK_WAKEUP_MASK);
-	}
 	return 0;
+}
+
+int cec_clear_wakeup(struct cec_device * dev)
+{
+        cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
+        cec_dev_write(dev,CEC_WAKEUPCTRL, 0);
+        cec_IntDisable(dev, CEC_MASK_WAKEUP_MASK);
+
+        return 0;
 }
 
 int cec_check_wake_up_interrupt(struct cec_device * dev)
@@ -251,143 +402,7 @@ int cec_CfgSignalFreeTime(struct cec_device * dev, int time)
 	return 0;
 }
 
-/**
- * Read send status
- * @param dev:  address and device information
- * @return SEND status
- */
-int cec_GetSend(struct cec_device * dev)
-{
-	return (cec_dev_read(dev, CEC_CTRL) & CEC_CTRL_SEND_MASK) != 0;
-}
 
-/**
- * Set send status
- * @param dev: address and device information
- * @return error code
- */
-int cec_SetSend(struct cec_device * dev)
-{
-	cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) | CEC_CTRL_SEND_MASK);
-	return 0;
-}
-
-/**
- * Clear interrupts
- * @param dev:  address and device information
- * @param mask: interrupt mask to clear
- * @return error code
- */
-int cec_IntClear(struct cec_device * dev, unsigned char mask)
-{
-	cec_dev_write(dev, IO_IH_CEC_STAT0, mask);
-	return 0;
-}
-
-/**
- * Disable interrupts
- * @param dev:  address and device information
- * @param mask: interrupt mask to disable
- * @return error code
- */
-int cec_IntDisable(struct cec_device * dev, unsigned char mask)
-{
-	cec_dev_write(dev, IO_IH_MUTE_CEC_STAT0, cec_dev_read(dev, IO_IH_MUTE_CEC_STAT0) | mask);
-	return 0;
-}
-
-/**
- * Enable interrupts
- * @param dev:  address and device information
- * @param mask: interrupt mask to enable
- * @return error code
- */
-int cec_IntEnable(struct cec_device * dev, unsigned char mask)
-{
-	cec_dev_write(dev, IO_IH_MUTE_CEC_STAT0, cec_dev_read(dev, IO_IH_MUTE_CEC_STAT0) & ~mask);
-	return 0;
-}
-
-/**
- * Read interrupts
- * @param dev:  address and device information
- * @param mask: interrupt mask to read
- * @return INT content
- */
-int cec_IntStatus(struct cec_device * dev, unsigned char mask)
-{
-	return cec_dev_read(dev, IO_IH_CEC_STAT0) & mask;
-}
-
-/**
- * Write transmission buffer
- * @param dev:  address and device information
- * @param buf:  data to transmit
- * @param size: data length [byte]
- * @return error code or bytes configured
- */
-int cec_CfgTxBuf(struct cec_device * dev, const char *buf, unsigned size)
-{
-	int index;
-
-	if (size > CEC_TX_DATA_SIZE) {
-		printk("%s: invalid parameter\n",__func__);
-		return -1;
-	}
-
-	for(index = 0; index < size; index++)
-		cec_dev_write(dev, CEC_TX_DATA + sizeof(u32)*index, buf[index]);
-
-	cec_dev_write(dev, CEC_TX_CNT, size);   /* mask 7-5? */
-
-	return size;
-}
-
-/**
- * Read reception buffer
- * @param dev:  address and device information
- * @param buf:  buffer to hold receive data
- * @param size: maximum data length [byte]
- * @return error code or received bytes
- */
-int cec_CfgRxBuf(struct cec_device * dev, char *buf, unsigned size)
-{
-	unsigned char cnt = 0;
-	int index;
-
-	cnt = cec_dev_read(dev, CEC_RX_CNT);   /* mask 7-5? */
-	cnt = (cnt > size) ? size : cnt;
-	if (cnt > CEC_RX_DATA_SIZE) {
-		printk("%s: wrong byte count\n",__func__);
-		return -1;
-	}
-
-	for(index = 0; index < cnt; index++)
-		buf[index] = cec_dev_read(dev,CEC_RX_DATA + sizeof(u32)*index);
-
-	return cnt;
-}
-
-/**
- * Read locked status
- * @param dev: address and device information
- * @return LOCKED status
- */
-int cec_GetLocked(struct cec_device * dev)
-{
-	return (cec_dev_read(dev, CEC_LOCK) & CEC_LOCK_LOCKED_BUFFER_MASK) != 0;
-}
-
-/**
- * Set locked status
- * @param dev: address and device information
- * @return error code
- */
-int cec_SetLocked(struct cec_device * dev)
-{
-	cec_dev_write(dev, CEC_LOCK, cec_dev_read(dev, CEC_LOCK) & ~CEC_LOCK_LOCKED_BUFFER_MASK);
-	return TRUE;
-}
 
 /**
  * Configure broadcast rejection
@@ -402,7 +417,7 @@ int cec_CfgBroadcastNAK(struct cec_device * dev, int enable)
 		cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) |  CEC_CTRL_BC_NACK_MASK);
 	else
 		cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) & ~CEC_CTRL_BC_NACK_MASK);
-	return TRUE;
+	return 0;
 }
 
 /**

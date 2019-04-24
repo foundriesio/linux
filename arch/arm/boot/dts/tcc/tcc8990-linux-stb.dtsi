@@ -300,8 +300,8 @@
 		pinctrl-names = "idle", "active";
 		pinctrl-0 = <&tsrx1_idle>;
 		pinctrl-1 = <&tsrx1_active>;
-		clocks = <&clk_peri PERI_TSRX1>;
-		clock-names = "tsrx1";
+		clocks = <&clk_peri PERI_TSRX0>;
+		clock-names = "tsrx0";
 		status = "okay";
 	};
 
@@ -311,8 +311,8 @@
 		pinctrl-names = "idle", "active";
 		pinctrl-0 = <&tsrx2_idle>;
 		pinctrl-1 = <&tsrx2_active>;
-		clocks = <&clk_peri PERI_TSRX2>;
-		clock-names = "tsrx2";
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
 	};
 
 	tcc_dxb_ctrl {

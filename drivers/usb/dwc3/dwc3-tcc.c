@@ -1109,6 +1109,10 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 		goto populate_err;
 	}
 
+#ifdef CONFIG_DWC3_DUAL_FIRST_HOST
+	dwc3_tcc_vbus_ctrl(tcc, ON);
+#endif
+
 	if (node) {
         ret = of_platform_populate(node, NULL, NULL, dev);
         if (ret) {

@@ -1,30 +1,36 @@
 /*
  *   FileName    : smp_driver.c
- *   Author:  <linux@telechips.com>
- *   Created: June 10, 2008
- *   Description: TCC VPU h/w block
+ *   Description : vpu CA driver for OPTEE
  *
- *   Copyright (C) 2008-2009 Telechips
+ *   TCC Version 1.0
+ *   Copyright (c) Telechips Inc.
+ *   All rights reserved
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see the file COPYING, or write
- * to the Free Software Foundation, Inc.,
- * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * This source code contains confidential information of Telechips.
+ * Any unauthorized use without a written permission of Telechips including
+ * not limited to re-distribution in source or binary form is strictly prohibited.
+ * This source code is provided "AS IS" and nothing contained in this source code
+ * shall constitute any express or implied warranty of any kind,
+ * including without limitation, any warranty of merchantability,
+ * fitness for a particular purpose or non-infringement of any patent,
+ * copyright or other third party intellectual property right.
+ * No warranty is made, express or implied, regarding the informations accuracy,
+ * completeness, or performance.
+ * In no event shall Telechips be liable for any claim, damages or other liability
+ * arising from, out of or in connection with this source code or the use
+ * in the source code.
+ * This source code is provided subject to the terms of a Mutual Non-Disclosure
+ * Agreement between Telechips and Company.
  *
  */
 
 #include "smp_driver.h"
 #include "vpu_comm.h"
+
+#define dprintk(msg...) //printk( "SMP_DRIVER: " msg);
+#define detailk(msg...) //printk( "SMP_DRIVER: " msg);
+#define cmdk(msg...) //printk( "SMP_DRIVER [Cmd]: " msg);
+#define err(msg...) printk("SMP_DRIVER [Err]: "msg);
 
 static tee_client_context context = NULL;
 static int vpu_tee_client_count = 0;
@@ -34,7 +40,7 @@ int vpu_optee_open(void) {
         struct tee_client_uuid uuid = TA_VPU_UUID;
         int rc = tee_client_open_ta(&uuid, NULL, &context);
         if (rc) {
-            printk("[%s] tee_client_open_ta: error = %d (0x%x)\n", __func__, rc, rc);
+            printk("[%s] tee_client_open_ta: error = %d (0x%x), Check uboot and sest img\n", __func__, rc, rc);
             return rc;
         }
         printk("[%s] tee_client_open_ta \n", __func__);
@@ -94,3 +100,162 @@ int vpu_optee_close(void) {
     }
     return 0;
 }
+// for JPU
+static tee_client_context jpu_context = NULL;
+static int jpu_tee_client_count = 0;
+int jpu_optee_open(void) {
+    if (jpu_context == NULL) {
+        struct tee_client_uuid uuid = TA_JPU_UUID;
+        int rc = tee_client_open_ta(&uuid, NULL, &jpu_context);
+        if (rc) {
+            printk("[%s] tee_client_open_ta: error = %d (0x%x)\n", __func__, rc, rc);
+            return rc;
+        }
+        printk("[%s] tee_client_open_ta \n", __func__);
+    }
+    jpu_tee_client_count++;
+    printk("[%s] tee client count [%d] \n", __func__, jpu_tee_client_count);
+    return 0;
+}
+
+int jpu_optee_close(void) {
+    jpu_tee_client_count--;
+    printk("[%s] tee client count [%d]\n", __func__, jpu_tee_client_count);
+
+    if (jpu_tee_client_count <= 0) {
+        tee_client_close_ta(jpu_context);
+        jpu_tee_client_count = 0;
+        jpu_context = NULL;
+        printk("[%s] tee_client_close_ta\n", __func__);
+    }
+    return 0;
+}
+
+int jpu_optee_command(int Op, void *pstInst, long lInstSize) {
+
+    int rc;
+    int command;
+    struct tee_client_params params;
+
+    memset(&params, 0, sizeof(params));
+
+
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    switch (Op) {
+    case JPU_DEC_INIT:
+        {
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_INIT\n", __func__);
+            command = CMD_CA_JPU_DEC_INIT;
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+#if defined(JPU_C6)
+    case JPU_DEC_SEQ_HEADER:
+        {
+            command = CMD_CA_JPU_DEC_SEQ_HEADER;
+
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_SEQ_HEADER(0x%x)\n", __func__, command);
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+    case JPU_DEC_REG_FRAME_BUFFER:
+        {
+            command = CMD_CA_JPU_DEC_REG_FRAME_BUFFER;
+
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_REG_FRAME_BUFFER(0x%x)\n", __func__, command);
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+#endif
+    case JPU_DEC_DECODE:
+        {
+            command = CMD_CA_JPU_DEC_DECODE;
+
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_DECODE 001(0x%x)\n", __func__, command);
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+    case JPU_DEC_GET_ROI_INFO:
+        {
+            command = CMD_CA_JPU_DEC_GET_ROI_INFO;
+
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_GET_ROI_INFO(0x%x)\n", __func__, command);
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+    case JPU_CODEC_GET_VERSION:
+        {
+            dprintk("[KERNEL:%s]         CMD_CA_JPU_CODEC_GET_VERSION\n", __func__);
+            command = CMD_CA_JPU_CODEC_GET_VERSION;
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+    case JPU_DEC_CLOSE:
+    default:
+        {
+            command = CMD_CA_JPU_DEC_CLOSE;
+
+            dprintk("[KERNEL:%s]        CMD_CA_JPU_DEC_CLOSE(0x%x)\n", __func__, command);
+            params.params[0].tee_client_memref.buffer = (long)pstInst;
+            params.params[0].tee_client_memref.size = lInstSize;
+            params.params[0].type = TEE_CLIENT_PARAM_BUF_INOUT;
+        }
+        break;
+    }
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+
+    rc = tee_client_execute_command(jpu_context, &params, command);
+    if (rc) {
+        err("[KERNEL:%s] #####################################################\n", __func__);
+        err("[KERNEL:%s] #####################################################\n", __func__);
+        err("[KERNEL:%s]        commandID [%d(%x)] Error: %d(%x) !!\n", __func__, command, command, rc, rc);
+        err("[KERNEL:%s] #####################################################\n", __func__);
+        err("[KERNEL:%s] #####################################################\n", __func__);
+        tee_client_close_ta(jpu_context);
+        jpu_tee_client_count = 0;
+        jpu_context = NULL;
+        return -1;
+    }
+
+
+    switch (Op) {
+    case JPU_DEC_INIT:
+        break;
+    case JPU_DEC_SEQ_HEADER:
+        break;
+    case JPU_DEC_REG_FRAME_BUFFER:
+        break;
+    case JPU_DEC_DECODE:
+        break;
+    case JPU_DEC_CLOSE:
+        break;
+    case JPU_DEC_GET_ROI_INFO:
+        break;
+    case JPU_CODEC_GET_VERSION:
+        break;
+    default:
+        break;
+    }
+
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    dprintk("[KERNEL:%s]       commandID 0x%x rc %d", __func__, command, rc);
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    dprintk("[KERNEL:%s] -----------------------------------------------------\n", __func__);
+    return 0;
+}
+EXPORT_SYMBOL(jpu_optee_command);
