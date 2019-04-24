@@ -82,6 +82,12 @@ static void dwc2_drd_update(struct dwc2_hsotg *hsotg)
 	    (bvalid && hsotg->dr_mode == USB_DR_MODE_HOST))
 		return;
 
+	/* Skip session if core is in test mode */
+	if (!avalid && !bvalid && hsotg->test_mode) {
+		dev_dbg(hsotg->dev, "Core is in test mode\n");
+		return;
+	}
+
 	spin_lock_irqsave(&hsotg->lock, flags);
 
 	if (avalid) {
