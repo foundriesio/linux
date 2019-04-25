@@ -2,6 +2,9 @@
 # ACPI Configuration
 #
 
+config ARCH_SUPPORTS_ACPI
+	bool
+
 menuconfig ACPI
 	bool "ACPI (Advanced Configuration and Power Interface) Support"
 	depends on ARCH_SUPPORTS_ACPI
@@ -38,9 +41,6 @@ menuconfig ACPI
 	  The specification is available at:
 	  <http://www.acpi.info>
 	  <http://www.uefi.org/acpi/specs>
-
-config ARCH_SUPPORTS_ACPI
-	bool
 
 if ACPI
 
