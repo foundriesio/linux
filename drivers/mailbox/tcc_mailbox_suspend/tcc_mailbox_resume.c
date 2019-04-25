@@ -159,6 +159,7 @@ static void tcc_mbox_suspend_message_received(struct mbox_client *client, void *
 	unsigned short cmd_type;
 	struct arm_smccc_res res;
 
+#if 0
 	printk("%s : suspend received start++\n", __FUNCTION__);
 
 	kobject_uevent_env(&suspend_dev->dev->kobj,
@@ -167,6 +168,7 @@ static void tcc_mbox_suspend_message_received(struct mbox_client *client, void *
 	//pm_suspend(3);
 	//arm_smccc_smc(0x84000001, 0, 0, 0, 0, 0, 0, 0, &res);
 	dprintk("%s : received end--\n", __FUNCTION__);
+#endif
 
 
 }
@@ -301,7 +303,7 @@ err_ioctl:
 }
 
 
-struct file_operations tcc_mbox_suspend_fops = {
+struct file_operations tcc_mbox_resume_fops = {
     .owner = THIS_MODULE,
     .open = tcc_mbox_suspend_open,
     .read = tcc_mbox_suspend_read,
@@ -344,7 +346,7 @@ static int mbox_suspend_probe(struct platform_device *pdev) {
 		return result;
 	}
 
-    cdev_init(&suspend_dev->c_dev, &tcc_mbox_suspend_fops);
+    cdev_init(&suspend_dev->c_dev, &tcc_mbox_resume_fops);
 	suspend_dev->c_dev.owner = THIS_MODULE;
 
 	result = cdev_add(&suspend_dev->c_dev, suspend_dev->dev_num, 1);
@@ -456,7 +458,7 @@ static int tcc_mailbox_resume(struct device *dev)
 }
 #ifdef CONFIG_OF
 static const struct of_device_id mbox_suspend_match[] = {
-    { .compatible = "telechips,mailbox-suspend" },
+    { .compatible = "telechips,mailbox-resume" },
     {},
 };
 MODULE_DEVICE_TABLE(of, mbox_suspend_match);
