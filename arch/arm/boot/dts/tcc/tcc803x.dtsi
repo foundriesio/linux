@@ -1318,6 +1318,13 @@
 	   mboxes = <&mbox0 TCC_MBOX0_CH_SUSPEND>;
    };
 
+	suspend_mbox1: suspend_mbox@1 {
+	   compatible = "telechips,mailbox-resume";
+	   device-name = "resume-mbox-dev-a53";
+	   mbox-names ="resume-mbox-a53";
+	   mboxes = <&mbox0 TCC_MBOX0_CH_RESUME>;
+   };
+
 	/* A53 <-> A7S */
 	mbox1: mbox@0x17A00000 {
 		compatible = "telechips,multichannel-mailbox";
