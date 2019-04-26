@@ -728,13 +728,6 @@ static int tb_switch_set_authorized(struct tb_switch *sw, unsigned int val)
 	 * the new tunnel too early.
 	 */
 	pci_lock_rescan_remove();
-
-	/*
-	 * Make sure there is no PCIe rescan ongoing when a new PCIe
-	 * tunnel is created. Otherwise the PCIe rescan code might find
-	 * the new tunnel too early.
-	 */
-	pci_lock_rescan_remove();
 	pm_runtime_get_sync(&sw->dev);
 
 	switch (val) {
@@ -758,8 +751,6 @@ static int tb_switch_set_authorized(struct tb_switch *sw, unsigned int val)
 
 	pm_runtime_mark_last_busy(&sw->dev);
 	pm_runtime_put_autosuspend(&sw->dev);
-	pci_unlock_rescan_remove();
-
 	pci_unlock_rescan_remove();
 
 	if (!ret) {
