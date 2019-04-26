@@ -149,6 +149,8 @@ static inline void blk_clear_rq_complete(struct request *rq)
 #define ELV_ON_HASH(rq) ((rq)->rq_flags & RQF_HASHED)
 
 void blk_insert_flush(struct request *rq);
+int elevator_switch_mq(struct request_queue *q,
+			      struct elevator_type *new_e);
 
 static inline struct request *__elv_next_request(struct request_queue *q)
 {
