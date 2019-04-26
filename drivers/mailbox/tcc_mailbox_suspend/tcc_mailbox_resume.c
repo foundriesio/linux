@@ -56,7 +56,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/suspend.h>
 
-#define MBOX_SUSPEND_DEV_NAME        "mailbox-suspend"
+#define MBOX_SUSPEND_DEV_NAME        "mailbox-resume"
 #define MBOX_SUSPEND_DEV_MINOR       0
 
 #define DRV_STATUS_NO_INIT 0
@@ -67,9 +67,9 @@
 #define AUDIO_MBOX_FOR_A53					0
 #define AUDIO_MBOX_FOR_A7S					1
 
-//#define MBOX_SUSPEND_DEBUG
+#define MBOX_SUSPEND_DEBUG
 
-#define LOG_TAG    "MBOX_SUSPEND"
+#define LOG_TAG    "MBOX_RESUME"
 
 #ifdef MBOX_SUSPEND_DEBUG    
 #define dprintk(msg...)    printk(LOG_TAG  msg);		
