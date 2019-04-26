@@ -81,6 +81,7 @@ struct nfs_client_initdata {
 	unsigned int nconnect;
 	struct net *net;
 	const struct rpc_timeout *timeparms;
+	unsigned int xprt_id;
 };
 
 /*
@@ -102,6 +103,7 @@ struct nfs_parsed_mount_data {
 	unsigned int		minorversion;
 	char			*fscache_uniq;
 	bool			need_mount;
+	unsigned int		xprt_id;
 
 	struct {
 		struct sockaddr_storage	address;

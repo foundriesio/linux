@@ -131,6 +131,8 @@ struct xhci_cap_regs {
 /* Extended Capabilities pointer from PCI base - section 5.3.6 */
 #define HCC_EXT_CAPS(p)		XHCI_HCC_EXT_CAPS(p)
 
+#define CTX_SIZE(_hcc)		(HCC_64BYTE_CONTEXT(_hcc) ? 64 : 32)
+
 /* db_off bitmask - bits 0:1 reserved */
 #define	DBOFF_MASK	(~0x3)
 
@@ -1020,6 +1022,8 @@ struct xhci_virt_device {
 	struct xhci_tt_bw_info		*tt_info;
 	/* The current max exit latency for the enabled USB3 link states. */
 	u16				current_mel;
+	/* Used for the debugfs interfaces. */
+	void				*debugfs_private;
 };
 
 /*
@@ -1701,13 +1705,23 @@ static inline unsigned int hcd_index(struct usb_hcd *hcd)
 	else
 		return 1;
 }
+struct xhci_port {
+	__le32 __iomem		*addr;
+	int			hw_portnum;
+	int			hcd_portnum;
+	struct xhci_hub		*rhub;
+};
 
 struct xhci_hub {
-	u8	maj_rev;
-	u8	min_rev;
-	u32	*psi;		/* array of protocol speed ID entries */
-	u8	psi_count;
-	u8	psi_uid_count;
+	struct xhci_port	**ports;
+	unsigned int		num_ports;
+	struct usb_hcd		*hcd;
+	/* supported prococol extended capabiliy values */
+	u8			maj_rev;
+	u8			min_rev;
+	u32			*psi;	/* array of protocol speed ID entries */
+	u8			psi_count;
+	u8			psi_uid_count;
 };
 
 /* There is one xhci_hcd structure per controller */
@@ -1854,6 +1868,7 @@ struct xhci_hcd {
 	struct xhci_bus_state   bus_state[2];
 	/* Is each xHCI roothub port a USB 3.0, USB 2.0, or USB 1.1 port? */
 	u8			*port_array;
+	struct xhci_port	*hw_ports;
 	/* Array of pointers to USB 3.0 PORTSC registers */
 	__le32 __iomem		**usb3_ports;
 	unsigned int		num_usb3_ports;
@@ -1878,6 +1893,11 @@ struct xhci_hcd {
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
 
+	struct dentry		*debugfs_root;
+	struct dentry		*debugfs_slots;
+	struct list_head	regset_list;
+
+	void			*dbc;
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };
@@ -2116,6 +2136,8 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue, u16 wIndex,
 		char *buf, u16 wLength);
 int xhci_hub_status_data(struct usb_hcd *hcd, char *buf);
 int xhci_find_raw_port_number(struct usb_hcd *hcd, int port1);
+struct xhci_hub *xhci_get_rhub(struct usb_hcd *hcd);
+
 void xhci_hc_died(struct xhci_hcd *xhci);
 
 #ifdef CONFIG_PM
@@ -2139,6 +2161,7 @@ struct xhci_ep_ctx *xhci_get_ep_ctx(struct xhci_hcd *xhci, struct xhci_container
 struct xhci_ring *xhci_triad_to_transfer_ring(struct xhci_hcd *xhci,
 		unsigned int slot_id, unsigned int ep_index,
 		unsigned int stream_id);
+
 static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 								struct urb *urb)
 {

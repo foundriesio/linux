@@ -1313,12 +1313,20 @@ static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
 	return false;
 }
 
-static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode)
+static int can_open_cached(struct nfs4_state *state, fmode_t mode,
+		int open_mode, enum open_claim_type4 claim)
 {
 	int ret = 0;
 
 	if (open_mode & (O_EXCL|O_TRUNC))
 		goto out;
+	switch (claim) {
+	case NFS4_OPEN_CLAIM_NULL:
+	case NFS4_OPEN_CLAIM_FH:
+		goto out;
+	default:
+		break;
+	}
 	switch (mode & (FMODE_READ|FMODE_WRITE)) {
 		case FMODE_READ:
 			ret |= test_bit(NFS_O_RDONLY_STATE, &state->flags) != 0
@@ -1613,7 +1621,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
 
 	for (;;) {
 		spin_lock(&state->owner->so_lock);
-		if (can_open_cached(state, fmode, open_mode)) {
+		if (can_open_cached(state, fmode, open_mode, claim)) {
 			update_open_stateflags(state, fmode);
 			spin_unlock(&state->owner->so_lock);
 			goto out_return_state;
@@ -2109,7 +2117,8 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
 	if (data->state != NULL) {
 		struct nfs_delegation *delegation;
 
-		if (can_open_cached(data->state, data->o_arg.fmode, data->o_arg.open_flags))
+		if (can_open_cached(data->state, data->o_arg.fmode,
+					data->o_arg.open_flags, claim))
 			goto out_no_action;
 		rcu_read_lock();
 		delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
@@ -5374,6 +5383,8 @@ nfs4_init_nonuniform_client_string(struct nfs_client *clp)
 		1 +
 		strlen(rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO)) +
 		1;
+	if (clp->cl_xprt_id != 0)
+		len += ilog2(clp->cl_xprt_id)/3 + 2;
 	rcu_read_unlock();
 
 	if (len > NFS4_OPAQUE_LIMIT + 1)
@@ -5389,10 +5400,17 @@ nfs4_init_nonuniform_client_string(struct nfs_client *clp)
 		return -ENOMEM;
 
 	rcu_read_lock();
-	scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
-			clp->cl_ipaddr,
-			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
-			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO));
+	if (clp->cl_xprt_id != 0)
+		scnprintf(str, len, "Linux NFSv4.0 %s/%s %s %d",
+			  clp->cl_ipaddr,
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO),
+			  clp->cl_xprt_id);
+	else
+		scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
+			  clp->cl_ipaddr,
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
+			  rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO));
 	rcu_read_unlock();
 
 	clp->cl_owner_id = str;
@@ -5408,6 +5426,8 @@ nfs4_init_uniquifier_client_string(struct nfs_client *clp)
 	len = 10 + 10 + 1 + 10 + 1 +
 		strlen(nfs4_client_id_uniquifier) + 1 +
 		strlen(clp->cl_rpcclient->cl_nodename) + 1;
+	if (clp->cl_xprt_id != 0)
+		len += ilog2(clp->cl_xprt_id)/3 + 2;
 
 	if (len > NFS4_OPAQUE_LIMIT + 1)
 		return -EINVAL;
@@ -5421,10 +5441,17 @@ nfs4_init_uniquifier_client_string(struct nfs_client *clp)
 	if (!str)
 		return -ENOMEM;
 
-	scnprintf(str, len, "Linux NFSv%u.%u %s/%s",
-			clp->rpc_ops->version, clp->cl_minorversion,
-			nfs4_client_id_uniquifier,
-			clp->cl_rpcclient->cl_nodename);
+	if (clp->cl_xprt_id != 0)
+		scnprintf(str, len, "Linux NFSv%u.%u %s/%s %d",
+			  clp->rpc_ops->version, clp->cl_minorversion,
+			  nfs4_client_id_uniquifier,
+			  clp->cl_rpcclient->cl_nodename,
+			  clp->cl_xprt_id);
+	else
+		scnprintf(str, len, "Linux NFSv%u.%u %s/%s",
+			  clp->rpc_ops->version, clp->cl_minorversion,
+			  nfs4_client_id_uniquifier,
+			  clp->cl_rpcclient->cl_nodename);
 	clp->cl_owner_id = str;
 	return 0;
 }

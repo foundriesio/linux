@@ -44,7 +44,9 @@ from sphinx.domains.c import CDomain as Base_CDomain
 __version__  = '1.0'
 
 # Get Sphinx version
-major, minor, patch = sphinx.version_info[:3]
+# major, minor, patch = sphinx.version_info[:3]
+# XXX use the fixed versions for SLE12-SP4 due to silly issues
+major, minor, patch = 1, 2, 3
 
 def setup(app):
 

@@ -68,7 +68,10 @@ else:
     _unicode = unicode
 
 # Get Sphinx version
-major, minor, patch = sphinx.version_info[:3]
+# major, minor, patch = sphinx.version_info[:3]
+# XXX use the fixed versions for SLE12-SP4 due to silly issues
+major, minor, patch = 1, 2, 3
+
 if major == 1 and minor > 3:
     # patches.Figure only landed in Sphinx 1.4
     from sphinx.directives.patches import Figure  # pylint: disable=C0413
@@ -237,7 +240,7 @@ def convert_image(img_node, translator, src_fname=None):
         elif translator.builder.format == 'html':
             dst_fname = path.join(
                 translator.builder.outdir,
-                translator.builder.imagedir,
+                '_images',
                 fname + '.svg')
             img_node['uri'] = path.join(
                 translator.builder.imgpath, fname + '.svg')
@@ -433,7 +436,7 @@ def visit_kernel_render(self, node):
     fname     = path.join('%s-%s' % (srclang, sha1(hashobj).hexdigest()))
 
     tmp_fname = path.join(
-        self.builder.outdir, self.builder.imagedir, fname + tmp_ext)
+        self.builder.outdir, '_images', fname + tmp_ext)
 
     if not path.isfile(tmp_fname):
         mkdir(path.dirname(tmp_fname))

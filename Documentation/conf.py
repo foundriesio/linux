@@ -17,7 +17,9 @@ import os
 import sphinx
 
 # Get Sphinx version
-major, minor, patch = sphinx.version_info[:3]
+# major, minor, patch = sphinx.version_info[:3]
+# XXX use the fixed versions for SLE12-SP4 due to silly issues
+major, minor, patch = 1, 2, 3
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
