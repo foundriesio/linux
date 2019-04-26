@@ -32,7 +32,7 @@ static int cpu_subsys_match(struct device *dev, struct device_driver *drv)
 	return 0;
 }
 
-#ifdef CONFIG_TCC_WATCHDOG
+#ifdef CONFIG_TCC_CORE_RESET
 extern struct watchdog_device *wdd_saved;
 extern int tcc_wdt_disable_timer(struct watchdog_device *wdd);
 
@@ -473,7 +473,7 @@ static struct attribute *cpu_root_attrs[] = {
 	&dev_attr_kernel_max.attr,
 	&dev_attr_offline.attr,
 	&dev_attr_isolated.attr,
-#ifdef CONFIG_TCC_WATCHDOG
+#ifdef CONFIG_TCC_CORE_RESET
 	&dev_attr_off_test.attr,
 #endif
 #ifdef CONFIG_NO_HZ_FULL
