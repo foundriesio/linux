@@ -397,6 +397,14 @@ struct pci_dev {
 	unsigned int	reset_fn:1;
 	unsigned int    is_hotplug_bridge:1;
 	unsigned int	is_thunderbolt:1; /* Thunderbolt controller */
+	/*
+	 * Devices marked being untrusted are the ones that can potentially
+	 * execute DMA attacks and similar. They are typically connected
+	 * through external ports such as Thunderbolt but not limited to
+	 * that. When an IOMMU is enabled they should be getting full
+	 * mappings to make sure they cannot access arbitrary memory.
+	 */
+	unsigned int	untrusted:1;
 	unsigned int    __aer_firmware_first_valid:1;
 	unsigned int	__aer_firmware_first:1;
 	unsigned int	broken_intx_masking:1;
@@ -1526,6 +1534,8 @@ static inline void pcie_ecrc_get_policy(char *str) { }
 int  ht_create_irq(struct pci_dev *dev, int idx);
 void ht_destroy_irq(unsigned int irq);
 #endif /* CONFIG_HT_IRQ */
+
+bool pci_ats_disabled(void);
 
 #ifdef CONFIG_PCI_ATS
 /* Address Translation Service */
