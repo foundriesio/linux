@@ -12185,6 +12185,13 @@ F:	include/media/soc*
 F:	drivers/media/i2c/soc_camera/
 F:	drivers/media/platform/soc_camera/
 
+SOCIONEXT SYNQUACER I2C DRIVER
+M:	Ard Biesheuvel <ard.biesheuvel@linaro.org>
+L:	linux-i2c@vger.kernel.org
+S:	Maintained
+F:	drivers/i2c/busses/i2c-synquacer.c
+F:	Documentation/devicetree/bindings/i2c/i2c-synquacer.txt
+
 SOEKRIS NET48XX LED SUPPORT
 M:	Chris Boot <bootc@bootc.net>
 S:	Maintained
