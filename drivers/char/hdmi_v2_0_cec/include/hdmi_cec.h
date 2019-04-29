@@ -45,57 +45,88 @@ NOTE: Tab size is 8
 
 #include "../hdmi_cec_lib/cec_reg.h"
 
+#define HDMI_CEC_VERSION        "1.0.0"
 
+/** This constant is used to define index of IOBUS clocks */
 #define HDMI_CLK_CEC_INDEX_IOBUS       0
+/** This constant is used to define maximum number of clocks */
 #define HDMI_CLK_CEC_INDEX_MAX         1
 
 struct cec_buffer{
+        /** This is buffers used for storing the data waiting for transmission */
 	char	send_buf[CEC_TX_DATA_SIZE];
+        /** This is buffers used for storing the received data */
 	char	recv_buf[CEC_RX_DATA_SIZE];
-	unsigned	int size;
+        /** Number of transmission or received data */
+	unsigned int size;
 };
 
 /**
- * @short Main structures to instantiate the driver
+ * @short This structure defines the device context of cec driver.
  */
 struct cec_device{
-        /** Device node */
+        /** Device pointer to indicates device of platform device */
         struct device 		*parent_dev;
 
-        /** Device Tree Information */
+        /** Name of this driver */
         char 			*device_name;
 
-        /** clocks **/
+        /** Array of cec clocks */
         struct clk              *clk[HDMI_CLK_CEC_INDEX_MAX];
 
+        /** Count of clock enable */
         int                     clk_enable_count;
 
-        /** iobus cec base address **/
+        /** Base address of CEC core register */
         volatile void __iomem *cec_core_io;
+
+        /** Base address of CEC interrupt register */
         volatile void __iomem *cec_irq_io;
+
+        /** Base address of CEC clock select register */
         volatile void __iomem *cec_clk_sel;
 
-        /** IRQ number **/
+        /* IRQ number */
+        /** CEC interrupt number */
         uint32_t		cec_irq;
+        /** CEC wakeup interrupt number */
         uint32_t		cec_wake_up_irq;
 
+        /**
+         * It stores status of device standby or resume(normal)
+         *  0: resume(normal)
+         *  1: standby */
         unsigned int 	standby_status;
 
-        /** Misc Device */
+        /** Device pointer to miscellaneous device */
         struct miscdevice	*misc;
+
+        /** Reference count for miscellaneous device */
+        int                     reference_count;
 
         /** Device list **/
         struct list_head	devlist;
 
+        /** Buffer for cec communication  */
         struct cec_buffer buf;
 
+        /** It stores logical address */
         int			l_address;
+        /** It stores physical address */
         int			p_address;
+        /** Not used, It will be deprecated */
         int			cec_enable;
+        /**
+         * It stores whether cec interrupts are used as wakeup source.
+         *  0: The cec interrupt is not wakeup source
+         *  1: The cec interrupt is used to wakeup source
+         *  n:                                              */
         int                     cec_wakeup_enable;
 
         struct proc_dir_entry	*cec_proc_dir;
         struct proc_dir_entry	*cec_proc_wakeup;
+
+        struct mutex            mutex;
 };
 
 /**

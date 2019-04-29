@@ -277,7 +277,7 @@ int cec_check_wake_up_interrupt(struct cec_device * dev)
 }
 
 /**
- * Open a CEC controller
+ * This function initialize the cec controller
  * @warning Execute before start using a CEC controller
  * @param dev:  address and device information
  * @return error code
@@ -285,9 +285,7 @@ int cec_check_wake_up_interrupt(struct cec_device * dev)
 int cec_Init(struct cec_device * dev)
 {
 	/*
-	 * This function is also called after wake up,
-	 * so it must NOT reset logical address allocation
-	 */
+	 * NOTE: This function is called also after wake up. Therefore it should keep a logical address */
 
 	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
 	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
@@ -301,7 +299,7 @@ int cec_Init(struct cec_device * dev)
 }
 
 /**
- * Close a CEC controller
+ * This function deinitialize the cec controller
  * @warning Execute before stop using a CEC controller
  * @param dev:    address and device information
  * @param wakeup: enable wake up mode (don't enable it in TX side)
@@ -313,21 +311,16 @@ int cec_Disable(struct cec_device * dev, int wakeup)
 	cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) | IH_MUTE_MUTE_ALL_INTERRUPT_MASK);
 	cec_IntDisable(dev, CEC_MASK_DONE_MASK|CEC_MASK_EOM_MASK|CEC_MASK_NACK_MASK|
 			CEC_MASK_ARB_LOST_MASK|CEC_MASK_ERROR_FLOW_MASK|CEC_MASK_ERROR_INITIATOR_MASK);
-	if (wakeup) {
-		cec_dev_write(dev,IH_MUTE,cec_dev_read(dev,IH_MUTE) & ~IH_MUTE_MUTE_WAKEUP_INTERRUPT_MASK);
-		cec_dev_write(dev,CEC_WAKEUPCTRL,WAKEUP_MASK_FLAG);
-		cec_IntClear(dev, CEC_MASK_WAKEUP_MASK);
-		cec_IntEnable(dev, CEC_MASK_WAKEUP_MASK);
-		cec_CfgStandbyMode(dev, 1);
-	} else
-		cec_CfgLogicAddr(dev, BCST_ADDR, 1);
+	if (!wakeup) {
+                cec_CfgLogicAddr(dev, BCST_ADDR, 1);
+	}
 
 	printk("%s: Wakeup status : %d \n",__func__,wakeup);
 	return 0;
 }
 
 /**
- * Configure logical address
+ * This function sets logical address of CEC controller
  * @param dev:    address and device information
  * @param addr:   logical address
  * @param enable: alloc/free address

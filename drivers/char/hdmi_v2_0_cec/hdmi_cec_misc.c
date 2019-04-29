@@ -31,7 +31,13 @@ NOTE: Tab size is 8
 #include <linux/pm_runtime.h>
 #endif
 
-//#define CEC_KERNEL_DEBUG
+#define CEC_KERNEL_DEBUG
+
+#if defined(CEC_KERNEL_DEBUG)
+#define dpr_info(fmt...) pr_info(fmt, ##__VA_ARGS__))
+#else
+#define dpr_info
+#endif
 
 #ifdef CONFIG_PM
 static int hdmi_cec_blank(struct cec_device *dev, int blank_mode)
@@ -94,12 +100,15 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                if( dev->cec_wakeup_enable != wakeup) {
-                                        if(dev->cec_wakeup_enable) {
-                                                dev->clk_enable_count -= (dev->cec_wakeup_enable-1);
-                                        }
+                                mutex_lock(&dev->mutex);
+                                if(!wakeup && dev->cec_wakeup_enable > 1) {
+                                        pr_info("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        dev->clk_enable_count = dev->reference_count;
+                                        dev->cec_wakeup_enable = 0;
+                                } else {
                                         dev->cec_wakeup_enable = (wakeup>0)?1:0;
                                 }
+                                mutex_unlock(&dev->mutex);
         			ret = cec_Disable(dev, wakeup);
         		}
         		break;
@@ -242,12 +251,15 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                if( dev->cec_wakeup_enable != wakeup) {
-                                        if(dev->cec_wakeup_enable) {
-                                                dev->clk_enable_count -= (dev->cec_wakeup_enable-1);
-                                        }
+                                mutex_lock(&dev->mutex);
+                                if(!wakeup && dev->cec_wakeup_enable > 1) {
+                                        pr_info("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        dev->clk_enable_count = dev->reference_count;
+                                        dev->cec_wakeup_enable = 0;
+                                } else {
                                         dev->cec_wakeup_enable = (wakeup>0)?1:0;
                                 }
+                                mutex_unlock(&dev->mutex);
                                 ret = 0;
                         }
                         break;
@@ -435,7 +447,12 @@ static int hdmi_cec_open(struct inode *inode, struct file *file) {
         printk("### %s \n", __func__);
         #endif
         file->private_data = dev;
-        cec_power_on(dev);
+        if(dev != NULL) {
+                mutex_lock(&dev->mutex);
+                dev->reference_count++;
+                cec_power_on(dev);
+                mutex_unlock(&dev->mutex);
+        }
 	return 0;
 }
 
@@ -444,7 +461,14 @@ static int hdmi_cec_release(struct inode *inode, struct file *file){
         #ifdef CEC_KERNEL_DEBUG
         printk("### %s \n", __func__);
         #endif
-        cec_power_off(dev);
+        if(dev != NULL) {
+                mutex_lock(&dev->mutex);
+                if(dev->reference_count > 0) {
+                        cec_power_off(dev);
+                        dev->reference_count--;
+                }
+                mutex_unlock(&dev->mutex);
+        }
 	return 0;
 }
 

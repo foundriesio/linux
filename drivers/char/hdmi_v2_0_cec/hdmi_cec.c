@@ -55,7 +55,9 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 
                 dev->device_name = "HDMI_CEC";
 
-                printk("%s:Driver's name '%s'\n", __func__, dev->device_name);
+                printk("%s:Driver's name '%s' v%s\n", __func__, dev->device_name, HDMI_CEC_VERSION);
+
+                mutex_init(&dev->mutex);
 
                 /* Parse Device Tree */
         	if(pdev->dev.of_node){
