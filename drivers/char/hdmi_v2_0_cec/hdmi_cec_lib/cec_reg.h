@@ -61,12 +61,14 @@
 #define CEC_RX_CNT                              0x00000020
 #define CEC_RX_CNT_CEC_RX_CNT_MASK              0x0000001F //CEC Receiver Counter register: 5'd0: No data received 5'd1: 1-byte data is received
 
-//CEC TX Data Register Array Address offset: i = 0 to 15 These registers (8 bits each) are the buffers used for storing the data waiting for transmission (including header and data blocks)
+/** CEC TX Data Register Array Address offset: i = 0 to 15 These registers (8 bits each) are the buffers used for storing the data waiting for transmission (including header and data blocks) */
 #define CEC_TX_DATA                             0x00000040
+/** This constant is used to define number of CEC Tx Data buffers */
 #define CEC_TX_DATA_SIZE                        16
 
-//CEC RX Data Register Array Address offset: i =0 to 15 These registers (8 bit each) are the buffers used for storing the received data (including header and data blocks)
+/** CEC RX Data Register Array Address offset: i =0 to 15 These registers (8 bit each) are the buffers used for storing the received data (including header and data blocks)*/
 #define CEC_RX_DATA                             0x00000080
+/** This constant is used to define number of CEC Rx Data buffers */
 #define CEC_RX_DATA_SIZE                        16
 
 //CEC Buffer Lock Register
