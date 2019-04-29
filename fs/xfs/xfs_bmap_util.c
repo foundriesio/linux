@@ -1809,7 +1809,7 @@ xfs_swap_change_owner(
 		if (error != -EAGAIN)
 			break;
 
-		error = xfs_trans_roll(tpp, NULL);
+		error = xfs_trans_roll(tpp);
 		if (error)
 			break;
 		tp = *tpp;
