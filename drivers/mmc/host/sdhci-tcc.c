@@ -341,11 +341,11 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 	if(host->mmc->caps & MMC_CAP_HW_RESET) {
 		tcc->hw_reset = of_get_named_gpio_flags(np, "tcc-mmc-reset", 0, &flags);
 		if(gpio_is_valid(tcc->hw_reset)) {
-			gpio_set_value_cansleep(tcc->hw_reset, 0);
+			gpio_set_value_cansleep(tcc->hw_reset, 1);
 
 			ret = devm_gpio_request_one(&host->mmc->class_dev,
 					tcc->hw_reset,
-					GPIOF_OUT_INIT_LOW,
+					GPIOF_OUT_INIT_HIGH,
 					"eMMC_reset");
 			if(ret)
 				dev_err(&pdev->dev, "failed to request hw reset gpio\n");
@@ -683,9 +683,9 @@ static void sdhci_tcc_hw_reset(struct sdhci_host *host)
 
 	pr_debug("%s: %s\n", mmc_hostname(host->mmc), __func__);
 
-	gpio_set_value_cansleep(hw_reset_gpio, 1);
-	udelay(10);
 	gpio_set_value_cansleep(hw_reset_gpio, 0);
+	udelay(10);
+	gpio_set_value_cansleep(hw_reset_gpio, 1);
 	usleep_range(300, 1000);
 }
 
