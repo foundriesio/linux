@@ -1037,7 +1037,7 @@ static int _disconnect(dwc_otg_pcd_t * pcd)
 {
 	if (gadget_wrapper->driver && gadget_wrapper->driver->disconnect) {
 		gadget_wrapper->driver->disconnect(&gadget_wrapper->gadget);
-		if (gadget_wrapper->driver->disconnect_tcc)
+		if (gadget_wrapper->driver && gadget_wrapper->driver->disconnect_tcc)
 			gadget_wrapper->driver->disconnect_tcc();
 	}
 	return 0;
