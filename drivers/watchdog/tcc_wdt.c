@@ -301,7 +301,7 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 #ifdef WDT_SIP
 	arm_smccc_smc( SIP_WATCHDOG_START,
 			0,
-#ifdef CONFIG_TCC_CORE_RESET
+#if defined(CONFIG_ARCH_TCC803X)
 			(EN_BIT(WDT_PMU_EN)),
 #else
 			(EN_BIT(WDT_PMU_EN)|EN_BIT(WDT_PMU_RESET)),
