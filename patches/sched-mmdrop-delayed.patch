@@ -50,9 +50,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +# define mmdrop_delayed(mm)	mmdrop(mm)
 +#endif
 +
- /**
-  * mmget() - Pin the address space associated with a &struct mm_struct.
-  * @mm: The address space to pin.
+ /*
+  * This has to be called after a get_task_mm()/mmget_not_zero()
+  * followed by taking the mmap_sem for writing before modifying the
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
 @@ -679,6 +679,19 @@ void __mmdrop(struct mm_struct *mm)
