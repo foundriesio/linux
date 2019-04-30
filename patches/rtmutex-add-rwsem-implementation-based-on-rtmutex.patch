@@ -41,14 +41,14 @@ the approach.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/rwsem_rt.h  |   68 ++++++++++
+ include/linux/rwsem-rt.h  |   68 ++++++++++
  kernel/locking/rwsem-rt.c |  293 ++++++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 361 insertions(+)
- create mode 100644 include/linux/rwsem_rt.h
+ create mode 100644 include/linux/rwsem-rt.h
  create mode 100644 kernel/locking/rwsem-rt.c
 
 --- /dev/null
-+++ b/include/linux/rwsem_rt.h
++++ b/include/linux/rwsem-rt.h
 @@ -0,0 +1,68 @@
 +#ifndef _LINUX_RWSEM_RT_H
 +#define _LINUX_RWSEM_RT_H

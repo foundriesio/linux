@@ -131,7 +131,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return ret;
  }
-@@ -474,7 +476,11 @@ static int __init tcb_clksrc_init(struct
+@@ -477,7 +479,11 @@ static int __init tcb_clksrc_init(struct
  		goto err_disable_t1;
  
  	/* channel 2:  periodic and oneshot timer support */
