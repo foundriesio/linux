@@ -251,7 +251,7 @@ extern void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int bas
 			 unsigned int fmt, unsigned int width, unsigned int height,
 			 unsigned int b10bit, unsigned int split_mode, unsigned int wide_mode,
 			 unsigned int nSurface, unsigned int bSetOutputBase);
-extern void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int Num);
+extern void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int vioc_id);
 extern volatile void __iomem* VIOC_AFBCDec_GetAddress(unsigned int vioc_id);
 
 
