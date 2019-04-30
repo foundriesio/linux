@@ -255,4 +255,9 @@
 	vioc_mgr@0 {
 		status = "okay";
 	};
+	tcc-gpio-sample {
+		compatible = "gpio-sample";
+		leble = "TCC GPIO";
+		gpios = <&gpa 11 0>;
+	};
 };
