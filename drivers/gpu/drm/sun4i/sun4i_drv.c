@@ -167,10 +167,11 @@ static void sun4i_drv_unbind(struct device *dev)
 	drm_atomic_helper_shutdown(drm);
 	drm_mode_config_cleanup(drm);
 	drm_vblank_cleanup(drm);
-	of_reserved_mem_device_release(dev);
-	drm_dev_unref(drm);
 
 	component_unbind_all(dev, NULL);
+	of_reserved_mem_device_release(dev);
+
+	drm_dev_unref(drm);
 }
 
 static const struct component_master_ops sun4i_drv_master_ops = {
