@@ -10,6 +10,7 @@ struct nouveau_channel {
 
 	int chid;
 	u64 inst;
+	u32 token;
 
 	struct nvif_object vram;
 	struct nvif_object gart;
