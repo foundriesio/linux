@@ -510,10 +510,11 @@ int tcc_ipc_suspend(struct platform_device *pdev, pm_message_t state)
 			ipc_workqueue_release(ipc_dev);
 			ipc_release(ipc_dev);
 		}
-		spin_unlock(&ipc_dev->ipc_handler.spinLock);
-
+		else
+		{
+			spin_unlock(&ipc_dev->ipc_handler.spinLock);
+		}
 	}
-
 	return 0;
 }
 
@@ -546,10 +547,13 @@ int tcc_ipc_resume(struct platform_device *pdev)
 				eprintk(ipc_dev->dev, "ipc_request_channel errorn");
 				ret = -EPROBE_DEFER;
 				goto ipc_initialize_error;
-			}			
+			}
+			(void)ipc_send_open(ipc_dev);
 		}
-		spin_unlock(&ipc_dev->ipc_handler.spinLock);
-		(void)ipc_send_open(ipc_dev);
+		else
+		{
+			spin_unlock(&ipc_dev->ipc_handler.spinLock);
+		}
 	}
 
 	return 0;
