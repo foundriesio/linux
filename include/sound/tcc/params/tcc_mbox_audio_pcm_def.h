@@ -133,7 +133,7 @@ enum asrc_pcm_value_volume_mode {
 #define ASRC_PCM_BALANCE_FADE_MAX   100
 #define ASRC_PCM_BALANCE_FADE_MIN   (-100)
 
-#define ASRC_PCM_VOLUME_MAX        30
+#define ASRC_PCM_VOLUME_MAX        42
 #define ASRC_PCM_VOLUME_MIN        (-79)
 
 struct asrc_pcm_volume_t {
