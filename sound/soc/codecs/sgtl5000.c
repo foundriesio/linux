@@ -33,6 +33,8 @@
 #define SGTL5000_DAP_REG_OFFSET	0x0100
 #define SGTL5000_MAX_REG_OFFSET	0x013A
 
+#define SGTL5000_VAG_POWERDOWN_TIME 500 /* ms */
+
 /* default value of sgtl5000 registers */
 static const u16 sgtl5000_regs[SGTL5000_MAX_REG_OFFSET] =  {
 	[SGTL5000_CHIP_CLK_CTRL] = 0x0008,
@@ -150,14 +152,23 @@ static int mic_bias_event(struct snd_soc_dapm_widget *w,
 static int power_vag_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	const u32 mask = SGTL5000_DAC_POWERUP | SGTL5000_ADC_POWERUP;
+	const u32 power_mask = SGTL5000_DAC_POWERUP | SGTL5000_ADC_POWERUP;
+	const u32 mute_mask = SGTL5000_HP_MUTE | SGTL5000_LINE_OUT_MUTE;
+	static int reg = 0;
 
 	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
+	case SND_SOC_DAPM_PRE_PMU:
+		reg = snd_soc_read(w->codec, SGTL5000_CHIP_ANA_CTRL);
+		snd_soc_update_bits(w->codec, SGTL5000_CHIP_ANA_CTRL,
+			mute_mask, mute_mask);
 		snd_soc_update_bits(w->codec, SGTL5000_CHIP_ANA_POWER,
 			SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
 		break;
 
+	case SND_SOC_DAPM_POST_PMU:
+		snd_soc_update_bits(w->codec, SGTL5000_CHIP_ANA_CTRL,
+			mute_mask, reg);
+		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/*
 		 * Don't clear VAG_POWERUP, when both DAC and ADC are
@@ -165,10 +176,10 @@ static int power_vag_event(struct snd_soc_dapm_widget *w,
 		 * other one of them.
 		 */
 		if ((snd_soc_read(w->codec, SGTL5000_CHIP_ANA_POWER) &
-				mask) != mask) {
+				power_mask) != power_mask) {
 			snd_soc_update_bits(w->codec, SGTL5000_CHIP_ANA_POWER,
 				SGTL5000_VAG_POWERUP, 0);
-			msleep(400);
+			msleep(SGTL5000_VAG_POWERDOWN_TIME);
 		}
 		break;
 	default:
