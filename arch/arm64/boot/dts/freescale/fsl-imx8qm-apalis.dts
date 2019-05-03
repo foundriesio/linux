@@ -88,9 +88,9 @@
 		regulator-name = "VCC_USBH(2A|2C|2D|3|4)";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio4 4 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
-		regulator-always-on;
+		/* Apalis USBH_EN */
+		gpio = <&gpio4 4 GPIO_ACTIVE_HIGH>;
 	};
 
 	gpio-fan {
@@ -999,11 +999,18 @@
 	status = "okay";
 };
 
+&usbphynop1 {
+	vbus-regulator = <&reg_usb_host_vbus>;
+};
+
+/* Apalis USBH4 SuperSpeed */
 &usbotg3 {
+	cdns3,usbphy = <&usbphynop1>;
 	dr_mode = "host";
 	status = "okay";
 };
 
+/* Apalis USBH2, Apalis USBH3 and on-module Wi-Fi via on-module HSIC Hub */
 &usbh1 {
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&pinctrl_usb_hsic_idle>;
@@ -1012,6 +1019,7 @@
 	hnp-disable;
 	adp-disable;
 	disable-over-current;
+	vbus-supply = <&reg_usb_host_vbus>;
 	status = "okay";
 };
 
