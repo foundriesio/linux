@@ -1372,6 +1372,7 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 	int ret;
 	u16 reg;
 	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+	unsigned int zcd_mask = SGTL5000_HP_ZCD_EN | SGTL5000_ADC_ZCD_EN;
 
 	/* power up sgtl5000 */
 	ret = sgtl5000_set_power_regs(codec);
@@ -1403,9 +1404,8 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 	reg = ((sgtl5000->lrclk_strength) << SGTL5000_PAD_I2S_LRCLK_SHIFT | 0x5f);
 	snd_soc_write(codec, SGTL5000_CHIP_PAD_STRENGTH, reg);
 
-	snd_soc_write(codec, SGTL5000_CHIP_ANA_CTRL,
-			SGTL5000_HP_ZCD_EN |
-			SGTL5000_ADC_ZCD_EN);
+	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL,
+			    zcd_mask, zcd_mask);
 
 	snd_soc_update_bits(codec, SGTL5000_CHIP_MIC_CTRL,
 			SGTL5000_BIAS_R_MASK,
