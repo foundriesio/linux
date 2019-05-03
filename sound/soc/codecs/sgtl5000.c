@@ -403,20 +403,30 @@ static const struct snd_kcontrol_new sgtl5000_snd_controls[] = {
 		.put = dac_put_volsw,
 	},
 
+	/* ADC Capture */
 	SOC_DOUBLE("Capture Volume", SGTL5000_CHIP_ANA_ADC_CTRL, 0, 4, 0xf, 0),
 	SOC_SINGLE_TLV("Capture Attenuate Switch (-6dB)",
 			SGTL5000_CHIP_ANA_ADC_CTRL,
 			8, 2, 0, capture_6db_attenuate),
-	SOC_SINGLE("Capture ZC Switch", SGTL5000_CHIP_ANA_CTRL, 1, 1, 0),
+	SOC_SINGLE("Capture ZC Switch", SGTL5000_CHIP_ANA_CTRL,
+		SGTL5000_ADC_ZCD_EN, 1, 0),
 
+	/* Headphone */
 	SOC_DOUBLE_TLV("Headphone Playback Volume",
 			SGTL5000_CHIP_ANA_HP_CTRL,
 			0, 8,
 			0x7f, 1,
 			headphone_volume),
 	SOC_SINGLE("Headphone Playback ZC Switch", SGTL5000_CHIP_ANA_CTRL,
-			5, 1, 0),
+		SGTL5000_HP_ZCD_EN, 1, 0),
+	SOC_SINGLE("Headphone Playback Switch", SGTL5000_CHIP_ANA_CTRL,
+		SGTL5000_HP_MUTE_SHIFT, 1, 1),
 
+	/* Lineout */
+	SOC_SINGLE("Lineout Playback Switch", SGTL5000_CHIP_ANA_CTRL,
+		SGTL5000_LINE_MUTE_SHIFT, 1, 1),
+
+	/* Microphone */
 	SOC_SINGLE_TLV("Mic Volume", SGTL5000_CHIP_MIC_CTRL,
 			0, 3, 0, mic_gain_tlv),
 };
@@ -1289,7 +1299,7 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 {
 	int ret;
 	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
-	int zcd_mask = SGTL5000_HP_ZCD_EN | SGTL5000_ADC_ZCD_EN;
+	unsigned int zcd_mask = SGTL5000_HP_ZCD_EN | SGTL5000_ADC_ZCD_EN;
 
 	/* setup i2c data ops */
 	ret = snd_soc_codec_set_cache_io(codec, 16, 16, SND_SOC_I2C);
