@@ -1209,7 +1209,7 @@
 	pinctrl-0 = <&pinctrl_lpspi2>;
 	status = "okay";
 
-	spidev2: spi@0 {
+	spidev1: spi@0 {
 		reg = <0>;
 		compatible = "toradex,evalspi";
 		spi-max-frequency = <4000000>;
