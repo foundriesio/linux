@@ -450,24 +450,35 @@ static const struct snd_kcontrol_new sgtl5000_snd_controls[] = {
 		.put = dac_put_volsw,
 	},
 
+	/* ADC Capture */
 	SOC_DOUBLE("Capture Volume", SGTL5000_CHIP_ANA_ADC_CTRL, 0, 4, 0xf, 0),
 	SOC_SINGLE_TLV("Capture Attenuate Switch (-6dB)",
-			SGTL5000_CHIP_ANA_ADC_CTRL,
-			8, 1, 0, capture_6db_attenuate),
-	SOC_SINGLE("Capture ZC Switch", SGTL5000_CHIP_ANA_CTRL, 1, 1, 0),
+		       SGTL5000_CHIP_ANA_ADC_CTRL,
+		       SGTL5000_ADC_VOL_M6DB, 1, 0, capture_6db_attenuate),
+	SOC_SINGLE("Capture ZC Switch", SGTL5000_CHIP_ANA_CTRL,
+		   SGTL5000_ADC_ZCD_EN, 1, 0),
 
+	/* Headphone */
 	SOC_DOUBLE_TLV("Headphone Playback Volume",
-			SGTL5000_CHIP_ANA_HP_CTRL,
-			0, 8,
-			0x7f, 1,
-			headphone_volume),
+		       SGTL5000_CHIP_ANA_HP_CTRL,
+		       SGTL5000_HP_VOL_LEFT_SHIFT,
+		       SGTL5000_HP_VOL_RIGHT_SHIFT,
+		       0x7f, 1,
+		       headphone_volume),
 	SOC_SINGLE("Headphone Playback Switch", SGTL5000_CHIP_ANA_CTRL,
-			4, 1, 1),
+		   SGTL5000_HP_MUTE_SHIFT, 1, 1),
 	SOC_SINGLE("Headphone Playback ZC Switch", SGTL5000_CHIP_ANA_CTRL,
-			5, 1, 0),
+		   SGTL5000_HP_ZCD_EN, 1, 0),
+	SOC_SINGLE("Headphone Playback Switch", SGTL5000_CHIP_ANA_CTRL,
+		   SGTL5000_HP_MUTE_SHIFT, 1, 1),
 
+	/* Lineout */
+	SOC_SINGLE("Lineout Playback Switch", SGTL5000_CHIP_ANA_CTRL,
+		   SGTL5000_LINE_MUTE_SHIFT, 1, 1),
+
+	/* Microphone */
 	SOC_SINGLE_TLV("Mic Volume", SGTL5000_CHIP_MIC_CTRL,
-			0, 3, 0, mic_gain_tlv),
+		       SGTL5000_MIC_GAIN_SHIFT, 3, 0, mic_gain_tlv),
 
 	SOC_DOUBLE_TLV("Lineout Playback Volume",
 			SGTL5000_CHIP_LINE_OUT_VOL,
@@ -475,7 +486,8 @@ static const struct snd_kcontrol_new sgtl5000_snd_controls[] = {
 			SGTL5000_LINE_OUT_VOL_RIGHT_SHIFT,
 			0x1f, 1,
 			lineout_volume),
-	SOC_SINGLE("Lineout Playback Switch", SGTL5000_CHIP_ANA_CTRL, 8, 1, 1),
+	SOC_SINGLE("Lineout Playback Switch", SGTL5000_CHIP_ANA_CTRL,
+		   SGTL5000_LINE_MUTE_SHIFT, 1, 1),
 };
 
 /* mute the codec used by alsa core */
