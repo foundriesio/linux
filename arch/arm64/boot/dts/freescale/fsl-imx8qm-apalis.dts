@@ -69,14 +69,14 @@
 
 	reg_module_3v3_avdd: regulator-module-3v3-avdd {
 		compatible = "regulator-fixed";
-		regulator-name = "+V3.3_AVDD_AUDIO";
+		regulator-name = "+V3.3_AUDIO";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
 
 	reg_vref_1v8: regulator-vref-1v8 {
 		compatible = "regulator-fixed";
-		regulator-name = "vref-1v8";
+		regulator-name = "+V1.8";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 	};
@@ -85,7 +85,7 @@
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_usbh_en>;
-		regulator-name = "usb_host_vbus";
+		regulator-name = "VCC_USBH(2A|2C|2D|3|4)";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio4 4 GPIO_ACTIVE_HIGH>;
