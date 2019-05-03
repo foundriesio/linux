@@ -866,6 +866,7 @@ static int ldo_regulator_remove(struct snd_soc_codec *codec)
 	if (!ldo)
 		return 0;
 
+	sgtl5000->ldo = NULL;
 	regulator_unregister(ldo->dev);
 	kfree(ldo->desc.name);
 	kfree(ldo);
@@ -1269,8 +1270,7 @@ err_regulator_disable:
 err_regulator_free:
 	regulator_bulk_free(ARRAY_SIZE(sgtl5000->supplies),
 				sgtl5000->supplies);
-	if (! external_vddd)
-		ldo_regulator_remove(codec);
+	ldo_regulator_remove(codec);
 	return ret;
 
 }
