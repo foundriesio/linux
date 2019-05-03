@@ -1031,6 +1031,8 @@
 	fsl,magic-packet;
 	fsl,rgmii_txc_dly;
 	fsl,rgmii_rxc_dly;
+	phy-reset-duration = <10>;
+	phy-reset-gpios = <&gpio1 11 1>;
 	status = "okay";
 
 	mdio {
