@@ -1495,7 +1495,7 @@ void stm32_gpio_backup_bias(struct stm32_gpio_bank *bank,
 	bank->pin_backup[offset] |= bias << STM32_GPIO_BKP_PUPD_SHIFT;
 }
 
-int stm32_pinctrl_restore_gpio_regs(struct stm32_pinctrl *pctl, u32 pin)
+static int stm32_pinctrl_restore_gpio_regs(struct stm32_pinctrl *pctl, u32 pin)
 {
 	const struct pin_desc *desc = pin_desc_get(pctl->pctl_dev, pin);
 	struct pinctrl_gpio_range *range;
