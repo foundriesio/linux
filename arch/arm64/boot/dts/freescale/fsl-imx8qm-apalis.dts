@@ -1227,8 +1227,6 @@
 &lpuart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart1>;
-	/* DMA seems not to work when using LPUART as console */
-	/delete-property/ dma-names;
 	status = "okay";
 };
 
