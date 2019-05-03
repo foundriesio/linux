@@ -49,12 +49,12 @@
 #define AM3D_LEVEL_ALIGNMENT_PARAMS_NUM           (2 * 1) //all
 #define AM3D_TREBLE_ENHANCEMENT_PARAMS_NUM        (5 * 3) //all, flr, blr, fc (available to set/get all channel)
 #define AM3D_SURROUND_PARAMS_NUM                  (2 * 1) //all
-#define AM3D_GRAPHIC_EQ_PARAMS_NUM                (15 * 1) //all
-#define AM3D_TONE_CONTROL_PARAMS_NUM              (10 * 1) //all
+#define AM3D_GRAPHIC_EQ_PARAMS_NUM                (16 * 1) //all
+#define AM3D_TONE_CONTROL_PARAMS_NUM              (12 * 1) //all
 #define AM3D_HPF_PARAMS_NUM                       (2 * 3) // flr, blr, fc (available to set/get all channel)
 #define AM3D_SWEET_SPOT_PARAMS_NUM                (1 + (2 * 5)) //on-off, fr, fr, bl, br, fc (available to set/get all channel)
-#define AM3D_PARAMETRIC_EQ_PARAMS_NUM             (2 + (5 * 15)) //on-off, headroom_gail, 15sections (support all channel only)
-#define AM3D_LOUD_PARAMETRIC_EQ_PARAMS_NUM        (2 + (5 * 15)) //on-off, headroom_gail, 15sections (support each channel but we use only all channel)
+#define AM3D_PARAMETRIC_EQ_PARAMS_NUM             (3 + (5 * 15)) //on-off, auto headroom, headroom_gain, 15sections (support all channel only)
+#define AM3D_LOUD_PARAMETRIC_EQ_PARAMS_NUM        (3 + (5 * 15)) //on-off, auto headroom, headroom_gain, 15sections (support each channel but we use only all channel)
 #define AM3D_LIMITER_PARAMS_NUM                   (2 * 3) //flr, blr, fv (available to set/get all channel)
 #define AM3D_INPUT_MODULE_PARAMS_NUM              (1 + 5 + 3) //on-off, 5 params for all, 3 params for lf
 #define AM3D_BALANCE_FADE_PARAMS_NUM              (3 * 1) //all
