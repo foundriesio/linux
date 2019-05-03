@@ -47,39 +47,46 @@
 #define I2C_M_MODE              0x0040
 #define I2C_M_WR_RD             0x0080
 #define I2C_M_WM899x_CODEC      0x0100
-#define I2C_M_TCC_IPOD		0x0200
+#define I2C_M_TCC_IPOD          0x0200
 
 /* I2C Configuration Reg. */
-#define I2C_PRES		0x00
-#define I2C_CTRL		0x04
-#define I2C_TXR			0x08
-#define I2C_CMD			0x0C
-#define I2C_RXR			0x10
-#define I2C_SR			0x14
-#define I2C_TIME		0x18
+#define I2C_PRES                0x00
+#define I2C_CTRL                0x04
+#define I2C_TXR                 0x08
+#define I2C_CMD                 0x0C
+#define I2C_RXR                 0x10
+#define I2C_SR                  0x14
+#define I2C_TIME                0x18
+#if defined(CONFIG_ARCH_TCC803X)
+#define I2C_TR1                 0x24
+#endif
 
 /* I2C Port Configuration Reg. */
 #ifdef TCC_USE_GFB_PORT
-#define I2C_PORT_CFG0		0x00	// Master
-#define I2C_PORT_CFG1		0x04
-#define I2C_PORT_CFG4		0x10	// Slave
-#define I2C_PORT_CFG5		0x14
+#define I2C_PORT_CFG0           0x00 /* Master */
+#define I2C_PORT_CFG1           0x04
+#define I2C_PORT_CFG4           0x10 /* Slave */
+#define I2C_PORT_CFG5           0x14
 
-#define I2C_IRQ_STS		0x1C
+#define I2C_IRQ_STS             0x1C
 #else
-#define I2C_PORT_CFG0		0x0
-#define I2C_PORT_CFG1		0x4
-#define I2C_PORT_CFG2		0x8
-#define I2C_IRQ_STS		0xC
+#define I2C_PORT_CFG0           0x00
+#define I2C_PORT_CFG1           0x04
+#define I2C_PORT_CFG2           0x08
+#if defined(CONFIG_ARCH_TCC803X)
+#define I2C_IRQ_STS             0x10
+#else
+#define I2C_IRQ_STS             0xC
+#endif
 #endif
 
-#define I2C_DEF_RETRIES	2
+#define I2C_DEF_RETRIES         2
 
-#define I2C_ACK_TIMEOUT	50		/* in msec */
-#define I2C_CMD_TIMEOUT	500		/* in msec */
+#define I2C_ACK_TIMEOUT         50   /* in msec */
+#define I2C_CMD_TIMEOUT         500  /* in msec */
 
-#define i2c_readl	__raw_readl
-#define i2c_writel	__raw_writel
+#define i2c_readl       __raw_readl
+#define i2c_writel      __raw_writel
 
 enum tcc_i2c_state {
 	STATE_IDLE,
@@ -90,35 +97,40 @@ enum tcc_i2c_state {
 };
 
 struct tcc_i2c {
-	spinlock_t			lock;
-	wait_queue_head_t		wait;
-	void __iomem			*regs;
-	void __iomem			*port_cfg;
+	spinlock_t              lock;
+	wait_queue_head_t       wait;
+	void __iomem            *regs;
+	void __iomem            *port_cfg;
 
-	int				core;
-	unsigned int			i2c_clk_rate;
-	unsigned int			core_clk_rate;
-	struct clk			*pclk;
-	struct clk			*hclk;
-	struct i2c_msg			*msg;
-	unsigned int			msg_num;
-	unsigned int			msg_idx;
-	unsigned int			msg_ptr;
+	int                     core;
+	unsigned int            i2c_clk_rate;
+	unsigned int            core_clk_rate;
+	struct clk              *pclk;
+	struct clk              *hclk;
+	struct i2c_msg          *msg;
+	unsigned int            msg_num;
+	unsigned int            msg_idx;
+	unsigned int            msg_ptr;
 
-	struct completion 		msg_complete;
-	enum tcc_i2c_state		state;
-	struct device			*dev;
-	struct i2c_adapter		adap;
-	bool				is_suspended;
+	struct completion       msg_complete;
+	enum tcc_i2c_state      state;
+	struct device           *dev;
+	struct i2c_adapter      adap;
+	bool                    is_suspended;
 #ifdef TCC_USE_GFB_PORT
-	u32						port_mux[2];
+	u32                     port_mux[2];
 #else
-	unsigned int			port_mux;
+	unsigned int            port_mux;
 #endif
 
-	int					irq;
-	unsigned int 			interrupt_mode;
-	unsigned int			noise_filter;
+	int                     irq;
+	unsigned int            interrupt_mode;
+	unsigned int            noise_filter;
+#if defined(CONFIG_ARCH_TCC803X)
+	bool                    use_pw;
+	unsigned int            pwh;
+	unsigned int            pwl;
+#endif
 };
 
 #ifdef DEBUG
@@ -132,6 +144,9 @@ static void tcc_i2c_reg_dump(void __iomem *regs, void __iomem *port_cfg)
 //	printk("I2C_RXR      : 0x%08x\n", i2c_readl(regs + I2C_RXR));
 	printk("I2C_SR       : 0x%08x\n", i2c_readl(regs + I2C_SR));
 	printk("I2C_TIME     : 0x%08x\n", i2c_readl(regs + I2C_TIME));
+#if defined(CONFIG_ARCH_TCC803X)
+	printk("I2C_TR1      : 0x%08x\n", i2c_readl(regs + I2C_TR1));
+#endif
 #ifdef TCC_USE_GFB_PORT
 	printk("I2C_PORT_CFG0: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG0));
 	printk("I2C_PORT_CFG1: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG1));
@@ -198,7 +213,7 @@ static int tcc_i2c_bus_busy(struct tcc_i2c *i2c, int start_stop)
 			dev_dbg(&i2c->adap.dev,
 				"<%s> I2C bus is busy\n", __func__);
 			return -ETIMEDOUT;
-		}		
+		}
 		schedule();
 	}
 
@@ -215,14 +230,14 @@ static int wait_intr(struct tcc_i2c *i2c)
 	timeout = I2C_CMD_TIMEOUT;
 
 	if(i2c->interrupt_mode) {
-		reinit_completion(&i2c->msg_complete); 
+		reinit_completion(&i2c->msg_complete);
 		tcc_i2c_enable_irq(i2c);
 		ret = wait_for_completion_timeout(&i2c->msg_complete, msecs_to_jiffies(timeout));
 		tcc_i2c_disable_irq(i2c);
 		if (ret == 0) {
 			dev_err(i2c->dev, "i2c cmd timeout (check sclk status)\n");
 			return -ETIMEDOUT;
-		}		
+		}
 	} else{
 		orig_jiffies = jiffies;
 		ret = 0;
@@ -268,7 +283,7 @@ static int wait_intr(struct tcc_i2c *i2c)
 	return 0;
 }
 
-/* 
+/*
  * tcc_i2c_message_start
  * put the start of a message onto the bus
  */
@@ -314,7 +329,7 @@ static int tcc_i2c_acked(struct tcc_i2c *i2c)
 
 		if (time_after(jiffies, orig_jiffies + msecs_to_jiffies(I2C_ACK_TIMEOUT))) {
 			dev_dbg(&i2c->adap.dev,
-				"<%s> No ACK\n", __func__);
+					"<%s> No ACK\n", __func__);
 			return -EIO;
 		}
 		schedule();
@@ -329,11 +344,11 @@ static int recv_i2c(struct tcc_i2c *i2c)
 	dev_dbg(&i2c->adap.dev, "READ [%x][%d]\n", i2c->msg->addr, i2c->msg->len);
 
 	ret = tcc_i2c_message_start(i2c, i2c->msg);
-	if(ret) 
+	if(ret)
 		return ret;
-	
+
 	ret = tcc_i2c_acked(i2c);
-	if(ret) 
+	if(ret)
 		return ret;
 
 	for (i = 0; i < i2c->msg->len; i++) {
@@ -369,13 +384,13 @@ static int send_i2c(struct tcc_i2c *i2c)
 		return ret;
 
 	ret = tcc_i2c_acked(i2c);
-	if(ret) 
+	if(ret)
 		return ret;
 
 	for (i = 0; i < i2c->msg->len; i++) {
 		i2c_writel(i2c->msg->buf[i], i2c->regs+I2C_TXR);
 
-		 if(i2c->msg->flags == I2C_M_WM899x_CODEC)	/* B090183 */
+		 if(i2c->msg->flags == I2C_M_WM899x_CODEC) /* B090183 */
 			i2c_writel((1<<4)|(1<<3), i2c->regs+I2C_CMD);
 		 else
 			i2c_writel(1<<4, i2c->regs+I2C_CMD);
@@ -385,7 +400,7 @@ static int send_i2c(struct tcc_i2c *i2c)
 			return ret;
 
 		ret = tcc_i2c_acked(i2c);
-		if(ret) 
+		if(ret)
 			return ret;
 	}
 	return 0;
@@ -402,12 +417,12 @@ static int tcc_i2c_doxfer(struct tcc_i2c *i2c, struct i2c_msg *msgs, int num)
 
 	for (i = 0; i < num; i++) {
 		spin_lock_irq(&i2c->lock);
-		i2c->msg		= &msgs[i];
-		i2c->msg->flags	= msgs[i].flags;
-		i2c->msg_num	= num;
-		i2c->msg_ptr	= 0;
-		i2c->msg_idx	= 0;
-		i2c->state		= STATE_START;
+		i2c->msg        = &msgs[i];
+		i2c->msg->flags = msgs[i].flags;
+		i2c->msg_num    = num;
+		i2c->msg_ptr    = 0;
+		i2c->msg_idx    = 0;
+		i2c->state      = STATE_START;
 		spin_unlock_irq(&i2c->lock);
 
 		if (i2c->msg->flags & I2C_M_RD) {
@@ -435,7 +450,7 @@ static int tcc_i2c_doxfer(struct tcc_i2c *i2c, struct i2c_msg *msgs, int num)
 
 fail:
 	tcc_i2c_stop(i2c);
-	tcc_i2c_bus_busy(i2c, 0);	
+	tcc_i2c_bus_busy(i2c, 0);
 	return (ret < 0) ? ret : i;
 
 no_stop:
@@ -477,8 +492,8 @@ static u32 tcc_i2c_func(struct i2c_adapter *adap)
 
 /* i2c bus registration info */
 static const struct i2c_algorithm tcc_i2c_algo = {
-	.master_xfer	= tcc_i2c_xfer,
-	.functionality	= tcc_i2c_func,
+	.master_xfer    = tcc_i2c_xfer,
+	.functionality  = tcc_i2c_func,
 };
 
 /* tcc_i2c_set_port
@@ -567,7 +582,7 @@ static int tcc_i2c_set_port(struct tcc_i2c *i2c)
  */
 static int tcc_i2c_init(struct tcc_i2c *i2c)
 {
-	unsigned int prescale;
+	unsigned int prescale, tmp;
 	struct device_node *np = i2c->dev->of_node;
 
 	if (i2c->hclk == NULL)
@@ -588,6 +603,24 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	/* Set prescale */
 	prescale = (clk_get_rate(i2c->pclk) / (i2c->i2c_clk_rate * 5)) - 1;
 	i2c_writel(prescale, i2c->regs+I2C_PRES);
+
+#if defined(CONFIG_ARCH_TCC803X)
+	if (i2c->core > 3) {
+		/*
+		 * TR.CKSEL = 0
+		 * TR.STD = 0
+		 */
+		tmp = i2c_readl(i2c->regs+I2C_TIME);
+		tmp &= (~0x000000E0);
+		if (i2c->use_pw) {
+			i2c_writel(0x00000000, i2c->regs+I2C_PRES);
+		}
+		i2c_writel(((i2c->pwh << 16) | (i2c->pwl)), i2c->regs+I2C_TR1);
+
+		dev_info(i2c->dev, "pulse-width-high: %d\n", i2c->pwh);
+		dev_info(i2c->dev, "pulse-width-low: %d\n", i2c->pwl);
+	}
+#endif
 
 	/* Enable core, Disable interrupt, Set 8 bit mode */
 	i2c_writel((1<<7)|0, i2c->regs+I2C_CTRL);
@@ -621,6 +654,17 @@ static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 #endif
 	of_property_read_u32(np, "interrupt_mode", &i2c->interrupt_mode);
 	of_property_read_u32(np, "noise_filter", &i2c->noise_filter);
+
+#if defined(CONFIG_ARCH_TCC803X)
+	if (of_property_read_u32(np, "pulse-width-high", &i2c->pwh) ||
+			of_property_read_u32(np, "pulse-width-low", &i2c->pwl)) {
+		i2c->pwh = 2;
+		i2c->pwl = 3;
+		i2c->use_pw = 0;
+	} else {
+		i2c->use_pw = 1;
+	}
+#endif
 }
 #else
 static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
@@ -670,7 +714,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	tcc_i2c_parse_dt(pdev->dev.of_node, i2c);
 
 	init_completion(&i2c->msg_complete);
-	
+
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "i2c");
 	i2c->core = pdev->id;
 	i2c->adap.owner = THIS_MODULE;
@@ -679,8 +723,8 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	i2c->dev = &(pdev->dev);
 	sprintf(i2c->adap.name, "%s", pdev->name);
 	printk(KERN_INFO "i2c: bus %d - sclk: %d kHz retry: %d irq mode: %d noise filter: %d\n",
-		i2c->core, (i2c->i2c_clk_rate/1000), i2c->adap.retries,
-		i2c->interrupt_mode, i2c->noise_filter);
+			i2c->core, (i2c->i2c_clk_rate/1000), i2c->adap.retries,
+			i2c->interrupt_mode, i2c->noise_filter);
 	spin_lock_init(&i2c->lock);
 	init_waitqueue_head(&i2c->wait);
 
@@ -817,13 +861,13 @@ MODULE_DEVICE_TABLE(of, tcc_i2c_of_match);
 #endif
 
 static struct platform_driver tcc_i2c_driver = {
-	.probe			= tcc_i2c_probe,
-	.remove			= tcc_i2c_remove,
-	.driver			= {
-		.owner		= THIS_MODULE,
-		.name		= "tcc-i2c",
-		.pm		= TCC_I2C_PM,
-		.of_match_table	= of_match_ptr(tcc_i2c_of_match),
+	.probe                  = tcc_i2c_probe,
+	.remove                 = tcc_i2c_remove,
+	.driver                 = {
+		.owner          = THIS_MODULE,
+		.name           = "tcc-i2c",
+		.pm             = TCC_I2C_PM,
+		.of_match_table = of_match_ptr(tcc_i2c_of_match),
 	},
 };
 
