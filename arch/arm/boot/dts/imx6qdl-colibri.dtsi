@@ -166,8 +166,11 @@
  */
 &i2c2 {
 	clock-frequency = <100000>;
-	pinctrl-names = "default";
+	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c2>;
+	pinctrl-1 = <&pinctrl_i2c2_recovery>;
+	scl-gpios = <&gpio2 30 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio3 16 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 
 	pmic: pfuze100@08 {
@@ -317,7 +320,7 @@
  */
 &i2c3 {
 	clock-frequency = <100000>;
-	pinctrl-names = "default", "recovery";
+	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c3>;
 	pinctrl-1 = <&pinctrl_i2c3_recovery>;
 	scl-gpios = <&gpio1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
@@ -530,6 +533,12 @@
 		fsl,pins = <
 			MX6QDL_PAD_EIM_EB2__I2C2_SCL 0x4001b8b1
 			MX6QDL_PAD_EIM_D16__I2C2_SDA 0x4001b8b1
+		>;
+	};
+	pinctrl_i2c2_recovery: i2c2-recoverygrp {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_EB2__GPIO2_IO30 0x4001b8b1
+			MX6QDL_PAD_EIM_D16__GPIO3_IO16 0x4001b8b1
 		>;
 	};
 
