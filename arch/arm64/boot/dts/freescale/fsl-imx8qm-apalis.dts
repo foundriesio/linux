@@ -111,7 +111,7 @@
 		simple-audio-card,format = "i2s";
 		simple-audio-card,frame-master = <&dailink_master>;
 		/* simple-audio-card,mclk-fs = <1>; */
-		simple-audio-card,name = "imx8qm-sgtl5000";
+		simple-audio-card,name = "apalis-imx8qm-sgtl5000";
 
 		simple-audio-card,cpu {
 			sound-dai = <&sai1>;
