@@ -26,10 +26,10 @@
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bkl_on>;
-		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* Apalis BKL1_ON */
-		pwms = <&lvds1_pwm 0 100000 0>;
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* Apalis BKL1_ON */
+		pwms = <&lvds1_pwm 0 100000 0>;
 		status = "okay";
 	};
 
@@ -107,36 +107,36 @@
 
 	sound {
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "imx8qm-sgtl5000";
-		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&dailink_master>;
+		simple-audio-card,format = "i2s";
 		simple-audio-card,frame-master = <&dailink_master>;
 		/* simple-audio-card,mclk-fs = <1>; */
+		simple-audio-card,name = "imx8qm-sgtl5000";
 
 		simple-audio-card,cpu {
 			sound-dai = <&sai1>;
 		};
 
 		dailink_master: simple-audio-card,codec {
-			sound-dai = <&sgtl5000>;
 			clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
+			sound-dai = <&sgtl5000>;
 		};
 	};
 
 	sound-hdmi-tx {
 		compatible = "fsl,imx-audio-cdnhdmi";
-		model = "imx-audio-hdmi-tx";
 		audio-cpu = <&sai_hdmi_tx>;
 		constraint-rate = <48000>;
-		protocol = <1>;
 		hdmi-out;
+		model = "imx-audio-hdmi-tx";
+		protocol = <1>;
 	};
 
 	sound-amix-sai {
 		compatible = "fsl,imx-audio-amix";
-		model = "amix-audio-sai";
-		dais = <&sai6>, <&sai7>;
 		amix-controller = <&amix>;
+		dais = <&sai6>, <&sai7>;
+		model = "amix-audio-sai";
 		status = "okay";
 	};
 
@@ -1027,11 +1027,11 @@
 &usbotg1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg1>;
-	srp-disable;
-	hnp-disable;
 	adp-disable;
-	power-polarity-active-high;
 	ci-disable-lpm;
+	hnp-disable;
+	power-polarity-active-high;
+	srp-disable;
 	status = "okay";
 };
 
@@ -1051,10 +1051,10 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&pinctrl_usb_hsic_idle>;
 	pinctrl-1 = <&pinctrl_usb_hsic_active>;
-	srp-disable;
-	hnp-disable;
 	adp-disable;
 	disable-over-current;
+	hnp-disable;
+	srp-disable;
 	vbus-supply = <&reg_usb_host_vbus>;
 	status = "okay";
 };
@@ -1063,11 +1063,11 @@
 &fec1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec1>;
-	phy-mode = "rgmii";
-	phy-handle = <&ethphy0>;
 	fsl,magic-packet;
-	fsl,rgmii_txc_dly;
 	fsl,rgmii_rxc_dly;
+	fsl,rgmii_txc_dly;
+	phy-handle = <&ethphy0>;
+	phy-mode = "rgmii";
 	phy-reset-duration = <10>;
 	phy-reset-gpios = <&gpio1 11 1>;
 	status = "okay";
@@ -1126,40 +1126,40 @@
 
 /* Apalis I2C2 (DDC) */
 &i2c0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpi2c0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	clock-frequency = <100000>;
 	status = "okay";
 };
 
 /* On-module I2C */
 &i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c1>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c1>;
 	status = "okay";
 
 	/* SGTL5000 */
 	sgtl5000: codec@a {
 		compatible = "fsl,sgtl5000";
-		#sound-dai-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_sgtl5000>;
-		reg = <0x0a>;
-		clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
-		power-domains = <&pd_mclk_out0>;
+		#sound-dai-cells = <0>;
 		assigned-clocks = <&clk IMX8QM_AUD_PLL0_DIV>,
 				  <&clk IMX8QM_AUD_ACM_AUD_PLL_CLK0_DIV>,
 				  <&clk IMX8QM_AUD_ACM_AUD_REC_CLK0_DIV>,
 				  <&clk IMX8QM_AUD_MCLKOUT0>;
 		assigned-clock-rates = <786432000>, <49152000>, <12288000>, <12288000>;
+		clocks = <&clk IMX8QM_AUD_MCLKOUT0>;
+		power-domains = <&pd_mclk_out0>;
+		reg = <0x0a>;
 		VDDA-supply = <&reg_module_3v3_avdd>;
-		VDDIO-supply = <&reg_module_3v3>;
 		VDDD-supply = <&reg_vref_1v8>;
+		VDDIO-supply = <&reg_module_3v3>;
 	};
 
 	/* USB3503A */
@@ -1167,22 +1167,22 @@
 		compatible = "smsc,usb3503a";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_usb3503a>;
-		reg = <0x08>;
-		refclk-frequency = <25000000>;
 		connect-gpios = <&gpio0 31 GPIO_ACTIVE_LOW>;
-		intn-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
-		reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
 		initial-mode = <1>;
+		intn-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+		refclk-frequency = <25000000>;
+		reg = <0x08>;
+		reset-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
 	};
 };
 
 /* Apalis I2C1 */
 &i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c2>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c2>;
 	status = "okay";
 
 	/* M41T0M6 real time clock on carrier board */
@@ -1194,29 +1194,29 @@
 
 /* Apalis I2C3 (CAM) */
 &i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c3>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c3>;
 	status = "okay";
 
 	ov5640_mipi@3c {
 		compatible = "ovti,ov5640_mipi";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio12>;
-		reg = <0x3c>;
-		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
-		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		mclk = <24000000>;
 		mclk_source = <0>;
+		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+		reg = <0x3c>;
+		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		virtual-channel;
 		status = "okay";
 
 		port {
 			ov5640_ep: endpoint {
-				remote-endpoint = <&mipi_csi1_ep>;
 				data-lanes = <1 2>;
+				remote-endpoint = <&mipi_csi1_ep>;
 			};
 		};
 	};
@@ -1228,30 +1228,30 @@
 
 /* Apalis SPI1 */
 &lpspi0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 
 	spidev0: spi@0 {
-		reg = <0>;
 		compatible = "toradex,evalspi";
+		reg = <0>;
 		spi-max-frequency = <4000000>;
 	};
 };
 
 /* Apalis SPI2 */
 &lpspi2 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi2>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
 
 	spidev1: spi@0 {
-		reg = <0>;
 		compatible = "toradex,evalspi";
+		reg = <0>;
 		spi-max-frequency = <4000000>;
 	};
 };
@@ -1295,8 +1295,8 @@
 		reg = <0>;
 
 		mipi_csi1_ep: endpoint {
-			remote-endpoint = <&ov5640_ep>;
 			data-lanes = <1 2>;
+			remote-endpoint = <&ov5640_ep>;
 		};
 	};
 };
@@ -1484,7 +1484,6 @@
 
 /* Apalis PCIE1 */
 &pciea{
-	ext_osc = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpio7>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
@@ -1493,6 +1492,7 @@
 		 <&clk IMX8QM_HSIO_PCIE_A_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	ext_osc = <1>;
 	max-link-speed = <1>;
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
 	status = "okay";
@@ -1502,17 +1502,17 @@
 &pcieb{
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
-	ext_osc = <1>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_B_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
 		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
+	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	/*epdev_on-supply = <&epdev_on>;*/
+	ext_osc = <1>;
 	max-link-speed = <1>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
-	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
-	/*epdev_on-supply = <&epdev_on>;*/
 	status = "okay";
 };
 
@@ -1528,8 +1528,8 @@
 	/*
 	 * 64K for one rpmsg instance:
 	 */
-	vdev-nums = <2>;
 	reg = <0x0 0x90000000 0x0 0x20000>;
+	vdev-nums = <2>;
 	status = "okay";
 };
 
@@ -1545,8 +1545,8 @@
 	/*
 	 * 64K for one rpmsg instance:
 	 */
-	vdev-nums = <2>;
 	reg = <0x0 0x90100000 0x0 0x20000>;
+	vdev-nums = <2>;
 	status = "okay";
 };
 
@@ -1564,7 +1564,6 @@
 
 /* Apalis SATA1 */
 &sata {
-	ext_osc = <1>;
 	clocks = <&clk IMX8QM_HSIO_SATA_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X1_PCLK>,
 		 <&clk IMX8QM_HSIO_SATA_EPCS_TX_CLK>,
@@ -1575,6 +1574,7 @@
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "sata", "sata_ref", "epcs_tx", "epcs_rx",
 		      "phy_pclk0", "phy_pclk1", "phy_apbclk", "sata_ext";
+	ext_osc = <1>;
 	status = "okay";
 };
 
@@ -1586,14 +1586,14 @@
 };
 
 &ldb2 {
-	status = "okay";
 	fsl,dual-channel;
+	status = "okay";
 
 	lvds-channel@0 {
 		fsl,data-mapping = "spwg";
 		fsl,data-width = <18>;
-		status = "okay";
 		primary;
+		status = "okay";
 
 		display-timings {
 			native-mode = <&timing_fullhd>;
@@ -1641,35 +1641,35 @@
 
 &thermal_zones {
 	pmic-thermal0 {
-		polling-delay-passive = <250>;
 		polling-delay = <2000>;
+		polling-delay-passive = <250>;
 		thermal-sensors = <&tsens 5>;
 
 		trips {
 			pmic_alert0: trip0 {
-				temperature = <110000>;
 				hysteresis = <2000>;
+				temperature = <110000>;
 				type = "passive";
 			};
 
 			pmic_crit0: trip1 {
-				temperature = <125000>;
 				hysteresis = <2000>;
+				temperature = <125000>;
 				type = "critical";
 			};
 		};
 
 		cooling-maps {
 			map0 {
-				trip = <&pmic_alert0>;
 				cooling-device =
 				<&A53_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				trip = <&pmic_alert0>;
 			};
 
 			map1 {
-				trip = <&pmic_alert0>;
 				cooling-device =
 				<&A72_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				trip = <&pmic_alert0>;
 			};
 		};
 	};
