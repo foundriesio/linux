@@ -461,7 +461,6 @@ static void stm32_dma_irq_clear(struct stm32_dma_chan *chan, u32 flags)
 static int stm32_dma_disable_chan(struct stm32_dma_chan *chan)
 {
 	struct stm32_dma_device *dmadev = stm32_dma_get_dev(chan);
-	unsigned long timeout = jiffies + msecs_to_jiffies(5000);
 	u32 dma_scr, id;
 
 	id = chan->id;
@@ -471,19 +470,10 @@ static int stm32_dma_disable_chan(struct stm32_dma_chan *chan)
 		dma_scr &= ~STM32_DMA_SCR_EN;
 		stm32_dma_write(dmadev, STM32_DMA_SCR(id), dma_scr);
 
-		do {
-			dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(id));
-			dma_scr &= STM32_DMA_SCR_EN;
-			if (!dma_scr)
-				break;
-
-			if (time_after_eq(jiffies, timeout)) {
-				dev_err(chan2dev(chan), "%s: timeout!\n",
-					__func__);
-				return -EBUSY;
-			}
-			cond_resched();
-		} while (1);
+		return readl_relaxed_poll_timeout_atomic(
+					dmadev->base + STM32_DMA_SCR(id),
+					dma_scr, !(dma_scr & STM32_DMA_SCR_EN),
+					10, 1000000);
 	}
 
 	return 0;
