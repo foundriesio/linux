@@ -21,21 +21,24 @@
 		stdout-path = &lpuart1;
 	};
 
+	/* Apalis BKL1 */
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bkl_on>;
-		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* Apalis BKL1_ON */
 		pwms = <&lvds1_pwm 0 100000 0>;
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
 		status = "okay";
 	};
 
+	/* Apalis WAKE1_MICO */
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_keys>;
+
 		wakeup {
 			label = "Wake-Up";
 			gpios = <&gpio2 20 GPIO_ACTIVE_LOW>;
@@ -218,6 +221,7 @@
 		    <&pinctrl_usdhc1_gpios>;
 
 	apalis-imx8qm {
+		/* Apalis AN1_ADC */
 		pinctrl_adc0: adc0grp {
 			fsl,pins = <
 				/* Apalis AN1_ADC0 */
@@ -231,6 +235,7 @@
 			>;
 		};
 
+		/* Apalis AN1_TS */
 		pinctrl_adc1: adc1grp {
 			fsl,pins = <
 				/* Apalis AN1_TSPX */
@@ -244,13 +249,14 @@
 			>;
 		};
 
+		/* On-module SGTL5000 SYS_MCLK */
 		pinctrl_sgtl5000: sgtl5000grp {
 			fsl,pins = <
-				/* On-module SGTL5000 SYS_MCLK */
 				SC_P_MCLK_OUT0_AUD_ACM_MCLK_OUT0	0xc600004c
 			>;
 		};
 
+		/* Apalis GPIO1+2 */
 		pinctrl_gpio12: gpio12grp {
 			fsl,pins = <
 				/* Apalis GPIO1 */
@@ -260,6 +266,7 @@
 			>;
 		};
 
+		/* Apalis GPIO3+4 */
 		pinctrl_gpio34: gpio34grp {
 			fsl,pins = <
 				/* Apalis GPIO3 */
@@ -269,6 +276,7 @@
 			>;
 		};
 
+		/* Apalis GPIO5+6 */
 		pinctrl_gpio56: gpio56grp {
 			fsl,pins = <
 				/* Apalis GPIO5 */
@@ -278,27 +286,28 @@
 			>;
 		};
 
+		/* Apalis GPIO7 */
 		pinctrl_gpio7: gpio7 {
 			fsl,pins = <
-				/* Apalis GPIO7 */
 				SC_P_MLB_SIG_LSIO_GPIO3_IO26			0x00000021
 			>;
 		};
 
+		/* Apalis GPIO8 */
 		pinctrl_gpio8: gpio8 {
 			fsl,pins = <
-				/* Apalis GPIO8 */
 				SC_P_MLB_DATA_LSIO_GPIO3_IO28			0x00000021
 			>;
 		};
 
+		/* Apalis WAKE1_MICO */
 		pinctrl_gpio_keys: gpio-keys {
 			fsl,pins = <
-				/* Apalis WAKE1_MICO */
 				SC_P_SPI3_CS0_LSIO_GPIO2_IO20		0x06000021
 			>;
 		};
 
+		/* On-module Micrel KSZ9031 Gigabit Ethernet PHY for Apalis GLAN */
 		pinctrl_fec1: fec1grp {
 			fsl,pins = <
 				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETB_PAD	0x000014a0 /* Use pads in 3.3V mode */
@@ -317,14 +326,14 @@
 				SC_P_ENET0_RGMII_RXD2_CONN_ENET0_RGMII_RXD2	0x06000020
 				SC_P_ENET0_RGMII_RXD3_CONN_ENET0_RGMII_RXD3	0x06000020
 				SC_P_ENET0_REFCLK_125M_25M_CONN_ENET0_REFCLK_125M_25M	0x06000020
-				/* ETH_RESET# */
+				/* On-module ETH_RESET# */
 				SC_P_LVDS1_GPIO01_LSIO_GPIO1_IO11		0x06000020
 			>;
 		};
 
+		/* Apalis BKL_ON */
 		pinctrl_gpio_bkl_on: gpio-bkl-on {
 			fsl,pins = <
-				/* Apalis BKL_ON */
 				SC_P_LVDS0_GPIO00_LSIO_GPIO1_IO04	0x00000021
 			>;
 		};
@@ -337,13 +346,14 @@
 			>;
 		};
 
+		/* On-module HDMI_CTRL */
 		pinctrl_hdmi_ctrl: hdmictrlgrp {
 			fsl,pins = <
-				/* On-module HDMI_CTRL */
 				SC_P_MIPI_CSI1_GPIO0_00_LSIO_GPIO1_IO30 0x00000061
 			>;
 		};
 
+		/* Apalis CAM1 */
 		pinctrl_cam1_gpios: cam1gpiosgrp {
 			fsl,pins = <
 				/* Apalis CAM1_D7 */
@@ -373,6 +383,7 @@
 			>;
 		};
 
+		/* Apalis DAP1 */
 		pinctrl_dap1_gpios: dap1gpiosgrp {
 			fsl,pins = <
 				/* Apalis DAP1_MCLK */
@@ -387,11 +398,12 @@
 				SC_P_SAI1_RXFS_LSIO_GPIO3_IO14			0x00000021
 				/* Apalis DAP1_SYNC */
 				SC_P_SPI2_CS1_LSIO_GPIO3_IO11			0x00000021
-				/* Wi-Fi_I2S_EN# */
+				/* On-module Wi-Fi_I2S_EN# */
 				SC_P_ESAI1_TX5_RX0_LSIO_GPIO2_IO13		0x00000021
 			>;
 		};
 
+		/* Apalis LCD1_G1+2 */
 		pinctrl_esai0_gpios: esai0gpiosgrp {
 			fsl,pins = <
 				/* Apalis LCD1_G1 */
@@ -401,6 +413,7 @@
 			>;
 		};
 
+		/* Apalis LCD1_ */
 		pinctrl_fec2_gpios: fec2gpiosgrp {
 			fsl,pins = <
 				SC_P_COMP_CTL_GPIO_1V8_3V3_ENET_ENETA_PAD	0x000014a0
@@ -433,13 +446,14 @@
 			>;
 		};
 
+		/* Apalis TS_2 */
 		pinctrl_lvds0_i2c0_gpio: lvds0i2c0gpio {
 			fsl,pins = <
-				/* Apalis TS_2 */
 				SC_P_LVDS0_I2C0_SCL_LSIO_GPIO1_IO06		0x00000021
 			>;
 		};
 
+		/* Apalis LCD1_G6+7 */
 		pinctrl_lvds1_i2c0_gpios: lvds1i2c0gpiosgrp {
 			fsl,pins = <
 				/* Apalis LCD1_G6 */
@@ -449,20 +463,21 @@
 			>;
 		};
 
+		/* Apalis TS_4 */
 		pinctrl_mipi_dsi1_gpios: mipidsi1gpiosgrp {
 			fsl,pins = <
-				/* Apalis TS_4 */
 				SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO22		0x00000021
 			>;
 		};
 
+		/* Apalis TS_1 */
 		pinctrl_mlb_gpios: mlbgpiosgrp {
 			fsl,pins = <
-				/* Apalis TS_1 */
 				SC_P_MLB_CLK_LSIO_GPIO3_IO27			0x00000021
 			>;
 		};
 
+		/* Apalis LCD1_ */
 		pinctrl_qspi1a_gpios: qspi1agpiosgrp {
 			fsl,pins = <
 				/* Apalis LCD1_B0 */
@@ -484,6 +499,7 @@
 			>;
 		};
 
+		/* Apalis LCD1_ */
 		pinctrl_sim0_gpios: sim0gpiosgrp {
 			fsl,pins = <
 				/* Apalis LCD1_G5 */
@@ -497,16 +513,16 @@
 			>;
 		};
 
+		/* Apalis TS_6 */
 		pinctrl_usdhc1_gpios: usdhc1gpiosgrp {
 			fsl,pins = <
-				/* Apalis TS_6 */
 				SC_P_USDHC1_STROBE_LSIO_GPIO5_IO23		0x00000021
 			>;
 		};
 
+		/* Apalis TS_3 */
 		pinctrl_mipi_dsi_0_1_en: mipi_dsi_0_1_en {
 			fsl,pins = <
-				/* Apalis TS_3 */
 				SC_P_LVDS0_I2C0_SDA_LSIO_GPIO1_IO07		0x00000021
 			>;
 		};
@@ -573,6 +589,7 @@
 			>;
 		};
 
+		/* Apalis UART1_ */
 		pinctrl_lpuart1ctrl: lpuart1ctrlgrp {
 			fsl,pins = <
 				/* Apalis UART1_DTR */
@@ -639,6 +656,7 @@
 			>;
 		};
 
+		/* On-module eMMC */
 		pinctrl_usdhc1: usdhc1grp {
 			fsl,pins = <
 				SC_P_EMMC0_CLK_CONN_EMMC0_CLK		0x06000041
@@ -690,13 +708,14 @@
 			>;
 		};
 
+		/* Apalis SATA1_ACT# */
 		pinctrl_sata1_act: sata1actgrp {
 			fsl,pins = <
-				/* Apalis SATA1_ACT# */
 				SC_P_ESAI1_TX0_LSIO_GPIO2_IO08		0x00000021
 			>;
 		};
 
+		/* Apalis SPDIF */
 		pinctrl_spdif0: spdif0grp {
 			fsl,pins = <
 				SC_P_SPDIF0_TX_AUD_SPDIF0_TX	0xc6000040
@@ -704,13 +723,14 @@
 			>;
 		};
 
+		/* Apalis MMC1_CD# */
 		pinctrl_mmc1_cd: mmc1cdgrp {
 			fsl,pins = <
-				/* Apalis MMC1_CD# */
 				SC_P_ESAI1_TX1_LSIO_GPIO2_IO09		0x00000021
 			>;
 		};
 
+		/* Apalis MMC1 */
 		pinctrl_usdhc2: usdhc2grp {
 			fsl,pins = <
 				SC_P_USDHC1_CLK_CONN_USDHC1_CLK		0x06000041
@@ -762,13 +782,14 @@
 			>;
 		};
 
+		/* Apalis SD1_CD# */
 		pinctrl_sd1_cd: sd1cdgrp {
 			fsl,pins = <
-				/* Apalis SD1_CD# */
 				SC_P_USDHC2_CD_B_LSIO_GPIO4_IO12	0x00000021
 			>;
 		};
 
+		/* Apalis SD1 */
 		pinctrl_usdhc3: usdhc3grp {
 			fsl,pins = <
 				SC_P_USDHC2_CLK_CONN_USDHC2_CLK		0x06000041
@@ -824,12 +845,14 @@
 			>;
 		};
 
+		/* On-module PCIe_CTRL0_CLKREQ */
 		pinctrl_pcie_sata_refclk: pciesatarefclkgrp {
 			fsl,pins = <
 				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO27	0x00000021
 			>;
 		};
 
+		/* On-module PCIe_Wi-Fi */
 		pinctrl_pcieb: pciebgrp {
 			fsl,pins = <
 				SC_P_PCIE_CTRL1_CLKREQ_B_LSIO_GPIO4_IO30	0x00000021
@@ -838,6 +861,7 @@
 			>;
 		};
 
+		/* On-module I2S to SGTL5000 for Apalis Analogue Audio */
 		pinctrl_sai1: sai1grp {
 			fsl,pins = <
 				SC_P_SAI1_TXD_AUD_SAI1_TXD		0xc600006c
@@ -871,6 +895,7 @@
 			>;
 		};
 
+		/* On-module HSIC HUB (idle) */
 		pinctrl_usb_hsic_idle: usbh1_1 {
 			fsl,pins = <
 				SC_P_USB_HSIC0_DATA_CONN_USB_HSIC0_DATA		0xc60000c5
@@ -878,24 +903,33 @@
 			>;
 		};
 
+		/* On-module HSIC HUB (active) */
 		pinctrl_usb_hsic_active: usbh1_2 {
 			fsl,pins = <
 				SC_P_USB_HSIC0_STROBE_CONN_USB_HSIC0_STROBE	0xc60000d5
 			>;
 		};
 
+		/* On-module HSIC HUB */
 		pinctrl_usb3503a: usb3503agrp {
 			fsl,pins = <
+				/* On-module HSIC_HUB_CONNECT */
 				SC_P_SCU_GPIO0_03_LSIO_GPIO0_IO31		0x00000021
+				/* On-module HSIC_INT_N */
 				SC_P_SCU_GPIO0_05_LSIO_GPIO1_IO01		0x00000021
+				/* On-module HSIC_RESET_N */
 				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02		0x00000021
 			>;
 		};
 
+		/* On-module Wi-Fi */
 		pinctrl_wifi: wifigrp {
 			fsl,pins = <
+				/* On-module Wi-Fi_POWER_DOWN */
 				SC_P_MIPI_CSI0_GPIO0_01_LSIO_GPIO1_IO28		0x06000021
+				/* On-module Wi-Fi_SUSCLK_32k */
 				SC_P_SCU_GPIO0_07_SCU_DSC_RTC_CLOCK_OUTPUT_32K	0x06000021
+				/* On-module Wi-Fi_PCIE_W_DISABLE */
 				SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO1_IO24		0x06000021
 			>;
 		};
@@ -917,45 +951,46 @@
 };
 
 &asrc0 {
-	fsl,asrc-rate  = <48000>;
+	fsl,asrc-rate = <48000>;
 	status = "okay";
 };
 
-/* PWM3, MXM3 pin 6 */
+/* Apalis PWM3, MXM3 pin 6 */
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm0>;
 	status = "okay";
 };
 
-/* PWM4, MXM3 pin 8 */
+/* Apalis PWM4, MXM3 pin 8 */
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
 	status = "okay";
 };
 
-/* PWM1, MXM3 pin 2 */
+/* Apalis PWM1, MXM3 pin 2 */
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm2>;
 	status = "okay";
 };
 
-/* PWM2, MXM3 pin 4 */
+/* Apalis PWM2, MXM3 pin 4 */
 &pwm3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm3>;
 	status = "okay";
 };
 
+/* Apalis BKL1_PWM */
 &lvds1_pwm {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_bkl>;
 	status = "okay";
 };
 
-/* eMMC */
+/* On-module eMMC */
 &usdhc1 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc1>;
@@ -979,15 +1014,16 @@
 
 /* Apalis SD1 */
 &usdhc3 {
-        pinctrl-names = "default", "state_100mhz", "state_200mhz";
-        pinctrl-0 = <&pinctrl_usdhc3>, <&pinctrl_sd1_cd>;
-        pinctrl-1 = <&pinctrl_usdhc3_100mhz>, <&pinctrl_sd1_cd>;
-        pinctrl-2 = <&pinctrl_usdhc3_200mhz>, <&pinctrl_sd1_cd>;
-        bus-width = <4>;
-        cd-gpios = <&gpio4 12 GPIO_ACTIVE_LOW>; /* Apalis SD1_CD# */
-        status = "okay";
+	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-0 = <&pinctrl_usdhc3>, <&pinctrl_sd1_cd>;
+	pinctrl-1 = <&pinctrl_usdhc3_100mhz>, <&pinctrl_sd1_cd>;
+	pinctrl-2 = <&pinctrl_usdhc3_200mhz>, <&pinctrl_sd1_cd>;
+	bus-width = <4>;
+	cd-gpios = <&gpio4 12 GPIO_ACTIVE_LOW>; /* Apalis SD1_CD# */
+	status = "okay";
 };
 
+/* Apalis USBO1 */
 &usbotg1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg1>;
@@ -1023,6 +1059,7 @@
 	status = "okay";
 };
 
+/* Apalis GLAN */
 &fec1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec1>;
@@ -1046,6 +1083,7 @@
 	};
 };
 
+/* Apalis CAN1 */
 &flexcan1 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
@@ -1055,6 +1093,7 @@
 	status = "okay";
 };
 
+/* Apalis CAN2 */
 &flexcan2 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
@@ -1181,13 +1220,13 @@
 			};
 		};
 	};
-
 };
 
 &pd_dma_lpuart1 {
 	debug_console;
 };
 
+/* Apalis SPI1 */
 &lpspi0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -1202,6 +1241,7 @@
 	};
 };
 
+/* Apalis SPI2 */
 &lpspi2 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -1253,6 +1293,7 @@
 	/* Camera 0 MIPI CSI-2 (CSIS1) */
 	port@0 {
 		reg = <0>;
+
 		mipi_csi1_ep: endpoint {
 			remote-endpoint = <&ov5640_ep>;
 			data-lanes = <1 2>;
@@ -1441,6 +1482,7 @@
 	status = "okay";
 };
 
+/* Apalis PCIE1 */
 &pciea{
 	ext_osc = <1>;
 	pinctrl-names = "default";
@@ -1456,6 +1498,7 @@
 	status = "okay";
 };
 
+/* On-module Wi-Fi */
 &pcieb{
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
@@ -1519,6 +1562,7 @@
 	status = "okay";
 };
 
+/* Apalis SATA1 */
 &sata {
 	ext_osc = <1>;
 	clocks = <&clk IMX8QM_HSIO_SATA_CLK>,
@@ -1534,6 +1578,7 @@
 	status = "okay";
 };
 
+/* Apalis LVDS1 */
 //TBD: enabling breaks HDMI
 #if 0
 &ldb2_phy {
@@ -1571,6 +1616,7 @@
 };
 #endif
 
+/* Apalis SPDIF1 */
 &spdif0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spdif0>;
@@ -1598,24 +1644,28 @@
 		polling-delay-passive = <250>;
 		polling-delay = <2000>;
 		thermal-sensors = <&tsens 5>;
+
 		trips {
 			pmic_alert0: trip0 {
 				temperature = <110000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
+
 			pmic_crit0: trip1 {
 				temperature = <125000>;
 				hysteresis = <2000>;
 				type = "critical";
 			};
 		};
+
 		cooling-maps {
 			map0 {
 				trip = <&pmic_alert0>;
 				cooling-device =
 				<&A53_0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
+
 			map1 {
 				trip = <&pmic_alert0>;
 				cooling-device =
