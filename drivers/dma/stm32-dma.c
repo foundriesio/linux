@@ -1446,7 +1446,6 @@ static int stm32_dma_mdma_prep_dma_cyclic(struct stm32_dma_chan *chan,
 	struct stm32_dma_mdma *mchan = &chan->mchan;
 	struct stm32_dma_mdma_desc *m_desc = &desc->sg_req[0].m_desc;
 	struct dma_slave_config config;
-	dma_addr_t mem;
 	int ret;
 
 	chan->sram_size = ALIGN(period_len, STM32_DMA_SRAM_GRANULARITY);
@@ -1458,7 +1457,6 @@ static int stm32_dma_mdma_prep_dma_cyclic(struct stm32_dma_chan *chan,
 	desc->dma_buf_size = 2 * chan->sram_size;
 
 	memset(&config, 0, sizeof(config));
-	mem = buf_addr;
 
 	/* Configure MDMA channel */
 	if (chan->mchan.dir == DMA_MEM_TO_DEV)
