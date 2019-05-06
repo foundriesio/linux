@@ -1703,7 +1703,8 @@ static int stm32_mdma_runtime_resume(struct device *dev)
 static int stm32_mdma_pw_suspend(struct device *dev)
 {
 	struct stm32_mdma_device *dmadev = dev_get_drvdata(dev);
-	u32 ccr, id, ret;
+	u32 ccr, id;
+	int ret;
 
 	ret = pm_runtime_get_sync(dev);
 	if (ret < 0)
