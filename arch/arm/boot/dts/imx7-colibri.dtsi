@@ -49,6 +49,12 @@
 		enable-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 	};
 
+	pxp_v4l2_out {
+		compatible = "fsl,imx7d-pxp-v4l2", "fsl,imx6sx-pxp-v4l2", \
+		             "fsl,imx6sl-pxp-v4l2";
+		status = "okay";
+	};
+
 	reg_module_3v3: regulator-module-3v3 {
 		compatible = "regulator-fixed";
 		regulator-name = "+V3.3";
@@ -79,6 +85,11 @@
 			sound-dai = <&codec>;
 			clocks = <&clks IMX7D_AUDIO_MCLK_ROOT_CLK>;
 		};
+	};
+
+	m4_tcm: tcml@007f8000 {
+		compatible = "fsl, m4_tcml";
+		reg = <0x007f8000 0x8000>;
 	};
 };
 
@@ -256,6 +267,16 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lcdif_dat
 		     &pinctrl_lcdif_ctrl>;
+};
+
+&ocram {
+	reg = <0x00901000 0xf000>;
+};
+
+&rpmsg {
+	vdev-nums = <1>;
+	reg = <0x8fff0000 0x10000>;
+	status = "okay";
 };
 
 &pwm1 {
@@ -652,6 +673,12 @@
 		>;
 	};
 
+	pinctrl_usbc_det: gpio_usbc_det {
+		fsl,pins = <
+			MX7D_PAD_ENET1_CRS__GPIO7_IO14	0x14
+		>;
+	};
+
 	pinctrl_usbh_reg: gpio-usbh-vbus {
 		fsl,pins = <
 			MX7D_PAD_UART3_CTS_B__GPIO4_IO7	0x14 /* SODIMM 129 USBH PEN */
@@ -764,6 +791,12 @@
 			MX7D_PAD_LPSR_GPIO1_IO01__GPIO1_IO1	0x59
 			MX7D_PAD_LPSR_GPIO1_IO02__GPIO1_IO2	0x59
 			MX7D_PAD_LPSR_GPIO1_IO03__GPIO1_IO3	0x59
+		>;
+	};
+
+	pinctrl_gpiokeys: gpiokeysgrp {
+		fsl,pins = <
+			MX7D_PAD_LPSR_GPIO1_IO01__GPIO1_IO1	0x19
 		>;
 	};
 
