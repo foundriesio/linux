@@ -169,15 +169,7 @@ static int power_vag_event(struct snd_soc_dapm_widget *w,
 			SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
 		msleep(400);
 		break;
-
 	case SND_SOC_DAPM_PRE_PMD:
-		/*
-		 * Don't clear VAG_POWERUP when there is a local loop
-		 * from LINE_IN to the HP.
-		 */
-		if (snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL) &
-		    SGTL5000_HP_SEL_MASK)
-			break;
 		/*
 		 * Don't clear VAG_POWERUP, when both DAC and ADC are
 		 * operational to prevent inadvertently starving the
@@ -198,30 +190,26 @@ static int power_vag_event(struct snd_soc_dapm_widget *w,
 }
 
 /*
- * If we mux a direct path from LINE_IN to HP, VAG must be powered up.
- * With the SND_SOC_DAPM_POST_REG event the new state of the headphone mux is
- * available.
+ * Mute Headphone when switch muxing HP from LINE_IN to DAC and back.
  */
 static int headphone_mux_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	const u32 mute_mask = SGTL5000_HP_MUTE;
+	static int reg = 0;
 
-	/*
-	 * switch on VAG unconditionally on any change of the headphone muxer
-	 * early to lessen pop.
-	 */
 	switch (event) {
+	/* Mute HP unconditionally */
 	case SND_SOC_DAPM_PRE_REG:
-		snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
-				SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
+		reg = snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL);
+		snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL,
+			mute_mask, mute_mask);
 		break;
-	/*
-	 * The call to power_vag_event() switches VAG off again, if VAG need
-	 * not be switched on.
-	 */
+	/* Restore previously saved mute/unmute HP state */
 	case SND_SOC_DAPM_POST_REG:
-		power_vag_event(w, kcontrol, SND_SOC_DAPM_PRE_PMD);
+		snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL,
+			mute_mask, reg);
 		break;
 	default:
 		break;
