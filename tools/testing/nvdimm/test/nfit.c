@@ -33,6 +33,10 @@
 
 #include <asm/mcsafe_test.h>
 
+#ifndef SZ_4G
+#define SZ_4G 0x100000000ULL
+#endif
+
 /*
  * Generate an NFIT table to describe the following topology:
  *
