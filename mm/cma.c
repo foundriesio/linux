@@ -499,7 +499,7 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 			page_kasan_tag_reset(page + i);
 	}
 
-	if (ret && !no_warn) {
+	if (ret && !no_warn && printk_ratelimit()) {
 		pr_err("%s: %s: alloc failed, req-size: %zu pages, ret: %d\n",
 		       __func__, cma->name, count, ret);
 		cma_debug_show_areas(cma);
