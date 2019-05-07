@@ -5,6 +5,14 @@ This is a list of all the patches that relates to the TEE subsystem. The
 text inside the brackets are the kernel version where it was introduced,
 followed by the sha1 hash in the upstream kernel tree.
 
+[v5.1-rc1] 32356d309c22 tee: optee: update optee_msg.h and optee_smc.h to dual license
+[v5.1-rc1] 4f062dc1b759 tee: add cancellation support to client interface
+[v5.1-rc1] 62ade1bed27c tee: optee: Fix unsigned comparison with less than zero
+[v5.1-rc1] bb342f016862 tee: fix possible error pointer ctx dereferencing
+[v5.1-rc1] 50ceca6894ad tee: optee: Initialize some structs using memset instead of braces
+[v5.1-rc1] c3fa24af9244 tee: optee: add TEE bus device enumeration support
+[v5.1-rc1] 0fc1db9d1059 tee: add bus driver framework for TEE based devices
+[v5.1-rc1] 42bf4152d8a7 tee: add supp_nowait flag in tee_context struct
 [v5.0] c7c0d8df0b94 tee: optee: add missing of_node_put after of_device_is_available
 [v5.0-rc1] 3c15ddb97c77 tee: optee: log message if dynamic shm is enabled
 [v5.0-rc1] b2d102bd0146 tee: optee: avoid possible double list_del()
