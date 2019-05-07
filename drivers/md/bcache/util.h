@@ -287,10 +287,10 @@ do {									\
 #define ANYSINT_MAX(t)							\
 	((((t) 1 << (sizeof(t) * 8 - 2)) - (t) 1) * (t) 2 + (t) 1)
 
-int bch_strtoint_h(const char *, int *);
-int bch_strtouint_h(const char *, unsigned int *);
-int bch_strtoll_h(const char *, long long *);
-int bch_strtoull_h(const char *, unsigned long long *);
+int bch_strtoint_h(const char *cp, int *res);
+int bch_strtouint_h(const char *cp, unsigned int *res);
+int bch_strtoll_h(const char *cp, long long *res);
+int bch_strtoull_h(const char *cp, unsigned long long *res);
 
 static inline int bch_strtol_h(const char *cp, long *res)
 {
