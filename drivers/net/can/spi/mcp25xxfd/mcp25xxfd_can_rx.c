@@ -251,7 +251,7 @@ static int mcp25xxfd_can_rx_predict_prefetch(struct mcp25xxfd_can_priv *cpriv)
 	int dlc, i, top;
 	u8 histo[16];
 
-	/* if we have a prfecth set then use that one */
+	/* if we have a prefetch set then use that one */
 	if (rx_prefetch_bytes != -1)
 		return min_t(int, rx_prefetch_bytes,
 			     (cpriv->can.dev->mtu == CANFD_MTU) ? 64 : 8);
