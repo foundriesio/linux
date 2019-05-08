@@ -18,7 +18,6 @@
 #include <linux/slab.h>
 #include <linux/sort.h>
 
-#include "mcp25xxfd_regs.h"
 #include "mcp25xxfd_can.h"
 #include "mcp25xxfd_can_debugfs.h"
 #include "mcp25xxfd_can_int.h"
@@ -28,6 +27,7 @@
 #include "mcp25xxfd_cmd.h"
 #include "mcp25xxfd_ecc.h"
 #include "mcp25xxfd_int.h"
+#include "mcp25xxfd_regs.h"
 
 static unsigned int reschedule_int_thread_after = 4;
 module_param(reschedule_int_thread_after, uint, 0664);
