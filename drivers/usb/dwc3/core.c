@@ -884,7 +884,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 	int ret;
 
 	if (node) {
-		dwc->usb2_phy = NULL;//devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
+		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
 		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "telechips,dwc3_phy", 0);
 #if 0
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);

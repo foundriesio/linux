@@ -2405,6 +2405,7 @@
     dwc3_phy: dwc3_phy@11D90000 {
         compatible = "telechips,tcc_dwc3_phy";
         reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
+		 interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
         clocks = <&clk_isoip_top ISOIP_TOP_U30>;
         status = "disabled";
     };
@@ -2417,6 +2418,7 @@
         #size-cells = <1>;
         ranges;
 		status = "disabled";
+		//tpl-support;
 
         dwc3 {
             compatible = "snps,dwc3";
@@ -2434,6 +2436,7 @@
 	ehci_phy: ehci_phy@11DA0010 {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA0010 0x30>;
+		 interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
 		 status = "disabled";
@@ -2469,6 +2472,7 @@
 	mhst_phy: mux_host_phy@11DA00DC {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA00DC 0x20>;
+		 interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
 		 mux_port;

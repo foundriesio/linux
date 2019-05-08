@@ -168,6 +168,9 @@ struct usb_phy {
 	int (*get_dc_voltage_level)(struct usb_phy *phy);
 	int (*set_dc_voltage_level)(struct usb_phy *phy, unsigned int level);
 #endif
+#if defined (CONFIG_TCC_BC_12)
+	void (*set_chg_det)(struct usb_phy *phy);
+#endif
 #if defined (CONFIG_TCC_DWC3_PHY)
 	unsigned int (*read_u30phy_reg)(struct usb_phy *phy, unsigned int address);
 	void (*read_u30phy_reg_all)(struct usb_phy *phy);

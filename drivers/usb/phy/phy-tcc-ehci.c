@@ -33,6 +33,10 @@ struct tcc_ehci_device {
 
 	int vbus_gpio;
 	int vbus_status;
+#if defined (CONFIG_TCC_BC_12)
+	int irq;
+	//struct task_struct *chg_det_thread;
+#endif
 };
 
 struct ehci_phy_reg
@@ -138,7 +142,42 @@ static int tcc_ehci_set_dc_level(struct usb_phy *phy, unsigned int level)
 	return 0;
 }
 #endif
+#if defined (CONFIG_TCC_BC_12)
+static void tcc_ehci_set_chg_det(struct usb_phy *phy)
+{
+	struct tcc_ehci_device *ehci_phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+	struct ehci_phy_reg	*ehci_pcfg = (struct ehci_phy_reg*)ehci_phy_dev->base;
 
+	writel(readl(&ehci_pcfg->pcfg4) | (1<<31), &ehci_pcfg->pcfg4);//clear irq
+	udelay(1);
+	writel(readl(&ehci_pcfg->pcfg4) & ~(1<<31), &ehci_pcfg->pcfg4);//clear irq
+
+	writel(readl(&ehci_pcfg->pcfg2) |(1<<8) , &ehci_pcfg->pcfg2); //enable chg det
+}
+
+static irqreturn_t chg_irq(int irq, void *data)
+{
+    struct tcc_ehci_device *phy_dev = (struct tcc_ehci_device *)data;
+    struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)phy_dev->base;
+    uint32_t pcfg2=0;
+
+	printk("Charging Detection!\n");
+    //printk("pcfg2 = 0x%08x\n", readl(&ehci_pcfg->pcfg2));
+    pcfg2 = readl(&ehci_pcfg->pcfg2);
+    writel((pcfg2|(1<<9)), &ehci_pcfg->pcfg2);
+    //printk("Chager Detecttion!!\n");
+    mdelay(50);
+    writel(readl(&ehci_pcfg->pcfg2) & ~((1<<9)|(1<<8)) , &ehci_pcfg->pcfg2);
+    //printk("pcfg2 = 0x%08x\n", readl(&ehci_pcfg->pcfg2));
+    //writel(readl(&ehci_pcfg->pcfg2) |(1<<8) , &ehci_pcfg->pcfg2);
+
+    writel(readl(&ehci_pcfg->pcfg4) | (1<<31), &ehci_pcfg->pcfg4);//clear irq
+    udelay(1);
+    writel(readl(&ehci_pcfg->pcfg4) & ~(1<<31), &ehci_pcfg->pcfg4);//clear irq
+    //writel(readl(&ehci_pcfg->pcfg2) |(1<<8) , &ehci_pcfg->pcfg2);
+    return IRQ_HANDLED;
+}
+#endif
 #define TCC_MUX_H_SWRST				(1<<4)		/* Host Controller in OTG MUX S/W Reset */
 #define TCC_MUX_H_CLKMSK			(1<<3)		/* Host Controller in OTG MUX Clock Enable */
 #define TCC_MUX_O_SWRST				(1<<2)		/* OTG Controller in OTG MUX S/W Reset */
@@ -157,7 +196,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	uint32_t mux_cfg_val;
 	int i;
 
-	printk("%s:ehci_pcfg=%p\n ", __func__, ehci_pcfg);
+	//printk("%s:ehci_pcfg=%p\n ", __func__, ehci_pcfg);
 
 	if (ehci_phy_dev->mux_port) {
 		mux_cfg_val = readl(phy->otg->mux_cfg_addr); /* get otg control cfg register */
@@ -237,6 +276,20 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 #ifdef CONFIG_USB_HS_DC_VOLTAGE_LEVEL		/* 017.03.03 */
 	phy->set_dc_voltage_level(phy, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif /* CONFIG_USB_HS_DC_VOLTAGE_LEVEL */
+
+#if defined (CONFIG_TCC_BC_12)	
+	writel(readl(&ehci_pcfg->pcfg4) | (1<<31), &ehci_pcfg->pcfg4);//clear irq
+	printk("%s : Not Mux host\n", __func__);
+	writel(readl(&ehci_pcfg->pcfg4) & ~(1<<30), &ehci_pcfg->pcfg4);//Disable VBUS Detect
+	
+	writel(readl(&ehci_pcfg->pcfg4) & ~(1<<31), &ehci_pcfg->pcfg4);//clear irq
+	udelay(1);
+	writel(readl(&ehci_pcfg->pcfg2) | ((1<<8)|(1<<10)), &ehci_pcfg->pcfg2);
+	udelay(1);
+	writel(readl(&ehci_pcfg->pcfg4 ) | (1<<28), &ehci_pcfg->pcfg4);//enable CHG_DET interrupt
+
+	enable_irq(ehci_phy_dev->irq);
+#endif
 
 	return 0;
 }
@@ -356,6 +409,9 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	phy_dev->phy.get_dc_voltage_level = tcc_ehci_get_dc_level;
 	phy_dev->phy.set_dc_voltage_level = tcc_ehci_set_dc_level;
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
+#if defined (CONFIG_TCC_BC_12)
+	phy_dev->phy.set_chg_det = tcc_ehci_set_chg_det;	
+#endif
 
 	phy_dev->phy.otg->usb_phy		= &phy_dev->phy;
 
@@ -368,12 +424,34 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	struct tcc_ehci_device *phy_dev;
 	int retval;
 
+#if defined (CONFIG_TCC_BC_12)
+	int irq, ret=0;
+#endif
+
 	printk("%s:%s\n",pdev->dev.kobj.name, __func__);
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
 
 	retval = tcc_ehci_create_phy(dev, phy_dev);
 	if (retval)
 		return retval;
+
+#if defined (CONFIG_TCC_BC_12)
+	if (1) {//phy_dev->mux_port) {
+		printk("%s : MUX Host\n", __func__);
+		irq = platform_get_irq(pdev, 0);
+		if (irq <= 0) {
+			dev_err(&pdev->dev,
+					"Found HC with no IRQ. Check %s setup!\n",
+					dev_name(&pdev->dev));
+			retval = -ENODEV;
+		}
+		else
+		{
+			printk("%s: irq=%d\n", __func__, irq);
+			phy_dev->irq = irq;
+		}
+	}
+#endif
 
 	if (!request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
@@ -385,7 +463,21 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 				 pdev->resource[0].end - pdev->resource[0].start+1);
 
 	phy_dev->phy.base = phy_dev->base;
+#if defined (CONFIG_TCC_BC_12)
+	if (1) {//phy_dev->mux_port) {
+		ret = devm_request_irq(&pdev->dev, phy_dev->irq, chg_irq, IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
+		if (ret)
+			dev_err(&pdev->dev, "request irq failed\n");
 
+		disable_irq(phy_dev->irq);
+		/*
+		phy_dev->chg_det_thread = kthread_run(chg_det_monitor_thread, (void*)phy_dev, "chg_det_monitor");
+		if (IS_ERR(phy_dev->chg_det_thread)) {
+			printk("\x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
+		}
+		*/
+	}
+#endif
 	platform_set_drvdata(pdev, phy_dev);
 
 	retval = usb_add_phy_dev(&phy_dev->phy);

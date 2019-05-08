@@ -297,6 +297,20 @@ static int set_port_dc_level(struct usb_hcd *hcd, int level)
        return hcd->usb_phy->set_dc_voltage_level(hcd->usb_phy, level);
 }
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
+#if defined (CONFIG_TCC_BC_12)
+static void set_chg_det(struct usb_hcd *hcd)
+{
+   	if (!hcd->usb_phy || !hcd->usb_phy->set_chg_det) {
+		if (!hcd->usb_phy)
+			printk("[%s]PHY driver is needed\n", __func__);
+		else
+			printk("[%s]BC1.2 Detect function is needed\n", __func__);
+		return;	
+	}
+	else
+		hcd->usb_phy->set_chg_det(hcd->usb_phy);
+}
+#endif
 
 
 
@@ -2392,6 +2406,12 @@ void usb_disconnect(struct usb_device **pdev)
     {
     	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
         set_port_dc_level(hcd, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
+    }
+#endif
+#if defined (CONFIG_TCC_BC_12)
+    {
+    	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+        set_chg_det(hcd);
     }
 #endif
 

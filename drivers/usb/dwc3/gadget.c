@@ -1535,8 +1535,10 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 		else
 			dep->flags |= DWC3_EP_STALL;
 	} else {
+#ifndef CONFIG_TCC_EH_ELECT_TST
 		if (!(dep->flags & DWC3_EP_STALL))
 			return 0;
+#endif
 
 		ret = dwc3_send_clear_stall_ep_cmd(dep);
 		if (ret)
