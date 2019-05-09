@@ -82,6 +82,25 @@ si2166_i2c_addr_t g_i2c_addr[SILABS_FE_TYPE_MAX] = {
 	 { 0x00, 0x00, 0x00 }
 };
 
+static  int  rate_f_mant_exp (signed   int mant, signed   int exp, char *rate_i, char *rate_d, char *rate_e )
+{
+	if (mant ==  0) {
+	  *rate_i = *rate_d = *rate_e = 0;
+	  return 0;
+	}
+	if (mant >= 10) {
+	  *rate_i = mant/10;
+	  *rate_d = mant%10;
+	  *rate_e = -exp+1;
+	} else {
+	  *rate_i = mant;
+	  *rate_d = 0;
+	  *rate_e = -exp;
+	}
+	return 0;
+}
+
+
 static int si2166_internal_init(si2166_priv_t *priv)
 {
 	int i;
@@ -293,16 +312,19 @@ static int si2166_internal_tune(struct dvb_frontend* fe)
 		 }
 	}
 	
-#if 0
-	if(i_lock == 1)
-	{
-		char str_msg[100];
-		SiLabs_API_FE_status(p_ctx, &FE_Status);
-		SiLabs_API_Text_status(p_ctx, &FE_Status, str_msg);
-
-		dprintk("%s : %s", __FUNCTION__,str_msg);
-	}
-#endif
+#if 1
+        if(i_lock == 1)
+        {
+                char rate_i, rate_d, rate_e;
+                SiLabs_API_FE_status(p_ctx, &FE_Status);
+               //SiLabs_API_Text_status(p_ctx, &FE_Status, str_msg);
+               rate_f_mant_exp(FE_Status.ber_mant,FE_Status.ber_exp,&rate_i,&rate_d,&rate_e);
+               printk("ber %d.%de%d \n", rate_i,rate_d,rate_e);
+               printk("snrl %d snrh %d  FE_Status.video_snr %d \n", FE_Status.snrl, FE_Status.snrh, FE_Status.video_snr);
+               printk("SSI %d  SQI  %d \n ", FE_Status.SSI, FE_Status.SQI);
+               printk("TS_bitrate_kHz %d  TS_clock_kHz  %d \n ", FE_Status.TS_bitrate_kHz, FE_Status.TS_clock_kHz);
+        }
+ #endif
 	SiLabs_API_TS_Mode(p_ctx, SILABS_TS_SERIAL);
 	
 	return ret;
@@ -392,7 +414,7 @@ static int si2166_fe_tune(struct dvb_frontend* fe, bool re_tune, unsigned int mo
 	 }
 	 else
 	 {
-		 *delay = 10 * HZ; // 10 sess
+		 *delay = 60 * HZ; // 10 sess
 	 }
  
 	 return 0;
@@ -433,7 +455,7 @@ static int si2166_fe_read_snr(struct dvb_frontend* fe, unsigned short* snr)
 {
 	 
 	 int result = 1;
- 
+	 
 	 return result;
 }
  
@@ -442,6 +464,12 @@ static int si2166_fe_read_snr(struct dvb_frontend* fe, unsigned short* snr)
  {
 	 si2166_priv_t *priv = (si2166_priv_t *)fe->demodulator_priv;
 	 int result = 1;
+	 
+     SILABS_FE_Context *p_ctx = &FrontEnd_Table[priv->fe_id];
+     char rate_i, rate_d, rate_e;
+     result = SiLabs_API_FE_status(p_ctx, &FE_Status);
+     rate_f_mant_exp(FE_Status.ber_mant,FE_Status.ber_exp,&rate_i,&rate_d,&rate_e);
+     printk("ber %d.%de%d \n", rate_i,rate_d,rate_e);
  
 	 return result;
  }
@@ -450,7 +478,12 @@ static int si2166_fe_read_snr(struct dvb_frontend* fe, unsigned short* snr)
  {
 	 si2166_priv_t *priv = (si2166_priv_t *)fe->demodulator_priv;
 	 int result = 1;
-  
+	 
+     SILABS_FE_Context *p_ctx = &FrontEnd_Table[priv->fe_id];
+     char rate_i, rate_d, rate_e;
+     result = SiLabs_API_FE_status(p_ctx, &FE_Status);
+     printk("SSI %d SQI %d \n", FE_Status.SSI, FE_Status.SQI);
+
 	 return result;
  }
  

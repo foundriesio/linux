@@ -3,6 +3,7 @@
 #
 menu "SI2166 support"
 comment "SI2166 support"
+	depends on iDxB_SUPPORT
 
 config iDxB_SILABS_SI2166_Device
 	tristate "SI2166 support as device"
