@@ -57,3 +57,11 @@ config ARGON_MEM
 		This driver provides a character device interface for memory-map operations
 		so userspace tools can access the control and status registers of the Argon
 		video decoder hardware.
+
+config RPIVID_MEM
+	tristate "Character device driver for the Raspberry Pi RPIVid video decoder hardware"
+	default n
+	help
+		This driver provides a character device interface for memory-map operations
+		so userspace tools can access the control and status registers of the
+		Raspberry Pi RPiVid video decoder hardware.
