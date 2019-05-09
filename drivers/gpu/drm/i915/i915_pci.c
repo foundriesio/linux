@@ -129,7 +129,7 @@ static const struct intel_device_info intel_i915gm_info = {
 	.is_mobile = 1,
 	.cursor_needs_physical = 1,
 	.has_overlay = 1, .overlay_needs_physical = 1,
-	.supports_tv = 1,
+	/* .supports_tv = 1, */ /* causes vblank mess (bsc#1086657) */
 	.has_fbc = 1,
 	.hws_needs_physical = 1,
 	.unfenced_needs_alignment = 1,
@@ -150,7 +150,7 @@ static const struct intel_device_info intel_i945gm_info = {
 	.is_mobile = 1,
 	.has_hotplug = 1, .cursor_needs_physical = 1,
 	.has_overlay = 1, .overlay_needs_physical = 1,
-	.supports_tv = 1,
+	/* .supports_tv = 1, */ /* causes vblank mess (bsc#1086657) */
 	.has_fbc = 1,
 	.hws_needs_physical = 1,
 	.unfenced_needs_alignment = 1,
@@ -195,7 +195,7 @@ static const struct intel_device_info intel_i965gm_info = {
 	PLATFORM(INTEL_I965GM),
 	.is_mobile = 1, .has_fbc = 1,
 	.has_overlay = 1,
-	.supports_tv = 1,
+	/* .supports_tv = 1, */ /* causes vblank mess (bsc#1086657) */
 	.hws_needs_physical = 1,
 	.has_snoop = false,
 };
@@ -210,7 +210,7 @@ static const struct intel_device_info intel_gm45_info = {
 	GEN4_FEATURES,
 	PLATFORM(INTEL_GM45),
 	.is_mobile = 1, .has_fbc = 1,
-	.supports_tv = 1,
+	/* .supports_tv = 1, */ /* causes vblank mess (bsc#1086657) */
 	.ring_mask = RENDER_RING | BSD_RING,
 };
 
