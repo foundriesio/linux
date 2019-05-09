@@ -1,7 +1,7 @@
 /*
  * linux/drivers/char/tcc_screen_share.c
  *
- * Copyright (c) Telechips, Inc.
+ * Copyright (c) 2019 Telechips, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -84,55 +84,6 @@ static struct tcc_scrshare_info *tcc_scrshare_info;
 
 static struct file *overlay_file = NULL;
 
-void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, unsigned int frameHeight, unsigned int fmt, unsigned int layer)
-{
-	pr_debug("%s addr:0x%08x\n", __func__, addr);
-	if((tcc_scrshare_info==NULL) || (addr <= 0) || (frameWidth <= 0) || (frameHeight <= 0) || (fmt <= 0) || (layer < 0))
-		return;
-	
-	if(tcc_scrshare_info->share_enable)
-	{
-		int ret =0;
-		unsigned int base0, base1, base2;
-		tcc_scrshare_info->src_addr = addr;
-		tcc_scrshare_info->frm_w= frameWidth;
-		tcc_scrshare_info->frm_h = frameHeight;
-		tcc_scrshare_info->layer = layer;
-		tcc_scrshare_info->fmt = fmt;
- 		overlay_shared_buffer_t buffer_cfg;
-		
-		if(overlay_file == NULL)
-		{
-			overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
-			if(overlay_file == NULL) {
-			        printk("error: driver open fail (%s)\n", OVERLAY_DRIVER);
-			}
-		}
-		
-		tccxxx_GetAddress(fmt, addr, tcc_scrshare_info->frm_w, tcc_scrshare_info->frm_h,
-								tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, &base0, &base1, &base2);
-
-		buffer_cfg.src_addr = base0;
-		buffer_cfg.src_x = tcc_scrshare_info->srcinfo->x;
-		buffer_cfg.src_y = tcc_scrshare_info->srcinfo->y;
-		buffer_cfg.src_w = tcc_scrshare_info->srcinfo->width;
-		buffer_cfg.src_h = tcc_scrshare_info->srcinfo->height;
-		buffer_cfg.dst_x = tcc_scrshare_info->dstinfo->x;
-		buffer_cfg.dst_y = tcc_scrshare_info->dstinfo->y;
-		buffer_cfg.dst_w = tcc_scrshare_info->dstinfo->width;
-		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
-		buffer_cfg.frm_w = tcc_scrshare_info->frm_w;
-		buffer_cfg.frm_h = tcc_scrshare_info->frm_h;
-		buffer_cfg.fmt = tcc_scrshare_info->fmt;
-		buffer_cfg.layer = tcc_scrshare_info->layer;
-
-		ret = overlay_file->f_op->unlocked_ioctl(overlay_file, OVERLAY_PUSH_SHARED_BUFFER, (unsigned long)&buffer_cfg);
-		if(ret  < 0) {
-			printk("ERROR: OVERLAY_PUSH_SHARED_BUFFER\n");
-		}
-	}
-}
-
 static void tcc_scrshare_on(void)
 {
 	tcc_scrshare_info->share_enable= 1;
@@ -141,7 +92,7 @@ static void tcc_scrshare_on(void)
 	{
 		overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
 		if(overlay_file == NULL) {
-		        printk("error: driver open fail (%s)\n", OVERLAY_DRIVER);
+		        pr_err("error: driver open fail (%s)\n", OVERLAY_DRIVER);
 		}
 	}
 }
@@ -151,7 +102,10 @@ static void tcc_scrshare_off(void)
 	tcc_scrshare_info->share_enable= 0;
 
 	if(overlay_file)
+	{
 		filp_close(overlay_file, 0);	
+		overlay_file = NULL;
+	}
 }
 
 static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
@@ -160,45 +114,44 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 	mssg->data[1] = tcc_scrshare_info->dstinfo->y;
 	mssg->data[2] = tcc_scrshare_info->dstinfo->width;
 	mssg->data[3] = tcc_scrshare_info->dstinfo->height;
-	mssg->data_len = 4;
-	pr_debug("%s x:%d, y:%d, w:%d, h:%d\n", __func__, mssg->data[0], mssg->data[1], mssg->data[2], mssg->data[3]);
+	mssg->data[4] = tcc_scrshare_info->dstinfo->img_num;
+	mssg->data_len = 5;
+	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d\n", __func__, mssg->data[0], mssg->data[1], mssg->data[2], mssg->data[3], mssg->data[4]);
 }
 
-int tcc_scrshare_queue_work(unsigned int command, unsigned int blk, unsigned int data0, unsigned int data1, unsigned int data2)
+static void tcc_scrshare_display(struct tcc_mbox_data *mssg)
 {
-	int ret = 0;
-	if(atomic_read(&tcc_scrshare_device->status) == SCRSHARE_STS_READY) {
-		struct tcc_mbox_data data;
-		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
-		data.data[0] = blk;
-		data.data[1] = data0;
-		data.data[2] = data1;
-		data.data[3] = data2;
-
-		mutex_lock(&tcc_scrshare_device->rx.lock);
-		switch(command) {
-		case SCRSHARE_CMD_GET_DSTINFO:
-			tcc_scrshare_get_dstinfo(&data);
-			break;
-		case SCRSHARE_CMD_ON:
-			break;
-		case SCRSHARE_CMD_OFF:
-			break;
-		case SCRSHARE_CMD_READY:
-		case SCRSHARE_CMD_NULL:
-		case SCRSHARE_CMD_MAX:
-		default:
-			break;
+	long ret = 0;
+	overlay_shared_buffer_t buffer_cfg;
+	pr_debug("%s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d\n", __func__, tcc_scrshare_info->share_enable, mssg->data[0], mssg->data[1], mssg->data[2], mssg->data[3]);
+	pr_debug("%s dst x:%d, y:%d, w:%d, h:%d\n", __func__, 
+		tcc_scrshare_info->dstinfo->x, tcc_scrshare_info->dstinfo->y, tcc_scrshare_info->dstinfo->width, tcc_scrshare_info->dstinfo->height);
+	if(tcc_scrshare_info->share_enable)
+	{
+		if(overlay_file == NULL)
+		{
+			overlay_file = filp_open(OVERLAY_DRIVER, O_RDWR, 0666);
+			if(overlay_file == NULL) {
+			        pr_err("error: driver open fail (%s)\n", OVERLAY_DRIVER);
+			}
 		}
-		mutex_unlock(&tcc_scrshare_device->rx.lock);
-	} else {
-		pr_info("warning in %s: Not Ready for work \n", __func__);
-		ret = -100;
+		
+		buffer_cfg.src_addr = mssg->data[0];
+		buffer_cfg.frm_w = mssg->data[1];
+		buffer_cfg.frm_h = mssg->data[2];
+		buffer_cfg.fmt = mssg->data[3];
+		buffer_cfg.dst_x = tcc_scrshare_info->dstinfo->x;
+		buffer_cfg.dst_y = tcc_scrshare_info->dstinfo->y;
+		buffer_cfg.dst_w = tcc_scrshare_info->dstinfo->width;
+		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
+		buffer_cfg.layer = tcc_scrshare_info->dstinfo->img_num;
+		
+		ret = overlay_file->f_op->unlocked_ioctl(overlay_file, OVERLAY_PUSH_SHARED_BUFFER, (unsigned long)&buffer_cfg);
+		if(ret  < 0) {
+			pr_err("ERROR: OVERLAY_PUSH_SHARED_BUFFER\n");
+		}
 	}
-
-	return ret;
 }
-EXPORT_SYMBOL(tcc_scrshare_queue_work);
 
 static void tcc_scrshare_send_message(struct tcc_scrshare_device *tcc_scrshare, struct tcc_mbox_data *mssg)
 {
@@ -227,9 +180,14 @@ static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare, s
 		case SCRSHARE_CMD_GET_DSTINFO:
 			tcc_scrshare_get_dstinfo(data);
 			break;
+		case SCRSHARE_CMD_SET_SRCINFO:
+			tcc_scrshare_display(data);
+			break;
 		case SCRSHARE_CMD_ON:
+			tcc_scrshare_info->share_enable= 1;
 			break;
 		case SCRSHARE_CMD_OFF:
+			tcc_scrshare_info->share_enable= 0;
 			break;
 		case SCRSHARE_CMD_READY:
 		case SCRSHARE_CMD_NULL:
@@ -259,16 +217,21 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 
 	switch(command) {
 	case SCRSHARE_CMD_GET_DSTINFO:
+	case SCRSHARE_CMD_SET_SRCINFO:
 	case SCRSHARE_CMD_ON:
 	case SCRSHARE_CMD_OFF:
 		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY)
 		{
-			pr_debug("%s msg x:%d, y:%d, width:%d, height:%d\n", __func__, msg->data[0], msg->data[1], msg->data[2], msg->data[3]);
 			if(msg->cmd[1] & TCC_SCRSHARE_ACK) {
-				tcc_scrshare_info->dstinfo->x = msg->data[0];
-				tcc_scrshare_info->dstinfo->y = msg->data[1];
-				tcc_scrshare_info->dstinfo->width = msg->data[2];
-				tcc_scrshare_info->dstinfo->height = msg->data[3];
+				if(command == SCRSHARE_CMD_GET_DSTINFO)
+				{
+					pr_debug("%s msg x:%d, y:%d, width:%d, height:%d\n", __func__, msg->data[0], msg->data[1], msg->data[2], msg->data[3]);
+					tcc_scrshare_info->dstinfo->x = msg->data[0];
+					tcc_scrshare_info->dstinfo->y = msg->data[1];
+					tcc_scrshare_info->dstinfo->width = msg->data[2];
+					tcc_scrshare_info->dstinfo->height = msg->data[3];
+					tcc_scrshare_info->dstinfo->img_num= msg->data[4];
+				}
 				mbox_done = 1;
 				wake_up_interruptible(&mbox_waitq);
 				return;
@@ -303,7 +266,7 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 	long ret = 0;
 
 	if(atomic_read(&tcc_scrshare->status) != SCRSHARE_STS_READY) {
-		pr_err("error in %s: Not ready to send message \n", __func__);
+		pr_err("error in %s: Not ready to send message status:%d\n", __func__, atomic_read(&tcc_scrshare->status));
 		ret = -100;
 		return ret;
 	}
@@ -312,46 +275,40 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 
 	switch(cmd) {
 	case IOCTL_TCC_SCRSHARE_SET_DSTINFO: //set in a7s
-		ret =copy_from_user(tcc_scrshare_info->dstinfo, (void *)arg, sizeof(struct tcc_scrshare_screeninfo));
+		ret =copy_from_user(tcc_scrshare_info->dstinfo, (void *)arg, sizeof(struct tcc_scrshare_dstinfo));
 		if(ret) {
 			pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
 			goto err_ioctl;
 		}
-		pr_debug("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d\n", __func__, tcc_scrshare_info->dstinfo->x, tcc_scrshare_info->dstinfo->y, tcc_scrshare_info->dstinfo->width, tcc_scrshare_info->dstinfo->height);
+		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d\n", __func__, 
+			tcc_scrshare_info->dstinfo->x, tcc_scrshare_info->dstinfo->y, tcc_scrshare_info->dstinfo->width, tcc_scrshare_info->dstinfo->height, tcc_scrshare_info->dstinfo->img_num);
 		goto err_ioctl;
 		break;
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in a53
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL:
-		if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO) {
-			pr_debug("%s IOCTL_TCC_SCRSHARE_GET_SCRINFO\n", __func__);
-			ret =copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
-			if(ret) {
-				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
-				goto err_ioctl;
-			}
-		} else if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL){
-			memcpy(&data, (struct tcc_mbox_data *)arg, sizeof(struct tcc_mbox_data));
-		}
+		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+		data.cmd[1] = (SCRSHARE_CMD_GET_DSTINFO & 0xFFFF) << 16;
 		break;
 	case IOCTL_TCC_SCRSHARE_SET_SRCINFO: //set in a53
-		ret =copy_from_user(tcc_scrshare_info->srcinfo, (void *)arg, sizeof(struct tcc_scrshare_screeninfo));
+		ret =copy_from_user(tcc_scrshare_info->srcinfo, (void *)arg, sizeof(struct tcc_scrshare_srcinfo));
 		if(ret) {
 			pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
 			goto err_ioctl;
 		}
-		pr_debug("%s SET_SRCINFO x:%d, y:%d, w:%d, h:%d\n", __func__, tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, tcc_scrshare_info->srcinfo->width, tcc_scrshare_info->srcinfo->height);
-		tcc_scrshare_on();
+		pr_info("%s SET_SRCINFO x:%d, y:%d, w:%d, h:%d\n", __func__, tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, tcc_scrshare_info->srcinfo->width, tcc_scrshare_info->srcinfo->height);
 		goto err_ioctl;
 		break;
-	case IOCTL_TCC_SCRSHARE_ON: //set in a53
-	case IOCTL_TCC_SCRSHARE_ON_KERNEL: //set in a53
+	case IOCTL_TCC_SCRSHARE_ON: //set in a7s
+	case IOCTL_TCC_SCRSHARE_ON_KERNEL: //set in a7s
 		tcc_scrshare_on();
-		goto err_ioctl;
+		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+		data.cmd[1] = (SCRSHARE_CMD_ON& 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_OFF: //set in a53
-	case IOCTL_TCC_SCRSHARE_OFF_KERNEL: //set in a53
+	case IOCTL_TCC_SCRSHARE_OFF: //set in a7s
+	case IOCTL_TCC_SCRSHARE_OFF_KERNEL: //set in a7s
 		tcc_scrshare_off();
-		goto err_ioctl;
+		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+		data.cmd[1] = (SCRSHARE_CMD_OFF& 0xFFFF) << 16;
 		break;
 	default:
 		pr_info("warning in %s: Invalid command (%d)\n", __func__, cmd);
@@ -373,13 +330,7 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 	else
 	{
 		if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO)
-		{
-			data.data[0] = tcc_scrshare_info->dstinfo->x;
-			data.data[1] = tcc_scrshare_info->dstinfo->y;
-			data.data[2] = tcc_scrshare_info->dstinfo->width;
-			data.data[3] = tcc_scrshare_info->dstinfo->height;
-			copy_to_user((void *)arg, &data, sizeof(struct tcc_mbox_data));
-		}
+			copy_to_user((void *)arg, tcc_scrshare_info->dstinfo, sizeof(struct tcc_scrshare_dstinfo));
 	}
 	mbox_done = 0;
 
@@ -388,9 +339,59 @@ err_ioctl:
 	return ret;
 }
 
+
+void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, unsigned int frameHeight, unsigned int fmt)
+{
+	if((tcc_scrshare_info==NULL) || (addr <= 0) || (frameWidth <= 0) || (frameHeight <= 0) || (fmt <= 0)) {
+		pr_err("%s Invalid arguments entered addr:0x%08x, frm_w:%d, frm_h:%d, fmt:0x%x\n", __func__, addr, frameWidth, frameHeight, fmt);
+		return;
+	}
+
+	if((tcc_scrshare_info->share_enable) && (tcc_scrshare_info->srcinfo->width > 0))
+	{
+		long ret = 0;
+		struct tcc_mbox_data data;
+		unsigned int base0, base1, base2;
+
+		pr_debug("%s addr:0x%08x, frm_w:%d, frm_h:%d, fmt:0x%x\n", __func__, addr, frameWidth, frameHeight, fmt);
+		tccxxx_GetAddress(fmt, addr, frameWidth, frameHeight,
+								tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, &base0, &base1, &base2);
+		
+		tcc_scrshare_info->src_addr = base0;
+		tcc_scrshare_info->frm_w= frameWidth;
+		tcc_scrshare_info->frm_h = frameHeight;
+		tcc_scrshare_info->fmt = fmt;
+		
+		
+		mutex_lock(&tcc_scrshare_device->tx.lock);
+		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+		data.cmd[1] = (SCRSHARE_CMD_SET_SRCINFO & 0xFFFF) << 16;
+		data.data[0] = tcc_scrshare_info->src_addr;
+		data.data[1] = tcc_scrshare_info->frm_w;
+		data.data[2] = tcc_scrshare_info->frm_h;
+		data.data[3] = tcc_scrshare_info->fmt;
+		data.data_len = 4;
+
+		/* Increase tx-sequence ID */
+		atomic_inc(&tcc_scrshare_device->tx.seq);
+		data.cmd[0] = atomic_read(&tcc_scrshare_device->tx.seq);
+
+		/* Initialize tx-wakup condition */
+		mbox_done = 0;
+
+		tcc_scrshare_send_message(tcc_scrshare_device, &data);
+		ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
+		if(ret <= 0)
+			pr_err("error in %s: Timeout tcc_scrshare_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
+		mbox_done = 0;
+		mutex_unlock(&tcc_scrshare_device->tx.lock);		
+	}
+
+}
+
 static int tcc_scrshare_release(struct inode *inode, struct file *filp)
 {
-//	tcc_scrshare_off();
+	tcc_scrshare_off();
 	return 0;
 }
 
@@ -523,11 +524,11 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	tcc_scrshare_disp_info = kzalloc(sizeof(struct tcc_scrshare_info), GFP_KERNEL);
 	if(!tcc_scrshare_disp_info)
 		return -ENOMEM;
-	tcc_scrshare_disp_info->srcinfo = kzalloc(sizeof(struct tcc_scrshare_screeninfo), GFP_KERNEL);
+	tcc_scrshare_disp_info->srcinfo = kzalloc(sizeof(struct tcc_scrshare_srcinfo), GFP_KERNEL);
 	if(!tcc_scrshare_disp_info->srcinfo)
 		goto err_scrshare_mem;
 
-	tcc_scrshare_disp_info->dstinfo = kzalloc(sizeof(struct tcc_scrshare_screeninfo), GFP_KERNEL);
+	tcc_scrshare_disp_info->dstinfo = kzalloc(sizeof(struct tcc_scrshare_dstinfo), GFP_KERNEL);
 	if(!tcc_scrshare_disp_info->dstinfo)
 		goto err_scrshare_mem;
 	
@@ -535,6 +536,7 @@ static int tcc_scrshare_probe(struct platform_device *pdev)
 	tcc_scrshare_disp_info->dstinfo->y = 0;
 	tcc_scrshare_disp_info->dstinfo->width = 640;
 	tcc_scrshare_disp_info->dstinfo->height = 720;
+	tcc_scrshare_disp_info->dstinfo->img_num = 1;
 	tcc_scrshare_info = tcc_scrshare_disp_info;
 
 	pr_info("%s:%s Driver Initialized\n", __func__, tcc_scrshare->name);
@@ -544,7 +546,7 @@ err_scrshare_mem:
 		kfree(tcc_scrshare_disp_info->srcinfo);
 	if(tcc_scrshare_disp_info)
 		kfree(tcc_scrshare_disp_info);
-	printk("err_scrshare_mem. \n");
+	pr_err("err_scrshare_mem. \n");
 
 	return ret;
 }

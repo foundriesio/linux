@@ -2,7 +2,7 @@
 linux/include/video/tcc/tcc_screen_share.h
 Description: Telechips Screen Share Driver
 
-Copyright (C) 2013 Telechips Inc.
+Copyright (C) 2019 Telechips Inc.
 
 This program is free software; you can redistribute it and/or modify it under the terms
 of the GNU General Public License as published by the Free Software Foundation;
@@ -22,23 +22,31 @@ Suite 330, Boston, MA 02111-1307 USA
 #define TCC_SCRSHARE_SEND		0x1
 #define TCC_SCRSHARE_ACK		0x10
 
-struct tcc_scrshare_screeninfo
+struct tcc_scrshare_srcinfo
 {
-	unsigned int 	x;
-	unsigned int 	y;
-	unsigned int 	width;
-	unsigned int 	height;
+	unsigned int    x;
+	unsigned int    y;
+	unsigned int    width;
+	unsigned int    height;
+};
+
+struct tcc_scrshare_dstinfo
+{
+	unsigned int    x;
+	unsigned int    y;
+	unsigned int    width;
+	unsigned int    height;
+	unsigned int    img_num;
 };
 
 struct tcc_scrshare_info
 {
-	struct tcc_scrshare_screeninfo *srcinfo;
-	struct tcc_scrshare_screeninfo *dstinfo;
+	struct tcc_scrshare_srcinfo *srcinfo;
+	struct tcc_scrshare_dstinfo *dstinfo;
 
 	unsigned int	frm_w;
 	unsigned	int	frm_h;
 	unsigned	int	fmt;
-	unsigned int    layer;
 	unsigned int 	src_addr;
 	unsigned int 	share_enable;
 };
@@ -47,6 +55,7 @@ struct tcc_scrshare_info
 enum {
 	SCRSHARE_CMD_NULL = 0,
 	SCRSHARE_CMD_GET_DSTINFO,
+	SCRSHARE_CMD_SET_SRCINFO,
 	SCRSHARE_CMD_ON,
 	SCRSHARE_CMD_OFF,
 	SCRSHARE_CMD_READY,
@@ -65,12 +74,12 @@ enum {
 #define IOCTL_TCC_SCRSHARE_SET_DSTINFO		_IO(TCC_SCRSHARE_MAGIC ,1)
 #define IOCTL_TCC_SCRSHARE_GET_DSTINFO		_IO(TCC_SCRSHARE_MAGIC ,2)
 #define IOCTL_TCC_SCRSHARE_SET_SRCINFO		_IO(TCC_SCRSHARE_MAGIC ,3)
-#define IOCTL_TCC_SCRSHARE_ON					_IO(TCC_SCRSHARE_MAGIC ,4)
+#define IOCTL_TCC_SCRSHARE_ON				_IO(TCC_SCRSHARE_MAGIC ,4)
 #define IOCTL_TCC_SCRSHARE_OFF				_IO(TCC_SCRSHARE_MAGIC ,5)
 
 #define IOCTL_TCC_SCRSHARE_SET_DSTINFO_KERNEL		0x100
 #define IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL		0x101
 #define IOCTL_TCC_SCRSHARE_SET_SRCINFO_KERNEL		0x102
-#define IOCTL_TCC_SCRSHARE_ON_KERNEL					0x102
-#define IOCTL_TCC_SCRSHARE_OFF_KERNEL				0x103
+#define IOCTL_TCC_SCRSHARE_ON_KERNEL				0x103
+#define IOCTL_TCC_SCRSHARE_OFF_KERNEL				0x104
 #endif
