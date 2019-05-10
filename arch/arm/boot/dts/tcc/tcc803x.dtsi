@@ -2560,7 +2560,7 @@
 		compatible = "telechips,lvds_phy";
 		clocks = <&clk_peri PERI_LVDS_PHY>;
 		phy-frequency = <100000000>;
-		reg = <0x12370000 0x400 0x12370400 0x400 0x12360800 0x400 0x12360C00 0x400>;
+		reg = <0x1b941000 400 0x1b941000 400 0x1b942800 400 0x1b942c00 400 0x1b940000 400>;
 	};
 
 	vioc_pxdemux:vioc_pxdemux@12390000 {

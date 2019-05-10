@@ -163,8 +163,10 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 	unsigned int vioc_id = -1;
 
 	/* Check RDMA is enabled */
-	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK))
+	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK)){
+		printk("rdma is enabled\n");
 		return;
+	}
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	#if defined(DOLBY_VISION_CHECK_SEQUENCE)

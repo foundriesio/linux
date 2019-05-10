@@ -2964,6 +2964,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	if(lcd_panel->init)
 		lcd_panel->init(lcd_panel, &info->pdata.Mdp_data);
 
+
 	tca_fb_init(info);
 
 #if !defined(CONFIG_DRM_TCC)
