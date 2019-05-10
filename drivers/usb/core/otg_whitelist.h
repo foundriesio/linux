@@ -50,6 +50,7 @@ static struct usb_device_id whitelist_table[] = {
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 { USB_INTERFACE_CLASS_INFO(USB_CLASS_MASS_STORAGE) },
 { USB_INTERFACE_CLASS_INFO(USB_CLASS_HID) },
+{ USB_INTERFACE_CLASS_INFO(USB_CLASS_VENDOR_SPEC) },
 { USB_VENDOR_AND_INTERFACE_INFO(0x05ac, USB_CLASS_AUDIO, 0, 0) }, //apple device
 #endif
 { }	/* Terminating entry */

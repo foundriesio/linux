@@ -299,6 +299,10 @@ static int ehci_platform_probe(struct platform_device *dev)
 	}
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
+	#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
+	printk("%s : tpl_support!!\n", __func__);
+	hcd->tpl_support = 1;
+	#endif
 
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (err)
