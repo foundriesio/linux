@@ -97,7 +97,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * explicit rescheduling in places that are safe. The return
 --- a/kernel/ptrace.c
 +++ b/kernel/ptrace.c
-@@ -175,7 +175,14 @@ static bool ptrace_freeze_traced(struct
+@@ -176,7 +176,14 @@ static bool ptrace_freeze_traced(struct
  
  	spin_lock_irq(&task->sighand->siglock);
  	if (task_is_traced(task) && !__fatal_signal_pending(task)) {

@@ -542,7 +542,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	update_task_stack(next_p);
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -7868,6 +7868,10 @@ static int vcpu_enter_guest(struct kvm_v
+@@ -7891,6 +7891,10 @@ static int vcpu_enter_guest(struct kvm_v
  		wait_lapic_expire(vcpu);
  	guest_enter_irqoff();
  
@@ -553,7 +553,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(vcpu->arch.switch_db_regs)) {
  		set_debugreg(0, 7);
  		set_debugreg(vcpu->arch.eff_db[0], 0);
-@@ -8126,22 +8130,30 @@ static int complete_emulated_mmio(struct
+@@ -8149,22 +8153,30 @@ static int complete_emulated_mmio(struct
  /* Swap (qemu) user FPU context for the guest FPU context. */
  static void kvm_load_guest_fpu(struct kvm_vcpu *vcpu)
  {

@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -4565,7 +4565,7 @@ static u64 distribute_cfs_runtime(struct
+@@ -4569,7 +4569,7 @@ static u64 distribute_cfs_runtime(struct
  		struct rq *rq = rq_of(cfs_rq);
  		struct rq_flags rf;
  
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (!cfs_rq_throttled(cfs_rq))
  			goto next;
  
-@@ -4582,7 +4582,7 @@ static u64 distribute_cfs_runtime(struct
+@@ -4586,7 +4586,7 @@ static u64 distribute_cfs_runtime(struct
  			unthrottle_cfs_rq(cfs_rq);
  
  next:
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		if (!remaining)
  			break;
-@@ -4598,7 +4598,7 @@ static u64 distribute_cfs_runtime(struct
+@@ -4602,7 +4602,7 @@ static u64 distribute_cfs_runtime(struct
   * period the timer is deactivated until scheduling resumes; cfs_b->idle is
   * used to track this state.
   */
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	u64 runtime, runtime_expires;
  	int throttled;
-@@ -4640,11 +4640,11 @@ static int do_sched_cfs_period_timer(str
+@@ -4644,11 +4644,11 @@ static int do_sched_cfs_period_timer(str
  	while (throttled && cfs_b->runtime > 0 && !cfs_b->distribute_running) {
  		runtime = cfs_b->runtime;
  		cfs_b->distribute_running = 1;
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		cfs_b->distribute_running = 0;
  		throttled = !list_empty(&cfs_b->throttled_cfs_rq);
-@@ -4753,17 +4753,18 @@ static __always_inline void return_cfs_r
+@@ -4757,17 +4757,18 @@ static __always_inline void return_cfs_r
  static void do_sched_cfs_slack_timer(struct cfs_bandwidth *cfs_b)
  {
  	u64 runtime = 0, slice = sched_cfs_bandwidth_slice();
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return;
  	}
  
-@@ -4774,18 +4775,18 @@ static void do_sched_cfs_slack_timer(str
+@@ -4778,18 +4779,18 @@ static void do_sched_cfs_slack_timer(str
  	if (runtime)
  		cfs_b->distribute_running = 1;
  
@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -4865,11 +4866,12 @@ static enum hrtimer_restart sched_cfs_pe
+@@ -4869,11 +4870,12 @@ static enum hrtimer_restart sched_cfs_pe
  {
  	struct cfs_bandwidth *cfs_b =
  		container_of(timer, struct cfs_bandwidth, period_timer);
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	for (;;) {
  		overrun = hrtimer_forward_now(timer, cfs_b->period);
  		if (!overrun)
-@@ -4897,11 +4899,11 @@ static enum hrtimer_restart sched_cfs_pe
+@@ -4901,11 +4903,11 @@ static enum hrtimer_restart sched_cfs_pe
  			count = 0;
  		}
  
