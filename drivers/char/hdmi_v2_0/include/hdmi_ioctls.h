@@ -132,9 +132,13 @@ typedef struct {
         u8 mColorimetry;
         u8 mScanInfo;
         u8 mActiveFormatAspectRatio;
+        /** Sets Non-Uniform Pictre Scaling */
         u8 mNonUniformScaling;
         ext_colorimetry_t mExtColorimetry;
         u8 mColorimetryDataBlock;
+        /** IT content
+          * [7:4] IT Content Type
+          * [3:0] IT Content */
         u8 mItContent;
         u16 mEndTopBar;
         u16 mStartBottomBar;
@@ -371,11 +375,13 @@ typedef struct {
 
 #endif
 
+/** @brief This structure defines the header of Dynamic Range and Mastering InfoFrame. */
 typedef struct {
 	u8 version;
 	u8 length;
 } DRM_Packet_Header;
 
+/** @brief This structure defines the body of Dynamic Range and Mastering InfoFrame. */
 typedef struct {
 	u8	EOTF;
 	u8	Descriptor_ID;
@@ -390,8 +396,12 @@ typedef struct {
 
 } DRM_Packet_Body;
 
+/**
+ * @brief This structure defines the DRM packet */
 typedef struct {
+        /** Header of Dynamic Range and Mastering InfoFrame. */
 	DRM_Packet_Header	mInfoFrame;
+        /** Body of Dynamic Range and Mastering InfoFrame. */
 	DRM_Packet_Body		mDescriptor_type1;
 } DRM_Packet_t;
 
@@ -695,24 +705,45 @@ typedef struct {
 #define HDMI_API_PHY_MASK			_IOW( IOCTL_HDMI_MAGIC, 0x282, unsigned int)
 
 /**
- * @short IOCTL to update drm config of user to drmParm.
+ * @short This ioctl calls hdmi_update_drm_configure to store
+ *        drm data provided by user-space.
+ * @param[in] drmParm Drm data to store
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_CONFIG			_IOW(IOCTL_HDMI_MAGIC, 0x285, DRM_Packet_t)
 
 /**
- * @short IOCTL to apply drm config of drmparm to hdmi link.
+ * @short This ioctl calls hdmi hdmi_apply_drm to apply drm data
+ *        stored in drmParam of device context to HDMI drm packet.
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
+ * @note Before use this API, you must store drm parameter want
+ *       to set to drmParm of device context.
  */
 #define HDMI_API_DRM_SET			_IO(IOCTL_HDMI_MAGIC, 0x286)
 
 /**
- * @short IOCTL to clear drm config of drmparm to hdmi link.
+ * @short This ioctl calls hdmi hdmi_clear_drm to change EOTF of
+ *        drm packet from any HDR mode to SDR mode.
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_CLEAR                      _IO(IOCTL_HDMI_MAGIC, 0x287)
 
 
 /**
- * @short IOCTL get validation of drmparam
-
+ * @short This ioctl get validate of drm data.
+ * @param[out] valid Indicates validate of drm data stored in device contex\n
+ *      0: drm Param of device context is invali\n
+ *      2: drm Param of device context is valid for HDR\n
+ *      3: drm Param of device context is valid for HLG\n
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_GET_VALID                  _IOR( IOCTL_HDMI_MAGIC, 0x288, int)
 
