@@ -9302,11 +9302,6 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
 };
 
 #if defined(CONFIG_NFS_V4_1)
-static struct nfs_seqid *
-nfs_alloc_no_seqid(struct nfs_seqid_counter *arg1, gfp_t arg2)
-{
-	return NULL;
-}
 
 static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
 	.minor_version = 1,
@@ -9321,7 +9316,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
 	.find_root_sec = nfs41_find_root_sec,
 	.free_lock_state = nfs41_free_lock_state,
 	.test_and_free_expired = nfs41_test_and_free_expired_stateid,
-	.alloc_seqid = nfs_alloc_no_seqid,
+	.alloc_seqid = nfs_alloc_seqid,
 	.session_trunk = nfs4_test_session_trunk,
 	.call_sync_ops = &nfs41_call_sync_ops,
 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
@@ -9352,7 +9347,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
 	.free_lock_state = nfs41_free_lock_state,
 	.call_sync_ops = &nfs41_call_sync_ops,
 	.test_and_free_expired = nfs41_test_and_free_expired_stateid,
-	.alloc_seqid = nfs_alloc_no_seqid,
+	.alloc_seqid = nfs_alloc_seqid,
 	.session_trunk = nfs4_test_session_trunk,
 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
