@@ -1,6 +1,8 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
+#include <asm/cpu.h>
+
 #include "mce_amd.h"
 
 static struct amd_decoder_ops *fam_ops;
@@ -835,7 +837,7 @@ static void decode_mc3_mce(struct mce *m)
 
 static void decode_mc4_mce(struct mce *m)
 {
-	struct cpuinfo_x86 *c = &boot_cpu_data;
+	unsigned int fam = x86_family(m->cpuid);
 	int node_id = amd_get_nb_id(m->extcpu);
 	u16 ec = EC(m->status);
 	u8 xec = XEC(m->status, 0x1f);
@@ -849,7 +851,7 @@ static void decode_mc4_mce(struct mce *m)
 		/* special handling for DRAM ECCs */
 		if (xec == 0x0 || xec == 0x8) {
 			/* no ECCs on F11h */
-			if (c->x86 == 0x11)
+			if (fam == 0x11)
 				goto wrong_mc4_mce;
 
 			pr_cont("%s.\n", mc4_mce_desc[xec]);
@@ -870,7 +872,7 @@ static void decode_mc4_mce(struct mce *m)
 		return;
 
 	case 0x19:
-		if (boot_cpu_data.x86 == 0x15 || boot_cpu_data.x86 == 0x16)
+		if (fam == 0x15 || fam == 0x16)
 			pr_cont("Compute Unit Data Error.\n");
 		else
 			goto wrong_mc4_mce;
@@ -893,11 +895,11 @@ static void decode_mc4_mce(struct mce *m)
 
 static void decode_mc5_mce(struct mce *m)
 {
-	struct cpuinfo_x86 *c = &boot_cpu_data;
+	unsigned int fam = x86_family(m->cpuid);
 	u16 ec = EC(m->status);
 	u8 xec = XEC(m->status, xec_mask);
 
-	if (c->x86 == 0xf || c->x86 == 0x11)
+	if (fam == 0xf || fam == 0x11)
 		goto wrong_mc5_mce;
 
 	pr_emerg(HW_ERR "MC5 Error: ");
@@ -1039,7 +1041,7 @@ static int
 amd_decode_mce(struct notifier_block *nb, unsigned long val, void *data)
 {
 	struct mce *m = (struct mce *)data;
-	struct cpuinfo_x86 *c = &cpu_data(m->extcpu);
+	unsigned int fam = x86_family(m->cpuid);
 	int ecc;
 
 	if (amd_filter_mce(m))
@@ -1049,7 +1051,7 @@ amd_decode_mce(struct notifier_block *nb, unsigned long val, void *data)
 
 	pr_emerg(HW_ERR "CPU:%d (%x:%x:%x) MC%d_STATUS[%s|%s|%s|%s|%s",
 		m->extcpu,
-		c->x86, c->x86_model, c->x86_mask,
+		fam, x86_model(m->cpuid), x86_stepping(m->cpuid),
 		m->bank,
 		((m->status & MCI_STATUS_OVER)	? "Over"  : "-"),
 		((m->status & MCI_STATUS_UC)	? "UE"	  :
@@ -1058,11 +1060,11 @@ amd_decode_mce(struct notifier_block *nb, unsigned long val, void *data)
 		((m->status & MCI_STATUS_PCC)	? "PCC"	  : "-"),
 		((m->status & MCI_STATUS_ADDRV)	? "AddrV" : "-"));
 
-	if (c->x86 >= 0x15) {
+	if (fam >= 0x15) {
 		pr_cont("|%s", (m->status & MCI_STATUS_DEFERRED ? "Deferred" : "-"));
 
 		/* F15h, bank4, bit 43 is part of McaStatSubCache. */
-		if (c->x86 != 0x15 || m->bank != 4)
+		if (fam != 0x15 || m->bank != 4)
 			pr_cont("|%s", (m->status & MCI_STATUS_POISON ? "Poison" : "-"));
 	}
 
