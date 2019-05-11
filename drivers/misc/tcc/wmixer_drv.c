@@ -281,13 +281,27 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 
     VIOC_WDMA_SetImageBase(pWMIX_wdma_base, wmix_info->dst_y_addr, wmix_info->dst_u_addr, wmix_info->dst_v_addr);
 
-    if (((wmix_info->src_fmt > VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt > VIOC_IMG_FMT_COMP))
+    if (wmix_info->src_fmt == VIOC_IMG_FMT_COMP) {
+        if ( wmix_info->dst_fmt < VIOC_IMG_FMT_COMP ) {
+            VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
+            VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 1);
+            VIOC_WDMA_SetImageY2RMode(pWMIX_wdma_base, 2);
+        } else {
+            VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
+            VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
+        }
+    } else if (((wmix_info->src_fmt > VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt > VIOC_IMG_FMT_COMP))
         || ((wmix_info->src_fmt < VIOC_IMG_FMT_COMP) && (wmix_info->dst_fmt < VIOC_IMG_FMT_COMP))) {
             VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
+            VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
     } else {
         if ( wmix_info->src_fmt < VIOC_IMG_FMT_COMP && wmix_info->dst_fmt > VIOC_IMG_FMT_COMP ) {
+            VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
             VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
             VIOC_WDMA_SetImageR2YMode(pWMIX_wdma_base, 1);
+        } else {
+            VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
+            VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
         }
     }
 
@@ -485,7 +499,7 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
         VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 1);
         VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 0);
     }
-    else if ((aps_info->src_fmt > VIOC_IMG_FMT_COMP) && (aps_info->dst_fmt < VIOC_IMG_FMT_COMP)) {
+    else if ((aps_info->src_fmt >= VIOC_IMG_FMT_COMP) && (aps_info->dst_fmt < VIOC_IMG_FMT_COMP)) {
         VIOC_WDMA_SetImageR2YEnable(pWMIX_wdma_base, 0);
         VIOC_WDMA_SetImageY2REnable(pWMIX_wdma_base, 1);
     }
