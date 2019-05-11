@@ -963,13 +963,12 @@ static void decode_smca_errors(struct mce *m)
 
 	ip_name = smca_get_long_name(bank_type);
 
-	pr_emerg(HW_ERR "%s Extended Error Code: %d\n", ip_name, xec);
+	pr_emerg(HW_ERR "%s Ext. Error Code: %d", ip_name, xec);
 
 	/* Only print the decode of valid error codes */
 	if (xec < smca_mce_descs[bank_type].num_descs &&
 			(hwid->xec_bitmap & BIT_ULL(xec))) {
-		pr_emerg(HW_ERR "%s Error: ", ip_name);
-		pr_cont("%s.\n", smca_mce_descs[bank_type].descs[xec]);
+		pr_cont(", %s.\n", smca_mce_descs[bank_type].descs[xec]);
 	}
 
 	/*
