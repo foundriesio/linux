@@ -189,7 +189,7 @@ static bool stusb_reg_writeable(struct device *dev, unsigned int reg)
 
 static bool stusb_reg_readable(struct device *dev, unsigned int reg)
 {
-	if ((reg >= 0x00 && reg <= 0x0A) ||
+	if (reg <= 0x0A ||
 	    (reg >= 0x14 && reg <= 0x17) ||
 	    (reg >= 0x19 && reg <= 0x1D) ||
 	    (reg >= 0x29 && reg <= 0x2D) ||
