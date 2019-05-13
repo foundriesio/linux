@@ -781,18 +781,44 @@ static int tee_ioctl_cas_send(struct tee_context *ctx,
 			       struct tee_ioctl_buf_data __user *ubuf)
 {
 	int rc;
+	struct tee_ioctl_buf_data buf;
+	void *data;
+	size_t size;
 
 	if (!ctx->teedev->desc->ops->cas_send) {
 		printk("%s:%d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	rc = ctx->teedev->desc->ops->cas_send(ctx, (uint32_t)ubuf);
-	if (rc) {
+	if (copy_from_user(&buf, ubuf, sizeof(buf))) {
 		printk("%s:%d\n", __func__, __LINE__);
-		goto out;
+		return -EFAULT;
 	}
 
+	if (!buf.buf_len) {
+		printk("%s:%d\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	data = kmalloc(buf.buf_len, GFP_KERNEL);
+	if (!data) {
+		buf.buf_len = 0;
+		goto exit;
+	}
+
+	if (copy_from_user(data, (void *)buf.buf_ptr, buf.buf_len)) {
+		kfree(data);
+		data = NULL;
+		buf.buf_len = 0;
+	}
+
+exit:
+	rc = ctx->teedev->desc->ops->cas_send(ctx, data, buf.buf_len);
+	if (rc)
+		printk("%s:%d\n", __func__, __LINE__);
+
+	if (data)
+		kfree(data);
 out:
 	return rc;
 }

@@ -114,7 +114,7 @@ struct tee_driver_ops {
 			    struct page **pages, size_t num_pages);
 	int (*shm_unregister)(struct tee_context *ctx, struct tee_shm *shm);
 	int (*cas_recv)(struct tee_context *ctx, void **data, size_t *size);
-	int (*cas_send)(struct tee_context *ctx, u32 ret);
+	int (*cas_send)(struct tee_context *ctx, void *data, size_t size);
 };
 
 /**

@@ -153,7 +153,7 @@ int optee_supp_send(struct tee_context *ctx, u32 ret, u32 num_params,
 
 u32 optee_cas_thrd_req(struct tee_context *ctx, void *data, size_t size);
 int optee_cas_recv(struct tee_context *ctx, void **data, size_t *size);
-int optee_cas_send(struct tee_context *ctx, u32 ret);
+int optee_cas_send(struct tee_context *ctx, void *data, size_t size);
 
 u32 optee_do_call_with_arg(struct tee_context *ctx, phys_addr_t parg);
 int optee_open_session(struct tee_context *ctx,

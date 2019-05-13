@@ -53,34 +53,20 @@ static struct optee_cas_req *cas_pop_req(struct optee_supp *cas)
 {
 	struct optee_cas_req *req;
 	int id;
-	size_t nm;
-//	const u32 attr = TEE_IOCTL_PARAM_ATTR_TYPE_VALUE_INOUT |
-//			 TEE_IOCTL_PARAM_ATTR_META;
-
-//	if (!num_params)
-//		return ERR_PTR(-EINVAL);
 
 	if (cas->req_id == -1) {
-//		if (param->attr != attr)
-			return ERR_PTR(-EINVAL);
-//		id = param->u.value.a;
-//		nm = 1;
+		return ERR_PTR(-EINVAL);
 	} else {
 		id = cas->req_id;
-		nm = 0;
 	}
 
 	req = idr_find(&cas->idr, id);
 	if (!req)
 		return ERR_PTR(-ENOENT);
 
-//	if ((num_params - nm) != req->num_params)
-//		return ERR_PTR(-EINVAL);
-
 	req->busy = false;
 	idr_remove(&cas->idr, id);
 	cas->req_id = -1;
-//	*num_meta = nm;
 
 	return req;
 }
@@ -218,7 +204,7 @@ int optee_cas_recv(struct tee_context *ctx, void **data, size_t *size)
  *
  * Returns 0 on success or <0 on failure.
  */
-int optee_cas_send(struct tee_context *ctx, u32 ret)
+int optee_cas_send(struct tee_context *ctx, void *data, size_t size)
 {
 	struct tee_device *teedev = ctx->teedev;
 	struct optee *optee = tee_get_drvdata(teedev);
@@ -234,7 +220,18 @@ int optee_cas_send(struct tee_context *ctx, u32 ret)
 		return PTR_ERR(req);
 	}
 
-	req->ret = ret;
+	if (size) {
+		if (req->size < size)
+			req->ret = TEEC_ERROR_COMMUNICATION;
+		else {
+			memcpy(req->data, data, size);
+			req->size = size;
+			req->ret = TEEC_SUCCESS;
+		}
+	}
+	else
+		req->ret = TEEC_ERROR_COMMUNICATION;
+
 	/* Let the requesting thread continue */
 	complete(&req->c);
 
