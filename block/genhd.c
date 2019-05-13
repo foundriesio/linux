@@ -1645,7 +1645,8 @@ static unsigned long disk_events_poll_jiffies(struct gendisk *disk)
 	 */
 	if (ev->poll_msecs >= 0)
 		intv_msecs = ev->poll_msecs;
-	else if (disk->events & ~disk->async_events)
+	else if (disk->events & DISK_EVENT_FLAG_POLL
+		 && disk->events & ~disk->async_events)
 		intv_msecs = disk_events_dfl_poll_msecs;
 
 	return msecs_to_jiffies(intv_msecs);
@@ -1855,11 +1856,13 @@ static void disk_check_events(struct disk_events *ev,
 
 	/*
 	 * Tell userland about new events.  Only the events listed in
-	 * @disk->events are reported.  Unlisted events are processed the
-	 * same internally but never get reported to userland.
+	 * @disk->events are reported, and only if DISK_EVENT_FLAG_UEVENT
+	 * is set. Otherwise, events are processed internally but never
+	 * get reported to userland.
 	 */
 	for (i = 0; i < ARRAY_SIZE(disk_uevents); i++)
-		if (events & disk->events & (1 << i))
+		if (events & disk->events & (1 << i) &&
+		    disk->events & DISK_EVENT_FLAG_UEVENT)
 			envp[nr_events++] = disk_uevents[i];
 
 	if (nr_events)
@@ -1896,7 +1899,10 @@ static ssize_t disk_events_show(struct device *dev,
 {
 	struct gendisk *disk = dev_to_disk(dev);
 
-	return __disk_events_show(disk->events, buf);
+	if (!(disk->events & DISK_EVENT_FLAG_UEVENT))
+		return 0;
+
+	return __disk_events_show(disk->events & DISK_EVENT_TYPES_MASK, buf);
 }
 
 static ssize_t disk_events_async_show(struct device *dev,
@@ -1904,7 +1910,11 @@ static ssize_t disk_events_async_show(struct device *dev,
 {
 	struct gendisk *disk = dev_to_disk(dev);
 
-	return __disk_events_show(disk->async_events, buf);
+	if (!(disk->events & DISK_EVENT_FLAG_UEVENT))
+		return 0;
+
+	return __disk_events_show(disk->async_events & DISK_EVENT_TYPES_MASK,
+				  buf);
 }
 
 static ssize_t disk_events_poll_msecs_show(struct device *dev,
