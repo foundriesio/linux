@@ -5537,7 +5537,8 @@ EXPORT_SYMBOL(tca_fb_pan_display);
 
 
 /* suspend and resume support for the lcd controller */
-int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
+int tca_fb_suspend(struct device *dev,
+        struct lcd_panel *disp_panel, struct lcd_panel *ext_panel)
 {
 	struct platform_device *fb_device = container_of(dev, struct platform_device, dev);
 	struct tccfb_info	   *info = platform_get_drvdata(fb_device);
@@ -5564,11 +5565,15 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
         }
         #endif
 
-
 	info->pdata.Mdp_data.FbPowerState = 0;
 
 	if (disp_panel->set_power)
 		disp_panel->set_power(disp_panel, 0, &info->pdata.Mdp_data);
+
+        /* disable extended panel */
+        if(ext_panel != NULL && ext_panel->set_power != NULL) {
+                ext_panel->set_power(ext_panel, 0, NULL);
+        }
 
 	#ifdef CONFIG_ANDROID
 	VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[RDMA_FB].virt_addr);
@@ -5601,7 +5606,8 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 EXPORT_SYMBOL(tca_fb_suspend);
 
 
-int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
+int tca_fb_resume(struct device *dev,
+        struct lcd_panel *disp_panel, struct lcd_panel *ext_panel)
 {
 	struct platform_device *fb_device = container_of(dev, struct platform_device, dev);
 	struct tccfb_info	   *fbi = platform_get_drvdata(fb_device);
@@ -5617,11 +5623,16 @@ int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
 	clk_prepare_enable(pdp_data->vioc_clock);
 	clk_prepare_enable(pdp_data->ddc_clock);
 
-	 if (disp_panel->set_power)
-		disp_panel->set_power(disp_panel, 1, &fbi->pdata.Mdp_data);
+        if (disp_panel->set_power)
+	        disp_panel->set_power(disp_panel, 1, &fbi->pdata.Mdp_data);
 
-	 if(fbi->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_LCD)
-		fbi->pdata.Mdp_data.FbPowerState = 1;
+        /* resume extended panel */
+        if(ext_panel != NULL && ext_panel->set_power != NULL) {
+                ext_panel->set_power(ext_panel, 1, NULL);
+        }
+
+        if(fbi->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_LCD)
+                fbi->pdata.Mdp_data.FbPowerState = 1;
 
 	_tca_vioc_intr_onoff(ON, pdp_data->ddc_info.irq_num, fbi->pdata.lcdc_number);
 

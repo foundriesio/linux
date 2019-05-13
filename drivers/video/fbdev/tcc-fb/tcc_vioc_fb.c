@@ -192,8 +192,8 @@ extern void tca_fb_attach_start(struct tccfb_info *info);
 extern int tca_fb_attach_stop(struct tccfb_info *info);
 
 
-extern int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel);
-extern int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel);
+extern int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel, struct lcd_panel *ext_panel);
+extern int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel, struct lcd_panel *ext_panel);
 extern int tca_fb_init(struct tccfb_info *dev);
 extern void tca_fb_exit(void);
 extern int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info);
@@ -2737,7 +2737,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	int ret = 0 , plane = 0;
 	unsigned int screen_width, screen_height;
 
-	if (!lcd_panel) {
+	if (lcd_panel == NULL) {
 		pr_err("tccfb: no LCD panel data\n");
 		return -EINVAL;
 	}
@@ -2745,6 +2745,11 @@ static int tccfb_probe(struct platform_device *pdev)
 // 	const struct of_device_id *of_id = of_match_device(tccfb_of_match, &pdev->dev);
 
 	pr_info("\x1b[1;38m   LCD panel is %s %s %d x %d \x1b[0m \n", lcd_panel->manufacturer, lcd_panel->name, lcd_panel->xres, lcd_panel->yres);
+
+        if(hdmi_ext_panel != NULL) {
+                pr_info("\x1b[1;38m   Extended panel is %s %s %d x %d \x1b[0m \n",
+                        hdmi_ext_panel->manufacturer, hdmi_ext_panel->name, hdmi_ext_panel->xres, hdmi_ext_panel->yres);
+        }
 
     screen_width      = lcd_panel->xres;
     screen_height     = lcd_panel->yres;
@@ -2964,6 +2969,9 @@ static int tccfb_probe(struct platform_device *pdev)
 	if(lcd_panel->init)
 		lcd_panel->init(lcd_panel, &info->pdata.Mdp_data);
 
+        if(hdmi_ext_panel != NULL && hdmi_ext_panel->init != NULL) {
+		hdmi_ext_panel->init(hdmi_ext_panel, &info->pdata.Sdp_data);
+        }
 
 	tca_fb_init(info);
 
@@ -3058,7 +3066,7 @@ int tcc_fb_runtime_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_suspend(dev, lcd_panel);
+	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
 
 	return 0;
 }
@@ -3067,7 +3075,7 @@ int tcc_fb_runtime_resume(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_resume(dev, lcd_panel);
+	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
 
 	return 0;
 }
@@ -3078,7 +3086,7 @@ static int tccfb_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 #ifndef CONFIG_PM
-	tca_fb_suspend(dev, lcd_panel);
+	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
 #endif//
 	return 0;
 }
@@ -3086,7 +3094,7 @@ static int tccfb_suspend(struct device *dev)
 static int tccfb_resume(struct device *dev)
 {
 #ifndef CONFIG_PM
-	tca_fb_resume(dev, lcd_panel);
+	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
 #endif//
 	return 0;
 }
