@@ -64,7 +64,7 @@ static int dwc2_ovr_bvalid(struct dwc2_hsotg *hsotg, bool valid)
 	return 0;
 }
 
-void dwc2_drd_update(struct dwc2_hsotg *hsotg)
+static void dwc2_drd_update(struct dwc2_hsotg *hsotg)
 {
 	int avalid, bvalid;
 	unsigned long flags;
