@@ -52,7 +52,11 @@ void fc_ActiveFormatAspectRatio(struct hdmi_tx_dev *dev, u8 left)
 void fc_IsItContent(struct hdmi_tx_dev *dev, u8 it)
 {
 	LOG_TRACE1(it);
-	hdmi_dev_write_mask(dev, FC_AVICONF2, FC_AVICONF2_IT_CONTENT_MASK, (it ? 1 : 0));
+        /** IT content
+          * [7:4] IT Content Type
+          * [3:0] IT Content */
+	hdmi_dev_write_mask(dev, FC_AVICONF2, FC_AVICONF2_IT_CONTENT_MASK, ((it & 0xF)? 1 : 0));
+        hdmi_dev_write_mask(dev, FC_AVICONF3, FC_AVICONF3_CN_MASK, (it >> 4));
 }
 
 void fc_ExtendedColorimetry(struct hdmi_tx_dev *dev, u8 extColor)
