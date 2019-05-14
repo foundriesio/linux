@@ -622,66 +622,15 @@ add_delayed_ref_head(struct btrfs_fs_info *fs_info,
 {
 	struct btrfs_delayed_ref_head *existing;
 	struct btrfs_delayed_ref_root *delayed_refs;
-	int count_mod = 1;
-	int must_insert_reserved = 0;
-
-	/* If reserved is provided, it must be a data extent. */
-	BUG_ON(!is_data && reserved);
-
-	/*
-	 * the head node stores the sum of all the mods, so dropping a ref
-	 * should drop the sum in the head node by one.
-	 */
-	if (action == BTRFS_UPDATE_DELAYED_HEAD)
-		count_mod = 0;
-	else if (action == BTRFS_DROP_DELAYED_REF)
-		count_mod = -1;
-
-	/*
-	 * BTRFS_ADD_DELAYED_EXTENT means that we need to update
-	 * the reserved accounting when the extent is finally added, or
-	 * if a later modification deletes the delayed ref without ever
-	 * inserting the extent into the extent allocation tree.
-	 * ref->must_insert_reserved is the flag used to record
-	 * that accounting mods are required.
-	 *
-	 * Once we record must_insert_reserved, switch the action to
-	 * BTRFS_ADD_DELAYED_REF because other special casing is not required.
-	 */
-	if (action == BTRFS_ADD_DELAYED_EXTENT)
-		must_insert_reserved = 1;
-	else
-		must_insert_reserved = 0;
 
 	delayed_refs = &trans->transaction->delayed_refs;
 
-	refcount_set(&head_ref->refs, 1);
-	head_ref->bytenr = bytenr;
-	head_ref->num_bytes = num_bytes;
-	head_ref->ref_mod = count_mod;
-	head_ref->must_insert_reserved = must_insert_reserved;
-	head_ref->is_data = is_data;
-	head_ref->is_system = is_system;
-	head_ref->ref_tree = RB_ROOT;
-	INIT_LIST_HEAD(&head_ref->ref_add_list);
-	RB_CLEAR_NODE(&head_ref->href_node);
-	head_ref->processing = 0;
-	head_ref->total_ref_mod = count_mod;
-	spin_lock_init(&head_ref->lock);
-	mutex_init(&head_ref->mutex);
+	init_delayed_ref_head(head_ref, qrecord, bytenr, num_bytes, ref_root,
+			      reserved, action, is_data, is_system);
 
 	/* Record qgroup extent info if provided */
 	if (qrecord) {
-		if (ref_root && reserved) {
-			qrecord->data_rsv = reserved;
-			qrecord->data_rsv_refroot = ref_root;
-		}
-
-		qrecord->bytenr = bytenr;
-		qrecord->num_bytes = num_bytes;
-		qrecord->old_roots = NULL;
-
-		if(btrfs_qgroup_trace_extent_nolock(fs_info,
+		if (btrfs_qgroup_trace_extent_nolock(fs_info,
 					delayed_refs, qrecord))
 			kfree(qrecord);
 	}
@@ -702,7 +651,7 @@ add_delayed_ref_head(struct btrfs_fs_info *fs_info,
 	} else {
 		if (old_ref_mod)
 			*old_ref_mod = 0;
-		if (is_data && count_mod < 0)
+		if (is_data && head_ref->ref_mod < 0)
 			delayed_refs->pending_csums += num_bytes;
 		delayed_refs->num_heads++;
 		delayed_refs->num_heads_ready++;
