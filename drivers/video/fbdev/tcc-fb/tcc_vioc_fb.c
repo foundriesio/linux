@@ -1117,7 +1117,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                 }
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL)
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 1, pdp_data);
+                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 3/* turn on by external app */, NULL);
                                                 }
         				} else {
         				        pr_err("hdmi timing setting : can't find HDMI voic display block \n");
@@ -1141,7 +1141,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         				if(pdp_data != NULL){
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL) {
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 0, &ptccfb_info->pdata.Sdp_data);
+                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 2 /* turn off by external app */, NULL);
                                                         }
                                                 }
                                                 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)

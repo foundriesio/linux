@@ -96,6 +96,8 @@ struct adv7613_dev {
         int gpio_power_on;
         int gpio_reset;
 
+        int power_status; /* 0 : turn off by fb driver, 1: turn on by fb driver, 2: turn off by external app, 3: turn on by external app */
+
         struct tcc_dp_device *fb_pdata;
  };
 
@@ -202,6 +204,9 @@ static int adv7613_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_
                 /* store display device */
                 dev ->fb_pdata = fb_pdata;
 
+                /* turn on by fb driver */
+                dev->power_status = 1;
+
                 fb_pdata->FbPowerState = true;
                 fb_pdata->FbUpdateType = FB_SC_RDMA_UPDATE;
                 fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
@@ -258,6 +263,93 @@ static int adv763_update(struct adv7613_dev *dev, struct i2c_data_reg *i2c_data_
         return ret;
 }
 
+
+static int adv7613_set_power_internal(struct adv7613_dev *dev, int on)
+{
+        int ret = -1;
+        struct i2c_client *client;
+        struct tcc_dp_device *fb_pdata;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is null\r\n", __func__);
+                        break;
+                }
+                if(dev->fb_pdata == NULL) {
+                        pr_err("%s display device is null\r\n", __func__);
+                        break;
+                }
+
+                client = dev->client;
+
+                /* overwrite display device */
+                fb_pdata = dev->fb_pdata;
+
+                if(on) {
+                        pr_info("%s power on\r\n", __func__);
+                        if(gpio_is_valid(dev->gpio_power_on))
+                                gpio_set_value(dev->gpio_power_on, 1);
+
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 0);
+
+                        mdelay(1);
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 1);
+
+                        client->addr = dev->i2c_slave_address.main;
+                        if(adv763_update(dev, main_data_reg) < 0) {
+                                pr_err("%s failed set main reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.cp;
+                        if(adv763_update(dev, cp_data_reg) < 0) {
+                                pr_err("%s failed set cp reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.ksv;
+                        if(adv763_update(dev, ksv_data_reg) < 0) {
+                                pr_err("%s failed set ksv reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.hdmi;
+                        if(adv763_update(dev, hdmi_data_reg) < 0) {
+                                pr_err("%s failed set hdmi reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.lvds;
+                        if(adv763_update(dev, lvds_data_reg) < 0) {
+                                pr_err("%s failed set lvds reg\r\n", __func__);
+                                break;
+                        }
+
+                        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
+                        if(gpio_is_valid(dev->gpio_backlight_on))
+                                gpio_set_value(dev->gpio_backlight_on, 1);
+                        #endif
+                } else {
+                        pr_info("%s power off\r\n", __func__);
+                        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
+                        if(gpio_is_valid(dev->gpio_backlight_on))
+                                gpio_set_value(dev->gpio_backlight_on, 0);
+                        #endif
+
+                        #if defined(CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER)
+                        if(gpio_is_valid(dev->gpio_power_on))
+                                gpio_set_value(dev->gpio_power_on, 0);
+                        #endif
+
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 0);
+                }
+                ret = 0;
+        } while(0);
+        return ret;
+}
+
 static int adv7613_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
         int ret = -1;
@@ -276,74 +368,51 @@ static int adv7613_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 
                 client = dev->client;
 
-                /* overwrite display device */
-                fb_pdata = dev->fb_pdata;
-
+                /**
+                 * power_status    | current command | status result
+                 * ----------------|-----------------|---------------
+                 * turn off by fb  | turn on by fb   |turn on panel\n set power_status to turn on by fb
+                 * turn off by fb  | turn on by app  |turn on panel\n set power_status to turn on by app
+                 * turn off by app | turn on by fb   |SKIP
+                 * turn off by app | turn on by app  |turn on panel\n set power_status to turn on by app
+                 * turn on  by fb  | turn on by app  |set power_status to turn on by app
+                 * turn on  by app | turn on by fb   |SKIP
+                 * turn on  by app | turn off by fb  |turn off panel\n set power_status to turn off by fb
+                 */
                 switch(on) {
-                        case 0:
-                                pr_info("%s power off\r\n", __func__);
-                                #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
-                                if(gpio_is_valid(dev->gpio_backlight_on))
-                                        gpio_set_value(dev->gpio_backlight_on, 0);
-                                #endif
-
-                                #if defined(CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER)
-                                if(gpio_is_valid(dev->gpio_power_on))
-                                        gpio_set_value(dev->gpio_power_on, 0);
-                                #endif
-
-                                if(gpio_is_valid(dev->gpio_reset))
-                                        gpio_set_value(dev->gpio_reset, 0);
+                        case 0: /* turn off by fb driver */
+                                pr_info("%s turn off by fb, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 1 || dev->power_status == 3) {
+                                        adv7613_set_power_internal(dev, 0);
+                                        dev->power_status = 0;
+                                }
                                 break;
 
-                        case 1:
-                                pr_info("%s power on\r\n", __func__);
-                                if(gpio_is_valid(dev->gpio_power_on))
-                                        gpio_set_value(dev->gpio_power_on, 1);
-
-                                if(gpio_is_valid(dev->gpio_reset))
-                                        gpio_set_value(dev->gpio_reset, 0);
-
-                                udelay(20);
-                                if(gpio_is_valid(dev->gpio_reset))
-                                        gpio_set_value(dev->gpio_reset, 1);
-
-                                client->addr = dev->i2c_slave_address.main;
-                                if(adv763_update(dev, main_data_reg) < 0) {
-                                        pr_err("%s failed set main reg\r\n", __func__);
-                                        break;
+                        case 1: /* turn on by fb driver */
+                                pr_info("%s turn on by fb, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 0) {
+                                        adv7613_set_power_internal(dev, 1);
+                                        dev->power_status = 1;
                                 }
-
-                                client->addr = dev->i2c_slave_address.cp;
-                                if(adv763_update(dev, cp_data_reg) < 0) {
-                                        pr_err("%s failed set cp reg\r\n", __func__);
-                                        break;
-                                }
-
-                                client->addr = dev->i2c_slave_address.ksv;
-                                if(adv763_update(dev, ksv_data_reg) < 0) {
-                                        pr_err("%s failed set ksv reg\r\n", __func__);
-                                        break;
-                                }
-
-                                client->addr = dev->i2c_slave_address.hdmi;
-                                if(adv763_update(dev, hdmi_data_reg) < 0) {
-                                        pr_err("%s failed set hdmi reg\r\n", __func__);
-                                        break;
-                                }
-
-                                client->addr = dev->i2c_slave_address.lvds;
-                                if(adv763_update(dev, lvds_data_reg) < 0) {
-                                        pr_err("%s failed set lvds reg\r\n", __func__);
-                                        break;
-                                }
-
-                                #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
-                                if(gpio_is_valid(dev->gpio_backlight_on))
-                                        gpio_set_value(dev->gpio_backlight_on, 1);
-                                #endif
                                 break;
 
+                        case 2: /* turn off by external app */
+                                pr_info("%s turn off by external app, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 1 || dev->power_status == 3) {
+                                        adv7613_set_power_internal(dev, 0);
+                                        dev->power_status = 2;
+                                }
+                                break;
+
+                        case 3: /* turn on by external app */
+                                pr_info("%s turn on by external app, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status < 3) {
+                                        if(dev->power_status != 1) {
+                                                adv7613_set_power_internal(dev, 1);
+                                        }
+                                        dev->power_status = 3;
+                                }
+                                break;
                 }
                 ret = 0;
         } while(0);
