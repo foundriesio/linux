@@ -127,8 +127,10 @@ static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 
 
 /**
- * @short  Change the drm packet to sdr mode while keeping the devparam of hdmi device.
- * return int
+ * @short This function changes EOTF of drm packet from any HDR mode to SDR mode.
+ * @param[in] dev Device context for HDMI driver
+ * @return Always 0
+ * @retval 0 this function succeeded
  */
 int hdmi_clear_drm(struct hdmi_tx_dev *dev)
 {
@@ -148,8 +150,10 @@ int hdmi_clear_drm(struct hdmi_tx_dev *dev)
 }
 
 /**
- * @short Apply the drmparam of hdmi device to the drm packet.
- * return int
+ * @short This function applies drm data stored in drmParm of device context to HDMI drm packet.
+ * @param[in] dev Device context for HDMI driver
+ * @return Always 0
+ * @retval 0 this function succeeded
  */
 int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 {
@@ -167,8 +171,12 @@ int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 }
 
 /**
- * @short Update the drmparam of hdmi device from input data.
- * return int
+ * @short This function stores drm data to drmParm of device context
+ * @param[in] dev Device context for HDMI driver
+ * @param[in] drmparam Drm Data to store
+ * @return Return the result of this api
+ * @retval 0 this function succeeded
+ * @retval -1 otherwise
  */
 int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 {
@@ -199,11 +207,11 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
                         pr_info("%s valid drm meta data\r\n", __func__);
                         memcpy(dev->drmParm, drmparm, sizeof(DRM_Packet_t));
                         if(drm_infoframe_verification(dev, (DRM_Packet_t*)dev->drmParm)) {
-                                // HDR
+                                // HDR 0, 1, 2
                                 if(drmparm->mDescriptor_type1.EOTF < 3) {
                                         set_bit(HDMI_TX_HDR_VALID, &dev->status);
                                 }
-                                // HLG
+                                // HLG 3
                                 else if(drmparm->mDescriptor_type1.EOTF < 4) {
                                         set_bit(HDMI_TX_HLG_VALID, &dev->status);
                                 }
