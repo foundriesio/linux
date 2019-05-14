@@ -60,6 +60,7 @@ static int sun4i_rgb_mode_valid(struct drm_connector *connector,
 	u32 hsync = mode->hsync_end - mode->hsync_start;
 	u32 vsync = mode->vsync_end - mode->vsync_start;
 	unsigned long rate = mode->clock * 1000;
+	unsigned long long lowest, highest;
 	long rounded_rate;
 
 	DRM_DEBUG_DRIVER("Validating modes...\n");
@@ -92,13 +93,37 @@ static int sun4i_rgb_mode_valid(struct drm_connector *connector,
 
 	DRM_DEBUG_DRIVER("Vertical parameters OK\n");
 
+	/*
+	 * TODO: We should use the struct display_timing if available
+	 * and / or trying to stretch the timings within that
+	 * tolerancy to take care of panels that we wouldn't be able
+	 * to have a exact match for.
+	 */
+	if (rgb->panel) {
+		DRM_DEBUG_DRIVER("RGB panel used, skipping clock rate checks");
+		goto out;
+	}
+
+	/*
+	 * That shouldn't ever happen unless something is really wrong, but it
+	 * doesn't harm to check.
+	 */
+	if (!rgb->bridge)
+		goto out;
+
 	rounded_rate = clk_round_rate(tcon->dclk, rate);
-	if (rounded_rate < rate)
+
+	lowest = rate * (1000 - SUN4I_RGB_DOTCLOCK_TOLERANCE_PER_MILLE);
+	do_div(lowest, 1000);
+	if (rounded_rate < lowest)
 		return MODE_CLOCK_LOW;
 
-	if (rounded_rate > rate)
+	highest = rate * (1000 + SUN4I_RGB_DOTCLOCK_TOLERANCE_PER_MILLE);
+	do_div(highest, 1000);
+	if (rounded_rate > highest)
 		return MODE_CLOCK_HIGH;
 
+out:
 	DRM_DEBUG_DRIVER("Clock rate OK\n");
 
 	return MODE_OK;
