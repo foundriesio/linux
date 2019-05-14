@@ -72,13 +72,13 @@ enum {
 	MGEM_TCC_OUTPUT_HDMI_AUDIO_ONOFF,
 	MGEM_TCC_OUTPUT_HDMI_AUDIO_DISABLE,
 	MGEM_TCC_OUTPUT_HDMI_VIDEO_FORMAT,
-	MGEM_TCC_OUTPUT_HDMI_STRUCTURE_3D, 
+	MGEM_TCC_OUTPUT_HDMI_STRUCTURE_3D,
 	MGEM_TCC_OUTPUT_HDMI_SUPPORTED_RESOLUTION,
 	MGEM_TCC_OUTPUT_HDMI_SUPPORTED_3D_MODE,
         MGEM_TCC_OUTPUT_HDMI_SUPPORTED_HDR,
-	MGEM_TCC_VIDEO_HDMI_RESOLUTION, 
-	MGEM_TCC_OUTPUT_MODE_DETECTED, 
-	MGEM_TCC_OUTPUT_MODE_STB, 
+	MGEM_TCC_VIDEO_HDMI_RESOLUTION,
+	MGEM_TCC_OUTPUT_MODE_DETECTED,
+	MGEM_TCC_OUTPUT_MODE_STB,
 	MGEM_TCC_OUTPUT_MODE_PLUGOUT,
 	MGEM_TCC_2D_COMPRESSION,
 
@@ -91,9 +91,9 @@ enum {
 	MGEM_PERSIST_SPDIF_SETTING,
 	MGEM_PERSIST_HDMI_MODE,
 	MGEM_PERSIST_HDMI_RESIZE_UP,
-	MGEM_PERSIST_HDMI_RESIZE_DN, 
-	MGEM_PERSIST_HDMI_RESIZE_LT, 
-	MGEM_PERSIST_HDMI_RESIZE_RT, 
+	MGEM_PERSIST_HDMI_RESIZE_DN,
+	MGEM_PERSIST_HDMI_RESIZE_LT,
+	MGEM_PERSIST_HDMI_RESIZE_RT,
 	MGEM_PERSIST_HDMI_CEC,
 	MGEM_PERSIST_HDMI_RESOLUTION,
 	MGEM_PERSIST_HDMI_DETECTED_RES,
@@ -108,39 +108,18 @@ enum {
 	MGEM_PERSIST_HDMI_REFRESH_RATE,
 	MGEM_PERSIST_COMPOSITE_MODE,
 	MGEM_PERSIST_COMPOSITE_RESIZE_UP,
-	MGEM_PERSIST_COMPOSITE_RESIZE_DN, 
-	MGEM_PERSIST_COMPOSITE_RESIZE_LT, 
-	MGEM_PERSIST_COMPOSITE_RESIZE_RT, 
+	MGEM_PERSIST_COMPOSITE_RESIZE_DN,
+	MGEM_PERSIST_COMPOSITE_RESIZE_LT,
+	MGEM_PERSIST_COMPOSITE_RESIZE_RT,
 	MGEM_PERSIST_COMPOSITE_DETECTED,
 	MGEM_PERSIST_COMPONENT_MODE,
 	MGEM_PERSIST_COMPONENT_RESIZE_UP,
-	MGEM_PERSIST_COMPONENT_RESIZE_DN, 
-	MGEM_PERSIST_COMPONENT_RESIZE_LT, 
+	MGEM_PERSIST_COMPONENT_RESIZE_DN,
+	MGEM_PERSIST_COMPONENT_RESIZE_LT,
 	MGEM_PERSIST_COMPONENT_RESIZE_RT,
 	MGEM_PERSIST_COMPONENT_DETECTED,
 	MGEM_TCCDISPMAN_SUPPORT_RESOLUTION_COUNT,
-
-	//+ COLOR ENHANCEMENT
-	MGEM_COLOR_ENHANCE_LCD_HUE,
-	MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS,
-	MGEM_COLOR_ENHANCE_LCD_CONTRAST,
-	MGEM_COLOR_ENHANCE_LCD_SAT,				// only tcc898x
-	MGEM_COLOR_ENHANCE_HDMI_HUE,
-	MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS,
-	MGEM_COLOR_ENHANCE_HDMI_CONTRAST,
-	MGEM_COLOR_ENHANCE_HDMI_SAT,			// only tcc898x
-	MGEM_COLOR_ENHANCE_COMPOSITE_HUE,
-	MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS,
-	MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST,
-	MGEM_COLOR_ENHANCE_COMPOSITE_SAT,		// only tcc898x
-	MGEM_COLOR_ENHANCE_COMPONENT_HUE,
-	MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS,
-	MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST,
-	MGEM_COLOR_ENHANCE_COMPONENT_SAT,		// only tcc898x
-	//- COLOR ENHANCEMENT
-
 	MGEM_TCC_HDCP_HDMI_ENABLE,		// for hdcp
-
 	MGEM_PERSIST_HDMI_NATIVE_FIRST,
 	MGEM_PERSIST_HDMI_HW_CTS,
 	MGEM_TCC_SYS_OUTPUT_SECOND_ATTACH,
@@ -172,367 +151,6 @@ extern char default_component_resolution;
 
 // Support Lock_F
 static  atomic_t tcc_dispman_lock_file;
-
-
-#define DBGENHANCE		0
-
-/* Display Device Color Enhancemnet */
-struct dd_color_enhancement {
-	int enable;
-	int output_mode;
-	int disp_id;
-	volatile void __iomem *pDISP;
-	unsigned int hue;	// hue
-	unsigned int bri;	// brightness
-	unsigned int con;	// contrast
-	unsigned int sat;	// saturation. (>= tcc898x)
-};
-
-void tcc_init_display_enhancement(void)
-{
-        #if !defined(CONFIG_ARCH_TCC803X)
-	int i;
-	int tcc_output_mode_stb;
-	int persist_display_mode;
-	int persist_hdmi_detected;
-	struct dd_color_enhancement dce[2];
-
-	/* tcc_dispman_init()
-	 * #ifdef CONFIG_TCC_DISPLAY_MODE_USE
-	 *  // STB MODE
-	 *  atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB], (unsigned long)1);
-	 * #endif
-	 */
-	tcc_output_mode_stb = atomic_read(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB]);
-
-	/* tcc_dispman_init()
-	 * #if defined(CONFIG_TCC_DISPLAY_MODE_USE)
-	 *  #if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)1);
-	 *  #elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)2);
-	 *  #elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)3);
-	 *  #endif
-	 * #endif
-	 */
-	persist_display_mode = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE]);
-
-	/* hdmi detected */
-	persist_hdmi_detected = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]);
-
-	dce[0].pDISP = VIOC_DISP_GetAddress(0);
-	dce[1].pDISP = VIOC_DISP_GetAddress(1);
-
-	for (i = 0; i <= 1; i++) {
-		VIOC_DISP_GetCENH_hue(dce[i].pDISP, &dce[i].hue);
-		VIOC_DISP_GetCENH_brightness(dce[i].pDISP, &dce[i].bri);
-		VIOC_DISP_GetCENH_contrast(dce[i].pDISP, &dce[i].con);
-		VIOC_DISP_GetCENH_saturation(dce[i].pDISP, &dce[i].sat);
-	}
-
-	if (0 == tcc_output_mode_stb) {
-		/*
-		 * 1st display: LCD
-		 * 2nd display: HDMI/Composite/Component
-		 */
-		i = 0;
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_HUE], dce[i].hue);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS], dce[i].bri);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_CONTRAST], dce[i].con);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_SAT], dce[i].sat);
-
-		i = 1;
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], dce[i].hue);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], dce[i].bri);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], dce[i].con);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_SAT], dce[i].sat);
-
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], dce[i].hue);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], dce[i].bri);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], dce[i].con);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_SAT], dce[i].sat);
-
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_HUE], dce[i].hue);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS], dce[i].bri);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST], dce[i].con);
-		atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_SAT], dce[i].sat);
-	} else if (1 == tcc_output_mode_stb) {
-		if (1 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI(plug-in/out)/Composite
-			 */
-			i = 0;
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], dce[i].hue);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], dce[i].bri);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], dce[i].con);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_SAT], dce[i].sat);
-
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], dce[i].hue);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], dce[i].bri);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], dce[i].con);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_SAT], dce[i].sat);
-		} else if (2 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI(plug-in/out)/Composite
-			 * 2nd display: Composite
-			 */
-			if (persist_hdmi_detected) {
-				i = 0;
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], dce[i].hue);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], dce[i].bri);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], dce[i].con);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_SAT], dce[i].sat);
-
-				i = 1;
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], dce[i].hue);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], dce[i].bri);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], dce[i].con);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_SAT], dce[i].sat);
-			} else {
-				i = 0;
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], dce[i].hue);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], dce[i].bri);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], dce[i].con);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_SAT], dce[i].sat);
-
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], dce[i].hue);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], dce[i].bri);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], dce[i].con);
-				atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_SAT], dce[i].sat);
-			}
-		}else if (3 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI/Component
-			 * 2nd display: Composite
-			 */
-			i = 0;
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], dce[i].hue);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], dce[i].bri);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], dce[i].con);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_SAT], dce[i].sat);
-
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_HUE], dce[i].hue);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS], dce[i].bri);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST], dce[i].con);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_SAT], dce[i].sat);
-
-			i = 1;
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], dce[i].hue);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], dce[i].bri);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], dce[i].con);
-			atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_SAT], dce[i].sat);
-		}
-	}
-
-	#if DBGENHANCE
-	{
-		int x, y;
-		printk("dispman: color enhancement\n");
-		for (x = 0; x <= 3; x++) {
-			for (y = 0; y <= 3; y++) {
-				printk("  0x%x ", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_HUE + (4 * x) + y]));
-			}
-			printk("\n");
-		}
-	}
-	#endif
-        #endif
-}
-
-void tcc_set_display_enhancement(unsigned int OutputMode)
-{
-        #if !defined(CONFIG_ARCH_TCC803X)
-	int tcc_output_mode_stb;
-	int persist_display_mode;
-	int persist_hdmi_detected;
-	struct dd_color_enhancement dce;
-
-	/* tcc_dispman_init()
-	 * #ifdef CONFIG_TCC_DISPLAY_MODE_USE
-	 *  // STB MODE
-	 *  atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB], (unsigned long)1);
-	 * #endif
-	 */
-	tcc_output_mode_stb = atomic_read(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB]);
-
-	/* tcc_dispman_init()
-	 * #if defined(CONFIG_TCC_DISPLAY_MODE_USE)
-	 *  #if defined(CONFIG_TCC_DISPLAY_MODE_AUTO_DETECT)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)1);
-	 *  #elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_HDMI_CVBS)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)2);
-	 *  #elif defined(CONFIG_TCC_DISPLAY_MODE_DUAL_AUTO)
-	 *   atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)3);
-	 *  #endif
-	 * #endif
-	 */
-	persist_display_mode = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE]);
-
-	/* hdmi detected */
-	persist_hdmi_detected = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]);
-
-	dce.enable = 0;
-
-	if (0 == tcc_output_mode_stb) {
-		/*
-		 * 1st display: LCD
-		 * 2nd display: HDMI/Composite/Component
-		 */
-		switch (OutputMode) {
-		case OUTPUT_NONE:
-			dce.enable = 1;
-			dce.output_mode = OutputMode;
-			dce.disp_id = tca_get_lcd_lcdc_num();
-			dce.hue = MGEM_COLOR_ENHANCE_LCD_HUE;
-			dce.bri = MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS;
-			dce.con = MGEM_COLOR_ENHANCE_LCD_CONTRAST;
-			dce.sat = MGEM_COLOR_ENHANCE_LCD_SAT;
-			break;
-		case OUTPUT_HDMI:
-			dce.enable = 1;
-			dce.output_mode = OutputMode;
-			dce.disp_id = tca_get_output_lcdc_num();
-			dce.hue = MGEM_COLOR_ENHANCE_HDMI_HUE;
-			dce.bri = MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS;
-			dce.con = MGEM_COLOR_ENHANCE_HDMI_CONTRAST;
-			dce.sat = MGEM_COLOR_ENHANCE_HDMI_SAT;
-			break;
-		case OUTPUT_COMPOSITE:
-			dce.enable = 1;
-			dce.output_mode = OutputMode;
-			dce.disp_id = tca_get_output_lcdc_num();
-			dce.hue = MGEM_COLOR_ENHANCE_COMPOSITE_HUE;
-			dce.bri = MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS;
-			dce.con = MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST;
-			dce.sat = MGEM_COLOR_ENHANCE_COMPOSITE_SAT;
-			break;
-		case OUTPUT_COMPONENT:
-			dce.enable = 1;
-			dce.output_mode = OutputMode;
-			dce.disp_id = tca_get_output_lcdc_num();
-			dce.hue = MGEM_COLOR_ENHANCE_COMPONENT_HUE;
-			dce.bri = MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS;
-			dce.con = MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST;
-			dce.sat = MGEM_COLOR_ENHANCE_COMPONENT_SAT;
-			break;
-		default:
-			break;
-		}
-	} else if (1 == tcc_output_mode_stb) {
-		if (1 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI(plug-in/out)/Composite
-			 */
-			if (OUTPUT_HDMI == OutputMode) {
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_HDMI_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_HDMI_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_HDMI_SAT;
-			} else if (OUTPUT_COMPOSITE == OutputMode) {
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_COMPOSITE_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_COMPOSITE_SAT;
-			}
-		} else if (2 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI(plug-in/out)/Composite
-			 * 2nd display: Composite
-			 */
-			switch (OutputMode) {
-			case OUTPUT_HDMI:
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_HDMI_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_HDMI_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_HDMI_SAT;
-				break;
-			case OUTPUT_COMPOSITE:
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				if (persist_hdmi_detected)
-					dce.disp_id = tca_get_output_lcdc_num();
-				else
-					dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_COMPOSITE_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_COMPOSITE_SAT;
-				break;
-			default:
-				break;
-			}
-		}else if (3 == persist_display_mode) {
-			/*
-			 * 1st display: HDMI/Component
-			 * 2nd display: Composite
-			 */
-			switch (OutputMode) {
-			case OUTPUT_HDMI:
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_HDMI_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_HDMI_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_HDMI_SAT;
-				break;
-			case OUTPUT_COMPONENT:
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_lcd_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_COMPONENT_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_COMPONENT_SAT;
-				break;
-			case OUTPUT_COMPOSITE:
-				dce.enable = 1;
-				dce.output_mode = OutputMode;
-				dce.disp_id = tca_get_output_lcdc_num();
-				dce.hue = MGEM_COLOR_ENHANCE_COMPOSITE_HUE;
-				dce.bri = MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS;
-				dce.con = MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST;
-				dce.sat = MGEM_COLOR_ENHANCE_COMPOSITE_SAT;
-				break;
-			default:
-				break;
-			}
-		}
-	}
-
-	if (dce.enable) {
-		if (dce.disp_id)
-			dce.pDISP = VIOC_DISP_GetAddress(1);
-		else
-			dce.pDISP = VIOC_DISP_GetAddress(0);
-
-		dce.hue = atomic_read(&tcc_dispman_attribute_data[dce.hue]);
-		dce.bri = atomic_read(&tcc_dispman_attribute_data[dce.bri]);
-		dce.con = atomic_read(&tcc_dispman_attribute_data[dce.con]);
-
-		dce.sat = atomic_read(&tcc_dispman_attribute_data[dce.sat]);
-		VIOC_DISP_SetCENH_hue(dce.pDISP, dce.hue);
-		VIOC_DISP_SetCENH_brightness(dce.pDISP, dce.bri);
-		VIOC_DISP_SetCENH_contrast(dce.pDISP, dce.con);
-		VIOC_DISP_SetCENH_saturation(dce.pDISP, dce.sat);
-
-		#if DBGENHANCE
-		printk("dispman: disp%d mode(%d) h(0x%x) b(0x%x) c(0x%x) s(0x%x)\n"
-				, dce.disp_id, dce.output_mode, dce.hue, dce.bri, dce.con, dce.sat);
-		#endif
-	}
-        #endif
-}
 
 static ssize_t tcc_hdmi_720p_fixed_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -816,12 +434,12 @@ static ssize_t tcc_output_hdmi_structure_3d_store(struct device *dev, struct dev
 
 static ssize_t tcc_output_hdmi_supported_resolution_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        int tcc_dispman_supported_resolution_length = 
+        int tcc_dispman_supported_resolution_length =
 (int)atomic_read(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_HDMI_SUPPORTED_RESOLUTION]);
         ssize_t ret_size = 0;
         mutex_lock(&tcc_dispman_mutex);
         if(tcc_dispman_supported_resolution_length > 0) {
-                memcpy(buf, tcc_dispman_supported_resolution, tcc_dispman_supported_resolution_length);      
+                memcpy(buf, tcc_dispman_supported_resolution, tcc_dispman_supported_resolution_length);
                 ret_size = tcc_dispman_supported_resolution_length;
         }
         mutex_unlock(&tcc_dispman_mutex);
@@ -843,12 +461,12 @@ static ssize_t tcc_output_hdmi_supported_resolution_store(struct device *dev, st
 
 static ssize_t tcc_output_hdmi_supported_3d_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        int tcc_dispman_supported_3d_mode_lenght = 
+        int tcc_dispman_supported_3d_mode_lenght =
 (int)atomic_read(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_HDMI_SUPPORTED_3D_MODE]);
         ssize_t ret_size = 0;
         mutex_lock(&tcc_dispman_mutex);
         if(tcc_dispman_supported_3d_mode_lenght > 0) {
-                memcpy(buf, tcc_dispman_supported_3d_mode, tcc_dispman_supported_3d_mode_lenght);      
+                memcpy(buf, tcc_dispman_supported_3d_mode, tcc_dispman_supported_3d_mode_lenght);
                 ret_size = tcc_dispman_supported_3d_mode_lenght;
         }
         mutex_unlock(&tcc_dispman_mutex);
@@ -871,11 +489,11 @@ static ssize_t tcc_output_hdmi_supported_3d_mode_store(struct device *dev, struc
 static ssize_t tcc_output_hdmi_supported_hdr_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
         ssize_t ret_size = 0;
-        int tcc_dispman_supported_hdr_lenght = 
+        int tcc_dispman_supported_hdr_lenght =
                 (int)atomic_read(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_HDMI_SUPPORTED_HDR]);
         mutex_lock(&tcc_dispman_mutex);
         if(tcc_dispman_supported_hdr_lenght > 0) {
-                memcpy(buf, tcc_dispman_supported_hdr, tcc_dispman_supported_hdr_lenght);      
+                memcpy(buf, tcc_dispman_supported_hdr, tcc_dispman_supported_hdr_lenght);
                 ret_size = tcc_dispman_supported_hdr_lenght;
         }
         mutex_unlock(&tcc_dispman_mutex);
@@ -939,7 +557,7 @@ static ssize_t tcc_output_panel_width_show(struct device *dev, struct device_att
 	else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
-		
+
 	return result_size;
 #else
 	return 0;
@@ -951,14 +569,14 @@ static ssize_t tcc_output_panel_height_show(struct device *dev, struct device_at
 #ifdef CONFIG_FB_VIOC
 	ssize_t result_size;
 	struct lcd_panel *panel = tccfb_get_panel();
-	
+
 	if(panel) {
 		result_size = sprintf(buf, "%d\n", panel->yres);
 	}
 	else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
-		
+
 	return result_size;
 #else
 	return 0;
@@ -977,22 +595,22 @@ static ssize_t tcc_output_dispdev_width_show(struct device *dev, struct device_a
 	ptccfb_info = info->par;
 
 	if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-	    || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  
+	    || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)
 		|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Mdp_data;
 	} else if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  
+		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)
 		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Sdp_data;
 	} else {
 		printk("%s Can't find  output , Main:%d, Sub :%d \n",
-				__func__, 
-				ptccfb_info->pdata.Mdp_data.DispDeviceType, 
+				__func__,
+				ptccfb_info->pdata.Mdp_data.DispDeviceType,
 				ptccfb_info->pdata.Sdp_data.DispDeviceType);
 
 		return 0;
 	}
-	
+
 	pDISPBase = pdp_data->ddc_info.virt_addr;
 	VIOC_DISP_GetSize(pDISPBase, &lcd_width, &lcd_height);
 
@@ -1002,7 +620,7 @@ static ssize_t tcc_output_dispdev_width_show(struct device *dev, struct device_a
 	else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
-		
+
 	return result_size;
 }
 
@@ -1018,22 +636,22 @@ static ssize_t tcc_output_dispdev_height_show(struct device *dev, struct device_
 	ptccfb_info = info->par;
 
 	if((ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-	    || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  
+	    || (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)
 		|| (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Mdp_data;
 	} else if((ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)  
+		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPOSITE)
 		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Sdp_data;
 	} else {
 		printk("%s Can't find  output , Main:%d, Sub :%d \n",
-				__func__, 
-				ptccfb_info->pdata.Mdp_data.DispDeviceType, 
+				__func__,
+				ptccfb_info->pdata.Mdp_data.DispDeviceType,
 				ptccfb_info->pdata.Sdp_data.DispDeviceType);
 
 		return 0;
 	}
-	
+
 	pDISPBase = pdp_data->ddc_info.virt_addr;
 	VIOC_DISP_GetSize(pDISPBase, &lcd_width, &lcd_height);
 
@@ -1043,7 +661,7 @@ static ssize_t tcc_output_dispdev_height_show(struct device *dev, struct device_
 	else {
 		result_size = sprintf(buf, "%d\n", 0);
 	}
-		
+
 	return result_size;
 }
 
@@ -1502,9 +1120,6 @@ static ssize_t persist_hdmi_detected_store(struct device *dev, struct device_att
 	//if (data > 1) data = 1;
 	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]);
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED], data);
-	if(data && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_HDMI);
-	}
 	return count;
 }
 
@@ -1674,9 +1289,6 @@ static ssize_t persist_composite_detected_store(struct device *dev, struct devic
 	//if (data > 1) data = 1;
 	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPOSITE_DETECTED]);
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPOSITE_DETECTED], data);
-	if(data && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPOSITE);
-	}
 	return count;
 }
 
@@ -1784,12 +1396,8 @@ static ssize_t persist_component_detected_store(struct device *dev, struct devic
 	if (error)
 		return error;
 	//if (data > 1) data = 1;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED]);	
+	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED]);
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED], data);
-
-	if(data && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPONENT);
-	}	
 	return count;
 }
 static DEVICE_ATTR(persist_component_mode, S_IRUGO|S_IWUSR|S_IWGRP, persist_component_mode_show, persist_component_mode_store);
@@ -1821,7 +1429,7 @@ static ssize_t persist_supported_resolution_show(struct device *dev, struct devi
 	ssize_t ret_size = 0;
 	mutex_lock(&tcc_dispman_mutex);
 	if(tcc_dispman_support_resolution_length > 0) {
-		memcpy(buf, tcc_dispman_support_resolution, sizeof(char) * tcc_dispman_support_resolution_length);	
+		memcpy(buf, tcc_dispman_support_resolution, sizeof(char) * tcc_dispman_support_resolution_length);
 		ret_size = tcc_dispman_support_resolution_length;
 	}
 	mutex_unlock(&tcc_dispman_mutex);
@@ -1832,314 +1440,14 @@ static ssize_t persist_supported_resolution_store(struct device *dev, struct dev
 {
 	mutex_lock(&tcc_dispman_mutex);
 	memset(tcc_dispman_support_resolution, 0, sizeof(tcc_dispman_support_resolution));
-	memcpy(tcc_dispman_support_resolution, buf, sizeof(char) * count);	
+	memcpy(tcc_dispman_support_resolution, buf, sizeof(char) * count);
 	tcc_dispman_support_resolution_length = count;
 	mutex_unlock(&tcc_dispman_mutex);
 	return count;
 }
 
 static DEVICE_ATTR(persist_supported_resolution_count, S_IRUGO|S_IWUSR|S_IWGRP, persist_supported_resolution_count_show, persist_supported_resolution_count_store);
-static DEVICE_ATTR(persist_supported_resolution, S_IRUGO|S_IWUSR|S_IWGRP, persist_supported_resolution_show, persist_supported_resolution_store);  
-
-
-// ENHANCE LCD
-static ssize_t color_enhance_lcd_hue_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_HUE]));
-}
-
-static ssize_t color_enhance_lcd_hue_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_HUE]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_HUE], data);
-
-	if(prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_NONE);
-	}
-	return count;
-}
-
-static ssize_t color_enhance_lcd_brightness_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS]));
-}
-
-static ssize_t color_enhance_lcd_brightness_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_BRIGHTNESS], data);
-
-	if(prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_NONE);
-	}
-	return count;
-}
-
-static ssize_t color_enhance_lcd_contrast_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_CONTRAST]));
-}
-
-static ssize_t color_enhance_lcd_contrast_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_CONTRAST]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_LCD_CONTRAST], data);
-
-	if(prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_NONE);
-	}
-	return count;
-}
-
-
-static DEVICE_ATTR(color_enhance_lcd_hue, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_lcd_hue_show, color_enhance_lcd_hue_store);  
-static DEVICE_ATTR(color_enhance_lcd_brightness, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_lcd_brightness_show, color_enhance_lcd_brightness_store);  
-static DEVICE_ATTR(color_enhance_lcd_contrast, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_lcd_contrast_show, color_enhance_lcd_contrast_store);
-
-
-// ENHANCE HDMI
-static ssize_t color_enhance_hdmi_hue_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE]));
-}
-
-static ssize_t color_enhance_hdmi_hue_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_HUE], data);
-
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_HDMI);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_hdmi_brightness_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS]));
-}
-
-static ssize_t color_enhance_hdmi_brightness_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_BRIGHTNESS], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_HDMI);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_hdmi_contrast_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST]));
-}
-
-static ssize_t color_enhance_hdmi_contrast_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_HDMI_CONTRAST], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_HDMI);		
-	}
-	return count;
-}
-
-
-static DEVICE_ATTR(color_enhance_hdmi_hue, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_hdmi_hue_show, color_enhance_hdmi_hue_store);  
-static DEVICE_ATTR(color_enhance_hdmi_brightness, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_hdmi_brightness_show, color_enhance_hdmi_brightness_store);  
-static DEVICE_ATTR(color_enhance_hdmi_contrast, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_hdmi_contrast_show, color_enhance_hdmi_contrast_store);
-
-
-
-// ENHANCE COMPOSITE
-static ssize_t color_enhance_composite_hue_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE]));
-}
-
-static ssize_t color_enhance_composite_hue_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_HUE], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPOSITE_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPOSITE);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_composite_brightness_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS]));
-}
-
-static ssize_t color_enhance_composite_brightness_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_BRIGHTNESS], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPOSITE_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPOSITE);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_composite_contrast_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST]));
-}
-
-static ssize_t color_enhance_composite_contrast_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPOSITE_CONTRAST], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPOSITE_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPOSITE);		
-	}
-	return count;
-}
-
-
-static DEVICE_ATTR(color_enhance_composite_hue, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_composite_hue_show, color_enhance_composite_hue_store);  
-static DEVICE_ATTR(color_enhance_composite_brightness, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_composite_brightness_show, color_enhance_composite_brightness_store);  
-static DEVICE_ATTR(color_enhance_composite_contrast, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_composite_contrast_show, color_enhance_composite_contrast_store);
-
-
-
-
-// ENHANCE COMPONENT
-static ssize_t color_enhance_component_hue_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_HUE]));
-}
-
-static ssize_t color_enhance_component_hue_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_HUE]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_HUE], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPONENT);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_component_brightness_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS]));
-}
-
-static ssize_t color_enhance_component_brightness_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_BRIGHTNESS], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPONENT);		
-	}
-	return count;
-}
-
-static ssize_t color_enhance_component_contrast_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST]));
-}
-
-static ssize_t color_enhance_component_contrast_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long data, prev_data;
-	int error = kstrtoul(buf, 10, &data);
-	if (error)
-		return error;
-
-	if(data > 255)
-		data = 255;
-	prev_data = atomic_read(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST]);
-	atomic_set(&tcc_dispman_attribute_data[MGEM_COLOR_ENHANCE_COMPONENT_CONTRAST], data);
-	if(atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_COMPONENT_DETECTED]) && prev_data != data) {
-		tcc_set_display_enhancement(OUTPUT_COMPONENT);		
-	}
-	return count;
-}
-
-
-static DEVICE_ATTR(color_enhance_component_hue, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_component_hue_show, color_enhance_component_hue_store);  
-static DEVICE_ATTR(color_enhance_component_brightness, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_component_brightness_show, color_enhance_component_brightness_store);  
-static DEVICE_ATTR(color_enhance_component_contrast, S_IRUGO|S_IWUSR|S_IWGRP, color_enhance_component_contrast_show, color_enhance_component_contrast_store);
-
+static DEVICE_ATTR(persist_supported_resolution, S_IRUGO|S_IWUSR|S_IWGRP, persist_supported_resolution_show, persist_supported_resolution_store);
 
 static ssize_t hdmi_native_first_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -2179,7 +1487,7 @@ static ssize_t hdmi_hw_cts_store(struct device *dev, struct device_attribute *at
 }
 static DEVICE_ATTR(persist_hdmi_hw_cts, S_IRUGO|S_IWUSR|S_IWGRP, hdmi_hw_cts_show, hdmi_hw_cts_store);
 
-        
+
 
 
 static ssize_t tcc_dispman_lock_file_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -2236,12 +1544,12 @@ static struct attribute *tcc_dispman_attributes[] = {
 	&dev_attr_tcc_output_hdmi_3d_format.attr,
 	&dev_attr_tcc_output_hdmi_audio_onoff.attr,
 	&dev_attr_tcc_output_hdmi_audio_disable.attr,
-	&dev_attr_tcc_output_hdmi_video_format.attr, 
+	&dev_attr_tcc_output_hdmi_video_format.attr,
 	&dev_attr_tcc_output_hdmi_structure_3d.attr,
 	&dev_attr_tcc_output_hdmi_supported_resolution.attr,
-	&dev_attr_tcc_output_hdmi_supported_3d_mode.attr,	
+	&dev_attr_tcc_output_hdmi_supported_3d_mode.attr,
         &dev_attr_tcc_output_hdmi_supported_hdr.attr,
-	&dev_attr_tcc_video_hdmi_resolution.attr,	
+	&dev_attr_tcc_video_hdmi_resolution.attr,
 	&dev_attr_tcc_output_mode_detected.attr,
 	&dev_attr_tcc_output_panel_width.attr,
 	&dev_attr_tcc_output_panel_height.attr,
@@ -2259,9 +1567,9 @@ static struct attribute *tcc_dispman_attributes[] = {
 	&dev_attr_persist_auto_resolution.attr,
 	&dev_attr_persist_spdif_setting.attr,
 	&dev_attr_persist_hdmi_mode.attr,
-	&dev_attr_persist_hdmi_resize_up.attr, 
-	&dev_attr_persist_hdmi_resize_dn.attr, 
-	&dev_attr_persist_hdmi_resize_lt.attr, 
+	&dev_attr_persist_hdmi_resize_up.attr,
+	&dev_attr_persist_hdmi_resize_dn.attr,
+	&dev_attr_persist_hdmi_resize_lt.attr,
 	&dev_attr_persist_hdmi_resize_rt.attr,
 	&dev_attr_persist_hdmi_cec.attr,
 	&dev_attr_persist_hdmi_resolution.attr,
@@ -2269,7 +1577,7 @@ static struct attribute *tcc_dispman_attributes[] = {
 	&dev_attr_persist_hdmi_printlog.attr,
 	&dev_attr_persist_hdmi_color_depth.attr,
 	&dev_attr_persist_hdmi_color_space.attr,
-	&dev_attr_persist_hdmi_colorimetry.attr,	
+	&dev_attr_persist_hdmi_colorimetry.attr,
 	&dev_attr_persist_hdmi_aspect_ratio.attr,
 	&dev_attr_persist_hdmi_detected.attr,
 	&dev_attr_persist_hdmi_detected_mode.attr,
@@ -2282,25 +1590,13 @@ static struct attribute *tcc_dispman_attributes[] = {
 	&dev_attr_persist_composite_resize_rt.attr,
 	&dev_attr_persist_composite_detected.attr,
 	&dev_attr_persist_component_mode.attr,
-	&dev_attr_persist_component_resize_up.attr,  
-	&dev_attr_persist_component_resize_dn.attr,  
-	&dev_attr_persist_component_resize_lt.attr,  
+	&dev_attr_persist_component_resize_up.attr,
+	&dev_attr_persist_component_resize_dn.attr,
+	&dev_attr_persist_component_resize_lt.attr,
 	&dev_attr_persist_component_resize_rt.attr,
 	&dev_attr_persist_supported_resolution.attr,
 	&dev_attr_persist_component_detected.attr,
 	&dev_attr_persist_supported_resolution_count.attr,
-	&dev_attr_color_enhance_lcd_hue.attr,
-	&dev_attr_color_enhance_lcd_brightness.attr,
-	&dev_attr_color_enhance_lcd_contrast.attr,
-	&dev_attr_color_enhance_hdmi_hue.attr,
-	&dev_attr_color_enhance_hdmi_brightness.attr,
-	&dev_attr_color_enhance_hdmi_contrast.attr,
-	&dev_attr_color_enhance_composite_hue.attr,
-	&dev_attr_color_enhance_composite_brightness.attr,
-	&dev_attr_color_enhance_composite_contrast.attr,
-	&dev_attr_color_enhance_component_hue.attr,
-	&dev_attr_color_enhance_component_brightness.attr,
-	&dev_attr_color_enhance_component_contrast.attr,
 	&dev_attr_persist_hdmi_native_first.attr,
 	&dev_attr_persist_hdmi_hw_cts.attr,
 	&dev_attr_tcc_dispman_lock_file.attr,
@@ -2354,7 +1650,7 @@ static unsigned int tcc_dispman_poll(struct file *filp, poll_table *wait)
 	if (msc_data == NULL) {
 		return -EFAULT;
 	}
-	
+
 	poll_wait(filp, &(msc_data->poll_wq), wait);
 
 	spin_lock_irq(&(msc_data->poll_lock));
@@ -2364,14 +1660,14 @@ static unsigned int tcc_dispman_poll(struct file *filp, poll_table *wait)
 	}
 
 	spin_unlock_irq(&(msc_data->poll_lock));
-	
+
 	return ret;
 #endif
 }
 
 long tcc_dispman_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	
+
 	return 0;
 }
 EXPORT_SYMBOL(tcc_dispman_ioctl);
@@ -2383,13 +1679,13 @@ int tcc_dispman_release(struct inode *inode, struct file *filp)
 EXPORT_SYMBOL(tcc_dispman_release);
 
 int tcc_dispman_open(struct inode *inode, struct file *filp)
-{	
+{
 	return 0;
 }
 EXPORT_SYMBOL(tcc_dispman_open);
 
 
-static struct file_operations tcc_dispman_fops = 
+static struct file_operations tcc_dispman_fops =
 {
 	.owner			= THIS_MODULE,
 	.unlocked_ioctl	= tcc_dispman_ioctl,
@@ -2410,7 +1706,7 @@ void __exit tcc_dispman_cleanup(void)
 	unregister_chrdev(tcc_dispman_major, DEVICE_NAME);
 	device_destroy(tcc_dispman_class, MKDEV(tcc_dispman_major, MANAGER_MINOR_ID));
 	class_destroy(tcc_dispman_class);
-	
+
 	return;
 }
 static struct device *tcc_dispman_dev;
@@ -2421,7 +1717,7 @@ int __init tcc_dispman_init(void)
 	printk(banner);
 
 	memset(tcc_dispman_attribute_data, 0, sizeof(tcc_dispman_attribute_data));
-		
+
 	tcc_dispman_major = MANAGER_MAJOR_ID;
 
 	if (register_chrdev(tcc_dispman_major, DEVICE_NAME, &tcc_dispman_fops)) {
@@ -2432,7 +1728,7 @@ int __init tcc_dispman_init(void)
 		}
 		printk(KERN_ERR "tcc_dispman: unable to register major %d. Registered %d instead\n", MANAGER_MAJOR_ID, tcc_dispman_major);
 	}
-	
+
 	tcc_dispman_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (IS_ERR(tcc_dispman_class)) {
 		unregister_chrdev(tcc_dispman_major, DEVICE_NAME);
@@ -2450,9 +1746,9 @@ int __init tcc_dispman_init(void)
 #endif
         // Support Lock_F
         atomic_set(&tcc_dispman_lock_file, (unsigned long)0);
-        
+
 	// HDMI AUTO RESOLUTION
-	
+
         #if defined(CONFIG_LCD_HDMI1920X720_ADV7613)
         atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_RESOLUTION], (unsigned long)16);
         #else
@@ -2465,35 +1761,33 @@ int __init tcc_dispman_init(void)
 		// STB MODE
 		atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB], (unsigned long)1);
 
-		// PLUGOUT 
+		// PLUGOUT
 		atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_PLUGOUT], (unsigned long)0);
 
 		// HDMI OUTPUT
 		atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_OUTPUT_MODE], (unsigned long)1);
 	#endif
-	
+
 	#if defined(CONFIG_TCC_DISPLAY_HDMI_LVDS)
 	atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_SYS_OUTPUT_SECOND_ATTACH], 1);
 	#endif
-		
+
 	// auto color space
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_COLOR_SPACE], (unsigned long)125);
 
         // auto colorimetry
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_COLORIMETRY], (unsigned long)125);
 
-	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_REFRESH_RATE], (unsigned long)0); // default refresh is HZ/1.00 
+	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_REFRESH_RATE], (unsigned long)0); // default refresh is HZ/1.00
 
         // support hdr & hlg
         atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_HDMI_EXTRA_MODE], (unsigned long)3);
 
 	//cec connection information
-	atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_CEC_CONNECTION], (unsigned long)0);  
+	atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_CEC_CONNECTION], (unsigned long)0);
 
 	// TCC HDCP enable
 	atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_HDCP_HDMI_ENABLE], 0);
-
-	tcc_init_display_enhancement();
 
 	#if defined(CONFIG_TCC_OUTPUT_STARTER)
 	if (default_component_resolution == 3/*STARTER_COMPONENT_1080I*/) {
@@ -2506,7 +1800,7 @@ int __init tcc_dispman_init(void)
 	ret = sysfs_create_group(&tcc_dispman_dev->kobj, &tcc_dispman_attribute_group);
 	if(ret)
 		printk("failed create sysfs\r\n");
-	
+
 	return 0;
 }
 
