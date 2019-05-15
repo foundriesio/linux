@@ -35,8 +35,14 @@
 #define SGTL5000_DAP_REG_OFFSET	0x0100
 #define SGTL5000_MAX_REG_OFFSET	0x013A
 
+/* The Manual recommends a VAG ramp delay 200-400 ms.
+ * For Toradex SoM Apalis TK1 v1.2A the optimal up/down delay is 500 ms.
+ * For Toradex SoM Apalis iMX6D/Q v1.1B the optimal delay
+ * is 600 ms for ramp up and 500 ms ramp down.
+ */
+
 /* Delay for the VAG ramp up */
-#define SGTL5000_VAG_POWERUP_DELAY 500 /* ms */
+#define SGTL5000_VAG_POWERUP_DELAY 600 /* ms */
 /* Delay for the VAG ramp down */
 #define SGTL5000_VAG_POWERDOWN_DELAY 500 /* ms */
 
