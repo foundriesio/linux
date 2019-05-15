@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _ENIC_CLSF_H_
 #define _ENIC_CLSF_H_
 
