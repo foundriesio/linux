@@ -67,7 +67,7 @@ enum {
 	HDCP_NR_GET_STATUS,
 	HDCP2_NR_INIT,
 	HDCP2_NR_STOP,
-	HDCP_NR_BLANK,
+	HDCP_NR_SRM,
 	ESM_NR_MAX
 };
 
@@ -187,6 +187,6 @@ struct hdcp_ioc_data {
 #define HDCP2_INIT _IO('H', HDCP2_NR_INIT)
 #define HDCP2_STOP _IO('H', HDCP2_NR_STOP)
 
-#define HDCP_IOC_BLANK			   _IOW('H', HDCP_NR_BLANK, struct hdcp_ioc_data)
+#define HDCP_SET_SRM	_IOW('H', HDCP_NR_SRM, struct esm_ioc_code)
 
 #endif
