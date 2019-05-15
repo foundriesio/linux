@@ -4846,6 +4846,7 @@ int stmmac_resume(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
+	int ret;
 
 	if (!netif_running(ndev))
 		return 0;
@@ -4879,7 +4880,25 @@ int stmmac_resume(struct device *dev)
 
 	stmmac_reset_queues_param(priv);
 
-	stmmac_clear_descriptors(priv);
+	/* Stop TX/RX DMA and clear the descriptors */
+	stmmac_stop_all_dma(priv);
+
+	/* Release and free the Rx/Tx resources */
+	free_dma_desc_resources(priv);
+
+	ret = alloc_dma_desc_resources(priv);
+	if (ret < 0) {
+		netdev_err(priv->dev, "%s: DMA descriptors allocation failed\n",
+			   __func__);
+		goto dma_desc_error;
+	}
+
+	ret = init_dma_desc_rings(ndev, GFP_KERNEL);
+	if (ret < 0) {
+		netdev_err(priv->dev, "%s: DMA descriptors initialization failed\n",
+			   __func__);
+		goto init_error;
+	}
 
 	if (!device_may_wakeup(priv->device)) {
 		rtnl_lock();
@@ -4900,6 +4919,13 @@ int stmmac_resume(struct device *dev)
 	phylink_mac_change(priv->phylink, true);
 
 	return 0;
+init_error:
+	free_dma_desc_resources(priv);
+dma_desc_error:
+	if (ndev->phydev)
+		phy_disconnect(ndev->phydev);
+
+	return -1;
 }
 EXPORT_SYMBOL_GPL(stmmac_resume);
 
