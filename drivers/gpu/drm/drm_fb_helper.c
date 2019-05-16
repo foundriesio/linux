@@ -3225,8 +3225,6 @@ int drm_fbdev_generic_setup(struct drm_device *dev, unsigned int preferred_bpp)
 		return ret;
 	}
 
-	drm_client_add(&fb_helper->client);
-
 	if (!preferred_bpp)
 		preferred_bpp = dev->mode_config.preferred_depth;
 	if (!preferred_bpp)
@@ -3234,6 +3232,8 @@ int drm_fbdev_generic_setup(struct drm_device *dev, unsigned int preferred_bpp)
 	fb_helper->preferred_bpp = preferred_bpp;
 
 	drm_fbdev_client_hotplug(&fb_helper->client);
+
+	drm_client_add(&fb_helper->client);
 
 	return 0;
 }
