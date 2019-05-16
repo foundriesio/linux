@@ -1531,6 +1531,9 @@ static int nvme_revalidate_disk(struct gendisk *disk)
 	struct nvme_ns_ids ids;
 	int ret = 0;
 
+	if (ctrl->state != NVME_CTRL_LIVE)
+		return 0;
+
 	if (test_bit(NVME_NS_DEAD, &ns->flags)) {
 		set_capacity(disk, 0);
 		return -ENODEV;
