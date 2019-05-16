@@ -616,6 +616,21 @@ static void stm32_exti_h_syscore_deinit(void)
 	unregister_syscore_ops(&stm32_exti_h_syscore_ops);
 }
 
+static int stm32_exti_request_resources(struct irq_data *d)
+{
+	struct irq_chip *chip_parent = d->parent_data->chip;
+
+	if (chip_parent && chip_parent->irq_request_resources)
+		return chip_parent->irq_request_resources(d->parent_data);
+	return 0;
+}
+
+static void stm32_exti_release_resources(struct irq_data *d)
+{
+	if (d->parent_data->chip && d->parent_data->chip->irq_release_resources)
+		d->parent_data->chip->irq_release_resources(d->parent_data);
+}
+
 static struct irq_chip stm32_exti_h_chip = {
 	.name			= "stm32-exti-h",
 	.irq_eoi		= stm32_exti_h_eoi,
@@ -627,6 +642,8 @@ static struct irq_chip stm32_exti_h_chip = {
 	.irq_set_wake		= stm32_exti_h_set_wake,
 	.flags			= IRQCHIP_MASK_ON_SUSPEND,
 	.irq_set_affinity	= IS_ENABLED(CONFIG_SMP) ? stm32_exti_h_set_affinity : NULL,
+	.irq_request_resources = stm32_exti_request_resources,
+	.irq_release_resources = stm32_exti_release_resources,
 };
 
 static int stm32_exti_h_domain_alloc(struct irq_domain *dm,
