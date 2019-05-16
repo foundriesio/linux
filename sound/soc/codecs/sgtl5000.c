@@ -576,17 +576,12 @@ static const struct snd_kcontrol_new sgtl5000_snd_controls[] = {
 		   SGTL5000_HP_MUTE_SHIFT, 1, 1),
 	SOC_SINGLE("Headphone Playback ZC Switch", SGTL5000_CHIP_ANA_CTRL,
 		   SGTL5000_HP_ZCD_EN, 1, 0),
-	SOC_SINGLE("Headphone Playback Switch", SGTL5000_CHIP_ANA_CTRL,
-		   SGTL5000_HP_MUTE_SHIFT, 1, 1),
-
-	/* Lineout */
-	SOC_SINGLE("Lineout Playback Switch", SGTL5000_CHIP_ANA_CTRL,
-		   SGTL5000_LINE_MUTE_SHIFT, 1, 1),
 
 	/* Microphone */
 	SOC_SINGLE_TLV("Mic Volume", SGTL5000_CHIP_MIC_CTRL,
 		       SGTL5000_MIC_GAIN_SHIFT, 3, 0, mic_gain_tlv),
 
+	/* Lineout */
 	SOC_DOUBLE_TLV("Lineout Playback Volume",
 			SGTL5000_CHIP_LINE_OUT_VOL,
 			SGTL5000_LINE_OUT_VOL_LEFT_SHIFT,
