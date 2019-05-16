@@ -755,7 +755,7 @@ static int stm32_dma_mdma_flush_remaining(struct stm32_dma_chan *chan)
 				dev_err(chan2dev(chan),
 					"%s timeout waiting for last bytes\n",
 					__func__);
-				break;
+				return -EBUSY;
 			}
 			cpu_relax();
 			residue = stm32_dma_get_remaining_bytes(chan);
