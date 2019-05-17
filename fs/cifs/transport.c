@@ -540,15 +540,20 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int timeout,
 }
 
 static int
-wait_for_free_request(struct TCP_Server_Info *server, const int timeout,
-		      const int optype, unsigned int *instance)
+wait_for_free_request(struct TCP_Server_Info *server, const int flags,
+		      unsigned int *instance)
 {
 	int *val;
+	int timeout, optype;
+
+	timeout = flags & CIFS_TIMEOUT_MASK;
+	optype = flags & CIFS_OP_MASK;
 
 	val = server->ops->get_credits_field(server, optype);
 	/* Since an echo is already inflight, no need to wait to send another */
 	if (*val <= 0 && optype == CIFS_ECHO_OP)
 		return -EAGAIN;
+
 	return wait_for_free_credits(server, timeout, val, instance);
 }
 
@@ -648,16 +653,16 @@ cifs_call_async(struct TCP_Server_Info *server, struct smb_rqst *rqst,
 		mid_handle_t *handle, void *cbdata, const int flags,
 		const struct cifs_credits *exist_credits)
 {
-	int rc, timeout, optype;
+	int rc;
 	struct mid_q_entry *mid;
 	struct cifs_credits credits = { .value = 0, .instance = 0 };
 	unsigned int instance;
+	int optype;
 
-	timeout = flags & CIFS_TIMEOUT_MASK;
 	optype = flags & CIFS_OP_MASK;
 
 	if ((flags & CIFS_HAS_CREDITS) == 0) {
-		rc = wait_for_free_request(server, timeout, optype, &instance);
+		rc = wait_for_free_request(server, flags, &instance);
 		if (rc)
 			return rc;
 		credits.value = 1;
@@ -873,8 +878,7 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 		   const int flags, const int num_rqst, struct smb_rqst *rqst,
 		   int *resp_buf_type, struct kvec *resp_iov)
 {
-	int i, j, rc = 0;
-	int timeout, optype;
+	int i, j, optype, rc = 0;
 	struct mid_q_entry *midQ[MAX_COMPOUND];
 	bool cancelled_mid[MAX_COMPOUND] = {false};
 	struct cifs_credits credits[MAX_COMPOUND] = {
@@ -884,7 +888,6 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 	unsigned int first_instance = 0;
 	char *buf;
 
-	timeout = flags & CIFS_TIMEOUT_MASK;
 	optype = flags & CIFS_OP_MASK;
 
 	for (i = 0; i < num_rqst; i++)
@@ -935,8 +938,7 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 	 * Ensure we obtain 1 credit per request in the compound chain.
 	 */
 	for (i = 0; i < num_rqst; i++) {
-		rc = wait_for_free_request(ses->server, timeout, optype,
-					   &instance);
+		rc = wait_for_free_request(ses->server, flags, &instance);
 
 		if (rc == 0) {
 			credits[i].value = 1;
@@ -1059,7 +1061,7 @@ setup_rqsts:
 		smb311_update_preauth_hash(ses, rqst[0].rq_iov,
 					   rqst[0].rq_nvec);
 
-	if (timeout == CIFS_ASYNC_OP)
+	if ((flags & CIFS_TIMEOUT_MASK) == CIFS_ASYNC_OP)
 		goto out;
 
 	for (i = 0; i < num_rqst; i++) {
@@ -1196,7 +1198,7 @@ SendReceive2(const unsigned int xid, struct cifs_ses *ses,
 int
 SendReceive(const unsigned int xid, struct cifs_ses *ses,
 	    struct smb_hdr *in_buf, struct smb_hdr *out_buf,
-	    int *pbytes_returned, const int timeout)
+	    int *pbytes_returned, const int flags)
 {
 	int rc = 0;
 	struct mid_q_entry *midQ;
@@ -1227,7 +1229,7 @@ SendReceive(const unsigned int xid, struct cifs_ses *ses,
 		return -EIO;
 	}
 
-	rc = wait_for_free_request(ses->server, timeout, 0, &credits.instance);
+	rc = wait_for_free_request(ses->server, flags, &credits.instance);
 	if (rc)
 		return rc;
 
@@ -1266,7 +1268,7 @@ SendReceive(const unsigned int xid, struct cifs_ses *ses,
 	if (rc < 0)
 		goto out;
 
-	if (timeout == CIFS_ASYNC_OP)
+	if ((flags & CIFS_TIMEOUT_MASK) == CIFS_ASYNC_OP)
 		goto out;
 
 	rc = wait_for_response(ses->server, midQ);
@@ -1369,8 +1371,7 @@ SendReceiveBlockingLock(const unsigned int xid, struct cifs_tcon *tcon,
 		return -EIO;
 	}
 
-	rc = wait_for_free_request(ses->server, CIFS_BLOCKING_OP, 0,
-				   &instance);
+	rc = wait_for_free_request(ses->server, CIFS_BLOCKING_OP, &instance);
 	if (rc)
 		return rc;
 
