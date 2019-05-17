@@ -27,6 +27,7 @@ struct cpu_dev {
 	}		legacy_models[5];
 #endif
 };
+extern void init_hygon_cacheinfo(struct cpuinfo_x86 *c);
 
 struct _tlb_table {
 	unsigned char descriptor;
