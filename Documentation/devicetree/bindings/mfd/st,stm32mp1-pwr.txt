@@ -12,6 +12,7 @@ Required properties:
 - interrupts: contains the reference to the gic wake-up pin interrupt
 - interrupt-controller; Enable interrupt controller for wake-up pins.
 - #interrupt-cells = <3>
+- wakeup-gpios: contains a list of GPIO spec describing each wake-up pin.
 
 Optional Properties:
 - pwr-supply: main soc power supply
@@ -31,6 +32,10 @@ Example:
 		interrupt-controller;
 		#interrupt-cells = <3>;
 
+		wakeup-gpios = <&gpioa 0 0>, <&gpioa 2 0>,
+			       <&gpioc 13 0>, <&gpioi 8 0>,
+			       <&gpioi 11 0>, <&gpioc 1 0>;
+
 		pwr-supply = <&vdd>;
 	};
 
@@ -46,7 +51,6 @@ gpio_keys {
 		linux,code = <BTN_4>;
 		interrupt-parent = <&pwr>;
 		interrupts = <3 IRQ_TYPE_EDGE_FALLING 1>;
-		status = "okay";
 		wakeup-source;
 	};
 };
