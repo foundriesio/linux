@@ -184,10 +184,10 @@ static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare, s
 			tcc_scrshare_display(data);
 			break;
 		case SCRSHARE_CMD_ON:
-			tcc_scrshare_info->share_enable= 1;
+			tcc_scrshare_on();
 			break;
 		case SCRSHARE_CMD_OFF:
-			tcc_scrshare_info->share_enable= 0;
+			tcc_scrshare_off();
 			break;
 		case SCRSHARE_CMD_READY:
 		case SCRSHARE_CMD_NULL:
@@ -232,6 +232,17 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 					tcc_scrshare_info->dstinfo->height = msg->data[3];
 					tcc_scrshare_info->dstinfo->img_num= msg->data[4];
 				}
+				else if(command == SCRSHARE_CMD_ON)
+				{
+					pr_info("%s SCRSHARE_CMD_ON ok\n", __func__);
+					tcc_scrshare_info->share_enable = 1;
+				}
+				else if(command == SCRSHARE_CMD_OFF)
+				{
+					pr_info("%s SCRSHARE_CMD_ON ok\n", __func__);
+					tcc_scrshare_info->share_enable = 0;
+				}
+				
 				mbox_done = 1;
 				wake_up_interruptible(&mbox_waitq);
 				return;
@@ -298,15 +309,13 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 		pr_info("%s SET_SRCINFO x:%d, y:%d, w:%d, h:%d\n", __func__, tcc_scrshare_info->srcinfo->x, tcc_scrshare_info->srcinfo->y, tcc_scrshare_info->srcinfo->width, tcc_scrshare_info->srcinfo->height);
 		goto err_ioctl;
 		break;
-	case IOCTL_TCC_SCRSHARE_ON: //set in a7s
-	case IOCTL_TCC_SCRSHARE_ON_KERNEL: //set in a7s
-		tcc_scrshare_on();
+	case IOCTL_TCC_SCRSHARE_ON: //set in a53
+	case IOCTL_TCC_SCRSHARE_ON_KERNEL: //set in a53
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_ON& 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_OFF: //set in a7s
-	case IOCTL_TCC_SCRSHARE_OFF_KERNEL: //set in a7s
-		tcc_scrshare_off();
+	case IOCTL_TCC_SCRSHARE_OFF: //set in a53
+	case IOCTL_TCC_SCRSHARE_OFF_KERNEL: //set in a53
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_OFF& 0xFFFF) << 16;
 		break;
