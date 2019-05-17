@@ -2930,14 +2930,16 @@ smb2_echo_callback(struct mid_q_entry *mid)
 {
 	struct TCP_Server_Info *server = mid->callback_data;
 	struct smb2_echo_rsp *rsp = (struct smb2_echo_rsp *)mid->resp_buf;
-	unsigned int credits_received = 0;
+	struct cifs_credits credits = { .value = 0, .instance = 0 };
 
 	if (mid->mid_state == MID_RESPONSE_RECEIVED
-	    || mid->mid_state == MID_RESPONSE_MALFORMED)
-		credits_received = le16_to_cpu(rsp->sync_hdr.CreditRequest);
+	    || mid->mid_state == MID_RESPONSE_MALFORMED) {
+		credits.value = le16_to_cpu(rsp->sync_hdr.CreditRequest);
+		credits.instance = server->reconnect_instance;
+	}
 
 	DeleteMidQEntry(mid);
-	add_credits(server, credits_received, CIFS_ECHO_OP);
+	add_credits(server, &credits, CIFS_ECHO_OP);
 }
 
 void smb2_reconnect_server(struct work_struct *work)
@@ -3190,7 +3192,7 @@ smb2_readv_callback(struct mid_q_entry *mid)
 	struct TCP_Server_Info *server = tcon->ses->server;
 	struct smb2_sync_hdr *shdr =
 				(struct smb2_sync_hdr *)rdata->iov[0].iov_base;
-	unsigned int credits_received = 0;
+	struct cifs_credits credits = { .value = 0, .instance = 0 };
 	struct smb_rqst rqst = { .rq_iov = rdata->iov,
 				 .rq_nvec = 2,
 				 .rq_pages = rdata->pages,
@@ -3205,7 +3207,8 @@ smb2_readv_callback(struct mid_q_entry *mid)
 
 	switch (mid->mid_state) {
 	case MID_RESPONSE_RECEIVED:
-		credits_received = le16_to_cpu(shdr->CreditRequest);
+		credits.value = le16_to_cpu(shdr->CreditRequest);
+		credits.instance = server->reconnect_instance;
 		/* result already set, check signature */
 		if (server->sign && !mid->decrypted) {
 			int rc;
@@ -3230,7 +3233,8 @@ smb2_readv_callback(struct mid_q_entry *mid)
 		cifs_stats_bytes_read(tcon, rdata->got_bytes);
 		break;
 	case MID_RESPONSE_MALFORMED:
-		credits_received = le16_to_cpu(shdr->CreditRequest);
+		credits.value = le16_to_cpu(shdr->CreditRequest);
+		credits.instance = server->reconnect_instance;
 		/* fall through */
 	default:
 		rdata->result = -EIO;
@@ -3260,7 +3264,7 @@ smb2_readv_callback(struct mid_q_entry *mid)
 
 	queue_work(cifsiod_wq, &rdata->work);
 	DeleteMidQEntry(mid);
-	add_credits(server, credits_received, 0);
+	add_credits(server, &credits, 0);
 }
 
 /* smb2_async_readv - send an async read, and set up mid to handle result */
@@ -3432,14 +3436,16 @@ smb2_writev_callback(struct mid_q_entry *mid)
 {
 	struct cifs_writedata *wdata = mid->callback_data;
 	struct cifs_tcon *tcon = tlink_tcon(wdata->cfile->tlink);
+	struct TCP_Server_Info *server = tcon->ses->server;
 	unsigned int written;
 	struct smb2_write_rsp *rsp = (struct smb2_write_rsp *)mid->resp_buf;
-	unsigned int credits_received = 0;
+	struct cifs_credits credits = { .value = 0, .instance = 0 };
 
 	switch (mid->mid_state) {
 	case MID_RESPONSE_RECEIVED:
-		credits_received = le16_to_cpu(rsp->sync_hdr.CreditRequest);
-		wdata->result = smb2_check_receive(mid, tcon->ses->server, 0);
+		credits.value = le16_to_cpu(rsp->sync_hdr.CreditRequest);
+		credits.instance = server->reconnect_instance;
+		wdata->result = smb2_check_receive(mid, server, 0);
 		if (wdata->result != 0)
 			break;
 
@@ -3463,7 +3469,8 @@ smb2_writev_callback(struct mid_q_entry *mid)
 		wdata->result = -EAGAIN;
 		break;
 	case MID_RESPONSE_MALFORMED:
-		credits_received = le16_to_cpu(rsp->sync_hdr.CreditRequest);
+		credits.value = le16_to_cpu(rsp->sync_hdr.CreditRequest);
+		credits.instance = server->reconnect_instance;
 		/* fall through */
 	default:
 		wdata->result = -EIO;
@@ -3496,7 +3503,7 @@ smb2_writev_callback(struct mid_q_entry *mid)
 
 	queue_work(cifsiod_wq, &wdata->work);
 	DeleteMidQEntry(mid);
-	add_credits(tcon->ses->server, credits_received, 0);
+	add_credits(server, &credits, 0);
 }
 
 /* smb2_async_writev - send an async write, and set up mid to handle result */
