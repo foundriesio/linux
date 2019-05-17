@@ -23,8 +23,7 @@
 
 #include "pcie-designware.h"
 
-//#define PCI_SI_TEST
-#define PCI_EXT_OSC_USE
+
 #define to_tcc_pcie(x)	dev_get_drvdata((x)->dev)
 
 struct tcc_pcie {
@@ -41,6 +40,7 @@ struct tcc_pcie {
 	bool				using_phy;
 	unsigned int		using_ext_ref_clk;
 	unsigned int		for_si_test;
+	unsigned int		suspend_mode;
 	struct phy		*phy;
 	unsigned 		*suspend_regs;
 };
@@ -51,34 +51,6 @@ struct tcc_pcie {
 #define PORT_LOGIC_SPEED_CHANGE		(0x1 << 17)
 
 /* PCIe PHY registers */
-#define PCIE_PHY_IMPEDANCE		0x004
-#define PCIE_PHY_PLL_DIV_0		0x008
-#define PCIE_PHY_PLL_BIAS		0x00c
-#define PCIE_PHY_DCC_FEEDBACK		0x014
-#define PCIE_PHY_PLL_DIV_1		0x05c
-#define PCIE_PHY_COMMON_POWER		0x064
-#define PCIE_PHY_COMMON_PD_CMN		(0x1 << 3)
-#define PCIE_PHY_TRSV0_EMP_LVL		0x084
-#define PCIE_PHY_TRSV0_DRV_LVL		0x088
-#define PCIE_PHY_TRSV0_RXCDR		0x0ac
-#define PCIE_PHY_TRSV0_POWER		0x0c4
-#define PCIE_PHY_TRSV0_PD_TSV		(0x1 << 7)
-#define PCIE_PHY_TRSV0_LVCC		0x0dc
-#define PCIE_PHY_TRSV1_EMP_LVL		0x144
-#define PCIE_PHY_TRSV1_RXCDR		0x16c
-#define PCIE_PHY_TRSV1_POWER		0x184
-#define PCIE_PHY_TRSV1_PD_TSV		(0x1 << 7)
-#define PCIE_PHY_TRSV1_LVCC		0x19c
-#define PCIE_PHY_TRSV2_EMP_LVL		0x204
-#define PCIE_PHY_TRSV2_RXCDR		0x22c
-#define PCIE_PHY_TRSV2_POWER		0x244
-#define PCIE_PHY_TRSV2_PD_TSV		(0x1 << 7)
-#define PCIE_PHY_TRSV2_LVCC		0x25c
-#define PCIE_PHY_TRSV3_EMP_LVL		0x2c4
-#define PCIE_PHY_TRSV3_RXCDR		0x2ec
-#define PCIE_PHY_TRSV3_POWER		0x304
-#define PCIE_PHY_TRSV3_PD_TSV		(0x1 << 7)
-#define PCIE_PHY_TRSV3_LVCC		0x31c
 #define PCIE_PHY_CMN_REG062		0x188
 #define PCIE_PHY_CMN_REG064		0x190
 
@@ -97,6 +69,7 @@ struct tcc_pcie {
 #define PCIE_CFG07			0x01c
 #define PCIE_CFG08			0x020
 #define PCIE_CFG08_PHY_PLL_LOCKED	(1<<1)
+#define PCIE_CFG08_PHY_POWER_OFF	(1<<5)
 #define PCIE_CFG09			0x024
 #define PCIE_CFG10			0x028
 #define PCIE_CFG11			0x02c
@@ -225,6 +198,10 @@ static void tcc_pcie_deassert_phy_reset(struct tcc_pcie *tp)
 	tcc_cfg_write(tp, PCIE_CFG44_PHY_TRSV_RST, PCIE_CFG44, PCIE_CFG44_PHY_TRSV_RST);
 }
 
+static void tcc_pcie_power_on_phy(struct tcc_pcie *tp)
+{
+	tcc_cfg_write(tp, 0, PCIE_CFG08, PCIE_CFG08_PHY_POWER_OFF);
+}
 
 static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 {
@@ -233,26 +210,10 @@ static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 	if (!pwdn)
 		return;
 
-	val = tcc_phy_readl(tp, PCIE_PHY_COMMON_POWER);
-	val |= PCIE_PHY_COMMON_PD_CMN;
-	tcc_phy_writel(tp, val, PCIE_PHY_COMMON_POWER);
-
-	val = tcc_phy_readl(tp, PCIE_PHY_TRSV0_POWER);
-	val |= PCIE_PHY_TRSV0_PD_TSV;
-	tcc_phy_writel(tp, val, PCIE_PHY_TRSV0_POWER);
-
-	val = tcc_phy_readl(tp, PCIE_PHY_TRSV1_POWER);
-	val |= PCIE_PHY_TRSV1_PD_TSV;
-	tcc_phy_writel(tp, val, PCIE_PHY_TRSV1_POWER);
-
-	val = tcc_phy_readl(tp, PCIE_PHY_TRSV2_POWER);
-	val |= PCIE_PHY_TRSV2_PD_TSV;
-	tcc_phy_writel(tp, val, PCIE_PHY_TRSV2_POWER);
-
-	val = tcc_phy_readl(tp, PCIE_PHY_TRSV3_POWER);
-	val |= PCIE_PHY_TRSV3_PD_TSV;
-	tcc_phy_writel(tp, val, PCIE_PHY_TRSV3_POWER);
+	tcc_pcie_assert_phy_reset(tp);
+	tcc_cfg_write(tp, PCIE_CFG08_PHY_POWER_OFF, PCIE_CFG08, PCIE_CFG08_PHY_POWER_OFF);
 }
+
 
 static void tcc_pcie_init_phy(struct tcc_pcie *tp)
 {
@@ -263,8 +224,7 @@ static void tcc_pcie_init_phy(struct tcc_pcie *tp)
 
 	tcc_cfg_write(tp, 1<<4, PCIE_CFG43, 1<<4);
 	udelay(100);
-	tcc_cfg_write(tp, 1<<2, PCIE_CFG04, 1<<2); // enable ltssm
-	udelay(100);
+
 
 	while(tcc_cfg_read(tp, PCIE_CFG08, 1<<16) != 0) 
 	{
@@ -319,7 +279,7 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	/* de-assert phy reset */
 	tcc_pcie_deassert_phy_reset(tp);
 
-	/* power on phy */
+
 
 	/* pulse for common reset */
 	tcc_cfg_write(tp, 0, PCIE_CFG44, PCIE_CFG44_PHY_CMN_RST);
@@ -363,10 +323,6 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 			val = tcc_cfg_read(tp, PCIE_CFG08,
 				PCIE_CFG08_PHY_PLL_LOCKED) ? 1 : 0;
 			printk("PLL Locked: 0x%x\n", val);
-
-			/* power off phy */
-			tcc_pcie_power_off_phy(tp, 0);
-
 			printk("PCIe Link Fail\n");
 			return -EINVAL;
 		}
@@ -604,6 +560,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk", &tp->using_ext_ref_clk);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "for_si_test", &tp->for_si_test);
+	ret = of_property_read_u32(pdev->dev.of_node, "suspend_mode", &tp->suspend_mode);
 
 	tp->clk_phy = devm_clk_get(&pdev->dev, "pcie_phy");
 	if (IS_ERR(tp->clk_phy)) {
@@ -672,6 +629,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, tp);
 
+	tcc_pcie_power_on_phy(tp);
 	ret = add_pcie_port(tp, pdev);
 	if (ret < 0) {
 		tcc_pcie_power_off_phy(tp, 1);
@@ -737,10 +695,17 @@ static int tcc_pcie_suspend_noirq(struct device *dev)
 	disable_irq(pp->irq);
 	memcpy(tp->suspend_regs, pci->dbi_base, TCC_PCIE_REG_BACKUP_SIZE);
 
-	gpio_direction_output(tp->reset_gpio, 0);
-	tcc_pcie_assert_core_reset(tp);
-	tcc_pcie_power_off_phy(tp, 1);
+	if(tp->suspend_mode){
+	    gpio_direction_output(tp->reset_gpio, 0);
+	    tcc_pcie_power_off_phy(tp, 1);
+	}
 
+	if(!tp->using_ext_ref_clk)
+	    clk_disable_unprepare(tp->clk_ref_ext);
+	if(tp->suspend_mode){
+	    clk_disable_unprepare(tp->clk_apb);
+	    clk_disable_unprepare(tp->clk_aux);
+	}
 	clk_disable_unprepare(tp->clk_phy);
 	clk_disable_unprepare(tp->clk_hsio);
 
@@ -757,9 +722,16 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 
 	clk_prepare_enable(tp->clk_hsio);
 	clk_prepare_enable(tp->clk_phy);
+	if(tp->suspend_mode){	
+	    clk_prepare_enable(tp->clk_aux);
+	    clk_prepare_enable(tp->clk_apb);
+	    tcc_pcie_power_on_phy(tp);
+	}
+	if(!tp->using_ext_ref_clk)	
+	    clk_prepare_enable(tp->clk_ref_ext);
 
 	/* re-establish link */
-
+	if(tp->suspend_mode){	
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		if (pp->ops->msi_host_init) {
 //			int ret = 0;
@@ -769,19 +741,20 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 		}
 	}
 
-	if (pp->ops->host_init) {
-		tcc_pcie_establish_link(tp);
-		tcc_pcie_enable_interrupts(tp);
+   	    if (pp->ops->host_init) {
+		    tcc_pcie_establish_link(tp);
+		    tcc_pcie_enable_interrupts(tp);
+	    }
+
+	    tcc_pcie_cfg_write(pp, PCI_BASE_ADDRESS_0, 4, 0);
+
+	    /* program correct class for RC */
+	    tcc_pcie_cfg_write(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
+
+	    tcc_pcie_cfg_read(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+	    val |= PORT_LOGIC_SPEED_CHANGE;
+	    tcc_pcie_cfg_write(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
 	}
-
-	tcc_pcie_cfg_write(pp, PCI_BASE_ADDRESS_0, 4, 0);
-
-	/* program correct class for RC */
-	tcc_pcie_cfg_write(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
-
-	tcc_pcie_cfg_read(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
-	val |= PORT_LOGIC_SPEED_CHANGE;
-	tcc_pcie_cfg_write(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
 
 	if (tp->suspend_regs)
 		memcpy(pci->dbi_base, tp->suspend_regs, TCC_PCIE_REG_BACKUP_SIZE);
@@ -806,6 +779,7 @@ static struct platform_driver tcc_pcie_driver = {
 	.remove		= __exit_p(tcc_pcie_remove),
 	.driver = {
 		.name	= "tcc-pcie",
+		.pm	= &tcc_pcie_pm,
 		.of_match_table = tcc_pcie_of_match,
 	},
 };
