@@ -790,7 +790,13 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 	struct stm32_dfsdm_filter *fl = &adc->dfsdm->fl_list[adc->fl_id];
 	int available = stm32_dfsdm_adc_dma_residue(adc);
 	size_t old_pos;
-	unsigned int shift = fl->shift > 0 ? fl->shift : 0;
+	/*
+	 * Resolution is limited to 23 bits before applying saturation.
+	 * After saturation shift is increased by 1 bit to align on 24 bits.
+	 */
+	int shift = fl->shift > 0 ? fl->shift + 1 : 1;
+	s32 max = fl->shift > 0 ? BIT(DFSDM_DATA_RES - 1 - fl->shift) :
+				  BIT(DFSDM_DATA_RES - 1);
 
 	if (indio_dev->currentmode & INDIO_BUFFER_TRIGGERED) {
 		iio_trigger_poll_chained(indio_dev->trig);
@@ -811,10 +817,18 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 	old_pos = adc->bufi;
 
 	while (available >= indio_dev->scan_bytes) {
-		u32 *buffer = (u32 *)&adc->rx_buf[adc->bufi];
+		s32 *buffer = (s32 *)&adc->rx_buf[adc->bufi];
 
 		/* Mask 8 LSB that contains the channel ID */
-		*buffer = (*buffer & 0xFFFFFF00) << shift;
+		*buffer &= 0xFFFFFF00;
+		/* Convert 2^(n-1) sample to 2^(n-1)-1 to avoid wrap-around */
+		if (*buffer >= max)
+			*buffer -= 1;
+		/*
+		 * Samples from filter are retrieved with 23 bits resolution
+		 * or less. Shift left to align MSB on 24 bits.
+		 */
+		*buffer <<= shift;
 
 		available -= indio_dev->scan_bytes;
 		adc->bufi += indio_dev->scan_bytes;
