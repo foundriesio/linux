@@ -2829,6 +2829,19 @@ smb3_handle_read_data(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 				NULL, 0, 0);
 }
 
+static int
+smb2_next_header(char *buf)
+{
+	struct smb2_sync_hdr *hdr = (struct smb2_sync_hdr *)buf;
+	struct smb2_transform_hdr *t_hdr = (struct smb2_transform_hdr *)buf;
+
+	if (hdr->ProtocolId == SMB2_TRANSFORM_PROTO_NUM)
+		return sizeof(struct smb2_transform_hdr) +
+		  le32_to_cpu(t_hdr->OriginalMessageSize);
+
+	return le32_to_cpu(hdr->NextCommand);
+}
+
 struct smb_version_operations smb20_operations = {
 	.compare_fids = smb2_compare_fids,
 	.setup_request = smb2_setup_request,
@@ -2920,6 +2933,7 @@ struct smb_version_operations smb20_operations = {
 	.get_acl_by_fid = get_smb2_acl_by_fid,
 	.set_acl = set_smb2_acl,
 #endif /* CIFS_ACL */
+	.next_header = smb2_next_header,
 };
 
 struct smb_version_operations smb21_operations = {
@@ -3014,6 +3028,7 @@ struct smb_version_operations smb21_operations = {
 	.get_acl_by_fid = get_smb2_acl_by_fid,
 	.set_acl = set_smb2_acl,
 #endif /* CIFS_ACL */
+	.next_header = smb2_next_header,
 };
 
 struct smb_version_operations smb30_operations = {
@@ -3118,6 +3133,7 @@ struct smb_version_operations smb30_operations = {
 	.get_acl_by_fid = get_smb2_acl_by_fid,
 	.set_acl = set_smb2_acl,
 #endif /* CIFS_ACL */
+	.next_header = smb2_next_header,
 };
 
 #ifdef CONFIG_CIFS_SMB311
@@ -3218,6 +3234,7 @@ struct smb_version_operations smb311_operations = {
 	.query_all_EAs = smb2_query_eas,
 	.set_EA = smb2_set_ea,
 #endif /* CIFS_XATTR */
+	.next_header = smb2_next_header,
 };
 #endif /* CIFS_SMB311 */
 
