@@ -135,11 +135,11 @@ static int rpmsg_tty_write(struct tty_struct *tty, const unsigned char *buf,
 	tbuf = buf;
 	do {
 		/* send a message to our remote processor */
-		ret = rpmsg_send(rpdev->ept, (void *)tbuf,
-				 count > msg_size ? msg_size : count);
+		ret = rpmsg_trysend(rpdev->ept, (void *)tbuf,
+				    count > msg_size ? msg_size : count);
 		if (ret) {
-			dev_err(&rpdev->dev, "rpmsg_send failed: %d\n", ret);
-			return ret;
+			dev_dbg(&rpdev->dev, "rpmsg_send failed: %d\n", ret);
+			return 0;
 		}
 
 		if (count > msg_size) {
