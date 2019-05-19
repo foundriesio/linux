@@ -542,7 +542,6 @@ static void alc_eapd_shutup(struct hda_codec *codec)
 /* generic EAPD initialization */
 static void alc_auto_init_amp(struct hda_codec *codec, int type)
 {
-	alc_fill_eapd_coef(codec);
 	alc_auto_setup_eapd(codec, true);
 	alc_write_gpio(codec);
 	switch (type) {
@@ -870,9 +869,21 @@ static int alc_build_controls(struct hda_codec *codec)
  * Common callbacks
  */
 
+static void alc_pre_init(struct hda_codec *codec)
+{
+	alc_fill_eapd_coef(codec);
+}
+
+#define is_s4_resume(codec) \
+	((codec)->core.dev.power.power_state.event == PM_EVENT_RESTORE)
+
 static int alc_init(struct hda_codec *codec)
 {
 	struct alc_spec *spec = codec->spec;
+
+	/* hibernation resume needs the full chip initialization */
+	if (is_s4_resume(codec))
+		alc_pre_init(codec);
 
 	if (spec->init_hook)
 		spec->init_hook(codec);
@@ -1589,6 +1600,8 @@ static int patch_alc880(struct hda_codec *codec)
 
 	codec->patch_ops.unsol_event = alc880_unsol_event;
 
+	alc_pre_init(codec);
+
 	snd_hda_pick_fixup(codec, alc880_fixup_models, alc880_fixup_tbl,
 		       alc880_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
@@ -1836,6 +1849,8 @@ static int patch_alc260(struct hda_codec *codec)
 	spec->gen.beep_nid = 0x01;
 
 	spec->shutup = alc_eapd_shutup;
+
+	alc_pre_init(codec);
 
 	snd_hda_pick_fixup(codec, alc260_fixup_models, alc260_fixup_tbl,
 			   alc260_fixups);
@@ -2545,6 +2560,8 @@ static int patch_alc882(struct hda_codec *codec)
 		break;
 	}
 
+	alc_pre_init(codec);
+
 	snd_hda_pick_fixup(codec, alc882_fixup_models, alc882_fixup_tbl,
 		       alc882_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
@@ -2708,6 +2725,8 @@ static int patch_alc262(struct hda_codec *codec)
 #endif
 	alc_fix_pll_init(codec, 0x20, 0x0a, 10);
 
+	alc_pre_init(codec);
+
 	snd_hda_pick_fixup(codec, alc262_fixup_models, alc262_fixup_tbl,
 		       alc262_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
@@ -2848,6 +2867,8 @@ static int patch_alc268(struct hda_codec *codec)
 	spec->gen.beep_nid = 0x01;
 
 	spec->shutup = alc_eapd_shutup;
+
+	alc_pre_init(codec);
 
 	snd_hda_pick_fixup(codec, alc268_fixup_models, alc268_fixup_tbl, alc268_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
@@ -7530,6 +7551,8 @@ static int patch_alc269(struct hda_codec *codec)
 	spec->shutup = alc_default_shutup;
 	spec->init_hook = alc_default_init;
 
+	alc_pre_init(codec);
+
 	snd_hda_pick_fixup(codec, alc269_fixup_models,
 		       alc269_fixup_tbl, alc269_fixups);
 	snd_hda_pick_pin_fixup(codec, alc269_pin_fixup_tbl, alc269_fixups);
@@ -7793,6 +7816,8 @@ static int patch_alc861(struct hda_codec *codec)
 	spec->power_hook = alc_power_eapd;
 #endif
 
+	alc_pre_init(codec);
+
 	snd_hda_pick_fixup(codec, NULL, alc861_fixup_tbl, alc861_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
 
@@ -7881,6 +7906,8 @@ static int patch_alc861vd(struct hda_codec *codec)
 	spec->gen.beep_nid = 0x23;
 
 	spec->shutup = alc_eapd_shutup;
+
+	alc_pre_init(codec);
 
 	snd_hda_pick_fixup(codec, NULL, alc861vd_fixup_tbl, alc861vd_fixups);
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PRE_PROBE);
@@ -8602,6 +8629,8 @@ static int patch_alc662(struct hda_codec *codec)
 		spec->init_hook = alc668_restore_default_value;
 		break;
 	}
+
+	alc_pre_init(codec);
 
 	snd_hda_pick_fixup(codec, alc662_fixup_models,
 		       alc662_fixup_tbl, alc662_fixups);
