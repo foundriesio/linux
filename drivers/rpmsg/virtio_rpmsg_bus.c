@@ -707,7 +707,7 @@ static int virtio_get_buffer_size(struct rpmsg_endpoint *ept)
 	struct virtio_rpmsg_channel *vch = to_virtio_rpmsg_channel(rpdev);
 	struct virtproc_info *vrp = vch->vrp;
 
-	return vrp->buf_size;
+	return vrp->buf_size - sizeof(struct rpmsg_hdr);
 }
 
 static int rpmsg_recv_single(struct virtproc_info *vrp, struct device *dev,
