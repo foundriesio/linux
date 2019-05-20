@@ -322,24 +322,13 @@ static int vag_and_mute_control(struct snd_soc_component *component,
 			       sgtl5000->mute_state[event_source]);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		/*
-		 * Don't clear VAG_POWERUP when there is a local loop
-		 * from LINE_IN to the HP.
-		 */
-		if (snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL) &
-		    SGTL5000_HP_SEL_MASK)
-			break;
-		/*
-		 * Don't clear VAG_POWERUP, when both DAC and ADC are
-		 * operational to prevent inadvertently starving the
-		 * other one of them.
-		 */
-		if ((snd_soc_read(codec, SGTL5000_CHIP_ANA_POWER) &
-				mask) != mask) {
-			snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
-				SGTL5000_VAG_POWERUP, 0);
-			msleep(400);
-		}
+		sgtl5000->mute_state[event_source] =
+			mute_output(component, mute_mask[event_source]);
+		vag_power_off(component, event_source);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		restore_output(component, mute_mask[event_source],
+			       sgtl5000->mute_state[event_source]);
 		break;
 	default:
 		break;
@@ -349,36 +338,38 @@ static int vag_and_mute_control(struct snd_soc_component *component,
 }
 
 /*
- * If we mux a direct path from LINE_IN to HP, VAG must be powered up.
- * With the SND_SOC_DAPM_POST_REG event the new state of the headphone mux is
- * available.
+ * Mute Headphone when power it up/down.
+ * Control VAG power on HP power path.
  */
-static int headphone_mux_event(struct snd_soc_dapm_widget *w,
+static int headphone_pga_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
 
-	/*
-	 * switch on VAG unconditionally on any change of the headphone muxer
-	 * early to lessen pop.
-	 */
-	switch (event) {
-	case SND_SOC_DAPM_PRE_REG:
-		snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
-				SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
-		break;
-	/*
-	 * The call to power_vag_event() switches VAG off again, if VAG need
-	 * not be switched on.
-	 */
-	case SND_SOC_DAPM_POST_REG:
-		power_vag_event(w, kcontrol, SND_SOC_DAPM_PRE_PMD);
-		break;
-	default:
-		break;
-	}
+	return vag_and_mute_control(component, event, HP_POWER_EVENT);
+}
 
-	return 0;
+/* As manual describes, ADC/DAC powering up/down requires
+ * to mute outputs to avoid pops.
+ * Control VAG power on ADC/DAC power path.
+ */
+static int adc_updown_depop(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
+
+	return vag_and_mute_control(component, event, ADC_POWER_EVENT);
+}
+
+static int dac_updown_depop(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
+
+	return vag_and_mute_control(component, event, DAC_POWER_EVENT);
 }
 
 /* input sources for ADC */
@@ -423,9 +414,7 @@ static const struct snd_soc_dapm_widget sgtl5000_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("LO", SGTL5000_CHIP_ANA_POWER, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_MUX("Capture Mux", SND_SOC_NOPM, 0, 0, &adc_mux),
-	SND_SOC_DAPM_MUX_E("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux,
-			   headphone_mux_event,
-			   SND_SOC_DAPM_PRE_REG | SND_SOC_DAPM_POST_REG),
+	SND_SOC_DAPM_MUX("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux),
 
 	/* aif for i2s input */
 	SND_SOC_DAPM_AIF_IN("AIFIN", "Playback",
