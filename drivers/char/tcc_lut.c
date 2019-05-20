@@ -2,7 +2,7 @@
  * linux/drivers/char/tcc_lut.c
  * Author:  <linux@telechips.com>
  * Created: June 10, 2008
- * Description: TCC VIOC h/w block 
+ * Description: TCC VIOC h/w block
  *
  * Copyright (C) 2008-2009 Telechips
  *
@@ -20,7 +20,7 @@
  * along with this program; if not, see the file COPYING, or write
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- */ 
+ */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -41,7 +41,7 @@
 #include <linux/uaccess.h>
 #include <asm/div64.h>
 #include <asm/mach/map.h>
-#include <linux/fs.h> 
+#include <linux/fs.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -57,6 +57,8 @@
 #include <video/tcc/tcc_lut_ioctl.h>
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/vioc_global.h>
+
+#define LUT_VERSION "v1.0"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg...)		if(TCC_LUT_DEBUG) { printk("\x1b[1;38m TCC LUT: \x1b[0m " msg); }
@@ -74,17 +76,46 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				struct VIOC_LUT_VALUE_SET *lut_cmd;
 
 				lut_cmd = kmalloc(sizeof(struct VIOC_LUT_VALUE_SET), GFP_KERNEL);
-								
+
 				if(copy_from_user((void *)lut_cmd, (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET)))				{
 					kfree(lut_cmd);
 					return -EFAULT;
 				}
 
-				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, &lut_cmd->Gamma);
+				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, lut_cmd->Gamma);
 				kfree(lut_cmd);
-				
+
 			}
 			return 0;
+
+                case TCC_LUT_SET_EX:
+                        {
+                                struct VIOC_LUT_VALUE_SET_EX *lut_value_set_ex;
+
+                                lut_value_set_ex = kmalloc(sizeof(struct VIOC_LUT_VALUE_SET_EX), GFP_KERNEL);
+                                if(lut_value_set_ex == NULL) {
+                                        pr_err("%s TCC_LUT_SET_EX out of memory\r\n", __func__);
+                                        return -EFAULT;
+                                }
+
+                                if(copy_from_user((void *)lut_value_set_ex,
+                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET))) {
+                                        kfree(lut_value_set_ex);
+                                        return -EFAULT;
+                                }
+
+                                if(LUT_TABLE_SIZE != lut_value_set_ex->lut_size) {
+                                        pr_err("%s TCC_LUT_SET_EX table size mismatch %d != %d\r\n",
+                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
+                                        kfree(lut_value_set_ex);
+                                        return -EINVAL;
+                                }
+
+                                tcc_set_lut_table(VIOC_LUT + lut_value_set_ex->lut_number, lut_value_set_ex->Gamma);
+                                kfree(lut_value_set_ex);
+
+                        }
+                        return 0;
 
 		case TCC_LUT_ONOFF:
 			{
@@ -95,17 +126,17 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				}
 				dprintk("lut num:%d enable:%d \n", lut_cmd.lut_number, lut_cmd.lut_onoff);
 				tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
-				
+
 			}
-			return 0;			
-			
+			return 0;
+
 		case TCC_LUT_PLUG_IN:
 			{
 				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
-				
+
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
 					return -EFAULT;
-				
+
 				if(!lut_cmd.enable) {
 					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, false);
 				}
@@ -116,9 +147,17 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			}
 			return 0;
 
+                case TCC_LUT_GET_DEPTH:
+                        {
+                                unsigned int lut_depth = LUT_COLOR_DEPTH;
+                                if(copy_to_user((void __user *)arg, &lut_depth, sizeof(lut_depth))) {
+                                        return -EFAULT;
+                                }
+                        }
+                        return 0;
 		default:
 			printk(KERN_ALERT "not supported LUT IOCTL(0x%x). \n", cmd);
-			break;			
+			break;
 	}
 
 	return 0;
@@ -132,7 +171,7 @@ static int lut_drv_open(struct inode *inode, struct file *filp)
 	struct lut_drv_type	*lut = dev_get_drvdata(misc->parent);
 
 	int ret = 0;
-	
+
 	dprintk("%s():  In -open(%d) \n", __func__, lut->dev_opened);
 
 	lut->dev_opened++;
@@ -179,16 +218,16 @@ static ssize_t store_settings(struct device *dev, struct device_attribute *attr,
 	int Y_out, Cb_out, Cr_out;
 	unsigned int RGB[256];
 
-	
+
 	if((buf[0] >= '0') && (buf[0] <= '9'))	{
-		printk("lut number:%c \n",buf[0]);			
+		printk("lut number:%c \n",buf[0]);
 		lut_channel = buf[0] - '0';
 	}
 	else	{
 		printk("%s : fisrt char is lut number  : %s count:%d \n", __func__, buf, count);
 		return count;
 	}
-	
+
 	EffectStr = strstr(buf, TEXT_CONTRAST);
 	if(EffectStr != NULL)
 	{
@@ -205,7 +244,7 @@ static ssize_t store_settings(struct device *dev, struct device_attribute *attr,
 		printk("constrast : %d \n", value);
 		contrast = value;
 	}
-	
+
 	EffectStr = strstr(buf, TEXT_SATURATION);
 	if(EffectStr != NULL)
 	{
@@ -222,7 +261,7 @@ static ssize_t store_settings(struct device *dev, struct device_attribute *attr,
 		printk("saturation : %d \n", value);
 		saturation = value;
 	}
-	
+
 	EffectStr = strstr(buf, TEXT_BRIGHTNESS);
 	if(EffectStr != NULL)
 	{
@@ -239,31 +278,31 @@ static ssize_t store_settings(struct device *dev, struct device_attribute *attr,
 		printk(TEXT_BRIGHTNESS ": %d \n", value);
 		brightness = value;
 	}
-		
+
     printk("%s count:%d contast: %d saturation : %d brightness : %d \n", __func__,  count, contrast, saturation, brightness);
 
 
 	for(i = 0; i < 256; i++)	{
-		
+
 		Y_out = ((i - 16) * CONTRAST)/100 + BRIGHTNESS + 16;
-		Cb_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128; 
-		Cr_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128; 
+		Cb_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128;
+		Cr_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128;
 
 		if(Y_out < 0) Y_out = 0;
 		if(Cb_out < 0) Cb_out = 0;
-		if(Cr_out < 0) Cr_out = 0;		
-			
+		if(Cr_out < 0) Cr_out = 0;
+
 		if(Y_out > 255) Y_out = 255;
 		if(Cb_out > 255) Cb_out = 255;
-		if(Cr_out > 255) Cr_out = 255;	
+		if(Cr_out > 255) Cr_out = 255;
 
 		RGB[i] = (Y_out & 0xFF) << 16 | (Cb_out & 0xFF) << 8 | (Cr_out & 0xFF);
 	}
-	
+
 	printk(" brightness : %d   saturation : %d   contast: %d\n",BRIGHTNESS, SATURATION, CONTRAST);
 	tcc_set_lut_table(VIOC_LUT_COMP0 + lut_channel, RGB);
 
-	return count;   
+	return count;
 }
 
 static DEVICE_ATTR(settings, 0664, show_settings, store_settings);
@@ -295,10 +334,10 @@ static int lut_drv_probe(struct platform_device *pdev)
 	ret = misc_register(lut->misc);
 	if (ret)
 		goto err_misc_register;
-	
+
 	platform_set_drvdata(pdev, lut);
 
-	pr_info("%s: :%s, Driver Initialized  lut set num :0x%x\n",__func__, pdev->name, TCC_LUT_SET);
+	pr_info("%s: :%s, Driver %s Initialized  lut set num :0x%x\n",__func__, LUT_VERSION, pdev->name, TCC_LUT_SET);
 	ret = device_create_file(lut->misc->this_device, &dev_attr_settings);
 	return 0;
 
@@ -306,7 +345,7 @@ static int lut_drv_probe(struct platform_device *pdev)
 
 err_misc_register:
 	misc_deregister(lut->misc);
-	
+
 err_misc_alloc:
 	kfree(lut->misc);
 	kfree(lut);

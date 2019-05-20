@@ -113,6 +113,8 @@ struct tee_driver_ops {
 	int (*shm_register)(struct tee_context *ctx, struct tee_shm *shm,
 			    struct page **pages, size_t num_pages);
 	int (*shm_unregister)(struct tee_context *ctx, struct tee_shm *shm);
+	int (*cas_recv)(struct tee_context *ctx, void **data, size_t *size);
+	int (*cas_send)(struct tee_context *ctx, void *data, size_t size);
 };
 
 /**
@@ -123,6 +125,7 @@ struct tee_driver_ops {
  * @flags:	Extra properties of driver, defined by TEE_DESC_* below
  */
 #define TEE_DESC_PRIVILEGED	0x1
+#define TEE_DESC_CAS		0x2
 struct tee_desc {
 	const char *name;
 	const struct tee_driver_ops *ops;

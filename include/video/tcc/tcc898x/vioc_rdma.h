@@ -243,7 +243,7 @@
 #define RDMAIRQMSK_IEOFF_MASK		(0x1 << RDMAIRQMSK_IEOFF_SHIFT)
 #define RDMAIRQMSK_IEOFR_MASK		(0x1 << RDMAIRQMSK_IEOFR_SHIFT)
 #define RDMAIRQMSK_ICFG_MASK		(0x1 << RDMAIRQMSK_ICFG_SHIFT)
-
+#define RDMAIRQMSK_ALL_MASK		(RDMAIRQMSK_IBOTR_MASK | RDMAIRQMSK_ITOPR_MASK |RDMAIRQMSK_IEOFW_MASK | RDMAIRQMSK_IUPDD_MASK | RDMAIRQMSK_IEOFF_MASK |RDMAIRQMSK_IEOFR_MASK |RDMAIRQMSK_ICFG_MASK)
 /*
  * RDMA sync Base Address 0
  */
@@ -413,6 +413,7 @@ extern void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd
 extern void VIOC_RDMA_SetImageIntl (volatile void __iomem *reg, unsigned int intl_en);
 extern void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask);
 extern void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set);
+extern unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg);
 
 extern volatile void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
 extern void VIOC_RDMA_SetDataFormat(volatile void __iomem *reg, unsigned int fmt_type, unsigned int fill_mode);

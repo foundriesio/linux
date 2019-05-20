@@ -186,41 +186,38 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	#endif
 
 	val = (((lcd_spec->xres - 1) << DHTIME1_LPC_SHIFT) |
-	       (lcd_spec->lpw << DHTIME1_LPW_SHIFT));
+	       ((lcd_spec->lpw - 1) << DHTIME1_LPW_SHIFT));
 	__raw_writel(val, pDISPBase + DHTIME1);
 
-	val = ((lcd_spec->lswc << DHTIME2_LSWC_SHIFT) |
-	       (lcd_spec->lewc << DHTIME2_LEWC_SHIFT));
+	val = (((lcd_spec->lswc - 1) << DHTIME2_LSWC_SHIFT) |
+	       ((lcd_spec->lewc - 1) << DHTIME2_LEWC_SHIFT));
 	__raw_writel(val, pDISPBase + DHTIME2);
 
 	val = (__raw_readl(pDISPBase + DVTIME1) &
 	       ~(DVTIME1_FPW_MASK | DVTIME1_FLC_MASK));
-	val |= ((lcd_spec->fpw1 << DVTIME1_FPW_SHIFT) |
+	val |= (((lcd_spec->fpw1 - 1) << DVTIME1_FPW_SHIFT) |
 		((lcd_spec->yres - 1) << DVTIME1_FLC_SHIFT));
 	__raw_writel(val, pDISPBase + DVTIME1);
 
-	val = ((lcd_spec->fswc1 << DVTIME2_FSWC_SHIFT) |
-	       (lcd_spec->fewc1 << DVTIME2_FEWC_SHIFT));
+	val = (((lcd_spec->fswc1 - 1) << DVTIME2_FSWC_SHIFT) |
+	       ((lcd_spec->fewc1 - 1) << DVTIME2_FEWC_SHIFT));
 	__raw_writel(val, pDISPBase + DVTIME2);
 
-	val = ((lcd_spec->fpw2 << DVTIME3_FPW_SHIFT) |
+	val = (((lcd_spec->fpw2 - 1) << DVTIME3_FPW_SHIFT) |
 	       ((lcd_spec->yres - 1) << DVTIME3_FLC_SHIFT));
 	__raw_writel(val, pDISPBase + DVTIME3);
 
-	val = ((lcd_spec->fswc2 << DVTIME4_FSWC_SHIFT) |
-	       (lcd_spec->fewc2 << DVTIME4_FEWC_SHIFT));
+	val = (((lcd_spec->fswc2 - 1) << DVTIME4_FSWC_SHIFT) |
+	       ((lcd_spec->fewc2 - 1) << DVTIME4_FEWC_SHIFT));
 	__raw_writel(val, pDISPBase + DVTIME4);
 
 	val = ((lcd_spec->yres << DDS_VSIZE_SHIFT) |
 	       (lcd_spec->xres << DDS_HSIZE_SHIFT));
 	__raw_writel(val, pDISPBase + DDS);
 
-// pjj
-#if 0
 	val = (__raw_readl(pDISPBase+DCTRL) & ~(DCTRL_LEN_MASK));
 	val |= (0x1 << DCTRL_LEN_SHIFT);
 	__raw_writel(val, pDISPBase+DCTRL);
-#endif
 }
 
 EXPORT_SYMBOL(lcdc_initialize);

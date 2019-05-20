@@ -1535,8 +1535,10 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 		else
 			dep->flags |= DWC3_EP_STALL;
 	} else {
+#ifndef CONFIG_TCC_EH_ELECT_TST
 		if (!(dep->flags & DWC3_EP_STALL))
 			return 0;
+#endif
 
 		ret = dwc3_send_clear_stall_ep_cmd(dep);
 		if (ret)
@@ -3245,7 +3247,7 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
 	dwc->gadget.sg_supported	= true;
 	dwc->gadget.name		= "dwc3-gadget";
-	dwc->gadget.is_otg		= dwc->dr_mode == USB_DR_MODE_OTG;
+	dwc->gadget.is_otg		= false;
 
 	/*
 	 * FIXME We might be setting max_speed to <SUPER, however versions

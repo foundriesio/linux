@@ -94,6 +94,7 @@ struct lvds_data {
 	struct lvds_gpio gpio;
 	unsigned int main_port;
 	unsigned int sub_port;
+	unsigned int lcdc_select;
 };
 #endif
 
@@ -122,6 +123,7 @@ struct lcd_panel {
 	int height;		/* display height in mm */
 	int bpp;		/* bits per pixels */
 
+
 	int clk_freq;
 	int clk_div;
 	int bus_width;
@@ -141,6 +143,8 @@ struct lcd_panel {
 	int fewc2;		/* frame end wait cycle 2 */
 	int sync_invert;
 
+	unsigned int vcm;		/* common voltage level in mV */
+	unsigned int vsw;		/* swing voltage level in mV */
 	int (*init)(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata);
 	int (*set_power)(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata);
 

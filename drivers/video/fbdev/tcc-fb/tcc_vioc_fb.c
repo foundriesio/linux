@@ -158,6 +158,10 @@ static int screen_debug = 0;
 static unsigned int fb_lock = false;   //TO FORBID UPDATE
 #endif
 
+#ifdef CONFIG_TCC_SCREEN_SHARE
+extern void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, unsigned int frameHeight, unsigned int fmt, unsigned int layer);
+#endif
+
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
 extern void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image);
 extern int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo);
@@ -188,8 +192,8 @@ extern void tca_fb_attach_start(struct tccfb_info *info);
 extern int tca_fb_attach_stop(struct tccfb_info *info);
 
 
-extern int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel);
-extern int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel);
+extern int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel, struct lcd_panel *ext_panel);
+extern int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel, struct lcd_panel *ext_panel);
 extern int tca_fb_init(struct tccfb_info *dev);
 extern void tca_fb_exit(void);
 extern int tca_main_interrupt_reg(char SetClear, struct tccfb_info *info);
@@ -1113,7 +1117,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                 }
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL)
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 1, pdp_data);
+                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 3/* turn on by external app */, NULL);
                                                 }
         				} else {
         				        pr_err("hdmi timing setting : can't find HDMI voic display block \n");
@@ -1137,7 +1141,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         				if(pdp_data != NULL){
                                                 if(hdmi_ext_panel != NULL){
                                                         if(hdmi_ext_panel->set_power != NULL) {
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 0, &ptccfb_info->pdata.Sdp_data);
+                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 2 /* turn off by external app */, NULL);
                                                         }
                                                 }
                                                 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
@@ -1334,6 +1338,35 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                         break;
                 #endif
 
+                #if defined(TCC_LCDC_HDMI_DISPDEV_ID)
+                case TCC_LCDC_HDMI_DISPDEV_ID:
+                        {
+                                int dispdev_id = -1;
+                                struct tcc_dp_device *pdp_data = NULL;
+
+                                if(ptccfb_info != NULL) {
+                                        if((ptccfb_info->pdata.Mdp_data.FbPowerState != true) || (ptccfb_info->pdata.Mdp_data.DispDeviceType ==TCC_OUTPUT_HDMI))
+                                                pdp_data = &ptccfb_info->pdata.Mdp_data;
+                                        else if((ptccfb_info->pdata.Sdp_data.FbPowerState != true) || (ptccfb_info->pdata.Sdp_data.DispDeviceType ==TCC_OUTPUT_HDMI))
+                                                pdp_data = &ptccfb_info->pdata.Sdp_data;
+
+                                        if(pdp_data != NULL)
+                                        {
+                                                pr_info("%s TCC_LCDC_HDMI_DISPDEV_ID = %d\r\n", __func__, pdp_data->DispNum);
+                                                dispdev_id = pdp_data->DispNum;
+                                        } else {
+                                                pr_err("TCC_LCDC_HDMI_DISPDEV_ID  : can't find HDMI voic display block \n");
+                                        }
+                                        if (copy_to_user((int *)arg, &dispdev_id, sizeof(int))) {
+                                                return -EFAULT;
+                                        }
+                                }
+                        }
+                        break;
+                #else
+                #warning("Please check TCC_LCDC_HDMI_DISPDEV_ID")
+                #endif
+		
         case TCC_EXT_FBIOPUT_VSCREENINFO:
         case TCC_HDMI_FBIOPUT_VSCREENINFO:
         case TCC_CVBS_FBIOPUT_VSCREENINFO:
@@ -1434,17 +1467,20 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		break;
 
 	case TCC_SH_DISPLAY_FBIOPUT_VSCREENINFO:
-			{
-				unsigned int BaseAddr = 0;
-				external_fbioput_vscreeninfo sc_info;
-				struct tcc_dp_device *pdp_data = NULL;
-				pdp_data = &ptccfb_info->pdata.Sdp_data;
+		{
+			unsigned int BaseAddr = 0;
+			external_fbioput_vscreeninfo sc_info;
+			struct tcc_dp_device *pdp_data = NULL;
+			pdp_data = &ptccfb_info->pdata.Sdp_data;
 
-				if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
-					return -EFAULT;
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo)))
+				return -EFAULT;
 
-			 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
-				printk("Base address : 0x%08x, width:%d, height:%d \n", BaseAddr, sc_info.width, sc_info.height);
+		 	BaseAddr = ptccfb_info->map_dma + sc_info.offset;
+			printk("Base address : 0x%08x \n", BaseAddr);	
+#ifdef CONFIG_TCC_SCREEN_SHARE				
+			tcc_scrshare_set_sharedBuffer(BaseAddr, sc_info.width, sc_info.height, TCC_LCDC_IMG_FMT_RGB888, 0);
+#endif			
 		}
 		break;
 
@@ -2701,7 +2737,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	int ret = 0 , plane = 0;
 	unsigned int screen_width, screen_height;
 
-	if (!lcd_panel) {
+	if (lcd_panel == NULL) {
 		pr_err("tccfb: no LCD panel data\n");
 		return -EINVAL;
 	}
@@ -2709,6 +2745,11 @@ static int tccfb_probe(struct platform_device *pdev)
 // 	const struct of_device_id *of_id = of_match_device(tccfb_of_match, &pdev->dev);
 
 	pr_info("\x1b[1;38m   LCD panel is %s %s %d x %d \x1b[0m \n", lcd_panel->manufacturer, lcd_panel->name, lcd_panel->xres, lcd_panel->yres);
+
+        if(hdmi_ext_panel != NULL) {
+                pr_info("\x1b[1;38m   Extended panel is %s %s %d x %d \x1b[0m \n",
+                        hdmi_ext_panel->manufacturer, hdmi_ext_panel->name, hdmi_ext_panel->xres, hdmi_ext_panel->yres);
+        }
 
     screen_width      = lcd_panel->xres;
     screen_height     = lcd_panel->yres;
@@ -2928,6 +2969,10 @@ static int tccfb_probe(struct platform_device *pdev)
 	if(lcd_panel->init)
 		lcd_panel->init(lcd_panel, &info->pdata.Mdp_data);
 
+        if(hdmi_ext_panel != NULL && hdmi_ext_panel->init != NULL) {
+		hdmi_ext_panel->init(hdmi_ext_panel, &info->pdata.Sdp_data);
+        }
+
 	tca_fb_init(info);
 
 #if !defined(CONFIG_DRM_TCC)
@@ -3021,7 +3066,7 @@ int tcc_fb_runtime_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_suspend(dev, lcd_panel);
+	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
 
 	return 0;
 }
@@ -3030,7 +3075,7 @@ int tcc_fb_runtime_resume(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_resume(dev, lcd_panel);
+	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
 
 	return 0;
 }
@@ -3041,7 +3086,7 @@ static int tccfb_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 #ifndef CONFIG_PM
-	tca_fb_suspend(dev, lcd_panel);
+	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
 #endif//
 	return 0;
 }
@@ -3049,7 +3094,7 @@ static int tccfb_suspend(struct device *dev)
 static int tccfb_resume(struct device *dev)
 {
 #ifndef CONFIG_PM
-	tca_fb_resume(dev, lcd_panel);
+	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
 #endif//
 	return 0;
 }

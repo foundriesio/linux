@@ -636,13 +636,36 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 	afbcDec_status = VIOC_AFBCDec_GetStatus(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id));
 	if(afbcDec_status & AFBCDEC_IRQ_ALL) {
 		//pr_info("AFBC(%d) INT(0x%x) ------ \n", afbc_dec_1st_cfg, afbcDec_status);
+		if( afbcDec_status & AFBCDEC_IRQ_SURF_COMPLETED_MASK) {
+			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_SURF_COMPLETED_MASK);
+		}		
 		if( afbcDec_status & AFBCDEC_IRQ_CONFIG_SWAPPED_MASK) {
+			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_CONFIG_SWAPPED_MASK);
 			//VIOC_AFBCDec_TurnOn(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), VIOC_AFBCDEC_SWAP_PENDING);
 		}
-		if( afbcDec_status & AFBCDEC_IRQ_DECODE_ERR_MASK|| afbcDec_status & AFBCDEC_IRQ_DETILING_ERR_MASK) {
-			pr_info("AFBC(%d) INT(0x%x) ------ \n", afbc_dec_1st_cfg, afbcDec_status);
+		if( afbcDec_status & AFBCDEC_IRQ_DECODE_ERR_MASK) {
+			unsigned int rdma_enable;
+			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_CONFIG_SWAPPED_MASK);
+			pr_info("AFBC(%d) INT(0x%x) ------ \n", afbc_dec_1st_cfg, AFBCDEC_IRQ_DECODE_ERR_MASK);
+			VIOC_RDMA_GetImageEnable(fbdev->pdata.Mdp_data.rdma_info[RDMA_FB].virt_addr, &rdma_enable);
+			if(rdma_enable)
+				VIOC_RDMA_SetImageDisable(fbdev->pdata.Mdp_data.rdma_info[RDMA_FB].virt_addr);
+			VIOC_CONFIG_SWReset(afbc_dec_vioc_id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(afbc_dec_vioc_id, VIOC_CONFIG_CLEAR);
+
+			afbc_dec_1st_cfg = 0;
 		}
-		VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), afbcDec_status);
+		if( afbcDec_status & AFBCDEC_IRQ_DETILING_ERR_MASK) {
+			unsigned int rdma_enable;
+			VIOC_AFBCDec_ClearIrq(VIOC_AFBCDec_GetAddress(afbc_dec_vioc_id), AFBCDEC_IRQ_CONFIG_SWAPPED_MASK);
+			pr_info("AFBC(%d) INT(0x%x) ------ \n", afbc_dec_1st_cfg, AFBCDEC_IRQ_DETILING_ERR_MASK);
+			VIOC_RDMA_GetImageEnable(fbdev->pdata.Mdp_data.rdma_info[RDMA_FB].virt_addr, &rdma_enable);
+			if(rdma_enable)
+				VIOC_RDMA_SetImageDisable(fbdev->pdata.Mdp_data.rdma_info[RDMA_FB].virt_addr);
+			VIOC_CONFIG_SWReset(afbc_dec_vioc_id, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(afbc_dec_vioc_id, VIOC_CONFIG_CLEAR);
+			afbc_dec_1st_cfg = 0;
+		}
 	}
 #endif
 
@@ -1317,6 +1340,10 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	stLTIMING stTimingParam;
 	unsigned int rdma_en = 0;
 
+	#if defined(CONFIG_VIOC_AFBCDEC)
+	afbc_dec_1st_cfg = 0;
+	#endif
+	
         #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
         tca_vioc_displayblock_clock_select(pDisplayInfo, 0);
         #endif
@@ -1912,6 +1939,7 @@ tca_vioc_configure_AFBCDEC(unsigned int vioc_dec_id, unsigned int base_addr,
 		else{
 			VIOC_AFBCDec_SurfaceCfg(pAFBC_Dec, base_addr, fmt, width, height, 0, bSplitMode, bWideMode, VIOC_AFBCDEC_SURFACE_0, 0);
 			VIOC_AFBCDec_TurnOn(pAFBC_Dec, VIOC_AFBCDEC_SWAP_PENDING);
+			afbc_dec_1st_cfg++;
 		}
 	}
 	else {
@@ -5509,7 +5537,8 @@ EXPORT_SYMBOL(tca_fb_pan_display);
 
 
 /* suspend and resume support for the lcd controller */
-int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
+int tca_fb_suspend(struct device *dev,
+        struct lcd_panel *disp_panel, struct lcd_panel *ext_panel)
 {
 	struct platform_device *fb_device = container_of(dev, struct platform_device, dev);
 	struct tccfb_info	   *info = platform_get_drvdata(fb_device);
@@ -5536,11 +5565,15 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
         }
         #endif
 
-
 	info->pdata.Mdp_data.FbPowerState = 0;
 
 	if (disp_panel->set_power)
 		disp_panel->set_power(disp_panel, 0, &info->pdata.Mdp_data);
+
+        /* disable extended panel */
+        if(ext_panel != NULL && ext_panel->set_power != NULL) {
+                ext_panel->set_power(ext_panel, 0, NULL);
+        }
 
 	#ifdef CONFIG_ANDROID
 	VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[RDMA_FB].virt_addr);
@@ -5573,7 +5606,8 @@ int tca_fb_suspend(struct device *dev, struct lcd_panel *disp_panel)
 EXPORT_SYMBOL(tca_fb_suspend);
 
 
-int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
+int tca_fb_resume(struct device *dev,
+        struct lcd_panel *disp_panel, struct lcd_panel *ext_panel)
 {
 	struct platform_device *fb_device = container_of(dev, struct platform_device, dev);
 	struct tccfb_info	   *fbi = platform_get_drvdata(fb_device);
@@ -5589,11 +5623,16 @@ int tca_fb_resume(struct device *dev, struct lcd_panel *disp_panel)
 	clk_prepare_enable(pdp_data->vioc_clock);
 	clk_prepare_enable(pdp_data->ddc_clock);
 
-	 if (disp_panel->set_power)
-		disp_panel->set_power(disp_panel, 1, &fbi->pdata.Mdp_data);
+        if (disp_panel->set_power)
+	        disp_panel->set_power(disp_panel, 1, &fbi->pdata.Mdp_data);
 
-	 if(fbi->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_LCD)
-		fbi->pdata.Mdp_data.FbPowerState = 1;
+        /* resume extended panel */
+        if(ext_panel != NULL && ext_panel->set_power != NULL) {
+                ext_panel->set_power(ext_panel, 1, NULL);
+        }
+
+        if(fbi->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_LCD)
+                fbi->pdata.Mdp_data.FbPowerState = 1;
 
 	_tca_vioc_intr_onoff(ON, pdp_data->ddc_info.irq_num, fbi->pdata.lcdc_number);
 

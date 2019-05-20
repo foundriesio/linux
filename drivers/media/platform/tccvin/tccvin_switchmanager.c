@@ -21,15 +21,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/tcc_fb.h>
 #include <media/v4l2-common.h>
 
+#include "tccvin_common.h"
 #include "tccvin_switchmanager.h"
 #include "../videosource/videosource_if.h"
-
-static int					debug = 0;
-#define TAG					"tccvin_switchmanager"
-#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
-#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
 
 extern struct lcd_panel *tccfb_get_panel(void);
 

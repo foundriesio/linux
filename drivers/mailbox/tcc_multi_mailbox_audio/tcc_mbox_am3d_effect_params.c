@@ -123,6 +123,8 @@ struct am3d_effect_data g_am3d_graphic_eq_data[AM3D_GRAPHIC_EQ_PARAMS_NUM] = {
     {ZIRENE_GRAPHICEQ_BAND12_GAIN_IN_DB,           ZIRENE_GEQ_ALL_CHANNELS,    0},   // Range: [-12..12]  [dB]
     {ZIRENE_GRAPHICEQ_BAND13_GAIN_IN_DB,           ZIRENE_GEQ_ALL_CHANNELS,	   0},    // Range: [-12..12]  [dB]
 
+    /* auto headroom gain with attenuation (7.40 new feature) */
+    {ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF,         ZIRENE_GEQ_ALL_CHANNELS,    ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT},
     /* headroom gain (7.33 new feature) */
     {ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB, 		   ZIRENE_GEQ_ALL_CHANNELS,	   ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_DEFAULT},    // Range: [-12..0]  [dB]
 };
@@ -137,18 +139,23 @@ struct am3d_effect_data g_am3d_tone_control_data[AM3D_TONE_CONTROL_PARAMS_NUM] =
 #endif
     /* bass */
     {ZIRENE_TONECONTROL_BASS_CENTER_FREQUENCY_IN_HZ,    ZIRENE_TC_ALL_CHANNELS,	  130},				// Range: [60..599]  [Hz]
-    {ZIRENE_TONECONTROL_BASS_GAIN_IN_DB,                 ZIRENE_TC_ALL_CHANNELS,  0},				// Range: [-6..6]  [dB]
+    {ZIRENE_TONECONTROL_BASS_GAIN_IN_DB,                 ZIRENE_TC_ALL_CHANNELS,  0},				// Range: [-12..12]  [dB]
     {ZIRENE_TONECONTROL_BASS_QFACTOR,				    ZIRENE_TC_ALL_CHANNELS,	  724},				// Range: [410..4096]  [Q10]
 
     /* middle */
     {ZIRENE_TONECONTROL_MIDDLE_CENTER_FREQUENCY_IN_HZ,  ZIRENE_TC_ALL_CHANNELS,	  730},				// Range: [600..4999]  [Hz]
-    {ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB,				ZIRENE_TC_ALL_CHANNELS,	  0},				// Range: [-6..6]  [dB]
+    {ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB,				ZIRENE_TC_ALL_CHANNELS,	  0},				// Range: [-12..12]  [dB]
     {ZIRENE_TONECONTROL_MIDDLE_QFACTOR,					ZIRENE_TC_ALL_CHANNELS,	  678},				// Range: [410..4096]  [Q10]
 
 	/* treble */
     {ZIRENE_TONECONTROL_TREBLE_CENTER_FREQUENCY_IN_HZ,  ZIRENE_TC_ALL_CHANNELS,	  5500},		    // Range: [5000..20000]  [Hz]
-    {ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB,				ZIRENE_TC_ALL_CHANNELS,	  0},				// Range: [-6..6]  [dB]
+    {ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB,				ZIRENE_TC_ALL_CHANNELS,	  0},				// Range: [-12..12]  [dB]
     {ZIRENE_TONECONTROL_TREBLE_QFACTOR,					ZIRENE_TC_ALL_CHANNELS,	  724},            // Range: [410..4096]  [Q10]
+
+    /* auto headroom gain with attenuation (7.40 new feature) */
+    {ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF,         ZIRENE_TC_ALL_CHANNELS,    ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT},
+    /* headroom gain (7.36 new feature) */
+    {ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB,         ZIRENE_TC_ALL_CHANNELS,    ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_DEFAULT},    // Range: [-12..0]  [dB]
 };
 EXPORT_SYMBOL(g_am3d_tone_control_data);
 
@@ -202,7 +209,9 @@ struct am3d_effect_data g_am3d_parametric_eq_data[AM3D_PARAMETRIC_EQ_PARAMS_NUM]
 #else
     {ZIRENE_PARAMETRICEQ_ENABLE_IN_ONOFF, 				ZIRENE_PEQ_ALL_CHANNELS,	   AM3D_FALSE},
 #endif
-    {ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB,			ZIRENE_PEQ_ALL_CHANNELS,	 -12},        // Range: [-12..0]  [dB]
+    /* auto headroom gain with attenuation (7.40 new feature) */
+    {ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF,           ZIRENE_PEQ_ALL_CHANNELS,     ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT},
+    {ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB,           ZIRENE_PEQ_ALL_CHANNELS,     -12},        // Range: [-12..0]  [dB]
 
     /* PARAMETRIC EQ, section #0[1ST]; type: peaking, cutoff freq: 80 Hz, gain: +3, Q: 1024 */
     {ZIRENE_PARAMETRICEQ_PARM_ID(0, ZIRENE_PARAMETRICEQ_SECTION_TYPE_IN_NA),		ZIRENE_PEQ_ALL_CHANNELS,	 ZIRENE_PARAMETRICEQ_SECTIONTYPE_PEAKING},
@@ -314,6 +323,8 @@ EXPORT_SYMBOL(g_am3d_parametric_eq_data);
 struct am3d_effect_data g_am3d_loud_parametric_eq_data[AM3D_LOUD_PARAMETRIC_EQ_PARAMS_NUM] = {
     /* parameter									    channel mask 		         value    */
     {ZIRENE_PEQLOUDSPEAKER_ENABLE_IN_ONOFF, 			ZIRENE_PEQLS_ALL_CHANNELS,	 AM3D_TRUE},
+    /* auto headroom gain with attenuation (7.40 new feature) */
+    {ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF,           ZIRENE_PEQLS_ALL_CHANNELS,     ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT},
     {ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB,			ZIRENE_PEQLS_ALL_CHANNELS,	 -2},        // Range: [-12..0]  [dB]
 
     /* PARAMETRIC EQ, section #0[1ST]; type: peaking, cutoff freq: 50 Hz, gain: 2, Q: 512 */
@@ -441,17 +452,13 @@ EXPORT_SYMBOL(g_am3d_limiter_data);
 
 struct am3d_effect_data g_am3d_input_module_data[AM3D_INPUT_MODULE_PARAMS_NUM] = {
 	/* parameter									                    channel mask 		        value    */
-#if (AM3D_EFFECT_OUTPUT_CH == 5)
-	{ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_TRUE},
-#else
-    {ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,								ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},
-#endif
+    {ZIRENE_INPUTMODULE_ENABLE_IN_ONOFF,                                ZIRENE_INP_ALL_CHANNELS,    AM3D_FALSE},
 	// Section 1 : (For Common process)
 	{ZIRENE_INPUTMODULE_LOWER_CUTOFF_FREQUENCY_IN_HZ,					ZIRENE_INP_ALL_CHANNELS,	15},				// Range: [15..1500]  [Hz]
 	{ZIRENE_INPUTMODULE_LOWER_CUTOFF_FREQUENCY_ENABLE_IN_ONOFF,			ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},		// Range: AM3D_TRUE OR AM3D_FALSE [ON OR OFF]
 	{ZIRENE_INPUTMODULE_HIGHER_CUTOFF_FREQUENCY_IN_HZ,					ZIRENE_INP_ALL_CHANNELS,	10000},			// Range: [40..15000]  [Hz]
 	{ZIRENE_INPUTMODULE_HIGHER_CUTOFF_FREQUENCY_ENABLE_IN_ONOFF,		ZIRENE_INP_ALL_CHANNELS,	AM3D_FALSE},		// Range: AM3D_TRUE OR AM3D_FALSE [ON OR OFF]
-	{ZIRENE_INPUTMODULE_GAIN_IN_DB,										ZIRENE_INP_ALL_CHANNELS,	0},				// Range: [-6..0]
+	{ZIRENE_INPUTMODULE_GAIN_IN_DB,										ZIRENE_INP_ALL_CHANNELS,	0},				// Range: [-12..0]
 
 	// Section 2 : (For Sub Woofer process)
     /** 

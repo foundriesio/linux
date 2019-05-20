@@ -2,157 +2,244 @@
 /*
 * Copyright (c) 2019 - present Synopsys, Inc. and/or its affiliates.
 * Synopsys DesignWare HDMI driver
+*
+* NOTE: Tab size is 8
 */
 #ifndef __HDMI_V2_0_H__
 #define __HDMI_V2_0_H__
 
+/** @addtogroup videoParams VIdeo parameters */
+/** @{ */
+
 #if !defined(APP_BUILD)
 typedef enum {
+        /** OUtput mode is not defined */
         MODE_UNDEFINED = -1,
+        /** Output mode is DVI */
         DVI = 0,
+         /** Output mode is HDMI */
         HDMI
 } video_mode_t;
 
 typedef struct {
-        /** VIC code */
+        /** Video Identification Code */
         uint32_t mCode;
 
-        /** Identifies modes that ONLY can be displayed in YCC 4:2:0 */
+        /** Sink is only allow YCbCr4:2:0 sampling mode
+         * @note This field is used by user-level application only. */
         uint8_t mLimitedToYcc420;
 
-        /** Identifies modes that can also be displayed in YCC 4:2:0 */
+        /**  Sink is allow YCbCr4:2:0 sampling mode
+         * @note This field is used by user-level application only. */
         uint8_t mYcc420;
 
+        /** Pixel repetition of input video */
         uint16_t mPixelRepetitionInput;
 
-        /** In units of 1MHz */
+        /** Pixel clock in units of 1MHz*/
         uint32_t mPixelClock;
 
-        /** 1 for interlaced, 0 progressive */
+        /** Scan mode \n
+         * 0: Progressive scan \n
+         * 1: Interlaced scan \n */
         uint8_t mInterlaced;
 
+        /** Horizontal active area */
         uint16_t mHActive;
 
+        /** Horizontal blank area */
         uint16_t mHBlanking;
 
+        /** Not used, Always 0 */
         uint16_t mHBorder;
 
+        /** Horizontal Image size (4 or 16) */
         uint16_t mHImageSize;
 
+        /** Horizontal sync start */
         uint16_t mHSyncOffset;
 
+        /** Horizontal sync width */
         uint16_t mHSyncPulseWidth;
 
-        /** 0 for Active low, 1 active high */
+        /** Horizontal sync polarity \r
+         * 0: Active Low \n
+         * 1: Active High \n */
         uint8_t mHSyncPolarity;
 
+        /** Vertical active area */
         uint16_t mVActive;
 
+        /** Vertical blank area */
         uint16_t mVBlanking;
 
+        /** Not used, Always 0 */
         uint16_t mVBorder;
 
+        /** Vertical Image size (3 or 9) */
         uint16_t mVImageSize;
 
+        /** Vertical sync start */
         uint16_t mVSyncOffset;
 
+        /** v sync width */
         uint16_t mVSyncPulseWidth;
 
-        /** 0 for Active low, 1 active high */
+        /** Vertical sync polarity \r
+         * 0: Active Low \n
+         * 1: Active High \n */
         uint8_t mVSyncPolarity;
 
 } dtd_t;
 
 typedef enum {
+        /** HDMI output color depth is 8-bit */
         COLOR_DEPTH_8 = 8,
+        /** HDMI output color depth is 10-bit */
         COLOR_DEPTH_10 = 10,
+        /** HDMI output color depth is 12-bit */
         COLOR_DEPTH_12 = 12,
+        /** HDMI output color depth is 16-bit - not used*/
         COLOR_DEPTH_16 = 16
 } color_depth_t;
 
 typedef enum {
-        PIXEL_REPETITION_OFF = 0,
-        PIXEL_REPETITION_1 = 1,
-        PIXEL_REPETITION_2 = 2,
-        PIXEL_REPETITION_3 = 3,
-        PIXEL_REPETITION_4 = 4,
-        PIXEL_REPETITION_5 = 5,
-        PIXEL_REPETITION_6 = 6,
-        PIXEL_REPETITION_7 = 7,
-        PIXEL_REPETITION_8 = 8,
-        PIXEL_REPETITION_9 = 9,
-        PIXEL_REPETITION_10 = 10
-} pixel_repetition_t;
-
-typedef enum {
-        HDMI_14 = 1,
-        HDMI_20,
-        MHL_24 ,
-        MHL_PACKEDPIXEL
-} operation_mode_t;
-
-typedef enum {
+        /** Encoding is not defined */
         ENC_UNDEFINED = -1,
+        /** Encoding is RGB */
         RGB = 0,
+        /** Encoding is YCbCr444 */
         YCC444,
+        /** Encoding is YCbCr422 */
         YCC422,
+        /** Encoding is YCbCr420 */
         YCC420,
+        /** ENC_ AUTO means that color space is automatically
+          * selected by parsing E-EDID - It is used by user-level application only */
         ENC_AUTO=125,
 } encoding_t;
 
 typedef enum {
-        ITU601 = 1,
+        /** No Data */
+        COLORIMETRY_NODATA = 0,
+        /** SMPTE 170M */
+        ITU601,
+        /** ITU-R BT.709 */
         ITU709,
+        /** Extended Colorimetry Information Valid */
         EXTENDED_COLORIMETRY
 } colorimetry_t;
 
 typedef enum {
+        /** Invalid Extended Colorimetry */
         COLORMETRY_INVALID=-1,
+        /** xvYCC601 */
         XV_YCC601 = 0,
+        /** xvYCC709 */
         XV_YCC709,
+        /** sYCC601 */
         S_YCC601,
+        /** AdobeYCC601 */
         ADOBE_YCC601,
+        /** AdobeRGB */
         ADOBE_RGB,
-        BT2020YCCBCR, // ITU-R BT.2020 Y'CC'BCC'RC
-        BT2020YCBCR // ITU-R BT.2020 R¡¯G¡¯B¡¯ or Y'C'BC'R
+        /** ITU-R BT.2020 YcCbcCrc */
+        BT2020YCCBCR,
+        /** ITU-R BT.2020 RGB or YCbCr */
+        BT2020YCBCR
 } ext_colorimetry_t;
 
+/**
+ * @short This structure defines HDMI Video, AVI infoFrame and HDMI 3D */
 typedef struct {
+        /** HDMI output mode DVI or HDMI */
         video_mode_t mHdmi;
+        /** Color space of output video
+          * @note mEncodingOuput and mEncodingIn is should be same color space. */
         encoding_t mEncodingOut;
+        /** Color space of intput video
+          * @note mEncodingOuput and mEncodingIn is should be same color space. */
         encoding_t mEncodingIn;
+        /** Color depth of video */
         u8 mColorResolution;
+        /** Not used, Always set to 0 */
         u8 mPixelRepetitionFactor;
+        /** Detailed Timing Information  */
         dtd_t mDtd;
+        /** RGB quantization range \n
+          * 0: CEA default \n
+          * 1: Limited Range \n
+          * 2: Full Range */
         u8 mRgbQuantizationRange;
+        /** YUV quantization range \n
+         * 0: Limited Range \n
+         * 1: Full Range */
         u8 mYuvQuantizationRange;
+        /** Not used, Always set to 0 */
         u8 mPixelPackingDefaultPhase;
+        /** Colorimetry */
         u8 mColorimetry;
+        /** Scan Information */
         u8 mScanInfo;
+        /** Active Portion Aspect Ratio \n
+         *  8: Same as Picture Aspect Ratio \n
+         *  9: 4:3 (Center) \n
+         * 10: 16:9 (Center) */
         u8 mActiveFormatAspectRatio;
+        /** Sets Non-Uniform Pictre Scaling */
         u8 mNonUniformScaling;
+        /** Extended colorimetry  */
         ext_colorimetry_t mExtColorimetry;
+        /** Indicate MD0 bit of 'Colorimetry Data Block' */
         u8 mColorimetryDataBlock;
+        /** IT content
+          * [7:4] IT Content Type
+          * [3:0] IT Content */
         u8 mItContent;
+        /** End of Top Bar */
         u16 mEndTopBar;
+        /** Start of Bottom Bar */
         u16 mStartBottomBar;
+        /** End of Left Bar */
         u16 mEndLeftBar;
+        /** Start Right Bar */
         u16 mStartRightBar;
+        /** Not used, Always set to 0 */
         u16 mCscFilter;
+        /** Not used, Always set to 0 */
         u16 mCscA[4];
+        /** Not used, Always set to 0 */
         u16 mCscC[4];
+        /** Not used, Always set to 0 */
         u16 mCscB[4];
+        /** Not used, Always set to 0 */
         u16 mCscScale;
+        /** HDMI Video Format */
         u8 mHdmiVideoFormat;
+        /** 3D_Structure */
         u8 m3dStructure;
+        /** 3D_Ext_Data */
         u8 m3dExtData;
+        /** Not used, Always set to 0 */
         u8 mHdmiVic;
+        /** Indicate SINK supports HDMI version 2.0 */
         u8 mHdmi20;
+        /** Indicate Scrambling is necessary
+          * @note If TMDS character rate >= 340Mcsc or
+          * SINK support LTE_340 (optional), Scrambling is should be enabled. */
         u8 mScrambling;
+        /** Not used, Always set to 0 */
         u8 mHdrEnable;
-        u8 mDolbyVision;       // [2:0] b`000: No DV, b`001: DV-YCC444, b`010: DV-RGB [5:3] b`000: SDR, b`0
+        /** Indicate DolbyVision Mode \n
+         * [2:0] 0: No DV, 1: DV-YCC444, 2: DV-RGB (tunneling) \n
+         * [5:3] 0: TV mode is SDR, 1: TV mode is HDR-10, 2: TV mode is DV */
+        u8 mDolbyVision;
+        /** Indicate SINK supports SCDC communication.
+         * @note If SINK does not support SCDC communication,
+         * mScrambling field is ignored. */
         u8 mScdcPresent;
 } videoParams_t;
+/** @} */
 
 typedef enum {
 	INTERFACE_NOT_DEFINED = -1, I2S = 0, SPDIF, HBR, GPA, DMA
@@ -369,11 +456,13 @@ typedef struct {
 
 #endif
 
+/** @brief This structure defines the header of Dynamic Range and Mastering InfoFrame. */
 typedef struct {
 	u8 version;
 	u8 length;
 } DRM_Packet_Header;
 
+/** @brief This structure defines the body of Dynamic Range and Mastering InfoFrame. */
 typedef struct {
 	u8	EOTF;
 	u8	Descriptor_ID;
@@ -388,8 +477,12 @@ typedef struct {
 
 } DRM_Packet_Body;
 
+/**
+ * @brief This structure defines the DRM packet */
 typedef struct {
+        /** Header of Dynamic Range and Mastering InfoFrame. */
 	DRM_Packet_Header	mInfoFrame;
+        /** Body of Dynamic Range and Mastering InfoFrame. */
 	DRM_Packet_Body		mDescriptor_type1;
 } DRM_Packet_t;
 
@@ -693,24 +786,45 @@ typedef struct {
 #define HDMI_API_PHY_MASK			_IOW( IOCTL_HDMI_MAGIC, 0x282, unsigned int)
 
 /**
- * @short IOCTL to update drm config of user to drmParm.
+ * @short This ioctl calls hdmi_update_drm_configure to store
+ *        drm data provided by user-space.
+ * @param[in] drmParm Drm data to store
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_CONFIG			_IOW(IOCTL_HDMI_MAGIC, 0x285, DRM_Packet_t)
 
 /**
- * @short IOCTL to apply drm config of drmparm to hdmi link.
+ * @short This ioctl calls hdmi hdmi_apply_drm to apply drm data
+ *        stored in drmParam of device context to HDMI drm packet.
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
+ * @note Before use this API, you must store drm parameter want
+ *       to set to drmParm of device context.
  */
 #define HDMI_API_DRM_SET			_IO(IOCTL_HDMI_MAGIC, 0x286)
 
 /**
- * @short IOCTL to clear drm config of drmparm to hdmi link.
+ * @short This ioctl calls hdmi hdmi_clear_drm to change EOTF of
+ *        drm packet from any HDR mode to SDR mode.
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_CLEAR                      _IO(IOCTL_HDMI_MAGIC, 0x287)
 
 
 /**
- * @short IOCTL get validation of drmparam
-
+ * @short This ioctl get validate of drm data.
+ * @param[out] valid Indicates validate of drm data stored in device contex\n
+ *      0: drm Param of device context is invali\n
+ *      2: drm Param of device context is valid for HDR\n
+ *      3: drm Param of device context is valid for HLG\n
+ * @return Return the result of this ioctl
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
  */
 #define HDMI_API_DRM_GET_VALID                  _IOR( IOCTL_HDMI_MAGIC, 0x288, int)
 

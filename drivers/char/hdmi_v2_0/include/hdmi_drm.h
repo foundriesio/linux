@@ -17,8 +17,10 @@ Suite 330, Boston, MA 02111-1307 USA
 #define __HDMI_DRM_H__
 
 #define DRM_BIT_OFFSET	8
+/** @addtogroup drmparam DRM parameters */
+/** @{ */
 int hdmi_clear_drm(struct hdmi_tx_dev *dev);
 int hdmi_apply_drm(struct hdmi_tx_dev *dev);
 int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm);
-
+/** @} */
 #endif

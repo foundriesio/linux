@@ -6,6 +6,7 @@
 #
 # Licensed under GPL
 
+obj-y += videosource_common.o 
 obj-y += videosource_if.o
 obj-y += videosource_i2c.o
 obj-y += videodecoder/

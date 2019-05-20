@@ -12,3 +12,10 @@ config SWITCH_REVERSE
 	help
 	  Say Y here to enable GPIO based switch support.
 
+config SWITCH_REVERSE_IPC
+	tristate "Reverse Switch IPC Driver for TCC803x"
+	default n
+	depends on (TCC_MULTI_MAILBOX && SWITCH_REVERSE)
+	help
+		Choose this option if you want to use reverse switch ipc driver
+

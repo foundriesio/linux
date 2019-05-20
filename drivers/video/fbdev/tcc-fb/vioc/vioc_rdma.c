@@ -26,10 +26,10 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-#include <video/tcc/vioc_v_dv.h>
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_scaler.h>
+#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+#include <video/tcc/vioc_v_dv.h>
 #include <video/tcc/tccfb.h>
 #endif
 
@@ -159,11 +159,14 @@ void VIOC_RDMA_GetImageEnable(volatile void __iomem *reg, unsigned int *enable)
 void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 {
 	unsigned long val;
-	int i;
+	int i, scaler_blknum= -1;
+	unsigned int vioc_id = -1;
 
 	/* Check RDMA is enabled */
-	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK))
+	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK)){
+		printk("rdma is enabled\n");
 		return;
+	}
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	#if defined(DOLBY_VISION_CHECK_SEQUENCE)
@@ -190,6 +193,23 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 		VIOC_CONFIG_DV_EX_VIOC_PROC(VIOC_RDMA + nRDMA);
 	}
 #endif
+	for(i=0; i<VIOC_RDMA_MAX; i++)
+	{
+		if(pRDMA_reg[i] == reg){
+			vioc_id = i;
+			break;
+		}	
+	}
+	if(vioc_id >= 0)
+		vioc_id |= VIOC_RDMA;
+
+	// prevent Fifo underrun
+	scaler_blknum = VIOC_CONFIG_GetScaler_PluginToRDMA(vioc_id);
+	if(scaler_blknum >= VIOC_SCALER0){
+		volatile void __iomem *pSC = VIOC_SC_GetAddress(scaler_blknum);
+		VIOC_SC_SetDstSize (pSC, 0, 0);			
+		VIOC_SC_SetOutSize (pSC, 0, 0);			
+	}
 
 	val = (__raw_readl(reg + RDMASTAT) & ~(RDMASTAT_EOFR_MASK));
 	val |= (0x1 << RDMASTAT_EOFR_SHIFT);
@@ -597,6 +617,11 @@ void VIOC_RDMA_SetIreqMask(volatile void __iomem *reg, unsigned int mask,
 void VIOC_RDMA_SetStatus(volatile void __iomem *reg, unsigned int mask)
 {
 	__raw_writel(mask, reg + RDMASTAT);
+}
+
+unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg)
+{
+	return __raw_readl(reg + RDMASTAT);
 }
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)

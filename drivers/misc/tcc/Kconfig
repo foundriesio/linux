@@ -40,5 +40,11 @@ config SCALER_TEST
 	help
 		Telechips testscaler driver
 
+config GPIO_TCC_SAMPLE
+        default y
+        bool "TCC gpio sample driver"
+        help
+		Telechips gpio sample driver.
+
 source "drivers/misc/tcc/tcc_dsp/Kconfig"
 

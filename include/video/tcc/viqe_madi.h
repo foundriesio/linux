@@ -32,6 +32,9 @@
 #define TEST_REG_RW
 #endif
 
+extern unsigned int g_width;	//alank
+extern unsigned int g_height;
+
 /*
  * Block Start Address
  */
@@ -71,6 +74,8 @@ typedef enum{
 
 typedef enum{
 	MADI_VDEINT_0 = 0,
+	MADI_VDEINT_11,		// DDEI
+	MADI_VDEINT_2,		// Movie det mp
 	MADI_VDEINT_4,		// Src-Y
 	MADI_VDEINT_5,		// Src-C
 	MADI_VDEINT_6,		// Src-Y
@@ -254,6 +259,8 @@ typedef enum{
  */
 
 #define M0_VDEINT_OFFSET 	(0x000)
+#define M11_VDEINT_OFFSET   (0x200) // DDEI
+#define M2_VDEINT_OFFSET    (0x2C0) // ~0x340 :: M2 Movie det mp
 #define M4_VDEINT_OFFSET 	(0x400) // Src-Y
 #define M5_VDEINT_OFFSET 	(0x480) // Src-C
 #define M6_VDEINT_OFFSET 	(0x500) // Src-Y
@@ -445,6 +452,19 @@ extern void VIQE_MADI_DUMP(VMADI_TYPE type, unsigned int size);
 
 #ifdef USE_REG_EXTRACTOR
 extern void _reg_print_ext(void);
+#endif
+
+
+#define MADI_DYNAMIC_CONTROL
+#ifdef	MADI_DYNAMIC_CONTROL
+#define MADI_FIELD_INSERTION
+#define MADI_EGG_SLICE_PROTECTION
+#ifdef MADI_FIELD_INSERTION
+extern void FieldInsertionCtrl(void);
+#endif
+#ifdef MADI_EGG_SLICE_PROTECTION
+extern void PQ_VDETN_FileMode_SafetyProtect_Patch(void);
+#endif
 #endif
 
 #endif

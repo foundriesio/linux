@@ -47,9 +47,7 @@ MODULE_VERSION("1.0");
 //MISC Funcations
 extern int dwc_hdmi_misc_register(struct hdmi_tx_dev *dev);
 extern int dwc_hdmi_misc_deregister(struct hdmi_tx_dev *dev);
-#if defined(CONFIG_TCC_OUTPUT_STARTER)
 extern void dwc_hdmi_power_on_core(struct hdmi_tx_dev *dev, int need_link_reset);
-#endif
 
 // API Functions
 extern void dwc_hdmi_api_register(struct hdmi_tx_dev *dev);
@@ -576,6 +574,7 @@ static const struct dev_pm_ops hdmi_tx_pm_ops = {
 static int
 hdmi_tx_init(struct platform_device *pdev){
         int ret = 0;
+        unsigned int val;
         struct hdmi_tx_dev *dev = NULL;
 
         pr_info("****************************************\n");
@@ -660,20 +659,18 @@ hdmi_tx_init(struct platform_device *pdev){
         set_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status);
         #endif
 
-        #if defined(CONFIG_TCC_OUTPUT_STARTER)
-        if(dev->ddibus_io != NULL)
-        {
-        	unsigned int val = ioread32(dev->ddibus_io+0x10);
-        	if(val & (1 << 15)) {
-        		//pr_info("HDMI already Enabled\r\n");
+        if(dev->ddibus_io != NULL) {
+                val = ioread32(dev->ddibus_io+0x10);
+                if(val & (1 << 15)) {
+                        /* HDMI Enable */
         		dwc_hdmi_power_on_core(dev, 0);
         	}
+                #if defined(CONFIG_TCC_OUTPUT_STARTER)
         	else  {
-        		//pr_info("HDMI needs Enable\r\n");
         		dwc_hdmi_power_on(dev);
         	}
+                #endif
         }
-        #endif
 
         pr_info("%s done!!\r\n", __func__);
         return ret;

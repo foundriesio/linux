@@ -1,26 +1,26 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        hdmi_1920x720_adv7613.c
 *  \brief       HDMI TX controller driver
-*  \details   
+*  \details
 *  \version     1.0
 *  \date        2014-2015
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not 
+Any unauthorized use without a written  permission  of Telechips including not
 limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source 
+This source  code is  provided "AS IS"and nothing contained in this source
 code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular 
-purpose or non-infringement  of  any  patent,  copyright  or  other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source  code or the  use in the 
-source code. 
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure 
+without limitation, any warranty of merchantability, fitness for a   particular
+purpose or non-infringement  of  any  patent,  copyright  or  other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source  code or the  use in the
+source code.
+This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
 Agreement between Telechips and Company.
 */
 #include <linux/errno.h>
@@ -35,7 +35,7 @@ Agreement between Telechips and Company.
 #endif
 #include <linux/regmap.h>
 
-         
+
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
@@ -52,6 +52,7 @@ Agreement between Telechips and Company.
 #define DEFAULT_HDMI_ADDR       0x34
 #define DEFAULT_CP_ADDR         0x22
 #define DEFAULT_LVDS_ADDR       0x60
+#define DEFAULT_DELAY_ADDR      0xFF
 
 //#define HDMI_ADV7613_DEBUG
 #ifdef HDMI_ADV7613_DEBUG
@@ -61,38 +62,45 @@ Agreement between Telechips and Company.
 #define dprintk(fmt, args...)
 #endif
 
+//#define CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST
+
+/**
+  * If power gpio of ADV7613 set to low, hotplug detect pin of HDMI also goes to low.
+  * If you do not use hot plug detect pin of HDMI port, please unmask the below define. */
+//#define CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER
+
 extern int tccfb_register_hdmi_ext_panel(struct lcd_panel *panel);
+extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int specific_pclk);
 
 struct adv7613_dev {
-        /* slave address */
-        unsigned char main_slave;              
-        unsigned char cec_slave;               
-        unsigned char info_slave;         
-        unsigned char dpll_slave;              
-        unsigned char ksv_slave;               
-        unsigned char edid_slave;              
-        unsigned char hdmi_slave;              
-        unsigned char cp_slave;                
-        unsigned char lvds_slave;              
-
         struct i2c_client *client;
-        
-        struct regmap *main_map;
-        struct regmap *cec_map;
-        struct regmap *info_map;
-        struct regmap *dpll_map;
-        struct regmap *ksv_map;
-        struct regmap *edid_map;
-        struct regmap *hdmi_map;
-        struct regmap *cp_map;
-        struct regmap *lvds_map;
+        struct regmap *i2c_regmap;
+
+        /* slave address */
+        struct {
+                unsigned char main;
+                unsigned char cec;
+                unsigned char info;
+                unsigned char dpll;
+                unsigned char ksv;
+                unsigned char edid;
+                unsigned char hdmi;
+                unsigned char cp;
+                unsigned char lvds;
+        }i2c_slave_address;
 
         /* gpio */
+        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
         int gpio_backlight_on;
+        #endif
         int gpio_power_on;
         int gpio_reset;
+
+        int power_status; /* 0 : turn off by fb driver, 1: turn on by fb driver, 2: turn off by external app, 3: turn on by external app */
+
+        struct tcc_dp_device *fb_pdata;
  };
- 
+
 struct i2c_data_reg {
         unsigned char addr;
         unsigned char reg;
@@ -103,7 +111,7 @@ struct i2c_data_reg {
 /* 1920x720p@60 HDMI Input_LVDS Output Port A and B*/
 static struct i2c_data_reg main_data_reg[] = {
         {DEFAULT_MAIN_ADDR, 0xFF, 0x80}, /*  ;default 0x00, I2C reset */
-        {0xFF,              0x00, 0x05}, /* wait 5ms */
+        {DEFAULT_DELAY_ADDR,0x00, 0x05}, /* wait 5ms */
         {DEFAULT_MAIN_ADDR, 0xF4, 0x80}, /* ;default 0x00, CEC Map Address set to 0x80 */
         {DEFAULT_MAIN_ADDR, 0xF5, 0x7C}, /* ;default 0x00, Infoframe Map Address set to 0x7C */
         {DEFAULT_MAIN_ADDR, 0xF8, 0x4C}, /* ;default 0x00, DPLL Map Address set to 0x4C */
@@ -149,7 +157,7 @@ static struct i2c_data_reg hdmi_data_reg[] = {
         {DEFAULT_HDMI_ADDR, 0x4E, 0xFE}, /* ;default 0x7B, ADI recommended write */
         {DEFAULT_HDMI_ADDR, 0x4F, 0x08}, /* ;default 0x63, ADI recommended write */
         {DEFAULT_HDMI_ADDR, 0x57, 0xA3}, /* ;default 0x30, ADI recommended write */
-        {DEFAULT_HDMI_ADDR, 0x58, 0x07}, /* ;default 0x01, ADI recommended write */  
+        {DEFAULT_HDMI_ADDR, 0x58, 0x07}, /* ;default 0x01, ADI recommended write */
         {DEFAULT_HDMI_ADDR, 0x6F, 0x08}, /* ;default 0x00, ADI Recommended write */
         {DEFAULT_HDMI_ADDR, 0x83, 0xFE}, /* ;default 0xFF, ADI recommended write */
         {DEFAULT_HDMI_ADDR, 0x86, 0x9B}, /* ;default 0x00, ADI recommended write */
@@ -176,100 +184,238 @@ static struct i2c_data_reg lvds_data_reg[] = {
 
 static int adv7613_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-        fb_pdata->FbPowerState = true;
-        fb_pdata->FbUpdateType = FB_SC_RDMA_UPDATE;
-        fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
-        return 0;
+        int ret = -1;
+        struct adv7613_dev *dev;
+        do {
+                if(panel == NULL) {
+                        pr_err("%s panel is NULL\r\n", __func__);
+                        break;
+                }
+                if(fb_pdata == NULL) {
+                        pr_err("%s fb device is NULL\r\n", __func__);
+                        break;
+                }
+                dev = (struct adv7613_dev *)panel->panel_data;
+                if(dev == NULL) {
+                        pr_err("%s adv7613_dev is NULL\r\n", __func__);
+                        break;
+                }
+
+                /* store display device */
+                dev ->fb_pdata = fb_pdata;
+
+                /* turn on by fb driver */
+                dev->power_status = 1;
+
+                fb_pdata->FbPowerState = true;
+                fb_pdata->FbUpdateType = FB_SC_RDMA_UPDATE;
+                fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
+
+                tca_vioc_displayblock_powerOn(fb_pdata, 1 /* SKIP */);
+
+                ret = 0;
+        }while(0);
+
+        return ret;
 }
 
-static int adv763_update(struct regmap *regmap, unsigned char base_addr, struct i2c_data_reg *i2c_data_reg)
+static int adv763_update(struct adv7613_dev *dev, struct i2c_data_reg *i2c_data_reg)
 {
-        int loop;
+
         int ret = -1;
-        #if defined(HDMI_ADV7613_DEBUG)
-        int val;
-        #endif
-        
-        if(regmap == NULL) {
-                pr_err("%s regmap is null\r\n", __func__);
-                goto api_end;
-        }
-        for(loop = 0;!(i2c_data_reg[loop].addr == 0 && i2c_data_reg[loop].reg == 0 && i2c_data_reg[loop].val == 0) ; loop++) {
-                if(base_addr != i2c_data_reg[loop].addr) {
-                        msleep(i2c_data_reg[loop].val);
-                } else {
-                        ret = regmap_write(regmap, i2c_data_reg[loop].reg, i2c_data_reg[loop].val);
-                        #if defined(HDMI_ADV7613_DEBUG)
-                        regmap_read(regmap, i2c_data_reg[loop].reg, &val);
-                        if(val != i2c_data_reg[loop].val) {
-                                pr_info("[%02d] reg(0x%02x) 0x%02x:0x%02x\r\n", loop, i2c_data_reg[loop].reg, i2c_data_reg[loop].val, val);
-                        }
-                        #endif
+        int val, loop, retry = 0;
+        struct regmap *regmap;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is null\r\n", __func__);
+                        break;
                 }
-        }
-api_end:
+                regmap = dev->i2c_regmap;
+                if(regmap == NULL) {
+                        pr_err("%s regmap is null\r\n", __func__);
+                        break;
+                }
+
+                for(loop = 0;
+                        !(i2c_data_reg[loop].addr == 0 &&
+                          i2c_data_reg[loop].reg == 0
+                          && i2c_data_reg[loop].val == 0); loop++) {
+                        if(DEFAULT_DELAY_ADDR == i2c_data_reg[loop].addr) {
+                                mdelay(i2c_data_reg[loop].val);
+                        } else {
+                                retry = 3;
+                                do {
+                                        ret = regmap_write(regmap, i2c_data_reg[loop].reg, i2c_data_reg[loop].val); udelay(1);
+                                        regmap_read(regmap, i2c_data_reg[loop].reg, &val);
+                                        if(val != i2c_data_reg[loop].val) {
+                                                pr_info(" WARNING [%02d] A_0x%02x R_0x%02x 0x%02x : 0x%02x\r\n",
+                                                        loop, i2c_data_reg[loop].addr,
+                                                        i2c_data_reg[loop].reg, i2c_data_reg[loop].val, val);
+                                        } else {
+                                                break;
+                                        }
+                                }while((--retry) > 0);
+                        }
+                }
+                ret = 0;
+        } while(0);
+
+        return ret;
+}
+
+
+static int adv7613_set_power_internal(struct adv7613_dev *dev, int on)
+{
+        int ret = -1;
+        struct i2c_client *client;
+        struct tcc_dp_device *fb_pdata;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is null\r\n", __func__);
+                        break;
+                }
+                if(dev->fb_pdata == NULL) {
+                        pr_err("%s display device is null\r\n", __func__);
+                        break;
+                }
+
+                client = dev->client;
+
+                /* overwrite display device */
+                fb_pdata = dev->fb_pdata;
+
+                if(on) {
+                        pr_info("%s power on\r\n", __func__);
+                        if(gpio_is_valid(dev->gpio_power_on))
+                                gpio_set_value(dev->gpio_power_on, 1);
+
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 0);
+
+                        mdelay(1);
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 1);
+
+                        client->addr = dev->i2c_slave_address.main;
+                        if(adv763_update(dev, main_data_reg) < 0) {
+                                pr_err("%s failed set main reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.cp;
+                        if(adv763_update(dev, cp_data_reg) < 0) {
+                                pr_err("%s failed set cp reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.ksv;
+                        if(adv763_update(dev, ksv_data_reg) < 0) {
+                                pr_err("%s failed set ksv reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.hdmi;
+                        if(adv763_update(dev, hdmi_data_reg) < 0) {
+                                pr_err("%s failed set hdmi reg\r\n", __func__);
+                                break;
+                        }
+
+                        client->addr = dev->i2c_slave_address.lvds;
+                        if(adv763_update(dev, lvds_data_reg) < 0) {
+                                pr_err("%s failed set lvds reg\r\n", __func__);
+                                break;
+                        }
+
+                        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
+                        if(gpio_is_valid(dev->gpio_backlight_on))
+                                gpio_set_value(dev->gpio_backlight_on, 1);
+                        #endif
+                } else {
+                        pr_info("%s power off\r\n", __func__);
+                        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
+                        if(gpio_is_valid(dev->gpio_backlight_on))
+                                gpio_set_value(dev->gpio_backlight_on, 0);
+                        #endif
+
+                        #if defined(CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER)
+                        if(gpio_is_valid(dev->gpio_power_on))
+                                gpio_set_value(dev->gpio_power_on, 0);
+                        #endif
+
+                        if(gpio_is_valid(dev->gpio_reset))
+                                gpio_set_value(dev->gpio_reset, 0);
+                }
+                ret = 0;
+        } while(0);
         return ret;
 }
 
 static int adv7613_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
-{       
+{
         int ret = -1;
-        struct i2c_client *client;                
+        struct i2c_client *client;
         struct adv7613_dev *dev = (struct adv7613_dev *)panel->panel_data;
 
-        if(dev == NULL) {
-                pr_err("%s dev is null\r\n", __func__);
-                goto api_end;
-        }
-        client = dev->client;
-
-        switch(on) {
-                case 0:
-                        pr_info("%s power off\r\n", __func__);
-                        if(gpio_is_valid(dev->gpio_backlight_on)) 
-                                gpio_set_value_cansleep(dev->gpio_backlight_on, 0)
-                                ;
-                        if(gpio_is_valid(dev->gpio_power_on))
-                                gpio_set_value_cansleep(dev->gpio_power_on, 0);
-                        
-                        if(gpio_is_valid(dev->gpio_reset))
-                                gpio_set_value_cansleep(dev->gpio_reset, 0);
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is null\r\n", __func__);
                         break;
-                        
-                case 1: 
-                        pr_info("%s power on\r\n", __func__);
-                        if(gpio_is_valid(dev->gpio_power_on))
-                                gpio_set_value_cansleep(dev->gpio_power_on, 1);
-
-                        if(gpio_is_valid(dev->gpio_reset))
-                                gpio_set_value_cansleep(dev->gpio_reset, 0);
-
-                        udelay(20);
-                        if(gpio_is_valid(dev->gpio_reset))
-                                gpio_set_value_cansleep(dev->gpio_reset, 1);
-
-                        client->addr = dev->main_slave;
-                        adv763_update(dev->main_map, DEFAULT_MAIN_ADDR, main_data_reg);
-
-                        client->addr = dev->cp_slave;
-                        adv763_update(dev->cp_map, DEFAULT_CP_ADDR, cp_data_reg);
-
-                        client->addr = dev->ksv_slave;
-                        adv763_update(dev->ksv_map, DEFAULT_KSV_ADDR, ksv_data_reg);
-
-                        client->addr = dev->hdmi_slave;
-                        adv763_update(dev->hdmi_map, DEFAULT_HDMI_ADDR, hdmi_data_reg);
-
-                        client->addr = dev->lvds_slave;
-                        adv763_update(dev->lvds_map, DEFAULT_LVDS_ADDR, lvds_data_reg); 
-
-                        if(gpio_is_valid(dev->gpio_backlight_on)) 
-                                gpio_set_value_cansleep(dev->gpio_backlight_on, 1);
+                }
+                if(dev->fb_pdata == NULL) {
+                        pr_err("%s display device is null\r\n", __func__);
                         break;
-        }
-                
-        ret = 0;
-api_end:
+                }
+
+                client = dev->client;
+
+                /**
+                 * power_status    | current command | status result
+                 * ----------------|-----------------|---------------
+                 * turn off by fb  | turn on by fb   |turn on panel\n set power_status to turn on by fb
+                 * turn off by fb  | turn on by app  |turn on panel\n set power_status to turn on by app
+                 * turn off by app | turn on by fb   |SKIP
+                 * turn off by app | turn on by app  |turn on panel\n set power_status to turn on by app
+                 * turn on  by fb  | turn on by app  |set power_status to turn on by app
+                 * turn on  by app | turn on by fb   |SKIP
+                 * turn on  by app | turn off by fb  |turn off panel\n set power_status to turn off by fb
+                 */
+                switch(on) {
+                        case 0: /* turn off by fb driver */
+                                pr_info("%s turn off by fb, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 1 || dev->power_status == 3) {
+                                        adv7613_set_power_internal(dev, 0);
+                                        dev->power_status = 0;
+                                }
+                                break;
+
+                        case 1: /* turn on by fb driver */
+                                pr_info("%s turn on by fb, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 0) {
+                                        adv7613_set_power_internal(dev, 1);
+                                        dev->power_status = 1;
+                                }
+                                break;
+
+                        case 2: /* turn off by external app */
+                                pr_info("%s turn off by external app, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status == 1 || dev->power_status == 3) {
+                                        adv7613_set_power_internal(dev, 0);
+                                        dev->power_status = 2;
+                                }
+                                break;
+
+                        case 3: /* turn on by external app */
+                                pr_info("%s turn on by external app, power status is %d\r\n", __func__, dev->power_status);
+                                if(dev->power_status < 3) {
+                                        if(dev->power_status != 1) {
+                                                adv7613_set_power_internal(dev, 1);
+                                        }
+                                        dev->power_status = 3;
+                                }
+                                break;
+                }
+                ret = 0;
+        } while(0);
         return ret;
 }
 
@@ -283,160 +429,10 @@ static struct lcd_panel adv7613_panel = {
         .set_power      = adv7613_set_power,
 };
 
-static bool main_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool main_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config main_regmap_config = {
+static const struct regmap_config hdmi_adv7613_regmap_config = {
         .reg_bits = 8,
         .val_bits = 8,
-        .readable_reg = main_reg_readable,
-        .writeable_reg = main_reg_writeable,
 };
-
-static bool cec_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool cec_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config cec_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = cec_reg_readable,
-        .writeable_reg = cec_reg_writeable,
-};
-
-static bool info_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool info_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config info_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = info_reg_readable,
-        .writeable_reg = info_reg_writeable,
-};
-
-static bool dpll_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool dpll_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config dpll_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = dpll_reg_readable,
-        .writeable_reg = dpll_reg_writeable,
-};
-
-
-static bool ksv_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool ksv_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config ksv_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = ksv_reg_readable,
-        .writeable_reg = ksv_reg_writeable,
-};
-
-static bool edid_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool edid_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config edid_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = edid_reg_readable,
-        .writeable_reg = edid_reg_writeable,
-};
-
-static bool hdmi_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool hdmi_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config hdmi_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = hdmi_reg_readable,
-        .writeable_reg = hdmi_reg_writeable,
-};
-
-static bool cp_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool cp_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config cp_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = cp_reg_readable,
-        .writeable_reg = cp_reg_writeable,
-};
-
-static bool lvds_reg_readable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static bool lvds_reg_writeable(struct device *dev, unsigned int reg)
-{
-        return 1;
-}
-
-static const struct regmap_config lvds_regmap_config = {
-        .reg_bits = 8,
-        .val_bits = 8,
-        .readable_reg = lvds_reg_readable,
-        .writeable_reg = lvds_reg_writeable,
-};
-
 
 static int hdmi_adv7613_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -456,17 +452,17 @@ static int hdmi_adv7613_probe(struct i2c_client *client, const struct i2c_device
         dev->client = client;
         i2c_set_clientdata(client, dev);
 
-        
+
         of_property_read_u32(np, "hdmi-ext-panel", (u32 *)&hdmi_ext_panel);
-        of_property_read_u32(np, "main-slave", (u32 *)&dev->main_slave);
-        of_property_read_u32(np, "cec-slave", (u32 *)&dev->cec_slave);
-        of_property_read_u32(np, "info-slave", (u32 *)&dev->info_slave);
-        of_property_read_u32(np, "dpll-slave", (u32 *)&dev->dpll_slave);
-        of_property_read_u32(np, "ksv-slave", (u32 *)&dev->ksv_slave);
-        of_property_read_u32(np, "edid-slave", (u32 *)&dev->edid_slave);
-        of_property_read_u32(np, "hdmi-slave", (u32 *)&dev->hdmi_slave);
-        of_property_read_u32(np, "cp-slave", (u32 *)&dev->cp_slave);
-        of_property_read_u32(np, "lvds-slave", (u32 *)&dev->lvds_slave);
+        of_property_read_u32(np, "main-slave", (u32 *)&dev->i2c_slave_address.main);
+        of_property_read_u32(np, "cec-slave", (u32 *)&dev->i2c_slave_address.cec);
+        of_property_read_u32(np, "info-slave", (u32 *)&dev->i2c_slave_address.info);
+        of_property_read_u32(np, "dpll-slave", (u32 *)&dev->i2c_slave_address.dpll);
+        of_property_read_u32(np, "ksv-slave", (u32 *)&dev->i2c_slave_address.ksv);
+        of_property_read_u32(np, "edid-slave", (u32 *)&dev->i2c_slave_address.edid);
+        of_property_read_u32(np, "hdmi-slave", (u32 *)&dev->i2c_slave_address.hdmi);
+        of_property_read_u32(np, "cp-slave", (u32 *)&dev->i2c_slave_address.cp);
+        of_property_read_u32(np, "lvds-slave", (u32 *)&dev->i2c_slave_address.lvds);
 
         #if defined(HDMI_ADV7613_DEBUG)
         pr_info("%s DUMP\r\n", __func__);
@@ -479,49 +475,41 @@ static int hdmi_adv7613_probe(struct i2c_client *client, const struct i2c_device
                 "edid-slave     = 0x%02x\r\n"
                 "hdmi-slave     = 0x%02x\r\n"
                 "cp-slave       = 0x%02x\r\n"
-                "lvds-slave     = 0x%02x\r\n\r\n", 
-                hdmi_ext_panel, 
-                dev->main_slave,
-                dev->cec_slave,
-                dev->info_slave,
-                dev->dpll_slave,
-                dev->ksv_slave,
-                dev->edid_slave,
-                dev->hdmi_slave,
-                dev->cp_slave,
-                dev->lvds_slave);
+                "lvds-slave     = 0x%02x\r\n\r\n",
+                hdmi_ext_panel,
+                dev->i2c_slave_address.main,
+                dev->i2c_slave_address.cec,
+                dev->i2c_slave_address.info,
+                dev->i2c_slave_address.dpll,
+                dev->i2c_slave_address.ksv,
+                dev->i2c_slave_address.edid,
+                dev->i2c_slave_address.hdmi,
+                dev->i2c_slave_address.cp,
+                dev->i2c_slave_address.lvds);
         #endif
 
-        dev->main_map = devm_regmap_init_i2c(client, &main_regmap_config);
-        dev->cec_map = devm_regmap_init_i2c(client, &cec_regmap_config);
-        dev->info_map = devm_regmap_init_i2c(client, &info_regmap_config);
-        dev->dpll_map = devm_regmap_init_i2c(client, &dpll_regmap_config);
-        dev->ksv_map = devm_regmap_init_i2c(client, &ksv_regmap_config);
-        dev->edid_map = devm_regmap_init_i2c(client, &edid_regmap_config);
-        dev->hdmi_map = devm_regmap_init_i2c(client, &hdmi_regmap_config);
-        dev->cp_map = devm_regmap_init_i2c(client, &cp_regmap_config);
-        dev->lvds_map = devm_regmap_init_i2c(client, &lvds_regmap_config);
+        dev->i2c_regmap = devm_regmap_init_i2c(client, &hdmi_adv7613_regmap_config);
 
-
-        
+        #if defined(CONFIG_TCCFB_ADV7613_BACKLIGHT_TEST)
         dev->gpio_backlight_on = of_get_named_gpio(np, "backlight-on-gpios", 0);
         if(gpio_is_valid(dev->gpio_backlight_on)) {
                 gpio_request(dev->gpio_backlight_on, "backlight_on");
                 gpio_direction_output(dev->gpio_backlight_on, 0);
         }
+        #endif
 
         dev->gpio_power_on = of_get_named_gpio(np, "power-on-gpios", 0);
         if(gpio_is_valid(dev->gpio_power_on)) {
                 gpio_request(dev->gpio_power_on, "panel_power");
                 gpio_direction_output(dev->gpio_power_on, 1);
         }
-        
+
         dev->gpio_reset = of_get_named_gpio(np, "reset-gpios", 0);
         if(gpio_is_valid(dev->gpio_reset)) {
                 gpio_request(dev->gpio_reset, "panel_reset");
                 gpio_direction_output(dev->gpio_reset, 1);
         }
-        
+
         adv7613_panel.panel_data = (void*)dev;
 #ifdef CONFIG_FB_VIOC
         if(hdmi_ext_panel) {
@@ -545,7 +533,7 @@ static int hdmi_adv7613_remove(struct i2c_client *client)
         }
         return 0;
 }
- 
+
 #ifdef CONFIG_OF
 static const struct of_device_id hdmi_adv7613of_match[] = {
         { .compatible = "telechips,adv7613", },

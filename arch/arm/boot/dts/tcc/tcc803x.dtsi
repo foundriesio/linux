@@ -1318,6 +1318,13 @@
 	   mboxes = <&mbox0 TCC_MBOX0_CH_SUSPEND>;
    };
 
+	suspend_mbox1: suspend_mbox@1 {
+	   compatible = "telechips,mailbox-resume";
+	   device-name = "resume-mbox-dev-a53";
+	   mbox-names ="resume-mbox-a53";
+	   mboxes = <&mbox0 TCC_MBOX0_CH_RESUME>;
+   };
+
 	/* A53 <-> A7S */
 	mbox1: mbox@0x17A00000 {
 		compatible = "telechips,multichannel-mailbox";
@@ -1348,6 +1355,15 @@
 		 mbox-names ="ap-ipc";
 		 mboxes = <&mbox1 TCC_MBOX1_CH_IPC>;
 	 };
+
+        /* tcc_scrshare for A53 */
+        tcc_scrshare0: tcc_scrshare@0 {
+                compatible = "telechips,tcc_scrshare";
+                device-name ="tcc_scrshare_a53";
+                mbox-names ="a53-scrshare";
+                mboxes = <&mbox1 TCC_MBOX1_CH_SCRSHARE>;
+                status = "disabled";
+        };
 
 	/* vioc_mgr for A53 */
 	vioc_mgr0: vioc_mgr@0 {
@@ -1944,6 +1960,7 @@
 		num-viewport = <4>;
 		using_ext_ref_clk = <1>;
 		for_si_test = <0>;
+		suspend_mode = <0>;
 
 
 		status = "disabled";
@@ -2389,6 +2406,7 @@
     dwc3_phy: dwc3_phy@11D90000 {
         compatible = "telechips,tcc_dwc3_phy";
         reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
+		 interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
         clocks = <&clk_isoip_top ISOIP_TOP_U30>;
         status = "disabled";
     };
@@ -2401,6 +2419,7 @@
         #size-cells = <1>;
         ranges;
 		status = "disabled";
+		//tpl-support;
 
         dwc3 {
             compatible = "snps,dwc3";
@@ -2418,6 +2437,7 @@
 	ehci_phy: ehci_phy@11DA0010 {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA0010 0x30>;
+		 interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
 		 status = "disabled";
@@ -2453,6 +2473,7 @@
 	mhst_phy: mux_host_phy@11DA00DC {
 		 compatible = "telechips,tcc_ehci_phy";
 		 reg = <0x11DA00DC 0x20>;
+		 interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
 		 mux_port;
@@ -2540,7 +2561,7 @@
 		compatible = "telechips,lvds_phy";
 		clocks = <&clk_peri PERI_LVDS_PHY>;
 		phy-frequency = <100000000>;
-		reg = <0x12370000 0x400 0x12370400 0x400 0x12360800 0x400 0x12360C00 0x400>;
+		reg = <0x1b941000 400 0x1b941000 400 0x1b942800 400 0x1b942c00 400 0x1b940000 400>;
 	};
 
 	vioc_pxdemux:vioc_pxdemux@12390000 {
@@ -2697,7 +2718,7 @@
 		reg = <0x12009000 0x800>,
 			/* VIOC_REMAP */
 			  <0x12045000 0x800>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	vioc_deintls:vioc_deintls@12003800{

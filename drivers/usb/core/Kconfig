@@ -112,3 +112,10 @@ config MIN_DC_VOLTAGE_LEVEL
     depends on DYNAMIC_DC_LEVEL_ADJUSTMENT
     help
       You can set the minimum HS DC voltage level
+
+config TCC_BC_12
+	bool "Enable BC 1.2 Detection"
+	default n
+	depends on USB
+	help
+		Enalbe BC 1.2 Detection

@@ -2,6 +2,8 @@
 hdmi_cec
 
 Copyright (C) 2018 Telechips Inc.
+
+NOTE: Tab size is 8
 ****************************************************************************/
 #ifndef __HDMI_CEC_H__
 #define __HDMI_CEC_H__
@@ -24,21 +26,13 @@ int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup);
 int cec_CfgLogicAddr(struct cec_device * dev, unsigned addr, int enable);
 int cec_CfgStandbyMode(struct cec_device * dev, int enable);
 int cec_CfgSignalFreeTime(struct cec_device * dev, int time);
-int cec_GetSend(struct cec_device * dev);
-int cec_SetSend(struct cec_device * dev);
-int cec_IntClear(struct cec_device * dev, unsigned char mask);
-int cec_IntDisable(struct cec_device * dev, unsigned char mask);
-int cec_IntEnable(struct cec_device * dev, unsigned char mask);
-int cec_IntStatus(struct cec_device * dev, unsigned char mask);
-int cec_CfgTxBuf(struct cec_device * dev, const char *buf, unsigned size);
-int cec_CfgRxBuf(struct cec_device * dev, char *buf, unsigned size);
-int cec_GetLocked(struct cec_device * dev);
-int cec_SetLocked(struct cec_device * dev);
+
 int cec_CfgBroadcastNAK(struct cec_device * dev, int enable);
 int cec_ctrlReceiveFrame(struct cec_device * dev, char *buf, unsigned size);
 int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size);
 int cec_check_wake_up_interrupt(struct cec_device * dev);
-int cec_CfgWakeupFlag(struct cec_device * dev, int wakeup);
+int cec_set_wakeup(struct cec_device * dev, unsigned int flag);
+int cec_clear_wakeup(struct cec_device * dev);
 void cec_register_dump(struct cec_device * dev);
 
 /******************************************************************************

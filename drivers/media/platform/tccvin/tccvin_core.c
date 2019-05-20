@@ -14,6 +14,7 @@ You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
 ****************************************************************************/
+
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
@@ -22,18 +23,12 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include <video/tcc/tcc_cam_ioctrl.h>
 
+#include "tccvin_common.h"
 #include "tccvin_core.h"
 #include "tccvin_dev.h"
 #ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 #include "tccvin_switchmanager.h"
 #endif//CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
-
-static int					debug = 0;
-#define TAG					"tccvin_core"
-#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
-#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
 
 #define MODULE_NAME			"telechips,video-input"
 
@@ -41,7 +36,7 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 	tccvin_dev_t	* vdev	= video_drvdata(file);
 	int				ret		= 0;
 
-	FUNCTION_IN
+//	FUNCTION_IN
 
 	dlog("path index: %d, cmd: 0x%08x\n", vdev->plt_dev->id, cmd);
 
@@ -208,7 +203,8 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		log("ERROR: VIDIOC command(0x%08x) is WRONG.\n", cmd);
 		WARN_ON(1);
 	}
-	FUNCTION_OUT
+
+//	FUNCTION_OUT
 	return ret;
 }
 
@@ -376,6 +372,9 @@ int tccvin_core_probe(struct platform_device * pdev) {
 
 	// set the video driver's data
 	video_set_drvdata(vdev->vid_dev, vdev);
+
+	// Create the tccvin_attr_debug sysfs
+	tccvin_create_attr_log(&pdev->dev);
 
 #ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 	// switchmanager

@@ -581,7 +581,7 @@ typedef enum
 /*---------------------------------------------------------------------------------------------------------------------
     Input Module
   ---------------------------------------------------------------------------------------------------------------------*/
-#define ZIRENE_INPUTMODULE_GAIN_IN_DB_MIN                             (-6)   /**< Input gain, minimum allowed value [dB] */
+#define ZIRENE_INPUTMODULE_GAIN_IN_DB_MIN                            (-12)   /**< Input gain, minimum allowed value [dB] */
 #define ZIRENE_INPUTMODULE_GAIN_IN_DB_MAX                               0    /**< Input gain, maximum allowed value [dB] */
 #define ZIRENE_INPUTMODULE_GAIN_IN_DB_DEFAULT                           0    /**< Input gain, default value when parameter is not specifically set [dB] */
 #define ZIRENE_INPUTMODULE_LOWER_CUTOFF_FREQUENCY_IN_HZ_MIN            15    /**< High-pass filter cutoff frequency, minimum allowed value  [Hz] */
@@ -644,6 +644,10 @@ Graphic EQ
 #define ZIRENE_GRAPHICEQ_BAND_GAIN_IN_DB_MAX                       +12 /**< GraphicEq, Maximum supported gain in dB       */
 #define ZIRENE_GRAPHICEQ_BAND_GAIN_IN_DB_DEFAULT                     0 /**< GraphicEq, Default gain [dB] for all bands    */
 
+#define ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MIN        0 /**< GraphicEq, minimum allowed enable value [on/off] */
+#define ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MAX        1 /**< GraphicEq, maximum allowed enable value [on/off] */
+#define ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT    0 /**< GraphicEq, Default enable value (OFF) [on/off] */
+
 #define ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_MIN                   -12 /**< GraphicEq, minimum allowed headroom gain [dB] */
 #define ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_MAX                     0 /**< GraphicEq, maximum allowed headroom gain [dB] */
 #define ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_DEFAULT                 0 /**< GraphicEq, Default headroom gain [dB]         */
@@ -683,6 +687,11 @@ typedef enum
     ZIRENE_GRAPHICEQ_BAND11_GAIN_IN_DB,
     ZIRENE_GRAPHICEQ_BAND12_GAIN_IN_DB,
     ZIRENE_GRAPHICEQ_BAND13_GAIN_IN_DB,
+    /** Sets the attenuation gain enabled state on Graphic EQ. \n
+    * If it is set to false attenuation gain has no effect
+    * If it is set to true Graphic EQ internally computes a headroom gain after equal loudness principle which
+    * will be applied to the input. */
+    ZIRENE_GRAPHICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF,
     /** Sets the Graphic EQ headroom gain in dB. \n
     *   iValue range is from ::ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_MIN to ::ZIRENE_GRAPHICEQ_HEADROOM_GAIN_IN_DB_MAX in steps of 1 [dB].
     **/
@@ -702,14 +711,14 @@ eZireneStatus Zirene_GraphicEq_SetConfiguration(ZireneHandle handle, void* pvCon
 /*---------------------------------------------------------------------------------------------------------------------
 Tone Control
 ---------------------------------------------------------------------------------------------------------------------*/
-#define ZIRENE_TONECONTROL_BASS_GAIN_IN_DB_MIN           -6 /**< Minimum supported gain in bass section in dB   */
-#define ZIRENE_TONECONTROL_BASS_GAIN_IN_DB_MAX           +6 /**< Maximum supported gain in bass section in dB   */
+#define ZIRENE_TONECONTROL_BASS_GAIN_IN_DB_MIN          -12 /**< Minimum supported gain in bass section in dB   */
+#define ZIRENE_TONECONTROL_BASS_GAIN_IN_DB_MAX          +12 /**< Maximum supported gain in bass section in dB   */
 #define ZIRENE_TONECONTROL_BASS_GAIN_IN_DB_DEFAULT        0 /**< Default gain for bass section                  */
-#define ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB_MIN         -6 /**< Minimum supported gain in middle section in dB */
-#define ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB_MAX         +6 /**< Maximum supported gain in middle section in dB */
+#define ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB_MIN        -12 /**< Minimum supported gain in middle section in dB */
+#define ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB_MAX        +12 /**< Maximum supported gain in middle section in dB */
 #define ZIRENE_TONECONTROL_MIDDLE_GAIN_IN_DB_DEFAULT      0 /**< Default gain for middle section                */
-#define ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB_MIN         -6 /**< Minimum supported gain in treble section in dB */
-#define ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB_MAX         +6 /**< Maximum supported gain in treble section in dB */
+#define ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB_MIN        -12 /**< Minimum supported gain in treble section in dB */
+#define ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB_MAX        +12 /**< Maximum supported gain in treble section in dB */
 #define ZIRENE_TONECONTROL_TREBLE_GAIN_IN_DB_DEFAULT      0 /**< Default gain for treble section                */
 #define ZIRENE_TONECONTROL_BASS_QFACTOR_MIN             410 /**< Minimum supported quality factor in bass section expressed in Q10 fixed-point format (0.4)   */
 #define ZIRENE_TONECONTROL_BASS_QFACTOR_MAX            4096 /**< Maximum supported quality factor in bass section expressed in Q10 fixed-point format (4.0)   */
@@ -729,6 +738,14 @@ Tone Control
 #define ZIRENE_TONECONTROL_TREBLE_CENTER_FREQUENCY_IN_HZ_MIN      5000 /**< Minimum supported center frequency in Hz for Treble section */
 #define ZIRENE_TONECONTROL_TREBLE_CENTER_FREQUENCY_IN_HZ_MAX     20000 /**< Maximum supported center frequency in Hz for Treble section */
 #define ZIRENE_TONECONTROL_TREBLE_CENTER_FREQUENCY_IN_HZ_DEFAULT 10000 /**< Default center frequency in Hz for Treble section */
+
+#define ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MIN      0 /**< ToneControl, minimum allowed enable value [on/off] */
+#define ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MAX      1 /**< ToneControl, maximum allowed enable value [on/off] */
+#define ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT  0 /**< ToneControl, Default enable value (OFF) [on/off] */
+
+#define ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_MIN                   -12 /**< ToneControl, minimum allowed headroom gain [dB] */
+#define ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_MAX                     0 /**< ToneControl, maximum allowed headroom gain [dB] */
+#define ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_DEFAULT                 0 /**< ToneControl, Default headroom gain [dB]         */
 
 /**
 * The enum contains the list of audio channel combinations supported by the Tone Control effect.
@@ -777,33 +794,46 @@ typedef enum
     /** Sets quality factor for the treble section.\n
     * iValue range is from ::ZIRENE_TONECONTROL_TREBLE_QFACTOR_MIN to ::ZIRENE_TONECONTROL_TREBLE_QFACTOR_MAX.
     * @note The quality factor is expressed in Q10 fixed-point format. A quality factor of 1 is then expressed as 1024 in Q10 format. */
-    ZIRENE_TONECONTROL_TREBLE_QFACTOR
+    ZIRENE_TONECONTROL_TREBLE_QFACTOR,
+    /** Sets the attenuation gain enabled state on Tone Control. \n
+    * If it is set to false gain has no effect
+    * If it is set to true Tone Control internally computes an attenuation gain after equal loudness principle which
+    * will be applied to the input. */
+    ZIRENE_TONECONTROL_ENABLE_ATTENUATION_GAIN_IN_ONOFF,
+    /** Sets the Tone Control headroom gain in dB. \n
+    *   iValue range is from ::ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_MIN to ::ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB_MAX in steps of 1 [dB].
+    **/
+    ZIRENE_TONECONTROL_HEADROOM_GAIN_IN_DB
 } eZirene_ToneControl_Parameters;
 
 
 /*---------------------------------------------------------------------------------------------------------------------
     Parametric EQ
   ---------------------------------------------------------------------------------------------------------------------*/
-#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_MIN                      15  /**< Minimum supported value for frequency in Hz           */
-#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_MAX                   17000  /**< Maximum supported value for frequency in Hz           */
-#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_DEFAULT                1000  /**< Default value for frequency in Hz                     */
-#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_MIN                         (-12) /**< Minimum supported value for section Gain in dB        */
-#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_MAX                           12  /**< Maximum supported value for section Gain in dB        */
-#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_DEFAULT                        0  /**< Default value for section Gain in dB                  */
-#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_MIN                    100  /**< Minimum supported value for section Q-factor as Q10   */
-#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_MAX                  12288  /**< Maximum supported value for section Q-factor as Q10   */
-#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_DEFAULT               1024  /**< Default value for section Q-factor as Q10             */
+#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_MIN                       15  /**< Minimum supported value for frequency in Hz           */
+#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_MAX                    17000  /**< Maximum supported value for frequency in Hz           */
+#define ZIRENE_PARAMETRICEQ_FREQUENCY_IN_HZ_DEFAULT                 1000  /**< Default value for frequency in Hz                     */
+#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_MIN                          (-12) /**< Minimum supported value for section Gain in dB        */
+#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_MAX                            12  /**< Maximum supported value for section Gain in dB        */
+#define ZIRENE_PARAMETRICEQ_GAIN_IN_DB_DEFAULT                         0  /**< Default value for section Gain in dB                  */
+#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_MIN                     100  /**< Minimum supported value for section Q-factor as Q10   */
+#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_MAX                   12288  /**< Maximum supported value for section Q-factor as Q10   */
+#define ZIRENE_PARAMETRICEQ_QFACTORQ10_IN_NA_DEFAULT                1024  /**< Default value for section Q-factor as Q10             */
 
-#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_PEAKING                     0x0  /**< Configures a section for peaking type                 */
-#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_LFSHELVING                  0x1  /**< Configures a section for low-frequency shelving type  */
-#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_HFSHELVING                  0x2  /**< Configures a section for high-frequency shelving type */
-#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_DEFAULT                     ZIRENE_PARAMETRICEQ_SECTIONTYPE_PEAKING /**< Default is peaking */
+#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_PEAKING                      0x0  /**< Configures a section for peaking type                 */
+#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_LFSHELVING                   0x1  /**< Configures a section for low-frequency shelving type  */
+#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_HFSHELVING                   0x2  /**< Configures a section for high-frequency shelving type */
+#define ZIRENE_PARAMETRICEQ_SECTIONTYPE_DEFAULT                      ZIRENE_PARAMETRICEQ_SECTIONTYPE_PEAKING /**< Default is peaking */
 
-#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MIN                (-12) /**< Minimum supported value in dB for headroom gain       */
-#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MAX                   0  /**< Maximum supported value in dB for headroom gain       */
-#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_DEFAULT               0  /**< Default value for headroom in dB                      */
+#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MIN                 (-12) /**< Minimum supported value in dB for headroom gain       */
+#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MAX                    0  /**< Maximum supported value in dB for headroom gain       */
+#define ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_DEFAULT                0  /**< Default value for headroom in dB                      */
 
-#define ZIRENE_PARAMETRICEQ_NOF_SECTIONS                             15  /**< Supported number of sections                          */
+#define ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MIN       0  /**< Minimum supported value for att. gain enable [on/off] */
+#define ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MAX       1  /**< Maximum supported value for att. gain enable [on/off] */
+#define ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT   0  /**< Default value for attenuation gain enable (OFF)       */
+
+#define ZIRENE_PARAMETRICEQ_NOF_SECTIONS                              15  /**< Supported number of sections                          */
 
 /**
   * The ZIRENE_PARAMETRICEQ_PARM_ID() macro must be used when providing the eParm argument to Zirene_SetParameter() and Zirene_GetParameter()
@@ -848,6 +878,12 @@ typedef enum
     /** Sets enable for the section.\n
      * iValue must be either (::AM3D_TRUE) or disabled (::AM3D_FALSE). */
     ZIRENE_PARAMETRICEQ_SECTION_ENABLE_IN_ONOFF,
+    /** Sets attenuation gain enabled state for Parametric EQ. \n
+    * iValue must be either (::AM3D_TRUE) or disabled (::AM3D_FALSE). 
+    * If set to ::AM3D_FALSE the applied attenuation gain is disabled. 
+    * If set to ::AM3D_TRUE  the applied attenuation gain is determined internally by equal loudness computation
+    * @note sectionindex must be 0. */
+    ZIRENE_PARAMETRICEQ_ENABLE_ATTENUATION_GAIN_IN_ONOFF,
     /** Sets Headroom gain for the entire Parametric EQ. If the Parametric EQ module provides a high gain (more than +14 dB at any frequency) it may be required to set
      * the headroom gain to avoid distortion. \n
      * iValue range is from ::ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MIN to ::ZIRENE_PARAMETRICEQ_HEADROOM_GAIN_IN_DB_MAX. */
@@ -876,6 +912,10 @@ typedef enum
 #define ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB_MIN                (-12) /**< Minimum supported value in dB for headroom gain         */
 #define ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB_MAX                   0  /**< Maximum supported value in dB for headroom gain         */
 #define ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB_DEFAULT               0  /**< Default value for headroom in dB                        */
+
+#define ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MIN      0  /**< Minimum supported value for att. gain enable [on/off]   */
+#define ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF_MAX      1  /**< Maximum supported value for att. gain enable [on/off]   */
+#define ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF_DEFAULT  0  /**< Default value for attenuation gain enable (OFF)         */
 
 #define ZIRENE_PEQLOUDSPEAKER_NOF_SECTIONS                             15  /**< Supported number of sections                            */
 
@@ -934,6 +974,12 @@ typedef enum
     /** Sets enable for the section.\n
     * iValue must be either (::AM3D_TRUE) or disabled (::AM3D_FALSE). */
     ZIRENE_PEQLOUDSPEAKER_SECTION_ENABLE_IN_ONOFF,
+    /** Sets attenuation gain enabled state for Parametric EQ. \n
+    * iValue must be either (::AM3D_TRUE) or disabled (::AM3D_FALSE). 
+    * If set to ::AM3D_FALSE the applied attenuation gain is disabled. 
+    * If set to ::AM3D_TRUE  the applied attenuation gain is determined internally by equal loudness computation
+    * @note sectionindex must be 0. */
+    ZIRENE_PEQLOUDSPEAKER_ENABLE_ATTENUATION_GAIN_IN_ONOFF,
     /** Sets Headroom gain for the entire Parametric EQ. If the Parametric EQ module provides a high gain (more than +14 dB at any frequency) it may be required to set
     * the headroom gain to avoid distortion. \n
     * iValue range is from ::ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB_MIN to ::ZIRENE_PEQLOUDSPEAKER_HEADROOM_GAIN_IN_DB_MAX. */

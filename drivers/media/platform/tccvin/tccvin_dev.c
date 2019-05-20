@@ -29,16 +29,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <media/v4l2-common.h>
 
 #include <video/tcc/tcc_gpu_align.h>
-#include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
 
+#include "tccvin_common.h"
 #include "tccvin_dev.h"
-
-static int					debug = 0;
-#define TAG					"tccvin_dev"
-#define log(msg, arg...)	do { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } while(0)
-#define dlog(msg, arg...)	do { if(debug) { printk(KERN_INFO TAG ": %s - " msg, __func__, ## arg); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
 
 #define	DRIVER_NAME		"avn-camera"
 

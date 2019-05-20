@@ -37,17 +37,17 @@ enum{
         LUT_CSC_PRESET_HDR10_TO_SDR,
         LUT_CSC_PRESET_SDR_TO_HLG,
         LUT_CSC_PRESET_HLG_TO_SDR,
-        LUT_CSC_PRESET_MAX                
+        LUT_CSC_PRESET_MAX
 };
 
 enum{
         LUT_CSC_PRESET_BT709_TO_BT2020 = 0,
         LUT_CSC_PRESET_BT2020_TO_BT709,
-        LUT_CSC_PRESET_BTXXX_MAX                
+        LUT_CSC_PRESET_BTXXX_MAX
 };
 
 enum {
-        LUT_CSC_COEFF11 = 0, 
+        LUT_CSC_COEFF11 = 0,
         LUT_CSC_COEFF12,
         LUT_CSC_COEFF13,
         LUT_CSC_COEFF21,
@@ -67,20 +67,35 @@ struct VIOC_LUT_VALUE_SET
 	// 10bit RGB
 	unsigned int Gamma[1024];	 //vioc componet : RGB ,  disp component : BGR
 #endif//
-	unsigned int lut_number; 	//enum VIOC_LUT_NUM 
+	unsigned int lut_number; 	//enum VIOC_LUT_NUM
+};
+
+/**
+ * Structure that interfaces with the IOCTL of the tcc_lut driver.
+ * This is an extension of VIOC_LUT_VALUE_SET, It has the additional
+ * variable to provides information of lut_size
+ */
+struct VIOC_LUT_VALUE_SET_EX
+{
+        /** lookup table size */
+        unsigned int lut_size;
+        /** lookup table id */
+        unsigned int lut_number;
+        /** lookup table */
+        unsigned int Gamma[1024];
 };
 
 struct VIOC_LUT_PLUG_IN_SET
 {
 	unsigned int enable;
-	unsigned int lut_number;  		//enum VIOC_LUT_NUM 
-	unsigned int lut_plug_in_ch; 	//ex :VIOC_LUT_RDMA_00 
+	unsigned int lut_number;  		//enum VIOC_LUT_NUM
+	unsigned int lut_plug_in_ch; 	//ex :VIOC_LUT_RDMA_00
 };
 
 struct VIOC_LUT_ONOFF_SET
 {
 	unsigned int lut_onoff;
-	unsigned int lut_number; 	//enum VIOC_LUT_NUM 
+	unsigned int lut_number; 	//enum VIOC_LUT_NUM
 };
 
 struct VIOC_LUT_SET_Type
@@ -107,8 +122,8 @@ struct VIOC_LUT_CSC_PRESET_SET
 #define TCC_LUT_PLUG_IN_INFO    _IOWR(LUT_IOC_MAGIC, 10, struct VIOC_LUT_PLUG_IN_SET)
 #define TCC_LUT_CSC_PRESET_SET  _IOW(LUT_IOC_MAGIC, 11, struct VIOC_LUT_CSC_PRESET_SET)
 
-
-
+#define TCC_LUT_GET_DEPTH       _IOR(LUT_IOC_MAGIC, 20, unsigned int)
+#define TCC_LUT_SET_EX          _IOW(LUT_IOC_MAGIC, 21, struct VIOC_LUT_VALUE_SET_EX)
 
 #ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED

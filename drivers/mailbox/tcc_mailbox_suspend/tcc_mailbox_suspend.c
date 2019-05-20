@@ -435,6 +435,25 @@ static int mbox_suspend_remove(struct platform_device * pdev)
 	return 0;
 }
 
+static int tcc_mailbox_suspend(struct device *dev)
+{
+	printk("%s %d mailbox suspend enter \n",__func__,__LINE__);
+	return 0;
+}
+
+static int tcc_mailbox_resume(struct device *dev)
+{
+	//struct platform_device *pdev = to_platform_device(client->dev);
+	struct mbox_suspend_device *suspend_dev = platform_get_drvdata(dev);
+	char *suspend_wake[2]    = { "SUSPEND_STATE=WAKE", NULL };
+
+	printk("%s %d mailbox suspend resume \n",__func__,__LINE__);
+
+	kobject_uevent_env(&suspend_dev->dev->kobj,
+			KOBJ_CHANGE, suspend_wake);
+
+	return 0;
+}
 #ifdef CONFIG_OF
 static const struct of_device_id mbox_suspend_match[] = {
     { .compatible = "telechips,mailbox-suspend" },
@@ -451,6 +470,10 @@ static struct platform_driver mbox_suspend_driver = {
         .of_match_table = mbox_suspend_match,
 #endif
     },
+#ifdef CONFIG_OF
+	.suspend	= tcc_mailbox_suspend,
+	.resume		= tcc_mailbox_resume,
+#endif
     .probe  = mbox_suspend_probe,
     .remove = mbox_suspend_remove,
 };

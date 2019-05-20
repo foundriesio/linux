@@ -2,15 +2,19 @@
 hdmi_cec
 
 Copyright (C) 2018 Telechips Inc.
+
+NOTE: Tab size is 8
 ****************************************************************************/
 #include "include/hdmi_cec.h"
+#include "include/hdmi_cec_misc.h"
+
 #include "hdmi_cec_lib/cec.h"
 #include"include/cec_proc_fs.h"
 
 #define DEBUGFS_BUF_SIZE 4096
 
 
-ssize_t proc_write_wake_up_test(struct file *filp, const char __user *buffer, size_t cnt,
+ssize_t proc_write_wake_up(struct file *filp, const char __user *buffer, size_t cnt,
                 loff_t *off_set){
         int ret;
         unsigned int wake_up_test = 0;
@@ -35,10 +39,16 @@ ssize_t proc_write_wake_up_test(struct file *filp, const char __user *buffer, si
 
         switch(wake_up_test) {
 			case 0: default:
+                                if(dev->cec_wakeup_enable) {
+                                        dev->clk_enable_count -= (dev->cec_wakeup_enable-1);
+                                        dev->cec_wakeup_enable = 0;
+                                }
 				break;
 
 			case 1:
-                cec_CfgWakeupFlag(dev,1);
+                                if(!dev->cec_wakeup_enable) {
+                                        dev->cec_wakeup_enable = 1;
+                                }
 				break;
 			case 9:
 				cec_check_wake_up_interrupt(dev);
@@ -49,11 +59,11 @@ ssize_t proc_write_wake_up_test(struct file *filp, const char __user *buffer, si
 }
 
 
-static const struct file_operations proc_fops_wakeup_test = {
+static const struct file_operations proc_fops_wakeup = {
         .owner   = THIS_MODULE,
         .open    = cec_proc_open,
         .release = cec_proc_close,
-        .write   = proc_write_wake_up_test,
+        .write   = proc_write_wake_up,
 };
 
 
@@ -79,19 +89,20 @@ void hdmi_cec_proc_interface_init(struct cec_device *dev){
 			__func__);
 	}
 
-    dev->cec_proc_wakeup_test = proc_create_data("wakeup_test", S_IFREG | S_IRUGO | S_IWUGO,
-                    dev->cec_proc_dir, &proc_fops_wakeup_test, dev);
-    if(dev->cec_proc_wakeup_test == NULL){
+    dev->cec_proc_wakeup = proc_create_data("wakeup", S_IFREG | S_IRUGO | S_IWUGO,
+                    dev->cec_proc_dir, &proc_fops_wakeup, dev);
+    if(dev->cec_proc_wakeup == NULL){
             pr_err("%s:Could not create file system @"
-                            " /proc/hdmi_tx/wake_up_test\n", __func__);
+                            " /proc/hdmi_tx/wake_up\n", __func__);
     }
 
 }
 
-void hdmi_cec_proc_interface_remove(struct cec_device *dev){
+void hdmi_cec_proc_interface_remove(struct cec_device *dev)
+{
 
-	if(dev->cec_proc_wakeup_test != NULL)
-		proc_remove(dev->cec_proc_wakeup_test);
+	if(dev->cec_proc_wakeup != NULL)
+		proc_remove(dev->cec_proc_wakeup);
 
 	if(dev->cec_proc_dir != NULL)
 		proc_remove(dev->cec_proc_dir);

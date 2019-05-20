@@ -53,6 +53,12 @@
  * distinguished by cmd[15:12], i.e. magic number.*/
 #define IS_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 != (((cmd)&0xF000) >> 12)))
 
+static const struct of_device_id sp_ipc_dt_id[] = {
+	{.compatible = "telechips,sp"},
+	{},
+};
+MODULE_DEVICE_TABLE(of, sp_ipc_dt_id);
+
 /**
  * @todo data size should be increased if necessary
  */
@@ -74,24 +80,27 @@ static DECLARE_WAIT_QUEUE_HEAD(waitq);
 static DECLARE_WAIT_QUEUE_HEAD(event_waitq);
 
 #ifdef PROTECTED_BUFFER_SUPPORT
-struct cipher_data_t {
-	uint32_t	inbuf;
-	uint32_t	outbuf;
-	uint32_t	size;
-	uint32_t	keytable;
+struct cipher_data_t
+{
+	uint32_t inbuf;
+	uint32_t outbuf;
+	uint32_t size;
+	uint32_t keytable;
 };
 
-struct protected_buffer_t {
-	uintptr_t	paddr;
-	uintptr_t	vaddr;
-	uintptr_t	ustart;
-	uintptr_t	uend;
-	size_t		size;
+struct protected_buffer_t
+{
+	uintptr_t paddr;
+	uintptr_t vaddr;
+	uintptr_t ustart;
+	uintptr_t uend;
+	size_t size;
 };
 
-struct dma_buffer_t {
-	void		*vaddr;
-	dma_addr_t	dma;
+struct dma_buffer_t
+{
+	void *vaddr;
+	dma_addr_t dma;
 };
 
 static struct protected_buffer_t *pbuff = NULL;
@@ -133,7 +142,7 @@ static void __iomem *cfgbase;
  * @param event SP event made by #SP_EVENT macro
  * @return On success, the index is returned. On failure, -1 is returned.
  */
-int sp_event_idx(uint32_t event)
+static int sp_event_idx(uint32_t event)
 {
 	int idx = 0;
 	event >>= 16;
@@ -192,7 +201,7 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 		memcpy(mbox_msg.message, data, size);
 		mbox_msg.trans_type = DATA_MBOX;
 		dev_dbg(device, "cmd %X, size %d\n", cmd, size);
-		//print_hex_dump_bytes("Sending message: ", DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
+		// print_hex_dump_bytes("Sending message: ", DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
 	} else if (TCC_MBOX_MAX_MSG < size) {
 		memcpy(vaddr, data, size);
 		mbox_msg.trans_type = DMA;
@@ -330,30 +339,28 @@ static int sp_sendack_cmd(int cmd, struct cipher_data_t *data)
 	if (mbox_msg.msg_len == 4) {
 		memcpy(&result, mbox_msg.message, mbox_msg.msg_len);
 
-	}
-	else if (mbox_msg.msg_len > 4) {
+	} else if (mbox_msg.msg_len > 4) {
 		memcpy(&rdata, mbox_msg.message, mbox_msg.msg_len);
 		if (rdata.size != data->size) {
 			result = -2;
-		}
-		else
+		} else
 			result = 0;
 
-	}
-	else
+	} else
 		result = -1;
 
 out:
 	if (result) {
 		dev_err(device, "%s: error:%d\n", __func__, result);
-		dev_err(device, "send: in:0x%x, out:0x%x, size:0x%x\n", data->inbuf, data->outbuf, data->size);
-		dev_err(device, "recv: in:0x%x, out:0x%x, size:0x%x\n", rdata.inbuf, rdata.outbuf, rdata.size);
+		dev_err(
+			device, "send: in:0x%x, out:0x%x, size:0x%x\n", data->inbuf, data->outbuf, data->size);
+		dev_err(
+			device, "recv: in:0x%x, out:0x%x, size:0x%x\n", rdata.inbuf, rdata.outbuf, rdata.size);
 	}
 
 	pr_debug("%s:%d End\n", __func__, __LINE__);
 	mutex_unlock(&mutex);
 	return result;
-
 }
 
 static int sp_sendrecv_cmd_ioctl_extend(unsigned long arg, struct sp_segment *segment_kern)
@@ -371,15 +378,16 @@ static int sp_sendrecv_cmd_ioctl_extend(unsigned long arg, struct sp_segment *se
 		return -EINVAL;
 	}
 
-	pr_debug("in:%p(0x%x), out:%p(0x%x) mmap:%p--%p)\n", (uintptr_t)segment_kern->data_addr, segment_kern->size,
-				(uintptr_t)segment_kern->rdata_addr, segment_kern->rsize, pbuff->ustart, pbuff->uend);
+	pr_debug(
+		"in:%p(0x%x), out:%p(0x%x) mmap:%p--%p)\n", (uintptr_t)segment_kern->data_addr,
+		segment_kern->size, (uintptr_t)segment_kern->rdata_addr, segment_kern->rsize, pbuff->ustart,
+		pbuff->uend);
 
-	if (((uintptr_t)segment_kern->data_addr >= pbuff->ustart) &&
-	    (((uintptr_t)segment_kern->data_addr+segment_kern->size) <= (pbuff->uend))) {
+	if (((uintptr_t)segment_kern->data_addr >= pbuff->ustart)
+		&& (((uintptr_t)segment_kern->data_addr + segment_kern->size) <= (pbuff->uend))) {
 		cipher_data.inbuf = (uint64_t)(pbuff->paddr + (segment_kern->data_addr - pbuff->ustart));
 		in_is_pbuff = 1;
-	}
-	else {
+	} else {
 		result = copy_from_user(vaddr, (void *)segment_kern->data_addr, segment_kern->size);
 		if (result != 0) {
 			dev_err(device, "%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
@@ -390,12 +398,11 @@ static int sp_sendrecv_cmd_ioctl_extend(unsigned long arg, struct sp_segment *se
 	}
 	cipher_data.size = segment_kern->size;
 
-	if (((uintptr_t)segment_kern->rdata_addr >= pbuff->ustart) &&
-	    (((uintptr_t)segment_kern->rdata_addr+segment_kern->rsize) <= (pbuff->uend))) {
+	if (((uintptr_t)segment_kern->rdata_addr >= pbuff->ustart)
+		&& (((uintptr_t)segment_kern->rdata_addr + segment_kern->rsize) <= (pbuff->uend))) {
 		cipher_data.outbuf = (uint64_t)(pbuff->paddr + (segment_kern->rdata_addr - pbuff->ustart));
 		out_is_pbuff = 1;
-	}
-	else {
+	} else {
 		cipher_data.outbuf = (uint64_t)paddr;
 	}
 
@@ -413,8 +420,7 @@ static int sp_sendrecv_cmd_ioctl_extend(unsigned long arg, struct sp_segment *se
 			goto out;
 		}
 		memset(vaddr, 0x0, segment_kern->rsize);
-	}
-	else if (!in_is_pbuff)
+	} else if (!in_is_pbuff)
 		memset(vaddr, 0x0, segment_kern->rsize);
 
 #if (0)
@@ -436,7 +442,7 @@ static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 {
 	struct sp_segment segment_kern, segment_user;
 	int result = 0, readCnt;
-	static uint8_t *long_data = NULL; /* Do not change this */
+	static uint8_t *long_data = NULL; /* Do not change the initial value */
 
 	// Copy data from user space to kernel space
 	result = copy_from_user(&segment_kern, (void *)arg, sizeof(struct sp_segment));
@@ -462,6 +468,9 @@ static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 
 	segment_user = segment_kern;
 
+	/* Why do we use kmalloc instead of copying to DMA space used by
+	 * sp_sendrecv_cmd? sp_sendrecv_cmd assures thread-safe. If we copy
+	 * data to DMA here, it will ruin thread-safe. */
 	if (!long_data) {
 		long_data = kmalloc(SP_DMA_SIZE, GFP_KERNEL);
 		if (long_data == NULL) {
@@ -514,7 +523,7 @@ static int sp_sendrecv_cmd_ioctl(unsigned long arg)
 	}
 
 out:
-	//kfree(long_data);
+	// kfree(long_data);
 	return result;
 }
 
@@ -650,12 +659,11 @@ static void sp_msg_received(struct mbox_client *client, void *message)
 {
 	struct tcc_mbox_msg *rmsg = (struct tcc_mbox_msg *)message;
 
-	if (IS_DMX_EVENT(rmsg->cmd)) {
-		pr_debug("%s:%d Dmx Event Received\n", __func__, __LINE__);
+	if (IS_DMX_EVENT(rmsg->cmd)) { /* Demux event */
 		if (dmx_callback != NULL) {
 			dmx_callback(rmsg->cmd, rmsg->message, rmsg->msg_len);
 		}
-	} else if (IS_EVENT(rmsg->cmd)) {
+	} else if (IS_EVENT(rmsg->cmd)) { /* Event */
 		if (event_mask & rmsg->cmd) {
 			int idx = sp_event_idx(rmsg->cmd);
 			recv_event |= rmsg->cmd;
@@ -664,8 +672,7 @@ static void sp_msg_received(struct mbox_client *client, void *message)
 			wake_up(&event_waitq);
 		}
 	} else { /* For normal SP commands */
-		pr_debug("%s:%d Cmd Received\n", __func__, __LINE__);
-		if(rmsg->trans_type == DATA_MBOX)
+		if (rmsg->trans_type == DATA_MBOX)
 			memcpy(mbox_msg.message, rmsg->message, rmsg->msg_len);
 		else
 			mbox_msg.dma_addr = rmsg->dma_addr;
@@ -737,7 +744,7 @@ static int sp_mmap(struct file *filep, struct vm_area_struct *vma)
 	}
 
 	pbuff->ustart = (uintptr_t)vma->vm_start;
-	pbuff->uend =(uintptr_t)vma->vm_end;
+	pbuff->uend = (uintptr_t)vma->vm_end;
 out:
 	return ret;
 }
@@ -886,18 +893,13 @@ static int sp_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id match[] = {
-	{.compatible = "telechips,sp"},
-	{},
-};
-
 // clang-format off
 static struct platform_driver spdriver = {
 	.probe = sp_probe,
 	.remove = sp_remove,
 	.driver = {
-		.name = "sp",
-		.of_match_table = match,
+		.name = "tcc_sp_ipc",
+		.of_match_table = sp_ipc_dt_id,
 	},
 };
 // clang-format on

@@ -338,16 +338,17 @@ void VIOC_AFBCDec_SurfaceCfg(volatile void __iomem *reg, unsigned int base,
 	//pr_info("%s - End\n", __func__);
 }
 
-void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int Num)
+void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 {
 	unsigned int cnt = 0;
 	char *pReg = (char *)reg;
+	int Num = get_vioc_index(vioc_id);
 
 	if(Num >= AFBCDec_MAX_N)
 		goto err;
 
 	if (pReg == NULL)
-		pReg = (char *)VIOC_AFBCDec_GetAddress(Num);
+		pReg = (char *)VIOC_AFBCDec_GetAddress(vioc_id);
 
 	printk("AFBC_DEC-%d :: 0x%p \n", Num, pReg);
 

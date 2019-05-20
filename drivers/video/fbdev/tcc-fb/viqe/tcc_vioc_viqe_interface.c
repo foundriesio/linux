@@ -2974,7 +2974,7 @@ void TCC_VIQE_DI_DeInit60Hz(void)
 	if(gOutputMode == TCC_OUTPUT_LCD){
 		pVIQE_Info = viqe_common_info.pVIQE0;
 		nVIOC_VIQE = viqe_common_info.gVIOC_VIQE0;
-		pViqe_60hz_info = &viqe_60hz_external_info;	// 2017.09.20 added
+		pViqe_60hz_info = &viqe_60hz_lcd_info;
 	}
 	else {
 		if( gLcdc_layer_60Hz == RDMA_VIDEO ){

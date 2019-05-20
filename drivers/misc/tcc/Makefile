@@ -6,6 +6,7 @@ obj-$(CONFIG_TCC_ATTACH) += attach_drv.o
 obj-$(CONFIG_TCC_VIQE_MADI)	+= viqe_madi_drv.o
 obj-$(CONFIG_VIDEO_HDMI_IN_SENSOR_EP9553T)	+= tcc_ep9553t_cec.o
 obj-$(CONFIG_TCC_G2D) += tcc_grp.o
+obj-$(CONFIG_GPIO_TCC_SAMPLE)   += gpio-tcc-sample.o
 
 ifdef CONFIG_ARCH_TCC802X
 obj-$(CONFIG_TCC_SDR)   += tcc_sdr.o tca_sdr.o

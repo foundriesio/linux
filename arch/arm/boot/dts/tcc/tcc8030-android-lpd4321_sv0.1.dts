@@ -149,10 +149,15 @@
 	*/
 	mode = <1>;		/* 0: single 1: dual */
 	ports = <2 3 4>;
+	mux_select = <0>; /*lcdc mux select */
 };
 
 &gpu1 {
 	status = "disabled";
+};
+
+&tcc_scrshare0{
+	status = "okay";
 };
 
 &vioc_mgr0 {

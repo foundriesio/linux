@@ -12,6 +12,8 @@ PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 Suite 330, Boston, MA 02111-1307 USA
+
+NOTE: Tab size is 8
 ****************************************************************************/
 #ifndef TCC_HDMI_V_2_0_CEC_H
 #define TCC_HDMI_V_2_0_CEC_H
@@ -43,58 +45,88 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include "../hdmi_cec_lib/cec_reg.h"
 
-#define HDMI_CLK_CEC_INDEX_CORE		0
-#define HDMI_CLK_CEC_INDEX_SFR		1
-#define HDMI_CLK_CEC_INDEX_IOBUS	2
-#define HDMI_CLK_CEC_INDEX_MAX		3
+#define HDMI_CEC_VERSION        "1.0.0"
 
-#define HDMI_CEC_CORE_CLK_RATE (32768)
-#define HDMI_CEC_SFR_CLK_RATE (27000000)
+/** This constant is used to define index of IOBUS clocks */
+#define HDMI_CLK_CEC_INDEX_IOBUS       0
+/** This constant is used to define maximum number of clocks */
+#define HDMI_CLK_CEC_INDEX_MAX         1
 
 struct cec_buffer{
+        /** This is buffers used for storing the data waiting for transmission */
 	char	send_buf[CEC_TX_DATA_SIZE];
+        /** This is buffers used for storing the received data */
 	char	recv_buf[CEC_RX_DATA_SIZE];
-	unsigned	int size;
+        /** Number of transmission or received data */
+	unsigned int size;
 };
 
 /**
- * @short Main structures to instantiate the driver
+ * @short This structure defines the device context of cec driver.
  */
 struct cec_device{
+        /** Device pointer to indicates device of platform device */
+        struct device 		*parent_dev;
 
-	/** Device node */
-	struct device 		*parent_dev;
+        /** Name of this driver */
+        char 			*device_name;
 
-	/** Device Tree Information */
-	char 			*device_name;
+        /** Array of cec clocks */
+        struct clk              *clk[HDMI_CLK_CEC_INDEX_MAX];
 
-	/** clocks **/
-    struct clk     *clk[HDMI_CLK_CEC_INDEX_MAX];
+        /** Count of clock enable */
+        int                     clk_enable_count;
 
-	/** iobus cec base address **/
-	volatile void __iomem *cec_core_io;
-	volatile void __iomem *cec_clk_sel;
+        /** Base address of CEC core register */
+        volatile void __iomem *cec_core_io;
 
-	/** IRQ number **/
-	uint32_t		cec_irq;
-	uint32_t		cec_wake_up_irq;
+        /** Base address of CEC interrupt register */
+        volatile void __iomem *cec_irq_io;
 
-	unsigned int 	standby_status;
+        /** Base address of CEC clock select register */
+        volatile void __iomem *cec_clk_sel;
 
-    /** Misc Device */
-    struct miscdevice	*misc;
+        /* IRQ number */
+        /** CEC interrupt number */
+        uint32_t		cec_irq;
+        /** CEC wakeup interrupt number */
+        uint32_t		cec_wake_up_irq;
 
-	/** Device list **/
-	struct list_head	devlist;
+        /**
+         * It stores status of device standby or resume(normal)
+         *  0: resume(normal)
+         *  1: standby */
+        unsigned int 	standby_status;
 
-	struct cec_buffer buf;
+        /** Device pointer to miscellaneous device */
+        struct miscdevice	*misc;
 
-	int			l_address;
-	int			p_address;
-	int			cec_enable;
+        /** Reference count for miscellaneous device */
+        int                     reference_count;
 
-	struct proc_dir_entry	*cec_proc_dir;
-	struct proc_dir_entry	*cec_proc_wakeup_test;
+        /** Device list **/
+        struct list_head	devlist;
+
+        /** Buffer for cec communication  */
+        struct cec_buffer buf;
+
+        /** It stores logical address */
+        int			l_address;
+        /** It stores physical address */
+        int			p_address;
+        /** Not used, It will be deprecated */
+        int			cec_enable;
+        /**
+         * It stores whether cec interrupts are used as wakeup source.
+         *  0: The cec interrupt is not wakeup source
+         *  1: The cec interrupt is used to wakeup source
+         *  n:                                              */
+        int                     cec_wakeup_enable;
+
+        struct proc_dir_entry	*cec_proc_dir;
+        struct proc_dir_entry	*cec_proc_wakeup;
+
+        struct mutex            mutex;
 };
 
 /**

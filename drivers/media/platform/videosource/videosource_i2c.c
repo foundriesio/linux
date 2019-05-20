@@ -18,6 +18,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/slab.h>
 #include <linux/i2c.h>
 
+#include "videosource_common.h"
 #include "videosource_i2c.h"
 #include "videodecoder/videodecoder.h"
 
