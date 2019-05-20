@@ -159,9 +159,9 @@ static ssize_t gpio_val_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR(gpio_dir, S_IRWXU, gpio_dir_show, gpio_dir_store);
-static DEVICE_ATTR(gpio_num, S_IRWXU, gpio_num_show, gpio_num_store);
-static DEVICE_ATTR(gpio_val, S_IRWXU, gpio_val_show, gpio_val_store);
+static DEVICE_ATTR(gpio_dir, S_IRUGO|S_IWUSR, gpio_dir_show, gpio_dir_store);
+static DEVICE_ATTR(gpio_num, S_IRUGO|S_IWUSR, gpio_num_show, gpio_num_store);
+static DEVICE_ATTR(gpio_val, S_IRUGO|S_IWUSR, gpio_val_show, gpio_val_store);
 
 
 static struct attribute *gpio_sample_attrs[] = {
