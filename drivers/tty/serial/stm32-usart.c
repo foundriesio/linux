@@ -993,13 +993,15 @@ static int stm32_init_port(struct stm32_port *stm32port,
 	port->flags	= UPF_BOOT_AUTOCONF;
 	port->ops	= &stm32_uart_ops;
 	port->dev	= &pdev->dev;
-	port->irq	= platform_get_irq_byname(pdev, "event");
-	if (port->irq < 0) {
-		if (port->irq != -EPROBE_DEFER)
+
+	ret = platform_get_irq_byname(pdev, "event");
+	if (ret <= 0) {
+		if (ret != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "Can't get event IRQ: %d\n",
-				port->irq);
-		return port->irq;
+				ret);
+		return ret ? ret : -ENODEV;
 	}
+	port->irq = ret;
 
 	port->fifosize	= stm32port->info->cfg.fifosize;
 
@@ -1008,12 +1010,13 @@ static int stm32_init_port(struct stm32_port *stm32port,
 
 	if (stm32port->info->cfg.has_wakeup) {
 		stm32port->wakeirq = platform_get_irq_byname(pdev, "wakeup");
-		if (stm32port->wakeirq < 0 && stm32port->wakeirq != -ENXIO) {
+		if (stm32port->wakeirq <= 0 && stm32port->wakeirq != -ENXIO) {
 			if (stm32port->wakeirq != -EPROBE_DEFER)
 				dev_err(&pdev->dev,
 					"Can't get event wake IRQ: %d\n",
 					stm32port->wakeirq);
-			return stm32port->wakeirq;
+			return stm32port->wakeirq ? stm32port->wakeirq :
+				-ENODEV;
 		}
 	}
 
