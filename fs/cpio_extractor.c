@@ -670,11 +670,15 @@ static ssize_t extract_store(struct kobject *kobj, struct kobj_attribute *attr,
 	if (!image_addr || !image_size)
 		return -EINVAL;
 
-#if 1
-	image_buf = ioremap(image_addr, image_size);
-#else
-	image_buf = phys_to_virt(image_addr);
-#endif
+	if (pfn_valid(__phys_to_pfn(image_addr)))
+		image_buf = phys_to_virt(image_addr);
+	else
+		image_buf = ioremap(image_addr, image_size);
+
+	if (!image_buf) {
+		pr_err("Failed to map image address\n");
+		return -ENODEV;
+	}
 
 	path = kmalloc(PATH_MAX, GFP_KERNEL);
 	if (!path)
@@ -698,7 +702,8 @@ static ssize_t extract_store(struct kobject *kobj, struct kobj_attribute *attr,
 	set_fs(old_fs);
 	set_fs_pwd(current->fs, &old_pwd);
 
-	iounmap(image_buf);
+	if (!pfn_valid(__phys_to_pfn(image_addr)))
+		iounmap(image_buf);
 
 	return count;
 }
