@@ -250,6 +250,7 @@ enum stm32_dfsdm_sinc_order {
  * @res: output sample resolution
  * @sync_mode: filter synchronized with filter 0
  * @fast: filter fast mode
+ * @shift: output data shift
  */
 struct stm32_dfsdm_filter {
 	unsigned int iosr;
@@ -258,6 +259,7 @@ struct stm32_dfsdm_filter {
 	u64 res;
 	unsigned int sync_mode;
 	unsigned int fast;
+	int shift;
 };
 
 /**
