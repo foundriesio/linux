@@ -722,6 +722,9 @@ static void uart_unthrottle(struct tty_struct *tty)
 	struct uart_port *port;
 	upstat_t mask = 0;
 
+	if (!state)
+		return;
+
 	port = uart_port_ref(state);
 	if (!port)
 		return;
@@ -2405,9 +2408,6 @@ static void uart_poll_put_char(struct tty_driver *driver, int line, char ch)
 	struct uart_driver *drv = driver->driver_state;
 	struct uart_state *state = drv->state + line;
 	struct uart_port *port;
-
-	if (!state)
-		return;
 
 	port = uart_port_ref(state);
 	if (!port)
