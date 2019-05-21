@@ -988,25 +988,8 @@ static int stm32f7_i2c_smbus_xfer_msg(struct stm32f7_i2c_dev *i2c_dev,
 		f7_msg->read_write = I2C_SMBUS_READ;
 		break;
 	case I2C_SMBUS_I2C_BLOCK_DATA:
-		if (data->block[0] > I2C_SMBUS_BLOCK_MAX) {
-			dev_err(dev, "Invalid block %s size %d\n",
-				f7_msg->read_write == I2C_SMBUS_READ ?
-				"read" : "write",
-				data->block[0]);
-			return -EINVAL;
-		}
-
-		if (f7_msg->read_write) {
-			f7_msg->stop = false;
-			f7_msg->count = data->block[0];
-			cr2 &= ~STM32F7_I2C_CR2_RD_WRN;
-		} else {
-			f7_msg->stop = true;
-			f7_msg->count = data->block[0] + 1;
-			for (i = 1; i <= data->block[0]; i++)
-				f7_msg->smbus_buf[i] = data->block[i];
-		}
-		break;
+		/* Rely on emulated i2c transfer (through master_xfer) */
+		return -EOPNOTSUPP;
 	default:
 		dev_err(dev, "Unsupported smbus protocol %d\n", f7_msg->size);
 		return -EOPNOTSUPP;
@@ -1015,8 +998,7 @@ static int stm32f7_i2c_smbus_xfer_msg(struct stm32f7_i2c_dev *i2c_dev,
 	f7_msg->buf = f7_msg->smbus_buf;
 
 	/* Configure PEC */
-	if ((flags & I2C_CLIENT_PEC) && f7_msg->size != I2C_SMBUS_QUICK &&
-	    f7_msg->size != I2C_SMBUS_I2C_BLOCK_DATA) {
+	if ((flags & I2C_CLIENT_PEC) && f7_msg->size != I2C_SMBUS_QUICK) {
 		cr1 |= STM32F7_I2C_CR1_PECEN;
 		cr2 |= STM32F7_I2C_CR2_PECBYTE;
 		if (!f7_msg->read_write)
@@ -1099,7 +1081,6 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 		break;
 	case I2C_SMBUS_BLOCK_DATA:
 	case I2C_SMBUS_BLOCK_PROC_CALL:
-	case I2C_SMBUS_I2C_BLOCK_DATA:
 		f7_msg->count = 1;
 		cr2 |= STM32F7_I2C_CR2_RELOAD;
 		break;
@@ -1124,8 +1105,8 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 
 	/*
 	 * Configure DMA or enable RX/TX interrupt:
-	 * For all BLOCK transactions we don't use dma as we don't know in
-	 * advance how many data will be received
+	 * For I2C_SMBUS_BLOCK_DATA and I2C_SMBUS_BLOCK_PROC_CALL we don't use
+	 * dma as we don't know in advance how many data will be received
 	 */
 	cr1 &= ~(STM32F7_I2C_CR1_RXIE | STM32F7_I2C_CR1_TXIE |
 		 STM32F7_I2C_CR1_RXDMAEN | STM32F7_I2C_CR1_TXDMAEN);
@@ -1133,8 +1114,7 @@ static void stm32f7_i2c_smbus_rep_start(struct stm32f7_i2c_dev *i2c_dev)
 	i2c_dev->use_dma = false;
 	if (i2c_dev->dma && f7_msg->count >= STM32F7_I2C_DMA_LEN_MIN &&
 	    f7_msg->size != I2C_SMBUS_BLOCK_DATA &&
-	    f7_msg->size != I2C_SMBUS_BLOCK_PROC_CALL &&
-	    f7_msg->size != I2C_SMBUS_I2C_BLOCK_DATA) {
+	    f7_msg->size != I2C_SMBUS_BLOCK_PROC_CALL) {
 		ret = stm32_i2c_prep_dma_xfer(i2c_dev->dev, i2c_dev->dma,
 					      cr2 & STM32F7_I2C_CR2_RD_WRN,
 					      f7_msg->count, f7_msg->buf,
@@ -1691,8 +1671,7 @@ static int stm32f7_i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 	}
 
 	/* Check PEC */
-	if ((flags & I2C_CLIENT_PEC) && size != I2C_SMBUS_QUICK &&
-	    size != I2C_SMBUS_I2C_BLOCK_DATA && read_write) {
+	if ((flags & I2C_CLIENT_PEC) && size != I2C_SMBUS_QUICK && read_write) {
 		ret = stm32f7_i2c_smbus_check_pec(i2c_dev);
 		if (ret)
 			goto pm_free;
@@ -1708,10 +1687,6 @@ static int stm32f7_i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 		case I2C_SMBUS_PROC_CALL:
 			data->word = f7_msg->smbus_buf[0] |
 				(f7_msg->smbus_buf[1] << 8);
-		break;
-		case I2C_SMBUS_I2C_BLOCK_DATA:
-		for (i = 0; i < data->block[0]; i++)
-			data->block[i + 1] = f7_msg->smbus_buf[i];
 		break;
 		case I2C_SMBUS_BLOCK_DATA:
 		case I2C_SMBUS_BLOCK_PROC_CALL:
