@@ -3154,23 +3154,12 @@ static int kbase_common_reg_map(struct kbase_device *kbdev)
 		goto out_region;
 	}
 
-#ifdef CONFIG_TCC803X_CA7S
-	kbdev->reg = ioremap(kbdev->reg_start - CAL_GPU0_REG, kbdev->reg_size + CAL_GPU0_REG) + CAL_GPU0_REG;
-	if (!kbdev->reg) {
-		dev_err(kbdev->dev, "Can't remap register window\n");
-		err = -EINVAL;
-		goto out_ioremap;
-	}
-
-#else
 	kbdev->reg = ioremap(kbdev->reg_start, kbdev->reg_size);
 	if (!kbdev->reg) {
 		dev_err(kbdev->dev, "Can't remap register window\n");
 		err = -EINVAL;
 		goto out_ioremap;
 	}
-
-#endif
 
 	return err;
 
@@ -3184,11 +3173,7 @@ static void kbase_common_reg_unmap(struct kbase_device * const kbdev)
 {
 	if (kbdev->reg) {
 		iounmap(kbdev->reg);
-#ifdef CONFIG_TCC803X_CA7S
-		release_mem_region(kbdev->reg_start-CAL_GPU0_REG, kbdev->reg_size+CAL_GPU0_REG);
-#else
 		release_mem_region(kbdev->reg_start, kbdev->reg_size);
-#endif
 		kbdev->reg = NULL;
 		kbdev->reg_start = 0;
 		kbdev->reg_size = 0;
