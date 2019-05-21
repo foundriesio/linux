@@ -1,6 +1,5 @@
 /*
  *
- * (C) COPYRIGHT 2019 Telechips Inc.
  * (C) COPYRIGHT 2014-2016,2018 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
@@ -51,13 +50,6 @@ static irqreturn_t kbase_job_irq_handler(int irq, void *data)
 	u32 val;
 
 	spin_lock_irqsave(&kbdev->pm.backend.gpu_powered_lock, flags);
-#ifdef CONFIG_TCC803X_CA7S
-	if(readl(kbdev->reg-CAL_GPU0_REG + JOB_CONTROL_REG(JOB_IRQ_STATUS)))
-	{
-		spin_unlock_irqrestore(&kbdev->pm.backend.gpu_powered_lock, flags);
-		return IRQ_HANDLED;
-	}
-#endif
 
 	if (!kbdev->pm.backend.gpu_powered) {
 		/* GPU is turned off - IRQ is not for us */
@@ -94,13 +86,6 @@ static irqreturn_t kbase_mmu_irq_handler(int irq, void *data)
 	u32 val;
 
 	spin_lock_irqsave(&kbdev->pm.backend.gpu_powered_lock, flags);
-#ifdef CONFIG_TCC803X_CA7S
-	if(readl(kbdev->reg-CAL_GPU0_REG + MMU_REG(MMU_IRQ_STATUS)))
-	{
-		spin_unlock_irqrestore(&kbdev->pm.backend.gpu_powered_lock, flags);
-		return IRQ_HANDLED;
-	}
-#endif
 
 	if (!kbdev->pm.backend.gpu_powered) {
 		/* GPU is turned off - IRQ is not for us */
@@ -141,13 +126,6 @@ static irqreturn_t kbase_gpu_irq_handler(int irq, void *data)
 	u32 val;
 
 	spin_lock_irqsave(&kbdev->pm.backend.gpu_powered_lock, flags);
-#ifdef CONFIG_TCC803X_CA7S
-	if(readl(kbdev->reg-CAL_GPU0_REG + GPU_CONTROL_REG(GPU_IRQ_STATUS)))
-	{
-		spin_unlock_irqrestore(&kbdev->pm.backend.gpu_powered_lock, flags);
-		return IRQ_HANDLED;
-	}
-#endif
 
 	if (!kbdev->pm.backend.gpu_powered) {
 		/* GPU is turned off - IRQ is not for us */
