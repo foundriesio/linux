@@ -624,8 +624,15 @@ static void tcc_thermal_get_efuse(struct platform_device *pdev)
     data->temp_trim1 = (readl(data->ecid_user0_reg1) & 0x0000FF00) >> 8;
     reg_temp &= ~(1<<31); writel(reg_temp, data->ecid_conf); // disable
     // ~Read ECID - USER0
+
+    if (data->temp_trim1)
+	    data->cal_data->cal_type = pdata->cal_type;
+    else
+	    data->cal_data->cal_type = TYPE_NONE;
+
+    printk("%s. trim_val: %08x\n", __func__, data->temp_trim1);
+    printk("%s. cal_type: %d\n", __func__, data->cal_data->cal_type);
     
-    data->cal_data->cal_type = pdata->cal_type;
     switch (data->cal_data->cal_type) {
         case TYPE_TWO_POINT_TRIMMING:
             if(data->temp_trim1)
