@@ -107,8 +107,8 @@ static int stm32_pwr_irq_set_type(struct irq_data *d, unsigned int flow_type)
 }
 
 #ifdef CONFIG_SMP
-int stm32_pwr_set_affinity_parent(struct irq_data *data,
-				  const struct cpumask *dest, bool force)
+static int stm32_pwr_set_affinity_parent(struct irq_data *data,
+					 const struct cpumask *dest, bool force)
 {
 	struct stm32_pwr_data *priv = data->domain->host_data;
 	struct irq_data *parent = irq_get_irq_data(priv->irq);
