@@ -155,6 +155,25 @@
 		spdif-in;
 		spdif-out;
 	};
+
+	touchscreen: vf50-touchscreen {
+		compatible = "toradex,vf50-touchscreen";
+		io-channels = <&adc1 2>,<&adc1 1>,
+			      <&adc1 0>,<&adc1 3>;
+		xp-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;
+		xm-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;
+		yp-gpios = <&gpio2 17 GPIO_ACTIVE_LOW>;
+		ym-gpios = <&gpio2 21 GPIO_ACTIVE_HIGH>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <22 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "idle","default";
+		pinctrl-0 = <&pinctrl_touchctrl_idle>, <&pinctrl_touchctrl_gpios>;
+		pinctrl-1 = <&pinctrl_adc1>, <&pinctrl_touchctrl_gpios>;
+		vf50-ts-min-pressure = <200>;
+		/* NOTE: you must remove the pinctrl-adc1 from the adc1
+                         node below to use the touchscreen */
+		status = "disabled";
+	};
 };
 
 &acm {
@@ -810,6 +829,22 @@
 				/* On-module PMIC use */
 				SC_P_USDHC2_VSELECT_CONN_USDHC2_VSELECT	0x00000021
 			>;
+		};
+
+		pinctrl_touchctrl_idle: touchctrl_idle {
+			fsl,pins = <
+				SC_P_ADC_IN4_LSIO_GPIO3_IO22		0x00000021
+				SC_P_ADC_IN5_LSIO_GPIO3_IO23		0x00000021
+				>;
+		};
+
+		pinctrl_touchctrl_gpios: touchctrl_gpios {
+			fsl,pins = <
+				SC_P_ESAI1_FSR_LSIO_GPIO2_IO04		0x00000021
+				SC_P_ESAI1_FST_LSIO_GPIO2_IO05		0x00000041
+				SC_P_SPI3_SCK_LSIO_GPIO2_IO17		0x00000021
+				SC_P_SPI3_CS1_LSIO_GPIO2_IO21		0x00000041
+				>;
 		};
 
 		pinctrl_usdhc3_100mhz: usdhc3grp100mhz {
