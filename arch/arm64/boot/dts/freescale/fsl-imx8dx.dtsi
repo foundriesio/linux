@@ -2316,6 +2316,7 @@
 
 	adc0: adc@5a880000 {
 		compatible = "fsl,imx8qxp-adc";
+		#io-channel-cells = <1>;
 		reg = <0x0 0x5a880000 0x0 0x10000>;
 		interrupts = <GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-parent = <&gic>;
