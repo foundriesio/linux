@@ -1249,11 +1249,11 @@ config TOUCHSCREEN_ZFORCE
 
 config TOUCHSCREEN_COLIBRI_VF50
 	tristate "Toradex Colibri on board touchscreen driver"
-	depends on IIO && VF610_ADC
+	depends on IIO
 	depends on GPIOLIB || COMPILE_TEST
 	help
-	  Say Y here if you have a Colibri VF50 and plan to use
-	  the on-board provided 4-wire touchscreen driver.
+	  Say Y here if you have a Apalis iMX8 or Colibri VF50 and plan
+	  to use the on-board provided 4-wire touchscreen controller.
 
 	  If unsure, say N.
 
