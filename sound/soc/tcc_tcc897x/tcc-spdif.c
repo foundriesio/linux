@@ -57,6 +57,8 @@
 #define alsa_dbg(f, a...)  
 #endif
 
+extern bool __clk_is_enabled(struct clk *clk);
+
 //#define TCC_FIX_DIV 4
 #define SPDIF_CLK_GAIN 128
 static unsigned int tcc_spdif_get_mclk_fs(unsigned int freq, struct clk  *dai_pclk)
@@ -121,7 +123,8 @@ static void tcc_spdif_set_clock(struct snd_soc_dai *dai, unsigned int req_rate, 
 			}
 		}	// Planet 20150812 S/PDIF_Rx End
 		if (prtd->ptcc_clk->dai_pclk) {
-			//if(prtd->ptcc_clk->dai_pclk->enable_count)
+//			if(prtd->ptcc_clk->dai_pclk->enable_count)
+			if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 				clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 			clk_set_rate(prtd->ptcc_clk->dai_pclk, clk_rate);
 			clk_prepare_enable(prtd->ptcc_clk->dai_pclk);
@@ -459,10 +462,10 @@ static int tcc_spdif_suspend(struct device *dev)
 
 	// Disable all about dai clk
 	//if((prtd->ptcc_clk->dai_pclk)&&(prtd->ptcc_clk->dai_pclk->enable_count))
-	if(prtd->ptcc_clk->dai_pclk)
+	if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 		clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count))
-	if(prtd->ptcc_clk->dai_hclk)
+	if(__clk_is_enabled(prtd->ptcc_clk->dai_hclk))
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 
 	return 0;

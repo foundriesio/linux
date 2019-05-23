@@ -45,9 +45,10 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_AK4671 if I2C
 	select SND_SOC_AK5386
 	select SND_SOC_AK7604 if I2C
+	select SND_SOC_AK7759 if I2C
 	select SND_SOC_ALC5623 if I2C
 	select SND_SOC_ALC5632 if I2C
-	select SND_SOC_BT_SCO
+ 	select SND_SOC_BT_SCO
 	select SND_SOC_CQ0093VC
 	select SND_SOC_CS35L32 if I2C
 	select SND_SOC_CS35L33 if I2C

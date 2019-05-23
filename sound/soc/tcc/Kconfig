@@ -25,31 +25,6 @@ config SND_SOC_TCC_CARD
 	help
 		Telechips ASoC Card Driver
 
-config SND_SOC_TCC_BOARD_DUMMY
-	bool "TCC DUMMY"
-	select SND_SOC_DUMMY
-	depends on SND_SOC_TCC && ARCH_TCC897X
-
-	help
-	  Say Y if you want to add support for SoC audio on Telechips
-	  TCC (DUMMY).
-
-config SND_SOC_TCC8971_BOARD_LCN3
-	tristate "TCC8971 LCN 3.0"
-	select SND_SOC_AK4601
-	select SND_SOC_DUMMY
-	depends on SND_SOC_TCC && ARCH_TCC897X
-
-	help
-	  Say Y if you want to add support for SoC audio on TCC8971 LCN 3.0(AK4601)
-
-config SND_SOC_TCC_PCM_V10
-	bool
-	depends on SND_SOC_TCC && (ARCH_TCC897X || ARCH_TCC570X)
-	default y
-	help
-	  Say Y if you want to add support for SoC audio on PCM driver V1.0
-
 source "sound/soc/tcc/asrc/Kconfig"
 
 config SND_SOC_TCC_ASRC_M2M_PCM
@@ -58,4 +33,5 @@ config SND_SOC_TCC_ASRC_M2M_PCM
 	default n
 
 source "sound/soc/tcc/virtual/Kconfig"
+
 endmenu

@@ -3106,6 +3106,93 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	return 0;
 }
 
+#ifdef CONFIG_TCC803X_CA7S	
+static int ak4601_init_reg_for_a7s(struct snd_soc_codec *codec)
+{
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	int i;
+	
+	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
+
+	printk("[AK4601] %s Check Connection...%s\n", __FUNCTION__, snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18 ? "SUCCESS" : "FAILUE");
+
+	ak4601->fs = 48000;
+	ak4601->PLLInput = 1; //BICK1
+	ak4601->XtiFs    = 0;
+
+	setPLLOut(codec);
+
+	for ( i = 0 ; i < NUM_SYNCDOMAIN ; i ++ ) {
+		ak4601->SDBick[i]  = 0; //64fs
+		ak4601->SDfs[i] = 5;  // 48kHz
+		ak4601->SDCks[i] = 1;  // PLLMCLK
+
+		setSDClock(codec, i);
+	}
+
+	for ( i = 0 ; i < NUM_SDIO ; i ++ ) {
+		ak4601->TDMSDINbit[i]  = 0; //TDM Off
+		ak4601->TDMSDOUTbit[i] = 0; //TDM Off
+		ak4601->DIEDGEbit[i] = 0;   //I2S
+		ak4601->DOEDGEbit[i] = 0;   //I2S
+		ak4601->DISLbit[i] = 2;	    //0:24bit, 2:16bit
+		ak4601->DOSLbit[i] = 2;		//0:24bit, 2:16bit
+		ak4601->EXBCK[i] = i+1;		//
+	}
+
+	ak4601->DIDL3 = 0;
+	ak4601->EXBCK[2] = PORT3_LINK;
+
+	snd_soc_update_bits( ak4601->codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
+	snd_soc_update_bits( ak4601->codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
+	akdbgprt("\t[AK4601] %s\n addr=%03X data=%02X",__FUNCTION__, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38);
+
+	snd_soc_update_bits( ak4601->codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
+	//'CODEC Sync Domain' 'SD1', 'ADC1 Sync Domain' 'SD1'
+	snd_soc_update_bits( ak4601->codec, AK4601_020_SYNC_DOMAIN_SELECT_16, 0x77, 0x11);
+	//'MixerB Sync Domain' 'SD1'
+	snd_soc_update_bits( ak4601->codec, AK4601_01F_SYNC_DOMAIN_SELECT_15, 0x07, 0x01);
+	//'LRCK2/SDOUT3 Pin BICK2/SDIN3 Pin Setting' 'SDIN3,SDOUT3 Enable'
+	snd_soc_update_bits( ak4601->codec, AK4601_010_PIN_SETTING, 0x01, 0x01);
+	//'ADCM MUX' 'AINM'
+	//'AIN1 Lch MUX' 'IN1P_N'
+	//'AIN1 Rch MUX' 'IN2P_N'
+	snd_soc_update_bits( ak4601->codec, AK4601_06B_ANALOG_INPUT_SELECT_SETTING, 0x1C, 0x10);
+	//'MicBias1 MUX' 'MicBias1'
+	//'MicBias2 MUX' 'MicBias2'
+	snd_soc_update_bits( ak4601->codec, AK4601_002_MIC_BIAS_POWER_MANAGEMENT, 0xFF, 0x03);
+	//'ADC1 Digital Volume L' 255
+	snd_soc_update_bits( ak4601->codec, AK4601_064_ADC1LCH_DIGITAL_VOLUME, 0xFF, 0x00);
+	//'ADC1 Digital Volume R' 0
+	snd_soc_update_bits( ak4601->codec, AK4601_065_ADC1RCH_DIGITAL_VOLUME, 0xFF, 0xFF);
+	//'MixerB Ch1 Source Selector' 'ADC1'
+	snd_soc_update_bits( ak4601->codec, AK4601_047_MIXER_B_CH1_INPUT_DATA_SELECT, 0x3F, 0x15);
+	//'MixerB Ch2 Source Selector' 'ADCM'
+	snd_soc_update_bits( ak4601->codec, AK4601_048_MIXER_B_CH2_INPUT_DATA_SELECT, 0x3F, 0x17);
+	//'MixerB Input2 Data Change' 'Swap'
+	snd_soc_update_bits( ak4601->codec, AK4601_061_MIXER_B_SETTING, 0x0c, 0x0c);
+	//'SDOUT1 Source Selector' 'MixerB'
+	snd_soc_update_bits( ak4601->codec, AK4601_021_SDOUT1_TDM_SLOT1_2_DATA_SELECT, 0x3F, 0x19);
+	//'SDOUT1 Output Enable' on        
+	snd_soc_update_bits( ak4601->codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x20, 0x20);
+	//'ADC1 Mute' off                  
+	//'ADCM Mute' off                  
+	snd_soc_update_bits( ak4601->codec, AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 0x50, 0x00);
+	//'DAC1 Source Selector' 'SDIN1'   
+	//'DAC2 Source Selector' 'SDIN2'   
+	//'DAC3 Source Selector' 'SDIN1'  
+	snd_soc_update_bits( ak4601->codec, AK4601_035_DAC1_INPUT_DATA_SELECT, 0x3F, 0x01);
+	snd_soc_update_bits( ak4601->codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x09);
+	snd_soc_update_bits( ak4601->codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x01);
+	//'DAC1 Mute' off    
+	//'DAC2 Mute' off                  
+	//'DAC3 Mute' off                  
+	snd_soc_update_bits( ak4601->codec, AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 0x70, 0x00);
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_OF	//16/04/11
 static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 {
@@ -3141,12 +3228,12 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 
 static int ak4601_probe(struct snd_soc_codec *codec)
 {
-	printk("[AK4601] probe!!\n");
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 #ifndef CONFIG_OF
 	struct ak4601_platform_data *pdata = codec->dev->platform_data;
 #endif
 	int ret = 0;
+	printk("[AK4601] probe!!\n");
 
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
@@ -3177,6 +3264,9 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 	}
 
 	ak4601_init_reg(codec);
+#ifdef CONFIG_TCC803X_CA7S	
+	ak4601_init_reg_for_a7s(codec);
+#endif
 	akdbgprt("\t[AK4601] %s return(%d)\n",__FUNCTION__, ret );
 	return ret;
 }

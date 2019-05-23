@@ -62,6 +62,8 @@
 static int tcc_i2s_tx_enable(struct snd_pcm_substream *substream, int En);
 static int tcc_i2s_rx_enable(struct snd_pcm_substream *substream, int En);
 
+extern bool __clk_is_enabled(struct clk *clk);
+
 static unsigned int tcc_i2s_get_mclk_fs_for_af(unsigned int freq, struct clk	*dai_pclk)
 {
 	unsigned int fs=MAX_TCC_MCLK_FS, minfs=0, mdiff=freq;
@@ -164,6 +166,7 @@ static void tcc_i2s_set_clock(struct snd_soc_dai *dai, unsigned int req_lrck, bo
 
 		if(prtd->ptcc_clk->dai_pclk) {
 			//if (prtd->ptcc_clk->dai_pclk->enable_count)
+			if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 				clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 
 			if(prtd->ptcc_clk->af_pclk) {
@@ -739,15 +742,15 @@ static int tcc_i2s_suspend(struct device *dev)
 
 	// Disable all about dai clk
 	//if((prtd->ptcc_clk->af_pclk)&&(prtd->ptcc_clk->af_pclk->enable_count)){
-	if(prtd->ptcc_clk->af_pclk) {
-		clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
+	if(__clk_is_enabled(prtd->ptcc_clk->af_pclk)) {
+			clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
 	}
 	//if((prtd->ptcc_clk->dai_pclk)&&(prtd->ptcc_clk->dai_pclk->enable_count)){
-	if(prtd->ptcc_clk->dai_pclk) {
+	if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk)) {	
 		clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 	}
 	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count)){
-	if(prtd->ptcc_clk->dai_hclk) {
+	if(__clk_is_enabled(prtd->ptcc_clk->dai_hclk)) {		
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 	}
 
@@ -902,6 +905,7 @@ static int tcc_i2s_probe(struct snd_soc_dai *dai)
 
 	if (prtd->ptcc_clk->af_pclk) {
 		//if(prtd->ptcc_clk->af_pclk->enable_count)
+		if(__clk_is_enabled(prtd->ptcc_clk->af_pclk))
 			clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
 
 		clk_set_rate(prtd->ptcc_clk->af_pclk, MAX_TCC_AF_PCLK);
@@ -911,6 +915,7 @@ static int tcc_i2s_probe(struct snd_soc_dai *dai)
 
 	if (prtd->ptcc_clk->dai_pclk) {
 		//if(prtd->ptcc_clk->dai_pclk->enable_count)
+		if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 			clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 
 		tcc_i2s_set_clock(dai, tcc_i2s->dai_clk_rate[0], SNDRV_PCM_STREAM_PLAYBACK);
