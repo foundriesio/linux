@@ -1548,7 +1548,7 @@ static int clk_sdivider_set_rate(struct clk_hw *hw, unsigned long rate,
 				 unsigned long parent_rate)
 {
 	struct clk_divider *divider = to_clk_divider(hw);
-	unsigned int value;
+	int value;
 	unsigned long flags = 0;
 	u32 val;
 
