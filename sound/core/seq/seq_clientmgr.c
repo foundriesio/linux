@@ -2543,20 +2543,3 @@ void snd_sequencer_device_done(void)
 	snd_unregister_device(&seq_dev);
 	put_device(&seq_dev);
 }
-
-/* XXX kABI compatibility for SLE15 XXX */
-#undef snd_seq_kernel_client_enqueue
-int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev,
-				  int atomic, int hop)
-{
-	return __snd_seq_kernel_client_enqueue(client, ev, NULL, false);
-}
-EXPORT_SYMBOL(snd_seq_kernel_client_enqueue);
-
-int snd_seq_kernel_client_enqueue_blocking(int client, struct snd_seq_event *ev,
-					   struct file *file, int atomic,
-					   int hop)
-{
-	return __snd_seq_kernel_client_enqueue(client, ev, file, true);
-}
-EXPORT_SYMBOL(snd_seq_kernel_client_enqueue_blocking);

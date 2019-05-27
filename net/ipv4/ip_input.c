@@ -298,7 +298,7 @@ static inline bool ip_rcv_options(struct sk_buff *skb, struct net_device *dev)
 			}
 		}
 
-		if (ip_options_rcv_srr2(skb, dev))
+		if (ip_options_rcv_srr(skb, dev))
 			goto drop;
 	}
 

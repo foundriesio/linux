@@ -31,9 +31,7 @@
 #include <asm/ioctls.h>
 
 #include <net/net_namespace.h>
-#ifndef __GENKSYMS__
 #include <net/netns/generic.h>
-#endif
 #include "smc_netns.h"
 
 #include "smc.h"

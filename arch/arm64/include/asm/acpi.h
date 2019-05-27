@@ -12,10 +12,7 @@
 #ifndef _ASM_ACPI_H
 #define _ASM_ACPI_H
 
-#ifndef __GENKSYMS__
 #include <linux/efi.h>
-#endif
-
 #include <linux/memblock.h>
 #include <linux/psci.h>
 
