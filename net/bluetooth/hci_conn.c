@@ -1148,8 +1148,21 @@ int hci_conn_check_link_mode(struct hci_conn *conn)
 			return 0;
 	}
 
-	if (hci_conn_ssp_enabled(conn) &&
-	    !test_bit(HCI_CONN_ENCRYPT, &conn->flags))
+	/* If Secure Simple Pairing is not enabled, then legacy connection
+	 * setup is used and no encryption or key sizes can be enforced.
+	 */
+	if (!hci_conn_ssp_enabled(conn))
+		return 1;
+
+	if (!test_bit(HCI_CONN_ENCRYPT, &conn->flags))
+		return 0;
+
+	/* The minimum encryption key size needs to be enforced by the
+	 * host stack before establishing any L2CAP connections. The
+	 * specification in theory allows a minimum of 1, but to align
+	 * BR/EDR and LE transports, a minimum of 7 is chosen.
+	 */
+	if (conn->enc_key_size < HCI_MIN_ENC_KEY_SIZE)
 		return 0;
 
 	return 1;

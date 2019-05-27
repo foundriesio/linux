@@ -215,6 +215,9 @@ struct ipmi_user {
 
 	/* Does this interface receive IPMI events? */
 	bool gets_events;
+
+	/* Free must run in process context for RCU cleanup. */
+	struct work_struct remove_work;
 };
 
 static struct ipmi_user *acquire_ipmi_user(struct ipmi_user *user, int *index)
@@ -904,7 +907,7 @@ static int deliver_response(struct ipmi_smi *intf, struct ipmi_recv_msg *msg)
 
 		if (user) {
 			user->handler->ipmi_recv_hndl(msg, user->handler_data);
-			release_ipmi_user(msg->user, index);
+			release_ipmi_user(user, index);
 		} else {
 			/* User went away, give up. */
 			ipmi_free_recv_msg(msg);
@@ -1088,6 +1091,14 @@ static int intf_err_seq(struct ipmi_smi *intf,
 	return rv;
 }
 
+static void free_user_work(struct work_struct *work)
+{
+	struct ipmi_user *user = container_of(work, struct ipmi_user,
+					      remove_work);
+
+	cleanup_srcu_struct(&user->release_barrier);
+	kfree(user);
+}
 
 int ipmi_create_user(unsigned int          if_num,
 		     const struct ipmi_user_hndl *handler,
@@ -1141,6 +1152,8 @@ int ipmi_create_user(unsigned int          if_num,
 	goto out_kfree;
 
  found:
+	INIT_WORK(&new_user->remove_work, free_user_work);
+
 	rv = init_srcu_struct(&new_user->release_barrier);
 	if (rv)
 		goto out_kfree;
@@ -1203,8 +1216,9 @@ EXPORT_SYMBOL(ipmi_get_smi_info);
 static void free_user(struct kref *ref)
 {
 	struct ipmi_user *user = container_of(ref, struct ipmi_user, refcount);
-	cleanup_srcu_struct(&user->release_barrier);
-	kfree(user);
+
+	/* SRCU cleanup must happen in task context. */
+	schedule_work(&user->remove_work);
 }
 
 static void _ipmi_destroy_user(struct ipmi_user *user)

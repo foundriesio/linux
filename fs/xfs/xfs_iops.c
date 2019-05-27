@@ -458,7 +458,7 @@ xfs_vn_get_link(
 	if (!dentry)
 		return ERR_PTR(-ECHILD);
 
-	link = kmalloc(MAXPATHLEN+1, GFP_KERNEL);
+	link = kmalloc(XFS_SYMLINK_MAXLEN+1, GFP_KERNEL);
 	if (!link)
 		goto out_err;
 
@@ -881,7 +881,9 @@ xfs_setattr_size(
 	 * truncate.
 	 */
 	if (newsize > oldsize) {
-		error = xfs_zero_eof(ip, newsize, oldsize, &did_zeroing);
+		trace_xfs_zero_eof(ip, oldsize, newsize - oldsize);
+		error = iomap_zero_range(inode, oldsize, newsize - oldsize,
+				&did_zeroing, &xfs_iomap_ops);
 	} else {
 		error = iomap_truncate_page(inode, newsize, &did_zeroing,
 				&xfs_iomap_ops);

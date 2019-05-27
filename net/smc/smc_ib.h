@@ -44,6 +44,10 @@ struct smc_ib_device {				/* ib-device infos for smc */
 	u8			initialized : 1; /* ib dev CQ, evthdl done */
 	struct work_struct	port_event_work;
 	unsigned long		port_event_mask;
+#ifndef __GENKSYMS__
+	bool			pnetid_by_user[SMC_MAX_PORTS];
+						/* pnetid defined by user? */
+#endif
 };
 
 struct smc_buf_desc;

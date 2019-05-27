@@ -992,7 +992,7 @@ xfs_alloc_file_space(
 		/*
 		 * Complete the transaction
 		 */
-		error = xfs_defer_finish(&tp, &dfops, NULL);
+		error = xfs_defer_finish(&tp, &dfops);
 		if (error)
 			goto error0;
 
@@ -1058,7 +1058,8 @@ xfs_unmap_extent(
 	if (error)
 		goto out_bmap_cancel;
 
-	error = xfs_defer_finish(&tp, &dfops, ip);
+	xfs_defer_ijoin(&dfops, ip);
+	error = xfs_defer_finish(&tp, &dfops);
 	if (error)
 		goto out_bmap_cancel;
 
@@ -1189,18 +1190,15 @@ xfs_free_file_space(
 
 	/*
 	 * Now that we've unmap all full blocks we'll have to zero out any
-	 * partial block at the beginning and/or end.  xfs_zero_range is
-	 * smart enough to skip any holes, including those we just created,
-	 * but we must take care not to zero beyond EOF and enlarge i_size.
+	 * partial block at the beginning and/or end.  iomap_zero_range is smart
+	 * enough to skip any holes, including those we just created, but we
+	 * must take care not to zero beyond EOF and enlarge i_size.
 	 */
-
 	if (offset >= XFS_ISIZE(ip))
 		return 0;
-
 	if (offset + len > XFS_ISIZE(ip))
 		len = XFS_ISIZE(ip) - offset;
-
-	return xfs_zero_range(ip, offset, len, NULL);
+	return iomap_zero_range(VFS_I(ip), offset, len, NULL, &xfs_iomap_ops);
 }
 
 /*
@@ -1349,7 +1347,7 @@ xfs_collapse_file_space(
 		if (error)
 			goto out_bmap_cancel;
 
-		error = xfs_defer_finish(&tp, &dfops, NULL);
+		error = xfs_defer_finish(&tp, &dfops);
 		if (error)
 			goto out_bmap_cancel;
 		error = xfs_trans_commit(tp);
@@ -1424,7 +1422,7 @@ xfs_insert_file_space(
 		if (error)
 			goto out_bmap_cancel;
 
-		error = xfs_defer_finish(&tp, &dfops, NULL);
+		error = xfs_defer_finish(&tp, &dfops);
 		if (error)
 			goto out_bmap_cancel;
 		error = xfs_trans_commit(tp);
@@ -1649,7 +1647,8 @@ xfs_swap_extent_rmap(
 			if (error)
 				goto out_defer;
 
-			error = xfs_defer_finish(tpp, &dfops, ip);
+			xfs_defer_ijoin(&dfops, ip);
+			error = xfs_defer_finish(tpp, &dfops);
 			if (error)
 				goto out_defer;
 
@@ -1809,7 +1808,7 @@ xfs_swap_change_owner(
 		if (error != -EAGAIN)
 			break;
 
-		error = xfs_trans_roll(tpp, NULL);
+		error = xfs_trans_roll(tpp);
 		if (error)
 			break;
 		tp = *tpp;

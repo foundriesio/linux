@@ -240,8 +240,7 @@ void pciehp_handle_disable_request(struct controller *ctrl)
 
 void pciehp_handle_presence_or_link_change(struct controller *ctrl, u32 events)
 {
-	bool link_active;
-	u8 present;
+	bool present, link_active;
 
 	/*
 	 * If the slot is on and presence or link has changed, turn it off.
@@ -268,7 +267,7 @@ void pciehp_handle_presence_or_link_change(struct controller *ctrl, u32 events)
 
 	/* Turn the slot on if it's occupied or link is up */
 	mutex_lock(&ctrl->lock);
-	pciehp_get_adapter_status(ctrl, &present);
+	present = pciehp_card_present(ctrl);
 	link_active = pciehp_check_link_active(ctrl);
 	if (!present && !link_active) {
 		mutex_unlock(&ctrl->lock);
@@ -301,11 +300,6 @@ static int __pciehp_enable_slot(struct controller *ctrl)
 {
 	u8 getstatus = 0;
 
-	pciehp_get_adapter_status(ctrl, &getstatus);
-	if (!getstatus) {
-		ctrl_info(ctrl, "Slot(%s): No adapter\n", slot_name(ctrl));
-		return -ENODEV;
-	}
 	if (MRL_SENS(ctrl)) {
 		pciehp_get_latch_status(ctrl, &getstatus);
 		if (getstatus) {
@@ -331,15 +325,15 @@ int pciehp_enable_slot(struct controller *ctrl)
 {
 	int ret;
 
-	pm_runtime_get_sync(&ctrl->pcie->port->dev);
+	mutex_lock(&ctrl->lock);
 	ret = __pciehp_enable_slot(ctrl);
-	pm_runtime_put(&ctrl->pcie->port->dev);
+	mutex_unlock(&ctrl->lock);
 
 	if (ret && ATTN_BUTTN(ctrl))
 		pciehp_green_led_off(ctrl); /* may be blinking */
 
 	mutex_lock(&ctrl->lock);
-	ctrl->state = ret ? OFF_STATE : ON_STATE;
+	ctrl->state = ON_STATE;
 	mutex_unlock(&ctrl->lock);
 
 	return ret;

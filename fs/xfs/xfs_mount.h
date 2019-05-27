@@ -199,14 +199,12 @@ typedef struct xfs_mount {
 	bool			m_fail_unmount;
 #ifdef DEBUG
 	/*
-	 * DEBUG mode instrumentation to test and/or trigger delayed allocation
-	 * block killing in the event of failed writes. When enabled, all
-	 * buffered writes are silenty dropped and handled as if they failed.
-	 * All delalloc blocks in the range of the write (including pre-existing
-	 * delalloc blocks!) are tossed as part of the write failure error
-	 * handling sequence.
+	 * Frequency with which errors are injected.  Replaces xfs_etest; the
+	 * value stored in here is the inverse of the frequency with which the
+	 * error triggers.  1 = always, 2 = half the time, etc.
 	 */
-	bool			m_drop_writes;
+	unsigned int		*m_errortag;
+	struct xfs_kobj		m_errortag_kobj;
 #endif
 } xfs_mount_t;
 
@@ -217,6 +215,7 @@ typedef struct xfs_mount {
 						   must be synchronous except
 						   for space allocations */
 #define XFS_MOUNT_UNMOUNTING	(1ULL << 1)	/* filesystem is unmounting */
+#define XFS_MOUNT_BAD_SUMMARY	(1ULL << 2)	/* summary counters are bad */
 #define XFS_MOUNT_WAS_CLEAN	(1ULL << 3)
 #define XFS_MOUNT_FS_SHUTDOWN	(1ULL << 4)	/* atomic stop of all filesystem
 						   operations, typically for
@@ -324,20 +323,6 @@ xfs_daddr_to_agbno(struct xfs_mount *mp, xfs_daddr_t d)
 	xfs_rfsblock_t ld = XFS_BB_TO_FSBT(mp, d);
 	return (xfs_agblock_t) do_div(ld, mp->m_sb.sb_agblocks);
 }
-
-#ifdef DEBUG
-static inline bool
-xfs_mp_drop_writes(struct xfs_mount *mp)
-{
-	return mp->m_drop_writes;
-}
-#else
-static inline bool
-xfs_mp_drop_writes(struct xfs_mount *mp)
-{
-	return 0;
-}
-#endif
 
 /* per-AG block reservation data structures*/
 enum xfs_ag_resv_type {
@@ -462,5 +447,6 @@ int	xfs_zero_extent(struct xfs_inode *ip, xfs_fsblock_t start_fsb,
 
 struct xfs_error_cfg * xfs_error_get_cfg(struct xfs_mount *mp,
 		int error_class, int error);
+void xfs_force_summary_recalc(struct xfs_mount *mp);
 
 #endif	/* __XFS_MOUNT_H__ */

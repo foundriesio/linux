@@ -394,6 +394,16 @@ static noinline int btrfs_ioctl_fitrim(struct file *file, void __user *arg)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
+	/*
+	 * If the fs is mounted with nologreplay, which requires it to be
+	 * mounted in RO mode as well, we can not allow discard on free space
+	 * inside block groups, because log trees refer to extents that are not
+	 * pinned in a block group's free space cache (pinning the extents is
+	 * precisely the first phase of replaying a log tree).
+	 */
+	if (btrfs_test_opt(fs_info, NOLOGREPLAY))
+		return -EROFS;
+
 	rcu_read_lock();
 	list_for_each_entry_rcu(device, &fs_info->fs_devices->devices,
 				dev_list) {
@@ -3799,13 +3809,18 @@ process_slot:
 								datal);
 
 				if (disko) {
+					struct btrfs_ref ref = { 0 };
+
 					inode_add_bytes(inode, datal);
+					btrfs_init_generic_ref(&ref,
+						BTRFS_ADD_DELAYED_REF, disko,
+						diskl, 0);
+					btrfs_init_data_ref(&ref,
+						root->root_key.objectid,
+						btrfs_ino(BTRFS_I(inode)),
+						new_key.offset - datao);
 					ret = btrfs_inc_extent_ref(trans,
-							fs_info,
-							disko, diskl, 0,
-							root->root_key.objectid,
-							btrfs_ino(BTRFS_I(inode)),
-							new_key.offset - datao);
+							fs_info, &ref);
 					if (ret) {
 						btrfs_abort_transaction(trans,
 									ret);
