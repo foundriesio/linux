@@ -342,7 +342,7 @@
 
 		vqmmc-supply = <&vqmmc_sd>;
 	};
-#if 0 // 0 : force detect, 1 : not force detect
+#if 1 // 0 : force detect, 1 : not force detect
 	sdhc@76020400 { // Wi-Fi tcm3840
 		status = "okay";
 		controller-id = <2>;
