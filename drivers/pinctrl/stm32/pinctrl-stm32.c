@@ -303,6 +303,7 @@ static const struct gpio_chip stm32_gpio_template = {
 	.direction_output	= stm32_gpio_direction_output,
 	.to_irq			= stm32_gpio_to_irq,
 	.get_direction		= stm32_gpio_get_direction,
+	.set_config		= gpiochip_generic_config,
 };
 
 static int stm32_gpio_irq_request_resources(struct irq_data *irq_data)
@@ -1008,19 +1009,13 @@ static bool stm32_pconf_get(struct stm32_gpio_bank *bank,
 }
 
 static int stm32_pconf_parse_conf(struct pinctrl_dev *pctldev,
-		unsigned int pin, enum pin_config_param param,
-		enum pin_config_param arg)
+				  struct pinctrl_gpio_range *range,
+				  unsigned int pin,
+				  enum pin_config_param param,
+				  enum pin_config_param arg)
 {
-	struct stm32_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
-	struct pinctrl_gpio_range *range;
 	struct stm32_gpio_bank *bank;
 	int offset, ret = 0;
-
-	range = pinctrl_find_gpio_range_from_pin(pctldev, pin);
-	if (!range) {
-		dev_err(pctl->dev, "No gpio range defined.\n");
-		return -EINVAL;
-	}
 
 	bank = gpiochip_get_data(range->gc);
 	offset = stm32_gpio_pin(pin);
@@ -1049,7 +1044,8 @@ static int stm32_pconf_parse_conf(struct pinctrl_dev *pctldev,
 		ret = stm32_pmx_gpio_set_direction(pctldev, range, pin, false);
 		break;
 	default:
-		ret = -EINVAL;
+		dev_dbg(pctldev->dev, "configuration %d not supported.\n",
+			param);
 	}
 
 	return ret;
@@ -1071,16 +1067,47 @@ static int stm32_pconf_group_set(struct pinctrl_dev *pctldev, unsigned group,
 {
 	struct stm32_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	struct stm32_pinctrl_group *g = &pctl->groups[group];
+	struct pinctrl_gpio_range *range;
 	int i, ret;
 
+	range = pinctrl_find_gpio_range_from_pin(pctldev, g->pin);
+	if (!range) {
+		dev_err(pctl->dev, "No gpio range defined.\n");
+		return -EINVAL;
+	}
+
 	for (i = 0; i < num_configs; i++) {
-		ret = stm32_pconf_parse_conf(pctldev, g->pin,
-			pinconf_to_config_param(configs[i]),
-			pinconf_to_config_argument(configs[i]));
+		ret = stm32_pconf_parse_conf(pctldev, range, g->pin,
+				pinconf_to_config_param(configs[i]),
+				pinconf_to_config_argument(configs[i]));
 		if (ret < 0)
 			return ret;
 
 		g->config = configs[i];
+	}
+
+	return 0;
+}
+
+static int stm32_pconf_set(struct pinctrl_dev *pctldev, unsigned int pin,
+			   unsigned long *configs, unsigned int num_configs)
+{
+	struct stm32_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
+	struct pinctrl_gpio_range *range;
+	int i, ret;
+
+	range = pinctrl_find_gpio_range_from_pin_nolock(pctldev, pin);
+	if (!range) {
+		dev_err(pctl->dev, "No gpio range defined.\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num_configs; i++) {
+		ret = stm32_pconf_parse_conf(pctldev, range, pin,
+			pinconf_to_config_param(configs[i]),
+			pinconf_to_config_argument(configs[i]));
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;
@@ -1160,6 +1187,7 @@ static const struct pinconf_ops stm32_pconf_ops = {
 	.pin_config_group_get	= stm32_pconf_group_get,
 	.pin_config_group_set	= stm32_pconf_group_set,
 	.pin_config_dbg_show	= stm32_pconf_dbg_show,
+	.pin_config_set		= stm32_pconf_set,
 };
 
 static int stm32_gpiolib_register_bank(struct stm32_pinctrl *pctl,
