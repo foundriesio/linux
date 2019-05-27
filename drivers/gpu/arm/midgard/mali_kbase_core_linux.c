@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018 Telechips Inc.
+ * (C) COPYRIGHT 2019 Telechips Inc.
  * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
@@ -3809,6 +3809,8 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	}
 	kbdev->inited_subsys |= inited_registers_map;
 
+	kbase_pm_disable_interrupts_nolock(kbdev);		//TCC
+
 	err = power_control_init(pdev);
 	if (err) {
 		dev_err(&pdev->dev, "Power control initialization failed\n");
@@ -4206,6 +4208,10 @@ static int kbase_device_runtime_idle(struct device *dev)
 static const struct dev_pm_ops kbase_pm_ops = {
 	.suspend = kbase_device_suspend,
 	.resume = kbase_device_resume,
+    .freeze = kbase_device_suspend,
+    .thaw = kbase_device_resume,
+    .restore = kbase_device_resume,
+    .poweroff = kbase_device_suspend,
 #ifdef KBASE_PM_RUNTIME
 	.runtime_suspend = kbase_device_runtime_suspend,
 	.runtime_resume = kbase_device_runtime_resume,
