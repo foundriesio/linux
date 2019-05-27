@@ -24,6 +24,8 @@
 #include <linux/kernel.h>
 #include <linux/idr.h>
 
+#include "hashtab.h"
+
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PROG_ARRAY || \
 			   (map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			   (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
@@ -488,8 +490,8 @@ static int map_lookup_elem(union bpf_attr *attr)
 		err = bpf_fd_htab_map_lookup_elem(map, key, value);
 	} else {
 		rcu_read_lock();
-		if (map->ops->map_lookup_elem_sys_only)
-			ptr = map->ops->map_lookup_elem_sys_only(map, key);
+		if (map->map_type == BPF_MAP_TYPE_LRU_HASH)
+			ptr = suse_htab_lru_map_lookup_elem_sys(map, key);
 		else
 			ptr = map->ops->map_lookup_elem(map, key);
 		if (ptr)

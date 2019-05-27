@@ -512,7 +512,7 @@ static void *htab_lru_map_lookup_elem(struct bpf_map *map, void *key)
 	return __htab_lru_map_lookup_elem(map, key, true);
 }
 
-static void *htab_lru_map_lookup_elem_sys(struct bpf_map *map, void *key)
+void *suse_htab_lru_map_lookup_elem_sys(struct bpf_map *map, void *key)
 {
 	return __htab_lru_map_lookup_elem(map, key, false);
 }
@@ -1166,7 +1166,6 @@ const struct bpf_map_ops htab_lru_map_ops = {
 	.map_free = htab_map_free,
 	.map_get_next_key = htab_map_get_next_key,
 	.map_lookup_elem = htab_lru_map_lookup_elem,
-	.map_lookup_elem_sys_only = htab_lru_map_lookup_elem_sys,
 	.map_update_elem = htab_lru_map_update_elem,
 	.map_delete_elem = htab_lru_map_delete_elem,
 	.map_gen_lookup = htab_lru_map_gen_lookup,
