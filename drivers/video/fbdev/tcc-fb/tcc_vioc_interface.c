@@ -2086,6 +2086,12 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 #if defined(CONFIG_VIOC_AFBCDEC)
     if(!afbc_dec_1st_cfg)
         VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#if !defined(CONFIG_ANDROID) && defined(CONFIG_PLATFORM_STB)
+    if(var->reserved[3] != 0 )
+        VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x5);//BGR	
+    else
+	VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x0);//RGB
+#endif
 #else
     VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
@@ -2313,6 +2319,12 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 #if defined(CONFIG_VIOC_AFBCDEC)
 	if(!afbc_dec_1st_cfg)
 		VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
+#if !defined(CONFIG_ANDROID) && defined(CONFIG_PLATFORM_STB)
+        if(var->reserved[3] != 0 )
+		VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x5); //BGR
+	else
+		VIOC_RDMA_SetImageRGBSwapMode(pRDMA, 0x0); //RGB
+#endif
 #else
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
