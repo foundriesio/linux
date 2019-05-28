@@ -55,6 +55,7 @@ void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr,
 			Bpp = 2;
 
 		*Y = base_Yaddr + Yoffset * Bpp;
+		return;
 	}
 
 	if ((format == TCC_LCDC_IMG_FMT_UYVY) ||
