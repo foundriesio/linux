@@ -2559,12 +2559,16 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	osd_req = rbd_osd_req_create_copyup(orig_request);
 	if (!osd_req)
 		goto out_err;
+	img_result = osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd",
+					 "copyup");
+	if (img_result)
+		goto out_err;
+
 	rbd_osd_req_destroy(orig_request->osd_req);
 	orig_request->osd_req = osd_req;
 
 	/* Initialize the copyup op */
 
-	osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd", "copyup");
 	osd_req_op_cls_request_data_bvecs(osd_req, 0, orig_request->copyup_bvecs,
 					  orig_request->copyup_bvec_count,
 					  parent_length);
