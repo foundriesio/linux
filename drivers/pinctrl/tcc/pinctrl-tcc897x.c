@@ -39,6 +39,9 @@
 
 #define GPIO_DATA					0x0
 #define GPIO_OUTPUT_ENABLE			0x4
+#define GPIO_DATA_OR				0x8
+#define GPIO_DATA_BIC				0xC
+#define GPIO_XOR_DATA				0x10
 #define GPIO_DRIVE_STRENGTH			0x14
 #define GPIO_PULL_ENABLE			0x1c
 #define GPIO_PULL_SELECT			0x20
@@ -192,11 +195,12 @@ static void tcc897x_gpio_set(void __iomem *base, unsigned offset, int value)
 {
 	unsigned int data;
 
-	data = readl(base + GPIO_DATA);
-	data &= ~(1 << offset);
+	data = 1 << offset;
+
 	if (value)
-		data |= 1 << offset;
-	writel(data, base + GPIO_DATA);
+		writel(data, base + GPIO_DATA_OR);
+	else
+		writel(data, base + GPIO_DATA_BIC);
 }
 
 static void tcc897x_gpio_pinconf_extra(void __iomem *base, unsigned offset, int value, unsigned base_offset)
