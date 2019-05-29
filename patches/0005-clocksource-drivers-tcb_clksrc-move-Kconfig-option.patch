@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/clocksource/Kconfig
 +++ b/drivers/clocksource/Kconfig
-@@ -409,6 +409,13 @@ config ATMEL_ST
+@@ -410,6 +410,13 @@ config ATMEL_ST
  	help
  	  Support for the Atmel ST timer.
  

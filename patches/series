@@ -24,6 +24,7 @@ tty-sysrq-Convert-show_lock-to-raw_spinlock_t.patch
 0009-misc-atmel_tclib-do-not-probe-already-used-TCBs.patch
 
 kthread-convert-worker-lock-to-raw-spinlock.patch
+kthread-Do-not-use-TIMER_IRQSAFE.patch
 sched-fair-Robustify-CFS-bandwidth-timer-locking.patch
 x86-ima-Check-EFI_RUNTIME_SERVICES-before-using.patch
 
@@ -88,6 +89,8 @@ crypto-chtls-remove-cdev_list_lock.patch
 crypto-user-remove-crypto_cfg_mutex.patch
 tpm-remove-tpm_dev_wq_lock.patch
 drm-i915-Don-t-disable-interrupts-independently-of-t.patch
+locking-lockdep-Don-t-complain-about-incorrect-name-.patch
+arm-imx6-cpuidle-Use-raw_spinlock_t.patch
 
 # [PATCH v9] x86: load FPU registers on return to userland
 # Date: Wed,  3 Apr 2019 18:41:29 +0200
@@ -124,8 +127,19 @@ drm-i915-Don-t-disable-interrupts-independently-of-t.patch
 # Ready for posting
 ############################################################
 efi-Allow-efi-runtime.patch
-drm-i915-fence-Do-not-use-TIMER_IRQSAFE.patch
-kthread-Do-not-use-TIMER_IRQSAFE.patch
+
+softirq-Add-preemptible-softirq.patch
+sched-swait-Add-swait_event_lock_irq.patch
+# WORKQUEUE
+workqueue-use-rcu.patch
+workqueue-distangle-from-rq-lock.patch
+workqueue-Make-alloc-apply-free_workqueue_attrs-stat.patch
+workqueue-Remove-GPF-argument-from-alloc_workqueue_a.patch
+workqueue-Convert-the-locks-to-raw-type.patch
+sched-core-Schedule-new-worker-even-if-PI-blocked.patch
+# The two below use a workqueue as workaround
+fs-aio-simple-simple-work.patch
+block-blk-mq-move-blk_queue_usage_counter_release-in.patch
 
 ############################################################
 # Needs to address review feedback
@@ -136,7 +150,6 @@ kthread-Do-not-use-TIMER_IRQSAFE.patch
 ############################################################
 arm64-KVM-compute_layout-before-altenates-are-applie.patch
 of-allocate-free-phandle-cache-outside-of-the-devtre.patch
-EXP-rcu-skip_workqueue.patch
 kmemleak-Turn-kmemleak_lock-to-raw-spinlock-on-RT.patch
 
 ###############################################################
@@ -150,6 +163,7 @@ sched-migrate_disable-Add-export_symbol_gpl-for-__mi.patch
 # Those two should vanish soon (not use PIT during bootup)
 at91_dont_enable_disable_clock.patch
 clocksource-tclib-allow-higher-clockrates.patch
+clocksource-tclib-add-proper-depend.patch
 
 # Timekeeping split jiffies lock. Needs a good argument :)
 timekeeping-split-jiffies-lock.patch
@@ -251,21 +265,14 @@ x86-kvm-require-const-tsc-for-rt.patch
 # SIMPLE WAITQUEUE
 pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 wait.h-include-atomic.h.patch
-kthread-add-a-global-worker-thread.patch
 completion-use-simple-wait-queues.patch
 sched-completion-Fix-a-lockup-in-wait_for_completion.patch
-fs-aio-simple-simple-work.patch
-genirq-do-not-invoke-the-affinity-callback-via-a-wor.patch
-genirq-Handle-missing-work_struct-in-irq_set_affinit.patch
-psi-replace-delayed-work-with-timer-work.patch
 
 # HRTIMERS
-time-hrtimer-avoid-schedule_work-with-interrupts-dis.patch
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
 hrtimers-prepare-full-preemption.patch
 hrtimer-by-timers-by-default-into-the-softirq-context.patch
 sched-fair-Make-the-hrtimers-non-hard-again.patch
-hrtimer-Move-schedule_work-call-to-helper-thread.patch
 hrtimer-move-state-change-before-hrtimer_cancel-in-d.patch
 
 # POSIX-CPU-TIMERS
@@ -280,7 +287,6 @@ sched-rt-mutex-wakeup.patch
 sched-might-sleep-do-not-account-rcu-depth.patch
 cond-resched-lock-rt-tweak.patch
 sched-disable-ttwu-queue.patch
-sched-workqueue-Only-wake-up-idle-workers-if-not-blo.patch
 rt-Increase-decrease-the-nr-of-migratory-tasks-when-.patch
 
 # MIGRATE DISABLE AND PER CPU
@@ -291,14 +297,14 @@ ftrace-migrate-disable-tracing.patch
 lockdep-no-softirq-accounting-on-rt.patch
 
 # SOFTIRQ
-tasklet-rt-prevent-tasklets-from-going-into-infinite-spin-in-rt.patch
+# tasklet-rt-prevent-tasklets-from-going-into-infinite-spin-in-rt.patch
 softirq-preempt-fix-3-re.patch
 softirq-disable-softirq-stacks-for-rt.patch
-softirq-split-locks.patch
+
 net-core-use-local_bh_disable-in-netif_rx_ni.patch
-irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
-softirq-split-timer-softirqs-out-of-ksoftirqd.patch
-rtmutex-trylock-is-okay-on-RT.patch
+#irq-allow-disabling-of-softirq-processing-in-irq-thread-context.patch
+#softirq-split-timer-softirqs-out-of-ksoftirqd.patch
+#rtmutex-trylock-is-okay-on-RT.patch
 
 # compile fix due to rtmutex locks
 fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
@@ -354,9 +360,6 @@ fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
 fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
 squashfs-make-use-of-local-lock-in-multi_cpu-decompr.patch
 
-# X86
-thermal-Defer-thermal-wakups-to-threads.patch
-
 # POWER
 powerpc-pseries-iommu-Use-a-locallock-instead-local_ir.patch
 
@@ -371,9 +374,6 @@ md-raid5-percpu-handling-rt-aware.patch
 # CPU CHILL
 rt-introduce-cpu-chill.patch
 
-# block
-block-blk-mq-move-blk_queue_usage_counter_release-in.patch
-
 # BLOCK LIVELOCK PREVENTION
 block-use-cpu-chill.patch
 
@@ -381,12 +381,6 @@ block-use-cpu-chill.patch
 fs-dcache-use-cpu-chill-in-trylock-loops.patch
 net-use-cpu-chill.patch
 fs-dcache-use-swait_queue-instead-of-waitqueue.patch
-
-# WORKQUEUE more fixes
-workqueue-use-rcu.patch
-workqueue-use-locallock.patch
-work-queue-work-around-irqsafe-timer-optimization.patch
-workqueue-distangle-from-rq-lock.patch
 
 # DEBUGOBJECTS
 debugobjects-rt.patch
@@ -398,11 +392,9 @@ seqlock-prevent-rt-starvation.patch
 sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch
 skbufhead-raw-lock.patch
 net-move-xmit_recursion-to-per-task-variable-on-RT.patch
-net-provide-a-way-to-delegate-processing-a-softirq-t.patch
+#net-provide-a-way-to-delegate-processing-a-softirq-t.patch
 net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 net-Qdisc-use-a-seqlock-instead-seqcount.patch
-net-add-back-the-missing-serialization-in-ip_send_un.patch
-net-add-a-lock-around-icmp_sk.patch
 net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
 
 # irqwork
@@ -478,14 +470,10 @@ drm-i915-disable-tracing-on-RT.patch
 drm-i915-skip-DRM_I915_LOW_LEVEL_TRACEPOINTS-with-NO.patch
 
 # CGROUPS
-cgroups-use-simple-wait-in-css_release.patch
 cpuset-Convert-callback_lock-to-raw_spinlock_t.patch
 
 # Security
 apparmor-use-a-locallock-instead-preempt_disable.patch
-
-# WORKQUEUE SIGH
-workqueue-prevent-deadlock-stall.patch
 
 # Nice to have
 signals-allow-rt-tasks-to-cache-one-sigqueue-struct.patch

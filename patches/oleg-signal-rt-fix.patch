@@ -38,7 +38,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/entry/common.c
 +++ b/arch/x86/entry/common.c
-@@ -152,6 +152,13 @@ static void exit_to_usermode_loop(struct
+@@ -153,6 +153,13 @@ static void exit_to_usermode_loop(struct
  		if (cached_flags & _TIF_NEED_RESCHED)
  			schedule();
  

@@ -71,7 +71,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * in the fpregs in the eager-FPU case.
 --- a/arch/x86/kernel/process_32.c
 +++ b/arch/x86/kernel/process_32.c
-@@ -267,9 +267,7 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -274,9 +274,7 @@ EXPORT_SYMBOL_GPL(start_thread);
  	/*
  	 * Leave lazy mode, flushing any hypercalls made here.
  	 * This must be done before restoring TLS segments so
@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/arch/x86/kernel/process_64.c
 +++ b/arch/x86/kernel/process_64.c
-@@ -538,9 +538,7 @@ void compat_start_thread(struct pt_regs
+@@ -546,9 +546,7 @@ void compat_start_thread(struct pt_regs
  	/*
  	 * Leave lazy mode, flushing any hypercalls made here.  This
  	 * must be done after loading TLS entries in the GDT but before

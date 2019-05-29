@@ -373,7 +373,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * and saves them off to the 'fpu memory buffer.
 --- a/arch/x86/kernel/process_32.c
 +++ b/arch/x86/kernel/process_32.c
-@@ -288,10 +288,10 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -295,10 +295,10 @@ EXPORT_SYMBOL_GPL(start_thread);
  	if (prev->gs | next->gs)
  		lazy_load_gs(next->gs);
  
@@ -388,7 +388,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/arch/x86/kernel/process_64.c
 +++ b/arch/x86/kernel/process_64.c
-@@ -566,14 +566,14 @@ void compat_start_thread(struct pt_regs
+@@ -574,14 +574,14 @@ void compat_start_thread(struct pt_regs
  
  	x86_fsgsbase_load(prev, next);
  

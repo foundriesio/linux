@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1769,12 +1769,12 @@ static int __sched do_nanosleep(struct h
+@@ -1752,12 +1752,12 @@ static int __sched do_nanosleep(struct h
  		if (likely(t->task))
  			freezable_schedule();
  

@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	.thread_node	= LIST_HEAD_INIT(init_signals.thread_head),
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1621,6 +1621,9 @@ static void rt_mutex_init_task(struct ta
+@@ -1631,6 +1631,9 @@ static void rt_mutex_init_task(struct ta
   */
  static void posix_cpu_timers_init(struct task_struct *tsk)
  {

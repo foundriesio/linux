@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -201,7 +201,7 @@ do { \
+@@ -198,7 +198,7 @@ do { \
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  extern void migrate_disable(void);
  extern void migrate_enable(void);
-@@ -218,8 +218,8 @@ static inline int __migrate_disabled(str
+@@ -215,8 +215,8 @@ static inline int __migrate_disabled(str
  }
  
  #else
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		p->migrate_disable_update = 1;
  		goto out;
-@@ -7177,7 +7177,7 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7132,7 +7132,7 @@ const u32 sched_prio_to_wmult[40] = {
  
  #undef CREATE_TRACE_POINTS
  
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline void
  update_nr_migratory(struct task_struct *p, long delta)
-@@ -7325,45 +7325,44 @@ EXPORT_SYMBOL(migrate_enable);
+@@ -7280,45 +7280,44 @@ EXPORT_SYMBOL(migrate_enable);
  #elif !defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
  void migrate_disable(void)
  {

@@ -214,7 +214,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		slab_destroy(cache, page);
  		nr_freed++;
  	}
-@@ -2728,7 +2728,7 @@ static void cache_grow_end(struct kmem_c
+@@ -2727,7 +2727,7 @@ static void cache_grow_end(struct kmem_c
  	INIT_LIST_HEAD(&page->lru);
  	n = get_node(cachep, page_to_nid(page));
  
@@ -223,7 +223,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	n->total_slabs++;
  	if (!page->active) {
  		list_add_tail(&page->lru, &(n->slabs_free));
-@@ -2738,7 +2738,7 @@ static void cache_grow_end(struct kmem_c
+@@ -2737,7 +2737,7 @@ static void cache_grow_end(struct kmem_c
  
  	STATS_INC_GROWN(cachep);
  	n->free_objects += cachep->num - page->active;
@@ -232,7 +232,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	fixup_objfreelist_debug(cachep, &list);
  }
-@@ -2906,7 +2906,7 @@ static struct page *get_first_slab(struc
+@@ -2905,7 +2905,7 @@ static struct page *get_first_slab(struc
  {
  	struct page *page;
  
@@ -241,7 +241,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	page = list_first_entry_or_null(&n->slabs_partial, struct page, lru);
  	if (!page) {
  		n->free_touched = 1;
-@@ -2932,10 +2932,10 @@ static noinline void *cache_alloc_pfmema
+@@ -2931,10 +2931,10 @@ static noinline void *cache_alloc_pfmema
  	if (!gfp_pfmemalloc_allowed(flags))
  		return NULL;
  
@@ -254,7 +254,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return NULL;
  	}
  
-@@ -2944,7 +2944,7 @@ static noinline void *cache_alloc_pfmema
+@@ -2943,7 +2943,7 @@ static noinline void *cache_alloc_pfmema
  
  	fixup_slab_list(cachep, n, page, &list);
  
@@ -263,7 +263,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	fixup_objfreelist_debug(cachep, &list);
  
  	return obj;
-@@ -3003,7 +3003,7 @@ static void *cache_alloc_refill(struct k
+@@ -3002,7 +3002,7 @@ static void *cache_alloc_refill(struct k
  	if (!n->free_objects && (!shared || !shared->avail))
  		goto direct_grow;
  
@@ -272,7 +272,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	shared = READ_ONCE(n->shared);
  
  	/* See if we can refill from the shared array */
-@@ -3027,7 +3027,7 @@ static void *cache_alloc_refill(struct k
+@@ -3026,7 +3026,7 @@ static void *cache_alloc_refill(struct k
  must_grow:
  	n->free_objects -= ac->avail;
  alloc_done:
@@ -281,7 +281,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	fixup_objfreelist_debug(cachep, &list);
  
  direct_grow:
-@@ -3252,7 +3252,7 @@ static void *____cache_alloc_node(struct
+@@ -3251,7 +3251,7 @@ static void *____cache_alloc_node(struct
  	BUG_ON(!n);
  
  	check_irq_off();
@@ -290,7 +290,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	page = get_first_slab(n, false);
  	if (!page)
  		goto must_grow;
-@@ -3270,12 +3270,12 @@ static void *____cache_alloc_node(struct
+@@ -3269,12 +3269,12 @@ static void *____cache_alloc_node(struct
  
  	fixup_slab_list(cachep, n, page, &list);
  
@@ -305,7 +305,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	page = cache_grow_begin(cachep, gfp_exact_node(flags), nodeid);
  	if (page) {
  		/* This slab isn't counted yet so don't update free_objects */
-@@ -3451,7 +3451,7 @@ static void cache_flusharray(struct kmem
+@@ -3450,7 +3450,7 @@ static void cache_flusharray(struct kmem
  
  	check_irq_off();
  	n = get_node(cachep, node);
@@ -314,7 +314,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (n->shared) {
  		struct array_cache *shared_array = n->shared;
  		int max = shared_array->limit - shared_array->avail;
-@@ -3480,7 +3480,7 @@ static void cache_flusharray(struct kmem
+@@ -3479,7 +3479,7 @@ static void cache_flusharray(struct kmem
  		STATS_SET_FREEABLE(cachep, i);
  	}
  #endif
@@ -323,7 +323,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	slabs_destroy(cachep, &list);
  	ac->avail -= batchcount;
  	memmove(ac->entry, &(ac->entry[batchcount]), sizeof(void *)*ac->avail);
-@@ -3888,9 +3888,9 @@ static int __do_tune_cpucache(struct kme
+@@ -3887,9 +3887,9 @@ static int __do_tune_cpucache(struct kme
  
  		node = cpu_to_mem(cpu);
  		n = get_node(cachep, node);
@@ -335,7 +335,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		slabs_destroy(cachep, &list);
  	}
  	free_percpu(prev);
-@@ -4015,9 +4015,9 @@ static void drain_array(struct kmem_cach
+@@ -4014,9 +4014,9 @@ static void drain_array(struct kmem_cach
  		return;
  	}
  
@@ -347,7 +347,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	slabs_destroy(cachep, &list);
  }
-@@ -4101,7 +4101,7 @@ void get_slabinfo(struct kmem_cache *cac
+@@ -4100,7 +4100,7 @@ void get_slabinfo(struct kmem_cache *cac
  
  	for_each_kmem_cache_node(cachep, node, n) {
  		check_irq_on();
@@ -356,7 +356,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		total_slabs += n->total_slabs;
  		free_slabs += n->free_slabs;
-@@ -4110,7 +4110,7 @@ void get_slabinfo(struct kmem_cache *cac
+@@ -4109,7 +4109,7 @@ void get_slabinfo(struct kmem_cache *cac
  		if (n->shared)
  			shared_avail += n->shared->avail;
  

@@ -127,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -3680,15 +3680,15 @@ static void fill_xsave(u8 *dest, struct
+@@ -3691,15 +3691,15 @@ static void fill_xsave(u8 *dest, struct
  	 */
  	valid = xstate_bv & ~XFEATURE_MASK_FPSSE;
  	while (valid) {
@@ -148,7 +148,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				memcpy(dest + offset, &vcpu->arch.pkru,
  				       sizeof(vcpu->arch.pkru));
  			else
-@@ -3696,7 +3696,7 @@ static void fill_xsave(u8 *dest, struct
+@@ -3707,7 +3707,7 @@ static void fill_xsave(u8 *dest, struct
  
  		}
  
@@ -157,7 +157,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  }
  
-@@ -3723,22 +3723,22 @@ static void load_xsave(struct kvm_vcpu *
+@@ -3734,22 +3734,22 @@ static void load_xsave(struct kvm_vcpu *
  	 */
  	valid = xstate_bv & ~XFEATURE_MASK_FPSSE;
  	while (valid) {
@@ -186,7 +186,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  }
  
-@@ -8862,11 +8862,11 @@ void kvm_vcpu_reset(struct kvm_vcpu *vcp
+@@ -8873,11 +8873,11 @@ void kvm_vcpu_reset(struct kvm_vcpu *vcp
  		if (init_event)
  			kvm_put_guest_fpu(vcpu);
  		mpx_state_buffer = get_xsave_addr(&vcpu->arch.guest_fpu->state.xsave,

@@ -8,9 +8,9 @@ Required for lock implementation ontop of rtmutex.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/locking/rtmutex.c        |   67 +++++++++++++++++++++++++---------------
+ kernel/locking/rtmutex.c        |   63 +++++++++++++++++++++++++++-------------
  kernel/locking/rtmutex_common.h |    3 +
- 2 files changed, 46 insertions(+), 24 deletions(-)
+ 2 files changed, 46 insertions(+), 20 deletions(-)
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
@@ -102,15 +102,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_trylock - try to lock a rt_mutex
   *
-@@ -1631,14 +1652,7 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1631,10 +1652,7 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  
--#ifdef CONFIG_PREEMPT_RT_FULL
--	if (WARN_ON_ONCE(in_irq() || in_nmi()))
--#else
 -	if (WARN_ON_ONCE(in_irq() || in_nmi() || in_serving_softirq()))
--#endif
 -		return 0;
 -
 -	ret = rt_mutex_fasttrylock(lock, rt_mutex_slowtrylock);
@@ -118,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  
-@@ -1646,6 +1660,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1642,6 +1660,11 @@ int __sched rt_mutex_trylock(struct rt_m
  }
  EXPORT_SYMBOL_GPL(rt_mutex_trylock);
  

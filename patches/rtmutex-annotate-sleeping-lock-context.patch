@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -208,6 +208,15 @@ extern void migrate_enable(void);
+@@ -205,6 +205,15 @@ extern void migrate_enable(void);
  
  int __migrate_disabled(struct task_struct *p);
  
@@ -67,7 +67,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  
  #ifdef CONFIG_PREEMPT_RCU
-@@ -1813,6 +1822,23 @@ static __always_inline bool need_resched
+@@ -1810,6 +1819,23 @@ static __always_inline bool need_resched
  	return unlikely(tif_need_resched());
  }
  
@@ -241,7 +241,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7321,4 +7321,49 @@ void migrate_enable(void)
+@@ -7276,4 +7276,49 @@ void migrate_enable(void)
  	preempt_enable();
  }
  EXPORT_SYMBOL(migrate_enable);

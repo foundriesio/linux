@@ -38,7 +38,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  #include <asm/pgtable.h>
  #include <asm/ldt.h>
-@@ -195,6 +196,35 @@ start_thread(struct pt_regs *regs, unsig
+@@ -202,6 +203,35 @@ start_thread(struct pt_regs *regs, unsig
  }
  EXPORT_SYMBOL_GPL(start_thread);
  
@@ -74,7 +74,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /*
   *	switch_to(x,y) should switch tasks from x to y.
-@@ -265,6 +295,8 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -272,6 +302,8 @@ EXPORT_SYMBOL_GPL(start_thread);
  
  	switch_to_extra(prev_p, next_p);
  
@@ -247,9 +247,9 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -1210,6 +1211,12 @@ struct task_struct {
- 	int				softirq_nestcnt;
- 	unsigned int			softirqs_raised;
+@@ -1208,6 +1209,12 @@ struct task_struct {
+ #ifdef CONFIG_PREEMPT_RT_BASE
+ 	struct rcu_head			put_rcu;
  #endif
 +#ifdef CONFIG_PREEMPT_RT_FULL
 +# if defined CONFIG_HIGHMEM || defined CONFIG_X86_32

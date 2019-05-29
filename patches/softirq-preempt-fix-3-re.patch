@@ -48,7 +48,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static __init int blk_softirq_init(void)
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -184,8 +184,10 @@ do { \
+@@ -190,8 +190,10 @@ do { \
  
  #ifdef CONFIG_PREEMPT_RT_BASE
  # define preempt_enable_no_resched() sched_preempt_enable_no_resched()
@@ -59,7 +59,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
-@@ -272,6 +274,7 @@ do { \
+@@ -278,6 +280,7 @@ do { \
  #define preempt_disable_notrace()		barrier()
  #define preempt_enable_no_resched_notrace()	barrier()
  #define preempt_enable_notrace()		barrier()

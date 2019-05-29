@@ -12,7 +12,7 @@ Subject: kernel/sched/core: add migrate_disable()
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -182,6 +182,22 @@ do { \
+@@ -188,6 +188,22 @@ do { \
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
  
@@ -35,7 +35,7 @@ Subject: kernel/sched/core: add migrate_disable()
  #ifdef CONFIG_PREEMPT
  #define preempt_enable() \
  do { \
-@@ -250,6 +266,13 @@ do { \
+@@ -256,6 +272,13 @@ do { \
  #define preempt_enable_notrace()		barrier()
  #define preemptible()				0
  
@@ -135,7 +135,7 @@ Subject: kernel/sched/core: add migrate_disable()
  	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
  	if (task_running(rq, p) || p->state == TASK_WAKING) {
  		struct migration_arg arg = { p, dest_cpu };
-@@ -7072,3 +7101,100 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7029,3 +7058,100 @@ const u32 sched_prio_to_wmult[40] = {
  };
  
  #undef CREATE_TRACE_POINTS

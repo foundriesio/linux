@@ -1,23 +1,22 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Tue, 12 Feb 2019 12:57:45 +0100
+Date: Tue, 12 Feb 2019 17:25:54 +0100
 Subject: [PATCH] kthread: Do not use TIMER_IRQSAFE
 
-The TIMER_IRQSAFE was introduced in commit
+[ Upstream commit ad01423aedaa7c6dd62d560b73a3cb39e6da3901 ]
 
-  22597dc3d97b1 ("kthread: initial support for delayed kthread work")
+The TIMER_IRQSAFE usage was introduced in commit 22597dc3d97b1 ("kthread:
+initial support for delayed kthread work") which modelled the delayed
+kthread code after workqueue's code. The workqueue code requires the flag
+TIMER_IRQSAFE for synchronisation purpose. This is not true for kthread's
+delay timer since all operations occur under a lock.
 
-which modelled the delayed kthread code after workqueue's code. The
-workqueue code requires the flag TIMER_IRQSAFE for synchronisation
-purpose. This is not true for kthread's delay timer since all
-operations occur under a lock.
+Remove TIMER_IRQSAFE from the timer initialisation and use timer_setup()
+for initialisation purpose which is the official function.
 
-Remove TIMER_IRQSAFE from the timer initialisation.
-Use timer_setup() for initialisation purpose which is the official
-function.
-
-Cc: Petr Mladek <pmladek@suse.com>
-Cc: Ingo Molnar <mingo@kernel.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Link: https://lkml.kernel.org/r/20190212162554.19779-2-bigeasy@linutronix.de
 ---
  include/linux/kthread.h |    5 ++---
  kernel/kthread.c        |    5 +++--

@@ -415,7 +415,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * CPU.
  	 *
  	 * Since this is common to all placement strategies, this lives here.
-@@ -2421,7 +2421,7 @@ void wake_up_new_task(struct task_struct
+@@ -2367,7 +2367,7 @@ void wake_up_new_task(struct task_struct
  #ifdef CONFIG_SMP
  	/*
  	 * Fork balancing, do it here and not earlier because:
@@ -424,7 +424,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 *  - any previously selected CPU might disappear through hotplug
  	 *
  	 * Use __set_task_cpu() to avoid calling sched_class::migrate_task_rq,
-@@ -4287,7 +4287,7 @@ static int __sched_setscheduler(struct t
+@@ -4244,7 +4244,7 @@ static int __sched_setscheduler(struct t
  			 * the entire root_domain to become SCHED_DEADLINE. We
  			 * will also fail if there's no bandwidth available.
  			 */
@@ -433,7 +433,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			    rq->rd->dl_bw.bw == 0) {
  				task_rq_unlock(rq, p, &rf);
  				return -EPERM;
-@@ -4886,7 +4886,7 @@ long sched_getaffinity(pid_t pid, struct
+@@ -4843,7 +4843,7 @@ long sched_getaffinity(pid_t pid, struct
  		goto out_unlock;
  
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
@@ -442,7 +442,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
  
  out_unlock:
-@@ -5464,7 +5464,7 @@ int task_can_attach(struct task_struct *
+@@ -5421,7 +5421,7 @@ int task_can_attach(struct task_struct *
  	 * allowed nodes is unnecessary.  Thus, cpusets are not
  	 * applicable for such threads.  This prevents checking for
  	 * success of set_cpus_allowed_ptr() on all attached tasks
@@ -451,7 +451,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 */
  	if (p->flags & PF_NO_SETAFFINITY) {
  		ret = -EINVAL;
-@@ -5491,7 +5491,7 @@ int migrate_task_to(struct task_struct *
+@@ -5448,7 +5448,7 @@ int migrate_task_to(struct task_struct *
  	if (curr_cpu == target_cpu)
  		return 0;
  
@@ -460,7 +460,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return -EINVAL;
  
  	/* TODO: This is not properly updating schedstats */
-@@ -5629,7 +5629,7 @@ static void migrate_tasks(struct rq *dea
+@@ -5586,7 +5586,7 @@ static void migrate_tasks(struct rq *dea
  		put_prev_task(rq, next);
  
  		/*
