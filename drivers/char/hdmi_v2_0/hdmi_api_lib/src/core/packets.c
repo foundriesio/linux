@@ -53,13 +53,14 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         break;
                 }
 
-                if (productParams != NULL && productParams->mVendorPayloadLength > 0) {
+                if (productParams != NULL) {
                         if(productParams->mVendorPayloadLength > 24) {
                                 pr_info("%s mVendorPayloadLength is over 24\r\n", __func__);
                                 productParams->mVendorPayloadLength = 24;
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
+                        /* backup product params */
                         memcpy(prod, productParams, sizeof(productParams_t));
                 }
         } while(0);
@@ -92,9 +93,7 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productPar
 
 		fc_spd_config(dev, &spd_data);
 
-                if(payload_length > 0)
-		        packets_VendorSpecificInfoFrame(dev, oui, vendor_payload, payload_length, 1);
-
+                packets_VendorSpecificInfoFrame(dev, oui, vendor_payload, payload_length, 1);
 	}
 	else {
 		LOGGER(SNPS_WARN,"No product info provided: not configured");
@@ -254,18 +253,35 @@ void packets_DisableAllPackets(struct hdmi_tx_dev *dev)
 
 int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 * payload, u8 length, u8 autoSend)
 {
-	LOG_TRACE();
-	fc_packets_AutoSend(dev,  0, VSD_TX);	/* prevent sending half the info. */
-	fc_vsd_vendor_OUI(dev, oui);
-	if (fc_vsd_vendor_payload(dev, payload, length)) {
-		return FALSE;	/* DEFINE ERROR */
-	}
-	if (autoSend) {
-		fc_packets_AutoSend(dev, autoSend, VSD_TX);
-	} else {
-		fc_packets_ManualSend(dev, VSD_TX);
-	}
-	return TRUE;
+        int ret = -1;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
+
+	        fc_packets_AutoSend(dev,  0, VSD_TX);	/* prevent sending half the info. */
+                if(payload == NULL) {
+                        pr_info("%s to stop transmit vsif, because payload is NULL\r\n", __func__);
+			break;
+                }
+		if(length == 0) {
+                        pr_info("%s to stop transmit vsif, because length is 0\r\n", __func__);
+			break;
+		}
+		fc_vsd_vendor_OUI(dev, oui);
+        	if (fc_vsd_vendor_payload(dev, payload, length)) {
+                        pr_err("%s failed to set payload\r\n", __func__);
+        		break;
+        	}
+        	if (autoSend) {
+        		fc_packets_AutoSend(dev, autoSend, VSD_TX);
+        	} else {
+        		fc_packets_ManualSend(dev, VSD_TX);
+        	}
+                ret = 0;
+        } while(0);
+	return ret;
 }
 
 u8 packets_AudioMetaDataPacket(struct hdmi_tx_dev *dev, audioMetaDataPacket_t * audioMetaDataPckt)
