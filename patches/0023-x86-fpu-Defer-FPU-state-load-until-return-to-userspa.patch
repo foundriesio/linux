@@ -46,10 +46,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/uaccess.h>
  #include <asm/cpufeature.h>
 +#include <asm/fpu/api.h>
+ #include <asm/nospec-branch.h>
  
  #define CREATE_TRACE_POINTS
- #include <trace/events/syscalls.h>
-@@ -196,6 +197,13 @@ static void exit_to_usermode_loop(struct
+@@ -197,6 +198,13 @@ static void exit_to_usermode_loop(struct
  	if (unlikely(cached_flags & EXIT_TO_USERMODE_LOOP_FLAGS))
  		exit_to_usermode_loop(regs, cached_flags);
  
@@ -500,7 +500,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
 --- a/arch/x86/kernel/process_32.c
 +++ b/arch/x86/kernel/process_32.c
-@@ -234,7 +234,8 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -241,7 +241,8 @@ EXPORT_SYMBOL_GPL(start_thread);
  
  	/* never put a printk in __switch_to... printk() calls wake_up*() indirectly */
  
@@ -510,7 +510,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Save away %gs. No need to save %fs, as it was saved on the
-@@ -290,7 +291,7 @@ EXPORT_SYMBOL_GPL(start_thread);
+@@ -297,7 +298,7 @@ EXPORT_SYMBOL_GPL(start_thread);
  
  	this_cpu_write(current_task, next_p);
  
@@ -521,7 +521,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	resctrl_sched_in();
 --- a/arch/x86/kernel/process_64.c
 +++ b/arch/x86/kernel/process_64.c
-@@ -520,7 +520,8 @@ void compat_start_thread(struct pt_regs
+@@ -528,7 +528,8 @@ void compat_start_thread(struct pt_regs
  	WARN_ON_ONCE(IS_ENABLED(CONFIG_DEBUG_ENTRY) &&
  		     this_cpu_read(irq_count) != -1);
  
@@ -531,7 +531,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* We must save %fs and %gs before load_TLS() because
  	 * %fs and %gs may be cleared by load_TLS().
-@@ -572,7 +573,7 @@ void compat_start_thread(struct pt_regs
+@@ -580,7 +581,7 @@ void compat_start_thread(struct pt_regs
  	this_cpu_write(current_task, next_p);
  	this_cpu_write(cpu_current_top_of_stack, task_top_of_stack(next_p));
  
@@ -542,7 +542,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	update_task_stack(next_p);
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -7891,6 +7891,10 @@ static int vcpu_enter_guest(struct kvm_v
+@@ -7902,6 +7902,10 @@ static int vcpu_enter_guest(struct kvm_v
  		wait_lapic_expire(vcpu);
  	guest_enter_irqoff();
  
@@ -553,7 +553,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(vcpu->arch.switch_db_regs)) {
  		set_debugreg(0, 7);
  		set_debugreg(vcpu->arch.eff_db[0], 0);
-@@ -8149,22 +8153,30 @@ static int complete_emulated_mmio(struct
+@@ -8160,22 +8164,30 @@ static int complete_emulated_mmio(struct
  /* Swap (qemu) user FPU context for the guest FPU context. */
  static void kvm_load_guest_fpu(struct kvm_vcpu *vcpu)
  {

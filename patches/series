@@ -256,6 +256,7 @@ completion-use-simple-wait-queues.patch
 sched-completion-Fix-a-lockup-in-wait_for_completion.patch
 fs-aio-simple-simple-work.patch
 genirq-do-not-invoke-the-affinity-callback-via-a-wor.patch
+genirq-Handle-missing-work_struct-in-irq_set_affinit.patch
 psi-replace-delayed-work-with-timer-work.patch
 
 # HRTIMERS
