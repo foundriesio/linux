@@ -847,11 +847,9 @@ int osd_req_op_cls_init(struct ceph_osd_request *osd_req, unsigned int which,
 
 	BUG_ON(opcode != CEPH_OSD_OP_CALL);
 
-	pagelist = kmalloc(sizeof (*pagelist), GFP_NOFS);
+	pagelist = ceph_pagelist_alloc(GFP_NOFS);
 	if (!pagelist)
 		return -ENOMEM;
-
-	ceph_pagelist_init(pagelist);
 
 	op->cls.class_name = class;
 	size = strlen(class);
@@ -888,11 +886,9 @@ int osd_req_op_xattr_init(struct ceph_osd_request *osd_req, unsigned int which,
 		&& opcode != CEPH_OSD_OP_CMPXATTR
 		&& opcode != CEPH_OSD_OP_GETXATTR);
 
-	req_pagelist = kmalloc(sizeof(*req_pagelist), GFP_NOFS);
+	req_pagelist = ceph_pagelist_alloc(GFP_NOFS);
 	if (!req_pagelist)
 		return -ENOMEM;
-
-	ceph_pagelist_init(req_pagelist);
 
 	payload_len = strlen(name);
 	op->xattr.name_len = payload_len;
@@ -4701,11 +4697,10 @@ static int osd_req_op_notify_ack_init(struct ceph_osd_request *req, int which,
 
 	op = _osd_req_op_init(req, which, CEPH_OSD_OP_NOTIFY_ACK, 0);
 
-	pl = kmalloc(sizeof(*pl), GFP_NOIO);
+	pl = ceph_pagelist_alloc(GFP_NOIO);
 	if (!pl)
 		return -ENOMEM;
 
-	ceph_pagelist_init(pl);
 	ret = ceph_pagelist_encode_64(pl, notify_id);
 	ret |= ceph_pagelist_encode_64(pl, cookie);
 	if (payload) {
@@ -4772,11 +4767,10 @@ static int osd_req_op_notify_init(struct ceph_osd_request *req, int which,
 	op = _osd_req_op_init(req, which, CEPH_OSD_OP_NOTIFY, 0);
 	op->notify.cookie = cookie;
 
-	pl = kmalloc(sizeof(*pl), GFP_NOIO);
+	pl = ceph_pagelist_alloc(GFP_NOIO);
 	if (!pl)
 		return -ENOMEM;
 
-	ceph_pagelist_init(pl);
 	ret = ceph_pagelist_encode_32(pl, 1); /* prot_ver */
 	ret |= ceph_pagelist_encode_32(pl, timeout);
 	ret |= ceph_pagelist_encode_32(pl, payload_len);
