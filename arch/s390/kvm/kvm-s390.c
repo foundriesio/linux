@@ -164,7 +164,7 @@ MODULE_PARM_DESC(nested, "Nested virtualization support");
 /* maximum percentage of steal time for polling.  >100 is treated like 100 */
 static u8 halt_poll_max_steal = 10;
 module_param(halt_poll_max_steal, byte, 0644);
-MODULE_PARM_DESC(hpage, "Maximum percentage of steal time to allow polling");
+MODULE_PARM_DESC(halt_poll_max_steal, "Maximum percentage of steal time to allow polling");
 
 /*
  * Base feature mask that defines default mask for facilities. Consists of the
