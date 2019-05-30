@@ -139,6 +139,7 @@ struct cpuinfo_x86 {
 	 */
 	u8			x86_cache_bits;
 	u16			cpu_die_id;
+	u16			logical_die_id;
 #endif
 };
 
