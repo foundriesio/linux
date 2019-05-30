@@ -98,7 +98,7 @@ struct lowcore {
 
 	/* Current process. */
 	__u64	current_task;			/* 0x0328 */
-	__u8	pad_0x318[0x320-0x318];		/* 0x0330 */
+	__u64	avg_steal_timer;		/* 0x0330 */
 	__u64	kernel_stack;			/* 0x0338 */
 
 	/* Interrupt, panic and restart stack. */
@@ -139,7 +139,7 @@ struct lowcore {
 	/* Per cpu primary space access list */
 	__u32	paste[16];			/* 0x0400 */
 
-	__u8	pad_0x04c0[0x0500-0x0440];	/* 0x0440 */
+	__u8    pad_0x04c0[0x0500-0x0440];      /* 0x0440 */
 
 	/* br %r1 trampoline */
 	__u16	br_r1_trampoline;		/* 0x0500 */
