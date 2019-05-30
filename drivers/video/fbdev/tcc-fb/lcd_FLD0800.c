@@ -53,6 +53,7 @@
 #if defined(CONFIG_ARCH_TCC803X)
 #include <video/tcc/vioc_pxdemux.h>
 #endif
+extern int tccfb_register_ext_panel(struct lcd_panel *panel);
 
 #if defined(CONFIG_ARCH_TCC803X)
 /*
@@ -152,16 +153,21 @@ static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 		VIOC_LVDS_PHY_SetLaneSwap(lvds_fld0800.main_port, LVDS_PHY_DATA2_LANE, LVDS_PHY_DATA1_LANE);
 		VIOC_LVDS_PHY_SetLaneSwap(lvds_fld0800.main_port, LVDS_PHY_DATA3_LANE, LVDS_PHY_DATA0_LANE);
 
-		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, LVDS_PHY_INIT);
+		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, 
+					LVDS_PHY_INIT, fld0800_panel.vcm, fld0800_panel.vsw);
 
 		VIOC_LVDS_PHY_SetFcon(lvds_fld0800.main_port, LVDS_PHY_FCON_AUTOMATIC, 0, 0, ref_cnt);		// fcon value, for 44.1Mhz
 		VIOC_LVDS_PHY_FConEnable(lvds_fld0800.main_port, 1);
 		mdelay(10);		// fcon waiting time		-- Alphachips Guide
 		VIOC_LVDS_PHY_SetCFcon(lvds_fld0800.main_port, LVDS_PHY_FCON_AUTOMATIC, 1);
 
-		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, LVDS_PHY_READY);
+		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, 
+			LVDS_PHY_READY, fld0800_panel.vcm, fld0800_panel.vsw);
+
 		mdelay(1);		// two pll locking time, at least over 10us
-		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, LVDS_PHY_START);
+
+		VIOC_LVDS_PHY_StrobeConfig(lvds_fld0800.main_port, lvds_fld0800.sub_port, upsample_ratio, 
+			LVDS_PHY_START, fld0800_panel.vcm, fld0800_panel.vsw);
 
 		/* LVDS PHY digital setup */
 		VIOC_LVDS_PHY_SetFormat(lvds_fld0800.main_port, 0, 1, 0, upsample_ratio);
@@ -345,13 +351,10 @@ static int fld0800_probe(struct platform_device *pdev)
 
 #endif
 
-#ifdef CONFIG_FB_VIOC
-	#ifdef CONFIG_TCC_EXTFB
-	extfb_register_panel(&fld0800_panel);
-	#else
-	tccfb_register_panel(&fld0800_panel);
-	#endif
-#endif
+	if(of_property_read_bool(pdev->dev.of_node, "second-display"))
+		tccfb_register_ext_panel(&fld0800_panel);
+	else
+		tccfb_register_panel(&fld0800_panel);
 
 	return 0;
 }

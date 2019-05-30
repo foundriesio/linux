@@ -131,9 +131,6 @@ extern char* boot_recovery_mode;
 extern void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming, stLCDCTR *pstCtrl, int specific_pclk);
 
 
-static struct display_platform_data tcc_display_data;
-
-
 static char default_composite_resolution = STARTER_COMPOSITE_NTSC;
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
 char default_component_resolution = STARTER_COMPONENT_1080I;
@@ -672,17 +669,6 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 	}
 	#endif
 
-	//if(tcc_display_data.output >= STARTER_OUTPUT_MAX)
-	{
-		tcc_display_data.composite_resolution = default_composite_resolution;
-		tcc_display_data.component_resolution = default_component_resolution;
-	}
-
-	DPRINTF("%s, output_setting=%d, composite_res=%d, component_res=%d\n",
-			__func__,
-			tcc_display_data.output,
-			tcc_display_data.composite_resolution,
-			tcc_display_data.component_resolution);
 
 	pmap_get_info("fb_video", &pmap_fb);
 	pmap_get_info("output_attach", &pmap_attach);

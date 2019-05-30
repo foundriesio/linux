@@ -2081,7 +2081,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt
 
-	VIOC_RDMA_SetImageOffset(pRDMA, fmt, img_width);		//offset
+	VIOC_RDMA_SetImageOffset(pRDMA, fmt, var->xres_virtual);		//offset
 	VIOC_RDMA_SetImageSize(pRDMA, img_width, img_height);	//size
 #if defined(CONFIG_VIOC_AFBCDEC)
     if(!afbc_dec_1st_cfg)

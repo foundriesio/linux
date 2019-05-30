@@ -230,8 +230,6 @@ static int tccxxx_ccfb_get_config(ccfb_dev_config_t *dev, void *arg)
 
 	cfg.res.disp_w = panel->xres;
 	cfg.res.disp_h = panel->yres;
-
-	//printk("==> %s - %dx%d (%d)\n", __func__, panel->xres, panel->yres, tcc_display_data.resolution);
 	
 	state = dev->cur_state;
 	
