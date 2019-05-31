@@ -158,7 +158,9 @@ struct hisi_sas_phy {
 	u32		phy_type;
 	enum sas_linkrate	minimum_linkrate;
 	enum sas_linkrate	maximum_linkrate;
+#ifndef	__GENKSYMS__
 	int enable;
+#endif
 };
 
 struct hisi_sas_port {
@@ -189,9 +191,13 @@ struct hisi_sas_device {
 	struct hisi_sas_dq	*dq;
 	struct list_head	list;
 	enum sas_device_type	dev_type;
-	enum dev_status dev_status;
 	int device_id;
 	int sata_idx;
+#ifndef	__GENKSYMS__
+	enum dev_status dev_status;
+#else
+	u8 dev_status;
+#endif
 };
 
 struct hisi_sas_tmf_task {
