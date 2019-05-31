@@ -427,12 +427,14 @@ static inline void tcc_dai_set_master_mode(void __iomem *base_addr, bool mclk_ma
 	}
 	
 	if (bclk_master) {
+		value |= (DAMR_BCLK_SRC_DIRECT_MASTER);
 		value |= (DAMR_DAI_BIT_CLK_MASTER_SYS);
 	} else {
 		value |= (DAMR_DAI_BIT_CLK_MASTER_EXT);
 	}
 
 	if (lrck_master) {
+		value |= (DAMR_LRCK_SRC_DIRECT_MASTER);
 		value |= (DAMR_DAI_FRAME_CLK_MASTER_SYS);
 	} else {
 		value |= (DAMR_DAI_FRAME_CLK_MASTER_EXT);
