@@ -18,6 +18,7 @@
 #include <linux/dmapool.h>
 #include <linux/iopoll.h>
 #include <linux/lcm.h>
+#include <linux/libata.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
@@ -84,8 +85,8 @@ enum {
 };
 
 enum dev_status {
+	HISI_SAS_DEV_INIT,
 	HISI_SAS_DEV_NORMAL,
-	HISI_SAS_DEV_EH,
 };
 
 enum {
@@ -157,6 +158,9 @@ struct hisi_sas_phy {
 	u32		phy_type;
 	enum sas_linkrate	minimum_linkrate;
 	enum sas_linkrate	maximum_linkrate;
+#ifndef	__GENKSYMS__
+	int enable;
+#endif
 };
 
 struct hisi_sas_port {
@@ -189,7 +193,11 @@ struct hisi_sas_device {
 	enum sas_device_type	dev_type;
 	int device_id;
 	int sata_idx;
+#ifndef	__GENKSYMS__
+	enum dev_status dev_status;
+#else
 	u8 dev_status;
+#endif
 };
 
 struct hisi_sas_tmf_task {
@@ -520,6 +528,8 @@ extern int hisi_sas_slave_configure(struct scsi_device *sdev);
 extern int hisi_sas_scan_finished(struct Scsi_Host *shost, unsigned long time);
 extern void hisi_sas_scan_start(struct Scsi_Host *shost);
 extern int hisi_sas_host_reset(struct Scsi_Host *shost, int reset_type);
+extern void hisi_sas_phy_enable(struct hisi_hba *hisi_hba, int phy_no,
+				int enable);
 extern void hisi_sas_phy_down(struct hisi_hba *hisi_hba, int phy_no, int rdy);
 extern void hisi_sas_slot_task_free(struct hisi_hba *hisi_hba,
 				    struct sas_task *task,
