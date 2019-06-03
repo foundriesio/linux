@@ -516,10 +516,14 @@ static int stm32_dma_terminate_all(struct dma_chan *c)
 	unsigned long flags;
 	LIST_HEAD(head);
 
-	spin_lock_irqsave(&chan->vchan.lock, flags);
 
-	if (chan->use_mdma)
+	if (chan->use_mdma) {
+		spin_lock_irqsave_nested(&chan->vchan.lock, flags,
+					 SINGLE_DEPTH_NESTING);
 		dmaengine_terminate_async(mchan->chan);
+	} else {
+		spin_lock_irqsave(&chan->vchan.lock, flags);
+	}
 
 	if (chan->busy) {
 		stm32_dma_stop(chan);
