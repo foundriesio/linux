@@ -57,7 +57,9 @@
 #include <net/pkt_cls.h>
 #include <net/tc_act/tc_gact.h>
 #include <net/tc_act/tc_mirred.h>
+#ifndef __GENKSYMS__
 #include <net/xdp_sock.h>
+#endif
 #include "i40e_type.h"
 #include "i40e_prototype.h"
 #include "i40e_client.h"
