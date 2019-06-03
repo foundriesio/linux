@@ -337,6 +337,7 @@
 	interrupt-parent = <&exti>;
 	interrupts = <68 1>;
 	interrupt-names = "wdg";
+	wakeup-source;
 	recovery;
 	status = "okay";
 };
