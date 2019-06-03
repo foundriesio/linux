@@ -127,6 +127,19 @@
 	phy-mode = "rmii";
 	phy-supply = <&reg_LDO1>;
 	fsl,magic-packet;
+	phy-handle = <&ethphy0>;
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@0 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			max-speed = <100>;
+			micrel,led-mode = <0>;
+			reg = <0>;
+		};
+	};
 };
 
 &flexcan1 {
