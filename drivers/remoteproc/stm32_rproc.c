@@ -695,7 +695,7 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 		if (err)
 			return err;
 
-		ddata->rsc_va = ioremap_wc(rsc_pa, ddata->rsc_len);
+		ddata->rsc_va = devm_ioremap_wc(dev, rsc_pa, ddata->rsc_len);
 		if (IS_ERR_OR_NULL(ddata->rsc_va)) {
 			dev_err(dev, "Unable to map memory region: %pa+%zx\n",
 				&rsc_pa,  ddata->rsc_len);
@@ -767,8 +767,6 @@ static int stm32_rproc_remove(struct platform_device *pdev)
 
 	rproc_del(rproc);
 	stm32_rproc_free_mbox(rproc);
-	if (ddata->rsc_va)
-		iounmap(ddata->rsc_va);
 	destroy_workqueue(ddata->workqueue);
 
 	rproc_free(rproc);
