@@ -7801,21 +7801,21 @@ unsigned long pagecache_over_limit()
 	 * not seem to be guaranteed. (Maybe this was just an oprofile
 	 * bug?).
 	 * (FIXME: Do we need to subtract NR_FILE_DIRTY here as well?) */
-	unsigned long pgcache_pages = global_page_state(NR_FILE_PAGES)
+	unsigned long pgcache_pages = global_node_page_state(NR_FILE_PAGES)
 				    - max_t(unsigned long,
-					    global_page_state(NR_FILE_MAPPED),
-					    global_page_state(NR_SHMEM));
+					    global_node_page_state(NR_FILE_MAPPED),
+					    global_node_page_state(NR_SHMEM));
 	/* We certainly can't free more than what's on the LRU lists
 	 * minus the dirty ones. (FIXME: pages accounted for in NR_WRITEBACK
 	 * are not on the LRU lists  any more, right?) */
-	unsigned long pgcache_lru_pages = global_page_state(NR_ACTIVE_FILE)
-				        + global_page_state(NR_INACTIVE_FILE);
+	unsigned long pgcache_lru_pages = global_node_page_state(NR_ACTIVE_FILE)
+				        + global_node_page_state(NR_INACTIVE_FILE);
 	unsigned long free_pages = global_page_state(NR_FREE_PAGES);
 	unsigned long swap_pages = total_swap_pages - get_nr_swap_pages();
 	unsigned long limit;
 
 	if (vm_pagecache_ignore_dirty != 0)
-		pgcache_lru_pages -= global_page_state(NR_FILE_DIRTY)
+		pgcache_lru_pages -= global_node_page_state(NR_FILE_DIRTY)
 				     /vm_pagecache_ignore_dirty;
 	/* Paranoia */
 	if (unlikely(pgcache_lru_pages > LONG_MAX))
