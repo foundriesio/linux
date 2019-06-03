@@ -312,10 +312,6 @@
 	pinctrl-0 = <&pinctrl_pwm4>;
 };
 
-&reg_1p0d {
-	vin-supply = <&reg_DCDC3>;
-};
-
 &sai1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai1>;
