@@ -127,11 +127,11 @@
 
 &adc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&adc12_usb_pwr_pins_a>;
+	pinctrl-0 = <&adc12_ain_pins_a>, <&adc12_usb_pwr_pins_a>;
 	vdd-supply = <&vdd>;
 	vdda-supply = <&vdd>;
 	vref-supply = <&vrefbuf>;
-	status = "okay";
+	status = "disabled";
 	adc1: adc@0 {
 		/*
 		 * Type-C USB_PWR_CC1 & USB_PWR_CC2 on in18 & in19.
@@ -140,13 +140,13 @@
 		 * Use arbitrary margin here (e.g. 5µs).
 		 */
 		st,min-sample-time-nsecs = <5000>;
-		/* ANA0, ANA1, USB Type-C CC1 & CC2 */
-		st,adc-channels = <0 1 18 19>;
+		/* AIN connector, USB Type-C CC1 & CC2 */
+		st,adc-channels = <0 1 6 13 18 19>;
 		status = "okay";
 	};
 	adc2: adc@100 {
-		/* ANA0, ANA1, temp sensor, USB Type-C CC1 & CC2 */
-		st,adc-channels = <0 1 12 18 19>;
+		/* AIN connector, temp sensor, USB Type-C CC1 & CC2 */
+		st,adc-channels = <0 1 2 6 12 18 19>;
 		/* temperature sensor min sample time */
 		st,min-sample-time-nsecs = <10000>;
 		status = "okay";
