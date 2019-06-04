@@ -52,9 +52,13 @@ struct efi __read_mostly efi = {
 	.properties_table	= EFI_INVALID_TABLE_ADDR,
 	.mem_attr_table		= EFI_INVALID_TABLE_ADDR,
 	.rng_seed		= EFI_INVALID_TABLE_ADDR,
-	.mem_reserve		= EFI_INVALID_TABLE_ADDR,
 };
 EXPORT_SYMBOL(efi);
+
+ /* Linux EFI memreserve table
+  * Declared as global variable for not breaking KABI
+  */
+unsigned long mem_reserve	= EFI_INVALID_TABLE_ADDR;
 
 static unsigned long *efi_tables[] = {
 	&efi.mps,
@@ -467,7 +471,7 @@ static __initdata efi_config_table_type_t common_tables[] = {
 	{EFI_PROPERTIES_TABLE_GUID, "PROP", &efi.properties_table},
 	{EFI_MEMORY_ATTRIBUTES_TABLE_GUID, "MEMATTR", &efi.mem_attr_table},
 	{LINUX_EFI_RANDOM_SEED_TABLE_GUID, "RNG", &efi.rng_seed},
-	{LINUX_EFI_MEMRESERVE_TABLE_GUID, "MEMRESERVE", &efi.mem_reserve},
+	{LINUX_EFI_MEMRESERVE_TABLE_GUID, "MEMRESERVE", &mem_reserve},
 	{NULL_GUID, NULL, NULL},
 };
 
@@ -572,8 +576,8 @@ int __init efi_config_parse_tables(void *config_tables, int count, int sz,
 		early_memunmap(tbl, sizeof(*tbl));
 	}
 
-	if (efi.mem_reserve != EFI_INVALID_TABLE_ADDR) {
-		unsigned long prsv = efi.mem_reserve;
+	if (mem_reserve != EFI_INVALID_TABLE_ADDR) {
+		unsigned long prsv = mem_reserve;
 
 		while (prsv) {
 			struct linux_efi_memreserve *rsv;
@@ -933,10 +937,10 @@ static struct linux_efi_memreserve *efi_memreserve_root __ro_after_init;
 
 static int __init efi_memreserve_map_root(void)
 {
-	if (efi.mem_reserve == EFI_INVALID_TABLE_ADDR)
+	if (mem_reserve == EFI_INVALID_TABLE_ADDR)
 		return -ENODEV;
 
-	efi_memreserve_root = memremap(efi.mem_reserve,
+	efi_memreserve_root = memremap(mem_reserve,
 				       sizeof(*efi_memreserve_root),
 				       MEMREMAP_WB);
 	if (WARN_ON_ONCE(!efi_memreserve_root))
