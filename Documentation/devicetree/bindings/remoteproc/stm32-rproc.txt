@@ -28,6 +28,9 @@ Optional properties:
 - interrupt-parent: phandle to the interrupt controller node.
 - interrupts:	Should contain the watchdog interrupt
 - interrupt-names: Must be "wdg"
+- wakeup-source: Flag indicating whether remoteproc can wake up the system by
+		the watchdog interrupt. Only meaningful if the "interrupts"
+		property is defined.
 - mboxes:	List of phandle and mailbox channel specifiers:
 		- a channel (a) used to communicate through virtqueues with the
 		  remote proc.
