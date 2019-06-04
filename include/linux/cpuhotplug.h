@@ -145,7 +145,7 @@ enum cpuhp_state {
 	CPUHP_AP_PERF_ARM_L2X0_ONLINE,
 	CPUHP_AP_PERF_ARM_QCOM_L2_ONLINE,
 	CPUHP_AP_PERF_ARM_QCOM_L3_ONLINE,
-	CPUHP_AP_PERF_ARM_CAVIUM_TX2_UNCORE_ONLINE,
+	/* kernel ABI: CPUHP_AP_PERF_ARM_CAVIUM_TX2_UNCORE_ONLINE, */
 	CPUHP_AP_PERF_POWERPC_NEST_IMC_ONLINE,
 	CPUHP_AP_PERF_POWERPC_CORE_IMC_ONLINE,
 	CPUHP_AP_PERF_POWERPC_THREAD_IMC_ONLINE,
@@ -158,6 +158,12 @@ enum cpuhp_state {
 	CPUHP_AP_ACTIVE,
 	CPUHP_ONLINE,
 };
+
+#ifdef CONFIG_ARM64
+/* Reuse other arch's entries to avoid kernel ABI breakage */
+#define CPUHP_AP_PERF_ARM_CAVIUM_TX2_UNCORE_ONLINE	\
+		CPUHP_AP_PERF_POWERPC_NEST_IMC_ONLINE
+#endif
 
 int __cpuhp_setup_state(enum cpuhp_state state,	const char *name, bool invoke,
 			int (*startup)(unsigned int cpu),
