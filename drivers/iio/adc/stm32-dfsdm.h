@@ -248,12 +248,14 @@ enum stm32_dfsdm_sinc_order {
  * @fosr: filter oversampling
  * @shift: output sample shift
  * @res: output sample resolution
+ * @max: output sample maximum positive value
  */
 struct stm32_dfsdm_filter_osr {
 	unsigned int iosr;
 	unsigned int fosr;
 	int shift;
 	u64 res;
+	s32 max;
 };
 
 /**

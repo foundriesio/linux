@@ -39,8 +39,8 @@
 #define DFSDM_MAX_INT_OVERSAMPLING 256
 #define DFSDM_MAX_FL_OVERSAMPLING 1024
 
-/* Max sample resolutions */
-#define DFSDM_DATA_MAX BIT(31)
+/* Limit filter output resolution to 31 bits. (i.e. sample range is +/-2^30) */
+#define DFSDM_DATA_MAX BIT(30)
 /*
  * Data are output as two’s complement data in a 24 bit field.
  * Data from filters are in the range +/-2^(n-1)
@@ -192,7 +192,7 @@ static int stm32_dfsdm_compute_osrs(struct stm32_dfsdm_filter *fl,
 				    unsigned int fast, unsigned int oversamp)
 {
 	unsigned int i, d, fosr, iosr;
-	u64 res;
+	u64 res, max;
 	int bits;
 	unsigned int m = 1;	/* multiplication factor */
 	unsigned int p = fl->ford;	/* filter order (ford) */
@@ -257,10 +257,19 @@ static int stm32_dfsdm_compute_osrs(struct stm32_dfsdm_filter *fl,
 				flo->iosr = iosr;
 
 				bits = fls(flo->res);
+				/* 8 LBSs in data register contain chan info */
+				max = flo->res << 8;
+
 				/* if resolution is not a power of two */
 				if (flo->res > BIT(bits - 1))
 					bits++;
+				else
+					max--;
 				flo->shift = DFSDM_DATA_RES - bits;
+
+				if (flo->shift < 0)
+					max >>= -flo->shift;
+				flo->max = (s32)max;
 
 				pr_debug("%s: fosr = %d, iosr = %d, resolution = 0x%llx/%d bits, shift = %d\n",
 					 __func__, flo->fosr, flo->iosr,
@@ -840,8 +849,6 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 	 * After saturation shift is increased by 1 bit to align on 24 bits.
 	 */
 	int shift = flo->shift > 0 ? flo->shift + 1 : 1;
-	s32 max = flo->shift > 0 ? BIT(DFSDM_DATA_RES - 1 - flo->shift) :
-				   BIT(DFSDM_DATA_RES - 1);
 
 	if (indio_dev->currentmode & INDIO_BUFFER_TRIGGERED) {
 		iio_trigger_poll_chained(indio_dev->trig);
@@ -867,7 +874,7 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 		/* Mask 8 LSB that contains the channel ID */
 		*buffer &= 0xFFFFFF00;
 		/* Convert 2^(n-1) sample to 2^(n-1)-1 to avoid wrap-around */
-		if (*buffer >= max)
+		if (*buffer > flo->max)
 			*buffer -= 1;
 		/*
 		 * Samples from filter are retrieved with 23 bits resolution
