@@ -219,7 +219,7 @@ struct ftrace_likely_data {
 #endif
 
 #ifndef __copy
-# define __copy
+# define __copy(symbol)
 #endif
 
 #ifndef __randomize_layout
