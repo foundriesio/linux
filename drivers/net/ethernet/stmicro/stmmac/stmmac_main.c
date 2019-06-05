@@ -4485,7 +4485,8 @@ int stmmac_suspend(struct device *dev)
 	if (!ndev || !netif_running(ndev))
 		return 0;
 
-	stmmac_disable_all_queues(priv);
+	/* call carrier off first to avoid false dev_watchdog timeouts */
+	netif_carrier_off(ndev);
 
 	if (ndev->phydev)
 		phy_stop(ndev->phydev);
@@ -4494,6 +4495,7 @@ int stmmac_suspend(struct device *dev)
 
 	netif_device_detach(ndev);
 	stmmac_stop_all_queues(priv);
+	stmmac_disable_all_queues(priv);
 
 	/* Stop TX/RX DMA */
 	stmmac_stop_all_dma(priv);
