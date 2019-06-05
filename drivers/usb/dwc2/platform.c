@@ -46,6 +46,7 @@
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
 #include <linux/platform_data/s3c-hsotg.h>
+#include <linux/pm_wakeirq.h>
 #include <linux/reset.h>
 
 #include <linux/usb/of.h>
@@ -318,6 +319,9 @@ static int dwc2_driver_remove(struct platform_device *dev)
 {
 	struct dwc2_hsotg *hsotg = platform_get_drvdata(dev);
 
+	if (hsotg->wakeirq > 0)
+		dev_pm_clear_wake_irq(&dev->dev);
+
 	dwc2_debugfs_exit(hsotg);
 	if (hsotg->hcd_enabled)
 		dwc2_hcd_remove(hsotg);
@@ -434,6 +438,16 @@ static int dwc2_driver_probe(struct platform_device *dev)
 				  dev_name(hsotg->dev), hsotg);
 	if (retval)
 		return retval;
+
+	hsotg->wakeirq = platform_get_irq(dev, 1);
+	if (hsotg->wakeirq > 0) {
+		retval = dev_pm_set_dedicated_wake_irq(&dev->dev,
+						       hsotg->wakeirq);
+		if (retval)
+			return retval;
+	} else if (hsotg->wakeirq == -EPROBE_DEFER) {
+		return hsotg->wakeirq;
+	}
 
 	hsotg->vbus_supply = devm_regulator_get_optional(hsotg->dev, "vbus");
 	if (IS_ERR(hsotg->vbus_supply)) {
@@ -554,6 +568,9 @@ error_init:
 	if (hsotg->params.activate_stm_id_vb_detection)
 		regulator_disable(hsotg->usb33d);
 error:
+	if (hsotg->wakeirq > 0)
+		dev_pm_clear_wake_irq(&dev->dev);
+
 	dwc2_lowlevel_hw_disable(hsotg);
 	return retval;
 }
@@ -600,6 +617,10 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	if (dwc2->ll_hw_enabled)
 		ret = __dwc2_lowlevel_hw_disable(dwc2);
 
+	if (dwc2->wakeirq > 0 &&
+	    (device_may_wakeup(dev) || dev->power.wakeup_path))
+		enable_irq_wake(dwc2->wakeirq);
+
 	return ret;
 }
 
@@ -607,6 +628,10 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 {
 	struct dwc2_hsotg *dwc2 = dev_get_drvdata(dev);
 	int ret = 0;
+
+	if (dwc2->wakeirq > 0 &&
+	    (device_may_wakeup(dev) || dev->power.wakeup_path))
+		disable_irq_wake(dwc2->wakeirq);
 
 	if (dwc2->ll_hw_enabled) {
 		ret = __dwc2_lowlevel_hw_enable(dwc2);

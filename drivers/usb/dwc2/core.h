@@ -1012,6 +1012,7 @@ struct dwc2_hregs_backup {
  * @ctrl_out_desc_dma:	EP0 OUT data phase desc chain DMA address
  * @ctrl_out_desc:	EP0 OUT data phase desc chain pointer
  * @irq:		Interrupt request line number
+ * @wakeirq:		Wakeup interrupt request line number
  * @clk:		Pointer to otg clock
  * @reset:		Pointer to dwc2 reset controller
  * @reset_ecc:          Pointer to dwc2 optional reset controller in Stratix10.
@@ -1071,6 +1072,7 @@ struct dwc2_hsotg {
 	spinlock_t lock;
 	void *priv;
 	int     irq;
+	int	wakeirq;
 	struct clk *clk;
 	struct reset_control *reset;
 	struct reset_control *reset_ecc;
