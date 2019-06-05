@@ -977,6 +977,8 @@ const struct iommu_ops *iort_iommu_configure(struct device *dev)
 
 		if (!err && iort_pci_rc_supports_ats(node))
 			dev->iommu_fwspec->flags |= IOMMU_FWSPEC_PCI_RC_ATS;
+
+		pci_fixup_device(pci_fixup_final, to_pci_dev(dev));
 	} else {
 		int i = 0;
 
