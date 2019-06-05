@@ -1509,6 +1509,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 				otg_dev->dwc_otg_soffn_thread = NULL;
 				cil_pcd_disconnect(otg_dev->core_if);
 			}
+#ifndef CONFIG_TCC_EH_ELECT_TST
 			do
 			{
 				if(tcc_otg_vbus_ctrl(otg_dev, ON) == 0) //VBUS on
@@ -1527,6 +1528,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 					printk("[%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
 				}
 			} while(retry_cnt < VBUS_CTRL_MAX);
+#endif
 			#endif /* TCC_DWC_SOFFN_USE */
 		}
 
@@ -1557,6 +1559,9 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 			otg_dev->mhst_phy->init(otg_dev->mhst_phy);
 			if(is_resuming == 0)
 				dwc_otg_mux_hcd_init(otg_dev);
+			#ifdef CONFIG_TCC_EH_ELECT_TST
+			tcc_otg_vbus_ctrl(otg_dev, ON);
+			#endif
 		}
 		#endif
 
