@@ -46,9 +46,9 @@
  * Data from filters are in the range +/-2^(n-1)
  * 2^(n-1) maximum positive value cannot be coded in 2's complement n bits
  * An extra bit is required to avoid wrap-around of the binary code for 2^(n-1)
- * So, the resolution of samples from filter is limited to 23 bits.
+ * So, the resolution of samples from filter is actually limited to 23 bits
  */
-#define DFSDM_DATA_RES 23
+#define DFSDM_DATA_RES 24
 
 /* Filter configuration */
 #define DFSDM_CR1_CFG_MASK (DFSDM_CR1_RCH_MASK | DFSDM_CR1_RCONT_MASK | \
@@ -193,7 +193,7 @@ static int stm32_dfsdm_compute_osrs(struct stm32_dfsdm_filter *fl,
 {
 	unsigned int i, d, fosr, iosr;
 	u64 res, max;
-	int bits;
+	int bits, shift;
 	unsigned int m = 1;	/* multiplication factor */
 	unsigned int p = fl->ford;	/* filter order (ford) */
 	struct stm32_dfsdm_filter_osr *flo = &fl->flo[fast];
@@ -265,15 +265,39 @@ static int stm32_dfsdm_compute_osrs(struct stm32_dfsdm_filter *fl,
 					bits++;
 				else
 					max--;
-				flo->shift = DFSDM_DATA_RES - bits;
 
-				if (flo->shift < 0)
-					max >>= -flo->shift;
+				shift = DFSDM_DATA_RES - bits;
+				/*
+				 * Compute right/left shift
+				 * Right shift is performed by hardware
+				 * when transferring samples to data register.
+				 * Left shift is done by software on buffer
+				 */
+				if (shift > 0) {
+					/* Resolution is lower than 24 bits */
+					flo->rshift = 0;
+					flo->lshift = shift;
+				} else {
+					/*
+					 * If resolution is 24 bits or more,
+					 * max positive value may be ambiguous
+					 * (equal to max negative value as sign
+					 * bit is dropped).
+					 * Reduce resolution to 23 bits (rshift)
+					 * to keep the sign on bit 23 and treat
+					 * saturation before rescaling on 24
+					 * bits (lshift).
+					 */
+					flo->rshift = 1 - shift;
+					flo->lshift = 1;
+					max >>= flo->rshift;
+				}
 				flo->max = (s32)max;
 
-				pr_debug("%s: fosr = %d, iosr = %d, resolution = 0x%llx/%d bits, shift = %d\n",
-					 __func__, flo->fosr, flo->iosr,
-					 flo->res, bits, flo->shift);
+				pr_debug("%s: fast %d, fosr %d, iosr %d, res 0x%llx/%d bits, rshift %d, lshift %d\n",
+					 __func__, fast, flo->fosr, flo->iosr,
+					 flo->res, bits, flo->rshift,
+					 flo->lshift);
 			}
 		}
 	}
@@ -423,28 +447,6 @@ static int stm32_dfsdm_filter_set_trig(struct stm32_dfsdm_adc *adc,
 	return 0;
 }
 
-static inline int stm32_dfsdm_channel_shift(struct regmap *regmap,
-					    const struct iio_chan_spec *chan,
-					    struct stm32_dfsdm_filter_osr *flo
-)
-{
-	/*
-	 * The shift depends on filter output sample resolution.
-	 * If sample resolution is lower than 23 bits, a left shift is
-	 * performed to align data on MSBs. Left shift (positive shift)
-	 * is a software shift performed in DMA callback.
-	 * If sample resolution is greater than 23 bits a right shift is
-	 * required. Right shift is performed by hardware and set here.
-	 */
-	if (flo->shift >= 0)
-		return 0;
-
-	return regmap_update_bits(regmap,
-				  DFSDM_CHCFGR2(chan->channel),
-				  DFSDM_CHCFGR2_DTRBS_MASK,
-				  DFSDM_CHCFGR2_DTRBS(-flo->shift));
-}
-
 static int stm32_dfsdm_channels_configure(struct stm32_dfsdm_adc *adc,
 					  unsigned int fl_id,
 					  struct iio_trigger *trig)
@@ -478,8 +480,11 @@ static int stm32_dfsdm_channels_configure(struct stm32_dfsdm_adc *adc,
 			 sizeof(adc->smask) * BITS_PER_BYTE) {
 		chan = indio_dev->channels + bit;
 
-		ret = stm32_dfsdm_channel_shift(regmap, chan, flo);
-		if (ret < 0)
+		ret = regmap_update_bits(regmap,
+					 DFSDM_CHCFGR2(chan->channel),
+					 DFSDM_CHCFGR2_DTRBS_MASK,
+					 DFSDM_CHCFGR2_DTRBS(flo->rshift));
+		if (ret)
 			return ret;
 	}
 
@@ -844,11 +849,6 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 	struct stm32_dfsdm_filter_osr *flo = &fl->flo[fl->fast];
 	int available = stm32_dfsdm_adc_dma_residue(adc);
 	size_t old_pos;
-	/*
-	 * Resolution is limited to 23 bits before applying saturation.
-	 * After saturation shift is increased by 1 bit to align on 24 bits.
-	 */
-	int shift = flo->shift > 0 ? flo->shift + 1 : 1;
 
 	if (indio_dev->currentmode & INDIO_BUFFER_TRIGGERED) {
 		iio_trigger_poll_chained(indio_dev->trig);
@@ -880,7 +880,7 @@ static void stm32_dfsdm_dma_buffer_done(void *data)
 		 * Samples from filter are retrieved with 23 bits resolution
 		 * or less. Shift left to align MSB on 24 bits.
 		 */
-		*buffer <<= shift;
+		*buffer <<= flo->lshift;
 
 		available -= indio_dev->scan_bytes;
 		adc->bufi += indio_dev->scan_bytes;

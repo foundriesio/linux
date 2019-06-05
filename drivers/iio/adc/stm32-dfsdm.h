@@ -246,14 +246,16 @@ enum stm32_dfsdm_sinc_order {
  * struct stm32_dfsdm_filter_osr - DFSDM filter settings linked to oversampling
  * @iosr: integrator oversampling
  * @fosr: filter oversampling
- * @shift: output sample shift
+ * @rshift: output sample right shift (hardware shift)
+ * @lshift: output sample left shift (software shift)
  * @res: output sample resolution
  * @max: output sample maximum positive value
  */
 struct stm32_dfsdm_filter_osr {
 	unsigned int iosr;
 	unsigned int fosr;
-	int shift;
+	unsigned int rshift;
+	unsigned int lshift;
 	u64 res;
 	s32 max;
 };
