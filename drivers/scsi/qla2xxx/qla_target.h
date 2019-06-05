@@ -928,13 +928,15 @@ struct qla_tgt_cmd {
 	uint64_t	lba;
 	uint16_t	a_guard, e_guard, a_app_tag, e_app_tag;
 	uint32_t	a_ref_tag, e_ref_tag;
-#define DIF_BUNDL_DMA_VALID 1
-	uint16_t prot_flags;
 
 	uint64_t jiffies_at_alloc;
 	uint64_t jiffies_at_free;
 
 	enum trace_flags trc_flags;
+#ifndef __GENKSYMS__
+#define DIF_BUNDL_DMA_VALID 1
+	uint16_t prot_flags;
+#endif
 };
 
 struct qla_tgt_sess_work_param {

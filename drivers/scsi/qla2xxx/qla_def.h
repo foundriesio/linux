@@ -1892,7 +1892,7 @@ struct crc_context {
 	dma_addr_t	crc_ctx_dma;
 	/* List of DMA context transfers */
 	struct list_head dsd_list;
-
+#ifndef __GENKSYMS__
 	/* List of DIF Bundling context DMA address */
 	struct list_head ldif_dsd_list;
 	u8 no_ldif_dsd;
@@ -1900,6 +1900,7 @@ struct crc_context {
 	struct list_head ldif_dma_hndl_list;
 	u32 dif_bundl_len;
 	u8 no_dif_bundl;
+#endif
 	/* This structure should not exceed 512 bytes */
 };
 
@@ -2369,7 +2370,6 @@ typedef struct fc_port {
 #define NVME_PRLI_SP_DISCOVERY  BIT_3
 #define NVME_PRLI_SP_FIRST_BURST	BIT_0
 	uint8_t nvme_flag;
-	uint32_t nvme_first_burst_size;
 #define NVME_FLAG_REGISTERED 4
 #define NVME_FLAG_DELETING 2
 #define NVME_FLAG_RESETTING 1
@@ -2438,6 +2438,9 @@ typedef struct fc_port {
 	u8 last_login_state;
 	u16 n2n_link_reset_cnt;
 	u16 n2n_chip_reset;
+#ifndef __GENKSYMS__
+	uint32_t nvme_first_burst_size;
+#endif
 } fc_port_t;
 
 #define QLA_FCPORT_SCAN		1
@@ -3705,7 +3708,6 @@ struct qla_hw_data {
 #define PORT_SPEED_32GB 0x06
 #define PORT_SPEED_10GB	0x13
 	uint16_t	link_data_rate;         /* F/W operating speed */
-	uint16_t	set_data_rate;		/* Set by user */
 
 	uint8_t		current_topology;
 	uint8_t		prev_topology;
@@ -4200,6 +4202,14 @@ struct qla_hw_data {
 	uint16_t min_link_speed;
 	uint16_t max_speed_sup;
 
+	atomic_t        nvme_active_aen_cnt;
+	uint16_t        nvme_last_rptd_aen;             /* Last recorded aen count */
+
+	atomic_t zio_threshold;
+	uint16_t last_zio_threshold;
+#define DEFAULT_ZIO_THRESHOLD 5
+#ifndef __GENKSYMS__
+	uint16_t	set_data_rate;		/* Set by user */
 	/* DMA pool for the DIF bundling buffers */
 	struct dma_pool *dif_bundl_pool;
 	#define DIF_BUNDLING_DMA_POOL_SIZE  1024
@@ -4219,13 +4229,7 @@ struct qla_hw_data {
 	unsigned long long dif_bundle_writes;
 	unsigned long long dif_bundle_kallocs;
 	unsigned long long dif_bundle_dma_allocs;
-
-	atomic_t        nvme_active_aen_cnt;
-	uint16_t        nvme_last_rptd_aen;             /* Last recorded aen count */
-
-	atomic_t zio_threshold;
-	uint16_t last_zio_threshold;
-#define DEFAULT_ZIO_THRESHOLD 5
+#endif
 };
 
 #define FW_ABILITY_MAX_SPEED_MASK	0xFUL
@@ -4269,7 +4273,9 @@ typedef struct scsi_qla_host {
 		uint32_t	qpairs_req_created:1;
 		uint32_t	qpairs_rsp_created:1;
 		uint32_t	nvme_enabled:1;
+#ifndef __GENKSYMS__
 		uint32_t        nvme_first_burst:1;
+#endif
 	} flags;
 
 	atomic_t	loop_state;
