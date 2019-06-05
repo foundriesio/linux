@@ -64,6 +64,7 @@
 #include "ixgbe.h"
 #include "ixgbe_common.h"
 #include "ixgbe_dcb_82599.h"
+#include "ixgbe_phy.h"
 #include "ixgbe_sriov.h"
 #include "ixgbe_model.h"
 #include "ixgbe_txrx_common.h"
@@ -3977,8 +3978,11 @@ static void ixgbe_setup_mrqc(struct ixgbe_adapter *adapter)
 			else
 				mrqc = IXGBE_MRQC_VMDQRSS64EN;
 
-			/* Enable L3/L4 for Tx Switched packets */
-			mrqc |= IXGBE_MRQC_L3L4TXSWEN;
+			/* Enable L3/L4 for Tx Switched packets only for X550,
+			 * older devices do not support this feature
+			 */
+			if (hw->mac.type >= ixgbe_mac_X550)
+				mrqc |= IXGBE_MRQC_L3L4TXSWEN;
 		} else {
 			if (tcs > 4)
 				mrqc = IXGBE_MRQC_RTRSS8TCEN;
@@ -8813,6 +8817,15 @@ ixgbe_mdio_read(struct net_device *netdev, int prtad, int devad, u16 addr)
 	u16 value;
 	int rc;
 
+	if (adapter->mii_bus) {
+		int regnum = addr;
+
+		if (devad != MDIO_DEVAD_NONE)
+			regnum |= (devad << 16) | MII_ADDR_C45;
+
+		return mdiobus_read(adapter->mii_bus, prtad, regnum);
+	}
+
 	if (prtad != hw->phy.mdio.prtad)
 		return -EINVAL;
 	rc = hw->phy.ops.read_reg(hw, addr, devad, &value);
@@ -8826,6 +8839,15 @@ static int ixgbe_mdio_write(struct net_device *netdev, int prtad, int devad,
 {
 	struct ixgbe_adapter *adapter = netdev_priv(netdev);
 	struct ixgbe_hw *hw = &adapter->hw;
+
+	if (adapter->mii_bus) {
+		int regnum = addr;
+
+		if (devad != MDIO_DEVAD_NONE)
+			regnum |= (devad << 16) | MII_ADDR_C45;
+
+		return mdiobus_write(adapter->mii_bus, prtad, regnum, value);
+	}
 
 	if (prtad != hw->phy.mdio.prtad)
 		return -EINVAL;
@@ -9796,7 +9818,7 @@ static int ixgbe_set_features(struct net_device *netdev,
 			    NETIF_F_HW_VLAN_CTAG_FILTER))
 		ixgbe_set_rx_mode(netdev);
 
-	return 0;
+	return 1;
 }
 
 /**
@@ -11155,6 +11177,8 @@ skip_sriov:
 			IXGBE_LINK_SPEED_10GB_FULL | IXGBE_LINK_SPEED_1GB_FULL,
 			true);
 
+	ixgbe_mii_bus_init(hw);
+
 	return 0;
 
 err_register:
@@ -11205,6 +11229,8 @@ static void ixgbe_remove(struct pci_dev *pdev)
 	set_bit(__IXGBE_REMOVING, &adapter->state);
 	cancel_work_sync(&adapter->service_task);
 
+	if (adapter->mii_bus)
+		mdiobus_unregister(adapter->mii_bus);
 
 #ifdef CONFIG_IXGBE_DCA
 	if (adapter->flags & IXGBE_FLAG_DCA_ENABLED) {

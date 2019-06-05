@@ -56,7 +56,7 @@ MODULE_PARM_DESC(db_coalescing_threshold,
 
 static int max_fr_immd = T4_MAX_FR_IMMD;
 module_param(max_fr_immd, int, 0644);
-MODULE_PARM_DESC(max_fr_immd, "fastreg threshold for using DSGL instead of immedate");
+MODULE_PARM_DESC(max_fr_immd, "fastreg threshold for using DSGL instead of immediate");
 
 static int alloc_ird(struct c4iw_dev *dev, u32 ird)
 {
@@ -632,7 +632,10 @@ static void build_rdma_write_cmpl(struct t4_sq *sq,
 
 	wcwr->stag_sink = cpu_to_be32(rdma_wr(wr)->rkey);
 	wcwr->to_sink = cpu_to_be64(rdma_wr(wr)->remote_addr);
-	wcwr->stag_inv = cpu_to_be32(wr->next->ex.invalidate_rkey);
+	if (wr->next->opcode == IB_WR_SEND)
+		wcwr->stag_inv = 0;
+	else
+		wcwr->stag_inv = cpu_to_be32(wr->next->ex.invalidate_rkey);
 	wcwr->r2 = 0;
 	wcwr->r3 = 0;
 
@@ -726,7 +729,10 @@ static void post_write_cmpl(struct c4iw_qp *qhp, const struct ib_send_wr *wr)
 
 	/* SEND_WITH_INV swsqe */
 	swsqe = &qhp->wq.sq.sw_sq[qhp->wq.sq.pidx];
-	swsqe->opcode = FW_RI_SEND_WITH_INV;
+	if (wr->next->opcode == IB_WR_SEND)
+		swsqe->opcode = FW_RI_SEND;
+	else
+		swsqe->opcode = FW_RI_SEND_WITH_INV;
 	swsqe->idx = qhp->wq.sq.pidx;
 	swsqe->complete = 0;
 	swsqe->signaled = send_signaled;
@@ -897,8 +903,6 @@ static void free_qp_work(struct work_struct *work)
 	destroy_qp(&rhp->rdev, &qhp->wq,
 		   ucontext ? &ucontext->uctx : &rhp->rdev.uctx, !qhp->srq);
 
-	if (ucontext)
-		c4iw_put_ucontext(ucontext);
 	c4iw_put_wr_wait(qhp->wr_waitp);
 	kfree(qhp);
 }
@@ -1133,9 +1137,9 @@ int c4iw_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
 	/*
 	 * Fastpath for NVMe-oF target WRITE + SEND_WITH_INV wr chain which is
 	 * the response for small NVMEe-oF READ requests.  If the chain is
-	 * exactly a WRITE->SEND_WITH_INV and the sgl depths and lengths
-	 * meet the requirements of the fw_ri_write_cmpl_wr work request,
-	 * then build and post the write_cmpl WR.  If any of the tests
+	 * exactly a WRITE->SEND_WITH_INV or a WRITE->SEND and the sgl depths
+	 * and lengths meet the requirements of the fw_ri_write_cmpl_wr work
+	 * request, then build and post the write_cmpl WR. If any of the tests
 	 * below are not true, then we continue on with the tradtional WRITE
 	 * and SEND WRs.
 	 */
@@ -1145,7 +1149,8 @@ int c4iw_post_send(struct ib_qp *ibqp, const struct ib_send_wr *wr,
 	    wr && wr->next && !wr->next->next &&
 	    wr->opcode == IB_WR_RDMA_WRITE &&
 	    wr->sg_list[0].length && wr->num_sge <= T4_WRITE_CMPL_MAX_SGL &&
-	    wr->next->opcode == IB_WR_SEND_WITH_INV &&
+	    (wr->next->opcode == IB_WR_SEND ||
+	    wr->next->opcode == IB_WR_SEND_WITH_INV) &&
 	    wr->next->sg_list[0].length == T4_WRITE_CMPL_MAX_CQE &&
 	    wr->next->num_sge == 1 && num_wrs >= 2) {
 		post_write_cmpl(qhp, wr);
@@ -1970,10 +1975,10 @@ int c4iw_modify_qp(struct c4iw_dev *rhp, struct c4iw_qp *qhp,
 			qhp->attr.layer_etype = attrs->layer_etype;
 			qhp->attr.ecode = attrs->ecode;
 			ep = qhp->ep;
+			c4iw_get_ep(&ep->com);
+			disconnect = 1;
 			if (!internal) {
-				c4iw_get_ep(&qhp->ep->com);
 				terminate = 1;
-				disconnect = 1;
 			} else {
 				terminate = qhp->attr.send_term;
 				ret = rdma_fini(rhp, qhp, ep);
@@ -2331,7 +2336,6 @@ struct ib_qp *c4iw_create_qp(struct ib_pd *pd, struct ib_qp_init_attr *attrs,
 			insert_mmap(ucontext, ma_sync_key_mm);
 		}
 
-		c4iw_get_ucontext(ucontext);
 		qhp->ucontext = ucontext;
 	}
 	if (!attrs->srq) {
