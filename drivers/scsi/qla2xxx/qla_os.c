@@ -3735,8 +3735,6 @@ qla2x00_remove_one(struct pci_dev *pdev)
 	}
 	qla2x00_wait_for_hba_ready(base_vha);
 
-	qla2x00_wait_for_sess_deletion(base_vha);
-
 	if (IS_QLA25XX(ha) || IS_QLA2031(ha) || IS_QLA27XX(ha)) {
 		if (ha->flags.fw_started)
 			qla2x00_abort_isp_cleanup(base_vha);
@@ -3751,6 +3749,8 @@ qla2x00_remove_one(struct pci_dev *pdev)
 
 		qla2x00_try_to_stop_firmware(base_vha);
 	}
+ 
+	qla2x00_wait_for_sess_deletion(base_vha);
 
 	/*
 	 * if UNLOAD flag is already set, then continue unload,
