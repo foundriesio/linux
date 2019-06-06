@@ -484,7 +484,7 @@ static void mxs_phy_disconnect_line(struct mxs_phy *mxs_phy, bool on)
 
 	vbus_is_on = mxs_phy_get_vbus_status(mxs_phy);
 
-	if (on && ((!vbus_is_on && mxs_phy->mode != USB_MODE_HOST) ||
+	if (on && ((!vbus_is_on && mxs_phy->mode != USB_CURRENT_MODE_HOST) ||
 			(last_event == USB_EVENT_VBUS)))
 		__mxs_phy_disconnect_line(mxs_phy, true);
 	else
