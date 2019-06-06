@@ -311,10 +311,10 @@ static inline int ci_role_start(struct ci_hdrc *ci, enum ci_role role)
 	if (ci->usb_phy) {
 		if (role == CI_ROLE_HOST)
 			usb_phy_set_mode(ci->usb_phy,
-					USB_MODE_HOST);
+					USB_CURRENT_MODE_HOST);
 		else
 			usb_phy_set_mode(ci->usb_phy,
-					USB_MODE_DEVICE);
+					USB_CURRENT_MODE_DEVICE);
 	}
 
 	return 0;
@@ -332,7 +332,7 @@ static inline void ci_role_stop(struct ci_hdrc *ci)
 	ci->roles[role]->stop(ci);
 
 	if (ci->usb_phy)
-		usb_phy_set_mode(ci->usb_phy, USB_MODE_NONE);
+		usb_phy_set_mode(ci->usb_phy, USB_CURRENT_MODE_NONE);
 }
 
 /**
