@@ -827,7 +827,6 @@ static int stm32_adc_get_syscfg_cell(struct device_node *np,
 
 	syscfg->regmap = syscon_regmap_lookup_by_phandle(np, prop);
 	if (IS_ERR(syscfg->regmap)) {
-		pr_debug("FGA: %s %ld\n", prop, PTR_ERR(syscfg->regmap));
 		/* Optional */
 		if (PTR_ERR(syscfg->regmap) == -ENODEV)
 			return 0;
