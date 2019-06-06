@@ -65,9 +65,9 @@ enum usb_otg_state {
 
 /* The usb role of phy to be working with */
 enum usb_current_mode {
-	USB_MODE_NONE,
-	USB_MODE_HOST,
-	USB_MODE_DEVICE,
+	USB_CURRENT_MODE_NONE,
+	USB_CURRENT_MODE_HOST,
+	USB_CURRENT_MODE_DEVICE,
 };
 
 struct usb_phy;
