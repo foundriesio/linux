@@ -366,14 +366,16 @@ qla2x00_async_prlo(struct scsi_qla_host *vha, fc_port_t *fcport)
 	qla2x00_init_timer(sp, qla2x00_get_async_timeout(vha) + 2);
 
 	sp->done = qla2x00_async_prlo_sp_done;
-	rval = qla2x00_start_sp(sp);
-	if (rval != QLA_SUCCESS)
-		goto done_free_sp;
 
 	ql_dbg(ql_dbg_disc, vha, 0x2070,
 	    "Async-prlo - hdl=%x loop-id=%x portid=%02x%02x%02x.\n",
 	    sp->handle, fcport->loop_id, fcport->d_id.b.domain,
 	    fcport->d_id.b.area, fcport->d_id.b.al_pa);
+
+	rval = qla2x00_start_sp(sp);
+	if (rval != QLA_SUCCESS)
+		goto done_free_sp;
+
 	return rval;
 
 done_free_sp:
@@ -471,9 +473,11 @@ qla2x00_async_adisc(struct scsi_qla_host *vha, fc_port_t *fcport,
 {
 	srb_t *sp;
 	struct srb_iocb *lio;
-	int rval;
+	int rval = QLA_FUNCTION_FAILED;
 
-	rval = QLA_FUNCTION_FAILED;
+	if (!vha->flags.online || (fcport->flags & FCF_ASYNC_SENT))
+		return rval;
+
 	fcport->flags |= FCF_ASYNC_SENT;
 	sp = qla2x00_get_sp(vha, fcport, GFP_KERNEL);
 	if (!sp)
@@ -644,11 +648,14 @@ static void qla24xx_handle_gnl_done_event(scsi_qla_host_t *vha,
 				break;
 			case DSC_LS_PORT_UNAVAIL:
 			default:
-				if (fcport->loop_id != FC_NO_LOOP_ID)
-					qla2x00_clear_loop_id(fcport);
-
-				fcport->loop_id = loop_id;
-				fcport->fw_login_state = DSC_LS_PORT_UNAVAIL;
+				if (fcport->loop_id == FC_NO_LOOP_ID) {
+					qla2x00_find_new_loop_id(vha, fcport);
+					fcport->fw_login_state =
+					    DSC_LS_PORT_UNAVAIL;
+				}
+				ql_dbg(ql_dbg_disc, vha, 0x20e5,
+				    "%s %d %8phC\n", __func__, __LINE__,
+				    fcport->port_name);
 				qla24xx_fcport_handle_login(vha, fcport);
 				break;
 			}
@@ -933,13 +940,13 @@ int qla24xx_async_gnl(struct scsi_qla_host *vha, fc_port_t *fcport)
 
 	sp->done = qla24xx_async_gnl_sp_done;
 
-	rval = qla2x00_start_sp(sp);
-	if (rval != QLA_SUCCESS)
-		goto done_free_sp;
-
 	ql_dbg(ql_dbg_disc, vha, 0x20da,
 	    "Async-%s - OUT WWPN %8phC hndl %x\n",
 	    sp->name, fcport->port_name, sp->handle);
+
+	rval = qla2x00_start_sp(sp);
+	if (rval != QLA_SUCCESS)
+		goto done_free_sp;
 
 	return rval;
 
@@ -1074,17 +1081,17 @@ qla24xx_async_prli(struct scsi_qla_host *vha, fc_port_t *fcport)
 	if  (fcport->fc4f_nvme)
 		lio->u.logio.flags |= SRB_LOGIN_NVME_PRLI;
 
+	ql_dbg(ql_dbg_disc, vha, 0x211b,
+	    "Async-prli - %8phC hdl=%x, loopid=%x portid=%06x retries=%d %s.\n",
+	    fcport->port_name, sp->handle, fcport->loop_id, fcport->d_id.b24,
+	    fcport->login_retry, fcport->fc4f_nvme ? "nvme" : "fc");
+
 	rval = qla2x00_start_sp(sp);
 	if (rval != QLA_SUCCESS) {
 		fcport->flags |= FCF_LOGIN_NEEDED;
 		set_bit(RELOGIN_NEEDED, &vha->dpc_flags);
 		goto done_free_sp;
 	}
-
-	ql_dbg(ql_dbg_disc, vha, 0x211b,
-	    "Async-prli - %8phC hdl=%x, loopid=%x portid=%06x retries=%d %s.\n",
-	    fcport->port_name, sp->handle, fcport->loop_id, fcport->d_id.b24,
-	    fcport->login_retry, fcport->fc4f_nvme ? "nvme" : "fc");
 
 	return rval;
 
@@ -1700,14 +1707,14 @@ qla2x00_async_tm_cmd(fc_port_t *fcport, uint32_t flags, uint32_t lun,
 		lun = (uint16_t)tm_iocb->u.tmf.lun;
 
 		/* Issue Marker IOCB */
-		qla2x00_marker(vha, vha->hw->req_q_map[0],
-		    vha->hw->rsp_q_map[0], sp->fcport->loop_id, lun,
+		qla2x00_marker(vha, vha->hw->base_qpair,
+		    fcport->loop_id, lun,
 		    flags == TCF_LUN_RESET ? MK_SYNC_ID_LUN : MK_SYNC_ID);
 	}
 
 done_free_sp:
 	sp->free(sp);
-	sp->fcport->flags &= ~FCF_ASYNC_SENT;
+	fcport->flags &= ~FCF_ASYNC_SENT;
 done:
 	return rval;
 }
@@ -1828,6 +1835,12 @@ qla24xx_handle_prli_done_event(struct scsi_qla_host *vha, struct event_arg *ea)
 
 		ea->fcport->chip_reset = vha->hw->base_qpair->chip_reset;
 		ea->fcport->logout_on_delete = 1;
+		ea->fcport->nvme_prli_service_param = ea->iop[0];
+		if (ea->iop[0] & NVME_PRLI_SP_FIRST_BURST)
+			ea->fcport->nvme_first_burst_size =
+			    (ea->iop[1] & 0xffff) * 512;
+		else
+			ea->fcport->nvme_first_burst_size = 0;
 		qla24xx_post_gpdb_work(vha, ea->fcport, 0);
 		break;
 	default:
@@ -3869,7 +3882,16 @@ qla24xx_config_rings(struct scsi_qla_host *vha)
 		WRT_REG_DWORD(&reg->isp24.rsp_q_in, 0);
 		WRT_REG_DWORD(&reg->isp24.rsp_q_out, 0);
 	}
+
 	qlt_24xx_config_rings(vha);
+
+	/* If the user has configured the speed, set it here */
+	if (ha->set_data_rate) {
+		ql_dbg(ql_dbg_init, vha, 0x00fd,
+		    "Speed set by user : %s Gbps \n",
+		    qla2x00_get_link_speed_str(ha, ha->set_data_rate));
+		icb->firmware_options_3 = (ha->set_data_rate << 13);
+	}
 
 	/* PCI posting */
 	RD_REG_DWORD(&ioreg->hccr);
@@ -6019,11 +6041,6 @@ qla2x00_loop_resync(scsi_qla_host_t *vha)
 {
 	int rval = QLA_SUCCESS;
 	uint32_t wait_time;
-	struct req_que *req;
-	struct rsp_que *rsp;
-
-	req = vha->req;
-	rsp = req->rsp;
 
 	clear_bit(ISP_ABORT_RETRY, &vha->dpc_flags);
 	if (vha->flags.online) {
@@ -6036,8 +6053,8 @@ qla2x00_loop_resync(scsi_qla_host_t *vha)
 					 * Issue a marker after FW becomes
 					 * ready.
 					 */
-					qla2x00_marker(vha, req, rsp, 0, 0,
-						MK_SYNC_ALL);
+					qla2x00_marker(vha, vha->hw->base_qpair,
+					    0, 0, MK_SYNC_ALL);
 					vha->marker_needed = 0;
 				}
 
@@ -6775,8 +6792,6 @@ qla2x00_restart_isp(scsi_qla_host_t *vha)
 {
 	int status = 0;
 	struct qla_hw_data *ha = vha->hw;
-	struct req_que *req = ha->req_q_map[0];
-	struct rsp_que *rsp = ha->rsp_q_map[0];
 
 	/* If firmware needs to be loaded */
 	if (qla2x00_isp_firmware(vha)) {
@@ -6796,7 +6811,7 @@ qla2x00_restart_isp(scsi_qla_host_t *vha)
 		status = qla2x00_fw_ready(vha);
 		if (!status) {
 			/* Issue a marker after FW becomes ready. */
-			qla2x00_marker(vha, req, rsp, 0, 0, MK_SYNC_ALL);
+			qla2x00_marker(vha, ha->base_qpair, 0, 0, MK_SYNC_ALL);
 			set_bit(LOOP_RESYNC_NEEDED, &vha->dpc_flags);
 		}
 
@@ -7851,22 +7866,15 @@ qla24xx_configure_vhba(scsi_qla_host_t *vha)
 	uint16_t mb[MAILBOX_REGISTER_COUNT];
 	struct qla_hw_data *ha = vha->hw;
 	struct scsi_qla_host *base_vha = pci_get_drvdata(ha->pdev);
-	struct req_que *req;
-	struct rsp_que *rsp;
 
 	if (!vha->vp_idx)
 		return -EINVAL;
 
 	rval = qla2x00_fw_ready(base_vha);
-	if (vha->qpair)
-		req = vha->qpair->req;
-	else
-		req = ha->req_q_map[0];
-	rsp = req->rsp;
 
 	if (rval == QLA_SUCCESS) {
 		clear_bit(RESET_MARKER_NEEDED, &vha->dpc_flags);
-		qla2x00_marker(vha, req, rsp, 0, 0, MK_SYNC_ALL);
+		qla2x00_marker(vha, ha->base_qpair, 0, 0, MK_SYNC_ALL);
 	}
 
 	vha->flags.management_server_logged_in = 0;
@@ -8258,8 +8266,6 @@ qla82xx_restart_isp(scsi_qla_host_t *vha)
 {
 	int status, rval;
 	struct qla_hw_data *ha = vha->hw;
-	struct req_que *req = ha->req_q_map[0];
-	struct rsp_que *rsp = ha->rsp_q_map[0];
 	struct scsi_qla_host *vp;
 	unsigned long flags;
 
@@ -8271,7 +8277,7 @@ qla82xx_restart_isp(scsi_qla_host_t *vha)
 		status = qla2x00_fw_ready(vha);
 		if (!status) {
 			/* Issue a marker after FW becomes ready. */
-			qla2x00_marker(vha, req, rsp, 0, 0, MK_SYNC_ALL);
+			qla2x00_marker(vha, ha->base_qpair, 0, 0, MK_SYNC_ALL);
 			vha->flags.online = 1;
 			set_bit(LOOP_RESYNC_NEEDED, &vha->dpc_flags);
 		}
