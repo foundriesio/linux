@@ -1798,7 +1798,7 @@ __qla2x00_abort_all_cmds(struct qla_qpair *qp, int res)
 						spin_unlock_irqrestore
 							(qp->qp_lock_ptr, flags);
 						status = qla2xxx_eh_abort(
-						    GET_CMD_SP(sp));
+							GET_CMD_SP(sp));
 						spin_lock_irqsave
 							(qp->qp_lock_ptr, flags);
 						/*
