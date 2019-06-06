@@ -2128,7 +2128,7 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 		default:
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	case QED_ROCE_QP_STATE_INIT:
 		switch (new_state) {
@@ -2149,7 +2149,7 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 			/* Invalid state change. */
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	case QED_ROCE_QP_STATE_RTR:
 		/* RTR->XXX */
@@ -2162,7 +2162,7 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 			/* Invalid state change. */
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	case QED_ROCE_QP_STATE_RTS:
 		/* RTS->XXX */
@@ -2175,7 +2175,7 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 			/* Invalid state change. */
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	case QED_ROCE_QP_STATE_SQD:
 		/* SQD->XXX */
@@ -2187,7 +2187,7 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 			/* Invalid state change. */
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	case QED_ROCE_QP_STATE_ERR:
 		/* ERR->XXX */
@@ -2205,12 +2205,12 @@ static int qedr_update_qp_state(struct qedr_dev *dev,
 		default:
 			status = -EINVAL;
 			break;
-		};
+		}
 		break;
 	default:
 		status = -EINVAL;
 		break;
-	};
+	}
 
 	return status;
 }
