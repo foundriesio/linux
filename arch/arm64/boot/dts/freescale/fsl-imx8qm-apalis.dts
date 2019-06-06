@@ -26,10 +26,10 @@
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bkl_on>;
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
+		brightness-levels = <255 226 215 194 162 120 66 0>;
+		default-brightness-level = <7>;
 		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* Apalis BKL1_ON */
-		pwms = <&lvds1_pwm 0 100000 0>;
+		pwms = <&lvds1_pwm 0 5000000 0>;
 		status = "okay";
 	};
 
@@ -173,6 +173,17 @@
 		/* NOTE: you must remove the pinctrl-adc1 from the adc1
                          node below to use the touchscreen */
 		status = "disabled";
+	};
+
+	lvds1_panel {
+		compatible = "toradex,captouch-101-lvds";
+		backlight = <&backlight>;
+
+		port {
+			panel_lvds1_in: endpoint {
+				remote-endpoint = <&lvds1_out>;
+			};
+		};
 	};
 };
 
@@ -394,6 +405,17 @@
 		compatible = "st,m41t0";
 		reg = <0x68>;
 	};
+
+	atmel_mxt_ts: atmel_mxt_ts@4a {
+		compatible = "atmel,maxtouch";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_touch>;
+		reg = <0x4a>;
+		interrupt-parent = <&gpio4>;
+		interrupts = <1 IRQ_TYPE_EDGE_FALLING>;    /* Apalis GPIO5 */
+		reset-gpios = <&gpio4 2 GPIO_ACTIVE_HIGH>; /* Apalis GPIO6 */
+		status = "okay";
+	};
 };
 
 /* Apalis I2C3 (CAM) */
@@ -442,13 +464,12 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_cam1_gpios>, <&pinctrl_dap1_gpios>,
 		    <&pinctrl_esai0_gpios>, <&pinctrl_fec2_gpios>,
-		    <&pinctrl_gpio34>, <&pinctrl_gpio56>,
-		    <&pinctrl_gpio_usbh_oc_n>, <&pinctrl_lpuart1ctrl>,
-		    <&pinctrl_lvds0_i2c0_gpio>, <&pinctrl_lvds1_i2c0_gpios>,
-		    <&pinctrl_mipi_dsi_0_1_en>, <&pinctrl_mipi_dsi1_gpios>,
-		    <&pinctrl_mlb_gpios>, <&pinctrl_qspi1a_gpios>,
-		    <&pinctrl_sata1_act>, <&pinctrl_sim0_gpios>,
-		    <&pinctrl_usdhc1_gpios>;
+		    <&pinctrl_gpio34>, <&pinctrl_gpio_usbh_oc_n>,
+		    <&pinctrl_lpuart1ctrl>, <&pinctrl_lvds0_i2c0_gpio>,
+		    <&pinctrl_lvds1_i2c0_gpios>, <&pinctrl_mipi_dsi_0_1_en>,
+		    <&pinctrl_mipi_dsi1_gpios>, <&pinctrl_mlb_gpios>,
+		    <&pinctrl_qspi1a_gpios>, <&pinctrl_sata1_act>,
+		    <&pinctrl_sim0_gpios>, <&pinctrl_usdhc1_gpios>;
 
 	apalis-imx8qm {
 		/* Apalis AN1_ADC */
@@ -580,11 +601,9 @@
 		};
 
 		/* Apalis GPIO5+6 */
-		pinctrl_gpio56: gpio56grp {
+		pinctrl_touch: touchgrp {
 			fsl,pins = <
-				/* Apalis GPIO5 */
 				SC_P_FLEXCAN2_RX_LSIO_GPIO4_IO01		0x06000021
-				/* Apalis GPIO6 */
 				SC_P_FLEXCAN2_TX_LSIO_GPIO4_IO02		0x06000021
 			>;
 		};
@@ -1218,43 +1237,27 @@
 	status = "okay";
 };
 
-/* Apalis LVDS1 */
-//TBD: enabling breaks HDMI
-#if 0
 &ldb2_phy {
 	status = "okay";
 };
 
 &ldb2 {
-	fsl,dual-channel;
 	status = "okay";
 
 	lvds-channel@0 {
 		fsl,data-mapping = "spwg";
-		fsl,data-width = <18>;
-		primary;
+		fsl,data-width = <24>;
 		status = "okay";
 
-		display-timings {
-			native-mode = <&timing_fullhd>;
-			timing_fullhd: 1920x1080 {
-				clock-frequency = <138500000>;
-				hactive = <1920>;
-				vactive = <1080>;
-				hback-porch = <80>;
-				hfront-porch = <48>;
-				vback-porch = <23>;
-				vfront-porch = <3>;
-				hsync-len = <32>;
-				vsync-len = <5>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pixelclk-active = <0>;
+		port@1 {
+			reg = <1>;
+
+			lvds1_out: endpoint {
+				remote-endpoint = <&panel_lvds1_in>;
 			};
 		};
 	};
 };
-#endif
 
 /* Apalis SPI1 */
 &lpspi0 {
