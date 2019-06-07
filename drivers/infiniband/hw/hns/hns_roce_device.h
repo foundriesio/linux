@@ -482,6 +482,7 @@ struct hns_roce_qp_table {
 	struct hns_roce_hem_table	qp_table;
 	struct hns_roce_hem_table	irrl_table;
 	struct hns_roce_hem_table	trrl_table;
+	struct hns_roce_hem_table	sccc_table;
 };
 
 struct hns_roce_cq_table {
@@ -769,6 +770,7 @@ struct hns_roce_caps {
 	int		irrl_entry_sz;
 	int		trrl_entry_sz;
 	int		cqc_entry_sz;
+	int		sccc_entry_sz;
 	int		srqc_entry_sz;
 	int		idx_entry_sz;
 	u32		pbl_ba_pg_sz;
@@ -781,6 +783,7 @@ struct hns_roce_caps {
 	u32		srqc_bt_num;
 	u32		cqc_bt_num;
 	u32		mpt_bt_num;
+	u32		sccc_bt_num;
 	u32		qpc_ba_pg_sz;
 	u32		qpc_buf_pg_sz;
 	u32		qpc_hop_num;
@@ -796,6 +799,9 @@ struct hns_roce_caps {
 	u32		mtt_ba_pg_sz;
 	u32		mtt_buf_pg_sz;
 	u32		mtt_hop_num;
+	u32		sccc_ba_pg_sz;
+	u32		sccc_buf_pg_sz;
+	u32		sccc_hop_num;
 	u32		cqe_ba_pg_sz;
 	u32		cqe_buf_pg_sz;
 	u32		cqe_hop_num;
