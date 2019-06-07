@@ -1033,6 +1033,7 @@ struct mbx_cmd_32 {
 #define MBC_GET_FIRMWARE_VERSION	8	/* Get firmware revision. */
 #define MBC_LOAD_RISC_RAM		9	/* Load RAM command. */
 #define MBC_DUMP_RISC_RAM		0xa	/* Dump RAM command. */
+#define MBC_SECURE_FLASH_UPDATE		0xa	/* Secure Flash Update(28xx) */
 #define MBC_LOAD_RISC_RAM_EXTENDED	0xb	/* Load RAM extended. */
 #define MBC_DUMP_RISC_RAM_EXTENDED	0xc	/* Dump RAM extended. */
 #define MBC_WRITE_RAM_WORD_EXTENDED	0xd	/* Write RAM word extended */
@@ -1203,6 +1204,10 @@ struct mbx_cmd_32 {
 #define QLA27XX_IMG_STATUS_VER_MAJOR   0x01
 #define QLA27XX_IMG_STATUS_VER_MINOR    0x00
 #define QLA27XX_IMG_STATUS_SIGN   0xFACEFADE
+#define QLA28XX_IMG_STATUS_SIGN    0xFACEFADF
+#define QLA28XX_IMG_STATUS_SIGN		0xFACEFADF
+#define QLA28XX_AUX_IMG_STATUS_SIGN	0xFACEFAED
+#define QLA27XX_DEFAULT_IMAGE		0
 #define QLA27XX_PRIMARY_IMAGE  1
 #define QLA27XX_SECONDARY_IMAGE    2
 
@@ -2675,6 +2680,7 @@ struct ct_fdmiv2_hba_attributes {
 #define FDMI_PORT_SPEED_8GB		0x10
 #define FDMI_PORT_SPEED_16GB		0x20
 #define FDMI_PORT_SPEED_32GB		0x40
+#define FDMI_PORT_SPEED_64GB		0x80
 #define FDMI_PORT_SPEED_UNKNOWN		0x8000
 
 #define FC_CLASS_2	0x04
@@ -3133,10 +3139,18 @@ struct rsp_que;
 struct isp_operations {
 
 	int (*pci_config) (struct scsi_qla_host *);
+#ifdef __GENKSYMS__
 	void (*reset_chip) (struct scsi_qla_host *);
+#else
+	int (*reset_chip) (struct scsi_qla_host *);
+#endif
 	int (*chip_diag) (struct scsi_qla_host *);
 	void (*config_rings) (struct scsi_qla_host *);
+#ifdef __GENKSYMS__
 	void (*reset_adapter) (struct scsi_qla_host *);
+#else
+	int (*reset_adapter) (struct scsi_qla_host *);
+#endif
 	int (*nvram_config) (struct scsi_qla_host *);
 	void (*update_fw_options) (struct scsi_qla_host *);
 	int (*load_risc) (struct scsi_qla_host *, uint32_t *);
@@ -3162,10 +3176,17 @@ struct isp_operations {
 	void *(*prep_ms_fdmi_iocb) (struct scsi_qla_host *, uint32_t,
 	    uint32_t);
 
+#ifdef __GENKSYMS__
 	uint8_t *(*read_nvram) (struct scsi_qla_host *, uint8_t *,
 		uint32_t, uint32_t);
 	int (*write_nvram) (struct scsi_qla_host *, uint8_t *, uint32_t,
 		uint32_t);
+#else
+	uint8_t *(*read_nvram) (struct scsi_qla_host *, void *,
+		uint32_t, uint32_t);
+	int (*write_nvram) (struct scsi_qla_host *, void *, uint32_t,
+		uint32_t);
+#endif
 
 	void (*fw_dump) (struct scsi_qla_host *, int);
 
@@ -3173,11 +3194,17 @@ struct isp_operations {
 	int (*beacon_off) (struct scsi_qla_host *);
 	void (*beacon_blink) (struct scsi_qla_host *);
 
+#ifdef __GENKSYMS__
 	uint8_t * (*read_optrom) (struct scsi_qla_host *, uint8_t *,
 		uint32_t, uint32_t);
 	int (*write_optrom) (struct scsi_qla_host *, uint8_t *, uint32_t,
 		uint32_t);
-
+#else
+	void *(*read_optrom) (struct scsi_qla_host *, void *,
+		uint32_t, uint32_t);
+	int (*write_optrom) (struct scsi_qla_host *, void *, uint32_t,
+		uint32_t);
+#endif
 	int (*get_flash_version) (struct scsi_qla_host *, void *);
 	int (*start_scsi) (srb_t *);
 	int (*start_scsi_mq) (srb_t *);
@@ -3371,7 +3398,8 @@ struct qla_tc_param {
 #define QLA_MQ_SIZE 32
 #define QLA_MAX_QUEUES 256
 #define ISP_QUE_REG(ha, id) \
-	((ha->mqenable || IS_QLA83XX(ha) || IS_QLA27XX(ha)) ? \
+	((ha->mqenable || IS_QLA83XX(ha) || \
+	  IS_QLA27XX(ha) || IS_QLA28XX(ha)) ? \
 	 ((void __iomem *)ha->mqiobase + (QLA_QUE_PAGE * id)) :\
 	 ((void __iomem *)ha->iobase))
 #define QLA_REQ_QUE_ID(tag) \
@@ -3624,6 +3652,10 @@ struct qla_hw_data {
 		uint32_t	rida_fmt2:1;
 		uint32_t	purge_mbox:1;
 		uint32_t        n2n_bigger:1;
+#ifndef __GENKSYMS__
+		uint32_t	secure_adapter:1;
+		uint32_t	secure_fw:1;
+#endif
 	} flags;
 
 	uint16_t max_exchg;
@@ -3706,6 +3738,7 @@ struct qla_hw_data {
 #define PORT_SPEED_8GB  0x04
 #define PORT_SPEED_16GB 0x05
 #define PORT_SPEED_32GB 0x06
+#define PORT_SPEED_64GB 0x07
 #define PORT_SPEED_10GB	0x13
 	uint16_t	link_data_rate;         /* F/W operating speed */
 
@@ -3731,6 +3764,11 @@ struct qla_hw_data {
 #define PCI_DEVICE_ID_QLOGIC_ISP2071	0x2071
 #define PCI_DEVICE_ID_QLOGIC_ISP2271	0x2271
 #define PCI_DEVICE_ID_QLOGIC_ISP2261	0x2261
+#define PCI_DEVICE_ID_QLOGIC_ISP2061	0x2061
+#define PCI_DEVICE_ID_QLOGIC_ISP2081	0x2081
+#define PCI_DEVICE_ID_QLOGIC_ISP2089	0x2089
+#define PCI_DEVICE_ID_QLOGIC_ISP2281	0x2281
+#define PCI_DEVICE_ID_QLOGIC_ISP2289	0x2289
 
 	uint32_t	isp_type;
 #define DT_ISP2100                      BIT_0
@@ -3755,7 +3793,12 @@ struct qla_hw_data {
 #define DT_ISP2071			BIT_19
 #define DT_ISP2271			BIT_20
 #define DT_ISP2261			BIT_21
-#define DT_ISP_LAST			(DT_ISP2261 << 1)
+#define DT_ISP2061			BIT_22
+#define DT_ISP2081			BIT_23
+#define DT_ISP2089			BIT_24
+#define DT_ISP2281			BIT_25
+#define DT_ISP2289			BIT_26
+#define DT_ISP_LAST			(DT_ISP2289 << 1)
 
 	uint32_t	device_type;
 #define DT_T10_PI                       BIT_25
@@ -3790,6 +3833,8 @@ struct qla_hw_data {
 #define IS_QLA2071(ha)	(DT_MASK(ha) & DT_ISP2071)
 #define IS_QLA2271(ha)	(DT_MASK(ha) & DT_ISP2271)
 #define IS_QLA2261(ha)	(DT_MASK(ha) & DT_ISP2261)
+#define IS_QLA2081(ha)	(DT_MASK(ha) & DT_ISP2081)
+#define IS_QLA2281(ha)	(DT_MASK(ha) & DT_ISP2281)
 
 #define IS_QLA23XX(ha)  (IS_QLA2300(ha) || IS_QLA2312(ha) || IS_QLA2322(ha) || \
 			IS_QLA6312(ha) || IS_QLA6322(ha))
@@ -3799,6 +3844,7 @@ struct qla_hw_data {
 #define IS_QLA83XX(ha)	(IS_QLA2031(ha) || IS_QLA8031(ha))
 #define IS_QLA84XX(ha)  (IS_QLA8432(ha))
 #define IS_QLA27XX(ha)  (IS_QLA2071(ha) || IS_QLA2271(ha) || IS_QLA2261(ha))
+#define IS_QLA28XX(ha)	(IS_QLA2081(ha) || IS_QLA2281(ha))
 #define IS_QLA24XX_TYPE(ha)     (IS_QLA24XX(ha) || IS_QLA54XX(ha) || \
 				IS_QLA84XX(ha))
 #define IS_CNA_CAPABLE(ha)	(IS_QLA81XX(ha) || IS_QLA82XX(ha) || \
@@ -3807,14 +3853,15 @@ struct qla_hw_data {
 #define IS_QLA2XXX_MIDTYPE(ha)	(IS_QLA24XX(ha) || IS_QLA84XX(ha) || \
 				IS_QLA25XX(ha) || IS_QLA81XX(ha) || \
 				IS_QLA82XX(ha) || IS_QLA83XX(ha) || \
-				IS_QLA8044(ha) || IS_QLA27XX(ha))
+				IS_QLA8044(ha) || IS_QLA27XX(ha) || \
+				IS_QLA28XX(ha))
 #define IS_MSIX_NACK_CAPABLE(ha) (IS_QLA81XX(ha) || IS_QLA83XX(ha) || \
-				IS_QLA27XX(ha))
+				IS_QLA27XX(ha) || IS_QLA28XX(ha))
 #define IS_NOPOLLING_TYPE(ha)	(IS_QLA81XX(ha) && (ha)->flags.msix_enabled)
 #define IS_FAC_REQUIRED(ha)	(IS_QLA81XX(ha) || IS_QLA83XX(ha) || \
-				IS_QLA27XX(ha))
+				IS_QLA27XX(ha) || IS_QLA28XX(ha))
 #define IS_NOCACHE_VPD_TYPE(ha)	(IS_QLA81XX(ha) || IS_QLA83XX(ha) || \
-				IS_QLA27XX(ha))
+				IS_QLA27XX(ha) || IS_QLA28XX(ha))
 #define IS_ALOGIO_CAPABLE(ha)	(IS_QLA23XX(ha) || IS_FWI2_CAPABLE(ha))
 
 #define IS_T10_PI_CAPABLE(ha)   ((ha)->device_type & DT_T10_PI)
@@ -3825,28 +3872,34 @@ struct qla_hw_data {
 #define HAS_EXTENDED_IDS(ha)    ((ha)->device_type & DT_EXTENDED_IDS)
 #define IS_CT6_SUPPORTED(ha)	((ha)->device_type & DT_CT6_SUPPORTED)
 #define IS_MQUE_CAPABLE(ha)	((ha)->mqenable || IS_QLA83XX(ha) || \
-				IS_QLA27XX(ha))
-#define IS_BIDI_CAPABLE(ha)	((IS_QLA25XX(ha) || IS_QLA2031(ha)))
+				IS_QLA27XX(ha) || IS_QLA28XX(ha))
+#define IS_BIDI_CAPABLE(ha) \
+    (IS_QLA25XX(ha) || IS_QLA2031(ha) || IS_QLA27XX(ha) || IS_QLA28XX(ha))
 /* Bit 21 of fw_attributes decides the MCTP capabilities */
 #define IS_MCTP_CAPABLE(ha)	(IS_QLA2031(ha) && \
 				((ha)->fw_attributes_ext[0] & BIT_0))
 #define IS_PI_UNINIT_CAPABLE(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha))
 #define IS_PI_IPGUARD_CAPABLE(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha))
 #define IS_PI_DIFB_DIX0_CAPABLE(ha)	(0)
-#define IS_PI_SPLIT_DET_CAPABLE_HBA(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha))
+#define IS_PI_SPLIT_DET_CAPABLE_HBA(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha) || \
+					IS_QLA28XX(ha))
 #define IS_PI_SPLIT_DET_CAPABLE(ha)	(IS_PI_SPLIT_DET_CAPABLE_HBA(ha) && \
     (((ha)->fw_attributes_h << 16 | (ha)->fw_attributes) & BIT_22))
-#define IS_ATIO_MSIX_CAPABLE(ha) (IS_QLA83XX(ha) || IS_QLA27XX(ha))
+#define IS_ATIO_MSIX_CAPABLE(ha) (IS_QLA83XX(ha) || IS_QLA27XX(ha) || \
+				IS_QLA28XX(ha))
 #define IS_TGT_MODE_CAPABLE(ha)	(ha->tgt.atio_q_length)
-#define IS_SHADOW_REG_CAPABLE(ha)  (IS_QLA27XX(ha))
-#define IS_DPORT_CAPABLE(ha)  (IS_QLA83XX(ha) || IS_QLA27XX(ha))
-#define IS_FAWWN_CAPABLE(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha))
+#define IS_SHADOW_REG_CAPABLE(ha)  (IS_QLA27XX(ha) || IS_QLA28XX(ha))
+#define IS_DPORT_CAPABLE(ha)  (IS_QLA83XX(ha) || IS_QLA27XX(ha) || \
+				IS_QLA28XX(ha))
+#define IS_FAWWN_CAPABLE(ha)	(IS_QLA83XX(ha) || IS_QLA27XX(ha) || \
+				IS_QLA28XX(ha))
 #define IS_EXCHG_OFFLD_CAPABLE(ha) \
-	(IS_QLA81XX(ha) || IS_QLA83XX(ha) || IS_QLA27XX(ha))
+	(IS_QLA81XX(ha) || IS_QLA83XX(ha) || IS_QLA27XX(ha) || IS_QLA28XX(ha))
 #define IS_EXLOGIN_OFFLD_CAPABLE(ha) \
-	(IS_QLA25XX(ha) || IS_QLA81XX(ha) || IS_QLA83XX(ha) || IS_QLA27XX(ha))
+	(IS_QLA25XX(ha) || IS_QLA81XX(ha) || IS_QLA83XX(ha) || \
+	 IS_QLA27XX(ha) || IS_QLA28XX(ha))
 #define USE_ASYNC_SCAN(ha) (IS_QLA25XX(ha) || IS_QLA81XX(ha) ||\
-	IS_QLA83XX(ha) || IS_QLA27XX(ha))
+	IS_QLA83XX(ha) || IS_QLA27XX(ha) || IS_QLA28XX(ha))
 
 	/* HBA serial number */
 	uint8_t		serial0;
@@ -4006,7 +4059,7 @@ struct qla_hw_data {
 	uint8_t		phy_version[3];
 	uint8_t		pep_version[3];
 
-	/* Firmware dump template */
+	/* Old Firmware dump template */
 	void		*fw_dump_template;
 	uint32_t	fw_dump_template_len;
 	/* Firmware dump information. */
@@ -4051,7 +4104,6 @@ struct qla_hw_data {
 	uint16_t	product_id[4];
 
 	uint8_t		model_number[16+1];
-#define BINZERO		"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 	char		model_desc[80];
 	uint8_t		adapter_id[16+1];
 
@@ -4199,9 +4251,13 @@ struct qla_hw_data {
 	struct qlt_hw_data tgt;
 	int	allow_cna_fw_dump;
 	uint32_t fw_ability_mask;
+#ifdef __GENKSYMS__
 	uint16_t min_link_speed;
 	uint16_t max_speed_sup;
-
+#else
+	uint16_t min_supported_speed;
+	uint16_t max_supported_speed;
+#endif
 	atomic_t        nvme_active_aen_cnt;
 	uint16_t        nvme_last_rptd_aen;             /* Last recorded aen count */
 
@@ -4229,7 +4285,30 @@ struct qla_hw_data {
 	unsigned long long dif_bundle_writes;
 	unsigned long long dif_bundle_kallocs;
 	unsigned long long dif_bundle_dma_allocs;
+	void		*flt;
+	dma_addr_t	flt_dma;
+	uint8_t		serdes_version[3];
+	struct fwdt {
+		void *template;
+		ulong length;
+		ulong dump_size;
+	} fwdt[2];
+	bool		fw_dump_mpi;
+	uint32_t	flt_region_vpd_nvram_sec;
+	uint32_t	flt_region_nvram_sec;
+	uint32_t	flt_region_aux_img_status_pri;
+	uint32_t	flt_region_aux_img_status_sec;
 #endif
+};
+
+struct active_regions {
+	uint8_t global;
+	struct {
+		uint8_t board_config;
+		uint8_t vpd_nvram;
+		uint8_t npiv_config_0_1;
+		uint8_t npiv_config_2_3;
+	} aux;
 };
 
 #define FW_ABILITY_MAX_SPEED_MASK	0xFUL
@@ -4321,6 +4400,7 @@ typedef struct scsi_qla_host {
 #define N2N_LOGIN_NEEDED	30
 #define IOCB_WORK_ACTIVE	31
 #define SET_ZIO_THRESHOLD_NEEDED 32
+#define ISP_ABORT_TO_ROM	33
 
 	unsigned long	pci_flags;
 #define PFLG_DISCONNECTED	0	/* PCI device removed */
@@ -4435,7 +4515,11 @@ typedef struct scsi_qla_host {
 	int fcport_count;
 	wait_queue_head_t fcport_waitQ;
 	wait_queue_head_t vref_waitq;
+#ifdef __GENKSYMS__
 	uint8_t min_link_speed_feat;
+#else
+	uint8_t min_supported_speed;
+#endif
 	uint8_t n2n_node_name[WWN_SIZE];
 	uint8_t n2n_port_name[WWN_SIZE];
 	uint16_t	n2n_id;
@@ -4445,13 +4529,20 @@ typedef struct scsi_qla_host {
 
 struct qla27xx_image_status {
 	uint8_t image_status_mask;
-	uint16_t generation_number;
-	uint8_t reserved[3];
-	uint8_t ver_minor;
+	uint16_t generation;
 	uint8_t ver_major;
+	uint8_t ver_minor;
+	uint8_t bitmap;		/* 28xx only */
+	uint8_t reserved[2];
 	uint32_t checksum;
 	uint32_t signature;
 } __packed;
+
+/* 28xx aux image status bimap values */
+#define QLA28XX_AUX_IMG_BOARD_CONFIG		BIT_0
+#define QLA28XX_AUX_IMG_VPD_NVRAM		BIT_1
+#define QLA28XX_AUX_IMG_NPIV_CONFIG_0_1		BIT_2
+#define QLA28XX_AUX_IMG_NPIV_CONFIG_2_3		BIT_3
 
 #define SET_VP_IDX	1
 #define SET_AL_PA	2
@@ -4498,6 +4589,24 @@ struct qla2_sgx {
 	_ha->queue_pair_map[i]->fw_started = 0;	\
 	}					\
 }
+
+
+#define SFUB_CHECKSUM_SIZE	4
+
+struct secure_flash_update_block {
+	uint32_t	block_info;
+	uint32_t	signature_lo;
+	uint32_t	signature_hi;
+	uint32_t	signature_upper[0x3e];
+};
+
+struct secure_flash_update_block_pk {
+	uint32_t	block_info;
+	uint32_t	signature_lo;
+	uint32_t	signature_hi;
+	uint32_t	signature_upper[0x3e];
+	uint32_t	public_key[0x41];
+};
 
 /*
  * Macros to help code, maintain, etc.
@@ -4599,6 +4708,7 @@ struct qla2_sgx {
 #define OPTROM_SIZE_81XX	0x400000
 #define OPTROM_SIZE_82XX	0x800000
 #define OPTROM_SIZE_83XX	0x1000000
+#define OPTROM_SIZE_28XX	0x2000000
 
 #define OPTROM_BURST_SIZE	0x1000
 #define OPTROM_BURST_DWORDS	(OPTROM_BURST_SIZE / 4)
@@ -4695,10 +4805,13 @@ struct sff_8247_a0 {
 #define AUTO_DETECT_SFP_SUPPORT(_vha)\
 	(ql2xautodetectsfp && !_vha->vp_idx &&		\
 	(IS_QLA25XX(_vha->hw) || IS_QLA81XX(_vha->hw) ||\
-	IS_QLA83XX(_vha->hw) || IS_QLA27XX(_vha->hw)))
+	IS_QLA83XX(_vha->hw) || IS_QLA27XX(_vha->hw) || \
+	 IS_QLA28XX(_vha->hw)))
+
+#define FLASH_SEMAPHORE_REGISTER_ADDR   0x00101016
 
 #define USER_CTRL_IRQ(_ha) (ql2xuctrlirq && QLA_TGT_MODE_ENABLED() && \
-	(IS_QLA27XX(_ha) || IS_QLA83XX(_ha)))
+	(IS_QLA27XX(_ha) || IS_QLA28XX(_ha) || IS_QLA83XX(_ha)))
 
 #define SAVE_TOPO(_ha) { \
 	if (_ha->current_topology)				\
@@ -4714,4 +4827,5 @@ struct sff_8247_a0 {
 #include "qla_gbl.h"
 #include "qla_dbg.h"
 #include "qla_inline.h"
+
 #endif
