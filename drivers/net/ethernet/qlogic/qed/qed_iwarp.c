@@ -1688,6 +1688,15 @@ qed_iwarp_parse_rx_pkt(struct qed_hwfn *p_hwfn,
 
 	eth_hlen = ETH_HLEN + (vlan_valid ? sizeof(u32) : 0);
 
+	if (!ether_addr_equal(ethh->h_dest,
+			      p_hwfn->p_rdma_info->iwarp.mac_addr)) {
+		DP_VERBOSE(p_hwfn,
+			   QED_MSG_RDMA,
+			   "Got unexpected mac %pM instead of %pM\n",
+			   ethh->h_dest, p_hwfn->p_rdma_info->iwarp.mac_addr);
+		return -EINVAL;
+	}
+
 	ether_addr_copy(remote_mac_addr, ethh->h_source);
 	ether_addr_copy(local_mac_addr, ethh->h_dest);
 
@@ -2519,7 +2528,7 @@ qed_iwarp_ll2_slowpath(void *cxt,
 		memset(fpdu, 0, sizeof(*fpdu));
 }
 
-static int qed_iwarp_ll2_stop(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt)
+static int qed_iwarp_ll2_stop(struct qed_hwfn *p_hwfn)
 {
 	struct qed_iwarp_info *iwarp_info = &p_hwfn->p_rdma_info->iwarp;
 	int rc = 0;
@@ -2554,8 +2563,9 @@ static int qed_iwarp_ll2_stop(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt)
 		iwarp_info->ll2_mpa_handle = QED_IWARP_HANDLE_INVAL;
 	}
 
-	qed_llh_remove_mac_filter(p_hwfn,
-				  p_ptt, p_hwfn->p_rdma_info->iwarp.mac_addr);
+	qed_llh_remove_mac_filter(p_hwfn->cdev, 0,
+				  p_hwfn->p_rdma_info->iwarp.mac_addr);
+
 	return rc;
 }
 
@@ -2599,13 +2609,12 @@ qed_iwarp_ll2_alloc_buffers(struct qed_hwfn *p_hwfn,
 
 static int
 qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
-		    struct qed_rdma_start_in_params *params,
-		    struct qed_ptt *p_ptt)
+		    struct qed_rdma_start_in_params *params)
 {
 	struct qed_iwarp_info *iwarp_info;
 	struct qed_ll2_acquire_data data;
 	struct qed_ll2_cbs cbs;
-	u32 mpa_buff_size;
+	u32 buff_size;
 	u16 n_ooo_bufs;
 	int rc = 0;
 	int i;
@@ -2619,7 +2628,7 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 
 	ether_addr_copy(p_hwfn->p_rdma_info->iwarp.mac_addr, params->mac_addr);
 
-	rc = qed_llh_add_mac_filter(p_hwfn, p_ptt, params->mac_addr);
+	rc = qed_llh_add_mac_filter(p_hwfn->cdev, 0, params->mac_addr);
 	if (rc)
 		return rc;
 
@@ -2632,7 +2641,7 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 
 	memset(&data, 0, sizeof(data));
 	data.input.conn_type = QED_LL2_TYPE_IWARP;
-	data.input.mtu = QED_IWARP_MAX_SYN_PKT_SIZE;
+	data.input.mtu = params->max_mtu;
 	data.input.rx_num_desc = QED_IWARP_LL2_SYN_RX_SIZE;
 	data.input.tx_num_desc = QED_IWARP_LL2_SYN_TX_SIZE;
 	data.input.tx_max_bds_per_packet = 1;	/* will never be fragmented */
@@ -2644,7 +2653,7 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 	rc = qed_ll2_acquire_connection(p_hwfn, &data);
 	if (rc) {
 		DP_NOTICE(p_hwfn, "Failed to acquire LL2 connection\n");
-		qed_llh_remove_mac_filter(p_hwfn, p_ptt, params->mac_addr);
+		qed_llh_remove_mac_filter(p_hwfn->cdev, 0, params->mac_addr);
 		return rc;
 	}
 
@@ -2654,9 +2663,10 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 		goto err;
 	}
 
+	buff_size = QED_IWARP_MAX_BUF_SIZE(params->max_mtu);
 	rc = qed_iwarp_ll2_alloc_buffers(p_hwfn,
 					 QED_IWARP_LL2_SYN_RX_SIZE,
-					 QED_IWARP_MAX_SYN_PKT_SIZE,
+					 buff_size,
 					 iwarp_info->ll2_syn_handle);
 	if (rc)
 		goto err;
@@ -2710,10 +2720,9 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 	if (rc)
 		goto err;
 
-	mpa_buff_size = QED_IWARP_MAX_BUF_SIZE(params->max_mtu);
 	rc = qed_iwarp_ll2_alloc_buffers(p_hwfn,
 					 data.input.rx_num_desc,
-					 mpa_buff_size,
+					 buff_size,
 					 iwarp_info->ll2_mpa_handle);
 	if (rc)
 		goto err;
@@ -2726,7 +2735,7 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 
 	iwarp_info->max_num_partial_fpdus = (u16)p_hwfn->p_rdma_info->num_qps;
 
-	iwarp_info->mpa_intermediate_buf = kzalloc(mpa_buff_size, GFP_KERNEL);
+	iwarp_info->mpa_intermediate_buf = kzalloc(buff_size, GFP_KERNEL);
 	if (!iwarp_info->mpa_intermediate_buf)
 		goto err;
 
@@ -2748,12 +2757,12 @@ qed_iwarp_ll2_start(struct qed_hwfn *p_hwfn,
 			      &iwarp_info->mpa_buf_list);
 	return rc;
 err:
-	qed_iwarp_ll2_stop(p_hwfn, p_ptt);
+	qed_iwarp_ll2_stop(p_hwfn);
 
 	return rc;
 }
 
-int qed_iwarp_setup(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt,
+int qed_iwarp_setup(struct qed_hwfn *p_hwfn,
 		    struct qed_rdma_start_in_params *params)
 {
 	struct qed_iwarp_info *iwarp_info;
@@ -2785,10 +2794,10 @@ int qed_iwarp_setup(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt,
 				  qed_iwarp_async_event);
 	qed_ooo_setup(p_hwfn);
 
-	return qed_iwarp_ll2_start(p_hwfn, params, p_ptt);
+	return qed_iwarp_ll2_start(p_hwfn, params);
 }
 
-int qed_iwarp_stop(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt)
+int qed_iwarp_stop(struct qed_hwfn *p_hwfn)
 {
 	int rc;
 
@@ -2799,7 +2808,7 @@ int qed_iwarp_stop(struct qed_hwfn *p_hwfn, struct qed_ptt *p_ptt)
 
 	qed_spq_unregister_async_cb(p_hwfn, PROTOCOLID_IWARP);
 
-	return qed_iwarp_ll2_stop(p_hwfn, p_ptt);
+	return qed_iwarp_ll2_stop(p_hwfn);
 }
 
 static void qed_iwarp_qp_in_error(struct qed_hwfn *p_hwfn,

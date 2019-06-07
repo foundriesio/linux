@@ -92,6 +92,7 @@ struct qede_stats_common {
 	u64 non_coalesced_pkts;
 	u64 coalesced_bytes;
 	u64 link_change_count;
+	u64 ptp_skip_txts;
 
 	/* port */
 	u64 rx_64_byte_packets;
@@ -162,6 +163,7 @@ struct qede_rdma_dev {
 	struct list_head entry;
 	struct list_head rdma_event_list;
 	struct workqueue_struct *rdma_wq;
+	bool exp_recovery;
 };
 
 struct qede_ptp;
@@ -188,6 +190,7 @@ struct qede_dev {
 
 	const struct qed_eth_ops	*ops;
 	struct qede_ptp			*ptp;
+	u64				ptp_skip_txts;
 
 	struct qed_dev_eth_info dev_info;
 #define QEDE_MAX_RSS_CNT(edev)	((edev)->dev_info.num_queues)
@@ -264,6 +267,7 @@ struct qede_dev {
 enum QEDE_STATE {
 	QEDE_STATE_CLOSED,
 	QEDE_STATE_OPEN,
+	QEDE_STATE_RECOVERY,
 };
 
 #define HILO_U64(hi, lo)		((((u64)(hi)) << 32) + (lo))
@@ -462,6 +466,7 @@ struct qede_fastpath {
 #define QEDE_CSUM_UNNECESSARY		BIT(1)
 #define QEDE_TUNN_CSUM_UNNECESSARY	BIT(2)
 
+#define QEDE_SP_RECOVERY		0
 #define QEDE_SP_RX_MODE			1
 
 #ifdef CONFIG_RFS_ACCEL

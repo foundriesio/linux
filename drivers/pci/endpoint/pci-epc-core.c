@@ -18,7 +18,6 @@
  */
 
 #include <linux/device.h>
-#include <linux/dma-mapping.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 
@@ -381,8 +380,6 @@ int pci_epc_add_epf(struct pci_epc *epc, struct pci_epf *epf)
 		return -EINVAL;
 
 	epf->epc = epc;
-	dma_set_coherent_mask(&epf->dev, epc->dev.coherent_dma_mask);
-	epf->dev.dma_mask = epc->dev.dma_mask;
 
 	spin_lock_irqsave(&epc->lock, flags);
 	list_add_tail(&epf->list, &epc->pci_epf);
@@ -497,9 +494,7 @@ __pci_epc_create(struct device *dev, const struct pci_epc_ops *ops,
 	INIT_LIST_HEAD(&epc->pci_epf);
 
 	device_initialize(&epc->dev);
-	dma_set_coherent_mask(&epc->dev, dev->coherent_dma_mask);
 	epc->dev.class = pci_epc_class;
-	epc->dev.dma_mask = dev->dma_mask;
 	epc->ops = ops;
 
 	ret = dev_set_name(&epc->dev, "%s", dev_name(dev));

@@ -38,7 +38,6 @@
 #include <linux/netdevice.h>
 #include <linux/pci.h>
 #include <linux/skbuff.h>
-#include <linux/types.h>
 #include <asm/byteorder.h>
 #include <linux/io.h>
 #include <linux/compiler.h>
@@ -644,6 +643,7 @@ struct qed_dev_info {
 	u16		mtu;
 
 	bool wol_support;
+	bool smart_an;
 
 	/* MBI version */
 	u32 mbi_version;
@@ -764,6 +764,7 @@ struct qed_probe_params {
 	u32 dp_module;
 	u8 dp_level;
 	bool is_vf;
+	bool recov_in_prog;
 };
 
 #define QED_DRV_VER_STR_SIZE 12
@@ -810,6 +811,7 @@ struct qed_common_cb_ops {
 	void (*arfs_filter_op)(void *dev, void *fltr, u8 fw_rc);
 	void	(*link_update)(void			*dev,
 			       struct qed_link_output	*link);
+	void (*schedule_recovery_handler)(void *dev);
 	void	(*dcbx_aen)(void *dev, struct qed_dcbx_get *get, u32 mib_type);
 	void (*get_generic_tlv_data)(void *dev, struct qed_generic_tlvs *data);
 	void (*get_protocol_tlv_data)(void *dev, void *data);
@@ -905,7 +907,8 @@ struct qed_common_ops {
 
 	u32		(*sb_release)(struct qed_dev *cdev,
 				      struct qed_sb_info *sb_info,
-				      u16 sb_id);
+				      u16 sb_id,
+				      enum qed_sb_type type);
 
 	void		(*simd_handler_config)(struct qed_dev *cdev,
 					       void *token,
@@ -1058,6 +1061,24 @@ struct qed_common_ops {
 			       void __iomem *db_addr, void *db_data);
 
 /**
+ * @brief recovery_process - Trigger a recovery process
+ *
+ * @param cdev
+ *
+ * @return 0 on success, error otherwise.
+ */
+	int (*recovery_process)(struct qed_dev *cdev);
+
+/**
+ * @brief recovery_prolog - Execute the prolog operations of a recovery process
+ *
+ * @param cdev
+ *
+ * @return 0 on success, error otherwise.
+ */
+	int (*recovery_prolog)(struct qed_dev *cdev);
+
+/**
  * @brief update_drv_state - API to inform the change in the driver state.
  *
  * @param cdev
@@ -1103,6 +1124,13 @@ struct qed_common_ops {
  */
 	int (*read_module_eeprom)(struct qed_dev *cdev,
 				  char *buf, u8 dev_addr, u32 offset, u32 len);
+
+/**
+ * @brief get_affin_hwfn_idx
+ *
+ * @param cdev
+ */
+	u8 (*get_affin_hwfn_idx)(struct qed_dev *cdev);
 };
 
 #define MASK_FIELD(_name, _value) \
