@@ -29,6 +29,7 @@ static const struct hns3_stats hns3_txq_stats[] = {
 	HNS3_TQP_STAT("errors", tx_err_cnt),
 	HNS3_TQP_STAT("wake", restart_queue),
 	HNS3_TQP_STAT("busy", tx_busy),
+	HNS3_TQP_STAT("copy", tx_copy),
 };
 
 #define HNS3_TXQ_STATS_COUNT ARRAY_SIZE(hns3_txq_stats)
@@ -48,6 +49,7 @@ static const struct hns3_stats hns3_rxq_stats[] = {
 	HNS3_TQP_STAT("l2_err", l2_err),
 	HNS3_TQP_STAT("l3l4_csum_err", l3l4_csum_err),
 	HNS3_TQP_STAT("multicast", rx_multicast),
+	HNS3_TQP_STAT("non_reuse_pg", non_reuse_pg),
 };
 
 #define HNS3_RXQ_STATS_COUNT ARRAY_SIZE(hns3_rxq_stats)
@@ -483,6 +485,11 @@ static void hns3_get_stats(struct net_device *netdev,
 	struct hnae3_handle *h = hns3_get_handle(netdev);
 	u64 *p = data;
 
+	if (hns3_nic_resetting(netdev)) {
+		netdev_err(netdev, "dev resetting, could not get stats\n");
+		return;
+	}
+
 	if (!h->ae_algo->ops->get_stats || !h->ae_algo->ops->update_stats) {
 		netdev_err(netdev, "could not get any statistics\n");
 		return;
@@ -648,6 +655,10 @@ static int hns3_get_link_ksettings(struct net_device *netdev,
 static int hns3_set_link_ksettings(struct net_device *netdev,
 				   const struct ethtool_link_ksettings *cmd)
 {
+	/* Chip doesn't support this mode. */
+	if (cmd->base.speed == SPEED_1000 && cmd->base.duplex == DUPLEX_HALF)
+		return -EINVAL;
+
 	/* Only support ksettings_set for netdev with phy attached for now */
 	if (netdev->phydev)
 		return phy_ethtool_ksettings_set(netdev->phydev, cmd);
@@ -1101,6 +1112,20 @@ static int hns3_set_phys_id(struct net_device *netdev,
 	return h->ae_algo->ops->set_led_id(h, state);
 }
 
+static u32 hns3_get_msglevel(struct net_device *netdev)
+{
+	struct hnae3_handle *h = hns3_get_handle(netdev);
+
+	return h->msg_enable;
+}
+
+static void hns3_set_msglevel(struct net_device *netdev, u32 msg_level)
+{
+	struct hnae3_handle *h = hns3_get_handle(netdev);
+
+	h->msg_enable = msg_level;
+}
+
 static const struct ethtool_ops hns3vf_ethtool_ops = {
 	.get_drvinfo = hns3_get_drvinfo,
 	.get_ringparam = hns3_get_ringparam,
@@ -1121,6 +1146,8 @@ static const struct ethtool_ops hns3vf_ethtool_ops = {
 	.get_regs_len = hns3_get_regs_len,
 	.get_regs = hns3_get_regs,
 	.get_link = hns3_get_link,
+	.get_msglevel = hns3_get_msglevel,
+	.set_msglevel = hns3_set_msglevel,
 };
 
 static const struct ethtool_ops hns3_ethtool_ops = {
@@ -1150,6 +1177,8 @@ static const struct ethtool_ops hns3_ethtool_ops = {
 	.get_regs_len = hns3_get_regs_len,
 	.get_regs = hns3_get_regs,
 	.set_phys_id = hns3_set_phys_id,
+	.get_msglevel = hns3_get_msglevel,
+	.set_msglevel = hns3_set_msglevel,
 };
 
 void hns3_ethtool_set_ops(struct net_device *netdev)
