@@ -3139,10 +3139,18 @@ struct rsp_que;
 struct isp_operations {
 
 	int (*pci_config) (struct scsi_qla_host *);
-	int (*reset_chip)(struct scsi_qla_host *);
+#ifdef __GENKSYMS__
+	void (*reset_chip) (struct scsi_qla_host *);
+#else
+	int (*reset_chip) (struct scsi_qla_host *);
+#endif
 	int (*chip_diag) (struct scsi_qla_host *);
 	void (*config_rings) (struct scsi_qla_host *);
-	int (*reset_adapter)(struct scsi_qla_host *);
+#ifdef __GENKSYMS__
+	void (*reset_adapter) (struct scsi_qla_host *);
+#else
+	int (*reset_adapter) (struct scsi_qla_host *);
+#endif
 	int (*nvram_config) (struct scsi_qla_host *);
 	void (*update_fw_options) (struct scsi_qla_host *);
 	int (*load_risc) (struct scsi_qla_host *, uint32_t *);
@@ -3168,10 +3176,17 @@ struct isp_operations {
 	void *(*prep_ms_fdmi_iocb) (struct scsi_qla_host *, uint32_t,
 	    uint32_t);
 
-	uint8_t *(*read_nvram)(struct scsi_qla_host *, void *,
+#ifdef __GENKSYMS__
+	uint8_t *(*read_nvram) (struct scsi_qla_host *, uint8_t *,
 		uint32_t, uint32_t);
-	int (*write_nvram)(struct scsi_qla_host *, void *, uint32_t,
+	int (*write_nvram) (struct scsi_qla_host *, uint8_t *, uint32_t,
 		uint32_t);
+#else
+	uint8_t *(*read_nvram) (struct scsi_qla_host *, void *,
+		uint32_t, uint32_t);
+	int (*write_nvram) (struct scsi_qla_host *, void *, uint32_t,
+		uint32_t);
+#endif
 
 	void (*fw_dump) (struct scsi_qla_host *, int);
 
@@ -3179,11 +3194,17 @@ struct isp_operations {
 	int (*beacon_off) (struct scsi_qla_host *);
 	void (*beacon_blink) (struct scsi_qla_host *);
 
-	void *(*read_optrom)(struct scsi_qla_host *, void *,
+#ifdef __GENKSYMS__
+	uint8_t * (*read_optrom) (struct scsi_qla_host *, uint8_t *,
 		uint32_t, uint32_t);
-	int (*write_optrom)(struct scsi_qla_host *, void *, uint32_t,
+	int (*write_optrom) (struct scsi_qla_host *, uint8_t *, uint32_t,
 		uint32_t);
-
+#else
+	void *(*read_optrom) (struct scsi_qla_host *, void *,
+		uint32_t, uint32_t);
+	int (*write_optrom) (struct scsi_qla_host *, void *, uint32_t,
+		uint32_t);
+#endif
 	int (*get_flash_version) (struct scsi_qla_host *, void *);
 	int (*start_scsi) (srb_t *);
 	int (*start_scsi_mq) (srb_t *);
@@ -3631,8 +3652,10 @@ struct qla_hw_data {
 		uint32_t	rida_fmt2:1;
 		uint32_t	purge_mbox:1;
 		uint32_t        n2n_bigger:1;
+#ifndef __GENKSYMS__
 		uint32_t	secure_adapter:1;
 		uint32_t	secure_fw:1;
+#endif
 	} flags;
 
 	uint16_t max_exchg;
@@ -3920,9 +3943,6 @@ struct qla_hw_data {
 	void		*sfp_data;
 	dma_addr_t	sfp_data_dma;
 
-	void		*flt;
-	dma_addr_t	flt_dma;
-
 #define XGMAC_DATA_SIZE	4096
 	void		*xgmac_data;
 	dma_addr_t	xgmac_data_dma;
@@ -4034,22 +4054,18 @@ struct qla_hw_data {
 	uint8_t		fw_seriallink_options[4];
 	uint16_t	fw_seriallink_options24[4];
 
-	uint8_t		serdes_version[3];
 	uint8_t		mpi_version[3];
 	uint32_t	mpi_capabilities;
 	uint8_t		phy_version[3];
 	uint8_t		pep_version[3];
 
-	/* Firmware dump template */
-	struct fwdt {
-		void *template;
-		ulong length;
-		ulong dump_size;
-	} fwdt[2];
+	/* Old Firmware dump template */
+	void		*fw_dump_template;
+	uint32_t	fw_dump_template_len;
+	/* Firmware dump information. */
 	struct qla2xxx_fw_dump *fw_dump;
 	uint32_t	fw_dump_len;
-	bool		fw_dumped;
-	bool		fw_dump_mpi;
+	int		fw_dumped;
 	unsigned long	fw_dump_cap_flags;
 #define RISC_PAUSE_CMPL		0
 #define DMA_SHUTDOWN_CMPL	1
@@ -4127,28 +4143,22 @@ struct qla_hw_data {
 	uint32_t	fdt_protect_sec_cmd;
 	uint32_t	fdt_wrt_sts_reg_cmd;
 
-	struct {
-		uint32_t	flt_region_flt;
-		uint32_t	flt_region_fdt;
-		uint32_t	flt_region_boot;
-		uint32_t	flt_region_boot_sec;
-		uint32_t	flt_region_fw;
-		uint32_t	flt_region_fw_sec;
-		uint32_t	flt_region_vpd_nvram;
-		uint32_t	flt_region_vpd_nvram_sec;
-		uint32_t	flt_region_vpd;
-		uint32_t	flt_region_vpd_sec;
-		uint32_t	flt_region_nvram;
-		uint32_t	flt_region_nvram_sec;
-		uint32_t	flt_region_npiv_conf;
-		uint32_t	flt_region_gold_fw;
-		uint32_t	flt_region_fcp_prio;
-		uint32_t	flt_region_bootload;
-		uint32_t	flt_region_img_status_pri;
-		uint32_t	flt_region_img_status_sec;
-		uint32_t	flt_region_aux_img_status_pri;
-		uint32_t	flt_region_aux_img_status_sec;
-	};
+	uint32_t        flt_region_flt;
+	uint32_t        flt_region_fdt;
+	uint32_t        flt_region_boot;
+	uint32_t        flt_region_boot_sec;
+	uint32_t        flt_region_fw;
+	uint32_t        flt_region_fw_sec;
+	uint32_t        flt_region_vpd_nvram;
+	uint32_t        flt_region_vpd;
+	uint32_t        flt_region_vpd_sec;
+	uint32_t        flt_region_nvram;
+	uint32_t        flt_region_npiv_conf;
+	uint32_t	flt_region_gold_fw;
+	uint32_t	flt_region_fcp_prio;
+	uint32_t	flt_region_bootload;
+	uint32_t	flt_region_img_status_pri;
+	uint32_t	flt_region_img_status_sec;
 	uint8_t         active_image;
 
 	/* Needed for BEACON */
@@ -4241,9 +4251,13 @@ struct qla_hw_data {
 	struct qlt_hw_data tgt;
 	int	allow_cna_fw_dump;
 	uint32_t fw_ability_mask;
+#ifdef __GENKSYMS__
+	uint16_t min_link_speed;
+	uint16_t max_speed_sup;
+#else
 	uint16_t min_supported_speed;
 	uint16_t max_supported_speed;
-
+#endif
 	atomic_t        nvme_active_aen_cnt;
 	uint16_t        nvme_last_rptd_aen;             /* Last recorded aen count */
 
@@ -4271,6 +4285,19 @@ struct qla_hw_data {
 	unsigned long long dif_bundle_writes;
 	unsigned long long dif_bundle_kallocs;
 	unsigned long long dif_bundle_dma_allocs;
+	void		*flt;
+	dma_addr_t	flt_dma;
+	uint8_t		serdes_version[3];
+	struct fwdt {
+		void *template;
+		ulong length;
+		ulong dump_size;
+	} fwdt[2];
+	bool		fw_dump_mpi;
+	uint32_t	flt_region_vpd_nvram_sec;
+	uint32_t	flt_region_nvram_sec;
+	uint32_t	flt_region_aux_img_status_pri;
+	uint32_t	flt_region_aux_img_status_sec;
 #endif
 };
 
@@ -4488,7 +4515,11 @@ typedef struct scsi_qla_host {
 	int fcport_count;
 	wait_queue_head_t fcport_waitQ;
 	wait_queue_head_t vref_waitq;
+#ifdef __GENKSYMS__
+	uint8_t min_link_speed_feat;
+#else
 	uint8_t min_supported_speed;
+#endif
 	uint8_t n2n_node_name[WWN_SIZE];
 	uint8_t n2n_port_name[WWN_SIZE];
 	uint16_t	n2n_id;
