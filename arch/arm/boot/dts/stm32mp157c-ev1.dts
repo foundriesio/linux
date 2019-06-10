@@ -483,7 +483,6 @@
 
 			hog_pins: hog {
 				pins = "gpio14";
-				drive-push-pull;
 				bias-pull-down;
 			};
 
