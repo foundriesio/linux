@@ -141,6 +141,7 @@ struct mongroup {
  *			region
  * @debugfs_dir:	pointer to this region's directory in the debugfs
  *			filesystem
+ * @pm_reqs:		Power management QoS requests related to this region
  */
 struct pseudo_lock_region {
 	struct rdt_resource	*r;
@@ -154,6 +155,7 @@ struct pseudo_lock_region {
 	void			*kmem;
 	unsigned int		minor;
 	struct dentry		*debugfs_dir;
+	struct list_head	pm_reqs;
 };
 
 /**
