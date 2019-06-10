@@ -151,6 +151,9 @@ struct net {
 #endif
 	struct sock		*diag_nlsk;
 	atomic_t		fnhe_genid;
+#ifndef __GENKSYMS__
+	int sysctl_tcp_min_snd_mss;
+#endif
 };
 
 #include <linux/seq_file_net.h>
