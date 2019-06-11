@@ -30,8 +30,8 @@
 #include <linux/cpuhotplug.h>
 
 #include <asm/intel-family.h>
-#include <asm/intel_rdt_sched.h>
-#include "intel_rdt.h"
+#include <asm/resctrl_sched.h>
+#include "internal.h"
 
 #define MBA_IS_LINEAR	0x4
 #define MBA_MAX_MBPS	U32_MAX
@@ -607,6 +607,13 @@ static void domain_remove_cpu(int cpu, struct rdt_resource *r)
 			__check_limbo(d, true);
 			cancel_delayed_work(&d->cqm_limbo);
 		}
+
+		/*
+		 * rdt_domain "d" is going to be freed below, so clear
+		 * its pointer from pseudo_lock_region struct.
+		 */
+		if (d->plr)
+			d->plr->d = NULL;
 
 		kfree(d->ctrl_val);
 		kfree(d->mbps_val);

@@ -26,7 +26,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <asm/cpu_device_id.h>
-#include "intel_rdt.h"
+#include "internal.h"
 
 #define MSR_IA32_QM_CTR		0x0c8e
 #define MSR_IA32_QM_EVTSEL		0x0c8d
@@ -51,7 +51,7 @@ static LIST_HEAD(rmid_free_lru);
  *     may have a occupancy value > intel_cqm_threshold. User can change
  *     the threshold occupancy value.
  */
-unsigned int rmid_limbo_count;
+static unsigned int rmid_limbo_count;
 
 /**
  * @rmid_entry - The entry in the limbo and free lists.
