@@ -80,6 +80,30 @@
 		};
 	};
 
+	v4l2_cap_0 {
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <0>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+	v4l2_cap_1 { // second parallel camera
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <1>;
+		csi_id = <1>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+	v4l2_cap_2 { // mipi-csi2 camera
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <1>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
 	lcd_display: display@di0 {
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
@@ -151,10 +175,40 @@
 };
 
 &backlight {
+#if 0 /* PWM polarity: if 1 is brightest */
+	pwms = <&pwm4 0 5000000 0>;
+#if 0 /* Fusion 7 needs 10kHz PWM frequency */
+	pwms = <&pwm4 0 100000 0>;
+#endif
+#else /* PWM polarity: if 0 is brightest */
+	pwms = <&pwm4 0 5000000 1>;
+#endif
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
 	power-supply = <&reg_3v3_sw>;
 	status = "okay";
+};
+
+/* Apalis SPI1 */
+&ecspi1 {
+	status = "okay";
+
+	spidev0: spidev@1 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <18000000>;
+	};
+};
+
+/* Apalis SPI2 */
+&ecspi2 {
+	status = "okay";
+
+	spidev1: spidev@2 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <18000000>;
+	};
 };
 
 &can1 {
@@ -167,7 +221,19 @@
 	status = "okay";
 };
 
-&hdmi {
+&hdmi_audio {
+	status = "okay";
+};
+
+&hdmi_cec {
+	status = "okay";
+};
+
+&hdmi_core {
+	status = "okay";
+};
+
+&hdmi_video {
 	status = "okay";
 };
 
@@ -285,8 +351,40 @@
 	};
 };
 
+/*
+ * DDC_I2C: I2C2_SDA/SCL on MXM3 205/207
+ */
+&i2cddc {
+	status = "okay";
+
+	hdmi_ddc: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
+	};
+};
+
 &ipu1_di1_disp1 {
 	remote-endpoint = <&lcd_display_in>;
+};
+
+&lcd {
+	status = "okay";
+};
+
+&mxcfb1 {
+	status = "okay";
+};
+
+&mxcfb2 {
+	status = "okay";
+};
+
+&mxcfb3 {
+	status = "okay";
+};
+
+&mxcfb4 {
+	status = "okay";
 };
 
 &ldb {
@@ -296,10 +394,8 @@
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_reset_moci>;
-	/* active-high meaning opposite of regular PERST# active-low polarity */
-	reset-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
-	reset-gpio-active-high;
-	vpcie-supply = <&reg_pcie_switch>;
+	reset-gpio = <&gpio1 2 0>;
+	reset-ep-gpio = <&gpio1 28 0>;
 	status = "okay";
 };
 
@@ -328,6 +424,10 @@
 };
 
 &sata {
+	status = "okay";
+};
+
+&sound_hdmi {
 	status = "okay";
 };
 
@@ -378,6 +478,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2 &pinctrl_sd_cd>;
 	cd-gpios = <&gpio6 14 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&vdac {
 	status = "okay";
 };
 

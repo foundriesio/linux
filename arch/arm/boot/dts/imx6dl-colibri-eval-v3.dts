@@ -77,6 +77,14 @@
 		mmc1 = &usdhc1; /* MMC 4bit slot */
 	};
 
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det>;
+	};
+
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
@@ -146,6 +154,14 @@
 };
 
 &backlight {
+	#if 0 /* PWM polarity: if 1 is brightest */
+		pwms = <&pwm3 0 5000000 0>;
+	#if 0 /* Fusion 7 needs 10kHz PWM frequency */
+		pwms = <&pwm3 0 100000 0>;
+	#endif
+	#else /* PWM polarity: if 0 is brightest */
+		pwms = <&pwm3 0 5000000 1>;
+	#endif
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
 	status = "okay";
@@ -164,10 +180,12 @@
 		spi-max-frequency = <10000000>;
 		status = "okay";
 	};
-};
-
-&hdmi {
-	status = "okay";
+	spidev0: spidev@1 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <23000000>;
+		status = "disabled";
+	};
 };
 
 /*
@@ -217,6 +235,9 @@
 		&pinctrl_weim_gpio_1 &pinctrl_weim_gpio_2
 		&pinctrl_weim_gpio_3 &pinctrl_weim_gpio_4
 		&pinctrl_weim_gpio_5 &pinctrl_weim_gpio_6
+		&pinctrl_csi_gpio_1
+		&pinctrl_gpio_1
+		&pinctrl_gpio_2
 		&pinctrl_usbh_oc_1 &pinctrl_usbc_id_1
 	>;
 
@@ -237,6 +258,18 @@
 
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
+};
+
+&lcd {
+	status = "okay";
+};
+
+&mxcfb1 {
+	status = "okay";
+};
+
+&mxcfb2 {
+	status = "okay";
 };
 
 &pwm1 {
@@ -278,6 +311,7 @@
 
 &usbotg {
 	status = "okay";
+	extcon = <&extcon_usbc_det>, <&extcon_usbc_det>;
 };
 
 /* Colibri MMC */
@@ -287,7 +321,7 @@
 
 &weim {
 	status = "okay";
-
+	fsl,weim-cs-gpr = <&gpr>;
 	/* weim memory map: 32MB on CS0, CS1, CS2 and CS3 */
 	ranges = <0 0 0x08000000 0x02000000
 		  1 0 0x0a000000 0x02000000

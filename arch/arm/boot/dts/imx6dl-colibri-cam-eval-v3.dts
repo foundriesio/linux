@@ -46,7 +46,7 @@
 		debounce = <25>;
 		id-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usbc_det_1>;
+		pinctrl-0 = <&pinctrl_usbc_det>;
 	};
 
 	gpio-keys {
@@ -63,12 +63,6 @@
 		};
 	};
 
-	regulators {
-		reg_usb_host_vbus: usb_host_vbus {
-			status = "okay";
-		};
-	};
-
 	v4l2_cap_0 {
 		compatible = "fsl,imx6q-v4l2-capture";
 		ipu_id = <0>;
@@ -76,6 +70,10 @@
 		mclk_source = <0>;
 		status = "okay";
 	};
+};
+
+&reg_usb_host_vbus {
+	status = "okay";
 };
 
 &backlight {
@@ -236,15 +234,15 @@
 	gpio {
 		pinctrl_pcap_1: pcap-1 {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_9__GPIO1_IO09	PAD_CTRL_HYS_PU /* SODIMM 28 */
-				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	PAD_CTRL_HYS_PU /* SODIMM 30 */
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09	0x1b0b0 /* SODIMM 28 */
+				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	0x1b0b0 /* SODIMM 30 */
 			>;
 		};
 
 		pinctrl_mxt_ts: mxt-ts {
 			fsl,pins = <
-				MX6QDL_PAD_EIM_CS1__GPIO2_IO24	PAD_CTRL_HYS_PD /* SODIMM 107 */
-				MX6QDL_PAD_SD2_DAT1__GPIO1_IO14	PAD_CTRL_HYS_PD /* SODIMM 106 */
+				MX6QDL_PAD_EIM_CS1__GPIO2_IO24	0x130b0 /* SODIMM 107 */
+				MX6QDL_PAD_SD2_DAT1__GPIO1_IO14	0x130b0 /* SODIMM 106 */
 			>;
 		};
 	};

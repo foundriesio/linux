@@ -46,9 +46,15 @@
 / {
 	model = "Toradex Apalis iMX6Q/D Module";
 	compatible = "toradex,apalis_imx6q", "fsl,imx6q";
-
 	memory@10000000 {
 		reg = <0x10000000 0>;
+	};
+
+	aliases {
+		mxcfb0 = &mxcfb1;
+		mxcfb1 = &mxcfb2;
+		mxcfb2 = &mxcfb3;
+		mxcfb3 = &mxcfb4;
 	};
 
 	backlight: backlight {
@@ -58,6 +64,97 @@
 		pwms = <&pwm4 0 5000000>;
 		enable-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
+	};
+
+	/* DDC_I2C: I2C2_SDA/SCL on MXM3 205/207 */
+	i2cddc: i2c@0 {
+		compatible = "i2c-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_i2c_ddc>;
+		gpios = <&gpio3 16 GPIO_ACTIVE_HIGH /* sda */
+			 &gpio2 30 GPIO_ACTIVE_HIGH /* scl */
+			>;
+		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	lcd: lcd@0 {
+		compatible = "fsl,lcd";
+		ipu_id = <0>;
+		disp_id = <1>;
+		default_ifmt = "RGB24";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
+		status = "disabled";
+	};
+
+	mxcfb1: fb@0 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "ldb";
+		interface_pix_fmt = "RGB666";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	mxcfb2: fb@1 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "hdmi";
+		interface_pix_fmt = "RGB24";
+		mode_str ="1920x1080M@60";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	mxcfb3: fb@2 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "lcd";
+		interface_pix_fmt = "RGB565";
+		mode_str ="CLAA-WVGA";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	mxcfb4: fb@3 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "vdac";
+		interface_pix_fmt = "RGB565";
+		mode_str ="LDB-XGA";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	reg_1p8v: regulator-1p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "1P8V";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	reg_2p5v: regulator-2p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "2P5V";
+		regulator-min-microvolt = <2500000>;
+		regulator-max-microvolt = <2500000>;
+		regulator-always-on;
+	};
+
+	reg_3p3v: regulator-3p3v {
+		compatible = "regulator-fixed";
+		regulator-name = "3P3V";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
 	};
 
 	reg_module_3v3: regulator-module-3v3 {
@@ -118,7 +215,7 @@
 	sound {
 		compatible = "fsl,imx-audio-sgtl5000";
 		model = "imx6q-apalis-sgtl5000";
-		ssi-controller = <&ssi1>;
+		cpu-dai = <&ssi1>;
 		audio-codec = <&codec>;
 		audio-routing =
 			"LINE_IN", "Line In Jack",
@@ -129,6 +226,14 @@
 		mux-ext-port = <4>;
 	};
 
+	sound_hdmi: sound-hdmi {
+		compatible = "fsl,imx6q-audio-hdmi",
+			     "fsl,imx-audio-hdmi";
+		model = "imx-audio-hdmi";
+		hdmi-controller = <&hdmi_audio>;
+		status = "disabled";
+	};
+
 	sound_spdif: sound-spdif {
 		compatible = "fsl,imx-audio-spdif";
 		model = "imx-spdif";
@@ -136,6 +241,21 @@
 		spdif-in;
 		spdif-out;
 		status = "disabled";
+	};
+
+	vdac: vdac@0 {
+		compatible = "fsl,vdac";
+		ipu_id = <1>;
+		disp_id = <0>;
+		default_ifmt = "RGB565";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu2_vdac>;
+		status = "disabled";
+	};
+
+	v4l2_out {
+		compatible = "fsl,mxc_v4l2_output";
+		status = "okay";
 	};
 };
 
@@ -196,9 +316,25 @@
 	};
 };
 
-&hdmi {
+&hdmi_audio {
+	status = "okay";
+};
+
+&hdmi_cec {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hdmi_ddc>;
+	pinctrl-0 = <&pinctrl_hdmi_cec>;
+	status = "disabled";
+};
+
+&hdmi_core {
+	ipu_id = <0>;
+	disp_id = <0>;
+	status = "disabled";
+};
+
+&hdmi_video {
+	fsl,phy_reg_vlev = <0x0294>;
+	fsl,phy_reg_cksymtx = <0x800d>;
 	status = "disabled";
 };
 
@@ -384,6 +520,131 @@
 	scl-gpios = <&gpio3 17 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	sda-gpios = <&gpio3 18 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	status = "disabled";
+};
+
+&ldb {
+	status = "okay";
+//	split-mode;
+//	dual-mode;
+
+	lvds-channel@0 {
+		reg = <0>;
+		fsl,data-mapping = "spwg"; /* "jeida"; */
+		fsl,data-width = <18>;
+		crtc = "ipu2-di1";
+		primary;
+		status = "okay";
+
+		display-timings {
+			native-mode = <&timing_xga>;
+			/* LDB-AM-800600LTNQW-A0H */
+			timing_svga: 800x600 {
+				clock-frequency = <55000000>;
+				hactive = <800>;
+				vactive = <600>;
+				hback-porch = <112>;
+				hfront-porch = <32>;
+				vback-porch = <3>;
+				vfront-porch = <17>;
+				hsync-len = <80>;
+				vsync-len = <4>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+			/* Standard XGA timing */
+			timing_xga: 1024x768 {
+				clock-frequency = <65000000>;
+				hactive = <1024>;
+				vactive = <768>;
+				hback-porch = <160>;
+				hfront-porch = <24>;
+				vback-porch = <29>;
+				vfront-porch = <3>;
+				hsync-len = <136>;
+				vsync-len = <6>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+			timing_wxga: 1280x800 {
+				clock-frequency = <68930000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hback-porch = <64>;
+				hfront-porch = <64>;
+				vback-porch = <5>;
+				vfront-porch = <5>;
+				hsync-len = <40>;
+				vsync-len = <6>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+			/* LTTD1280800101-L4WH-CT1, note that it needs
+			   fsl,data-mapping = "spwg"; fsl,data-width = <24>; */
+			timing_wxga1: 1280x800-1 {
+				clock-frequency = <71100000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hback-porch = <60>;
+				hfront-porch = <60>;
+				vback-porch = <7>;
+				vfront-porch = <7>;
+				hsync-len = <40>;
+				vsync-len = <9>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+			timing_fullhd: 1920x1080 {
+				clock-frequency = <138500000>;
+				hactive = <1920>;
+				vactive = <1080>;
+				hback-porch = <80>;
+				hfront-porch = <48>;
+				vback-porch = <23>;
+				vfront-porch = <3>;
+				hsync-len = <32>;
+				vsync-len = <5>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+	};
+
+	lvds-channel@1 {
+		reg = <1>;
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <18>;
+		crtc = "ipu1-di0";
+		status = "okay";
+
+		display-timings {
+/*			native-mode = <&timing_svga_ch2>;*/
+			/* LDB-AM-800600LTNQW-A0H */
+			timing_svga_ch2: 800x600 {
+				clock-frequency = <55000000>;
+				hactive = <800>;
+				vactive = <600>;
+				hback-porch = <112>;
+				hfront-porch = <32>;
+				vback-porch = <3>;
+				vfront-porch = <17>;
+				hsync-len = <80>;
+				vsync-len = <4>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+	};
+};
+
+&pcie {
+	/* Gen2 does not work on Apalis iMX6 */
+	fsl,max-link-speed = <1>;
 };
 
 &pwm1 {
@@ -648,6 +909,14 @@
 	pinctrl_hdmi_cec: hdmicecgrp {
 		fsl,pins = <
 			MX6QDL_PAD_KEY_ROW2__HDMI_TX_CEC_LINE 0x1f8b0
+		>;
+	};
+
+	pinctrl_i2c_ddc: gpioi2cddcgrp {
+		fsl,pins = <
+			/* DDC bitbang */
+			MX6QDL_PAD_EIM_EB2__GPIO2_IO30 0x1b0b0
+			MX6QDL_PAD_EIM_D16__GPIO3_IO16 0x1b0b0
 		>;
 	};
 
