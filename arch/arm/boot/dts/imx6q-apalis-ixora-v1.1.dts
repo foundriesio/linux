@@ -148,12 +148,54 @@
 			gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;
 		};
 	};
+
+	v4l2_cap_0 {
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <0>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+	v4l2_cap_2 { // mipi-csi2 camera
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <1>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+#if 0
+	v4l2_out {
+		compatible = "fsl,mxc_v4l2_output";
+		status = "okay";
+	};
+#endif
 };
 
 &backlight {
+#if 0 /* PWM polarity: if 1 is brightest */
+	pwms = <&pwm4 0 5000000 0>;
+#if 0 /* Fusion 7 needs 10kHz PWM frequency */
+	pwms = <&pwm4 0 100000 0>;
+#endif
+#else /* PWM polarity: if 0 is brightest */
+	pwms = <&pwm4 0 5000000 1>;
+#endif
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
 	status = "okay";
+};
+
+/* Apalis SPI1 */
+&ecspi1 {
+	status = "okay";
+
+	spidev0: spidev@1 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <18000000>;
+	};
 };
 
 &can1 {
@@ -164,7 +206,19 @@
 	status = "okay";
 };
 
-&hdmi {
+&hdmi_audio {
+	status = "okay";
+};
+
+&hdmi_cec {
+	status = "okay";
+};
+
+&hdmi_core {
+	status = "okay";
+};
+
+&hdmi_video {
 	status = "okay";
 };
 
@@ -277,8 +331,48 @@
 	};
 };
 
+/*
+ * DDC_I2C: I2C2_SDA/SCL on MXM3 205/207
+ */
+&i2cddc {
+	status = "okay";
+
+	hdmi_ddc: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
+	};
+};
+
+&lcd {
+	status = "okay";
+};
+
 &ipu1_di1_disp1 {
 	remote-endpoint = <&lcd_display_in>;
+};
+
+&mipi_csi {
+	ipu_id = <0>;
+	csi_id = <1>;
+	v_channel = <0>;
+	lanes = <2>;
+	status = "okay";
+};
+
+&mxcfb1 {
+	status = "okay";
+};
+
+&mxcfb2 {
+	status = "okay";
+};
+
+&mxcfb3 {
+	status = "okay";
+};
+
+&mxcfb4 {
+	status = "okay";
 };
 
 &ldb {
@@ -322,6 +416,10 @@
 	status = "okay";
 };
 
+&sound_hdmi {
+	status = "okay";
+};
+
 &sound_spdif {
 	status = "okay";
 };
@@ -336,10 +434,21 @@
 
 &uart2 {
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2_dte &pinctrl_uart24_forceoff>;
+#if 0
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-low;
+	rs485-rx-during-tx;
+#endif
 };
 
 &uart4 {
 	status = "okay";
+	/*
+	 * note that uart4 is only working with pinctrl_uart24_forceoff that is
+	 * already defined in &uart2
+	 */
 };
 
 &uart5 {
@@ -382,6 +491,12 @@
 			MX6QDL_PAD_SD2_DAT3__GPIO1_IO12 0x1b0b0
 			MX6QDL_PAD_NANDF_D1__GPIO2_IO01 0x1b0b0
 			MX6QDL_PAD_NANDF_D2__GPIO2_IO02 0x1b0b0
+		>;
+	};
+
+	pinctrl_uart24_forceoff: uart24_forceoff {
+		fsl,pins = <
+			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x1b0b0
 		>;
 	};
 };
