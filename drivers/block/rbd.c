@@ -1796,9 +1796,6 @@ __rbd_osd_req_create(struct rbd_device *rbd_dev,
 			rbd_dev->header.object_prefix, obj_request->object_no))
 		goto err_req;
 
-	if (ceph_osdc_alloc_messages(req, GFP_NOIO))
-		goto err_req;
-
 	return req;
 
 err_req:
@@ -2396,6 +2393,8 @@ int rbd_img_request_fill(struct rbd_img_request *img_request,
 		obj_request->img_offset = img_offset;
 
 		rbd_img_obj_request_fill(obj_request, osd_req, op_type, 0);
+		if (ceph_osdc_alloc_messages(osd_req, GFP_NOIO))
+			goto out_unwind;
 
 		img_offset += length;
 		resid -= length;
@@ -2471,6 +2470,9 @@ int rbd_img_cmp_and_write_request_fill(struct rbd_img_request *img_request,
 				      write_length);
 
 	rbd_osd_req_format_rw(obj_request);
+
+	if (ceph_osdc_alloc_messages(osd_req, GFP_NOIO))
+		goto del_obj_req;
 
 	return 0;
 
@@ -2577,6 +2579,10 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 
 	op_type = rbd_img_request_op_type(orig_request->img_request);
 	rbd_img_obj_request_fill(orig_request, osd_req, op_type, 1);
+
+	img_result = ceph_osdc_alloc_messages(osd_req, GFP_NOIO);
+	if (img_result)
+		goto out_err;
 
 	/* All set, send it off. */
 
@@ -2773,6 +2779,10 @@ static int rbd_img_obj_exists_submit(struct rbd_obj_request *obj_request)
 	stat_request->obj_request = obj_request;
 	stat_request->callback = rbd_img_obj_exists_callback;
 
+	ret = ceph_osdc_alloc_messages(stat_request->osd_req, GFP_NOIO);
+	if (ret)
+		goto fail_stat_request;
+
 	rbd_obj_request_submit(stat_request);
 	return 0;
 
@@ -2867,6 +2877,12 @@ rbd_img_obj_creatrunc_callback(struct rbd_obj_request *obj_request)
 
 	rbd_osd_req_format_rw(orig_request);
 
+	result = ceph_osdc_alloc_messages(orig_request->osd_req, GFP_NOIO);
+	if (result) {
+		orig_request->result = result;
+		goto out;
+	}
+
 	/*
 	 * Resubmit the original request now that we have truncated
 	 * the target object.
@@ -2929,6 +2945,10 @@ rbd_img_obj_creatrunc_submit(struct rbd_obj_request *obj_request)
 				object_size, 0, 0, 0);
 
 	rbd_osd_req_format_write(creatrunc_req);
+
+	ret = ceph_osdc_alloc_messages(creatrunc_req->osd_req, GFP_NOIO);
+	if (ret)
+		goto fail_creatrunc_request;
 
 	rbd_obj_request_submit(creatrunc_req);
 
@@ -4323,10 +4343,6 @@ static int rbd_obj_read_sync(struct rbd_device *rbd_dev,
 	ceph_oloc_copy(&req->r_base_oloc, oloc);
 	req->r_flags = CEPH_OSD_FLAG_READ;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out_req;
-
 	pages = ceph_alloc_page_vector(num_pages, GFP_KERNEL);
 	if (IS_ERR(pages)) {
 		ret = PTR_ERR(pages);
@@ -4336,6 +4352,10 @@ static int rbd_obj_read_sync(struct rbd_device *rbd_dev,
 	osd_req_op_extent_init(req, 0, CEPH_OSD_OP_READ, 0, buf_len, 0, 0);
 	osd_req_op_extent_osd_data_pages(req, 0, pages, buf_len, 0, false,
 					 true);
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	if (ret)
+		goto out_req;
 
 	ceph_osdc_start_request(osdc, req, false);
 	ret = ceph_osdc_wait_request(osdc, req);
@@ -4781,12 +4801,12 @@ int rbd_dev_setxattr(struct rbd_device *rbd_dev, char *key, void *val,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_WRITE;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	ret = osd_req_op_xattr_init(req, 0, CEPH_OSD_OP_SETXATTR,
+				    key, val, val_len, 0, 0);
 	if (ret)
 		goto out;
 
-	ret = osd_req_op_xattr_init(req, 0, CEPH_OSD_OP_SETXATTR,
-				    key, val, val_len, 0, 0);
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
 	if (ret)
 		goto out;
 
@@ -4817,10 +4837,6 @@ int rbd_dev_cmpsetxattr(struct rbd_device *rbd_dev, char *key, void *oldval,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_WRITE;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out;
-
 	ret = osd_req_op_xattr_init(req, 0,
 				    CEPH_OSD_OP_CMPXATTR,
 				    key, oldval, oldval_len,
@@ -4832,6 +4848,10 @@ int rbd_dev_cmpsetxattr(struct rbd_device *rbd_dev, char *key, void *oldval,
 	ret = osd_req_op_xattr_init(req, 1,
 				    CEPH_OSD_OP_SETXATTR,
 				    key, newval, newval_len, 0, 0);
+	if (ret)
+		goto out;
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
 	if (ret)
 		goto out;
 
@@ -4868,10 +4888,6 @@ int rbd_dev_getxattr(struct rbd_device *rbd_dev, char *key, int max_val_len,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_READ;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out_req;
-
 	ret = osd_req_op_xattr_init(req, 0,
 				    CEPH_OSD_OP_GETXATTR,
 				    key, NULL, 0, 0, 0);
@@ -4888,6 +4904,10 @@ int rbd_dev_getxattr(struct rbd_device *rbd_dev, char *key, int max_val_len,
 	osd_req_op_xattr_response_data_pages(req, 0,
 					     pages, max_val_len,
 					     0, false, true);
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	if (ret)
+		goto out_req;
 
 	ceph_osdc_start_request(osdc, req, false);
 	ret = ceph_osdc_wait_request(osdc, req);
