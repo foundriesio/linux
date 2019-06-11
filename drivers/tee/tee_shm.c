@@ -19,6 +19,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
+#include <linux/module.h>
 #include "tee_private.h"
 
 /* extra references appended to shm object for registered shared memory */
@@ -373,7 +374,15 @@ struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long
 	}
 
 	for (i = 0; i < num_pages; i++) {
-		shm->pages[i] = virt_to_page(start + offset);
+		if (is_vmalloc_addr(start + offset) ||
+			is_module_address(start + offset)) {
+			shm->pages[i] = vmalloc_to_page(start + offset);
+		} else if (virt_addr_valid(start + offset)) {
+			shm->pages[i] = virt_to_page(start + offset);
+		} else {
+			ret = ERR_PTR(-ENOMEM);
+			goto err;
+		}
 		offset += PAGE_SIZE;
 	}
 

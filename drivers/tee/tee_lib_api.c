@@ -122,8 +122,23 @@ static int tee_client_set_params(struct tee_context * context,
 			shm = tee_shm_register_for_kern(context,
 											(unsigned long)params->params[i].tee_client_memref.buffer,
 											params->params[i].tee_client_memref.size, 0);
-			if (IS_ERR(shm))
-				goto FREE_EXIT;
+			if (IS_ERR(shm)) {
+				void * va;
+				// Try to allocate shm
+				shm = tee_shm_alloc(context,
+									params->params[i].tee_client_memref.size,
+									TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
+				if (IS_ERR(shm))
+					goto FREE_EXIT;
+
+				va = tee_shm_get_va(shm, 0);
+				if (IS_ERR(va))
+					goto FREE_EXIT;
+
+				memcpy(va,
+					   params->params[i].tee_client_memref.buffer,
+					   params->params[i].tee_client_memref.size);
+			}
 
 			tee_params[i].u.memref.shm = shm;
 			tee_params[i].u.memref.size = params->params[i].tee_client_memref.size;
