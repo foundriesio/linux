@@ -42,9 +42,9 @@
 #include <linux/wakelock.h>
 #endif
 
-//#define OPTEE_BASE_HDCP
+#define HDCP_DRV_VERSION "1.0.10"
 
-#define HDCP_DRV_VERSION "1.0.9"
+//#define OPTEE_BASE_HDCP
 
 #define USE_HDMI_PWR_CTRL
 
@@ -146,7 +146,7 @@ typedef struct {
 #ifdef USE_HDMI_PWR_CTRL
 extern void hdmi_api_power_control(int enable);
 #endif
-extern void packets_AvMute(struct hdmi_tx_dev *dev, uint8_t enable);
+extern void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable);
 
 static void avmute_delay_work(struct work_struct *work)
 {
@@ -155,7 +155,7 @@ static void avmute_delay_work(struct work_struct *work)
 	if(!esm || !esm->dev)
 		return;
 
-	packets_AvMute(esm->dev, 0);
+	hdmi_api_avmute(esm->dev, 0);
 }
 
 static void dwc_avmute(esm_device *esm, uint32_t en, uint32_t delay)
@@ -165,7 +165,7 @@ static void dwc_avmute(esm_device *esm, uint32_t en, uint32_t delay)
 
 
 	if (en) {
-		packets_AvMute(esm->dev, 1);
+		hdmi_api_avmute(esm->dev, 1);
 		/* CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation) */
 		msleep(90 /*90*/);
 	}
@@ -944,7 +944,7 @@ tcc_hdcp_open(struct inode *inode, struct file *file)
 		if (esm->tee_params) {
 			ret = tee_client_open_ta(&uuid, NULL, &esm->context);
 			if (ret) {
-				dev_err(dev->parent, "%s: hdcp ta open failed\n", __func__);
+				dev_err(dev->parent, "%s: hdcp ta open failed ret:0x%x\n", __func__, ret);
 				esm->context = NULL;
 				kfree(esm->tee_params);
 				esm->tee_params = NULL;
@@ -1188,6 +1188,8 @@ static struct platform_driver __refdata dw_hdcp_driver = {
 };
 module_platform_driver(dw_hdcp_driver);
 
+MODULE_VERSION(HDCP_DRV_VERSION);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Telechips Inc.");
-MODULE_VERSION("HDCP_DRV_VERSION");
+MODULE_DESCRIPTION("Synopsys DesignWare HDCP driver");
+
