@@ -5,11 +5,6 @@ analog block which delivers a frequency depending on the internal SoC's
 temperature. By using a reference frequency, DTS is able to provide a sample
 number which can be translated into a temperature by the user.
 
-DTS provides interrupt notification mechanism by threshold. This mechanism
-offers two temperature trip points: passive and critical. The first is intended
-for passive cooling notification while the second is used for over-temperature
-reset.
-
 Required parameters:
 -------------------
 
@@ -35,13 +30,13 @@ Example:
 			trips {
 				cpu_alert1: cpu-alert1 {
 					temperature = <85000>;
-					hysteresis = <0>;
+					hysteresis = <2000>;
 					type = "passive";
 				};
 
 				cpu-crit: cpu-crit {
 					temperature = <120000>;
-					hysteresis = <0>;
+					hysteresis = <2000>;
 					type = "critical";
 				};
 			};
