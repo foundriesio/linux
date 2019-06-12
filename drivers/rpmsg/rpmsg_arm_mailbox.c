@@ -25,9 +25,9 @@
 #define RPMSG_ADDR_ANY	0xFFFFFFFF
 
 struct arm_channel {
-	struct rpmsg_channel_info chinfo;
 	struct rpmsg_endpoint ept;
 	struct mbox_client cl;
+	struct mbox_chan *mbox;
 };
 
 #define arm_channel_from_rpmsg(_ept) container_of(_ept, struct arm_channel, ept)
@@ -37,29 +37,25 @@ struct arm_channel {
 static void arm_msg_rx_handler(struct mbox_client *cl, void *mssg)
 {
 	struct arm_channel* channel = arm_channel_from_mbox(cl);
-	channel->ept.cb(channel->ept.rpdev, mssg, 4, channel->ept.priv, RPMSG_ADDR_ANY);
+	int err = channel->ept.cb(channel->ept.rpdev, mssg, 4, channel->ept.priv, RPMSG_ADDR_ANY);
+	if(err) {
+		printk("ARM Mailbox: Endpoint callback failed with error: %d", err);
+	}
 }
 
 
 static void arm_destroy_ept(struct rpmsg_endpoint *ept)
 {
 	struct arm_channel *channel = arm_channel_from_rpmsg(ept);
+	mbox_free_channel(channel->mbox);
 	kfree(channel);
 }
 
 static int arm_send(struct rpmsg_endpoint *ept, void *data, int len)
 {
 	struct arm_channel *channel = arm_channel_from_rpmsg(ept);
-	struct mbox_chan *mbox;
 
-	mbox = mbox_request_channel_byname(&channel->cl, channel->chinfo.name);
-	if (IS_ERR_OR_NULL(mbox)) {
-		printk("RPMsg ARM: Cannot get channel by name: '%s'\n", channel->chinfo.name);
-		return -1;
-	}
-
-	mbox_send_message(mbox, data);
-	mbox_free_channel(mbox);
+	mbox_send_message(channel->mbox, data);
 	return 0;
 }
 
@@ -72,12 +68,9 @@ static const struct rpmsg_endpoint_ops arm_endpoint_ops = {
 static struct rpmsg_endpoint *arm_create_ept(struct rpmsg_device *rpdev,
 		rpmsg_rx_cb_t cb, void *priv, struct rpmsg_channel_info chinfo)
 {
-	struct arm_channel* channel;
-	channel = kzalloc(sizeof(*channel), GFP_KERNEL);
+	struct arm_channel *channel;
 
-	// store chinfo for determining destination mailbox when sending
-	channel->chinfo = chinfo;
-	strncpy(channel->chinfo.name, chinfo.name, RPMSG_NAME_SIZE);
+	channel = kzalloc(sizeof(*channel), GFP_KERNEL);
 
 	// Initialize rpmsg endpoint
 	kref_init(&channel->ept.refcount);
@@ -93,6 +86,12 @@ static struct rpmsg_endpoint *arm_create_ept(struct rpmsg_device *rpdev,
 	channel->cl.tx_block = true;
 	channel->cl.tx_tout = 500; /* by half a second */
 	channel->cl.knows_txdone = false; /* depending upon protocol */
+
+	channel->mbox = mbox_request_channel_byname(&channel->cl, chinfo.name);
+	if (IS_ERR_OR_NULL(channel->mbox)) {
+		printk("RPMsg ARM: Cannot get channel by name: '%s'\n", chinfo.name);
+		return -1;
+	}
 
 	return &channel->ept;
 }
