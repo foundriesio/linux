@@ -344,7 +344,7 @@ static int cpus_mon_write(struct rdtgroup *rdtgrp, cpumask_var_t newmask,
 	/* Check whether cpus belong to parent ctrl group */
 	cpumask_andnot(tmpmask, newmask, &prgrp->cpu_mask);
 	if (cpumask_weight(tmpmask)) {
-		rdt_last_cmd_puts("can only add CPUs to mongroup that belong to parent\n");
+		rdt_last_cmd_puts("Can only add CPUs to mongroup that belong to parent\n");
 		return -EINVAL;
 	}
 
@@ -469,14 +469,14 @@ static ssize_t rdtgroup_cpus_write(struct kernfs_open_file *of,
 	rdt_last_cmd_clear();
 	if (!rdtgrp) {
 		ret = -ENOENT;
-		rdt_last_cmd_puts("directory was removed\n");
+		rdt_last_cmd_puts("Directory was removed\n");
 		goto unlock;
 	}
 
 	if (rdtgrp->mode == RDT_MODE_PSEUDO_LOCKED ||
 	    rdtgrp->mode == RDT_MODE_PSEUDO_LOCKSETUP) {
 		ret = -EINVAL;
-		rdt_last_cmd_puts("pseudo-locking in progress\n");
+		rdt_last_cmd_puts("Pseudo-locking in progress\n");
 		goto unlock;
 	}
 
@@ -486,7 +486,7 @@ static ssize_t rdtgroup_cpus_write(struct kernfs_open_file *of,
 		ret = cpumask_parse(buf, newmask);
 
 	if (ret) {
-		rdt_last_cmd_puts("bad cpu list/mask\n");
+		rdt_last_cmd_puts("Bad CPU list/mask\n");
 		goto unlock;
 	}
 
@@ -494,7 +494,7 @@ static ssize_t rdtgroup_cpus_write(struct kernfs_open_file *of,
 	cpumask_andnot(tmpmask, newmask, cpu_online_mask);
 	if (cpumask_weight(tmpmask)) {
 		ret = -EINVAL;
-		rdt_last_cmd_puts("can only assign online cpus\n");
+		rdt_last_cmd_puts("Can only assign online CPUs\n");
 		goto unlock;
 	}
 
@@ -573,7 +573,7 @@ static int __rdtgroup_move_task(struct task_struct *tsk,
 		 */
 		atomic_dec(&rdtgrp->waitcount);
 		kfree(callback);
-		rdt_last_cmd_puts("task exited\n");
+		rdt_last_cmd_puts("Task exited\n");
 	} else {
 		/*
 		 * For ctrl_mon groups move both closid and rmid.
@@ -691,7 +691,7 @@ static ssize_t rdtgroup_tasks_write(struct kernfs_open_file *of,
 	if (rdtgrp->mode == RDT_MODE_PSEUDO_LOCKED ||
 	    rdtgrp->mode == RDT_MODE_PSEUDO_LOCKSETUP) {
 		ret = -EINVAL;
-		rdt_last_cmd_puts("pseudo-locking in progress\n");
+		rdt_last_cmd_puts("Pseudo-locking in progress\n");
 		goto unlock;
 	}
 
@@ -1157,14 +1157,14 @@ static bool rdtgroup_mode_test_exclusive(struct rdtgroup *rdtgrp)
 		list_for_each_entry(d, &r->domains, list) {
 			if (rdtgroup_cbm_overlaps(r, d, d->ctrl_val[closid],
 						  rdtgrp->closid, false)) {
-				rdt_last_cmd_puts("schemata overlaps\n");
+				rdt_last_cmd_puts("Schemata overlaps\n");
 				return false;
 			}
 		}
 	}
 
 	if (!has_cache) {
-		rdt_last_cmd_puts("cannot be exclusive without CAT/CDP\n");
+		rdt_last_cmd_puts("Cannot be exclusive without CAT/CDP\n");
 		return false;
 	}
 
@@ -1205,7 +1205,7 @@ static ssize_t rdtgroup_mode_write(struct kernfs_open_file *of,
 		goto out;
 
 	if (mode == RDT_MODE_PSEUDO_LOCKED) {
-		rdt_last_cmd_printf("cannot change pseudo-locked group\n");
+		rdt_last_cmd_printf("Cannot change pseudo-locked group\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1234,7 +1234,7 @@ static ssize_t rdtgroup_mode_write(struct kernfs_open_file *of,
 			goto out;
 		rdtgrp->mode = RDT_MODE_PSEUDO_LOCKSETUP;
 	} else {
-		rdt_last_cmd_printf("unknown/unsupported mode\n");
+		rdt_last_cmd_printf("Unknown orunsupported mode\n");
 		ret = -EINVAL;
 	}
 
@@ -2541,7 +2541,7 @@ static int rdtgroup_init_alloc(struct rdtgroup *rdtgrp)
 			tmp_cbm = d->new_ctrl;
 			if (bitmap_weight(&tmp_cbm, r->cache.cbm_len) <
 			    r->cache.min_cbm_bits) {
-				rdt_last_cmd_printf("no space on %s:%d\n",
+				rdt_last_cmd_printf("No space on %s:%d\n",
 						    r->name, d->id);
 				return -ENOSPC;
 			}
@@ -2558,7 +2558,7 @@ static int rdtgroup_init_alloc(struct rdtgroup *rdtgrp)
 			continue;
 		ret = update_domains(r, rdtgrp->closid);
 		if (ret < 0) {
-			rdt_last_cmd_puts("failed to initialize allocations\n");
+			rdt_last_cmd_puts("Failed to initialize allocations\n");
 			return ret;
 		}
 		rdtgrp->mode = RDT_MODE_SHAREABLE;
@@ -2581,7 +2581,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	rdt_last_cmd_clear();
 	if (!prdtgrp) {
 		ret = -ENODEV;
-		rdt_last_cmd_puts("directory was removed\n");
+		rdt_last_cmd_puts("Directory was removed\n");
 		goto out_unlock;
 	}
 
@@ -2589,7 +2589,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	    (prdtgrp->mode == RDT_MODE_PSEUDO_LOCKSETUP ||
 	     prdtgrp->mode == RDT_MODE_PSEUDO_LOCKED)) {
 		ret = -EINVAL;
-		rdt_last_cmd_puts("pseudo-locking in progress\n");
+		rdt_last_cmd_puts("Pseudo-locking in progress\n");
 		goto out_unlock;
 	}
 
@@ -2597,7 +2597,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	rdtgrp = kzalloc(sizeof(*rdtgrp), GFP_KERNEL);
 	if (!rdtgrp) {
 		ret = -ENOSPC;
-		rdt_last_cmd_puts("kernel out of memory\n");
+		rdt_last_cmd_puts("Kernel out of memory\n");
 		goto out_unlock;
 	}
 	*r = rdtgrp;
@@ -2638,7 +2638,7 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	if (rdt_mon_capable) {
 		ret = alloc_rmid();
 		if (ret < 0) {
-			rdt_last_cmd_puts("out of RMIDs\n");
+			rdt_last_cmd_puts("Out of RMIDs\n");
 			goto out_destroy;
 		}
 		rdtgrp->mon.rmid = ret;
@@ -2726,7 +2726,7 @@ static int rdtgroup_mkdir_ctrl_mon(struct kernfs_node *parent_kn,
 	kn = rdtgrp->kn;
 	ret = closid_alloc();
 	if (ret < 0) {
-		rdt_last_cmd_puts("out of CLOSIDs\n");
+		rdt_last_cmd_puts("Out of CLOSIDs\n");
 		goto out_common_fail;
 	}
 	closid = ret;
