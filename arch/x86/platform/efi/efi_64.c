@@ -83,7 +83,7 @@ pgd_t * __init efi_call_phys_prolog(void)
 	if (!efi_enabled(EFI_OLD_MEMMAP)) {
 		save_pgd = (pgd_t *)__read_cr3();
 		write_cr3((unsigned long)efi_scratch.efi_pgt);
-		return save_pgd;
+		goto out;
 	}
 
 	early_code_mapping_set_exec(1);
@@ -110,7 +110,7 @@ pgd_t * __init efi_call_phys_prolog(void)
 		p4d = p4d_alloc(&init_mm, pgd_efi, addr_pgd);
 		if (!p4d) {
 			pr_err("Failed to allocate p4d table!\n");
-			goto out;
+			goto error;
 		}
 
 		for (i = 0; i < PTRS_PER_P4D; i++) {
@@ -120,7 +120,7 @@ pgd_t * __init efi_call_phys_prolog(void)
 			pud = pud_alloc(&init_mm, p4d_efi, addr_p4d);
 			if (!pud) {
 				pr_err("Failed to allocate pud table!\n");
-				goto out;
+				goto error;
 			}
 
 			for (j = 0; j < PTRS_PER_PUD; j++) {
@@ -139,9 +139,12 @@ pgd_t * __init efi_call_phys_prolog(void)
 		pgd_offset_k(pgd * PGDIR_SIZE)->pgd &= ~_PAGE_NX;
 	}
 
-	__flush_tlb_all();
-	return save_pgd;
 out:
+	__flush_tlb_all();
+
+	return save_pgd;
+
+error:
 	efi_call_phys_epilog(save_pgd);
 	return NULL;
 }
