@@ -82,7 +82,7 @@
 #define POLL_TIMEOUT		5000
 #define STARTUP_TIME		40
 #define TS1_T0_VAL0		30000  /* 30 celsius */
-#define TS1_T0_VAL1		130000 /* 130 celsius */
+#define TS1_T0_VAL1		110000 /* 110 celsius */
 #define NO_HW_TRIG		0
 #define SAMPLING_TIME		15
 
