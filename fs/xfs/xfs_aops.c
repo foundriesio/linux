@@ -928,7 +928,6 @@ xfs_writepage_map(
 	uint64_t		offset;
 	int			error = 0;
 	int			count = 0;
-	int			uptodate = 1;
 	unsigned int		new_type;
 
 	bh = head = page_buffers(page);
@@ -936,8 +935,6 @@ xfs_writepage_map(
 	do {
 		if (offset >= end_offset)
 			break;
-		if (!buffer_uptodate(bh))
-			uptodate = 0;
 
 		/*
 		 * set_page_dirty dirties all buffers in a page, independent
@@ -1000,9 +997,6 @@ xfs_writepage_map(
 		}
 
 	} while (offset += len, ((bh = bh->b_this_page) != head));
-
-	if (uptodate && bh == head)
-		SetPageUptodate(page);
 
 	ASSERT(wpc->ioend || list_empty(&submit_list));
 
