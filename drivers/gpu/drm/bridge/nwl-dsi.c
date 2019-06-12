@@ -1165,7 +1165,7 @@ static int nwl_dsi_bridge_attach(struct drm_bridge *bridge)
 	if (dsi->panel)
 		ret = nwl_dsi_create_connector(encoder->dev, dsi);
 	else if (!dsi->next_bridge)
-		ret = -ENODEV;
+		ret = -EPROBE_DEFER;
 
 	return ret;
 }
