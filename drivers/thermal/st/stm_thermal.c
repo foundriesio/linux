@@ -98,20 +98,9 @@ struct stm_thermal_sensor {
 	unsigned int low_temp_enabled;
 	int num_trips;
 	int irq;
-	unsigned int irq_enabled;
 	void __iomem *base;
 	int t0, fmt0, ramp_coeff;
 };
-
-static irqreturn_t stm_thermal_alarm_irq(int irq, void *sdata)
-{
-	struct stm_thermal_sensor *sensor = sdata;
-
-	disable_irq_nosync(irq);
-	sensor->irq_enabled = false;
-
-	return IRQ_WAKE_THREAD;
-}
 
 static irqreturn_t stm_thermal_alarm_irq_thread(int irq, void *sdata)
 {
@@ -464,16 +453,6 @@ static int stm_thermal_get_temp(void *data, int *temp)
 			if (ret)
 				return ret;
 		}
-
-		/*
-		 * Re-enable alarm IRQ if temperature below critical
-		 * temperature
-		 */
-		if (!sensor->irq_enabled &&
-		    (celsius(*temp) < sensor->temp_critical)) {
-			sensor->irq_enabled = true;
-			enable_irq(sensor->irq);
-		}
 	}
 
 	return 0;
@@ -493,7 +472,7 @@ static int stm_register_irq(struct stm_thermal_sensor *sensor)
 	}
 
 	ret = devm_request_threaded_irq(dev, sensor->irq,
-					stm_thermal_alarm_irq,
+					NULL,
 					stm_thermal_alarm_irq_thread,
 					IRQF_ONESHOT,
 					dev->driver->name, sensor);
@@ -502,8 +481,6 @@ static int stm_register_irq(struct stm_thermal_sensor *sensor)
 			sensor->irq);
 		return ret;
 	}
-
-	sensor->irq_enabled = true;
 
 	dev_dbg(dev, "%s: thermal IRQ registered", __func__);
 
