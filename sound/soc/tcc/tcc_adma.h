@@ -721,8 +721,11 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 	if (adrcnt_mode) {
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
+		if(adrcnt % 8 != 0) {
+			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		}
 		adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
-		txdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt);
+		txdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		txdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
 		txdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
@@ -777,8 +780,11 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 	if (adrcnt_mode) {
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
+		if(adrcnt % 8 != 0) {
+			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		}
 		adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
-		rxdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt);
+		rxdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		rxdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
 		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
@@ -830,7 +836,12 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
 	if (adrcnt_mode) {
-		txspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, buffer_bytes/(1<<wsize));
+		uint32_t adrcnt = buffer_bytes / (1<<wsize);
+
+		if(adrcnt % 8 != 0) {
+			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		}
+		txspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		txspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
 		txspadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
@@ -881,7 +892,12 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
 	if (adrcnt_mode) {
-		rxspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, buffer_bytes/(1<<wsize));
+		uint32_t adrcnt = buffer_bytes / (1<<wsize);
+
+		if(adrcnt % 8 != 0) {
+			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+		}
+		rxspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		rxspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
 	} else {
 		rxspadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
