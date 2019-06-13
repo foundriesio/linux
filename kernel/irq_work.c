@@ -57,58 +57,15 @@ void __weak arch_irq_work_raise(void)
 	 */
 }
 
-/*
- * Enqueue the irq_work @work on @cpu unless it's already pending
- * somewhere.
- *
- * Can be re-enqueued while the callback is still in progress.
- */
-bool irq_work_queue_on(struct irq_work *work, int cpu)
-{
-	struct llist_head *list;
-
-	/* All work should have been flushed before going offline */
-	WARN_ON_ONCE(cpu_is_offline(cpu));
-
-#ifdef CONFIG_SMP
-
-	/* Arch remote IPI send/receive backend aren't NMI safe */
-	WARN_ON_ONCE(in_nmi());
-
-	/* Only queue if not already pending */
-	if (!irq_work_claim(work))
-		return false;
-
-	if (IS_ENABLED(CONFIG_PREEMPT_RT_FULL) && !(work->flags & IRQ_WORK_HARD_IRQ))
-		list = &per_cpu(lazy_list, cpu);
-	else
-		list = &per_cpu(raised_list, cpu);
-
-	if (llist_add(&work->llnode, list))
-		arch_send_call_function_single_ipi(cpu);
-
-#else /* #ifdef CONFIG_SMP */
-	irq_work_queue(work);
-#endif /* #else #ifdef CONFIG_SMP */
-
-	return true;
-}
-
-/* Enqueue the irq work @work on the current CPU */
-bool irq_work_queue(struct irq_work *work)
+/* Enqueue on current CPU, work must already be claimed and preempt disabled */
+static void __irq_work_queue_local(struct irq_work *work)
 {
 	struct llist_head *list;
 	bool lazy_work, realtime = IS_ENABLED(CONFIG_PREEMPT_RT_FULL);
 
-	/* Only queue if not already pending */
-	if (!irq_work_claim(work))
-		return false;
-
-	/* Queue the entry and raise the IPI if needed. */
-	preempt_disable();
-
 	lazy_work = work->flags & IRQ_WORK_LAZY;
 
+	/* If the work is "lazy", handle it from next tick if any */
 	if (lazy_work || (realtime && !(work->flags & IRQ_WORK_HARD_IRQ)))
 		list = this_cpu_ptr(&lazy_list);
 	else
@@ -118,12 +75,65 @@ bool irq_work_queue(struct irq_work *work)
 		if (!lazy_work || tick_nohz_tick_stopped())
 			arch_irq_work_raise();
 	}
+}
 
+/* Enqueue the irq work @work on the current CPU */
+bool irq_work_queue(struct irq_work *work)
+{
+	/* Only queue if not already pending */
+	if (!irq_work_claim(work))
+		return false;
+
+	/* Queue the entry and raise the IPI if needed. */
+	preempt_disable();
+	__irq_work_queue_local(work);
 	preempt_enable();
 
 	return true;
 }
 EXPORT_SYMBOL_GPL(irq_work_queue);
+
+/*
+ * Enqueue the irq_work @work on @cpu unless it's already pending
+ * somewhere.
+ *
+ * Can be re-enqueued while the callback is still in progress.
+ */
+bool irq_work_queue_on(struct irq_work *work, int cpu)
+{
+#ifndef CONFIG_SMP
+	return irq_work_queue(work);
+
+#else /* CONFIG_SMP: */
+	/* All work should have been flushed before going offline */
+	WARN_ON_ONCE(cpu_is_offline(cpu));
+
+	/* Only queue if not already pending */
+	if (!irq_work_claim(work))
+		return false;
+
+	preempt_disable();
+	if (cpu != smp_processor_id()) {
+		struct llist_head *list;
+
+		/* Arch remote IPI send/receive backend aren't NMI safe */
+		WARN_ON_ONCE(in_nmi());
+		if (IS_ENABLED(CONFIG_PREEMPT_RT_FULL) && !(work->flags & IRQ_WORK_HARD_IRQ))
+			list = &per_cpu(lazy_list, cpu);
+		else
+			list = &per_cpu(raised_list, cpu);
+
+		if (llist_add(&work->llnode, list))
+			arch_send_call_function_single_ipi(cpu);
+	} else {
+		__irq_work_queue_local(work);
+	}
+	preempt_enable();
+
+	return true;
+#endif /* CONFIG_SMP */
+}
+
 
 bool irq_work_needs_cpu(void)
 {
