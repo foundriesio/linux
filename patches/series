@@ -430,7 +430,6 @@ panic-disable-random-on-rt.patch
 x86-stackprot-no-random-on-rt.patch
 powerpc-stackprotector-work-around-stack-guard-init-.patch
 random-make-it-work-on-rt.patch
-random-avoid-preempt_disable-ed-section.patch
 
 # HOTPLUG
 cpu-hotplug--Implement-CPU-pinning.patch
