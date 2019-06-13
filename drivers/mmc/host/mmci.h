@@ -401,6 +401,7 @@ struct mmci_host {
 	struct mmci_platform_data *plat;
 	struct mmci_host_ops	*ops;
 	struct variant_data	*variant;
+	void			*variant_priv;
 	struct pinctrl		*pinctrl;
 	struct pinctrl_state	*pins_default;
 	struct pinctrl_state	*pins_opendrain;
