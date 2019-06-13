@@ -1456,8 +1456,10 @@ static void stm32_serial_enable_wakeup(struct uart_port *port, bool enable)
 		val |= USART_CR3_WUS_START_BIT | USART_CR3_WUFIE;
 		writel_relaxed(val, port->membase + ofs->cr3);
 		stm32_set_bits(port, ofs->cr1, BIT(cfg->uart_enable_bit));
+		enable_irq_wake(stm32_port->wakeirq);
 	} else {
 		stm32_clr_bits(port, ofs->cr1, USART_CR1_UESM);
+		disable_irq_wake(stm32_port->wakeirq);
 	}
 }
 
@@ -1465,23 +1467,9 @@ static int stm32_serial_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
 	struct stm32_port *stm32_port = to_stm32_port(port);
-	struct tty_struct *tty = port->state->port.tty;
 
-	if (tty) {
-		struct device *tty_dev = tty->dev;
-
-		if (tty_dev && (device_may_wakeup(tty_dev)
-				!= device_may_wakeup(dev))) {
-			dev_err(port->dev,
-				"UART and TTY wakeup are not coherent\n");
-			return -EINVAL;
-		}
-	}
-
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev) || dev->power.wakeup_path)
 		stm32_serial_enable_wakeup(port, true);
-	else
-		stm32_serial_enable_wakeup(port, false);
 
 	uart_suspend_port(&stm32_usart_driver, port);
 
@@ -1493,7 +1481,7 @@ static int stm32_serial_suspend(struct device *dev)
 
 		pinctrl_select_state(dev->pins->p, stm32_port->console_pins);
 	} else {
-		if (device_may_wakeup(dev))
+		if (device_may_wakeup(dev) || dev->power.wakeup_path)
 			pinctrl_pm_select_idle_state(dev);
 		else
 			pinctrl_pm_select_sleep_state(dev);
@@ -1508,7 +1496,7 @@ static int stm32_serial_resume(struct device *dev)
 
 	pinctrl_pm_select_default_state(dev);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev) || dev->power.wakeup_path)
 		stm32_serial_enable_wakeup(port, false);
 
 	return uart_resume_port(&stm32_usart_driver, port);
