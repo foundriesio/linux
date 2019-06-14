@@ -32,6 +32,7 @@
 #define SPT_PMC_MTPMC_OFFSET			0x20
 #define SPT_PMC_MFPMC_OFFSET			0x38
 #define SPT_PMC_LTR_IGNORE_OFFSET		0x30C
+#define SPT_PMC_VRIC1_OFFSET			0x31c
 #define SPT_PMC_MPHY_CORE_STS_0			0x1143
 #define SPT_PMC_MPHY_CORE_STS_1			0x1142
 #define SPT_PMC_MPHY_COM_STS_0			0x1155
@@ -53,6 +54,7 @@
 #define SPT_PMC_LTR_SATA			0x368
 #define SPT_PMC_LTR_GBE				0x36C
 #define SPT_PMC_LTR_XHCI			0x370
+#define SPT_PMC_LTR_RESERVED			0x374
 #define SPT_PMC_LTR_ME				0x378
 #define SPT_PMC_LTR_EVA				0x37C
 #define SPT_PMC_LTR_SPC				0x380
@@ -142,6 +144,9 @@ enum ppfear_regs {
 #define SPT_PMC_BIT_MPHY_CMN_LANE2		BIT(2)
 #define SPT_PMC_BIT_MPHY_CMN_LANE3		BIT(3)
 
+#define SPT_PMC_VRIC1_SLPS0LVEN			BIT(13)
+#define SPT_PMC_VRIC1_XTALSDQDIS		BIT(22)
+
 /* Cannonlake Power Management Controller register offsets */
 #define CNP_PMC_SLPS0_DBG_OFFSET		0x10B4
 #define CNP_PMC_PM_CFG_OFFSET			0x1818
@@ -163,6 +168,7 @@ enum ppfear_regs {
 #define CNP_PMC_LTR_SATA			0x1B68
 #define CNP_PMC_LTR_GBE				0x1B6C
 #define CNP_PMC_LTR_XHCI			0x1B70
+#define CNP_PMC_LTR_RESERVED			0x1B74
 #define CNP_PMC_LTR_ME				0x1B78
 #define CNP_PMC_LTR_EVA				0x1B7C
 #define CNP_PMC_LTR_SPC				0x1B80
@@ -182,6 +188,10 @@ enum ppfear_regs {
 #define LTR_DECODED_SCALE			GENMASK(12, 10)
 #define LTR_REQ_SNOOP				BIT(15)
 #define LTR_REQ_NONSNOOP			BIT(31)
+
+#define ICL_PPFEAR_NUM_ENTRIES			9
+#define ICL_NUM_IP_IGN_ALLOWED			20
+#define ICL_PMC_LTR_WIGIG			0x1BFC
 
 struct pmc_bit_map {
 	const char *name;
@@ -215,6 +225,7 @@ struct pmc_reg_map {
 	const struct pmc_bit_map *pll_sts;
 	const struct pmc_bit_map **slps0_dbg_maps;
 	const struct pmc_bit_map *ltr_show_sts;
+	const struct pmc_bit_map *msr_sts;
 	const u32 slp_s0_offset;
 	const u32 ltr_ignore_offset;
 	const int regmap_length;
@@ -224,6 +235,7 @@ struct pmc_reg_map {
 	const int pm_read_disable_bit;
 	const u32 slps0_dbg_offset;
 	const u32 ltr_ignore_max;
+	const u32 pm_vric1_offset;
 };
 
 /**
