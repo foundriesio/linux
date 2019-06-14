@@ -49,7 +49,7 @@ struct snd_usb_work_q {
 
 struct snd_usb_work_q *snd_wq = NULL;
 
-int tc_snd_set_cur(struct work_struct *work);
+void tc_snd_set_cur(struct work_struct *work);
 #endif
 
 
@@ -1252,7 +1252,7 @@ rep_err:
 }
 
 #if defined(__TC_IPOD_ERR__)
-int tc_snd_set_cur(struct work_struct *work)
+void tc_snd_set_cur(struct work_struct *work)
 {
 	struct snd_usb_work_q *wq = container_of(work, struct snd_usb_work_q, wq);
 	struct snd_usb_substream *subs = wq->subs;
@@ -1277,8 +1277,8 @@ int tc_snd_set_cur(struct work_struct *work)
 			USB_TYPE_CLASS | USB_RECIP_ENDPOINT | USB_DIR_OUT,
 			UAC_EP_CS_ATTR_SAMPLE_RATE << 8, ep,
 			data, sizeof(data));
-
-	return err;
+	if (err)
+		dev_err(&subs->dev->dev, "%s : snd_usb_ctl_msg FAIL!!\n", __func__);
 }
 #endif
 

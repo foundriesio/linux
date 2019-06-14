@@ -732,14 +732,14 @@ static void iap2_ext_acc_function_unbind(struct usb_configuration *c, struct usb
 }
 
 /* Notify start of EA gadget */
-static void iap2_ext_acc_start_work(struct delayed_work *data)
+static void iap2_ext_acc_start_work(struct work_struct *work)
 {
 	struct iap2_ext_acc_dev *dev = NULL;
 	struct miscdevice *misc_dev;
 	char *envp[2] = { "EA=START", NULL };
 
 	EA_DBG("%s\n",__func__);
-	dev = (struct iap2_ext_acc_dev *)container_of(data, struct iap2_ext_acc_dev, start_work);
+	dev = (struct iap2_ext_acc_dev *)container_of(work, struct iap2_ext_acc_dev, start_work.work);
 	if(dev == NULL)
 	{
 		printk("\x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
@@ -759,7 +759,7 @@ static void iap2_ext_acc_start_work(struct delayed_work *data)
 }
 
 /* Notify alternate setting change */
-static void iap2_ext_acc_alt_change(struct delayed_work *data)
+static void iap2_ext_acc_alt_change(struct work_struct *work)
 {
 	struct iap2_ext_acc_dev *dev = NULL;
 	struct miscdevice *misc_dev;
@@ -768,7 +768,7 @@ static void iap2_ext_acc_alt_change(struct delayed_work *data)
 
 	EA_DBG("%s\n",__func__);
 
-	dev = (struct iap2_ext_acc_dev *)container_of(data, struct iap2_ext_acc_dev, alt_change_work);
+	dev = (struct iap2_ext_acc_dev *)container_of(work, struct iap2_ext_acc_dev, alt_change_work.work);
 	if(dev == NULL)
 	{
 		printk("\x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
