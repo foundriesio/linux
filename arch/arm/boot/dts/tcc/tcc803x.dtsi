@@ -1292,7 +1292,24 @@
 				   <GIC_SPI 11 0>,
 				   <GIC_SPI 12 0>,
 				   <GIC_SPI 13 0>,
-				   <GIC_SPI 14 0>;
+				   <GIC_SPI 14 0>,
+				   <GIC_SPI 15 0>,
+				   <GIC_SPI 16 0>,
+				   <GIC_SPI 17 0>,
+				   <GIC_SPI 18 0>,
+				   <GIC_SPI 19 0>,
+				   <GIC_SPI 20 0>,
+				   <GIC_SPI 21 0>,
+				   <GIC_SPI 22 0>,
+				   <GIC_SPI 23 0>,
+				   <GIC_SPI 24 0>,
+				   <GIC_SPI 25 0>,
+				   <GIC_SPI 26 0>,
+				   <GIC_SPI 27 0>,
+				   <GIC_SPI 28 0>,
+				   <GIC_SPI 29 0>,
+				   <GIC_SPI 30 0>,
+				   <GIC_SPI 31 0>;
 	};
 
 	cmbox: mbox@19000000 {
