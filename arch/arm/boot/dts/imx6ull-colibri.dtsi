@@ -11,12 +11,41 @@
 		ethernet1 = &fec1;
 	};
 
+	memory {
+		reg = <0x80000000 0x10000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x08000000>;
+			linux,cma-default;
+		};
+	};
+
+	cpus {
+		cpu0: cpu@0 {
+			dc-supply = <&reg_soc_in>;
+		};
+	};
+
 	bl: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		enable-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
+	};
+
+	pxp_v4l2_out {
+		compatible = "fsl,imx6ul-pxp-v4l2", "fsl,imx6sx-pxp-v4l2", \
+			     "fsl,imx6sl-pxp-v4l2";
+		status = "okay";
 	};
 
 	reg_module_3v3: regulator-module-3v3 {
@@ -47,6 +76,26 @@
 		states = <1800000 0x1 3300000 0x0>;
 		vin-supply = <&reg_module_3v3>;
 	};
+
+	reg_soc_in: regulator-soc-in {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <1275000>;
+		regulator-max-microvolt = <1275000>;
+		regulator-name = "soc_in";
+		regulator-type = "voltage";
+		vin-supply = <&reg_module_3v3>;
+	};
+
+	reg_eth_phy: regulator-eth-phy {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-name = "eth_phy";
+		regulator-type = "voltage";
+		vin-supply = <&reg_module_3v3>;
+		clocks = <&clks IMX6UL_CLK_ENET2_REF_125M>;
+		startup-delay-us = <150000>;
+	};
 };
 
 &adc1 {
@@ -67,6 +116,7 @@
 	pinctrl-1 = <&pinctrl_enet2_sleep>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy1>;
+	phy-supply = <&reg_eth_phy>;
 	status = "okay";
 
 	mdio {
@@ -79,6 +129,14 @@
 			reg = <2>;
 		};
 	};
+};
+
+&gpc {
+	fsl,cpu_pupscr_sw2iso = <0x1>;
+	fsl,cpu_pupscr_sw = <0x0>;
+	fsl,cpu_pdnscr_iso2sw = <0x1>;
+	fsl,cpu_pdnscr_iso = <0x1>;
+	fsl,ldo-bypass = <0>; /* DCDC, ldo-enable */
 };
 
 &gpmi {
@@ -156,6 +214,10 @@
 	#pwm-cells = <3>;
 };
 
+&pxp {
+	status = "okay";
+};
+
 &sdma {
 	status = "okay";
 };
@@ -167,14 +229,14 @@
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1 &pinctrl_uart1_ctrl1>;
-	uart-has-rtscts;
+	fsl,uart-has-rtscts;
 	fsl,dte-mode;
 };
 
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
-	uart-has-rtscts;
+	fsl,uart-has-rtscts;
 	fsl,dte-mode;
 };
 
@@ -208,6 +270,7 @@
 };
 
 &iomuxc {
+	imx6ull-colibri {
 	pinctrl_can_int: canint-grp {
 		fsl,pins = <
 			MX6UL_PAD_ENET1_TX_DATA1__GPIO2_IO04	0X14 /* SODIMM 73 */
@@ -523,7 +586,7 @@
 			MX6UL_PAD_CSI_HSYNC__USDHC2_CMD		0x17059
 			MX6UL_PAD_CSI_VSYNC__USDHC2_CLK		0x17059
 
-			MX6UL_PAD_GPIO1_IO03__OSC32K_32K_OUT	0x14
+			MX6UL_PAD_GPIO1_IO03__REF_CLK_32K	0x14
 		>;
 	};
 
@@ -532,6 +595,7 @@
 			MX6UL_PAD_LCD_RESET__WDOG1_WDOG_ANY    0x30b0
 		>;
 	};
+	}; /* imx6ull { */
 };
 
 &iomuxc_snvs {
@@ -584,6 +648,12 @@
 	pinctrl_snvs_usdhc1_cd: snvs-usdhc1-cd-grp {
 		fsl,pins = <
 			MX6ULL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x1b0b0 /* CD */
+		>;
+	};
+
+	pinctrl_snvs_cd_usdhc1_sleep: snvs-usdhc1-cd-grp-slp {
+		fsl,pins = <
+			MX6ULL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x0
 		>;
 	};
 
