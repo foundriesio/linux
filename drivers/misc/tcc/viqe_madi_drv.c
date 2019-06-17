@@ -379,7 +379,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 				}
 
 				VIQE_MADI_Change_Cfg();
-				FieldInsertionCtrl();	//alank
+				//FieldInsertionCtrl();	//alank
 
 				dprintk("TCC_VIQE_MADI_GET_RESULT(0x%x) :: [%d] = 0x%x/0x%x \n", viqe_madi->irq_status, viqe_madi->info->first_frame, result.dest_Yaddr, result.dest_Uaddr);
 

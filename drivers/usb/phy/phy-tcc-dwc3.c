@@ -213,15 +213,16 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
     {
     	pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
         writel((pcfg2|(1<<9)), &USBPHYCFG->FPHY_PCFG2);
-        mdelay(50);
+        mdelay(100);
         writel(readl(&USBPHYCFG->FPHY_PCFG2) & ~((1<<9)|(1<<8)) , &USBPHYCFG->FPHY_PCFG2);
         //printk("pcfg2 = 0x%08x\n", readl(&USBPHYCFG->FPHY_PCFG2));
     }
 
     writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
-    udelay(1);
+    udelay(10);
     writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
-
+	printk("%s:Enable chg det!!!\n", __func__);
+	//writel(readl(&USBPHYCFG->FPHY_PCFG2) |(1<<8) , &USBPHYCFG->FPHY_PCFG2); //enable chg det
 }
 
 static irqreturn_t tcc_dwc3_chg_irq(int irq, void *data)

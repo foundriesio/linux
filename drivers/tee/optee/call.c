@@ -506,20 +506,15 @@ int optee_shm_register(struct tee_context *ctx, struct tee_shm *shm,
 	phys_addr_t msg_parg;
 	int rc = 0;
 
-	if (!num_pages) {
-		pr_err("num page error, num_pages = %d\n", num_pages);
+	if (!num_pages)
 		return -EINVAL;
-	}
 
 	pages_array = optee_allocate_pages_array(num_pages);
-	if (!pages_array) {
-		pr_err("allocate pages array failed\n");
+	if (!pages_array)
 		return -ENOMEM;
-	}
 
 	shm_arg = get_msg_arg(ctx, 1, &msg_arg, &msg_parg);
 	if (IS_ERR(shm_arg)) {
-		pr_err("get msg arg failed\n");
 		rc = PTR_ERR(shm_arg);
 		goto out;
 	}

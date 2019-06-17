@@ -283,10 +283,9 @@ static int tcc_mbox_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined(CONFIG_PM)
-int mbox_audio_suspend(struct platform_device *pdev, pm_message_t state)
+int tcc_mbox_suspend(struct device *dev)
 {
-	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
+	//struct tcc_mbox_device *mdev = dev_get_drvdata(dev);
 
 	/* disable received interrupt */
 	//writel_relaxed(readl_relaxed(mdev->mbox_base + MBOX_CTR) & ~0x10, mdev->mbox_base + MBOX_CTR);
@@ -294,9 +293,9 @@ int mbox_audio_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-int mbox_audio_resume(struct platform_device *pdev)
+int tcc_mbox_resume(struct device *dev)
 {
-	struct tcc_mbox_device *mdev = platform_get_drvdata(pdev);
+	struct tcc_mbox_device *mdev = dev_get_drvdata(dev);
 
 	/* flush cmd data */
 	//writel_relaxed(0xc0, mdev->mbox_base + MBOX_CTR);
@@ -306,7 +305,10 @@ int mbox_audio_resume(struct platform_device *pdev)
 
 	return 0;
 }
-#endif
+
+static const struct dev_pm_ops tcc_mbox_pm = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(tcc_mbox_suspend, tcc_mbox_resume)
+};
 
 static struct platform_driver tcc_mbox_driver = {
 	.probe = tcc_mbox_probe,
@@ -314,12 +316,9 @@ static struct platform_driver tcc_mbox_driver = {
 	.driver =
 		{
 			.name = "tcc-mailbox",
+			.pm = &tcc_mbox_pm,
 			.of_match_table = of_match_ptr(tcc_mbox_of_match),
 		},
-#if defined(CONFIG_PM)
-	.suspend = mbox_audio_suspend,
-	.resume = mbox_audio_resume,
-#endif
 };
 
 static int __init tcc_mbox_init(void)

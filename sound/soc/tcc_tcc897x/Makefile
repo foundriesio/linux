@@ -34,6 +34,7 @@ obj-$(CONFIG_SND_SOC_TCC_BOARD_WM8524) += snd-soc-tcc-board-wm8524.o
 obj-$(CONFIG_SND_SOC_TCC_BOARD_WM8731) += snd-soc-tcc-board-wm8731.o
 obj-$(CONFIG_SND_SOC_TCC_BOARD_WM8581) += snd-soc-tcc-board-wm8581.o
 
+snd-soc-tcc8970-board-stb-objs := tcc8970_board_stb.o
 snd-soc-tcc8971-board-lcn10-objs := tcc8971_board_lcn_10.o
 snd-soc-tcc8971-board-lcn20-objs := tcc8971_board_lcn_20.o
 snd-soc-tcc8971-board-lcn30-objs := tcc8971_board_lcn_30.o
@@ -41,6 +42,7 @@ snd-soc-tcc5700-board-hd-dmb-objs := tcc5700_board_hd-dmb.o
 snd-soc-tcc8021-board-evm-objs := tcc8021_board_evm.o
 snd-soc-tcc8021-board-evm20-objs := tcc8021_board_evm_20.o
 
+obj-$(CONFIG_SND_SOC_TCC8970_BOARD_STB) += snd-soc-tcc8970-board-stb.o
 obj-$(CONFIG_SND_SOC_TCC8971_BOARD_LCN1) += snd-soc-tcc8971-board-lcn10.o
 obj-$(CONFIG_SND_SOC_TCC8971_BOARD_LCN2) += snd-soc-tcc8971-board-lcn20.o
 obj-$(CONFIG_SND_SOC_TCC8971_BOARD_LCN3) += snd-soc-tcc8971-board-lcn30.o

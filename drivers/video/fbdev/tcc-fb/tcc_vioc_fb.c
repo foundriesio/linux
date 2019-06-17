@@ -261,7 +261,7 @@ static ump_dd_handle ump_wrapped_buffer[CONFIG_FB_TCC_DEVS_MAX][3];
 #endif
 
 static struct lcd_panel *lcd_panel;
-static struct lcd_panel *hdmi_ext_panel = NULL;
+static struct lcd_panel *display_ext_panel = NULL;
 
 static int lcd_video_started = 0;
 
@@ -1115,9 +1115,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
                                                 if(!skip_activate) {
         					        tccfb_extoutput_activate(info->node, STAGE_FB);
                                                 }
-                                                if(hdmi_ext_panel != NULL){
-                                                        if(hdmi_ext_panel->set_power != NULL)
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 3/* turn on by external app */, NULL);
+                                                if(display_ext_panel != NULL){
+                                                        if(display_ext_panel->set_power != NULL)
+                                                                display_ext_panel->set_power(display_ext_panel, 3/* turn on by external app */, NULL);
                                                 }
         				} else {
         				        pr_err("hdmi timing setting : can't find HDMI voic display block \n");
@@ -1139,9 +1139,9 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
         					pdp_data = &ptccfb_info->pdata.Sdp_data;
 
         				if(pdp_data != NULL){
-                                                if(hdmi_ext_panel != NULL){
-                                                        if(hdmi_ext_panel->set_power != NULL) {
-                                                                hdmi_ext_panel->set_power(hdmi_ext_panel, 2 /* turn off by external app */, NULL);
+                                                if(display_ext_panel != NULL){
+                                                        if(display_ext_panel->set_power != NULL) {
+                                                                display_ext_panel->set_power(display_ext_panel, 2 /* turn off by external app */, NULL);
                                                         }
                                                 }
                                                 #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
@@ -1404,14 +1404,14 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				return 0;
 			}
                         pdp_data->DispOrder = DD_SUB;
+			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo))) {
+				return -EFAULT;
+			}
 
 			if(!pdp_data->FbPowerState) {
 				return 0;
 			}
 
-			if (copy_from_user((void*)&sc_info, (const void*)arg, sizeof(external_fbioput_vscreeninfo))) {
-				return -EFAULT;
-			}
 
 			memset(&var, 0, sizeof(struct fb_var_screeninfo));
 			var.xres = sc_info.width;
@@ -2746,26 +2746,13 @@ static int tccfb_probe(struct platform_device *pdev)
 
 	pr_info("\x1b[1;38m   LCD panel is %s %s %d x %d \x1b[0m \n", lcd_panel->manufacturer, lcd_panel->name, lcd_panel->xres, lcd_panel->yres);
 
-        if(hdmi_ext_panel != NULL) {
+        if(display_ext_panel != NULL) {
                 pr_info("\x1b[1;38m   Extended panel is %s %s %d x %d \x1b[0m \n",
-                        hdmi_ext_panel->manufacturer, hdmi_ext_panel->name, hdmi_ext_panel->xres, hdmi_ext_panel->yres);
+                        display_ext_panel->manufacturer, display_ext_panel->name, display_ext_panel->xres, display_ext_panel->yres);
         }
 
     screen_width      = lcd_panel->xres;
     screen_height     = lcd_panel->yres;
-
-#if defined(CONFIG_TCC_HDMI_UI_SIZE_1280_720)
-    if(tcc_display_data.resolution == 1)
-    {
-        screen_width      = 720;
-        screen_height     = 576;
-    }
-    else if(tcc_display_data.resolution == 2)
-    {
-        screen_width 	  = 800;
-        screen_height 	  = 480;
-    }
-#endif
 
 	printk("%s, screen_width=%d, screen_height=%d \n", __func__, screen_width, screen_height);
 
@@ -2969,8 +2956,8 @@ static int tccfb_probe(struct platform_device *pdev)
 	if(lcd_panel->init)
 		lcd_panel->init(lcd_panel, &info->pdata.Mdp_data);
 
-        if(hdmi_ext_panel != NULL && hdmi_ext_panel->init != NULL) {
-		hdmi_ext_panel->init(hdmi_ext_panel, &info->pdata.Sdp_data);
+        if(display_ext_panel != NULL && display_ext_panel->init != NULL) {
+		display_ext_panel->init(display_ext_panel, &info->pdata.Sdp_data);
         }
 
 	tca_fb_init(info);
@@ -3046,18 +3033,18 @@ struct lcd_panel *tccfb_get_panel(void)
 EXPORT_SYMBOL(tccfb_get_panel);
 
 
-int tccfb_register_hdmi_ext_panel(struct lcd_panel *panel)
+int tccfb_register_ext_panel(struct lcd_panel *panel)
 {
         pr_info("%s\r\n", __func__);
-        hdmi_ext_panel = panel;
+        display_ext_panel = panel;
         return 1;
 }
-EXPORT_SYMBOL(tccfb_register_hdmi_ext_panel);
+EXPORT_SYMBOL(tccfb_register_ext_panel);
 
 
 struct lcd_panel *tccfb_get_hdmi_ext_panel(void)
 {
-        return hdmi_ext_panel;
+        return display_ext_panel;
 }
 EXPORT_SYMBOL(tccfb_get_hdmi_ext_panel);
 
@@ -3066,7 +3053,7 @@ int tcc_fb_runtime_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
+	tca_fb_suspend(dev, lcd_panel, display_ext_panel);
 
 	return 0;
 }
@@ -3075,7 +3062,7 @@ int tcc_fb_runtime_resume(struct device *dev)
 {
 	printk(" %s \n",__func__);
 
-	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
+	tca_fb_resume(dev, lcd_panel, display_ext_panel);
 
 	return 0;
 }
@@ -3086,7 +3073,7 @@ static int tccfb_suspend(struct device *dev)
 {
 	printk(" %s \n",__func__);
 #ifndef CONFIG_PM
-	tca_fb_suspend(dev, lcd_panel, hdmi_ext_panel);
+	tca_fb_suspend(dev, lcd_panel, display_ext_panel);
 #endif//
 	return 0;
 }
@@ -3094,7 +3081,7 @@ static int tccfb_suspend(struct device *dev)
 static int tccfb_resume(struct device *dev)
 {
 #ifndef CONFIG_PM
-	tca_fb_resume(dev, lcd_panel, hdmi_ext_panel);
+	tca_fb_resume(dev, lcd_panel, display_ext_panel);
 #endif//
 	return 0;
 }

@@ -69,7 +69,7 @@ Agreement between Telechips and Company.
   * If you do not use hot plug detect pin of HDMI port, please unmask the below define. */
 //#define CONFIG_TCCFB_CONTROL_HDMIPANEL_POWER
 
-extern int tccfb_register_hdmi_ext_panel(struct lcd_panel *panel);
+extern int tccfb_register_ext_panel(struct lcd_panel *panel);
 extern void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int specific_pclk);
 
 struct adv7613_dev {
@@ -513,7 +513,7 @@ static int hdmi_adv7613_probe(struct i2c_client *client, const struct i2c_device
         adv7613_panel.panel_data = (void*)dev;
 #ifdef CONFIG_FB_VIOC
         if(hdmi_ext_panel) {
-                tccfb_register_hdmi_ext_panel(&adv7613_panel);
+                tccfb_register_ext_panel(&adv7613_panel);
         } else {
                 tccfb_register_panel(&adv7613_panel);
                 adv7613_set_power(&adv7613_panel, 1, NULL);

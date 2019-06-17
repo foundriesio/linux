@@ -46,6 +46,15 @@ config SND_SOC_TCC_BOARD_DUMMY
 	  Say Y if you want to add support for SoC audio on Telechips
 	  TCC (DUMMY).
 
+config SND_SOC_TCC8970_BOARD_STB
+	tristate "TCC8970 STB"
+	select SND_SOC_WM8524
+	select SND_SOC_DUMMY
+	depends on SND_SOC_TCC && ARCH_TCC897X
+
+	help
+	  Say Y if you want to add support for SoC audio on TCC8970 STB(WM8524)
+
 config SND_SOC_TCC8971_BOARD_LCN1
 	tristate "TCC8971 LCN 1.0"
 	select SND_SOC_WM8731

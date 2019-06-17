@@ -544,7 +544,7 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * will be '0' when the core is reset. Application needs to set it
 	 * to '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
+	//if (dwc->revision > DWC3_REVISION_194A)
 		//reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 
 	if (dwc->u2ss_inp3_quirk)
@@ -571,9 +571,10 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	if (dwc->tx_de_emphasis_quirk)
 		reg |= DWC3_GUSB3PIPECTL_TX_DEEPH(dwc->tx_de_emphasis);
 
+#ifndef CONFIG_TCC_EH_ELECT_TST
 	if (dwc->dis_u3_susphy_quirk)
 		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
-
+#endif
 	if (dwc->dis_del_phy_power_chg_quirk)
 		reg &= ~DWC3_GUSB3PIPECTL_DEPOCHANGE;
 
@@ -630,12 +631,13 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	 * be '0' when the core is reset. Application needs to set it to
 	 * '1' after the core initialization is completed.
 	 */
-	if (dwc->revision > DWC3_REVISION_194A)
+#ifndef CONFIG_TCC_EH_ELECT_TST
+	//if (dwc->revision > DWC3_REVISION_194A)
 		//reg |= DWC3_GUSB2PHYCFG_SUSPHY;
 
 	if (dwc->dis_u2_susphy_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
-
+#endif
 	if (dwc->dis_enblslpm_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
 
@@ -854,6 +856,12 @@ static int dwc3_core_init(struct dwc3 *dwc)
 
 		dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
 	}
+
+#ifdef CONFIG_TCC_EH_ELECT_TST
+	reg = dwc3_readl(dwc->regs, DWC3_GUCTL2);
+	reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed. 
+	dwc3_writel(dwc->regs, DWC3_GUCTL2, reg);
+#endif
 
 	return 0;
 

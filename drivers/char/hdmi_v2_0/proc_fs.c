@@ -611,9 +611,65 @@ ssize_t proc_read_phy_regs(struct file *filp, char __user *usr_buf, size_t cnt, 
                 }
                 devm_kfree(dev->parent_dev, phy_regs_buf);
         }
+        return size
+}
+#endif
+
+#if defined(CONFIG_TCC_RUNTIME_VSIF)
+extern int hdmi_api_vsif_update(productParams_t *productParams);
+ssize_t proc_write_vsif(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
+        ssize_t size;
+        int vsif_vic;
+        productParams_t productParams;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+        char *vsif_vic_buf;
+
+        do {
+                if(dev == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+
+                vsif_vic_buf = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+                if (vsif_vic_buf == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+
+                memset(&productParams, 0, sizeof(productParams));
+                size = simple_write_to_buffer(vsif_vic_buf, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                vsif_vic_buf[cnt] = '\0';
+
+                sscanf(vsif_vic_buf, "%u", &vsif_vic);
+                devm_kfree(dev->parent_dev, vsif_vic_buf);
+
+                productParams.mOUI = 0x00030C00;
+                if(vsif_vic > 0 && vsif_vic <= 4) {
+                        /* PB[4] */
+                        productParams.mVendorPayload[productParams.mVendorPayloadLength++] = 1 << 5;
+                        /* PB[5] */
+                        productParams.mVendorPayload[productParams.mVendorPayloadLength++] = vsif_vic;
+                        /*
+                         * hdmi_vic (1) - 3840x2160p30Hz hdmi2.0 vic 95
+                         * hdmi_vic (2) - 3840x2160p25Hz hdmi2.0 vic 94
+                         * hdmi_vic (3) - 3840x2160p24Hz hdmi2.0 vic 93
+                         * hdmi_vic (4) - 4096x2160p24Hz hdmi2.0 vic 98 */
+                }
+                hdmi_api_vsif_update(&productParams);
+        }
+        while(0);
+
         return size;
 }
 #endif
+
 
 
 #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
@@ -834,6 +890,16 @@ static const struct file_operations proc_fops_phy_regs = {
 };
 #endif
 
+#if defined(CONFIG_TCC_RUNTIME_VSIF)
+static const struct file_operations proc_fops_vsif = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_vsif,
+};
+#endif
+
+
 #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
 static const struct file_operations proc_fops_dv_vsif = {
         .owner   = THIS_MODULE,
@@ -852,7 +918,6 @@ static const struct file_operations proc_fops_audio_channel_mux = {
         .read    = proc_read_audio_channel_mux,
 };
 #endif
-
 
 int
 proc_open(struct inode *inode, struct file *filp){
@@ -971,6 +1036,16 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/phy_regs\n", FUNC_NAME);
         }
         #endif
+
+        #if defined(CONFIG_TCC_RUNTIME_VSIF)
+        dev->hdmi_proc_vsif = proc_create_data("vsif", S_IFREG | S_IWUGO,
+                        dev->hdmi_proc_dir, &proc_fops_vsif, dev);
+        if(dev->hdmi_proc_vsif == NULL){
+                pr_err("%s:Could not create file system @"
+                                " /proc/hdmi_tx/vsif\n", FUNC_NAME);
+        }
+        #endif
+
 
         #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)
         dev->hdmi_proc_dv_vsif = proc_create_data("dv_vsif", S_IFREG | S_IWUGO,

@@ -75,6 +75,11 @@
 #define FIX_TCC_MCLK_FS 256 //We support 256, 512, 1024 fs.
 #endif
 
+#if defined(CONFIG_SND_SOC_TCC8970_BOARD_STB)
+#define MAX_TCC_MCLK_FS 256	//Max. of DAI MCLK FS
+#define FIX_TCC_MCLK_FS 256 //We support 256, 512, 1024 fs.
+#endif
+
 struct tcc_i2s_backup_reg {
 	unsigned int reg_damr;
 	unsigned int reg_davc;

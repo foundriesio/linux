@@ -41,7 +41,7 @@ config SCALER_TEST
 		Telechips testscaler driver
 
 config GPIO_TCC_SAMPLE
-        default y
+        default n
         bool "TCC gpio sample driver"
         help
 		Telechips gpio sample driver.

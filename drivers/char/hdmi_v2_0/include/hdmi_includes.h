@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.3.0d"
+#define HDMI_DRV_VERSION        "4.14_1.3.1d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.3.0"
+#define HDMI_DRV_VERSION        "4.14_1.3.1"
 #endif
 
 // HDMI COMPONENTS
@@ -271,6 +271,10 @@ struct hdmi_tx_dev{
         /** Supports variable PHY settings */
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
         struct proc_dir_entry   *hdmi_proc_phy_regs;
+        #endif
+
+        #if defined(CONFIG_TCC_RUNTIME_VSIF)
+        struct proc_dir_entry   *hdmi_proc_vsif;
         #endif
 
         #if defined(CONFIG_TCC_RUNTIME_DV_VSIF)

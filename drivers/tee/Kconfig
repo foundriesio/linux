@@ -7,6 +7,7 @@ config TEE
 	help
 	  This implements a generic interface towards a Trusted Execution
 	  Environment (TEE).
+	default y
 
 if TEE
 

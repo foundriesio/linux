@@ -1259,7 +1259,7 @@ void _voic_set_panel(void __iomem *reg_VirtAddr, void __iomem *meta_VirtAddr, un
 			value	&= ~(0xFFFF<<0); // metadata length
 			if(vioc_v_dv_get_mode() != DV_STD)
 				value |= (0x1<<31);
-			value	|= 	(((*(volatile unsigned char *)(meta_VirtAddr+3))<<4) | ((*(volatile unsigned char *)(meta_VirtAddr+4))<<0));
+			value	|= 	(((*(volatile unsigned char *)(meta_VirtAddr+3))<<8) | ((*(volatile unsigned char *)(meta_VirtAddr+4))<<0));
 		}
 		//pVPANEL->out.bioKsuds16.value	= value;		// 1d8
 		__dv_reg_w(value, pVPANEL+0x01d8);
@@ -1419,9 +1419,10 @@ void _voic_set_metadata(unsigned int meta_PhyAddr, void __iomem *meta_VirtAddr, 
 		//value	= pVPANEL->out.bioKsuds16.value;
 		value   = __dv_reg_r(pVPANEL+0x01d8);
 		value	&= ~(0xFFFF<<0);
-		value	|= 	(((*(volatile unsigned char *)(meta_VirtAddr+3))<<4) | ((*(volatile unsigned char *)(meta_VirtAddr+4))<<0));
+		value	|= 	(((*(volatile unsigned char *)(meta_VirtAddr+3))<<8) | ((*(volatile unsigned char *)(meta_VirtAddr+4))<<0));
 		//pVPANEL->out.bioKsuds16.value	= value;
 		__dv_reg_w(value, pVPANEL+0x01d8);
+		dprintk("md len : 0x%x \n", value);
 
         VIOC_CONFIG_DV_Metadata_Enable(meta_PhyAddr, 0);
     }
