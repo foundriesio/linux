@@ -544,6 +544,9 @@ static void __init setup_boot_command_line(void)
 	strlcpy(boot_command_line, strstrip(COMMAND_LINE),
 		ARCH_COMMAND_LINE_SIZE);
 
+	if (is_prot_virt_guest())
+		return;
+
 	/* append IPL PARM data to the boot command line */
 	if (MACHINE_IS_VM)
 		append_to_cmdline(append_ipl_vmparm);
