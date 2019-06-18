@@ -42,9 +42,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.0.10"
-
-//#define OPTEE_BASE_HDCP
+#define HDCP_DRV_VERSION "1.1.0"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -111,11 +109,11 @@ typedef struct {
 	uint8_t		rxsense_status;
 
 	uintptr_t	hpi_paddr;
-	dma_addr_t	esm_paddr;
-	void *		esm_vaddr;
-	uint32_t	esm_size;
+	dma_addr_t	code_paddr;
+	void *		code_vaddr;
 	uint32_t	code_size;
-	uint32_t	data_offs;
+	dma_addr_t	data_paddr;
+	void *		data_vaddr;
 	uint32_t	data_size;
 
 	struct hdmi_tx_dev *dev;
@@ -134,9 +132,8 @@ typedef struct {
 	struct wake_lock wakelock;
 #endif
 	bool		initialized;
-	bool		code_loaded;
 
-#if defined(CONFIG_OPTEE)
+#ifdef CONFIG_OPTEE
 	tee_client_context context;
 	struct tee_client_params *tee_params;
 #endif
@@ -332,6 +329,11 @@ hdcp_isr_exit:
 	if (esm->hdcp_status == HDCP_IDLE)
 		dwc_avmute(esm, 0, 0);
 
+#ifdef CONFIG_OPTEE
+	if (esm->context)
+		tee_client_execute_command(esm->context, NULL, TEE_CMD_SET_OPC_HDCP_VER);
+#endif
+
 	return IRQ_HANDLED;
 }
 
@@ -371,9 +373,9 @@ static long get_meminfo(esm_device *esm, void __user *arg)
 {
 	struct esm_ioc_meminfo info = {
 		.hpi_base = (uint32_t)esm->hpi_paddr,
-		.code_base = (uint32_t)esm->esm_paddr,
+		.code_base = (uint32_t)esm->code_paddr,
 		.code_size = esm->code_size,
-		.data_base = (uint32_t)esm->esm_paddr + esm->data_offs,
+		.data_base = (uint32_t)esm->data_paddr,
 		.data_size = esm->data_size,
 	};
 
@@ -387,42 +389,44 @@ static long get_meminfo(esm_device *esm, void __user *arg)
 static long load_code(esm_device *esm, struct esm_ioc_code __user *arg)
 {
 	struct esm_ioc_code head;
-	int res;
+	int res = 0;
 
 	if (copy_from_user(&head, arg, sizeof head) != 0)
 		return -EFAULT;
 
 	if (head.len > esm->code_size)
 		return -ENOSPC;
-#if 0 // remove by yonghee, we need to load/unload according hdmi status
-	if (esm->code_loaded)
-		return -EBUSY;
-#endif
 
-	if (copy_from_user(esm->esm_vaddr, &arg->data, head.len) != 0)
-		return -EFAULT;
-
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
+	if (head.len) {
+		if (copy_from_user(esm->code_vaddr, &arg->data, head.len) != 0)
+			return -EFAULT;
+	}
+	else
+#ifdef CONFIG_OPTEE
 	if (esm->context) {
 		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
-		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_BUF_IN;
-		esm->tee_params->params[0].tee_client_memref.buffer = esm->esm_vaddr;
-		esm->tee_params->params[0].tee_client_memref.size = head.len;
-		res = tee_client_execute_command(esm->context, esm->tee_params,
-				TEE_CMD_LOAD_ESM_FIRMWARE);
-		if (res)
-			return res;
+		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_VALUE_OUT;
+		res = tee_client_execute_command(esm->context, esm->tee_params, TEE_CMD_LOAD_ESM_FIRMWARE);
+		if (res) {
+			printk("Failed to load ESM in TEE: ret:0x%x\n", res);
+			return -24; /* ESM_HL_ESM_FIRMWARE_NOT_EXIST  */
+		}
+		esm->code_paddr = (dma_addr_t)esm->tee_params->params[0].tee_client_value.a;
 	}
+	else
 #endif
-	esm->code_loaded = true;
-	return 0;
+	{
+		printk("Code size of ESM is zero.\n");
+		res = -EFAULT;
+	}
+
+	return res;
 }
 
 /* ESM_IOC_WRITE_DATA implementation */
 static long write_data(esm_device *esm, struct esm_ioc_data __user *arg)
 {
 	struct esm_ioc_data head;
-	int res;
 
 	if (copy_from_user(&head, arg, sizeof head) != 0)
 		return -EFAULT;
@@ -432,23 +436,9 @@ static long write_data(esm_device *esm, struct esm_ioc_data __user *arg)
 	if (esm->data_size - head.len < head.offset)
 		return -ENOSPC;
 
-	if (copy_from_user(esm->esm_vaddr + esm->data_offs + head.offset, &arg->data, head.len) != 0)
+	if (copy_from_user(esm->data_vaddr + head.offset, &arg->data, head.len) != 0)
 		return -EFAULT;
 
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
-	if (esm->context) {
-		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
-		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_BUF_IN;
-		esm->tee_params->params[0].tee_client_memref.buffer = &arg->data;
-		esm->tee_params->params[0].tee_client_memref.size = head.len;
-		esm->tee_params->params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
-		esm->tee_params->params[1].tee_client_value.a = head.offset;
-		res = tee_client_execute_command(esm->context, esm->tee_params,
-				TEE_CMD_WRITE_DATA);
-		if (res)
-			return res;
-	}
-#endif
 	return 0;
 }
 
@@ -456,7 +446,6 @@ static long write_data(esm_device *esm, struct esm_ioc_data __user *arg)
 static long read_data(esm_device *esm, struct esm_ioc_data __user *arg)
 {
 	struct esm_ioc_data head;
-	int res;
 
 	if (copy_from_user(&head, arg, sizeof head) != 0)
 		return -EFAULT;
@@ -466,29 +455,9 @@ static long read_data(esm_device *esm, struct esm_ioc_data __user *arg)
 	if (esm->data_size - head.len < head.offset)
 		return -ENOSPC;
 
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
-	if (esm->context) {
-		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
-		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_BUF_OUT;
-		esm->tee_params->params[0].tee_client_memref.buffer = &arg->data;
-		esm->tee_params->params[0].tee_client_memref.size = head.len;
-		esm->tee_params->params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
-		esm->tee_params->params[1].tee_client_value.a = head.offset;
-		res = tee_client_execute_command(esm->context, esm->tee_params,
-				TEE_CMD_READ_DATA);
-		if (res)
-			return res;
-		if (copy_to_user(&arg->data,
-			esm->tee_params->params[1].tee_client_memref.buffer, head.len) != 0)
-			return -EFAULT;
-	}
-	else
-#endif
-	{
-		if (copy_to_user(&arg->data,
-			esm->esm_vaddr + esm->data_offs + head.offset, head.len) != 0)
-			return -EFAULT;
-	}
+	if (copy_to_user(&arg->data,
+		esm->data_vaddr + head.offset, head.len) != 0)
+		return -EFAULT;
 
 	return 0;
 }
@@ -500,7 +469,6 @@ static long set_data(esm_device *esm, void __user *arg)
 		struct esm_ioc_data data;
 		unsigned char buf[sizeof(struct esm_ioc_data) + 1];
 	} u;
-	int res;
 
 	if (copy_from_user(&u.data, arg, sizeof u.buf) != 0)
 		return -EFAULT;
@@ -510,22 +478,7 @@ static long set_data(esm_device *esm, void __user *arg)
 	if (esm->data_size - u.data.len < u.data.offset)
 		return -ENOSPC;
 
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
-	if (esm->context) {
-		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
-		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
-		esm->tee_params->params[0].tee_client_value.a = u.data.len;
-		esm->tee_params->params[0].tee_client_value.b = u.data.data[0];
-		esm->tee_params->params[1].type = TEE_CLIENT_PARAM_VALUE_IN;
-		esm->tee_params->params[1].tee_client_value.a = u.data.offset;
-		res = tee_client_execute_command(esm->context, esm->tee_params,
-				TEE_CMD_SET_DATA);
-		if (res)
-			return res;
-	}
-	else
-#endif
-		memset(esm->esm_vaddr + esm->data_offs + u.data.offset, u.data.data[0], u.data.len);
+	memset(esm->data_vaddr + u.data.offset, u.data.data[0], u.data.len);
 
 	return 0;
 }
@@ -534,7 +487,7 @@ static long set_data(esm_device *esm, void __user *arg)
 static long hpi_read(esm_device *esm, void __user *arg)
 {
 	struct esm_ioc_hpi_reg reg;
-	int res;
+	int res = 0;
 
 	if (copy_from_user(&reg, arg, sizeof reg) != 0)
 		return -EFAULT;
@@ -542,7 +495,7 @@ static long hpi_read(esm_device *esm, void __user *arg)
 	if ((reg.offset & 3) || reg.offset >= DWC_HPI_SIZE)
 		return -EINVAL;
 
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
+#ifdef CONFIG_OPTEE
 	if (esm->context) {
 		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
 		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_VALUE_INOUT;
@@ -562,14 +515,14 @@ static long hpi_read(esm_device *esm, void __user *arg)
 	if (copy_to_user(arg, &reg, sizeof reg) != 0)
 		return -EFAULT;
 
-	return 0;
+	return res;
 }
 
 /* ESM_IOC_WRITE_HPI implementation */
 static long hpi_write(esm_device *esm, void __user *arg)
 {
 	struct esm_ioc_hpi_reg reg;
-	int res;
+	int res = 0;
 
 	if (copy_from_user(&reg, arg, sizeof reg) != 0)
 		return -EFAULT;
@@ -577,7 +530,7 @@ static long hpi_write(esm_device *esm, void __user *arg)
 	if ((reg.offset & 3) || reg.offset >= DWC_HPI_SIZE)
 		return -EINVAL;
 
-#if defined(OPTEE_BASE_HDCP) && defined(CONFIG_OPTEE)
+#ifdef CONFIG_OPTEE
 	if (esm->context) {
 		memset(esm->tee_params, 0x0, sizeof(struct tee_client_params));
 		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_VALUE_IN;
@@ -592,7 +545,7 @@ static long hpi_write(esm_device *esm, void __user *arg)
 #endif
 		iowrite32(reg.value, esm->hdcp22 + reg.offset);
 
-	return 0;
+	return res;
 }
 
 /* HDCP1_INIT implementation */
@@ -667,6 +620,11 @@ static long hdcp1Stop(esm_device *esm, void __user *arg)
 	mutex_unlock(&esm->dev->mutex);
 	dwc_avmute(esm, 0, 500);
 
+#ifdef CONFIG_OPTEE
+	if (esm->context)
+		 tee_client_execute_command(esm->context, NULL, TEE_CMD_SET_OPC_HDCP_VER);
+#endif
+
 	return 0;
 }
 
@@ -718,19 +676,15 @@ exit:
 static long hdcpGetStatus(esm_device *esm, void __user *arg)
 {
 	struct hdcp_ioc_data data;
-	int res;
 
 	if (copy_from_user(&data, arg, sizeof data) != 0)
 		return -EFAULT;
 
 	data.status = esm->hdcp_status;
 
-#if defined(CONFIG_OPTEE)
-	if (esm->context) {
-		res = tee_client_execute_command(esm->context, NULL, TEE_CMD_SET_OPC_HDCP_VER);
-		if (res)
-			;//return res;
-	}
+#ifdef CONFIG_OPTEE
+	if (esm->context)
+		tee_client_execute_command(esm->context, NULL, TEE_CMD_SET_OPC_HDCP_VER);
 #endif
 
 	if (copy_to_user(arg, &data, sizeof data) != 0)
@@ -788,6 +742,11 @@ static long hdcp2Stop(esm_device *esm, void __user *arg)
 	//iowrite32(0x0, esm->hdcp22 + 0x20);
 	//iowrite32(0xffffffff, esm->hdcp22 + 0x24);
 
+#ifdef CONFIG_OPTEE
+	if (esm->context)
+		 tee_client_execute_command(esm->context, NULL, TEE_CMD_SET_OPC_HDCP_VER);
+#endif
+
 	return 0;
 }
 
@@ -804,27 +763,19 @@ static long init(esm_device *esm, void __user *arg)
 
 
 	if (!esm->initialized) {
-		if (!esm->esm_vaddr && !esm->esm_size)
+		if (!esm->code_vaddr || !esm->data_vaddr)
 			return -ENOMEM;
 
-		esm->code_size = (info.code_size < DWC_ESM_CODE_SIZE) ? DWC_ESM_CODE_SIZE : info.code_size;
-		esm->data_offs = (info.code_size + 0xFFF) & ~0xFFF;
-		esm->data_size = info.data_size ? info.data_size : esm->esm_size - esm->code_size;
-		if (esm->esm_size < (esm->data_offs+info.data_size))
-			goto err_free;
+		if ((info.code_size > DWC_ESM_CODE_SIZE) || (info.data_size > DWC_ESM_CODE_SIZE))
+			return -ENOSPC;
+
+		esm->code_size = info.code_size;
+		esm->data_size = info.data_size;
 
 		esm->initialized = true;
 	}
 
 	return 0;
-
-err_free:
-	esm->initialized = false;
-	esm->code_size = 0;
-	esm->data_offs = 0;
-	esm->data_size = 0;
-
-	return -ENOMEM;
 }
 
 static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
@@ -915,8 +866,10 @@ tcc_hdcp_open(struct inode *inode, struct file *file)
 {
 	struct miscdevice *dev = (struct miscdevice *)file->private_data;
 	esm_device *esm = dev_get_drvdata(dev->parent);
+#ifdef CONFIG_OPTEE
 	struct tee_client_uuid uuid = HDCP_UUID;
 	int ret;
+#endif
 
 	if (!esm->dev)
 		esm->dev = dwc_hdmi_api_get_dev();
@@ -939,8 +892,8 @@ tcc_hdcp_open(struct inode *inode, struct file *file)
 		iowrite32(0xff, esm->link + DWC_HDCP22_INTMASK);
 		iowrite32(0xff, esm->link + DWC_HDCP22_INTMUTE);
 
-#if defined(CONFIG_OPTEE)
-		esm->tee_params = kmalloc(sizeof(struct tee_client_params), GFP_KERNEL);
+#ifdef CONFIG_OPTEE
+		esm->tee_params = kzalloc(sizeof(struct tee_client_params), GFP_KERNEL);
 		if (esm->tee_params) {
 			ret = tee_client_open_ta(&uuid, NULL, &esm->context);
 			if (ret) {
@@ -973,7 +926,7 @@ tcc_hdcp_release(struct inode *inode, struct file *file)
 	esm->open_cs--;
 
 	if (!esm->open_cs) {
-#if defined(CONFIG_OPTEE)
+#ifdef CONFIG_OPTEE
 		if (esm->context) {
 			kfree(esm->tee_params);
 			esm->tee_params = NULL;
@@ -1094,15 +1047,24 @@ static int hdcp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	esm->esm_size = (DWC_ESM_CODE_SIZE + DWC_ESM_DATA_SIZE);
-	esm->esm_vaddr = dma_alloc_coherent(&pdev->dev, esm->esm_size,
-					&esm->esm_paddr, GFP_KERNEL);
-	if (esm->esm_vaddr)
-		dev_info(&pdev->dev, "esm: paddr:%p, size:%08x\n", (void *)esm->esm_paddr, esm->esm_size);
+	esm->code_vaddr = dma_alloc_coherent(&pdev->dev, DWC_ESM_CODE_SIZE,
+					&esm->code_paddr, GFP_KERNEL);
+	if (esm->code_vaddr) {
+		esm->data_vaddr = dma_alloc_coherent(&pdev->dev, DWC_ESM_DATA_SIZE,
+						&esm->data_paddr, GFP_KERNEL);
+		if (!esm->data_vaddr) {
+			dev_err(&pdev->dev, "error alloc memories for DATA\n");
+			esm->data_vaddr = NULL;
+			esm->data_paddr = (dma_addr_t)0;
+			esm->code_vaddr = NULL;
+			esm->code_paddr = (dma_addr_t)0;
+			dma_free_coherent(&pdev->dev, DWC_ESM_CODE_SIZE, esm->code_vaddr, esm->code_paddr);
+		}
+	}
 	else {
-		dev_err(&pdev->dev, "error alloc memories for ESM\n");
-		esm->esm_vaddr = NULL;
-		esm->esm_paddr = NULL;
+		dev_err(&pdev->dev, "error alloc memories for CODE\n");
+		esm->code_vaddr = NULL;
+		esm->code_paddr = (dma_addr_t)0;
 	}
 
 	if (of_address_to_resource(pdev->dev.of_node, 1, &res)) {
@@ -1147,11 +1109,10 @@ static int hdcp_remove(struct platform_device *pdev)
 
 	if (esm) {
 		tcc_hdcp_misc_deregister(esm);
-		if (esm->esm_vaddr)
-			dma_free_coherent(&pdev->dev, esm->esm_size, esm->esm_vaddr, esm->esm_paddr);
-		esm->esm_vaddr = NULL;
-		esm->esm_paddr = NULL;
-		esm->esm_size = 0;
+		if (esm->code_vaddr)
+			dma_free_coherent(&pdev->dev, DWC_ESM_CODE_SIZE, esm->code_vaddr, esm->code_paddr);
+		if (esm->data_vaddr)
+			dma_free_coherent(&pdev->dev, DWC_ESM_DATA_SIZE, esm->data_vaddr, esm->data_paddr);
 		kfree(esm);
 	}
 
