@@ -409,7 +409,9 @@ struct pci_dev {
 	unsigned int	irq_managed:1;
 	unsigned int	has_secondary_link:1;
 	unsigned int	non_compliant_bars:1;	/* broken BARs; ignore them */
+#ifndef __GENKSYMS__
 	unsigned int	no_vf_scan:1;		/* Don't scan for VFs after IOV enablement */
+#endif
 	pci_dev_flags_t dev_flags;
 	atomic_t	enable_cnt;	/* pci_enable_device has been called */
 
