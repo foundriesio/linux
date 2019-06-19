@@ -74,6 +74,21 @@ enum intel_platform {
 	INTEL_MAX_PLATFORMS
 };
 
+/*
+ * Subplatform bits share the same namespace per parent platform. In other words
+ * it is fine for the same bit to be used on multiple parent platforms.
+ */
+
+#define INTEL_SUBPLATFORM_BITS (3)
+
+/* HSW/BDW/SKL/KBL/CFL */
+#define INTEL_SUBPLATFORM_ULT	(0)
+#define INTEL_SUBPLATFORM_ULX	(1)
+#define INTEL_SUBPLATFORM_AML	(2)
+
+/* CNL/ICL */
+#define INTEL_SUBPLATFORM_PORTF	(0)
+
 #define DEV_INFO_FOR_EACH_FLAG(func) \
 	func(is_mobile); \
 	func(is_lp); \
@@ -150,7 +165,6 @@ struct intel_device_info {
 	intel_ring_mask_t ring_mask; /* Rings supported by the HW */
 
 	enum intel_platform platform;
-	u32 platform_mask;
 
 	unsigned int page_sizes; /* page sizes supported by the HW */
 
@@ -176,6 +190,16 @@ struct intel_device_info {
 };
 
 struct intel_runtime_info {
+	/*
+	 * Platform mask is used for optimizing or-ed IS_PLATFORM calls into
+	 * into single runtime conditionals, and also to provide groundwork
+	 * for future per platform, or per SKU build optimizations.
+	 *
+	 * Array can be extended when necessary if the corresponding
+	 * BUILD_BUG_ON is hit.
+	 */
+	u32 platform_mask[2];
+
 	u16 device_id;
 
 	u8 num_sprites[I915_MAX_PIPES];
@@ -247,6 +271,7 @@ static inline void sseu_set_eus(struct sseu_dev_info *sseu,
 
 const char *intel_platform_name(enum intel_platform platform);
 
+void intel_device_info_subplatform_init(struct drm_i915_private *dev_priv);
 void intel_device_info_runtime_init(struct intel_device_info *info);
 void intel_device_info_dump(const struct intel_device_info *info,
 			    struct drm_printer *p);

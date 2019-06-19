@@ -881,6 +881,8 @@ static int i915_driver_init_early(struct drm_i915_private *dev_priv)
 	if (i915_inject_load_failure())
 		return -ENODEV;
 
+	intel_device_info_subplatform_init(dev_priv);
+
 	spin_lock_init(&dev_priv->irq_lock);
 	spin_lock_init(&dev_priv->gpu_error.lock);
 	mutex_init(&dev_priv->backlight_lock);
@@ -1346,8 +1348,6 @@ i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
 	memcpy(device_info, match_info, sizeof(*device_info));
 	RUNTIME_INFO(i915)->device_id = pdev->device;
 
-	BUILD_BUG_ON(INTEL_MAX_PLATFORMS >
-		     sizeof(device_info->platform_mask) * BITS_PER_BYTE);
 	BUG_ON(device_info->gen > sizeof(device_info->gen_mask) * BITS_PER_BYTE);
 
 	return i915;
