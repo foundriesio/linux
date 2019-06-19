@@ -2,7 +2,7 @@
 /*
  * Driver for STMicroelectronics Multi-Function eXpander (STMFX) core
  *
- * Copyright (C) 2018 STMicroelectronics
+ * Copyright (C) 2019 STMicroelectronics
  * Author(s): Amelie Delaunay <amelie.delaunay@st.com>.
  */
 #include <linux/bitfield.h>
@@ -14,85 +14,84 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 
-/* General */
-#define STMFX_REG_CHIP_ID		0x00 /* R */
-#define STMFX_REG_FW_VERSION_MSB	0x01 /* R */
-#define STMFX_REG_FW_VERSION_LSB	0x02 /* R */
-#define STMFX_REG_SYS_CTRL		0x40 /* RW */
-/* IRQ output management */
-#define STMFX_REG_IRQ_OUT_PIN		0x41 /* RW */
-#define STMFX_REG_IRQ_SRC_EN		0x42 /* RW */
-#define STMFX_REG_IRQ_PENDING		0x08 /* R */
-#define STMFX_REG_IRQ_ACK		0x44 /* RW */
-/* GPIO management */
-#define STMFX_REG_IRQ_GPI_PENDING1	0x0C /* R */
-#define STMFX_REG_IRQ_GPI_PENDING2	0x0D /* R */
-#define STMFX_REG_IRQ_GPI_PENDING3	0x0E /* R */
-#define STMFX_REG_GPIO_STATE1		0x10 /* R */
-#define STMFX_REG_GPIO_STATE2		0x11 /* R */
-#define STMFX_REG_GPIO_STATE3		0x12 /* R */
-#define STMFX_REG_IRQ_GPI_SRC1		0x48 /* RW */
-#define STMFX_REG_IRQ_GPI_SRC2		0x49 /* RW */
-#define STMFX_REG_IRQ_GPI_SRC3		0x4A /* RW */
-#define STMFX_REG_GPO_SET1		0x6C /* RW */
-#define STMFX_REG_GPO_SET2		0x6D /* RW */
-#define STMFX_REG_GPO_SET3		0x6E /* RW */
-#define STMFX_REG_GPO_CLR1		0x70 /* RW */
-#define STMFX_REG_GPO_CLR2		0x71 /* RW */
-#define STMFX_REG_GPO_CLR3		0x72 /* RW */
+static bool stmfx_reg_volatile(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case STMFX_REG_SYS_CTRL:
+	case STMFX_REG_IRQ_SRC_EN:
+	case STMFX_REG_IRQ_PENDING:
+	case STMFX_REG_IRQ_GPI_PENDING1:
+	case STMFX_REG_IRQ_GPI_PENDING2:
+	case STMFX_REG_IRQ_GPI_PENDING3:
+	case STMFX_REG_GPIO_STATE1:
+	case STMFX_REG_GPIO_STATE2:
+	case STMFX_REG_GPIO_STATE3:
+	case STMFX_REG_IRQ_GPI_SRC1:
+	case STMFX_REG_IRQ_GPI_SRC2:
+	case STMFX_REG_IRQ_GPI_SRC3:
+	case STMFX_REG_GPO_SET1:
+	case STMFX_REG_GPO_SET2:
+	case STMFX_REG_GPO_SET3:
+	case STMFX_REG_GPO_CLR1:
+	case STMFX_REG_GPO_CLR2:
+	case STMFX_REG_GPO_CLR3:
+		return true;
+	default:
+		return false;
+	}
+}
 
-#define STMFX_REG_MAX			0xB0
+static bool stmfx_reg_writeable(struct device *dev, unsigned int reg)
+{
+	return (reg >= STMFX_REG_SYS_CTRL);
+}
 
-/* MFX boot time is around 10ms, so after reset, we have to wait this delay */
-#define STMFX_BOOT_TIME_MS 10
-
-/* STMFX_REG_CHIP_ID bitfields */
-#define STMFX_REG_CHIP_ID_MASK		GENMASK(7, 0)
-
-/* STMFX_REG_SYS_CTRL bitfields */
-#define STMFX_REG_SYS_CTRL_GPIO_EN	BIT(0)
-#define STMFX_REG_SYS_CTRL_TS_EN	BIT(1)
-#define STMFX_REG_SYS_CTRL_IDD_EN	BIT(2)
-#define STMFX_REG_SYS_CTRL_ALTGPIO_EN	BIT(3)
-#define STMFX_REG_SYS_CTRL_SWRST	BIT(7)
-
-/* STMFX_REG_IRQ_OUT_PIN bitfields */
-#define STMFX_REG_IRQ_OUT_PIN_TYPE	BIT(0) /* 0-OD 1-PP */
-#define STMFX_REG_IRQ_OUT_PIN_POL	BIT(1) /* 0-active LOW 1-active HIGH */
-
-/* STMFX_REG_IRQ_(SRC_EN/PENDING/ACK) bit shift */
-enum stmfx_irqs {
-	STMFX_REG_IRQ_SRC_EN_GPIO = 0,
-	STMFX_REG_IRQ_SRC_EN_IDD,
-	STMFX_REG_IRQ_SRC_EN_ERROR,
-	STMFX_REG_IRQ_SRC_EN_TS_DET,
-	STMFX_REG_IRQ_SRC_EN_TS_NE,
-	STMFX_REG_IRQ_SRC_EN_TS_TH,
-	STMFX_REG_IRQ_SRC_EN_TS_FULL,
-	STMFX_REG_IRQ_SRC_EN_TS_OVF,
-	STMFX_REG_IRQ_SRC_MAX,
+static const struct regmap_config stmfx_regmap_config = {
+	.reg_bits	= 8,
+	.reg_stride	= 1,
+	.val_bits	= 8,
+	.max_register	= STMFX_REG_MAX,
+	.volatile_reg	= stmfx_reg_volatile,
+	.writeable_reg	= stmfx_reg_writeable,
+	.cache_type	= REGCACHE_RBTREE,
 };
 
-/**
- * struct stmfx_ddata - STMFX MFD private structure
- * @stmfx:		state holder with device for logs and register map
- * @vdd:		STMFX power supply
- * @irq_domain:		IRQ domain
- * @lock:		IRQ bus lock
- * @irq_src:		cache of IRQ_SRC_EN register for bus_lock
- * @bkp_sysctrl:	backup of SYS_CTRL register for suspend/resume
- * @bkp_irqoutpin:	backup of IRQ_OUT_PIN register for suspend/resume
- */
-struct stmfx_ddata {
-	struct stmfx *stmfx;
-	struct regulator *vdd;
-	struct irq_domain *irq_domain;
-	struct mutex lock; /* IRQ bus lock */
-	u8 irq_src;
-#ifdef CONFIG_PM
-	u8 bkp_sysctrl;
-	u8 bkp_irqoutpin;
-#endif
+static const struct resource stmfx_pinctrl_resources[] = {
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_GPIO),
+};
+
+static const struct resource stmfx_idd_resources[] = {
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_IDD),
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_ERROR),
+};
+
+static const struct resource stmfx_ts_resources[] = {
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_TS_DET),
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_TS_NE),
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_TS_TH),
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_TS_FULL),
+	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_TS_OVF),
+};
+
+static struct mfd_cell stmfx_cells[] = {
+	{
+		.of_compatible = "st,stmfx-0300-pinctrl",
+		.name = "stmfx-pinctrl",
+		.resources = stmfx_pinctrl_resources,
+		.num_resources = ARRAY_SIZE(stmfx_pinctrl_resources),
+	},
+	{
+		.of_compatible = "st,stmfx-0300-idd",
+		.name = "stmfx-idd",
+		.resources = stmfx_idd_resources,
+		.num_resources = ARRAY_SIZE(stmfx_idd_resources),
+	},
+	{
+		.of_compatible = "st,stmfx-0300-ts",
+		.name = "stmfx-ts",
+		.resources = stmfx_ts_resources,
+		.num_resources = ARRAY_SIZE(stmfx_ts_resources),
+	},
 };
 
 static u8 stmfx_func_to_mask(u32 func)
@@ -166,32 +165,32 @@ EXPORT_SYMBOL_GPL(stmfx_function_disable);
 
 static void stmfx_irq_bus_lock(struct irq_data *data)
 {
-	struct stmfx_ddata *ddata = irq_data_get_irq_chip_data(data);
+	struct stmfx *stmfx = irq_data_get_irq_chip_data(data);
 
-	mutex_lock(&ddata->lock);
+	mutex_lock(&stmfx->lock);
 }
 
 static void stmfx_irq_bus_sync_unlock(struct irq_data *data)
 {
-	struct stmfx_ddata *ddata = irq_data_get_irq_chip_data(data);
+	struct stmfx *stmfx = irq_data_get_irq_chip_data(data);
 
-	regmap_write(ddata->stmfx->map, STMFX_REG_IRQ_SRC_EN, ddata->irq_src);
+	regmap_write(stmfx->map, STMFX_REG_IRQ_SRC_EN, stmfx->irq_src);
 
-	mutex_unlock(&ddata->lock);
+	mutex_unlock(&stmfx->lock);
 }
 
 static void stmfx_irq_mask(struct irq_data *data)
 {
-	struct stmfx_ddata *ddata = irq_data_get_irq_chip_data(data);
+	struct stmfx *stmfx = irq_data_get_irq_chip_data(data);
 
-	ddata->irq_src &= ~BIT(data->hwirq % 8);
+	stmfx->irq_src &= ~BIT(data->hwirq % 8);
 }
 
 static void stmfx_irq_unmask(struct irq_data *data)
 {
-	struct stmfx_ddata *ddata = irq_data_get_irq_chip_data(data);
+	struct stmfx *stmfx = irq_data_get_irq_chip_data(data);
 
-	ddata->irq_src |= BIT(data->hwirq % 8);
+	stmfx->irq_src |= BIT(data->hwirq % 8);
 }
 
 static struct irq_chip stmfx_irq_chip = {
@@ -204,13 +203,12 @@ static struct irq_chip stmfx_irq_chip = {
 
 static irqreturn_t stmfx_irq_handler(int irq, void *data)
 {
-	struct stmfx_ddata *ddata = data;
-	unsigned long n, pending;
-	u32 ack;
-	int ret;
+	struct stmfx *stmfx = data;
+	unsigned long bits;
+	u32 pending, ack;
+	int n, ret;
 
-	ret = regmap_read(ddata->stmfx->map, STMFX_REG_IRQ_PENDING,
-			  (u32 *)&pending);
+	ret = regmap_read(stmfx->map, STMFX_REG_IRQ_PENDING, &pending);
 	if (ret)
 		return IRQ_NONE;
 
@@ -220,13 +218,14 @@ static irqreturn_t stmfx_irq_handler(int irq, void *data)
 	 */
 	ack = pending & ~BIT(STMFX_REG_IRQ_SRC_EN_GPIO);
 	if (ack) {
-		ret = regmap_write(ddata->stmfx->map, STMFX_REG_IRQ_ACK, ack);
+		ret = regmap_write(stmfx->map, STMFX_REG_IRQ_ACK, ack);
 		if (ret)
 			return IRQ_NONE;
 	}
 
-	for_each_set_bit(n, &pending, STMFX_REG_IRQ_SRC_MAX)
-		handle_nested_irq(irq_find_mapping(ddata->irq_domain, n));
+	bits = pending;
+	for_each_set_bit(n, &bits, STMFX_REG_IRQ_SRC_MAX)
+		handle_nested_irq(irq_find_mapping(stmfx->irq_domain, n));
 
 	return IRQ_HANDLED;
 }
@@ -253,55 +252,58 @@ static const struct irq_domain_ops stmfx_irq_ops = {
 	.unmap	= stmfx_irq_unmap,
 };
 
-static void stmfx_irq_exit(struct stmfx_ddata *ddata)
+static void stmfx_irq_exit(struct i2c_client *client)
 {
+	struct stmfx *stmfx = i2c_get_clientdata(client);
 	int hwirq;
 
 	for (hwirq = 0; hwirq < STMFX_REG_IRQ_SRC_MAX; hwirq++)
-		irq_dispose_mapping(irq_find_mapping(ddata->irq_domain, hwirq));
-	irq_domain_remove(ddata->irq_domain);
+		irq_dispose_mapping(irq_find_mapping(stmfx->irq_domain, hwirq));
+
+	irq_domain_remove(stmfx->irq_domain);
 }
 
-static int stmfx_irq_init(struct stmfx_ddata *ddata, int irq)
+static int stmfx_irq_init(struct i2c_client *client)
 {
-	struct device *dev = ddata->stmfx->dev;
+	struct stmfx *stmfx = i2c_get_clientdata(client);
 	u32 irqoutpin = 0, irqtrigger;
 	int ret;
 
-	ddata->irq_domain = irq_domain_add_simple(dev->of_node,
+	stmfx->irq_domain = irq_domain_add_simple(stmfx->dev->of_node,
 						  STMFX_REG_IRQ_SRC_MAX, 0,
-						  &stmfx_irq_ops, ddata);
-	if (!ddata->irq_domain) {
-		dev_err(dev, "failed to create irq domain\n");
+						  &stmfx_irq_ops, stmfx);
+	if (!stmfx->irq_domain) {
+		dev_err(stmfx->dev, "Failed to create IRQ domain\n");
 		return -EINVAL;
 	}
 
-	if (!of_property_read_bool(dev->of_node, "drive-open-drain"))
+	if (!of_property_read_bool(stmfx->dev->of_node, "drive-open-drain"))
 		irqoutpin |= STMFX_REG_IRQ_OUT_PIN_TYPE;
 
-	irqtrigger = irq_get_trigger_type(irq);
+	irqtrigger = irq_get_trigger_type(client->irq);
 	if ((irqtrigger & IRQ_TYPE_EDGE_RISING) ||
 	    (irqtrigger & IRQ_TYPE_LEVEL_HIGH))
 		irqoutpin |= STMFX_REG_IRQ_OUT_PIN_POL;
 
-	ret = regmap_write(ddata->stmfx->map, STMFX_REG_IRQ_OUT_PIN, irqoutpin);
+	ret = regmap_write(stmfx->map, STMFX_REG_IRQ_OUT_PIN, irqoutpin);
 	if (ret)
 		return ret;
 
-	ret = devm_request_threaded_irq(dev, irq, NULL, stmfx_irq_handler,
+	ret = devm_request_threaded_irq(stmfx->dev, client->irq,
+					NULL, stmfx_irq_handler,
 					irqtrigger | IRQF_ONESHOT,
-					"stmfx", ddata);
+					"stmfx", stmfx);
 	if (ret)
-		stmfx_irq_exit(ddata);
+		stmfx_irq_exit(client);
 
 	return ret;
 }
 
-static int stmfx_chip_reset(struct stmfx_ddata *ddata)
+static int stmfx_chip_reset(struct stmfx *stmfx)
 {
 	int ret;
 
-	ret = regmap_write(ddata->stmfx->map, STMFX_REG_SYS_CTRL,
+	ret = regmap_write(stmfx->map, STMFX_REG_SYS_CTRL,
 			   STMFX_REG_SYS_CTRL_SWRST);
 	if (ret)
 		return ret;
@@ -311,34 +313,35 @@ static int stmfx_chip_reset(struct stmfx_ddata *ddata)
 	return ret;
 }
 
-static int stmfx_chip_init(struct stmfx_ddata *ddata, struct i2c_client *client)
+static int stmfx_chip_init(struct i2c_client *client)
 {
+	struct stmfx *stmfx = i2c_get_clientdata(client);
 	u32 id;
 	u8 version[2];
 	int ret;
 
-	ddata->vdd = devm_regulator_get_optional(&client->dev, "vdd");
-	if (IS_ERR(ddata->vdd)) {
-		ret = PTR_ERR(ddata->vdd);
-		if (ret != -ENODEV) {
-			if (ret != -EPROBE_DEFER)
-				dev_err(&client->dev,
-					"no vdd regulator found:%d\n", ret);
-			return ret;
-		}
+	stmfx->vdd = devm_regulator_get_optional(&client->dev, "vdd");
+	ret = PTR_ERR_OR_ZERO(stmfx->vdd);
+	if (ret == -ENODEV) {
+		stmfx->vdd = NULL;
+	} else if (ret == -EPROBE_DEFER) {
+		return ret;
+	} else if (ret) {
+		dev_err(&client->dev, "Failed to get VDD regulator: %d\n", ret);
+		return ret;
 	}
 
-	if (!IS_ERR(ddata->vdd)) {
-		ret = regulator_enable(ddata->vdd);
+	if (stmfx->vdd) {
+		ret = regulator_enable(stmfx->vdd);
 		if (ret) {
-			dev_err(&client->dev, "vdd enable failed: %d\n", ret);
+			dev_err(&client->dev, "VDD enable failed: %d\n", ret);
 			return ret;
 		}
 	}
 
-	ret = regmap_read(ddata->stmfx->map, STMFX_REG_CHIP_ID, &id);
+	ret = regmap_read(stmfx->map, STMFX_REG_CHIP_ID, &id);
 	if (ret) {
-		dev_err(&client->dev, "error reading chip id: %d\n", ret);
+		dev_err(&client->dev, "Error reading chip ID: %d\n", ret);
 		goto err;
 	}
 
@@ -354,125 +357,74 @@ static int stmfx_chip_init(struct stmfx_ddata *ddata, struct i2c_client *client)
 	 *       1       | b: 1000 011x h:0x86 |       0x43
 	 */
 	if (FIELD_GET(STMFX_REG_CHIP_ID_MASK, ~id) != (client->addr << 1)) {
-		dev_err(&client->dev, "unknown chip id: %#x\n", id);
+		dev_err(&client->dev, "Unknown chip ID: %#x\n", id);
 		ret = -EINVAL;
 		goto err;
 	}
 
-	ret = regmap_bulk_read(ddata->stmfx->map, STMFX_REG_FW_VERSION_MSB,
+	ret = regmap_bulk_read(stmfx->map, STMFX_REG_FW_VERSION_MSB,
 			       version, ARRAY_SIZE(version));
 	if (ret) {
-		dev_err(&client->dev, "error reading fw version: %d\n", ret);
+		dev_err(&client->dev, "Error reading FW version: %d\n", ret);
 		goto err;
 	}
 
 	dev_info(&client->dev, "STMFX id: %#x, fw version: %x.%02x\n",
 		 id, version[0], version[1]);
 
-	return stmfx_chip_reset(ddata);
+	ret = stmfx_chip_reset(stmfx);
+	if (ret) {
+		dev_err(&client->dev, "Failed to reset chip: %d\n", ret);
+		goto err;
+	}
+
+	return 0;
 
 err:
-	if (!IS_ERR(ddata->vdd))
-		return regulator_disable(ddata->vdd);
+	if (stmfx->vdd)
+		return regulator_disable(stmfx->vdd);
 
 	return ret;
 }
 
-static int stmfx_chip_exit(struct stmfx_ddata *ddata)
+static int stmfx_chip_exit(struct i2c_client *client)
 {
-	regmap_write(ddata->stmfx->map, STMFX_REG_IRQ_SRC_EN, 0);
-	regmap_write(ddata->stmfx->map, STMFX_REG_SYS_CTRL, 0);
+	struct stmfx *stmfx = i2c_get_clientdata(client);
 
-	if (!IS_ERR(ddata->vdd))
-		return regulator_disable(ddata->vdd);
+	regmap_write(stmfx->map, STMFX_REG_IRQ_SRC_EN, 0);
+	regmap_write(stmfx->map, STMFX_REG_SYS_CTRL, 0);
+
+	if (stmfx->vdd)
+		return regulator_disable(stmfx->vdd);
 
 	return 0;
 }
-
-static const struct resource stmfx_pinctrl_resources[] = {
-	DEFINE_RES_IRQ(STMFX_REG_IRQ_SRC_EN_GPIO),
-};
-
-static struct mfd_cell stmfx_cells[] = {
-	{
-		.of_compatible = "st,stmfx-0300-pinctrl",
-		.name = "stmfx-pinctrl",
-		.resources = stmfx_pinctrl_resources,
-		.num_resources = ARRAY_SIZE(stmfx_pinctrl_resources),
-	}
-};
-
-static bool stmfx_reg_volatile(struct device *dev, unsigned int reg)
-{
-	switch (reg) {
-	case STMFX_REG_SYS_CTRL:
-	case STMFX_REG_IRQ_SRC_EN:
-	case STMFX_REG_IRQ_PENDING:
-	case STMFX_REG_IRQ_GPI_PENDING1:
-	case STMFX_REG_IRQ_GPI_PENDING2:
-	case STMFX_REG_IRQ_GPI_PENDING3:
-	case STMFX_REG_GPIO_STATE1:
-	case STMFX_REG_GPIO_STATE2:
-	case STMFX_REG_GPIO_STATE3:
-	case STMFX_REG_IRQ_GPI_SRC1:
-	case STMFX_REG_IRQ_GPI_SRC2:
-	case STMFX_REG_IRQ_GPI_SRC3:
-	case STMFX_REG_GPO_SET1:
-	case STMFX_REG_GPO_SET2:
-	case STMFX_REG_GPO_SET3:
-	case STMFX_REG_GPO_CLR1:
-	case STMFX_REG_GPO_CLR2:
-	case STMFX_REG_GPO_CLR3:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static bool stmfx_reg_writeable(struct device *dev, unsigned int reg)
-{
-	return (reg >= STMFX_REG_SYS_CTRL);
-}
-
-static const struct regmap_config stmfx_regmap_config = {
-	.reg_bits	= 8,
-	.reg_stride	= 1,
-	.val_bits	= 8,
-	.max_register	= STMFX_REG_MAX,
-	.volatile_reg	= stmfx_reg_volatile,
-	.writeable_reg	= stmfx_reg_writeable,
-	.cache_type	= REGCACHE_RBTREE,
-};
 
 static int stmfx_probe(struct i2c_client *client,
 		       const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
-	struct stmfx_ddata *ddata;
-	int i, ret;
+	struct stmfx *stmfx;
+	int ret;
 
-	ddata = devm_kzalloc(dev, sizeof(*ddata), GFP_KERNEL);
-	if (!ddata)
-		return -ENOMEM;
-	/* State holder */
-	ddata->stmfx = devm_kzalloc(dev, sizeof(*ddata->stmfx), GFP_KERNEL);
-	if (!ddata->stmfx)
+	stmfx = devm_kzalloc(dev, sizeof(*stmfx), GFP_KERNEL);
+	if (!stmfx)
 		return -ENOMEM;
 
-	i2c_set_clientdata(client, ddata);
+	i2c_set_clientdata(client, stmfx);
 
-	ddata->stmfx->dev = dev;
+	stmfx->dev = dev;
 
-	ddata->stmfx->map = devm_regmap_init_i2c(client, &stmfx_regmap_config);
-	if (IS_ERR(ddata->stmfx->map)) {
-		ret = PTR_ERR(ddata->stmfx->map);
-		dev_err(dev, "failed to allocate register map: %d\n", ret);
+	stmfx->map = devm_regmap_init_i2c(client, &stmfx_regmap_config);
+	if (IS_ERR(stmfx->map)) {
+		ret = PTR_ERR(stmfx->map);
+		dev_err(dev, "Failed to allocate register map: %d\n", ret);
 		return ret;
 	}
 
-	mutex_init(&ddata->lock);
+	mutex_init(&stmfx->lock);
 
-	ret = stmfx_chip_init(ddata, client);
+	ret = stmfx_chip_init(client);
 	if (ret) {
 		if (ret == -ETIMEDOUT)
 			return -EPROBE_DEFER;
@@ -480,123 +432,90 @@ static int stmfx_probe(struct i2c_client *client,
 	}
 
 	if (client->irq < 0) {
-		dev_err(dev, "failed to get irq: %d\n", client->irq);
+		dev_err(dev, "Failed to get IRQ: %d\n", client->irq);
 		ret = client->irq;
 		goto err_chip_exit;
 	}
 
-	ret = stmfx_irq_init(ddata, client->irq);
+	ret = stmfx_irq_init(client);
 	if (ret)
 		goto err_chip_exit;
 
-	for (i = 0; i < ARRAY_SIZE(stmfx_cells); i++) {
-		stmfx_cells[i].platform_data = ddata->stmfx;
-		stmfx_cells[i].pdata_size = sizeof(struct stmfx);
-	}
-
 	ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_NONE,
 				   stmfx_cells, ARRAY_SIZE(stmfx_cells), NULL,
-				   0, ddata->irq_domain);
+				   0, stmfx->irq_domain);
 	if (ret)
 		goto err_irq_exit;
 
 	return 0;
 
 err_irq_exit:
-	stmfx_irq_exit(ddata);
+	stmfx_irq_exit(client);
 err_chip_exit:
-	stmfx_chip_exit(ddata);
+	stmfx_chip_exit(client);
 
 	return ret;
 }
 
 static int stmfx_remove(struct i2c_client *client)
 {
-	struct stmfx_ddata *ddata = i2c_get_clientdata(client);
+	stmfx_irq_exit(client);
 
-	stmfx_irq_exit(ddata);
-
-	return stmfx_chip_exit(ddata);
+	return stmfx_chip_exit(client);
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int stmfx_backup_regs(struct stmfx_ddata *ddata)
-{
-	int ret;
-
-	ret = regmap_raw_read(ddata->stmfx->map, STMFX_REG_SYS_CTRL,
-			      &ddata->bkp_sysctrl, sizeof(ddata->bkp_sysctrl));
-	if (ret)
-		return ret;
-	ret = regmap_raw_read(ddata->stmfx->map, STMFX_REG_IRQ_OUT_PIN,
-			      &ddata->bkp_irqoutpin,
-			      sizeof(ddata->bkp_irqoutpin));
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
-static int stmfx_restore_regs(struct stmfx_ddata *ddata)
-{
-	int ret;
-
-	ret = regmap_raw_write(ddata->stmfx->map, STMFX_REG_SYS_CTRL,
-			       &ddata->bkp_sysctrl, sizeof(ddata->bkp_sysctrl));
-	if (ret)
-		return ret;
-	ret = regmap_raw_write(ddata->stmfx->map, STMFX_REG_IRQ_OUT_PIN,
-			       &ddata->bkp_irqoutpin,
-			       sizeof(ddata->bkp_irqoutpin));
-	if (ret)
-		return ret;
-	ret = regmap_raw_write(ddata->stmfx->map, STMFX_REG_IRQ_SRC_EN,
-			       &ddata->irq_src, sizeof(ddata->irq_src));
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
 static int stmfx_suspend(struct device *dev)
 {
-	struct stmfx_ddata *ddata = dev_get_drvdata(dev);
+	struct stmfx *stmfx = dev_get_drvdata(dev);
 	int ret;
 
-	ret = stmfx_backup_regs(ddata);
-	if (ret) {
-		dev_err(ddata->stmfx->dev, "registers backup failure\n");
+	ret = regmap_raw_read(stmfx->map, STMFX_REG_SYS_CTRL,
+			      &stmfx->bkp_sysctrl, sizeof(stmfx->bkp_sysctrl));
+	if (ret)
 		return ret;
-	}
 
-	if (!IS_ERR(ddata->vdd)) {
-		ret = regulator_disable(ddata->vdd);
-		if (ret)
-			return ret;
-	}
+	ret = regmap_raw_read(stmfx->map, STMFX_REG_IRQ_OUT_PIN,
+			      &stmfx->bkp_irqoutpin,
+			      sizeof(stmfx->bkp_irqoutpin));
+	if (ret)
+		return ret;
+
+	if (stmfx->vdd)
+		return regulator_disable(stmfx->vdd);
 
 	return 0;
 }
 
 static int stmfx_resume(struct device *dev)
 {
-	struct stmfx_ddata *ddata = dev_get_drvdata(dev);
+	struct stmfx *stmfx = dev_get_drvdata(dev);
 	int ret;
 
-	if (!IS_ERR(ddata->vdd)) {
-		ret = regulator_enable(ddata->vdd);
+	if (stmfx->vdd) {
+		ret = regulator_enable(stmfx->vdd);
 		if (ret) {
-			dev_err(ddata->stmfx->dev,
-				"vdd enable failed: %d\n", ret);
+			dev_err(stmfx->dev,
+				"VDD enable failed: %d\n", ret);
 			return ret;
 		}
 	}
 
-	ret = stmfx_restore_regs(ddata);
-	if (ret) {
-		dev_err(ddata->stmfx->dev, "registers restoration failure\n");
+	ret = regmap_raw_write(stmfx->map, STMFX_REG_SYS_CTRL,
+			       &stmfx->bkp_sysctrl, sizeof(stmfx->bkp_sysctrl));
+	if (ret)
 		return ret;
-	}
+
+	ret = regmap_raw_write(stmfx->map, STMFX_REG_IRQ_OUT_PIN,
+			       &stmfx->bkp_irqoutpin,
+			       sizeof(stmfx->bkp_irqoutpin));
+	if (ret)
+		return ret;
+
+	ret = regmap_raw_write(stmfx->map, STMFX_REG_IRQ_SRC_EN,
+			       &stmfx->irq_src, sizeof(stmfx->irq_src));
+	if (ret)
+		return ret;
 
 	return 0;
 }
