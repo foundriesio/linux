@@ -2,7 +2,7 @@
 /*
  * Driver for STMicroelectronics Multi-Function eXpander (STMFX) GPIO expander
  *
- * Copyright (C) 2018 STMicroelectronics
+ * Copyright (C) 2019 STMicroelectronics
  * Author(s): Amelie Delaunay <amelie.delaunay@st.com>.
  */
 #include <linux/gpio/driver.h>
@@ -18,30 +18,27 @@
 
 /* GPIOs expander */
 /* GPIO_STATE1 0x10, GPIO_STATE2 0x11, GPIO_STATE3 0x12 */
-#define STMFX_REG_GPIO_STATE		0x10 /* R */
+#define STMFX_REG_GPIO_STATE		STMFX_REG_GPIO_STATE1 /* R */
 /* GPIO_DIR1 0x60, GPIO_DIR2 0x61, GPIO_DIR3 0x63 */
-#define STMFX_REG_GPIO_DIR		0x60 /* RW */
+#define STMFX_REG_GPIO_DIR		STMFX_REG_GPIO_DIR1 /* RW */
 /* GPIO_TYPE1 0x64, GPIO_TYPE2 0x65, GPIO_TYPE3 0x66 */
-#define STMFX_REG_GPIO_TYPE		0x64 /* RW */
+#define STMFX_REG_GPIO_TYPE		STMFX_REG_GPIO_TYPE1 /* RW */
 /* GPIO_PUPD1 0x68, GPIO_PUPD2 0x69, GPIO_PUPD3 0x6A */
-#define STMFX_REG_GPIO_PUPD		0x68 /* RW */
+#define STMFX_REG_GPIO_PUPD		STMFX_REG_GPIO_PUPD1 /* RW */
 /* GPO_SET1 0x6C, GPO_SET2 0x6D, GPO_SET3 0x6E */
-#define STMFX_REG_GPO_SET		0x6C /* RW */
+#define STMFX_REG_GPO_SET		STMFX_REG_GPO_SET1 /* RW */
 /* GPO_CLR1 0x70, GPO_CLR2 0x71, GPO_CLR3 0x72 */
-#define STMFX_REG_GPO_CLR		0x70 /* RW */
+#define STMFX_REG_GPO_CLR		STMFX_REG_GPO_CLR1 /* RW */
 /* IRQ_GPI_SRC1 0x48, IRQ_GPI_SRC2 0x49, IRQ_GPI_SRC3 0x4A */
-#define STMFX_REG_IRQ_GPI_SRC		0x48 /* RW */
+#define STMFX_REG_IRQ_GPI_SRC		STMFX_REG_IRQ_GPI_SRC1 /* RW */
 /* IRQ_GPI_EVT1 0x4C, IRQ_GPI_EVT2 0x4D, IRQ_GPI_EVT3 0x4E */
-#define STMFX_REG_IRQ_GPI_EVT		0x4C /* RW */
+#define STMFX_REG_IRQ_GPI_EVT		STMFX_REG_IRQ_GPI_EVT1 /* RW */
 /* IRQ_GPI_TYPE1 0x50, IRQ_GPI_TYPE2 0x51, IRQ_GPI_TYPE3 0x52 */
-#define STMFX_REG_IRQ_GPI_TYPE		0x50 /* RW */
+#define STMFX_REG_IRQ_GPI_TYPE		STMFX_REG_IRQ_GPI_TYPE1 /* RW */
 /* IRQ_GPI_PENDING1 0x0C, IRQ_GPI_PENDING2 0x0D, IRQ_GPI_PENDING3 0x0E*/
-#define STMFX_REG_IRQ_GPI_PENDING	0x0C /* R */
+#define STMFX_REG_IRQ_GPI_PENDING	STMFX_REG_IRQ_GPI_PENDING1 /* R */
 /* IRQ_GPI_ACK1 0x54, IRQ_GPI_ACK2 0x55, IRQ_GPI_ACK3 0x56 */
-#define STMFX_REG_IRQ_GPI_ACK		0x54 /* RW */
-
-/* STMFX_REG_IRQ_PENDING bitfields */
-#define STMFX_REG_IRQ_PENDING_GPIO	BIT(0)
+#define STMFX_REG_IRQ_GPI_ACK		STMFX_REG_IRQ_GPI_ACK1 /* RW */
 
 #define NR_GPIO_REGS			3
 #define NR_GPIOS_PER_REG		8
@@ -216,9 +213,8 @@ static int stmfx_pinconf_get(struct pinctrl_dev *pctldev,
 	struct stmfx_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	u32 param = pinconf_to_config_param(*config);
 	struct pinctrl_gpio_range *range;
-	int dir, type, pupd;
 	u32 arg = 0;
-	int ret;
+	int ret, dir, type, pupd;
 
 	range = pinctrl_find_gpio_range_from_pin_nolock(pctldev, pin);
 	if (!range)
@@ -441,7 +437,7 @@ static int stmfx_pinctrl_irq_set_type(struct irq_data *data, unsigned int type)
 	u32 reg = get_reg(data->hwirq);
 	u32 mask = get_mask(data->hwirq);
 
-	if (type & IRQ_TYPE_NONE)
+	if (type == IRQ_TYPE_NONE)
 		return -EINVAL;
 
 	if (type & IRQ_TYPE_EDGE_BOTH) {
@@ -591,7 +587,7 @@ static int stmfx_pinctrl_gpio_function_enable(struct stmfx_pinctrl *pctl)
 
 static int stmfx_pinctrl_probe(struct platform_device *pdev)
 {
-	struct stmfx *stmfx = dev_get_platdata(&pdev->dev);
+	struct stmfx *stmfx = dev_get_drvdata(pdev->dev.parent);
 	struct device_node *np = pdev->dev.of_node;
 	struct stmfx_pinctrl *pctl;
 	u32 n;
@@ -663,14 +659,6 @@ static int stmfx_pinctrl_probe(struct platform_device *pdev)
 	}
 
 	ret = stmfx_pinctrl_gpio_function_enable(pctl);
-	if (ret)
-		return ret;
-
-	/*
-	 * Claim hogs after enabling gpio function, otherwise pin
-	 * configuration will not apply
-	 */
-	ret = pinctrl_claim_hogs(pctl->pctl_dev);
 	if (ret)
 		return ret;
 
