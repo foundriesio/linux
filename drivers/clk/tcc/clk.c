@@ -21,6 +21,7 @@
 #include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
 #include <linux/clk/tcc.h>
+#include <dt-bindings/clock/telechips,clk-common.h>
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0))
 #define DEFINE_DEBUGFS_ATTRIBUTE DEFINE_SIMPLE_ATTRIBUTE
@@ -374,12 +375,23 @@ static int tcc_peri_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk(hw);
 	unsigned long flags = __clk_get_flags(hw->clk);
+	unsigned long vflags = 0;
 
 	if (ckc_ops != NULL) {
 		if (ckc_ops->ckc_peri_set_rate)
 			ckc_ops->ckc_peri_set_rate(tcc->id, rate);
 	} else {
-		arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, tcc->id, 1, rate, flags,
+		/* We care only about vendor-specific flags */
+		if (flags & CLK_F_FIXED)
+			vflags |= (flags & (CLK_F_SRC_CLK_MASK << CLK_F_SRC_CLK_SHIFT))
+					>> CLK_F_SRC_CLK_SHIFT;
+		if (flags & CLK_F_DCO_MODE)
+			vflags |= CLK_F_DCO_MODE;
+		if (flags & CLK_F_SKIP_SSCG)
+			vflags |= CLK_F_SKIP_SSCG;
+		if (flags & CLK_F_DIV_MODE)
+			vflags |= CLK_F_DIV_MODE;
+		arm_smccc_smc(SIP_CLK_SET_PCLKCTRL, tcc->id, 1, rate, vflags,
 				0, 0, 0, &res);
 	}
 	return 0;
