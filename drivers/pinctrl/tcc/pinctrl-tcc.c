@@ -25,8 +25,80 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/slab.h>
+#include <linux/tcc_gpio.h>
 
 #include "pinctrl-tcc.h"
+
+
+
+int tcc_gpio_config(unsigned gpio, unsigned config)
+{
+
+	unsigned config_list[9] = {0,};
+	int config_num=0, i;
+
+	if(!!(config&GPIO_FN_BITMASK)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_FUNC, ((config&GPIO_FN_BITMASK)>>GPIO_FN_SHIFT)-1);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_CD_BITMASK)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_DRIVE_STRENGTH, ((config&GPIO_CD_BITMASK)>>GPIO_CD_SHIFT)-1);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_PULLUP)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_PULL_UP, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_PULLDOWN)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_PULL_DOWN, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_PULL_DISABLE)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_NO_PULL, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_SCHMITT_INPUT)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_SCHMITT_INPUT, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_CMOS_INPUT)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_CMOS_INPUT, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_HIGH)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_OUTPUT_HIGH, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_LOW)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_OUTPUT_LOW, NULL);
+		config_num++;
+	}
+
+	if(!!(config&GPIO_INPUT)){
+		pinctrl_gpio_direction_input(gpio);
+	}
+
+	if(!!(config&GPIO_OUTPUT)){
+		pinctrl_gpio_direction_output(gpio);
+	}
+
+
+	for(i=0; i < config_num; i++)
+	{
+
+		pinctrl_gpio_set_config(gpio, config_list[i]);
+
+	}
+
+}
 
 
 struct tcc_pinctrl {
@@ -85,7 +157,7 @@ static int tcc_pinctrl_gpio_get(struct gpio_chip *chip, unsigned offset)
 }
 
 static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, unsigned offset,
-				 int value)
+		int value)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
@@ -101,20 +173,20 @@ static void tcc_pinctrl_gpio_set(struct gpio_chip *chip, unsigned offset,
 }
 
 static int tcc_pinctrl_gpio_direction_input(struct gpio_chip *chip,
-					    unsigned offset)
+		unsigned offset)
 {
 	return pinctrl_gpio_direction_input(chip->base + offset);
 }
 
 static int tcc_pinctrl_gpio_direction_output(struct gpio_chip *chip,
-					     unsigned offset, int value)
+		unsigned offset, int value)
 {
 	tcc_pinctrl_gpio_set(chip, offset, value);
 	return pinctrl_gpio_direction_output(chip->base + offset);
 }
 
 static int tcc_pinctrl_gpio_to_irq(struct gpio_chip *chip,
-				unsigned offset)
+		unsigned offset)
 {
 	struct tcc_pin_bank *bank = gpiochip_to_pin_bank(chip);
 	struct tcc_pinctrl *pctl = bank->pctl;
@@ -150,7 +222,7 @@ static int tcc_get_groups_count(struct pinctrl_dev *pctldev)
 }
 
 static const char *tcc_get_group_name(struct pinctrl_dev *pctldev,
-				      unsigned selector)
+		unsigned selector)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
@@ -158,7 +230,7 @@ static const char *tcc_get_group_name(struct pinctrl_dev *pctldev,
 }
 
 static int tcc_get_group_pins(struct pinctrl_dev *pctldev, unsigned selector,
-			      const unsigned **pins, unsigned *npins)
+		const unsigned **pins, unsigned *npins)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
@@ -168,15 +240,15 @@ static int tcc_get_group_pins(struct pinctrl_dev *pctldev, unsigned selector,
 }
 
 static void tcc_pin_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
-			     unsigned offset)
+		unsigned offset)
 {
 	pr_info("%s\n", __func__);
 	//seq_printf(s, "%s", dev_name(pctldev->dev));
 }
 
 static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
-			      struct device_node *np,
-			      struct pinctrl_map **map, unsigned *num_maps)
+		struct device_node *np,
+		struct pinctrl_map **map, unsigned *num_maps)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	unsigned long *configs;
@@ -197,7 +269,7 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		++nmaps;
 	if (!nmaps) {
 		dev_err(pctl->dev, "node %s does not have either config "
-			"or function configurations\n", np->name);
+				"or function configurations\n", np->name);
 		return -EINVAL;
 	}
 
@@ -209,7 +281,7 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	configs = kzalloc(sizeof(unsigned long) * num_configs, GFP_KERNEL);
 	if (!configs) {
 		dev_err(pctl->dev,
-			"failed to allocate memory for configs\n");
+				"failed to allocate memory for configs\n");
 		return -ENOMEM;
 	}
 
@@ -241,7 +313,7 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 			value = 0;
 
 		configs[num_configs++] = tcc_pinconf_pack(config->param,
-							  value);
+				value);
 	}
 
 	(*map)[*num_maps].data.configs.group_or_pin = group;
@@ -255,7 +327,7 @@ skip_config:
 }
 
 static void tcc_dt_free_map(struct pinctrl_dev *pctldev,
-			    struct pinctrl_map *map, unsigned num_maps)
+		struct pinctrl_map *map, unsigned num_maps)
 {
 	pr_info("%s\n", __func__);
 	kfree(map);
@@ -278,7 +350,7 @@ static int tcc_pinmux_get_funcs_count(struct pinctrl_dev *pctldev)
 }
 
 static const char *tcc_pinmux_get_func_name(struct pinctrl_dev *pctldev,
-					    unsigned selector)
+		unsigned selector)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
@@ -286,9 +358,9 @@ static const char *tcc_pinmux_get_func_name(struct pinctrl_dev *pctldev,
 }
 
 static int tcc_pinmux_get_func_groups(struct pinctrl_dev *pctldev,
-				      unsigned selector,
-				      const char * const **groups,
-				      unsigned * const num_groups)
+		unsigned selector,
+		const char * const **groups,
+		unsigned * const num_groups)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
@@ -299,25 +371,25 @@ static int tcc_pinmux_get_func_groups(struct pinctrl_dev *pctldev,
 }
 
 static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, unsigned pin,
-		       void __iomem **reg, unsigned *offset)
+		void __iomem **reg, unsigned *offset)
 {
 	struct tcc_pin_bank *bank = pctl->pin_banks;
 
 	while (pin >= bank->base && (bank->base + bank->npins - 1) < pin)
 		++bank;
 
-               if(!strcmp("gpk", bank->name)){
-               *reg = pctl->pmgpio_base;
-	       *offset = pin - bank->base;
-		}
-               else{
-               *reg = pctl->base + bank->reg_base;
-               *offset = pin - bank->base;
-		}
+	if(!strcmp("gpk", bank->name)){
+		*reg = pctl->pmgpio_base;
+		*offset = pin - bank->base;
+	}
+	else{
+		*reg = pctl->base + bank->reg_base;
+		*offset = pin - bank->base;
+	}
 }
 
 static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, unsigned selector,
-			     unsigned group)
+		unsigned group)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
@@ -329,9 +401,9 @@ static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, unsigned selector,
 
 	for (i = 0; i < pctl->groups[group].npins; i++) {
 		tcc_pin_to_reg(pctl, pctl->groups[group].pins[i],
-			       &reg, &offset);
+				&reg, &offset);
 		pctl->ops->gpio_set_function(reg, offset,
-					     pctl->groups[group].func);
+				pctl->groups[group].func);
 	}
 
 	return 0;
@@ -339,7 +411,7 @@ static int tcc_pinmux_enable(struct pinctrl_dev *pctldev, unsigned selector,
 
 #if (0)
 static void tcc_pinmux_disable(struct pinctrl_dev *pctldev, unsigned selector,
-			      unsigned group)
+		unsigned group)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
@@ -351,7 +423,7 @@ static void tcc_pinmux_disable(struct pinctrl_dev *pctldev, unsigned selector,
 
 	for (i = 0; i < pctl->groups[group].npins; i++) {
 		tcc_pin_to_reg(pctl, pctl->groups[group].pins[i],
-			       &reg, &offset);
+				&reg, &offset);
 		pctl->ops->gpio_set_function(reg, offset, 0);
 	}
 }
@@ -396,7 +468,7 @@ static const struct pinmux_ops tcc_pinmux_ops = {
 };
 
 static int tcc_pinconf_get(struct pinctrl_dev *pctldev, unsigned pin,
-			   unsigned long *config)
+		unsigned long *config)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
@@ -415,8 +487,8 @@ static int tcc_pinconf_get(struct pinctrl_dev *pctldev, unsigned pin,
 }
 
 static int tcc_pinconf_set(struct pinctrl_dev *pctldev, unsigned pin,
-				unsigned long *configs,
-				unsigned num_configs)
+		unsigned long *configs,
+		unsigned num_configs)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	void __iomem *reg;
@@ -442,8 +514,8 @@ static int tcc_pinconf_set(struct pinctrl_dev *pctldev, unsigned pin,
 }
 
 static int tcc_pinconf_group_get(struct pinctrl_dev *pctldev,
-				 unsigned group,
-				 unsigned long *config)
+		unsigned group,
+		unsigned long *config)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 
@@ -451,8 +523,8 @@ static int tcc_pinconf_group_get(struct pinctrl_dev *pctldev,
 }
 
 static int tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
-				unsigned group, unsigned long *configs,
-				unsigned num_configs)
+		unsigned group, unsigned long *configs,
+		unsigned num_configs)
 {
 	struct tcc_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
 	unsigned int i;
@@ -465,13 +537,13 @@ static int tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
 }
 
 static void tcc_pinconf_dbg_show(struct pinctrl_dev *pctldev,
-				 struct seq_file *s, unsigned pin_id)
+		struct seq_file *s, unsigned pin_id)
 {
 	pr_info("%s\n", __func__);
 }
 
 static void tcc_pinconf_group_dbg_show(struct pinctrl_dev *pctldev,
-				       struct seq_file *s, unsigned group)
+		struct seq_file *s, unsigned group)
 {
 	pr_info("%s\n", __func__);
 }
@@ -486,8 +558,8 @@ static const struct pinconf_ops tcc_pinconf_ops = {
 };
 
 static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
-				     struct device_node *np,
-				     unsigned int **pins, unsigned int *npins)
+		struct device_node *np,
+		unsigned int **pins, unsigned int *npins)
 {
 	struct property *prop;
 	const char *pin_name;
@@ -510,7 +582,7 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 		}
 		if (i == pctl->npins) {
 			dev_err(pctl->dev, "invalid pin %s for %s node\n",
-				pin_name, np->name);
+					pin_name, np->name);
 			devm_kfree(pctl->dev, *pins);
 			return -EINVAL;
 		}
@@ -519,7 +591,7 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 }
 
 static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
-				struct tcc_pinctrl *pctl)
+		struct tcc_pinctrl *pctl)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *child;
@@ -566,12 +638,12 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		group->pins = pins;
 		group->npins = npins;
 		of_property_read_u32(child, "telechips,pin-function",
-				     &group->func);
+				&group->func);
 
 		if (of_find_property(child, "telechips,pin-function", NULL)) {
 			func->name = kstrdup(child->name, GFP_KERNEL);
 			func->groups = devm_kzalloc(pctl->dev, ((strlen(func->name)+2+3)/4)*4,
-						    GFP_KERNEL);
+					GFP_KERNEL);
 			func->groups[0] = kstrdup(child->name, GFP_KERNEL);
 			func->ngroups = 1;
 
@@ -617,8 +689,8 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 	}
 
 	match = (struct extintr_match_ *) devm_kzalloc(dev,
-		(sizeof(struct extintr_match_) * ext_irq->size),
-		GFP_KERNEL);
+			(sizeof(struct extintr_match_) * ext_irq->size),
+			GFP_KERNEL);
 
 	if(!match) {
 		dev_err(dev, "failed to alloc extinr_match\n");
@@ -629,7 +701,7 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 		irq = platform_get_irq(pdev, i);
 		if(irq < 0) {
 			dev_err(dev, "failed to get irq (count %d, %d)\n",
-				ext_irq->size, i);
+					ext_irq->size, i);
 			return -ENOMEM;
 		}
 
@@ -641,7 +713,7 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 }
 
 int tcc_pinctrl_probe(struct platform_device *pdev,
-		      struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base)
+		struct tcc_pinctrl_soc_data *soc_data, void __iomem *base, void __iomem *pmgpio_base)
 {
 	struct pinctrl_pin_desc *pindesc;
 	struct tcc_pinctrl *pctl;
@@ -683,8 +755,8 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			++pctl->nbanks;
 	}
 	pctl->pin_banks = devm_kzalloc(&pdev->dev, pctl->nbanks *
-				       sizeof(struct tcc_pin_bank),
-				       GFP_KERNEL);
+			sizeof(struct tcc_pin_bank),
+			GFP_KERNEL);
 	if (!pctl->pin_banks) {
 		dev_err(&pdev->dev, "failed to allocate pin banks\n");
 		return -ENOMEM;
@@ -696,14 +768,14 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			continue;
 
 		ret = of_property_read_u32_index(np, "reg", 0,
-						 &bank->reg_base);
+				&bank->reg_base);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "failed to get bank reg base\n");
 			return -EINVAL;
 		}
 
 		ret = of_property_read_u32_index(np, "reg", 1,
-						 &bank->pin_base);
+				&bank->pin_base);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "failed to get pin base\n");
 			return -EINVAL;
@@ -725,7 +797,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	}
 
 	pindesc = devm_kzalloc(&pdev->dev, sizeof(struct pinctrl_pin_desc) * pctl->npins,
-			       GFP_KERNEL);
+			GFP_KERNEL);
 	if (!pindesc) {
 		dev_err(&pdev->dev, "failed to allocate pin descriptors\n");
 		return -ENOMEM;
@@ -740,7 +812,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			pdesc = pindesc + bank->base + pin;
 			pdesc->number = bank->base + pin;
 			pdesc->name = kasprintf(GFP_KERNEL, "%s-%u", bank->name,
-						pin + bank->pin_base);
+					pin + bank->pin_base);
 		}
 	}
 	pctl->base = regs;
@@ -758,7 +830,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	pctl->dev = &pdev->dev;
 
 	pctl->pctldev = pinctrl_register(&pctl->pinctrl_desc, &pdev->dev,
-					 pctl);
+			pctl);
 	if (!pctl->pctldev) {
 		dev_err(&pdev->dev, "failed to register pinctrl driver\n");
 		return -EINVAL;

@@ -79,7 +79,7 @@ struct gpio_regs {
 	unsigned func_select3; /* port configuration 3 */
 };
 
-
+/*
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
 	TCC_PINCONF_PARAM_NO_PULL,
@@ -95,8 +95,9 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_SLOW_SLEW,
 	TCC_PINCONF_PARAM_FAST_SLEW,
 	TCC_PINCONF_PARAM_ECLK_SEL,
+	TCC_PINCONF_PARAM_FUNC,
 };
-
+*/
 struct extintr_ {
 	unsigned port_base;
 	unsigned port_num;
@@ -460,6 +461,9 @@ int tcc803x_pinconf_set(void __iomem *base, unsigned offset, int param,
 			return -EINVAL;
 		}
 		break;
+	case TCC_PINCONF_PARAM_FUNC:
+	         tcc803x_gpio_set_function(base, offset, config);
+                break;
 	}
 	return 0;
 }
