@@ -83,11 +83,15 @@ int tcc_gpio_config(unsigned gpio, unsigned config)
 	}
 
 	if(!!(config&GPIO_INPUT)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE, true);
 		pinctrl_gpio_direction_input(gpio);
+		config_num++;
 	}
 
 	if(!!(config&GPIO_OUTPUT)){
+		config_list[config_num] = tcc_pinconf_pack(TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE, false);
 		pinctrl_gpio_direction_output(gpio);
+		config_num++;
 	}
 
 
