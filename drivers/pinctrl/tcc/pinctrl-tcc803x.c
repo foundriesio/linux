@@ -383,8 +383,6 @@ set_gpio_to_irq_finish:
 
 int tcc_irq_get_reverse(int irq)
 {
-	if (irq < 32 || irq >= (32+16))
-		BUG_ON(1);
 	return irq+16;
 }
 
