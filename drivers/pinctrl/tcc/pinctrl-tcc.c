@@ -29,7 +29,7 @@
 
 #include "pinctrl-tcc.h"
 
-
+#ifdef CONFIG_ARCH_TCC803X
 
 int tcc_gpio_config(unsigned gpio, unsigned config)
 {
@@ -104,6 +104,7 @@ int tcc_gpio_config(unsigned gpio, unsigned config)
 
 }
 
+#endif
 
 struct tcc_pinctrl {
 	struct device *dev;
