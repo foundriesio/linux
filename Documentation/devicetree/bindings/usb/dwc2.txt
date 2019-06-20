@@ -45,6 +45,10 @@ Refer to phy/phy-bindings.txt for generic phy consumer properties
   perform OTG operation, used on STM32MP1 SoCs.
 - extcon: external connector for vbus and id pin changes detection to
   dynamically force A- or B-peripheral session.
+- wakeup-source: bool flag to indicate this device has wakeup capabilities
+- interrupt-names, if optional wake-up interrupt is used, should be:
+  - "event": the name for the interrupt line of the USB DWC2 instance
+  - "wakeup" the name for the optional wake-up interrupt
 
 Deprecated properties:
 - g-use-dma: gadget DMA mode is automatically detected
