@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017 Toradex AG
+ * Copyright 2014-2019 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -107,21 +107,6 @@
 		};
 	};
 
-	panel: panel {
-		/*
-		 * edt,et057090dhu: EDT 5.7" LCD TFT
-		 * edt,et070080dh6: EDT 7.0" LCD TFT
-		 */
-		compatible = "edt,et057090dhu";
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-
 	leds {
 		compatible = "gpio-leds";
 
@@ -149,6 +134,30 @@
 		};
 	};
 
+	panel: panel {
+		/*
+		 * edt,et057090dhu: EDT 5.7" LCD TFT
+		 * edt,et070080dh6: EDT 7.0" LCD TFT
+		 */
+		compatible = "edt,et057090dhu";
+		backlight = <&backlight>;
+		power-supply = <&reg_3v3_sw>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+
+	reg_3v3_sw: regulator-3v3-sw {
+		compatible = "regulator-fixed";
+		regulator-name = "3.3V_SW";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	v4l2_cap_0 {
 		compatible = "fsl,imx6q-v4l2-capture";
 		ipu_id = <0>;
@@ -164,13 +173,6 @@
 		mclk_source = <0>;
 		status = "okay";
 	};
-
-#if 0
-	v4l2_out {
-		compatible = "fsl,mxc_v4l2_output";
-		status = "okay";
-	};
-#endif
 };
 
 &backlight {
@@ -184,6 +186,17 @@
 #endif
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
+	power-supply = <&reg_3v3_sw>;
+	status = "okay";
+};
+
+&can1 {
+	xceiver-supply = <&reg_3v3_sw>;
+	status = "okay";
+};
+
+&can2 {
+	xceiver-supply = <&reg_3v3_sw>;
 	status = "okay";
 };
 
@@ -198,12 +211,15 @@
 	};
 };
 
-&can1 {
+/* Apalis SPI2 */
+&ecspi2 {
 	status = "okay";
-};
 
-&can2 {
-	status = "okay";
+	spidev1: spidev@2 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <18000000>;
+	};
 };
 
 &hdmi_audio {
@@ -343,12 +359,16 @@
 	};
 };
 
+&ipu1_di1_disp1 {
+	remote-endpoint = <&lcd_display_in>;
+};
+
 &lcd {
 	status = "okay";
 };
 
-&ipu1_di1_disp1 {
-	remote-endpoint = <&lcd_display_in>;
+&ldb {
+	status = "okay";
 };
 
 &mipi_csi {
@@ -372,10 +392,6 @@
 };
 
 &mxcfb4 {
-	status = "okay";
-};
-
-&ldb {
 	status = "okay";
 };
 
@@ -404,11 +420,11 @@
 	status = "okay";
 };
 
-&reg_usb_otg_vbus {
+&reg_usb_host_vbus {
 	status = "okay";
 };
 
-&reg_usb_host_vbus {
+&reg_usb_otg_vbus {
 	status = "okay";
 };
 
@@ -474,10 +490,12 @@
 	status = "okay";
 };
 
+&vdac {
+	status = "okay";
+};
+
 &iomuxc {
-	/*
-	 * Mux the Apalis GPIOs
-	 */
+	/* Mux the Apalis GPIOs */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2
 		     &pinctrl_apalis_gpio3 &pinctrl_apalis_gpio4

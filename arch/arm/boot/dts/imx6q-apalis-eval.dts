@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017 Toradex AG
+ * Copyright 2014-2019 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
@@ -80,30 +80,6 @@
 		};
 	};
 
-	v4l2_cap_0 {
-		compatible = "fsl,imx6q-v4l2-capture";
-		ipu_id = <0>;
-		csi_id = <0>;
-		mclk_source = <0>;
-		status = "okay";
-	};
-
-	v4l2_cap_1 { // second parallel camera
-		compatible = "fsl,imx6q-v4l2-capture";
-		ipu_id = <1>;
-		csi_id = <1>;
-		mclk_source = <0>;
-		status = "okay";
-	};
-
-	v4l2_cap_2 { // mipi-csi2 camera
-		compatible = "fsl,imx6q-v4l2-capture";
-		ipu_id = <0>;
-		csi_id = <1>;
-		mclk_source = <0>;
-		status = "okay";
-	};
-
 	lcd_display: display@di0 {
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
@@ -164,14 +140,30 @@
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
 	};
-};
 
-&mipi_csi {
-	ipu_id = <0>;
-	csi_id = <1>;
-	v_channel = <0>;
-	lanes = <2>;
-	status = "okay";
+	v4l2_cap_0 {
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <0>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+	v4l2_cap_1 { // second parallel camera
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <1>;
+		csi_id = <1>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
+	v4l2_cap_2 { // mipi-csi2 camera
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <1>;
+		mclk_source = <0>;
+		status = "okay";
+	};
 };
 
 &backlight {
@@ -186,6 +178,16 @@
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
 	power-supply = <&reg_3v3_sw>;
+	status = "okay";
+};
+
+&can1 {
+	xceiver-supply = <&reg_3v3_sw>;
+	status = "okay";
+};
+
+&can2 {
+	xceiver-supply = <&reg_3v3_sw>;
 	status = "okay";
 };
 
@@ -209,16 +211,6 @@
 		reg = <0>;
 		spi-max-frequency = <18000000>;
 	};
-};
-
-&can1 {
-	xceiver-supply = <&reg_3v3_sw>;
-	status = "okay";
-};
-
-&can2 {
-	xceiver-supply = <&reg_3v3_sw>;
-	status = "okay";
 };
 
 &hdmi_audio {
@@ -255,8 +247,8 @@
 		/* TouchRevolution Fusion 7 and 10 multi-touch controller */
 		compatible = "touchrevolution,fusion-f0710a";
 		reg = <0x10>;
-		gpios = <&gpio6 10 0 /* MXM3 11, Pen down interrupt */
-			 &gpio6  9 0 /* MXM3 13, Reset */
+		gpios = <&gpio6 10 GPIO_ACTIVE_HIGH /* MXM3 11, Pen down interrupt */
+			 &gpio6  9 GPIO_ACTIVE_HIGH /* MXM3 13, Reset */
 			>;
 	};
 
@@ -371,6 +363,18 @@
 	status = "okay";
 };
 
+&ldb {
+	status = "okay";
+};
+
+&mipi_csi {
+	ipu_id = <0>;
+	csi_id = <1>;
+	v_channel = <0>;
+	lanes = <2>;
+	status = "okay";
+};
+
 &mxcfb1 {
 	status = "okay";
 };
@@ -387,15 +391,13 @@
 	status = "okay";
 };
 
-&ldb {
-	status = "okay";
-};
-
 &pcie {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_reset_moci>;
-	reset-gpio = <&gpio1 2 0>;
-	reset-ep-gpio = <&gpio1 28 0>;
+	/* active-high meaning opposite of regular PERST# active-low polarity */
+	reset-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+	reset-gpio-active-high;
+	vpcie-supply = <&reg_pcie_switch>;
 	status = "okay";
 };
 
@@ -415,11 +417,11 @@
 	status = "okay";
 };
 
-&reg_usb_otg_vbus {
+&reg_usb_host_vbus {
 	status = "okay";
 };
 
-&reg_usb_host_vbus {
+&reg_usb_otg_vbus {
 	status = "okay";
 };
 
@@ -445,6 +447,11 @@
 
 &uart2 {
 	status = "okay";
+#if 0
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-low;
+	rs485-rx-during-tx;
+#endif
 };
 
 &uart4 {
@@ -486,9 +493,7 @@
 };
 
 &iomuxc {
-	/*
-	 * Mux the Apalis GPIOs
-	 */
+	/* Mux the Apalis GPIOs */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_apalis_gpio1 &pinctrl_apalis_gpio2
 		     &pinctrl_apalis_gpio3 &pinctrl_apalis_gpio4
