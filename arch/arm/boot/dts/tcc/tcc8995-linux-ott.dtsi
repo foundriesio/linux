@@ -507,14 +507,6 @@
 	};
 
 	/* USB 2.0 OTG */
-	dwc2@11980000 {
-	    status = "okay";
-	    phy-type = <1>;     //pico phy = 1, nano phy = 0
-
-	    vbus-ctrl-able;
-	    vbus-gpio = <&gpd 18 0>;
-	};
-
 	dwc_otg@11980000 {
 	    status = "okay";
 	    phy-type = <1>;     //pico phy = 1, nano phy = 0
