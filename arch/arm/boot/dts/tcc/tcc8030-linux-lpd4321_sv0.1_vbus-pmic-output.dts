@@ -73,10 +73,6 @@
 		vbus-gpio = <&da9063_gpio 6 0>;
 	};
 
-	dwc2@11980000 {
-		vbus-gpio = <&da9063_gpio 6 0>;
-	};
-
 	dwc_otg@11980000 {
 	    vbus-gpio = <&da9063_gpio 6 0>;
 	};

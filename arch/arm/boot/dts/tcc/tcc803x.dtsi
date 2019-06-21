@@ -2497,7 +2497,7 @@
 		 status = "disabled";
 	};
 
-	dwc2: dwc2@11980000 {
+	dwc_otg: dwc_otg@11980000 {
 		compatible = "telechips,dwc2";
 		reg = <0x11980000 0xcfff 0x11900000 0x108 0x11940000 0x60>;
 		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
@@ -2509,20 +2509,6 @@
 		status= "disabled";
 	};
 
-	dwc_otg: dwc_otg@11980000 {
-		compatible = "telechips,dwc_otg";
-		/*      otg base   |size  |otg phy   |size|ehci base |size |ehci phy  |size|ohci base |size */
-		reg = <0x11980000 0xcfff 0x11DA0100 0x30 0x11900000 0x108 0x11DA00DC 0x20 0x11940000 0x60>;
-		clock-frequency = <48000000>;
-		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = </*&clk_peri PERI_USB_OTG*/
-		           &clk_hsio HSIOBUS_USB20DH
-		           &clk_isoip_top ISOIP_TOP_U20DH>;   /* otg_pclk=0x120+9, otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		telechips,mhst_phy = <&mhst_phy>;
-		telechips,dwc_otg_phy = <&dwc_otg_phy>;
-		status = "disabled";
-		//tpl-support;
-	};
 /*
 	hsic: hsic@11c00000 {
 	    compatible = "telechips,tcc-hsic";

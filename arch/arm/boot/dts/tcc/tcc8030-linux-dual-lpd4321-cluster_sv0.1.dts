@@ -69,10 +69,6 @@
 		status = "disabled";
 	};
 
-	dwc2@11980000 {
-		status = "disabled";
-	};
-
 	dwc_otg@11980000 {
 		status = "disabled";
 	};
