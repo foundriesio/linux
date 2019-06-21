@@ -66,10 +66,12 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_usbc_det>;
 	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpiokeys>;
+
 		power {
 			label = "Wake-Up";
 			gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
@@ -237,6 +239,7 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
+
 			/* WVGA Timing, TouchRevolution Fusion 7" */
 			timing_wvga2: 800x480pixclkact {
 				clock-frequency = <33260000>;
@@ -254,6 +257,7 @@
 				vsync-active = <0>;
 				pixelclk-active = <1>;
 			};
+
 			/* Standard SVGA timing */
 			timing_svga: 800x600 {
 				clock-frequency = <40000000>;
@@ -271,6 +275,7 @@
 				vsync-active = <1>;
 				pixelclk-active = <0>;
 			};
+
 			/* TouchRevolution Fusion 10"/CLAA101NC05 10.1 inch */
 			timing_wsvga: 1024x600 {
 				clock-frequency = <48000000>;
@@ -288,6 +293,7 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
+
 			/* Standard XGA timing */
 			timing_xga: 1024x768 {
 				clock-frequency = <65000000>;
