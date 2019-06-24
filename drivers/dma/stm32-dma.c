@@ -525,8 +525,10 @@ static int stm32_dma_terminate_all(struct dma_chan *c)
 		spin_lock_irqsave(&chan->vchan.lock, flags);
 	}
 
-	if (chan->busy) {
-		stm32_dma_stop(chan);
+	if (chan->desc) {
+		vchan_terminate_vdesc(&chan->desc->vdesc);
+		if (chan->busy)
+			stm32_dma_stop(chan);
 		chan->desc = NULL;
 	}
 
@@ -808,7 +810,6 @@ static void stm32_mdma_chan_complete(void *param,
 		}
 
 		if (chan->next_sg == chan->desc->num_sgs) {
-			list_del(&chan->desc->vdesc.node);
 			vchan_cookie_complete(&chan->desc->vdesc);
 			chan->desc = NULL;
 		}
@@ -897,6 +898,8 @@ static void stm32_dma_start_transfer(struct stm32_dma_chan *chan)
 		vdesc = vchan_next_desc(&chan->vchan);
 		if (!vdesc)
 			return;
+
+		list_del(&vdesc->node);
 
 		chan->desc = to_stm32_dma_desc(vdesc);
 		chan->next_sg = 0;
@@ -1000,7 +1003,6 @@ static void stm32_dma_handle_chan_done(struct stm32_dma_chan *chan)
 		if (chan->use_mdma && chan->mchan.dir != DMA_MEM_TO_DEV)
 			return;
 		if (chan->next_sg == chan->desc->num_sgs) {
-			list_del(&chan->desc->vdesc.node);
 			vchan_cookie_complete(&chan->desc->vdesc);
 			chan->desc = NULL;
 		}
