@@ -2232,7 +2232,7 @@
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
-		telechips,pull-down;
+		telechips,no-pull;
 	};
 
 	cam0_8bit_idle: cam0_8bit_idle {
