@@ -109,12 +109,6 @@ static bool ksoftirqd_running(unsigned long pending)
 static DEFINE_LOCAL_IRQ_LOCK(bh_lock);
 static DEFINE_PER_CPU(long, softirq_counter);
 
-long softirq_count(void)
-{
-	return raw_cpu_read(softirq_counter);
-}
-EXPORT_SYMBOL(softirq_count);
-
 void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
 {
 	unsigned long __maybe_unused flags;
@@ -125,6 +119,7 @@ void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
 		local_lock(bh_lock);
 	soft_cnt = this_cpu_inc_return(softirq_counter);
 	WARN_ON_ONCE(soft_cnt == 0);
+	current->softirq_count += SOFTIRQ_DISABLE_OFFSET;
 
 #ifdef CONFIG_TRACE_IRQFLAGS
 	local_irq_save(flags);
@@ -155,6 +150,7 @@ void _local_bh_enable(void)
 	local_irq_restore(flags);
 #endif
 
+	current->softirq_count -= SOFTIRQ_DISABLE_OFFSET;
 	if (!in_atomic())
 		local_unlock(bh_lock);
 }
@@ -192,6 +188,7 @@ void __local_bh_enable_ip(unsigned long ip, unsigned int cnt)
 	if (!in_atomic())
 		local_unlock(bh_lock);
 
+	current->softirq_count -= SOFTIRQ_DISABLE_OFFSET;
 	preempt_check_resched();
 }
 EXPORT_SYMBOL(__local_bh_enable_ip);
@@ -365,7 +362,9 @@ asmlinkage __visible void __softirq_entry __do_softirq(void)
 	pending = local_softirq_pending();
 	account_irq_enter_time(current);
 
-#ifndef CONFIG_PREEMPT_RT_FULL
+#ifdef CONFIG_PREEMPT_RT_FULL
+	current->softirq_count |= SOFTIRQ_OFFSET;
+#else
 	__local_bh_disable_ip(_RET_IP_, SOFTIRQ_OFFSET);
 #endif
 	in_hardirq = lockdep_softirq_start();
@@ -418,7 +417,9 @@ restart:
 
 	lockdep_softirq_end(in_hardirq);
 	account_irq_exit_time(current);
-#ifndef CONFIG_PREEMPT_RT_FULL
+#ifdef CONFIG_PREEMPT_RT_FULL
+	current->softirq_count &= ~SOFTIRQ_OFFSET;
+#else
 	__local_bh_enable(SOFTIRQ_OFFSET);
 #endif
 	WARN_ON_ONCE(in_interrupt());
@@ -468,7 +469,7 @@ void irq_enter(void)
 
 static inline void invoke_softirq(void)
 {
-	if (softirq_count() == 0)
+	if (this_cpu_read(softirq_counter) == 0)
 		wakeup_softirqd();
 }
 
@@ -552,7 +553,7 @@ void raise_softirq_irqoff(unsigned int nr)
 	 * If were are not in BH-disabled section then we have to wake
 	 * ksoftirqd.
 	 */
-	if (softirq_count() == 0)
+	if (this_cpu_read(softirq_counter) == 0)
 		wakeup_softirqd();
 }
 

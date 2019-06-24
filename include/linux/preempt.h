@@ -80,14 +80,6 @@
 #define hardirq_count()	(preempt_count() & HARDIRQ_MASK)
 #define irq_count()	(preempt_count() & (HARDIRQ_MASK | SOFTIRQ_MASK \
 				 | NMI_MASK))
-#ifdef CONFIG_PREEMPT_RT_FULL
-
-long softirq_count(void);
-
-#else
-#define softirq_count()	(preempt_count() & SOFTIRQ_MASK)
-#endif
-
 /*
  * Are we doing bottom half or hardware interrupt processing?
  *
@@ -102,12 +94,23 @@ long softirq_count(void);
  *       should not be used in new code.
  */
 #define in_irq()		(hardirq_count())
-#define in_softirq()		(softirq_count())
 #define in_interrupt()		(irq_count())
-#define in_serving_softirq()	(softirq_count() & SOFTIRQ_OFFSET)
 #define in_nmi()		(preempt_count() & NMI_MASK)
 #define in_task()		(!(preempt_count() & \
 				   (NMI_MASK | HARDIRQ_MASK | SOFTIRQ_OFFSET)))
+#ifdef CONFIG_PREEMPT_RT_FULL
+
+#define softirq_count()		((long)get_current()->softirq_count)
+#define in_softirq()		(softirq_count())
+#define in_serving_softirq()	(get_current()->softirq_count & SOFTIRQ_OFFSET)
+
+#else
+
+#define softirq_count()		(preempt_count() & SOFTIRQ_MASK)
+#define in_softirq()		(softirq_count())
+#define in_serving_softirq()	(softirq_count() & SOFTIRQ_OFFSET)
+
+#endif
 
 /*
  * The preempt_count offset after preempt_disable();
