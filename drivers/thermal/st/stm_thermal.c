@@ -298,15 +298,17 @@ static int stm_thermal_get_temp(void *data, int *temp)
 {
 	struct stm_thermal_sensor *sensor = data;
 	u32 periods;
-	int freqM;
+	int freqM, ret;
 
 	if (sensor->mode != THERMAL_DEVICE_ENABLED)
 		return -EAGAIN;
 
 	/* Retrieve the number of periods sampled */
-	periods = readl_relaxed(sensor->base + DTS_DR_OFFSET) & TS1_MFREQ_MASK;
-	if (!periods)
-		return -EINVAL;
+	ret = readl_relaxed_poll_timeout(sensor->base + DTS_DR_OFFSET, periods,
+					 (periods & TS1_MFREQ_MASK),
+					 STARTUP_TIME, POLL_TIMEOUT);
+	if (ret)
+		return ret;
 
 	/* Figure out the CLK_PTAT frequency */
 	freqM = (clk_get_rate(sensor->clk) * SAMPLING_TIME) / periods;
