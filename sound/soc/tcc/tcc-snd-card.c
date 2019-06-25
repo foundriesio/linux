@@ -465,6 +465,22 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 	dai_link->ops = &tcc_snd_card_ops;
 	dai_link->init = tcc_snd_card_dai_init;
 
+	if(of_property_read_bool(node, "playback_only")) {
+		snd_card_dbg("\t\tDAI link playback_only!\n");
+		dai_link->playback_only = true;
+	}
+
+	if(of_property_read_bool(node, "capture_only")) {
+		snd_card_dbg("\t\tDAI link capture only!\n");
+		dai_link->capture_only = true;
+	}
+
+	if(dai_link->playback_only && dai_link->capture_only) {
+	     pr_err("no enabled DAI link,  This will activate both.");
+	     dai_link->playback_only = false;
+	     dai_link->capture_only = false;
+	}
+
 	dai_info->dai_fmt = snd_soc_of_parse_daifmt(node, "codec,", NULL, NULL);
 	dai_link->dai_fmt = dai_info->dai_fmt;
 	snd_card_dbg("\t\tdai_fmt : 0x%08x\n", dai_info->dai_fmt);
