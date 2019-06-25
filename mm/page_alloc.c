@@ -73,6 +73,10 @@
 #include <asm/div64.h>
 #include "internal.h"
 
+#ifdef CONFIG_CMA
+#include <linux/cma.h>
+#endif
+
 /* prevent >1 _updater_ of zone percpu pageset ->high and ->batch fields */
 static DEFINE_MUTEX(pcp_batch_high_lock);
 #define MIN_PERCPU_PAGELIST_FRACTION	(8)
@@ -4577,9 +4581,17 @@ EXPORT_SYMBOL_GPL(si_mem_available);
 
 void si_meminfo(struct sysinfo *val)
 {
+#ifdef CONFIG_GCMA_DEFAULT
+	unsigned long gcma_pages, kb_gcma;
+	kb_gcma = gcma_free_mem();
+	gcma_pages = kb_gcma >> 2;
+	val->totalram = totalram_pages + totalcma_pages;
+	val->freeram = global_zone_page_state(NR_FREE_PAGES) + gcma_pages;
+#else
 	val->totalram = totalram_pages;
-	val->sharedram = global_node_page_state(NR_SHMEM);
 	val->freeram = global_zone_page_state(NR_FREE_PAGES);
+#endif
+	val->sharedram = global_node_page_state(NR_SHMEM);
 	val->bufferram = nr_blockdev_pages();
 	val->totalhigh = totalhigh_pages;
 	val->freehigh = nr_free_highpages();
