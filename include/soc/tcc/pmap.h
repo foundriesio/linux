@@ -30,14 +30,22 @@ typedef struct {
 	__u32 base;
 	__u32 size;
 	__u32 groups;
-	__u32 v_base;
+	__u32 v_base; /* NO MORE USED (will be removed later) */
 	__u32 rc;
 	unsigned int flags;
 } pmap_t;
 
 
+int pmap_check_region(__u32 base, __u32 size);
 int pmap_get_info(const char *name, pmap_t *mem);
 int pmap_release_info(const char *name);
-int pmap_check_region(__u32 base, __u32 size);
+
+#ifdef CONFIG_PMAP_TO_CMA
+void *pmap_cma_remap(__u32 base, __u32 size);
+void pmap_cma_unmap(void *virt, __u32 size);
+#else
+#define pmap_cma_remap NULL
+#define pmap_cma_unmap
+#endif
 
 #endif  /* __PLAT_PMAP_H */

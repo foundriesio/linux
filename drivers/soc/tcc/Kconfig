@@ -22,6 +22,7 @@ if PMAP
 
 config PMAP_TO_CMA
 	bool "CMA allocation for PMAP (Physical memory MAP)"
+	depends on DMA_CMA
 	default n
 	help
 	  Say Y here to enable CMA allocation for pmap.

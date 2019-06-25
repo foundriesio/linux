@@ -34,14 +34,12 @@
 #include <linux/seq_file.h>
 #endif
 
-#ifdef CONFIG_DMA_CMA
+#ifdef CONFIG_PMAP_TO_CMA
 #include <linux/dma-mapping.h>
 #include <linux/highmem.h>
-#endif
-
-#define PMAP_DEV_NAME		"pmap"
 
 struct device *pmap_device;
+#endif
 
 #define PMAP_DATA_NA		~(0)
 
@@ -54,8 +52,8 @@ struct device *pmap_device;
 
 typedef struct {
 	char name[TCC_PMAP_NAME_LEN];
-	unsigned long base;
-	unsigned long size;
+	unsigned int base;
+	unsigned int size;
 } user_pmap_t;
 #endif
 
@@ -106,11 +104,11 @@ error:
 
 static pmap_t *pmap_find_info_by_name(const char *name)
 {
-	int i;
+	struct pmap_entry *entry = NULL;
 
-	for (i = 0; i < MAX_PMAPS; i++) {
-		if (!strcmp(name, pmap_table[i].info.name)) {
-			return &pmap_table[i].info;
+	list_for_each_entry(entry, &pmap_list_head, list) {
+		if (!strcmp(name, entry->info.name)) {
+			return &entry->info;
 		}
 	}
 
@@ -124,7 +122,7 @@ static inline __u32 pmap_get_base(pmap_t *info)
 
 	do {
 		if (entry->info.base == PMAP_DATA_NA)
-			return PMAP_DATA_NA;
+			return 0;
 
 		base += entry->info.base;
 		entry = entry->parent;
@@ -133,65 +131,95 @@ static inline __u32 pmap_get_base(pmap_t *info)
 	return base;
 }
 
-static inline __u32 pmap_get_v_base(pmap_t *info)
-{
-	struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
-	__u32 v_base = 0;
+#ifdef CONFIG_PMAP_TO_CMA
+#define PMAP_DMA_ATTR DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS | \
+	DMA_ATTR_NO_KERNEL_MAPPING
 
-	do {
-		if (entry->info.v_base == PMAP_DATA_NA)
-			return PMAP_DATA_NA;
-
-		v_base += entry->info.v_base;
-		entry = entry->parent;
-	} while (entry);
-
-	return v_base;
-}
-
-#ifdef CONFIG_DMA_CMA
 static __u32 pmap_cma_alloc(pmap_t *info)
 {
 	dma_addr_t phys;
-	void *virt;
+	void *ret;
 
 	pr_debug("pmap: cma: request to alloc %s for size 0x%08x\n",
 			info->name, info->size);
 
-	virt = dma_alloc_attrs(pmap_device, info->size, &phys, GFP_KERNEL,
-			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
+	ret = dma_alloc_attrs(pmap_device, info->size, &phys, GFP_KERNEL,
+			PMAP_DMA_ATTR);
 
-	if (!virt) {
+	if (!ret) {
 		pr_err("\x1b[31m" "pmap: cma: failed to alloc %s" "\x1b[0m\n",
 				info->name);
 		return 0;
 	}
 
 	info->base = (__u32) phys;
-	info->v_base = (__u32) virt;
 
-	pr_debug("pmap: cma: %s is allocated at 0x%08x (virt: 0x%08x)\n",
-			info->name, info->base, info->v_base);
+	pr_debug("pmap: cma: %s is allocated at 0x%08x\n",
+			info->name, info->base);
 
 	return 1;
 }
 
-static int pmap_cma_release(pmap_t *info)
+static void pmap_cma_release(pmap_t *info)
 {
 	dma_addr_t phys = (dma_addr_t) info->base;
-	void *virt = (void *) info->v_base;
+	void *page = (void *) phys_to_page(phys);
 
-	dma_free_attrs(pmap_device, info->size, virt, phys,
-			DMA_ATTR_WRITE_COMBINE | DMA_ATTR_FORCE_CONTIGUOUS);
+	dma_free_attrs(pmap_device, info->size, page, phys, PMAP_DMA_ATTR);
 
-	pr_debug("pmap: cma: %s is released from 0x%08x (virt: 0x%08x)\n",
-			info->name, info->base, info->v_base);
+	pr_debug("pmap: cma: %s is released from 0x%08x\n",
+			info->name, info->base);
 
 	info->base = PMAP_DATA_NA;
-	info->v_base = PMAP_DATA_NA;
-
-	return 1;
 }
+
+#define VM_ARM_DMA_CONSISTENT	0x20000000
+
+/*
+ * FIXME
+ * pmap_cma_remap/unmap functions have critical dependency on ...
+ *
+ * 1. ARM architecture
+ * 2. CMA area on highmem
+ */
+void *pmap_cma_remap(__u32 base, __u32 size)
+{
+	struct page *page = phys_to_page(base);
+	void *virt;
+
+	BUG_ON(!pmap_check_region(base, size));
+
+	pr_debug("pmap: cma: request to map 0x%08x for size 0x%08x\n",
+			base, size);
+
+	size = PAGE_ALIGN(size);
+
+	virt = dma_common_contiguous_remap(page, size,
+			VM_ARM_DMA_CONSISTENT | VM_USERMAP,
+			pgprot_writecombine(PAGE_KERNEL),
+			__builtin_return_address(0));
+
+	if (!virt)
+		pr_err("\x1b[31m" "pmap: cma: failed to map 0x%08x" "\x1b[0m\n",
+				base);
+	else
+		pr_debug("pmap: cma: 0x%08x is virtually mapped to 0x%08x\n",
+				base, (__u32) virt);
+
+	return virt;
+}
+EXPORT_SYMBOL(pmap_cma_remap);
+
+void pmap_cma_unmap(void *virt, __u32 size)
+{
+	size = PAGE_ALIGN(size);
+
+	dma_common_free_remap(virt, size, VM_ARM_DMA_CONSISTENT | VM_USERMAP);
+
+	pr_debug("pmap: cma: virtual address 0x%08x is unmapped\n",
+			(__u32) virt);
+}
+EXPORT_SYMBOL(pmap_cma_unmap);
 #endif
 
 static int __pmap_get_info(pmap_t *info)
@@ -201,7 +229,7 @@ static int __pmap_get_info(pmap_t *info)
 	if (entry->parent) {
 		if (!__pmap_get_info(&entry->parent->info))
 			return 0;
-#ifdef CONFIG_DMA_CMA
+#ifdef CONFIG_PMAP_TO_CMA
 	} else if (!info->rc && pmap_is_cma_alloc(info)) {
 		if (!pmap_cma_alloc(info))
 			return 0;
@@ -223,11 +251,9 @@ static int __pmap_release_info(pmap_t *info)
 	if (info->rc && entry->parent) {
 		if (!__pmap_release_info(&entry->parent->info))
 			return 0;
-#ifdef CONFIG_DMA_CMA
+#ifdef CONFIG_PMAP_TO_CMA
 	} else if (info->rc == 1 && pmap_is_cma_alloc(info)) {
-		if (!pmap_cma_release(info))
-			return 0;
-
+		pmap_cma_release(info);
 		pmap_total_size -= info->size;
 #endif
 	}
@@ -255,7 +281,6 @@ int pmap_get_info(const char *name, pmap_t *mem)
 
 	memcpy(mem, info, sizeof(pmap_t));
 	mem->base = pmap_get_base(info);
-	mem->v_base = pmap_get_v_base(info);
 	return 1;
 }
 EXPORT_SYMBOL(pmap_get_info);
@@ -282,6 +307,9 @@ int pmap_check_region(__u32 base, __u32 size)
 	list_for_each_entry(entry, &pmap_list_head, list) {
 		start = pmap_get_base(&entry->info);
 		end = start + entry->info.size;
+
+		if (!start)
+			continue;
 
 		if (start <= base && end >= base + size)
 			return 1;
@@ -328,7 +356,7 @@ static int proc_pmap_show(struct seq_file *m, void *v)
 		pmap_t *info = &entry->info;
 		char is_cma = pmap_is_cma_alloc(info) ? '*' : ' ';
 
-		if (pmap_get_base(info) == PMAP_DATA_NA)
+		if (!pmap_get_base(info))
 			continue;
 
 		if (!shared_info && pmap_is_shared(info)) {
@@ -357,7 +385,7 @@ static int proc_pmap_open(struct inode *inode, struct file *file)
 	return single_open(file, proc_pmap_show, PDE_DATA(inode));
 }
 
-long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
+static long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
 	user_pmap_t ret_info;
 	pmap_t info;
@@ -392,6 +420,9 @@ static const struct file_operations proc_pmap_fops = {
 	.llseek		= seq_lseek,
 	.release	= seq_release,
 	.unlocked_ioctl	= proc_pmap_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl	= proc_pmap_ioctl,
+#endif
 };
 #endif
 
@@ -401,7 +432,7 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 
 	if (pmap_is_secured(info)) {
 		if (pmap_is_cma_alloc(info))
-			info->base = info->v_base = entry->parent->info.size;
+			info->base = entry->parent->info.size;
 		else
 			info->base -= entry->parent->info.base;
 
@@ -429,10 +460,8 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 		info->base = offset;
 		info->size = size;
 
-		if (pmap_is_cma_alloc(&entry->parent->info)) {
-			info->v_base = offset;
+		if (pmap_is_cma_alloc(&entry->parent->info))
 			info->flags |= PMAP_FLAG_CMA_ALLOC;
-		}
 	}
 
 	/* Remove pmap with size 0 from entry list */
@@ -442,15 +471,18 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 
 static int __init tcc_pmap_init(void)
 {
+#ifdef CONFIG_PMAP_TO_CMA
 	struct class *class;
+#endif
 	struct pmap_entry *entry;
 	struct device_node *np;
-	int ret, i;
+	int i;
 
 	/*
 	 * Create entry under procfs for user interface and create a
 	 * device to use DMA API on cma alloc/release.
 	 */
+#ifdef CONFIG_PMAP_TO_CMA
 	class = class_create(THIS_MODULE, "pmap");
 
 	pmap_device = device_create(class, NULL, 0, NULL, "pmap");
@@ -459,9 +491,9 @@ static int __init tcc_pmap_init(void)
 		return PTR_ERR(pmap_device);
 	}
 
-	ret = dma_set_coherent_mask(pmap_device, DMA_BIT_MASK(32));
-	if (ret < 0)
-		return ret;
+	if (dma_set_coherent_mask(pmap_device, DMA_BIT_MASK(32)) < 0)
+		return -EIO;
+#endif
 
 #ifdef CONFIG_PROC_FS
 	if (!proc_create("pmap", S_IRUGO, NULL, &proc_pmap_fops))
@@ -632,7 +664,7 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	entry->info.base = alloc_size ? PMAP_DATA_NA : rmem->base;
 	entry->info.size = alloc_size ? alloc_size : rmem->size;
 	entry->info.groups = groups;
-	entry->info.v_base = 0;
+	entry->info.v_base = 0; /* NO MORE USED (will be removed later) */
 	entry->info.rc = 0;
 	entry->info.flags = flags;
 
