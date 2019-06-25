@@ -3341,6 +3341,7 @@ host:
 	}
 }
 
+#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 static void _dwc2_hcd_stop(struct usb_hcd *hcd);
 void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 {
@@ -3393,6 +3394,7 @@ void dwc2_manual_change(struct dwc2_hsotg *hsotg)
 
 	}
 }
+#endif
 
 static void dwc2_wakeup_detected(unsigned long data)
 {

@@ -165,6 +165,7 @@ static ssize_t dwc2_tcc_vbus_store(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR(vbus, S_IRUGO | S_IWUSR, dwc2_tcc_vbus_show, dwc2_tcc_vbus_store);
 
+#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 static ssize_t dwc2_tcc_drd_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
@@ -258,6 +259,8 @@ static int dwc2_soffn_monitor_thread(void *w)
 	dev_warn(hsotg->dev, "dwc2 device - Host Disconnected\n");	
 }
 #endif
+#endif
+
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/ohci_pdriver.h>
@@ -460,7 +463,7 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 			ret = phy_init(hsotg->phy);
 	}
 #ifdef CONFIG_USB_DWC2_TCC_MUX
-	if (hsotg->mhst_uphy && (hsotg->dr_mode == USB_DR_MODE_HOST) || (hsotg->dr_mode == USB_DR_MODE_OTG)) 
+	if (hsotg->mhst_uphy && ((hsotg->dr_mode == USB_DR_MODE_HOST) || (hsotg->dr_mode == USB_DR_MODE_OTG)))
 		ret = usb_phy_init(hsotg->mhst_uphy);
 #endif
 	return ret;
@@ -517,7 +520,7 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 
 /**
  * dwc2_lowlevel_hw_disable - disable platform lowlevel hw resources
- /* @hsotg: The driver state
+ * @hsotg: The driver state
  *
  * A wrapper for platform code responsible for controlling
  * low-level USB platform resources (phy, clock, regulators)
@@ -534,7 +537,7 @@ int dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 
 static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 {
-	int i, ret;
+	int ret;
 
 	hsotg->reset = devm_reset_control_get_optional(hsotg->dev, "dwc2");
 	if (IS_ERR(hsotg->reset)) {
@@ -660,7 +663,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #endif
 	return 0;
 }
-#ifdef CONFIG_USB_DWC2_TCC
+#if defined (CONFIG_USB_DWC2_TCC) && defined (CONFIG_USB_DWC2_DUAL_ROLE)
 #define VBUS_CTRL_MAX 10
 
 static int dwc2_change_dr_mode(struct work_struct *w)
@@ -695,7 +698,7 @@ static int dwc2_change_dr_mode(struct work_struct *w)
 			else {
 				retry_cnt++;
 				msleep(50);
-				dev_warn("[%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
+				dev_warn(hsotg->dev, "[%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
 			}
 		} while (retry_cnt < VBUS_CTRL_MAX);
 #endif
@@ -757,10 +760,12 @@ static int dwc2_driver_remove(struct platform_device *dev)
 
 	reset_control_assert(hsotg->reset);
 #ifdef CONFIG_USB_DWC2_TCC
+#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 	cancel_work_sync(&hsotg->drd_work);
 	destroy_workqueue(hsotg->drd_wq);
 
 	device_remove_file(&dev->dev, &dev_attr_drdmode);
+#endif
 	device_remove_file(&dev->dev, &dev_attr_vbus);
 #endif
 	return 0;
@@ -947,30 +952,30 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		goto skip_mode_change;
 	}
 #ifdef CONFIG_USB_DWC2_TCC
+	retval = device_create_file(&dev->dev, &dev_attr_vbus);
+	if (retval) 
+		dev_err(hsotg->dev, "failed to create vbus\n");
+	#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
 	if (!hsotg->drd_wq) {
 		goto error;
 	}
 	INIT_WORK(&hsotg->drd_work, dwc2_change_dr_mode);
-	retval = device_create_file(&dev->dev, &dev_attr_vbus);
-	if (retval) 
-		dev_err(hsotg->dev, "failed to create vbus\n");
-	
 	retval = device_create_file(&dev->dev, &dev_attr_drdmode);
 	if (retval)
 		dev_err(hsotg->dev, "failed to create dr_mode\n");
 
-#if CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+		#ifdef CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
+			#ifdef CONFIG_USB_DWC2_TCC_MUX
 	//NOTHING TO DO!!
-#else
+			#else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
 	hsotg->dr_mode = USB_DR_MODE_HOST;
 	dwc2_manual_change(hsotg);
-#endif
-#elif CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
-#ifdef CONFIG_USB_DWC2_TCC_MUX
+			#endif
+		#elif CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
+			#ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	struct work_struct *work;
 	work = &hsotg->drd_work;
@@ -984,12 +989,13 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	queue_work(hsotg->drd_wq, work);
 	/* wait for operation to complete */
 	flush_work(work);
-#else
+			#else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
-#endif
+			#endif
 
-#endif //CONFIG_USB_DWC2_TCC_FIRST
+		#endif //CONFIG_USB_DWC2_TCC_FIRST
+	#endif //CONFIG_USB_DWC2_DUAL_ROLE
 #endif //CONFIG_USB_DWC2_TCC
 
 skip_mode_change:
