@@ -259,7 +259,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_PREEMPT_RCU
  	int				rcu_read_lock_nesting;
-@@ -1401,7 +1402,7 @@ extern struct pid *cad_pid;
+@@ -1404,7 +1405,7 @@ extern struct pid *cad_pid;
  #define PF_SWAPWRITE		0x00800000	/* Allowed to write to swap */
  #define PF_MEMSTALL		0x01000000	/* Stalled due to lack of memory */
  #define PF_UMH			0x02000000	/* I'm an Usermodehelper process */

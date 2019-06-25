@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -922,7 +922,7 @@ static inline bool is_cpu_allowed(struct
+@@ -917,7 +917,7 @@ static inline bool is_cpu_allowed(struct
  	if (!cpumask_test_cpu(cpu, p->cpus_ptr))
  		return false;
  

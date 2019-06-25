@@ -26,7 +26,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -3383,10 +3383,9 @@ static bool blk_mq_poll_hybrid_sleep(str
+@@ -3394,10 +3394,9 @@ static bool blk_mq_poll_hybrid_sleep(str
  	kt = nsecs;
  
  	mode = HRTIMER_MODE_REL;
@@ -57,7 +57,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  	while (1) {
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -361,10 +361,17 @@ DECLARE_PER_CPU(struct tick_device, tick
+@@ -364,10 +364,17 @@ DECLARE_PER_CPU(struct tick_device, tick
  /* Initialize timers: */
  extern void hrtimer_init(struct hrtimer *timer, clockid_t which_clock,
  			 enum hrtimer_mode mode);
@@ -75,7 +75,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  
  extern void destroy_hrtimer_on_stack(struct hrtimer *timer);
  #else
-@@ -374,6 +381,15 @@ static inline void hrtimer_init_on_stack
+@@ -377,6 +384,15 @@ static inline void hrtimer_init_on_stack
  {
  	hrtimer_init(timer, which_clock, mode);
  }
@@ -91,7 +91,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  static inline void destroy_hrtimer_on_stack(struct hrtimer *timer) { }
  #endif
  
-@@ -477,9 +493,6 @@ extern long hrtimer_nanosleep(const stru
+@@ -481,9 +497,6 @@ extern long hrtimer_nanosleep(const stru
  			      const enum hrtimer_mode mode,
  			      const clockid_t clockid);
  
@@ -158,7 +158,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  	}
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1639,13 +1639,44 @@ static enum hrtimer_restart hrtimer_wake
+@@ -1651,13 +1651,44 @@ static enum hrtimer_restart hrtimer_wake
  	return HRTIMER_NORESTART;
  }
  
@@ -204,7 +204,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  int nanosleep_copyout(struct restart_block *restart, struct timespec64 *ts)
  {
  	switch(restart->nanosleep.type) {
-@@ -1669,8 +1700,6 @@ static int __sched do_nanosleep(struct h
+@@ -1681,8 +1712,6 @@ static int __sched do_nanosleep(struct h
  {
  	struct restart_block *restart;
  
@@ -213,7 +213,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  	do {
  		set_current_state(TASK_INTERRUPTIBLE);
  		hrtimer_start_expires(&t->timer, mode);
-@@ -1707,10 +1736,9 @@ static long __sched hrtimer_nanosleep_re
+@@ -1719,10 +1748,9 @@ static long __sched hrtimer_nanosleep_re
  	struct hrtimer_sleeper t;
  	int ret;
  
@@ -226,7 +226,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  	ret = do_nanosleep(&t, HRTIMER_MODE_ABS);
  	destroy_hrtimer_on_stack(&t.timer);
  	return ret;
-@@ -1728,7 +1756,7 @@ long hrtimer_nanosleep(const struct time
+@@ -1740,7 +1768,7 @@ long hrtimer_nanosleep(const struct time
  	if (dl_task(current) || rt_task(current))
  		slack = 0;
  
@@ -235,7 +235,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  	hrtimer_set_expires_range_ns(&t.timer, timespec64_to_ktime(*rqtp), slack);
  	ret = do_nanosleep(&t, mode);
  	if (ret != -ERESTART_RESTARTBLOCK)
-@@ -1927,11 +1955,9 @@ schedule_hrtimeout_range_clock(ktime_t *
+@@ -1940,11 +1968,9 @@ schedule_hrtimeout_range_clock(ktime_t *
  		return -EINTR;
  	}
  

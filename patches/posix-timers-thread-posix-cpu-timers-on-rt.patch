@@ -85,7 +85,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #include "posix-timers.h"
  
-@@ -1133,14 +1136,12 @@ static inline int fastpath_timer_check(s
+@@ -1148,15 +1151,13 @@ void cpu_timers_grab_expiry_lock(struct
   * already updated our counts.  We need to check if any timers fire now.
   * Interrupts are disabled.
   */
@@ -95,14 +95,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	LIST_HEAD(firing);
  	struct k_itimer *timer, *next;
  	unsigned long flags;
+ 	spinlock_t *expiry_lock;
  
 -	lockdep_assert_irqs_disabled();
 -
  	/*
  	 * The fast path checks that there are no expired thread or thread
  	 * group timers.  If that's so, just return.
-@@ -1193,6 +1194,153 @@ void run_posix_cpu_timers(struct task_st
- 	}
+@@ -1214,6 +1215,153 @@ void run_posix_cpu_timers(struct task_st
+ 	spin_unlock(expiry_lock);
  }
  
 +#ifdef CONFIG_PREEMPT_RT_BASE

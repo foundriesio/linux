@@ -14,17 +14,20 @@ Acked-by: Paul E. McKenney <paulmck@linux.ibm.com>
 Signed-off-by: Julia Cartwright <julia@ni.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/rcu/update.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/rcu/update.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 --- a/kernel/rcu/update.c
 +++ b/kernel/rcu/update.c
-@@ -68,7 +68,7 @@ extern int rcu_expedited; /* from sysctl
+@@ -68,8 +68,10 @@ extern int rcu_expedited; /* from sysctl
  module_param(rcu_expedited, int, 0);
  extern int rcu_normal; /* from sysctl */
  module_param(rcu_normal, int, 0);
 -static int rcu_normal_after_boot;
 +static int rcu_normal_after_boot = IS_ENABLED(CONFIG_PREEMPT_RT_FULL);
++#ifndef CONFIG_PREEMPT_RT_FULL
  module_param(rcu_normal_after_boot, int, 0);
++#endif
  #endif /* #ifndef CONFIG_TINY_RCU */
  
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC

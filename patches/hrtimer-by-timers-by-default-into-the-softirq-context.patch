@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		apic->lapic_timer.timer_advance_ns = 1000;
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
-@@ -39,6 +39,7 @@ enum hrtimer_mode {
+@@ -38,6 +38,7 @@ enum hrtimer_mode {
  	HRTIMER_MODE_REL	= 0x01,
  	HRTIMER_MODE_PINNED	= 0x02,
  	HRTIMER_MODE_SOFT	= 0x04,
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	HRTIMER_MODE_ABS_PINNED = HRTIMER_MODE_ABS | HRTIMER_MODE_PINNED,
  	HRTIMER_MODE_REL_PINNED = HRTIMER_MODE_REL | HRTIMER_MODE_PINNED,
-@@ -49,6 +50,11 @@ enum hrtimer_mode {
+@@ -48,6 +49,11 @@ enum hrtimer_mode {
  	HRTIMER_MODE_ABS_PINNED_SOFT = HRTIMER_MODE_ABS_PINNED | HRTIMER_MODE_SOFT,
  	HRTIMER_MODE_REL_PINNED_SOFT = HRTIMER_MODE_REL_PINNED | HRTIMER_MODE_SOFT,
  
@@ -129,7 +129,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1126,7 +1126,9 @@ void hrtimer_start_range_ns(struct hrtim
+@@ -1109,7 +1109,9 @@ void hrtimer_start_range_ns(struct hrtim
  	 * Check whether the HRTIMER_MODE_SOFT bit and hrtimer.is_soft
  	 * match.
  	 */
@@ -139,7 +139,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	base = lock_hrtimer_base(timer, &flags);
  
-@@ -1286,10 +1288,17 @@ static inline int hrtimer_clockid_to_bas
+@@ -1269,10 +1271,17 @@ static inline int hrtimer_clockid_to_bas
  static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
  			   enum hrtimer_mode mode)
  {
@@ -159,7 +159,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	memset(timer, 0, sizeof(struct hrtimer));
  
  	cpu_base = raw_cpu_ptr(&hrtimer_bases);
-@@ -1672,6 +1681,14 @@ static void __hrtimer_init_sleeper(struc
+@@ -1656,6 +1665,14 @@ static void __hrtimer_init_sleeper(struc
  				   enum hrtimer_mode mode,
  				   struct task_struct *task)
  {

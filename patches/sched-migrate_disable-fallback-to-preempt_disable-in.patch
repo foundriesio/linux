@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -198,7 +198,7 @@ do { \
+@@ -201,7 +201,7 @@ do { \
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  extern void migrate_disable(void);
  extern void migrate_enable(void);
-@@ -215,8 +215,8 @@ static inline int __migrate_disabled(str
+@@ -218,8 +218,8 @@ static inline int __migrate_disabled(str
  }
  
  #else
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1049,7 +1049,7 @@ void set_cpus_allowed_common(struct task
+@@ -1044,7 +1044,7 @@ void set_cpus_allowed_common(struct task
  	p->nr_cpus_allowed = cpumask_weight(new_mask);
  }
  
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int __migrate_disabled(struct task_struct *p)
  {
  	return p->migrate_disable;
-@@ -1089,7 +1089,7 @@ static void __do_set_cpus_allowed_tail(s
+@@ -1084,7 +1084,7 @@ static void __do_set_cpus_allowed_tail(s
  
  void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
  {
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		lockdep_assert_held(&p->pi_lock);
  
-@@ -1162,7 +1162,7 @@ static int __set_cpus_allowed_ptr(struct
+@@ -1157,7 +1157,7 @@ static int __set_cpus_allowed_ptr(struct
  	if (cpumask_test_cpu(task_cpu(p), new_mask) || __migrate_disabled(p))
  		goto out;
  
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		p->migrate_disable_update = 1;
  		goto out;
-@@ -7132,7 +7132,7 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7134,7 +7134,7 @@ const u32 sched_prio_to_wmult[40] = {
  
  #undef CREATE_TRACE_POINTS
  
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline void
  update_nr_migratory(struct task_struct *p, long delta)
-@@ -7280,45 +7280,44 @@ EXPORT_SYMBOL(migrate_enable);
+@@ -7282,45 +7282,44 @@ EXPORT_SYMBOL(migrate_enable);
  #elif !defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
  void migrate_disable(void)
  {
