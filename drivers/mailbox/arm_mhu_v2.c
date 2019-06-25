@@ -24,6 +24,11 @@
 #define MHU_V2_REG_MSG_NO_CAP_OFS	0xF80
 #define MHU_V2_REG_ACC_REQ_OFS		0xF88
 #define MHU_V2_REG_ACC_RDY_OFS		0xF8C
+#define MHU_V2_INT_EN_OFS		0xF98
+#define MHU_V2_AIDR_OFS			0xFCC
+
+#define MHU_V2_CHCOMB			BIT(2)
+#define MHU_V2_AIDR_MINOR(_reg)		((_reg) & 0xF)
 
 #define MHU_V2_CHANS			2
 
@@ -117,6 +122,16 @@ static const struct mbox_chan_ops mhuv2_ops = {
 	.last_tx_done = mhuv2_last_tx_done,
 };
 
+void mhuv2_check_enable_cmbint(struct mhuv2_link *link)
+{
+	const u32 aidr = readl_relaxed(link->rx_reg + MHU_V2_AIDR_OFS);
+
+	if (MHU_V2_AIDR_MINOR(aidr) == 1) {
+		// Enable combined receiver interrupt for MHUv2.1
+		writel_relaxed(MHU_V2_CHCOMB, link->rx_reg + MHU_V2_INT_EN_OFS);
+	}
+}
+
 static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 {
 	int i, err;
@@ -157,6 +172,7 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 		mhuv2->mlink[i].irq = adev->irq[i];
 		mhuv2->mlink[i].rx_reg = rx_base + i*0x4;
 		mhuv2->mlink[i].tx_reg = tx_base + i*0x4;
+		mhuv2_check_enable_cmbint(&mhuv2->mlink[i]);
 	}
 
 	mhuv2->base = tx_base;
