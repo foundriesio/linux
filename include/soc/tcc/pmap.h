@@ -44,8 +44,8 @@ int pmap_release_info(const char *name);
 void *pmap_cma_remap(__u32 base, __u32 size);
 void pmap_cma_unmap(void *virt, __u32 size);
 #else
-#define pmap_cma_remap NULL
-#define pmap_cma_unmap
+#define pmap_cma_remap(base, size) NULL
+#define pmap_cma_unmap(base, size)
 #endif
 
 #endif  /* __PLAT_PMAP_H */
