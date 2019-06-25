@@ -128,7 +128,7 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 	struct usb_phy *phy = hsotg->uphy;
 
 	if (!vbus_control_enable) {
-		dev_err(hsotg->dev, "dwc_otg vbus ctrl disable.\n");
+		dev_warn(hsotg->dev, "dwc_otg vbus ctrl disable.\n");
 		return -1;
 	}
 	if (!phy || !phy->set_vbus) {
@@ -184,7 +184,7 @@ static ssize_t dwc2_tcc_drd_mode_store(struct device *dev, struct device_attribu
 	int retval = 0;
 	if (!strncmp(buf, "host", 4)) {
 		if (hsotg->dr_mode == USB_DR_MODE_HOST || hsotg->dr_mode == USB_DR_MODE_OTG) {
-			dev_err(hsotg->dev, "Already host mode!\n");
+			dev_warn(hsotg->dev, "Already host mode!\n");
 			goto error;
 		}
 		tmp_mode = USB_DR_MODE_HOST;
@@ -196,7 +196,7 @@ static ssize_t dwc2_tcc_drd_mode_store(struct device *dev, struct device_attribu
 		tmp_mode = USB_DR_MODE_PERIPHERAL;
 	} else {
 error:
-		dev_err(hsotg->dev, "Value is invalid!\n");
+		dev_warn(hsotg->dev, "Value is invalid!\n");
 		return count;
 	}
 
@@ -205,7 +205,7 @@ error:
 
 	if (work_pending(work))
 	{
-		dev_err(hsotg->dev, "[drd_store pending]\n");
+		dev_warn(hsotg->dev, "[drd_store pending]\n");
 		return count;
 	}
 
@@ -557,7 +557,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	 */
 	hsotg->phy = devm_phy_get(hsotg->dev, "usb2-phy");
 	if (IS_ERR(hsotg->phy)) {
-		dev_err(hsotg->dev, "[dwc2]usb-2phy is ERR %s\n", __func__);	
+		dev_warn(hsotg->dev, "[dwc2]usb-2phy is ERR %s\n", __func__);	
 		ret = PTR_ERR(hsotg->phy);
 		switch (ret) {
 		case -ENODEV:
@@ -573,7 +573,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	}
 
 	if (!hsotg->phy) {
-		dev_err(hsotg->dev, "[dwc2]hsotg->phy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev, "[dwc2]hsotg->phy is NULL %s\n", __func__);
 #ifndef CONFIG_USB_DWC2_TCC
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
@@ -586,7 +586,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #endif 
 #endif
 		if (IS_ERR(hsotg->uphy)) {
-			dev_err(hsotg->dev, "[dwc2]hsotg->uphy is NULL %s\n", __func__);
+			dev_warn(hsotg->dev, "[dwc2]hsotg->uphy is NULL %s\n", __func__);
 			ret = PTR_ERR(hsotg->uphy);
 			switch (ret) {
 			case -ENODEV:
@@ -612,7 +612,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	}
 #endif 
 	if (IS_ERR(hsotg->mhst_uphy)) {
-		dev_err(hsotg->dev, "[dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev, "[dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
 		ret = PTR_ERR(hsotg->uphy);
 		switch (ret) {
 		case -ENODEV:
@@ -830,7 +830,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->regs))
 		return PTR_ERR(hsotg->regs);
 
-	dev_err(&dev->dev, "dwc2 controller mapped PA %08lx to VA %p\n",
+	dev_info(&dev->dev, "dwc2 controller mapped PA %08lx to VA %p\n",
 		(unsigned long)res->start, hsotg->regs);
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	/*
@@ -841,7 +841,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->ehci_regs))
 		return PTR_ERR(hsotg->ehci_regs);
 
-	dev_err(&dev->dev, "ehci controller mapped PA %08lx to VA %p SIZE %d\n",
+	dev_info(&dev->dev, "ehci controller mapped PA %08lx to VA %p SIZE %d\n",
 		(unsigned long)res->start, hsotg->ehci_regs, hsotg->ehci_regs_size);
 
 	/*
@@ -852,7 +852,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->ohci_regs))
 		return PTR_ERR(hsotg->ohci_regs);
 
-	dev_err(&dev->dev, "ohci controller mapped PA %08lx to VA %p SIZE %d\n",
+	dev_info(&dev->dev, "ohci controller mapped PA %08lx to VA %p SIZE %d\n",
 		(unsigned long)res->start, hsotg->ohci_regs, hsotg->ohci_regs_size);
 
 #endif
@@ -868,7 +868,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		return hsotg->irq;
 	}
 
-	dev_err(hsotg->dev, "registering common handler for irq%d\n",
+	dev_info(hsotg->dev, "registering common handler for irq%d\n",
 		hsotg->irq);
 	retval = devm_request_irq(hsotg->dev, hsotg->irq,
 				  dwc2_handle_common_intr, IRQF_SHARED,
@@ -982,7 +982,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	if (work_pending(work))
 	{
-		dev_err(hsotg->dev, "[drd_store pending]\n");
+		dev_warn(hsotg->dev, "[drd_store pending]\n");
 		return count;
 	}
 
