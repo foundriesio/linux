@@ -22,7 +22,7 @@ Optional properties:
   "default" states can refer to the same pin configuration.
 - pinctrl-n: Phandle(s) pointing to pin configuration nodes.
   For Pinctrl properties see ../pinctrl/pinctrl-bindings.txt
-- st,hw-flow-ctrl: bool flag to enable hardware flow control.
+- uart-has-rtscts: See description in serial.txt binding.
 - rs485-rts-delay, rs485-rx-during-tx, rs485-rts-active-low,
   linux,rs485-enabled-at-boot-time: see rs485.txt.
 - dmas: phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
