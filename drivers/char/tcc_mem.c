@@ -280,21 +280,18 @@ static void ump_sw_mgmt_init(void)
 		for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 		{
 			ump_sw_buf[i].phy_addr = 0x00;
-            ump_sw_buf[i].ref_count = 0x00;
+			ump_sw_buf[i].ref_count = 0x00;
 		}
 
-		if(pmap_ump_reserved_sw.v_base)
-			remap_ump_reserved_sw = pmap_ump_reserved_sw.v_base;
+		if (pmap_is_cma_alloc(&pmap_ump_reserved_sw))
+			remap_ump_reserved_sw = (void *)pmap_cma_remap(pmap_ump_reserved_sw.base, pmap_ump_reserved_sw.size);
 		else
 			remap_ump_reserved_sw = (void *)ioremap_nocache(pmap_ump_reserved_sw.base, PAGE_ALIGN(pmap_ump_reserved_sw.size/*-PAGE_SIZE*/));
 
-    	if(remap_ump_reserved_sw == NULL) {
+		if(remap_ump_reserved_sw == NULL) {
 			ump_printk_err("phy[0x%x - 0x%x] mmap failed.\n", pmap_ump_reserved_sw.base, pmap_ump_reserved_sw.size );
 		}
 		else {
-			if(pmap_ump_reserved_sw.v_base)
-				memset(remap_ump_reserved_sw, 0x00, pmap_ump_reserved_sw.size);
-			else
 				memset_io(remap_ump_reserved_sw, 0x00, pmap_ump_reserved_sw.size);
 		}
 		bInited_ump_reserved_sw = 1;
@@ -308,14 +305,18 @@ static void ump_sw_mgmt_deinit(void)
 	if(!bInited_ump_reserved_sw)
 		return;
 
-	if(remap_ump_reserved_sw && !pmap_ump_reserved_sw.v_base)
-		iounmap((void*)remap_ump_reserved_sw);
-    remap_ump_reserved_sw = NULL;
+	if (remap_ump_reserved_sw)
+		if (pmap_is_cma_alloc(&pmap_ump_reserved_sw))
+			pmap_cma_unmap((void*)remap_ump_reserved_sw, pmap_ump_reserved_sw.size);
+		else
+			iounmap((void*)remap_ump_reserved_sw);
+
+	remap_ump_reserved_sw = NULL;
 
 	if(pmap_ump_reserved_sw.base){
 		pmap_release_info("ump_reserved_sw");
-        pmap_ump_reserved_sw.base = 0x00;
-    }
+		pmap_ump_reserved_sw.base = 0x00;
+	}
 
 	bInited_ump_reserved_sw = 0;
 	ump_printk_info("%s \n", __func__);

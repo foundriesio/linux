@@ -2257,37 +2257,32 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 }
 
 #if  defined(CONFIG_HDMI_DISPLAY_LASTFRAME) || defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
-static void* _tcc_vsync_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
+static int _tcc_vsync_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
 {
-	void *cma_virt_address = NULL;
 	unsigned int end_phyaddr = start_phyaddr + length -1;
 	int type = 0;
 
 	for(type = VSYNC_MAIN; type < VSYNC_MAX; type++)
 	{
-		if(tccvid_lastframe[type].pmapBuff.v_base != NULL){
-			if( (start_phyaddr >= tccvid_lastframe[type].pmapBuff.base) && (end_phyaddr <= (tccvid_lastframe[type].pmapBuff.base+tccvid_lastframe[type].pmapBuff.size-1))){
-				cma_virt_address = tccvid_lastframe[type].pmapBuff.v_base + (start_phyaddr - tccvid_lastframe[type].pmapBuff.base);
-				return cma_virt_address;
-			}
-		}
+		if( (start_phyaddr >= tccvid_lastframe[type].pmapBuff.base) && (end_phyaddr <= (tccvid_lastframe[type].pmapBuff.base+tccvid_lastframe[type].pmapBuff.size-1)))
+			return pmap_is_cma_alloc(&tccvid_lastframe[type].pmapBuff);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void* _tcc_vsync_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 {
 	void *virt_address = NULL;
 
-	virt_address = _tcc_vsync_check_region_for_cma(start_phyaddr, length);
-
-	if(!virt_address){
+	if (_tcc_vsync_check_region_for_cma(start_phyaddr, length))
+		virt_address = pmap_cma_remap((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
+	else
 		virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
-		if (virt_address == NULL) {
-			pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
-			return NULL;
-		}
+
+	if (virt_address == NULL) {
+		pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
+		return NULL;
 	}
 
 	return virt_address;
@@ -2295,11 +2290,9 @@ static void* _tcc_vsync_get_virtaddr(unsigned int start_phyaddr, unsigned int le
 
 static void _tcc_vsync_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
 {
-	void *cma_virt_address = NULL;
-
-	cma_virt_address = _tcc_vsync_check_region_for_cma(start_phyaddr, length);
-
-	if(target_virtaddr != cma_virt_address)
+	if (_tcc_vsync_check_region_for_cma(start_phyaddr, length))
+		pmap_cma_unmap(target_virtaddr, PAGE_ALIGN(length));
+	else
 		iounmap((void*)target_virtaddr);
 }
 
