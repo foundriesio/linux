@@ -10,12 +10,17 @@
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
 #include <linux/mm.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/syscore_ops.h>
 
 #include <dt-bindings/clock/stm32mp1-clks.h>
 
@@ -47,6 +52,7 @@ static DEFINE_SPINLOCK(rlock);
 #define RCC_AHB5ENSETR		0x210
 #define RCC_AHB6ENSETR		0x218
 #define RCC_AHB6LPENSETR	0x318
+#define RCC_MLAHBENSETR		0xA38
 #define RCC_RCK12SELR		0x28
 #define RCC_RCK3SELR		0x820
 #define RCC_RCK4SELR		0x824
@@ -103,6 +109,10 @@ static DEFINE_SPINLOCK(rlock);
 #define RCC_TIMG2PRER		0x82C
 #define RCC_RTCDIVR		0x44
 #define RCC_DBGCFGR		0x80C
+#define RCC_SREQSETR		0x104
+#define RCC_SREQCLRR		0x108
+#define RCC_CIER		0x414
+#define RCC_CIFR		0x418
 
 #define RCC_CLR	0x4
 
@@ -2637,21 +2647,364 @@ static int stm32_rcc_init(struct device_node *np,
 	return of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
 }
 
+static void __iomem *rcc_base;
+
+static int stm32_rcc_init_pwr(struct device_node *np);
+
 static void stm32mp1_rcc_init(struct device_node *np)
 {
-	void __iomem *base;
-
-	base = of_iomap(np, 0);
-	if (!base) {
+	rcc_base = of_iomap(np, 0);
+	if (!rcc_base) {
 		pr_err("%pOFn: unable to map resource", np);
 		of_node_put(np);
 		return;
 	}
 
-	if (stm32_rcc_init(np, base, stm32mp1_match_data)) {
-		iounmap(base);
+	if (stm32_rcc_init(np, rcc_base, stm32mp1_match_data)) {
+		iounmap(rcc_base);
 		of_node_put(np);
+		return;
 	}
+
+	stm32_rcc_init_pwr(np);
 }
 
 CLK_OF_DECLARE_DRIVER(stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_rcc_init);
+
+/*
+ * RCC POWER
+ *
+ */
+
+struct reg {
+	u32 address;
+	u32 val;
+};
+
+/* This table lists the IPs for which CSLEEP is enabled */
+static const struct reg lp_table[] = {
+	{ 0xB04, 0x00000000 }, /* APB1 */
+	{ 0xB0C, 0x00000000 }, /* APB2 */
+	{ 0xB14, 0x00000800 }, /* APB3 */
+	{ 0x304, 0x00000000 }, /* APB4 */
+	{ 0xB1C, 0x00000000 }, /* AHB2 */
+	{ 0xB24, 0x00000000 }, /* AHB3 */
+	{ 0xB2C, 0x00000000 }, /* AHB4 */
+	{ 0x31C, 0x00000000 }, /* AHB6 */
+	{ 0xB34, 0x00000000 }, /* AXIM */
+	{ 0xB3C, 0x00000000 }, /* MLAHB */
+};
+
+struct sreg {
+	u32 address;
+	u32 secured;
+	u32 val;
+	u8 setclr;
+};
+
+#define SREG(_addr, _setclr, _sec) { \
+	.address = _addr,\
+	.setclr = _setclr,\
+	.secured = _sec,\
+	.val = 0,\
+}
+
+static struct sreg clock_gating[] = {
+	SREG(RCC_APB1ENSETR, 1, 0),
+	SREG(RCC_APB2ENSETR, 1, 0),
+	SREG(RCC_APB3ENSETR, 1, 0),
+	SREG(RCC_APB4ENSETR, 1, 0),
+	SREG(RCC_APB5ENSETR, 1, 1),
+	SREG(RCC_AHB5ENSETR, 1, 1),
+	SREG(RCC_AHB6ENSETR, 1, 0),
+	SREG(RCC_AHB2ENSETR, 1, 0),
+	SREG(RCC_AHB3ENSETR, 1, 0),
+	SREG(RCC_AHB4ENSETR, 1, 0),
+	SREG(RCC_MLAHBENSETR, 1, 0),
+	SREG(RCC_MCO1CFGR, 0, 0),
+	SREG(RCC_MCO2CFGR, 0, 0),
+	SREG(RCC_PLL4CFGR2, 0, 0),
+};
+
+struct smux {
+	u32 clk_id;
+	u32 mux_id;
+	struct clk_hw *hw;
+};
+
+#define KER_SRC(_clk_id, _mux_id)\
+{\
+	.clk_id = _clk_id,\
+	.mux_id = _mux_id,\
+}
+
+struct smux _mux_kernel[M_LAST] = {
+	KER_SRC(SDMMC1_K, M_SDMMC12),
+	KER_SRC(SDMMC3_K, M_SDMMC3),
+	KER_SRC(FMC_K, M_FMC),
+	KER_SRC(QSPI_K, M_QSPI),
+	KER_SRC(RNG1_K, M_RNG1),
+	KER_SRC(RNG2_K, M_RNG2),
+	KER_SRC(USBPHY_K, M_USBPHY),
+	KER_SRC(USBO_K, M_USBO),
+	KER_SRC(STGEN_K, M_STGEN),
+	KER_SRC(SPDIF_K, M_SPDIF),
+	KER_SRC(SPI1_K, M_SPI1),
+	KER_SRC(SPI2_K, M_SPI23),
+	KER_SRC(SPI4_K, M_SPI45),
+	KER_SRC(SPI6_K, M_SPI6),
+	KER_SRC(CEC_K, M_CEC),
+	KER_SRC(I2C1_K, M_I2C12),
+	KER_SRC(I2C3_K, M_I2C35),
+	KER_SRC(I2C4_K, M_I2C46),
+	KER_SRC(LPTIM1_K, M_LPTIM1),
+	KER_SRC(LPTIM2_K, M_LPTIM23),
+	KER_SRC(LPTIM4_K, M_LPTIM45),
+	KER_SRC(USART1_K, M_USART1),
+	KER_SRC(USART2_K, M_UART24),
+	KER_SRC(USART3_K, M_UART35),
+	KER_SRC(USART6_K, M_USART6),
+	KER_SRC(UART7_K, M_UART78),
+	KER_SRC(SAI1_K, M_SAI1),
+	KER_SRC(SAI2_K, M_SAI2),
+	KER_SRC(SAI3_K, M_SAI3),
+	KER_SRC(SAI4_K, M_SAI4),
+	KER_SRC(DSI_K, M_DSI),
+	KER_SRC(FDCAN_K, M_FDCAN),
+	KER_SRC(ADC12_K, M_ADC12),
+	KER_SRC(ETHCK_K, M_ETHCK),
+	KER_SRC(CK_PER, M_CKPER),
+};
+
+static struct sreg pll_clock[] = {
+	SREG(RCC_PLL3CR, 0, 0),
+	SREG(RCC_PLL4CR, 0, 0),
+};
+
+static struct sreg mcu_source[] = {
+	SREG(RCC_MCUDIVR, 0, 0),
+	SREG(RCC_MSSCKSELR, 0, 0),
+};
+
+#define RCC_IRQ_FLAGS_MASK	0x110F1F
+#define RCC_STOP_MASK		(BIT(0) | BIT(1))
+#define RCC_RSTSR	0x408
+#define PWR_MPUCR	0x10
+#define PLL_EN		(BIT(0))
+#define STOP_FLAG	(BIT(5))
+#define SBF		(BIT(11))
+#define SBF_MPU		(BIT(12))
+
+static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
+{
+	pr_info("RCC generic interrupt received\n");
+
+	/* clear interrupt flag */
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+
+	return IRQ_HANDLED;
+}
+
+static void stm32mp1_backup_sreg(struct sreg *sreg, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		sreg[i].val = readl_relaxed(rcc_base + sreg[i].address);
+}
+
+static void stm32mp1_restore_sreg(struct sreg *sreg, int size)
+{
+	int i;
+	u32 val, address, reg;
+	int soc_secured;
+
+	soc_secured = _is_soc_secured(rcc_base);
+
+	for (i = 0; i < size; i++) {
+		val = sreg[i].val;
+		address =  sreg[i].address;
+
+		reg = readl_relaxed(rcc_base + address);
+		if (reg == val)
+			continue;
+
+		if (soc_secured && sreg[i].secured) {
+			SMC(STM32_SVC_RCC, STM32_WRITE, address, val);
+			if (sreg[i].setclr)
+				SMC(STM32_SVC_RCC, STM32_WRITE,
+				    address + RCC_CLR, ~val);
+		} else {
+			writel_relaxed(val, rcc_base + address);
+			if (sreg[i].setclr)
+				writel_relaxed(~val,
+					       rcc_base + address + RCC_CLR);
+		}
+	}
+}
+
+static void stm32mp1_restore_pll(struct sreg *sreg, int size)
+{
+	int i;
+	u32 val;
+	void __iomem *address;
+
+	for (i = 0; i < size; i++) {
+		val = sreg[i].val;
+		address =  sreg[i].address + rcc_base;
+
+		/* if pll was off turn it on before */
+		if ((readl_relaxed(address) & PLL_EN) == 0) {
+			writel_relaxed(PLL_EN, address);
+			while ((readl_relaxed(address) & PLL_RDY) == 0)
+				;
+		}
+
+		/* 2sd step: restore odf */
+		writel_relaxed(val, address);
+	}
+}
+
+static void stm32mp1_backup_mux(struct device_node *np,
+				struct smux *smux, int size)
+{
+	int i;
+	struct of_phandle_args clkspec;
+
+	clkspec.np = np;
+	clkspec.args_count = 1;
+
+	for (i = 0; i < size; i++) {
+		clkspec.args[0] = smux[i].clk_id;
+		smux[i].hw = __clk_get_hw(of_clk_get_from_provider(&clkspec));
+	}
+}
+
+static void stm32mp1_restore_mux(struct smux *smux, int size)
+{
+	int i;
+	struct clk_hw *hw, *hwp1, *hwp2;
+	struct mux_cfg *mux;
+	u8 idx;
+
+	/* These MUX are glitch free.
+	 * Then we have to restore mux thru clock framework
+	 * to be sure that CLK_OPS_PARENT_ENABLE will be exploited
+	 */
+	for (i = 0; i < M_LAST; i++) {
+		/* get parent strored in clock framework */
+		hw = smux[i].hw;
+		hwp1 = clk_hw_get_parent(hw);
+
+		/* Get parent corresponding to mux register */
+		mux = ker_mux_cfg[smux[i].mux_id].mux;
+		idx = readl_relaxed(rcc_base + mux->reg_off) >> mux->shift;
+		idx &= (BIT(mux->width) - 1);
+		hwp2 = clk_hw_get_parent_by_index(hw, idx);
+
+		/* check if parent from mux & clock framework are differents */
+		if (hwp1 != hwp2) {
+			/* update first clock framework with the true parent */
+			clk_set_parent(hw->clk, hwp2->clk);
+
+			/* Restore now new parent */
+			clk_set_parent(hw->clk, hwp1->clk);
+		}
+	}
+}
+
+#define RCC_BIT_HSI	0
+#define RCC_BIT_CSI	4
+#define RCC_BIT_HSE	8
+
+#define RCC_CK_OSC_MASK (BIT(RCC_BIT_HSE) | BIT(RCC_BIT_CSI) | BIT(RCC_BIT_HSI))
+
+#define RCC_CK_XXX_KER_MASK (RCC_CK_OSC_MASK << 1)
+
+static int stm32mp1_clk_suspend(void)
+{
+	u32 reg;
+
+	/* Save pll regs */
+	stm32mp1_backup_sreg(pll_clock, ARRAY_SIZE(pll_clock));
+
+	/* Save mcu source */
+	stm32mp1_backup_sreg(mcu_source, ARRAY_SIZE(mcu_source));
+
+	/* Save clock gating regs */
+	stm32mp1_backup_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+
+	/* Enable ck_xxx_ker clocks if ck_xxx was on */
+	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
+	writel_relaxed(reg << 1, rcc_base + RCC_OCENSETR);
+
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
+
+	return 0;
+}
+
+static void stm32mp1_clk_resume(void)
+{
+
+	/* Restore pll  */
+	stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
+
+	/* Restore mcu source */
+	stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
+
+	stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+
+	stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
+
+	/* Disable ck_xxx_ker clocks */
+	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
+			     rcc_base + RCC_OCENSETR + RCC_CLR);
+}
+
+static struct syscore_ops stm32mp1_clk_ops = {
+	.suspend	= stm32mp1_clk_suspend,
+	.resume		= stm32mp1_clk_resume,
+};
+
+static struct irqaction rcc_irq = {
+	.name = "rcc irq",
+	.flags = IRQF_ONESHOT,
+	.handler = stm32mp1_rcc_irq_handler,
+};
+
+static int stm32_rcc_init_pwr(struct device_node *np)
+{
+	int irq;
+	int ret;
+	int i;
+
+	/* register generic irq */
+	irq = of_irq_get(np, 0);
+	if (irq < 0) {
+		pr_err("%s: failed to get RCC generic IRQ\n", __func__);
+		return irq;
+	}
+
+	ret = setup_irq(irq, &rcc_irq);
+	if (ret) {
+		pr_err("%s: failed to register generic IRQ\n", __func__);
+		return ret;
+	}
+
+
+	/* Configure LPEN static table */
+	for (i = 0; i < ARRAY_SIZE(lp_table); i++)
+		writel_relaxed(lp_table[i].val, rcc_base + lp_table[i].address);
+
+	/* cleanup RCC flags */
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_SREQCLRR, RCC_STOP_MASK);
+
+	/* Prepare kernel clock source backup */
+	stm32mp1_backup_mux(np, _mux_kernel, ARRAY_SIZE(_mux_kernel));
+
+	register_syscore_ops(&stm32mp1_clk_ops);
+
+	return 0;
+}
