@@ -219,6 +219,16 @@
 			size = <0x20000000>;
 			no-map;
 		};
+
+#ifdef CONFIG_TCC_CORE_RESET
+		a7s_avm_backup {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "a7s_avm_backup";
+			alloc-ranges = <0xA0000000 0x10000000>;
+			size = <0x10000000>;
+			no-map;
+		};
+#endif
 #endif
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
