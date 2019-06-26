@@ -1484,7 +1484,7 @@ static struct clk_hw *clk_hw_register_smux(struct device *dev,
 
 	init.ops = &clk_smux_ops;
 
-	init.flags = flags | CLK_IS_BASIC;
+	init.flags = flags;
 	init.parent_names = parent_names;
 	init.num_parents = num_parents;
 
@@ -1617,7 +1617,7 @@ clk_hw_register_sdivider_table(struct device *dev, const char *name,
 	else
 		init.ops = &clk_sdivider_ops;
 
-	init.flags = flags | CLK_IS_BASIC;
+	init.flags = flags;
 	init.parent_names = (parent_name ? &parent_name : NULL);
 	init.num_parents = (parent_name ? 1 : 0);
 
