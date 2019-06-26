@@ -1,0 +1,80 @@
+From: Hugh Dickins <hughd@google.com>
+Date: Wed, 29 May 2019 09:25:40 +0200
+Subject: [PATCH] x86/fpu: Use fault_in_pages_writeable() for pre-faulting
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Since commit
+
+   d9c9ce34ed5c8 ("x86/fpu: Fault-in user stack if copy_fpstate_to_sigframe() fails")
+
+get_user_pages_unlocked() pre-faults user's memory if a write generates
+a page fault while the handler is disabled.
+
+This works in general and uncovered a bug as reported by Mike
+Rapoport¹. It has been pointed out that this function may be fragile
+and a simple pre-fault as in fault_in_pages_writeable() would be a
+better solution. Better as in taste and simplicity: that write (as
+performed by the alternative function) performs exactly the same
+faulting of memory as before. This was suggested by Hugh Dickins and
+Andrew Morton.
+
+Use fault_in_pages_writeable() for pre-faulting user's stack.
+
+  [ bigeasy: Write commit message. ]
+  [ bp: Massage some. ]
+
+¹ https://lkml.kernel.org/r/1557844195-18882-1-git-send-email-rppt@linux.ibm.com
+
+Fixes: d9c9ce34ed5c8 ("x86/fpu: Fault-in user stack if copy_fpstate_to_sigframe() fails")
+Suggested-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Hugh Dickins <hughd@google.com>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Borislav Petkov <bp@suse.de>
+Tested-by: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Andrea Arcangeli <aarcange@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Dave Hansen <dave.hansen@linux.intel.com>
+Cc: "H. Peter Anvin" <hpa@zytor.com>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Jann Horn <jannh@google.com>
+Cc: linux-mm <linux-mm@kvack.org>
+Cc: Mike Rapoport <rppt@linux.ibm.com>
+Cc: Pavel Machek <pavel@ucw.cz>
+Cc: Rik van Riel <riel@surriel.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: x86-ml <x86@kernel.org>
+Link: https://lkml.kernel.org/r/20190529072540.g46j4kfeae37a3iu@linutronix.de
+Link: https://lkml.kernel.org/r/1557844195-18882-1-git-send-email-rppt@linux.ibm.com
+---
+ arch/x86/kernel/fpu/signal.c |   11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
+
+--- a/arch/x86/kernel/fpu/signal.c
++++ b/arch/x86/kernel/fpu/signal.c
+@@ -5,6 +5,7 @@
+ 
+ #include <linux/compat.h>
+ #include <linux/cpu.h>
++#include <linux/pagemap.h>
+ 
+ #include <asm/fpu/internal.h>
+ #include <asm/fpu/signal.h>
+@@ -189,15 +190,7 @@ int copy_fpstate_to_sigframe(void __user
+ 	fpregs_unlock();
+ 
+ 	if (ret) {
+-		int aligned_size;
+-		int nr_pages;
+-
+-		aligned_size = offset_in_page(buf_fx) + fpu_user_xstate_size;
+-		nr_pages = DIV_ROUND_UP(aligned_size, PAGE_SIZE);
+-
+-		ret = get_user_pages_unlocked((unsigned long)buf_fx, nr_pages,
+-					      NULL, FOLL_WRITE);
+-		if (ret == nr_pages)
++		if (!fault_in_pages_writeable(buf_fx, fpu_user_xstate_size))
+ 			goto retry;
+ 		return -EFAULT;
+ 	}

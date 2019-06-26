@@ -23,7 +23,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1563,6 +1563,25 @@ int __sched __rt_mutex_futex_trylock(str
+@@ -1538,6 +1538,25 @@ int __sched __rt_mutex_futex_trylock(str
  }
  
  /**

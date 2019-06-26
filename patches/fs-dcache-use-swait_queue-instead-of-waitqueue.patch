@@ -204,7 +204,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	long timeout;
 --- a/kernel/sched/swait.c
 +++ b/kernel/sched/swait.c
-@@ -70,6 +70,7 @@ void swake_up_all(struct swait_queue_hea
+@@ -71,6 +71,7 @@ void swake_up_all(struct swait_queue_hea
  	struct swait_queue *curr;
  	LIST_HEAD(tmp);
  

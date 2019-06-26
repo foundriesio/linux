@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include "rtmutex_common.h"
  
-@@ -1919,6 +1920,15 @@ rt_mutex_fastlock(struct rt_mutex *lock,
+@@ -1894,6 +1895,15 @@ rt_mutex_fastlock(struct rt_mutex *lock,
  	if (likely(rt_mutex_cmpxchg_acquire(lock, NULL, current)))
  		return 0;
  
@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return slowfn(lock, state, NULL, RT_MUTEX_MIN_CHAINWALK, ww_ctx);
  }
  
-@@ -1936,6 +1946,9 @@ rt_mutex_timed_fastlock(struct rt_mutex
+@@ -1911,6 +1921,9 @@ rt_mutex_timed_fastlock(struct rt_mutex
  	    likely(rt_mutex_cmpxchg_acquire(lock, NULL, current)))
  		return 0;
  
