@@ -1442,7 +1442,7 @@ static int clk_smux_set_parent(struct clk_hw *hw, u8 index)
 
 	spin_lock_irqsave(mux->lock, flags);
 
-	val = clk_readl(mux->reg);
+	val = readl(mux->reg);
 	val &= ~(mux->mask << mux->shift);
 	val |= index << mux->shift;
 
@@ -1573,7 +1573,7 @@ static int clk_sdivider_set_rate(struct clk_hw *hw, unsigned long rate,
 	if (divider->flags & CLK_DIVIDER_HIWORD_MASK) {
 		val = div_mask(divider->width) << (divider->shift + 16);
 	} else {
-		val = clk_readl(divider->reg);
+		val = readl(divider->reg);
 		val &= ~(div_mask(divider->width) << divider->shift);
 	}
 	val |= (u32)value << divider->shift;
