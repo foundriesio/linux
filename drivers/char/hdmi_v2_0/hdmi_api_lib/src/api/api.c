@@ -217,9 +217,6 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
                 set_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
 
-                // Initialize the drm info frame.
-                hdmi_clear_drm(dev);
-
                 ret = 0;
         }while(0);
 
