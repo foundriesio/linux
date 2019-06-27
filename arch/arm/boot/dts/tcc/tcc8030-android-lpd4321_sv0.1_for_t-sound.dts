@@ -127,31 +127,49 @@
 		status = "okay";
 	};
 
+	//Main Media / Capture(4ch)
 	asrc_m2m_pcm@0 {
 		asrc = <&asrc0>;
+		playback-pair-id = <1>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		capture-pair-id = <0>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		playback-amd-cmd = <0>;		//0~5: tx to mixer, 6~8: general, undefine or 99: disable.
+		capture-amd-cmd = <8>;		//0~5: tx to mixer, 6~8: general, undefine or 99: disable.
 		status = "okay";
 	};
 
+	//Call Tx
 	asrc_m2m_pcm@1 {
 		asrc = <&asrc0>;
+		playback-pair-id = <2>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		capture-pair-id = <99>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		playback-amd-cmd = <1>;		//0~5: tx to mixer, 6~8: general, undefine or 99: disable.
 		status = "okay";
 	};
 
+	//Navi&Sys
 	asrc_m2m_pcm@2 {
 		asrc = <&asrc0>;
+		playback-pair-id = <3>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		capture-pair-id = <99>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		playback-amd-cmd = <2>;		//0~5: tx to mixer, 6~8: general, undefine or 99: disable.
 		status = "okay";
 	};
 
-	asrc_m2m_pcm@3 {
+	//RSE
+	/*asrc_m2m_pcm@3 {
 		asrc = <&asrc0>;
+		playback-pair-id = <99>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		capture-pair-id = <99>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
+		playback-amd-cmd = <6>;		//0~5: tx to mixer, 6~8: general, undefine or 99: disable.
 		status = "okay";
-	};
+	};*/
 
 	sound@1 {
 		compatible = "telechips,vir-snd-card";
 		card-name = "TCC8031 EVM Virtual Card";
 		status = "okay";
 
+		//Main Media, Capture (4ch)
 		telechips,dai-link@0 {
 			stream-name="virI2S_0";
 			codec,format = "i2s"; 
@@ -161,25 +179,22 @@
 			codec,dai-name = "ak4601-vir-aif";
 		};
 
+		//Call Tx
 		telechips,dai-link@1 {
 			stream-name="virI2S_1";
 			codec,format = "i2s"; 
 			pcm = <&asrc_m2m_pcm1>;
 			dai = <&vi2s1>;
+			playback-only;
 		};
-		
+
+		//Navi&Sys
 		telechips,dai-link@2 {
 			stream-name="virI2S_2";
 			codec,format = "i2s"; 
 			pcm = <&asrc_m2m_pcm2>;
 			dai = <&vi2s2>;
-		};
-
-		telechips,dai-link@3 {
-			stream-name="virI2S_3";
-			codec,format = "i2s"; 
-			pcm = <&asrc_m2m_pcm3>;
-			dai = <&vi2s3>;
+			playback-only;
 		};
 
 	};				

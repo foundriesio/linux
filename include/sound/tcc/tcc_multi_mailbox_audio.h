@@ -35,15 +35,22 @@
 //So, we estimates 5 queues (4 queues are for i/o device and 1 queue is for command.)
 #define RX_QUEUE_DEFAULT_NAME	"mbox_audio_rx_"
 
-#define RX_QUEUE_FOR_AUDIO_DEVICE_TX_0	    0  //hw0:0
-#define RX_QUEUE_FOR_AUDIO_DEVICE_TX_1	    1  //hw0:1
-#define RX_QUEUE_FOR_AUDIO_DEVICE_TX_2	    2  //hw0:2
-#define RX_QUEUE_FOR_AUDIO_DEVICE_RX		3  //hw0:3
-#define RX_QUEUE_FOR_COMMAND				4  //for command from a53 to a7s
-#define RX_QUEUE_COUNT						(RX_QUEUE_FOR_COMMAND + 1)
-
 #define TX_MAX_REPLY_COUNT					5
 #define MAX_USER_QUEUE_SIZE					20
+
+enum mbox_audio_rx_queue_index {
+    RX_QUEUE_FOR_AUDIO_DEVICE_0 = 0     ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_1         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_2         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_3         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_4         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_5         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_6         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_7         ,
+    RX_QUEUE_FOR_AUDIO_DEVICE_8         ,
+    RX_QUEUE_FOR_COMMAND                ,
+    RX_QUEUE_COUNT                      ,
+};
 
 //TODO : use driver variable? or use extern variable?
 /*struct mbox_audio_backup_data_t {
@@ -149,7 +156,6 @@ struct mbox_audio_device {
     //for set callback to other devices
     struct mbox_audio_client_t client[MBOX_AUDIO_CMD_TYPE_MAX];
 
-	//struct mbox_audio_backup_data_t backup_data;
  };
 
 struct mbox_audio_device *get_global_audio_dev(void);
