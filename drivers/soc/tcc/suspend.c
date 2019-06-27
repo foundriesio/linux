@@ -24,6 +24,7 @@
 #include "sram_map.h"
 #include "suspend.h"
 #include <linux/slab.h>
+#include <linux/regulator/machine.h>
 
 typedef void (*FuncPtr1)(unsigned int arg0);
 
@@ -83,9 +84,38 @@ failed_soc_reg_save:
 	return ret;
 }
 
+#if CONFIG_ARCH_TCC803X 
+static int tcc_suspend_prepare(void)
+{
+	int ret;
+
+	ret = regulator_suspend_prepare(PM_SUSPEND_MEM);
+	if (ret) {
+		pr_err("Failed to prepare regulators for suspend (%d)\n", ret);
+		return ret;
+	}
+
+
+	return 0;
+}
+
+static void tcc_suspend_finish(void)
+{
+	int ret;
+
+	ret = regulator_suspend_finish();
+	if (ret)
+		pr_warn("Failed to resume regulators from suspend (%d)\n", ret);
+}
+#endif
+
 static struct platform_suspend_ops suspend_ops = {
 	.valid	= suspend_valid_only_mem,
 	.enter	= tcc_pm_enter,
+#if CONFIG_ARCH_TCC803X
+	.prepare = tcc_suspend_prepare,
+	.finish = tcc_suspend_finish,
+#endif
 };
 
 void tcc_suspend_set_ops(struct tcc_suspend_ops *ops)
