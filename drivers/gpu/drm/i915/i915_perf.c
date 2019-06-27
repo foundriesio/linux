@@ -2743,7 +2743,7 @@ err:
 static u64 oa_exponent_to_ns(struct drm_i915_private *dev_priv, int exponent)
 {
 	return div64_u64(1000000000ULL * (2ULL << exponent),
-			 1000ULL * INTEL_INFO(dev_priv)->cs_timestamp_frequency_khz);
+			 1000ULL * RUNTIME_INFO(dev_priv)->cs_timestamp_frequency_khz);
 }
 
 /**
@@ -3099,6 +3099,7 @@ static bool gen8_is_valid_mux_addr(struct drm_i915_private *dev_priv, u32 addr)
 static bool gen10_is_valid_mux_addr(struct drm_i915_private *dev_priv, u32 addr)
 {
 	return gen8_is_valid_mux_addr(dev_priv, addr) ||
+		addr == i915_mmio_reg_offset(GEN10_NOA_WRITE_HIGH) ||
 		(addr >= i915_mmio_reg_offset(OA_PERFCNT3_LO) &&
 		 addr <= i915_mmio_reg_offset(OA_PERFCNT4_HI));
 }
@@ -3570,7 +3571,7 @@ void i915_perf_init(struct drm_i915_private *dev_priv)
 		spin_lock_init(&dev_priv->perf.oa.oa_buffer.ptr_lock);
 
 		oa_sample_rate_hard_limit = 1000 *
-			(INTEL_INFO(dev_priv)->cs_timestamp_frequency_khz / 2);
+			(RUNTIME_INFO(dev_priv)->cs_timestamp_frequency_khz / 2);
 		dev_priv->perf.sysctl_header = register_sysctl_table(dev_root);
 
 		mutex_init(&dev_priv->perf.metrics_lock);

@@ -57,12 +57,19 @@ enum interruption_class {
 	IRQIO_APB,
 	IRQIO_ADM,
 	IRQIO_CSC,
+#ifdef __GENKSYMS__
 	IRQIO_PCI,
+#else
+	IRQIO_PCF,
+#endif
 	IRQIO_MSI,
 	IRQIO_VIR,
 	IRQIO_VAI,
 	NMI_NMI,
 	CPU_RST,
+#ifndef __GENKSYMS__
+	IRQIO_PCD,
+#endif
 	NR_ARCH_IRQS
 };
 

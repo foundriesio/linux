@@ -84,6 +84,7 @@ obj-$(CONFIG_PERF_EVENTS)	+= perf_event.o perf_cpum_cf.o perf_cpum_sf.o
 obj-$(CONFIG_PERF_EVENTS)	+= perf_cpum_cf_events.o
 
 obj-$(CONFIG_TRACEPOINTS)	+= trace.o
+obj-$(CONFIG_PROTECTED_VIRTUALIZATION_GUEST)   += uv.o
 
 # vdso
 obj-y				+= vdso64/

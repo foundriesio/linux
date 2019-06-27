@@ -22,7 +22,6 @@
 
 #include <net/inet_sock.h>
 #include <net/snmp.h>
-#include <net/ip.h>
 
 struct icmp_err {
   int		errno;
@@ -42,11 +41,7 @@ struct net;
 
 void __icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info,
 		 const struct ip_options *opt);
-static inline void icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info)
-{
-	__icmp_send(skb_in, type, code, info, &IPCB(skb_in)->opt);
-}
-
+void icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info);
 int icmp_rcv(struct sk_buff *skb);
 void icmp_err(struct sk_buff *skb, u32 info);
 int icmp_init(void);

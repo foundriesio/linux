@@ -29,7 +29,7 @@
 #include "i915_drv.h"
 #include "i915_selftest.h"
 
-#define PLATFORM(x) .platform = (x), .platform_mask = BIT(x)
+#define PLATFORM(x) .platform = (x)
 #define GEN(x) .gen = (x), .gen_mask = BIT((x) - 1)
 
 #define GEN_DEFAULT_PIPEOFFSETS \
@@ -163,7 +163,14 @@ static const struct intel_device_info intel_g33_info = {
 	.has_overlay = 1,
 };
 
-static const struct intel_device_info intel_pineview_info = {
+static const struct intel_device_info intel_pineview_g_info = {
+	GEN3_FEATURES,
+	PLATFORM(INTEL_PINEVIEW),
+	.has_hotplug = 1,
+	.has_overlay = 1,
+};
+
+static const struct intel_device_info intel_pineview_m_info = {
 	GEN3_FEATURES,
 	PLATFORM(INTEL_PINEVIEW),
 	.is_mobile = 1,
@@ -625,7 +632,8 @@ static const struct pci_device_id pciidlist[] = {
 	INTEL_I965GM_IDS(&intel_i965gm_info),
 	INTEL_GM45_IDS(&intel_gm45_info),
 	INTEL_G45_IDS(&intel_g45_info),
-	INTEL_PINEVIEW_IDS(&intel_pineview_info),
+	INTEL_PINEVIEW_G_IDS(&intel_pineview_g_info),
+	INTEL_PINEVIEW_M_IDS(&intel_pineview_m_info),
 	INTEL_IRONLAKE_D_IDS(&intel_ironlake_d_info),
 	INTEL_IRONLAKE_M_IDS(&intel_ironlake_m_info),
 	INTEL_SNB_D_GT1_IDS(&intel_sandybridge_d_gt1_info),
@@ -656,15 +664,19 @@ static const struct pci_device_id pciidlist[] = {
 	INTEL_KBL_GT2_IDS(&intel_kabylake_gt2_info),
 	INTEL_KBL_GT3_IDS(&intel_kabylake_gt3_info),
 	INTEL_KBL_GT4_IDS(&intel_kabylake_gt3_info),
-	INTEL_AML_GT2_IDS(&intel_kabylake_gt2_info),
+	INTEL_AML_KBL_GT2_IDS(&intel_kabylake_gt2_info),
 	INTEL_CFL_S_GT1_IDS(&intel_coffeelake_gt1_info),
 	INTEL_CFL_S_GT2_IDS(&intel_coffeelake_gt2_info),
+	INTEL_CFL_H_GT1_IDS(&intel_coffeelake_gt1_info),
 	INTEL_CFL_H_GT2_IDS(&intel_coffeelake_gt2_info),
 	INTEL_CFL_U_GT2_IDS(&intel_coffeelake_gt2_info),
 	INTEL_CFL_U_GT3_IDS(&intel_coffeelake_gt3_info),
 	INTEL_WHL_U_GT1_IDS(&intel_coffeelake_gt1_info),
 	INTEL_WHL_U_GT2_IDS(&intel_coffeelake_gt2_info),
+	INTEL_AML_CFL_GT2_IDS(&intel_coffeelake_gt2_info),
 	INTEL_WHL_U_GT3_IDS(&intel_coffeelake_gt3_info),
+	INTEL_CML_GT1_IDS(&intel_coffeelake_gt1_info),
+	INTEL_CML_GT2_IDS(&intel_coffeelake_gt2_info),
 	INTEL_CNL_IDS(&intel_cannonlake_info),
 	INTEL_ICL_11_IDS(&intel_icelake_11_info),
 	{0, 0, 0}

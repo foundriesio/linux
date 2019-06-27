@@ -1573,7 +1573,7 @@ static inline int mi_set_context(struct i915_request *rq, u32 flags)
 	const int num_rings =
 		/* Use an extended w/a on gen7 if signalling from other rings */
 		(HAS_LEGACY_SEMAPHORES(i915) && IS_GEN7(i915)) ?
-		INTEL_INFO(i915)->num_rings - 1 :
+		RUNTIME_INFO(i915)->num_rings - 1 :
 		0;
 	bool force_restore = false;
 	int len;
@@ -2220,7 +2220,7 @@ static void intel_ring_default_vfuncs(struct drm_i915_private *dev_priv,
 
 		engine->emit_breadcrumb = gen6_sema_emit_breadcrumb;
 
-		num_rings = INTEL_INFO(dev_priv)->num_rings - 1;
+		num_rings = RUNTIME_INFO(dev_priv)->num_rings - 1;
 		engine->emit_breadcrumb_sz += num_rings * 3;
 		if (num_rings & 1)
 			engine->emit_breadcrumb_sz++;

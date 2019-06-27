@@ -1587,6 +1587,7 @@ struct drm_i915_private {
 	struct kmem_cache *priorities;
 
 	const struct intel_device_info info;
+	struct intel_runtime_info __runtime; /* Use RUNTIME_INFO() to access. */
 	struct intel_driver_caps caps;
 
 	/**
@@ -2335,10 +2336,11 @@ intel_info(const struct drm_i915_private *dev_priv)
 }
 
 #define INTEL_INFO(dev_priv)	intel_info((dev_priv))
+#define RUNTIME_INFO(dev_priv)	(&(dev_priv)->__runtime)
 #define DRIVER_CAPS(dev_priv)	(&(dev_priv)->caps)
 
 #define INTEL_GEN(dev_priv)	((dev_priv)->info.gen)
-#define INTEL_DEVID(dev_priv)	((dev_priv)->info.device_id)
+#define INTEL_DEVID(dev_priv)	(RUNTIME_INFO(dev_priv)->device_id)
 
 #define REVID_FOREVER		0xff
 #define INTEL_REVID(dev_priv)	((dev_priv)->drm.pdev->revision)
@@ -2368,7 +2370,69 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define IS_REVID(p, since, until) \
 	(INTEL_REVID(p) >= (since) && INTEL_REVID(p) <= (until))
 
-#define IS_PLATFORM(dev_priv, p) ((dev_priv)->info.platform_mask & BIT(p))
+static __always_inline unsigned int
+__platform_mask_index(const struct intel_runtime_info *info,
+		      enum intel_platform p)
+{
+	const unsigned int pbits =
+		BITS_PER_TYPE(info->platform_mask[0]) - INTEL_SUBPLATFORM_BITS;
+
+	/* Expand the platform_mask array if this fails. */
+	BUILD_BUG_ON(INTEL_MAX_PLATFORMS >
+		     pbits * ARRAY_SIZE(info->platform_mask));
+
+	return p / pbits;
+}
+
+static __always_inline unsigned int
+__platform_mask_bit(const struct intel_runtime_info *info,
+		    enum intel_platform p)
+{
+	const unsigned int pbits =
+		BITS_PER_TYPE(info->platform_mask[0]) - INTEL_SUBPLATFORM_BITS;
+
+	return p % pbits + INTEL_SUBPLATFORM_BITS;
+}
+
+static inline u32
+intel_subplatform(const struct intel_runtime_info *info, enum intel_platform p)
+{
+	const unsigned int pi = __platform_mask_index(info, p);
+
+	return info->platform_mask[pi] & INTEL_SUBPLATFORM_BITS;
+}
+
+static __always_inline bool
+IS_PLATFORM(const struct drm_i915_private *i915, enum intel_platform p)
+{
+	const struct intel_runtime_info *info = RUNTIME_INFO(i915);
+	const unsigned int pi = __platform_mask_index(info, p);
+	const unsigned int pb = __platform_mask_bit(info, p);
+
+	BUILD_BUG_ON(!__builtin_constant_p(p));
+
+	return info->platform_mask[pi] & BIT(pb);
+}
+
+static __always_inline bool
+IS_SUBPLATFORM(const struct drm_i915_private *i915,
+	       enum intel_platform p, unsigned int s)
+{
+	const struct intel_runtime_info *info = RUNTIME_INFO(i915);
+	const unsigned int pi = __platform_mask_index(info, p);
+	const unsigned int pb = __platform_mask_bit(info, p);
+	const unsigned int msb = BITS_PER_TYPE(info->platform_mask[0]) - 1;
+	const u32 mask = info->platform_mask[pi];
+
+	BUILD_BUG_ON(!__builtin_constant_p(p));
+	BUILD_BUG_ON(!__builtin_constant_p(s));
+	BUILD_BUG_ON((s) >= INTEL_SUBPLATFORM_BITS);
+
+	/* Shift and test on the MSB position so sign flag can be used. */
+	return ((mask << (msb - pb)) & (mask << (msb - s))) & BIT(msb);
+}
+
+#define IS_MOBILE(dev_priv)	(INTEL_INFO(dev_priv)->is_mobile)
 
 #define IS_I830(dev_priv)	IS_PLATFORM(dev_priv, INTEL_I830)
 #define IS_I845G(dev_priv)	IS_PLATFORM(dev_priv, INTEL_I845G)
@@ -2383,11 +2447,11 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define IS_G45(dev_priv)	IS_PLATFORM(dev_priv, INTEL_G45)
 #define IS_GM45(dev_priv)	IS_PLATFORM(dev_priv, INTEL_GM45)
 #define IS_G4X(dev_priv)	(IS_G45(dev_priv) || IS_GM45(dev_priv))
-#define IS_PINEVIEW_G(dev_priv)	(INTEL_DEVID(dev_priv) == 0xa001)
-#define IS_PINEVIEW_M(dev_priv)	(INTEL_DEVID(dev_priv) == 0xa011)
 #define IS_PINEVIEW(dev_priv)	IS_PLATFORM(dev_priv, INTEL_PINEVIEW)
 #define IS_G33(dev_priv)	IS_PLATFORM(dev_priv, INTEL_G33)
-#define IS_IRONLAKE_M(dev_priv)	(INTEL_DEVID(dev_priv) == 0x0046)
+#define IS_IRONLAKE(dev_priv)	IS_PLATFORM(dev_priv, INTEL_IRONLAKE)
+#define IS_IRONLAKE_M(dev_priv) \
+	(IS_PLATFORM(dev_priv, INTEL_IRONLAKE) && IS_MOBILE(dev_priv))
 #define IS_IVYBRIDGE(dev_priv)	IS_PLATFORM(dev_priv, INTEL_IVYBRIDGE)
 #define IS_IVB_GT1(dev_priv)	(IS_IVYBRIDGE(dev_priv) && \
 				 (dev_priv)->info.gt == 1)
@@ -2402,41 +2466,32 @@ intel_info(const struct drm_i915_private *dev_priv)
 #define IS_COFFEELAKE(dev_priv)	IS_PLATFORM(dev_priv, INTEL_COFFEELAKE)
 #define IS_CANNONLAKE(dev_priv)	IS_PLATFORM(dev_priv, INTEL_CANNONLAKE)
 #define IS_ICELAKE(dev_priv)	IS_PLATFORM(dev_priv, INTEL_ICELAKE)
-#define IS_MOBILE(dev_priv)	((dev_priv)->info.is_mobile)
 #define IS_HSW_EARLY_SDV(dev_priv) (IS_HASWELL(dev_priv) && \
 				    (INTEL_DEVID(dev_priv) & 0xFF00) == 0x0C00)
-#define IS_BDW_ULT(dev_priv)	(IS_BROADWELL(dev_priv) && \
-				 ((INTEL_DEVID(dev_priv) & 0xf) == 0x6 ||	\
-				 (INTEL_DEVID(dev_priv) & 0xf) == 0xb ||	\
-				 (INTEL_DEVID(dev_priv) & 0xf) == 0xe))
-/* ULX machines are also considered ULT. */
-#define IS_BDW_ULX(dev_priv)	(IS_BROADWELL(dev_priv) && \
-				 (INTEL_DEVID(dev_priv) & 0xf) == 0xe)
+#define IS_BDW_ULT(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_BROADWELL, INTEL_SUBPLATFORM_ULT)
+#define IS_BDW_ULX(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_BROADWELL, INTEL_SUBPLATFORM_ULX)
 #define IS_BDW_GT3(dev_priv)	(IS_BROADWELL(dev_priv) && \
 				 (dev_priv)->info.gt == 3)
-#define IS_HSW_ULT(dev_priv)	(IS_HASWELL(dev_priv) && \
-				 (INTEL_DEVID(dev_priv) & 0xFF00) == 0x0A00)
+#define IS_HSW_ULT(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_HASWELL, INTEL_SUBPLATFORM_ULT)
 #define IS_HSW_GT3(dev_priv)	(IS_HASWELL(dev_priv) && \
 				 (dev_priv)->info.gt == 3)
 /* ULX machines are also considered ULT. */
-#define IS_HSW_ULX(dev_priv)	(INTEL_DEVID(dev_priv) == 0x0A0E || \
-				 INTEL_DEVID(dev_priv) == 0x0A1E)
-#define IS_SKL_ULT(dev_priv)	(INTEL_DEVID(dev_priv) == 0x1906 || \
-				 INTEL_DEVID(dev_priv) == 0x1913 || \
-				 INTEL_DEVID(dev_priv) == 0x1916 || \
-				 INTEL_DEVID(dev_priv) == 0x1921 || \
-				 INTEL_DEVID(dev_priv) == 0x1926)
-#define IS_SKL_ULX(dev_priv)	(INTEL_DEVID(dev_priv) == 0x190E || \
-				 INTEL_DEVID(dev_priv) == 0x1915 || \
-				 INTEL_DEVID(dev_priv) == 0x191E)
-#define IS_KBL_ULT(dev_priv)	(INTEL_DEVID(dev_priv) == 0x5906 || \
-				 INTEL_DEVID(dev_priv) == 0x5913 || \
-				 INTEL_DEVID(dev_priv) == 0x5916 || \
-				 INTEL_DEVID(dev_priv) == 0x5921 || \
-				 INTEL_DEVID(dev_priv) == 0x5926)
-#define IS_KBL_ULX(dev_priv)	(INTEL_DEVID(dev_priv) == 0x590E || \
-				 INTEL_DEVID(dev_priv) == 0x5915 || \
-				 INTEL_DEVID(dev_priv) == 0x591E)
+#define IS_HSW_ULX(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_HASWELL, INTEL_SUBPLATFORM_ULX)
+#define IS_SKL_ULT(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_SKYLAKE, INTEL_SUBPLATFORM_ULT)
+#define IS_SKL_ULX(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_SKYLAKE, INTEL_SUBPLATFORM_ULX)
+#define IS_KBL_ULT(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_KABYLAKE, INTEL_SUBPLATFORM_ULT)
+#define IS_KBL_ULX(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_KABYLAKE, INTEL_SUBPLATFORM_ULX)
+#define IS_AML_ULX(dev_priv) \
+	(IS_SUBPLATFORM(dev_priv, INTEL_KABYLAKE, INTEL_SUBPLATFORM_AML) || \
+	 IS_SUBPLATFORM(dev_priv, INTEL_COFFEELAKE, INTEL_SUBPLATFORM_AML))
 #define IS_SKL_GT2(dev_priv)	(IS_SKYLAKE(dev_priv) && \
 				 (dev_priv)->info.gt == 2)
 #define IS_SKL_GT3(dev_priv)	(IS_SKYLAKE(dev_priv) && \
@@ -2447,14 +2502,16 @@ intel_info(const struct drm_i915_private *dev_priv)
 				 (dev_priv)->info.gt == 2)
 #define IS_KBL_GT3(dev_priv)	(IS_KABYLAKE(dev_priv) && \
 				 (dev_priv)->info.gt == 3)
-#define IS_CFL_ULT(dev_priv)	(IS_COFFEELAKE(dev_priv) && \
-				 (INTEL_DEVID(dev_priv) & 0x00F0) == 0x00A0)
+#define IS_CFL_ULT(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_COFFEELAKE, INTEL_SUBPLATFORM_ULT)
 #define IS_CFL_GT2(dev_priv)	(IS_COFFEELAKE(dev_priv) && \
 				 (dev_priv)->info.gt == 2)
 #define IS_CFL_GT3(dev_priv)	(IS_COFFEELAKE(dev_priv) && \
 				 (dev_priv)->info.gt == 3)
-#define IS_CNL_WITH_PORT_F(dev_priv)   (IS_CANNONLAKE(dev_priv) && \
-					(INTEL_DEVID(dev_priv) & 0x0004) == 0x0004)
+#define IS_CNL_WITH_PORT_F(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_CANNONLAKE, INTEL_SUBPLATFORM_PORTF)
+#define IS_ICL_WITH_PORT_F(dev_priv) \
+	IS_SUBPLATFORM(dev_priv, INTEL_ICELAKE, INTEL_SUBPLATFORM_PORTF)
 
 #define IS_ALPHA_SUPPORT(intel_info) ((intel_info)->is_alpha_support)
 

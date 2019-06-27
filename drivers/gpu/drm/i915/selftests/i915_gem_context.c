@@ -410,7 +410,7 @@ static int igt_ctx_exec(void *arg)
 		ncontexts++;
 	}
 	pr_info("Submitted %lu contexts (across %u engines), filling %lu dwords\n",
-		ncontexts, INTEL_INFO(i915)->num_rings, ndwords);
+		ncontexts, RUNTIME_INFO(i915)->num_rings, ndwords);
 
 	dw = 0;
 	list_for_each_entry(obj, &objects, st_link) {
@@ -510,7 +510,7 @@ static int igt_ctx_readonly(void *arg)
 		}
 	}
 	pr_info("Submitted %lu dwords (across %u engines)\n",
-		ndwords, INTEL_INFO(i915)->num_rings);
+		ndwords, RUNTIME_INFO(i915)->num_rings);
 
 	dw = 0;
 	list_for_each_entry(obj, &objects, st_link) {

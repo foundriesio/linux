@@ -49,7 +49,8 @@ static const struct file_operations snd_shutdown_f_ops;
 
 /* locked for registering/using */
 static DECLARE_BITMAP(snd_cards_lock, SNDRV_CARDS);
-static struct snd_card *snd_cards[SNDRV_CARDS];
+struct snd_card *snd_cards[SNDRV_CARDS];
+EXPORT_SYMBOL(snd_cards); /* XXX exported only for SLE15 kABI compatibility */
 
 static DEFINE_MUTEX(snd_card_mutex);
 

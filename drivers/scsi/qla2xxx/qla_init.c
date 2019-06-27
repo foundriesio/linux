@@ -5046,6 +5046,13 @@ qla2x00_configure_local_loop(scsi_qla_host_t *vha)
 		if ((domain & 0xf0) == 0xf0)
 			continue;
 
+		/* Bypass if not same domain and area of adapter. */
+		if (area && domain && ((area != vha->d_id.b.area) ||
+		    (domain != vha->d_id.b.domain)) &&
+		    (ha->current_topology == ISP_CFG_NL))
+			continue;
+
+
 		/* Bypass invalid local loop ID. */
 		if (loop_id > LAST_LOCAL_LOOP_ID)
 			continue;
@@ -7683,6 +7690,10 @@ qla24xx_load_risc_flash(scsi_qla_host_t *vha, uint32_t *srisc_addr,
 
 		faddr += risc_size + 1;
 	}
+	if (IS_QLA27XX(ha)) {
+		ha->fw_dump_template = ha->fwdt[0].template;
+		ha->fw_dump_template_len = ha->fwdt[0].length;
+	}
 
 	return QLA_SUCCESS;
 
@@ -7691,6 +7702,8 @@ failed:
 		vfree(fwdt->template);
 	fwdt->template = NULL;
 	fwdt->length = 0;
+	ha->fw_dump_template = NULL;
+	ha->fw_dump_template_len = 0;
 
 	return QLA_SUCCESS;
 }
@@ -7940,6 +7953,10 @@ qla24xx_load_risc_blob(scsi_qla_host_t *vha, uint32_t *srisc_addr)
 
 		fwcode += risc_size + 1;
 	}
+	if (IS_QLA27XX(ha)) {
+		ha->fw_dump_template = ha->fwdt[0].template;
+		ha->fw_dump_template_len = ha->fwdt[0].length;
+	}
 
 	return QLA_SUCCESS;
 
@@ -7948,6 +7965,8 @@ failed:
 		vfree(fwdt->template);
 	fwdt->template = NULL;
 	fwdt->length = 0;
+	ha->fw_dump_template = NULL;
+	ha->fw_dump_template_len = 0;
 
 	return QLA_SUCCESS;
 }

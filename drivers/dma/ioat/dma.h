@@ -27,7 +27,7 @@
 #include "registers.h"
 #include "hw.h"
 
-#define IOAT_DMA_VERSION  "4.00"
+#define IOAT_DMA_VERSION  "5.00"
 
 #define IOAT_DMA_DCA_ANY_CPU		~0
 
@@ -142,11 +142,14 @@ struct ioatdma_chan {
 	spinlock_t prep_lock;
 	struct ioat_descs descs[2];
 	int desc_chunks;
+	int intr_coalesce;
+	int prev_intr_coalesce;
 };
 
 struct ioat_sysfs_entry {
 	struct attribute attr;
 	ssize_t (*show)(struct dma_chan *, char *);
+	ssize_t (*store)(struct dma_chan *, const char *, size_t);
 };
 
 /**

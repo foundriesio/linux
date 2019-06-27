@@ -55,7 +55,8 @@ struct read_info_sccb {
 	u32	hmfai;			/* 124-127 */
 	u8	_pad_128[134 - 128];	/* 128-133 */
 	u8	byte_134;			/* 134 */
-	u8	_pad_135[4096 - 135];	/* 135-4095 */
+	u8      cpudirq;                /* 135 */
+	u8	_pad_136[4096 - 136];	/* 136-4095 */
 } __packed __aligned(PAGE_SIZE);
 
 static struct sclp_ipl_info sclp_ipl_info;
@@ -154,6 +155,7 @@ static void __init sclp_early_facilities_detect(struct read_info_sccb *sccb)
 	sclp.mtid_prev = (sccb->fac42 & 0x80) ? (sccb->fac66 & 31) : 0;
 
 	sclp.hmfai = sccb->hmfai;
+	sclp.has_dirq = !!(sccb->cpudirq & 0x80);
 }
 
 /*

@@ -357,12 +357,12 @@ static int i915_getparam_ioctl(struct drm_device *dev, void *data,
 		value = i915_cmd_parser_get_version(dev_priv);
 		break;
 	case I915_PARAM_SUBSLICE_TOTAL:
-		value = sseu_subslice_total(&INTEL_INFO(dev_priv)->sseu);
+		value = sseu_subslice_total(&RUNTIME_INFO(dev_priv)->sseu);
 		if (!value)
 			return -ENODEV;
 		break;
 	case I915_PARAM_EU_TOTAL:
-		value = INTEL_INFO(dev_priv)->sseu.eu_total;
+		value = RUNTIME_INFO(dev_priv)->sseu.eu_total;
 		if (!value)
 			return -ENODEV;
 		break;
@@ -379,7 +379,7 @@ static int i915_getparam_ioctl(struct drm_device *dev, void *data,
 		value = HAS_POOLED_EU(dev_priv);
 		break;
 	case I915_PARAM_MIN_EU_IN_POOL:
-		value = INTEL_INFO(dev_priv)->sseu.min_eu_in_pool;
+		value = RUNTIME_INFO(dev_priv)->sseu.min_eu_in_pool;
 		break;
 	case I915_PARAM_HUC_STATUS:
 		value = intel_huc_check_status(&dev_priv->huc);
@@ -429,17 +429,17 @@ static int i915_getparam_ioctl(struct drm_device *dev, void *data,
 		value = intel_engines_has_context_isolation(dev_priv);
 		break;
 	case I915_PARAM_SLICE_MASK:
-		value = INTEL_INFO(dev_priv)->sseu.slice_mask;
+		value = RUNTIME_INFO(dev_priv)->sseu.slice_mask;
 		if (!value)
 			return -ENODEV;
 		break;
 	case I915_PARAM_SUBSLICE_MASK:
-		value = INTEL_INFO(dev_priv)->sseu.subslice_mask[0];
+		value = RUNTIME_INFO(dev_priv)->sseu.subslice_mask[0];
 		if (!value)
 			return -ENODEV;
 		break;
 	case I915_PARAM_CS_TIMESTAMP_FREQUENCY:
-		value = 1000 * INTEL_INFO(dev_priv)->cs_timestamp_frequency_khz;
+		value = 1000 * RUNTIME_INFO(dev_priv)->cs_timestamp_frequency_khz;
 		break;
 	default:
 		DRM_DEBUG("Unknown parameter %d\n", param->param);
@@ -867,7 +867,6 @@ static void intel_detect_preproduction_hw(struct drm_i915_private *dev_priv)
 /**
  * i915_driver_init_early - setup state not requiring device access
  * @dev_priv: device private
- * @ent: the matching pci_device_id
  *
  * Initialize everything that is a "SW-only" state, that is state not
  * requiring accessing the device or exposing the driver via kernel internal
@@ -875,25 +874,15 @@ static void intel_detect_preproduction_hw(struct drm_i915_private *dev_priv)
  * system memory allocation, setting up device specific attributes and
  * function hooks not requiring accessing the device.
  */
-static int i915_driver_init_early(struct drm_i915_private *dev_priv,
-				  const struct pci_device_id *ent)
+static int i915_driver_init_early(struct drm_i915_private *dev_priv)
 {
-	const struct intel_device_info *match_info =
-		(struct intel_device_info *)ent->driver_data;
-	struct intel_device_info *device_info;
 	int ret = 0;
 
 	if (i915_inject_load_failure())
 		return -ENODEV;
 
-	/* Setup the write-once "constant" device info */
-	device_info = mkwrite_device_info(dev_priv);
-	memcpy(device_info, match_info, sizeof(*device_info));
-	device_info->device_id = dev_priv->drm.pdev->device;
+	intel_device_info_subplatform_init(dev_priv);
 
-	BUILD_BUG_ON(INTEL_MAX_PLATFORMS >
-		     sizeof(device_info->platform_mask) * BITS_PER_BYTE);
-	BUG_ON(device_info->gen > sizeof(device_info->gen_mask) * BITS_PER_BYTE);
 	spin_lock_init(&dev_priv->irq_lock);
 	spin_lock_init(&dev_priv->gpu_error.lock);
 	mutex_init(&dev_priv->backlight_lock);
@@ -1324,13 +1313,55 @@ static void i915_welcome_messages(struct drm_i915_private *dev_priv)
 		struct drm_printer p = drm_debug_printer("i915 device info:");
 
 		intel_device_info_dump(&dev_priv->info, &p);
-		intel_device_info_dump_runtime(&dev_priv->info, &p);
+		intel_device_info_dump_runtime(RUNTIME_INFO(dev_priv), &p);
 	}
 
 	if (IS_ENABLED(CONFIG_DRM_I915_DEBUG))
 		DRM_INFO("DRM_I915_DEBUG enabled\n");
 	if (IS_ENABLED(CONFIG_DRM_I915_DEBUG_GEM))
 		DRM_INFO("DRM_I915_DEBUG_GEM enabled\n");
+}
+
+static struct drm_i915_private *
+i915_driver_create(struct pci_dev *pdev, const struct pci_device_id *ent)
+{
+	const struct intel_device_info *match_info =
+		(struct intel_device_info *)ent->driver_data;
+	struct intel_device_info *device_info;
+	struct drm_i915_private *i915;
+
+	i915 = kzalloc(sizeof(*i915), GFP_KERNEL);
+	if (!i915)
+		return NULL;
+
+	if (drm_dev_init(&i915->drm, &driver, &pdev->dev)) {
+		kfree(i915);
+		return NULL;
+	}
+
+	i915->drm.pdev = pdev;
+	i915->drm.dev_private = i915;
+	pci_set_drvdata(pdev, &i915->drm);
+
+	/* Setup the write-once "constant" device info */
+	device_info = mkwrite_device_info(i915);
+	memcpy(device_info, match_info, sizeof(*device_info));
+	RUNTIME_INFO(i915)->device_id = pdev->device;
+
+	BUG_ON(device_info->gen > sizeof(device_info->gen_mask) * BITS_PER_BYTE);
+
+	return i915;
+}
+
+static void i915_driver_destroy(struct drm_i915_private *i915)
+{
+	struct pci_dev *pdev = i915->drm.pdev;
+
+	drm_dev_fini(&i915->drm);
+	kfree(i915);
+
+	/* And make sure we never chase our dangling pointer from pci_dev */
+	pci_set_drvdata(pdev, NULL);
 }
 
 /**
@@ -1355,23 +1386,14 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (!i915_modparams.nuclear_pageflip && match_info->gen < 5)
 		driver.driver_features &= ~DRIVER_ATOMIC;
 
-	ret = -ENOMEM;
-	dev_priv = kzalloc(sizeof(*dev_priv), GFP_KERNEL);
-	if (dev_priv)
-		ret = drm_dev_init(&dev_priv->drm, &driver, &pdev->dev);
-	if (ret) {
-		DRM_DEV_ERROR(&pdev->dev, "allocation failed\n");
-		goto out_free;
-	}
-
-	dev_priv->drm.pdev = pdev;
-	dev_priv->drm.dev_private = dev_priv;
+	dev_priv = i915_driver_create(pdev, ent);
+	if (!dev_priv)
+		return -ENOMEM;
 
 	ret = pci_enable_device(pdev);
 	if (ret)
 		goto out_fini;
 
-	pci_set_drvdata(pdev, &dev_priv->drm);
 	/*
 	 * Disable the system suspend direct complete optimization, which can
 	 * leave the device suspended skipping the driver's suspend handlers
@@ -1382,7 +1404,7 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 	 */
 	dev_pm_set_driver_flags(&pdev->dev, DPM_FLAG_NEVER_SKIP);
 
-	ret = i915_driver_init_early(dev_priv, ent);
+	ret = i915_driver_init_early(dev_priv);
 	if (ret < 0)
 		goto out_pci_disable;
 
@@ -1435,10 +1457,7 @@ out_pci_disable:
 	pci_disable_device(pdev);
 out_fini:
 	i915_load_error(dev_priv, "Device initialization failed (%d)\n", ret);
-	drm_dev_fini(&dev_priv->drm);
-out_free:
-	kfree(dev_priv);
-	pci_set_drvdata(pdev, NULL);
+	i915_driver_destroy(dev_priv);
 	return ret;
 }
 
@@ -1487,9 +1506,7 @@ static void i915_driver_release(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = to_i915(dev);
 
 	i915_driver_cleanup_early(dev_priv);
-	drm_dev_fini(&dev_priv->drm);
-
-	kfree(dev_priv);
+	i915_driver_destroy(dev_priv);
 }
 
 static int i915_driver_open(struct drm_device *dev, struct drm_file *file)

@@ -1883,13 +1883,14 @@ static inline  u64 __get_oldest_tid(struct ceph_mds_client *mdsc)
  * Encode hidden .snap dirs as a double /, i.e.
  *   foo/.snap/bar -> foo//bar
  */
-char *ceph_mdsc_build_path(struct dentry *dentry, int *plen, u64 *base,
+char *ceph_mdsc_build_path(struct dentry *dentry, int *plen, u64 *pbase,
 			   int stop_on_nosnap)
 {
 	struct dentry *temp;
 	char *path;
 	int len, pos;
 	unsigned seq;
+	u64 base;
 
 	if (!dentry)
 		return ERR_PTR(-EINVAL);
@@ -1945,6 +1946,7 @@ retry:
 			path[--pos] = '/';
 		temp = temp->d_parent;
 	}
+	base = ceph_ino(d_inode(temp));
 	rcu_read_unlock();
 	if (pos != 0 || read_seqretry(&rename_lock, seq)) {
 		pr_err("build_path did not end path lookup where "
@@ -1957,10 +1959,10 @@ retry:
 		goto retry;
 	}
 
-	*base = ceph_ino(d_inode(temp));
+	*pbase = base;
 	*plen = len;
 	dout("build_path on %p %d built %llx '%.*s'\n",
-	     dentry, d_count(dentry), *base, len, path);
+	     dentry, d_count(dentry), base, len, path);
 	return path;
 }
 
@@ -3701,6 +3703,8 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
 	mdsc->max_sessions = 0;
 	mdsc->stopping = 0;
 	atomic64_set(&mdsc->quotarealms_count, 0);
+	mdsc->quotarealms_inodes = RB_ROOT;
+	mutex_init(&mdsc->quotarealms_inodes_mutex);
 	mdsc->last_snap_seq = 0;
 	init_rwsem(&mdsc->snap_rwsem);
 	mdsc->snap_realms = RB_ROOT;
@@ -3783,6 +3787,8 @@ void ceph_mdsc_pre_umount(struct ceph_mds_client *mdsc)
 	 * their inode/dcache refs
 	 */
 	ceph_msgr_flush();
+
+	ceph_cleanup_quotarealms_inodes(mdsc);
 }
 
 /*

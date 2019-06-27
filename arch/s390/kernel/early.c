@@ -28,6 +28,8 @@
 #include <asm/cpcmd.h>
 #include <asm/sclp.h>
 #include <asm/facility.h>
+#include <asm/uv.h>
+#include <asm/pci_insn.h>
 #include "entry.h"
 
 /*
@@ -394,6 +396,7 @@ static __init void detect_machine_facilities(void)
 	}
 	if (test_facility(133))
 		S390_lowcore.machine_flags |= MACHINE_FLAG_GS;
+	enable_mio_ctl();
 }
 
 static inline void save_vector_registers(void)
@@ -541,6 +544,9 @@ static void __init setup_boot_command_line(void)
 	strlcpy(boot_command_line, strstrip(COMMAND_LINE),
 		ARCH_COMMAND_LINE_SIZE);
 
+	if (is_prot_virt_guest())
+		return;
+
 	/* append IPL PARM data to the boot command line */
 	if (MACHINE_IS_VM)
 		append_to_cmdline(append_ipl_vmparm);
@@ -558,12 +564,13 @@ void __init startup_init(void)
 	ipl_save_parameters();
 	rescue_initrd();
 	clear_bss_section();
+	setup_facility_list();
+	uv_query_info();
 	ipl_verify_parameters();
 	time_early_init();
 	init_kernel_storage_key();
 	lockdep_off();
 	setup_lowcore_early();
-	setup_facility_list();
 	detect_machine_type();
 	setup_arch_string();
 	ipl_update_parameters();

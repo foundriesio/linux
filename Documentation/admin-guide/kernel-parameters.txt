@@ -3233,6 +3233,8 @@
 				Adding the window is slightly risky (it may
 				conflict with unreported devices), so this
 				taints the kernel.
+		force_floating	[S390] Force usage of floating interrupts.
+		nomio		[S390] Do not use MIO instructions.
 
 	pcie_aspm=	[PCIE] Forcibly enable or disable PCIe Active State Power
 			Management.
@@ -4090,6 +4092,7 @@
 			retpoline	  - replace indirect branches
 			retpoline,generic - google's original retpoline
 			retpoline,amd     - AMD-specific minimal thunk
+			ibrs		  - Intel/AMD microcode feature
 
 			Not specifying this option is equivalent to
 			spectre_v2=auto.
