@@ -713,9 +713,7 @@ struct kvm_vcpu_arch {
 	/* Flush the L1 Data cache for L1TF mitigation on VMENTER */
 	bool l1tf_flush_l1d;
 
-#ifndef __GENKSYMS__
 	u64 arch_capabilities;
-#endif
 };
 
 struct kvm_lpage_info {
@@ -1121,9 +1119,7 @@ struct kvm_x86_ops {
 
 	int (*get_msr_feature)(struct kvm_msr_entry *entry);
 
-#ifndef __GENKSYMS__
 	bool (*need_emulation_on_page_fault)(struct kvm_vcpu *vcpu);
-#endif
 };
 
 struct kvm_arch_async_pf {

@@ -985,7 +985,7 @@ static struct ctl_table ipv4_net_table[] = {
 	},
 	{
 		.procname	= "tcp_min_snd_mss",
-		.data		= &init_net.sysctl_tcp_min_snd_mss,
+		.data		= &init_net.ipv4.sysctl_tcp_min_snd_mss,
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,

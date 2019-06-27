@@ -46,7 +46,6 @@ enum interruption_class {
 	IRQEXT_CMC,
 	IRQEXT_FTP,
 	IRQIO_CIO,
-	IRQIO_QAI,
 	IRQIO_DAS,
 	IRQIO_C15,
 	IRQIO_C70,
@@ -54,22 +53,17 @@ enum interruption_class {
 	IRQIO_VMR,
 	IRQIO_LCS,
 	IRQIO_CTC,
-	IRQIO_APB,
 	IRQIO_ADM,
 	IRQIO_CSC,
-#ifdef __GENKSYMS__
-	IRQIO_PCI,
-#else
-	IRQIO_PCF,
-#endif
-	IRQIO_MSI,
 	IRQIO_VIR,
+	IRQIO_QAI,
+	IRQIO_APB,
+	IRQIO_PCF,
+	IRQIO_PCD,
+	IRQIO_MSI,
 	IRQIO_VAI,
 	NMI_NMI,
 	CPU_RST,
-#ifndef __GENKSYMS__
-	IRQIO_PCD,
-#endif
 	NR_ARCH_IRQS
 };
 

@@ -255,7 +255,6 @@ struct usb_interface {
 
 	struct device dev;		/* interface specific device info */
 	struct device *usb_dev;
-	atomic_t pm_usage_cnt;		/* XXX placeholder only for kABI */
 	struct work_struct reset_ws;	/* for resets in atomic context */
 	void *suse_kabi_padding;
 };

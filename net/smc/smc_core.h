@@ -81,6 +81,8 @@ struct smc_link {
 	struct smc_wr_buf	*wr_tx_bufs;	/* WR send payload buffers */
 	struct ib_send_wr	*wr_tx_ibs;	/* WR send meta data */
 	struct ib_sge		*wr_tx_sges;	/* WR send gather meta data */
+	struct smc_rdma_sges	*wr_tx_rdma_sges;/*RDMA WRITE gather meta data*/
+	struct smc_rdma_wr	*wr_tx_rdmas;	/* WR RDMA WRITE */
 	struct smc_wr_tx_pend	*wr_tx_pends;	/* WR send waiting for CQE */
 	/* above four vectors have wr_tx_cnt elements and use the same index */
 	dma_addr_t		wr_tx_dma_addr;	/* DMA address of wr_tx_bufs */
@@ -129,11 +131,6 @@ struct smc_link {
 	struct completion	llc_delete_rkey; /* wait 4 rx of del rkey */
 	int			llc_delete_rkey_rc; /* rc from del rkey msg */
 	struct mutex		llc_delete_rkey_mutex; /* serialize usage */
-};
-
-struct smc_link_extra {
-	struct smc_rdma_sges	*wr_tx_rdma_sges;/*RDMA WRITE gather meta data*/
-	struct smc_rdma_wr	*wr_tx_rdmas;	/* WR RDMA WRITE */
 };
 
 /* For now we just allow one parallel link per link group. The SMC protocol
@@ -229,10 +226,6 @@ struct smc_link_group {
 						/* ISM device for VLAN reg. */
 		};
 	};
-#ifndef __GENKSYMS__
-	struct smc_link_extra	lnk_extra[SMC_LINKS_PER_LGR_MAX];
-				/* smc_link fields added after kABI freeze */
-#endif
 };
 
 struct smc_clc_msg_local;

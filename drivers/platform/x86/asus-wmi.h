@@ -44,10 +44,8 @@ struct quirk_entry {
 	bool store_backlight_power;
 	bool wmi_backlight_power;
 	bool wmi_backlight_native;
-	bool wmi_force_als_set;
-#ifndef __GENKSYMS__
 	bool wmi_backlight_set_devstate;
-#endif
+	bool wmi_force_als_set;
 	int wapf;
 	/*
 	 * For machines with AMD graphic chips, it will send out WMI event

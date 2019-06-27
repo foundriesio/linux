@@ -614,7 +614,7 @@ void ip_forward_options(struct sk_buff *skb)
 	}
 }
 
-int ip_options_rcv_srr2(struct sk_buff *skb, struct net_device *dev)
+int ip_options_rcv_srr(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ip_options *opt = &(IPCB(skb)->opt);
 	int srrspace, srrptr;
@@ -669,11 +669,5 @@ int ip_options_rcv_srr2(struct sk_buff *skb, struct net_device *dev)
 		opt->is_changed = 1;
 	}
 	return 0;
-}
-EXPORT_SYMBOL(ip_options_rcv_srr2);
-
-int ip_options_rcv_srr(struct sk_buff *skb)
-{
-	return ip_options_rcv_srr2(skb, skb->dev);
 }
 EXPORT_SYMBOL(ip_options_rcv_srr);

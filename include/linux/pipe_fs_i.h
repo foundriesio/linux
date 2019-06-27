@@ -107,11 +107,7 @@ struct pipe_buf_operations {
 	/*
 	 * Get a reference to the pipe buffer.
 	 */
-#ifndef __GENKSYMS__
 	bool (*get)(struct pipe_inode_info *, struct pipe_buffer *);
-#else
-	void (*get)(struct pipe_inode_info *, struct pipe_buffer *);
-#endif
 };
 
 /**
@@ -184,12 +180,7 @@ struct pipe_inode_info *alloc_pipe_info(void);
 void free_pipe_info(struct pipe_inode_info *);
 
 /* Generic pipe buffer ops functions */
-#ifndef __GENKSYMS__
-bool
-#else
-void
-#endif
-generic_pipe_buf_get(struct pipe_inode_info *, struct pipe_buffer *);
+bool generic_pipe_buf_get(struct pipe_inode_info *, struct pipe_buffer *);
 int generic_pipe_buf_confirm(struct pipe_inode_info *, struct pipe_buffer *);
 int generic_pipe_buf_steal(struct pipe_inode_info *, struct pipe_buffer *);
 int generic_pipe_buf_nosteal(struct pipe_inode_info *, struct pipe_buffer *);

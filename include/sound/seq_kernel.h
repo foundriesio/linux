@@ -73,8 +73,6 @@ __printf(3, 4)
 int snd_seq_create_kernel_client(struct snd_card *card, int client_index,
 				 const char *name_fmt, ...);
 int snd_seq_delete_kernel_client(int client);
-/* XXX kABI compatibility for SLE15 XXX */
-#define snd_seq_kernel_client_enqueue	__snd_seq_kernel_client_enqueue
 int snd_seq_kernel_client_enqueue(int client, struct snd_seq_event *ev,
 				  struct file *file, bool blocking);
 int snd_seq_kernel_client_dispatch(int client, struct snd_seq_event *ev, int atomic, int hop);

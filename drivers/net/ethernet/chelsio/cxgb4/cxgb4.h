@@ -887,9 +887,7 @@ struct vf_info {
 	unsigned int tx_rate;
 	bool pf_set_mac;
 	u16 vlan;
-#ifndef __GENKSYMS__
 	int link_state;
-#endif
 };
 
 enum {
