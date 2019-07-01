@@ -50,7 +50,7 @@
 
 #define SECTION_DMA_SIZE (1024 * 1024)
 
-#define HWDMX_NUM 8
+#define HWDMX_NUM 4
 
 //#define TS_PACKET_CHK_MODE
 

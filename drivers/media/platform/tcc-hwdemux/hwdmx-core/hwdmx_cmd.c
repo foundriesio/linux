@@ -503,6 +503,7 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 {
 	int result = 0, rsize;
 	int mbox_data[3], mbox_result;
+	static DEFINE_MUTEX(input_stream_mutex);
 
 	// pr_info("[DEMUX #%d]hwdmx_input_internal(buffer=[0x%X], size=%d)\n",
 	// dmx_id, phy_addr, size);
@@ -511,7 +512,7 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 		// pr_err("session count is zero\n");
 		return -1;
 	}
-
+	mutex_lock(&input_stream_mutex); //for multiple demux, it is critical section
 	/* Atomic operation */
 	clear_bit(0, &empty_bufevt_received);
 
@@ -542,6 +543,7 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 	}
 
 out:
+	mutex_unlock(&input_stream_mutex); //for multiple demux
 	return result;
 }
 
