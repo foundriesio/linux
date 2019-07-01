@@ -3778,7 +3778,7 @@ static int shrink_all_nodes(unsigned long nr_pages, int pass,
 		nr_locked_zones++;
 
 		for_each_evictable_lru(lru) {
-			enum zone_stat_item ls = NR_LRU_BASE + lru;
+			enum node_stat_item ls = NR_LRU_BASE + lru;
 			unsigned long lru_pages = node_page_state(pgdat, ls);
 
 			/* For pass = 0, we don't shrink the active list */
