@@ -135,6 +135,22 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	dai_link->stream_name = stream_name;
 	dai_link->ops = &tcc_vir_snd_card_ops;
 	dai_link->init = tcc_vir_snd_card_dai_init;
+	dai_link->playback_only = false;
+	dai_link->capture_only = false;
+
+	if(of_property_read_bool(node, "playback-only")) {
+		dai_link->playback_only = true;
+	}
+
+	if(of_property_read_bool(node, "captrue-only")) {
+		dai_link->capture_only = true;
+	}
+
+	if(dai_link->playback_only && dai_link->capture_only) {
+		pr_err("no enabled DAI link,  This will activate both.");
+		dai_link->playback_only = false;
+		dai_link->capture_only = false;
+	}
 
 	return 0;
 }
