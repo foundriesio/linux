@@ -503,7 +503,6 @@ void mmc_cleanup_queue(struct mmc_queue *mq)
 	 */
 	flush_work(&mq->complete_work);
 
-	blk_mq_free_tag_set(&mq->tag_set);
 	mq->card = NULL;
 }
 
