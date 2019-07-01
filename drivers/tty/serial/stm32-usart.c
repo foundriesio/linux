@@ -4,6 +4,7 @@
  * Copyright (C) STMicroelectronics SA 2017
  * Authors:  Maxime Coquelin <mcoquelin.stm32@gmail.com>
  *	     Gerald Baeza <gerald.baeza@st.com>
+ *	     Erwan Le Ray <erwan.leray@st.com>
  *
  * Inspired by st-asc.c from STMicroelectronics (c)
  */
