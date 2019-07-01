@@ -116,7 +116,7 @@ struct cpuinfo_x86 {
 	int			x86_power;
 	unsigned long		loops_per_jiffy;
 	/* cpuid returned max cores value: */
-	u16			 x86_max_cores;
+	u16			x86_max_cores;
 	u16			apicid;
 	u16			initial_apicid;
 	u16			x86_clflush_size;
@@ -137,6 +137,10 @@ struct cpuinfo_x86 {
 	 */
 	u8			x86_cache_bits;
 	unsigned		initialized : 1;
+#ifndef __GENKSYMS__
+	u16			logical_die_id;
+	u16			cpu_die_id;
+#endif
 };
 
 struct cpuid_regs {
@@ -157,7 +161,8 @@ enum cpuid_regs_idx {
 #define X86_VENDOR_CENTAUR	5
 #define X86_VENDOR_TRANSMETA	7
 #define X86_VENDOR_NSC		8
-#define X86_VENDOR_NUM		9
+#define X86_VENDOR_HYGON	9
+#define X86_VENDOR_NUM		10
 
 #define X86_VENDOR_UNKNOWN	0xff
 
