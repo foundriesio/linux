@@ -275,8 +275,10 @@ void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsi
 		uData = &pImage->private_data.userData_Info;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-	if(VIOC_CONFIG_DV_GET_EDR_PATH() && (HDR10 != vioc_get_out_type()))
+	if(VIOC_CONFIG_DV_GET_EDR_PATH() && (HDR10 != vioc_get_out_type())){
+		memset(&gDRM_packet, 0x0, sizeof(DRM_Packet_t));
 		return;
+	}
 #endif
 
 	if( mode == DRM_ON )
