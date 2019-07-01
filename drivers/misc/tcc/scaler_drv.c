@@ -56,6 +56,10 @@
 #include <video/tcc/tca_dtrc_converter.h>
 #endif
 
+#if defined(CONFIG_VIOC_SAR)
+#include <video/tcc/vioc_sar.h>
+extern int CheckSarPathSelection(unsigned int component);
+#endif//
 static int debug	   		= 0;
 #define dprintk(msg...)	if(debug) { 	printk( "TCC_SCALER1:  " msg); 	}
 
@@ -85,6 +89,13 @@ struct scaler_drv_vioc {
 //	unsigned int path;
 };
 
+#if defined(CONFIG_VIOC_SAR)
+struct vioc_sar_block_res_type {
+	unsigned int enable;
+	unsigned int id;
+	unsigned int level;
+};
+#endif//
 struct scaler_drv_type {
 	struct vioc_intr_type	*vioc_intr;
 
@@ -103,6 +114,9 @@ struct scaler_drv_type {
 	SCALER_TYPE		*info;
 
 	unsigned int		settop_support;
+#if defined(CONFIG_VIOC_SAR)
+	struct vioc_sar_block_res_type	sar;
+#endif
 };
 
 extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
@@ -290,6 +304,33 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 		tcc_set_lut_plugin(VIOC_LUT + scaler->info->lut.use_lut_number, scaler->rdma.id);
 		tcc_set_lut_enable(VIOC_LUT + scaler->info->lut.use_lut_number, true);
 	}
+#if defined(CONFIG_VIOC_SAR)
+	if(scaler->info->sar.enable) {
+		int ret = -1;
+
+		scaler->sar.id = VIOC_SAR0;
+		scaler->sar.enable = scaler->info->sar.enable;
+		scaler->sar.level = scaler->info->sar.strength;
+
+		ret = CheckSarPathSelection(scaler->rdma.id);
+
+//		printk("SAR on in ret:%d  enable :%d  strength:%d src fmt:%x   %x\n", 
+//			ret, scaler->info->sar.enable, scaler->info->sar.strength,
+//			scaler->info->src_fmt, scaler->info->dest_fmt);
+		
+		if(ret >= 0) {
+			VIOC_SAR_POWER_ONOFF(1);
+			VIOC_CONFIG_PlugIn(VIOC_SAR, scaler->rdma.id);			
+
+			VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
+
+			vioc_sar_on((scaler->info->src_winRight - scaler->info->src_winLeft), (scaler->info->src_winBottom - scaler->info->src_winTop), scaler->sar.level);
+
+		}
+
+	}
+#endif//
 
 	VIOC_SC_SetBypass(pSC_SCALERBase, 0);
 #if defined(CONFIG_MC_WORKAROUND)
@@ -464,6 +505,14 @@ static irqreturn_t scaler_drv_handler(int irq, void *client_data)
 		scaler->info->lut.use_lut = false;
 	}
 
+#if defined(CONFIG_VIOC_SAR)
+	if(scaler->info->sar.enable) {
+
+		scaler->sar.enable = 0;
+		VIOC_CONFIG_PlugOut(VIOC_SAR0);
+		VIOC_SAR_POWER_ONOFF(0);
+	}
+#endif//
 	if (VIOC_CONFIG_DMAPath_Support()) {
 		int component_num = VIOC_CONFIG_DMAPath_Select(scaler->rdma.id);
 		#ifdef CONFIG_VIOC_MAP_DECOMP
