@@ -228,7 +228,7 @@ static int pwm_backlight_initial_power_state(const struct pwm_bl_data *pb)
 	 * assume that another driver will enable the backlight at the
 	 * appropriate time. Therefore, if it is disabled, keep it so.
 	 */
-
+#if 0
 	/* if the enable GPIO is disabled, do not enable the backlight */
 	if (pb->enable_gpio && gpiod_get_value_cansleep(pb->enable_gpio) == 0)
 		return FB_BLANK_POWERDOWN;
@@ -240,7 +240,7 @@ static int pwm_backlight_initial_power_state(const struct pwm_bl_data *pb)
 	/* The PWM is disabled, keep it like this */
 	if (!pwm_is_enabled(pb->pwm))
 		return FB_BLANK_POWERDOWN;
-
+#endif
 	return FB_BLANK_UNBLANK;
 }
 
