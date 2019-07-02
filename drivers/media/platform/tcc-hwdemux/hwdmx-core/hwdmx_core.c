@@ -173,28 +173,31 @@ EXPORT_SYMBOL(hwdmx_input_stream);
 static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	int result, devid;
-
+	static DEFINE_MUTEX(hwdmx_buf_mutex);
 	devid = (int)filp->private_data;
-
 	if (dma_vaddr == NULL) {
 		return -EFAULT;
 	}
-
+	mutex_lock(&hwdmx_buf_mutex); //for writing multiple, it is critical section
 	result = copy_from_user(dma_vaddr, buf, count);
 	if (result != 0) {
 		pr_err("%s:%d copy_from_user fail\n");
-		return -EFAULT;
+		result = -EFAULT;
+		goto out;
 	}
 
 	// dmx_id should be 1 at internal mode
 	result = hwdmx_input_stream_cmd(devid, dma_paddr, count);
 	if (result != 0) {
-		return -EFAULT;
+		result = -EFAULT;
+		goto out;
 	}
 
 	// pr_info("%s:%d\n", __func__, count);
 	// HexDump((unsigned char *)gpvVirtAddr, 64);
-
+	
+out:
+	mutex_unlock(&hwdmx_buf_mutex); //for writing multiple, it is critical section
 	return result;
 }
 
