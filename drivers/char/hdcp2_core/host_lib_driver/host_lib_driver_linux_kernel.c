@@ -42,7 +42,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.1.0"
+#define HDCP_DRV_VERSION "1.1.1"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -408,7 +408,7 @@ static long load_code(esm_device *esm, struct esm_ioc_code __user *arg)
 		esm->tee_params->params[0].type = TEE_CLIENT_PARAM_VALUE_OUT;
 		res = tee_client_execute_command(esm->context, esm->tee_params, TEE_CMD_LOAD_ESM_FIRMWARE);
 		if (res) {
-			printk("Failed to load ESM in TEE: ret:0x%x\n", res);
+			//printk("Failed to load ESM in TEE: ret:0x%x\n", res);
 			return -24; /* ESM_HL_ESM_FIRMWARE_NOT_EXIST  */
 		}
 		esm->code_paddr = (dma_addr_t)esm->tee_params->params[0].tee_client_value.a;
@@ -416,7 +416,7 @@ static long load_code(esm_device *esm, struct esm_ioc_code __user *arg)
 	else
 #endif
 	{
-		printk("Code size of ESM is zero.\n");
+		//printk("Code size of ESM is zero.\n");
 		res = -EFAULT;
 	}
 
@@ -855,7 +855,7 @@ static long tcc_hdcp_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		ret = -ENOTTY;
 	}
 
-	if (ret)
+	if (ret && (cmd != ESM_IOC_LOAD_CODE))
 		printk("\x1b[1;33m cmd:0x%x(%s): ret:%ld \x1b[0m\n", cmd, cmd_name, ret);
 
 	return ret;
@@ -897,7 +897,7 @@ tcc_hdcp_open(struct inode *inode, struct file *file)
 		if (esm->tee_params) {
 			ret = tee_client_open_ta(&uuid, NULL, &esm->context);
 			if (ret) {
-				dev_err(dev->parent, "%s: hdcp ta open failed ret:0x%x\n", __func__, ret);
+				//dev_err(dev->parent, "%s: hdcp ta open failed ret:0x%x\n", __func__, ret);
 				esm->context = NULL;
 				kfree(esm->tee_params);
 				esm->tee_params = NULL;
