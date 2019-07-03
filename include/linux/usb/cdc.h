@@ -39,6 +39,8 @@ struct usb_cdc_parsed_header {
 	struct usb_cdc_mbim_desc *usb_cdc_mbim_desc;
 	struct usb_cdc_mbim_extended_desc *usb_cdc_mbim_extended_desc;
 
+	void *suse_kabi_padding;
+
 	bool phonet_magic_present;
 };
 

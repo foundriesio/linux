@@ -821,6 +821,8 @@ struct xhci_command {
 	struct completion		*completion;
 	union xhci_trb			*command_trb;
 	struct list_head		cmd_list;
+
+	void *suse_kabi_padding;
 };
 
 /* drop context bitmasks */
@@ -863,6 +865,8 @@ struct xhci_stream_info {
 	/* For mapping physical TRB addresses to segments in stream rings */
 	struct radix_tree_root		trb_address_map;
 	struct xhci_command		*free_streams_command;
+
+	void *suse_kabi_padding;
 };
 
 #define	SMALL_STREAM_ARRAY_SIZE		256
@@ -957,6 +961,8 @@ struct xhci_virt_ep {
 	 */
 	struct xhci_segment	*queued_deq_seg;
 	union xhci_trb		*queued_deq_ptr;
+
+	void *suse_kabi_padding;
 	/*
 	 * Sometimes the xHC can not process isochronous endpoint ring quickly
 	 * enough, and it will miss some isoc tds on the ring and generate
@@ -1024,6 +1030,8 @@ struct xhci_virt_device {
 	u16				current_mel;
 	/* Used for the debugfs interfaces. */
 	void				*debugfs_private;
+
+	void				*suse_kabi_padding;
 };
 
 /*
@@ -1609,6 +1617,8 @@ struct xhci_ring {
 	enum xhci_ring_type	type;
 	bool			last_td_was_short;
 	struct radix_tree_root	*trb_address_map;
+
+	void *suse_kabi_padding;
 };
 
 struct xhci_erst_entry {
@@ -1689,6 +1699,8 @@ struct xhci_bus_state {
 	/* Which ports are waiting on RExit to U0 transition. */
 	unsigned long		rexit_ports;
 	struct completion	rexit_done[USB_MAXCHILDREN];
+
+	void *suse_kabi_padding;
 };
 
 
@@ -1898,6 +1910,7 @@ struct xhci_hcd {
 	struct list_head	regset_list;
 
 	void			*dbc;
+	void			*suse_kabi_padding;
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };

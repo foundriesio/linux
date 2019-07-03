@@ -102,6 +102,9 @@ struct typec_altmode_desc {
 	u16			svid;
 	u8			mode;
 	u32			vdo;
+
+	void *suse_kabi_padding;
+
 	/* Only used with ports */
 	enum typec_port_data	roles;
 };
@@ -149,6 +152,8 @@ struct typec_cable_desc {
 	enum typec_plug_type	type;
 	unsigned int		active:1;
 	struct usb_pd_identity	*identity;
+
+	void *suse_kabi_padding;
 };
 
 /*
@@ -165,6 +170,8 @@ struct typec_partner_desc {
 	unsigned int		usb_pd:1;
 	enum typec_accessory	accessory;
 	struct usb_pd_identity	*identity;
+
+	void *suse_kabi_padding;
 };
 
 /*
@@ -209,6 +216,8 @@ struct typec_capability {
 				     enum typec_role);
 	int		(*port_type_set)(const struct typec_capability *,
 					 enum typec_port_type);
+
+	void *suse_kabi_padding;
 };
 
 /* Specific to try_role(). Indicates the user want's to clear the preference. */

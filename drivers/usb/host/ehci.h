@@ -267,6 +267,8 @@ struct ehci_hcd {			/* one per controller */
 						/* us budgeted per uframe */
 	struct list_head	tt_list;
 
+	void			*suse_kabi_padding;
+
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };

@@ -669,6 +669,8 @@ struct usb_mon_operations {
 	void (*urb_submit_error)(struct usb_bus *bus, struct urb *urb, int err);
 	void (*urb_complete)(struct usb_bus *bus, struct urb *urb, int status);
 	/* void (*urb_unlink)(struct usb_bus *bus, struct urb *urb); */
+
+	void *suse_kabi_padding;
 };
 
 extern const struct usb_mon_operations *mon_ops;

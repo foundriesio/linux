@@ -323,6 +323,8 @@ struct usb_interface_cache {
 	unsigned num_altsetting;	/* number of alternate settings */
 	struct kref ref;		/* reference counter */
 
+	void *suse_kabi_padding;
+
 	/* variable-length array of alternate settings for this interface,
 	 * stored in no particular order */
 	struct usb_host_interface altsetting[0];
@@ -389,6 +391,7 @@ struct usb_host_config {
 	struct usb_interface_cache *intf_cache[USB_MAXINTERFACES];
 
 	unsigned char *extra;   /* Extra descriptors */
+	void *suse_kabi_padding;
 	int extralen;
 };
 
@@ -1561,9 +1564,9 @@ struct urb {
 	int error_count;		/* (return) number of ISO errors */
 	void *context;			/* (in) context for completion */
 	usb_complete_t complete;	/* (in) completion routine */
+	void *suse_kabi_padding;
 	struct usb_iso_packet_descriptor iso_frame_desc[0];
 					/* (in) ISO ONLY */
-	void *suse_kabi_padding;
 };
 
 /* ----------------------------------------------------------------------- */
