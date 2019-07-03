@@ -28,8 +28,7 @@ void swake_up_locked(struct swait_queue_head *q)
 
 	curr = list_first_entry(&q->task_list, typeof(*curr), task_list);
 	wake_up_process(curr->task);
-	if (curr->remove)
-		list_del_init(&curr->task_list);
+	list_del_init(&curr->task_list);
 }
 EXPORT_SYMBOL(swake_up_locked);
 
@@ -78,8 +77,7 @@ void swake_up_all(struct swait_queue_head *q)
 		curr = list_first_entry(&tmp, typeof(*curr), task_list);
 
 		wake_up_state(curr->task, TASK_NORMAL);
-		if (curr->remove)
-			list_del_init(&curr->task_list);
+		list_del_init(&curr->task_list);
 
 		if (list_empty(&tmp))
 			break;
