@@ -78,9 +78,11 @@ struct device_private {
 	struct klist_node knode_driver;
 	struct klist_node knode_bus;
 	struct list_head deferred_probe;
-	struct device_driver *async_driver;
 	struct device *device;
+#ifndef __GENKSYMS__
+	struct device_driver *async_driver;
 	u8 dead:1;
+#endif
 };
 #define to_device_private_parent(obj)	\
 	container_of(obj, struct device_private, knode_parent)
