@@ -1109,7 +1109,7 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 		goto populate_err;
 	}
 
-#ifdef CONFIG_DWC3_DUAL_FIRST_HOST
+#if defined (CONFIG_DWC3_DUAL_FIRST_HOST) || defined (CONFIG_USB_DWC3_HOST)
 	dwc3_tcc_vbus_ctrl(tcc, ON);
 #endif
 
