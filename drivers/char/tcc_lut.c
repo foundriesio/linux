@@ -21,6 +21,7 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+#define pr_fmt(fmt) "\x1b[1;38m TCC LUT: \x1b[0m" fmt
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -30,38 +31,22 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/init.h>
-#include <linux/dma-mapping.h>
-#include <linux/interrupt.h>
-#include <linux/workqueue.h>
-#include <linux/wait.h>
-#include <linux/sched.h>
 #include <linux/platform_device.h>
-#include <linux/clk.h>
-#include <asm/io.h>
 #include <linux/uaccess.h>
-#include <asm/div64.h>
-#include <asm/mach/map.h>
-#include <linux/fs.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/of_device.h>
-#include <linux/of_dma.h>
+#include <linux/types.h>
 #include <linux/miscdevice.h>
-#include <soc/tcc/pmap.h>
-#include <video/tcc/vioc_rdma.h>
-#include <video/tcc/vioc_wdma.h>
-#include <video/tcc/vioc_wmix.h>
-#include <video/tcc/vioc_config.h>
-#include <video/tcc/vioc_disp.h>
-#include <video/tcc/tcc_lut_ioctl.h>
-#include <video/tcc/vioc_lut.h>
-#include <video/tcc/vioc_global.h>
+#include <asm/io.h>
 
-#define LUT_VERSION "v1.0"
+#include <video/tcc/vioc_global.h>
+#include <video/tcc/vioc_lut.h>
+#include <video/tcc/tcc_lut_ioctl.h>
+
+#define LUT_VERSION "v1.1"
 
 #define TCC_LUT_DEBUG	0
-#define dprintk(msg...)		if(TCC_LUT_DEBUG) { printk("\x1b[1;38m TCC LUT: \x1b[0m " msg); }
+#define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
 
 struct lut_drv_type {
 	unsigned int  			dev_opened;
@@ -70,6 +55,8 @@ struct lut_drv_type {
 
 static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	int ret = -EFAULT;
+
 	switch(cmd) {
 		case TCC_LUT_SET:
 			{
@@ -79,91 +66,163 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 				if(copy_from_user((void *)lut_cmd, (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET)))				{
 					kfree(lut_cmd);
-					return -EFAULT;
+					break;
 				}
 
 				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, lut_cmd->Gamma);
 				kfree(lut_cmd);
-
+				ret = 0;
 			}
-			return 0;
+			break;
 
                 case TCC_LUT_SET_EX:
                         {
-                                struct VIOC_LUT_VALUE_SET_EX *lut_value_set_ex;
+                        	unsigned int lut_sel;
 
-                                lut_value_set_ex = kmalloc(sizeof(struct VIOC_LUT_VALUE_SET_EX), GFP_KERNEL);
-                                if(lut_value_set_ex == NULL) {
-                                        pr_err("%s TCC_LUT_SET_EX out of memory\r\n", __func__);
-                                        return -EFAULT;
-                                }
+                                struct VIOC_LUT_VALUE_SET_EX *lut_value_set_ex = NULL;
 
-                                if(copy_from_user((void *)lut_value_set_ex,
-                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET))) {
-                                        kfree(lut_value_set_ex);
-                                        return -EFAULT;
-                                }
+                                lut_value_set_ex =
+					kmalloc(sizeof(struct VIOC_LUT_VALUE_SET_EX), GFP_KERNEL);
 
-                                if(LUT_TABLE_SIZE != lut_value_set_ex->lut_size) {
-                                        pr_err("%s TCC_LUT_SET_EX table size mismatch %d != %d\r\n",
-                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
-                                        kfree(lut_value_set_ex);
-                                        return -EINVAL;
-                                }
+				do {
+	                                if(lut_value_set_ex == NULL) {
+	                                        pr_err("%s TCC_LUT_SET_EX out of memory\r\n", __func__);
+	                                        break;
+	                                }
+	                                if(copy_from_user((void *)lut_value_set_ex,
+	                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET))) {
+	                                        pr_err("%s TCC_LUT_SET_EX failed copy from user\r\n", __func__);
+	                                        break;
+	                                }
 
-                                tcc_set_lut_table(VIOC_LUT + lut_value_set_ex->lut_number, lut_value_set_ex->Gamma);
-                                kfree(lut_value_set_ex);
+	                                if(LUT_TABLE_SIZE != lut_value_set_ex->lut_size) {
+	                                        pr_err("%s TCC_LUT_SET_EX table size mismatch %d != %d\r\n",
+	                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
+	                                        break;
+	                                }
 
-                        }
-                        return 0;
+					lut_sel = lut_value_set_ex->lut_number;
+					dprintk("TCC_LUT_SET_EX lut_sel = %d\r\n", lut_sel);
+
+					/* Y Table? */
+					ret = 0;
+					#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+					dprintk("TCC_LUT_SET_EX para = %d\r\n", lut_value_set_ex->param);
+					if(lut_value_set_ex->param & 1) {
+						switch(lut_sel) {
+							case LUT_COMP0:
+							case LUT_COMP1:
+								lut_sel++;
+								dprintk("TCC_LUT_SET_EX y-lut lut_sel = %d\r\n", lut_sel);
+								break;
+							default:
+								ret = -EINVAL;
+								break;
+						}
+					}
+					if(ret < 0) {
+						pr_err("TCC_LUT_SET_EX invalid parameter\r\n");
+						break;
+					}
+					#endif
+					dprintk("TCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", lut_sel);
+	                                tcc_set_lut_table(VIOC_LUT + lut_sel, lut_value_set_ex->Gamma);
+				}while(0);
+
+				if(lut_value_set_ex != NULL) {
+					kfree(lut_value_set_ex);
+				}
+			}
+                        break;
 
 		case TCC_LUT_ONOFF:
 			{
 				struct VIOC_LUT_ONOFF_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(struct VIOC_LUT_ONOFF_SET))) {
-					return -EFAULT;
+					break;
 				}
-				dprintk("lut num:%d enable:%d \n", lut_cmd.lut_number, lut_cmd.lut_onoff);
+				dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
 				tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
+				ret = 0;
 
 			}
-			return 0;
+			break;
 
 		case TCC_LUT_PLUG_IN:
 			{
 				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
-					return -EFAULT;
+					break;
 
 				if(!lut_cmd.enable) {
-					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, false);
+					dprintk("TCC_LUT_PLUG_IN disable lut_number(%d)\r\n", VIOC_LUT + lut_cmd.lut_number);
+					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, 0);
 				}
 				else 	{
+					dprintk("TCC_LUT_PLUG_IN enable lut_number(%d)\r\n", VIOC_LUT + lut_cmd.lut_number);
 					tcc_set_lut_plugin(VIOC_LUT + lut_cmd.lut_number, VIOC_RDMA + lut_cmd.lut_plug_in_ch);
-					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, true);
+					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, 1);
 				}
+				ret = 0;
 			}
-			return 0;
+			break;
 
                 case TCC_LUT_GET_DEPTH:
                         {
                                 unsigned int lut_depth = LUT_COLOR_DEPTH;
                                 if(copy_to_user((void __user *)arg, &lut_depth, sizeof(lut_depth))) {
-                                        return -EFAULT;
+                                        break;
                                 }
+				dprintk("TCC_LUT_GET_DEPTH LUT depth is  %d\r\n", lut_depth);
+				ret = 0;
                         }
-                        return 0;
+                        break;
+
+		#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+		case TCC_LUT_SET_CSC_COEFF:
+			{
+				if((void*)arg == NULL) {
+					tcc_set_default_lut_csc_coeff();
+				} else {
+					struct VIOC_LUT_CSC_COEFF csc_coeff;
+					unsigned int lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33;
+					if(copy_from_user((void *)&csc_coeff, (const void *)arg, sizeof(struct VIOC_LUT_CSC_COEFF)))
+						break;
+
+					lut_csc_11_12 = csc_coeff.csc_coeff_1[0] | (csc_coeff.csc_coeff_1[1] << 16);
+	                                lut_csc_13_21 = csc_coeff.csc_coeff_1[2] | (csc_coeff.csc_coeff_2[0] << 16);
+	                                lut_csc_22_23 = csc_coeff.csc_coeff_2[1] | (csc_coeff.csc_coeff_2[2] << 16);
+	                                lut_csc_31_32 = csc_coeff.csc_coeff_3[0] | (csc_coeff.csc_coeff_3[1] << 16);
+	                                lut_csc_33 = csc_coeff.csc_coeff_3[2];
+	                                dprintk("TCC_LUT_PRESET_SET csc (0x%x, 0x%x, 0x%x, 0x%x, 0x%x)\r\n",
+						lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33);
+	                                tcc_set_lut_csc_coeff(lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33);
+				}
+				ret = 0;
+			}
+			break;
+
+		case TCC_LUT_SET_MIX_CONIG:
+			{
+				struct VIOC_LUT_MIX_CONFIG mix_config;
+				if(copy_from_user((void *)&mix_config, (const void *)arg, sizeof(struct VIOC_LUT_MIX_CONFIG)))
+						break;
+				dprintk("TCC_LUT_SET_MIX_CONIG r2y_sel(%d), bypass(%d)\r\n", mix_config.r2y_sel, mix_config.bypass);
+				tcc_set_mix_config(mix_config.r2y_sel, mix_config.bypass);
+				ret = 0;
+			}
+			break;
+		#endif
+
 		default:
 			printk(KERN_ALERT "not supported LUT IOCTL(0x%x). \n", cmd);
 			break;
 	}
 
-	return 0;
+	return ret;
 }
-
-
 
 static int lut_drv_open(struct inode *inode, struct file *filp)
 {
@@ -174,143 +233,30 @@ static int lut_drv_open(struct inode *inode, struct file *filp)
 
 	dprintk("%s():  In -open(%d) \n", __func__, lut->dev_opened);
 
-	lut->dev_opened++;
+	if(lut != NULL) {
+		lut->dev_opened++;
+	}
 	return ret;
 }
-
-
 
 static int lut_drv_release(struct inode *inode, struct file *filp)
 {
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct lut_drv_type	*lut = dev_get_drvdata(misc->parent);
 
+	if(lut != NULL && lut->dev_opened > 0) {
+		lut->dev_opened--;
+	}
 	dprintk("%s(): open(%d). \n", __func__, lut->dev_opened);
 
 	return 0;
 }
 
-
-int contrast, saturation, brightness;
-static ssize_t show_settings(struct device *dev, struct device_attribute *attr, char *buf)
-{
-
-    printk("%s contast: %d saturation : %d brightness : %d \n", __func__, contrast, saturation, brightness);
-
-    printk("If you want to set Lut 1 contast:0.1 saturation:0.4 brightness:10\n");
-    printk("echo settings 1 contast:10 saturation:40 brightness:10 \n");
-    return 0;
-}
-
-static ssize_t store_settings(struct device *dev, struct device_attribute *attr,
-        const char *buf, size_t count)
-{
-
-#define TEXT_BRIGHTNESS  	"brightness:"
-#define TEXT_CONTRAST  		"contrast:"
-#define TEXT_SATURATION  	"saturation:"
-#define BRIGHTNESS		(brightness)
-#define CONTRAST			(100 + contrast)
-#define SATURATION		(100 + saturation)
-
-	char *EffectStr;
-	int  value, lut_channel, i, j;
-	int Y_out, Cb_out, Cr_out;
-	unsigned int RGB[256];
-
-
-	if((buf[0] >= '0') && (buf[0] <= '9'))	{
-		printk("lut number:%c \n",buf[0]);
-		lut_channel = buf[0] - '0';
-	}
-	else	{
-		printk("%s : fisrt char is lut number  : %s count:%d \n", __func__, buf, count);
-		return count;
-	}
-
-	EffectStr = strstr(buf, TEXT_CONTRAST);
-	if(EffectStr != NULL)
-	{
-		value = 0;
-		j = strlen(TEXT_CONTRAST);
-		for(i = j ; i < 3+j ; i++)	{
-			if((EffectStr[i] >= '0') && (EffectStr[i] <= '9'))		{
-				value = (value * 10) + (EffectStr[i] - '0');
-			}
-			else {
-				break;
-			}
-		}
-		printk("constrast : %d \n", value);
-		contrast = value;
-	}
-
-	EffectStr = strstr(buf, TEXT_SATURATION);
-	if(EffectStr != NULL)
-	{
-		value = 0;
-		j = strlen(TEXT_SATURATION);
-		for(i = j ; i < 3+j ; i++)	{
-			if((EffectStr[i] >= '0') && (EffectStr[i] <= '9'))		{
-				value = (value * 10) + (EffectStr[i] - '0');
-			}
-			else {
-				break;
-			}
-		}
-		printk("saturation : %d \n", value);
-		saturation = value;
-	}
-
-	EffectStr = strstr(buf, TEXT_BRIGHTNESS);
-	if(EffectStr != NULL)
-	{
-		value = 0;
-		j = strlen(TEXT_BRIGHTNESS);
-		for(i = j ; i < 3+j ; i++)	{
-			if((EffectStr[i] >= '0') && (EffectStr[i] <= '9'))		{
-				value = (value * 10) + (EffectStr[i] - '0');
-			}
-			else {
-				break;
-			}
-		}
-		printk(TEXT_BRIGHTNESS ": %d \n", value);
-		brightness = value;
-	}
-
-    printk("%s count:%d contast: %d saturation : %d brightness : %d \n", __func__,  count, contrast, saturation, brightness);
-
-
-	for(i = 0; i < 256; i++)	{
-
-		Y_out = ((i - 16) * CONTRAST)/100 + BRIGHTNESS + 16;
-		Cb_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128;
-		Cr_out = ((i - 128) * (CONTRAST * SATURATION))/10000 + 128;
-
-		if(Y_out < 0) Y_out = 0;
-		if(Cb_out < 0) Cb_out = 0;
-		if(Cr_out < 0) Cr_out = 0;
-
-		if(Y_out > 255) Y_out = 255;
-		if(Cb_out > 255) Cb_out = 255;
-		if(Cr_out > 255) Cr_out = 255;
-
-		RGB[i] = (Y_out & 0xFF) << 16 | (Cb_out & 0xFF) << 8 | (Cr_out & 0xFF);
-	}
-
-	printk(" brightness : %d   saturation : %d   contast: %d\n",BRIGHTNESS, SATURATION, CONTRAST);
-	tcc_set_lut_table(VIOC_LUT_COMP0 + lut_channel, RGB);
-
-	return count;
-}
-
-static DEVICE_ATTR(settings, 0664, show_settings, store_settings);
 static struct file_operations lut_drv_fops = {
 	.owner			= THIS_MODULE,
 	.unlocked_ioctl		= lut_drv_ioctl,
 	.open			= lut_drv_open,
-	.release			= lut_drv_release,
+	.release		= lut_drv_release,
 };
 
 static int lut_drv_probe(struct platform_device *pdev)
@@ -338,10 +284,7 @@ static int lut_drv_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lut);
 
 	pr_info("%s: :%s, Driver %s Initialized  lut set num :0x%x\n",__func__, LUT_VERSION, pdev->name, TCC_LUT_SET);
-	ret = device_create_file(lut->misc->this_device, &dev_attr_settings);
 	return 0;
-
-
 
 err_misc_register:
 	misc_deregister(lut->misc);

@@ -27,9 +27,7 @@ enum{
 	LUT_DEV0 = 0,
 	LUT_DEV1 = 1,
 	LUT_COMP0 = 3,
-	LUT_COMP1 = 4,
-	LUT_COMP2 = 5,
-	LUT_COMP3 = 6
+	LUT_COMP1 = 5
 };
 
 enum{
@@ -81,6 +79,8 @@ struct VIOC_LUT_VALUE_SET_EX
         unsigned int lut_size;
         /** lookup table id */
         unsigned int lut_number;
+	/** lookup parameter bit[ :0] table 0: rgb-table, 1: y-table */
+	unsigned int param;
         /** lookup table */
         unsigned int Gamma[1024];
 };
@@ -114,6 +114,18 @@ struct VIOC_LUT_CSC_PRESET_SET
         unsigned int enable;
 };
 
+struct VIOC_LUT_CSC_COEFF
+{
+	unsigned short csc_coeff_1[3];
+	unsigned short csc_coeff_2[3];
+	unsigned short csc_coeff_3[3];
+};
+
+struct VIOC_LUT_MIX_CONFIG
+{
+	int r2y_sel;
+	int bypass;
+};
 
 #define TCC_LUT_SET		_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET) //hw vioc lut set
 #define TCC_LUT_PLUG_IN		_IOW(LUT_IOC_MAGIC, 3, struct VIOC_LUT_PLUG_IN_SET)
@@ -124,6 +136,10 @@ struct VIOC_LUT_CSC_PRESET_SET
 
 #define TCC_LUT_GET_DEPTH       _IOR(LUT_IOC_MAGIC, 20, unsigned int)
 #define TCC_LUT_SET_EX          _IOW(LUT_IOC_MAGIC, 21, struct VIOC_LUT_VALUE_SET_EX)
+
+#define TCC_LUT_SET_CSC_COEFF  	_IOW(LUT_IOC_MAGIC, 22, struct VIOC_LUT_CSC_COEFF)
+#define TCC_LUT_SET_MIX_CONIG	_IOW(LUT_IOC_MAGIC, 24, struct VIOC_LUT_MIX_CONFIG)
+
 
 #ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED

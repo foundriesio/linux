@@ -16,6 +16,7 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+#define pr_fmt(fmt) "\x1b[1;38m VIOC LUT: \x1b[0m" fmt
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -23,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/of_address.h>
 #include <asm/io.h>
+#include <linux/types.h>
 
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/tcc_types.h>
@@ -38,6 +40,7 @@ static volatile void __iomem *pLUT_reg;
 #define LUT_TABLE_IND_R REG_VIOC_LUT(0x20)
 #define LUT_UPDATE_PEND REG_VIOC_LUT(0x24)
 #define LUT_COEFFBASE REG_VIOC_LUT(0x28)
+#define LUT_MIX_CFG REG_VIOC_LUT(0x3C)
 #endif
 #define LUT_TABLE_R REG_VIOC_LUT(0x400)
 
@@ -59,13 +62,13 @@ static volatile void __iomem *pLUT_reg;
 #define TCC_LUT_DEBUG 0
 #define TCC_LUT_DEBUG_TABLE 0
 
-#define dpr_info(msg...)                                                       \
-	if (TCC_LUT_DEBUG) {                                                   \
-		printk("\x1b[1;38m VIOC LUT: \x1b[0m " msg);                   \
+#define dpr_info(msg, ...)                                                     	\
+	if (TCC_LUT_DEBUG) {                                                   	\
+		pr_info(msg, ##__VA_ARGS__);					\
 	}
-#define drp_table_info(msg...)                                                 \
-	if (TCC_LUT_DEBUG_TABLE) {                                             \
-		printk(msg);                                                   \
+#define drp_table_info(msg,...)                                                 	\
+	if (TCC_LUT_DEBUG_TABLE) {                                             	\
+		pr_info(msg, ##__VA_ARGS__);                                   	\
 	}
 
 int lut_get_pluginComponent_index(unsigned int tvc_n)
@@ -76,10 +79,13 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 16:
+					dpr_info(" >>plugin to rdma16\r\n", __func__);
 					return 17;
 				case 17:
+					dpr_info(" >>plugin to rdma17\r\n", __func__);
 					return 19;
 				default:
+					dpr_info(" >>plugin to rdma%02d\r\n", get_vioc_index(tvc_n));
 					return get_vioc_index(tvc_n);
 			}
 		break;
@@ -87,8 +93,10 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 0:
+					dpr_info(" >>plugin to vin0\r\n", __func__);
 					return 16;
 				case 1:
+					dpr_info(" >>plugin to vin1\r\n", __func__);
 					return 18;
 				default:
 					break;
@@ -123,142 +131,71 @@ int lut_get_Component_index_to_tvc(unsigned int plugin_n)
 }
 
 // R, G, B is 10bit color format and R = Y, G = U, B = V
-void tcc_set_lut_table_to_color(unsigned int lut_n, unsigned int R,
-				unsigned int G, unsigned int B)
+void tcc_set_lut_table_to_color(unsigned int lut_n,
+				unsigned int R, unsigned int G, unsigned int B)
 {
 	unsigned int i, reg_off, lut_index;
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(LUT_TABLE_IND_R)
 	unsigned int ind_v;
-#endif
+	#endif
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 	volatile unsigned int color = 0;
 
 	color = ((R & 0x3FF) << 20) | ((G & 0x3FF) << 10) | (B & 0x3FF);
-	pr_info("%s R:0x%x, G:0x%x B:0x%x, color:0x%x \n", __func__, R, G, B,
-		color);
-	// lut table select
-	lut_index = get_vioc_index(lut_n);
+	pr_info("%s R:0x%x, G:0x%x B:0x%x, color:0x%x \n",
+		__func__, R, G, B, color);
 
+	/* Get Component index */
+	lut_index = get_vioc_index(lut_n);
 	lut_writel(lut_index, ctrl_reg);
 
 	// lut table setting
 	for (i = 0; i < LUT_TABLE_SIZE; i++) {
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+		#if defined(LUT_TABLE_IND_R)
 		ind_v = i >> 8;
 		lut_writel(ind_v, LUT_TABLE_IND_R);
-#endif
+		#endif
 		reg_off = (0xFF & i);
 		lut_writel(color, table_reg + (reg_off * 0x4));
 	}
 
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
-	if (lut_index >= VIOC_LUT_COMP0)
-		lut_writel(
-			1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET),
-			LUT_UPDATE_PEND);
-#endif
+	#if defined(LUT_UPDATE_PEND)
+	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0))
+		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)), LUT_UPDATE_PEND);
+	#endif
 }
 
 void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 {
 	unsigned int i, reg_off, lut_index;
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(LUT_TABLE_IND_R)
 	unsigned int ind_v;
-#endif
+	#endif
 	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
 	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
 
 	// lut table select
 	lut_index = get_vioc_index(lut_n);
 	lut_writel(lut_index, ctrl_reg);
+	dpr_info("%s ctrl lut_comp %d is %d\r\n", __func__, lut_index, lut_readl(ctrl_reg));
 
 	// lut table setting
 	for (i = 0; i < LUT_TABLE_SIZE; i++) {
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+		#if defined(LUT_TABLE_IND_R)
 		ind_v = i >> 8;
 		lut_writel(ind_v, LUT_TABLE_IND_R);
-#endif
+		#endif
 		reg_off = (0xFF & i);
 		lut_writel(table[i], table_reg + (reg_off * 0x4));
 	}
 
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
-	if (lut_index >= VIOC_LUT_COMP0)
-		lut_writel(
-			1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET),
-			LUT_UPDATE_PEND);
-#endif
-}
-
-
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
-/**
- * @short Set up preset table to lut for interchange between sdr to hdr.
- * @param[in] lut_n  Number of lut to apply preset table
- * @param[in] y_lut_table pointer to the y-lut of preset table.
- * @param[in] rgb_lut_table pointer to the rgb-lut of preset table.
- * @return 0 on success and a negative number on failure.
- */
-int tcc_set_lut_csc_preset(unsigned int lut_n, unsigned int *y_lut_table,
-			   unsigned int *rgb_lut_table)
-{
-	int ret = -1;
-	unsigned int i, ind_v, reg_off, lut_index;
-	void __iomem *table_reg = (void __iomem *)LUT_TABLE_R;
-	void __iomem *ctrl_reg = (void __iomem *)LUT_CTRL_R;
-
-	/* Make sure that lut number is in valid range */
-	if (lut_n < VIOC_LUT_COMP0 ||
-	    lut_n > VIOC_LUT_COMP1) {
-		pr_err("%s lun number is out of range\r\n", __func__);
-		goto lut_n_is_out_of_range;
+	#if defined(LUT_UPDATE_PEND)
+	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0)) {
+		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)), LUT_UPDATE_PEND);
+		dpr_info("%s update_pend lut_comp %d is %d\r\n", __func__, lut_index, lut_readl(LUT_UPDATE_PEND));
 	}
-
-	if (IS_ERR_OR_NULL(y_lut_table) || IS_ERR_OR_NULL(rgb_lut_table)) {
-		pr_err("%s lut pointer is NULL\r\n", __func__);
-		goto lut_table_is_err_or_null;
-	}
-
-	/* lut table select */
-	lut_index = get_vioc_index(lut_n);
-	lut_writel(lut_index, ctrl_reg);
-
-	/* y lut table setting */
-	for (i = 0; i < LUT_TABLE_SIZE; i++) {
-		ind_v = i >> 8;
-		lut_writel(ind_v, LUT_TABLE_IND_R);
-		reg_off = (0xFF & i);
-		lut_writel(y_lut_table[i], table_reg + (reg_off * 0x4));
-		drp_table_info("%d %d 0x%x\r\n", ind_v, (reg_off * 0x4),
-			       y_lut_table[i]);
-	}
-	dpr_info("%s update y-lut : %p write to %x \r\n", __func__,
-		 LUT_UPDATE_PEND,
-		 (2 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET)));
-	lut_writel((2 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET)),
-		   LUT_UPDATE_PEND);
-
-	/* rgb lut table setting */
-	for (i = 0; i < LUT_TABLE_SIZE; i++) {
-		ind_v = i >> 8;
-		lut_writel(ind_v, LUT_TABLE_IND_R);
-		reg_off = (0xFF & i);
-		lut_writel(rgb_lut_table[i], table_reg + (reg_off * 0x4));
-		drp_table_info("%d %d 0x%x\r\n", ind_v, (reg_off * 0x4),
-			       rgb_lut_table[i]);
-	}
-	lut_writel(1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET),
-		   LUT_UPDATE_PEND);
-	dpr_info("%s update rgb-lut : %p write to %x \r\n", __func__,
-		 LUT_UPDATE_PEND,
-		 (1 << ((lut_index - VIOC_LUT_COMP0) << LUT_TABLE_OFFSET)));
-	ret = 0;
-
-lut_n_is_out_of_range:
-lut_table_is_err_or_null:
-
-	return ret;
+	#endif
 }
 
 
@@ -267,6 +204,7 @@ void tcc_set_lut_csc_coeff(unsigned int lut_csc_11_12,
 			   unsigned int lut_csc_22_23,
 			   unsigned int lut_csc_31_32, unsigned int lut_csc_32)
 {
+	#if defined(LUT_COEFFBASE)
 	void __iomem *lut_coeff_base_reg = (void __iomem *)LUT_COEFFBASE;
 
 	/* coeff11_12 */
@@ -279,13 +217,14 @@ void tcc_set_lut_csc_coeff(unsigned int lut_csc_11_12,
 	lut_writel(lut_csc_31_32, lut_coeff_base_reg + 0xC);
 	/* coeff33 */
 	lut_writel(lut_csc_32, lut_coeff_base_reg + 0x10);
+	#endif
 }
 
 void tcc_set_default_lut_csc_coeff(void)
 {
+	#if defined(LUT_COEFFBASE)
 	unsigned int lut_csc_val;
 	void __iomem *lut_coeff_base_reg = (void __iomem *)LUT_COEFFBASE;
-
 
 	lut_csc_val = 1;
 	/* coeff11_12 */
@@ -300,31 +239,46 @@ void tcc_set_default_lut_csc_coeff(void)
 	lut_csc_val = 0;
 	/* coeff31_32 */
 	lut_writel(lut_csc_val, lut_coeff_base_reg + 0xC);
+	#endif
 }
-#endif
 
+void tcc_set_mix_config(int r2y_sel, int bypass)
+{
+	#if defined(LUT_MIX_CFG)
+	lut_writel(((r2y_sel & 0xF) << 4)| (bypass?1:0), LUT_MIX_CFG);
+	#endif
+}
 
 int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 {
 	void __iomem *reg;
 
 	int plugin, ret = -1;
-	unsigned int value, lut_index;
+	unsigned int lut_cfg_val, lut_index;
 
 	lut_index = get_vioc_index(lut_n);
 	dpr_info("%s lut_index_%d\r\n", __func__, lut_index);
+
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
+	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
+		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
+	}
+	#endif
+
 	// select lut config register
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
-	value = lut_readl(reg);
+	lut_cfg_val = lut_readl(reg);
+	lut_cfg_val &= ~L_TABLE_SEL_MASK;
+
 	plugin = lut_get_pluginComponent_index(plugComp);
 	if (plugin < 0) {
 		pr_err("%s plugcomp(0x%x) is out of range \r\n", __func__,
 		       plugComp);
 		goto plugComp_is_out_of_range;
 	}
-	value = (value & ~(L_TABLE_SEL_MASK)) |
-		((unsigned int)plugin << L_TABLE_SEL_SHIFT);
-	lut_writel(value, reg);
+	lut_cfg_val |= ((unsigned int)plugin << L_TABLE_SEL_SHIFT);
+	lut_writel(lut_cfg_val, reg);
 	ret = 0;
 
 plugComp_is_out_of_range:
@@ -337,6 +291,13 @@ int tcc_get_lut_plugin(unsigned int lut_n)
 	unsigned int value, lut_index, ret;
 
 	lut_index = get_vioc_index(lut_n);
+
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
+	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
+		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
+	}
+	#endif
 	dpr_info("%s lut_index = %d\r\n", __func__, lut_index);
 
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
@@ -353,6 +314,14 @@ void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable)
 	unsigned int lut_index;
 
 	lut_index = get_vioc_index(lut_n);
+
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
+	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
+		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
+	}
+	#endif
+
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 
 	dpr_info("%s lut_index_%d %s\r\n", __func__, lut_index,
@@ -370,6 +339,14 @@ int tcc_get_lut_enable(unsigned int lut_n)
 	unsigned int lut_index;
 
 	lut_index = get_vioc_index(lut_n);
+
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
+	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
+		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
+	}
+	#endif
+
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 
 	// enable , disable
