@@ -278,7 +278,7 @@ pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 pci-switchtec-fix-stream_open.cocci-warnings.patch
 wait.h-include-atomic.h.patch
 completion-use-simple-wait-queues.patch
-swait-Delete-the-task-from-after-a-wakeup-occured.patch
+sched-completion-Fix-a-lockup-in-wait_for_completion.patch
 
 # HRTIMERS
 hrtimer-consolidate-hrtimer_init-hrtimer_init_sleepe.patch
