@@ -171,7 +171,7 @@
 		pinctrl-1 = <&pinctrl_adc1>, <&pinctrl_touchctrl_gpios>;
 		vf50-ts-min-pressure = <200>;
 		/* NOTE: you must remove the pinctrl-adc1 from the adc1
-                         node below to use the touchscreen */
+			 node below to use the touchscreen */
 		status = "disabled";
 	};
 
@@ -427,21 +427,23 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio12>;
+	ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		clocks = <&clk IMX8QM_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <1>;
 		mclk = <24000000>;
 		mclk_source = <0>;
+		mipi_csi;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio12>;
 		pwn-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
 		reg = <0x3c>;
 		rst-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
-		virtual-channel;
 		status = "okay";
 
 		port {
 			ov5640_ep: endpoint {
-				data-lanes = <1 2>;
 				remote-endpoint = <&mipi_csi1_ep>;
 			};
 		};
@@ -1329,12 +1331,12 @@
 &mipi_csi_1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
-	virtual-channel;
+	/delete-property/virtual-channel;
 	status = "okay";
 
 	/* Camera 0 MIPI CSI-2 (CSIS1) */
-	port@0 {
-		reg = <0>;
+	port@1 {
+		reg = <1>;
 
 		mipi_csi1_ep: endpoint {
 			data-lanes = <1 2>;
