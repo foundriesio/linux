@@ -578,7 +578,7 @@ struct arm_smmu_strtab_l1_desc {
 };
 
 struct arm_smmu_ctx_desc {
-	u16				asid;
+	u32				asid;
 	u64				ttbr;
 	u64				tcr;
 	u64				mair;
@@ -654,7 +654,6 @@ struct arm_smmu_device {
 
 #define ARM_SMMU_MAX_ASIDS		(1 << 16)
 	unsigned int			asid_bits;
-	DECLARE_BITMAP(asid_map, ARM_SMMU_MAX_ASIDS);
 
 #define ARM_SMMU_MAX_VMIDS		(1 << 16)
 	unsigned int			vmid_bits;
@@ -722,6 +721,7 @@ struct arm_smmu_option_prop {
 };
 
 static DECLARE_IOASID_SET(private_ioasid);
+static DEFINE_XARRAY_ALLOC1(asid_xa);
 
 static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ ARM_SMMU_OPT_SKIP_PREFETCH, "hisilicon,broken-prefetch-cmd" },
@@ -1768,6 +1768,14 @@ static void arm_smmu_free_cd_tables(struct arm_smmu_domain *smmu_domain)
 	cfg->tables = NULL;
 }
 
+static void arm_smmu_free_asid(struct arm_smmu_ctx_desc *cd)
+{
+	if (!cd->asid)
+		return;
+
+	xa_erase(&asid_xa, cd->asid);
+}
+
 /* Stream table manipulation functions */
 static void
 arm_smmu_write_strtab_l1_desc(__le64 *dst, struct arm_smmu_strtab_l1_desc *desc)
@@ -2432,8 +2440,7 @@ static void arm_smmu_domain_free(struct iommu_domain *domain)
 
 		if (cfg->tables)
 			arm_smmu_free_cd_tables(smmu_domain);
-		if (cfg->cd.asid)
-			arm_smmu_bitmap_free(smmu->asid_map, cfg->cd.asid);
+		arm_smmu_free_asid(&cfg->cd);
 		if (smmu_domain->ssid)
 			ioasid_free(smmu_domain->ssid);
 	} else {
@@ -2449,15 +2456,15 @@ static int arm_smmu_domain_finalise_cd(struct arm_smmu_domain *smmu_domain,
 				       struct arm_smmu_master *master,
 				       struct io_pgtable_cfg *pgtbl_cfg)
 {
-	int asid;
+	int ret;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_s1_cfg *cfg = &smmu_domain->s1_cfg;
 
-	asid = arm_smmu_bitmap_alloc(smmu->asid_map, smmu->asid_bits);
-	if (asid < 0)
-		return asid;
+	ret = xa_alloc(&asid_xa, &cfg->cd.asid, &cfg->cd,
+		       XA_LIMIT(1, (1 << smmu->asid_bits) - 1), GFP_KERNEL);
+	if (ret)
+		return ret;
 
-	cfg->cd.asid	= (u16)asid;
 	cfg->cd.ttbr	= pgtbl_cfg->arm_lpae_s1_cfg.ttbr[0];
 	cfg->cd.tcr	= pgtbl_cfg->arm_lpae_s1_cfg.tcr;
 	cfg->cd.mair	= pgtbl_cfg->arm_lpae_s1_cfg.mair[0];
@@ -2470,7 +2477,6 @@ static int arm_smmu_domain_finalise_s1(struct arm_smmu_domain *smmu_domain,
 {
 	int ret;
 	struct arm_smmu_s1_cfg *cfg = &smmu_domain->s1_cfg;
-	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
 	ret = arm_smmu_domain_finalise_cd(smmu_domain, master, pgtbl_cfg);
 	if (ret)
@@ -2491,7 +2497,7 @@ static int arm_smmu_domain_finalise_s1(struct arm_smmu_domain *smmu_domain,
 out_free_tables:
 	arm_smmu_free_cd_tables(smmu_domain);
 out_free_asid:
-	arm_smmu_bitmap_free(smmu->asid_map, cfg->cd.asid);
+	arm_smmu_free_asid(&cfg->cd);
 	return ret;
 }
 
@@ -4169,8 +4175,6 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	smmu->dev = dev;
-	/* Reserve ASID 0 for validity check */
-	set_bit(0, smmu->asid_map);
 
 	if (dev->of_node) {
 		ret = arm_smmu_device_dt_probe(pdev, smmu);
