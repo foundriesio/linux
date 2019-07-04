@@ -1265,6 +1265,7 @@
 	pinctrl-0 = <&pinctrl_lpspi0>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	dma-names = "no","no";
 	status = "okay";
 
 	spidev0: spi@0 {
@@ -1280,6 +1281,7 @@
 	pinctrl-0 = <&pinctrl_lpspi2>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	dma-names = "no","no";
 	status = "okay";
 
 	spidev1: spi@0 {
