@@ -241,18 +241,20 @@
 		&pinctrl_usbh_oc_1 &pinctrl_usbc_id_1
 	>;
 
-	pinctrl_pcap_1: pcap-1 {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_9__GPIO1_IO09	0x1b0b0 /* SODIMM 28 */
-			MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	0x1b0b0 /* SODIMM 30 */
-		>;
-	};
+	gpio {
+		pinctrl_pcap_1: pcap-1 {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09	0x1b0b0 /* SODIMM 28 */
+				MX6QDL_PAD_SD4_DAT2__GPIO2_IO10	0x1b0b0 /* SODIMM 30 */
+			>;
+		};
 
-	pinctrl_mxt_ts: mxt-ts {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_CS1__GPIO2_IO24	0x130b0 /* SODIMM 107 */
-			MX6QDL_PAD_SD2_DAT1__GPIO1_IO14	0x130b0 /* SODIMM 106 */
-		>;
+		pinctrl_mxt_ts: mxt-ts {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_CS1__GPIO2_IO24	0x130b0 /* SODIMM 107 */
+				MX6QDL_PAD_SD2_DAT1__GPIO1_IO14	0x130b0 /* SODIMM 106 */
+			>;
+		};
 	};
 };
 
