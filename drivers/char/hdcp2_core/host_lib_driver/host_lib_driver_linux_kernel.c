@@ -313,7 +313,13 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		}
 		if (hdcp22 & (1<<5)) {
 			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_DECRYPTED_CHG");
-			esm->hdcp_status = HDCP2_DECRYPTED_CHG;
+			/**
+			 * Decrypted change status occurs even after authentication failed.
+			 * Since customer knows value of 12 as a success,
+			 * only change the value when the previous is a success.
+			 */
+			if (esm->hdcp_status == HDCP2_AUTHENTICATED)
+				esm->hdcp_status = HDCP2_DECRYPTED_CHG;
 			dwc_avmute(esm, 0, 100);
 		}
 	}
