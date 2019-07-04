@@ -24,6 +24,7 @@
 #include <linux/iopoll.h>
 #include <linux/init.h>
 #include <linux/moduleparam.h>
+#include <linux/mmu_context.h>
 #include <linux/msi.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -582,6 +583,9 @@ struct arm_smmu_ctx_desc {
 	u64				ttbr;
 	u64				tcr;
 	u64				mair;
+
+	refcount_t			refs;
+	struct mm_struct		*mm;
 };
 
 struct arm_smmu_cd_table {
@@ -1669,7 +1673,8 @@ static int arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 #ifdef __BIG_ENDIAN
 			CTXDESC_CD_0_ENDI |
 #endif
-			CTXDESC_CD_0_R | CTXDESC_CD_0_A | CTXDESC_CD_0_ASET |
+			CTXDESC_CD_0_R | CTXDESC_CD_0_A |
+			(cd->mm ? 0 : CTXDESC_CD_0_ASET) |
 			CTXDESC_CD_0_AA64 |
 			FIELD_PREP(CTXDESC_CD_0_ASID, cd->asid) |
 			CTXDESC_CD_0_V;
@@ -1768,12 +1773,154 @@ static void arm_smmu_free_cd_tables(struct arm_smmu_domain *smmu_domain)
 	cfg->tables = NULL;
 }
 
-static void arm_smmu_free_asid(struct arm_smmu_ctx_desc *cd)
+static void arm_smmu_init_cd(struct arm_smmu_ctx_desc *cd)
 {
-	if (!cd->asid)
-		return;
+	refcount_set(&cd->refs, 1);
+}
 
-	xa_erase(&asid_xa, cd->asid);
+static bool arm_smmu_free_asid(struct arm_smmu_ctx_desc *cd)
+{
+	bool free;
+	struct arm_smmu_ctx_desc *old_cd;
+
+	if (!cd->asid)
+		return false;
+
+	xa_lock(&asid_xa);
+	free = refcount_dec_and_test(&cd->refs);
+	if (free) {
+		old_cd = __xa_erase(&asid_xa, cd->asid);
+		WARN_ON(old_cd != cd);
+	}
+	xa_unlock(&asid_xa);
+	return free;
+}
+
+static struct arm_smmu_ctx_desc *arm_smmu_share_asid(u16 asid)
+{
+	struct arm_smmu_ctx_desc *cd;
+
+	cd = xa_load(&asid_xa, asid);
+	if (!cd)
+		return NULL;
+
+	if (cd->mm) {
+		/*
+		 * It's pretty common to find a stale CD when doing unbind-bind,
+		 * given that the release happens after a RCU grace period.
+		 * Simply reuse it.
+		 */
+		refcount_inc(&cd->refs);
+		return cd;
+	}
+
+	/*
+	 * Ouch, ASID is already in use for a private cd.
+	 * TODO: seize it.
+	 */
+	return ERR_PTR(-EEXIST);
+}
+
+static struct arm_smmu_ctx_desc *arm_smmu_alloc_shared_cd(struct mm_struct *mm)
+{
+	u16 asid;
+	int ret = 0;
+	u64 tcr, par, reg;
+	struct arm_smmu_ctx_desc *cd;
+	struct arm_smmu_ctx_desc *old_cd = NULL;
+
+	asid = mm_context_get(mm);
+	if (!asid)
+		return ERR_PTR(-ESRCH);
+
+	cd = kzalloc(sizeof(*cd), GFP_KERNEL);
+	if (!cd) {
+		ret = -ENOMEM;
+		goto err_put_context;
+	}
+
+	arm_smmu_init_cd(cd);
+
+	xa_lock(&asid_xa);
+	old_cd = arm_smmu_share_asid(asid);
+	if (!old_cd) {
+		old_cd = __xa_store(&asid_xa, asid, cd, GFP_KERNEL);
+		ret = xa_err(old_cd);
+		BUG_ON(!ret && old_cd);
+		cd->asid = asid;
+	}
+	xa_unlock(&asid_xa);
+
+	if (ret) {
+		goto err_free_cd;
+	} else if (!IS_ERR_OR_NULL(old_cd)) {
+		if (WARN_ON(old_cd->mm != mm)) {
+			ret = -EINVAL;
+			goto err_free_cd;
+		}
+		kfree(cd);
+		mm_context_put(mm);
+		return old_cd;
+	} else if (old_cd) {
+		ret = PTR_ERR(old_cd);
+		goto err_free_cd;
+	}
+
+	/* FIXME: these are defined in io-pgtable-arm.c */
+#define ARM_LPAE_TCR_IPS_SHIFT		32
+#define ARM_LPAE_TCR_EPD1		(1 << 23)
+	tcr = TCR_T0SZ(VA_BITS) | TCR_IRGN0_WBWA | TCR_ORGN0_WBWA |
+		TCR_SH0_INNER | ARM_LPAE_TCR_EPD1;
+
+	switch (PAGE_SIZE) {
+		case SZ_4K:
+			tcr |= TCR_TG0_4K;
+			break;
+		case SZ_16K:
+			tcr |= TCR_TG0_16K;
+			break;
+		case SZ_64K:
+			tcr |= TCR_TG0_64K;
+			break;
+		default:
+			WARN_ON(1);
+			ret = -EINVAL;
+			goto err_free_asid;
+	}
+
+	reg = read_sanitised_ftr_reg(SYS_ID_AA64MMFR0_EL1);
+	par = cpuid_feature_extract_unsigned_field(reg, ID_AA64MMFR0_PARANGE_SHIFT);
+	tcr |= par << ARM_LPAE_TCR_IPS_SHIFT;
+
+	cd->ttbr = virt_to_phys(mm->pgd);
+	cd->tcr = tcr;
+	/*
+	 * MAIR value is pretty much constant and global, so we can just get it
+	 * from the current CPU register
+	 */
+	cd->mair = read_sysreg(mair_el1);
+
+	cd->mm = mm;
+	cd->asid = asid;
+
+	return cd;
+
+err_free_asid:
+	arm_smmu_free_asid(cd);
+err_free_cd:
+	kfree(cd);
+err_put_context:
+	mm_context_put(mm);
+	return ERR_PTR(ret);
+}
+
+static void arm_smmu_free_shared_cd(struct arm_smmu_ctx_desc *cd)
+{
+	if (arm_smmu_free_asid(cd)) {
+		/* Unpin ASID */
+		mm_context_put(cd->mm);
+		kfree(cd);
+	}
 }
 
 /* Stream table manipulation functions */
@@ -2459,6 +2606,8 @@ static int arm_smmu_domain_finalise_cd(struct arm_smmu_domain *smmu_domain,
 	int ret;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_s1_cfg *cfg = &smmu_domain->s1_cfg;
+
+	arm_smmu_init_cd(&cfg->cd);
 
 	ret = xa_alloc(&asid_xa, &cfg->cd.asid, &cfg->cd,
 		       XA_LIMIT(1, (1 << smmu->asid_bits) - 1), GFP_KERNEL);
