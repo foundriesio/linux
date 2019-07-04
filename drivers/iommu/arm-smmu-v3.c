@@ -58,6 +58,8 @@
 #define IDR0_ASID16			(1 << 12)
 #define IDR0_ATS			(1 << 10)
 #define IDR0_HYP			(1 << 9)
+#define IDR0_HD				(1 << 7)
+#define IDR0_HA				(1 << 6)
 #define IDR0_BTM			(1 << 5)
 #define IDR0_COHACC			(1 << 4)
 #define IDR0_TTF			GENMASK(3, 2)
@@ -307,6 +309,11 @@
 #define ARM64_TCR_IPS			GENMASK_ULL(34, 32)
 #define CTXDESC_CD_0_TCR_TBI0		(1ULL << 38)
 #define ARM64_TCR_TBI0			(1ULL << 37)
+
+#define CTXDESC_CD_0_TCR_HA		(1UL << 43)
+#define ARM64_TCR_HA			(1ULL << 39)
+#define CTXDESC_CD_0_TCR_HD		(1UL << 42)
+#define ARM64_TCR_HD			(1ULL << 40)
 
 #define CTXDESC_CD_0_AA64		(1UL << 41)
 #define CTXDESC_CD_0_S			(1UL << 44)
@@ -649,6 +656,8 @@ struct arm_smmu_device {
 #define ARM_SMMU_FEAT_E2H		(1 << 15)
 #define ARM_SMMU_FEAT_BTM		(1 << 16)
 #define ARM_SMMU_FEAT_SVA		(1 << 17)
+#define ARM_SMMU_FEAT_HA		(1 << 18)
+#define ARM_SMMU_FEAT_HD		(1 << 19)
 	u32				features;
 
 #define ARM_SMMU_OPT_SKIP_PREFETCH	(1 << 0)
@@ -1624,7 +1633,7 @@ static __le64 *arm_smmu_get_cd_ptr(struct arm_smmu_domain *smmu_domain,
 	return table->ptr + idx * CTXDESC_CD_DWORDS;
 }
 
-static u64 arm_smmu_cpu_tcr_to_cd(u64 tcr)
+static u64 arm_smmu_cpu_tcr_to_cd(struct arm_smmu_device *smmu, u64 tcr)
 {
 	u64 val = 0;
 
@@ -1637,6 +1646,11 @@ static u64 arm_smmu_cpu_tcr_to_cd(u64 tcr)
 	val |= ARM_SMMU_TCR2CD(tcr, EPD0);
 	val |= ARM_SMMU_TCR2CD(tcr, EPD1);
 	val |= ARM_SMMU_TCR2CD(tcr, IPS);
+
+	if (smmu->features & ARM_SMMU_FEAT_HA)
+		val |= ARM_SMMU_TCR2CD(tcr, HA);
+	if (smmu->features & ARM_SMMU_FEAT_HD)
+		val |= ARM_SMMU_TCR2CD(tcr, HD);
 
 	return val;
 }
@@ -1685,7 +1699,7 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 		 */
 		arm_smmu_sync_cd(smmu_domain, ssid, true);
 
-		val = arm_smmu_cpu_tcr_to_cd(cd->tcr) |
+		val = arm_smmu_cpu_tcr_to_cd(smmu, cd->tcr) |
 #ifdef __BIG_ENDIAN
 			CTXDESC_CD_0_ENDI |
 #endif
@@ -1953,6 +1967,7 @@ static struct arm_smmu_ctx_desc *arm_smmu_alloc_shared_cd(struct mm_struct *mm)
 	reg = read_sanitised_ftr_reg(SYS_ID_AA64MMFR0_EL1);
 	par = cpuid_feature_extract_unsigned_field(reg, ID_AA64MMFR0_PARANGE_SHIFT);
 	tcr |= par << ARM_LPAE_TCR_IPS_SHIFT;
+	tcr |= TCR_HA | TCR_HD;
 
 	cd->ttbr = virt_to_phys(mm->pgd);
 	cd->tcr = tcr;
@@ -4349,6 +4364,12 @@ static int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 		smmu->features |= ARM_SMMU_FEAT_HYP;
 		if (vhe)
 			smmu->features |= ARM_SMMU_FEAT_E2H;
+	}
+
+	if (reg & (IDR0_HA | IDR0_HD)) {
+		smmu->features |= ARM_SMMU_FEAT_HA;
+		if (reg & IDR0_HD)
+			smmu->features |= ARM_SMMU_FEAT_HD;
 	}
 
 	/*
