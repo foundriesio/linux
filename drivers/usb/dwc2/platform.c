@@ -173,7 +173,7 @@ static ssize_t dwc2_tcc_drd_mode_show(struct device *dev, struct device_attribut
 	return sprintf(buf, "dwc2 dr_mode - %s\n", hsotg->dr_mode == USB_DR_MODE_HOST ? "HOST":"DEVICE");
 }
 
-static int dwc2_change_dr_mode(struct work_struct *);
+static void dwc2_change_dr_mode(struct work_struct *);
 static ssize_t dwc2_tcc_drd_mode_store(struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t count)
 {
@@ -666,7 +666,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #if defined (CONFIG_USB_DWC2_TCC) && defined (CONFIG_USB_DWC2_DUAL_ROLE)
 #define VBUS_CTRL_MAX 10
 
-static int dwc2_change_dr_mode(struct work_struct *w)
+static void dwc2_change_dr_mode(struct work_struct *w)
 {
 	struct dwc2_hsotg *hsotg = container_of(w, struct dwc2_hsotg,
 						drd_work);
