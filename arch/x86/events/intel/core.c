@@ -272,7 +272,7 @@ EVENT_ATTR_STR(mem-loads,	mem_ld_nhm,	"event=0x0b,umask=0x10,ldlat=3");
 EVENT_ATTR_STR(mem-loads,	mem_ld_snb,	"event=0xcd,umask=0x1,ldlat=3");
 EVENT_ATTR_STR(mem-stores,	mem_st_snb,	"event=0xcd,umask=0x2");
 
-static struct attribute *nhm_events_attrs[] = {
+static struct attribute *nhm_mem_events_attrs[] = {
 	EVENT_PTR(mem_ld_nhm),
 	NULL,
 };
@@ -308,8 +308,6 @@ EVENT_ATTR_STR_HT(topdown-recovery-bubbles.scale, td_recovery_bubbles_scale,
 	"4", "2");
 
 static struct attribute *snb_events_attrs[] = {
-	EVENT_PTR(mem_ld_snb),
-	EVENT_PTR(mem_st_snb),
 	EVENT_PTR(td_slots_issued),
 	EVENT_PTR(td_slots_retired),
 	EVENT_PTR(td_fetch_bubbles),
@@ -317,6 +315,12 @@ static struct attribute *snb_events_attrs[] = {
 	EVENT_PTR(td_total_slots_scale),
 	EVENT_PTR(td_recovery_bubbles),
 	EVENT_PTR(td_recovery_bubbles_scale),
+	NULL,
+};
+
+static struct attribute *snb_mem_events_attrs[] = {
+	EVENT_PTR(mem_ld_snb),
+	EVENT_PTR(mem_st_snb),
 	NULL,
 };
 
@@ -4016,6 +4020,23 @@ EVENT_ATTR_STR(cycles-t,	cycles_t,	"event=0x3c,in_tx=1");
 EVENT_ATTR_STR(cycles-ct,	cycles_ct,	"event=0x3c,in_tx=1,in_tx_cp=1");
 
 static struct attribute *hsw_events_attrs[] = {
+	EVENT_PTR(td_slots_issued),
+	EVENT_PTR(td_slots_retired),
+	EVENT_PTR(td_fetch_bubbles),
+	EVENT_PTR(td_total_slots),
+	EVENT_PTR(td_total_slots_scale),
+	EVENT_PTR(td_recovery_bubbles),
+	EVENT_PTR(td_recovery_bubbles_scale),
+	NULL
+};
+
+static struct attribute *hsw_mem_events_attrs[] = {
+	EVENT_PTR(mem_ld_hsw),
+	EVENT_PTR(mem_st_hsw),
+	NULL,
+};
+
+static struct attribute *hsw_tsx_events_attrs[] = {
 	EVENT_PTR(tx_start),
 	EVENT_PTR(tx_commit),
 	EVENT_PTR(tx_abort),
@@ -4028,15 +4049,6 @@ static struct attribute *hsw_events_attrs[] = {
 	EVENT_PTR(el_conflict),
 	EVENT_PTR(cycles_t),
 	EVENT_PTR(cycles_ct),
-	EVENT_PTR(mem_ld_hsw),
-	EVENT_PTR(mem_st_hsw),
-	EVENT_PTR(td_slots_issued),
-	EVENT_PTR(td_slots_retired),
-	EVENT_PTR(td_fetch_bubbles),
-	EVENT_PTR(td_total_slots),
-	EVENT_PTR(td_total_slots_scale),
-	EVENT_PTR(td_recovery_bubbles),
-	EVENT_PTR(td_recovery_bubbles_scale),
 	NULL
 };
 
@@ -4125,8 +4137,33 @@ static struct attribute *intel_pmu_attrs[] = {
 	NULL,
 };
 
+static __init struct attribute **
+get_events_attrs(struct attribute **base,
+		 struct attribute **mem,
+		 struct attribute **tsx)
+{
+	struct attribute **attrs = base;
+	struct attribute **old;
+
+	if (mem && x86_pmu.pebs)
+		attrs = merge_attr(attrs, mem);
+
+	if (tsx && boot_cpu_has(X86_FEATURE_RTM)) {
+		old = attrs;
+		attrs = merge_attr(attrs, tsx);
+		if (old != base)
+			kfree(old);
+	}
+
+	return attrs;
+}
+
 __init int intel_pmu_init(void)
 {
+	struct attribute **extra_attr = NULL;
+	struct attribute **mem_attr = NULL;
+	struct attribute **tsx_attr = NULL;
+	struct attribute **to_free = NULL;
 	union cpuid10_edx edx;
 	union cpuid10_eax eax;
 	union cpuid10_ebx ebx;
@@ -4134,7 +4171,6 @@ __init int intel_pmu_init(void)
 	unsigned int unused;
 	struct extra_reg *er;
 	int version, i;
-	struct attribute **extra_attr = NULL;
 
 	if (!cpu_has(&boot_cpu_data, X86_FEATURE_ARCH_PERFMON)) {
 		switch (boot_cpu_data.x86) {
@@ -4232,7 +4268,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.enable_all = intel_pmu_nhm_enable_all;
 		x86_pmu.extra_regs = intel_nehalem_extra_regs;
 
-		x86_pmu.cpu_events = nhm_events_attrs;
+		mem_attr = nhm_mem_events_attrs;
 
 		/* UOPS_ISSUED.STALLED_CYCLES */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -4378,7 +4414,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.extra_regs = intel_westmere_extra_regs;
 		x86_pmu.flags |= PMU_FL_HAS_RSP_1;
 
-		x86_pmu.cpu_events = nhm_events_attrs;
+		mem_attr = nhm_mem_events_attrs;
 
 		/* UOPS_ISSUED.STALLED_CYCLES */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -4417,6 +4453,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
 
 		x86_pmu.cpu_events = snb_events_attrs;
+		mem_attr = snb_mem_events_attrs;
 
 		/* UOPS_ISSUED.ANY,c=1,i=1 to count stall cycles */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -4456,6 +4493,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
 
 		x86_pmu.cpu_events = snb_events_attrs;
+		mem_attr = snb_mem_events_attrs;
 
 		/* UOPS_ISSUED.ANY,c=1,i=1 to count stall cycles */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -4494,6 +4532,8 @@ __init int intel_pmu_init(void)
 		x86_pmu.lbr_double_abort = true;
 		extra_attr = boot_cpu_has(X86_FEATURE_RTM) ?
 			hsw_format_attr : nhm_format_attr;
+		mem_attr = hsw_mem_events_attrs;
+		tsx_attr = hsw_tsx_events_attrs;
 		pr_cont("Haswell events, ");
 		break;
 
@@ -4533,6 +4573,8 @@ __init int intel_pmu_init(void)
 		x86_pmu.limit_period = bdw_limit_period;
 		extra_attr = boot_cpu_has(X86_FEATURE_RTM) ?
 			hsw_format_attr : nhm_format_attr;
+		mem_attr = hsw_mem_events_attrs;
+		tsx_attr = hsw_tsx_events_attrs;
 		pr_cont("Broadwell events, ");
 		break;
 
@@ -4586,7 +4628,10 @@ __init int intel_pmu_init(void)
 		extra_attr = boot_cpu_has(X86_FEATURE_RTM) ?
 			hsw_format_attr : nhm_format_attr;
 		extra_attr = merge_attr(extra_attr, skl_format_attr);
+		to_free = extra_attr;
 		x86_pmu.cpu_events = hsw_events_attrs;
+		mem_attr = hsw_mem_events_attrs;
+		tsx_attr = hsw_tsx_events_attrs;
 		intel_pmu_pebs_data_source_skl(
 			boot_cpu_data.x86_model == INTEL_FAM6_SKYLAKE_X);
 
@@ -4649,6 +4694,9 @@ __init int intel_pmu_init(void)
 						  extra_attr);
 		WARN_ON(!x86_pmu.format_attrs);
 	}
+
+	x86_pmu.cpu_events = get_events_attrs(x86_pmu.cpu_events,
+					      mem_attr, tsx_attr);
 
 	if (x86_pmu.num_counters > INTEL_PMC_MAX_GENERIC) {
 		WARN(1, KERN_ERR "hw perf events %d > max(%d), clipping!",
@@ -4719,6 +4767,7 @@ __init int intel_pmu_init(void)
 		pr_cont("full-width counters, ");
 	}
 
+	kfree(to_free);
 	return 0;
 }
 
