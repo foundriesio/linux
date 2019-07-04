@@ -15,6 +15,7 @@
 #define _LINUX_PERF_EVENT_H
 
 #include <uapi/linux/perf_event.h>
+#include <linux/ptrace.h>
 
 /*
  * Kernel-internal data types and definitions:
