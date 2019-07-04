@@ -12,6 +12,8 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 
+#include <trace/events/iommu.h>
+
 #include "iommu-sva.h"
 
 /**
@@ -121,6 +123,7 @@ struct io_mm {
 struct iommu_bond {
 	struct iommu_sva		sva;
 	struct io_mm __rcu		*io_mm;
+	int				pasid; /* XXX only for tracing */
 
 	struct list_head		mm_head;
 	void				*drvdata;
@@ -163,8 +166,10 @@ static int io_mm_finalize(struct io_mm *io_mm, const struct io_mm_ops *ops,
 	if (WARN_ON(!ops || (io_mm->ops && io_mm->ops != ops)))
 		return -EINVAL;
 
-	if (io_mm->ops)
+	if (io_mm->ops) {
+		trace_io_mm_reuse(io_mm->pasid);
 		return 0;
+	}
 
 	pasid = ioasid_alloc(&shared_pasid, min_pasid, max_pasid, io_mm->mm);
 	if (pasid == INVALID_IOASID)
@@ -185,6 +190,7 @@ static int io_mm_finalize(struct io_mm *io_mm, const struct io_mm_ops *ops,
 	io_mm->ctx = ctx;
 	io_mm->ops = ops;
 
+	trace_io_mm_alloc(io_mm->pasid);
 	return 0;
 }
 
@@ -193,6 +199,8 @@ static void io_mm_free(struct mmu_notifier *mn)
 	struct io_mm *io_mm = to_io_mm(mn);
 
 	WARN_ON(!list_empty(&io_mm->devices));
+
+	trace_io_mm_free(io_mm->pasid);
 
 	/*
 	 * FIXME: still not entirely clear why this is safe.
@@ -263,6 +271,7 @@ io_mm_attach(struct device *dev, struct io_mm *io_mm, void *drvdata)
 
 	bond->sva.dev	= dev;
 	bond->drvdata	= drvdata;
+	bond->pasid	= io_mm->pasid;
 	refcount_set(&bond->refs, 1);
 	RCU_INIT_POINTER(bond->io_mm, io_mm);
 
@@ -286,6 +295,7 @@ io_mm_attach(struct device *dev, struct io_mm *io_mm, void *drvdata)
 		io_mm_put(io_mm);
 		kfree(bond);
 		mutex_unlock(&iommu_sva_lock);
+		trace_io_mm_attach_get(io_mm->pasid, dev);
 		return &tmp->sva;
 	}
 
@@ -297,6 +307,7 @@ io_mm_attach(struct device *dev, struct io_mm *io_mm, void *drvdata)
 	if (ret)
 		goto err_remove;
 
+	trace_io_mm_attach_alloc(io_mm->pasid, dev);
 	return &bond->sva;
 
 err_remove:
@@ -323,6 +334,8 @@ static void io_mm_detach_locked(struct iommu_bond *bond)
 					  lockdep_is_held(&iommu_sva_lock));
 	if (!io_mm)
 		return;
+
+	trace_io_mm_detach(bond->pasid, bond->sva.dev);
 
 	io_mm->ops->detach(bond->sva.dev, io_mm->pasid, io_mm->ctx);
 
@@ -352,6 +365,8 @@ static void io_mm_release(struct mmu_notifier *mn, struct mm_struct *mm)
 	list_for_each_entry_safe(bond, next, &io_mm->devices, mm_head) {
 		struct device *dev = bond->sva.dev;
 		struct iommu_sva *sva = &bond->sva;
+
+		trace_io_mm_exit(io_mm->pasid, dev);
 
 		iopf_queue_flush_dev(dev, io_mm->pasid);
 
@@ -387,6 +402,10 @@ static void io_mm_invalidate_range(struct mmu_notifier *mn,
 		io_mm = rcu_dereference(bond->io_mm);
 		io_mm->ops->invalidate(bond->sva.dev, io_mm->pasid, io_mm->ctx,
 				       start, end - start);
+	}
+	if (!list_empty(&io_mm->devices)) {
+		WARN_ON(io_mm->pasid == INVALID_IOASID);
+		trace_io_mm_invalidate(io_mm->pasid, start, end);
 	}
 	rcu_read_unlock();
 }
@@ -437,9 +456,12 @@ static void iommu_sva_unbind_locked(struct iommu_bond *bond)
 	struct device *dev = bond->sva.dev;
 	struct iommu_sva_param *param = dev->iommu_param->sva_param;
 
-	if (!refcount_dec_and_test(&bond->refs))
+	if (!refcount_dec_and_test(&bond->refs)) {
+		trace_io_mm_unbind_put(bond->pasid, dev);
 		return;
+	}
 
+	trace_io_mm_unbind_free(bond->pasid, dev);
 	io_mm_detach_locked(bond);
 	param->nr_bonds--;
 	kfree_rcu(bond, rcu_head);
