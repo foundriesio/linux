@@ -395,6 +395,22 @@ static void amd_l3_disable_index(struct amd_northbridge *nb, int cpu,
 	}
 }
 
+void cacheinfo_hygon_init_llc_id(struct cpuinfo_x86 *c, int cpu, u8 node_id)
+{
+	/*
+	 * We may have multiple LLCs if L3 caches exist, so check if we
+	 * have an L3 cache by looking at the L3 cache CPUID leaf.
+	 */
+	if (!cpuid_edx(0x80000006))
+		return;
+
+	/*
+	 * LLC is at the core complex level.
+	 * Core complex ID is ApicId[3] for these processors.
+	 */
+	per_cpu(cpu_llc_id, cpu) = c->apicid >> 3;
+}
+
 /*
  * disable a L3 cache index by using a disable-slot
  *
@@ -678,22 +694,6 @@ void cacheinfo_amd_init_llc_id(struct cpuinfo_x86 *c, int cpu, u8 node_id)
 			per_cpu(cpu_llc_id, cpu) = c->apicid >> bits;
 		}
 	}
-}
-
-void cacheinfo_hygon_init_llc_id(struct cpuinfo_x86 *c, int cpu, u8 node_id)
-{
-	/*
-	 * We may have multiple LLCs if L3 caches exist, so check if we
-	 * have an L3 cache by looking at the L3 cache CPUID leaf.
-	 */
-	if (!cpuid_edx(0x80000006))
-		return;
-
-	/*
-	 * LLC is at the core complex level.
-	 * Core complex ID is ApicId[3] for these processors.
-	 */
-	per_cpu(cpu_llc_id, cpu) = c->apicid >> 3;
 }
 
 void init_amd_cacheinfo(struct cpuinfo_x86 *c)

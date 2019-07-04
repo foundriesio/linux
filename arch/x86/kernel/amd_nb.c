@@ -241,7 +241,7 @@ int amd_cache_northbridges(void)
 		return -ENODEV;
 
 	root = NULL;
-	while ((root = next_northbridge(root, amd_root_ids)) != NULL)
+	while ((root = next_northbridge(root, root_ids)) != NULL)
 		root_count++;
 
 	if (root_count) {
@@ -283,7 +283,7 @@ int amd_cache_northbridges(void)
 		 * correct PCI roots.
 		 */
 		for (j = 1; j < roots_per_misc; j++)
-			root = next_northbridge(root, amd_root_ids);
+			root = next_northbridge(root, root_ids);
 	}
 
 	if (amd_gart_present())
