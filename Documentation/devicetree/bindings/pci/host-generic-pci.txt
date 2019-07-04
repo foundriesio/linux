@@ -38,6 +38,10 @@ Properties of the host controller node:
                    the first bus in the "bus-range" property.  If no
                    "bus-range" is specified, this will be bus 0 (the default).
 
+- ats-supported  : Optional property to indicate that a PCIe host controller
+                   supports ATS, and can handle Memory Requests with Address
+                   Type.
+
 Properties of the /chosen node:
 
 - linux,pci-probe-only
