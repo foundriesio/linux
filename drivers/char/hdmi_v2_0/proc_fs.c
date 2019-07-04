@@ -55,7 +55,6 @@ ssize_t proc_read_hdcp_status(struct file *filp, char __user *usr_buf, size_t cn
 		size += sprintf(hdcp_status_buf+size, "%s \n", "HDCP 1.4 KSV list memory access error.");
 		break;
 	case 5:
-	case 12:
 		size += sprintf(hdcp_status_buf+size, "%s \n", "HDCP 1.4 Authentication success.");
 		break;
 	case 6:
@@ -75,6 +74,9 @@ ssize_t proc_read_hdcp_status(struct file *filp, char __user *usr_buf, size_t cn
 		break;
 	case 11:
 		size += sprintf(hdcp_status_buf+size, "%s \n", "HDCP 2.2 Authentication fail.");
+		break;
+	case 12:
+		size += sprintf(hdcp_status_buf+size, "%s \n", "HDCP 2.2 Authentication success.");
 		break;
 	}
 
