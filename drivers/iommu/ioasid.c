@@ -6,6 +6,7 @@
  */
 #include <linux/ioasid.h>
 #include <linux/module.h>
+#include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/xarray.h>
@@ -59,10 +60,11 @@ static DEFINE_SPINLOCK(ioasid_allocator_lock);
 static LIST_HEAD(allocators_list);
 
 static ioasid_t default_alloc(ioasid_t min, ioasid_t max, void *opaque);
+static ioasid_t random_alloc(ioasid_t min, ioasid_t max, void *opaque);
 static void default_free(ioasid_t ioasid, void *opaque);
 
 static struct ioasid_allocator_ops default_ops = {
-	.alloc = default_alloc,
+	.alloc = random_alloc,
 	.free = default_free,
 };
 
@@ -92,6 +94,26 @@ static void default_free(ioasid_t ioasid, void *opaque)
 
 	ioasid_data = xa_erase(&default_allocator.xa, ioasid);
 	kfree_rcu(ioasid_data, rcu);
+}
+
+static ioasid_t random_alloc(ioasid_t min, ioasid_t max, void *opaque)
+{
+	int i;
+	ioasid_t id;
+
+	/*
+	 * Try to allocate a random PASID a few times, then fallback to normal
+	 * alloc.
+	 */
+	for (i = 0; i < 32; i++) {
+		id = prandom_u32_max(max - min + 1) + min;
+
+		if (xa_alloc(&default_allocator.xa, &id, opaque,
+			     XA_LIMIT(id, id), GFP_KERNEL))
+			continue;
+		return id;
+	}
+	return default_alloc(min, max, opaque);
 }
 
 /* Allocate and initialize a new custom allocator with its helper functions */
