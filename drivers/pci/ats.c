@@ -41,6 +41,7 @@ int pci_enable_ats(struct pci_dev *dev, int ps)
 {
 	u16 ctrl;
 	struct pci_dev *pdev;
+	struct pci_host_bridge *bridge;
 
 	if (!dev->ats_cap)
 		return -EINVAL;
@@ -50,6 +51,13 @@ int pci_enable_ats(struct pci_dev *dev, int ps)
 
 	if (ps < PCI_ATS_MIN_STU)
 		return -EINVAL;
+
+	bridge = pci_find_host_bridge(dev->bus);
+	if (!bridge)
+		return -EINVAL;
+
+	if (!bridge->ats_supported)
+		return -ENXIO;
 
 	/*
 	 * Note that enabling ATS on a VF fails unless it's already enabled
