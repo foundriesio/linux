@@ -408,6 +408,7 @@ config ARM_SMMU_V3
 	depends on ARM64
 	select IOASID
 	select IOMMU_API
+	select IOMMU_SVA
 	select IOMMU_IO_PGTABLE_LPAE
 	select GENERIC_MSI_IRQ_DOMAIN
 	help
