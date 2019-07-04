@@ -299,6 +299,13 @@ struct fpu {
 	unsigned char			fpstate_active;
 
 	/*
+	 * @avx512_timestamp:
+	 *
+	 * Records the timestamp of AVX512 use during last context switch.
+	 */
+	unsigned long			avx512_timestamp;
+
+	/*
 	 * @fpregs_active:
 	 *
 	 * This flag determines whether a given context is actively
