@@ -4000,6 +4000,14 @@ static int arm_smmu_dev_enable_sva(struct device *dev)
 	if (ret)
 		goto err_disable_sva;
 
+	/*
+	 * Some devices appear as PCI but are actually on the AMBA bus and
+	 * support stall. Check if stall is enabled by firmware before trying to
+	 * enable PRI.
+	 */
+	if (master->stall_enabled)
+		return 0;
+
 	if (dev_is_pci(dev) && arm_smmu_enable_pri(master))
 		goto err_remove_device;
 
