@@ -138,8 +138,8 @@ struct cpuinfo_x86 {
 	u8			x86_cache_bits;
 	unsigned		initialized : 1;
 #ifndef __GENKSYMS__
-	u16			logical_die_id;
 	u16			cpu_die_id;
+	u16			logical_die_id;
 #endif
 };
 
