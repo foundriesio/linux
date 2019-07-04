@@ -531,6 +531,18 @@ int pci_parse_request_of_pci_ranges(struct device *dev,
 	return err;
 }
 
+void of_pci_host_check_ats(struct pci_host_bridge *bridge)
+{
+	struct device_node *np = bridge->bus->dev.of_node;
+
+	if (bridge->ats_supported)
+		return;
+
+	if (!np)
+		return;
+
+	bridge->ats_supported = of_property_read_bool(np, "ats-supported");
+}
 #endif /* CONFIG_PCI */
 
 /**
