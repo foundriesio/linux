@@ -43,6 +43,12 @@ int pci_enable_ats(struct pci_dev *dev, int ps)
 	struct pci_dev *pdev;
 	struct pci_host_bridge *bridge;
 
+	if (pci_ats_disabled())
+		return -EINVAL;
+
+	if (dev->untrusted)
+		return -EPERM;
+
 	if (!dev->ats_cap)
 		return -EINVAL;
 
