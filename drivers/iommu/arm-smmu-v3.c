@@ -3380,9 +3380,12 @@ arm_smmu_iova_to_phys(struct iommu_domain *domain, dma_addr_t iova)
 static void arm_smmu_mm_invalidate(struct device *dev, int pasid, void *entry,
 				   unsigned long iova, size_t size)
 {
+	struct arm_smmu_cmdq_ent cmd;
+	struct arm_smmu_master *master = dev_to_master(dev);
 
+	arm_smmu_atc_inv_to_cmd(pasid, iova, size, &cmd);
+	arm_smmu_atc_inv_master(master, &cmd);
 	/*
-	 * TODO: Invalidate ATC
 	 * TODO: Invalidate mapping if not DVM
 	 */
 }
@@ -3400,6 +3403,7 @@ static int arm_smmu_mm_attach(struct device *dev, int pasid, void *entry)
 static void arm_smmu_mm_detach(struct device *dev, int pasid, void *entry)
 {
 	struct arm_smmu_ctx_desc *cd = entry;
+	struct arm_smmu_master *master = dev_to_master(dev);
 	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
 	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 
@@ -3411,8 +3415,7 @@ static void arm_smmu_mm_detach(struct device *dev, int pasid, void *entry)
          * freeing io-pgtable ops performs the invalidation.
          */
 	arm_smmu_tlb_inv_asid(smmu_domain->smmu, cd->asid);
-
-	/* TODO: invalidate ATC */
+	arm_smmu_atc_inv_master_all(master, pasid);
 }
 
 static void *arm_smmu_mm_alloc(struct mm_struct *mm)
