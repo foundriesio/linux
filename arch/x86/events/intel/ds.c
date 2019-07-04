@@ -1246,7 +1246,7 @@ static void setup_pebs_sample_data(struct perf_event *event,
 		set_linear_ip(regs, pebs->ip);
 
 
-	if ((sample_type & PERF_SAMPLE_ADDR) &&
+	if ((sample_type & (PERF_SAMPLE_ADDR | PERF_SAMPLE_PHYS_ADDR)) &&
 	    x86_pmu.intel_cap.pebs_format >= 1)
 		data->addr = pebs->dla;
 
