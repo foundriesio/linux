@@ -126,6 +126,12 @@
 #else
 	pinctrl-0 = <&pinctrl_lcdif>;
 #endif
+	/* By default, Colibri iMX8QXP uses 18-bits output bus for eLCDIF.
+	 * However, you can configure it to support 24-bits output.
+	 * "X20 Generic Display Connector" of Colibri Evaluation Board v3.2
+	 * supports 24-bits mode.
+	 */
+	bus-width = <18>;
 	status = "okay";
 
 	port@0 {
