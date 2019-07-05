@@ -56,6 +56,9 @@ enum mxsfb_devtype {
 	MXSFB_V4,
 };
 
+/* default output bus width */
+#define MXSFB_DEFAULT_BUS_WIDTH 24
+
 /*
  * When adding new formats, make sure to update the num_formats from
  * mxsfb_devdata below.
@@ -415,6 +418,7 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 	struct mxsfb_drm_private *mxsfb;
 	struct resource *res;
 	u32 max_res[2] = {0, 0};
+	u32 bus_width = MXSFB_DEFAULT_BUS_WIDTH;
 	int ret;
 
 	mxsfb = devm_kzalloc(&pdev->dev, sizeof(*mxsfb), GFP_KERNEL);
@@ -509,6 +513,10 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 			return ret;
 		}
 	}
+
+	/* bus width is needed to set up correct bus format */
+	of_property_read_u32(drm->dev->of_node, "bus-width", &bus_width);
+	mxsfb->bus_width = bus_width;
 
 	of_property_read_u32_array(drm->dev->of_node, "max-res",
 				   &max_res[0], 2);

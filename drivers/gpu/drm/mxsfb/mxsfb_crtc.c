@@ -158,9 +158,9 @@ err:
 	return -EINVAL;
 }
 
-static u32 get_bus_format_from_bpp(u32 bpp)
+static u32 get_bus_format_from_width(u32 width)
 {
-	switch (bpp) {
+	switch (width) {
 	case 16:
 		return MEDIA_BUS_FMT_RGB565_1X16;
 	case 18:
@@ -177,7 +177,7 @@ static void mxsfb_set_bus_fmt(struct mxsfb_drm_private *mxsfb)
 	struct drm_crtc *crtc = &mxsfb->pipe.crtc;
 	unsigned int bits_per_pixel = crtc->primary->state->fb->format->depth;
 	struct drm_device *drm = crtc->dev;
-	u32 bus_format = MEDIA_BUS_FMT_RGB888_1X24;
+	u32 bus_format = get_bus_format_from_width(mxsfb->bus_width);
 	int num_bus_formats = mxsfb->connector->display_info.num_bus_formats;
 	const u32 *bus_formats = mxsfb->connector->display_info.bus_formats;
 	u32 reg = 0;
@@ -185,7 +185,7 @@ static void mxsfb_set_bus_fmt(struct mxsfb_drm_private *mxsfb)
 
 	/* match the user requested bus_format to one supported by the panel */
 	if (num_bus_formats) {
-		u32 user_bus_format = get_bus_format_from_bpp(bits_per_pixel);
+		u32 user_bus_format = get_bus_format_from_width(bits_per_pixel);
 
 		bus_format = bus_formats[0];
 		for (i = 0; i < num_bus_formats; i++) {
