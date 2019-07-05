@@ -438,26 +438,6 @@ int x86_setup_perfctr(struct perf_event *event)
 	if (config == -1LL)
 		return -EINVAL;
 
-	/*
-	 * Branch tracing:
-	 */
-	if (attr->config == PERF_COUNT_HW_BRANCH_INSTRUCTIONS &&
-	    !attr->freq && hwc->sample_period == 1) {
-		/* BTS is not supported by this architecture. */
-		if (!x86_pmu.bts_active)
-			return -EOPNOTSUPP;
-
-		/* BTS is currently only allowed for user-mode. */
-		if (!attr->exclude_kernel)
-			return -EOPNOTSUPP;
-
-		/* disallow bts if conflicting events are present */
-		if (x86_add_exclusive(x86_lbr_exclusive_lbr))
-			return -EBUSY;
-
-		event->destroy = hw_perf_lbr_event_destroy;
-	}
-
 	hwc->config |= config;
 
 	return 0;
@@ -574,6 +554,21 @@ int x86_pmu_hw_config(struct perf_event *event)
 			return -EINVAL;
 	}
 
+	/* sample_regs_user never support XMM registers */
+	if (unlikely(event->attr.sample_regs_user & PEBS_XMM_REGS))
+		return -EINVAL;
+	/*
+	 * Besides the general purpose registers, XMM registers may
+	 * be collected in PEBS on some platforms, e.g. Icelake
+	 */
+	if (unlikely(event->attr.sample_regs_intr & PEBS_XMM_REGS)) {
+		if (x86_pmu.pebs_no_xmm_regs)
+			return -EINVAL;
+
+		if (!event->attr.precise_ip)
+			return -EINVAL;
+	}
+
 	return x86_setup_perfctr(event);
 }
 
@@ -675,6 +670,10 @@ static inline int is_x86_event(struct perf_event *event)
 	return event->pmu == &pmu;
 }
 
+struct pmu *x86_get_pmu(void)
+{
+	return &pmu;
+}
 /*
  * Event scheduler state:
  *
@@ -939,19 +938,23 @@ int x86_schedule_events(struct cpu_hw_events *cpuc, int n, int *assign)
 	if (!unsched && assign) {
 		for (i = 0; i < n; i++) {
 			e = cpuc->event_list[i];
-			e->hw.flags |= PERF_X86_EVENT_COMMITTED;
 			if (x86_pmu.commit_scheduling)
 				x86_pmu.commit_scheduling(cpuc, i, assign[i]);
 		}
 	} else {
-		for (i = 0; i < n; i++) {
+		/*
+		 * Compute the number of events already present; see
+		 * x86_pmu_add(), validate_group() and x86_pmu_commit_txn().
+		 * For the former two cpuc->n_events hasn't been updated yet,
+		 * while for the latter cpuc->n_txn contains the number of
+		 * events added in the current transaction.
+		 */
+		i = cpuc->n_events;
+		if (cpuc->txn_flags & PERF_PMU_TXN_ADD)
+			i -= cpuc->n_txn;
+
+		for (; i < n; i++) {
 			e = cpuc->event_list[i];
-			/*
-			 * do not put_constraint() on comitted events,
-			 * because they are good to go
-			 */
-			if ((e->hw.flags & PERF_X86_EVENT_COMMITTED))
-				continue;
 
 			/*
 			 * release events that failed scheduling
@@ -1387,11 +1390,6 @@ static void x86_pmu_del(struct perf_event *event, int flags)
 	int i;
 
 	/*
-	 * event is descheduled
-	 */
-	event->hw.flags &= ~PERF_X86_EVENT_COMMITTED;
-
-	/*
 	 * If we're called during a txn, we only need to undo x86_pmu.add.
 	 * The events never got scheduled and ->cancel_txn will truncate
 	 * the event_list.
@@ -1639,9 +1637,9 @@ __init struct attribute **merge_attr(struct attribute **a, struct attribute **b)
 	struct attribute **new;
 	int j, i;
 
-	for (j = 0; a[j]; j++)
+	for (j = 0; a && a[j]; j++)
 		;
-	for (i = 0; b[i]; i++)
+	for (i = 0; b && b[i]; i++)
 		j++;
 	j++;
 
@@ -1650,9 +1648,9 @@ __init struct attribute **merge_attr(struct attribute **a, struct attribute **b)
 		return NULL;
 
 	j = 0;
-	for (i = 0; a[i]; i++)
+	for (i = 0; a && a[i]; i++)
 		new[j++] = a[i];
-	for (i = 0; b[i]; i++)
+	for (i = 0; b && b[i]; i++)
 		new[j++] = b[i];
 	new[j] = NULL;
 
@@ -1890,6 +1888,8 @@ early_initcall(init_hw_perf_events);
 
 static inline void x86_pmu_read(struct perf_event *event)
 {
+	if (x86_pmu.read)
+		return x86_pmu.read(event);
 	x86_perf_event_update(event);
 }
 
@@ -2075,8 +2075,7 @@ static int validate_group(struct perf_event *event)
 	if (n < 0)
 		goto out;
 
-	fake_cpuc->n_events = n;
-
+	fake_cpuc->n_events = 0;
 	ret = x86_pmu.schedule_events(fake_cpuc, n, NULL);
 
 out:
@@ -2121,7 +2120,8 @@ static int x86_pmu_event_init(struct perf_event *event)
 			event->destroy(event);
 	}
 
-	if (READ_ONCE(x86_pmu.attr_rdpmc))
+	if (READ_ONCE(x86_pmu.attr_rdpmc) &&
+	    !(event->hw.flags & PERF_X86_EVENT_LARGE_PEBS))
 		event->hw.flags |= PERF_X86_EVENT_RDPMC_ALLOWED;
 
 	return err;
