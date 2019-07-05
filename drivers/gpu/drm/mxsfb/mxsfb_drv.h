@@ -56,6 +56,8 @@ struct mxsfb_drm_private {
 	struct drm_bridge		*bridge;
 	struct drm_fbdev_cma		*fbdev;
 
+	u32				bus_width;
+
 	struct list_head		valid_modes;
 };
 
