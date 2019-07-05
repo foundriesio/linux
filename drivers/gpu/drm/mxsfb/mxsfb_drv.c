@@ -336,9 +336,17 @@ static void mxsfb_pipe_enable(struct drm_simple_display_pipe *pipe,
 	drm_crtc_vblank_on(&mxsfb->pipe.crtc);
 
 	pm_runtime_get_sync(drm->dev);
-	drm_panel_prepare(mxsfb->panel);
-	mxsfb_crtc_enable(mxsfb);
-	drm_panel_enable(mxsfb->panel);
+	if (mxsfb->panel) {
+		drm_panel_prepare(mxsfb->panel);
+		mxsfb_crtc_enable(mxsfb);
+		drm_panel_enable(mxsfb->panel);
+	}
+
+	if (mxsfb->bridge) {
+		drm_bridge_pre_enable(mxsfb->bridge);
+		mxsfb_crtc_enable(mxsfb);
+		drm_bridge_enable(mxsfb->bridge);
+	}
 }
 
 static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
@@ -348,9 +356,18 @@ static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
 	struct drm_crtc *crtc = &pipe->crtc;
 	struct drm_pending_vblank_event *event;
 
-	drm_panel_disable(mxsfb->panel);
-	mxsfb_crtc_disable(mxsfb);
-	drm_panel_unprepare(mxsfb->panel);
+	if (mxsfb->bridge) {
+		drm_bridge_disable(mxsfb->bridge);
+		mxsfb_crtc_disable(mxsfb);
+		drm_bridge_post_disable(mxsfb->bridge);
+	}
+
+	if (mxsfb->panel) {
+		drm_panel_disable(mxsfb->panel);
+		mxsfb_crtc_disable(mxsfb);
+		drm_panel_unprepare(mxsfb->panel);
+	}
+
 	pm_runtime_put_sync(drm->dev);
 
 	spin_lock_irq(&drm->event_lock);
@@ -537,7 +554,8 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 err_cma:
 	drm_irq_uninstall(drm);
 err_irq:
-	drm_panel_detach(mxsfb->panel);
+	if (mxsfb->panel)
+		drm_panel_detach(mxsfb->panel);
 
 	return ret;
 }
