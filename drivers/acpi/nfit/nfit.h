@@ -184,6 +184,7 @@ struct nfit_mem {
 enum scrub_flags {
 	ARS_BUSY,
 	ARS_CANCEL,
+	ARS_VALID,
 };
 
 struct acpi_nfit_desc {
@@ -209,7 +210,6 @@ struct acpi_nfit_desc {
 	unsigned int scrub_mode;
 	unsigned int cancel:1;
 	unsigned int init_complete:1;
-	unsigned long scrub_flags;
 	unsigned long dimm_cmd_force_en;
 	unsigned long bus_cmd_force_en;
 	unsigned long bus_nfit_cmd_force_en;
@@ -222,6 +222,7 @@ struct acpi_nfit_desc {
 	struct delayed_work dwork;
 	unsigned int scrub_busy:1;
 	struct nfit_spa *scrub_spa;
+	unsigned long scrub_flags;
 #endif
 };
 
