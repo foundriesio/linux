@@ -181,6 +181,11 @@ struct nfit_mem {
 	bool has_lsw;
 };
 
+enum scrub_flags {
+	ARS_BUSY,
+	ARS_CANCEL,
+};
+
 struct acpi_nfit_desc {
 	struct nvdimm_bus_descriptor nd_desc;
 	struct acpi_table_header acpi_header;
@@ -204,6 +209,7 @@ struct acpi_nfit_desc {
 	unsigned int scrub_mode;
 	unsigned int cancel:1;
 	unsigned int init_complete:1;
+	unsigned long scrub_flags;
 	unsigned long dimm_cmd_force_en;
 	unsigned long bus_cmd_force_en;
 	unsigned long bus_nfit_cmd_force_en;
