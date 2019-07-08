@@ -26,6 +26,6 @@ between Telechips and Company.
 #ifndef _TCC_IPC_H
 #define _TCC_IPC_H
 
-#include <uapi/linux/tcc_ipc.h>
+#include <uapi/linux/tcc/tcc_ipc.h>
 
 #endif /* _TCC_IPC_H */

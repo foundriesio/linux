@@ -28,7 +28,12 @@
 #define CLK_OPS_PARENT_ENABLE	BIT(12)
 
 /* Vendor-specific flags */
-#define CLK_DCO_MODE		BIT(30) /* DCO mode */
-#define CLK_DIV_MODE		BIT(31) /* Divider mode */
+#define CLK_F_SKIP_SSCG		(1 << 28)
+#define CLK_F_SRC_CLK_MASK	0x3f
+#define CLK_F_SRC_CLK_SHIFT	16
+#define CLK_F_SRC_CLK(x)	((((x) & CLK_F_SRC_CLK_MASK) << CLK_F_SRC_CLK_SHIFT) | CLK_F_FIXED)
+#define CLK_F_FIXED		(1 << 29)	/* Use fixed source clock */
+#define CLK_F_DCO_MODE		(1 << 30)	/* Set DCO mode */
+#define CLK_F_DIV_MODE		(1 << 31)	/* Set divide mode */
 
 #endif /* __DT_BINDINGS_TELECHIPS_CLK_COMMON_H */

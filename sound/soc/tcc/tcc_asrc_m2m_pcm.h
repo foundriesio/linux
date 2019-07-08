@@ -82,6 +82,11 @@ typedef enum {
 	TCC_ASRC_M2M_TYPE_MAX,
 } TCC_ASRC_DEV_TYPE;
 
+struct tcc_asrc_pair_id {
+	unsigned int m2m_play;
+	unsigned int m2m_cap;
+};
+
 struct tcc_mid_buf {
 	unsigned char *ptemp_buf;
 	unsigned int cur_pos;
@@ -131,9 +136,57 @@ struct footprint {
 };
 #endif
 
-struct tcc_asrc_m2m_pcm {
-	struct device *dev;
+struct asrc_m2m_pcm_stream {
 	unsigned int pair_id;
+	struct tcc_asrc_param_t *asrc_m2m_param;
+	struct snd_pcm_substream *asrc_substream;
+	struct tcc_mid_buf *middle;
+	struct tcc_param_info *src;
+	struct tcc_param_info *dst;
+	struct tcc_app_buffer_info *app;
+	struct task_struct *kth_id;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+    char mbox_cmd_type;
+#endif
+	bool first_open;
+	char is_flag;
+	/*
+	#define IS_TRIG_STARTED 0x01
+	#define IS_A7S_STARTED 0x02
+	#define IS_ASRC_STARTED 0x04
+	#define IS_ASRC_RUNNING 0x08
+	*/
+	unsigned int interval; //ms
+	ssize_t Bwrote; //Bytes 
+	ssize_t Btail; //Bytes 
+	wait_queue_head_t kth_wq;
+	atomic_t wakeup;
+	spinlock_t is_locked;
+};
+
+struct tcc_asrc_m2m_pcm {
+	struct platform_device *pdev;
+	struct device *dev;
+	unsigned int dev_id;
+	struct tcc_asrc_t *asrc;
+	struct asrc_m2m_pcm_stream *playback;
+	struct asrc_m2m_pcm_stream *capture;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+	struct mbox_audio_device *mbox_audio_dev;
+#endif
+#ifdef FOOTPRINT_LINKED_LIST
+	List *asrc_footprint;	//for playback
+#else
+	struct footprint *asrc_footprint;	//for playback
+#endif
+	spinlock_t foot_locked;
+};
+#if 0
+struct tcc_asrc_m2m_pcm {
+	struct platform_device *pdev;
+	struct device *dev;
+	unsigned int dev_id;
+	struct tcc_asrc_pair_id *pair_id;
 	struct tcc_asrc_t *asrc;
 	struct tcc_asrc_param_t *asrc_m2m_param;
 	struct snd_pcm_substream *asrc_substream;
@@ -145,6 +198,7 @@ struct tcc_asrc_m2m_pcm {
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 	struct mbox_audio_device *mbox_audio_dev;
     unsigned short mbox_cmd_type;
+	struct tcc_amd_cmdtype *amd_cmdtype;
 #endif
 	bool first_open;
 	char is_flag;
@@ -167,5 +221,6 @@ struct tcc_asrc_m2m_pcm {
 	spinlock_t is_locked;
 	spinlock_t foot_locked;
 };
+#endif
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_

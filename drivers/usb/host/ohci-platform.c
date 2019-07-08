@@ -360,7 +360,7 @@ static int ohci_platform_suspend(struct device *dev)
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
+#if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined (CONFIG_USB_DWC2_TCC_MUX)
 	if (hcd->usb_phy) {
 		hcd->usb_phy->set_phy_state(hcd->usb_phy, 0);
 	}

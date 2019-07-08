@@ -39,91 +39,79 @@
 
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
-/*
-#include "tcc_adma_pcm.h"
-#include "tcc_dai.h"
-#include "tcc_audio_chmux.h"
-#define TDM_WORKAROUND	(1)
-*/
 
-#undef i2s_dai_dbg
+#undef vir_i2s_dbg
 #if 0
-#define i2s_dai_dbg(f, a...)	printk("<I2S DAI>" f, ##a)
+#define vir_i2s_dbg(f, a...)	printk("<VIRTUAL I2S>" f, ##a)
 #else
-#define i2s_dai_dbg(f, a...)
+#define vir_i2s_dbg(f, a...)
 #endif
-
+#define vir_i2s_dbg_err(f, a...)	printk("<VIRTUAL I2S> ERROR" f, ##a)
+/*
+enum tcc_vir_i2s_direction_type {
+	VIRTUAL_I2S_DTYPE_PLAYBACK = 0,
+	VIRTUAL_I2S_DTYPE_CAPTURE = 1,
+	VIRTUAL_I2S_DTYPE_BOTH = 2,
+};
+*/
 struct tcc_vir_i2s_t {
 	struct platform_device *pdev;
-	int index;
+//	uint32_t direction_type;
+	int dev_id;
 };
 
 static int tcc_vir_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
+	struct tcc_vir_i2s_t *vi2s = (struct tcc_vir_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	i2s_dai_dbg("%s\n", __func__);
-
+	vir_i2s_dbg("%s\n", __func__);
 	switch(fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 		case SND_SOC_DAIFMT_I2S:
 			break;
 		case SND_SOC_DAIFMT_RIGHT_J:
-			break;
 		case SND_SOC_DAIFMT_LEFT_J:
-			break;
 		case SND_SOC_DAIFMT_DSP_A:
-			break;
 		case SND_SOC_DAIFMT_DSP_B:
-			break;
 		default:
-			break;
+			vir_i2s_dbg_err("[%s][%d][dev-%d] format does not supported\n", __func__, __LINE__, vi2s->dev_id);
+			ret = -ENOTSUPP;
 	}
-
-	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
-		case SND_SOC_DAIFMT_CBM_CFM: /* codec clk & FRM master */
-			break;
-		case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
-			break;
-		case SND_SOC_DAIFMT_CBM_CFS: /* codec clk master & frame slave */
-			break;
-		case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
-			break;
-		default:
-			break;
-	}
-
+		 						
 	return ret;
 }
 
 static int tcc_vir_i2s_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
 	return 0;
 }
 
 static void tcc_vir_i2s_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	i2s_dai_dbg("%s\n", __func__);
-
+	vir_i2s_dbg("%s\n", __func__);
 }
  
 static int tcc_vir_i2s_hw_params(struct snd_pcm_substream *substream,
                                  struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
+	int ret = 0;
+/*
 	int channels = params_channels(params);
 	snd_pcm_format_t format = params_format(params);
 	int sample_rate = params_rate(params);
 	int ret = 0;
 
-	i2s_dai_dbg("%s - format : 0x%08x\n", __func__, format);
-	i2s_dai_dbg("%s - sample_rate : %d\n", __func__, sample_rate);
-	i2s_dai_dbg("%s - channels : %d\n", __func__, channels);
+	vir_i2s_dbg("%s - format : 0x%08x\n", __func__, format);
+	vir_i2s_dbg("%s - sample_rate : %d\n", __func__, sample_rate);
+	vir_i2s_dbg("%s - channels : %d\n", __func__, channels);
+*/
 	return ret;
 }
 
 static int tcc_vir_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
 	return 0;
 }
 
@@ -131,7 +119,7 @@ static int tcc_vir_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_s
 static int tcc_vir_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
 {
 	int ret;
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
 	ret = 0;
 	return ret;
 }
@@ -149,26 +137,47 @@ struct snd_soc_component_driver tcc_vir_i2s_component_drv = {
 	.name = "tcc-i2s",
 };
 
-static int tcc_vir_i2s_dai_suspend(struct snd_soc_dai *dai)
+static int tcc_vir_i2s_suspend(struct snd_soc_dai *dai)
 {
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
     return 0;
 }
 
-static int tcc_vir_i2s_dai_resume(struct snd_soc_dai *dai)
+static int tcc_vir_i2s_resume(struct snd_soc_dai *dai)
 {
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
     return 0;
 }
 
+struct snd_soc_dai_driver tcc_vir_i2s_dai_drv = {
+	.name = "tcc-vir-i2s",
+	.suspend = tcc_vir_i2s_suspend,
+	.resume	= tcc_vir_i2s_resume,
+	.playback = {
+		.stream_name = "I2S-Playback",
+		.channels_min = 2,
+		.channels_max = 8,
+		.rates = SNDRV_PCM_RATE_8000_192000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	},
+	.capture = {
+		.stream_name = "I2S-Capture",
+		.channels_min = 2,
+		.channels_max = 8,
+		.rates = SNDRV_PCM_RATE_8000_192000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	},
+	.ops = &tcc_vir_i2s_ops,
+};
+/*
 struct snd_soc_dai_driver tcc_vir_i2s_dai_drv[] = {
-	[0] = {
+	[VIRTUAL_I2S_DTYPE_PLAYBACK] = {
 		.name = "tcc-vir-i2s",
-		.suspend = tcc_vir_i2s_dai_suspend,
-		.resume	= tcc_vir_i2s_dai_resume,
+		.suspend = tcc_vir_i2s_suspend,
+		.resume	= tcc_vir_i2s_resume,
 		.playback = {
 			.stream_name = "I2S-Playback",
-			.channels_min = 1,
+			.channels_min = 2,
 			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_8000_192000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
@@ -177,71 +186,85 @@ struct snd_soc_dai_driver tcc_vir_i2s_dai_drv[] = {
 		.symmetric_channels = 1,
 		.ops = &tcc_vir_i2s_ops,
 	},
-	[1] = {
+	[VIRTUAL_I2S_DTYPE_CAPTURE] = {
 		.name = "tcc-vir-i2s",
-		.suspend = tcc_vir_i2s_dai_suspend,
-		.resume	= tcc_vir_i2s_dai_resume,
-		.playback = {
-			.stream_name = "I2S-Playback",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_192000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.symmetric_rates = 1,
-		.symmetric_channels = 1,
-		.ops = &tcc_vir_i2s_ops,
-	},
-	[2] = {
-		.name = "tcc-vir-i2s",
-		.suspend = tcc_vir_i2s_dai_suspend,
-		.resume	= tcc_vir_i2s_dai_resume,
-		.playback = {
-			.stream_name = "I2S-Playback",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_192000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.symmetric_rates = 1,
-		.symmetric_channels = 1,
-		.ops = &tcc_vir_i2s_ops,
-	},
-	[3] = {
-		.name = "tcc-vir-i2s",
-		.suspend = tcc_vir_i2s_dai_suspend,
-		.resume	= tcc_vir_i2s_dai_resume,
+		.suspend = tcc_vir_i2s_suspend,
+		.resume	= tcc_vir_i2s_resume,
 		.capture = {
 			.stream_name = "I2S-Capture",
-			.channels_min = 1,
+			.channels_min = 2,
 			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_8000_192000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 		},
 		.symmetric_rates = 1,
 		.symmetric_channels = 1,
+		.ops = &tcc_vir_i2s_ops,
+	},
+	[VIRTUAL_I2S_DTYPE_BOTH] = {
+		.name = "tcc-vir-i2s",
+		.suspend = tcc_vir_i2s_suspend,
+		.resume	= tcc_vir_i2s_resume,
+		.playback = {
+			.stream_name = "I2S-Playback",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = SNDRV_PCM_RATE_8000_192000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+		},
+		.capture = {
+			.stream_name = "I2S-Capture",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = SNDRV_PCM_RATE_8000_192000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+		},
 		.ops = &tcc_vir_i2s_ops,
 	},
 };
+*/
+static void parse_vir_i2s_dt(struct platform_device *pdev, struct tcc_vir_i2s_t *vi2s)
+{
+	vi2s->pdev = pdev;
+
+	vi2s->dev_id = of_alias_get_id(pdev->dev.of_node, "vi2s");
+	vir_i2s_dbg("%s - i2s : %p, dev_id[%d]\n", __func__, vi2s, vi2s->dev_id);
+/*
+	if (of_property_read_bool(pdev->dev.of_node, "playback-only")) {
+		vi2s->direction_type = VIRTUAL_I2S_DTYPE_PLAYBACK;
+		vir_i2s_dbg("direction_type value is playback-only\n");	
+	}
+	else if(of_property_read_bool(pdev->dev.of_node, "capture-only")) {
+		vi2s->direction_type = VIRTUAL_I2S_DTYPE_CAPTURE;
+		vir_i2s_dbg("direction_type value is caputre-only\n");	
+	}
+	else {
+		vi2s->direction_type = VIRTUAL_I2S_DTYPE_BOTH;
+		vir_i2s_dbg("direction_type value is both\n");	
+	}
+*/
+}
 
 static int tcc_vir_i2s_probe(struct platform_device *pdev)
 {
 	struct tcc_vir_i2s_t *vi2s;
 	int ret = 0;
+
 	if ((vi2s = (struct tcc_vir_i2s_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_vir_i2s_t), GFP_KERNEL)) == NULL) {
 		return -ENOMEM;
 	}
-	//i2s_dai_dbg("%s\n", __func__);
-	vi2s->index = of_alias_get_id(pdev->dev.of_node, "vi2s");
-	i2s_dai_dbg("%s - i2s : %p, index[%d]\n", __func__, vi2s, vi2s->index);
+	//vir_i2s_dbg("%s\n", __func__);
+
+	parse_vir_i2s_dt(pdev, vi2s);
 
 	platform_set_drvdata(pdev, vi2s);
 
-	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv[vi2s->index], 1)) < 0) {
+//	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv[vi2s->direction_type], 1)) < 0) {
+	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv, 1)) < 0) {
 		pr_err("devm_snd_soc_register_component failed\n");
 		goto error;
 	}
-	i2s_dai_dbg("devm_snd_soc_register_component success\n");
+	vir_i2s_dbg("devm_snd_soc_register_component success\n");
 
 	return 0;
 
@@ -252,7 +275,7 @@ error:
 
 static int tcc_vir_i2s_remove(struct platform_device *pdev)
 {
-	i2s_dai_dbg("%s\n", __func__);
+	vir_i2s_dbg("%s\n", __func__);
 	return 0;
 }
 

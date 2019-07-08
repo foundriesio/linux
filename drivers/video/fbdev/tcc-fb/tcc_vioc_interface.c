@@ -711,13 +711,15 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 				vioc_intr_clear(fbdev->pdata.lcdc_number, (1<<VIOC_DISP_INTR_FU));
 		#if defined(CONFIG_DUMP_DISPLAY_UNDERRUN) && defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 				if ( underrun_idx++ < 1){
-					pr_err(" FIFO UNDERUN(%d) STATUS:0x%x device type:%d \n", underrun_idx,dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
+					pr_err(" FIFO UNDERRUN(%d) status(0x%x) main(%d)\n",
+							underrun_idx, dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
 					tca_fb_dump_underrun_state();
 				}
 				else
 		#endif
 				if ( (underrun_idx++) % 60 == 1){
-					pr_err(" FIFO UNDERUN(%d) STATUS:0x%x device type:%d \n", underrun_idx,dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
+					pr_err(" FIFO UNDERRUN(%d) status(0x%x) main(%d)\n",
+							underrun_idx, dispblock_status, fbdev->pdata.Mdp_data.DispDeviceType);
 				}
 		#if defined(CONFIG_DUMP_DISPLAY_UNDERRUN)
 				if ( underrun_idx % 60 == 1) {
@@ -851,7 +853,7 @@ static irqreturn_t tca_sub_display_handler(int irq, void *dev_id)
 		if(VIOC_DISP_Get_TurnOnOff(pDisplayInfo->ddc_info.virt_addr)) {
 			if(dispblock_status & (1<<VIOC_DISP_INTR_FU)) {
 	#if defined(CONFIG_VIOC_FIFO_UNDER_RUN_COMPENSATION)
-				pr_err("%s FIFO UNDERUN STATUS:0x%x \n",__func__, dispblock_status);
+				pr_err(" FIFO UNDERRUN status(0x%x) sub\n", dispblock_status);
 	#endif
 				vioc_intr_clear(pDisplayInfo->DispNum, (1<<VIOC_DISP_INTR_FU));
 				//vioc_intr_disable(irq, pDisplayInfo->DispNum, (1<<VIOC_DISP_INTR_FU));

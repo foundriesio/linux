@@ -257,21 +257,21 @@ pgprot_t vmem_get_pgprot(pgprot_t ulOldProt, unsigned long ulPageOffset)
 EXPORT_SYMBOL(vmem_get_pgprot);
 /////////////////////////////////////////
 
-extern void* _vmem_phy_check_region_for_cma(unsigned int start_phyaddr, unsigned int length);
+extern int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr, unsigned int length);
 static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 {
 	void *cma_virt_address = NULL;
 
-	cma_virt_address = _vmem_phy_check_region_for_cma(start_phyaddr, length);
-
 	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address);
 
-	if(!cma_virt_address){
+	if (_vmem_is_cma_allocated_phy_region(start_phyaddr, length))
+		cma_virt_address = pmap_cma_remap(start_phyaddr, PAGE_ALIGN(length));
+	else
 		cma_virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
-		if (cma_virt_address == NULL) {
-			pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
-			return NULL;
-		}
+
+	if (cma_virt_address == NULL) {
+		pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
+		return cma_virt_address;
 	}
 
 	return cma_virt_address;
@@ -279,13 +279,11 @@ static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 
 static void _vmem_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
 {
-	void *cma_virt_address = NULL;
-
-	cma_virt_address = _vmem_phy_check_region_for_cma(start_phyaddr, length);
-
 	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p =? %p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address, target_virtaddr);
 
-	if(target_virtaddr != cma_virt_address)
+	if (_vmem_is_cma_allocated_phy_region(start_phyaddr, length))
+		pmap_cma_unmap(target_virtaddr, PAGE_ALIGN(length));
+	else
 		iounmap((void*)target_virtaddr);
 }
 
@@ -1435,161 +1433,82 @@ int _vmem_deinit_memory_info(void)
 	return 0;
 }
 
-int _vmem_virt_check_region_for_cma(unsigned int start_virtaddr, unsigned int length)
+int _vmem_is_cma_allocated_virt_region(unsigned int start_virtaddr, unsigned int length)
 {
+	int type = 0, i = 0;
 	void *cma_virt_address = NULL;
 	unsigned int end_virtaddr = start_virtaddr + length -1;
 
-// pmap_video
-	if(pmap_video.v_base != NULL){
-		if( (start_virtaddr >= pmap_video.v_base) && (end_virtaddr <= (pmap_video.v_base+pmap_video.size-1))){
-			return 1;
+	for(type=0; type < VPU_MAX ; type++)
+	{
+		if(vmem_allocated_count[type] > 0)
+		{
+			for(i=vmem_allocated_count[type]; i>0; i--)
+			{
+				if(vmem_alloc_info[type][i-1].kernel_remap_addr != 0)
+				{
+					if( (start_virtaddr >= vmem_alloc_info[type][i-1].kernel_remap_addr) 
+						&& (end_virtaddr <= (vmem_alloc_info[type][i-1].kernel_remap_addr+vmem_alloc_info[type][i-1].request_size-1)))
+					{
+						if(_vmem_is_cma_allocated_phy_region(vmem_alloc_info[type][i-1].phy_addr, vmem_alloc_info[type][i-1].request_size))
+							return 1;
+						else
+							return 0;
+					}
+				}
+			}
 		}
 	}
-
-// pmap_video_sw
-	if(pmap_video_sw.v_base != NULL){
-		if( (start_virtaddr >= pmap_video_sw.v_base) && (end_virtaddr <= (pmap_video_sw.v_base+pmap_video_sw.size-1))){
-			return 1;
-		}
-	}
-
-// pmap_enc
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc.v_base != NULL){
-		if( (start_virtaddr >= pmap_enc.v_base) && (end_virtaddr <= (pmap_enc.v_base+pmap_enc.size-1))){
-			return 1;
-		}
-	}
-#endif
-
-// pmap_video_ext
-#if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
-	if(pmap_video_ext.v_base != NULL){
-		if( (start_virtaddr >= pmap_video_ext.v_base) && (end_virtaddr <= (pmap_video_ext.v_base+pmap_video_ext.size-1))){
-			return 1;
-		}
-	}
-#endif
-
-// pmap_video_ext2
-#if defined(CONFIG_VDEC_CNT_5)
-	if(pmap_video_ext2.v_base != NULL){
-		if( (start_virtaddr >= pmap_video_ext2.v_base) && (end_virtaddr <= (pmap_video_ext2.v_base+pmap_video_ext2.size-1))){
-			return 1;
-		}
-	}
-#endif
-
-// pmap_enc_ext[0]
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[0].v_base != NULL){
-		if( (start_virtaddr >= pmap_enc_ext[0].v_base) && (end_virtaddr <= (pmap_enc_ext[0].v_base+pmap_enc_ext[0].size-1))){
-			return 1;
-		}
-	}
-#endif
-
-//pmap_enc_ext[1]
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[1].v_base != NULL){
-		if( (start_virtaddr >= pmap_enc_ext[1].v_base) && (end_virtaddr <= (pmap_enc_ext[1].v_base+pmap_enc_ext[1].size-1))){
-			return 1;
-		}
-	}
-#endif
-
-// pmap_enc_ext[2]
-#if defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[2].v_base != NULL){
-		if( (start_virtaddr >= pmap_enc_ext[2].v_base) && (end_virtaddr <= (pmap_enc_ext[2].v_base+pmap_enc_ext[2].size-1))){
-			return 1;
-		}
-	}
-#endif
 
 	return 0;
 }
 
-void* _vmem_phy_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
+int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr, unsigned int length)
 {
-	void *cma_virt_address = NULL;
 	unsigned int end_phyaddr = start_phyaddr + length -1;
 
 // pmap_video
-	if(pmap_video.v_base != NULL){
-		if( (start_phyaddr >= pmap_video.base) && (end_phyaddr <= (pmap_video.base+pmap_video.size-1))){
-			cma_virt_address = pmap_video.v_base + (start_phyaddr - pmap_video.base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_video.base) && (end_phyaddr <= (pmap_video.base+pmap_video.size-1)))
+		return pmap_is_cma_alloc(&pmap_video);
 
 // pmap_video_sw
-	if(pmap_video_sw.v_base != NULL){
-		if( (start_phyaddr >= pmap_video_sw.base) && (end_phyaddr <= (pmap_video_sw.base+pmap_video_sw.size-1))){
-			cma_virt_address = pmap_video_sw.v_base + (start_phyaddr - pmap_video_sw.base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_video_sw.base) && (end_phyaddr <= (pmap_video_sw.base+pmap_video_sw.size-1)))
+		return pmap_is_cma_alloc(&pmap_video_sw);
 
 // pmap_enc
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc.v_base != NULL){
-		if( (start_phyaddr >= pmap_enc.base) && (end_phyaddr <= (pmap_enc.base+pmap_enc.size-1))){
-			cma_virt_address = pmap_enc.v_base + (start_phyaddr - pmap_enc.base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_enc.base) && (end_phyaddr <= (pmap_enc.base+pmap_enc.size-1)))
+		return pmap_is_cma_alloc(&pmap_enc);
 #endif
 
 // pmap_video_ext
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
-	if(pmap_video_ext.v_base != NULL){
-		if( (start_phyaddr >= pmap_video_ext.base) && (end_phyaddr <= (pmap_video_ext.base+pmap_video_ext.size-1))){
-			cma_virt_address = pmap_video_ext.v_base + (start_phyaddr - pmap_video_ext.base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_video_ext.base) && (end_phyaddr <= (pmap_video_ext.base+pmap_video_ext.size-1)))
+		return pmap_is_cma_alloc(&pmap_video_ext);
 #endif
 
 // pmap_video_ext2
 #if defined(CONFIG_VDEC_CNT_5)
-	if(pmap_video_ext2.v_base != NULL){
-		if( (start_phyaddr >= pmap_video_ext2.base) && (end_phyaddr <= (pmap_video_ext2.base+pmap_video_ext2.size-1))){
-			cma_virt_address = pmap_video_ext2.v_base + (start_phyaddr - pmap_video_ext2.base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_video_ext2.base) && (end_phyaddr <= (pmap_video_ext2.base+pmap_video_ext2.size-1)))
+		return pmap_is_cma_alloc(&pmap_video_ext2);
 #endif
 
 // pmap_enc_ext[0]
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[0].v_base != NULL){
-		if( (start_phyaddr >= pmap_enc_ext[0].base) && (end_phyaddr <= (pmap_enc_ext[0].base+pmap_enc_ext[0].size-1))){
-			cma_virt_address = pmap_enc_ext[0].v_base + (start_phyaddr - pmap_enc_ext[0].base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_enc_ext[0].base) && (end_phyaddr <= (pmap_enc_ext[0].base+pmap_enc_ext[0].size-1)))
+		return pmap_is_cma_alloc(&pmap_enc_ext[0]);
 #endif
 
 //pmap_enc_ext[1]
 #if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[1].v_base != NULL){
-		if( (start_phyaddr >= pmap_enc_ext[1].base) && (end_phyaddr <= (pmap_enc_ext[1].base+pmap_enc_ext[1].size-1))){
-			cma_virt_address = pmap_enc_ext[1].v_base + (start_phyaddr - pmap_enc_ext[1].base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_enc_ext[1].base) && (end_phyaddr <= (pmap_enc_ext[1].base+pmap_enc_ext[1].size-1)))
+		return pmap_is_cma_alloc(&pmap_enc_ext[1]);
 #endif
 
 // pmap_enc_ext[2]
 #if defined(CONFIG_VENC_CNT_4)
-	if(pmap_enc_ext[2].v_base != NULL){
-		if( (start_phyaddr >= pmap_enc_ext[2].base) && (end_phyaddr <= (pmap_enc_ext[2].base+pmap_enc_ext[2].size-1))){
-			cma_virt_address = pmap_enc_ext[2].v_base + (start_phyaddr - pmap_enc_ext[2].base);
-			return cma_virt_address;
-		}
-	}
+	if( (start_phyaddr >= pmap_enc_ext[2].base) && (end_phyaddr <= (pmap_enc_ext[2].base+pmap_enc_ext[2].size-1)))
+		return pmap_is_cma_alloc(&pmap_enc_ext[2]);
 #endif
 
 	return NULL;

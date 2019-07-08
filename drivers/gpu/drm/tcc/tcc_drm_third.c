@@ -436,8 +436,8 @@ static irqreturn_t third_irq_handler(int irq, void *dev_id)
 			vioc_intr_disable(irq, ctx->ddc_id,
 					  (1 << VIOC_DISP_INTR_FU));
 			vioc_intr_clear(ctx->ddc_id, (1 << VIOC_DISP_INTR_FU));
-			pr_crit("%s: FIFO UNDERRUN STATUS:0x%x \n", __func__,
-				dispblock_status);
+			pr_crit(" FIFO UNDERRUN status(0x%x) %s\n",
+					dispblock_status, __func__);
 		}
 	}
 

@@ -33,13 +33,12 @@ static int cpu_subsys_match(struct device *dev, struct device_driver *drv)
 }
 
 #ifdef CONFIG_TCC_CORE_RESET
-extern struct watchdog_device *wdd_saved;
-extern int tcc_wdt_disable_timer(struct watchdog_device *wdd);
+extern int tcc_wdt_disable_timer_test(void);
 
 static ssize_t off_test_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
-	tcc_wdt_disable_timer(wdd_saved);
+	tcc_wdt_disable_timer_test();
 	return count;
 }
 static DEVICE_ATTR(off_test, S_IWUSR, NULL, off_test_store);

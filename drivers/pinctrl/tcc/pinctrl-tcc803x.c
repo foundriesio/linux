@@ -80,23 +80,6 @@ struct gpio_regs {
 };
 
 
-enum tcc_pinconf_param {
-	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
-	TCC_PINCONF_PARAM_NO_PULL,
-	TCC_PINCONF_PARAM_PULL_UP,
-	TCC_PINCONF_PARAM_PULL_DOWN,
-	TCC_PINCONF_PARAM_INPUT_ENABLE,
-	TCC_PINCONF_PARAM_OUTPUT_LOW,
-	TCC_PINCONF_PARAM_OUTPUT_HIGH,
-	TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE,
-	TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE,
-	TCC_PINCONF_PARAM_SCHMITT_INPUT,
-	TCC_PINCONF_PARAM_CMOS_INPUT,
-	TCC_PINCONF_PARAM_SLOW_SLEW,
-	TCC_PINCONF_PARAM_FAST_SLEW,
-	TCC_PINCONF_PARAM_ECLK_SEL,
-};
-
 struct extintr_ {
 	unsigned port_base;
 	unsigned port_num;
@@ -383,8 +366,6 @@ set_gpio_to_irq_finish:
 
 int tcc_irq_get_reverse(int irq)
 {
-	if (irq < 32 || irq >= (32+16))
-		BUG_ON(1);
 	return irq+16;
 }
 
@@ -462,6 +443,9 @@ int tcc803x_pinconf_set(void __iomem *base, unsigned offset, int param,
 			return -EINVAL;
 		}
 		break;
+	case TCC_PINCONF_PARAM_FUNC:
+	         tcc803x_gpio_set_function(base, offset, config);
+                break;
 	}
 	return 0;
 }

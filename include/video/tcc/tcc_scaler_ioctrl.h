@@ -20,6 +20,8 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include "tcc_video_private.h"
 
+#include "tcc_sar.h"
+
 #define TCC_SCALER_IOCTRL 						0x1
 #define TCC_SCALER_IOCTRL_KERENL 				0x10
 #define TCC_SCALER_VIOC_PLUGIN 				0x100
@@ -104,9 +106,12 @@ typedef struct {
 #if defined(CONFIG_SUPPORT_TCC_G2V2_VP9)
 	vp9_compressed_info_t dtrcConv_info;
 #endif
+
 	unsigned int 			color_base;			// operation color base 0 : YUV 1 : RGB, 
 	unsigned char			wdma_aligned_offset; // 0 : Normal, 1 : Aligned WDMA Image Offset
 	struct SCALER_LUT	lut;			// look up table
+
+	struct sar_cmd	sar;			
 }SCALER_TYPE;
 
 typedef struct {

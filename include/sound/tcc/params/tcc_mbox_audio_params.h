@@ -17,37 +17,6 @@
 #ifndef _TCC_MBOX_AUDIO_PARAMS_H_
 #define _TCC_MBOX_AUDIO_PARAMS_H_
 
-//#include "tcc_mbox_pcm_params.h"
-//#include "tcc_mbox_ak4601_codec_params.h"
-//#include "tcc_mbox_am3d_effect_params.h"
-
-/****************************************************************************
-* define features
-****************************************************************************/
-/*If this feature is on, 
-  use backup data in AMD for effect, codec and pcm vol/fade. ()
-  This means, backup data in AMD is set/get using 'tcc_mbox_audio_utils'
-  and AMD does not send any request message to opposite app or driver, so no need to process request message in app.
-
-  If you want to control effect or codec or pcm data at kernel, you should enable this feature and process set/get backup data in AMD.
-  If you want to control effect or codec at app, you can choose this feature enable or not.
-  In this case, even though data is stored and changed in AMD, app should have initial data.
-
-  If this feature is off,
-  app should control set/get backup data in app layer.
-  AMD is no longer involved in setting, getting backup data.
-  If app does not send reply message for request, requester (A53) will get timeout during waiting reply requested message. */
- 
-//#define USE_AMD_BACKUP_DATA
-
-//define effect & codec to set/get backup value
-#define USE_AM3D_EFFECT
-#define USE_AK4601_CODEC
-	
-//define tcc volume & balance/fade to set/get backup value
-#define USE_TELECHIPS_VOLCTRL
-#define USE_TELECHIPS_BALANCEFADE
-
 /*****************************************************************************
 * define header & message size
 *****************************************************************************/
@@ -81,14 +50,21 @@ enum {
      2. the callback identification to process received message at other devices.
 */
 enum {
-	MBOX_AUDIO_CMD_TYPE_PCM = 0x0000,           // control pcm data or command
-	MBOX_AUDIO_CMD_TYPE_CODEC = 0x0001,         // control codec data or command
-	MBOX_AUDIO_CMD_TYPE_EFFECT = 0x0002,        // control effect,mixer data or command
-	MBOX_AUDIO_CMD_TYPE_DATA_TX_0 = 0x0003,     // control position tx data for hw:0,0
-	MBOX_AUDIO_CMD_TYPE_DATA_TX_1 = 0x0004,     // control position tx data for hw:0,1
-	MBOX_AUDIO_CMD_TYPE_DATA_TX_2 = 0x0005,     // control position tx data for hw:0,2
-	MBOX_AUDIO_CMD_TYPE_DATA_RX = 0x0006,       // control position rx data for hw:0,3
-	MBOX_AUDIO_CMD_TYPE_MAX = MBOX_AUDIO_CMD_TYPE_DATA_RX,
+    MBOX_AUDIO_CMD_TYPE_POSITION_MIN        = 0x0000,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_0          = 0x0000,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_1          = 0x0001,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_2          = 0x0002,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_3          = 0x0003,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_4          = 0x0004,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_5          = 0x0005,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_6          = 0x0006,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_7          = 0x0007,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_8          = 0x0008,     // control position data for playback/capture/rse
+	MBOX_AUDIO_CMD_TYPE_POSITION_MAX        = 0x0008,     // max count of position cmd_type
+	MBOX_AUDIO_CMD_TYPE_PCM                 = 0x0009,     // control pcm data or command
+	MBOX_AUDIO_CMD_TYPE_CODEC               = 0x000A,     // control codec data or command
+	MBOX_AUDIO_CMD_TYPE_EFFECT              = 0x000B,     // control effect,mixer data or command
+	MBOX_AUDIO_CMD_TYPE_MAX = MBOX_AUDIO_CMD_TYPE_EFFECT,
 };
 	
 #endif//_TCC_MBOX_AUDIO_PARAMS_H_

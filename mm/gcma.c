@@ -427,9 +427,11 @@ static void dmem_get(struct dmem_entry *entry)
  */
 static void dmem_put(struct dmem_hashbucket *buck, struct dmem_entry *entry)
 {
-	int refcount = atomic_dec_return(&entry->refcount);
+	int refcount, val;
+	val = atomic_read(&entry->refcount);
 
-	BUG_ON(refcount < 0);
+	if(val > 0)
+		refcount = atomic_dec_return(&entry->refcount);
 
 	if (refcount == 0) {
 		struct page *page = entry->page;
@@ -902,7 +904,7 @@ int gcma_cleancache_init_fs(size_t pagesize)
 	return pool_id;
 }
 
-int gcma_cleancache_init_shared_fs(char *uuid, size_t pagesize)
+int gcma_cleancache_init_shared_fs(uuid_t *uuid, size_t pagesize)
 {
 	return -1;
 }
@@ -1054,10 +1056,6 @@ int gcma_alloc_contig(struct gcma *gcma, unsigned long start_pfn,
 	unsigned long orig_start = start_pfn;
 	spinlock_t *lru_lock;
 	unsigned long flags = 0;
-	unsigned int time;
-
-	s64 latency;
-	struct timespec ts1, ts2;
 
 retry:
 	for (pfn = start_pfn; pfn < start_pfn + size; pfn++) {

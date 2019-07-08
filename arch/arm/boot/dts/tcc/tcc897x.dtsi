@@ -1662,7 +1662,7 @@
 		status = "disabled";
 	};
 
-	dwc2: dwc2@71B00000 {
+	dwc_otg: dwc_otg@71B00000 {
 		compatible = "telechips,dwc2";
 		reg = <0x71B00000 0xcfff>;
 		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
@@ -1671,17 +1671,6 @@
 		phy = <&dwc_otg_phy>;
 		phy-names = "usb2-phy";
 		status= "disabled";
-	};
-
-	dwc_otg@71B00000 {
-		compatible = "telechips,dwc_otg";
-		reg = <0x71B00000 0xCFFF 0x71EA0100 0x20>;
-		clock-frequency = <48000000>;
-		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_USB_OTG &clk_hsio HSIOBUS_USBOTG &clk_isoip_top ISOIP_TOP_USBOTG>; /* otg_pclk=0x120+9, otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		telechips,dwc_otg_phy = <&dwc_otg_phy>;
-		status = "disabled";
-		tpl-support; // Support TPL
 	};
 
 	ehci_phy:ehci_phy@71EA0010 {

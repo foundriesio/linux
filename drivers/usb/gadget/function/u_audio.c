@@ -25,6 +25,8 @@
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
 
 #include "u_audio.h"
 
@@ -108,6 +110,8 @@ struct snd_uac_chip {
 	unsigned int p_framesize;
 #ifdef TCC_UAC2_WQ
 	struct work_struct work_reset;
+	struct work_struct work_reset_while;
+	struct task_struct *thread_reset;
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 	struct work_struct work_capture;
 #endif
@@ -125,14 +129,62 @@ static const struct snd_pcm_hardware uac_pcm_hardware = {
 	.periods_min = MIN_PERIODS,
 };
 #ifdef TCC_UAC2_WQ
+static int compl_cnt_for_reset = 0;
+static struct work_struct *ws_rs = NULL;
+static int zero_cnt = 0;
+static int enable_while = 0;
+
 static void f_uac2_work_reset(struct work_struct *data)
 {
 	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset);
-	int ret;
 	u_audio_stop_capture(uac2->audio_dev);
 	u_audio_start_capture(uac2->audio_dev);
-	printk("[UAC2] %s : reset!!\n", __func__);
+	pr_info("[UAC2] %s : reset!!\n", __func__);
 }
+
+static int f_uac2_reset_monitor_thread(void *w)
+{
+	struct snd_uac_chip *suc = (struct snd_uac_chip *)w;
+	bool discon_chk = false;
+	int retry = 10;	//wait for a sec until iPhone role-switching
+	unsigned long flags;
+	int pre_compl_cnt = compl_cnt_for_reset;
+	while(!kthread_should_stop() && retry > 0) {
+		msleep(50);
+		if (pre_compl_cnt != compl_cnt_for_reset) {//normal
+			retry = 0;
+			pre_compl_cnt = compl_cnt_for_reset;
+			continue;
+		}
+		else {
+			retry--;
+			if (ws_rs)
+				schedule_work(ws_rs);
+		}
+	}
+
+	suc->thread_reset = NULL;
+	pr_info("%s : thread termination\n", __func__);
+}
+
+static void f_uac2_work_reset_while(struct work_struct *data)
+{
+	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset_while);
+	if (enable_while) {
+		if (uac2->thread_reset != NULL) {
+			kthread_stop(uac2->thread_reset);
+			uac2->thread_reset = NULL;
+		}
+		uac2->thread_reset = kthread_run(f_uac2_reset_monitor_thread, (void *)uac2, "uac2_reset_thread");
+	} else {
+		if (uac2->thread_reset != NULL) {
+			kthread_stop(uac2->thread_reset);
+			uac2->thread_reset = NULL;
+		}
+	}
+	pr_info("%s : termination while loop\n", __func__);
+}
+
 #endif
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 struct f_uac2_buf {
@@ -200,11 +252,6 @@ static void f_uac2_capture_pcm (void)
 }
 #endif
 
-#ifdef TCC_UAC2_WQ
-static struct work_struct *ws_rs = NULL;
-static int zero_cnt = 0;
-#endif
-
 static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	unsigned pending;
@@ -240,9 +287,10 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	}
 #endif
 	/* i/f shutting down */
-	if (!prm->ep_enabled || req->status == -ESHUTDOWN)
+	if (!prm->ep_enabled || req->status == -ESHUTDOWN) {
+		pr_debug("%s : i/f shutting down\n", __func__);
 		return;
-
+	}
 	/*
 	 * We can't really do much about bad xfers.
 	 * Afterall, the ISOCH xfers could fail legitimately.
@@ -293,6 +341,12 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		if (ws_rs)
 			schedule_work(ws_rs);
 	}
+#if 1
+//#ifdef CONFIG_USB_DWC2_TCC
+	compl_cnt_for_reset++;
+	if(compl_cnt_for_reset > 10000)
+		compl_cnt_for_reset = 0;
+#endif
 #endif
 	pending = prm->hw_ptr % prm->period_size;
 	pending += req->actual;
@@ -374,10 +428,19 @@ static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 		prm->ss = substream;
+//#if defined (TCC_UAC2_WQ) && defined(CONFIG_USB_DWC2_TCC)
+#if 1
+		enable_while = 1;
+		schedule_work(&uac->work_reset_while);
+#endif
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		prm->ss = NULL;
+//#if defined (TCC_UAC2_WQ) && defined(CONFIG_USB_DWC2_TCC)
+#if 1
+		enable_while = 0;
+#endif
 		break;
 	default:
 		err = -EINVAL;
@@ -703,6 +766,7 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 	uac->audio_dev = g_audio;
 #ifdef TCC_UAC2_WQ
 	INIT_WORK(&uac->work_reset, f_uac2_work_reset);
+	INIT_WORK(&uac->work_reset_while, f_uac2_work_reset_while);
 	ws_rs = &uac->work_reset;
 #endif
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
@@ -830,6 +894,8 @@ void g_audio_cleanup(struct g_audio *g_audio)
 		cancel_work_sync(&uac->work_capture);
 #endif
 #ifdef TCC_UAC2_WQ
+	if(&uac->work_reset_while)
+		cancel_work_sync(&uac->work_reset_while);
 	if(&uac->work_reset)
 		cancel_work_sync(&uac->work_reset);
 	ws_rs = NULL;

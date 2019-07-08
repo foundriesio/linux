@@ -219,6 +219,16 @@
 			size = <0x20000000>;
 			no-map;
 		};
+
+#ifdef CONFIG_TCC_CORE_RESET
+		a7s_avm_backup {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "a7s_avm_backup";
+			alloc-ranges = <0xA0000000 0x10000000>;
+			size = <0x10000000>;
+			no-map;
+		};
+#endif
 #endif
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
@@ -1292,7 +1302,24 @@
 				   <GIC_SPI 11 0>,
 				   <GIC_SPI 12 0>,
 				   <GIC_SPI 13 0>,
-				   <GIC_SPI 14 0>;
+				   <GIC_SPI 14 0>,
+				   <GIC_SPI 15 0>,
+				   <GIC_SPI 16 0>,
+				   <GIC_SPI 17 0>,
+				   <GIC_SPI 18 0>,
+				   <GIC_SPI 19 0>,
+				   <GIC_SPI 20 0>,
+				   <GIC_SPI 21 0>,
+				   <GIC_SPI 22 0>,
+				   <GIC_SPI 23 0>,
+				   <GIC_SPI 24 0>,
+				   <GIC_SPI 25 0>,
+				   <GIC_SPI 26 0>,
+				   <GIC_SPI 27 0>,
+				   <GIC_SPI 28 0>,
+				   <GIC_SPI 29 0>,
+				   <GIC_SPI 30 0>,
+				   <GIC_SPI 31 0>;
 	};
 
 	cmbox: mbox@19000000 {
@@ -2480,7 +2507,7 @@
 		 status = "disabled";
 	};
 
-	dwc2: dwc2@11980000 {
+	dwc_otg: dwc_otg@11980000 {
 		compatible = "telechips,dwc2";
 		reg = <0x11980000 0xcfff 0x11900000 0x108 0x11940000 0x60>;
 		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
@@ -2492,20 +2519,6 @@
 		status= "disabled";
 	};
 
-	dwc_otg: dwc_otg@11980000 {
-		compatible = "telechips,dwc_otg";
-		/*      otg base   |size  |otg phy   |size|ehci base |size |ehci phy  |size|ohci base |size */
-		reg = <0x11980000 0xcfff 0x11DA0100 0x30 0x11900000 0x108 0x11DA00DC 0x20 0x11940000 0x60>;
-		clock-frequency = <48000000>;
-		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = </*&clk_peri PERI_USB_OTG*/
-		           &clk_hsio HSIOBUS_USB20DH
-		           &clk_isoip_top ISOIP_TOP_U20DH>;   /* otg_pclk=0x120+9, otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		telechips,mhst_phy = <&mhst_phy>;
-		telechips,dwc_otg_phy = <&dwc_otg_phy>;
-		status = "disabled";
-		//tpl-support;
-	};
 /*
 	hsic: hsic@11c00000 {
 	    compatible = "telechips,tcc-hsic";

@@ -1301,6 +1301,10 @@ static void pagetypeinfo_showfree_print(struct seq_file *m,
 	int order, mtype;
 
 	for (mtype = 0; mtype < MIGRATE_TYPES; mtype++) {
+#ifdef CONFIG_GCMA_DEFAULT
+		if (mtype == MIGRATE_CMA)
+			continue;
+#endif
 		seq_printf(m, "Node %4d, zone %8s, type %12s ",
 					pgdat->node_id,
 					zone->name,
@@ -1368,8 +1372,13 @@ static void pagetypeinfo_showblockcount_print(struct seq_file *m,
 
 	/* Print counts */
 	seq_printf(m, "Node %d, zone %8s ", pgdat->node_id, zone->name);
-	for (mtype = 0; mtype < MIGRATE_TYPES; mtype++)
+	for (mtype = 0; mtype < MIGRATE_TYPES; mtype++) {
+#ifdef CONFIG_GCMA_DEFAULT
+		if (mtype == MIGRATE_CMA)
+			continue;
+#endif
 		seq_printf(m, "%12lu ", count[mtype]);
+	}
 	seq_putc(m, '\n');
 }
 
@@ -1380,8 +1389,13 @@ static int pagetypeinfo_showblockcount(struct seq_file *m, void *arg)
 	pg_data_t *pgdat = (pg_data_t *)arg;
 
 	seq_printf(m, "\n%-23s", "Number of blocks type ");
-	for (mtype = 0; mtype < MIGRATE_TYPES; mtype++)
+	for (mtype = 0; mtype < MIGRATE_TYPES; mtype++) {
+#ifdef CONFIG_GCMA_DEFAULT
+		if (mtype == MIGRATE_CMA)
+			continue;
+#endif
 		seq_printf(m, "%12s ", migratetype_names[mtype]);
+	}
 	seq_putc(m, '\n');
 	walk_zones_in_node(m, pgdat, true, false,
 		pagetypeinfo_showblockcount_print);

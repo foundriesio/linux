@@ -230,7 +230,7 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     const struct snd_pcm *pcm;
     unsigned int device, action_value;
 
-    unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_ACTION] = {0};
+    unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_ACTION] = {0,};
 
     if (substream == NULL) {
         pr_err("%s - substream is NULL\n", __func__);
@@ -244,12 +244,12 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     case SNDRV_PCM_TRIGGER_START:
     case SNDRV_PCM_TRIGGER_RESUME:
     case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-        action_value = ASRC_PCM_VALUE_ACTION_START;
+        action_value = PCM_VALUE_ACTION_START;
         break;
     case SNDRV_PCM_TRIGGER_STOP:
     case SNDRV_PCM_TRIGGER_SUSPEND:
     case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-        action_value = ASRC_PCM_VALUE_ACTION_STOP;
+        action_value = PCM_VALUE_ACTION_STOP;
         break;
     default :
         pr_err("%s - invalid command\n", __func__);
@@ -261,9 +261,11 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     mbox_header.msg_size = MBOX_MSG_SIZE_FOR_ACTION;
     mbox_header.tx_instance = 0;
 
-    mbox_msg[0] = ASRC_PCM_ACTION;
+    mbox_msg[0] = PCM_ACTION;
     mbox_msg[1] = device;
-    mbox_msg[2] = action_value;
+    mbox_msg[2] = (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ? PCM_VALUE_DIRECTON_TX : PCM_VALUE_DIRECTON_RX;
+    mbox_msg[3] = action_value;
+    mbox_msg[4] = PCM_VALUE_MUX_SOURCE_MAIN;
 
     tcc_mbox_audio_send_message(mbox_audio_dev, &mbox_header, mbox_msg, NULL);
 
@@ -272,7 +274,7 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     return 0;
 }
 
-static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
+static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm, int stream)
 {
     struct mbox_audio_data_header_t mbox_header;
 
@@ -287,11 +289,17 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
         return -EFAULT;
     }
 
-    pcm = asrc_m2m_pcm->asrc_substream->pcm;
-    device = pcm->card->number << 4 | (pcm->device & 0x0F);
-	phy_address = asrc_m2m_pcm->middle->dma_buf->addr;
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		pcm = asrc_m2m_pcm->playback->asrc_substream->pcm;
+		device = pcm->card->number << 4 | (pcm->device & 0x0F);
+		phy_address = asrc_m2m_pcm->playback->middle->dma_buf->addr;
+	} else {
+		pcm = asrc_m2m_pcm->capture->asrc_substream->pcm;
+		device = pcm->card->number << 4 | (pcm->device & 0x0F);
+		phy_address = asrc_m2m_pcm->capture->middle->dma_buf->addr;
+	}
 	if (!phy_address) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s] fail to get phy addr\n", __func__);
+		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] fail to get phy addr\n", __func__);
 		return -EFAULT;
 	}
     //printk("[%s] phy_address = 0x%08x\n", __func__, phy_address);
@@ -300,11 +308,11 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
     mbox_header.msg_size = MBOX_MSG_SIZE_FOR_PARAMS;
     mbox_header.tx_instance = 0;
 
-    mbox_msg[0] = ASRC_PCM_PARAMS;
+    mbox_msg[0] = PCM_PARAMS;
     mbox_msg[1] = device;
-    mbox_msg[2] = (asrc_m2m_pcm->asrc_substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ? ASRC_PCM_VALUE_DIRECTON_TX : ASRC_PCM_VALUE_DIRECTON_RX;
+    mbox_msg[2] = (stream == SNDRV_PCM_STREAM_PLAYBACK) ? PCM_VALUE_DIRECTON_TX : PCM_VALUE_DIRECTON_RX;
     mbox_msg[3] = (unsigned int) phy_address;
-    mbox_msg[4] = asrc_m2m_pcm->middle->buffer_bytes;
+    mbox_msg[4] = (stream == SNDRV_PCM_STREAM_PLAYBACK) ? asrc_m2m_pcm->playback->middle->buffer_bytes : asrc_m2m_pcm->capture->middle->buffer_bytes;
 
     tcc_mbox_audio_send_message(asrc_m2m_pcm->mbox_audio_dev, &mbox_header, mbox_msg, NULL);
 
@@ -327,25 +335,25 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 		goto playback_callback_end;
     }
 
-	if(asrc_m2m_pcm->asrc_substream != NULL) {
-		substream = asrc_m2m_pcm->asrc_substream;
+	if(asrc_m2m_pcm->playback->asrc_substream != NULL) {
+		substream = asrc_m2m_pcm->playback->asrc_substream;
 	} else {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ERROR!! asrc_m2m_pcm->asrc_substream is null!!\n");
+		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! asrc_m2m_pcm->asrc_substream is null!!\n");
 		goto playback_callback_end;
 	}
 
-	mid_buffer_bytes = asrc_m2m_pcm->middle->buffer_bytes;
-	mix_pos = asrc_m2m_pcm->middle->pre_pos;
+	mid_buffer_bytes = asrc_m2m_pcm->playback->middle->buffer_bytes;
+	mix_pos = asrc_m2m_pcm->playback->middle->pre_pos;
 
-	if(asrc_m2m_pcm->middle->cur_pos_from_ipc != asrc_m2m_pcm->middle->pre_pos_from_ipc) {
-		if(asrc_m2m_pcm->middle->pre_pos_from_ipc > asrc_m2m_pcm->middle->cur_pos_from_ipc) {
-			mix_byte = mid_buffer_bytes - asrc_m2m_pcm->middle->pre_pos_from_ipc;
-			mix_byte += asrc_m2m_pcm->middle->cur_pos_from_ipc;
+	if(asrc_m2m_pcm->playback->middle->cur_pos_from_ipc != asrc_m2m_pcm->playback->middle->pre_pos_from_ipc) {
+		if(asrc_m2m_pcm->playback->middle->pre_pos_from_ipc > asrc_m2m_pcm->playback->middle->cur_pos_from_ipc) {
+			mix_byte = mid_buffer_bytes - asrc_m2m_pcm->playback->middle->pre_pos_from_ipc;
+			mix_byte += asrc_m2m_pcm->playback->middle->cur_pos_from_ipc;
 		} else {
-			mix_byte = asrc_m2m_pcm->middle->cur_pos_from_ipc - asrc_m2m_pcm->middle->pre_pos_from_ipc;
+			mix_byte = asrc_m2m_pcm->playback->middle->cur_pos_from_ipc - asrc_m2m_pcm->playback->middle->pre_pos_from_ipc;
 		}
 		//This line already be in the main function of mbox callback.
-		//asrc_m2m_pcm->middle->pre_pos_from_ipc = asrc_m2m_pcm->middle->cur_pos_from_ipc;
+		//asrc_m2m_pcm->playback->middle->pre_pos_from_ipc = asrc_m2m_pcm->playback->middle->cur_pos_from_ipc;
 	} else {
 		mix_byte = 0;
 	}
@@ -357,11 +365,11 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 /*	
 	if(mix_byte > 1024) {
 		printk("[%d]mix_byte=%d, mix_pos=%d, mid_buf_byte=%d\n", __LINE__, (unsigned int)mix_byte, mix_pos, mid_buffer_bytes);
-		printk("[%s][%d]cur_pos=%d, pre_pos=%d\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->middle->cur_pos_from_ipc, (unsigned int)asrc_m2m_pcm->middle->pre_pos_from_ipc);
+		printk("[%s][%d]cur_pos=%d, pre_pos=%d\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->middle->cur_pos_from_ipc, (unsigned int)asrc_m2m_pcm->playback->middle->pre_pos_from_ipc);
 	}
 */	
-	asrc_m2m_pcm->middle->pre_pos = mix_pos;
-	cur_pos = asrc_m2m_pcm->middle->cur_pos;
+	asrc_m2m_pcm->playback->middle->pre_pos = mix_pos;
+	cur_pos = asrc_m2m_pcm->playback->middle->cur_pos;
 	elapsed_en = false;
 	while (1) {
 		spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
@@ -380,9 +388,9 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 #endif
 		if(cur_pos > mix_pos) {
 			if((head_pos <= mix_pos)||(head_pos >= cur_pos)) {
-				asrc_m2m_pcm->Bwrote += mix_byte;
-				if(asrc_m2m_pcm->Bwrote >= asrc_m2m_pcm->src->buffer_bytes)
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote - asrc_m2m_pcm->src->buffer_bytes;
+				asrc_m2m_pcm->playback->Bwrote += mix_byte;
+				if(asrc_m2m_pcm->playback->Bwrote >= asrc_m2m_pcm->playback->src->buffer_bytes)
+					asrc_m2m_pcm->playback->Bwrote = asrc_m2m_pcm->playback->Bwrote - asrc_m2m_pcm->playback->src->buffer_bytes;
 				spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
 				len = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, false);
 				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
@@ -392,15 +400,15 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 			}
 		} else {
 			if((head_pos <= mix_pos)&&(head_pos >= cur_pos)) {
-				asrc_m2m_pcm->Bwrote += mix_byte;
-				if(asrc_m2m_pcm->Bwrote >= asrc_m2m_pcm->src->buffer_bytes)
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote - asrc_m2m_pcm->src->buffer_bytes;
+				asrc_m2m_pcm->playback->Bwrote += mix_byte;
+				if(asrc_m2m_pcm->playback->Bwrote >= asrc_m2m_pcm->playback->src->buffer_bytes)
+					asrc_m2m_pcm->playback->Bwrote = asrc_m2m_pcm->playback->Bwrote - asrc_m2m_pcm->playback->src->buffer_bytes;
 				spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
 				len = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, false);
 				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 				elapsed_en = true;
 			} else {
-				//	printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
+				//printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
 				break;
 			}
 		}
@@ -408,8 +416,8 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 playback_callback_end:
 	if(elapsed_en == true) {
 		snd_pcm_period_elapsed(substream);
-		atomic_set(&asrc_m2m_pcm->wakeup, 1);
-		wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+		atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
+		wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 	} else {
 		//This is for snd_pcm_drain
 		if(substream->runtime->status->state == SNDRV_PCM_STATE_DRAINING) {
@@ -420,16 +428,16 @@ playback_callback_end:
 				mix_byte = asrc_m2m_pcm->asrc_footprint->input_byte[asrc_m2m_pcm->asrc_footprint->head];
 #endif
 
-				asrc_m2m_pcm->Bwrote += mix_byte;
-				if(asrc_m2m_pcm->Bwrote >= asrc_m2m_pcm->src->buffer_bytes)
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote - asrc_m2m_pcm->src->buffer_bytes;
+				asrc_m2m_pcm->playback->Bwrote += mix_byte;
+				if(asrc_m2m_pcm->playback->Bwrote >= asrc_m2m_pcm->playback->src->buffer_bytes)
+					asrc_m2m_pcm->playback->Bwrote = asrc_m2m_pcm->playback->Bwrote - asrc_m2m_pcm->playback->src->buffer_bytes;
 				spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
 				len = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, false);
 				spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 				if(substream) {
 					snd_pcm_period_elapsed(substream);
 				} else {
-					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "ERROR!! asrc_m2m_pcm->asrc_substream set to null during drain!!\n");
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "ERROR!! asrc_m2m_pcm->asrc_substream set to null during drain!!\n");
 					break;
 				}
 			}
@@ -441,30 +449,29 @@ static void capture_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 {
 	unsigned int read_pos=0;
 
-	read_pos = asrc_m2m_pcm->middle->cur_pos_from_ipc;
+	read_pos = asrc_m2m_pcm->capture->middle->cur_pos_from_ipc;
 
 #if	(CHECK_OVERRUN == 1)
-	if((asrc_m2m_pcm->middle->cur_pos > asrc_m2m_pcm->middle->pre_pos)
-			&&(read_pos > asrc_m2m_pcm->middle->pre_pos)&&(read_pos < asrc_m2m_pcm->middle->cur_pos)) {
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->middle->pre_pos, read_pos, asrc_m2m_pcm->middle->cur_pos);
+	if((asrc_m2m_pcm->capture->middle->cur_pos > asrc_m2m_pcm->capture->middle->pre_pos)
+			&&(read_pos > asrc_m2m_pcm->capture->middle->pre_pos)&&(read_pos < asrc_m2m_pcm->capture->middle->cur_pos)) {
+		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
 
-	} else if((asrc_m2m_pcm->middle->cur_pos < asrc_m2m_pcm->middle->pre_pos)
-			&&((read_pos > asrc_m2m_pcm->middle->pre_pos)||(read_pos < asrc_m2m_pcm->middle->cur_pos))) {
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->middle->pre_pos, read_pos, asrc_m2m_pcm->middle->cur_pos);
+	} else if((asrc_m2m_pcm->capture->middle->cur_pos < asrc_m2m_pcm->capture->middle->pre_pos)
+			&&((read_pos > asrc_m2m_pcm->capture->middle->pre_pos)||(read_pos < asrc_m2m_pcm->capture->middle->cur_pos))) {
+		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
 	}
 #endif
 
-	asrc_m2m_pcm->middle->cur_pos = read_pos;
+	asrc_m2m_pcm->capture->middle->cur_pos = read_pos;
 
-	atomic_set(&asrc_m2m_pcm->wakeup, 1);
-	wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+	atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
+	wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
 }
 
 static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsigned short msg_size, unsigned short cmd_type)
 {
     struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)data;
 	//unsigned int cmd = msg[0];	//for debug
-	unsigned int device = msg[1];	//for debug
 	unsigned int pos = msg[2];
 	unsigned long flags;
 	char Ctemp=0;
@@ -474,30 +481,32 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 		return;
 	}
 
-    if (cmd_type != asrc_m2m_pcm->mbox_cmd_type) {
-		printk("[%s] Invalid cmd type between %u and %u\n", __func__, cmd_type, asrc_m2m_pcm->mbox_cmd_type);
+    if ((cmd_type != asrc_m2m_pcm->playback->mbox_cmd_type) && (cmd_type != asrc_m2m_pcm->capture->mbox_cmd_type)) {
+		printk("[%s] Invalid cmd type between msg[%u], playback[%u] and capture[%u]\n", __func__, cmd_type, asrc_m2m_pcm->playback->mbox_cmd_type, asrc_m2m_pcm->capture->mbox_cmd_type);
 		return;
     }
 
     if (msg_size == AUDIO_MBOX_CONCURRENT_PCM_POSITION_MESSAGE_SIZE) {
-        if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_0) {
-            pos = msg[2];
-        } else if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_1) {
-            pos = msg[3];
-        } else if (cmd_type == MBOX_AUDIO_CMD_TYPE_DATA_TX_2) {
-            pos = msg[4];
-        }
+        pos = msg[cmd_type];
     }
-	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	Ctemp = asrc_m2m_pcm->is_flag;
-	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-	if(((Ctemp & IS_A7S_STARTED)!= 0)
-		&&(asrc_m2m_pcm->middle->cur_pos_from_ipc != pos)) {
-		asrc_m2m_pcm->middle->pre_pos_from_ipc = asrc_m2m_pcm->middle->cur_pos_from_ipc;
-		asrc_m2m_pcm->middle->cur_pos_from_ipc = pos;
-		if((device != ASRC_PCM_VALUE_DEVICE_0_3)&&(device != ASRC_PCM_VALUE_DEVICE_1_3)) {	//For playback
+	if(cmd_type == asrc_m2m_pcm->playback->mbox_cmd_type) {	//For playback
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->playback->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		if(((Ctemp & IS_A7S_STARTED)!= 0)
+				&&(asrc_m2m_pcm->playback->middle->cur_pos_from_ipc != pos)) {
+			asrc_m2m_pcm->playback->middle->pre_pos_from_ipc = asrc_m2m_pcm->playback->middle->cur_pos_from_ipc;
+			asrc_m2m_pcm->playback->middle->cur_pos_from_ipc = pos;
 			playback_for_mbox_callback(asrc_m2m_pcm);
-		} else {			//For capture
+		}
+	} else {			//For capture
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->capture->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		if(((Ctemp & IS_A7S_STARTED)!= 0)
+				&&(asrc_m2m_pcm->capture->middle->cur_pos_from_ipc != pos)) {
+			asrc_m2m_pcm->capture->middle->pre_pos_from_ipc = asrc_m2m_pcm->capture->middle->cur_pos_from_ipc;
+			asrc_m2m_pcm->capture->middle->cur_pos_from_ipc = pos;
 			capture_for_mbox_callback(asrc_m2m_pcm);
 		}
 	}
@@ -505,6 +514,41 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 	return;
 }
 #endif
+
+static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool prepare)
+{
+/*
+	unsigned long flags;
+	spin_lock_irqsave(&strm->is_locked, flags);
+	strm->is_flag = 0;
+	spin_unlock_irqrestore(&strm->is_locked, flags);
+
+	//atomic_set(&strm->wakeup, 0);
+*/
+	//Buffer info reset.
+	strm->app->pre_pos = 0;
+	strm->app->pre_ptr = 0;
+	if(!prepare) {
+		strm->src->buffer_bytes = 0;
+		strm->src->period_bytes = 0;
+
+		strm->dst->buffer_bytes = 0;
+		strm->dst->period_bytes = 0;
+
+		strm->middle->buffer_bytes = 0;
+	}
+	strm->middle->cur_pos = 0;
+	strm->middle->pre_pos = 0;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+	strm->middle->cur_pos_from_ipc = 0;
+	strm->middle->pre_pos_from_ipc = 0;
+#endif
+	if((prepare) && (strm->middle->dma_buf->area != NULL))
+		memset(strm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+	strm->interval = 0;
+	strm->Bwrote = 0;
+	strm->Btail = 0;
+}
 
 static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -523,74 +567,62 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 32);
 	snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 32);
 
-    if (substream->pcm->device == ASRC_7_1CH_DEV_NUM) {  
-        snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_7_1CH]);
-    } else {
-        snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_STEREO]);
-    }
-	asrc_m2m_pcm->asrc_substream = substream;
-
-	//Buffer info reset.
-	asrc_m2m_pcm->app->pre_pos = 0;
-	asrc_m2m_pcm->app->pre_ptr = 0;
-
-	asrc_m2m_pcm->src->buffer_bytes = 0;
-	asrc_m2m_pcm->src->period_bytes = 0;
-
-	asrc_m2m_pcm->dst->buffer_bytes = 0;
-	asrc_m2m_pcm->dst->period_bytes = 0;
-
-
-	asrc_m2m_pcm->middle->cur_pos = 0;
-	asrc_m2m_pcm->middle->pre_pos = 0;
-#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	asrc_m2m_pcm->middle->cur_pos_from_ipc = 0;
-	asrc_m2m_pcm->middle->pre_pos_from_ipc = 0;
-#endif
-	if(asrc_m2m_pcm->middle->dma_buf->area != NULL)
-		memset(asrc_m2m_pcm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
-	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	asrc_m2m_pcm->is_flag = 0;
-	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-
-	asrc_m2m_pcm->Bwrote = 0;
-	asrc_m2m_pcm->Btail = 0;
-
-	if(asrc_m2m_pcm->first_open == false) {
-		asrc_m2m_pcm->first_open = true;
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-			pkth_id = (struct task_struct *) kthread_run(tcc_appl_ptr_check_thread_for_play, (void *)(asrc_m2m_pcm), "tcc_appl_ptr_check_thread_for_play");
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		if (asrc_m2m_pcm->playback->pair_id == ASRC_7_1CH_DEV_NUM) {  
+			snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_7_1CH]);
 		} else {
-			pkth_id = (struct task_struct *) kthread_run(tcc_ptr_update_thread_for_capture, (void *)(asrc_m2m_pcm), "tcc_ptr_update_thread_for_capture");
+			snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_STEREO]);
 		}
-		if(pkth_id != NULL) asrc_m2m_pcm->kth_id = pkth_id;
-	}
+		asrc_m2m_pcm->playback->asrc_substream = substream;
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->playback, false);
+
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		asrc_m2m_pcm->playback->is_flag = 0;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+
+
+		if(asrc_m2m_pcm->playback->first_open == false) {
+			asrc_m2m_pcm->playback->first_open = true;
+			pkth_id = (struct task_struct *) kthread_run(tcc_appl_ptr_check_thread_for_play, (void *)(asrc_m2m_pcm), "tcc_appl_ptr_check_thread_for_play");
+			if(pkth_id != NULL) asrc_m2m_pcm->playback->kth_id = pkth_id;
+		}
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	switch(substream->pcm->device) {
-	case 0:
-		asrc_m2m_pcm->mbox_cmd_type = MBOX_AUDIO_CMD_TYPE_DATA_TX_0;
-		break;
-    case 1:
-		asrc_m2m_pcm->mbox_cmd_type = MBOX_AUDIO_CMD_TYPE_DATA_TX_1;
-		break;
-	case 2:
-		asrc_m2m_pcm->mbox_cmd_type = MBOX_AUDIO_CMD_TYPE_DATA_TX_2;
-		break;
-	case 3:
-		asrc_m2m_pcm->mbox_cmd_type = MBOX_AUDIO_CMD_TYPE_DATA_RX;
-		break;
-	default:
-		asrc_m2m_pcm_dbg("Not Supported devices %d\n", substream->pcm->device);
-		asrc_m2m_pcm->mbox_cmd_type = -1;
-	}
 
-    if (asrc_m2m_pcm->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_DATA_TX_0 && asrc_m2m_pcm->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_DATA_RX) {
-		asrc_m2m_pcm->mbox_audio_dev = tcc_mbox_audio_register_set_kernel_callback((void*)asrc_m2m_pcm, tcc_asrc_m2m_pcm_mbox_callback, asrc_m2m_pcm->mbox_cmd_type);
-    }
+		if ((asrc_m2m_pcm->playback->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_POSITION_MIN) 
+			&& (asrc_m2m_pcm->playback->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX)) {
+			asrc_m2m_pcm->mbox_audio_dev = tcc_mbox_audio_register_set_kernel_callback((void*)asrc_m2m_pcm, tcc_asrc_m2m_pcm_mbox_callback, asrc_m2m_pcm->playback->mbox_cmd_type);
+		}
 #endif
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	} else {
+		if (asrc_m2m_pcm->capture->pair_id == ASRC_7_1CH_DEV_NUM) {  
+			snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_7_1CH]);
+		} else {
+			snd_soc_set_runtime_hwparams(substream, &tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_STEREO]);
+		}
+		asrc_m2m_pcm->capture->asrc_substream = substream;
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, false);
+
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		asrc_m2m_pcm->capture->is_flag = 0;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+
+		if(asrc_m2m_pcm->capture->first_open == false) {
+			asrc_m2m_pcm->capture->first_open = true;
+			pkth_id = (struct task_struct *) kthread_run(tcc_ptr_update_thread_for_capture, (void *)(asrc_m2m_pcm), "tcc_ptr_update_thread_for_capture");
+			if(pkth_id != NULL) asrc_m2m_pcm->capture->kth_id = pkth_id;
+		}
+
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+		if ((asrc_m2m_pcm->capture->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_POSITION_MIN) 
+			&& (asrc_m2m_pcm->capture->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX)) { 
+			asrc_m2m_pcm->mbox_audio_dev = tcc_mbox_audio_register_set_kernel_callback((void*)asrc_m2m_pcm, tcc_asrc_m2m_pcm_mbox_callback, asrc_m2m_pcm->capture->mbox_cmd_type);
+		}
+#endif
+	}
+
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
     return 0;
 }
 
@@ -601,45 +633,45 @@ static int tcc_asrc_m2m_pcm_close(struct snd_pcm_substream *substream)
 	unsigned long flags;
 	int ret=0;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s] start\n", __func__);
-	asrc_m2m_pcm->app->pre_pos = 0;
-	asrc_m2m_pcm->app->pre_ptr = 0;
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] start\n", __func__);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 
-	asrc_m2m_pcm->src->buffer_bytes = 0;
-	asrc_m2m_pcm->src->period_bytes = 0;
-	asrc_m2m_pcm->src->rate = 0;
-
-	asrc_m2m_pcm->dst->buffer_bytes = 0;
-	asrc_m2m_pcm->dst->period_bytes = 0;
-	asrc_m2m_pcm->dst->rate = 0;
-
-	asrc_m2m_pcm->middle->cur_pos = 0;
-	asrc_m2m_pcm->middle->pre_pos = 0;
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	asrc_m2m_pcm->middle->cur_pos_from_ipc = 0;
-	asrc_m2m_pcm->middle->pre_pos_from_ipc = 0;
-	if (asrc_m2m_pcm->mbox_audio_dev != NULL && asrc_m2m_pcm->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_DATA_TX_0 && asrc_m2m_pcm->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_DATA_RX) {
-		tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->mbox_cmd_type);
-    }
+		if ((asrc_m2m_pcm->mbox_audio_dev != NULL) 
+			&& (asrc_m2m_pcm->playback->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_POSITION_MIN) 
+			&& (asrc_m2m_pcm->playback->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX)) {
+			tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->playback->mbox_cmd_type);
+		}
 #endif
-	atomic_set(&asrc_m2m_pcm->wakeup, 0);
+		atomic_set(&asrc_m2m_pcm->playback->wakeup, 0);
 
-	asrc_m2m_pcm->middle->buffer_bytes = 0;
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->playback, false);
+		spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
+		if(asrc_m2m_pcm->asrc_footprint->list_len > 0) {
+			ret = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, true);
+		}
+		tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
+		spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 
-	asrc_m2m_pcm->interval = 0;
-	asrc_m2m_pcm->Bwrote = 0;
-	asrc_m2m_pcm->Btail = 0;
+		if (asrc_m2m_pcm->playback->asrc_substream != NULL) { 
+			asrc_m2m_pcm->playback->asrc_substream = NULL;
+		}
+	} else {
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+		if ((asrc_m2m_pcm->mbox_audio_dev != NULL) 
+			&& (asrc_m2m_pcm->capture->mbox_cmd_type >= MBOX_AUDIO_CMD_TYPE_POSITION_MIN) 
+			&& (asrc_m2m_pcm->capture->mbox_cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX)) {
+			tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->capture->mbox_cmd_type);
+		}
+#endif
+		atomic_set(&asrc_m2m_pcm->capture->wakeup, 0);
 
-	spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
-	if(asrc_m2m_pcm->asrc_footprint->list_len > 0) {
-		ret = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, true);
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, false);
+		if (asrc_m2m_pcm->capture->asrc_substream != NULL) { 
+			asrc_m2m_pcm->capture->asrc_substream = NULL;
+		}
 	}
-	tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
-	spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 
-	if (asrc_m2m_pcm->asrc_substream != NULL) { 
-		asrc_m2m_pcm->asrc_substream = NULL;
-	}
 /*
 	if (asrc_m2m_pcm->kth_id != NULL) { 
 		asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
@@ -664,7 +696,7 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
-	struct tcc_asrc_param_t *pasrc_param = asrc_m2m_pcm->asrc_m2m_param;
+	struct tcc_asrc_param_t *pasrc_param;// = asrc_m2m_pcm->asrc_m2m_param;
 
 	int channels = params_channels(params);
 	size_t rate = params_rate(params);
@@ -677,14 +709,13 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	enum tcc_asrc_drv_ch_t asrc_channels;
 	uint64_t ratio_shift22;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "format : 0x%08x\n", format);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "channels : %d\n", channels);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "period_bytes : %u\n", period_bytes);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "buffer_bytes : %u\n", buffer_bytes);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "format : 0x%08x\n", format);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "channels : %d\n", channels);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "period_bytes : %u\n", period_bytes);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "buffer_bytes : %u\n", buffer_bytes);
 
 	memset(substream->dma_buffer.area, 0, buffer_bytes);
-	memset(pasrc_param, 0, sizeof(struct tcc_asrc_param_t));
 
 	asrc_bitwidth = (format == SNDRV_PCM_FORMAT_S24_LE) ? TCC_ASRC_24BIT : TCC_ASRC_16BIT;
 
@@ -699,12 +730,17 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		pasrc_param = asrc_m2m_pcm->playback->asrc_m2m_param;
+
 		ratio_shift22 = ((uint64_t)0x400000 * ASRC_DST_RATE);
 		do_div(ratio_shift22, rate);
 	} else {
+		pasrc_param = asrc_m2m_pcm->capture->asrc_m2m_param;
+
 		ratio_shift22 = ((uint64_t)0x400000 * rate);
 		do_div(ratio_shift22, ASRC_SRC_RATE);
 	}
+	memset(pasrc_param, 0, sizeof(struct tcc_asrc_param_t));
 
 	pasrc_param->u.cfg.src_bitwidth = asrc_bitwidth;
 	pasrc_param->u.cfg.dst_bitwidth = asrc_bitwidth;
@@ -713,37 +749,37 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 
-		asrc_m2m_pcm->src->buffer_bytes = buffer_bytes;
-		asrc_m2m_pcm->src->period_bytes = period_bytes;
-		asrc_m2m_pcm->src->rate = rate;
-		asrc_m2m_pcm->interval = TCC_APP_PTR_CHECK_INTERVAL_TX;
+		asrc_m2m_pcm->playback->src->buffer_bytes = buffer_bytes;
+		asrc_m2m_pcm->playback->src->period_bytes = period_bytes;
+		asrc_m2m_pcm->playback->src->rate = rate;
+		asrc_m2m_pcm->playback->interval = TCC_APP_PTR_CHECK_INTERVAL_TX;
 
-		asrc_m2m_pcm->dst->rate = ASRC_DST_RATE;
-		asrc_m2m_pcm->dst->buffer_bytes = MAX_BUFFER_BYTES;
-		//asrc_m2m_pcm->dst->period_bytes = PLAYBACK_MAX_PERIOD_BYTES;
-		asrc_m2m_pcm->dst->period_bytes = MIN_PERIOD_BYTES;
+		asrc_m2m_pcm->playback->dst->rate = ASRC_DST_RATE;
+		asrc_m2m_pcm->playback->dst->buffer_bytes = MAX_BUFFER_BYTES;
+		//asrc_m2m_pcm->playback->dst->period_bytes = PLAYBACK_MAX_PERIOD_BYTES;
+		asrc_m2m_pcm->playback->dst->period_bytes = MIN_PERIOD_BYTES;
 
-		asrc_m2m_pcm->middle->buffer_bytes = asrc_m2m_pcm->dst->buffer_bytes * MID_BUFFER_CONST;
+		asrc_m2m_pcm->playback->middle->buffer_bytes = asrc_m2m_pcm->playback->dst->buffer_bytes * MID_BUFFER_CONST;
 	} else {
-		asrc_m2m_pcm->dst->buffer_bytes = buffer_bytes;
-		asrc_m2m_pcm->dst->period_bytes = period_bytes;
-		asrc_m2m_pcm->dst->rate = rate;
-		asrc_m2m_pcm->interval = TCC_APP_PTR_CHECK_INTERVAL_RX;
+		asrc_m2m_pcm->capture->dst->buffer_bytes = buffer_bytes;
+		asrc_m2m_pcm->capture->dst->period_bytes = period_bytes;
+		asrc_m2m_pcm->capture->dst->rate = rate;
+		asrc_m2m_pcm->capture->interval = TCC_APP_PTR_CHECK_INTERVAL_RX;
 
-		asrc_m2m_pcm->src->rate = ASRC_SRC_RATE;
-		asrc_m2m_pcm->src->buffer_bytes = MAX_BUFFER_BYTES;
-		//asrc_m2m_pcm->src->period_bytes = PLAYBACK_MAX_PERIOD_BYTES;
-		asrc_m2m_pcm->src->period_bytes = MIN_PERIOD_BYTES;
+		asrc_m2m_pcm->capture->src->rate = ASRC_SRC_RATE;
+		asrc_m2m_pcm->capture->src->buffer_bytes = MAX_BUFFER_BYTES;
+		//asrc_m2m_pcm->capture->src->period_bytes = PLAYBACK_MAX_PERIOD_BYTES;
+		asrc_m2m_pcm->capture->src->period_bytes = MIN_PERIOD_BYTES;
 
-		asrc_m2m_pcm->middle->buffer_bytes = asrc_m2m_pcm->src->buffer_bytes * MID_BUFFER_CONST; 
+		asrc_m2m_pcm->capture->middle->buffer_bytes = asrc_m2m_pcm->capture->src->buffer_bytes * MID_BUFFER_CONST; 
 	}
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	tcc_asrc_m2m_pcm_set_hw_params_to_mbox(asrc_m2m_pcm);
+	tcc_asrc_m2m_pcm_set_hw_params_to_mbox(asrc_m2m_pcm, substream->stream);
 #endif
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -755,29 +791,49 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 	char Ctemp=0;
 	int ret = -1;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 	
-	while(1) {
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-		if(!(Ctemp & IS_ASRC_RUNNING)) {
-			break;
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		while(1) {
+			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+			Ctemp = asrc_m2m_pcm->playback->is_flag;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			if(!(Ctemp & IS_ASRC_RUNNING)) {
+				break;
+			}
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s] ASRC is running.\n", __func__);
+			msleep(1);
 		}
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s] ASRC is running.\n", __func__);
-		msleep(1);
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		asrc_m2m_pcm->playback->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+
+		atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
+		wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
+	} else {
+		while(1) {
+			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+			Ctemp = asrc_m2m_pcm->capture->is_flag;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			if(!(Ctemp & IS_ASRC_RUNNING)) {
+				break;
+			}
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s] ASRC is running.\n", __func__);
+			msleep(1);
+		}
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		asrc_m2m_pcm->capture->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+
+		atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
+		wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
 	}
-	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	asrc_m2m_pcm->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
-	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-	atomic_set(&asrc_m2m_pcm->wakeup, 1);
-	wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
 
 	if(substream){
 		snd_pcm_set_runtime_buffer(substream, NULL);
 		ret=0;
 	} else {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "%s-error\n", __func__);
+		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "%s-error\n", __func__);
 	}
 
 	return ret;
@@ -792,19 +848,50 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 	char Ctemp=0;
 	int ret=0;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 
-	while(1) {
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-		if(!(Ctemp & IS_ASRC_RUNNING)) {
-			break;
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		while(1) {
+			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+			Ctemp = asrc_m2m_pcm->playback->is_flag;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			if(!(Ctemp & IS_ASRC_RUNNING)) {
+				break;
+			}
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s] ASRC is running.\n", __func__);
+			msleep(1);
 		}
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s] ASRC is running.\n", __func__);
-		msleep(1);
-	}
 
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->playback, true);
+
+		spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
+		if(asrc_m2m_pcm->asrc_footprint->list_len > 0) {
+			// delete all footprint
+			ret = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, true);
+		}
+		tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
+		spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
+
+		if(asrc_m2m_pcm->playback->middle->dma_buf->area != NULL)
+			memset(asrc_m2m_pcm->playback->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+	} else {
+		while(1) {
+			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+			Ctemp = asrc_m2m_pcm->capture->is_flag;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			if(!(Ctemp & IS_ASRC_RUNNING)) {
+				break;
+			}
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s] ASRC is running.\n", __func__);
+			msleep(1);
+		}
+
+		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, true);
+
+		if(asrc_m2m_pcm->capture->middle->dma_buf->area != NULL)
+			memset(asrc_m2m_pcm->capture->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+	}
+	/*
 	asrc_m2m_pcm->app->pre_pos = 0;
 	asrc_m2m_pcm->app->pre_ptr = 0;
 
@@ -816,20 +903,10 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 #endif
 	asrc_m2m_pcm->Bwrote = 0;
 	asrc_m2m_pcm->Btail = 0;
-
-	spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
-	if(asrc_m2m_pcm->asrc_footprint->list_len > 0) {
-		// delete all footprint
-		ret = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, true);
-	}
-	tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
-	spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
-
-	if(asrc_m2m_pcm->middle->dma_buf->area != NULL)
-		memset(asrc_m2m_pcm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+*/
 	memset(runtime->dma_area, 0x00, runtime->dma_bytes);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -845,43 +922,62 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	char Ctemp=0;
 	int ret=-1;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 
 	if(asrc_m2m_pcm == NULL) {
 		asrc_m2m_pcm_dbg_err("[%s][%d] error!\n", __func__, __LINE__);
 		return -EFAULT;
 	} else {
-		pasrc_param = asrc_m2m_pcm->asrc_m2m_param;
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+			pasrc_param = asrc_m2m_pcm->playback->asrc_m2m_param;
+		} else {
+			pasrc_param = asrc_m2m_pcm->capture->asrc_m2m_param;
+		}
 		if(pasrc_param == NULL) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] error!\n", __func__, __LINE__);
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!\n", __func__, __LINE__);
 			return -EFAULT;
 		}
 	}
 
-	spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-	Ctemp = asrc_m2m_pcm->is_flag;
-	spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->playback->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+	} else {
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->capture->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+	}
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START, PLAY\n");
 				if(!(Ctemp & IS_ASRC_STARTED)) {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START, PLAY\n");
-					if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
-						ret = 0;
-					} else {
-						ret = tcc_asrc_m2m_start(asrc_m2m_pcm->asrc,
-								asrc_m2m_pcm->pair_id, // Pair
+					if((asrc_m2m_pcm->playback->pair_id == 99)
+						&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+						ret = -EINVAL;
+						goto error_trigger;
+
+					} else if((asrc_m2m_pcm->playback->pair_id != 99)
+						&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
+ 
+						ret = tcc_asrc_m2m_start(pasrc,
+								asrc_m2m_pcm->playback->pair_id, // Pair
 								pasrc_param->u.cfg.src_bitwidth, // SRC Bit width
 								pasrc_param->u.cfg.dst_bitwidth, // DST Bit width
 								pasrc_param->u.cfg.channels, //Channels
 								pasrc_param->u.cfg.ratio_shift22); // multiple of 2
+					} else {
+						ret = 0;
 					}
+
 					Ctemp |= IS_ASRC_STARTED;
 				} else {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START already, PLAY\n");
+					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START already, PLAY\n");
 				}
 /*
 	//ref. code
@@ -901,46 +997,63 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 #if 0//def CONFIG_TCC_MULTI_MAILBOX_AUDIO
 				ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 				if(ret < 0) {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 				}
 #endif
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START end ret=%d, PLAY\n", ret);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START end ret=%d, PLAY\n", ret);
 			} else {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START, CAPTURE\n");
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START, CAPTURE\n");
 				if(!(Ctemp & IS_ASRC_STARTED)) {
-					if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
-						ret = 0;
-					} else {
+					if((asrc_m2m_pcm->capture->pair_id == 99)
+						&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+						ret = -EINVAL;
+						goto error_trigger;
+
+					} else if((asrc_m2m_pcm->capture->pair_id != 99)
+							&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
 						ret = tcc_asrc_m2m_start(pasrc,
-								asrc_m2m_pcm->pair_id, // Pair
+								asrc_m2m_pcm->capture->pair_id, // Pair
 								pasrc_param->u.cfg.src_bitwidth, // SRC Bit width
 								pasrc_param->u.cfg.dst_bitwidth, // DST Bit width
 								pasrc_param->u.cfg.channels, //Channels
 								pasrc_param->u.cfg.ratio_shift22); // multiple of 2
+					} else {
+						ret = 0;
 					}
+
 					Ctemp |= IS_ASRC_STARTED;
 
 				} else {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START already, CAPTURE\n");
+					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START already, CAPTURE\n");
+					return -EINVAL;
 				}
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 				ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 				if(ret < 0) {
-					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 				} else {
 					Ctemp |= IS_A7S_STARTED;
 				}
 #endif
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_START end ret=%d, CAPTURE\n", ret);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START end ret=%d, CAPTURE\n", ret);
 			}
 
 			Ctemp |= IS_TRIG_STARTED;
 
-			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_flag |= Ctemp;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-			atomic_set(&asrc_m2m_pcm->wakeup, 1);
-			wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				asrc_m2m_pcm->playback->is_flag |= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
+				wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
+			} else {
+				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+				asrc_m2m_pcm->capture->is_flag |= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+				atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
+				wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
+			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -948,70 +1061,104 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 
 			Ctemp &= ~IS_TRIG_STARTED;
 
-			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_flag &= Ctemp;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-			//atomic_set(&asrc_m2m_pcm->wakeup, 1);
-			//wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
-
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP, PLAY\n");
-				if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
-					ret = 0;
-				} else {
+
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				asrc_m2m_pcm->playback->is_flag &= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				//atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
+				//wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, PLAY\n");
+				if((asrc_m2m_pcm->playback->pair_id == 99)
+						&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+					ret = -EINVAL;
+					goto error_trigger;
+
+				} else if((asrc_m2m_pcm->playback->pair_id != 99)
+						&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
+
 					while(1) {
-						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						Ctemp = asrc_m2m_pcm->is_flag;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+						Ctemp = asrc_m2m_pcm->playback->is_flag;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 						if(!(Ctemp & IS_ASRC_RUNNING)) {
 							break;
 						}
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
 						mdelay(1);
 					}
-					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
+					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->playback->pair_id);
+
+				} else {
+					ret = 0;
 				}
+
 				Ctemp &= ~IS_ASRC_STARTED;
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP ret=%d, PLAY\n", ret);
+
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP ret=%d, PLAY\n", ret);
 			} else {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP, CAPTURE\n");
-				if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
-					ret = 0;
-				} else {
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, CAPTURE\n");
+
+				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+				asrc_m2m_pcm->capture->is_flag &= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+				//atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
+				//wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
+				if((asrc_m2m_pcm->capture->pair_id == 99)
+						&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
+					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+					ret = -EINVAL;
+					goto error_trigger;
+
+				} else if((asrc_m2m_pcm->capture->pair_id != 99)
+						&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
+
 					while(1) {
-						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						Ctemp = asrc_m2m_pcm->is_flag;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+						Ctemp = asrc_m2m_pcm->capture->is_flag;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 						if(!(Ctemp & IS_ASRC_RUNNING)) {
 							break;
 						}
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
+						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ASRC is running.\n", __func__, __LINE__);
 						mdelay(1);
 					}
-					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->pair_id);
+					ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->capture->pair_id);
+
+				} else {
+					ret = 0;
 				}
 				Ctemp &= ~IS_ASRC_STARTED;
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ASRC_TRIGGER_STOP ret=%d, CAPTURE\n", ret);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP ret=%d, CAPTURE\n", ret);
 			}
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 			ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 			if(ret < 0) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 			} else {
 				Ctemp &= ~IS_A7S_STARTED;
 			}
 #endif
-			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_flag &= Ctemp;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-			atomic_set(&asrc_m2m_pcm->wakeup, 1);
-			wake_up_interruptible(&(asrc_m2m_pcm->kth_wq));
+			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				asrc_m2m_pcm->playback->is_flag &= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
+				wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
+			} else {
+				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+				asrc_m2m_pcm->capture->is_flag &= Ctemp;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+				atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
+				wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
+			}
 			break;
 		default:
 			return -EINVAL;
 	}
-
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+error_trigger:
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 
 	return ret;
 }
@@ -1030,11 +1177,11 @@ static snd_pcm_uframes_t tcc_asrc_m2m_pcm_pointer(struct snd_pcm_substream *subs
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		ret = bytes_to_frames(runtime, asrc_m2m_pcm->Bwrote);
+		ret = bytes_to_frames(runtime, asrc_m2m_pcm->playback->Bwrote);
 	} else {
-		ret = asrc_m2m_pcm->app->pre_pos;
+		ret = asrc_m2m_pcm->capture->app->pre_pos;
 	}
-	//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ret=%d\n", (int)ret);
+	//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ret=%d\n", (int)ret);
 	return ret;
 }
 
@@ -1057,7 +1204,8 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
-	struct tcc_asrc_t *asrc = (struct tcc_asrc_t *)asrc_m2m_pcm->asrc; 
+	struct tcc_asrc_t *asrc = (struct tcc_asrc_t *)asrc_m2m_pcm->asrc;
+	//struct asrc_m2m_pcm_stream *strm = (struct asrc_m2m_pcm_stream *)asrc_m2m_pcm->capture;
 	snd_pcm_uframes_t Ftemp=0;
 	ssize_t dst_buffer_bytes=0, dst_period_bytes=0;
 	ssize_t read_pos=0, write_pos=0, temp_pos=0;
@@ -1065,20 +1213,20 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	unsigned long flags;
 	char *pin_buf, *pout_buf, *ptemp_buf, Ctemp=0;
 
-	ptemp_buf = asrc_m2m_pcm->middle->ptemp_buf;
-	pin_buf = asrc_m2m_pcm->middle->dma_buf->area;
+	ptemp_buf = asrc_m2m_pcm->capture->middle->ptemp_buf;
+	pin_buf = asrc_m2m_pcm->capture->middle->dma_buf->area;
 	pout_buf = substream->dma_buffer.area;
 
-	dst_buffer_bytes = asrc_m2m_pcm->dst->buffer_bytes;
-	dst_period_bytes = asrc_m2m_pcm->dst->period_bytes;
+	dst_buffer_bytes = asrc_m2m_pcm->capture->dst->buffer_bytes;
+	dst_period_bytes = asrc_m2m_pcm->capture->dst->period_bytes;
 	while(1) {
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->capture->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 		if((readable_byte <= 0)
 			||((Ctemp & IS_TRIG_STARTED) == 0)
 			||((Ctemp & IS_ASRC_STARTED) == 0)) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
 			break;//return 0;
 		}
 
@@ -1088,10 +1236,10 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			read_byte = readable_byte; 
 		}
 
-		write_pos = frames_to_bytes(runtime, asrc_m2m_pcm->app->pre_pos);
-		read_pos = asrc_m2m_pcm->middle->pre_pos;
+		write_pos = frames_to_bytes(runtime, asrc_m2m_pcm->capture->app->pre_pos);
+		read_pos = asrc_m2m_pcm->capture->middle->pre_pos;
 
-		if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
+		if(asrc_m2m_pcm->capture->src->rate == asrc_m2m_pcm->capture->dst->rate) {
 
 			if(write_pos + read_byte >= dst_buffer_bytes) {
 				//1st part copy for out_buf
@@ -1111,51 +1259,55 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			Ftemp = bytes_to_frames(runtime, read_byte);
 			Btemp = frames_to_bytes(runtime, Ftemp);
 			if(Btemp != read_byte) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] read_byte=%d, Btemp=%d\n", __LINE__, read_byte, Btemp);
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] read_byte=%d, Btemp=%d\n", __LINE__, read_byte, Btemp);
 			}
 		*/
-			Btemp = read_byte + asrc_m2m_pcm->Btail;
+			Btemp = read_byte + asrc_m2m_pcm->capture->Btail;
 			Ftemp = bytes_to_frames(runtime, Btemp);
-			asrc_m2m_pcm->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
+			asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 			
 			//update ptr info.
-			asrc_m2m_pcm->app->pre_pos += Ftemp;
-			if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size)
-				asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
+			asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
+			if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
+				asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
 
-			asrc_m2m_pcm->app->pre_ptr += Ftemp;
-			if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-				asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+			asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
+			if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
+				asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
 
-			asrc_m2m_pcm->Bwrote += read_byte;
-			if(asrc_m2m_pcm->Bwrote >= dst_period_bytes) {
-				asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote % dst_period_bytes;
+			asrc_m2m_pcm->capture->Bwrote += read_byte;
+			if(asrc_m2m_pcm->capture->Bwrote >= dst_period_bytes) {
+				asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
 				snd_pcm_period_elapsed(substream);
 			}
 
 		} else {
-			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_flag |= IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf+read_pos, read_byte);
+			if(asrc_m2m_pcm->capture->pair_id == 99) {
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! asrc pair_id[%d] is wrong!\n", asrc_m2m_pcm->capture->pair_id);
+				return -1;
+			}
+			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+			asrc_m2m_pcm->capture->is_flag |= IS_ASRC_RUNNING;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->capture->pair_id, pin_buf+read_pos, read_byte);
 			if(write_pos + writeable_byte >= dst_buffer_bytes) {
 				if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 					ptemp_buf = NULL;
 					ptemp_buf = kzalloc(sizeof(char)*writeable_byte, GFP_KERNEL);
 					if(ptemp_buf == NULL){
-						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
-						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
+						spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+						asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 						return -1;
 					}
 				} else {
 					memset(ptemp_buf, 0, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				}
-				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, ptemp_buf, writeable_byte);
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->capture->pair_id, ptemp_buf, writeable_byte);
+				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+				asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 
 				//1st part copy for out_buf
 				temp_pos = dst_buffer_bytes - write_pos;
@@ -1166,24 +1318,24 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				Ftemp = bytes_to_frames(runtime, temp_pos);
 				Btemp = frames_to_bytes(runtime, Ftemp);
 				if(Btemp != temp_pos) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] temp_pos=%d, Btemp=%d\n", __LINE__, temp_pos, Btemp);
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] temp_pos=%d, Btemp=%d\n", __LINE__, temp_pos, Btemp);
 				}
 			*/
-				Btemp = temp_pos + asrc_m2m_pcm->Btail;
+				Btemp = temp_pos + asrc_m2m_pcm->capture->Btail;
 				Ftemp = bytes_to_frames(runtime, Btemp);
-				asrc_m2m_pcm->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
+				asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 	
 				//1st update ptr info.
-				asrc_m2m_pcm->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
+					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
+				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
+					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
 				
-				asrc_m2m_pcm->Bwrote += temp_pos;
-				if(asrc_m2m_pcm->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote % dst_period_bytes;
+				asrc_m2m_pcm->capture->Bwrote += temp_pos;
+				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
+					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
 					snd_pcm_period_elapsed(substream);
 				}
 
@@ -1198,71 +1350,71 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				Ftemp = bytes_to_frames(runtime, Btemp);
 				temp_pos = frames_to_bytes(runtime, Ftemp);
 				if(Btemp != temp_pos) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] temp_pos=%d, Btemp=%d\n", __LINE__, temp_pos, Btemp);
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] temp_pos=%d, Btemp=%d\n", __LINE__, temp_pos, Btemp);
 				}
 			*/
-				temp_pos = Btemp + asrc_m2m_pcm->Btail;
+				temp_pos = Btemp + asrc_m2m_pcm->capture->Btail;
 				Ftemp = bytes_to_frames(runtime, temp_pos);
-				asrc_m2m_pcm->Btail = temp_pos - (frames_to_bytes(runtime, Ftemp));
+				asrc_m2m_pcm->capture->Btail = temp_pos - (frames_to_bytes(runtime, Ftemp));
 
 				//2nd update ptr info.
-				asrc_m2m_pcm->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
+					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
+				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
+					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
 
-				asrc_m2m_pcm->Bwrote += Btemp;
-				if(asrc_m2m_pcm->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote % dst_period_bytes;
+				asrc_m2m_pcm->capture->Bwrote += Btemp;
+				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
+					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
 					snd_pcm_period_elapsed(substream);
 				}
 
 			} else {
 				//copy for out_buf
-				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, pout_buf+write_pos, writeable_byte);
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->capture->pair_id, pout_buf+write_pos, writeable_byte);
+				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+				asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 
 				//check ptr size for update
 			/*
 				Ftemp = bytes_to_frames(runtime, Wtemp);
 				Btemp = frames_to_bytes(runtime, Ftemp);
 				if(Btemp != Wtemp) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] Wtemp=%d, Btemp=%d\n", __LINE__, Wtemp, Btemp);
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] Wtemp=%d, Btemp=%d\n", __LINE__, Wtemp, Btemp);
 				}
 			*/
-				Btemp = Wtemp + asrc_m2m_pcm->Btail;
+				Btemp = Wtemp + asrc_m2m_pcm->capture->Btail;
 				Ftemp = bytes_to_frames(runtime, Btemp);
-				asrc_m2m_pcm->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
+				asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 
 				//update ptr info.
-				asrc_m2m_pcm->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
+					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
+				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
+				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
+					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
 
-				asrc_m2m_pcm->Bwrote += Wtemp;
-				if(asrc_m2m_pcm->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->Bwrote = asrc_m2m_pcm->Bwrote % dst_period_bytes;
+				asrc_m2m_pcm->capture->Bwrote += Wtemp;
+				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
+					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
 					snd_pcm_period_elapsed(substream);
 				}
 			}
 		}
-		asrc_m2m_pcm->middle->pre_pos += read_byte;
-		if(asrc_m2m_pcm->middle->pre_pos >= asrc_m2m_pcm->middle->buffer_bytes) {
-			asrc_m2m_pcm->middle->pre_pos = asrc_m2m_pcm->middle->pre_pos - asrc_m2m_pcm->middle->buffer_bytes;
+		asrc_m2m_pcm->capture->middle->pre_pos += read_byte;
+		if(asrc_m2m_pcm->capture->middle->pre_pos >= asrc_m2m_pcm->capture->middle->buffer_bytes) {
+			asrc_m2m_pcm->capture->middle->pre_pos = asrc_m2m_pcm->capture->middle->pre_pos - asrc_m2m_pcm->capture->middle->buffer_bytes;
 		}
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "ERROR!! readable_byte: %d\n", readable_byte);
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! readable_byte: %d\n", readable_byte);
 			return -1;
 		}
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, read_byte: %d, pre_pos: %d\n", readable_byte, read_byte, asrc_m2m_pcm->middle->pre_pos);
+		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, read_byte: %d, pre_pos: %d\n", readable_byte, read_byte, asrc_m2m_pcm->capture->middle->pre_pos);
 	}
 	return 0;
 }
@@ -1282,19 +1434,19 @@ static int tcc_ptr_update_thread_for_capture(void *data)
 	int ret=0;
 
 	while(!kthread_should_stop()) {
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->capture->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 		if(((Ctemp & IS_TRIG_STARTED) != 0)&&((Ctemp & IS_ASRC_STARTED) != 0)) {
-			if (asrc_m2m_pcm->middle->cur_pos != asrc_m2m_pcm->middle->pre_pos) {
-    			substream = asrc_m2m_pcm->asrc_substream;
+			if (asrc_m2m_pcm->capture->middle->cur_pos != asrc_m2m_pcm->capture->middle->pre_pos) {
+    			substream = asrc_m2m_pcm->capture->asrc_substream;
     			rtd = substream->private_data;
     			runtime = substream->runtime;
     
-    			cur_pos = asrc_m2m_pcm->middle->cur_pos;
-    			pre_pos = asrc_m2m_pcm->middle->pre_pos;
+    			cur_pos = asrc_m2m_pcm->capture->middle->cur_pos;
+    			pre_pos = asrc_m2m_pcm->capture->middle->pre_pos;
     
-    			mid_buffer_bytes = asrc_m2m_pcm->middle->buffer_bytes;
+    			mid_buffer_bytes = asrc_m2m_pcm->capture->middle->buffer_bytes;
     
     			temp = frames_to_bytes(runtime, runtime->period_size);
     			if(temp > TCC_ASRC_MAX_SIZE) {
@@ -1305,16 +1457,16 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     			temp=0;
     
     			if(cur_pos >= pre_pos) {
-    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
+    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
     				readable_byte = cur_pos - pre_pos;
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
     					}
     				}
     			} else {			
-    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
+    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
 					
     				//1st part copy for in_buf
     				readable_byte = mid_buffer_bytes - pre_pos;
@@ -1322,27 +1474,27 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0){
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
     					}
     				}
     				
     				//2nd part copy
     				readable_byte = cur_pos;
-    				//asrc_m2m_pcm->middle->pre_pos = 0;
+    				//asrc_m2m_pcm->capture->middle->pre_pos = 0;
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
     					}
     				}
     			} //(cur_pos > pre_pos)?
 			} else {
-				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), usecs_to_jiffies(asrc_m2m_pcm->interval));
-			    atomic_set(&asrc_m2m_pcm->wakeup, 0);
+				wait_event_interruptible_timeout(asrc_m2m_pcm->capture->kth_wq, atomic_read(&asrc_m2m_pcm->capture->wakeup), usecs_to_jiffies(asrc_m2m_pcm->capture->interval));
+			    atomic_set(&asrc_m2m_pcm->capture->wakeup, 0);
 			}
 		} else { //start or closed?
-		    wait_event_interruptible(asrc_m2m_pcm->kth_wq, (((asrc_m2m_pcm->is_flag & IS_TRIG_STARTED)!= 0) && ((asrc_m2m_pcm->is_flag & IS_ASRC_STARTED)!= 0)));
-			atomic_set(&asrc_m2m_pcm->wakeup, 0);
+		    wait_event_interruptible(asrc_m2m_pcm->capture->kth_wq, (((asrc_m2m_pcm->capture->is_flag & IS_TRIG_STARTED)!= 0) && ((asrc_m2m_pcm->capture->is_flag & IS_ASRC_STARTED)!= 0)));
+			atomic_set(&asrc_m2m_pcm->capture->wakeup, 0);
 		}
 	}//while
 	return 0;
@@ -1358,20 +1510,20 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 	int len=0;
 	char *pout_buf, *ptemp_buf, Ctemp=0;
 	
-	mid_buffer_bytes = asrc_m2m_pcm->middle->buffer_bytes;
+	mid_buffer_bytes = asrc_m2m_pcm->playback->middle->buffer_bytes;
 
-	ptemp_buf = asrc_m2m_pcm->middle->ptemp_buf;
-	pout_buf = asrc_m2m_pcm->middle->dma_buf->area;
+	ptemp_buf = asrc_m2m_pcm->playback->middle->ptemp_buf;
+	pout_buf = asrc_m2m_pcm->playback->middle->dma_buf->area;
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
 	while(1) {
 #endif
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->playback->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 		if((readable_byte <= 0)
 				||((Ctemp & IS_TRIG_STARTED) == 0)
 				||((Ctemp & IS_ASRC_STARTED) == 0)) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
 			break;
 #else
@@ -1384,10 +1536,10 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			read_byte = readable_byte;
 		}
 
-		write_pos = asrc_m2m_pcm->middle->cur_pos;
-		pre_pos = asrc_m2m_pcm->middle->pre_pos;
+		write_pos = asrc_m2m_pcm->playback->middle->cur_pos;
+		pre_pos = asrc_m2m_pcm->playback->middle->pre_pos;
 		
-		if(asrc_m2m_pcm->src->rate == asrc_m2m_pcm->dst->rate) {
+		if(asrc_m2m_pcm->playback->src->rate == asrc_m2m_pcm->playback->dst->rate) {
 			if(write_pos + read_byte >= mid_buffer_bytes) {
 				//1st part copy for out_buf
 				Btemp = mid_buffer_bytes - write_pos;
@@ -1397,36 +1549,40 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				Btemp = read_byte - Btemp;
 				memcpy(pout_buf, pin_buf+ret+temp_pos, Btemp);
 
-				//asrc_m2m_pcm->middle->cur_pos = Btemp;
+				//asrc_m2m_pcm->playback->middle->cur_pos = Btemp;
 			} else {
 				memcpy(pout_buf+write_pos, pin_buf+ret, read_byte);
-				//asrc_m2m_pcm->middle->cur_pos += read_byte; 
+				//asrc_m2m_pcm->playback->middle->cur_pos += read_byte; 
 			}
 
 			//ret += read_byte;
 			Wtemp = read_byte;
 		} else {
-			spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-			asrc_m2m_pcm->is_flag |= IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
-			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->pair_id, pin_buf+ret, read_byte);
+			if(asrc_m2m_pcm->playback->pair_id == 99) {
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
+				return -1;
+			}
+			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+			asrc_m2m_pcm->playback->is_flag |= IS_ASRC_RUNNING;
+			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->playback->pair_id, pin_buf+ret, read_byte);
 			if(write_pos + writeable_byte >= mid_buffer_bytes) {
 				if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 					ptemp_buf = NULL;
 					ptemp_buf = kzalloc(sizeof(char)*writeable_byte, GFP_KERNEL);
 					if(ptemp_buf == NULL){
-						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
-						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!!\n", __func__, __LINE__);
+						spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+						asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 						return -1;
 					}
 				}
-				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, ptemp_buf, writeable_byte);
+				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->playback->pair_id, ptemp_buf, writeable_byte);
 
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 
 				//1st part copy for out_buf
 				Btemp = mid_buffer_bytes - write_pos;
@@ -1437,48 +1593,48 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				Btemp = Wtemp - Btemp;
 				memcpy(pout_buf, ptemp_buf+temp_pos, Btemp);
 
-				//asrc_m2m_pcm->middle->cur_pos = write_pos + Wtemp - mid_buffer_bytes;
+				//asrc_m2m_pcm->playback->middle->cur_pos = write_pos + Wtemp - mid_buffer_bytes;
 				memset(ptemp_buf, 0, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 
 			} else {
-				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->pair_id, pout_buf+write_pos, writeable_byte);
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				asrc_m2m_pcm->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->playback->pair_id, pout_buf+write_pos, writeable_byte);
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 
-				//asrc_m2m_pcm->middle->cur_pos += Wtemp;
+				//asrc_m2m_pcm->playback->middle->cur_pos += Wtemp;
 
 			}
 			//ret += read_byte;
 		}
 
-		asrc_m2m_pcm->middle->cur_pos += Wtemp;
-		if(asrc_m2m_pcm->middle->cur_pos >= mid_buffer_bytes) {
-			asrc_m2m_pcm->middle->cur_pos = asrc_m2m_pcm->middle->cur_pos - mid_buffer_bytes;
+		asrc_m2m_pcm->playback->middle->cur_pos += Wtemp;
+		if(asrc_m2m_pcm->playback->middle->cur_pos >= mid_buffer_bytes) {
+			asrc_m2m_pcm->playback->middle->cur_pos = asrc_m2m_pcm->playback->middle->cur_pos - mid_buffer_bytes;
 		}
 
 		ret += read_byte;
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! readable_byte=%d, max_asrc_byte=%d, ret=%d\n", __func__, __LINE__, readable_byte, max_asrc_byte, ret);
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! readable_byte=%d, max_asrc_byte=%d, ret=%d\n", __func__, __LINE__, readable_byte, max_asrc_byte, ret);
 			return -1;
 		}
 
 		spin_lock_irqsave(&asrc_m2m_pcm->foot_locked, flags);
-		len = tcc_asrc_footprint_insert(asrc_m2m_pcm->asrc_footprint, asrc_m2m_pcm->middle->cur_pos, read_byte);
+		len = tcc_asrc_footprint_insert(asrc_m2m_pcm->asrc_footprint, asrc_m2m_pcm->playback->middle->cur_pos, read_byte);
 		spin_unlock_irqrestore(&asrc_m2m_pcm->foot_locked, flags);
 		if(len <= 0) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! len=%d\n", __func__, __LINE__, len);
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! len=%d\n", __func__, __LINE__, len);
 		}
 
 #if	(CHECK_OVERRUN == 1)
 		if((write_pos > pre_pos)
-				&&(asrc_m2m_pcm->middle->cur_pos > pre_pos)&&(write_pos > asrc_m2m_pcm->middle->cur_pos)) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->middle->cur_pos);
+				&&(asrc_m2m_pcm->playback->middle->cur_pos > pre_pos)&&(write_pos > asrc_m2m_pcm->playback->middle->cur_pos)) {
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
 
 		} else if((write_pos < pre_pos)
-				&&((asrc_m2m_pcm->middle->cur_pos > pre_pos)||(write_pos > asrc_m2m_pcm->middle->cur_pos))) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->middle->cur_pos);
+				&&((asrc_m2m_pcm->playback->middle->cur_pos > pre_pos)||(write_pos > asrc_m2m_pcm->playback->middle->cur_pos))) {
+			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
 		}
 #endif
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
@@ -1509,31 +1665,31 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 
 wait_check_play:
 
-		spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = asrc_m2m_pcm->playback->is_flag;
+		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 		if(((Ctemp & IS_TRIG_STARTED) != 0)&&((Ctemp & IS_ASRC_STARTED) != 0)) {
 
-			substream = asrc_m2m_pcm->asrc_substream;
+			substream = asrc_m2m_pcm->playback->asrc_substream;
 			if(!substream) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
 				goto wait_check_play;
 			}
 
 			rtd = substream->private_data;
 			if(!rtd) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
 				goto wait_check_play;
 			}
 
 			runtime = substream->runtime;
 			if(!runtime) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->is_flag);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
 				goto wait_check_play;
 			}
 
 			cur_appl_ptr = runtime->control->appl_ptr;
-			pre_appl_ptr = asrc_m2m_pcm->app->pre_ptr;
+			pre_appl_ptr = asrc_m2m_pcm->playback->app->pre_ptr;
 
 			if((cur_appl_ptr != pre_appl_ptr)) {
 				cur_appl_ofs = cur_appl_ptr % runtime->buffer_size;
@@ -1541,7 +1697,7 @@ wait_check_play:
 				if((cur_appl_ofs == 0) && (cur_appl_ptr > 0)) {
 					cur_appl_ofs = runtime->buffer_size;
 				}*/
-				pre_appl_ofs = asrc_m2m_pcm->app->pre_pos;
+				pre_appl_ofs = asrc_m2m_pcm->playback->app->pre_pos;
 
 				Btemp = frames_to_bytes(runtime, runtime->period_size);
 				if(Btemp > TCC_ASRC_MAX_SIZE) {
@@ -1554,10 +1710,10 @@ wait_check_play:
 				pin_buf = substream->dma_buffer.area;
 
 				if(cur_appl_ofs > pre_appl_ofs) {
-					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
+					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
 					Ftemp = cur_appl_ofs - pre_appl_ofs;
 					readable_byte = frames_to_bytes(runtime, Ftemp);
-					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->app->pre_pos);
+					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos);
 
 					if(readable_byte > 0) {
 
@@ -1570,7 +1726,7 @@ wait_check_play:
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
 
 #if	(CHECK_ASRC_M2M_ELAPSED_TIME == 1)
@@ -1586,27 +1742,27 @@ wait_check_play:
 						Ftemp = bytes_to_frames(runtime, ret);
 						Btemp = frames_to_bytes(runtime, Ftemp);
 						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
 						}
 						 
 
-						asrc_m2m_pcm->app->pre_pos += Ftemp;
-						if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
+						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
+							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
 						}
 
-						asrc_m2m_pcm->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
+							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
 
 					}
 				} else {	//(cur_appl_ofs > pre_appl_ofs)?
-					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
+					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
 
 					//1st part copy for in_buf
 					Ftemp = runtime->buffer_size - pre_appl_ofs;
 					readable_byte = frames_to_bytes(runtime, Ftemp);
-					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->app->pre_pos);
+					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos);
 
 					if(readable_byte > 0) {
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
@@ -1615,23 +1771,23 @@ wait_check_play:
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
 
 						Ftemp = bytes_to_frames(runtime, ret);
 						Btemp = frames_to_bytes(runtime, Ftemp);
 						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
 						}
 
-						asrc_m2m_pcm->app->pre_pos += Ftemp;
-						if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
+						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
+							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
 						}
 
-						asrc_m2m_pcm->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
+							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
 
 					}
 
@@ -1655,46 +1811,46 @@ wait_check_play:
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
 
 						Ftemp = bytes_to_frames(runtime, ret);
 						Btemp = frames_to_bytes(runtime, Ftemp);
 						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
+							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
 						}
 
 
-						asrc_m2m_pcm->app->pre_pos = Ftemp;
-						if(asrc_m2m_pcm->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->app->pre_pos = asrc_m2m_pcm->app->pre_pos - runtime->buffer_size;
+						asrc_m2m_pcm->playback->app->pre_pos = Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
+							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
 						}
 
-						asrc_m2m_pcm->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->app->pre_ptr =asrc_m2m_pcm->app->pre_ptr - runtime->boundary;
+						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
+						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
+							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
 
 					}
 				} //(cur_appl_ofs > pre_appl_ofs)? else?
 max_cpy_tx:
 				Ftemp=0;
 
-				spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-				Ctemp = asrc_m2m_pcm->is_flag;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+				Ctemp = asrc_m2m_pcm->playback->is_flag;
+				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
 			    if((!(Ctemp & IS_A7S_STARTED))
-					&&((Ctemp & IS_ASRC_STARTED) != 0)) {
+        			&&((Ctemp & IS_ASRC_STARTED) != 0)) {
         
-        			substream = asrc_m2m_pcm->asrc_substream;
+        			substream = asrc_m2m_pcm->playback->asrc_substream;
         
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
         			ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, SNDRV_PCM_TRIGGER_START);
         			if(ret < 0) {
-        				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->pair_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+        				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 					} else {
-						spin_lock_irqsave(&asrc_m2m_pcm->is_locked, flags);
-						asrc_m2m_pcm->is_flag |= IS_A7S_STARTED;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->is_locked, flags);
+						spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
+						asrc_m2m_pcm->playback->is_flag |= IS_A7S_STARTED;
+						spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
         			}
 #endif
         		}
@@ -1703,43 +1859,307 @@ max_cpy_tx:
 				/*
 				 * This kthread check the appl_ptr in every interval (default 5ms).
 				 */
-				wait_event_interruptible_timeout(asrc_m2m_pcm->kth_wq, atomic_read(&asrc_m2m_pcm->wakeup), usecs_to_jiffies(asrc_m2m_pcm->interval));
-				atomic_set(&asrc_m2m_pcm->wakeup, 0);
+				wait_event_interruptible_timeout(asrc_m2m_pcm->playback->kth_wq, atomic_read(&asrc_m2m_pcm->playback->wakeup), usecs_to_jiffies(asrc_m2m_pcm->playback->interval));
+				atomic_set(&asrc_m2m_pcm->playback->wakeup, 0);
 			}	//(cur_appl_ptr != pre_appl_ptr)? else?
 		} else { //start or closed? 
-			wait_event_interruptible(asrc_m2m_pcm->kth_wq, (((asrc_m2m_pcm->is_flag & IS_TRIG_STARTED)!= 0) && ((asrc_m2m_pcm->is_flag & IS_ASRC_STARTED)!= 0)));
-			atomic_set(&asrc_m2m_pcm->wakeup, 0);
+			wait_event_interruptible(asrc_m2m_pcm->playback->kth_wq, (((asrc_m2m_pcm->playback->is_flag & IS_TRIG_STARTED)!= 0) && ((asrc_m2m_pcm->playback->is_flag & IS_ASRC_STARTED)!= 0)));
+			atomic_set(&asrc_m2m_pcm->playback->wakeup, 0);
 		} //start or closed? else ? 
 	}//while
 	return 0;
+}
+
+static int tcc_asrc_m2m_pcm_stream_init(struct device *dev, struct asrc_m2m_pcm_stream *strm)
+{
+	struct tcc_asrc_param_t *asrc_m2m_param;
+	struct snd_pcm_substream *asrc_substrm;
+	struct tcc_mid_buf *middle;
+	struct tcc_param_info *src;
+	struct tcc_param_info *dst;
+	struct tcc_app_buffer_info *app;
+	int ret = 0;
+
+	if(strm->asrc_m2m_param == NULL) {
+		asrc_m2m_param = (struct tcc_asrc_param_t*)devm_kzalloc(dev, sizeof(struct tcc_asrc_param_t), GFP_KERNEL);
+		if(!asrc_m2m_param) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_asrc_m2m_param;
+		} else {
+			memset(asrc_m2m_param, 0, sizeof(struct tcc_asrc_param_t));
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] asrc_m2m_param is already allocated!!\n", __func__, __LINE__);
+		asrc_m2m_param = NULL; 
+	}
+
+	if(strm->asrc_substream == NULL) {
+		asrc_substrm = (struct snd_pcm_substream*)devm_kzalloc(dev, sizeof(struct snd_pcm_substream), GFP_KERNEL);
+		if(!asrc_substrm) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_asrc_substrm;
+		} else {
+			memset(asrc_substrm, 0, sizeof(struct snd_pcm_substream));
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] asrc_substreamm is already allocated!!\n", __func__, __LINE__);
+		asrc_substrm = NULL; 
+	}
+
+	if(strm->middle == NULL) {
+		middle = (struct tcc_mid_buf*)devm_kzalloc(dev, sizeof(struct tcc_mid_buf), GFP_KERNEL);
+		if(!middle) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_middle;
+		} else {
+			memset(middle, 0, sizeof(struct tcc_mid_buf));
+		}
+
+		middle->dma_buf = (struct snd_dma_buffer *)kzalloc(sizeof(struct snd_dma_buffer), GFP_KERNEL);
+		if(!middle->dma_buf) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_middle_buf;
+		} else {
+			memset(middle->dma_buf, 0, sizeof(struct snd_dma_buffer));
+		}
+
+		middle->ptemp_buf = (unsigned char *)kzalloc(sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST, GFP_KERNEL);
+		if(!middle->ptemp_buf) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_middle_temp_buf;
+		} else {
+			memset(middle->ptemp_buf, 0, sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] middle is already allocated!!\n", __func__, __LINE__);
+		middle = NULL; 
+	}
+
+	if(strm->src == NULL) {
+		src = (struct tcc_param_info*)devm_kzalloc(dev, sizeof(struct tcc_param_info), GFP_KERNEL);
+		if(!src) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_src;
+		} else {
+			memset(src, 0, sizeof(struct tcc_param_info));
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] src is already allocated!!\n", __func__, __LINE__);
+		src = NULL; 
+	}
+
+	if(strm->dst == NULL) {
+		dst = (struct tcc_param_info*)devm_kzalloc(dev, sizeof(struct tcc_param_info), GFP_KERNEL);
+		if(!dst) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_dst;
+		} else {
+			memset(dst, 0, sizeof(struct tcc_param_info));
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] dst is already allocated!!\n", __func__, __LINE__);
+		dst = NULL; 
+	}
+
+	if(strm->app == NULL) {
+		app = (struct tcc_app_buffer_info*)devm_kzalloc(dev, sizeof(struct tcc_app_buffer_info), GFP_KERNEL);
+		if(!app) {
+			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_app;
+		} else {
+			memset(app, 0, sizeof(struct tcc_app_buffer_info));
+		}
+	} else {
+		asrc_m2m_pcm_dbg("[%s][%d] app is already allocated!!\n", __func__, __LINE__);
+		app = NULL; 
+	}
+
+	strm->asrc_m2m_param = asrc_m2m_param;
+	strm->asrc_substream = asrc_substrm;
+	strm->middle = middle;
+
+	strm->src = src;
+	strm->dst = dst;
+	strm->app = app;
+
+	return 0;
+	
+	devm_kfree(dev, app);
+error_app:
+	devm_kfree(dev, dst);
+error_dst:
+	devm_kfree(dev, src);
+error_src:
+	kfree(middle->ptemp_buf);
+error_middle_temp_buf:
+	kfree(middle->dma_buf);
+error_middle_buf:
+	devm_kfree(dev, middle);
+error_middle:
+	devm_kfree(dev, asrc_substrm);
+error_asrc_substrm:
+	devm_kfree(dev, asrc_m2m_param);
+error_asrc_m2m_param:
+	return ret;
+}
+
+static void tcc_asrc_m2m_pcm_stream_deinit(struct device *dev, struct asrc_m2m_pcm_stream *strm)
+{
+	struct tcc_asrc_param_t *asrc_m2m_param;
+	struct tcc_mid_buf *middle;
+	struct tcc_param_info *src;
+	struct tcc_param_info *dst;
+	struct tcc_app_buffer_info *app;
+
+	if(strm->asrc_m2m_param) {
+		asrc_m2m_param = strm->asrc_m2m_param;
+		devm_kfree(dev, asrc_m2m_param);
+	}
+
+	if(strm->middle) {
+		middle = strm->middle;
+		if(middle->ptemp_buf)
+			kfree(middle->ptemp_buf);
+		if(middle->dma_buf)
+			kfree(middle->dma_buf);
+		devm_kfree(dev, middle);
+	}
+
+	if(strm->src) {
+		src = strm->src;
+		devm_kfree(dev, src);
+	}
+
+	if(strm->dst) {
+		dst = strm->dst;
+		devm_kfree(dev, dst);
+	}
+
+	if(strm->app) {
+		app = strm->app;
+		devm_kfree(dev, app);
+	}
 }
 
 static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd) 
 {
 	struct snd_card *card = rtd->card->snd_card;
 	struct snd_pcm *pcm	= rtd->pcm;
+	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
+	struct platform_device *pdev;
+	bool playback=true, capture=true;
 	int ret;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	if(asrc_m2m_pcm) {
+		pdev = asrc_m2m_pcm->pdev;
+	} else {
+		asrc_m2m_pcm_dbg_err("[%s][%d] ERROR!!\n", __func__, __LINE__);
+		return -1;
+	}
+
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+
 	ret = dma_coerce_mask_and_coherent(card->dev, DMA_BIT_MASK(32));
 	if (ret) {
 		return ret;
 	}
 
-	ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, card->dev, MAX_BUFFER_BYTES*MID_BUFFER_CONST, asrc_m2m_pcm->middle->dma_buf);
-	if (ret) {
-		return ret;
+	if(dai_link->playback_only) {
+		capture = false;
 	}
+
+	if(dai_link->capture_only) {
+		playback = false;
+	}
+
+	if(playback) {
+		ret = tcc_asrc_m2m_pcm_stream_init(&pdev->dev, asrc_m2m_pcm->playback);
+		if(ret != 0) {
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			goto error_playback_stream_init;
+		}
+
+#ifdef FOOTPRINT_LINKED_LIST
+		asrc_m2m_pcm->asrc_footprint = (List *)kzalloc(sizeof(List), GFP_KERNEL);
+#else
+		asrc_m2m_pcm->asrc_footprint = (struct footprint *)kzalloc(sizeof(struct footprint), GFP_KERNEL);
+#endif
+		if(!asrc_m2m_pcm->asrc_footprint) {
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			ret = -ENOMEM;
+			goto error_footprint;
+		} else {
+			tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
+		}
+
+		ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, card->dev, MAX_BUFFER_BYTES*MID_BUFFER_CONST, asrc_m2m_pcm->playback->middle->dma_buf);
+		if (ret) {
+			goto error_alloc_pages_play;
+		}
+	}
+
+	if(capture) {
+		ret = tcc_asrc_m2m_pcm_stream_init(&pdev->dev, asrc_m2m_pcm->capture);
+		if(ret != 0) {
+			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			goto error_capture_stream_init;
+		}
+
+		ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, card->dev, MAX_BUFFER_BYTES*MID_BUFFER_CONST, asrc_m2m_pcm->capture->middle->dma_buf);
+		if (ret) {
+			goto error_alloc_pages_cap;
+		}
+	}
+
 	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
 			card->dev, MAX_BUFFER_BYTES, MAX_BUFFER_BYTES);
 	if (ret) {
-		return ret;
+		goto error_prealloc;
 	}
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	if(playback) {
+		atomic_set(&asrc_m2m_pcm->playback->wakeup, 0);
+
+		init_waitqueue_head(&asrc_m2m_pcm->playback->kth_wq);
+		spin_lock_init(&asrc_m2m_pcm->playback->is_locked);
+		spin_lock_init(&asrc_m2m_pcm->foot_locked);	//This is only for playback
+	}
+
+	if(capture) {
+		atomic_set(&asrc_m2m_pcm->capture->wakeup, 0);
+
+		init_waitqueue_head(&asrc_m2m_pcm->capture->kth_wq);
+		spin_lock_init(&asrc_m2m_pcm->capture->is_locked);
+	}
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 
 	return 0;
+	
+error_prealloc:
+	if(capture) {
+		snd_dma_free_pages(asrc_m2m_pcm->capture->middle->dma_buf);
+error_alloc_pages_cap:
+		tcc_asrc_m2m_pcm_stream_deinit(&pdev->dev, asrc_m2m_pcm->playback);
+	}
+error_capture_stream_init:
+	if(playback) {
+		snd_dma_free_pages(asrc_m2m_pcm->playback->middle->dma_buf);
+error_alloc_pages_play:
+		kfree(asrc_m2m_pcm->asrc_footprint);
+error_footprint:
+		tcc_asrc_m2m_pcm_stream_deinit(&pdev->dev, asrc_m2m_pcm->capture);
+	}
+error_playback_stream_init:
+	return ret;
 }
 
 static void tcc_asrc_m2m_pcm_free_dma_buffers(struct snd_pcm *pcm)
@@ -1747,11 +2167,12 @@ static void tcc_asrc_m2m_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 	snd_pcm_lib_preallocate_free_for_all(pcm);
-	snd_dma_free_pages(asrc_m2m_pcm->middle->dma_buf);
+	snd_dma_free_pages(asrc_m2m_pcm->playback->middle->dma_buf);
+	snd_dma_free_pages(asrc_m2m_pcm->capture->middle->dma_buf);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 }
 
 
@@ -1766,42 +2187,110 @@ static int tcc_asrc_m2m_pcm_suspend(struct platform_device *pdev, pm_message_t s
 {
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)platform_get_drvdata(pdev);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] start\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 
-	if(asrc_m2m_pcm->first_open == true) {
-		if (asrc_m2m_pcm->kth_id != NULL) { 
+	if(asrc_m2m_pcm->playback->first_open == true) {
+		if (asrc_m2m_pcm->playback->kth_id != NULL) { 
 			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
-			kthread_stop(asrc_m2m_pcm->kth_id);
-			asrc_m2m_pcm->kth_id = NULL;
+			kthread_stop(asrc_m2m_pcm->playback->kth_id);
+			asrc_m2m_pcm->playback->kth_id = NULL;
 		}
-		asrc_m2m_pcm->first_open = false;
+		asrc_m2m_pcm->playback->first_open = false;
 	}
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	if(asrc_m2m_pcm->capture->first_open == true) {
+		if (asrc_m2m_pcm->capture->kth_id != NULL) { 
+			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			kthread_stop(asrc_m2m_pcm->capture->kth_id);
+			asrc_m2m_pcm->capture->kth_id = NULL;
+		}
+		asrc_m2m_pcm->capture->first_open = false;
+	}
+
+
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
     return 0;
 }
 
 static int tcc_asrc_m2m_pcm_resume(struct platform_device *pdev)
 {
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)platform_get_drvdata(pdev);
-	asrc_m2m_pcm->first_open = false;
+	asrc_m2m_pcm->playback->first_open = false;
+	asrc_m2m_pcm->capture->first_open = false;
     return 0;
 }
 #endif
+
+static int parse_asrc_m2m_pcm_dt(struct platform_device *pdev, struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
+{
+	unsigned int itemp=0;
+	int ret=0;
+
+	asrc_m2m_pcm->pdev = pdev;
+
+    asrc_m2m_pcm->dev_id = -1;
+    asrc_m2m_pcm->dev_id = of_alias_get_id(pdev->dev.of_node, "asrc_m2m_pcm");
+	if(asrc_m2m_pcm->dev_id < 0) {
+		asrc_m2m_pcm_dbg("[%s] ERROR!! id[%d] is wrong.\n", __func__, asrc_m2m_pcm->dev_id);
+		ret = -EINVAL;
+		goto error_dev_id;
+	}
+	asrc_m2m_pcm_dbg("[%s] dev_id[%u]\n", __func__, asrc_m2m_pcm->dev_id);
+	
+	if((of_property_read_u32(pdev->dev.of_node, "playback-pair-id", &itemp)) >= 0) {
+		asrc_m2m_pcm->playback->pair_id = itemp;
+	} else {
+		asrc_m2m_pcm->playback->pair_id = 99;
+	}
+	asrc_m2m_pcm_dbg("[%s] playback_pair_id[%u]\n", __func__, asrc_m2m_pcm->playback->pair_id);
+
+	if((of_property_read_u32(pdev->dev.of_node, "capture-pair-id", &itemp)) >= 0) {
+		asrc_m2m_pcm->capture->pair_id = itemp;
+	} else {
+		asrc_m2m_pcm->capture->pair_id = 99;
+	}
+	asrc_m2m_pcm_dbg("[%s] capture_pair_id[%u]\n", __func__, asrc_m2m_pcm->capture->pair_id);
+
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+	if((of_property_read_u32(pdev->dev.of_node, "playback-amd-cmd", &itemp)) >= 0) {
+		if((itemp >= 0x0)&&(itemp < 0x9)) {	//0~5: playback stream to mixer, 6~8: general
+			asrc_m2m_pcm->playback->mbox_cmd_type = (char)(itemp&0xFF);
+		} else {
+			asrc_m2m_pcm->playback->mbox_cmd_type = 99;
+		}
+	} else {
+		asrc_m2m_pcm->playback->mbox_cmd_type = 99;
+	}
+	asrc_m2m_pcm_dbg("[%s] playback-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->playback->mbox_cmd_type);
+
+	if((of_property_read_u32(pdev->dev.of_node, "capture-amd-cmd", &itemp)) >= 0) {
+		if((itemp >= 0x0)&&(itemp < 0x9)) {	//0~5: playback stream to mixer, 6~8: general
+			asrc_m2m_pcm->capture->mbox_cmd_type = (char)(itemp&0xFF);
+		} else {
+			asrc_m2m_pcm->capture->mbox_cmd_type = 99;
+		}
+	} else {
+		asrc_m2m_pcm->capture->mbox_cmd_type = 99;
+	}
+	asrc_m2m_pcm_dbg("[%s] capture-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->capture->mbox_cmd_type);
+
+	if((asrc_m2m_pcm->playback->mbox_cmd_type == 99)&&(asrc_m2m_pcm->capture->mbox_cmd_type == 99)) {
+		asrc_m2m_pcm_dbg_err("[%s] ERROR!! cmdtype number is wrong! Please check device tree.\n", __func__);
+	}
+#endif
+error_dev_id:
+	return ret;
+}
+
 
 static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm;
 	struct tcc_asrc_t *asrc;
-	struct tcc_asrc_param_t *asrc_m2m_param;
-	struct snd_pcm_substream *asrc_substream;
-	struct tcc_mid_buf *middle;
-
-	struct tcc_param_info *src;
-	struct tcc_param_info *dst;
-	struct tcc_app_buffer_info *app;
-
+	struct asrc_m2m_pcm_stream *playback_strm;
+	struct asrc_m2m_pcm_stream *capture_strm;
+	//struct snd_pcm_substream *asrc_substream;
 	struct device_node *of_node_asrc;
 
 	asrc_m2m_pcm_dbg("[%s][%d] start\n", __func__, __LINE__);
@@ -1824,77 +2313,22 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 		memset(asrc, 0, sizeof(struct tcc_asrc_t));
 	}
 
-	asrc_m2m_param = (struct tcc_asrc_param_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_asrc_param_t), GFP_KERNEL);
-	if(!asrc_m2m_param) {
+	playback_strm = (struct asrc_m2m_pcm_stream*)devm_kzalloc(&pdev->dev, sizeof(struct asrc_m2m_pcm_stream), GFP_KERNEL);
+	if(!playback_strm) {
 		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
-		goto error_asrc_m2m_param;
+		goto error_playback_strm;
 	} else {
-		memset(asrc_m2m_param, 0, sizeof(struct tcc_asrc_param_t));
+		memset(playback_strm, 0, sizeof(struct asrc_m2m_pcm_stream));
 	}
 
-	asrc_substream = (struct snd_pcm_substream*)devm_kzalloc(&pdev->dev, sizeof(struct snd_pcm_substream), GFP_KERNEL);
-	if(!asrc_substream) {
+	capture_strm = (struct asrc_m2m_pcm_stream*)devm_kzalloc(&pdev->dev, sizeof(struct asrc_m2m_pcm_stream), GFP_KERNEL);
+	if(!capture_strm) {
 		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
-		goto error_asrc_substream;
+		goto error_capture_strm;
 	} else {
-		memset(asrc_substream, 0, sizeof(struct snd_pcm_substream));
-	}
-
-	middle = (struct tcc_mid_buf*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_mid_buf), GFP_KERNEL);
-	if(!middle) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_middle;
-	} else {
-		memset(middle, 0, sizeof(struct tcc_mid_buf));
-	}
-
-
-	middle->dma_buf = (struct snd_dma_buffer *)kzalloc(sizeof(struct snd_dma_buffer), GFP_KERNEL);
-	if(!middle->dma_buf) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_middle_buf;
-	} else {
-		memset(middle->dma_buf, 0, sizeof(struct snd_dma_buffer));
-	}
-
-	middle->ptemp_buf = (unsigned char *)kzalloc(sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST, GFP_KERNEL);
-	if(!middle->ptemp_buf) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_middle_temp_buf;
-	} else {
-		memset(middle->ptemp_buf, 0, sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
-	}
-
-	src = (struct tcc_param_info*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_param_info), GFP_KERNEL);
-	if(!src) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_src;
-	} else {
-		memset(src, 0, sizeof(struct tcc_param_info));
-	}
-
-	dst = (struct tcc_param_info*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_param_info), GFP_KERNEL);
-	if(!dst) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_dst;
-	} else {
-		memset(dst, 0, sizeof(struct tcc_param_info));
-	}
-
-	app = (struct tcc_app_buffer_info*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_app_buffer_info), GFP_KERNEL);
-	if(!app) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_app;
-	} else {
-		memset(app, 0, sizeof(struct tcc_app_buffer_info));
+		memset(capture_strm, 0, sizeof(struct asrc_m2m_pcm_stream));
 	}
 
 	of_node_asrc = of_parse_phandle(pdev->dev.of_node, "asrc", 0); 
@@ -1911,54 +2345,24 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 		goto error_of_node;
 	}
 
-
-	asrc_m2m_pcm->first_open = false;
-
 	asrc_m2m_pcm->asrc = asrc;
+	asrc_m2m_pcm->playback = playback_strm;
+	asrc_m2m_pcm->capture = capture_strm;
 
-	asrc_m2m_pcm->asrc_m2m_param = asrc_m2m_param;
-	asrc_m2m_pcm->asrc_substream = asrc_substream;
-	asrc_m2m_pcm->middle = middle;
-
-	asrc_m2m_pcm->src = src;
-	asrc_m2m_pcm->dst = dst;
-	asrc_m2m_pcm->app = app;
-
-    asrc_m2m_pcm->pair_id = -1;
-    asrc_m2m_pcm->pair_id = of_alias_get_id(pdev->dev.of_node, "asrc_m2m_pcm");
-	if(asrc_m2m_pcm->pair_id < 0) {
-		asrc_m2m_pcm_dbg("[%s] ERROR!! id[%d] is wrong.\n", __func__, asrc_m2m_pcm->pair_id);
-		ret = -EINVAL;
-		goto error_of_node;
+	if((ret = parse_asrc_m2m_pcm_dt(pdev, asrc_m2m_pcm)) < 0) {
+		pr_err("%s : Fail to parse asrc_m2m_pcm dt\n", __func__);
+		goto error_parse;
 	}
 
     asrc_m2m_pcm->dev = &pdev->dev;
+
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	asrc_m2m_pcm->mbox_cmd_type = -1;
     asrc_m2m_pcm->mbox_audio_dev = get_tcc_mbox_audio_device();
     if (asrc_m2m_pcm->mbox_audio_dev == NULL) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s] ERROR!! mbox_audio_dev is NULL!\n", __func__);
+		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] ERROR!! mbox_audio_dev is NULL!\n", __func__);
 		goto error_mailbox;
     }
 #endif
-#ifdef FOOTPRINT_LINKED_LIST
-	asrc_m2m_pcm->asrc_footprint = (List *)kzalloc(sizeof(List), GFP_KERNEL);
-#else
-	asrc_m2m_pcm->asrc_footprint = (struct footprint *)kzalloc(sizeof(struct footprint), GFP_KERNEL);
-#endif
-	if(!asrc_m2m_pcm->asrc_footprint) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] Error!!\n", __func__, __LINE__);
-		ret = -ENOMEM;
-		goto error_footprint;
-	} else {
-		tcc_asrc_footprint_init(asrc_m2m_pcm->asrc_footprint);
-	}
-
-    atomic_set(&asrc_m2m_pcm->wakeup, 0);
-
-	init_waitqueue_head(&asrc_m2m_pcm->kth_wq);
-	spin_lock_init(&asrc_m2m_pcm->is_locked);
-	spin_lock_init(&asrc_m2m_pcm->foot_locked);
 
 	platform_set_drvdata(pdev, asrc_m2m_pcm);
 
@@ -1969,35 +2373,21 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 	}
 	//asrc_m2m_pcm_dbg("tcc_asrc_m2m_pcm_platform_register success\n");
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->pair_id, "[%s][%d] end\n", __func__, __LINE__);
+	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
 	return ret;
 
 error_register:
-	kfree(asrc_m2m_pcm->asrc_footprint);
-error_footprint:
 error_mailbox:
+error_parse:
 error_of_node:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->app);
-error_app:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->dst);
-error_dst:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->src);
-error_src:
-	kfree(asrc_m2m_pcm->middle->ptemp_buf);
-error_middle_temp_buf:
-	kfree(asrc_m2m_pcm->middle->dma_buf);
-error_middle_buf:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->middle);
-error_middle:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc_substream);
-error_asrc_substream:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc_m2m_param);
-error_asrc_m2m_param:
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc);
+	devm_kfree(&pdev->dev, capture_strm);
+error_capture_strm:
+	devm_kfree(&pdev->dev, playback_strm);
+error_playback_strm:
+	devm_kfree(&pdev->dev, asrc);
 error_asrc:
 	devm_kfree(&pdev->dev, asrc_m2m_pcm);
 error_pcm:
-
 	return ret;
 }
 
@@ -2006,30 +2396,50 @@ static int tcc_asrc_m2m_pcm_remove(struct platform_device *pdev)
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)platform_get_drvdata(pdev);
 	asrc_m2m_pcm_dbg("%s\n", __func__);
 
-	if(asrc_m2m_pcm->first_open == true) {
-		if (asrc_m2m_pcm->kth_id != NULL) { 
+	if(asrc_m2m_pcm->playback->first_open == true) {
+		if (asrc_m2m_pcm->playback->kth_id != NULL) { 
 			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
-			kthread_stop(asrc_m2m_pcm->kth_id);
-			asrc_m2m_pcm->kth_id = NULL;
+			kthread_stop(asrc_m2m_pcm->playback->kth_id);
+			asrc_m2m_pcm->playback->kth_id = NULL;
 		}
-		asrc_m2m_pcm->first_open = false;
+		asrc_m2m_pcm->playback->first_open = false;
 	}
 
+	if(asrc_m2m_pcm->capture->first_open == true) {
+		if (asrc_m2m_pcm->capture->kth_id != NULL) { 
+			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			kthread_stop(asrc_m2m_pcm->capture->kth_id);
+			asrc_m2m_pcm->capture->kth_id = NULL;
+		}
+		asrc_m2m_pcm->capture->first_open = false;
+	}
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->mbox_cmd_type);
+	tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->playback->mbox_cmd_type);
+	tcc_mbox_audio_unregister_set_kernel_callback(asrc_m2m_pcm->mbox_audio_dev, asrc_m2m_pcm->capture->mbox_cmd_type);
 #endif
 	kfree(asrc_m2m_pcm->asrc_footprint);
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->app);
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->dst);
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->src);
-	
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->middle);
-	
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc_m2m_param);
-	kfree(asrc_m2m_pcm->middle->ptemp_buf);
-	kfree(asrc_m2m_pcm->middle->dma_buf);
-	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc);
 
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->playback->app);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->playback->dst);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->playback->src);
+	
+	kfree(asrc_m2m_pcm->playback->middle->ptemp_buf);
+	kfree(asrc_m2m_pcm->playback->middle->dma_buf);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->playback->middle);
+	
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->playback->asrc_m2m_param);
+
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->capture->app);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->capture->dst);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->capture->src);
+	
+	kfree(asrc_m2m_pcm->capture->middle->ptemp_buf);
+	kfree(asrc_m2m_pcm->capture->middle->dma_buf);
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->capture->middle);
+	
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->capture->asrc_m2m_param);
+
+	devm_kfree(&pdev->dev, asrc_m2m_pcm->asrc);
 	devm_kfree(&pdev->dev, asrc_m2m_pcm);
 
 	return 0;

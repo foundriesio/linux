@@ -409,7 +409,7 @@ static int tcc_component_plug_in_set(struct scaler_common_drv_type *scaler)
 	}
 	#endif//
 	
-	#ifdef CONFIG_VIOC_SAR
+	#ifdef CONFIG_VIOC_PIXEL_MAPPER
 	if(scaler->sar.reg != NULL)
 	{
 		support_plug = CheckPixelMapPathSelection(scaler->rdma.id);

@@ -34,13 +34,21 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include <linux/tcc_gpio.h>
+/*#############################################################################*/
 
+//global
 
+extern int tcc_irq_get_reverse(int irq);
+extern int tcc_gpio_config(unsigned, unsigned);
 
 struct gpio_data {
 	int gpio;
 	const char *desc;
 	int value;
+	int irq_enable;
+	int irq;
+	int irq_rev;
 };
 
 struct gpio_sample_platform_data {
@@ -48,9 +56,12 @@ struct gpio_sample_platform_data {
 	const char *name;
 };
 
+/*#############################################################################*/
 
 
+/*#############################################################################*/
 
+//sysfs
 
 static ssize_t gpio_dir_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -159,10 +170,11 @@ static ssize_t gpio_val_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+
+
 static DEVICE_ATTR(gpio_dir, S_IRUGO|S_IWUSR, gpio_dir_show, gpio_dir_store);
 static DEVICE_ATTR(gpio_num, S_IRUGO|S_IWUSR, gpio_num_show, gpio_num_store);
 static DEVICE_ATTR(gpio_val, S_IRUGO|S_IWUSR, gpio_val_show, gpio_val_store);
-
 
 static struct attribute *gpio_sample_attrs[] = {
 	&dev_attr_gpio_dir.attr,
@@ -175,7 +187,9 @@ static const struct attribute_group gpio_sample_attr_group = {
 	.attrs = gpio_sample_attrs,
 };
 
+/*#############################################################################*/
 
+//device tree parsing
 
 #ifdef CONFIG_OF
 	static struct gpio_sample_platform_data *
@@ -201,7 +215,7 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 	pdata->gdata = gdata;
 
 
-	gdata->gpio = of_get_gpio_flags(node, 0, &flags);
+	gdata->gpio = of_get_gpio_flags(node, 0, &flags); //get gpio from device tree
 	if (gdata->gpio < 0) {
 		error = gdata->gpio;
 		if (error != -ENOENT) {
@@ -219,7 +233,7 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 	}
 
 
-	gdata->desc = of_get_property(node, "label", NULL);
+	gdata->desc = of_get_property(node, "label", NULL); //get label from device tree
 
 	return pdata;
 }
@@ -240,12 +254,33 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 
 #endif
 
+/*#############################################################################*/
+
+
+//isr function
+
+static irqreturn_t gpio_sample_isr(int irq, void *dev_id)
+{
+        struct gpio_button_data *pdata = dev_id;
+
+
+//	printk("gpio sample interrupt");
+
+        return IRQ_HANDLED;
+}
+
+
+/*#############################################################################*/
 
 
 static int gpio_sample_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct gpio_sample_platform_data *pdata = dev_get_platdata(dev);
+	//struct gpio_struct *gpio_desc;
+	unsigned long irqflags;
+	irq_handler_t isr;
+	int irq, irq_rev;
 	int error;
 
 	if(!pdata) {
@@ -262,16 +297,57 @@ static int gpio_sample_probe(struct platform_device *pdev)
 
 
 	}
-	dev_set_drvdata(dev, pdata);
 
-	error = gpio_request(pdata->gdata->gpio, "sample_gpio");
+	pdata->gdata->irq_enable=0;
+
+	error = gpio_request(pdata->gdata->gpio, "sample_gpio"); 
 
 	if(error) {
 		goto err_remove_group;
 	}
 
+//set irq
 
-	error = sysfs_create_group(&pdev->dev.kobj, &gpio_sample_attr_group);
+	isr = gpio_sample_isr;
+	irq = gpio_to_irq(pdata->gdata->gpio); // get irq number -> for rising edge interrupt
+	printk("############################################irq : %d##################################################", irq);
+	if(irq < 0)
+		goto err_remove_group;
+
+	irq_rev = tcc_irq_get_reverse(irq); // get reverse irq number(irq+16) -> for falling edge interrupt
+	printk("############################################irq_rev : %d##################################################", irq_rev);
+	if(irq_rev < 0)
+		goto err_remove_group;
+
+/* two interrupt signals are used for each rising and falling edge. */
+/* Since GIC only detect rising edge signal, one of two signal to GIC from same port should be converted from low to high to detect falling edge */
+
+	pdata->gdata->irq=irq; // for rising edge
+	pdata->gdata->irq_rev=irq_rev; // for falling edge
+
+	irqflags = IRQ_TYPE_EDGE_RISING; // falling and rising edge use same IRQ_TYPE_EDGE_RISING type
+
+	error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", pdata); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising etc), 4th : name, 5th : parameter to isr
+
+        if (error) {
+                dev_err(dev, "Unable requests irq, error: %d\n",
+                                error);
+                goto err_remove_group;
+        }
+
+	irqflags = IRQ_TYPE_EDGE_FALLING;
+
+        error = request_any_context_irq(irq_rev, isr, irqflags, "sample_gpio_interrupt", pdata);
+
+        if (error) {
+                dev_err(dev, "Unable requests irq, error: %d\n",
+                                error);
+                goto err_remove_group;
+        }
+
+	dev_set_drvdata(dev, pdata);
+
+	error = sysfs_create_group(&pdev->dev.kobj, &gpio_sample_attr_group); //create nodes to sysfs with attribute_group
 	if (error) {
 		dev_err(dev, "Unable to export sample/switches, error: %d\n",
 				error);
