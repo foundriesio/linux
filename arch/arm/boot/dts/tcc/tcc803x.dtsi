@@ -7,6 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc803x-clks.h>
+#include <dt-bindings/reset/telechips,tcc803x-reset.h>
 #include <dt-bindings/display/tcc803x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -677,6 +678,11 @@
 			0x16684000 0x000010  /* uart config*/
 			0x14200000 0x000700>;  /* gpio*/
 		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
+	};
+
+	pmu_rst: reset-controller@140000b4 {
+		compatible = "telechips,reset";
+		#reset-cells = <1>;
 	};
 
 	clocks {
@@ -1974,6 +1980,7 @@
 		clocks = <&clk_peri PERI_PCIE_AUX>, <&clk_peri PERI_PCIE_APB>, <&clk_peri PERI_PCIE_PCS>, <&clk_peri PERI_PCIE_REF_EXT>,
 			 <&clk_fbus FBUS_HSIO>, <&clk_isoip_top ISOIP_TOP_PCIE>;
 		clock-names = "pcie_aux", "pcie_apb", "pcie_pcs" ,"pcie_ref_ext", "fbus_hsio", "pcie_phy";
+		resets = <&pmu_rst RESET_PCIE>;
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";

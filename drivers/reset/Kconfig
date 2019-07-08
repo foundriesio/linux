@@ -93,6 +93,12 @@ config RESET_SUNXI
 	help
 	  This enables the reset driver for Allwinner SoCs.
 
+config RESET_TCC
+	bool "Telechips SoCs Reset Driver"
+	default ARCH_TCC
+	help
+	  This enables the reset driver for Telechips SoCs.
+
 config RESET_TI_SCI
 	tristate "TI System Control Interface (TI-SCI) reset driver"
 	depends on TI_SCI_PROTOCOL
