@@ -5668,6 +5668,9 @@ int mlx5_ib_stage_init_init(struct mlx5_ib_dev *dev)
 	for (i = 0; i < dev->num_ports; i++) {
 		spin_lock_init(&dev->port[i].mp.mpi_lock);
 		rwlock_init(&dev->roce[i].netdev_lock);
+		dev->roce[i].dev = dev;
+		dev->roce[i].native_port_num = i + 1;
+		dev->roce[i].last_port_state = IB_PORT_DOWN;
 	}
 
 	err = mlx5_ib_init_multiport_master(dev);
@@ -5919,13 +5922,6 @@ int mlx5_ib_stage_rep_non_default_cb(struct mlx5_ib_dev *dev)
 static int mlx5_ib_stage_common_roce_init(struct mlx5_ib_dev *dev)
 {
 	u8 port_num;
-	int i;
-
-	for (i = 0; i < dev->num_ports; i++) {
-		dev->roce[i].dev = dev;
-		dev->roce[i].native_port_num = i + 1;
-		dev->roce[i].last_port_state = IB_PORT_DOWN;
-	}
 
 	dev->ib_dev.get_netdev	= mlx5_ib_get_netdev;
 	dev->ib_dev.create_wq	 = mlx5_ib_create_wq;
