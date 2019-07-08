@@ -18,6 +18,7 @@ struct pci_dev;
 struct platform_msi_priv_data;
 void __get_cached_msi_msg(struct msi_desc *entry, struct msi_msg *msg);
 #ifdef CONFIG_GENERIC_MSI_IRQ
+int suse_msi_set_irq_unmanaged(struct device *dev);
 void get_cached_msi_msg(unsigned int irq, struct msi_msg *msg);
 #else
 static inline void get_cached_msi_msg(unsigned int irq, struct msi_msg *msg)
