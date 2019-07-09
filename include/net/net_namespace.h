@@ -54,7 +54,6 @@ struct net {
 						 */
 	spinlock_t		rules_mod_lock;
 
-	u32			hash_mix;
 	atomic64_t		cookie_gen;
 
 	struct list_head	list;		/* list of network namespaces */
@@ -156,6 +155,7 @@ struct net {
 	} ip6addrlbl_table;
 	struct uevent_sock	*uevent_sock;		/* uevent socket */
 	int sysctl_tcp_min_snd_mss;
+	u32			hash_mix;
 #endif
 };
 
