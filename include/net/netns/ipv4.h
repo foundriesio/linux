@@ -160,6 +160,5 @@ struct netns_ipv4 {
 	unsigned int	fib_seq;	/* protected by rtnl_mutex */
 
 	atomic_t	rt_genid;
-	siphash_key_t	ip_id_key;
 };
 #endif

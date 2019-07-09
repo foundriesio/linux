@@ -156,6 +156,7 @@ struct net {
 	struct uevent_sock	*uevent_sock;		/* uevent socket */
 	int sysctl_tcp_min_snd_mss;
 	u32			hash_mix;
+	siphash_key_t		ip_id_key;
 #endif
 };
 
