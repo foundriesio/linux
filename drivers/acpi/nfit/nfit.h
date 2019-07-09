@@ -181,6 +181,13 @@ struct nfit_mem {
 	bool has_lsw;
 };
 
+enum scrub_flags {
+	ARS_BUSY,
+	ARS_CANCEL,
+	ARS_POLL,
+	ARS_VALID,
+};
+
 struct acpi_nfit_desc {
 	struct nvdimm_bus_descriptor nd_desc;
 	struct acpi_table_header acpi_header;
@@ -213,6 +220,7 @@ struct acpi_nfit_desc {
 			void *iobuf, u64 len, int rw);
 #ifndef __GENKSYMS__
 	struct nfit_spa *scrub_spa;
+	unsigned long scrub_flags;
 #endif
 };
 
