@@ -520,15 +520,15 @@
 #else
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_mmc_cd>;
+	no-1-8-v;
 #endif
 	label = "MMC1";
 	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* MMCD */
 	disable-wp;
 	enable-sdio-wakeup;
 	keep-power-in-suspend;
-	vqmmc-supply = <&reg_module_3v3>;
+	vmmc-supply = <&reg_3p3v>;
 	bus-width = <4>;
-	no-1-8-v;
 	status = "disabled";
 };
 
