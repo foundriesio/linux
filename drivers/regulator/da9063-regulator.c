@@ -211,6 +211,7 @@ static int da9063_buck_set_mode(struct regulator_dev *rdev, unsigned mode)
 	default:
 		return -EINVAL;
 	}
+	printk("Set PMIC mode : %d\n", val);
 
 	return regmap_field_write(regl->mode, val);
 }
