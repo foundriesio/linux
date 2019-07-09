@@ -214,6 +214,7 @@ enum scrub_flags {
 	ARS_BUSY,
 	ARS_CANCEL,
 	ARS_VALID,
+	ARS_POLL,
 };
 
 struct acpi_nfit_desc {
