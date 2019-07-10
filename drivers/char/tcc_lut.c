@@ -43,7 +43,7 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.1"
+#define LUT_VERSION "v1.2"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
@@ -90,7 +90,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	                                        break;
 	                                }
 	                                if(copy_from_user((void *)lut_value_set_ex,
-	                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET))) {
+	                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET_EX))) {
 	                                        pr_err("%s TCC_LUT_SET_EX failed copy from user\r\n", __func__);
 	                                        break;
 	                                }
