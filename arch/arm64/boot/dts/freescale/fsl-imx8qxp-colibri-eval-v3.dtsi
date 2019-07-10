@@ -62,12 +62,12 @@
 		};
 
 		vdd_3v3_vga: regulator-vga-avcc {
-                        compatible = "regulator-fixed";
-                        regulator-name = "+3.3V_AVCC_VGA";
-                        regulator-min-microvolt = <3300000>;
-                        regulator-max-microvolt = <3300000>;
+			compatible = "regulator-fixed";
+			regulator-name = "+3.3V_AVCC_VGA";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
 			regulator-always-on;
-                };
+		};
 	};
 
 	sound {
