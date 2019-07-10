@@ -63,36 +63,36 @@
 		label = "vga";
 		status = "okay";
 
-                port {
-                        vga_in: endpoint {
-                                remote-endpoint = <&adv7125_out>;
-                        };
-                };
-        };
+		port {
+			vga_in: endpoint {
+				remote-endpoint = <&adv7125_out>;
+			};
+		};
+	};
 
-        vga-encoder {
-                compatible = "adi,adv7125", "adi,adv7123";
+	vga-encoder {
+		compatible = "adi,adv7125", "adi,adv7123";
 		status = "okay";
 		vdd-supply = <&vdd_3v3_vga>;
 
-                ports {
-                        #address-cells = <1>;
+		ports {
+			#address-cells = <1>;
 			#size-cells = <0>;
 
-                        port@0 {
-                                reg = <0>;
-                                lcd_display_in: endpoint {
-                                        remote-endpoint = <&lcdif_out>;
-                                };
-                        };
-                        port@1 {
-                                reg = <1>;
-                                adv7125_out: endpoint {
-                                        remote-endpoint = <&vga_in>;
-                                };
-                        };
-                };
-        };
+			port@0 {
+				reg = <0>;
+				lcd_display_in: endpoint {
+					remote-endpoint = <&lcdif_out>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				adv7125_out: endpoint {
+					remote-endpoint = <&vga_in>;
+				};
+			};
+		};
+	};
 #endif
 };
 
