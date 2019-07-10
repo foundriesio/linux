@@ -479,28 +479,7 @@
 				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT	0x00000021
 			>;
 		};
-#if 0
-		pinctrl_flexspi0: flexspi0grp {
-			fsl,pins = <
-				SC_P_QSPI0A_DATA0_LSIO_QSPI0A_DATA0	0x0600004c
-				SC_P_QSPI0A_DATA1_LSIO_QSPI0A_DATA1	0x0600004c
-				SC_P_QSPI0A_DATA2_LSIO_QSPI0A_DATA2	0x0600004c
-				SC_P_QSPI0A_DATA3_LSIO_QSPI0A_DATA3	0x0600004c
-				SC_P_QSPI0A_DQS_LSIO_QSPI0A_DQS		0x0600004c
-				SC_P_QSPI0A_SS0_B_LSIO_QSPI0A_SS0_B	0x0600004c
-				SC_P_QSPI0A_SS1_B_LSIO_QSPI0A_SS1_B	0x0600004c
-				SC_P_QSPI0A_SCLK_LSIO_QSPI0A_SCLK	0x0600004c
-				SC_P_QSPI0B_SCLK_LSIO_QSPI0B_SCLK	0x0600004c
-				SC_P_QSPI0B_DATA0_LSIO_QSPI0B_DATA0	0x0600004c
-				SC_P_QSPI0B_DATA1_LSIO_QSPI0B_DATA1	0x0600004c
-				SC_P_QSPI0B_DATA2_LSIO_QSPI0B_DATA2	0x0600004c
-				SC_P_QSPI0B_DATA3_LSIO_QSPI0B_DATA3	0x0600004c
-				SC_P_QSPI0B_DQS_LSIO_QSPI0B_DQS		0x0600004c
-				SC_P_QSPI0B_SS0_B_LSIO_QSPI0B_SS0_B	0x0600004c
-				SC_P_QSPI0B_SS1_B_LSIO_QSPI0B_SS1_B	0x0600004c
-			>;
-		};
-#endif
+
 		pinctrl_i2c0_mipi_lvds0: mipi_lvds0_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI0_I2C0_SCL_MIPI_DSI0_I2C0_SCL 0xc6000020
@@ -532,14 +511,12 @@
 	};
 };
 
-#ifndef IS_A0_SILICON
 &adc0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_adc0>;
 	vref-supply = <&reg_vref_1v8>;
 	status = "okay";
 };
-#endif
 
 /* CAN on UART_B RTS/CTS */
 &flexcan1 {
@@ -696,22 +673,6 @@
 		};
 	};
 };
-#if 0
-&flexspi0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexspi0>;
-	status = "okay";
-
-	flash0: mt35xu512aba@0 {
-		reg = <0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "spi-flash";
-		spi-max-frequency = <29000000>;
-		spi-nor,ddr-quad-read-dummy = <8>;
-	};
-};
-#endif
 
 &i2c0 {
 	#address-cells = <1>;
@@ -1011,15 +972,6 @@
 	status = "disabled";
 };
 
-#ifdef IS_A0_SILICON
-&vpu_decoder {
-	status = "disabled";
-};
-
-&vpu_encoder {
-	status = "disabled";
-};
-#else
 &vpu_decoder {
 	core_type = <1>;
 	status = "okay";
@@ -1029,4 +981,3 @@
 	core_type = <1>;
 	status = "okay";
 };
-#endif

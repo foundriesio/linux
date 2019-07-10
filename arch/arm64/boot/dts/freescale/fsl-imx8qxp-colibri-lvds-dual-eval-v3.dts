@@ -4,7 +4,6 @@
  */
 
 /dts-v1/;
-//#define IS_A0_SILICON
 
 #include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp-colibri.dtsi"

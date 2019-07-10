@@ -4,7 +4,6 @@
  */
 
 /dts-v1/;
-//#define IS_A0_SILICON
 //#define DSI_TO_HDMI_V10
 
 #include "fsl-imx8qxp-colibri.dtsi"
