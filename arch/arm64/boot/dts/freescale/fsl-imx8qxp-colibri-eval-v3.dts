@@ -23,7 +23,7 @@
 //#define LCDIF_OUT_ADV7125
 
 #include "dt-bindings/pwm/pwm.h"
-#include "fsl-imx8qxp-colibri-eval-v3.dtsi"
+#include "fsl-imx8qxp-colibri.dtsi"
 
 / {
 	model = "Toradex Colibri iMX8QXP";
