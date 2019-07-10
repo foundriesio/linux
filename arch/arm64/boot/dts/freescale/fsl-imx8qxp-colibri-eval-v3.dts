@@ -4,7 +4,6 @@
  */
 
 /dts-v1/;
-//#define IS_A0_SILICON
 
 /*
  * Choose output point for LCDIF block:
