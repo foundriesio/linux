@@ -132,6 +132,7 @@ x86-fpu-Update-kernel-s-FPU-state-before-using-for-t.patch
 efi-Allow-efi-runtime.patch
 
 softirq-Add-preemptible-softirq.patch
+softirq-Don-t-do-softirq-if-ksoftird-is-pending.patch
 sched-swait-Add-swait_event_lock_irq.patch
 # WORKQUEUE
 workqueue-use-rcu.patch
