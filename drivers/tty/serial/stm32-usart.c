@@ -225,12 +225,17 @@ static void stm32_receive_chars(struct uart_port *port, bool threaded)
 	struct tty_port *tport = &port->state->port;
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
-	unsigned long c;
+	unsigned long c, flags;
 	u32 sr;
 	char flag;
 
 	if (irqd_is_wakeup_set(irq_get_irq_data(port->irq)))
 		pm_wakeup_event(tport->tty->dev, 0);
+
+	if (threaded)
+		spin_lock_irqsave(&port->lock, flags);
+	else
+		spin_lock(&port->lock);
 
 	while (stm32_pending_rx(port, &sr, &stm32_port->last_res, threaded)) {
 		sr |= USART_SR_DUMMY_RX;
@@ -286,9 +291,12 @@ static void stm32_receive_chars(struct uart_port *port, bool threaded)
 		uart_insert_char(port, sr, USART_SR_ORE, c, flag);
 	}
 
-	spin_unlock(&port->lock);
+	if (threaded)
+		spin_unlock_irqrestore(&port->lock, flags);
+	else
+		spin_unlock(&port->lock);
+
 	tty_flip_buffer_push(tport);
-	spin_lock(&port->lock);
 }
 
 static void stm32_tx_dma_complete(void *arg)
@@ -320,7 +328,9 @@ static void stm32_rx_dma_complete(void *arg)
 
 	if (stm32port->rx_dma_cb == CALLBACK_NOT_CALLED) {
 		stm32port->rx_dma_cb = CALLBACK_CALLED;
+		spin_unlock_irqrestore(&port->lock, flags);
 		stm32_receive_chars(port, true);
+		return;
 	}
 
 	spin_unlock_irqrestore(&port->lock, flags);
@@ -471,8 +481,6 @@ static irqreturn_t stm32_interrupt(int irq, void *ptr)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	u32 sr;
 
-	spin_lock(&port->lock);
-
 	sr = readl_relaxed(port->membase + ofs->isr);
 
 	if ((sr & USART_SR_RTOF) && (ofs->icr != UNDEF_REG))
@@ -486,10 +494,11 @@ static irqreturn_t stm32_interrupt(int irq, void *ptr)
 	if ((sr & USART_SR_RXNE) && !(stm32_port->rx_ch))
 		stm32_receive_chars(port, false);
 
-	if ((sr & USART_SR_TXE) && !(stm32_port->tx_ch))
+	if ((sr & USART_SR_TXE) && !(stm32_port->tx_ch)) {
+		spin_lock(&port->lock);
 		stm32_transmit_chars(port);
-
-	spin_unlock(&port->lock);
+		spin_unlock(&port->lock);
+	}
 
 	if (stm32_port->rx_ch)
 		return IRQ_WAKE_THREAD;
@@ -502,11 +511,12 @@ static irqreturn_t stm32_threaded_interrupt(int irq, void *ptr)
 	struct uart_port *port = ptr;
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
-
-	spin_lock(&port->lock);
+	unsigned long flags;
 
 	if (stm32_port->rx_ch) {
+		spin_lock_irqsave(&port->lock, flags);
 		stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
+		spin_unlock_irqrestore(&port->lock, flags);
 		dma_sync_single_for_cpu(port->dev,
 					stm32_port->rx_dma_buf,
 					RX_BUF_L, DMA_FROM_DEVICE);
@@ -514,10 +524,10 @@ static irqreturn_t stm32_threaded_interrupt(int irq, void *ptr)
 		dma_sync_single_for_device(port->dev,
 					   stm32_port->rx_dma_buf,
 					   RX_BUF_L, DMA_FROM_DEVICE);
+		spin_lock_irqsave(&port->lock, flags);
 		stm32_set_bits(port, ofs->cr3, USART_CR3_DMAR);
+		spin_unlock_irqrestore(&port->lock, flags);
 	}
-
-	spin_unlock(&port->lock);
 
 	return IRQ_HANDLED;
 }
