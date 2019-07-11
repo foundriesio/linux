@@ -6,22 +6,12 @@
 #include "fsl-imx8qxp.dtsi"
 
 / {
-	aliases {
-		rtc0 = &rtc_i2c;
-		rtc1 = &rtc;
-	};
+	model = "Toradex Colibri iMX8QXP/DX Module";
+	compatible = "toradex,colibri-imx8x", "fsl,imx8qxp";
 
 	chosen {
 		bootargs = "console=ttyLP3,115200 earlycon=lpuart32,0x5a090000,115200";
 		stdout-path = &lpuart3;
-	};
-
-	extcon_usbc_det: usbc_det {
-		compatible = "linux,extcon-usb-gpio";
-		debounce = <25>;
-		id-gpio = <&gpio5 9 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usbc_det &pinctrl_ext_io0>;
 	};
 
 	regulators {
@@ -48,17 +38,6 @@
 			regulator-name = "vref-1v8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
-		};
-
-		reg_usbh_vbus: regulator-usbh-vbus {
-			compatible = "regulator-fixed";
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_usbh1_reg>;
-			regulator-name = "usbh_vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio4 3 GPIO_ACTIVE_LOW>;
-			regulator-always-on;
 		};
 
 		vdd_3v3_vga: regulator-vga-avcc {
@@ -274,29 +253,7 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
-	status = "okay";
-
-	ov5640_mipi: ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi_v3";
-		clocks = <&clk IMX8QXP_24MHZ>;
-		clock-names = "csi_mclk";
-		csi_id = <0>;
-		mclk = <24000000>;
-		mclk_source = <0>;
-		mipi_csi;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_csi_ctl>;
-		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
-		reg = <0x3c>;
-		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
-		status = "okay";
-
-		port {
-			ov5640_ep: endpoint {
-				remote-endpoint = <&mipi_csi0_ep>;
-			};
-		};
-	};
+	status = "disabled";
 };
 
 /* Colibri I2C */
@@ -306,13 +263,6 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
-	status = "okay";
-
-	/* M41T0M6 real time clock on carrier board */
-	rtc_i2c: rtc@68 {
-		compatible = "st,m41t0";
-		reg = <0x68>;
-	};
 };
 
 &imx8_gpu_ss {
@@ -792,13 +742,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi2>;
 	cs-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-	status = "okay";
-
-	spidev0: spidev@0 {
-		compatible = "toradex,evalspi";
-		reg = <0>;
-		spi-max-frequency = <10000000>;
-	};
+	status = "disabled";
 };
 
 /* Colibri UART_B */
@@ -827,17 +771,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	/delete-property/virtual-channel;
-	status = "okay";
-
-	/* Camera 0 MIPI CSI-2 (CSIS0) */
-	port@0 {
-		reg = <0>;
-
-		mipi_csi0_ep: endpoint {
-			data-lanes = <1 2>;
-			remote-endpoint = <&ov5640_ep>;
-		};
-	};
+	status = "disabled";
 };
 
 /* On-module PCIe for wifi */
@@ -998,22 +932,6 @@
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
-	status = "okay";
-};
-
-&usbotg1 {
-	extcon = <&extcon_usbc_det &extcon_usbc_det>;
-	vbus-supply = <&reg_usbh_vbus>;
-	srp-disable;
-	hnp-disable;
-	adp-disable;
-	power-polarity-active-high;
-	disable-over-current;
-	status = "okay";
-};
-
-&usbotg3 {
-	dr_mode = "host";
 	status = "okay";
 };
 

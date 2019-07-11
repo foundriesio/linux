@@ -25,15 +25,26 @@
 #include "fsl-imx8qxp-colibri.dtsi"
 
 / {
-	model = "Toradex Colibri iMX8QXP";
+	model = "Toradex Colibri iMX8QXP/DX on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri-imx8qxp-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
+
+	aliases {
+		rtc0 = &rtc_i2c;
+		rtc1 = &rtc;
+	};
 
 	display-subsystem {
 		status = "disabled";
 	};
 
-#ifndef LCDIF_OUT_ADV7125
-	backlight: backlight {
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio5 9 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbc_det &pinctrl_ext_io0>;
+	};
+
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
@@ -93,6 +104,19 @@
 		};
 	};
 #endif
+
+	regulators {
+		reg_usbh_vbus: regulator-usbh-vbus {
+			compatible = "regulator-fixed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usbh1_reg>;
+			regulator-name = "usbh_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio4 3 GPIO_ACTIVE_LOW>;
+			regulator-always-on;
+		};
+	};
 };
 
 &adma_lcdif {
@@ -132,12 +156,65 @@
 	status = "disabled";
 };
 
+/* On-module MIPI CSI I2C accessible via FFC (X3) */
+&i2c0_mipi_lvds1 {
+	status = "okay";
+
+	ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		clocks = <&clk IMX8QXP_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <0>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_csi_ctl>;
+		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
+		reg = <0x3c>;
+		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		port {
+			ov5640_ep: endpoint {
+				remote-endpoint = <&mipi_csi0_ep>;
+			};
+		};
+	};
+};
+
 &ldb1_phy {
 	status = "disabled";
 };
 
 &ldb1 {
 	status = "disabled";
+};
+
+/* Colibri SPI */
+&lpspi2 {
+	status = "okay";
+
+	spidev0: spidev@0 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+	};
+};
+
+/* On-module MIPI CSI accessible via FFC (X3) */
+&mipi_csi_0 {
+	status = "okay";
+
+	/* Camera 0 MIPI CSI-2 (CSIS0) */
+	port@0 {
+		reg = <0>;
+
+		mipi_csi0_ep: endpoint {
+			data-lanes = <1 2>;
+			remote-endpoint = <&ov5640_ep>;
+		};
+	};
 };
 
 &mipi_dsi_phy1 {
@@ -151,6 +228,16 @@
 
 &mipi_dsi_bridge1 {
 	status = "disabled";
+};
+
+&i2c1 {
+	status = "okay";
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t0";
+		reg = <0x68>;
+	};
 };
 
 /* DSI/LVDS port 1 */
@@ -193,5 +280,21 @@
 &pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
+	status = "okay";
+};
+
+&usbotg1 {
+	extcon = <&extcon_usbc_det &extcon_usbc_det>;
+	vbus-supply = <&reg_usbh_vbus>;
+	srp-disable;
+	hnp-disable;
+	adp-disable;
+	power-polarity-active-high;
+	disable-over-current;
+	status = "okay";
+};
+
+&usbotg3 {
+	dr_mode = "host";
 	status = "okay";
 };
