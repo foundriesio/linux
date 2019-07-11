@@ -210,6 +210,13 @@ struct nfit_mem {
 	int family;
 };
 
+enum scrub_flags {
+	ARS_BUSY,
+	ARS_CANCEL,
+	ARS_POLL,
+	ARS_VALID,
+};
+
 struct acpi_nfit_desc {
 	struct nvdimm_bus_descriptor nd_desc;
 	struct acpi_table_header acpi_header;
@@ -241,6 +248,9 @@ struct acpi_nfit_desc {
 	unsigned int scrub_tmo;
 	int (*blk_do_io)(struct nd_blk_region *ndbr, resource_size_t dpa,
 			void *iobuf, u64 len, int rw);
+#ifndef __GENKSYMS__
+	unsigned long scrub_flags;
+#endif
 };
 
 enum scrub_mode {

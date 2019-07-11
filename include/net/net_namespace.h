@@ -153,6 +153,8 @@ struct net {
 	atomic_t		fnhe_genid;
 #ifndef __GENKSYMS__
 	int sysctl_tcp_min_snd_mss;
+	u32			hash_mix;
+	siphash_key_t		ip_id_key;
 #endif
 };
 
