@@ -89,6 +89,236 @@
 	};
 };
 
+/* Colibri Analogue Inputs */
+&adc0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc0>;
+	vref-supply = <&reg_vref_1v8>;
+	status = "okay";
+};
+
+/* Display Prefetch Resolve, (Tiling) */
+&dpr1_channel1 {
+	status = "okay";
+};
+
+&dpr1_channel2 {
+	status = "okay";
+};
+
+&dpr1_channel3 {
+	status = "okay";
+};
+
+&dpr2_channel1 {
+	status = "okay";
+};
+
+&dpr2_channel2 {
+	status = "okay";
+};
+
+&dpr2_channel3 {
+	status = "okay";
+};
+
+&dpu1 {
+	status = "okay";
+};
+
+/* Colibri Ethernet */
+&fec1 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&pinctrl_fec1>;
+	pinctrl-1 = <&pinctrl_fec1_sleep>;
+	clocks = <&clk IMX8QXP_ENET0_IPG_CLK>,
+		 <&clk IMX8QXP_ENET0_AHB_CLK>,
+		 <&clk IMX8QXP_ENET0_REF_50MHZ_CLK>,
+		 <&clk IMX8QXP_ENET0_PTP_CLK>,
+		 <&clk IMX8QXP_ENET0_TX_CLK>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy0>;
+	fsl,magic-packet;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@2 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			max-speed = <100>;
+			reg = <2>;
+		};
+	};
+};
+
+/* Colibri optional CAN on UART_B RTS/CTS */
+&flexcan1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+	xceiver-supply = <&reg_module_3v3>;
+	status = "disabled";
+};
+
+/* Colibri optional CAN on PS2 */
+&flexcan2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan2>;
+	xceiver-supply = <&reg_module_3v3>;
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&gpu_3d0 {
+	status = "okay";
+};
+
+/* On-module I2C */
+&i2c0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0>, <&pinctrl_sgtl5000_usb_clk>;
+	status = "okay";
+
+	/*
+	 * IMX8QXP_AUD_MCLKOUT0 is used by both the usb3803 and sgtl5000
+	 * So do the pinmuxing and setup for both here
+	 */
+	assigned-clocks = <&clk IMX8QXP_AUD_PLL0_DIV>,
+			  <&clk IMX8QXP_AUD_ACM_AUD_PLL_CLK0_DIV>,
+			  <&clk IMX8QXP_AUD_ACM_AUD_REC_CLK0_DIV>,
+			  <&clk IMX8QXP_AUD_MCLKOUT0>;
+	assigned-clock-rates = <786432000>, <49152000>, <12000000>, <12000000>;
+
+	/* USB3503A */
+	usb3803@08 {
+		compatible = "smsc,usb3803";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usb3503a>;
+		reg = <0x08>;
+		clocks = <&clk IMX8QXP_AUD_MCLKOUT0>;
+		clock-names = "refclk";
+		power-domains = <&pd_mclk_out0>;
+		bypass-gpios = <&gpio_expander_43 5 GPIO_ACTIVE_LOW>;
+		intn-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio_expander_43 4 GPIO_ACTIVE_LOW>;
+		disabled-ports = <2>;
+		initial-mode = <1>;
+		non-removable-devices = <1>;
+	};
+
+	/* SGTL5000 */
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		#sound-dai-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_sgtl5000>;
+		reg = <0x0a>;
+		clocks = <&clk IMX8QXP_AUD_MCLKOUT0>;
+		power-domains = <&pd_mclk_out0>;
+		VDDA-supply = <&reg_module_3v3_avdd>;
+		VDDIO-supply = <&reg_module_3v3>;
+		VDDD-supply = <&reg_vref_1v8>;
+	};
+
+	/* GPIO expander */
+	gpio_expander_43: gpio-expander@43 {
+		compatible = "fcs,fxl6408";
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x43>;
+		inital_io_dir = <0xff>;
+		inital_output = <0x05>;
+	};
+
+	/* Touch controller */
+	ad7879@2c {
+		compatible = "adi,ad7879-1";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ad7879_int>;
+		reg = <0x2c>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+		touchscreen-max-pressure = <4096>;
+		adi,resistance-plate-x = <120>;
+		adi,first-conversion-delay = /bits/ 8 <3>;
+		adi,acquisition-time = /bits/ 8 <1>;
+		adi,median-filter-size = /bits/ 8 <2>;
+		adi,averaging = /bits/ 8 <1>;
+		adi,conversion-interval = /bits/ 8 <255>;
+	};
+};
+
+/* On-module MIPI CSI I2C accessible via FFC (X3) */
+&i2c0_mipi_lvds1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
+	status = "okay";
+
+	ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		clocks = <&clk IMX8QXP_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <0>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_csi_ctl>;
+		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
+		reg = <0x3c>;
+		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		port {
+			ov5640_ep: endpoint {
+				remote-endpoint = <&mipi_csi0_ep>;
+			};
+		};
+	};
+};
+
+/* Colibri I2C */
+&i2c1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	status = "okay";
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t0";
+		reg = <0x68>;
+	};
+};
+
+&imx8_gpu_ss {
+	status = "okay";
+};
+
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>;
@@ -538,28 +768,37 @@
 	};
 };
 
-/* Colibri Analogue Inputs */
-&adc0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_adc0>;
-	vref-supply = <&reg_vref_1v8>;
+&isi_0 {
 	status = "okay";
 };
 
-/* Colibri optional CAN on UART_B RTS/CTS */
-&flexcan1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan1>;
-	xceiver-supply = <&reg_module_3v3>;
-	status = "disabled";
+&isi_1 {
+	status = "okay";
 };
 
-/* Colibri optional CAN on PS2 */
-&flexcan2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan2>;
-	xceiver-supply = <&reg_module_3v3>;
+&isi_2 {
 	status = "okay";
+};
+
+&isi_3 {
+	status = "okay";
+};
+
+/* Colibri SPI */
+&lpspi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	fsl,spi-num-chipselects = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpspi2>;
+	cs-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	spidev0: spidev@0 {
+		compatible = "toradex,evalspi";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+	};
 };
 
 /* Colibri UART_B */
@@ -576,10 +815,6 @@
 	status = "okay";
 };
 
-&pd_dma_lpuart3 {
-	debug_console;
-};
-
 /* Colibri UART_A */
 &lpuart3 {
 	pinctrl-names = "default";
@@ -587,21 +822,42 @@
 	status = "okay";
 };
 
-&gpio0 {
+/* On-module MIPI CSI accessible via FFC (X3) */
+&mipi_csi_0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/delete-property/virtual-channel;
+	status = "okay";
+
+	/* Camera 0 MIPI CSI-2 (CSIS0) */
+	port@0 {
+		reg = <0>;
+
+		mipi_csi0_ep: endpoint {
+			data-lanes = <1 2>;
+			remote-endpoint = <&ov5640_ep>;
+		};
+	};
+};
+
+/* On-module PCIe for wifi */
+&pcieb{
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
+	ext_osc = <1>;
+	clkreq-gpio = <&gpio_expander_43 3 GPIO_ACTIVE_HIGH>;
+	disable-gpio = <&gpio_expander_43 6 GPIO_ACTIVE_LOW>;
+	power-on-gpio = <&gpio_expander_43 2 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&gpio4 0 GPIO_ACTIVE_LOW>;
+/*	epdev_on-supply = <&reg_wifi>;*/
+	fsl,max-link-speed = <1>;
 	status = "okay";
 };
 
-&gpio1 {
-	status = "okay";
+&pd_dma_lpuart3 {
+	debug_console;
 };
 
-&gpio3 {
-	status = "okay";
-};
-
-&gpio4 {
-	status = "okay";
-};
 
 &pixel_combiner {
 	status = "okay";
@@ -640,261 +896,6 @@
 };
 
 &prg9 {
-	status = "okay";
-};
-
-/* Display Prefetch Resolve, (Tiling) */
-&dpr1_channel1 {
-	status = "okay";
-};
-
-&dpr1_channel2 {
-	status = "okay";
-};
-
-&dpr1_channel3 {
-	status = "okay";
-};
-
-&dpr2_channel1 {
-	status = "okay";
-};
-
-&dpr2_channel2 {
-	status = "okay";
-};
-
-&dpr2_channel3 {
-	status = "okay";
-};
-
-&dpu1 {
-	status = "okay";
-};
-
-&gpu_3d0 {
-	status = "okay";
-};
-
-&imx8_gpu_ss {
-	status = "okay";
-};
-
-/* Colibri Ethernet */
-&fec1 {
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&pinctrl_fec1>;
-	pinctrl-1 = <&pinctrl_fec1_sleep>;
-	clocks = <&clk IMX8QXP_ENET0_IPG_CLK>,
-		 <&clk IMX8QXP_ENET0_AHB_CLK>,
-		 <&clk IMX8QXP_ENET0_REF_50MHZ_CLK>,
-		 <&clk IMX8QXP_ENET0_PTP_CLK>,
-		 <&clk IMX8QXP_ENET0_TX_CLK>;
-	phy-mode = "rmii";
-	phy-handle = <&ethphy0>;
-	fsl,magic-packet;
-	status = "okay";
-
-	mdio {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		ethphy0: ethernet-phy@2 {
-			compatible = "ethernet-phy-ieee802.3-c22";
-			max-speed = <100>;
-			reg = <2>;
-		};
-	};
-};
-
-/* On-module I2C */
-&i2c0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0>, <&pinctrl_sgtl5000_usb_clk>;
-	status = "okay";
-
-	/*
-	 * IMX8QXP_AUD_MCLKOUT0 is used by both the usb3803 and sgtl5000
-	 * So do the pinmuxing and setup for both here
-	 */
-	assigned-clocks = <&clk IMX8QXP_AUD_PLL0_DIV>,
-			  <&clk IMX8QXP_AUD_ACM_AUD_PLL_CLK0_DIV>,
-			  <&clk IMX8QXP_AUD_ACM_AUD_REC_CLK0_DIV>,
-			  <&clk IMX8QXP_AUD_MCLKOUT0>;
-	assigned-clock-rates = <786432000>, <49152000>, <12000000>, <12000000>;
-
-	/* USB3503A */
-	usb3803@08 {
-		compatible = "smsc,usb3803";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usb3503a>;
-		reg = <0x08>;
-		clocks = <&clk IMX8QXP_AUD_MCLKOUT0>;
-		clock-names = "refclk";
-		power-domains = <&pd_mclk_out0>;
-		bypass-gpios = <&gpio_expander_43 5 GPIO_ACTIVE_LOW>;
-		intn-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
-		reset-gpios = <&gpio_expander_43 4 GPIO_ACTIVE_LOW>;
-		disabled-ports = <2>;
-		initial-mode = <1>;
-		non-removable-devices = <1>;
-	};
-
-	/* SGTL5000 */
-	sgtl5000: codec@a {
-		compatible = "fsl,sgtl5000";
-		#sound-dai-cells = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_sgtl5000>;
-		reg = <0x0a>;
-		clocks = <&clk IMX8QXP_AUD_MCLKOUT0>;
-		power-domains = <&pd_mclk_out0>;
-		VDDA-supply = <&reg_module_3v3_avdd>;
-		VDDIO-supply = <&reg_module_3v3>;
-		VDDD-supply = <&reg_vref_1v8>;
-	};
-
-	/* GPIO expander */
-	gpio_expander_43: gpio-expander@43 {
-		compatible = "fcs,fxl6408";
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x43>;
-		inital_io_dir = <0xff>;
-		inital_output = <0x05>;
-	};
-
-	/* Touch controller */
-	ad7879@2c {
-		compatible = "adi,ad7879-1";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ad7879_int>;
-		reg = <0x2c>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
-		touchscreen-max-pressure = <4096>;
-		adi,resistance-plate-x = <120>;
-		adi,first-conversion-delay = /bits/ 8 <3>;
-		adi,acquisition-time = /bits/ 8 <1>;
-		adi,median-filter-size = /bits/ 8 <2>;
-		adi,averaging = /bits/ 8 <1>;
-		adi,conversion-interval = /bits/ 8 <255>;
-	};
-};
-
-/* Colibri I2C */
-&i2c1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c1>;
-	status = "okay";
-
-	/* M41T0M6 real time clock on carrier board */
-	rtc_i2c: rtc@68 {
-		compatible = "st,m41t0";
-		reg = <0x68>;
-	};
-};
-
-/* On-module MIPI CSI I2C accessible via FFC (X3) */
-&i2c0_mipi_lvds1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
-	status = "okay";
-
-	ov5640_mipi: ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi_v3";
-		clocks = <&clk IMX8QXP_24MHZ>;
-		clock-names = "csi_mclk";
-		csi_id = <0>;
-		mclk = <24000000>;
-		mclk_source = <0>;
-		mipi_csi;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_csi_ctl>;
-		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
-		reg = <0x3c>;
-		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
-		status = "okay";
-
-		port {
-			ov5640_ep: endpoint {
-				remote-endpoint = <&mipi_csi0_ep>;
-			};
-		};
-	};
-};
-
-&isi_0 {
-	status = "okay";
-};
-
-&isi_1 {
-	status = "okay";
-};
-
-&isi_2 {
-	status = "okay";
-};
-
-&isi_3 {
-	status = "okay";
-};
-
-/* Colibri SPI */
-&lpspi2 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	fsl,spi-num-chipselects = <1>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpspi2>;
-	cs-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-	status = "okay";
-
-	spidev0: spidev@0 {
-		compatible = "toradex,evalspi";
-		reg = <0>;
-		spi-max-frequency = <10000000>;
-	};
-};
-
-/* On-module MIPI CSI accessible via FFC (X3) */
-&mipi_csi_0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	/delete-property/virtual-channel;
-	status = "okay";
-
-	/* Camera 0 MIPI CSI-2 (CSIS0) */
-	port@0 {
-		reg = <0>;
-
-		mipi_csi0_ep: endpoint {
-			data-lanes = <1 2>;
-			remote-endpoint = <&ov5640_ep>;
-		};
-	};
-};
-
-/* On-module PCIe for wifi */
-&pcieb{
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
-	ext_osc = <1>;
-	clkreq-gpio = <&gpio_expander_43 3 GPIO_ACTIVE_HIGH>;
-	disable-gpio = <&gpio_expander_43 6 GPIO_ACTIVE_LOW>;
-	power-on-gpio = <&gpio_expander_43 2 GPIO_ACTIVE_LOW>;
-	reset-gpio = <&gpio4 0 GPIO_ACTIVE_LOW>;
-/*	epdev_on-supply = <&reg_wifi>;*/
-	fsl,max-link-speed = <1>;
 	status = "okay";
 };
 
