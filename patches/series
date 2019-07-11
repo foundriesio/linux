@@ -5,39 +5,10 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
-tty-sysrq-Convert-show_lock-to-raw_spinlock_t.patch
-x86-uaccess-Introduce-user_access_-save-restore.patch
 
 ############################################################
 # POSTED by others
 ############################################################
-# AT91
-# Alexandre Belloni | [PATCH v3 0/9] clocksource: improve Atmel TCB timer driver
-# Date: Fri, 26 Apr 2019 23:47:09 +0200
-0001-ARM-at91-move-SoC-specific-definitions-to-SoC-folder.patch
-0002-clocksource-drivers-tcb_clksrc-stop-depending-on-atm.patch
-0003-clocksource-drivers-tcb_clksrc-Use-tcb-as-sched_cloc.patch
-0004-ARM-at91-Implement-clocksource-selection.patch
-0005-clocksource-drivers-tcb_clksrc-move-Kconfig-option.patch
-0006-clocksource-drivers-timer-atmel-pit-rework-Kconfig-o.patch
-0007-clocksource-drivers-tcb_clksrc-Rename-the-file-for-c.patch
-0008-clocksource-drivers-timer-atmel-tcb-tc_clksrc_suspen.patch
-0009-misc-atmel_tclib-do-not-probe-already-used-TCBs.patch
-
-kthread-convert-worker-lock-to-raw-spinlock.patch
-kthread-Do-not-use-TIMER_IRQSAFE.patch
-sched-fair-Robustify-CFS-bandwidth-timer-locking.patch
-x86-ima-Check-EFI_RUNTIME_SERVICES-before-using.patch
-
-# Julien Grall | [PATCH v3 0/7] iommu/dma-iommu: Split iommu_dma_map_msi_msg in two parts
-# Date: Wed,  1 May 2019 14:58:17 +0100
-0001-genirq-msi-Add-a-new-field-in-msi_desc-to-store-an-I.patch
-0002-iommu-dma-iommu-Split-iommu_dma_map_msi_msg-in-two-p.patch
-0003-irqchip-gicv2m-Don-t-map-the-MSI-page-in-gicv2m_comp.patch
-0004-irqchip-gic-v3-its-Don-t-map-the-MSI-page-in-its_irq.patch
-0005-irqchip-ls-scfg-msi-Don-t-map-the-MSI-page-in-ls_scf.patch
-0006-irqchip-gic-v3-mbi-Don-t-map-the-MSI-page-in-mbi_com.patch
-0007-iommu-dma-iommu-Remove-iommu_dma_map_msi_msg.patch
 
 # John's printk series
 # [RFC PATCH v1 00/25] printk: new implementation
@@ -86,45 +57,11 @@ fscache-initialize-cookie-hash-table-raw-spinlocks.patch
 Drivers-hv-vmbus-include-header-for-get_irq_regs.patch
 percpu-include-irqflags.h-for-raw_local_irq_save.patch
 mm-workingset-replace-IRQ-off-check-with-a-lockdep-a.patch
-crypto-chtls-remove-cdev_list_lock.patch
-crypto-user-remove-crypto_cfg_mutex.patch
 tpm-remove-tpm_dev_wq_lock.patch
 drm-i915-Don-t-disable-interrupts-independently-of-t.patch
 locking-lockdep-Don-t-complain-about-incorrect-name-.patch
 arm-imx6-cpuidle-Use-raw_spinlock_t.patch
-
-# [PATCH v9] x86: load FPU registers on return to userland
-# Date: Wed,  3 Apr 2019 18:41:29 +0200
-0001-x86-fpu-Remove-fpu-initialized-usage-in-__fpu__resto.patch
-0002-x86-fpu-Remove-fpu__restore.patch
-0003-x86-fpu-Remove-preempt_disable-in-fpu__clear.patch
-0004-x86-fpu-Always-init-the-state-in-fpu__clear.patch
-0005-x86-fpu-Remove-fpu-initialized-usage-in-copy_fpstate.patch
-0006-x86-fpu-Don-t-save-fxregs-for-ia32-frames-in-copy_fp.patch
-0007-x86-fpu-Remove-fpu-initialized.patch
-0008-x86-fpu-Remove-user_fpu_begin.patch
-0009-x86-fpu-Add-__-make_fpregs_active-helpers.patch
-0010-x86-fpu-Make-__raw_xsave_addr-use-feature-number-ins.patch
-0011-x86-fpu-Make-get_xsave_field_ptr-and-get_xsave_addr-.patch
-0012-x86-pkru-Provide-.-_pkru_ins-functions.patch
-0013-x86-fpu-Only-write-PKRU-if-it-is-different-from-curr.patch
-0014-x86-pkeys-Don-t-check-if-PKRU-is-zero-before-writtin.patch
-0015-x86-fpu-Eager-switch-PKRU-state.patch
-0016-x86-entry-Add-TIF_NEED_FPU_LOAD.patch
-0017-x86-fpu-Always-store-the-registers-in-copy_fpstate_t.patch
-0018-x86-fpu-Prepare-copy_fpstate_to_sigframe-for-TIF_NEE.patch
-0019-x86-fpu-Update-xstate-s-PKRU-value-on-write_pkru.patch
-0020-x86-fpu-Inline-copy_user_to_fpregs_zeroing.patch
-0021-x86-fpu-Let-__fpu__restore_sig-restore-the-32bit-fxs.patch
-0022-x86-fpu-Merge-the-two-code-paths-in-__fpu__restore_s.patch
-0023-x86-fpu-Defer-FPU-state-load-until-return-to-userspa.patch
-0024-x86-fpu-Add-a-fastpath-to-__fpu__restore_sig.patch
-0025-x86-fpu-Add-a-fastpath-to-copy_fpstate_to_sigframe.patch
-0026-x86-fpu-Restore-FPU-register-in-copy_fpstate_to_sigf.patch
-0027-x86-pkeys-add-PKRU-value-to-init_fpstate.patch
-0028-x86-fpu-Fault-in-user-stack-if-copy_fpstate_to_sigfr.patch
-x86-fpu-Use-fault_in_pages_writeable-for-pre-faultin.patch
-x86-fpu-Update-kernel-s-FPU-state-before-using-for-t.patch
+x86-ldt-Initialize-the-context-lock-for-init_mm.patch
 
 ############################################################
 # Ready for posting
@@ -132,11 +69,8 @@ x86-fpu-Update-kernel-s-FPU-state-before-using-for-t.patch
 efi-Allow-efi-runtime.patch
 
 softirq-Add-preemptible-softirq.patch
-softirq-Don-t-do-softirq-if-ksoftird-is-pending.patch
 sched-swait-Add-swait_event_lock_irq.patch
 # WORKQUEUE
-workqueue-use-rcu.patch
-workqueue-distangle-from-rq-lock.patch
 workqueue-Make-alloc-apply-free_workqueue_attrs-stat.patch
 workqueue-Remove-GPF-argument-from-alloc_workqueue_a.patch
 workqueue-Convert-the-locks-to-raw-type.patch
@@ -203,15 +137,14 @@ rcu-make-RCU_BOOST-default-on-RT.patch
 sched-disable-rt-group-sched-on-rt.patch
 net_disable_NET_RX_BUSY_POLL.patch
 arm-disable-NEON-in-kernel-mode.patch
-power-use-generic-rwsem-on-rt.patch
 powerpc-kvm-Disable-in-kernel-MPIC-emulation-for-PRE.patch
 power-disable-highmem-on-rt.patch
 mips-disable-highmem-on-rt.patch
-x86-use-gen-rwsem-spinlocks-rt.patch
 leds-trigger-disable-CPU-trigger-on-RT.patch
 cpufreq-drop-K8-s-driver-from-beeing-selected.patch
 md-disable-bcache.patch
 efi-Disable-runtime-services-on-RT.patch
+x86-Disable-HAVE_ARCH_JUMP_LABEL.patch
 
 # PREEMPT NORT
 preempt-nort-rt-variants.patch
@@ -276,7 +209,6 @@ x86-kvm-require-const-tsc-for-rt.patch
 #
 # SIMPLE WAITQUEUE
 pci-switchtec-Don-t-use-completion-s-wait-queue.patch
-pci-switchtec-fix-stream_open.cocci-warnings.patch
 wait.h-include-atomic.h.patch
 completion-use-simple-wait-queues.patch
 sched-completion-Fix-a-lockup-in-wait_for_completion.patch
@@ -314,7 +246,6 @@ softirq-preempt-fix-3-re.patch
 softirq-disable-softirq-stacks-for-rt.patch
 
 net-core-use-local_bh_disable-in-netif_rx_ni.patch
-#softirq-split-timer-softirqs-out-of-ksoftirqd.patch
 rtmutex-trylock-is-okay-on-RT.patch
 
 # compile fix due to rtmutex locks
@@ -349,7 +280,6 @@ locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
 
 # RCU
 rcu-Eliminate-softirq-processing-from-rcutree.patch
-srcu-Remove-srcu_queue_delayed_work_on.patch
 srcu-replace-local_irqsave-with-a-locallock.patch
 rcu-enable-rcu_normal_after_boot-by-default-for-RT.patch
 
@@ -360,7 +290,6 @@ tty-serial-pl011-warning-about-uninitialized.patch
 rt-serial-warn-fix.patch
 
 # FS
-peterz-percpu-rwsem-rt.patch
 mm-protect-activate-switch-mm.patch
 fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
 fs-dcache-disable-preemption-on-i_dir_seq-s-write-si.patch
@@ -397,8 +326,6 @@ seqlock-prevent-rt-starvation.patch
 # NETWORKING
 sunrpc-make-svc_xprt_do_enqueue-use-get_cpu_light.patch
 skbufhead-raw-lock.patch
-net-move-xmit_recursion-to-per-task-variable-on-RT.patch
-#net-provide-a-way-to-delegate-processing-a-softirq-t.patch
 net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 net-Qdisc-use-a-seqlock-instead-seqcount.patch
 net-Have-__napi_schedule_irqoff-disable-interrupts-o.patch
@@ -428,7 +355,6 @@ scsi-fcoe-rt-aware.patch
 x86-crypto-reduce-preempt-disabled-regions.patch
 crypto-Reduce-preempt-disabled-regions-more-algos.patch
 crypto-limit-more-FPU-enabled-sections.patch
-crypto-scompress-serialize-RT-percpu-scratch-buffer-.patch
 crypto-cryptd-add-a-lock-instead-preempt_disable-loc.patch
 
 # RANDOM

@@ -14,8 +14,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
  include/linux/cpu.h |    5 +++++
  kernel/cpu.c        |   15 +++++++++++++++
- kernel/sched/core.c |    4 ++++
- 3 files changed, 24 insertions(+)
+ kernel/sched/core.c |    3 +++
+ 3 files changed, 23 insertions(+)
 
 --- a/include/linux/cpu.h
 +++ b/include/linux/cpu.h
@@ -40,7 +40,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /* Wrappers which go away once all code is converted */
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -281,6 +281,21 @@ static int cpu_hotplug_disabled;
+@@ -282,6 +282,21 @@ static int cpu_hotplug_disabled;
  
  #ifdef CONFIG_HOTPLUG_CPU
  
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void cpus_read_lock(void)
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7173,6 +7173,7 @@ void migrate_disable(void)
+@@ -7223,6 +7223,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -72,15 +72,13 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	migrate_disable_update_cpus_allowed(p);
  	p->migrate_disable = 1;
-@@ -7238,12 +7239,15 @@ void migrate_enable(void)
+@@ -7288,11 +7289,13 @@ void migrate_enable(void)
  			arg.task = p;
  			arg.dest_cpu = dest_cpu;
  
 +			unpin_current_cpu();
  			preempt_enable();
  			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
- 			tlb_migrate_finish(p->mm);
-+
  			return;
  		}
  	}

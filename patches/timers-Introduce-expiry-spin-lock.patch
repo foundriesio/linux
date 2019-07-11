@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned long		clk;
  	unsigned long		next_expiry;
  	unsigned int		cpu;
-@@ -1206,14 +1207,8 @@ int del_timer(struct timer_list *timer)
+@@ -1201,14 +1202,8 @@ int del_timer(struct timer_list *timer)
  }
  EXPORT_SYMBOL(del_timer);
  
@@ -59,7 +59,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct timer_base *base;
  	unsigned long flags;
-@@ -1221,7 +1216,7 @@ int try_to_del_timer_sync(struct timer_l
+@@ -1216,7 +1211,7 @@ int try_to_del_timer_sync(struct timer_l
  
  	debug_assert_init(timer);
  
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (base->running_timer != timer)
  		ret = detach_if_pending(timer, base, true);
-@@ -1230,9 +1225,42 @@ int try_to_del_timer_sync(struct timer_l
+@@ -1225,9 +1220,42 @@ int try_to_del_timer_sync(struct timer_l
  
  	return ret;
  }
@@ -111,7 +111,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * del_timer_sync - deactivate a timer and wait for the handler to finish.
   * @timer: the timer to be deactivated
-@@ -1288,12 +1316,8 @@ int del_timer_sync(struct timer_list *ti
+@@ -1283,12 +1311,8 @@ int del_timer_sync(struct timer_list *ti
  	 * could lead to deadlock.
  	 */
  	WARN_ON(in_irq() && !(timer->flags & TIMER_IRQSAFE));
@@ -126,7 +126,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL(del_timer_sync);
  #endif
-@@ -1654,6 +1678,7 @@ static inline void __run_timers(struct t
+@@ -1658,6 +1682,7 @@ static inline void __run_timers(struct t
  	if (!time_after_eq(jiffies, base->clk))
  		return;
  
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	raw_spin_lock_irq(&base->lock);
  
  	/*
-@@ -1682,6 +1707,7 @@ static inline void __run_timers(struct t
+@@ -1686,6 +1711,7 @@ static inline void __run_timers(struct t
  	}
  	base->running_timer = NULL;
  	raw_spin_unlock_irq(&base->lock);
@@ -142,7 +142,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -1926,6 +1952,7 @@ static void __init init_timer_cpu(int cp
+@@ -1930,6 +1956,7 @@ static void __init init_timer_cpu(int cp
  		base->cpu = cpu;
  		raw_spin_lock_init(&base->lock);
  		base->clk = jiffies;

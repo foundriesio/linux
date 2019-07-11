@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -3352,17 +3352,17 @@ get_total_entries(struct trace_buffer *b
+@@ -3557,17 +3557,17 @@ unsigned long trace_total_entries(struct
  
  static void print_lat_help_header(struct seq_file *m)
  {

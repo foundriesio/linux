@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -243,7 +243,7 @@ struct futex_q {
+@@ -231,7 +231,7 @@ struct futex_q {
  	struct plist_node list;
  
  	struct task_struct *task;
@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	union futex_key key;
  	struct futex_pi_state *pi_state;
  	struct rt_mutex_waiter *rt_waiter;
-@@ -264,7 +264,7 @@ static const struct futex_q futex_q_init
+@@ -252,7 +252,7 @@ static const struct futex_q futex_q_init
   */
  struct futex_hash_bucket {
  	atomic_t waiters;
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct plist_head chain;
  } ____cacheline_aligned_in_smp;
  
-@@ -916,7 +916,7 @@ void exit_pi_state_list(struct task_stru
+@@ -900,7 +900,7 @@ void exit_pi_state_list(struct task_stru
  		}
  		raw_spin_unlock_irq(&curr->pi_lock);
  
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		raw_spin_lock_irq(&pi_state->pi_mutex.wait_lock);
  		raw_spin_lock(&curr->pi_lock);
  		/*
-@@ -926,7 +926,7 @@ void exit_pi_state_list(struct task_stru
+@@ -910,7 +910,7 @@ void exit_pi_state_list(struct task_stru
  		if (head->next != next) {
  			/* retain curr->pi_lock for the loop invariant */
  			raw_spin_unlock(&pi_state->pi_mutex.wait_lock);
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			put_pi_state(pi_state);
  			continue;
  		}
-@@ -938,7 +938,7 @@ void exit_pi_state_list(struct task_stru
+@@ -922,7 +922,7 @@ void exit_pi_state_list(struct task_stru
  
  		raw_spin_unlock(&curr->pi_lock);
  		raw_spin_unlock_irq(&pi_state->pi_mutex.wait_lock);
@@ -64,7 +64,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		rt_mutex_futex_unlock(&pi_state->pi_mutex);
  		put_pi_state(pi_state);
-@@ -1559,21 +1559,21 @@ static inline void
+@@ -1542,21 +1542,21 @@ static inline void
  double_lock_hb(struct futex_hash_bucket *hb1, struct futex_hash_bucket *hb2)
  {
  	if (hb1 <= hb2) {
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -1601,7 +1601,7 @@ futex_wake(u32 __user *uaddr, unsigned i
+@@ -1584,7 +1584,7 @@ futex_wake(u32 __user *uaddr, unsigned i
  	if (!hb_waiters_pending(hb))
  		goto out_put_key;
  
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	plist_for_each_entry_safe(this, next, &hb->chain, list) {
  		if (match_futex (&this->key, &key)) {
-@@ -1620,7 +1620,7 @@ futex_wake(u32 __user *uaddr, unsigned i
+@@ -1603,7 +1603,7 @@ futex_wake(u32 __user *uaddr, unsigned i
  		}
  	}
  
@@ -110,7 +110,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	wake_up_q(&wake_q);
  out_put_key:
  	put_futex_key(&key);
-@@ -2225,7 +2225,7 @@ static inline struct futex_hash_bucket *
+@@ -2208,7 +2208,7 @@ static inline struct futex_hash_bucket *
  
  	q->lock_ptr = &hb->lock;
  
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return hb;
  }
  
-@@ -2233,7 +2233,7 @@ static inline void
+@@ -2216,7 +2216,7 @@ static inline void
  queue_unlock(struct futex_hash_bucket *hb)
  	__releases(&hb->lock)
  {
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	hb_waiters_dec(hb);
  }
  
-@@ -2272,7 +2272,7 @@ static inline void queue_me(struct futex
+@@ -2255,7 +2255,7 @@ static inline void queue_me(struct futex
  	__releases(&hb->lock)
  {
  	__queue_me(q, hb);
@@ -137,7 +137,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -2288,41 +2288,41 @@ static inline void queue_me(struct futex
+@@ -2271,41 +2271,41 @@ static inline void queue_me(struct futex
   */
  static int unqueue_me(struct futex_q *q)
  {
@@ -190,7 +190,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		ret = 1;
  	}
  
-@@ -2344,7 +2344,7 @@ static void unqueue_me_pi(struct futex_q
+@@ -2327,7 +2327,7 @@ static void unqueue_me_pi(struct futex_q
  	put_pi_state(q->pi_state);
  	q->pi_state = NULL;
  
@@ -199,7 +199,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static int fixup_pi_state_owner(u32 __user *uaddr, struct futex_q *q,
-@@ -2477,7 +2477,7 @@ static int fixup_pi_state_owner(u32 __us
+@@ -2460,7 +2460,7 @@ static int fixup_pi_state_owner(u32 __us
  	 */
  handle_err:
  	raw_spin_unlock_irq(&pi_state->pi_mutex.wait_lock);
@@ -208,7 +208,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	switch (err) {
  	case -EFAULT:
-@@ -2495,7 +2495,7 @@ static int fixup_pi_state_owner(u32 __us
+@@ -2478,7 +2478,7 @@ static int fixup_pi_state_owner(u32 __us
  		break;
  	}
  
@@ -217,7 +217,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	raw_spin_lock_irq(&pi_state->pi_mutex.wait_lock);
  
  	/*
-@@ -2591,7 +2591,7 @@ static void futex_wait_queue_me(struct f
+@@ -2574,7 +2574,7 @@ static void futex_wait_queue_me(struct f
  	/*
  	 * The task state is guaranteed to be set before another task can
  	 * wake it. set_current_state() is implemented using smp_store_mb() and
@@ -226,7 +226,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * access to the hash list and forcing another memory barrier.
  	 */
  	set_current_state(TASK_INTERRUPTIBLE);
-@@ -2884,7 +2884,7 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2867,7 +2867,7 @@ static int futex_lock_pi(u32 __user *uad
  	 * before __rt_mutex_start_proxy_lock() is done.
  	 */
  	raw_spin_lock_irq(&q.pi_state->pi_mutex.wait_lock);
@@ -235,7 +235,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * __rt_mutex_start_proxy_lock() unconditionally enqueues the @rt_waiter
  	 * such that futex_unlock_pi() is guaranteed to observe the waiter when
-@@ -2905,7 +2905,7 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2888,7 +2888,7 @@ static int futex_lock_pi(u32 __user *uad
  	ret = rt_mutex_wait_proxy_lock(&q.pi_state->pi_mutex, to, &rt_waiter);
  
  cleanup:
@@ -244,7 +244,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * If we failed to acquire the lock (deadlock/signal/timeout), we must
  	 * first acquire the hb->lock before removing the lock from the
-@@ -3006,7 +3006,7 @@ static int futex_unlock_pi(u32 __user *u
+@@ -2989,7 +2989,7 @@ static int futex_unlock_pi(u32 __user *u
  		return ret;
  
  	hb = hash_futex(&key);
@@ -253,7 +253,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Check waiters first. We do not trust user space values at
-@@ -3040,7 +3040,7 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3023,7 +3023,7 @@ static int futex_unlock_pi(u32 __user *u
  		 * rt_waiter. Also see the WARN in wake_futex_pi().
  		 */
  		raw_spin_lock_irq(&pi_state->pi_mutex.wait_lock);
@@ -262,7 +262,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/* drops pi_state->pi_mutex.wait_lock */
  		ret = wake_futex_pi(uaddr, uval, pi_state);
-@@ -3079,7 +3079,7 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3062,7 +3062,7 @@ static int futex_unlock_pi(u32 __user *u
  	 * owner.
  	 */
  	if ((ret = cmpxchg_futex_value_locked(&curval, uaddr, uval, 0))) {
@@ -271,7 +271,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		switch (ret) {
  		case -EFAULT:
  			goto pi_faulted;
-@@ -3099,7 +3099,7 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3082,7 +3082,7 @@ static int futex_unlock_pi(u32 __user *u
  	ret = (curval == uval) ? 0 : -EAGAIN;
  
  out_unlock:
@@ -280,7 +280,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out_putkey:
  	put_futex_key(&key);
  	return ret;
-@@ -3274,9 +3274,9 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3257,9 +3257,9 @@ static int futex_wait_requeue_pi(u32 __u
  	/* Queue the futex_q, drop the hb lock, wait for wakeup. */
  	futex_wait_queue_me(hb, &q, to);
  
@@ -292,7 +292,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		goto out_put_keys;
  
-@@ -3296,7 +3296,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3279,7 +3279,7 @@ static int futex_wait_requeue_pi(u32 __u
  		 * did a lock-steal - fix up the PI-state in that case.
  		 */
  		if (q.pi_state && (q.pi_state->owner != current)) {
@@ -301,7 +301,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			ret = fixup_pi_state_owner(uaddr2, &q, current);
  			if (ret && rt_mutex_owner(&q.pi_state->pi_mutex) == current) {
  				pi_state = q.pi_state;
-@@ -3307,7 +3307,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3290,7 +3290,7 @@ static int futex_wait_requeue_pi(u32 __u
  			 * the requeue_pi() code acquired for us.
  			 */
  			put_pi_state(q.pi_state);
@@ -310,7 +310,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	} else {
  		struct rt_mutex *pi_mutex;
-@@ -3321,7 +3321,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3304,7 +3304,7 @@ static int futex_wait_requeue_pi(u32 __u
  		pi_mutex = &q.pi_state->pi_mutex;
  		ret = rt_mutex_wait_proxy_lock(pi_mutex, to, &rt_waiter);
  
@@ -319,7 +319,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (ret && !rt_mutex_cleanup_proxy_lock(pi_mutex, &rt_waiter))
  			ret = 0;
  
-@@ -3946,7 +3946,7 @@ static int __init futex_init(void)
+@@ -3929,7 +3929,7 @@ static int __init futex_init(void)
  	for (i = 0; i < futex_hashsize; i++) {
  		atomic_set(&futex_queues[i].waiters, 0);
  		plist_head_init(&futex_queues[i].chain);

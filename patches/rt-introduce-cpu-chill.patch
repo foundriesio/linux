@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/delay.h
 +++ b/include/linux/delay.h
-@@ -64,4 +64,10 @@ static inline void ssleep(unsigned int s
+@@ -65,4 +65,10 @@ static inline void ssleep(unsigned int s
  	msleep(seconds * 1000);
  }
  
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* defined(_LINUX_DELAY_H) */
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1845,6 +1845,38 @@ COMPAT_SYSCALL_DEFINE2(nanosleep, struct
+@@ -1845,6 +1845,38 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
  }
  #endif
  

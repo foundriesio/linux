@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/update.c
 +++ b/kernel/rcu/update.c
-@@ -68,8 +68,10 @@ extern int rcu_expedited; /* from sysctl
+@@ -55,8 +55,10 @@ extern int rcu_expedited; /* from sysctl
  module_param(rcu_expedited, int, 0);
  extern int rcu_normal; /* from sysctl */
  module_param(rcu_normal, int, 0);

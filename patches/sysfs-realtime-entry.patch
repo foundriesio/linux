@@ -19,7 +19,7 @@ Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 
 --- a/kernel/ksysfs.c
 +++ b/kernel/ksysfs.c
-@@ -140,6 +140,15 @@ KERNEL_ATTR_RO(vmcoreinfo);
+@@ -138,6 +138,15 @@ KERNEL_ATTR_RO(vmcoreinfo);
  
  #endif /* CONFIG_CRASH_CORE */
  
@@ -35,7 +35,7 @@ Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
  /* whether file capabilities are enabled */
  static ssize_t fscaps_show(struct kobject *kobj,
  				  struct kobj_attribute *attr, char *buf)
-@@ -231,6 +240,9 @@ static struct attribute * kernel_attrs[]
+@@ -229,6 +238,9 @@ static struct attribute * kernel_attrs[]
  	&rcu_expedited_attr.attr,
  	&rcu_normal_attr.attr,
  #endif

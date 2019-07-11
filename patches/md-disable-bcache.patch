@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/md/bcache/Kconfig
 +++ b/drivers/md/bcache/Kconfig
-@@ -1,6 +1,7 @@
+@@ -2,6 +2,7 @@
  
  config BCACHE
  	tristate "Block device as cache"

@@ -31,7 +31,7 @@ Signed-off-by: Ingo Molnar <mingo@kernel.org>
 
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -699,7 +699,8 @@ look_up_lock_class(const struct lockdep_
+@@ -732,7 +732,8 @@ look_up_lock_class(const struct lockdep_
  			 * Huh! same key, different name? Did someone trample
  			 * on some memory? We're most confused.
  			 */

@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/leds/trigger/Kconfig
 +++ b/drivers/leds/trigger/Kconfig
-@@ -63,6 +63,7 @@ config LEDS_TRIGGER_BACKLIGHT
+@@ -64,6 +64,7 @@ config LEDS_TRIGGER_BACKLIGHT
  
  config LEDS_TRIGGER_CPU
  	bool "LED CPU Trigger"

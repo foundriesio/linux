@@ -51,7 +51,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	defined(CONFIG_PREEMPT_TRACER)
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -3768,6 +3768,7 @@ static void check_flags(unsigned long fl
+@@ -4227,6 +4227,7 @@ static void check_flags(unsigned long fl
  		}
  	}
  
@@ -59,7 +59,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * We dont accurately track softirq state in e.g.
  	 * hardirq contexts (such as on 4KSTACKS), so only
-@@ -3782,6 +3783,7 @@ static void check_flags(unsigned long fl
+@@ -4241,6 +4242,7 @@ static void check_flags(unsigned long fl
  			DEBUG_LOCKS_WARN_ON(!current->softirqs_enabled);
  		}
  	}

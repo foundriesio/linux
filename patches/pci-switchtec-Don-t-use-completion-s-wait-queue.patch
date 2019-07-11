@@ -96,7 +96,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		ret |= EPOLLIN | EPOLLRDNORM;
  
  	if (stuser->event_cnt != atomic_read(&stdev->event_cnt))
-@@ -1087,7 +1090,8 @@ static void stdev_kill(struct switchtec_
+@@ -1102,7 +1105,8 @@ static void stdev_kill(struct switchtec_
  
  	/* Wake up and kill any users waiting on an MRPC request */
  	list_for_each_entry_safe(stuser, tmpuser, &stdev->mrpc_queue, list) {

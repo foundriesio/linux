@@ -15,10 +15,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  include/linux/bottom_half.h |    5 
  include/linux/interrupt.h   |    1 
  include/linux/preempt.h     |   17 ++-
+ include/linux/rcupdate.h    |    3 
  include/linux/sched.h       |    3 
  kernel/softirq.c            |  222 +++++++++++++++++++++++++++++++++++++++++++-
  kernel/time/tick-sched.c    |    9 -
- 6 files changed, 244 insertions(+), 13 deletions(-)
+ 7 files changed, 246 insertions(+), 14 deletions(-)
 
 --- a/include/linux/bottom_half.h
 +++ b/include/linux/bottom_half.h
@@ -43,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -527,6 +527,7 @@ extern void __raise_softirq_irqoff(unsig
+@@ -556,6 +556,7 @@ extern void __raise_softirq_irqoff(unsig
  
  extern void raise_softirq_irqoff(unsigned int nr);
  extern void raise_softirq(unsigned int nr);
@@ -90,9 +91,21 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * The preempt_count offset after preempt_disable();
+--- a/include/linux/rcupdate.h
++++ b/include/linux/rcupdate.h
+@@ -272,7 +272,8 @@ static inline void rcu_preempt_sleep_che
+ #define rcu_sleep_check()						\
+ 	do {								\
+ 		rcu_preempt_sleep_check();				\
+-		RCU_LOCKDEP_WARN(lock_is_held(&rcu_bh_lock_map),	\
++		if (!IS_ENABLED(CONFIG_PREEMPT_RT_FULL))		\
++		    RCU_LOCKDEP_WARN(lock_is_held(&rcu_bh_lock_map),	\
+ 				 "Illegal context switch in RCU-bh read-side critical section"); \
+ 		RCU_LOCKDEP_WARN(lock_is_held(&rcu_sched_lock_map),	\
+ 				 "Illegal context switch in RCU-sched read-side critical section"); \
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -927,6 +927,9 @@ struct task_struct {
+@@ -923,6 +923,9 @@ struct task_struct {
  	int				softirqs_enabled;
  	int				softirq_context;
  #endif
@@ -104,30 +117,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  # define MAX_LOCK_DEPTH			48UL
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -26,6 +26,7 @@
+@@ -25,6 +25,9 @@
  #include <linux/smpboot.h>
  #include <linux/tick.h>
  #include <linux/irq.h>
++#ifdef CONFIG_PREEMPT_RT_FULL
 +#include <linux/locallock.h>
++#endif
  
  #define CREATE_TRACE_POINTS
  #include <trace/events/irq.h>
-@@ -77,6 +78,7 @@ static void wakeup_softirqd(void)
- 		wake_up_process(tsk);
- }
- 
-+#ifndef CONFIG_PREEMPT_RT_FULL
- /*
-  * If ksoftirqd is scheduled, we do not want to process pending softirqs
-  * right now. Let ksoftirqd handle this at its own rate, to get fairness,
-@@ -91,6 +93,7 @@ static bool ksoftirqd_running(unsigned l
- 		return false;
- 	return tsk && (tsk->state == TASK_RUNNING);
- }
-+#endif
- 
- /*
-  * preempt_count and SOFTIRQ_OFFSET usage:
 @@ -102,6 +105,98 @@ static bool ksoftirqd_running(unsigned l
   * softirq and whether we just have bh disabled.
   */
@@ -200,7 +199,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +	if (unlikely(count == 1)) {
 +		pending = local_softirq_pending();
-+		if (pending) {
++		if (pending && !ksoftirqd_running(pending)) {
 +			if (!in_atomic())
 +				__do_softirq();
 +			else
@@ -346,7 +345,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void raise_softirq(unsigned int nr)
  {
  	unsigned long flags;
-@@ -645,6 +786,7 @@ static int ksoftirqd_should_run(unsigned
+@@ -594,6 +735,7 @@ static int ksoftirqd_should_run(unsigned
  
  static void run_ksoftirqd(unsigned int cpu)
  {
@@ -354,7 +353,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_irq_disable();
  	if (local_softirq_pending()) {
  		/*
-@@ -653,10 +795,12 @@ static void run_ksoftirqd(unsigned int c
+@@ -602,10 +744,12 @@ static void run_ksoftirqd(unsigned int c
  		 */
  		__do_softirq();
  		local_irq_enable();
@@ -367,7 +366,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #ifdef CONFIG_HOTPLUG_CPU
-@@ -730,6 +874,13 @@ static struct smp_hotplug_thread softirq
+@@ -679,6 +823,13 @@ static struct smp_hotplug_thread softirq
  
  static __init int spawn_ksoftirqd(void)
  {
@@ -381,7 +380,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	cpuhp_setup_state_nocalls(CPUHP_SOFTIRQ_DEAD, "softirq:dead", NULL,
  				  takeover_tasklets);
  	BUG_ON(smpboot_register_percpu_thread(&softirq_threads));
-@@ -738,6 +889,75 @@ static __init int spawn_ksoftirqd(void)
+@@ -687,6 +838,75 @@ static __init int spawn_ksoftirqd(void)
  }
  early_initcall(spawn_ksoftirqd);
  
@@ -459,7 +458,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *   GCC does not inline them incorrectly. ]
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -883,14 +883,7 @@ static bool can_stop_idle_tick(int cpu,
+@@ -893,14 +893,7 @@ static bool can_stop_idle_tick(int cpu,
  		return false;
  
  	if (unlikely(local_softirq_pending())) {

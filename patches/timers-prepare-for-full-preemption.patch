@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  # define del_timer_sync(t)		del_timer(t)
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1241,7 +1241,7 @@ int try_to_del_timer_sync(struct timer_l
+@@ -1236,7 +1236,7 @@ int try_to_del_timer_sync(struct timer_l
  }
  EXPORT_SYMBOL(try_to_del_timer_sync);
  
@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  static int __del_timer_sync(struct timer_list *timer)
  {
  	struct timer_base *base;
-@@ -1377,7 +1377,8 @@ static void expire_timers(struct timer_b
+@@ -1381,7 +1381,8 @@ static void expire_timers(struct timer_b
  
  		fn = timer->function;
  
@@ -43,5 +43,5 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		if (!IS_ENABLED(CONFIG_PREEMPT_RT_FULL) &&
 +		    timer->flags & TIMER_IRQSAFE) {
  			raw_spin_unlock(&base->lock);
- 			call_timer_fn(timer, fn);
+ 			call_timer_fn(timer, fn, baseclk);
  			base->running_timer = NULL;

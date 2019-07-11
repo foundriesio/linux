@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline void INIT_HLIST_BL_NODE(struct hlist_bl_node *h)
  {
-@@ -119,12 +129,26 @@ static inline void hlist_bl_del_init(str
+@@ -145,12 +155,26 @@ static inline void hlist_bl_del_init(str
  
  static inline void hlist_bl_lock(struct hlist_bl_head *b)
  {

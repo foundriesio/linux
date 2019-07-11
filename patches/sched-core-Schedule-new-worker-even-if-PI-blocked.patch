@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3443,7 +3443,7 @@ void __noreturn do_task_dead(void)
+@@ -3469,7 +3469,7 @@ void __noreturn do_task_dead(void)
  
  static inline void sched_submit_work(struct task_struct *tsk)
  {
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return;
  
  	/*
-@@ -3459,6 +3459,9 @@ static inline void sched_submit_work(str
+@@ -3485,6 +3485,9 @@ static inline void sched_submit_work(str
  		preempt_enable_no_resched();
  	}
  

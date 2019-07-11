@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/i915_request.c
 +++ b/drivers/gpu/drm/i915/i915_request.c
-@@ -278,9 +278,7 @@ static void __retire_engine_request(stru
+@@ -202,9 +202,7 @@ static void __retire_engine_request(stru
  
  	GEM_BUG_ON(!i915_request_completed(rq));
  
@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	GEM_BUG_ON(!list_is_first(&rq->link, &engine->timeline.requests));
  	list_del_init(&rq->link);
  	spin_unlock(&engine->timeline.lock);
-@@ -294,9 +292,7 @@ static void __retire_engine_request(stru
+@@ -219,9 +217,7 @@ static void __retire_engine_request(stru
  		GEM_BUG_ON(!atomic_read(&rq->i915->gt_pm.rps.num_waiters));
  		atomic_dec(&rq->i915->gt_pm.rps.num_waiters);
  	}

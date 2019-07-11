@@ -12,7 +12,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/mach-imx/cpuidle-imx6q.c
 +++ b/arch/arm/mach-imx/cpuidle-imx6q.c
-@@ -17,22 +17,22 @@
+@@ -14,22 +14,22 @@
  #include "hardware.h"
  
  static int num_idle_cpus = 0;
