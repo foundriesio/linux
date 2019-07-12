@@ -261,7 +261,7 @@
 	#size-cells = <0>;
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds1>;
 };
 
 /* Colibri I2C */
@@ -701,7 +701,7 @@
 		};
 
 		/* On-module MIPI CSI I2C accessible on FFC (X3) */
-		pinctrl_i2c0_mipi_csi: mipi_csi_i2c0_grp {
+		pinctrl_i2c0_mipi_lvds1: mipi_lvds1_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI1_I2C0_SCL_MIPI_DSI1_I2C0_SCL 	0xc6000020	/* SODIMM 186 */
 				SC_P_MIPI_DSI1_I2C0_SDA_MIPI_DSI1_I2C0_SDA 	0xc6000020	/* SODIMM 188 */
