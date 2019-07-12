@@ -8048,21 +8048,21 @@ unsigned long pagecache_over_limit()
 	 * not seem to be guaranteed. (Maybe this was just an oprofile
 	 * bug?).
 	 * (FIXME: Do we need to subtract NR_FILE_DIRTY here as well?) */
-	unsigned long pgcache_pages = global_page_state(NR_FILE_PAGES)
+	unsigned long pgcache_pages = global_node_page_state(NR_FILE_PAGES)
 				    - max_t(unsigned long,
-					    global_page_state(NR_FILE_MAPPED),
-					    global_page_state(NR_SHMEM));
+					    global_node_page_state(NR_FILE_MAPPED),
+					    global_node_page_state(NR_SHMEM));
 	/* We certainly can't free more than what's on the LRU lists
 	 * minus the dirty ones. (FIXME: pages accounted for in NR_WRITEBACK
 	 * are not on the LRU lists  any more, right?) */
-	unsigned long pgcache_lru_pages = global_page_state(NR_ACTIVE_FILE)
-				        + global_page_state(NR_INACTIVE_FILE);
+	unsigned long pgcache_lru_pages = global_node_page_state(NR_ACTIVE_FILE)
+				        + global_node_page_state(NR_INACTIVE_FILE);
 	unsigned long free_pages = global_page_state(NR_FREE_PAGES);
 	unsigned long swap_pages = total_swap_pages - get_nr_swap_pages();
 	unsigned long limit;
 
 	if (vm_pagecache_ignore_dirty != 0)
-		pgcache_lru_pages -= global_page_state(NR_FILE_DIRTY)
+		pgcache_lru_pages -= global_node_page_state(NR_FILE_DIRTY)
 				     /vm_pagecache_ignore_dirty;
 	/* Paranoia */
 	if (unlikely(pgcache_lru_pages > LONG_MAX))
@@ -8162,3 +8162,33 @@ bool is_free_buddy_page(struct page *page)
 
 	return order < MAX_ORDER;
 }
+
+#ifdef CONFIG_MEMORY_FAILURE
+/*
+ * Set PG_hwpoison flag if a given page is confirmed to be a free page.  This
+ * test is performed under the zone lock to prevent a race against page
+ * allocation.
+ */
+bool set_hwpoison_free_buddy_page(struct page *page)
+{
+	struct zone *zone = page_zone(page);
+	unsigned long pfn = page_to_pfn(page);
+	unsigned long flags;
+	unsigned int order;
+	bool hwpoisoned = false;
+
+	spin_lock_irqsave(&zone->lock, flags);
+	for (order = 0; order < MAX_ORDER; order++) {
+		struct page *page_head = page - (pfn & ((1 << order) - 1));
+
+		if (PageBuddy(page_head) && page_order(page_head) >= order) {
+			if (!TestSetPageHWPoison(page))
+				hwpoisoned = true;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&zone->lock, flags);
+
+	return hwpoisoned;
+}
+#endif
