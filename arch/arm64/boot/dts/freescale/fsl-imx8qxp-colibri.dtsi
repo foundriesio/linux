@@ -76,35 +76,6 @@
 	status = "okay";
 };
 
-/* Display Prefetch Resolve, (Tiling) */
-&dpr1_channel1 {
-	status = "okay";
-};
-
-&dpr1_channel2 {
-	status = "okay";
-};
-
-&dpr1_channel3 {
-	status = "okay";
-};
-
-&dpr2_channel1 {
-	status = "okay";
-};
-
-&dpr2_channel2 {
-	status = "okay";
-};
-
-&dpr2_channel3 {
-	status = "okay";
-};
-
-&dpu1 {
-	status = "okay";
-};
-
 /* Colibri Ethernet */
 &fec1 {
 	pinctrl-names = "default", "sleep";
@@ -161,10 +132,6 @@
 };
 
 &gpio4 {
-	status = "okay";
-};
-
-&gpu_3d0 {
 	status = "okay";
 };
 
@@ -271,10 +238,6 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
-};
-
-&imx8_gpu_ss {
-	status = "okay";
 };
 
 &iomuxc {
@@ -745,38 +708,6 @@
 	};
 };
 
-&isi_0 {
-	status = "okay";
-};
-
-&isi_1 {
-	status = "okay";
-};
-
-&isi_2 {
-	status = "okay";
-};
-
-&isi_3 {
-	status = "okay";
-};
-
-&ldb1 {
-	status = "okay";
-};
-
-&ldb1_phy {
-	status = "okay";
-};
-
-&ldb2 {
-	status = "okay";
-};
-
-&ldb2_phy {
-	status = "okay";
-};
-
 /* Colibri SPI */
 &lpspi2 {
 	#address-cells = <1>;
@@ -819,30 +750,11 @@
 
 &mipi_dsi1 {
 	pwr-delay = <10>;
-	status = "disabled";
-};
-
-&mipi_dsi_bridge1 {
-	status = "disabled";
-};
-
-&mipi_dsi_phy1 {
-	status = "disabled";
 };
 
 &mipi_dsi2 {
 	pwr-delay = <10>;
-	status = "disabled";
 };
-
-&mipi_dsi_bridge2 {
-	status = "disabled";
-};
-
-&mipi_dsi_phy2 {
-	status = "disabled";
-};
-
 
 /* On-module PCIe for wifi */
 &pcieb{
@@ -860,47 +772,6 @@
 
 &pd_dma_lpuart3 {
 	debug_console;
-};
-
-
-&pixel_combiner {
-	status = "okay";
-};
-
-&prg1 {
-	status = "okay";
-};
-
-&prg2 {
-	status = "okay";
-};
-
-&prg3 {
-	status = "okay";
-};
-
-&prg4 {
-	status = "okay";
-};
-
-&prg5 {
-	status = "okay";
-};
-
-&prg6 {
-	status = "okay";
-};
-
-&prg7 {
-	status = "okay";
-};
-
-&prg8 {
-	status = "okay";
-};
-
-&prg9 {
-	status = "okay";
 };
 
 /* Colibri PWM_A */
@@ -1007,16 +878,10 @@
 	status = "okay";
 };
 
-&vpu {
-	status = "disabled";
-};
-
 &vpu_decoder {
 	core_type = <1>;
-	status = "okay";
 };
 
 &vpu_encoder {
 	core_type = <1>;
-	status = "okay";
 };

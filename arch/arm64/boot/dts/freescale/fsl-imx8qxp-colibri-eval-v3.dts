@@ -146,15 +146,39 @@
 	};
 };
 
-/* DSI/LVDS port 0 */
-&i2c0_mipi_lvds0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
-	clock-frequency = <100000>;
-	status = "disabled";
+/* Display Prefetch Resolve, (Tiling) */
+&dpr1_channel1 {
+	status = "okay";
 };
+
+&dpr1_channel2 {
+	status = "okay";
+};
+
+&dpr1_channel3 {
+	status = "okay";
+};
+
+&dpr2_channel1 {
+	status = "okay";
+};
+
+&dpr2_channel2 {
+	status = "okay";
+};
+
+&dpr2_channel3 {
+	status = "okay";
+};
+
+&dpu1 {
+	status = "okay";
+};
+
+&gpu_3d0 {
+	status = "okay";
+};
+
 /* On-module MIPI CSI I2C accessible on FFC (X3) */
 &i2c0_mipi_lvds1 {
 	status = "okay";
@@ -180,6 +204,22 @@
 			};
 		};
 	};
+};
+
+&isi_0 {
+	status = "okay";
+};
+
+&isi_1 {
+	status = "okay";
+};
+
+&isi_2 {
+	status = "okay";
+};
+
+&isi_3 {
+	status = "okay";
 };
 
 &ldb1 {
@@ -226,6 +266,30 @@
 	};
 };
 
+&mipi_dsi1 {
+	status = "okay";
+};
+
+&mipi_dsi_bridge1 {
+	status = "okay";
+};
+
+&mipi_dsi_phy1 {
+	status = "okay";
+};
+
+&mipi_dsi2 {
+	status = "okay";
+};
+
+&mipi_dsi_bridge2 {
+	status = "okay";
+};
+
+&mipi_dsi_phy2 {
+	status = "okay";
+};
+
 &ldb2_phy {
 	status = "disabled";
 };
@@ -240,9 +304,49 @@
 	};
 };
 
+&pixel_combiner {
+	status = "okay";
+};
+
 &pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
+	status = "okay";
+};
+
+&prg1 {
+	status = "okay";
+};
+
+&prg2 {
+	status = "okay";
+};
+
+&prg3 {
+	status = "okay";
+};
+
+&prg4 {
+	status = "okay";
+};
+
+&prg5 {
+	status = "okay";
+};
+
+&prg6 {
+	status = "okay";
+};
+
+&prg7 {
+	status = "okay";
+};
+
+&prg8 {
+	status = "okay";
+};
+
+&prg9 {
 	status = "okay";
 };
 
@@ -259,5 +363,17 @@
 
 &usbotg3 {
 	dr_mode = "host";
+	status = "okay";
+};
+
+&vpu {
+	status = "disabled";
+};
+
+&vpu_decoder {
+	status = "okay";
+};
+
+&vpu_encoder {
 	status = "okay";
 };
