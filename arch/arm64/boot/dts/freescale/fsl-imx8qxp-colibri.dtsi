@@ -73,7 +73,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_adc0>;
 	vref-supply = <&reg_vref_1v8>;
-	status = "okay";
 };
 
 /* Colibri Ethernet */
@@ -89,7 +88,6 @@
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
 	fsl,magic-packet;
-	status = "okay";
 
 	mdio {
 		#address-cells = <1>;
@@ -108,7 +106,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
 	xceiver-supply = <&reg_module_3v3>;
-	status = "disabled";
 };
 
 /* Colibri optional CAN on PS2 */
@@ -116,7 +113,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
 	xceiver-supply = <&reg_module_3v3>;
-	status = "okay";
 };
 
 &gpio0 {
@@ -716,28 +712,24 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi2>;
 	cs-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-	status = "disabled";
 };
 
 /* Colibri UART_B */
 &lpuart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart0>;
-	status = "okay";
 };
 
 /* Colibri UART_C */
 &lpuart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart2>;
-	status = "okay";
 };
 
 /* Colibri UART_A */
 &lpuart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart3>, <&pinctrl_lpuart3_ctrl>;
-	status = "okay";
 };
 
 /* On-module MIPI CSI accessible via FFC (X3) */
@@ -745,7 +737,6 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	/delete-property/virtual-channel;
-	status = "disabled";
 };
 
 &mipi_dsi1 {
@@ -778,28 +769,24 @@
 &pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
-	status = "okay";
 };
 
 /* Colibri PWM_B */
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_b>;
-	status = "okay";
 };
 
 /* Colibri PWM_C */
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_c>;
-	status = "okay";
 };
 
 /* Colibri PWM_D */
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_d>;
-	status = "okay";
 };
 
 &rpmsg{
@@ -875,7 +862,6 @@
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-3 = <&pinctrl_usdhc2_sleep>, <&pinctrl_usdhc2_gpio_sleep>;
 	disable-wp;
-	status = "okay";
 };
 
 &vpu_decoder {
