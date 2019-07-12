@@ -656,6 +656,12 @@
 			>;
 		};
 
+		pinctrl_usdhc2_gpio_sleep: usdhc2gpioslpgrp {
+			fsl,pins = <
+				SC_P_QSPI0A_DATA0_LSIO_GPIO3_IO09		0x60		/* SODIMM  43 */
+			>;
+		};
+
 		/* Colibri SDCard */
 		pinctrl_usdhc2: usdhc2grp {
 			fsl,pins = <
@@ -689,6 +695,18 @@
 				SC_P_USDHC1_DATA1_CONN_USDHC1_DATA1		0x21		/* SODIMM  49 */
 				SC_P_USDHC1_DATA2_CONN_USDHC1_DATA2		0x21		/* SODIMM  51 */
 				SC_P_USDHC1_DATA3_CONN_USDHC1_DATA3		0x21		/* SODIMM  53 */
+				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT		0x21
+			>;
+		};
+
+		pinctrl_usdhc2_sleep: usdhc2slpgrp {
+			fsl,pins = <
+				SC_P_USDHC1_CLK_LSIO_GPIO4_IO23			0x60		/* SODIMM  47 */
+				SC_P_USDHC1_CMD_LSIO_GPIO4_IO24			0x60		/* SODIMM 190 */
+				SC_P_USDHC1_DATA0_LSIO_GPIO4_IO25		0x60		/* SODIMM 192 */
+				SC_P_USDHC1_DATA1_LSIO_GPIO4_IO26		0x60		/* SODIMM  49 */
+				SC_P_USDHC1_DATA2_LSIO_GPIO4_IO27		0x60		/* SODIMM  51 */
+				SC_P_USDHC1_DATA3_LSIO_GPIO4_IO28		0x60		/* SODIMM  53 */
 				SC_P_USDHC1_VSELECT_CONN_USDHC1_VSELECT		0x21
 			>;
 		};
@@ -980,10 +998,12 @@
 	bus-width = <4>;
 	cd-gpios = <&gpio3 9 GPIO_ACTIVE_LOW>;
 	vmmc-supply = <&reg_module_3v3>;
-	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
+	pinctrl-3 = <&pinctrl_usdhc2_sleep>, <&pinctrl_usdhc2_gpio_sleep>;
+	disable-wp;
 	status = "okay";
 };
 
