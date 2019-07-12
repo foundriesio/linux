@@ -8,12 +8,14 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/reset-controller.h>
+#include <linux/of_device.h>
 #include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
 
 struct tcc_reset_data {
 	struct reset_controller_dev rcdev;
 	spinlock_t lock;
+	int op;
 };
 
 static int tcc_reset_assert(struct reset_controller_dev *rcdev,
@@ -28,7 +30,7 @@ static int tcc_reset_assert(struct reset_controller_dev *rcdev,
 
 	spin_lock_irqsave(&priv->lock, flags);
 
-	arm_smccc_smc(SIP_CLK_SWRESET, id, 1, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(priv->op, id, 1, 0, 0, 0, 0, 0, &res);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 
@@ -47,7 +49,7 @@ static int tcc_reset_deassert(struct reset_controller_dev *rcdev,
 
 	spin_lock_irqsave(&priv->lock, flags);
 
-	arm_smccc_smc(SIP_CLK_SWRESET, id, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(priv->op, id, 0, 0, 0, 0, 0, 0, &res);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 
@@ -68,6 +70,10 @@ static int tcc_reset_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, priv);
 
+	priv->op = (int) of_device_get_match_data(&pdev->dev);
+	if (WARN_ON(!priv->op))
+		return -EINVAL;
+
 	spin_lock_init(&priv->lock);
 
 	priv->rcdev.owner = THIS_MODULE;
@@ -78,8 +84,27 @@ static int tcc_reset_probe(struct platform_device *pdev)
 	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
 }
 
-static const struct of_device_id tcc_reset_match[] __initconst = {
-	{ .compatible = "telechips,reset", },
+static const struct of_device_id tcc_reset_match[] = {
+	{
+		.compatible = "telechips,reset",
+		.data = (void *) SIP_CLK_SWRESET,
+	},
+	{
+		.compatible = "telechips,vpubus-reset",
+		.data = (void *) SIP_CLK_RESET_VPUBUS,
+	},
+	{
+		.compatible = "telechips,ddibus-reset",
+		.data = (void *) SIP_CLK_RESET_DDIBUS,
+	},
+	{
+		.compatible = "telechips,iobus-reset",
+		.data = (void *) SIP_CLK_RESET_IOBUS,
+	},
+	{
+		.compatible = "telechips,hsiobus-reset",
+		.data = (void *) SIP_CLK_RESET_HSIOBUS,
+	},
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, tcc_reset_match);

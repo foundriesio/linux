@@ -716,6 +716,26 @@
 		#reset-cells = <1>;
 	};
 
+	vpubus_rst: reset-controller@15100004 {
+		compatible = "telechips,vpubus-reset";
+		#reset-cells = <1>;
+	};
+
+	ddibus_rst: reset-controller@12380004 {
+		compatible = "telechips,ddibus-reset";
+		#reset-cells = <1>;
+	};
+
+	iobus_rst: reset-controller@1605100c {
+		compatible = "telechips,iobus-reset";
+		#reset-cells = <1>;
+	};
+
+	hsiobus_rst: reset-controller@111a0004 {
+		compatible = "telechips,hsiobus-reset";
+		#reset-cells = <1>;
+	};
+
 	clocks {
 		compatible = "telechips,ckc";
 		#address-cells = <1>;
@@ -1754,6 +1774,7 @@
 		 reg = <0x11DA0010 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
+		resets = <&hsiobus_rst HSIOBUS_USB20H>;
 		 status = "disabled";
 	 };
 
@@ -1781,6 +1802,7 @@
 		 reg = <0x11DA0100 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_DWC_OTG &clk_isoip_top ISOIP_TOP_OTG>;
+		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		 status = "disabled";
 	};
 
@@ -1789,6 +1811,7 @@
 		 reg = <0x11DA00DC 0x20>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_DWC_OTG &clk_isoip_top ISOIP_TOP_OTG>;
+		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		 mux_port;
 		 status = "disabled";
 	};
