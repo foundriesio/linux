@@ -714,10 +714,15 @@ dasd_fba_dump_sense(struct dasd_device *device, struct dasd_ccw_req * req,
 			       " CCW %p: %08X %08X DAT:",
 			       act, ((int *) act)[0], ((int *) act)[1]);
 		for (count = 0; count < 32 && count < act->count;
-		     count += sizeof(int))
+		     count += sizeof(int)) {
+			if (act->flags & CCW_FLAG_SLI) {
+				len += sprintf(page + len, " 00000000");
+				break;
+			}
 			len += sprintf(page + len, " %08X",
 				       ((int *) (addr_t) act->cda)
 				       [(count>>2)]);
+		}
 		len += sprintf(page + len, "\n");
 		act++;
 	}
@@ -736,10 +741,15 @@ dasd_fba_dump_sense(struct dasd_device *device, struct dasd_ccw_req * req,
 			       " CCW %p: %08X %08X DAT:",
 			       act, ((int *) act)[0], ((int *) act)[1]);
 		for (count = 0; count < 32 && count < act->count;
-		     count += sizeof(int))
+		     count += sizeof(int)) {
+			if (act->flags & CCW_FLAG_SLI) {
+				len += sprintf(page + len, " 00000000");
+				break;
+			}
 			len += sprintf(page + len, " %08X",
 				       ((int *) (addr_t) act->cda)
 				       [(count>>2)]);
+		}
 		len += sprintf(page + len, "\n");
 		act++;
 	}
@@ -754,10 +764,15 @@ dasd_fba_dump_sense(struct dasd_device *device, struct dasd_ccw_req * req,
 			       " CCW %p: %08X %08X DAT:",
 			       act, ((int *) act)[0], ((int *) act)[1]);
 		for (count = 0; count < 32 && count < act->count;
-		     count += sizeof(int))
+		     count += sizeof(int)) {
+			if (act->flags & CCW_FLAG_SLI) {
+				len += sprintf(page + len, " 00000000");
+				break;
+			}
 			len += sprintf(page + len, " %08X",
 				       ((int *) (addr_t) act->cda)
 				       [(count>>2)]);
+		}
 		len += sprintf(page + len, "\n");
 		act++;
 	}
