@@ -16,11 +16,6 @@
 
 /* DSI/LVDS port 0 */
 &i2c0_mipi_lvds0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
-	clock-frequency = <100000>;
 	status = "okay";
 
 #ifndef DSI_TO_HDMI_V10
@@ -163,7 +158,6 @@
 };
 
 &mipi_dsi1 {
-	pwr-delay = <10>;
 	status = "okay";
 };
 
@@ -175,25 +169,4 @@
 			remote-endpoint = <&lt8912_1_in>;
 		};
 	};
-};
-
-&ldb2_phy {
-	status = "disabled";
-};
-
-&ldb2 {
-	status = "disabled";
-};
-
-&mipi_dsi_phy2 {
-	status = "disabled";
-};
-
-&mipi_dsi2 {
-	pwr-delay = <10>;
-	status = "disabled ";
-};
-
-&mipi_dsi_bridge2 {
-	status = "disabled";
 };

@@ -54,16 +54,6 @@
 	};
 };
 
-/* DSI/LVDS port 0 */
-&i2c0_mipi_lvds0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
-	clock-frequency = <100000>;
-	status = "disabled";
-};
-
 &ldb1_phy {
 	status = "okay";
 };
@@ -91,7 +81,6 @@
 };
 
 &mipi_dsi1 {
-	pwr-delay = <10>;
 	status = "okay";
 };
 
@@ -99,13 +88,8 @@
 	status = "disabled";
 };
 
-/* DSI/LVDS port 1 */
+/* On-module MIPI DSI accessible on FFC (X2) */
 &i2c0_mipi_lvds1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
-	clock-frequency = <100000>;
 	status = "disabled";
 };
 
@@ -122,7 +106,6 @@
 };
 
 &mipi_dsi2 {
-	pwr-delay = <10>;
 	status = "disabled";
 };
 
