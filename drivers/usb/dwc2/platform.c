@@ -597,7 +597,8 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	}
 
 	if (dwc2->params.activate_stm_id_vb_detection) {
-		u32 ggpio;
+		unsigned long flags;
+		u32 ggpio, gotgctl;
 		int is_host = dwc2_is_host_mode(dwc2);
 
 		/*
@@ -605,6 +606,19 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 		 * Mismatch Interrupt when ID detection will be disabled.
 		 */
 		dwc2_force_mode(dwc2, is_host);
+
+		spin_lock_irqsave(&dwc2->lock, flags);
+		gotgctl = dwc2_readl(dwc2, GOTGCTL);
+		/* bypass debounce filter, enable overrides */
+		gotgctl |= GOTGCTL_DBNCE_FLTR_BYPASS;
+		gotgctl |= GOTGCTL_BVALOEN | GOTGCTL_AVALOEN;
+		/* Force A / B session if needed */
+		if (gotgctl & GOTGCTL_ASESVLD)
+			gotgctl |= GOTGCTL_AVALOVAL;
+		if (gotgctl & GOTGCTL_BSESVLD)
+			gotgctl |= GOTGCTL_BVALOVAL;
+		dwc2_writel(dwc2, gotgctl, GOTGCTL);
+		spin_unlock_irqrestore(&dwc2->lock, flags);
 
 		ggpio = dwc2_readl(dwc2, GGPIO);
 		ggpio &= ~GGPIO_STM32_OTG_GCCFG_IDEN;
@@ -640,7 +654,8 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 	}
 
 	if (dwc2->params.activate_stm_id_vb_detection) {
-		u32 ggpio;
+		unsigned long flags;
+		u32 ggpio, gotgctl;
 
 		ret = regulator_enable(dwc2->usb33d);
 		if (ret)
@@ -653,6 +668,14 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 
 		/* ID/VBUS detection startup time */
 		usleep_range(5000, 7000);
+
+		spin_lock_irqsave(&dwc2->lock, flags);
+		gotgctl = dwc2_readl(dwc2, GOTGCTL);
+		gotgctl &= ~GOTGCTL_DBNCE_FLTR_BYPASS;
+		gotgctl &= ~(GOTGCTL_BVALOEN | GOTGCTL_AVALOEN |
+			     GOTGCTL_BVALOVAL | GOTGCTL_AVALOVAL);
+		dwc2_writel(dwc2, gotgctl, GOTGCTL);
+		spin_unlock_irqrestore(&dwc2->lock, flags);
 	}
 
 	if (dwc2->params.power_down == DWC2_POWER_DOWN_PARAM_NONE) {
