@@ -95,8 +95,7 @@ static int imx8_pd_power(struct generic_pm_domain *domain, bool power_on)
 					pd->rsrc_id == SC_R_HDMI_I2S ||
 					pd->rsrc_id == SC_R_HDMI_I2C_0 ||
 					pd->rsrc_id == SC_R_HDMI_PLL_0 ||
-					pd->rsrc_id == SC_R_HDMI_PLL_1 ||
-					pd->rsrc_id == SC_R_ELCDIF_PLL))
+					pd->rsrc_id == SC_R_HDMI_PLL_1))
 		pd->pd.flags |= GENPD_FLAG_ALWAYS_ON;
 
 	return 0;
