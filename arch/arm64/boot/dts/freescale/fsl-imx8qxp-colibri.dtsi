@@ -279,7 +279,8 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>;
+	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>,
+			<&pinctrl_ext_io0>;
 
 	colibri-imx8qxp {
 		/* On-module touch pen-down interrupt */
