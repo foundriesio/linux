@@ -264,7 +264,6 @@ static int klp_check_stack(struct task_struct *task, char *err_buf)
 	trace.max_entries = MAX_STACK_ENTRIES;
 	trace.entries = entries;
 	ret = save_stack_trace_tsk_reliable(task, &trace);
-	WARN_ON_ONCE(ret == -ENOSYS);
 	if (ret) {
 		snprintf(err_buf, STACK_ERR_BUF_SIZE,
 			 "%s: %s:%d has an unreliable stack\n",
