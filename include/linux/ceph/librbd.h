@@ -73,18 +73,16 @@ struct rbd_img_request {
 	struct rbd_obj_request	*obj_request;	/* obj req initiator */
 	void			*lio_cmd_data;	/* lio specific data */
 
-	struct page		**copyup_pages;
-	u32			copyup_page_count;
 	spinlock_t		completion_lock;/* protects next_completion */
 	u32			next_completion;
 	rbd_img_callback_t	callback;
-        /*
+	/*
 	 * xferred is the bytes that have successfully been transferred.
 	 * completed is the bytes that have been accounted for and includes
-	 * failures.
+	 * both failed and successfully transffered bytes.
 	 */
 	u64			xferred;/* aggregate bytes transferred */
-	u64			completed;/* aggregate bytes completed */
+	u64			completed;
 	int			result;	/* first nonzero obj_request result */
 
 	u32			obj_request_count;
