@@ -155,8 +155,7 @@
 	clock-frequency = <100000>;
 	status = "disabled";
 };
-
-/* On-module MIPI CSI I2C accessible via FFC (X3) */
+/* On-module MIPI CSI I2C accessible on FFC (X3) */
 &i2c0_mipi_lvds1 {
 	status = "okay";
 
@@ -183,11 +182,11 @@
 	};
 };
 
-&ldb1_phy {
+&ldb1 {
 	status = "disabled";
 };
 
-&ldb1 {
+&ldb1_phy {
 	status = "disabled";
 };
 
@@ -217,19 +216,6 @@
 	};
 };
 
-&mipi_dsi_phy1 {
-	status = "disabled";
-};
-
-&mipi_dsi1 {
-	pwr-delay = <10>;
-	status = "disabled";
-};
-
-&mipi_dsi_bridge1 {
-	status = "disabled";
-};
-
 &i2c1 {
 	status = "okay";
 
@@ -238,16 +224,6 @@
 		compatible = "st,m41t0";
 		reg = <0x68>;
 	};
-};
-
-/* DSI/LVDS port 1 */
-&i2c0_mipi_lvds1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
-	clock-frequency = <100000>;
-	status = "disabled";
 };
 
 &ldb2_phy {
@@ -262,19 +238,6 @@
 		fsl,data-width = <24>;
 		status = "okay";
 	};
-};
-
-&mipi_dsi_phy2 {
-	status = "disabled";
-};
-
-&mipi_dsi2 {
-	pwr-delay = <10>;
-	status = "disabled ";
-};
-
-&mipi_dsi_bridge2 {
-	status = "disabled";
 };
 
 &pwm_adma_lcdif {

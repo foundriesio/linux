@@ -246,14 +246,22 @@
 	};
 };
 
-/* On-module MIPI CSI I2C accessible via FFC (X3) */
+/* On-module MIPI DSI accessible on FFC (X2) */
+&i2c0_mipi_lvds0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds0>;
+	clock-frequency = <100000>;
+};
+
+/* On-module MIPI CSI accessible on FFC (X3) */
 &i2c0_mipi_lvds1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_mipi_csi>;
-	status = "disabled";
 };
 
 /* Colibri I2C */
@@ -684,7 +692,7 @@
 			>;
 		};
 
-		/* MIPI DSI0 I2C on FFC (X2) */
+		/* On-module MIPI DSI I2C accessible on FFC (X2) */
 		pinctrl_i2c0_mipi_lvds0: mipi_lvds0_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI0_I2C0_SCL_MIPI_DSI0_I2C0_SCL 	0xc6000020	/* SODIMM 140 */
@@ -692,7 +700,7 @@
 			>;
 		};
 
-		/* On-module MIPI CSI I2C accessible via FFC (X3) */
+		/* On-module MIPI CSI I2C accessible on FFC (X3) */
 		pinctrl_i2c0_mipi_csi: mipi_csi_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI1_I2C0_SCL_MIPI_DSI1_I2C0_SCL 	0xc6000020	/* SODIMM 186 */
@@ -731,6 +739,22 @@
 };
 
 &isi_3 {
+	status = "okay";
+};
+
+&ldb1 {
+	status = "okay";
+};
+
+&ldb1_phy {
+	status = "okay";
+};
+
+&ldb2 {
+	status = "okay";
+};
+
+&ldb2_phy {
 	status = "okay";
 };
 
@@ -773,6 +797,33 @@
 	/delete-property/virtual-channel;
 	status = "disabled";
 };
+
+&mipi_dsi1 {
+	pwr-delay = <10>;
+	status = "disabled";
+};
+
+&mipi_dsi_bridge1 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy1 {
+	status = "disabled";
+};
+
+&mipi_dsi2 {
+	pwr-delay = <10>;
+	status = "disabled";
+};
+
+&mipi_dsi_bridge2 {
+	status = "disabled";
+};
+
+&mipi_dsi_phy2 {
+	status = "disabled";
+};
+
 
 /* On-module PCIe for wifi */
 &pcieb{
