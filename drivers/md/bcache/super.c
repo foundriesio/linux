@@ -807,13 +807,14 @@ static int bcache_device_init(struct bcache_device *d, unsigned int block_size,
 	if (idx < 0)
 		return idx;
 
-	if (!(d->bio_split = bioset_create(4, offsetof(struct bbio, bio),
-					   BIOSET_NEED_BVECS |
-					   BIOSET_NEED_RESCUER)) ||
-	    !(d->disk = alloc_disk(BCACHE_MINORS))) {
-		ida_simple_remove(&bcache_device_idx, idx);
-		return -ENOMEM;
-	}
+	d->bio_split = bioset_create(4, offsetof(struct bbio, bio),
+				     BIOSET_NEED_BVECS | BIOSET_NEED_RESCUER);
+	if (!d->bio_split)
+		goto err;
+
+	d->disk = alloc_disk(BCACHE_MINORS);
+	if (!d->disk)
+		goto err;
 
 	set_capacity(d->disk, sectors);
 	snprintf(d->disk->disk_name, DISK_NAME_LEN, "bcache%i", idx);
@@ -847,6 +848,11 @@ static int bcache_device_init(struct bcache_device *d, unsigned int block_size,
 	blk_queue_write_cache(q, true, true);
 
 	return 0;
+
+err:
+	ida_simple_remove(&bcache_device_idx, idx);
+	return -ENOMEM;
+
 }
 
 /* Cached device */
