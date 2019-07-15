@@ -188,7 +188,7 @@ extern void tcc_plugout_for_component(int ch_layer);
 extern void tcc_video_frame_backup(struct tcc_lcdc_image_update *Image);
 #endif
 #ifdef CONFIG_DISPLAY_EXT_FRAME
-#ifdef CONFIG_LINUX
+#if defined(CONFIG_LINUX) || defined(CONFIG_LINUX_ANDROID)
 extern int restricted_ExtFrame;
 #endif
 extern int tcc_ctrl_ext_frame(char enable);
@@ -3635,7 +3635,7 @@ void tcc_video_post_process(struct tcc_lcdc_image_update *ImageInfo)
 		tcc_video_frame_backup(ImageInfo);
 	#endif
 	#ifdef CONFIG_DISPLAY_EXT_FRAME
-	#ifdef CONFIG_LINUX
+	#if defined(CONFIG_LINUX) || defined(CONFIG_LINUX_ANDROID)
 	if(!restricted_ExtFrame)
 	#endif
 		tcc_ctrl_ext_frame(0);
