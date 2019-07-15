@@ -39,7 +39,7 @@
  */
 #define KVM_NR_IRQCHIPS 1
 #define KVM_IRQCHIP_NUM_PINS 4096
-#define KVM_HALT_POLL_NS_DEFAULT 80000
+#define KVM_HALT_POLL_NS_DEFAULT 50000
 
 /* s390-specific vcpu->requests bit members */
 #define KVM_REQ_ENABLE_IBS	KVM_ARCH_REQ(0)
@@ -303,6 +303,9 @@ struct kvm_vcpu_stat {
 	u64 halt_successful_poll;
 	u64 halt_attempted_poll;
 	u64 halt_poll_invalid;
+#ifndef __GENKSYMS__
+	u64 halt_no_poll_steal;
+#endif
 	u64 halt_wakeup;
 	u64 instruction_lctl;
 	u64 instruction_lctlg;
