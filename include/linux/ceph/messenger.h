@@ -82,23 +82,6 @@ enum ceph_msg_data_type {
 	CEPH_MSG_DATA_SG,	/* data source/destination is a scatterlist */
 };
 
-static __inline__ bool ceph_msg_data_type_valid(enum ceph_msg_data_type type)
-{
-	switch (type) {
-	case CEPH_MSG_DATA_NONE:
-	case CEPH_MSG_DATA_PAGES:
-	case CEPH_MSG_DATA_PAGELIST:
-#ifdef CONFIG_BLOCK
-	case CEPH_MSG_DATA_BIO:
-#endif /* CONFIG_BLOCK */
-	case CEPH_MSG_DATA_BVECS:
-	case CEPH_MSG_DATA_SG:
-		return true;
-	default:
-		return false;
-	}
-}
-
 #ifdef CONFIG_BLOCK
 
 struct ceph_bio_iter {
@@ -182,7 +165,6 @@ struct ceph_bvec_iter {
 } while (0)
 
 struct ceph_msg_data {
-	struct list_head		links;	/* ceph_msg->data */
 	enum ceph_msg_data_type		type;
 	union {
 #ifdef CONFIG_BLOCK
@@ -208,7 +190,6 @@ struct ceph_msg_data {
 
 struct ceph_msg_data_cursor {
 	size_t			total_resid;	/* across all data items */
-	struct list_head	*data_head;	/* = &ceph_msg->data */
 
 	struct ceph_msg_data	*data;		/* current data item */
 	size_t			resid;		/* bytes not yet consumed */
@@ -250,7 +231,9 @@ struct ceph_msg {
 	struct ceph_buffer *middle;
 
 	size_t				data_length;
-	struct list_head		data;
+	struct ceph_msg_data		*data;
+	int				num_data_items;
+	int				max_data_items;
 	struct ceph_msg_data_cursor	cursor;
 
 	struct ceph_connection *con;
@@ -393,6 +376,8 @@ void ceph_msg_data_add_bvecs(struct ceph_msg *msg,
 extern void ceph_msg_data_add_sg(struct ceph_msg *msg, struct scatterlist *sgl,
 				 unsigned int sgl_init_offset, u64 length);
 
+struct ceph_msg *ceph_msg_new2(int type, int front_len, int max_data_items,
+			       gfp_t flags, bool can_fail);
 extern struct ceph_msg *ceph_msg_new(int type, int front_len, gfp_t flags,
 				     bool can_fail);
 
