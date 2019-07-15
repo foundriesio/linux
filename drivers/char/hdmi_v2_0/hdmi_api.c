@@ -30,7 +30,9 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_v_dv.h>
 #endif
+#include <core/fc_video.h>
 #include <hdmi_api_lib/src/core/frame_composer/frame_composer_reg.h>
+#include <hdmi_api_lib/src/core/main_controller/main_controller_reg.h>
 #include <hdmi_api_lib/src/core/video/video_packetizer_reg.h>
 
 
@@ -306,4 +308,185 @@ void hdmi_api_power_control(int enable)
         }
 }
 EXPORT_SYMBOL(hdmi_api_power_control);
+
+
+static int hdmi_api_update_avi_infoframe(videoParams_t *videoParam)
+{
+
+        int ret = -1;
+
+        int mc_timeout = 100;
+        volatile unsigned int mc_reg_val;
+
+        do {
+                if(hdmi_apis.dev == NULL) {
+                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        break;
+                }
+                if(videoParam == NULL) {
+                        pr_err("%s videoParam is NULL\r\n", __func__);
+                        break;
+                }
+		if(hdmi_apis.dev->videoParam == NULL) {
+			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+                        break;
+		}
+
+                if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                break;
+                        }
+
+			if(packets_Configure(hdmi_apis.dev, videoParam, NULL) < 0) {
+				pr_err("%s failed packets_Configure <%d>\r\n", __func__, __LINE__);
+                                break;
+			}
+			/* Update Video parameters */
+			memcpy(hdmi_apis.dev->videoParam, videoParam, sizeof(videoParams_t));
+
+			/* Reset the main controller */
+			hdmi_dev_write(hdmi_apis.dev, MC_SWRSTZREQ, 0);
+
+	                /* wait main controller to resume */
+	                do {
+	                        usleep_range(10, 20);
+	                        mc_reg_val = hdmi_dev_read(hdmi_apis.dev, MC_SWRSTZREQ);
+	                }
+	                while(mc_timeout-- && mc_reg_val != 0xDF);
+			if(mc_timeout < 1) {
+				pr_info("%s main controller timeout \r\n",__func__);
+			}
+
+	                fc_video_VSyncPulseWidth(hdmi_apis.dev, videoParam->mDtd.mVSyncPulseWidth);
+
+			ret = 0;
+                } else {
+                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                }
+        }while(0);
+        return ret;
+}
+
+
+/**
+ * @short This function sets colorimetry and stores it to device context.
+ * @param[in] colorimetry Stores colorimetry value
+ * @param[in] ext_colorimetry Store extended colorimetry value
+ *            If colorimetry is not EXTENDED_COLORIMETRY, this value is ignored.
+ * @return Return the result of this function
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
+ */
+int hdmi_api_update_colorimetry(
+	colorimetry_t colorimetry,
+	ext_colorimetry_t ext_colorimetry)
+{
+        int ret = -1;
+	videoParams_t videoParam;
+
+        do {
+                if(hdmi_apis.dev == NULL) {
+                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        break;
+                }
+		if(hdmi_apis.dev->videoParam == NULL) {
+			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+                        break;
+		}
+                mutex_lock(&hdmi_apis.dev->mutex);
+                if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                mutex_unlock(&hdmi_apis.dev->mutex);
+                                break;
+                        }
+			memcpy(&videoParam, hdmi_apis.dev->videoParam, sizeof(videoParams_t));
+			videoParam.mColorimetry = colorimetry;
+			videoParam.mExtColorimetry = ext_colorimetry;
+
+			ret = hdmi_api_update_avi_infoframe(&videoParam);
+                } else {
+                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                }
+                mutex_unlock(&hdmi_apis.dev->mutex);
+        }while(0);
+        return ret;
+}
+EXPORT_SYMBOL(hdmi_api_update_colorimetry);
+
+/**
+ * @short This function sets quantization and stores it to device context.
+ * @param[in] quantization_range Stores quantization range value
+ *           [0] For RGB, This value means that the quantization range corresponds
+ *               to the default RGB quantization range.
+ *               For YUV, this value means that the quantization range corresponds
+ *               to the  limited quantization range
+ *           [1] For RGB, This value means that the quantization range corresponds
+ *               to the limited quantization range.
+ *               For YUV, this value means that the quantization range corresponds
+ *               to the  limited quantization range
+ *           [2] For RGB, This value means that the quantization range corresponds
+ *               to the full quantization range.
+ *               For YUV, this value means that the quantization range corresponds
+ *               to the full quantization range
+ * @return Return the result of this function
+ * @retval 0 if this function succeeded \n
+ * @retval -1 otherwise
+ */
+int hdmi_api_update_quantization(int quantization_range)
+{
+        int ret = -1;
+	videoParams_t videoParam;
+
+        do {
+                if(hdmi_apis.dev == NULL) {
+                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        break;
+                }
+
+		if(hdmi_apis.dev->videoParam == NULL) {
+			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+                        break;
+		}
+                mutex_lock(&hdmi_apis.dev->mutex);
+                if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                mutex_unlock(&hdmi_apis.dev->mutex);
+                                break;
+                        }
+			memcpy(&videoParam, hdmi_apis.dev->videoParam, sizeof(videoParams_t));
+
+			switch(quantization_range) {
+				case 0:
+					/* RGB : default range for the transmitted Video Format.
+					 * YuV : Limited Range */
+					videoParam.mRgbQuantizationRange = 0;
+					videoParam.mYuvQuantizationRange = 0;
+					break;
+				case 1:
+					/* Limited Range */
+					videoParam.mRgbQuantizationRange = 1;
+					videoParam.mYuvQuantizationRange = 0;
+					break;
+				case 2:
+					/* Full Range */
+					videoParam.mRgbQuantizationRange = 2;
+					videoParam.mYuvQuantizationRange = 1;
+					break;
+			}
+
+			ret = hdmi_api_update_avi_infoframe(&videoParam);
+                } else {
+                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                }
+                mutex_unlock(&hdmi_apis.dev->mutex);
+        }while(0);
+        return ret;
+}
+EXPORT_SYMBOL(hdmi_api_update_quantization);
+
+
+
 

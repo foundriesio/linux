@@ -181,10 +181,8 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 }
 
                 // Packets
-                ret = packets_Configure(dev, video, product);
-                if (ret == FALSE) {
+                if(packets_Configure(dev, video, product) < 0) {
                         pr_err("%s Could not configure packets\r\n", __func__);
-                        ret = -1;
                         break;
                 }
 
