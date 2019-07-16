@@ -8,6 +8,7 @@
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/numa.h>
 
 #include <asm/pgtable.h>
 #include <linux/uaccess.h>

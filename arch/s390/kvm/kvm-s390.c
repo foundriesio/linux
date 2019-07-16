@@ -74,6 +74,7 @@ struct kvm_stats_debugfs_item debugfs_entries[] = {
 	{ "halt_successful_poll", VCPU_STAT(halt_successful_poll) },
 	{ "halt_attempted_poll", VCPU_STAT(halt_attempted_poll) },
 	{ "halt_poll_invalid", VCPU_STAT(halt_poll_invalid) },
+	{ "halt_no_poll_steal", VCPU_STAT(halt_no_poll_steal) },
 	{ "halt_wakeup", VCPU_STAT(halt_wakeup) },
 	{ "instruction_lctlg", VCPU_STAT(instruction_lctlg) },
 	{ "instruction_lctl", VCPU_STAT(instruction_lctl) },
@@ -164,6 +165,11 @@ MODULE_PARM_DESC(hpage, "1m huge page backing support");
  * this, this requires changes to code, but the external uapi can stay.
  */
 #define SIZE_INTERNAL 16
+
+/* maximum percentage of steal time for polling.  >100 is treated like 100 */
+static u8 halt_poll_max_steal = 10;
+module_param(halt_poll_max_steal, byte, 0644);
+MODULE_PARM_DESC(halt_poll_max_steal, "Maximum percentage of steal time to allow polling");
 
 /*
  * Base feature mask that defines default mask for facilities. Consists of the
@@ -2778,6 +2784,17 @@ static void kvm_gmap_notifier(struct gmap *gmap, unsigned long start,
 			kvm_s390_sync_request(KVM_REQ_MMU_RELOAD, vcpu);
 		}
 	}
+}
+
+bool kvm_arch_no_poll(struct kvm_vcpu *vcpu)
+{
+	/* do not poll with more than halt_poll_max_steal percent of steal time */
+	if (S390_lowcore.avg_steal_timer * 100 / (TICK_USEC << 12) >=
+	    halt_poll_max_steal) {
+		vcpu->stat.halt_no_poll_steal++;
+		return true;
+	}
+	return false;
 }
 
 int kvm_arch_vcpu_should_kick(struct kvm_vcpu *vcpu)

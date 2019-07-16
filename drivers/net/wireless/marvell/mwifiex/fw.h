@@ -1759,9 +1759,16 @@ struct mwifiex_ie_types_wmm_queue_status {
 struct ieee_types_vendor_header {
 	u8 element_id;
 	u8 len;
+#ifdef __GENKSYMS__
 	u8 oui[4];	/* 0~2: oui, 3: oui_type */
 	u8 oui_subtype;
 	u8 version;
+#else
+	struct {
+		u8 oui[3];
+		u8 oui_type;
+	} __packed oui;
+#endif
 } __packed;
 
 struct ieee_types_wmm_parameter {
@@ -1775,6 +1782,11 @@ struct ieee_types_wmm_parameter {
 	 *   Version     [1]
 	 */
 	struct ieee_types_vendor_header vend_hdr;
+#ifndef __GENKSYMS__
+	u8 oui_subtype;
+	u8 version;
+#endif
+
 	u8 qos_info_bitmap;
 	u8 reserved;
 	struct ieee_types_wmm_ac_parameters ac_params[IEEE80211_NUM_ACS];
@@ -1792,6 +1804,10 @@ struct ieee_types_wmm_info {
 	 *   Version     [1]
 	 */
 	struct ieee_types_vendor_header vend_hdr;
+#ifndef __GENKSYMS__
+	u8 oui_subtype;
+	u8 version;
+#endif
 
 	u8 qos_info_bitmap;
 } __packed;
