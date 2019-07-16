@@ -216,9 +216,9 @@ static void initialize_distance_lookup_table(int nid,
  */
 static int associativity_to_nid(const __be32 *associativity)
 {
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 
-	if (min_common_depth == -1)
+	if (!numa_enabled)
 		goto out;
 
 	if (of_read_number(associativity, 1) >= min_common_depth)
@@ -226,7 +226,7 @@ static int associativity_to_nid(const __be32 *associativity)
 
 	/* POWER4 LPAR uses 0xffff as invalid node */
 	if (nid == 0xffff || nid >= MAX_NUMNODES)
-		nid = -1;
+		nid = NUMA_NO_NODE;
 
 	if (nid > 0 &&
 		of_read_number(associativity, 1) >= distance_ref_points_depth) {
@@ -245,7 +245,7 @@ out:
  */
 static int of_node_to_nid_single(struct device_node *device)
 {
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 	const __be32 *tmp;
 
 	tmp = of_get_associativity(device);
@@ -257,7 +257,7 @@ static int of_node_to_nid_single(struct device_node *device)
 /* Walk the device tree upwards, looking for an associativity id */
 int of_node_to_nid(struct device_node *device)
 {
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 
 	of_node_get(device);
 	while (device) {
@@ -422,17 +422,19 @@ static int of_get_assoc_arrays(struct assoc_arrays *aa)
 static int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 {
 	struct assoc_arrays aa = { .arrays = NULL };
-	int default_nid = 0;
+	int default_nid = NUMA_NO_NODE;
 	int nid = default_nid;
 	int rc, index;
+
+	if ((min_common_depth < 0) || !numa_enabled)
+		return default_nid;
 
 	rc = of_get_assoc_arrays(&aa);
 	if (rc)
 		return default_nid;
 
-	if (min_common_depth > 0 && min_common_depth <= aa.array_sz &&
-	    !(lmb->flags & DRCONF_MEM_AI_INVALID) &&
-	    lmb->aa_index < aa.n_arrays) {
+	if (min_common_depth <= aa.array_sz &&
+	    !(lmb->flags & DRCONF_MEM_AI_INVALID) && lmb->aa_index < aa.n_arrays) {
 		index = lmb->aa_index * aa.array_sz + min_common_depth - 1;
 		nid = of_read_number(&aa.arrays[index], 1);
 
@@ -455,7 +457,7 @@ static int of_drconf_to_nid_single(struct drmem_lmb *lmb)
  */
 static int numa_setup_cpu(unsigned long lcpu)
 {
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 	struct device_node *cpu;
 
 	/*
@@ -632,8 +634,14 @@ static int __init parse_numa_properties(void)
 
 	min_common_depth = find_min_common_depth();
 
-	if (min_common_depth < 0)
+	if (min_common_depth < 0) {
+		/*
+		 * if we fail to parse min_common_depth from device tree
+		 * mark the numa disabled, boot with numa disabled.
+		 */
+		numa_enabled = false;
 		return min_common_depth;
+	}
 
 	dbg("NUMA associativity depth for CPU/Memory: %d\n", min_common_depth);
 
@@ -749,7 +757,7 @@ void __init dump_numa_cpu_topology(void)
 	unsigned int node;
 	unsigned int cpu, count;
 
-	if (min_common_depth == -1 || !numa_enabled)
+	if (!numa_enabled)
 		return;
 
 	for_each_online_node(node) {
@@ -810,7 +818,7 @@ static void __init find_possible_nodes(void)
 	struct device_node *rtas;
 	u32 numnodes, i;
 
-	if (min_common_depth <= 0)
+	if (!numa_enabled)
 		return;
 
 	rtas = of_find_node_by_path("/rtas");
@@ -931,7 +939,7 @@ static int hot_add_drconf_scn_to_nid(unsigned long scn_addr)
 {
 	struct drmem_lmb *lmb;
 	unsigned long lmb_size;
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 
 	lmb_size = drmem_lmb_size();
 
@@ -961,7 +969,7 @@ static int hot_add_drconf_scn_to_nid(unsigned long scn_addr)
 static int hot_add_node_scn_to_nid(unsigned long scn_addr)
 {
 	struct device_node *memory;
-	int nid = -1;
+	int nid = NUMA_NO_NODE;
 
 	for_each_node_by_type(memory, "memory") {
 		unsigned long start, size;
@@ -1006,7 +1014,7 @@ int hot_add_scn_to_nid(unsigned long scn_addr)
 	struct device_node *memory = NULL;
 	int nid;
 
-	if (!numa_enabled || (min_common_depth < 0))
+	if (!numa_enabled)
 		return first_online_node;
 
 	memory = of_find_node_by_path("/ibm,dynamic-reconfiguration-memory");
