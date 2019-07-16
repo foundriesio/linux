@@ -3,6 +3,7 @@
  * Copyright 2018-2019 Toradex
  */
 
+#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp.dtsi"
 
 / {
@@ -12,6 +13,17 @@
 	chosen {
 		bootargs = "console=ttyLP3,115200 earlycon=lpuart32,0x5a090000,115200";
 		stdout-path = &lpuart3;
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		enable-gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* Colibri BL_ON */
+		pwms = <&pwm_adma_lcdif 0 100000 PWM_POLARITY_INVERTED>;
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+		status = "disabled";
 	};
 
 	regulators {
