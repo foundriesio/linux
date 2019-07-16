@@ -51,8 +51,8 @@
 		enable-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
 
 		port {
-			lcd_display_in: endpoint {
-				remote-endpoint = <&lcdif_out>;
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
 			};
 		};
 	};
@@ -128,11 +128,21 @@
 	bus-width = <18>;
 	status = "okay";
 
+#ifdef LCDIF_OUT_ADV7125
 	port@0 {
 		lcdif_out: lcdif-endpoint {
 			remote-endpoint = <&lcd_display_in>;
 		};
 	};
+#endif
+
+#ifdef LCDIF_OUT_DISPLAY
+	port@0 {
+		lcd_display_out: lcdif-endpoint {
+			remote-endpoint = <&lcd_panel_in>;
+		};
+	};
+#endif
 };
 
 /* Display Prefetch Resolve, (Tiling) */
