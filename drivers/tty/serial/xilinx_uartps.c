@@ -319,8 +319,8 @@ static void cdns_uart_handle_tx(void *dev_id)
 			 * register.
 			 */
 			writel(
-				port->state->xmit.buf[port->state->xmit.
-				tail], port->membase + CDNS_UART_FIFO);
+				port->state->xmit.buf[port->state->xmit.tail],
+					port->membase + CDNS_UART_FIFO);
 
 			port->icount.tx++;
 
