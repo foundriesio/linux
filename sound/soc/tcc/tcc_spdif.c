@@ -56,12 +56,6 @@
 
 #define CHECK_SPDIF_HW_PARAM_ELAPSED_TIME	(0)
 
-enum tcc_spdif_direction_type {
-	SPDIF_DTYPE_TX = 0,
-	SPDIF_DTYPE_RX = 1,
-	SPDIF_DTYPE_BOTH = 2,
-};
-
 struct tcc_spdif_t {
 	struct platform_device *pdev;
 	spinlock_t lock;
@@ -71,7 +65,6 @@ struct tcc_spdif_t {
     struct clk *pclk;
     struct clk *hclk;
     uint32_t clk_rate;
-	uint32_t direction_type;
 	uint32_t clk_ratio;
 #if defined(CONFIG_ARCH_TCC802X)
 	void __iomem *pcfg_reg;
@@ -468,56 +461,26 @@ static int tcc_spdif_resume(struct snd_soc_dai *dai)
 }
 
 
-struct snd_soc_dai_driver tcc_spdif_dai_drv[] = {
-	[SPDIF_DTYPE_TX] = {
-		.name = "tcc-spdif",
-		.suspend = tcc_spdif_suspend,
-		.resume	= tcc_spdif_resume,
-		.playback = {
-			.stream_name = "SPDIF-Playback",
-			.channels_min = 2,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats =SNDRV_PCM_FMTBIT_U16_LE |  SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.symmetric_rates = 1,
-		.ops   = &tcc_spdif_ops,
+struct snd_soc_dai_driver tcc_spdif_dai_drv = {
+	.name = "tcc-spdif",
+	.suspend = tcc_spdif_suspend,
+	.resume	= tcc_spdif_resume,
+	.playback = {
+		.stream_name = "SPDIF-Playback",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_48000,
+		.formats =SNDRV_PCM_FMTBIT_U16_LE |  SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
-	[SPDIF_DTYPE_RX] = {
-		.name = "tcc-spdif",
-		.suspend = tcc_spdif_suspend,
-		.resume	= tcc_spdif_resume,
-		.capture = {
-			.stream_name = "SPDIF-Capture",
-			.channels_min = 2,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats = SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.symmetric_rates = 1,
-		.ops   = &tcc_spdif_ops,
+	.capture = {
+		.stream_name = "SPDIF-Capture",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_48000,
+		.formats = SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
-	[SPDIF_DTYPE_BOTH] = {
-		.name = "tcc-spdif",
-		.suspend = tcc_spdif_suspend,
-		.resume	= tcc_spdif_resume,
-		.playback = {
-			.stream_name = "SPDIF-Playback",
-			.channels_min = 2,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats =SNDRV_PCM_FMTBIT_U16_LE |  SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.capture = {
-			.stream_name = "SPDIF-Capture",
-			.channels_min = 2,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats = SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
-		},
-		.symmetric_rates = 1,
-		.ops   = &tcc_spdif_ops,
-	},
+	.symmetric_rates = 1,
+	.ops   = &tcc_spdif_ops,
 };
 
 static void spdif_initialize(struct tcc_spdif_t *spdif)
@@ -575,19 +538,6 @@ static int parse_spdif_dt(struct platform_device *pdev, struct tcc_spdif_t *spdi
 	}
 	spdif_dai_dbg("spdif)clk_rate=%u\n", spdif->clk_rate);	
 
-	if (of_property_read_bool(pdev->dev.of_node, "tx-only")) {
-		spdif->direction_type = SPDIF_DTYPE_TX;
-		spdif_dai_dbg("spdif)direction_type value is tx-only\n");	
-	}
-	else if(of_property_read_bool(pdev->dev.of_node, "rx-only")) {
-		spdif->direction_type = SPDIF_DTYPE_RX;
-		spdif_dai_dbg("spdif)direction_type value is rx-only\n");	
-	}
-	else {
-		spdif->direction_type = SPDIF_DTYPE_BOTH;
-		spdif_dai_dbg("spdif)direction_type value is both\n");	
-	}
-
 #if defined(CONFIG_ARCH_TCC802X)
     spdif->pcfg_reg = of_iomap(pdev->dev.of_node, 1);
     if (IS_ERR((void *)spdif->pcfg_reg)) {
@@ -627,7 +577,7 @@ static int tcc_spdif_probe(struct platform_device *pdev)
 
 	spdif_initialize(spdif);
 
-	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_spdif_component_drv, &tcc_spdif_dai_drv[spdif->direction_type], 1)) < 0) {
+	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_spdif_component_drv, &tcc_spdif_dai_drv, 1)) < 0) {
 		pr_err("devm_snd_soc_register_component failed\n");
 		goto error;
 	}

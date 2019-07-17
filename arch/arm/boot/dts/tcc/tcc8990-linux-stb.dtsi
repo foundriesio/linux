@@ -573,7 +573,6 @@
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai1_spdif_tx>;
 		pinctrl-1 = <&m0dai1_spdif_tx_idle>;
-		tx-only;
 		status = "okay";
 	};
 
@@ -610,6 +609,7 @@
 			mclk_div = <2>; //spdif peri_clk = samplerate * 128 * mclk_div
 			pcm = <&adma0>;
 			dai = <&spdif0>;
+			playback-only;
 		};
 
 		telechips,dai-link@2 {
@@ -622,6 +622,7 @@
 			bclk_ratio = <64>; // 32,48,64fs
 			pcm = <&adma1>;
 			dai = <&i2s1>;
+			playback-only;
 		};
 	};
 

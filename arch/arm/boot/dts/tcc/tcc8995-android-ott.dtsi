@@ -522,7 +522,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai1_spdif_tx>;
 	pinctrl-1 = <&m0dai1_spdif_tx_idle>;
-	tx-only;
 	status = "okay";
 };
 
@@ -530,7 +529,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai1_spdif_tx>;
 	pinctrl-1 = <&m1dai1_spdif_tx_idle>;
-	tx-only;
 	status = "disable";
 };
 
@@ -577,6 +575,7 @@
 
 		pcm = <&adma0>;
 		dai = <&spdif0>;
+		playback-only;
 	};
 };
 

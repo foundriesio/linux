@@ -465,12 +465,12 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 	dai_link->ops = &tcc_snd_card_ops;
 	dai_link->init = tcc_snd_card_dai_init;
 
-	if(of_property_read_bool(node, "playback_only")) {
+	if(of_property_read_bool(node, "playback-only")) {
 		snd_card_dbg("\t\tDAI link playback_only!\n");
 		dai_link->playback_only = true;
 	}
 
-	if(of_property_read_bool(node, "capture_only")) {
+	if(of_property_read_bool(node, "capture-only")) {
 		snd_card_dbg("\t\tDAI link capture only!\n");
 		dai_link->capture_only = true;
 	}

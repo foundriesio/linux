@@ -526,7 +526,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&spdif2_tx>;
 	pinctrl-1 = <&spdif2_tx_idle>;
-	tx-only;
 	status = "okay";
 };
 
@@ -534,7 +533,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&spdif3_rx>;
 	pinctrl-1 = <&spdif3_rx_idle>;
-	rx-only;
 	status = "okay";
 };
 
@@ -593,12 +591,14 @@
 		stream-name="SPDIF_0_TX";
 		pcm = <&adma0>;
 		dai = <&spdif0>;
+		playback-only;
 	};
 		
 	telechips,dai-link@2 {
 		stream-name="SPDIF_1_RX";
 		pcm = <&adma1>;
 		dai = <&spdif1>;
+		capture-only;
 	};
 
 	telechips,dai-link@3 {
