@@ -7026,6 +7026,7 @@ lpfc_get_cfgparam(struct lpfc_hba *phba)
 	if (phba->sli_rev != LPFC_SLI_REV4) {
 		/* NVME only supported on SLI4 */
 		phba->nvmet_support = 0;
+		phba->cfg_nvmet_mrq = 0;
 		phba->cfg_enable_fc4_type = LPFC_ENABLE_FCP;
 		phba->cfg_enable_bbcr = 0;
 		phba->cfg_xri_rebalancing = 0;
@@ -7127,7 +7128,7 @@ lpfc_nvme_mod_param_dep(struct lpfc_hba *phba)
 	} else {
 		/* Not NVME Target mode.  Turn off Target parameters. */
 		phba->nvmet_support = 0;
-		phba->cfg_nvmet_mrq = LPFC_NVMET_MRQ_OFF;
+		phba->cfg_nvmet_mrq = 0;
 		phba->cfg_nvmet_fb_size = 0;
 	}
 }
