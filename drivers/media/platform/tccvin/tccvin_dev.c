@@ -994,8 +994,6 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 
 	FUNCTION_IN
 
-	mutex_lock(&(vdev->v4l2.lock));
-
 	// size info
 	dlog("tgt: %d * %d\n", vdev->v4l2.pix_format.width, vdev->v4l2.pix_format.height);
 
@@ -1051,8 +1049,6 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 #endif//CONFIG_TCC803X_CA7S
 	}
 
-	mutex_unlock(&(vdev->v4l2.lock));
-
 	FUNCTION_OUT
 	return 0;
 }
@@ -1070,8 +1066,6 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 	unsigned int status;
 
 	FUNCTION_IN
-
-	mutex_lock(&(vdev->v4l2.lock));
 
 	if(vdev->v4l2.preview_method == PREVIEW_DD) {
 		// set wmixer_out
@@ -1122,8 +1116,6 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 
 	// clear framebuffer
 	tccvin_clear_buffer(vdev);
-
-	mutex_unlock(&(vdev->v4l2.lock));
 
 	FUNCTION_OUT
 	return 0;
@@ -1622,8 +1614,6 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 
 //	FUNCTION_IN
 
-	mutex_lock(&vdev->v4l2.lock);
-
 	// Check the buffer index is valid.
 	if(!((0 <= buf->index) && (buf->index < vdev->v4l2.pp_num))) {
 		log("ERROR: The buffer index(%d) is WRONG.\n", buf->index);
@@ -1646,8 +1636,6 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	// clear the flag V4L2_BUF_FLAG_DONE
 	cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
-	mutex_unlock(&vdev->v4l2.lock);
-
 //	FUNCTION_OUT
 	return 0;
 }
@@ -1660,8 +1648,6 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 	int					ret			= 0;
 
 //	FUNCTION_IN
-
-	mutex_lock(&vdev->v4l2.lock);
 
 	display_buf_entry_count = list_get_entry_count(&vdev->v4l2.display_buf_list);
 	dlog("disp count: %d\n", display_buf_entry_count);
@@ -1681,8 +1667,6 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 
 		memcpy(buf, &(cif_buf->buf), sizeof(struct v4l2_buffer));
 	}
-
-	mutex_unlock(&vdev->v4l2.lock);
 
 	if(1 >= display_buf_entry_count) {
 		dlog("The display buffer list is EMPTY!!\n");
@@ -1713,8 +1697,8 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 		tccvin_v4l2_init_buffer_list(vdev);
 	} else if((vdev->v4l2.preview_method & PREVIEW_METHOD_MASK) == PREVIEW_DD) {
         // If it is handover, Skip start stream function
-        if((vdev->v4l2.preview_method & PREVIEW_DD_HANDOVER_MASK) == PREVIEW_DD_HANDOVER)
-        skip = 1;
+		if((vdev->v4l2.preview_method & PREVIEW_DD_HANDOVER_MASK) == PREVIEW_DD_HANDOVER)
+			skip = 1;
 	}
 
 	if(vdev->cif.is_handover_needed) {

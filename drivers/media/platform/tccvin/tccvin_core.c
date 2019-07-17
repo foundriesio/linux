@@ -40,6 +40,8 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 
 	dlog("path index: %d, cmd: 0x%08x\n", vdev->plt_dev->id, cmd);
 
+	mutex_lock(&vdev->v4l2.lock);
+
 	switch(cmd) {
 	case VIDIOC_QUERYCAP:
 		tccvin_v4l2_querycap(vdev, (struct v4l2_capability *)arg);
@@ -180,6 +182,7 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 	case VIDIOC_G_ENC_INDEX:
 	case VIDIOC_ENCODER_CMD:
 	case VIDIOC_TRY_ENCODER_CMD:
+	case VIDIOC_USER_JPEG_CAPTURE:
 		ret = -EINVAL;
 		break;
 
@@ -201,8 +204,11 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 
 	default:
 		log("ERROR: VIDIOC command(0x%08x) is WRONG.\n", cmd);
+		ret = -EINVAL;
 		WARN_ON(1);
 	}
+
+	mutex_unlock(&vdev->v4l2.lock);
 
 //	FUNCTION_OUT
 	return ret;
