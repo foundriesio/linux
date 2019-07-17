@@ -189,7 +189,7 @@ extern struct cred init_cred;
 
 #ifdef CONFIG_NUMA_BALANCING
 # define INIT_NUMA_BALANCING(tsk)					\
-	.numa_preferred_nid = -1,					\
+	.numa_preferred_nid = NUMA_NO_NODE,				\
 	.numa_group = NULL,						\
 	.numa_faults = NULL,
 #else
