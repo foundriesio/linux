@@ -93,6 +93,7 @@ static unsigned int DV_HDMI_CLK_Khz = 0;
 static char DV_HDMI_noYUV422_OUT = 0;
 static char hdmi_vsvdb[48];
 static unsigned int hdmi_sz_vsvdb = 0;
+static char DV_RGB_Tunneling = 0;
 
 static int debug = 0;
 #define dprintk(msg...)	 if (debug) { printk( "vioc_v_dv: " msg); }
@@ -189,6 +190,11 @@ DV_MODE vioc_v_dv_get_mode(void)
 	return dv_mode;
 }
 
+int vioc_v_dv_is_rgb_tunneling(void)
+{
+	return DV_RGB_Tunneling;
+}
+
 unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb)
 {
 	if((vioc_get_out_type() != DOVI) && (vioc_get_out_type() != DOVI_LL))
@@ -278,6 +284,7 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out,
 {
 	DV_HDMI_OUT = bHDMI_Out;
 	DV_HDMI_CLK_Khz = hdmi_khz * mode->dv_noYUV422_SDR;
+	DV_RGB_Tunneling = mode->dv_rgb_tunneling;
 
 	if(!bHDMI_Out)
 		out_color_format = 2;

@@ -180,24 +180,6 @@ static int debug = 0;
 #define GAP_CNT 60
 #endif
 
-#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-#define DV_PREVENT_FRAME_DROP_AND_DUPLICATION // To prevent frame dropping or duplicating!!
-
-//static long long nPrevTS = 0;
-//static long long nBaseTS = 0;
-//#define GAP_TS_MS (33)
-static int bStart_DV_Display = 0;
-static int b1st_frame_id = 0;
-static int b1st_frame_display_count = 0;
-extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
-
-#define DV_TRANSITION_SKIP_CNT (4)
-static int nDolbyTransition_Skipped_Count = 0;
-static int nDolbyTransition_VSIF = 0;
-extern int hdmi_api_vsif_update_by_index(int index);
-extern void hdmi_api_AvMute(int enable);
-#endif
-
 #if 0
 static int testToggleBit1=0;
 static int testToggleBit=0;
@@ -254,6 +236,26 @@ static int tcc_vsync_mvc_overlay_priority = 0;
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../../../char/hdmi_v2_0/include/hdmi_ioctls.h"
+
+#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
+#define DV_PREVENT_FRAME_DROP_AND_DUPLICATION // To prevent frame dropping or duplicating!!
+
+//static long long nPrevTS = 0;
+//static long long nBaseTS = 0;
+//#define GAP_TS_MS (33)
+static int bStart_DV_Display = 0;
+static int b1st_frame_id = 0;
+static int b1st_frame_display_count = 0;
+extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
+
+#define DV_TRANSITION_SKIP_CNT (4)
+static int nDolbyTransition_Skipped_Count = 0;
+static int nDolbyTransition_VSIF = 0;
+extern int hdmi_api_vsif_update_by_index(int index);
+extern void hdmi_api_AvMute(int enable);
+extern int hdmi_api_update_colorimetry(colorimetry_t colorimetry,  ext_colorimetry_t ext_colorimetry );
+extern int hdmi_api_update_quantization(int quantization_range);
+#endif
 
 static DRM_Packet_t gDRM_packet;
 extern void hdmi_set_drm(DRM_Packet_t * drmparm);
@@ -683,6 +685,51 @@ static void tcc_video_change_dolby_out_wq_isr(struct work_struct *work)
 	if(nDolbyTransition_Skipped_Count >= 0)
 	{
 		if(nDolbyTransition_Skipped_Count == (DV_TRANSITION_SKIP_CNT - 2)){
+			OUT_TYPE dv_out_type = vioc_get_out_type();
+			int rgb_tunneling = vioc_v_dv_is_rgb_tunneling();
+			int out_colorimetry = 0, out_ext_colorimetry = 0;
+			int out_quan_val = 0;
+
+			switch(dv_out_type)
+			{
+				case 2: // SDR
+					out_colorimetry = ITU709;
+					out_quan_val = 1; // limited
+					break;
+
+				case 1: // HDR10
+					out_colorimetry = EXTENDED_COLORIMETRY;
+					if(rgb_tunneling)
+						out_ext_colorimetry = BT2020YCBCR;
+					else
+						out_ext_colorimetry = BT2020YCCBCR;
+					out_quan_val = 1;
+					break;
+
+				case 0: // DV
+					out_colorimetry = EXTENDED_COLORIMETRY;
+					if(rgb_tunneling)
+						out_ext_colorimetry = BT2020YCBCR;
+					else
+						out_ext_colorimetry = BT2020YCCBCR;
+					out_quan_val = 2; // full
+					break;
+
+				default:
+				case 3: // DV_LL
+					out_colorimetry = EXTENDED_COLORIMETRY;
+					if(rgb_tunneling)
+						out_ext_colorimetry = BT2020YCBCR;
+					else
+						out_ext_colorimetry = BT2020YCCBCR;
+					out_quan_val = 1;
+					break;
+			}
+			hdmi_api_update_colorimetry(out_colorimetry, out_ext_colorimetry);
+			hdmi_api_update_quantization(out_quan_val);  //RGB:YUV = 2: full/full, 1: limited/limited, 0:default/limited ?
+			/*dprintk_dv_transition*/printk("Out Format: %d, RGB_Tunneling: %d => color(%d/%d), quan(%d)",
+					 dv_out_type, rgb_tunneling, out_colorimetry, out_ext_colorimetry, out_quan_val);
+
 			hdmi_api_vsif_update_by_index(nDolbyTransition_VSIF);
 			dprintk_dv_transition("%s-%d :: ref_count(%d) vsif(%d) !!!\n", __func__, __LINE__, nDolbyTransition_Skipped_Count, nDolbyTransition_VSIF);
 		}
@@ -3524,7 +3571,7 @@ static void print_vsync_input(char *str, struct tcc_lcdc_image_update *pIn)
 				pIn->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO], pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE], pIn->private_data.optional_info[26], pIn->private_data.optional_info[27], 
 				pIn->private_data.optional_info[28], pIn->private_data.optional_info[29]);
 
-	printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d / %04d  %d bpp Attr(%d), #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+	printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d / %04d  %d bpp Attr(%d), #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 			0, 0, pIn->buffer_unique_id, pIn->time_stamp, pIn->sync_time,
 			pIn->private_data.optional_info[VID_OPT_BIT_DEPTH],
 			pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE],
@@ -3536,7 +3583,7 @@ static void print_vsync_input(char *str, struct tcc_lcdc_image_update *pIn)
 			pIn->private_data.dolbyVision_info.el_offset[0],
 			pIn->private_data.dolbyVision_info.el_frame_width, pIn->private_data.dolbyVision_info.el_frame_height,
 			pIn->private_data.dolbyVision_info.el_buffer_width, pIn->private_data.dolbyVision_info.el_buffer_height,
-			pIn->private_data.dolbyVision_info.osd_addr,
+			pIn->private_data.dolbyVision_info.osd_addr[0], pIn->private_data.dolbyVision_info.osd_addr[1],
 			pIn->private_data.dolbyVision_info.reg_addr, pIn->private_data.dolbyVision_info.md_hdmi_addr);
 	#endif
 }
