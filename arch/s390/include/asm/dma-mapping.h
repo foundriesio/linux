@@ -22,11 +22,4 @@ static inline void dma_cache_sync(struct device *dev, void *vaddr, size_t size,
 {
 }
 
-static inline bool dma_capable(struct device *dev, dma_addr_t addr, size_t size)
-{
-	if (!dev->dma_mask)
-		return false;
-	return addr + size - 1 <= *dev->dma_mask;
-}
-
 #endif /* _ASM_S390_DMA_MAPPING_H */
