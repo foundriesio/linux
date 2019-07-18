@@ -47,8 +47,8 @@
 	regulator-type = "voltage";
 	regulator-always-on;
 
-	gpios = <&gpd 26 0x4
-		&gpd 27 0x4>;
+	gpios = <&gpd 27 0x4
+		&gpd 26 0x4>;
 	gpios-states = <1 0>;
 
         states = < 700000 0x1
