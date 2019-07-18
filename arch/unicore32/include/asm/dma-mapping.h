@@ -28,8 +28,6 @@ static inline const struct dma_map_ops *get_arch_dma_ops(struct bus_type *bus)
 	return &swiotlb_dma_map_ops;
 }
 
-static inline void dma_mark_clean(void *addr, size_t size) {}
-
 static inline void dma_cache_sync(struct device *dev, void *vaddr,
 		size_t size, enum dma_data_direction direction)
 {
