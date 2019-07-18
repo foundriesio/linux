@@ -17,6 +17,7 @@
 #include <linux/mman.h>
 #include <linux/mm.h>
 #include <linux/swap.h>
+#include <linux/swiotlb.h>
 #include <linux/smp.h>
 #include <linux/init.h>
 #include <linux/pagemap.h>
@@ -29,6 +30,7 @@
 #include <linux/cma.h>
 #include <linux/gfp.h>
 #include <linux/memblock.h>
+#include <linux/dma-mapping.h>
 #include <asm/processor.h>
 #include <linux/uaccess.h>
 #include <asm/pgtable.h>
@@ -41,12 +43,17 @@
 #include <asm/ctl_reg.h>
 #include <asm/sclp.h>
 #include <asm/set_memory.h>
+#include <asm/dma-mapping.h>
+#include <asm/uv.h>
 
 pgd_t swapper_pg_dir[PTRS_PER_PGD] __section(.bss..swapper_pg_dir);
 
 unsigned long empty_zero_page, zero_page_mask;
 EXPORT_SYMBOL(empty_zero_page);
 EXPORT_SYMBOL(zero_page_mask);
+
+const struct dma_map_ops *s390_dma_ops = &dma_noop_ops;
+EXPORT_SYMBOL(s390_dma_ops);
 
 static void __init setup_zero_pages(void)
 {
@@ -119,6 +126,95 @@ void mark_rodata_ro(void)
 	pr_info("Write protected read-only-after-init data: %luk\n", size >> 10);
 }
 
+int set_memory_encrypted(unsigned long addr, int numpages)
+{
+	int i;
+
+	/* make specified pages unshared, (swiotlb, dma_free) */
+	for (i = 0; i < numpages; ++i) {
+		uv_remove_shared(addr);
+		addr += PAGE_SIZE;
+	}
+	return 0;
+}
+
+int set_memory_decrypted(unsigned long addr, int numpages)
+{
+	int i;
+	/* make specified pages shared (swiotlb, dma_alloca) */
+	for (i = 0; i < numpages; ++i) {
+		uv_set_shared(addr);
+		addr += PAGE_SIZE;
+	}
+	return 0;
+}
+
+/* are we a protected virtualization guest? */
+bool sev_active(void)
+{
+	return is_prot_virt_guest();
+}
+
+static void *s390_pv_alloc_coherent(struct device *dev, size_t size,
+				    dma_addr_t *dma_handle, gfp_t gfp,
+				    unsigned long attrs)
+{
+	void *ret;
+
+	if (dev->coherent_dma_mask != DMA_BIT_MASK(64))
+		gfp |= GFP_DMA;
+	ret = swiotlb_alloc_coherent(dev, size, dma_handle, gfp);
+
+	/* share */
+	if (ret)
+		set_memory_decrypted((unsigned long)ret, 1 << get_order(size));
+
+	return ret;
+}
+
+static void s390_pv_free_coherent(struct device *dev, size_t size,
+				  void *vaddr, dma_addr_t dma_addr,
+				  unsigned long attrs)
+{
+	if (!vaddr)
+		return;
+
+	/* unshare */
+	set_memory_encrypted((unsigned long)vaddr, 1 << get_order(size));
+
+	swiotlb_free_coherent(dev, size, vaddr, dma_addr);
+}
+
+static const struct dma_map_ops s390_pv_dma_ops = {
+	.alloc			= s390_pv_alloc_coherent,
+	.free			= s390_pv_free_coherent,
+	.map_page		= swiotlb_map_page,
+	.unmap_page		= swiotlb_unmap_page,
+	.map_sg			= swiotlb_map_sg_attrs,
+	.unmap_sg		= swiotlb_unmap_sg_attrs,
+	.sync_single_for_cpu	= swiotlb_sync_single_for_cpu,
+	.sync_single_for_device	= swiotlb_sync_single_for_device,
+	.sync_sg_for_cpu	= swiotlb_sync_sg_for_cpu,
+	.sync_sg_for_device	= swiotlb_sync_sg_for_device,
+	.dma_supported		= swiotlb_dma_supported,
+	.mapping_error		= swiotlb_dma_mapping_error,
+	.max_mapping_size	= swiotlb_max_mapping_size,
+};
+
+/* protected virtualization */
+static void pv_init(void)
+{
+	if (!is_prot_virt_guest())
+		return;
+
+	/* make sure bounce buffers are shared */
+	swiotlb_init(1);
+	swiotlb_update_mem_attributes();
+	swiotlb_force = SWIOTLB_FORCE;
+	/* use swiotlb_dma_ops */
+	s390_dma_ops = &s390_pv_dma_ops;
+}
+
 void __init mem_init(void)
 {
 	cpumask_set_cpu(0, &init_mm.context.cpu_attach_mask);
@@ -126,6 +222,8 @@ void __init mem_init(void)
 
 	set_max_mapnr(max_low_pfn);
         high_memory = (void *) __va(max_low_pfn * PAGE_SIZE);
+
+	pv_init();
 
 	/* Setup guest page hinting */
 	cmma_init();
