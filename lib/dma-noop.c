@@ -25,7 +25,8 @@ again:
 		free_pages((unsigned long)ret, get_order(size));
 		ret = NULL;
 
-		if (dev->coherent_dma_mask < DMA_BIT_MASK(32) &&
+		if (IS_ENABLED(CONFIG_ZONE_DMA) &&
+		    dev->coherent_dma_mask < DMA_BIT_MASK(32) &&
 		    !(gfp & GFP_DMA)) {
 			gfp = (gfp & ~GFP_DMA32) | GFP_DMA;
 			goto again;
