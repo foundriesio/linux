@@ -161,6 +161,9 @@ struct cxgbi_sock {
 	u32 write_seq;
 	u32 snd_win;
 	u32 rcv_win;
+#ifndef	__GENKSYMS__
+	struct completion cmpl;
+#endif
 };
 
 /*
@@ -504,6 +507,12 @@ struct cxgbi_device {
 	int (*csk_init_act_open)(struct cxgbi_sock *);
 
 	void *dd_data;
+#ifndef	__GENKSYMS__
+	int (*__csk_ddp_setup_digest)(struct cxgbi_sock *,
+				    unsigned int, int, int);
+	int (*__csk_ddp_setup_pgidx)(struct cxgbi_sock *,
+				   unsigned int, int);
+#endif
 };
 #define cxgbi_cdev_priv(cdev)	((cdev)->dd_data)
 
@@ -589,9 +598,13 @@ umode_t cxgbi_attr_is_visible(int param_type, int param);
 void cxgbi_get_conn_stats(struct iscsi_cls_conn *, struct iscsi_stats *);
 int cxgbi_set_conn_param(struct iscsi_cls_conn *,
 			enum iscsi_param, char *, int);
+int __cxgbi_set_conn_param(struct iscsi_cls_conn *,
+			enum iscsi_param, char *, int);
 int cxgbi_get_ep_param(struct iscsi_endpoint *ep, enum iscsi_param, char *);
 struct iscsi_cls_conn *cxgbi_create_conn(struct iscsi_cls_session *, u32);
 int cxgbi_bind_conn(struct iscsi_cls_session *,
+			struct iscsi_cls_conn *, u64, int);
+int __cxgbi_bind_conn(struct iscsi_cls_session *,
 			struct iscsi_cls_conn *, u64, int);
 void cxgbi_destroy_session(struct iscsi_cls_session *);
 struct iscsi_cls_session *cxgbi_create_session(struct iscsi_endpoint *,
@@ -600,6 +613,8 @@ int cxgbi_set_host_param(struct Scsi_Host *,
 			enum iscsi_host_param, char *, int);
 int cxgbi_get_host_param(struct Scsi_Host *, enum iscsi_host_param, char *);
 struct iscsi_endpoint *cxgbi_ep_connect(struct Scsi_Host *,
+			struct sockaddr *, int);
+struct iscsi_endpoint *__cxgbi_ep_connect(struct Scsi_Host *,
 			struct sockaddr *, int);
 int cxgbi_ep_poll(struct iscsi_endpoint *, int);
 void cxgbi_ep_disconnect(struct iscsi_endpoint *);
