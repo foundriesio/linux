@@ -272,6 +272,11 @@ static int __init rpmsg_tty_init(void)
 
 	tty_set_operations(rpmsg_tty_driver, &rpmsg_tty_ops);
 
+	/* Disable unused mode by default */
+	rpmsg_tty_driver->init_termios = tty_std_termios;
+	rpmsg_tty_driver->init_termios.c_lflag &= ~(ECHO | ICANON);
+	rpmsg_tty_driver->init_termios.c_oflag &= ~(OPOST | ONLCR);
+
 	err = tty_register_driver(rpmsg_tty_driver);
 	if (err < 0) {
 		pr_err("Couldn't install rpmsg tty driver: err %d\n", err);
