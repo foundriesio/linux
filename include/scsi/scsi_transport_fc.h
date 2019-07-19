@@ -473,9 +473,7 @@ enum fc_host_event_code  {
 	FCH_EVT_PORT_ONLINE		= 0x202,
 	FCH_EVT_PORT_FABRIC		= 0x204,
 	FCH_EVT_LINK_UNKNOWN		= 0x500,
-#ifndef __GENKSYMS__
 	FCH_EVT_LINK_FPIN		= 0x501,
-#endif
 	FCH_EVT_VENDOR_UNIQUE		= 0xffff,
 };
 

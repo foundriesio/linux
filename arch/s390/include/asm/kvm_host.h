@@ -307,9 +307,7 @@ struct kvm_vcpu_stat {
 	u64 halt_successful_poll;
 	u64 halt_attempted_poll;
 	u64 halt_poll_invalid;
-#ifndef __GENKSYMS__
 	u64 halt_no_poll_steal;
-#endif
 	u64 halt_wakeup;
 	u64 instruction_lctl;
 	u64 instruction_lctlg;

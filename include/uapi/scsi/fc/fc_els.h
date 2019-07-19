@@ -51,9 +51,7 @@ enum fc_els_cmd {
 	ELS_RRQ =	0x12,	/* reinstate recovery qualifier */
 	ELS_REC =	0x13,	/* read exchange concise */
 	ELS_SRR =	0x14,	/* sequence retransmission request */
-#ifndef __GENKSYMS__
 	ELS_FPIN =	0x16,	/* Fabric Performance Impact Notification */
-#endif
 	ELS_PRLI =	0x20,	/* process login */
 	ELS_PRLO =	0x21,	/* process logout */
 	ELS_SCN =	0x22,	/* state change notification */
@@ -100,70 +98,6 @@ enum fc_els_cmd {
  * Initializer useful for decoding table.
  * Please keep this in sync with the above definitions.
  */
-#ifdef __GENKSYMS__
-#define	FC_ELS_CMDS_INIT {			\
-	[ELS_LS_RJT] =	"LS_RJT",		\
-	[ELS_LS_ACC] =	"LS_ACC",		\
-	[ELS_PLOGI] =	"PLOGI",		\
-	[ELS_FLOGI] =	"FLOGI",		\
-	[ELS_LOGO] =	"LOGO",			\
-	[ELS_ABTX] =	"ABTX",			\
-	[ELS_RCS] =	"RCS",			\
-	[ELS_RES] =	"RES",			\
-	[ELS_RSS] =	"RSS",			\
-	[ELS_RSI] =	"RSI",			\
-	[ELS_ESTS] =	"ESTS",			\
-	[ELS_ESTC] =	"ESTC",			\
-	[ELS_ADVC] =	"ADVC",			\
-	[ELS_RTV] =	"RTV",			\
-	[ELS_RLS] =	"RLS",			\
-	[ELS_ECHO] =	"ECHO",			\
-	[ELS_TEST] =	"TEST",			\
-	[ELS_RRQ] =	"RRQ",			\
-	[ELS_REC] =	"REC",			\
-	[ELS_SRR] =	"SRR",			\
-	[ELS_PRLI] =	"PRLI",			\
-	[ELS_PRLO] =	"PRLO",			\
-	[ELS_SCN] =	"SCN",			\
-	[ELS_TPLS] =	"TPLS",			\
-	[ELS_TPRLO] =	"TPRLO",		\
-	[ELS_LCLM] =	"LCLM",			\
-	[ELS_GAID] =	"GAID",			\
-	[ELS_FACT] =	"FACT",			\
-	[ELS_FDACDT] =	"FDACDT",		\
-	[ELS_NACT] =	"NACT",			\
-	[ELS_NDACT] =	"NDACT",		\
-	[ELS_QOSR] =	"QOSR",			\
-	[ELS_RVCS] =	"RVCS",			\
-	[ELS_PDISC] =	"PDISC",		\
-	[ELS_FDISC] =	"FDISC",		\
-	[ELS_ADISC] =	"ADISC",		\
-	[ELS_RNC] =	"RNC",			\
-	[ELS_FARP_REQ] = "FARP_REQ",		\
-	[ELS_FARP_REPL] =  "FARP_REPL",		\
-	[ELS_RPS] =	"RPS",			\
-	[ELS_RPL] =	"RPL",			\
-	[ELS_RPBC] =	"RPBC",			\
-	[ELS_FAN] =	"FAN",			\
-	[ELS_RSCN] =	"RSCN",			\
-	[ELS_SCR] =	"SCR",			\
-	[ELS_RNFT] =	"RNFT",			\
-	[ELS_CSR] =	"CSR",			\
-	[ELS_CSU] =	"CSU",			\
-	[ELS_LINIT] =	"LINIT",		\
-	[ELS_LSTS] =	"LSTS",			\
-	[ELS_RNID] =	"RNID",			\
-	[ELS_RLIR] =	"RLIR",			\
-	[ELS_LIRR] =	"LIRR",			\
-	[ELS_SRL] =	"SRL",			\
-	[ELS_SBRP] =	"SBRP",			\
-	[ELS_RPSC] =	"RPSC",			\
-	[ELS_QSA] =	"QSA",			\
-	[ELS_EVFP] =	"EVFP",			\
-	[ELS_LKA] =	"LKA",			\
-	[ELS_AUTH_ELS] = "AUTH_ELS",		\
-}
-#else
 #define	FC_ELS_CMDS_INIT {			\
 	[ELS_LS_RJT] =	"LS_RJT",		\
 	[ELS_LS_ACC] =	"LS_ACC",		\
@@ -227,7 +161,6 @@ enum fc_els_cmd {
 	[ELS_LKA] =	"LKA",			\
 	[ELS_AUTH_ELS] = "AUTH_ELS",		\
 }
-#endif
 
 /*
  * LS_ACC payload.

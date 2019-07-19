@@ -165,15 +165,7 @@ struct ccw_device_private {
 	} __attribute__((packed)) flags;
 	unsigned long intparm;	/* user interruption parameter */
 	struct qdio_irq *qdio_data;
-#ifdef __GENKSYMS__
-	struct irb irb;		/* device status */
-#endif
 	int async_kill_io_rc;
-#ifdef __GENKSYMS__
-	struct senseid senseid;	/* SenseID info */
-	struct pgid pgid[8];	/* path group IDs per chpid*/
-	struct ccw1 iccws[2];	/* ccws for SNID/SID/SPGID commands */
-#endif
 	struct work_struct todo_work;
 	enum cdev_todo todo;
 	wait_queue_head_t wait_q;
@@ -182,10 +174,8 @@ struct ccw_device_private {
 	struct list_head cmb_list;	/* list of measured devices */
 	u64 cmb_start_time;		/* clock value of cmb reset */
 	void *cmb_wait;			/* deferred cmb enable/disable */
-#ifndef __GENKSYMS__
 	struct gen_pool *dma_pool;
 	struct ccw_device_dma_area *dma_area;
-#endif
 	enum interruption_class int_class;
 };
 

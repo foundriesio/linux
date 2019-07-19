@@ -787,15 +787,9 @@ struct kvm_sev_info {
 };
 
 struct kvm_arch {
-#ifndef __GENKSYMS__
-        unsigned long n_used_mmu_pages;
-        unsigned long n_requested_mmu_pages;
-        unsigned long n_max_mmu_pages;
-#else
-        unsigned int n_used_mmu_pages;
-        unsigned int n_requested_mmu_pages;
-        unsigned int n_max_mmu_pages;
-#endif
+	unsigned long n_used_mmu_pages;
+	unsigned long n_requested_mmu_pages;
+	unsigned long n_max_mmu_pages;
 	unsigned int indirect_shadow_pages;
 	unsigned long mmu_valid_gen;
 	struct hlist_head mmu_page_hash[KVM_NUM_MMU_PAGES];

@@ -133,12 +133,12 @@ static struct iscsi_transport cxgb4i_iscsi_transport = {
 	.get_session_param = iscsi_session_get_param,
 	/* connection management */
 	.create_conn	= cxgbi_create_conn,
-	.bind_conn		= __cxgbi_bind_conn,
+	.bind_conn		= cxgbi_bind_conn,
 	.destroy_conn	= iscsi_tcp_conn_teardown,
 	.start_conn		= iscsi_conn_start,
 	.stop_conn		= iscsi_conn_stop,
 	.get_conn_param	= iscsi_conn_get_param,
-	.set_param	= __cxgbi_set_conn_param,
+	.set_param	= cxgbi_set_conn_param,
 	.get_stats	= cxgbi_get_conn_stats,
 	/* pdu xmit req from user space */
 	.send_pdu	= iscsi_conn_send_pdu,
@@ -153,7 +153,7 @@ static struct iscsi_transport cxgb4i_iscsi_transport = {
 	.parse_pdu_itt	= cxgbi_parse_pdu_itt,
 	/* TCP connect/disconnect */
 	.get_ep_param	= cxgbi_get_ep_param,
-	.ep_connect	= __cxgbi_ep_connect,
+	.ep_connect	= cxgbi_ep_connect,
 	.ep_poll	= cxgbi_ep_poll,
 	.ep_disconnect	= cxgbi_ep_disconnect,
 	/* Error recovery timeout call */
@@ -2088,8 +2088,8 @@ static int cxgb4i_ddp_init(struct cxgbi_device *cdev)
 	cxgbi_ddp_ppm_setup(lldi->iscsi_ppm, cdev, &tformat, ppmax,
 			    lldi->iscsi_llimit, lldi->vr->iscsi.start, 2);
 
-	cdev->__csk_ddp_setup_digest = ddp_setup_conn_digest;
-	cdev->__csk_ddp_setup_pgidx = ddp_setup_conn_pgidx;
+	cdev->csk_ddp_setup_digest = ddp_setup_conn_digest;
+	cdev->csk_ddp_setup_pgidx = ddp_setup_conn_pgidx;
 	cdev->csk_ddp_set_map = ddp_set_map;
 	cdev->tx_max_size = min_t(unsigned int, ULP2_MAX_PDU_PAYLOAD,
 				  lldi->iscsi_iolen - ISCSI_PDU_NONPAYLOAD_LEN);

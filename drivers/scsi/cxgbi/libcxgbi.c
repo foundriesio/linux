@@ -553,7 +553,7 @@ void cxgbi_sock_free_cpl_skbs(struct cxgbi_sock *csk)
 }
 EXPORT_SYMBOL_GPL(cxgbi_sock_free_cpl_skbs);
 
-static struct cxgbi_sock *cxgbi_sock_create(struct cxgbi_device *cdev, bool kabi_supports_completion)
+static struct cxgbi_sock *cxgbi_sock_create(struct cxgbi_device *cdev)
 {
 	struct cxgbi_sock *csk = kzalloc(sizeof(*csk), GFP_NOIO);
 
@@ -573,8 +573,7 @@ static struct cxgbi_sock *cxgbi_sock_create(struct cxgbi_device *cdev, bool kabi
 	skb_queue_head_init(&csk->receive_queue);
 	skb_queue_head_init(&csk->write_queue);
 	timer_setup(&csk->retry_timer, NULL, 0);
-	if (kabi_supports_completion)
-		init_completion(&csk->cmpl);
+	init_completion(&csk->cmpl);
 	rwlock_init(&csk->callback_lock);
 	csk->cdev = cdev;
 	csk->flags = 0;
@@ -601,7 +600,7 @@ static struct rtable *find_route_ipv4(struct flowi4 *fl4,
 }
 
 static struct cxgbi_sock *
-cxgbi_check_route(struct sockaddr *dst_addr, int ifindex, bool kabi_supports_completion)
+cxgbi_check_route(struct sockaddr *dst_addr, int ifindex)
 {
 	struct sockaddr_in *daddr = (struct sockaddr_in *)dst_addr;
 	struct dst_entry *dst;
@@ -665,7 +664,7 @@ cxgbi_check_route(struct sockaddr *dst_addr, int ifindex, bool kabi_supports_com
 		&daddr->sin_addr.s_addr, ntohs(daddr->sin_port),
 			   port, ndev->name, cdev);
 
-	csk = cxgbi_sock_create(cdev, kabi_supports_completion);
+	csk = cxgbi_sock_create(cdev);
 	if (!csk) {
 		err = -ENOMEM;
 		goto rel_neigh;
@@ -711,7 +710,7 @@ static struct rt6_info *find_route_ipv6(const struct in6_addr *saddr,
 }
 
 static struct cxgbi_sock *
-cxgbi_check_route6(struct sockaddr *dst_addr, int ifindex, bool kabi_supports_completion)
+cxgbi_check_route6(struct sockaddr *dst_addr, int ifindex)
 {
 	struct sockaddr_in6 *daddr6 = (struct sockaddr_in6 *)dst_addr;
 	struct dst_entry *dst;
@@ -776,7 +775,7 @@ cxgbi_check_route6(struct sockaddr *dst_addr, int ifindex, bool kabi_supports_co
 		  daddr6->sin6_addr.s6_addr, ntohs(daddr6->sin6_port), port,
 		  ndev->name, cdev);
 
-	csk = cxgbi_sock_create(cdev, kabi_supports_completion);
+	csk = cxgbi_sock_create(cdev);
 	if (!csk) {
 		err = -ENOMEM;
 		goto rel_rt;
@@ -2235,9 +2234,8 @@ static int cxgbi_conn_max_recv_dlength(struct iscsi_conn *conn)
 	return 0;
 }
 
-static int cxgbi_set_conn_param_internal(struct iscsi_cls_conn *cls_conn,
-			enum iscsi_param param, char *buf, int buflen,
-			bool does_not_need_reply_arg)
+int cxgbi_set_conn_param(struct iscsi_cls_conn *cls_conn,
+			enum iscsi_param param, char *buf, int buflen)
 {
 	struct iscsi_conn *conn = cls_conn->dd_data;
 	struct iscsi_tcp_conn *tcp_conn = conn->dd_data;
@@ -2252,29 +2250,17 @@ static int cxgbi_set_conn_param_internal(struct iscsi_cls_conn *cls_conn,
 	switch (param) {
 	case ISCSI_PARAM_HDRDGST_EN:
 		err = iscsi_set_param(cls_conn, param, buf, buflen);
-		if (!err && conn->hdrdgst_en) {
-			if (does_not_need_reply_arg)
-				err = csk->cdev->__csk_ddp_setup_digest(csk, csk->tid,
-								conn->hdrdgst_en,
-								conn->datadgst_en);
-			else
-				err = csk->cdev->csk_ddp_setup_digest(csk, csk->tid,
-								conn->hdrdgst_en,
-								conn->datadgst_en, 0);
-		}
+		if (!err && conn->hdrdgst_en)
+			err = csk->cdev->csk_ddp_setup_digest(csk, csk->tid,
+							conn->hdrdgst_en,
+							conn->datadgst_en);
 		break;
 	case ISCSI_PARAM_DATADGST_EN:
 		err = iscsi_set_param(cls_conn, param, buf, buflen);
-		if (!err && conn->datadgst_en) {
-			if (does_not_need_reply_arg)
-				err = csk->cdev->__csk_ddp_setup_digest(csk, csk->tid,
-								conn->hdrdgst_en,
-								conn->datadgst_en);
-			else
-				err = csk->cdev->csk_ddp_setup_digest(csk, csk->tid,
-								conn->hdrdgst_en,
-								conn->datadgst_en, 0);
-		}
+		if (!err && conn->datadgst_en)
+			err = csk->cdev->csk_ddp_setup_digest(csk, csk->tid,
+							conn->hdrdgst_en,
+							conn->datadgst_en);
 		break;
 	case ISCSI_PARAM_MAX_R2T:
 		return iscsi_tcp_set_max_r2t(conn, buf);
@@ -2293,20 +2279,7 @@ static int cxgbi_set_conn_param_internal(struct iscsi_cls_conn *cls_conn,
 	}
 	return err;
 }
-
-int cxgbi_set_conn_param(struct iscsi_cls_conn *cls_conn,
-			enum iscsi_param param, char *buf, int buflen)
-{
-	return cxgbi_set_conn_param_internal(cls_conn, param, buf, buflen, 0);
-}
 EXPORT_SYMBOL_GPL(cxgbi_set_conn_param);
-
-int __cxgbi_set_conn_param(struct iscsi_cls_conn *cls_conn,
-			enum iscsi_param param, char *buf, int buflen)
-{
-	return cxgbi_set_conn_param_internal(cls_conn, param, buf, buflen, 1);
-}
-EXPORT_SYMBOL_GPL(__cxgbi_set_conn_param);
 
 static inline int csk_print_port(struct cxgbi_sock *csk, char *buf)
 {
@@ -2390,10 +2363,9 @@ cxgbi_create_conn(struct iscsi_cls_session *cls_session, u32 cid)
 }
 EXPORT_SYMBOL_GPL(cxgbi_create_conn);
 
-int cxgbi_bind_conn_internal(struct iscsi_cls_session *cls_session,
+int cxgbi_bind_conn(struct iscsi_cls_session *cls_session,
 				struct iscsi_cls_conn *cls_conn,
-				u64 transport_eph, int is_leading,
-				bool does_not_need_reply_arg)
+				u64 transport_eph, int is_leading)
 {
 	struct iscsi_conn *conn = cls_conn->dd_data;
 	struct iscsi_tcp_conn *tcp_conn = conn->dd_data;
@@ -2413,12 +2385,8 @@ int cxgbi_bind_conn_internal(struct iscsi_cls_session *cls_session,
 	csk = cep->csk;
 
 	ppm = csk->cdev->cdev2ppm(csk->cdev);
-	if (does_not_need_reply_arg)
-		err = csk->cdev->__csk_ddp_setup_pgidx(csk, csk->tid,
-						     ppm->tformat.pgsz_idx_dflt);
-	else
-		err = csk->cdev->csk_ddp_setup_pgidx(csk, csk->tid,
-						     ppm->tformat.pgsz_idx_dflt, 0);
+	err = csk->cdev->csk_ddp_setup_pgidx(csk, csk->tid,
+					     ppm->tformat.pgsz_idx_dflt);
 	if (err < 0)
 		return err;
 
@@ -2447,24 +2415,7 @@ int cxgbi_bind_conn_internal(struct iscsi_cls_session *cls_session,
 
 	return 0;
 }
-
-int cxgbi_bind_conn(struct iscsi_cls_session *cls_session,
-				struct iscsi_cls_conn *cls_conn,
-				u64 transport_eph, int is_leading)
-{
-	return cxgbi_bind_conn_internal(cls_session, cls_conn, transport_eph,
-			is_leading, 0);
-}
 EXPORT_SYMBOL_GPL(cxgbi_bind_conn);
-
-int __cxgbi_bind_conn(struct iscsi_cls_session *cls_session,
-				struct iscsi_cls_conn *cls_conn,
-				u64 transport_eph, int is_leading)
-{
-	return cxgbi_bind_conn_internal(cls_session, cls_conn, transport_eph,
-			is_leading, 1);
-}
-EXPORT_SYMBOL_GPL(__cxgbi_bind_conn);
 
 struct iscsi_cls_session *cxgbi_create_session(struct iscsi_endpoint *ep,
 						u16 cmds_max, u16 qdepth,
@@ -2595,9 +2546,9 @@ int cxgbi_get_host_param(struct Scsi_Host *shost, enum iscsi_host_param param,
 }
 EXPORT_SYMBOL_GPL(cxgbi_get_host_param);
 
-static struct iscsi_endpoint *cxgbi_ep_connect_internal(struct Scsi_Host *shost,
+struct iscsi_endpoint *cxgbi_ep_connect(struct Scsi_Host *shost,
 					struct sockaddr *dst_addr,
-					int non_blocking, bool kabi_supports_completion)
+					int non_blocking)
 {
 	struct iscsi_endpoint *ep;
 	struct cxgbi_endpoint *cep;
@@ -2624,10 +2575,10 @@ static struct iscsi_endpoint *cxgbi_ep_connect_internal(struct Scsi_Host *shost,
 	}
 
 	if (dst_addr->sa_family == AF_INET) {
-		csk = cxgbi_check_route(dst_addr, ifindex, kabi_supports_completion);
+		csk = cxgbi_check_route(dst_addr, ifindex);
 #if IS_ENABLED(CONFIG_IPV6)
 	} else if (dst_addr->sa_family == AF_INET6) {
-		csk = cxgbi_check_route6(dst_addr, ifindex, kabi_supports_completion);
+		csk = cxgbi_check_route6(dst_addr, ifindex);
 #endif
 	} else {
 		pr_info("address family 0x%x NOT supported.\n",
@@ -2688,31 +2639,7 @@ release_conn:
 err_out:
 	return ERR_PTR(err);
 }
-
-
-struct iscsi_endpoint *cxgbi_ep_connect(struct Scsi_Host *shost,
-					struct sockaddr *dst_addr,
-					int non_blocking)
-{
-	/*
-	 * this uses the original KABI, which uses NOT completion, and
-	 * for external drivers expecting the original KABI
-	 */
-	return cxgbi_ep_connect_internal(shost, dst_addr, non_blocking, false);
-}
 EXPORT_SYMBOL_GPL(cxgbi_ep_connect);
-
-struct iscsi_endpoint *__cxgbi_ep_connect(struct Scsi_Host *shost,
-					struct sockaddr *dst_addr,
-					int non_blocking)
-{
-	/*
-	 * this uses the new KABI, which uses completion, and is
-	 * used by our updated cxgb3i and cxgb4i drivers
-	 */
-	return cxgbi_ep_connect_internal(shost, dst_addr, non_blocking, true);
-}
-EXPORT_SYMBOL_GPL(__cxgbi_ep_connect);
 
 int cxgbi_ep_poll(struct iscsi_endpoint *ep, int timeout_ms)
 {

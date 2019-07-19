@@ -98,11 +98,7 @@ struct lowcore {
 
 	/* Current process. */
 	__u64	current_task;			/* 0x0328 */
-#ifndef __GENKSYMS__
 	__u64	avg_steal_timer;		/* 0x0330 */
-#else
-	__u8    pad_0x318[0x320-0x318];         /* 0x0330 */
-#endif	
 	__u64	kernel_stack;			/* 0x0338 */
 
 	/* Interrupt, panic and restart stack. */
