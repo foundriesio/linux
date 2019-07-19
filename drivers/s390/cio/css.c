@@ -22,7 +22,9 @@
 #include <linux/suspend.h>
 #include <linux/proc_fs.h>
 #include <linux/genalloc.h>
+#ifndef __GENKSYMS__
 #include <linux/dma-mapping.h>
+#endif
 #include <asm/isc.h>
 #include <asm/crw.h>
 
