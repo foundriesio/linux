@@ -54,23 +54,27 @@
 
     //T_SND for move sound card from a53 to a7
 
+	//i2s0 - disable (using in A7)
 	i2s@16101000 {
 		status = "disabled";		
 	};
 
+	//adma0 - disable (using in A7)
 	adma@16100000 {
 		status = "disabled";
 	};
 
+	//spdif0 - disable
 	spdif@16102000 {
 		status = "disabled";
 	};
 
+	//ak4601 control - disable
 	i2c@16320000 {
 		status = "disabled";
 	};
 
-	sound@0 {
+	/*sound@0 {
 		compatible = "telechips,snd-card";
 		card-name = "TCC8031 EVM Card";
 		status = "okay";
@@ -91,7 +95,7 @@
 			dai = <&spdif1>;
 		};
 
-	};
+	};*/
 
 	audio_mbox@0 {
 		status = "okay";
@@ -137,7 +141,7 @@
 		status = "okay";
 	};
 
-	//Call Tx
+	//Sub 1
 	asrc_m2m_pcm@1 {
 		asrc = <&asrc0>;
 		playback-pair-id = <2>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
@@ -146,7 +150,7 @@
 		status = "okay";
 	};
 
-	//Navi&Sys
+	//Sub 2
 	asrc_m2m_pcm@2 {
 		asrc = <&asrc0>;
 		playback-pair-id = <3>;		//0: multi-ch, 1, 2, 3: stereo, undefine or 99: disable.
@@ -164,7 +168,8 @@
 		status = "okay";
 	};*/
 
-	sound@1 {
+	//T-sound sound card 1
+	/*sound@1 {
 		compatible = "telechips,vir-snd-card";
 		card-name = "TCC8031 EVM Virtual Card";
 		status = "okay";
@@ -179,7 +184,7 @@
 			codec,dai-name = "ak4601-vir-aif";
 		};
 
-		//Call Tx
+		//Sub 1
 		telechips,dai-link@1 {
 			stream-name="virI2S_1";
 			codec,format = "i2s"; 
@@ -188,7 +193,7 @@
 			playback-only;
 		};
 
-		//Navi&Sys
+		//Sub 2
 		telechips,dai-link@2 {
 			stream-name="virI2S_2";
 			codec,format = "i2s"; 
@@ -197,5 +202,60 @@
 			playback-only;
 		};
 
-	};				
+	};*/
+
+	//T-sound sound card 0
+	sound@0 {
+		compatible = "telechips,snd-card";
+		card-name = "TCC8031 EVM Card";
+		status = "okay";
+
+		//T-sound - Main Media, Capture (4ch)
+		telechips,dai-link@0 {
+			stream-name="virI2S_0";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm0>;
+			dai = <&vi2s0>;
+			codec = <&ak4601_virtual>;
+			codec,dai-name = "ak4601-vir-aif";
+		};
+
+		//T-sound - Sub 1
+		telechips,dai-link@1 {
+			stream-name="virI2S_1";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm1>;
+			dai = <&vi2s1>;
+			playback-only;
+		};
+
+		//spdif 1 RX
+		telechips,dai-link@2 {
+			stream-name="SPDIF_1_RX";
+			pcm = <&adma1>;
+			dai = <&spdif1>;
+			capture-only;
+		};
+
+		//BT Tx/Rx
+		telechips,dai-link@3 {
+			stream-name="I2S_3";
+			codec,format = "i2s"; // i2s, left_j, right_j
+			codec,continuous-clock;
+			mclk_div = <16>; // 4,6,8,16
+			bclk_ratio = <64>; // 32,48,64fs
+			pcm = <&adma3>;
+			dai = <&i2s3>;
+		};
+
+		//T-sound - Sub 2
+		telechips,dai-link@4 {
+			stream-name="virI2S_2";
+			codec,format = "i2s"; 
+			pcm = <&asrc_m2m_pcm2>;
+			dai = <&vi2s2>;
+			playback-only;
+		};
+
+	};
 };
