@@ -8,6 +8,14 @@
 #include <linux/dma-direct.h>
 #include <linux/scatterlist.h>
 
+/*
+ * Most architectures use ZONE_DMA for the first 16 Megabytes, but
+ * some use it for entirely different regions:
+ */
+#ifndef ARCH_ZONE_DMA_BITS
+#define ARCH_ZONE_DMA_BITS 24
+#endif
+
 static bool dma_coherent_ok(struct device *dev, phys_addr_t phys, size_t size)
 {
 	return phys_to_dma(dev, phys) + size - 1 <= dev->coherent_dma_mask;
@@ -18,6 +26,12 @@ static void *dma_noop_alloc(struct device *dev, size_t size,
 			    unsigned long attrs)
 {
 	void *ret;
+
+	/* GFP_DMA32 and GFP_DMA are no ops without the corresponding zones: */
+	if (dev->coherent_dma_mask <= DMA_BIT_MASK(ARCH_ZONE_DMA_BITS))
+		gfp |= GFP_DMA;
+	if (dev->coherent_dma_mask <= DMA_BIT_MASK(32) && !(gfp & GFP_DMA))
+		gfp |= GFP_DMA32;
 
 again:
 	ret = (void *)__get_free_pages(gfp, get_order(size));
