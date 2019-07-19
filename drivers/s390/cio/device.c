@@ -25,7 +25,9 @@
 #include <linux/timer.h>
 #include <linux/kernel_stat.h>
 #include <linux/sched/signal.h>
+#ifndef __GENKSYMS__
 #include <linux/dma-mapping.h>
+#endif
 
 #include <asm/ccwdev.h>
 #include <asm/cio.h>
