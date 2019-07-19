@@ -10,6 +10,9 @@
 #define _ASM_S390_AIRQ_H
 
 #include <linux/bit_spinlock.h>
+#ifndef __GENKSYMS__
+#include <linux/dma-mapping.h>
+#endif
 
 struct airq_struct {
 	struct hlist_node list;		/* Handler queueing. */
@@ -36,6 +39,9 @@ struct airq_iv {
 	unsigned long end;	/* Number of highest allocated bit + 1 */
 	unsigned long flags;	/* Allocation flags */
 	spinlock_t lock;	/* Lock to protect alloc & free */
+#ifndef __GENKSYMS__
+	dma_addr_t vector_dma; /* Adapter interrupt bit vector dma */
+#endif
 };
 
 #define AIRQ_IV_ALLOC		1	/* Use an allocation bit mask */
