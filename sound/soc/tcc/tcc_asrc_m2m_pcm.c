@@ -545,7 +545,7 @@ static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool
 #endif
 	if((prepare) && (strm->middle->dma_buf->area != NULL))
 		memset(strm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
-	strm->interval = 0;
+
 	strm->Bwrote = 0;
 	strm->Btail = 0;
 }
