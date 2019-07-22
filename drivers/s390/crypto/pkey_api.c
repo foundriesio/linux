@@ -1047,7 +1047,7 @@ int pkey_verifykey(const struct pkey_seckey *seckey,
 	rc = mkvp_cache_fetch(cardnr, domain, mkvp);
 	if (rc)
 		goto out;
-	if (t->mkvp == mkvp[1]) {
+	if (t->mkvp == mkvp[1] && t->mkvp != mkvp[0]) {
 		DEBUG_DBG("pkey_verifykey secure key has old mkvp\n");
 		if (pattributes)
 			*pattributes |= PKEY_VERIFY_ATTR_OLD_MKVP;
