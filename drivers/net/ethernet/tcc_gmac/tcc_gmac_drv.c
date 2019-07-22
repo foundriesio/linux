@@ -2403,9 +2403,9 @@ out_resume:
 }
 
 
-int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
+long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 {
-	int ret=0;
+	long ret=0;
 	unsigned int rev_value;
 	unsigned int send_value;
 	struct miscdevice *misc = (struct miscdevice *) flip->private_data;
@@ -2414,7 +2414,7 @@ int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 	struct mii_bus *mii_bus = priv->mii;
 	struct iodata iodata;
 
-	int data = 0;
+	long data = 0;
 	u32	addr;
 
 	iodata.addr=(arg&0xffff);
@@ -2425,7 +2425,7 @@ int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 	switch(cmd)
 	{
 		case CMD_PHY_READ:
-			data = phy_read(priv->phydev, iodata.addr);
+			data = (long)phy_read(priv->phydev, iodata.addr);
 			//printk("Read addr : 0x%08x value : 0x%08x \n", iodata.addr, data);
 			return data;
 
