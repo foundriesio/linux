@@ -221,7 +221,7 @@
 	};
 };
 
-/* On-module MIPI DSI accessible on FFC (X2) */
+/* MIPI DSI accessible on FFC (X2) */
 &i2c0_mipi_lvds0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -230,7 +230,7 @@
 	clock-frequency = <100000>;
 };
 
-/* On-module MIPI CSI accessible on FFC (X3) */
+/* MIPI CSI accessible on FFC (X3) */
 &i2c0_mipi_lvds1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -682,7 +682,7 @@
 			>;
 		};
 
-		/* On-module MIPI DSI I2C accessible on FFC (X2) */
+		/* MIPI DSI I2C accessible on SODIMM (X1) and FFC (X2) */
 		pinctrl_i2c0_mipi_lvds0: mipi_lvds0_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI0_I2C0_SCL_MIPI_DSI0_I2C0_SCL 	0xc6000020	/* SODIMM 140 */
@@ -690,7 +690,7 @@
 			>;
 		};
 
-		/* On-module MIPI CSI I2C accessible on FFC (X3) */
+		/* MIPI CSI I2C accessible on SODIMM (X1) and FFC (X3) */
 		pinctrl_i2c0_mipi_lvds1: mipi_lvds1_i2c0_grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI1_I2C0_SCL_MIPI_DSI1_I2C0_SCL 	0xc6000020	/* SODIMM 186 */
@@ -744,7 +744,7 @@
 	pinctrl-0 = <&pinctrl_lpuart3>, <&pinctrl_lpuart3_ctrl>;
 };
 
-/* On-module MIPI CSI accessible via FFC (X3) */
+/* MIPI CSI accessible via FFC (X3) */
 &mipi_csi_0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
