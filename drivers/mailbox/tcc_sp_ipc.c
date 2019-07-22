@@ -69,6 +69,7 @@ struct event_info
 };
 
 static struct tcc_mbox_msg mbox_msg;
+static struct tcc_mbox_msg mbox_rmsg;
 static struct device *device;
 static struct cdev cdev;
 static dev_t devnum;
@@ -224,7 +225,7 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 		result = -EINVAL;
 		goto out;
 	}
-	// mbox_msg.msg_len is set at this point by sp_msg_received
+	// mbox_rmsg.msg_len is set at this point by sp_msg_received
 
 	// Nothing to read
 	if (rdata == NULL || rsize == 0) {
@@ -232,20 +233,20 @@ int sp_sendrecv_cmd(int cmd, void *data, int size, void *rdata, int rsize)
 		goto out;
 	}
 
-	if (mbox_msg.msg_len > rsize) {
+	if (mbox_rmsg.msg_len > rsize) {
 		result = -EPERM;
 		dev_err(device, "%s: received msg size is larger than rsize\n", __func__);
 		goto out;
 	}
 
 	// Copy received data
-	if (mbox_msg.trans_type == DATA_MBOX) {
-		memcpy(rdata, mbox_msg.message, mbox_msg.msg_len);
+	if (mbox_rmsg.trans_type == DATA_MBOX) {
+		memcpy(rdata, mbox_rmsg.message, mbox_rmsg.msg_len);
 	} else {
-		memcpy(rdata, vaddr, mbox_msg.msg_len);
+		memcpy(rdata, vaddr, mbox_rmsg.msg_len);
 	}
-	// print_hex_dump_bytes("Received: ", DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
-	result = mbox_msg.msg_len;
+	// print_hex_dump_bytes("Received: ", DUMP_PREFIX_ADDRESS, mbox_rmsg.message, size);
+	result = mbox_rmsg.msg_len;
 
 out:
 	pr_debug("%s:%d End\n", __func__, __LINE__);
@@ -673,12 +674,12 @@ static void sp_msg_received(struct mbox_client *client, void *message)
 		}
 	} else { /* For normal SP commands */
 		if (rmsg->trans_type == DATA_MBOX)
-			memcpy(mbox_msg.message, rmsg->message, rmsg->msg_len);
+			memcpy(mbox_rmsg.message, rmsg->message, rmsg->msg_len);
 		else
-			mbox_msg.dma_addr = rmsg->dma_addr;
+			mbox_rmsg.dma_addr = rmsg->dma_addr;
 
-		mbox_msg.trans_type = rmsg->trans_type;
-		mbox_msg.msg_len = rmsg->msg_len;
+		mbox_rmsg.trans_type = rmsg->trans_type;
+		mbox_rmsg.msg_len = rmsg->msg_len;
 		mbox_received = 1;
 		wake_up(&waitq);
 	}
