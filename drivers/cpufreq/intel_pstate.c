@@ -203,7 +203,7 @@ struct _pid {
  *			based on the MSR_IA32_MISC_ENABLE value and whether or
  *			not the maximum reported turbo P-state is different from
  *			the maximum reported non-turbo one.
- * @turbo_disabled_s:	Saved @turbo_disabled value.
+ * @turbo_disabled_mf:	The @turbo_disabled value reflected by cpuinfo.max_freq.
  * @min_perf_pct:	Minimum capacity limit in percent of the maximum turbo
  *			P-state capacity.
  * @max_perf_pct:	Maximum capacity limit in percent of the maximum turbo
@@ -212,7 +212,7 @@ struct _pid {
 struct global_params {
 	bool no_turbo;
 	bool turbo_disabled;
-	bool turbo_disabled_s;
+	bool turbo_disabled_mf;
 	int max_perf_pct;
 	int min_perf_pct;
 };
@@ -1064,6 +1064,28 @@ static void intel_pstate_debug_hide_params(void)
 
 /************************** debugfs end ************************/
 
+static void intel_pstate_update_max_freq(unsigned int cpu)
+{
+	struct cpufreq_policy *policy = cpufreq_cpu_acquire(cpu);
+	struct cpufreq_policy new_policy;
+	struct cpudata *cpudata;
+
+	if (!policy)
+		return;
+
+	cpudata = all_cpu_data[cpu];
+	policy->cpuinfo.max_freq = global.turbo_disabled_mf ?
+			cpudata->pstate.max_freq : cpudata->pstate.turbo_freq;
+
+	memcpy(&new_policy, policy, sizeof(*policy));
+	new_policy.max = min(policy->user_policy.max, policy->cpuinfo.max_freq);
+	new_policy.min = min(policy->user_policy.min, new_policy.max);
+
+	cpufreq_set_policy(policy, &new_policy);
+
+	cpufreq_cpu_release(policy);
+}
+
 static void intel_pstate_update_limits(unsigned int cpu)
 {
 	mutex_lock(&intel_pstate_driver_lock);
@@ -1073,9 +1095,10 @@ static void intel_pstate_update_limits(unsigned int cpu)
 	 * If turbo has been turned on or off globally, policy limits for
 	 * all CPUs need to be updated to reflect that.
 	 */
-	if (global.turbo_disabled_s != global.turbo_disabled) {
-		global.turbo_disabled_s = global.turbo_disabled;
-		intel_pstate_update_policies();
+	if (global.turbo_disabled_mf != global.turbo_disabled) {
+		global.turbo_disabled_mf = global.turbo_disabled;
+		for_each_possible_cpu(cpu)
+			intel_pstate_update_max_freq(cpu);
 	} else {
 		cpufreq_update_policy(cpu);
 	}
@@ -2421,7 +2444,7 @@ static int __intel_pstate_cpu_init(struct cpufreq_policy *policy)
 	/* cpuinfo and default policy values */
 	policy->cpuinfo.min_freq = cpu->pstate.min_pstate * cpu->pstate.scaling;
 	update_turbo_state();
-	global.turbo_disabled_s = global.turbo_disabled;
+	global.turbo_disabled_mf = global.turbo_disabled;
 	policy->cpuinfo.max_freq = global.turbo_disabled ?
 			cpu->pstate.max_pstate : cpu->pstate.turbo_pstate;
 	policy->cpuinfo.max_freq *= cpu->pstate.scaling;
