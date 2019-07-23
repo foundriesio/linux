@@ -32,6 +32,7 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h> /* __clk_is_enabled */
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -269,7 +270,7 @@ static int tcc_cdif_suspend(struct device *dev)
 	// Backup's all about dai control.
 	tcc_cdif->backup_rCICR = cdif_readl(pdai_reg+CDIF_CICR);
 	// Disable all about dai clk
-	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count))
+	if(__clk_is_enabled(prtd->ptcc_clk->dai_hclk))
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 
 	return 0;
@@ -293,7 +294,7 @@ static int tcc_cdif_resume(struct device *dev)
 
 
 	// Enable all about dai clk
-	//if((prtd->ptcc_clk->dai_hclk)&&(!prtd->ptcc_clk->dai_hclk->enable_count))
+	if(prtd->ptcc_clk->dai_hclk)
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 
 #if !defined(CONFIG_ARCH_TCC897X)&& !defined(CONFIG_ARCH_TCC570X)
@@ -328,7 +329,7 @@ static int tcc_cdif_probe(struct snd_soc_dai *dai)
 #endif
 #endif	
 	/* clock enable */
-	//if((prtd->ptcc_clk->dai_hclk)&&(!prtd->ptcc_clk->dai_hclk->enable_count))
+	if(prtd->ptcc_clk->dai_hclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_hclk);
 
 	return 0;
