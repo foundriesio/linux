@@ -2549,6 +2549,15 @@
 		status= "disabled";
 	};
 
+	tcc_cipher: tcc_cipher@11DC0000 {
+		compatible = "telechips,tcc-cipher";
+		status = "okay";
+	};
+
+	tcc_hsm@0 {
+		compatible = "telechips,tcc-hsm";
+		status = "okay";
+	};
 /*
 	hsic: hsic@11c00000 {
 	    compatible = "telechips,tcc-hsic";

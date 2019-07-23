@@ -616,6 +616,8 @@ source "drivers/char/vpu/Kconfig"
 source "drivers/char/viocmg/Kconfig"
 source "drivers/char/tcc_early_view_control/Kconfig"
 source "drivers/char/switch/Kconfig"
+source "drivers/char/tcc_cipher/Kconfig"
+source "drivers/char/tcc_hsm/Kconfig"
 
 config TCC_DISPMG
     tristate "TCC Output Display Manager"
