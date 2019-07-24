@@ -3,18 +3,6 @@
  * Copyright 2018-2019 Toradex
  */
 
-/*
- * Choose output point for LCDIF block:
- * LCDIF_OUT_ADV7125: VGA converter + VGA connector X24
- * LCDIF_OUT_DISPLAY: Panel connected to
- * - Generic Display Connector X20,
- * - Unified Interface Display Connector X34
- *
- * NOTE: LCDIF output to LVDS transmitter is not supported for now.
- */
-#define LCDIF_OUT_ADV7125
-//#define LCDIF_OUT_DISPLAY
-
 / {
 	aliases {
 		rtc0 = &rtc_i2c;
@@ -33,11 +21,29 @@
 		pinctrl-0 = <&pinctrl_usbc_det>;
 	};
 
-#ifdef LCDIF_OUT_DISPLAY
 	panel {
-		compatible = "edt,et070080dh6";
+		compatible = "panel-dpi";
 		backlight = <&backlight>;
 		enable-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
+		power-supply = <&reg_3v3>;
+
+		width-mm = <154>;
+		height-mm = <86>;
+
+		data-mapping = "bgr666";
+
+		panel-timing {
+			clock-frequency = <33300000>;
+			hactive = <800>;
+			hback-porch = <46>;
+			hfront-porch = <210>;
+			hsync-len = <20>;
+			vactive = <480>;
+			vback-porch = <23>;
+			vfront-porch = <22>;
+			vsync-len = <10>;
+			pixelclk-active = <1>;
+		};
 
 		port {
 			lcd_panel_in: endpoint {
@@ -45,45 +51,6 @@
 			};
 		};
 	};
-#endif
-
-#if defined(LCDIF_OUT_ADV7125)
-	vga {
-		compatible = "vga-connector";
-		label = "vga";
-		status = "okay";
-
-		port {
-			vga_in: endpoint {
-				remote-endpoint = <&adv7125_out>;
-			};
-		};
-	};
-
-	vga-encoder {
-		compatible = "adi,adv7125", "adi,adv7123";
-		status = "okay";
-		vdd-supply = <&vdd_3v3_vga>;
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			port@0 {
-				reg = <0>;
-				lcd_display_in: endpoint {
-					remote-endpoint = <&lcdif_out>;
-				};
-			};
-			port@1 {
-				reg = <1>;
-				adv7125_out: endpoint {
-					remote-endpoint = <&vga_in>;
-				};
-			};
-		};
-	};
-#endif
 
 	regulators {
 		reg_usbh_vbus: regulator-usbh-vbus {
@@ -101,63 +68,18 @@
 
 &adma_lcdif {
 	pinctrl-names = "default";
-	/* Dumb DAC to VGA converter doesn't support backlight, so
-	 * instead use enable-gpios for LCDIF driver for this configuration
-	 */
-#ifdef LCDIF_OUT_ADV7125
-	pinctrl-0 = <&pinctrl_lcdif &pinctrl_gpio_bl_on>;
-	enable-gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
-	pinctrl-assert-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
-#else
 	pinctrl-0 = <&pinctrl_lcdif>;
-#endif
-	/* By default, Colibri iMX8QXP uses 18-bits output bus for eLCDIF.
-	 * However, you can configure it to support 24-bits output.
-	 * "X20 Generic Display Connector" of Colibri Evaluation Board v3.2
-	 * supports 24-bits mode.
-	 */
 	bus-width = <18>;
 	status = "okay";
 
-#ifdef LCDIF_OUT_ADV7125
-	port@0 {
-		lcdif_out: lcdif-endpoint {
-			remote-endpoint = <&lcd_display_in>;
-		};
-	};
-#endif
-
-#ifdef LCDIF_OUT_DISPLAY
 	port@0 {
 		lcd_display_out: lcdif-endpoint {
 			remote-endpoint = <&lcd_panel_in>;
 		};
 	};
-#endif
 };
 
-/* Display Prefetch Resolve, (Tiling) */
-&dpr1_channel1 {
-	status = "okay";
-};
-
-&dpr1_channel2 {
-	status = "okay";
-};
-
-&dpr1_channel3 {
-	status = "okay";
-};
-
-&dpr2_channel1 {
-	status = "okay";
-};
-
-&dpr2_channel2 {
-	status = "okay";
-};
-
-&dpr2_channel3 {
+&backlight {
 	status = "okay";
 };
 
@@ -167,33 +89,6 @@
 
 &gpu_3d0 {
 	status = "okay";
-};
-
-/* On-module MIPI CSI I2C accessible on FFC (X3) */
-&i2c0_mipi_lvds1 {
-	status = "okay";
-
-	ov5640_mipi: ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi_v3";
-		clocks = <&clk IMX8QXP_24MHZ>;
-		clock-names = "csi_mclk";
-		csi_id = <0>;
-		mclk = <24000000>;
-		mclk_source = <0>;
-		mipi_csi;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_csi_ctl>;
-		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
-		reg = <0x3c>;
-		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
-		status = "okay";
-
-		port {
-			ov5640_ep: endpoint {
-				remote-endpoint = <&mipi_csi0_ep>;
-			};
-		};
-	};
 };
 
 &i2c1 {
@@ -206,42 +101,8 @@
 	};
 };
 
-&isi_0 {
+&imx8_gpu_ss {
 	status = "okay";
-};
-
-&isi_1 {
-	status = "okay";
-};
-
-&isi_2 {
-	status = "okay";
-};
-
-&isi_3 {
-	status = "okay";
-};
-
-&ldb1 {
-	status = "disabled";
-};
-
-&ldb1_phy {
-	status = "disabled";
-};
-
-&ldb2 {
-	status = "disabled";
-
-	lvds-channel@0 {
-		fsl,data-mapping = "jeida";
-		fsl,data-width = <24>;
-		status = "okay";
-	};
-};
-
-&ldb2_phy {
-	status = "disabled";
 };
 
 /* Colibri SPI */
@@ -255,88 +116,12 @@
 	};
 };
 
-/* On-module MIPI CSI accessible via FFC (X3) */
-&mipi_csi_0 {
-	status = "okay";
-
-	/* Camera 0 MIPI CSI-2 (CSIS0) */
-	port@0 {
-		reg = <0>;
-
-		mipi_csi0_ep: endpoint {
-			data-lanes = <1 2>;
-			remote-endpoint = <&ov5640_ep>;
-		};
-	};
+&lpuart3 {
+	status= "okay";
 };
 
-&mipi_dsi1 {
-	status = "okay";
-};
-
-&mipi_dsi_bridge1 {
-	status = "okay";
-};
-
-&mipi_dsi_phy1 {
-	status = "okay";
-};
-
-&mipi_dsi2 {
-	status = "okay";
-};
-
-&mipi_dsi_bridge2 {
-	status = "okay";
-};
-
-&mipi_dsi_phy2 {
-	status = "okay";
-};
-
-&pixel_combiner {
-	status = "okay";
-};
-
-&prg1 {
-	status = "okay";
-};
-
-&prg2 {
-	status = "okay";
-};
-
-&prg3 {
-	status = "okay";
-};
-
-&prg4 {
-	status = "okay";
-};
-
-&prg5 {
-	status = "okay";
-};
-
-&prg6 {
-	status = "okay";
-};
-
-&prg7 {
-	status = "okay";
-};
-
-&prg8 {
-	status = "okay";
-};
-
-&prg9 {
-	status = "okay";
-};
-
+/* Colibri PWM_A */
 &pwm_adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm_a>;
 	status = "okay";
 };
 
