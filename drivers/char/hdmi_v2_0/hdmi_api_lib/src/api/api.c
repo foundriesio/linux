@@ -250,6 +250,9 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
                 dwc_hdmi_phy_standby(dev);
                 clear_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
 
+		/* Clear VSIF update function */
+		clear_bit(HDMI_TX_VSIF_UPDATE_FOR_HDR_10P, &dev->status);
+
                 /* HDCP */
                 hdcp_statusinit(dev);
         } while(0);
@@ -282,3 +285,4 @@ void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
         } while(0);
 }
 EXPORT_SYMBOL(hdmi_api_avmute);
+

@@ -60,8 +60,12 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
-                        /* backup product params */
-                        memcpy(prod, productParams, sizeof(productParams_t));
+
+                        /* Store product params */
+			memcpy(&prod->mOUI, &productParams->mOUI,
+				sizeof(productParams->mOUI) +
+				sizeof(productParams->mVendorPayload) +
+				sizeof(productParams->mVendorPayloadLength));
                 }
         } while(0);
 
@@ -269,7 +273,7 @@ int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 *
 			break;
                 }
 		if(length == 0) {
-                        pr_info("%s to stop transmit vsif, because length is 0\r\n", __func__);
+                        //pr_info("%s to stop transmit vsif, because length is not valid\r\n", __func__);
 			break;
 		}
 		fc_vsd_vendor_OUI(dev, oui);

@@ -1354,6 +1354,25 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 }
                 break;
 
+	case HDMI_API_SET_VSIF_UPDATE_HDR_10P:
+
+		{
+			int update;
+                        if(copy_from_user(&update, (void __user *)arg, sizeof(int))) {
+                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                break;
+                        }
+                        mutex_lock(&dev->mutex);
+			if(update == 0) {
+				clear_bit(HDMI_TX_VSIF_UPDATE_FOR_HDR_10P, &dev->status);
+			} else {
+				set_bit(HDMI_TX_VSIF_UPDATE_FOR_HDR_10P, &dev->status);
+			}
+                        ret = 0;
+                        mutex_unlock(&dev->mutex);
+		}
+		break;
+
 	case HDCP22_CTRL_REG_RESET:
 		{
 			mutex_lock(&dev->mutex);

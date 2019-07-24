@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.3.3d"
+#define HDMI_DRV_VERSION        "4.14_1.3.4d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.3.3"
+#define HDMI_DRV_VERSION        "4.14_1.3.4"
 #endif
 
 // HDMI COMPONENTS
@@ -49,12 +49,11 @@
 
 // HDMI IRQS
 #define HDMI_IRQ_TX_CORE        0
-#define HDMI_IRQ_TX_HDCP        1
 #if defined(CONFIG_HDMI_USE_CEC_IRQ)
-#define HDMI_IRQ_TX_CEC         2
-#define HDMI_IRQ_TX_MAX         3
-#else
+#define HDMI_IRQ_TX_CEC         1
 #define HDMI_IRQ_TX_MAX         2
+#else
+#define HDMI_IRQ_TX_MAX         1
 #endif
 
 // HDMI CLOCKS
@@ -67,11 +66,6 @@
 #define HDMI_CLK_INDEX_DDIBUS   6
 #define HDMI_CLK_INDEX_ISOIP    7
 #define HDMI_CLK_INDEX_MAX      8
-
-
-// STATUS BITS
-#define HDMI_STATUS_BIT_CORE_POWERON      1
-
 
 // CLOCK FREQ
 #define HDMI_PHY_REF_CLK_RATE   (24000000)
@@ -171,6 +165,8 @@ struct drv_enable_entry
 #define HDMI_TX_STATUS_SCDC_CHECK       20
 #define HDMI_TX_STATUS_SCDC_IGNORE      21
 #define HDMI_TX_STATUS_SCDC_FORCE_ERROR 22
+
+#define HDMI_TX_VSIF_UPDATE_FOR_HDR_10P 23
 
 struct irq_dev_id {
         void *dev;
