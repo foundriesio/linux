@@ -77,8 +77,18 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 		if (pos) {
 			pci_read_config_dword(dev, pos + PCI_ERR_ROOT_STATUS,
 					      &reg32);
-			*aer = reg32 >> 27;
+			*aer = (reg32 & PCI_ERR_ROOT_AER_IRQ) >> 27;
 			nvec = max(nvec, *aer + 1);
+		}
+	}
+
+	if (mask & PCIE_PORT_SERVICE_DPC) {
+		pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_DPC);
+		if (pos) {
+			pci_read_config_word(dev, pos + PCI_EXP_DPC_CAP,
+					     &reg16);
+			*dpc = reg16 & PCI_EXP_DPC_IRQ;
+			nvec = max(nvec, *dpc + 1);
 		}
 	}
 
@@ -140,6 +150,9 @@ static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 
 	if (mask & PCIE_PORT_SERVICE_AER)
 		irqs[PCIE_PORT_SERVICE_AER_SHIFT] = pci_irq_vector(dev, aer);
+
+	if (mask & PCIE_PORT_SERVICE_DPC)
+		irqs[PCIE_PORT_SERVICE_DPC_SHIFT] = pci_irq_vector(dev, dpc);
 
 	return 0;
 }
