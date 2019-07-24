@@ -216,9 +216,6 @@ static int get_port_device_capability(struct pci_dev *dev)
 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
 	int services = 0;
 
-	if (pcie_ports_disabled)
-		return 0;
-
 	if (dev->is_hotplug_bridge &&
 	    (pcie_ports_native || host->native_pcie_hotplug)) {
 		services |= PCIE_PORT_SERVICE_HP;
