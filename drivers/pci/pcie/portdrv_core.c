@@ -56,7 +56,7 @@ static void release_pcie_device(struct device *dev)
 static int pcie_message_numbers(struct pci_dev *dev, int mask,
 				u32 *pme, u32 *aer, u32 *dpc)
 {
-	u32 nvec = 0, pos, reg32;
+	u32 nvec = 0, pos;
 	u16 reg16;
 
 	/*
@@ -72,8 +72,11 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 		nvec = *pme + 1;
 	}
 
+#ifdef CONFIG_PCIEAER
 	if (mask & PCIE_PORT_SERVICE_AER) {
-		pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_ERR);
+		u32 reg32;
+
+		pos = dev->aer_cap;
 		if (pos) {
 			pci_read_config_dword(dev, pos + PCI_ERR_ROOT_STATUS,
 					      &reg32);
@@ -81,6 +84,7 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 			nvec = max(nvec, *aer + 1);
 		}
 	}
+#endif
 
 	if (mask & PCIE_PORT_SERVICE_DPC) {
 		pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_DPC);
@@ -228,8 +232,9 @@ static int get_port_device_capability(struct pci_dev *dev)
 			  PCI_EXP_SLTCTL_CCIE | PCI_EXP_SLTCTL_HPIE);
 	}
 
-	if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_ERR) &&
-	    pci_aer_available() && (pcie_ports_native || host->native_aer)) {
+#ifdef CONFIG_PCIEAER
+	if (dev->aer_cap && pci_aer_available() &&
+	    (pcie_ports_native || host->native_aer)) {
 		services |= PCIE_PORT_SERVICE_AER;
 
 		/*
@@ -238,6 +243,7 @@ static int get_port_device_capability(struct pci_dev *dev)
 		 */
 		pci_disable_pcie_error_reporting(dev);
 	}
+#endif
 	/* VC support */
 	if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_VC))
 		services |= PCIE_PORT_SERVICE_VC;
