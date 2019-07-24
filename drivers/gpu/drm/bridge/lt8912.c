@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018 Rockchip Electronics Co. Ltd.
+ * Copyright 2019 Toradex AG
  */
 
 #include <linux/kernel.h>
@@ -14,6 +15,7 @@
 #include <linux/of_graph.h>
 #include <linux/regmap.h>
 #include <video/of_display_timing.h>
+#include <video/videomode.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_of.h>
@@ -32,8 +34,10 @@ struct lt8912 {
 	struct device_node *host_node;
 	u8 num_dsi_lanes;
 	u8 channel_id;
+	u8 sink_is_hdmi;
 	struct regmap *regmap[3];
 	struct gpio_desc *reset_n;
+	struct i2c_adapter *ddc;        /* optional regular DDC I2C bus */
 };
 
 static int lt8912_attach_dsi(struct lt8912 *lt);
@@ -54,16 +58,20 @@ static void lt8912_init(struct lt8912 *lt)
 	u8 lanes = lt->dsi->lanes;
 	const struct drm_display_mode *mode = &lt->mode;
 	u32 hactive, hfp, hsync, hbp, vfp, vsync, vbp, htotal, vtotal;
+	unsigned int hsync_activehigh, vsync_activehigh, reg;
 	unsigned int version[2];
 
+	dev_info(lt->dev, DRM_MODE_FMT "\n", DRM_MODE_ARG(mode));
 	/* TODO: lvds output init */
 
 	hactive = mode->hdisplay;
 	hfp = mode->hsync_start - mode->hdisplay;
 	hsync = mode->hsync_end - mode->hsync_start;
+	hsync_activehigh = !!(mode->flags & DRM_MODE_FLAG_PHSYNC);
 	hbp = mode->htotal - mode->hsync_end;
 	vfp = mode->vsync_start - mode->vdisplay;
 	vsync = mode->vsync_end - mode->vsync_start;
+	vsync_activehigh = !!(mode->flags & DRM_MODE_FLAG_PVSYNC);
 	vbp = mode->vtotal - mode->vsync_end;
 	htotal = mode->htotal;
 	vtotal = mode->vtotal;
@@ -139,6 +147,10 @@ static void lt8912_init(struct lt8912 *lt)
 	regmap_write(lt->regmap[1], 0x3d, hbp >> 8);
 	regmap_write(lt->regmap[1], 0x3e, hfp % 0x100);
 	regmap_write(lt->regmap[1], 0x3f, hfp >> 8);
+	regmap_read(lt->regmap[0], 0xab, &reg);
+	reg &= 0xfc;
+	reg |= (hsync_activehigh < 1) | vsync_activehigh;
+	regmap_write(lt->regmap[0], 0xab, reg);
 
 	/* DDSConfig */
 	regmap_write(lt->regmap[1], 0x4e, 0x6a);
@@ -193,7 +205,7 @@ static void lt8912_init(struct lt8912 *lt)
 	usleep_range(100000, 110000);
 	regmap_write(lt->regmap[0], 0x03, 0xff);
 
-	regmap_write(lt->regmap[0], 0xb2, 0x01);
+	regmap_write(lt->regmap[0], 0xb2, lt->sink_is_hdmi);
 
 	/* Audio Disable */
 	regmap_write(lt->regmap[2], 0x06, 0x00);
@@ -414,34 +426,81 @@ lt8912_connector_best_encoder(struct drm_connector *connector)
 static int lt8912_connector_get_modes(struct drm_connector *connector)
 {
 	struct lt8912 *lt = connector_to_lt8912(connector);
-	struct drm_display_mode *mode;
-	u32 bus_flags = 0;
-	int ret;
+	struct edid *edid;
+	struct display_timings *timings;
+	int i, num_modes = 0;
 
-	/* TODO: EDID handing */
+	/* Check if optional DDC I2C bus should be used. */
+	if (lt->ddc) {
+		edid = drm_get_edid(connector, lt->ddc);
+		if (edid) {
+			drm_mode_connector_update_edid_property(connector,
+								edid);
+			num_modes = drm_add_edid_modes(connector, edid);
+			lt->sink_is_hdmi = !!drm_detect_hdmi_monitor(edid);
+			kfree(edid);
+		}
+		if (num_modes == 0) {
+			dev_warn(lt->dev, "failed to get display timings from EDID\n");
+			return 0;
+		}
+	} else { /* if not EDID, use dtb timings */
+		timings = of_get_display_timings(lt->dev->of_node);
 
-	mode = drm_mode_create(connector->dev);
-	if (!mode)
-		return -EINVAL;
+		if (timings->num_timings == 0) {
+			dev_err(lt->dev, "failed to get display timings from dtb\n");
+			return 0;
+		}
 
-	ret = of_get_drm_display_mode(lt->dev->of_node, mode,
-				      &bus_flags, OF_USE_NATIVE_MODE);
-	if (ret) {
-		dev_err(lt->dev, "failed to get display timings\n");
-		drm_mode_destroy(connector->dev, mode);
-		return 0;
+		for (i = 0; i < timings->num_timings; i++) {
+			struct drm_display_mode *mode;
+			struct videomode vm;
+
+			if (videomode_from_timings(timings, &vm, i)) {
+				continue;
+			}
+
+			mode = drm_mode_create(connector->dev);
+			drm_display_mode_from_videomode(&vm, mode);
+			mode->type = DRM_MODE_TYPE_DRIVER;
+
+			if (timings->native_mode == i)
+				mode->type |= DRM_MODE_TYPE_PREFERRED;
+
+			drm_mode_set_name(mode);
+			drm_mode_probed_add(connector, mode);
+			num_modes++;
+		}
+		if (num_modes == 0) {
+			dev_err(lt->dev, "failed to get display modes from dtb\n");
+			return 0;
+		}
 	}
+	return num_modes;
+}
 
-	mode->type |= DRM_MODE_TYPE_PREFERRED;
-	drm_mode_set_name(mode);
-	drm_mode_probed_add(connector, mode);
+static enum drm_mode_status lt8912_connector_mode_valid(struct drm_connector *connector,
+			     struct drm_display_mode *mode)
+{
+struct lt8912 *lt = connector_to_lt8912(connector);
+dev_warn(lt->dev, "%s: Testing mode clk: %i, h: %i, v: %i\n", __func__, mode->clock, mode->hdisplay, mode->vdisplay);
 
-	return 1;
+	if (mode->clock > 150000)
+		return MODE_CLOCK_HIGH;
+
+	if (mode->hdisplay > 1920)
+		return MODE_BAD_HVALUE;
+
+	if (mode->vdisplay > 1080)
+		return MODE_BAD_VVALUE;
+
+	return MODE_OK;
 }
 
 static const struct drm_connector_helper_funcs lt8912_connector_helper_funcs = {
 	.get_modes = lt8912_connector_get_modes,
 	.best_encoder = lt8912_connector_best_encoder,
+	.mode_valid = lt8912_connector_mode_valid,
 };
 
 static void lt8912_bridge_post_disable(struct drm_bridge *bridge)
@@ -611,6 +670,7 @@ static int lt8912_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
 	struct device *dev = &i2c->dev;
 	struct lt8912 *lt;
+	struct device_node *ddc_phandle;
 	struct device_node *endpoint;
 	int ret;
 
@@ -626,6 +686,15 @@ static int lt8912_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		return -ENOMEM;
 
 	lt->dev = dev;
+
+	/* get optional regular DDC I2C bus */
+	ddc_phandle = of_parse_phandle(dev->of_node, "ddc-i2c-bus", 0);
+	if (ddc_phandle) {
+		lt->ddc = of_get_i2c_adapter_by_node(ddc_phandle);
+		if (!(lt->ddc))
+			ret = -EPROBE_DEFER;
+		of_node_put(ddc_phandle);
+	}
 
 	lt->reset_n = devm_gpiod_get_optional(dev, "reset", GPIOD_ASIS);
 	if (IS_ERR(lt->reset_n)) {
