@@ -1038,6 +1038,7 @@ void _vmem_free_dedicated_buffer(void)
 {
 	int type = 0;
 
+	dprintk_mem("%s \n", __func__);
 	// Memory Management!!
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if( gsJpuWork_memInfo.kernel_remap_addr != 0 )
@@ -1382,6 +1383,8 @@ Error:
 
 int _vmem_deinit_memory_info(void)
 {
+	dprintk_mem("%s \n", __func__);
+
 	if(pmap_video.base){
 		pmap_release_info("video");		// pmap_video
 		pmap_video.base = 0;
@@ -1772,7 +1775,7 @@ unsigned int vmem_get_free_memory(vputype type)
 		szFreeMem = sz_remained_mem;
 	}
 
-	printk("%s :: type(%d) free(0x%x) :: etc_info = enc(0x%x), ext_used(0x%x), front_used(0x%x)\n", __func__, type, szFreeMem, sz_enc_mem, sz_ext_used_mem, sz_front_used_mem); 
+	dprintk_mem("%s :: type(%d) free(0x%x) :: etc_info = enc(0x%x), ext_used(0x%x), front_used(0x%x)\n", __func__, type, szFreeMem, sz_enc_mem, sz_ext_used_mem, sz_front_used_mem); 
 	return szFreeMem;
 }
 EXPORT_SYMBOL(vmem_get_free_memory);
@@ -1843,6 +1846,8 @@ unsigned int vmem_get_freemem_size(vputype type)
 
 void _vmem_config_zero(void)
 {
+	dprintk_mem("%s \n", __func__);
+
 	pmap_video.base = 0;
 	pmap_video_sw.base = 0;
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
@@ -1939,7 +1944,6 @@ int vmem_init(void)
 					goto Error0;
 				}
 			}
-			cntMem_Reference++;
 			goto Success;
 		}
 
@@ -1971,6 +1975,11 @@ Error1:
 		}
 
 Success:
+		if(ret >= 0)
+		{
+			cntMem_Reference++;
+		}
+
 		mutex_unlock(&mem_mutex);
 		return ret;
 	}
@@ -1991,6 +2000,7 @@ int vmem_config(void)
 void vmem_deinit(void)
 {
 	mutex_lock(&mem_mutex);
+	dprintk_mem("%s :: ref count: %d \n", __func__, cntMem_Reference);
 	if(cntMem_Reference > 0)
 		cntMem_Reference--;
 	else
