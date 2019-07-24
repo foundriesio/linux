@@ -99,12 +99,7 @@ static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 	int nr_entries, nvec;
 	u32 pme = 0, aer = 0, dpc = 0;
 
-	/*
-	 * Allocate as many entries as the port wants, so that we can check
-	 * which of them will be useful.  Moreover, if nr_entries is correctly
-	 * equal to the number of entries this port actually uses, we'll happily
-	 * go through without any tricks.
-	 */
+	/* Allocate the maximum possible number of MSI/MSI-X vectors */
 	nr_entries = pci_alloc_irq_vectors(dev, 1, PCIE_PORT_MAX_MSI_ENTRIES,
 			PCI_IRQ_MSIX | PCI_IRQ_MSI);
 	if (nr_entries < 0)
