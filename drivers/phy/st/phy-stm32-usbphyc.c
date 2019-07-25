@@ -114,13 +114,6 @@ enum rx_offset {
 #define MINREV			GENMASK(3, 0)
 #define MAJREV			GENMASK(7, 4)
 
-static const char * const supplies_names[] = {
-	"vdda1v1",	/* 1V1 */
-	"vdda1v8",	/* 1V8 */
-};
-
-#define NUM_SUPPLIES		ARRAY_SIZE(supplies_names)
-
 #define PLL_LOCK_TIME_US	100
 #define PLL_PWR_DOWN_TIME_US	5
 #define PLL_FVCO_MHZ		2880
@@ -147,7 +140,8 @@ struct stm32_usbphyc {
 	struct reset_control *rst;
 	struct stm32_usbphyc_phy **phys;
 	int nphys;
-	struct regulator_bulk_data supplies[NUM_SUPPLIES];
+	struct regulator *vdda1v1;
+	struct regulator *vdda1v8;
 	int switch_setup;
 };
 
@@ -159,6 +153,41 @@ static inline void stm32_usbphyc_set_bits(void __iomem *reg, u32 bits)
 static inline void stm32_usbphyc_clr_bits(void __iomem *reg, u32 bits)
 {
 	writel_relaxed(readl_relaxed(reg) & ~bits, reg);
+}
+
+static int stm32_usbphyc_regulators_enable(struct stm32_usbphyc *usbphyc)
+{
+	int ret;
+
+	ret = regulator_enable(usbphyc->vdda1v1);
+	if (ret)
+		return ret;
+
+	ret = regulator_enable(usbphyc->vdda1v8);
+	if (ret)
+		goto vdda1v1_disable;
+
+	return 0;
+
+vdda1v1_disable:
+	regulator_disable(usbphyc->vdda1v1);
+
+	return ret;
+}
+
+static int stm32_usbphyc_regulators_disable(struct stm32_usbphyc *usbphyc)
+{
+	int ret;
+
+	ret = regulator_disable(usbphyc->vdda1v8);
+	if (ret)
+		return ret;
+
+	ret = regulator_disable(usbphyc->vdda1v1);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static void stm32_usbphyc_get_pll_params(u32 clk_rate,
@@ -248,7 +277,7 @@ static int stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
 		return -EIO;
 	}
 
-	return regulator_bulk_disable(NUM_SUPPLIES, usbphyc->supplies);
+	return stm32_usbphyc_regulators_disable(usbphyc);
 }
 
 static int stm32_usbphyc_pll_enable(struct stm32_usbphyc *usbphyc)
@@ -267,7 +296,7 @@ static int stm32_usbphyc_pll_enable(struct stm32_usbphyc *usbphyc)
 			return ret;
 	}
 
-	ret = regulator_bulk_enable(NUM_SUPPLIES, usbphyc->supplies);
+	ret = stm32_usbphyc_regulators_enable(usbphyc);
 	if (ret)
 		return ret;
 
@@ -288,7 +317,7 @@ static int stm32_usbphyc_pll_enable(struct stm32_usbphyc *usbphyc)
 	return 0;
 
 reg_disable:
-	regulator_bulk_disable(NUM_SUPPLIES, usbphyc->supplies);
+	stm32_usbphyc_regulators_disable(usbphyc);
 
 	return ret;
 }
@@ -482,7 +511,7 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct phy_provider *phy_provider;
 	u32 version;
-	int ret, i, port = 0;
+	int ret, port = 0;
 
 	usbphyc = devm_kzalloc(dev, sizeof(*usbphyc), GFP_KERNEL);
 	if (!usbphyc)
@@ -533,13 +562,19 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 		goto clk_disable;
 	}
 
-	for (i = 0; i < NUM_SUPPLIES; i++)
-		usbphyc->supplies[i].supply = supplies_names[i];
-
-	ret = devm_regulator_bulk_get(dev, NUM_SUPPLIES, usbphyc->supplies);
-	if (ret) {
+	usbphyc->vdda1v1 = devm_regulator_get(dev, "vdda1v1");
+	if (IS_ERR(usbphyc->vdda1v1)) {
+		ret = PTR_ERR(usbphyc->vdda1v1);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to get regulators: %d\n", ret);
+			dev_err(dev, "failed to get vdda1v1 supply: %d\n", ret);
+		goto clk_disable;
+	}
+
+	usbphyc->vdda1v8 = devm_regulator_get(dev, "vdda1v8");
+	if (IS_ERR(usbphyc->vdda1v8)) {
+		ret = PTR_ERR(usbphyc->vdda1v8);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "failed to get vdda1v8 supply: %d\n", ret);
 		goto clk_disable;
 	}
 
