@@ -1441,7 +1441,7 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 			fb_vm.sync |= FB_SYNC_CLK_LAT_FALL;
 
 		if (i == timings->native_mode) {
-			fb_videomode_from_videomode(&vm, &native_mode);
+			native_mode = fb_vm;
 			fb_videomode_to_var(&fb_info->var, &fb_vm);
 		}
 
@@ -1454,6 +1454,27 @@ static int mxsfb_init_fbinfo_dt(struct mxsfb_info *host)
 	if (retval != 1)
 		/* save the sync value getting from dtb */
 		host->sync = fb_info->var.sync;
+
+	switch (retval) {
+		case 0:
+			dev_err(dev, "fb_find_mode can't find a "
+					"suitable timing\n");
+			break;
+		case 1:
+			dev_info(dev, "Using timings from kernel parameters\n");
+			break;
+		case 2:
+			dev_info(dev, "Using timings from kernel parameters "
+					"and ignoring refresh rate\n");
+			break;
+		case 3:
+			dev_info(dev, "Using timings from devicetree\n");
+			break;
+		case 4:
+			dev_warn(dev, "Falling back to any valid timing\n");
+		default:
+			break;
+	}
 
 put_display_node:
 	if (timings)
