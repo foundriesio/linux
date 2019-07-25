@@ -443,6 +443,7 @@ EXPORT_SYMBOL(radix__flush_tlb_kernel_range);
  * individual page flushes to full-pid flushes.
  */
 static unsigned long tlb_single_page_flush_ceiling __read_mostly = 33;
+static unsigned long tlb_local_single_page_flush_ceiling __read_mostly = POWER9_TLB_SETS_RADIX * 2;
 
 void radix__flush_tlb_range(struct vm_area_struct *vma, unsigned long start,
 		     unsigned long end)
@@ -465,8 +466,15 @@ void radix__flush_tlb_range(struct vm_area_struct *vma, unsigned long start,
 		return;
 
 	preempt_disable();
-	local = mm_is_thread_local(mm);
-	full = (end == TLB_FLUSH_ALL || nr_pages > tlb_single_page_flush_ceiling);
+	if (mm_is_thread_local(mm)) {
+		local = true;
+		full = (end == TLB_FLUSH_ALL ||
+				nr_pages > tlb_local_single_page_flush_ceiling);
+	} else {
+		local = false;
+		full = (end == TLB_FLUSH_ALL ||
+				nr_pages > tlb_single_page_flush_ceiling);
+	}
 
 	if (full) {
 		if (local) {
@@ -576,8 +584,15 @@ static inline void __radix__flush_tlb_range_psize(struct mm_struct *mm,
 		return;
 
 	preempt_disable();
-	local = mm_is_thread_local(mm);
-	full = (end == TLB_FLUSH_ALL || nr_pages > tlb_single_page_flush_ceiling);
+	if (mm_is_thread_local(mm)) {
+		local = true;
+		full = (end == TLB_FLUSH_ALL ||
+				nr_pages > tlb_local_single_page_flush_ceiling);
+	} else {
+		local = false;
+		full = (end == TLB_FLUSH_ALL ||
+				nr_pages > tlb_single_page_flush_ceiling);
+	}
 
 	if (full) {
 		if (!local && mm_needs_flush_escalation(mm))
