@@ -56,7 +56,7 @@ static void release_pcie_device(struct device *dev)
 static int pcie_message_numbers(struct pci_dev *dev, int mask,
 				u32 *pme, u32 *aer, u32 *dpc)
 {
-	u32 nvec = 0, pos, reg32;
+	u32 nvec = 0, pos;
 	u16 reg16;
 
 	/*
@@ -72,13 +72,27 @@ static int pcie_message_numbers(struct pci_dev *dev, int mask,
 		nvec = *pme + 1;
 	}
 
+#ifdef CONFIG_PCIEAER
 	if (mask & PCIE_PORT_SERVICE_AER) {
-		pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_ERR);
+		u32 reg32;
+
+		pos = dev->aer_cap;
 		if (pos) {
 			pci_read_config_dword(dev, pos + PCI_ERR_ROOT_STATUS,
 					      &reg32);
-			*aer = reg32 >> 27;
+			*aer = (reg32 & PCI_ERR_ROOT_AER_IRQ) >> 27;
 			nvec = max(nvec, *aer + 1);
+		}
+	}
+#endif
+
+	if (mask & PCIE_PORT_SERVICE_DPC) {
+		pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_DPC);
+		if (pos) {
+			pci_read_config_word(dev, pos + PCI_EXP_DPC_CAP,
+					     &reg16);
+			*dpc = reg16 & PCI_EXP_DPC_IRQ;
+			nvec = max(nvec, *dpc + 1);
 		}
 	}
 
@@ -99,12 +113,7 @@ static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 	int nr_entries, nvec;
 	u32 pme = 0, aer = 0, dpc = 0;
 
-	/*
-	 * Allocate as many entries as the port wants, so that we can check
-	 * which of them will be useful.  Moreover, if nr_entries is correctly
-	 * equal to the number of entries this port actually uses, we'll happily
-	 * go through without any tricks.
-	 */
+	/* Allocate the maximum possible number of MSI/MSI-X vectors */
 	nr_entries = pci_alloc_irq_vectors(dev, 1, PCIE_PORT_MAX_MSI_ENTRIES,
 			PCI_IRQ_MSIX | PCI_IRQ_MSI);
 	if (nr_entries < 0)
@@ -145,6 +154,9 @@ static int pcie_port_enable_irq_vec(struct pci_dev *dev, int *irqs, int mask)
 
 	if (mask & PCIE_PORT_SERVICE_AER)
 		irqs[PCIE_PORT_SERVICE_AER_SHIFT] = pci_irq_vector(dev, aer);
+
+	if (mask & PCIE_PORT_SERVICE_DPC)
+		irqs[PCIE_PORT_SERVICE_DPC_SHIFT] = pci_irq_vector(dev, dpc);
 
 	return 0;
 }
@@ -208,9 +220,6 @@ static int get_port_device_capability(struct pci_dev *dev)
 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
 	int services = 0;
 
-	if (pcie_ports_disabled)
-		return 0;
-
 	if (dev->is_hotplug_bridge &&
 	    (pcie_ports_native || host->native_pcie_hotplug)) {
 		services |= PCIE_PORT_SERVICE_HP;
@@ -223,8 +232,9 @@ static int get_port_device_capability(struct pci_dev *dev)
 			  PCI_EXP_SLTCTL_CCIE | PCI_EXP_SLTCTL_HPIE);
 	}
 
-	if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_ERR) &&
-	    pci_aer_available() && (pcie_ports_native || host->native_aer)) {
+#ifdef CONFIG_PCIEAER
+	if (dev->aer_cap && pci_aer_available() &&
+	    (pcie_ports_native || host->native_aer)) {
 		services |= PCIE_PORT_SERVICE_AER;
 
 		/*
@@ -233,6 +243,7 @@ static int get_port_device_capability(struct pci_dev *dev)
 		 */
 		pci_disable_pcie_error_reporting(dev);
 	}
+#endif
 	/* VC support */
 	if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_VC))
 		services |= PCIE_PORT_SERVICE_VC;
