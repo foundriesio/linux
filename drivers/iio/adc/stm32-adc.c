@@ -20,6 +20,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
+#include <linux/irq_work.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -192,6 +193,7 @@ struct stm32_adc_cfg {
  * @smpr_val:		sampling time settings (e.g. smpr1 / smpr2)
  * @cal:		optional calibration data on some devices
  * @chan_name:		channel name array
+ * @work:		irq work used to call trigger poll routine
  */
 struct stm32_adc {
 	struct stm32_adc_common	*common;
@@ -215,6 +217,7 @@ struct stm32_adc {
 	u32			smpr_val[2];
 	struct stm32_adc_calib	cal;
 	char			chan_name[STM32_ADC_CH_MAX][STM32_ADC_CH_SZ];
+	struct irq_work		work;
 };
 
 struct stm32_adc_diff_channel {
@@ -1415,11 +1418,32 @@ static unsigned int stm32_adc_dma_residue(struct stm32_adc *adc)
 	return 0;
 }
 
+static void stm32_adc_dma_irq_work(struct irq_work *work)
+{
+	struct stm32_adc *adc = container_of(work, struct stm32_adc, work);
+	struct iio_dev *indio_dev = iio_priv_to_dev(adc);
+
+	/*
+	 * iio_trigger_poll calls generic_handle_irq(). So, it requires hard
+	 * irq context, and cannot be called directly from dma callback,
+	 * dma cb has to schedule this work instead.
+	 */
+	iio_trigger_poll(indio_dev->trig);
+}
+
 static void stm32_adc_dma_buffer_done(void *data)
 {
 	struct iio_dev *indio_dev = data;
+	struct stm32_adc *adc = iio_priv(indio_dev);
 
-	iio_trigger_poll_chained(indio_dev->trig);
+	/*
+	 * Invoques iio_trigger_poll() from hard irq context: We can't
+	 * call iio_trigger_poll() nor iio_trigger_poll_chained()
+	 * directly from DMA callback (under tasklet e.g. softirq).
+	 * They require respectively HW IRQ and threaded IRQ context
+	 * as it might sleep.
+	 */
+	irq_work_queue(&adc->work);
 }
 
 static int stm32_adc_dma_start(struct iio_dev *indio_dev)
@@ -1531,8 +1555,10 @@ static void __stm32_adc_buffer_predisable(struct iio_dev *indio_dev)
 
 	stm32_adc_ovr_irq_disable(adc);
 
-	if (adc->dma_chan)
+	if (adc->dma_chan) {
 		dmaengine_terminate_sync(adc->dma_chan);
+		irq_work_sync(&adc->work);
+	}
 
 	if (stm32_adc_set_trig(indio_dev, NULL))
 		dev_err(&indio_dev->dev, "Can't clear trigger\n");
@@ -1817,6 +1843,8 @@ static int stm32_adc_dma_request(struct iio_dev *indio_dev)
 	ret = dmaengine_slave_config(adc->dma_chan, &config);
 	if (ret)
 		goto err_free;
+
+	init_irq_work(&adc->work, stm32_adc_dma_irq_work);
 
 	return 0;
 
