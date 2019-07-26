@@ -829,7 +829,7 @@ static void node_states_check_changes_online(unsigned long nr_pages,
 	if (!node_state(nid, N_MEMORY))
 		arg->status_change_nid = nid;
 	else
-		arg->status_change_nid = -1;
+		arg->status_change_nid = NUMA_NO_NODE;
 }
 
 static void node_states_set_node(int node, struct memory_notify *arg)
@@ -1735,7 +1735,7 @@ static void node_states_check_changes_offline(unsigned long nr_pages,
 	if (nr_pages >= present_pages)
 		arg->status_change_nid = zone_to_nid(zone);
 	else
-		arg->status_change_nid = -1;
+		arg->status_change_nid = NUMA_NO_NODE;
 }
 
 static void node_states_clear_node(int node, struct memory_notify *arg)
