@@ -82,6 +82,13 @@ dumb_vga_connector_detect(struct drm_connector *connector, bool force)
 	struct dumb_vga *vga = drm_connector_to_dumb_vga(connector);
 
 	/*
+	 * If I2C bus for DDC is not defined, asume that the cable
+	 * is always connected.
+	 */
+	if (PTR_ERR(vga->ddc) == -ENODEV)
+		return connector_status_connected;
+
+	/*
 	 * Even if we have an I2C bus, we can't assume that the cable
 	 * is disconnected if drm_probe_ddc fails. Some cables don't
 	 * wire the DDC pins, or the I2C bus might not be working at
