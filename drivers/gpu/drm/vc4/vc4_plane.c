@@ -815,7 +815,7 @@ static void vc4_plane_atomic_async_update(struct drm_plane *plane,
 
 	if (plane->state->fb != state->fb) {
 		vc4_plane_async_set_fb(plane, state->fb);
-		drm_atomic_set_fb_for_plane(plane->state, state->fb);
+		swap(plane->state->fb, state->fb);
 	}
 
 	/* Set the cursor's position on the screen.  This is the

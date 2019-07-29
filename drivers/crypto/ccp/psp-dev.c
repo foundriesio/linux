@@ -27,10 +27,6 @@
 #include "sp-dev.h"
 #include "psp-dev.h"
 
-#define SEV_VERSION_GREATER_OR_EQUAL(_maj, _min)	\
-		((psp_master->api_major) >= _maj &&	\
-		 (psp_master->api_minor) >= _min)
-
 #define DEVICE_NAME		"sev"
 #define SEV_FW_FILE		"amd/sev.fw"
 #define SEV_FW_NAME_SIZE	64
@@ -49,6 +45,15 @@ MODULE_PARM_DESC(psp_probe_timeout, " default timeout value, in seconds, during 
 
 static bool psp_dead;
 static int psp_timeout;
+
+static inline bool sev_version_greater_or_equal(u8 maj, u8 min)
+{
+	if (psp_master->api_major > maj)
+		return true;
+	if (psp_master->api_major == maj && psp_master->api_minor >= min)
+		return true;
+	return false;
+}
 
 static struct psp_device *psp_alloc_struct(struct sp_device *sp)
 {
@@ -450,6 +455,7 @@ static int sev_get_api_version(void)
 	psp_master->api_major = status->api_major;
 	psp_master->api_minor = status->api_minor;
 	psp_master->build = status->build;
+	psp_master->sev_state = status->state;
 
 	return 0;
 }
@@ -603,7 +609,7 @@ static int sev_ioctl_do_get_id(struct sev_issue_cmd *argp)
 	int ret;
 
 	/* SEV GET_ID available from SEV API v0.16 and up */
-	if (!SEV_VERSION_GREATER_OR_EQUAL(0, 16))
+	if (!sev_version_greater_or_equal(0, 16))
 		return -ENOTSUPP;
 
 	/* SEV FW expects the buffer it fills with the ID to be
@@ -977,7 +983,22 @@ void psp_pci_init(void)
 	if (sev_get_api_version())
 		goto err;
 
-	if (SEV_VERSION_GREATER_OR_EQUAL(0, 15) &&
+	/*
+	 * If platform is not in UNINIT state then firmware upgrade and/or
+	 * platform INIT command will fail. These command require UNINIT state.
+	 *
+	 * In a normal boot we should never run into case where the firmware
+	 * is not in UNINIT state on boot. But in case of kexec boot, a reboot
+	 * may not go through a typical shutdown sequence and may leave the
+	 * firmware in INIT or WORKING state.
+	 */
+
+	if (psp_master->sev_state != SEV_STATE_UNINIT) {
+		sev_platform_shutdown(NULL);
+		psp_master->sev_state = SEV_STATE_UNINIT;
+	}
+
+	if (sev_version_greater_or_equal(0, 15) &&
 	    sev_update_firmware(psp_master->dev) == 0)
 		sev_get_api_version();
 

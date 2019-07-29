@@ -160,13 +160,15 @@ int pci_p2pdma_add_resource(struct pci_dev *pdev, int bar, size_t size,
 	error = devm_add_action_or_reset(&pdev->dev, pci_p2pdma_percpu_kill,
 					  &pdev->p2pdma->devmap_ref);
 	if (error)
-		goto pgmap_free;
+		goto pages_free;
 
 	pci_info(pdev, "added peer-to-peer DMA memory %pR\n",
 		 &pgmap->res);
 
 	return 0;
 
+pages_free:
+	devm_memunmap_pages(&pdev->dev, pgmap);
 pgmap_free:
 	devm_kfree(&pdev->dev, pgmap);
 	return error;
@@ -388,6 +390,14 @@ int pci_p2pdma_distance_many(struct pci_dev *provider, struct device **clients,
 		return -1;
 
 	for (i = 0; i < num_clients; i++) {
+		if (IS_ENABLED(CONFIG_DMA_VIRT_OPS) &&
+		    clients[i]->dma_ops == &dma_virt_ops) {
+			if (verbose)
+				dev_warn(clients[i],
+					 "cannot be used for peer-to-peer DMA because the driver makes use of dma_virt_ops\n");
+			return -1;
+		}
+
 		pci_client = find_parent_pci_dev(clients[i]);
 		if (!pci_client) {
 			if (verbose)
@@ -652,7 +662,7 @@ int pci_p2pdma_map_sg(struct device *dev, struct scatterlist *sg, int nents,
 	 * p2pdma mappings are not compatible with devices that use
 	 * dma_virt_ops. If the upper layers do the right thing
 	 * this should never happen because it will be prevented
-	 * by the check in pci_p2pdma_add_client()
+	 * by the check in pci_p2pdma_distance_many()
 	 */
 	if (WARN_ON_ONCE(IS_ENABLED(CONFIG_DMA_VIRT_OPS) &&
 			 dev->dma_ops == &dma_virt_ops))

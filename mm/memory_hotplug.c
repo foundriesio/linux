@@ -159,28 +159,24 @@ u64 max_mem_size = U64_MAX;
 /* add this memory to iomem resource */
 static struct resource *register_memory_resource(u64 start, u64 size)
 {
-	struct resource *res, *conflict;
+	struct resource *res;
+	unsigned long flags =  IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
+	char *resource_name = "System RAM";
 
 	if (start + size > max_mem_size)
 		return ERR_PTR(-E2BIG);
 
-	res = kzalloc(sizeof(struct resource), GFP_KERNEL);
-	if (!res)
-		return ERR_PTR(-ENOMEM);
+	/*
+	 * Request ownership of the new memory range.  This might be
+	 * a child of an existing resource that was present but
+	 * not marked as busy.
+	 */
+	res = __request_region(&iomem_resource, start, size,
+			       resource_name, flags);
 
-	res->name = "System RAM";
-	res->start = start;
-	res->end = start + size - 1;
-	res->flags = IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
-	conflict =  request_resource_conflict(&iomem_resource, res);
-	if (conflict) {
-		if (conflict->desc == IORES_DESC_DEVICE_PRIVATE_MEMORY) {
-			pr_debug("Device unaddressable memory block "
-				 "memory hotplug at %#010llx !\n",
-				 (unsigned long long)start);
-		}
-		pr_debug("System RAM resource %pR cannot be added\n", res);
-		kfree(res);
+	if (!res) {
+		pr_debug("Unable to reserve System RAM region: %016llx->%016llx\n",
+				start, start + size);
 		return ERR_PTR(-EEXIST);
 	}
 	return res;
@@ -829,7 +825,7 @@ static void node_states_check_changes_online(unsigned long nr_pages,
 	if (!node_state(nid, N_MEMORY))
 		arg->status_change_nid = nid;
 	else
-		arg->status_change_nid = -1;
+		arg->status_change_nid = NUMA_NO_NODE;
 }
 
 static void node_states_set_node(int node, struct memory_notify *arg)
@@ -1735,7 +1731,7 @@ static void node_states_check_changes_offline(unsigned long nr_pages,
 	if (nr_pages >= present_pages)
 		arg->status_change_nid = zone_to_nid(zone);
 	else
-		arg->status_change_nid = -1;
+		arg->status_change_nid = NUMA_NO_NODE;
 }
 
 static void node_states_clear_node(int node, struct memory_notify *arg)

@@ -1272,17 +1272,6 @@ struct task_struct *__switch_to(struct task_struct *prev,
 		 * mappings. We don't have a VAS driver that allocates those
 		 * yet, so no cpabort is required.
 		 */
-		if (cpu_has_feature(CPU_FTR_POWER9_DD1)) {
-			/*
-			 * DD1 allows paste into normal system memory, so we
-			 * do an unpaired copy here to clear the buffer and
-			 * prevent a covert channel being set up.
-			 *
-			 * cpabort is not used because it is quite expensive.
-			 */
-			asm volatile(PPC_COPY(%0, %1)
-					: : "r"(dummy_copy_buffer), "r"(0));
-		}
 	}
 #endif /* CONFIG_PPC_BOOK3S_64 */
 

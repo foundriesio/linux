@@ -189,6 +189,10 @@ struct tls_offload_context_tx {
 	(ALIGN(sizeof(struct tls_offload_context_tx), sizeof(void *)) +        \
 	 TLS_DRIVER_STATE_SIZE)
 
+enum tls_context_flags {
+	TLS_RX_SYNC_RUNNING = 0,
+};
+
 struct cipher_context {
 	u16 prepend_size;
 	u16 tag_size;
@@ -285,6 +289,7 @@ int tls_device_sendmsg(struct sock *sk, struct msghdr *msg, size_t size);
 int tls_device_sendpage(struct sock *sk, struct page *page,
 			int offset, size_t size, int flags);
 void tls_device_sk_destruct(struct sock *sk);
+void tls_device_free_resources_tx(struct sock *sk);
 void tls_device_init(void);
 void tls_device_cleanup(void);
 int tls_tx_records(struct sock *sk, int flags);
@@ -308,25 +313,11 @@ int tls_push_sg(struct sock *sk, struct tls_context *ctx,
 		int flags);
 int tls_push_partial_record(struct sock *sk, struct tls_context *ctx,
 			    int flags);
+bool tls_free_partial_record(struct sock *sk, struct tls_context *ctx);
 
 static inline bool tls_is_partially_sent_record(struct tls_context *ctx)
 {
 	return !!ctx->partially_sent_record;
-}
-
-static inline int tls_complete_pending_work(struct sock *sk,
-					    struct tls_context *ctx,
-					    int flags, long *timeo)
-{
-	int rc = 0;
-
-	if (unlikely(sk->sk_write_pending))
-		rc = wait_on_pending_writer(sk, timeo);
-
-	if (!rc && tls_is_partially_sent_record(ctx))
-		rc = tls_push_partial_record(sk, ctx, flags);
-
-	return rc;
 }
 
 static inline bool tls_is_pending_open_record(struct tls_context *tls_ctx)
@@ -352,7 +343,7 @@ tls_validate_xmit_skb(struct sock *sk, struct net_device *dev,
 static inline bool tls_is_sk_tx_device_offloaded(struct sock *sk)
 {
 #ifdef CONFIG_SOCK_VALIDATE_XMIT
-	return sk_fullsock(sk) &
+	return sk_fullsock(sk) &&
 	       (smp_load_acquire(&sk->sk_validate_xmit_skb) ==
 	       &tls_validate_xmit_skb);
 #else

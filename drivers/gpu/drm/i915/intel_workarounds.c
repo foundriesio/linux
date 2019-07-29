@@ -488,8 +488,18 @@ static int cnl_ctx_workarounds_init(struct drm_i915_private *dev_priv)
 	return 0;
 }
 
+static void wa_write(struct i915_wa_list *wal, i915_reg_t reg, u32 val);
+
 static int icl_ctx_workarounds_init(struct drm_i915_private *dev_priv)
 {
+	struct i915_wa_list *wal = &dev_priv->gt_wa_list;
+
+	/* WaDisableBankHangMode:icl */
+	wa_write(wal,
+		 GEN8_L3CNTLREG,
+		 I915_READ(GEN8_L3CNTLREG) |
+		 GEN8_ERRDETBCTRL);
+
 	/* Wa_1604370585:icl (pre-prod)
 	 * Formerly known as WaPushConstantDereferenceHoldDisable
 	 */

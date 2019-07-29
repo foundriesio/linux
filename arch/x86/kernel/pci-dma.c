@@ -1,4 +1,4 @@
-#include <linux/dma-mapping.h>
+#include <linux/dma-direct.h>
 #include <linux/dma-debug.h>
 #include <linux/dmar.h>
 #include <linux/export.h>
