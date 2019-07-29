@@ -98,7 +98,7 @@ int mcp25xxfd_can_rx_submit_frame(struct mcp25xxfd_can_priv *cpriv, int fifo)
 	/* update stats */
 	net->stats.rx_packets++;
 	net->stats.rx_bytes += len;
-	cpriv->fifos.rx.dlc_usage[dlc]++;
+	MCP25XXFD_DEBUGFS_INCR(cpriv->fifos.rx.dlc_usage[dlc]);
 	if (rx->flags & MCP25XXFD_CAN_OBJ_FLAGS_FDF)
 		MCP25XXFD_DEBUGFS_INCR(cpriv->fifos.rx.fd_count);
 
@@ -151,7 +151,7 @@ static int mcp25xxfd_can_rx_read_frame(struct mcp25xxfd_can_priv *cpriv,
 
 	/* we read the header plus prefetch_bytes */
 	if (read) {
-		cpriv->stats.rx_single_reads++;
+		MCP25XXFD_DEBUGFS_INCR(cpriv->stats.rx_single_reads);
 		ret = mcp25xxfd_cmd_readn(spi, MCP25XXFD_SRAM_ADDR(addr),
 					  rx, sizeof(*rx) + prefetch_bytes);
 		if (ret)
@@ -187,7 +187,7 @@ static int mcp25xxfd_can_rx_read_frame(struct mcp25xxfd_can_priv *cpriv,
 	}
 
 	/* update stats */
-	cpriv->stats.rx_reads++;
+	MCP25XXFD_DEBUGFS_INCR(cpriv->stats.rx_reads);
 	if (len < prefetch_bytes) {
 		MCP25XXFD_DEBUGFS_STATS_INCR(cpriv,
 					     rx_reads_prefetched_too_many);

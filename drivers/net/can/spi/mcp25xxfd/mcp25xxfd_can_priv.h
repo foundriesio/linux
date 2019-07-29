@@ -132,6 +132,9 @@ struct mcp25xxfd_can_priv {
 	} fifos;
 
 	/* statistics exposed via debugfs */
+#define MCP25XXFD_CAN_TEF_READ_BINS 8
+#define MCP25XXFD_CAN_RX_BULK_READ_BINS 8
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_dir;
 
@@ -159,7 +162,6 @@ struct mcp25xxfd_can_priv {
 		u64 tef_read_splits;
 		u64 tef_conservative_reads;
 		u64 tef_optimized_reads;
-#define MCP25XXFD_CAN_TEF_READ_BINS 8
 		u64 tef_optimized_read_sizes[MCP25XXFD_CAN_TEF_READ_BINS];
 
 		u64 rx_reads;
@@ -169,7 +171,6 @@ struct mcp25xxfd_can_priv {
 		u64 rx_reads_prefetched_too_many_bytes;
 		u64 rx_single_reads;
 		u64 rx_bulk_reads;
-#define MCP25XXFD_CAN_RX_BULK_READ_BINS 8
 		u64 rx_bulk_read_sizes[MCP25XXFD_CAN_RX_BULK_READ_BINS];
 	} stats;
 #endif /* CONFIG_DEBUG_FS */
