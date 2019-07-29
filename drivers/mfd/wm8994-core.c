@@ -7,6 +7,7 @@
  * Author: Mark Brown <broonie@opensource.wolfsonmicro.com>
  */
 
+#include <linux/clk.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -300,6 +301,20 @@ static int wm8994_set_pdata_from_of(struct wm8994 *wm8994)
 
 	pdata->csnaddr_pd = of_property_read_bool(np, "wlf,csnaddr-pd");
 
+
+	pdata->mclk1 = devm_clk_get(wm8994->dev, "MCLK1");
+	if (IS_ERR(pdata->mclk1)) {
+		if (PTR_ERR(pdata->mclk1) != -ENOENT)
+			return PTR_ERR(pdata->mclk1);
+		pdata->mclk1 = NULL;
+	}
+
+	pdata->mclk2 = devm_clk_get(wm8994->dev, "MCLK2");
+	if (IS_ERR(pdata->mclk2)) {
+		if (PTR_ERR(pdata->mclk2) != -ENOENT)
+			return PTR_ERR(pdata->mclk2);
+		pdata->mclk2 = NULL;
+	}
 	return 0;
 }
 #else
