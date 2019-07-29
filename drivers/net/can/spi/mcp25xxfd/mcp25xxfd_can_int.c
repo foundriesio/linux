@@ -52,7 +52,7 @@ static void mcp25xxfd_can_int_send_error_skb(struct mcp25xxfd_can_priv *cpriv)
 	memcpy(frame->data, cpriv->error_frame.data, sizeof(frame->data));
 
 	/* and submit it */
-	netif_receive_skb(skb);
+	netif_rx(skb);
 }
 
 static int mcp25xxfd_can_int_compare_obj_ts(const void *a, const void *b)
