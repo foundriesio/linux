@@ -271,10 +271,22 @@
 			>;
 		};
 
+		pinctrl_can_int: can-int-grp {
+			fsl,pins = <
+				SC_P_QSPI0A_DQS_LSIO_GPIO3_IO13			0x40		/* SODIMM  73 */
+			>;
+		};
+
 		pinctrl_csi_ctl: csictlgrp {
 			fsl,pins = <
 				SC_P_QSPI0A_SS0_B_LSIO_GPIO3_IO14		0x20		/* SODIMM  77 */
 				SC_P_QSPI0A_SS1_B_LSIO_GPIO3_IO15		0x20		/* SODIMM  89 */
+			>;
+		};
+
+		pinctrl_gpiokeys: gpiokeysgrp {
+			fsl,pins = <
+				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10		0x20		/* SODIMM  45 */
 			>;
 		};
 
@@ -364,11 +376,9 @@
 
 		pinctrl_hog1: hog1grp {
 			fsl,pins = <
-				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10		0x20		/* SODIMM  45 */
 				SC_P_ENET0_RGMII_TXD3_LSIO_GPIO5_IO02		0x06000020	/* SODIMM  65 */
 				SC_P_CSI_D07_CI_PI_D09				0x61		/* SODIMM  65 */
 				SC_P_QSPI0A_DATA2_LSIO_GPIO3_IO11		0x20		/* SODIMM  69 */
-				SC_P_QSPI0A_DQS_LSIO_GPIO3_IO13			0x20		/* SODIMM  73 */
 				SC_P_SAI0_TXC_LSIO_GPIO0_IO26			0x20		/* SODIMM  79 */
 				SC_P_CSI_D02_CI_PI_D04				0x61		/* SODIMM  79 */
 				SC_P_ENET0_RGMII_RXC_LSIO_GPIO5_IO03		0x06000020	/* SODIMM  85 */
