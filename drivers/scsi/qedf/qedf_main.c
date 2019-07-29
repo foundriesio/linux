@@ -1373,11 +1373,13 @@ static void qedf_rport_event_handler(struct fc_lport *lport,
 
 		spin_lock_irqsave(&fcport->rport_lock, flags);
 		/* Only free this fcport if it is offloaded already */
-		if (test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
-			set_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags);
+		if (test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags) &&
+		    !test_bit(QEDF_RPORT_UPLOADING_CONNECTION,
+		    &fcport->flags)) {
+			set_bit(QEDF_RPORT_UPLOADING_CONNECTION,
+				&fcport->flags);
 			spin_unlock_irqrestore(&fcport->rport_lock, flags);
 			qedf_cleanup_fcport(qedf, fcport);
-
 			/*
 			 * Remove fcport to list of qedf_ctx list of offloaded
 			 * ports

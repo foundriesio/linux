@@ -143,6 +143,8 @@ retry_els:
 	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_ELS, "Ringing doorbell for ELS "
 		   "req\n");
 	qedf_ring_doorbell(fcport);
+	set_bit(QEDF_CMD_OUTSTANDING, &els_req->flags);
+
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 els_err:
 	return rc;
@@ -158,6 +160,8 @@ void qedf_process_els_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 
 	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_ELS, "Entered with xid = 0x%x"
 		   " cmd_type = %d.\n", els_req->xid, els_req->cmd_type);
+
+	clear_bit(QEDF_CMD_OUTSTANDING, &els_req->flags);
 
 	/* Kill the ELS timer */
 	cancel_delayed_work(&els_req->timeout_work);
