@@ -3314,8 +3314,11 @@ static int __qedf_probe(struct pci_dev *pdev, int mode)
 		host->max_lun = qedf_max_lun;
 		host->max_cmd_len = QEDF_MAX_CDB_LEN;
 		rc = scsi_add_host(host, &pdev->dev);
-		if (rc)
+		if (rc) {
+			QEDF_WARN(&qedf->dbg_ctx,
+				  "Error adding Scsi_Host.\n");
 			goto err6;
+		}
 	}
 
 	memset(&params, 0, sizeof(params));
