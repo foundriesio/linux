@@ -8,15 +8,19 @@
 
 /*
  * Choose output point for LCDIF block:
- * LCDIF_OUT_ADV7125: VGA converter + VGA connector X24
- * LCDIF_OUT_PANEL: Panel connected to
- * - Generic Display Connector X20,
- * - Unified Interface Display Connector X34
+ * By default use LCD Panel driver:
+ * - Panel connected to
+ *   - Generic Display Connector X20;
+ *   - Unified Interface Display Connector X34;
+ * OR
+ * - VGA monitor connected to X24.
+ *
+ * Define LCDIF_OUT_ADV7125 to use ONLY (!) VGA monitor connected to X24
+ * with our without DDC channel to use higher resolutions.
  *
  * NOTE: LCDIF output to LVDS transmitter is not supported for now.
  */
-#define LCDIF_OUT_ADV7125
-//#define LCDIF_OUT_PANEL
+//#define LCDIF_OUT_ADV7125
 
 #include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
@@ -29,8 +33,8 @@
 		status = "disabled";
 	};
 
-#ifdef LCDIF_OUT_PANEL
-	lcdif_backlight: lcdif_backlight {
+#ifndef LCDIF_OUT_ADV7125
+	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
@@ -44,7 +48,7 @@
 
 	panel {
 		compatible = "edt,et070080dh6";
-		backlight = <&lcdif_backlight>;
+		backlight = <&backlight>;
 		enable-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
 
 		port {
@@ -53,9 +57,7 @@
 			};
 		};
 	};
-#endif
-
-#if defined(LCDIF_OUT_ADV7125)
+#else
 	vga {
 		compatible = "vga-connector";
 		label = "vga";
@@ -99,12 +101,12 @@
 	/* Dumb DAC to VGA converter doesn't support backlight, so
 	 * instead use enable-gpios for LCDIF driver for this configuration
 	 */
-#ifdef LCDIF_OUT_ADV7125
+#ifndef LCDIF_OUT_ADV7125
+	pinctrl-0 = <&pinctrl_lcdif>;
+#else
 	pinctrl-0 = <&pinctrl_lcdif &pinctrl_gpio_bl_on>;
 	enable-gpios = <&gpio3 12 GPIO_ACTIVE_HIGH>; /* BKL1_ON */
 	pinctrl-assert-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
-#else
-	pinctrl-0 = <&pinctrl_lcdif>;
 #endif
 	/* By default, Colibri iMX8QXP uses 18-bits output bus for eLCDIF.
 	 * However, you can configure it to support 24-bits output.
