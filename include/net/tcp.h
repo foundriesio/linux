@@ -1996,6 +1996,20 @@ static inline void tcp_listendrop(const struct sock *sk)
 
 enum hrtimer_restart tcp_pace_kick(struct hrtimer *timer);
 
+static inline struct sk_buff *tcp_rtx_queue_head(const struct sock *sk)
+{
+	struct sk_buff *skb = tcp_write_queue_head(sk);
+
+	return skb == tcp_send_head(sk) ? NULL : skb;
+}
+
+static inline struct sk_buff *tcp_rtx_queue_tail(const struct sock *sk)
+{
+	struct sk_buff *skb = tcp_send_head(sk);
+
+	return skb ? tcp_write_queue_prev(sk, skb) : tcp_write_queue_tail(sk);
+}
+
 #endif	/* _TCP_H */
 
 #if IS_ENABLED(CONFIG_SMC)
