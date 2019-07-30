@@ -4,14 +4,23 @@
  */
 
 /dts-v1/;
-//#define DSI_TO_HDMI_V10
 
 #include "fsl-imx8qxp-colibri.dtsi"
+#include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
 	model = "Toradex Colibri iMX8QXP with LT8912 MIPI-DSI 2 HDMI bridge";
 	compatible = "toradex,colibri-imx8qxp-dsihdmi-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
+};
+
+/* Colibri Parallel RGB */
+&adma_lcdif {
+	status = "disabled";
+};
+
+&backlight {
+	status = "disabled";
 };
 
 /* Display Prefetch Resolve, (Tiling) */
@@ -51,7 +60,6 @@
 &i2c0_mipi_lvds0 {
 	status = "okay";
 
-#ifndef DSI_TO_HDMI_V10
 	/* DSI to HDMI Adapter V1.1A */
 	i2c-switch@70 {
 		compatible = "nxp,pca9540";
@@ -121,55 +129,6 @@
 			};
 		};
 	};
-#else /* DSI_TO_HDMI_V10 */
-	/* DSI to HDMI Adapter V1.0A */
-	lt8912@48 {
-		compatible = "lontium,lt8912";
-		reg = <0x48>;
-
-		port {
-			lt8912_1_in: endpoint {
-				remote-endpoint = <&mipi_dsi_bridge1_out>;
-			};
-		};
-
-		display-timings {
-			native-mode = <&timing1>;
-
-			timing0: timing0 {
-				clock-frequency = <74250000>;
-				hactive = <1280>;
-				vactive = <720>;
-				hfront-porch = <110>;
-				hsync-len = <40>;
-				hback-porch = <220>;
-				vfront-porch = <5>;
-				vsync-len = <5>;
-				vback-porch = <20>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				de-active = <0>;
-				pixelclk-active = <0>;
-			};
-
-			timing1: timing1 {
-				clock-frequency = <148500000>;
-				hactive = <1920>;
-				vactive = <1080>;
-				hfront-porch = <88>;
-				hsync-len = <44>;
-				hback-porch = <148>;
-				vfront-porch = <36>;
-				vsync-len = <5>;
-				vback-porch = <4>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				de-active = <0>;
-				pixelclk-active = <0>;
-			};
-		};
-	};
-#endif /* DSI_TO_HDMI_V10 */
 };
 
 &ldb1_phy {
