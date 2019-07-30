@@ -17,7 +17,7 @@
 	};
 
 	display-subsystem {
-		status = "disabled";
+		status = "okay";
 	};
 
 	extcon_usbc_det: usbc_det {
