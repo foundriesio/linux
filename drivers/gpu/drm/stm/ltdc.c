@@ -735,22 +735,44 @@ static int ltdc_plane_atomic_check(struct drm_plane *plane,
 				   struct drm_plane_state *state)
 {
 	struct drm_framebuffer *fb = state->fb;
-	u32 src_w, src_h;
+	struct drm_crtc_state *crtc_state;
+	struct drm_rect *src = &state->src;
+	struct drm_rect *dst = &state->dst;
 
 	DRM_DEBUG_DRIVER("\n");
 
 	if (!fb)
 		return 0;
 
-	/* convert src_ from 16:16 format */
-	src_w = state->src_w >> 16;
-	src_h = state->src_h >> 16;
+	/* convert src from 16:16 format */
+	src->x1 = state->src_x >> 16;
+	src->y1 = state->src_y >> 16;
+	src->x2 = (state->src_w >> 16) + src->x1 - 1;
+	src->y2 = (state->src_h >> 16) + src->y1 - 1;
 
-	/* Reject scaling */
-	if (src_w != state->crtc_w || src_h != state->crtc_h) {
-		DRM_ERROR("Scaling is not supported");
+	dst->x1 = state->crtc_x;
+	dst->y1 = state->crtc_y;
+	dst->x2 = state->crtc_w + dst->x1 - 1;
+	dst->y2 = state->crtc_h + dst->y1 - 1;
+
+	DRM_DEBUG_DRIVER("plane:%d fb:%d (%dx%d)@(%d,%d) -> (%dx%d)@(%d,%d)\n",
+			 plane->base.id, fb->base.id,
+			 src->x2 - src->x1 + 1, src->y2 - src->y1 + 1,
+			 src->x1, src->y1,
+			 dst->x2 - dst->x1 + 1, dst->y2 - dst->y1 + 1,
+			 dst->x1, dst->y1);
+
+	crtc_state = drm_atomic_get_existing_crtc_state(state->state,
+							state->crtc);
+	/* destination coordinates do not have to exceed display sizes */
+	if (crtc_state && (crtc_state->mode.hdisplay <= dst->x2 ||
+			   crtc_state->mode.vdisplay <= dst->y2))
 		return -EINVAL;
-	}
+
+	/* source sizes do not have to exceed destination sizes */
+	if (dst->x2 - dst->x1 < src->x2 - src->x1 ||
+	    dst->y2 - dst->y1 < src->y2 - src->y1)
+		return -EINVAL;
 
 	return 0;
 }
@@ -760,44 +782,36 @@ static void ltdc_plane_atomic_update(struct drm_plane *plane,
 {
 	struct ltdc_device *ldev = plane_to_ltdc(plane);
 	struct drm_plane_state *state = plane->state;
+	struct drm_rect *src = &state->src;
+	struct drm_rect *dst = &state->dst;
 	struct drm_framebuffer *fb = state->fb;
 	u32 lofs = plane->index * LAY_OFS;
-	u32 x0 = state->crtc_x;
-	u32 x1 = state->crtc_x + state->crtc_w - 1;
-	u32 y0 = state->crtc_y;
-	u32 y1 = state->crtc_y + state->crtc_h - 1;
-	u32 src_x, src_y, src_w, src_h;
 	u32 val, pitch_in_bytes, line_length, paddr, ahbp, avbp, bpcr;
 	enum ltdc_pix_fmt pf;
+	struct drm_rect dr;
 
 	if (!state->crtc || !fb) {
 		DRM_DEBUG_DRIVER("fb or crtc NULL");
 		return;
 	}
 
-	/* convert src_ from 16:16 format */
-	src_x = state->src_x >> 16;
-	src_y = state->src_y >> 16;
-	src_w = state->src_w >> 16;
-	src_h = state->src_h >> 16;
-
-	DRM_DEBUG_DRIVER("plane:%d fb:%d (%dx%d)@(%d,%d) -> (%dx%d)@(%d,%d)\n",
-			 plane->base.id, fb->base.id,
-			 src_w, src_h, src_x, src_y,
-			 state->crtc_w, state->crtc_h,
-			 state->crtc_x, state->crtc_y);
+	/* compute final coordinates of frame buffer */
+	dr.x1 = src->x1 + dst->x1;
+	dr.y1 = src->y1 + dst->y1;
+	dr.x2 = src->x2 + dst->x1;
+	dr.y2 = src->y2 + dst->y1;
 
 	bpcr = reg_read(ldev->regs, LTDC_BPCR);
 	ahbp = (bpcr & BPCR_AHBP) >> 16;
 	avbp = bpcr & BPCR_AVBP;
 
 	/* Configures the horizontal start and stop position */
-	val = ((x1 + 1 + ahbp) << 16) + (x0 + 1 + ahbp);
+	val = ((dr.x2 + 1 + ahbp) << 16) + (dr.x1 + 1 + ahbp);
 	reg_update_bits(ldev->regs, LTDC_L1WHPCR + lofs,
 			LXWHPCR_WHSTPOS | LXWHPCR_WHSPPOS, val);
 
 	/* Configures the vertical start and stop position */
-	val = ((y1 + 1 + avbp) << 16) + (y0 + 1 + avbp);
+	val = ((dr.y2 + 1 + avbp) << 16) + (dr.y1 + 1 + avbp);
 	reg_update_bits(ldev->regs, LTDC_L1WVPCR + lofs,
 			LXWVPCR_WVSTPOS | LXWVPCR_WVSPPOS, val);
 
@@ -816,8 +830,8 @@ static void ltdc_plane_atomic_update(struct drm_plane *plane,
 
 	/* Configures the color frame buffer pitch in bytes & line length */
 	pitch_in_bytes = fb->pitches[0];
-	line_length = fb->format->cpp[0] *
-		      (x1 - x0 + 1) + (ldev->caps.bus_width >> 3) - 1;
+	line_length = fb->format->cpp[0] * (dr.x2 - dr.x1 + 1) +
+		      (ldev->caps.bus_width >> 3) - 1;
 	val = ((pitch_in_bytes << 16) | line_length);
 	reg_update_bits(ldev->regs, LTDC_L1CFBLR + lofs,
 			LXCFBLR_CFBLL | LXCFBLR_CFBP, val);
@@ -840,7 +854,7 @@ static void ltdc_plane_atomic_update(struct drm_plane *plane,
 			LXBFCR_BF2 | LXBFCR_BF1, val);
 
 	/* Configures the frame buffer line number */
-	val = y1 - y0 + 1;
+	val = dr.y2 - dr.y1 + 1;
 	reg_update_bits(ldev->regs, LTDC_L1CFBLNR + lofs, LXCFBLNR_CFBLN, val);
 
 	/* Sets the FB address */
