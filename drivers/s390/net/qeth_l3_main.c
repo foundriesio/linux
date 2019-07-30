@@ -2802,10 +2802,9 @@ static netdev_tx_t qeth_l3_hard_start_xmit(struct sk_buff *skb,
 
 tx_drop:
 	card->stats.tx_dropped++;
-	card->stats.tx_errors++;
 	if ((new_skb != skb) && new_skb)
 		dev_kfree_skb_any(new_skb);
-	dev_kfree_skb_any(skb);
+	kfree_skb(skb);
 	netif_wake_queue(dev);
 	return NETDEV_TX_OK;
 }
