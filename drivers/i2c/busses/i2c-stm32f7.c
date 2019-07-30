@@ -191,8 +191,6 @@ struct stm32f7_i2c_regs {
 /**
  * struct stm32f7_i2c_spec - private i2c specification timing
  * @rate: I2C bus speed (Hz)
- * @rate_min: 80% of I2C bus speed (Hz)
- * @rate_max: 100% of I2C bus speed (Hz)
  * @fall_max: Max fall time of both SDA and SCL signals (ns)
  * @rise_max: Max rise time of both SDA and SCL signals (ns)
  * @hddat_min: Min data hold time (ns)
@@ -203,8 +201,6 @@ struct stm32f7_i2c_regs {
  */
 struct stm32f7_i2c_spec {
 	u32 rate;
-	u32 rate_min;
-	u32 rate_max;
 	u32 fall_max;
 	u32 rise_max;
 	u32 hddat_min;
@@ -352,8 +348,6 @@ struct stm32f7_i2c_dev {
 static struct stm32f7_i2c_spec i2c_specs[] = {
 	[STM32_I2C_SPEED_STANDARD] = {
 		.rate = 100000,
-		.rate_min = 80000,
-		.rate_max = 100000,
 		.fall_max = 300,
 		.rise_max = 1000,
 		.hddat_min = 0,
@@ -364,8 +358,6 @@ static struct stm32f7_i2c_spec i2c_specs[] = {
 	},
 	[STM32_I2C_SPEED_FAST] = {
 		.rate = 400000,
-		.rate_min = 320000,
-		.rate_max = 400000,
 		.fall_max = 300,
 		.rise_max = 300,
 		.hddat_min = 0,
@@ -376,8 +368,6 @@ static struct stm32f7_i2c_spec i2c_specs[] = {
 	},
 	[STM32_I2C_SPEED_FAST_PLUS] = {
 		.rate = 1000000,
-		.rate_min = 800000,
-		.rate_max = 1000000,
 		.fall_max = 100,
 		.rise_max = 120,
 		.hddat_min = 0,
@@ -410,6 +400,7 @@ static void stm32f7_i2c_disable_irq(struct stm32f7_i2c_dev *i2c_dev, u32 mask)
 	stm32f7_i2c_clr_bits(i2c_dev->base + STM32F7_I2C_CR1, mask);
 }
 
+#define RATE_MIN(rate)	(rate / 100 * 80)
 static int stm32f7_i2c_compute_timing(struct stm32f7_i2c_dev *i2c_dev,
 				      struct stm32f7_i2c_setup *setup,
 				      struct stm32f7_i2c_timings *output)
@@ -529,8 +520,8 @@ static int stm32f7_i2c_compute_timing(struct stm32f7_i2c_dev *i2c_dev,
 
 	tsync = af_delay_min + dnf_delay + (2 * i2cclk);
 	s = NULL;
-	clk_max = NSEC_PER_SEC / i2c_specs[setup->speed].rate_min;
-	clk_min = NSEC_PER_SEC / i2c_specs[setup->speed].rate_max;
+	clk_max = NSEC_PER_SEC / RATE_MIN(i2c_specs[setup->speed].rate);
+	clk_min = NSEC_PER_SEC / i2c_specs[setup->speed].rate;
 
 	/*
 	 * Among Prescaler possibilities discovered above figures out SCL Low
