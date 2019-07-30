@@ -66,6 +66,8 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
 				sizeof(productParams->mOUI) +
 				sizeof(productParams->mVendorPayload) +
 				sizeof(productParams->mVendorPayloadLength));
+
+			fc_packets_metadata_config(dev);
                 }
         } while(0);
 

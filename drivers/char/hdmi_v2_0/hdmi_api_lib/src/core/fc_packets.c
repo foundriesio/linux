@@ -63,10 +63,14 @@ void fc_packets_disable_all(struct hdmi_tx_dev *dev)
 
 void fc_packets_metadata_config(struct hdmi_tx_dev *dev)
 {
-#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST	
+#ifdef CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST
 	fc_packets_MetadataFrameInterpolation(dev, 0);
 #else
-	fc_packets_MetadataFrameInterpolation(dev, 1);
+	if(test_bit(HDMI_TX_VSIF_UPDATE_FOR_HDR_10P, &dev->status)) {
+		fc_packets_MetadataFrameInterpolation(dev, 0);
+	} else {
+		fc_packets_MetadataFrameInterpolation(dev, 1);
+	}
 #endif
 	fc_packets_MetadataFramesPerPacket(dev, 1);
 	fc_packets_MetadataLineSpacing(dev, 1);
