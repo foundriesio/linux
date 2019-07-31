@@ -395,16 +395,16 @@ static void ump_sw_mgmt_register(unsigned int phy_addr)
 }
 
 
-static void ump_sw_mgmt_deregister(unsigned int phy_addr)
+static void ump_sw_mgmt_deregister(unsigned int phy_addr, bool autofree)
 {
 	int i = 0;
-	ump_printk_info("%s with 0x%x \n", __func__, phy_addr);
+	ump_printk_info("%s with 0x%x autofree:%d\n", __func__, phy_addr, autofree);
 
 	if(!bInited_ump_reserved_sw)
 		return;
 
-    if(!phy_addr)
-        return;
+    	if(!phy_addr)
+        	return;
 
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
@@ -418,18 +418,20 @@ static void ump_sw_mgmt_deregister(unsigned int phy_addr)
 		return;
 	}
 
-    ump_sw_buf[i].ref_count -= 1;
-    if(ump_sw_buf[i].ref_count == 0){
-	    ump_sw_buf[i].phy_addr = 0x00;
-	    ump_sw_mgmt_write_recognition_addr(i, phy_addr);
+	ump_sw_buf[i].ref_count -= 1;
+	if(autofree)
+		ump_sw_buf[i].ref_count = 0;
+		
+	if(ump_sw_buf[i].ref_count == 0){
+		ump_sw_buf[i].phy_addr = 0x00;
+		ump_sw_mgmt_write_recognition_addr(i, phy_addr);
 		ump_printk_check("%s :: [%d] = 0x%x \n", __func__, i, phy_addr);
-    }
+   	}
 
 	ump_printk_info("%s :: [%d] = 0x%x/%d \n", __func__, i, phy_addr, ump_sw_buf[i].ref_count);
 
 	if(0 == ump_sw_mgmt_check_status())
 		ump_sw_mgmt_deinit();
-
 }
 #endif
 
@@ -576,31 +578,40 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	#endif
 
 #ifdef USE_UMP_RESERVED_SW_PMAP
-		case TCC_REGISTER_UMP_SW_INFO:
-		{
-			unsigned int phy_addr = 0x00;
+	case TCC_REGISTER_UMP_SW_INFO:
+	{
+		unsigned int phy_addr = 0x00;
 
-			if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int))){
-                ret = -EFAULT;
-            }
-            else{
-				ump_sw_mgmt_register(phy_addr);
-            }
+		if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int)))
+			ret = -EFAULT;
+		else
+			ump_sw_mgmt_register(phy_addr);
+	}
+	break;
+
+	case TCC_DEREGISTER_UMP_SW_INFO:
+	case TCC_DEREGISTER_UMP_SW_INFO_KERNEL:
+	{
+		unsigned int phy_addr = 0x00;
+
+		if(cmd == TCC_DEREGISTER_UMP_SW_INFO){
+			if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int)))
+				return -EFAULT;
+			else{
+				ump_sw_mgmt_deregister(phy_addr, 0);
+				ret = 0;
+			}
 		}
-		break;
-
-		case TCC_DEREGISTER_UMP_SW_INFO:
-		{
-			unsigned int phy_addr = 0x00;
-
-			if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int))){
-                ret = -EFAULT;
-            }
-            else{
-				ump_sw_mgmt_deregister(phy_addr);
-            }
+		else{
+			if(NULL == memcpy(&phy_addr, (const void*)arg, sizeof(unsigned int)))
+				return -EFAULT;
+			else{
+				ump_sw_mgmt_deregister(phy_addr, 1);
+				ret = 0;
+			}
 		}
-		break;
+	}
+	break;
 #endif
 
         default:

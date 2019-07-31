@@ -43,6 +43,7 @@
 #ifdef USE_UMP_RESERVED_SW_PMAP
 #define TCC_REGISTER_UMP_SW_INFO            0x40
 #define TCC_DEREGISTER_UMP_SW_INFO          0x41
+#define TCC_DEREGISTER_UMP_SW_INFO_KERNEL   0x42
 #endif
 
 typedef struct {
