@@ -26,9 +26,13 @@
 enum{
 	LUT_DEV0 = 0,
 	LUT_DEV1 = 1,
+	LUT_DEV2 = 2,
 	LUT_COMP0 = 3,
-	LUT_COMP1 = 5
+	LUT_COMP1 = 4,
+	LUT_COMP2 = 5,
+	LUT_COMP3 = 6
 };
+
 
 enum{
         LUT_CSC_PRESET_SDR_TO_HDR10 = 0,
