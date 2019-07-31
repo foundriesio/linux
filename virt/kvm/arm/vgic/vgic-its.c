@@ -318,21 +318,24 @@ static int vgic_copy_lpi_list(struct kvm_vcpu *vcpu, u32 **intid_ptr)
 	struct vgic_irq *irq;
 	unsigned long flags;
 	u32 *intids;
-	int irq_count = dist->lpi_list_count, i = 0;
+	int irq_count, i = 0;
 
 	/*
-	 * We use the current value of the list length, which may change
-	 * after the kmalloc. We don't care, because the guest shouldn't
-	 * change anything while the command handling is still running,
-	 * and in the worst case we would miss a new IRQ, which one wouldn't
-	 * expect to be covered by this command anyway.
+	 * There is an obvious race between allocating the array and LPIs
+	 * being mapped/unmapped. If we ended up here as a result of a
+	 * command, we're safe (locks are held, preventing another
+	 * command). If coming from another path (such as enabling LPIs),
+	 * we must be careful not to overrun the array.
 	 */
+	irq_count = READ_ONCE(dist->lpi_list_count);
 	intids = kmalloc_array(irq_count, sizeof(intids[0]), GFP_KERNEL);
 	if (!intids)
 		return -ENOMEM;
 
 	spin_lock_irqsave(&dist->lpi_list_lock, flags);
 	list_for_each_entry(irq, &dist->lpi_list_head, lpi_list) {
+		if (i == irq_count)
+			break;
 		/* We don't need to "get" the IRQ, as we hold the list lock. */
 		if (irq->target_vcpu != vcpu)
 			continue;
@@ -1742,6 +1745,7 @@ static void vgic_its_destroy(struct kvm_device *kvm_dev)
 
 	mutex_unlock(&its->its_lock);
 	kfree(its);
+	kfree(kvm_dev);/* alloc by kvm_ioctl_create_device, free by .destroy */
 }
 
 int vgic_its_has_attr_regs(struct kvm_device *dev,
