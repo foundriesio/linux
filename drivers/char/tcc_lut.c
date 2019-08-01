@@ -43,15 +43,56 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.2"
+#define LUT_VERSION "v1.3"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
 
 struct lut_drv_type {
-	unsigned int  			dev_opened;
-	struct miscdevice		*misc;
+	unsigned int dev_opened;
+	struct miscdevice *misc;
 };
+
+static unsigned int lut_get_real_lut_number(unsigned int input_lut_number)
+{
+	unsigned int lut_number = (unsigned int)-1;
+
+
+	switch(input_lut_number) {
+		case LUT_DEV0:
+		case LUT_DEV1:
+			lut_number = input_lut_number;
+			break;
+
+		#if defined(CONFIG_ARCH_TCC803X)
+		case LUT_DEV2:
+			lut_number = input_lut_number;
+			break;
+		#endif
+
+		case LUT_COMP0:
+			lut_number = input_lut_number;
+			break;
+
+		case LUT_COMP1:
+			#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+			lut_number = 5; /* Number of LUT in VIOC1 RGB is 5 */
+			#else
+			lut_number = input_lut_number;
+			#endif
+			break;
+
+		#if defined(CONFIG_ARCH_TCC897X)
+		case LUT_COMP2:
+		case LUT_COMP3:
+			lut_number = input_lut_number;
+			break;
+		#endif
+
+	}
+
+	return lut_number;
+}
 
 static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -60,6 +101,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	switch(cmd) {
 		case TCC_LUT_SET:
 			{
+				unsigned int lut_number;
 				struct VIOC_LUT_VALUE_SET *lut_cmd;
 
 				lut_cmd = kmalloc(sizeof(struct VIOC_LUT_VALUE_SET), GFP_KERNEL);
@@ -68,8 +110,13 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					kfree(lut_cmd);
 					break;
 				}
+				lut_number = lut_get_real_lut_number(lut_cmd->lut_number);
+				if(lut_number == (unsigned int)-1 ) {
+					pr_err("%s TCC_LUT_SET invalid lut number[%d]\r\n", __func__, lut_cmd->lut_number);
+					break;
+				}
 
-				tcc_set_lut_table(VIOC_LUT + lut_cmd->lut_number, lut_cmd->Gamma);
+				tcc_set_lut_table(VIOC_LUT + lut_number, lut_cmd->Gamma);
 				kfree(lut_cmd);
 				ret = 0;
 			}
@@ -77,8 +124,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
                 case TCC_LUT_SET_EX:
                         {
-                        	unsigned int lut_sel;
-
+				unsigned int lut_number;
                                 struct VIOC_LUT_VALUE_SET_EX *lut_value_set_ex = NULL;
 
                                 lut_value_set_ex =
@@ -100,33 +146,27 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
 	                                        break;
 	                                }
-
-					lut_sel = lut_value_set_ex->lut_number;
-					dprintk("TCC_LUT_SET_EX lut_sel = %d\r\n", lut_sel);
+					lut_number = lut_get_real_lut_number(lut_value_set_ex->lut_number);
+					if(lut_number == (unsigned int)-1 ) {
+						pr_err("%s TCC_LUT_SET_EX invalid lut number[%d]\r\n", __func__, lut_value_set_ex->lut_number);
+						break;
+					}
+					dprintk("TCC_LUT_SET_EX lut_sel = %d\r\n", lut_number);
 
 					/* Y Table? */
-					ret = 0;
 					#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
 					dprintk("TCC_LUT_SET_EX para = %d\r\n", lut_value_set_ex->param);
 					if(lut_value_set_ex->param & 1) {
-						switch(lut_sel) {
-							case LUT_COMP0:
-							case LUT_COMP1:
-								lut_sel++;
-								dprintk("TCC_LUT_SET_EX y-lut lut_sel = %d\r\n", lut_sel);
-								break;
-							default:
-								ret = -EINVAL;
-								break;
+						if(lut_number == 3 || lut_number == 5) {
+							lut_number++;
+							dprintk("TCC_LUT_SET_EX y-lut lut_sel = %d\r\n", lut_number);
 						}
 					}
-					if(ret < 0) {
-						pr_err("TCC_LUT_SET_EX invalid parameter\r\n");
-						break;
-					}
 					#endif
-					dprintk("TCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", lut_sel);
-	                                tcc_set_lut_table(VIOC_LUT + lut_sel, lut_value_set_ex->Gamma);
+
+					dprintk("TCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", lut_number);
+	                                tcc_set_lut_table(VIOC_LUT + lut_number, lut_value_set_ex->Gamma);
+					ret = 0;
 				}while(0);
 
 				if(lut_value_set_ex != NULL) {
@@ -137,13 +177,19 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 		case TCC_LUT_ONOFF:
 			{
+				unsigned int lut_number;
 				struct VIOC_LUT_ONOFF_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(struct VIOC_LUT_ONOFF_SET))) {
 					break;
 				}
 				dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
-				tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
+				lut_number = lut_get_real_lut_number(lut_cmd.lut_number);
+				if(lut_number == (unsigned int)-1 ) {
+					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
+					break;
+				}
+				tcc_set_lut_enable(VIOC_LUT + lut_number, lut_cmd.lut_onoff);
 				ret = 0;
 
 			}
@@ -151,19 +197,24 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 		case TCC_LUT_PLUG_IN:
 			{
+				unsigned int lut_number;
 				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
 					break;
-
+				lut_number = lut_get_real_lut_number(lut_cmd.lut_number);
+				if(lut_number == (unsigned int)-1 ) {
+					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_number);
+					break;
+				}
 				if(!lut_cmd.enable) {
-					dprintk("TCC_LUT_PLUG_IN disable lut_number(%d)\r\n", VIOC_LUT + lut_cmd.lut_number);
-					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, 0);
+					dprintk("TCC_LUT_PLUG_IN disable lut_number(%d)\r\n", VIOC_LUT + lut_number);
+					tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
 				}
 				else 	{
-					dprintk("TCC_LUT_PLUG_IN enable lut_number(%d)\r\n", VIOC_LUT + lut_cmd.lut_number);
-					tcc_set_lut_plugin(VIOC_LUT + lut_cmd.lut_number, VIOC_RDMA + lut_cmd.lut_plug_in_ch);
-					tcc_set_lut_enable(VIOC_LUT + lut_cmd.lut_number, 1);
+					dprintk("TCC_LUT_PLUG_IN enable lut_number(%d)\r\n", VIOC_LUT + lut_number);
+					tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + lut_cmd.lut_plug_in_ch);
+					tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
 				}
 				ret = 0;
 			}
