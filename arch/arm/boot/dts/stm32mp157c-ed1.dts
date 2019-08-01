@@ -7,7 +7,6 @@
 
 #include "stm32mp157c.dtsi"
 #include "stm32mp157xaa-pinctrl.dtsi"
-#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mfd/st,stpmic1.h>
 
 / {
