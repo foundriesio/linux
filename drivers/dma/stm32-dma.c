@@ -1060,11 +1060,17 @@ static void stm32_dma_issue_pending(struct dma_chan *c)
 	struct stm32_dma_chan *chan = to_stm32_dma_chan(c);
 	unsigned long flags;
 
-	spin_lock_irqsave(&chan->vchan.lock, flags);
+	if (chan->use_mdma)
+		spin_lock_irqsave_nested(&chan->vchan.lock, flags,
+					 SINGLE_DEPTH_NESTING);
+	else
+		spin_lock_irqsave(&chan->vchan.lock, flags);
+
 	if (vchan_issue_pending(&chan->vchan) && !chan->desc && !chan->busy) {
 		dev_dbg(chan2dev(chan), "vchan %pK: issued\n", &chan->vchan);
 		stm32_dma_start_transfer(chan);
 	}
+
 	spin_unlock_irqrestore(&chan->vchan.lock, flags);
 }
 
