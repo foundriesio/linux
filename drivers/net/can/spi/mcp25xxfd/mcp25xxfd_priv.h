@@ -34,7 +34,7 @@ struct mcp25xxfd_priv {
 	/* the actual model of the mcp25xxfd */
 	enum mcp25xxfd_model model;
 
-	/* full device name used for debugfs ant interrupts */
+	/* full device name used for debugfs and interrupts */
 	char device_name[32];
 
 	/* everything clock related */
