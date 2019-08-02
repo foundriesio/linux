@@ -35,10 +35,10 @@ static inline void mcp25xxfd_cmd_convert_from_cpu(u32 *data, int n)
 
 static inline void mcp25xxfd_cmd_calc(u16 cmd, u16 addr, u8 *data)
 {
-	cmd = cmd | (addr & MCP25XXFD_ADDRESS_MASK);
+	cmd |= addr & MCP25XXFD_ADDRESS_MASK;
 
-	data[0] = (cmd >> 8) & 0xff;
-	data[1] = (cmd >> 0) & 0xff;
+	data[0] = cmd >> 8;
+	data[1] = cmd;
 }
 
 static inline int mcp25xxfd_cmd_first_byte(u32 mask)
