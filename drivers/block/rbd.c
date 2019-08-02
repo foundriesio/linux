@@ -223,18 +223,18 @@ struct rbd_obj_request {
 
 	enum obj_request_type	type;
 	union {
-		struct bio	*bio_list;
+		struct ceph_bio_iter	bio_pos;
 		struct {
-			struct page	**pages;
-			u32		page_count;
+			struct ceph_bvec_iter	bvec_pos;
+			u32			bvec_count;
 		};
 		struct {
 			struct scatterlist	*sg;
 			unsigned int		init_sg_offset;
 		};
 	};
-	struct page		**copyup_pages;
-	u32			copyup_page_count;
+	struct bio_vec		*copyup_bvecs;
+	u32			copyup_bvec_count;
 
 	struct ceph_osd_request	*osd_req;
 
@@ -287,8 +287,6 @@ static DEFINE_SPINLOCK(rbd_client_list_lock);
 
 static struct kmem_cache	*rbd_img_request_cache;
 static struct kmem_cache	*rbd_obj_request_cache;
-
-static struct bio_set		*rbd_bio_clone;
 
 static int rbd_major;
 static DEFINE_IDA(rbd_dev_id_ida);
@@ -1138,47 +1136,35 @@ static u64 rbd_segment_length(struct rbd_device *rbd_dev,
 	return length;
 }
 
-/*
- * bio helpers
- */
-
-static void bio_chain_put(struct bio *chain)
+static void zero_bvec(struct bio_vec *bv)
 {
-	struct bio *tmp;
+	void *buf;
+	unsigned long flags;
 
-	while (chain) {
-		tmp = chain;
-		chain = chain->bi_next;
-		bio_put(tmp);
-	}
+	buf = bvec_kmap_irq(bv, &flags);
+	memset(buf, 0, bv->bv_len);
+	flush_dcache_page(bv->bv_page);
+	bvec_kunmap_irq(buf, &flags);
 }
 
-/*
- * zeros a bio chain, starting at specific offset
- */
-static void zero_bio_chain(struct bio *chain, int start_ofs)
+static void zero_bios(struct ceph_bio_iter *bio_pos, u32 off, u32 bytes)
 {
-	struct bio_vec bv;
-	struct bvec_iter iter;
-	unsigned long flags;
-	void *buf;
-	int pos = 0;
+	struct ceph_bio_iter it = *bio_pos;
 
-	while (chain) {
-		bio_for_each_segment(bv, chain, iter) {
-			if (pos + bv.bv_len > start_ofs) {
-				int remainder = max(start_ofs - pos, 0);
-				buf = bvec_kmap_irq(&bv, &flags);
-				memset(buf + remainder, 0,
-				       bv.bv_len - remainder);
-				flush_dcache_page(bv.bv_page);
-				bvec_kunmap_irq(buf, &flags);
-			}
-			pos += bv.bv_len;
-		}
+	ceph_bio_iter_advance(&it, off);
+	ceph_bio_iter_advance_step(&it, bytes, ({
+		zero_bvec(&bv);
+	}));
+}
 
-		chain = chain->bi_next;
-	}
+static void zero_bvecs(struct ceph_bvec_iter *bvec_pos, u32 off, u32 bytes)
+{
+	struct ceph_bvec_iter it = *bvec_pos;
+
+	ceph_bvec_iter_advance(&it, off);
+	ceph_bvec_iter_advance_step(&it, bytes, ({
+		zero_bvec(&bv);
+	}));
 }
 
 static void zero_sg(struct scatterlist *sgl, u64 start, u64 length)
@@ -1207,122 +1193,6 @@ static void zero_sg(struct scatterlist *sgl, u64 start, u64 length)
 		pos += sg->length;
 		sg = sg_next(sg);
 	}
-}
-
-/*
- * similar to zero_bio_chain(), zeros data defined by a page array,
- * starting at the given byte offset from the start of the array and
- * continuing up to the given end offset.  The pages array is
- * assumed to be big enough to hold all bytes up to the end.
- */
-static void zero_pages(struct page **pages, u64 offset, u64 end)
-{
-	struct page **page = &pages[offset >> PAGE_SHIFT];
-
-	rbd_assert(end > offset);
-	rbd_assert(end - offset <= (u64)SIZE_MAX);
-	while (offset < end) {
-		size_t page_offset;
-		size_t length;
-		unsigned long flags;
-		void *kaddr;
-
-		page_offset = offset & ~PAGE_MASK;
-		length = min_t(size_t, PAGE_SIZE - page_offset, end - offset);
-		local_irq_save(flags);
-		kaddr = kmap_atomic(*page);
-		memset(kaddr + page_offset, 0, length);
-		flush_dcache_page(*page);
-		kunmap_atomic(kaddr);
-		local_irq_restore(flags);
-
-		offset += length;
-		page++;
-	}
-}
-
-/*
- * Clone a portion of a bio, starting at the given byte offset
- * and continuing for the number of bytes indicated.
- */
-static struct bio *bio_clone_range(struct bio *bio_src,
-					unsigned int offset,
-					unsigned int len,
-					gfp_t gfpmask)
-{
-	struct bio *bio;
-
-	bio = bio_clone_fast(bio_src, gfpmask, rbd_bio_clone);
-	if (!bio)
-		return NULL;	/* ENOMEM */
-
-	bio_advance(bio, offset);
-	bio->bi_iter.bi_size = len;
-
-	return bio;
-}
-
-/*
- * Clone a portion of a bio chain, starting at the given byte offset
- * into the first bio in the source chain and continuing for the
- * number of bytes indicated.  The result is another bio chain of
- * exactly the given length, or a null pointer on error.
- *
- * The bio_src and offset parameters are both in-out.  On entry they
- * refer to the first source bio and the offset into that bio where
- * the start of data to be cloned is located.
- *
- * On return, bio_src is updated to refer to the bio in the source
- * chain that contains first un-cloned byte, and *offset will
- * contain the offset of that byte within that bio.
- */
-static struct bio *bio_chain_clone_range(struct bio **bio_src,
-					unsigned int *offset,
-					unsigned int len,
-					gfp_t gfpmask)
-{
-	struct bio *bi = *bio_src;
-	unsigned int off = *offset;
-	struct bio *chain = NULL;
-	struct bio **end;
-
-	/* Build up a chain of clone bios up to the limit */
-
-	if (!bi || off >= bi->bi_iter.bi_size || !len)
-		return NULL;		/* Nothing to clone */
-
-	end = &chain;
-	while (len) {
-		unsigned int bi_size;
-		struct bio *bio;
-
-		if (!bi) {
-			rbd_warn(NULL, "bio_chain exhausted with %u left", len);
-			goto out_err;	/* EINVAL; ran out of bio's */
-		}
-		bi_size = min_t(unsigned int, bi->bi_iter.bi_size - off, len);
-		bio = bio_clone_range(bi, off, bi_size, gfpmask);
-		if (!bio)
-			goto out_err;	/* ENOMEM */
-
-		*end = bio;
-		end = &bio->bi_next;
-
-		off += bi_size;
-		if (off == bi->bi_iter.bi_size) {
-			bi = bi->bi_next;
-			off = 0;
-		}
-		len -= bi_size;
-	}
-	*bio_src = bi;
-	*offset = off;
-
-	return chain;
-out_err:
-	bio_chain_put(chain);
-
-	return NULL;
 }
 
 /*
@@ -1484,7 +1354,7 @@ static bool obj_request_type_valid(enum obj_request_type type)
 	switch (type) {
 	case OBJ_REQUEST_NODATA:
 	case OBJ_REQUEST_BIO:
-	case OBJ_REQUEST_PAGES:
+	case OBJ_REQUEST_BVECS:
 	case OBJ_REQUEST_SG:
 		return true;
 	default:
@@ -1668,17 +1538,19 @@ rbd_img_obj_request_read_callback(struct rbd_obj_request *obj_request)
 	rbd_assert(obj_request->type != OBJ_REQUEST_NODATA);
 	if (obj_request->result == -ENOENT) {
 		if (obj_request->type == OBJ_REQUEST_BIO)
-			zero_bio_chain(obj_request->bio_list, 0);
-		else if (obj_request->type == OBJ_REQUEST_PAGES)
-			zero_pages(obj_request->pages, 0, length);
+			zero_bios(&obj_request->bio_pos, 0, length);
+		else if (obj_request->type == OBJ_REQUEST_BVECS)
+			zero_bvecs(&obj_request->bvec_pos, 0, length);
 		else if (obj_request->type == OBJ_REQUEST_SG)
 			zero_sg(obj_request->sg, 0, length);
 		obj_request->result = 0;
 	} else if (xferred < length && !obj_request->result) {
 		if (obj_request->type == OBJ_REQUEST_BIO)
-			zero_bio_chain(obj_request->bio_list, xferred);
-		else if (obj_request->type == OBJ_REQUEST_PAGES)
-			zero_pages(obj_request->pages, xferred, length);
+			zero_bios(&obj_request->bio_pos, xferred,
+				  length - xferred);
+		else if (obj_request->type == OBJ_REQUEST_BVECS)
+			zero_bvecs(&obj_request->bvec_pos, xferred,
+				   length - xferred);
 		else if (obj_request->type == OBJ_REQUEST_SG)
 			zero_sg(obj_request->sg, xferred, length);
 	}
@@ -1954,9 +1826,6 @@ __rbd_osd_req_create(struct rbd_device *rbd_dev,
 			rbd_dev->header.object_prefix, obj_request->object_no))
 		goto err_req;
 
-	if (ceph_osdc_alloc_messages(req, GFP_NOIO))
-		goto err_req;
-
 	return req;
 
 err_req:
@@ -2058,6 +1927,7 @@ rbd_obj_request_create(enum obj_request_type type)
 static void rbd_obj_request_destroy(struct kref *kref)
 {
 	struct rbd_obj_request *obj_request;
+	u32 i;
 
 	obj_request = container_of(kref, struct rbd_obj_request, kref);
 
@@ -2069,22 +1939,22 @@ static void rbd_obj_request_destroy(struct kref *kref)
 	if (obj_request->osd_req)
 		rbd_osd_req_destroy(obj_request->osd_req);
 
-	rbd_assert(obj_request_type_valid(obj_request->type));
 	switch (obj_request->type) {
 	case OBJ_REQUEST_NODATA:
+	case OBJ_REQUEST_BIO:
+	case OBJ_REQUEST_BVECS:
 	case OBJ_REQUEST_SG:
 		break;		/* Nothing to do */
-	case OBJ_REQUEST_BIO:
-		if (obj_request->bio_list)
-			bio_chain_put(obj_request->bio_list);
-		break;
-	case OBJ_REQUEST_PAGES:
-		/* img_data requests don't own their page array */
-		if (obj_request->pages &&
-		    !obj_request_img_data_test(obj_request))
-			ceph_release_page_vector(obj_request->pages,
-						obj_request->page_count);
-		break;
+	default:
+		rbd_assert(0);
+	}
+
+	if (obj_request->copyup_bvecs) {
+		for (i = 0; i < obj_request->copyup_bvec_count; i++) {
+			if (obj_request->copyup_bvecs[i].bv_page)
+				__free_page(obj_request->copyup_bvecs[i].bv_page);
+		}
+		kfree(obj_request->copyup_bvecs);
 	}
 
 	kmem_cache_free(rbd_obj_request_cache, obj_request);
@@ -2164,15 +2034,13 @@ struct rbd_img_request *rbd_img_request_create(struct rbd_device *rbd_dev,
 {
 	struct rbd_img_request *img_request;
 
-	img_request = kmem_cache_alloc(rbd_img_request_cache, GFP_NOIO);
+	img_request = kmem_cache_zalloc(rbd_img_request_cache, GFP_NOIO);
 	if (!img_request)
 		return NULL;
 
-	img_request->rq = NULL;
 	img_request->rbd_dev = rbd_dev;
 	img_request->offset = offset;
 	img_request->length = length;
-	img_request->flags = 0;
 	img_request->completed = 0;
 	if (op_type == OBJ_OP_DISCARD) {
 		img_request_discard_set(img_request);
@@ -2192,11 +2060,8 @@ struct rbd_img_request *rbd_img_request_create(struct rbd_device *rbd_dev,
 	}
 	if (rbd_dev_parent_get(rbd_dev))
 		img_request_layered_set(img_request);
+
 	spin_lock_init(&img_request->completion_lock);
-	img_request->next_completion = 0;
-	img_request->callback = NULL;
-	img_request->result = 0;
-	img_request->obj_request_count = 0;
 	INIT_LIST_HEAD(&img_request->obj_requests);
 	kref_init(&img_request->kref);
 
@@ -2434,11 +2299,10 @@ static void rbd_img_obj_request_fill(struct rbd_obj_request *obj_request,
 
 	if (obj_request->type == OBJ_REQUEST_BIO)
 		osd_req_op_extent_osd_data_bio(osd_request, num_ops,
-					obj_request->bio_list, length);
-	else if (obj_request->type == OBJ_REQUEST_PAGES)
-		osd_req_op_extent_osd_data_pages(osd_request, num_ops,
-					obj_request->pages, length,
-					offset & ~PAGE_MASK, false, false);
+					&obj_request->bio_pos, length);
+	else if (obj_request->type == OBJ_REQUEST_BVECS)
+		osd_req_op_extent_osd_data_bvec_pos(osd_request, num_ops,
+					&obj_request->bvec_pos);
 	else if (obj_request->type == OBJ_REQUEST_SG) {
 		if (op_type == OBJ_OP_WRITESAME)
 			osd_req_op_writesame_osd_data_sg(osd_request, num_ops,
@@ -2474,12 +2338,11 @@ int rbd_img_request_fill(struct rbd_img_request *img_request,
 	struct rbd_device *rbd_dev = img_request->rbd_dev;
 	struct rbd_obj_request *obj_request = NULL;
 	struct rbd_obj_request *next_obj_request;
-	struct bio *bio_list = NULL;
-	unsigned int bio_offset = 0;
-	unsigned int sg_offset = 0;
-	struct page **pages = NULL;
+	struct ceph_bio_iter bio_it;
+	struct ceph_bvec_iter bvec_it;
 	struct scatterlist *sgl = NULL;
 	enum obj_operation_type op_type;
+	unsigned int sg_offset = 0;
 	u64 img_offset;
 	u64 resid;
 
@@ -2492,11 +2355,11 @@ int rbd_img_request_fill(struct rbd_img_request *img_request,
 	op_type = rbd_img_request_op_type(img_request);
 
 	if (type == OBJ_REQUEST_BIO) {
-		bio_list = data_desc;
+		bio_it = *(struct ceph_bio_iter *)data_desc;
 		rbd_assert(img_offset ==
-			   bio_list->bi_iter.bi_sector << SECTOR_SHIFT);
-	} else if (type == OBJ_REQUEST_PAGES) {
-		pages = data_desc;
+			   bio_it.iter.bi_sector << SECTOR_SHIFT);
+	} else if (type == OBJ_REQUEST_BVECS) {
+		bvec_it = *(struct ceph_bvec_iter *)data_desc;
 	} else if (type == OBJ_REQUEST_SG) {
 		sgl = data_desc;
 	}
@@ -2522,26 +2385,12 @@ int rbd_img_request_fill(struct rbd_img_request *img_request,
 		rbd_img_obj_request_add(img_request, obj_request);
 
 		if (type == OBJ_REQUEST_BIO) {
-			unsigned int clone_size;
-
-			rbd_assert(length <= (u64)UINT_MAX);
-			clone_size = (unsigned int)length;
-			obj_request->bio_list =
-					bio_chain_clone_range(&bio_list,
-								&bio_offset,
-								clone_size,
-								GFP_NOIO);
-			if (!obj_request->bio_list)
-				goto out_unwind;
-		} else if (type == OBJ_REQUEST_PAGES) {
-			unsigned int page_count;
-
-			obj_request->pages = pages;
-			page_count = (u32)calc_pages_for(offset, length);
-			obj_request->page_count = page_count;
-			if ((offset + length) & ~PAGE_MASK)
-				page_count--;	/* more on last page */
-			pages += page_count;
+			obj_request->bio_pos = bio_it;
+			ceph_bio_iter_advance(&bio_it, length);
+		} else if (type == OBJ_REQUEST_BVECS) {
+			obj_request->bvec_pos = bvec_it;
+			ceph_bvec_iter_shorten(&obj_request->bvec_pos, length);
+			ceph_bvec_iter_advance(&bvec_it, length);
 		} else if (type == OBJ_REQUEST_SG) {
 			u64 sg_length = 0;
 
@@ -2575,6 +2424,8 @@ int rbd_img_request_fill(struct rbd_img_request *img_request,
 		obj_request->img_offset = img_offset;
 
 		rbd_img_obj_request_fill(obj_request, osd_req, op_type, 0);
+		if (ceph_osdc_alloc_messages(osd_req, GFP_NOIO))
+			goto out_unwind;
 
 		img_offset += length;
 		resid -= length;
@@ -2651,6 +2502,9 @@ int rbd_img_cmp_and_write_request_fill(struct rbd_img_request *img_request,
 
 	rbd_osd_req_format_rw(obj_request);
 
+	if (ceph_osdc_alloc_messages(osd_req, GFP_NOIO))
+		goto del_obj_req;
+
 	return 0;
 
 del_obj_req:
@@ -2664,8 +2518,6 @@ rbd_osd_copyup_callback(struct rbd_obj_request *obj_request)
 {
 	struct rbd_img_request *img_request;
 	struct rbd_device *rbd_dev;
-	struct page **pages;
-	u32 page_count;
 
 	dout("%s: obj %p\n", __func__, obj_request);
 
@@ -2678,14 +2530,6 @@ rbd_osd_copyup_callback(struct rbd_obj_request *obj_request)
 
 	rbd_dev = img_request->rbd_dev;
 	rbd_assert(rbd_dev);
-
-	pages = obj_request->copyup_pages;
-	rbd_assert(pages != NULL);
-	obj_request->copyup_pages = NULL;
-	page_count = obj_request->copyup_page_count;
-	rbd_assert(page_count);
-	obj_request->copyup_page_count = 0;
-	ceph_release_page_vector(pages, page_count);
 
 	/*
 	 * We want the transfer count to reflect the size of the
@@ -2705,22 +2549,13 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	struct rbd_obj_request *orig_request;
 	struct ceph_osd_request *osd_req;
 	struct rbd_device *rbd_dev;
-	struct page **pages;
 	enum obj_operation_type op_type;
-	u32 page_count;
 	int img_result;
 	u64 parent_length;
 
 	rbd_assert(img_request_child_test(img_request));
 
 	/* First get what we need from the image request */
-
-	pages = img_request->copyup_pages;
-	rbd_assert(pages != NULL);
-	img_request->copyup_pages = NULL;
-	page_count = img_request->copyup_page_count;
-	rbd_assert(page_count);
-	img_request->copyup_page_count = 0;
 
 	orig_request = img_request->obj_request;
 	rbd_assert(orig_request != NULL);
@@ -2740,7 +2575,6 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	 * and re-submit the original write request.
 	 */
 	if (!rbd_dev->parent_overlap) {
-		ceph_release_page_vector(pages, page_count);
 		rbd_obj_request_submit(orig_request);
 		return;
 	}
@@ -2758,21 +2592,29 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	osd_req = rbd_osd_req_create_copyup(orig_request);
 	if (!osd_req)
 		goto out_err;
+
+	img_result = osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd",
+					 "copyup");
+	if (img_result)
+		goto out_err;
+
 	rbd_osd_req_destroy(orig_request->osd_req);
 	orig_request->osd_req = osd_req;
-	orig_request->copyup_pages = pages;
-	orig_request->copyup_page_count = page_count;
 
 	/* Initialize the copyup op */
 
-	osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd", "copyup");
-	osd_req_op_cls_request_data_pages(osd_req, 0, pages, parent_length, 0,
-						false, false);
+	osd_req_op_cls_request_data_bvecs(osd_req, 0, orig_request->copyup_bvecs,
+					  orig_request->copyup_bvec_count,
+					  parent_length);
 
 	/* Add the other op(s) */
 
 	op_type = rbd_img_request_op_type(orig_request->img_request);
 	rbd_img_obj_request_fill(orig_request, osd_req, op_type, 1);
+
+	img_result = ceph_osdc_alloc_messages(osd_req, GFP_NOIO);
+	if (img_result)
+		goto out_err;
 
 	/* All set, send it off. */
 
@@ -2780,9 +2622,10 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	return;
 
 out_err:
-	ceph_release_page_vector(pages, page_count);
 	rbd_obj_request_error(orig_request, img_result);
 }
+
+static int setup_copyup_bvecs(struct rbd_obj_request *obj_req, u64 obj_overlap);
 
 /*
  * Read from the parent image the range of data that covers the
@@ -2802,10 +2645,9 @@ static int rbd_img_obj_parent_read_full(struct rbd_obj_request *obj_request)
 {
 	struct rbd_device *rbd_dev = obj_request->img_request->rbd_dev;
 	struct rbd_img_request *parent_request = NULL;
+	struct ceph_bvec_iter bvec_it = { 0 };
 	u64 img_offset;
 	u64 length;
-	struct page **pages = NULL;
-	u32 page_count;
 	int result;
 
 	rbd_assert(rbd_dev->parent != NULL);
@@ -2831,13 +2673,9 @@ static int rbd_img_obj_parent_read_full(struct rbd_obj_request *obj_request)
 	 * Allocate a page array big enough to receive the data read
 	 * from the parent.
 	 */
-	page_count = (u32)calc_pages_for(0, length);
-	pages = ceph_alloc_page_vector(page_count, GFP_NOIO);
-	if (IS_ERR(pages)) {
-		result = PTR_ERR(pages);
-		pages = NULL;
+	result = setup_copyup_bvecs(obj_request, length);
+	if (result)
 		goto out_err;
-	}
 
 	result = -ENOMEM;
 	parent_request = rbd_parent_request_create(obj_request,
@@ -2845,25 +2683,20 @@ static int rbd_img_obj_parent_read_full(struct rbd_obj_request *obj_request)
 	if (!parent_request)
 		goto out_err;
 
-	result = rbd_img_request_fill(parent_request, OBJ_REQUEST_PAGES, pages);
+	bvec_it.bvecs = obj_request->copyup_bvecs;
+	bvec_it.iter.bi_size = length;
+	result = rbd_img_request_fill(parent_request, OBJ_REQUEST_BVECS,
+				      &bvec_it);
 	if (result)
 		goto out_err;
 
-	parent_request->copyup_pages = pages;
-	parent_request->copyup_page_count = page_count;
 	parent_request->callback = rbd_img_obj_parent_read_full_callback;
 
 	result = rbd_img_request_submit(parent_request);
 	if (!result)
 		return 0;
 
-	parent_request->copyup_pages = NULL;
-	parent_request->copyup_page_count = 0;
-	parent_request->obj_request = NULL;
-	rbd_obj_request_put(obj_request);
 out_err:
-	if (pages)
-		ceph_release_page_vector(pages, page_count);
 	if (parent_request)
 		rbd_img_request_put(parent_request);
 	return result;
@@ -2940,11 +2773,9 @@ static int rbd_img_obj_exists_submit(struct rbd_obj_request *obj_request)
 	struct rbd_device *rbd_dev = obj_request->img_request->rbd_dev;
 	struct rbd_obj_request *stat_request;
 	struct page **pages;
-	u32 page_count;
-	size_t size;
 	int ret;
 
-	stat_request = rbd_obj_request_create(OBJ_REQUEST_PAGES);
+	stat_request = rbd_obj_request_create(OBJ_REQUEST_NODATA);
 	if (!stat_request)
 		return -ENOMEM;
 
@@ -2965,23 +2796,24 @@ static int rbd_img_obj_exists_submit(struct rbd_obj_request *obj_request)
 	 *         le32 tv_nsec;
 	 *     } mtime;
 	 */
-	size = sizeof (__le64) + sizeof (__le32) + sizeof (__le32);
-	page_count = (u32)calc_pages_for(0, size);
-	pages = ceph_alloc_page_vector(page_count, GFP_NOIO);
+	pages = ceph_alloc_page_vector(1, GFP_NOIO);
 	if (IS_ERR(pages)) {
 		ret = PTR_ERR(pages);
 		goto fail_stat_request;
 	}
 
 	osd_req_op_init(stat_request->osd_req, 0, CEPH_OSD_OP_STAT, 0);
-	osd_req_op_raw_data_in_pages(stat_request->osd_req, 0, pages, size, 0,
-				     false, false);
+	osd_req_op_raw_data_in_pages(stat_request->osd_req, 0, pages,
+				     8 + sizeof(struct ceph_timespec),
+				     0, false, true);
 
 	rbd_obj_request_get(obj_request);
 	stat_request->obj_request = obj_request;
-	stat_request->pages = pages;
-	stat_request->page_count = page_count;
 	stat_request->callback = rbd_img_obj_exists_callback;
+
+	ret = ceph_osdc_alloc_messages(stat_request->osd_req, GFP_NOIO);
+	if (ret)
+		goto fail_stat_request;
 
 	rbd_obj_request_submit(stat_request);
 	return 0;
@@ -3077,6 +2909,12 @@ rbd_img_obj_creatrunc_callback(struct rbd_obj_request *obj_request)
 
 	rbd_osd_req_format_rw(orig_request);
 
+	result = ceph_osdc_alloc_messages(orig_request->osd_req, GFP_NOIO);
+	if (result) {
+		orig_request->result = result;
+		goto out;
+	}
+
 	/*
 	 * Resubmit the original request now that we have truncated
 	 * the target object.
@@ -3139,6 +2977,10 @@ rbd_img_obj_creatrunc_submit(struct rbd_obj_request *obj_request)
 				object_size, 0, 0, 0);
 
 	rbd_osd_req_format_write(creatrunc_req);
+
+	ret = ceph_osdc_alloc_messages(creatrunc_req->osd_req, GFP_NOIO);
+	if (ret)
+		goto fail_creatrunc_request;
 
 	rbd_obj_request_submit(creatrunc_req);
 
@@ -3235,6 +3077,34 @@ out_put_ireq:
 }
 EXPORT_SYMBOL(rbd_img_request_submit);
 
+static int setup_copyup_bvecs(struct rbd_obj_request *obj_req, u64 obj_overlap)
+{
+	u32 i;
+
+	rbd_assert(!obj_req->copyup_bvecs);
+	obj_req->copyup_bvec_count = calc_pages_for(0, obj_overlap);
+	obj_req->copyup_bvecs = kcalloc(obj_req->copyup_bvec_count,
+					sizeof(*obj_req->copyup_bvecs),
+					GFP_NOIO);
+	if (!obj_req->copyup_bvecs)
+		return -ENOMEM;
+
+	for (i = 0; i < obj_req->copyup_bvec_count; i++) {
+		unsigned int len = min(obj_overlap, (u64)PAGE_SIZE);
+
+		obj_req->copyup_bvecs[i].bv_page = alloc_page(GFP_NOIO);
+		if (!obj_req->copyup_bvecs[i].bv_page)
+			return -ENOMEM;
+
+		obj_req->copyup_bvecs[i].bv_offset = 0;
+		obj_req->copyup_bvecs[i].bv_len = len;
+		obj_overlap -= len;
+	}
+
+	rbd_assert(!obj_overlap);
+	return 0;
+}
+
 static void rbd_img_parent_read_callback(struct rbd_img_request *img_request)
 {
 	struct rbd_obj_request *obj_request;
@@ -3314,10 +3184,10 @@ static void rbd_img_parent_read(struct rbd_obj_request *obj_request)
 
 	if (obj_request->type == OBJ_REQUEST_BIO)
 		result = rbd_img_request_fill(img_request, OBJ_REQUEST_BIO,
-						obj_request->bio_list);
-	else if (obj_request->type == OBJ_REQUEST_PAGES)
-		result = rbd_img_request_fill(img_request, OBJ_REQUEST_PAGES,
-						obj_request->pages);
+						&obj_request->bio_pos);
+	else if (obj_request->type == OBJ_REQUEST_BVECS)
+		result = rbd_img_request_fill(img_request, OBJ_REQUEST_BVECS,
+						&obj_request->bvec_pos);
 	else
 		result = rbd_img_request_fill(img_request, OBJ_REQUEST_SG,
 						obj_request->sg);
@@ -4438,9 +4308,13 @@ static void rbd_queue_workfn(struct work_struct *work)
 	if (op_type == OBJ_OP_DISCARD)
 		result = rbd_img_request_fill(img_request, OBJ_REQUEST_NODATA,
 					      NULL);
-	else
+	else {
+		struct ceph_bio_iter bio_it = { .bio = rq->bio,
+						.iter = rq->bio->bi_iter };
+
 		result = rbd_img_request_fill(img_request, OBJ_REQUEST_BIO,
-					      rq->bio);
+					      &bio_it);
+	}
 	if (result)
 		goto err_img_request;
 
@@ -4504,10 +4378,6 @@ static int rbd_obj_read_sync(struct rbd_device *rbd_dev,
 	ceph_oloc_copy(&req->r_base_oloc, oloc);
 	req->r_flags = CEPH_OSD_FLAG_READ;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out_req;
-
 	pages = ceph_alloc_page_vector(num_pages, GFP_KERNEL);
 	if (IS_ERR(pages)) {
 		ret = PTR_ERR(pages);
@@ -4517,6 +4387,10 @@ static int rbd_obj_read_sync(struct rbd_device *rbd_dev,
 	osd_req_op_extent_init(req, 0, CEPH_OSD_OP_READ, 0, buf_len, 0, 0);
 	osd_req_op_extent_osd_data_pages(req, 0, pages, buf_len, 0, false,
 					 true);
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	if (ret)
+		goto out_req;
 
 	ceph_osdc_start_request(osdc, req, false);
 	ret = ceph_osdc_wait_request(osdc, req);
@@ -4962,12 +4836,12 @@ int rbd_dev_setxattr(struct rbd_device *rbd_dev, char *key, void *val,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_WRITE;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	ret = osd_req_op_xattr_init(req, 0, CEPH_OSD_OP_SETXATTR,
+				    key, val, val_len, 0, 0);
 	if (ret)
 		goto out;
 
-	ret = osd_req_op_xattr_init(req, 0, CEPH_OSD_OP_SETXATTR,
-				    key, val, val_len, 0, 0);
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
 	if (ret)
 		goto out;
 
@@ -4998,10 +4872,6 @@ int rbd_dev_cmpsetxattr(struct rbd_device *rbd_dev, char *key, void *oldval,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_WRITE;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out;
-
 	ret = osd_req_op_xattr_init(req, 0,
 				    CEPH_OSD_OP_CMPXATTR,
 				    key, oldval, oldval_len,
@@ -5013,6 +4883,10 @@ int rbd_dev_cmpsetxattr(struct rbd_device *rbd_dev, char *key, void *oldval,
 	ret = osd_req_op_xattr_init(req, 1,
 				    CEPH_OSD_OP_SETXATTR,
 				    key, newval, newval_len, 0, 0);
+	if (ret)
+		goto out;
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
 	if (ret)
 		goto out;
 
@@ -5049,10 +4923,6 @@ int rbd_dev_getxattr(struct rbd_device *rbd_dev, char *key, int max_val_len,
 	ceph_oloc_copy(&req->r_base_oloc, &rbd_dev->header_oloc);
 	req->r_flags = CEPH_OSD_FLAG_READ;
 
-	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
-	if (ret)
-		goto out_req;
-
 	ret = osd_req_op_xattr_init(req, 0,
 				    CEPH_OSD_OP_GETXATTR,
 				    key, NULL, 0, 0, 0);
@@ -5069,6 +4939,10 @@ int rbd_dev_getxattr(struct rbd_device *rbd_dev, char *key, int max_val_len,
 	osd_req_op_xattr_response_data_pages(req, 0,
 					     pages, max_val_len,
 					     0, false, true);
+
+	ret = ceph_osdc_alloc_messages(req, GFP_KERNEL);
+	if (ret)
+		goto out_req;
 
 	ceph_osdc_start_request(osdc, req, false);
 	ret = ceph_osdc_wait_request(osdc, req);
@@ -6976,16 +6850,8 @@ static int rbd_slab_init(void)
 	if (!rbd_obj_request_cache)
 		goto out_err;
 
-	rbd_assert(!rbd_bio_clone);
-	rbd_bio_clone = bioset_create(BIO_POOL_SIZE, 0, 0);
-	if (!rbd_bio_clone)
-		goto out_err_clone;
-
 	return 0;
 
-out_err_clone:
-	kmem_cache_destroy(rbd_obj_request_cache);
-	rbd_obj_request_cache = NULL;
 out_err:
 	kmem_cache_destroy(rbd_img_request_cache);
 	rbd_img_request_cache = NULL;
@@ -7001,10 +6867,6 @@ static void rbd_slab_exit(void)
 	rbd_assert(rbd_img_request_cache);
 	kmem_cache_destroy(rbd_img_request_cache);
 	rbd_img_request_cache = NULL;
-
-	rbd_assert(rbd_bio_clone);
-	bioset_free(rbd_bio_clone);
-	rbd_bio_clone = NULL;
 }
 
 static int __init rbd_init(void)
