@@ -34,6 +34,8 @@
 
 struct drm_display_mode *g_mode;
 uint8_t g_default_mode = 2;
+static const uint8_t g_4kp60_mode = 3;
+
 static struct drm_display_mode edid_cea_modes[] = {
 	/* 3 - 720x480@60Hz */
 	{ DRM_MODE("720x480", DRM_MODE_TYPE_DRIVER, 27000, 720, 736,
@@ -1420,7 +1422,7 @@ static void hotplug_work_func(struct work_struct *work)
 		/* For HDMI2.0 SCDC should setup again.
 		 * So recovery pre video mode if it is 4Kp60 */
 		if (drm_mode_equal(&hdp->video.pre_mode,
-				   &edid_cea_modes[g_default_mode]))
+				   &edid_cea_modes[g_4kp60_mode]))
 			imx_hdp_mode_setup(hdp, &hdp->video.pre_mode);
 		DRM_INFO("HDMI/DP Cable Plug In\n");
 		enable_irq(hdp->irq[HPD_IRQ_OUT]);
