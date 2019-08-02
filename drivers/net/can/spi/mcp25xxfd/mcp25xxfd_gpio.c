@@ -18,9 +18,6 @@
 #include "mcp25xxfd_gpio.h"
 #include "mcp25xxfd_priv.h"
 
-/* GPIO component */
-#ifdef CONFIG_GPIOLIB
-
 static int mcp25xxfd_gpio_request(struct gpio_chip *chip,
 				  unsigned int offset)
 {
@@ -236,14 +233,3 @@ void mcp25xxfd_gpio_remove(struct mcp25xxfd_priv *priv)
 {
 	gpiochip_remove(&priv->gpio);
 }
-
-#else
-int mcp25xxfd_gpio_setup(struct mcp25xxfd_priv *priv)
-{
-	return 0;
-}
-
-void mcp25xxfd_gpio_remove(struct mcp25xxfd_priv *priv)
-{
-}
-#endif
