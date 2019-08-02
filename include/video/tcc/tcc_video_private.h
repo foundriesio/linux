@@ -77,6 +77,50 @@ typedef struct hevc_userdata_output_t
    int eotf;
    int static_metadata_descriptor;
 } hevc_userdata_output_t;
+
+typedef struct hdr10p_userdata_info_t
+{
+	uint32_t mOUI; //fixed value, 0x008B8490 for PB0 ~ PB4
+	/*
+		PB04 :
+			[7:6] : application version [1:0]
+			[5:1] : display maximum luminance[4:0]
+			[0]   : reserved[0]
+		PB05 : average maxrgb
+		PB06 : distribution values 0 @1%
+		PB07 : distribution values 1 @DistributionY99
+		PB08 : distribution values 2 @DistributionY100nit cd/m2
+		PB09 : distribution values 3 @25%
+		PB10 : distribution values 4 @50%
+		PB11 : distribution values 5 @75%
+		PB12 : distribution values 6 @90%
+		PB13 : distribution values 7 @95%
+		PB14 : distribution values 8 @99.98%
+		PB15 :
+			[7:4] : num bezier curve anchors[3:0]
+			[3:0] : knee_pointx[9:6]
+		PB16 :
+			[7:2] : knee_pointx[5:0]
+			[1:0] : knee_pointy[9:8]
+		PB17 : knee_pointy[7:0]
+		PB18 : bezier curve anchors 0
+		PB19 : bezier curve anchors 1
+		PB20 : bezier curve anchors 2
+		PB21 : bezier curve anchors 3
+		PB22 : bezier curve anchors 4
+		PB23 : bezier curve anchors 5
+		PB24 : bezier curve anchors 6
+		PB25 : bezier curve anchors 7
+		PB26 : bezier curve anchors 8
+		PB27 :								// maybe always 0 from the decoder.
+			[7] : graphic overlay flag
+			[6] : vsif timming mode
+			[5:0] : reserved
+	*/
+	uint8_t mVendorPayload[24];	//PB4 ~ PB27
+	uint8_t mVendorPayloadLength; //real used payload among 24, PB4 ~ PB27.
+
+}hdr10p_userdata_info_t;
 #endif
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
@@ -138,9 +182,10 @@ enum optional_info_description {
 	VID_OPT_HAVE_DOLBYVISION_INFO = 24,	//Have Dolby-Hdr-info.
 	VID_OPT_CONTENT_TYPE = 25,			//Content type // 0: SDR content, 1: DV without Backward Compatibility, 2: DV with Backward Compatibility
 	VID_OPT_PLAYER_NOW_MS = 26,
-	VID_OPT_RESERVED_1 = 27,
-	VID_OPT_RESERVED_2 = 28,
-	VID_OPT_RESERVED_3 = 29,
+	VID_OPT_HAVE_HDR10P_USERDATA = 27, 	//Have userData_info. (for HDR10+)
+	VID_OPT_RESERVED_1 = 28,
+	VID_OPT_RESERVED_2 = 29,
+	VID_OPT_RESERVED_3 = 30,
 	VID_OPT_MAX
 };
 
@@ -160,7 +205,10 @@ typedef struct TCC_PLATFORM_PRIVATE_PMEM_INFO
 	hevc_MapConv_info_t mapConv_info;
 #endif
 #if defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC) || defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
-	hevc_userdata_output_t userData_Info;
+	union {
+		hevc_userdata_output_t userData_Info;
+		hdr10p_userdata_info_t hdr10p_Info;
+	};
 #endif
 #if defined(CONFIG_VIOC_DTRC_DECOMP)
 	vp9_compressed_info_t dtrcConv_info;
