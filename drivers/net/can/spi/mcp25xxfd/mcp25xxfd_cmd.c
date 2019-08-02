@@ -190,15 +190,10 @@ int mcp25xxfd_cmd_readn(struct spi_device *spi, u32 reg,
 			void *data, int n)
 {
 	u8 cmd[2];
-	int ret;
 
 	mcp25xxfd_cmd_calc(MCP25XXFD_INSTRUCTION_READ, reg, cmd);
 
-	ret = mcp25xxfd_cmd_write_then_read(spi, &cmd, 2, data, n, NULL);
-	if (ret)
-		return ret;
-
-	return 0;
+	return mcp25xxfd_cmd_write_then_read(spi, cmd, ARRAY_SIZE(cmd), data, n, NULL);
 }
 
 static u16 _mcp25xxfd_cmd_compute_crc(u8 *cmd, u8 *data, int n)
