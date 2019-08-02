@@ -84,6 +84,9 @@
 			lt8912@48 {
 				compatible = "lontium,lt8912";
 				ddc-i2c-bus = <&i2c_sw0>;
+				hpd-gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_gpio_hpd>;
 				reg = <0x48>;
 
 				port {
@@ -92,6 +95,19 @@
 					};
 				};
 			};
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+
+	colibri-imx8qxp {
+		/* DSI/LVDS Hot Plug Detect on FFC (X2) */
+		pinctrl_gpio_hpd: gpio-hpd {
+			fsl,pins = <
+				SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31		0x20		/* SODIMM 138 */
+			>;
 		};
 	};
 };
