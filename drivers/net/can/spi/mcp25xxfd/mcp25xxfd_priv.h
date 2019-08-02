@@ -28,7 +28,9 @@ struct mcp25xxfd_can_priv;
 struct mcp25xxfd_priv {
 	struct spi_device *spi;
 	struct clk *clk;
+#ifdef CONFIG_GPIOLIB
 	struct gpio_chip gpio;
+#endif
 	struct mcp25xxfd_can_priv *cpriv;
 
 	/* the actual model of the mcp25xxfd */
