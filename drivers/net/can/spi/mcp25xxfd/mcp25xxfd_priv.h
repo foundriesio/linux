@@ -78,7 +78,7 @@ struct mcp25xxfd_priv {
 	} regs;
 
 	/* debugfs related */
-#if defined(CONFIG_DEBUG_FS)
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	struct dentry *debugfs_dir;
 	struct dentry *debugfs_regs_dir;
 	struct {

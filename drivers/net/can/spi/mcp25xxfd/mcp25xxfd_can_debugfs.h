@@ -10,7 +10,7 @@
 
 #include "mcp25xxfd_can_priv.h"
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 
 #include <linux/debugfs.h>
 
@@ -24,7 +24,7 @@
 void mcp25xxfd_can_debugfs_setup(struct mcp25xxfd_can_priv *cpriv);
 void mcp25xxfd_can_debugfs_remove(struct mcp25xxfd_can_priv *cpriv);
 
-#else /* CONFIG_DEBUG_FS */
+#else /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 
 #define MCP25XXFD_DEBUGFS_INCR(counter)
 #define MCP25XXFD_DEBUGFS_ADD(counter, val)
@@ -41,5 +41,5 @@ void mcp25xxfd_can_debugfs_remove(struct mcp25xxfd_can_priv *cpriv)
 {
 }
 
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 #endif /* __MCP25XXFD_CAN_DEBUGFS_H */

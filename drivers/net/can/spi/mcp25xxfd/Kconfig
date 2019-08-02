@@ -1,7 +1,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-config CAN_MCP25XXFD
+menuconfig CAN_MCP25XXFD
 	tristate "Microchip MCP25xxFD SPI CAN controllers"
 	depends on HAS_DMA
 	help
 	  Driver for the Microchip MCP25XXFD SPI FD-CAN controller family.
+
+if CAN_MCP25XXFD
+
+config CAN_MCP25XXFD_DEBUG_FS
+	bool "Enable debugfs for MCP25xxFD SPI driver"
+	depends on DEBUG_FS
+	help
+	  Choose Y to enable RX/TX and FIFO statistics.
+
+endif

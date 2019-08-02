@@ -10,7 +10,7 @@
 
 #include "mcp25xxfd_priv.h"
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 
 void mcp25xxfd_debugfs_setup(struct mcp25xxfd_priv *priv);
 void mcp25xxfd_debugfs_remove(struct mcp25xxfd_priv *priv);
@@ -25,5 +25,5 @@ static inline void mcp25xxfd_debugfs_remove(struct mcp25xxfd_priv *priv)
 {
 }
 
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 #endif /* __MCP25XXFD_DEBUGFS_H */
