@@ -300,15 +300,10 @@ int mcp25xxfd_cmd_writen(struct spi_device *spi, u32 reg,
 			 void *data, int n)
 {
 	u8 cmd[2];
-	int ret;
 
 	mcp25xxfd_cmd_calc(MCP25XXFD_INSTRUCTION_WRITE, reg, cmd);
 
-	ret = mcp25xxfd_cmd_write_then_write(spi, &cmd, 2, data, n);
-	if (ret)
-		return ret;
-
-	return 0;
+	return mcp25xxfd_cmd_write_then_write(spi, &cmd, 2, data, n);
 }
 
 /* read a register, but we are only interrested in a few bytes */
