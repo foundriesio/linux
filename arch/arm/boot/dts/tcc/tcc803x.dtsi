@@ -208,6 +208,16 @@
 		#size-cells = <1>;
 		ranges;
 
+#ifdef CONFIG_TCC_CORE_RESET
+		u_boot {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "u-boot";
+			alloc-ranges = <0x30000000 0x200000>;
+			size = <0x200000>;
+			no-map;
+		};
+#endif
+
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
