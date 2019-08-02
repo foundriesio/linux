@@ -5,8 +5,6 @@
  * Copyright 2019 Martin Sperl <kernel@martin.sperl.org>
  */
 
-#ifdef CONFIG_DEBUG_FS
-
 #include <linux/dcache.h>
 #include <linux/debugfs.h>
 #include "mcp25xxfd_can_debugfs.h"
@@ -232,5 +230,3 @@ void mcp25xxfd_can_debugfs_setup(struct mcp25xxfd_can_priv *cpriv)
 	mcp25xxfd_can_debugfs_tx_fifos(cpriv, root);
 	mcp25xxfd_can_debugfs_tx_queue(cpriv, root);
 }
-
-#endif

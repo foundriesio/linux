@@ -5,8 +5,6 @@
  * Copyright 2019 Martin Sperl <kernel@martin.sperl.org>
  */
 
-#ifdef CONFIG_DEBUG_FS
-
 #include <linux/debugfs.h>
 #include <linux/kernel.h>
 #include <linux/seq_file.h>
@@ -112,5 +110,3 @@ void mcp25xxfd_debugfs_remove(struct mcp25xxfd_priv *priv)
 	debugfs_remove_recursive(priv->debugfs_dir);
 	priv->debugfs_dir = NULL;
 }
-
-#endif /* CONFIG_DEBUG_FS */
