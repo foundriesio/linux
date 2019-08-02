@@ -482,7 +482,7 @@ static int mcp25xxfd_can_open(struct net_device *net)
 		return ret;
 	}
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	/* clear those statistics */
 	memset(&cpriv->stats, 0, sizeof(cpriv->stats));
 #endif

@@ -20,10 +20,10 @@ struct mcp25xxfd_fifo {
 	u32 count;
 	u32 start;
 	u32 size;
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	u64 dlc_usage[16];
 	u64 fd_count;
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 };
 
 /* used for sorting incoming messages */
@@ -38,9 +38,9 @@ struct mcp25xxfd_fifo_info {
 	u32 is_rx;
 	u32 offset;
 	u32 priority;
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	u64 use_count;
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 };
 
 struct mcp25xxfd_can_priv {
@@ -135,7 +135,7 @@ struct mcp25xxfd_can_priv {
 #define MCP25XXFD_CAN_TEF_READ_BINS 8
 #define MCP25XXFD_CAN_RX_BULK_READ_BINS 8
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	struct dentry *debugfs_dir;
 
 	struct {
@@ -173,7 +173,7 @@ struct mcp25xxfd_can_priv {
 		u64 rx_bulk_reads;
 		u64 rx_bulk_read_sizes[MCP25XXFD_CAN_RX_BULK_READ_BINS];
 	} stats;
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_CAN_MCP25XXFD_DEBUG_FS */
 
 	/* history of rx-dlc */
 	struct {
