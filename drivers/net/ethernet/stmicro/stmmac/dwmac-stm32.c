@@ -306,7 +306,7 @@ static int stm32mp1_parse_data(struct stm32_dwmac *dwmac,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct device_node *np = dev->of_node;
-	int err = 0;
+	int err;
 
 	/* Gigabit Ethernet 125MHz clock selection. */
 	dwmac->eth_clk_sel_reg = of_property_read_bool(np, "st,eth_clk_sel");
@@ -339,6 +339,7 @@ static int stm32mp1_parse_data(struct stm32_dwmac *dwmac,
 		dwmac->syscfg_clk = NULL;
 	}
 
+	err = 0;
 	/* Get IRQ information early to have an ability to ask for deferred
 	 * probe if needed before we went too far with resource allocation.
 	 */
