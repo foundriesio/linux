@@ -74,28 +74,28 @@ static MPT_CALLBACK	mpt_callbacks[MPT_MAX_CALLBACKS];
 #define MAX_HBA_QUEUE_DEPTH	30000
 #define MAX_CHAIN_DEPTH		100000
 static int max_queue_depth = -1;
-module_param(max_queue_depth, int, 0);
+module_param(max_queue_depth, int, 0444);
 MODULE_PARM_DESC(max_queue_depth, " max controller queue depth ");
 
 static int max_sgl_entries = -1;
-module_param(max_sgl_entries, int, 0);
+module_param(max_sgl_entries, int, 0444);
 MODULE_PARM_DESC(max_sgl_entries, " max sg entries ");
 
 static int msix_disable = -1;
-module_param(msix_disable, int, 0);
+module_param(msix_disable, int, 0444);
 MODULE_PARM_DESC(msix_disable, " disable msix routed interrupts (default=0)");
 
 static int smp_affinity_enable = 1;
-module_param(smp_affinity_enable, int, S_IRUGO);
+module_param(smp_affinity_enable, int, 0444);
 MODULE_PARM_DESC(smp_affinity_enable, "SMP affinity feature enable/disable Default: enable(1)");
 
 static int max_msix_vectors = -1;
-module_param(max_msix_vectors, int, 0);
+module_param(max_msix_vectors, int, 0444);
 MODULE_PARM_DESC(max_msix_vectors,
 	" max msix vectors");
 
 static int irqpoll_weight = -1;
-module_param(irqpoll_weight, int, 0);
+module_param(irqpoll_weight, int, 0444);
 MODULE_PARM_DESC(irqpoll_weight,
 	"irq poll weight (default= one fourth of HBA queue depth)");
 
@@ -104,7 +104,7 @@ MODULE_PARM_DESC(mpt3sas_fwfault_debug,
 	" enable detection of firmware fault and halt firmware - (default=0)");
 
 static int perf_mode = -1;
-module_param(perf_mode, int, 0);
+module_param(perf_mode, int, 0444);
 MODULE_PARM_DESC(perf_mode,
 	"Performance mode (only for Aero/Sea Generation), options:\n\t\t"
 	"0 - balanced: high iops mode is enabled &\n\t\t"
@@ -113,8 +113,7 @@ MODULE_PARM_DESC(perf_mode,
 	"interrupt coalescing is enabled on all queues,\n\t\t"
 	"2 - latency: high iops mode is disabled &\n\t\t"
 	"interrupt coalescing is enabled on all queues with timeout value 0xA,\n"
-	"\t\tdefault - on Intel architecture, default perf_mode is\n\t\t"
-	" 'balanced' and in others architectures the default mode is 'latency'"
+	"\t\tdefault - default perf_mode is 'balanced'"
 	);
 
 enum mpt3sas_perf_mode {
@@ -2704,6 +2703,8 @@ _base_config_dma_addressing(struct MPT3SAS_ADAPTER *ioc, struct pci_dev *pdev)
 {
 	u64 required_mask, coherent_mask;
 	struct sysinfo s;
+	/* Set 63 bit DMA mask for all SAS3 and SAS35 controllers */
+	int dma_mask = (ioc->hba_mpi_version_belonged > MPI2_VERSION) ? 63 : 64;
 
 	if (ioc->is_mcpu_endpoint)
 		goto try_32bit;
@@ -2713,17 +2714,17 @@ _base_config_dma_addressing(struct MPT3SAS_ADAPTER *ioc, struct pci_dev *pdev)
 		goto try_32bit;
 
 	if (ioc->dma_mask)
-		coherent_mask = DMA_BIT_MASK(64);
+		coherent_mask = DMA_BIT_MASK(dma_mask);
 	else
 		coherent_mask = DMA_BIT_MASK(32);
 
-	if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(64)) ||
+	if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(dma_mask)) ||
 	    dma_set_coherent_mask(&pdev->dev, coherent_mask))
 		goto try_32bit;
 
 	ioc->base_add_sg_single = &_base_add_sg_single_64;
 	ioc->sge_size = sizeof(Mpi2SGESimple64_t);
-	ioc->dma_mask = 64;
+	ioc->dma_mask = dma_mask;
 	goto out;
 
  try_32bit:
@@ -2745,7 +2746,7 @@ static int
 _base_change_consistent_dma_mask(struct MPT3SAS_ADAPTER *ioc,
 				      struct pci_dev *pdev)
 {
-	if (pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(64))) {
+	if (pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(ioc->dma_mask))) {
 		if (pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32)))
 			return -ENODEV;
 	}
@@ -2814,7 +2815,7 @@ _base_free_irq(struct MPT3SAS_ADAPTER *ioc)
 
 	list_for_each_entry_safe(reply_q, next, &ioc->reply_queue_list, list) {
 		list_del(&reply_q->list);
-		if (smp_affinity_enable)
+		if (ioc->smp_affinity_enable)
 			irq_set_affinity_hint(pci_irq_vector(ioc->pdev,
 			    reply_q->msix_index), NULL);
 		free_irq(pci_irq_vector(ioc->pdev, reply_q->msix_index),
@@ -2885,11 +2886,9 @@ _base_assign_reply_queues(struct MPT3SAS_ADAPTER *ioc)
 
 	if (!_base_is_controller_msix_enabled(ioc))
 		return;
-	ioc->msix_load_balance = false;
-	if (ioc->reply_queue_count < num_online_cpus()) {
-		ioc->msix_load_balance = true;
+
+	if (ioc->msix_load_balance)
 		return;
-	}
 
 	memset(ioc->cpu_msix_table, 0, ioc->cpu_msix_table_sz);
 
@@ -2899,7 +2898,7 @@ _base_assign_reply_queues(struct MPT3SAS_ADAPTER *ioc)
 	if (!nr_msix)
 		return;
 
-	if (smp_affinity_enable) {
+	if (ioc->smp_affinity_enable) {
 
 		/*
 		 * set irq affinity to local numa node for those irqs
@@ -2980,7 +2979,7 @@ static void
 _base_check_and_enable_high_iops_queues(struct MPT3SAS_ADAPTER *ioc,
 		int hba_msix_vector_count)
 {
-	enum pci_bus_speed speed = PCI_SPEED_UNKNOWN;
+	u16 lnksta, speed;
 
 	if (perf_mode == MPT_PERF_MODE_IOPS ||
 	    perf_mode == MPT_PERF_MODE_LATENCY) {
@@ -2990,28 +2989,10 @@ _base_check_and_enable_high_iops_queues(struct MPT3SAS_ADAPTER *ioc,
 
 	if (perf_mode == MPT_PERF_MODE_DEFAULT) {
 
-#if defined(CONFIG_X86)
-		/*
-		 * Use global variable boot_cpu_data.x86_vendor to
-		 * determine whether the architecture is Intel or not.
-		 */
-		if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL) {
-			ioc->high_iops_queues = 0;
-			return;
-		}
-#else
-		ioc->high_iops_queues = 0;
-		return;
-#endif
-		speed = pcie_get_speed_cap(ioc->pdev);
-		dev_info(&ioc->pdev->dev, "PCIe device speed is %s\n",
-		     speed == PCIE_SPEED_2_5GT ? "2.5GHz" :
-		     speed == PCIE_SPEED_5_0GT ? "5.0GHz" :
-		     speed == PCIE_SPEED_8_0GT ? "8.0GHz" :
-		     speed == PCIE_SPEED_16_0GT ? "16.0GHz" :
-		     "Unknown");
+		pcie_capability_read_word(ioc->pdev, PCI_EXP_LNKSTA, &lnksta);
+		speed = lnksta & PCI_EXP_LNKSTA_CLS;
 
-		if (speed < PCIE_SPEED_16_0GT) {
+		if (speed < 0x4) {
 			ioc->high_iops_queues = 0;
 			return;
 		}
@@ -3052,7 +3033,7 @@ _base_alloc_irq_vectors(struct MPT3SAS_ADAPTER *ioc)
 	struct irq_affinity desc = { .pre_vectors = ioc->high_iops_queues };
 	struct irq_affinity *descp = &desc;
 
-	if (smp_affinity_enable)
+	if (ioc->smp_affinity_enable)
 		irq_flags |= PCI_IRQ_AFFINITY;
 	else
 		descp = NULL;
@@ -3078,6 +3059,8 @@ _base_enable_msix(struct MPT3SAS_ADAPTER *ioc)
 	int r;
 	int i, local_max_msix_vectors;
 	u8 try_msix = 0;
+
+	ioc->msix_load_balance = false;
 
 	if (msix_disable == -1 || msix_disable == 0)
 		try_msix = 1;
@@ -3109,8 +3092,21 @@ _base_enable_msix(struct MPT3SAS_ADAPTER *ioc)
 	else if (local_max_msix_vectors == 0)
 		goto try_ioapic;
 
-	if (ioc->msix_vector_count < ioc->cpu_count)
-		smp_affinity_enable = 0;
+	/*
+	 * Enable msix_load_balance only if combined reply queue mode is
+	 * disabled on SAS3 & above generation HBA devices.
+	 */
+	if (!ioc->combined_reply_queue &&
+	    ioc->hba_mpi_version_belonged != MPI2_VERSION) {
+		ioc->msix_load_balance = true;
+	}
+
+	/*
+	 * smp affinity setting is not need when msix load balance
+	 * is enabled.
+	 */
+	if (ioc->msix_load_balance)
+		ioc->smp_affinity_enable = 0;
 
 	r = _base_alloc_irq_vectors(ioc);
 	if (r < 0) {
@@ -4528,6 +4524,7 @@ _base_update_ioc_page1_inlinewith_perf_mode(struct MPT3SAS_ADAPTER *ioc)
 			ioc_info(ioc, "performance mode: balanced\n");
 			return;
 		}
+		/* Fall through */
 	case MPT_PERF_MODE_LATENCY:
 		/*
 		 * Enable interrupt coalescing on all reply queues
@@ -4995,7 +4992,7 @@ _base_allocate_memory_pools(struct MPT3SAS_ADAPTER *ioc)
 		total_sz += sz;
 	} while (ioc->rdpq_array_enable && (++i < ioc->reply_queue_count));
 
-	if (ioc->dma_mask == 64) {
+	if (ioc->dma_mask > 32) {
 		if (_base_change_consistent_dma_mask(ioc, ioc->pdev) != 0) {
 			ioc_warn(ioc, "no suitable consistent DMA mask for %s\n",
 				 pci_name(ioc->pdev));
@@ -6915,6 +6912,8 @@ mpt3sas_base_attach(struct MPT3SAS_ADAPTER *ioc)
 			goto out_free_resources;
 		}
 	}
+
+	ioc->smp_affinity_enable = smp_affinity_enable;
 
 	ioc->rdpq_array_enable_assigned = 0;
 	ioc->dma_mask = 0;
