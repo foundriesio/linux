@@ -1549,23 +1549,34 @@
 		// dma-names = "tx", "rx";
 	};
 
-	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {};
+	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {
+		clocks = <&clk_peri PERI_TSRX0>;
+		clock-names = "tsrx0";
+	};
 
-	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {};
-
-	tcc_ex_tsif0: tcc_ex_tsif@0 {};
-
-	tcc_ex_tsif1: tcc_ex_tsif@1 {};
-
-	tcc_dxb_drv0: tcc_dxb_drv@0 {};
-
-	tcc_dxb_drv1: tcc_dxb_drv@1 {};
-
-	tcc_dxb_internal: tcc_dxb_internal {};
+	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+	};
 
 	tcc_dxb_ctrl: tcc_dxb_ctrl {};
 
 	tcc_isdbt_ctrl: tcc_isdbt_ctrl{};
+
+	/* Deprecated */
+	tcc_ex_tsif0: tcc_ex_tsif@0 {};
+
+	/* Deprecated */
+	tcc_ex_tsif1: tcc_ex_tsif@1 {};
+
+	/* Deprecated */
+	tcc_dxb_drv0: tcc_dxb_drv@0 {};
+
+	/* Deprecated */
+	tcc_dxb_drv1: tcc_dxb_drv@1 {};
+
+	/* Deprecated */
+	tcc_dxb_internal: tcc_dxb_internal {};
 
 	si_power: si_power {};
 	avl62x1_power: avl62x1_power {};
@@ -2711,17 +2722,6 @@
 	 * CM Bus Block
 	 */
 	hwdemux: cmbus@19000000 {
-		reg =   <0x19080000 0x10000>,
-			<0x190A0000 0x80>,
-			<0x190B0000 0x80>,
-			<0x190F0000 0x50>;
-		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&clk_fbus FBUS_CMBUS>,
-			<&clk_peri PERI_TSRX0>,
-			<&clk_peri PERI_TSRX1>,
-			<&clk_peri PERI_TSRX2>,
-			<&clk_peri PERI_TSRX3>;
-		clock-frequency = <200000000>;
 		status = "disabled";
 	};
 
