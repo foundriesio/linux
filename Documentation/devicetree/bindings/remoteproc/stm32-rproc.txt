@@ -50,6 +50,14 @@ Optional properties:
 	3rd cell: register bitmask for the deep sleep bit
 - st,auto-boot:	If defined, when remoteproc is probed, it loads the default
 		firmware and starts the remote processor.
+- early-booted:	If defined, when remoteproc tries to boot a firmware, it
+		considers that the remote processor is already running and
+		attaches to this hardware state and updates accordingly (state,
+		resources, ...)
+- rsc-address:	Resource table address of the early-booted firmware. Meaningful
+		only if 'early-booted' is defined.
+- rsc-size:	Resource table size of the early-booted firmware. Meaningful
+		only if 'early-booted' is defined.
 
 Example:
 	m4_rproc: m4@10000000 {
