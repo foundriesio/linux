@@ -10,7 +10,7 @@
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
-	model = "Toradex Colibri iMX8QXP with dual channel lvds";
+	model = "Toradex Colibri iMX8QXP/DX with dual channel lvds";
 	compatible = "toradex,colibri-imx8qxp-lvds-dual-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 	backlight: backlight {
