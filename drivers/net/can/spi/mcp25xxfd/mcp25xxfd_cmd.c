@@ -40,13 +40,12 @@ static int mcp25xxfd_cmd_sync_transfer(struct spi_device *spi,
  */
 static int mcp25xxfd_cmd_sync_write(struct spi_device *spi,
 				    const void *tx_buf,
-				    unsigned tx_len)
+				    unsigned len)
 {
-	struct spi_transfer xfer;
-
-	memset(&xfer, 0, sizeof(xfer));
-	xfer.tx_buf = tx_buf;
-	xfer.len = tx_len;
+	struct spi_transfer xfer = {
+		.tx_buf = tx_buf,
+		.len = len,
+	};
 
 	return mcp25xxfd_cmd_sync_transfer(spi, &xfer, 1);
 }
