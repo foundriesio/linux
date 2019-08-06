@@ -285,6 +285,9 @@ static int stm32_ddr_pmu_event_init(struct perf_event *event)
 {
 	struct hw_perf_event *hw = &event->hw;
 
+	if (event->attr.type != event->pmu->type)
+		return -ENOENT;
+
 	if (is_sampling_event(event))
 		return -EINVAL;
 
