@@ -1447,16 +1447,6 @@
 				status = "disabled";
 			};
 
-			btreg: bt_reg_on-0 {
-				pins {
-					pinmux = <STM32_PINMUX('Z', 6, GPIO)>;
-					drive-push-pull;
-					bias-pull-up;
-					output-high;
-					slew-rate = <0>;
-				};
-			};
-
 			i2c4_pins_a: i2c4-0 {
 				pins {
 					pinmux = <STM32_PINMUX('Z', 4, AF6)>, /* I2C4_SCL */
