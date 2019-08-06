@@ -9,7 +9,7 @@
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
-	model = "Toradex Colibri iMX8QXP with LT8912 MIPI-DSI 2 HDMI bridge";
+	model = "Toradex Colibri iMX8QXP/DX with LT8912 MIPI-DSI 2 HDMI bridge";
 	compatible = "toradex,colibri-imx8qxp-dsihdmi-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 };

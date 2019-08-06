@@ -10,7 +10,7 @@
 #include "fsl-imx8qxp-colibri-eval-v3.dtsi"
 
 / {
-	model = "Toradex Colibri iMX8QXP with single channel lvds";
+	model = "Toradex Colibri iMX8QXP/DX with single channel lvds";
 	compatible = "toradex,colibri-imx8qxp-lvds-single-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 	backlight: backlight {
