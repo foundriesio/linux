@@ -43,8 +43,9 @@ static void qedf_cmd_timeout(struct work_struct *work)
 	switch (io_req->cmd_type) {
 	case QEDF_ABTS:
 		if (qedf == NULL) {
-			QEDF_INFO(NULL, QEDF_LOG_IO, "qedf is NULL for xid=0x%x.\n",
-			    io_req->xid);
+			QEDF_INFO(NULL, QEDF_LOG_IO,
+				  "qedf is NULL for ABTS xid=0x%x.\n",
+				  io_req->xid);
 			return;
 		}
 
@@ -61,6 +62,9 @@ static void qedf_cmd_timeout(struct work_struct *work)
 		 */
 		kref_put(&io_req->refcount, qedf_release_cmd);
 
+		/* Clear in abort bit now that we're done with the command */
+		clear_bit(QEDF_CMD_IN_ABORT, &io_req->flags);
+
 		/*
 		 * Now that the original I/O and the ABTS are complete see
 		 * if we need to reconnect to the target.
@@ -68,6 +72,15 @@ static void qedf_cmd_timeout(struct work_struct *work)
 		qedf_restart_rport(fcport);
 		break;
 	case QEDF_ELS:
+		if (!qedf) {
+			QEDF_INFO(NULL, QEDF_LOG_IO,
+				  "qedf is NULL for ELS xid=0x%x.\n",
+				  io_req->xid);
+			return;
+		}
+		/* ELS request no longer outstanding since it timed out */
+		clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+
 		kref_get(&io_req->refcount);
 		/*
 		 * Don't attempt to clean an ELS timeout as any subseqeunt
@@ -157,6 +170,7 @@ static void qedf_handle_rrq(struct work_struct *work)
 	struct qedf_ioreq *io_req =
 	    container_of(work, struct qedf_ioreq, rrq_work.work);
 
+	atomic_set(&io_req->state, QEDFC_CMD_ST_RRQ_ACTIVE);
 	qedf_send_rrq(io_req);
 
 }
@@ -329,7 +343,7 @@ struct qedf_ioreq *qedf_alloc_cmd(struct qedf_rport *fcport, u8 cmd_type)
 			cmd_mgr->idx = 0;
 
 		/* Check to make sure command was previously freed */
-		if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags))
+		if (!io_req->alloc)
 			break;
 	}
 
@@ -338,7 +352,14 @@ struct qedf_ioreq *qedf_alloc_cmd(struct qedf_rport *fcport, u8 cmd_type)
 		goto out_failed;
 	}
 
-	set_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+	if (test_bit(QEDF_CMD_DIRTY, &io_req->flags))
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "io_req found to be dirty ox_id = 0x%x.\n",
+			 io_req->xid);
+
+	/* Clear any flags now that we've reallocated the xid */
+	io_req->flags = 0;
+	io_req->alloc = 1;
 	spin_unlock_irqrestore(&cmd_mgr->lock, flags);
 
 	atomic_inc(&fcport->num_active_ios);
@@ -349,8 +370,13 @@ struct qedf_ioreq *qedf_alloc_cmd(struct qedf_rport *fcport, u8 cmd_type)
 	io_req->cmd_mgr = cmd_mgr;
 	io_req->fcport = fcport;
 
+	/* Clear any stale sc_cmd back pointer */
+	io_req->sc_cmd = NULL;
+	io_req->lun = -1;
+
 	/* Hold the io_req against deletion */
-	kref_init(&io_req->refcount);
+	kref_init(&io_req->refcount);	/* ID: 001 */
+	atomic_set(&io_req->state, QEDFC_CMD_ST_IO_ACTIVE);
 
 	/* Bind io_bdt for this io_req */
 	/* Have a static link between io_req and io_bdt_pool */
@@ -412,6 +438,10 @@ void qedf_release_cmd(struct kref *ref)
 	    container_of(ref, struct qedf_ioreq, refcount);
 	struct qedf_cmd_mgr *cmd_mgr = io_req->cmd_mgr;
 	struct qedf_rport *fcport = io_req->fcport;
+	unsigned long flags;
+
+	if (io_req->cmd_type == QEDF_SCSI_CMD)
+		WARN_ON(io_req->sc_cmd);
 
 	if (io_req->cmd_type == QEDF_ELS ||
 	    io_req->cmd_type == QEDF_TASK_MGMT_CMD)
@@ -419,13 +449,20 @@ void qedf_release_cmd(struct kref *ref)
 
 	atomic_inc(&cmd_mgr->free_list_cnt);
 	atomic_dec(&fcport->num_active_ios);
+	atomic_set(&io_req->state, QEDF_CMD_ST_INACTIVE);
 	if (atomic_read(&fcport->num_active_ios) < 0)
 		QEDF_WARN(&(fcport->qedf->dbg_ctx), "active_ios < 0.\n");
 
 	/* Increment task retry identifier now that the request is released */
 	io_req->task_retry_identifier++;
+	io_req->fcport = NULL;
 
-	clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+	clear_bit(QEDF_CMD_DIRTY, &io_req->flags);
+	io_req->cpu = 0;
+	spin_lock_irqsave(&cmd_mgr->lock, flags);
+	io_req->fcport = NULL;
+	io_req->alloc = 0;
+	spin_unlock_irqrestore(&cmd_mgr->lock, flags);
 }
 
 static int qedf_split_bd(struct qedf_ioreq *io_req, u64 addr, int sg_len,
@@ -895,14 +932,23 @@ int qedf_post_io_req(struct qedf_rport *fcport, struct qedf_ioreq *io_req)
 	/* Build buffer descriptor list for firmware from sg list */
 	if (qedf_build_bd_list_from_sg(io_req)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "BD list creation failed.\n");
+		/* Release cmd will release io_req, but sc_cmd is assigned */
+		io_req->sc_cmd = NULL;
 		kref_put(&io_req->refcount, qedf_release_cmd);
 		return -EAGAIN;
 	}
 
-	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
+	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags) ||
+	    test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "Session not offloaded yet.\n");
+		/* Release cmd will release io_req, but sc_cmd is assigned */
+		io_req->sc_cmd = NULL;
 		kref_put(&io_req->refcount, qedf_release_cmd);
+		return -EINVAL;
 	}
+
+	/* Record LUN number for later use if we neeed them */
+	io_req->lun = (int)sc_cmd->device->lun;
 
 	/* Obtain free SQE */
 	sqe_idx = qedf_get_sqe_idx(fcport);
@@ -914,6 +960,8 @@ int qedf_post_io_req(struct qedf_rport *fcport, struct qedf_ioreq *io_req)
 	if (!task_ctx) {
 		QEDF_WARN(&(qedf->dbg_ctx), "task_ctx is NULL, xid=%d.\n",
 			   xid);
+		/* Release cmd will release io_req, but sc_cmd is assigned */
+		io_req->sc_cmd = NULL;
 		kref_put(&io_req->refcount, qedf_release_cmd);
 		return -EINVAL;
 	}
@@ -922,6 +970,9 @@ int qedf_post_io_req(struct qedf_rport *fcport, struct qedf_ioreq *io_req)
 
 	/* Ring doorbell */
 	qedf_ring_doorbell(fcport);
+
+	/* Set that command is with the firmware now */
+	set_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
 
 	if (qedf_io_tracing && io_req->sc_cmd)
 		qedf_trace_io(fcport, io_req, QEDF_IO_TRACE_REQ);
@@ -981,7 +1032,8 @@ qedf_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc_cmd)
 	/* rport and tgt are allocated together, so tgt should be non-NULL */
 	fcport = (struct qedf_rport *)&rp[1];
 
-	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
+	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags) ||
+	    test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
 		/*
 		 * Session is not offloaded yet. Let SCSI-ml retry
 		 * the command.
@@ -989,12 +1041,16 @@ qedf_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc_cmd)
 		rc = SCSI_MLQUEUE_TARGET_BUSY;
 		goto exit_qcmd;
 	}
+
+	atomic_inc(&fcport->ios_to_queue);
+
 	if (fcport->retry_delay_timestamp) {
 		if (time_after(jiffies, fcport->retry_delay_timestamp)) {
 			fcport->retry_delay_timestamp = 0;
 		} else {
 			/* If retry_delay timer is active, flow off the ML */
 			rc = SCSI_MLQUEUE_TARGET_BUSY;
+			atomic_dec(&fcport->ios_to_queue);
 			goto exit_qcmd;
 		}
 	}
@@ -1002,6 +1058,7 @@ qedf_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc_cmd)
 	io_req = qedf_alloc_cmd(fcport, QEDF_SCSI_CMD);
 	if (!io_req) {
 		rc = SCSI_MLQUEUE_HOST_BUSY;
+		atomic_dec(&fcport->ios_to_queue);
 		goto exit_qcmd;
 	}
 
@@ -1016,6 +1073,7 @@ qedf_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *sc_cmd)
 		rc = SCSI_MLQUEUE_HOST_BUSY;
 	}
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
+	atomic_dec(&fcport->ios_to_queue);
 
 exit_qcmd:
 	return rc;
@@ -1092,7 +1150,7 @@ static void qedf_unmap_sg_list(struct qedf_ctx *qedf, struct qedf_ioreq *io_req)
 void qedf_scsi_completion(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 	struct qedf_ioreq *io_req)
 {
-	u16 xid, rval;
+	u16 xid;
 	struct e4_fcoe_task_context *task_ctx;
 	struct scsi_cmnd *sc_cmd;
 	struct fcoe_cqe_rsp_info *fcp_rsp;
@@ -1105,6 +1163,15 @@ void qedf_scsi_completion(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 		return;
 	if (!cqe)
 		return;
+
+	if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags) ||
+	    test_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags) ||
+	    test_bit(QEDF_CMD_IN_ABORT, &io_req->flags)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "io_req xid=0x%x already in cleanup or abort processing or already completed.\n",
+			 io_req->xid);
+		return;
+	}
 
 	xid = io_req->xid;
 	task_ctx = qedf_get_task_mem(&qedf->tasks, xid);
@@ -1119,6 +1186,12 @@ void qedf_scsi_completion(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 	if (!sc_cmd->SCp.ptr) {
 		QEDF_WARN(&(qedf->dbg_ctx), "SCp.ptr is NULL, returned in "
 		    "another context.\n");
+		return;
+	}
+
+	if (!sc_cmd->device) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Device for sc_cmd %p is NULL.\n", sc_cmd);
 		return;
 	}
 
@@ -1142,6 +1215,19 @@ void qedf_scsi_completion(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 
 	fcport = io_req->fcport;
 
+	/*
+	 * When flush is active, let the cmds be completed from the cleanup
+	 * context
+	 */
+	if (test_bit(QEDF_RPORT_IN_TARGET_RESET, &fcport->flags) ||
+	    (test_bit(QEDF_RPORT_IN_LUN_RESET, &fcport->flags) &&
+	     sc_cmd->device->lun == (u64)fcport->lun_reset_lun)) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+			  "Dropping good completion xid=0x%x as fcport is flushing",
+			  io_req->xid);
+		return;
+	}
+
 	qedf_parse_fcp_rsp(io_req, fcp_rsp);
 
 	qedf_unmap_sg_list(qedf, io_req);
@@ -1159,24 +1245,17 @@ void qedf_scsi_completion(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 	fw_residual_flag = GET_FIELD(cqe->cqe_info.rsp_info.fw_error_flags,
 	    FCOE_CQE_RSP_INFO_FW_UNDERRUN);
 	if (fw_residual_flag) {
-		QEDF_ERR(&(qedf->dbg_ctx),
-		    "Firmware detected underrun: xid=0x%x fcp_rsp.flags=0x%02x "
-		    "fcp_resid=%d fw_residual=0x%x.\n", io_req->xid,
-		    fcp_rsp->rsp_flags.flags, io_req->fcp_resid,
-		    cqe->cqe_info.rsp_info.fw_residual);
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Firmware detected underrun: xid=0x%x fcp_rsp.flags=0x%02x fcp_resid=%d fw_residual=0x%x lba=%02x%02x%02x%02x.\n",
+			 io_req->xid, fcp_rsp->rsp_flags.flags,
+			 io_req->fcp_resid,
+			 cqe->cqe_info.rsp_info.fw_residual, sc_cmd->cmnd[2],
+			 sc_cmd->cmnd[3], sc_cmd->cmnd[4], sc_cmd->cmnd[5]);
 
 		if (io_req->cdb_status == 0)
 			sc_cmd->result = (DID_ERROR << 16) | io_req->cdb_status;
 		else
 			sc_cmd->result = (DID_OK << 16) | io_req->cdb_status;
-
-		/* Abort the command since we did not get all the data */
-		init_completion(&io_req->abts_done);
-		rval = qedf_initiate_abts(io_req, true);
-		if (rval) {
-			QEDF_ERR(&(qedf->dbg_ctx), "Failed to queue ABTS.\n");
-			sc_cmd->result = (DID_ERROR << 16) | io_req->cdb_status;
-		}
 
 		/*
 		 * Set resid to the whole buffer length so we won't try to resue
@@ -1249,6 +1328,12 @@ out:
 	if (qedf_io_tracing)
 		qedf_trace_io(fcport, io_req, QEDF_IO_TRACE_RSP);
 
+	/*
+	 * We wait till the end of the function to clear the
+	 * outstanding bit in case we need to send an abort
+	 */
+	clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+
 	io_req->sc_cmd = NULL;
 	sc_cmd->SCp.ptr =  NULL;
 	sc_cmd->scsi_done(sc_cmd);
@@ -1266,6 +1351,19 @@ void qedf_scsi_done(struct qedf_ctx *qedf, struct qedf_ioreq *io_req,
 	if (!io_req)
 		return;
 
+	if (test_and_set_bit(QEDF_CMD_ERR_SCSI_DONE, &io_req->flags)) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+			  "io_req:%p scsi_done handling already done\n",
+			  io_req);
+		return;
+	}
+
+	/*
+	 * We will be done with this command after this call so clear the
+	 * outstanding bit.
+	 */
+	clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+
 	xid = io_req->xid;
 	sc_cmd = io_req->sc_cmd;
 
@@ -1274,10 +1372,48 @@ void qedf_scsi_done(struct qedf_ctx *qedf, struct qedf_ioreq *io_req,
 		return;
 	}
 
+	if (!virt_addr_valid(sc_cmd)) {
+		QEDF_ERR(&qedf->dbg_ctx, "sc_cmd=%p is not valid.", sc_cmd);
+		goto bad_scsi_ptr;
+	}
+
 	if (!sc_cmd->SCp.ptr) {
 		QEDF_WARN(&(qedf->dbg_ctx), "SCp.ptr is NULL, returned in "
 		    "another context.\n");
 		return;
+	}
+
+	if (!sc_cmd->device) {
+		QEDF_ERR(&qedf->dbg_ctx, "Device for sc_cmd %p is NULL.\n",
+			 sc_cmd);
+		goto bad_scsi_ptr;
+	}
+
+	if (!virt_addr_valid(sc_cmd->device)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Device pointer for sc_cmd %p is bad.\n", sc_cmd);
+		goto bad_scsi_ptr;
+	}
+
+	if (!sc_cmd->sense_buffer) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "sc_cmd->sense_buffer for sc_cmd %p is NULL.\n",
+			 sc_cmd);
+		goto bad_scsi_ptr;
+	}
+
+	if (!virt_addr_valid(sc_cmd->sense_buffer)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "sc_cmd->sense_buffer for sc_cmd %p is bad.\n",
+			 sc_cmd);
+		goto bad_scsi_ptr;
+	}
+
+	if (!sc_cmd->scsi_done) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "sc_cmd->scsi_done for sc_cmd %p is NULL.\n",
+			 sc_cmd);
+		goto bad_scsi_ptr;
 	}
 
 	qedf_unmap_sg_list(qedf, io_req);
@@ -1306,6 +1442,15 @@ void qedf_scsi_done(struct qedf_ctx *qedf, struct qedf_ioreq *io_req,
 	sc_cmd->SCp.ptr = NULL;
 	sc_cmd->scsi_done(sc_cmd);
 	kref_put(&io_req->refcount, qedf_release_cmd);
+	return;
+
+bad_scsi_ptr:
+	/*
+	 * Clear the io_req->sc_cmd backpointer so we don't try to process
+	 * this again
+	 */
+	io_req->sc_cmd = NULL;
+	kref_put(&io_req->refcount, qedf_release_cmd);  /* ID: 001 */
 }
 
 /*
@@ -1444,6 +1589,10 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 	struct qedf_ctx *qedf;
 	struct qedf_cmd_mgr *cmd_mgr;
 	int i, rc;
+	unsigned long flags;
+	int flush_cnt = 0;
+	int wait_cnt = 100;
+	int refcount = 0;
 
 	if (!fcport)
 		return;
@@ -1455,18 +1604,102 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 	}
 
 	qedf = fcport->qedf;
+
+	if (!qedf) {
+		QEDF_ERR(NULL, "qedf is NULL.\n");
+		return;
+	}
+
+	/* Only wait for all commands to be queued in the Upload context */
+	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags) &&
+	    (lun == -1)) {
+		while (atomic_read(&fcport->ios_to_queue)) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+				  "Waiting for %d I/Os to be queued\n",
+				  atomic_read(&fcport->ios_to_queue));
+			if (wait_cnt == 0) {
+				QEDF_ERR(NULL,
+					 "%d IOs request could not be queued\n",
+					 atomic_read(&fcport->ios_to_queue));
+			}
+			msleep(20);
+			wait_cnt--;
+		}
+	}
+
 	cmd_mgr = qedf->cmd_mgr;
 
-	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_IO, "Flush active i/o's.\n");
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+		  "Flush active i/o's num=0x%x fcport=0x%p port_id=0x%06x scsi_id=%d.\n",
+		  atomic_read(&fcport->num_active_ios), fcport,
+		  fcport->rdata->ids.port_id, fcport->rport->scsi_target_id);
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO, "Locking flush mutex.\n");
+
+	mutex_lock(&qedf->flush_mutex);
+	if (lun == -1) {
+		set_bit(QEDF_RPORT_IN_TARGET_RESET, &fcport->flags);
+	} else {
+		set_bit(QEDF_RPORT_IN_LUN_RESET, &fcport->flags);
+		fcport->lun_reset_lun = lun;
+	}
 
 	for (i = 0; i < FCOE_PARAMS_NUM_TASKS; i++) {
 		io_req = &cmd_mgr->cmds[i];
 
 		if (!io_req)
 			continue;
+		if (!io_req->fcport)
+			continue;
+
+		spin_lock_irqsave(&cmd_mgr->lock, flags);
+
+		if (io_req->alloc) {
+			if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags)) {
+				if (io_req->cmd_type == QEDF_SCSI_CMD)
+					QEDF_ERR(&qedf->dbg_ctx,
+						 "Allocated but not queued, xid=0x%x\n",
+						 io_req->xid);
+			}
+			spin_unlock_irqrestore(&cmd_mgr->lock, flags);
+		} else {
+			spin_unlock_irqrestore(&cmd_mgr->lock, flags);
+			continue;
+		}
+
 		if (io_req->fcport != fcport)
 			continue;
-		if (io_req->cmd_type == QEDF_ELS) {
+
+		/* In case of ABTS, CMD_OUTSTANDING is cleared on ABTS response,
+		 * but RRQ is still pending.
+		 * Workaround: Within qedf_send_rrq, we check if the fcport is
+		 * NULL, and we drop the ref on the io_req to clean it up.
+		 */
+		if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags)) {
+			refcount = kref_read(&io_req->refcount);
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+				  "Not outstanding, xid=0x%x, cmd_type=%d refcount=%d.\n",
+				  io_req->xid, io_req->cmd_type, refcount);
+			/* If RRQ work has been queue, try to cancel it and
+			 * free the io_req
+			 */
+			if (atomic_read(&io_req->state) ==
+			    QEDFC_CMD_ST_RRQ_WAIT) {
+				if (cancel_delayed_work_sync
+				    (&io_req->rrq_work)) {
+					QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+						  "Putting reference for pending RRQ work xid=0x%x.\n",
+						  io_req->xid);
+					/* ID: 003 */
+					kref_put(&io_req->refcount,
+						 qedf_release_cmd);
+				}
+			}
+			continue;
+		}
+
+		/* Only consider flushing ELS during target reset */
+		if (io_req->cmd_type == QEDF_ELS &&
+		    lun == -1) {
 			rc = kref_get_unless_zero(&io_req->refcount);
 			if (!rc) {
 				QEDF_ERR(&(qedf->dbg_ctx),
@@ -1474,6 +1707,7 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 				    io_req, io_req->xid);
 				continue;
 			}
+			flush_cnt++;
 			qedf_flush_els_req(qedf, io_req);
 			/*
 			 * Release the kref and go back to the top of the
@@ -1483,6 +1717,7 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 		}
 
 		if (io_req->cmd_type == QEDF_ABTS) {
+			/* ID: 004 */
 			rc = kref_get_unless_zero(&io_req->refcount);
 			if (!rc) {
 				QEDF_ERR(&(qedf->dbg_ctx),
@@ -1490,28 +1725,50 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 				    io_req, io_req->xid);
 				continue;
 			}
+			if (lun != -1 && io_req->lun != lun)
+				goto free_cmd;
+
 			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
 			    "Flushing abort xid=0x%x.\n", io_req->xid);
 
-			clear_bit(QEDF_CMD_IN_ABORT, &io_req->flags);
-
-			if (io_req->sc_cmd) {
-				if (io_req->return_scsi_cmd_on_abts)
-					qedf_scsi_done(qedf, io_req, DID_ERROR);
+			if (cancel_delayed_work_sync(&io_req->rrq_work)) {
+				QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+					  "Putting ref for cancelled RRQ work xid=0x%x.\n",
+					  io_req->xid);
+				kref_put(&io_req->refcount, qedf_release_cmd);
 			}
 
-			/* Notify eh_abort handler that ABTS is complete */
-			complete(&io_req->abts_done);
-			kref_put(&io_req->refcount, qedf_release_cmd);
-
+			if (cancel_delayed_work_sync(&io_req->timeout_work)) {
+				QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+					  "Putting ref for cancelled tmo work xid=0x%x.\n",
+					  io_req->xid);
+				qedf_initiate_cleanup(io_req, true);
+				/* Notify eh_abort handler that ABTS is
+				 * complete
+				 */
+				complete(&io_req->abts_done);
+				clear_bit(QEDF_CMD_IN_ABORT, &io_req->flags);
+				/* ID: 002 */
+				kref_put(&io_req->refcount, qedf_release_cmd);
+			}
+			flush_cnt++;
 			goto free_cmd;
 		}
 
 		if (!io_req->sc_cmd)
 			continue;
-		if (lun > 0) {
-			if (io_req->sc_cmd->device->lun !=
-			    (u64)lun)
+		if (!io_req->sc_cmd->device) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+				  "Device backpointer NULL for sc_cmd=%p.\n",
+				  io_req->sc_cmd);
+			/* Put reference for non-existent scsi_cmnd */
+			io_req->sc_cmd = NULL;
+			qedf_initiate_cleanup(io_req, false);
+			kref_put(&io_req->refcount, qedf_release_cmd);
+			continue;
+		}
+		if (lun > -1) {
+			if (io_req->lun != lun)
 				continue;
 		}
 
@@ -1525,15 +1782,65 @@ void qedf_flush_active_ios(struct qedf_rport *fcport, int lun)
 			    "io_req=0x%p xid=0x%x\n", io_req, io_req->xid);
 			continue;
 		}
+
 		QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_IO,
 		    "Cleanup xid=0x%x.\n", io_req->xid);
+		flush_cnt++;
 
 		/* Cleanup task and return I/O mid-layer */
 		qedf_initiate_cleanup(io_req, true);
 
 free_cmd:
-		kref_put(&io_req->refcount, qedf_release_cmd);
+		kref_put(&io_req->refcount, qedf_release_cmd);	/* ID: 004 */
 	}
+
+	wait_cnt = 60;
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+		  "Flushed 0x%x I/Os, active=0x%x.\n",
+		  flush_cnt, atomic_read(&fcport->num_active_ios));
+	/* Only wait for all commands to complete in the Upload context */
+	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags) &&
+	    (lun == -1)) {
+		while (atomic_read(&fcport->num_active_ios)) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+				  "Flushed 0x%x I/Os, active=0x%x cnt=%d.\n",
+				  flush_cnt,
+				  atomic_read(&fcport->num_active_ios),
+				  wait_cnt);
+			if (wait_cnt == 0) {
+				QEDF_ERR(&qedf->dbg_ctx,
+					 "Flushed %d I/Os, active=%d.\n",
+					 flush_cnt,
+					 atomic_read(&fcport->num_active_ios));
+				for (i = 0; i < FCOE_PARAMS_NUM_TASKS; i++) {
+					io_req = &cmd_mgr->cmds[i];
+					if (io_req->fcport &&
+					    io_req->fcport == fcport) {
+						refcount =
+						kref_read(&io_req->refcount);
+						set_bit(QEDF_CMD_DIRTY,
+							&io_req->flags);
+						QEDF_ERR(&qedf->dbg_ctx,
+							 "Outstanding io_req =%p xid=0x%x flags=0x%lx, sc_cmd=%p refcount=%d cmd_type=%d.\n",
+							 io_req, io_req->xid,
+							 io_req->flags,
+							 io_req->sc_cmd,
+							 refcount,
+							 io_req->cmd_type);
+					}
+				}
+				WARN_ON(1);
+				break;
+			}
+			msleep(500);
+			wait_cnt--;
+		}
+	}
+
+	clear_bit(QEDF_RPORT_IN_LUN_RESET, &fcport->flags);
+	clear_bit(QEDF_RPORT_IN_TARGET_RESET, &fcport->flags);
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO, "Unlocking flush mutex.\n");
+	mutex_unlock(&qedf->flush_mutex);
 }
 
 /*
@@ -1552,52 +1859,60 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 	unsigned long flags;
 	struct fcoe_wqe *sqe;
 	u16 sqe_idx;
+	int refcount = 0;
 
 	/* Sanity check qedf_rport before dereferencing any pointers */
 	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
 		QEDF_ERR(NULL, "tgt not offloaded\n");
 		rc = 1;
-		goto abts_err;
+		goto out;
 	}
 
-	rdata = fcport->rdata;
-	r_a_tov = rdata->r_a_tov;
 	qedf = fcport->qedf;
+	rdata = fcport->rdata;
+
+	if (!rdata || !kref_get_unless_zero(&rdata->kref)) {
+		QEDF_ERR(&qedf->dbg_ctx, "stale rport\n");
+		rc = 1;
+		goto out;
+	}
+
+	r_a_tov = rdata->r_a_tov;
 	lport = qedf->lport;
 
 	if (lport->state != LPORT_ST_READY || !(lport->link_up)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "link is not ready\n");
 		rc = 1;
-		goto abts_err;
+		goto drop_rdata_kref;
 	}
 
 	if (atomic_read(&qedf->link_down_tmo_valid) > 0) {
 		QEDF_ERR(&(qedf->dbg_ctx), "link_down_tmo active.\n");
 		rc = 1;
-		goto abts_err;
+		goto drop_rdata_kref;
 	}
 
 	/* Ensure room on SQ */
 	if (!atomic_read(&fcport->free_sqes)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "No SQ entries available\n");
 		rc = 1;
-		goto abts_err;
+		goto drop_rdata_kref;
 	}
 
 	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
 		QEDF_ERR(&qedf->dbg_ctx, "fcport is uploading.\n");
 		rc = 1;
-		goto out;
+		goto drop_rdata_kref;
 	}
 
 	if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags) ||
 	    test_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags) ||
 	    test_bit(QEDF_CMD_IN_ABORT, &io_req->flags)) {
-		QEDF_ERR(&(qedf->dbg_ctx), "io_req xid=0x%x already in "
-			  "cleanup or abort processing or already "
-			  "completed.\n", io_req->xid);
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "io_req xid=0x%x sc_cmd=%p already in cleanup or abort processing or already completed.\n",
+			 io_req->xid, io_req->sc_cmd);
 		rc = 1;
-		goto out;
+		goto drop_rdata_kref;
 	}
 
 	kref_get(&io_req->refcount);
@@ -1606,18 +1921,17 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 	qedf->control_requests++;
 	qedf->packet_aborts++;
 
-	/* Set the return CPU to be the same as the request one */
-	io_req->cpu = smp_processor_id();
-
 	/* Set the command type to abort */
 	io_req->cmd_type = QEDF_ABTS;
 	io_req->return_scsi_cmd_on_abts = return_scsi_cmd_on_abts;
 
 	set_bit(QEDF_CMD_IN_ABORT, &io_req->flags);
-	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_SCSI_TM, "ABTS io_req xid = "
-		   "0x%x\n", xid);
+	refcount = kref_read(&io_req->refcount);
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_SCSI_TM,
+		  "ABTS io_req xid = 0x%x refcount=%d\n",
+		  xid, refcount);
 
-	qedf_cmd_timer_set(qedf, io_req, QEDF_ABORT_TIMEOUT * HZ);
+	qedf_cmd_timer_set(qedf, io_req, QEDF_ABORT_TIMEOUT);
 
 	spin_lock_irqsave(&fcport->rport_lock, flags);
 
@@ -1631,13 +1945,8 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 
-	return rc;
-abts_err:
-	/*
-	 * If the ABTS task fails to queue then we need to cleanup the
-	 * task at the firmware.
-	 */
-	qedf_initiate_cleanup(io_req, return_scsi_cmd_on_abts);
+drop_rdata_kref:
+	kref_put(&rdata->kref, fc_rport_destroy);
 out:
 	return rc;
 }
@@ -1647,27 +1956,62 @@ void qedf_process_abts_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 {
 	uint32_t r_ctl;
 	uint16_t xid;
+	int rc;
+	struct qedf_rport *fcport = io_req->fcport;
 
 	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_SCSI_TM, "Entered with xid = "
 		   "0x%x cmd_type = %d\n", io_req->xid, io_req->cmd_type);
 
-	cancel_delayed_work(&io_req->timeout_work);
-
 	xid = io_req->xid;
 	r_ctl = cqe->cqe_info.abts_info.r_ctl;
+
+	/* This was added at a point when we were scheduling abts_compl &
+	 * cleanup_compl on different CPUs and there was a possibility of
+	 * the io_req to be freed from the other context before we got here.
+	 */
+	if (!fcport) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+			  "Dropping ABTS completion xid=0x%x as fcport is NULL",
+			  io_req->xid);
+		return;
+	}
+
+	/*
+	 * When flush is active, let the cmds be completed from the cleanup
+	 * context
+	 */
+	if (test_bit(QEDF_RPORT_IN_TARGET_RESET, &fcport->flags) ||
+	    test_bit(QEDF_RPORT_IN_LUN_RESET, &fcport->flags)) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+			  "Dropping ABTS completion xid=0x%x as fcport is flushing",
+			  io_req->xid);
+		return;
+	}
+
+	if (!cancel_delayed_work(&io_req->timeout_work)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Wasn't able to cancel abts timeout work.\n");
+	}
 
 	switch (r_ctl) {
 	case FC_RCTL_BA_ACC:
 		QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_SCSI_TM,
 		    "ABTS response - ACC Send RRQ after R_A_TOV\n");
 		io_req->event = QEDF_IOREQ_EV_ABORT_SUCCESS;
+		rc = kref_get_unless_zero(&io_req->refcount);	/* ID: 003 */
+		if (!rc) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_SCSI_TM,
+				  "kref is already zero so ABTS was already completed or flushed xid=0x%x.\n",
+				  io_req->xid);
+			return;
+		}
 		/*
 		 * Dont release this cmd yet. It will be relesed
 		 * after we get RRQ response
 		 */
-		kref_get(&io_req->refcount);
 		queue_delayed_work(qedf->dpc_wq, &io_req->rrq_work,
 		    msecs_to_jiffies(qedf->lport->r_a_tov));
+		atomic_set(&io_req->state, QEDFC_CMD_ST_RRQ_WAIT);
 		break;
 	/* For error cases let the cleanup return the command */
 	case FC_RCTL_BA_RJT:
@@ -1809,6 +2153,7 @@ int qedf_initiate_cleanup(struct qedf_ioreq *io_req,
 	unsigned long flags;
 	struct fcoe_wqe *sqe;
 	u16 sqe_idx;
+	int refcount = 0;
 
 	fcport = io_req->fcport;
 	if (!fcport) {
@@ -1830,7 +2175,7 @@ int qedf_initiate_cleanup(struct qedf_ioreq *io_req,
 	}
 
 	if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags) ||
-	    test_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags)) {
+	    test_and_set_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "io_req xid=0x%x already in "
 			  "cleanup processing or already completed.\n",
 			  io_req->xid);
@@ -1843,19 +2188,25 @@ int qedf_initiate_cleanup(struct qedf_ioreq *io_req,
 		return FAILED;
 	}
 
+	if (io_req->cmd_type == QEDF_CLEANUP) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "io_req=0x%x is already a cleanup command cmd_type=%d.\n",
+			 io_req->xid, io_req->cmd_type);
+		clear_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags);
+		return SUCCESS;
+	}
 
-	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_IO, "Entered xid=0x%x\n",
-	    io_req->xid);
+	refcount = kref_read(&io_req->refcount);
+
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_IO,
+		  "Entered xid=0x%x sc_cmd=%p cmd_type=%d flags=0x%lx refcount=%d fcport=%p port_id=0x%06x\n",
+		  io_req->xid, io_req->sc_cmd, io_req->cmd_type, io_req->flags,
+		  refcount, fcport, fcport->rdata->ids.port_id);
 
 	/* Cleanup cmds re-use the same TID as the original I/O */
 	xid = io_req->xid;
 	io_req->cmd_type = QEDF_CLEANUP;
 	io_req->return_scsi_cmd_on_abts = return_scsi_cmd_on_abts;
-
-	/* Set the return CPU to be the same as the request one */
-	io_req->cpu = smp_processor_id();
-
-	set_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags);
 
 	task = qedf_get_task_mem(&qedf->tasks, xid);
 
@@ -1885,6 +2236,16 @@ int qedf_initiate_cleanup(struct qedf_ioreq *io_req,
 		/* Issue a drain request if cleanup task times out */
 		QEDF_ERR(&(qedf->dbg_ctx), "Issuing MCP drain request.\n");
 		qedf_drain_request(qedf);
+	}
+
+	/* If it TASK MGMT handle it, reference will be decreased
+	 * in qedf_execute_tmf
+	 */
+	if (io_req->tm_flags  == FCP_TMF_LUN_RESET ||
+	    io_req->tm_flags == FCP_TMF_TGT_RESET) {
+		clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+		io_req->sc_cmd = NULL;
+		complete(&io_req->tm_done);
 	}
 
 	if (io_req->sc_cmd) {
@@ -1922,6 +2283,7 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 	int rc = 0;
 	uint16_t xid;
 	int tmo = 0;
+	int lun = 0;
 	unsigned long flags;
 	struct fcoe_wqe *sqe;
 	u16 sqe_idx;
@@ -1931,20 +2293,18 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 		return FAILED;
 	}
 
+	lun = (int)sc_cmd->device->lun;
 	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "fcport not offloaded\n");
 		rc = FAILED;
-		return FAILED;
+		goto no_flush;
 	}
-
-	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_SCSI_TM, "portid = 0x%x "
-		   "tm_flags = %d\n", fcport->rdata->ids.port_id, tm_flags);
 
 	io_req = qedf_alloc_cmd(fcport, QEDF_TASK_MGMT_CMD);
 	if (!io_req) {
 		QEDF_ERR(&(qedf->dbg_ctx), "Failed TMF");
 		rc = -EAGAIN;
-		goto reset_tmf_err;
+		goto no_flush;
 	}
 
 	if (tm_flags == FCP_TMF_LUN_RESET)
@@ -1957,7 +2317,7 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 	io_req->fcport = fcport;
 	io_req->cmd_type = QEDF_TASK_MGMT_CMD;
 
-	/* Set the return CPU to be the same as the request one */
+	/* Record which cpu this request is associated with */
 	io_req->cpu = smp_processor_id();
 
 	/* Set TM flags */
@@ -1966,7 +2326,7 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 	io_req->tm_flags = tm_flags;
 
 	/* Default is to return a SCSI command when an error occurs */
-	io_req->return_scsi_cmd_on_abts = true;
+	io_req->return_scsi_cmd_on_abts = false;
 
 	/* Obtain exchange id */
 	xid = io_req->xid;
@@ -1990,12 +2350,16 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 
+	set_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
 	tmo = wait_for_completion_timeout(&io_req->tm_done,
 	    QEDF_TM_TIMEOUT * HZ);
 
 	if (!tmo) {
 		rc = FAILED;
 		QEDF_ERR(&(qedf->dbg_ctx), "wait for tm_cmpl timeout!\n");
+		/* Clear outstanding bit since command timed out */
+		clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
+		io_req->sc_cmd = NULL;
 	} else {
 		/* Check TMF response code */
 		if (io_req->fcp_rsp_code == 0)
@@ -2003,14 +2367,25 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 		else
 			rc = FAILED;
 	}
+	/*
+	 * Double check that fcport has not gone into an uploading state before
+	 * executing the command flush for the LUN/target.
+	 */
+	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "fcport is uploading, not executing flush.\n");
+		goto no_flush;
+	}
+	/* We do not need this io_req any more */
+	kref_put(&io_req->refcount, qedf_release_cmd);
+
 
 	if (tm_flags == FCP_TMF_LUN_RESET)
-		qedf_flush_active_ios(fcport, (int)sc_cmd->device->lun);
+		qedf_flush_active_ios(fcport, lun);
 	else
 		qedf_flush_active_ios(fcport, -1);
 
-	kref_put(&io_req->refcount, qedf_release_cmd);
-
+no_flush:
 	if (rc != SUCCESS) {
 		QEDF_ERR(&(qedf->dbg_ctx), "task mgmt command failed...\n");
 		rc = FAILED;
@@ -2018,7 +2393,6 @@ static int qedf_execute_tmf(struct qedf_rport *fcport, struct scsi_cmnd *sc_cmd,
 		QEDF_ERR(&(qedf->dbg_ctx), "task mgmt command success...\n");
 		rc = SUCCESS;
 	}
-reset_tmf_err:
 	return rc;
 }
 
@@ -2028,26 +2402,65 @@ int qedf_initiate_tmf(struct scsi_cmnd *sc_cmd, u8 tm_flags)
 	struct fc_rport_libfc_priv *rp = rport->dd_data;
 	struct qedf_rport *fcport = (struct qedf_rport *)&rp[1];
 	struct qedf_ctx *qedf;
-	struct fc_lport *lport;
+	struct fc_lport *lport = shost_priv(sc_cmd->device->host);
 	int rc = SUCCESS;
 	int rval;
+	struct qedf_ioreq *io_req = NULL;
+	int ref_cnt = 0;
+	struct fc_rport_priv *rdata = fcport->rdata;
+
+	QEDF_ERR(NULL,
+		 "tm_flags 0x%x sc_cmd %p op = 0x%02x target_id = 0x%x lun=%d\n",
+		 tm_flags, sc_cmd, sc_cmd->cmnd[0], rport->scsi_target_id,
+		 (int)sc_cmd->device->lun);
+
+	if (!rdata || !kref_get_unless_zero(&rdata->kref)) {
+		QEDF_ERR(NULL, "stale rport\n");
+		return FAILED;
+	}
+
+	QEDF_ERR(NULL, "portid=%06x tm_flags =%s\n", rdata->ids.port_id,
+		 (tm_flags == FCP_TMF_TGT_RESET) ? "TARGET RESET" :
+		 "LUN RESET");
+
+	if (sc_cmd->SCp.ptr) {
+		io_req = (struct qedf_ioreq *)sc_cmd->SCp.ptr;
+		ref_cnt = kref_read(&io_req->refcount);
+		QEDF_ERR(NULL,
+			 "orig io_req = %p xid = 0x%x ref_cnt = %d.\n",
+			 io_req, io_req->xid, ref_cnt);
+	}
 
 	rval = fc_remote_port_chkready(rport);
-
 	if (rval) {
 		QEDF_ERR(NULL, "device_reset rport not ready\n");
 		rc = FAILED;
 		goto tmf_err;
 	}
 
-	if (fcport == NULL) {
+	rc = fc_block_scsi_eh(sc_cmd);
+	if (rc)
+		goto tmf_err;
+
+	if (!fcport) {
 		QEDF_ERR(NULL, "device_reset: rport is NULL\n");
 		rc = FAILED;
 		goto tmf_err;
 	}
 
 	qedf = fcport->qedf;
-	lport = qedf->lport;
+
+	if (!qedf) {
+		QEDF_ERR(NULL, "qedf is NULL.\n");
+		rc = FAILED;
+		goto tmf_err;
+	}
+
+	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
+		QEDF_ERR(&qedf->dbg_ctx, "Connection is getting uploaded.\n");
+		rc = SUCCESS;
+		goto tmf_err;
+	}
 
 	if (test_bit(QEDF_UNLOADING, &qedf->flags) ||
 	    test_bit(QEDF_DBG_STOP_IO, &qedf->flags)) {
@@ -2061,9 +2474,22 @@ int qedf_initiate_tmf(struct scsi_cmnd *sc_cmd, u8 tm_flags)
 		goto tmf_err;
 	}
 
+	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
+		if (!fcport->rdata)
+			QEDF_ERR(&qedf->dbg_ctx, "fcport %p is uploading.\n",
+				 fcport);
+		else
+			QEDF_ERR(&qedf->dbg_ctx,
+				 "fcport %p port_id=%06x is uploading.\n",
+				 fcport, fcport->rdata->ids.port_id);
+		rc = FAILED;
+		goto tmf_err;
+	}
+
 	rc = qedf_execute_tmf(fcport, sc_cmd, tm_flags);
 
 tmf_err:
+	kref_put(&rdata->kref, fc_rport_destroy);
 	return rc;
 }
 
@@ -2071,6 +2497,8 @@ void qedf_process_tmf_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 	struct qedf_ioreq *io_req)
 {
 	struct fcoe_cqe_rsp_info *fcp_rsp;
+
+	clear_bit(QEDF_CMD_OUTSTANDING, &io_req->flags);
 
 	fcp_rsp = &cqe->cqe_info.rsp_info;
 	qedf_parse_fcp_rsp(io_req, fcp_rsp);
