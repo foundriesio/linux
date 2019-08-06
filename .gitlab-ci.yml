@@ -1,0 +1,89 @@
+image: $CI_IMAGE
+
+variables:
+# uncomment for the pipeline debug purpose 
+# CI_DEBUG_TRACE: "true"
+  CI_IMAGE: gitlab.int.toradex.com:4567/yuiry.erofeev/linux-toradex/ci-kernel-builder
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  
+# Kernel Configuration Section 
+# Supplementary Tool Section 
+ # Artifacts configuring section  
+  KERNEL_CONFIG_BUILD_LOG_FILE_NAME: build_config.log
+  KERNEL_BUILD_LOG_FILE_NAME: build.log
+  KERNEL_CONFIGURATION_FILE: .config
+ # Defining temporary build folder to do outside of the box builds.  Absolute path
+  TEMP_BUILD_FOLDER: /builds/temp-builds
+stages:
+  - build-product
+
+.build_base:
+  stage: build-product
+  variables:
+   GIT_STRATEGY: fetch
+#  To run just on merge request 
+#  only:
+#     - merge_requests
+#  when: manual
+  script: | 
+    #set -o xtrace
+    cd $CI_PROJECT_DIR
+    echo -e "Compiler used to build binaries is"
+    which ${CROSS_COMPILE}gcc
+    ${CROSS_COMPILE}gcc --version
+    echo -e "Arch is \e[36m$ARCH\e[39m"
+    mkdir -p $TEMP_BUILD_FOLDER
+    make O=$TEMP_BUILD_FOLDER $DEFCONFIG | tee $KERNEL_CONFIG_BUILD_LOG_FILE_NAME
+    make O=$TEMP_BUILD_FOLDER -j3 2>&1 | tee $KERNEL_BUILD_LOG_FILE_NAME
+    # Artifacts should be uploaded from the CI folder, so we should to copy it 
+    cp $TEMP_BUILD_FOLDER/$KERNEL_CONFIGURATION_FILE $CI_PROJECT_DIR
+    #find / -name ".config" -print
+  artifacts:
+    when: always
+    name: "$CI_COMMIT_REF_NAME" 
+    paths:
+      - $KERNEL_CONFIG_BUILD_LOG_FILE_NAME
+      - $KERNEL_BUILD_LOG_FILE_NAME
+      - $KERNEL_CONFIGURATION_FILE
+#  To allow single steps failing without failing the whole pipeline
+ # allow_failure: true
+  after_script:
+    - set -o xtrace
+    - rm -rf $TEMP_BUILD_FOLDER
+      
+# If you need additional products build just copy-paste build_******_product section with new config name 
+build_apalis_product_imx6 :
+  extends: .build_base
+  variables:
+    DEFCONFIG: apalis_imx6_defconfig
+  stage: build-product
+
+
+build_apalis_product_imx6_android :
+  extends: .build_base
+  variables:
+    DEFCONFIG: apalis_imx6_android_defconfig
+# This only stage is set to manual mode because android config is not in the scope of the overall build 
+  when: manual
+  stage: build-product
+
+ 
+build_colibri_product_imx6 :
+  extends: .build_base
+  variables:
+    DEFCONFIG: colibri_imx6_defconfig
+  stage: build-product
+  
+build_colibri_product_imx7 :
+  extends: .build_base
+  variables:
+    DEFCONFIG: colibri_imx7_defconfig
+  stage: build-product
+    
+build_colibri_product_imx6ull :
+  extends: .build_base
+  variables:
+    DEFCONFIG:  colibri-imx6ull_defconfig
+  stage: build-product
