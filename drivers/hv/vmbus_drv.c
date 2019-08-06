@@ -1418,9 +1418,6 @@ static ssize_t vmbus_chan_attr_show(struct kobject *kobj,
 	if (!attribute->show)
 		return -EIO;
 
-	if (chan->state != CHANNEL_OPENED_STATE)
-		return -EINVAL;
-
 	return attribute->show(chan, buf);
 }
 
@@ -1431,8 +1428,9 @@ static const struct sysfs_ops vmbus_chan_sysfs_ops = {
 static ssize_t out_mask_show(const struct vmbus_channel *channel, char *buf)
 {
 	const struct hv_ring_buffer_info *rbi = &channel->outbound;
+
 	if (!rbi->ring_buffer)
-		return -ENOENT;
+		return -EINVAL;
 
 	return sprintf(buf, "%u\n", rbi->ring_buffer->interrupt_mask);
 }
@@ -1441,8 +1439,9 @@ static VMBUS_CHAN_ATTR_RO(out_mask);
 static ssize_t in_mask_show(const struct vmbus_channel *channel, char *buf)
 {
 	const struct hv_ring_buffer_info *rbi = &channel->inbound;
+
 	if (!rbi->ring_buffer)
-		return -ENOENT;
+		return -EINVAL;
 
 	return sprintf(buf, "%u\n", rbi->ring_buffer->interrupt_mask);
 }
@@ -1451,8 +1450,9 @@ static VMBUS_CHAN_ATTR_RO(in_mask);
 static ssize_t read_avail_show(const struct vmbus_channel *channel, char *buf)
 {
 	const struct hv_ring_buffer_info *rbi = &channel->inbound;
+
 	if (!rbi->ring_buffer)
-		return -ENOENT;
+		return -EINVAL;
 
 	return sprintf(buf, "%u\n", hv_get_bytes_to_read(rbi));
 }
@@ -1461,8 +1461,9 @@ static VMBUS_CHAN_ATTR_RO(read_avail);
 static ssize_t write_avail_show(const struct vmbus_channel *channel, char *buf)
 {
 	const struct hv_ring_buffer_info *rbi = &channel->outbound;
+
 	if (!rbi->ring_buffer)
-		return -ENOENT;
+		return -EINVAL;
 
 	return sprintf(buf, "%u\n", hv_get_bytes_to_write(rbi));
 }
