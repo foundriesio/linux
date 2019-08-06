@@ -208,12 +208,20 @@
 		#size-cells = <1>;
 		ranges;
 
-#ifdef CONFIG_TCC_CORE_RESET
+#if defined(CONFIG_TCC_CORE_RESET) && !defined(CONFIG_TCC803X_CA7S)
 		u_boot {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "u-boot";
 			alloc-ranges = <0x30000000 0x200000>;
-			size = <0x200000>;
+			size = <0x200000>; /* CONFIG_TCC_U_BOOT_LEN in U-Boot */
+			no-map;
+		};
+
+		save_dram_size {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "save_dram_size";
+			alloc-ranges = <0x30f80000 0x1000>;
+			size = <0x1000>;
 			no-map;
 		};
 #endif
