@@ -40,7 +40,7 @@ static int mcp25xxfd_cmd_sync_transfer(struct spi_device *spi,
  */
 static int mcp25xxfd_cmd_sync_write(struct spi_device *spi,
 				    const void *tx_buf,
-				    unsigned int tx_len)
+				    unsigned tx_len)
 {
 	struct spi_transfer xfer;
 
