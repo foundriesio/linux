@@ -1,29 +1,29 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        audio.c
 *  \brief       HDMI Audio controller driver
-*  \details   
+*  \details
 *               Important!
 *               The default tab size of this source code is setted with 8.
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company. 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
+Agreement between Telechips and Company.
 */
 
 #include <linux/module.h>
@@ -62,7 +62,7 @@ Agreement between Telechips and Company.
 #endif
 
 #define HDMI_IOCTL_DEBUG 0
-#if HDMI_IOCTL_DEBUG 
+#if HDMI_IOCTL_DEBUG
 #define io_debug(...) pr_info(__VA_ARGS__)
 #else
 #define io_debug(...)
@@ -109,7 +109,7 @@ struct tcc_hdmi_audio_dev {
         struct miscdevice *misc;
 
         int audio_irq;
-        
+
         unsigned int suspend;
         unsigned int runtime_suspend;
 
@@ -131,11 +131,11 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
 {
         unsigned int val = 0;
         volatile void __iomem *hdmi_io = NULL;
-        
+
         if(offset & 0x3){
                 return val;
         }
-       
+
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
@@ -149,7 +149,7 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
@@ -171,7 +171,7 @@ static void hdmi_audio_reg_write(struct tcc_hdmi_audio_dev *dev, unsigned int da
         if(offset & 0x3){
                 return;
         }
-       
+
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
@@ -185,7 +185,7 @@ static void hdmi_audio_reg_write(struct tcc_hdmi_audio_dev *dev, unsigned int da
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
@@ -257,7 +257,7 @@ static irqreturn_t audio_spdif_handler(int irq, void *dev_id)
                         // clear pending bit
                         hdmi_audio_reg_write(dev, status,HDMI_SS_SPDIF_IRQ_STATUS);
 
-                        switch(dev->spdif_struct.codingtype) { 
+                        switch(dev->spdif_struct.codingtype) {
                                 case SPDIF_NLPCM:
                                         // for NLPCM
                                         switch(status) {
@@ -347,10 +347,10 @@ static int setAudioInputPort(struct tcc_hdmi_audio_dev *dev, enum HDMIAudioPort 
                         case I2S_PORT:
                                 {
                                         /* disable SPDIF INT */
-                                        
+
                                         reg = hdmi_audio_reg_read(dev, HDMI_SS_INTC_CON);
                                         reg &= ~(1<<HDMI_IRQ_SPDIF);
-                                        
+
                                         hdmi_audio_reg_write(dev, reg, HDMI_SS_INTC_CON);
 
                                         // disable DSD
@@ -398,7 +398,7 @@ static int setAudioInputPort(struct tcc_hdmi_audio_dev *dev, enum HDMIAudioPort 
                                         reg = hdmi_audio_reg_read(dev, HDMI_SS_INTC_CON);
                                         reg |= (1<<HDMI_IRQ_SPDIF) | (1<<HDMI_IRQ_GLOBAL);
                                         hdmi_audio_reg_write(dev, reg, HDMI_SS_INTC_CON);
-                        
+
                                         // start to detect signal
                                         hdmi_audio_reg_write(dev, SPDIF_SIGNAL_DETECT, HDMI_SS_SPDIF_OP_CTRL);
                                         ret = 0;
@@ -412,7 +412,7 @@ static int setAudioInputPort(struct tcc_hdmi_audio_dev *dev, enum HDMIAudioPort 
                                         I2S_MUX_CH_2_LEFT_ENABLE | I2S_MUX_CH_2_RIGHT_ENABLE , HDMI_SS_I2S_MUX_CH);
 
                                         reg = ~(I2S_MUX_CUV_LEFT_ENABLE| I2S_MUX_CUV_RIGHT_ENABLE);
-                                        
+
                                         // enable CUV from right and left channel
                                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_MUX_CUV);
 
@@ -431,14 +431,17 @@ static int setAudioInputPort(struct tcc_hdmi_audio_dev *dev, enum HDMIAudioPort 
 static unsigned int io_ckc_get_dai_clock(unsigned int freq)
 {
         unsigned int clock = freq * 256;
-        
+
         switch (freq) {
-                case 44100: 
+                case 44100:
                         clock = (44100 * 256);
-                case 22000: 
+			break;
+                case 22000:
                         clock = (22050 * 256);
-                case 11000: 
+			break;
+                case 11000:
                         clock = (11025 * 256);
+			break;
                 default:
                         break;
         }
@@ -457,25 +460,25 @@ static void tcc_hdmi_audio_set_clock(struct tcc_hdmi_audio_dev *dev, unsigned in
                                         clk_disable_unprepare(dev->pclk);
                                         clk_set_rate(dev->pclk, XTIN_CLK_RATE);
                                         clk_rate = io_ckc_get_dai_clock(clock_rate) * 2;   /* set 512xfs for HDMI */
-                                        tcc_ckc_set_hdmi_audio_src(PERI_ADAI0); 
+                                        tcc_ckc_set_hdmi_audio_src(PERI_ADAI0);
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
                                         //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
                                 }
                                 break;
-                                
+
                         case SPDIF_PORT:
                                 clk_rate = io_ckc_get_dai_clock(clock_rate) * 2;   /* set 512xfs for HDMI */
 
                                 if(dev->spidf_pclk != NULL) {
                                         clk_set_rate(dev->spidf_pclk, clk_rate);
                                 }
-                                
+
                                 //To Do : SPDIF Clock Setting...
                                 if(dev->pclk != NULL) {
                                         clk_disable_unprepare(dev->pclk);
                                         clk_set_rate(dev->pclk, XTIN_CLK_RATE);
-                                        tcc_ckc_set_hdmi_audio_src(PERI_SPDIF3);		
+                                        tcc_ckc_set_hdmi_audio_src(PERI_SPDIF3);
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
                                         //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
@@ -622,7 +625,7 @@ static int setCUVCodingType(struct tcc_hdmi_audio_dev *dev, enum CUVAudioCoding 
                         default:
                                 break;
                 };
-                if(ret < 0) {       
+                if(ret < 0) {
                         pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_0);
@@ -731,7 +734,7 @@ static int setCUVChannelNum(struct tcc_hdmi_audio_dev *dev, enum CUVChannelNumbe
                         default:
                                 break;
                 }
-                if(ret < 0) {       
+                if(ret < 0) {
                         pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_2);
@@ -819,7 +822,7 @@ static int setCUVWordLength(struct tcc_hdmi_audio_dev *dev, enum CUVWordLength l
                         default:
                                 break;
                 }
-                if(ret < 0) {       
+                if(ret < 0) {
                         pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_4);
@@ -837,7 +840,7 @@ static int setCUVWordLength(struct tcc_hdmi_audio_dev *dev, enum CUVWordLength l
  */
 static int setI2SParameter(struct tcc_hdmi_audio_dev *dev, struct I2SParameter i2s)
 {
-        int ret = -1;   
+        int ret = -1;
         unsigned int reg;
 
         do {
@@ -928,7 +931,7 @@ static int audio_open(struct inode *inode, struct file *file)
         struct tcc_hdmi_audio_dev *dev = (struct tcc_hdmi_audio_dev *)(misc!=NULL)?dev_get_drvdata(misc->parent):NULL;
 
         if(dev != NULL) {
-                file->private_data = dev;  
+                file->private_data = dev;
                 if(++dev->open_cnt == 1) {
                         pr_info("%s clock enable\r\n", __func__);
                         if(dev->pclk != NULL)
@@ -949,7 +952,7 @@ static int audio_release(struct inode *inode, struct file *file)
         struct tcc_hdmi_audio_dev *dev = (struct tcc_hdmi_audio_dev *)(file!=NULL)?file->private_data:NULL;
 
         if(dev != NULL) {
-                file->private_data = dev; 
+                file->private_data = dev;
 
                 if(dev->open_cnt > 0) {
                         if(--dev->open_cnt == 0) {
@@ -962,7 +965,7 @@ static int audio_release(struct inode *inode, struct file *file)
                 }
                 pr_info("%s (%d)\n", __func__, dev->open_cnt);
                 ret = 0;
-        }         
+        }
         return ret;
 }
 
@@ -979,12 +982,12 @@ static ssize_t audio_write(struct file *file, const char __user *buffer, size_t 
 static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
         long ret = -EINVAL;
-        struct tcc_hdmi_audio_dev *dev = NULL;  
-        
+        struct tcc_hdmi_audio_dev *dev = NULL;
+
         if(file != NULL) {
                 dev = (struct tcc_hdmi_audio_dev *)file->private_data;
         }
-        
+
         if(dev != NULL) {
                 switch (cmd) {
                         case AUDIO_IOC_SET_AUDIOINPUT:
@@ -1005,7 +1008,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                         }
                         break;
-                        
+
                         case AUDIO_IOC_GET_AUDIOINPUT:
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_AUDIOINPUT)\n");
@@ -1034,7 +1037,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_GET_I2S_CUV_SET_SAMPLEFREQ:
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_CUV_SET_SAMPLEFREQ)\n");
@@ -1064,7 +1067,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_GET_I2S_CUV_SET_CODINGTYPE:
                                 {
                                         //          int val;
@@ -1113,7 +1116,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                                        
+
                                         if (setCUVChannelNum(dev, val) < 0) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
@@ -1123,7 +1126,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_GET_I2S_CUV_SET_CHANNELNUMBER:
                                 {
                                         //          int val;
@@ -1144,7 +1147,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                                        
+
                                         if (setCUVWordLength(dev, val) < 0) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
@@ -1152,7 +1155,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_SET_I2S_CUV_SET_WORDLENGTH_INFO:
                                 {
                                         int val;
@@ -1163,10 +1166,10 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         }
 
                                         dev->lpcm_word_length = val;
-                                        ret = 0;      
+                                        ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_GET_I2S_CUV_SET_WORDLENGTH_INFO:
                                 {
                                         //          int val;
@@ -1204,7 +1207,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         }
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_SET_SPDIF_SET_SAMPLEFREQ:
                                 {
                                         int val;
@@ -1213,7 +1216,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                                       
+
 
                                         if (setSPDIFSampleFreq(dev, val) < 0) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -1222,17 +1225,17 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_SET_I2S_PARAMETER:
                                 {
                                         struct I2SParameter i2s;
-                                        
+
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_PARAMETER)\n");
                                         if(copy_from_user(&i2s, (void __user *)arg, sizeof(struct I2SParameter))) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-                                        
+
                                         ret = setI2SParameter(dev, i2s);
                                         if(ret < 0) {
                                                 pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
@@ -1254,7 +1257,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
 
                         case AUDIO_IOC_UPDATE_I2S_CUV:
                                 {
@@ -1263,7 +1266,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_RESET_I2S_CUV:
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_RESET_I2S_CUV)\n");
@@ -1278,7 +1281,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case AUDIO_IOC_ENABLE_I2S_CLK_CON:
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_ENABLE_I2S_CLK_CON)\n");
@@ -1286,7 +1289,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         // disable audio
                                         hdmi_audio_reg_write(dev, I2S_CLK_CON_ENABLE,HDMI_SS_I2S_CLK_CON);
                                         ret = 0;
-                                }               
+                                }
                                 break;
 
                         case AUDIO_IOC_DISABLE_I2S_CLK_CON:
@@ -1298,7 +1301,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         default:
                             break;
                 }
@@ -1320,32 +1323,32 @@ static const struct file_operations audio_fops =
 static int hdmi_audio_suspend(struct device *dev)
 {
         struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-                
-        if(tcc_hdmi_audio_dev != NULL) {    
+
+        if(tcc_hdmi_audio_dev != NULL) {
                 if(tcc_hdmi_audio_dev->runtime_suspend) {
                         pr_info("hdmi audio runtime suspend\r\n");
                 } else {
                         pr_info("hdmi audio suspend\r\n");
                 }
                 if(!tcc_hdmi_audio_dev->suspend) {
-                        tcc_hdmi_audio_dev->suspend = 1 ; 
-                }                
-        }        
+                        tcc_hdmi_audio_dev->suspend = 1 ;
+                }
+        }
         return 0;
 }
 
 static int hdmi_audio_resume(struct device *dev)
 {
         struct tcc_hdmi_audio_dev *tcc_hdmi_audio_dev = (struct tcc_hdmi_audio_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-                
-        if(tcc_hdmi_audio_dev != NULL) {    
+
+        if(tcc_hdmi_audio_dev != NULL) {
                 if(tcc_hdmi_audio_dev->runtime_suspend) {
                         pr_info("hdmi audio runtime suspend\r\n");
                 } else {
                         pr_info("hdmi audio suspend\r\n");
                 }
                 if(tcc_hdmi_audio_dev->suspend  && !tcc_hdmi_audio_dev->runtime_suspend) {
-                        tcc_hdmi_audio_dev->suspend = 0; 
+                        tcc_hdmi_audio_dev->suspend = 0;
                 }
         }
         return 0;
@@ -1385,7 +1388,7 @@ static int audio_remove(struct platform_device *pdev)
 {
         unsigned int reg;
         struct tcc_hdmi_audio_dev *dev = NULL;
-                                
+
         if(pdev != NULL) {
                 dev = (struct tcc_hdmi_audio_dev *)dev_get_drvdata(pdev->dev.parent);
 
@@ -1408,9 +1411,9 @@ static int audio_remove(struct platform_device *pdev)
 static int audio_probe(struct platform_device *pdev)
 {
         int ret =  -ENODEV;
-        
+
         struct device_node *np;
-        
+
         struct tcc_hdmi_audio_dev *dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_audio_dev), GFP_KERNEL);
         do {
                 if (dev == NULL) {
@@ -1418,7 +1421,7 @@ static int audio_probe(struct platform_device *pdev)
                 	break;
                 }
                 dev->pdev = &pdev->dev;
-                
+
                 dev->hclk = of_clk_get(pdev->dev.of_node, 1);
                 dev->pclk = of_clk_get(pdev->dev.of_node, 0);
 
@@ -1435,7 +1438,7 @@ static int audio_probe(struct platform_device *pdev)
                 }
 
                 np = of_parse_phandle(pdev->dev.of_node,"spdif-block", 0);
-                if (np) 
+                if (np)
                 {
                         dev->spidf_pclk = of_clk_get(np, 0);
                         if (IS_ERR_OR_NULL(dev->spidf_pclk)){
@@ -1490,7 +1493,7 @@ static int audio_probe(struct platform_device *pdev)
                         break;
                 }
                 pr_info("%s:HDMI Audio driver %s\n", __func__, SRC_VERSION);
-                
+
                 dev_set_drvdata(dev->pdev, dev);
 
                 dev->spdif_struct.state = -1;
@@ -1513,7 +1516,7 @@ static int audio_probe(struct platform_device *pdev)
         if(ret < 0) {
                 audio_remove(pdev);
         }
-        
+
         return ret;
 }
 
