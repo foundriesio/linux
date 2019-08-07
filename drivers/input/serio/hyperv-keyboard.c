@@ -83,8 +83,8 @@ struct synth_kbd_keystroke {
 
 #define HK_MAXIMUM_MESSAGE_SIZE 256
 
-#define KBD_VSC_SEND_RING_BUFFER_SIZE		(10 * PAGE_SIZE)
-#define KBD_VSC_RECV_RING_BUFFER_SIZE		(10 * PAGE_SIZE)
+#define KBD_VSC_SEND_RING_BUFFER_SIZE		(40 * 1024)
+#define KBD_VSC_RECV_RING_BUFFER_SIZE		(40 * 1024)
 
 #define XTKBD_EMUL0     0xe0
 #define XTKBD_EMUL1     0xe1
@@ -440,5 +440,7 @@ static void __exit hv_kbd_exit(void)
 }
 
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Microsoft Hyper-V Synthetic Keyboard Driver");
+
 module_init(hv_kbd_init);
 module_exit(hv_kbd_exit);
