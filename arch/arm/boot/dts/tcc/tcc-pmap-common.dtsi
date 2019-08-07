@@ -361,8 +361,8 @@
  * Default Reserved Memory
  *-----------------------------------------------------------
  */
-#define SIZE_SECURE_EXP		0x00800000
-#define SIZE_ENCED_TS			0x00800000
+#define SIZE_SECURE_EXP			0x00000000
+#define SIZE_ENCED_TS			0x00000000
 #define SIZE_VIDEO_THUMB		0x00000000
 #define SIZE_VIDEO_SBACKUP		0x00000000
 
