@@ -258,6 +258,52 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
         return ret ;
 }
 
+#ifdef CONFIG_TCC_HDCP2_CORE_DRIVER
+extern void dwc_hdcp_avmute(int mute);
+void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
+{
+	static uint32_t en_mask = 0;
+
+	if (caller > 1)
+		return;
+	if (enable)
+		en_mask |= (1<<caller);
+	else
+		en_mask &= ~(1<<caller);
+
+	if (enable)
+		dwc_hdcp_avmute(1);
+
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
+                }
+
+                /* Suspend status */
+                if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
+                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        break;
+                }
+
+                /* Power status */
+                if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        break;
+                }
+
+                packets_AvMute(dev, en_mask ? 1 : 0);
+        } while(0);
+
+	if (!enable)
+		dwc_hdcp_avmute(0);
+}
+
+void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
+{
+	hdmi_api_avmute_core(dev, enable, 0);
+}
+#else /* CONFIG_TCC_HDCP2_CORE_DRIVER */
 
 void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
@@ -282,5 +328,6 @@ void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
                 packets_AvMute(dev, enable);
         } while(0);
 }
+#endif /* CONFIG_TCC_HDCP2_CORE_DRIVER */
 EXPORT_SYMBOL(hdmi_api_avmute);
 
