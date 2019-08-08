@@ -585,6 +585,7 @@ static struct qeth_reply *qeth_alloc_reply(struct qeth_card *card)
 	if (reply) {
 		atomic_set(&reply->refcnt, 1);
 		atomic_set(&reply->received, 0);
+		init_waitqueue_head(&reply->wait_q);
 		reply->card = card;
 	}
 	return reply;
@@ -601,6 +602,26 @@ static void qeth_put_reply(struct qeth_reply *reply)
 	WARN_ON(atomic_read(&reply->refcnt) <= 0);
 	if (atomic_dec_and_test(&reply->refcnt))
 		kfree(reply);
+}
+
+static void qeth_enqueue_reply(struct qeth_card *card, struct qeth_reply *reply)
+{
+	spin_lock_irq(&card->lock);
+	list_add_tail(&reply->list, &card->cmd_waiter_list);
+	spin_unlock_irq(&card->lock);
+}
+
+static void qeth_dequeue_reply(struct qeth_card *card, struct qeth_reply *reply)
+{
+	spin_lock_irq(&card->lock);
+	list_del(&reply->list);
+	spin_unlock_irq(&card->lock);
+}
+
+static void qeth_notify_reply(struct qeth_reply *reply)
+{
+	atomic_inc(&reply->received);
+	wake_up(&reply->wait_q);
 }
 
 static void qeth_issue_ipa_msg(struct qeth_ipa_cmd *cmd, int rc,
@@ -699,19 +720,15 @@ static struct qeth_ipa_cmd *qeth_check_ipa_data(struct qeth_card *card,
 
 void qeth_clear_ipacmd_list(struct qeth_card *card)
 {
-	struct qeth_reply *reply, *r;
+	struct qeth_reply *reply;
 	unsigned long flags;
 
 	QETH_CARD_TEXT(card, 4, "clipalst");
 
 	spin_lock_irqsave(&card->lock, flags);
-	list_for_each_entry_safe(reply, r, &card->cmd_waiter_list, list) {
-		qeth_get_reply(reply);
+	list_for_each_entry(reply, &card->cmd_waiter_list, list) {
 		reply->rc = -EIO;
-		atomic_inc(&reply->received);
-		list_del_init(&reply->list);
-		wake_up(&reply->wait_q);
-		qeth_put_reply(reply);
+		qeth_notify_reply(reply);
 	}
 	spin_unlock_irqrestore(&card->lock, flags);
 }
@@ -833,10 +850,11 @@ static void qeth_send_control_data_cb(struct qeth_channel *channel,
 		  struct qeth_cmd_buffer *iob)
 {
 	struct qeth_card *card;
-	struct qeth_reply *reply, *r;
+	struct qeth_reply *reply = NULL;
+	struct qeth_reply *r;
 	struct qeth_ipa_cmd *cmd;
 	unsigned long flags;
-	int keep_reply;
+	int keep_reply = 0;
 	int rc = 0;
 
 	card = CARD_FROM_CDEV(channel->ccwdev);
@@ -865,44 +883,40 @@ static void qeth_send_control_data_cb(struct qeth_channel *channel,
 		goto out;
 	}
 
+	/* match against pending cmd requests */
 	spin_lock_irqsave(&card->lock, flags);
-	list_for_each_entry_safe(reply, r, &card->cmd_waiter_list, list) {
-		if ((reply->seqno == QETH_IDX_COMMAND_SEQNO) ||
-		    ((cmd) && (reply->seqno == cmd->hdr.seqno))) {
+	list_for_each_entry(r, &card->cmd_waiter_list, list) {
+		if ((r->seqno == QETH_IDX_COMMAND_SEQNO) ||
+		    (cmd && (r->seqno == cmd->hdr.seqno))) {
+			reply = r;
+			/* take the object outside the lock */
 			qeth_get_reply(reply);
-			list_del_init(&reply->list);
-			spin_unlock_irqrestore(&card->lock, flags);
-			keep_reply = 0;
-			if (reply->callback != NULL) {
-				if (cmd) {
-					reply->offset = (__u16)((char *)cmd -
-							(char *)iob->data);
-					keep_reply = reply->callback(card,
-							reply,
-							(unsigned long)cmd);
-				} else
-					keep_reply = reply->callback(card,
-							reply,
-							(unsigned long)iob);
-			}
-			if (cmd)
-				reply->rc = (u16) cmd->hdr.return_code;
-			else if (iob->rc)
-				reply->rc = iob->rc;
-			if (keep_reply) {
-				spin_lock_irqsave(&card->lock, flags);
-				list_add_tail(&reply->list,
-					      &card->cmd_waiter_list);
-				spin_unlock_irqrestore(&card->lock, flags);
-			} else {
-				atomic_inc(&reply->received);
-				wake_up(&reply->wait_q);
-			}
-			qeth_put_reply(reply);
-			goto out;
+			break;
 		}
 	}
 	spin_unlock_irqrestore(&card->lock, flags);
+
+	if (!reply)
+		goto out;
+
+	if (reply->callback) {
+		if (cmd) {
+			reply->offset = (u16)((char *)cmd - (char *)iob->data);
+			keep_reply = reply->callback(card, reply,
+						     (unsigned long)cmd);
+		} else
+			keep_reply = reply->callback(card, reply,
+						     (unsigned long)iob);
+	}
+	if (cmd)
+		reply->rc = (u16) cmd->hdr.return_code;
+	else if (iob->rc)
+		reply->rc = iob->rc;
+
+	if (!keep_reply)
+		qeth_notify_reply(reply);
+	qeth_put_reply(reply);
+
 out:
 	memcpy(&card->seqno.pdu_hdr_ack,
 		QETH_PDU_HEADER_SEQ_NO(iob->data),
@@ -2105,8 +2119,6 @@ int qeth_send_control_data(struct qeth_card *card, int len,
 	reply->callback = reply_cb;
 	reply->param = reply_param;
 
-	init_waitqueue_head(&reply->wait_q);
-
 	while (atomic_cmpxchg(&card->write.irq_pending, 0, 1)) ;
 
 	if (IS_IPA(iob->data)) {
@@ -2120,9 +2132,7 @@ int qeth_send_control_data(struct qeth_card *card, int len,
 	}
 	qeth_prepare_control_data(card, len, iob);
 
-	spin_lock_irqsave(&card->lock, flags);
-	list_add_tail(&reply->list, &card->cmd_waiter_list);
-	spin_unlock_irqrestore(&card->lock, flags);
+	qeth_enqueue_reply(card, reply);
 	timeout = jiffies + event_timeout;
 
 	QETH_CARD_TEXT(card, 6, "noirqpnd");
@@ -2134,10 +2144,8 @@ int qeth_send_control_data(struct qeth_card *card, int len,
 		QETH_DBF_MESSAGE(2, "qeth_send_control_data on device %x: ccw_device_start rc = %i\n",
 				 CARD_DEVID(card), rc);
 		QETH_CARD_TEXT_(card, 2, " err%d", rc);
-		spin_lock_irqsave(&card->lock, flags);
-		list_del_init(&reply->list);
+		qeth_dequeue_reply(card, reply);
 		qeth_put_reply(reply);
-		spin_unlock_irqrestore(&card->lock, flags);
 		qeth_release_buffer(iob->channel, iob);
 		atomic_set(&card->write.irq_pending, 0);
 		wake_up(&card->wait_q);
@@ -2159,19 +2167,15 @@ int qeth_send_control_data(struct qeth_card *card, int len,
 		}
 	}
 
+	qeth_dequeue_reply(card, reply);
 	rc = reply->rc;
 	qeth_put_reply(reply);
 	return rc;
 
 time_err:
-	reply->rc = -ETIME;
-	spin_lock_irqsave(&reply->card->lock, flags);
-	list_del_init(&reply->list);
-	spin_unlock_irqrestore(&reply->card->lock, flags);
-	atomic_inc(&reply->received);
-	rc = reply->rc;
+	qeth_dequeue_reply(card, reply);
 	qeth_put_reply(reply);
-	return rc;
+	return -ETIME;
 }
 EXPORT_SYMBOL_GPL(qeth_send_control_data);
 
