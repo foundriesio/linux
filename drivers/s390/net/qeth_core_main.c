@@ -810,11 +810,26 @@ void qeth_release_buffer(struct qeth_channel *channel,
 	memset(iob->data, 0, QETH_BUFSIZE);
 	iob->state = BUF_STATE_FREE;
 	iob->callback = qeth_send_control_data_cb;
+	if (iob->reply) {
+		qeth_put_reply(iob->reply);
+		iob->reply = NULL;
+	}
 	iob->rc = 0;
 	spin_unlock_irqrestore(&channel->iob_lock, flags);
 	wake_up(&channel->wait_q);
 }
 EXPORT_SYMBOL_GPL(qeth_release_buffer);
+
+static void qeth_cancel_cmd(struct qeth_cmd_buffer *iob, int rc)
+{
+	struct qeth_reply *reply = iob->reply;
+
+	if (reply) {
+		reply->rc = rc;
+		qeth_notify_reply(reply);
+	}
+	qeth_release_buffer(iob->channel, iob);
+}
 
 static struct qeth_cmd_buffer *qeth_get_buffer(struct qeth_channel *channel)
 {
@@ -1076,7 +1091,7 @@ static int qeth_get_problem(struct ccw_device *cdev, struct irb *irb)
 	return 0;
 }
 
-static long __qeth_check_irb_error(struct ccw_device *cdev,
+static int __qeth_check_irb_error(struct ccw_device *cdev,
 		unsigned long intparm, struct irb *irb)
 {
 	struct qeth_card *card;
@@ -1092,7 +1107,7 @@ static long __qeth_check_irb_error(struct ccw_device *cdev,
 				 CCW_DEVID(cdev));
 		QETH_CARD_TEXT(card, 2, "ckirberr");
 		QETH_CARD_TEXT_(card, 2, "  rc%d", -EIO);
-		break;
+		return -EIO;
 	case -ETIMEDOUT:
 		dev_warn(&cdev->dev, "A hardware operation timed out"
 			" on the device\n");
@@ -1104,14 +1119,14 @@ static long __qeth_check_irb_error(struct ccw_device *cdev,
 				wake_up(&card->wait_q);
 			}
 		}
-		break;
+		return -ETIMEDOUT;
 	default:
 		QETH_DBF_MESSAGE(2, "unknown error %ld on channel %x\n",
 				 PTR_ERR(irb), CCW_DEVID(cdev));
 		QETH_CARD_TEXT(card, 2, "ckirberr");
 		QETH_CARD_TEXT(card, 2, "  rc???");
+		return PTR_ERR(irb);
 	}
-	return PTR_ERR(irb);
 }
 
 static void qeth_irq(struct ccw_device *cdev, unsigned long intparm,
@@ -1143,10 +1158,11 @@ static void qeth_irq(struct ccw_device *cdev, unsigned long intparm,
 	if (qeth_intparm_is_iob(intparm))
 		iob = (struct qeth_cmd_buffer *) __va((addr_t)intparm);
 
-	if (__qeth_check_irb_error(cdev, intparm, irb)) {
+	rc = __qeth_check_irb_error(cdev, intparm, irb);
+	if (rc) {
 		/* IO was terminated, free its resources. */
 		if (iob)
-			qeth_release_buffer(iob->channel, iob);
+			qeth_cancel_cmd(iob, rc);
 		atomic_set(&channel->irq_pending, 0);
 		wake_up(&card->wait_q);
 		return;
@@ -1202,7 +1218,7 @@ static void qeth_irq(struct ccw_device *cdev, unsigned long intparm,
 		if (rc) {
 			card->read_or_write_problem = 1;
 			if (iob)
-				qeth_release_buffer(iob->channel, iob);
+				qeth_cancel_cmd(iob, rc);
 			qeth_clear_ipacmd_list(card);
 			qeth_schedule_recovery(card);
 			goto out;
@@ -2118,6 +2134,10 @@ int qeth_send_control_data(struct qeth_card *card, int len,
 	}
 	reply->callback = reply_cb;
 	reply->param = reply_param;
+
+	/* pairs with qeth_release_buffer(): */
+	qeth_get_reply(reply);
+	iob->reply = reply;
 
 	while (atomic_cmpxchg(&card->write.irq_pending, 0, 1)) ;
 
