@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.3.5d"
+#define HDMI_DRV_VERSION        "2.0.0d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.3.5"
+#define HDMI_DRV_VERSION        "2.0.0"
 #endif
 
 // HDMI COMPONENTS
@@ -124,15 +124,13 @@ struct hdmi_tx_ctrl {
         unsigned char hdcp_on;
         unsigned char data_enable_polarity;
 
-        /*
-         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
-         * 340 MHz or when HDCP is enabled.
-         * When HDCP Keepout is set to 1, the control period configuration is changed.
-         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
-         * of swinging HPD.
-         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
-         * if this SINK is a VIZIO TV. */
-        unsigned char sink_is_vizio;
+        /* In general, HDCP Keepout is set to 1 when TMDS character rate is higher
+	 * than 340 MHz or when HDCP is enabled.
+	 * If HDCP Keepout is set to 1 then the control period configuration is changed
+	 * in order to supports scramble and HDCP encryption. But some SINK needs this
+	 * packet configuration always even if HDMI ouput is not scrambled or HDCP is
+	 * not enabled. */
+        unsigned char sink_need_hdcp_keepout;
 
         unsigned int pixel_clock;
 };

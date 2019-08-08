@@ -239,10 +239,10 @@ static void tcc_output_starter_hdmi_start(unsigned int display_device)
                 else {
                         videoParam->mScrambling = 0;
                 }
-                if(edid_is_sink_vizio() == 1) {
-                        hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 1;
+                if(edid_is_sink_need_hdcp_keepout() == 1) {
+                        hdmi_dev->hdmi_tx_ctrl.sink_need_hdcp_keepout = 1;
                 } else {
-                        hdmi_dev->hdmi_tx_ctrl.sink_is_vizio = 0;
+                        hdmi_dev->hdmi_tx_ctrl.sink_need_hdcp_keepout = 0;
                 }
                 memcpy(hdmi_dev->videoParam, videoParam, sizeof(videoParams_t));
                 memcpy(hdmi_dev->audioParam, audioParam, sizeof(audioParams_t));
