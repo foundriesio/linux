@@ -43,6 +43,8 @@ Optional properties:
 	2nd cell: clear register offset within SYSCFG
 	3rd cell: register bitmask for FMP clear bit
   For STM32MP1 family only.
+- st,smbus-alert: enable the SMBus Alert feature
+- st,smbus-host-notify: enable the SMBus Host-Notify feature
 
 Example:
 
