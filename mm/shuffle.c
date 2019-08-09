@@ -40,7 +40,7 @@ extern int shuffle_show(char *buffer, const struct kernel_param *kp)
 }
 
 static __meminit int shuffle_store(const char *val,
-		const struct kernel_param *kp)
+		struct kernel_param *kp)
 {
 	int rc = param_set_bool(val, kp);
 
