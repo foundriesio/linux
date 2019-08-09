@@ -750,6 +750,13 @@ struct btrfs_delayed_root;
  */
 #define BTRFS_FS_NEED_ASYNC_COMMIT		17
 
+/*
+ * Indicate that balance has been set up from the ioctl and is in the main
+ * phase. The fs_info::balance_ctl is initialized.
+ * Set and cleared while holding fs_info::balance_mutex.
+ */
+#define BTRFS_FS_BALANCE_RUNNING		18
+
 struct btrfs_fs_info {
 	u8 fsid[BTRFS_FSID_SIZE];
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
@@ -1030,7 +1037,6 @@ struct btrfs_fs_info {
 	/* restriper state */
 	spinlock_t balance_lock;
 	struct mutex balance_mutex;
-	atomic_t balance_running;
 	atomic_t balance_pause_req;
 	atomic_t balance_cancel_req;
 	struct btrfs_balance_control *balance_ctl;
@@ -1145,6 +1151,12 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+
+	/*
+	 * Number of send operations in progress.
+	 * Updated while holding fs_info::balance_mutex.
+	 */
+	int send_in_progress;
 };
 
 static inline struct btrfs_fs_info *btrfs_sb(struct super_block *sb)
@@ -1321,6 +1333,12 @@ struct btrfs_root {
 	 * manipulation with the read-only status via SUBVOL_SETFLAGS
 	 */
 	int send_in_progress;
+	/*
+	 * Number of currently running deduplication operations that have a
+	 * destination inode belonging to this root. Protected by the lock
+	 * root_item_lock.
+	 */
+	int dedupe_in_progress;
 	struct btrfs_subvolume_writers *subv_writers;
 	atomic_t will_be_snapshoted;
 

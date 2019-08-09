@@ -2208,7 +2208,6 @@ static void btrfs_init_balance(struct btrfs_fs_info *fs_info)
 {
 	spin_lock_init(&fs_info->balance_lock);
 	mutex_init(&fs_info->balance_mutex);
-	atomic_set(&fs_info->balance_running, 0);
 	atomic_set(&fs_info->balance_pause_req, 0);
 	atomic_set(&fs_info->balance_cancel_req, 0);
 	fs_info->balance_ctl = NULL;
@@ -2665,6 +2664,8 @@ int open_ctree(struct super_block *sb,
 	fs_info->nodesize = 4096;
 	fs_info->sectorsize = 4096;
 	fs_info->stripesize = 4096;
+
+	fs_info->send_in_progress = 0;
 
 	ret = btrfs_alloc_stripe_hash_table(fs_info);
 	if (ret) {
