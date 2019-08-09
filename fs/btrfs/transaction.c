@@ -1921,6 +1921,18 @@ static void cleanup_transaction(struct btrfs_trans_handle *trans,
 	kmem_cache_free(btrfs_trans_handle_cachep, trans);
 }
 
+/*
+ * Release reserved delayed ref space of all pending block groups of the
+ * transaction and remove them from the list
+ */
+static void btrfs_cleanup_pending_block_groups(struct btrfs_trans_handle *trans)
+{
+       struct btrfs_block_group_cache *block_group, *tmp;
+
+       list_for_each_entry_safe(block_group, tmp, &trans->new_bgs, bg_list)
+               list_del_init(&block_group->bg_list);
+}
+
 static inline int btrfs_start_delalloc_flush(struct btrfs_fs_info *fs_info)
 {
 	if (btrfs_test_opt(fs_info, FLUSHONCOMMIT))
@@ -2322,6 +2334,7 @@ scrub_continue:
 	btrfs_scrub_continue(fs_info);
 cleanup_transaction:
 	btrfs_trans_release_metadata(trans, fs_info);
+	btrfs_cleanup_pending_block_groups(trans);
 	btrfs_trans_release_chunk_metadata(trans);
 	trans->block_rsv = NULL;
 	btrfs_warn(fs_info, "Skipping commit of aborted transaction.");
