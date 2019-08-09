@@ -1,5 +1,5 @@
 
-ccflags-y		:= -I $(srctree)/drivers/scsi
+ccflags-y		:= -Idrivers/scsi
 
 # 16-bit client drivers
 obj-$(CONFIG_PCMCIA_QLOGIC)	+= qlogic_cs.o
