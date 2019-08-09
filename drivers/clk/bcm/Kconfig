@@ -46,3 +46,10 @@ config CLK_BCM_NS2
 	default ARCH_BCM_IPROC
 	help
 	  Enable common clock framework support for the Broadcom Northstar 2 SoC
+
+config CLK_RASPBERRYPI
+	tristate "Raspberry Pi firmware based clock support"
+	depends on RASPBERRYPI_FIRMWARE || (COMPILE_TEST && !RASPBERRYPI_FIRMWARE)
+	help
+	  Enable common clock framework support for Raspberry Pi's firmware
+	  dependent clocks
