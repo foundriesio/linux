@@ -3229,6 +3229,8 @@ static inline void btrfs_force_ra(struct address_space *mapping,
 	page_cache_sync_readahead(mapping, ra, file, offset, req_size);
 }
 
+void __btrfs_del_delalloc_inode(struct btrfs_root *root,
+				struct btrfs_inode *inode);
 struct inode *btrfs_lookup_dentry(struct inode *dir, struct dentry *dentry);
 int btrfs_set_inode_index(struct btrfs_inode *dir, u64 *index);
 int btrfs_unlink_inode(struct btrfs_trans_handle *trans,
