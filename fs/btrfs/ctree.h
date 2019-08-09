@@ -753,6 +753,7 @@ struct btrfs_delayed_root;
 /*
  * Indicate that balance has been set up from the ioctl and is in the main
  * phase. The fs_info::balance_ctl is initialized.
+ * Set and cleared while holding fs_info::balance_mutex.
  */
 #define BTRFS_FS_BALANCE_RUNNING		18
 
@@ -1150,6 +1151,12 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+
+	/*
+	 * Number of send operations in progress.
+	 * Updated while holding fs_info::balance_mutex.
+	 */
+	int send_in_progress;
 };
 
 static inline struct btrfs_fs_info *btrfs_sb(struct super_block *sb)
