@@ -17,7 +17,7 @@
 #include <asm/unistd.h>
 #include <asm/msr.h>
 #include <asm/pvclock.h>
-#include <asm/mshyperv.h>
+#include <clocksource/hyperv_timer.h>
 #include <linux/math64.h>
 #include <linux/time.h>
 #include <linux/kernel.h>
