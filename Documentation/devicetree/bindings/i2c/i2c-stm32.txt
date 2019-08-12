@@ -8,6 +8,7 @@ Required properties:
 - interrupts: Must contain the interrupt id for I2C event and then the
   interrupt id for I2C error.
   Optionnaly a wakeup interrupt may be specified.
+- interrupt-names: Must be "event", "error" and optionnaly "wakeup".
 - resets: Must contain the phandle to the reset controller.
 - clocks: Must contain the input clock of the I2C instance.
 - A pinctrl state named "default" must be defined to set pins in mode of
