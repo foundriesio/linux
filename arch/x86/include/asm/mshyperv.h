@@ -242,7 +242,6 @@ bool hv_vcpu_is_preempted(int vcpu);
 #else
 static inline void hv_apic_init(void) {}
 #endif
-#include <asm-generic/mshyperv.h>
 
 #else /* CONFIG_HYPERV */
 static inline void hyperv_init(void) {}
@@ -261,5 +260,6 @@ static inline int hyperv_flush_guest_mapping_range(u64 as,
 	return -1;
 }
 #endif /* CONFIG_HYPERV */
+#include <asm-generic/mshyperv.h>
 
 #endif
