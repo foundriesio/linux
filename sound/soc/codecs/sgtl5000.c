@@ -1437,9 +1437,35 @@ static int sgtl5000_remove(struct snd_soc_codec *codec)
 	return 0;
 }
 
+static int sgtl5000_suspend(struct snd_soc_codec *codec)
+{
+	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+
+	clk_disable_unprepare(sgtl5000->mclk);
+
+	return 0;
+}
+
+static int sgtl5000_resume(struct snd_soc_codec *codec)
+{
+	int ret;
+	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+
+	ret = clk_prepare_enable(sgtl5000->mclk);
+	if (ret)
+		dev_err(codec->dev, "Error enabling clock %d\n", ret);
+
+	/* Need 8 clocks before I2C accesses */
+	udelay(1);
+
+	return ret;
+}
+
 static const struct snd_soc_codec_driver sgtl5000_driver = {
 	.probe = sgtl5000_probe,
 	.remove = sgtl5000_remove,
+	.suspend = sgtl5000_suspend,
+	.resume = sgtl5000_resume,
 	.set_bias_level = sgtl5000_set_bias_level,
 	.suspend_bias_off = true,
 	.component_driver = {
