@@ -26,7 +26,7 @@
 #ifndef _VPU_TYPE_H_
 #define _VPU_TYPE_H_
 
-#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC570X)
+#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC901X)
 #define VPU_D6
 #else
 #define VPU_C7

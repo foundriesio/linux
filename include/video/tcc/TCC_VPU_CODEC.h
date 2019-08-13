@@ -27,7 +27,7 @@
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X)
 #include "TCC_VPU_C7_CODEC.h"
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC897X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC901X)
 #include "TCC_VPU_D6.h"
 #endif
 

@@ -13,3 +13,5 @@ obj-$(CONFIG_ARCH_TCC803X)	+= clk-tcc803x-sysfs.o
 else
 obj-$(CONFIG_ARCH_TCC803X)	+= clk-tcc803x-a7s.o
 endif
+obj-$(CONFIG_ARCH_TCC901X)	+= clk-tcc901x.o
+obj-$(CONFIG_ARCH_TCC901X)	+= clk-tcc901x-sysfs.o

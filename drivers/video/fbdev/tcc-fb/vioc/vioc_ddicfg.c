@@ -39,7 +39,7 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 		val |= ((set & 0x1) << PWDN_VIOC_SHIFT);
 		__raw_writel(val, reg + DDI_PWDN);
 		break;
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	case DDICFG_TYPE_NTSCPAL:
 		val = (__raw_readl(reg + DDI_PWDN) & ~(PWDN_NTSCPAL_MASK));
 		val |= ((set & 0x1) << PWDN_NTSCPAL_SHIFT);
@@ -112,7 +112,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 		val |= ((set & 0x1) << SWRESET_VIOC_SHIFT);
 		__raw_writel(val, reg + SWRESET);
 		break;
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	case DDICFG_TYPE_NTSCPAL:
 		val = (__raw_readl(reg + SWRESET) & ~(SWRESET_NTSCPAL_MASK));
 		val |= ((set & 0x1) << SWRESET_NTSCPAL_SHIFT);
@@ -158,7 +158,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 	dprintk("type(%d) set(%d)\n", type, set);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
 {
         unsigned int val;
@@ -269,7 +269,7 @@ void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 				     enum dac_pwdn_status dac_status)
 {
@@ -369,7 +369,7 @@ static void VIOC_DDICONFIG_TVOVENC_SetEnable(volatile void __iomem *reg,
 static void VIOC_DDICONFIG_Select_TVEncoder(volatile void __iomem *reg,
 				      unsigned int tve_type)
 {
-	#if defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t val;
 
 	dprintk("%s(%d)\n", __func__, tve_type);

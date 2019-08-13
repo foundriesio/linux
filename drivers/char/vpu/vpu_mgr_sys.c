@@ -54,7 +54,7 @@ void vmgr_enable_clock(int only_clk_ctrl)
     if (vbus_xoda_clk)
         clk_prepare_enable(vbus_xoda_clk);
 
-#if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
+#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
 	if(!only_clk_ctrl)
     {
         int ret = vpu_optee_open();
@@ -84,7 +84,7 @@ void vmgr_disable_clock(int only_clk_ctrl)
     if (fbus_vbus_clk)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
-#if defined(CONFIG_ARCH_TCC899X) && defined(USE_TA_LOADING)
+#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
 	if(!only_clk_ctrl)
 	    vpu_optee_close();
 #endif

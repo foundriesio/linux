@@ -643,7 +643,7 @@ endif # SDR_PLATFORM_DRIVERS
 
 config PLATFORM_HWDEMUX
 	tristate "Telechips hardware demux"
-	depends on (ARCH_TCC899X || ARCH_TCC803X) && TCC_SECURE_PROCESSOR
+	depends on (ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X) && TCC_SECURE_PROCESSOR
 	default y
 	help
 	  Say Y here if you want Telechips hardware demux, using ARM

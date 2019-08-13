@@ -9,7 +9,7 @@ if TCC_VPU_DRV
 
 config SUPPORT_TCC_WAVE512_4K_D2
     bool "support HEVC/VP9 Decoder using WAVE512"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default y
 	help
 	Enable HEVC/VP9 codec using WAVE512.
@@ -69,7 +69,7 @@ config SUPPORT_TCC_JPU
 choice
         prompt "Max Frame Size (W x H)"
         default DEC_MAX_FRAME_SIZE_1
-		depends on (ARCH_TCC899X)
+		depends on (ARCH_TCC899X || ARCH_TCC901X)
         help
           max frame size(width/height) for decoder
 

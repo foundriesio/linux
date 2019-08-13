@@ -403,7 +403,7 @@ void tca_gmac_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr)
 #define A2		Hw19
 #define A1		Hw18
 #define A0		Hw17
-#if defined (CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define SEC 	Hw15
 #else
 #define SEC	Hw16

@@ -155,7 +155,7 @@ typedef struct dolby_layer_str_t
 #endif
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define DIV_FB_SC       (VIOC_SCALER4)
 #else
 #define DIV_FB_SC       (VIOC_SCALER3)
@@ -949,7 +949,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	int ret = 0;
 	int vioc_clock_value = 0;
 	struct device_node *np_output = NULL;
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 	#endif
 
@@ -971,7 +971,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	{
 		np_output = of_find_compatible_node(NULL, NULL, "telechips,tcc-composite");
 
-		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, 0);
 		#endif
 	}
@@ -979,7 +979,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 	{
 		np_output = of_find_compatible_node(NULL, NULL, "telechips,tcc-component");
 
-		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, 0);
 		#endif
 	}
@@ -1015,7 +1015,7 @@ void tca_vioc_displayblock_powerOn(struct tcc_dp_device *pDisplayInfo, int speci
 
 void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo)
 {
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	volatile void __iomem *pDDICONFIG = VIOC_DDICONFIG_GetAddress();
 #endif
 
@@ -1031,7 +1031,7 @@ void tca_vioc_displayblock_powerOff(struct tcc_dp_device *pDisplayInfo)
 		VIOC_V_DV_Power(0);
 	}
 #endif
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_DDICONFIG_SetPeriClock(pDDICONFIG, pDisplayInfo->DispNum, 0);
 #endif
 
@@ -1302,7 +1302,7 @@ void tca_vioc_displayblock_extra_set(struct tcc_dp_device *pDisplayInfo, struct 
                 pr_info("%s pxdw(%d), swapbf(%d), r2ymd(%d), r2y(%d)\r\n",
                         __func__, tcc_fb_extra_data->pxdw, tcc_fb_extra_data->swapbf, tcc_fb_extra_data->r2ymd, tcc_fb_extra_data->r2y);
                 VIOC_DISP_SetPXDW(pDISP, tcc_fb_extra_data->pxdw);
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
                 VIOC_DISP_SetSwapaf(pDISP, tcc_fb_extra_data->swapbf);
 #elif defined(CONFIG_ARCH_TCC897X)
 				VIOC_DISP_SetSWAP(pDISP, tcc_fb_extra_data->swapbf);
@@ -1471,7 +1471,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 
 	VIOC_DISP_SetControlConfigure(pDISP, &stCtrlParam);
 
-        #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+        #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_DISP_SetSwapbf(pDISP, 0);
         #endif
 	VIOC_DISP_SetSize (pDISP, width, height);
@@ -1491,7 +1491,7 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	else
 		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x80, 0x80, 0x00);
 #else
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0x3ff);
 	#endif
 #endif
@@ -1713,7 +1713,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         	VIOC_DISP_SetTimingParam(pDISP, pstTiming);
         	VIOC_DISP_SetControlConfigure(pDISP, pstCtrl);
 
-			#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+			#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
         	if (outDevice == VIOC_OUTCFG_HDMI) {
         		VIOC_DISP_SetAlign(pDISP, 0);
         	} else {
@@ -1731,7 +1731,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         	}
         	#endif
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 			VIOC_DISP_SetSwapbf(pDISP, 0);
 #endif
         	VIOC_DISP_SetSize(pDISP, width, height);
@@ -1751,7 +1751,7 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 	else
 		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x80, 0x80, 0x00);
         #else
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0x3ff);
 	#else
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
@@ -2068,7 +2068,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
 	#else
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
@@ -2101,7 +2101,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_RDMA_SetImage3DMode(pRDMA, 0);
 	VIOC_RDMA_SetImageRBase(pRDMA, 0, 0, 0);
 	#endif
@@ -2123,7 +2123,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
 	else
 	#endif
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	{
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
 	}
@@ -2147,7 +2147,7 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 //		VIOC_DISP_TurnOn(pdp_data->ddc_info.virt_addr);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 void tca_fb_rdma_active_var_rbase(struct tcc_dp_device *pdp_data)
 {
 	unsigned int rdma_3d_mode;
@@ -2332,7 +2332,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 #endif
 
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
 #else
 	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
@@ -2366,7 +2366,7 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 		VIOC_RDMA_SetIssue(pRDMA, 7, 16);
 	else
 #endif
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	{
 		VIOC_RDMA_SetIssue(pRDMA, 15, 16);
 	}
@@ -2736,13 +2736,13 @@ void tca_fb_mvc_active_var(unsigned int base_addr, struct fb_var_screeninfo *var
 	VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, 0, 0, 0);
 	VIOC_WMIX_SetPosition(pdp_data->wmixer_info.virt_addr, 1, 0, lcd_height+iVBlank);
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetBGColor(pdp_data->wmixer_info.virt_addr, 0x3ff, 0x3ff, 0x3ff, 0x3ff);
 	#else
 	VIOC_WMIX_SetBGColor(pdp_data->wmixer_info.virt_addr, 0xff, 0xff, 0xff, 0xff);
 	#endif
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetChromaKey(pdp_data->wmixer_info.virt_addr, 0, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
 	VIOC_WMIX_SetChromaKey(pdp_data->wmixer_info.virt_addr, 1, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
 	#else
@@ -2781,7 +2781,7 @@ void tca_fb_attach_update(struct tcc_dp_device *pMdp_data, struct tcc_dp_device 
 	/* default framebuffer */
 	VIOC_WMIX_SetPosition(pSdp_data->wmixer_info.virt_addr, nRDMA_Attached, 0, 0);
 	/* overlay setting */
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetChromaKey(pSdp_data->wmixer_info.virt_addr, nRDMA_Attached, 0, 0, 0, 0, 0x3FF, 0x3FF, 0x3FF);
 	#else
 	VIOC_WMIX_SetChromaKey(pSdp_data->wmixer_info.virt_addr, nRDMA_Attached, 0, 0, 0, 0, 0xF8, 0xFC, 0xF8);
@@ -3443,7 +3443,7 @@ void tca_fb_divide_active_var(unsigned int base_addr, struct fb_var_screeninfo *
 	/* Update Right/Bottom screen */
 	divide_data.count = 1;
 	if(divide_data.fbtype == FB_SC_M2M_RDMA_UPDATE) {
-		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		tca_fb_rdma_active_var_rbase(pdp_data);
 		#else
 		tca_fb_sc_m2m_rdma_active_var(base_addr, var, pdp_data);
@@ -5208,7 +5208,7 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, layer, 0, 0);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
 	#else
 	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);

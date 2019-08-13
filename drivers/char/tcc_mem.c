@@ -82,7 +82,7 @@
 #define AV_BASE2        0x74400000
 #define AD_BASE         0x76066000
 
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 #define VPU_BASE        0x15000000
 #define JPEG_BASE       0x15180000
 #define CLK_BASE        0x14000000

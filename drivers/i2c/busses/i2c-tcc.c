@@ -855,6 +855,7 @@ static const struct of_device_id tcc_i2c_of_match[] = {
 	{ .compatible = "telechips,tcc803x-i2c" },
 	{ .compatible = "telechips,tcc897x-i2c" },
 	{ .compatible = "telechips,tcc899x-i2c" },
+	{ .compatible = "telechips,tcc901x-i2c" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, tcc_i2c_of_match);

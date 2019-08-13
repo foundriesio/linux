@@ -58,7 +58,7 @@ config TCC_MIPI
 
 config VIOC_DOLBY_VISION_EDR
 	bool"support HDR with Dolby-Vision in VIOC."
-	depends on (ARCH_TCC898X || ARCH_TCC899X)
+	depends on (ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC901X)
 	default n
 	help
 		TCC VIOC Dolby-HDR Support Block.
@@ -72,7 +72,7 @@ config VIOC_DOLBY_VISION_CERTIFICATION_TEST
 
 config TCC_DV_IN
     bool "Support DolbyVision In"
-    depends on ARCH_TCC899X
+    depends on ARCH_TCC899X || ARCH_TCC901X
     default y
     help
         This is DolbyVision IN Interface.
@@ -184,7 +184,7 @@ config TCC_VIDEO_DISPLAY_DEINTERLACE_MODE
 
 config TCC_VIQE_FOR_SUB_M2M
 	bool "Support VIQE1 for SUB_M2M"
-	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X
+	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X
 	default n
 	help
 	 Choose this option if you want to use VIQE1 block for sub m2m
@@ -294,7 +294,7 @@ config LCD_HDMI1920X720_ADV7613
 config LCD_HDMI4K
 	bool "HDMI 4K (3840X2160) LCD support"
 	depends on FB_TCC
-	depends on ARCH_TCC898X || ARCH_TCC899X
+	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC901X
 
 config LCD_FLD0800
 	bool "FLD080 1024 * 600 LVDS interface LCD support"
@@ -382,7 +382,7 @@ config FB_TCC_COMPOSITE_TVE
 	bool "Telecips, TVEncoder"
 
 config FB_TCC_COMPOSITE_BVO
-	depends on ARCH_TCC899X
+	depends on ARCH_TCC899X || ARCH_TCC901X
 	bool "Sigma Design, BVO"
 
 endchoice

@@ -525,7 +525,7 @@ char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 	VIOC_WDMA_SetImageOffset(pwdma_data->wdma.reg, ImageCfg.ImgFormat, ImageCfg.TargetWidth);
 	VIOC_WDMA_SetImageBase(pwdma_data->wdma.reg, ImageCfg.BaseAddress, ImageCfg.BaseAddress1, ImageCfg.BaseAddress2);
 	VIOC_WDMA_SetImageRGBSwapMode(pwdma_data->wdma.reg, 0);
-	#ifdef CONFIG_ARCH_TCC899X
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WDMA_SetImageEnhancer(pwdma_data->wdma.reg, ImageCfg.Contrast, ImageCfg.Bright, ImageCfg.Hue);
 	#endif
 	VIOC_WDMA_SetImageEnable(pwdma_data->wdma.reg, ImageCfg.ContinuousMode);

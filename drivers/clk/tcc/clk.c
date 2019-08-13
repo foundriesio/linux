@@ -198,7 +198,7 @@ err:
 void tcc_ckc_set_ops(struct tcc_ckc_ops *ops)
 {
 #if !defined(CONFIG_TCC803X_CA7S)
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	ckc_ops = NULL;
 	#else
 	ckc_ops = ops;

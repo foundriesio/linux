@@ -371,7 +371,7 @@ typedef struct _GMACDLY {
 #elif defined (CONFIG_ARCH_TCC802X)
 	#define TCC_PA_HSIOBUSCFG   0x119A0000
 	#define TCC_PA_GPIO     0x14200000
-#elif defined (CONFIG_ARCH_TCC899X) || defined (CONFIG_ARCH_TCC803X)
+#elif defined (CONFIG_ARCH_TCC899X) || defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC901X)
 	#define TCC_PA_HSIOBUSCFG   0x11DA0000
 	#define TCC_PA_GPIO     0x14200000
 #else

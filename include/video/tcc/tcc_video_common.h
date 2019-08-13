@@ -31,7 +31,8 @@
 #define kVpu32bitUserSpaceIoctlMode 32264
 #endif
 
-#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC899X) \
+	|| defined(CONFIG_ARCH_TCC901X)
 #   define _VPU_D6_INCLUDE_
 #else
 #   define _VPU_C7_INCLUDE_
@@ -44,7 +45,8 @@
 #endif
 
 #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) \
-        || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	|| defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) \
+	|| defined(CONFIG_ARCH_TCC901X)
 #   define _JPU_C6_INCLUDE_
 #else
 #   define _JPU_C5_INCLUDE_

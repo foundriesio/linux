@@ -10,14 +10,14 @@ config TCC_VIOC_CONTROLLER
 
 config VIOC_10BIT
 	bool"support 10bit format support in VIOC"
-	depends on ((TCC_VIOC_CONTROLLER)&&(ARCH_TCC898X || ARCH_TCC899X))
+	depends on ((TCC_VIOC_CONTROLLER)&&(ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC901X))
 	default y
 	help
 		This is support LCD CVBS display
 
 config VIOC_MAP_DECOMP
 	bool "VIOC MAP Decompressor support for HEVC"
-	depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC898X || ARCH_TCC896X)
+	depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC898X || ARCH_TCC896X || ARCH_TCC901X)
 	default y
 
 	help
@@ -29,7 +29,7 @@ config VIOC_MAP_DECOMP
 if VIOC_MAP_DECOMP
 config MC_WORKAROUND
 	bool"MC Work-Around until CS chip"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default y
     help
         MC Work-Around until CS chip
@@ -45,28 +45,28 @@ config VIOC_DTRC_DECOMP
 
 config VIOC_AFBCDEC
     bool "Enable AFBC decoder"
-    depends on (ARCH_TCC803X || ARCH_TCC899X) && MALI_MIDGARD
+    depends on (ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC901X) && MALI_MIDGARD
     default n
     help
         TCC AFBC Decoder
 
 config VIOC_PIXEL_MAPPER
     bool "Support VIOC PIXEL MAPPER(3D LUT)"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default y
     help
         This is 3D LUT block in VIOC.
 
 config VIOC_2D_FILTER
     bool "Support VIOC 2D FILTER"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default y
     help
         This is 2D Filter block in VIOC.
 
 config VIOC_CHROMA_INTERPOLATOR
     bool "Support VIOC Chroma Interpolator"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default y
     help
         This is Chroma Interpolator block in VIOC.
@@ -74,7 +74,7 @@ config VIOC_CHROMA_INTERPOLATOR
 
 config VIOC_SAR
     bool "Support SAR (SD deblocker)"
-    depends on (ARCH_TCC899X)
+    depends on (ARCH_TCC899X || ARCH_TCC901X)
     default n
     help
         This is Image Deblocker block in VIOC.

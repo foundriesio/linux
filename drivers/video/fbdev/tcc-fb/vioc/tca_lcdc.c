@@ -137,7 +137,7 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	else
 		VIOC_DISP_SetPXDW(pDISPBase, 0x3);
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (lcd_spec->bus_width <= 24)
 		VIOC_DISP_SetAlign(pDISPBase, 0x1); // Convert to 10-to-8 bits bus
 	else
@@ -178,7 +178,7 @@ void lcdc_initialize(struct lcd_panel *lcd_spec, struct tcc_dp_device *pdata)
 	__raw_writel((lcd_spec->clk_div / 2) << DCLKDIV_PXCLKDIV_SHIFT,
 		     pDISPBase + DCLKDIV);
 
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	__raw_writel(0x00000000, pDISPBase + DBG0);
 	__raw_writel(0x00000000, pDISPBase + DBG1);
 	#else

@@ -36,7 +36,7 @@ static volatile void __iomem *pLUT_reg;
 #define REG_VIOC_LUT(offset) (pLUT_reg + (offset))
 #define LUT_CTRL_R REG_VIOC_LUT(0)
 #define LUT_CONFIG_R(x) REG_VIOC_LUT(0x04 + (4 * x))
-#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define LUT_TABLE_IND_R REG_VIOC_LUT(0x20)
 #define LUT_UPDATE_PEND REG_VIOC_LUT(0x24)
 #define LUT_COEFFBASE REG_VIOC_LUT(0x28)
@@ -259,7 +259,7 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 	lut_index = get_vioc_index(lut_n);
 	dpr_info("%s lut_index_%d\r\n", __func__, lut_index);
 
-	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
 	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
 		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
@@ -292,7 +292,7 @@ int tcc_get_lut_plugin(unsigned int lut_n)
 
 	lut_index = get_vioc_index(lut_n);
 
-	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
 	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
 		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
@@ -315,7 +315,7 @@ void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable)
 
 	lut_index = get_vioc_index(lut_n);
 
-	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
 	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
 		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
@@ -340,7 +340,7 @@ int tcc_get_lut_enable(unsigned int lut_n)
 
 	lut_index = get_vioc_index(lut_n);
 
-	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
 	if(lut_index == get_vioc_index(VIOC_LUT_COMP1)) {
 		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;

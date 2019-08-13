@@ -27,3 +27,7 @@
 #ifdef CONFIG_ARCH_TCC803X
 #include "tcc803x/vioc_afbcdec.h"
 #endif
+
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_afbcdec.h"
+#endif

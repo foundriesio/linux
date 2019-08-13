@@ -32,6 +32,11 @@
 #include "tcc899x/vioc_dv_in.h"
 #endif
 
+
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_v_dv.h"
+#include "tcc901x/vioc_dv_in.h"
+#endif
 //#define DOLBY_VISION_CHECK_SEQUENCE
 #if defined(DOLBY_VISION_CHECK_SEQUENCE)
 #define dprintk_dv_sequence(msg...) printk("" msg);

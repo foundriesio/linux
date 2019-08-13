@@ -752,6 +752,7 @@ static const struct of_device_id sdhci_tcc_of_match_table[] = {
 	{ .compatible = "telechips,tcc899x-sdhci", .data = &soc_data_tcc},
 	{ .compatible = "telechips,tcc803x-sdhci", .data = &soc_data_tcc803x},
 	{ .compatible = "telechips,tcc897x-sdhci", .data = &soc_data_tcc897x},
+	{ .compatible = "telechips,tcc901x-sdhci", .data = &soc_data_tcc},
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdhci_tcc_of_match_table);

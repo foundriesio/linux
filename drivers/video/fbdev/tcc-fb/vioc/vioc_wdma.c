@@ -298,7 +298,7 @@ void VIOC_WDMA_SetImageOffset_withYV12(volatile void __iomem *reg,
 	__raw_writel(value, reg + WDMAOFFS_OFFSET);
 }
 
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_WDMA_SetImageEnhancer(volatile void __iomem *reg,
 				unsigned int nContrast, unsigned int nBright,
 				unsigned int nHue)

@@ -10,7 +10,7 @@ CTAG_E="\x1b[0m"
 WORK_ROOT=`pwd`/..
 
 sfile=.config
-str_a="CONFIG_ARCH_TCC[58]"
+str_a="CONFIG_ARCH_TCC[589]"
 str_b="=y"
 
 ARCH=$(cat $sfile | grep "$str_a" | grep "$str_b")
@@ -19,7 +19,7 @@ ARCH=${ARCH%=y}
 
 TCC_TARGET=$ARCH
 case $TCC_TARGET in
-	TCC898X|TCC899X|TCC802X|TCC803X) BASE_ADDR="0x20000000"
+	TCC898X|TCC899X|TCC802X|TCC803X|TCC901X) BASE_ADDR="0x20000000"
 		;;
 	TCC897X|TCC570X) BASE_ADDR="0x80000000"
 		;;
@@ -149,7 +149,7 @@ $MKBOOTIMG --kernel $KERNEL_UNCOMPRESSED_IMG_PATH --ramdisk $RAMDISK_IMG_PATH \
 
 echo
 echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_boot.img\x1b[0m"
-echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/TCC_TARGET"_uncompressed_boot.img\x1b[0m"
+echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_uncompressed_boot.img\x1b[0m"
 #echo -e "[\x1b[1;33mMAKE\x1b[0m] \x1b[1;31m"$KERNEL_OUT_DIR/$TCC_TARGET"_mtd.rom\x1b[0m"
 echo
 echo "========================================================="

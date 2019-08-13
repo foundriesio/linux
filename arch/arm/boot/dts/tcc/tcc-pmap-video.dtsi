@@ -51,6 +51,8 @@
 	#include "tcc-pmap-803x-android-customized.dtsi"
 	#elif defined(CONFIG_ARCH_TCC897X)
 	#include "tcc-pmap-897x-android-customized.dtsi"
+	#elif defined(CONFIG_ARCH_TCC901X)
+	#include "tcc-pmap-901x-android-customized.dtsi"
 	#else
 	#error1
 	#endif
@@ -61,6 +63,8 @@
 	#include "tcc-pmap-803x-linux-customized.dtsi"
 	#elif defined(CONFIG_ARCH_TCC897X)
 	#include "tcc-pmap-897x-linux-customized.dtsi"
+	#elif defined(CONFIG_ARCH_TCC901X)
+	#include "tcc-pmap-901x-linux-customized.dtsi"
 	#else
 	#error2
 	#endif

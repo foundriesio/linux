@@ -210,14 +210,14 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	clk_reset(ehci_phy_dev->hclk, 1);
 
 	// Reset PHY Registers
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x83000025, &ehci_pcfg->pcfg0);
 	writel(0xE31C243A, &ehci_pcfg->pcfg1);
 	#else
 	writel(0x03000115, &ehci_pcfg->pcfg0);
 	writel(0x0334D175, &ehci_pcfg->pcfg1);
 	#endif
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x00000000, &ehci_pcfg->pcfg2);
 	#else
 	writel(0x00000004, &ehci_pcfg->pcfg2);
@@ -236,7 +236,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0);
 	#endif
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	// Wait 30 usec
 	udelay(30);
 	#else
@@ -260,7 +260,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Wait Phy Valid Interrupt
 	i = 0;
 	while (i < 10000) {
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		if ((readl(&ehci_pcfg->pcfg4) & (1<<27))) break;
 	#else
 		if ((readl(&ehci_pcfg->pcfg0) & (1<<21))) break;

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Telechips SoC series device tree overlay source
+ *
+ * Copyright (C) 2019 Telechips Inc.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#define DT_OVERLAY
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/telechips,tcc901x-clks.h>
+#include <dt-bindings/soc/tcc901x-pm.h>
+#include <dt-bindings/display/tcc901x-vioc.h>
+#include <dt-bindings/power/telechips,boot-mode.h>
+#include <dt-bindings/gpio/gpio.h>
+
+#include "tcc-pmap-common.dtsi"
+
+#include "tcc9010-android-lpd4322-v0.1.dts"
+

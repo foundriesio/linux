@@ -1313,7 +1313,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 			break;
 
-                #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+                #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
                 case TCC_LCDC_HDMI_EXTRA_SET:
                         {
                                 struct tcc_dp_device *pdp_data = NULL;

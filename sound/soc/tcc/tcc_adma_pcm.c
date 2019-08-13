@@ -318,7 +318,7 @@ static int tcc_adma_pcm_open(struct snd_pcm_substream *substream)
 		adma_pcm->dev[dma_info->dev_type].capture_substream = substream;
     }
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		switch (dma_info->dev_type) {
 			case TCC_ADMA_I2S_STEREO:
@@ -362,7 +362,7 @@ static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
 
 	adma_pcm_dbg("%s\n", __func__);
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		switch (dma_info->dev_type) {
 			case TCC_ADMA_I2S_STEREO:

@@ -218,6 +218,9 @@ static const struct of_device_id hwdmx_drv_of_match[] = {
 	{
 		.compatible = "telechips,tcc89xx-hwdmx-tsif",
 	},
+	{
+		.compatible = "telechips,tcc90xx-hwdmx-tsif",
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, hwdmx_drv_of_match);

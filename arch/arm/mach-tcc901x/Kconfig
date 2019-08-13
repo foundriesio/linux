@@ -1,0 +1,28 @@
+# arch/arm/mach-tcc901x/Kconfig
+#
+# Configuration options for the TCC901X SoCs
+
+menuconfig ARCH_TCC901X
+	bool "TCC901X"
+	select AEABI
+	select CPU_V7
+	select VFP
+	select NEON
+	select USE_OF
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select HAVE_ARM_SCU if SMP
+	select HAVE_SMP
+	select CLKDEV_LOOKUP
+	select CLKSRC_MMIO
+	select CLKSRC_OF
+	select COMMON_CLK
+	select HAVE_ARM_ARCH_TIMER
+	select ARCH_HAS_OPP
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select SOC_TCC
+	select MIGHT_HAVE_PCI
+	select PCI_DOMAINS if PCI

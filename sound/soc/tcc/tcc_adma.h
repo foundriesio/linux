@@ -99,7 +99,7 @@ static inline void tcc_adma_rx_reset_enable(void __iomem *base_addr, bool enable
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 static inline void tcc_adma_dai_tx_reset_enable(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);

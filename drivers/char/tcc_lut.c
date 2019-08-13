@@ -75,7 +75,7 @@ static unsigned int lut_get_real_lut_number(unsigned int input_lut_number)
 			break;
 
 		case LUT_COMP1:
-			#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+			#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 			lut_number = 5; /* Number of LUT in VIOC1 RGB is 5 */
 			#else
 			lut_number = input_lut_number;
@@ -154,7 +154,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					dprintk("TCC_LUT_SET_EX lut_sel = %d\r\n", lut_number);
 
 					/* Y Table? */
-					#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+					#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 					dprintk("TCC_LUT_SET_EX para = %d\r\n", lut_value_set_ex->param);
 					if(lut_value_set_ex->param & 1) {
 						if(lut_number == 3 || lut_number == 5) {
@@ -231,7 +231,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
                         }
                         break;
 
-		#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X)
+		#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		case TCC_LUT_SET_CSC_COEFF:
 			{
 				if((void*)arg == NULL) {

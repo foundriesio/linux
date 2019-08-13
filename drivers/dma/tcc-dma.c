@@ -989,6 +989,7 @@ static const struct of_device_id tcc_dma_of_id_table[] = {
 	{ .compatible = "telechips,tcc899x-dma", },
 	{ .compatible = "telechips,tcc802x-dma", },
 	{ .compatible = "telechips,tcc803x-dma", },
+	{ .compatible = "telechips,tcc901x-dma", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, tcc_dma_of_id_table);

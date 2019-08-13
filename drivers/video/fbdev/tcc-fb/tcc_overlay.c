@@ -324,7 +324,7 @@ static int tcc_overlay_display_video_buffer(overlay_video_buffer_t buffer_cfg, s
 			VIOC_RDMA_SetIssue(overlay_drv->rdma[layer].reg, 7, 16);
 		else
 #endif
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 			VIOC_RDMA_SetIssue(overlay_drv->rdma[layer].reg, 15, 16);
 #endif
 

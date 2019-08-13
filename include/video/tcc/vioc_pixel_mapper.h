@@ -24,3 +24,7 @@
 #ifdef CONFIG_ARCH_TCC899X
 #include "tcc899x/vioc_pixel_mapper.h"
 #endif//
+
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_pixel_mapper.h"
+#endif//
