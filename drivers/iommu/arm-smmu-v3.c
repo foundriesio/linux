@@ -532,6 +532,7 @@ struct arm_smmu_cmdq_ent {
 		} tlbi;
 
 		#define CMDQ_OP_ATC_INV		0x40
+		#define ATC_INV_ADDR_ALL        0x7FFFFFFFFFFFF000UL
 		#define ATC_INV_SIZE_ALL	52
 		struct {
 			u32			sid;
@@ -2756,6 +2757,7 @@ arm_smmu_atc_inv_to_cmd(int ssid, unsigned long iova, size_t size,
 	};
 
 	if (!size) {
+		cmd->atc.addr = ATC_INV_ADDR_ALL;
 		cmd->atc.size = ATC_INV_SIZE_ALL;
 		return;
 	}
