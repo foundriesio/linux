@@ -3341,6 +3341,11 @@ static int vmx_set_vmx_msr(struct kvm_vcpu *vcpu, u32 msr_index, u64 data)
 	case MSR_IA32_VMX_VMCS_ENUM:
 		vmx->nested.nested_vmx_vmcs_enum = data;
 		return 0;
+	case MSR_IA32_VMX_VMFUNC:
+		if (data & ~vmx->nested.nested_vmx_vmfunc_controls)
+			return -EINVAL;
+		vmx->nested.nested_vmx_vmfunc_controls = data;
+		return 0;
 	default:
 		/*
 		 * The rest of the VMX capability MSRs do not support restore.
