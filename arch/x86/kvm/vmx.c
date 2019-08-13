@@ -5608,7 +5608,7 @@ static void set_cr4_guest_host_mask(struct vcpu_vmx *vmx)
 	vmcs_writel(CR4_GUEST_HOST_MASK, ~vmx->vcpu.arch.cr4_guest_owned_bits);
 }
 
-static u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
+u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
 {
 	u32 pin_based_exec_ctrl = vmcs_config.pin_based_exec_ctrl;
 
@@ -10981,11 +10981,11 @@ static int prepare_vmcs02(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12,
 		vmcs_write64(XSS_EXIT_BITMAP, vmcs12->xss_exit_bitmap);
 	vmcs_write64(VMCS_LINK_POINTER, -1ull);
 
-	exec_control = vmcs12->pin_based_vm_exec_control;
+	exec_control = vmx_pin_based_exec_ctrl(vmx);
+	exec_control |= vmcs12->pin_based_vm_exec_control;
 
 	/* Preemption timer setting is only taken from vmcs01.  */
 	exec_control &= ~PIN_BASED_VMX_PREEMPTION_TIMER;
-	exec_control |= vmcs_config.pin_based_exec_ctrl;
 	if (vmx->hv_deadline_tsc == -1)
 		exec_control &= ~PIN_BASED_VMX_PREEMPTION_TIMER;
 
