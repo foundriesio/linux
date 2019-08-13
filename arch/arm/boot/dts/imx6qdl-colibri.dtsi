@@ -267,8 +267,8 @@
 	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c2>;
 	pinctrl-1 = <&pinctrl_i2c2_recovery>;
-	scl-gpios = <&gpio2 30 GPIO_ACTIVE_HIGH>;
-	sda-gpios = <&gpio3 16 GPIO_ACTIVE_HIGH>;
+	scl-gpios = <&gpio2 30 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	sda-gpios = <&gpio3 16 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	status = "okay";
 
 	pmic: pfuze100@08 {

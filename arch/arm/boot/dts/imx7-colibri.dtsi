@@ -168,7 +168,7 @@
 	pinctrl-0 = <&pinctrl_i2c1 &pinctrl_i2c1_int>;
 	pinctrl-1 = <&pinctrl_i2c1_recovery &pinctrl_i2c1_int>;
 	scl-gpios = <&gpio1 4 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-	sda-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio1 5 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	status = "okay";
 
 	codec: sgtl5000@0a {
@@ -273,7 +273,7 @@
 	pinctrl-0 = <&pinctrl_i2c4>;
 	pinctrl-1 = <&pinctrl_i2c4_recovery>;
 	scl-gpios = <&gpio7 8 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-	sda-gpios = <&gpio7 9 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio7 9 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 };
 
 &lcdif {
