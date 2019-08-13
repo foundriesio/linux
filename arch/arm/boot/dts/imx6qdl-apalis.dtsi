@@ -344,8 +344,8 @@
 	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c1>;
 	pinctrl-1 = <&pinctrl_i2c1_recovery>;
-	scl-gpios = <&gpio5 27 GPIO_ACTIVE_HIGH>;
-	sda-gpios = <&gpio5 26 GPIO_ACTIVE_HIGH>;
+	scl-gpios = <&gpio5 27 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	sda-gpios = <&gpio5 26 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	status = "disabled";
 };
 
@@ -358,8 +358,8 @@
 	pinctrl-names = "default", "gpio";
 	pinctrl-0 = <&pinctrl_i2c2>;
 	pinctrl-1 = <&pinctrl_i2c2_recovery>;
-	scl-gpios = <&gpio4 12 GPIO_ACTIVE_HIGH>;
-	sda-gpios = <&gpio4 13 GPIO_ACTIVE_HIGH>;
+	scl-gpios = <&gpio4 12 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	sda-gpios = <&gpio4 13 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	status = "okay";
 
 	pmic: pfuze100@08 {
