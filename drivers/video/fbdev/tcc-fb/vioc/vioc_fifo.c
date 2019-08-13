@@ -35,8 +35,8 @@ static volatile void __iomem *pFIFO_reg[VIOC_FIFO_MAX] = {0};
 
 void VIOC_FIFO_ConfigEntry(volatile void __iomem *reg, unsigned int *buf)
 {
-	unsigned int EEMPTY	= 0;	// emergency empty
-	unsigned int EFULL	= 0;	// emergency full
+	unsigned int EEMPTY	= 1;	// emergency empty
+	unsigned int EFULL	= 1;	// emergency full
 	unsigned int WMT	= 0;	// wdma mode - time
 	unsigned int NENTRY	= 4;	// frame memory number  ->  max. frame count is 4.
 	unsigned int RMT	= 0;	// rdma mode - time
