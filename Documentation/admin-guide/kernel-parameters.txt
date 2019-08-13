@@ -2417,6 +2417,7 @@
 				Equivalent to: nopti [X86,PPC]
 					       nospectre_v1 [PPC]
 					       nobp=0 [S390]
+					       nospectre_v1 [X86]
 					       nospectre_v2 [X86,PPC,S390]
 					       spectre_v2_user=off [X86]
 					       spec_store_bypass_disable=off [X86,PPC]
@@ -2757,6 +2758,10 @@
 				     cannot be undone. Depending on the CPU
 				     type this might have a performance impact.
 
+	nospectre_v1	[PPC] Disable mitigations for Spectre Variant 1 (bounds
+			check bypass). With this option data leaks are possible
+			in the system.
+
 	nospectre_v2	[X86] Disable all mitigations for the Spectre variant 2
 			(indirect branch prediction) vulnerability. System may
 			allow data leaks with this option, which is equivalent
@@ -2988,6 +2993,16 @@
 
 	OSS		[HW,OSS]
 			See Documentation/sound/oss/oss-parameters.txt
+
+	page_alloc.shuffle=
+			[KNL] Boolean flag to control whether the page allocator
+			should randomize its free lists. The randomization may
+			be automatically enabled if the kernel detects it is
+			running on a platform with a direct-mapped memory-side
+			cache, and this parameter can be used to
+			override/disable that behavior. The state of the flag
+			can be read from sysfs at:
+			/sys/module/page_alloc/parameters/shuffle.
 
 	page_owner=	[KNL] Boot-time page_owner enabling option.
 			Storage of the information about who allocated

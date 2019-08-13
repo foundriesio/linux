@@ -9,7 +9,6 @@
  * by the 31 bit heritage.
  */
 #define MAX_DMA_ADDRESS         0x80000000
-#define ARCH_ZONE_DMA_BITS      31
 
 #ifdef CONFIG_PCI
 extern int isa_dma_bridge_buggy;

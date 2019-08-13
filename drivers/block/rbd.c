@@ -2561,6 +2561,7 @@ rbd_img_obj_parent_read_full_callback(struct rbd_img_request *img_request)
 	osd_req = rbd_osd_req_create_copyup(orig_request);
 	if (!osd_req)
 		goto out_err;
+
 	img_result = osd_req_op_cls_init(osd_req, 0, CEPH_OSD_OP_CALL, "rbd",
 					 "copyup");
 	if (img_result)

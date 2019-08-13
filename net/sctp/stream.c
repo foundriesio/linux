@@ -40,6 +40,8 @@ int sctp_stream_new(struct sctp_association *asoc, gfp_t gfp)
 	struct sctp_stream *stream;
 	int i;
 
+	gfp |= __GFP_NOWARN;
+
 	stream = kzalloc(sizeof(*stream), gfp);
 	if (!stream)
 		return -ENOMEM;
@@ -63,9 +65,14 @@ int sctp_stream_init(struct sctp_association *asoc, gfp_t gfp)
 	struct sctp_stream *stream = asoc->stream;
 	int i;
 
+	gfp |= __GFP_NOWARN;
+
 	/* Initial stream->out size may be very big, so free it and alloc
-	 * a new one with new outcnt to save memory.
+	 * a new one with new outcnt to save memory if needed.
 	 */
+	if (asoc->c.sinit_num_ostreams == stream->outcnt)
+		goto in;
+
 	kfree(stream->out);
 	stream->outcnt = asoc->c.sinit_num_ostreams;
 	stream->out = kcalloc(stream->outcnt, sizeof(*stream->out), gfp);
@@ -75,6 +82,7 @@ int sctp_stream_init(struct sctp_association *asoc, gfp_t gfp)
 	for (i = 0; i < stream->outcnt; i++)
 		stream->out[i].state = SCTP_STREAM_OPEN;
 
+in:
 	stream->incnt = asoc->c.sinit_max_instreams;
 	stream->in = kcalloc(stream->incnt, sizeof(*stream->in), gfp);
 	if (!stream->in) {

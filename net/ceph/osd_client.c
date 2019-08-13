@@ -443,6 +443,8 @@ static void osd_req_op_data_release(struct ceph_osd_request *osd_req,
 		break;
 	case CEPH_OSD_OP_SETXATTR:
 	case CEPH_OSD_OP_CMPXATTR:
+		ceph_osd_data_release(&op->xattr.request_data);
+		break;
 	case CEPH_OSD_OP_GETXATTR:
 		ceph_osd_data_release(&op->xattr.request_data);
 		ceph_osd_data_release(&op->xattr.response_data);
@@ -750,6 +752,8 @@ static void get_num_data_items(struct ceph_osd_request *req,
 		/* request */
 		case CEPH_OSD_OP_WRITE:
 		case CEPH_OSD_OP_WRITEFULL:
+		case CEPH_OSD_OP_SETXATTR:
+		case CEPH_OSD_OP_CMPXATTR:
 		case CEPH_OSD_OP_NOTIFY_ACK:
 		case CEPH_OSD_OP_CMPEXT:
 		case CEPH_OSD_OP_WRITESAME:
@@ -765,8 +769,6 @@ static void get_num_data_items(struct ceph_osd_request *req,
 
 		/* both */
 		case CEPH_OSD_OP_GETXATTR:
-		case CEPH_OSD_OP_SETXATTR:
-		case CEPH_OSD_OP_CMPXATTR:
 		case CEPH_OSD_OP_NOTIFY:
 			*num_request_data_items += 1;
 			*num_reply_data_items += 1;
@@ -2048,13 +2050,10 @@ static void setup_request_data(struct ceph_osd_request *req)
 			break;
 		case CEPH_OSD_OP_SETXATTR:
 		case CEPH_OSD_OP_CMPXATTR:
-		case CEPH_OSD_OP_GETXATTR:
 			WARN_ON(op->indata_len != op->xattr.name_len +
 						  op->xattr.value_len);
 			ceph_osdc_msg_data_add(request_msg,
 					       &op->xattr.request_data);
-			ceph_osdc_msg_data_add(reply_msg,
-					       &op->xattr.response_data);
 			break;
 		case CEPH_OSD_OP_NOTIFY_ACK:
 			ceph_osdc_msg_data_add(request_msg,
@@ -2095,6 +2094,12 @@ static void setup_request_data(struct ceph_osd_request *req)
 			ceph_osdc_msg_data_add(reply_msg,
 					       &op->notify.response_data);
 			break;
+		case CEPH_OSD_OP_GETXATTR:
+			WARN_ON(op->indata_len != op->xattr.name_len);
+			ceph_osdc_msg_data_add(request_msg,
+					       &op->xattr.request_data);
+			ceph_osdc_msg_data_add(reply_msg,
+					       &op->xattr.response_data);
 		}
 	}
 }

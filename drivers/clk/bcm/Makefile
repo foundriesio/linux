@@ -7,6 +7,7 @@ obj-$(CONFIG_COMMON_CLK_IPROC)	+= clk-iproc-armpll.o clk-iproc-pll.o clk-iproc-a
 obj-$(CONFIG_ARCH_BCM2835)	+= clk-bcm2835.o
 obj-$(CONFIG_ARCH_BCM2835)	+= clk-bcm2835-aux.o
 obj-$(CONFIG_ARCH_BCM_53573)	+= clk-bcm53573-ilp.o
+obj-$(CONFIG_CLK_RASPBERRYPI)	+= clk-raspberrypi.o
 obj-$(CONFIG_CLK_BCM_CYGNUS)	+= clk-cygnus.o
 obj-$(CONFIG_CLK_BCM_NSP)	+= clk-nsp.o
 obj-$(CONFIG_CLK_BCM_NS2)	+= clk-ns2.o
