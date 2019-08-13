@@ -118,7 +118,7 @@ static void cf_diag_trailer(struct cf_trailer_entry *te)
 	if (te->cpu_speed)
 		te->speed = 1;
 	te->clock_base = 1;			/* Save clock base */
-	te->tod_base = sched_clock_base_cc;
+	memcpy(&te->tod_base, &tod_clock_base[1], 8);
 	store_tod_clock((__u64 *)&te->timestamp);
 }
 
