@@ -84,8 +84,8 @@
 		regulator-type = "voltage";
 		regulator-always-on;
 
-		gpios = <&gpd 15 0x4
-		         &gpd 7 0x4>;
+		gpios = <&gpd 7 0x4
+		         &gpd 15 0x4>;
 		gpios-states = <1 0>;
 
 	        states = < 700000 0x1
@@ -102,6 +102,7 @@
 	};
 
 	gpu_opp_table {
+
 	    opp@444000000 {
 		opp-hz = /bits/ 64 <444000000>;
 		opp-microvolt = <700000>;
@@ -112,8 +113,9 @@
 	        opp-microvolt = <800000>;
 	        opp-core-mask = /bits/ 64 <0x3>;
 	    };
-	    opp@666000000 {
-	        opp-hz = /bits/ 64 <666000000>;
+
+	    opp@600000000 {
+	        opp-hz = /bits/ 64 <600000000>;
 	        opp-microvolt = <900000>;
 	        opp-core-mask = /bits/ 64 <0x3>;
 	    };
