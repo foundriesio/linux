@@ -173,6 +173,7 @@
 		compatible = "toradex,evalspi";
 		reg = <0>;
 		spi-max-frequency = <10000000>;
+		status = "disabled";
 	};
 };
 
