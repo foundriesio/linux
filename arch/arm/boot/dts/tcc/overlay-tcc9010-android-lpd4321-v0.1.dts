@@ -19,5 +19,5 @@
 
 #include "tcc-pmap-common.dtsi"
 
-#include "tcc9010-android-lpd4322-v0.1.dts"
+#include "tcc9010-android-lpd4321-v0.1.dts"
 
