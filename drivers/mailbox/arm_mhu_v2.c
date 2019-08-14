@@ -30,7 +30,7 @@
 #define MHU_V2_CHCOMB			BIT(2)
 #define MHU_V2_AIDR_MINOR(_reg)		((_reg) & 0xF)
 
-#define MHU_V2_CHANS			2
+#define MHU_V2_EACH_CHANNEL_SIZE	0x20
 
 #define mbox_to_arm_mhuv2(c) container_of(c, struct arm_mhuv2, mbox)
 
@@ -42,8 +42,8 @@ struct mhuv2_link {
 
 struct arm_mhuv2 {
 	void __iomem *base;
-	struct mhuv2_link mlink[MHU_V2_CHANS];
-	struct mbox_chan chan[MHU_V2_CHANS];
+	struct mhuv2_link *mlink;
+	struct mbox_chan *chan;
 	struct mbox_controller mbox;
 };
 
@@ -140,6 +140,9 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 	void __iomem *rx_base, *tx_base;
 	const struct device_node *np = dev->of_node;
 	unsigned int pchans;
+	struct mhuv2_link *mlink;
+	struct mbox_chan *chan;
+
 
 	/* Allocate memory for device */
 	mhuv2 = devm_kzalloc(dev, sizeof(*mhuv2), GFP_KERNEL);
@@ -159,25 +162,43 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 		return -ENOMEM;
 	}
 
-
 	pchans = readl_relaxed(tx_base + MHU_V2_REG_MSG_NO_CAP_OFS);
-	if (pchans == 0 || pchans > MHU_V2_CHANS || pchans % 2) {
+	if (pchans == 0 || pchans % 2) {
 		dev_err(dev, "invalid number of channels %d\n", pchans);
 		iounmap(rx_base);
 		iounmap(tx_base);
 		return -EINVAL;
 	}
-	for (i = 0; i < pchans/2; i++) {
-		mhuv2->chan[i].con_priv = &mhuv2->mlink[i];
-		mhuv2->mlink[i].irq = adev->irq[i];
-		mhuv2->mlink[i].rx_reg = rx_base + i*0x4;
-		mhuv2->mlink[i].tx_reg = tx_base + i*0x4;
-		mhuv2_check_enable_cmbint(&mhuv2->mlink[i]);
+
+	mhuv2->mlink = devm_kcalloc(dev, pchans, sizeof(*mlink), GFP_KERNEL);
+	if (!mhuv2->mlink) {
+		iounmap(rx_base);
+		iounmap(tx_base);
+		return -ENOMEM;
 	}
+
+	mhuv2->chan = devm_kcalloc(dev, pchans, sizeof(*chan), GFP_KERNEL);
+	if (!mhuv2->chan) {
+		iounmap(rx_base);
+		iounmap(tx_base);
+		kfree(mhuv2->mlink);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < pchans; i++) {
+		mlink = mhuv2->mlink + i;
+		chan = mhuv2->chan + i;
+		chan->con_priv = mlink;
+		mlink->rx_reg = rx_base + (i * MHU_V2_EACH_CHANNEL_SIZE);
+		mlink->tx_reg = tx_base + (i * MHU_V2_EACH_CHANNEL_SIZE);
+	}
+
+	mhuv2->mlink->irq = adev->irq[0];
+	mhuv2_check_enable_cmbint(mhuv2->mlink);
 
 	mhuv2->base = tx_base;
 	mhuv2->mbox.dev = dev;
-	mhuv2->mbox.chans = &mhuv2->chan[0];
+	mhuv2->mbox.chans = mhuv2->chan;
 	mhuv2->mbox.num_chans = pchans;
 	mhuv2->mbox.ops = &mhuv2_ops;
 	mhuv2->mbox.txdone_irq = false;
@@ -191,6 +212,8 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 		dev_err(dev, "failed to register mailboxes %d\n", err);
 		iounmap(rx_base);
 		iounmap(tx_base);
+		kfree(mhuv2->mlink);
+		kfree(mhuv2->chan);
 		return err;
 	}
 
