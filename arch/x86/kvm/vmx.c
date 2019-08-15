@@ -3347,6 +3347,11 @@ static int vmx_set_vmx_msr(struct kvm_vcpu *vcpu, u32 msr_index, u64 data)
 	case MSR_IA32_VMX_VMCS_ENUM:
 		vmx->nested.nested_vmx_vmcs_enum = data;
 		return 0;
+	case MSR_IA32_VMX_VMFUNC:
+		if (data & ~vmx->nested.nested_vmx_vmfunc_controls)
+			return -EINVAL;
+		vmx->nested.nested_vmx_vmfunc_controls = data;
+		return 0;
 	default:
 		/*
 		 * The rest of the VMX capability MSRs do not support restore.
@@ -3513,7 +3518,10 @@ static int vmx_get_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			return 1;
 		return vmx_get_vmx_msr(vcpu, msr_info->index, &msr_info->data);
 	case MSR_IA32_XSS:
-		if (!vmx_xsaves_supported())
+		if (!vmx_xsaves_supported() ||
+		    (!msr_info->host_initiated &&
+		     !(guest_cpuid_has(vcpu, X86_FEATURE_XSAVE) &&
+		       guest_cpuid_has(vcpu, X86_FEATURE_XSAVES))))
 			return 1;
 		msr_info->data = vcpu->arch.ia32_xss;
 		break;
@@ -3647,9 +3655,10 @@ static int vmx_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 					      MSR_TYPE_W);
 		break;
 	case MSR_IA32_CR_PAT:
+		if (!kvm_mtrr_valid(vcpu, MSR_IA32_CR_PAT, data))
+			return 1;
+
 		if (vmcs_config.vmentry_ctrl & VM_ENTRY_LOAD_IA32_PAT) {
-			if (!kvm_mtrr_valid(vcpu, MSR_IA32_CR_PAT, data))
-				return 1;
 			vmcs_write64(GUEST_IA32_PAT, data);
 			vcpu->arch.pat = data;
 			break;
@@ -3683,7 +3692,10 @@ static int vmx_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			return 1;
 		return vmx_set_vmx_msr(vcpu, msr_index, data);
 	case MSR_IA32_XSS:
-		if (!vmx_xsaves_supported())
+		if (!vmx_xsaves_supported() ||
+		    (!msr_info->host_initiated &&
+		     !(guest_cpuid_has(vcpu, X86_FEATURE_XSAVE) &&
+		       guest_cpuid_has(vcpu, X86_FEATURE_XSAVES))))
 			return 1;
 		/*
 		 * The only supported bit as of Skylake is bit 8, but
@@ -5625,7 +5637,7 @@ static void set_cr4_guest_host_mask(struct vcpu_vmx *vmx)
 	vmcs_writel(CR4_GUEST_HOST_MASK, ~vmx->vcpu.arch.cr4_guest_owned_bits);
 }
 
-static u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
+u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
 {
 	u32 pin_based_exec_ctrl = vmcs_config.pin_based_exec_ctrl;
 
@@ -7679,6 +7691,7 @@ static void vmx_disable_shadow_vmcs(struct vcpu_vmx *vmx)
 {
 	vmcs_clear_bits(SECONDARY_VM_EXEC_CONTROL, SECONDARY_EXEC_SHADOW_VMCS);
 	vmcs_write64(VMCS_LINK_POINTER, -1ull);
+	vmx->nested.sync_shadow_vmcs = false;
 }
 
 static inline void nested_release_vmcs12(struct vcpu_vmx *vmx)
@@ -7690,7 +7703,6 @@ static inline void nested_release_vmcs12(struct vcpu_vmx *vmx)
 		/* copy to memory all shadowed fields in case
 		   they were modified */
 		copy_shadow_to_vmcs12(vmx);
-		vmx->nested.sync_shadow_vmcs = false;
 		vmx_disable_shadow_vmcs(vmx);
 	}
 	vmx->nested.posted_intr_nv = -1;
@@ -7877,6 +7889,9 @@ static void copy_shadow_to_vmcs12(struct vcpu_vmx *vmx)
 	const unsigned long *fields = shadow_read_write_fields;
 	const int num_fields = max_shadow_read_write_fields;
 
+	if (WARN_ON(!shadow_vmcs))
+		return;
+
 	preempt_disable();
 
 	vmcs_load(shadow_vmcs);
@@ -7923,6 +7938,9 @@ static void copy_vmcs12_to_shadow(struct vcpu_vmx *vmx)
 	unsigned long field;
 	u64 field_value = 0;
 	struct vmcs *shadow_vmcs = vmx->vmcs01.shadow_vmcs;
+
+	if (WARN_ON(!shadow_vmcs))
+		return;
 
 	vmcs_load(shadow_vmcs);
 
@@ -8208,13 +8226,11 @@ static int handle_invept(struct kvm_vcpu *vcpu)
 
 	switch (type) {
 	case VMX_EPT_EXTENT_GLOBAL:
-	/*
-	 * TODO: track mappings and invalidate
-	 * single context requests appropriately
-	 */
 	case VMX_EPT_EXTENT_CONTEXT:
-		kvm_mmu_sync_roots(vcpu);
-		kvm_make_request(KVM_REQ_TLB_FLUSH, vcpu);
+	/*
+	 * TODO: Sync the necessary shadow EPT roots here, rather than
+	 * at the next emulated VM-entry.
+	 */
 		nested_vmx_succeed(vcpu);
 		break;
 	default:
@@ -9411,6 +9427,11 @@ static int vmx_sync_pir_to_irr(struct kvm_vcpu *vcpu)
 	return max_irr;
 }
 
+static bool vmx_dy_apicv_has_pending_interrupt(struct kvm_vcpu *vcpu)
+{
+	return pi_test_on(vcpu_to_pi_desc(vcpu));
+}
+
 static void vmx_load_eoi_exitmap(struct kvm_vcpu *vcpu, u64 *eoi_exit_bitmap)
 {
 	if (!kvm_vcpu_apicv_active(vcpu))
@@ -9432,28 +9453,21 @@ static void vmx_apicv_post_state_restore(struct kvm_vcpu *vcpu)
 
 static void vmx_complete_atomic_exit(struct vcpu_vmx *vmx)
 {
-	u32 exit_intr_info = 0;
-	u16 basic_exit_reason = (u16)vmx->exit_reason;
-
-	if (!(basic_exit_reason == EXIT_REASON_MCE_DURING_VMENTRY
-	      || basic_exit_reason == EXIT_REASON_EXCEPTION_NMI))
+	if (vmx->exit_reason != EXIT_REASON_EXCEPTION_NMI)
 		return;
 
-	if (!(vmx->exit_reason & VMX_EXIT_REASONS_FAILED_VMENTRY))
-		exit_intr_info = vmcs_read32(VM_EXIT_INTR_INFO);
-	vmx->exit_intr_info = exit_intr_info;
+	vmx->exit_intr_info = vmcs_read32(VM_EXIT_INTR_INFO);
 
 	/* if exit due to PF check for async PF */
-	if (is_page_fault(exit_intr_info))
+	if (is_page_fault(vmx->exit_intr_info))
 		vmx->vcpu.arch.apf.host_apf_reason = kvm_read_and_reset_pf_reason();
 
 	/* Handle machine checks before interrupts are enabled */
-	if (basic_exit_reason == EXIT_REASON_MCE_DURING_VMENTRY ||
-	    is_machine_check(exit_intr_info))
+	if (is_machine_check(vmx->exit_intr_info))
 		kvm_machine_check();
 
 	/* We need to handle NMIs before interrupts are enabled */
-	if (is_nmi(exit_intr_info)) {
+	if (is_nmi(vmx->exit_intr_info)) {
 		kvm_before_handle_nmi(&vmx->vcpu);
 		asm("int $2");
 		kvm_after_handle_nmi(&vmx->vcpu);
@@ -9958,6 +9972,9 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	vmx->idt_vectoring_info = 0;
 
 	vmx->exit_reason = vmx->fail ? 0xdead : vmcs_read32(VM_EXIT_REASON);
+	if ((u16)vmx->exit_reason == EXIT_REASON_MCE_DURING_VMENTRY)
+		kvm_machine_check();
+
 	if (vmx->fail || (vmx->exit_reason & VMX_EXIT_REASONS_FAILED_VMENTRY))
 		return;
 
@@ -11017,11 +11034,11 @@ static int prepare_vmcs02(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12,
 		vmcs_write64(XSS_EXIT_BITMAP, vmcs12->xss_exit_bitmap);
 	vmcs_write64(VMCS_LINK_POINTER, -1ull);
 
-	exec_control = vmcs12->pin_based_vm_exec_control;
+	exec_control = vmx_pin_based_exec_ctrl(vmx);
+	exec_control |= vmcs12->pin_based_vm_exec_control;
 
 	/* Preemption timer setting is only taken from vmcs01.  */
 	exec_control &= ~PIN_BASED_VMX_PREEMPTION_TIMER;
-	exec_control |= vmcs_config.pin_based_exec_ctrl;
 	if (vmx->hv_deadline_tsc == -1)
 		exec_control &= ~PIN_BASED_VMX_PREEMPTION_TIMER;
 
@@ -12840,6 +12857,7 @@ static struct kvm_x86_ops vmx_x86_ops __ro_after_init = {
 	.hwapic_isr_update = vmx_hwapic_isr_update,
 	.sync_pir_to_irr = vmx_sync_pir_to_irr,
 	.deliver_posted_interrupt = vmx_deliver_posted_interrupt,
+	.dy_apicv_has_pending_interrupt = vmx_dy_apicv_has_pending_interrupt,
 
 	.set_tss_addr = vmx_set_tss_addr,
 	.get_tdp_level = get_ept_level,

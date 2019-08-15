@@ -2221,7 +2221,6 @@ static void btrfs_init_balance(struct btrfs_fs_info *fs_info)
 {
 	spin_lock_init(&fs_info->balance_lock);
 	mutex_init(&fs_info->balance_mutex);
-	atomic_set(&fs_info->balance_running, 0);
 	atomic_set(&fs_info->balance_pause_req, 0);
 	atomic_set(&fs_info->balance_cancel_req, 0);
 	fs_info->balance_ctl = NULL;
@@ -2678,6 +2677,8 @@ int open_ctree(struct super_block *sb,
 	fs_info->nodesize = 4096;
 	fs_info->sectorsize = 4096;
 	fs_info->stripesize = 4096;
+
+	fs_info->send_in_progress = 0;
 
 	spin_lock_init(&fs_info->swapfile_pins_lock);
 	fs_info->swapfile_pins = RB_ROOT;
@@ -3931,6 +3932,7 @@ void close_ctree(struct btrfs_fs_info *fs_info)
 	set_bit(BTRFS_FS_CLOSING_DONE, &fs_info->flags);
 
 	btrfs_free_qgroup_config(fs_info);
+	ASSERT(list_empty(&fs_info->delalloc_roots));
 
 	if (percpu_counter_sum(&fs_info->delalloc_bytes)) {
 		btrfs_info(fs_info, "at unmount delalloc count %lld",
@@ -4235,15 +4237,15 @@ static int btrfs_check_super_valid(struct btrfs_fs_info *fs_info)
 
 static void btrfs_error_commit_super(struct btrfs_fs_info *fs_info)
 {
+	/* cleanup FS via transaction */
+	btrfs_cleanup_transaction(fs_info);
+
 	mutex_lock(&fs_info->cleaner_mutex);
 	btrfs_run_delayed_iputs(fs_info);
 	mutex_unlock(&fs_info->cleaner_mutex);
 
 	down_write(&fs_info->cleanup_work_sem);
 	up_write(&fs_info->cleanup_work_sem);
-
-	/* cleanup FS via transaction */
-	btrfs_cleanup_transaction(fs_info);
 }
 
 static void btrfs_destroy_ordered_extents(struct btrfs_root *root)
@@ -4347,6 +4349,7 @@ static int btrfs_destroy_delayed_refs(struct btrfs_transaction *trans,
 		if (pin_bytes)
 			btrfs_pin_extent(fs_info, head->bytenr,
 					 head->num_bytes, 1);
+		btrfs_cleanup_ref_head_accounting(fs_info, delayed_refs, head);
 		btrfs_put_delayed_ref_head(head);
 		cond_resched();
 		spin_lock(&delayed_refs->lock);
@@ -4368,19 +4371,23 @@ static void btrfs_destroy_delalloc_inodes(struct btrfs_root *root)
 	list_splice_init(&root->delalloc_inodes, &splice);
 
 	while (!list_empty(&splice)) {
+		struct inode *inode = NULL;
 		btrfs_inode = list_first_entry(&splice, struct btrfs_inode,
 					       delalloc_inodes);
-
-		list_del_init(&btrfs_inode->delalloc_inodes);
-		clear_bit(BTRFS_INODE_IN_DELALLOC_LIST,
-			  &btrfs_inode->runtime_flags);
+		__btrfs_del_delalloc_inode(root, btrfs_inode);
 		spin_unlock(&root->delalloc_lock);
 
-		btrfs_invalidate_inodes(btrfs_inode->root);
-
+		/*
+		 * Make sure we get a live inode and that it'll not disappear
+		 * meanwhile.
+		 */
+		inode = igrab(&btrfs_inode->vfs_inode);
+		if (inode) {
+			invalidate_inode_pages2(inode->i_mapping);
+			iput(inode);
+		}
 		spin_lock(&root->delalloc_lock);
 	}
-
 	spin_unlock(&root->delalloc_lock);
 }
 
@@ -4396,7 +4403,6 @@ static void btrfs_destroy_all_delalloc_inodes(struct btrfs_fs_info *fs_info)
 	while (!list_empty(&splice)) {
 		root = list_first_entry(&splice, struct btrfs_root,
 					 delalloc_root);
-		list_del_init(&root->delalloc_root);
 		root = btrfs_grab_fs_root(root);
 		BUG_ON(!root);
 		spin_unlock(&fs_info->delalloc_root_lock);
@@ -4454,13 +4460,23 @@ static int btrfs_destroy_pinned_extent(struct btrfs_fs_info *fs_info,
 	unpin = pinned_extents;
 again:
 	while (1) {
+		/*
+		 * The btrfs_finish_extent_commit() may get the same range as
+		 * ours between find_first_extent_bit and clear_extent_dirty.
+		 * Hence, hold the unused_bg_unpin_mutex to avoid double unpin
+		 * the same extent range.
+		 */
+		mutex_lock(&fs_info->unused_bg_unpin_mutex);
 		ret = find_first_extent_bit(unpin, 0, &start, &end,
 					    EXTENT_DIRTY, NULL);
-		if (ret)
+		if (ret) {
+			mutex_unlock(&fs_info->unused_bg_unpin_mutex);
 			break;
+		}
 
 		clear_extent_dirty(unpin, start, end);
 		btrfs_error_unpin_extent_range(fs_info, start, end);
+		mutex_unlock(&fs_info->unused_bg_unpin_mutex);
 		cond_resched();
 	}
 

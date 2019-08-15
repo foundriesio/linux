@@ -3257,9 +3257,22 @@ static int btrfs_extent_same(struct inode *src, u64 loff, u64 olen,
 	int num_pages = PAGE_ALIGN(BTRFS_MAX_DEDUPE_LEN) >> PAGE_SHIFT;
 	bool same_inode = (src == dst);
 	u64 i, tail_len, chunk_count;
+	struct btrfs_root *root_dst = BTRFS_I(dst)->root;
 
 	if (olen == 0)
 		return 0;
+
+	spin_lock(&root_dst->root_item_lock);
+	if (root_dst->send_in_progress) {
+		btrfs_warn_rl(root_dst->fs_info,
+"cannot deduplicate to root %llu while send operations are using it (%d in progress)",
+			      root_dst->root_key.objectid,
+			      root_dst->send_in_progress);
+		spin_unlock(&root_dst->root_item_lock);
+		return -EAGAIN;
+	}
+	root_dst->dedupe_in_progress++;
+	spin_unlock(&root_dst->root_item_lock);
 
 	if (same_inode)
 		inode_lock(src);
@@ -3328,6 +3341,10 @@ out_unlock:
 		inode_unlock(src);
 	else
 		unlock_two_nondirectories(src, dst);
+
+	spin_lock(&root_dst->root_item_lock);
+	root_dst->dedupe_in_progress--;
+	spin_unlock(&root_dst->root_item_lock);
 
 	return ret;
 }
@@ -4706,7 +4723,7 @@ void update_ioctl_balance_args(struct btrfs_fs_info *fs_info, int lock,
 
 	bargs->flags = bctl->flags;
 
-	if (atomic_read(&fs_info->balance_running))
+	if (test_bit(BTRFS_FS_BALANCE_RUNNING, &fs_info->flags))
 		bargs->state |= BTRFS_BALANCE_STATE_RUNNING;
 	if (atomic_read(&fs_info->balance_pause_req))
 		bargs->state |= BTRFS_BALANCE_STATE_PAUSE_REQ;
@@ -4759,14 +4776,14 @@ again:
 	mutex_lock(&fs_info->balance_mutex);
 	if (fs_info->balance_ctl) {
 		/* this is either (2) or (3) */
-		if (!atomic_read(&fs_info->balance_running)) {
+		if (!test_bit(BTRFS_FS_BALANCE_RUNNING, &fs_info->flags)) {
 			mutex_unlock(&fs_info->balance_mutex);
 			if (!mutex_trylock(&fs_info->volume_mutex))
 				goto again;
 			mutex_lock(&fs_info->balance_mutex);
 
 			if (fs_info->balance_ctl &&
-			    !atomic_read(&fs_info->balance_running)) {
+			    !test_bit(BTRFS_FS_BALANCE_RUNNING, &fs_info->flags)) {
 				/* this is (3) */
 				need_unlock = false;
 				goto locked;

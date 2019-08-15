@@ -493,9 +493,19 @@ static ssize_t tpm_try_transmit(struct tpm_chip *chip,
 
 	rc = chip->ops->send(chip, (u8 *) buf, count);
 	if (rc < 0) {
-		dev_err(&chip->dev,
-			"tpm_transmit: tpm_send: error %d\n", rc);
+		if (rc != -EPIPE)
+			dev_err(&chip->dev,
+				"%s: send(): error %d\n", __func__, rc);
 		goto out;
+	}
+
+	/* A sanity check. send() should just return zero on success e.g.
+	 * not the command length.
+	 */
+	if (rc > 0) {
+		dev_warn(&chip->dev,
+			 "%s: send(): invalid value %d\n", __func__, rc);
+		rc = 0;
 	}
 
 	if (chip->flags & TPM_CHIP_FLAG_IRQ)
