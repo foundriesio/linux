@@ -187,7 +187,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/* We only dequeue private signals from ourselves, we don't let
  	 * signalfd steal them
  	 */
-@@ -1756,7 +1816,8 @@ EXPORT_SYMBOL(kill_pid);
+@@ -1800,7 +1860,8 @@ EXPORT_SYMBOL(kill_pid);
   */
  struct sigqueue *sigqueue_alloc(void)
  {

@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -1890,7 +1890,11 @@ int nfs_rmdir(struct inode *dir, struct
+@@ -1812,7 +1812,11 @@ int nfs_rmdir(struct inode *dir, struct
  
  	trace_nfs_rmdir_enter(dir, dentry);
  	if (d_really_is_positive(dentry)) {
@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		error = NFS_PROTO(dir)->rmdir(dir, &dentry->d_name);
  		/* Ensure the VFS deletes this inode */
  		switch (error) {
-@@ -1900,7 +1904,11 @@ int nfs_rmdir(struct inode *dir, struct
+@@ -1822,7 +1826,11 @@ int nfs_rmdir(struct inode *dir, struct
  		case -ENOENT:
  			nfs_dentry_handle_enoent(dentry);
  		}
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	trace_nfs_rmdir_exit(dir, dentry, error);
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -2089,7 +2089,11 @@ static void init_once(void *foo)
+@@ -2090,7 +2090,11 @@ static void init_once(void *foo)
  	atomic_long_set(&nfsi->nrequests, 0);
  	atomic_long_set(&nfsi->commit_info.ncommit, 0);
  	atomic_set(&nfsi->commit_info.rpcs_out, 0);

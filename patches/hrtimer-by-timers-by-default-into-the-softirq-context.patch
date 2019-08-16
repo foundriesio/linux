@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	timer->function = perf_mux_hrtimer_handler;
  }
  
-@@ -9488,7 +9488,7 @@ static void perf_swevent_init_hrtimer(st
+@@ -9511,7 +9511,7 @@ static void perf_swevent_init_hrtimer(st
  	if (!is_sampling_event(event))
  		return;
  
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -4945,9 +4945,9 @@ void init_cfs_bandwidth(struct cfs_bandw
+@@ -4999,9 +4999,9 @@ void init_cfs_bandwidth(struct cfs_bandw
  	cfs_b->period = ns_to_ktime(default_cfs_period());
  
  	INIT_LIST_HEAD(&cfs_b->throttled_cfs_rq);

@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <asm/page.h>
  
  struct notifier_block;
-@@ -328,6 +329,7 @@ extern unsigned long nr_free_pagecache_p
+@@ -329,6 +330,7 @@ extern unsigned long nr_free_pagecache_p
  
  
  /* linux/mm/swap.c */
@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  extern void lru_cache_add_file(struct page *page);
 --- a/mm/compaction.c
 +++ b/mm/compaction.c
-@@ -2226,10 +2226,12 @@ compact_zone(struct compact_control *cc,
+@@ -2229,10 +2229,12 @@ compact_zone(struct compact_control *cc,
  				block_start_pfn(cc->migrate_pfn, cc->order);
  
  			if (last_migrated_pfn < current_block_start) {

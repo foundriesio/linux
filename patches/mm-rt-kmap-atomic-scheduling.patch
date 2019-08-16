@@ -247,7 +247,7 @@ Link: http://lkml.kernel.org/r/1311842631.5890.208.camel@twins
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -1209,6 +1210,12 @@ struct task_struct {
+@@ -1217,6 +1218,12 @@ struct task_struct {
  #ifdef CONFIG_PREEMPT_RT_BASE
  	struct rcu_head			put_rcu;
  #endif
