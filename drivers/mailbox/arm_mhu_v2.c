@@ -216,6 +216,10 @@ static struct amba_id mhuv2_ids[] = {
 		.id     = 0xbb0d1,
 		.mask   = 0xfffff,
 	},
+	{
+		.id     = 0xbb076,
+		.mask   = 0xfffff,
+	},
 	{ 0, 0 },
 };
 MODULE_DEVICE_TABLE(amba, mhuv2_ids);
