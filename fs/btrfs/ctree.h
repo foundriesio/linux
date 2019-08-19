@@ -48,6 +48,7 @@
 struct btrfs_trans_handle;
 struct btrfs_transaction;
 struct btrfs_pending_snapshot;
+struct btrfs_delayed_ref_root;
 extern struct kmem_cache *btrfs_trans_handle_cachep;
 extern struct kmem_cache *btrfs_transaction_cachep;
 extern struct kmem_cache *btrfs_bit_radix_cachep;
@@ -777,6 +778,13 @@ bool btrfs_pinned_by_swapfile(struct btrfs_fs_info *fs_info, void *ptr);
  */
 #define BTRFS_FS_NEED_ASYNC_COMMIT		17
 
+/*
+ * Indicate that balance has been set up from the ioctl and is in the main
+ * phase. The fs_info::balance_ctl is initialized.
+ * Set and cleared while holding fs_info::balance_mutex.
+ */
+#define BTRFS_FS_BALANCE_RUNNING		18
+
 struct btrfs_fs_info {
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
 	unsigned long flags;
@@ -1056,7 +1064,6 @@ struct btrfs_fs_info {
 	/* restriper state */
 	spinlock_t balance_lock;
 	struct mutex balance_mutex;
-	atomic_t balance_running;
 	atomic_t balance_pause_req;
 	atomic_t balance_cancel_req;
 	struct btrfs_balance_control *balance_ctl;
@@ -1171,6 +1178,12 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+
+	/*
+	 * Number of send operations in progress.
+	 * Updated while holding fs_info::balance_mutex.
+	 */
+	int send_in_progress;
 
 	/* Block groups and devices containing active swapfiles. */
 	spinlock_t swapfile_pins_lock;
@@ -1354,6 +1367,12 @@ struct btrfs_root {
 	 * manipulation with the read-only status via SUBVOL_SETFLAGS
 	 */
 	int send_in_progress;
+	/*
+	 * Number of currently running deduplication operations that have a
+	 * destination inode belonging to this root. Protected by the lock
+	 * root_item_lock.
+	 */
+	int dedupe_in_progress;
 	struct btrfs_subvolume_writers *subv_writers;
 	atomic_t will_be_snapshoted;
 
@@ -2705,6 +2724,9 @@ int btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 			   struct btrfs_fs_info *fs_info, unsigned long count);
 int btrfs_async_run_delayed_refs(struct btrfs_fs_info *fs_info,
 				 unsigned long count, u64 transid, int wait);
+void btrfs_cleanup_ref_head_accounting(struct btrfs_fs_info *fs_info,
+				  struct btrfs_delayed_ref_root *delayed_refs,
+				  struct btrfs_delayed_ref_head *head);
 int btrfs_lookup_data_extent(struct btrfs_fs_info *fs_info, u64 start, u64 len);
 int btrfs_lookup_extent_info(struct btrfs_trans_handle *trans,
 			     struct btrfs_fs_info *fs_info, u64 bytenr,
@@ -3262,6 +3284,8 @@ static inline void btrfs_force_ra(struct address_space *mapping,
 	page_cache_sync_readahead(mapping, ra, file, offset, req_size);
 }
 
+void __btrfs_del_delalloc_inode(struct btrfs_root *root,
+				struct btrfs_inode *inode);
 struct inode *btrfs_lookup_dentry(struct inode *dir, struct dentry *dentry);
 int btrfs_set_inode_index(struct btrfs_inode *dir, u64 *index);
 int btrfs_unlink_inode(struct btrfs_trans_handle *trans,

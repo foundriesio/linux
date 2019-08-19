@@ -234,8 +234,13 @@ void isa207_get_mem_weight(u64 *weight)
 	u64 mmcra = mfspr(SPRN_MMCRA);
 	u64 exp = MMCRA_THR_CTR_EXP(mmcra);
 	u64 mantissa = MMCRA_THR_CTR_MANT(mmcra);
+	u64 sier = mfspr(SPRN_SIER);
+	u64 val = (sier & ISA207_SIER_TYPE_MASK) >> ISA207_SIER_TYPE_SHIFT;
 
-	*weight = mantissa << (2 * exp);
+	if (val == 0 || val == 7)
+		*weight = 0;
+	else
+		*weight = mantissa << (2 * exp);
 }
 
 int isa207_get_constraint(u64 event, unsigned long *maskp, unsigned long *valp)
@@ -282,17 +287,25 @@ int isa207_get_constraint(u64 event, unsigned long *maskp, unsigned long *valp)
 	}
 
 	if (unit >= 6 && unit <= 9) {
-		/*
-		 * L2/L3 events contain a cache selector field, which is
-		 * supposed to be programmed into MMCRC. However MMCRC is only
-		 * HV writable, and there is no API for guest kernels to modify
-		 * it. The solution is for the hypervisor to initialise the
-		 * field to zeroes, and for us to only ever allow events that
-		 * have a cache selector of zero. The bank selector (bit 3) is
-		 * irrelevant, as long as the rest of the value is 0.
-		 */
-		if (!cpu_has_feature(CPU_FTR_ARCH_300) && (cache & 0x7))
+		if (cpu_has_feature(CPU_FTR_ARCH_300)) {
+			mask  |= CNST_CACHE_GROUP_MASK;
+			value |= CNST_CACHE_GROUP_VAL(event & 0xff);
+
+			mask |= CNST_CACHE_PMC4_MASK;
+			if (pmc == 4)
+				value |= CNST_CACHE_PMC4_VAL;
+		} else if (cache & 0x7) {
+			/*
+			 * L2/L3 events contain a cache selector field, which is
+			 * supposed to be programmed into MMCRC. However MMCRC is only
+			 * HV writable, and there is no API for guest kernels to modify
+			 * it. The solution is for the hypervisor to initialise the
+			 * field to zeroes, and for us to only ever allow events that
+			 * have a cache selector of zero. The bank selector (bit 3) is
+			 * irrelevant, as long as the rest of the value is 0.
+			 */
 			return -1;
+		}
 
 	} else if (cpu_has_feature(CPU_FTR_ARCH_300) || (event & EVENT_IS_L1)) {
 		mask  |= CNST_L1_QUAL_MASK;

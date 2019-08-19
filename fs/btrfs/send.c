@@ -6621,6 +6621,13 @@ static void btrfs_root_dec_send_in_progress(struct btrfs_root* root)
 	spin_unlock(&root->root_item_lock);
 }
 
+static void dedupe_in_progress_warn(const struct btrfs_root *root)
+{
+	btrfs_warn_rl(root->fs_info,
+"cannot use root %llu for send while deduplications on it are in progress (%d in progress)",
+		      root->root_key.objectid, root->dedupe_in_progress);
+}
+
 long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
 {
 	int ret = 0;
@@ -6645,6 +6652,11 @@ long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
 	 * making it RW. This also protects against deletion.
 	 */
 	spin_lock(&send_root->root_item_lock);
+	if (btrfs_root_readonly(send_root) && send_root->dedupe_in_progress) {
+		dedupe_in_progress_warn(send_root);
+		spin_unlock(&send_root->root_item_lock);
+		return -EAGAIN;
+	}
 	send_root->send_in_progress++;
 	spin_unlock(&send_root->root_item_lock);
 
@@ -6789,6 +6801,13 @@ long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
 				ret = -EPERM;
 				goto out;
 			}
+			if (clone_root->dedupe_in_progress) {
+				dedupe_in_progress_warn(clone_root);
+				spin_unlock(&clone_root->root_item_lock);
+				srcu_read_unlock(&fs_info->subvol_srcu, index);
+				ret = -EAGAIN;
+				goto out;
+			}
 			clone_root->send_in_progress++;
 			spin_unlock(&clone_root->root_item_lock);
 			srcu_read_unlock(&fs_info->subvol_srcu, index);
@@ -6823,6 +6842,13 @@ long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
 			ret = -EPERM;
 			goto out;
 		}
+		if (sctx->parent_root->dedupe_in_progress) {
+			dedupe_in_progress_warn(sctx->parent_root);
+			spin_unlock(&sctx->parent_root->root_item_lock);
+			srcu_read_unlock(&fs_info->subvol_srcu, index);
+			ret = -EAGAIN;
+			goto out;
+		}
 		spin_unlock(&sctx->parent_root->root_item_lock);
 
 		srcu_read_unlock(&fs_info->subvol_srcu, index);
@@ -6849,9 +6875,23 @@ long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
 	if (ret)
 		goto out;
 
+	mutex_lock(&fs_info->balance_mutex);
+	if (test_bit(BTRFS_FS_BALANCE_RUNNING, &fs_info->flags)) {
+		mutex_unlock(&fs_info->balance_mutex);
+		btrfs_warn_rl(fs_info,
+		"cannot run send because a balance operation is in progress");
+		ret = -EAGAIN;
+		goto out;
+	}
+	fs_info->send_in_progress++;
+	mutex_unlock(&fs_info->balance_mutex);
+
 	current->journal_info = BTRFS_SEND_TRANS_STUB;
 	ret = send_subvol(sctx);
 	current->journal_info = NULL;
+	mutex_lock(&fs_info->balance_mutex);
+	fs_info->send_in_progress--;
+	mutex_unlock(&fs_info->balance_mutex);
 	if (ret < 0)
 		goto out;
 
