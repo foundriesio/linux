@@ -2580,7 +2580,7 @@ qla2x00_init_timer(srb_t *sp, unsigned long tmo)
 	sp->free = qla2x00_sp_free;
 	if (IS_QLAFX00(sp->vha->hw) && (sp->type == SRB_FXIOCB_DCMD))
 		init_completion(&sp->u.iocb_cmd.u.fxiocb.fxiocb_comp);
-	add_timer(&sp->u.iocb_cmd.timer);
+	sp->start_timer = 1;
 }
 
 static void
@@ -3744,6 +3744,9 @@ qla2x00_start_sp(srb_t *sp)
 	default:
 		break;
 	}
+
+	if (sp->start_timer)
+		add_timer(&sp->u.iocb_cmd.timer);
 
 	wmb();
 	qla2x00_start_iocbs(vha, qp->req);
