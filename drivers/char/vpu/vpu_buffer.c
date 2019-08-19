@@ -605,7 +605,7 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 		detailk_mem_dec("type[%d] : alloc = 0x%x ~ 0x%x, 0x%d!!, used 0x%d \n", type, (ptr_rear_addr_mem + request_size), curr_phyaddr, request_size, sz_rear_used_mem);
 	}
 #endif
-	detailk_mem_dec("type[%d] : mem usage = 0x%x/0x%x = Dec(0x%x + 0x%x) + Enc(0x%x) !! \n", type, sz_front_used_mem+sz_rear_used_mem+sz_ext_used_mem, pmap_video.size, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem);
+	detailk_mem_dec("type[%d] : mem usage = 0x%x/0x%x = Dec(f:0x%x + ext:0x%x) + Rear(0x%x (Enc?)) !! \n", type, sz_front_used_mem+sz_rear_used_mem+sz_ext_used_mem, pmap_video.size, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem);
 
 	sz_remained_mem -= request_size;
 
@@ -1775,7 +1775,7 @@ unsigned int vmem_get_free_memory(vputype type)
 		szFreeMem = sz_remained_mem;
 	}
 
-	dprintk_mem("%s :: type(%d) free(0x%x) :: etc_info = enc(0x%x), ext_used(0x%x), front_used(0x%x)\n", __func__, type, szFreeMem, sz_enc_mem, sz_ext_used_mem, sz_front_used_mem); 
+	dprintk_mem("%s :: type(%d) free(0x%x) :: etc_info = enc(0x%x), front_used(0x%x), ext_used(0x%x), rear_used(0x%x)\n", __func__, type, szFreeMem, sz_enc_mem, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem); 
 	return szFreeMem;
 }
 EXPORT_SYMBOL(vmem_get_free_memory);

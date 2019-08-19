@@ -772,7 +772,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
 
                 switch (arg->gsV4kd2DecOutput.m_DecOutInfo.m_iDecodingStatus) {
                     case VPU_DEC_BUF_FULL:
-                    err("Buffer full\n");
+                    err("[%d] Buffer full\n", type);
                     //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "Buffer full");
                         break;
 
@@ -837,7 +837,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                         arg->gsV4kd2DecOutput.m_pCurrOut[VA][2]);
 
                 if(arg->gsV4kd2DecOutput.m_DecOutInfo.m_iDecodingStatus == VPU_DEC_BUF_FULL){
-                    err("Buffer full\n");
+                    err("%d: Buffer full\n", type);
                     //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "Buffer full");
                 }
             }
@@ -939,7 +939,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
     else
     {
-        err("@@ Enc: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x) \n", cmd);
+        err("@@ Enc[%d]: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x) \n", type, cmd);
         return 0x999;
     }
 #endif
