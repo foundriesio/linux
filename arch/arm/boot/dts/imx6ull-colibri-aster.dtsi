@@ -8,6 +8,7 @@
  */
 
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/pwm/pwm.h>
 
 / {
 	chosen {
@@ -64,9 +65,9 @@
 };
 
 &bl {
-	brightness-levels = <0 4 8 16 32 64 128 255>;
-	default-brightness-level = <6>;
-	pwms = <&pwm4 0 5000000 1>;
+	brightness-levels = <0 45 63 88 119 158 203 255>;
+	default-brightness-level = <4>;
+	pwms = <&pwm4 0 6666667 PWM_POLARITY_INVERTED>;
 	status = "okay";
 };
 
