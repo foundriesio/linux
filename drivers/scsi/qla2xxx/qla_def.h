@@ -4293,6 +4293,7 @@ struct qla_hw_data {
 		ulong length;
 		ulong dump_size;
 	} fwdt[2];
+	u32             fw_dump_alloc_len;
 	bool		fw_dump_mpi;
 	uint32_t	flt_region_vpd_nvram_sec;
 	uint32_t	flt_region_nvram_sec;
