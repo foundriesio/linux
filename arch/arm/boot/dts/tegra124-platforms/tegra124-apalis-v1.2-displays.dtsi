@@ -217,10 +217,10 @@
 
 	bl: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&tegra_pwm 3 5000000>; /* PWM freq. 200Hz */
+		pwms = <&tegra_pwm 3 6666667>; /* PWM freq. 150Hz */
 
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
+		brightness-levels = <255 210 192 167 136 97 52 0>;
+		default-brightness-level = <4>;
 
 		enable-gpios = <&gpio TEGRA_GPIO(BB, 5) 0>;
 		power-supply = <&reg_3v3_mxm>;
