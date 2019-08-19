@@ -889,14 +889,12 @@ struct qla_tgt_cmd {
 	unsigned int term_exchg:1;
 	unsigned int cmd_sent_to_fw:1;
 	unsigned int cmd_in_wq:1;
-
-	/*
-	 * This variable may be set from outside the LIO and I/O completion
-	 * callback functions. Do not declare this member variable as a
-	 * bitfield to avoid a read-modify-write operation when this variable
-	 * is set.
-	 */
-	unsigned int aborted;
+#ifdef __GENKSYMS__
+	unsigned int aborted:1;
+	unsigned int data_work:1;
+	unsigned int data_work_free:1;
+	unsigned int released:1;
+#endif
 
 	struct scatterlist *sg;	/* cmd data buffer SG vector */
 	int sg_cnt;		/* SG segments count */
@@ -940,6 +938,13 @@ struct qla_tgt_cmd {
 #ifndef __GENKSYMS__
 #define DIF_BUNDL_DMA_VALID 1
 	uint16_t prot_flags;
+	/*
+	 * This variable may be set from outside the LIO and I/O completion
+	 * callback functions. Do not declare this member variable as a
+	 * bitfield to avoid a read-modify-write operation when this variable
+	 * is set.
+	 */
+	unsigned int aborted;
 #endif
 };
 

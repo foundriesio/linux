@@ -531,12 +531,9 @@ typedef struct srb {
 	uint8_t cmd_type;
 	uint8_t pad[3];
 	atomic_t ref_count;
-	struct kref cmd_kref;	/* need to migrate ref_count over to this */
-	void *priv;
 	wait_queue_head_t nvme_ls_waitq;
 	struct fc_port *fcport;
 	struct scsi_qla_host *vha;
-	unsigned int start_timer:1;
 	uint32_t handle;
 	uint16_t flags;
 	uint16_t type;
@@ -548,7 +545,11 @@ typedef struct srb {
 	u32 gen2;	/* scratch */
 	int rc;
 	int retry_count;
+#ifdef __GENKSYMS__
+	struct completion comp;
+#else
 	struct completion *comp;
+#endif
 	union {
 		struct srb_iocb iocb_cmd;
 		struct bsg_job *bsg_job;
@@ -556,7 +557,12 @@ typedef struct srb {
 	} u;
 	void (*done)(void *, int);
 	void (*free)(void *);
+#ifndef __GENKSYMS__
+	struct kref cmd_kref;	/* need to migrate ref_count over to this */
+	void *priv;
+	unsigned int start_timer:1;
 	void (*put_fn)(struct kref *kref);
+#endif
 } srb_t;
 
 #define GET_CMD_SP(sp) (sp->u.scmd.cmd)
@@ -2268,10 +2274,14 @@ typedef enum {
 	FCT_BROADCAST,
 	FCT_INITIATOR,
 	FCT_TARGET,
+#ifdef __GENKSYMS__
+	FCT_NVME
+#else
 	FCT_NVME_INITIATOR = 0x10,
 	FCT_NVME_TARGET = 0x20,
 	FCT_NVME_DISCOVERY = 0x40,
 	FCT_NVME = 0xf0,
+#endif
 } fc_port_type_t;
 
 enum qla_sess_deletion {
@@ -2373,6 +2383,9 @@ typedef struct fc_port {
 	unsigned int id_changed:1;
 	unsigned int scan_needed:1;
 
+#ifdef __GENKSYMS__
+	struct work_struct nvme_del_work;
+#endif
 	struct completion nvme_del_done;
 	uint32_t nvme_prli_service_param;
 #define NVME_PRLI_SP_CONF       BIT_7
@@ -4443,6 +4456,9 @@ typedef struct scsi_qla_host {
 
 	struct		nvme_fc_local_port *nvme_local_port;
 	struct completion nvme_del_done;
+#ifdef __GENKSYMS__
+	struct list_head nvme_rport_list;
+#endif
 
 	uint16_t	fcoe_vlan_id;
 	uint16_t	fcoe_fcf_idx;
