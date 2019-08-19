@@ -80,6 +80,9 @@ static inline pgd_t *pgd_alloc(struct mm_struct *mm)
 		return radix__pgd_alloc(mm);
 
 	pgd = kmem_cache_alloc(PGT_CACHE(PGD_INDEX_SIZE), GFP_KERNEL);
+	if (unlikely(!pgd))
+		return pgd;
+
 	memset(pgd, 0, PGD_TABLE_SIZE);
 
 	return pgd;

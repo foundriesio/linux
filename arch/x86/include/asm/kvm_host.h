@@ -1117,6 +1117,7 @@ struct kvm_x86_ops {
 	void (*vm_free)(struct kvm *);
 	bool (*cpu_has_high_real_mode_segbase)(void);
 	bool (*need_emulation_on_page_fault)(struct kvm_vcpu *vcpu);
+	bool (*dy_apicv_has_pending_interrupt)(struct kvm_vcpu *vcpu);
 #endif
 };
 
