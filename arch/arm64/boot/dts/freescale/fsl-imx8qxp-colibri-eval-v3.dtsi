@@ -121,6 +121,9 @@
 };
 
 &backlight {
+	brightness-levels = <0 45 63 88 119 158 203 255>;
+	default-brightness-level = <4>;
+	pwms = <&pwm_adma_lcdif 0 6666667 PWM_POLARITY_INVERTED>;
 	status = "okay";
 };
 
