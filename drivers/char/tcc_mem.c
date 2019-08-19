@@ -523,42 +523,38 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         {
             vHdmi_info mInfo_Hdmi;
 
-            memset(&mInfo_Hdmi, 0x00, sizeof(vHdmi_info));
+        #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+            if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
+                mInfo_Hdmi.dv_path = 1;
+                mInfo_Hdmi.out_type = vioc_get_out_type();
+                mInfo_Hdmi.width = Hactive;
+                mInfo_Hdmi.height = Vactive;
+				mInfo_Hdmi.dv_vsvdb_size = vioc_v_dv_get_vsvdb((unsigned char*)mInfo_Hdmi.dv_vsvdb);
+				mInfo_Hdmi.dv_ll_mode = vioc_v_dv_get_mode();
+            }
+            else
+        #endif
+            {
+	            memset(&mInfo_Hdmi, 0x00, sizeof(vHdmi_info));
 
-            if(copy_from_user(&mInfo_Hdmi, (const void*)arg, sizeof(vHdmi_info))){
+                mInfo_Hdmi.dv_path = 0;
+                mInfo_Hdmi.out_type = 2;
+            #ifdef CONFIG_FB_VIOC
+                mInfo_Hdmi.width = HDMI_video_width;
+                mInfo_Hdmi.height = HDMI_video_height;
+            #else
+                mInfo_Hdmi.width = 1920;
+                mInfo_Hdmi.height = 1080;
+                printk("Error :: Can't get the resolution information related to HDMI \n");
+            #endif
+            }
+			//printk("@@@@@@@@@@@@@@@@@@@@@@ hdmi info DV_path(%d)/out(%d), %d x %d vsvdb(%d) LL(%d) \n",
+			//			mInfo_Hdmi.dv_path, mInfo_Hdmi.out_type, mInfo_Hdmi.width, mInfo_Hdmi.height,
+			//			mInfo_Hdmi.dv_vsvdb_size, mInfo_Hdmi.dv_ll_mode);
+
+            if (copy_to_user((void *)arg, &mInfo_Hdmi, sizeof(vHdmi_info))) {
                 ret = -EFAULT;
             }
-            else{
-            #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
-                if (VIOC_CONFIG_DV_GET_EDR_PATH()) {
-                    mInfo_Hdmi.dv_path = 1;
-                    mInfo_Hdmi.out_type = vioc_get_out_type();
-                    mInfo_Hdmi.width = Hactive;
-                    mInfo_Hdmi.height = Vactive;
-					mInfo_Hdmi.dv_vsvdb_size = vioc_v_dv_get_vsvdb((unsigned char*)mInfo_Hdmi.dv_vsvdb);
-					mInfo_Hdmi.dv_ll_mode = vioc_v_dv_get_mode();
-                    //printk("@@@@@@@@@@@@@@@@@@@@@@ hdmi info DV_path(%d)/out(%d), %d x %d \n", mInfo_Hdmi.dv_path, mInfo_Hdmi.out_type, mInfo_Hdmi.width, mInfo_Hdmi.height);
-                }
-                else
-            #endif
-                {
-                    mInfo_Hdmi.dv_path = 0;
-                    mInfo_Hdmi.out_type = 2;
-                #ifdef CONFIG_FB_VIOC
-                    mInfo_Hdmi.width = HDMI_video_width;
-                    mInfo_Hdmi.height = HDMI_video_height;
-                #else
-                    mInfo_Hdmi.width = 1920;
-                    mInfo_Hdmi.height = 1080;
-                    printk("Error :: Can't get the resolution information related to HDMI \n");
-                #endif
-                }
-
-                if (copy_to_user((void *)arg, &mInfo_Hdmi, sizeof(vHdmi_info))) {
-                    ret = -EFAULT;
-                }
-            }
-
         }
         break;
 
