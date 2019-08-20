@@ -752,8 +752,7 @@ static int ccp_run_aes_gcm_cmd(struct ccp_cmd_queue *cmd_q,
 		while (src.sg_wa.bytes_left) {
 			ccp_prepare_data(&src, &dst, &op, AES_BLOCK_SIZE, true);
 			if (!src.sg_wa.bytes_left) {
-				unsigned int nbytes = aes->src_len
-						      % AES_BLOCK_SIZE;
+				unsigned int nbytes = ilen % AES_BLOCK_SIZE;
 
 				if (nbytes) {
 					op.eom = 1;
@@ -841,11 +840,11 @@ e_tag:
 	ccp_dm_free(&final_wa);
 
 e_dst:
-	if (aes->src_len && !in_place)
+	if (ilen > 0 && !in_place)
 		ccp_free_data(&dst, cmd_q);
 
 e_src:
-	if (aes->src_len)
+	if (ilen > 0)
 		ccp_free_data(&src, cmd_q);
 
 e_aad:

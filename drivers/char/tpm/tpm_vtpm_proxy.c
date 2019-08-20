@@ -312,7 +312,6 @@ out:
 static int vtpm_proxy_tpm_op_send(struct tpm_chip *chip, u8 *buf, size_t count)
 {
 	struct proxy_dev *proxy_dev = dev_get_drvdata(&chip->dev);
-	int rc = 0;
 
 	if (count > sizeof(proxy_dev->buffer)) {
 		dev_err(&chip->dev,
@@ -339,7 +338,7 @@ static int vtpm_proxy_tpm_op_send(struct tpm_chip *chip, u8 *buf, size_t count)
 
 	wake_up_interruptible(&proxy_dev->wq);
 
-	return rc;
+	return 0;
 }
 
 static void vtpm_proxy_tpm_op_cancel(struct tpm_chip *chip)
