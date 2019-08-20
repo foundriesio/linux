@@ -1385,6 +1385,7 @@ qla2x00_mgmt_svr_login(scsi_qla_host_t *vha)
 	int ret, rval;
 	uint16_t mb[MAILBOX_REGISTER_COUNT];
 	struct qla_hw_data *ha = vha->hw;
+
 	ret = QLA_SUCCESS;
 	if (vha->flags.management_server_logged_in)
 		return ret;
@@ -1423,6 +1424,7 @@ qla2x00_prep_ms_fdmi_iocb(scsi_qla_host_t *vha, uint32_t req_size,
 {
 	ms_iocb_entry_t *ms_pkt;
 	struct qla_hw_data *ha = vha->hw;
+
 	ms_pkt = ha->ms_iocb;
 	memset(ms_pkt, 0, sizeof(ms_iocb_entry_t));
 
@@ -2446,7 +2448,7 @@ qla2x00_fdmiv2_rpa(scsi_qla_host_t *vha)
 	eiter->type = cpu_to_be16(FDMI_PORT_MAX_FRAME_SIZE);
 	eiter->len = cpu_to_be16(4 + 4);
 	eiter->a.max_frame_size = IS_FWI2_CAPABLE(ha) ?
-	    le16_to_cpu(icb24->frame_payload_size):
+	    le16_to_cpu(icb24->frame_payload_size) :
 	    le16_to_cpu(ha->init_cb->frame_payload_size);
 	eiter->a.max_frame_size = cpu_to_be32(eiter->a.max_frame_size);
 	size += 4 + 4;
@@ -3032,6 +3034,8 @@ static void qla24xx_async_gpsc_sp_done(void *s, int res)
 	ql_dbg(ql_dbg_disc, vha, 0x2053,
 	    "Async done-%s res %x, WWPN %8phC \n",
 	    sp->name, res, fcport->port_name);
+
+	fcport->flags &= ~(FCF_ASYNC_SENT | FCF_ASYNC_ACTIVE);
 
 	if (res == QLA_FUNCTION_TIMEOUT)
 		return;
@@ -4058,9 +4062,6 @@ static int qla24xx_async_gnnft(scsi_qla_host_t *vha, struct srb *sp,
 
 	rval = qla2x00_start_sp(sp);
 	if (rval != QLA_SUCCESS) {
-		spin_lock_irqsave(&vha->work_lock, flags);
-		vha->scan.scan_flags &= ~SF_SCANNING;
-		spin_unlock_irqrestore(&vha->work_lock, flags);
 		goto done_free_sp;
 	}
 
@@ -4083,6 +4084,17 @@ done_free_sp:
 	}
 
 	sp->free(sp);
+
+	spin_lock_irqsave(&vha->work_lock, flags);
+	vha->scan.scan_flags &= ~SF_SCANNING;
+	if (vha->scan.scan_flags == 0) {
+		ql_dbg(ql_dbg_disc, vha, 0xffff,
+		    "%s: schedule\n", __func__);
+		vha->scan.scan_flags |= SF_QUEUED;
+		schedule_delayed_work(&vha->scan.scan_work, 5);
+	}
+	spin_unlock_irqrestore(&vha->work_lock, flags);
+
 
 	return rval;
 } /* GNNFT */
@@ -4155,7 +4167,7 @@ int qla24xx_async_gpnft(scsi_qla_host_t *vha, u8 fc4_type, srb_t *sp)
 		sp->u.iocb_cmd.u.ctarg.rsp = dma_zalloc_coherent(
 			&vha->hw->pdev->dev, rspsz,
 			&sp->u.iocb_cmd.u.ctarg.rsp_dma, GFP_KERNEL);
-		sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = sizeof(struct ct_sns_pkt);
+		sp->u.iocb_cmd.u.ctarg.rsp_allocated_size = rspsz;
 		if (!sp->u.iocb_cmd.u.ctarg.rsp) {
 			ql_log(ql_log_warn, vha, 0xffff,
 			    "Failed to allocate ct_sns request.\n");
@@ -4211,9 +4223,6 @@ int qla24xx_async_gpnft(scsi_qla_host_t *vha, u8 fc4_type, srb_t *sp)
 
 	rval = qla2x00_start_sp(sp);
 	if (rval != QLA_SUCCESS) {
-		spin_lock_irqsave(&vha->work_lock, flags);
-		vha->scan.scan_flags &= ~SF_SCANNING;
-		spin_unlock_irqrestore(&vha->work_lock, flags);
 		goto done_free_sp;
 	}
 
@@ -4236,6 +4245,17 @@ done_free_sp:
 	}
 
 	sp->free(sp);
+
+	spin_lock_irqsave(&vha->work_lock, flags);
+	vha->scan.scan_flags &= ~SF_SCANNING;
+	if (vha->scan.scan_flags == 0) {
+		ql_dbg(ql_dbg_disc, vha, 0xffff,
+		    "%s: schedule\n", __func__);
+		vha->scan.scan_flags |= SF_QUEUED;
+		schedule_delayed_work(&vha->scan.scan_work, 5);
+	}
+	spin_unlock_irqrestore(&vha->work_lock, flags);
+
 
 	return rval;
 }
@@ -4349,6 +4369,7 @@ int qla24xx_async_gnnid(scsi_qla_host_t *vha, fc_port_t *fcport)
 
 done_free_sp:
 	sp->free(sp);
+	fcport->flags &= ~FCF_ASYNC_SENT;
 done:
 	return rval;
 }

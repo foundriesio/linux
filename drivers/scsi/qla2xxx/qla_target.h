@@ -855,7 +855,7 @@ enum trace_flags {
 	TRC_CTIO_ERR = BIT_11,
 	TRC_CTIO_DONE = BIT_12,
 	TRC_CTIO_ABORTED =  BIT_13,
-	TRC_CTIO_STRANGE= BIT_14,
+	TRC_CTIO_STRANGE = BIT_14,
 	TRC_CMD_DONE = BIT_15,
 	TRC_CMD_CHK_STOP = BIT_16,
 	TRC_CMD_FREE = BIT_17,
@@ -889,10 +889,12 @@ struct qla_tgt_cmd {
 	unsigned int term_exchg:1;
 	unsigned int cmd_sent_to_fw:1;
 	unsigned int cmd_in_wq:1;
+#ifdef __GENKSYMS__
 	unsigned int aborted:1;
 	unsigned int data_work:1;
 	unsigned int data_work_free:1;
 	unsigned int released:1;
+#endif
 
 	struct scatterlist *sg;	/* cmd data buffer SG vector */
 	int sg_cnt;		/* SG segments count */
@@ -936,6 +938,13 @@ struct qla_tgt_cmd {
 #ifndef __GENKSYMS__
 #define DIF_BUNDL_DMA_VALID 1
 	uint16_t prot_flags;
+	/*
+	 * This variable may be set from outside the LIO and I/O completion
+	 * callback functions. Do not declare this member variable as a
+	 * bitfield to avoid a read-modify-write operation when this variable
+	 * is set.
+	 */
+	unsigned int aborted;
 #endif
 };
 
@@ -1105,7 +1114,5 @@ extern void qlt_do_generation_tick(struct scsi_qla_host *, int *);
 
 void qlt_send_resp_ctio(struct qla_qpair *, struct qla_tgt_cmd *, uint8_t,
     uint8_t, uint8_t, uint8_t);
-extern void qlt_abort_cmd_on_host_reset(struct scsi_qla_host *,
-    struct qla_tgt_cmd *);
 
 #endif /* __QLA_TARGET_H */

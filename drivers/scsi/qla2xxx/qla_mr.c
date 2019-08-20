@@ -273,9 +273,9 @@ premature_exit:
 
 	if (rval) {
 		ql_log(ql_log_warn, base_vha, 0x1163,
-		    "**** Failed mbx[0]=%x, mb[1]=%x, mb[2]=%x, "
-		    "mb[3]=%x, cmd=%x ****.\n",
-		    mcp->mb[0], mcp->mb[1], mcp->mb[2], mcp->mb[3], command);
+		       "**** Failed=%x mbx[0]=%x, mb[1]=%x, mb[2]=%x, mb[3]=%x, cmd=%x ****.\n",
+		       rval, mcp->mb[0], mcp->mb[1], mcp->mb[2], mcp->mb[3],
+		       command);
 	} else {
 		ql_dbg(ql_dbg_mbx, base_vha, 0x1164, "Done %s.\n", __func__);
 	}
@@ -1323,6 +1323,7 @@ qlafx00_configure_devices(scsi_qla_host_t *vha)
 {
 	int  rval;
 	unsigned long flags;
+
 	rval = QLA_SUCCESS;
 
 	flags = vha->dpc_flags;
@@ -3308,6 +3309,7 @@ qlafx00_fxdisc_iocb(srb_t *sp, struct fxdisc_entry_fx00 *pfxiocb)
 		fx_iocb.flags = fxio->u.fxiocb.flags;
 	} else {
 		struct scatterlist *sg;
+
 		bsg_job = sp->u.bsg_job;
 		bsg_request = bsg_job->request;
 		piocb_rqst = (struct qla_mt_iocb_rqst_fx00 *)
