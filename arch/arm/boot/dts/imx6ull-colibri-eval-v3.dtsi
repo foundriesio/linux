@@ -343,10 +343,12 @@
 };
 
 &iomuxc {
+	imx6ull-colibri {
 	pinctrl_gpiotouch: touchgpios {
 		fsl,pins = <
 			MX6UL_PAD_NAND_DQS__GPIO4_IO16		0x74
 			MX6UL_PAD_ENET1_TX_EN__GPIO2_IO05	0x14
 		>;
+	};
 	};
 };
