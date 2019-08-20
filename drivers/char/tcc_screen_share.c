@@ -202,6 +202,7 @@ static void tcc_scrshare_cmd_handler(struct tcc_scrshare_device *tcc_scrshare, s
 			data->cmd[1] |= TCC_SCRSHARE_ACK;
 			tcc_scrshare_send_message(tcc_scrshare, data);
 			atomic_set(&tcc_scrshare->rx.seq, data->cmd[0]);
+			pr_debug("%s rx&cmd[0]:0x%x, cmd[1]:0x%x\n", __func__, data->cmd[0], data->cmd[1]);
 		}
 	}
 end_handler:
@@ -239,7 +240,7 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 				}
 				else if(command == SCRSHARE_CMD_OFF)
 				{
-					pr_info("%s SCRSHARE_CMD_ON ok\n", __func__);
+					pr_info("%s SCRSHARE_CMD_OFF ok\n", __func__);
 					tcc_scrshare_info->share_enable = 0;
 				}
 				
@@ -254,7 +255,13 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 		}
 		break;
 	case SCRSHARE_CMD_READY:
-		if((atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_INIT) || (atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY)) {
+		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_READY) {
+			tcc_scrshare_off();
+			atomic_set(&tcc_scrshare->status, SCRSHARE_STS_INIT);
+			atomic_set(&tcc_scrshare->rx.seq, 0);		
+		}
+
+		if(atomic_read(&tcc_scrshare->status) == SCRSHARE_STS_INIT) {
 			atomic_set(&tcc_scrshare->status, SCRSHARE_STS_READY);
 			if(!(msg->cmd[1] & TCC_SCRSHARE_ACK)) {
 				msg->cmd[1] |= TCC_SCRSHARE_ACK;
@@ -338,8 +345,13 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 		pr_err("error in %s: Timeout tcc_scrshare_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
 	else
 	{
-		if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO)
-			copy_to_user((void *)arg, tcc_scrshare_info->dstinfo, sizeof(struct tcc_scrshare_dstinfo));
+		if(cmd == IOCTL_TCC_SCRSHARE_GET_DSTINFO) {
+			ret = copy_to_user((void *)arg, tcc_scrshare_info->dstinfo, sizeof(struct tcc_scrshare_dstinfo));
+			if(ret) {
+				pr_err("error in %s: copy to user fail (%ld) \n", __func__, ret);
+				goto err_ioctl;
+			}			
+		}
 	}
 	mbox_done = 0;
 
@@ -391,7 +403,7 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth, u
 		tcc_scrshare_send_message(tcc_scrshare_device, &data);
 		ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
 		if(ret <= 0)
-			pr_err("error in %s: Timeout tcc_scrshare_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
+			pr_err("error in %s: Timeout tcc_scrshare_send_message(%ld)(%d).  A7S seems to have some problem. Try screen share on / off again\n", __func__, ret, mbox_done);
 		mbox_done = 0;
 		mutex_unlock(&tcc_scrshare_device->tx.lock);		
 	}

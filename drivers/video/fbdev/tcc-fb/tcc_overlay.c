@@ -356,11 +356,7 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 		{
 			overlay_shared_buffer_t overBuffCfg;
 
-			
-			if(0)//copy_from_user(&overBuffCfg, (overlay_video_buffer_t *)arg, sizeof(overlay_video_buffer_t)))
-				return -EFAULT;
 			memcpy(&overBuffCfg, (overlay_shared_buffer_t *)arg, sizeof(overlay_shared_buffer_t));
-
 			return tcc_overlay_display_shared_screen(overBuffCfg, overlay_drv);
 		}
 #endif
@@ -575,6 +571,10 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 		if(tmp_node) {
 			overlay_drv->rdma[i].reg = VIOC_RDMA_GetAddress(index);
 			overlay_drv->rdma[i].id = index;
+#if defined (CONFIG_TCC_SCREEN_SHARE)
+			if((overlay_drv->fb_dd_num == 1) && (i==1))
+				VIOC_RDMA_SetImageDisable(overlay_drv->rdma[i].reg);
+#endif			
 		}
 		dprintk("%s-%d :: fd_num(%d) => rdma[%d]: %d %d/%p\n", __func__, __LINE__, overlay_drv->fb_dd_num, i, index, overlay_drv->rdma[i].id, overlay_drv->rdma[i].reg);
 
