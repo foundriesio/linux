@@ -754,6 +754,8 @@ static int uac_mixer_unit_get_channels(struct mixer_build *state,
 		return -EINVAL;
 	if (!desc->bNrInPins)
 		return -EINVAL;
+	if (desc->bLength < sizeof(*desc) + desc->bNrInPins)
+		return -EINVAL;
 
 	switch (state->mixer->protocol) {
 	case UAC_VERSION_1:
@@ -1000,6 +1002,7 @@ static int __check_input_term(struct mixer_build *state, int id,
 	}
 	return -ENODEV;
 }
+
 
 static int check_input_term(struct mixer_build *state, int id,
 			    struct usb_audio_term *term)
@@ -2133,9 +2136,6 @@ static int parse_audio_mixer_unit(struct mixer_build *state, int unitid,
 
 	num_outs = err;
 	input_pins = desc->bNrInPins;
-
-	if (desc->bLength < sizeof(*desc) + desc->bNrInPins)
-		return -EINVAL;
 
 	num_ins = 0;
 	ich = 0;
