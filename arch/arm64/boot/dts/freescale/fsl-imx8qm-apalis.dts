@@ -1325,6 +1325,7 @@
 &lvds1_pwm {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_bkl>;
+	#pwm-cells = <3>;
 	status = "okay";
 };
 
@@ -1475,6 +1476,7 @@
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm0>;
+	#pwm-cells = <3>;
 	status = "okay";
 };
 
@@ -1482,6 +1484,7 @@
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
+	#pwm-cells = <3>;
 	status = "okay";
 };
 
@@ -1489,6 +1492,7 @@
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm2>;
+	#pwm-cells = <3>;
 	status = "okay";
 };
 
@@ -1496,6 +1500,7 @@
 &pwm3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm3>;
+	#pwm-cells = <3>;
 	status = "okay";
 };
 
