@@ -791,24 +791,28 @@
 &pwm_adma_lcdif {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_a>;
+	#pwm-cells = <3>;
 };
 
 /* Colibri PWM_B */
 &pwm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_b>;
+	#pwm-cells = <3>;
 };
 
 /* Colibri PWM_C */
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_c>;
+	#pwm-cells = <3>;
 };
 
 /* Colibri PWM_D */
 &pwm2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_d>;
+	#pwm-cells = <3>;
 };
 
 &rpmsg{
