@@ -164,23 +164,10 @@
 		opp-shared;
 
 		opp0 {
-			opp-hz = /bits/ 64 <1400000000>;
+			opp-hz = /bits/ 64 <1000000000>;
 			opp-microvolt = <900000>;
 			clock-latency-ns = <300000>;
 		};
-
-		opp1 {
-			opp-hz = /bits/ 64 <1250000000>;
-			opp-microvolt = <900000>;
-			clock-latency-ns = <300000>;
-		};
-
-		opp2 {
-			opp-hz = /bits/ 64 <1050000000>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <300000>;
-		};
-
 	};
 
 	gic: interrupt-controller@17301000 {
