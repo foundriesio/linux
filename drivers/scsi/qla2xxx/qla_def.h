@@ -531,9 +531,12 @@ typedef struct srb {
 	uint8_t cmd_type;
 	uint8_t pad[3];
 	atomic_t ref_count;
+	struct kref cmd_kref;	/* need to migrate ref_count over to this */
+	void *priv;
 	wait_queue_head_t nvme_ls_waitq;
 	struct fc_port *fcport;
 	struct scsi_qla_host *vha;
+	unsigned int start_timer:1;
 	uint32_t handle;
 	uint16_t flags;
 	uint16_t type;
@@ -545,7 +548,7 @@ typedef struct srb {
 	u32 gen2;	/* scratch */
 	int rc;
 	int retry_count;
-	struct completion comp;
+	struct completion *comp;
 	union {
 		struct srb_iocb iocb_cmd;
 		struct bsg_job *bsg_job;
@@ -553,6 +556,7 @@ typedef struct srb {
 	} u;
 	void (*done)(void *, int);
 	void (*free)(void *);
+	void (*put_fn)(struct kref *kref);
 } srb_t;
 
 #define GET_CMD_SP(sp) (sp->u.scmd.cmd)
@@ -2263,7 +2267,10 @@ typedef enum {
 	FCT_BROADCAST,
 	FCT_INITIATOR,
 	FCT_TARGET,
-	FCT_NVME
+	FCT_NVME_INITIATOR = 0x10,
+	FCT_NVME_TARGET = 0x20,
+	FCT_NVME_DISCOVERY = 0x40,
+	FCT_NVME = 0xf0,
 } fc_port_type_t;
 
 enum qla_sess_deletion {
@@ -2365,7 +2372,6 @@ typedef struct fc_port {
 	unsigned int id_changed:1;
 	unsigned int scan_needed:1;
 
-	struct work_struct nvme_del_work;
 	struct completion nvme_del_done;
 	uint32_t nvme_prli_service_param;
 #define NVME_PRLI_SP_CONF       BIT_7
@@ -2468,13 +2474,7 @@ struct event_arg {
 #define FCS_DEVICE_LOST		3
 #define FCS_ONLINE		4
 
-static const char * const port_state_str[] = {
-	"Unknown",
-	"UNCONFIGURED",
-	"DEAD",
-	"LOST",
-	"ONLINE"
-};
+extern const char *const port_state_str[5];
 
 /*
  * FC port flags.
@@ -3185,7 +3185,7 @@ struct isp_operations {
 	int (*start_scsi) (srb_t *);
 	int (*start_scsi_mq) (srb_t *);
 	int (*abort_isp) (struct scsi_qla_host *);
-	int (*iospace_config)(struct qla_hw_data*);
+	int (*iospace_config)(struct qla_hw_data *);
 	int (*initialize_adapter)(struct scsi_qla_host *);
 };
 
@@ -4046,6 +4046,7 @@ struct qla_hw_data {
 	} fwdt[2];
 	struct qla2xxx_fw_dump *fw_dump;
 	uint32_t	fw_dump_len;
+	u32		fw_dump_alloc_len;
 	bool		fw_dumped;
 	bool		fw_dump_mpi;
 	unsigned long	fw_dump_cap_flags;
@@ -4410,7 +4411,6 @@ typedef struct scsi_qla_host {
 
 	struct		nvme_fc_local_port *nvme_local_port;
 	struct completion nvme_del_done;
-	struct list_head nvme_rport_list;
 
 	uint16_t	fcoe_vlan_id;
 	uint16_t	fcoe_fcf_idx;
@@ -4659,6 +4659,7 @@ struct secure_flash_update_block_pk {
 #define QLA_SUSPENDED			0x106
 #define QLA_BUSY			0x107
 #define QLA_ALREADY_REGISTERED		0x109
+#define QLA_OS_TIMER_EXPIRED		0x10a
 
 #define NVRAM_DELAY()		udelay(10)
 
@@ -4791,5 +4792,4 @@ struct sff_8247_a0 {
 #include "qla_gbl.h"
 #include "qla_dbg.h"
 #include "qla_inline.h"
-
 #endif
