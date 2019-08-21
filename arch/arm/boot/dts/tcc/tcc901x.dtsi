@@ -2716,7 +2716,7 @@
         pwm:pwm@16050000 { /* pwm */
                 compatible = "telechips,pwm";
                 reg = <0x16030000 0x70 0x1605104C 0x4>;
-                tcc,pwm-number = <4>;
+                tcc,pwm-number = <2>;
                 #pwm-cells = <2>;
                 clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM >;
 				clock-frequency = <400000000>; /* Hz */
