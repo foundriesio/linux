@@ -265,6 +265,13 @@ void nvme_complete_rq(struct request *req)
 			return;
 		}
 	}
+	/*
+	 * Any pathing error might be retried, but the DNR bit takes
+	 * precedence. So return BLK_STS_TARGET if the DNR bit is set
+	 * to avoid retrying.
+	 */
+	if (blk_path_error(status) && nvme_req(req)->status & NVME_SC_DNR)
+		status = BLK_STS_TARGET;
 	blk_mq_end_request(req, status);
 }
 EXPORT_SYMBOL_GPL(nvme_complete_rq);

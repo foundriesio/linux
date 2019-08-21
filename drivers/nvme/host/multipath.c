@@ -449,14 +449,16 @@ static int nvme_update_ana_state(struct nvme_ctrl *ctrl,
 
 	mutex_lock(&ctrl->namespaces_mutex);
 	list_for_each_entry(ns, &ctrl->namespaces, list) {
-		if (ns->head->ns_id != le32_to_cpu(desc->nsids[n]))
+		unsigned nsid = le32_to_cpu(desc->nsids[n]);
+
+		if (ns->head->ns_id < nsid)
 			continue;
-		nvme_update_ns_ana_state(desc, ns);
+		if (ns->head->ns_id == nsid)
+			nvme_update_ns_ana_state(desc, ns);
 		if (++n == nr_nsids)
 			break;
 	}
 	mutex_unlock(&ctrl->namespaces_mutex);
-	WARN_ON_ONCE(n < nr_nsids);
 	return 0;
 }
 
