@@ -16,14 +16,15 @@
 #include <linux/ceph/auth.h>
 
 /* The first 8 bits are reserved for old ceph releases */
-#define CEPHFS_FEATURE_MIMIC    8
+#define CEPHFS_FEATURE_MIMIC		8
+#define CEPHFS_FEATURE_REPLY_ENCODING	9
 
-#define CEPHFS_FEATURES_ALL {           \
-  0, 1, 2, 3, 4, 5, 6, 7,		\
-  CEPHFS_FEATURE_MIMIC,                 \
+#define CEPHFS_FEATURES_CLIENT_SUPPORTED { 	\
+	0, 1, 2, 3, 4, 5, 6, 7,			\
+	CEPHFS_FEATURE_MIMIC,			\
+	CEPHFS_FEATURE_REPLY_ENCODING,		\
 }
 
-#define CEPHFS_FEATURES_CLIENT_SUPPORTED CEPHFS_FEATURES_ALL
 #define CEPHFS_FEATURES_CLIENT_REQUIRED {}
 
 
