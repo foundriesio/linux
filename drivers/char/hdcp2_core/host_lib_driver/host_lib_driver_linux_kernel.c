@@ -42,7 +42,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.1.2"
+#define HDCP_DRV_VERSION "1.1.3"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -266,13 +266,13 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		if (hdcp & (1<<6)) {
 			if (!(hdcpcfg1 & (1<<1)))
 				iowrite32(hdcpcfg1 | (1<<1), esm->link + DWC_HDCP_CFG1);
-			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_FAILED \n", __func__);
+			printk(KERN_INFO "\x1b[33m %s: HDCP 1.4 Authentication process - HDCP_FAILED \x1b[0m\n", __func__);
 			esm->hdcp_status = HDCP_FAILED;
 		}
 		if (hdcp & (1<<7)) {
 			if (hdcpcfg1 & (1<<1))
 				iowrite32(hdcpcfg1 & ~(1<<1), esm->link + DWC_HDCP_CFG1);
-			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_ENGAGED \n", __func__);
+			printk(KERN_INFO "\x1b[32m%s: HDCP 1.4 Authentication process - HDCP_ENGAGED \x1b[0m\n", __func__);
 			esm->hdcp_status = HDCP_ENGAGED;
 			dwc_avmute(esm, 0, 0);
 		}
@@ -291,7 +291,7 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		}
 		if (hdcp22 & (1<<2)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_LOST;
-			printk("%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
+			printk("\x1b[33m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST\x1b[0m");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
 					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
@@ -302,12 +302,12 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		}
 		if (hdcp22 & (1<<3)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATED;
-			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED");
+			printk(KERN_INFO "\x1b[32m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED\x1b[0m");
 			dwc_avmute(esm, 0, 0);
 		}
 		if (hdcp22 & (1<<4)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_FAIL;
-			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL");
+			printk(KERN_INFO "\x1b[33m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL\x1b[0m");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
 					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
@@ -980,11 +980,6 @@ tcc_hdcp_write(struct file *file, const char *buf, size_t count, loff_t *f_pos)
 		dwc_avmute(esm, 1, 0);
 	else if (!strncmp(buf, "avunmute", 8))
 		dwc_avmute(esm, 0, 0);
-	else if (!strncmp(buf, "bypassen", 8))
-		iowrite32(ioread32(esm->link + 0x5000*4) | 1<<5, esm->link + 0x5000*4);
-	else if (!strncmp(buf, "bypassdis", 9))
-		iowrite32(ioread32(esm->link + 0x5000*4) & ~(1<<5), esm->link + 0x5000*4);
-
 	return count;
 }
 
@@ -1161,20 +1156,41 @@ static int hdcp_resume(struct platform_device *pdev)
 
 void dwc_hdcp_avmute(int mute)
 {
+	int cnt;
+
 	if (!st_esm)
 		return;
 
 	if (st_esm->open_cs <= 0)
 		return;
 
-	if (ioread32(st_esm->link + DWC_HDCP22_INTSTS) & (1<<2)) {
-		if (mute) {
-			iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) | 0x3, st_esm->link + DWC_HDCP22_CTRL1);
+	if (mute) {
+		iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) | 0x3, st_esm->link + DWC_HDCP22_CTRL1);
+		iowrite32(ioread32(st_esm->link + DWC_HDCP_CFG1) | (1<<1), st_esm->link + DWC_HDCP_CFG1);
+		if (ioread32(st_esm->link + DWC_HDCP22_INTSTS) & (1<<2)) {
 			reinit_completion(&st_esm->avmute_completion);
 			wait_for_completion_timeout(&st_esm->avmute_completion, msecs_to_jiffies(500));
 		}
-		else
-		iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) & ~0x3, st_esm->link + DWC_HDCP22_CTRL1);
+		else {
+			cnt = 10;
+			do {
+				if ((ioread32(st_esm->link + DWC_HDCP_OBS2) & ((1<<2) | (1<<1))) == 0)
+					break;
+			} while (cnt--);
+		}
+	}
+	else {
+		switch (st_esm->hdcp_status) {
+		case HDCP_ENGAGED:
+			iowrite32(ioread32(st_esm->link + DWC_HDCP_CFG1) & ~(1<<1), st_esm->link + DWC_HDCP_CFG1);
+			break;
+		case HDCP2_AUTHENTICATED:
+		case HDCP2_DECRYPTED_CHG:
+			iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) & ~0x3, st_esm->link + DWC_HDCP22_CTRL1);
+			break;
+		default:
+			break;
+		}
 	}
 }
 EXPORT_SYMBOL(dwc_hdcp_avmute);
