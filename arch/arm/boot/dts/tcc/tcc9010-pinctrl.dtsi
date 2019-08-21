@@ -103,12 +103,6 @@
 		reg = <0x240 0 11>;
 	};
 
-	gpadc: gpadc {	/* dummy regs. */
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x2C0 2 32>;	/* use 2~9 pins */
-	};
-
 	i2c0_bus: i2c0_bus {
 		telechips,pins = "gpa-15", "gpa-16";
 		telechips,pin-function = <8>;

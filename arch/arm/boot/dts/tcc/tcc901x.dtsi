@@ -2665,25 +2665,6 @@
 		status = "disabled";
 	};
 
-	adc: adc@16050000 {
-		compatible = "telechips,adc";
-		reg = <0x16050000 0x24 0x1440000C 0x4>;
-		clocks = <&clk_peri PERI_TSADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		adc-board-ver = <8>;
-		status = "disabled";
-	};
-
-	tsadc@16050000 {	/* ADC Touch Screen */
-		compatible = "telechips,tsadc";
-		reg = <0x16050000 0x24>;
-		int-gpios = <&gpadc 6 0>;	/* for using TSADC_UPDOWN extint soruce */
-		status = "disabled";
-	};
-
 	/*
 	 * HSIO Bus Block
 	 */
