@@ -1,5 +1,6 @@
 /*
- * linux/include/video/tcc/viqe_madi.h
+ * viqe_madi.h
+ *
  * Author:  <linux@telechips.com>
  * Created: Jan 20, 2018
  * Description: TCC MADI h/w block 
@@ -30,6 +31,14 @@
 //#define EN_MADI_VERIFICATION
 #if defined(EN_MADI_VERIFICATION)
 #define TEST_REG_RW
+#endif
+
+/*
+ * Dynamic Field Insertion Control Function.
+ */
+#define DDEI_FIELD_INSERTION
+#ifdef DDEI_FIELD_INSERTION
+extern void FieldInsertionCtrl(void);
 #endif
 
 extern unsigned int g_width;	//alank
@@ -440,7 +449,7 @@ extern void VIQE_MADI_Gen_Timming(unsigned int out_width, unsigned int out_heigh
 
 extern void VIQE_MADI_Set_Clk_Gating(void);
 extern void VIQE_MADI_Go_Request(void);
-extern void VIQE_MADI_Set_odd_field_first(void);
+extern void VIQE_MADI_Set_odd_field_first(unsigned int odd_first);
 extern void VIQE_MADI_Change_Cfg(void);
 
 #ifdef TEST_REG_RW
@@ -452,19 +461,6 @@ extern void VIQE_MADI_DUMP(VMADI_TYPE type, unsigned int size);
 
 #ifdef USE_REG_EXTRACTOR
 extern void _reg_print_ext(void);
-#endif
-
-
-#define MADI_DYNAMIC_CONTROL
-#ifdef	MADI_DYNAMIC_CONTROL
-#define MADI_FIELD_INSERTION
-#define MADI_EGG_SLICE_PROTECTION
-#ifdef MADI_FIELD_INSERTION
-extern void FieldInsertionCtrl(void);
-#endif
-#ifdef MADI_EGG_SLICE_PROTECTION
-extern void PQ_VDETN_FileMode_SafetyProtect_Patch(void);
-#endif
 #endif
 
 #endif
