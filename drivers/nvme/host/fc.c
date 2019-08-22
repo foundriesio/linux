@@ -26,7 +26,9 @@
 #include "fabrics.h"
 #include <linux/nvme-fc-driver.h>
 #include <linux/nvme-fc.h>
+#ifndef __GENKSYMS__
 #include <scsi/scsi_transport_fc.h>
+#endif
 
 /* *************************** Data Structures/Defines ****************** */
 
