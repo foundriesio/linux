@@ -378,47 +378,6 @@
 		};
 	};
 
-	gpsb1@16910000 {
-		status = "okay";
-		gpsb-port = <5>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&gpsb5_bus_idle>;
-		pinctrl-1 = <&gpsb5_bus_tsif>;
-	};
-
-/*
-	gpsb2@16920000 {
-		status = "okay";
-		gpsb-port = <4>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&gpsb4_bus_idle>;
-		pinctrl-1 = <&gpsb4_bus_tsif>;
-	};
-*/
-
-/* TODO : Need to decide port for each gpsb channel
-	gpsb3@16930000 {
-		status = "okay";
-		gpsb-port = <4>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&gpsb5_bus>;
-	};
-
-	gpsb4@16940000 {
-		status = "okay";
-		gpsb-port = <?>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&gpsb5_bus>;
-	};
-
-	gpsb5@16950000 {
-		status = "okay";
-		gpsb-port = <?>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&gpsb5_bus>;
-	};
-*/
-
 	/* USB 3.0 DRD */
 	dwc3_phy@11D90000 {
 		status = "okay";

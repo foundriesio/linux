@@ -220,11 +220,6 @@
 		telechips,pin-function = <5>;
 	};
 
-	gpsb1_bus: gpsb1_bus {
-		telechips,pins = "gpa-17", "gpa-18", "gpa-19", "gpa-20";
-		telechips,pin-function = <5>;
-	};
-
 	gpsb2_bus: gpsb2_bus {
 		telechips,pins = "gpd-8", "gpd-9", "gpd-7", "gpd-10";
 		telechips,pin-function = <4>;
@@ -246,40 +241,6 @@
 		telechips,pin-function = <4>;
 	};
 
-	gpsb4_bus: gpsb4_bus {
-		telechips,pins = "gpe-0", "gpe-2", "gpe-3", "gpe-1";
-		telechips,pin-function = <3>;
-	};
-
-	gpsb4_bus_idle: gpsb4_bus_idle {
-		telechips,pins = "gpe-0", "gpe-2", "gpe-3", "gpe-1";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-
-	gpsb4_bus_tsif: gpsb4_bus_tsif {
-		telechips,pins = "gpe-0", "gpe-2", "gpe-3", "gpe-1";
-		telechips,pin-function = <3>;
-		telechips,input-enable;
-	};
-
-	gpsb5_bus: gpsb5_bus {
-		telechips,pins = "gpe-16", "gpe-18", "gpe-19", "gpe-17";
-		telechips,pin-function = <3>;
-	};
-
-	gpsb5_bus_idle: gpsb5_bus_idle {
-		telechips,pins = "gpe-16", "gpe-18", "gpe-19", "gpe-17";
-		telechips,pin-function = <0>;
-		telechips,output-low;
-	};
-
-	gpsb5_bus_tsif: gpsb5_bus_tsif {
-		telechips,pins = "gpe-16", "gpe-18", "gpe-19", "gpe-17";
-		telechips,pin-function = <3>;
-		telechips,input-enable;
-	};
-
 	gpsb6_bus: gpsb6_bus {
 		telechips,pins = "gpf-11", "gpf-8", "gpf-9", "gpf-10";
 		telechips,pin-function = <6>;
@@ -293,16 +254,6 @@
 	gpsb8_bus: gpsb8_bus {
 		telechips,pins = "gpf-17", "gpf-18", "gpf-19", "gpf-20";
 		telechips,pin-function = <6>;
-	};
-
-	gpsb9_bus: gpsb9_bus {
-		telechips,pins = "gpf-28", "gpf-29", "gpf-30", "gpf-31";
-		telechips,pin-function = <6>;
-	};
-
-	gpsb10_bus: gpsb10_bus {
-		telechips,pins = "gpa-25", "gpa-26", "gpa-27", "gpa-28";
-		telechips,pin-function = <5>;
 	};
 
 	gpsb11_bus: gpsb11_bus {
