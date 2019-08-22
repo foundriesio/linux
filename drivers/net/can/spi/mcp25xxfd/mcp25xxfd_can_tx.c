@@ -601,12 +601,13 @@ netdev_tx_t mcp25xxfd_can_tx_start_xmit(struct sk_buff *skb,
 	ret = spi_async(spi, &smsg->fill_fifo.msg);
 	if (ret)
 		goto out_async_failed;
-	ret = spi_async(spi, &smsg->trigger_fifo.msg);
-	if (ret)
-		goto out_async_failed;
 
 	/* keep it for reference until the message really got transmitted */
 	can_put_echo_skb(skb, net, smsg->fifo);
+
+	ret = spi_async(spi, &smsg->trigger_fifo.msg);
+	if (ret)
+		goto out_async_failed;
 
 	return NETDEV_TX_OK;
 out_async_failed:
