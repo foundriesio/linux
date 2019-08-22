@@ -405,7 +405,7 @@
 		compatible = "telechips,audio-chmux-901x";
 		dai = <1 99>; // i2s0(x) i2s1(x)
 		cdif = <99 99>; // cdif0(x) cdif1(x)
-		spdif = <1 99>; // spdif0(x) spdif1(x)
+		spdif = <1>; // spdif0(x)
 		status = "okay";
 	};
 

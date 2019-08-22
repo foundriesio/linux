@@ -40,7 +40,6 @@
 		i2s0 = &i2s0;
 		i2s1 = &i2s1;
 		spdif0 = &spdif0;
-		spdif1 = &spdif1;
 		cdif0 = &cdif0;
 		cdif1 = &cdif1;
 		serial0 = &uart0;
@@ -1642,21 +1641,12 @@
 		status = "disabled";
 	};
 
-	spdif1: spdif@16202000 {
-		compatible = "telechips,spdif";
-		reg = <0x16202000 0x1000>;
-		clocks = <&clk_peri PERI_MSPDIF1 &clk_io IOBUS_SPDIF1>;
-		clock-frequency = <44100>;
-		adma = <&adma1>;
-		status = "disabled";
-	};
-
 	audio_chmux: audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-901x";
 		reg = <0x16051000 0x78>;
 		dai = <0 0>; // i2s0(x) i2s1(x)
 		cdif = <0 0>; // cdif0(x) cdif1(x)
-		spdif = <0 0>; // spdif0(x) spdif1(x)
+		spdif = <0>;  // spdif0(x) 
 		status = "disabled";
 	};
 
