@@ -489,8 +489,8 @@
 		phy-interface = "rgmii";
 		ecid-mac-addr;
 
-		txclk-o-dly = <0>;
-		txclk-o-inv = <1>;
+		txclk-o-dly = <4>;
+		txclk-o-inv = <0>;
 
 		txen-dly = <0>;
 		txer-dly = <0>;
@@ -503,8 +503,8 @@
 		txd6-dly = <0>;
 		txd7-dly = <0>;
 
-		rxclk-i-dly = <4>;
-		rxclk-i-inv = <1>;
+		rxclk-i-dly = <12>;
+		rxclk-i-inv = <0>;
 
 		rxdv-dly = <0>;
 		rxer-dly = <0>;
