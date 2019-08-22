@@ -45,11 +45,6 @@
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
-		serial3 = &uart3;
-		serial4 = &uart4;
-		serial5 = &uart5;
-		serial6 = &uart6;
-		serial7 = &uart7;
 		dma0 = &dma0;
 		dma1 = &dma1;
 		dma2 = &dma2;
@@ -812,9 +807,7 @@
 				<PERI_MDAI1>, <PERI_MFLT1_DAI>, <PERI_MSPDIF1>,
 				<PERI_PDM>, <PERI_CEC1_SFR>, <PERI_TSADC>,
 				<PERI_I2C0>, <PERI_I2C1>, <PERI_I2C2>, <PERI_I2C3>,
-				<PERI_UART0>, <PERI_UART1>, <PERI_UART2>,
-				<PERI_UART3>, <PERI_UART4>, <PERI_UART5>,
-				<PERI_UART6>, <PERI_UART7>, <PERI_GPSB0>,
+				<PERI_UART0>, <PERI_UART1>, <PERI_UART2>, <PERI_GPSB0>,
 				<PERI_GPSB1>, <PERI_GPSB2>, <PERI_GPSBMS0>,
 				<PERI_GPSBMS1>, <PERI_GPSBMS2>, <PERI_ASRC0_INPUT>,
 				<PERI_ASRC1_INPUT>, <PERI_MFLT0_CDIF>,
@@ -841,9 +834,7 @@
 				"peri_mdai1", "peri_mflt1_dai", "peri_mspdif1",
 				"peri_pdm", "peri_cec1_sfr", "peri_tsadc",
 				"peri_i2c0", "peri_i2c1", "peri_i2c2", "peri_i2c3",
-				"peri_uart0", "peri_uart1", "peri_uart2",
-				"peri_uart3", "peri_uart4", "peri_uart5",
-				"peri_uart6", "peri_uart7", "peri_gpsb0",
+				"peri_uart0", "peri_uart1", "peri_uart2", "peri_gpsb0",
 				"peri_gpsb1", "peri_gpsb2", "peri_gpsbms0",
 				"peri_gpsbms1", "peri_gpsbms2", "peri_asrc0_input",
 				"peri_asrc1_input", "peri_mflt0_cdif",
@@ -899,11 +890,6 @@
 				<CLK_IGNORE_UNUSED>,	/* PERI_UART0 */
 				<CLK_IGNORE_UNUSED>,	/* PERI_UART1 */
 				<CLK_IGNORE_UNUSED>,	/* PERI_UART2 */
-				<CLK_IGNORE_UNUSED>,	/* PERI_UART3 */
-				<CLK_IGNORE_UNUSED>,	/* PERI_UART4 */
-				<CLK_IGNORE_UNUSED>,	/* PERI_UART5 */
-				<CLK_IGNORE_UNUSED>,	/* PERI_UART6 */
-				<CLK_IGNORE_UNUSED>,	/* PERI_UART7 */
 				<CLK_IGNORE_UNUSED>,	/* PERI_GPSB0 */
 				<CLK_IGNORE_UNUSED>,	/* PERI_GPSB1 */
 				<CLK_IGNORE_UNUSED>,	/* PERI_GPSB2 */
@@ -956,9 +942,7 @@
 				<IOBUS_GPSB5>, <IOBUS_GPSB>, <IOBUS_I2C_S3>,
 				<IOBUS_I2C_M4>, <IOBUS_I2C_M5>, <IOBUS_I2C_M6>,
 				<IOBUS_I2C_M7>, <IOBUS_UART0>, <IOBUS_UART1>,
-				<IOBUS_UART2>, <IOBUS_UART3>, <IOBUS_UART4>,
-				<IOBUS_UART5>, <IOBUS_UART6>, <IOBUS_UART7>,
-				<IOBUS_SMARTCARD0>, <IOBUS_SMARTCARD1>,
+				<IOBUS_UART2>, <IOBUS_SMARTCARD0>, <IOBUS_SMARTCARD1>,
 				<IOBUS_SMARTCARD2>, <IOBUS_SMARTCARD3>,
 				<IOBUS_SMARTCARD4>, <IOBUS_SMARTCARD5>,
 				<IOBUS_SMARTCARD6>, <IOBUS_SMARTCARD7>, <IOBUS_UDMA0>,
@@ -986,9 +970,7 @@
 				"iobus_gpsb5", "iobus_gpsb", "iobus_i2c_s3",
 				"iobus_i2c_m4", "iobus_i2c_m5", "iobus_i2c_m6",
 				"iobus_i2c_m7", "iobus_uart0", "iobus_uart1",
-				"iobus_uart2", "iobus_uart3", "iobus_uart4",
-				"iobus_uart5", "iobus_uart6", "iobus_uart7",
-				"iobus_smartcard0", "iobus_smartcard1",
+				"iobus_uart2", "iobus_smartcard0", "iobus_smartcard1",
 				"iobus_smartcard2", "iobus_smartcard3",
 				"iobus_smartcard4", "iobus_smartcard5",
 				"iobus_smartcard6", "iobus_smartcard7", "iobus_udma0",
@@ -1047,11 +1029,6 @@
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART0 */
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART1 */
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART2 */
-				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART3 */
-				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART4 */
-				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART5 */
-				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART6 */
-				<CLK_IGNORE_UNUSED>,	/* IOBUS_UART7 */
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_SMARTCARD0 */
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_SMARTCARD1 */
 				<CLK_IGNORE_UNUSED>,	/* IOBUS_SMARTCARD2 */
@@ -1676,56 +1653,6 @@
 		arm,primecell-periphid = <0x001feff7>;
 	    interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_UART2>, <&clk_io IOBUS_UART2>;
-		clock-names = "uartclk", "apb_pclk";
-		status = "disabled";
-	};
-
-	uart3: serial@16630000 {
-		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16630000 0x1000>;
-		arm,primecell-periphid = <0x001feff7>;
-	    interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART3>, <&clk_io IOBUS_UART3>;
-		clock-names = "uartclk", "apb_pclk";
-		status = "disabled";
-	};
-
-	uart4: serial@16640000 {
-		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16640000 0x1000>;
-		arm,primecell-periphid = <0x001feff7>;
-	    interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART4>, <&clk_io IOBUS_UART4>;
-		clock-names = "uartclk", "apb_pclk";
-		status = "disabled";
-	};
-
-	uart5: serial@16650000 {
-		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16650000 0x1000>;
-		arm,primecell-periphid = <0x001feff7>;
-	    interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
-		clock-names = "uartclk", "apb_pclk";
-		status = "disabled";
-	};
-
-	uart6: serial@16660000 {
-		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16660000 0x1000>;
-		arm,primecell-periphid = <0x001feff7>;
-	    interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
-		clock-names = "uartclk", "apb_pclk";
-		status = "disabled";
-	};
-
-	uart7: serial@16670000 {
-		compatible = "arm,pl011", "arm,primecell";
-		reg = <0x16670000 0x1000>;
-		arm,primecell-periphid = <0x001feff7>;
-	    interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
 		clock-names = "uartclk", "apb_pclk";
 		status = "disabled";
 	};
