@@ -232,19 +232,10 @@ struct smb2_negotiate_req {
 #define SMB2_NT_FIND			0x00100000
 #define SMB2_LARGE_FILES		0x00200000
 
-struct smb2_neg_context {
-	__le16	ContextType;
-	__le16	DataLength;
-	__le32	Reserved;
-	/* Followed by array of data */
-} __packed;
-
 #define SMB311_SALT_SIZE			32
 /* Hash Algorithm Types */
 #define SMB2_PREAUTH_INTEGRITY_SHA512	cpu_to_le16(0x0001)
-#define SMB2_PREAUTH_HASH_SIZE 64
 
-#define MIN_PREAUTH_CTXT_DATA_LEN	(SMB311_SALT_SIZE + 6)
 struct smb2_preauth_neg_context {
 	__le16	ContextType; /* 1 */
 	__le16	DataLength;
@@ -259,14 +250,12 @@ struct smb2_preauth_neg_context {
 #define SMB2_ENCRYPTION_AES128_CCM	cpu_to_le16(0x0001)
 #define SMB2_ENCRYPTION_AES128_GCM	cpu_to_le16(0x0002)
 
-/* Min encrypt context data is one cipher so 2 bytes + 2 byte count field */
-#define MIN_ENCRYPT_CTXT_DATA_LEN	4
 struct smb2_encryption_neg_context {
 	__le16	ContextType; /* 2 */
 	__le16	DataLength;
 	__le32	Reserved;
 	__le16	CipherCount; /* AES-128-GCM and AES-128-CCM */
-	__le16	Ciphers[1]; /* Ciphers[0] since only one used now */
+	__le16	Ciphers[2]; /* Ciphers[0] since only one used now */
 } __packed;
 
 struct smb2_negotiate_rsp {
@@ -571,14 +560,16 @@ struct create_context {
 #define SMB2_LEASE_KEY_SIZE 16
 
 struct lease_context {
-	u8 LeaseKey[SMB2_LEASE_KEY_SIZE];
+	__le64 LeaseKeyLow;
+	__le64 LeaseKeyHigh;
 	__le32 LeaseState;
 	__le32 LeaseFlags;
 	__le64 LeaseDuration;
 } __packed;
 
 struct lease_context_v2 {
-	u8 LeaseKey[SMB2_LEASE_KEY_SIZE];
+	__le64 LeaseKeyLow;
+	__le64 LeaseKeyHigh;
 	__le32 LeaseState;
 	__le32 LeaseFlags;
 	__le64 LeaseDuration;
@@ -725,7 +716,7 @@ struct validate_negotiate_info_req {
 	__u8   Guid[SMB2_CLIENT_GUID_SIZE];
 	__le16 SecurityMode;
 	__le16 DialectCount;
-	__le16 Dialects[3]; /* BB expand this if autonegotiate > 3 dialects */
+	__le16 Dialects[1]; /* dialect (someday maybe list) client asked for */
 } __packed;
 
 struct validate_negotiate_info_rsp {
@@ -1117,17 +1108,6 @@ struct smb3_fs_ss_info {
 	__le32 ByteOffsetForPartitionAlignment;
 } __packed;
 
-/* volume info struct - see MS-FSCC 2.5.9 */
-#define MAX_VOL_LABEL_LEN	32
-struct smb3_fs_vol_info {
-	__le64	VolumeCreationTime;
-	__u32	VolumeSerialNumber;
-	__le32	VolumeLabelLength; /* includes trailing null */
-	__u8	SupportsObjects; /* True if eg like NTFS, supports objects */
-	__u8	Reserved;
-	__u8	VolumeLabel[0]; /* variable len */
-} __packed;
-
 /* partial list of QUERY INFO levels */
 #define FILE_DIRECTORY_INFORMATION	1
 #define FILE_FULL_DIRECTORY_INFORMATION 2
@@ -1197,16 +1177,6 @@ struct smb2_file_link_info { /* encoding of request for level 11 */
 	__le32 FileNameLength;
 	char   FileName[0];     /* Name to be assigned to new link */
 } __packed; /* level 11 Set */
-
-#define SMB2_MAX_EA_BUF 2048
-
-struct smb2_file_full_ea_info { /* encoding of response for level 15 */
-	__le32 next_entry_offset;
-	__u8   flags;
-	__u8   ea_name_length;
-	__le16 ea_value_length;
-	char   ea_data[0]; /* \0 terminated name plus value */
-} __packed; /* level 15 Set */
 
 /*
  * This level 18, although with struct with same name is different from cifs

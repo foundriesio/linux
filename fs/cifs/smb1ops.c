@@ -105,7 +105,6 @@ cifs_find_mid(struct TCP_Server_Info *server, char *buffer)
 		if (compare_mid(mid->mid, buf) &&
 		    mid->mid_state == MID_REQUEST_SUBMITTED &&
 		    le16_to_cpu(mid->command) == buf->Command) {
-			kref_get(&mid->refcount);
 			spin_unlock(&GlobalMid_Lock);
 			return mid;
 		}
@@ -931,18 +930,19 @@ cifs_unix_dfs_readlink(const unsigned int xid, struct cifs_tcon *tcon,
 {
 #ifdef CONFIG_CIFS_DFS_UPCALL
 	int rc;
-	struct dfs_info3_param referral = {0};
+	unsigned int num_referrals = 0;
+	struct dfs_info3_param *referrals = NULL;
 
-	rc = get_dfs_path(xid, tcon->ses, searchName, nls_codepage, &referral,
-			  0);
+	rc = get_dfs_path(xid, tcon->ses, searchName, nls_codepage,
+			  &num_referrals, &referrals, 0);
 
-	if (!rc) {
-		*symlinkinfo = kstrndup(referral.node_name,
-					strlen(referral.node_name),
+	if (!rc && num_referrals > 0) {
+		*symlinkinfo = kstrndup(referrals->node_name,
+					strlen(referrals->node_name),
 					GFP_KERNEL);
-		free_dfs_info_param(&referral);
 		if (!*symlinkinfo)
 			rc = -ENOMEM;
+		free_dfs_info_array(referrals, num_referrals);
 	}
 	return rc;
 #else /* No DFS support */

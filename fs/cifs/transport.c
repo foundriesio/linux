@@ -37,7 +37,6 @@
 #include "cifsglob.h"
 #include "cifsproto.h"
 #include "cifs_debug.h"
-#include "smb2proto.h"
 
 void
 cifs_wake_up_task(struct mid_q_entry *mid)
@@ -57,7 +56,6 @@ AllocMidQEntry(const struct smb_hdr *smb_buffer, struct TCP_Server_Info *server)
 
 	temp = mempool_alloc(cifs_mid_poolp, GFP_NOFS);
 	memset(temp, 0, sizeof(struct mid_q_entry));
-	kref_init(&temp->refcount);
 	temp->mid = get_mid(smb_buffer);
 	temp->pid = current->pid;
 	temp->command = cpu_to_le16(smb_buffer->Command);
@@ -77,21 +75,6 @@ AllocMidQEntry(const struct smb_hdr *smb_buffer, struct TCP_Server_Info *server)
 	atomic_inc(&midCount);
 	temp->mid_state = MID_REQUEST_ALLOCATED;
 	return temp;
-}
-
-static void _cifs_mid_q_entry_release(struct kref *refcount)
-{
-	struct mid_q_entry *mid = container_of(refcount, struct mid_q_entry,
-					       refcount);
-
-	mempool_free(mid, cifs_mid_poolp);
-}
-
-void cifs_mid_q_entry_release(struct mid_q_entry *midEntry)
-{
-	spin_lock(&GlobalMid_Lock);
-	kref_put(&midEntry->refcount, _cifs_mid_q_entry_release);
-	spin_unlock(&GlobalMid_Lock);
 }
 
 void
@@ -122,7 +105,7 @@ DeleteMidQEntry(struct mid_q_entry *midEntry)
 		}
 	}
 #endif
-	cifs_mid_q_entry_release(midEntry);
+	mempool_free(midEntry, cifs_mid_poolp);
 }
 
 void
@@ -319,7 +302,7 @@ uncork:
 	if (rc < 0 && rc != -EINTR)
 		cifs_dbg(VFS, "Error %d sending data on socket to server\n",
 			 rc);
-	else if (rc > 0)
+	else
 		rc = 0;
 
 	return rc;
@@ -553,14 +536,11 @@ cifs_call_async(struct TCP_Server_Info *server, struct smb_rqst *rqst,
 	list_add_tail(&mid->qhead, &server->pending_mid_q);
 	spin_unlock(&GlobalMid_Lock);
 
-	/*
-	 * Need to store the time in mid before calling I/O. For call_async,
-	 * I/O response may come back and free the mid entry on another thread.
-	 */
-	cifs_save_when_sent(mid);
+
 	cifs_in_send_inc(server);
 	rc = smb_send_rqst(server, rqst, flags);
 	cifs_in_send_dec(server);
+	cifs_save_when_sent(mid);
 
 	if (rc < 0) {
 		server->sequence_number -= 2;
@@ -761,10 +741,6 @@ cifs_send_recv(const unsigned int xid, struct cifs_ses *ses,
 	if (rc < 0)
 		goto out;
 
-	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP))
-		smb311_update_preauth_hash(ses, rqst->rq_iov+1,
-					   rqst->rq_nvec-1);
-
 	if (timeout == CIFS_ASYNC_OP)
 		goto out;
 
@@ -802,14 +778,6 @@ cifs_send_recv(const unsigned int xid, struct cifs_ses *ses,
 		*resp_buf_type = CIFS_LARGE_BUFFER;
 	else
 		*resp_buf_type = CIFS_SMALL_BUFFER;
-
-	if ((ses->status == CifsNew) || (optype & CIFS_NEG_OP)) {
-		struct kvec iov = {
-			.iov_base = buf + 4,
-			.iov_len = get_rfc1002_length(buf)
-		};
-		smb311_update_preauth_hash(ses, &iov, 1);
-	}
 
 	credits = ses->server->ops->get_credits(midQ);
 

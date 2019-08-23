@@ -30,7 +30,9 @@
 #include "smberr.h"
 #include "nterr.h"
 #include "cifs_unicode.h"
+#ifdef CONFIG_CIFS_SMB2
 #include "smb2pdu.h"
+#endif
 
 extern mempool_t *cifs_sm_req_poolp;
 extern mempool_t *cifs_req_poolp;
@@ -98,11 +100,14 @@ sesInfoFree(struct cifs_ses *buf_to_free)
 	kfree(buf_to_free->serverOS);
 	kfree(buf_to_free->serverDomain);
 	kfree(buf_to_free->serverNOS);
-	kzfree(buf_to_free->password);
+	if (buf_to_free->password) {
+		memset(buf_to_free->password, 0, strlen(buf_to_free->password));
+		kfree(buf_to_free->password);
+	}
 	kfree(buf_to_free->user_name);
 	kfree(buf_to_free->domainName);
-	kzfree(buf_to_free->auth_key.response);
-	kzfree(buf_to_free);
+	kfree(buf_to_free->auth_key.response);
+	kfree(buf_to_free);
 }
 
 struct cifs_tcon *
@@ -133,10 +138,10 @@ tconInfoFree(struct cifs_tcon *buf_to_free)
 	}
 	atomic_dec(&tconInfoAllocCount);
 	kfree(buf_to_free->nativeFileSystem);
-	kzfree(buf_to_free->password);
-#ifdef CONFIG_CIFS_DFS_UPCALL
-	kfree(buf_to_free->dfs_path);
-#endif
+	if (buf_to_free->password) {
+		memset(buf_to_free->password, 0, strlen(buf_to_free->password));
+		kfree(buf_to_free->password);
+	}
 	kfree(buf_to_free);
 }
 
@@ -144,12 +149,15 @@ struct smb_hdr *
 cifs_buf_get(void)
 {
 	struct smb_hdr *ret_buf = NULL;
+	size_t buf_size = sizeof(struct smb_hdr);
+
+#ifdef CONFIG_CIFS_SMB2
 	/*
 	 * SMB2 header is bigger than CIFS one - no problems to clean some
 	 * more bytes for CIFS.
 	 */
-	size_t buf_size = sizeof(struct smb2_hdr);
-
+	buf_size = sizeof(struct smb2_hdr);
+#endif
 	/*
 	 * We could use negotiated size instead of max_msgsize -
 	 * but it may be more efficient to always alloc same size
@@ -481,7 +489,8 @@ is_valid_oplock_break(char *buffer, struct TCP_Server_Info *srv)
 					   CIFS_INODE_DOWNGRADE_OPLOCK_TO_L2,
 					   &pCifsInode->flags);
 
-				cifs_queue_oplock_break(netfile);
+				queue_work(cifsoplockd_wq,
+					   &netfile->oplock_break);
 				netfile->oplock_break_cancelled = false;
 
 				spin_unlock(&tcon->open_file_lock);
@@ -513,17 +522,9 @@ void
 cifs_autodisable_serverino(struct cifs_sb_info *cifs_sb)
 {
 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM) {
-		struct cifs_tcon *tcon = NULL;
-
-		if (cifs_sb->master_tlink)
-			tcon = cifs_sb_master_tcon(cifs_sb);
-
 		cifs_sb->mnt_cifs_flags &= ~CIFS_MOUNT_SERVER_INUM;
-		cifs_dbg(VFS, "Autodisabling the use of server inode numbers on %s.\n",
-			 tcon ? tcon->treeName : "new server");
-		cifs_dbg(VFS, "The server doesn't seem to support them properly or the files might be on different servers (DFS).\n");
-		cifs_dbg(VFS, "Hardlinks will not be recognized on this mount. Consider mounting with the \"noserverino\" option to silence this message.\n");
-
+		cifs_dbg(VFS, "Autodisabling the use of server inode numbers on %s. This server doesn't seem to support them properly. Hardlinks will not be recognized on this mount. Consider mounting with the \"noserverino\" option to silence this message.\n",
+			 cifs_sb_master_tcon(cifs_sb)->treeName);
 	}
 }
 
@@ -586,28 +587,6 @@ void cifs_put_writer(struct cifsInodeInfo *cinode)
 	spin_unlock(&cinode->writers_lock);
 }
 
-/**
- * cifs_queue_oplock_break - queue the oplock break handler for cfile
- *
- * This function is called from the demultiplex thread when it
- * receives an oplock break for @cfile.
- *
- * Assumes the tcon->open_file_lock is held.
- * Assumes cfile->file_info_lock is NOT held.
- */
-void cifs_queue_oplock_break(struct cifsFileInfo *cfile)
-{
-	/*
-	 * Bump the handle refcount now while we hold the
-	 * open_file_lock to enforce the validity of it for the oplock
-	 * break handler. The matching put is done at the end of the
-	 * handler.
-	 */
-	cifsFileInfo_get(cfile);
-
-	queue_work(cifsoplockd_wq, &cfile->oplock_break);
-}
-
 void cifs_done_oplock_break(struct cifsInodeInfo *cinode)
 {
 	clear_bit(CIFS_INODE_PENDING_OPLOCK_BREAK, &cinode->flags);
@@ -641,7 +620,9 @@ void
 cifs_add_pending_open_locked(struct cifs_fid *fid, struct tcon_link *tlink,
 			     struct cifs_pending_open *open)
 {
+#ifdef CONFIG_CIFS_SMB2
 	memcpy(open->lease_key, fid->lease_key, SMB2_LEASE_KEY_SIZE);
+#endif
 	open->oplock = CIFS_OPLOCK_NO_CHANGE;
 	open->tlink = tlink;
 	fid->pending_open = open;
@@ -749,8 +730,6 @@ parse_dfs_referrals(struct get_dfs_referral_rsp *rsp, u32 rsp_size,
 			rc = -ENOMEM;
 			goto parse_DFS_referrals_exit;
 		}
-
-		node->ttl = le32_to_cpu(ref->TimeToLive);
 
 		ref++;
 	}
@@ -881,75 +860,4 @@ setup_aio_ctx_iter(struct cifs_aio_ctx *ctx, struct iov_iter *iter, int rw)
 	ctx->npages = npages;
 	iov_iter_bvec(&ctx->iter, ITER_BVEC | rw, ctx->bv, npages, ctx->len);
 	return 0;
-}
-
-/**
- * cifs_alloc_hash - allocate hash and hash context together
- *
- * The caller has to make sure @sdesc is initialized to either NULL or
- * a valid context. Both can be freed via cifs_free_hash().
- */
-int
-cifs_alloc_hash(const char *name,
-		struct crypto_shash **shash, struct sdesc **sdesc)
-{
-	int rc = 0;
-	size_t size;
-
-	if (*sdesc != NULL)
-		return 0;
-
-	*shash = crypto_alloc_shash(name, 0, 0);
-	if (IS_ERR(*shash)) {
-		cifs_dbg(VFS, "could not allocate crypto %s\n", name);
-		rc = PTR_ERR(*shash);
-		*shash = NULL;
-		*sdesc = NULL;
-		return rc;
-	}
-
-	size = sizeof(struct shash_desc) + crypto_shash_descsize(*shash);
-	*sdesc = kmalloc(size, GFP_KERNEL);
-	if (*sdesc == NULL) {
-		cifs_dbg(VFS, "no memory left to allocate crypto %s\n", name);
-		crypto_free_shash(*shash);
-		*shash = NULL;
-		return -ENOMEM;
-	}
-
-	(*sdesc)->shash.tfm = *shash;
-	(*sdesc)->shash.flags = 0x0;
-	return 0;
-}
-
-/**
- * cifs_free_hash - free hash and hash context together
- *
- * Freeing a NULL hash or context is safe.
- */
-void
-cifs_free_hash(struct crypto_shash **shash, struct sdesc **sdesc)
-{
-	kfree(*sdesc);
-	*sdesc = NULL;
-	if (*shash)
-		crypto_free_shash(*shash);
-	*shash = NULL;
-}
-
-void extract_unc_hostname(const char *unc, const char **h, size_t *len)
-{
-	const char *end;
-
-	/* skip initial slashes */
-	while (*unc && (*unc == '\\' || *unc == '/'))
-		unc++;
-
-	end = unc;
-
-	while (*end && !(*end == '\\' || *end == '/'))
-		end++;
-
-	*h = unc;
-	*len = end - unc;
 }
