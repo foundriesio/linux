@@ -6,7 +6,9 @@
 #include <linux/gfp.h>
 #include <linux/pci.h>
 #include <linux/kmemleak.h>
+#ifndef __GENKSYMS__
 #include <linux/iommu.h>
+#endif
 
 #include <asm/proto.h>
 #include <asm/dma.h>
