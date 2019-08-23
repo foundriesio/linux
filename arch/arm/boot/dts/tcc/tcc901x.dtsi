@@ -1837,12 +1837,6 @@
 	*/
 	};
 
-	cifport: cifport@1238000c {
-		compatible = "telechips,cif-port";
-		reg = <0x1238000c 0x4>;
-		status = "disabled";
-	};
-
 	lvds@12380040 {
 		compatible = "telechips,lvds_phy";
 		reg = <0x12380040 0x64>;
@@ -1865,12 +1859,6 @@
 			     <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI VIOC2_IRQI IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI VIOC3_IRQI IRQ_TYPE_LEVEL_HIGH>;
-		status = "disabled";
-	};
-
-	vioc_vin_demux:vioc_vin_demux@1200a800{
-		compatible = "telechips,vioc_vin_demux";
-		reg = <0x1200a800 0x1000>;
 		status = "disabled";
 	};
 
@@ -1978,22 +1966,6 @@
 			     <GIC_SPI VIOC2_IRQI IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI VIOC2_IRQI IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI VIOC2_IRQI IRQ_TYPE_LEVEL_HIGH>;
-	};
-
-	vioc_vin:vioc_vin@12004000{
-		compatible = "telechips,vioc_vin";
-		reg = <0x12004000 0x400 0x12005000 0x400 0x12006000 0x400 0x12007000 0x400
-				0x12004400 0x600 0x12005400 0x600 0x12006400 0x600 0x12007400 0x600>;
-		interrupts = <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI VIOC0_IRQI IRQ_TYPE_LEVEL_HIGH>;
-
 	};
 
 	vioc_dv_in: vioc_dv_in@12008000{

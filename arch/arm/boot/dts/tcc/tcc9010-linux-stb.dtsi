@@ -244,11 +244,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c9_bus>;
 
-		hdmi_in@78 {
-			compatible = "tcc-hdin-i2c";
-			reg = <0x3C>;
-		};
-
 		adv7343@20 {
 			compatible = "component-adv7343-i2c";
 			reg = <0x2b>;	/* ALSB=1, Write=0x56, Read=0x57 */
@@ -262,43 +257,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c8_bus>;
 	};*/
-
-	/* TODO : need to modify vioc index
-	hdmi_in {
-		compatible = "telechips-hdin";
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&hdin_clki &hdin_hsync &hdin_vsync &hdin_data &hdin_de>;
-		clocks = <&clk_ddi DDIBUS_VIOC>;
-		hdin_port = <&cifport 3 1>;
-		hdin_wmixer = <&vioc_wmix 5>;
-		hdin_wdma = <&vioc_wdma 5>;
-		hdin_videoin = <&vioc_vin 4 0>;
-		hdin_scaler = <&vioc_scaler 0>;
-		hdin_config = <&vioc_config 0>;
-		hdin_viqe = <&vioc_viqe 0>;
-
-		ep9553t{
-			rst-gpios = <&gpe 31 0>;
-			pwr-gpios = <&gpf 30 0>;
-			key-gpios = <&gpg 15 0>;
-			int-gpios = <&gpg 13 1>;
-			polarity_hsync = <1>;
-			polarity_vsync = <1>;
-			field_bfield_low = <0>;
-			polarity_data_en = <0>;
-			gen_field_en = <1>;
-			polarity_pclk = <1>;
-			conv_en = <0>;
-			hsde_connect_en = <0>;
-			vs_mask = <0>;
-			input_fmt = <0>;
-			data_order = <5>;
-			intpl_en = <0>;
-			wdma_swap_order = <0>;
-		};
-	};
-	*/
 
 	/* GPSB */
 	gpsb0@16900000 {

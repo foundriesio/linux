@@ -560,41 +560,6 @@
 		telechips,pull-up;
 	};
 
-	hdin_clki: hdin_clki {
-		telechips,pins = "gpb-28";
-		telechips,pin-function = <2>;
-		telechips,input-enable;
-	};
-
-	hdin_hsync: hdin_hsync {
-		telechips,pins = "gpb-24";
-		telechips,pin-function = <2>;
-		telechips,input-enable;
-	};
-
-	hdin_vsync: hdin_vsync {
-		telechips,pins = "gpb-25";
-		telechips,pin-function = <2>;
-		telechips,input-enable;
-	};
-
-	hdin_data: hdin_data {
-		telechips,pins = "gpb-0", "gpb-1", "gpb-2", "gpb-3",
-				 "gpb-4", "gpb-5", "gpb-6", "gpb-7",
-				 "gpb-8", "gpb-9", "gpb-10", "gpb-11",
-				 "gpb-12", "gpb-13", "gpb-14", "gpb-15",
-				 "gpb-16", "gpb-17", "gpb-18", "gpb-19",
-				 "gpb-20", "gpb-21", "gpb-22", "gpb-23";
-		telechips,pin-function = <2>;
-		telechips,input-enable;
-	};
-
-	hdin_de: hdin_de {
-		telechips,pins = "gpb-26";
-		telechips,pin-function = <2>;
-		telechips,input-enable;
-	};
-
 	tsc_default: tsc_default {
 		telechips,pins = "gpd-7", "gpd-10";
 		telechips,pin-function = <0>;
