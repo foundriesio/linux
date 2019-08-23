@@ -889,12 +889,14 @@ struct qla_tgt_cmd {
 	unsigned int term_exchg:1;
 	unsigned int cmd_sent_to_fw:1;
 	unsigned int cmd_in_wq:1;
-#ifdef __GENKSYMS__
-	unsigned int aborted:1;
-	unsigned int data_work:1;
-	unsigned int data_work_free:1;
-	unsigned int released:1;
-#endif
+
+	/*
+	 * This variable may be set from outside the LIO and I/O completion
+	 * callback functions. Do not declare this member variable as a
+	 * bitfield to avoid a read-modify-write operation when this variable
+	 * is set.
+	 */
+	unsigned int aborted;
 
 	struct scatterlist *sg;	/* cmd data buffer SG vector */
 	int sg_cnt;		/* SG segments count */
@@ -937,15 +939,6 @@ struct qla_tgt_cmd {
 	uint64_t jiffies_at_free;
 
 	enum trace_flags trc_flags;
-#ifndef __GENKSYMS__
-	/*
-	 * This variable may be set from outside the LIO and I/O completion
-	 * callback functions. Do not declare this member variable as a
-	 * bitfield to avoid a read-modify-write operation when this variable
-	 * is set.
-	 */
-	unsigned int aborted;
-#endif
 };
 
 struct qla_tgt_sess_work_param {
