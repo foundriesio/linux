@@ -29,7 +29,9 @@
 #include "cifs_debug.h"
 #include "cifs_fs_sb.h"
 #include "cifs_unicode.h"
+#ifdef CONFIG_CIFS_SMB2
 #include "smb2proto.h"
+#endif
 
 /*
  * M-F Symlink Functions - Begin
@@ -50,12 +52,25 @@ static int
 symlink_hash(unsigned int link_len, const char *link_str, u8 *md5_hash)
 {
 	int rc;
-	struct crypto_shash *md5 = NULL;
-	struct sdesc *sdescmd5 = NULL;
+	unsigned int size;
+	struct crypto_shash *md5;
+	struct sdesc *sdescmd5;
 
-	rc = cifs_alloc_hash("md5", &md5, &sdescmd5);
-	if (rc)
+	md5 = crypto_alloc_shash("md5", 0, 0);
+	if (IS_ERR(md5)) {
+		rc = PTR_ERR(md5);
+		cifs_dbg(VFS, "%s: Crypto md5 allocation error %d\n",
+			 __func__, rc);
+		return rc;
+	}
+	size = sizeof(struct shash_desc) + crypto_shash_descsize(md5);
+	sdescmd5 = kmalloc(size, GFP_KERNEL);
+	if (!sdescmd5) {
+		rc = -ENOMEM;
 		goto symlink_hash_err;
+	}
+	sdescmd5->shash.tfm = md5;
+	sdescmd5->shash.flags = 0x0;
 
 	rc = crypto_shash_init(&sdescmd5->shash);
 	if (rc) {
@@ -72,7 +87,9 @@ symlink_hash(unsigned int link_len, const char *link_str, u8 *md5_hash)
 		cifs_dbg(VFS, "%s: Could not generate md5 hash\n", __func__);
 
 symlink_hash_err:
-	cifs_free_hash(&md5, &sdescmd5);
+	crypto_free_shash(md5);
+	kfree(sdescmd5);
+
 	return rc;
 }
 
@@ -385,6 +402,7 @@ cifs_create_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 /*
  * SMB 2.1/SMB3 Protocol specific functions
  */
+#ifdef CONFIG_CIFS_SMB2
 int
 smb3_query_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 		      struct cifs_sb_info *cifs_sb, const unsigned char *path,
@@ -396,7 +414,7 @@ smb3_query_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 	struct cifs_io_parms io_parms;
 	int buf_type = CIFS_NO_BUFFER;
 	__le16 *utf16_path;
-	__u8 oplock = SMB2_OPLOCK_LEVEL_NONE;
+	__u8 oplock = SMB2_OPLOCK_LEVEL_II;
 	struct smb2_file_all_info *pfile_info = NULL;
 
 	oparms.tcon = tcon;
@@ -458,7 +476,7 @@ smb3_create_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 	struct cifs_io_parms io_parms;
 	int create_options = CREATE_NOT_DIR;
 	__le16 *utf16_path;
-	__u8 oplock = SMB2_OPLOCK_LEVEL_NONE;
+	__u8 oplock = SMB2_OPLOCK_LEVEL_EXCLUSIVE;
 	struct kvec iov[2];
 
 	if (backup_cred(cifs_sb))
@@ -507,6 +525,7 @@ smb3_create_mf_symlink(unsigned int xid, struct cifs_tcon *tcon,
 	kfree(utf16_path);
 	return rc;
 }
+#endif /* CONFIG_CIFS_SMB2 */
 
 /*
  * M-F Symlink Functions - End

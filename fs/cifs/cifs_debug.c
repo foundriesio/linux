@@ -107,32 +107,6 @@ void cifs_dump_mids(struct TCP_Server_Info *server)
 }
 
 #ifdef CONFIG_PROC_FS
-static void cifs_debug_tcon(struct seq_file *m, struct cifs_tcon *tcon)
-{
-	__u32 dev_type = le32_to_cpu(tcon->fsDevInfo.DeviceType);
-
-	seq_printf(m, "%s Mounts: %d ", tcon->treeName, tcon->tc_count);
-	if (tcon->nativeFileSystem)
-		seq_printf(m, "Type: %s ", tcon->nativeFileSystem);
-	seq_printf(m, "DevInfo: 0x%x Attributes: 0x%x\n\tPathComponentMax: %d Status: %d",
-		   le32_to_cpu(tcon->fsDevInfo.DeviceCharacteristics),
-		   le32_to_cpu(tcon->fsAttrInfo.Attributes),
-		   le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength),
-		   tcon->tidStatus);
-	if (dev_type == FILE_DEVICE_DISK)
-		seq_puts(m, " type: DISK ");
-	else if (dev_type == FILE_DEVICE_CD_ROM)
-		seq_puts(m, " type: CDROM ");
-	else
-		seq_printf(m, " type: %d ", dev_type);
-	if (tcon->ses->server->ops->dump_share_caps)
-		tcon->ses->server->ops->dump_share_caps(m, tcon);
-
-	if (tcon->need_reconnect)
-		seq_puts(m, "\tDISCONNECTED ");
-	seq_putc(m, '\n');
-}
-
 static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
 {
 	struct list_head *tmp1, *tmp2, *tmp3;
@@ -141,6 +115,7 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
 	struct cifs_ses *ses;
 	struct cifs_tcon *tcon;
 	int i, j;
+	__u32 dev_type;
 
 	seq_puts(m,
 		    "Display Internal CIFS Data Structures for Debugging\n"
@@ -148,41 +123,25 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "CIFS Version %s\n", CIFS_VERSION);
 	seq_printf(m, "Features:");
 #ifdef CONFIG_CIFS_DFS_UPCALL
-	seq_printf(m, " DFS");
+	seq_printf(m, " dfs");
 #endif
 #ifdef CONFIG_CIFS_FSCACHE
-	seq_printf(m, ",FSCACHE");
-#endif
-#ifdef CONFIG_CIFS_SMB_DIRECT
-	seq_printf(m, ",SMB_DIRECT");
-#endif
-#ifdef CONFIG_CIFS_STATS2
-	seq_printf(m, ",STATS2");
-#elif defined(CONFIG_CIFS_STATS)
-	seq_printf(m, ",STATS");
-#endif
-#ifdef CONFIG_CIFS_DEBUG2
-	seq_printf(m, ",DEBUG2");
-#elif defined(CONFIG_CIFS_DEBUG)
-	seq_printf(m, ",DEBUG");
-#endif
-#ifdef CONFIG_CIFS_ALLOW_INSECURE_LEGACY
-	seq_printf(m, ",ALLOW_INSECURE_LEGACY");
+	seq_printf(m, " fscache");
 #endif
 #ifdef CONFIG_CIFS_WEAK_PW_HASH
-	seq_printf(m, ",WEAK_PW_HASH");
+	seq_printf(m, " lanman");
 #endif
 #ifdef CONFIG_CIFS_POSIX
-	seq_printf(m, ",CIFS_POSIX");
+	seq_printf(m, " posix");
 #endif
 #ifdef CONFIG_CIFS_UPCALL
-	seq_printf(m, ",UPCALL(SPNEGO)");
+	seq_printf(m, " spnego");
 #endif
 #ifdef CONFIG_CIFS_XATTR
-	seq_printf(m, ",XATTR");
+	seq_printf(m, " xattr");
 #endif
 #ifdef CONFIG_CIFS_ACL
-	seq_printf(m, ",ACL");
+	seq_printf(m, " acl");
 #endif
 	seq_putc(m, '\n');
 	seq_printf(m, "Active VFS Requests: %d\n", GlobalTotalActiveXid);
@@ -194,7 +153,6 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
 		server = list_entry(tmp1, struct TCP_Server_Info,
 				    tcp_ses_list);
 		seq_printf(m, "\nNumber of credits: %d", server->credits);
-
 		i++;
 		list_for_each(tmp2, &server->smb_ses_list) {
 			ses = list_entry(tmp2, struct cifs_ses,
@@ -226,19 +184,35 @@ static int cifs_debug_data_proc_show(struct seq_file *m, void *v)
 
 			seq_puts(m, "\n\tShares:");
 			j = 0;
-
-			seq_printf(m, "\n\t%d) IPC: ", j);
-			if (ses->tcon_ipc)
-				cifs_debug_tcon(m, ses->tcon_ipc);
-			else
-				seq_puts(m, "none\n");
-
 			list_for_each(tmp3, &ses->tcon_list) {
 				tcon = list_entry(tmp3, struct cifs_tcon,
 						  tcon_list);
 				++j;
-				seq_printf(m, "\n\t%d) ", j);
-				cifs_debug_tcon(m, tcon);
+				dev_type = le32_to_cpu(tcon->fsDevInfo.DeviceType);
+				seq_printf(m, "\n\t%d) %s Mounts: %d ", j,
+					   tcon->treeName, tcon->tc_count);
+				if (tcon->nativeFileSystem) {
+					seq_printf(m, "Type: %s ",
+						   tcon->nativeFileSystem);
+				}
+				seq_printf(m, "DevInfo: 0x%x Attributes: 0x%x"
+					"\n\tPathComponentMax: %d Status: %d",
+					le32_to_cpu(tcon->fsDevInfo.DeviceCharacteristics),
+					le32_to_cpu(tcon->fsAttrInfo.Attributes),
+					le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength),
+					tcon->tidStatus);
+				if (dev_type == FILE_DEVICE_DISK)
+					seq_puts(m, " type: DISK ");
+				else if (dev_type == FILE_DEVICE_CD_ROM)
+					seq_puts(m, " type: CDROM ");
+				else
+					seq_printf(m, " type: %d ", dev_type);
+				if (server->ops->dump_share_caps)
+					server->ops->dump_share_caps(m, tcon);
+
+				if (tcon->need_reconnect)
+					seq_puts(m, "\tDISCONNECTED ");
+				seq_putc(m, '\n');
 			}
 
 			seq_puts(m, "\n\tMIDs:\n");
@@ -294,13 +268,6 @@ static ssize_t cifs_stats_proc_write(struct file *file,
 		atomic_set(&totBufAllocCount, 0);
 		atomic_set(&totSmBufAllocCount, 0);
 #endif /* CONFIG_CIFS_STATS2 */
-		atomic_set(&tcpSesReconnectCount, 0);
-		atomic_set(&tconInfoReconnectCount, 0);
-
-		spin_lock(&GlobalMid_Lock);
-		GlobalMaxActiveXid = 0;
-		GlobalCurrentXid = 0;
-		spin_unlock(&GlobalMid_Lock);
 		spin_lock(&cifs_tcp_ses_lock);
 		list_for_each(tmp1, &cifs_tcp_ses_list) {
 			server = list_entry(tmp1, struct TCP_Server_Info,
@@ -313,10 +280,6 @@ static ssize_t cifs_stats_proc_write(struct file *file,
 							  struct cifs_tcon,
 							  tcon_list);
 					atomic_set(&tcon->num_smbs_sent, 0);
-					spin_lock(&tcon->stat_lock);
-					tcon->bytes_read = 0;
-					tcon->bytes_written = 0;
-					spin_unlock(&tcon->stat_lock);
 					if (server->ops->clear_stats)
 						server->ops->clear_stats(tcon);
 				}

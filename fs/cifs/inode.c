@@ -234,8 +234,6 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
 	fattr->cf_atime = cifs_NTtimeToUnix(info->LastAccessTime);
 	fattr->cf_mtime = cifs_NTtimeToUnix(info->LastModificationTime);
 	fattr->cf_ctime = cifs_NTtimeToUnix(info->LastStatusChange);
-	/* old POSIX extensions don't get create time */
-
 	fattr->cf_mode = le64_to_cpu(info->Permissions);
 
 	/*
@@ -467,8 +465,6 @@ cifs_sfu_type(struct cifs_fattr *fattr, const char *path,
 	oparms.cifs_sb = cifs_sb;
 	oparms.desired_access = GENERIC_READ;
 	oparms.create_options = CREATE_NOT_DIR;
-	if (backup_cred(cifs_sb))
-		oparms.create_options |= CREATE_OPEN_BACKUP_INTENT;
 	oparms.disposition = FILE_OPEN;
 	oparms.path = path;
 	oparms.fid = &fid;
@@ -709,18 +705,6 @@ cgfi_exit:
 	return rc;
 }
 
-/* Simple function to return a 64 bit hash of string.  Rarely called */
-static __u64 simple_hashstr(const char *str)
-{
-	const __u64 hash_mult =  1125899906842597ULL; /* a big enough prime */
-	__u64 hash = 0;
-
-	while (*str)
-		hash = (hash + (__u64) *str++) * hash_mult;
-
-	return hash;
-}
-
 int
 cifs_get_inode_info(struct inode **inode, const char *full_path,
 		    FILE_ALL_INFO *data, struct super_block *sb, int xid,
@@ -748,8 +732,7 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 	cifs_dbg(FYI, "Getting info on %s\n", full_path);
 
 	if ((data == NULL) && (*inode != NULL)) {
-		if (CIFS_CACHE_READ(CIFS_I(*inode)) &&
-		    CIFS_I(*inode)->time != 0) {
+		if (CIFS_CACHE_READ(CIFS_I(*inode))) {
 			cifs_dbg(FYI, "No need to revalidate cached inode sizes\n");
 			goto cgii_exit;
 		}
@@ -777,15 +760,7 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 	} else if (rc == -EREMOTE) {
 		cifs_create_dfs_fattr(&fattr, sb);
 		rc = 0;
-	} else if ((rc == -EACCES) && backup_cred(cifs_sb) &&
-		   (strcmp(server->vals->version_string, SMB1_VERSION_STRING)
-		      == 0)) {
-			/*
-			 * For SMB2 and later the backup intent flag is already
-			 * sent if needed on open and there is no path based
-			 * FindFirst operation to use to retry with
-			 */
-
+	} else if (rc == -EACCES && backup_cred(cifs_sb)) {
 			srchinf = kzalloc(sizeof(struct cifs_search_info),
 						GFP_KERNEL);
 			if (srchinf == NULL) {
@@ -839,14 +814,6 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 						 tmprc);
 					fattr.cf_uniqueid = iunique(sb, ROOT_I);
 					cifs_autodisable_serverino(cifs_sb);
-				} else if ((fattr.cf_uniqueid == 0) &&
-						strlen(full_path) == 0) {
-					/* some servers ret bad root ino ie 0 */
-					cifs_dbg(FYI, "Invalid (0) inodenum\n");
-					fattr.cf_flags |=
-						CIFS_FATTR_FAKE_ROOT_INO;
-					fattr.cf_uniqueid =
-						simple_hashstr(tcon->treeName);
 				}
 			}
 		} else
@@ -863,16 +830,6 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 				&fattr.cf_uniqueid, data);
 			if (tmprc)
 				fattr.cf_uniqueid = CIFS_I(*inode)->uniqueid;
-			else if ((fattr.cf_uniqueid == 0) &&
-					strlen(full_path) == 0) {
-				/*
-				 * Reuse existing root inode num since
-				 * inum zero for root causes ls of . and .. to
-				 * not be returned
-				 */
-				cifs_dbg(FYI, "Srv ret 0 inode num for root\n");
-				fattr.cf_uniqueid = CIFS_I(*inode)->uniqueid;
-			}
 		} else
 			fattr.cf_uniqueid = CIFS_I(*inode)->uniqueid;
 	}
@@ -934,9 +891,6 @@ cifs_get_inode_info(struct inode **inode, const char *full_path,
 	}
 
 cgii_exit:
-	if ((*inode) && ((*inode)->i_ino == 0))
-		cifs_dbg(FYI, "inode number of zero returned\n");
-
 	kfree(buf);
 	cifs_put_tlink(tlink);
 	return rc;
@@ -1093,7 +1047,7 @@ iget_no_retry:
 	tcon->resource_id = CIFS_I(inode)->uniqueid;
 #endif
 
-	if (rc && tcon->pipe) {
+	if (rc && tcon->ipc) {
 		cifs_dbg(FYI, "ipc connection - fake read inode\n");
 		spin_lock(&inode->i_lock);
 		inode->i_mode |= S_IFDIR;
@@ -1132,8 +1086,6 @@ cifs_set_file_info(struct inode *inode, struct iattr *attrs, unsigned int xid,
 	server = cifs_sb_master_tcon(cifs_sb)->ses->server;
 	if (!server->ops->set_file_info)
 		return -ENOSYS;
-
-	info_buf.Pad = 0;
 
 	if (attrs->ia_valid & ATTR_ATIME) {
 		set_time = true;
@@ -1873,13 +1825,13 @@ cifs_inode_needs_reval(struct inode *inode)
 	struct cifsInodeInfo *cifs_i = CIFS_I(inode);
 	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
 
-	if (cifs_i->time == 0)
-		return true;
-
 	if (CIFS_CACHE_READ(cifs_i))
 		return false;
 
 	if (!lookupCacheEnabled)
+		return true;
+
+	if (cifs_i->time == 0)
 		return true;
 
 	if (!cifs_sb->actimeo)
@@ -2072,19 +2024,6 @@ int cifs_getattr(const struct path *path, struct kstat *stat,
 	stat->blksize = CIFS_MAX_MSGSIZE;
 	stat->ino = CIFS_I(inode)->uniqueid;
 
-	/* old CIFS Unix Extensions doesn't return create time */
-	if (CIFS_I(inode)->createtime) {
-		stat->result_mask |= STATX_BTIME;
-		stat->btime =
-		      cifs_NTtimeToUnix(cpu_to_le64(CIFS_I(inode)->createtime));
-	}
-
-	stat->attributes_mask |= (STATX_ATTR_COMPRESSED | STATX_ATTR_ENCRYPTED);
-	if (CIFS_I(inode)->cifsAttrs & FILE_ATTRIBUTE_COMPRESSED)
-		stat->attributes |= STATX_ATTR_COMPRESSED;
-	if (CIFS_I(inode)->cifsAttrs & FILE_ATTRIBUTE_ENCRYPTED)
-		stat->attributes |= STATX_ATTR_ENCRYPTED;
-
 	/*
 	 * If on a multiuser mount without unix extensions or cifsacl being
 	 * enabled, and the admin hasn't overridden them, set the ownership
@@ -2120,14 +2059,10 @@ static int cifs_truncate_page(struct address_space *mapping, loff_t from)
 
 static void cifs_setsize(struct inode *inode, loff_t offset)
 {
-	struct cifsInodeInfo *cifs_i = CIFS_I(inode);
-
 	spin_lock(&inode->i_lock);
 	i_size_write(inode, offset);
 	spin_unlock(&inode->i_lock);
 
-	/* Cached inode must be refreshed on truncate */
-	cifs_i->time = 0;
 	truncate_pagecache(inode, offset);
 }
 
