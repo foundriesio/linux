@@ -31,8 +31,6 @@ int force_iommu __read_mostly = 1;
 int force_iommu __read_mostly;
 #endif
 
-int iommu_pass_through;
-
 extern struct dma_map_ops intel_dma_ops;
 
 static int __init pci_iommu_init(void)
