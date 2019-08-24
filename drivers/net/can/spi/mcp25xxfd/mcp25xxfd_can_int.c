@@ -624,7 +624,7 @@ irqreturn_t mcp25xxfd_can_int(int irq, void *dev_id)
 	MCP25XXFD_DEBUGFS_STATS_INCR(cpriv, irq_calls);
 
 	/* loop forever unless we need to exit */
-	for (loops = 0; true; loops++) {
+	for (loops = 1; true; loops++) {
 		/* count irq loops */
 		MCP25XXFD_DEBUGFS_STATS_INCR(cpriv, irq_loops);
 
