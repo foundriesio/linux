@@ -407,13 +407,12 @@ int mcp25xxfd_can_tx_handle_int_tefif(struct mcp25xxfd_can_priv *cpriv)
 
 	MCP25XXFD_DEBUGFS_STATS_INCR(cpriv, int_tef_count);
 
+	/* compute finished fifos and clear them immediately
+	 *
+	 * bit in txreq == 0 means successfully sent
+	 */
 	spin_lock_irqsave(&cpriv->fifos.tx_queue->lock, flags);
-
-	/* compute finished fifos and clear them immediately */
-	finished = (cpriv->fifos.tx_queue->in_can_transfer ^
-		    cpriv->status.txreq) &
-		cpriv->fifos.tx_queue->in_can_transfer;
-
+	finished = ~cpriv->status.txreq & cpriv->fifos.tx_queue->in_can_transfer;
 	spin_unlock_irqrestore(&cpriv->fifos.tx_queue->lock, flags);
 
 	/* run in optimized mode if possible */
