@@ -2986,6 +2986,7 @@ CONFIG_TOUCHSCREEN_AD7879                       policy<{'amd64': 'm', 'arm64': '
 CONFIG_TOUCHSCREEN_AD7879_I2C                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_TOUCHSCREEN_AD7879_SPI                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_TOUCHSCREEN_AR1021_I2C                   policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_TOUCHSCREEN_IQS5XX                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_TOUCHSCREEN_ATMEL_MXT                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_TOUCHSCREEN_ATMEL_MXT_T37                policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
 CONFIG_TOUCHSCREEN_AUO_PIXCIR                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
