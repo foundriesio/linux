@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC9010 MINI board
+ *
+ * Copyright (C) 2018 Telechips Inc.
+*/
+
+#ifndef DT_OVERLAY
+/dts-v1/;
+#endif
+
+#include "tcc9010-android-mini.dtsi"
+
+/* CPU Power Control */
+&cpu0_regulators {
+	gpios = <&gpf 5 0x4>;
+};
+
+/* eMMC */
+&vqmmc_emmc {
+	compatible = "regulator-gpio";
+
+	regulator-name = "vqmmc_emmc";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-type = "voltage";
+	regulator-ramp-delay = <10>;
+	regulator-always-on;
+
+	gpios = <&gpa 4 0x4>;
+	gpios-states = <0>;
+	states = <1800000 0x0
+		3300000 0x1>;
+};
+
+&sdhc1 {
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd1_1_clk &sd1_1_cmd &sd1_1_bus8>;
+
+	non-removable;
+	keep-power-in-suspend;
+	disable-wp;
+	cap-mmc-hw-reset;
+	mmc-ddr-1_8v;
+
+	tcc-mmc-reset = <&gpa 6 0>;
+
+	vqmmc-supply = <&vqmmc_emmc>;
+};
+
+/* SDIO */
+&vqmmc_sdio {
+	compatible = "regulator-fixed";
+	regulator-name = "vqmmc_sdio";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+&sdhc2 {
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <2000000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+
+	keep-power-in-suspend;
+	cap-sdio-irq;
+
+	vqmmc-supply = <&vqmmc_sdio>;
+
+	cd-force-presence-change;
+
+	tcm38xx {
+		compatible = "telechips,tcm38xx";
+		wifi_pwr-gpio = <&gpf 30 0>; /* BT_WIFI_VBAT_EN */
+		wlreg_on-gpio = <&gpd 16 0>; /* WIFI_REG_ON */
+		wifi_pwr_1p8v-gpio = <&gpd 7 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+};
+
+/* USB 3.0 DRD */
+&dwc3_phy {
+	status = "disable";
+};
+&dwc3 {
+	status = "disable";
+	//usb3en-ctrl-able;
+	//usb3en-gpio = <&gpc 22 0>;
+	//vbus-source-ctrl;
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 19 0>;
+	//pinctrl-names = "default";
+	//vdd_dwc-supply = <&vdd_v5p0_reg>;
+};
+
+/* USB 2.0 HOST */
+&ehci_phy {
+	status = "disable";
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 15 0>;
+};
+
+&tcc_bluetooth {
+	compatible = "telechips, tcc_bluetooth";
+	bt_power-gpio = <&gpf 30 0>; /* BTWIFI_VBAT_EN */
+	bt_reg_on-gpio = <&gpd 15 0>;
+	bt_wake-gpio = <&gpd 0 0>;
+	bt_hwake-gpio = <&gpd 9 0>;
+	bt_power_1p8v-gpio = <&gpf 27 0>;
+	//bt_power_3p3v-gpio = <&gpsd1 7 0>;
+	status = "okay";
+};
+
+&gpio_keys_polled {
+	compatible = "gpio-keys-polled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	poll-interval = <100>;
+	autorepeat;
+	button@0 {
+		label = "BT Auto Pair Key";
+		linux,code = <218>;
+		gpios = <&gpf 29 1>;
+	};
+};
+
+/* bluetooth */
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_data &uart4_rtscts>;
+	dmas = <&udma1 2 2 &udma1 3 2>;
+	dma-names = "tx", "rx";
+	status = "okay";
+};
+
+&gpu {
+        operating-points-v2 = <&gpu_opp_table>;
+};
+
+&gpu_opp_table {
+    opp@444000000 {
+	opp-hz = /bits/ 64 <444000000>;
+	opp-core-mask = /bits/ 64 <0x3>;
+    };
+    opp@592000000 {
+        opp-hz = /bits/ 64 <592000000>;
+        opp-core-mask = /bits/ 64 <0x3>;
+    };
+    opp@600000000 {
+        opp-hz = /bits/ 64 <600000000>;
+        opp-core-mask = /bits/ 64 <0x3>;
+    };
+};

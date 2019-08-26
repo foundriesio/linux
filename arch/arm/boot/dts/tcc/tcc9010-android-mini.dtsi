@@ -1,0 +1,321 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC9010 MINI board
+ *
+ * Copyright (C) 2019 Telechips Inc.
+ */
+
+#ifndef DT_OVERLAY
+#include "tcc9010.dtsi"
+#endif
+
+#include "tcc901x-android.dtsi"
+
+/ {
+	model = "Telechips TCC9010 MINI Board";
+	compatible = "telechips,tcc9010", "telechips,tcc901x";
+};
+
+&chosen {
+};
+
+&cpu0_regulators {
+	compatible = "regulator-gpio";
+
+	regulator-name = "vdd_cpu0";
+	regulator-min-microvolt = <800000>;
+	regulator-max-microvolt = <900000>;
+	regulator-type = "voltage";
+	regulator-always-on;
+
+	gpios = <&gpd 16 0x4>;
+	gpios-states = <0>;
+
+	states = < 800000 0x0
+		900000 0x1
+		>;
+
+	startup-delay-us = <100000>;
+	enable-active-high;
+};
+
+&panel {
+	status = "okay";
+	compatible = "telechips,hdmi1920x1080";
+};
+
+&tcc_tve {
+	status = "disabled";
+};
+
+&composite {
+	status = "disabled";
+};
+
+&component {
+	status = "disabled";
+	io_port_num = <1>;	/* TCC901x: LCDC interface 1 (L1_XXX) */
+};
+
+&output_starter {
+	status = "okay";
+};
+
+&overlaymixer {
+	status ="okay";
+	contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
+	baseAddress = <0x20000000>;
+	physSize = <0x80000000>; /*  DRAM size (0x40000000 = 1GB, 0x80000000 = 2GB) */
+};
+
+&fbdisplay {
+	telechips,fbdisplay_num = <0>;
+	status ="okay";
+};
+
+&tcc_overlay {
+	compatible = "telechips,tcc_overlay";
+	status = "okay";
+	fbdisplay-overlay = <&fbdisplay>;
+};
+
+&tcc_vsync {
+	compatible = "telechips,tcc_vsync";
+	display-vioc0 = <&vioc_disp VIOC_DISP0>;
+	display-vioc1 = <&vioc_disp VIOC_DISP1>;
+	status = "okay";
+};
+
+&tcc_viqe {
+	compatible = "telechips,tcc_viqe";
+	status ="okay";
+	tcc_viqe_viqe_common {
+		board_num=<1>;
+	};
+};
+
+&scaler_drv1 {
+	rdmas = <&vioc_rdma VIOC_RDMA16>;
+	scalers = <&vioc_scaler VIOC_SCALER1 VIOC_SC_RDMA_16>;	/* id:1, path:17 */
+	wmixs = <&vioc_wmix VIOC_WMIX5>;	/* id:5, path:6 */
+	wdmas = <&vioc_wdma VIOC_WDMA06>;
+	settop_support = <1>;
+	status = "okay";
+};
+
+&scaler_drv3 {
+	rdmas = <&vioc_rdma VIOC_RDMA07>;
+	scalers = <&vioc_scaler VIOC_SCALER3 VIOC_SC_RDMA_07>;	/* id:3, path:7 */
+	wmixs = <&vioc_wmix VIOC_WMIX1>;	/* id:1, path:3 */
+	wdmas = <&vioc_wdma VIOC_WDMA01>;
+	settop_support = <1>;
+	status = "okay";
+};
+
+&wmixer_drv0 {
+	status = "okay";
+};
+
+&wmixer_drv1 {
+	status = "okay";
+};
+&vioc_lut {
+	status = "okay";
+};
+
+&hdmi_tx_20 {
+	status = "okay";
+	hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
+	hdmi_phy_type = <1>;
+
+	/* Source Product Description */
+	product_description = "TCC9010_mini";
+};
+
+&hdmi_cec_20 {
+	status = "okay";
+};
+
+/* I2C */
+
+// Default set
+&i2c0 {
+	port-mux = <9>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c9_bus>;
+
+	adv7343@20 {
+		compatible = "component-adv7343-i2c";
+		reg = <0x2b>;	/* ALSB=1, Write=0x56, Read=0x57 */
+	};
+};
+
+/* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpd 19 0>;
+};
+&dwc3 {
+	status = "okay";
+	//usb3en-ctrl-able;
+	//usb3en-gpio = <&gpc 22 0>;
+	//vbus-source-ctrl;
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 19 0>;
+	//pinctrl-names = "default";
+	//vdd_dwc-supply = <&vdd_v5p0_reg>;
+};
+
+/* USB 2.0 HOST */
+&ehci_phy {
+	status = "okay";
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 15 0>;
+};
+
+&mhst_phy {
+	status = "okay";
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 18 0>;
+};
+
+&dwc_otg_phy {
+	status = "okay";
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 18 0>;
+};
+
+&ehci {
+	status = "disable";
+	hcd_id = <0>;
+	phy-type = <1>;	    //pico phy = 1, nano phy = 0
+	//hosten-ctrl-able;
+	//hosten-gpio = <&gpe 15 0>;
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 15 0>;
+	//vbus-source-ctrl;
+	//pinctrl-names = "default";
+	//vdd_ehci-supply = <&vdd_v5p0_reg>;
+
+	//sq_level_ctl;
+	TXVRT = <0xB>;
+	TXRISET = <0x3>;
+	TXAT = <0x1>;
+};
+
+&ohci {
+	status = "disable";
+	//hosten-ctrl-able;
+	//hosten-gpio = <&gpe 15 0>;
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 15 0>;
+	//vbus-source-ctrl;
+	//vdd_ohci-supply = <&vdd_v5p0_reg>;
+};
+
+/* USB 2.0 OTG */
+&dwc_otg {
+	status = "okay";
+	phy-type = <1>;     //pico phy = 1, nano phy = 0
+
+	//vbus-ctrl-able;
+	//vbus-gpio = <&gpd 18 0>;
+};
+
+&audio_chmux {
+	compatible = "telechips,audio-chmux-901x";
+	dai = <99 99>; // i2s0(x) i2s1(x)
+	cdif = <99 99>; // cdif0(x) cdif1(x)
+	spdif = <99>; // spdif0(x)
+	status = "okay";
+};
+
+&i2s1 {
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&adma1 {
+	status = "okay";
+};
+
+&sound {
+	compatible = "telechips,snd-card";
+	card-name = "TCC9010 Mini Card";
+	status = "okay";
+
+	telechips,dai-link@0 {
+		stream-name="I2S_1_HDMI";
+
+		codec,format = "i2s"; // i2s, left_j, right_j
+		codec,continuous-clock;
+
+		mclk_div = <4>; // 4,6,8,16
+		bclk_ratio = <64>; // 32,48,64fs
+		pcm = <&adma1>;
+		dai = <&i2s1>;
+	};
+};
+
+&thermal {
+	compatible = "telechips,tcc-thermal";
+	reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4>;
+	clocks = <&clk_isoip_top ISOIP_TOP_TSEN>;
+	status = "okay";
+
+	throttle_count = <5>;
+	throttle_active_count = <0>;
+	throttle_passive_count = <5>;
+
+	cal_type = "TYPE_ONE_POINT_TRIMMING";
+	polling-delay-idle = <0>;
+	polling-delay-passive = <0>;
+
+	throttle_table {
+		throttle_tab_0 {
+			temp = <75>;
+			freq_max_cluster0 = <1000000>;
+			freq_max_cluster1 = <900000>;
+		};
+		throttle_tab_1 {
+			temp = <80>;
+			freq_max_cluster0 = <900000>;
+			freq_max_cluster1 = <810000>;
+		};
+		throttle_tab_2 {
+			temp = <85>;
+			freq_max_cluster0 = <800000>;
+			freq_max_cluster1 = <720000>;
+		};
+		throttle_tab_3 {
+			temp = <90>;
+			freq_max_cluster0 = <700000>;
+			freq_max_cluster1 = <630000>;
+		};
+		throttle_tab_4 {
+			temp = <95>;
+			freq_max_cluster0 = <600000>;
+			freq_max_cluster1 = <540000>;
+		};
+	};
+};
+
+&gpio_leds {
+	compatible = "gpio-leds";
+	green {
+		gpios = <&gpd 1 0>;
+		default-state = "on";
+	};
+	red {
+		gpios = <&gpd 0 1>;
+		default-state = "on";
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_data>;
+	status = "okay";
+};
