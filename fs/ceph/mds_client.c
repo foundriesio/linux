@@ -60,6 +60,29 @@ static const struct ceph_connection_operations mds_con_ops;
  * mds reply parsing
  */
 
+static int parse_reply_info_quota(void **p, void *end,
+				  struct ceph_mds_reply_info_in *info)
+{
+	u8 struct_v, struct_compat;
+	u32 struct_len;
+
+	ceph_decode_8_safe(p, end, struct_v, bad);
+	ceph_decode_8_safe(p, end, struct_compat, bad);
+	/* struct_v is expected to be >= 1. we only
+	 * understand encoding with struct_compat == 1. */
+	if (!struct_v || struct_compat != 1)
+		goto bad;
+	ceph_decode_32_safe(p, end, struct_len, bad);
+	ceph_decode_need(p, end, struct_len, bad);
+	end = *p + struct_len;
+	ceph_decode_64_safe(p, end, info->max_bytes, bad);
+	ceph_decode_64_safe(p, end, info->max_files, bad);
+	*p = end;
+	return 0;
+bad:
+	return -EIO;
+}
+
 /*
  * parse individual inode info
  */
@@ -67,8 +90,24 @@ static int parse_reply_info_in(void **p, void *end,
 			       struct ceph_mds_reply_info_in *info,
 			       u64 features)
 {
-	int err = -EIO;
+	int err = 0;
+	u8 struct_v = 0;
 
+	if (features == (u64)-1) {
+		u32 struct_len;
+		u8 struct_compat;
+		ceph_decode_8_safe(p, end, struct_v, bad);
+		ceph_decode_8_safe(p, end, struct_compat, bad);
+		/* struct_v is expected to be >= 1. we only understand
+		 * encoding with struct_compat == 1. */
+		if (!struct_v || struct_compat != 1)
+			goto bad;
+		ceph_decode_32_safe(p, end, struct_len, bad);
+		ceph_decode_need(p, end, struct_len, bad);
+		end = *p + struct_len;
+	}
+
+	ceph_decode_need(p, end, sizeof(struct ceph_mds_reply_inode), bad);
 	info->in = *p;
 	*p += sizeof(struct ceph_mds_reply_inode) +
 		sizeof(*info->in->fragtree.splits) *
@@ -90,49 +129,136 @@ static int parse_reply_info_in(void **p, void *end,
 	info->xattr_data = *p;
 	*p += info->xattr_len;
 
-	if (features & CEPH_FEATURE_MDS_INLINE_DATA) {
+	if (features == (u64)-1) {
+		/* inline data */
 		ceph_decode_64_safe(p, end, info->inline_version, bad);
 		ceph_decode_32_safe(p, end, info->inline_len, bad);
 		ceph_decode_need(p, end, info->inline_len, bad);
 		info->inline_data = *p;
 		*p += info->inline_len;
-	} else
-		info->inline_version = CEPH_INLINE_NONE;
-
-	if (features & CEPH_FEATURE_MDS_QUOTA) {
-		u8 struct_v, struct_compat;
-		u32 struct_len;
-
-		/*
-		 * both struct_v and struct_compat are expected to be >= 1
-		 */
-		ceph_decode_8_safe(p, end, struct_v, bad);
-		ceph_decode_8_safe(p, end, struct_compat, bad);
-		if (!struct_v || !struct_compat)
-			goto bad;
-		ceph_decode_32_safe(p, end, struct_len, bad);
-		ceph_decode_need(p, end, struct_len, bad);
-		ceph_decode_64_safe(p, end, info->max_bytes, bad);
-		ceph_decode_64_safe(p, end, info->max_files, bad);
-	} else {
-		info->max_bytes = 0;
-		info->max_files = 0;
-	}
-
-	info->pool_ns_len = 0;
-	info->pool_ns_data = NULL;
-	if (features & CEPH_FEATURE_FS_FILE_LAYOUT_V2) {
+		/* quota */
+		err = parse_reply_info_quota(p, end, info);
+		if (err < 0)
+			goto out_bad;
+		/* pool namespace */
 		ceph_decode_32_safe(p, end, info->pool_ns_len, bad);
 		if (info->pool_ns_len > 0) {
 			ceph_decode_need(p, end, info->pool_ns_len, bad);
 			info->pool_ns_data = *p;
 			*p += info->pool_ns_len;
 		}
-	}
+		/* btime, change_attr */
+		{
+			struct ceph_timespec btime;
+			u64 change_attr;
+			ceph_decode_need(p, end, sizeof(btime), bad);
+			ceph_decode_copy(p, &btime, sizeof(btime));
+			ceph_decode_64_safe(p, end, change_attr, bad);
+		}
 
+		/* dir pin */
+		if (struct_v >= 2) {
+			ceph_decode_32_safe(p, end, info->dir_pin, bad);
+		} else {
+			info->dir_pin = -ENODATA;
+		}
+
+		*p = end;
+	} else {
+		if (features & CEPH_FEATURE_MDS_INLINE_DATA) {
+			ceph_decode_64_safe(p, end, info->inline_version, bad);
+			ceph_decode_32_safe(p, end, info->inline_len, bad);
+			ceph_decode_need(p, end, info->inline_len, bad);
+			info->inline_data = *p;
+			*p += info->inline_len;
+		} else
+			info->inline_version = CEPH_INLINE_NONE;
+
+		if (features & CEPH_FEATURE_MDS_QUOTA) {
+			err = parse_reply_info_quota(p, end, info);
+			if (err < 0)
+				goto out_bad;
+		} else {
+			info->max_bytes = 0;
+			info->max_files = 0;
+		}
+
+		info->pool_ns_len = 0;
+		info->pool_ns_data = NULL;
+		if (features & CEPH_FEATURE_FS_FILE_LAYOUT_V2) {
+			ceph_decode_32_safe(p, end, info->pool_ns_len, bad);
+			if (info->pool_ns_len > 0) {
+				ceph_decode_need(p, end, info->pool_ns_len, bad);
+				info->pool_ns_data = *p;
+				*p += info->pool_ns_len;
+			}
+		}
+
+		info->dir_pin = -ENODATA;
+	}
 	return 0;
 bad:
+	err = -EIO;
+out_bad:
 	return err;
+}
+
+static int parse_reply_info_dir(void **p, void *end,
+				struct ceph_mds_reply_dirfrag **dirfrag,
+				u64 features)
+{
+	if (features == (u64)-1) {
+		u8 struct_v, struct_compat;
+		u32 struct_len;
+		ceph_decode_8_safe(p, end, struct_v, bad);
+		ceph_decode_8_safe(p, end, struct_compat, bad);
+		/* struct_v is expected to be >= 1. we only understand
+		 * encoding whose struct_compat == 1. */
+		if (!struct_v || struct_compat != 1)
+			goto bad;
+		ceph_decode_32_safe(p, end, struct_len, bad);
+		ceph_decode_need(p, end, struct_len, bad);
+		end = *p + struct_len;
+	}
+
+	ceph_decode_need(p, end, sizeof(**dirfrag), bad);
+	*dirfrag = *p;
+	*p += sizeof(**dirfrag) + sizeof(u32) * le32_to_cpu((*dirfrag)->ndist);
+	if (unlikely(*p > end))
+		goto bad;
+	if (features == (u64)-1)
+		*p = end;
+	return 0;
+bad:
+	return -EIO;
+}
+
+static int parse_reply_info_lease(void **p, void *end,
+				  struct ceph_mds_reply_lease **lease,
+				  u64 features)
+{
+	if (features == (u64)-1) {
+		u8 struct_v, struct_compat;
+		u32 struct_len;
+		ceph_decode_8_safe(p, end, struct_v, bad);
+		ceph_decode_8_safe(p, end, struct_compat, bad);
+		/* struct_v is expected to be >= 1. we only understand
+		 * encoding whose struct_compat == 1. */
+		if (!struct_v || struct_compat != 1)
+			goto bad;
+		ceph_decode_32_safe(p, end, struct_len, bad);
+		ceph_decode_need(p, end, struct_len, bad);
+		end = *p + struct_len;
+	}
+
+	ceph_decode_need(p, end, sizeof(**lease), bad);
+	*lease = *p;
+	*p += sizeof(**lease);
+	if (features == (u64)-1)
+		*p = end;
+	return 0;
+bad:
+	return -EIO;
 }
 
 /*
@@ -150,20 +276,18 @@ static int parse_reply_info_trace(void **p, void *end,
 		if (err < 0)
 			goto out_bad;
 
-		if (unlikely(*p + sizeof(*info->dirfrag) > end))
-			goto bad;
-		info->dirfrag = *p;
-		*p += sizeof(*info->dirfrag) +
-			sizeof(u32)*le32_to_cpu(info->dirfrag->ndist);
-		if (unlikely(*p > end))
-			goto bad;
+		err = parse_reply_info_dir(p, end, &info->dirfrag, features);
+		if (err < 0)
+			goto out_bad;
 
 		ceph_decode_32_safe(p, end, info->dname_len, bad);
 		ceph_decode_need(p, end, info->dname_len, bad);
 		info->dname = *p;
 		*p += info->dname_len;
-		info->dlease = *p;
-		*p += sizeof(*info->dlease);
+
+		err = parse_reply_info_lease(p, end, &info->dlease, features);
+		if (err < 0)
+			goto out_bad;
 	}
 
 	if (info->head->is_target) {
@@ -186,20 +310,16 @@ out_bad:
 /*
  * parse readdir results
  */
-static int parse_reply_info_dir(void **p, void *end,
+static int parse_reply_info_readdir(void **p, void *end,
 				struct ceph_mds_reply_info_parsed *info,
 				u64 features)
 {
 	u32 num, i = 0;
 	int err;
 
-	info->dir_dir = *p;
-	if (*p + sizeof(*info->dir_dir) > end)
-		goto bad;
-	*p += sizeof(*info->dir_dir) +
-		sizeof(u32)*le32_to_cpu(info->dir_dir->ndist);
-	if (*p > end)
-		goto bad;
+	err = parse_reply_info_dir(p, end, &info->dir_dir, features);
+	if (err < 0)
+		goto out_bad;
 
 	ceph_decode_need(p, end, sizeof(num) + 2, bad);
 	num = ceph_decode_32(p);
@@ -225,15 +345,16 @@ static int parse_reply_info_dir(void **p, void *end,
 	while (num) {
 		struct ceph_mds_reply_dir_entry *rde = info->dir_entries + i;
 		/* dentry */
-		ceph_decode_need(p, end, sizeof(u32)*2, bad);
-		rde->name_len = ceph_decode_32(p);
+		ceph_decode_32_safe(p, end, rde->name_len, bad);
 		ceph_decode_need(p, end, rde->name_len, bad);
 		rde->name = *p;
 		*p += rde->name_len;
 		dout("parsed dir dname '%.*s'\n", rde->name_len, rde->name);
-		rde->lease = *p;
-		*p += sizeof(struct ceph_mds_reply_lease);
 
+		/* dentry lease */
+		err = parse_reply_info_lease(p, end, &rde->lease, features);
+		if (err)
+			goto out_bad;
 		/* inode */
 		err = parse_reply_info_in(p, end, &rde->inode, features);
 		if (err < 0)
@@ -284,7 +405,8 @@ static int parse_reply_info_create(void **p, void *end,
 				  struct ceph_mds_reply_info_parsed *info,
 				  u64 features)
 {
-	if (features & CEPH_FEATURE_REPLY_CREATE_INODE) {
+	if (features == (u64)-1 ||
+	    (features & CEPH_FEATURE_REPLY_CREATE_INODE)) {
 		if (*p == end) {
 			info->has_create_ino = false;
 		} else {
@@ -313,7 +435,7 @@ static int parse_reply_info_extra(void **p, void *end,
 	if (op == CEPH_MDS_OP_GETFILELOCK)
 		return parse_reply_info_filelock(p, end, info, features);
 	else if (op == CEPH_MDS_OP_READDIR || op == CEPH_MDS_OP_LSSNAP)
-		return parse_reply_info_dir(p, end, info, features);
+		return parse_reply_info_readdir(p, end, info, features);
 	else if (op == CEPH_MDS_OP_CREATE)
 		return parse_reply_info_create(p, end, info, features);
 	else
@@ -901,6 +1023,27 @@ static struct ceph_msg *create_session_msg(u32 op, u64 seq)
 	return msg;
 }
 
+static void encode_supported_features(void **p, void *end)
+{
+	static const unsigned char bits[] = CEPHFS_FEATURES_CLIENT_SUPPORTED;
+	static const size_t count = ARRAY_SIZE(bits);
+
+	if (count > 0) {
+		size_t i;
+		size_t size = ((size_t)bits[count - 1] + 64) / 64 * 8;
+
+		BUG_ON(*p + 4 + size > end);
+		ceph_encode_32(p, size);
+		memset(*p, 0, size);
+		for (i = 0; i < count; i++)
+			((unsigned char*)(*p))[i / 8] |= 1 << (bits[i] % 8);
+		*p += size;
+	} else {
+		BUG_ON(*p + 4 > end);
+		ceph_encode_32(p, 0);
+	}
+}
+
 /*
  * session message, specialization for CEPH_SESSION_REQUEST_OPEN
  * to include additional client metadata fields.
@@ -910,11 +1053,11 @@ static struct ceph_msg *create_session_open_msg(struct ceph_mds_client *mdsc, u6
 	struct ceph_msg *msg;
 	struct ceph_mds_session_head *h;
 	int i = -1;
-	int metadata_bytes = 0;
+	int extra_bytes = 0;
 	int metadata_key_count = 0;
 	struct ceph_options *opt = mdsc->fsc->client->options;
 	struct ceph_mount_options *fsopt = mdsc->fsc->mount_options;
-	void *p;
+	void *p, *end;
 
 	const char* metadata[][2] = {
 		{"hostname", mdsc->nodename},
@@ -925,21 +1068,26 @@ static struct ceph_msg *create_session_open_msg(struct ceph_mds_client *mdsc, u6
 	};
 
 	/* Calculate serialized length of metadata */
-	metadata_bytes = 4;  /* map length */
+	extra_bytes = 4;  /* map length */
 	for (i = 0; metadata[i][0]; ++i) {
-		metadata_bytes += 8 + strlen(metadata[i][0]) +
+		extra_bytes += 8 + strlen(metadata[i][0]) +
 			strlen(metadata[i][1]);
 		metadata_key_count++;
 	}
+	/* supported feature */
+	extra_bytes += 4 + 8;
 
 	/* Allocate the message */
-	msg = ceph_msg_new(CEPH_MSG_CLIENT_SESSION, sizeof(*h) + metadata_bytes,
+	msg = ceph_msg_new(CEPH_MSG_CLIENT_SESSION, sizeof(*h) + extra_bytes,
 			   GFP_NOFS, false);
 	if (!msg) {
 		pr_err("create_session_msg ENOMEM creating msg\n");
 		return NULL;
 	}
-	h = msg->front.iov_base;
+	p = msg->front.iov_base;
+	end = p + msg->front.iov_len;
+
+	h = p;
 	h->op = cpu_to_le32(CEPH_SESSION_REQUEST_OPEN);
 	h->seq = cpu_to_le64(seq);
 
@@ -949,11 +1097,11 @@ static struct ceph_msg *create_session_open_msg(struct ceph_mds_client *mdsc, u6
 	 *
 	 * ClientSession messages with metadata are v2
 	 */
-	msg->hdr.version = cpu_to_le16(2);
+	msg->hdr.version = cpu_to_le16(3);
 	msg->hdr.compat_version = cpu_to_le16(1);
 
 	/* The write pointer, following the session_head structure */
-	p = msg->front.iov_base + sizeof(*h);
+	p += sizeof(*h);
 
 	/* Number of entries in the map */
 	ceph_encode_32(&p, metadata_key_count);
@@ -970,6 +1118,10 @@ static struct ceph_msg *create_session_open_msg(struct ceph_mds_client *mdsc, u6
 		memcpy(p, metadata[i][1], val_len);
 		p += val_len;
 	}
+
+	encode_supported_features(&p, end);
+	msg->front.iov_len = p - msg->front.iov_base;
+	msg->hdr.front_len = cpu_to_le32(msg->front.iov_len);
 
 	return msg;
 }
@@ -2656,7 +2808,10 @@ static void handle_reply(struct ceph_mds_session *session, struct ceph_msg *msg)
 
 	dout("handle_reply tid %lld result %d\n", tid, result);
 	rinfo = &req->r_reply_info;
-	err = parse_reply_info(msg, rinfo, session->s_con.peer_features);
+	if (test_bit(CEPHFS_FEATURE_REPLY_ENCODING, &session->s_features))
+		err = parse_reply_info(msg, rinfo, (u64)-1);
+	else
+		err = parse_reply_info(msg, rinfo, session->s_con.peer_features);
 	mutex_unlock(&mdsc->mutex);
 
 	mutex_lock(&session->s_mutex);
@@ -2780,6 +2935,25 @@ bad:
 	pr_err("mdsc_handle_forward decode error err=%d\n", err);
 }
 
+static int __decode_and_drop_session_metadata(void **p, void *end)
+{
+	/* map<string,string> */
+	u32 n;
+	ceph_decode_32_safe(p, end, n, bad);
+	while (n-- > 0) {
+		u32 len;
+		ceph_decode_32_safe(p, end, len, bad);
+		ceph_decode_need(p, end, len, bad);
+		*p += len;
+		ceph_decode_32_safe(p, end, len, bad);
+		ceph_decode_need(p, end, len, bad);
+		*p += len;
+	}
+	return 0;
+bad:
+	return -1;
+}
+
 /*
  * handle a mds session control message
  */
@@ -2787,17 +2961,35 @@ static void handle_session(struct ceph_mds_session *session,
 			   struct ceph_msg *msg)
 {
 	struct ceph_mds_client *mdsc = session->s_mdsc;
+	int mds = session->s_mds;
+	int msg_version = le16_to_cpu(msg->hdr.version);
+	void *p = msg->front.iov_base;
+	void *end = p + msg->front.iov_len;
+	struct ceph_mds_session_head *h;
 	u32 op;
 	u64 seq;
-	int mds = session->s_mds;
-	struct ceph_mds_session_head *h = msg->front.iov_base;
+	unsigned long features = 0;
 	int wake = 0;
 
 	/* decode */
-	if (msg->front.iov_len != sizeof(*h))
-		goto bad;
+	ceph_decode_need(&p, end, sizeof(*h), bad);
+	h = p;
+	p += sizeof(*h);
+
 	op = le32_to_cpu(h->op);
 	seq = le64_to_cpu(h->seq);
+
+	if (msg_version >= 3) {
+		u32 len;
+		/* version >= 2, metadata */
+		if (__decode_and_drop_session_metadata(&p, end) < 0)
+			goto bad;
+		/* version >= 3, feature bits */
+		ceph_decode_32_safe(&p, end, len, bad);
+		ceph_decode_need(&p, end, len, bad);
+		memcpy(&features, p, min_t(size_t, len, sizeof(features)));
+		p += len;
+	}
 
 	mutex_lock(&mdsc->mutex);
 	if (op == CEPH_SESSION_CLOSE) {
@@ -2824,6 +3016,7 @@ static void handle_session(struct ceph_mds_session *session,
 		if (session->s_state == CEPH_MDS_SESSION_RECONNECTING)
 			pr_info("mds%d reconnect success\n", session->s_mds);
 		session->s_state = CEPH_MDS_SESSION_OPEN;
+		session->s_features = features;
 		renewed_caps(mdsc, session, 0);
 		wake = 1;
 		if (mdsc->stopping)
