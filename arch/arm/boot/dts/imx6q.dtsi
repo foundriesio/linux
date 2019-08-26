@@ -186,8 +186,9 @@
 			interrupts = <0 39 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMX6QDL_CLK_SATA>,
 				 <&clks IMX6QDL_CLK_SATA_REF_100M>,
-				 <&clks IMX6QDL_CLK_AHB>;
-			clock-names = "sata", "sata_ref", "ahb";
+				 <&clks IMX6QDL_CLK_AHB>,
+				 <&clks IMX6QDL_CLK_DUMMY>;
+			clock-names = "sata", "sata_ref", "ahb", "sata_ext";
 			status = "disabled";
 		};
 
