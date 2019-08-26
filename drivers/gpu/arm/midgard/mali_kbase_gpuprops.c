@@ -165,6 +165,8 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
 			regdump.shader_present_lo;
 	else	//TCC8033, TCC8034, TCC8036 - MP2
 		gpu_props->raw_props.shader_present = 0x2;
+#elif defined(CONFIG_ARCH_TCC901X)
+	gpu_props->raw_props.shader_present =0x1;
 #else
 	gpu_props->raw_props.shader_present =
         	((u64) regdump.shader_present_hi << 32) +
