@@ -4387,6 +4387,7 @@ CONFIG_BTT                                      policy<{'amd64': 'y', 'arm64': '
 CONFIG_NVDIMM_PFN                               policy<{'amd64': 'y'}>
 CONFIG_NVDIMM_DAX                               policy<{'amd64': 'y'}>
 CONFIG_DM_DUST                                  policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_DM_INIT                                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 
 # Menu: Device Drivers >> NVMEM Support
 CONFIG_NVMEM                                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
