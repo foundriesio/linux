@@ -11095,6 +11095,7 @@ CONFIG_APPLDATA_NET_SUM                         policy<{'s390x': 'm'}>
 CONFIG_ARM64_ERRATUM_858921			policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_1418040			policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_1463225			policy<{'arm64': 'y'}>
+CONFIG_FUJITSU_ERRATUM_010001			policy<{'arm64': 'y'}>
 CONFIG_QCOM_QDF2400_ERRATUM_0065		policy<{'arm64': 'y'}>
 #
 #CONFIG_ARM64_ERRATUM_843419			mark<ENFORCED> note<LP#1647793>
