@@ -10696,6 +10696,9 @@ CONFIG_ARCH_OMAP1                               policy<{'armhf': 'n'}>
 # Menu: System Type >> Allwinner SoCs >> Architecture: arm
 CONFIG_ARCH_SUNXI                               policy<{'arm64': 'n', 'armhf': 'n'}>
 
+# Menu: System Type >> Intel Agilex SOCFPGA family >> Architecture: arm
+CONFIG_ARCH_AGILEX                              policy<{'arm64': 'n'}>
+
 # Menu: System Type >> Altera SOCFPGA family >> Architecture: arm
 CONFIG_ARCH_SOCFPGA                             policy<{'armhf': 'n'}>
 
