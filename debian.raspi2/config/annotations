@@ -10709,6 +10709,7 @@ CONFIG_MACH_MESON8                              policy<{'armhf': 'y'}>
 CONFIG_MACH_MESON8B                             policy<{'armhf': 'y'}>
 
 # Menu: System Type >> Architecture: arm
+CONFIG_ARCH_BITMAIN                             policy<{'arm64': 'n'}>
 CONFIG_ARCH_VIRT                                policy<{'armhf': 'y'}>
 CONFIG_ARCH_ALPINE                              policy<{'arm64': 'n', 'armhf': 'y'}>
 CONFIG_ARCH_AXXIA                               policy<{'armhf-generic-lpae': 'y'}>
