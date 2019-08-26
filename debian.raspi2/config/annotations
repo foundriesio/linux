@@ -4959,6 +4959,8 @@ CONFIG_MDIO_BITBANG                             policy<{'amd64': 'm', 'arm64': '
 CONFIG_MDIO_BUS_MUX_BCM_IPROC                   policy<{'arm64': 'y'}>
 CONFIG_MDIO_BUS_MUX_GPIO                        policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_MDIO_BUS_MUX_MMIOREG                     policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_MDIO_BUS_MUX_MULTIPLEXER                 policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+
 CONFIG_MDIO_GPIO                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_MDIO_HISI_FEMAC                          policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_MDIO_OCTEON                              policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm', 's390x': 'm'}>
