@@ -557,23 +557,15 @@ netdev_tx_t mcp25xxfd_can_tx_start_xmit(struct sk_buff *skb,
 {
 	u32 state = MCP25XXFD_CAN_TX_QUEUE_STATE_STOPPED;
 	struct mcp25xxfd_can_priv *cpriv = netdev_priv(net);
-	struct mcp25xxfd_tx_spi_message_queue *q = cpriv->fifos.tx_queue;
 	struct mcp25xxfd_priv *priv = cpriv->priv;
 	struct spi_device *spi = priv->spi;
 	struct mcp25xxfd_tx_spi_message *smsg;
 	struct mcp25xxfd_can_obj_tx *tx;
-	unsigned long flags;
 	int ret;
 
 	/* invalid skb we can ignore */
 	if (can_dropped_invalid_skb(net, skb))
 		return NETDEV_TX_OK;
-
-	/* acquire lock on spi so that we are are not risking
-	 * some reordering of spi messages when we are running
-	 * start_xmit in multiple threads (on multiple cores)
-	 */
-	spin_lock_irqsave(&q->spi_lock, flags);
 
 	/* get the fifo message structure to process now */
 	smsg = mcp25xxfd_can_tx_queue_get_next_fifo(cpriv);
@@ -613,9 +605,6 @@ netdev_tx_t mcp25xxfd_can_tx_start_xmit(struct sk_buff *skb,
 	if (ret)
 		goto out_async_failed;
 
-	/* unlock the spi bus */
-	spin_unlock_irqrestore(&q->spi_lock, flags);
-
 	/* keep it for reference until the message really got transmitted */
 	can_put_echo_skb(skb, net, smsg->fifo);
 
@@ -627,8 +616,6 @@ out_async_failed:
 out_busy:
 	/* stop the queue */
 	mcp25xxfd_can_tx_queue_manage_nolock(cpriv, state);
-
-	spin_unlock_irqrestore(&q->spi_lock, flags);
 
 	return NETDEV_TX_BUSY;
 }
@@ -770,7 +757,6 @@ int mcp25xxfd_can_tx_queue_alloc(struct mcp25xxfd_can_priv *cpriv)
 
 	/* initialize the tx_queue structure */
 	spin_lock_init(&cpriv->fifos.tx_queue->lock);
-	spin_lock_init(&cpriv->fifos.tx_queue->spi_lock);
 
 	/* initialize the individual spi_message structures */
 	for (i = 0, f = cpriv->fifos.tx.start; i < cpriv->fifos.tx.count;
