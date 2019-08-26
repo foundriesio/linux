@@ -2891,6 +2891,7 @@ CONFIG_INPUT_ARIZONA_HAPTICS                    policy<{'amd64': 'm', 'arm64': '
 CONFIG_INPUT_ATMEL_CAPTOUCH                     policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_INPUT_BMA150                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_INPUT_E3X0_BUTTON                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_INPUT_MSM_VIBRATOR                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_INPUT_PCSPKR                             policy<{'amd64': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_INPUT_PM8941_PWRKEY                      policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_INPUT_PM8XXX_VIBRATOR                    policy<{'armhf': 'm'}>
