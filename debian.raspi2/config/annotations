@@ -8422,6 +8422,8 @@ CONFIG_STATIC_KEYS_SELFTEST                     policy<{'amd64': 'n', 'arm64': '
 CONFIG_VMAP_STACK                               policy<{'amd64': 'y'}>
 CONFIG_STRICT_KERNEL_RWX                        policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
 CONFIG_STRICT_MODULE_RWX                        policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
+CONFIG_LOCK_EVENT_COUNTS                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+
 #
 CONFIG_FHANDLE                                  mark<ENFORCED> note<LP:1412543>
 CONFIG_SYSFS_DEPRECATED                         mark<ENFORCED> note<ensure nothing is using these deprecated interfaces>
