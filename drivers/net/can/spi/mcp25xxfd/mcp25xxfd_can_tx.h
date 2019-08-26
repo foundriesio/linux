@@ -59,9 +59,6 @@ struct mcp25xxfd_tx_spi_message_queue {
 #define MCP25XXFD_CAN_TX_QUEUE_STATE_RUNABLE 2
 #define MCP25XXFD_CAN_TX_QUEUE_STATE_RESTART 3
 
-	/* spinlock protecting spi submission order */
-	spinlock_t spi_lock;
-
 	/* map each fifo to a mcp25xxfd_tx_spi_message */
 	struct mcp25xxfd_tx_spi_message *fifo2message[32];
 
