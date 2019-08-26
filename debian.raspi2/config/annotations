@@ -10107,6 +10107,7 @@ CONFIG_ARM_SCPI_CPUFREQ                         policy<{'arm64': 'm', 'armhf': '
 CONFIG_CPU_IDLE                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
 CONFIG_CPU_IDLE_GOV_LADDER                      policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
 CONFIG_CPU_IDLE_GOV_MENU                        policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
+CONFIG_CPU_IDLE_GOV_TEO                         policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
 
 # Menu: Power management and ACPI options >> CPU Idle >> CPU idle PM support >> ARM CPU Idle Drivers
 CONFIG_ARM_CPUIDLE                              policy<{'arm64': 'y', 'armhf': 'y'}>
