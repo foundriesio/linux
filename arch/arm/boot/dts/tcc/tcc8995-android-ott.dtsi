@@ -19,7 +19,7 @@
 &chosen {
 };
 
-&cpu0_regulators {
+&vdd_cpu {
 	compatible = "regulator-gpio";
 
 	regulator-name = "vdd_cpu0";

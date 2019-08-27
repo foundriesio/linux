@@ -36,7 +36,7 @@
 };
 
 /* CPU Power Control */
-&cpu0_regulators {
+&vdd_cpu {
 	gpios = <&gpf 5 0x4>;
 };
 
