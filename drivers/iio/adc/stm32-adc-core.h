@@ -45,11 +45,23 @@ struct stm32_adc_calib {
 	bool			calibrated;
 };
 
+/* STM32F4 - registers for each ADC instance */
+#define STM32F4_ADC_CR1			0x04
+
+/* STM32F4_ADC_CR1 - bit fields */
+#define STM32F4_EOCIE			BIT(5)
+
 /* STM32F4 - common registers for all ADC instances: 1, 2 & 3 */
 #define STM32F4_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x04)
 
 /* STM32F4_ADC_CCR - bit fields */
 #define STM32F4_ADC_TSVREFE		BIT(23)
+
+/* STM32H7 - registers for each instance */
+#define STM32H7_ADC_IER			0x04
+
+/* STM32H7_ADC_IER - bit fields */
+#define STM32H7_EOCIE			BIT(2)
 
 /* STM32H7 - common registers for all ADC instances */
 #define STM32H7_ADC_CCR			(STM32_ADCX_COMN_OFFSET + 0x08)
