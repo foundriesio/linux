@@ -6413,6 +6413,7 @@ CONFIG_SND_SOC_FSL_SPDIF                        policy<{'amd64': 'm', 'arm64': '
 CONFIG_SND_SOC_FSL_ESAI                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SND_SOC_IMX_AUDMUX                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf-generic': 'y', 'armhf-generic-lpae': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SND_SOC_FSL_AUDMIX                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_SND_SOC_FSL_MICFIL                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 #
 CONFIG_SND_SOC_FSL_SSI                          flag<REVIEW>
 CONFIG_SND_SOC_IMX_AUDMUX                       flag<REVIEW>
