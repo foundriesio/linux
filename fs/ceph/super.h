@@ -193,6 +193,7 @@ struct ceph_cap_snap {
 	u64 xattr_version;
 
 	u64 size;
+	u64 change_attr;
 	struct timespec mtime, atime, ctime, btime;
 	u64 time_warp_seq;
 	u64 truncate_size;
