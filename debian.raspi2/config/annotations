@@ -139,6 +139,7 @@ CONFIG_PCIEPORTBUS                              policy<{'amd64': 'y', 'arm64': '
 CONFIG_PCIEAER                                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
 CONFIG_PCIEAER_INJECT                           policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
 CONFIG_PCIE_ECRC                                policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
+CONFIG_PCIEASPM                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
 
 # Menu: Bus options (PCI etc.) >> PCCard (PCMCIA/CardBus) support >> 16-bit PCMCIA support
 CONFIG_PCMCIA                                   policy<{'amd64': 'm', 'i386': 'm', 's390x': 'n'}>
