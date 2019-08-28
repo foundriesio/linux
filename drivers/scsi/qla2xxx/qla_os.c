@@ -4629,8 +4629,6 @@ qla2x00_free_fw_dump(struct qla_hw_data *ha)
 		fwdt->template = NULL;
 		fwdt->length = 0;
 	}
-	ha->fw_dump_template = NULL;
-	ha->fw_dump_template_len = 0;
 }
 
 /*

@@ -7766,10 +7766,6 @@ qla24xx_load_risc_flash(scsi_qla_host_t *vha, uint32_t *srisc_addr,
 
 		faddr += risc_size + 1;
 	}
-	if (IS_QLA27XX(ha)) {
-		ha->fw_dump_template = ha->fwdt[0].template;
-		ha->fw_dump_template_len = ha->fwdt[0].length;
-	}
 
 	return QLA_SUCCESS;
 
@@ -7778,8 +7774,6 @@ failed:
 		vfree(fwdt->template);
 	fwdt->template = NULL;
 	fwdt->length = 0;
-	ha->fw_dump_template = NULL;
-	ha->fw_dump_template_len = 0;
 
 	return QLA_SUCCESS;
 }
@@ -8029,10 +8023,6 @@ qla24xx_load_risc_blob(scsi_qla_host_t *vha, uint32_t *srisc_addr)
 
 		fwcode += risc_size + 1;
 	}
-	if (IS_QLA27XX(ha)) {
-		ha->fw_dump_template = ha->fwdt[0].template;
-		ha->fw_dump_template_len = ha->fwdt[0].length;
-	}
 
 	return QLA_SUCCESS;
 
@@ -8041,8 +8031,6 @@ failed:
 		vfree(fwdt->template);
 	fwdt->template = NULL;
 	fwdt->length = 0;
-	ha->fw_dump_template = NULL;
-	ha->fw_dump_template_len = 0;
 
 	return QLA_SUCCESS;
 }
