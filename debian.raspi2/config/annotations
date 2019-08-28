@@ -128,6 +128,8 @@ CONFIG_EISA                                     policy<{'i386': 'y'}>
 CONFIG_PCCARD                                   policy<{'amd64': 'm', 'armhf': 'n', 'i386': 'm', 'ppc64el': 'n'}>
 CONFIG_CARDBUS                                  policy<{'amd64': 'y', 'i386': 'y'}>
 
+CONFIG_CAN_C_CAN_PCI                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+
 # Menu: Bus options (PCI etc.) >> PCCard (PCMCIA/CardBus) support >> 16-bit PCMCIA support
 CONFIG_PCMCIA                                   policy<{'amd64': 'm', 'i386': 'm', 's390x': 'n'}>
 CONFIG_PCMCIA_LOAD_CIS                          policy<{'amd64': 'y', 'i386': 'y'}>
