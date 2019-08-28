@@ -1653,6 +1653,7 @@ CONFIG_DRM_OMAP                                 policy<{'armhf': 'n'}>
 # Menu: Device Drivers >> Graphics support >> Direct Rendering Manager (XFree86 4.1.0 and higher DRI support) >> Support for simple displays
 CONFIG_DRM_TINYDRM                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_TINYDRM_MI0283QT                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_DRM_PANFROST                             policy<{'arm64': 'm', 'armhf': 'm'}>
 
 # Menu: Device Drivers >> Graphics support >> Frame buffer Devices
 CONFIG_FB_SH_MOBILE_MERAM                       policy<{'arm64': 'm', 'armhf': 'm'}>
