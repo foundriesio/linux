@@ -6403,9 +6403,11 @@ CONFIG_SND_SOC_WM8985                           policy<{'amd64': 'm', 'arm64': '
 CONFIG_SND_SOC_NAU8540                          policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SND_SOC_NAU8810                          policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SND_SOC_TPA6130A2                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+
 #
 CONFIG_SND_SOC_HDMI_CODEC                       flag<REVIEW>
 CONFIG_SND_SOC_SGTL5000                         flag<REVIEW>
+CONFIG_SND_SOC_CROS_EC_CODEC                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm'}>
 
 # Menu: Device Drivers >> Sound card support >> Advanced Linux Sound Architecture >> ALSA for SoC audio support >> SoC AC97 Audio for the ADI BF5xx chip
 
