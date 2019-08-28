@@ -721,7 +721,7 @@ static ssize_t dwc3_eyep_show(struct device *dev,
 	else
 	{
     	PUSBSSPHYCFG pUSBPHYCFG = (PUSBSSPHYCFG)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-    	reg = readl(&pUSBPHYCFG->FPHY_PCFG2);
+    	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
     	val = reg & 0xF;
 	}
 	#endif
