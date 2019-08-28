@@ -1581,6 +1581,7 @@ CONFIG_DRM_I2C_ADV7533                          policy<{'arm64': 'y', 'armhf': '
 CONFIG_DRM_PANEL_SIMPLE                         policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_DRM_PANEL_FEIYANG_FY07024DI26A30D        policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_DRM_PANEL_KINGDISPLAY_KD097D04           policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_DRM_PANEL_ROCKTECH_JH057N00900           policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_DRM_PANEL_JDI_LT070ME05000               policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_LD9040                 policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_DRM_PANEL_LG_LG4573                      policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
