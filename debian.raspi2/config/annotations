@@ -10677,6 +10677,13 @@ CONFIG_EVM_ATTR_FSUUID                          policy<{'amd64': 'y', 'arm64': '
 CONFIG_EVM_EXTRA_SMACK_XATTRS                   policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_EVM_LOAD_X509                            policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'y', 's390x': 'n'}>
 CONFIG_EVM_X509_PATH                            policy<{'ppc64el': '"/etc/keys/x509_evm.der"'}>
+
+CONFIG_DEFAULT_SECURITY_SELINUX                 policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_DEFAULT_SECURITY_SMACK                   policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_DEFAULT_SECURITY_TOMOYO                  policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_DEFAULT_SECURITY_APPARMOR                policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
+CONFIG_DEFAULT_SECURITY_DAC                     policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+
 #
 CONFIG_EVM                                      note<LP:1643652>
 CONFIG_EVM_ATTR_FSUUID                          note<LP:1643652>
