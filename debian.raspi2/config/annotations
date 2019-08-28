@@ -7106,6 +7106,7 @@ CONFIG_USB_OTG                                  policy<{'amd64': 'n', 'arm64': '
 CONFIG_USB_OTG_WHITELIST                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
 CONFIG_USB_OTG_BLACKLIST_HUB                    policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
 CONFIG_USB_LEDS_TRIGGER_USBPORT                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_USB_AUTOSUSPEND_DELAY                    policy<{'amd64': '2', 'arm64': '2', 'armhf': '2', 'i386': '2', 'ppc64el': '2'}>
 CONFIG_USB_MON                                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_USB_WUSB                                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_USB_WUSB_CBAF                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
