@@ -3597,6 +3597,10 @@ CONFIG_PANEL                                    policy<{'amd64': 'm', 'arm64': '
 CONFIG_PANEL_PARPORT                            policy<{'amd64': '0', 'arm64': '0', 'armhf': '0', 'i386': '0', 'ppc64el': '0'}>
 CONFIG_PANEL_PROFILE                            policy<{'amd64': '5', 'arm64': '5', 'armhf': '5', 'i386': '5', 'ppc64el': '5'}>
 CONFIG_PANEL_CHANGE_MESSAGE                     policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_CHARLCD_BL_OFF                           policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_CHARLCD_BL_ON                            policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_CHARLCD_BL_FLASH                         policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
+
 
 # Menu: Device Drivers >> Misc devices >> Parallel port LCD/Keypad Panel support >> LCD type (0=none, 1=custom, 2=old //, 3=ks0074, 4=hantronix, 5=Nexcom)
 
