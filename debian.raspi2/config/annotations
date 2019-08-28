@@ -9246,6 +9246,7 @@ CONFIG_NFC_SHDLC                                policy<{'amd64': 'y', 'arm64': '
 
 CONFIG_FIELDBUS_DEV                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_HMS_ANYBUSS_BUS                          policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_ARCX_ANYBUS_CONTROLLER                   policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 
 # Menu: Networking support >> NFC subsystem support >> Near Field Communication (NFC) devices
 CONFIG_NFC_WILINK                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
