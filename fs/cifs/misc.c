@@ -82,6 +82,7 @@ sesInfoAlloc(void)
 		INIT_LIST_HEAD(&ret_buf->smb_ses_list);
 		INIT_LIST_HEAD(&ret_buf->tcon_list);
 		mutex_init(&ret_buf->session_mutex);
+		spin_lock_init(&ret_buf->iface_lock);
 	}
 	return ret_buf;
 }
@@ -102,6 +103,7 @@ sesInfoFree(struct cifs_ses *buf_to_free)
 	kfree(buf_to_free->user_name);
 	kfree(buf_to_free->domainName);
 	kzfree(buf_to_free->auth_key.response);
+	kfree(buf_to_free->iface_list);
 	kzfree(buf_to_free);
 }
 
@@ -109,18 +111,27 @@ struct cifs_tcon *
 tconInfoAlloc(void)
 {
 	struct cifs_tcon *ret_buf;
-	ret_buf = kzalloc(sizeof(struct cifs_tcon), GFP_KERNEL);
-	if (ret_buf) {
-		atomic_inc(&tconInfoAllocCount);
-		ret_buf->tidStatus = CifsNew;
-		++ret_buf->tc_count;
-		INIT_LIST_HEAD(&ret_buf->openFileList);
-		INIT_LIST_HEAD(&ret_buf->tcon_list);
-		spin_lock_init(&ret_buf->open_file_lock);
-#ifdef CONFIG_CIFS_STATS
-		spin_lock_init(&ret_buf->stat_lock);
-#endif
+
+	ret_buf = kzalloc(sizeof(*ret_buf), GFP_KERNEL);
+	if (!ret_buf)
+		return NULL;
+	ret_buf->crfid.fid = kzalloc(sizeof(*ret_buf->crfid.fid), GFP_KERNEL);
+	if (!ret_buf->crfid.fid) {
+		kfree(ret_buf);
+		return NULL;
 	}
+
+	atomic_inc(&tconInfoAllocCount);
+	ret_buf->tidStatus = CifsNew;
+	++ret_buf->tc_count;
+	INIT_LIST_HEAD(&ret_buf->openFileList);
+	INIT_LIST_HEAD(&ret_buf->tcon_list);
+	spin_lock_init(&ret_buf->open_file_lock);
+	mutex_init(&ret_buf->crfid.fid_mutex);
+	spin_lock_init(&ret_buf->stat_lock);
+	atomic_set(&ret_buf->num_local_opens, 0);
+	atomic_set(&ret_buf->num_remote_opens, 0);
+
 	return ret_buf;
 }
 
@@ -134,6 +145,7 @@ tconInfoFree(struct cifs_tcon *buf_to_free)
 	atomic_dec(&tconInfoAllocCount);
 	kfree(buf_to_free->nativeFileSystem);
 	kzfree(buf_to_free->password);
+	kfree(buf_to_free->crfid.fid);
 #ifdef CONFIG_CIFS_DFS_UPCALL
 	kfree(buf_to_free->dfs_path);
 #endif
@@ -148,7 +160,7 @@ cifs_buf_get(void)
 	 * SMB2 header is bigger than CIFS one - no problems to clean some
 	 * more bytes for CIFS.
 	 */
-	size_t buf_size = sizeof(struct smb2_hdr);
+	size_t buf_size = sizeof(struct smb2_sync_hdr);
 
 	/*
 	 * We could use negotiated size instead of max_msgsize -
@@ -342,7 +354,7 @@ checkSMB(char *buf, unsigned int total_read, struct TCP_Server_Info *server)
 	/* otherwise, there is enough to get to the BCC */
 	if (check_smb_hdr(smb))
 		return -EIO;
-	clc_len = smbCalcSize(smb);
+	clc_len = smbCalcSize(smb, server);
 
 	if (4 + rfclen != total_read) {
 		cifs_dbg(VFS, "Length read does not match RFC1001 length %d\n",
@@ -401,9 +413,17 @@ is_valid_oplock_break(char *buffer, struct TCP_Server_Info *srv)
 			(struct smb_com_transaction_change_notify_rsp *)buf;
 		struct file_notify_information *pnotify;
 		__u32 data_offset = 0;
+		size_t len = srv->total_read - sizeof(pSMBr->hdr.smb_buf_length);
+
 		if (get_bcc(buf) > sizeof(struct file_notify_information)) {
 			data_offset = le32_to_cpu(pSMBr->DataOffset);
 
+			if (data_offset >
+			    len - sizeof(struct file_notify_information)) {
+				cifs_dbg(FYI, "invalid data_offset %u\n",
+					 data_offset);
+				return true;
+			}
 			pnotify = (struct file_notify_information *)
 				((char *)&pSMBr->hdr.Protocol + data_offset);
 			cifs_dbg(FYI, "dnotify on %s Action: 0x%x\n",
@@ -519,6 +539,7 @@ cifs_autodisable_serverino(struct cifs_sb_info *cifs_sb)
 			tcon = cifs_sb_master_tcon(cifs_sb);
 
 		cifs_sb->mnt_cifs_flags &= ~CIFS_MOUNT_SERVER_INUM;
+		cifs_sb->mnt_cifs_serverino_autodisabled = true;
 		cifs_dbg(VFS, "Autodisabling the use of server inode numbers on %s.\n",
 			 tcon ? tcon->treeName : "new server");
 		cifs_dbg(VFS, "The server doesn't seem to support them properly or the files might be on different servers (DFS).\n");
@@ -769,6 +790,11 @@ cifs_aio_ctx_alloc(void)
 {
 	struct cifs_aio_ctx *ctx;
 
+	/*
+	 * Must use kzalloc to initialize ctx->bv to NULL and ctx->direct_io
+	 * to false so that we know when we have to unreference pages within
+	 * cifs_aio_ctx_release()
+	 */
 	ctx = kzalloc(sizeof(struct cifs_aio_ctx), GFP_KERNEL);
 	if (!ctx)
 		return NULL;
@@ -787,7 +813,23 @@ cifs_aio_ctx_release(struct kref *refcount)
 					struct cifs_aio_ctx, refcount);
 
 	cifsFileInfo_put(ctx->cfile);
-	kvfree(ctx->bv);
+
+	/*
+	 * ctx->bv is only set if setup_aio_ctx_iter() was call successfuly
+	 * which means that iov_iter_get_pages() was a success and thus that
+	 * we have taken reference on pages.
+	 */
+	if (ctx->bv) {
+		unsigned i;
+
+		for (i = 0; i < ctx->npages; i++) {
+			if (ctx->should_dirty)
+				set_page_dirty(ctx->bv[i].bv_page);
+			put_page(ctx->bv[i].bv_page);
+		}
+		kvfree(ctx->bv);
+	}
+
 	kfree(ctx);
 }
 
@@ -935,6 +977,23 @@ cifs_free_hash(struct crypto_shash **shash, struct sdesc **sdesc)
 	if (*shash)
 		crypto_free_shash(*shash);
 	*shash = NULL;
+}
+
+/**
+ * rqst_page_get_length - obtain the length and offset for a page in smb_rqst
+ * Input: rqst - a smb_rqst, page - a page index for rqst
+ * Output: *len - the length for this page, *offset - the offset for this page
+ */
+void rqst_page_get_length(struct smb_rqst *rqst, unsigned int page,
+				unsigned int *len, unsigned int *offset)
+{
+	*len = rqst->rq_pagesz;
+	*offset = (page == 0) ? rqst->rq_offset : 0;
+
+	if (rqst->rq_npages == 1 || page == rqst->rq_npages-1)
+		*len = rqst->rq_tailsz;
+	else if (page == 0)
+		*len = rqst->rq_pagesz - rqst->rq_offset;
 }
 
 void extract_unc_hostname(const char *unc, const char **h, size_t *len)
