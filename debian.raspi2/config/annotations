@@ -141,6 +141,10 @@ CONFIG_PCIEAER_INJECT                           policy<{'amd64': 'n', 'arm64': '
 CONFIG_PCIE_ECRC                                policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
 CONFIG_PCIEASPM                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
 CONFIG_PCIEASPM_DEBUG                           policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
+CONFIG_PCIEASPM_DEFAULT                         policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 's390x': 'y'}>
+CONFIG_PCIEASPM_POWERSAVE                       policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
+CONFIG_PCIEASPM_POWER_SUPERSAVE                 policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
+CONFIG_PCIEASPM_PERFORMANCE                     policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 's390x': 'n'}>
 
 # Menu: Bus options (PCI etc.) >> PCCard (PCMCIA/CardBus) support >> 16-bit PCMCIA support
 CONFIG_PCMCIA                                   policy<{'amd64': 'm', 'i386': 'm', 's390x': 'n'}>
