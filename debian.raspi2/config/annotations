@@ -901,6 +901,7 @@ CONFIG_CLK_VEXPRESS_OSC                         policy<{'arm64': 'y', 'armhf': '
 CONFIG_COMMON_CLK_MAX77686                      policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_COMMON_CLK_RK808                         policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_COMMON_CLK_SCPI                          policy<{'arm64': 'm', 'armhf': 'm'}>
+CONFIG_COMMON_CLK_FIXED_MMIO                    policy<{'arm64': 'y', 'armhf': 'y'}>
 CONFIG_COMMON_CLK_SI5351                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm'}>
 CONFIG_COMMON_CLK_SI514                         policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_COMMON_CLK_SI570                         policy<{'arm64': 'm', 'armhf': 'm'}>
