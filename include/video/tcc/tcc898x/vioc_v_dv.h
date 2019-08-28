@@ -107,6 +107,7 @@ extern void voic_v_dv_osd_ctrl(DV_DISP_TYPE type, unsigned int on);
 extern int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned int video_attribute, unsigned int frmcnt);
 extern void vioc_v_dv_set_mode(DV_MODE mode, unsigned char* vsvdb, unsigned int sz_vsvdb);
 extern DV_MODE vioc_v_dv_get_mode(void);
+extern int vioc_v_dv_is_rgb_tunneling(void);
 extern unsigned int vioc_v_dv_get_vsvdb(unsigned char* vsvdb);
 extern void vioc_v_dv_set_stage(DV_STAGE stage);
 extern DV_STAGE vioc_v_dv_get_stage(void);

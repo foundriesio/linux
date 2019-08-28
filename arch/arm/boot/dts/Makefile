@@ -1089,6 +1089,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc/tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtb
 endif
+dtb-$(CONFIG_ARCH_TCC901X) += \
+	tcc/tcc9010-android-lpd4321-v0.1.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8990-linux-lpd4322-v0.1.dtb \
@@ -1110,6 +1112,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc/tcc8030-linux-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc/tcc8030-linux-lpd4321_sv0.1-hdmi-main-output.dtb
 endif
+dtb-$(CONFIG_ARCH_TCC901X) += \
+	tcc/tcc9010-linux-lpd4321-v0.1.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
@@ -1131,6 +1135,12 @@ dtbo-y += \
 	tcc/overlay-tcc8030-android-dual-lpd4321-ivi_sv0.1.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
 	tcc/overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+
+dtb-y += \
+	tcc/tcc9010-soc.dtb
+
+dtbo-y += \
+	tcc/overlay-tcc9010-android-lpd4321-v0.1.dtbo
 endif
 
 dtstree		:= $(srctree)/$(src)

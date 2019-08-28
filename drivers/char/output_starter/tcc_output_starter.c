@@ -132,7 +132,7 @@ extern void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pst
 
 
 static char default_composite_resolution = STARTER_COMPOSITE_NTSC;
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 char default_component_resolution = STARTER_COMPONENT_1080I;
 #else
 char default_component_resolution = STARTER_COMPONENT_720P;
@@ -175,7 +175,7 @@ void vioc_sub_disp_composite_disable(int disp_num)
 	VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_SDVENC, disp_num);
 	VIOC_DDICONFIG_NTSCPAL_SetEnable(pDDICfg, 0, disp_num);
 	VIOC_DDICONFIG_SetPWDN(pDDICfg, DDICFG_TYPE_NTSCPAL, 0);
-	#if defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_DDICONFIG_DAC_PWDN_Control(pDDICfg, 0);
 	#endif
 	DPRINTF("[%s] Disable composite output\n", __func__);

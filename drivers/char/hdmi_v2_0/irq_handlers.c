@@ -87,27 +87,6 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
         }
 }
 
- static void dwc_hdmi_tx_hdcp_handler_thread(struct work_struct *work)
- {
-        uint32_t hdcp_irq = 0, hdcp22_irq=0;
-        int temp = 0;
-        struct hdmi_tx_dev *dev;
-
-        dev = container_of(work, struct hdmi_tx_dev, tx_hdcp_handler);
-
-        if(dev->verbose >= VERBOSE_IRQ)
-                pr_info("dwc_hdmi_tx_hdcp_handler_thread\r\n");
-        hdcp_irq = hdcp_interrupt_status(dev);
-        hdcp22_irq = _HDCP22RegReadStat(dev);
-
-        if(hdcp_irq != 0){
-                hdcp_event_handler(dev, &temp);
-        }
-        if(hdcp22_irq) {
-                hdcp22_event_handler(dev, &temp);
-        }
-}
-
 static void dwc_hdmi_tx_hotplug_thread(struct work_struct *work)
 {
         int i;
@@ -197,43 +176,7 @@ end_handler:
 
 }
 
-static irqreturn_t
-hdcp_handler(int irq, void *dev_id){
-        struct irq_dev_id *irq_dev = (struct irq_dev_id *)dev_id;
-        struct hdmi_tx_dev *dev;
-        uint32_t hdcp_irq, hdcp22_irq;
 
-        if(irq_dev == NULL) {
-                pr_err("%s: irq_dev is NULL\r\n", FUNC_NAME);
-                goto end_handler;
-        }
-
-        dev = (struct hdmi_tx_dev *)irq_dev->dev;
-        if(dev == NULL){
-                pr_err("%s: dev is NULL\r\n", FUNC_NAME);
-                goto end_handler;
-        }
-        if(dev->verbose >= VERBOSE_BASIC)
-                pr_info("%s\n", FUNC_NAME);
-
-        hdcp_irq = hdcp_interrupt_status(dev);
-        hdcp22_irq = _HDCP22RegReadStat(dev);
-        if(hdcp_irq){
-                _InterruptMask(dev, hdcp_irq | _InterruptMaskStatus(dev));
-        }
-        if(hdcp22_irq){
-                _HDCP22RegMask(dev, hdcp22_irq | _HDCP22RegMaskRead(dev));
-                _HDCP22RegMute(dev, hdcp22_irq | _HDCP22RegMuteRead(dev));
-        }
-        if(!hdcp_irq && !hdcp22_irq) {
-                goto end_handler;
-        }
-        schedule_work(&dev->tx_hdcp_handler);
-        return IRQ_HANDLED;
-
-end_handler:
-        return IRQ_NONE;
-}
 
 #if defined(CONFIG_HDMI_USE_CEC_IRQ)
 static irqreturn_t
@@ -258,8 +201,6 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
         int flag;
         int ret = 0;
         INIT_WORK(&dev->tx_handler, dwc_hdmi_tx_handler_thread);
-        /* hdcp irq handled in hdcp driver */
-        //INIT_WORK(&dev->tx_hdcp_handler, dwc_hdmi_tx_hdcp_handler_thread);
         INIT_WORK(&dev->tx_hotplug_handler, dwc_hdmi_tx_hotplug_thread);
 
         /* Check GPIO HPD */
@@ -300,17 +241,6 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                 pr_err("%s:Could not register dwc_hdmi_tx interrupt\n",
                         FUNC_NAME);
         }
-
-#if (0) /* hdcp irq handled in hdcp driver */
-        dev->irq_dev[HDMI_IRQ_TX_HDCP].dev = dev;
-        ret = devm_request_irq(dev->parent_dev, dev->irq[HDMI_IRQ_TX_CORE],
-                               hdcp_handler, IRQF_SHARED,
-                               "hdcp_handler", &dev->irq_dev[HDMI_IRQ_TX_HDCP]);
-        if (ret){
-                pr_err("%s:Could not register hdcp interrupt\n",
-                        FUNC_NAME);
-        }
-#endif
 
         #if defined(CONFIG_HDMI_USE_CEC_IRQ)
         dev->irq_dev[HDMI_IRQ_TX_CEC].dev = dev;

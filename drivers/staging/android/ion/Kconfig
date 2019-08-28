@@ -3,7 +3,7 @@ menuconfig ION
 	depends on HAVE_MEMBLOCK && HAS_DMA && MMU
 	select GENERIC_ALLOCATOR
 	select DMA_SHARED_BUFFER
-	default y if ARCH_TCC897X || ARCH_TCC898X || ARCH_TCC899X ||ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC803X
+	default y if ARCH_TCC897X || ARCH_TCC898X || ARCH_TCC899X ||ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC803X || ARCH_TCC901X
 	---help---
 	  Chose this option to enable the ION Memory Manager,
 	  used by Android to efficiently allocate buffers

@@ -159,14 +159,14 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	}
 #endif /* CONFIG_TCC_DWC_OTG_HOST_MUX */
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x83000025, &dwc_otg_pcfg->pcfg0);
 #else
 	dwc_otg_pcfg->pcfg0 = 0x83000015;
 #endif
 #if defined(CONFIG_ARCH_TCC897X)
 	dwc_otg_pcfg->pcfg1 = 0x0330d643;
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0xE31C243A, &dwc_otg_pcfg->pcfg1);
 #else
 	dwc_otg_pcfg->pcfg1 = 0x0330d645;
@@ -175,13 +175,13 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 	dwc_otg_pcfg->pcfg2 = 0x00000004 | USBOTG_PCFG2_ACAENB;
 #else
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x75852004, &dwc_otg_pcfg->pcfg2);
 #else
 	dwc_otg_pcfg->pcfg2 = 0x00000004;
 #endif
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x00000000, &dwc_otg_pcfg->pcfg3);
 	writel(0x00000000, &dwc_otg_pcfg->pcfg4);
 	writel(0x30000000, &dwc_otg_pcfg->lcfg0);
@@ -205,7 +205,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	// Wait Phy Valid Interrupt
 	i = 0;                                                         
 	while (i < 10000) {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		if ((readl(&dwc_otg_pcfg->pcfg4) & (1<<27))) break;
 #else
 		if ((readl(&dwc_otg_pcfg->pcfg0) & (1<<21))) break;

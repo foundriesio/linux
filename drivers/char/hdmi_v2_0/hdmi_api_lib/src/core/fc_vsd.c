@@ -31,8 +31,12 @@ u8 fc_vsd_vendor_payload(struct hdmi_tx_dev *dev, const u8 * data, unsigned shor
 		length = size;
 		LOGGER(SNPS_WARN,"vendor payload truncated");
 	}
-	for (i = 0; i < length; i++) {
-		hdmi_dev_write(dev, (FC_VSDPAYLOAD0 + (i*4)), data[i]);
+	for (i = 0; i < size; i++) {
+		if(i < length) {
+			hdmi_dev_write(dev, (FC_VSDPAYLOAD0 + (i*4)), data[i]);
+		} else {
+			hdmi_dev_write(dev, (FC_VSDPAYLOAD0 + (i*4)), 0);
+		}
 	}
 	// VSD sise IEEE(3-bit) + length
 	hdmi_dev_write(dev, FC_VSDSIZE, length + 3);

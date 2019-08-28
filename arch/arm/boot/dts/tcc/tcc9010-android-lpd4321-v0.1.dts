@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC9010 STB board
+ *
+ * Copyright (C) 2019 Telechips Inc. - http://www.telechips.com
+*/
+
+#ifndef DT_OVERLAY
+/dts-v1/;
+#endif
+
+#include "tcc9010-android-stb.dtsi"
+
+/* eMMC */
+&vqmmc_emmc {
+	compatible = "regulator-gpio";
+
+	regulator-name = "vqmmc_emmc";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-type = "voltage";
+	regulator-ramp-delay = <10>;
+	regulator-always-on;
+
+	gpios = <&gpa 4 0x4>;
+	gpios-states = <0>;
+	states = <1800000 0x0
+		3300000 0x1>;
+};
+
+&sdhc1 {
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd1_1_clk &sd1_1_cmd &sd1_1_bus8>;
+
+	non-removable;
+	keep-power-in-suspend;
+	disable-wp;
+	cap-mmc-hw-reset;
+	mmc-ddr-1_8v;
+
+	tcc-mmc-reset = <&gpa 6 0>;
+
+	vqmmc-supply = <&vqmmc_emmc>;
+};
+
+/* SDIO */
+&vqmmc_sdio {
+	compatible = "regulator-fixed";
+	regulator-name = "vqmmc_sdio";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+&sdhc2 {
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <2000000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+
+	keep-power-in-suspend;
+	cap-sdio-irq;
+
+	vqmmc-supply = <&vqmmc_sdio>;
+
+	cd-force-presence-change;
+
+	tcm38xx {
+		compatible = "telechips,tcm38xx";
+		wifi_pwr-gpio = <&gpf 30 0>; /* BT_WIFI_VBAT_EN */
+		wlreg_on-gpio = <&gpg 15 0>; /* WIFI_REG_ON */
+		wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+};
+
+&tcc_bluetooth {
+	compatible = "telechips, tcc_bluetooth";
+	bt_power-gpio = <&gpf 30 0>; /* BTWIFI_VBAT_EN */
+	bt_reg_on-gpio = <&gpc 21 0>;
+	bt_wake-gpio = <&gpc 20 0>;
+	bt_hwake-gpio = <&gpc 22 0>;
+	bt_power_1p8v-gpio = <&gpg 4 0>;
+	status = "okay";
+};
+
+&gpio_keys_polled {
+        compatible = "gpio-keys-polled";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        poll-interval = <100>;
+        autorepeat;
+        button@0 {
+                label = "BT Auto Pair Key";
+                linux,code = <218>;
+                gpios = <&gpa 3 1>;
+        };
+        button@1 {
+                label = "Power Key";
+                linux,code = <116>;
+                gpios = <&gpg 11 1>;
+        };
+};

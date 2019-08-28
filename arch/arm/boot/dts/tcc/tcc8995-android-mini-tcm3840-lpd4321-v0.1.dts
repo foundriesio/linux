@@ -20,7 +20,7 @@
                 opp-microvolt = <800000>;
                 clock-latency-ns = <300000>;
         };
-/*
+
         opp1 {
                 opp-hz = /bits/ 64 <890000000>;
                 opp-microvolt = <800000>;
@@ -32,7 +32,7 @@
                 opp-microvolt = <800000>;
                 clock-latency-ns = <300000>;
         };
-*/
+
 };
 
 /* CPU Power Control */

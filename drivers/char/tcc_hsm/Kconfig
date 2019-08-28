@@ -1,0 +1,7 @@
+config TCC_HSM
+	tristate "TCC HSM"
+	default n
+	depends on PLATFORM_AVN
+	help
+		Support to HSM based on Cortex-M4
+

@@ -7,6 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc899x-clks.h>
+#include <dt-bindings/reset/telechips,tcc899x-reset.h>
 #include <dt-bindings/soc/tcc899x-pm.h>
 #include <dt-bindings/display/tcc899x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
@@ -708,6 +709,31 @@
 			0x16684000 0x000010  /* uart config*/
 			0x14200000 0x000540>;  /* gpio*/
 		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
+	};
+
+	pmu_rst: reset-controller@140000b4 {
+		compatible = "telechips,reset";
+		#reset-cells = <1>;
+	};
+
+	vpubus_rst: reset-controller@15100004 {
+		compatible = "telechips,vpubus-reset";
+		#reset-cells = <1>;
+	};
+
+	ddibus_rst: reset-controller@12380004 {
+		compatible = "telechips,ddibus-reset";
+		#reset-cells = <1>;
+	};
+
+	iobus_rst: reset-controller@1605100c {
+		compatible = "telechips,iobus-reset";
+		#reset-cells = <1>;
+	};
+
+	hsiobus_rst: reset-controller@111a0004 {
+		compatible = "telechips,hsiobus-reset";
+		#reset-cells = <1>;
 	};
 
 	clocks {
@@ -1523,23 +1549,34 @@
 		// dma-names = "tx", "rx";
 	};
 
-	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {};
+	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {
+		clocks = <&clk_peri PERI_TSRX0>;
+		clock-names = "tsrx0";
+	};
 
-	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {};
-
-	tcc_ex_tsif0: tcc_ex_tsif@0 {};
-
-	tcc_ex_tsif1: tcc_ex_tsif@1 {};
-
-	tcc_dxb_drv0: tcc_dxb_drv@0 {};
-
-	tcc_dxb_drv1: tcc_dxb_drv@1 {};
-
-	tcc_dxb_internal: tcc_dxb_internal {};
+	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+	};
 
 	tcc_dxb_ctrl: tcc_dxb_ctrl {};
 
 	tcc_isdbt_ctrl: tcc_isdbt_ctrl{};
+
+	/* Deprecated */
+	tcc_ex_tsif0: tcc_ex_tsif@0 {};
+
+	/* Deprecated */
+	tcc_ex_tsif1: tcc_ex_tsif@1 {};
+
+	/* Deprecated */
+	tcc_dxb_drv0: tcc_dxb_drv@0 {};
+
+	/* Deprecated */
+	tcc_dxb_drv1: tcc_dxb_drv@1 {};
+
+	/* Deprecated */
+	tcc_dxb_internal: tcc_dxb_internal {};
 
 	si_power: si_power {};
 	avl62x1_power: avl62x1_power {};
@@ -1748,6 +1785,7 @@
 		 reg = <0x11DA0010 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
+		resets = <&hsiobus_rst HSIOBUS_USB20H>;
 		 status = "disabled";
 	 };
 
@@ -1775,6 +1813,7 @@
 		 reg = <0x11DA0100 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_DWC_OTG &clk_isoip_top ISOIP_TOP_OTG>;
+		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		 status = "disabled";
 	};
 
@@ -1783,6 +1822,7 @@
 		 reg = <0x11DA00DC 0x20>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_DWC_OTG &clk_isoip_top ISOIP_TOP_OTG>;
+		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		 mux_port;
 		 status = "disabled";
 	};
@@ -1819,6 +1859,7 @@
 		clocks = <&clk_peri PERI_PCIE_AUX>, <&clk_peri PERI_PCIE_APB>, <&clk_peri PERI_PCIE_PCS>, <&clk_peri PERI_PCIE_REF_EXT>,
 			 <&clk_fbus FBUS_HSIO>, <&clk_isoip_top ISOIP_TOP_PCIE>;
 		clock-names = "pcie_aux", "pcie_apb", "pcie_pcs" ,"pcie_ref_ext", "fbus_hsio", "pcie_phy";
+		resets = <&pmu_rst RESET_PCIE>;
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
@@ -2681,17 +2722,6 @@
 	 * CM Bus Block
 	 */
 	hwdemux: cmbus@19000000 {
-		reg =   <0x19080000 0x10000>,
-			<0x190A0000 0x80>,
-			<0x190B0000 0x80>,
-			<0x190F0000 0x50>;
-		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_LOW>;
-		clocks = <&clk_fbus FBUS_CMBUS>,
-			<&clk_peri PERI_TSRX0>,
-			<&clk_peri PERI_TSRX1>,
-			<&clk_peri PERI_TSRX2>,
-			<&clk_peri PERI_TSRX3>;
-		clock-frequency = <200000000>;
 		status = "disabled";
 	};
 

@@ -140,6 +140,7 @@ struct edid_info_t {
 };
 
 struct sink_manufacture_list_t{
+       const int manufacture_id;
        const char manufacturer_name[4];
 };
 
@@ -162,16 +163,19 @@ struct hdmi_supported_list {
 
 static struct edid_info_t  sink_edid_info;
 
-/*
- * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
- * 340 MHz or when HDCP is enabled.
- * When HDCP Keepout is set to 1, the control period configuration is changed.
- * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
- * of swinging HPD.
- * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
- * if this SINK is a VIZIO TV. */
+/* In general, HDCP Keepout is set to 1 when TMDS character rate is higher
+ * than 340 MHz or when HDCP is enabled.
+ * If HDCP Keepout is set to 1 then the control period configuration is changed
+ * in order to supports scramble and HDCP encryption. But some SINK needs this
+ * packet configuration always even if HDMI ouput is not scrambled or HDCP is
+ * not enabled. */
 static struct sink_manufacture_list_t sink_manufacture_list[] = {
-        {{"VIZ"}}, /* VIZIO TV */
+        {
+        	1, "VIZ" /* VIZIO TV */
+	},
+	{
+		2, "SAM" /* SAMSUNG TV */
+	},
 };
 
 struct hdmi_supported_list hdmi_supported_list[] = {
@@ -800,7 +804,7 @@ static int edid_get_sink_manufacture(void)
 
                 for(list_loop = 0; list_loop < list_max; list_loop++) {
                         if(!memcmp(sink_edid_info.sink_manufacturer_name, sink_manufacture_list[list_loop].manufacturer_name, 3)) {
-                                sink_manufacture = list_loop;
+                                sink_manufacture = sink_manufacture_list[list_loop].manufacture_id;
                                 break;
                         }
                 }
@@ -816,28 +820,51 @@ void edid_get_manufacturer_info(char* manufacturer_name)
         }
 }
 
-/*
- * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
- * 340 MHz or when HDCP is enabled.
- * When HDCP Keepout is set to 1, the control period configuration is changed.
- * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
- * of swinging HPD.
- * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
- * if this SINK is a VIZIO TV. */
-int edid_is_sink_vizio(void)
-{
-        int sink_manufacture = edid_get_sink_manufacture();
-        return (sink_manufacture == 1)?1:0;
-}
-
 int edid_get_product_id(void)
 {
-        return sink_edid_info.sink_product_id;
+        unsigned int sink_product_id = 0;
+
+	if(sink_edid_info.edid_done) {
+		sink_product_id = sink_edid_info.sink_product_id;
+	}
+
+        return sink_product_id;
 }
 
 int  edid_get_serial(void)
 {
-        return sink_edid_info.sink_serial;
+	unsigned int sink_serial = 0;
+
+	if(sink_edid_info.edid_done) {
+		sink_serial = sink_edid_info.sink_serial;
+	}
+
+	return sink_serial;
+}
+
+
+/* In general, HDCP Keepout is set to 1 when TMDS character rate is higher
+ * than 340 MHz or when HDCP is enabled.
+ * If HDCP Keepout is set to 1 then the control period configuration is changed
+ * in order to supports scramble and HDCP encryption. But some SINK needs this
+ * packet configuration always even if HDMI ouput is not scrambled or HDCP is
+ * not enabled. */
+int edid_is_sink_need_hdcp_keepout(void)
+{
+	int need_hdcp_keepout = 0;
+
+	switch(edid_get_sink_manufacture()) {
+		case 1: /* VIZIO */
+			need_hdcp_keepout = 1;
+			break;
+		case 2:
+			/* SAMSUNG */
+			if(edid_get_product_id() == 0x0F13) {
+				need_hdcp_keepout = 1;
+			}
+			break;
+	}
+	return need_hdcp_keepout;
 }
 
 int edid_get_scdc_present(void)

@@ -857,11 +857,9 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
 	}
 
-#ifdef CONFIG_TCC_EH_ELECT_TST
 	reg = dwc3_readl(dwc->regs, DWC3_GUCTL2);
 	reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed. 
 	dwc3_writel(dwc->regs, DWC3_GUCTL2, reg);
-#endif
 
 	return 0;
 

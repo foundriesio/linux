@@ -31,7 +31,7 @@
 #define chmux_writel(v,c)			writel(v,c)
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 
 #define IOBUSCFG_DAI_PORT_MAX		(3)
 #define IOBUSCFG_CDIF_PORT_MAX		(3)

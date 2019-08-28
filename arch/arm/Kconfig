@@ -290,7 +290,7 @@ config PHYS_OFFSET
 			ARCH_KS8695 || \
 			ARCH_REALVIEW
 	default 0x10000000 if ARCH_OMAP1 || ARCH_RPC
-	default 0x20000000 if ARCH_S5PV210 || ARCH_TCC899X || ARCH_TCC803X
+	default 0x20000000 if ARCH_S5PV210 || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X
 	default 0x80000000 if ARCH_TCC897X
 	default 0xc0000000 if ARCH_SA1100
 	help
@@ -855,6 +855,7 @@ source "arch/arm/mach-tango/Kconfig"
 source "arch/arm/mach-tcc897x/Kconfig"
 source "arch/arm/mach-tcc899x/Kconfig"
 source "arch/arm/mach-tcc803x/Kconfig"
+source "arch/arm/mach-tcc901x/Kconfig"
 
 source "arch/arm/mach-tegra/Kconfig"
 

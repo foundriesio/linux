@@ -700,8 +700,11 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
         case TCC_WMIXER_ALPHA_SCALING:
         case TCC_WMIXER_ALPHA_SCALING_KERNEL:
-            if (wmixer->sc.reg == NULL)
+            if (wmixer->sc.reg == NULL) {
+                pr_warn("Warning: TCC_WMIXER_ALPHA_SCALING ioctl needs a sc\n");
                 break;
+            }
+
             mutex_lock(&wmixer->data->io_mutex);
             if(wmixer->data->block_operating) {
                 wmixer->data->block_waiting = 1;
@@ -757,6 +760,11 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
             return 0;
 
         case TCC_WMIXER_ALPHA_MIXING:
+            if (wmixer->rdma1.reg == NULL) {
+                pr_warn("Warning: TCC_WMIXER_ALPHA_MIXING ioctl needs a rdma1\n");
+                break;
+            }
+
             mutex_lock(&wmixer->data->io_mutex);
             if(wmixer->data->block_operating) {
                 wmixer->data->block_waiting = 1;

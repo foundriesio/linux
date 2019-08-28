@@ -17,6 +17,7 @@
 #include <linux/of_gpio.h>
 #include <linux/pci.h>
 #include <linux/phy/phy.h>
+#include <linux/reset.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
@@ -37,6 +38,7 @@ struct tcc_pcie {
 	struct clk		*clk_ref_ext;
 	struct clk		*clk_hsio;
 	struct clk		*clk_phy;
+	struct reset_control	*rst;
 	bool				using_phy;
 	unsigned int		using_ext_ref_clk;
 	unsigned int		for_si_test;
@@ -571,6 +573,8 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	tp->rst = devm_reset_control_get(&pdev->dev, NULL);
+
 	tp->clk_aux = devm_clk_get(&pdev->dev, "pcie_aux");
 	if (IS_ERR(tp->clk_aux)) {
 		dev_err(&pdev->dev, "Failed to get pcie aux clock\n");
@@ -729,6 +733,12 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 	}
 	if(!tp->using_ext_ref_clk)	
 	    clk_prepare_enable(tp->clk_ref_ext);
+
+	if (!IS_ERR(tp->rst)) {
+		reset_control_assert(tp->rst);
+		/* TODO: add some delay if needed */
+		reset_control_deassert(tp->rst);
+	}
 
 	/* re-establish link */
 	if(tp->suspend_mode){	

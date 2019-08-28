@@ -1,0 +1,140 @@
+/*
+ * Device tree for Telechips TCC9010 STB board
+ *
+ * Copyright (C) 2019 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include "tcc9010-linux-stb.dtsi"
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+
+	/* eMMC */
+	vqmmc_emmc: vqmmc_emmc {
+		compatible = "regulator-gpio";
+
+		regulator-name = "vqmmc_emmc";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-type = "voltage";
+		regulator-ramp-delay = <10>;
+		regulator-always-on;
+
+		gpios = <&gpa 4 0x4>;
+		gpios-states = <0>;
+		states = <1800000 0x0
+			3300000 0x1>;
+	};
+
+	sdhc@16450000 {
+		status = "okay";
+		bus-width = <8>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd1_1_clk &sd1_1_cmd &sd1_1_bus8>;
+
+		non-removable;
+		keep-power-in-suspend;
+		disable-wp;
+		cap-mmc-hw-reset;
+		mmc-ddr-1_8v;
+
+		tcc-mmc-reset = <&gpa 6 0>;
+
+		vqmmc-supply = <&vqmmc_emmc>;
+	};
+
+	/* SDIO */
+	vqmmc_sdio: vqmmc_sdio {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sdio";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	sdhc@16460000 {
+		status = "okay";
+		bus-width = <4>;
+		max-frequency = <2000000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+
+		keep-power-in-suspend;
+		cap-sdio-irq;
+
+		vqmmc-supply = <&vqmmc_sdio>;
+
+		cd-force-presence-change;
+
+		tcm38xx {
+			compatible = "telechips,tcm38xx";
+			wifi_pwr-gpio = <&gpf 30 0>; /* BT_WIFI_VBAT_EN */
+			wlreg_on-gpio = <&gpg 15 0>; /* WIFI_REG_ON */
+			wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+			//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+		};
+	};
+
+	tcc_bluetooth {
+		compatible = "telechips, tcc_bluetooth";
+		bt_power-gpio = <&gpf 30 0>; /* BTWIFI_VBAT_EN */
+		bt_reg_on-gpio = <&gpc 21 0>;
+		bt_wake-gpio = <&gpc 20 0>;
+		bt_hwake-gpio = <&gpc 22 0>;
+		bt_power_1p8v-gpio = <&gpg 4 0>;
+		status = "okay";
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		autorepeat;
+		button@0 {
+			label = "Macro Key";
+			linux,code = <112>;
+			gpios = <&gpa 3 1>;
+		};
+	};
+};

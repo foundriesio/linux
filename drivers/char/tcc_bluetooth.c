@@ -39,12 +39,12 @@ static bool bt_enabled;
 //static bool host_wake_uart_enabled;
 //static bool wake_uart_enabled;
 
-static int bt_wake_port		= (int)NULL;
-static int bt_hwake_port	= (int)NULL;
-static int bt_reg_on_port	= (int)NULL;
-static int bt_power_port	= (int)NULL;
-static int bt_power_1p8v_port	= (int)NULL;
-static int bt_power_3p3v_port	= (int)NULL;
+static int bt_wake_port		= 0;
+static int bt_hwake_port	= 0;
+static int bt_reg_on_port	= 0;
+static int bt_power_port	= 0;
+static int bt_power_1p8v_port	= 0;
+static int bt_power_3p3v_port	= 0;
 
 /*
 struct bcm_bt_lpm {
@@ -229,9 +229,9 @@ static int bcm_bt_lpm_init(struct platform_device *pdev)
 }
 #endif
 
-static struct of_device_id tcc_bluetooth_dt_match[] = {
-	{ .compatible = "telechips, tcc_bluetooth", },
-	{ },
+static struct of_device_id tcc_bluetooth_dt_match[2] = {
+    {.name = "", .type = "", .compatible = "telechips, tcc_bluetooth", NULL},
+    {.name = "", .type = "", .compatible = "", NULL},
 };
 MODULE_DEVICE_TABLE(of, tcc_bluetooth_dt_match);
 
@@ -251,12 +251,12 @@ static int tcc_bluetooth_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	
-	bt_power_1p8v_port	= (int)NULL;
-	bt_power_3p3v_port	= (int)NULL;
-	bt_power_port		= (int)NULL;
-	bt_wake_port		= (int)NULL;
-	bt_hwake_port		= (int)NULL;
-	bt_reg_on_port		= (int)NULL;
+	bt_power_1p8v_port	= 0;
+	bt_power_3p3v_port	= 0;
+	bt_power_port		= 0;
+	bt_wake_port		= 0;
+	bt_hwake_port		= 0;
+	bt_reg_on_port		= 0;
 
     if (np) {
 	bt_power_1p8v_port = of_get_named_gpio(np, "bt_power_1p8v-gpio", 0);

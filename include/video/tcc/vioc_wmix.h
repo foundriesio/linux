@@ -36,3 +36,7 @@
 #ifdef CONFIG_ARCH_TCC897X
 #include "tcc897x/vioc_wmix.h"
 #endif
+
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_wmix.h"
+#endif

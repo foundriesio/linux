@@ -262,7 +262,7 @@ static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 {
 	void *cma_virt_address = NULL;
 
-	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address);
+	dprintk_mem("_vmem_get_virtaddr :: phy_region[0x%x - 0x%x], !! \n", start_phyaddr, start_phyaddr + length);
 
 	if (_vmem_is_cma_allocated_phy_region(start_phyaddr, length))
 		cma_virt_address = pmap_cma_remap(start_phyaddr, PAGE_ALIGN(length));
@@ -270,16 +270,16 @@ static void* _vmem_get_virtaddr(unsigned int start_phyaddr, unsigned int length)
 		cma_virt_address = (void*)ioremap_nocache((phys_addr_t)start_phyaddr, PAGE_ALIGN(length));
 
 	if (cma_virt_address == NULL) {
-		pr_err("%s: error ioremap for 0x%x / 0x%x \n", __func__, start_phyaddr, length);
+		pr_err("_vmem_get_virtaddr: error ioremap for 0x%x / 0x%x \n", start_phyaddr, length);
 		return cma_virt_address;
 	}
 
 	return cma_virt_address;
 }
 
-static void _vmem_release_virtaddr(void * target_virtaddr, unsigned int start_phyaddr, unsigned int length)
+static void _vmem_release_virtaddr(void *target_virtaddr, unsigned int start_phyaddr, unsigned int length)
 {
-	dprintk_mem("%s-%d :: phy_region[0x%x - 0x%x], virt[%p =? %p] !! \n", __func__, __LINE__, start_phyaddr, start_phyaddr + length, cma_virt_address, target_virtaddr);
+	dprintk_mem("_vmem_release_virtaddr :: phy_region[0x%x - 0x%x]!! \n", start_phyaddr, start_phyaddr + length);
 
 	if (_vmem_is_cma_allocated_phy_region(start_phyaddr, length))
 		pmap_cma_unmap(target_virtaddr, PAGE_ALIGN(length));
@@ -570,7 +570,7 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 		ptr_front_addr_mem += request_size;
 		sz_front_used_mem += request_size;
 
-		detailk_mem_dec("type[%d] : alloc = 0x%x ~ 0x%x, 0x%d!!, used 0x%x \n", type, curr_phyaddr, ptr_front_addr_mem, request_size, sz_front_used_mem);
+		detailk_mem_dec("type[%d] : alloc = 0x%x ~ 0x%x, 0x%x!!, used 0x%x \n", type, curr_phyaddr, ptr_front_addr_mem, request_size, sz_front_used_mem);
 	}
 	else if(type == VPU_DEC_EXT)
 	{
@@ -605,7 +605,7 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 		detailk_mem_dec("type[%d] : alloc = 0x%x ~ 0x%x, 0x%d!!, used 0x%d \n", type, (ptr_rear_addr_mem + request_size), curr_phyaddr, request_size, sz_rear_used_mem);
 	}
 #endif
-	detailk_mem_dec("type[%d] : mem usage = 0x%x/0x%x = Dec(0x%x + 0x%x) + Enc(0x%x) !! \n", type, sz_front_used_mem+sz_rear_used_mem+sz_ext_used_mem, pmap_video.size, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem);
+	detailk_mem_dec("type[%d] : mem usage = 0x%x/0x%x = Dec(f:0x%x + ext:0x%x) + Rear(0x%x (Enc?)) !! \n", type, sz_front_used_mem+sz_rear_used_mem+sz_ext_used_mem, pmap_video.size, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem);
 
 	sz_remained_mem -= request_size;
 
@@ -1038,6 +1038,7 @@ void _vmem_free_dedicated_buffer(void)
 {
 	int type = 0;
 
+	dprintk_mem("%s \n", __func__);
 	// Memory Management!!
 #ifdef CONFIG_SUPPORT_TCC_JPU
 	if( gsJpuWork_memInfo.kernel_remap_addr != 0 )
@@ -1382,6 +1383,8 @@ Error:
 
 int _vmem_deinit_memory_info(void)
 {
+	dprintk_mem("%s \n", __func__);
+
 	if(pmap_video.base){
 		pmap_release_info("video");		// pmap_video
 		pmap_video.base = 0;
@@ -1703,6 +1706,8 @@ int vmem_proc_free_memory(vputype type)
 
 unsigned int vmem_get_free_memory(vputype type)
 {
+	unsigned int szFreeMem = 0;
+
 	if( type == VPU_DEC )
 	{
 		if( vmgr_get_close(VPU_DEC_EXT) && vmgr_get_close(VPU_ENC)
@@ -1720,53 +1725,58 @@ unsigned int vmem_get_free_memory(vputype type)
 #endif
 		)
 		{
-			return sz_remained_mem;
+			szFreeMem = sz_remained_mem;
 		}
 		else
 		{
 			if(only_decmode)
-				return sz_remained_mem;
+				szFreeMem = sz_remained_mem;
 			else
-				return (pmap_video.size - sz_enc_mem - VPU_SW_ACCESS_REGION_SIZE) - (sz_ext_used_mem + sz_front_used_mem);
+				szFreeMem = (pmap_video.size - sz_enc_mem - VPU_SW_ACCESS_REGION_SIZE) - (sz_ext_used_mem + sz_front_used_mem);
 		}
 	}
 	else if( type == VPU_DEC_EXT )
 	{
 		if(only_decmode)
-			return sz_remained_mem;
+			szFreeMem = sz_remained_mem;
 		else
-			return (pmap_video.size - sz_enc_mem - VPU_SW_ACCESS_REGION_SIZE) - (sz_ext_used_mem + sz_front_used_mem);
+			szFreeMem = (pmap_video.size - sz_enc_mem - VPU_SW_ACCESS_REGION_SIZE) - (sz_ext_used_mem + sz_front_used_mem);
 	}
 	else if( type == VPU_ENC )
 	{
-		return sz_enc_mem-sz_rear_used_mem;
+		szFreeMem = sz_enc_mem-sz_rear_used_mem;
 	}
 	else if( type == VPU_DEC_EXT2 || type == VPU_DEC_EXT3 )
 	{
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
-		return sz_ext_remained_mem;
+		szFreeMem = sz_ext_remained_mem;
 #else
-		return 0;
+		szFreeMem = 0;
 #endif
 	}
 	else if( type == VPU_DEC_EXT4 )
 	{
 #if defined(CONFIG_VDEC_CNT_5)
-		return sz_ext2_remained_mem;
+		szFreeMem = sz_ext2_remained_mem;
 #else
-		return 0;
+		szFreeMem = 0;
 #endif
 	}
 	else if( type == VPU_ENC_EXT || type == VPU_ENC_EXT2 || type == VPU_ENC_EXT3 )
 	{
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-		return sz_enc_ext_remained_mem[type-VPU_ENC_EXT];
+		szFreeMem = sz_enc_ext_remained_mem[type-VPU_ENC_EXT];
 #else
-		return 0;
+		szFreeMem = 0;
 #endif
 	}
+	else
+	{
+		szFreeMem = sz_remained_mem;
+	}
 
-	return sz_remained_mem;
+	dprintk_mem("%s :: type(%d) free(0x%x) :: etc_info = enc(0x%x), front_used(0x%x), ext_used(0x%x), rear_used(0x%x)\n", __func__, type, szFreeMem, sz_enc_mem, sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem); 
+	return szFreeMem;
 }
 EXPORT_SYMBOL(vmem_get_free_memory);
 
@@ -1836,6 +1846,8 @@ unsigned int vmem_get_freemem_size(vputype type)
 
 void _vmem_config_zero(void)
 {
+	dprintk_mem("%s \n", __func__);
+
 	pmap_video.base = 0;
 	pmap_video_sw.base = 0;
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
@@ -1932,34 +1944,43 @@ int vmem_init(void)
 					goto Error0;
 				}
 			}
-			cntMem_Reference++;
 			goto Success;
 		}
-Error0:
-	_vmem_free_dedicated_buffer();
-Error1:
-	_vmem_deinit_memory_info();
 
-	sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
-	sz_remained_mem = sz_enc_mem = 0;
+Error0:
+		if(ret < 0)
+			_vmem_free_dedicated_buffer();
+Error1:
+		if(ret < 0)
+			_vmem_deinit_memory_info();
+
+		if(ret < 0)
+		{
+			sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
+			sz_remained_mem = sz_enc_mem = 0;
 
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
-	sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
-	sz_ext_remained_mem = 0;
+			sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
+			sz_ext_remained_mem = 0;
 #endif
 #if defined(CONFIG_VDEC_CNT_5)
-	sz_ext2_front_used_mem = 0;
-	sz_ext2_remained_mem = 0;
+			sz_ext2_front_used_mem = 0;
+			sz_ext2_remained_mem = 0;
 #endif
 
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	sz_enc_ext_used_mem[0] = sz_enc_ext_used_mem[1] = sz_enc_ext_used_mem[2] = 0;
-	sz_enc_ext_remained_mem[0] = sz_enc_ext_remained_mem[1] = sz_enc_ext_remained_mem[2] = 0;
+			sz_enc_ext_used_mem[0] = sz_enc_ext_used_mem[1] = sz_enc_ext_used_mem[2] = 0;
+			sz_enc_ext_remained_mem[0] = sz_enc_ext_remained_mem[1] = sz_enc_ext_remained_mem[2] = 0;
 #endif
+		}
 
 Success:
-		mutex_unlock(&mem_mutex);
+		if(ret >= 0)
+		{
+			cntMem_Reference++;
+		}
 
+		mutex_unlock(&mem_mutex);
 		return ret;
 	}
 
@@ -1979,6 +2000,7 @@ int vmem_config(void)
 void vmem_deinit(void)
 {
 	mutex_lock(&mem_mutex);
+	dprintk_mem("%s :: ref count: %d \n", __func__, cntMem_Reference);
 	if(cntMem_Reference > 0)
 		cntMem_Reference--;
 	else

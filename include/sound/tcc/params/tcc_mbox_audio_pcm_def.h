@@ -113,6 +113,8 @@ enum pcm_value_action {
     PCM_VALUE_ACTION_STOP                  ,
     PCM_VALUE_ACTION_SETUP                 , // to future use..
     PCM_VALUE_ACTION_RELEASE               , // to future use..
+    PCM_VALUE_ACTION_PAUSE                 , //just use for R5 (no use in T-sound)
+    PCM_VALUE_ACTION_RESUME                , //just use for R5 (no use in T-sound)
 };
 
 //

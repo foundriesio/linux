@@ -60,8 +60,14 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
                                 productParams->mVendorPayload, productParams->mVendorPayloadLength, 1);
-                        /* backup product params */
-                        memcpy(prod, productParams, sizeof(productParams_t));
+
+                        /* Store product params */
+			memcpy(&prod->mOUI, &productParams->mOUI,
+				sizeof(productParams->mOUI) +
+				sizeof(productParams->mVendorPayload) +
+				sizeof(productParams->mVendorPayloadLength));
+
+			fc_packets_metadata_config(dev);
                 }
         } while(0);
 
@@ -70,48 +76,51 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
 
 int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productParams_t * prod)
 {
-	LOG_TRACE();
+	int ret = -1;
 
-	if(video->mHdmi == DVI){
-		LOGGER(SNPS_WARN, "DVI mode selected: packets not configured\r\n");
-		return TRUE;
-	}
+	do {
+		if(video->mHdmi == DVI){
+			pr_err(" %s DVI mode selected: packets not configured\r\n", __func__);
+			break;
+		}
 
-	if (prod != 0) {
-		fc_spd_info_t spd_data = {
-                        .vName = prod->mVendorName,
-		        .vLength = prod->mVendorNameLength,
-		        .pName = prod->mProductName,
-		        .pLength = prod->mProductNameLength,
-		        .code = prod->mSourceType,
-		        .autoSend = 1,
-		};
+		if (prod != NULL) {
+			fc_spd_info_t spd_data = {
+	                        .vName = prod->mVendorName,
+			        .vLength = prod->mVendorNameLength,
+			        .pName = prod->mProductName,
+			        .pLength = prod->mProductNameLength,
+			        .code = prod->mSourceType,
+			        .autoSend = 1,
+			};
 
-		u32 oui = prod->mOUI;
-		u8 *vendor_payload = prod->mVendorPayload;
-		u8 payload_length = prod->mVendorPayloadLength;
+			u32 oui = prod->mOUI;
+			u8 *vendor_payload = prod->mVendorPayload;
+			u8 payload_length = prod->mVendorPayloadLength;
 
-		fc_spd_config(dev, &spd_data);
+			fc_spd_config(dev, &spd_data);
 
-                packets_VendorSpecificInfoFrame(dev, oui, vendor_payload, payload_length, 1);
-	}
-	else {
-		LOGGER(SNPS_WARN,"No product info provided: not configured");
-	}
+	                packets_VendorSpecificInfoFrame(dev, oui, vendor_payload, payload_length, 1);
+		}
 
-	fc_packets_metadata_config(dev);
+		fc_packets_metadata_config(dev);
+		fc_gamut_config(dev);
 
-	// default phase 1 = true
-	hdmi_dev_write_mask(dev, FC_GCP, FC_GCP_DEFAULT_PHASE_MASK, ((video->mPixelPackingDefaultPhase == 1) ? 1 : 0));
+		if(video != NULL) {
+			// default phase 1 = true
+			hdmi_dev_write_mask(dev,
+				FC_GCP, FC_GCP_DEFAULT_PHASE_MASK,
+				((video->mPixelPackingDefaultPhase == 1) ? 1 : 0));
 
-	fc_gamut_config(dev);
+			fc_avi_config(dev, video);
 
-	fc_avi_config(dev, video);
+			/** Colorimetry */
+			packets_colorimetry_config(dev, video);
+		}
+ 		ret = 0;
+	}while(0);
 
-	/** Colorimetry */
-	packets_colorimetry_config(dev, video);
-
-	return TRUE;
+	return ret;
 }
 
 void packets_AudioContentProtection(struct hdmi_tx_dev *dev, u8 type, const u8 * fields, u8 length, u8 autoSend)
@@ -266,7 +275,7 @@ int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 *
 			break;
                 }
 		if(length == 0) {
-                        pr_info("%s to stop transmit vsif, because length is 0\r\n", __func__);
+                        //pr_info("%s to stop transmit vsif, because length is not valid\r\n", __func__);
 			break;
 		}
 		fc_vsd_vendor_OUI(dev, oui);

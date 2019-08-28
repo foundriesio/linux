@@ -1685,6 +1685,7 @@ static struct of_device_id tcc_spi_of_match[] = {
 	{ .compatible = "telechips,tcc803x-spi" },
 	{ .compatible = "telechips,tcc897x-spi" },
 	{ .compatible = "telechips,tcc899x-spi" },
+	{ .compatible = "telechips,tcc901x-spi" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, tcc_spi_of_match);

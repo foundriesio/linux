@@ -504,13 +504,13 @@ void internal_tve_clock_onoff(unsigned int onoff)
 	if (onoff) {
 		clk_prepare_enable(tve_clk_dac);				// vdac on, display bus isolation
 		clk_prepare_enable(tve_clk_ntscpal);			// tve on, ddi_config
-		#if defined(CONFIG_ARCH_TCC899X)
+		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_ON);	// dac on, ddi_config
 		#endif
 	} else {
 		clk_disable_unprepare(tve_clk_dac);				// vdac off, display bus isolation
 		clk_disable_unprepare(tve_clk_ntscpal);			// tve off, ddi_config
-		#if defined(CONFIG_ARCH_TCC899X)
+		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_DDICONFIG_DAC_PWDN_Control(NULL, DAC_OFF);	// dac off, ddi_config
 		#endif
 	}

@@ -32,6 +32,7 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h> /* __clk_is_enabled */
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -61,8 +62,6 @@
 
 static int tcc_i2s_tx_enable(struct snd_pcm_substream *substream, int En);
 static int tcc_i2s_rx_enable(struct snd_pcm_substream *substream, int En);
-
-extern bool __clk_is_enabled(struct clk *clk);
 
 static unsigned int tcc_i2s_get_mclk_fs_for_af(unsigned int freq, struct clk	*dai_pclk)
 {
@@ -165,7 +164,6 @@ static void tcc_i2s_set_clock(struct snd_soc_dai *dai, unsigned int req_lrck, bo
 		}
 
 		if(prtd->ptcc_clk->dai_pclk) {
-			//if (prtd->ptcc_clk->dai_pclk->enable_count)
 			if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 				clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 
@@ -741,15 +739,12 @@ static int tcc_i2s_suspend(struct device *dev)
 	}
 
 	// Disable all about dai clk
-	//if((prtd->ptcc_clk->af_pclk)&&(prtd->ptcc_clk->af_pclk->enable_count)){
 	if(__clk_is_enabled(prtd->ptcc_clk->af_pclk)) {
-			clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
+		clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
 	}
-	//if((prtd->ptcc_clk->dai_pclk)&&(prtd->ptcc_clk->dai_pclk->enable_count)){
 	if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk)) {	
 		clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 	}
-	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count)){
 	if(__clk_is_enabled(prtd->ptcc_clk->dai_hclk)) {		
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 	}
@@ -769,18 +764,12 @@ static int tcc_i2s_resume(struct device *dev)
 	alsa_dai_dbg(prtd->id, "[%s] \n", __func__);
 
 	// Enable all about dai clk
-	//if((prtd->ptcc_clk->dai_hclk)&&(!prtd->ptcc_clk->dai_hclk->enable_count))
-	if(prtd->ptcc_clk->dai_hclk) {
+	if(prtd->ptcc_clk->dai_hclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_hclk);
-	}
-	//if((prtd->ptcc_clk->dai_pclk)&&(!prtd->ptcc_clk->dai_pclk->enable_count))
-	if(prtd->ptcc_clk->dai_pclk) {
+	if(prtd->ptcc_clk->dai_pclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_pclk);
-	}
-	//if((prtd->ptcc_clk->af_pclk)&&(!prtd->ptcc_clk->af_pclk->enable_count))
-	if(prtd->ptcc_clk->af_pclk) {
+	if(prtd->ptcc_clk->af_pclk)
 		clk_prepare_enable(prtd->ptcc_clk->af_pclk);
-	}
 
 #if !defined(CONFIG_ARCH_TCC897X) && !defined(CONFIG_ARCH_TCC570X)
 	if(prtd->dai_port)
@@ -904,7 +893,6 @@ static int tcc_i2s_probe(struct snd_soc_dai *dai)
 	/* set All about dai clk */
 
 	if (prtd->ptcc_clk->af_pclk) {
-		//if(prtd->ptcc_clk->af_pclk->enable_count)
 		if(__clk_is_enabled(prtd->ptcc_clk->af_pclk))
 			clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
 
@@ -914,7 +902,6 @@ static int tcc_i2s_probe(struct snd_soc_dai *dai)
 	}
 
 	if (prtd->ptcc_clk->dai_pclk) {
-		//if(prtd->ptcc_clk->dai_pclk->enable_count)
 		if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 			clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 

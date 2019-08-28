@@ -1,6 +1,6 @@
 config TCC_SDR
 	tristate "Telechips DAI Radio Mode Driver"
-	depends on (ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC803X || ARCH_TCC899X)
+	depends on (ARCH_TCC897X || ARCH_TCC570X || ARCH_TCC802X || ARCH_TCC803X || ARCH_TCC899X || ARCH_TCC901X)
 	default n
 	help
 		Telechips DAI Radio Mode Driver
@@ -28,7 +28,7 @@ config TCC_ATTACH
 
 config TCC_VIQE_MADI
 	tristate "Telechips Viqe-Madi driver"
-	depends on ARCH_TCC899X
+	depends on (ARCH_TCC899X || ARCH_TCC901X)
 	default y
 	help
 		Telechips Viqe-Madi driver

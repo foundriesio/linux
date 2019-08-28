@@ -294,27 +294,6 @@
 		status = "okay";
 	};
 
-	tcc_hwdmx_tsif@0 {
-		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-port = <1>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx1_idle>;
-		pinctrl-1 = <&tsrx1_active>;
-		clocks = <&clk_peri PERI_TSRX0>;
-		clock-names = "tsrx0";
-		status = "okay";
-	};
-
-	tcc_hwdmx_tsif@1 {
-		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-port = <2>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-		clocks = <&clk_peri PERI_TSRX1>;
-		clock-names = "tsrx1";
-	};
-
 	tcc_dxb_ctrl {
 		compatible = "telechips,tcc_dxb_ctrl";
 		pw-gpios   = <&gpe 20 0>;
@@ -387,11 +366,6 @@
 		};
 	};
 	*/
-	/* H/W Demux */
-	hwdemux: cmbus@19000000 {
-		compatible = "telechips,hwdemux";
-		status = "okay";
-	};
 
 	/* GPSB */
 	gpsb0@16900000 {
@@ -427,16 +401,6 @@
 		pinctrl-1 = <&gpsb4_bus_tsif>;
 	};
 */
-
-	tcc_ex_tsif {
-		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-id = <2>;
-		tsif-port = <2>;
-		port-mux = <2>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-	};
 
 /* TODO : Need to decide port for each gpsb channel
 	gpsb3@16930000 {
@@ -573,7 +537,6 @@
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai1_spdif_tx>;
 		pinctrl-1 = <&m0dai1_spdif_tx_idle>;
-		tx-only;
 		status = "okay";
 	};
 
@@ -610,6 +573,7 @@
 			mclk_div = <2>; //spdif peri_clk = samplerate * 128 * mclk_div
 			pcm = <&adma0>;
 			dai = <&spdif0>;
+			playback-only;
 		};
 
 		telechips,dai-link@2 {
@@ -622,6 +586,7 @@
 			bclk_ratio = <64>; // 32,48,64fs
 			pcm = <&adma1>;
 			dai = <&i2s1>;
+			playback-only;
 		};
 	};
 
@@ -821,4 +786,28 @@
 	dmas = <&udma1 2 2 &udma1 3 2>;
 	dma-names = "tx", "rx";
 	status = "okay";
+};
+
+/* H/W Demux */
+&hwdemux {
+	compatible = "telechips,hwdemux";
+	status = "okay";
+};
+
+/* Linux TV */
+&tcc_hwdmx_tsif0 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <1>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx1_idle>;
+	pinctrl-1 = <&tsrx1_active>;
+	status = "okay";
+};
+
+&tcc_hwdmx_tsif1 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <2>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx2_idle>;
+	pinctrl-1 = <&tsrx2_active>;
 };

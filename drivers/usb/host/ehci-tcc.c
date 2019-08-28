@@ -452,7 +452,7 @@ static int tcc_ehci_suspend(struct device *dev)
 	ehci_suspend(hcd, do_wakeup);
 
 	/* Telechips specific routine */
-	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	tcc_ehci_phy_ctrl(tcc_ehci, OFF);
 	tcc_ehci_clk_ctrl(tcc_ehci, OFF);
 	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
@@ -483,7 +483,7 @@ static int tcc_ehci_resume(struct device *dev)
 	#endif
 
 	/* Telechips specific routine */
-	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	tcc_ehci_power_ctrl(tcc_ehci, ON);
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 	tcc_ehci_vbus_ctrl(tcc_ehci, ON);

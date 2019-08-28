@@ -15,6 +15,9 @@ endif
 ifdef CONFIG_ARCH_TCC803X
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/phy/phy_803x.o
 endif
+ifdef CONFIG_ARCH_TCC901X
+obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/phy/phy_901x.o
+endif
 
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/bsp/i2cm.o
 obj-$(CONFIG_TCC_HDMI_DRIVER_V2_0)	+=  src/core/main_controller.o

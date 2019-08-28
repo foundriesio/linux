@@ -353,6 +353,7 @@ struct lcdc_timimg_parms_t {
 	unsigned int dv_hdmi_clk_khz;
 	unsigned int dv_vsvdb[12];
 	unsigned int dv_vsvdb_size;
+	unsigned int dv_rgb_tunneling;
 #endif
 };
 

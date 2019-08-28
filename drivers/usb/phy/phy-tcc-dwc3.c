@@ -533,7 +533,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		dwc3_tcc898x_swreset(USBPHYCFG, ON);
 		mdelay(1);
 		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		//dwc3_tcc899x_swreset(tcc, ON);
 		//mdelay(1);
 		//dwc3_tcc899x_swreset(tcc, OFF);
@@ -568,12 +568,12 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		//======================================================
 #if defined(CONFIG_ARCH_TCC898X)		/* 016.09.30 */
 		USBPHYCFG->U30_PCFG0 	= (system_rev >= 2)?0x40306228:0x20306228;
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) 
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		writel(0x03204208, &USBPHYCFG->U30_PCFG0);
 #else
 		USBPHYCFG->U30_PCFG0 	= 0x20306228;
 #endif /* CONFIG_ARCH_TCC898X */
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		writel(0x00000000, &USBPHYCFG->U30_PCFG1);
 		writel(0x919E1A04, &USBPHYCFG->U30_PCFG2);
 		writel(0x4B8E7F05, &USBPHYCFG->U30_PCFG3);
@@ -616,7 +616,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 		// Link global Reset
 		USBPHYCFG->U30_LCFG &= ~(Hw31); // CoreRSTN (Cold Reset), active low
-		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		//dwc3_tcc899x_swreset(tcc, ON);
 		// Link global Reset
 		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31), &USBPHYCFG->U30_LCFG); // CoreRSTN (Cold Reset), active low
@@ -653,7 +653,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 		// Release Reset Link global
 		USBPHYCFG->U30_LCFG |= (Hw31);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		if (!strncmp("high", maximum_speed, 4)) {
 			// USB20 Only Mode
 			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
@@ -834,7 +834,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 #endif
 		#if defined(CONFIG_ARCH_TCC898X)
 		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		//dwc3_tcc899x_swreset(tcc, OFF);
 		//msleep(10);
 		#endif

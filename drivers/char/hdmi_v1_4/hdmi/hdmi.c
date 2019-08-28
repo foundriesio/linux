@@ -1,29 +1,29 @@
 /*!
 * TCC Version 1.0
 * Copyright (c) Telechips Inc.
-* All rights reserved 
+* All rights reserved
 *  \file        hdmi.c
 *  \brief       HDMI controller driver
-*  \details   
+*  \details
 *               Important!
 *               The default tab size of this source code is setted with 8.
 *  \version     1.0
 *  \date        2014-2018
 *  \copyright
 This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not 
+Any unauthorized use without a written permission of Telechips including not
 limited to re-distribution in source or binary form is strictly prohibited.
-This source code is provided "AS IS"and nothing contained in this source 
+This source code is provided "AS IS"and nothing contained in this source
 code shall constitute any express or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a particular 
-purpose or non-infringement of any patent, copyright or other third party 
-intellectual property right. No warranty is made, express or implied, regarding 
-the information's accuracy, completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability 
-arising from, out of or in connection with this source code or the use in the 
-source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure 
-Agreement between Telechips and Company. 
+without limitation, any warranty of merchantability, fitness for a particular
+purpose or non-infringement of any patent, copyright or other third party
+intellectual property right. No warranty is made, express or implied, regarding
+the information's accuracy, completeness, or performance.
+In no event shall Telechips be liable for any claim, damages or other liability
+arising from, out of or in connection with this source code or the use in the
+source code.
+This source code is provided subject to the terms of a Mutual Non-Disclosure
+Agreement between Telechips and Company.
 */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -69,7 +69,7 @@ Agreement between Telechips and Company.
 #include <linux/clocksource.h>
 #include <asm/bitops.h> // bit macros
 
-#define SRC_VERSION     "4.14_1.0.4"
+#define SRC_VERSION     "4.14_1.0.6"
 /**
  * If 'SIMPLAYHD' is 1, check Ri of 127th and 128th frame -@n
  * on 3rd authentication. And also check if Ri of 127th frame is -@n
@@ -86,7 +86,7 @@ Agreement between Telechips and Company.
 #endif
 
 #define HDMI_IOCTL_DEBUG 0
-#if HDMI_IOCTL_DEBUG 
+#if HDMI_IOCTL_DEBUG
 #define io_debug(...) pr_info(__VA_ARGS__)
 #else
 #define io_debug(...)
@@ -105,11 +105,11 @@ static unsigned int ddi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
 {
         unsigned int val = 0;
         volatile void __iomem *ddibus_io = dev->ddibus_io;;
-        
+
         if(offset & 0x3){
                 return val;
         }
-        
+
         if(ddibus_io != NULL) {
                 val = ioread32((void*)(ddibus_io + offset));
         }
@@ -119,11 +119,11 @@ static unsigned int ddi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
 static void ddi_reg_write(struct tcc_hdmi_dev *dev, unsigned int data, unsigned int offset)
 {
         volatile void __iomem *ddibus_io = dev->ddibus_io;;
-        
+
         if(offset & 0x3){
                 return;
         }
-        
+
         if(ddibus_io != NULL) {
                 iowrite32(data, (void*)(ddibus_io + offset));
         }
@@ -134,11 +134,11 @@ static unsigned int hdmi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
 {
         unsigned int val = 0;
         volatile void __iomem *hdmi_io = NULL;
-        
+
         if(offset & 0x3){
                 return val;
         }
-       
+
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_phy_io;
@@ -152,7 +152,7 @@ static unsigned int hdmi_reg_read(struct tcc_hdmi_dev *dev, unsigned int offset)
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_core_io;
                         offset -= HDMIDP_HDMIREG(0);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
@@ -173,7 +173,7 @@ static void hdmi_reg_write(struct tcc_hdmi_dev *dev, unsigned int data, unsigned
         if(offset & 0x3){
                 return;
         }
-       
+
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_phy_io;
@@ -187,7 +187,7 @@ static void hdmi_reg_write(struct tcc_hdmi_dev *dev, unsigned int data, unsigned
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_core_io;
                         offset -= HDMIDP_HDMIREG(0);
-                } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
+                } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
@@ -245,7 +245,7 @@ static const struct device_video_params HDMIVideoParams[] =
 	{ 1728, 288 , 625 , 24, 24  , 126, 1, 2 , 3, 1, 54, 55, 1, 1, },	// v720x576i_200Hz
 	{ 858 , 138 , 525 , 45, 16  , 62 , 1, 9 , 6, 1, 56, 57, 0, 0, },	// v720x480p_240Hz
 	{ 1716, 276 , 525 , 22, 38  , 124, 1, 4 , 3, 1, 58, 59, 1, 1, },	// v720x480i_240Hz
-/*	
+/*
 	{ 3300, 2020, 750 , 30, 1760, 40 , 0, 5 , 5, 0, 60, 60, 0, 0, },	// v1280x720p24Hz
 	{ 3960, 2680, 750 , 30, 2420, 40 , 0, 5 , 5, 0, 61, 61, 0, 0, },        // v1280x720p25Hz
 	{ 3300, 2020, 750 , 30, 1760, 40 , 0, 5 , 5, 0, 62, 62, 0, 0, },	// v1280x720p30Hz
@@ -253,7 +253,7 @@ static const struct device_video_params HDMIVideoParams[] =
 	{ 2640, 720 , 1125, 45, 528 , 44 , 0, 4 , 5, 0, 64, 64, 0, 0, },	// v1920x1080p100Hz
 	{ 4400, 560 , 2250, 90, 176 , 88 , 0, 8 , 10, 0, 1, 1, 0, 0, },	    	// v4Kx2K_30Hz
 */
-	{ 2200, 280 , 1125, 45, 88  , 44 , 0, 4 , 5, 0, 34, 34, 0, 0, },	// [40] v1920x1080p_29.976Hz	
+	{ 2200, 280 , 1125, 45, 88  , 44 , 0, 4 , 5, 0, 34, 34, 0, 0, },	// [40] v1920x1080p_29.976Hz
        { 2080, 160 , 780,   60, 60  , 20 , 0, 2 , 1, 0,   0, 0,  0, 0, }        // v1920x720p_60H
 
 };
@@ -331,7 +331,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0x52,0x69,0x75,0x57,0x01,0x00,0xC8,0x82,0xC8,0x3B,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x01,0x84,0x05,0x02,0x24,0x86,0x54,0xC3,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0x52,0x3F,0x35,0x63,0x01,0x00,0xC8,0x82,0xC8,0xBD,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xA3,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//  1: 25.175Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -340,7 +340,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x51,0x55,0x40,0x2B,0xC8,0x81,0xE8,0xEC,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xC3,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x1F,0x30,0x63,0x20,0x1E,0xC8,0x81,0xE8,0xBD,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xA3,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//  2: 27.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -349,7 +349,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x2A,0x52,0x55,0x08,0x03,0xC8,0x86,0xE8,0xFD,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x33,0x54,0x65,0x08,0xFA,0xC8,0x85,0xE8,0x30,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x98,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//  3: 27.027Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -358,7 +358,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x38,0x74,0x57,0x50,0x31,0xC1,0x80,0xC8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD4,0x87,0x31,0x63,0x64,0x1B,0xE0,0x19,0xE8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x98,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//  4: 54.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -367,7 +367,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x38,0x35,0x53,0x08,0x04,0xC8,0x88,0xE8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x22,0x15,0x61,0x08,0xFC,0xC8,0x82,0xC8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x98,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 5: 54.054Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -376,7 +376,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD2,0x70,0x34,0x53,0x50,0x31,0xC8,0x80,0xC8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD4,0x87,0x11,0x61,0x64,0x1B,0xE0,0x19,0xE8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x98,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//74.250Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -385,7 +385,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x11,0x51,0x40,0xD6,0xC8,0x81,0xE8,0xE8,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x84,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x2E,0x12,0x61,0x40,0x34,0xC8,0x82,0xE8,0x16,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB9,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//74.176Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -394,7 +394,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x14,0x51,0x5B,0xA7,0xC8,0x84,0xE8,0xE8,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x85,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD2,0x5D,0x12,0x61,0x5B,0xCD,0xD0,0x43,0xE8,0x16,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xBA,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//148.500Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -403,7 +403,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x01,0x50,0x40,0xD6,0xC8,0x81,0xE8,0xE8,0xD8,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0x09,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x2E,0x02,0x60,0x40,0x34,0xC8,0x82,0xE8,0x16,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xDD,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//148.352Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -412,7 +412,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x04,0x50,0x5B,0xA7,0xC8,0x84,0xE8,0xE8,0xD8,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0x09,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD2,0x5D,0x02,0x60,0x5B,0xCD,0xD0,0x43,0xE8,0x16,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xDD,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 10: 108.108Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -421,7 +421,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD2,0x70,0x14,0x51,0x50,0x31,0xC8,0x80,0xC8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x6C,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD4,0x87,0x01,0x60,0x64,0x1B,0xE0,0x19,0xE8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x2F,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//72.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -430,7 +430,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0x52,0x4B,0x15,0x51,0x01,0x00,0xC8,0x82,0xC8,0xE1,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x89,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0x51,0x2D,0x15,0x61,0x01,0x00,0xC8,0x82,0xC8,0x0E,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xC7,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//25.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -439,7 +439,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x27,0x51,0x55,0x40,0x08,0xC8,0x81,0xE8,0xEA,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xC5,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x1F,0x30,0x63,0x40,0x20,0xC8,0x81,0xE8,0xBC,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xA4,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//65.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -448,7 +448,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x22,0x11,0x51,0x30,0xF2,0xC8,0x86,0xE8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x97,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x29,0x12,0x61,0x40,0xD0,0xC8,0x87,0xE8,0xF4,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x7E,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//108.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -457,7 +457,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x38,0x14,0x51,0x08,0x04,0xC8,0x80,0xC8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x6C,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x22,0x01,0x60,0x08,0xFC,0xC8,0x86,0xE8,0xCB,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x2F,0x25,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 15: 162.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -466,7 +466,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x2A,0x02,0x50,0x40,0x18,0xC8,0x86,0xE8,0xFD,0xD8,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xF3,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x33,0x04,0x60,0x40,0xD0,0xC8,0x85,0xE8,0x30,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xCA,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//45.000Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -475,7 +475,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x2F,0x32,0x53,0x40,0xF0,0xC8,0x81,0xE8,0x19,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xDA,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x38,0x34,0x63,0x40,0x20,0xC8,0x80,0xC8,0x52,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//44.955Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -484,7 +484,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD2,0x5D,0x32,0x53,0x5B,0x3B,0xD0,0x83,0xE8,0x19,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xDB,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD2,0x70,0x35,0x63,0x5B,0x23,0xC8,0x88,0xE8,0x51,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xB6,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//297.000Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -494,7 +494,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x3E,0x05,0x40,0x40,0xE0,0xC8,0x42,0xE8,0x73,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xA5,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x3E,0x05,0x40,0x40,0xE0,0xC8,0x42,0xE8,0x73,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xA5,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//296.703Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -504,7 +504,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x3E,0x05,0x40,0x5B,0xDE,0xC8,0x82,0xE8,0x73,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xA6,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x3E,0x05,0x40,0x5B,0xDE,0xC8,0x82,0xE8,0x73,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0xA6,0x24,0x03,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 20: 59.400Mhz
 	{
 	   // TMDS Data Amplitude[4:0] : (Reg40 Bit<3:0>, REG3C Bit<7>), TMDS Clock Amplitude[3:0] : (Reg5C Bit<7:3>), TMDS Pre-emphasis Control : (Reg40 Bit<7:4>)
@@ -513,7 +513,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x1F,0x10,0x51,0x40,0xF8,0xC8,0x81,0xE8,0xBA,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xA5,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x25,0x11,0x61,0x40,0x10,0xC8,0x83,0xE8,0xDF,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x8A,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//36.000Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -523,7 +523,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0x51,0x2D,0x55,0x40,0x40,0x00,0xC8,0x02,0xC8,0x0E,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xAB,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0x51,0x2D,0x55,0x40,0x40,0x00,0xC8,0x02,0xC8,0x0E,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0xAB,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//40.000Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -533,7 +533,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x21,0x31,0x40,0x3C,0x28,0xC8,0x87,0xE8,0xC8,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x9A,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x21,0x31,0x40,0x3C,0x28,0xC8,0x87,0xE8,0xC8,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x9A,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//71.000Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -543,7 +543,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x3B,0x35,0x40,0x0C,0x04,0xC8,0x85,0xE8,0x63,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x57,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x3B,0x35,0x40,0x0C,0x04,0xC8,0x85,0xE8,0x63,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x57,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//83.500Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -553,7 +553,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x23,0x11,0x40,0x0C,0xFB,0xC8,0x85,0xE8,0xD1,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x4A,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x23,0x11,0x40,0x0C,0xFB,0xC8,0x85,0xE8,0xD1,0xD8,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x4A,0x24,0x00,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 25: 106.500Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -563,7 +563,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x2C,0x12,0x40,0x0C,0x09,0xC8,0x84,0xE8,0x0A,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x73,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x2C,0x12,0x40,0x0C,0x09,0xC8,0x84,0xE8,0x0A,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x73,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	//122.500Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -573,7 +573,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x33,0x14,0x40,0x0C,0x01,0xC8,0x85,0xE8,0x32,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x64,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x33,0x14,0x40,0x0C,0x01,0xC8,0x85,0xE8,0x32,0xD9,0x45,0xA0,0xAC,0x30,0x08,0x80,0x09,0x84,0x05,0x02,0x24,0x86,0x54,0x64,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-	
+
 	// 27: 146.250Mhz
 	//We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
 	{
@@ -583,7 +583,7 @@ static const unsigned char hdmi_phy_config[][3][32] =
 		{0xD1,0x3D,0x15,0x40,0x18,0xFD,0xC8,0x83,0xE8,0x6E,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0x54,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 		{0xD1,0x3D,0x15,0x40,0x18,0xFD,0xC8,0x83,0xE8,0x6E,0xD9,0x45,0xA0,0xAC,0x30,0x0e,0x80,0x09,0x84,0x05,0x02,0x24,0xe4,0x54,0x54,0x24,0x01,0x00,0x00,0x01,0x80,0x90},
 	},
-        // 28: 97.34Mhz 
+        // 28: 97.34Mhz
         //  change to lcdc clock        nPCLKCTRL.sel = PCLKCTRL_SEL_HDMITMDS;
         //We only support 8bit mode, 10bit and 12bit is same setting with 8bit. If you set 10bit and 12bit, there is no meaning.
         {
@@ -612,7 +612,7 @@ static void tcc_ddi_pwdn_hdmi(struct tcc_hdmi_dev *dev, char onoff)
                 } else {
                 	val |= PWDN_HDMI;
                 }
-                ddi_reg_write(dev, val, DDICFG_PWDN);	
+                ddi_reg_write(dev, val, DDICFG_PWDN);
         }
 }
 
@@ -620,7 +620,7 @@ static void tcc_ddi_pwdn_hdmi(struct tcc_hdmi_dev *dev, char onoff)
 static void tcc_ddi_swreset_hdmi(struct tcc_hdmi_dev *dev, char onoff)
 {
         unsigned int val;
-                
+
         if(dev != NULL) {
                 // HDMI Power-on
                 val = ddi_reg_read(dev, DDICFG_PWDN);
@@ -629,7 +629,7 @@ static void tcc_ddi_swreset_hdmi(struct tcc_hdmi_dev *dev, char onoff)
                 } else {
                         val |= SWRESET_HDMI;
                 }
-                ddi_reg_write(dev, val, DDICFG_PWDN);   
+                ddi_reg_write(dev, val, DDICFG_PWDN);
         }
 }
 
@@ -640,7 +640,7 @@ static void tcc_ddi_hdmi_ctrl(struct tcc_hdmi_dev *dev, unsigned int index, char
         unsigned int offset = 0x1000;
         if(dev != NULL) {
         	val = ddi_reg_read(dev, DDICFG_HDMICTRL);
-        	
+
          	switch(index) {
                         case HDMICTRL_RESET_HDMI:
                               if(onoff) {
@@ -659,7 +659,7 @@ static void tcc_ddi_hdmi_ctrl(struct tcc_hdmi_dev *dev, unsigned int index, char
                                 }
                                 offset = DDICFG_HDMICTRL;
                                 break;
-        		
+
         		case HDMICTRL_RESET_TMDS:
                                 if(onoff) {
                                         val &= ~HDMICTRL_RESET_TMDS;
@@ -668,7 +668,7 @@ static void tcc_ddi_hdmi_ctrl(struct tcc_hdmi_dev *dev, unsigned int index, char
                                 }
                                 offset = DDICFG_HDMICTRL;
                                 break;
-        		
+
         		case HDMICTRL_HDMI_ENABLE:
                                 if(onoff) {
                                         val |= HDMICTRL_HDMI_ENABLE;
@@ -678,9 +678,9 @@ static void tcc_ddi_hdmi_ctrl(struct tcc_hdmi_dev *dev, unsigned int index, char
                                 offset = DDICFG_HDMICTRL;
                                 break;
         	}
-                
+
                 if(offset < 0x1000) {
-                        ddi_reg_write(dev, val, DDICFG_HDMICTRL);   
+                        ddi_reg_write(dev, val, DDICFG_HDMICTRL);
                 }
         }
 }
@@ -707,7 +707,7 @@ static void hdmi_phy_reset(struct tcc_hdmi_dev *dev)
                 udelay(1);
                 tcc_ddi_swreset_hdmi(dev, 0);
 
-                udelay(100);        // min 25us wait is needed for resetting phy.               
+                udelay(100);        // min 25us wait is needed for resetting phy.
 
                 val = ddi_reg_read(dev, DDICFG_HDMICTRL);
 
@@ -725,7 +725,7 @@ static void hdmi_phy_reset(struct tcc_hdmi_dev *dev)
                 #else
                 val &= ~(3 << 8);
                 #endif /* CONFIG_HDMI_CLK_USE_XIN_24MHZ */
-                
+
                 // This option must be enable at TCC897x
                 // Internal Clock Setting
                 val |= (1 << 11);
@@ -818,7 +818,7 @@ static int hdmi_set_color_space(struct tcc_hdmi_dev *dev, enum ColorSpace space)
         if(dev != NULL) {
                 val_con0 = hdmi_reg_read(dev, HDMI_CON_0);
                 val_avi_byte1 = hdmi_reg_read(dev, HDMI_AVI_BYTE1);
-                
+
                 // clear fields
                 val_con0 &= ~HDMI_YCBCR422_ENABLE;
                 val_avi_byte1 &= ~(AVI_CS_Y422|AVI_CS_Y444);
@@ -840,7 +840,7 @@ static int hdmi_set_color_space(struct tcc_hdmi_dev *dev, enum ColorSpace space)
                                 val_avi_byte1 |= AVI_CS_Y444;
                                 ret = 0;
                                 break;
-                                /*      
+                                /*
                                         iPXWD = 12;
                         		iR2YMD = 3;
                         		iR2Y = 1;
@@ -854,13 +854,13 @@ static int hdmi_set_color_space(struct tcc_hdmi_dev *dev, enum ColorSpace space)
                         		iR2YMD = 0;
                         		iR2Y = 0;
                         		iSWAP = 0;
-                                */      
+                                */
                         default:
                                 break;
                 }
 
                 hdmi_reg_write(dev, val_con0, HDMI_CON_0);
-                hdmi_reg_write(dev, val_avi_byte1, HDMI_AVI_BYTE1);       
+                hdmi_reg_write(dev, val_avi_byte1, HDMI_AVI_BYTE1);
 
                 /*
                 VIOC_DISP_SetPXDW(pDispBase,  iPXWD);
@@ -885,14 +885,14 @@ static int hdmi_set_yuv420_color_space(struct tcc_hdmi_dev *dev)
         if(dev != NULL) {
                 val_con0 = hdmi_reg_read(dev, HDMI_CON_0);
                 val_avi_byte1 = hdmi_reg_read(dev, HDMI_AVI_BYTE1);
-                
+
                 // clear fields
                 val_avi_byte1 &= ~AVI_CS_Y444;
-                
+
                 // set video input interface
                 val_con0 |= HDMI_YCBCR422_ENABLE;
                 val_avi_byte1 |= AVI_CS_Y422;
-                
+
                 hdmi_reg_write(dev, val_con0, HDMI_CON_0);
                 hdmi_reg_write(dev, val_avi_byte1, HDMI_AVI_BYTE1);
         }
@@ -956,27 +956,27 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
                         pr_err("%s device is NULL at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
-                
+
                 phy_depth_index = dev->phy_depth;
 
                 if(freq >= PHY_FREQ_MAX) {
                         pr_err("%s out of range at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
-        
+
                 if(phy_depth_index > 2) {
                         pr_err("%s out of range at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
                 pr_info("%s Freq=%dKHz, Depth=%d\r\n", __func__, hdmi_phy_k_freq[freq][phy_depth_index], phy_depth_index);
-        
+
                 phy_reg_count = (sizeof(hdmi_phy_config[freq][phy_depth_index]) / sizeof(hdmi_phy_config[freq][phy_depth_index][0])) -2;
                 if(phy_reg_count < 0) {
                         pr_err("%s out of range at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
-                
+
                 phy_buffer = (unsigned char *) hdmi_phy_config[freq][phy_depth_index];
 
         	#if (HDMI_DEBUG)
@@ -987,7 +987,7 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
         		{
         			printk("0x%02x ", phy_buffer[phy_loop]);
         		}
-        		
+
         		printk("\n");
         	}
         	#endif
@@ -1015,7 +1015,7 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
         			val = hdmi_reg_read(dev, HDMIDP_PHYREG((phy_loop+1) << 2));
         			printk("0x%02x ", val);
         		}
-        		
+
         		printk("\n");
         	}
         	#endif
@@ -1032,14 +1032,14 @@ static int hdmi_set_phy_pwdn(struct tcc_hdmi_dev *dev, unsigned char enable)
         		// If you set the PHY setting, you must clear Mode_Set_Done.
         		hdmi_reg_write(dev, 0x00, HDMIDP_PHYREG(0x7C));
 
-        		//TX Power down(Reg74) Bit<6:4>,Bit<2:0> : refer LN28LPP_HDMI_v1p4_TX_PHY_DataSheet_REV1.2.pdf 
+        		//TX Power down(Reg74) Bit<6:4>,Bit<2:0> : refer LN28LPP_HDMI_v1p4_TX_PHY_DataSheet_REV1.2.pdf
         		// Bit<6> : PLL PD(PLL & Bias Block Power Down)
         		// Bit<5> : TX_CLKSER_PD (Clock Serializer Power Down)
         		// Bit<4> : TX_CLKDRV_PD (TMDS Clock Driver Power Down)
         		// Bit<2> : TX_DRV_PD (TMDS Data Driver Power Down)
         		// Bit<1> : TX_SER_PD (TMDS Data Serializer Power Down)
         		// Bit<0> : TX_CLK_PD (TMDS Internal Clock Buffer / Divider Power Down)
-        		hdmi_reg_write(dev, 0x36, HDMIDP_PHYREG(0x74));	
+        		hdmi_reg_write(dev, 0x36, HDMIDP_PHYREG(0x74));
 
         		// Set Top:MODE_SET_DONE.
         		//If you apply the PHY Setting, you must set MODE_SET_DONE>
@@ -1285,15 +1285,15 @@ static int hdmi_set_2D_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
                         else // V TOP and V BOT are not same
                         {
                                 // V2 BLANK
-                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2 
+                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2
                                                 + HDMIVideoParams[format].VBlank;
                                 hdmi_reg_write(dev, temp&0xFF, HDMI_V2_BLANK_0 );
                                 hdmi_reg_write(dev, (temp>>8)&0xFF, HDMI_V2_BLANK_1 );
 
                                 // VBLANK_F0
-                                hdmi_reg_write(dev, ((HDMIVideoParams[format].VTotal + HDMIVideoParams[format].VBlank*2 + 1)/2) 
+                                hdmi_reg_write(dev, ((HDMIVideoParams[format].VTotal + HDMIVideoParams[format].VBlank*2 + 1)/2)
                                                                         & 0xFF, HDMI_V_BLANK_F0_0);
-                                hdmi_reg_write(dev, (((HDMIVideoParams[format].VTotal + HDMIVideoParams[format].VBlank*2 + 1)/2)>>8) 
+                                hdmi_reg_write(dev, (((HDMIVideoParams[format].VTotal + HDMIVideoParams[format].VBlank*2 + 1)/2)>>8)
                                                                         & 0xFF, HDMI_V_BLANK_F0_1);
 
                                 // VSYNC_LINE_AFT1
@@ -1332,7 +1332,7 @@ static int hdmi_set_2D_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
                         hdmi_reg_write(dev, (HDMIVideoParams[format].VTotal>>8) & 0xFF, HDMI_V2_BLANK_1 );
                 }
         }
-        
+
         return 0;
 }
 
@@ -1428,7 +1428,7 @@ int hdmi_set_3D_FP_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
                         }
                         else // V TOP and V BOT are not same
                         {
-                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2 
+                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2
                                                 + HDMIVideoParams[format].VBlank;
 
                                 // VACT_SPACE1
@@ -1600,7 +1600,7 @@ int hdmi_set_3D_FA_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
                         }
                         else // V TOP and V BOT are not same
                         {
-                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2 
+                                temp = (HDMIVideoParams[format].VTotal - HDMIVideoParams[format].VBlank*2 - 1)/2
                                         + HDMIVideoParams[format].VBlank;
 
                                 //V BLANK2
@@ -1676,7 +1676,7 @@ int hdmi_set_3D_FA_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
 int hdmi_set_3D_LA_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
 {
         int ret = -1;
-        
+
         // only for progressive
         if ( HDMIVideoParams[format].interlaced )
         {
@@ -1803,7 +1803,7 @@ int hdmi_set_3D_LD_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
         if ( HDMIVideoParams[format].interlaced ) {
                 // interlaced mode
         } else  {
-                // progressive mode        
+                // progressive mode
                 if(dev != NULL) {
                         ret =  hdmi_set_3D_FP_video(dev, format);
                 }
@@ -1924,7 +1924,7 @@ int hdmi_set_3D_LDGFX_video(struct tcc_hdmi_dev *dev, enum VideoFormat format)
 static void hdmi_set_default_value(struct tcc_hdmi_dev *dev)
 {
         unsigned int offset;
-        
+
         if(dev != NULL) {
                 // HBLANK
                 hdmi_reg_write(dev, 0x00, HDMI_H_BLANK_0);
@@ -1944,7 +1944,7 @@ static void hdmi_set_default_value(struct tcc_hdmi_dev *dev)
                 // V_LINE
                 hdmi_reg_write(dev, 0x00, HDMI_V_LINE_0);
                 hdmi_reg_write(dev, 0x00, HDMI_V_LINE_1);
-                
+
                 // set default value(0xff) from HDMI_V_BLANK_F0_0 to HDMI_VACT_SPACE6_1
                 for ( offset = HDMI_V_BLANK_F0_0; offset <= HDMI_VACT_SPACE6_1; offset+=4) {
                         hdmi_reg_write(dev, 0xFF, offset);
@@ -2027,7 +2027,7 @@ static int hdmi_set_video_mode(struct tcc_hdmi_dev *dev, struct HDMIVideoParamet
         		default:
         			return 0;
         	}
-                
+
                 // Set Video Auxilary packet
                 ret = hdmi_set_aux_data(dev, pVideo);
         }
@@ -2077,7 +2077,7 @@ static int hdmi_set_pixel_limit(struct tcc_hdmi_dev *dev, enum PixelLimit limit)
                 } else {
                 	// set pixel repetition
                 	hdmi_reg_write(dev, reg,HDMI_CON_1);
-                        
+
                 	// set avi packet body
                 	hdmi_reg_write(dev, aviQQ,HDMI_AVI_BYTE3);
                 }
@@ -2219,18 +2219,18 @@ static int hdmi_set_hdmimode(struct tcc_hdmi_dev *dev, int mode)
  */
 int hdmi_set_audio_sample_freq(struct tcc_hdmi_dev *dev, enum SamplingFreq freq)
 {
-        
+
         int ret = -1;
 	unsigned int n, reg;
 
         do {
-                if(dev == NULL) 
+                if(dev == NULL)
                         break;
-                
+
         	// check param
         	if ( freq > sizeof(ACR_N_params)/sizeof(unsigned int) || freq < 0 )
         		break;
-                
+
 
         	// set ACR packet
         	// set N value
@@ -2285,7 +2285,7 @@ int hdmi_set_audio_sample_freq(struct tcc_hdmi_dev *dev, enum SamplingFreq freq)
         		default:
         			break;
         	}
-                
+
                 if(ret < 0) {
                         break;
                 }
@@ -2351,7 +2351,7 @@ static int hdmi_set_audio_number_of_channels(struct tcc_hdmi_dev *dev, enum Chan
 {
 	int ret = -1;
         unsigned int reg_asp_con, reg_byte1, reg_byte4;
-        
+
         if(dev != NULL) {
         	reg_asp_con = hdmi_reg_read(dev, HDMI_ASP_CON);
         	// clear field
@@ -2409,7 +2409,7 @@ static int hdmi_set_audio_number_of_channels(struct tcc_hdmi_dev *dev, enum Chan
         		default:
         			break;
         	}
-                if(ret < 0) {       
+                if(ret < 0) {
                         pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_reg_write(dev, reg_byte1, HDMI_AUI_BYTE1);
@@ -2472,7 +2472,7 @@ static int hdmi_set_spd_infoframe(struct tcc_hdmi_dev *dev, struct HDMIVideoForm
         		hdmi_reg_write(dev, 0,HDMI_SPD_DATA6);
         		hdmi_reg_write(dev, 0,HDMI_SPD_DATA7);
         	}
-        	
+
         	hdmi_spd_update_checksum(dev);
         }
 
@@ -2512,7 +2512,7 @@ static void hdmi_enable_bluescreen(struct tcc_hdmi_dev *dev, unsigned char enabl
                 reg = hdmi_reg_read(dev, HDMI_CON_0);
 
                 dprintk(KERN_INFO "%s enable = %d\n", __func__, enable);
-                
+
                 if (enable) {
                         reg |= HDMI_BLUE_SCR_ENABLE;
                 } else {
@@ -2522,14 +2522,14 @@ static void hdmi_enable_bluescreen(struct tcc_hdmi_dev *dev, unsigned char enabl
         }
 }
 
-static void hdmi_start_internal(struct tcc_hdmi_dev *dev) 
+static void hdmi_start_internal(struct tcc_hdmi_dev *dev)
 {
         unsigned int reg, mode;
 
         if(dev != NULL) {
                 if(!dev->hdmi_started) {
                         pr_info("%s \r\n", __func__);
-                        
+
                         // check HDMI mode
                         mode = hdmi_reg_read(dev, HDMI_MODE_SEL) & HDMI_MODE_SEL_HDMI;
                         reg = hdmi_reg_read(dev, HDMI_CON_0);
@@ -2539,7 +2539,7 @@ static void hdmi_start_internal(struct tcc_hdmi_dev *dev)
 
                         if (mode) {
                                 // HDMI
-                                
+
                                 // enable AVI packet: mandatory
                                 // update avi packet checksum
                                 hdmi_avi_update_checksum(dev);
@@ -2603,8 +2603,8 @@ static void hdmi_start_internal(struct tcc_hdmi_dev *dev)
                         hdmi_enable_bluescreen(dev, 0);
 
                         reg = hdmi_reg_read(dev, HDMI_AVI_BYTE4);
-                        pr_info("\r\n VIDEO-%s VIC[%d] %s - %dBIT\r\n", (mode==0)?"DVI":"HDMI", reg, 
-                                (dev->video_params.colorSpace==0)?"RGB":(dev->video_params.colorSpace==1)?"YCbCr444":(dev->video_params.colorSpace==2)?"YCbCr422":"UNKNOWN", 
+                        pr_info("\r\n VIDEO-%s VIC[%d] %s - %dBIT\r\n", (mode==0)?"DVI":"HDMI", reg,
+                                (dev->video_params.colorSpace==0)?"RGB":(dev->video_params.colorSpace==1)?"YCbCr444":(dev->video_params.colorSpace==2)?"YCbCr422":"UNKNOWN",
                                 (dev->video_params.colorDepth==HDMI_CD_36)?36:(dev->video_params.colorDepth==HDMI_CD_30)?30:24);
                 }
                 dev->hdmi_started = 1;
@@ -2649,7 +2649,7 @@ static int hdmi_fill_one_subpacket(struct tcc_hdmi_dev *dev, unsigned char enabl
 static void tcc_hdmi_power_on(struct tcc_hdmi_dev *dev)
 {
         unsigned int  val;
-        
+
         if(dev != NULL) {
                 if(++dev->power_enable_count == 1) {
                         if(!dev->suspend) {
@@ -2672,7 +2672,7 @@ static void tcc_hdmi_power_on(struct tcc_hdmi_dev *dev)
 
                                 if(dev->pclk != NULL)
                                         clk_set_rate(dev->pclk, HDMI_LINK_CLK_FREQ);
-                                
+
                                 if(dev->ipclk != NULL) {
                                         clk_prepare_enable(dev->ipclk);
                                         clk_set_rate(dev->ipclk, HDMI_PCLK_FREQ);
@@ -2710,7 +2710,7 @@ static void tcc_hdmi_power_off(struct tcc_hdmi_dev *dev)
                         dev->power_enable_count = 0;
                         if(!dev->suspend) {
                                 hdmi_stop_internal(dev);
-                                
+
                                 dprintk(KERN_INFO "%s\n", __FUNCTION__);
                                 // HDMI PHY Reset
                                 tcc_ddi_hdmi_ctrl(dev, HDMICTRL_RESET_HDMI, 0);
@@ -2741,7 +2741,7 @@ static void tcc_hdmi_power_off(struct tcc_hdmi_dev *dev)
                                 // enable HDMI PHY Power-off
                                 if(dev->ipclk != NULL)
                                         clk_disable_unprepare(dev->ipclk); // power down
-                                
+
                                 // gpio power on
                                 udelay(100);
 
@@ -2749,7 +2749,7 @@ static void tcc_hdmi_power_off(struct tcc_hdmi_dev *dev)
                                         clk_disable_unprepare(dev->pclk);
                                 if(dev->hclk != NULL)
                                         clk_disable_unprepare(dev->hclk);
-                                
+
                                 #if defined(CONFIG_REGULATOR)
                                 /*
                                 if(dev->vdd_hdmi != NULL) {
@@ -2771,8 +2771,8 @@ static int hdmi_suspend(struct device *dev)
 {
         int suspend_power_enable_count;
         struct tcc_hdmi_dev *hdmi_tx_dev = (struct tcc_hdmi_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-                
-        if(hdmi_tx_dev != NULL) {    
+
+        if(hdmi_tx_dev != NULL) {
                 if(hdmi_tx_dev->runtime_suspend) {
                         pr_info("hdmi runtime suspend\r\n");
                 } else {
@@ -2786,10 +2786,10 @@ static int hdmi_suspend(struct device *dev)
                                 tcc_hdmi_power_off(hdmi_tx_dev);
                                 hdmi_tx_dev->power_enable_count = suspend_power_enable_count;
                         }
-                        hdmi_tx_dev->suspend = 1 ; 
+                        hdmi_tx_dev->suspend = 1 ;
                         hdmi_tx_dev->os_suspend = 1;
-                }                
-        }        
+                }
+        }
         return 0;
 }
 
@@ -2797,15 +2797,15 @@ static int hdmi_resume(struct device *dev)
 {
         int suspend_power_enable_count;
         struct tcc_hdmi_dev *hdmi_tx_dev = (struct tcc_hdmi_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-                
-        if(hdmi_tx_dev != NULL) {    
+
+        if(hdmi_tx_dev != NULL) {
                 if(hdmi_tx_dev->runtime_suspend) {
                         pr_info("hdmi runtime suspend\r\n");
                 } else {
                         pr_info("hdmi suspend\r\n");
                 }
                 if(hdmi_tx_dev->suspend  && !hdmi_tx_dev->runtime_suspend) {
-                        hdmi_tx_dev->suspend = 0; 
+                        hdmi_tx_dev->suspend = 0;
                         if(hdmi_tx_dev->power_enable_count > 0) {
                                 suspend_power_enable_count = hdmi_tx_dev->power_enable_count;
                                 hdmi_tx_dev->power_enable_count = 0;
@@ -2813,7 +2813,7 @@ static int hdmi_resume(struct device *dev)
                                 hdmi_tx_dev->power_enable_count = suspend_power_enable_count;
                         }
                 }
-        }        
+        }
         return 0;
 }
 
@@ -2859,7 +2859,7 @@ static int hdmi_parse_dt(struct tcc_hdmi_dev *dev)
                         break;
                 }
                 np = dev->pdev->of_node;
-                
+
                 /* Register Mapping */
                 dev->hdmi_ctrl_io = of_iomap(np, 0);
                 if(dev->hdmi_ctrl_io == NULL){
@@ -2879,14 +2879,14 @@ static int hdmi_parse_dt(struct tcc_hdmi_dev *dev)
                 }
 
                 //pr_info("%s %p %p %p\r\n", __func__, dev->hdmi_ctrl_io, dev->hdmi_core_io, dev->hdmi_phy_io);
-                
+
                 ddibus_np = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
                 if(ddibus_np == NULL) {
                         pr_err("%s:Unable to map ddibus resource\n", __func__);
                         break;
                 }
-                
-                // Map DDI_Bus interface                
+
+                // Map DDI_Bus interface
                 dev->ddibus_io = of_iomap(ddibus_np, 0);
                 if(dev->ddibus_io == NULL){
                         pr_err("%s:Unable to map ddibus resource\n", __func__);
@@ -2942,7 +2942,7 @@ static int hdmi_blank(struct tcc_hdmi_dev *dev, int blank_mode)
         if(dev != NULL) {
                 pdev = dev->pdev;
         }
-        
+
         if(pdev != NULL) {
                 #ifdef CONFIG_PM
                 switch(blank_mode) {
@@ -2953,8 +2953,8 @@ static int hdmi_blank(struct tcc_hdmi_dev *dev, int blank_mode)
                                 break;
                         case FB_BLANK_UNBLANK:
                                 if(pdev->power.usage_count.counter == 1) {
-                                /* 
-                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that 
+                                /*
+                                 * usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK ) means that
                                  * this driver is stable state when booting. don't call runtime_suspend or resume state  */
                                 } else {
                 	                pm_runtime_get_sync(dev->pdev);
@@ -2982,8 +2982,8 @@ static int hdmi_open(struct inode *inode, struct file *file)
 
 
         if(dev != NULL) {
-                file->private_data = dev;  
-        
+                file->private_data = dev;
+
                 if(dev != NULL) {
                         dev->open_cnt++;
                         dprintk("%s (%d)\n", __func__, dev->open_cnt);
@@ -3004,7 +3004,7 @@ static int hdmi_release(struct inode *inode, struct file *file)
                         dprintk("%s (%d)\n", __func__, dev->open_cnt);
                 }
                 ret = 0;
-        }        
+        }
         return ret;
 }
 
@@ -3028,7 +3028,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         long ret = -EINVAL;
         struct tcc_hdmi_dev *dev = (struct tcc_hdmi_dev *)(file!=NULL)?file->private_data:NULL;
 
-        if(dev != NULL) {                      
+        if(dev != NULL) {
                 switch (cmd) {
                         case HDMI_IOC_GET_PWR_STATUS:
                                 {
@@ -3040,10 +3040,10 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                        
+
                         case HDMI_IOC_SET_PWR_CONTROL:
                                 {
-                                        
+
                                         unsigned int cmd;
                                         if(copy_from_user(&cmd, (void __user *)arg, sizeof(unsigned int))) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -3062,10 +3062,10 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_PWR_V5_CONTROL:
                                 {
-                                        
+
                                         unsigned int cmd;
                                         if(copy_from_user(&cmd, (void __user *)arg, sizeof(unsigned int))) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
@@ -3076,7 +3076,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_SUSPEND_STATUS:
                                 {
                                         if (dev->os_suspend) {
@@ -3114,7 +3114,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 }
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
-                                        }                                        
+                                        }
                                         dev->video_params.colorSpace = space;
                                         ret = 0;
                                 }
@@ -3138,7 +3138,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 }
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
-                                        }  
+                                        }
                                         dev->video_params.colorDepth = depth;
                                         ret = 0;
                                 }
@@ -3162,7 +3162,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 }
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
-                                        }  
+                                        }
                                         dev->video_params.mode = mode;
                                         ret = 0;
                                 }
@@ -3186,10 +3186,10 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 }
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
-                                        }  
+                                        }
                                 }
                                 break;
-                                        
+
                         case HDMI_IOC_SET_VIDEOFORMAT_INFO:
                                 {
                                         enum VideoFormat video_format;
@@ -3213,7 +3213,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_HDMISTART_STATUS:
                                 {
                                         if(copy_to_user((void __user *)arg, &dev->hdmi_started, sizeof(unsigned int))) {
@@ -3243,7 +3243,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_PIXEL_LIMIT:
                                 {
                                         int val;
@@ -3263,12 +3263,12 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                 }
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
-                                        }  
+                                        }
                                         dev->color_range = val;
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_PIXEL_LIMIT:
                                 {
                                         io_debug("HDMI: ioctl(HDMI_IOC_GET_PIXEL_LIMIT)\n");
@@ -3304,7 +3304,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret  = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_COLORIMETRY:
                                 {
                                         int val;
@@ -3330,7 +3330,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_AVMUTE:
                                 {
                                         unsigned char val;
@@ -3360,11 +3360,11 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                                         }
-                                        
+
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_AUDIOPACKETTYPE:
                                 {
                                         int val;
@@ -3390,7 +3390,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_AUDIOPACKETTYPE:
                                 {
                                         io_debug("HDMI: ioctl(HDMI_IOC_GET_AUDIOPACKETTYPE)\n");
@@ -3402,7 +3402,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_AUDIOSAMPLEFREQ:
                                 {
                                         int val;
@@ -3428,7 +3428,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_AUDIOSAMPLEFREQ:
                                 {
                                         io_debug("HDMI: ioctl(HDMI_IOC_GET_AUDIOSAMPLEFREQ)\n");
@@ -3465,7 +3465,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_AUDIOCHANNEL:
                                 {
                                         io_debug("HDMI: ioctl(HDMI_IOC_GET_AUDIOCHANNEL)\n");
@@ -3498,7 +3498,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_SPEAKER_ALLOCATION:
                                 {
                                         unsigned int val;
@@ -3514,7 +3514,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_GET_PHYREADY:
                                 {
                                         unsigned char phy_status = hdmi_reg_read(dev, HDMI_SS_PHY_STATUS_0);
@@ -3560,7 +3560,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         if(!dev->suspend) {
                                                 if(dev->power_status) {
                                                         hdmi_start_internal(dev);
-                                                        #if defined(CONFIG_PLATFORM_AVN)       
+                                                        #if defined(CONFIG_PLATFORM_AVN)
                                                         set_bit(HDMI_SWITCH_STATUS_ON, &dev->status);
                                                         schedule_work(&dev->hdmi_output_event_work);
                                                         #endif
@@ -3570,11 +3570,11 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         } else {
                                                 pr_err("%s hdmi was in suspend at line(%d)\r\n", __func__, __LINE__);
                                         }
-                                        
+
                                         ret = 0;
                                 }
                                 break;
-                        
+
                         case HDMI_IOC_STOP_HDMI:
                                 {
                                         io_debug("HDMI: ioctl(HDMI_IOC_STOP_HDMI)\n");
@@ -3595,7 +3595,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_SET_AUDIO_ENABLE:
                                 {
                                         unsigned char enable;
@@ -3613,7 +3613,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                                         mode = hdmi_reg_read(dev, HDMI_MODE_SEL) & HDMI_MODE_SEL_HDMI;
 
                                                         reg = hdmi_reg_read(dev, HDMI_CON_0);
-                                                        
+
                                                         // enable audio output
                                                         if ( enable && mode ) {
                                                                 hdmi_aui_update_checksum(dev);
@@ -3639,7 +3639,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_RESET_AUISAMPLEFREQ:
                                 {
                                         unsigned int reg;
@@ -3657,7 +3657,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_VIDEO_FORMAT_CONTROL:
                                 {
                                         struct HDMIVideoFormatCtrl video_format_ctrl;
@@ -3706,7 +3706,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_DEBUG_HDMI_CORE:
                                 {
                                         ret = 0;
@@ -3718,7 +3718,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         ret = 0;
                                 }
                                 break;
-                                
+
                         case HDMI_IOC_FILL_ONE_SUBPACKET:
                                 {
                                         unsigned char enable;
@@ -3787,7 +3787,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         if(copy_from_user(&dbg, (void __user *)arg, sizeof(struct hdmi_dbg))) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
-                                        }          
+                                        }
                                         if(!dev->suspend) {
                                                 if(dev->power_status) {
                                                         //hdmi_reg_write(dev, dbg.value, regs_core + dbg.offset);
@@ -3807,7 +3807,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         if(copy_from_user(&cmd, (void __user *)arg, sizeof(unsigned int))) {
                                                 pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
-                                        } 
+                                        }
                                         if(!dev->suspend) {
                                                 if(dev->power_status) {
                                                         ret = hdmi_blank(dev, cmd);
@@ -3819,7 +3819,7 @@ static long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         }
                                 }
                                 break;
-                                
+
                         default:
                                 break;
                 }
@@ -3840,13 +3840,13 @@ static const struct file_operations hdmi_fops =
 };
 
 static int hdmi_remove(struct platform_device *pdev)
-{    
+{
 
         struct tcc_hdmi_dev *dev = NULL;
-                        
+
         if(pdev != NULL) {
                 dev = (struct tcc_hdmi_dev *)dev_get_drvdata(pdev->dev.parent);
-        
+
                 if(dev != NULL) {
                         /* Deinit Interrupt */
                         if(dev->misc != NULL) {
@@ -3859,9 +3859,9 @@ static int hdmi_remove(struct platform_device *pdev)
                 #ifdef CONFIG_PM
                 pm_runtime_disable(dev->pdev);
                 #endif
-        }        
+        }
         return 0;
-        
+
 }
 
 static int hdmi_probe(struct platform_device *pdev)
@@ -3873,7 +3873,7 @@ static int hdmi_probe(struct platform_device *pdev)
         pr_info("****************************************\n");
         pr_info("%s:HDMI driver %s\n", __func__, SRC_VERSION);
         pr_info("****************************************\n");
-        
+
         dev = devm_kzalloc(&pdev->dev, sizeof(struct tcc_hdmi_dev), GFP_KERNEL);
         do {
                 if (dev == NULL) {
@@ -3890,7 +3890,7 @@ static int hdmi_probe(struct platform_device *pdev)
         	dev->pclk = of_clk_get(pdev->dev.of_node, 0);
         	dev->hclk = of_clk_get(pdev->dev.of_node, 1);
                 dev->ipclk = of_clk_get(pdev->dev.of_node, 2);
-                
+
         	if (IS_ERR_OR_NULL(dev->pclk)) {
         		pr_err("HDMI: failed to get hdmi pclock\n");
         		dev->pclk = NULL;
@@ -3955,9 +3955,9 @@ static int hdmi_probe(struct platform_device *pdev)
                 #endif
 
                 #ifdef CONFIG_PM
-                pm_runtime_set_active(dev->pdev);	
-                pm_runtime_enable(dev->pdev);  
-                pm_runtime_get_noresume(dev->pdev);  //increase usage_count 
+                pm_runtime_set_active(dev->pdev);
+                pm_runtime_enable(dev->pdev);
+                pm_runtime_get_noresume(dev->pdev);  //increase usage_count
                 #endif
 
                 api_dev = dev;
@@ -3991,7 +3991,7 @@ static struct platform_driver tcc_hdmi = {
 };
 
 static __init int hdmi_init(void)
-{	
+{
 	return platform_driver_register(&tcc_hdmi);
 }
 
@@ -4026,7 +4026,7 @@ int hdmi_get_VBlank(void)
 EXPORT_SYMBOL(hdmi_get_VBlank);
 
 void hdmi_start(void)
-{        
+{
         if(api_dev != NULL) {
                 if(!api_dev->suspend) {
                         if(api_dev->power_status) {

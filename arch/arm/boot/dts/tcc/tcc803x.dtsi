@@ -7,6 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/telechips,tcc803x-clks.h>
+#include <dt-bindings/reset/telechips,tcc803x-reset.h>
 #include <dt-bindings/display/tcc803x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -206,6 +207,24 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
+
+#if defined(CONFIG_TCC_CORE_RESET) && !defined(CONFIG_TCC803X_CA7S)
+		u_boot {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "u-boot";
+			alloc-ranges = <0x30000000 0x200000>;
+			size = <0x200000>; /* CONFIG_TCC_U_BOOT_LEN in U-Boot */
+			no-map;
+		};
+
+		save_dram_size {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "save_dram_size";
+			alloc-ranges = <0x30f80000 0x1000>;
+			size = <0x1000>;
+			no-map;
+		};
+#endif
 
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
@@ -677,6 +696,31 @@
 			0x16684000 0x000010  /* uart config*/
 			0x14200000 0x000700>;  /* gpio*/
 		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
+	};
+
+	pmu_rst: reset-controller@140000b4 {
+		compatible = "telechips,reset";
+		#reset-cells = <1>;
+	};
+
+	vpubus_rst: reset-controller@15100004 {
+		compatible = "telechips,vpubus-reset";
+		#reset-cells = <1>;
+	};
+
+	ddibus_rst: reset-controller@12380004 {
+		compatible = "telechips,ddibus-reset";
+		#reset-cells = <1>;
+	};
+
+	iobus_rst: reset-controller@1605100c {
+		compatible = "telechips,iobus-reset";
+		#reset-cells = <1>;
+	};
+
+	hsiobus_rst: reset-controller@111a0004 {
+		compatible = "telechips,hsiobus-reset";
+		#reset-cells = <1>;
 	};
 
 	clocks {
@@ -1974,6 +2018,7 @@
 		clocks = <&clk_peri PERI_PCIE_AUX>, <&clk_peri PERI_PCIE_APB>, <&clk_peri PERI_PCIE_PCS>, <&clk_peri PERI_PCIE_REF_EXT>,
 			 <&clk_fbus FBUS_HSIO>, <&clk_isoip_top ISOIP_TOP_PCIE>;
 		clock-names = "pcie_aux", "pcie_apb", "pcie_pcs" ,"pcie_ref_ext", "fbus_hsio", "pcie_phy";
+		resets = <&pmu_rst RESET_PCIE>;
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
@@ -2467,6 +2512,7 @@
 		 interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20H &clk_isoip_top ISOIP_TOP_U20H>;
+		resets = <&hsiobus_rst HSIOBUS_USB20H>;
 		 status = "disabled";
 	};
 
@@ -2494,6 +2540,7 @@
 		 reg = <0x11DA0100 0x30>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
+		resets = <&hsiobus_rst HSIOBUS_USB20DH>;
 		 status = "disabled";
 	};
 
@@ -2503,6 +2550,7 @@
 		 interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
 		 clocks = <&clk_hsio HSIOBUS_USB20DH &clk_isoip_top ISOIP_TOP_U20DH>;
+		resets = <&hsiobus_rst HSIOBUS_USB20DH>;
 		 mux_port;
 		 status = "disabled";
 	};
@@ -2519,6 +2567,15 @@
 		status= "disabled";
 	};
 
+	tcc_cipher: tcc_cipher@11DC0000 {
+		compatible = "telechips,tcc-cipher";
+		status = "okay";
+	};
+
+	tcc_hsm@0 {
+		compatible = "telechips,tcc-hsm";
+		status = "okay";
+	};
 /*
 	hsic: hsic@11c00000 {
 	    compatible = "telechips,tcc-hsic";

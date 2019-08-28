@@ -268,7 +268,7 @@ static supported_dtd_t _dtd[] = {
                     |  |  |  mPixelRepetitionInput    mHBorder |   |     mHSyncPolarity  |  mVSyncOffset
                     |  |  |  |  |       |   |     mHBlanking   |   |     |   mVActive |  |  |    mVSyncPulseWidth
                                                                                                               */
-        {60000 , {C01, 0, 0, 0,  88200, 0, 1920,   64, 0, 16,   28,   8, 1,  720, 21, 0, 9,  9,  3, 1}},
+        {60000 , {C01, 0, 0, 0,  88200, 0, 1920,   64, 0, 16,   28,   8, 0,  720, 21, 0, 9, 10,  2, 0}},
 
         {0     , {  0, 0, 0, 0,      0, 0,    0,    0, 0,  0,    0,   0, 0,    0,  0, 0, 0,  0,  0, 0}},
 };
@@ -301,12 +301,10 @@ int hdmi_dtd_fill(dtd_t * dtd, u32 code, u32 refreshRate)
 {
         dtd_t * p_dtd = NULL;
 
-	LOG_TRACE();
-
 
 	p_dtd = get_dtd(code, refreshRate);
 	if(p_dtd == NULL){
-		//LOGGER(SNPS_ERROR, "VIC code [%d] with refresh rate [%dHz] is not supported", code, refreshRate);
+		pr_err("VIC code [%d] with refresh rate [%dHz] is not supported", code, refreshRate);
 		return -1;
 	}
 	p_dtd->mLimitedToYcc420 = 0;

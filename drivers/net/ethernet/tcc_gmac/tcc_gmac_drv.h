@@ -42,7 +42,7 @@
 
 #if defined (CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
 	#include <mach/tca_gmac.h>
-#elif defined (CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined (CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	#include "tca_gmac.h"
 #else
 #endif

@@ -68,7 +68,7 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd);
 
 static int (*gs_fpTccJpuDec) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2);
 
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 
 //#define DEBUG_TRACE_TA
 #ifdef DEBUG_TRACE_TA
@@ -271,7 +271,7 @@ int tcc_jpu_dec_internal(int Op, codec_handle_t* pHandle, void* pParam1, void* p
 
     return ret;
 }
-#endif //#if defined(CONFIG_ARCH_TCC899X)
+#endif //#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 
 
 
@@ -467,7 +467,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
 
                     gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec;
                     dprintk("@@ Dec :: loading JPU ... \n");
-                #if defined(CONFIG_ARCH_TCC899X)
+                #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
                     if (arg->gsJpuDecInit.m_uiDecOptFlags & (1<<30)) {
                         printk("@@ Dec :: USE OPTEE_JPU \n");
                         gs_fpTccJpuDec = (int (*) (int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2))tcc_jpu_dec_internal;

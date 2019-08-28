@@ -8,7 +8,7 @@ CTAG_E="\x1b[0m"
 WORK_ROOT=`pwd`/..
 
 sfile=../kernel/.config
-str_a="CONFIG_ARCH_TCC8"
+str_a="CONFIG_ARCH_TCC[89]"
 str_b="=y"
 
 ARCH=$(cat $sfile | grep "$str_a" | grep "$str_b")

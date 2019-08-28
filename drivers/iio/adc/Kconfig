@@ -691,7 +691,7 @@ config SUN4I_GPADC
 
 config TCC_ADC
 	tristate "Telechips ADC driver"
-	default y
+	default n
 	help
 	  Say yes here to have support for the TELECHIPS ADC.
 

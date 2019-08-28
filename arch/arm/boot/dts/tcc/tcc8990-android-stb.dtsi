@@ -266,8 +266,6 @@
 	pinctrl-1 = <&tsrx1_active>;
 	// pinctrl-1 = <&tsrx1_active_parallel>;
 
-	clocks = <&clk_peri PERI_TSRX0>;
-	clock-names = "tsrx0";
 	status = "okay";
 };
 
@@ -277,8 +275,6 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&tsrx2_idle>;
 	pinctrl-1 = <&tsrx2_active>;
-	clocks = <&clk_peri PERI_TSRX1>;
-	clock-names = "tsrx1";
 };
 
 &tcc_dxb_ctrl {
@@ -587,7 +583,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai1_spdif_tx>;
 	pinctrl-1 = <&m0dai1_spdif_tx_idle>;	
-	tx-only;
 	status = "okay";
 };
 
@@ -595,7 +590,6 @@
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai1_spdif_tx>;
 	pinctrl-1 = <&m1dai1_spdif_tx_idle>;
-	tx-only;
 	status = "disable";
 };
 
@@ -642,6 +636,7 @@
 
 		pcm = <&adma0>;
 		dai = <&spdif0>;
+		playback-only;
 	};
 };
 

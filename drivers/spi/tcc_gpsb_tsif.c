@@ -1314,6 +1314,7 @@ static struct of_device_id tcc_gpsb_tsif_of_match[] = {
 	{ .compatible = "telechips,tcc803x-tsif" },
 	{ .compatible = "telechips,tcc897x-tsif" },
 	{ .compatible = "telechips,tcc899x-tsif" },
+	{ .compatible = "telechips,tcc901x-tsif" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, tcc_gpsb_tsif_of_match);

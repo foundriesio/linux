@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC901x Android platform
+ *
+ * Copyright (C) 2019 Telechips Inc.
+ */
+#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+&video_viqe {
+	tcc_video_viqe_external {
+		telechips,rdma,60 = <&vioc_rdma VIOC_RDMA02>;
+		viqe_rdma_num_60 = <VIOC_VIQE_RDMA_02>;
+		sc_rdma_num_60 = <VIOC_SC_RDMA_02>;
+	};
+
+	tcc_video_viqe_external_sub {
+		telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+		viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+		sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+	};
+};
+
+&vout_drv0 {
+	rdma = <&vioc_rdma VIOC_RDMA02>;
+	subplane_rdma = <&vioc_rdma VIOC_RDMA03>;
+};
+#endif
+
+&firmware_android {
+	compatible = "android,firmware";
+	fstab {
+		compatible = "android,fstab";
+		vendor {
+			compatible = "android,vendor";
+			dev = "/dev/block/platform/16450000.sdhc/by-name/vendor";
+			type = "ext4";
+			mnt_flags = "ro,barrier=1";
+			fsmgr_flags = "wait";
+		};
+	};
+};

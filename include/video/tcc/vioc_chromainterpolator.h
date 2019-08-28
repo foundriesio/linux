@@ -26,3 +26,6 @@
 #include "tcc899x/vioc_chromainterpolator.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_chromainterpolator.h"
+#endif

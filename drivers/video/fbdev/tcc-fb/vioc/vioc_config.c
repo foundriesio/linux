@@ -169,7 +169,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 	switch (get_vioc_type(component)) {
 	case get_vioc_type(VIOC_RDMA):
 		switch (get_vioc_index(component)) {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC901X)
 		case 2:
 			reg = (pIREQ_reg + CFG_PATH_RDMA02_OFFSET);
 			break;
@@ -182,7 +182,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 		case 7:
 			reg = (pIREQ_reg + CFG_PATH_RDMA07_OFFSET);
 			break;
-	#if defined(CONFIG_ARCH_TCC899X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		case 10:
 			reg = (pIREQ_reg + CFG_PATH_RDMA10_OFFSET);
 			break;
@@ -230,7 +230,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 			reg = (pIREQ_reg + CFG_PATH_SC4_OFFSET);
 			break;
 	#endif
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		case 5:
 			reg = (pIREQ_reg + CFG_PATH_SC5_OFFSET);
 			break;
@@ -277,7 +277,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 #ifdef CONFIG_VIOC_MAP_DECOMP
 	case get_vioc_type(VIOC_MC):
 		switch (get_vioc_index(component)) {
-		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC898X)
+		#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC901X)
 		case 0:
 			reg = (pIREQ_reg + CFG_PATH_MC0_OFFSET);
 			break;
@@ -1424,7 +1424,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 	case get_vioc_type(VIOC_AFBCDEC):
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		value = (__raw_readl(reg + PWR_BLK_SWR4_OFFSET) &
 			 ~(PWR_BLK_SWR4_AD_MASK));
 		value |= (mode << (PWR_BLK_SWR4_AD_SHIFT +
@@ -1657,14 +1657,14 @@ void VIOC_CONFIG_DV_Metadata_Enable(unsigned int addr, unsigned int endian)
 
 	value = (__raw_readl(reg + DV_MD_DMA_CTRL_OFFSET)
 				& ~(DV_MD_DMA_CTRL_ENDIAN_MASK
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 						| DV_MD_DMA_CTRL_UPD_MASK
 #endif
 						| DV_MD_DMA_CTRL_EN_MASK));
 
 	value |= ((endian & 0x1) << DV_MD_DMA_CTRL_ENDIAN_SHIFT);
 
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	value |= (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT);
 #endif
 
@@ -1679,12 +1679,12 @@ void VIOC_CONFIG_DV_Metadata_Disable(void)
 
 	value = (__raw_readl(reg + DV_MD_DMA_CTRL_OFFSET) &
 		 ~(DV_MD_DMA_CTRL_EN_MASK
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 			|  DV_MD_DMA_CTRL_UPD_MASK
 #endif
 		));
 
-#ifdef CONFIG_ARCH_TCC899X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	value |= ((0x0 << DV_MD_DMA_CTRL_EN_SHIFT) | (0x1 << DV_MD_DMA_CTRL_UPD_SHIFT));
 #else
 	value |= (0x0 << DV_MD_DMA_CTRL_EN_SHIFT);
@@ -2000,7 +2000,7 @@ int VIOC_CONFIG_DMAPath_Support(void)
 	}
 #endif
 
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	return 1;
 #else // TCC897X, TCC802X, TCC570X, TCC803X
 	return 0;

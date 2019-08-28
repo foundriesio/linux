@@ -198,7 +198,7 @@ err:
 void tcc_ckc_set_ops(struct tcc_ckc_ops *ops)
 {
 #if !defined(CONFIG_TCC803X_CA7S)
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	ckc_ops = NULL;
 	#else
 	ckc_ops = ops;
@@ -236,6 +236,7 @@ static int tcc_clkctrl_enable(struct clk_hw *hw)
 	return 0;
 }
 
+#ifndef IGNORE_CLK_DISABLE
 static void tcc_clkctrl_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
@@ -253,6 +254,7 @@ static void tcc_clkctrl_disable(struct clk_hw *hw)
 		arm_smccc_smc(SIP_CLK_DISABLE_CLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0, &res);
 	}
 }
+#endif
 
 static unsigned long tcc_clkctrl_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
@@ -445,6 +447,7 @@ static int tcc_isoip_top_enable(struct clk_hw *hw)
 	return 0;
 }
 
+#ifndef IGNORE_CLK_DISABLE
 static void tcc_isoip_top_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
@@ -458,6 +461,7 @@ static void tcc_isoip_top_disable(struct clk_hw *hw)
 		arm_smccc_smc(SIP_CLK_DISABLE_ISOTOP, tcc->id, 0, 0, 0, 0, 0, 0, &res);
 	}
 }
+#endif
 
 static int tcc_isoip_top_is_enabled(struct clk_hw *hw)
 {
@@ -506,6 +510,7 @@ static int tcc_isoip_ddi_enable(struct clk_hw *hw)
 	return 0;
 }
 
+#ifndef IGNORE_CLK_DISABLE
 static void tcc_isoip_ddi_disable(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
@@ -519,6 +524,7 @@ static void tcc_isoip_ddi_disable(struct clk_hw *hw)
 		arm_smccc_smc(SIP_CLK_DISABLE_ISODDI, tcc->id, 0, 0, 0, 0, 0, 0, &res);
 	}
 }
+#endif
 
 static int tcc_isoip_ddi_is_enabled(struct clk_hw *hw)
 {
@@ -602,27 +608,10 @@ static int tcc_ddibus_is_enabled(struct clk_hw *hw)
 	return 0;
 }
 
-#if 0
-static void tcc_ddibus_reset(struct clk_hw *hw, unsigned reset)
-{
-	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
-
-	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_ddibus_swreset)
-			ckc_ops->ckc_ddibus_swreset(tcc->id, (reset)?true:false);
-	}
-	else {
-		arm_smccc_smc(SIP_CLK_RESET_DDIBUS, tcc->id, reset, 0, 0, 0, 0, 0, &res);
-	}
-}
-#endif
-
 static struct clk_ops tcc_ddibus_ops = {
 	.enable		= tcc_ddibus_enable,
 	.disable	= tcc_ddibus_disable,
 	.is_enabled	= tcc_ddibus_is_enabled,
-	//.reset		= tcc_ddibus_reset,
 	.debug_init	= tcc_clk_debug_init,
 };
 
@@ -683,27 +672,10 @@ static int tcc_iobus_is_enabled(struct clk_hw *hw)
 	return 0;
 }
 
-#if 0
-static void tcc_iobus_reset(struct clk_hw *hw, unsigned reset)
-{
-	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
-
-	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_iobus_swreset)
-			ckc_ops->ckc_iobus_swreset(tcc->id, (reset)?true:false);
-	}
-	else {
-		arm_smccc_smc(SIP_CLK_RESET_IOBUS, tcc->id, reset, 0, 0, 0, 0, 0, &res);
-	}
-}
-#endif
-
 static struct clk_ops tcc_iobus_ops = {
 	.enable		= tcc_iobus_enable,
 	.disable	= tcc_iobus_disable,
 	.is_enabled	= tcc_iobus_is_enabled,
-	//.reset		= tcc_iobus_reset,
 	.debug_init	= tcc_clk_debug_init,
 };
 
@@ -762,20 +734,6 @@ static int tcc_vpubus_is_enabled(struct clk_hw *hw)
 	}
 
 	return 0;
-}
-
-static void tcc_vpubus_reset(struct clk_hw *hw, unsigned reset)
-{
-	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
-
-	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_vpubus_swreset)
-			ckc_ops->ckc_vpubus_swreset(tcc->id, (reset)?true:false);
-	}
-	else {
-		arm_smccc_smc(SIP_CLK_RESET_VPUBUS, tcc->id, reset, 0, 0, 0, 0, 0, &res);
-	}
 }
 
 static struct clk_ops tcc_vpubus_ops = {
@@ -843,25 +801,10 @@ static int tcc_hsiobus_is_enabled(struct clk_hw *hw)
 	return 0;
 }
 
-static void tcc_hsiobus_reset(struct clk_hw *hw, unsigned reset)
-{
-	struct arm_smccc_res res;
-	struct tcc_clk *tcc = to_tcc_clk(hw);
-
-	if (ckc_ops != NULL) {
-		if (ckc_ops->ckc_hsiobus_swreset)
-			ckc_ops->ckc_hsiobus_swreset(tcc->id, (reset)?true:false);
-	}
-	else {
-		arm_smccc_smc(SIP_CLK_RESET_HSIOBUS, tcc->id, reset, 0, 0, 0, 0, 0, &res);
-	}
-}
-
 static struct clk_ops tcc_hsiobus_ops = {
 	.enable		= tcc_hsiobus_enable,
 	.disable	= tcc_hsiobus_disable,
 	.is_enabled	= tcc_hsiobus_is_enabled,
-	//.reset		= tcc_hsiobus_reset,
 	.debug_init	= tcc_clk_debug_init,
 };
 

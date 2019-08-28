@@ -1,5 +1,6 @@
 /*
- * linux/include/video/tcc/viqe_madi.h
+ * viqe_madi.h
+ *
  * Author:  <linux@telechips.com>
  * Created: Jan 20, 2018
  * Description: TCC MADI h/w block
@@ -683,7 +684,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	}
 
 	if (g_height >= 1080) {
-		printk("madi: src(%dx%d), RES_1080i\n", g_width, g_height);
+		printk("\e[33m madi: src(%dx%d), RES_1080i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_1080i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -691,7 +692,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_1080i[i].offset);
 		}
 	} else if (g_height >= 576) {
-		printk("madi: src(%dx%d), RES_576i\n", g_width, g_height);
+		printk("\e[33m madi: src(%dx%d), RES_576i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_576i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -699,7 +700,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_576i[i].offset);
 		}
 	} else if (g_height >= 480) {
-		printk("madi: src(%dx%d), RES_480i\n", g_width, g_height);
+		printk("\e[33m madi: src(%dx%d), RES_480i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_480i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -707,11 +708,11 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_480i[i].offset);
 		}
 	} else {
-		printk("madi: src(%dx%d)\n", g_width, g_height);
+		printk("\e[33m madi: src(%dx%d) \e[0m\n", g_width, g_height);
 	}
 
-	if(odd_first)
-		VIQE_MADI_Set_odd_field_first();
+	//if(odd_first)
+		VIQE_MADI_Set_odd_field_first(odd_first);
 
 }
 
@@ -1140,19 +1141,28 @@ void VIQE_MADI_Go_Request(void)
 	__madi_reg_w(value, reg + MADITIMMING_GEN_GO_REQ_OFFSET);
 }
 
-void VIQE_MADI_Set_odd_field_first(void)
+void VIQE_MADI_Set_odd_field_first(unsigned int odd_first)
 {
 	volatile void __iomem *reg = NULL;
-	unsigned int curr_cfg_field = 0x00;
-	unsigned int next_cfg_field = 0x00;
+	//unsigned int curr_cfg_field = 0x00;
+	//unsigned int next_cfg_field = 0x00;
+	//unsigned int curr_cfg_code = 0x00;
 
 	reg = VIQE_MADI_GetAddress(VMADI_TIMMING);
 
-	curr_cfg_field = __madi_reg_r(reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
-	next_cfg_field = (curr_cfg_field + 1) & 0x1;
-	printk("first_field = %d\n", next_cfg_field);
+	//curr_cfg_code = __madi_reg_r(reg + MADITIMMING_GEN_CFG_CODE_OFFSET);
+	//curr_cfg_field = __madi_reg_r(reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
+	//printk("curr_cfg_code = %d, curr_cfg_field = %d\n", curr_cfg_code, curr_cfg_field);
 
-	__madi_reg_w(next_cfg_field, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
+	__madi_reg_w(0, reg + MADITIMMING_GEN_CFG_CODE_OFFSET);
+
+	if (odd_first) {
+		//next_cfg_field = (curr_cfg_field + 1) & 0x1;
+		//printk("first_field = %d\n", next_cfg_field);
+		__madi_reg_w(1, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
+	} else {
+		__madi_reg_w(0, reg + MADITIMMING_GEN_CFG_FIELD_OFFSET);
+	}
 }
 
 void VIQE_MADI_Change_Cfg(void)
@@ -1178,473 +1188,109 @@ void VIQE_MADI_Change_Cfg(void)
 /*
  *============================================================================
  */
-#if 0
-typedef enum{
-	VMADI_CTRL_IF = 0,	//0x12600000		// DDEI_Control_IF 		// (0x0 ~ )
-	VMADI_CAP_IF,		//0x12602000		// DDE_Data_Capture_IF 	// (0x0 ~ )
-	VMADI_DEINT,		//0x12604000		// cpu_clk_vdeint 			// (0x0 ~ 0x96C )
-	VMADI_DEINT_LUT,	//0x12606000		// cpu_clk_vdeint 			// (0x19640000 ~ )
-	VMADI_TIMMING,		//0x12608000  	// ??					// ( ~ )
-	VMADI_MAX
-}VMADI_TYPE;
+#ifdef DDEI_FIELD_INSERTION
 
-pMADI_reg[VMADI_CTRL_IF]
-pMADI_reg[VMADI_CAP_IF]
-pMADI_reg[VMADI_DEINT]
-pMADI_reg[VMADI_DEINT_LUT]
-pMADI_reg[VMADI_TIMMING]
-
-#define __madi_reg_r _reg_r_ext
-#define __madi_reg_w _reg_w_ext
-#endif
-
-
-#ifdef	MADI_DYNAMIC_CONTROL
-
-typedef bool		BOOL;
 typedef u_int8_t	BYTE;
-typedef u_int16_t	WORD;
 typedef u_int32_t	DWORD;
-
-#define ABS abs
-#define TRUE 1
-#define FALSE 0
-
-#define _BIT0_	(1 << 0)
-#define BIT_28	(1 << 28)
-#define BIT_29	(1 << 29)
-#define BIT_30	(1 << 30)
 
 #define ReadReg(r)		__madi_reg_r(r)
 #define WriteReg(r, v)	__madi_reg_w(v, r)
-#define WriteRegWordMask(r, m, v) __madi_reg_w((v & ~m), r)
 
-//top1_reg = VIQE_MADI_GetAddress(VMADI_DEINT) + Mx_Vdeint_offset[MADI_VDEINT_11] + offset;
+#define reg_1960_0880	(pMADI_reg[VMADI_DEINT] + 0x880)
+#define reg_1960_028C	(pMADI_reg[VMADI_DEINT] + 0x28C)
+#define reg_1960_0240	(pMADI_reg[VMADI_DEINT] + 0x240)
+#define reg_1960_025C	(pMADI_reg[VMADI_DEINT] + 0x25C)
 
-//#define _PAGE_MP_TNR_TOP_			(pMADI_reg[VMADI_CTRL_IF] + offset)
-#define _PAGE_V_DETN_2_				(pMADI_reg[VMADI_DEINT] + 0x800)
-#define _PAGE_MP_DDEI_TOP_1_		(pMADI_reg[VMADI_DEINT] + Mx_Vdeint_offset[MADI_VDEINT_11] + 0x180)
-#define _PAGE_MP_DDEI_TOP_2_		(pMADI_reg[VMADI_DEINT] + Mx_Vdeint_offset[MADI_VDEINT_11] + 0x280)
-//#define _PAGE_MP_DDEI_TOP_3_		(pMADI_reg[VMADI_DEINT] + Mx_Vdeint_offset[MADI_VDEINT_11] + offset)
-//#define _PAGE_MP_ST_NEST_			(pMADI_reg[VMADI_CTRL_IF] + offset)
-//#define _PAGE_MP_V_DETN_SCHEDULE_	(pMADI_reg[VMADI_CTRL_IF] + offset)
-
-//VIRTUALREG_ADD_LIST[eVR_DEBUG_2]
-//VIRTUALREG_ADD_LIST[Egg_slice_debug_reg]
-//VIRTUALREG_ADD_LIST[Threshold_Reg]
-
-#define reg_SCFI	0x68	//0x68 is our datasheet value, 0x28 is latest IP version
-#define VIDEO  0
-#define FILM32 2
-#define FILM22 1
-#define FILM_DETECT_ERR 3
-
-#ifdef MADI_FIELD_INSERTION
-u_int32_t idx = 0;
 void FieldInsertionCtrl(void)
 {
-	static WORD wFilm32Count       = 0;
-	static WORD wFilm22Count       = 0;
-	static BYTE ucPreFilmMode      = 0;
+	DWORD Reg19600880 = ReadReg(reg_1960_0880);
+	BYTE FilmMode = (Reg19600880 & 0x180000) >> 19;
+	BYTE phase22 = (Reg19600880 & 0x40000000) >> 30;
+	BYTE phase32 = (Reg19600880 & 0x38000000) >> 27;
 
-    BYTE ucCurFilmMode = 0;
-    BOOL bStable       = TRUE;
-	DWORD uiPhase = 0;
+	DWORD Reg1960028C = ReadReg(reg_1960_028C) & 0xFFF3FFFF;
+	DWORD Reg19600240 = ReadReg(reg_1960_0240) & 0xF9FFFFFF;
+	DWORD Reg1960025C = ReadReg(reg_1960_025C) & 0xDFFFFFFF;
 
-    DWORD uiReg1963F880;
-    DWORD uiOffset;
-    DWORD uiReg1960040C;//[26:25]reg_tdei_mode_c low bits for chroma insertion control
-    DWORD uiReg196000DC;//[29]reg_tdei_mode_c[2] high bit for chroma insertion control
-    DWORD uiReg196000C0;//[19:18]reg_1960_040C:reg_field_insert_ctrl
-    
-    DWORD uiReg197002DC = 0; //This register is used for debug.
-                        // bit 30 is used to bypass dynamic insertion
-                        // bit 29 enable manual phase offset for film 32
-                        // bit 28 enable manual phase offset for film 22
-                        // [2:0] offset value for film 32
-                        // [5:3] offset value for film 22
+	BYTE phase_offset22 = 1;
+	BYTE phase_offset32 = 4;
 
+	if (FilmMode == 3) {  // Wrong detection
+		WriteReg(reg_1960_028C, (Reg1960028C | (0x0 << 18)));
+		WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+		WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
 
-    //DWORD dwDebug       = ReadReg(VIRTUALREG_ADD_LIST[eVR_DEBUG_2]);
-    BYTE ucFrameCount32 = 20;//ReadReg(_PAGE_MP_DDEI_TOP_3_ + 0xac) & 0xff;// Debug register that is used to control field insertion delay number
-    BYTE ucFrameCount22 = 20;//(ReadReg(_PAGE_MP_DDEI_TOP_3_ + 0xac) >> 8) & 0xff; // Same as above 
+	} else if (FilmMode == 1) { // Film 22 mode
+		phase22 = (phase22 + phase_offset22) % 2;
 
-    DWORD isInterlaced  = 1; //ReadReg((_PAGE_MP_TNR_TOP_ + 0x40) & 0x80000000); // Fetch the scan mode of the input stream
-    uiReg1963F880       = ReadReg(_PAGE_V_DETN_2_ + 0x80); // read back register for detection results like phase , mode
-    uiReg1960040C       = ReadReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C) & 0xFFF3FFFF;
-    uiReg196000C0       = ReadReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0) & 0xF9FFFFFF; //196000C0
-    uiReg196000DC       = ReadReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC) & 0xDFFFFFFF; //196000DC
-    ucCurFilmMode       = (uiReg1963F880 & 0x180000) >> 19; //(ReadReg(0x19600880) & 0x180000) >> 19;//get current film mode [20:19]
-
-
-///////////////////////////////////////////////
-//             DEBUGGING                     //
-///////////////////////////////////////////////
-#if 0
-	{//for debugging
-		/*
-		 * force field insertion enable
-		 * - for 1080i
-		 */
-		u_int32_t reg = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x28c);
-		if (idx++ % 2)
-			__madi_reg_w((reg & !(0x3 << 18)) | (0x1 << 18), pMADI_reg[VMADI_DEINT] + 0x28c);
-		else
-			__madi_reg_w((reg & !(0x3 << 18)) | (0x2 << 18), pMADI_reg[VMADI_DEINT] + 0x28c);
-
-	printk("[20] %d, [19] %d, [17:0] 0x%05X, (%d)\n",
-			(uiReg1963F880 & 0x100000) >> 20,	/* [20] r32 read back */
-			(uiReg1963F880 & 0x80000) >> 19,	/* [19] r22 read back */
-			uiReg1963F880 & 0x3ffff,			/* [17:0] field_motion */
-			(__madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x28c) & (0x3 << 18)) >> 18); /* [19:18] reg_field_insert_ctrl */
-	return;
-	}
-#endif
-#if 0	/* 2019.3.26. Testing 480i tunning values by Peter */
-	printk("[20] %d, [19] %d, [17:0] 0x%05X\n",
-			(uiReg1963F880 & 0x100000) >> 20,	/* [20] r32 read back */
-			(uiReg1963F880 & 0x80000) >> 19,	/* [19] r22 read back */
-			uiReg1963F880 & 0x3ffff);			/* [17:0] field_motion */
-	return;
-#endif
-#if 1	/* 2019.4.03. Testing 1080i tunning values by Peter */
-{
-	u_int32_t reg_1960_0880 = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x880);
-	u_int32_t reg_1960_088C = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x88c);
-	u_int32_t reg_1960_089C = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x89c);
-	u_int32_t reg_1960_086C = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x86c);
-	u_int32_t reg_1960_0870 = __madi_reg_r(pMADI_reg[VMADI_DEINT] + 0x870);
-
-	//printk("[17:8] 0x%03X, [17:0] 0x%05X\n",
-	//		(reg_1960_088C & 0x0003FF00) >> 8,
-	//		(reg_1960_089C & 0x0003FFFF));
-
-	printk("880[20:19] 0x%02X, 88C[17:0] 0x%05X, 89C[17:0] 0x%05X, 86C[23:0] 0x%06X, 870[11:0] 0x%03X\n",
-			(reg_1960_0880 & 0x00180000) >> 19,
-			(reg_1960_088C & 0x0003FFFF),
-			(reg_1960_089C & 0x0003FFFF),
-			(reg_1960_086C & 0x00FFFFFF),
-			(reg_1960_0870 & 0x00000FFF));
-
-	return;
-}
-#endif
-
-return;
-///////////////////////////////////////////////
-//             END OF DEBUGGING              //
-///////////////////////////////////////////////
-
-
-
-    if (!isInterlaced)
-    {// if input signal is not interlaced , we need to do nothing.
-    	return;
-    }
-
-    if ((uiReg197002DC & BIT_30) == BIT_30) //debug bit , if it's equal 1'b1, turn of SW field insertion
-    {
-        WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x0 << 18)));
-        WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-        WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-        return;
-    }
-    if (ucPreFilmMode == ucCurFilmMode)
-    {
-    	if (ucCurFilmMode == FILM32)
-    	{
-    		wFilm32Count++;
-    		wFilm22Count = 0;
-    	}
-    	else if (ucCurFilmMode == FILM22)
-    	{
-    		wFilm22Count++;
-    		wFilm32Count = 0;
-    	}
-    	else 
-    	{
-    		wFilm32Count = 0;
-    		wFilm22Count = 0;
-    	}
-    }
-    else 
-    {
-    	wFilm32Count = 0;
-    	wFilm22Count = 0;
-    	bStable = FALSE; 
-
-    }
-    
-    // To see if current mode is stable 
-    if (wFilm22Count >= ucFrameCount22)
-    {
-    	bStable = TRUE;
-    	wFilm22Count = ucFrameCount22;
-    }
-    else if (wFilm32Count >= ucFrameCount32)
-    {
-    	bStable = TRUE;
-    	wFilm32Count = ucFrameCount32;
-    }
-    else 
-    { // unstable 
-    	bStable = FALSE;
-    }
-
-    ucPreFilmMode = ucCurFilmMode; //save current mode
-
-  if (bStable) 
-  {
-	    if (ucCurFilmMode == FILM32)
-	    {//do insertion for FILM32
-
-	        if ((uiReg197002DC & BIT_29) == 0x0)
-	            uiOffset = 0;
-	        else
-	            uiOffset = uiReg197002DC & 0x7; // adjust the phase the value the we set to debug register
-	       
-			uiPhase = ((uiReg1963F880 & 0x38000000) >> 27) + uiOffset; //Reg1963F880[29:27] phase_32_int
-
-	        if (uiPhase >= 5)
-	            uiPhase -= 5;
-
-	        if (uiPhase == 4)
-	        {
-	            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x2 << 18))); //[19:18]reg_1960_040C:reg_field_insert_ctrl
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25))); //[26:25]reg_1960_00C0:reg_tdei_mode_c
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29))); //[29]reg_1960_00DC:reg_tdei_mode_c[2]
-	        }
-	        else if (uiPhase == 0)
-	        {
-	            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x1 << 18))); 
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-	        }
-	        else if (uiPhase == 1)
-	        {
-	            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x2 << 18)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-	        }
-	        else if (uiPhase == 2)
-	        {
-	            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x1 << 18)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-	        }
-	        else if (uiPhase == 3)
-	        {
-	            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x1 << 18)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-	            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-	        }
-	    }
-        else if (ucCurFilmMode == FILM22)
-        {//do insertion for FILM22 
-
-            if ((uiReg197002DC & BIT_28) == 0x0)
-                uiOffset = 0;
-            else
-                uiOffset = (uiReg197002DC >> 3) & 0x7;
-
-			uiPhase = ((uiReg1963F880 & 0x40000000) >> 30) + uiOffset; //Reg1963F880[30] phase_22_int
-           
-            if (uiPhase >= 2)
-                uiPhase -= 2;
-
-            if (uiPhase == 1)
-            {
-                WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x2 << 18)));
-                WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-                WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-            }
-            else if (uiPhase == 0)
-            {
-                WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x1 << 18)));
-                WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-                WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-            }
-        }
-        else
-        {
-            //For Video, no insertion needed
-            WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x0 << 18)));
-            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));
-            WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));
-        }
-    }
-}
-#endif
-
-#ifdef MADI_EGG_SLICE_PROTECTION
-// ReadReg and WriteReg are HW register reading and writing APIs, you need to replace them with your own HW accessing APIs.
-// Besides the register address should also be replaced, it may be different from chip to chip.
-void PQ_VDETN_FileMode_SafetyProtect_Patch(void)
-{
-    DWORD dwFilmMode    = (ReadReg(_PAGE_V_DETN_2_ + 0x80) >> 19) & 0x3;    //Get the film detection results. bit[20]r32_read_back;[19] r22_read_back
-    //DWORD DebugReg      = ReadReg(VIRTUALREG_ADD_LIST[Egg_slice_debug_reg]); // use a virtual register to do debug
-    //DWORD Threshold_Reg = ReadReg(VIRTUALREG_ADD_LIST[Threshold_Reg]); //Threshold manual control register, 
-    DWORD isInterlaced  = 1; //ReadReg((_PAGE_MP_TNR_TOP_ + 0x40) & 0x80000000); // Fetch the scan mode of the input stream
-
-	DWORD dwWidth;
-	DWORD stat_count_false_inserted;
-	WORD  ucTH1;
-	WORD  ucTH2;
-	WORD  ucDiffTH;
-	WORD  ucCountTH;
-	static DWORD stat_count_false_inserted_pre = 0;
-	static DWORD ucZeroCount                   = 0;
-	static DWORD StatCountFalseInserted[5]     = {0, 0, 0, 0, 0};
-	static BYTE ucCount                        = 0;
-	static BYTE ucCount32                      = 0;
-	static BYTE ucCountDiff22                  = 0;                   
-	static BYTE ucZeroPosition                 = 0;
-	static BYTE ucZeroPositionPre              = 0;
-
-	BYTE i, j, ucFlag;
-	BYTE Egg_enable = 0; // = DebugReg & 0x1;  // bit 0 is used enable or disbale this patch
-	BYTE DebugThrdBit = 0; //DebugReg & 0x2; // bit 1 to 1'b1 means read the threshold from register
-
-	DWORD uiReg1960040C = ReadReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C) & 0xFFF3FFFF;	//alank: check mask value
-    DWORD uiReg196000C0 = ReadReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0) & 0xF9FFFFFF;	//alank: check mask value
-    DWORD uiReg196000DC = ReadReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC) & 0xDFFFFFFF;	//alank: check mask value
-
-	if (!isInterlaced)
-    {// if input signal is not interlaced , we need to do nothing.
-    	return;
-    }
-
-    if ((dwFilmMode == VIDEO) || (dwFilmMode == FILM_DETECT_ERR))
-    {// not pulldown mode, no insertion
-        WriteReg(_PAGE_MP_DDEI_TOP_2_ + 0x0C, (uiReg1960040C | (0x0 << 18)));  //[19:18]reg_1960_040C:reg_field_insert_ctrl
-        WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xC0, (uiReg196000C0 | (0x2 << 25)));  //[26:25]reg_1960_00C0:reg_tdei_mode_c
-        WriteReg(_PAGE_MP_DDEI_TOP_1_ + 0xDC, (uiReg196000DC | (0x0 << 29)));  //[29]reg_1960_00DC:reg_tdei_mode_c[2]
-        return;
-    }// Don't need field insertion in video mode , just turn off the weave mode for both luma and chroma
-
-   dwWidth = g_width /*ReadReg(_PAGE_MP_ST_NEST_)*/ & 0x1FFF; // Get the horizontal resolution of the picture 
-
-   if ((dwWidth > 1500) && (isInterlaced == TRUE)) //1080i && not video mode
-        WriteRegWordMask(_PAGE_MP_DDEI_TOP_1_ + 0xFC, 0xFFFFFF, 0x13D0); //[23:0]reg_1960_00FC:reg_thr_field_prot
-    else
-       WriteRegWordMask(_PAGE_MP_DDEI_TOP_1_ + 0xFC, 0xFFFFFF, 0x7D0);   //[23:0]reg_1960_00FC:reg_thr_field_prot
-
-    if(Egg_enable == 0)
-	{		
-		if((dwWidth > 1500) && isInterlaced/*((ReadReg(_PAGE_MP_V_DETN_SCHEDULE_) & _BIT0_) == _BIT0_)*/)//Check if the input signal is 1080i
-		{
-			stat_count_false_inserted = (ReadReg(_PAGE_V_DETN_2_ + reg_SCFI/*0x28*/) & 0xffffff);   // read [23:0] stat_count_false_inserted
-
-			if((DebugThrdBit) == 0)  
-			{
-				ucCountTH = 0x8;
-				ucTH1 = 0xD00;
-                ucTH2 = 0x2000;
-			}
-			//else
-			//{
-			//	ucCountTH = 0x8;
-			//	ucTH1 = (Threshold_Reg & 0xFFFF0000) >> 16; //use the value that's read back from debug register
-			//	ucTH2 = (Threshold_Reg & 0xFFFF);
-			//}
-			ucDiffTH = 64;
-				
-			if(dwFilmMode == FILM32)
-	    	{// for case film 32
-	    		ucCountDiff22 = 0;
-	    		ucZeroPositionPre = ucZeroPosition;
-	    		if(stat_count_false_inserted <= 10)
-	    		{
-					ucZeroCount++;
-					ucZeroPosition = ucCount32;
-	    		}
-
-				else if((stat_count_false_inserted < ucTH2 && stat_count_false_inserted > ucTH1) 
-					&& ((stat_count_false_inserted_pre < ucTH2 && stat_count_false_inserted_pre > ucTH1) || stat_count_false_inserted_pre <= 10))
-				{
-					ucCount++;
-					ucZeroCount = 0;
-				}
-				else if((stat_count_false_inserted >= ucTH2) 
-					&& ((stat_count_false_inserted_pre >= ucTH2) || stat_count_false_inserted_pre <= 10))
-				{
-					ucCount++;
-					ucZeroCount = 0;
-				}
-				else
-				{
-					ucCount = 0;
-					ucZeroCount = 0;
-				}
-
-				//for "01111" case (0: <=100; 1: >100)
-				StatCountFalseInserted[ucCount32] = stat_count_false_inserted;
-
-				if(ucZeroPositionPre != ucZeroPosition)
-					ucFlag = 0;
-				else
-				{
-					j = ucZeroPosition;
-					for(i=0; i<4; i++)
-					{
-						j++;
-						if(j >= 5) j = 0;
-						
-						if(StatCountFalseInserted[j] <= 100) break;
-					}
-					if(i < 4) ucFlag = 0;
-					else ucFlag = 1;
-				}
-
-				ucCount32++;
-				if(ucCount32 >= 5)
-					ucCount32 = 0;	
-			}
-			else
-			{// for film 22	
-				ucFlag = 0;
-				ucZeroCount = 0;
-				if((stat_count_false_inserted < ucTH2 && stat_count_false_inserted > ucTH1) 
-					&& (stat_count_false_inserted_pre < ucTH2 && stat_count_false_inserted_pre > ucTH1))
-					ucCount++;
-				else if((stat_count_false_inserted >= ucTH2) && (stat_count_false_inserted_pre >= ucTH2))
-					ucCount++;
-				else
-					ucCount = 0;
-
-				if((stat_count_false_inserted > 150) && (ABS(stat_count_false_inserted - stat_count_false_inserted_pre) <= ucDiffTH))
-					ucCountDiff22++;
-				else
-					ucCountDiff22 = 0;
-			}
-
-			if(ucCount >= ucCountTH)
-				ucCount = ucCountTH;
-			if(ucCountDiff22 >= ucCountTH)
-				ucCountDiff22 = ucCountTH;
-			if(ucZeroCount >= 3)
-			{
-				ucZeroCount = 3;
-				ucCount = 0;
-			}
-	
-			stat_count_false_inserted_pre = stat_count_false_inserted;			
-				
-			if((ucCount >= ucCountTH) || ucFlag || (ucCountDiff22 >= ucCountTH))  
-				WriteRegWordMask((_PAGE_MP_DDEI_TOP_2_ + 0x0C), 0x700000, 0x000000); //switch off the egg slicing protection function;  
-			else
-				WriteRegWordMask((_PAGE_MP_DDEI_TOP_2_ + 0x0C), 0x700000, 0x500000); //keep the egg slicing protection function as default = ON;
+		switch(phase22) {
+		case 0:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x1 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		case 1:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x2 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
 		}
-		else
-			WriteRegWordMask((_PAGE_MP_DDEI_TOP_2_ + 0x0C), 0x700000, 0x500000);
+
+	} else if (FilmMode == 2) {  // Film 32 mode
+		phase32 = (phase32 + phase_offset32) % 5;
+
+		switch(phase32) {
+		case 0:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x1 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		case 1:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x2 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		case 2:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x1 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		case 3:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x1 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		case 4:
+			WriteReg(reg_1960_028C, (Reg1960028C | (0x2 << 18)));
+			WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+			WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
+			break;
+		}
+	}else { // Normal video, using Spatial and temporal DDEIN
+		WriteReg(reg_1960_028C, (Reg1960028C | (0x0 << 18)));
+		WriteReg(reg_1960_0240, (Reg19600240 | (0x2 << 25)));
+		WriteReg(reg_1960_025C, (Reg1960025C | (0x0 << 29)));
 	}
-	else
-	{// Debug mode on, turn off the egg slice protection feature.
-		WriteRegWordMask((_PAGE_MP_DDEI_TOP_2_ + 0x0C), 0x700000, 0x0);
+
+	#if 0
+	{
+		DWORD Reg19600880 = ReadReg(reg_1960_0880);
+		DWORD Reg1960028C = ReadReg(reg_1960_028C);
+		DWORD Reg19600888 = ReadReg((pMADI_reg[VMADI_DEINT] + 0x888));
+		printk("%d%d, %x | %05x %05x | %x %x\n",
+				(Reg19600880 & 0x100000) >> 20,	/* [20] r32 read back */
+				(Reg19600880 & 0x80000) >> 19,	/* [19] r22 read back */
+				(Reg1960028C & 0xC0000) >> 18,	/* [19:18] field number */
+				(Reg19600880 & 0x3FFFF),		/* field motion */
+				(Reg19600888 & 0x3FFFF),		/* frame motion */
+				(Reg19600880 & 0x40000000) >> 30,	/* [30] */
+				(Reg19600880 & 0x38000000) >> 27	/* [29:27] */
+				);
 	}
+	#endif
 }
-#endif
-#endif //MADI_DYNAMIC_CONTROL
+#endif	//DDEI_FIELD_INSERTION
+
 
 #ifdef TEST_REG_RW
 typedef struct {

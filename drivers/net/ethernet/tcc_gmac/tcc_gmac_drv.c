@@ -1283,7 +1283,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 		// for kernel-v4.14
 		if (bus->mdio_map[phy_addr]) {
-			phy = bus->mdio_map[phy_addr];
+			phy = (struct phy_device *)bus->mdio_map[phy_addr];
 			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
 			break;    
 		} 
@@ -1308,7 +1308,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 //	printk("priv->bus_id : %d \n" , priv->bus_id);
 //	printk("%s: trying to attach to %s\n", __func__,	phy_id);
 
-	phy = phy_connect(dev, dev_name(&phy->mdio), &tcc_gmac_adjust_link, tca_gmac_get_phy_interface(&priv->dt_info));
+	phy = phy_connect(dev, dev_name(&phy->mdio.dev), &tcc_gmac_adjust_link, tca_gmac_get_phy_interface(&priv->dt_info));
 #if 0
 	/* Attach the MAC to the Phy */
 	phy = phy_connect(dev, 
@@ -2403,9 +2403,9 @@ out_resume:
 }
 
 
-int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
+long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 {
-	int ret=0;
+	long ret=0;
 	unsigned int rev_value;
 	unsigned int send_value;
 	struct miscdevice *misc = (struct miscdevice *) flip->private_data;
@@ -2414,7 +2414,7 @@ int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 	struct mii_bus *mii_bus = priv->mii;
 	struct iodata iodata;
 
-	int data = 0;
+	long data = 0;
 	u32	addr;
 
 	iodata.addr=(arg&0xffff);
@@ -2425,7 +2425,7 @@ int tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 	switch(cmd)
 	{
 		case CMD_PHY_READ:
-			data = phy_read(priv->phydev, iodata.addr);
+			data = (long)phy_read(priv->phydev, iodata.addr);
 			//printk("Read addr : 0x%08x value : 0x%08x \n", iodata.addr, data);
 			return data;
 

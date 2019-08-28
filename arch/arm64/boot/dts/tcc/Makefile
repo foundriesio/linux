@@ -12,6 +12,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtb
 endif
+dtb-$(CONFIG_ARCH_TCC901X) += \
+	tcc9010-android-lpd4321-v0.1.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc8990-linux-lpd4322-v0.1.dtb \
@@ -26,6 +28,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-linux-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc8030-linux-lpd4321_sv0.1-hdmi-main-output.dtb
 endif
+dtb-$(CONFIG_ARCH_TCC901X) += \
+	tcc9010-linux-lpd4321-v0.1.dtb
 endif
 
 always         := $(dtb-y)

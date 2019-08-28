@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "4.14_1.3.2d"
+#define HDMI_DRV_VERSION        "2.0.1d"
 #else
-#define HDMI_DRV_VERSION        "4.14_1.3.2"
+#define HDMI_DRV_VERSION        "2.0.1"
 #endif
 
 // HDMI COMPONENTS
@@ -49,12 +49,11 @@
 
 // HDMI IRQS
 #define HDMI_IRQ_TX_CORE        0
-#define HDMI_IRQ_TX_HDCP        1
 #if defined(CONFIG_HDMI_USE_CEC_IRQ)
-#define HDMI_IRQ_TX_CEC         2
-#define HDMI_IRQ_TX_MAX         3
-#else
+#define HDMI_IRQ_TX_CEC         1
 #define HDMI_IRQ_TX_MAX         2
+#else
+#define HDMI_IRQ_TX_MAX         1
 #endif
 
 // HDMI CLOCKS
@@ -67,11 +66,6 @@
 #define HDMI_CLK_INDEX_DDIBUS   6
 #define HDMI_CLK_INDEX_ISOIP    7
 #define HDMI_CLK_INDEX_MAX      8
-
-
-// STATUS BITS
-#define HDMI_STATUS_BIT_CORE_POWERON      1
-
 
 // CLOCK FREQ
 #define HDMI_PHY_REF_CLK_RATE   (24000000)
@@ -130,15 +124,13 @@ struct hdmi_tx_ctrl {
         unsigned char hdcp_on;
         unsigned char data_enable_polarity;
 
-        /*
-         * In general, HDCP Keepout is set to 1 when TMDS frequencyrk is higher than
-         * 340 MHz or when HDCP is enabled.
-         * When HDCP Keepout is set to 1, the control period configuration is changed.
-         * Exceptionally, if HDCP keepout is set to 0 for VIZIO TV, there is a problem
-         * of swinging HPD.
-         * hdmi driver reads the EDID of the SINK and sets HDCP keepout to always 1
-         * if this SINK is a VIZIO TV. */
-        unsigned char sink_is_vizio;
+        /* In general, HDCP Keepout is set to 1 when TMDS character rate is higher
+	 * than 340 MHz or when HDCP is enabled.
+	 * If HDCP Keepout is set to 1 then the control period configuration is changed
+	 * in order to supports scramble and HDCP encryption. But some SINK needs this
+	 * packet configuration always even if HDMI ouput is not scrambled or HDCP is
+	 * not enabled. */
+        unsigned char sink_need_hdcp_keepout;
 
         unsigned int pixel_clock;
 };
@@ -171,6 +163,8 @@ struct drv_enable_entry
 #define HDMI_TX_STATUS_SCDC_CHECK       20
 #define HDMI_TX_STATUS_SCDC_IGNORE      21
 #define HDMI_TX_STATUS_SCDC_FORCE_ERROR 22
+
+#define HDMI_TX_VSIF_UPDATE_FOR_HDR_10P 23
 
 struct irq_dev_id {
         void *dev;

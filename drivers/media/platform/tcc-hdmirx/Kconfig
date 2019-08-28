@@ -3,7 +3,7 @@ config VIDEO_TCCXX_HDMI_RX
 	select VIDEOBUF_GEN
 	select VIDEOBUF_DMA_SG
 	select VIDEOBUF_VMALLOC
-	depends on VIDEO_DEV && ARCH_TCC899X
+	depends on VIDEO_DEV && (ARCH_TCC899X || ARCH_TCC901X)
 	help
 	  V4L2 HDMI IN Receiver driver support for TCCXXX.
 	

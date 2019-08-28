@@ -32,6 +32,7 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h> /* __clk_is_enabled */
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -57,33 +58,19 @@
 #define alsa_dbg(f, a...)  
 #endif
 
-extern bool __clk_is_enabled(struct clk *clk);
-
-//#define TCC_FIX_DIV 4
 #define SPDIF_CLK_GAIN 128
 static unsigned int tcc_spdif_get_mclk_fs(unsigned int freq, struct clk  *dai_pclk)
 {
-#if defined(TCC_FIX_DIV)
-	unsigned int mindiv = (unsigned int)TCC_FIX_DIV;	
-#else
-	unsigned int div=1, mindiv=1, mdiff=freq*SPDIF_CLK_GAIN;
-	unsigned int temp=0;
-
-	while((SPDIF_CLK_GAIN*div >= SPDIF_CLK_GAIN)&&(SPDIF_CLK_GAIN*div <= 1024)){
-		clk_set_rate(dai_pclk, freq*SPDIF_CLK_GAIN*div);
-		temp = clk_get_rate(dai_pclk);
-		temp = abs(freq*(SPDIF_CLK_GAIN*div)-temp);
-		alsa_dbg("[%s]temp=%d, div=%d\n", __func__, temp, div);
-		if(temp < mdiff){
-			mdiff=temp;
-			mindiv=div;
-			if(temp == 0)break;
-		}
-		div++;
-	}
-#endif
-	alsa_dbg("[%s]min. div=%d\n", __func__, mindiv);
-	return mindiv;
+	unsigned int clk_ratio;
+	
+	clk_ratio = (freq < 22050) ? 32 :
+				(freq < 32000) ? 28 :
+				(freq < 44100) ? 12 :
+				(freq < 88200) ? 8 :
+				(freq < 96000) ? 6 :
+				(freq < 176400) ? 5 : 4;
+	alsa_dai_dbg("[%s] clk_ratio=%d\n", __func__, clk_ratio);
+	return clk_ratio;
 }
 
 static void tcc_spdif_set_clock(struct snd_soc_dai *dai, unsigned int req_rate, bool stream)
@@ -96,34 +83,34 @@ static void tcc_spdif_set_clock(struct snd_soc_dai *dai, unsigned int req_rate, 
 
 	alsa_dai_dbg(prtd->id, "[%s] : clock req rate[%u] \n", __func__, req_rate);
 
-	// Planet 20150812 S/PDIF_Rx Start
-	if((tcc_spdif->spdif_clk_rate[0] != req_rate)
-			||(tcc_spdif->spdif_clk_rate[1] != clk_get_rate(prtd->ptcc_clk->dai_pclk))) {
+	clk_div = tcc_spdif_get_mclk_fs(req_rate, prtd->ptcc_clk->dai_pclk);
 
+	if(clk_div <= 0){
+		printk("[%s] ERR. tcc_spdif_get_mclk_fs return value %d\n", __func__, clk_div);
+	}
+	clk_rate = req_rate*SPDIF_CLK_GAIN*clk_div;
+	
+	if(stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		//tmpCfg = spdif_readl(pdai_reg+SPDIF_TXCONFIG);
-		tmpStatus = spdif_readl(pdai_reg+SPDIF_TXCHSTAT);
-		if(stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			spdif_writel(0, pdai_reg+SPDIF_TXCONFIG);	//SPDIF_disable
-			clk_div = tcc_spdif_get_mclk_fs(req_rate, prtd->ptcc_clk->dai_pclk);
-
-			if(clk_div <= 0){
-				printk("[%s] ERR. tcc_spdif_get_mclk_fs return value %d\n", __func__, clk_div);
-			}
-
-			clk_rate = req_rate*SPDIF_CLK_GAIN*clk_div;
-			tmpCfg = (((clk_div-1)&0xFF) << 8);
-			if (req_rate == 44100) {          /* 44.1KHz */
-				tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (0 << 6));
-			} else if (req_rate == 48000) {   /* 48KHz */
-				tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (1 << 6));
-			} else if (req_rate == 32000) {   /* 32KHz */
-				tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (2 << 6));
-			} else {                            /* Sampling Rate Converter */
-				tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (3 << 6));
-			}
-		}	// Planet 20150812 S/PDIF_Rx End
+		tmpStatus = spdif_readl(pdai_reg+SPDIF_TXCHSTAT);	
+		spdif_writel(0, pdai_reg+SPDIF_TXCONFIG);	//SPDIF_disable
+		tmpCfg = (((clk_div-1)&0xFF) << 8);
+		if (req_rate == 44100) {          /* 44.1KHz */
+			tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (0 << 6));
+		} else if (req_rate == 48000) {   /* 48KHz */
+			tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (1 << 6));
+		} else if (req_rate == 32000) {   /* 32KHz */
+			tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (2 << 6));
+		} else {                            /* Sampling Rate Converter */
+			tmpStatus = ((tmpStatus & 0xFFFFFF3F) | (3 << 6));
+		}
+		spdif_writel(tmpCfg, pdai_reg+SPDIF_TXCONFIG);
+		spdif_writel(tmpStatus, pdai_reg+SPDIF_TXCHSTAT);		
+	}
+		
+	if((tcc_spdif->spdif_clk_rate[0] != req_rate)
+			||(tcc_spdif->spdif_clk_rate[1] != clk_get_rate(prtd->ptcc_clk->dai_pclk))) {		
 		if (prtd->ptcc_clk->dai_pclk) {
-//			if(prtd->ptcc_clk->dai_pclk->enable_count)
 			if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 				clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
 			clk_set_rate(prtd->ptcc_clk->dai_pclk, clk_rate);
@@ -133,9 +120,6 @@ static void tcc_spdif_set_clock(struct snd_soc_dai *dai, unsigned int req_rate, 
 		}
 		alsa_dai_dbg(prtd->id, "[%s]: req_rate[%u] set_pclk[%u] \n", __func__, req_rate, clk_rate);
 		alsa_dai_dbg(prtd->id, "[%s]: spdif_clk_rate[0]:[%lu] spdif_clk_rate[1]:[%lu] \n", __func__, tcc_spdif->spdif_clk_rate[0], tcc_spdif->spdif_clk_rate[1]);
-
-		spdif_writel(tmpCfg, pdai_reg+SPDIF_TXCONFIG);
-		spdif_writel(tmpStatus, pdai_reg+SPDIF_TXCHSTAT);
 	}
 }
 
@@ -332,10 +316,8 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-			// Planet 20150812 S/PDIF_Rx Start
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 				alsa_dbg("%s() spdif playback start\n", __func__);
-				// SPDIF_24BIT_MODE Planet_20160715
 				reg_value = spdif_readl(pdai_reg+SPDIF_TXCONFIG);
 				//Hw2: Tx Intr Enable
 				//Hw1: Data Valid bit
@@ -344,8 +326,6 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 				spdif_writel(reg_value, pdai_reg+SPDIF_TXCONFIG);
 			} else {
 				alsa_dbg("%s() S/PDIF recording start\n", __func__);
-				// SPDIF_24BIT_MODE Planet_20160715
-
 				reg_value = spdif_readl(pdai_reg+SPDIF_RXCONFIG);
 				//Hw4: Sample Data Store
 				//Hw3: RxStatus Register Holds Channel
@@ -354,7 +334,7 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 				//Hw0: Rx Enable
 				reg_value |= (Hw4 | Hw3 | Hw2 | Hw1 | Hw0);
 				spdif_writel(reg_value, pdai_reg+SPDIF_RXCONFIG);
-			}   // Planet 20150812 S/PDIF_Rx End
+			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -461,10 +441,8 @@ static int tcc_spdif_suspend(struct device *dev)
 	tcc_spdif->backup_spdif->rRxIntMask = spdif_readl(pdai_reg+SPDIF_RXINTMASK);
 
 	// Disable all about dai clk
-	//if((prtd->ptcc_clk->dai_pclk)&&(prtd->ptcc_clk->dai_pclk->enable_count))
 	if(__clk_is_enabled(prtd->ptcc_clk->dai_pclk))
 		clk_disable_unprepare(prtd->ptcc_clk->dai_pclk);
-	//if((prtd->ptcc_clk->dai_hclk)&&(prtd->ptcc_clk->dai_hclk->enable_count))
 	if(__clk_is_enabled(prtd->ptcc_clk->dai_hclk))
 		clk_disable_unprepare(prtd->ptcc_clk->dai_hclk);
 
@@ -487,10 +465,8 @@ static int tcc_spdif_resume(struct device *dev)
 	alsa_dai_dbg(prtd->id, "[%s] \n", __func__);
 
 	// Enable all about spdif clk
-	//if((prtd->ptcc_clk->dai_hclk)&&(!prtd->ptcc_clk->dai_hclk->enable_count))
 	if(prtd->ptcc_clk->dai_hclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_hclk);
-	//if((prtd->ptcc_clk->dai_pclk)&&(!prtd->ptcc_clk->dai_pclk->enable_count))
 	if(prtd->ptcc_clk->dai_pclk)
 		clk_prepare_enable(prtd->ptcc_clk->dai_pclk);
 

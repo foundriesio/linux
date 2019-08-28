@@ -30,6 +30,10 @@
 #include "tcc899x/vioc_dv_cfg.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC901X
+#include "tcc901x/vioc_dv_cfg.h"
+#endif
+
 #define DV_FB_INT			(1<<INT_EN_R_TX_VS_SHIFT)
 #define DV_VIDEO_INT		(1<<INT_EN_R_TX_VE_SHIFT) // INT_EN_F_TX_VS_SHIFT
 #define DV_VIDEO_INT_SUB	(1<<INT_EN_R_TX_HE_SHIFT) // INT_EN_F_TX_VS_SHIFT

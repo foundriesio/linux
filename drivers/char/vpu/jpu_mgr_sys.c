@@ -47,7 +47,7 @@ void jmgr_enable_clock(int only_clk_ctrl)
     if (vbus_jpeg_clk)
         clk_prepare_enable(vbus_jpeg_clk);
 
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if(!only_clk_ctrl) {
         int ret = jpu_optee_open();
         if (ret != 0) {
@@ -67,7 +67,7 @@ void jmgr_disable_clock(int only_clk_ctrl)
     if (fbus_vbus_clk)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
-#if defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if(!only_clk_ctrl) {
         int ret = jpu_optee_close();
         if (ret != 0) {

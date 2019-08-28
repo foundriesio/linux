@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC9010 SoC
+ *
+ * Copyright (C) 2019 Telechips Inc. - http://www.telechips.com
+ */
+
+#include "tcc901x.dtsi"
+#include "tcc9010-pinctrl.dtsi"
+
+/ {
+};

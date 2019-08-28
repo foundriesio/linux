@@ -4179,6 +4179,23 @@ static int _regulator_suspend_prepare(struct device *dev, void *data)
 	struct regulator_dev *rdev = dev_to_rdev(dev);
 	const suspend_state_t *state = data;
 	int ret;
+	//printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+	mutex_lock(&rdev->mutex);
+	if (!rdev->desc->ops->set_mode)
+		printk("set_mode is not implemented\n");
+	else
+	{
+		ret = rdev->desc->ops->get_mode(rdev);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+
+		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_NORMAL);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+
+		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_NORMAL);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+		ret = rdev->desc->ops->get_mode(rdev);
+	}
+	mutex_unlock(&rdev->mutex);
 
 	mutex_lock(&rdev->mutex);
 	ret = suspend_prepare(rdev, *state);
@@ -4228,6 +4245,21 @@ static int _regulator_suspend_finish(struct device *dev, void *data)
 		ret = _regulator_do_disable(rdev);
 		if (ret)
 			dev_err(dev, "Failed to suspend regulator %d\n", ret);
+	}
+
+	if (!rdev->desc->ops->set_mode)
+		printk("set_mode is not implemented\n");
+	else
+	{
+		ret = rdev->desc->ops->get_mode(rdev);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+
+		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_FAST);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+
+		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_FAST);
+		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+		ret = rdev->desc->ops->get_mode(rdev);
 	}
 unlock:
 	mutex_unlock(&rdev->mutex);

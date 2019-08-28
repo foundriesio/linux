@@ -1,0 +1,7 @@
+config TCC_HSIO_CIPHER
+	tristate "TCC HSIO Cipher"
+	default n
+	depends on PLATFORM_AVN
+	help
+		Support to HSIO Cipher
+

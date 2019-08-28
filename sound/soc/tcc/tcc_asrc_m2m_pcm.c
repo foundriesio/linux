@@ -536,6 +536,8 @@ static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool
 		strm->dst->period_bytes = 0;
 
 		strm->middle->buffer_bytes = 0;
+
+		strm->interval = 0;
 	}
 	strm->middle->cur_pos = 0;
 	strm->middle->pre_pos = 0;
@@ -545,7 +547,7 @@ static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool
 #endif
 	if((prepare) && (strm->middle->dma_buf->area != NULL))
 		memset(strm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
-	strm->interval = 0;
+
 	strm->Bwrote = 0;
 	strm->Btail = 0;
 }
@@ -1236,7 +1238,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			read_byte = readable_byte; 
 		}
 
-		write_pos = frames_to_bytes(runtime, asrc_m2m_pcm->capture->app->pre_pos);
+		write_pos = frames_to_bytes(runtime, asrc_m2m_pcm->capture->app->pre_pos) + asrc_m2m_pcm->capture->Btail;
 		read_pos = asrc_m2m_pcm->capture->middle->pre_pos;
 
 		if(asrc_m2m_pcm->capture->src->rate == asrc_m2m_pcm->capture->dst->rate) {
@@ -1713,7 +1715,7 @@ wait_check_play:
 					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
 					Ftemp = cur_appl_ofs - pre_appl_ofs;
 					readable_byte = frames_to_bytes(runtime, Ftemp);
-					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos);
+					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos) + asrc_m2m_pcm->playback->Btail;
 
 					if(readable_byte > 0) {
 
@@ -1738,13 +1740,9 @@ wait_check_play:
 
 						printk("asrc m2m elapsed time : %03d usec, %ldbytes\n", elapsed_usecs, ret);
 #endif
-
-						Ftemp = bytes_to_frames(runtime, ret);
-						Btemp = frames_to_bytes(runtime, Ftemp);
-						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
-						}
-						 
+						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
+						Ftemp = bytes_to_frames(runtime, Btemp);
+						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 
 						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
 						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
@@ -1762,7 +1760,7 @@ wait_check_play:
 					//1st part copy for in_buf
 					Ftemp = runtime->buffer_size - pre_appl_ofs;
 					readable_byte = frames_to_bytes(runtime, Ftemp);
-					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos);
+					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos) + asrc_m2m_pcm->playback->Btail;
 
 					if(readable_byte > 0) {
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
@@ -1774,11 +1772,9 @@ wait_check_play:
 							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
 
-						Ftemp = bytes_to_frames(runtime, ret);
-						Btemp = frames_to_bytes(runtime, Ftemp);
-						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
-						}
+						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
+						Ftemp = bytes_to_frames(runtime, Btemp);
+						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 
 						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
 						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
@@ -1814,12 +1810,9 @@ wait_check_play:
 							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 						}
 
-						Ftemp = bytes_to_frames(runtime, ret);
-						Btemp = frames_to_bytes(runtime, Ftemp);
-						if(Btemp != ret) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%d] ret=%d, Btemp=%d\n", __LINE__, ret, Btemp);
-						}
-
+						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
+						Ftemp = bytes_to_frames(runtime, Btemp);
+						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
 
 						asrc_m2m_pcm->playback->app->pre_pos = Ftemp;
 						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {

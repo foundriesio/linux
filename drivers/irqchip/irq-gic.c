@@ -104,7 +104,7 @@ struct gic_chip_data {
 #define PIC_MODEA	0x078	/* 0: Single Edge,  1: Both Edeg */
 #define PIC_INTMASK	0x100
 #define PIC_ALLMASK	0x108
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 #define PIC_IEN		0x000
 #define PIC_CLR		0x020
 #define PIC_STS		0x040
@@ -1552,6 +1552,8 @@ gic_of_init(struct device_node *node, struct device_node *parent)
 	} else if (of_device_is_compatible(node, "telechips,tcc898x-vpic")) {
 		pic_base = of_iomap(node, 4);
 	} else if (of_device_is_compatible(node, "telechips,tcc899x-vpic")) {
+		pic_base = of_iomap(node, 4);
+	} else if (of_device_is_compatible(node, "telechips,tcc901x-vpic")) {
 		pic_base = of_iomap(node, 4);
 	} else {
 		WARN(!pic_base, "unable to map tcc_pic registers\n");

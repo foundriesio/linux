@@ -380,7 +380,6 @@ static int tcc_ipc_poll( struct file *filp, poll_table *wait)
 		}
 		spin_unlock(&ipc_dev->ipc_handler.spinLock);
 
-		ipc_dev->ipc_handler.isWait = 1;
 		poll_wait(filp, &ipc_dev->ipc_handler.ipcReadQueue._cmdQueue, wait);
 
 		mutex_lock(&ipc_dev->ipc_handler.rbufMutex);

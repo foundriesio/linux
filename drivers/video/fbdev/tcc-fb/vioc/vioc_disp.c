@@ -34,7 +34,7 @@
 static volatile void __iomem *pDISP_reg[VIOC_DISP_MAX] = {0};
 
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 /*
  * DISP.DALIGN.ALIGN register
  * --------------------------
@@ -56,7 +56,7 @@ void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 /*
  * DISP.DALIGN.[SWAPBF, SWAPAF] register
  * =====================================
@@ -98,7 +98,7 @@ void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 {
 	unsigned long value;
@@ -146,7 +146,7 @@ void VIOC_DISP_GetSize(volatile void __iomem *reg, unsigned int *nWidth,
 void VIOC_DISP_SetBGColor(volatile void __iomem *reg, unsigned int BG0,
 			  unsigned int BG1, unsigned int BG2, unsigned int BG3)
 {
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	__raw_writel((BG1 << DBG0_BG1_SHIFT) | (BG0 << DBG0_BG0_SHIFT),
 		     reg + DBG0);
 	__raw_writel((BG3 << DBG1_BG3_SHIFT) | (BG2 << DBG1_BG2_SHIFT),
@@ -175,7 +175,7 @@ void VIOC_DISP_GetPosition(volatile void __iomem *reg, unsigned int *startX,
 	*startY = (__raw_readl(reg + DPOS) & DPOS_YPOS_MASK) >> DPOS_YPOS_SHIFT;
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff)
 {
 	unsigned long value;

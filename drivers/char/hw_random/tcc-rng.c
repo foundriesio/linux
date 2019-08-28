@@ -97,7 +97,7 @@ static inline char __tcc_rng_read_byte(void)
 	return rnd_byte[rnd_byte_cnt];
 }
 
-#else // CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC803X
+#else // CONFIG_ARCH_TCC899X, CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC901X
 
 #define SIP_CRYPTO_TRNG 0x8200D000
 

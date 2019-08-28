@@ -287,16 +287,7 @@
 		status = "okay";
 	};
 
-	/*tcc_dxb_drv {
-		compatible = "telechips,tcc_dxb_drv";
-	};
-
-	tcc_dxb_internal {
-		compatible = "telechips,tcc_dxb_internal";
-		hwdmx_num = <1>;
-	};
-
-	tcc_dxb_ctrl {
+	/*tcc_dxb_ctrl {
 		compatible = "telechips,tcc_dxb_ctrl";
 		pw-gpios   = <&gpe 20 0>;
 		dxb0-gpios = <&gpe 22 0>, <&gpe 21>, <&gpd 2 0>, <>;
@@ -368,11 +359,6 @@
 		};
 	};
 	*/
-	/* H/W Demux */
-	hwdemux: cmbus@19000000 {
-		compatible = "telechips,hwdemux";
-		status = "okay";
-	};
 
 	/* GPSB */
 	gpsb0@16900000 {
@@ -408,16 +394,6 @@
 		pinctrl-1 = <&gpsb4_bus_tsif>;
 	};
 */
-
-	tcc_ex_tsif {
-		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-id = <2>;
-		tsif-port = <2>;
-		port-mux = <2>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-	};
 
 /* TODO : Need to decide port for each gpsb channel
 	gpsb3@16930000 {
@@ -549,7 +525,6 @@
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai1_spdif_tx>;
 		pinctrl-1 = <&m0dai1_spdif_tx_idle>;
-		tx-only;
 		status = "okay";
 	};
 
@@ -585,6 +560,7 @@
 
 			pcm = <&adma0>;
 			dai = <&spdif0>;
+			playback-only;
 		};
 
 		telechips,dai-link@2 {
@@ -772,4 +748,19 @@
 	dmas = <&udma1 2 2 &udma1 3 2>;
 	dma-names = "tx", "rx";
 	status = "okay";
+};
+
+/* H/W Demux */
+&hwdemux {
+	compatible = "telechips,hwdemux";
+	status = "okay";
+};
+
+/* Linux TV */
+&tcc_hwdmx_tsif0 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <2>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx2_idle>;
+	pinctrl-1 = <&tsrx2_active>;
 };

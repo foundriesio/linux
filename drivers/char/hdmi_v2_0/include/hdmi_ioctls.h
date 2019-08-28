@@ -654,6 +654,7 @@ typedef struct {
 #define HDCP_SUPPORT	1
 
 #define IOCTL_HDMI_MAGIC            'H'
+
 /**
  * IOCTL defines
  */
@@ -827,6 +828,18 @@ typedef struct {
  * @retval -1 otherwise
  */
 #define HDMI_API_DRM_GET_VALID                  _IOR( IOCTL_HDMI_MAGIC, 0x288, int)
+
+/**
+ * @short This ioctls sets HDMI_TX_VSIF_UPDATE_FOR_HDR_10P of device status bits.
+ *        This bit is used to determins whether to runs hdmi_api_vsif_update_for_hdr_10p.
+ * @param[in] update Determins whether to run hdmi_api_vsif_update_for_hdr_10p\n
+ *      0: Clear HDMI_TX_VSIF_UPDATE_FOR_HDR_10P of device status bits.\n
+ *         hdmi_api_vsif_update_for_hdr_10p will be ignored\n
+ *      1:Set HDMI_TX_VSIF_UPDATE_FOR_HDR_10P of device status bits.\n
+ *         hdmi_api_vsif_update_for_hdr_10p will be run.\n
+ * @return Return Always 0
+ */
+#define HDMI_API_SET_VSIF_UPDATE_HDR_10P 	_IOW( IOCTL_HDMI_MAGIC, 0x289, int)
 
 #if defined(HDCP_SUPPORT)
 #define HDCP22_CTRL_REG_RESET			_IO( IOCTL_HDMI_MAGIC, 0x290)

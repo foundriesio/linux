@@ -26,7 +26,7 @@ hdmi_soc_features current_soc_features = {
         .max_tmds_mhz = 594,
         .support_feature_1 = SOC_FEATURE_DOLBYVISION | SOC_FEATURE_HDR |
                                 SOC_FEATURE_30_36_BIT | SOC_FEATURE_YCBCR420,
-#elif defined(CONFIG_ARCH_TCC899X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
                 .max_tmds_mhz = 594,
                 .support_feature_1 = SOC_FEATURE_DV_TO_DISP | SOC_FEATURE_DOLBYVISION |
                                 SOC_FEATURE_HDR | SOC_FEATURE_30_36_BIT | SOC_FEATURE_YCBCR420,

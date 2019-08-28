@@ -7,6 +7,7 @@ config SND_SOC_TCC
 	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC898X != n
 	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC899X != n
 	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC803X != n
+	select SND_SOC_TCC_AUDIO_CHMUX if ARCH_TCC901X != n
 	depends on ARCH_TCC && SND_SOC
 	default y
 	help

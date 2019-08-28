@@ -136,7 +136,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 
 	}
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	if( irq == vioc_base_irq_num[0] )
 		type_clr_offset = IRQMASKCLR0_0_OFFSET;
 	else if( irq == vioc_base_irq_num[1] )
@@ -266,7 +266,7 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 	}
 
 	if (do_irq_mask) {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		if( irq == vioc_base_irq_num[0] )
 			type_set_offset = IRQMASKSET0_0_OFFSET;
 		else if( irq == vioc_base_irq_num[1] )
@@ -645,7 +645,7 @@ static int __init vioc_intr_init(void)
 	if (ViocIntr_np == NULL) {
 		pr_info("vioc-intr: disabled [this is mandatory for vioc display]\n");
 	} else {
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		int i = 0;
 		for(i = 0; i < VIOC_IRQ_MAX; i++) {
 			vioc_base_irq_num[i] = irq_of_parse_and_map(ViocIntr_np, i);

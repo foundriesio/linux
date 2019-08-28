@@ -283,6 +283,21 @@ if ARCH_TCC
 choice
 	bool "TCC SoC family"
 
+config ARCH_TCC901X
+	bool "ARMv8 based Telechips TCC901x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC901x SoC family
+
 config ARCH_TCC899X
 	bool "ARMv8 based Telechips TCC899x"
 	select ARM_GIC

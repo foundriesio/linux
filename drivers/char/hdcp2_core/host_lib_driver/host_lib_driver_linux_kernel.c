@@ -21,7 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-
+#include <linux/completion.h>
 #include <linux/random.h>
 #include <linux/interrupt.h>
 #include <linux/miscdevice.h>
@@ -42,7 +42,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.1.1"
+#define HDCP_DRV_VERSION "1.1.3"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -138,12 +138,15 @@ typedef struct {
 	struct tee_client_params *tee_params;
 #endif
 	struct delayed_work	avmute_work;
+	struct completion	avmute_completion;
 } esm_device;
 
 #ifdef USE_HDMI_PWR_CTRL
 extern void hdmi_api_power_control(int enable);
 #endif
-extern void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable);
+extern void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller);
+
+static esm_device *st_esm = NULL;
 
 static void avmute_delay_work(struct work_struct *work)
 {
@@ -152,7 +155,7 @@ static void avmute_delay_work(struct work_struct *work)
 	if(!esm || !esm->dev)
 		return;
 
-	hdmi_api_avmute(esm->dev, 0);
+	hdmi_api_avmute_core(esm->dev, 0, 1);
 }
 
 static void dwc_avmute(esm_device *esm, uint32_t en, uint32_t delay)
@@ -160,9 +163,10 @@ static void dwc_avmute(esm_device *esm, uint32_t en, uint32_t delay)
 	if (!esm || !esm->dev)
 		return;
 
+	cancel_delayed_work(&esm->avmute_work);
 
 	if (en) {
-		hdmi_api_avmute(esm->dev, 1);
+		hdmi_api_avmute_core(esm->dev, 1, 1);
 		/* CEA8610F F.3.6 Video Timing Transition (AVMUTE Recommendation) */
 		msleep(90 /*90*/);
 	}
@@ -262,13 +266,13 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		if (hdcp & (1<<6)) {
 			if (!(hdcpcfg1 & (1<<1)))
 				iowrite32(hdcpcfg1 | (1<<1), esm->link + DWC_HDCP_CFG1);
-			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_FAILED \n", __func__);
+			printk(KERN_INFO "\x1b[33m %s: HDCP 1.4 Authentication process - HDCP_FAILED \x1b[0m\n", __func__);
 			esm->hdcp_status = HDCP_FAILED;
 		}
 		if (hdcp & (1<<7)) {
 			if (hdcpcfg1 & (1<<1))
 				iowrite32(hdcpcfg1 & ~(1<<1), esm->link + DWC_HDCP_CFG1);
-			printk(KERN_INFO "%s: HDCP 1.4 Authentication process - HDCP_ENGAGED \n", __func__);
+			printk(KERN_INFO "\x1b[32m%s: HDCP 1.4 Authentication process - HDCP_ENGAGED \x1b[0m\n", __func__);
 			esm->hdcp_status = HDCP_ENGAGED;
 			dwc_avmute(esm, 0, 0);
 		}
@@ -287,29 +291,30 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 		}
 		if (hdcp22 & (1<<2)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_LOST;
-			printk("%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
+			printk("\x1b[33m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST\x1b[0m");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
 					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
 					esm->rxsense_status);
 				esm->hdcp_status = HDCP_IDLE;
 			}
-			dwc_avmute(esm, 0, 0);
+			dwc_avmute(esm, 0, 500);
 		}
 		if (hdcp22 & (1<<3)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATED;
-			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED");
+			printk(KERN_INFO "\x1b[32m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATED\x1b[0m");
 			dwc_avmute(esm, 0, 0);
 		}
 		if (hdcp22 & (1<<4)) {
 			esm->hdcp_status = HDCP2_AUTHENTICATION_FAIL;
-			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL");
+			printk(KERN_INFO "\x1b[33m%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_FAIL\x1b[0m");
 			if (!esm->hpd_status || !esm->rxsense_status) {
 				printk(KERN_INFO
 					"%s: %s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", esm->hpd_status,
 					esm->rxsense_status);
 				esm->hdcp_status = HDCP_IDLE;
 			}
+			dwc_avmute(esm, 0, 500);
 		}
 		if (hdcp22 & (1<<5)) {
 			printk(KERN_INFO "%s: %s\n", __func__, "HDCP22REG_STAT_ST_HDCP_DECRYPTED_CHG");
@@ -320,7 +325,8 @@ static irqreturn_t hdcp_isr(int irq, void *dev_id)
 			 */
 			if (esm->hdcp_status == HDCP2_AUTHENTICATED)
 				esm->hdcp_status = HDCP2_DECRYPTED_CHG;
-			dwc_avmute(esm, 0, 100);
+
+			complete(&esm->avmute_completion);
 		}
 	}
 
@@ -624,7 +630,7 @@ static long hdcp1Stop(esm_device *esm, void __user *arg)
 	dwc_hdmi_set_hdcp_keepout(esm->dev);
 	esm->dev->hdcp_status = esm->hdcp_status = HDCP_IDLE;
 	mutex_unlock(&esm->dev->mutex);
-	dwc_avmute(esm, 0, 500);
+	dwc_avmute(esm, 0, 1000);
 
 #ifdef CONFIG_OPTEE
 	if (esm->context)
@@ -744,6 +750,7 @@ static long hdcp2Stop(esm_device *esm, void __user *arg)
 	dwc_hdmi_set_hdcp_keepout(esm->dev);
 	hdcp2p2Stop(esm->dev);
 	mutex_unlock(&esm->dev->mutex);
+	dwc_avmute(esm, 0, 1000);
 
 	//iowrite32(0x0, esm->hdcp22 + 0x20);
 	//iowrite32(0xffffffff, esm->hdcp22 + 0x24);
@@ -959,12 +966,20 @@ tcc_hdcp_release(struct inode *inode, struct file *file)
 static ssize_t
 tcc_hdcp_read(struct file *file, char *buf, size_t count, loff_t *f_pos)
 {
+	printk("avmute avunmute bypassen bypassdis\n");
 	return 0;
 }
 
 static ssize_t
 tcc_hdcp_write(struct file *file, const char *buf, size_t count, loff_t *f_pos)
 {
+	struct miscdevice *dev = (struct miscdevice *)file->private_data;
+	esm_device *esm = dev_get_drvdata(dev->parent);
+
+	if (!strncmp(buf, "avmute", 6))
+		dwc_avmute(esm, 1, 0);
+	else if (!strncmp(buf, "avunmute", 8))
+		dwc_avmute(esm, 0, 0);
 	return count;
 }
 
@@ -1103,6 +1118,8 @@ static int hdcp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, esm);
 
 	INIT_DELAYED_WORK(&esm->avmute_work, avmute_delay_work);
+	init_completion(&esm->avmute_completion);
+	st_esm = esm;
 
 	dev_info(&pdev->dev, "driver probed. ver: %s\n", HDCP_DRV_VERSION);
 
@@ -1136,6 +1153,47 @@ static int hdcp_resume(struct platform_device *pdev)
 	//esm_device *esm= platform_get_drvdata(pdev);
 	return 0;
 }
+
+void dwc_hdcp_avmute(int mute)
+{
+	int cnt;
+
+	if (!st_esm)
+		return;
+
+	if (st_esm->open_cs <= 0)
+		return;
+
+	if (mute) {
+		iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) | 0x3, st_esm->link + DWC_HDCP22_CTRL1);
+		iowrite32(ioread32(st_esm->link + DWC_HDCP_CFG1) | (1<<1), st_esm->link + DWC_HDCP_CFG1);
+		if (ioread32(st_esm->link + DWC_HDCP22_INTSTS) & (1<<2)) {
+			reinit_completion(&st_esm->avmute_completion);
+			wait_for_completion_timeout(&st_esm->avmute_completion, msecs_to_jiffies(500));
+		}
+		else {
+			cnt = 10;
+			do {
+				if ((ioread32(st_esm->link + DWC_HDCP_OBS2) & ((1<<2) | (1<<1))) == 0)
+					break;
+			} while (cnt--);
+		}
+	}
+	else {
+		switch (st_esm->hdcp_status) {
+		case HDCP_ENGAGED:
+			iowrite32(ioread32(st_esm->link + DWC_HDCP_CFG1) & ~(1<<1), st_esm->link + DWC_HDCP_CFG1);
+			break;
+		case HDCP2_AUTHENTICATED:
+		case HDCP2_DECRYPTED_CHG:
+			iowrite32(ioread32(st_esm->link + DWC_HDCP22_CTRL1) & ~0x3, st_esm->link + DWC_HDCP22_CTRL1);
+			break;
+		default:
+			break;
+		}
+	}
+}
+EXPORT_SYMBOL(dwc_hdcp_avmute);
 
 static const struct of_device_id hdcp_of_match[] = {
 	{ .compatible =	"telechips,dw-hdcp" },

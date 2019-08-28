@@ -101,7 +101,7 @@
 #define TCC_ADMA_TXDACARL2_OFFSET			(0x0158)
 #define TCC_ADMA_TXDACARL3_OFFSET			(0x015C)
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define TCC_ADMA_TXDASAR4_OFFSET			(0x0160)
 #define TCC_ADMA_TXDACAR4_OFFSET			(0x0164)
 #define TCC_ADMA_TXDADARL4_OFFSET			(0x0168)
@@ -168,7 +168,7 @@
 	#define TCC_AUDIO_PCFG1_OFFSET			(0x0004)
 	#define TCC_AUDIO_PCFG2_OFFSET			(0x0008)
 	#define TCC_AUDIO_PCFG3_OFFSET			(0x000C)
-#elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/****** Port Configuration Register Offset (IOBUS Cfg Base + offset) ******/
 	#define IOBUS_CFG_DAI0_CHMUX			(0x005C)
 	#define IOBUS_CFG_DAI1_CHMUX			(0x0060)
@@ -568,7 +568,7 @@
 #define ADMA_RESET_DMA_RX_RESET			(1U << ADMA_RESET_DMA_RX_Pos)
 #define ADMA_RESET_DMA_RX_RELEASE		(0U << ADMA_RESET_DMA_RX_Pos)
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	#define ADMA_RESET_DMA_DAI_TX_Pos			(2)
 	#define ADMA_RESET_DMA_DAI_TX_Msk			(1U << ADMA_RESET_DMA_DAI_TX_Pos)
 	#define ADMA_RESET_DMA_DAI_TX_RESET			(1U << ADMA_RESET_DMA_DAI_TX_Pos)
@@ -1378,7 +1378,7 @@
 
 	#define PCFG3_SPDIF_TX_Pos							(24)
 	#define PCFG3_SPDIF_TX_Msk							(0xFFU << PCFG3_SPDIF_TX_Pos)
-#elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#elif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define IOBUS_CFG_CHMUX_SEL_Pos						(0)
 	#define IOBUS_CFG_CHMUX_SEL_Msk						(7 << IOBUS_CFG_CHMUX_SEL_Pos)
 #elif defined(CONFIG_ARCH_TCC803X)

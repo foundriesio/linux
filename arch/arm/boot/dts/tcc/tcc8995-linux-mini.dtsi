@@ -303,21 +303,6 @@
 		};
 	};
 	*/
-	/* H/W Demux */
-	hwdemux: cmbus@19000000 {
-		compatible = "telechips,hwdemux";
-		status = "okay";
-	};
-
-	tcc_ex_tsif {
-		compatible = "telechips,tcc89xx-hwdmx-tsif";
-		tsif-id = <2>;
-		tsif-port = <2>;
-		port-mux = <2>;
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&tsrx2_idle>;
-		pinctrl-1 = <&tsrx2_active>;
-	};
 
 /* TODO : Need to decide port for each gpsb channel
 	gpsb3@16930000 {
@@ -605,4 +590,19 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart2_data>;
 	status = "okay";
+};
+
+/* H/W Demux */
+&hwdemux {
+	compatible = "telechips,hwdemux";
+	status = "okay";
+};
+
+/* Linux TV */
+&tcc_hwdmx_tsif0 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <2>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&tsrx2_idle>;
+	pinctrl-1 = <&tsrx2_active>;
 };

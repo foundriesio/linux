@@ -192,7 +192,6 @@ typedef struct _IpcHandler{
 
 	IPC_RINGBUF readRingBuffer;
 
-	IPC_UINT32	isWait;
 	IPC_UINT32	vTime;
 	IPC_UINT32	vMin;
 

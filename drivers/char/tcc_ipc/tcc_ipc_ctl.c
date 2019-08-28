@@ -103,14 +103,13 @@ void ipc_struct_init(struct ipc_device *ipc_dev)
 		ipcHandler->setParam.vMin= 0;
 		ipcHandler->vTime = 0;
 		ipcHandler->vMin = 0;
-		ipcHandler->isWait =0;
 
 		ipcHandler->seqID =0;
 		ipcHandler->openSeqID= 0xFFFFFFFF;
 		ipcHandler->requestConnectTime = 0;
 
 		ipcHandler->tempWbuf = NULL;
-		
+
 		spin_lock_init(&ipcHandler->spinLock);
 		mutex_init(&ipcHandler->rMutex);
 		mutex_init(&ipcHandler->wMutex);
@@ -437,15 +436,11 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 						}
 						else
 						{
-							if(ipc_handler->isWait ==1)
+							IPC_INT32  dataSize;
+							dataSize = ipc_buffer_data_available(&ipc_handler->readRingBuffer);
+							if(ipc_handler->vMin  <= (IPC_UINT32)dataSize )
 							{
-								IPC_INT32  dataSize;
-								dataSize = ipc_buffer_data_available(&ipc_handler->readRingBuffer);
-								if(ipc_handler->vMin  <= (IPC_UINT32)dataSize )
-								{
-									ipc_read_wake_up(ipc_dev);
-								}
-								ipc_handler->isWait = 0;
+								ipc_read_wake_up(ipc_dev);
 							}
 						}
 					}
@@ -640,7 +635,6 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_U
 		{
 			if(isWait ==1)
 			{
-				ipc_handler->isWait = 1;
 				ipc_read_wait_event_timeout(ipc_dev,ipc_handler->vTime*100);
 
 				mutex_lock(&ipc_handler->rbufMutex);

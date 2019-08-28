@@ -27,7 +27,7 @@
 #include <linux/of_address.h>
 #include <linux/arm-smccc.h>
 
-#if defined (CONFIG_ARCH_TCC899X)
+#if defined (CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	#define SIP_REMOCON_CFG	0x82004000
 #endif
 
@@ -58,7 +58,7 @@ void tca_remocon_reg_dump(void)
 	printk("PBD01   0x%08x\n", readl(remote_base + REMOTE_PBD0_H_OFFSET));
 	printk("PBD10   0x%08x\n", readl(remote_base + REMOTE_PBD1_L_OFFSET));
 	printk("PBD10   0x%08x\n", readl(remote_base + REMOTE_PBD1_H_OFFSET));
-#if defined(CONFIG_ARCH_TCC896X)||defined(CONFIG_ARCH_TCC897x) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC896X)||defined(CONFIG_ARCH_TCC897x) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	printk("PBD20   0x%08x\n", readl(remote_base + REMOTE_PBD2_L_OFFSET));
 	printk("PBD21   0x%08x\n", readl(remote_base + REMOTE_PBD2_H_OFFSET));
 	printk("PBD30   0x%08x\n", readl(remote_base + REMOTE_PBD3_L_OFFSET));
@@ -213,7 +213,7 @@ void    RemoconConfigure (void)
 {
 	writel(readl(remote_base + REMOTE_INPOL_OFFSET) | Hw0, remote_base + REMOTE_INPOL_OFFSET);
 
-#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	writel(readl(remote_base + REMOTE_INPOL_OFFSET) | Hw14, remote_base + REMOTE_INPOL_OFFSET);
 #endif
 #if defined(CONFIG_PBUS_DIVIDE_CLOCK_WITH_XTIN) || defined(CONFIG_PBUS_DIVIDE_CLOCK_WITHOUT_XTIN)
@@ -227,7 +227,7 @@ void    RemoconConfigure (void)
 	
 	writel(readl(remote_base + REMOTE_BDD_OFFSET) | Hw0 | Hw1 | Hw5 , remote_base + REMOTE_BDD_OFFSET);
 
-#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	writel(readl(remote_base + REMOTE_BDD_OFFSET) | Hw26 , remote_base + REMOTE_BDD_OFFSET);
   #endif
 #if defined(CONFIG_PBUS_DIVIDE_CLOCK_WITH_XTIN) || defined(CONFIG_PBUS_DIVIDE_CLOCK_WITHOUT_XTIN)
@@ -235,7 +235,7 @@ void    RemoconConfigure (void)
 #else
 	writel(readl(remote_base + REMOTE_BDD_OFFSET) | Hw23 , remote_base + REMOTE_BDD_OFFSET);
 #endif
-  #if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X)
+  #if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC570X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	writel(readl(remote_base + REMOTE_BDD_OFFSET) & ~Hw25 , remote_base + REMOTE_BDD_OFFSET);
   #endif
 	writel(readl(remote_base + REMOTE_BDD_OFFSET) | Hw24 , remote_base + REMOTE_BDD_OFFSET);

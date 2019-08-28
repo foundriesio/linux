@@ -47,7 +47,7 @@ struct tcc_gpu_dvfs_table_t {
 	unsigned int uVol;
 };
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 static struct tcc_gpu_dvfs_table_t gpu_dvfs_table[] = {
        	/* Hz    			uV */
 	{ 440000000,   30,  0, 650000 },	

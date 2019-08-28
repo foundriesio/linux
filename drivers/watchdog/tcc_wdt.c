@@ -37,7 +37,7 @@
 #include <soc/tcc/tcc-sip.h>
 #include <soc/tcc/timer.h>
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define WDT_SIP
 #endif
 
@@ -427,6 +427,8 @@ static const struct watchdog_info tcc_wdt_info = {
 		"TCC898X Watchdog",
 #elif defined(CONFIG_ARCH_TCC899X)
 		"TCC899X Watchdog",
+#elif defined(CONFIG_ARCH_TCC901X)
+		"TCC901X Watchdog",
 #else
 		"Telechips Watchdog",
 #endif

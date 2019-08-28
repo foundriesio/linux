@@ -42,7 +42,7 @@
 
 #define VPU_REGISTER_DUMP
 //#define VPU_REGISTER_INIT
-//#define USE_WAIT_LIST // for interlaced format with fileplay-mode or all format with ring-mode
+#define USE_WAIT_LIST // for interlaced format with fileplay-mode or all format with ring-mode
 
 //#define FORCED_ERROR //For test purpose!!
 #ifdef FORCED_ERROR

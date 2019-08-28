@@ -45,7 +45,7 @@
 //#define USER    (~Hw16)
 
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 #define SEL	  14
 #else
 #define SEL	  15
