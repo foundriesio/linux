@@ -2949,7 +2949,8 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			memcpy(lastUpdated, &tccvid_lastframe[type].LastImage, sizeof(struct tcc_lcdc_image_update));
 
 	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-			if(lastUpdated->private_data.optional_info[VID_OPT_CONTENT_TYPE] == ATTR_DV_WITHOUT_BC){
+			//if(lastUpdated->private_data.optional_info[VID_OPT_CONTENT_TYPE] == ATTR_DV_WITHOUT_BC){
+			if(lastUpdated->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO] != 0){
 				spin_lock_irq(&LastFrame_lockDisp);
 				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type);
 				spin_unlock_irq(&LastFrame_lockDisp);
