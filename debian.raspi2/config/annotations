@@ -3635,6 +3635,7 @@ CONFIG_MFD_CROS_EC_I2C                          policy<{'amd64': 'm', 'arm64': '
 CONFIG_MFD_CROS_EC_SPI                          policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm'}>
 CONFIG_CROS_EC_RPMSG                            policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_CROS_EC_LIGHTBAR                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm'}>
+CONFIG_CROS_EC_VBC                              policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_MFD_ASIC3                                policy<{'armhf': 'y'}>
 CONFIG_PMIC_DA903X                              policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
 CONFIG_MFD_DA9052_SPI                           policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
