@@ -356,7 +356,7 @@ void *devm_memremap_pages(struct device *dev, struct dev_pagemap *pgmap)
 		WARN_ONCE(1, "%s attempted on %s region %pr\n", __func__,
 				is_ram == REGION_MIXED ? "mixed" : "ram", res);
 		error = -ENXIO;
-		goto err_radix;
+		goto err_array;
 	}
 
 	pgmap->dev = dev;
@@ -417,6 +417,7 @@ void *devm_memremap_pages(struct device *dev, struct dev_pagemap *pgmap)
  err_pfn_remap:
  err_radix:
 	pgmap_radix_release(res, pgoff);
+ err_array:
 	pgmap->kill(pgmap->ref);
 	return ERR_PTR(error);
 }
