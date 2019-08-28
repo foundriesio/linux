@@ -2719,6 +2719,7 @@ CONFIG_ZPA2326                                  policy<{'amd64': 'm', 'arm64': '
 
 # Menu: Device Drivers >> Industrial I/O support >> Proximity and distance sensors
 CONFIG_LIDAR_LITE_V2                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MB1232                                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SX9500                                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_SRF08                                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 
