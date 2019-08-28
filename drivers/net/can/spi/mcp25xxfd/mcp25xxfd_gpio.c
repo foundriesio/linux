@@ -21,11 +21,6 @@
 /* GPIO component */
 #ifdef CONFIG_GPIOLIB
 
-enum mcp25xxfd_gpio_pins {
-	MCP25XXFD_GPIO_GPIO0 = 0,
-	MCP25XXFD_GPIO_GPIO1 = 1,
-};
-
 static int mcp25xxfd_gpio_request(struct gpio_chip *chip,
 				  unsigned int offset)
 {
