@@ -2538,6 +2538,7 @@ CONFIG_VIPERBOARD_ADC                           policy<{'amd64': 'm', 'arm64': '
 CONFIG_ATLAS_PH_SENSOR                          policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_IAQCORE                                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_VZ89X                                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_PMS7003                                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 
 # Menu: Device Drivers >> Industrial I/O support >> Counters
 CONFIG_104_QUAD_8                               policy<{'amd64': 'm', 'i386': 'm'}>
