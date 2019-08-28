@@ -3436,6 +3436,13 @@ CONFIG_MTD_LPDDR2_NVM                           policy<{'armhf': 'm'}>
 
 # Menu: Device Drivers >> Memory Technology Device (MTD) support >> Mapping drivers for chip access
 CONFIG_MTD_PHYSMAP                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MTD_PCI                                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MTD_INTEL_VR_NOR                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MTD_PMC551                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MTD_PMC551_BUGFIX                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_MTD_PMC551_DEBUG                         policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_MTD_NAND_DENALI_PCI                      policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_MTD_NAND_RICOH                           policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_MTD_PHYSMAP_COMPAT                       policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
 CONFIG_MTD_PHYSMAP_OF                           policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_MTD_PHYSMAP_OF_VERSATILE                 policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
@@ -3571,6 +3578,28 @@ CONFIG_MTDRAM_ERASE_SIZE                        policy<{'amd64': '128', 'arm64':
 CONFIG_MTD_BLOCK2MTD                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_MTD_POWERNV_FLASH                        policy<{'ppc64el': 'm'}>
 CONFIG_MTD_DOCG3                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+
+CONFIG_BLK_DEV_PCIESSD_MTIP32XX                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_BLK_DEV_UMEM                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_BLK_DEV_SKD                              policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_BLK_DEV_SX8                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_BLK_DEV_RSXX                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_BLK_DEV_NVME                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+CONFIG_NVME_TCP                                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+
+CONFIG_PHANTOM                                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_SGI_IOC4                                 policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_TIFM_CORE                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_TIFM_7XX1                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_HP_ILO                                   policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_PCI_ENDPOINT_TEST                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_CB710_CORE                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_CB710_DEBUG                              policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
+CONFIG_GENWQE                                   policy<{'amd64': 'm', 'arm64': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+CONFIG_GENWQE_PLATFORM_ERROR_RECOVERY           policy<{'amd64': '0', 'arm64': '0', 'ppc64el': '0', 's390x': '0'}>
+CONFIG_MISC_ALCOR_PCI                           policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_MISC_RTSX_PCI                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
+CONFIG_HABANA_AI                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'n'}>
 
 # Menu: Device Drivers >> Microsoft Hyper-V guest support
 CONFIG_HYPERV                                   policy<{'amd64': 'm', 'i386': 'm'}>
