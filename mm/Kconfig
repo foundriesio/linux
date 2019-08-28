@@ -528,7 +528,7 @@ config CMA_AREAS
 	  If unsure, leave the default value "7".
 
 config GCMA
-	bool "Guaranteed Contiguous Memory Allocator"
+	bool "Guaranteed Contiguous Memory Allocator (EXPERIMENTAL)"
 	default n
 	select FRONTSWAP
 	select CLEANCACHE
@@ -544,7 +544,7 @@ config GCMA
 	  interacts heavily with memory reclaim.
 
 config GCMA_DEFAULT
-	bool "Set GCMA as default CMA facility"
+	bool "Set GCMA as default CMA facility (EXPERIMENTAL)"
 	default n
 	depends on GCMA
 	help

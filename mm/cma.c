@@ -58,15 +58,6 @@ struct cma_buffer {
 };
 #endif
 
-#ifdef CONFIG_GCMA_DEFAULT
-unsigned long int gcma_free = (CONFIG_CMA_SIZE_MBYTES * 1024);
-unsigned long int gcma_free_mem(void)
-{
-	return gcma_free;
-}
-EXPORT_SYMBOL(gcma_free_mem);
-#endif
-
 struct cma cma_areas[MAX_CMA_AREAS];
 unsigned cma_area_count;
 static DEFINE_MUTEX(cma_mutex);
@@ -653,10 +644,7 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 		}
 	}
 #endif
-#ifdef CONFIG_GCMA_DEFAULT
-	if (ret == 0)
-		gcma_free -= (count * (PAGE_SIZE/1024));
-#endif
+
 	pr_debug("%s(): returned %p\n", __func__, page);
 	return page;
 }
@@ -694,9 +682,7 @@ bool cma_release(struct cma *cma, const struct page *pages, unsigned int count)
 
 	cma_clear_bitmap(cma, pfn, count);
 	trace_cma_release(pfn, pages, count);
-#ifdef CONFIG_GCMA_DEFAULT
-	gcma_free += (count * (PAGE_SIZE/1024));
-#endif
+
 	return true;
 }
 
