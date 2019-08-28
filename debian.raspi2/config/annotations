@@ -156,6 +156,7 @@ CONFIG_PCI_PRI                                  policy<{'amd64': 'y', 'arm64': '
 CONFIG_PCI_PASID                                policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'n'}>
 CONFIG_PCI_HOST_GENERIC                         policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
 CONFIG_PCIE_XILINX                              policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
+CONFIG_PCI_REALLOC_ENABLE_AUTO                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 
 # Menu: Bus options (PCI etc.) >> PCCard (PCMCIA/CardBus) support >> 16-bit PCMCIA support
 CONFIG_PCMCIA                                   policy<{'amd64': 'm', 'i386': 'm', 's390x': 'n'}>
