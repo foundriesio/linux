@@ -372,6 +372,7 @@ struct ceph_inode_info {
 	int i_snap_realm_counter; /* snap realm (if caps) */
 	struct list_head i_snap_realm_item;
 	struct list_head i_snap_flush_item;
+	struct timespec i_btime;
 	struct timespec i_snap_btime;
 
 	struct work_struct i_wb_work;  /* writeback work */
