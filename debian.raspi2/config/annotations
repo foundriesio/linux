@@ -972,6 +972,7 @@ CONFIG_AMBA_PL08X                               policy<{'arm64': 'y', 'armhf': '
 CONFIG_DMA_BCM2835                              policy<{'arm64': 'y'}>
 CONFIG_DMA_OMAP                                 policy<{'armhf': 'y'}>
 CONFIG_FSL_EDMA                                 policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_FSL_QDMA                                 policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_IMX_DMA                                  policy<{'armhf-generic': 'm'}>
 CONFIG_IMX_SDMA                                 policy<{'armhf-generic': 'm'}>
 CONFIG_INTEL_IDMA64                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
