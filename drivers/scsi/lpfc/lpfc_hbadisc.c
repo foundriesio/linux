@@ -4459,8 +4459,7 @@ lpfc_initialize_node(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 {
 	INIT_LIST_HEAD(&ndlp->els_retry_evt.evt_listp);
 	INIT_LIST_HEAD(&ndlp->dev_loss_evt.evt_listp);
-	setup_timer(&ndlp->nlp_delayfunc, lpfc_els_retry_delay,
-			(unsigned long)ndlp);
+	timer_setup(&ndlp->nlp_delayfunc, lpfc_els_retry_delay, 0);
 	ndlp->nlp_DID = did;
 	ndlp->vport = vport;
 	ndlp->phba = vport->phba;
@@ -5606,12 +5605,10 @@ static void
 lpfc_free_tx(struct lpfc_hba *phba, struct lpfc_nodelist *ndlp)
 {
 	LIST_HEAD(completions);
-	struct lpfc_sli *psli;
 	IOCB_t     *icmd;
 	struct lpfc_iocbq    *iocb, *next_iocb;
 	struct lpfc_sli_ring *pring;
 
-	psli = &phba->sli;
 	pring = lpfc_phba_elsring(phba);
 	if (unlikely(!pring))
 		return;
@@ -5693,9 +5690,9 @@ lpfc_cleanup_discovery_resources(struct lpfc_vport *vport)
  */
 /*****************************************************************************/
 void
-lpfc_disc_timeout(unsigned long ptr)
+lpfc_disc_timeout(struct timer_list *t)
 {
-	struct lpfc_vport *vport = (struct lpfc_vport *) ptr;
+	struct lpfc_vport *vport = from_timer(vport, t, fc_disctmo);
 	struct lpfc_hba   *phba = vport->phba;
 	uint32_t tmo_posted;
 	unsigned long flags = 0;
