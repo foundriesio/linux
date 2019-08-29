@@ -938,6 +938,8 @@ static int fill_inode(struct inode *inode, struct page *locked_page,
 	case S_IFDIR:
 		inode->i_op = &ceph_dir_iops;
 		inode->i_fop = &ceph_dir_fops;
+
+
 		break;
 	default:
 		pr_err("fill_inode %llx.%llx BAD mode 0%o\n",
