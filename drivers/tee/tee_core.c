@@ -23,6 +23,8 @@
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
 #include <linux/uaccess.h>
+#include <linux/mm.h>
+#include <asm/pgtable.h>
 #include "tee_private.h"
 
 #define TEE_NUM_DEVICES	32
@@ -864,12 +866,55 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 }
 
+#define pgprot_cached(prot) \
+	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_WRITEALLOC)
+
+static void tee_mmap_mem_open(struct vm_area_struct *vma)
+{
+	/* do nothing */
+}
+
+static void tee_mmap_mem_close(struct vm_area_struct *vma)
+{
+	/* do nothing */
+}
+
+static struct vm_operations_struct tee_mmap_ops = {
+	.open = tee_mmap_mem_open,
+	.close = tee_mmap_mem_close,
+};
+
+extern int range_is_allowed(unsigned long pfn, unsigned long size);
+
+static int tee_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	size_t size = vma->vm_end - vma->vm_start;
+
+	if (range_is_allowed(vma->vm_pgoff, size) < 0) {
+		printk(KERN_ERR  "tee: this address is not allowed \n");
+		return -EPERM;
+	}
+
+	vma->vm_page_prot = pgprot_cached(vma->vm_page_prot);
+	vma->vm_ops = &tee_mmap_ops;
+
+	if (remap_pfn_range(vma,
+				vma->vm_start,
+				vma->vm_pgoff, size,
+				vma->vm_page_prot)) {
+		printk(KERN_ERR  "tee: remap_pfn_range failed \n");
+		return -EAGAIN;
+	}
+	return 0;
+}
+
 static const struct file_operations tee_fops = {
 	.owner = THIS_MODULE,
 	.open = tee_open,
 	.release = tee_release,
 	.unlocked_ioctl = tee_ioctl,
 	.compat_ioctl = tee_ioctl,
+	.mmap = tee_mmap,
 };
 
 static void tee_release_device(struct device *dev)
