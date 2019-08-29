@@ -59,17 +59,20 @@ static volatile void __iomem *pLUT_reg;
 #define lut_writel __raw_writel
 #define lut_readl __raw_readl
 
-#define TCC_LUT_DEBUG 0
-#define TCC_LUT_DEBUG_TABLE 0
+#define TCC_LUT_DEBUG		0
+#define TCC_LUT_DEBUG_TABLE	0
 
-#define dpr_info(msg, ...)                                                     	\
-	if (TCC_LUT_DEBUG) {                                                   	\
-		pr_info(msg, ##__VA_ARGS__);					\
-	}
-#define drp_table_info(msg,...)                                                 	\
-	if (TCC_LUT_DEBUG_TABLE) {                                             	\
-		pr_info(msg, ##__VA_ARGS__);                                   	\
-	}
+#if TCC_LUT_DEBUG
+#define dpr_info(fmt, args...) printk("[%s:%d]" fmt, __func__, __LINE__, ## args)
+#else
+#define dpr_info(fmt, args...)
+#endif
+#if TCC_LUT_DEBUG_TABLE
+#define drp_table_info(fmt, args...) printk("[%s:%d]" fmt, __func__, __LINE__, ## args)
+#else
+#define drp_table_info(fmt, args...)
+#endif
+
 
 int lut_get_pluginComponent_index(unsigned int tvc_n)
 {
@@ -79,13 +82,13 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 16:
-					dpr_info(" >>plugin to rdma16\r\n", __func__);
+					dpr_info(" >>plugin to rdma16\n");
 					return 17;
 				case 17:
-					dpr_info(" >>plugin to rdma17\r\n", __func__);
+					dpr_info(" >>plugin to rdma17\n");
 					return 19;
 				default:
-					dpr_info(" >>plugin to rdma%02d\r\n", get_vioc_index(tvc_n));
+					dpr_info(" >>plugin to rdma%02d\n", get_vioc_index(tvc_n));
 					return get_vioc_index(tvc_n);
 			}
 		break;
@@ -93,10 +96,10 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 0:
-					dpr_info(" >>plugin to vin0\r\n", __func__);
+					dpr_info(" >>plugin to vin0\n");
 					return 16;
 				case 1:
-					dpr_info(" >>plugin to vin1\r\n", __func__);
+					dpr_info(" >>plugin to vin1\n");
 					return 18;
 				default:
 					break;
@@ -178,7 +181,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 	// lut table select
 	lut_index = get_vioc_index(lut_n);
 	lut_writel(lut_index, ctrl_reg);
-	dpr_info("%s ctrl lut_comp %d is %d\r\n", __func__, lut_index, lut_readl(ctrl_reg));
+	dpr_info("ctrl lut_comp %d is %d\n", lut_index, lut_readl(ctrl_reg));
 
 	// lut table setting
 	for (i = 0; i < LUT_TABLE_SIZE; i++) {
@@ -193,7 +196,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 	#if defined(LUT_UPDATE_PEND)
 	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0)) {
 		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)), LUT_UPDATE_PEND);
-		dpr_info("%s update_pend lut_comp %d is %d\r\n", __func__, lut_index, lut_readl(LUT_UPDATE_PEND));
+		dpr_info("update_pend lut_comp %d is %d\n", lut_index, lut_readl(LUT_UPDATE_PEND));
 	}
 	#endif
 }
@@ -257,7 +260,7 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 	unsigned int lut_cfg_val, lut_index;
 
 	lut_index = get_vioc_index(lut_n);
-	dpr_info("%s lut_index_%d\r\n", __func__, lut_index);
+	dpr_info("lut_index_%d\n", lut_index);
 
 	#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	/* 3: rgb-comp0 4: y-comp0, 5: rgb-comp1, 6: y-comp */
@@ -273,8 +276,7 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 
 	plugin = lut_get_pluginComponent_index(plugComp);
 	if (plugin < 0) {
-		pr_err("%s plugcomp(0x%x) is out of range \r\n", __func__,
-		       plugComp);
+		pr_err("plugcomp(0x%x) is out of range \n", plugComp);
 		goto plugComp_is_out_of_range;
 	}
 	lut_cfg_val |= ((unsigned int)plugin << L_TABLE_SEL_SHIFT);
@@ -298,7 +300,7 @@ int tcc_get_lut_plugin(unsigned int lut_n)
 		lut_index = get_vioc_index(VIOC_LUT_COMP0) +1;
 	}
 	#endif
-	dpr_info("%s lut_index = %d\r\n", __func__, lut_index);
+	dpr_info("lut_index = %d\n", lut_index);
 
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 	value = lut_readl(reg);
@@ -324,7 +326,7 @@ void tcc_set_lut_enable(unsigned int lut_n, unsigned int enable)
 
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 
-	dpr_info("%s lut_index_%d %s\r\n", __func__, lut_index,
+	dpr_info("lut_index_%d %s\n", lut_index,
 		 enable ? "enable" : "disable");
 	// enable , disable
 	if (enable)
@@ -359,7 +361,7 @@ int tcc_get_lut_enable(unsigned int lut_n)
 volatile void __iomem *VIOC_LUT_GetAddress(void)
 {
 	if (pLUT_reg == NULL)
-		pr_err("%s ADDRESS NULL \n", __func__);
+		pr_err("ADDRESS NULL \n");
 
 	return pLUT_reg;
 }
