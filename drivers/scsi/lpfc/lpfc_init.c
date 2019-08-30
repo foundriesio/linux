@@ -73,7 +73,7 @@ unsigned long _dump_buf_dif_order;
 spinlock_t _dump_buf_lock;
 
 /* Used when mapping IRQ vectors in a driver centric manner */
-uint32_t lpfc_present_cpu;
+static uint32_t lpfc_present_cpu;
 
 static void lpfc_get_hba_model_desc(struct lpfc_hba *, uint8_t *, uint8_t *);
 static int lpfc_post_rcv_buf(struct lpfc_hba *);
@@ -1147,13 +1147,13 @@ lpfc_hba_down_post(struct lpfc_hba *phba)
  * be cleared by the worker thread after it has taken the event bitmap out.
  **/
 static void
-lpfc_hb_timeout(unsigned long ptr)
+lpfc_hb_timeout(struct timer_list *t)
 {
 	struct lpfc_hba *phba;
 	uint32_t tmo_posted;
 	unsigned long iflag;
 
-	phba = (struct lpfc_hba *)ptr;
+	phba = from_timer(phba, t, hb_tmofunc);
 
 	/* Check for heart beat timeout conditions */
 	spin_lock_irqsave(&phba->pport->work_port_lock, iflag);
@@ -1181,12 +1181,12 @@ lpfc_hb_timeout(unsigned long ptr)
  * be cleared by the worker thread after it has taken the event bitmap out.
  **/
 static void
-lpfc_rrq_timeout(unsigned long ptr)
+lpfc_rrq_timeout(struct timer_list *t)
 {
 	struct lpfc_hba *phba;
 	unsigned long iflag;
 
-	phba = (struct lpfc_hba *)ptr;
+	phba = from_timer(phba, t, rrq_tmr);
 	spin_lock_irqsave(&phba->pport->work_port_lock, iflag);
 	if (!(phba->pport->load_flag & FC_UNLOADING))
 		phba->hba_flag |= HBA_RRQ_ACTIVE;
@@ -4351,14 +4351,11 @@ lpfc_create_port(struct lpfc_hba *phba, int instance, struct device *dev)
 	INIT_LIST_HEAD(&vport->rcv_buffer_list);
 	spin_lock_init(&vport->work_port_lock);
 
-	setup_timer(&vport->fc_disctmo, lpfc_disc_timeout,
-			(unsigned long)vport);
+	timer_setup(&vport->fc_disctmo, lpfc_disc_timeout, 0);
 
-	setup_timer(&vport->els_tmofunc, lpfc_els_timeout,
-			(unsigned long)vport);
+	timer_setup(&vport->els_tmofunc, lpfc_els_timeout, 0);
 
-	setup_timer(&vport->delayed_disc_tmo, lpfc_delayed_disc_tmo,
-			(unsigned long)vport);
+	timer_setup(&vport->delayed_disc_tmo, lpfc_delayed_disc_tmo, 0);
 
 	if (phba->sli3_options & LPFC_SLI3_BG_ENABLED)
 		lpfc_setup_bg(phba, shost);
@@ -4643,9 +4640,9 @@ lpfc_fcf_redisc_wait_start_timer(struct lpfc_hba *phba)
  * worker thread context.
  **/
 static void
-lpfc_sli4_fcf_redisc_wait_tmo(unsigned long ptr)
+lpfc_sli4_fcf_redisc_wait_tmo(struct timer_list *t)
 {
-	struct lpfc_hba *phba = (struct lpfc_hba *)ptr;
+	struct lpfc_hba *phba = from_timer(phba, t, fcf.redisc_wait);
 
 	/* Don't send FCF rediscovery event if timer cancelled */
 	spin_lock_irq(&phba->hbalock);
@@ -6216,15 +6213,13 @@ lpfc_setup_driver_resource_phase1(struct lpfc_hba *phba)
 	INIT_LIST_HEAD(&phba->luns);
 
 	/* MBOX heartbeat timer */
-	setup_timer(&psli->mbox_tmo, lpfc_mbox_timeout, (unsigned long)phba);
+	timer_setup(&psli->mbox_tmo, lpfc_mbox_timeout, 0);
 	/* Fabric block timer */
-	setup_timer(&phba->fabric_block_timer, lpfc_fabric_block_timeout,
-			(unsigned long)phba);
+	timer_setup(&phba->fabric_block_timer, lpfc_fabric_block_timeout, 0);
 	/* EA polling mode timer */
-	setup_timer(&phba->eratt_poll, lpfc_poll_eratt,
-			(unsigned long)phba);
+	timer_setup(&phba->eratt_poll, lpfc_poll_eratt, 0);
 	/* Heartbeat timer */
-	setup_timer(&phba->hb_tmofunc, lpfc_hb_timeout, (unsigned long)phba);
+	timer_setup(&phba->hb_tmofunc, lpfc_hb_timeout, 0);
 
 	INIT_DELAYED_WORK(&phba->eq_delay_work, lpfc_hb_eq_delay_work);
 
@@ -6252,8 +6247,7 @@ lpfc_sli_driver_resource_setup(struct lpfc_hba *phba)
 	 */
 
 	/* FCP polling mode timer */
-	setup_timer(&phba->fcp_poll_timer, lpfc_poll_timeout,
-			(unsigned long)phba);
+	timer_setup(&phba->fcp_poll_timer, lpfc_poll_timeout, 0);
 
 	/* Host attention work mask setup */
 	phba->work_ha_mask = (HA_ERATT | HA_MBATT | HA_LATT);
@@ -6460,11 +6454,10 @@ lpfc_sli4_driver_resource_setup(struct lpfc_hba *phba)
 	 * Initialize timers used by driver
 	 */
 
-	setup_timer(&phba->rrq_tmr, lpfc_rrq_timeout, (unsigned long)phba);
+	timer_setup(&phba->rrq_tmr, lpfc_rrq_timeout, 0);
 
 	/* FCF rediscover timer */
-	setup_timer(&phba->fcf.redisc_wait, lpfc_sli4_fcf_redisc_wait_tmo,
-			(unsigned long)phba);
+	timer_setup(&phba->fcf.redisc_wait, lpfc_sli4_fcf_redisc_wait_tmo, 0);
 
 	/*
 	 * Control structure for handling external multi-buffer mailbox
@@ -9379,10 +9372,8 @@ static void
 lpfc_setup_cq_lookup(struct lpfc_hba *phba)
 {
 	struct lpfc_queue *eq, *childq;
-	struct lpfc_sli4_hdw_queue *qp;
 	int qidx;
 
-	qp = phba->sli4_hba.hdwq;
 	memset(phba->sli4_hba.cq_lookup, 0,
 	       (sizeof(struct lpfc_queue *) * (phba->sli4_hba.cq_max + 1)));
 	/* Loop thru all IRQ vectors */

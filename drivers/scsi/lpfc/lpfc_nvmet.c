@@ -220,7 +220,8 @@ lpfc_nvmet_cmd_template(void)
 	/* Word 12, 13, 14, 15 - is zero */
 }
 
-struct lpfc_nvmet_rcv_ctx *
+#if (IS_ENABLED(CONFIG_NVME_TARGET_FC))
+static struct lpfc_nvmet_rcv_ctx *
 lpfc_nvmet_get_ctx_for_xri(struct lpfc_hba *phba, u16 xri)
 {
 	struct lpfc_nvmet_rcv_ctx *ctxp;
@@ -242,7 +243,7 @@ lpfc_nvmet_get_ctx_for_xri(struct lpfc_hba *phba, u16 xri)
 	return NULL;
 }
 
-struct lpfc_nvmet_rcv_ctx *
+static struct lpfc_nvmet_rcv_ctx *
 lpfc_nvmet_get_ctx_for_oxid(struct lpfc_hba *phba, u16 oxid, u32 sid)
 {
 	struct lpfc_nvmet_rcv_ctx *ctxp;
@@ -263,6 +264,7 @@ lpfc_nvmet_get_ctx_for_oxid(struct lpfc_hba *phba, u16 oxid, u32 sid)
 
 	return NULL;
 }
+#endif
 
 static void
 lpfc_nvmet_defer_release(struct lpfc_hba *phba, struct lpfc_nvmet_rcv_ctx *ctxp)
@@ -1054,7 +1056,8 @@ lpfc_nvmet_targetport_delete(struct nvmet_fc_target_port *targetport)
 	struct lpfc_nvmet_tgtport *tport = targetport->private;
 
 	/* release any threads waiting for the unreg to complete */
-	complete(&tport->tport_unreg_done);
+	if (tport->phba->targetport)
+		complete(tport->tport_unreg_cmp);
 }
 
 static void
@@ -1891,6 +1894,7 @@ lpfc_nvmet_destroy_targetport(struct lpfc_hba *phba)
 	struct lpfc_nvmet_tgtport *tgtp;
 	struct lpfc_queue *wq;
 	uint32_t qidx;
+	DECLARE_COMPLETION_ONSTACK(tport_unreg_cmp);
 
 	if (phba->nvmet_support == 0)
 		return;
@@ -1900,9 +1904,9 @@ lpfc_nvmet_destroy_targetport(struct lpfc_hba *phba)
 			wq = phba->sli4_hba.hdwq[qidx].io_wq;
 			lpfc_nvmet_wqfull_flush(phba, wq, NULL);
 		}
-		init_completion(&tgtp->tport_unreg_done);
+		tgtp->tport_unreg_cmp = &tport_unreg_cmp;
 		nvmet_fc_unregister_targetport(phba->targetport);
-		if (!wait_for_completion_timeout(&tgtp->tport_unreg_done,
+		if (!wait_for_completion_timeout(tgtp->tport_unreg_cmp,
 					msecs_to_jiffies(LPFC_NVMET_WAIT_TMO)))
 			lpfc_printf_log(phba, KERN_ERR, LOG_NVME,
 					"6179 Unreg targetport %p timeout "
@@ -1940,7 +1944,7 @@ lpfc_nvmet_unsol_ls_buffer(struct lpfc_hba *phba, struct lpfc_sli_ring *pring,
 	fc_hdr = (struct fc_frame_header *)(nvmebuf->hbuf.virt);
 	oxid = be16_to_cpu(fc_hdr->fh_ox_id);
 
-	if (!nvmebuf || !phba->targetport) {
+	if (!phba->targetport) {
 		lpfc_printf_log(phba, KERN_ERR, LOG_NVME_IOERR,
 				"6154 LS Drop IO x%x\n", oxid);
 		oxid = 0;
@@ -1965,8 +1969,7 @@ dropit:
 		lpfc_nvmeio_data(phba, "NVMET LS  DROP: "
 				 "xri x%x sz %d from %06x\n",
 				 oxid, size, sid);
-		if (nvmebuf)
-			lpfc_in_buf_free(phba, &nvmebuf->dbuf);
+		lpfc_in_buf_free(phba, &nvmebuf->dbuf);
 		return;
 	}
 	ctxp->phba = phba;
@@ -2010,8 +2013,7 @@ dropit:
 			ctxp->oxid, rc);
 
 	/* We assume a rcv'ed cmd ALWAYs fits into 1 buffer */
-	if (nvmebuf)
-		lpfc_in_buf_free(phba, &nvmebuf->dbuf);
+	lpfc_in_buf_free(phba, &nvmebuf->dbuf);
 
 	atomic_inc(&tgtp->xmt_ls_abort);
 	lpfc_nvmet_unsol_ls_issue_abort(phba, ctxp, sid, oxid);
@@ -2881,8 +2883,7 @@ lpfc_nvmet_prep_fcp_wqe(struct lpfc_hba *phba,
 	nvmewqe->drvrTimeout = (phba->fc_ratov * 3) + LPFC_DRVR_TIMEOUT;
 	nvmewqe->context1 = ndlp;
 
-	for (i = 0; i < rsp->sg_cnt; i++) {
-		sgel = &rsp->sg[i];
+	for_each_sg(rsp->sg, sgel, rsp->sg_cnt, i) {
 		physaddr = sg_dma_address(sgel);
 		cnt = sg_dma_len(sgel);
 		sgl->addr_hi = putPaddrHigh(physaddr);
