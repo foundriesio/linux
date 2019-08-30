@@ -768,6 +768,10 @@
 
 /* On-module PCIe for wifi */
 &pcieb{
+/*
+ * WARNING! Enabling "epdev_on-supply" leads a crash of pcie driver on
+ * system suspend.
+ */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb &pinctrl_wifi>;
 	ext_osc = <1>;
@@ -775,7 +779,6 @@
 	disable-gpio = <&gpio_expander_43 6 GPIO_ACTIVE_LOW>;
 	power-on-gpio = <&gpio_expander_43 2 GPIO_ACTIVE_LOW>;
 	reset-gpio = <&gpio4 0 GPIO_ACTIVE_LOW>;
-/*	epdev_on-supply = <&reg_wifi>;*/
 	fsl,max-link-speed = <1>;
 	status = "okay";
 };
