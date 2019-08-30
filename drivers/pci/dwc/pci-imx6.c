@@ -642,7 +642,6 @@ static int imx_pcie_enable_ref_clk(struct imx_pcie *imx_pcie)
 		ret = clk_prepare_enable(imx_pcie->pcie_inbound_axi);
 		if (ret)
 			dev_err(dev, "unable to enable pcie_axi clock\n");
-
 		break;
 	}
 
@@ -2082,6 +2081,8 @@ static int pci_imx_suspend_noirq(struct device *dev)
 				IMX6Q_GPR1_PCIE_TEST_PD,
 				IMX6Q_GPR1_PCIE_TEST_PD);
 	} else {
+		pm_runtime_put_sync(dev);
+
 		pci_imx_clk_disable(dev);
 
 		imx_pcie_phy_pwr_dn(imx_pcie);
@@ -2150,6 +2151,8 @@ static int pci_imx_resume_noirq(struct device *dev)
 		regmap_update_bits(imx_pcie->iomuxc_gpr, IOMUXC_GPR1,
 				IMX6Q_GPR1_PCIE_TEST_PD, 0);
 	} else {
+		pm_runtime_get_sync(dev);
+
 		pci_imx_ltssm_disable(dev);
 		imx_pcie_assert_core_reset(imx_pcie);
 		imx_pcie_init_phy(imx_pcie);
@@ -2811,6 +2814,8 @@ static int imx_pcie_probe(struct platform_device *pdev)
 				&& (imx_pcie->hard_wired == 0))
 			imx_pcie_regions_setup(&pdev->dev);
 	}
+	pm_runtime_get_sync(&pdev->dev);
+
 	return 0;
 }
 
@@ -2821,6 +2826,8 @@ static void imx_pcie_shutdown(struct platform_device *pdev)
 	/* bring down link, so bootloader gets clean state in case of reboot */
 	if (imx_pcie->variant == IMX6Q)
 		imx_pcie_assert_core_reset(imx_pcie);
+
+	pm_runtime_put_sync(&pdev->dev);
 }
 
 static const struct of_device_id imx_pcie_of_match[] = {
