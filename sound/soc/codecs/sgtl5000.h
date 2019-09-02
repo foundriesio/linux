@@ -397,4 +397,48 @@
 #define SGTL5000_SYSCLK				0x00
 #define SGTL5000_LRCLK				0x01
 
+/* Convert sample rate and SYS_FS frequencies to external SYS_MCLK */
+
+static inline int sgtl5000_sys_fs_to_mclk(int sys_fs) {
+	int mul[] = { 256, 384, 512 };
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		int mclk = sys_fs * mul[i];
+		/* minimum freq for sync mode is 8 MHz */
+		if (mclk > 8000000) {
+			/* maximum freq for sync mode is 27 MHz */
+			if (mclk > 27000000)
+				return -EINVAL;
+			/* return as minimum mclk as possible to save power */
+			return mclk;
+		}
+	}
+	/* srate too small */
+	return -EINVAL;
+}
+
+static inline int sgtl5000_srate_to_sys_fs(int srate) {
+	/* Supported SYS_FS frequencies */
+	static const int sys_fs[] = { 32000, 44100, 48000, 96000, 0 };
+	int i = 0;
+
+	while (sys_fs[i] > 0) {
+		if (!(sys_fs[i] % srate))
+			return sys_fs[i];
+		i++;
+	}
+	/* srate is not compatible with any SYS_FS */
+	return -EINVAL;
+}
+
+static inline int sgtl5000_srate_to_mclk(int srate) {
+	int sys_fs = sgtl5000_srate_to_sys_fs(srate);
+
+	if (IS_ERR_VALUE(sys_fs))
+		return sys_fs;
+
+	return sgtl5000_sys_fs_to_mclk(sys_fs);
+}
+
 #endif
