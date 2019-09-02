@@ -516,6 +516,8 @@
 			dmas = <&dmamux1 33 0x400 0x05>,
 			       <&dmamux1 34 0x400 0x05>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x1>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x1>;
 			status = "disabled";
 		};
 
@@ -532,6 +534,8 @@
 			dmas = <&dmamux1 35 0x400 0x05>,
 			       <&dmamux1 36 0x400 0x05>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x2>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x2>;
 			status = "disabled";
 		};
 
@@ -548,6 +552,8 @@
 			dmas = <&dmamux1 73 0x400 0x05>,
 			       <&dmamux1 74 0x400 0x05>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x4>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x4>;
 			status = "disabled";
 		};
 
@@ -564,6 +570,8 @@
 			dmas = <&dmamux1 115 0x400 0x05>,
 			       <&dmamux1 116 0x400 0x05>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x10>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x10>;
 			status = "disabled";
 		};
 
@@ -1566,6 +1574,8 @@
 			dmas = <&mdma1 36 0x0 0x40008 0x0 0x0 0>,
 			       <&mdma1 37 0x0 0x40002 0x0 0x0 0>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x8>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x8>;
 			status = "disabled";
 		};
 
@@ -1608,6 +1618,8 @@
 			dmas = <&mdma1 38 0x0 0x40008 0x0 0x0 0>,
 			       <&mdma1 39 0x0 0x40002 0x0 0x0 0>;
 			dma-names = "rx", "tx";
+			st,syscfg-fmp = <&syscfg 0x4 0x20>;
+			st,syscfg-fmp-clr = <&syscfg 0x44 0x20>;
 			status = "disabled";
 		};
 
