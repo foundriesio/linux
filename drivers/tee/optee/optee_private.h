@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2019, Telechips Inc
  * Copyright (c) 2015, Linaro Limited
  *
  * This software is licensed under the terms of the GNU General Public
@@ -25,6 +26,7 @@
 
 /* Some Global Platform error codes used in this driver */
 #define TEEC_SUCCESS			0x00000000
+#define TEEC_ERROR_CANCEL		0xFFFF0002	// Added by Telechips
 #define TEEC_ERROR_BAD_PARAMETERS	0xFFFF0006
 #define TEEC_ERROR_COMMUNICATION	0xFFFF000E
 #define TEEC_ERROR_OUT_OF_MEMORY	0xFFFF000C
