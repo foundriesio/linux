@@ -41,6 +41,8 @@ int hwdmx_add_pid(struct tcc_demux_handle *dmx, struct tcc_tsif_filter *param);
 int hwdmx_remove_pid(struct tcc_demux_handle *dmx, struct tcc_tsif_filter *param);
 int hwdmx_set_pcr_pid(struct tcc_demux_handle *dmx, unsigned int index, unsigned int pcr_pid);
 int hwdmx_get_stc(struct tcc_demux_handle *dmx, unsigned int index, u64 *stc);
+int hwdmx_set_cipher_dec_pid(struct tcc_demux_handle *dmx,	unsigned int numOfPids, 
+	unsigned int delete_option, unsigned short *pids);
 int hwdmx_set_cipher_mode(struct tcc_demux_handle *dmx, int algo, int opmode,
 	int residual, int smsg, unsigned int numOfPids, unsigned short *pids);
 int hwdmx_set_key(struct tcc_demux_handle *dmx, int keytype, int keymode, int size, void *key);
