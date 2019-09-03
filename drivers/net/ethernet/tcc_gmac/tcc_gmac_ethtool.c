@@ -122,7 +122,7 @@ int tcc_gmac_ethtool_getsettings(struct net_device *dev, struct ethtool_cmd *cmd
 	cmd->transceiver = XCVR_INTERNAL;
 	spin_lock_irq(&priv->lock);
 	//rc = phy_ethtool_gset(phy, cmd); // kernel-4.4
-	phy_ethtool_ksettings_get(phy, cmd); // kernel-4.14
+	// phy_ethtool_ksettings_get(phy, cmd); // kernel-4.14
 	spin_unlock_irq(&priv->lock);
 	return rc;
 }
