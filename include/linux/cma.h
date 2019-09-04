@@ -44,7 +44,3 @@ extern bool cma_release(struct cma *cma, const struct page *pages, unsigned int 
 
 extern int cma_for_each_area(int (*it)(struct cma *cma, void *data), void *data);
 #endif
-
-#ifdef CONFIG_GCMA_DEFAULT
-unsigned long int gcma_free_mem(void);
-#endif

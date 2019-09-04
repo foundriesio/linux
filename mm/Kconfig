@@ -528,7 +528,7 @@ config CMA_AREAS
 	  If unsure, leave the default value "7".
 
 config GCMA
-	bool "Guaranteed Contiguous Memory Allocator"
+	bool "Guaranteed Contiguous Memory Allocator (EXPERIMENTAL)"
 	default n
 	select FRONTSWAP
 	select CLEANCACHE
@@ -544,7 +544,7 @@ config GCMA
 	  interacts heavily with memory reclaim.
 
 config GCMA_DEFAULT
-	bool "Set GCMA as default CMA facility"
+	bool "Set GCMA as default CMA facility (EXPERIMENTAL)"
 	default n
 	depends on GCMA
 	help
@@ -732,12 +732,12 @@ config MIGRATE_VMA_HELPER
 
 config HMM
 	bool
+	select MMU_NOTIFIER
 	select MIGRATE_VMA_HELPER
 
 config HMM_MIRROR
 	bool "HMM mirror CPU page table into a device page table"
 	depends on ARCH_HAS_HMM
-	select MMU_NOTIFIER
 	select HMM
 	help
 	  Select HMM_MIRROR if you want to mirror range of the CPU page table of a

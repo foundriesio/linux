@@ -51,6 +51,7 @@ MODULE_PARM_DESC(tsif_debug, "Turn on/off tsif debugging (default:off).");
 /*****************************************************************************
  * Defines
  ******************************************************************************/
+//#define	USE_TASKLET_BUFFER_HANDLING
 #define HWDMX_SECFILTER_ENABLE
 #ifdef HWDMX_SECFILTER_ENABLE
 #define HWDMX_SECFILTER_MAX 16
@@ -75,6 +76,7 @@ static tcc_tsif_inst_t *gInst[] = {[0 ...(MAX_INST - 1)] = NULL};
 /*****************************************************************************
  * Functions
  ******************************************************************************/
+#ifdef	USE_TASKLET_BUFFER_HANDLING
 static void tcc_tsif_running_feed(long unsigned int id)
 {
 	tcc_tsif_priv_t *pHandle;
@@ -171,6 +173,30 @@ static int tcc_tsif_parse_packet(char *p1, int p1_size, char *p2, int p2_size, i
 	}
 	return 0;
 }
+#else
+static int tcc_tsif_parse_packet(char *p1, int p1_size, char *p2, int p2_size, int devid)
+{
+    tcc_tsif_priv_t *pHandle;
+	int type = (p1_size < 188) ? TSIF_FILTER_TYPE_SECTION : TSIF_FILTER_TYPE_TS;
+    pHandle = &gInst[devid]->tsif[0];
+	if (type == TSIF_FILTER_TYPE_SECTION) {
+		if (p2_size > 0) {
+			hwdmx_buffer_flush(&pHandle->demux, (unsigned long)p2, p2_size);
+		}
+		tcc_dmx_sec_callback((unsigned int)p1, p1_size, p2, p2_size, devid);
+	} else {
+		if (p1_size > 0) {
+			hwdmx_buffer_flush(&pHandle->demux, (unsigned long)p1, p1_size);
+		}
+		if (p2_size > 0) {
+			hwdmx_buffer_flush(&pHandle->demux, (unsigned long)p2, p2_size);
+		}
+		tcc_dmx_ts_callback(p1, p1_size, p2, p2_size, devid);
+	}
+	return 0;
+}
+#endif
+
 
 int tcc_tsif_init(tcc_tsif_inst_t *inst)
 {
@@ -221,8 +247,11 @@ int tcc_tsif_deinit(tcc_tsif_inst_t *inst)
 int tcc_tsif_start(unsigned int devid)
 {
 	tcc_tsif_priv_t *pHandle;
+    #ifdef	USE_TASKLET_BUFFER_HANDLING
 	tcc_tsif_tasklet_t *pTask;
-	int err, ret, type;
+    int type;
+    #endif
+	int err, ret;
 
 	if (gInst[devid] == NULL)
 		return -1;
@@ -245,7 +274,7 @@ int tcc_tsif_start(unsigned int devid)
 		memset(&pHandle->ts_table, 0xff, sizeof(ts_table_t));
 		memset(&pHandle->sec_table, 0xff, sizeof(sec_table_t));
 		pHandle->sec_table.iNum = 0;
-
+#ifdef	USE_TASKLET_BUFFER_HANDLING
 		for (type = 0; type < TSIF_FILTER_TYPE_MAX; type++) {
 			pTask = &pHandle->task[type];
 
@@ -254,6 +283,7 @@ int tcc_tsif_start(unsigned int devid)
 			spin_lock_init(&pTask->ts_packet_list.lock);
 			tasklet_init(&pTask->tsif_tasklet, tcc_tsif_running_feed, (type << 16) | devid);
 		}
+#endif        
 		hwdmx_set_external_tsdemux(&pHandle->demux, tcc_tsif_parse_packet);
 	}
 

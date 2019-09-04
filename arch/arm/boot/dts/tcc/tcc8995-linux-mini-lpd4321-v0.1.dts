@@ -61,6 +61,11 @@
 	};
 };
 
+/* CPU Power Control */
+&vdd_cpu {
+        gpios = <&gpf 5 0x4>;
+};
+
 &gpu {
         operating-points-v2 = <&gpu_opp_table>;
 };

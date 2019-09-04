@@ -3,6 +3,7 @@
 #define __MM_CMA_H__
 
 #define IS_GCMA ((struct gcma *)(void *)0xFF)
+
 //#define CMA_LATENCY_DEBUG
 
 struct cma {

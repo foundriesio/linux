@@ -2796,7 +2796,7 @@
                 //status = "okay";
         };
 
-	cpu0_regulators: cpu0-regulators {};
+	vdd_cpu: cpu0-regulators {};
 
 	mali_regulators: mali-regulators {};
 

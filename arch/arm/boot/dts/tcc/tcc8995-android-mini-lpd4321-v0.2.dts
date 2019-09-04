@@ -24,7 +24,7 @@
 	};
 };
 
-&cpu0_regulators {
+&vdd_cpu {
 	compatible = "regulator-gpio";
 
 	regulator-name = "vdd_cpu0";
@@ -68,6 +68,13 @@
 
         startup-delay-us = <100000>;
         enable-active-high;
+};
+
+&vdd_cpu {
+
+	gpios = <&gpd 17 0x4
+                 &gpd 16 0x4>;
+
 };
 
 &gpu {

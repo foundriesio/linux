@@ -51,9 +51,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	long available;
 	unsigned long pages[NR_LRU_LISTS];
 	int lru;
-#ifdef CONFIG_GCMA_DEFAULT
-	unsigned long gcma_pages, kb_gcma;
-#endif
+
 	si_meminfo(&i);
 	si_swapinfo(&i);
 	committed = percpu_counter_read_positive(&vm_committed_as);
@@ -70,14 +68,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 
 	show_val_kb(m, "MemTotal:       ", i.totalram);
 	show_val_kb(m, "MemFree:        ", i.freeram);
-#ifdef CONFIG_GCMA_DEFAULT
-	kb_gcma = gcma_free_mem();
-	gcma_pages = kb_gcma >> 2;
-	show_val_kb(m, "MemAvailable:   ", available + gcma_pages);
-#else
 	show_val_kb(m, "MemAvailable:   ", available);
-#endif
-
 	show_val_kb(m, "Buffers:        ", i.bufferram);
 	show_val_kb(m, "Cached:         ", cached);
 	show_val_kb(m, "SwapCached:     ", total_swapcache_pages());
@@ -158,14 +149,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    global_node_page_state(NR_SHMEM_PMDMAPPED) * HPAGE_PMD_NR);
 #endif
 
-#if defined(CONFIG_CMA) && !defined(CONFIG_GCMA_DEFAULT)
+#ifdef CONFIG_CMA
 	show_val_kb(m, "CmaTotal:       ", totalcma_pages);
 	show_val_kb(m, "CmaFree:        ",
 		    global_zone_page_state(NR_FREE_CMA_PAGES));
-#endif
-#ifdef CONFIG_GCMA_DEFAULT
-	show_val_kb(m, "GcmaTotal:       ", totalcma_pages);
-	seq_printf(m,  "GcmaFree:      %9lu kB\n", gcma_free_mem());
 #endif
 
 	hugetlb_report_meminfo(m);

@@ -41,7 +41,7 @@
 struct device *pmap_device;
 #endif
 
-#define PMAP_DATA_NA		~(0)
+#define PMAP_DATA_NA		((unsigned int) ~(0))
 
 #define MAX_PMAPS		64
 #define MAX_PMAP_GROUPS		4
@@ -102,6 +102,11 @@ error:
 	return ret;
 }
 
+static inline struct pmap_entry *pmap_entry_of(pmap_t *info)
+{
+	return container_of(info, struct pmap_entry, info);
+}
+
 static pmap_t *pmap_find_info_by_name(const char *name)
 {
 	struct pmap_entry *entry = NULL;
@@ -117,16 +122,16 @@ static pmap_t *pmap_find_info_by_name(const char *name)
 
 static inline __u32 pmap_get_base(pmap_t *info)
 {
-	struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
+	struct pmap_entry *entry = pmap_entry_of(info);
+	struct pmap_entry *iter = NULL;
 	__u32 base = 0;
 
-	do {
-		if (entry->info.base == PMAP_DATA_NA)
+	for (iter = entry; iter; iter = iter->parent) {
+		if (iter->info.base == PMAP_DATA_NA)
 			return 0;
 
-		base += entry->info.base;
-		entry = entry->parent;
-	} while (entry);
+		base += iter->info.base;
+	}
 
 	return base;
 }
@@ -224,7 +229,7 @@ EXPORT_SYMBOL(pmap_cma_unmap);
 
 static int __pmap_get_info(pmap_t *info)
 {
-	struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
+	struct pmap_entry *entry = pmap_entry_of(info);
 
 	if (entry->parent) {
 		if (!__pmap_get_info(&entry->parent->info))
@@ -244,13 +249,12 @@ static int __pmap_get_info(pmap_t *info)
 	return 1;
 }
 
-static int __pmap_release_info(pmap_t *info)
+static void __pmap_release_info(pmap_t *info)
 {
-	struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
+	struct pmap_entry *entry = pmap_entry_of(info);
 
 	if (info->rc && entry->parent) {
-		if (!__pmap_release_info(&entry->parent->info))
-			return 0;
+		__pmap_release_info(&entry->parent->info);
 #ifdef CONFIG_PMAP_TO_CMA
 	} else if (info->rc == 1 && pmap_is_cma_alloc(info)) {
 		pmap_cma_release(info);
@@ -260,8 +264,6 @@ static int __pmap_release_info(pmap_t *info)
 
 	if (info->rc > 0)
 		--info->rc;
-
-	return 1;
 }
 
 int pmap_get_info(const char *name, pmap_t *mem)
@@ -292,8 +294,7 @@ int pmap_release_info(const char *name)
 	if (!info)
 		return 0;
 
-	if (!__pmap_release_info(info))
-		return -1;
+	__pmap_release_info(info);
 
 	return 1;
 }
@@ -349,8 +350,8 @@ static int proc_pmap_show(struct seq_file *m, void *v)
 		pmap_list_sorted = true;
 	}
 
-	seq_printf(m, "%-10s %-10s %-3s %-3s %s\n", "base_addr", "size", "cma",
-			"ref", "name");
+	/* format:     %-10s      %-10s      %3s %3s %s */
+	seq_printf(m, "base_addr  size       cma ref name\n");
 
 	list_for_each_entry(entry, &pmap_list_head, list) {
 		pmap_t *info = &entry->info;
@@ -387,16 +388,20 @@ static int proc_pmap_open(struct inode *inode, struct file *file)
 
 static long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
+	user_pmap_t __user *uinfo = (user_pmap_t __user *) arg;
 	user_pmap_t ret_info;
 	pmap_t info;
 	int ret;
 
-	if (copy_from_user(&ret_info, (void __user *) arg, sizeof(user_pmap_t)))
+	if (copy_from_user(&ret_info, uinfo, sizeof(user_pmap_t)))
 		return -1;
 
 	switch (cmd) {
 	case PROC_PMAP_CMD_GET:
 		ret = pmap_get_info(ret_info.name, &info);
+
+		ret_info.base = info.base;
+		ret_info.size = info.size;
 		break;
 	case PROC_PMAP_CMD_RELEASE:
 		ret = pmap_release_info(ret_info.name);
@@ -405,10 +410,7 @@ static long proc_pmap_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		ret = -1;
 	}
 
-	ret_info.base = info.base;
-	ret_info.size = info.size;
-
-	if (copy_to_user((void __user *) arg, &ret_info, sizeof(user_pmap_t)))
+	if (copy_to_user(uinfo, &ret_info, sizeof(user_pmap_t)))
 		return -1;
 
 	return ret;
@@ -428,7 +430,7 @@ static const struct file_operations proc_pmap_fops = {
 
 static void pmap_update_info(struct device_node *np, pmap_t *info)
 {
-	struct pmap_entry *entry = container_of(info, struct pmap_entry, info);
+	struct pmap_entry *entry = pmap_entry_of(info);
 
 	if (pmap_is_secured(info)) {
 		if (pmap_is_cma_alloc(info))
@@ -456,7 +458,7 @@ static void pmap_update_info(struct device_node *np, pmap_t *info)
 		of_property_read_u32(np, "telechips,pmap-offset", &offset);
 		of_property_read_u32(np, "telechips,pmap-shared-size", &size);
 
-		entry->parent = container_of(shared, struct pmap_entry, info);
+		entry->parent = pmap_entry_of(shared);
 		info->base = offset;
 		info->size = size;
 
@@ -664,7 +666,6 @@ static int __init rmem_pmap_setup(struct reserved_mem *rmem)
 	entry->info.base = alloc_size ? PMAP_DATA_NA : rmem->base;
 	entry->info.size = alloc_size ? alloc_size : rmem->size;
 	entry->info.groups = groups;
-	entry->info.v_base = 0; /* NO MORE USED (will be removed later) */
 	entry->info.rc = 0;
 	entry->info.flags = flags;
 

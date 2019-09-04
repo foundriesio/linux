@@ -30,7 +30,6 @@ typedef struct {
 	__u32 base;
 	__u32 size;
 	__u32 groups;
-	__u32 v_base; /* NO MORE USED (will be removed later) */
 	__u32 rc;
 	unsigned int flags;
 } pmap_t;

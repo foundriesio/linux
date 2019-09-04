@@ -18,7 +18,7 @@
 &chosen {
 };
 
-&cpu0_regulators {
+&vdd_cpu {
 	compatible = "regulator-gpio";
 
 	regulator-name = "vdd_cpu0";
@@ -27,7 +27,6 @@
 	regulator-type = "voltage";
 	regulator-always-on;
 
-	gpios = <&gpd 16 0x4>;
 	gpios-states = <0>;
 
 	states = < 800000 0x0

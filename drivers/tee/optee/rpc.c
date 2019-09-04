@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Telechips Inc
+ * Copyright (c) 2018-2019, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  *
  * This software is licensed under the terms of the GNU General Public
@@ -145,9 +145,10 @@ static void handle_rpc_func_cmd_wait(struct optee_msg_arg *arg)
 	msec_to_wait = arg->params[0].u.value.a;
 
 	/* Go to interruptible sleep */
-	msleep_interruptible(msec_to_wait);
-
-	arg->ret = TEEC_SUCCESS;
+	if (msleep_interruptible(msec_to_wait))
+		arg->ret = TEEC_ERROR_CANCEL;
+	else
+		arg->ret = TEEC_SUCCESS;
 	return;
 bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;

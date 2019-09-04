@@ -52,6 +52,7 @@
 #define HWDMX_SET_KDFDATA_CMD			SP_CMD(MAGIC_NUM, 0x00F)
 #define HWDMX_SET_KLDATA_CMD			SP_CMD(MAGIC_NUM, 0x010)
 #define HWDMX_GET_KLNRESP_CMD			SP_CMD(MAGIC_NUM, 0x011)
+#define HWDMX_SET_MODE_ADDPID_CMD		SP_CMD(MAGIC_NUM, 0x012)
 /* Up to 16 of events can be assigned. */
 #define HWDMX_WBUF_UPDATED_EVT			SP_EVENT(MAGIC_NUM, 1)
 #define HWDMX_STC_RECV_EVT				SP_EVENT(MAGIC_NUM, 2)
@@ -102,7 +103,7 @@ static int interface[8] = {
 };
 static int session_cnt = 0;
 static DECLARE_WAIT_QUEUE_HEAD(waitq_empty_bufevt);
-static int empty_bufevt_received = 0;
+static unsigned long empty_bufevt_received = 0;
 
 static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 {
@@ -253,8 +254,8 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	int mbox_data[12], mbox_result;
 
 	pr_info(
-		"\n%s:%d:0x%08X:0x%08X:0x%08X port:%u\n", __func__, __LINE__, h->dma_buffer->dma_addr,
-		(unsigned int)h->dma_buffer->v_addr, h->dma_buffer->buf_size, h->port_cfg.tsif_port);
+		"\n%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__, __LINE__, (u32)h->dma_buffer->dma_addr,
+		h->dma_buffer->v_addr, h->dma_buffer->buf_size, h->port_cfg.tsif_port);
 
 	if (session_cnt == 0) {
 		sp_set_callback(hwdmx_evt_handler);
@@ -547,6 +548,36 @@ out:
 	return result;
 }
 
+int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
+		unsigned int numOfPids, unsigned int delete_option, unsigned short *pids)
+{
+	int result = 0, rsize;
+	int mbox_data[3 + 4], mbox_result;
+
+	mbox_data[0] = h->dmx_id;
+	mbox_data[1] = numOfPids;
+	mbox_data[2] = delete_option;
+	if(numOfPids>0)
+		memcpy(mbox_data + 3, (unsigned char *)pids, numOfPids*2);
+	
+	rsize = sp_sendrecv_cmd(
+			HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
+	if (rsize < 0) {
+		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		result = -EBADR;
+		goto out;
+	}
+
+	result = mbox_result;
+	if (result != 0) {
+		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		goto out;
+	}
+
+out:
+	return result;
+}
+
 int hwdmx_set_algo_cmd(struct tcc_tsif_handle *h, int algo,
 	int opmode, int residual, int smsg, unsigned int numOfPids, unsigned short *pids)
 {
@@ -649,6 +680,8 @@ int  hwdmx_setCw(struct tcc_tsif_handle *h/*unsigned int _tunerId*/, unsigned in
 	hwdmx_set_key_cmd(h, even, 0, DEAULT_AES_128KEYSIZE, _evenKey);
 	hwdmx_set_key_cmd(h, odd, 0, DEAULT_AES_128KEYSIZE, _oddKey);
 	hwdmx_set_iv_cmd(h, 1, DEAULT_AES_IVSIZE, _iv);
+
+	return 0;
 }
 
 
@@ -659,8 +692,8 @@ int hwdmx_set_data_cmd(
 	int mbox_data[4], mbox_result;
 
 	mbox_data[0] = dmxid;
-	mbox_data[1] = srcaddr;
-	mbox_data[2] = destaddr;
+	mbox_data[1] = (int)srcaddr;
+	mbox_data[2] = (int)destaddr;
 	mbox_data[3] = srclen;
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_DATA_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));

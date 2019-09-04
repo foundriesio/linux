@@ -430,7 +430,7 @@ static void dmem_put(struct dmem_hashbucket *buck, struct dmem_entry *entry)
 	int refcount, val;
 	val = atomic_read(&entry->refcount);
 
-	if(val > 0)
+	if (val > 0)
 		refcount = atomic_dec_return(&entry->refcount);
 
 	if (refcount == 0) {

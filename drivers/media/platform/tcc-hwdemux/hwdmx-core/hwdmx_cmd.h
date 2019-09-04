@@ -71,6 +71,8 @@ int hwdmx_set_pcrpid_cmd(struct tcc_tsif_handle *h, unsigned int pid);
 int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed);
 int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed);
 int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned int size);
+int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
+		unsigned int numOfPids, unsigned int delete_option, unsigned short *pids);
 int hwdmx_set_algo_cmd(struct tcc_tsif_handle *h, int algo,
 	int opmode, int residual, int smsg, unsigned int numOfPids, unsigned short *pids);
 int hwdmx_set_key_cmd(struct tcc_tsif_handle *h, int keytype, int keymode, int size, void *key);

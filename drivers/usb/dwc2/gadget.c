@@ -904,7 +904,7 @@ static int dwc2_gadget_fill_isoc_desc(struct dwc2_hsotg_ep *hs_ep,
 		else
 			pid = 1;
 		desc->status |= ((pid << DEV_DMA_ISOC_PID_SHIFT) &
-				DEV_DMA_ISOC_PID_MASK) |
+				 DEV_DMA_ISOC_PID_MASK) |
 				((len % hs_ep->ep.maxpacket) ?
 				 DEV_DMA_SHORT : 0) |
 				((hs_ep->target_frame <<
