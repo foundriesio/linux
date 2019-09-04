@@ -359,7 +359,7 @@ typedef struct {
 } cmdmsg;
 
 typedef struct {
-    unsigned int paddr;
+    dma_addr_t paddr;
     unsigned char *vaddr;
     unsigned int size;
 } audiomem;
