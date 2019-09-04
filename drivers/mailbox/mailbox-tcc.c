@@ -22,6 +22,7 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/mailbox/mailbox-tcc.h>
+#include <linux/kthread.h>
 
 // clang-format off
 #define MBOX_TXC(x)		(0x00 + (x) * 4)	/* Transmit cmd fifo */
@@ -34,6 +35,8 @@
 #define MBOX_RXD		0x70			/* Receive data fifo */
 // clang-format on
 
+#define MBOX_THREADED_IRQ
+
 struct tcc_mbox_device
 {
 	struct mbox_controller mbox;
@@ -41,6 +44,11 @@ struct tcc_mbox_device
 	int irq;
 	spinlock_t lock;
 	struct tcc_mbox_msg *msg;
+#ifndef MBOX_THREADED_IRQ
+	struct task_struct* t;
+	int received;
+	wait_queue_head_t wait;
+#endif
 };
 
 static int tcc_mbox_send_data(struct mbox_chan *chan, void *data)
@@ -162,7 +170,13 @@ static irqreturn_t tcc_mbox_irq(int irq, void *dev_id)
 		writel_relaxed(
 			readl_relaxed(mdev->mbox_base + MBOX_CTR) & ~(1 << 4), mdev->mbox_base + MBOX_CTR);
 		spin_unlock_irqrestore(&mdev->lock, flags);
+#ifdef MBOX_THREADED_IRQ
 		return IRQ_WAKE_THREAD;
+#else
+		mdev->received = 1;
+		wake_up(&mdev->wait);
+		return IRQ_HANDLED;
+#endif
 	}
 
 	return IRQ_NONE;
@@ -213,6 +227,24 @@ static irqreturn_t tcc_mbox_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifndef MBOX_THREADED_IRQ
+static int tcc_mbox_thread(void* arg)
+{
+	struct tcc_mbox_device *mdev = (struct tcc_mbox_device *)arg;
+
+	while (!kthread_should_stop())
+	{
+		wait_event_interruptible_timeout(mdev->wait, mdev->received == 1, msecs_to_jiffies(500));
+
+		if (mdev->received == 1) {
+			mdev->received = 0;
+			tcc_mbox_isr(mdev->irq, arg);
+		}
+	}
+	return 0;
+}
+#endif
+
 static const struct of_device_id tcc_mbox_of_match[] = {
 	{.compatible = "telechips,mailbox"},
 	{},
@@ -258,15 +290,25 @@ static int tcc_mbox_probe(struct platform_device *pdev)
 	if (mdev->irq < 0)
 		return mdev->irq;
 
+#ifdef MBOX_THREADED_IRQ
 	ret = devm_request_threaded_irq(
 		&pdev->dev, mdev->irq, tcc_mbox_irq, tcc_mbox_isr, IRQF_ONESHOT, dev_name(&pdev->dev),
 		mdev);
+#else
+	ret = request_irq(mdev->irq, tcc_mbox_irq, 0, dev_name(&pdev->dev), mdev);
+#endif
 	if (ret < 0)
 		return ret;
 
 	ret = mbox_controller_register(&mdev->mbox);
 	if (ret < 0)
 		dev_err(&pdev->dev, "Failed to register mailbox: %d\n", ret);
+
+#ifndef MBOX_THREADED_IRQ
+	init_waitqueue_head(&mdev->wait);
+	mdev->received = 0;
+	mdev->t = kthread_run(tcc_mbox_thread, mdev, dev_name(&pdev->dev));
+#endif
 
 	return ret;
 }

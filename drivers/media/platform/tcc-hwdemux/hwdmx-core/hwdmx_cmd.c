@@ -52,6 +52,7 @@
 #define HWDMX_SET_KDFDATA_CMD			SP_CMD(MAGIC_NUM, 0x00F)
 #define HWDMX_SET_KLDATA_CMD			SP_CMD(MAGIC_NUM, 0x010)
 #define HWDMX_GET_KLNRESP_CMD			SP_CMD(MAGIC_NUM, 0x011)
+#define HWDMX_SET_MODE_ADDPID_CMD		SP_CMD(MAGIC_NUM, 0x012)
 /* Up to 16 of events can be assigned. */
 #define HWDMX_WBUF_UPDATED_EVT			SP_EVENT(MAGIC_NUM, 1)
 #define HWDMX_STC_RECV_EVT				SP_EVENT(MAGIC_NUM, 2)
@@ -253,7 +254,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	int mbox_data[12], mbox_result;
 
 	pr_info(
-		"\n%s:%d:%llu:%p:0x%08X port:%u\n", __func__, __LINE__, h->dma_buffer->dma_addr,
+		"\n%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__, __LINE__, (u32)h->dma_buffer->dma_addr,
 		h->dma_buffer->v_addr, h->dma_buffer->buf_size, h->port_cfg.tsif_port);
 
 	if (session_cnt == 0) {
@@ -544,6 +545,36 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 
 out:
 	mutex_unlock(&input_stream_mutex); //for multiple demux
+	return result;
+}
+
+int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
+		unsigned int numOfPids, unsigned int delete_option, unsigned short *pids)
+{
+	int result = 0, rsize;
+	int mbox_data[3 + 4], mbox_result;
+
+	mbox_data[0] = h->dmx_id;
+	mbox_data[1] = numOfPids;
+	mbox_data[2] = delete_option;
+	if(numOfPids>0)
+		memcpy(mbox_data + 3, (unsigned char *)pids, numOfPids*2);
+	
+	rsize = sp_sendrecv_cmd(
+			HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
+	if (rsize < 0) {
+		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		result = -EBADR;
+		goto out;
+	}
+
+	result = mbox_result;
+	if (result != 0) {
+		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		goto out;
+	}
+
+out:
 	return result;
 }
 

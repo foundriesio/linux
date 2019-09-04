@@ -93,6 +93,13 @@ int hwdmx_get_stc(struct tcc_demux_handle *dmx, unsigned int index, u64 *stc)
 }
 EXPORT_SYMBOL(hwdmx_get_stc);
 
+int hwdmx_set_cipher_dec_pid(struct tcc_demux_handle *dmx,	unsigned int numOfPids, unsigned int delete_option, unsigned short *pids)
+{
+	struct tcc_hwdmx_tsif_rx_handle *demux = (struct tcc_hwdmx_tsif_rx_handle *)dmx->handle;
+	return tcc_hwdmx_tsif_rx_set_cipher_dec_pid(demux, numOfPids, delete_option, pids);
+}
+EXPORT_SYMBOL(hwdmx_set_cipher_dec_pid);
+
 int hwdmx_set_cipher_mode(struct tcc_demux_handle *dmx, int algo, int opmode,
 	int residual, int smsg, unsigned int numOfPids, unsigned short *pids)
 {
@@ -181,7 +188,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 	mutex_lock(&hwdmx_buf_mutex); //for writing multiple, it is critical section
 	result = copy_from_user(dma_vaddr, buf, count);
 	if (result != 0) {
-		pr_err("%s:%d copy_from_user fail\n");
+		pr_err("%s:%d copy_from_user fail\n", __func__, __LINE__);
 		result = -EFAULT;
 		goto out;
 	}
@@ -195,7 +202,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 
 	// pr_info("%s:%d\n", __func__, count);
 	// HexDump((unsigned char *)gpvVirtAddr, 64);
-	
+
 out:
 	mutex_unlock(&hwdmx_buf_mutex); //for writing multiple, it is critical section
 	return result;
@@ -226,7 +233,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 
 	printk("%s\n", __FUNCTION__);
 
-	tcc_hwdmx_tsif_rx_init();
+	tcc_hwdmx_tsif_rx_init(&pdev->dev);
 
 	retval = register_chrdev(0, HWDMX_DEV_NAME, &fops);
 	if (retval < 0) {
@@ -250,7 +257,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 dma_alloc_fail:
 	class_destroy(class);
 	unregister_chrdev(majornum, HWDMX_DEV_NAME);
-	tcc_hwdmx_tsif_rx_deinit();
+	tcc_hwdmx_tsif_rx_deinit(&pdev->dev);
 
 	return retval;
 }
@@ -265,7 +272,7 @@ static int hwdmx_remove(struct platform_device *pdev)
 	}
 	class_destroy(class);
 	unregister_chrdev(majornum, HWDMX_DEV_NAME);
-	tcc_hwdmx_tsif_rx_deinit();
+	tcc_hwdmx_tsif_rx_deinit(&pdev->dev);
 	return 0;
 }
 

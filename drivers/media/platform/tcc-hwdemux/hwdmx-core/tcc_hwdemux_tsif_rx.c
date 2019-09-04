@@ -35,6 +35,8 @@
 #include <linux/sched.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/sysfs.h>
+#include <linux/atomic.h>
 
 #include <asm/uaccess.h>
 #include <asm/io.h>
@@ -46,16 +48,33 @@
 #include "tca_hwdemux_param.h"
 #include "tcc_hwdemux_tsif_rx.h"
 
+#define DEMUX_SYSFS
+
 #define USE_REV_MEMORY
 
 #define SECTION_DMA_SIZE (1024 * 1024)
 
+#if defined(CONFIG_ARCH_TCC897X)
 #define HWDMX_NUM 4
+#else
+#define HWDMX_NUM 8
+#endif
 
 //#define TS_PACKET_CHK_MODE
 
 static DEFINE_SPINLOCK(timer_lock);
 static int hwdmx_tsif_num;
+
+#if defined(DEMUX_SYSFS)
+struct tcc_tsif_stat
+{
+	atomic_t pidnum;
+	atomic_t secnum;
+	unsigned long tsevt;
+	unsigned long secevt;
+	unsigned long pcrevt;
+};
+#endif
 
 struct tcc_tsif_pri_handle
 {
@@ -70,6 +89,9 @@ struct tcc_tsif_pri_handle
 	struct tea_dma_buf *static_dma_buffer[HWDMX_NUM];
 	struct tca_tsif_port_config port_cfg[HWDMX_NUM];
 	struct device *dev[HWDMX_NUM];
+#if defined(DEMUX_SYSFS)
+	struct tcc_tsif_stat stat[HWDMX_NUM];
+#endif
 };
 static struct tcc_tsif_pri_handle tsif_ex_pri;
 
@@ -330,7 +352,6 @@ static int __maybe_unused rx_dma_buffer_free(int devid, struct tea_dma_buf *dma)
 
 static int rx_dma_alloc_buffer(int devid)
 {
-	int result = 0;
 	int __maybe_unused i, __maybe_unused os;
 	int size;
 
@@ -370,18 +391,13 @@ static int rx_dma_alloc_buffer(int devid)
 	if (rx_dma_buffer_alloc(devid, tsif_ex_pri.static_dma_buffer[devid]) != 0) {
 		dev_err(
 			tsif_ex_pri.dev[devid], "%s:%d dma alloc(%d) failed\n", __FUNCTION__, __LINE__, devid);
-		result = -ENOMEM;
-		goto dma_buffer_alloc_fail;
+		kfree(tsif_ex_pri.static_dma_buffer[devid]);
+		tsif_ex_pri.static_dma_buffer[devid] = NULL;
+		return -ENOMEM;
 	}
 #endif /* USE_REV_MEMORY */
 
 	return 0;
-
-dma_buffer_alloc_fail:
-	kfree(tsif_ex_pri.static_dma_buffer[devid]);
-	tsif_ex_pri.static_dma_buffer[devid] = NULL;
-
-	return result;
 }
 
 static int rx_dma_free_buffer(int devid)
@@ -486,6 +502,9 @@ static int rx_updated_callback(
 	switch (ftype) {
 	case 0: // HW_DEMUX_SECTION
 	{
+#if defined(DEMUX_SYSFS)
+		tsif_ex_pri.stat[dmxid].secevt++;
+#endif
 		if (demux->ts_demux_feed_handle.is_active != 0 && fid < 0xFF) {
 			// printk("0x%x, 0x%x, 0x%x\n", demux->tsif_ex_handle.dma_buffer->v_sec_addr, value1,
 			// demux->tsif_ex_handle.dma_buffer->dma_sec_addr);
@@ -497,6 +516,9 @@ static int rx_updated_callback(
 	}
 	case 1: // HW_DEMUX_TS
 	{
+#if defined(DEMUX_SYSFS)
+		tsif_ex_pri.stat[dmxid].tsevt++;
+#endif
 		if (demux->ts_demux_feed_handle.is_active != 0) {
 			ret = rx_parse_packet(demux, demux->tsif_ex_handle.dma_buffer->v_addr, value1, value2);
 		}
@@ -508,6 +530,9 @@ static int rx_updated_callback(
 	}
 	case 3: // HW_DEMUX_PCR
 	{
+#if defined(DEMUX_SYSFS)
+		tsif_ex_pri.stat[dmxid].pcrevt++;
+#endif
 		// bErrCRC is error(ms) for PCR & STC
 		// printk("%s: STC Error (%d)ms \n", __func__, bErrCRC);
 		uiSTC = (unsigned int)value2 & 0x80000000;
@@ -524,11 +549,61 @@ static int rx_updated_callback(
 	return ret;
 }
 
+#if defined(DEMUX_SYSFS)
+static ssize_t tcc_hwdmx_tsif_sysfs_show(
+		struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int i;
+	ssize_t count = 0;
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10d ", tsif_ex_pri.demux[i].state);
+	}
+	count += sprintf(&buf[count], "\n");
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10d ", atomic_read(&tsif_ex_pri.stat[i].pidnum));
+	}
+	count += sprintf(&buf[count], "\n");
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10d ", atomic_read(&tsif_ex_pri.stat[i].secnum));
+	}
+	count += sprintf(&buf[count], "\n");
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10lu ", tsif_ex_pri.stat[i].tsevt);
+	}
+	count += sprintf(&buf[count], "\n");
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10lu ", tsif_ex_pri.stat[i].secevt);
+	}
+	count += sprintf(&buf[count], "\n");
+
+	for (i = 0; i < HWDMX_NUM; i++) {
+		count += sprintf(&buf[count], "%10lu ", tsif_ex_pri.stat[i].pcrevt);
+	}
+	count += sprintf(&buf[count], "\n");
+
+	return count;
+}
+
+static ssize_t tcc_hwdmx_tsif_sysfs_store(
+		struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	return 0;
+}
+
+static struct kobj_attribute sc_attrb =
+	__ATTR(stat, S_IWUSR|S_IRUGO, tcc_hwdmx_tsif_sysfs_show, tcc_hwdmx_tsif_sysfs_store);
+#endif
+
 struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 {
 	struct tcc_hwdmx_tsif_rx_handle *demux = &tsif_ex_pri.demux[devid];
 	struct tea_dma_buf *dma_buffer;
-	struct pinctrl *pinctrl;
+	struct pinctrl *pinctrl = NULL;
 
 	mutex_lock(&(tsif_ex_pri.mutex));
 
@@ -742,12 +817,30 @@ int tcc_hwdmx_tsif_rx_set_external_tsdemux(
 int tcc_hwdmx_tsif_rx_add_pid(
 	struct tcc_hwdmx_tsif_rx_handle *demux, struct tcc_hwdmx_tsif_rx_filter_param *param)
 {
+#if defined(DEMUX_SYSFS)
+	int dmxid = demux->tsif_ex_handle.dmx_id;
+	if (param->f_type == FILTER_TYPE_SECTION) {
+		atomic_inc(&tsif_ex_pri.stat[dmxid].secnum);
+	}
+	else { // FILTER_TYPE_TS
+		atomic_inc(&tsif_ex_pri.stat[dmxid].pidnum);
+	}
+#endif
 	return hwdmx_add_filter_cmd(&demux->tsif_ex_handle, (struct tcc_tsif_filter *)param);
 }
 
 int tcc_hwdmx_tsif_rx_remove_pid(
 	struct tcc_hwdmx_tsif_rx_handle *demux, struct tcc_hwdmx_tsif_rx_filter_param *param)
 {
+#if defined(DEMUX_SYSFS)
+	int dmxid = demux->tsif_ex_handle.dmx_id;
+	if (param->f_type == FILTER_TYPE_SECTION) {
+		atomic_dec(&tsif_ex_pri.stat[dmxid].secnum);
+	}
+	else { // FILTER_TYPE_TS
+		atomic_dec(&tsif_ex_pri.stat[dmxid].pidnum);
+	}
+#endif
 	return hwdmx_remove_filter_cmd(&demux->tsif_ex_handle, (struct tcc_tsif_filter *)param);
 }
 
@@ -783,6 +876,13 @@ int tcc_hwdmx_tsif_rx_get_stc(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned i
 	return 0;
 }
 
+int tcc_hwdmx_tsif_rx_set_cipher_dec_pid(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int numOfPids,
+				unsigned int delete_option, unsigned short *pids)
+{
+	hwdmx_set_cipher_dec_pid_cmd(&demux->tsif_ex_handle, numOfPids, delete_option, pids);
+	return 0;
+}
+
 int tcc_hwdmx_tsif_rx_set_mode(struct tcc_hwdmx_tsif_rx_handle *demux, int algo, int opmode,
 	int residual, int smsg, unsigned int numOfPids, unsigned short *pids)
 {
@@ -804,7 +904,9 @@ int tcc_hwdmx_tsif_rx_register(int devid, struct device *dev)
 		of_property_read_u32(dev->of_node, "tsif-port", &tsif_ex_pri.port_cfg[devid].tsif_port);
 		pr_info("tsif_port: %d\n", tsif_ex_pri.port_cfg[devid].tsif_port);
 	} else {
-		tsif_ex_pri.port_cfg[devid].tsif_port = 1;
+		if(tsif_ex_pri.port_cfg[devid].tsif_port == 0xF) {
+			tsif_ex_pri.port_cfg[devid].tsif_port = 1;
+		}
 	}
 #endif
 	tsif_ex_pri.port_cfg[devid].tsif_id = devid;
@@ -828,16 +930,22 @@ int tcc_hwdmx_tsif_rx_unregister(int devid)
 	return ret;
 }
 
-int tcc_hwdmx_tsif_rx_init(void)
+int tcc_hwdmx_tsif_rx_init(struct device *dev)
 {
+    int i;
 	int ret = 0;
 
 	memset(&tsif_ex_pri, 0, sizeof(struct tcc_tsif_pri_handle));
+	for(i=0; i<HWDMX_NUM; i++)
+	{
+		tsif_ex_pri.port_cfg[i].tsif_port = 0xF;
+	}
+
 	mutex_init(&(tsif_ex_pri.mutex));
 
 #ifdef USE_REV_MEMORY
 	/* This function returns 1 on success, and 0 on failure. Weird function design. */
-	if (pmap_get_info("tsif", &tsif_ex_pri.pmap_tsif) < 0) {
+	if (pmap_get_info("tsif", &tsif_ex_pri.pmap_tsif) != 1) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -848,17 +956,25 @@ int tcc_hwdmx_tsif_rx_init(void)
 		goto out;
 	}
 	pr_info(
-		"tsif_ex: pmap(PA: 0x%08x, VA: 0x%08x, SIZE: 0x%x)\n", tsif_ex_pri.pmap_tsif.base,
+		"tsif_ex: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n", tsif_ex_pri.pmap_tsif.base,
 		tsif_ex_pri.mem_base, tsif_ex_pri.pmap_tsif.size);
 #endif /* USE_REV_MEMORY */
+
+#if defined(DEMUX_SYSFS)
+	ret = sysfs_create_file(&dev->kobj, &sc_attrb.attr);
+#endif
 
 out:
 	return ret;
 }
 
-int tcc_hwdmx_tsif_rx_deinit(void)
+int tcc_hwdmx_tsif_rx_deinit(struct device *dev)
 {
 	int ret = 0;
+
+#if defined(DEMUX_SYSFS)
+	sysfs_remove_file(&dev->kobj, &sc_attrb.attr);
+#endif
 
 #ifdef USE_REV_MEMORY
 	if (tsif_ex_pri.mem_base == NULL) {

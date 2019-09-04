@@ -55,8 +55,8 @@ struct tcc_hwdmx_tsif_rx_filter_param
 	unsigned char *f_mode;
 };
 
-int tcc_hwdmx_tsif_rx_init(void);
-int tcc_hwdmx_tsif_rx_deinit(void);
+int tcc_hwdmx_tsif_rx_init(struct device *dev);
+int tcc_hwdmx_tsif_rx_deinit(struct device *dev);
 int tcc_hwdmx_tsif_rx_register(int devid, struct device *dev);
 int tcc_hwdmx_tsif_rx_unregister(int devid);
 struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid);
@@ -73,6 +73,8 @@ int tcc_hwdmx_tsif_rx_remove_pid(
 int tcc_hwdmx_tsif_rx_set_pcr_pid(
 	struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int index, unsigned int pcr_pid);
 int tcc_hwdmx_tsif_rx_get_stc(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int index, u64 *stc);
+int tcc_hwdmx_tsif_rx_set_cipher_dec_pid(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int numOfPids, 
+				unsigned int delete_option, unsigned short *pids);
 int tcc_hwdmx_tsif_rx_set_mode(struct tcc_hwdmx_tsif_rx_handle *demux, int algo, int opmode,
 	int residual, int smsg, unsigned int numOfPids, unsigned short *pids);
 int tcc_hwdmx_tsif_rx_set_key(struct tcc_hwdmx_tsif_rx_handle *demux,
