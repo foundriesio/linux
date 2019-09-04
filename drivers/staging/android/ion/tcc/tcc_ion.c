@@ -89,10 +89,9 @@ static struct ion_platform_data *tcc_ion_parse_dt(struct platform_device *pdev)
 				printk("%s-%d : ump_reserved allocation is failed.\n", __func__, __LINE__);
 				return ERR_PTR(-ENOMEM);
 			}
-			printk("@@@@@@@@@@@@@@@@@@@@ %s - 0x%x - 0x%x - %d - %d - %d - %d\n", 
+			printk("@@@@@@@@@@@@@@@@@@@@ %s - 0x%x - 0x%x - %d - %d - %d\n",
 						pmap_ump_reserved.name, pmap_ump_reserved.base, pmap_ump_reserved.size,
-						pmap_ump_reserved.groups, pmap_ump_reserved.v_base, pmap_ump_reserved.rc,
-						pmap_ump_reserved.flags);
+						pmap_ump_reserved.groups, pmap_ump_reserved.rc, pmap_ump_reserved.flags);
 
 			heap->base = pmap_ump_reserved.base;
 			heap->size = pmap_ump_reserved.size;

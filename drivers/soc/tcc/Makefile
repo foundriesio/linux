@@ -10,7 +10,6 @@ endif
 obj-y	+= timer.o
 
 obj-$(CONFIG_PMAP)		+= pmap.o
-obj-$(CONFIG_PMAP_TCC897X)	+= pmap-tcc897x.o
 
 #obj-$(CONFIG_ARCH_TCC802X)	+= pm-tcc802x.o
 #obj-$(CONFIG_ARCH_TCC898X)	+= pm-tcc898x.o
