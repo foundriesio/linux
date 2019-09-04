@@ -4488,9 +4488,6 @@ int stmmac_suspend(struct device *dev)
 	/* call carrier off first to avoid false dev_watchdog timeouts */
 	netif_carrier_off(ndev);
 
-	if (ndev->phydev)
-		phy_stop(ndev->phydev);
-
 	mutex_lock(&priv->lock);
 
 	netif_device_detach(ndev);
@@ -4516,6 +4513,10 @@ int stmmac_suspend(struct device *dev)
 	priv->oldlink = false;
 	priv->speed = SPEED_UNKNOWN;
 	priv->oldduplex = DUPLEX_UNKNOWN;
+
+	if (ndev->phydev)
+		phy_stop(ndev->phydev);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(stmmac_suspend);
@@ -4608,6 +4609,9 @@ int stmmac_resume(struct device *dev)
 		goto init_error;
 	}
 
+	if (ndev->phydev)
+		phy_start(ndev->phydev);
+
 	stmmac_hw_setup(ndev, false);
 	stmmac_init_tx_coalesce(priv);
 	stmmac_set_rx_mode(ndev);
@@ -4617,9 +4621,6 @@ int stmmac_resume(struct device *dev)
 	stmmac_start_all_queues(priv);
 
 	mutex_unlock(&priv->lock);
-
-	if (ndev->phydev)
-		phy_start(ndev->phydev);
 
 	return 0;
 init_error:
