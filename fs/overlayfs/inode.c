@@ -14,6 +14,7 @@
 #include <linux/posix_acl.h>
 #include <linux/ratelimit.h>
 #include "overlayfs.h"
+#include "ovl_entry.h"
 
 int ovl_setattr(struct dentry *dentry, struct iattr *attr)
 {
@@ -48,7 +49,7 @@ int ovl_setattr(struct dentry *dentry, struct iattr *attr)
 		inode_lock(upperdentry->d_inode);
 		old_cred = ovl_override_creds(dentry->d_sb);
 		err = notify_change(upperdentry, attr, NULL);
-		revert_creds(old_cred);
+		ovl_revert_creds(old_cred);
 		if (!err)
 			ovl_copyattr(upperdentry->d_inode, dentry->d_inode);
 		inode_unlock(upperdentry->d_inode);
@@ -141,7 +142,7 @@ int ovl_getattr(const struct path *path, struct kstat *stat,
 		stat->nlink = dentry->d_inode->i_nlink;
 
 out:
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 
 	return err;
 }
@@ -175,7 +176,7 @@ int ovl_permission(struct inode *inode, int mask)
 		mask |= MAY_READ;
 	}
 	err = inode_permission(realinode, mask);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 
 	return err;
 }
@@ -192,7 +193,7 @@ static const char *ovl_get_link(struct dentry *dentry,
 
 	old_cred = ovl_override_creds(dentry->d_sb);
 	p = vfs_get_link(ovl_dentry_real(dentry), done);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 	return p;
 }
 
@@ -235,7 +236,7 @@ int ovl_xattr_set(struct dentry *dentry, struct inode *inode, const char *name,
 		WARN_ON(flags != XATTR_REPLACE);
 		err = vfs_removexattr(realdentry, name);
 	}
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 
 out_drop_write:
 	ovl_drop_write(dentry);
@@ -253,7 +254,7 @@ int ovl_xattr_get(struct dentry *dentry, struct inode *inode, const char *name,
 
 	old_cred = ovl_override_creds(dentry->d_sb);
 	res = vfs_getxattr(realdentry, name, value, size);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 	return res;
 }
 
@@ -277,7 +278,7 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 
 	old_cred = ovl_override_creds(dentry->d_sb);
 	res = vfs_listxattr(realdentry, list, size);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 	if (res <= 0 || size == 0)
 		return res;
 
@@ -312,7 +313,7 @@ struct posix_acl *ovl_get_acl(struct inode *inode, int type)
 
 	old_cred = ovl_override_creds(inode->i_sb);
 	acl = get_acl(realinode, type);
-	revert_creds(old_cred);
+	ovl_revert_creds(old_cred);
 
 	return acl;
 }
@@ -608,39 +609,63 @@ static bool ovl_verify_inode(struct inode *inode, struct dentry *lowerdentry,
 	return true;
 }
 
+/*
+ * Does overlay inode need to be hashed by lower inode?
+ */
+static bool ovl_hash_bylower(struct super_block *sb, struct dentry *upper,
+			     struct dentry *lower, struct dentry *index)
+{
+	struct ovl_fs *ofs = sb->s_fs_info;
+
+	/* No, if pure upper */
+	if (!lower)
+		return false;
+
+	/* Yes, if already indexed */
+	if (index)
+		return true;
+
+	/* Yes, if won't be copied up */
+	if (!ofs->upper_mnt)
+		return true;
+
+	/* No, if lower hardlink is or will be broken on copy up */
+	if ((upper || !ovl_indexdir(sb)) &&
+	    !d_is_dir(lower) && d_inode(lower)->i_nlink > 1)
+		return false;
+
+	/* No, if non-indexed upper with NFS export */
+	if (sb->s_export_op && upper)
+		return false;
+
+	/* Otherwise, hash by lower inode for fsnotify */
+	return true;
+}
+
 struct inode *ovl_get_inode(struct dentry *dentry, struct dentry *upperdentry,
 			    struct dentry *index)
 {
+	struct super_block *sb = dentry->d_sb;
 	struct dentry *lowerdentry = ovl_dentry_lower(dentry);
 	struct inode *realinode = upperdentry ? d_inode(upperdentry) : NULL;
 	struct inode *inode;
-	/* Already indexed or could be indexed on copy up? */
-	bool indexed = (index || (ovl_indexdir(dentry->d_sb) && !upperdentry));
-	struct dentry *origin = indexed ? lowerdentry : NULL;
+	bool bylower = ovl_hash_bylower(sb, upperdentry, lowerdentry, index);
 	bool is_dir;
-
-	if (WARN_ON(upperdentry && indexed && !lowerdentry))
-		return ERR_PTR(-EIO);
 
 	if (!realinode)
 		realinode = d_inode(lowerdentry);
 
 	/*
-	 * Copy up origin (lower) may exist for non-indexed non-dir upper, but
-	 * we must not use lower as hash key in that case.
-	 * Hash non-dir that is or could be indexed by origin inode.
-	 * Hash dir that is or could be merged by origin inode.
-	 * Hash pure upper and non-indexed non-dir by upper inode.
+	 * Copy up origin (lower) may exist for non-indexed upper, but we must
+	 * not use lower as hash key if this is a broken hardlink.
 	 */
 	is_dir = S_ISDIR(realinode->i_mode);
-	if (is_dir)
-		origin = lowerdentry;
-
-	if (upperdentry || origin) {
-		struct inode *key = d_inode(origin ?: upperdentry);
+	if (upperdentry || bylower) {
+		struct inode *key = d_inode(bylower ? lowerdentry :
+						      upperdentry);
 		unsigned int nlink = is_dir ? 1 : realinode->i_nlink;
 
-		inode = iget5_locked(dentry->d_sb, (unsigned long) key,
+		inode = iget5_locked(sb, (unsigned long) key,
 				     ovl_inode_test, ovl_inode_set, key);
 		if (!inode)
 			goto out_nomem;
@@ -664,7 +689,8 @@ struct inode *ovl_get_inode(struct dentry *dentry, struct dentry *upperdentry,
 			nlink = ovl_get_nlink(lowerdentry, upperdentry, nlink);
 		set_nlink(inode, nlink);
 	} else {
-		inode = new_inode(dentry->d_sb);
+		/* Lower hardlink that will be broken on copy up */
+		inode = new_inode(sb);
 		if (!inode)
 			goto out_nomem;
 	}

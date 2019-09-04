@@ -177,6 +177,8 @@ static void ipgre_err(struct sk_buff *skb, u32 info,
 
 	if (tpi->proto == htons(ETH_P_TEB))
 		itn = net_generic(net, gre_tap_net_id);
+	else if (tpi->proto == htons(ETH_P_ERSPAN))
+		itn = net_generic(net, erspan_net_id);
 	else
 		itn = net_generic(net, ipgre_net_id);
 
@@ -320,6 +322,8 @@ static int erspan_rcv(struct sk_buff *skb, struct tnl_ptk_info *tpi,
 		ip_tunnel_rcv(tunnel, skb, tpi, tun_dst, log_ecn_error);
 		return PACKET_RCVD;
 	}
+	return PACKET_REJECT;
+
 drop:
 	kfree_skb(skb);
 	return PACKET_RCVD;
@@ -685,7 +689,7 @@ static void erspan_build_header(struct sk_buff *skb,
 				__be32 id, u32 index, bool truncate)
 {
 	struct iphdr *iphdr = ip_hdr(skb);
-	struct ethhdr *eth = eth_hdr(skb);
+	struct ethhdr *eth = (struct ethhdr *)skb->data;
 	enum erspan_encap_type enc_type;
 	struct erspanhdr *ershdr;
 	struct qtag_prefix {

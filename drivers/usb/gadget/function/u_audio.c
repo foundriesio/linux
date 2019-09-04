@@ -72,9 +72,6 @@ struct uac_req {
 struct uac_rtd_params {
 	struct snd_uac_chip *uac; /* parent chip */
 	bool ep_enabled; /* if the ep is enabled */
-	/* Size of the ring buffer */
-	size_t dma_bytes;
-	unsigned char *dma_area;
 
 	struct snd_pcm_substream *ss;
 
@@ -82,8 +79,6 @@ struct uac_rtd_params {
 	ssize_t hw_ptr;
 
 	void *rbuf;
-
-	size_t period_size;
 
 	unsigned max_psize;	/* MaxPacketSize of endpoint */
 	struct uac_req *ureq;
@@ -255,12 +250,12 @@ static void f_uac2_capture_pcm (void)
 static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	unsigned pending;
-	unsigned long flags;
+	unsigned long flags, flags2;
 	unsigned int hw_ptr;
-	bool update_alsa = false;
 	int status = req->status;
 	struct uac_req *ur = req->context;
 	struct snd_pcm_substream *substream;
+	struct snd_pcm_runtime *runtime;
 	struct uac_rtd_params *prm = ur->pp;
 	struct snd_uac_chip *uac = prm->uac;
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
@@ -306,6 +301,15 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		pr_debug("%s : Do nothing if ALSA isn't active\n", __func__);
 		goto exit;
 	}
+
+	snd_pcm_stream_lock_irqsave(substream, flags2);
+
+	runtime = substream->runtime;
+	if (!runtime || !snd_pcm_running(substream)) {
+		snd_pcm_stream_unlock_irqrestore(substream, flags2);
+		goto exit;
+	}
+
 	spin_lock_irqsave(&prm->lock, flags);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -348,10 +352,6 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 		compl_cnt_for_reset = 0;
 #endif
 #endif
-	pending = prm->hw_ptr % prm->period_size;
-	pending += req->actual;
-	if (pending >= prm->period_size)
-		update_alsa = true;
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
     ringbuff_offset = (unsigned int)prm->dma_area + hw_ptr; //for debugging UAC20 transfer
 	//if (complete_count % 1000 == 0 || complete_count == 1) {
@@ -362,43 +362,51 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	}
 #endif
 	hw_ptr = prm->hw_ptr;
-	prm->hw_ptr = (prm->hw_ptr + req->actual) % prm->dma_bytes;
 
 	spin_unlock_irqrestore(&prm->lock, flags);
 
 	/* Pack USB load in ALSA ring buffer */
-	pending = prm->dma_bytes - hw_ptr;
+	pending = runtime->dma_bytes - hw_ptr;
 
 
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (unlikely(pending < req->actual)) {
-			memcpy(req->buf, prm->dma_area + hw_ptr, pending);
-			memcpy(req->buf + pending, prm->dma_area,
+			memcpy(req->buf, runtime->dma_area + hw_ptr, pending);
+			memcpy(req->buf + pending, runtime->dma_area,
 			       req->actual - pending);
 		} else {
-			memcpy(req->buf, prm->dma_area + hw_ptr, req->actual);
+			memcpy(req->buf, runtime->dma_area + hw_ptr,
+			       req->actual);
 		}
 	} else {
 		if (unlikely(pending < req->actual)) {
-			memcpy(prm->dma_area + hw_ptr, req->buf, pending);
-			memcpy(prm->dma_area, req->buf + pending,
+			memcpy(runtime->dma_area + hw_ptr, req->buf, pending);
+			memcpy(runtime->dma_area, req->buf + pending,
 			       req->actual - pending);
 		} else {
-			memcpy(prm->dma_area + hw_ptr, req->buf, req->actual);
+			memcpy(runtime->dma_area + hw_ptr, req->buf,
+			       req->actual);
 		}
 	}
 
-exit:
-	if (usb_ep_queue(ep, req, GFP_ATOMIC))
-		dev_err(uac->card->dev, "%d Error!\n", __LINE__);
+	spin_lock_irqsave(&prm->lock, flags);
+	/* update hw_ptr after data is copied to memory */
+	prm->hw_ptr = (hw_ptr + req->actual) % runtime->dma_bytes;
+	hw_ptr = prm->hw_ptr;
+	spin_unlock_irqrestore(&prm->lock, flags);
+	snd_pcm_stream_unlock_irqrestore(substream, flags2);
 
-	if (update_alsa) {
+	if ((hw_ptr % snd_pcm_lib_period_bytes(substream)) < req->actual) {
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
 		printk(KERN_DEBUG "[UAC2] %s : hw_ptr = %d\n", __func__, hw_ptr);
 #endif
 		snd_pcm_period_elapsed(substream);
 	}
+
+exit:
+	if (usb_ep_queue(ep, req, GFP_ATOMIC))
+		dev_err(uac->card->dev, "%d Error!\n", __LINE__);
 }
 
 static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -471,40 +479,12 @@ static snd_pcm_uframes_t uac_pcm_pointer(struct snd_pcm_substream *substream)
 static int uac_pcm_hw_params(struct snd_pcm_substream *substream,
 			       struct snd_pcm_hw_params *hw_params)
 {
-	struct snd_uac_chip *uac = snd_pcm_substream_chip(substream);
-	struct uac_rtd_params *prm;
-	int err;
-
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		prm = &uac->p_prm;
-	else
-		prm = &uac->c_prm;
-
-	err = snd_pcm_lib_malloc_pages(substream,
+	return snd_pcm_lib_malloc_pages(substream,
 					params_buffer_bytes(hw_params));
-	if (err >= 0) {
-		prm->dma_bytes = substream->runtime->dma_bytes;
-		prm->dma_area = substream->runtime->dma_area;
-		prm->period_size = params_period_bytes(hw_params);
-	}
-
-	return err;
 }
 
 static int uac_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	struct snd_uac_chip *uac = snd_pcm_substream_chip(substream);
-	struct uac_rtd_params *prm;
-
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		prm = &uac->p_prm;
-	else
-		prm = &uac->c_prm;
-
-	prm->dma_area = NULL;
-	prm->dma_bytes = 0;
-	prm->period_size = 0;
-
 	return snd_pcm_lib_free_pages(substream);
 }
 
@@ -838,15 +818,15 @@ int g_audio_setup(struct g_audio *g_audio, const char *pcm_name,
 	if (err < 0)
 		goto snd_fail;
 
-	strcpy(pcm->name, pcm_name);
+	strlcpy(pcm->name, pcm_name, sizeof(pcm->name));
 	pcm->private_data = uac;
 	uac->pcm = pcm;
 
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &uac_pcm_ops);
 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &uac_pcm_ops);
 
-	strcpy(card->driver, card_name);
-	strcpy(card->shortname, card_name);
+	strlcpy(card->driver, card_name, sizeof(card->driver));
+	strlcpy(card->shortname, card_name, sizeof(card->shortname));
 	sprintf(card->longname, "%s %i", card_name, card->dev->id);
 
 	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_CONTINUOUS,
