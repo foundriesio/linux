@@ -7,6 +7,7 @@
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/writeback.h>
+#include <linux/iversion.h>
 
 #include "super.h"
 #include "mds_client.h"
@@ -1114,8 +1115,9 @@ struct cap_msg_args {
 	u64			ino, cid, follows;
 	u64			flush_tid, oldest_flush_tid, size, max_size;
 	u64			xattr_version;
+	u64			change_attr;
 	struct ceph_buffer	*xattr_buf;
-	struct timespec		atime, mtime, ctime;
+	struct timespec		atime, mtime, ctime, btime;
 	int			op, caps, wanted, dirty;
 	u32			seq, issue_seq, mseq, time_warp_seq;
 	u32			flags;
@@ -1136,7 +1138,6 @@ static int send_cap_msg(struct cap_msg_args *arg)
 	struct ceph_msg *msg;
 	void *p;
 	size_t extra_len;
-	struct timespec zerotime = {0};
 	struct ceph_osd_client *osdc = &arg->session->s_mdsc->fsc->client->osdc;
 
 	dout("send_cap_msg %s %llx %llx caps %s wanted %s dirty %s"
@@ -1221,15 +1222,10 @@ static int send_cap_msg(struct cap_msg_args *arg)
 	/* pool namespace (version 8) (mds always ignores this) */
 	ceph_encode_32(&p, 0);
 
-	/*
-	 * btime and change_attr (version 9)
-	 *
-	 * We just zero these out for now, as the MDS ignores them unless
-	 * the requisite feature flags are set (which we don't do yet).
-	 */
-	ceph_encode_timespec(p, &zerotime);
+	/* btime and change_attr (version 9) */
+	ceph_encode_timespec(p, &arg->btime);
 	p += sizeof(struct ceph_timespec);
-	ceph_encode_64(&p, 0);
+	ceph_encode_64(&p, arg->change_attr);
 
 	/* Advisory flags (version 10) */
 	ceph_encode_32(&p, arg->flags);
@@ -1239,20 +1235,23 @@ static int send_cap_msg(struct cap_msg_args *arg)
 }
 
 /*
- * Queue cap releases when an inode is dropped from our cache.  Since
- * inode is about to be destroyed, there is no need for i_ceph_lock.
+ * Queue cap releases when an inode is dropped from our cache.
  */
 void ceph_queue_caps_release(struct inode *inode)
 {
 	struct ceph_inode_info *ci = ceph_inode(inode);
 	struct rb_node *p;
 
+	/* lock i_ceph_lock, because ceph_d_revalidate(..., LOOKUP_RCU)
+	 * may call __ceph_caps_issued_mask() on a freeing inode. */
+	spin_lock(&ci->i_ceph_lock);
 	p = rb_first(&ci->i_caps);
 	while (p) {
 		struct ceph_cap *cap = rb_entry(p, struct ceph_cap, ci_node);
 		p = rb_next(p);
 		__ceph_remove_cap(cap, true);
 	}
+	spin_unlock(&ci->i_ceph_lock);
 }
 
 /*
@@ -1279,6 +1278,7 @@ static int __send_cap(struct ceph_mds_client *mdsc, struct ceph_cap *cap,
 {
 	struct ceph_inode_info *ci = cap->ci;
 	struct inode *inode = &ci->vfs_inode;
+	struct ceph_buffer *old_blob = NULL;
 	struct cap_msg_args arg;
 	int held, revoking;
 	int wake = 0;
@@ -1343,7 +1343,7 @@ static int __send_cap(struct ceph_mds_client *mdsc, struct ceph_cap *cap,
 	ci->i_requested_max_size = arg.max_size;
 
 	if (flushing & CEPH_CAP_XATTR_EXCL) {
-		__ceph_build_xattrs_blob(ci);
+		old_blob = __ceph_build_xattrs_blob(ci);
 		arg.xattr_version = ci->i_xattrs.version;
 		arg.xattr_buf = ci->i_xattrs.blob;
 	} else {
@@ -1353,6 +1353,8 @@ static int __send_cap(struct ceph_mds_client *mdsc, struct ceph_cap *cap,
 	arg.mtime = inode->i_mtime;
 	arg.atime = inode->i_atime;
 	arg.ctime = inode->i_ctime;
+	arg.btime = ci->i_btime;
+	arg.change_attr = inode_peek_iversion_raw(inode);
 
 	arg.op = op;
 	arg.caps = cap->implemented;
@@ -1377,6 +1379,8 @@ static int __send_cap(struct ceph_mds_client *mdsc, struct ceph_cap *cap,
 		arg.flags |= CEPH_CLIENT_CAPS_SYNC;
 
 	spin_unlock(&ci->i_ceph_lock);
+
+	ceph_buffer_put(old_blob);
 
 	ret = send_cap_msg(&arg);
 	if (ret < 0) {
@@ -1412,6 +1416,8 @@ static inline int __send_flush_snap(struct inode *inode,
 	arg.atime = capsnap->atime;
 	arg.mtime = capsnap->mtime;
 	arg.ctime = capsnap->ctime;
+	arg.btime = capsnap->btime;
+	arg.change_attr = capsnap->change_attr;
 
 	arg.op = CEPH_CAP_OP_FLUSHSNAP;
 	arg.caps = capsnap->issued;
@@ -3026,8 +3032,10 @@ struct cap_extra_info {
 	bool dirstat_valid;
 	u64 nfiles;
 	u64 nsubdirs;
+	u64 change_attr;
 	/* currently issued */
 	int issued;
+	struct timespec btime;
 };
 
 /*
@@ -3109,11 +3117,14 @@ static void handle_cap_grant(struct inode *inode,
 
 	__check_cap_issue(ci, cap, newcaps);
 
+	inode_set_max_iversion_raw(inode, extra_info->change_attr);
+
 	if ((newcaps & CEPH_CAP_AUTH_SHARED) &&
 	    (extra_info->issued & CEPH_CAP_AUTH_EXCL) == 0) {
 		inode->i_mode = le32_to_cpu(grant->mode);
 		inode->i_uid = make_kuid(&init_user_ns, le32_to_cpu(grant->uid));
 		inode->i_gid = make_kgid(&init_user_ns, le32_to_cpu(grant->gid));
+		ci->i_btime = extra_info->btime;
 		dout("%p mode 0%o uid.gid %d.%d\n", inode, inode->i_mode,
 		     from_kuid(&init_user_ns, inode->i_uid),
 		     from_kgid(&init_user_ns, inode->i_gid));
@@ -3834,17 +3845,19 @@ void ceph_handle_caps(struct ceph_mds_session *session,
 		}
 	}
 
-	if (msg_version >= 11) {
+	if (msg_version >= 9) {
 		struct ceph_timespec *btime;
-		u64 change_attr;
-		u32 flags;
 
-		/* version >= 9 */
 		if (p + sizeof(*btime) > end)
 			goto bad;
 		btime = p;
+		ceph_decode_timespec(&extra_info.btime, btime);
 		p += sizeof(*btime);
-		ceph_decode_64_safe(&p, end, change_attr, bad);
+		ceph_decode_64_safe(&p, end, extra_info.change_attr, bad);
+	}
+
+	if (msg_version >= 11) {
+		u32 flags;
 		/* version >= 10 */
 		ceph_decode_32_safe(&p, end, flags, bad);
 		/* version >= 11 */

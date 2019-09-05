@@ -47,8 +47,9 @@
 #define ARM64_HW_DBM				26
 #define ARM64_SSBD				27
 #define ARM64_HAS_CNP				28
+#define ARM64_WORKAROUND_843419			29
 
-/* kabi: reserve 29 - 40 for future cpu capabilities */
+/* kabi: reserve 30 - 40 for future cpu capabilities */
 #define ARM64_NCAPS				40
 
 #endif /* __ASM_CPUCAPS_H */
