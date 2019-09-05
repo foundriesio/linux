@@ -1873,7 +1873,6 @@
 		num-viewport = <4>;
 		using_ext_ref_clk = <1>;
 		for_si_test = <0>;
-		suspend_mode = <0>;
 
 		status = "disabled";
 	};
