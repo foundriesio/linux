@@ -1354,9 +1354,10 @@
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
+		 <&clk IMX8QM_HSIO_PCIE_X2_PER_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
-	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 	ext_osc = <1>;
 	max-link-speed = <1>;
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_LOW>;
@@ -1370,10 +1371,11 @@
 	clocks = <&clk IMX8QM_HSIO_PCIE_B_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
+		 <&clk IMX8QM_HSIO_PCIE_X1_PER_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
 		 <&pcie_sata_refclk_gate>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
-	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
+	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 	/*epdev_on-supply = <&epdev_on>;*/
 	ext_osc = <1>;
 	max-link-speed = <1>;
