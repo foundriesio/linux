@@ -22,6 +22,8 @@
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
+#define V4L2_MBUS_CSI2_DPHY V4L2_MBUS_CSI2
+
 #define MIPID02_CLK_LANE_WR_REG1			0x01
 #define MIPID02_CLK_LANE_REG1				0x02
 #define MIPID02_CLK_LANE_REG3				0x04
@@ -879,15 +881,14 @@ static int mipid02_parse_rx_ep(struct mipid02_dev *bridge)
 		fwnode_graph_get_remote_port_parent(of_fwnode_handle(ep_node));
 	bridge->asd.match_type = V4L2_ASYNC_MATCH_FWNODE;
 	of_node_put(ep_node);
-
-	v4l2_async_notifier_init(&bridge->notifier);
-	ret = v4l2_async_notifier_add_subdev(&bridge->notifier, &bridge->asd);
-	if (ret) {
-		dev_err(&client->dev, "fail to register asd to notifier %d",
-			ret);
-		fwnode_handle_put(bridge->asd.match.fwnode);
-		return ret;
-	}
+	bridge->notifier.subdevs =
+		devm_kzalloc(&bridge->i2c_client->dev,
+			     sizeof(*bridge->notifier.subdevs),
+			     GFP_KERNEL);
+	if (!bridge->notifier.subdevs)
+		return -ENOMEM;
+	bridge->notifier.subdevs[0] = &bridge->asd;
+	bridge->notifier.num_subdevs = 1;
 	bridge->notifier.ops = &mipid02_notifier_ops;
 
 	ret = v4l2_async_subdev_notifier_register(&bridge->sd,
