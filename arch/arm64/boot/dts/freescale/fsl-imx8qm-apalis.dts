@@ -1359,7 +1359,7 @@
 		 <&pcie_sata_refclk_gate>;
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 	ext_osc = <1>;
-	max-link-speed = <1>;
+	fsl,max-link-speed = <1>;
 	reset-gpio = <&gpio3 26 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
@@ -1378,7 +1378,7 @@
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_per", "pcie_inbound_axi", "pcie_ext";
 	/*epdev_on-supply = <&epdev_on>;*/
 	ext_osc = <1>;
-	max-link-speed = <1>;
+	fsl,max-link-speed = <1>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
