@@ -259,6 +259,7 @@ static struct variant_data variant_stm32_sdmmc = {
 	.datacnt_useless	= true,
 	.datalength_bits	= 25,
 	.datactrl_blocksz	= 14,
+	.pwrreg_nopower		= true,
 	.stm32_idmabsize_mask	= GENMASK(12, 5),
 	.busy_timeout		= true,
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
