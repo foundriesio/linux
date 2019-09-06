@@ -8523,6 +8523,7 @@ CONFIG_KERNEL_MODE_NEON                         policy<{'arm64': 'y', 'armhf': '
 # Menu: General setup
 CONFIG_CROSS_COMPILE                            policy<{'amd64': '""', 'arm64': '""', 'armhf': '""', 'i386': '""', 'ppc64el': '""', 's390x': '""'}>
 CONFIG_COMPILE_TEST                             policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
+CONFIG_HEADER_TEST                              policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_LOCALVERSION                             policy<{'amd64': '""', 'arm64': '""', 'armhf': '""', 'i386': '""', 'ppc64el': '""', 's390x': '""'}>
 CONFIG_LOCALVERSION_AUTO                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n', 's390x': 'n'}>
 CONFIG_DEFAULT_HOSTNAME                         policy<{'amd64': '"(none)"', 'arm64': '"(none)"', 'armhf': '"(none)"', 'i386': '"(none)"', 'ppc64el': '"(none)"', 's390x': '"(none)"'}>
