@@ -230,6 +230,12 @@ int hclge_mac_connect_phy(struct hnae3_handle *handle)
 	phydev->supported &= HCLGE_PHY_SUPPORTED_FEATURES;
 	phydev->advertising = phydev->supported;
 
+	/* supported flag is Pause and Asym Pause, but default advertising
+	 * should be rx on, tx on, so need clear Asym Pause in advertising
+	 * flag
+	 */
+	phydev->advertising &= ~ETHTOOL_LINK_MODE_Asym_Pause_BIT;
+
 	return 0;
 }
 
