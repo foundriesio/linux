@@ -7952,13 +7952,21 @@ static int hclge_init_nic_client_instance(struct hnae3_ae_dev *ae_dev,
 {
 	struct hnae3_client *client = vport->nic.client;
 	struct hclge_dev *hdev = ae_dev->priv;
+	int rst_cnt;
 	int ret;
 
+	rst_cnt = hdev->rst_stats.reset_cnt;
 	ret = client->ops->init_instance(&vport->nic);
 	if (ret)
 		return ret;
 
 	set_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state);
+	if (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state) ||
+	    rst_cnt != hdev->rst_stats.reset_cnt) {
+		ret = -EBUSY;
+		goto init_nic_err;
+	}
+
 	hnae3_set_client_init_flag(client, ae_dev, 1);
 
 	/* Enable nic hw error interrupts */
@@ -7971,6 +7979,15 @@ static int hclge_init_nic_client_instance(struct hnae3_ae_dev *ae_dev,
 		hclge_info_show(hdev);
 
 	return ret;
+
+init_nic_err:
+	clear_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state);
+	while (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state))
+		msleep(HCLGE_WAIT_RESET_DONE);
+
+	client->ops->uninit_instance(&vport->nic, 0);
+
+	return ret;
 }
 
 static int hclge_init_roce_client_instance(struct hnae3_ae_dev *ae_dev,
@@ -7978,6 +7995,7 @@ static int hclge_init_roce_client_instance(struct hnae3_ae_dev *ae_dev,
 {
 	struct hnae3_client *client = vport->roce.client;
 	struct hclge_dev *hdev = ae_dev->priv;
+	int rst_cnt;
 	int ret;
 
 	if (!hnae3_dev_roce_supported(hdev) || !hdev->roce_client ||
@@ -7989,14 +8007,30 @@ static int hclge_init_roce_client_instance(struct hnae3_ae_dev *ae_dev,
 	if (ret)
 		return ret;
 
+	rst_cnt = hdev->rst_stats.reset_cnt;
 	ret = client->ops->init_instance(&vport->roce);
 	if (ret)
 		return ret;
 
 	set_bit(HCLGE_STATE_ROCE_REGISTERED, &hdev->state);
+	if (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state) ||
+	    rst_cnt != hdev->rst_stats.reset_cnt) {
+		ret = -EBUSY;
+		goto init_roce_err;
+	}
+
 	hnae3_set_client_init_flag(client, ae_dev, 1);
 
 	return 0;
+
+init_roce_err:
+	clear_bit(HCLGE_STATE_ROCE_REGISTERED, &hdev->state);
+	while (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state))
+		msleep(HCLGE_WAIT_RESET_DONE);
+
+	hdev->roce_client->ops->uninit_instance(&vport->roce, 0);
+
+	return ret;
 }
 
 static int hclge_init_client_instance(struct hnae3_client *client,
@@ -8068,6 +8102,9 @@ static void hclge_uninit_client_instance(struct hnae3_client *client,
 		vport = &hdev->vport[i];
 		if (hdev->roce_client) {
 			clear_bit(HCLGE_STATE_ROCE_REGISTERED, &hdev->state);
+			while (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state))
+				msleep(HCLGE_WAIT_RESET_DONE);
+
 			hdev->roce_client->ops->uninit_instance(&vport->roce,
 								0);
 			hdev->roce_client = NULL;
@@ -8077,6 +8114,9 @@ static void hclge_uninit_client_instance(struct hnae3_client *client,
 			return;
 		if (hdev->nic_client && client->ops->uninit_instance) {
 			clear_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state);
+			while (test_bit(HCLGE_STATE_RST_HANDLING, &hdev->state))
+				msleep(HCLGE_WAIT_RESET_DONE);
+
 			client->ops->uninit_instance(&vport->nic, 0);
 			hdev->nic_client = NULL;
 			vport->nic.client = NULL;
