@@ -4163,10 +4163,10 @@
 		clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi";
 
 		interrupt-map-mask = <0 0 0 0x7>;
-		interrupt-map =  <0 0 0 1 &gic 0 73 4>,
-				 <0 0 0 2 &gic 0 74 4>,
-				 <0 0 0 3 &gic 0 75 4>,
-				 <0 0 0 4 &gic 0 76 4>;
+		interrupt-map =  <0 0 0 1 &gic GIC_SPI 73 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 2 &gic GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 3 &gic GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 4 &gic GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
 		power-domains = <&pd_pcie1>;
 		fsl,max-link-speed = <3>;
 		hsio-cfg = <PCIEAX1PCIEBX1SATA>;
@@ -4205,10 +4205,10 @@
 		clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi";
 
 		interrupt-map-mask = <0 0 0 0x7>;
-		interrupt-map =  <0 0 0 1 &gic 0 105 4>,
-				 <0 0 0 2 &gic 0 106 4>,
-				 <0 0 0 3 &gic 0 107 4>,
-				 <0 0 0 4 &gic 0 108 4>;
+		interrupt-map =  <0 0 0 1 &gic GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 2 &gic GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 3 &gic GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
+				 <0 0 0 4 &gic GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
 		power-domains = <&pd_pcie1>;
 		fsl,max-link-speed = <3>;
 		hsio-cfg = <PCIEAX1PCIEBX1SATA>;
