@@ -966,7 +966,7 @@ static int ceph_set_super(struct super_block *s, void *data)
 	s->s_d_op = &ceph_dentry_ops;
 	s->s_export_op = &ceph_export_ops;
 
-	s->s_time_gran = 1000;  /* 1000 ns == 1 us */
+	s->s_time_gran = 1;
 
 	ret = set_anon_super(s, NULL);  /* what is that second arg for? */
 	if (ret != 0)
@@ -1147,17 +1147,15 @@ static int __init init_ceph(void)
 		goto out;
 
 	ceph_flock_init();
-	ceph_xattr_init();
 	ret = register_filesystem(&ceph_fs_type);
 	if (ret)
-		goto out_xattr;
+		goto out_caches;
 
 	pr_info("loaded (mds proto %d)\n", CEPH_MDSC_PROTOCOL);
 
 	return 0;
 
-out_xattr:
-	ceph_xattr_exit();
+out_caches:
 	destroy_caches();
 out:
 	return ret;
@@ -1167,7 +1165,6 @@ static void __exit exit_ceph(void)
 {
 	dout("exit_ceph\n");
 	unregister_filesystem(&ceph_fs_type);
-	ceph_xattr_exit();
 	destroy_caches();
 }
 
