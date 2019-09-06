@@ -131,6 +131,15 @@ struct VIOC_LUT_MIX_CONFIG
 	int bypass;
 };
 
+struct VIOC_LUT_UPDATE_PEND
+{
+	unsigned int lut_number;
+
+	/** lookup parameter bit[ :0] table 0: rgb-table, 1: y-table */
+	unsigned int param;
+	int update_pend;
+};
+
 #define TCC_LUT_SET		_IOW(LUT_IOC_MAGIC, 2, struct VIOC_LUT_VALUE_SET) //hw vioc lut set
 #define TCC_LUT_PLUG_IN		_IOW(LUT_IOC_MAGIC, 3, struct VIOC_LUT_PLUG_IN_SET)
 #define TCC_LUT_ONOFF		_IOW(LUT_IOC_MAGIC, 4, struct VIOC_LUT_ONOFF_SET)
@@ -143,7 +152,7 @@ struct VIOC_LUT_MIX_CONFIG
 
 #define TCC_LUT_SET_CSC_COEFF  	_IOW(LUT_IOC_MAGIC, 22, struct VIOC_LUT_CSC_COEFF)
 #define TCC_LUT_SET_MIX_CONIG	_IOW(LUT_IOC_MAGIC, 24, struct VIOC_LUT_MIX_CONFIG)
-
+#define TCC_LUT_GET_UPDATE_PEND _IOW(LUT_IOC_MAGIC, 25, struct VIOC_LUT_UPDATE_PEND)
 
 #ifndef ADDRESS_ALIGNED
 #define ADDRESS_ALIGNED

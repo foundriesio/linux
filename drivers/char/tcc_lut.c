@@ -43,7 +43,7 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.3"
+#define LUT_VERSION "v1.4"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
@@ -184,7 +184,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					break;
 				}
 				dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
-				lut_number = lut_get_real_lut_number(lut_cmd.lut_number);
+				lut_number = lut_cmd.lut_number;
 				if(lut_number == (unsigned int)-1 ) {
 					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
 					break;
@@ -202,7 +202,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
 					break;
-				lut_number = lut_get_real_lut_number(lut_cmd.lut_number);
+				lut_number = lut_cmd.lut_number;
 				if(lut_number == (unsigned int)-1 ) {
 					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_number);
 					break;
@@ -266,6 +266,45 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			}
 			break;
 		#endif
+
+		case TCC_LUT_GET_UPDATE_PEND:
+			{
+				int tcc_get_lut_update_pend(unsigned int lut_n);
+				unsigned int lut_number;
+				struct VIOC_LUT_UPDATE_PEND lut_update_pend;
+
+                                if(copy_from_user((void *)&lut_update_pend,
+                                        (const void *)arg, sizeof(struct VIOC_LUT_UPDATE_PEND))) {
+                                        pr_err("%s TCC_LUT_GET_UPDATE_PEND failed copy from user\r\n", __func__);
+                                        break;
+                                }
+
+				#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+				lut_number = lut_get_real_lut_number(lut_update_pend.lut_number);
+				if(lut_number == (unsigned int)-1 ) {
+					pr_err("%s TCC_LUT_GET_UPDATE_PEND invalid lut number[%d]\r\n", __func__, lut_update_pend.lut_number);
+					break;
+				}
+
+				/* Y Table? */
+				if(lut_update_pend.param & 1) {
+					if(lut_number == 3 || lut_number == 5) {
+						lut_number++;
+						dprintk("TCC_LUT_GET_UPDATE_PEND y-lut lut_sel = %d\r\n", lut_number);
+					}
+				}
+				//pr_info(" %s LUT\r\n", (lut_number == 4 || lut_number == 6)?"Y":"RGB");
+				lut_update_pend.update_pend = tcc_get_lut_update_pend(lut_number);
+				#else
+				lut_update_pend.update_pend = 0;
+				#endif
+                                if(copy_to_user((void __user *)arg, &lut_update_pend, sizeof(struct VIOC_LUT_UPDATE_PEND))) {
+					pr_err("%s TCC_LUT_GET_UPDATE_PEND failed copy to user\r\n", __func__);
+                                        break;
+                                }
+				ret = 0;
+			}
+			break;
 
 		default:
 			printk(KERN_ALERT "not supported LUT IOCTL(0x%x). \n", cmd);
