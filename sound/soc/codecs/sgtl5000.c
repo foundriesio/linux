@@ -553,6 +553,8 @@ static const struct snd_kcontrol_new sgtl5000_snd_controls[] = {
 			8, 2, 0, capture_6db_attenuate),
 	SOC_SINGLE("Capture ZC Switch", SGTL5000_CHIP_ANA_CTRL,
 		SGTL5000_ADC_ZCD_EN, 1, 0),
+	SOC_SINGLE("Capture Switch", SGTL5000_CHIP_ANA_CTRL,
+		SGTL5000_ADC_MUTE_SHIFT, 1, 1),
 
 	/* Headphone */
 	SOC_DOUBLE_TLV("Headphone Playback Volume",
