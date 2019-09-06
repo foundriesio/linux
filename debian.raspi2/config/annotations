@@ -620,6 +620,7 @@ CONFIG_POWER_RESET_SYSCON                       policy<{'arm64': 'y', 'armhf': '
 CONFIG_POWER_RESET_SYSCON_POWEROFF              policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y'}>
 CONFIG_POWER_RESET_RMOBILE                      policy<{'armhf': 'm'}>
 CONFIG_SYSCON_REBOOT_MODE                       policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
+CONFIG_NVMEM_REBOOT_MODE                        policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 
 # Menu: Device Drivers >> Broadcom specific AMBA
 CONFIG_BCMA_HOST_PCI                            policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y'}>
