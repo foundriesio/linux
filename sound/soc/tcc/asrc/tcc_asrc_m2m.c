@@ -429,7 +429,7 @@ static int tcc_asrc_m2m_push_data_from_user(struct tcc_asrc_t *asrc, int asrc_pa
 int tcc_asrc_m2m_pop_data(struct tcc_asrc_t * asrc, int asrc_pair, void *data, uint32_t size)
 {
 	uint32_t rxsize = (size < asrc->pair[asrc_pair].stat.readable_size) ? size : asrc->pair[asrc_pair].stat.readable_size;
-	int ret;
+	//int ret;
 
 	dprintk("%s - size:%d\n", __func__, size);
 
@@ -449,7 +449,7 @@ int tcc_asrc_m2m_pop_data(struct tcc_asrc_t * asrc, int asrc_pair, void *data, u
 
 	memcpy(data, asrc->pair[asrc_pair].rxbuf.virt + asrc->pair[asrc_pair].stat.read_offset, rxsize);
 
-	rxsize -= (uint32_t)ret;
+	//rxsize -= (uint32_t)ret;
 
 	asrc->pair[asrc_pair].stat.read_offset += rxsize;
 	asrc->pair[asrc_pair].stat.readable_size -= rxsize;
