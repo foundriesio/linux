@@ -469,6 +469,14 @@ static irqreturn_t tcc_dma_done_handler(int irq, void *dev_id)
 			prtd->ptcc_intr->nOut=0;
 		}
 	}
+	
+#if defined(RX_FIFO_CLEAR_IN_DMA_BUF)
+	if ((dmaInterruptSource & DMA_I2S_IN) && (flag & TCC_RUNNING_CAPTURE) && (prtd->to_be_cleared_rx_period_cnt > 0)) {		
+		memset(prtd->ptcc_intr->cap_ptr->dma_buffer.area + (min_period_size * prtd->ptcc_intr->nIn), 0, min_period_size); //clear period_size	
+		prtd->to_be_cleared_rx_period_cnt--;
+	}
+#endif
+	
 	if (((dmaInterruptSource & DMA_I2S_IN) && (flag & TCC_RUNNING_CAPTURE))
 		|| ((dmaInterruptSource & DMA_CDIF_SPDIF_IN) && (flag & TCC_RUNNING_CDIF_SPDIF_CAPTURE))) {
 		prtd->ptcc_intr->nIn ++;
@@ -477,13 +485,6 @@ static irqreturn_t tcc_dma_done_handler(int irq, void *dev_id)
 			prtd->ptcc_intr->nIn=0;
 		}
 	}
-
-#if defined(RX_FIFO_CLEAR_IN_DMA_BUF)
-	if ((dmaInterruptSource & DMA_I2S_IN) && (flag & TCC_RUNNING_CAPTURE) && (prtd->to_be_cleared_rx_period_cnt > 0)) {
-		memset(prtd->ptcc_intr->cap_ptr->dma_buffer.area, 0, min_period_size); //clear period_size
-		prtd->to_be_cleared_rx_period_cnt--;
-	}
-#endif
 
 	return IRQ_HANDLED;
 }
@@ -1006,12 +1007,12 @@ static int tcc_adma_spdif_tx_enable(struct snd_pcm_substream *substream, int En)
 					pcm_writel(reg_value, padma_reg+ADMA_CHCTRL);
 					spin_unlock_irqrestore(prtd->adma_slock, flags);
 
-					reg_value = pcm_readl(pdai_reg+I2S_DAMR);
+					reg_value = pcm_readl(pdai_reg+SPDIF_TXCONFIG);
 					//Hw2: Tx Intr Enable
 					//Hw1: Data Valid bit
 					//Hw0: Tx Enable
 					reg_value &= ~(Hw2 | Hw1 | Hw0);	//SPDIF TX Disable
-					pcm_writel(reg_value, pdai_reg+I2S_DAMR);
+					pcm_writel(reg_value, pdai_reg+SPDIF_TXCONFIG);
 
 					ret = 1;
 					break;
