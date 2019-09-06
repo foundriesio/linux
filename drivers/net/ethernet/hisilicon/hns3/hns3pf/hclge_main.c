@@ -8019,6 +8019,14 @@ static int hclge_init_roce_client_instance(struct hnae3_ae_dev *ae_dev,
 		goto init_roce_err;
 	}
 
+	/* Enable roce ras interrupts */
+	ret = hclge_config_rocee_ras_interrupt(hdev, true);
+	if (ret) {
+		dev_err(&ae_dev->pdev->dev,
+			"fail(%d) to enable roce ras interrupts\n", ret);
+		goto init_roce_err;
+	}
+
 	hnae3_set_client_init_flag(client, ae_dev, 1);
 
 	return 0;
@@ -8072,12 +8080,6 @@ static int hclge_init_client_instance(struct hnae3_client *client,
 			return -EINVAL;
 		}
 	}
-
-	/* Enable roce ras interrupts */
-	ret = hclge_config_rocee_ras_interrupt(hdev, true);
-	if (ret)
-		dev_err(&ae_dev->pdev->dev,
-			"fail(%d) to enable roce ras interrupts\n", ret);
 
 	return ret;
 
