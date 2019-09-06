@@ -83,8 +83,7 @@ static const u32 tqp_intr_reg_addr_list[] = {HCLGEVF_TQP_INTR_CTRL_REG,
 					     HCLGEVF_TQP_INTR_GL2_REG,
 					     HCLGEVF_TQP_INTR_RL_REG};
 
-static inline struct hclgevf_dev *hclgevf_ae_get_hdev(
-	struct hnae3_handle *handle)
+static struct hclgevf_dev *hclgevf_ae_get_hdev(struct hnae3_handle *handle)
 {
 	if (!handle->client)
 		return container_of(handle, struct hclgevf_dev, nic);
@@ -1674,9 +1673,9 @@ static void hclgevf_reset_service_task(struct work_struct *work)
 	if (test_and_clear_bit(HCLGEVF_RESET_PENDING,
 			       &hdev->reset_state)) {
 		/* PF has initmated that it is about to reset the hardware.
-		 * We now have to poll & check if harware has actually completed
-		 * the reset sequence. On hardware reset completion, VF needs to
-		 * reset the client and ae device.
+		 * We now have to poll & check if hardware has actually
+		 * completed the reset sequence. On hardware reset completion,
+		 * VF needs to reset the client and ae device.
 		 */
 		hdev->reset_attempts = 0;
 
@@ -1692,7 +1691,7 @@ static void hclgevf_reset_service_task(struct work_struct *work)
 	} else if (test_and_clear_bit(HCLGEVF_RESET_REQUESTED,
 				      &hdev->reset_state)) {
 		/* we could be here when either of below happens:
-		 * 1. reset was initiated due to watchdog timeout due to
+		 * 1. reset was initiated due to watchdog timeout caused by
 		 *    a. IMP was earlier reset and our TX got choked down and
 		 *       which resulted in watchdog reacting and inducing VF
 		 *       reset. This also means our cmdq would be unreliable.
@@ -2002,7 +2001,7 @@ static int hclgevf_rss_init_hw(struct hclgevf_dev *hdev)
 
 	}
 
-	/* Initialize RSS indirect table for each vport */
+	/* Initialize RSS indirect table */
 	for (i = 0; i < HCLGEVF_RSS_IND_TBL_SIZE; i++)
 		rss_cfg->rss_indirection_tbl[i] = i % hdev->rss_size_max;
 
@@ -2015,9 +2014,6 @@ static int hclgevf_rss_init_hw(struct hclgevf_dev *hdev)
 
 static int hclgevf_init_vlan_config(struct hclgevf_dev *hdev)
 {
-	/* other vlan config(like, VLAN TX/RX offload) would also be added
-	 * here later
-	 */
 	return hclgevf_set_vlan_filter(&hdev->nic, htons(ETH_P_8021Q), 0,
 				       false);
 }
@@ -2039,7 +2035,6 @@ static int hclgevf_ae_start(struct hnae3_handle *handle)
 {
 	struct hclgevf_dev *hdev = hclgevf_ae_get_hdev(handle);
 
-	/* reset tqp stats */
 	hclgevf_reset_tqp_stats(handle);
 
 	hclgevf_request_link_info(hdev);
@@ -2063,7 +2058,6 @@ static void hclgevf_ae_stop(struct hnae3_handle *handle)
 			if (hclgevf_reset_tqp(handle, i))
 				break;
 
-	/* reset tqp stats */
 	hclgevf_reset_tqp_stats(handle);
 	hclgevf_update_link_status(hdev, 0);
 }
