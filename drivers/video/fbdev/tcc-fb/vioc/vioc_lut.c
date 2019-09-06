@@ -321,7 +321,6 @@ int tcc_get_lut_enable(unsigned int lut_n)
 
 	lut_index = get_vioc_index(lut_n);
 
-	#endif
 
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 
