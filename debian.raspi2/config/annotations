@@ -1195,6 +1195,7 @@ CONFIG_GPIO_TS4900                              policy<{'armhf-generic': 'm'}>
 # Menu: Device Drivers >> GPIO Support >> MFD GPIO expanders
 CONFIG_GPIO_ADP5520                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_GPIO_ARIZONA                             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_GPIO_BD70528                             policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_GPIO_CRYSTAL_COVE                        policy<{'amd64': 'm', 'i386': 'm'}>
 CONFIG_GPIO_CS5535                              policy<{'i386': 'm'}>
 CONFIG_GPIO_DA9052                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
