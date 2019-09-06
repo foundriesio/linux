@@ -2557,6 +2557,10 @@ int hclge_notify_client(struct hclge_dev *hdev,
 	struct hnae3_client *client = hdev->nic_client;
 	u16 i;
 
+	if (!test_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state) ||
+	    !client)
+		return 0;
+
 	if (!client->ops->reset_notify)
 		return -EOPNOTSUPP;
 
@@ -7874,6 +7878,7 @@ static int hclge_init_client_instance(struct hnae3_client *client,
 				goto clear_nic;
 
 			hnae3_set_client_init_flag(client, ae_dev, 1);
+			set_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state);
 
 			if (netif_msg_drv(&hdev->vport->nic))
 				hclge_info_show(hdev);
@@ -7960,6 +7965,7 @@ static void hclge_uninit_client_instance(struct hnae3_client *client,
 		if (client->type == HNAE3_CLIENT_ROCE)
 			return;
 		if (hdev->nic_client && client->ops->uninit_instance) {
+			clear_bit(HCLGE_STATE_NIC_REGISTERED, &hdev->state);
 			client->ops->uninit_instance(&vport->nic, 0);
 			hdev->nic_client = NULL;
 			vport->nic.client = NULL;
