@@ -2179,7 +2179,8 @@ static void hclge_mbx_task_schedule(struct hclge_dev *hdev)
 
 static void hclge_reset_task_schedule(struct hclge_dev *hdev)
 {
-	if (!test_and_set_bit(HCLGE_STATE_RST_SERVICE_SCHED, &hdev->state))
+	if (!test_bit(HCLGE_STATE_REMOVING, &hdev->state) &&
+	    !test_and_set_bit(HCLGE_STATE_RST_SERVICE_SCHED, &hdev->state))
 		schedule_work(&hdev->rst_service_task);
 }
 
@@ -8075,6 +8076,7 @@ static void hclge_state_init(struct hclge_dev *hdev)
 static void hclge_state_uninit(struct hclge_dev *hdev)
 {
 	set_bit(HCLGE_STATE_DOWN, &hdev->state);
+	set_bit(HCLGE_STATE_REMOVING, &hdev->state);
 
 	if (hdev->service_timer.function)
 		del_timer_sync(&hdev->service_timer);
