@@ -157,7 +157,7 @@ void __wbt_done(struct rq_wb *rwb, enum wbt_flags wb_acct)
 		int diff = limit - inflight;
 
 		if (!inflight || diff >= rwb->wb_background / 2)
-			wake_up(&rqw->wait);
+			wake_up_all(&rqw->wait);
 	}
 }
 
@@ -502,6 +502,30 @@ static inline unsigned int get_limit(struct rq_wb *rwb, unsigned long rw)
 	return limit;
 }
 
+static inline bool may_queue(struct rq_wb *rwb, struct rq_wait *rqw,
+			     wait_queue_entry_t *wait, unsigned long rw)
+{
+	/*
+	 * inc it here even if disabled, since we'll dec it at completion.
+	 * this only happens if the task was sleeping in __wbt_wait(),
+	 * and someone turned it off at the same time.
+	 */
+	if (!rwb_enabled(rwb)) {
+		atomic_inc(&rqw->inflight);
+		return true;
+	}
+
+	/*
+	 * If the waitqueue is already active and we are not the next
+	 * in line to be woken up, wait for our turn.
+	 */
+	if (waitqueue_active(&rqw->wait) &&
+	    rqw->wait.head.next != &wait->entry)
+		return false;
+
+	return atomic_inc_below(&rqw->inflight, get_limit(rwb, rw));
+}
+
 /*
  * Block if we will exceed our limit, or if we are currently waiting for
  * the timer to kick off queuing again.
@@ -511,32 +535,16 @@ static void __wbt_wait(struct rq_wb *rwb, unsigned long rw, spinlock_t *lock)
 	__acquires(lock)
 {
 	struct rq_wait *rqw = get_rq_wait(rwb, current_is_kswapd());
-	DECLARE_WAITQUEUE(wait, current);
+	DEFINE_WAIT(wait);
 
-	/*
-	* inc it here even if disabled, since we'll dec it at completion.
-	* this only happens if the task was sleeping in __wbt_wait(),
-	* and someone turned it off at the same time.
-	*/
-	if (!rwb_enabled(rwb)) {
-	       atomic_inc(&rqw->inflight);
-	       return;
-	}
+	if (may_queue(rwb, rqw, &wait, rw))
+		return;
 
-	if (!waitqueue_active(&rqw->wait)
-		&& atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
-
-	add_wait_queue_exclusive(&rqw->wait, &wait);
 	do {
-		set_current_state(TASK_UNINTERRUPTIBLE);
+		prepare_to_wait_exclusive(&rqw->wait, &wait,
+						TASK_UNINTERRUPTIBLE);
 
-		if (!rwb_enabled(rwb)) {
-		       atomic_inc(&rqw->inflight);
-		       break;
-		}
-
-
-		if (atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
+		if (may_queue(rwb, rqw, &wait, rw))
 			break;
 
 		if (lock) {
@@ -547,8 +555,7 @@ static void __wbt_wait(struct rq_wb *rwb, unsigned long rw, spinlock_t *lock)
 			io_schedule();
 	} while (1);
 
-	__set_current_state(TASK_RUNNING);
-	remove_wait_queue(&rqw->wait, &wait);
+	finish_wait(&rqw->wait, &wait);
 }
 
 static inline bool wbt_should_throttle(struct rq_wb *rwb, struct bio *bio)
