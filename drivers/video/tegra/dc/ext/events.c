@@ -191,7 +191,10 @@ int tegra_dc_ext_queue_hotplug(struct tegra_dc_ext_control *control, int output)
 
 	pack.hotplug.handle = output;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Waddress-of-packed-member"
 	tegra_dc_ext_queue_event(control, &pack.event);
+#pragma GCC diagnostic pop
 
 	return 0;
 }
@@ -222,7 +225,10 @@ int tegra_dc_ext_queue_bandwidth_renegotiate(
 
 	pack.bandwidth.handle = output;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Waddress-of-packed-member"
 	tegra_dc_ext_queue_event(control, &pack.event);
+#pragma GCC diagnostic pop
 
 	return 0;
 }
