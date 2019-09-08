@@ -8081,6 +8081,7 @@ CONFIG_BINFMT_ELF                               policy<{'amd64': 'y', 'arm64': '
 CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS            policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_BINFMT_SCRIPT                            policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'y'}>
 CONFIG_BINFMT_FLAT                              policy<{'armhf': 'y'}>
+CONFIG_BINFMT_FLAT_OLD                          policy<{'armhf': 'y'}>
 CONFIG_BINFMT_ZFLAT                             policy<{'armhf': 'y'}>
 CONFIG_BINFMT_SHARED_FLAT                       policy<{'armhf': 'y'}>
 CONFIG_BINFMT_AOUT                              policy<{'i386': 'm'}>
@@ -10941,6 +10942,7 @@ CONFIG_ARM_THUMB                                policy<{'armhf': 'y'}>
 CONFIG_ARM_THUMBEE                              policy<{'armhf': 'y'}>
 CONFIG_SWP_EMULATE                              policy<{'armhf': 'y'}>
 CONFIG_CPU_ICACHE_DISABLE                       policy<{'armhf': 'n'}>
+CONFIG_CPU_ICACHE_MISMATCH_WORKAROUND           policy<{'armhf': 'y'}>
 CONFIG_CPU_BPREDICT_DISABLE                     policy<{'armhf': 'n'}>
 CONFIG_CACHE_FEROCEON_L2                        policy<{'armhf': 'y'}>
 CONFIG_CACHE_FEROCEON_L2_WRITETHROUGH           policy<{'armhf': 'n'}>
@@ -10962,7 +10964,10 @@ CONFIG_ARM_ERRATA_773022                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_818325_852422                 policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_821420                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_825619                        policy<{'armhf': 'y'}>
+CONFIG_ARM_ERRATA_857271                        policy<{'armhf': 'y'}>
+CONFIG_ARM_ERRATA_857272                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_852421                        policy<{'armhf': 'y'}>
+CONFIG_ARM_ERRATA_814220                        policy<{'armhf': 'y'}>
 CONFIG_ARM_ERRATA_852423                        policy<{'armhf': 'y'}>
 #
 CONFIG_ARCH_ROCKCHIP				note<LP:1566283>
