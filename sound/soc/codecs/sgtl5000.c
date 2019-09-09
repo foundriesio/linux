@@ -732,27 +732,13 @@ static int sgtl5000_set_clock(struct snd_soc_codec *codec, int frame_rate)
 	int clk_ctl = 0;
 	int sys_fs;	/* sample freq */
 
-	/*
-	 * sample freq should be divided by frame clock,
-	 * if frame clock lower than 44.1khz, sample feq should set to
-	 * 32khz or 44.1khz.
-	 */
-	switch (frame_rate) {
-	case 8000:
-	case 16000:
-		sys_fs = 32000;
-		break;
-	case 11025:
-	case 22050:
-		sys_fs = 44100;
-		break;
-	default:
-		sys_fs = frame_rate;
-		break;
-	}
+	sys_fs = sgtl5000_srate_to_sys_fs(frame_rate);
 
 	/* set divided factor of frame clock */
 	switch (sys_fs / frame_rate) {
+	case 6:
+		clk_ctl |= SGTL5000_RATE_MODE_DIV_6 << SGTL5000_RATE_MODE_SHIFT;
+		break;
 	case 4:
 		clk_ctl |= SGTL5000_RATE_MODE_DIV_4 << SGTL5000_RATE_MODE_SHIFT;
 		break;

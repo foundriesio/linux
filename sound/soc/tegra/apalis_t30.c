@@ -65,20 +65,10 @@ static int apalis_t30_sgtl5000_hw_params(struct snd_pcm_substream *substream,
 	int err;
 	int rate;
 
-	/* sgtl5000 does not support 512*rate when in 96000 fs */
 	srate = params_rate(params);
-	switch (srate) {
-	case 96000:
-		mclk = 256 * srate;
-		break;
-	default:
-		mclk = 512 * srate;
-		break;
-	}
-
-	/* Sgtl5000 sysclk should be >= 8MHz and <= 27M */
-	if (mclk < 8000000 || mclk > 27000000)
-		return -EINVAL;
+	mclk = sgtl5000_srate_to_mclk(srate);
+	if (IS_ERR_VALUE(mclk))
+		return mclk;
 
 	if(pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
 		i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
