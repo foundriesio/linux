@@ -1530,6 +1530,7 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 {
 	int ret;
 	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+	unsigned int zcd_mask = SGTL5000_HP_ZCD_EN | SGTL5000_ADC_ZCD_EN;
 
 	/* setup i2c data ops */
 	ret = snd_soc_codec_set_cache_io(codec, 16, 16, SND_SOC_I2C);
@@ -1579,9 +1580,7 @@ static int sgtl5000_probe(struct snd_soc_codec *codec)
 
 	snd_soc_write(codec, SGTL5000_CHIP_PAD_STRENGTH, 0x015f);
 
-	snd_soc_write(codec, SGTL5000_CHIP_ANA_CTRL,
-			SGTL5000_HP_ZCD_EN |
-			SGTL5000_ADC_ZCD_EN);
+	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL, zcd_mask, zcd_mask);
 
 	snd_soc_write(codec, SGTL5000_CHIP_MIC_CTRL, 2);
 
