@@ -214,4 +214,10 @@ static inline void iwl_fw_cancel_dump(struct iwl_fw_runtime *fwrt)
 	cancel_delayed_work_sync(&fwrt->dump.wk);
 }
 
+static inline bool iwl_fw_dbg_is_paging_enabled(struct iwl_fw_runtime *fwrt)
+{
+	return !fwrt->trans->cfg->gen2 &&
+	fwrt->fw->img[fwrt->cur_fw_img].paging_mem_size &&
+	fwrt->fw_paging_db[0].fw_paging_block;
+}
 #endif  /* __iwl_fw_dbg_h__ */
