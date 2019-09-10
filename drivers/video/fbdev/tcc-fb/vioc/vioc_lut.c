@@ -79,10 +79,10 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 16:
-					dpr_info(" >>plugin to rdma16\r\n", __func__);
+					dpr_info(" >>plugin to rdma16\r\n");
 					return 17;
 				case 17:
-					dpr_info(" >>plugin to rdma17\r\n", __func__);
+					dpr_info(" >>plugin to rdma17\r\n");
 					return 19;
 				default:
 					dpr_info(" >>plugin to rdma%02d\r\n", get_vioc_index(tvc_n));
@@ -93,10 +93,10 @@ int lut_get_pluginComponent_index(unsigned int tvc_n)
 			switch(get_vioc_index(tvc_n))
 			{
 				case 0:
-					dpr_info(" >>plugin to vin0\r\n", __func__);
+					dpr_info(" >>plugin to vin0\r\n");
 					return 16;
 				case 1:
-					dpr_info(" >>plugin to vin1\r\n", __func__);
+					dpr_info(" >>plugin to vin1\r\n");
 					return 18;
 				default:
 					break;
@@ -162,7 +162,7 @@ void tcc_set_lut_table_to_color(unsigned int lut_n,
 
 	#if defined(LUT_UPDATE_PEND)
 	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0))
-		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)), LUT_UPDATE_PEND);
+		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)) | lut_readl(LUT_UPDATE_PEND), LUT_UPDATE_PEND);
 	#endif
 }
 
@@ -192,7 +192,7 @@ void tcc_set_lut_table(unsigned int lut_n, unsigned int *table)
 
 	#if defined(LUT_UPDATE_PEND)
 	if (lut_index >= get_vioc_index(VIOC_LUT_COMP0)) {
-		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)), LUT_UPDATE_PEND);
+		lut_writel(1 << (lut_index - get_vioc_index(VIOC_LUT_COMP0)) | lut_readl(LUT_UPDATE_PEND), LUT_UPDATE_PEND);
 		dpr_info("%s update_pend lut_comp %d is %d\r\n", __func__, lut_index, lut_readl(LUT_UPDATE_PEND));
 	}
 	#endif

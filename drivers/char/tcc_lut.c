@@ -43,7 +43,7 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.4"
+#define LUT_VERSION "v1.5"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
