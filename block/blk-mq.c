@@ -590,8 +590,8 @@ EXPORT_SYMBOL(blk_mq_complete_request);
 
 void blk_mq_complete_request_sync(struct request *rq)
 {
-	WRITE_ONCE(rq->state, MQ_RQ_COMPLETE);
-	rq->q->mq_ops->complete(rq);
+	if (!blk_mark_rq_complete(rq))
+		rq->q->mq_ops->complete(rq);
 }
 EXPORT_SYMBOL_GPL(blk_mq_complete_request_sync);
 
