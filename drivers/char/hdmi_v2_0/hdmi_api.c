@@ -534,3 +534,110 @@ int hdmi_api_update_quantization(int quantization_range)
 }
 EXPORT_SYMBOL(hdmi_api_update_quantization);
 
+int hdmi_api_dump_regs(void)
+{
+	unsigned int i, reg_val;
+	do {
+		if(hdmi_apis.dev == NULL) {
+			pr_err("%s device is not ready(NULL)\r\n", __func__);
+			break;
+		}
+		mutex_lock(&hdmi_apis.dev->mutex);
+                if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
+                        if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
+                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                mutex_unlock(&hdmi_apis.dev->mutex);
+                                break;
+                        }
+			pr_info("\r\nDUMP IRQ\r\n");
+			for(i = 0x00000400; i <= 0x000007FC; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP Video Sampler\r\n");
+			for(i = 0x00000800; i <= 0x0000081C; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP Video Packetizer\r\n");
+			for(i = 0x00002000; i <= 0x0000201C; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP Frame Composer\r\n");
+			for(i = 0x00004000; i <= 0x00004C00; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP PHY Configure\r\n");
+			for(i = 0x0000C000; i <= 0x0000C0E0; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP Audio Sample\r\n");
+			for(i = 0x0000C400; i <= 0x0000C410; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			printk("\r\n");
+			pr_info("\r\nDUMP Audio Packetizer\r\n");
+			for(i = 0x0000C800; i <= 0x0000C81C; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP Audio Sample SPDIF\r\n");
+			for(i = 0x0000CC00; i <= 0x0000CC10; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			pr_info("\r\nDUMP MainController\r\n");
+			for(i = 0x0001000; i <= 0x0001028; i+=4) {
+				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
+				if((i & 0xF) == 0) {
+					printk("\r\n[0x%08x] %02x ", i, reg_val);
+				} else {
+					printk("%02x ", reg_val);
+				}
+			}
+			printk("\r\n");
+		} else {
+			pr_err("## Failed to dump because hdmi linke was suspended\r\n");
+		}
+	}while(0);
+	return 0;
+}
+EXPORT_SYMBOL(hdmi_api_dump_regs);
+
+

@@ -24,6 +24,7 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #define DEBUGFS_BUF_SIZE 4096
 
+extern int hdmi_api_dump_regs(void);
 
 ssize_t proc_read_hdcp_status(struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
 {
@@ -812,6 +813,48 @@ ssize_t proc_read_audio_channel_mux(struct file *filp, char __user *usr_buf, siz
 }
 #endif
 
+ssize_t proc_write_debug(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
+        ssize_t size;
+	unsigned int audio_test_num;
+        struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
+
+        char *audio_test_buffer = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+
+        do {
+                //pr_info("audio_test_buffer=0x%x\r\n", audio_test_buffer);
+                if (audio_test_buffer == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+                size = simple_write_to_buffer(audio_test_buffer, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                audio_test_buffer[cnt] = '\0';
+                //pr_info("audio_test_buffer=[%s]\r\n", audio_test_buffer);
+
+                sscanf(audio_test_buffer, "%u", &audio_test_num);
+                devm_kfree(dev->parent_dev, audio_test_buffer);
+
+		switch(audio_test_num) {
+			case 0:
+				/* Nothing */
+				break;
+			case 1:
+				/* Dump */
+				hdmi_api_dump_regs();
+				break;
+		}
+        } while(0);
+
+        return size;
+}
+
 static const struct file_operations proc_fops_hdcp_status = {
         .owner   = THIS_MODULE,
         .open    = proc_open,
@@ -920,6 +963,13 @@ static const struct file_operations proc_fops_audio_channel_mux = {
         .read    = proc_read_audio_channel_mux,
 };
 #endif
+
+static const struct file_operations proc_fops_debug = {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_write_debug,
+};
 
 int
 proc_open(struct inode *inode, struct file *filp){
@@ -1066,6 +1116,14 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/audio_channel_mux\n", FUNC_NAME);
         }
         #endif
+
+	dev->hdmi_proc_debug = proc_create_data("debug", S_IFREG | S_IWUGO,
+                        dev->hdmi_proc_dir, &proc_fops_debug, dev);
+        if(dev->hdmi_proc_debug == NULL){
+                pr_err("%s:Could not create file system @"
+                                " /proc/hdmi_tx/debug\n", FUNC_NAME);
+        }
+
 }
 
 void proc_interface_remove(struct hdmi_tx_dev *dev){
@@ -1113,6 +1171,10 @@ void proc_interface_remove(struct hdmi_tx_dev *dev){
         if(dev->hdmi_proc_audio_channel_mux != NULL)
                 proc_remove(dev->hdmi_proc_audio_channel_mux);
         #endif
+
+	if(dev->hdmi_proc_debug != NULL)
+                proc_remove(dev->hdmi_proc_debug);
+
         if(dev->hdmi_proc_dir != NULL)
                 proc_remove(dev->hdmi_proc_dir);
 }

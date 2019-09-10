@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "2.0.1d"
+#define HDMI_DRV_VERSION        "2.0.2d"
 #else
-#define HDMI_DRV_VERSION        "2.0.1"
+#define HDMI_DRV_VERSION        "2.0.2"
 #endif
 
 // HDMI COMPONENTS
@@ -278,6 +278,8 @@ struct hdmi_tx_dev{
         #if defined(CONFIG_TCC_AUDIO_CHANNEL_MUX)
         struct proc_dir_entry   *hdmi_proc_audio_channel_mux;
         #endif
+
+        struct proc_dir_entry   *hdmi_proc_debug;
 
         /** Hot Plug */
         int                     hotplug_gpio;
