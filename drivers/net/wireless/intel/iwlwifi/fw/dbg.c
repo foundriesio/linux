@@ -561,19 +561,9 @@ _iwl_fw_error_dump(struct iwl_fw_runtime *fwrt,
 	bool monitor_dump_only = false;
 	int i;
 
-	/* there's no point in fw dump if the bus is dead */
-	if (test_bit(STATUS_TRANS_DEAD, &fwrt->trans->status)) {
-		IWL_ERR(fwrt, "Skip fw error dump since bus is dead\n");
-		goto out;
-	}
-
 	if (fwrt->dump.trig &&
 	    fwrt->dump.trig->mode & IWL_FW_DBG_TRIGGER_MONITOR_ONLY)
 		monitor_dump_only = true;
-
-	fw_error_dump = kzalloc(sizeof(*fw_error_dump), GFP_KERNEL);
-	if (!fw_error_dump)
-		goto out;
 
 	/* SRAM - include stack CCM if driver knows the values for it */
 	if (!fwrt->trans->cfg->dccm_offset || !fwrt->trans->cfg->dccm_len) {
@@ -910,6 +900,18 @@ void iwl_fw_error_dump(struct iwl_fw_runtime *fwrt)
 	struct iwl_fw_error_dump_file *dump_file;
 	struct scatterlist *sg_dump_data;
 	u32 file_len;
+
+	IWL_DEBUG_INFO(fwrt, "WRT dump start\n");
+
+	/* there's no point in fw dump if the bus is dead */
+	if (test_bit(STATUS_TRANS_DEAD, &fwrt->trans->status)) {
+		IWL_ERR(fwrt, "Skip fw error dump since bus is dead\n");
+		goto out;
+	}
+
+	fw_error_dump = kzalloc(sizeof(*fw_error_dump), GFP_KERNEL);
+	if (!fw_error_dump)
+		goto out;
 
 	dump_file = _iwl_fw_error_dump(fwrt, fw_error_dump);
 	if (!dump_file) {
