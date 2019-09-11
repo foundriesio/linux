@@ -4143,6 +4143,7 @@
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
+		bus-range = <0x00 0xff>;
 		ranges = <0x81000000 0 0x00000000 0x0 0x6ff80000 0 0x00010000 /* downstream I/O */
 			  0x82000000 0 0x60000000 0x0 0x60000000 0 0x0ff00000>; /* non-prefetchable memory */
 		num-lanes = <1>;
@@ -4185,6 +4186,7 @@
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
+		bus-range = <0x00 0xff>;
 		ranges = <0x81000000 0 0x00000000 0x0 0x7ff80000 0 0x00010000 /* downstream I/O */
 			  0x82000000 0 0x70000000 0x0 0x70000000 0 0x0ff00000>; /* non-prefetchable memory */
 		num-lanes = <1>;
