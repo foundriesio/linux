@@ -45,105 +45,107 @@
 
 #include "TCCxxxx_VPU_CODEC_COMMON.h"
 
-//#define USE_VPU_DISPLAY_MODE  //! use ring buffer
+//#define USE_VPU_DISPLAY_MODE	//! use ring buffer
 
-#define MAX_NUM_INSTANCE        4
+#define MAX_NUM_INSTANCE		4
 
-#define RETCODE_ERR_SEQ_HEADER_NOT_FOUND     31
-#define RETCODE_ERR_STRIDE_ZERO_OR_ALIGN8   100
-#define RETCODE_ERR_MIN_RESOLUTION          101
-#define RETCODE_ERR_MAX_RESOLUTION          102
-#define RETCODE_ERR_SEQ_INIT_HANGUP         103
-#define RETCODE_ERR_CHROMA_FORMAT           104
-#define RETCODE_H264ERR_PROFILE             110
-#define RETCODE_VC1ERR_COMPLEX_PROFILE      120
-#define RETCODE_H263ERR_ANNEX_D             130
-#define RETCODE_H263ERR_ANNEX_EFG           131
-#define RETCODE_H263ERR_UFEP                132
-#define RETCODE_H263ERR_ANNEX_D_PLUSPTYPE   133
-#define RETCODE_H263ERR_ANNEX_EF_PLUSPTYPE  134
-#define RETCODE_H263ERR_ANNEX_NRS_PLUSPTYPE 135
-#define RETCODE_H263ERR_ANNEX_PQ_MPPTYPE    136
-#define RETCODE_H263ERR_UUI                 137 //Unlimited Unrestricted Motion Vectors Indicator(UUI)
-#define RETCODE_H263ERR_SSS                 138 //Slice Structure Submode(Rectangular Slices or Arbitaray Slice Ordering)
-#define RETCODE_H263ERR_PIC_SIZE            139
-#define RETCODE_MPEG4ERR_OBMC_DISABLE       140
-#define RETCODE_MPEG4ERR_SPRITE_ENABLE      141 //Sprite Coding Mode(include GMC)
-#define RETCODE_MPEG4ERR_MP4ERR_SCALABILITY 142 //Scalable coding
-#define RETCODE_MPEG4ERR_SPK_FORMAT         144
-#define RETCODE_MPEG4ERR_SPK_VERSION        145
-#define RETCODE_MPEG4ERR_SPK_RESOLUTION     146
-#define RETCODE_MPEG4ERR_PACKEDPB           147
-#define RETCODE_MPEG4ERR_PIC_SIZE           148
-#define RETCODE_MPEG2ERR_CHROMA_FORMAT      150
-#define RETCODE_MPEG2ERR_PROFILE            151
-#define RETCODE_MPEG2ERR_SEQ_PIC_WIDTH_SPEC_OVER    152 // widht over 1920
-#define RETCODE_MPEG2ERR_SEQ_PIC_HEIGHT_SPEC_OVER   153 // height over 1152
+#define RETCODE_ERR_SEQ_HEADER_NOT_FOUND	 31
+#define RETCODE_ERR_STRIDE_ZERO_OR_ALIGN8	100
+#define RETCODE_ERR_MIN_RESOLUTION			101
+#define RETCODE_ERR_MAX_RESOLUTION			102
+#define RETCODE_ERR_SEQ_INIT_HANGUP			103
+#define RETCODE_ERR_CHROMA_FORMAT			104
+#define RETCODE_H264ERR_PROFILE				110
+#define RETCODE_VC1ERR_COMPLEX_PROFILE		120
+#define RETCODE_H263ERR_ANNEX_D				130
+#define RETCODE_H263ERR_ANNEX_EFG			131
+#define RETCODE_H263ERR_UFEP				132
+#define RETCODE_H263ERR_ANNEX_D_PLUSPTYPE	133
+#define RETCODE_H263ERR_ANNEX_EF_PLUSPTYPE	134
+#define RETCODE_H263ERR_ANNEX_NRS_PLUSPTYPE	135
+#define RETCODE_H263ERR_ANNEX_PQ_MPPTYPE	136
+#define RETCODE_H263ERR_UUI					137	//Unlimited Unrestricted Motion Vectors Indicator(UUI)
+#define RETCODE_H263ERR_SSS					138	//Slice Structure Submode(Rectangular Slices or Arbitaray Slice Ordering)
+#define RETCODE_H263ERR_PIC_SIZE			139
+#define RETCODE_MPEG4ERR_OBMC_DISABLE		140
+#define RETCODE_MPEG4ERR_SPRITE_ENABLE		141	//Sprite Coding Mode(include GMC)
+#define RETCODE_MPEG4ERR_MP4ERR_SCALABILITY	142	//Scalable coding
+#define RETCODE_MPEG4ERR_SPK_FORMAT			144
+#define RETCODE_MPEG4ERR_SPK_VERSION		145
+#define RETCODE_MPEG4ERR_SPK_RESOLUTION		146
+#define RETCODE_MPEG4ERR_PACKEDPB			147
+#define RETCODE_MPEG4ERR_PIC_SIZE			148
+#define RETCODE_MPEG2ERR_CHROMA_FORMAT		150
+#define RETCODE_MPEG2ERR_PROFILE			151
+#define RETCODE_MPEG2ERR_SEQ_PIC_WIDTH_SPEC_OVER	152	// widht over 1920
+#define RETCODE_MPEG2ERR_SEQ_PIC_HEIGHT_SPEC_OVER	153	// height over 1152
 
 #ifndef RETCODE_WRAP_AROUND
 #define RETCODE_WRAP_AROUND                 (-10)
 #endif
 
-#define PS_SAVE_SIZE        0x080000
-#define CODE_BUF_SIZE       (264*1024)
-#define TEMP_BUF_SIZE       (512*1024)
-#define WORK_BUF_SIZE       (80*1024)
-#define PARA_BUF_SIZE       (10*1024)
-#define SEC_AXI_BUF_SIZE    (128*1024)
+#define VPU_DEC_GET_INSTANCE_STATUS	0x100	//[TBD] get vpu instance information (instance number, instance index, pending index)
 
-#define SIZE_BIT_WORK   TEMP_BUF_SIZE + PARA_BUF_SIZE + CODE_BUF_SIZE + SEC_AXI_BUF_SIZE
+#define PS_SAVE_SIZE		0x080000
+#define CODE_BUF_SIZE		(264*1024)
+#define TEMP_BUF_SIZE		(512*1024)
+#define WORK_BUF_SIZE		(80*1024)
+#define PARA_BUF_SIZE		(10*1024)
+#define SEC_AXI_BUF_SIZE	(128*1024)
 
-#define WORK_CODE_PARA_BUF_SIZE     (SIZE_BIT_WORK + (WORK_BUF_SIZE * MAX_NUM_INSTANCE))
+#define SIZE_BIT_WORK	TEMP_BUF_SIZE + PARA_BUF_SIZE + CODE_BUF_SIZE + SEC_AXI_BUF_SIZE
 
-#define LARGE_STREAM_BUF_SIZE   0x200000
-#define SLICE_SAVE_SIZE         0x180000
-#define VP8_MB_SAVE_SIZE        0x100000
+#define WORK_CODE_PARA_BUF_SIZE		(SIZE_BIT_WORK + (WORK_BUF_SIZE * MAX_NUM_INSTANCE))
+
+#define	LARGE_STREAM_BUF_SIZE	0x200000
+#define	SLICE_SAVE_SIZE			0x180000
+#define VP8_MB_SAVE_SIZE		0x100000
 
 
 #ifndef INC_DEVICE_TREE_PMAP
 //------------------------------------------------------------------------------
 // decode struct and definition
 //------------------------------------------------------------------------------
-//! represents rectangular window information in a frame
+//! represents rectangular window information in a frame 
 typedef struct pic_crop_t
 {
-	unsigned int m_iCropLeft;
-	unsigned int m_iCropTop;
-	unsigned int m_iCropRight;
-	unsigned int m_iCropBottom;
+    unsigned int m_iCropLeft;
+    unsigned int m_iCropTop;
+    unsigned int m_iCropRight;
+    unsigned int m_iCropBottom;
 } pic_crop_t;
 
 typedef struct AVC_vui_info_t
 {
-	int m_iAvcVuiVideoFullRangeFlag;
-	int m_iAvcVuiColourPrimaries;
-	int m_iAvcVuiTransferCharacteristics;
-	int m_iAvcVuiMatrixCoefficients;
+    int m_iAvcVuiVideoFullRangeFlag;
+    int m_iAvcVuiColourPrimaries;
+    int m_iAvcVuiTransferCharacteristics;
+    int m_iAvcVuiMatrixCoefficients;
 	int m_Reserved[28];		//! Reserved.
 } AVC_vui_info_t;
 
 typedef struct MPEG2_SeqDisplayExt_info_t
 {
-	int m_iMp2ColorPrimaries;
-	int m_iMp2TransferCharacteristics;
-	int m_iMp2MatrixCoefficients;
+    int m_iMp2ColorPrimaries;
+    int m_iMp2TransferCharacteristics;
+    int m_iMp2MatrixCoefficients;
 	int m_Reserved[29];		//! Reserved.
 } MPEG2_SeqDisplayExt_info_t;
 
 //-----------------------------------------------------
-// data structure to get information necessary to
+// data structure to get information necessary to 
 // start decoding from the decoder (this is an output parameter)
 //-----------------------------------------------------
-typedef struct dec_initial_info_t
+typedef struct dec_initial_info_t     
 {
-	int m_iPicWidth;                //!< {(PicX+15)/16} * 16  (this width  will be used while allocating decoder frame buffers. picWidth  is a multiple of 16)
-	int m_iPicHeight;               //!< {(PicY+15)/16} * 16  (this height will be used while allocating decoder frame buffers. picHeight is a multiple of 16)
-	unsigned int m_uiFrameRateRes;  //!< decoded picture frame rate residual(number of time units of a clock operating at the frequency[m_iFrameRateDiv] Hz, frameRateInfo = m_uiFrameRateRes/m_uiFrameRateDiv
-	unsigned int m_uiFrameRateDiv;  //!< decoded picture frame rate unit number in Hz
-	int m_iMinFrameBufferCount;     //!< the minimum number of frame buffers that are required for decoding. application must allocate at least this number of frame buffers.
-	int m_iMinFrameBufferSize;      //!< minimum frame buffer size
-	int m_iNormalSliceSize;         //!< recommended size of to save slice. this value is determined as a quater of the memory size for one raw YUV image in KB unit.
-	int m_iWorstSliceSize;          //!< recommended size of to save slice in worst case. this value is determined as a half of the memory size for one raw YUV image in KB unit.
+	int m_iPicWidth;				//!< {(PicX+15)/16} * 16  (this width  will be used while allocating decoder frame buffers. picWidth  is a multiple of 16)
+	int m_iPicHeight;				//!< {(PicY+15)/16} * 16  (this height will be used while allocating decoder frame buffers. picHeight is a multiple of 16)
+	unsigned int m_uiFrameRateRes;	//!< decoded picture frame rate residual(number of time units of a clock operating at the frequency[m_iFrameRateDiv] Hz, frameRateInfo = m_uiFrameRateRes/m_uiFrameRateDiv
+	unsigned int m_uiFrameRateDiv;	//!< decoded picture frame rate unit number in Hz				
+	int m_iMinFrameBufferCount;		//!< the minimum number of frame buffers that are required for decoding. application must allocate at least this number of frame buffers.
+	int m_iMinFrameBufferSize;		//!< minimum frame buffer size
+	int	m_iNormalSliceSize;			//!< recommended size of to save slice. this value is determined as a quater of the memory size for one raw YUV image in KB unit.
+	int	m_iWorstSliceSize;			//!< recommended size of to save slice in worst case. this value is determined as a half of the memory size for one raw YUV image in KB unit.
 
 	//! H264/AVC only param
 	pic_crop_t m_iAvcPicCrop;		//!< represents rectangular window information in a frame
@@ -163,160 +165,163 @@ typedef struct dec_initial_info_t
 	int m_iM4vH263AnnexJEnable;		//!< ( 0: disable   1: enable )
 
 	//! VC-1 only param
-	int m_iVc1Psf;                  //!< this is only available in VC1 and indicates the value of "Progressive Segmented Frame"
+	int m_iVc1Psf;					//!< this is only available in VC1 and indicates the value of "Progressive Segmented Frame" 
 
 	//! Additional Info
-	int m_iProfile;                 //!< profile of the decoded stream
-	int m_iLevel;                   //!< level of the decoded stream
-	int m_iInterlace;               //!< when this value is 1, decoded stream will be decoded into both progressive or interlace frame. otherwise, all the frames will be progressive. In H.264, this is frame_mbs_only_flag.
-	int m_iAspectRateInfo;          //!< aspect rate information. if this value is 0, then aspect ratio information is not present
-	int m_iReportErrorReason;       //!< reports the reason of 'RETCODE_CODEC_SPECOUT' or 'RETCODE_INVALID_STRIDE' error
+	int m_iProfile;					//!< profile of the decoded stream
+	int m_iLevel;					//!< level of the decoded stream
+	int m_iInterlace;				//!< when this value is 1, decoded stream will be decoded into both progressive or interlace frame. otherwise, all the frames will be progressive. In H.264, this is frame_mbs_only_flag.
+	int m_iAspectRateInfo;			//!< aspect rate information. if this value is 0, then aspect ratio information is not present 
+	int m_iReportErrorReason;		//!< reports the reason of 'RETCODE_CODEC_SPECOUT' or 'RETCODE_INVALID_STRIDE' error
 
 	unsigned int m_Reserved[37];		//! Reserved.
 } dec_initial_info_t;
 
 //! data structure for initializing Video unit
-typedef struct dec_init_t
+typedef struct dec_init_t 
 {
-	codec_addr_t m_BitWorkAddr[2];      //!< physical[0] and virtual[1] address of a working space of the decoder. This working buffer space consists of work buffer, code buffer, and parameter buffer.
-	codec_addr_t m_CodeAddr[2];         //!< physical[0] and virtual[1] address of a code buffer of the decoder.    // TEST_FW_WRITING
-	codec_addr_t m_RegBaseVirtualAddr;  //!< virtual address BIT_BASE
+	codec_addr_t m_BitWorkAddr[2];		//!< physical[0] and virtual[1] address of a working space of the decoder. This working buffer space consists of work buffer, code buffer, and parameter buffer.
+	codec_addr_t m_CodeAddr[2];			//!< physical[0] and virtual[1] address of a code buffer of the decoder.	// TEST_FW_WRITING
+	codec_addr_t m_RegBaseVirtualAddr;	//!< virtual address BIT_BASE
 
 	//! Bitstream Info
-	int m_iBitstreamFormat;             //!< bitstream format
-	codec_addr_t m_BitstreamBufAddr[2]; //!< bitstream buf address : multiple of 4
-	int m_iBitstreamBufSize;            //!< bitstream buf size    : multiple of 1024
-	int m_iPicWidth;                    //!< frame width from demuxer or etc
-	int m_iPicHeight;                   //!< frame height from demuxer or etc
+	int m_iBitstreamFormat;				//!< bitstream format
+	codec_addr_t m_BitstreamBufAddr[2];	//!< bitstream buf address : multiple of 4
+	int m_iBitstreamBufSize;			//!< bitstream buf size	   : multiple of 1024
+	int m_iPicWidth;					//!< frame width from demuxer or etc
+	int m_iPicHeight;					//!< frame height from demuxer or etc
 
 	//! Decoding Options
-#define M4V_DEBLK_DISABLE       0   //!< (default)
-#define M4V_DEBLK_ENABLE        1   //!< mpeg-4 deblocking
-#define M4V_GMC_FILE_SKIP       (0<<1)  //!< (default) seq.init failure
-#define M4V_GMC_FRAME_SKIP      (1<<1)  //!< frame skip without decoding
-#define AVC_FIELD_DISPLAY       (1<<3)  //!< if only field is fed, display it
-#define MVC_DEC_ENABLE          (1<<20) //!< H.264 MVC enable
-#define SEC_AXI_BUS_ENABLE_SRAM (1<<21) //!< Use SRAM for sec. AXI bus
+#define M4V_DEBLK_DISABLE		0	//!< (default)
+#define M4V_DEBLK_ENABLE		1	//!< mpeg-4 deblocking
+#define M4V_GMC_FILE_SKIP		(0<<1)	//!< (default) seq.init failure
+#define M4V_GMC_FRAME_SKIP		(1<<1)	//!< frame skip without decoding
+#define AVC_VC1_REORDER_DISABLE	(1<<2)	//!< reorder disable only for AVC and VC1, (default) reorder enable
+#define AVC_FIELD_DISPLAY		(1<<3)	//!< if only field is fed, display it
+#define MVC_DEC_ENABLE			(1<<20)	//!< H.264 MVC enable
+#define SEC_AXI_BUS_ENABLE_SRAM	(1<<21) //!< Use SRAM for sec. AXI bus
 
 	unsigned int m_uiDecOptFlags;
 
 	//! H264 only param
-	unsigned char* m_pSpsPpsSaveBuffer; //!< multiple of 4
-	int m_iSpsPpsSaveBufferSize;        //!< multiple of 1024
+	unsigned char* m_pSpsPpsSaveBuffer;	//!< multiple of 4
+	int m_iSpsPpsSaveBufferSize;		//!< multiple of 1024
 
-	//! VPU Control
-	unsigned int m_bEnableUserData;     //!< If this is set, VPU returns userdata.
-	unsigned int m_bCbCrInterleaveMode; //!< 0 (chroma separate mode   : CbCr data is written in separate frame memories)
-	                                    //!< 1 (chroma interleave mode : CbCr data is interleaved in chroma memory)
-	int m_iFilePlayEnable;              //!< enable file play mode. If this value is set to 0, streaming mode with ring buffer will be used
+	//! VPU Control 
+	unsigned int m_bEnableUserData;		//!< If this is set, VPU returns userdata.
+	unsigned int m_bCbCrInterleaveMode;	//!< 0 (chroma separate mode   : CbCr data is written in separate frame memories)
+										//!< 1 (chroma interleave mode : CbCr data is interleaved in chroma memory)
+	int m_iFilePlayEnable;				//!< enable file play mode. If this value is set to 0, streaming mode with ring buffer will be used
 
-#define RESOLUTION_1080_HD  0           //1920x1088
-#define RESOLUTION_720P_HD  1           //1280x720
-#define RESOLUTION_625_SD   2           //720x576
-	int m_iMaxResolution;               //!< maximum resolution limitation option
+#define RESOLUTION_1080_HD	0			//1920x1088
+#define RESOLUTION_720P_HD	1			//1280x720
+#define RESOLUTION_625_SD	2			//720x576
+	int m_iMaxResolution;				//!< maximum resolution limitation option
 
 	//! Callback Func
-	void* (*m_Memcpy ) ( void*, const void*, unsigned int, unsigned int );  //!< memcpy
-	void  (*m_Memset ) ( void*, int, unsigned int, unsigned int );          //!< memset
-	int   (*m_Interrupt ) ( void );                             //!< hw interrupt (return value is always 0)
+	void* (*m_Memcpy ) ( void*, const void*, unsigned int, unsigned int );	//!< memcpy
+	void  (*m_Memset ) ( void*, int, unsigned int, unsigned int );			//!< memset
+	int   (*m_Interrupt ) ( void );								//!< hw interrupt (return value is always 0)
 	void* (*m_Ioremap ) ( unsigned int, unsigned int );
 	void  (*m_Iounmap ) ( void* );
 	unsigned int (*m_reg_read)(void *, unsigned int);
 	void (*m_reg_write)(void *, unsigned int, unsigned int);
+	void (*m_Usleep)(unsigned int, unsigned int);  
 
-	unsigned int m_Reserved[37];        //! Reserved.
+	unsigned int m_Reserved[36];		//! Reserved.
 } dec_init_t;
 
 // ===========================================================================
 // [32 bit user-space bearer for |dec_init_t|]
 typedef struct dec_init_64bit_t {
-	codec_addr_t m_BitWorkAddr[2];
-	codec_addr_t m_CodeAddr[2];
-	codec_addr_t m_RegBaseVirtualAddr;
+    codec_addr_t m_BitWorkAddr[2];
+    codec_addr_t m_CodeAddr[2];
+    codec_addr_t m_RegBaseVirtualAddr;
 
-	//! Bitstream Info
-	int m_iBitstreamFormat;
-	codec_addr_t m_BitstreamBufAddr[2];
-	int m_iBitstreamBufSize;
-	int m_iPicWidth;
-	int m_iPicHeight;
+    //! Bitstream Info
+    int m_iBitstreamFormat;
+    codec_addr_t m_BitstreamBufAddr[2];
+    int m_iBitstreamBufSize;
+    int m_iPicWidth;
+    int m_iPicHeight;
 
-	unsigned int m_uiDecOptFlags;
+    unsigned int m_uiDecOptFlags;
 
-	//! H264 only param
-	unsigned long long m_nSpsPpsSaveBuffer;
-	int m_iSpsPpsSaveBufferSize;
+    //! H264 only param
+    unsigned long long m_nSpsPpsSaveBuffer;
+    int m_iSpsPpsSaveBufferSize;
 
-	//! VPU Control
-	unsigned int m_bEnableUserData;
-	unsigned int m_bCbCrInterleaveMode;
-	int m_iFilePlayEnable;
-	int m_iMaxResolution;
+    //! VPU Control
+    unsigned int m_bEnableUserData;
+    unsigned int m_bCbCrInterleaveMode;
+    int m_iFilePlayEnable;
+    int m_iMaxResolution;
 
-	//! Callback Func
-	unsigned long long cb_dummy_memcpy;
-	unsigned long long cb_dummy_memset;
-	unsigned long long cb_dummy_interrupt;
-	unsigned long long cb_dummy_ioremap;
-	unsigned long long cb_dummy_iounmap;
-	unsigned long long cb_dummy_reg_read;
-	unsigned long long cb_dummy_reg_write;
+    //! Callback Func
+    unsigned long long cb_dummy_memcpy;
+    unsigned long long cb_dummy_memset;
+    unsigned long long cb_dummy_interrupt;
+    unsigned long long cb_dummy_ioremap;
+    unsigned long long cb_dummy_iounmap;
+    unsigned long long cb_dummy_reg_read;
+    unsigned long long cb_dummy_reg_write;
+	unsigned long long cb_dummy_usleep;
 
-	unsigned int m_Reserved[37];
+    unsigned int m_Reserved[36];
 } dec_init_64bit_t;
 // ===========================================================================
 
 typedef struct dec_input_t
 {
 	codec_addr_t m_BitstreamDataAddr[2];//!< bitstream data address
-	int m_iBitstreamDataSize;           //!< bitstream data size
-	codec_addr_t m_UserDataAddr[2];     //!< Picture Layer User-data address
-	int m_iUserDataBufferSize;          //!< Picture Layer User-data Size
+	int m_iBitstreamDataSize;			//!< bitstream data size
+	codec_addr_t m_UserDataAddr[2];		//!< Picture Layer User-data address
+	int m_iUserDataBufferSize;			//!< Picture Layer User-data Size
 
-	int m_iFrameSearchEnable;           //!< I-frame Search Mode
-	                                    //!< If this option is enabled, then decoder performs skipping frame decoding until decoder meet IDR(and/or I)-picture for H.264 or I-frame.
-	                                    //!< If this option is enabled, m_iSkipFrameMode option is ignored.
-	                                    //!< 0x000 ( Disable )
-	                                    //!< 0x001 ( Enable : search IDR-picture for H.264 or I-frame )
-	                                    //!< 0x201 ( Enable : search I(or IDR)-picture for H.264 or I-frame )
+	int m_iFrameSearchEnable;			//!< I-frame Search Mode
+										//!< If this option is enabled, then decoder performs skipping frame decoding until decoder meet IDR(and/or I)-picture for H.264 or I-frame.
+										//!< If this option is enabled, m_iSkipFrameMode option is ignored.
+										//!< 0x000 ( Disable )
+										//!< 0x001 ( Enable : search IDR-picture for H.264 or I-frame ) 
+										//!< 0x201 ( Enable : search I(or IDR)-picture for H.264 or I-frame ) 
 
-	int m_iSkipFrameMode;               //!< Skip Frame Mode
-	                                    //!< 0 ( Skip disable )
-	                                    //!< 1 ( Skip except I(IDR) picture )
-	                                    //!< 2 ( Skip B picture : skip if nal_ref_idc==0 in H.264 )
-	                                    //!< 3 ( Unconditionally Skip one picture )
+	int m_iSkipFrameMode;				//!< Skip Frame Mode
+										//!< 0 ( Skip disable )
+										//!< 1 ( Skip except I(IDR) picture )
+										//!< 2 ( Skip B picture : skip if nal_ref_idc==0 in H.264 )
+										//!< 3 ( Unconditionally Skip one picture )
 
-	int m_iSkipFrameNum;                //!< Number of skip frames (for I-frame Search Mode or Skip Frame Mode)
-	                                    //!< When this number is 0, m_iSkipFrameMode option is disabled.
-	unsigned int m_Reserved[23];        //! Reserved.
+	int m_iSkipFrameNum;				//!< Number of skip frames (for I-frame Search Mode or Skip Frame Mode)
+										//!< When this number is 0, m_iSkipFrameMode option is disabled.
+	unsigned int m_Reserved[23];		//! Reserved.
 } dec_input_t;
 
 typedef struct dec_buffer_t
 {
-	codec_addr_t m_FrameBufferStartAddr[2]; //!< physical[0] and virtual[1] address of a frame buffer of the decoder.
-	int m_iFrameBufferCount;                //!< allocated frame buffer count
-	unsigned int m_AvcSliceSaveBufferAddr;  //!< start address and size of slice save buffer which the decoder can save slice RBSP : multiple of 4
-	int m_iAvcSliceSaveBufferSize;          //!< multiple of 1024
-	unsigned int m_Vp8MbDataSaveBufferAddr; //!< start address and size of mb save buffer which the VP8 decoder can save mb data : multiple of 4
-	int m_iVp8MbDataSaveBufferSize;         //!< multiple of 1024
-	unsigned int m_Reserved[25];            //! Reserved.
+	codec_addr_t m_FrameBufferStartAddr[2];	//!< physical[0] and virtual[1] address of a frame buffer of the decoder.
+	int m_iFrameBufferCount;				//!< allocated frame buffer count
+	unsigned int m_AvcSliceSaveBufferAddr;	//!< start address and size of slice save buffer which the decoder can save slice RBSP : multiple of 4
+	int m_iAvcSliceSaveBufferSize;			//!< multiple of 1024
+	unsigned int m_Vp8MbDataSaveBufferAddr;	//!< start address and size of mb save buffer which the VP8 decoder can save mb data : multiple of 4
+	int m_iVp8MbDataSaveBufferSize;			//!< multiple of 1024
+	unsigned int m_Reserved[25];			//! Reserved.
 } dec_buffer_t;
 
 typedef struct dec_buffer2_t
 {
-	codec_addr_t    m_addrFrameBuffer[2][32];       //!< physical[0] and virtual[1] address of a frame buffer of the decoder.
-	unsigned int    m_ulFrameBufferCount;           //!< allocated frame buffer count
-	unsigned int    m_addrAvcSliceSaveBuffer;       //!< start address and size of slice save buffer which the decoder can save slice RBSP : multiple of 4
-	unsigned int    m_ulAvcSliceSaveBufferSize;     //!< multiple of 1024
-	unsigned int    m_addrVp8MbDataSaveBuffer;      //!< start address and size of mb save buffer which the VP8 decoder can save mb data : multiple of 4
-	unsigned int    m_ulVp8MbDataSaveBufferSize;    //!< multiple of 1024
+	codec_addr_t	m_addrFrameBuffer[2][32];		//!< physical[0] and virtual[1] address of a frame buffer of the decoder.
+	unsigned int	m_ulFrameBufferCount;			//!< allocated frame buffer count
+	unsigned int	m_addrAvcSliceSaveBuffer;		//!< start address and size of slice save buffer which the decoder can save slice RBSP : multiple of 4
+	unsigned int	m_ulAvcSliceSaveBufferSize;		//!< multiple of 1024
+	unsigned int	m_addrVp8MbDataSaveBuffer;		//!< start address and size of mb save buffer which the VP8 decoder can save mb data : multiple of 4
+	unsigned int	m_ulVp8MbDataSaveBufferSize;	//!< multiple of 1024
 } dec_buffer2_t;
 
 typedef struct dec_buffer3_t
 {
-	codec_addr_t    m_addrFrameBuffer[2][32][2];    //!< physical[0] and virtual[1] address of a frame buffer of the decoder.
-	unsigned int    m_ulFrameBufferCount;           //!< allocated frame buffer count
-	unsigned int    m_Reserved[31];                 //! Reserved.
+	codec_addr_t	m_addrFrameBuffer[2][32][2];	//!< physical[0] and virtual[1] address of a frame buffer of the decoder.
+	unsigned int	m_ulFrameBufferCount;			//!< allocated frame buffer count
+	unsigned int	m_Reserved[31];					//! Reserved.
 } dec_buffer3_t;
 
 typedef struct dec_ring_buffer_setting_in_t
@@ -335,67 +340,67 @@ typedef struct dec_ring_buffer_status_out_t
 // MVC specific picture information
 typedef struct MvcPictureInfo_t
 {
-	int m_iViewIdxDisplay;
-	int m_iViewIdxDecoded;
+    int m_iViewIdxDisplay;
+    int m_iViewIdxDecoded;
 } MvcPictureInfo_t;
 
 // AVC specific SEI information (frame packing arrangement SEI)
 typedef struct MvcAvcFpaSei_t
 {
-	unsigned int m_iExist;
-	unsigned int m_iFrame_Packing_Arrangement_Id;
-	unsigned int m_iFrame_Packing_Arrangement_Cancel_Flag;
-	unsigned int m_iQuincunx_Sampling_Flag;
-	unsigned int m_iSpatial_Flipping_Flag;
-	unsigned int m_iFrame0_Flipped_Flag;
-	unsigned int m_iField_Views_Flag;
-	unsigned int m_iCurrent_Frame_Is_Frame0_Flag;
-	unsigned int m_iFrame0_Self_Contained_Flag;
-	unsigned int m_iFrame1_Self_Contained_Flag;
-	unsigned int m_iFrame_Packing_Arrangement_Extension_Flag;
-	unsigned int m_iFrame_Packing_Arrangement_Type;
-	unsigned int m_iContent_Interpretation_Type;
-	unsigned int m_iFrame0_Grid_Position_X;
-	unsigned int m_iFrame0_Grid_Position_Y;
-	unsigned int m_iFrame1_Grid_Position_X;
-	unsigned int m_iFrame1_Grid_Position_Y;
-	unsigned int m_iFrame_Packing_Arrangement_Repetition_Period;
+    unsigned int m_iExist;
+    unsigned int m_iFrame_Packing_Arrangement_Id;
+    unsigned int m_iFrame_Packing_Arrangement_Cancel_Flag; 
+    unsigned int m_iQuincunx_Sampling_Flag;
+    unsigned int m_iSpatial_Flipping_Flag;
+    unsigned int m_iFrame0_Flipped_Flag;
+    unsigned int m_iField_Views_Flag;
+    unsigned int m_iCurrent_Frame_Is_Frame0_Flag;
+    unsigned int m_iFrame0_Self_Contained_Flag;
+    unsigned int m_iFrame1_Self_Contained_Flag;
+    unsigned int m_iFrame_Packing_Arrangement_Extension_Flag;
+    unsigned int m_iFrame_Packing_Arrangement_Type;
+    unsigned int m_iContent_Interpretation_Type;
+    unsigned int m_iFrame0_Grid_Position_X;
+    unsigned int m_iFrame0_Grid_Position_Y;
+    unsigned int m_iFrame1_Grid_Position_X;
+    unsigned int m_iFrame1_Grid_Position_Y;
+    unsigned int m_iFrame_Packing_Arrangement_Repetition_Period;
 } MvcAvcFpaSei_t;
 
 typedef struct Vp8DecScaleInfo_t
 {
-	unsigned int m_iHscaleFactor;
-	unsigned int m_iVscaleFactor;
-	unsigned int m_iPicWidth;
-	unsigned int m_iPicHeight;
+    unsigned int m_iHscaleFactor;
+    unsigned int m_iVscaleFactor;
+    unsigned int m_iPicWidth;
+    unsigned int m_iPicHeight;
 } Vp8DecScaleInfo_t;
 
 typedef struct Vp8DecPicInfo_t
 {
-	unsigned int m_iShowFrame;
-	unsigned int m_iVersionNumber;
-	unsigned int m_iRefIdxLast;
-	unsigned int m_iRefIdxAltr;
-	unsigned int m_iRefIdxGold;
+    unsigned int m_iShowFrame;
+    unsigned int m_iVersionNumber;
+    unsigned int m_iRefIdxLast;
+    unsigned int m_iRefIdxAltr;
+    unsigned int m_iRefIdxGold;
 } Vp8DecPicInfo_t;
 
 //-----------------------------------------------------
-// data structure to get resulting information from
+// data structure to get resulting information from 
 // VPU after decoding a frame
 //-----------------------------------------------------
 
 typedef struct dec_output_info_t
 {
-	int m_iPicType;                 //!< ( 0- I picture,  1- P picture,  2- B picture )
+	int m_iPicType;					//!< ( 0- I picture,  1- P picture,  2- B picture )
 
-	int m_iDispOutIdx;              //!< index of output frame buffer
-	int m_iDecodedIdx;              //!< index of decoded frame buffer
+	int m_iDispOutIdx;				//!< index of output frame buffer
+	int m_iDecodedIdx;				//!< index of decoded frame buffer
 
 	int m_iOutputStatus;
 	int m_iDecodingStatus;
 
-	int m_iInterlacedFrame;         //!< Interlaced Frame
-	int m_iNumOfErrMBs;             //!< number of error macroblocks
+	int m_iInterlacedFrame;			//!< Interlaced Frame 
+	int m_iNumOfErrMBs;				//!< number of error macroblocks
 
 	//! H264/AVC Only
 	AVC_vui_info_t m_AvcVuiInfo;
@@ -413,34 +418,34 @@ typedef struct dec_output_info_t
 	int m_iM2vFrameRate;
 
 	//! More Info
-	int m_iPictureStructure;        //!< indicates that the decodec picture is progressive or interlaced picture
-	int m_iTopFieldFirst;           //!< if this value is 1, top field is first decoded and then bottom field is decoded.
-	int m_iRepeatFirstField;        //!< repeat first field. this value is used during display process.
+	int m_iPictureStructure;		//!< indicates that the decodec picture is progressive or interlaced picture 
+	int m_iTopFieldFirst;			//!< if this value is 1, top field is first decoded and then bottom field is decoded.  
+	int m_iRepeatFirstField;		//!< repeat first field. this value is used during display process. 
 
 	//! VP8 Only
 	Vp8DecScaleInfo_t m_Vp8ScaleInfo;
 	Vp8DecPicInfo_t m_Vp8PicInfo;
 
 	//! MVC Only
-	MvcPictureInfo_t m_MvcPicInfo;
+	MvcPictureInfo_t m_MvcPicInfo; 
 	MvcAvcFpaSei_t m_MvcAvcFpaSei;
 
-	int m_iHeight;                  //!< Height of input bitstream. In some cases, this value can be different from the height of previous frames.
-	int m_iWidth;                   //!< Width of input bitstream. In some cases, this value can be different from the height of previous frames.
-	pic_crop_t m_CropInfo;          //!< Cropping information.
+	int m_iHeight;					//!< Height of input bitstream. In some cases, this value can be different from the height of previous frames.
+	int m_iWidth;					//!< Width of input bitstream. In some cases, this value can be different from the height of previous frames.
+	pic_crop_t m_CropInfo;			//!< Cropping information.
 
 	//! User Data Buffer Address
-	codec_addr_t m_UserDataAddress[2];  //!< If contents have picture-layer user-data, return it.
+	codec_addr_t m_UserDataAddress[2];	//!< If contents have picture-layer user-data, return it.
 
-	int m_iConsumedBytes;           //!< consumed bytes (only for file play mode, m_iFilePlayEnable=1)
+	int m_iConsumedBytes;			//!< consumed bytes (only for file play mode, m_iFilePlayEnable=1)
 
-	int m_iInvalidDispCount;        //!< counter of consecutive display index error
+	int m_iInvalidDispCount;		//!< counter of consecutive display index error
 
 	unsigned int m_Reserved[34];		//! Reserved. 
 
 } dec_output_info_t;
 
-typedef struct dec_output_t
+typedef struct dec_output_t 
 {
 	dec_output_info_t m_DecOutInfo;
 	unsigned char* m_pDispOut[2][3]; //! physical[0] and virtual[1] display  address of Y, Cb, Cr component
@@ -451,33 +456,39 @@ typedef struct dec_output_t
 // ===========================================================================
 // [32 bit user-space bearer for |dec_output_t|]
 typedef struct dec_output_64bit_t {
-	dec_output_info_t m_DecOutInfo;
+    dec_output_info_t m_DecOutInfo;
 
-	unsigned long long m_nDispOut[2][3];
-	unsigned long long m_nCurrOut[2][3];
-	unsigned long long m_nPrevOut[2][3];
+    unsigned long long m_nDispOut[2][3];
+    unsigned long long m_nCurrOut[2][3];
+    unsigned long long m_nPrevOut[2][3];
 } dec_output_64bit_t;
 // ===========================================================================
 
 /*!
  ***********************************************************************
  * \brief
- *      TCC_VPU_DEC     : main api function of libvpudec
+ *		TCC_VPU_DEC		: main api function of libvpudec
  * \param
- *      [in]Op          : decoder operation
+ *		[in]Op			: decoder operation 
  * \param
- *      [in,out]pHandle : libvpudec's handle
+ *		[in,out]pHandle	: libvpudec's handle
  * \param
- *      [in]pParam1     : init or input parameter
+ *		[in]pParam1		: init or input parameter
  * \param
- *      [in]pParam2     : output or info parameter
+ *		[in]pParam2		: output or info parameter
  * \return
- *      If successful, TCC_VPU_DEC returns 0 or plus. Otherwise, it returns a minus value.
+ *		If successful, TCC_VPU_DEC returns 0 or plus. Otherwise, it returns a minus value.
  ***********************************************************************
  */
 codec_result_t
 TCC_VPU_DEC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 
+
+codec_result_t
+TCC_VPU_DEC_ESC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+
+codec_result_t
+TCC_VPU_DEC_EXT( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 
 typedef struct enc_rc_init_t
 {
