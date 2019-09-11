@@ -762,6 +762,7 @@ static int ci_get_platdata(struct device *dev,
 		ext_id = extcon_get_edev_by_phandle(dev, 1);
 		if (IS_ERR(ext_id) && PTR_ERR(ext_id) != -ENODEV)
 			return PTR_ERR(ext_id);
+		platdata->flags |= CI_HDRC_DUAL_ROLE_NOT_OTG;
 	}
 
 	cable = &platdata->vbus_extcon;
