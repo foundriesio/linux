@@ -715,6 +715,9 @@ struct rq {
 	/* For active balancing */
 	int active_balance;
 	int push_cpu;
+#ifdef CONFIG_HPC_CPUSETS
+	unsigned int cpuset_flags;
+#endif
 	struct cpu_stop_work active_balance_work;
 	/* cpu of this runqueue: */
 	int cpu;
@@ -1323,6 +1326,7 @@ static inline void finish_lock_switch(struct rq *rq, struct task_struct *prev)
 #define WF_SYNC		0x01		/* waker goes to sleep after wakeup */
 #define WF_FORK		0x02		/* child wakeup after fork */
 #define WF_MIGRATED	0x4		/* internal use, task got migrated */
+#define WF_LOCK_SLEEPER	0x08		/* wakeup spinlock "sleeper" */
 
 /*
  * To aid in avoiding the subversion of "niceness" due to uneven distribution
@@ -1512,6 +1516,15 @@ extern void reweight_task(struct task_struct *p, int prio);
 extern void resched_curr(struct rq *rq);
 extern void resched_cpu(int cpu);
 
+#ifdef CONFIG_PREEMPT_LAZY
+extern void resched_curr_lazy(struct rq *rq);
+#else
+static inline void resched_curr_lazy(struct rq *rq)
+{
+	resched_curr(rq);
+}
+#endif
+
 extern struct rt_bandwidth def_rt_bandwidth;
 extern void init_rt_bandwidth(struct rt_bandwidth *rt_b, u64 period, u64 runtime);
 
@@ -1688,6 +1701,16 @@ rq_lock_irqsave(struct rq *rq, struct rq_flags *rf)
 {
 	raw_spin_lock_irqsave(&rq->lock, rf->flags);
 	rq_pin_lock(rq, rf);
+}
+
+static inline int
+rq_lock_trylock_irqsave(struct rq *rq, struct rq_flags *rf)
+	__acquires(rq->lock)
+{
+	if (!raw_spin_trylock_irqsave(&rq->lock, rf->flags))
+		return 0;
+	rq_pin_lock(rq, rf);
+	return 1;
 }
 
 static inline void
@@ -2041,3 +2064,16 @@ static inline void cpufreq_update_this_cpu(struct rq *rq, unsigned int flags) {}
 #else /* arch_scale_freq_capacity */
 #define arch_scale_freq_invariant()	(false)
 #endif
+
+#ifdef CONFIG_HPC_CPUSETS
+extern int tick_do_timer_cpu __read_mostly;
+static inline int rq_cpuset_flag(struct rq *rq, unsigned flag)
+{
+	return rq->cpuset_flags & flag;
+}
+#ifndef CONFIG_NO_HZ
+static inline void wake_up_idle_cpu(int cpu) { }
+#endif
+#else /* !CONFIG_HPC_CPUSETS */
+static inline int rq_cpuset_flag(struct rq *rq, unsigned flag) { return 0; }
+#endif /* CONFIG_HPC_CPUSETS */

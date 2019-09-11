@@ -599,11 +599,27 @@ do {									\
 			  "IRQs not disabled as expected\n");		\
 	} while (0)
 
+#define lockdep_assert_irqs_enabled_nonrt()	do {			\
+		WARN_ONCE(debug_locks && !current->lockdep_recursion &&	\
+			  !current->hardirqs_enabled &&			\
+			  !IS_ENABLED(CONFIG_PREEMPT_RT_BASE),		\
+			  "IRQs not enabled as expected\n");		\
+	} while (0)
+
+#define lockdep_assert_irqs_disabled_nonrt()	do {			\
+		WARN_ONCE(debug_locks && !current->lockdep_recursion &&	\
+			  current->hardirqs_enabled &&			\
+			  !IS_ENABLED(CONFIG_PREEMPT_RT_BASE),		\
+			  "IRQs not disabled as expected\n");		\
+	} while (0)
+
 #else
 # define might_lock(lock) do { } while (0)
 # define might_lock_read(lock) do { } while (0)
 # define lockdep_assert_irqs_enabled() do { } while (0)
 # define lockdep_assert_irqs_disabled() do { } while (0)
+# define lockdep_assert_irqs_enabled_nonrt() do { } while (0)
+# define lockdep_assert_irqs_disabled_nonrt() do { } while (0)
 #endif
 
 #ifdef CONFIG_LOCKDEP

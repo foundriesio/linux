@@ -122,9 +122,6 @@ static int setup_efi_info_memmap(struct boot_params *params,
 	unsigned long efi_map_phys_addr = params_load_addr + efi_map_offset;
 	struct efi_info *ei = &params->efi_info;
 
-	if (!efi_map_sz)
-		return 0;
-
 	efi_runtime_map_copy(efi_map, efi_map_sz);
 
 	ei->efi_memmap = efi_map_phys_addr & 0xffffffff;
@@ -176,7 +173,7 @@ setup_efi_state(struct boot_params *params, unsigned long params_load_addr,
 	 * acpi_rsdp=<addr> on kernel command line to make second kernel boot
 	 * without efi.
 	 */
-	if (efi_enabled(EFI_OLD_MEMMAP))
+	if (efi_enabled(EFI_OLD_MEMMAP) || !efi_enabled(EFI_MEMMAP))
 		return 0;
 
 	params->secure_boot = boot_params.secure_boot;
@@ -340,7 +337,7 @@ static void *bzImage64_load(struct kimage *image, char *kernel,
 	struct kexec_entry64_regs regs64;
 	void *stack;
 	unsigned int setup_hdr_offset = offsetof(struct boot_params, hdr);
-	unsigned int efi_map_offset, efi_map_sz, efi_setup_data_offset;
+	unsigned int efi_map_offset=0, efi_map_sz=0, efi_setup_data_offset=0;
 	struct kexec_buf kbuf = { .image = image, .buf_max = ULONG_MAX,
 				  .top_down = true };
 
@@ -398,19 +395,22 @@ static void *bzImage64_load(struct kimage *image, char *kernel,
 	 * have to create separate segment for each. Keeps things
 	 * little bit simple
 	 */
-	efi_map_sz = efi_get_runtime_map_size();
 	params_cmdline_sz = sizeof(struct boot_params) + cmdline_len +
 				MAX_ELFCOREHDR_STR_LEN;
 	params_cmdline_sz = ALIGN(params_cmdline_sz, 16);
-	kbuf.bufsz = params_cmdline_sz + ALIGN(efi_map_sz, 16) +
-				sizeof(struct setup_data) +
-				sizeof(struct efi_setup_data);
+	kbuf.bufsz = params_cmdline_sz + sizeof(struct setup_data);
+
+	/* Now add space for the efi stuff if we have a useable 1:1 mapping. */
+	if (!efi_enabled(EFI_OLD_MEMMAP) && efi_enabled(EFI_MEMMAP)) {
+		efi_map_sz = efi_get_runtime_map_size();
+		kbuf.bufsz += ALIGN(efi_map_sz, 16) + sizeof(struct efi_setup_data);
+		efi_map_offset = params_cmdline_sz;
+		efi_setup_data_offset = efi_map_offset + ALIGN(efi_map_sz, 16);
+	}
 
 	params = kzalloc(kbuf.bufsz, GFP_KERNEL);
 	if (!params)
 		return ERR_PTR(-ENOMEM);
-	efi_map_offset = params_cmdline_sz;
-	efi_setup_data_offset = efi_map_offset + ALIGN(efi_map_sz, 16);
 
 	/* Copy setup header onto bootparams. Documentation/x86/boot.txt */
 	setup_header_size = 0x0202 + kernel[0x0201] - setup_hdr_offset;

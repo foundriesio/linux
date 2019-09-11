@@ -448,12 +448,12 @@ static bool srcu_queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 {
 	bool ret;
 
-	preempt_disable();
+	migrate_disable();
 	if (READ_ONCE(per_cpu(srcu_online, cpu)))
 		ret = queue_delayed_work_on(cpu, wq, dwork, delay);
 	else
 		ret = queue_delayed_work(wq, dwork, delay);
-	preempt_enable();
+	migrate_enable();
 	return ret;
 }
 
@@ -802,9 +802,8 @@ void __call_srcu(struct srcu_struct *sp, struct rcu_head *rhp,
 
 	check_init_srcu_struct(sp);
 	rhp->func = func;
-	local_irq_save(flags);
-	sdp = this_cpu_ptr(sp->sda);
-	spin_lock(&sdp->lock);
+	sdp = get_local_ptr(sp->sda);
+	spin_lock_irqsave(&sdp->lock, flags);
 	rcu_segcblist_enqueue(&sdp->srcu_cblist, rhp, false);
 	rcu_segcblist_advance(&sdp->srcu_cblist,
 			      rcu_seq_current(&sp->srcu_gp_seq));
@@ -819,6 +818,7 @@ void __call_srcu(struct srcu_struct *sp, struct rcu_head *rhp,
 		needexp = true;
 	}
 	spin_unlock_irqrestore(&sdp->lock, flags);
+	put_local_ptr(sp->sda);
 	if (needgp)
 		srcu_funnel_gp_start(sp, sdp, s, do_norm);
 	else if (needexp)

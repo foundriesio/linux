@@ -272,7 +272,7 @@ static inline const struct cpumask *housekeeping_cpumask(void)
 static inline bool is_housekeeping_cpu(int cpu)
 {
 #ifdef CONFIG_NO_HZ_FULL
-	if (tick_nohz_full_enabled())
+	if (tick_nohz_full_enabled() && runqueue_is_isolated(cpu))
 		return cpumask_test_cpu(cpu, housekeeping_mask);
 #endif
 	return true;

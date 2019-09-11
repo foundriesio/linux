@@ -68,9 +68,13 @@ void netpoll_send_skb_on_dev(struct netpoll *np, struct sk_buff *skb,
 static inline void netpoll_send_skb(struct netpoll *np, struct sk_buff *skb)
 {
 	unsigned long flags;
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
+	if (IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
+		rcu_read_lock();
 	netpoll_send_skb_on_dev(np, skb, np->dev);
-	local_irq_restore(flags);
+	if (IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
+		rcu_read_unlock();
+	local_irq_restore_nort(flags);
 }
 
 #ifdef CONFIG_NETPOLL

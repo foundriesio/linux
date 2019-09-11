@@ -278,8 +278,13 @@ static void clocksource_watchdog(unsigned long data)
 	 * to each other.
 	 */
 	next_cpu = cpumask_next(raw_smp_processor_id(), cpu_online_mask);
+skip_nohz_full:
 	if (next_cpu >= nr_cpu_ids)
 		next_cpu = cpumask_first(cpu_online_mask);
+	if (next_cpu && tick_nohz_full_cpu(next_cpu)) {
+		next_cpu = cpumask_next(next_cpu, cpu_online_mask);
+		goto skip_nohz_full;
+	}
 	watchdog_timer.expires += WATCHDOG_INTERVAL;
 	add_timer_on(&watchdog_timer, next_cpu);
 out:

@@ -750,6 +750,11 @@ bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr)
 	return false;
 }
 
+bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr)
+{
+	return false;
+}
+
 #endif /* CONFIG_SMP */
 
 #define MODINFO_ATTR(field)	\

@@ -312,7 +312,7 @@ void netpoll_send_skb_on_dev(struct netpoll *np, struct sk_buff *skb,
 	/* It is up to the caller to keep npinfo alive. */
 	struct netpoll_info *npinfo;
 
-	lockdep_assert_irqs_disabled();
+	lockdep_assert_irqs_disabled_nonrt();
 
 	npinfo = rcu_dereference_bh(np->dev->npinfo);
 	if (!npinfo || !netif_running(dev) || !netif_device_present(dev)) {
@@ -346,7 +346,7 @@ void netpoll_send_skb_on_dev(struct netpoll *np, struct sk_buff *skb,
 			udelay(USEC_PER_POLL);
 		}
 
-		WARN_ONCE(!irqs_disabled(),
+		WARN_ONCE(!IS_ENABLED(CONFIG_PREEMPT_RT_FULL) && !irqs_disabled(),
 			"netpoll_send_skb_on_dev(): %s enabled interrupts in poll (%pF)\n",
 			dev->name, dev->netdev_ops->ndo_start_xmit);
 
@@ -369,7 +369,7 @@ void netpoll_send_udp(struct netpoll *np, const char *msg, int len)
 	static atomic_t ip_ident;
 	struct ipv6hdr *ip6h;
 
-	WARN_ON_ONCE(!irqs_disabled());
+	WARN_ON_ONCE_NONRT(!irqs_disabled());
 
 	udp_len = len + sizeof(*udph);
 	if (np->ipv6)

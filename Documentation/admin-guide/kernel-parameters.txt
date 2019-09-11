@@ -1296,6 +1296,24 @@
 	hpet_mmap=	[X86, HPET_MMAP] Allow userspace to mmap HPET
 			registers.  Default set by CONFIG_HPET_MMAP_DEFAULT.
 
+	hpc_cpusets	[KNL] activate HPC extensions to cpusets.  If HPC_CPUSETS
+			is enabled in .config, adds per cpuset scheduler behavior
+			modifiers to reduce jitter of isolated cpuset CPUs.
+			Currently, these modifiers include:
+
+			sched_hpc: switch nohz off for the cpuset, and elect
+			CPU0 for jiffies update duty.  This implies that CPU0
+			may not be in any HPC cpuset, as it serves all sets.
+
+			sched_hpc_rt: set sched_hpc, and additionally disable
+			rt push/pull logic.  This option extends the isolation
+			achieved by setting sched_load_balance to 0 in parent
+			and child set, to also disable RT load balancing.  It
+			explictly informs the scheduler that the user assumes
+			responsibility for realtime class task placement in
+			addition to the fair class responsibility assumed when
+			initially isolating the cpuset.
+
 	hugepages=	[HW,X86-32,IA-64] HugeTLB pages to allocate at boot.
 	hugepagesz=	[HW,IA-64,PPC,X86-64] The size of the HugeTLB pages.
 			On x86-64 and powerpc, this option can be specified
@@ -2893,6 +2911,8 @@
 	noresume	[SWSUSP] Disables resume and restores original swap
 			space.
 
+	nortsched       [KNL] Disables realtime task bandwidth control.
+
 	no-scroll	[VGA] Disables scrollback.
 			This is required for the Braillex ib80-piezo Braille
 			reader made by F.H. Papenmeier (Germany).
@@ -4373,6 +4393,9 @@
 	threadirqs	[KNL]
 			Force threading of all interrupt handlers except those
 			marked explicitly IRQF_NO_THREAD.
+
+	threadsirqs	[KNL]
+			Enable or disable threading of all softirqs for -rt.
 
 	tmem		[KNL,XEN]
 			Enable the Transcendent memory driver if built-in.

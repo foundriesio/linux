@@ -174,6 +174,8 @@ typedef enum {
 	CS_SCHED_LOAD_BALANCE,
 	CS_SPREAD_PAGE,
 	CS_SPREAD_SLAB,
+	CS_SCHED_HPC,
+	CS_SCHED_HPCRT,
 } cpuset_flagbits_t;
 
 /* convenient tests for these bits */
@@ -215,6 +217,16 @@ static inline int is_spread_page(const struct cpuset *cs)
 static inline int is_spread_slab(const struct cpuset *cs)
 {
 	return test_bit(CS_SPREAD_SLAB, &cs->flags);
+}
+
+static inline int is_sched_hpc(const struct cpuset *cs)
+{
+	return test_bit(CS_SCHED_HPC, &cs->flags);
+}
+
+static inline int is_sched_hpc_rt(const struct cpuset *cs)
+{
+	return test_bit(CS_SCHED_HPCRT, &cs->flags);
 }
 
 static struct cpuset top_cpuset = {
@@ -287,7 +299,7 @@ static struct cpuset top_cpuset = {
  */
 
 static DEFINE_MUTEX(cpuset_mutex);
-static DEFINE_SPINLOCK(callback_lock);
+static DEFINE_RAW_SPINLOCK(callback_lock);
 
 static struct workqueue_struct *cpuset_migrate_mm_wq;
 
@@ -446,6 +458,172 @@ static void free_trial_cpuset(struct cpuset *trial)
 	kfree(trial);
 }
 
+#ifdef CONFIG_HPC_CPUSETS
+/* Without boot parameter "hpc_cpusets", HPC functionality is disabled */
+static __read_mostly int hpc_cpusets_enabled;
+
+/**
+ * validate_sched_change() - validate proposed scheduler modifier changes.
+ *
+ * If we replaced the flag and mask values of the current cpuset (cur) with
+ * those values in the trial cpuset (trial), would our various subset and
+ * exclusive rules still be valid?  For cpusets with scheduler modifiers,
+ * ensure that CPUs entering/leaving set/clear runqueue flags accordingly,
+ * to ensure that cpuset and runqueue states remain in sync.
+ *
+ * @cur: address of an actual, in-use cpuset.
+ * @trial: address of copy of cur, with proposed changes.
+ *
+ * Presumes cpuset_mutex held.
+ * Return 0 if valid, -errno if not.
+ */
+static int
+validate_sched_change(const struct cpuset *cur, const struct cpuset *trial)
+{
+	int cpu;
+
+	if (!hpc_cpusets_enabled || !is_sched_hpc(trial))
+		return 0;
+
+	cpu = cpumask_first(trial->cpus_allowed);
+
+	if (cur == &top_cpuset || !is_cpu_exclusive(cur))
+		return -EINVAL;
+	/*
+	 * HPC cpusets may not contain the boot CPU,
+	 * and must be completely isolated or empty.
+	 */
+	if (!cpu || is_sched_load_balance(cur))
+		return -EINVAL;
+	if (cpu < nr_cpu_ids && !runqueue_is_isolated(cpu))
+		return -EINVAL;
+
+	/* Handle CPUs entering or leaving the set */
+	if (!cpumask_equal(cur->cpus_allowed, trial->cpus_allowed)) {
+		cpumask_var_t delta;
+		int entering, cpu;
+		unsigned bits;
+
+		if (!zalloc_cpumask_var(&delta, GFP_KERNEL))
+			return -ENOMEM;
+
+		cpumask_xor(delta, cur->cpus_allowed, trial->cpus_allowed);
+		entering = cpumask_weight(cur->cpus_allowed) <
+				cpumask_weight(trial->cpus_allowed);
+
+		bits = RQ_TICK | RQ_HPC;
+		if (is_sched_hpc_rt(trial))
+			bits |= RQ_HPCRT;
+
+		if (entering) {
+			for_each_cpu(cpu, delta) {
+				if (runqueue_is_isolated(cpu))
+					continue;
+				free_cpumask_var(delta);
+					return -EINVAL;
+			}
+		}
+
+		for_each_cpu(cpu, delta) {
+			if (entering)
+				cpuset_flags_set(cpu, bits);
+			else
+				cpuset_flags_clr(cpu, bits);
+		}
+		free_cpumask_var(delta);
+	}
+
+	return 0;
+}
+
+/*
+ * update_sched_flags - update scheduler modifier flags in cpusets.
+ * @bit: the bit changing state.
+ * @cs: the cpuset in which flags need to be updated:
+ * @turning_on: whether we're turning the bit on or off.
+ *
+ * Called with cgroup_mutex held.  Turn scheduler modifiers on/off,
+ * updating runqueue flags for associated CPUs.  Set/clear of a flag
+ * which invalidates modifiers recursively clears invalidated flags
+ * for child cpusets and their associated CPUs.
+ *
+ * No return value.
+ */
+static void
+update_sched_flags(cpuset_flagbits_t bit, struct cpuset *cs, int turning_on)
+{
+	struct cgroup_subsys_state *css;
+	struct cpuset *child;
+	unsigned cpu, bits = 0, recursive = 0;
+
+	switch (bit) {
+	case CS_CPU_EXCLUSIVE:
+		if (turning_on)
+			return;
+		bits = RQ_CLEAR;
+		recursive = 1;
+		break;
+	case CS_SCHED_LOAD_BALANCE:
+		if (!turning_on)
+			return;
+		if (is_sched_hpc(cs)) {
+			bits |= RQ_TICK | RQ_HPC;
+			clear_bit(CS_SCHED_HPC, &cs->flags);
+		}
+		if (is_sched_hpc_rt(cs)) {
+			bits |= RQ_HPCRT;
+			clear_bit(CS_SCHED_HPCRT, &cs->flags);
+		}
+		recursive = 1;
+		break;
+	case CS_SCHED_HPC:
+		bits = RQ_TICK | RQ_HPC;
+		break;
+	case CS_SCHED_HPCRT:
+		bits = RQ_HPCRT;
+		break;
+	default:
+		return;
+	}
+
+	/* Kill lockdep rq->lock false positive */
+	lockdep_off();
+
+	if (recursive) {
+		cpuset_for_each_child(child, css, cs)
+			update_sched_flags(bit, child, turning_on);
+		turning_on = 0;
+	}
+
+	if (!bits)
+		goto out;
+
+	for_each_cpu(cpu, cs->cpus_allowed) {
+		if (turning_on)
+			cpuset_flags_set(cpu, bits);
+		else
+			cpuset_flags_clr(cpu, bits);
+	}
+out:
+	lockdep_on();
+}
+
+static void hpc_cpusets_disable(void);
+
+#else /* !CONFIG_HPC_CPUSETS */
+
+static int
+validate_sched_change(const struct cpuset *cur, const struct cpuset *trial)
+{
+	return 0;
+}
+static void
+update_sched_flags(cpuset_flagbits_t bit, struct cpuset *cs, int turning_on) { }
+
+static void hpc_cpusets_disable(void) { }
+
+#endif /* CONFIG_HPC_CPUSETS */
+
 /*
  * validate_change() - Used to validate that any proposed cpuset change
  *		       follows the structural rules for cpusets.
@@ -479,6 +657,10 @@ static int validate_change(struct cpuset *cur, struct cpuset *trial)
 	cpuset_for_each_child(c, css, cur)
 		if (!is_cpuset_subset(c, trial))
 			goto out;
+
+	ret = validate_sched_change(cur, trial);
+	if (ret)
+		return ret;
 
 	/* Remaining checks don't apply to root cpuset */
 	ret = 0;
@@ -910,9 +1092,9 @@ static void update_cpumasks_hier(struct cpuset *cs, struct cpumask *new_cpus)
 			continue;
 		rcu_read_unlock();
 
-		spin_lock_irq(&callback_lock);
+		raw_spin_lock_irq(&callback_lock);
 		cpumask_copy(cp->effective_cpus, new_cpus);
-		spin_unlock_irq(&callback_lock);
+		raw_spin_unlock_irq(&callback_lock);
 
 		WARN_ON(!cgroup_subsys_on_dfl(cpuset_cgrp_subsys) &&
 			!cpumask_equal(cp->cpus_allowed, cp->effective_cpus));
@@ -977,9 +1159,9 @@ static int update_cpumask(struct cpuset *cs, struct cpuset *trialcs,
 	if (retval < 0)
 		return retval;
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cpumask_copy(cs->cpus_allowed, trialcs->cpus_allowed);
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	/* use trialcs->cpus_allowed as a temp variable */
 	update_cpumasks_hier(cs, trialcs->cpus_allowed);
@@ -1179,9 +1361,9 @@ static void update_nodemasks_hier(struct cpuset *cs, nodemask_t *new_mems)
 			continue;
 		rcu_read_unlock();
 
-		spin_lock_irq(&callback_lock);
+		raw_spin_lock_irq(&callback_lock);
 		cp->effective_mems = *new_mems;
-		spin_unlock_irq(&callback_lock);
+		raw_spin_unlock_irq(&callback_lock);
 
 		WARN_ON(!cgroup_subsys_on_dfl(cpuset_cgrp_subsys) &&
 			!nodes_equal(cp->mems_allowed, cp->effective_mems));
@@ -1249,9 +1431,9 @@ static int update_nodemask(struct cpuset *cs, struct cpuset *trialcs,
 	if (retval < 0)
 		goto done;
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cs->mems_allowed = trialcs->mems_allowed;
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	/* use trialcs->mems_allowed as a temp variable */
 	update_nodemasks_hier(cs, &trialcs->mems_allowed);
@@ -1321,6 +1503,7 @@ static int update_flag(cpuset_flagbits_t bit, struct cpuset *cs,
 	struct cpuset *trialcs;
 	int balance_flag_changed;
 	int spread_flag_changed;
+	int sched_flag_changed;
 	int err;
 
 	trialcs = alloc_trial_cpuset(cs);
@@ -1339,15 +1522,23 @@ static int update_flag(cpuset_flagbits_t bit, struct cpuset *cs,
 	balance_flag_changed = (is_sched_load_balance(cs) !=
 				is_sched_load_balance(trialcs));
 
+	sched_flag_changed = balance_flag_changed;
+	sched_flag_changed |= (is_cpu_exclusive(cs) != is_cpu_exclusive(trialcs));
+	sched_flag_changed |= (is_sched_hpc(cs) != is_sched_hpc(trialcs));
+	sched_flag_changed |= (is_sched_hpc_rt(cs) != is_sched_hpc_rt(trialcs));
+
 	spread_flag_changed = ((is_spread_slab(cs) != is_spread_slab(trialcs))
 			|| (is_spread_page(cs) != is_spread_page(trialcs)));
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cs->flags = trialcs->flags;
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	if (!cpumask_empty(trialcs->cpus_allowed) && balance_flag_changed)
 		rebuild_sched_domains_locked();
+
+	if (sched_flag_changed)
+		update_sched_flags(bit, cs, turning_on);
 
 	if (spread_flag_changed)
 		update_tasks_flags(cs);
@@ -1606,6 +1797,8 @@ typedef enum {
 	FILE_MEMORY_PRESSURE,
 	FILE_SPREAD_PAGE,
 	FILE_SPREAD_SLAB,
+	FILE_SCHED_HPC,
+	FILE_SCHED_HPCRT,
 } cpuset_filetype_t;
 
 static int cpuset_write_u64(struct cgroup_subsys_state *css, struct cftype *cft,
@@ -1645,6 +1838,18 @@ static int cpuset_write_u64(struct cgroup_subsys_state *css, struct cftype *cft,
 		break;
 	case FILE_SPREAD_SLAB:
 		retval = update_flag(CS_SPREAD_SLAB, cs, val);
+		break;
+	case FILE_SCHED_HPC:
+		if (!val && is_sched_hpc_rt(cs))
+			retval = update_flag(CS_SCHED_HPCRT, cs, val);
+		if (!retval)
+			retval = update_flag(CS_SCHED_HPC, cs, val);
+		break;
+	case FILE_SCHED_HPCRT:
+		if (val && !is_sched_hpc(cs))
+			retval = update_flag(CS_SCHED_HPC, cs, val);
+		if (!retval)
+			retval = update_flag(CS_SCHED_HPCRT, cs, val);
 		break;
 	default:
 		retval = -EINVAL;
@@ -1759,7 +1964,7 @@ static int cpuset_common_seq_show(struct seq_file *sf, void *v)
 	cpuset_filetype_t type = seq_cft(sf)->private;
 	int ret = 0;
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 
 	switch (type) {
 	case FILE_CPULIST:
@@ -1778,7 +1983,7 @@ static int cpuset_common_seq_show(struct seq_file *sf, void *v)
 		ret = -EINVAL;
 	}
 
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 	return ret;
 }
 
@@ -1795,6 +2000,10 @@ static u64 cpuset_read_u64(struct cgroup_subsys_state *css, struct cftype *cft)
 		return is_mem_hardwall(cs);
 	case FILE_SCHED_LOAD_BALANCE:
 		return is_sched_load_balance(cs);
+	case FILE_SCHED_HPC:
+		return is_sched_hpc(cs);
+	case FILE_SCHED_HPCRT:
+		return is_sched_hpc_rt(cs);
 	case FILE_MEMORY_MIGRATE:
 		return is_memory_migrate(cs);
 	case FILE_MEMORY_PRESSURE_ENABLED:
@@ -1932,6 +2141,25 @@ static struct cftype files[] = {
 		.private = FILE_MEMORY_PRESSURE_ENABLED,
 	},
 
+#ifdef CONFIG_HPC_CPUSETS
+	/* These MUST be the last array elements */
+	{
+		.name = "sched_hpc",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = cpuset_read_u64,
+		.write_u64 = cpuset_write_u64,
+		.private = FILE_SCHED_HPC,
+	},
+
+	{
+		.name = "sched_hpc_rt",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = cpuset_read_u64,
+		.write_u64 = cpuset_write_u64,
+		.private = FILE_SCHED_HPCRT,
+	},
+#endif
+
 	{ }	/* terminate */
 };
 
@@ -1993,12 +2221,12 @@ static int cpuset_css_online(struct cgroup_subsys_state *css)
 
 	cpuset_inc();
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	if (cgroup_subsys_on_dfl(cpuset_cgrp_subsys)) {
 		cpumask_copy(cs->effective_cpus, parent->effective_cpus);
 		cs->effective_mems = parent->effective_mems;
 	}
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	if (!test_bit(CGRP_CPUSET_CLONE_CHILDREN, &css->cgroup->flags))
 		goto out_unlock;
@@ -2025,12 +2253,12 @@ static int cpuset_css_online(struct cgroup_subsys_state *css)
 	}
 	rcu_read_unlock();
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cs->mems_allowed = parent->mems_allowed;
 	cs->effective_mems = parent->mems_allowed;
 	cpumask_copy(cs->cpus_allowed, parent->cpus_allowed);
 	cpumask_copy(cs->effective_cpus, parent->cpus_allowed);
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 out_unlock:
 	mutex_unlock(&cpuset_mutex);
 	return 0;
@@ -2069,7 +2297,7 @@ static void cpuset_css_free(struct cgroup_subsys_state *css)
 static void cpuset_bind(struct cgroup_subsys_state *root_css)
 {
 	mutex_lock(&cpuset_mutex);
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 
 	if (cgroup_subsys_on_dfl(cpuset_cgrp_subsys)) {
 		cpumask_copy(top_cpuset.cpus_allowed, cpu_possible_mask);
@@ -2080,7 +2308,7 @@ static void cpuset_bind(struct cgroup_subsys_state *root_css)
 		top_cpuset.mems_allowed = top_cpuset.effective_mems;
 	}
 
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 	mutex_unlock(&cpuset_mutex);
 }
 
@@ -2094,7 +2322,7 @@ static void cpuset_fork(struct task_struct *task)
 	if (task_css_is_root(task, cpuset_cgrp_id))
 		return;
 
-	set_cpus_allowed_ptr(task, &current->cpus_allowed);
+	set_cpus_allowed_ptr(task, current->cpus_ptr);
 	task->mems_allowed = current->mems_allowed;
 }
 
@@ -2141,6 +2369,8 @@ int __init cpuset_init(void)
 
 	BUG_ON(!alloc_cpumask_var(&cpus_attach, GFP_KERNEL));
 
+	hpc_cpusets_disable();
+
 	return 0;
 }
 
@@ -2178,12 +2408,12 @@ hotplug_update_tasks_legacy(struct cpuset *cs,
 {
 	bool is_empty;
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cpumask_copy(cs->cpus_allowed, new_cpus);
 	cpumask_copy(cs->effective_cpus, new_cpus);
 	cs->mems_allowed = *new_mems;
 	cs->effective_mems = *new_mems;
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	/*
 	 * Don't call update_tasks_cpumask() if the cpuset becomes empty,
@@ -2220,10 +2450,10 @@ hotplug_update_tasks(struct cpuset *cs,
 	if (nodes_empty(*new_mems))
 		*new_mems = parent_cs(cs)->effective_mems;
 
-	spin_lock_irq(&callback_lock);
+	raw_spin_lock_irq(&callback_lock);
 	cpumask_copy(cs->effective_cpus, new_cpus);
 	cs->effective_mems = *new_mems;
-	spin_unlock_irq(&callback_lock);
+	raw_spin_unlock_irq(&callback_lock);
 
 	if (cpus_updated)
 		update_tasks_cpumask(cs);
@@ -2316,21 +2546,21 @@ static void cpuset_hotplug_workfn(struct work_struct *work)
 
 	/* synchronize cpus_allowed to cpu_active_mask */
 	if (cpus_updated) {
-		spin_lock_irq(&callback_lock);
+		raw_spin_lock_irq(&callback_lock);
 		if (!on_dfl)
 			cpumask_copy(top_cpuset.cpus_allowed, &new_cpus);
 		cpumask_copy(top_cpuset.effective_cpus, &new_cpus);
-		spin_unlock_irq(&callback_lock);
+		raw_spin_unlock_irq(&callback_lock);
 		/* we don't mess with cpumasks of tasks in top_cpuset */
 	}
 
 	/* synchronize mems_allowed to N_MEMORY */
 	if (mems_updated) {
-		spin_lock_irq(&callback_lock);
+		raw_spin_lock_irq(&callback_lock);
 		if (!on_dfl)
 			top_cpuset.mems_allowed = new_mems;
 		top_cpuset.effective_mems = new_mems;
-		spin_unlock_irq(&callback_lock);
+		raw_spin_unlock_irq(&callback_lock);
 		update_tasks_nodemask(&top_cpuset);
 	}
 
@@ -2435,11 +2665,11 @@ void cpuset_cpus_allowed(struct task_struct *tsk, struct cpumask *pmask)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&callback_lock, flags);
+	raw_spin_lock_irqsave(&callback_lock, flags);
 	rcu_read_lock();
 	guarantee_online_cpus(task_cs(tsk), pmask);
 	rcu_read_unlock();
-	spin_unlock_irqrestore(&callback_lock, flags);
+	raw_spin_unlock_irqrestore(&callback_lock, flags);
 }
 
 void cpuset_cpus_allowed_fallback(struct task_struct *tsk)
@@ -2487,11 +2717,11 @@ nodemask_t cpuset_mems_allowed(struct task_struct *tsk)
 	nodemask_t mask;
 	unsigned long flags;
 
-	spin_lock_irqsave(&callback_lock, flags);
+	raw_spin_lock_irqsave(&callback_lock, flags);
 	rcu_read_lock();
 	guarantee_online_mems(task_cs(tsk), &mask);
 	rcu_read_unlock();
-	spin_unlock_irqrestore(&callback_lock, flags);
+	raw_spin_unlock_irqrestore(&callback_lock, flags);
 
 	return mask;
 }
@@ -2583,14 +2813,14 @@ bool __cpuset_node_allowed(int node, gfp_t gfp_mask)
 		return true;
 
 	/* Not hardwall and node outside mems_allowed: scan up cpusets */
-	spin_lock_irqsave(&callback_lock, flags);
+	raw_spin_lock_irqsave(&callback_lock, flags);
 
 	rcu_read_lock();
 	cs = nearest_hardwall_ancestor(task_cs(current));
 	allowed = node_isset(node, cs->mems_allowed);
 	rcu_read_unlock();
 
-	spin_unlock_irqrestore(&callback_lock, flags);
+	raw_spin_unlock_irqrestore(&callback_lock, flags);
 	return allowed;
 }
 
@@ -2765,3 +2995,34 @@ void cpuset_task_status_allowed(struct seq_file *m, struct task_struct *task)
 	seq_printf(m, "Mems_allowed_list:\t%*pbl\n",
 		   nodemask_pr_args(&task->mems_allowed));
 }
+
+#ifdef CONFIG_HPC_CPUSETS
+static int __init hpc_cpusets(char *str)
+{
+	hpc_cpusets_enabled = 1;
+
+	return 0;
+}
+early_param("hpc_cpusets", hpc_cpusets);
+
+static void __init hpc_cpusets_disable(void)
+{
+	struct cftype *cft;
+	int got = 0;
+
+	if (hpc_cpusets_enabled)
+		return;
+
+	/*
+	 * Q: Why the fsck did you turn it _off_ like this?
+	 * A: Turning it _on_ in hpc_cpusets() didn't work.
+	 */
+	for (cft = &files[0]; cft->name[0] != '\0'; cft++) {
+		if (!got && !strcmp(cft->name, "sched_hpc"))
+			got = 1;
+		if (got)
+			cft->name[0] =  '\0';
+	}
+}
+#endif
+
