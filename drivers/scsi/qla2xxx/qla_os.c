@@ -4738,31 +4738,24 @@ qla2x00_mem_free(struct qla_hw_data *ha)
 	if (ql2xenabledif && ha->dif_bundl_pool) {
 		struct dsd_dma *dsd, *nxt;
 
-		if (!ha->pool.unusable.head.next)
-			pci_warn(ha->pdev, "ha->pool.unusable.head not initialized\n");
-		else
-			list_for_each_entry_safe(dsd, nxt, &ha->pool.unusable.head,
-					list) {
-				list_del(&dsd->list);
-				dma_pool_free(ha->dif_bundl_pool, dsd->dsd_addr,
-						dsd->dsd_list_dma);
-				ha->dif_bundle_dma_allocs--;
-				kfree(dsd);
-				ha->dif_bundle_kallocs--;
-				ha->pool.unusable.count--;
-			}
-		if (!ha->pool.good.head.next)
-			pci_warn(ha->pdev, "ha->pool.good.head not initialized\n");
-		else
-			list_for_each_entry_safe(dsd, nxt, &ha->pool.good.head, list) {
-				list_del(&dsd->list);
-				dma_pool_free(ha->dif_bundl_pool, dsd->dsd_addr,
-						dsd->dsd_list_dma);
-				ha->dif_bundle_dma_allocs--;
-				kfree(dsd);
-				ha->dif_bundle_kallocs--;
-				ha->pool.good.count--;
-			}
+		list_for_each_entry_safe(dsd, nxt, &ha->pool.unusable.head,
+					 list) {
+			list_del(&dsd->list);
+			dma_pool_free(ha->dif_bundl_pool, dsd->dsd_addr,
+				      dsd->dsd_list_dma);
+			ha->dif_bundle_dma_allocs--;
+			kfree(dsd);
+			ha->dif_bundle_kallocs--;
+			ha->pool.unusable.count--;
+		}
+		list_for_each_entry_safe(dsd, nxt, &ha->pool.good.head, list) {
+			list_del(&dsd->list);
+			dma_pool_free(ha->dif_bundl_pool, dsd->dsd_addr,
+				      dsd->dsd_list_dma);
+			ha->dif_bundle_dma_allocs--;
+			kfree(dsd);
+			ha->dif_bundle_kallocs--;
+		}
 	}
 
 	dma_pool_destroy(ha->dif_bundl_pool);
