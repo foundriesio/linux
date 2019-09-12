@@ -468,6 +468,9 @@ static void qedf_update_link_speed(struct qedf_ctx *qedf,
 	case 10000:
 		lport->link_speed = FC_PORTSPEED_10GBIT;
 		break;
+	case 20000:
+		lport->link_speed = FC_PORTSPEED_20GBIT;
+		break;
 	case 25000:
 		lport->link_speed = FC_PORTSPEED_25GBIT;
 		break;
@@ -499,6 +502,8 @@ static void qedf_update_link_speed(struct qedf_ctx *qedf,
 		lport->link_supported_speeds |= FC_PORTSPEED_50GBIT;
 	if (link->supported_caps & SUPPORTED_100000baseKR4_Full)
 		lport->link_supported_speeds |= FC_PORTSPEED_100GBIT;
+	if (link->supported_caps & QED_LM_20000baseKR2_Full_BIT)
+		lport->link_supported_speeds |= FC_PORTSPEED_20GBIT;
 	fc_host_supported_speeds(lport->host) = lport->link_supported_speeds;
 }
 
