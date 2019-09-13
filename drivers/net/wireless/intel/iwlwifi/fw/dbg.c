@@ -719,6 +719,7 @@ _iwl_fw_error_dump(struct iwl_fw_runtime *fwrt,
 
 	/* Make room for fw's virtual image pages, if it exists */
 	if (iwl_fw_dbg_is_paging_enabled(fwrt))
+		file_len += fwrt->num_of_paging_blk *
 			(sizeof(*dump_data) +
 			 sizeof(struct iwl_fw_error_dump_paging) +
 			 PAGING_BLOCK_SIZE);
