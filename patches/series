@@ -79,7 +79,6 @@ sched-swait-Add-swait_event_lock_irq.patch
 workqueue-Make-alloc-apply-free_workqueue_attrs-stat.patch
 workqueue-Remove-GPF-argument-from-alloc_workqueue_a.patch
 workqueue-Convert-the-locks-to-raw-type.patch
-sched-core-Schedule-new-worker-even-if-PI-blocked.patch
 # The two below use a workqueue as workaround
 fs-aio-simple-simple-work.patch
 block-blk-mq-move-blk_queue_usage_counter_release-in.patch
