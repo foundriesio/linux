@@ -428,6 +428,7 @@ static void sii902x_bridge_mode_set(struct drm_bridge *bridge,
 	struct regmap *regmap = sii902x->regmap;
 	u8 buf[HDMI_INFOFRAME_SIZE(AVI)];
 	struct hdmi_avi_infoframe frame;
+	u16 pixel_clock_10kHz = adj->clock / 10;
 	unsigned int status = 0;
 	int ret;
 
@@ -439,8 +440,8 @@ static void sii902x_bridge_mode_set(struct drm_bridge *bridge,
 	if (status & SII902X_PLUGGED_STATUS)
 		pinctrl_pm_select_default_state(&sii902x->i2c->dev);
 
-	buf[0] = adj->clock;
-	buf[1] = adj->clock >> 8;
+	buf[0] = pixel_clock_10kHz & 0xff;
+	buf[1] = pixel_clock_10kHz >> 8;
 	buf[2] = adj->vrefresh;
 	buf[3] = 0x00;
 	buf[4] = adj->hdisplay;

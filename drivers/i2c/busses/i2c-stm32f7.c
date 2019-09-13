@@ -1946,19 +1946,19 @@ static int stm32f7_i2c_probe(struct platform_device *pdev)
 	phy_addr = (dma_addr_t)res->start;
 
 	i2c_dev->irq_event = platform_get_irq_byname(pdev, "event");
-	if (i2c_dev->irq_event < 0) {
+	if (i2c_dev->irq_event <= 0) {
 		if (i2c_dev->irq_event != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "Failed to get IRQ event: %d\n",
 				i2c_dev->irq_event);
-		return i2c_dev->irq_event;
+		return i2c_dev->irq_event ? : -ENOENT;
 	}
 
 	irq_error = platform_get_irq_byname(pdev, "error");
-	if (irq_error < 0) {
+	if (irq_error <= 0) {
 		if (irq_error != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "Failed to get IRQ error: %d\n",
 				irq_error);
-		return irq_error;
+		return irq_error ? : -ENOENT;
 	}
 
 	i2c_dev->irq_wakeup = platform_get_irq_byname(pdev, "wakeup");
