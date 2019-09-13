@@ -151,9 +151,6 @@ els_err:
 void qedf_process_els_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 	struct qedf_ioreq *els_req)
 {
-	struct fcoe_task_context *task_ctx;
-	struct scsi_cmnd *sc_cmd;
-	uint16_t xid;
 	struct fcoe_cqe_midpath_info *mp_info;
 
 	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_ELS, "Entered with xid = 0x%x"
@@ -161,10 +158,6 @@ void qedf_process_els_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 
 	/* Kill the ELS timer */
 	cancel_delayed_work(&els_req->timeout_work);
-
-	xid = els_req->xid;
-	task_ctx = qedf_get_task_mem(&qedf->tasks, xid);
-	sc_cmd = els_req->sc_cmd;
 
 	/* Get ELS response length from CQE */
 	mp_info = &cqe->cqe_info.midpath_info;
@@ -193,8 +186,11 @@ static void qedf_rrq_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Original io_req is NULL, rrq_req = %p.\n", rrq_req);
 		goto out_free;
+	}
 
 	if (rrq_req->event != QEDF_IOREQ_EV_ELS_TMO &&
 	    rrq_req->event != QEDF_IOREQ_EV_ELS_ERR_DETECT)
@@ -337,8 +333,10 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 	u32 port_id;
 	unsigned long flags;
 
-	if (!fcport)
+	if (!fcport) {
+		QEDF_ERR(NULL, "fcport is NULL.\n");
 		return;
+	}
 
 	spin_lock_irqsave(&fcport->rport_lock, flags);
 	if (test_bit(QEDF_RPORT_IN_RESET, &fcport->flags) ||
@@ -398,8 +396,11 @@ static void qedf_l2_els_compl(struct qedf_els_cb_arg *cb_arg)
 	 * If we are flushing the command just free the cb_arg as none of the
 	 * response data will be valid.
 	 */
-	if (els_req->event == QEDF_IOREQ_EV_ELS_FLUSH)
+	if (els_req->event == QEDF_IOREQ_EV_ELS_FLUSH) {
+		QEDF_ERR(NULL, "els_req xid=0x%x event is flush.\n",
+			 els_req->xid);
 		goto free_arg;
+	}
 
 	fcport = els_req->fcport;
 	mp_req = &(els_req->mp_req);
@@ -512,8 +513,10 @@ static void qedf_srr_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(NULL, "orig_io_req is NULL.\n");
 		goto out_free;
+	}
 
 	clear_bit(QEDF_CMD_SRR_SENT, &orig_io_req->flags);
 
@@ -527,8 +530,11 @@ static void qedf_srr_compl(struct qedf_els_cb_arg *cb_arg)
 		   orig_io_req, orig_io_req->xid, srr_req->xid, refcount);
 
 	/* If a SRR times out, simply free resources */
-	if (srr_req->event == QEDF_IOREQ_EV_ELS_TMO)
+	if (srr_req->event == QEDF_IOREQ_EV_ELS_TMO) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "ELS timeout rec_xid=0x%x.\n", srr_req->xid);
 		goto out_put;
+	}
 
 	/* Normalize response data into struct fc_frame */
 	mp_req = &(srr_req->mp_req);
@@ -579,7 +585,7 @@ static int qedf_send_srr(struct qedf_ioreq *orig_io_req, u32 offset, u8 r_ctl)
 	struct qedf_rport *fcport;
 	struct fc_lport *lport;
 	struct qedf_els_cb_arg *cb_arg = NULL;
-	u32 sid, r_a_tov;
+	u32 r_a_tov;
 	int rc;
 
 	if (!orig_io_req) {
@@ -605,7 +611,6 @@ static int qedf_send_srr(struct qedf_ioreq *orig_io_req, u32 offset, u8 r_ctl)
 
 	qedf = fcport->qedf;
 	lport = qedf->lport;
-	sid = fcport->sid;
 	r_a_tov = lport->r_a_tov;
 
 	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_ELS, "Sending SRR orig_io=%p, "
@@ -702,8 +707,11 @@ void qedf_process_seq_cleanup_compl(struct qedf_ctx *qedf,
 	cb_arg = io_req->cb_arg;
 
 	/* If we timed out just free resources */
-	if (io_req->event == QEDF_IOREQ_EV_ELS_TMO || !cqe)
+	if (io_req->event == QEDF_IOREQ_EV_ELS_TMO || !cqe) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "cqe is NULL or timeout event (0x%x)", io_req->event);
 		goto free;
+	}
 
 	/* Kill the timer we put on the request */
 	cancel_delayed_work_sync(&io_req->timeout_work);
@@ -806,8 +814,10 @@ static void qedf_rec_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(NULL, "orig_io_req is NULL.\n");
 		goto out_free;
+	}
 
 	if (rec_req->event != QEDF_IOREQ_EV_ELS_TMO &&
 	    rec_req->event != QEDF_IOREQ_EV_ELS_ERR_DETECT)
@@ -819,8 +829,12 @@ static void qedf_rec_compl(struct qedf_els_cb_arg *cb_arg)
 		   orig_io_req, orig_io_req->xid, rec_req->xid, refcount);
 
 	/* If a REC times out, free resources */
-	if (rec_req->event == QEDF_IOREQ_EV_ELS_TMO)
+	if (rec_req->event == QEDF_IOREQ_EV_ELS_TMO) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Got TMO event, orig_io_req %p orig_io_xid=0x%x.\n",
+			 orig_io_req, orig_io_req->xid);
 		goto out_put;
+	}
 
 	/* Normalize response data into struct fc_frame */
 	mp_req = &(rec_req->mp_req);

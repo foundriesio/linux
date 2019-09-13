@@ -30,6 +30,7 @@ const struct qed_fcoe_ops *qed_ops;
 
 static int qedf_probe(struct pci_dev *pdev, const struct pci_device_id *id);
 static void qedf_remove(struct pci_dev *pdev);
+static void qedf_shutdown(struct pci_dev *pdev);
 
 /*
  * Driver module parameters.
@@ -113,35 +114,45 @@ static struct kmem_cache *qedf_io_work_cache;
 
 void qedf_set_vlan_id(struct qedf_ctx *qedf, int vlan_id)
 {
-	qedf->vlan_id = vlan_id;
-	qedf->vlan_id |= qedf->prio << VLAN_PRIO_SHIFT;
-	QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_DISC, "Setting vlan_id=%04x "
-		   "prio=%d.\n", vlan_id, qedf->prio);
+	int vlan_id_tmp = 0;
+
+	vlan_id_tmp = vlan_id  | (qedf->prio << VLAN_PRIO_SHIFT);
+	qedf->vlan_id = vlan_id_tmp;
+	QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_DISC,
+		  "Setting vlan_id=0x%04x prio=%d.\n",
+		  vlan_id_tmp, qedf->prio);
 }
 
 /* Returns true if we have a valid vlan, false otherwise */
 static bool qedf_initiate_fipvlan_req(struct qedf_ctx *qedf)
 {
-	int rc;
-
-	if (atomic_read(&qedf->link_state) != QEDF_LINK_UP) {
-		QEDF_ERR(&(qedf->dbg_ctx), "Link not up.\n");
-		return  false;
-	}
 
 	while (qedf->fipvlan_retries--) {
-		if (qedf->vlan_id > 0)
+		/* This is to catch if link goes down during fipvlan retries */
+		if (atomic_read(&qedf->link_state) == QEDF_LINK_DOWN) {
+			QEDF_ERR(&qedf->dbg_ctx, "Link not up.\n");
+			return false;
+		}
+
+		if (test_bit(QEDF_UNLOADING, &qedf->flags)) {
+			QEDF_ERR(&qedf->dbg_ctx, "Driver unloading.\n");
+			return false;
+		}
+
+		if (qedf->vlan_id > 0) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_DISC,
+				  "vlan = 0x%x already set, calling ctlr_link_up.\n",
+				  qedf->vlan_id);
+			if (atomic_read(&qedf->link_state) == QEDF_LINK_UP)
+				fcoe_ctlr_link_up(&qedf->ctlr);
 			return true;
+		}
+
 		QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_DISC,
 			   "Retry %d.\n", qedf->fipvlan_retries);
 		init_completion(&qedf->fipvlan_compl);
 		qedf_fcoe_send_vlan_req(qedf);
-		rc = wait_for_completion_timeout(&qedf->fipvlan_compl,
-		    1 * HZ);
-		if (rc > 0) {
-			fcoe_ctlr_link_up(&qedf->ctlr);
-			return true;
-		}
+		wait_for_completion_timeout(&qedf->fipvlan_compl, 1 * HZ);
 	}
 
 	return false;
@@ -159,6 +170,14 @@ static void qedf_handle_link_update(struct work_struct *work)
 		rc = qedf_initiate_fipvlan_req(qedf);
 		if (rc)
 			return;
+
+		if (atomic_read(&qedf->link_state) != QEDF_LINK_UP) {
+			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_DISC,
+				  "Link is down, resetting vlan_id.\n");
+			qedf->vlan_id = 0;
+			return;
+		}
+
 		/*
 		 * If we get here then we never received a repsonse to our
 		 * fip vlan request so set the vlan_id to the default and
@@ -302,8 +321,10 @@ int qedf_send_flogi(struct qedf_ctx *qedf)
 
 	lport = qedf->lport;
 
-	if (!lport->tt.elsct_send)
+	if (!lport->tt.elsct_send) {
+		QEDF_ERR(&qedf->dbg_ctx, "tt.elsct_send not set.\n");
 		return -EINVAL;
+	}
 
 	fp = fc_frame_alloc(lport, sizeof(struct fc_els_flogi));
 	if (!fp) {
@@ -321,11 +342,6 @@ int qedf_send_flogi(struct qedf_ctx *qedf)
 	return 0;
 }
 
-struct qedf_tmp_rdata_item {
-	struct fc_rport_priv *rdata;
-	struct list_head list;
-};
-
 /*
  * This function is called if link_down_tmo is in use.  If we get a link up and
  * link_down_tmo has not expired then use just FLOGI/ADISC to recover our
@@ -335,9 +351,8 @@ static void qedf_link_recovery(struct work_struct *work)
 {
 	struct qedf_ctx *qedf =
 	    container_of(work, struct qedf_ctx, link_recovery.work);
-	struct qedf_rport *fcport;
+	struct fc_lport *lport = qedf->lport;
 	struct fc_rport_priv *rdata;
-	struct qedf_tmp_rdata_item *rdata_item, *tmp_rdata_item;
 	bool rc;
 	int retries = 30;
 	int rval, i;
@@ -404,33 +419,14 @@ static void qedf_link_recovery(struct work_struct *work)
 	 * Call lport->tt.rport_login which will cause libfc to send an
 	 * ADISC since the rport is in state ready.
 	 */
-	rcu_read_lock();
-	list_for_each_entry_rcu(fcport, &qedf->fcports, peers) {
-		rdata = fcport->rdata;
-		if (rdata == NULL)
-			continue;
-		rdata_item = kzalloc(sizeof(struct qedf_tmp_rdata_item),
-		    GFP_ATOMIC);
-		if (!rdata_item)
-			continue;
+	mutex_lock(&lport->disc.disc_mutex);
+	list_for_each_entry_rcu(rdata, &lport->disc.rports, peers) {
 		if (kref_get_unless_zero(&rdata->kref)) {
-			rdata_item->rdata = rdata;
-			list_add(&rdata_item->list, &rdata_login_list);
-		} else
-			kfree(rdata_item);
+			fc_rport_login(rdata);
+			kref_put(&rdata->kref, fc_rport_destroy);
+		}
 	}
-	rcu_read_unlock();
-	/*
-	 * Do the fc_rport_login outside of the rcu lock so we don't take a
-	 * mutex in an atomic context.
-	 */
-	list_for_each_entry_safe(rdata_item, tmp_rdata_item, &rdata_login_list,
-	    list) {
-		list_del(&rdata_item->list);
-		fc_rport_login(rdata_item->rdata);
-		kref_put(&rdata_item->rdata->kref, fc_rport_destroy);
-		kfree(rdata_item);
-	}
+	mutex_unlock(&lport->disc.disc_mutex);
 }
 
 static void qedf_update_link_speed(struct qedf_ctx *qedf,
@@ -445,6 +441,9 @@ static void qedf_update_link_speed(struct qedf_ctx *qedf,
 	switch (link->speed) {
 	case 10000:
 		lport->link_speed = FC_PORTSPEED_10GBIT;
+		break;
+	case 20000:
+		lport->link_speed = FC_PORTSPEED_20GBIT;
 		break;
 	case 25000:
 		lport->link_speed = FC_PORTSPEED_25GBIT;
@@ -477,12 +476,24 @@ static void qedf_update_link_speed(struct qedf_ctx *qedf,
 		lport->link_supported_speeds |= FC_PORTSPEED_50GBIT;
 	if (link->supported_caps & SUPPORTED_100000baseKR4_Full)
 		lport->link_supported_speeds |= FC_PORTSPEED_100GBIT;
+	if (link->supported_caps & QED_LM_20000baseKR2_Full_BIT)
+		lport->link_supported_speeds |= FC_PORTSPEED_20GBIT;
 	fc_host_supported_speeds(lport->host) = lport->link_supported_speeds;
 }
 
 static void qedf_link_update(void *dev, struct qed_link_output *link)
 {
 	struct qedf_ctx *qedf = (struct qedf_ctx *)dev;
+
+	/*
+	 * Prevent race where we're removing the module and we get link update
+	 * for qed.
+	 */
+	if (test_bit(QEDF_UNLOADING, &qedf->flags)) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Ignore link update, driver getting unload.\n");
+		return;
+	}
 
 	if (link->link_up) {
 		if (atomic_read(&qedf->link_state) == QEDF_LINK_UP) {
@@ -2203,12 +2214,14 @@ static void qedf_recv_frame(struct qedf_ctx *qedf,
 	fr_dev(fp) = lport;
 	fr_sof(fp) = hp->fcoe_sof;
 	if (skb_copy_bits(skb, fr_len, &crc_eof, sizeof(crc_eof))) {
+		QEDF_INFO(NULL, QEDF_LOG_LL2, "skb_copy_bits failed.\n");
 		kfree_skb(skb);
 		return;
 	}
 	fr_eof(fp) = crc_eof.fcoe_eof;
 	fr_crc(fp) = crc_eof.fcoe_crc32;
 	if (pskb_trim(skb, fr_len)) {
+		QEDF_INFO(NULL, QEDF_LOG_LL2, "pskb_trim failed.\n");
 		kfree_skb(skb);
 		return;
 	}
@@ -2269,9 +2282,9 @@ static void qedf_recv_frame(struct qedf_ctx *qedf,
 	 * empty then this is not addressed to our port so simply drop it.
 	 */
 	if (lport->port_id != ntoh24(fh->fh_d_id) && !vn_port) {
-		QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_LL2,
-		    "Dropping frame due to destination mismatch: lport->port_id=%x fh->d_id=%x.\n",
-		    lport->port_id, ntoh24(fh->fh_d_id));
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_LL2,
+			  "Dropping frame due to destination mismatch: lport->port_id=0x%x fh->d_id=0x%x.\n",
+			  lport->port_id, ntoh24(fh->fh_d_id));
 		kfree_skb(skb);
 		return;
 	}
@@ -2280,6 +2293,8 @@ static void qedf_recv_frame(struct qedf_ctx *qedf,
 	if ((fh->fh_type == FC_TYPE_BLS) && (f_ctl & FC_FC_SEQ_CTX) &&
 	    (f_ctl & FC_FC_EX_CTX)) {
 		/* Drop incoming ABTS response that has both SEQ/EX CTX set */
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_LL2,
+			  "Dropping ABTS response as both SEQ/EX CTX set.\n");
 		kfree_skb(skb);
 		return;
 	}
@@ -2361,6 +2376,13 @@ static int qedf_ll2_rx(void *cookie, struct sk_buff *skb,
 	struct qedf_ctx *qedf = (struct qedf_ctx *)cookie;
 	struct qedf_skb_work *skb_work;
 
+	if (atomic_read(&qedf->link_state) == QEDF_LINK_DOWN) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_LL2,
+			  "Dropping frame as link state is down.\n");
+		kfree_skb(skb);
+		return 0;
+	}
+
 	skb_work = kzalloc(sizeof(struct qedf_skb_work), GFP_ATOMIC);
 	if (!skb_work) {
 		QEDF_WARN(&(qedf->dbg_ctx), "Could not allocate skb_work so "
@@ -2416,8 +2438,9 @@ static int qedf_alloc_and_init_sb(struct qedf_ctx *qedf,
 	    sizeof(struct status_block_e4), &sb_phys, GFP_KERNEL);
 
 	if (!sb_virt) {
-		QEDF_ERR(&(qedf->dbg_ctx), "Status block allocation failed "
-			  "for id = %d.\n", sb_id);
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Status block allocation failed for id = %d.\n",
+			 sb_id);
 		return -ENOMEM;
 	}
 
@@ -2425,8 +2448,9 @@ static int qedf_alloc_and_init_sb(struct qedf_ctx *qedf,
 	    sb_id, QED_SB_TYPE_STORAGE);
 
 	if (ret) {
-		QEDF_ERR(&(qedf->dbg_ctx), "Status block initialization "
-			  "failed for id = %d.\n", sb_id);
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Status block initialization failed (0x%x) for id = %d.\n",
+			 ret, sb_id);
 		return ret;
 	}
 
@@ -2510,13 +2534,18 @@ void qedf_process_cqe(struct qedf_ctx *qedf, struct fcoe_cqe *cqe)
 	io_req = &qedf->cmd_mgr->cmds[xid];
 
 	/* Completion not for a valid I/O anymore so just return */
-	if (!io_req)
+	if (!io_req) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "io_req is NULL for xid=0x%x.\n", xid);
 		return;
+	}
 
 	fcport = io_req->fcport;
 
 	if (fcport == NULL) {
-		QEDF_ERR(&(qedf->dbg_ctx), "fcport is NULL.\n");
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "fcport is NULL for xid=0x%x io_req=%p.\n",
+			 xid, io_req);
 		return;
 	}
 
@@ -2525,7 +2554,8 @@ void qedf_process_cqe(struct qedf_ctx *qedf, struct fcoe_cqe *cqe)
 	 * isn't valid and shouldn't be taken. We should just return.
 	 */
 	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
-		QEDF_ERR(&(qedf->dbg_ctx), "Session not offloaded yet.\n");
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Session not offloaded yet, fcport = %p.\n", fcport);
 		return;
 	}
 
@@ -2735,6 +2765,7 @@ static int qedf_alloc_global_queues(struct qedf_ctx *qedf)
 	 */
 	if (!qedf->p_cpuq) {
 		status = 1;
+		QEDF_ERR(&qedf->dbg_ctx, "p_cpuq is NULL.\n");
 		goto mem_alloc_failure;
 	}
 
@@ -2750,8 +2781,10 @@ static int qedf_alloc_global_queues(struct qedf_ctx *qedf)
 
 	/* Allocate DMA coherent buffers for BDQ */
 	rc = qedf_alloc_bdq(qedf);
-	if (rc)
+	if (rc) {
+		QEDF_ERR(&qedf->dbg_ctx, "Unable to allocate bdq.\n");
 		goto mem_alloc_failure;
+	}
 
 	/* Allocate a CQ and an associated PBL for each MSI-X vector */
 	for (i = 0; i < qedf->num_queues; i++) {
@@ -2960,6 +2993,7 @@ static struct pci_driver qedf_pci_driver = {
 	.id_table = qedf_pci_tbl,
 	.probe = qedf_probe,
 	.remove = qedf_remove,
+	.shutdown = qedf_shutdown,
 };
 
 static int __qedf_probe(struct pci_dev *pdev, int mode)
@@ -3059,6 +3093,7 @@ static int __qedf_probe(struct pci_dev *pdev, int mode)
 	qed_params.is_vf = is_vf;
 	qedf->cdev = qed_ops->common->probe(pdev, &qed_params);
 	if (!qedf->cdev) {
+		QEDF_ERR(&qedf->dbg_ctx, "common probe failed.\n");
 		rc = -ENODEV;
 		goto err1;
 	}
@@ -3122,8 +3157,10 @@ static int __qedf_probe(struct pci_dev *pdev, int mode)
 
 	/* Setup interrupts */
 	rc = qedf_setup_int(qedf);
-	if (rc)
+	if (rc) {
+		QEDF_ERR(&qedf->dbg_ctx, "Setup interrupts failed.\n");
 		goto err3;
+	}
 
 	rc = qed_ops->start(qedf->cdev, &qedf->tasks);
 	if (rc) {
@@ -3207,7 +3244,7 @@ static int __qedf_probe(struct pci_dev *pdev, int mode)
 	}
 
 	memset(&params, 0, sizeof(params));
-	params.mtu = 9000;
+	params.mtu = QEDF_LL2_BUF_SIZE;
 	ether_addr_copy(params.ll2_mac_address, qedf->mac);
 
 	/* Start LL2 processing thread */
@@ -3555,6 +3592,11 @@ void qedf_get_protocol_tlv_data(void *dev, void *data)
 	fcoe->scsi_tsk_full = qedf->task_set_fulls;
 }
 
+static void qedf_shutdown(struct pci_dev *pdev)
+{
+	__qedf_remove(pdev, QEDF_MODE_NORMAL);
+}
+
 /* Generic TLV data callback */
 void qedf_get_generic_tlv_data(void *dev, struct qed_generic_tlvs *data)
 {
@@ -3690,7 +3732,7 @@ static void __exit qedf_cleanup(void)
 }
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("QLogic QEDF 25/40/50/100Gb FCoE Driver");
+MODULE_DESCRIPTION("QLogic FastLinQ 4xxxx FCoE Module");
 MODULE_AUTHOR("QLogic Corporation");
 MODULE_VERSION(QEDF_VERSION);
 module_init(qedf_init);
