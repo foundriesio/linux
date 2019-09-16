@@ -419,6 +419,7 @@
 			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 			telechips,cma-alloc-size = <CMA_SIZE_UMP_RESERVED>;
 			telechips,pmap-secured = <4>;
+			no-map;
 		};
 
                 pmap_ion_carveout_cam: ion_carveout_cam {
@@ -428,6 +429,7 @@
                         size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
 			telechips,cma-alloc-size = <CMA_SIZE_ION_CARVEOUT_CAM>;
                         telechips,pmap-secured = <4>;
+			no-map;
                 };
 
 		/*-----------------------------------------------------------
