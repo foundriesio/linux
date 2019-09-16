@@ -956,8 +956,6 @@ static int _vp9mgr_operation(void)
                 {
                     int opened_count = vp9mgr_data.dev_opened;
 
-                    _vp9mgr_close_all(1);
-
             #if 1
                     while(opened_count)
                     {
@@ -977,6 +975,8 @@ static int _vp9mgr_operation(void)
             #else
                     vp9mgr_hw_reset();
             #endif
+
+                    _vp9mgr_close_all(1);
                 }
             }
         }
