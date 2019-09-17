@@ -87,6 +87,10 @@
 	};
 };
 
+&atmel_mxt_ts {
+	status = "okay";
+};
+
 &backlight {
 	brightness-levels = <0 45 63 88 119 158 203 255>;
 	default-brightness-level = <4>;
@@ -97,18 +101,6 @@
 /* Colibri I2C */
 &i2c1 {
 	status = "okay";
-
-	/* Atmel maxtouch controller */
-	atmel_mxt_ts: atmel_mxt_ts@4a {
-		compatible = "atmel,maxtouch";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_mxt_ts>;
-		reg = <0x4a>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <20 IRQ_TYPE_EDGE_FALLING>;	/* SODIMM 107 */
-		reset-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* SODIMM 106 */
-		status = "okay";
-	};
 };
 
 &iomuxc {
@@ -116,13 +108,6 @@
 	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog2>;
 
 	colibri-imx8qxp {
-		pinctrl_mxt_ts: mxt-ts {
-			fsl,pins = <
-				SC_P_QSPI0B_DATA2_LSIO_GPIO3_IO20	0x20	/* SODIMM 107 */
-				SC_P_QSPI0B_SS1_B_LSIO_GPIO3_IO24	0x20	/* SODIMM 106 */
-			>;
-		};
-
 		pinctrl_gpio_keys: gpiokeys {
 			fsl,pins = <
 				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10	0x20	/* SODIMM  45 */
