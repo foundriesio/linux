@@ -429,7 +429,6 @@
 			alloc-ranges = <SECURE_AREA_4_BASE SECURE_AREA_4_SIZE>;
 			size = <PMAP_SIZE_UMP_RESERVED>; // Max-Video-Resolution(Aligned_256KB(w*h*3/2)) * 12 + 1MB
 			telechips,pmap-secured = <4>;
-			no-map;
 		};
 
                 pmap_ion_carveout_cam: ion_carveout_cam {
@@ -438,7 +437,6 @@
                         alloc-ranges = <SECURE_AREA_4_BASE SECURE_AREA_4_SIZE>;
                         size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
                         telechips,pmap-secured = <4>;
-			no-map;
                 };
 
 		/*-----------------------------------------------------------
