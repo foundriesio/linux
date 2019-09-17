@@ -1455,6 +1455,13 @@
 		mboxes = <&mbox1 TCC_MBOX1_CH_SWITCH>;
 	};
 
+	/* snor updater driver*/
+	snor_updater: snor_updater {
+		compatible = "telechips,snor_updater";
+		mbox-names ="snor-update-mbox";
+		mboxes = <&mbox0 TCC_MBOX0_CH_SNOR_UPDATE>;
+	};
+
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc803x-i2c";
 		reg = <0x16300000 0x1c 0x163c0000 0x010>;

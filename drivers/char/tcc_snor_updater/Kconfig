@@ -1,0 +1,6 @@
+config TCC_SNOR_UPDATER
+	bool "TCC SNOR Update Driver for TCC803x"
+	default n
+	depends on TCC_MULTI_MAILBOX
+	help 
+		TCC driver only supports TCC803x.
