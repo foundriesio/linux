@@ -243,12 +243,24 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
+
+	/* Atmel maxtouch controller */
+	atmel_mxt_ts: atmel_mxt_ts@4a {
+		compatible = "atmel,maxtouch";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mxt_ts>;
+		reg = <0x4a>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <20 IRQ_TYPE_EDGE_FALLING>;	/* SODIMM 107 */
+		reset-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* SODIMM 106 */
+                status = "disabled";
+        };
 };
 
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog0>, <&pinctrl_hog1>, <&pinctrl_hog2>,
-			<&pinctrl_ext_io0>;
+			<&pinctrl_ext_io0>, <&pinctrl_mxt_ts>;
 
 	colibri-imx8qxp {
 		/* On-module touch pen-down interrupt */
@@ -389,7 +401,6 @@
 				SC_P_SAI0_TXD_LSIO_GPIO0_IO25			0x20		/* SODIMM 103 */
 				SC_P_CSI_D01_CI_PI_D03				0x61		/* SODIMM 103 */
 				SC_P_QSPI0B_DATA1_LSIO_GPIO3_IO19		0x20		/* SODIMM 105 */
-				SC_P_QSPI0B_DATA2_LSIO_GPIO3_IO20		0x20		/* SODIMM 107 */
 				SC_P_USB_SS3_TC2_LSIO_GPIO4_IO05		0x20		/* SODIMM 127 */
 				SC_P_USB_SS3_TC3_LSIO_GPIO4_IO06		0x20		/* SODIMM 131 */
 				SC_P_USB_SS3_TC1_LSIO_GPIO4_IO04		0x20		/* SODIMM 133 */
@@ -398,7 +409,6 @@
 				SC_P_SAI1_RXFS_LSIO_GPIO0_IO31			0x20		/* SODIMM 100 */
 				SC_P_QSPI0B_DQS_LSIO_GPIO3_IO22			0x20		/* SODIMM 102 */
 				SC_P_QSPI0B_SS0_B_LSIO_GPIO3_IO23		0x20		/* SODIMM 104 */
-				SC_P_QSPI0B_SS1_B_LSIO_GPIO3_IO24		0x20		/* SODIMM 106 */
 			>;
 		};
 
@@ -718,6 +728,13 @@
 		pinctrl_wifi: wifigrp {
 			fsl,pins = <
 				SC_P_SCU_BOOT_MODE3_SCU_DSC_RTC_CLOCK_OUTPUT_32K 0x20
+			>;
+		};
+
+		pinctrl_mxt_ts: mxt-ts {
+			fsl,pins = <
+				SC_P_QSPI0B_DATA2_LSIO_GPIO3_IO20		0x20		/* SODIMM 107 */
+				SC_P_QSPI0B_SS1_B_LSIO_GPIO3_IO24		0x20		/* SODIMM 106 */
 			>;
 		};
 	};

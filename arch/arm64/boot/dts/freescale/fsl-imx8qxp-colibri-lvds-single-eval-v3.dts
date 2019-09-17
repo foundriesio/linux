@@ -30,6 +30,18 @@
 	status = "disabled";
 };
 
+/*
+ * Atmel maxtouch controller
+ * To enable it, you should disable pwm0 (PWM_B) and pwm1 (PWM_C)
+ */
+&atmel_mxt_ts {
+        pinctrl-0 = <&pinctrl_pwm_b &pinctrl_pwm_c>;
+        interrupt-parent = <&gpio0>;
+        interrupts = <21 IRQ_TYPE_EDGE_FALLING>;        /* SODIMM 28 */
+        reset-gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;     /* SODIMM 30 */
+	status = "okay";
+};
+
 &backlight {
 	brightness-levels = <0 45 63 88 119 158 203 255>;
 	default-brightness-level = <4>;
@@ -155,17 +167,6 @@
 
 &i2c1 {
 	status = "okay";
-
-	atmel_mxt_ts: atmel_mxt_ts@4a {
-		compatible = "atmel,maxtouch";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_touch>;
-		reg = <0x4a>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <21 IRQ_TYPE_EDGE_FALLING>;	/* SODIMM  98 */
-		reset-gpios = <&gpio4 4 GPIO_ACTIVE_HIGH>;	/* SODIMM 133 */
-		status = "okay";
-	};
 };
 
 &pixel_combiner {
@@ -206,4 +207,14 @@
 
 &prg9 {
 	status = "okay";
+};
+
+/* Colibri PWM_B */
+&pwm0 {
+	status = "disabled";
+};
+
+/* Colibri PWM_C */
+&pwm1 {
+	status = "disabled";
 };
