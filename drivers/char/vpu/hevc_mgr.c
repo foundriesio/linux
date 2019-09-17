@@ -1148,8 +1148,6 @@ static int _hmgr_operation(void)
                 {
                     int opened_count = hmgr_data.dev_opened;
 
-                    _hmgr_close_all(1);
-
             #if 1
                     while(opened_count)
                     {
@@ -1169,6 +1167,8 @@ static int _hmgr_operation(void)
             #else
                     hmgr_hw_reset();
             #endif
+
+                    _hmgr_close_all(1);
                 }
             }
         }

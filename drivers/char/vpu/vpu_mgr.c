@@ -765,6 +765,67 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
     return ret;
 }
 
+static int _vmgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
+{
+    if(!vmgr_get_close(type) && vmgr_data.handle[type] != 0x00)
+    {
+        list->type = type;
+        if( type >= VPU_ENC )
+            list->cmd_type = VPU_ENC_CLOSE;
+        else
+            list->cmd_type = VPU_DEC_CLOSE;
+        list->handle    = vmgr_data.handle[type];
+        list->args      = NULL;
+        list->comm_data = NULL;
+        list->vpu_result = result;
+
+        printk("_vmgr_proc_exit_by_external for %d!! \n", type);
+        vmgr_list_manager(list, LIST_ADD);
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static void _vmgr_wait_process(int wait_ms)
+{
+    int max_count = wait_ms/20;
+
+    //wait!! in case exceptional processing. ex). sdcard out!!
+    while(vmgr_data.cmd_processing)
+    {
+        max_count--;
+        msleep(20);
+
+        if(max_count <= 0)
+        {
+            err("cmd_processing(cmd %d) didn't finish!! \n", vmgr_data.current_cmd);
+            break;
+        }
+    }
+}
+
+static int _vmgr_external_all_close(int wait_ms)
+{
+    int type = 0;
+    int max_count = 0;
+    int ret;
+
+    for (type = 0; type < VPU_MAX; type++) {
+        if (_vmgr_proc_exit_by_external(&vmgr_data.vList[type], &ret, type)) {
+            max_count = wait_ms/10;
+
+            while (!vmgr_get_close(type)) {
+                max_count--;
+                msleep(10);
+            }
+        }
+    }
+
+    return 0;
+}
+
 static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -1032,6 +1093,20 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
     #endif
 
+		case VPU_TRY_FORCE_CLOSE:
+		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+			if(!vmgr_data.bVpu_already_proc_force_closed)
+			{
+				_vmgr_wait_process(2000);
+				vmgr_data.external_proc = 1;
+				_vmgr_external_all_close(200);
+				vmgr_data.external_proc = 0;
+				vmgr_data.bVpu_already_proc_force_closed = true;
+			}
+		}
+		break;
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1068,29 +1143,6 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
     wake_up_interruptible(&(vmgr_data.oper_wq));
 
     return IRQ_HANDLED;
-}
-
-static int _vmgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
-{
-    if(!vmgr_get_close(type) && vmgr_data.handle[type] != 0x00)
-    {
-        list->type = type;
-        if( type >= VPU_ENC )
-            list->cmd_type = VPU_ENC_CLOSE;
-        else
-            list->cmd_type = VPU_DEC_CLOSE;
-        list->handle    = vmgr_data.handle[type];
-        list->args      = NULL;
-        list->comm_data = NULL;
-        list->vpu_result = result;
-
-        printk("_vmgr_proc_exit_by_external for %d!! \n", type);
-        vmgr_list_manager(list, LIST_ADD);
-
-        return 1;
-    }
-
-    return 0;
 }
 
 static int _vmgr_open(struct inode *inode, struct file *filp)
@@ -1133,50 +1185,14 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
     return 0;
 }
 
-static void _vmgr_wait_process(int wait_ms)
-{
-    int max_count = wait_ms/20;
-
-    //wait!! in case exceptional processing. ex). sdcard out!!
-    while(vmgr_data.cmd_processing)
-    {
-        max_count--;
-        msleep(20);
-
-        if(max_count <= 0)
-        {
-            err("cmd_processing(cmd %d) didn't finish!! \n", vmgr_data.current_cmd);
-            break;
-        }
-    }
-}
-
-static int _vmgr_external_all_close(int wait_ms)
-{
-    int type = 0;
-    int max_count = 0;
-    int ret;
-
-    for (type = 0; type < VPU_MAX; type++) {
-        if (_vmgr_proc_exit_by_external(&vmgr_data.vList[type], &ret, type)) {
-            max_count = wait_ms/10;
-
-            while (!vmgr_get_close(type)) {
-                max_count--;
-                msleep(10);
-            }
-        }
-    }
-
-    return 0;
-}
-
 static int _vmgr_release(struct inode *inode, struct file *filp)
 {
     dprintk("_vmgr_release In!! %d'th \n", vmgr_data.dev_opened);
 
-    _vmgr_wait_process(2000);
-
+	if(!vmgr_data.bVpu_already_proc_force_closed)
+	{
+		_vmgr_wait_process(2000);
+	}
     if (vmgr_data.dev_opened > 0) {
         vmgr_data.dev_opened--;
     }
@@ -1187,10 +1203,14 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
         int type = 0, alive_cnt = 0;
 
     #if 1 // To close whole vpu instance when being killed process opened this.
-        vmgr_data.external_proc = 1;
-        _vmgr_external_all_close(200);
-        _vmgr_wait_process(2000);
-        vmgr_data.external_proc = 0;
+	if(!vmgr_data.bVpu_already_proc_force_closed)
+	{
+		vmgr_data.external_proc = 1;
+		_vmgr_external_all_close(200);
+		_vmgr_wait_process(2000);
+		vmgr_data.external_proc = 0;
+	}
+	vmgr_data.bVpu_already_proc_force_closed = false;
     #endif
 
         for(type=0; type<VPU_MAX; type++) {
@@ -1441,8 +1461,6 @@ static int _vmgr_operation(void)
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
                     int opened_count = vmgr_data.dev_opened;
 
-                    _vmgr_close_all(1);
-
                 #if 1
                     while(opened_count)
                     {
@@ -1462,6 +1480,8 @@ static int _vmgr_operation(void)
                 #else
                     vmgr_hw_reset();
                 #endif
+
+                    _vmgr_close_all(1);
                 }
             }
         } else {

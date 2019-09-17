@@ -167,6 +167,7 @@ typedef struct _mgr_data_t {
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
     TimeInfo_t iTime[VPU_MAX];
 #endif
+	bool bVpu_already_proc_force_closed;
 } mgr_data_t;
 
 #if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)

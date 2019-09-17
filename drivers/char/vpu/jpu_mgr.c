@@ -1269,8 +1269,6 @@ static int _jmgr_operation(void)
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
                     int opened_count = jmgr_data.dev_opened;
 
-                    _jmgr_close_all(1);
-
                 #if 1
                     while (opened_count) {
                         jmgr_disable_clock(0);
@@ -1288,6 +1286,8 @@ static int _jmgr_operation(void)
                 #else
                     jmgr_hw_reset();
                 #endif
+
+                    _jmgr_close_all(1);
                 }
             }
         }
