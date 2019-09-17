@@ -527,7 +527,7 @@ static int __init tcc_pmap_init(void)
 			entry->parent = &secure_area_table[entry->info.groups-1];
 			entry->parent->info.flags |= entry->info.flags;
 
-			if (entry->info.base < entry->parent->info.base) {
+			if (entry->info.size && entry->info.base < entry->parent->info.base) {
 				entry->parent->info.base = entry->info.base;
 			}
 		}
