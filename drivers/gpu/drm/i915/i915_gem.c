@@ -3435,6 +3435,11 @@ i915_gem_idle_work_handler(struct work_struct *work)
 
 	intel_display_power_put(dev_priv, POWER_DOMAIN_GT_IRQ);
 
+	if (NEEDS_RC6_CTX_CORRUPTION_WA(dev_priv)) {
+		i915_rc6_ctx_wa_check(dev_priv);
+		intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
+	}
+
 	intel_runtime_pm_put(dev_priv);
 out_unlock:
 	mutex_unlock(&dev_priv->drm.struct_mutex);
