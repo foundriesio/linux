@@ -24,6 +24,7 @@
  * since pm_power_off itself is global.
  */
 static struct gpio_desc *reset_gpio;
+static void *prev_pm_power_off = NULL;
 
 static void gpio_poweroff_do_poweroff(void)
 {
@@ -48,14 +49,28 @@ static void gpio_poweroff_do_poweroff(void)
 static int gpio_poweroff_probe(struct platform_device *pdev)
 {
 	bool input = false;
+	bool force = false;
 	enum gpiod_flags flags;
 
-	/* If a pm_power_off function has already been added, leave it alone */
+
+	force = of_property_read_bool(pdev->dev.of_node, "force-mode");
+
+	/*
+	 * If a pm_power_off function has already been added, leave it alone,
+	 * if force-mode is not enabled.
+	 */
 	if (pm_power_off != NULL) {
-		dev_err(&pdev->dev,
-			"%s: pm_power_off function already registered",
-		       __func__);
-		return -EBUSY;
+		if (force) {
+			dev_warn(&pdev->dev,
+				 "%s: pm_power_off function replaced",
+				 __func__);
+			prev_pm_power_off = pm_power_off;
+		} else {
+			dev_err(&pdev->dev,
+				"%s: pm_power_off function already registered",
+				__func__);
+			return -EBUSY;
+		}
 	}
 
 	input = of_property_read_bool(pdev->dev.of_node, "input");
@@ -75,7 +90,7 @@ static int gpio_poweroff_probe(struct platform_device *pdev)
 static int gpio_poweroff_remove(struct platform_device *pdev)
 {
 	if (pm_power_off == &gpio_poweroff_do_poweroff)
-		pm_power_off = NULL;
+		pm_power_off = prev_pm_power_off;
 
 	return 0;
 }

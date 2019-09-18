@@ -27,6 +27,9 @@ Optional properties:
   it to an output when the power-off handler is called. If this optional
   property is not specified, the GPIO is initialized as an output in its
   inactive state.
+- force-mode: Force replacing pm_power_off kernel hook.
+  If this optional property is not specified, the driver will fail to
+  load if someone has registered the pm_power_off hook earlier.
 
 Examples:
 
