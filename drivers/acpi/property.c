@@ -1066,7 +1066,7 @@ static struct fwnode_handle *acpi_graph_get_child_prop_value(
 
 
 /**
- * acpi_graph_get_remote_enpoint - Parses and returns remote end of an endpoint
+ * acpi_graph_get_remote_endpoint - Parses and returns remote end of an endpoint
  * @fwnode: Endpoint firmware node pointing to a remote device
  * @parent: Firmware node of remote port parent is filled here if not %NULL
  * @port: Firmware node of remote port is filled here if not %NULL
