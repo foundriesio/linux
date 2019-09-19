@@ -357,7 +357,7 @@
 
 		pinctrl_gpiokeys: gpiokeysgrp {
 			fsl,pins = <
-				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10		0x06700020	/* SODIMM  45 */
+				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10		0x06700041	/* SODIMM  45 */
 			>;
 		};
 
