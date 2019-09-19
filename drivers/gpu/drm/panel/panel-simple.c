@@ -1913,29 +1913,6 @@ static const struct panel_desc toradex_captouch_101_lvds = {
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
 };
 
-static const struct display_timing toradex_captouch_7_rgb_timing = {
-	.pixelclock = { 33300000, 33300000, 46800000 },
-	.hactive = { 800, 800, 800 },
-	.hfront_porch = { 16, 210, 354 },
-	.hback_porch = { 46, 46, 46 },
-	.hsync_len = { 1, 20, 40 },
-	.vactive = { 480, 480, 480 },
-	.vfront_porch = { 7, 22, 147 },
-	.vback_porch = { 23, 23, 23 },
-	.vsync_len = { 1, 10, 20 },
-};
-
-static const struct panel_desc toradex_captouch_7_rgb = {
-	.timings = &toradex_captouch_7_rgb_timing,
-	.num_timings = 1,
-	.size = {
-		.width = 154,
-		.height = 86,
-	},
-	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
-};
-
 static const struct drm_display_mode tpk_f07a_0102_mode = {
 	.clock = 33260,
 	.hdisplay = 800,
@@ -2226,9 +2203,6 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "toradex,captouch-101-lvds",
 		.data = &toradex_captouch_101_lvds,
-	}, {
-		.compatible = "toradex,captouch-7-rgb",
-		.data = &toradex_captouch_7_rgb,
 	}, {
 		.compatible = "tpk,f07a-0102",
 		.data = &tpk_f07a_0102,
