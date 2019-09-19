@@ -56,9 +56,17 @@
 #define asrc_m2m_pcm_dbg_err(f, a...)	printk("<ASRC M2M PCM>" f, ##a)
 #define asrc_m2m_pcm_dbg_id_err(id, f, a...)	printk("<ASRC M2M PCM-%d>" f, id, ##a)
 
-static int tcc_asrc_m2m_pcm_stop(struct snd_pcm_substream *substream);
+static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool prepare);
+static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream);
+static char tcc_is_flag_update(struct asrc_m2m_pcm_stream *strm, char is_flag, char mode);
 static int tcc_ptr_update_thread_for_capture(void *data);
 static int tcc_appl_ptr_check_thread_for_play(void *data);
+
+//#define TAIL_DEBUG
+#ifdef TAIL_DEBUG
+ssize_t cap_tail=0;
+ssize_t play_tail=0;
+#endif
 
 static const struct snd_pcm_hardware tcc_asrc_m2m_pcm_hw[TCC_ASRC_M2M_TYPE_MAX] = {
 	[TCC_ASRC_M2M_7_1CH] = {
@@ -474,7 +482,6 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
     struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)data;
 	//unsigned int cmd = msg[0];	//for debug
 	unsigned int pos = msg[2];
-	unsigned long flags;
 	char Ctemp=0;
 
 	if (asrc_m2m_pcm == NULL) {
@@ -491,19 +498,17 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
         pos = msg[cmd_type];
     }
 	if(cmd_type == asrc_m2m_pcm->playback->mbox_cmd_type) {	//For playback
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+	
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 		if(((Ctemp & IS_A7S_STARTED)!= 0)
 				&&(asrc_m2m_pcm->playback->middle->cur_pos_from_ipc != pos)) {
 			asrc_m2m_pcm->playback->middle->pre_pos_from_ipc = asrc_m2m_pcm->playback->middle->cur_pos_from_ipc;
 			asrc_m2m_pcm->playback->middle->cur_pos_from_ipc = pos;
 			playback_for_mbox_callback(asrc_m2m_pcm);
 		}
-	} else {			//For capture
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+	} else {	//For capture
+
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 		if(((Ctemp & IS_A7S_STARTED)!= 0)
 				&&(asrc_m2m_pcm->capture->middle->cur_pos_from_ipc != pos)) {
 			asrc_m2m_pcm->capture->middle->pre_pos_from_ipc = asrc_m2m_pcm->capture->middle->cur_pos_from_ipc;
@@ -516,49 +521,11 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 }
 #endif
 
-static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool prepare)
-{
-/*
-	unsigned long flags;
-	spin_lock_irqsave(&strm->is_locked, flags);
-	strm->is_flag = 0;
-	spin_unlock_irqrestore(&strm->is_locked, flags);
-
-	//atomic_set(&strm->wakeup, 0);
-*/
-	//Buffer info reset.
-	strm->app->pre_pos = 0;
-	strm->app->pre_ptr = 0;
-	if(!prepare) {
-		strm->src->buffer_bytes = 0;
-		strm->src->period_bytes = 0;
-
-		strm->dst->buffer_bytes = 0;
-		strm->dst->period_bytes = 0;
-
-		strm->middle->buffer_bytes = 0;
-
-		strm->interval = 0;
-	}
-	strm->middle->cur_pos = 0;
-	strm->middle->pre_pos = 0;
-#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	strm->middle->cur_pos_from_ipc = 0;
-	strm->middle->pre_pos_from_ipc = 0;
-#endif
-	if((prepare) && (strm->middle->dma_buf->area != NULL))
-		memset(strm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
-
-	strm->Bwrote = 0;
-	strm->Btail = 0;
-}
-
 static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
 	struct task_struct *pkth_id=NULL;
-	unsigned long flags;
 
 	asrc_m2m_pcm_dbg("%s, id=%d\n", __func__, substream->pcm->device);
 
@@ -579,10 +546,7 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 		asrc_m2m_pcm->playback->asrc_substream = substream;
 		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->playback, false);
 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		asrc_m2m_pcm->playback->is_flag = 0;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
-
+		tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_RESET);
 
 		if(asrc_m2m_pcm->playback->first_open == false) {
 			asrc_m2m_pcm->playback->first_open = true;
@@ -607,9 +571,7 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 		asrc_m2m_pcm->capture->asrc_substream = substream;
 		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, false);
 
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		asrc_m2m_pcm->capture->is_flag = 0;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_RESET);
 
 		if(asrc_m2m_pcm->capture->first_open == false) {
 			asrc_m2m_pcm->capture->first_open = true;
@@ -790,37 +752,28 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
-	unsigned long flags;
 	char Ctemp=0;
 	int ret = -1;
 
 	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 	} else {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 	}
 
 	//printk("[%s][%d] Ctemp=0x%08x \n", __func__, __LINE__, Ctemp);
 	if((Ctemp & IS_ASRC_STARTED) != 0) {
-		tcc_asrc_m2m_pcm_stop(substream);
+		tcc_asrc_m2m_pcm_asrc_stop(substream);
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		asrc_m2m_pcm->playback->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		tcc_is_flag_update(asrc_m2m_pcm->playback, (IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING), IS_FLAG_RELEASE);
 
 		atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 		wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 	} else {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		asrc_m2m_pcm->capture->is_flag &= ~(IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING);
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		tcc_is_flag_update(asrc_m2m_pcm->capture, (IS_TRIG_STARTED | IS_ASRC_STARTED | IS_ASRC_RUNNING), IS_FLAG_RELEASE);
 
 		atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
 		wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
@@ -848,18 +801,14 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 	} else {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 	}
 
 	if((Ctemp & IS_ASRC_STARTED) != 0) {
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] ASRC stop yet.\n", __func__);
-		tcc_asrc_m2m_pcm_stop(substream);
+		tcc_asrc_m2m_pcm_asrc_stop(substream);
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -876,13 +825,18 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 
 		if(asrc_m2m_pcm->playback->middle->dma_buf->area != NULL)
 			memset(asrc_m2m_pcm->playback->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
-
+#ifdef TAIL_DEBUG
+		play_tail=0;
+#endif
 	} else {
 
 		tcc_asrc_m2m_pcm_stream_reset(asrc_m2m_pcm->capture, true);
 
 		if(asrc_m2m_pcm->capture->middle->dma_buf->area != NULL)
 			memset(asrc_m2m_pcm->capture->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+#ifdef TAIL_DEBUG
+		cap_tail=0;
+#endif
 	}
 
 	memset(runtime->dma_area, 0x00, runtime->dma_bytes);
@@ -899,7 +853,6 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	struct tcc_asrc_param_t *pasrc_param = NULL; //asrc_m2m_pcm->asrc_m2m_param;
 	struct tcc_asrc_t *pasrc = asrc_m2m_pcm->asrc;
 //	unsigned int temp=0;
-	unsigned long flags;
 	char Ctemp=0;
 	int ret=-1;
 
@@ -921,13 +874,9 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 	} else {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 	}
 
 	switch (cmd) {
@@ -1023,16 +972,12 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 			Ctemp |= IS_TRIG_STARTED;
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				asrc_m2m_pcm->playback->is_flag |= Ctemp;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				tcc_is_flag_update(asrc_m2m_pcm->playback, Ctemp, IS_FLAG_SET);
 
 				atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 				wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 			} else {
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				asrc_m2m_pcm->capture->is_flag |= Ctemp;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+				tcc_is_flag_update(asrc_m2m_pcm->capture, Ctemp, IS_FLAG_SET);
 
 				atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
 				wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
@@ -1055,18 +1000,14 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, PLAY\n");
 
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				asrc_m2m_pcm->playback->is_flag &= Ctemp;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				tcc_is_flag_update(asrc_m2m_pcm->playback, Ctemp, IS_FLAG_APPLY);
 
 				atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 				wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 			} else {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, CAPTURE\n");
 
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				asrc_m2m_pcm->capture->is_flag &= Ctemp;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+				tcc_is_flag_update(asrc_m2m_pcm->capture, Ctemp, IS_FLAG_APPLY);
 
 				atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
 				wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
@@ -1116,63 +1057,98 @@ static struct snd_pcm_ops tcc_asrc_m2m_pcm_ops = {
     .mmap = tcc_asrc_m2m_pcm_mmap,
 };
 
-static int tcc_asrc_m2m_pcm_stop(struct snd_pcm_substream *substream)
+static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool prepare)
+{
+/*
+	unsigned long flags;
+	spin_lock_irqsave(&strm->is_locked, flags);
+	strm->is_flag = 0;
+	spin_unlock_irqrestore(&strm->is_locked, flags);
+
+	//atomic_set(&strm->wakeup, 0);
+*/
+	//Buffer info reset.
+	strm->app->pre_pos = 0;
+	strm->app->pre_ptr = 0;
+	if(!prepare) {
+		strm->src->buffer_bytes = 0;
+		strm->src->period_bytes = 0;
+
+		strm->dst->buffer_bytes = 0;
+		strm->dst->period_bytes = 0;
+
+		strm->middle->buffer_bytes = 0;
+
+		strm->interval = 0;
+	}
+	strm->middle->cur_pos = 0;
+	strm->middle->pre_pos = 0;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
+	strm->middle->cur_pos_from_ipc = 0;
+	strm->middle->pre_pos_from_ipc = 0;
+#endif
+	if((prepare) && (strm->middle->dma_buf->area != NULL))
+		memset(strm->middle->dma_buf->area, 0, sizeof(unsigned char)*MAX_BUFFER_BYTES*MID_BUFFER_CONST);
+
+	strm->Bwrote = 0;
+	strm->Btail = 0;
+}
+
+static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
-	unsigned long flags;
 	char Ctemp=0;
+	bool recheck=false;
 	int ret=-1, timeout=0;
 
 	while(timeout < 300) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-			Ctemp = asrc_m2m_pcm->playback->is_flag;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 		} else {
-			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-			Ctemp = asrc_m2m_pcm->capture->is_flag;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 		}
-		if(((Ctemp & IS_TRIG_STARTED) == 0)&&((Ctemp & IS_ASRC_RUNNING) == 0)) {
-			break;
+
+		if(((Ctemp & IS_TRIG_STARTED) == 0)
+			&&((Ctemp & IS_ASRC_RUNNING) == 0)) {
+
+			if (recheck) {
+				break;
+			}
+			recheck = true;
+		} else {
+			recheck = false;
 		}
+
 		timeout ++;
 		msleep(1);
 	}
-
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Ctemp=0x%08x, timeout=%d \n", __func__, __LINE__, Ctemp, timeout);
-
+/*	//for debug
+	if(timeout > 2) {
+		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] Ctemp=0x%08x, timeout=%d \n", __func__, __LINE__, Ctemp, timeout);
+	}
+*/
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP, PLAY\n");
 		if((asrc_m2m_pcm->playback->pair_id == 99)
 				&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
 			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
 			ret = -EINVAL;
-			goto error_pcm_stop;
+			goto error_pcm_asrc_stop;
 
 		} else if((asrc_m2m_pcm->playback->pair_id != 99)
 				&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
-/*
-			if((Ctemp & IS_ASRC_RUNNING) != 0) {
-				printk("[%s][%d] running!!\n", __func__, __LINE__);
-			}
-*/
+
 			ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->playback->pair_id);
 		} else {
 			ret = 0;
 		}
 
-
 		Ctemp &= ~IS_ASRC_STARTED;
 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		asrc_m2m_pcm->playback->is_flag &= Ctemp;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		tcc_is_flag_update(asrc_m2m_pcm->playback, Ctemp, IS_FLAG_APPLY);
 
 		//atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 		//wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
@@ -1180,24 +1156,18 @@ static int tcc_asrc_m2m_pcm_stop(struct snd_pcm_substream *substream)
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP ret=%d, PLAY\n", ret);
 	} else {
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP, CAPTURE\n");
-			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-			Ctemp = asrc_m2m_pcm->capture->is_flag;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 
 
 		if((asrc_m2m_pcm->capture->pair_id == 99)
 				&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
 			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
 			ret = -EINVAL;
-			goto error_pcm_stop;
+			goto error_pcm_asrc_stop;
 
 		} else if((asrc_m2m_pcm->capture->pair_id != 99)
 				&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
-/*
-			if((Ctemp & IS_ASRC_RUNNING) != 0) {
-				printk("[%s][%d] running!!\n", __func__, __LINE__);
-			}
-*/
+
 			ret = tcc_asrc_m2m_stop(asrc_m2m_pcm->asrc, asrc_m2m_pcm->capture->pair_id);
 		} else {
 			ret = 0;
@@ -1205,15 +1175,85 @@ static int tcc_asrc_m2m_pcm_stop(struct snd_pcm_substream *substream)
 
 		Ctemp &= ~IS_ASRC_STARTED;
 
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		asrc_m2m_pcm->capture->is_flag &= Ctemp;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		tcc_is_flag_update(asrc_m2m_pcm->capture, Ctemp, IS_FLAG_APPLY);
 		
 		//atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
 		//wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP ret=%d, CAPTURE\n", ret);
 	}
-error_pcm_stop:
+error_pcm_asrc_stop:
+	return ret;
+}
+
+static void tcc_pcm_app_position_update(unsigned int dev_id, struct asrc_m2m_pcm_stream *strm, struct snd_pcm_runtime *runtime, ssize_t byte_size)
+{
+	ssize_t Btemp=0;
+	snd_pcm_uframes_t Ftemp=0;
+
+	if((!strm) || (!runtime)) {
+		asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] strm is wrong!\n", __func__, __LINE__);
+	} else {
+	/*	//ref. code
+		Ftemp = bytes_to_frames(runtime, read_byte);
+		Btemp = frames_to_bytes(runtime, Ftemp);
+		if(Btemp != read_byte) {
+			asrc_m2m_pcm_dbg_id_err(dev_id, "[%d] read_byte=%d, Btemp=%d\n", __LINE__, read_byte, Btemp);
+		}
+   */
+		//check ptr size for update
+		Btemp = byte_size + strm->Btail;
+		Ftemp = bytes_to_frames(runtime, Btemp);
+		strm->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
+
+		//update ptr info.
+		strm->app->pre_pos += Ftemp;
+		if(strm->app->pre_pos >= runtime->buffer_size) {
+			strm->app->pre_pos = strm->app->pre_pos - runtime->buffer_size;
+		}
+
+		strm->app->pre_ptr += Ftemp;
+		if(strm->app->pre_ptr >= runtime->boundary) {
+			strm->app->pre_ptr = strm->app->pre_ptr - runtime->boundary;
+		}
+	}
+}
+
+static char tcc_is_flag_update(struct asrc_m2m_pcm_stream *strm, char is_flag, char mode)
+{
+	unsigned long flags;
+	char ret=0;
+	/*
+	 * mode
+	 * #define IS_FLAG_GET     0x00
+	 * #define IS_FLAG_RELEASE 0x01
+	 * #define IS_FLAG_SET     0x02
+	 * #define IS_FLAG_RESET   0x04
+	 * #define IS_FLAG_APPLY   0x08 
+	 */
+
+	spin_lock_irqsave(&strm->is_locked, flags);
+	switch(mode) {
+		case IS_FLAG_GET:	//This is for get is_flag
+			break;
+		case IS_FLAG_RELEASE:
+			strm->is_flag &= ~(is_flag);
+			break;
+		case IS_FLAG_SET:
+			strm->is_flag |= is_flag;
+			break;
+		case IS_FLAG_RESET:
+			strm->is_flag = 0;
+			break;
+		case IS_FLAG_APPLY:
+			strm->is_flag &= is_flag;
+			break;
+		default:
+			printk("[%s][%d] ERROR!!\n", __func__, __LINE__);
+			break;
+	}
+	ret = strm->is_flag;
+	spin_unlock_irqrestore(&strm->is_locked, flags);
+
 	return ret;
 }
 
@@ -1225,11 +1265,9 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform);
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t *)asrc_m2m_pcm->asrc;
 	//struct asrc_m2m_pcm_stream *strm = (struct asrc_m2m_pcm_stream *)asrc_m2m_pcm->capture;
-	snd_pcm_uframes_t Ftemp=0;
 	ssize_t dst_buffer_bytes=0, dst_period_bytes=0;
 	ssize_t read_pos=0, write_pos=0, temp_pos=0;
 	ssize_t writeable_byte=0, read_byte=0, Wtemp=0, Btemp=0;
-	unsigned long flags;
 	unsigned char *pin_buf, *pout_buf, *ptemp_buf, Ctemp=0;
 	int ret=0;
 
@@ -1240,26 +1278,18 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 	dst_buffer_bytes = asrc_m2m_pcm->capture->dst->buffer_bytes;
 	dst_period_bytes = asrc_m2m_pcm->capture->dst->period_bytes;
 	while(1) {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 		
 		if((readable_byte <= 0)
 			||((Ctemp & IS_TRIG_STARTED) == 0)
 			||((Ctemp & IS_ASRC_STARTED) == 0)) {
 
 			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
-				
-			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-			asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
-				
+			ret = 0;
 			break;//return 0;
 		} else {
 			/////ASRC Running start
-			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-			asrc_m2m_pcm->capture->is_flag |= IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+			tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_SET);
 		}
 
 		if(readable_byte > max_cpy_byte) {
@@ -1286,26 +1316,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				memcpy(pout_buf+write_pos, pin_buf+read_pos, read_byte);
 			}
 
-			//check ptr size for update
-		/*
-			Ftemp = bytes_to_frames(runtime, read_byte);
-			Btemp = frames_to_bytes(runtime, Ftemp);
-			if(Btemp != read_byte) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%d] read_byte=%d, Btemp=%d\n", __LINE__, read_byte, Btemp);
-			}
-		*/
-			Btemp = read_byte + asrc_m2m_pcm->capture->Btail;
-			Ftemp = bytes_to_frames(runtime, Btemp);
-			asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-			
-			//update ptr info.
-			asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
-			if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
-				asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
-
-			asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
-			if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
-				asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
+			tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->capture, runtime, read_byte);
 
 			asrc_m2m_pcm->capture->Bwrote += read_byte;
 			if(asrc_m2m_pcm->capture->Bwrote >= dst_period_bytes) {
@@ -1315,12 +1326,9 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 		} else {
 			if(asrc_m2m_pcm->capture->pair_id == 99) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! asrc pair_id[%d] is wrong!\n", asrc_m2m_pcm->capture->pair_id);
+				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
 				
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
-				
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			}
@@ -1329,23 +1337,14 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 
 				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
-				
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			} else if(writeable_byte < 0) {
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				Ctemp = asrc_m2m_pcm->capture->is_flag;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
-
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", __func__, __LINE__, read_byte, writeable_byte, Ctemp);
 
-				spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-				asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
-				
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = writeable_byte;
 				break;
 			}
@@ -1357,60 +1356,32 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->capture->pair_id, pout_buf+write_pos, writeable_byte);
 			}
 
+			if(Wtemp < 0) {
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
+
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[%d] Wtemp[%d] Ctemp[0x%02x]!\n", __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
+
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
+				ret = Wtemp;
+				break;
+			}
+/*
 			spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
 			asrc_m2m_pcm->capture->is_flag &= ~IS_ASRC_RUNNING;
 			spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
 			/////ASRC Running end
-
+*/
 			if(write_pos + writeable_byte >= dst_buffer_bytes) {
 
-				//1st part copy for out_buf
+				//1st part copy size
 				temp_pos = dst_buffer_bytes - write_pos;
+				//1st part copy for out_buf
 				memcpy(pout_buf+write_pos, ptemp_buf, temp_pos);
-				
-				//1st part check ptr size for update
-				Btemp = temp_pos + asrc_m2m_pcm->capture->Btail;
-				Ftemp = bytes_to_frames(runtime, Btemp);
-				asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-	
-				//1st update ptr info.
-				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
-				
-				asrc_m2m_pcm->capture->Bwrote += temp_pos;
-				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
-					snd_pcm_period_elapsed(substream);
-				}
 
 				//2nd part copy size
 				Btemp = Wtemp - temp_pos;
-
 				//2nd part copy for out_buf
 				memcpy(pout_buf, ptemp_buf+temp_pos, Btemp);
-
-				//2nd part check ptr size for update
-				temp_pos = Btemp + asrc_m2m_pcm->capture->Btail;
-				Ftemp = bytes_to_frames(runtime, temp_pos);
-				asrc_m2m_pcm->capture->Btail = temp_pos - (frames_to_bytes(runtime, Ftemp));
-
-				//2nd update ptr info.
-				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
-
-				asrc_m2m_pcm->capture->Bwrote += Btemp;
-				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
-					snd_pcm_period_elapsed(substream);
-				}
 
 				if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 					
@@ -1418,27 +1389,24 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 				} else {
 					memset(ptemp_buf, 0, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				}
-
-			} else {
-				//check ptr size for update
-				Btemp = Wtemp + asrc_m2m_pcm->capture->Btail;
-				Ftemp = bytes_to_frames(runtime, Btemp);
-				asrc_m2m_pcm->capture->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-
-				//update ptr info.
-				asrc_m2m_pcm->capture->app->pre_pos += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_pos >= runtime->buffer_size)
-					asrc_m2m_pcm->capture->app->pre_pos = asrc_m2m_pcm->capture->app->pre_pos - runtime->buffer_size;
-				asrc_m2m_pcm->capture->app->pre_ptr += Ftemp;
-				if(asrc_m2m_pcm->capture->app->pre_ptr >= runtime->boundary)
-					asrc_m2m_pcm->capture->app->pre_ptr =asrc_m2m_pcm->capture->app->pre_ptr - runtime->boundary;
-
-				asrc_m2m_pcm->capture->Bwrote += Wtemp;
-				if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
-					asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
-					snd_pcm_period_elapsed(substream);
-				}
 			}
+
+			tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->capture, runtime, Wtemp);
+			asrc_m2m_pcm->capture->Bwrote += Wtemp;
+			if(asrc_m2m_pcm->capture->Bwrote  >= dst_period_bytes) {
+				asrc_m2m_pcm->capture->Bwrote = asrc_m2m_pcm->capture->Bwrote % dst_period_bytes;
+				snd_pcm_period_elapsed(substream);
+			}
+
+#ifdef TAIL_DEBUG
+			if(asrc_m2m_pcm->capture->Btail != cap_tail) {
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
+				"[%s][%d] Btail=%d, write_pos=%d, Wtemp=%d, Btemp=%d, read_byte=%d, readable_byte=%d, writeable_byte=%d!! \n"
+				, __func__, __LINE__, asrc_m2m_pcm->capture->Btail, write_pos, Wtemp, Btemp, read_byte, readable_byte, writeable_byte);
+			}
+
+			cap_tail = asrc_m2m_pcm->capture->Btail;
+#endif
 		}
 		asrc_m2m_pcm->capture->middle->pre_pos += read_byte;
 		if(asrc_m2m_pcm->capture->middle->pre_pos >= asrc_m2m_pcm->capture->middle->buffer_bytes) {
@@ -1447,12 +1415,14 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
 			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! readable_byte: %d\n", readable_byte);
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
+			/////ASRC Running end
 			ret = -1;
 			break;
 		}
 		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, read_byte: %d, pre_pos: %d\n", readable_byte, read_byte, asrc_m2m_pcm->capture->middle->pre_pos);
 	}
-	return 0;
+	return ret;
 }
 
 static int tcc_ptr_update_thread_for_capture(void *data)
@@ -1464,15 +1434,12 @@ static int tcc_ptr_update_thread_for_capture(void *data)
 	snd_pcm_uframes_t temp=0;
 	unsigned int mid_buffer_bytes=0, max_cpy_byte=0;
 	unsigned int cur_pos=0, pre_pos=0;
-	unsigned long flags;
 	char Ctemp=0;
 	int readable_byte=0;
 	int ret=0;
 
 	while(!kthread_should_stop()) {
-		spin_lock_irqsave(&asrc_m2m_pcm->capture->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->capture->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->capture->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 		if(((Ctemp & IS_TRIG_STARTED) != 0)&&((Ctemp & IS_ASRC_STARTED) != 0)) {
 			if (asrc_m2m_pcm->capture->middle->cur_pos != asrc_m2m_pcm->capture->middle->pre_pos) {
     			substream = asrc_m2m_pcm->capture->asrc_substream;
@@ -1498,7 +1465,8 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+							readable_byte = 0;
     					}
     				}
     			} else {			
@@ -1510,7 +1478,9 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0){
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+							readable_byte = 0;
+							cur_pos = 0;
     					}
     				}
     				
@@ -1520,7 +1490,8 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+							readable_byte = 0;
     					}
     				}
     			} //(cur_pos > pre_pos)?
@@ -1557,29 +1528,20 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
 	while(1) {
 #endif
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 
 		if((readable_byte <= 0)
 				||((Ctemp & IS_TRIG_STARTED) == 0)
 				||((Ctemp & IS_ASRC_STARTED) == 0)) {
 
 			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
-
-			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-			asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
-
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
 			break;
 #else
-			return 0;
+			return ret;
 #endif
 		} else {
-			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-			asrc_m2m_pcm->playback->is_flag |= IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_SET);
 		}
 		if(readable_byte > max_asrc_byte) {
 			read_byte = max_asrc_byte;
@@ -1612,10 +1574,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			if(asrc_m2m_pcm->playback->pair_id == 99) {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
 
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
-
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			}
@@ -1625,22 +1584,15 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 			
 				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			} else if(writeable_byte < 0) {
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				Ctemp = asrc_m2m_pcm->playback->is_flag;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 
 				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", __func__, __LINE__, read_byte, writeable_byte, Ctemp);
 
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
-				
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = writeable_byte;
 				break;
 			}
@@ -1651,9 +1603,15 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				Wtemp = tcc_asrc_m2m_pop_data(asrc, asrc_m2m_pcm->playback->pair_id, pout_buf+write_pos, writeable_byte);
 			}
 
-			spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-			asrc_m2m_pcm->playback->is_flag &= ~IS_ASRC_RUNNING;
-			spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+			if(Wtemp < 0) {
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
+
+				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writealble_byte[%d] Wtemp[%d] Ctemp[0x%08x]!?\n", __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
+
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
+				ret = Wtemp;
+				break;
+			}
 
 			if(write_pos + writeable_byte >= mid_buffer_bytes) {
 
@@ -1684,6 +1642,8 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
 			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! readable_byte=%d, max_asrc_byte=%d, ret=%d\n", __func__, __LINE__, readable_byte, max_asrc_byte, ret);
+
+			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 			ret = -1;
 			break;
 		}
@@ -1722,7 +1682,6 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 	snd_pcm_uframes_t Ftemp=0;
 	ssize_t readable_byte=0, max_cpy_byte=0, read_pos=0, Btemp=0, ret=0;
 	char *pin_buf, Ctemp=0;
-	unsigned long flags;
 #if	(CHECK_ASRC_M2M_ELAPSED_TIME == 1)
 	struct timeval start, end;
 	u64 elapsed_usecs64;
@@ -1734,25 +1693,14 @@ static int tcc_appl_ptr_check_thread_for_play(void *data)
 
 wait_check_play:
 
-		spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-		Ctemp = asrc_m2m_pcm->playback->is_flag;
-		spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 		if(((Ctemp & IS_TRIG_STARTED) != 0)&&((Ctemp & IS_ASRC_STARTED) != 0)) {
 
 			substream = asrc_m2m_pcm->playback->asrc_substream;
-			if(!substream) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
-				goto wait_check_play;
-			}
-
 			rtd = substream->private_data;
-			if(!rtd) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
-				goto wait_check_play;
-			}
-
 			runtime = substream->runtime;
-			if(!runtime) {
+
+			if((!substream) || (!rtd) || (!runtime)) {
 				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
 				goto wait_check_play;
 			}
@@ -1794,9 +1742,6 @@ wait_check_play:
 #else
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
 #endif
-						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
-						}
 
 #if	(CHECK_ASRC_M2M_ELAPSED_TIME == 1)
 						do_gettimeofday(&end);
@@ -1807,19 +1752,20 @@ wait_check_play:
 
 						printk("asrc m2m elapsed time : %03d usec, %ldbytes\n", elapsed_usecs, ret);
 #endif
-						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
-						Ftemp = bytes_to_frames(runtime, Btemp);
-						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-
-						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
+						if(ret < 0) {
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+						} else {
+							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
 						}
-
-						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
-
+						
+#ifdef TAIL_DEBUG
+						if(asrc_m2m_pcm->playback->Btail != play_tail) {
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
+							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
+						}
+						play_tail = asrc_m2m_pcm->playback->Btail;
+#endif
 					}
 				} else {	//(cur_appl_ofs > pre_appl_ofs)?
 					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
@@ -1837,21 +1783,18 @@ wait_check_play:
 #endif
 						if(ret < 0) {
 							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+						} else {
+							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
 						}
 
-						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
-						Ftemp = bytes_to_frames(runtime, Btemp);
-						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-
-						asrc_m2m_pcm->playback->app->pre_pos += Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
+#ifdef TAIL_DEBUG
+						if(asrc_m2m_pcm->playback->Btail != play_tail) {
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
+							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
 						}
-
-						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
-
+						play_tail = asrc_m2m_pcm->playback->Btail;
+#endif
 					}
 
 					if(ret >= max_cpy_byte) {
@@ -1875,29 +1818,24 @@ wait_check_play:
 #endif
 						if(ret < 0) {
 							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+						} else {
+							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
 						}
 
-						Btemp = ret + asrc_m2m_pcm->playback->Btail; 
-						Ftemp = bytes_to_frames(runtime, Btemp);
-						asrc_m2m_pcm->playback->Btail = Btemp - (frames_to_bytes(runtime, Ftemp));
-
-						asrc_m2m_pcm->playback->app->pre_pos = Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_pos >= runtime->buffer_size) {
-							asrc_m2m_pcm->playback->app->pre_pos = asrc_m2m_pcm->playback->app->pre_pos - runtime->buffer_size;
+#ifdef TAIL_DEBUG
+						if(asrc_m2m_pcm->playback->Btail != play_tail) {
+							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
+							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
 						}
-
-						asrc_m2m_pcm->playback->app->pre_ptr += Ftemp;
-						if(asrc_m2m_pcm->playback->app->pre_ptr >= runtime->boundary)
-							asrc_m2m_pcm->playback->app->pre_ptr =asrc_m2m_pcm->playback->app->pre_ptr - runtime->boundary;
-
+						play_tail = asrc_m2m_pcm->playback->Btail;
+#endif
 					}
 				} //(cur_appl_ofs > pre_appl_ofs)? else?
 max_cpy_tx:
 				Ftemp=0;
 
-				spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-				Ctemp = asrc_m2m_pcm->playback->is_flag;
-				spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 			    if((!(Ctemp & IS_A7S_STARTED))
         			&&((Ctemp & IS_ASRC_STARTED) != 0)
         			&&((Ctemp & IS_TRIG_STARTED) != 0)) {
@@ -1909,9 +1847,7 @@ max_cpy_tx:
         			if(ret < 0) {
         				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
 					} else {
-						spin_lock_irqsave(&asrc_m2m_pcm->playback->is_locked, flags);
-						asrc_m2m_pcm->playback->is_flag |= IS_A7S_STARTED;
-						spin_unlock_irqrestore(&asrc_m2m_pcm->playback->is_locked, flags);
+						Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_A7S_STARTED, IS_FLAG_SET);
         			}
 #endif
         		}
@@ -2051,6 +1987,7 @@ static int tcc_asrc_m2m_pcm_stream_init(struct device *dev, struct asrc_m2m_pcm_
 	strm->dst = dst;
 	strm->app = app;
 
+	strm->first_open = false;
 	return 0;
 	
 	devm_kfree(dev, app);
