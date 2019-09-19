@@ -12,6 +12,10 @@
 	compatible = "toradex,colibri_imx8qxp-aster", \
 			"toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
+	display-subsystem {
+		status = "okay";
+	};
+
 	extcon_usbc_det: usbc_det {
 		compatible = "linux,extcon-usb-gpio";
 		debounce = <25>;
@@ -31,18 +35,6 @@
 			linux,code = <KEY_WAKEUP>;
 			debounce-interval = <10>;
 			gpio-key,wakeup;
-		};
-	};
-
-	panel {
-		compatible = "edt,et070080dh6";
-		backlight = <&backlight>;
-		enable-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
 		};
 	};
 
@@ -74,27 +66,7 @@
 	};
 };
 
-&adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lcdif>;
-	bus-width = <18>;
-	status = "okay";
-
-	port@0 {
-		lcd_display_out: lcdif-endpoint {
-			remote-endpoint = <&lcd_panel_in>;
-		};
-	};
-};
-
 &atmel_mxt_ts {
-	status = "okay";
-};
-
-&backlight {
-	brightness-levels = <0 45 63 88 119 158 203 255>;
-	default-brightness-level = <4>;
-	pwms = <&pwm_adma_lcdif 0 6666667 PWM_POLARITY_INVERTED>;
 	status = "okay";
 };
 
@@ -125,6 +97,11 @@
 		reg = <0>;
 		spi-max-frequency = <10000000>;
 	};
+};
+
+/* Colibri PWM_A */
+&pwm_adma_lcdif {
+	status = "okay";
 };
 
 /* Colibri PWM_B */
