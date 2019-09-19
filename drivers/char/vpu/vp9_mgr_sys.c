@@ -89,7 +89,7 @@ void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
 
     while(opened_count)
     {
-        vp9mgr_disable_clock(vbus_no_ctrl, 0);
+        vp9mgr_disable_clock(vbus_no_ctrl);
         if(opened_count > 0)
             opened_count--;
     }
@@ -98,7 +98,7 @@ void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
     opened_count = opened_cnt;
     while(opened_count)
     {
-        vp9mgr_enable_clock(vbus_no_ctrl, 0);
+        vp9mgr_enable_clock(vbus_no_ctrl);
         if(opened_count > 0)
             opened_count--;
     }

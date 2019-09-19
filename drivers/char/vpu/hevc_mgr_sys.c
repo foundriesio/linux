@@ -197,7 +197,7 @@ void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
 
     while(opened_count)
     {
-        hmgr_disable_clock(vbus_no_ctrl, 0);
+        hmgr_disable_clock(vbus_no_ctrl);
         if(opened_count > 0)
             opened_count--;
     }
@@ -206,7 +206,7 @@ void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
     opened_count = opened_cnt;
     while(opened_count)
     {
-        hmgr_enable_clock(vbus_no_ctrl, 0);
+        hmgr_enable_clock(vbus_no_ctrl);
         if(opened_count > 0)
             opened_count--;
     }
