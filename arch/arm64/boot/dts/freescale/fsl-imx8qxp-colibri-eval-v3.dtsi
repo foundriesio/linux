@@ -42,37 +42,6 @@
 		};
 	};
 
-	panel {
-		compatible = "panel-dpi";
-		backlight = <&backlight>;
-		enable-gpios = <&gpio4 19 GPIO_ACTIVE_HIGH>;
-		power-supply = <&reg_3v3>;
-
-		width-mm = <154>;
-		height-mm = <86>;
-
-		data-mapping = "bgr666";
-
-		panel-timing {
-			clock-frequency = <33300000>;
-			hactive = <800>;
-			hback-porch = <46>;
-			hfront-porch = <210>;
-			hsync-len = <20>;
-			vactive = <480>;
-			vback-porch = <23>;
-			vfront-porch = <22>;
-			vsync-len = <10>;
-			pixelclk-active = <1>;
-		};
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-
 	regulators {
 		reg_3v3: regulator-3v3 {
 			compatible = "regulator-fixed";
@@ -103,27 +72,6 @@
 
 /* Colibri Analogue Inputs */
 &adc0 {
-	status = "okay";
-};
-
-/* Colibri Parallel RGB */
-&adma_lcdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lcdif>;
-	bus-width = <18>;
-	status = "okay";
-
-	port@0 {
-		lcd_display_out: lcdif-endpoint {
-			remote-endpoint = <&lcd_panel_in>;
-		};
-	};
-};
-
-&backlight {
-	brightness-levels = <0 45 63 88 119 158 203 255>;
-	default-brightness-level = <4>;
-	pwms = <&pwm_adma_lcdif 0 6666667 PWM_POLARITY_INVERTED>;
 	status = "okay";
 };
 

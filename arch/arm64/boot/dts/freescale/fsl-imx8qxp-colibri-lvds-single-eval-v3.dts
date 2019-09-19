@@ -14,7 +14,7 @@
 	compatible = "toradex,colibri-imx8qxp-lvds-single-eval-v3", "toradex,colibri-imx8qxp", "fsl,imx8qxp";
 
 	lvds1_panel {
-		compatible = "toradex,captouch-101-lvds";
+		compatible = "logictechno,lt170410-2whc";
 		backlight = <&backlight>;
 
 		port {
