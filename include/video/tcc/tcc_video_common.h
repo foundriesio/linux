@@ -63,12 +63,20 @@
 #   define _DTRC_COMP_SUPPORT_
 #endif
 
+#if defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
+#   define _VPU_4K_D2_INCLUDE_
+#endif
+
 #if defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC) || defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
 #   define _HEVC_USER_DATA_SUPPORT_
 #endif
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 #   define _DOLBY_VISION_SUPPORT_
+#endif
+
+#ifndef CONFIG_ANDROID
+#   define DO_NOT_USE_REMAP_ADDR
 #endif
 
 typedef enum {
