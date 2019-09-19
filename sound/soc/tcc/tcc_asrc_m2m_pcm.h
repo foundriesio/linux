@@ -64,9 +64,16 @@
 
 //This is for is_flag in structure of tcc_asrc_m2m_pcm
 #define IS_TRIG_STARTED 0x01
-#define IS_A7S_STARTED 0x02
+#define IS_A7S_STARTED 	0x02
 #define IS_ASRC_STARTED 0x04
 #define IS_ASRC_RUNNING 0x08
+
+#define IS_FLAG_GET 	0x00	// get is_flag value.
+#define IS_FLAG_RELEASE 0x01	// must be released.
+#define IS_FLAG_SET 	0x02	// must be set.
+#define IS_FLAG_RESET 	0x04	// must be set 0.
+#define IS_FLAG_APPLY 	0x08	// some part released. It is helpful when multi-is_flag released.
+//#define IS_FLAG_EDIT (IS_FLAG_GET | IS_FLAG_RELEASE | IS_FLAG_SET | IS_FLAG_RESET | IS_FLAG_APPLY)
 
 typedef enum {
 	TCC_ASRC_M2M_7_1CH = 0,

@@ -60,7 +60,8 @@
 #define TX_BUFFER_BYTES					(PERIOD_BYTES * TX_PERIOD_CNT)	//bytes
 #define RX_BUFFER_BYTES					(PERIOD_BYTES * RX_PERIOD_CNT)	//bytes
 
-#define WRITE_TIMEOUT 	(1000)
+#define WRITE_TIMEOUT 	(1000)	//ms
+#define FIFO_STATUS_CHECK_DELAY 	(30) //us
 
 //#define LLI_DEBUG
 
@@ -596,14 +597,26 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 
 	while(1) {
 		asrc_fifo_in_status = tcc_asrc_get_fifo_in_status(asrc->asrc_reg, asrc_pair);
-		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
 
-		if ((asrc_fifo_in_status & (1 << 30)) && (asrc_fifo_out_status & (1 << 30))) {
-			dprintk("FIFO In/Out Cleared\n");
+		if (asrc_fifo_in_status & (1 << 30)) {
+			dprintk("FIFO In Cleared\n");
 			break;
 		} 	
 	}
 
+	udelay(FIFO_STATUS_CHECK_DELAY);
+
+	while(1) {
+		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
+
+		if (asrc_fifo_out_status & (1 << 30)) {
+			dprintk("FIFO Out Cleared\n");
+			break;
+		} 	
+	}
+
+	udelay(FIFO_STATUS_CHECK_DELAY);
+	
 	tcc_asrc_rx_dma_halt(asrc, asrc_pair);
 
 	while(1) {
