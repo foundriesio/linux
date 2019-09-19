@@ -1891,28 +1891,6 @@ static const struct panel_desc tianma_tm070jdhg30 = {
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
 };
 
-static const struct display_timing toradex_captouch_101_lvds_timing = {
-	.pixelclock = { 68900000, 71100000, 7340000 },
-	.hactive = { 1280, 1280, 1280 },
-	.hfront_porch = { 23, 60, 71 },
-	.hback_porch = { 23, 60, 71 },
-	.hsync_len = { 15, 40, 47 },
-	.vactive = { 800, 800, 800 },
-	.vfront_porch = { 5, 7, 10 },
-	.vback_porch = { 5, 7, 10 },
-	.vsync_len = { 6, 9, 12 },
-};
-
-static const struct panel_desc toradex_captouch_101_lvds = {
-	.timings = &toradex_captouch_101_lvds_timing,
-	.num_timings = 1,
-	.size = {
-		.width = 217,
-		.height = 136,
-	},
-	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
-};
-
 static const struct drm_display_mode tpk_f07a_0102_mode = {
 	.clock = 33260,
 	.hdisplay = 800,
@@ -2200,9 +2178,6 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "tianma,tm070jdhg30",
 		.data = &tianma_tm070jdhg30,
-	}, {
-		.compatible = "toradex,captouch-101-lvds",
-		.data = &toradex_captouch_101_lvds,
 	}, {
 		.compatible = "tpk,f07a-0102",
 		.data = &tpk_f07a_0102,
