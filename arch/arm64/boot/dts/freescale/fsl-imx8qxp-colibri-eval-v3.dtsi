@@ -130,12 +130,12 @@
 
 /* Colibri UART_B */
 &lpuart0 {
-	status= "okay";
+	status = "okay";
 };
 
 /* Colibri UART_C */
 &lpuart2 {
-	status= "okay";
+	status = "okay";
 };
 
 /* Colibri UART_A */
