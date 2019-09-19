@@ -2008,6 +2008,7 @@
 		st,syscfg-pdds = <&pwr 0x014 0x1>;
 		st,syscfg-holdboot = <&rcc 0x10C 0x1>;
 		st,syscfg-tz = <&rcc 0x000 0x1>;
+		st,syscfg-rsc-tbl = <&tamp 0x144 0xFFFFFFFF>;
 		status = "disabled";
 
 		m4_system_resources {
