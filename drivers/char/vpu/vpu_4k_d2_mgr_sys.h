@@ -49,12 +49,12 @@
 #define BUS_FOR_NORMAL  0
 #define BUS_FOR_VIDEO   1
 
-extern void vmgr_4k_d2_enable_clock(int only_clk_ctrl);
-extern void vmgr_4k_d2_disable_clock(int only_clk_ctrl);
+extern void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl);
+extern void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl);
 extern void vmgr_4k_d2_get_clock(struct device_node *node);
 extern void vmgr_4k_d2_put_clock(void);
 extern void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height);
-
+extern void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt);
 extern void vmgr_4k_d2_enable_irq(unsigned int irq);
 extern void vmgr_4k_d2_disable_irq(unsigned int irq);
 extern void vmgr_4k_d2_free_irq(unsigned int irq, void * dev_id);

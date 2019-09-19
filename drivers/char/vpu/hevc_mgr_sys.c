@@ -73,9 +73,9 @@ inline void vbus_matrix(void)
 }
 #endif
 
-void hmgr_enable_clock(void)
+void hmgr_enable_clock(int vbus_no_ctrl)
 {
-	if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
 	if (fbus_chevc_clk)
 		clk_prepare_enable(fbus_chevc_clk);
@@ -97,7 +97,7 @@ void hmgr_enable_clock(void)
 #endif
 }
 
-void hmgr_disable_clock(void)
+void hmgr_disable_clock(int vbus_no_ctrl)
 {
 	if (vbus_hevc_bus_clk)
 		clk_disable_unprepare(vbus_hevc_bus_clk);
@@ -114,8 +114,8 @@ void hmgr_disable_clock(void)
 	if (fbus_chevc_clk)
 		clk_disable_unprepare(fbus_chevc_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
-	if (fbus_vbus_clk)
-		clk_disable_unprepare(fbus_vbus_clk);
+    if (fbus_vbus_clk && !vbus_no_ctrl)
+        clk_disable_unprepare(fbus_vbus_clk);
 #endif
 }
 
@@ -188,6 +188,31 @@ void hmgr_put_clock(void)
 		clk_put(fbus_vbus_clk);
 		fbus_vbus_clk = NULL;
 	}
+}
+
+void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+	int opened_count = opened_cnt;
+
+    while(opened_count)
+    {
+        hmgr_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    //msleep(1);
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        hmgr_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+#else
+    hmgr_hw_reset();
+#endif
 }
 
 void hmgr_enable_irq(unsigned int irq)

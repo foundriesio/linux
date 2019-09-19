@@ -975,6 +975,13 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             }
             break;
 
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			jmgr_restore_clock(0, jmgr_data.dev_opened);
+		}
+		break;
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1034,7 +1041,7 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
 
     dprintk("_jmgr_open In!! %d'th \n", jmgr_data.dev_opened);
 
-    jmgr_enable_clock(0);
+    jmgr_enable_clock(0, 0);
 
     if(jmgr_data.dev_opened == 0)
     {
@@ -1149,7 +1156,7 @@ static int _jmgr_release(struct inode *inode, struct file *filp)
         jmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
     }
 
-    jmgr_disable_clock(0);
+    jmgr_disable_clock(0, 0);
 
     jmgr_data.nOpened_Count++;
 
@@ -1267,26 +1274,7 @@ static int _jmgr_operation(void)
                 }
 
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
-                    int opened_count = jmgr_data.dev_opened;
-
-                #if 1
-                    while (opened_count) {
-                        jmgr_disable_clock(0);
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-
-                    //msleep(1);
-                    opened_count = jmgr_data.dev_opened;
-                    while (opened_count) {
-                        jmgr_enable_clock(0);
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-                #else
-                    jmgr_hw_reset();
-                #endif
-
+					jmgr_restore_clock(0, jmgr_data.dev_opened);
                     _jmgr_close_all(1);
                 }
             }
@@ -1479,8 +1467,8 @@ int jmgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
-    jmgr_enable_clock(1);
-    jmgr_disable_clock(1);
+    jmgr_enable_clock(0, 1);
+    jmgr_disable_clock(0, 1);
 
     return 0;
 }
@@ -1523,7 +1511,7 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
         open_count = jmgr_data.dev_opened;
         for(i=0; i<open_count; i++) {
-            jmgr_disable_clock(0);
+            jmgr_disable_clock(0, 0);
         }
         printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n", jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
                                 jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
@@ -1542,7 +1530,7 @@ int jmgr_resume(struct platform_device *pdev)
         open_count = jmgr_data.dev_opened;
 
         for(i=0; i<open_count; i++) {
-            jmgr_enable_clock(0);
+            jmgr_enable_clock(0, 0);
         }
         printk("\n jpu: resume \n\n");
     }

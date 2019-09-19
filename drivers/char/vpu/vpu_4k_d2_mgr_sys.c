@@ -70,10 +70,10 @@ inline void vbus_matrix(void)
 }
 #endif
 
-void vmgr_4k_d2_enable_clock(int only_clk_ctrl)
+void vmgr_4k_d2_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
     dprintk("@@ vmgr_4k_d2_enable_clock \n");
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (fbus_chevc_clk)
         clk_prepare_enable(fbus_chevc_clk);
@@ -104,7 +104,7 @@ void vmgr_4k_d2_enable_clock(int only_clk_ctrl)
 #endif
 }
 
-void vmgr_4k_d2_disable_clock(int only_clk_ctrl)
+void vmgr_4k_d2_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
     dprintk("@@ vmgr_4k_d2_disable_clock \n");
 
@@ -117,7 +117,7 @@ void vmgr_4k_d2_disable_clock(int only_clk_ctrl)
     if (fbus_chevc_clk)
         clk_disable_unprepare(fbus_chevc_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
 
@@ -252,6 +252,31 @@ void vmgr_4k_d2_change_clock(unsigned int width, unsigned int height)
 			(unsigned int)(vbus_clk_value/1000000),
 			(unsigned int)(chevc_clk_value/1000000),
 			(unsigned int)(bhevc_clk_value/1000000));
+#endif
+}
+
+void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+	int opened_count = opened_cnt;
+
+    while(opened_count)
+    {
+        vmgr_4k_d2_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    //msleep(1);
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vmgr_4k_d2_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+#else
+    vmgr_4k_d2_hw_reset();
 #endif
 }
 

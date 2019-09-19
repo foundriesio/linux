@@ -50,10 +50,11 @@
 #define BUS_FOR_NORMAL  0
 #define BUS_FOR_VIDEO   1
 
-extern void jmgr_enable_clock(int only_clk_ctrl);
-extern void jmgr_disable_clock(int only_clk_ctrl);
+extern void jmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl);
+extern void jmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl);
 extern void jmgr_get_clock(struct device_node *node);
 extern void jmgr_put_clock(void);
+extern void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void jmgr_enable_irq(unsigned int irq);
 extern void jmgr_disable_irq(unsigned int irq);

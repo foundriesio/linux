@@ -59,6 +59,8 @@ static struct task_struct *kidle_task = NULL;
 extern void do_gettimeofday(struct timeval *tv);
 #endif
 extern int tcc_vpu_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+//extern codec_result_t tcc_vpu_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+//extern codec_result_t tcc_vpu_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 extern int tcc_vpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 #endif
@@ -1096,14 +1098,23 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		case VPU_TRY_FORCE_CLOSE:
 		case VPU_TRY_FORCE_CLOSE_KERNEL:
 		{
-			if(!vmgr_data.bVpu_already_proc_force_closed)
+            //tcc_vpu_dec_esc(1, 0, 0, 0);
+
+            if(!vmgr_data.bVpu_already_proc_force_closed)
 			{
-				_vmgr_wait_process(2000);
+				_vmgr_wait_process(200);
 				vmgr_data.external_proc = 1;
 				_vmgr_external_all_close(200);
 				vmgr_data.external_proc = 0;
 				vmgr_data.bVpu_already_proc_force_closed = true;
 			}
+        }
+		break;
+
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			vmgr_restore_clock(0, vmgr_data.dev_opened);
 		}
 		break;
 
@@ -1155,7 +1166,7 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
 
     dprintk("_vmgr_open In!! %d'th \n", vmgr_data.dev_opened);
 
-    vmgr_enable_clock(0);
+    vmgr_enable_clock(0, 0);
 
     if(vmgr_data.dev_opened == 0)
     {
@@ -1191,7 +1202,7 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
 
 	if(!vmgr_data.bVpu_already_proc_force_closed)
 	{
-		_vmgr_wait_process(2000);
+		_vmgr_wait_process(200);
 	}
     if (vmgr_data.dev_opened > 0) {
         vmgr_data.dev_opened--;
@@ -1203,14 +1214,14 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
         int type = 0, alive_cnt = 0;
 
     #if 1 // To close whole vpu instance when being killed process opened this.
-	if(!vmgr_data.bVpu_already_proc_force_closed)
-	{
-		vmgr_data.external_proc = 1;
-		_vmgr_external_all_close(200);
-		_vmgr_wait_process(2000);
-		vmgr_data.external_proc = 0;
-	}
-	vmgr_data.bVpu_already_proc_force_closed = false;
+		if(!vmgr_data.bVpu_already_proc_force_closed)
+		{
+			vmgr_data.external_proc = 1;
+			_vmgr_external_all_close(200);
+			_vmgr_wait_process(200);
+			vmgr_data.external_proc = 0;
+		}
+		vmgr_data.bVpu_already_proc_force_closed = false;
     #endif
 
         for(type=0; type<VPU_MAX; type++) {
@@ -1239,7 +1250,7 @@ static int _vmgr_release(struct inode *inode, struct file *filp)
 		vmem_deinit();
     }
 
-    vmgr_disable_clock(0);
+    vmgr_disable_clock(0, 0);
 
     vmgr_data.nOpened_Count++;
 
@@ -1459,28 +1470,7 @@ static int _vmgr_operation(void)
                 }
 
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
-                    int opened_count = vmgr_data.dev_opened;
-
-                #if 1
-                    while(opened_count)
-                    {
-                        vmgr_disable_clock(0);
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-
-                    //msleep(1);
-                    opened_count = vmgr_data.dev_opened;
-                    while(opened_count)
-                    {
-                        vmgr_enable_clock(0);
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-                #else
-                    vmgr_hw_reset();
-                #endif
-
+                	vmgr_restore_clock(0, vmgr_data.dev_opened);
                     _vmgr_close_all(1);
                 }
             }
@@ -1684,8 +1674,8 @@ int vmgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
-    vmgr_enable_clock(1);
-    vmgr_disable_clock(1);
+    vmgr_enable_clock(0, 1);
+    vmgr_disable_clock(0, 1);
 
     return 0;
 }
@@ -1730,7 +1720,7 @@ int vmgr_suspend(struct platform_device *pdev, pm_message_t state)
         open_count = vmgr_data.dev_opened;
 
         for (i = 0; i < open_count; i++) {
-            vmgr_disable_clock(0);
+            vmgr_disable_clock(0, 0);
         }
         printk("vpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n",
                 vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4),
@@ -1750,7 +1740,7 @@ int vmgr_resume(struct platform_device *pdev)
         open_count = vmgr_data.dev_opened;
 
         for (i=0; i<open_count; i++) {
-            vmgr_enable_clock(0);
+            vmgr_enable_clock(0, 0);
         }
         printk("\n vpu: resume \n\n");
     }

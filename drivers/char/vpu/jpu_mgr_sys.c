@@ -40,9 +40,9 @@ extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
 //////////////////////////////////////////////////////////////////////////////
-void jmgr_enable_clock(int only_clk_ctrl)
+void jmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (vbus_jpeg_clk)
         clk_prepare_enable(vbus_jpeg_clk);
@@ -59,12 +59,12 @@ void jmgr_enable_clock(int only_clk_ctrl)
 #endif
 }
 
-void jmgr_disable_clock(int only_clk_ctrl)
+void jmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
     if (vbus_jpeg_clk)
         clk_disable_unprepare(vbus_jpeg_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
@@ -103,6 +103,31 @@ void jmgr_put_clock(void)
         clk_put(vbus_jpeg_clk);
         vbus_jpeg_clk = NULL;
     }
+}
+
+void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+	int opened_count = opened_cnt;
+
+    while(opened_count)
+    {
+        jmgr_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    //msleep(1);
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        jmgr_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+#else
+    jmgr_hw_reset();
+#endif
 }
 
 void jmgr_enable_irq(unsigned int irq)

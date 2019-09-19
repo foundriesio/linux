@@ -528,6 +528,70 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
     return ret;
 }
 
+
+static int _vp9mgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
+{
+    if(!vp9mgr_get_close(type) && vp9mgr_data.handle[type] != 0x00)
+    {
+        list->type = type;
+        if( type >= VPU_ENC )
+            list->cmd_type = VPU_ENC_CLOSE;
+        else
+            list->cmd_type = VPU_DEC_CLOSE;
+        list->handle    = vp9mgr_data.handle[type];
+        list->args      = NULL;
+        list->comm_data = NULL;
+        list->vpu_result = result;
+
+        printk("_vp9mgr_proc_exit_by_external for %d!! \n", type);
+        vp9mgr_list_manager(list, LIST_ADD);
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static void _vp9mgr_wait_process(int wait_ms)
+{
+    int max_count = wait_ms/20;
+
+    //wait!! in case exceptional processing. ex). sdcard out!!
+    while(vp9mgr_data.cmd_processing)
+    {
+        max_count--;
+        msleep(20);
+
+        if(max_count <= 0)
+        {
+            err("cmd_processing(cmd %d) didn't finish!! \n", vp9mgr_data.current_cmd);
+            break;
+        }
+    }
+}
+
+static int _vp9mgr_external_all_close(int wait_ms)
+{
+    int type = 0;
+    int max_count = 0;
+    int ret;
+
+    for(type = 0; type < VP9_MAX; type++)
+    {
+        if(_vp9mgr_proc_exit_by_external(&vp9mgr_data.vList[type], &ret, type))
+        {
+            max_count = wait_ms/10;
+            while(!vp9mgr_get_close(type))
+            {
+                max_count--;
+                msleep(10);
+            }
+        }
+    }
+
+    return 0;
+}
+
 static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -662,6 +726,31 @@ static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             }
             break;
 
+
+
+		case VPU_TRY_FORCE_CLOSE:
+		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+            //tcc_vpu_dec_esc(1, 0, 0, 0);
+
+            if(!vp9mgr_data.bVpu_already_proc_force_closed)
+			{
+				_vp9mgr_wait_process(200);
+				vp9mgr_data.external_proc = 1;
+				_vp9mgr_external_all_close(200);
+				vp9mgr_data.external_proc = 0;
+				vp9mgr_data.bVpu_already_proc_force_closed = true;
+			}
+        }
+		break;
+
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			vp9mgr_restore_clock(0, vp9mgr_data.dev_opened);
+		}
+		break;
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -688,29 +777,6 @@ static irqreturn_t _vp9mgr_isr_handler(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-static int _vp9mgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
-{
-    if(!vp9mgr_get_close(type) && vp9mgr_data.handle[type] != 0x00)
-    {
-        list->type = type;
-        if( type >= VPU_ENC )
-            list->cmd_type = VPU_ENC_CLOSE;
-        else
-            list->cmd_type = VPU_DEC_CLOSE;
-        list->handle    = vp9mgr_data.handle[type];
-        list->args      = NULL;
-        list->comm_data = NULL;
-        list->vpu_result = result;
-
-        printk("_vp9mgr_proc_exit_by_external for %d!! \n", type);
-        vp9mgr_list_manager(list, LIST_ADD);
-
-        return 1;
-    }
-
-    return 0;
-}
-
 static int _vp9mgr_open(struct inode *inode, struct file *filp)
 {
 	int ret = 0;
@@ -721,7 +787,7 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
 
     dprintk("_vp9mgr_open In!! %d'th \n", vp9mgr_data.dev_opened);
 
-    vp9mgr_enable_clock();
+    vp9mgr_enable_clock(0);
 
     if(vp9mgr_data.dev_opened == 0)
     {
@@ -760,64 +826,32 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
     return 0;
 }
 
-static void _vp9mgr_wait_process(int wait_ms)
-{
-    int max_count = wait_ms/20;
-
-    //wait!! in case exceptional processing. ex). sdcard out!!
-    while(vp9mgr_data.cmd_processing)
-    {
-        max_count--;
-        msleep(20);
-
-        if(max_count <= 0)
-        {
-            err("cmd_processing(cmd %d) didn't finish!! \n", vp9mgr_data.current_cmd);
-            break;
-        }
-    }
-}
-
-static int _vp9mgr_external_all_close(int wait_ms)
-{
-    int type = 0;
-    int max_count = 0;
-    int ret;
-
-    for(type = 0; type < VP9_MAX; type++)
-    {
-        if(_vp9mgr_proc_exit_by_external(&vp9mgr_data.vList[type], &ret, type))
-        {
-            max_count = wait_ms/10;
-            while(!vp9mgr_get_close(type))
-            {
-                max_count--;
-                msleep(10);
-            }
-        }
-    }
-
-    return 0;
-}
-
 static int _vp9mgr_release(struct inode *inode, struct file *filp)
 {
     dprintk("_vp9mgr_release In!! %d'th \n", vp9mgr_data.dev_opened);
 
-    _vp9mgr_wait_process(2000);
-
-    if(vp9mgr_data.dev_opened > 0)
+	if(!vp9mgr_data.bVpu_already_proc_force_closed)
+	{
+	    _vp9mgr_wait_process(200);
+	}
+    if(vp9mgr_data.dev_opened > 0) {
         vp9mgr_data.dev_opened--;
+    }
+
     if(vp9mgr_data.dev_opened == 0)
     {
 //////////////////////////////////////
         int type = 0, alive_cnt = 0;
 
 #if 1 // To close whole vp9 instance when being killed process opened this.
-        vp9mgr_data.external_proc = 1;
-        _vp9mgr_external_all_close(200);
-        _vp9mgr_wait_process(2000);
-        vp9mgr_data.external_proc = 0;
+		if(!vp9mgr_data.bVpu_already_proc_force_closed)
+		{
+	        vp9mgr_data.external_proc = 1;
+	        _vp9mgr_external_all_close(200);
+	        _vp9mgr_wait_process(200);
+	        vp9mgr_data.external_proc = 0;
+		}
+		vp9mgr_data.bVpu_already_proc_force_closed = false;
 #endif
 
         for(type=0; type<VP9_MAX; type++) {
@@ -844,7 +878,7 @@ static int _vp9mgr_release(struct inode *inode, struct file *filp)
         vp9mgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
     }
 
-    vp9mgr_disable_clock();
+    vp9mgr_disable_clock(0);
 
     vp9mgr_data.nOpened_Count++;
 
@@ -954,28 +988,7 @@ static int _vp9mgr_operation(void)
 
                 if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
                 {
-                    int opened_count = vp9mgr_data.dev_opened;
-
-            #if 1
-                    while(opened_count)
-                    {
-                        vp9mgr_disable_clock();
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-
-                    //msleep(1);
-                    opened_count = vp9mgr_data.dev_opened;
-                    while(opened_count)
-                    {
-                        vp9mgr_enable_clock();
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-            #else
-                    vp9mgr_hw_reset();
-            #endif
-
+                    vp9mgr_restore_clock(0, vp9mgr_data.dev_opened);
                     _vp9mgr_close_all(1);
                 }
             }
@@ -1165,8 +1178,8 @@ int vp9mgr_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
-    vp9mgr_enable_clock();
-    vp9mgr_disable_clock();
+    vp9mgr_enable_clock(0);
+    vp9mgr_disable_clock(0);
 
     return 0;
 }
@@ -1209,7 +1222,7 @@ int vp9mgr_suspend(struct platform_device *pdev, pm_message_t state)
 
         open_count = vp9mgr_data.dev_opened;
         for(i=0; i<open_count; i++) {
-            vp9mgr_disable_clock();
+            vp9mgr_disable_clock(0);
         }
         printk("vp9: suspend Out DEC(%d/%d/%d/%d/%d) \n\n", vp9mgr_get_close(VPU_DEC), vp9mgr_get_close(VPU_DEC_EXT),
 			vp9mgr_get_close(VPU_DEC_EXT2), vp9mgr_get_close(VPU_DEC_EXT3), vp9mgr_get_close(VPU_DEC_EXT4));
@@ -1228,7 +1241,7 @@ int vp9mgr_resume(struct platform_device *pdev)
         open_count = vp9mgr_data.dev_opened;
 
         for(i=0; i<open_count; i++) {
-            vp9mgr_enable_clock();
+            vp9mgr_enable_clock(0);
         }
         printk("\n vp9: resume \n\n");
     }
