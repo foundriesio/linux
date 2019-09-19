@@ -35,7 +35,7 @@
  * To enable it, you should disable pwm0 (PWM_B) and pwm1 (PWM_C)
  */
 &atmel_mxt_ts {
-        pinctrl-0 = <&pinctrl_pwm_b &pinctrl_pwm_c>;
+        pinctrl-0 = <&pinctrl_touch>;
         interrupt-parent = <&gpio0>;
         interrupts = <21 IRQ_TYPE_EDGE_FALLING>;        /* SODIMM 28 */
         reset-gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;     /* SODIMM 30 */
@@ -43,6 +43,8 @@
 };
 
 &backlight {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpio_bklght_on>;
 	brightness-levels = <0 45 63 88 119 158 203 255>;
 	default-brightness-level = <4>;
 	enable-gpios = <&gpio1 31 GPIO_ACTIVE_HIGH>; /* Ext.Conn 25: LVDS1_GPIO0_00 */
@@ -93,8 +95,8 @@
 	colibri-imx8qxp {
 		pinctrl_touch: touchgrp {
 			fsl,pins = <
-				SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21	0x06000040
-				SC_P_USB_SS3_TC1_LSIO_GPIO4_IO04	0x06000040
+				SC_P_UART1_TX_LSIO_GPIO0_IO21	0x06000040	/* SODIMM  28 */
+				SC_P_UART1_RX_LSIO_GPIO0_IO22	0x06000020	/* SODIMM  30 */
 			>;
 		};
 
