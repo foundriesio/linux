@@ -45,7 +45,7 @@ NOTE: Tab size is 8
 
 #include "../hdmi_cec_lib/cec_reg.h"
 
-#define HDMI_CEC_VERSION        "1.0.0"
+#define HDMI_CEC_VERSION        "1.0.1"
 
 /** This constant is used to define index of IOBUS clocks */
 #define HDMI_CLK_CEC_INDEX_IOBUS       0

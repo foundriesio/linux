@@ -43,20 +43,63 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.5"
+#define LUT_VERSION "v1.6"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
 
+
+#define DEFAULT_DEV_MAX		2 /* 0: DEV0, 1: DEV1 and 2: DEV2 */
+#define DEFAULT_VIOC_MAX	6 /* 3: VIOC_LUT0, 4: VIOC_LUT1, 5: VIOC_LUT2 and 6: VIOC_LUT3 */
+
 struct lut_drv_type {
 	unsigned int dev_opened;
+	unsigned int dev_max;
+	unsigned int vioc_max;
 	struct miscdevice *misc;
 };
 
-static unsigned int lut_get_real_lut_number(unsigned int input_lut_number)
+struct lut_drv_type *lut_api = NULL;
+
+static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch);
+
+/* External APIs */
+/* if lut is not plugged then return value will be -1 */
+int lut_drv_api_get_plugin(unsigned int lut_number)
+{
+	int ret = -1;
+	if(lut_api != NULL) {
+		if(lut_number > lut_api->dev_max &&
+			lut_number <= lut_api->vioc_max) {
+			if(tcc_get_lut_enable(lut_number)) {
+				ret = tcc_get_lut_plugin(lut_number);
+			}
+		}else {
+			pr_err("%s lut number %d is out of range\r\n", __func__, lut_number);
+		}
+	} else {
+		pr_err("%s may be lut driver does not probed\r\n", __func__);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(lut_drv_api_get_plugin);
+
+int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch)
+{
+	int ret = -1;
+	if(lut_api != NULL) {
+		ret = lut_drv_set_plugin(lut_api, lut_number, plugin, plug_in_ch);
+	} else {
+		pr_err("%s may be lut driver does not probed\r\n", __func__);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(lut_drv_api_set_plugin);
+
+/* Internal APIs */
+static unsigned int lut_get_real_lut_table_number(unsigned int input_lut_number)
 {
 	unsigned int lut_number = (unsigned int)-1;
-
 
 	switch(input_lut_number) {
 		case LUT_DEV0:
@@ -94,9 +137,65 @@ static unsigned int lut_get_real_lut_number(unsigned int input_lut_number)
 	return lut_number;
 }
 
+static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch)
+{
+	int ret = -1;
+
+	do {
+		if(lut == NULL) {
+			break;
+		}
+		if(lut_number <= lut->dev_max) {
+			pr_err("%s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(lut_number > lut->vioc_max) {
+			pr_err("%s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(!plugin) {
+			dprintk("%s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
+		}
+		else	{
+			dprintk("%s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + plug_in_ch);
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
+		}
+		ret = 0;
+	}while(0);
+	return ret;
+}
+
+static int lut_drv_set_onoff(struct lut_drv_type *lut, unsigned int lut_number, int onoff)
+{
+	int ret = -1;
+
+	do {
+		if(lut == NULL) {
+			break;
+		}
+		if(lut_number > lut->vioc_max) {
+			pr_err("%s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+		dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_number, onoff);
+		tcc_set_lut_enable(VIOC_LUT + lut_number, onoff);
+		ret = 0;
+ 	} while(0);
+	return ret;
+}
+
 static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = -EFAULT;
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	struct lut_drv_type *lut = dev_get_drvdata(misc->parent);
 
 	switch(cmd) {
 		case TCC_LUT_SET:
@@ -110,7 +209,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					kfree(lut_cmd);
 					break;
 				}
-				lut_number = lut_get_real_lut_number(lut_cmd->lut_number);
+				lut_number = lut_get_real_lut_table_number(lut_cmd->lut_number);
 				if(lut_number == (unsigned int)-1 ) {
 					pr_err("%s TCC_LUT_SET invalid lut number[%d]\r\n", __func__, lut_cmd->lut_number);
 					break;
@@ -146,7 +245,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
 	                                        break;
 	                                }
-					lut_number = lut_get_real_lut_number(lut_value_set_ex->lut_number);
+					lut_number = lut_get_real_lut_table_number(lut_value_set_ex->lut_number);
 					if(lut_number == (unsigned int)-1 ) {
 						pr_err("%s TCC_LUT_SET_EX invalid lut number[%d]\r\n", __func__, lut_value_set_ex->lut_number);
 						break;
@@ -177,46 +276,26 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 		case TCC_LUT_ONOFF:
 			{
-				unsigned int lut_number;
 				struct VIOC_LUT_ONOFF_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(struct VIOC_LUT_ONOFF_SET))) {
 					break;
 				}
-				dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_cmd.lut_number, lut_cmd.lut_onoff);
-				lut_number = lut_cmd.lut_number;
-				if(lut_number == (unsigned int)-1 ) {
-					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
-					break;
-				}
-				tcc_set_lut_enable(VIOC_LUT + lut_number, lut_cmd.lut_onoff);
-				ret = 0;
-
+				ret = lut_drv_set_onoff(lut, lut_cmd.lut_number, lut_cmd.lut_onoff);
 			}
 			break;
 
 		case TCC_LUT_PLUG_IN:
 			{
-				unsigned int lut_number;
 				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
 
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
 					break;
-				lut_number = lut_cmd.lut_number;
-				if(lut_number == (unsigned int)-1 ) {
-					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_number);
+				if(lut_cmd.lut_number == (unsigned int)-1 ) {
+					pr_err("%s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
 					break;
 				}
-				if(!lut_cmd.enable) {
-					dprintk("TCC_LUT_PLUG_IN disable lut_number(%d)\r\n", VIOC_LUT + lut_number);
-					tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
-				}
-				else 	{
-					dprintk("TCC_LUT_PLUG_IN enable lut_number(%d)\r\n", VIOC_LUT + lut_number);
-					tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + lut_cmd.lut_plug_in_ch);
-					tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
-				}
-				ret = 0;
+				ret = lut_drv_set_plugin(lut, lut_cmd.lut_number, lut_cmd.enable, lut_cmd.lut_plug_in_ch);
 			}
 			break;
 
@@ -280,7 +359,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
                                 }
 
 				#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-				lut_number = lut_get_real_lut_number(lut_update_pend.lut_number);
+				lut_number = lut_get_real_lut_table_number(lut_update_pend.lut_number);
 				if(lut_number == (unsigned int)-1 ) {
 					pr_err("%s TCC_LUT_GET_UPDATE_PEND invalid lut number[%d]\r\n", __func__, lut_update_pend.lut_number);
 					break;
@@ -316,10 +395,9 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 static int lut_drv_open(struct inode *inode, struct file *filp)
 {
+	int ret = 0;
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct lut_drv_type	*lut = dev_get_drvdata(misc->parent);
-
-	int ret = 0;
 
 	dprintk("%s():  In -open(%d) \n", __func__, lut->dev_opened);
 
@@ -355,12 +433,23 @@ static int lut_drv_probe(struct platform_device *pdev)
 	int ret = -ENODEV;
 
 	lut = kzalloc(sizeof(struct lut_drv_type), GFP_KERNEL);
-	if (!lut)
+	if (lut == NULL) {
 		return -ENOMEM;
+	}
+
+	if(of_property_read_u32(pdev->dev.of_node, "dev_max", &lut->dev_max) < 0) {
+		lut->dev_max = DEFAULT_DEV_MAX;
+	}
+
+	if(of_property_read_u32(pdev->dev.of_node, "vioc_max", &lut->vioc_max) < 0) {
+		lut->vioc_max = DEFAULT_VIOC_MAX;
+	}
+	pr_info("dev_max is %d and vioc_max is %d\r\n", lut->dev_max, lut->vioc_max);
 
 	lut->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
-	if (lut->misc == 0)
+	if (lut->misc == NULL) {
 		goto err_misc_alloc;
+	}
 
  	/* register scaler discdevice */
 	lut->misc->minor = MISC_DYNAMIC_MINOR;
@@ -372,6 +461,9 @@ static int lut_drv_probe(struct platform_device *pdev)
 		goto err_misc_register;
 
 	platform_set_drvdata(pdev, lut);
+
+	/* Copy lut to lut_api to support external APIs */
+	lut_api = lut;
 
 	pr_info("%s: :%s, Driver %s Initialized  lut set num :0x%x\n",__func__, LUT_VERSION, pdev->name, TCC_LUT_SET);
 	return 0;
@@ -392,6 +484,8 @@ static int lut_drv_remove(struct platform_device *pdev)
 
 	misc_deregister(lut->misc);
 	kfree(lut);
+
+	lut_api = NULL;
 	return 0;
 }
 
