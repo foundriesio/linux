@@ -84,6 +84,10 @@ channel: a phandle to the DMA controller plus the following four integer cells:
 	0x1: 1/2 full FIFO
 	0x2: 3/4 full FIFO
 	0x3: full FIFO
+ -bit 2: DMA direct mode
+	0: FIFO mode: with threshold level selectable with bit 0-1
+	1: Direct mode: each DMA request immediately initiates a transfer
+	   from/to the memory.
  -bit 30-29: indicated SRAM Buffer size in (2^order)*PAGE_SIZE.
 	Order is given by those 2 bits starting at 0.
 	Valid only whether Intermediate M2M transfer is set.
