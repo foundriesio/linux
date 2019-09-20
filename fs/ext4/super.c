@@ -2790,13 +2790,6 @@ ext4_check_unsupported_ro(struct super_block *sb, bool allow_ro, bool readonly,
        return -EINVAL;
 }
 
-static int
-ext4_check_unsupported(struct super_block *sb, const char *description)
-{
-	/* The readonly argument doesn't matter if allow_ro is false */
-	return ext4_check_unsupported_ro(sb, false, false, description);
-}
-
 /*
  * Check whether this filesystem can be mounted based on
  * the features present and the RDONLY/RDWR mount requested.
