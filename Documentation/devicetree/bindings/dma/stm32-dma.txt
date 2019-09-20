@@ -93,6 +93,10 @@ channel: a phandle to the DMA controller plus the following four integer cells:
 	For cyclic, whether Intermediate M2M transfer is chosen, any value can
 	be set: SRAM buffer size will rely on period size and not on this DT
 	value.
+ -bit 5: DMA direct mode
+	0: FIFO mode: with threshold level selectable with bit 0-1
+	1: Direct mode: each DMA request immediately initiates a transfer
+	   from/to the memory.
 
 Example:
 
