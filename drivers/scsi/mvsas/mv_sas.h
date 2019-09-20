@@ -247,7 +247,9 @@ struct mvs_device {
 	enum sas_device_type dev_type;
 	struct mvs_info *mvi_info;
 	struct domain_device *sas_device;
+#ifdef __GENKSYMS__
 	struct timer_list timer;
+#endif
 	u32 attached_phy;
 	u32 device_id;
 	u32 running_req;

@@ -4272,6 +4272,8 @@ static int mv88e6xxx_probe(struct mdio_device *mdiodev)
 	chip->reset = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(chip->reset))
 		return PTR_ERR(chip->reset);
+	if (chip->reset)
+		usleep_range(1000, 2000);
 
 	err = mv88e6xxx_detect(chip);
 	if (err)

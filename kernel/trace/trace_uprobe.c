@@ -1403,7 +1403,6 @@ struct trace_event_call *
 create_local_trace_uprobe(char *name, unsigned long offs, bool is_return)
 {
 	struct trace_uprobe *tu;
-	struct inode *inode;
 	struct path path;
 	int ret;
 
@@ -1411,11 +1410,8 @@ create_local_trace_uprobe(char *name, unsigned long offs, bool is_return)
 	if (ret)
 		return ERR_PTR(ret);
 
-	inode = igrab(d_inode(path.dentry));
-	path_put(&path);
-
-	if (!inode || !S_ISREG(inode->i_mode)) {
-		iput(inode);
+	if (!d_is_reg(path.dentry)) {
+		path_put(&path);
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -1430,11 +1426,12 @@ create_local_trace_uprobe(char *name, unsigned long offs, bool is_return)
 	if (IS_ERR(tu)) {
 		pr_info("Failed to allocate trace_uprobe.(%d)\n",
 			(int)PTR_ERR(tu));
+		path_put(&path);
 		return ERR_CAST(tu);
 	}
 
 	tu->offset = offs;
-	tu->inode = inode;
+	tu->path = path;
 	tu->filename = kstrdup(name, GFP_KERNEL);
 	init_trace_event_call(tu, &tu->tp.call);
 

@@ -152,7 +152,6 @@ struct hv_per_cpu_context {
 	 * per-cpu list of the channels based on their CPU affinity.
 	 */
 	struct list_head chan_list;
-	struct clock_event_device *clk_evt;
 };
 
 struct hv_context {
@@ -189,8 +188,6 @@ extern void hv_synic_free(void);
 extern int hv_synic_init(unsigned int cpu);
 
 extern int hv_synic_cleanup(unsigned int cpu);
-
-extern void hv_synic_clockevents_cleanup(void);
 
 /* Interface */
 
@@ -322,6 +319,8 @@ int vmbus_device_register(struct hv_device *child_device_obj);
 void vmbus_device_unregister(struct hv_device *device_obj);
 int vmbus_add_channel_kobj(struct hv_device *device_obj,
 			   struct vmbus_channel *channel);
+
+void vmbus_remove_channel_attr_group(struct vmbus_channel *channel);
 
 struct vmbus_channel *relid2channel(u32 relid);
 

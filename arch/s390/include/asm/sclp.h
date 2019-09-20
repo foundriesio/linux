@@ -76,6 +76,7 @@ struct sclp_info {
 	unsigned char has_ibs : 1;
 	unsigned char has_skey : 1;
 	unsigned char has_kss : 1;
+	unsigned char has_gisaf : 1;
 	unsigned char has_diag318 : 1;
 	unsigned char has_dirq : 1;
 	unsigned int ibc;

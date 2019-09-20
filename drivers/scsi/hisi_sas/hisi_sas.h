@@ -31,7 +31,7 @@
 
 #define HISI_SAS_MAX_PHYS	9
 #define HISI_SAS_MAX_QUEUES	32
-#define HISI_SAS_QUEUE_SLOTS 512
+#define HISI_SAS_QUEUE_SLOTS	4096
 #define HISI_SAS_MAX_ITCT_ENTRIES 1024
 #define HISI_SAS_MAX_DEVICES HISI_SAS_MAX_ITCT_ENTRIES
 #define HISI_SAS_RESET_BIT	0
@@ -42,20 +42,25 @@
 #define HISI_SAS_COMMAND_TABLE_SZ (sizeof(union hisi_sas_command_table))
 
 #define hisi_sas_status_buf_addr(buf) \
-	(buf + offsetof(struct hisi_sas_slot_buf_table, status_buffer))
-#define hisi_sas_status_buf_addr_mem(slot) hisi_sas_status_buf_addr(slot->buf)
+	((buf) + offsetof(struct hisi_sas_slot_buf_table, status_buffer))
+#define hisi_sas_status_buf_addr_mem(slot) hisi_sas_status_buf_addr((slot)->buf)
 #define hisi_sas_status_buf_addr_dma(slot) \
-	hisi_sas_status_buf_addr(slot->buf_dma)
+	hisi_sas_status_buf_addr((slot)->buf_dma)
 
 #define hisi_sas_cmd_hdr_addr(buf) \
-	(buf + offsetof(struct hisi_sas_slot_buf_table, command_header))
-#define hisi_sas_cmd_hdr_addr_mem(slot) hisi_sas_cmd_hdr_addr(slot->buf)
-#define hisi_sas_cmd_hdr_addr_dma(slot) hisi_sas_cmd_hdr_addr(slot->buf_dma)
+	((buf) + offsetof(struct hisi_sas_slot_buf_table, command_header))
+#define hisi_sas_cmd_hdr_addr_mem(slot) hisi_sas_cmd_hdr_addr((slot)->buf)
+#define hisi_sas_cmd_hdr_addr_dma(slot) hisi_sas_cmd_hdr_addr((slot)->buf_dma)
 
 #define hisi_sas_sge_addr(buf) \
-	(buf + offsetof(struct hisi_sas_slot_buf_table, sge_page))
-#define hisi_sas_sge_addr_mem(slot) hisi_sas_sge_addr(slot->buf)
-#define hisi_sas_sge_addr_dma(slot) hisi_sas_sge_addr(slot->buf_dma)
+	((buf) + offsetof(struct hisi_sas_slot_buf_table, sge_page))
+#define hisi_sas_sge_addr_mem(slot) hisi_sas_sge_addr((slot)->buf)
+#define hisi_sas_sge_addr_dma(slot) hisi_sas_sge_addr((slot)->buf_dma)
+
+#define hisi_sas_sge_dif_addr(buf) \
+	((buf) + offsetof(struct hisi_sas_slot_dif_buf_table, sge_dif_page))
+#define hisi_sas_sge_dif_addr_mem(slot) hisi_sas_sge_dif_addr((slot)->buf)
+#define hisi_sas_sge_dif_addr_dma(slot) hisi_sas_sge_dif_addr((slot)->buf_dma)
 
 #define HISI_SAS_MAX_SSP_RESP_SZ (sizeof(struct ssp_frame_hdr) + 1024)
 #define HISI_SAS_MAX_SMP_RESP_SZ 1028
@@ -75,7 +80,13 @@
 				SHOST_DIF_TYPE2_PROTECTION | \
 				SHOST_DIF_TYPE3_PROTECTION)
 
-#define HISI_SAS_PROT_MASK (HISI_SAS_DIF_PROT_MASK)
+#define HISI_SAS_DIX_PROT_MASK (SHOST_DIX_TYPE1_PROTECTION | \
+				SHOST_DIX_TYPE2_PROTECTION | \
+				SHOST_DIX_TYPE3_PROTECTION)
+
+#define HISI_SAS_PROT_MASK (HISI_SAS_DIF_PROT_MASK | HISI_SAS_DIX_PROT_MASK)
+
+#define HISI_SAS_WAIT_PHYUP_TIMEOUT 20
 
 struct hisi_hba;
 
@@ -146,7 +157,7 @@ struct hisi_sas_phy {
 	struct hisi_sas_port	*port;
 	struct asd_sas_phy	sas_phy;
 	struct sas_identify	identify;
-	struct timer_list	timer;
+	struct timer_list timer;
 	struct completion *reset_completion;
 	spinlock_t lock;
 	u64		port_id; /* from hw */
@@ -159,6 +170,9 @@ struct hisi_sas_phy {
 	enum sas_linkrate	minimum_linkrate;
 	enum sas_linkrate	maximum_linkrate;
 	int enable;
+#ifndef __GENKSYMS__
+	u32		code_violation_err_count;
+#endif
 };
 
 struct hisi_sas_port {
@@ -172,6 +186,9 @@ struct hisi_sas_cq {
 	struct tasklet_struct tasklet;
 	int	rd_point;
 	int	id;
+#ifndef __GENKSYMS__
+	const struct cpumask *pci_irq_mask;
+#endif
 };
 
 struct hisi_sas_dq {
@@ -192,6 +209,9 @@ struct hisi_sas_device {
 	enum dev_status dev_status;
 	int device_id;
 	int sata_idx;
+#ifndef __GENKSYMS__
+	spinlock_t lock; /* For protecting slots */
+#endif
 };
 
 struct hisi_sas_tmf_task {
@@ -222,6 +242,10 @@ struct hisi_sas_slot {
 	void	*buf;
 	dma_addr_t buf_dma;
 	u16	idx;
+#ifndef __GENKSYMS__
+	int	device_id;
+	u64	n_elem_dif;
+#endif
 };
 
 #define HISI_SAS_DEBUGFS_REG(x) {#x, x}
@@ -371,6 +395,11 @@ struct hisi_hba {
 
 	struct dentry *debugfs_dir;
 	struct dentry *debugfs_dump_dentry;
+
+#ifndef __GENKSYMS__
+	int cq_nvecs;
+	unsigned int *reply_map;
+#endif
 };
 
 /* Generic HW DMA host memory structures */
@@ -464,9 +493,14 @@ struct hisi_sas_command_table_stp {
 	u8	atapi_cdb[ATAPI_CDB_LEN];
 };
 
-#define HISI_SAS_SGE_PAGE_CNT SG_CHUNK_SIZE
+#define HISI_SAS_SGE_PAGE_CNT (124)
 struct hisi_sas_sge_page {
 	struct hisi_sas_sge sge[HISI_SAS_SGE_PAGE_CNT];
+}  __aligned(16);
+
+#define HISI_SAS_SGE_DIF_PAGE_CNT   HISI_SAS_SGE_PAGE_CNT
+struct hisi_sas_sge_dif_page {
+	struct hisi_sas_sge sge[HISI_SAS_SGE_DIF_PAGE_CNT];
 }  __aligned(16);
 
 struct hisi_sas_command_table_ssp {
@@ -497,6 +531,11 @@ struct hisi_sas_slot_buf_table {
 	struct hisi_sas_status_buffer status_buffer;
 	union hisi_sas_command_table command_header;
 	struct hisi_sas_sge_page sge_page;
+};
+
+struct hisi_sas_slot_dif_buf_table {
+	struct hisi_sas_slot_buf_table slot_buf;
+	struct hisi_sas_sge_dif_page sge_dif_page;
 };
 
 extern struct scsi_transport_template *hisi_sas_stt;
@@ -532,6 +571,7 @@ extern void hisi_sas_init_mem(struct hisi_hba *hisi_hba);
 extern void hisi_sas_rst_work_handler(struct work_struct *work);
 extern void hisi_sas_sync_rst_work_handler(struct work_struct *work);
 extern void hisi_sas_kill_tasklets(struct hisi_hba *hisi_hba);
+extern void hisi_sas_phy_oob_ready(struct hisi_hba *hisi_hba, int phy_no);
 extern bool hisi_sas_notify_phy_event(struct hisi_sas_phy *phy,
 				enum hisi_sas_phy_event event);
 extern void hisi_sas_release_tasks(struct hisi_hba *hisi_hba);

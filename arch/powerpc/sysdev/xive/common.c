@@ -250,6 +250,13 @@ notrace void xmon_xive_do_dump(int cpu)
 	}
 #endif
 }
+
+int xmon_xive_get_irq_config(u32 irq, u32 *target, u8 *prio,
+			     u32 *sw_irq)
+{
+	return xive_ops->get_irq_config(irq, target, prio, sw_irq);
+}
+
 #endif /* CONFIG_XMON */
 
 static unsigned int xive_get_irq(void)
@@ -483,7 +490,7 @@ static int xive_find_target_in_mask(const struct cpumask *mask,
 	 * Now go through the entire mask until we find a valid
 	 * target.
 	 */
-	for (;;) {
+	do {
 		/*
 		 * We re-check online as the fallback case passes us
 		 * an untested affinity mask
@@ -491,12 +498,11 @@ static int xive_find_target_in_mask(const struct cpumask *mask,
 		if (cpu_online(cpu) && xive_try_pick_target(cpu))
 			return cpu;
 		cpu = cpumask_next(cpu, mask);
-		if (cpu == first)
-			break;
 		/* Wrap around */
 		if (cpu >= nr_cpu_ids)
 			cpu = cpumask_first(mask);
-	}
+	} while (cpu != first);
+
 	return -1;
 }
 

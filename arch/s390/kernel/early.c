@@ -55,8 +55,9 @@ static void __init reset_tod_clock(void)
 	if (set_tod_clock(TOD_UNIX_EPOCH) != 0 || store_tod_clock(&time) != 0)
 		disabled_wait(0);
 
-	sched_clock_base_cc = TOD_UNIX_EPOCH;
-	S390_lowcore.last_update_clock = sched_clock_base_cc;
+	memset(tod_clock_base, 0, 16);
+	*(__u64 *) &tod_clock_base[1] = TOD_UNIX_EPOCH;
+	S390_lowcore.last_update_clock = TOD_UNIX_EPOCH;
 }
 
 #ifdef CONFIG_SHARED_KERNEL
@@ -167,8 +168,8 @@ static noinline __init void create_kernel_nss(void)
 	}
 
 	/* re-initialize cputime accounting. */
-	sched_clock_base_cc = get_tod_clock();
-	S390_lowcore.last_update_clock = sched_clock_base_cc;
+	get_tod_clock_ext(tod_clock_base);
+	S390_lowcore.last_update_clock = *(__u64 *) &tod_clock_base[1];
 	S390_lowcore.last_update_timer = 0x7fffffffffffffffULL;
 	S390_lowcore.user_timer = 0;
 	S390_lowcore.system_timer = 0;
@@ -396,6 +397,12 @@ static __init void detect_machine_facilities(void)
 	}
 	if (test_facility(133))
 		S390_lowcore.machine_flags |= MACHINE_FLAG_GS;
+	if (test_facility(139) && (tod_clock_base[1] & 0x80)) {
+		/* Enabled signed clock comparator comparisons */
+		S390_lowcore.machine_flags |= MACHINE_FLAG_SCC;
+		clock_comparator_max = -1ULL >> 1;
+		__ctl_set_bit(0, 53);
+	}
 	enable_mio_ctl();
 }
 

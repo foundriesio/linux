@@ -1120,6 +1120,9 @@ struct kvm_x86_ops {
 	int (*get_msr_feature)(struct kvm_msr_entry *entry);
 
 	bool (*need_emulation_on_page_fault)(struct kvm_vcpu *vcpu);
+#ifndef __GENKSYMS__
+	bool (*dy_apicv_has_pending_interrupt)(struct kvm_vcpu *vcpu);
+#endif
 };
 
 struct kvm_arch_async_pf {

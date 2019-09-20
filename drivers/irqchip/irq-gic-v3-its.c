@@ -2576,8 +2576,10 @@ static void its_irq_domain_activate(struct irq_domain *domain,
 	/* Bind the LPI to the first possible CPU */
 	cpu = cpumask_first_and(cpu_mask, cpu_online_mask);
 	if (cpu >= nr_cpu_ids) {
-		if (its_dev->its->flags & ITS_FLAGS_WORKAROUND_CAVIUM_23144)
-			return -EINVAL;
+		if (its_dev->its->flags & ITS_FLAGS_WORKAROUND_CAVIUM_23144) {
+			pr_err("ITS: Can't bind LPI to non-local node CPU due to Cavium erratum 23144\n");
+			return;
+		}
 
 		cpu = cpumask_first(cpu_online_mask);
 	}
@@ -3101,7 +3103,7 @@ static void its_vpe_irq_domain_activate(struct irq_domain *domain,
 
 	/* If we use the list map, we issue VMAPP on demand... */
 	if (its_list_map)
-		return 0;
+		return;
 
 	/* Map the VPE to the first possible CPU */
 	vpe->col_idx = cpumask_first(cpu_online_mask);

@@ -729,7 +729,7 @@ enum {
 #define ERR_ON_RX_PHASE(err_phase) (err_phase == 0x10 || \
 		err_phase == 0x20 || err_phase == 0x40)
 
-static void link_timeout_disable_link(unsigned long data);
+static void link_timeout_disable_link(struct timer_list *t);
 
 static u32 hisi_sas_read32(struct hisi_hba *hisi_hba, u32 off)
 {
@@ -874,6 +874,7 @@ hisi_sas_device *alloc_dev_quirk_v2_hw(struct domain_device *device)
 			sas_dev->sas_device = device;
 			sas_dev->sata_idx = sata_idx;
 			sas_dev->dq = dq;
+			spin_lock_init(&sas_dev->lock);
 			INIT_LIST_HEAD(&hisi_hba->devices[i].list);
 			break;
 		}
@@ -1325,9 +1326,9 @@ static void init_reg_v2_hw(struct hisi_hba *hisi_hba)
 			 upper_32_bits(hisi_hba->initial_fis_dma));
 }
 
-static void link_timeout_enable_link(unsigned long data)
+static void link_timeout_enable_link(struct timer_list *t)
 {
-	struct hisi_hba *hisi_hba = (struct hisi_hba *)data;
+	struct hisi_hba *hisi_hba = from_timer(hisi_hba, t, timer);
 	int i, reg_val;
 
 	for (i = 0; i < hisi_hba->n_phy; i++) {
@@ -1342,13 +1343,13 @@ static void link_timeout_enable_link(unsigned long data)
 		}
 	}
 
-	hisi_hba->timer.function = link_timeout_disable_link;
+	hisi_hba->timer.function = (TIMER_FUNC_TYPE)link_timeout_disable_link;
 	mod_timer(&hisi_hba->timer, jiffies + msecs_to_jiffies(900));
 }
 
-static void link_timeout_disable_link(unsigned long data)
+static void link_timeout_disable_link(struct timer_list *t)
 {
-	struct hisi_hba *hisi_hba = (struct hisi_hba *)data;
+	struct hisi_hba *hisi_hba = from_timer(hisi_hba, t, timer);
 	int i, reg_val;
 
 	reg_val = hisi_sas_read32(hisi_hba, PHY_STATE);
@@ -1363,14 +1364,13 @@ static void link_timeout_disable_link(unsigned long data)
 		}
 	}
 
-	hisi_hba->timer.function = link_timeout_enable_link;
+	hisi_hba->timer.function = (TIMER_FUNC_TYPE)link_timeout_enable_link;
 	mod_timer(&hisi_hba->timer, jiffies + msecs_to_jiffies(100));
 }
 
 static void set_link_timer_quirk(struct hisi_hba *hisi_hba)
 {
-	hisi_hba->timer.data = (unsigned long)hisi_hba;
-	hisi_hba->timer.function = link_timeout_disable_link;
+	hisi_hba->timer.function = (TIMER_FUNC_TYPE)link_timeout_disable_link;
 	hisi_hba->timer.expires = jiffies + msecs_to_jiffies(1000);
 	add_timer(&hisi_hba->timer);
 }
@@ -2596,9 +2596,9 @@ static void prep_ata_v2_hw(struct hisi_hba *hisi_hba,
 	memcpy(buf_cmd, &task->ata_task.fis, sizeof(struct host_to_dev_fis));
 }
 
-static void hisi_sas_internal_abort_quirk_timeout(unsigned long data)
+static void hisi_sas_internal_abort_quirk_timeout(struct timer_list *t)
 {
-	struct hisi_sas_slot *slot = (struct hisi_sas_slot *)data;
+	struct hisi_sas_slot *slot = from_timer(slot, t, internal_abort_timer);
 	struct hisi_sas_port *port = slot->port;
 	struct asd_sas_port *asd_sas_port;
 	struct asd_sas_phy *sas_phy;
@@ -2641,8 +2641,7 @@ static void prep_abort_v2_hw(struct hisi_hba *hisi_hba,
 	struct timer_list *timer = &slot->internal_abort_timer;
 
 	/* setup the quirk timer */
-	setup_timer(timer, hisi_sas_internal_abort_quirk_timeout,
-		    (unsigned long)slot);
+	timer_setup(timer, hisi_sas_internal_abort_quirk_timeout, 0);
 	/* Set the timeout to 10ms less than internal abort timeout */
 	mod_timer(timer, jiffies + msecs_to_jiffies(100));
 
@@ -2676,6 +2675,8 @@ static int phy_up_v2_hw(int phy_no, struct hisi_hba *hisi_hba)
 
 	if (is_sata_phy_v2_hw(hisi_hba, phy_no))
 		goto end;
+
+	del_timer(&phy->timer);
 
 	if (phy_no == 8) {
 		u32 port_state = hisi_sas_read32(hisi_hba, PORT_STATE);
@@ -2756,6 +2757,7 @@ static int phy_down_v2_hw(int phy_no, struct hisi_hba *hisi_hba)
 	struct hisi_sas_port *port = phy->port;
 	struct device *dev = hisi_hba->dev;
 
+	del_timer(&phy->timer);
 	hisi_sas_phy_write32(hisi_hba, phy_no, PHYCTRL_NOT_RDY_MSK, 1);
 
 	phy_state = hisi_sas_read32(hisi_hba, PHY_STATE);
@@ -2943,6 +2945,9 @@ static irqreturn_t int_chnl_int_v2_hw(int irq_no, void *p)
 		if ((irq_msk & (1 << phy_no)) && irq_value0) {
 			if (irq_value0 & CHL_INT0_SL_RX_BCST_ACK_MSK)
 				phy_bcast_v2_hw(phy_no, hisi_hba);
+
+			if (irq_value0 & CHL_INT0_PHY_RDY_MSK)
+				hisi_sas_phy_oob_ready(hisi_hba, phy_no);
 
 			hisi_sas_phy_write32(hisi_hba, phy_no,
 					CHL_INT0, irq_value0
@@ -3227,6 +3232,8 @@ static irqreturn_t sata_int_v2_hw(int irq_no, void *p)
 	unsigned long flags;
 	int phy_no, offset;
 
+	del_timer(&phy->timer);
+
 	phy_no = sas_phy->id;
 	initial_fis = &hisi_hba->initial_fis[phy_no];
 	fis = &initial_fis->fis;
@@ -3388,6 +3395,8 @@ static int interrupt_init_v2_hw(struct hisi_hba *hisi_hba)
 		}
 		tasklet_init(t, cq_tasklet_v2_hw, (unsigned long)cq);
 	}
+
+	hisi_hba->cq_nvecs = hisi_hba->queue_count;
 
 	return 0;
 

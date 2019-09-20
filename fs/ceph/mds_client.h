@@ -24,6 +24,7 @@
 #define CEPHFS_FEATURES_CLIENT_SUPPORTED { 	\
 	0, 1, 2, 3, 4, 5, 6, 7,			\
 	CEPHFS_FEATURE_MIMIC,			\
+	CEPHFS_FEATURE_REPLY_ENCODING,		\
 	CEPHFS_FEATURE_LAZY_CAP_WANTED,		\
 }
 #define CEPHFS_FEATURES_CLIENT_REQUIRED {}
@@ -64,6 +65,10 @@ struct ceph_mds_reply_info_in {
 	char *pool_ns_data;
 	u64 max_bytes;
 	u64 max_files;
+	s32 dir_pin;
+	struct ceph_timespec btime;
+	struct ceph_timespec snap_btime;
+	u64 change_attr;
 };
 
 struct ceph_mds_reply_dir_entry {
@@ -151,6 +156,7 @@ struct ceph_mds_session {
 	int               s_mds;
 	int               s_state;
 	unsigned long     s_ttl;      /* time until mds kills us */
+	unsigned long	  s_features;
 	u64               s_seq;      /* incoming msg seq # */
 	struct mutex      s_mutex;    /* serialize session messages */
 
@@ -178,7 +184,7 @@ struct ceph_mds_session {
 	unsigned long     s_renew_requested; /* last time we sent a renew req */
 	u64               s_renew_seq;
 
-	refcount_t          s_ref;
+	refcount_t        s_ref;
 	struct list_head  s_waiting;  /* waiting requests */
 	struct list_head  s_unsafe;   /* unsafe requests */
 };

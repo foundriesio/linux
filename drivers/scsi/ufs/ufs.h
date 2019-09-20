@@ -588,7 +588,7 @@ struct ufs_vreg {
 	struct regulator *reg;
 	const char *name;
 	bool enabled;
-	bool unused;
+	bool unused;	/* added back for kABI but not used */
 	int min_uV;
 	int max_uV;
 	int min_uA;

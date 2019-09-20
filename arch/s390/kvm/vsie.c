@@ -38,7 +38,13 @@ struct vsie_page {
 	struct gmap *gmap;			/* 0x0220 */
 	/* address of the last reported fault to guest2 */
 	unsigned long fault_addr;		/* 0x0228 */
-	__u8 reserved[0x0700 - 0x0230];		/* 0x0230 */
+	/* calculated guest addresses of satellite control blocks */
+	gpa_t sca_gpa;				/* 0x0230 */
+	gpa_t itdba_gpa;			/* 0x0238 */
+	gpa_t gvrd_gpa;				/* 0x0240 */
+	gpa_t riccbd_gpa;			/* 0x0248 */
+	gpa_t sdnx_gpa;				/* 0x0250 */
+	__u8 reserved[0x0700 - 0x0258];		/* 0x0258 */
 	struct kvm_s390_crypto_cb crycb;	/* 0x0700 */
 	__u8 fac[S390_ARCH_FAC_LIST_SIZE_BYTE];	/* 0x0800 */
 };
@@ -282,6 +288,7 @@ static int shadow_crycb(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 	const u32 crycb_addr = crycbd_o & 0x7ffffff8U;
 	unsigned long *b1, *b2;
 	u8 ecb3_flags;
+	u32 ecd_flags;
 	int apie_h;
 	int key_msk = test_kvm_facility(vcpu->kvm, 76);
 	int fmt_o = crycbd_o & CRYCB_FORMAT_MASK;
@@ -314,7 +321,8 @@ static int shadow_crycb(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 	/* we may only allow it if enabled for guest 2 */
 	ecb3_flags = scb_o->ecb3 & vcpu->arch.sie_block->ecb3 &
 		     (ECB3_AES | ECB3_DEA);
-	if (!ecb3_flags)
+	ecd_flags = scb_o->ecd & vcpu->arch.sie_block->ecd & ECD_ECC;
+	if (!ecb3_flags && !ecd_flags)
 		goto end;
 
 	/* copy only the wrapping keys */
@@ -323,6 +331,7 @@ static int shadow_crycb(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 		return set_validity_icpt(scb_s, 0x0035U);
 
 	scb_s->ecb3 |= ecb3_flags;
+	scb_s->ecd |= ecd_flags;
 
 	/* xor both blocks in one run */
 	b1 = (unsigned long *) vsie_page->crycb.dea_wrapping_key_mask;
@@ -536,6 +545,8 @@ static int shadow_scb(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 	if (test_kvm_facility(vcpu->kvm, 156))
 		scb_s->ecd |= scb_o->ecd & ECD_ETOKENF;
 
+	scb_s->hpid = HPID_VSIE;
+
 	prepare_ibc(vcpu, vsie_page);
 	rc = shadow_crycb(vcpu, vsie_page);
 out:
@@ -649,46 +660,42 @@ static void unpin_guest_page(struct kvm *kvm, gpa_t gpa, hpa_t hpa)
 /* unpin all blocks previously pinned by pin_blocks(), marking them dirty */
 static void unpin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 {
-	struct kvm_s390_sie_block *scb_o = vsie_page->scb_o;
 	struct kvm_s390_sie_block *scb_s = &vsie_page->scb_s;
 	hpa_t hpa;
-	gpa_t gpa;
 
 	hpa = (u64) scb_s->scaoh << 32 | scb_s->scaol;
 	if (hpa) {
-		gpa = scb_o->scaol & ~0xfUL;
-		if (test_kvm_cpu_feat(vcpu->kvm, KVM_S390_VM_CPU_FEAT_64BSCAO))
-			gpa |= (u64) scb_o->scaoh << 32;
-		unpin_guest_page(vcpu->kvm, gpa, hpa);
+		unpin_guest_page(vcpu->kvm, vsie_page->sca_gpa, hpa);
+		vsie_page->sca_gpa = 0;
 		scb_s->scaol = 0;
 		scb_s->scaoh = 0;
 	}
 
 	hpa = scb_s->itdba;
 	if (hpa) {
-		gpa = scb_o->itdba & ~0xffUL;
-		unpin_guest_page(vcpu->kvm, gpa, hpa);
+		unpin_guest_page(vcpu->kvm, vsie_page->itdba_gpa, hpa);
+		vsie_page->itdba_gpa = 0;
 		scb_s->itdba = 0;
 	}
 
 	hpa = scb_s->gvrd;
 	if (hpa) {
-		gpa = scb_o->gvrd & ~0x1ffUL;
-		unpin_guest_page(vcpu->kvm, gpa, hpa);
+		unpin_guest_page(vcpu->kvm, vsie_page->gvrd_gpa, hpa);
+		vsie_page->gvrd_gpa = 0;
 		scb_s->gvrd = 0;
 	}
 
 	hpa = scb_s->riccbd;
 	if (hpa) {
-		gpa = scb_o->riccbd & ~0x3fUL;
-		unpin_guest_page(vcpu->kvm, gpa, hpa);
+		unpin_guest_page(vcpu->kvm, vsie_page->riccbd_gpa, hpa);
+		vsie_page->riccbd_gpa = 0;
 		scb_s->riccbd = 0;
 	}
 
 	hpa = scb_s->sdnxo;
 	if (hpa) {
-		gpa = scb_o->sdnxo;
-		unpin_guest_page(vcpu->kvm, gpa, hpa);
+		unpin_guest_page(vcpu->kvm, vsie_page->sdnx_gpa, hpa);
+		vsie_page->sdnx_gpa = 0;
 		scb_s->sdnxo = 0;
 	}
 }
@@ -719,7 +726,7 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 	if (test_kvm_cpu_feat(vcpu->kvm, KVM_S390_VM_CPU_FEAT_64BSCAO))
 		gpa |= (u64) READ_ONCE(scb_o->scaoh) << 32;
 	if (gpa) {
-		if (!(gpa & ~0x1fffUL))
+		if (gpa < 2 * PAGE_SIZE)
 			rc = set_validity_icpt(scb_s, 0x0038U);
 		else if ((gpa & ~0x1fffUL) == kvm_s390_get_prefix(vcpu))
 			rc = set_validity_icpt(scb_s, 0x0011U);
@@ -733,13 +740,14 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 		}
 		if (rc)
 			goto unpin;
+		vsie_page->sca_gpa = gpa;
 		scb_s->scaoh = (u32)((u64)hpa >> 32);
 		scb_s->scaol = (u32)(u64)hpa;
 	}
 
 	gpa = READ_ONCE(scb_o->itdba) & ~0xffUL;
 	if (gpa && (scb_s->ecb & ECB_TE)) {
-		if (!(gpa & ~0x1fffUL)) {
+		if (gpa < 2 * PAGE_SIZE) {
 			rc = set_validity_icpt(scb_s, 0x0080U);
 			goto unpin;
 		}
@@ -749,12 +757,13 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 			rc = set_validity_icpt(scb_s, 0x0080U);
 			goto unpin;
 		}
+		vsie_page->itdba_gpa = gpa;
 		scb_s->itdba = hpa;
 	}
 
 	gpa = READ_ONCE(scb_o->gvrd) & ~0x1ffUL;
 	if (gpa && (scb_s->eca & ECA_VX) && !(scb_s->ecd & ECD_HOSTREGMGMT)) {
-		if (!(gpa & ~0x1fffUL)) {
+		if (gpa < 2 * PAGE_SIZE) {
 			rc = set_validity_icpt(scb_s, 0x1310U);
 			goto unpin;
 		}
@@ -767,12 +776,13 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 			rc = set_validity_icpt(scb_s, 0x1310U);
 			goto unpin;
 		}
+		vsie_page->gvrd_gpa = gpa;
 		scb_s->gvrd = hpa;
 	}
 
 	gpa = READ_ONCE(scb_o->riccbd) & ~0x3fUL;
 	if (gpa && (scb_s->ecb3 & ECB3_RI)) {
-		if (!(gpa & ~0x1fffUL)) {
+		if (gpa < 2 * PAGE_SIZE) {
 			rc = set_validity_icpt(scb_s, 0x0043U);
 			goto unpin;
 		}
@@ -783,6 +793,7 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 			goto unpin;
 		}
 		/* Validity 0x0044 will be checked by SIE */
+		vsie_page->riccbd_gpa = gpa;
 		scb_s->riccbd = hpa;
 	}
 	if (((scb_s->ecb & ECB_GS) && !(scb_s->ecd & ECD_HOSTREGMGMT)) ||
@@ -791,7 +802,7 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 
 		gpa = READ_ONCE(scb_o->sdnxo) & ~0xfUL;
 		sdnxc = READ_ONCE(scb_o->sdnxo) & 0xfUL;
-		if (!gpa || !(gpa & ~0x1fffUL)) {
+		if (!gpa || gpa < 2 * PAGE_SIZE) {
 			rc = set_validity_icpt(scb_s, 0x10b0U);
 			goto unpin;
 		}
@@ -811,6 +822,7 @@ static int pin_blocks(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
 			rc = set_validity_icpt(scb_s, 0x10b0U);
 			goto unpin;
 		}
+		vsie_page->sdnx_gpa = gpa;
 		scb_s->sdnxo = hpa | sdnxc;
 	}
 	return 0;
@@ -976,6 +988,8 @@ static int handle_stfle(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
  *          - < 0 if an error occurred
  */
 static int do_vsie_run(struct kvm_vcpu *vcpu, struct vsie_page *vsie_page)
+	__releases(vcpu->kvm->srcu)
+	__acquires(vcpu->kvm->srcu)
 {
 	struct kvm_s390_sie_block *scb_s = &vsie_page->scb_s;
 	struct kvm_s390_sie_block *scb_o = vsie_page->scb_o;

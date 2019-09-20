@@ -432,12 +432,12 @@ config ARM64_ERRATUM_845719
 config ARM64_ERRATUM_843419
 	bool "Cortex-A53: 843419: A load or store might access an incorrect address"
 	default y
-	select ARM64_MODULE_CMODEL_LARGE if MODULES
+	select ARM64_MODULE_PLTS if MODULES
 	help
 	  This option links the kernel with '--fix-cortex-a53-843419' and
-	  builds modules using the large memory model in order to avoid the use
-	  of the ADRP instruction, which can cause a subsequent memory access
-	  to use an incorrect address on Cortex-A53 parts up to r0p4.
+	  enables PLT support to replace certain ADRP instructions, which can
+	  cause subsequent memory accesses to use an incorrect address on
+	  Cortex-A53 parts up to r0p4.
 
 	  If unsure, say Y.
 
@@ -1106,9 +1106,6 @@ config ARM64_SVE
 	  fixed.  Otherwise, you may experience firmware panics or lockups when
 	  booting the kernel.  If unsure and you are not observing these
 	  symptoms, you should assume that it is safe to say Y.
-
-config ARM64_MODULE_CMODEL_LARGE
-	bool
 
 config ARM64_MODULE_PLTS
 	bool

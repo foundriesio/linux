@@ -23,6 +23,14 @@ static void qla2x00_status_cont_entry(struct rsp_que *, sts_cont_entry_t *);
 static int qla2x00_error_entry(scsi_qla_host_t *, struct rsp_que *,
 	sts_entry_t *);
 
+const char *const port_state_str[] = {
+	"Unknown",
+	"UNCONFIGURED",
+	"DEAD",
+	"LOST",
+	"ONLINE"
+};
+
 /**
  * qla2100_intr_handler() - Process interrupts for the ISP2100 and ISP2200.
  * @irq: interrupt number
@@ -41,7 +49,7 @@ qla2100_intr_handler(int irq, void *dev_id)
 	int		status;
 	unsigned long	iter;
 	uint16_t	hccr;
-	uint16_t	mb[4];
+	uint16_t	mb[8];
 	struct rsp_que *rsp;
 	unsigned long	flags;
 
@@ -160,7 +168,7 @@ qla2300_intr_handler(int irq, void *dev_id)
 	unsigned long	iter;
 	uint32_t	stat;
 	uint16_t	hccr;
-	uint16_t	mb[4];
+	uint16_t	mb[8];
 	struct rsp_que *rsp;
 	struct qla_hw_data *ha;
 	unsigned long	flags;
@@ -366,7 +374,7 @@ qla2x00_get_link_speed_str(struct qla_hw_data *ha, uint16_t speed)
 	static const char *const link_speeds[] = {
 		"1", "2", "?", "4", "8", "16", "32", "10"
 	};
-#define	QLA_LAST_SPEED	7
+#define	QLA_LAST_SPEED (ARRAY_SIZE(link_speeds) - 1)
 
 	if (IS_QLA2100(ha) || IS_QLA2200(ha))
 		return link_speeds[0];
@@ -768,7 +776,6 @@ skip_rio:
 	case MBA_LOOP_INIT_ERR:
 		ql_log(ql_log_warn, vha, 0x5090,
 		    "LOOP INIT ERROR (%x).\n", mb[1]);
-		ha->isp_ops->fw_dump(vha, 1);
 		set_bit(ISP_ABORT_NEEDED, &vha->dpc_flags);
 		break;
 
@@ -840,6 +847,7 @@ skip_rio:
 				if (ha->flags.fawwpn_enabled &&
 				    (ha->current_topology == ISP_CFG_F)) {
 					void *wwpn = ha->init_cb->port_name;
+
 					memcpy(vha->port_name, wwpn, WWN_SIZE);
 					fc_host_port_name(vha->host) =
 					    wwn_to_u64(vha->port_name);
@@ -1594,8 +1602,8 @@ qla24xx_els_ct_entry(scsi_qla_host_t *vha, struct req_que *req,
 	}
 
 	comp_status = fw_status[0] = le16_to_cpu(pkt->comp_status);
-	fw_status[1] = le16_to_cpu(((struct els_sts_entry_24xx*)pkt)->error_subcode_1);
-	fw_status[2] = le16_to_cpu(((struct els_sts_entry_24xx*)pkt)->error_subcode_2);
+	fw_status[1] = le16_to_cpu(((struct els_sts_entry_24xx *)pkt)->error_subcode_1);
+	fw_status[2] = le16_to_cpu(((struct els_sts_entry_24xx *)pkt)->error_subcode_2);
 
 	if (iocb_type == ELS_IOCB_TYPE) {
 		els = &sp->u.iocb_cmd;
@@ -1616,7 +1624,7 @@ qla24xx_els_ct_entry(scsi_qla_host_t *vha, struct req_que *req,
 				res = DID_ERROR << 16;
 			}
 		}
-		ql_log(ql_log_info, vha, 0x503f,
+		ql_dbg(ql_dbg_user, vha, 0x503f,
 		    "ELS IOCB Done -%s error hdl=%x comp_status=0x%x error subcode 1=0x%x error subcode 2=0x%x total_byte=0x%x\n",
 		    type, sp->handle, comp_status, fw_status[1], fw_status[2],
 		    le16_to_cpu(((struct els_sts_entry_24xx *)
@@ -1972,6 +1980,52 @@ static void qla_ctrlvp_completed(scsi_qla_host_t *vha, struct req_que *req,
 	sp->done(sp, rval);
 }
 
+/* Process a single response queue entry. */
+static void qla2x00_process_response_entry(struct scsi_qla_host *vha,
+					   struct rsp_que *rsp,
+					   sts_entry_t *pkt)
+{
+	sts21_entry_t *sts21_entry;
+	sts22_entry_t *sts22_entry;
+	uint16_t handle_cnt;
+	uint16_t cnt;
+
+	switch (pkt->entry_type) {
+	case STATUS_TYPE:
+		qla2x00_status_entry(vha, rsp, pkt);
+		break;
+	case STATUS_TYPE_21:
+		sts21_entry = (sts21_entry_t *)pkt;
+		handle_cnt = sts21_entry->handle_count;
+		for (cnt = 0; cnt < handle_cnt; cnt++)
+			qla2x00_process_completed_request(vha, rsp->req,
+						sts21_entry->handle[cnt]);
+		break;
+	case STATUS_TYPE_22:
+		sts22_entry = (sts22_entry_t *)pkt;
+		handle_cnt = sts22_entry->handle_count;
+		for (cnt = 0; cnt < handle_cnt; cnt++)
+			qla2x00_process_completed_request(vha, rsp->req,
+						sts22_entry->handle[cnt]);
+		break;
+	case STATUS_CONT_TYPE:
+		qla2x00_status_cont_entry(rsp, (sts_cont_entry_t *)pkt);
+		break;
+	case MBX_IOCB_TYPE:
+		qla2x00_mbx_iocb_entry(vha, rsp->req, (struct mbx_entry *)pkt);
+		break;
+	case CT_IOCB_TYPE:
+		qla2x00_ct_entry(vha, rsp->req, pkt, CT_IOCB_TYPE);
+		break;
+	default:
+		/* Type Not Supported. */
+		ql_log(ql_log_warn, vha, 0x504a,
+		       "Received unknown response pkt type %x entry status=%x.\n",
+		       pkt->entry_type, pkt->entry_status);
+		break;
+	}
+}
+
 /**
  * qla2x00_process_response_queue() - Process response queue entries.
  * @rsp: response queue
@@ -1983,8 +2037,6 @@ qla2x00_process_response_queue(struct rsp_que *rsp)
 	struct qla_hw_data *ha = rsp->hw;
 	struct device_reg_2xxx __iomem *reg = &ha->iobase->isp;
 	sts_entry_t	*pkt;
-	uint16_t        handle_cnt;
-	uint16_t        cnt;
 
 	vha = pci_get_drvdata(ha->pdev);
 
@@ -2009,42 +2061,7 @@ qla2x00_process_response_queue(struct rsp_que *rsp)
 			continue;
 		}
 
-		switch (pkt->entry_type) {
-		case STATUS_TYPE:
-			qla2x00_status_entry(vha, rsp, pkt);
-			break;
-		case STATUS_TYPE_21:
-			handle_cnt = ((sts21_entry_t *)pkt)->handle_count;
-			for (cnt = 0; cnt < handle_cnt; cnt++) {
-				qla2x00_process_completed_request(vha, rsp->req,
-				    ((sts21_entry_t *)pkt)->handle[cnt]);
-			}
-			break;
-		case STATUS_TYPE_22:
-			handle_cnt = ((sts22_entry_t *)pkt)->handle_count;
-			for (cnt = 0; cnt < handle_cnt; cnt++) {
-				qla2x00_process_completed_request(vha, rsp->req,
-				    ((sts22_entry_t *)pkt)->handle[cnt]);
-			}
-			break;
-		case STATUS_CONT_TYPE:
-			qla2x00_status_cont_entry(rsp, (sts_cont_entry_t *)pkt);
-			break;
-		case MBX_IOCB_TYPE:
-			qla2x00_mbx_iocb_entry(vha, rsp->req,
-			    (struct mbx_entry *)pkt);
-			break;
-		case CT_IOCB_TYPE:
-			qla2x00_ct_entry(vha, rsp->req, pkt, CT_IOCB_TYPE);
-			break;
-		default:
-			/* Type Not Supported. */
-			ql_log(ql_log_warn, vha, 0x504a,
-			    "Received unknown response pkt type %x "
-			    "entry status=%x.\n",
-			    pkt->entry_type, pkt->entry_status);
-			break;
-		}
+		qla2x00_process_response_entry(vha, rsp, pkt);
 		((response_t *)pkt)->signature = RESPONSE_PROCESSED;
 		wmb();
 	}
@@ -2241,6 +2258,7 @@ qla25xx_process_bidir_status_iocb(scsi_qla_host_t *vha, void *pkt,
 	struct fc_bsg_reply *bsg_reply;
 	sts_entry_t *sts;
 	struct sts_entry_24xx *sts24;
+
 	sts = (sts_entry_t *) pkt;
 	sts24 = (struct sts_entry_24xx *) pkt;
 
@@ -3076,6 +3094,7 @@ process_err:
 	/* Adjust ring index */
 	if (IS_P3P_TYPE(ha)) {
 		struct device_reg_82xx __iomem *reg = &ha->iobase->isp82;
+
 		WRT_REG_DWORD(&reg->rsp_q_out[0], rsp->ring_index);
 	} else {
 		WRT_REG_DWORD(rsp->rsp_q_out, rsp->ring_index);
@@ -3477,7 +3496,7 @@ qla24xx_enable_msix(struct qla_hw_data *ha, struct rsp_que *rsp)
 		ql_log(ql_log_fatal, vha, 0x00c8,
 		    "Failed to allocate memory for ha->msix_entries.\n");
 		ret = -ENOMEM;
-		goto msix_out;
+		goto free_irqs;
 	}
 	ha->flags.msix_enabled = 1;
 
@@ -3560,6 +3579,10 @@ msix_register_fail:
 
 msix_out:
 	return ret;
+
+free_irqs:
+	pci_free_irq_vectors(ha->pdev);
+	goto msix_out;
 }
 
 int

@@ -159,6 +159,7 @@ void init_iova_domain(struct iova_domain *iovad, unsigned long granule,
 	unsigned long start_pfn);
 int init_iova_flush_queue(struct iova_domain *iovad,
 			  iova_flush_cb flush_cb, iova_entry_dtor entry_dtor);
+bool has_iova_flush_queue(struct iova_domain *iovad);
 struct iova *find_iova(struct iova_domain *iovad, unsigned long pfn);
 void put_iova_domain(struct iova_domain *iovad);
 struct iova *split_and_remove_iova(struct iova_domain *iovad,
@@ -234,6 +235,11 @@ static inline void init_iova_domain(struct iova_domain *iovad,
 				    unsigned long granule,
 				    unsigned long start_pfn)
 {
+}
+
+static inline bool has_iova_flush_queue(struct iova_domain *iovad)
+{
+	return false;
 }
 
 static inline int init_iova_flush_queue(struct iova_domain *iovad,

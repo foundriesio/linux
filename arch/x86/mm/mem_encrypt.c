@@ -424,6 +424,7 @@ static const struct dma_map_ops sev_dma_ops = {
 	.sync_sg_for_cpu        = swiotlb_sync_sg_for_cpu,
 	.sync_sg_for_device     = swiotlb_sync_sg_for_device,
 	.mapping_error          = swiotlb_dma_mapping_error,
+	.max_mapping_size	= swiotlb_max_mapping_size,
 };
 
 /* Architecture __weak replacement functions */

@@ -33,10 +33,15 @@ struct nvme_private {
 	struct work_struct ls_work;
 	struct work_struct abort_work;
 	int comp_status;
+#ifndef __GENKSYMS__
+	spinlock_t cmd_lock;
+#endif
 };
 
 struct qla_nvme_rport {
+#ifdef __GENKSYMS__
 	struct list_head list;
+#endif
 	struct fc_port *fcport;
 };
 
@@ -145,7 +150,6 @@ struct pt_ls4_rx_unsol {
 int qla_nvme_register_hba(struct scsi_qla_host *);
 int  qla_nvme_register_remote(struct scsi_qla_host *, struct fc_port *);
 void qla_nvme_delete(struct scsi_qla_host *);
-void qla_nvme_abort(struct qla_hw_data *, struct srb *sp, int res);
 void qla24xx_nvme_ls4_iocb(struct scsi_qla_host *, struct pt_ls4_request *,
     struct req_que *);
 void qla24xx_async_gffid_sp_done(void *, int);
