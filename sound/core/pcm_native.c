@@ -760,6 +760,17 @@ end:
 	return err;
 }
 
+//////////////////////////////////////////////////////////////////
+// ITAPI EXT START
+int snd_pcm_hw_params_kernel(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params)
+{
+	return snd_pcm_hw_params(substream, params);
+}
+EXPORT_SYMBOL(snd_pcm_hw_params_kernel);
+// ITAPI EXT END
+//////////////////////////////////////////////////////////////////
+
 static int snd_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime;
@@ -855,6 +866,42 @@ static int snd_pcm_sw_params_user(struct snd_pcm_substream *substream,
 	return err;
 }
 
+////////////////////////////////////////////////////////////////
+// ITAPI EXT START
+int snd_pcm_sw_params_kernel(struct snd_pcm_substream *substream,
+			     struct snd_pcm_sw_params *params)
+{
+	return snd_pcm_sw_params(substream, params);
+}
+EXPORT_SYMBOL(snd_pcm_sw_params_kernel);
+
+int snd_pcm_sw_params_get(struct snd_pcm_substream *substream, struct snd_pcm_sw_params *params)
+{
+	struct snd_pcm_runtime *runtime;
+
+	if (PCM_RUNTIME_CHECK(substream))
+		return -ENXIO;
+	runtime = substream->runtime;
+
+	snd_pcm_stream_lock_irq(substream);
+	params->tstamp_mode = runtime->tstamp_mode;
+	params->period_step = runtime->period_step;
+	params->sleep_min = 0;
+	params->avail_min = 1;//runtime->avail_min;
+	//params->period_event = runtime->period_event;
+	params->xfer_align = 1;
+	params->start_threshold = runtime->start_threshold;
+	params->stop_threshold = runtime->stop_threshold;
+	params->silence_threshold = runtime->silence_threshold;
+	params->silence_size = runtime->silence_size;
+	params->boundary = runtime->boundary;
+	snd_pcm_stream_unlock_irq(substream);
+	return 0;
+}
+EXPORT_SYMBOL(snd_pcm_sw_params_get);
+// ITAPI EXT END
+////////////////////////////////////////////////////////////////
+
 int snd_pcm_status(struct snd_pcm_substream *substream,
 		   struct snd_pcm_status *status)
 {
@@ -929,6 +976,9 @@ int snd_pcm_status(struct snd_pcm_substream *substream,
  	snd_pcm_stream_unlock_irq(substream);
 	return 0;
 }
+/////////////////////////////
+// ITAPI EXT
+EXPORT_SYMBOL(snd_pcm_status);
 
 static int snd_pcm_status_user(struct snd_pcm_substream *substream,
 			       struct snd_pcm_status __user * _status,
@@ -2775,6 +2825,53 @@ static int snd_pcm_sync_ptr(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+///////////////////////////////////////////////////////////////
+// ITAPI EXT START
+int snd_pcm_sync_ptr_kernel(struct snd_pcm_substream *substream,
+			    struct snd_pcm_sync_ptr __user *_sync_ptr)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_pcm_sync_ptr sync_ptr;
+	volatile struct snd_pcm_mmap_status *status;
+	volatile struct snd_pcm_mmap_control *control;
+	int err;
+
+	memset(&sync_ptr, 0, sizeof(sync_ptr));
+//	if (get_user(sync_ptr.flags, (unsigned __user *)&(_sync_ptr->flags)))
+//		return -EFAULT;
+	sync_ptr.flags = _sync_ptr->flags;
+//	if (copy_from_user(&sync_ptr.c.control, &(_sync_ptr->c.control), sizeof(struct snd_pcm_mmap_control)))
+//		return -EFAULT;
+	memcpy(&sync_ptr.c.control, &_sync_ptr->c.control, sizeof(struct snd_pcm_mmap_control));	
+	status = runtime->status;
+	control = runtime->control;
+	if (sync_ptr.flags & SNDRV_PCM_SYNC_PTR_HWSYNC) {
+		err = snd_pcm_hwsync(substream);
+		if (err < 0)
+			return err;
+	}
+	snd_pcm_stream_lock_irq(substream);
+	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_APPL))
+		control->appl_ptr = sync_ptr.c.control.appl_ptr;
+	else
+		sync_ptr.c.control.appl_ptr = control->appl_ptr;
+	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_AVAIL_MIN))
+		control->avail_min = sync_ptr.c.control.avail_min;
+	else
+		sync_ptr.c.control.avail_min = control->avail_min;
+	sync_ptr.s.status.state = status->state;
+	sync_ptr.s.status.hw_ptr = status->hw_ptr;
+	sync_ptr.s.status.tstamp = status->tstamp;
+	sync_ptr.s.status.suspended_state = status->suspended_state;
+	snd_pcm_stream_unlock_irq(substream);
+//	if (copy_to_user(_sync_ptr, &sync_ptr, sizeof(sync_ptr)))
+//		return -EFAULT;
+	memcpy(_sync_ptr, &sync_ptr, sizeof(sync_ptr));
+	return 0;
+}
+EXPORT_SYMBOL(snd_pcm_sync_ptr_kernel);
+// ITAPI EXT END
+///////////////////////////////////////////////////////////////
 static int snd_pcm_tstamp(struct snd_pcm_substream *substream, int __user *_arg)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
