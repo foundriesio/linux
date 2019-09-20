@@ -19,6 +19,7 @@
 		ethernet0 = &ethernet0;
 		serial0 = &uart4;
 		serial1 = &usart3;
+		serial2 = &uart7;
 	};
 
 	chosen {
@@ -621,6 +622,14 @@
 	pinctrl-2 = <&uart4_idle_pins_a>;
 	pinctrl-3 = <&uart4_pins_a>;
 	status = "okay";
+};
+
+&uart7 {
+	pinctrl-names = "default", "sleep", "idle";
+	pinctrl-0 = <&uart7_pins_b>;
+	pinctrl-1 = <&uart7_sleep_pins_b>;
+	pinctrl-2 = <&uart7_idle_pins_b>;
+	status = "disabled";
 };
 
 &usart3 {
