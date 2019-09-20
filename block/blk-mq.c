@@ -1590,7 +1590,7 @@ static void __blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 	}
 
 insert:
-	blk_mq_sched_insert_request(rq, false, run_queue, false, may_sleep);
+	blk_mq_request_bypass_insert(rq, run_queue);
 }
 
 static void blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
