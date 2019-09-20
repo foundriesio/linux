@@ -309,6 +309,7 @@ struct stm32f7_i2c_msg {
  * @regmap_smask: mask for Fast Mode Plus bits in set register
  * @regmap_creg: register address for setting Fast Mode Plus bits
  * @regmap_cmask: mask for Fast Mode Plus bits in set register
+ * @is_suspended: boolean to know if the driver has been suspended
  */
 struct stm32f7_i2c_dev {
 	struct i2c_adapter adap;
@@ -338,6 +339,7 @@ struct stm32f7_i2c_dev {
 	u32 regmap_smask;
 	u32 regmap_creg;
 	u32 regmap_cmask;
+	bool is_suspended;
 };
 
 /**
@@ -1593,6 +1595,9 @@ static int stm32f7_i2c_xfer(struct i2c_adapter *i2c_adap,
 	unsigned long time_left;
 	int ret;
 
+	if (i2c_dev->is_suspended)
+		return -EBUSY;
+
 	i2c_dev->msg = msgs;
 	i2c_dev->msg_num = num;
 	i2c_dev->msg_id = 0;
@@ -1638,6 +1643,9 @@ static int stm32f7_i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 	struct device *dev = i2c_dev->dev;
 	unsigned long timeout;
 	int i, ret;
+
+	if (i2c_dev->is_suspended)
+		return -EBUSY;
 
 	f7_msg->addr = addr;
 	f7_msg->size = size;
@@ -2252,6 +2260,10 @@ static int stm32f7_i2c_suspend(struct device *dev)
 	struct stm32f7_i2c_dev *i2c_dev = dev_get_drvdata(dev);
 	int ret;
 
+	i2c_lock_bus(&i2c_dev->adap, I2C_LOCK_ROOT_ADAPTER);
+	i2c_dev->is_suspended = true;
+	i2c_unlock_bus(&i2c_dev->adap, I2C_LOCK_ROOT_ADAPTER);
+
 	ret = stm32f7_i2c_regs_backup(i2c_dev);
 	if (ret < 0)
 		return ret;
@@ -2279,6 +2291,10 @@ static int stm32f7_i2c_resume(struct device *dev)
 	ret = stm32f7_i2c_regs_restore(i2c_dev);
 	if (ret < 0)
 		return ret;
+
+	i2c_lock_bus(&i2c_dev->adap, I2C_LOCK_ROOT_ADAPTER);
+	i2c_dev->is_suspended = false;
+	i2c_unlock_bus(&i2c_dev->adap, I2C_LOCK_ROOT_ADAPTER);
 
 	return 0;
 }
