@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -86,6 +86,14 @@ typedef struct base_mem_handle {
  * @{
  */
 
+/* Physical memory group ID for normal usage.
+ */
+#define BASE_MEM_GROUP_DEFAULT (0)
+
+/* Number of physical memory groups.
+ */
+#define BASE_MEM_GROUP_COUNT (16)
+
 /**
  * typedef base_mem_alloc_flags - Memory allocation, access/hint flags.
  *
@@ -129,7 +137,7 @@ typedef u32 base_mem_alloc_flags;
 /* Will be permanently mapped in kernel space.
  * Flag is only allowed on allocations originating from kbase.
  */
-#define BASE_MEM_PERMANENT_KERNEL_MAPPING ((base_mem_alloc_flags)1 << 5)
+#define BASEP_MEM_PERMANENT_KERNEL_MAPPING ((base_mem_alloc_flags)1 << 5)
 
 /* The allocation will completely reside within the same 4GB chunk in the GPU
  * virtual space.
@@ -139,7 +147,11 @@ typedef u32 base_mem_alloc_flags;
  */
 #define BASE_MEM_GPU_VA_SAME_4GB_PAGE ((base_mem_alloc_flags)1 << 6)
 
-#define BASE_MEM_RESERVED_BIT_7 ((base_mem_alloc_flags)1 << 7)
+/* Userspace is not allowed to free this memory.
+ * Flag is only allowed on allocations originating from kbase.
+ */
+#define BASEP_MEM_NO_USER_FREE ((base_mem_alloc_flags)1 << 7)
+
 #define BASE_MEM_RESERVED_BIT_8 ((base_mem_alloc_flags)1 << 8)
 
 /* Grow backing store on GPU Page Fault
@@ -210,11 +222,26 @@ typedef u32 base_mem_alloc_flags;
  */
 #define BASE_MEM_UNCACHED_GPU ((base_mem_alloc_flags)1 << 21)
 
-/* Number of bits used as flags for base memory management
+/*
+ * Bits [22:25] for group_id (0~15).
+ *
+ * In user space, inline function base_mem_group_id_set() can be used with
+ * numeric value (0~15) to generate a specific memory group ID.
+ *
+ * group_id is packed into in.flags of kbase_ioctl_mem_alloc to be delivered to
+ * kernel space via ioctl and then kernel driver can use inline function
+ * base_mem_group_id_get() to extract group_id from flags.
+ */
+#define BASEP_MEM_GROUP_ID_SHIFT 22
+#define BASE_MEM_GROUP_ID_MASK \
+	((base_mem_alloc_flags)0xF << BASEP_MEM_GROUP_ID_SHIFT)
+
+/**
+ * Number of bits used as flags for base memory management
  *
  * Must be kept in sync with the base_mem_alloc_flags flags
  */
-#define BASE_MEM_FLAGS_NR_BITS 22
+#define BASE_MEM_FLAGS_NR_BITS 26
 
 /* A mask for all output bits, excluding IN/OUT bits.
  */
@@ -224,6 +251,43 @@ typedef u32 base_mem_alloc_flags;
  */
 #define BASE_MEM_FLAGS_INPUT_MASK \
 	(((1 << BASE_MEM_FLAGS_NR_BITS) - 1) & ~BASE_MEM_FLAGS_OUTPUT_MASK)
+
+/**
+ * base_mem_group_id_get() - Get group ID from flags
+ * @flags: Flags to pass to base_mem_alloc
+ *
+ * This inline function extracts the encoded group ID from flags
+ * and converts it into numeric value (0~15).
+ *
+ * Return: group ID(0~15) extracted from the parameter
+ */
+static inline int base_mem_group_id_get(base_mem_alloc_flags flags)
+{
+	LOCAL_ASSERT((flags & ~BASE_MEM_FLAGS_INPUT_MASK) == 0);
+	return (int)((flags & BASE_MEM_GROUP_ID_MASK) >>
+			BASEP_MEM_GROUP_ID_SHIFT);
+}
+
+/**
+ * base_mem_group_id_set() - Set group ID into base_mem_alloc_flags
+ * @id: group ID(0~15) you want to encode
+ *
+ * This inline function encodes specific group ID into base_mem_alloc_flags.
+ * Parameter 'id' should lie in-between 0 to 15.
+ *
+ * Return: base_mem_alloc_flags with the group ID (id) encoded
+ *
+ * The return value can be combined with other flags against base_mem_alloc
+ * to identify a specific memory group.
+ */
+static inline base_mem_alloc_flags base_mem_group_id_set(int id)
+{
+	LOCAL_ASSERT(id >= 0);
+	LOCAL_ASSERT(id < BASE_MEM_GROUP_COUNT);
+
+	return ((base_mem_alloc_flags)id << BASEP_MEM_GROUP_ID_SHIFT) &
+		BASE_MEM_GROUP_ID_MASK;
+}
 
 /* A mask for all the flags which are modifiable via the base_mem_set_flags
  * interface.
@@ -236,13 +300,13 @@ typedef u32 base_mem_alloc_flags;
 /* A mask of all currently reserved flags
  */
 #define BASE_MEM_FLAGS_RESERVED \
-	(BASE_MEM_RESERVED_BIT_7 | BASE_MEM_RESERVED_BIT_8 | \
-		BASE_MEM_MAYBE_RESERVED_BIT_19)
+	(BASE_MEM_RESERVED_BIT_8 | BASE_MEM_MAYBE_RESERVED_BIT_19)
 
 /* A mask of all the flags which are only valid for allocations within kbase,
  * and may not be passed from user space.
  */
-#define BASE_MEM_FLAGS_KERNEL_ONLY (BASE_MEM_PERMANENT_KERNEL_MAPPING)
+#define BASEP_MEM_FLAGS_KERNEL_ONLY \
+	(BASEP_MEM_PERMANENT_KERNEL_MAPPING | BASEP_MEM_NO_USER_FREE)
 
 /* A mask of all the flags that can be returned via the base_mem_get_flags()
  * interface.
@@ -251,7 +315,7 @@ typedef u32 base_mem_alloc_flags;
 	(BASE_MEM_FLAGS_INPUT_MASK & ~(BASE_MEM_SAME_VA | \
 		BASE_MEM_COHERENT_SYSTEM_REQUIRED | BASE_MEM_DONT_NEED | \
 		BASE_MEM_IMPORT_SHARED | BASE_MEM_FLAGS_RESERVED | \
-		BASE_MEM_FLAGS_KERNEL_ONLY))
+		BASEP_MEM_FLAGS_KERNEL_ONLY))
 
 /**
  * enum base_mem_import_type - Memory types supported by @a base_mem_import
@@ -599,43 +663,8 @@ typedef u32 base_jd_core_req;
 #define BASE_JD_REQ_SOFT_FENCE_TRIGGER          (BASE_JD_REQ_SOFT_JOB | 0x2)
 #define BASE_JD_REQ_SOFT_FENCE_WAIT             (BASE_JD_REQ_SOFT_JOB | 0x3)
 
-/**
- * SW Only requirement : Replay job.
- *
- * If the preceding job fails, the replay job will cause the jobs specified in
- * the list of base_jd_replay_payload pointed to by the jc pointer to be
- * replayed.
- *
- * A replay job will only cause jobs to be replayed up to BASEP_JD_REPLAY_LIMIT
- * times. If a job fails more than BASEP_JD_REPLAY_LIMIT times then the replay
- * job is failed, as well as any following dependencies.
- *
- * The replayed jobs will require a number of atom IDs. If there are not enough
- * free atom IDs then the replay job will fail.
- *
- * If the preceding job does not fail, then the replay job is returned as
- * completed.
- *
- * The replayed jobs will never be returned to userspace. The preceding failed
- * job will be returned to userspace as failed; the status of this job should
- * be ignored. Completion should be determined by the status of the replay soft
- * job.
- *
- * In order for the jobs to be replayed, the job headers will have to be
- * modified. The Status field will be reset to NOT_STARTED. If the Job Type
- * field indicates a Vertex Shader Job then it will be changed to Null Job.
- *
- * The replayed jobs have the following assumptions :
- *
- * - No external resources. Any required external resources will be held by the
- *   replay atom.
- * - Pre-dependencies are created based on job order.
- * - Atom numbers are automatically assigned.
- * - device_nr is set to 0. This is not relevant as
- *   BASE_JD_REQ_SPECIFIC_COHERENT_GROUP should not be set.
- * - Priority is inherited from the replay job.
- */
-#define BASE_JD_REQ_SOFT_REPLAY                 (BASE_JD_REQ_SOFT_JOB | 0x4)
+/* 0x4 RESERVED for now */
+
 /**
  * SW only requirement: event wait/trigger job.
  *
@@ -1162,7 +1191,6 @@ typedef enum base_jd_event_code {
 	BASE_JD_EVENT_JOB_CANCELLED	= BASE_JD_SW_EVENT | BASE_JD_SW_EVENT_JOB | 0x002,
 	BASE_JD_EVENT_JOB_INVALID	= BASE_JD_SW_EVENT | BASE_JD_SW_EVENT_JOB | 0x003,
 	BASE_JD_EVENT_PM_EVENT		= BASE_JD_SW_EVENT | BASE_JD_SW_EVENT_JOB | 0x004,
-	BASE_JD_EVENT_FORCE_REPLAY	= BASE_JD_SW_EVENT | BASE_JD_SW_EVENT_JOB | 0x005,
 
 	BASE_JD_EVENT_BAG_INVALID	= BASE_JD_SW_EVENT | BASE_JD_SW_EVENT_BAG | 0x003,
 
@@ -1625,20 +1653,27 @@ typedef u32 base_context_create_flags;
 	((base_context_create_flags)1 << 1)
 
 
-/**
- * Bitpattern describing the ::base_context_create_flags that can be
- * passed to base_context_init()
+/* Bit-shift used to encode a memory group ID in base_context_create_flags
  */
-#define BASE_CONTEXT_CREATE_ALLOWED_FLAGS \
-	(BASE_CONTEXT_CCTX_EMBEDDED | \
-	 BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED)
+#define BASEP_CONTEXT_MMU_GROUP_ID_SHIFT (3)
 
-/**
- * Bitpattern describing the ::base_context_create_flags that can be
+/* Bitmask used to encode a memory group ID in base_context_create_flags
+ */
+#define BASEP_CONTEXT_MMU_GROUP_ID_MASK \
+	((base_context_create_flags)0xF << BASEP_CONTEXT_MMU_GROUP_ID_SHIFT)
+
+/* Bitpattern describing the base_context_create_flags that can be
  * passed to the kernel
  */
-#define BASE_CONTEXT_CREATE_KERNEL_FLAGS \
-	BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED
+#define BASEP_CONTEXT_CREATE_KERNEL_FLAGS \
+	(BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED | \
+	 BASEP_CONTEXT_MMU_GROUP_ID_MASK)
+
+/* Bitpattern describing the ::base_context_create_flags that can be
+ * passed to base_context_init()
+ */
+#define BASEP_CONTEXT_CREATE_ALLOWED_FLAGS \
+	(BASE_CONTEXT_CCTX_EMBEDDED | BASEP_CONTEXT_CREATE_KERNEL_FLAGS)
 
 /*
  * Private flags used on the base context
@@ -1649,7 +1684,46 @@ typedef u32 base_context_create_flags;
  * not collide with them.
  */
 /** Private flag tracking whether job descriptor dumping is disabled */
-#define BASEP_CONTEXT_FLAG_JOB_DUMP_DISABLED ((u32)(1 << 31))
+#define BASEP_CONTEXT_FLAG_JOB_DUMP_DISABLED \
+	((base_context_create_flags)(1 << 31))
+
+/**
+ * base_context_mmu_group_id_set - Encode a memory group ID in
+ *                                 base_context_create_flags
+ *
+ * Memory allocated for GPU page tables will come from the specified group.
+ *
+ * @group_id: Physical memory group ID. Range is 0..(BASE_MEM_GROUP_COUNT-1).
+ *
+ * Return: Bitmask of flags to pass to base_context_init.
+ */
+static inline base_context_create_flags base_context_mmu_group_id_set(
+	int const group_id)
+{
+	LOCAL_ASSERT(group_id >= 0);
+	LOCAL_ASSERT(group_id < BASE_MEM_GROUP_COUNT);
+	return BASEP_CONTEXT_MMU_GROUP_ID_MASK &
+		((base_context_create_flags)group_id <<
+		BASEP_CONTEXT_MMU_GROUP_ID_SHIFT);
+}
+
+/**
+ * base_context_mmu_group_id_get - Decode a memory group ID from
+ *                                 base_context_create_flags
+ *
+ * Memory allocated for GPU page tables will come from the returned group.
+ *
+ * @flags: Bitmask of flags to pass to base_context_init.
+ *
+ * Return: Physical memory group ID. Valid range is 0..(BASE_MEM_GROUP_COUNT-1).
+ */
+static inline int base_context_mmu_group_id_get(
+	base_context_create_flags const flags)
+{
+	LOCAL_ASSERT(flags == (flags & BASEP_CONTEXT_CREATE_ALLOWED_FLAGS));
+	return (int)((flags & BASEP_CONTEXT_MMU_GROUP_ID_MASK) >>
+			BASEP_CONTEXT_MMU_GROUP_ID_SHIFT);
+}
 
 /** @} end group base_user_api_core */
 
@@ -1675,76 +1749,6 @@ typedef u32 base_context_create_flags;
  * @addtogroup base_api Base APIs
  * @{
  */
-
-/**
- * @brief The payload for a replay job. This must be in GPU memory.
- */
-typedef struct base_jd_replay_payload {
-	/**
-	 * Pointer to the first entry in the base_jd_replay_jc list.  These
-	 * will be replayed in @b reverse order (so that extra ones can be added
-	 * to the head in future soft jobs without affecting this soft job)
-	 */
-	u64 tiler_jc_list;
-
-	/**
-	 * Pointer to the fragment job chain.
-	 */
-	u64 fragment_jc;
-
-	/**
-	 * Pointer to the tiler heap free FBD field to be modified.
-	 */
-	u64 tiler_heap_free;
-
-	/**
-	 * Hierarchy mask for the replayed fragment jobs. May be zero.
-	 */
-	u16 fragment_hierarchy_mask;
-
-	/**
-	 * Hierarchy mask for the replayed tiler jobs. May be zero.
-	 */
-	u16 tiler_hierarchy_mask;
-
-	/**
-	 * Default weight to be used for hierarchy levels not in the original
-	 * mask.
-	 */
-	u32 hierarchy_default_weight;
-
-	/**
-	 * Core requirements for the tiler job chain
-	 */
-	base_jd_core_req tiler_core_req;
-
-	/**
-	 * Core requirements for the fragment job chain
-	 */
-	base_jd_core_req fragment_core_req;
-} base_jd_replay_payload;
-
-/**
- * @brief An entry in the linked list of job chains to be replayed. This must
- *        be in GPU memory.
- */
-typedef struct base_jd_replay_jc {
-	/**
-	 * Pointer to next entry in the list. A setting of NULL indicates the
-	 * end of the list.
-	 */
-	u64 next;
-
-	/**
-	 * Pointer to the job chain.
-	 */
-	u64 jc;
-
-} base_jd_replay_jc;
-
-/* Maximum number of jobs allowed in a fragment chain in the payload of a
- * replay job */
-#define BASE_JD_REPLAY_F_CHAIN_JOB_LIMIT 256
 
 /** @} end group base_api */
 

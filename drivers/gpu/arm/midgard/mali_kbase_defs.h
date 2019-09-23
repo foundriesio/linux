@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2011-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -43,14 +43,13 @@
 #include <mali_kbase_hwcnt_backend_gpu.h>
 #include <protected_mode_switcher.h>
 
-
 #include <linux/atomic.h>
 #include <linux/mempool.h>
 #include <linux/slab.h>
 #include <linux/file.h>
 #include <linux/sizes.h>
 
-#ifdef CONFIG_MALI_FPGA_BUS_LOGGER
+#ifdef CONFIG_MALI_BUSLOG
 #include <linux/bus_logger.h>
 #endif
 
@@ -70,6 +69,7 @@
 
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+#include <linux/memory_group_manager.h>
 
 #if defined(CONFIG_PM_RUNTIME) || \
 	(defined(CONFIG_PM) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
@@ -165,11 +165,6 @@
 #include "mali_kbase_js_defs.h"
 #include "mali_kbase_hwaccess_defs.h"
 
-#define KBASEP_FORCE_REPLAY_DISABLED 0
-
-/* Maximum force replay limit when randomization is enabled */
-#define KBASEP_FORCE_REPLAY_RANDOM_LIMIT 16
-
 /* Maximum number of pages of memory that require a permanent mapping, per
  * kbase_context
  */
@@ -229,6 +224,26 @@
 #define KBASE_SERIALIZE_INTER_SLOT (1 << 1)
 /* Reset the GPU after each atom completion */
 #define KBASE_SERIALIZE_RESET (1 << 2)
+
+/* Minimum threshold period for hwcnt dumps between different hwcnt virtualizer
+ * clients, to reduce undesired system load.
+ * If a virtualizer client requests a dump within this threshold period after
+ * some other client has performed a dump, a new dump won't be performed and
+ * the accumulated counter values for that client will be returned instead.
+ */
+#define KBASE_HWCNT_GPU_VIRTUALIZER_DUMP_THRESHOLD_NS (200 * NSEC_PER_USEC)
+
+/* Maximum number of clock/regulator pairs that may be referenced by
+ * the device node.
+ * This is dependent on support for of_property_read_u64_array() in the
+ * kernel.
+ */
+#if (KERNEL_VERSION(4, 0, 0) <= LINUX_VERSION_CODE) || \
+			defined(LSK_OPPV2_BACKPORT)
+#define BASE_MAX_NR_CLOCKS_REGULATORS (2)
+#else
+#define BASE_MAX_NR_CLOCKS_REGULATORS (1)
+#endif
 
 /* Forward declarations */
 struct kbase_context;
@@ -541,8 +556,6 @@ struct kbase_ext_res {
  * @slot_nr:               Job slot chosen for the atom.
  * @atom_flags:            bitmask of KBASE_KATOM_FLAG* flags capturing the exact
  *                         low level state of the atom.
- * @retry_count:           Number of times this atom has been retried. Used by replay
- *                         soft job.
  * @gpu_rb_state:          bitmnask of KBASE_ATOM_GPU_RB_* flags, precisely tracking
  *                         atom's state after it has entered Job scheduler on becoming
  *                         runnable. Atom could be blocked due to cross slot dependency
@@ -920,6 +933,9 @@ struct kbase_as {
  *                        level page table of the context, this is used for
  *                        MMU HW programming as the address translation will
  *                        start from the top level page table.
+ * @group_id:             A memory group ID to be passed to a platform-specific
+ *                        memory group manager.
+ *                        Valid range is 0..(MEMORY_GROUP_MANAGER_NR_GROUPS-1).
  * @kctx:                 If this set of MMU tables belongs to a context then
  *                        this is a back-reference to the context, otherwise
  *                        it is NULL
@@ -928,6 +944,7 @@ struct kbase_mmu_table {
 	u64 *mmu_teardown_pages;
 	struct mutex mmu_lock;
 	phys_addr_t pgd;
+	u8 group_id;
 	struct kbase_context *kctx;
 };
 
@@ -1011,11 +1028,6 @@ struct kbase_trace {
 	u8 flags;
 };
 
-struct kbasep_kctx_list_element {
-	struct list_head link;
-	struct kbase_context *kctx;
-};
-
 /**
  * Data stored per device for power management.
  *
@@ -1080,6 +1092,9 @@ struct kbase_pm_device_data {
  * @max_size:     Maximum number of free pages in the pool
  * @order:        order = 0 refers to a pool of 4 KB pages
  *                order = 9 refers to a pool of 2 MB pages (2^9 * 4KB = 2 MB)
+ * @group_id:     A memory group ID to be passed to a platform-specific
+ *                memory group manager, if present. Immutable.
+ *                Valid range is 0..(MEMORY_GROUP_MANAGER_NR_GROUPS-1).
  * @pool_lock:    Lock protecting the pool - must be held when modifying
  *                @cur_size and @page_list
  * @page_list:    List of free pages in the pool
@@ -1096,7 +1111,8 @@ struct kbase_mem_pool {
 	struct kbase_device *kbdev;
 	size_t              cur_size;
 	size_t              max_size;
-	size_t		    order;
+	u8                  order;
+	u8                  group_id;
 	spinlock_t          pool_lock;
 	struct list_head    page_list;
 	struct shrinker     reclaim;
@@ -1108,16 +1124,62 @@ struct kbase_mem_pool {
 };
 
 /**
+ * struct kbase_mem_pool_group - a complete set of physical memory pools.
+ *
+ * Memory pools are used to allow efficient reallocation of previously-freed
+ * physical pages. A pair of memory pools is initialized for each physical
+ * memory group: one for 4 KiB pages and one for 2 MiB pages. These arrays
+ * should be indexed by physical memory group ID, the meaning of which is
+ * defined by the systems integrator.
+ *
+ * @small: Array of objects containing the state for pools of 4 KiB size
+ *         physical pages.
+ * @large: Array of objects containing the state for pools of 2 MiB size
+ *         physical pages.
+ */
+struct kbase_mem_pool_group {
+	struct kbase_mem_pool small[MEMORY_GROUP_MANAGER_NR_GROUPS];
+	struct kbase_mem_pool large[MEMORY_GROUP_MANAGER_NR_GROUPS];
+};
+
+/**
+ * struct kbase_mem_pool_config - Initial configuration for a physical memory
+ *                                pool
+ *
+ * @max_size: Maximum number of free pages that the pool can hold.
+ */
+struct kbase_mem_pool_config {
+	size_t max_size;
+};
+
+/**
+ * struct kbase_mem_pool_group_config - Initial configuration for a complete
+ *                                      set of physical memory pools
+ *
+ * This array should be indexed by physical memory group ID, the meaning
+ * of which is defined by the systems integrator.
+ *
+ * @small: Array of initial configuration for pools of 4 KiB pages.
+ * @large: Array of initial configuration for pools of 2 MiB pages.
+ */
+struct kbase_mem_pool_group_config {
+	struct kbase_mem_pool_config small[MEMORY_GROUP_MANAGER_NR_GROUPS];
+	struct kbase_mem_pool_config large[MEMORY_GROUP_MANAGER_NR_GROUPS];
+};
+
+/**
  * struct kbase_devfreq_opp - Lookup table for converting between nominal OPP
- *                            frequency, and real frequency and core mask
+ *                            frequency, real frequencies and core mask
+ * @real_freqs: Real GPU frequencies.
+ * @opp_volts: OPP voltages.
  * @opp_freq:  Nominal OPP frequency
- * @real_freq: Real GPU frequency
  * @core_mask: Shader core mask
  */
 struct kbase_devfreq_opp {
 	u64 opp_freq;
-	u64 real_freq;
 	u64 core_mask;
+	u64 real_freqs[BASE_MAX_NR_CLOCKS_REGULATORS];
+	u32 opp_volts[BASE_MAX_NR_CLOCKS_REGULATORS];
 };
 
 /* MMU mode flags */
@@ -1150,10 +1212,10 @@ struct kbase_mmu_mode {
 			struct kbase_mmu_setup * const setup);
 	void (*disable_as)(struct kbase_device *kbdev, int as_nr);
 	phys_addr_t (*pte_to_phy_addr)(u64 entry);
-	int (*ate_is_valid)(u64 ate, unsigned int level);
-	int (*pte_is_valid)(u64 pte, unsigned int level);
+	int (*ate_is_valid)(u64 ate, int level);
+	int (*pte_is_valid)(u64 pte, int level);
 	void (*entry_set_ate)(u64 *entry, struct tagged_addr phy,
-			unsigned long flags, unsigned int level);
+			unsigned long flags, int level);
 	void (*entry_set_pte)(u64 *entry, phys_addr_t phy);
 	void (*entry_invalidate)(u64 *entry);
 	unsigned long flags;
@@ -1163,8 +1225,38 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_lpae(void);
 struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
 
 
+
 #define DEVNAME_SIZE	16
 
+/**
+ * enum kbase_devfreq_work_type - The type of work to perform in the devfreq
+ *                                suspend/resume worker.
+ * @DEVFREQ_WORK_NONE:    Initilisation state.
+ * @DEVFREQ_WORK_SUSPEND: Call devfreq_suspend_device().
+ * @DEVFREQ_WORK_RESUME:  Call devfreq_resume_device().
+ */
+enum kbase_devfreq_work_type {
+	DEVFREQ_WORK_NONE,
+	DEVFREQ_WORK_SUSPEND,
+	DEVFREQ_WORK_RESUME
+};
+
+/**
+ * struct kbase_devfreq_queue_info - Object representing an instance for managing
+ *                                   the queued devfreq suspend/resume works.
+ * @workq:                 Workqueue for devfreq suspend/resume requests
+ * @work:                  Work item for devfreq suspend & resume
+ * @req_type:              Requested work type to be performed by the devfreq
+ *                         suspend/resume worker
+ * @acted_type:            Work type has been acted on by the worker, i.e. the
+ *                         internal recorded state of the suspend/resume
+ */
+struct kbase_devfreq_queue_info {
+	struct workqueue_struct *workq;
+	struct work_struct work;
+	enum kbase_devfreq_work_type req_type;
+	enum kbase_devfreq_work_type acted_type;
+};
 
 /**
  * struct kbase_device   - Object representing an instance of GPU platform device,
@@ -1193,12 +1285,19 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  * @irqs:                  Array containing IRQ resource info for 3 types of
  *                         interrupts : Job scheduling, MMU & GPU events (like
  *                         power management, cache etc.)
- * @clock:                 Pointer to the input clock resource (having an id of 0),
- *                         referenced by the GPU device node.
- * @regulator:             Pointer to the struct corresponding to the regulator
- *                         for GPU device
+ * @clocks:                Pointer to the input clock resources referenced by
+ *                         the GPU device node.
+ * @nr_clocks:             Number of clocks set in the clocks array.
+ * @regulators:            Pointer to the structs corresponding to the
+ *                         regulators referenced by the GPU device node.
+ * @nr_regulators:         Number of regulators set in the regulators array.
+ * @opp_table:             Pointer to the device OPP structure maintaining the
+ *                         link to OPPs attached to a device. This is obtained
+ *                         after setting regulator names for the device.
  * @devname:               string containing the name used for GPU device instance,
  *                         miscellaneous device is registered using the same name.
+ * @id:                    Unique identifier for the device, indicates the number of
+ *                         devices which have been created so far.
  * @model:                 Pointer, valid only when Driver is compiled to not access
  *                         the real GPU Hw, to the dummy model which tries to mimic
  *                         to some extent the state & behavior of GPU Hw in response
@@ -1223,14 +1322,16 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  *                         Job Scheduler, which is global to the device and is not
  *                         tied to any particular struct kbase_context running on
  *                         the device
- * @mem_pool:              Object containing the state for global pool of 4KB size
- *                         physical pages which can be used by all the contexts.
- * @lp_mem_pool:           Object containing the state for global pool of 2MB size
- *                         physical pages which can be used by all the contexts.
+ * @mem_pools:             Global pools of free physical memory pages which can
+ *                         be used by all the contexts.
  * @memdev:                keeps track of the in use physical pages allocated by
  *                         the Driver.
  * @mmu_mode:              Pointer to the object containing methods for programming
  *                         the MMU, depending on the type of MMU supported by Hw.
+ * @mgm_dev:               Pointer to the memory group manager device attached
+ *                         to the GPU device. This points to an internal memory
+ *                         group manager if no platform-specific memory group
+ *                         manager was retrieved through device tree.
  * @as:                    Array of objects representing address spaces of GPU.
  * @as_free:               Bitpattern of free/available GPU address spaces.
  * @as_to_kctx:            Array of pointers to struct kbase_context, having
@@ -1254,7 +1355,10 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  *                         @hwaccess_lock must be held when calling
  *                         kbase_hwcnt_context_enable() with @hwcnt_gpu_ctx.
  * @hwcnt_gpu_virt:        Virtualizer for GPU hardware counters.
- * @vinstr_ctx:            vinstr context created per device
+ * @vinstr_ctx:            vinstr context created per device.
+ * @timeline_is_enabled:   Non zero, if there is at least one timeline client,
+ *                         zero otherwise.
+ * @timeline:              Timeline context created per device.
  * @trace_lock:            Lock to serialize the access to trace buffer.
  * @trace_first_out:       Index/offset in the trace buffer at which the first
  *                         unread message is present.
@@ -1276,34 +1380,40 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  * @cache_clean_wait:      Signalled when a cache clean has finished.
  * @platform_context:      Platform specific private data to be accessed by
  *                         platform specific config files only.
- * @kctx_list:             List of kbase_contexts created for the device, including
- *                         the kbase_context created for vinstr_ctx.
+ * @kctx_list:             List of kbase_contexts created for the device,
+ *                         including any contexts that might be created for
+ *                         hardware counters.
  * @kctx_list_lock:        Lock protecting concurrent accesses to @kctx_list.
  * @devfreq_profile:       Describes devfreq profile for the Mali GPU device, passed
  *                         to devfreq_add_device() to add devfreq feature to Mali
  *                         GPU device.
  * @devfreq:               Pointer to devfreq structure for Mali GPU device,
  *                         returned on the call to devfreq_add_device().
- * @current_freq:          The real frequency, corresponding to @current_nominal_freq,
- *                         at which the Mali GPU device is currently operating, as
- *                         retrieved from @opp_table in the target callback of
+ * @current_freqs:         The real frequencies, corresponding to
+ *                         @current_nominal_freq, at which the Mali GPU device
+ *                         is currently operating, as retrieved from
+ *                         @devfreq_table in the target callback of
  *                         @devfreq_profile.
  * @current_nominal_freq:  The nominal frequency currently used for the Mali GPU
  *                         device as retrieved through devfreq_recommended_opp()
  *                         using the freq value passed as an argument to target
  *                         callback of @devfreq_profile
- * @current_voltage:       The voltage corresponding to @current_nominal_freq, as
- *                         retrieved through dev_pm_opp_get_voltage().
+ * @current_voltages:      The voltages corresponding to @current_nominal_freq,
+ *                         as retrieved from @devfreq_table in the target
+ *                         callback of @devfreq_profile.
  * @current_core_mask:     bitmask of shader cores that are currently desired &
  *                         enabled, corresponding to @current_nominal_freq as
- *                         retrieved from @opp_table in the target callback of
- *                         @devfreq_profile.
- * @opp_table:             Pointer to the lookup table for converting between nominal
- *                         OPP (operating performance point) frequency, and real
- *                         frequency and core mask. This table is constructed according
- *                         to operating-points-v2-mali table in devicetree.
+ *                         retrieved from @devfreq_table in the target callback
+ *                         of @devfreq_profile.
+ * @devfreq_table:         Pointer to the lookup table for converting between
+ *                         nominal OPP (operating performance point) frequency,
+ *                         and real frequency and core mask. This table is
+ *                         constructed according to operating-points-v2-mali
+ *                         table in devicetree.
  * @num_opps:              Number of operating performance points available for the Mali
  *                         GPU device.
+ * @devfreq_queue:         Per device object for storing data that manages devfreq
+ *                         suspend & resume request queue and the related items.
  * @devfreq_cooling:       Pointer returned on registering devfreq cooling device
  *                         corresponding to @devfreq.
  * @ipa_protection_mode_switched: is set to TRUE when GPU is put into protected
@@ -1312,7 +1422,6 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  *                         previously entered protected mode.
  * @ipa:                   Top level structure for IPA, containing pointers to both
  *                         configured & fallback models.
- * @timeline:              Stores the global timeline tracking information.
  * @job_fault_debug:       Flag to control the dumping of debug data for job faults,
  *                         set when the 'job_fault' debugfs file is opened.
  * @mali_debugfs_directory: Root directory for the debugfs files created by the driver
@@ -1334,18 +1443,6 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  * @job_fault_event_lock:  Lock to protect concurrent accesses to @job_fault_event_list
  * @regs_dump_debugfs_data: Contains the offset of register to be read through debugfs
  *                         file "read_register".
- * @force_replay_limit:    Number of gpu jobs, having replay atoms associated with them,
- *                         that are run before a job is forced to fail and replay.
- *                         Set to 0 to disable forced failures.
- * @force_replay_count:    Count of gpu jobs, having replay atoms associated with them,
- *                         between forced failures. Incremented on each gpu job which
- *                         has replay atoms dependent on it. A gpu job is forced to
- *                         fail once this is greater than or equal to @force_replay_limit
- * @force_replay_core_req: Core requirements, set through the sysfs file, for the replay
- *                         job atoms to consider the associated gpu job for forceful
- *                         failure and replay. May be zero
- * @force_replay_random:   Set to 1 to randomize the @force_replay_limit, in the
- *                         range of 1 - KBASEP_FORCE_REPLAY_RANDOM_LIMIT.
  * @ctx_num:               Total number of contexts created for the device.
  * @io_history:            Pointer to an object keeping a track of all recent
  *                         register accesses. The history of register accesses
@@ -1358,8 +1455,8 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  *                         power on for GPU is started.
  * @infinite_cache_active_default: Set to enable using infinite cache for all the
  *                         allocations of a new context.
- * @mem_pool_max_size_default: Initial/default value for the maximum size of both
- *                         types of pool created for a new context.
+ * @mem_pool_defaults:     Default configuration for the group of memory pools
+ *                         created for a new context.
  * @current_gpu_coherency_mode: coherency mode in use, which can be different
  *                         from @system_coherency, when using protected mode.
  * @system_coherency:      coherency mode as retrieved from the device tree.
@@ -1403,6 +1500,10 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
  *                          on disabling of GWT.
  * @js_ctx_scheduling_mode: Context scheduling mode currently being used by
  *                          Job Scheduler
+ * @l2_size_override:       Used to set L2 cache size via device tree blob
+ * @l2_hash_override:       Used to set L2 cache hash via device tree blob
+ * @policy_list:            A filtered list of policies available in the system.
+ * @policy_count:           Number of policies in the @policy_list.
  */
 struct kbase_device {
 	u32 hw_quirks_sc;
@@ -1422,11 +1523,17 @@ struct kbase_device {
 		int flags;
 	} irqs[3];
 
-	struct clk *clock;
+	struct clk *clocks[BASE_MAX_NR_CLOCKS_REGULATORS];
+	unsigned int nr_clocks;
 #ifdef CONFIG_REGULATOR
-	struct regulator *regulator;
-#endif
+	struct regulator *regulators[BASE_MAX_NR_CLOCKS_REGULATORS];
+	unsigned int nr_regulators;
+#if (KERNEL_VERSION(4, 10, 0) <= LINUX_VERSION_CODE)
+	struct opp_table *opp_table;
+#endif /* (KERNEL_VERSION(4, 10, 0) <= LINUX_VERSION_CODE */
+#endif /* CONFIG_REGULATOR */
 	char devname[DEVNAME_SIZE];
+	u32  id;
 
 #ifdef CONFIG_MALI_NO_MALI
 	void *model;
@@ -1440,10 +1547,11 @@ struct kbase_device {
 
 	struct kbase_pm_device_data pm;
 	struct kbasep_js_device_data js_data;
-	struct kbase_mem_pool mem_pool;
-	struct kbase_mem_pool lp_mem_pool;
+	struct kbase_mem_pool_group mem_pools;
 	struct kbasep_mem_device memdev;
 	struct kbase_mmu_mode const *mmu_mode;
+
+	struct memory_group_manager_device *mgm_dev;
 
 	struct kbase_as as[BASE_MAX_NR_AS];
 	u16 as_free; /* Bitpattern of free Address Spaces */
@@ -1480,6 +1588,9 @@ struct kbase_device {
 	struct kbase_hwcnt_virtualizer *hwcnt_gpu_virt;
 	struct kbase_vinstr_context *vinstr_ctx;
 
+	atomic_t               timeline_is_enabled;
+	struct kbase_timeline *timeline;
+
 #if KBASE_TRACE_ENABLE
 	spinlock_t              trace_lock;
 	u16                     trace_first_out;
@@ -1501,13 +1612,18 @@ struct kbase_device {
 #ifdef CONFIG_MALI_DEVFREQ
 	struct devfreq_dev_profile devfreq_profile;
 	struct devfreq *devfreq;
-	unsigned long current_freq;
+	unsigned long current_freqs[BASE_MAX_NR_CLOCKS_REGULATORS];
 	unsigned long current_nominal_freq;
-	unsigned long current_voltage;
+	unsigned long current_voltages[BASE_MAX_NR_CLOCKS_REGULATORS];
 	u64 current_core_mask;
-	struct kbase_devfreq_opp *opp_table;
+	struct kbase_devfreq_opp *devfreq_table;
 	int num_opps;
 	struct kbasep_pm_metrics last_devfreq_metrics;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
+	struct kbase_devfreq_queue_info devfreq_queue;
+#endif
+
 #ifdef CONFIG_DEVFREQ_THERMAL
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct devfreq_cooling_device *devfreq_cooling;
@@ -1558,14 +1674,6 @@ struct kbase_device {
 #endif /* !MALI_CUSTOMER_RELEASE */
 #endif /* CONFIG_DEBUG_FS */
 
-
-#if MALI_CUSTOMER_RELEASE == 0
-	int force_replay_limit;
-	int force_replay_count;
-	base_jd_core_req force_replay_core_req;
-	bool force_replay_random;
-#endif
-
 	atomic_t ctx_num;
 
 #ifdef CONFIG_DEBUG_FS
@@ -1584,7 +1692,7 @@ struct kbase_device {
 #else
 	u32 infinite_cache_active_default;
 #endif
-	size_t mem_pool_max_size_default;
+	struct kbase_mem_pool_group_config mem_pool_defaults;
 
 	u32 current_gpu_coherency_mode;
 	u32 system_coherency;
@@ -1610,7 +1718,7 @@ struct kbase_device {
 
 	bool protected_mode_support;
 
-#ifdef CONFIG_MALI_FPGA_BUS_LOGGER
+#ifdef CONFIG_MALI_BUSLOG
 	struct bus_logger_client *buslogger;
 #endif
 
@@ -1629,9 +1737,15 @@ struct kbase_device {
 	u8 backup_serialize_jobs;
 #endif
 
+	u8 l2_size_override;
+	u8 l2_hash_override;
+
 	/* See KBASE_JS_*_PRIORITY_MODE for details. */
 	u32 js_ctx_scheduling_mode;
 
+
+	const struct kbase_pm_policy *policy_list[KBASE_PM_MAX_NUM_POLICIES];
+	int policy_count;
 };
 
 /**
@@ -1653,6 +1767,56 @@ struct jsctx_queue {
 #define KBASE_API_VERSION(major, minor) ((((major) & 0xFFF) << 20)  | \
 					 (((minor) & 0xFFF) << 8) | \
 					 ((0 & 0xFF) << 0))
+
+/**
+ * enum kbase_file_state - Initialization state of a file opened by @kbase_open
+ *
+ * @KBASE_FILE_NEED_VSN:        Initial state, awaiting API version.
+ * @KBASE_FILE_VSN_IN_PROGRESS: Indicates if setting an API version is in
+ *                              progress and other setup calls shall be
+ *                              rejected.
+ * @KBASE_FILE_NEED_CTX:        Indicates if the API version handshake has
+ *                              completed, awaiting context creation flags.
+ * @KBASE_FILE_CTX_IN_PROGRESS: Indicates if the context's setup is in progress
+ *                              and other setup calls shall be rejected.
+ * @KBASE_FILE_COMPLETE:        Indicates if the setup for context has
+ *                              completed, i.e. flags have been set for the
+ *                              context.
+ *
+ * The driver allows only limited interaction with user-space until setup
+ * is complete.
+ */
+enum kbase_file_state {
+	KBASE_FILE_NEED_VSN,
+	KBASE_FILE_VSN_IN_PROGRESS,
+	KBASE_FILE_NEED_CTX,
+	KBASE_FILE_CTX_IN_PROGRESS,
+	KBASE_FILE_COMPLETE
+};
+
+/**
+ * struct kbase_file - Object representing a file opened by @kbase_open
+ *
+ * @kbdev:               Object representing an instance of GPU platform device,
+ *                       allocated from the probe method of the Mali driver.
+ * @filp:                Pointer to the struct file corresponding to device file
+ *                       /dev/malixx instance, passed to the file's open method.
+ * @kctx:                Object representing an entity, among which GPU is
+ *                       scheduled and which gets its own GPU address space.
+ *                       Invalid until @setup_state is KBASE_FILE_COMPLETE.
+ * @api_version:         Contains the version number for User/kernel interface,
+ *                       used for compatibility check. Invalid until
+ *                       @setup_state is KBASE_FILE_NEED_CTX.
+ * @setup_state:         Initialization state of the file. Values come from
+ *                       the kbase_file_state enumeration.
+ */
+struct kbase_file {
+	struct kbase_device  *kbdev;
+	struct file          *filp;
+	struct kbase_context *kctx;
+	unsigned long         api_version;
+	atomic_t              setup_state;
+};
 
 /**
  * enum kbase_context_flags - Flags for kbase contexts
@@ -1735,17 +1899,16 @@ struct kbase_sub_alloc {
 	DECLARE_BITMAP(sub_pages, SZ_2M / SZ_4K);
 };
 
-
 /**
- * struct kbase_context - Object representing an entity, among which GPU is
- *                        scheduled and gets its own GPU address space.
- *                        Created when the device file /dev/malixx is opened.
+ * struct kbase_context - Kernel base context
+ *
  * @filp:                 Pointer to the struct file corresponding to device file
  *                        /dev/malixx instance, passed to the file's open method.
  * @kbdev:                Pointer to the Kbase device for which the context is created.
+ * @kctx_list_link:       Node into Kbase device list of contexts.
  * @mmu:                  Structure holding details of the MMU tables for this
  *                        context
- * @id:                   Unique indentifier for the context, indicates the number of
+ * @id:                   Unique identifier for the context, indicates the number of
  *                        contexts which have been created for the device so far.
  * @api_version:          contains the version number for User/kernel interface,
  *                        used for compatibility check.
@@ -1760,18 +1923,11 @@ struct kbase_sub_alloc {
  *                        should stop posting events and also inform event handling
  *                        thread that context termination is in progress.
  * @event_workq:          Workqueue for processing work items corresponding to atoms
- *                        that do not return an event to Userspace or have to perform
- *                        a replay job
+ *                        that do not return an event to userspace.
  * @event_count:          Count of the posted events to be consumed by Userspace.
  * @event_coalesce_count: Count of the events present in @event_coalesce_list.
  * @flags:                bitmap of enums from kbase_context_flags, indicating the
  *                        state & attributes for the context.
- * @setup_complete:       Indicates if the setup for context has completed, i.e.
- *                        flags have been set for the context. Driver allows only
- *                        2 ioctls until the setup is done. Valid only for
- *                        @api_version value 0.
- * @setup_in_progress:    Indicates if the context's setup is in progress and other
- *                        setup calls during that shall be rejected.
  * @aliasing_sink_page:   Special page used for KBASE_MEM_TYPE_ALIAS allocations,
  *                        which can alias number of memory regions. The page is
  *                        represent a region where it is mapped with a write-alloc
@@ -1807,10 +1963,16 @@ struct kbase_sub_alloc {
  * @event_queue:          Wait queue used for blocking the thread, which consumes
  *                        the base_jd_event corresponding to an atom, when there
  *                        are no more posted events.
- * @tgid:                 thread group id of the process, whose thread opened the
- *                        device file /dev/malixx instance to create a context.
- * @pid:                  id of the thread, corresponding to process @tgid, which
- *                        actually which opened the device file.
+ * @tgid:                 Thread group ID of the process whose thread created
+ *                        the context (by calling KBASE_IOCTL_VERSION_CHECK or
+ *                        KBASE_IOCTL_SET_FLAGS, depending on the @api_version).
+ *                        This is usually, but not necessarily, the same as the
+ *                        process whose thread opened the device file
+ *                        /dev/malixx instance.
+ * @pid:                  ID of the thread, corresponding to process @tgid,
+ *                        which actually created the context. This is usually,
+ *                        but not necessarily, the same as the thread which
+ *                        opened the device file /dev/malixx instance.
  * @jctx:                 object encapsulating all the Job dispatcher related state,
  *                        including the array of atoms.
  * @used_pages:           Keeps a track of the number of 4KB physical pages in use
@@ -1819,10 +1981,7 @@ struct kbase_sub_alloc {
  *                        when special tracking page is freed by userspace where it
  *                        is reset to 0.
  * @permanent_mapped_pages: Usage count of permanently mapped memory
- * @mem_pool:             Object containing the state for the context specific pool of
- *                        4KB size physical pages.
- * @lp_mem_pool:          Object containing the state for the context specific pool of
- *                        2MB size physical pages.
+ * @mem_pools:            Context-specific pools of free physical memory pages.
  * @reclaim:              Shrinker object registered with the kernel containing
  *                        the pointer to callback function which is invoked under
  *                        low memory conditions. In the callback function Driver
@@ -1869,8 +2028,6 @@ struct kbase_sub_alloc {
  *                        or U64_MAX if the EXEC_VA zone is uninitialized.
  * @gpu_va_end:           End address of the GPU va space (in 4KB page units)
  * @jit_va:               Indicates if a JIT_VA zone has been created.
- * @timeline:             Object tracking the number of atoms currently in flight for
- *                        the context and thread group id of the process, i.e. @tgid.
  * @mem_profile_data:     Buffer containing the profiling information provided by
  *                        Userspace, can be read through the mem_profile debugfs file.
  * @mem_profile_size:     Size of the @mem_profile_data.
@@ -1924,6 +2081,9 @@ struct kbase_sub_alloc {
  *                        old or new version of interface for JIT allocations
  *	                  1 -> client used KBASE_IOCTL_MEM_JIT_INIT_OLD
  *	                  2 -> client used KBASE_IOCTL_MEM_JIT_INIT
+ * @jit_group_id:         A memory group ID to be passed to a platform-specific
+ *                        memory group manager.
+ *                        Valid range is 0..(MEMORY_GROUP_MANAGER_NR_GROUPS-1).
  * @jit_active_head:      List containing the JIT allocations which are in use.
  * @jit_pool_head:        List containing the JIT allocations which have been
  *                        freed up by userpsace and so not being used by them.
@@ -1963,10 +2123,17 @@ struct kbase_sub_alloc {
  * @priority:             Indicates the context priority. Used along with @atoms_count
  *                        for context scheduling, protected by hwaccess_lock.
  * @atoms_count:          Number of gpu atoms currently in use, per priority
+ *
+ * A kernel base context is an entity among which the GPU is scheduled.
+ * Each context has its own GPU address space.
+ * Up to one context can be created for each client that opens the device file
+ * /dev/malixx. Context creation is deferred until a special ioctl() system call
+ * is made on the device file.
  */
 struct kbase_context {
 	struct file *filp;
 	struct kbase_device *kbdev;
+	struct list_head kctx_list_link;
 	struct kbase_mmu_table mmu;
 
 	u32 id;
@@ -1980,9 +2147,6 @@ struct kbase_context {
 	int event_coalesce_count;
 
 	atomic_t flags;
-
-	atomic_t                setup_complete;
-	atomic_t                setup_in_progress;
 
 	struct tagged_addr aliasing_sink_page;
 
@@ -2007,8 +2171,7 @@ struct kbase_context {
 	atomic_t         nonmapped_pages;
 	unsigned long permanent_mapped_pages;
 
-	struct kbase_mem_pool mem_pool;
-	struct kbase_mem_pool lp_mem_pool;
+	struct kbase_mem_pool_group mem_pools;
 
 	struct shrinker         reclaim;
 	struct list_head        evict_list;
@@ -2026,13 +2189,6 @@ struct kbase_context {
 
 	atomic_t refcount;
 
-
-	/* NOTE:
-	 *
-	 * Flags are in jctx.sched_info.ctx.flags
-	 * Mutable flags *must* be accessed under jctx.sched_info.ctx.jsctx_mutex
-	 *
-	 * All other flags must be added there */
 	spinlock_t         mm_update_lock;
 	struct mm_struct __rcu *process_mm;
 	u64 same_va_end;
@@ -2079,6 +2235,7 @@ struct kbase_context {
 	u8 jit_current_allocations;
 	u8 jit_current_allocations_per_bin[256];
 	u8 jit_version;
+	u8 jit_group_id;
 	struct list_head jit_active_head;
 	struct list_head jit_pool_head;
 	struct list_head jit_destroy_head;
@@ -2191,9 +2348,6 @@ static inline bool kbase_device_is_cpu_coherent(struct kbase_device *kbdev)
 #define KBASE_CLEAN_CACHE_MAX_LOOPS     100000
 /* Maximum number of loops polling the GPU for an AS command to complete before we assume the GPU has hung */
 #define KBASE_AS_INACTIVE_MAX_LOOPS     100000
-
-/* Maximum number of times a job can be replayed */
-#define BASEP_JD_REPLAY_LIMIT 15
 
 /* JobDescriptorHeader - taken from the architecture specifications, the layout
  * is currently identical for all GPU archs. */

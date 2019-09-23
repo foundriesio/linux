@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2017-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2017-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -141,6 +141,7 @@ end:
 }
 
 static const struct file_operations fops_string = {
+	.owner = THIS_MODULE,
 	.read = param_string_get,
 	.write = param_string_set,
 	.open = simple_open,
@@ -222,8 +223,12 @@ static int current_power_get(void *data, u64 *val)
 	u32 power;
 
 	kbase_pm_context_active(kbdev);
+	/* The current model assumes that there's no more than one voltage
+	 * regulator currently available in the system.
+	 */
 	kbase_get_real_power(df, &power,
-		kbdev->current_nominal_freq, (kbdev->current_voltage / 1000));
+		kbdev->current_nominal_freq,
+		(kbdev->current_voltages[0] / 1000));
 	kbase_pm_context_idle(kbdev);
 
 	*val = power;

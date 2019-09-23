@@ -1,7 +1,6 @@
 /*
- *
- * (C) COPYRIGHT 2018 Telechips Inc.
- * (C) COPYRIGHT 2012-2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2019 Telechips Inc.
+ * (C) COPYRIGHT 2012-2017, 2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -44,7 +43,7 @@ static int kbasep_gpu_memory_seq_show(struct seq_file *sfile, void *data)
 	kbdev_list = kbase_dev_list_get();
 	list_for_each(entry, kbdev_list) {
 		struct kbase_device *kbdev = NULL;
-		struct kbasep_kctx_list_element *element;
+		struct kbase_context *kctx;
 
 		kbdev = list_entry(entry, struct kbase_device, entry);
 		/* output the total memory usage and cap for this device */
@@ -52,14 +51,14 @@ static int kbasep_gpu_memory_seq_show(struct seq_file *sfile, void *data)
 				kbdev->devname,
 				atomic_read(&(kbdev->memdev.used_pages)));
 		mutex_lock(&kbdev->kctx_list_lock);
-		list_for_each_entry(element, &kbdev->kctx_list, link) {
+		list_for_each_entry(kctx, &kbdev->kctx_list, kctx_list_link) {
 			/* output the memory usage and cap for each kctx
 			* opened on this device */ /* TCC */
 			seq_printf(sfile, "  %s-0x%p pid: %d %10u\n",
 				"kctx",
-				element->kctx,
-				element->kctx->pid,
-				atomic_read(&(element->kctx->used_pages)));
+				kctx,
+				kctx->pid,
+				atomic_read(&(kctx->used_pages)));
 		}
 		mutex_unlock(&kbdev->kctx_list_lock);
 	}
@@ -76,6 +75,7 @@ static int kbasep_gpu_memory_debugfs_open(struct inode *in, struct file *file)
 }
 
 static const struct file_operations kbasep_gpu_memory_debugfs_fops = {
+	.owner = THIS_MODULE,
 	.open = kbasep_gpu_memory_debugfs_open,
 	.read = seq_read,
 	.llseek = seq_lseek,

@@ -21,7 +21,7 @@
 
 
 # Driver version string which is returned to userspace via an ioctl
-MALI_RELEASE_NAME ?= "r16p0-01rel0"
+MALI_RELEASE_NAME ?= "r19p0-01rel0"
 
 # Paths required for build
 KBASE_PATH = $(src)
@@ -65,7 +65,9 @@ SRC := \
 	mali_kbase_device.c \
 	mali_kbase_cache_policy.c \
 	mali_kbase_mem.c \
+	mali_kbase_mem_pool_group.c \
 	mali_kbase_mmu.c \
+	mali_kbase_native_mgm.c \
 	mali_kbase_ctx_sched.c \
 	mali_kbase_jd.c \
 	mali_kbase_jd_debugfs.c \
@@ -91,18 +93,20 @@ SRC := \
 	mali_kbase_gpu_memory_debugfs.c \
 	mali_kbase_mem_linux.c \
 	mali_kbase_core_linux.c \
-	mali_kbase_replay.c \
 	mali_kbase_mem_profile_debugfs.c \
 	mali_kbase_mmu_mode_lpae.c \
 	mali_kbase_mmu_mode_aarch64.c \
 	mali_kbase_disjoint_events.c \
-	mali_kbase_gator_api.c \
 	mali_kbase_debug_mem_view.c \
 	mali_kbase_debug_job_fault.c \
 	mali_kbase_smc.c \
 	mali_kbase_mem_pool.c \
 	mali_kbase_mem_pool_debugfs.c \
+	mali_kbase_debugfs_helper.c \
+	mali_kbase_timeline.c \
+	mali_kbase_timeline_io.c \
 	mali_kbase_tlstream.c \
+	mali_kbase_tracepoints.c \
 	mali_kbase_strings.c \
 	mali_kbase_as_fault_debugfs.c \
 	mali_kbase_regs_history_debugfs.c \
@@ -114,7 +118,7 @@ ifeq ($(CONFIG_MALI_CINSTR_GWT),y)
 endif
 
 ifeq ($(MALI_UNIT_TEST),1)
-	SRC += mali_kbase_tlstream_test.c
+	SRC += mali_kbase_timeline_test.c
 endif
 
 ifeq ($(MALI_CUSTOMER_RELEASE),0)

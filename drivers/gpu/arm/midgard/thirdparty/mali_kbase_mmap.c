@@ -35,7 +35,7 @@
 /* mali_kbase_mmap.c
  *
  * This file contains Linux specific implementation of
- * kbase_get_unmapped_area() interface.
+ * kbase_context_get_unmapped_area() interface.
  */
 
 
@@ -253,11 +253,10 @@ check_current:
  * simplified slightly. Modifications come from the fact that some values
  * about the memory area are known in advance.
  */
-unsigned long kbase_get_unmapped_area(struct file *filp,
+unsigned long kbase_context_get_unmapped_area(struct kbase_context *const kctx,
 		const unsigned long addr, const unsigned long len,
 		const unsigned long pgoff, const unsigned long flags)
 {
-	struct kbase_context *kctx = filp->private_data;
 	struct mm_struct *mm = current->mm;
 	struct vm_unmapped_area_info info;
 	unsigned long align_offset = 0;
@@ -303,12 +302,15 @@ unsigned long kbase_get_unmapped_area(struct file *filp,
 	if ((PFN_DOWN(BASE_MEM_COOKIE_BASE) <= pgoff) &&
 		(PFN_DOWN(BASE_MEM_FIRST_FREE_ADDRESS) > pgoff)) {
 			int cookie = pgoff - PFN_DOWN(BASE_MEM_COOKIE_BASE);
-			struct kbase_va_region *reg =
-					kctx->pending_regions[cookie];
+			struct kbase_va_region *reg;
 
-			if (!reg)
+			/* Need to hold gpu vm lock when using reg */
+			kbase_gpu_vm_lock(kctx);
+			reg = kctx->pending_regions[cookie];
+			if (!reg) {
+				kbase_gpu_vm_unlock(kctx);
 				return -EINVAL;
-
+			}
 			if (!(reg->flags & KBASE_REG_GPU_NX)) {
 				if (cpu_va_bits > gpu_pc_bits) {
 					align_offset = 1ULL << gpu_pc_bits;
@@ -331,10 +333,11 @@ unsigned long kbase_get_unmapped_area(struct file *filp,
 			} else if (reg->flags & KBASE_REG_GPU_VA_SAME_4GB_PAGE) {
 				is_same_4gb_page = true;
 			}
+			kbase_gpu_vm_unlock(kctx);
 #ifndef CONFIG_64BIT
 	} else {
-		return current->mm->get_unmapped_area(filp, addr, len, pgoff,
-						      flags);
+		return current->mm->get_unmapped_area(
+			kctx->filp, addr, len, pgoff, flags);
 #endif
 	}
 
