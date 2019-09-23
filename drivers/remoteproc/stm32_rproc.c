@@ -36,6 +36,8 @@
 #define STM32_MBX_VQ1_ID	1
 #define STM32_MBX_SHUTDOWN	"shutdown"
 
+#define RSC_TBL_SIZE		(1024)
+
 struct stm32_syscon {
 	struct regmap *map;
 	u32 reg;
@@ -75,7 +77,6 @@ struct stm32_rproc {
 	struct workqueue_struct *workqueue;
 	bool secured_soc;
 	void __iomem *rsc_va;
-	u32 rsc_len;
 };
 
 static int stm32_rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da)
@@ -228,7 +229,6 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 	int status;
 	struct resource_table *table = NULL;
 	struct stm32_rproc *ddata = rproc->priv;
-	size_t tablesz = 0;
 
 	if (!rproc->early_boot) {
 		status = rproc_elf_load_rsc_table(rproc, fw);
@@ -239,14 +239,14 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 	}
 
 	if (ddata->rsc_va) {
-		tablesz = ddata->rsc_len;
 		table = (struct resource_table *)ddata->rsc_va;
-		rproc->cached_table = kmemdup(table, tablesz, GFP_KERNEL);
+		/* Assuming that the resource table fits in 1kB is fair */
+		rproc->cached_table = kmemdup(table, RSC_TBL_SIZE, GFP_KERNEL);
 		if (!rproc->cached_table)
 			return -ENOMEM;
 
 		rproc->table_ptr = rproc->cached_table;
-		rproc->table_sz = tablesz;
+		rproc->table_sz = RSC_TBL_SIZE;
 		return 0;
 	}
 
@@ -255,7 +255,7 @@ static int stm32_rproc_elf_load_rsc_table(struct rproc *rproc,
 	rproc->table_sz = 0;
 
 no_rsc_table:
-	dev_warn(&rproc->dev, "not resource table found for this firmware\n");
+	dev_warn(&rproc->dev, "no resource table found for this firmware\n");
 	return 0;
 }
 
@@ -627,7 +627,7 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	struct device_node *np = dev->of_node;
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct stm32_rproc *ddata = rproc->priv;
-	struct stm32_syscon tz;
+	struct stm32_syscon tz, rsctbl;
 	phys_addr_t rsc_pa;
 	u32 rsc_da;
 	unsigned int tzen;
@@ -688,7 +688,7 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 
 	err = stm32_rproc_get_syscon(np, "st,syscfg-pdds", &ddata->pdds);
 	if (err)
-		dev_warn(dev, "failed to get pdds\n");
+		dev_warn(dev, "pdds not supported\n");
 
 
 	rproc->auto_boot = of_property_read_bool(np, "auto_boot");
@@ -700,30 +700,35 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 
 	if (of_property_read_bool(np, "early-booted")) {
 		rproc->early_boot = true;
-		err = of_property_read_u32(np, "rsc-address", &rsc_da);
-		if (err)
-			/* no optional rsc table found */
-			return 0;
 
-		err = of_property_read_u32(np, "rsc-size", &ddata->rsc_len);
+		if (stm32_rproc_get_syscon(np, "st,syscfg-rsc-tbl", &rsctbl)) {
+			/* no rsc table syscon (optional) */
+			dev_warn(dev, "rsc tbl syscon not supported\n");
+			goto bail;
+		}
+
+		err = regmap_read(rsctbl.map, rsctbl.reg, &rsc_da);
 		if (err) {
-			dev_err(dev, "resource table size required as address defined\n");
+			dev_err(&rproc->dev, "failed to read rsc tbl addr\n");
 			return err;
 		}
+		if (!rsc_da)
+			/* no rsc table */
+			goto bail;
 
 		err = stm32_rproc_da_to_pa(rproc, rsc_da, &rsc_pa);
 		if (err)
 			return err;
 
-		ddata->rsc_va = devm_ioremap_wc(dev, rsc_pa, ddata->rsc_len);
+		ddata->rsc_va = devm_ioremap_wc(dev, rsc_pa, RSC_TBL_SIZE);
 		if (IS_ERR_OR_NULL(ddata->rsc_va)) {
 			dev_err(dev, "Unable to map memory region: %pa+%zx\n",
-				&rsc_pa,  ddata->rsc_len);
+				&rsc_pa, RSC_TBL_SIZE);
 			ddata->rsc_va = NULL;
 			return -ENOMEM;
 		}
 	}
-
+bail:
 	return 0;
 }
 
