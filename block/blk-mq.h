@@ -2,7 +2,9 @@
 #define INT_BLK_MQ_H
 
 #include "blk-stat.h"
+#ifndef __GENKSYMS__
 #include "blk-mq-tag.h"
+#endif
 
 struct blk_mq_tag_set;
 

@@ -45,7 +45,7 @@ static void gpio_trig_work(struct work_struct *work)
 			struct gpio_trig_data, work);
 	int tmp;
 
-	if (!gpio_data->gpio)
+	if (!gpio_is_valid(gpio_data->gpio))
 		return;
 
 	tmp = gpio_get_value_cansleep(gpio_data->gpio);
@@ -154,10 +154,10 @@ static ssize_t gpio_trig_gpio_store(struct device *dev,
 	if (gpio_data->gpio == gpio)
 		return n;
 
-	if (!gpio) {
-		if (gpio_data->gpio != 0)
+	if (!gpio_is_valid(gpio)) {
+		if (gpio_is_valid(gpio_data->gpio))
 			free_irq(gpio_to_irq(gpio_data->gpio), led);
-		gpio_data->gpio = 0;
+		gpio_data->gpio = gpio;
 		return n;
 	}
 
@@ -167,7 +167,7 @@ static ssize_t gpio_trig_gpio_store(struct device *dev,
 	if (ret) {
 		dev_err(dev, "request_irq failed with error %d\n", ret);
 	} else {
-		if (gpio_data->gpio != 0)
+		if (gpio_is_valid(gpio_data->gpio))
 			free_irq(gpio_to_irq(gpio_data->gpio), led);
 		gpio_data->gpio = gpio;
 	}
@@ -198,6 +198,8 @@ static void gpio_trig_activate(struct led_classdev *led)
 		goto err_brightness;
 
 	gpio_data->led = led;
+	gpio_data->gpio = -ENOENT;
+
 	led->trigger_data = gpio_data;
 	INIT_WORK(&gpio_data->work, gpio_trig_work);
 	led->activated = true;
@@ -223,7 +225,7 @@ static void gpio_trig_deactivate(struct led_classdev *led)
 		device_remove_file(led->dev, &dev_attr_inverted);
 		device_remove_file(led->dev, &dev_attr_desired_brightness);
 		flush_work(&gpio_data->work);
-		if (gpio_data->gpio != 0)
+		if (gpio_is_valid(gpio_data->gpio))
 			free_irq(gpio_to_irq(gpio_data->gpio), led);
 		kfree(gpio_data);
 		led->activated = false;
