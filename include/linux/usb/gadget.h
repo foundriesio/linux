@@ -532,7 +532,11 @@ static inline int gadget_is_superspeed_plus(struct usb_gadget *g)
 static inline int gadget_is_otg(struct usb_gadget *g)
 {
 #ifdef CONFIG_USB_OTG
+#ifdef CONFIG_TCC_EH_ELECT_TST
+	return 0; //for usb device CV test
+#else
 	return g->is_otg;
+#endif
 #else
 	return 0;
 #endif

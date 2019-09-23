@@ -41,7 +41,7 @@ struct tcc_dwc3_device {
 	struct device	*dev;
 	void __iomem	*base;
 	void __iomem	*h_base;
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
 	void __iomem	*ref_base;
 #endif
 	struct usb_phy 	phy;
@@ -171,6 +171,7 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 }
 
 #if defined (CONFIG_TCC_BC_12)
+#if defined (CONFIG_ARCH_TCC803x)
 static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
@@ -239,6 +240,76 @@ static irqreturn_t tcc_dwc3_chg_irq(int irq, void *data)
 
     return IRQ_HANDLED;
 }
+#else
+static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
+{
+    struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
+    PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
+    printk("Charging Detection!!\n");
+    //printk("%s : pcfg2 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG2));
+    //printk("%s : pcfg4 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG4));
+
+    //writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
+    //udelay(1);
+    //writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
+
+    writel(readl(&USBPHYCFG->U30_PCFG1) |(1<<17) , &USBPHYCFG->U30_PCFG1); //enable chg det
+}
+
+static void tcc_dwc3_set_cdp(struct work_struct *data)
+{
+    struct tcc_dwc3_device *dwc3_phy_dev = container_of(data, struct tcc_dwc3_device, dwc3_work);
+    PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
+    uint32_t pcfg=0;
+    int32_t count=3;
+
+    while(count > 0)
+    {
+        if((readl(&USBPHYCFG->U30_PCFG1) & (1<<20)) != 0)
+        {
+            printk("Chager Detecttion!!\n");
+            //printk("pcfg2 = 0x%08x\n", readl(&USBPHYCFG->FPHY_PCFG2));
+            break;
+        }
+        mdelay(1);
+        count--;
+    }
+
+    if(count == 0)
+    {
+        printk("%s : failed to detect charging!!\n", __func__);
+    }
+    else
+    {
+        pcfg = readl(&USBPHYCFG->U30_PCFG1);
+        writel((pcfg|(1<<18)), &USBPHYCFG->U30_PCFG1);
+        mdelay(100);
+        writel(readl(&USBPHYCFG->U30_PCFG1) & ~((1<<18)|(1<<17)) , &USBPHYCFG->U30_PCFG1);
+        //printk("pcfg2 = 0x%08x\n", readl(&USBPHYCFG->FPHY_PCFG2));
+    }
+
+    //writel(readl(&USBPHYCFG->U30_PCFG4) | (1<<31), &USBPHYCFG->U30_PCFG4);//clear irq
+    //udelay(10);
+    //writel(readl(&USBPHYCFG->U30_PCFG4) & ~(1<<31), &USBPHYCFG->U30_PCFG4);//clear irq
+    printk("%s:Enable chg det!!!\n", __func__);
+    //writel(readl(&USBPHYCFG->FPHY_PCFG2) |(1<<8) , &USBPHYCFG->FPHY_PCFG2); //enable chg det
+}
+
+static irqreturn_t tcc_dwc3_chg_irq(int irq, void *data)
+{
+    struct tcc_dwc3_device *dwc3_phy_dev = (struct tcc_dwc3_device *)data;
+    PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
+
+    printk("%s : CHGDET\n", __func__);
+    writel(readl(&USBPHYCFG->U30_PINT) | (1<<22), &USBPHYCFG->U30_PINT);//clear irq
+    udelay(1);
+    writel(readl(&USBPHYCFG->U30_PINT) & ~(1<<22), &USBPHYCFG->U30_PINT);//clear irq
+    //printk("PINT = 0x%08x\n", readl(&USBPHYCFG->U30_PINT));
+    schedule_work(&dwc3_phy_dev->dwc3_work);
+
+    return IRQ_HANDLED;
+}
+#endif
 #endif
 
 #ifdef DWC3_SQ_TEST_MODE		/* 016.08.26 */
@@ -576,7 +647,11 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		writel(0x00000000, &USBPHYCFG->U30_PCFG1);
 		writel(0x919E1A04, &USBPHYCFG->U30_PCFG2);
+		#if defined(CONFIG_ARCH_TCC899X)
+		writel(0x4befef05, &USBPHYCFG->U30_PCFG3); //vboost:4, de-emp:0x1f, swing:0x6f, ios_bias:05
+		#else
 		writel(0x4B8E7F05, &USBPHYCFG->U30_PCFG3);
+		#endif
 		writel(0x00200000, &USBPHYCFG->U30_PCFG4);
 		writel(0x00000351, &USBPHYCFG->U30_PFLT);
 		writel(0x80000000, &USBPHYCFG->U30_PINT);
