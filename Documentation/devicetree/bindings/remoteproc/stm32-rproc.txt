@@ -54,6 +54,11 @@ Optional properties:
 	1st cell: phandle to syscon block
 	2nd cell: register offset containing the deep sleep setting
 	3rd cell: register bitmask for the deep sleep bit
+- st,syscfg-rsc-tbl: Reference to the system configuration controlling the
+		resource table address loaded by the bootloader
+	1st cell: phandle to syscon block
+	2nd cell: register offset containing the resource table address
+	3rd cell: register bitmask for the resource table address
 - auto_boot:	If defined, when remoteproc is probed, it looks for a default
 		firmware and if it finds some, it loads the firmware and starts
 		the remote processor.
