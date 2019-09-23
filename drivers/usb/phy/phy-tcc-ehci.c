@@ -437,7 +437,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 
 #if defined (CONFIG_TCC_BC_12)
 	if (1) {//phy_dev->mux_port) {
-		printk("%s : MUX Host\n", __func__);
+		//printk("%s : MUX Host\n", __func__);
 		irq = platform_get_irq(pdev, 0);
 		if (irq <= 0) {
 			dev_err(&pdev->dev,

@@ -1110,7 +1110,9 @@ static int dwc3_tcc_new_probe(struct platform_device *pdev)
 	}
 
 #if defined (CONFIG_DWC3_DUAL_FIRST_HOST) || defined (CONFIG_USB_DWC3_HOST)
+#ifndef CONFIG_TCC_EH_ELECT_TST
 	dwc3_tcc_vbus_ctrl(tcc, ON);
+#endif
 #endif
 
 	if (node) {
