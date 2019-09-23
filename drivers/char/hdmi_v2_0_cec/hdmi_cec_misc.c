@@ -18,7 +18,6 @@ NOTE: Tab size is 8
 #include "include/hdmi_cec.h"
 #include "include/hdmi_cec_misc.h"
 #include "include/hdmi_cec_ioctl.h"
-#include "include/tcc_cec_interface.h"
 
 #include "hdmi_cec_lib/cec.h"
 #include "hdmi_cec_lib/cec_access.h"
@@ -31,10 +30,10 @@ NOTE: Tab size is 8
 #include <linux/pm_runtime.h>
 #endif
 
-#define CEC_KERNEL_DEBUG
+//#define CEC_KERNEL_DEBUG
 
 #if defined(CEC_KERNEL_DEBUG)
-#define dpr_info(fmt...) pr_info(fmt, ##__VA_ARGS__))
+#define dpr_info(fmt,...) pr_info(fmt, ##__VA_ARGS__))
 #else
 #define dpr_info
 #endif
@@ -181,7 +180,6 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
         			printk("\n");
         		        #endif
         			ret = cec_ctrlSendFrame(dev, dev->buf.send_buf, dev->buf.size);
-        			TccCECInterface_SendData(0, (unsigned int)dev->buf.send_buf);
         		}
         		break;
 
@@ -205,7 +203,6 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                                 pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-        				TccCECInterface_ParseMessage(dev, dev->buf.recv_buf, ret);
                                         break;
         			}
         		}
@@ -299,7 +296,6 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                TccCECInterface_SendData(0, (unsigned int)dev->buf.send_buf);
                                 ret = 0;
                         }
                         break;
@@ -327,7 +323,6 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                                 pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
-        				TccCECInterface_ParseMessage(dev, dev->buf.recv_buf, ret);
                                         ret = 0;
         			}
         		}

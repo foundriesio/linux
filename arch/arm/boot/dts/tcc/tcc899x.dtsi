@@ -2106,6 +2106,8 @@
 	vioc_lut: vioc_lut@12009000{
 		compatible = "telechips,vioc_lut";
 		reg = <0x12009000 0x800>;
+		dev_max = <1>; /* 0: DEV0, 1: DEV1 and 2: DEV2 */
+		vioc_max = <4>; /* 3: VIOC_LUT0, 4: VIOC_LUT1, 5: VIOC_LUT2 and 6: VIOC_LUT3 */
 		status = "okay";
 	};
 

@@ -130,6 +130,28 @@ static struct tcc_lcdc_image_update last_backup;
 #endif
 #endif
 
+
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+#include <video/tcc/tcc_lut_ioctl.h>
+#define UI_LUT 			LUT_COMP0
+#define UI_LUT_PLUGIN_CH 	0
+#define VIDEO_LUT 		LUT_COMP1
+#define VIDEO_LUT_PLUGIN_CH 	3
+
+static int debug_lut = 0;
+#define lut_prinfo(msg, ...) if (debug_lut) { pr_info("\x1b[1;38m TCC VSYNC: \x1b[0m" msg, ##__VA_ARGS__); }
+
+struct vsync_lut_into_t {
+	int content; /* 0: SDR, 1: HDR */
+	int output; /* 0: SDR, 1: HDR */
+};
+
+static struct vsync_lut_into_t vsync_lut_into = {0, };
+
+extern int lut_drv_api_get_plugin(unsigned int lut_number);
+extern int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch);
+#endif
+
 /*******			define extern symbol	******/
 #if defined(CONFIG_FB_TCC_COMPOSITE)
 extern void tcc_composite_set_bypass(char bypass_mode);
@@ -233,6 +255,89 @@ struct tcc_vsync_display_info_t vsync_vioc0_disp;
 
 static int tcc_vsync_mvc_status = 0;
 static int tcc_vsync_mvc_overlay_priority = 0;
+
+
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+static int vsync_deinit_lut(void)
+{
+	int lut_status = lut_drv_api_get_plugin(VIDEO_LUT);
+
+	lut_prinfo("%s \r\n", __func__);
+	if(lut_status == (VIOC_RDMA00 + UI_LUT_PLUGIN_CH)) {
+		lut_prinfo("%s ulplug video_lut \r\n", __func__);
+		lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
+	}
+	memset(&vsync_lut_into, 0, sizeof(vsync_lut_into));
+}
+
+static int vsync_process_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pImage)
+{
+	int ret = -1;
+	int lut_status, content, output;
+	hevc_userdata_output_t *uData = NULL;
+	do {
+		if(p == NULL) {
+			break;
+		}
+		if(pImage == NULL) {
+			break;
+		}
+
+		uData = &pImage->private_data.userData_Info;
+
+		/* check vsync start */
+		if(p->isVsyncRunning == 0) {
+			break;
+		}
+
+		if( TCC_OUTPUT_HDMI != Output_SelectMode ) {
+			break;
+		}
+
+		/* Check current state */
+		lut_status = lut_drv_api_get_plugin(UI_LUT);
+		if(lut_status == (VIOC_RDMA00 + UI_LUT_PLUGIN_CH)) {
+			/* Display is HDR : SDR to HDR */
+			output = 1;
+			lut_prinfo("display is HDR\r\n");
+		} else {
+			/* Display is SDR : SDR to SDR */
+			output = 0;
+			lut_prinfo("display is SDR\r\n");
+		}
+
+		/* HDR support */
+		if( pImage != NULL &&
+			pImage->private_data.optional_info[VID_OPT_HAVE_USERDATA] == 1 ) {
+			/* Content is HDR */
+			content = 1;
+			//lut_prinfo("content is HDR\r\n");
+		} else {
+			/* Content is SDR */
+			content = 0;
+			//lut_prinfo("content is SDR\r\n");
+		}
+
+		if(vsync_lut_into.content != content ||
+				vsync_lut_into.output != output) {
+
+			if(content == 0 && output == 1) {
+				/* SDR -> HDR */
+				lut_prinfo("%s contents is SDR, display is HDR >> plugin video_lut \r\n", __func__);
+				lut_drv_api_set_plugin(VIDEO_LUT, 1, VIDEO_LUT_PLUGIN_CH);
+			} else {
+				lut_prinfo("%s contents is %s, display is Ts >> unplug video_lut \r\n",
+						__func__, (content==1)?"HDR":"SDR", (output==1)?"HDR":"SDR");
+				lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
+			}
+
+			/* Store current stae */
+			vsync_lut_into.content = content;
+			vsync_lut_into.output = output;
+		}
+	} while(0);
+}
+#endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../../../char/hdmi_v2_0/include/hdmi_ioctls.h"
@@ -3795,6 +3900,11 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						printk("%s: PUSH Error(%d)_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", err_type, type,
 								input_image->buffer_unique_id, input_image->time_stamp, input_image->sync_time);
 					}
+					#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+					if(err_type == 0) {
+						vsync_process_lut(p, input_image);
+					}
+					#endif
 					ret = p->vsync_buffer.writeIdx;
 					kfree((const void*)input_image);
 				}
