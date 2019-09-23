@@ -804,7 +804,7 @@ static void remove_pagetable(unsigned long start, unsigned long end)
 
 int __ref radix__create_section_mapping(unsigned long start, unsigned long end)
 {
-	return create_physical_mapping(start, end);
+	return create_physical_mapping(__pa(start), __pa(end));
 }
 
 int radix__remove_section_mapping(unsigned long start, unsigned long end)
