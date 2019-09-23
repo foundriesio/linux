@@ -256,7 +256,7 @@ lt8912_connector_detect(struct drm_connector *connector, bool force)
 	hpd = connector_status_unknown;
 	do {
 		hpd_last = hpd;
-		hpd = gpiod_get_value(lt->hpd_gpio) ?
+		hpd = gpiod_get_value_cansleep(lt->hpd_gpio) ?
 			connector_status_connected : connector_status_disconnected;
 		msleep(20);
 		timeout += 20;
