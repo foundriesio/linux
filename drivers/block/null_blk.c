@@ -746,7 +746,7 @@ static int null_add_dev(void)
 		if (rv)
 			goto out_cleanup_queues;
 
-		nullb.tag_set->timeout = 5 * HZ;
+		nullb->tag_set.timeout = 5 * HZ;
 		nullb->q = blk_mq_init_queue(&nullb->tag_set);
 		if (IS_ERR(nullb->q)) {
 			rv = -ENOMEM;
