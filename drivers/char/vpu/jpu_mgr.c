@@ -975,13 +975,6 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             }
             break;
 
-		case VPU_TRY_CLK_RESTORE:
-		case VPU_TRY_CLK_RESTORE_KERNEL:
-		{
-			jmgr_restore_clock(0, jmgr_data.dev_opened);
-		}
-		break;
-
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;

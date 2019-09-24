@@ -1179,29 +1179,6 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
             }
             break;
 
-
-		case VPU_TRY_FORCE_CLOSE:
-		case VPU_TRY_FORCE_CLOSE_KERNEL:
-		{
-            //tcc_vpu_4k_d2_dec_esc(1, 0,0,0);
-			if(!vmgr_4k_d2_data.bVpu_already_proc_force_closed)
-			{
-				_vmgr_4k_d2_wait_process(200);
-				vmgr_4k_d2_data.external_proc = 1;
-				_vmgr_4k_d2_external_all_close(200);
-				vmgr_4k_d2_data.external_proc = 0;
-				vmgr_4k_d2_data.bVpu_already_proc_force_closed = true;
-			}
-		}
-		break;
-
-		case VPU_TRY_CLK_RESTORE:
-		case VPU_TRY_CLK_RESTORE_KERNEL:
-		{
-			vmgr_4k_d2_restore_clock(0, vmgr_4k_d2_data.dev_opened);
-		}
-		break;
-
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
