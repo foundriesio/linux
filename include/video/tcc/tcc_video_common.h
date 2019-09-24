@@ -75,10 +75,6 @@
 #   define _DOLBY_VISION_SUPPORT_
 #endif
 
-#ifndef CONFIG_ANDROID
-#   define DO_NOT_USE_REMAP_ADDR
-#endif
-
 typedef enum {
     VPU_DEC = 0,
     VPU_DEC_EXT,
@@ -166,9 +162,6 @@ typedef struct dec_user_info_t {
 #define VPU_DISABLE_JPU_CLOCK           207
 #define VPU_CHECK_INSTANCE_AVAILABLE    208
 
-#define VPU_TRY_FORCE_CLOSE				500
-#define VPU_TRY_CLK_RESTORE				501
-
 #define VPU_GET_FREEMEM_SIZE    40
 #define VPU_HW_RESET            50
 
@@ -215,7 +208,9 @@ typedef struct dec_user_info_t {
 #define V_DEC_GET_OUTPUT_INFO               64 //!< decode
 #define V_DEC_GET_OUTPUT_INFO_RESULT        65
 
-#define V_DEC_OP_CODE_MAX                   V_DEC_GET_OUTPUT_INFO_RESULT
+#define V_TRY_FORCE_CLOSE                 66
+
+#define V_DEC_OP_CODE_MAX                   V_TRY_FORCE_CLOSE
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /* Macro constants of VPU Command: ENCODER */
@@ -251,9 +246,6 @@ typedef struct dec_user_info_t {
 #define VPU_ENABLE_JPU_CLOCK_KERNEL  	( VPU_KERNEL_OP_BASE + VPU_ENABLE_JPU_CLOCK)
 #define VPU_DISABLE_JPU_CLOCK_KERNEL  	( VPU_KERNEL_OP_BASE + VPU_DISABLE_JPU_CLOCK)
 #define VPU_CHECK_INSTANCE_AVAILABLE_KERNEL ( VPU_KERNEL_OP_BASE + VPU_CHECK_INSTANCE_AVAILABLE)
-
-#define VPU_TRY_FORCE_CLOSE_KERNEL 		( VPU_KERNEL_OP_BASE + VPU_TRY_FORCE_CLOSE)
-#define VPU_TRY_CLK_RESTORE_KERNEL 		( VPU_KERNEL_OP_BASE + VPU_TRY_CLK_RESTORE)
 
 #define VPU_GET_FREEMEM_SIZE_KERNEL		( VPU_KERNEL_OP_BASE + VPU_GET_FREEMEM_SIZE)
 #define VPU_HW_RESET_KERNEL 			( VPU_KERNEL_OP_BASE + VPU_HW_RESET)
@@ -293,5 +285,7 @@ typedef struct dec_user_info_t {
 
 #define V_DEC_GET_OUTPUT_INFO_KERNEL    ( V_DEC_KERNEL_OP_BASE + V_DEC_GET_OUTPUT_INFO)
 #define V_DEC_GET_OUTPUT_INFO_RESULT_KERNEL  ( V_DEC_KERNEL_OP_BASE + V_DEC_GET_OUTPUT_INFO_RESULT)
+
+#define V_TRY_FORCE_CLOSE_KERNEL      ( V_DEC_KERNEL_OP_BASE + V_TRY_FORCE_CLOSE)
 
 #endif // _VIDEO_COMMON_H_lif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)
