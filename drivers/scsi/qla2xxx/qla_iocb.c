@@ -2551,10 +2551,8 @@ void qla2x00_init_timer(srb_t *sp, unsigned long tmo)
 	sp->start_timer = 1;
 }
 
-static void
-qla2x00_els_dcmd_sp_free(void *data)
+static void qla2x00_els_dcmd_sp_free(srb_t *sp)
 {
-	srb_t *sp = data;
 	struct srb_iocb *elsio = &sp->u.iocb_cmd;
 
 	kfree(sp->fcport);
@@ -2584,10 +2582,8 @@ qla2x00_els_dcmd_iocb_timeout(void *data)
 	complete(&lio->u.els_logo.comp);
 }
 
-static void
-qla2x00_els_dcmd_sp_done(void *ptr, int res)
+static void qla2x00_els_dcmd_sp_done(srb_t *sp, int res)
 {
-	srb_t *sp = ptr;
 	fc_port_t *fcport = sp->fcport;
 	struct srb_iocb *lio = &sp->u.iocb_cmd;
 	struct scsi_qla_host *vha = sp->vha;
@@ -2765,10 +2761,8 @@ qla2x00_els_dcmd2_iocb_timeout(void *data)
 	sp->done(sp, QLA_FUNCTION_TIMEOUT);
 }
 
-static void
-qla2x00_els_dcmd2_sp_done(void *ptr, int res)
+static void qla2x00_els_dcmd2_sp_done(srb_t *sp, int res)
 {
-	srb_t *sp = ptr;
 	fc_port_t *fcport = sp->fcport;
 	struct srb_iocb *lio = &sp->u.iocb_cmd;
 	struct scsi_qla_host *vha = sp->vha;
