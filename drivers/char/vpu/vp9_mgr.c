@@ -64,7 +64,7 @@ VpuList_t* vp9mgr_list_manager(VpuList_t* args, unsigned int cmd);
 
 int vp9mgr_opened(void)
 {
-    if(vp9mgr_data.dev_opened == 0)
+    if(atomic_read(&vp9mgr_data.dev_opened) == 0)
         return 0;
     return 1;
 }
@@ -77,7 +77,7 @@ int vp9mgr_get_close(vputype type)
 
 int vp9mgr_get_alive(void)
 {
-    return vp9mgr_data.dev_opened;
+    return atomic_read(&vp9mgr_data.dev_opened);
 }
 
 int vp9mgr_set_close(vputype type, int value, int bfreemem)
@@ -109,7 +109,7 @@ static void _vp9mgr_close_all(int bfreemem)
 
 int vp9mgr_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 {
-    if(vp9mgr_data.dev_opened == 0)
+    if(atomic_read(&vp9mgr_data.dev_opened) == 0)
         return 0;
 
     printk(" \n process_ex %d - 0x%x \n\n", type, Op);
@@ -592,6 +592,106 @@ static int _vp9mgr_external_all_close(int wait_ms)
     return 0;
 }
 
+static int _vp9mgr_cmd_open(char *str)
+{
+	int ret = 0;
+
+    dprintk("======> _vp9mgr_%s_open In!! %d'th \n", str, atomic_read(&vp9mgr_data.dev_opened));
+
+    vp9mgr_enable_clock(0);
+
+    if(atomic_read(&vp9mgr_data.dev_opened) == 0)
+    {
+#ifdef FORCED_ERROR
+        forced_error_count = FORCED_ERR_CNT;
+#endif
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+        vp9mgr_data.only_decmode = 0;
+#else
+        vp9mgr_data.only_decmode = 1;
+#endif
+        vp9mgr_data.clk_limitation = 1;
+        //vp9mgr_hw_reset();
+        vp9mgr_data.cmd_processing = 0;
+
+        vp9mgr_enable_irq(vp9mgr_data.irq);
+        if(1)
+        {
+            void *vbus_cfg = (unsigned int*)ioremap_nocache(HwVIDEOBUSCONFIG_BASE, PAGE_SIZE);
+            if(vbus_cfg){
+                vetc_reg_write(vbus_cfg, 0x60, 0xFFFFFFFF); // for VP9 fuse dec
+                iounmap((void*)vbus_cfg);
+            }
+        }
+        vetc_reg_init(vp9mgr_data.base_addr);
+        if(0 > vmem_init())
+	    {
+	        err("failed to allocate memory for VP9!! %d \n", ret);
+	        return -ENOMEM;
+	    }
+    }
+    atomic_inc(&vp9mgr_data.dev_opened);
+
+	return 0;
+}
+
+static int _vp9mgr_cmd_release(char *str)
+{
+    dprintk("======> _vp9mgr_%s_release In!! %d'th \n", str, atomic_read(&vp9mgr_data.dev_opened));
+
+    if(atomic_read(&vp9mgr_data.dev_opened) > 0) {
+        atomic_dec(&vp9mgr_data.dev_opened);
+	}
+
+    if(atomic_read(&vp9mgr_data.dev_opened) == 0)
+    {
+//////////////////////////////////////
+        int type = 0, alive_cnt = 0;
+
+#if 1 // To close whole vp9 instance when being killed process opened this.
+		if(!vp9mgr_data.bVpu_already_proc_force_closed)
+		{
+	        vp9mgr_data.external_proc = 1;
+	        _vp9mgr_external_all_close(200);
+	        vp9mgr_data.external_proc = 0;
+	        _vp9mgr_wait_process(200);
+		}
+		vp9mgr_data.bVpu_already_proc_force_closed = false;
+#endif
+
+        for(type=0; type<VP9_MAX; type++) {
+            if( vp9mgr_data.closed[type] == 0 ){
+                alive_cnt++;
+            }
+        }
+
+        if( alive_cnt )
+        {
+            // clear instances of vp9 by force.
+            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
+            printk("VP9 might be cleared by force. \n");
+        }
+
+//////////////////////////////////////
+        vp9mgr_data.oper_intr = 0;
+        vp9mgr_data.cmd_processing = 0;
+
+        _vp9mgr_close_all(1);
+//////////////////////////////////////
+
+        vp9mgr_disable_irq(vp9mgr_data.irq);
+        vp9mgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+    }
+
+    vp9mgr_disable_clock(0);
+
+    vp9mgr_data.nOpened_Count++;
+
+    printk("======> _vp9mgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&vp9mgr_data.dev_opened), vp9mgr_data.nOpened_Count,
+                    vp9mgr_get_close(VPU_DEC), vp9mgr_get_close(VPU_DEC_EXT), vp9mgr_get_close(VPU_DEC_EXT2), vp9mgr_get_close(VPU_DEC_EXT3), vp9mgr_get_close(VPU_DEC_EXT4));
+
+	return 0;
+}
 static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -726,6 +826,43 @@ static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             }
             break;
 
+
+
+		case VPU_TRY_FORCE_CLOSE:
+		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+            //tcc_vpu_dec_esc(1, 0, 0, 0);
+
+            if(!vp9mgr_data.bVpu_already_proc_force_closed)
+			{
+				vp9mgr_data.external_proc = 1;
+				_vp9mgr_external_all_close(200);
+				vp9mgr_data.external_proc = 0;
+				_vp9mgr_wait_process(200);
+				vp9mgr_data.bVpu_already_proc_force_closed = true;
+			}
+        }
+		break;
+
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			vp9mgr_restore_clock(0, atomic_read(&vp9mgr_data.dev_opened));
+		}
+		break;
+
+	#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+		case VPU_TRY_OPEN_DEV:
+		case VPU_TRY_OPEN_DEV_KERNEL:
+			_vp9mgr_cmd_open("cmd");
+		break;
+			
+		case VPU_TRY_CLOSE_DEV:
+		case VPU_TRY_CLOSE_DEV_KERNEL:
+			_vp9mgr_cmd_release("cmd");
+		break;
+	#endif
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -754,47 +891,19 @@ static irqreturn_t _vp9mgr_isr_handler(int irq, void *dev_id)
 
 static int _vp9mgr_open(struct inode *inode, struct file *filp)
 {
-	int ret = 0;
-
     if (!vp9mgr_data.irq_reged) {
         err("not registered vp9-mgr-irq \n");
     }
 
-    dprintk("_vp9mgr_open In!! %d'th \n", vp9mgr_data.dev_opened);
-
-    vp9mgr_enable_clock(0);
-
-    if(vp9mgr_data.dev_opened == 0)
-    {
-#ifdef FORCED_ERROR
-        forced_error_count = FORCED_ERR_CNT;
-#endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-        vp9mgr_data.only_decmode = 0;
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_vp9mgr_open In!! %d'th\n", vp9mgr_data.dev_file_opened);
+	vp9mgr_data.dev_file_opened++;
+	dprintk("_vp9mgr_open Out!! %d'th\n", vp9mgr_data.dev_file_opened);
 #else
-        vp9mgr_data.only_decmode = 1;
+    mutex_lock(&vp9mgr_data.comm_data.file_mutex);
+    _vp9mgr_cmd_open("file");
+    mutex_unlock(&vp9mgr_data.comm_data.file_mutex);
 #endif
-        vp9mgr_data.clk_limitation = 1;
-        //vp9mgr_hw_reset();
-        vp9mgr_data.cmd_processing = 0;
-
-        vp9mgr_enable_irq(vp9mgr_data.irq);
-        if(1)
-        {
-            void *vbus_cfg = (unsigned int*)ioremap_nocache(HwVIDEOBUSCONFIG_BASE, PAGE_SIZE);
-            if(vbus_cfg){
-                vetc_reg_write(vbus_cfg, 0x60, 0xFFFFFFFF); // for VP9 fuse dec
-                iounmap((void*)vbus_cfg);
-            }
-        }
-        vetc_reg_init(vp9mgr_data.base_addr);
-        if(0 > vmem_init())
-	    {
-	        err("failed to allocate memory for VP9!! %d \n", ret);
-	        return -ENOMEM;
-	    }
-    }
-    vp9mgr_data.dev_opened++;
 
     filp->private_data = &vp9mgr_data;
 
@@ -803,62 +912,18 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
 
 static int _vp9mgr_release(struct inode *inode, struct file *filp)
 {
-    dprintk("_vp9mgr_release In!! %d'th \n", vp9mgr_data.dev_opened);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_vp9mgr_release In!! %d'th\n", vp9mgr_data.dev_file_opened);
+	vp9mgr_data.dev_file_opened--;
+	vp9mgr_data.nOpened_Count++;
 
-	if(!vp9mgr_data.bVpu_already_proc_force_closed)
-	{
-	    _vp9mgr_wait_process(200);
-	}
-    if(vp9mgr_data.dev_opened > 0) {
-        vp9mgr_data.dev_opened--;
-    }
-
-    if(vp9mgr_data.dev_opened == 0)
-    {
-//////////////////////////////////////
-        int type = 0, alive_cnt = 0;
-
-#if 1 // To close whole vp9 instance when being killed process opened this.
-		if(!vp9mgr_data.bVpu_already_proc_force_closed)
-		{
-	        vp9mgr_data.external_proc = 1;
-	        _vp9mgr_external_all_close(200);
-	        _vp9mgr_wait_process(200);
-	        vp9mgr_data.external_proc = 0;
-		}
-		vp9mgr_data.bVpu_already_proc_force_closed = false;
+	printk("_vp9mgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", vmgr_data.dev_file_opened, vmgr_data.nOpened_Count,
+					vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4));
+#else
+    mutex_lock(&vp9mgr_data.comm_data.file_mutex);
+	_vp9mgr_cmd_release("file");
+    mutex_unlock(&vp9mgr_data.comm_data.file_mutex);
 #endif
-
-        for(type=0; type<VP9_MAX; type++) {
-            if( vp9mgr_data.closed[type] == 0 ){
-                alive_cnt++;
-            }
-        }
-
-        if( alive_cnt )
-        {
-            // clear instances of vp9 by force.
-            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
-            printk("VP9 might be cleared by force. \n");
-        }
-
-//////////////////////////////////////
-        vp9mgr_data.oper_intr = 0;
-        vp9mgr_data.cmd_processing = 0;
-
-        _vp9mgr_close_all(1);
-//////////////////////////////////////
-
-        vp9mgr_disable_irq(vp9mgr_data.irq);
-        vp9mgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
-    }
-
-    vp9mgr_disable_clock(0);
-
-    vp9mgr_data.nOpened_Count++;
-
-    printk("_vp9mgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", vp9mgr_data.dev_opened, vp9mgr_data.nOpened_Count,
-                    vp9mgr_get_close(VPU_DEC), vp9mgr_get_close(VPU_DEC_EXT), vp9mgr_get_close(VPU_DEC_EXT2), vp9mgr_get_close(VPU_DEC_EXT3), vp9mgr_get_close(VPU_DEC_EXT4));
 
     return 0;
 }
@@ -963,7 +1028,7 @@ static int _vp9mgr_operation(void)
 
                 if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
                 {
-                    vp9mgr_restore_clock(0, vp9mgr_data.dev_opened);
+                    vp9mgr_restore_clock(0, atomic_read(&vp9mgr_data.dev_opened));
                     _vp9mgr_close_all(1);
                 }
             }
@@ -977,7 +1042,7 @@ static int _vp9mgr_operation(void)
 
         if(oper_finished)
         {
-            if(oper_data->comm_data != NULL && vp9mgr_data.dev_opened != 0)
+            if(oper_data->comm_data != NULL && atomic_read(&vp9mgr_data.dev_opened) != 0)
             {
                 //unsigned long flags;
                 //spin_lock_irqsave(&(oper_data->comm_data->lock), flags);
@@ -989,11 +1054,11 @@ static int _vp9mgr_operation(void)
                 wake_up_interruptible(&(oper_data->comm_data->wq));
             }
             else{
-                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, vp9mgr_data.dev_opened);
+                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vp9mgr_data.dev_opened));
             }
         }
         else{
-            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, vp9mgr_data.dev_opened);
+            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vp9mgr_data.dev_opened));
         }
 
         vp9mgr_list_manager(oper_data, LIST_DEL);
@@ -1022,7 +1087,7 @@ static int _vp9mgr_thread(void *kthread)
         }
         else
         {
-            if(vp9mgr_data.dev_opened || vp9mgr_data.external_proc){
+            if(atomic_read(&vp9mgr_data.dev_opened) || vp9mgr_data.external_proc){
                 _vp9mgr_operation();
             }
             else{
@@ -1123,6 +1188,7 @@ int vp9mgr_probe(struct platform_device *pdev)
 
     mutex_init(&vp9mgr_data.comm_data.list_mutex);
     mutex_init(&(vp9mgr_data.comm_data.io_mutex));
+    mutex_init(&(vp9mgr_data.comm_data.file_mutex));
 
     INIT_LIST_HEAD(&vp9mgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&vp9mgr_data.comm_data.wait_list);
@@ -1188,14 +1254,14 @@ int vp9mgr_suspend(struct platform_device *pdev, pm_message_t state)
 {
     int i, open_count = 0;
 
-    if(vp9mgr_data.dev_opened != 0)
+    if(atomic_read(&vp9mgr_data.dev_opened) != 0)
     {
         printk(" \n vp9: suspend In DEC(%d/%d/%d/%d/%d) \n", vp9mgr_get_close(VPU_DEC), vp9mgr_get_close(VPU_DEC_EXT),
 			vp9mgr_get_close(VPU_DEC_EXT2), vp9mgr_get_close(VPU_DEC_EXT3), vp9mgr_get_close(VPU_DEC_EXT4));
 
         _vp9mgr_external_all_close(200);
 
-        open_count = vp9mgr_data.dev_opened;
+        open_count = atomic_read(&vp9mgr_data.dev_opened);
         for(i=0; i<open_count; i++) {
             vp9mgr_disable_clock(0);
         }
@@ -1211,9 +1277,9 @@ int vp9mgr_resume(struct platform_device *pdev)
 {
     int i, open_count = 0;
 
-    if(vp9mgr_data.dev_opened != 0){
+    if(atomic_read(&vp9mgr_data.dev_opened) != 0){
 
-        open_count = vp9mgr_data.dev_opened;
+        open_count = atomic_read(&vp9mgr_data.dev_opened);
 
         for(i=0; i<open_count; i++) {
             vp9mgr_enable_clock(0);

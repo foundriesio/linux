@@ -81,7 +81,7 @@ VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd);
 
 int vmgr_4k_d2_opened(void)
 {
-    if(vmgr_4k_d2_data.dev_opened == 0)
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) == 0)
         return 0;
     return 1;
 }
@@ -489,7 +489,7 @@ int vmgr_4k_d2_get_close(vputype type)
 
 int vmgr_4k_d2_get_alive(void)
 {
-    return vmgr_4k_d2_data.dev_opened;
+    return atomic_read(&vmgr_4k_d2_data.dev_opened);
 }
 
 int vmgr_4k_d2_set_close(vputype type, int value, int bfreemem)
@@ -521,7 +521,7 @@ static void _vmgr_4k_d2_close_all(int bfreemem)
 
 int vmgr_4k_d2_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 {
-    if(vmgr_4k_d2_data.dev_opened == 0)
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) == 0)
         return 0;
 
     printk(" \n process_ex %d - 0x%x \n\n", type, Op);
@@ -1044,6 +1044,107 @@ static int _vmgr_4k_d2_external_all_close(int wait_ms)
 
     return 0;
 }
+
+static unsigned int cntInt_4kd2 = 0;
+static int _vmgr_4k_d2_cmd_open(char *str)
+{
+	int ret = 0;
+
+    dprintk("======> _vmgr_4k_d2_%s_open In!! %d'th \n", str, atomic_read(&vmgr_4k_d2_data.dev_opened));
+
+    vmgr_4k_d2_enable_clock(0, 0);
+
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) == 0)
+    {
+#ifdef FORCED_ERROR
+        forced_error_count = FORCED_ERR_CNT;
+#endif
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+        vmgr_4k_d2_data.only_decmode = 0;
+#else
+        vmgr_4k_d2_data.only_decmode = 1;
+#endif
+        vmgr_4k_d2_data.clk_limitation = 1;
+        //vmgr_4k_d2_hw_reset();
+        vmgr_4k_d2_data.cmd_processing = 0;
+
+        vmgr_4k_d2_enable_irq(vmgr_4k_d2_data.irq);
+        //vetc_reg_init(vmgr_4k_d2_data.base_addr);
+        if(0 > (ret = vmem_init()))
+	    {
+	        err("failed to allocate memory for VPU_4K_D2!! %d \n", ret);
+	        //return -ENOMEM;
+	    }
+
+		cntInt_4kd2 = 0;
+    }
+    atomic_inc(&vmgr_4k_d2_data.dev_opened);
+
+	dprintk("======> _vmgr_4k_d2_%s_open Out!! %d'th \n", str, atomic_read(&vmgr_4k_d2_data.dev_opened));
+	
+	return 0;
+}
+
+static int _vmgr_4k_d2_cmd_release(char *str)
+{
+    dprintk("======> _vmgr_4k_d2_%s_release In!! %d'th \n", str, &vmgr_4k_d2_data.dev_opened);
+
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) > 0) {
+        atomic_dec(&vmgr_4k_d2_data.dev_opened);
+	}
+
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) == 0)
+    {
+//////////////////////////////////////
+        int type = 0, alive_cnt = 0;
+
+#if 1 // To close whole vpu-4k-d2 vp9/hevc instance when being killed process opened this.
+		if(!vmgr_4k_d2_data.bVpu_already_proc_force_closed)
+		{
+			vmgr_4k_d2_data.external_proc = 1;
+			_vmgr_4k_d2_external_all_close(200);
+			vmgr_4k_d2_data.external_proc = 0;
+			_vmgr_4k_d2_wait_process(200);
+		}
+		vmgr_4k_d2_data.bVpu_already_proc_force_closed = false;
+#endif
+
+        for(type=0; type<VPU_4K_D2_MAX; type++) {
+            if( vmgr_4k_d2_data.closed[type] == 0 ){
+                alive_cnt++;
+            }
+        }
+
+        if( alive_cnt )
+        {
+            // clear instances of vpu-4k-d2 vp9/hevc by force.
+            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
+            printk("VPU-4K-D2 VP9/HEVC might be cleared by force. \n");
+        }
+
+//////////////////////////////////////
+        vmgr_4k_d2_data.oper_intr = 0;
+        vmgr_4k_d2_data.cmd_processing = 0;
+
+        _vmgr_4k_d2_close_all(1);
+//////////////////////////////////////
+
+        vmgr_4k_d2_disable_irq(vmgr_4k_d2_data.irq);
+        vmgr_4k_d2_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
+    }
+
+    vmgr_4k_d2_disable_clock(0, 0);
+
+    vmgr_4k_d2_data.nOpened_Count++;
+
+    printk("======> _vmgr_4k_d2_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&vmgr_4k_d2_data.dev_opened), vmgr_4k_d2_data.nOpened_Count,
+                    vmgr_4k_d2_get_close(VPU_DEC), vmgr_4k_d2_get_close(VPU_DEC_EXT), vmgr_4k_d2_get_close(VPU_DEC_EXT2), vmgr_4k_d2_get_close(VPU_DEC_EXT3), vmgr_4k_d2_get_close(VPU_DEC_EXT4));
+
+	return 0;
+}
+
 static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -1179,6 +1280,41 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
             }
             break;
 
+
+		case VPU_TRY_FORCE_CLOSE:
+		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+            //tcc_vpu_4k_d2_dec_esc(1, 0,0,0);
+			if(!vmgr_4k_d2_data.bVpu_already_proc_force_closed)
+			{
+				vmgr_4k_d2_data.external_proc = 1;
+				_vmgr_4k_d2_external_all_close(200);
+				vmgr_4k_d2_data.external_proc = 0;
+				_vmgr_4k_d2_wait_process(200);
+				vmgr_4k_d2_data.bVpu_already_proc_force_closed = true;
+			}
+		}
+		break;
+
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			vmgr_4k_d2_restore_clock(0, atomic_read(&vmgr_4k_d2_data.dev_opened));
+		}
+		break;
+
+	#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+		case VPU_TRY_OPEN_DEV:
+		case VPU_TRY_OPEN_DEV_KERNEL:
+			_vmgr_4k_d2_cmd_open("cmd");
+		break;
+			
+		case VPU_TRY_CLOSE_DEV:
+		case VPU_TRY_CLOSE_DEV_KERNEL:
+			_vmgr_4k_d2_cmd_release("cmd");
+		break;
+	#endif
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1197,7 +1333,6 @@ static long _vmgr_4k_d2_compat_ioctl(struct file *file, unsigned int cmd, unsign
 }
 #endif
 
-static unsigned int cntInt_4kd2 = 0;
 static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 {
     unsigned long flags;
@@ -1219,105 +1354,39 @@ static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 
 static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 {
-	int ret = 0;
-
     if (!vmgr_4k_d2_data.irq_reged) {
         err("not registered vpu-4k-d2 vp9/hevc-mgr-irq \n");
     }
 
-    dprintk("_vmgr_4k_d2_open In!! %d'th \n", vmgr_4k_d2_data.dev_opened);
-
-    vmgr_4k_d2_enable_clock(0, 0);
-
-    if(vmgr_4k_d2_data.dev_opened == 0)
-    {
-#ifdef FORCED_ERROR
-        forced_error_count = FORCED_ERR_CNT;
-#endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-        vmgr_4k_d2_data.only_decmode = 0;
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_vmgr_4k_d2_open In!! %d'th\n", vmgr_4k_d2_data.dev_file_opened);
+	vmgr_4k_d2_data.dev_file_opened++;
+	dprintk("_vmgr_4k_d2_open Out!! %d'th\n", vmgr_4k_d2_data.dev_file_opened);
 #else
-        vmgr_4k_d2_data.only_decmode = 1;
+    mutex_lock(&vmgr_4k_d2_data.comm_data.file_mutex);
+    _vmgr_4k_d2_cmd_open("file");
+    mutex_unlock(&vmgr_4k_d2_data.comm_data.file_mutex);
 #endif
-        vmgr_4k_d2_data.clk_limitation = 1;
-        //vmgr_4k_d2_hw_reset();
-        vmgr_4k_d2_data.cmd_processing = 0;
-
-        vmgr_4k_d2_enable_irq(vmgr_4k_d2_data.irq);
-        //vetc_reg_init(vmgr_4k_d2_data.base_addr);
-        if(0 > vmem_init())
-	    {
-	        err("failed to allocate memory for VPU_4K_D2!! %d \n", ret);
-	        return -ENOMEM;
-	    }
-
-		cntInt_4kd2 = 0;
-    }
-    vmgr_4k_d2_data.dev_opened++;
 
     filp->private_data = &vmgr_4k_d2_data;
-	dprintk("_vmgr_4k_d2_open Out!! %d'th \n", vmgr_4k_d2_data.dev_opened);
 
     return 0;
 }
 
 static int _vmgr_4k_d2_release(struct inode *inode, struct file *filp)
 {
-    dprintk("_vmgr_4k_d2_release In!! %d'th \n", vmgr_4k_d2_data.dev_opened);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_vmgr_4k_d2_release In!! %d'th\n", vmgr_4k_d2_data.dev_file_opened);
+	vmgr_4k_d2_data.dev_file_opened--;
+	vmgr_4k_d2_data.nOpened_Count++;
 
-	if(!vmgr_4k_d2_data.bVpu_already_proc_force_closed)
-	{
-		_vmgr_4k_d2_wait_process(2000);
-	}
-    if(vmgr_4k_d2_data.dev_opened > 0)
-        vmgr_4k_d2_data.dev_opened--;
-    if(vmgr_4k_d2_data.dev_opened == 0)
-    {
-//////////////////////////////////////
-        int type = 0, alive_cnt = 0;
-
-#if 1 // To close whole vpu-4k-d2 vp9/hevc instance when being killed process opened this.
-	if(!vmgr_4k_d2_data.bVpu_already_proc_force_closed)
-	{
-		vmgr_4k_d2_data.external_proc = 1;
-		_vmgr_4k_d2_external_all_close(200);
-		_vmgr_4k_d2_wait_process(2000);
-		vmgr_4k_d2_data.external_proc = 0;
-	}
-	vmgr_4k_d2_data.bVpu_already_proc_force_closed = false;
+	printk("_vmgr_4k_d2_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", vmgr_4k_d2_data.dev_file_opened, vmgr_4k_d2_data.nOpened_Count,
+					vmgr_4k_d2_get_close(VPU_DEC), vmgr_4k_d2_get_close(VPU_DEC_EXT), vmgr_4k_d2_get_close(VPU_DEC_EXT2), vmgr_4k_d2_get_close(VPU_DEC_EXT3), vmgr_4k_d2_get_close(VPU_DEC_EXT4));
+#else
+    mutex_lock(&vmgr_4k_d2_data.comm_data.file_mutex);
+	_vmgr_4k_d2_cmd_release("file");
+	mutex_unlock(&vmgr_4k_d2_data.comm_data.file_mutex);	
 #endif
-
-        for(type=0; type<VPU_4K_D2_MAX; type++) {
-            if( vmgr_4k_d2_data.closed[type] == 0 ){
-                alive_cnt++;
-            }
-        }
-
-        if( alive_cnt )
-        {
-            // clear instances of vpu-4k-d2 vp9/hevc by force.
-            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
-            printk("VPU-4K-D2 VP9/HEVC might be cleared by force. \n");
-        }
-
-//////////////////////////////////////
-        vmgr_4k_d2_data.oper_intr = 0;
-        vmgr_4k_d2_data.cmd_processing = 0;
-
-        _vmgr_4k_d2_close_all(1);
-//////////////////////////////////////
-
-        vmgr_4k_d2_disable_irq(vmgr_4k_d2_data.irq);
-        vmgr_4k_d2_BusPrioritySetting(BUS_FOR_NORMAL, 0);
-
-		vmem_deinit();
-    }
-
-    vmgr_4k_d2_disable_clock(0, 0);
-
-    vmgr_4k_d2_data.nOpened_Count++;
-    printk("_vmgr_4k_d2_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", vmgr_4k_d2_data.dev_opened, vmgr_4k_d2_data.nOpened_Count,
-                    vmgr_4k_d2_get_close(VPU_DEC), vmgr_4k_d2_get_close(VPU_DEC_EXT), vmgr_4k_d2_get_close(VPU_DEC_EXT2), vmgr_4k_d2_get_close(VPU_DEC_EXT3), vmgr_4k_d2_get_close(VPU_DEC_EXT4));
 
     return 0;
 }
@@ -1422,7 +1491,7 @@ static int _vmgr_4k_d2_operation(void)
 
                 if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
                 {
-                	vmgr_4k_d2_restore_clock(0, vmgr_4k_d2_data.dev_opened);
+                	vmgr_4k_d2_restore_clock(0, atomic_read(&vmgr_4k_d2_data.dev_opened));
 					_vmgr_4k_d2_close_all(1);
                 }
             }
@@ -1436,7 +1505,7 @@ static int _vmgr_4k_d2_operation(void)
 
         if(oper_finished)
         {
-            if(oper_data->comm_data != NULL && vmgr_4k_d2_data.dev_opened != 0)
+            if(oper_data->comm_data != NULL && atomic_read(&vmgr_4k_d2_data.dev_opened) != 0)
             {
                 //unsigned long flags;
                 //spin_lock_irqsave(&(oper_data->comm_data->lock), flags);
@@ -1448,11 +1517,11 @@ static int _vmgr_4k_d2_operation(void)
                 wake_up_interruptible(&(oper_data->comm_data->wq));
             }
             else{
-                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, vmgr_4k_d2_data.dev_opened);
+                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vmgr_4k_d2_data.dev_opened));
             }
         }
         else{
-            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, vmgr_4k_d2_data.dev_opened);
+            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&vmgr_4k_d2_data.dev_opened));
         }
 
         vmgr_4k_d2_list_manager(oper_data, LIST_DEL);
@@ -1481,7 +1550,7 @@ static int _vmgr_4k_d2_thread(void *kthread)
         }
         else
         {
-            if(vmgr_4k_d2_data.dev_opened || vmgr_4k_d2_data.external_proc){
+            if(atomic_read(&vmgr_4k_d2_data.dev_opened) || vmgr_4k_d2_data.external_proc){
                 _vmgr_4k_d2_operation();
             }
             else{
@@ -1582,6 +1651,7 @@ int vmgr_4k_d2_probe(struct platform_device *pdev)
 
     mutex_init(&vmgr_4k_d2_data.comm_data.list_mutex);
     mutex_init(&(vmgr_4k_d2_data.comm_data.io_mutex));
+    mutex_init(&(vmgr_4k_d2_data.comm_data.file_mutex));
 
     INIT_LIST_HEAD(&vmgr_4k_d2_data.comm_data.main_list);
     INIT_LIST_HEAD(&vmgr_4k_d2_data.comm_data.wait_list);
@@ -1647,14 +1717,14 @@ int vmgr_4k_d2_suspend(struct platform_device *pdev, pm_message_t state)
 {
     int i, open_count = 0;
 
-    if(vmgr_4k_d2_data.dev_opened != 0)
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) != 0)
     {
         printk(" \n vpu_4k_d2: suspend In DEC(%d/%d/%d/%d/%d) \n", vmgr_4k_d2_get_close(VPU_DEC), vmgr_4k_d2_get_close(VPU_DEC_EXT),
 			vmgr_4k_d2_get_close(VPU_DEC_EXT2), vmgr_4k_d2_get_close(VPU_DEC_EXT3), vmgr_4k_d2_get_close(VPU_DEC_EXT4));
 
         _vmgr_4k_d2_external_all_close(200);
 
-        open_count = vmgr_4k_d2_data.dev_opened;
+        open_count = atomic_read(&vmgr_4k_d2_data.dev_opened);
         for(i=0; i<open_count; i++) {
             vmgr_4k_d2_disable_clock(0, 0);
         }
@@ -1670,9 +1740,9 @@ int vmgr_4k_d2_resume(struct platform_device *pdev)
 {
     int i, open_count = 0;
 
-    if(vmgr_4k_d2_data.dev_opened != 0){
+    if(atomic_read(&vmgr_4k_d2_data.dev_opened) != 0){
 
-        open_count = vmgr_4k_d2_data.dev_opened;
+        open_count = atomic_read(&vmgr_4k_d2_data.dev_opened);
 
         for(i=0; i<open_count; i++) {
             vmgr_4k_d2_enable_clock(0, 0);
