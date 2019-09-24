@@ -546,6 +546,7 @@ typedef struct srb {
 	int rc;
 	int retry_count;
 	struct completion comp;
+	wait_queue_head_t *cwaitq;
 	union {
 		struct srb_iocb iocb_cmd;
 		struct bsg_job *bsg_job;
@@ -4792,5 +4793,4 @@ struct sff_8247_a0 {
 #include "qla_gbl.h"
 #include "qla_dbg.h"
 #include "qla_inline.h"
-
 #endif
