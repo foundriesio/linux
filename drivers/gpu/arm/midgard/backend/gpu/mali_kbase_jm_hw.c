@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -27,12 +27,10 @@
 #include <mali_kbase.h>
 #include <mali_kbase_config.h>
 #include <mali_midg_regmap.h>
-#if defined(CONFIG_MALI_GATOR_SUPPORT)
-#include <mali_kbase_gator.h>
-#endif
-#include <mali_kbase_tlstream.h>
+#include <mali_kbase_tracepoints.h>
 #include <mali_kbase_hw.h>
 #include <mali_kbase_hwaccess_jm.h>
+#include <mali_kbase_reset_gpu.h>
 #include <mali_kbase_ctx_sched.h>
 #include <mali_kbase_hwcnt_context.h>
 #include <backend/gpu/mali_kbase_device_internal.h>
@@ -42,9 +40,7 @@
 #define beenthere(kctx, f, a...) \
 			dev_dbg(kctx->kbdev->dev, "%s:" f, __func__, ##a)
 
-static void kbasep_try_reset_gpu_early(struct kbase_device *kbdev);
-static void kbasep_reset_timeout_worker(struct work_struct *data);
-static enum hrtimer_restart kbasep_reset_timer_callback(struct hrtimer *timer);
+static void kbasep_try_reset_gpu_early_locked(struct kbase_device *kbdev);
 
 static inline int kbasep_jm_is_js_free(struct kbase_device *kbdev, int js,
 						struct kbase_context *kctx)
@@ -185,19 +181,19 @@ void kbase_job_hw_submit(struct kbase_device *kbdev,
 	KBASE_TRACE_ADD_SLOT_INFO(kbdev, JM_SUBMIT, kctx, katom, jc_head, js,
 							(u32)affinity);
 
-#if defined(CONFIG_MALI_GATOR_SUPPORT)
-	kbase_trace_mali_job_slots_event(
-				GATOR_MAKE_EVENT(GATOR_JOB_SLOT_START, js),
-				kctx, kbase_jd_atom_id(kctx, katom));
-#endif
-	KBASE_TLSTREAM_TL_ATTRIB_ATOM_CONFIG(katom, jc_head,
+	KBASE_TLSTREAM_AUX_EVENT_JOB_SLOT(kbdev, kctx,
+		js, kbase_jd_atom_id(kctx, katom), TL_JS_EVENT_START);
+
+	KBASE_TLSTREAM_TL_ATTRIB_ATOM_CONFIG(kbdev, katom, jc_head,
 			affinity, cfg);
 	KBASE_TLSTREAM_TL_RET_CTX_LPU(
+		kbdev,
 		kctx,
 		&kbdev->gpu_props.props.raw_props.js_features[
 			katom->slot_nr]);
-	KBASE_TLSTREAM_TL_RET_ATOM_AS(katom, &kbdev->as[kctx->as_nr]);
+	KBASE_TLSTREAM_TL_RET_ATOM_AS(kbdev, katom, &kbdev->as[kctx->as_nr]);
 	KBASE_TLSTREAM_TL_RET_ATOM_LPU(
+			kbdev,
 			katom,
 			&kbdev->gpu_props.props.raw_props.js_features[js],
 			"ctx_nr,atom_nr");
@@ -236,14 +232,12 @@ static void kbasep_job_slot_update_head_start_timestamp(
 						int js,
 						ktime_t end_timestamp)
 {
-	if (kbase_backend_nr_atoms_on_slot(kbdev, js) > 0) {
-		struct kbase_jd_atom *katom;
-		ktime_t timestamp_diff;
-		/* The atom in the HEAD */
-		katom = kbase_gpu_inspect(kbdev, js, 0);
+	ktime_t timestamp_diff;
+	struct kbase_jd_atom *katom;
 
-		KBASE_DEBUG_ASSERT(katom != NULL);
-
+	/* Checking the HEAD position for the job slot */
+	katom = kbase_gpu_inspect(kbdev, js, 0);
+	if (katom != NULL) {
 		timestamp_diff = ktime_sub(end_timestamp,
 				katom->start_timestamp);
 		if (ktime_to_ns(timestamp_diff) >= 0) {
@@ -269,21 +263,23 @@ static void kbasep_trace_tl_event_lpu_softstop(struct kbase_device *kbdev,
 					int js)
 {
 	KBASE_TLSTREAM_TL_EVENT_LPU_SOFTSTOP(
+		kbdev,
 		&kbdev->gpu_props.props.raw_props.js_features[js]);
 }
 
 void kbase_job_done(struct kbase_device *kbdev, u32 done)
 {
-	unsigned long flags;
 	int i;
 	u32 count = 0;
-	ktime_t end_timestamp = ktime_get();
+	ktime_t end_timestamp;
+
+	lockdep_assert_held(&kbdev->hwaccess_lock);
 
 	KBASE_DEBUG_ASSERT(kbdev);
 
 	KBASE_TRACE_ADD(kbdev, JM_IRQ, NULL, NULL, 0, done);
 
-	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
+	end_timestamp = ktime_get();
 
 	while (done) {
 		u32 failed = done >> 16;
@@ -310,12 +306,9 @@ void kbase_job_done(struct kbase_device *kbdev, u32 done)
 					JOB_SLOT_REG(i, JS_STATUS));
 
 				if (completion_code == BASE_JD_EVENT_STOPPED) {
-#if defined(CONFIG_MALI_GATOR_SUPPORT)
-					kbase_trace_mali_job_slots_event(
-						GATOR_MAKE_EVENT(
-						GATOR_JOB_SLOT_SOFT_STOPPED, i),
-								NULL, 0);
-#endif
+					KBASE_TLSTREAM_AUX_EVENT_JOB_SLOT(
+						kbdev, NULL,
+						i, 0, TL_JS_EVENT_SOFT_STOP);
 
 					kbasep_trace_tl_event_lpu_softstop(
 						kbdev, i);
@@ -339,6 +332,16 @@ void kbase_job_done(struct kbase_device *kbdev, u32 done)
 				}
 
 				kbase_gpu_irq_evict(kbdev, i, completion_code);
+
+				/* Some jobs that encounter a BUS FAULT may result in corrupted
+				 * state causing future jobs to hang. Reset GPU before
+				 * allowing any other jobs on the slot to continue. */
+				if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_TTRX_3076)) {
+					if (completion_code == BASE_JD_EVENT_JOB_BUS_FAULT) {
+						if (kbase_prepare_to_reset_gpu_locked(kbdev))
+							kbase_reset_gpu_locked(kbdev);
+					}
+				}
 			}
 
 			kbase_reg_write(kbdev, JOB_CONTROL_REG(JOB_IRQ_CLEAR),
@@ -464,18 +467,16 @@ void kbase_job_done(struct kbase_device *kbdev, u32 done)
 								end_timestamp);
 	}
 
-	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 	if (atomic_read(&kbdev->hwaccess.backend.reset_gpu) ==
 						KBASE_RESET_GPU_COMMITTED) {
 		/* If we're trying to reset the GPU then we might be able to do
 		 * it early (without waiting for a timeout) because some jobs
 		 * have completed
 		 */
-		kbasep_try_reset_gpu_early(kbdev);
+		kbasep_try_reset_gpu_early_locked(kbdev);
 	}
 	KBASE_TRACE_ADD(kbdev, JM_IRQ_END, NULL, NULL, 0, count);
 }
-KBASE_EXPORT_TEST_API(kbase_job_done);
 
 static bool kbasep_soft_stop_allowed(struct kbase_device *kbdev,
 					struct kbase_jd_atom *katom)
@@ -543,7 +544,7 @@ void kbasep_job_slot_soft_or_hard_stop_do_action(struct kbase_device *kbdev,
 		target_katom->atom_flags |= KBASE_KATOM_FLAG_BEEN_SOFT_STOPPPED;
 
 		/* Mark the point where we issue the soft-stop command */
-		KBASE_TLSTREAM_TL_EVENT_ATOM_SOFTSTOP_ISSUE(target_katom);
+		KBASE_TLSTREAM_TL_EVENT_ATOM_SOFTSTOP_ISSUE(kbdev, target_katom);
 
 		if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8316)) {
 			int i;
@@ -728,11 +729,14 @@ void kbase_backend_jm_kill_jobs_from_kctx(struct kbase_context *kctx)
 	mutex_lock(&kctx->jctx.lock);
 	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
 
-	/* Invalidate all jobs in context, to prevent re-submitting */
+	/* Invalidate all incomplete jobs in context to prevent resubmitting */
 	for (i = 0; i < BASE_JD_ATOM_COUNT; i++) {
-		if (!work_pending(&kctx->jctx.atoms[i].work))
-			kctx->jctx.atoms[i].event_code =
-						BASE_JD_EVENT_JOB_CANCELLED;
+		struct kbase_jd_atom *katom = &kctx->jctx.atoms[i];
+
+		if ((katom->status != KBASE_JD_ATOM_STATE_COMPLETED) &&
+				(katom->status !=
+				KBASE_JD_ATOM_STATE_HW_COMPLETED))
+			katom->event_code = BASE_JD_EVENT_JOB_CANCELLED;
 	}
 
 	for (i = 0; i < kbdev->gpu_props.num_job_slots; i++)
@@ -772,6 +776,7 @@ void kbase_job_slot_ctx_priority_check_locked(struct kbase_context *kctx,
 		if (katom->sched_priority > priority) {
 			if (!stop_sent)
 				KBASE_TLSTREAM_TL_ATTRIB_ATOM_PRIORITIZED(
+						kbdev,
 						target_katom);
 
 			kbase_job_slot_softstop(kbdev, js, katom);
@@ -806,9 +811,7 @@ void kbase_jm_wait_for_zero_jobs(struct kbase_context *kctx)
 	}
 
 	/* Wait for the reset to complete */
-	wait_event(kbdev->hwaccess.backend.reset_wait,
-			atomic_read(&kbdev->hwaccess.backend.reset_gpu)
-			== KBASE_RESET_GPU_NOT_PENDING);
+	kbase_reset_gpu_wait(kbdev);
 exit:
 	dev_dbg(kbdev->dev, "Zap: Finished Context %p", kctx);
 
@@ -836,19 +839,7 @@ u32 kbase_backend_get_current_flush_id(struct kbase_device *kbdev)
 
 int kbase_job_slot_init(struct kbase_device *kbdev)
 {
-	kbdev->hwaccess.backend.reset_workq = alloc_workqueue(
-						"Mali reset workqueue", 0, 1);
-	if (NULL == kbdev->hwaccess.backend.reset_workq)
-		return -EINVAL;
-
-	INIT_WORK(&kbdev->hwaccess.backend.reset_work,
-						kbasep_reset_timeout_worker);
-
-	hrtimer_init(&kbdev->hwaccess.backend.reset_timer, CLOCK_MONOTONIC,
-							HRTIMER_MODE_REL);
-	kbdev->hwaccess.backend.reset_timer.function =
-						kbasep_reset_timer_callback;
-
+	CSTD_UNUSED(kbdev);
 	return 0;
 }
 KBASE_EXPORT_TEST_API(kbase_job_slot_init);
@@ -860,7 +851,7 @@ void kbase_job_slot_halt(struct kbase_device *kbdev)
 
 void kbase_job_slot_term(struct kbase_device *kbdev)
 {
-	destroy_workqueue(kbdev->hwaccess.backend.reset_workq);
+	CSTD_UNUSED(kbdev);
 }
 KBASE_EXPORT_TEST_API(kbase_job_slot_term);
 
@@ -1455,7 +1446,7 @@ int kbase_reset_gpu_silent(struct kbase_device *kbdev)
 	return 0;
 }
 
-bool kbase_reset_gpu_active(struct kbase_device *kbdev)
+bool kbase_reset_gpu_is_active(struct kbase_device *kbdev)
 {
 	if (atomic_read(&kbdev->hwaccess.backend.reset_gpu) ==
 			KBASE_RESET_GPU_NOT_PENDING)
@@ -1463,3 +1454,37 @@ bool kbase_reset_gpu_active(struct kbase_device *kbdev)
 
 	return true;
 }
+
+int kbase_reset_gpu_wait(struct kbase_device *kbdev)
+{
+	wait_event(kbdev->hwaccess.backend.reset_wait,
+			atomic_read(&kbdev->hwaccess.backend.reset_gpu)
+			== KBASE_RESET_GPU_NOT_PENDING);
+
+	return 0;
+}
+KBASE_EXPORT_TEST_API(kbase_reset_gpu_wait);
+
+int kbase_reset_gpu_init(struct kbase_device *kbdev)
+{
+	kbdev->hwaccess.backend.reset_workq = alloc_workqueue(
+						"Mali reset workqueue", 0, 1);
+	if (kbdev->hwaccess.backend.reset_workq == NULL)
+		return -ENOMEM;
+
+	INIT_WORK(&kbdev->hwaccess.backend.reset_work,
+						kbasep_reset_timeout_worker);
+
+	hrtimer_init(&kbdev->hwaccess.backend.reset_timer, CLOCK_MONOTONIC,
+							HRTIMER_MODE_REL);
+	kbdev->hwaccess.backend.reset_timer.function =
+						kbasep_reset_timer_callback;
+
+	return 0;
+}
+
+void kbase_reset_gpu_term(struct kbase_device *kbdev)
+{
+	destroy_workqueue(kbdev->hwaccess.backend.reset_workq);
+}
+

@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2012-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2012-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -41,9 +41,9 @@ void kbase_sync_fence_wait_worker(struct work_struct *data)
 const char *kbase_sync_status_string(int status)
 {
 	if (status == 0)
-		return "signaled";
-	else if (status > 0)
 		return "active";
+	else if (status > 0)
+		return "signaled";
 	else
 		return "error";
 }

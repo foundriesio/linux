@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -35,7 +35,7 @@
 
 #include <mali_kbase_jm.h>
 #include <mali_kbase_hwaccess_jm.h>
-#include <mali_kbase_tlstream.h>
+#include <mali_kbase_tracepoints.h>
 
 #include "mali_kbase_dma_fence.h"
 
@@ -95,11 +95,7 @@ static int jd_run_atom(struct kbase_jd_atom *katom)
 			katom->status = KBASE_JD_ATOM_STATE_COMPLETED;
 			return 0;
 		}
-		if ((katom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE)
-						  == BASE_JD_REQ_SOFT_REPLAY) {
-			if (!kbase_replay_process(katom))
-				katom->status = KBASE_JD_ATOM_STATE_COMPLETED;
-		} else if (kbase_process_soft_job(katom) == 0) {
+		if (kbase_process_soft_job(katom) == 0) {
 			kbase_finish_soft_job(katom);
 			katom->status = KBASE_JD_ATOM_STATE_COMPLETED;
 		}
@@ -199,7 +195,9 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 	u32 res_no;
 #ifdef CONFIG_MALI_DMA_FENCE
 	struct kbase_dma_fence_resv_info info = {
+		.resv_objs = NULL,
 		.dma_fence_resv_count = 0,
+		.dma_fence_excl_bitmap = NULL
 	};
 #if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 	/*
@@ -223,10 +221,8 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 		return -EINVAL;
 
 	katom->extres = kmalloc_array(katom->nr_extres, sizeof(*katom->extres), GFP_KERNEL);
-	if (NULL == katom->extres) {
-		err_ret_val = -ENOMEM;
-		goto early_err_out;
-	}
+	if (!katom->extres)
+		return -ENOMEM;
 
 	/* copy user buffer to the end of our real buffer.
 	 * Make sure the struct sizes haven't changed in a way
@@ -270,19 +266,19 @@ static int kbase_jd_pre_external_resources(struct kbase_jd_atom *katom, const st
 	/* need to keep the GPU VM locked while we set up UMM buffers */
 	kbase_gpu_vm_lock(katom->kctx);
 	for (res_no = 0; res_no < katom->nr_extres; res_no++) {
-		struct base_external_resource *res;
+		struct base_external_resource *res = &input_extres[res_no];
 		struct kbase_va_region *reg;
 		struct kbase_mem_phy_alloc *alloc;
+#ifdef CONFIG_MALI_DMA_FENCE
 		bool exclusive;
-
-		res = &input_extres[res_no];
 		exclusive = (res->ext_resource & BASE_EXT_RES_ACCESS_EXCLUSIVE)
 				? true : false;
+#endif
 		reg = kbase_region_tracker_find_region_enclosing_address(
 				katom->kctx,
 				res->ext_resource & ~BASE_EXT_RES_ACCESS_EXCLUSIVE);
 		/* did we find a matching region object? */
-		if (NULL == reg || (reg->flags & KBASE_REG_FREE)) {
+		if (kbase_is_region_invalid_or_free(reg)) {
 			/* roll back */
 			goto failed_loop;
 		}
@@ -408,14 +404,7 @@ static inline void jd_resolve_dep(struct list_head *out_list,
 			KBASE_DEBUG_ASSERT(dep_atom->status !=
 						KBASE_JD_ATOM_STATE_UNUSED);
 
-			if ((dep_atom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE)
-					!= BASE_JD_REQ_SOFT_REPLAY) {
-				dep_atom->will_fail_event_code =
-					dep_atom->event_code;
-			} else {
-				dep_atom->status =
-					KBASE_JD_ATOM_STATE_COMPLETED;
-			}
+			dep_atom->will_fail_event_code = dep_atom->event_code;
 		}
 		other_dep_atom = (struct kbase_jd_atom *)
 			kbase_jd_katom_dep_atom(&dep_atom->dep[other_d]);
@@ -458,54 +447,6 @@ static inline void jd_resolve_dep(struct list_head *out_list,
 }
 
 KBASE_EXPORT_TEST_API(jd_resolve_dep);
-
-#if MALI_CUSTOMER_RELEASE == 0
-static void jd_force_failure(struct kbase_device *kbdev, struct kbase_jd_atom *katom)
-{
-	kbdev->force_replay_count++;
-
-	if (kbdev->force_replay_count >= kbdev->force_replay_limit) {
-		kbdev->force_replay_count = 0;
-		katom->event_code = BASE_JD_EVENT_FORCE_REPLAY;
-
-		if (kbdev->force_replay_random)
-			kbdev->force_replay_limit =
-			   (prandom_u32() % KBASEP_FORCE_REPLAY_RANDOM_LIMIT) + 1;
-
-		dev_info(kbdev->dev, "force_replay : promoting to error\n");
-	}
-}
-
-/** Test to see if atom should be forced to fail.
- *
- * This function will check if an atom has a replay job as a dependent. If so
- * then it will be considered for forced failure. */
-static void jd_check_force_failure(struct kbase_jd_atom *katom)
-{
-	struct kbase_context *kctx = katom->kctx;
-	struct kbase_device *kbdev = kctx->kbdev;
-	int i;
-
-	if ((kbdev->force_replay_limit == KBASEP_FORCE_REPLAY_DISABLED) ||
-	    (katom->core_req & BASEP_JD_REQ_EVENT_NEVER))
-		return;
-
-	for (i = 1; i < BASE_JD_ATOM_COUNT; i++) {
-		if (kbase_jd_katom_dep_atom(&kctx->jctx.atoms[i].dep[0]) == katom ||
-		    kbase_jd_katom_dep_atom(&kctx->jctx.atoms[i].dep[1]) == katom) {
-			struct kbase_jd_atom *dep_atom = &kctx->jctx.atoms[i];
-
-			if ((dep_atom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE) ==
-						     BASE_JD_REQ_SOFT_REPLAY &&
-			    (dep_atom->core_req & kbdev->force_replay_core_req)
-					     == kbdev->force_replay_core_req) {
-				jd_force_failure(kbdev, katom);
-				return;
-			}
-		}
-	}
-}
-#endif
 
 /**
  * is_dep_valid - Validate that a dependency is valid for early dependency
@@ -618,10 +559,6 @@ bool jd_done_nolock(struct kbase_jd_atom *katom,
 
 	KBASE_DEBUG_ASSERT(katom->status != KBASE_JD_ATOM_STATE_UNUSED);
 
-#if MALI_CUSTOMER_RELEASE == 0
-	jd_check_force_failure(katom);
-#endif
-
 	/* This is needed in case an atom is failed due to being invalid, this
 	 * can happen *before* the jobs that the atom depends on have completed */
 	for (i = 0; i < 2; i++) {
@@ -678,13 +615,7 @@ bool jd_done_nolock(struct kbase_jd_atom *katom,
 			} else {
 				node->event_code = katom->event_code;
 
-				if ((node->core_req &
-					BASE_JD_REQ_SOFT_JOB_TYPE) ==
-					BASE_JD_REQ_SOFT_REPLAY) {
-					if (kbase_replay_process(node))
-						/* Don't complete this atom */
-						continue;
-				} else if (node->core_req &
+				if (node->core_req &
 							BASE_JD_REQ_SOFT_JOB) {
 					WARN_ON(!list_empty(&node->queue));
 					kbase_finish_soft_job(node);
@@ -704,7 +635,7 @@ bool jd_done_nolock(struct kbase_jd_atom *katom,
 		}
 
 		/* Register a completed job as a disjoint event when the GPU
-		 * is in a disjoint state (ie. being reset or replaying jobs).
+		 * is in a disjoint state (ie. being reset).
 		 */
 		kbase_disjoint_event_potential(kctx->kbdev);
 		if (completed_jobs_ctx)
@@ -782,6 +713,7 @@ static const char *kbasep_map_core_reqs_to_string(base_jd_core_req core_req)
 
 bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *user_atom, struct kbase_jd_atom *katom)
 {
+	struct kbase_device *kbdev = kctx->kbdev;
 	struct kbase_jd_context *jctx = &kctx->jctx;
 	int queued = 0;
 	int i;
@@ -845,11 +777,15 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 				 * back to user space. Do not record any
 				 * dependencies. */
 				KBASE_TLSTREAM_TL_NEW_ATOM(
+						kbdev,
 						katom,
 						kbase_jd_atom_id(kctx, katom));
 				KBASE_TLSTREAM_TL_RET_ATOM_CTX(
+						kbdev,
 						katom, kctx);
-				KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(katom,
+				KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(
+						kbdev,
+						katom,
 						TL_ATOM_STATE_IDLE);
 
 				ret = jd_done_nolock(katom, NULL);
@@ -888,23 +824,17 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 			katom->event_code = dep_atom->event_code;
 			katom->status = KBASE_JD_ATOM_STATE_QUEUED;
 
-			/* This atom is going through soft replay or
-			 * will be sent back to user space. Do not record any
-			 * dependencies. */
+			/* This atom will be sent back to user space.
+			 * Do not record any dependencies.
+			 */
 			KBASE_TLSTREAM_TL_NEW_ATOM(
+					kbdev,
 					katom,
 					kbase_jd_atom_id(kctx, katom));
-			KBASE_TLSTREAM_TL_RET_ATOM_CTX(katom, kctx);
-			KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(katom,
+			KBASE_TLSTREAM_TL_RET_ATOM_CTX(kbdev, katom, kctx);
+			KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(kbdev, katom,
 					TL_ATOM_STATE_IDLE);
 
-			if ((katom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE)
-					 == BASE_JD_REQ_SOFT_REPLAY) {
-				if (kbase_replay_process(katom)) {
-					ret = false;
-					goto out;
-				}
-			}
 			will_fail = true;
 
 		} else {
@@ -967,11 +897,12 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 
 	/* Create a new atom. */
 	KBASE_TLSTREAM_TL_NEW_ATOM(
+			kbdev,
 			katom,
 			kbase_jd_atom_id(kctx, katom));
-	KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(katom, TL_ATOM_STATE_IDLE);
-	KBASE_TLSTREAM_TL_ATTRIB_ATOM_PRIORITY(katom, katom->sched_priority);
-	KBASE_TLSTREAM_TL_RET_ATOM_CTX(katom, kctx);
+	KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(kbdev, katom, TL_ATOM_STATE_IDLE);
+	KBASE_TLSTREAM_TL_ATTRIB_ATOM_PRIORITY(kbdev, katom, katom->sched_priority);
+	KBASE_TLSTREAM_TL_RET_ATOM_CTX(kbdev, katom, kctx);
 
 	/* Reject atoms with job chain = NULL, as these cause issues with soft-stop */
 	if (!katom->jc && (katom->core_req & BASE_JD_REQ_ATOM_TYPE) != BASE_JD_REQ_DEP) {
@@ -1065,15 +996,7 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 	}
 #endif /* CONFIG_MALI_DMA_FENCE */
 
-	if ((katom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE)
-						  == BASE_JD_REQ_SOFT_REPLAY) {
-		if (kbase_replay_process(katom))
-			ret = false;
-		else
-			ret = jd_done_nolock(katom, NULL);
-
-		goto out;
-	} else if (katom->core_req & BASE_JD_REQ_SOFT_JOB) {
+	if (katom->core_req & BASE_JD_REQ_SOFT_JOB) {
 		if (kbase_process_soft_job(katom) == 0) {
 			kbase_finish_soft_job(katom);
 			ret = jd_done_nolock(katom, NULL);
@@ -1191,7 +1114,7 @@ while (false)
 				       jd_submit_atom(kctx, &user_atom, katom);
 
 		/* Register a completed job as a disjoint event when the GPU is in a disjoint state
-		 * (ie. being reset or replaying jobs).
+		 * (ie. being reset).
 		 */
 		kbase_disjoint_event_potential(kbdev);
 
@@ -1236,7 +1159,7 @@ void kbase_jd_done_worker(struct work_struct *data)
 	 * Begin transaction on JD context and JS context
 	 */
 	mutex_lock(&jctx->lock);
-	KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(katom, TL_ATOM_STATE_DONE);
+	KBASE_TLSTREAM_TL_ATTRIB_ATOM_STATE(kbdev, katom, TL_ATOM_STATE_DONE);
 	mutex_lock(&js_devdata->queue_mutex);
 	mutex_lock(&js_kctx_info->ctx.jsctx_mutex);
 
