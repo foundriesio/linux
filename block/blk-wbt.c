@@ -519,8 +519,10 @@ static void __wbt_wait(struct rq_wb *rwb, unsigned long rw, spinlock_t *lock)
 {
 	struct rq_wait *rqw = get_rq_wait(rwb, current_is_kswapd());
 	DECLARE_WAITQUEUE(wait, current);
+	bool has_sleeper;
 
-	if (!wq_has_sleeper(&rqw->wait) &&
+	has_sleeper = wq_has_sleeper(&rqw->wait);
+	if (!has_sleeper &&
 	    atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
 		return;
 
@@ -528,7 +530,8 @@ static void __wbt_wait(struct rq_wb *rwb, unsigned long rw, spinlock_t *lock)
 	do {
 		set_current_state(TASK_UNINTERRUPTIBLE);
 
-		if (atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
+		if (!has_sleeper &&
+		    atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
 			break;
 
 		if (lock) {
@@ -537,6 +540,7 @@ static void __wbt_wait(struct rq_wb *rwb, unsigned long rw, spinlock_t *lock)
 			spin_lock_irq(lock);
 		} else
 			io_schedule();
+		has_sleeper = false;
 	} while (1);
 
 	__set_current_state(TASK_RUNNING);
