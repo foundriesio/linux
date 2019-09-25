@@ -217,6 +217,22 @@ struct optee_smc_get_shm_config_result {
 };
 
 /*
+ * Allocate Dynamic Secure Media Path Area
+ * Returns value type is Global Platform error code.
+ */
+#define OPTEE_SMC_FUNCID_ALLOC_DYNAMIC_SMP OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP
+#define OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_ALLOC_DYNAMIC_SMP)
+
+/*
+ * Release Dynamic Secure Media Path Area
+ * Returns value type is Global Platform error code.
+ */
+#define OPTEE_SMC_FUNCID_FREE_DYNAMIC_SMP OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP
+#define OPTEE_SMC_CALL_FREE_DYNAMIC_SMP \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_FREE_DYNAMIC_SMP)
+
+/*
  * Exchanges capabilities between normal world and secure world
  *
  * Call register usage:

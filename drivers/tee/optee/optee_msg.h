@@ -296,6 +296,16 @@ struct optee_msg_arg {
 #define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1
 
 /*
+ * Allocate Dynamic Secure Media Path Area
+ */
+#define OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	0xFFF3
+
+/*
+ * Release Dinamic Secure Media Path Area
+ */
+#define OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	0xFFF4
+
+/*
  * Do a secure call with struct optee_msg_arg as argument
  * The OPTEE_MSG_CMD_* below defines what goes in struct optee_msg_arg::cmd
  *

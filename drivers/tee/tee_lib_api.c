@@ -21,6 +21,9 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
+#include "optee/optee_private.h"
+#include "optee/optee_smc.h"
+
 static void uuid_to_octets(uint8_t *d, const struct tee_client_uuid *s)
 {
     d[0] = s->time_low >> 24;
@@ -461,3 +464,37 @@ static int __init tee_proc_init(void)
 }
 
 __initcall(tee_proc_init);
+
+/**
+ * Allocate Dynamic Secure Media Path Area.
+ */
+int tee_alloc_dynanic_smp(int id, uint32_t base, uint32_t size)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP, \
+		id, base, size, 0, 0, 0, 0, &res);
+
+	if (res.a0)
+		pr_err("\x1b[31m%s: cmd:0x%x, failed to allcate dynamic smp: res:0x%lx", __func__, \
+			OPTEE_SMC_CALL_ALLOC_DYNAMIC_SMP, res.a0);
+
+	return (int)res.a0;
+}
+
+/**
+ * Release Dynamic Secure Media Path Area.
+ */
+int tee_free_dynanic_smp(int id, uint32_t base, uint32_t size)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_CALL_FREE_DYNAMIC_SMP, \
+		id, base, size, 0, 0, 0, 0, &res);
+
+	if (res.a0)
+		pr_err("\x1b[31m%s: xmd:0x%x, failed to release dynamic smp: res:0x%lx", __func__, \
+			OPTEE_SMC_CALL_FREE_DYNAMIC_SMP, res.a0);
+
+	return (int)res.a0;
+}
