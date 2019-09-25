@@ -66,6 +66,7 @@
 		vqmmc-supply = <&vdd_ldo3>;
 	};
 	
+#if 0 // 0: force detect, 1: not force detect
 	/* SDIO */
 	sdhc@16460000 { // Wi-Fi tcm3800
 		status = "okay";
@@ -130,6 +131,41 @@
 		cap-adma;
 	};
 
+	tcm3800 {
+		compatible = "telechips, tcm3800";
+		wifi_pwr-gpio = <&gpsd2 6 0>;
+		wlreg_on-gpio = <&gpsd2 8 0>;
+		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+#else
+	/* SDIO */
+	vqmmc_sdio: vqmmc_sdio {
+		compatible = "regulator-fixed";
+		regulator-name = "vqmmc_sdio";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	sdhc@16460000 {
+		//non-removable;
+		keep-power-in-suspend;
+		cap-sdio-irq;
+
+		vqmmc-supply = <&vqmmc_sdio>;
+
+		cd-force-presence-change;
+
+		tcm38xx {
+			compatible = "telechips,tcm38xx";
+			wifi_pwr-gpio = <&gpsd2 6 0>; /* BT_WIFI_VBAT_EN */
+			wlreg_on-gpio = <&gpsd2 8 0>; /* WIFI_REG_ON */
+			//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
+			//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+		};
+	};
+#endif
 	timer@14300000 {
 		/* Timer 0 is used for WIFI LPO */
 		tcc-timer-reserved = <0>;
@@ -150,14 +186,6 @@
 		mode = <1>;		/* 0: single 1: dual */
 		ports = <2 3>;
 
-	};
-
-	tcm3800 {
-		compatible = "telechips, tcm3800";
-		wifi_pwr-gpio = <&gpsd2 6 0>;
-		wlreg_on-gpio = <&gpsd2 8 0>;
-		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
-		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
 
 	tcc-drm-lcd {
