@@ -652,6 +652,17 @@ int tee_client_execute_command(tee_client_context context,
 void tee_client_close_ta(tee_client_context context);
 
 /**
+ * Allocate Dynamic Secure Media Path Area.
+ */
+int tee_alloc_dynanic_smp(int id, uint32_t base, uint32_t size);
+
+/**
+ * Release Dynamic Secure Media Path Area.
+ */
+int tee_free_dynanic_smp(int id, uint32_t base, uint32_t size);
+
+
+/**
  * tee_client_shm_sdp_register() - Register SDP area shared memory.
  * @ctx: TEE Driver Context
  * @addr: SDP memory address

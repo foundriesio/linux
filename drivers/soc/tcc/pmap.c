@@ -34,6 +34,11 @@
 #include <linux/seq_file.h>
 #endif
 
+#ifdef CONFIG_OPTEE
+#include <linux/tee_drv.h>
+#include <linux/time.h>
+#endif
+
 #ifdef CONFIG_PMAP_TO_CMA
 #include <linux/dma-mapping.h>
 #include <linux/highmem.h>
@@ -144,7 +149,13 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 {
 	dma_addr_t phys;
 	void *ret;
-
+#ifdef CONFIG_OPTEE
+	int id;
+#ifdef CONFIG_PMAP_DEBUG
+	struct timespec start, end;
+	long elapsed;
+#endif
+#endif
 	pr_debug("pmap: cma: request to alloc %s for size 0x%08x\n",
 			info->name, info->size);
 
@@ -162,11 +173,40 @@ static __u32 pmap_cma_alloc(pmap_t *info)
 	pr_debug("pmap: cma: %s is allocated at 0x%08x\n",
 			info->name, info->base);
 
+#ifdef CONFIG_OPTEE
+	if ((strlen(info->name) == 12) && !strncmp(info->name, "secure_area", 11)) {
+		id = (int)info->name[11] - 0x30;
+
+#ifdef CONFIG_PMAP_DEBUG
+		getnstimeofday(&start);
+#endif
+		tee_alloc_dynanic_smp(id, info->base, info->size);
+
+#ifdef CONFIG_PMAP_DEBUG
+		getnstimeofday(&end);
+
+		if (end.tv_nsec < start.tv_nsec)
+			elapsed = end.tv_nsec + (1000000000 - start.tv_nsec);
+		else
+			elapsed = end.tv_nsec - start.tv_nsec;
+
+		pr_debug("\x1b[32m %s  :  0x%08x++0x%08x, area_%d, elapsed:%09ldns\x1b[0m\n", __func__,
+				info->base, info->size, id, elapsed);
+#endif
+	}
+#endif
 	return 1;
 }
 
 static void pmap_cma_release(pmap_t *info)
 {
+#ifdef CONFIG_OPTEE
+	int id;
+#ifdef CONFIG_PMAP_DEBUG
+	struct timespec start, end;
+	long elapsed;
+#endif
+#endif
 	dma_addr_t phys = (dma_addr_t) info->base;
 	void *page = (void *) phys_to_page(phys);
 
@@ -174,6 +214,30 @@ static void pmap_cma_release(pmap_t *info)
 
 	pr_debug("pmap: cma: %s is released from 0x%08x\n",
 			info->name, info->base);
+
+#ifdef CONFIG_OPTEE
+	if ((strlen(info->name) == 12) && !strncmp(info->name, "secure_area", 11)) {
+		id = (int)info->name[11] - 0x30;
+
+#ifdef CONFIG_PMAP_DEBUG
+		getnstimeofday(&start);
+#endif
+
+		tee_free_dynanic_smp(id, info->base, info->size);
+
+#ifdef CONFIG_PMAP_DEBUG
+		getnstimeofday(&end);
+
+		if (end.tv_nsec < start.tv_nsec)
+			elapsed = end.tv_nsec + (1000000000 - start.tv_nsec);
+		else
+			elapsed = end.tv_nsec - start.tv_nsec;
+
+		pr_debug("\x1b[32m %s:  0x%08x++0x%08x, area_%d, elapsed:%09ldns\x1b[0m\n", __func__,
+				info->base, info->size, id, elapsed);
+#endif
+	}
+#endif
 
 	info->base = PMAP_DATA_NA;
 }
