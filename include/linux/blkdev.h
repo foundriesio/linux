@@ -301,6 +301,8 @@ enum blk_eh_timer_return {
 	BLK_EH_RESET_TIMER,
 };
 
+#define BLK_EH_DONE BLK_EH_NOT_HANDLED
+
 typedef enum blk_eh_timer_return (rq_timed_out_fn)(struct request *);
 
 enum blk_queue_state {
