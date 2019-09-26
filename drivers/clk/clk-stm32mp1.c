@@ -899,6 +899,7 @@ static struct clk_hw *clk_register_pll(struct device *dev, const char *name,
 				       const char *parent_name,
 				       void __iomem *reg,
 				       unsigned long flags,
+				       const struct clk_ops *ops,
 				       spinlock_t *lock)
 {
 	struct stm32_pll_obj *element;
@@ -911,7 +912,7 @@ static struct clk_hw *clk_register_pll(struct device *dev, const char *name,
 		return ERR_PTR(-ENOMEM);
 
 	init.name = name;
-	init.ops = &pll_ops;
+	init.ops = ops;
 	init.flags = flags;
 	init.parent_names = &parent_name;
 	init.num_parents = 1;
@@ -1065,6 +1066,8 @@ static struct clk_hw *clk_register_cktim(struct device *dev, const char *name,
 
 struct stm32_pll_cfg {
 	u32 offset;
+	const struct clk_ops *ops;
+	const struct clk_ops *ops_sec;
 };
 
 static struct clk_hw *_clk_register_pll(struct device *dev,
@@ -1075,7 +1078,8 @@ static struct clk_hw *_clk_register_pll(struct device *dev,
 	struct stm32_pll_cfg *stm_pll_cfg = cfg->cfg;
 
 	return clk_register_pll(dev, cfg->name, cfg->parent_name,
-				base + stm_pll_cfg->offset, cfg->flags, lock);
+				base + stm_pll_cfg->offset, cfg->flags,
+				stm_pll_cfg->ops, lock);
 }
 
 struct stm32_cktim_cfg {
@@ -1193,6 +1197,7 @@ _clk_stm32_register_composite(struct device *dev,
 	.flags		= _flags,\
 	.cfg		=  &(struct stm32_pll_cfg) {\
 		.offset = _offset,\
+		.ops	= &pll_ops\
 	},\
 	.func		= _clk_register_pll,\
 }
@@ -1338,6 +1343,10 @@ _clk_stm32_register_composite(struct device *dev,
 #define STM32_WRITE	0x1
 #define STM32_SET_BITS	0x2
 #define STM32_CLR_BITS	0x3
+
+#define STM32_SMC_RCC_OPP 0x82001009
+#define STM32_SMC_RCC_OPP_SET	0
+#define STM32_SMC_RCC_OPP_ROUND	1
 
 #define SMC(class, op, address, val)\
 	({\
@@ -1592,6 +1601,10 @@ static const struct clk_ops clk_sdivider_ops = {
 	.set_rate = clk_sdivider_set_rate,
 };
 
+static const struct clk_ops clk_sdivider_pll1_p_ops = {
+	.recalc_rate = clk_sdivider_recalc_rate,
+};
+
 static struct clk_hw *
 clk_hw_register_sdivider_table(struct device *dev, const char *name,
 			       const char *parent_name,
@@ -1671,6 +1684,65 @@ __clk_hw_register_divider_table(struct device *dev,
 						      div_cfg->div_flags,
 						      div_cfg->table,
 						      lock);
+}
+
+static long clk_pll1_round_rate(struct clk_hw *hw, unsigned long rate,
+					  unsigned long *prate)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(STM32_SMC_RCC_OPP, STM32_SMC_RCC_OPP_ROUND, rate, 0, 0, 0,
+		      0, 0, &res);
+
+	return res.a1;
+}
+
+static int pll1_set_rate(struct clk_hw *hw, unsigned long rate,
+					unsigned long parent_rate)
+{
+	SMC(STM32_SMC_RCC_OPP, STM32_SMC_RCC_OPP_SET, rate, 0);
+
+	return 0;
+}
+
+static const struct clk_ops pll1_ops = {
+	.enable		= pll_enable,
+	.disable	= pll_disable,
+	.recalc_rate	= pll_recalc_rate,
+	.round_rate	= clk_pll1_round_rate,
+	.set_rate	= pll1_set_rate,
+	.is_enabled	= pll_is_enabled,
+};
+
+static struct clk_hw *_clk_sregister_pll(struct device *dev,
+					struct clk_hw_onecell_data *clk_data,
+					void __iomem *base, spinlock_t *lock,
+					const struct clock_config *cfg)
+{
+	struct stm32_pll_cfg *stm_pll_cfg = cfg->cfg;
+
+	if (!_is_soc_secured(base))
+		return clk_register_pll(dev, cfg->name, cfg->parent_name,
+					base + stm_pll_cfg->offset, cfg->flags,
+					stm_pll_cfg->ops, lock);
+	else
+		return clk_register_pll(dev, cfg->name, cfg->parent_name,
+					base + stm_pll_cfg->offset, cfg->flags,
+					stm_pll_cfg->ops_sec, lock);
+}
+
+#define PLL_1(_id, _name, _parent, _flags, _offset)\
+{\
+	.id		= _id,\
+	.name		= _name,\
+	.parent_name	= _parent,\
+	.flags		= _flags,\
+	.cfg		=  &(struct stm32_pll_cfg) {\
+		.offset		= _offset,\
+		.ops		= &pll_ops,\
+		.ops_sec	= &pll1_ops,\
+	},\
+	.func		= _clk_sregister_pll,\
 }
 
 static int mp1_sgate_clk_enable(struct clk_hw *hw)
@@ -1830,6 +1902,11 @@ static const struct clk_ops clk_s_mmux_ops = {
 #define _S_MUX(_offset, _shift, _width, _mux_flags)\
 	_STM32_MUX(_offset, _shift, _width, _mux_flags,\
 		   NULL, NULL, &clk_smux_ops)
+
+#define _S_PLL1_P_DIV(_div_offset, _div_shift, _div_width, _div_flags,\
+		      _div_table)\
+	_STM32_DIV(_div_offset, _div_shift, _div_width,\
+		   _div_flags, _div_table, NULL, &clk_sdivider_pll1_p_ops)
 
 enum {
 	G_SAI1,
@@ -2242,16 +2319,16 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	    0, 2, CLK_MUX_READ_ONLY),
 
 	/* PLLs */
-	PLL(PLL1, "pll1", "ref1", CLK_IGNORE_UNUSED, RCC_PLL1CR),
+	PLL_1(PLL1, "pll1", "ref1", CLK_IGNORE_UNUSED, RCC_PLL1CR),
 	PLL(PLL2, "pll2", "ref1", CLK_IGNORE_UNUSED, RCC_PLL2CR),
 	PLL(PLL3, "pll3", "ref3", CLK_IGNORE_UNUSED, RCC_PLL3CR),
 	PLL(PLL4, "pll4", "ref4", CLK_IGNORE_UNUSED, RCC_PLL4CR),
 
 	/* ODF */
-	COMPOSITE(PLL1_P, "pll1_p", PARENT("pll1"), 0,
+	COMPOSITE(PLL1_P, "pll1_p", PARENT("pll1"), CLK_SET_RATE_PARENT,
 		  _S_GATE(RCC_PLL1CR, 4, 0),
 		  _NO_MUX,
-		  _S_DIV(RCC_PLL1CFGR2, 0, 7, 0, NULL)),
+		  _S_PLL1_P_DIV(RCC_PLL1CFGR2, 0, 7, 0, NULL)),
 
 	COMPOSITE(PLL2_P, "pll2_p", PARENT("pll2"), 0,
 		  _S_GATE(RCC_PLL2CR, 4, 0),
@@ -2303,7 +2380,8 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	    RCC_CPERCKSELR, 0, 2, 0),
 
 	SMUX(CK_MPU, "ck_mpu", cpu_src, CLK_OPS_PARENT_ENABLE |
-	     CLK_IS_CRITICAL, RCC_MPCKSELR, 0, 2, 0),
+	     CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
+	     RCC_MPCKSELR, 0, 2, 0),
 
 	COMPOSITE(CK_AXI, "ck_axi", axi_src, CLK_IS_CRITICAL |
 		   CLK_OPS_PARENT_ENABLE,
