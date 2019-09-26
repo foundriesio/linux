@@ -322,6 +322,38 @@ sysret32_from_system_call:
 END(entry_SYSCALL_compat)
 
 /*
+ * Switch to the thread stack.  This is called with the IRET frame and
+ * orig_ax and RDI on the stack.  (That is, RSI..R12 are not on the stack and
+ * space has not been allocated for them.)
+ */
+ENTRY(switch_to_thread_stack_compat)
+	UNWIND_HINT_FUNC
+
+	/* Need to switch before accessing the thread stack. */
+	SWITCH_TO_KERNEL_CR3 scratch_reg=%rdi
+	/* In the Xen PV case we already run on the thread stack. */
+	ALTERNATIVE "movq %rsp, %rdi", "jmp .Lcompat_keep_stack", X86_FEATURE_XENPV
+	movq    %rsp, %rdi
+	movq    PER_CPU_VAR(cpu_current_top_of_stack), %rsp
+	/* Restrict Indirect Branch Speculation */
+	RESTRICT_IB_SPEC
+	UNWIND_HINT sp_offset=16 sp_reg=ORC_REG_DI
+
+	pushq   7*8(%rdi)		/* regs->ss */
+	pushq   6*8(%rdi)		/* regs->rsp */
+	pushq   5*8(%rdi)		/* regs->eflags */
+	pushq   4*8(%rdi)		/* regs->cs */
+	pushq   3*8(%rdi)		/* regs->ip */
+	pushq   2*8(%rdi)		/* regs->orig_ax */
+	pushq   8(%rdi)			/* pt_regs->di */
+	pushq   (%rdi)			/* return address */
+	UNWIND_HINT_FUNC
+
+.Lcompat_keep_stack:
+	ret
+END(switch_to_thread_stack_compat)
+
+/*
  * 32-bit legacy system call entry.
  *
  * 32-bit x86 Linux system calls traditionally used the INT $0x80
@@ -364,11 +396,11 @@ ENTRY(entry_INT80_compat)
 	movl	%eax, %eax
 
 	pushq	%rax			/* pt_regs->orig_ax */
-
-	/* switch to thread stack expects orig_ax to be pushed */
-	call	switch_to_thread_stack
-
 	pushq	%rdi			/* pt_regs->di */
+
+	/* switch to thread stack expects orig_ax and RDI to be pushed */
+	call	switch_to_thread_stack_compat
+
 	pushq	%rsi			/* pt_regs->si */
 	pushq	%rdx			/* pt_regs->dx */
 	pushq	%rcx			/* pt_regs->cx */

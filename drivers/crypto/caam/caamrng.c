@@ -357,7 +357,10 @@ static int __init caam_rng_init(void)
 
 	put_device(&pdev->dev);
 	dev_info(dev, "registering rng-caam\n");
-	return hwrng_register(&caam_rng);
+
+	err = hwrng_register(&caam_rng);
+	if (!err)
+		return err;
 
 free_rng_ctx:
 	kfree(rng_ctx);

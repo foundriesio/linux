@@ -26,12 +26,17 @@
 #include <linux/memblock.h>
 #include <linux/kthread.h>
 #include <linux/freezer.h>
+#include <linux/printk.h>
+#include <linux/kmsg_dump.h>
+#include <linux/console.h>
+#include <linux/sched/debug.h>
 
 #include <asm/machdep.h>
 #include <asm/opal.h>
 #include <asm/firmware.h>
 #include <asm/mce.h>
 #include <asm/imc-pmu.h>
+#include <asm/bug.h>
 
 #include "powernv.h"
 
@@ -424,24 +429,78 @@ static int opal_recover_mce(struct pt_regs *regs,
 		/* Fatal machine check */
 		pr_err("Machine check interrupt is fatal\n");
 		recovered = 0;
-	} else if ((evt->severity == MCE_SEV_ERROR_SYNC) &&
-			(user_mode(regs) && !is_global_init(current))) {
+	}
+
+	if (!recovered && evt->severity == MCE_SEV_ERROR_SYNC) {
 		/*
-		 * For now, kill the task if we have received exception when
-		 * in userspace.
+		 * Try to kill processes if we get a synchronous machine check
+		 * (e.g., one caused by execution of this instruction). This
+		 * will devolve into a panic if we try to kill init or are in
+		 * an interrupt etc.
 		 *
 		 * TODO: Queue up this address for hwpoisioning later.
+		 * TODO: This is not quite right for d-side machine
+		 *       checks ->nip is not necessarily the important
+		 *       address.
 		 */
-		_exception(SIGBUS, regs, BUS_MCEERR_AR, regs->nip);
-		recovered = 1;
+		if ((user_mode(regs))) {
+			_exception(SIGBUS, regs, BUS_MCEERR_AR, regs->nip);
+			recovered = 1;
+		} else if (die_will_crash()) {
+			/*
+			 * die() would kill the kernel, so better to go via
+			 * the platform reboot code that will log the
+			 * machine check.
+			 */
+			recovered = 0;
+		} else {
+			die("Machine check", regs, SIGBUS);
+			recovered = 1;
+		}
 	}
+
 	return recovered;
+}
+
+void pnv_platform_error_reboot(struct pt_regs *regs, const char *msg)
+{
+	panic_flush_kmsg_start();
+
+	pr_emerg("Hardware platform error: %s\n", msg);
+	if (regs)
+		show_regs(regs);
+	smp_send_stop();
+
+	panic_flush_kmsg_end();
+
+	/*
+	 * Don't bother to shut things down because this will
+	 * xstop the system.
+	 */
+	if (opal_cec_reboot2(OPAL_REBOOT_PLATFORM_ERROR, msg)
+						== OPAL_UNSUPPORTED) {
+		pr_emerg("Reboot type %d not supported for %s\n",
+				OPAL_REBOOT_PLATFORM_ERROR, msg);
+	}
+
+	/*
+	 * We reached here. There can be three possibilities:
+	 * 1. We are running on a firmware level that do not support
+	 *    opal_cec_reboot2()
+	 * 2. We are running on a firmware level that do not support
+	 *    OPAL_REBOOT_PLATFORM_ERROR reboot type.
+	 * 3. We are running on FSP based system that does not need
+	 *    opal to trigger checkstop explicitly for error analysis.
+	 *    The FSP PRD component would have already got notified
+	 *    about this error through other channels.
+	 */
+
+	ppc_md.restart(NULL);
 }
 
 int opal_machine_check(struct pt_regs *regs)
 {
 	struct machine_check_event evt;
-	int ret;
 
 	if (!get_mce_event(&evt, MCE_EVENT_RELEASE))
 		return 0;
@@ -457,43 +516,7 @@ int opal_machine_check(struct pt_regs *regs)
 	if (opal_recover_mce(regs, &evt))
 		return 1;
 
-	/*
-	 * Unrecovered machine check, we are heading to panic path.
-	 *
-	 * We may have hit this MCE in very early stage of kernel
-	 * initialization even before opal-prd has started running. If
-	 * this is the case then this MCE error may go un-noticed or
-	 * un-analyzed if we go down panic path. We need to inform
-	 * BMC/OCC about this error so that they can collect relevant
-	 * data for error analysis before rebooting.
-	 * Use opal_cec_reboot2(OPAL_REBOOT_PLATFORM_ERROR) to do so.
-	 * This function may not return on BMC based system.
-	 */
-	ret = opal_cec_reboot2(OPAL_REBOOT_PLATFORM_ERROR,
-			"Unrecoverable Machine Check exception");
-	if (ret == OPAL_UNSUPPORTED) {
-		pr_emerg("Reboot type %d not supported\n",
-					OPAL_REBOOT_PLATFORM_ERROR);
-	}
-
-	/*
-	 * We reached here. There can be three possibilities:
-	 * 1. We are running on a firmware level that do not support
-	 *    opal_cec_reboot2()
-	 * 2. We are running on a firmware level that do not support
-	 *    OPAL_REBOOT_PLATFORM_ERROR reboot type.
-	 * 3. We are running on FSP based system that does not need opal
-	 *    to trigger checkstop explicitly for error analysis. The FSP
-	 *    PRD component would have already got notified about this
-	 *    error through other channels.
-	 *
-	 * If hardware marked this as an unrecoverable MCE, we are
-	 * going to panic anyway. Even if it didn't, it's not safe to
-	 * continue at this point, so we should explicitly panic.
-	 */
-
-	panic("PowerNV Unrecovered Machine Check");
-	return 0;
+	pnv_platform_error_reboot(regs, "Unrecoverable Machine Check exception");
 }
 
 /* Early hmi handler called in real mode. */
