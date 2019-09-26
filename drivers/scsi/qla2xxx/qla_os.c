@@ -5038,6 +5038,7 @@ void qla24xx_create_new_sess(struct scsi_qla_host *vha, struct qla_work_evt *e)
 				fcport->fc4_type = FC4_TYPE_OTHER;
 				fcport->fc4f_nvme = FC4_TYPE_NVME;
 			}
+
 			memcpy(fcport->port_name, e->u.new_sess.port_name,
 			    WWN_SIZE);
 		} else {
