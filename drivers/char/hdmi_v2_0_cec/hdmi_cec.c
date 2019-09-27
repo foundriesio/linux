@@ -17,7 +17,6 @@ NOTE: Tab size is 8
 ****************************************************************************/
 #include"include/hdmi_cec.h"
 #include"include/hdmi_cec_misc.h"
-#include"include/tcc_cec_interface.h"
 #include"include/cec_proc_fs.h"
 
 #include "hdmi_cec_lib/cec.h"
@@ -106,8 +105,6 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 
                 /* Set clock source of cec core clock to xtin and sfr clock of cec to xin */
                 cec_dev_sel_write(dev, 1);
-
-        	TccCECInterface_Init();
 
         	#ifdef CONFIG_PM
         	pm_runtime_set_active(dev->parent_dev);

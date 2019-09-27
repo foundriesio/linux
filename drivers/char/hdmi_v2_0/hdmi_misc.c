@@ -1375,6 +1375,23 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		}
 		break;
 
+	case HDMI_API_GET_DRM_CONFIG:
+		{
+			if(dev->drmParm == NULL) {
+				pr_err("%s drmParm is NULL at line(%d)\r\n", __func__, __LINE__);
+				break;
+			}
+			mutex_lock(&dev->mutex);
+			if(copy_to_user((void __user *)arg, dev->drmParm, sizeof(DRM_Packet_t))) {
+                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                mutex_unlock(&dev->mutex);
+                                break;
+                        }
+                        ret = 0;
+			mutex_unlock(&dev->mutex);
+		}
+		break;
+
 	case HDCP22_CTRL_REG_RESET:
 		{
 			mutex_lock(&dev->mutex);

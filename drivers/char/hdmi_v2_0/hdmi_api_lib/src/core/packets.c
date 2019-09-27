@@ -76,8 +76,6 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
 
 int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productParams_t * prod)
 {
-	int ret = -1;
-
 	do {
 		if(video->mHdmi == DVI){
 			pr_err(" %s DVI mode selected: packets not configured\r\n", __func__);
@@ -117,10 +115,9 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productPar
 			/** Colorimetry */
 			packets_colorimetry_config(dev, video);
 		}
- 		ret = 0;
 	}while(0);
 
-	return ret;
+	return 0;
 }
 
 void packets_AudioContentProtection(struct hdmi_tx_dev *dev, u8 type, const u8 * fields, u8 length, u8 autoSend)

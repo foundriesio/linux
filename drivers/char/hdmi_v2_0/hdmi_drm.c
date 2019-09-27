@@ -157,17 +157,29 @@ int hdmi_clear_drm(struct hdmi_tx_dev *dev)
  */
 int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 {
-        if(dev != NULL) {
-                if(!dwc_hdmi_is_suspended(dev)) {
-                        if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                                // This Code is required to CTS HDMI2.0
-                                drm_configure(dev,(DRM_Packet_t*)dev->drmParm);
-                                drm_tx_enable(dev);
-                                drm_update(dev);
-                        }
+	int ret = -1;
+	do {
+		if(dev == NULL) {
+                        pr_err("%s dev is NULL\r\n", __func__);
+                        break;
                 }
-        }
-        return 0;
+
+		if(dev->drmParm == NULL) {
+                        pr_err("%s drmParm is NULL\r\n", __func__);
+                        break;
+                }
+
+		 if(!dwc_hdmi_is_suspended(dev)) {
+			if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
+				// This Code is required to CTS HDMI2.0
+				drm_configure(dev,(DRM_Packet_t*)dev->drmParm);
+				drm_tx_enable(dev);
+				drm_update(dev);
+			}
+		}
+		ret = 0;
+        }while(0);
+        return ret;
 }
 
 /**
@@ -192,6 +204,11 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
                         break;
                 }
 
+		if(dev->drmParm == NULL) {
+                        pr_err("%s dev->drmParm is NULL\r\n", __func__);
+                        break;
+                }
+
                 if(drmparm->mInfoFrame.length == 0) {
                         pr_info("%s remove drm meta data\r\n", __func__);
                         hdmi_reset_drmparm(dev->drmParm);
@@ -200,24 +217,28 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
                         clear_bit(HDMI_TX_HLG_VALID, &dev->status);
                         wake_up_interruptible(&dev->poll_wq);
                 } else {
-                        // Initialize Valid bit.
-                        clear_bit(HDMI_TX_HDR_VALID, &dev->status);
-                        clear_bit(HDMI_TX_HLG_VALID, &dev->status);
-
                         pr_info("%s valid drm meta data\r\n", __func__);
                         memcpy(dev->drmParm, drmparm, sizeof(DRM_Packet_t));
                         if(drm_infoframe_verification(dev, (DRM_Packet_t*)dev->drmParm)) {
                                 // HDR 0, 1, 2
                                 if(drmparm->mDescriptor_type1.EOTF < 3) {
                                         set_bit(HDMI_TX_HDR_VALID, &dev->status);
+					clear_bit(HDMI_TX_HLG_VALID, &dev->status);
                                 }
                                 // HLG 3
                                 else if(drmparm->mDescriptor_type1.EOTF < 4) {
                                         set_bit(HDMI_TX_HLG_VALID, &dev->status);
-                                }
+					clear_bit(HDMI_TX_HDR_VALID, &dev->status);
+                                } else {
+		                        clear_bit(HDMI_TX_HDR_VALID, &dev->status);
+		                        clear_bit(HDMI_TX_HLG_VALID, &dev->status);
+				}
                                 wake_up_interruptible(&dev->poll_wq);
                                 //pr_info("%s eotf=%d\r\n", __func__, drmparm->mDescriptor_type1.EOTF);
-                        }
+                        } else {
+                        	clear_bit(HDMI_TX_HDR_VALID, &dev->status);
+				clear_bit(HDMI_TX_HLG_VALID, &dev->status);
+			}
                 }
                 ret = 0;
         }while(0);
