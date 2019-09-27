@@ -464,8 +464,14 @@ VSYNC_CH_TYPE tcc_vsync_get_video_ch_type(unsigned int lcdc_layer)
 
 static int tcc_vsync_set_max_buffer(tcc_vsync_buffer_t * buffer_t, int buffer_count)
 {
-	buffer_t->max_buff_num = buffer_count;
-	return buffer_count;
+    if (buffer_count > VSYNC_BUFFER_COUNT) {
+		pr_info("max_buffer(%d) is bigger than VSYNC_BUFFER_COUNT(%d)\n",
+			buffer_count, VSYNC_BUFFER_COUNT);
+        buffer_count = VSYNC_BUFFER_COUNT;
+    }
+
+    buffer_t->max_buff_num = buffer_count;
+    return buffer_count;
 }
 
 static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t * buffer_t)
@@ -481,7 +487,6 @@ static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t * buffer_t)
 
 static int tcc_vsync_push_buffer(tcc_video_disp *p, tcc_vsync_buffer_t * buffer_t, struct tcc_lcdc_image_update* inputData)
 {
-
 	if(atomic_read(&buffer_t->valid_buff_count) >= buffer_t->max_buff_num || atomic_read( &buffer_t->readable_buff_count) >= buffer_t->max_buff_num)
 	{
 		printk("error: buffer full %d, max %d %d ts %d sync %d (%d)\n",
@@ -492,14 +497,13 @@ static int tcc_vsync_push_buffer(tcc_video_disp *p, tcc_vsync_buffer_t * buffer_
 	}
 
 	memcpy(&(buffer_t->stImage[buffer_t->writeIdx]),(void*)inputData, sizeof(struct tcc_lcdc_image_update) );
-	
+
 	if(++buffer_t->writeIdx >= buffer_t->max_buff_num)
 		buffer_t->writeIdx = 0;
-	
 
 	atomic_inc( &buffer_t->valid_buff_count);
 	atomic_inc( &buffer_t->readable_buff_count);
-	
+
 	return 0;
 }
 
