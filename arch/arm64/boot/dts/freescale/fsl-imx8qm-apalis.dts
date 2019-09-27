@@ -78,6 +78,18 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
+	reg_pcie_switch: regulator-pcie-switch {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio7>;
+		enable-active-high;
+		gpio = <&gpio3 26 GPIO_ACTIVE_HIGH>;
+		regulator-name = "pcie_switch";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		startup-delay-us = <100000>;
+	};
+
 	reg_vref_1v8: regulator-vref-1v8 {
 		compatible = "regulator-fixed";
 		regulator-name = "+V1.8";
@@ -1160,6 +1172,13 @@
 			>;
 		};
 
+		/* On-module RESET_MOCI#_DRV */
+		pinctrl_reset_moci: resetmocigrp {
+			fsl,pins = <
+				SC_P_SCU_GPIO0_02_LSIO_GPIO0_IO30		0x00000021
+			>;
+		};
+
 		/* On-module USB HSIC HUB */
 		pinctrl_usb3503a: usb3503agrp {
 			fsl,pins = <
@@ -1347,7 +1366,7 @@
 /* Apalis PCIE1 */
 &pciea{
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gpio7>;
+	pinctrl-0 = <&pinctrl_reset_moci>;
 	clocks = <&clk IMX8QM_HSIO_PCIE_A_MSTR_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PCIE_A_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_0>,
@@ -1356,7 +1375,8 @@
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
 	ext_osc = <1>;
 	fsl,max-link-speed = <1>;
-	reset-gpio = <&gpio3 26 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&gpio0 30 GPIO_ACTIVE_LOW>;
+	vpcie-supply = <&reg_pcie_switch>;
 	status = "okay";
 };
 
