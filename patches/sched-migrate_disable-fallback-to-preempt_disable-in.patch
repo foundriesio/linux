@@ -40,9 +40,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/preempt.h |    6 +++---
  include/linux/sched.h   |    4 ++--
- kernel/sched/core.c     |   23 +++++++++++------------
+ kernel/sched/core.c     |   21 ++++++++++-----------
  kernel/sched/debug.c    |    2 +-
- 4 files changed, 17 insertions(+), 18 deletions(-)
+ 4 files changed, 16 insertions(+), 17 deletions(-)
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
@@ -107,16 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (__migrate_disabled(p)) {
  		lockdep_assert_held(&p->pi_lock);
  
-@@ -1200,7 +1200,7 @@ static int __set_cpus_allowed_ptr(struct
- 	if (cpumask_test_cpu(task_cpu(p), new_mask) || __migrate_disabled(p))
- 		goto out;
- 
--#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
-+#if defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
- 	if (__migrate_disabled(p)) {
- 		p->migrate_disable_update = 1;
- 		goto out;
-@@ -7193,7 +7193,7 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -7186,7 +7186,7 @@ const u32 sched_prio_to_wmult[40] = {
  
  #undef CREATE_TRACE_POINTS
  
@@ -125,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline void
  update_nr_migratory(struct task_struct *p, long delta)
-@@ -7339,45 +7339,44 @@ EXPORT_SYMBOL(migrate_enable);
+@@ -7330,45 +7330,44 @@ EXPORT_SYMBOL(migrate_enable);
  #elif !defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
  void migrate_disable(void)
  {

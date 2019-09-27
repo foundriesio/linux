@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define tasklet_trylock(t) 1
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -705,7 +705,8 @@ void tasklet_kill(struct tasklet_struct
+@@ -711,7 +711,8 @@ void tasklet_kill(struct tasklet_struct
  
  	while (test_and_set_bit(TASKLET_STATE_SCHED, &t->state)) {
  		do {

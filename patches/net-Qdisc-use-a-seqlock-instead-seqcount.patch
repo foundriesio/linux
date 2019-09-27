@@ -259,7 +259,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (sch->flags & TCQ_F_MQROOT) {
 --- a/net/sched/sch_generic.c
 +++ b/net/sched/sch_generic.c
-@@ -552,7 +552,11 @@ struct Qdisc noop_qdisc = {
+@@ -557,7 +557,11 @@ struct Qdisc noop_qdisc = {
  	.ops		=	&noop_qdisc_ops,
  	.q.lock		=	__SPIN_LOCK_UNLOCKED(noop_qdisc.q.lock),
  	.dev_queue	=	&noop_netdev_queue,
@@ -271,7 +271,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	.busylock	=	__SPIN_LOCK_UNLOCKED(noop_qdisc.busylock),
  	.gso_skb = {
  		.next = (struct sk_buff *)&noop_qdisc.gso_skb,
-@@ -850,9 +854,17 @@ struct Qdisc *qdisc_alloc(struct netdev_
+@@ -862,9 +866,17 @@ struct Qdisc *qdisc_alloc(struct netdev_
  	lockdep_set_class(&sch->busylock,
  			  dev->qdisc_tx_busylock ?: &qdisc_tx_busylock);
  
