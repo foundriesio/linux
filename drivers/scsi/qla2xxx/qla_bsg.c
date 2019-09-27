@@ -1034,7 +1034,7 @@ qla84xx_updatefw(struct bsg_job *bsg_job)
 	sg_copy_to_buffer(bsg_job->request_payload.sg_list,
 		bsg_job->request_payload.sg_cnt, fw_buf, data_len);
 
-	mn = dma_pool_alloc(ha->s_dma_pool, GFP_KERNEL, &mn_dma);
+	mn = dma_pool_zalloc(ha->s_dma_pool, GFP_KERNEL, &mn_dma);
 	if (!mn) {
 		ql_log(ql_log_warn, vha, 0x7036,
 		    "DMA alloc failed for fw buffer.\n");
@@ -1045,7 +1045,6 @@ qla84xx_updatefw(struct bsg_job *bsg_job)
 	flag = bsg_request->rqst_data.h_vendor.vendor_cmd[1];
 	fw_ver = get_unaligned_le32((uint32_t *)fw_buf + 2);
 
-	memset(mn, 0, sizeof(struct access_chip_84xx));
 	mn->entry_type = VERIFY_CHIP_IOCB_TYPE;
 	mn->entry_count = 1;
 
