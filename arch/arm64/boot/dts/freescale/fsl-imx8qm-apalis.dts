@@ -45,7 +45,7 @@
 			gpios = <&gpio2 20 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_WAKEUP>;
 			debounce-interval = <10>;
-			gpio-key,wakeup;
+			wakeup-source;
 		};
 	};
 
