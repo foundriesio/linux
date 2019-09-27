@@ -42,7 +42,7 @@
 #include <linux/wakelock.h>
 #endif
 
-#define HDCP_DRV_VERSION "1.1.3"
+#define HDCP_DRV_VERSION "1.1.4"
 
 #define USE_HDMI_PWR_CTRL
 
@@ -96,6 +96,8 @@
 #define TEE_CMD_GET_TUR_HDCP_ENABLE	0xD
 #define TEE_CMD_SET_OPC_HDCP_VER	0xE
 #define TEE_CMD_GET_OPC_HDCP_VER	0xF
+
+#define COMPLETION_DEFAULT_TIME	100
 
 MODULE_PARM_DESC(noverify, "Wipe memory allocations on startup (for debug)");
 
@@ -1169,7 +1171,8 @@ void dwc_hdcp_avmute(int mute)
 		iowrite32(ioread32(st_esm->link + DWC_HDCP_CFG1) | (1<<1), st_esm->link + DWC_HDCP_CFG1);
 		if (ioread32(st_esm->link + DWC_HDCP22_INTSTS) & (1<<2)) {
 			reinit_completion(&st_esm->avmute_completion);
-			wait_for_completion_timeout(&st_esm->avmute_completion, msecs_to_jiffies(500));
+			wait_for_completion_timeout(&st_esm->avmute_completion, \
+							msecs_to_jiffies(COMPLETION_DEFAULT_TIME));
 		}
 		else {
 			cnt = 10;
