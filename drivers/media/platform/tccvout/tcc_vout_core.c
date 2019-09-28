@@ -530,7 +530,9 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 	case VIOC_RDMA02:
 	case VIOC_RDMA03:
 	case VIOC_RDMA05:
+#if !defined(CONFIG_ARCH_TCC899X)
 	case VIOC_RDMA06:
+#endif
 	case VIOC_RDMA07:
 	case VIOC_RDMA09:
 	case VIOC_RDMA10:
