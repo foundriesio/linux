@@ -57,6 +57,10 @@ extern void vmgr_get_clock(struct device_node *node);
 extern void vmgr_put_clock(void);
 extern void vmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
+extern void vmgr_get_reset(struct device_node *node);
+extern void vmgr_put_reset(void);
+extern void vmgr_hw_reset(void);
+
 extern void vmgr_enable_irq(unsigned int irq);
 extern void vmgr_disable_irq(unsigned int irq);
 extern void vmgr_free_irq(unsigned int irq, void * dev_id);
@@ -69,7 +73,6 @@ extern void vmgr_init_interrupt(void);
 extern int vmgr_BusPrioritySetting(int mode, int type);
 extern void vmgr_status_clear(unsigned int *base_addr);
 extern int vmgr_is_loadable(void);
-extern int vmgr_hw_reset(void);
 
 extern void vmgr_init_variable(void);
 

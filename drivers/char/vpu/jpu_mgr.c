@@ -879,13 +879,11 @@ static int _jmgr_external_all_close(int wait_ms)
     int max_count = 0;
     int ret;
 
-    for(type = 0; type < JPU_MAX; type++)
-    {
-        if(_jmgr_proc_exit_by_external(&jmgr_data.vList[type], &ret, type))
-        {
+    for(type = 0; type < JPU_MAX; type++) {
+        if(_jmgr_proc_exit_by_external(&jmgr_data.vList[type], &ret, type)) {
             max_count = wait_ms/10;
-            while(!jmgr_get_close(type))
-            {
+
+            while(!jmgr_get_close(type)) {
                 max_count--;
                 msleep(10);
             }
@@ -914,9 +912,9 @@ static int _jmgr_cmd_open(char *str)
         jmgr_data.only_decmode = 1;
 #endif
         jmgr_data.clk_limitation = 1;
-        //jmgr_hw_reset();
         jmgr_data.cmd_processing = 0;
 
+		jmgr_hw_reset();
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -977,6 +975,8 @@ static int _jmgr_cmd_release(char *str)
 
         jmgr_disable_irq(jmgr_data.irq);
         jmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
     }
 
     jmgr_disable_clock(0, 0);
@@ -1041,6 +1041,7 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
+			jmgr_hw_reset();
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1180,6 +1181,13 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static long _jmgr_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    return _jmgr_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
+}
+#endif
+
 static irqreturn_t _jmgr_isr_handler(int irq, void *dev_id)
 {
     unsigned long flags;
@@ -1244,30 +1252,29 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
         VpuList_t* data = NULL;
         ret = NULL;
 
-    /*
+    #if 0
         data = (VpuList_t *)args;
 
-        if(cmd == LIST_ADD)
+        if (cmd == LIST_ADD)
             printk("cmd = %d - 0x%x \n", cmd, data->cmd_type);
         else
             printk("cmd = %d \n", cmd);
-    */
-        switch(cmd)
-        {
-            case LIST_ADD:
-                {
-                    if(!args)
-                    {
-                        err("ADD :: data is null \n");
-                        goto Error;
-                    }
+    #endif
 
-                    data = (VpuList_t*)args;
-                    *(data->vpu_result) |= RET1;
-                    list_add_tail(&data->list, &jmgr_data.comm_data.main_list);jmgr_data.cmd_queued++;
-                    jmgr_data.comm_data.thread_intr++;
-                    wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
-                }
+        switch (cmd) {
+            case LIST_ADD:
+	            if(!args)
+	            {
+	            err("ADD :: data is null \n");
+	            goto Error;
+	            }
+
+	            data = (VpuList_t*)args;
+	            *(data->vpu_result) |= RET1;
+	            list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
+				jmgr_data.cmd_queued++;
+	            jmgr_data.comm_data.thread_intr++;
+	            wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
                 break;
 
             case LIST_DEL:
@@ -1277,12 +1284,14 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
                     goto Error;
                 }
                 data = (VpuList_t*)args;
-                list_del(&data->list);jmgr_data.cmd_queued--;
+                list_del(&data->list);
+				jmgr_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
-                if(list_empty(&jmgr_data.comm_data.main_list))
+                if(list_empty(&jmgr_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
+				}
                 break;
 
             case LIST_GET_ENTRY:
@@ -1305,10 +1314,8 @@ static int _jmgr_operation(void)
     int oper_finished;
     VpuList_t *oper_data = NULL;
 
-    while (!jmgr_list_manager(NULL, LIST_IS_EMPTY))
-    {
+    while (!jmgr_list_manager(NULL, LIST_IS_EMPTY)) {
         jmgr_data.cmd_processing = 1;
-
         oper_finished = 1;
         dprintk("_jmgr_operation :: not empty jmgr_data.cmd_queued(%d) \n", jmgr_data.cmd_queued);
 
@@ -1323,10 +1330,10 @@ static int _jmgr_operation(void)
         }
 
 
-        dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n",
-                oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
+        dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
 
-        if (oper_data->type < JPU_MAX && oper_data != NULL /*&& oper_data->comm_data != NULL*/) {
+        if (oper_data->type < JPU_MAX && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		{
             *(oper_data->vpu_result) |= RET3;
 
             *(oper_data->vpu_result) = _jmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
@@ -1334,8 +1341,7 @@ static int _jmgr_operation(void)
             if (*(oper_data->vpu_result) != RETCODE_SUCCESS)
             {
                 if (*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
-                    *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
-                {
+                    *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF) {
                     err("jmgr_out[0x%x] :: type = %d, handle = 0x%x, cmd = 0x%x, frame_len %d \n",
                             *(oper_data->vpu_result), oper_data->type, oper_data->handle,
                             oper_data->cmd_type, jmgr_data.szFrame_Len);
@@ -1346,29 +1352,27 @@ static int _jmgr_operation(void)
                     _jmgr_close_all(1);
                 }
             }
-        }
-        else
-        {
+        } else {
             printk("_jmgr_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
             *(oper_data->vpu_result) = RETCODE_FAILURE;
             oper_finished = 0;
         }
 
-        if(oper_finished)
-        {
-            if(oper_data->comm_data != NULL && atomic_read(&jmgr_data.dev_opened) != 0)
-            {
+        if(oper_finished) {
+            if(oper_data->comm_data != NULL && atomic_read(&jmgr_data.dev_opened) != 0) {
                 //unsigned long flags;
                 //spin_lock_irqsave(&(oper_data->comm_data->lock), flags);
                 oper_data->comm_data->count += 1;
                 if(oper_data->comm_data->count != 1){
-                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
+                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
+							oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
                 }
+
                 //spin_unlock_irqrestore(&(oper_data->comm_data->lock), flags);
                 wake_up_interruptible(&(oper_data->comm_data->wq));
             }
             else{
-                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&jmgr_data.dev_opened));
+                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n",oper_data->comm_data, atomic_read(&jmgr_data.dev_opened));
             }
         }
         else{
@@ -1387,37 +1391,36 @@ static int _jmgr_operation(void)
 
 static int _jmgr_thread(void *kthread)
 {
-    dprintk("_jmgr_thread for dec is running. \n");
+    dprintk("enter %s\n", __func__);
 
-    do
-    {
+    do {
 //      detailk("_jmgr_thread wait_sleep \n");
 
-        if(jmgr_list_manager(NULL, LIST_IS_EMPTY))
-        {
+        if(jmgr_list_manager(NULL, LIST_IS_EMPTY)) {
             jmgr_data.cmd_processing = 0;
 
             //wait_event_interruptible(jmgr_data.comm_data.thread_wq, jmgr_data.comm_data.thread_intr > 0);
-            wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq, jmgr_data.comm_data.thread_intr > 0, msecs_to_jiffies(50));
+            wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq,
+											 jmgr_data.comm_data.thread_intr > 0,
+											 msecs_to_jiffies(50));
             jmgr_data.comm_data.thread_intr = 0;
-        }
-        else
-        {
+        } else {
             if(atomic_read(&jmgr_data.dev_opened) || jmgr_data.external_proc){
                 _jmgr_operation();
-            }
-            else{
+            } else {
                 VpuList_t *oper_data = NULL;
 
                 printk("DEL for empty \n");
 
                 oper_data = jmgr_list_manager(NULL, LIST_GET_ENTRY);
-                if(oper_data)
+                if(oper_data) {
                     jmgr_list_manager(oper_data, LIST_DEL);
+				}
             }
         }
-
     } while (!kthread_should_stop());
+
+    dprintk("finish %s\n", __func__);
 
     return 0;
 }
@@ -1452,7 +1455,7 @@ static struct file_operations _jmgr_fops = {
     .mmap               = _jmgr_mmap,
     .unlocked_ioctl     = _jmgr_ioctl,
 #ifdef CONFIG_COMPAT
-    .compat_ioctl       = _jmgr_ioctl,
+    .compat_ioctl       = _jmgr_compat_ioctl,
 #endif
 };
 
@@ -1495,6 +1498,7 @@ int jmgr_probe(struct platform_device *pdev)
     dprintk("============> JPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, jmgr_data.base_addr, jmgr_data.irq - 32);
 
     jmgr_get_clock(pdev->dev.of_node);
+	jmgr_get_reset(pdev->dev.of_node);
 
     spin_lock_init(&(jmgr_data.oper_lock));
 //  spin_lock_init(&(jmgr_data.comm_data.lock));
@@ -1509,6 +1513,11 @@ int jmgr_probe(struct platform_device *pdev)
     INIT_LIST_HEAD(&jmgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&jmgr_data.comm_data.wait_list);
 
+    if( 0 > (ret = vmem_config()))
+    {
+        err("unable to configure memory for VPU!! %d \n", ret);
+        return -ENOMEM;
+    }
 
     jmgr_init_interrupt();
     int_flags = jmgr_get_int_flags();
@@ -1520,8 +1529,7 @@ int jmgr_probe(struct platform_device *pdev)
     jmgr_disable_irq(jmgr_data.irq);
 
     kidle_task = kthread_run(_jmgr_thread, NULL, "vJPU_th");
-    if( IS_ERR(kidle_task) )
-    {
+    if( IS_ERR(kidle_task) ) {
         err("unable to create thread!! \n");
         kidle_task = NULL;
         return -1;
@@ -1530,8 +1538,7 @@ int jmgr_probe(struct platform_device *pdev)
 
     _jmgr_close_all(1);
 
-    if (misc_register(&_jmgr_misc_device))
-    {
+    if (misc_register(&_jmgr_misc_device)) {
         printk(KERN_WARNING "JPU Manager: Couldn't register device.\n");
         return -EBUSY;
     }
@@ -1559,6 +1566,8 @@ int jmgr_remove(struct platform_device *pdev)
     }
 
     jmgr_put_clock();
+	jmgr_put_reset();
+    vmem_deinit();
 
     printk("success :: jmgr thread stopped!! \n");
 
@@ -1573,17 +1582,20 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
     if(atomic_read(&jmgr_data.dev_opened) != 0)
     {
-        printk("\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n", jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
-                                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
+        printk("\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n",
+				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
+                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
 
         _jmgr_external_all_close(200);
 
         open_count = atomic_read(&jmgr_data.dev_opened);
+
         for(i=0; i<open_count; i++) {
             jmgr_disable_clock(0, 0);
         }
-        printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n", jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
-                                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
+        printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n",
+				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
+                jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
     }
 
     return 0;

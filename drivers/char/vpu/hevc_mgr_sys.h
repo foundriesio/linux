@@ -55,6 +55,10 @@ extern void hmgr_get_clock(struct device_node *node);
 extern void hmgr_put_clock(void);
 extern void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
+extern void hmgr_get_reset(struct device_node *node);
+extern void hmgr_put_reset(void);
+extern void hmgr_hw_reset(void);
+
 extern void hmgr_enable_irq(unsigned int irq);
 extern void hmgr_disable_irq(unsigned int irq);
 extern void hmgr_free_irq(unsigned int irq, void *dev_id);
@@ -65,7 +69,6 @@ extern void hmgr_init_interrupt(void);
 extern int hmgr_BusPrioritySetting(int mode, int type);
 extern void hmgr_status_clear(unsigned int *base_addr);
 extern int hmgr_is_loadable(void);
-extern int hmgr_hw_reset(void);
 
 extern void hmgr_init_variable(void);
 
