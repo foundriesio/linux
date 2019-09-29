@@ -38,6 +38,12 @@ static struct clk *fbus_bhevc_clk = NULL;
 static struct clk *vbus_hevc_bus_clk = NULL;
 static struct clk *vbus_hevc_core_clk = NULL; // for pwdn and vBus.
 
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#include <linux/reset.h>
+static struct reset_control *vbus_hevc_bus_reset = NULL;
+static struct reset_control *vbus_hevc_core_reset = NULL; // for pwdn and vBus.
+#endif
+
 extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
@@ -275,10 +281,53 @@ void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt)
         if(opened_count > 0)
             opened_count--;
     }
+	vmgr_4k_d2_hw_reset();
 #else
     vmgr_4k_d2_hw_reset();
 #endif
 }
+
+void vmgr_4k_d2_get_reset(struct device_node *node)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if(node == NULL) {
+        printk("device node is null\n");
+    }
+	
+    vbus_hevc_bus_reset = of_reset_control_get(node, "hevc_bus");
+    BUG_ON(IS_ERR(vbus_hevc_bus_reset));
+
+    vbus_hevc_core_reset = of_reset_control_get(node, "hevc_core");
+    BUG_ON(IS_ERR(vbus_hevc_core_reset));
+#endif
+}
+
+void vmgr_4k_d2_put_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if (vbus_hevc_bus_reset) {
+        reset_control_put(vbus_hevc_bus_reset);
+        vbus_hevc_bus_reset = NULL;
+    }
+    if (vbus_hevc_core_reset) {
+        reset_control_put(vbus_hevc_core_reset);
+        vbus_hevc_core_reset = NULL;
+    }
+#endif
+}
+
+void vmgr_4k_d2_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+	if(vbus_hevc_bus_reset) {
+		reset_control_assert(vbus_hevc_bus_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_bus_reset);
+	}
+	if(vbus_hevc_core_reset) {
+		reset_control_assert(vbus_hevc_core_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_core_reset);
+	}
+#endif
+}
+
 
 void vmgr_4k_d2_enable_irq(unsigned int irq)
 {

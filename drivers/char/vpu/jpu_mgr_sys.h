@@ -56,6 +56,10 @@ extern void jmgr_get_clock(struct device_node *node);
 extern void jmgr_put_clock(void);
 extern void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
+extern void jmgr_get_reset(struct device_node *node);
+extern void jmgr_put_reset(void);
+extern void jmgr_hw_reset(void);
+
 extern void jmgr_enable_irq(unsigned int irq);
 extern void jmgr_disable_irq(unsigned int irq);
 extern void jmgr_free_irq(unsigned int irq, void * dev_id);
@@ -66,7 +70,6 @@ extern void jmgr_init_interrupt(void);
 extern int jmgr_BusPrioritySetting(int mode, int type);
 extern void jmgr_status_clear(unsigned int *base_addr);
 extern int jmgr_is_loadable(void);
-extern int jmgr_hw_reset(void);
 
 extern void jmgr_init_variable(void);
 

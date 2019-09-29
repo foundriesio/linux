@@ -3096,6 +3096,8 @@
 		reg = <0x15000000 0x4000>;
 		interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CODA &clk_vpu VIDEOBUS_CODA_BUS &clk_vpu VIDEOBUS_CODA_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_CODA_BUS>, <&vpubus_rst VIDEOBUS_CODA_CORE>;
+		reset-names = "xoda_bus", "xoda_core";
 	};
 
 	hevc_dev_mgr {
@@ -3103,6 +3105,8 @@
 		reg = <0x15200000 0xA000>;
 		interrupts = <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVC &clk_fbus FBUS_BHEVC &clk_vpu VIDEOBUS_HEVC_BUS &clk_vpu VIDEOBUS_HEVC_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_HEVC_BUS>, <&vpubus_rst VIDEOBUS_HEVC_CORE>;
+		reset-names = "hevc_bus", "hevc_core";
 	};
 
 	jpu_dev_mgr {
@@ -3110,6 +3114,8 @@
 		reg = <0x15180000 0x1000>;
 		interrupts = <GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_vpu VIDEOBUS_JPEG>;
+		resets = <&vpubus_rst VIDEOBUS_JPEG>;
+		reset-names = "jpeg";
 	};
 
 	tcc_switchmanager {

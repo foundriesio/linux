@@ -770,13 +770,11 @@ static int _hmgr_external_all_close(int wait_ms)
     int max_count = 0;
     int ret;
 
-    for(type = 0; type < HEVC_MAX; type++)
-    {
-        if(_hmgr_proc_exit_by_external(&hmgr_data.vList[type], &ret, type))
-        {
+    for(type = 0; type < HEVC_MAX; type++) {
+        if(_hmgr_proc_exit_by_external(&hmgr_data.vList[type], &ret, type)) {
             max_count = wait_ms/10;
-            while(!hmgr_get_close(type))
-            {
+
+            while(!hmgr_get_close(type)) {
                 max_count--;
                 msleep(10);
             }
@@ -805,18 +803,20 @@ static int _hmgr_cmd_open(char *str)
         hmgr_data.only_decmode = 1;
 #endif
         hmgr_data.clk_limitation = 1;
-        //hmgr_hw_reset();
         hmgr_data.cmd_processing = 0;
 
+		hmgr_hw_reset();
         hmgr_enable_irq(hmgr_data.irq);
         vetc_reg_init(hmgr_data.base_addr);
-        if(0 > vmem_init())
+        if(0 > (ret = vmem_init()))
 	    {
 	        err("failed to allocate memory for VPU!! %d \n", ret);
 	        //return -ENOMEM;
 	    }
     }
     atomic_inc(&hmgr_data.dev_opened);
+
+	dprintk("======> _hmgr_%s_open Out!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
 	
 	return 0;
 }
@@ -932,7 +932,8 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-            break;
+			hmgr_hw_reset();
+        break;
 
         case VPU_SET_MEM_ALLOC_MODE:
         case VPU_SET_MEM_ALLOC_MODE_KERNEL:
@@ -1066,6 +1067,13 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static long _hmgr_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    return _hmgr_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
+}
+#endif
+
 static irqreturn_t _hmgr_isr_handler(int irq, void *dev_id)
 {
     unsigned long flags;
@@ -1130,30 +1138,29 @@ VpuList_t* hmgr_list_manager(VpuList_t* args, unsigned int cmd)
         VpuList_t* data = NULL;
         ret = NULL;
 
-    /*
+    #if 0
         data = (VpuList_t *)args;
 
-        if(cmd == LIST_ADD)
+        if (cmd == LIST_ADD)
             printk("cmd = %d - 0x%x \n", cmd, data->cmd_type);
         else
             printk("cmd = %d \n", cmd);
-    */
-        switch(cmd)
-        {
-            case LIST_ADD:
-                {
-                    if(!args)
-                    {
-                        err("ADD :: data is null \n");
-                        goto Error;
-                    }
+    #endif
 
-                    data = (VpuList_t*)args;
-                    *(data->vpu_result) |= RET1;
-                    list_add_tail(&data->list, &hmgr_data.comm_data.main_list);hmgr_data.cmd_queued++;
-                    hmgr_data.comm_data.thread_intr++;
-                    wake_up_interruptible(&(hmgr_data.comm_data.thread_wq));
-                }
+        switch (cmd) {
+            case LIST_ADD:
+	            if(!args)
+	            {
+		            err("ADD :: data is null \n");
+		            goto Error;
+	            }
+
+	            data = (VpuList_t*)args;
+	            *(data->vpu_result) |= RET1;
+	            list_add_tail(&data->list, &hmgr_data.comm_data.main_list);
+				hmgr_data.cmd_queued++;
+	            hmgr_data.comm_data.thread_intr++;
+	            wake_up_interruptible(&(hmgr_data.comm_data.thread_wq));
                 break;
 
             case LIST_DEL:
@@ -1163,12 +1170,14 @@ VpuList_t* hmgr_list_manager(VpuList_t* args, unsigned int cmd)
                     goto Error;
                 }
                 data = (VpuList_t*)args;
-                list_del(&data->list);hmgr_data.cmd_queued--;
+                list_del(&data->list);
+				hmgr_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
-                if(list_empty(&hmgr_data.comm_data.main_list))
+                if(list_empty(&hmgr_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
+				}
                 break;
 
             case LIST_GET_ENTRY:
@@ -1190,8 +1199,7 @@ static int _hmgr_operation(void)
     int oper_finished;
     VpuList_t *oper_data = NULL;
 
-    while(!hmgr_list_manager(NULL, LIST_IS_EMPTY))
-    {
+    while(!hmgr_list_manager(NULL, LIST_IS_EMPTY)) {
         hmgr_data.cmd_processing = 1;
 
         oper_finished = 1;
@@ -1215,8 +1223,11 @@ static int _hmgr_operation(void)
             oper_finished = 1;
             if(*(oper_data->vpu_result) != RETCODE_SUCCESS)
             {
-                if( *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM && *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
-                    err("hmgr_out[0x%x] :: type = %d, hmgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n", *(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, hmgr_data.szFrame_Len);
+                if( *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
+					 *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF) {
+                    err("hmgr_out[0x%x] :: type = %d, hmgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n", 
+							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, hmgr_data.szFrame_Len);
+				}
 
                 if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
                 {
@@ -1224,23 +1235,21 @@ static int _hmgr_operation(void)
                     _hmgr_close_all(1);
                 }
             }
-        }
-        else
-        {
+        } else {
             printk("_hmgr_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
+
             *(oper_data->vpu_result) = RETCODE_FAILURE;
             oper_finished = 0;
         }
 
-        if(oper_finished)
-        {
-            if(oper_data->comm_data != NULL && atomic_read(&hmgr_data.dev_opened) != 0)
-            {
+        if (oper_finished) {
+            if(oper_data->comm_data != NULL && atomic_read(&hmgr_data.dev_opened) != 0) {
                 //unsigned long flags;
                 //spin_lock_irqsave(&(oper_data->comm_data->lock), flags);
                 oper_data->comm_data->count += 1;
                 if(oper_data->comm_data->count != 1){
-                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
+                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
+							oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
                 }
                 //spin_unlock_irqrestore(&(oper_data->comm_data->lock), flags);
                 wake_up_interruptible(&(oper_data->comm_data->wq));
@@ -1263,37 +1272,36 @@ static int _hmgr_operation(void)
 
 static int _hmgr_thread(void *kthread)
 {
-    dprintk("_hmgr_thread for dec is running. \n");
+    dprintk("enter %s\n", __func__);
 
-    do
-    {
+    do {
 //      detailk("_hmgr_thread wait_sleep \n");
 
-        if(hmgr_list_manager(NULL, LIST_IS_EMPTY))
-        {
+        if(hmgr_list_manager(NULL, LIST_IS_EMPTY)) {
             hmgr_data.cmd_processing = 0;
 
             //wait_event_interruptible(hmgr_data.comm_data.thread_wq, hmgr_data.comm_data.thread_intr > 0);
-            wait_event_interruptible_timeout(hmgr_data.comm_data.thread_wq, hmgr_data.comm_data.thread_intr > 0, msecs_to_jiffies(50));
+            wait_event_interruptible_timeout(hmgr_data.comm_data.thread_wq, 
+											 hmgr_data.comm_data.thread_intr > 0,
+											 msecs_to_jiffies(50));
             hmgr_data.comm_data.thread_intr = 0;
-        }
-        else
-        {
-            if(atomic_read(&hmgr_data.dev_opened) || hmgr_data.external_proc){
+        } else {
+            if(atomic_read(&hmgr_data.dev_opened) || hmgr_data.external_proc) {
                 _hmgr_operation();
-            }
-            else{
+            } else {
                 VpuList_t *oper_data = NULL;
 
                 printk("DEL for empty \n");
 
                 oper_data = hmgr_list_manager(NULL, LIST_GET_ENTRY);
-                if(oper_data)
+                if(oper_data) {
                     hmgr_list_manager(oper_data, LIST_DEL);
-            }
+	            }
+	        }
         }
-
     } while (!kthread_should_stop());
+
+    dprintk("finish %s\n", __func__);
 
     return 0;
 }
@@ -1328,7 +1336,7 @@ static struct file_operations _hmgr_fops = {
     .mmap               = _hmgr_mmap,
     .unlocked_ioctl     = _hmgr_ioctl,
 #ifdef CONFIG_COMPAT
-    .compat_ioctl       = _hmgr_ioctl,
+    .compat_ioctl       = _hmgr_compat_ioctl,
 #endif
 };
 
@@ -1371,6 +1379,7 @@ int hmgr_probe(struct platform_device *pdev)
     dprintk("============> HEVC base address [0x%x -> 0x%p], irq num [%d] \n", res->start, hmgr_data.base_addr, hmgr_data.irq - 32);
 
     hmgr_get_clock(pdev->dev.of_node);
+	hmgr_get_reset(pdev->dev.of_node);
 
     spin_lock_init(&(hmgr_data.oper_lock));
 //  spin_lock_init(&(hmgr_data.comm_data.lock));
@@ -1385,6 +1394,12 @@ int hmgr_probe(struct platform_device *pdev)
     INIT_LIST_HEAD(&hmgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&hmgr_data.comm_data.wait_list);
 
+    if( 0 > (ret = vmem_config()))
+    {
+        err("unable to configure memory for VPU!! %d \n", ret);
+        return -ENOMEM;
+    }
+
     hmgr_init_interrupt();
     int_flags = hmgr_get_int_flags();
     ret = hmgr_request_irq(hmgr_data.irq, _hmgr_isr_handler, int_flags, HMGR_NAME, &hmgr_data);
@@ -1395,8 +1410,7 @@ int hmgr_probe(struct platform_device *pdev)
     hmgr_disable_irq(hmgr_data.irq);
 
     kidle_task = kthread_run(_hmgr_thread, NULL, "vHEVC_th");
-    if( IS_ERR(kidle_task) )
-    {
+    if( IS_ERR(kidle_task) ) {
         err("unable to create thread!! \n");
         kidle_task = NULL;
         return -1;
@@ -1405,8 +1419,7 @@ int hmgr_probe(struct platform_device *pdev)
 
     _hmgr_close_all(1);
 
-    if (misc_register(&_hmgr_misc_device))
-    {
+    if (misc_register(&_hmgr_misc_device)) {
         printk(KERN_WARNING "HEVC Manager: Couldn't register device.\n");
         return -EBUSY;
     }
@@ -1434,6 +1447,8 @@ int hmgr_remove(struct platform_device *pdev)
     }
 
     hmgr_put_clock();
+    hmgr_put_reset();
+    vmem_deinit();
 
     printk("success :: hmgr thread stopped!! \n");
 
@@ -1448,15 +1463,18 @@ int hmgr_suspend(struct platform_device *pdev, pm_message_t state)
 
     if(atomic_read(&hmgr_data.dev_opened) != 0)
     {
-        printk(" \n hevc: suspend In DEC(%d/%d/%d/%d/%d) \n", hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+        printk(" \n hevc: suspend In DEC(%d/%d/%d/%d/%d) \n",
+				hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
 
         _hmgr_external_all_close(200);
 
         open_count = atomic_read(&hmgr_data.dev_opened);
+
         for(i=0; i<open_count; i++) {
             hmgr_disable_clock(0);
         }
-        printk("hevc: suspend Out DEC(%d/%d/%d/%d/%d) \n\n", hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+        printk("hevc: suspend Out DEC(%d/%d/%d/%d/%d) \n\n",
+				hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
     }
 
     return 0;

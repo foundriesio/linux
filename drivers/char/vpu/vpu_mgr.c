@@ -848,9 +848,9 @@ static int _vmgr_cmd_open(char *str)
         vmgr_data.only_decmode = 1;
 #endif
         vmgr_data.clk_limitation = 1;
-        //vmgr_hw_reset();
         vmgr_data.cmd_processing = 0;
 
+		vmgr_hw_reset();
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -862,7 +862,7 @@ static int _vmgr_cmd_open(char *str)
     }
     atomic_inc(&vmgr_data.dev_opened);
 
-	dprintk("======> _vmgr_cmd_open Out!! %d'th \n", atomic_read(&vmgr_data.dev_opened));
+	dprintk("======> _vmgr_%s_open Out!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
 	
 	return 0;
 }
@@ -999,6 +999,7 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
 
         case VPU_HW_RESET:
+			vmgr_hw_reset();
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1326,7 +1327,8 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
         switch (cmd) {
             case LIST_ADD:
-                if (!args) {
+                if (!args)
+				{
                     err("ADD :: data is null \n");
                     goto Error;
                 }
@@ -1676,6 +1678,7 @@ int vmgr_probe(struct platform_device *pdev)
     dprintk("============> VPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, vmgr_data.base_addr, vmgr_data.irq - 32);
 
     vmgr_get_clock(pdev->dev.of_node);
+	vmgr_get_reset(pdev->dev.of_node);
 
     spin_lock_init(&(vmgr_data.oper_lock));
     //  spin_lock_init(&(vmgr_data.comm_data.lock));
@@ -1743,6 +1746,7 @@ int vmgr_remove(struct platform_device *pdev)
     }
 
     vmgr_put_clock();
+    vmgr_put_reset();
     vmem_deinit();
 
     printk("success :: thread stopped!! \n");
