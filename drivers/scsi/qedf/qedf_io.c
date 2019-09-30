@@ -447,8 +447,12 @@ void qedf_release_cmd(struct kref *ref)
 	struct qedf_rport *fcport = io_req->fcport;
 	unsigned long flags;
 
-	if (io_req->cmd_type == QEDF_SCSI_CMD)
+	if (io_req->cmd_type == QEDF_SCSI_CMD) {
+		QEDF_WARN(&fcport->qedf->dbg_ctx,
+			  "Cmd released called without scsi_done called, io_req %p xid=0x%x.\n",
+			  io_req, io_req->xid);
 		WARN_ON(io_req->sc_cmd);
+	}
 
 	if (io_req->cmd_type == QEDF_ELS ||
 	    io_req->cmd_type == QEDF_TASK_MGMT_CMD)
@@ -457,8 +461,10 @@ void qedf_release_cmd(struct kref *ref)
 	atomic_inc(&cmd_mgr->free_list_cnt);
 	atomic_dec(&fcport->num_active_ios);
 	atomic_set(&io_req->state, QEDF_CMD_ST_INACTIVE);
-	if (atomic_read(&fcport->num_active_ios) < 0)
+	if (atomic_read(&fcport->num_active_ios) < 0) {
 		QEDF_WARN(&(fcport->qedf->dbg_ctx), "active_ios < 0.\n");
+		WARN_ON(1);
+	}
 
 	/* Increment task retry identifier now that the request is released */
 	io_req->task_retry_identifier++;

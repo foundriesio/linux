@@ -565,8 +565,8 @@ static void __blk_mq_complete_request_remote(void *data)
 
 void blk_mq_complete_request_sync(struct request *rq)
 {
-	if (!blk_mark_rq_complete(rq))
-		rq->q->mq_ops->complete(rq);
+	WRITE_ONCE(rq->state, MQ_RQ_COMPLETE);
+	rq->q->mq_ops->complete(rq);
 }
 EXPORT_SYMBOL_GPL(blk_mq_complete_request_sync);
 
@@ -654,6 +654,12 @@ int blk_mq_request_started(struct request *rq)
 	return blk_mq_rq_state(rq) != MQ_RQ_IDLE;
 }
 EXPORT_SYMBOL_GPL(blk_mq_request_started);
+
+int blk_mq_request_completed(struct request *rq)
+{
+	return blk_mq_rq_state(rq) == MQ_RQ_COMPLETE;
+}
+EXPORT_SYMBOL_GPL(blk_mq_request_completed);
 
 void blk_mq_start_request(struct request *rq)
 {

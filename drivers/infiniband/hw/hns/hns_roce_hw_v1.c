@@ -813,7 +813,7 @@ static int hns_roce_v1_rsv_lp_qp(struct hns_roce_dev *hr_dev)
 		attr.dest_qp_num	= hr_qp->qpn;
 		memcpy(rdma_ah_retrieve_dmac(&attr.ah_attr),
 		       hr_dev->dev_addr[port],
-		       MAC_ADDR_OCTET_NUM);
+		       ETH_ALEN);
 
 		memcpy(&dgid.raw, &subnet_prefix, sizeof(u64));
 		memcpy(&dgid.raw[8], hr_dev->dev_addr[port], 3);
@@ -1583,6 +1583,7 @@ static int hns_roce_v1_profile(struct hns_roce_dev *hr_dev)
 	caps->reserved_mrws	= 1;
 	caps->reserved_uars	= 0;
 	caps->reserved_cqs	= 0;
+	caps->reserved_qps	= 12; /* 2 SQP per port, six ports total 12 */
 	caps->chunk_sz		= HNS_ROCE_V1_TABLE_CHUNK_SIZE;
 
 	for (i = 0; i < caps->num_ports; i++)
@@ -2505,7 +2506,7 @@ static int hns_roce_v1_clear_hem(struct hns_roce_dev *hr_dev,
 	end = HW_SYNC_TIMEOUT_MSECS;
 	while (1) {
 		if (readl(bt_cmd) >> BT_CMD_SYNC_SHIFT) {
-			if (end < 0) {
+			if (!end) {
 				dev_err(dev, "Write bt_cmd err,hw_sync is not zero.\n");
 				spin_unlock_irqrestore(&hr_dev->bt_cmd_lock,
 					flags);
@@ -4253,7 +4254,8 @@ static int hns_roce_v1_aeq_int(struct hns_roce_dev *hr_dev,
 		 */
 		dma_rmb();
 
-		dev_dbg(dev, "aeqe = %p, aeqe->asyn.event_type = 0x%lx\n", aeqe,
+		dev_dbg(dev, "aeqe = %pK, aeqe->asyn.event_type = 0x%lx\n",
+			aeqe,
 			roce_get_field(aeqe->asyn,
 				       HNS_ROCE_AEQE_U32_4_EVENT_TYPE_M,
 				       HNS_ROCE_AEQE_U32_4_EVENT_TYPE_S));

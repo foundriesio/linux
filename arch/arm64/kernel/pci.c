@@ -179,6 +179,27 @@ static void pci_acpi_generic_release_info(struct acpi_pci_root_info *ci)
 	kfree(ri);
 }
 
+static bool is_amazon_graviton(void)
+{
+	static struct acpi_table_madt *madt;
+	acpi_status status;
+	bool ret = false;
+
+	status = acpi_get_table(ACPI_SIG_MADT, 0,
+			(struct acpi_table_header **)&madt);
+
+	if (ACPI_FAILURE(status) || !madt)
+               return ret;
+
+	ret = (!memcmp(madt->header.oem_id, "AMAZON", ACPI_OEM_ID_SIZE) &&
+		!memcmp(madt->header.oem_table_id, "GRAVITON",
+						ACPI_OEM_TABLE_ID_SIZE));
+
+	acpi_put_table((struct acpi_table_header *)madt);
+
+	return ret;
+}
+
 /* Interface called from ACPI code to setup PCI host controller */
 struct pci_bus *pci_acpi_scan_root(struct acpi_pci_root *root)
 {
@@ -211,8 +232,35 @@ struct pci_bus *pci_acpi_scan_root(struct acpi_pci_root *root)
 	if (!bus)
 		return NULL;
 
-	pci_bus_size_bridges(bus);
-	pci_bus_assign_resources(bus);
+	/* Only Evaluate _DSM Function #5 (PCI Boot Configuration function) on
+	 * Amazon Graviton.
+	 */
+	if (is_amazon_graviton()) {
+		union acpi_object *obj;
+
+		/*
+		 * Evaluate the "PCI Boot Configuration" _DSM Function.  If it
+		 * exists and returns 0, we must preserve any PCI resource
+		 * assignments made by firmware for this host bridge.
+		 */
+		obj = acpi_evaluate_dsm(ACPI_HANDLE(bus->bridge),
+			&pci_acpi_dsm_guid, 1, IGNORE_PCI_BOOT_CONFIG_DSM, NULL);
+
+		if (obj && obj->type == ACPI_TYPE_INTEGER && obj->integer.value == 0)
+			/* We must preserve the resource configuration, claim now */
+			pci_bus_claim_resources(bus);
+
+		/*
+		 * Assign whatever was left unassigned. If we didn't claim above,
+		 * this will reassign everything.
+		 */
+		pci_assign_unassigned_root_bus_resources(bus);
+
+		ACPI_FREE(obj);
+	} else {
+		pci_bus_size_bridges(bus);
+		pci_bus_assign_resources(bus);
+	}
 
 	list_for_each_entry(child, &bus->children, node)
 		pcie_bus_configure_settings(child);
