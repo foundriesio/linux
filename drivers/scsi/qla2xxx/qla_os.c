@@ -1117,15 +1117,9 @@ static inline int test_fcport_count(scsi_qla_host_t *vha)
 void
 qla2x00_wait_for_sess_deletion(scsi_qla_host_t *vha)
 {
-	u8 i;
-
 	qla2x00_mark_all_devices_lost(vha, 0);
 
-	for (i = 0; i < 10; i++)
-		wait_event_timeout(vha->fcport_waitQ, test_fcport_count(vha),
-		    HZ);
-
-	flush_workqueue(vha->hw->wq);
+	wait_event_timeout(vha->fcport_waitQ, test_fcport_count(vha), 10*HZ);
 }
 
 /*
@@ -3496,29 +3490,6 @@ disable_device:
 	return ret;
 }
 
-static void __qla_set_remove_flag(scsi_qla_host_t *base_vha)
-{
-	scsi_qla_host_t *vp;
-	unsigned long flags;
-	struct qla_hw_data *ha;
-
-	if (!base_vha)
-		return;
-
-	ha = base_vha->hw;
-
-	spin_lock_irqsave(&ha->vport_slock, flags);
-	list_for_each_entry(vp, &ha->vp_list, list)
-		set_bit(PFLG_DRIVER_REMOVING, &vp->pci_flags);
-
-	/*
-	 * Indicate device removal to prevent future board_disable
-	 * and wait until any pending board_disable has completed.
-	 */
-	set_bit(PFLG_DRIVER_REMOVING, &base_vha->pci_flags);
-	spin_unlock_irqrestore(&ha->vport_slock, flags);
-}
-
 static void
 qla2x00_shutdown(struct pci_dev *pdev)
 {
@@ -3535,7 +3506,7 @@ qla2x00_shutdown(struct pci_dev *pdev)
 	 * Prevent future board_disable and wait
 	 * until any pending board_disable has completed.
 	 */
-	__qla_set_remove_flag(vha);
+	set_bit(PFLG_DRIVER_REMOVING, &vha->pci_flags);
 	cancel_work_sync(&ha->board_disable);
 
 	if (!atomic_read(&pdev->enable_cnt))
@@ -3691,7 +3662,10 @@ qla2x00_remove_one(struct pci_dev *pdev)
 	ha = base_vha->hw;
 	ql_log(ql_log_info, base_vha, 0xb079,
 	    "Removing driver\n");
-	__qla_set_remove_flag(base_vha);
+
+	/* Indicate device removal to prevent future board_disable and wait
+	 * until any pending board_disable has completed. */
+	set_bit(PFLG_DRIVER_REMOVING, &base_vha->pci_flags);
 	cancel_work_sync(&ha->board_disable);
 
 	/*
@@ -5061,18 +5035,16 @@ void qla24xx_create_new_sess(struct scsi_qla_host *vha, struct qla_work_evt *e)
 			fcport->d_id = e->u.new_sess.id;
 			fcport->flags |= FCF_FABRIC_DEVICE;
 			fcport->fw_login_state = DSC_LS_PLOGI_PEND;
+			if (e->u.new_sess.fc4_type == FS_FC4TYPE_FCP)
+				fcport->fc4_type = FC4_TYPE_FCP_SCSI;
+
+			if (e->u.new_sess.fc4_type == FS_FC4TYPE_NVME) {
+				fcport->fc4_type = FC4_TYPE_OTHER;
+				fcport->fc4f_nvme = FC4_TYPE_NVME;
+			}
 
 			memcpy(fcport->port_name, e->u.new_sess.port_name,
 			    WWN_SIZE);
-
-			fcport->fc4_type = e->u.new_sess.fc4_type;
-			if (e->u.new_sess.fc4_type & FS_FCP_IS_N2N) {
-				fcport->fc4_type = FS_FC4TYPE_FCP;
-				fcport->n2n_flag = 1;
-				if (vha->flags.nvme_enabled)
-					fcport->fc4_type |= FS_FC4TYPE_NVME;
-			}
-
 		} else {
 			ql_dbg(ql_dbg_disc, vha, 0xffff,
 				   "%s %8phC mem alloc fail.\n",
@@ -5171,12 +5143,13 @@ void qla24xx_create_new_sess(struct scsi_qla_host *vha, struct qla_work_evt *e)
 			if (dfcp)
 				qlt_schedule_sess_for_deletion(tfcp);
 
-			if (N2N_TOPO(vha->hw)) {
+
+			if (N2N_TOPO(vha->hw))
 				fcport->flags &= ~FCF_FABRIC_DEVICE;
-				fcport->keep_nport_handle = 1;
+
+			if (N2N_TOPO(vha->hw)) {
 				if (vha->flags.nvme_enabled) {
-					fcport->fc4_type =
-					    (FS_FC4TYPE_NVME | FS_FC4TYPE_FCP);
+					fcport->fc4f_nvme = 1;
 					fcport->n2n_flag = 1;
 				}
 				fcport->fw_login_state = 0;

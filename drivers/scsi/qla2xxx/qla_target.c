@@ -962,7 +962,7 @@ void qlt_free_session_done(struct work_struct *work)
 	struct qla_hw_data *ha = vha->hw;
 	unsigned long flags;
 	bool logout_started = false;
-	scsi_qla_host_t *base_vha = pci_get_drvdata(ha->pdev);
+	scsi_qla_host_t *base_vha;
 	struct qlt_plogi_ack_t *own =
 		sess->plogi_link[QLT_PLOGI_LINK_SAME_WWN];
 
@@ -1029,7 +1029,6 @@ void qlt_free_session_done(struct work_struct *work)
 
 	if (logout_started) {
 		bool traced = false;
-		u16 cnt = 0;
 
 		while (!READ_ONCE(sess->logout_completed)) {
 			if (!traced) {
@@ -1039,9 +1038,6 @@ void qlt_free_session_done(struct work_struct *work)
 				traced = true;
 			}
 			msleep(100);
-			cnt++;
-			if (cnt > 200)
-				break;
 		}
 
 		ql_dbg(ql_dbg_disc, vha, 0xf087,
@@ -1114,7 +1110,6 @@ void qlt_free_session_done(struct work_struct *work)
 	}
 
 	spin_unlock_irqrestore(&ha->tgt.sess_lock, flags);
-	sess->free_pending = 0;
 
 	ql_dbg(ql_dbg_tgt_mgt, vha, 0xf001,
 	    "Unregistration of sess %p %8phC finished fcp_cnt %d\n",
@@ -1123,9 +1118,17 @@ void qlt_free_session_done(struct work_struct *work)
 	if (tgt && (tgt->sess_count == 0))
 		wake_up_all(&tgt->waitQ);
 
-	if (!test_bit(PFLG_DRIVER_REMOVING, &base_vha->pci_flags) &&
-	    !(vha->vp_idx && test_bit(VPORT_DELETE, &vha->dpc_flags)) &&
-	    (!tgt || !tgt->tgt_stop) && !LOOP_TRANSITION(vha)) {
+	if (vha->fcport_count == 0)
+		wake_up_all(&vha->fcport_waitQ);
+
+	base_vha = pci_get_drvdata(ha->pdev);
+
+	sess->free_pending = 0;
+
+	if (test_bit(PFLG_DRIVER_REMOVING, &base_vha->pci_flags))
+		return;
+
+	if ((!tgt || !tgt->tgt_stop) && !LOOP_TRANSITION(vha)) {
 		switch (vha->host->active_mode) {
 		case MODE_INITIATOR:
 		case MODE_DUAL:
@@ -1138,9 +1141,6 @@ void qlt_free_session_done(struct work_struct *work)
 			break;
 		}
 	}
-
-	if (vha->fcport_count == 0)
-		wake_up_all(&vha->fcport_waitQ);
 }
 
 /* ha->tgt.sess_lock supposed to be held on entry */
@@ -1170,7 +1170,7 @@ void qlt_unreg_sess(struct fc_port *sess)
 	sess->last_login_gen = sess->login_gen;
 
 	INIT_WORK(&sess->free_work, qlt_free_session_done);
-	queue_work(sess->vha->hw->wq, &sess->free_work);
+	schedule_work(&sess->free_work);
 }
 EXPORT_SYMBOL(qlt_unreg_sess);
 
