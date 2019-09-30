@@ -155,7 +155,13 @@ endif
 
 KBUILD_DTBS	:= dtbs
 
-all:	Image.gz $(KBUILD_DTBS) $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_KERNEL_IMAGE_NAME))
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+KBUILD_DTBO_IMG := dtbo.img
+
+export DTC_FLAGS := -@
+endif
+
+all:	Image.gz $(KBUILD_DTBS) $(KBUILD_DTBO_IMG) $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_KERNEL_IMAGE_NAME))
 
 
 Image: vmlinux
@@ -169,6 +175,16 @@ zinstall install:
 
 %.dtb: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+
+%.dtbo: scripts
+	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+PHONY += dtbo.img
+
+dtbo.img: prepare scripts dtbs
+	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+endif
 
 PHONY += dtbs dtbs_install
 
@@ -208,6 +224,7 @@ define archhelp
   echo  '  Image         - Uncompressed kernel image (arch/$(ARCH)/boot/Image)'
   echo  '* dtbs          - Build device tree blobs for enabled boards'
   echo  '  dtbs_install  - Install dtbs to $(INSTALL_DTBS_PATH)'
+  echo  '* dtbo.img      - Build device tree blobs overlay image'
   echo  '  install       - Install uncompressed kernel'
   echo  '  zinstall      - Install compressed kernel'
   echo  '                  Install using (your) ~/bin/installkernel or'

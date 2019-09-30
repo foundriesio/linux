@@ -32,6 +32,16 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-linux-lpd4321-v0.1.dtb
 endif
 
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+dtb-y += \
+	tcc8031-soc.dtb
+
+dtbo-y += \
+	overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
+	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
+	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+endif
+
 always         := $(dtb-y)
 subdir-y       := $(dts-dirs)
-clean-files    := *.dtb
+clean-files    := *.dtb *.dtbo
