@@ -45,3 +45,6 @@ endif
 always         := $(dtb-y)
 subdir-y       := $(dts-dirs)
 clean-files    := *.dtb *.dtbo
+
+targets += $(dtbo-y)
+always  += $(dtbo-y)

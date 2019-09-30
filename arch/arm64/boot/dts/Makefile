@@ -55,5 +55,3 @@ $(obj)/dtbo.img: $(obj)/dtboimg.cfg $(addprefix $(obj)/,$(dtbo-y)) FORCE
 endif
 
 targets += dtbo.img
-targets += $(dtbo-y)
-always  += $(dtbo-y)
