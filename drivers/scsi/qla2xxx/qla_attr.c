@@ -102,10 +102,8 @@ qla2x00_sysfs_write_fw_dump(struct file *filp, struct kobject *kobj,
 			qla8044_idc_lock(ha);
 			qla82xx_set_reset_owner(vha);
 			qla8044_idc_unlock(ha);
-		} else {
-			ha->fw_dump_mpi = 1;
+		} else
 			qla2x00_system_error(vha);
-		}
 		break;
 	case 4:
 		if (IS_P3P_TYPE(ha)) {
@@ -2920,8 +2918,6 @@ qla24xx_vport_delete(struct fc_vport *fc_vport)
 	scsi_qla_host_t *vha = fc_vport->dd_data;
 	struct qla_hw_data *ha = vha->hw;
 	uint16_t id = vha->vp_idx;
-
-	set_bit(VPORT_DELETE, &vha->dpc_flags);
 
 	while (test_bit(LOOP_RESYNC_ACTIVE, &vha->dpc_flags) ||
 	    test_bit(FCPORT_UPDATE_NEEDED, &vha->dpc_flags))
