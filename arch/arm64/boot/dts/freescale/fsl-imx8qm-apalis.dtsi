@@ -3,8 +3,6 @@
  * Copyright 2017-2019 Toradex
  */
 
-/dts-v1/;
-
 #include <dt-bindings/pwm/pwm.h>
 #include "fsl-imx8qm.dtsi"
 
