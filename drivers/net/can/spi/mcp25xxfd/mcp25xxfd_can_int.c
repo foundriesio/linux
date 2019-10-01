@@ -530,13 +530,18 @@ static int mcp25xxfd_can_int_error_handling(struct mcp25xxfd_can_priv *cpriv)
 	return 0;
 }
 
-
 static int mcp25xxfd_can_int_handle_status(struct mcp25xxfd_can_priv *cpriv)
 {
 	char *errfunc;
 	int ret;
 
-#define HANDLE_ERROR(name) if (ret) { errfunc = name; goto err; }
+#define HANDLE_ERROR(name) \
+	do { \
+		if (ret) { \
+			errfunc = name; \
+			goto err; \
+		} \
+	} while (0)
 
 	/* clear all the interrupts asap - we have them on file allready */
 	ret = mcp25xxfd_can_int_clear_int_flags(cpriv);
@@ -607,6 +612,7 @@ err:
 		   errfunc, ret);
 	return ret;
 }
+
 #undef HANDLE_ERROR
 
 irqreturn_t mcp25xxfd_can_int(int irq, void *dev_id)
@@ -671,9 +677,9 @@ irqreturn_t mcp25xxfd_can_int(int irq, void *dev_id)
 	return IRQ_HANDLED;
 
 fail:
- 	netdev_err(cpriv->can.dev,
+	netdev_err(cpriv->can.dev,
 		   "experienced unexpected error %i in interrupt handler - disabling interrupts\n",
- 		   ret);
+		   ret);
 	/* note that if we experienced an spi error,
 	 * then this would produce another error
 	 */

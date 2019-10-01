@@ -292,7 +292,7 @@ static int _mcp25xxfd_clock_probe(struct mcp25xxfd_priv *priv)
 	/* check clock register that the clock is ready or disabled */
 	ret = mcp25xxfd_cmd_read_regs(priv->spi, MCP25XXFD_OSC |
 				      MCP25XXFD_ADDRESS_WITH_CRC,
-				      &priv->regs.osc,4);
+				      &priv->regs.osc, 4);
 	if (ret == -EILSEQ)
 		dev_err(&priv->spi->dev,
 			"CRC read of clock register resulted in a bad CRC mismatch - hw not found\n");
