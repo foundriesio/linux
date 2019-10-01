@@ -182,11 +182,10 @@ static void mcp25xxfd_gpio_read_of(struct mcp25xxfd_priv *priv)
 static int mcp25xxfd_gpio_setup_regs(struct mcp25xxfd_priv *priv)
 {
 	/* handle open-drain */
-	if (priv->config.gpio_open_drain) {
+	if (priv->config.gpio_open_drain)
 		priv->regs.iocon |= MCP25XXFD_IOCON_INTOD;
-	} else {
+	else
 		priv->regs.iocon &= ~MCP25XXFD_IOCON_INTOD;
-	}
 
 	/* handle xstandby */
 	if (priv->config.gpio0_xstandby) {
