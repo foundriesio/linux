@@ -3392,7 +3392,6 @@
 				<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "hdmi_link", "hdcp_2.2";
 		memory-region = <&reserved_dw_esm>;
-		status = "disabled";
 	};
 
 	/*mtadc0@16053000 {
