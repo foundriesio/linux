@@ -1380,10 +1380,6 @@
 	srp-disable;
 };
 
-&usbphynop1 {
-	vbus-regulator = <&reg_usb_host_vbus>;
-};
-
 /* On-module eMMC */
 &usdhc1 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";

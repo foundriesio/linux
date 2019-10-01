@@ -445,8 +445,8 @@
 
 /* Apalis USBH4 SuperSpeed */
 &usbotg3 {
-	cdns3,usbphy = <&usbphynop1>;
 	dr_mode = "host";
+	vbus-supply = <&reg_usb_host_vbus>;
 	status = "okay";
 };
 
