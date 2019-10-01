@@ -1399,7 +1399,7 @@ static bool nfs_open_stateid_recover_openmode(struct nfs4_state *state)
 static void nfs_state_log_update_open_stateid(struct nfs4_state *state)
 {
 	if (test_and_clear_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
-		wake_up_all(&state->waitq);
+		wake_up_bit(&state->flags, NFS_STATE_CHANGE_WAIT);
 }
 
 static void nfs_state_log_out_of_order_open_stateid(struct nfs4_state *state,
@@ -1519,7 +1519,9 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
 static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		const nfs4_stateid *stateid, nfs4_stateid *freeme)
 {
-	DEFINE_WAIT(wait);
+	struct wait_queue_head *wq_head = bit_waitqueue(&state->flags,
+							NFS_STATE_CHANGE_WAIT);
+	DEFINE_WAIT_BIT(wbq_entry, &state->flags, NFS_STATE_CHANGE_WAIT);
 	int status = 0;
 	for (;;) {
 
@@ -1533,7 +1535,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		if (!nfs4_has_session(NFS_SERVER(state->inode)->nfs_client))
 			break;
 
-		prepare_to_wait(&state->waitq, &wait, TASK_KILLABLE);
+		prepare_to_wait(wq_head, &wbq_entry.wq_entry, TASK_KILLABLE);
 		/*
 		 * Ensure we process the state changes in the same order
 		 * in which the server processed them by delaying the
@@ -1549,7 +1551,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 				status = 0;
 		} else
 			status = -EINTR;
-		finish_wait(&state->waitq, &wait);
+		finish_wait(wq_head, &wbq_entry.wq_entry);
 		rcu_read_lock();
 		spin_lock(&state->owner->so_lock);
 		write_seqlock(&state->seqlock);
