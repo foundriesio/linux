@@ -11,7 +11,6 @@
 	compatible = "toradex,apalis-imx8qm", "fsl,imx8qm";
 
 	chosen {
-		bootargs = "console=ttyLP1,115200 earlycon";
 		stdout-path = &lpuart1;
 	};
 
