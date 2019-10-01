@@ -611,6 +611,14 @@
 			no-map;
 		};
 
+		reserved_ramblk: ramblk {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ramblk";
+			size = <0>;
+			no-map;
+			status = "disabled";
+		};
+
 		/*
 		reserved_cma: linux,cma {
 			compatible = "shared-dma-pool";
@@ -686,6 +694,12 @@
 			status = "disabled";
 		};
 
+	};
+
+	ramblk: ramblk {
+		compatible = "telechips,ramblk";
+		memory-region = <&reserved_ramblk>;
+		status = "disabled";
 	};
 
 	tcc_pm {

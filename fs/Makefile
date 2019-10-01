@@ -130,5 +130,3 @@ obj-y				+= exofs/ # Multiple modules
 obj-$(CONFIG_CEPH_FS)		+= ceph/
 obj-$(CONFIG_PSTORE)		+= pstore/
 obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
-obj-$(CONFIG_CPIO_LOADER)	+= cpio_loader.o
-obj-$(CONFIG_CPIO_EXTRACTOR)	+= cpio_extractor.o

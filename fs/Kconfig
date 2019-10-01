@@ -95,12 +95,6 @@ config MANDATORY_FILE_LOCKING
 
 	  To the best of my knowledge this is dead code that no one cares about.
 
-config CPIO_LOADER
-	bool "Enable loader for cpio archive"
-
-config CPIO_EXTRACTOR
-	bool "Enable extractor for cpio archive"
-
 source "fs/crypto/Kconfig"
 
 source "fs/notify/Kconfig"
