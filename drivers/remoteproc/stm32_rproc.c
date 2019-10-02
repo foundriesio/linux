@@ -412,7 +412,7 @@ static const struct stm32_mbox stm32_rproc_mbox[MBOX_NB_MBX] = {
 	}
 };
 
-static void stm32_rproc_request_mbox(struct rproc *rproc)
+static int stm32_rproc_request_mbox(struct rproc *rproc)
 {
 	struct stm32_rproc *ddata = rproc->priv;
 	struct device *dev = &rproc->dev;
@@ -430,7 +430,9 @@ static void stm32_rproc_request_mbox(struct rproc *rproc)
 		cl->dev = dev->parent;
 
 		ddata->mb[i].chan = mbox_request_channel_byname(cl, name);
-		if (IS_ERR(ddata->mb[i].chan)) {
+		if (PTR_ERR(ddata->mb[i].chan) == -EPROBE_DEFER) {
+			return -EPROBE_DEFER;
+		} else if (IS_ERR(ddata->mb[i].chan)) {
 			dev_warn(dev, "cannot get %s mbox\n", name);
 			ddata->mb[i].chan = NULL;
 		}
@@ -439,6 +441,8 @@ static void stm32_rproc_request_mbox(struct rproc *rproc)
 				  stm32_rproc_mb_vq_work);
 		}
 	}
+
+	return 0;
 }
 
 static int stm32_rproc_set_hold_boot(struct rproc *rproc, bool hold)
@@ -762,10 +766,12 @@ static int stm32_rproc_probe(struct platform_device *pdev)
 	if (!rproc->early_boot) {
 		ret = stm32_rproc_stop(rproc);
 		if (ret)
-			goto free_rproc;
+			goto free_wkq;
 	}
 
-	stm32_rproc_request_mbox(rproc);
+	ret = stm32_rproc_request_mbox(rproc);
+	if (ret)
+		goto free_wkq;
 
 	ret = rproc_add(rproc);
 	if (ret)
