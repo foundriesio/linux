@@ -642,6 +642,7 @@ struct arm_smmu_ctx_desc {
 struct arm_smmu_cd_table {
 	__le64				*ptr;
 	dma_addr_t			ptr_dma;
+	unsigned int			entries;
 };
 
 struct arm_smmu_s1_cfg {
@@ -1694,6 +1695,8 @@ static void arm_smmu_free_cd_leaf_table(struct arm_smmu_device *smmu,
 	if (!table->ptr)
 		return;
 	dmam_free_coherent(smmu->dev, size, table->ptr, table->ptr_dma);
+	table->ptr = NULL;
+	table->ptr_dma = 0;
 }
 
 static void arm_smmu_write_cd_l1_desc(__le64 *dst,
@@ -1706,7 +1709,8 @@ static void arm_smmu_write_cd_l1_desc(__le64 *dst,
 }
 
 static __le64 *arm_smmu_get_cd_ptr(struct arm_smmu_domain *smmu_domain,
-				   u32 ssid)
+				   u32 ssid,
+				   struct arm_smmu_cd_table **out_table)
 {
 	__le64 *l1ptr;
 	unsigned int idx;
@@ -1735,6 +1739,7 @@ static __le64 *arm_smmu_get_cd_ptr(struct arm_smmu_domain *smmu_domain,
 		}
 		idx = ssid & (CTXDESC_L2_ENTRIES - 1);
 	}
+	*out_table = table;
 	return table->ptr + idx * CTXDESC_CD_DWORDS;
 }
 
@@ -1774,8 +1779,9 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 	 */
 	u64 val;
 	bool cd_live;
+	struct arm_smmu_cd_table *table;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
-	__le64 *cdptr = arm_smmu_get_cd_ptr(smmu_domain, ssid);
+	__le64 *cdptr = arm_smmu_get_cd_ptr(smmu_domain, ssid, &table);
 
 	if (!cdptr)
 		return -ENOMEM;
@@ -1785,6 +1791,7 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 
 	if (!cd) { /* (4) */
 		val = 0;
+		--table->entries;
 	} else if (cd_live) { /* (3) */
 		val &= ~CTXDESC_CD_0_ASID;
 		val |= FIELD_PREP(CTXDESC_CD_0_ASID, cd->asid);
@@ -1817,10 +1824,25 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 		/* STALL_MODEL==0b10 && CD.S==0 is ILLEGAL */
 		if (smmu_domain->stall_enabled)
 			val |= CTXDESC_CD_0_S;
+
+		table->entries++;
 	}
 
-	WRITE_ONCE(cdptr[0], cpu_to_le64(val));
-	arm_smmu_sync_cd(smmu_domain, ssid, true);
+	if (table->entries == 0) {
+		/*
+		 * FIXME: make this nicer, and generic. For now only L2 tables
+		 * can be freed this way.
+		 */
+		unsigned int idx = ssid >> CTXDESC_SPLIT;
+		__le64 *l1ptr = smmu_domain->s1_cfg.l1ptr + idx * CTXDESC_L1_DESC_DWORDS;
+
+		WRITE_ONCE(*l1ptr, 0);
+		arm_smmu_sync_cd(smmu_domain, ssid, false);
+		arm_smmu_free_cd_leaf_table(smmu, table, CTXDESC_L2_ENTRIES);
+	} else {
+		WRITE_ONCE(cdptr[0], cpu_to_le64(val));
+		arm_smmu_sync_cd(smmu_domain, ssid, true);
+	}
 	return 0;
 }
 
