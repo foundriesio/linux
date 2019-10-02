@@ -2177,6 +2177,7 @@ call_status(struct rpc_task *task)
 	case -ECONNABORTED:
 	case -ENOTCONN:
 		rpc_force_rebind(clnt);
+		break;
 	case -EADDRINUSE:
 		rpc_delay(task, 3*HZ);
 	case -EPIPE:
