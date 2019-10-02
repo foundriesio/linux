@@ -872,7 +872,7 @@
 		/* Apalis WAKE1_MICO */
 		pinctrl_gpio_keys: gpio-keys {
 			fsl,pins = <
-				SC_P_SPI3_CS0_LSIO_GPIO2_IO20		0x06000021
+				SC_P_SPI3_CS0_LSIO_GPIO2_IO20		0x06700021
 			>;
 		};
 
