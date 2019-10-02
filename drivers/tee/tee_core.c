@@ -224,7 +224,7 @@ static int tee_ioctl_shm_sdp_register(struct tee_context *ctx,
 
 	data.id = -1;
 
-	shm = tee_shm_sdp_register(ctx, data.addr, data.length, TEE_SHM_SDP_MEM);
+	shm = tee_shm_sdp_register(ctx, data.addr, data.length, TEE_SHM_DMA_BUF | TEE_SHM_SDP_MEM);
 	if (IS_ERR(shm))
 		return PTR_ERR(shm);
 
@@ -232,11 +232,11 @@ static int tee_ioctl_shm_sdp_register(struct tee_context *ctx,
 	data.flags = shm->flags;
 	data.length = shm->size;
 
-	if (copy_to_user(udata, &data, sizeof(data))) {
+	if (copy_to_user(udata, &data, sizeof(data)))
 		ret = -EFAULT;
-	} else {
-		ret = 0;
-	}
+	else
+		ret = tee_shm_get_fd(shm);
+
 	/*
 	 * When user space closes the file descriptor the shared memory
 	 * should be freed or if tee_shm_get_fd() failed then it will
