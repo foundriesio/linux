@@ -73,6 +73,13 @@ EXPORT_SYMBOL(plpar_hcall_norets);
  */
 static int hblkrm_size[MMU_PAGE_COUNT][MMU_PAGE_COUNT] __ro_after_init;
 
+/*
+ * Due to the involved complexity, and that the current hypervisor is only
+ * returning this value or 0, we are limiting the support of the H_BLOCK_REMOVE
+ * buffer size to 8 size block.
+ */
+#define HBLKRM_SUPPORTED_BLOCK_SIZE 8
+
 void vpa_init(int cpu)
 {
 	int hwcpu = get_hard_smp_processor_id(cpu);
@@ -434,6 +441,17 @@ static void pSeries_lpar_hpte_invalidate(unsigned long slot, unsigned long vpn,
 #define HBLKR_CTRL_ERRNOTFOUND	0x8800000000000000UL
 #define HBLKR_CTRL_ERRBUSY	0xa000000000000000UL
 
+/*
+ * Returned true if we are supporting this block size for the specified segment
+ * base page size and actual page size.
+ *
+ * Currently, we only support 8 size block.
+ */
+static inline bool is_supported_hlbkrm(int bpsize, int psize)
+{
+	return (hblkrm_size[bpsize][psize] == HBLKRM_SUPPORTED_BLOCK_SIZE);
+}
+
 /**
  * H_BLOCK_REMOVE caller.
  * @idx should point to the latest @param entry set with a PTEX.
@@ -593,7 +611,8 @@ static inline void __pSeries_lpar_hugepage_invalidate(unsigned long *slot,
 	if (lock_tlbie)
 		spin_lock_irqsave(&pSeries_lpar_tlbie_lock, flags);
 
-	if (firmware_has_feature(FW_FEATURE_BLOCK_REMOVE))
+	/* Assuming THP size is 16M */
+	if (is_supported_hlbkrm(psize, MMU_PAGE_16M))
 		hugepage_block_invalidate(slot, vpn, count, psize, ssize);
 	else
 		hugepage_bulk_invalidate(slot, vpn, count, psize, ssize);
@@ -911,7 +930,7 @@ static void pSeries_lpar_flush_hash_range(unsigned long number, int local)
 	if (lock_tlbie)
 		spin_lock_irqsave(&pSeries_lpar_tlbie_lock, flags);
 
-	if (firmware_has_feature(FW_FEATURE_BLOCK_REMOVE)) {
+	if (is_supported_hlbkrm(batch->psize, batch->psize)) {
 		do_block_remove(number, batch, param);
 		goto out;
 	}
