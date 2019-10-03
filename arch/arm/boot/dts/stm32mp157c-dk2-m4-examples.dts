@@ -80,9 +80,8 @@
 
 		m4_led: m4_led {
 			compatible = "rproc-srm-dev";
-			pinctrl-names = "rproc_default", "rproc_sleep";
+			pinctrl-names = "rproc_default";
 			pinctrl-0 = <&leds_orange_pins>;
-			pinctrl-1 = <&leds_orange_sleep_pins>;
 			status = "okay";
 		};
 	};
@@ -142,12 +141,6 @@
 			drive-push-pull;
 			output-low;
 			slew-rate = <0>;
-		};
-	};
-
-	leds_orange_sleep_pins: leds_orange_sleep_test-0 {
-		pins {
-			pinmux = <STM32_PINMUX('H', 7, ANALOG)>;
 		};
 	};
 };
