@@ -699,7 +699,7 @@
 		/* Apalis WAKE1_MICO */
 		pinctrl_gpio_keys: gpio-keys {
 			fsl,pins = <
-				SC_P_MIPI_DSI0_I2C0_SDA_MIPI_DSI1_GPIO0_IO03	0x21		/* MXM3 37 */
+				SC_P_MIPI_DSI0_I2C0_SDA_MIPI_DSI1_GPIO0_IO03	0x06700021	/* MXM3 37 */
 			>;
 		};
 
