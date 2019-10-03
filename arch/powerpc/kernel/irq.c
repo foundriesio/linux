@@ -265,7 +265,7 @@ notrace void arch_local_irq_restore(unsigned long en)
 		 * warn if we are wrong. Only do that when IRQ tracing
 		 * is enabled as mfmsr() can be costly.
 		 */
-		if (WARN_ON(mfmsr() & MSR_EE))
+		if (WARN_ON_ONCE(mfmsr() & MSR_EE))
 			__hard_irq_disable();
 	}
 #endif /* CONFIG_TRACE_IRQFLAGS */
