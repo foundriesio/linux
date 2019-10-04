@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
+#include <linux/i2c-smbus.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -50,6 +51,8 @@
 
 /* STM32F7 I2C control 1 */
 #define STM32F7_I2C_CR1_PECEN			BIT(23)
+#define STM32F7_I2C_CR1_ALERTEN			BIT(22)
+#define STM32F7_I2C_CR1_SMBHEN			BIT(20)
 #define STM32F7_I2C_CR1_WUPEN			BIT(18)
 #define STM32F7_I2C_CR1_SBC			BIT(16)
 #define STM32F7_I2C_CR1_RXDMAEN			BIT(15)
@@ -121,6 +124,7 @@
 				(((n) & STM32F7_I2C_ISR_ADDCODE_MASK) >> 17)
 #define STM32F7_I2C_ISR_DIR			BIT(16)
 #define STM32F7_I2C_ISR_BUSY			BIT(15)
+#define STM32F7_I2C_ISR_ALERT			BIT(13)
 #define STM32F7_I2C_ISR_PECERR			BIT(11)
 #define STM32F7_I2C_ISR_ARLO			BIT(9)
 #define STM32F7_I2C_ISR_BERR			BIT(8)
@@ -134,6 +138,7 @@
 #define STM32F7_I2C_ISR_TXE			BIT(0)
 
 /* STM32F7 I2C Interrupt Clear */
+#define STM32F7_I2C_ICR_ALERTCF			BIT(13)
 #define STM32F7_I2C_ICR_PECCF			BIT(11)
 #define STM32F7_I2C_ICR_ARLOCF			BIT(9)
 #define STM32F7_I2C_ICR_BERRCF			BIT(8)
@@ -150,7 +155,7 @@
 
 #define STM32F7_I2C_MAX_LEN			0xff
 #define STM32F7_I2C_DMA_LEN_MIN			0x16
-#define STM32F7_I2C_MAX_SLAVE			0x2
+#define STM32F7_I2C_MAX_SLAVE			0x3
 
 #define STM32F7_I2C_DNF_DEFAULT			0
 #define STM32F7_I2C_DNF_MAX			16
@@ -275,6 +280,29 @@ struct stm32f7_i2c_msg {
 };
 
 /**
+ * struct stm32f7_i2c_host - SMBus host specific data
+ * @client: I2C slave device that represents SMBus host
+ * @notify_start: indicate that this is the start of the notify transaction
+ * @addr: device address of SMBus device that initiate SMBus host protocol
+ */
+struct stm32f7_i2c_host {
+	struct i2c_client *client;
+	bool notify_start;
+	u8 addr;
+};
+
+/**
+ * struct stm32f7_i2c_alert - SMBus alert specific data
+ * @setup: platform data for the smbus_alert i2c client
+ * @ara: I2C slave device used to respond to the SMBus Alert with Alert
+ * Response Address
+ */
+struct stm32f7_i2c_alert {
+	struct i2c_smbus_alert_setup setup;
+	struct i2c_client *ara;
+};
+
+/**
  * struct stm32f7_i2c_dev - private data of the controller
  * @adap: I2C adapter for this controller
  * @dev: device for this controller
@@ -304,7 +332,9 @@ struct stm32f7_i2c_msg {
  * @regmap_creg: register address for setting Fast Mode Plus bits
  * @regmap_cmask: mask for Fast Mode Plus bits in set register
  * @is_suspended: boolean to know if the driver has been suspended
- */
+ * @host: SMBus host protocol specific data
+ * @alert: SMBus alert specific data 
+*/
 struct stm32f7_i2c_dev {
 	struct i2c_adapter adap;
 	struct device *dev;
@@ -334,6 +364,8 @@ struct stm32f7_i2c_dev {
 	u32 regmap_creg;
 	u32 regmap_cmask;
 	bool is_suspended;
+	struct stm32f7_i2c_host *host;
+	struct stm32f7_i2c_alert *alert;
 };
 
 /*
@@ -1314,11 +1346,21 @@ static int stm32f7_i2c_get_free_slave_id(struct stm32f7_i2c_dev *i2c_dev,
 	int i;
 
 	/*
-	 * slave[0] supports 7-bit and 10-bit slave address
-	 * slave[1] supports 7-bit slave address only
+	 * slave[0] support only SMBus Host address (0x8)
+	 * slave[1] supports 7-bit and 10-bit slave address
+	 * slave[2] supports 7-bit slave address only
 	 */
+	if (i2c_dev->host) {
+		if (slave->addr == 0x08) {
+			if (i2c_dev->slave[0])
+				goto fail;
+			*id = 0;
+			return 0;
+		}
+	}
+
 	for (i = STM32F7_I2C_MAX_SLAVE - 1; i >= 0; i--) {
-		if (i == 1 && (slave->flags & I2C_CLIENT_TEN))
+		if (i == 2 && (slave->flags & I2C_CLIENT_TEN))
 			continue;
 		if (!i2c_dev->slave[i]) {
 			*id = i;
@@ -1326,6 +1368,7 @@ static int stm32f7_i2c_get_free_slave_id(struct stm32f7_i2c_dev *i2c_dev,
 		}
 	}
 
+fail:
 	dev_err(dev, "Slave 0x%x could not be registered\n", slave->addr);
 
 	return -EINVAL;
@@ -1578,6 +1621,13 @@ static irqreturn_t stm32f7_i2c_isr_error(int irq, void *data)
 		f7_msg->result = -EINVAL;
 	}
 
+	if (status & STM32F7_I2C_ISR_ALERT) {
+		dev_dbg(dev, "<%s>: SMBus alert received\n", __func__);
+		writel_relaxed(STM32F7_I2C_ICR_ALERTCF, base + STM32F7_I2C_ICR);
+		i2c_handle_smbus_alert(i2c_dev->alert->ara);
+		return IRQ_HANDLED;
+	}
+
 	if (!i2c_dev->slave_running) {
 		u32 mask;
 		/* Disable interrupts */
@@ -1759,7 +1809,13 @@ static int stm32f7_i2c_reg_slave(struct i2c_client *slave)
 	if (!stm32f7_i2c_is_slave_registered(i2c_dev))
 		stm32f7_i2c_enable_wakeup(i2c_dev, true);
 
-	if (id == 0) {
+	switch (id) {
+	case 0:
+		/* Slave SMBus Host */
+		i2c_dev->slave[id] = slave;
+		break;
+
+	case 1:
 		/* Configure Own Address 1 */
 		oar1 = readl_relaxed(i2c_dev->base + STM32F7_I2C_OAR1);
 		oar1 &= ~STM32F7_I2C_OAR1_MASK;
@@ -1772,7 +1828,9 @@ static int stm32f7_i2c_reg_slave(struct i2c_client *slave)
 		oar1 |= STM32F7_I2C_OAR1_OA1EN;
 		i2c_dev->slave[id] = slave;
 		writel_relaxed(oar1, i2c_dev->base + STM32F7_I2C_OAR1);
-	} else if (id == 1) {
+		break;
+
+	case 2:
 		/* Configure Own Address 2 */
 		oar2 = readl_relaxed(i2c_dev->base + STM32F7_I2C_OAR2);
 		oar2 &= ~STM32F7_I2C_OAR2_MASK;
@@ -1785,7 +1843,10 @@ static int stm32f7_i2c_reg_slave(struct i2c_client *slave)
 		oar2 |= STM32F7_I2C_OAR2_OA2EN;
 		i2c_dev->slave[id] = slave;
 		writel_relaxed(oar2, i2c_dev->base + STM32F7_I2C_OAR2);
-	} else {
+		break;
+
+	default:
+		dev_err(dev, "I2C slave id not supported\n");
 		ret = -ENODEV;
 		goto pm_free;
 	}
@@ -1826,10 +1887,10 @@ static int stm32f7_i2c_unreg_slave(struct i2c_client *slave)
 	if (ret < 0)
 		return ret;
 
-	if (id == 0) {
+	if (id == 1) {
 		mask = STM32F7_I2C_OAR1_OA1EN;
 		stm32f7_i2c_clr_bits(base + STM32F7_I2C_OAR1, mask);
-	} else {
+	} else if (id == 2) {
 		mask = STM32F7_I2C_OAR2_OA2EN;
 		stm32f7_i2c_clr_bits(base + STM32F7_I2C_OAR2, mask);
 	}
@@ -1928,6 +1989,132 @@ static int stm32f7_i2c_setup_fm_plus_bits(struct platform_device *pdev,
 	return stm32f7_i2c_write_fm_plus_bits(i2c_dev, 1);
 }
 
+static int stm32f7_i2c_smbus_host_cb(struct i2c_client *client,
+				     enum i2c_slave_event event,
+				     u8 *val)
+{
+	struct stm32f7_i2c_dev *i2c_dev = i2c_get_adapdata(client->adapter);
+	struct stm32f7_i2c_host *host = i2c_dev->host;
+	int ret;
+
+	switch (event) {
+	case I2C_SLAVE_WRITE_REQUESTED:
+		host->notify_start = true;
+		break;
+	case I2C_SLAVE_WRITE_RECEIVED:
+		/* We only retrieve the first byte received (addr)
+		 * From Documentation/i2c/smbus-protocol:
+		 * There is currently no way to retrieve the data parameter
+		 * from the client.
+		 */
+		if (!host->notify_start)
+			break;
+		host->addr = *val;
+		host->notify_start = false;
+		break;
+	case I2C_SLAVE_STOP:
+		ret = i2c_handle_smbus_host_notify(client->adapter,
+						   host->addr);
+		if (ret < 0) {
+			dev_dbg(i2c_dev->dev, "failed to handle host_notify (%d)\n",
+				ret);
+			return ret;
+		}
+		break;
+	default:
+		dev_err(i2c_dev->dev, "slave event not supported\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int stm32f7_i2c_enable_smbus_host(struct stm32f7_i2c_dev *i2c_dev)
+{
+	struct stm32f7_i2c_host *host;
+	struct i2c_adapter *adap = &i2c_dev->adap;
+	struct device *dev = i2c_dev->dev;
+	void __iomem *base = i2c_dev->base;
+	struct i2c_board_info host_notify_board_info = {
+		I2C_BOARD_INFO("smbus_host_notify", 0x8),
+		.flags  = I2C_CLIENT_SLAVE,
+	};
+	int ret;
+
+	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
+	if (!host)
+		return -ENOMEM;
+
+	host->client = i2c_new_device(adap, &host_notify_board_info);
+	if (!host->client)
+		return -ENOMEM;
+
+	i2c_dev->host = host;
+
+	ret = i2c_slave_register(host->client, stm32f7_i2c_smbus_host_cb);
+	if (ret) {
+		i2c_dev->host = NULL;
+		i2c_unregister_device(host->client);
+		return ret;
+	}
+
+	/* Enable SMBus Host address */
+	stm32f7_i2c_set_bits(base + STM32F7_I2C_CR1, STM32F7_I2C_CR1_SMBHEN);
+
+	return 0;
+}
+
+static void stm32f7_i2c_disable_smbus_host(struct stm32f7_i2c_dev *i2c_dev)
+{
+	void __iomem *base = i2c_dev->base;
+	struct stm32f7_i2c_host *host = i2c_dev->host;
+
+	if (host) {
+		/* Disable SMBus Host address */
+		stm32f7_i2c_clr_bits(base + STM32F7_I2C_CR1,
+				     STM32F7_I2C_CR1_SMBHEN);
+		i2c_slave_unregister(host->client);
+		i2c_dev->host = NULL;
+		i2c_unregister_device(host->client);
+	}
+}
+
+static int stm32f7_i2c_enable_smbus_alert(struct stm32f7_i2c_dev *i2c_dev)
+{
+	struct stm32f7_i2c_alert *alert;
+	struct i2c_adapter *adap = &i2c_dev->adap;
+	struct device *dev = i2c_dev->dev;
+	void __iomem *base = i2c_dev->base;
+
+	alert = devm_kzalloc(dev, sizeof(*alert), GFP_KERNEL);
+	if (!alert)
+		return -ENOMEM;
+
+	alert->ara = i2c_setup_smbus_alert(adap, &alert->setup);
+	if (!alert->ara)
+		return -ENOMEM;
+
+	i2c_dev->alert = alert;
+
+	/* Enable SMBus Alert */
+	stm32f7_i2c_set_bits(base + STM32F7_I2C_CR1, STM32F7_I2C_CR1_ALERTEN);
+
+	return 0;
+}
+
+static void stm32f7_i2c_disable_smbus_alert(struct stm32f7_i2c_dev *i2c_dev)
+{
+	struct stm32f7_i2c_alert *alert = i2c_dev->alert;
+	void __iomem *base = i2c_dev->base;
+
+	if (alert) {
+		/* Disable SMBus Alert */
+		stm32f7_i2c_clr_bits(base + STM32F7_I2C_CR1,
+				     STM32F7_I2C_CR1_ALERTEN);
+		i2c_unregister_device(alert->ara);
+	}
+}
+
 static u32 stm32f7_i2c_func(struct i2c_adapter *adap)
 {
 	return I2C_FUNC_I2C | I2C_FUNC_10BIT_ADDR | I2C_FUNC_SLAVE |
@@ -1935,7 +2122,7 @@ static u32 stm32f7_i2c_func(struct i2c_adapter *adap)
 		I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA |
 		I2C_FUNC_SMBUS_BLOCK_DATA | I2C_FUNC_SMBUS_BLOCK_PROC_CALL |
 		I2C_FUNC_SMBUS_PROC_CALL | I2C_FUNC_SMBUS_PEC |
-		I2C_FUNC_SMBUS_I2C_BLOCK;
+		I2C_FUNC_SMBUS_I2C_BLOCK | I2C_FUNC_SMBUS_HOST_NOTIFY;
 }
 
 static struct i2c_algorithm stm32f7_i2c_algo = {
@@ -2114,12 +2301,38 @@ static int stm32f7_i2c_probe(struct platform_device *pdev)
 	if (ret)
 		goto pm_disable;
 
+	if (device_property_read_bool(&pdev->dev, "st,smbus-host-notify")) {
+		ret = stm32f7_i2c_enable_smbus_host(i2c_dev);
+		if (ret) {
+			dev_err(i2c_dev->dev,
+				"failed to enable SMBus host notify (%d)\n",
+				ret);
+			goto i2c_adapter_remove;
+		}
+	}
+
+	if (device_property_read_bool(&pdev->dev, "st,smbus-alert")) {
+		ret = stm32f7_i2c_enable_smbus_alert(i2c_dev);
+		if (ret) {
+			dev_err(i2c_dev->dev,
+				"failed to enable SMBus alert protocol (%d)\n",
+				ret);
+			goto host_notify_disable;
+		}
+	}
+
 	dev_info(i2c_dev->dev, "STM32F7 I2C-%d bus adapter\n", adap->nr);
 
 	pm_runtime_mark_last_busy(i2c_dev->dev);
 	pm_runtime_put_autosuspend(i2c_dev->dev);
 
 	return 0;
+
+host_notify_disable:
+	stm32f7_i2c_disable_smbus_host(i2c_dev);
+
+i2c_adapter_remove:
+	i2c_del_adapter(adap);
 
 pm_disable:
 	dev_pm_clear_wake_irq(i2c_dev->dev);
@@ -2146,6 +2359,10 @@ clk_free:
 static int stm32f7_i2c_remove(struct platform_device *pdev)
 {
 	struct stm32f7_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+
+	stm32f7_i2c_disable_smbus_alert(i2c_dev);
+
+	stm32f7_i2c_disable_smbus_host(i2c_dev);
 
 	i2c_del_adapter(&i2c_dev->adap);
 	pm_runtime_get_sync(i2c_dev->dev);
