@@ -269,6 +269,7 @@ struct svc_rqst {
 #define	RQ_VICTIM	(5)			/* about to be shut down */
 #define	RQ_BUSY		(6)			/* request is busy */
 #define	RQ_DATA		(7)			/* request has data */
+#define RQ_AUTHERR	(8)			/* Request status is auth error */
 	unsigned long		rq_flags;	/* flags field */
 
 	void *			rq_argp;	/* decoded arguments */
@@ -495,6 +496,7 @@ unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
 					 struct kvec *first, size_t total);
 char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
 					     struct kvec *first, size_t total);
+__be32		   svc_return_autherr(struct svc_rqst *rqstp, __be32 auth_err);
 
 #define	RPC_MAX_ADDRBUFLEN	(63U)
 

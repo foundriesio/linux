@@ -265,7 +265,7 @@ notrace void arch_local_irq_restore(unsigned long en)
 		 * warn if we are wrong. Only do that when IRQ tracing
 		 * is enabled as mfmsr() can be costly.
 		 */
-		if (WARN_ON(mfmsr() & MSR_EE))
+		if (WARN_ON_ONCE(mfmsr() & MSR_EE))
 			__hard_irq_disable();
 	}
 #endif /* CONFIG_TRACE_IRQFLAGS */
@@ -774,11 +774,6 @@ int irq_choose_cpu(const struct cpumask *mask)
 	return hard_smp_processor_id();
 }
 #endif
-
-int arch_early_irq_init(void)
-{
-	return 0;
-}
 
 #ifdef CONFIG_PPC64
 static int __init setup_noirqdistrib(char *str)
