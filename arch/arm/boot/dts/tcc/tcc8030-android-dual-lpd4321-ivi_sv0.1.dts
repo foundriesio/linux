@@ -198,3 +198,6 @@
 	tcc-timer-reserved = <0>;
 };
 
+&auth_cp {
+	i2c-channel = <1>;
+};

@@ -46,4 +46,12 @@ targets += $(DTB_LIST)
 
 dtbs: $(addprefix $(obj)/, $(DTB_LIST))
 
-clean-files := dts/*.dtb *.dtb
+clean-files := dts/*.dtb *.dtb *.dtbo
+
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+$(obj)/dtbo.img: $(obj)/dtboimg.cfg $(addprefix $(obj)/,$(dtbo-y)) FORCE
+	$(call if_changed,mkdtimg,4096)
+	$(Q)$(kecho) '  Kernel: $@ is ready'
+endif
+
+targets += dtbo.img

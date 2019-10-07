@@ -2289,6 +2289,65 @@ long vdec_poll_2(struct file *filp, int timeout_ms)
 }
 EXPORT_SYMBOL(vdec_poll_2);
 
+static int _vdec_cmd_open(vpu_decoder_data *vdata, char *str)
+{
+    dprintk("======> %s :: _vdec_%s_open(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    if( vmem_get_free_memory(vdata->gsDecType) == 0 )
+    {
+        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
+        return -ENOMEM;
+    }
+
+    dprintk("======> %s :: _vdec_%s_open(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    if( vdata->vComm_data.dev_opened == 0 )
+        vdata->vComm_data.count = 0;
+    vdata->vComm_data.dev_opened++;
+
+    return 0;
+}
+
+static int _vdec_cmd_release(vpu_decoder_data *vdata, char *str)
+{
+    dprintk("======> %s :: _vdec_%s_release In(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    if(vdata->vComm_data.dev_opened > 0)
+        vdata->vComm_data.dev_opened--;
+
+    if(vdata->vComm_data.dev_opened == 0)
+    {
+        vdec_clear_instance(vdata->gsDecType-VPU_DEC);
+        _vdec_force_close(vdata);
+
+#ifdef CONFIG_SUPPORT_TCC_JPU
+        if(vdata->gsCodecType == STD_MJPG)
+            jmgr_set_close(vdata->gsDecType, 1, 1);
+        else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
+        if(vdata->gsCodecType == STD_HEVC || vdata->gsCodecType == STD_VP9)
+            vmgr_4k_d2_set_close(vdata->gsDecType, 1, 1);
+        else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
+        if(vdata->gsCodecType == STD_HEVC)
+            hmgr_set_close(vdata->gsDecType, 1, 1);
+        else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
+        if(vdata->gsCodecType == STD_VP9)
+            vp9mgr_set_close(vdata->gsDecType, 1, 1);
+        else
+#endif
+            vmgr_set_close(vdata->gsDecType, 1, 1);
+    }
+
+    printk("======> %s :: _vdec_%s_release Out(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    return 0;
+}
+
 long vdec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
@@ -2313,7 +2372,7 @@ long vdec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     )
     {
         err("vdec_ioctl(name:%s, cmd: 0x%x) Vpu Manager aliveness error (v/4k-d2/h/j/v9 = %d/%d/%d/%d/%d) !!!\n",
-                cmd, vdata->misc->name, vmgr_get_alive(),
+                vdata->misc->name, cmd, vmgr_get_alive(),
             #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
                 vmgr_4k_d2_get_alive(),
             #else
@@ -2537,6 +2596,18 @@ long vdec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case V_DEC_FLUSH_OUTPUT_RESULT_KERNEL:
             return _vdec_result_flush(vdata, (void *)arg, cmd == V_DEC_FLUSH_OUTPUT_RESULT_KERNEL);
 
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	case V_DEC_TRY_OPEN_DEV:
+	case V_DEC_TRY_OPEN_DEV_KERNEL:
+            _vdec_cmd_open(vdata, "cmd");
+	    break;
+
+	case V_DEC_TRY_CLOSE_DEV:
+	case V_DEC_TRY_CLOSE_DEV_KERNEL:
+            _vdec_cmd_release(vdata, "cmd");
+	    break;
+#endif
+
         default:
             err("[%s] Unsupported ioctl[%d]!!!\n", vdata->misc->name, cmd);
             break;
@@ -2557,17 +2628,13 @@ int vdec_open(struct inode *inode, struct file *filp)
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     vpu_decoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    if( vmem_get_free_memory(vdata->gsDecType) == 0 )
-    {
-        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
-        return -ENOMEM;
-    }
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	vdata->vComm_data.dev_file_opened++;
 
-    dprintk("%s :: open(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
-
-    if( vdata->vComm_data.dev_opened == 0 )
-        vdata->vComm_data.count = 0;
-    vdata->vComm_data.dev_opened++;
+	dprintk("%s :: open Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
+#else
+    _vdec_cmd_open(vdata, "file");
+#endif  
 
     return 0;
 }
@@ -2577,40 +2644,13 @@ int vdec_release(struct inode *inode, struct file *filp)
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     vpu_decoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    dprintk("%s :: release In(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	vdata->vComm_data.dev_file_opened--;
 
-    if(vdata->vComm_data.dev_opened > 0)
-        vdata->vComm_data.dev_opened--;
-
-    if(vdata->vComm_data.dev_opened == 0)
-    {
-        vdec_clear_instance(vdata->gsDecType-VPU_DEC);
-        _vdec_force_close(vdata);
-
-#ifdef CONFIG_SUPPORT_TCC_JPU
-        if(vdata->gsCodecType == STD_MJPG)
-            jmgr_set_close(vdata->gsDecType, 1, 1);
-        else
-#endif
-#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
-        if(vdata->gsCodecType == STD_HEVC || vdata->gsCodecType == STD_VP9)
-            vmgr_4k_d2_set_close(vdata->gsDecType, 1, 1);
-        else
-#endif
-#ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
-        if(vdata->gsCodecType == STD_HEVC)
-            hmgr_set_close(vdata->gsDecType, 1, 1);
-        else
-#endif
-#ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
-        if(vdata->gsCodecType == STD_VP9)
-            vp9mgr_set_close(vdata->gsDecType, 1, 1);
-        else
-#endif
-            vmgr_set_close(vdata->gsDecType, 1, 1);
-    }
-
-    dprintk("%s :: release Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
+	dprintk("%s :: release Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
+#else
+    _vdec_cmd_release(vdata, "file");
+#endif  
 
     return 0;
 }

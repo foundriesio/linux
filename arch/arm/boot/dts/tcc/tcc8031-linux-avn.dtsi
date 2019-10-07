@@ -798,11 +798,11 @@
 		pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4 &sd1_bus4_wp_cd>;
 	};
 
+#if 0
 	/* SDIO */
 	sdhc@16460000 {
 		status = "okay";
 		compatible = "telechips,tcc-sdhc";
-		controller-id = <2>;
 		bus-width = <4>;
 		max-frequency = <200000000>;
 		pinctrl-names = "default", "active";
@@ -811,7 +811,18 @@
 		clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
 		clock-names = "mmc_fclk", "mmc_hclk";
 	};
-
+#else
+	/* SDIO */
+	sdhc@16460000 {
+		status = "okay";
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
+		clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
+		clock-names = "mmc_fclk", "mmc_hclk";
+	};
+#endif
 	/* broadcast(ISDB-T/DAB/DMB) */
 
 	/* H/W Demux */

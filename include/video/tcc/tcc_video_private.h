@@ -185,7 +185,8 @@ enum optional_info_description {
 	VID_OPT_HAVE_HDR10P_USERDATA = 27, 	//Have userData_info. (for HDR10+)
 	VID_OPT_RESERVED_1 = 28,
 	VID_OPT_RESERVED_2 = 29,
-	VID_OPT_RESERVED_3 = 30,
+	VID_OPT_RESERVED_3 = 30,  //VSIF index for Dolby Certification
+	VID_OPT_RESERVED_4 = 31,  //PUSH_VSYNC_EXT
 	VID_OPT_MAX
 };
 

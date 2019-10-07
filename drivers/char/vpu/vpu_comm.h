@@ -61,6 +61,9 @@
 #include <video/tcc/tcc_vp9_ioctl.h>
 #endif
 
+//In case of kernel operation (open/close in the kernel level) like TMS, open/close works asynchronosly.
+//#define USE_DEV_OPEN_CLOSE_IOCTL
+
 ////////////////////////////////////////////////////////////////////////////////////////
 /* COMMON */
 #define IRQ_INT_TYPE    (IRQ_TYPE_EDGE_RISING|IRQF_SHARED)
@@ -91,6 +94,9 @@ typedef struct _vpu_dec_data_t{
     spinlock_t lock;
     unsigned int count;
     unsigned char dev_opened;
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL	
+    unsigned char dev_file_opened;
+#endif
 } vpu_comm_data_t;
 
 typedef struct VpuList{
@@ -110,6 +116,7 @@ typedef struct MgrCommData{
     struct list_head wait_list;
     struct mutex list_mutex;
     struct mutex io_mutex;
+	struct mutex file_mutex;
 
 //  spinlock_t lock;
     unsigned int thread_intr;
@@ -145,7 +152,10 @@ typedef struct _mgr_data_t {
     wait_queue_head_t oper_wq;
 
     MEM_ALLOC_INFO_t work_memInfo;
-    unsigned char dev_opened;
+    atomic_t dev_opened;
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	unsigned char dev_file_opened;
+#endif
     unsigned char irq_reged;
 
     unsigned char cmd_processing;
@@ -167,6 +177,7 @@ typedef struct _mgr_data_t {
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
     TimeInfo_t iTime[VPU_MAX];
 #endif
+	bool bVpu_already_proc_force_closed;
 } mgr_data_t;
 
 #if defined(CONFIG_VDEC_CNT_1) || defined(CONFIG_VDEC_CNT_2) || defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)

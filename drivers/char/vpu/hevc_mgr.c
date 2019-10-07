@@ -79,7 +79,7 @@ VpuList_t* hmgr_list_manager(VpuList_t* args, unsigned int cmd);
 
 int hmgr_opened(void)
 {
-    if(hmgr_data.dev_opened == 0)
+    if(atomic_read(&hmgr_data.dev_opened) == 0)
         return 0;
     return 1;
 }
@@ -302,7 +302,7 @@ int hmgr_get_close(vputype type)
 
 int hmgr_get_alive(void)
 {
-    return hmgr_data.dev_opened;
+    return atomic_read(&hmgr_data.dev_opened);
 }
 
 int hmgr_set_close(vputype type, int value, int bfreemem)
@@ -334,7 +334,7 @@ static void _hmgr_close_all(int bfreemem)
 
 int hmgr_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 {
-    if(hmgr_data.dev_opened == 0)
+    if(atomic_read(&hmgr_data.dev_opened) == 0)
         return 0;
 
     printk(" \n process_ex %d - 0x%x \n\n", type, Op);
@@ -723,6 +723,164 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
     return ret;
 }
 
+static int _hmgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
+{
+    if(!hmgr_get_close(type) && hmgr_data.handle[type] != 0x00)
+    {
+        list->type = type;
+        if( type >= VPU_ENC )
+            list->cmd_type = VPU_ENC_CLOSE;
+        else
+            list->cmd_type = VPU_DEC_CLOSE;
+        list->handle    = hmgr_data.handle[type];
+        list->args      = NULL;
+        list->comm_data = NULL;
+        list->vpu_result = result;
+
+        printk("_hmgr_proc_exit_by_external for %d!! \n", type);
+        hmgr_list_manager(list, LIST_ADD);
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static void _hmgr_wait_process(int wait_ms)
+{
+    int max_count = wait_ms/20;
+
+    //wait!! in case exceptional processing. ex). sdcard out!!
+    while(hmgr_data.cmd_processing)
+    {
+        max_count--;
+        msleep(20);
+
+        if(max_count <= 0)
+        {
+            err("cmd_processing(cmd %d) didn't finish!! \n", hmgr_data.current_cmd);
+            break;
+        }
+    }
+}
+
+static int _hmgr_external_all_close(int wait_ms)
+{
+    int type = 0;
+    int max_count = 0;
+    int ret;
+
+    for(type = 0; type < HEVC_MAX; type++) {
+        if(_hmgr_proc_exit_by_external(&hmgr_data.vList[type], &ret, type)) {
+            max_count = wait_ms/10;
+
+            while(!hmgr_get_close(type)) {
+                max_count--;
+                msleep(10);
+            }
+        }
+    }
+
+    return 0;
+}
+
+static int _hmgr_cmd_open(char *str)
+{
+	int ret = 0;
+
+    dprintk("======> _hmgr_%s_open In!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
+
+    hmgr_enable_clock(0);
+
+    if(atomic_read(&hmgr_data.dev_opened) == 0)
+    {
+#ifdef FORCED_ERROR
+        forced_error_count = FORCED_ERR_CNT;
+#endif
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+        hmgr_data.only_decmode = 0;
+#else
+        hmgr_data.only_decmode = 1;
+#endif
+        hmgr_data.clk_limitation = 1;
+        hmgr_data.cmd_processing = 0;
+
+		hmgr_hw_reset();
+        hmgr_enable_irq(hmgr_data.irq);
+        vetc_reg_init(hmgr_data.base_addr);
+        if(0 > (ret = vmem_init()))
+	    {
+	        err("failed to allocate memory for VPU!! %d \n", ret);
+	        //return -ENOMEM;
+	    }
+    }
+    atomic_inc(&hmgr_data.dev_opened);
+
+	dprintk("======> _hmgr_%s_open Out!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
+	
+	return 0;
+}
+
+static int _hmgr_cmd_release(char *str)
+{
+    dprintk("======> _hmgr_%s_release In!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
+
+    if(atomic_read(&hmgr_data.dev_opened) > 0) {
+        atomic_dec(&hmgr_data.dev_opened);
+	}
+
+    if(atomic_read(&hmgr_data.dev_opened) == 0)
+    {
+//////////////////////////////////////
+        int type = 0, alive_cnt = 0;
+
+#if 1 // To close whole hevc instance when being killed process opened this.
+		if(!hmgr_data.bVpu_already_proc_force_closed)
+		{
+	        hmgr_data.external_proc = 1;
+	        _hmgr_external_all_close(200);
+	        hmgr_data.external_proc = 0;
+	        _hmgr_wait_process(200);
+		}
+		hmgr_data.bVpu_already_proc_force_closed = false;
+#endif
+
+        for(type=0; type<HEVC_MAX; type++) {
+            if( hmgr_data.closed[type] == 0 ){
+                alive_cnt++;
+            }
+        }
+
+        if( alive_cnt )
+        {
+            // clear instances of hevc by force.
+            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
+            printk("HEVC might be cleared by force. \n");
+        }
+
+//////////////////////////////////////
+        hmgr_data.oper_intr = 0;
+        hmgr_data.cmd_processing = 0;
+
+        _hmgr_close_all(1);
+//////////////////////////////////////
+
+        hmgr_disable_irq(hmgr_data.irq);
+        hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
+
+		vmem_deinit();
+    }
+
+    hmgr_disable_clock(0);
+
+    hmgr_data.nOpened_Count++;
+
+    printk("======> _hmgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&hmgr_data.dev_opened), hmgr_data.nOpened_Count,
+                    hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+
+	return 0;
+}
+
 static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -774,7 +932,8 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-            break;
+			hmgr_hw_reset();
+        break;
 
         case VPU_SET_MEM_ALLOC_MODE:
         case VPU_SET_MEM_ALLOC_MODE_KERNEL:
@@ -860,6 +1019,43 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             }
             break;
 
+
+
+		case VPU_TRY_FORCE_CLOSE:
+		case VPU_TRY_FORCE_CLOSE_KERNEL:
+		{
+            //tcc_vpu_dec_esc(1, 0, 0, 0);
+
+            if(!hmgr_data.bVpu_already_proc_force_closed)
+			{
+				hmgr_data.external_proc = 1;
+				_hmgr_external_all_close(200);
+				hmgr_data.external_proc = 0;
+				_hmgr_wait_process(200);
+				hmgr_data.bVpu_already_proc_force_closed = true;
+			}
+        }
+		break;
+
+		case VPU_TRY_CLK_RESTORE:
+		case VPU_TRY_CLK_RESTORE_KERNEL:
+		{
+			hmgr_restore_clock(0, atomic_read(&hmgr_data.dev_opened));
+		}
+		break;
+
+	#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+		case VPU_TRY_OPEN_DEV:
+		case VPU_TRY_OPEN_DEV_KERNEL:
+			_hmgr_cmd_open("cmd");
+		break;
+			
+		case VPU_TRY_CLOSE_DEV:
+		case VPU_TRY_CLOSE_DEV_KERNEL:
+			_hmgr_cmd_release("cmd");
+		break;
+	#endif
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -870,6 +1066,13 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
     return ret;
 }
+
+#ifdef CONFIG_COMPAT
+static long _hmgr_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    return _hmgr_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
+}
+#endif
 
 static irqreturn_t _hmgr_isr_handler(int irq, void *dev_id)
 {
@@ -886,162 +1089,41 @@ static irqreturn_t _hmgr_isr_handler(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-static int _hmgr_proc_exit_by_external(struct VpuList *list, int *result, unsigned int type)
-{
-    if(!hmgr_get_close(type) && hmgr_data.handle[type] != 0x00)
-    {
-        list->type = type;
-        if( type >= VPU_ENC )
-            list->cmd_type = VPU_ENC_CLOSE;
-        else
-            list->cmd_type = VPU_DEC_CLOSE;
-        list->handle    = hmgr_data.handle[type];
-        list->args      = NULL;
-        list->comm_data = NULL;
-        list->vpu_result = result;
-
-        printk("_hmgr_proc_exit_by_external for %d!! \n", type);
-        hmgr_list_manager(list, LIST_ADD);
-
-        return 1;
-    }
-
-    return 0;
-}
-
 static int _hmgr_open(struct inode *inode, struct file *filp)
 {
-	int ret = 0;
-
     if (!hmgr_data.irq_reged) {
         err("not registered hevc-mgr-irq \n");
     }
 
-    dprintk("_hmgr_open In!! %d'th \n", hmgr_data.dev_opened);
-
-    hmgr_enable_clock();
-
-    if(hmgr_data.dev_opened == 0)
-    {
-#ifdef FORCED_ERROR
-        forced_error_count = FORCED_ERR_CNT;
-#endif
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-        hmgr_data.only_decmode = 0;
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_hmgr_open In!! %d'th\n", hmgr_data.dev_file_opened);
+	hmgr_data.dev_file_opened++;
+	dprintk("_hmgr_open Out!! %d'th\n", hmgr_data.dev_file_opened);
 #else
-        hmgr_data.only_decmode = 1;
+    mutex_lock(&hmgr_data.comm_data.file_mutex);
+    _hmgr_cmd_open("file");
+    mutex_unlock(&hmgr_data.comm_data.file_mutex);
 #endif
-        hmgr_data.clk_limitation = 1;
-        //hmgr_hw_reset();
-        hmgr_data.cmd_processing = 0;
-
-        hmgr_enable_irq(hmgr_data.irq);
-        vetc_reg_init(hmgr_data.base_addr);
-        if(0 > vmem_init())
-	    {
-	        err("failed to allocate memory for VPU!! %d \n", ret);
-	        return -ENOMEM;
-	    }
-    }
-    hmgr_data.dev_opened++;
 
     filp->private_data = &hmgr_data;
 
     return 0;
 }
 
-static void _hmgr_wait_process(int wait_ms)
-{
-    int max_count = wait_ms/20;
-
-    //wait!! in case exceptional processing. ex). sdcard out!!
-    while(hmgr_data.cmd_processing)
-    {
-        max_count--;
-        msleep(20);
-
-        if(max_count <= 0)
-        {
-            err("cmd_processing(cmd %d) didn't finish!! \n", hmgr_data.current_cmd);
-            break;
-        }
-    }
-}
-
-static int _hmgr_external_all_close(int wait_ms)
-{
-    int type = 0;
-    int max_count = 0;
-    int ret;
-
-    for(type = 0; type < HEVC_MAX; type++)
-    {
-        if(_hmgr_proc_exit_by_external(&hmgr_data.vList[type], &ret, type))
-        {
-            max_count = wait_ms/10;
-            while(!hmgr_get_close(type))
-            {
-                max_count--;
-                msleep(10);
-            }
-        }
-    }
-
-    return 0;
-}
-
 static int _hmgr_release(struct inode *inode, struct file *filp)
 {
-    dprintk("_hmgr_release In!! %d'th \n", hmgr_data.dev_opened);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	dprintk("_vmgr_release In!! %d'th\n", hmgr_data.dev_file_opened);
+	hmgr_data.dev_file_opened--;
+	hmgr_data.nOpened_Count++;
 
-    _hmgr_wait_process(2000);
-
-    if(hmgr_data.dev_opened > 0)
-        hmgr_data.dev_opened--;
-    if(hmgr_data.dev_opened == 0)
-    {
-//////////////////////////////////////
-        int type = 0, alive_cnt = 0;
-
-#if 1 // To close whole hevc instance when being killed process opened this.
-        hmgr_data.external_proc = 1;
-        _hmgr_external_all_close(200);
-        _hmgr_wait_process(2000);
-        hmgr_data.external_proc = 0;
+	printk("_hmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", hmgr_data.dev_file_opened, hmgr_data.nOpened_Count,
+					hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+#else
+    mutex_lock(&hmgr_data.comm_data.file_mutex);
+	_hmgr_cmd_release("file");
+    mutex_unlock(&hmgr_data.comm_data.file_mutex);
 #endif
-
-        for(type=0; type<HEVC_MAX; type++) {
-            if( hmgr_data.closed[type] == 0 ){
-                alive_cnt++;
-            }
-        }
-
-        if( alive_cnt )
-        {
-            // clear instances of hevc by force.
-            //TCC_VPU_DEC( 0x40, (void*)NULL, (void*)NULL, (void*)NULL);
-            printk("HEVC might be cleared by force. \n");
-        }
-
-//////////////////////////////////////
-        hmgr_data.oper_intr = 0;
-        hmgr_data.cmd_processing = 0;
-
-        _hmgr_close_all(1);
-//////////////////////////////////////
-
-        hmgr_disable_irq(hmgr_data.irq);
-        hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
-
-		vmem_deinit();
-    }
-
-    hmgr_disable_clock();
-
-    hmgr_data.nOpened_Count++;
-
-    printk("_hmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", hmgr_data.dev_opened, hmgr_data.nOpened_Count,
-                    hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
 
     return 0;
 }
@@ -1056,30 +1138,29 @@ VpuList_t* hmgr_list_manager(VpuList_t* args, unsigned int cmd)
         VpuList_t* data = NULL;
         ret = NULL;
 
-    /*
+    #if 0
         data = (VpuList_t *)args;
 
-        if(cmd == LIST_ADD)
+        if (cmd == LIST_ADD)
             printk("cmd = %d - 0x%x \n", cmd, data->cmd_type);
         else
             printk("cmd = %d \n", cmd);
-    */
-        switch(cmd)
-        {
-            case LIST_ADD:
-                {
-                    if(!args)
-                    {
-                        err("ADD :: data is null \n");
-                        goto Error;
-                    }
+    #endif
 
-                    data = (VpuList_t*)args;
-                    *(data->vpu_result) |= RET1;
-                    list_add_tail(&data->list, &hmgr_data.comm_data.main_list);hmgr_data.cmd_queued++;
-                    hmgr_data.comm_data.thread_intr++;
-                    wake_up_interruptible(&(hmgr_data.comm_data.thread_wq));
-                }
+        switch (cmd) {
+            case LIST_ADD:
+	            if(!args)
+	            {
+		            err("ADD :: data is null \n");
+		            goto Error;
+	            }
+
+	            data = (VpuList_t*)args;
+	            *(data->vpu_result) |= RET1;
+	            list_add_tail(&data->list, &hmgr_data.comm_data.main_list);
+				hmgr_data.cmd_queued++;
+	            hmgr_data.comm_data.thread_intr++;
+	            wake_up_interruptible(&(hmgr_data.comm_data.thread_wq));
                 break;
 
             case LIST_DEL:
@@ -1089,12 +1170,14 @@ VpuList_t* hmgr_list_manager(VpuList_t* args, unsigned int cmd)
                     goto Error;
                 }
                 data = (VpuList_t*)args;
-                list_del(&data->list);hmgr_data.cmd_queued--;
+                list_del(&data->list);
+				hmgr_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
-                if(list_empty(&hmgr_data.comm_data.main_list))
+                if(list_empty(&hmgr_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
+				}
                 break;
 
             case LIST_GET_ENTRY:
@@ -1116,8 +1199,7 @@ static int _hmgr_operation(void)
     int oper_finished;
     VpuList_t *oper_data = NULL;
 
-    while(!hmgr_list_manager(NULL, LIST_IS_EMPTY))
-    {
+    while(!hmgr_list_manager(NULL, LIST_IS_EMPTY)) {
         hmgr_data.cmd_processing = 1;
 
         oper_finished = 1;
@@ -1141,63 +1223,43 @@ static int _hmgr_operation(void)
             oper_finished = 1;
             if(*(oper_data->vpu_result) != RETCODE_SUCCESS)
             {
-                if( *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM && *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
-                    err("hmgr_out[0x%x] :: type = %d, hmgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n", *(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, hmgr_data.szFrame_Len);
+                if( *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
+					 *(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF) {
+                    err("hmgr_out[0x%x] :: type = %d, hmgr_data.handle = 0x%x, cmd = 0x%x, frame_len %d \n", 
+							*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, hmgr_data.szFrame_Len);
+				}
 
                 if(*(oper_data->vpu_result) == RETCODE_CODEC_EXIT)
                 {
-                    int opened_count = hmgr_data.dev_opened;
-
+                    hmgr_restore_clock(0, atomic_read(&hmgr_data.dev_opened));
                     _hmgr_close_all(1);
-
-            #if 1
-                    while(opened_count)
-                    {
-                        hmgr_disable_clock();
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-
-                    //msleep(1);
-                    opened_count = hmgr_data.dev_opened;
-                    while(opened_count)
-                    {
-                        hmgr_enable_clock();
-                        if(opened_count > 0)
-                            opened_count--;
-                    }
-            #else
-                    hmgr_hw_reset();
-            #endif
                 }
             }
-        }
-        else
-        {
+        } else {
             printk("_hmgr_operation :: missed info or unknown command => type = 0x%x, cmd = 0x%x,  \n", oper_data->type, oper_data->cmd_type);
+
             *(oper_data->vpu_result) = RETCODE_FAILURE;
             oper_finished = 0;
         }
 
-        if(oper_finished)
-        {
-            if(oper_data->comm_data != NULL && hmgr_data.dev_opened != 0)
-            {
+        if (oper_finished) {
+            if(oper_data->comm_data != NULL && atomic_read(&hmgr_data.dev_opened) != 0) {
                 //unsigned long flags;
                 //spin_lock_irqsave(&(oper_data->comm_data->lock), flags);
                 oper_data->comm_data->count += 1;
                 if(oper_data->comm_data->count != 1){
-                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
+                    dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
+							oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
                 }
                 //spin_unlock_irqrestore(&(oper_data->comm_data->lock), flags);
                 wake_up_interruptible(&(oper_data->comm_data->wq));
             }
             else{
-                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, hmgr_data.dev_opened);
+                err("Error: abnormal exception or external command was processed!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&hmgr_data.dev_opened));
             }
         }
         else{
-            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, hmgr_data.dev_opened);
+            err("Error: abnormal exception 2!! 0x%p - %d\n", oper_data->comm_data, atomic_read(&hmgr_data.dev_opened));
         }
 
         hmgr_list_manager(oper_data, LIST_DEL);
@@ -1210,37 +1272,36 @@ static int _hmgr_operation(void)
 
 static int _hmgr_thread(void *kthread)
 {
-    dprintk("_hmgr_thread for dec is running. \n");
+    dprintk("enter %s\n", __func__);
 
-    do
-    {
+    do {
 //      detailk("_hmgr_thread wait_sleep \n");
 
-        if(hmgr_list_manager(NULL, LIST_IS_EMPTY))
-        {
+        if(hmgr_list_manager(NULL, LIST_IS_EMPTY)) {
             hmgr_data.cmd_processing = 0;
 
             //wait_event_interruptible(hmgr_data.comm_data.thread_wq, hmgr_data.comm_data.thread_intr > 0);
-            wait_event_interruptible_timeout(hmgr_data.comm_data.thread_wq, hmgr_data.comm_data.thread_intr > 0, msecs_to_jiffies(50));
+            wait_event_interruptible_timeout(hmgr_data.comm_data.thread_wq, 
+											 hmgr_data.comm_data.thread_intr > 0,
+											 msecs_to_jiffies(50));
             hmgr_data.comm_data.thread_intr = 0;
-        }
-        else
-        {
-            if(hmgr_data.dev_opened || hmgr_data.external_proc){
+        } else {
+            if(atomic_read(&hmgr_data.dev_opened) || hmgr_data.external_proc) {
                 _hmgr_operation();
-            }
-            else{
+            } else {
                 VpuList_t *oper_data = NULL;
 
                 printk("DEL for empty \n");
 
                 oper_data = hmgr_list_manager(NULL, LIST_GET_ENTRY);
-                if(oper_data)
+                if(oper_data) {
                     hmgr_list_manager(oper_data, LIST_DEL);
-            }
+	            }
+	        }
         }
-
     } while (!kthread_should_stop());
+
+    dprintk("finish %s\n", __func__);
 
     return 0;
 }
@@ -1275,7 +1336,7 @@ static struct file_operations _hmgr_fops = {
     .mmap               = _hmgr_mmap,
     .unlocked_ioctl     = _hmgr_ioctl,
 #ifdef CONFIG_COMPAT
-    .compat_ioctl       = _hmgr_ioctl,
+    .compat_ioctl       = _hmgr_compat_ioctl,
 #endif
 };
 
@@ -1318,6 +1379,7 @@ int hmgr_probe(struct platform_device *pdev)
     dprintk("============> HEVC base address [0x%x -> 0x%p], irq num [%d] \n", res->start, hmgr_data.base_addr, hmgr_data.irq - 32);
 
     hmgr_get_clock(pdev->dev.of_node);
+	hmgr_get_reset(pdev->dev.of_node);
 
     spin_lock_init(&(hmgr_data.oper_lock));
 //  spin_lock_init(&(hmgr_data.comm_data.lock));
@@ -1327,9 +1389,16 @@ int hmgr_probe(struct platform_device *pdev)
 
     mutex_init(&hmgr_data.comm_data.list_mutex);
     mutex_init(&(hmgr_data.comm_data.io_mutex));
+    mutex_init(&(hmgr_data.comm_data.file_mutex));
 
     INIT_LIST_HEAD(&hmgr_data.comm_data.main_list);
     INIT_LIST_HEAD(&hmgr_data.comm_data.wait_list);
+
+    if( 0 > (ret = vmem_config()))
+    {
+        err("unable to configure memory for VPU!! %d \n", ret);
+        return -ENOMEM;
+    }
 
     hmgr_init_interrupt();
     int_flags = hmgr_get_int_flags();
@@ -1341,8 +1410,7 @@ int hmgr_probe(struct platform_device *pdev)
     hmgr_disable_irq(hmgr_data.irq);
 
     kidle_task = kthread_run(_hmgr_thread, NULL, "vHEVC_th");
-    if( IS_ERR(kidle_task) )
-    {
+    if( IS_ERR(kidle_task) ) {
         err("unable to create thread!! \n");
         kidle_task = NULL;
         return -1;
@@ -1351,14 +1419,13 @@ int hmgr_probe(struct platform_device *pdev)
 
     _hmgr_close_all(1);
 
-    if (misc_register(&_hmgr_misc_device))
-    {
+    if (misc_register(&_hmgr_misc_device)) {
         printk(KERN_WARNING "HEVC Manager: Couldn't register device.\n");
         return -EBUSY;
     }
 
-    hmgr_enable_clock();
-    hmgr_disable_clock();
+    hmgr_enable_clock(0);
+    hmgr_disable_clock(0);
 
     return 0;
 }
@@ -1380,6 +1447,8 @@ int hmgr_remove(struct platform_device *pdev)
     }
 
     hmgr_put_clock();
+    hmgr_put_reset();
+    vmem_deinit();
 
     printk("success :: hmgr thread stopped!! \n");
 
@@ -1392,17 +1461,20 @@ int hmgr_suspend(struct platform_device *pdev, pm_message_t state)
 {
     int i, open_count = 0;
 
-    if(hmgr_data.dev_opened != 0)
+    if(atomic_read(&hmgr_data.dev_opened) != 0)
     {
-        printk(" \n hevc: suspend In DEC(%d/%d/%d/%d/%d) \n", hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+        printk(" \n hevc: suspend In DEC(%d/%d/%d/%d/%d) \n",
+				hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
 
         _hmgr_external_all_close(200);
 
-        open_count = hmgr_data.dev_opened;
+        open_count = atomic_read(&hmgr_data.dev_opened);
+
         for(i=0; i<open_count; i++) {
-            hmgr_disable_clock();
+            hmgr_disable_clock(0);
         }
-        printk("hevc: suspend Out DEC(%d/%d/%d/%d/%d) \n\n", hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
+        printk("hevc: suspend Out DEC(%d/%d/%d/%d/%d) \n\n",
+				hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
     }
 
     return 0;
@@ -1413,12 +1485,12 @@ int hmgr_resume(struct platform_device *pdev)
 {
     int i, open_count = 0;
 
-    if(hmgr_data.dev_opened != 0){
+    if(atomic_read(&hmgr_data.dev_opened) != 0){
 
-        open_count = hmgr_data.dev_opened;
+        open_count = atomic_read(&hmgr_data.dev_opened);
 
         for(i=0; i<open_count; i++) {
-            hmgr_enable_clock();
+            hmgr_enable_clock(0);
         }
         printk("\n hevc: resume \n\n");
     }

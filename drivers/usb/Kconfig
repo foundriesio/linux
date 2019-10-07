@@ -94,7 +94,7 @@ config USB_PCI
 if USB
 config VBUS_CTRL_DEF_ENABLE
     bool "Tcc usb host VBUS Control Enable default setting"
-    default y
+    default n
     help
         Setting the VBUS Control Enable function's default value
 

@@ -104,7 +104,7 @@ void tcc_gmac_ethtool_getdrvinfo(struct net_device *dev,
 	return;
 }
 
-int tcc_gmac_ethtool_getsettings(struct net_device *dev, struct ethtool_cmd *cmd)
+int tcc_gmac_ethtool_get_link_ksettings(struct net_device *dev, struct ethtool_link_ksettings *cmd)
 {
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	struct phy_device *phy = priv->phydev;
@@ -119,13 +119,13 @@ int tcc_gmac_ethtool_getsettings(struct net_device *dev, struct ethtool_cmd *cmd
 		"link speed / duplex setting\n", dev->name);
 		return -EBUSY;
 	}
-	cmd->transceiver = XCVR_INTERNAL;
 	spin_lock_irq(&priv->lock);
 	//rc = phy_ethtool_gset(phy, cmd); // kernel-4.4
 	// phy_ethtool_ksettings_get(phy, cmd); // kernel-4.14
 	spin_unlock_irq(&priv->lock);
 	return rc;
 }
+
 
 int tcc_gmac_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
@@ -337,7 +337,7 @@ static int tcc_gmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 static struct ethtool_ops tcc_gmac_ethtool_ops = {
 	.begin = tcc_gmac_check_if_running,
 	.get_drvinfo = tcc_gmac_ethtool_getdrvinfo,
-	.get_settings = tcc_gmac_ethtool_getsettings,
+	.get_link_ksettings = tcc_gmac_ethtool_get_link_ksettings,
 	.set_settings = tcc_gmac_ethtool_setsettings,
 	.get_msglevel = tcc_gmac_ethtool_getmsglevel,
 	.set_msglevel = tcc_gmac_ethtool_setmsglevel,

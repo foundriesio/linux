@@ -37,13 +37,19 @@ static struct clk *vbus_xoda_clk = NULL; // for pwdn and vBus.
 static struct clk *vbus_core_clk = NULL;
 #endif
 
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#include <linux/reset.h>
+static struct reset_control *vbus_xoda_reset = NULL; // for pwdn and vBus.
+static struct reset_control *vbus_core_reset = NULL;
+#endif
+
 extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
 //////////////////////////////////////////////////////////////////////////////
-void vmgr_enable_clock(int only_clk_ctrl)
+void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_prepare_enable(fbus_vbus_clk);
     if (fbus_xoda_clk)
         clk_prepare_enable(fbus_xoda_clk);
@@ -70,7 +76,7 @@ void vmgr_enable_clock(int only_clk_ctrl)
 #endif
 }
 
-void vmgr_disable_clock(int only_clk_ctrl)
+void vmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
 {
 #if defined(VBUS_CODA_CORE_CLK_CTRL)
     if (vbus_core_clk)
@@ -81,7 +87,7 @@ void vmgr_disable_clock(int only_clk_ctrl)
     if (fbus_xoda_clk)
         clk_disable_unprepare(fbus_xoda_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
-    if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
 #if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
@@ -130,6 +136,73 @@ void vmgr_put_clock(void)
         clk_put(vbus_core_clk);
         vbus_core_clk = NULL;
     }
+#endif
+}
+
+void vmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+	int opened_count = opened_cnt;
+
+    while(opened_count)
+    {
+        vmgr_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    //msleep(1);
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vmgr_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+	vmgr_hw_reset();
+#else
+    vmgr_hw_reset();
+#endif
+}
+
+void vmgr_get_reset(struct device_node *node)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if(node == NULL) {
+        printk("device node is null\n");
+    }
+	printk("############# vmgr_get_reset\n");
+    vbus_xoda_reset = of_reset_control_get(node, "xoda_bus");
+    BUG_ON(IS_ERR(vbus_xoda_reset));
+
+    vbus_core_reset = of_reset_control_get(node, "xoda_core");
+    BUG_ON(IS_ERR(vbus_core_reset));
+#endif
+}
+
+void vmgr_put_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if (vbus_xoda_reset) {
+        reset_control_put(vbus_xoda_reset);
+        vbus_xoda_reset = NULL;
+    }
+    if (vbus_core_reset) {
+        reset_control_put(vbus_core_reset);
+        vbus_core_reset = NULL;
+    }
+#endif
+}
+
+void vmgr_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+	if(vbus_xoda_reset) {
+		reset_control_assert(vbus_xoda_reset);	/*msleep(1);*/	reset_control_deassert(vbus_xoda_reset);
+	}
+	if(vbus_core_reset) {
+		reset_control_assert(vbus_core_reset);	/*msleep(1);*/	reset_control_deassert(vbus_core_reset);
+	}
 #endif
 }
 

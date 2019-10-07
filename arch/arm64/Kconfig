@@ -223,7 +223,7 @@ config NEED_DMA_MAP_STATE
 	def_bool y
 
 config NEED_SG_DMA_LENGTH
-	def_bool y
+	def_bool n
 
 config SMP
 	def_bool y
@@ -1168,6 +1168,9 @@ config BUILD_ARM64_APPENDED_DTB_IMAGE
 	  Enabling this option will cause a concatenated Image.gz and list of
 	  DTBs to be built by default (instead of a standalone Image.gz.)
 	  The image will built in arch/arm64/boot/Image.gz-dtb
+
+config BUILD_ARM64_DT_OVERLAY
+	bool "Enable device tree overlay support"
 
 choice
 	prompt "Appended DTB Kernel Image name"

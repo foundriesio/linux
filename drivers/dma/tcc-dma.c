@@ -769,6 +769,15 @@ static int tcc_dma_slave_config(struct dma_chan *chan,
 	memcpy(&tdmac->slave_config, cfg, sizeof(struct dma_slave_config));
 	tdmac->slave_config.slave_id = slave_id;
 
+	//re-setting current count address
+	channel_writel(tdmac, DMA_HCOUNT, 0);
+
+	channel_writel(tdmac, DMA_CHCTRL, 0x201);
+	mb();
+	channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
+	mb();
+	channel_writel(tdmac, DMA_CHCTRL, 0x0);
+
 	return 0;
 }
 

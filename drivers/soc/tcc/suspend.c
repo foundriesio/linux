@@ -85,7 +85,7 @@ failed_soc_reg_save:
 }
 
 #if CONFIG_ARCH_TCC803X 
-static int tcc_suspend_begin(void)
+static int tcc_suspend_begin(suspend_state_t state)
 {
 	int ret;
 

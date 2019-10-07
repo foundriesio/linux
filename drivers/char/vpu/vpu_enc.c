@@ -439,6 +439,51 @@ unsigned int venc_poll(struct file *filp, poll_table *wait)
     return 0;
 }
 
+
+static int _venc_cmd_open(vpu_encoder_data *vdata, char *str)
+{
+    dprintk("======> %s :: _vdec_%s_open(%d)!! \n",, vdata->misc->name str, vdata->vComm_data.dev_opened);
+
+    if( vmem_get_free_memory(vdata->gsEncType) == 0 )
+    {
+        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
+        return -ENOMEM;
+    }
+
+    dprintk("======> %s :: _vdec_%s_open(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    if( vdata->vComm_data.dev_opened == 0 )
+        vdata->vComm_data.count = 0;
+    vdata->vComm_data.dev_opened++;
+
+    return 0;
+}
+
+static int _venc_cmd_release(vpu_encoder_data *vdata, char *str)
+{
+    detailk("======> %s :: _vdec_%s_release In(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    if(vdata->vComm_data.dev_opened > 0)
+        vdata->vComm_data.dev_opened--;
+
+    if(vdata->vComm_data.dev_opened == 0)
+    {
+        venc_clear_instance(vdata->gsEncType-VPU_ENC);
+        _venc_force_close(vdata);
+
+#ifdef CONFIG_SUPPORT_TCC_JPU
+        if(vdata->gsCodecType == STD_MJPG)
+            jmgr_set_close(vdata->gsEncType, 1, 1);
+        else
+#endif
+            vmgr_set_close(vdata->gsEncType, 1, 1);
+    }
+
+    printk("======> %s :: _vdec_%s_release Out(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+
+    return 0;
+}
+
 long venc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
@@ -524,6 +569,15 @@ long venc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         case V_ENC_ENCODE_RESULT:
             return _venc_proc_encode_result(vdata, (VENC_ENCODE_t *)arg);
 
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+		case V_ENC_TRY_OPEN_DEV:
+	            _venc_cmd_open(vdata, "cmd");
+		    break;
+
+		case V_ENC_TRY_CLOSE_DEV:
+	            _venc_cmd_release(vdata, "cmd");
+		    break;
+#endif
         default:
             err("[%s] Unsupported ioctl[%d]!!!\n", vdata->misc->name, cmd);
             break;
@@ -537,17 +591,13 @@ int venc_open(struct inode *inode, struct file *filp)
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    if( vmem_get_free_memory(vdata->gsEncType) == 0 )
-    {
-        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
-        return -ENOMEM;
-    }
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	vdata->vComm_data.dev_file_opened++;
 
-    dprintk("%s :: open(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
-
-    if( vdata->vComm_data.dev_opened == 0 )
-        vdata->vComm_data.count = 0;
-    vdata->vComm_data.dev_opened++;
+	dprintk("%s :: open Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
+#else
+    _venc_cmd_open(vdata, "file");
+#endif  
 
     return 0;
 }
@@ -557,26 +607,13 @@ int venc_release(struct inode *inode, struct file *filp)
     struct miscdevice *misc = (struct miscdevice *)filp->private_data;
     vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    detailk("%s :: release In(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	vdata->vComm_data.dev_file_opened--;
 
-
-    if(vdata->vComm_data.dev_opened > 0)
-        vdata->vComm_data.dev_opened--;
-
-    if(vdata->vComm_data.dev_opened == 0)
-    {
-        venc_clear_instance(vdata->gsEncType-VPU_ENC);
-        _venc_force_close(vdata);
-
-#ifdef CONFIG_SUPPORT_TCC_JPU
-        if(vdata->gsCodecType == STD_MJPG)
-            jmgr_set_close(vdata->gsEncType, 1, 1);
-        else
-#endif
-            vmgr_set_close(vdata->gsEncType, 1, 1);
-    }
-
-    dprintk("%s :: release Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_opened);
+	dprintk("%s :: release Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
+#else
+    _venc_cmd_release(vdata, "file");
+#endif  
 
     return 0;
 }

@@ -689,5 +689,7 @@ config TCC_SCREEN_SHARE
 	depends on TCC_MULTI_MAILBOX
 	help
 		Choose this option if you want to use screen share driver
+
+source "drivers/char/tcc_snor_updater/Kconfig"
 endmenu
 

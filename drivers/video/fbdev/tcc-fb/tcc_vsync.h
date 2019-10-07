@@ -131,6 +131,10 @@ typedef struct {
 	int prevImageHeight;
 
 	struct tcc_lcdc_image_update *pIntlNextImage;
+
+	struct tcc_lcdc_image_update push_ext_infoframe;
+	int push_ext_status_paused;
+	int push_ext_count;
 	
 }tcc_video_disp ;
 

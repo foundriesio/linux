@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -68,21 +68,11 @@ struct kbase_device *kbase_device_alloc(void)
 
 static int kbase_device_as_init(struct kbase_device *kbdev, int i)
 {
-	const char format[] = "mali_mmu%d";
-	char name[sizeof(format)];
-	const char poke_format[] = "mali_mmu%d_poker";
-	char poke_name[sizeof(poke_format)];
-
-	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8316))
-		snprintf(poke_name, sizeof(poke_name), poke_format, i);
-
-	snprintf(name, sizeof(name), format, i);
-
 	kbdev->as[i].number = i;
 	kbdev->as[i].bf_data.addr = 0ULL;
 	kbdev->as[i].pf_data.addr = 0ULL;
 
-	kbdev->as[i].pf_wq = alloc_workqueue(name, 0, 1);
+	kbdev->as[i].pf_wq = alloc_workqueue("mali_mmu%d", 0, 1, i);
 	if (!kbdev->as[i].pf_wq)
 		return -EINVAL;
 
@@ -93,7 +83,8 @@ static int kbase_device_as_init(struct kbase_device *kbdev, int i)
 		struct hrtimer *poke_timer = &kbdev->as[i].poke_timer;
 		struct work_struct *poke_work = &kbdev->as[i].poke_work;
 
-		kbdev->as[i].poke_wq = alloc_workqueue(poke_name, 0, 1);
+		kbdev->as[i].poke_wq =
+			alloc_workqueue("mali_mmu%d_poker", 0, 1, i);
 		if (!kbdev->as[i].poke_wq) {
 			destroy_workqueue(kbdev->as[i].pf_wq);
 			return -EINVAL;
@@ -241,6 +232,9 @@ int kbase_device_init(struct kbase_device * const kbdev)
 	else
 		kbdev->mmu_mode = kbase_mmu_mode_get_lpae();
 
+	mutex_init(&kbdev->kctx_list_lock);
+	INIT_LIST_HEAD(&kbdev->kctx_list);
+
 	return 0;
 term_trace:
 	kbasep_trace_term(kbdev);
@@ -255,6 +249,8 @@ fail:
 void kbase_device_term(struct kbase_device *kbdev)
 {
 	KBASE_DEBUG_ASSERT(kbdev);
+
+	WARN_ON(!list_empty(&kbdev->kctx_list));
 
 #if KBASE_TRACE_ENABLE
 	kbase_debug_assert_register_hook(NULL, NULL);
@@ -497,6 +493,7 @@ static int kbasep_trace_debugfs_open(struct inode *inode, struct file *file)
 }
 
 static const struct file_operations kbasep_trace_debugfs_fops = {
+	.owner = THIS_MODULE,
 	.open = kbasep_trace_debugfs_open,
 	.read = seq_read,
 	.llseek = seq_lseek,

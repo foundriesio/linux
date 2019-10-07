@@ -345,6 +345,12 @@ config BLK_DEV_RAM_DAX
 	  and will prevent RAM block device backing store memory from being
 	  allocated from highmem (only a problem for highmem systems).
 
+config BLK_DEV_RAM_BLOCK
+	bool "Support RAM block devices on reserved regions"
+	---help---
+	  Saying Y here will allow you to use RAM block devices on reserved
+	  regions.
+
 config CDROM_PKTCDVD
 	tristate "Packet writing on CD/DVD media (DEPRECATED)"
 	depends on !UML

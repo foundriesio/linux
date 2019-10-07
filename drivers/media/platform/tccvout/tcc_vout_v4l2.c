@@ -546,8 +546,17 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 		return -ENOMEM;
 	b = vout->deintl_bufs;
 
+	#if 0 /* The deintl_buf_size is calculated by the panel size. - 20190809 alanK */
 	width = vout->disp_rect.width;
 	height = vout->disp_rect.height;
+	#else
+	if(vout->id == VOUT_MAIN) {
+		vout_wmix_getsize(vout, &width, &height);
+	} else {
+		width = vout->disp_rect.width;
+		height = vout->disp_rect.height;
+	}
+	#endif
 
 	y_offset = width * height;
 	if(vout->vioc->m2m_wdma.fmt == VIOC_IMG_FMT_YUV420IL0)
@@ -822,6 +831,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 {
 	struct tcc_vout_device *vout = fh;
 	struct tcc_vout_vioc *vioc = vout->vioc;
+	unsigned int panel_width, panel_height;
 	int ret = 0;
 
 	if(f->fmt.pix.width == 0 || f->fmt.pix.height == 0) {
@@ -977,7 +987,12 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 
 		/* de-interlace path setting */
 		if(vout->id == VOUT_MAIN) {
+			#if 0 /* The deintl_buf_size is calculated by the panel size. - 20190809 alanK */
 			vout->deintl_buf_size = PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height * 3 / 2);
+			#else
+			vout_wmix_getsize(vout, &panel_width, &panel_height);
+			vout->deintl_buf_size = PAGE_ALIGN(panel_width * panel_height * 3 / 2);
+			#endif
 			vioc->m2m_wdma.fmt = VIOC_IMG_FMT_YUV420IL0;
 		} else {
 			vout->deintl_buf_size = PAGE_ALIGN(vout->disp_rect.width * vout->disp_rect.height * 2);

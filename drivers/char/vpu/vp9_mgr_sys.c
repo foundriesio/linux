@@ -35,25 +35,30 @@
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *vbus_vp9_clk = NULL; // for pwdn and vBus.
 
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+#include <linux/reset.h>
+static struct reset_control *vbus_vp9_reset = NULL; // for pwdn and vBus.
+#endif
+
 extern int tccxxx_sync_player(int sync);
 static int cache_droped = 0;
 
 //////////////////////////////////////////////////////////////////////////////
-void vp9mgr_enable_clock(void)
+void vp9mgr_enable_clock(int vbus_no_ctrl)
 {
-	if (fbus_vbus_clk)
+    if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
 	if (vbus_vp9_clk)
 		clk_prepare_enable(vbus_vp9_clk);
 }
 
-void vp9mgr_disable_clock(void)
+void vp9mgr_disable_clock(int vbus_no_ctrl)
 {
 	if (vbus_vp9_clk)
 		clk_disable_unprepare(vbus_vp9_clk);
 #if !defined(VBUS_CLK_ALWAYS_ON)
-	if (fbus_vbus_clk)
-		clk_disable_unprepare(fbus_vbus_clk);
+    if (fbus_vbus_clk && !vbus_no_ctrl)
+        clk_disable_unprepare(fbus_vbus_clk);
 #endif
 }
 
@@ -80,6 +85,62 @@ void vp9mgr_put_clock(void)
 		clk_put(fbus_vbus_clk);
 		fbus_vbus_clk = NULL;
 	}
+}
+
+void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+	int opened_count = opened_cnt;
+
+    while(opened_count)
+    {
+        vp9mgr_disable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    //msleep(1);
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vp9mgr_enable_clock(vbus_no_ctrl);
+        if(opened_count > 0)
+            opened_count--;
+    }
+#else
+    vp9mgr_hw_reset();
+#endif
+}
+
+void vp9mgr_get_reset(struct device_node *node)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if(node == NULL) {
+        printk("device node is null\n");
+    }
+	printk("############# hmgr_get_reset\n");
+    vbus_vp9_reset = of_reset_control_get(node, "vp9_bus");
+    BUG_ON(IS_ERR(vbus_vp9_reset));
+#endif
+}
+
+void vp9mgr_put_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    if (vbus_vp9_reset) {
+        reset_control_put(vbus_vp9_reset);
+        vbus_vp9_reset = NULL;
+    }
+#endif
+}
+
+void vp9mgr_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+	if(vbus_vp9_reset) {
+		reset_control_assert(vbus_vp9_reset);	/*msleep(1);*/	reset_control_deassert(vbus_vp9_reset);
+	}
+#endif
 }
 
 void vp9mgr_enable_irq(unsigned int irq)

@@ -47,7 +47,7 @@ struct tcc_gpu_dvfs_table_t {
 	unsigned int uVol;
 };
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 static struct tcc_gpu_dvfs_table_t gpu_dvfs_table[] = {
        	/* Hz    			uV */
 	{ 440000000,   30,  0, 650000 },	
@@ -109,12 +109,12 @@ int kbase_platform_clk_on(struct kbase_device *kbdev)
 	int err = 0;
 	if (!kbdev) 
  		return -ENODEV; 
-	if(!kbdev->clock)
+	if(!kbdev->clocks[0])
  		return -ENODEV; 
 		
 	if (clk_maliG51_status == 1) 
 		return 0; 
-	err = clk_prepare_enable(kbdev->clock);
+	err = clk_prepare_enable(kbdev->clocks[0]);
 	if(err)
 		dev_err(kbdev->dev, "Failed to prepare and enable clock (%d)\n", err);
 	else		
@@ -126,12 +126,12 @@ int kbase_platform_clk_off(struct kbase_device *kbdev)
 {
 	if (!kbdev) 
  		return -ENODEV; 
-	if(!kbdev->clock)
+	if(!kbdev->clocks[0])
  		return -ENODEV; 
 	
 	if (clk_maliG51_status == 0) 
 		return 0; 
-	clk_disable_unprepare(kbdev->clock);
+	clk_disable_unprepare(kbdev->clocks[0]);
 	clk_maliG51_status = 0; 
 	return 0; 
 }

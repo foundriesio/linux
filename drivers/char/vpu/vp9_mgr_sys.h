@@ -50,10 +50,15 @@
 #define BUS_FOR_VIDEO   1
 
 
-extern void vp9mgr_enable_clock(void);
-extern void vp9mgr_disable_clock(void);
+extern void vp9mgr_enable_clock(int vbus_no_ctrl);
+extern void vp9mgr_disable_clock(int vbus_no_ctrl);
 extern void vp9mgr_get_clock(struct device_node *node);
 extern void vp9mgr_put_clock(void);
+extern void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
+
+extern void vp9mgr_get_reset(struct device_node *node);
+extern void vp9mgr_put_reset(void);
+extern void vp9mgr_hw_reset(void);
 
 extern void vp9mgr_enable_irq(unsigned int irq);
 extern void vp9mgr_disable_irq(unsigned int irq);
@@ -65,7 +70,6 @@ extern void vp9mgr_init_interrupt(void);
 extern int vp9mgr_BusPrioritySetting(int mode, int type);
 extern void vp9mgr_status_clear(unsigned int *base_addr);
 extern int vp9mgr_is_loadable(void);
-extern int vp9mgr_hw_reset(void);
 
 extern void vp9mgr_init_variable(void);
 

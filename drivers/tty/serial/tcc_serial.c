@@ -293,7 +293,7 @@ static void *tcc_free_dma_buf(tcc_dma_buf_t *dma_buf)
 	if (dma_buf) {
 		if (dma_buf->dma_addr != 0) {
 			dma_free_writecombine(0, dma_buf->buf_size,
-					      dma_buf->addr, dma_buf->dma_addr);
+					dma_buf->addr, dma_buf->dma_addr);
 		}
 		memset(dma_buf, 0, sizeof(tcc_dma_buf_t));
 	}
@@ -302,12 +302,16 @@ static void *tcc_free_dma_buf(tcc_dma_buf_t *dma_buf)
 
 static void *tcc_malloc_dma_buf(tcc_dma_buf_t *dma_buf, int buf_size)
 {
+	int i;
 	dbg("%s\n", __func__);
 	if (dma_buf) {
 		tcc_free_dma_buf(dma_buf);
 		dma_buf->buf_size = buf_size;
 		dma_buf->addr = dma_alloc_writecombine(0, dma_buf->buf_size,
 				&dma_buf->dma_addr, GFP_KERNEL);
+		for(i=0; i<buf_size;i++){
+			dma_buf->addr[i]=0;
+		}
 		dbg("Malloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
 				(unsigned int)dma_buf->addr,
 				(unsigned int)dma_buf->dma_addr,
@@ -354,15 +358,15 @@ static void tcc_dma_rx_timeout(void *arg)
 		}
 
 		/*if(state.residue < tp->rx_residue)
-			last = SERIAL_RX_DMA_BUF_SIZE;*/
+		  last = SERIAL_RX_DMA_BUF_SIZE;*/
 
 		for(i = tp->rx_residue; i < last; i++) {
 			ch = buf[i];
 
 			/*if (uart_handle_sysrq_char(port, ch)) {
-				spin_unlock(&tp->rx_lock);
-				return;
-			}*/
+			  spin_unlock(&tp->rx_lock);
+			  return;
+			  }*/
 			//[> put the received char into UART buffer <]
 			uart_insert_char(port, uerstat, UART_LSR_OE, ch, flag);
 			tty_flip_buffer_push(&port->state->port);
@@ -677,12 +681,18 @@ static void tcc_serial_dma_shutdown(struct uart_port *port)
 	if(tp->rx_dma_probed) {
 		dmaengine_terminate_all(tp->chan_rx);
 		tp->rx_dma_probed = false;
+		dma_release_channel(tp->chan_rx);
+		tcc_free_dma_buf(&(tp->rx_dma_buffer));
+		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
 	}
 
 	if(tp->tx_dma_probed) {
 		dmaengine_terminate_all(tp->chan_tx);
+		tp->tx_dma_probed = false;
 		tp->tx_dma_working = false;
 		tp->tx_dma_using = false;
+		dma_release_channel(tp->chan_tx);
+		tcc_free_dma_buf(&(tp->tx_dma_buffer));
 	}
 }
 
@@ -706,8 +716,6 @@ static void tcc_serial_shutdown(struct uart_port *port)
 
 	wr_regl(port, OFFSET_IER, 0x0);
 	free_irq(port->irq, port);
-
-	//    tcc_serial_input_buffer_set(tp->port.line, 0);
 
 	port_used(port) = 0;	// for suspend/resume
 
@@ -854,7 +862,7 @@ static int tcc_run_rx_dma(struct uart_port *port)
 	struct scatterlist *sg = &tp->rx_sg;
 
 	desc = dmaengine_prep_slave_sg(tp->chan_rx, sg, 1,
-				      DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+			DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 
 	desc->callback = tcc_dma_rx_callback;
 	desc->callback_param = port;
@@ -873,7 +881,6 @@ static int tcc_serial_rx_dma_probe(struct uart_port *port)
 	struct dma_slave_config rx_conf;
 	struct scatterlist *sg = &tp->rx_sg;
 	int ret;
-
 
 	if(tp->rx_dma_probed == true) {
 		return 0;
@@ -986,8 +993,10 @@ static int tcc_serial_startup(struct uart_port *port)
 
 	rd_regl(port, OFFSET_IIR);
 
+	//set cpu for processing of irq
+	//irq_set_affinity(port->irq, cpumask_of(1));
 	retval = request_irq(port->irq, tcc_serial_interrupt,
-			     IRQF_SHARED, tp->name , port);
+			IRQF_SHARED, tp->name , port);
 	printk("request serial irq:%d,retval:%d\n", port->irq, retval);
 
 	tp->rx_residue = 0;
@@ -1290,11 +1299,14 @@ static int tcc_serial_remove(struct platform_device *dev)
 	if (port)
 		uart_remove_one_port(&tcc_uart_drv, port);
 
-	if (tp->tx_dma_probed)
+	if (tp->tx_dma_probed){
 		tcc_free_dma_buf(&(tp->tx_dma_buffer));
+		dma_release_channel(tp->chan_tx);
+	}
 
 	if (tp->rx_dma_probed) {
 		tcc_free_dma_buf(&(tp->rx_dma_buffer));
+		dma_release_channel(tp->chan_rx);
 		wr_regl(port, OFFSET_UCR, rd_regl(port, OFFSET_UCR) & ~Hw1);
 
 		// DMA channel is disabled.
@@ -1364,19 +1376,19 @@ static int tcc_serial_resume(struct device *dev)
 		container_of(port, struct tcc_uart_port, port);
 
 #if defined(CONFIG_PM_CONSOLE_NOT_SUSPEND)
-if(!port->cons || (port->cons->index != port->line)){
+	if(!port->cons || (port->cons->index != port->line)){
 #endif
-	if (tp->hclk)
-		clk_prepare_enable(tp->hclk);
-	if (tp->fclk)
-		clk_prepare_enable(tp->fclk);
+		if (tp->hclk)
+			clk_prepare_enable(tp->hclk);
+		if (tp->fclk)
+			clk_prepare_enable(tp->fclk);
 
 #if defined(CONFIG_PM_CONSOLE_NOT_SUSPEND)
-}
+	}
 #endif
 
-*(volatile unsigned long *) (portcfg_base) = uartPortCFG0;
-*(volatile unsigned long *) (portcfg_base + 0x4) = uartPortCFG1;
+	*(volatile unsigned long *) (portcfg_base) = uartPortCFG0;
+	*(volatile unsigned long *) (portcfg_base + 0x4) = uartPortCFG1;
 
 	if (port) {
 		if (port->suspended) {
@@ -1413,7 +1425,7 @@ static int tcc_serial_portcfg(struct device_node *np, struct uart_port *port)
 
 	if(of_property_read_u32(np, "port-mux", &port_mux) == 0) {
 		dbg("%s, port_mux:%d\n", __func__, port_mux);
-		
+
 		portcfg_base = ioremap(TCC_PA_UARTPORTCFG, 0x8);
 
 		if(port->line < 4) {
@@ -1763,7 +1775,7 @@ static struct console tcc_serial_console = {
  */
 static int tcc_console_init(void)
 {
-//	dbg("%s\n", __func__);
+	//	dbg("%s\n", __func__);
 
 	register_console(&tcc_serial_console);
 

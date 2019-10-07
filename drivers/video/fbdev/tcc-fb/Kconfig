@@ -182,6 +182,13 @@ config TCC_VIDEO_DISPLAY_DEINTERLACE_MODE
 	help
 	  It makes the interlaced video can be displayed smoothly.
 
+config TCC_VSYNC_DRV_CONTROL_LUT
+    bool "VSYNC driver controls lookup table to supports HDR"
+	depends on TCC_VIDEO_DISPLAY_BY_VSYNC_INT && TCC_LUT_DRV && TCC_HDMI_DRIVER_V2_0
+	default n
+	help
+	  VSYNC driver can controls lookup table to plug-in or unplug to VIDEO RDMA
+
 config TCC_VIQE_FOR_SUB_M2M
 	bool "Support VIQE1 for SUB_M2M"
 	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X

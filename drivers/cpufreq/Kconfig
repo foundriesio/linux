@@ -52,6 +52,13 @@ choice
 	  This option sets which CPUFreq governor shall be loaded at
 	  startup. If in doubt, select 'performance'.
 
+config CPU_FREQ_DEFAULT_GOV_BOOST
+	bool "boost"
+	select CPU_FREQ_GOV_BOOST
+	help
+	  Use the CPUFreq governor 'boost' as default. This enables the boost
+	  mode and sets the frequency statically to the boost frequency.
+
 config CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 	bool "performance"
 	select CPU_FREQ_GOV_PERFORMANCE
@@ -112,6 +119,12 @@ config CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 	  governor will be 'performance'.
 
 endchoice
+
+config CPU_FREQ_GOV_BOOST
+	tristate "'boost' governor"
+	help
+	  This cpufreq governor enables the boost mode and sets the frequency
+	  statically to the boost frequency.
 
 config CPU_FREQ_GOV_PERFORMANCE
 	tristate "'performance' governor"

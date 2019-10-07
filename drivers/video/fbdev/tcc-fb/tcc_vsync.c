@@ -130,6 +130,28 @@ static struct tcc_lcdc_image_update last_backup;
 #endif
 #endif
 
+
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+#include <video/tcc/tcc_lut_ioctl.h>
+#define UI_LUT 			LUT_COMP0
+#define UI_LUT_PLUGIN_CH 	0
+#define VIDEO_LUT 		LUT_COMP1
+#define VIDEO_LUT_PLUGIN_CH 	3
+
+static int debug_lut = 0;
+#define lut_prinfo(msg, ...) if (debug_lut) { pr_info("\x1b[1;38m TCC VSYNC: \x1b[0m" msg, ##__VA_ARGS__); }
+
+struct vsync_lut_into_t {
+	int content; /* 0: SDR, 1: HDR */
+	int output; /* 0: SDR, 1: HDR */
+};
+
+static struct vsync_lut_into_t vsync_lut_into = {0, };
+
+extern int lut_drv_api_get_plugin(unsigned int lut_number);
+extern int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch);
+#endif
+
 /*******			define extern symbol	******/
 #if defined(CONFIG_FB_TCC_COMPOSITE)
 extern void tcc_composite_set_bypass(char bypass_mode);
@@ -167,6 +189,7 @@ static int debug_v = 0;
 #define vprintk(msg...) if (debug_v) { printk( "tcc_vsync: " msg); }
 static int debug = 0;
 #define dprintk(msg...) if (debug) { printk( "tcc_vsync: " msg); }
+#define dprintk_ext(msg...) if (debug) { printk( "tcc_vsync_ext: " msg); }
 #if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 #define dprintk_drop(msg...) if (1) { printk( "tcc_vsync: " msg); }
 #define dprintk_dv_transition(msg...) if (0) { printk( "dv_transition: " msg); }
@@ -233,6 +256,89 @@ struct tcc_vsync_display_info_t vsync_vioc0_disp;
 
 static int tcc_vsync_mvc_status = 0;
 static int tcc_vsync_mvc_overlay_priority = 0;
+
+
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+static int vsync_deinit_lut(void)
+{
+	int lut_status = lut_drv_api_get_plugin(VIDEO_LUT);
+
+	lut_prinfo("%s \r\n", __func__);
+	if(lut_status == (VIOC_RDMA00 + UI_LUT_PLUGIN_CH)) {
+		lut_prinfo("%s ulplug video_lut \r\n", __func__);
+		lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
+	}
+	memset(&vsync_lut_into, 0, sizeof(vsync_lut_into));
+}
+
+static int vsync_process_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pImage)
+{
+	int ret = -1;
+	int lut_status, content, output;
+	hevc_userdata_output_t *uData = NULL;
+	do {
+		if(p == NULL) {
+			break;
+		}
+		if(pImage == NULL) {
+			break;
+		}
+
+		uData = &pImage->private_data.userData_Info;
+
+		/* check vsync start */
+		if(p->isVsyncRunning == 0) {
+			break;
+		}
+
+		if( TCC_OUTPUT_HDMI != Output_SelectMode ) {
+			break;
+		}
+
+		/* Check current state */
+		lut_status = lut_drv_api_get_plugin(UI_LUT);
+		if(lut_status == (VIOC_RDMA00 + UI_LUT_PLUGIN_CH)) {
+			/* Display is HDR : SDR to HDR */
+			output = 1;
+			lut_prinfo("display is HDR\r\n");
+		} else {
+			/* Display is SDR : SDR to SDR */
+			output = 0;
+			lut_prinfo("display is SDR\r\n");
+		}
+
+		/* HDR support */
+		if( pImage != NULL &&
+			pImage->private_data.optional_info[VID_OPT_HAVE_USERDATA] == 1 ) {
+			/* Content is HDR */
+			content = 1;
+			//lut_prinfo("content is HDR\r\n");
+		} else {
+			/* Content is SDR */
+			content = 0;
+			//lut_prinfo("content is SDR\r\n");
+		}
+
+		if(vsync_lut_into.content != content ||
+				vsync_lut_into.output != output) {
+
+			if(content == 0 && output == 1) {
+				/* SDR -> HDR */
+				lut_prinfo("%s contents is SDR, display is HDR >> plugin video_lut \r\n", __func__);
+				lut_drv_api_set_plugin(VIDEO_LUT, 1, VIDEO_LUT_PLUGIN_CH);
+			} else {
+				lut_prinfo("%s contents is %s, display is Ts >> unplug video_lut \r\n",
+						__func__, (content==1)?"HDR":"SDR", (output==1)?"HDR":"SDR");
+				lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
+			}
+
+			/* Store current stae */
+			vsync_lut_into.content = content;
+			vsync_lut_into.output = output;
+		}
+	} while(0);
+}
+#endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 #include "../../../char/hdmi_v2_0/include/hdmi_ioctls.h"
@@ -358,8 +464,14 @@ VSYNC_CH_TYPE tcc_vsync_get_video_ch_type(unsigned int lcdc_layer)
 
 static int tcc_vsync_set_max_buffer(tcc_vsync_buffer_t * buffer_t, int buffer_count)
 {
-	buffer_t->max_buff_num = buffer_count;
-	return buffer_count;
+    if (buffer_count > VSYNC_BUFFER_COUNT) {
+		pr_info("max_buffer(%d) is bigger than VSYNC_BUFFER_COUNT(%d)\n",
+			buffer_count, VSYNC_BUFFER_COUNT);
+        buffer_count = VSYNC_BUFFER_COUNT;
+    }
+
+    buffer_t->max_buff_num = buffer_count;
+    return buffer_count;
 }
 
 static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t * buffer_t)
@@ -375,7 +487,6 @@ static int _tcc_vsync_print_all_buffers(tcc_vsync_buffer_t * buffer_t)
 
 static int tcc_vsync_push_buffer(tcc_video_disp *p, tcc_vsync_buffer_t * buffer_t, struct tcc_lcdc_image_update* inputData)
 {
-
 	if(atomic_read(&buffer_t->valid_buff_count) >= buffer_t->max_buff_num || atomic_read( &buffer_t->readable_buff_count) >= buffer_t->max_buff_num)
 	{
 		printk("error: buffer full %d, max %d %d ts %d sync %d (%d)\n",
@@ -386,14 +497,13 @@ static int tcc_vsync_push_buffer(tcc_video_disp *p, tcc_vsync_buffer_t * buffer_
 	}
 
 	memcpy(&(buffer_t->stImage[buffer_t->writeIdx]),(void*)inputData, sizeof(struct tcc_lcdc_image_update) );
-	
+
 	if(++buffer_t->writeIdx >= buffer_t->max_buff_num)
 		buffer_t->writeIdx = 0;
-	
 
 	atomic_inc( &buffer_t->valid_buff_count);
 	atomic_inc( &buffer_t->readable_buff_count);
-	
+
 	return 0;
 }
 
@@ -2305,6 +2415,57 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 #endif
 }
 
+static void print_vsync_input(char *str, struct tcc_lcdc_image_update *pIn)
+{
+#if 0
+	printk("\n %s :: %d\n", str, pIn->private_data.optional_info[VID_OPT_BUFFER_ID]);
+	printk("Layer(%d), Enable(%d), Frame(%d x %d), Image(%d x %d), Offset(%d x %d) \n", 
+				pIn->Lcdc_layer, pIn->enable, pIn->Frame_width, pIn->Frame_height, pIn->Image_width, pIn->Image_height, pIn->offset_x, pIn->offset_y);
+	printk("Addr(0x%x / 0x%x / 0x%x), Fmt(%d), on_the_fly(%d) Crop(%d-%d-%d-%d) \n", pIn->addr0, pIn->addr1, pIn->addr2, pIn->fmt, pIn->on_the_fly,
+				pIn->crop_top, pIn->crop_bottom, pIn->crop_left, pIn->crop_right);
+	printk("Time(%d-%d), First(%d), Buffer_id(%d), overlay_used(%d), outMode(%d), outPath(%d) \n", 
+				pIn->time_stamp, pIn->sync_time, pIn->first_frame_after_seek, pIn->buffer_unique_id, pIn->overlay_used_flag, pIn->outputMode, pIn->output_path);
+	printk("DeIntl(%d), Odd_First(%d), m2m(%d), output_toM(%d), frm_intl(%d), one_field_only(%d) \n", 
+				pIn->deinterlace_mode, pIn->odd_first_flag, pIn->m2m_mode, pIn->output_toMemory, pIn->frameInfo_interlace, pIn->one_field_only_interlace);
+	printk("MVC(%d), base_Addr(0x%x / 0x%x / 0x%x), dest_Addr(0x%x / 0x%x / 0x%x) \n", 
+				pIn->MVCframeView, pIn->MVC_Base_addr0, pIn->MVC_Base_addr1, pIn->MVC_Base_addr2, pIn->dst_addr0, pIn->dst_addr1, pIn->dst_addr2);
+	printk("Max_buff(%d), ex_out(%d), fps(%d), bit_depth(%d), codec_id(%d), bSize_Change(%d) \n", 
+				pIn->max_buffer, pIn->ex_output, pIn->fps, pIn->bit_depth, pIn->codec_id, pIn->bSize_Changed);
+
+	printk("Priv[ %d x %d, fmt %d, offset(0x%x / 0x%x / 0x%x), name(%s), unique_addr(%d), copied(%d) \n", 
+				pIn->private_data.width, pIn->private_data.height, pIn->private_data.format, pIn->private_data.offset[0], pIn->private_data.offset[1], pIn->private_data.offset[2],
+				pIn->private_data.name, pIn->private_data.unique_addr, pIn->private_data.copied);
+	printk("optional_info[%d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d \n", 
+				pIn->private_data.optional_info[VID_OPT_BUFFER_WIDTH], pIn->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
+				pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT], 
+				pIn->private_data.optional_info[VID_OPT_BUFFER_ID], pIn->private_data.optional_info[VID_OPT_TIMESTAMP],
+				pIn->private_data.optional_info[VID_OPT_SYNC_TIME], pIn->private_data.optional_info[VID_OPT_FLAGS], 
+				pIn->private_data.optional_info[VID_OPT_FPS], pIn->private_data.optional_info[VID_OPT_MVC_DISP_IDX], 
+				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_1], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_2],
+				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_DISP_OUT_IDX], pIn->private_data.optional_info[VID_OPT_VPU_INST_IDX],
+				pIn->private_data.optional_info[VID_OPT_HAVE_MC_INFO], pIn->private_data.optional_info[VID_OPT_LOCAL_PLAYBACK], 
+				pIn->private_data.optional_info[VID_OPT_PLAYER_IDX], pIn->private_data.optional_info[VID_OPT_WIDTH_STRIDE], pIn->private_data.optional_info[VID_OPT_HEIGHT_STRIDE],
+				pIn->private_data.optional_info[VID_OPT_BIT_DEPTH], pIn->private_data.optional_info[VID_OPT_HAVE_USERDATA], pIn->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO], 
+				pIn->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO], pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE], pIn->private_data.optional_info[26], pIn->private_data.optional_info[27], 
+				pIn->private_data.optional_info[28], pIn->private_data.optional_info[29]);
+
+	printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d / %04d  %d bpp Attr(%d), #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+			0, 0, pIn->buffer_unique_id, pIn->time_stamp, pIn->sync_time,
+			pIn->private_data.optional_info[VID_OPT_BIT_DEPTH],
+			pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE],
+			pIn->addr0, //pIn->private_data.offset[0],
+			pIn->Frame_width, pIn->Frame_height, //pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
+			pIn->crop_right - pIn->crop_left, //pIn->private_data.optional_info[VID_OPT_BUFFER_WIDTH],
+			pIn->crop_bottom - pIn->crop_top, //pIn->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
+			pIn->fmt, //pIn->private_data.format,
+			pIn->private_data.dolbyVision_info.el_offset[0],
+			pIn->private_data.dolbyVision_info.el_frame_width, pIn->private_data.dolbyVision_info.el_frame_height,
+			pIn->private_data.dolbyVision_info.el_buffer_width, pIn->private_data.dolbyVision_info.el_buffer_height,
+			pIn->private_data.dolbyVision_info.osd_addr[0], pIn->private_data.dolbyVision_info.osd_addr[1],
+			pIn->private_data.dolbyVision_info.reg_addr, pIn->private_data.dolbyVision_info.md_hdmi_addr);
+	#endif
+}
+
 #if  defined(CONFIG_HDMI_DISPLAY_LASTFRAME) || defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
 static int _tcc_vsync_check_region_for_cma(unsigned int start_phyaddr, unsigned int length)
 {
@@ -3539,54 +3700,76 @@ Error:
 }
 #endif
 
-static void print_vsync_input(char *str, struct tcc_lcdc_image_update *pIn)
+static int tcc_vsync_push_main_process(unsigned int cmd, tcc_video_disp *p, struct tcc_lcdc_image_update *input_image, struct tcc_dp_device *dp_device, VSYNC_CH_TYPE type)
 {
-	#if 0
-	printk("\n %s \n", str);
-	printk("Layer(%d), Enable(%d), Frame(%d x %d), Image(%d x %d), Offset(%d x %d) \n", 
-				pIn->Lcdc_layer, pIn->enable, pIn->Frame_width, pIn->Frame_height, pIn->Image_width, pIn->Image_height, pIn->offset_x, pIn->offset_y);
-	printk("Addr(0x%x / 0x%x / 0x%x), Fmt(%d), on_the_fly(%d) Crop(%d-%d-%d-%d) \n", pIn->addr0, pIn->addr1, pIn->addr2, pIn->fmt, pIn->on_the_fly,
-				pIn->crop_top, pIn->crop_bottom, pIn->crop_left, pIn->crop_right);
-	printk("Time(%d-%d), First(%d), Buffer_id(%d), overlay_used(%d), outMode(%d), outPath(%d) \n", 
-				pIn->time_stamp, pIn->sync_time, pIn->first_frame_after_seek, pIn->buffer_unique_id, pIn->overlay_used_flag, pIn->outputMode, pIn->output_path);
-	printk("DeIntl(%d), Odd_First(%d), m2m(%d), output_toM(%d), frm_intl(%d), one_field_only(%d) \n", 
-				pIn->deinterlace_mode, pIn->odd_first_flag, pIn->m2m_mode, pIn->output_toMemory, pIn->frameInfo_interlace, pIn->one_field_only_interlace);
-	printk("MVC(%d), base_Addr(0x%x / 0x%x / 0x%x), dest_Addr(0x%x / 0x%x / 0x%x) \n", 
-				pIn->MVCframeView, pIn->MVC_Base_addr0, pIn->MVC_Base_addr1, pIn->MVC_Base_addr2, pIn->dst_addr0, pIn->dst_addr1, pIn->dst_addr2);
-	printk("Max_buff(%d), ex_out(%d), fps(%d), bit_depth(%d), codec_id(%d), bSize_Change(%d) \n", 
-				pIn->max_buffer, pIn->ex_output, pIn->fps, pIn->bit_depth, pIn->codec_id, pIn->bSize_Changed);
-	printk("Priv[ %d x %d, fmt %d, offset(0x%x / 0x%x / 0x%x), name(%s), unique_addr(%d), copied(%d) \n", 
-				pIn->private_data.width, pIn->private_data.height, pIn->private_data.format, pIn->private_data.offset[0], pIn->private_data.offset[1], pIn->private_data.offset[2],
-				pIn->private_data.name, pIn->private_data.unique_addr, pIn->private_data.copied);
-	printk("optional_info[%d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d - %d/%d/%d/%d/%d \n", 
-				pIn->private_data.optional_info[VID_OPT_BUFFER_WIDTH], pIn->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
-				pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT], 
-				pIn->private_data.optional_info[VID_OPT_BUFFER_ID], pIn->private_data.optional_info[VID_OPT_TIMESTAMP],
-				pIn->private_data.optional_info[VID_OPT_SYNC_TIME], pIn->private_data.optional_info[VID_OPT_FLAGS], 
-				pIn->private_data.optional_info[VID_OPT_FPS], pIn->private_data.optional_info[VID_OPT_MVC_DISP_IDX], 
-				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_1], pIn->private_data.optional_info[VID_OPT_MVC_ADDR_2],
-				pIn->private_data.optional_info[VID_OPT_MVC_ADDR_0], pIn->private_data.optional_info[VID_OPT_DISP_OUT_IDX], pIn->private_data.optional_info[VID_OPT_VPU_INST_IDX],
-				pIn->private_data.optional_info[VID_OPT_HAVE_MC_INFO], pIn->private_data.optional_info[VID_OPT_LOCAL_PLAYBACK], 
-				pIn->private_data.optional_info[VID_OPT_PLAYER_IDX], pIn->private_data.optional_info[VID_OPT_WIDTH_STRIDE], pIn->private_data.optional_info[VID_OPT_HEIGHT_STRIDE],
-				pIn->private_data.optional_info[VID_OPT_BIT_DEPTH], pIn->private_data.optional_info[VID_OPT_HAVE_USERDATA], pIn->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO], 
-				pIn->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO], pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE], pIn->private_data.optional_info[26], pIn->private_data.optional_info[27], 
-				pIn->private_data.optional_info[28], pIn->private_data.optional_info[29]);
+	int ret = 0;
+	int err_type = 0;
 
-	printk("^@New^^^^^^^^^^^^^ @@@ %d/%d, %03d :: TS: %04d / %04d  %d bpp Attr(%d), #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
-			0, 0, pIn->buffer_unique_id, pIn->time_stamp, pIn->sync_time,
-			pIn->private_data.optional_info[VID_OPT_BIT_DEPTH],
-			pIn->private_data.optional_info[VID_OPT_CONTENT_TYPE],
-			pIn->addr0, //pIn->private_data.offset[0],
-			pIn->Frame_width, pIn->Frame_height, //pIn->private_data.optional_info[VID_OPT_FRAME_WIDTH], pIn->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
-			pIn->crop_right - pIn->crop_left, //pIn->private_data.optional_info[VID_OPT_BUFFER_WIDTH],
-			pIn->crop_bottom - pIn->crop_top, //pIn->private_data.optional_info[VID_OPT_BUFFER_HEIGHT],
-			pIn->fmt, //pIn->private_data.format,
-			pIn->private_data.dolbyVision_info.el_offset[0],
-			pIn->private_data.dolbyVision_info.el_frame_width, pIn->private_data.dolbyVision_info.el_frame_height,
-			pIn->private_data.dolbyVision_info.el_buffer_width, pIn->private_data.dolbyVision_info.el_buffer_height,
-			pIn->private_data.dolbyVision_info.osd_addr[0], pIn->private_data.dolbyVision_info.osd_addr[1],
-			pIn->private_data.dolbyVision_info.reg_addr, pIn->private_data.dolbyVision_info.md_hdmi_addr);
+#ifdef CONFIG_USE_SUB_MULTI_FRAME
+	if(type != VSYNC_MAIN) {
+		input_image->m2m_mode = 1;
+		input_image->output_toMemory = 1;
+		input_image->Lcdc_layer = RDMA_VIDEO_SUB;
+	}
+#endif
+
+	if((cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_EXT) || (cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_EXT_KERNEL))
+		print_vsync_input("TCC_LCDC_VIDEO_PUSH_VSYNC_EXT", input_image);
+	else if((cmd == TCC_LCDC_VIDEO_PUSH_RENDER_INFO) || (cmd == TCC_LCDC_VIDEO_PUSH_RENDER_INFO_KERNEL))
+		print_vsync_input("TCC_LCDC_VIDEO_PUSH_RENDER_INFO", input_image);
+	else
+		print_vsync_input("TCC_LCDC_VIDEO_PUSH_VSYNC", input_image);
+	vprintk("%s: PUSH_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", type,
+				input_image->buffer_unique_id, input_image->time_stamp, input_image->sync_time);
+
+	if((err_type = tcc_vsync_push_preprocess(p, dp_device, input_image, type)) < 0)
+		goto TCC_VSYNC_PUSH_ERROR;
+
+#ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
+	tcc_video_info_backup(type, input_image);
+#endif
+
+	if(p->outputMode < 0)
+	{
+		tcc_vsync_push_set_outputMode(p, dp_device, input_image);
+	}
+
+	tcc_vsync_push_preprocess_deinterlacing(p, dp_device, input_image);
+
+	// This is for Display underrun issue.
+	if(!p->deinterlace_mode && !p->output_toMemory )
+	{
+	#if 0
+		if(p->outputMode == Output_SelectMode && 
+			(p->outputMode == TCC_OUTPUT_HDMI || p->outputMode == TCC_OUTPUT_LCD))
+			tca_set_onthefly(pdp_data,&input_image);
+	#else
+			tca_lcdc_set_onthefly(dp_device, input_image);
 	#endif
+	}
+
+	if(tcc_vsync_push_bypass_frame(p, dp_device, input_image, type) > 0)
+		goto PUSH_VIDEO_FORCE;
+
+	if((err_type = tcc_vsync_push_check_error(p, dp_device, input_image)) < 0)
+		goto TCC_VSYNC_PUSH_ERROR;
+
+PUSH_VIDEO_FORCE : 
+	tcc_vsync_push_process(p, dp_device, input_image, type);
+
+TCC_VSYNC_PUSH_ERROR:
+	if(err_type < 0){
+		printk("%s: PUSH Error(%d)_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", err_type, type,
+				input_image->buffer_unique_id, input_image->time_stamp, input_image->sync_time);
+	}
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+	if(err_type == 0) {
+		vsync_process_lut(p, input_image);
+	}
+#endif
+	ret = p->vsync_buffer.writeIdx;
+
+	return ret;
 }
 
 
@@ -3703,13 +3886,14 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				}
 				break ;
 
-		
+
+			case TCC_LCDC_VIDEO_PUSH_VSYNC_EXT:
+			case TCC_LCDC_VIDEO_PUSH_VSYNC_EXT_KERNEL:
 			case TCC_LCDC_VIDEO_PUSH_VSYNC:
 			case TCC_LCDC_VIDEO_PUSH_VSYNC_KERNEL:
 				{
 					struct tcc_lcdc_image_update *input_image = (struct tcc_lcdc_image_update *)kmalloc(sizeof(struct tcc_lcdc_image_update), GFP_KERNEL);
 					struct tcc_dp_device *dp_device = tca_fb_get_displayType(Output_SelectMode);
-					int err_type = 0;
 
 					if(!input_image) {
 						printk("%s-%d :: kmalloc fail \n", __func__, __LINE__);
@@ -3717,7 +3901,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						goto Error;
 					}
 
-					if (cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_KERNEL) {
+					if ((cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_KERNEL) || (cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_EXT_KERNEL)){
 						if (NULL == memcpy((void *)input_image , (const void *)arg, sizeof(struct tcc_lcdc_image_update)))
 						{
 							printk("fatal error :: copy err");
@@ -3736,13 +3920,29 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						}
 					}
 
-					#ifdef CONFIG_USE_SUB_MULTI_FRAME
-					if(type != VSYNC_MAIN) {
-						input_image->m2m_mode = 1;
-						input_image->output_toMemory = 1;
-						input_image->Lcdc_layer = RDMA_VIDEO_SUB;
+					if((cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_EXT) || (cmd == TCC_LCDC_VIDEO_PUSH_VSYNC_EXT_KERNEL))
+					{
+						p->push_ext_count += 1;
+						p->push_ext_infoframe.addr0 = input_image->private_data.offset[0];
+						p->push_ext_infoframe.addr1 = input_image->private_data.offset[1];
+						p->push_ext_infoframe.addr2 = input_image->private_data.offset[2];
+						p->push_ext_infoframe.time_stamp = input_image->private_data.optional_info[VID_OPT_TIMESTAMP];
+						p->push_ext_infoframe.sync_time = input_image->private_data.optional_info[VID_OPT_SYNC_TIME];
+						p->push_ext_infoframe.first_frame_after_seek = (input_image->private_data.optional_info[VID_OPT_FLAGS] & 0x00000001) ?1:0;
+						p->push_ext_infoframe.buffer_unique_id = input_image->private_data.optional_info[VID_OPT_BUFFER_ID];
+						p->push_ext_infoframe.codec_id = input_image->private_data.unique_addr;
+
+						memcpy(input_image, &(p->push_ext_infoframe), sizeof(struct tcc_lcdc_image_update) - sizeof(TCC_PLATFORM_PRIVATE_PMEM_INFO));
 					}
-					#endif
+					else
+					{
+						if(p->push_ext_count > 0) {
+							dprintk_ext("Info :: This is PUSH_VSYNC_EXT mode");
+							ret = 0;
+							kfree((const void*)input_image);
+							goto Error;
+						}
+					}
 
 					if(!p->vsync_started){
 						printk("fatal error :: vsync is not started");
@@ -3751,51 +3951,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						goto Error;
 					}
 
-					print_vsync_input("TCC_LCDC_VIDEO_PUSH_VSYNC", input_image);
-					vprintk("%s: PUSH_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", type,
-								input_image->buffer_unique_id, input_image->time_stamp, input_image->sync_time);
-
-					if((err_type = tcc_vsync_push_preprocess(p, dp_device, input_image, type)) < 0)
-						goto TCC_VSYNC_PUSH_ERROR;
-
-				#ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
-					tcc_video_info_backup(type, input_image);
-				#endif
-
-					if(p->outputMode < 0)
-					{
-						tcc_vsync_push_set_outputMode(p, dp_device, input_image);
-					}
-
-					tcc_vsync_push_preprocess_deinterlacing(p, dp_device, input_image);
-
-					// This is for Display underrun issue.
-					if(!p->deinterlace_mode && !p->output_toMemory )
-					{
-						#if 0
-						if(p->outputMode == Output_SelectMode && 
-							(p->outputMode == TCC_OUTPUT_HDMI || p->outputMode == TCC_OUTPUT_LCD))
-							tca_set_onthefly(pdp_data,&input_image);
-						#else
-							tca_lcdc_set_onthefly(dp_device, input_image);
-						#endif
-					}
-
-					if(tcc_vsync_push_bypass_frame(p, dp_device, input_image, type) > 0)
-						goto PUSH_VIDEO_FORCE;
-
-					if((err_type = tcc_vsync_push_check_error(p, dp_device, input_image)) < 0)
-						goto TCC_VSYNC_PUSH_ERROR;
-
-				PUSH_VIDEO_FORCE : 
-					tcc_vsync_push_process(p, dp_device, input_image, type);
-
-				TCC_VSYNC_PUSH_ERROR:
-					if(err_type < 0){
-						printk("%s: PUSH Error(%d)_%d ioctl ID(%d) - TS(v[%d ms] / s[%d ms]) \n", input_image->Lcdc_layer == RDMA_VIDEO ? "M" : "S", err_type, type,
-								input_image->buffer_unique_id, input_image->time_stamp, input_image->sync_time);
-					}
-					ret = p->vsync_buffer.writeIdx;
+					ret = tcc_vsync_push_main_process(cmd, p, input_image, dp_device, type);
 					kfree((const void*)input_image);
 				}
 				break;
@@ -4076,6 +4232,67 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						goto Error;
 				}
 			#endif
+				break;
+
+			case TCC_LCDC_VIDEO_PUSH_RENDER_INFO:
+			case TCC_LCDC_VIDEO_PUSH_RENDER_INFO_KERNEL:
+				dprintk_ext("TCC_LCDC_VIDEO_PUSH_RENDER_INFO \n");
+				if (cmd == TCC_LCDC_VIDEO_PUSH_RENDER_INFO_KERNEL) {
+					if (NULL == memcpy((void *)&p->push_ext_infoframe , (const void *)arg, sizeof(struct tcc_lcdc_image_update)))
+					{
+						printk("fatal error :: copy err");
+						ret = 0;
+					}
+				} else {
+					if (copy_from_user((void *)&p->push_ext_infoframe, (const void *)arg, sizeof(struct tcc_lcdc_image_update)))
+					{
+						printk("fatal error :: copy err");
+						ret = 0;
+					}
+				}
+
+				if(p->push_ext_status_paused)
+				{
+					struct tcc_lcdc_image_update *input_image = &p->push_ext_infoframe;
+					struct tcc_dp_device *dp_device = tca_fb_get_displayType(Output_SelectMode);
+					
+					input_image->addr0 = tccvid_lastframe[type].LastImage.private_data.offset[0];
+					input_image->addr1 = tccvid_lastframe[type].LastImage.private_data.offset[1];
+					input_image->addr2 = tccvid_lastframe[type].LastImage.private_data.offset[2];
+					input_image->time_stamp = tccvid_lastframe[type].LastImage.private_data.optional_info[VID_OPT_TIMESTAMP];
+					input_image->sync_time = tccvid_lastframe[type].LastImage.private_data.optional_info[VID_OPT_SYNC_TIME];
+					input_image->first_frame_after_seek = (tccvid_lastframe[type].LastImage.private_data.optional_info[VID_OPT_FLAGS] & 0x00000001) ?1:0;
+					input_image->buffer_unique_id = tccvid_lastframe[type].LastImage.private_data.optional_info[VID_OPT_BUFFER_ID];
+					input_image->codec_id = tccvid_lastframe[type].LastImage.private_data.unique_addr;
+
+					memcpy(&input_image->private_data, &tccvid_lastframe[type].LastImage.private_data, sizeof(TCC_PLATFORM_PRIVATE_PMEM_INFO));
+
+					if(!p->vsync_started){
+						printk("fatal error :: vsync is not started");
+						ret = 0;
+						goto Error;
+					}
+
+					ret = tcc_vsync_push_main_process(cmd, p, input_image, dp_device, type);
+				}
+				break;
+
+			case TCC_LCDC_VIDEO_SET_STATUS_PAUSE:
+			case TCC_LCDC_VIDEO_SET_STATUS_PAUSE_KERNEL:
+				dprintk_ext("TCC_LCDC_VIDEO_SET_STATUS_PAUSE \n");
+				if (cmd == TCC_LCDC_VIDEO_SET_STATUS_PAUSE_KERNEL) {
+					if (NULL == memcpy((void *)&p->push_ext_status_paused , (const void *)arg, sizeof(unsigned int)))
+					{
+						printk("fatal error :: copy err");
+						ret = 0;
+					}
+				} else {
+					if (copy_from_user((void *)&p->push_ext_status_paused, (const void *)arg, sizeof(unsigned int)))
+					{
+						printk("fatal error :: copy err");
+						ret = 0;
+					}
+				}
 				break;
 
 			default:

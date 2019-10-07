@@ -60,7 +60,8 @@
 #define TX_BUFFER_BYTES					(PERIOD_BYTES * TX_PERIOD_CNT)	//bytes
 #define RX_BUFFER_BYTES					(PERIOD_BYTES * RX_PERIOD_CNT)	//bytes
 
-#define WRITE_TIMEOUT 	(1000)
+#define WRITE_TIMEOUT 	(1000)	//ms
+#define FIFO_STATUS_CHECK_DELAY 	(30) //us
 
 //#define LLI_DEBUG
 
@@ -429,7 +430,7 @@ static int tcc_asrc_m2m_push_data_from_user(struct tcc_asrc_t *asrc, int asrc_pa
 int tcc_asrc_m2m_pop_data(struct tcc_asrc_t * asrc, int asrc_pair, void *data, uint32_t size)
 {
 	uint32_t rxsize = (size < asrc->pair[asrc_pair].stat.readable_size) ? size : asrc->pair[asrc_pair].stat.readable_size;
-	int ret;
+	//int ret;
 
 	dprintk("%s - size:%d\n", __func__, size);
 
@@ -449,7 +450,7 @@ int tcc_asrc_m2m_pop_data(struct tcc_asrc_t * asrc, int asrc_pair, void *data, u
 
 	memcpy(data, asrc->pair[asrc_pair].rxbuf.virt + asrc->pair[asrc_pair].stat.read_offset, rxsize);
 
-	rxsize -= (uint32_t)ret;
+	//rxsize -= (uint32_t)ret;
 
 	asrc->pair[asrc_pair].stat.read_offset += rxsize;
 	asrc->pair[asrc_pair].stat.readable_size -= rxsize;
@@ -596,14 +597,26 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 
 	while(1) {
 		asrc_fifo_in_status = tcc_asrc_get_fifo_in_status(asrc->asrc_reg, asrc_pair);
-		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
 
-		if ((asrc_fifo_in_status & (1 << 30)) && (asrc_fifo_out_status & (1 << 30))) {
-			dprintk("FIFO In/Out Cleared\n");
+		if (asrc_fifo_in_status & (1 << 30)) {
+			dprintk("FIFO In Cleared\n");
 			break;
 		} 	
 	}
 
+	udelay(FIFO_STATUS_CHECK_DELAY);
+
+	while(1) {
+		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
+
+		if (asrc_fifo_out_status & (1 << 30)) {
+			dprintk("FIFO Out Cleared\n");
+			break;
+		} 	
+	}
+
+	udelay(FIFO_STATUS_CHECK_DELAY);
+	
 	tcc_asrc_rx_dma_halt(asrc, asrc_pair);
 
 	while(1) {

@@ -1570,6 +1570,9 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 			reset_change = true;
 	}
 	if (!status && !reset_change) {
+#ifdef CONFIG_TCC_EH_ELECT_TST
+		xhci_err(xhci, "%s: ERROR!! Timeout port polling.\n", __func__); //for USB 3.0 link test
+#endif
 		xhci_dbg(xhci, "%s: stopping port polling.\n", __func__);
 		clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
 	}

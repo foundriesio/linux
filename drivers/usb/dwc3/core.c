@@ -881,7 +881,9 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	}
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUCTL2);
-	reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed. 
+	//reg |= 0x01F80000; //HP TIMER & PM TIMER spec is changed. 
+	reg &= 0x0000FFFF; //HP TIMER & PM TIMER spec is changed. 
+	reg |= 0x03080000; //HP TIMER & PM TIMER spec is changed. 
 	dwc3_writel(dwc->regs, DWC3_GUCTL2, reg);
 
 	return 0;

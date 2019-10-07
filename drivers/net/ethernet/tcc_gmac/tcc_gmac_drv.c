@@ -1283,7 +1283,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 		// for kernel-v4.14
 		if (bus->mdio_map[phy_addr]) {
-			phy = (struct phy_device *)bus->mdio_map[phy_addr];
+			phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
 			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
 			break;    
 		} 
@@ -1300,8 +1300,6 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 			pr_info("No Phy found\n");
 			return -1;
 	}
-
-
 
 //	snprintf(bus_id, MII_BUS_ID_SIZE, "tcc_gmac-%x", priv->bus_id);
 //	snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id, priv->phy_addr);
@@ -2403,7 +2401,7 @@ out_resume:
 }
 
 
-long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
+static long tcc_gmac_misc_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 {
 	long ret=0;
 	unsigned int rev_value;

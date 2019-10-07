@@ -611,6 +611,14 @@
 			no-map;
 		};
 
+		reserved_ramblk: ramblk {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "ramblk";
+			size = <0>;
+			no-map;
+			status = "disabled";
+		};
+
 		/*
 		reserved_cma: linux,cma {
 			compatible = "shared-dma-pool";
@@ -686,6 +694,12 @@
 			status = "disabled";
 		};
 
+	};
+
+	ramblk: ramblk {
+		compatible = "telechips,ramblk";
+		memory-region = <&reserved_ramblk>;
+		status = "disabled";
 	};
 
 	tcc_pm {
@@ -1451,6 +1465,13 @@
 		device-name = "switch_reverse_ipc";
 		mbox-names ="switch_reverse_ipc";
 		mboxes = <&mbox1 TCC_MBOX1_CH_SWITCH>;
+	};
+
+	/* snor updater driver*/
+	snor_updater: snor_updater {
+		compatible = "telechips,snor_updater";
+		mbox-names ="snor-update-mbox";
+		mboxes = <&mbox0 TCC_MBOX0_CH_SNOR_UPDATE>;
 	};
 
 	i2c0: i2c@16300000 {
@@ -2788,6 +2809,8 @@
 		reg = <0x12009000 0x800>,
 			/* VIOC_REMAP */
 			  <0x12045000 0x800>;
+		dev_max = <2>; /* 0: DEV0, 1: DEV1 and 2: DEV2 */
+		vioc_max = <4>; /* 3: VIOC_LUT0, 4: VIOC_LUT1, 5: VIOC_LUT2 and 6: VIOC_LUT3 */
 		status = "okay";
 	};
 
@@ -3087,6 +3110,8 @@
 		reg = <0x15000000 0x4000>;
 		interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CODA &clk_vpu VIDEOBUS_CODA_BUS &clk_vpu VIDEOBUS_CODA_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_CODA_BUS>, <&vpubus_rst VIDEOBUS_CODA_CORE>;
+		reset-names = "xoda_bus", "xoda_core";
 	};
 
 	hevc_dev_mgr {
@@ -3094,6 +3119,8 @@
 		reg = <0x15200000 0xA000>;
 		interrupts = <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVC &clk_fbus FBUS_BHEVC &clk_vpu VIDEOBUS_HEVC_BUS &clk_vpu VIDEOBUS_HEVC_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_HEVC_BUS>, <&vpubus_rst VIDEOBUS_HEVC_CORE>;
+		reset-names = "hevc_bus", "hevc_core";
 	};
 
 	jpu_dev_mgr {
@@ -3101,6 +3128,8 @@
 		reg = <0x15180000 0x1000>;
 		interrupts = <GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_vpu VIDEOBUS_JPEG>;
+		resets = <&vpubus_rst VIDEOBUS_JPEG>;
+		reset-names = "jpeg";
 	};
 
 	tcc_switchmanager {

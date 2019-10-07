@@ -92,3 +92,4 @@ obj-$(CONFIG_TCC_DRAM_TOOL) 	+= tcc_dram_tool.o
 
 obj-$(CONFIG_TCC_HSIO_CIPHER)	+= tcc_cipher/
 obj-$(CONFIG_TCC_HSM)			+= tcc_hsm/
+obj-$(CONFIG_TCC_SNOR_UPDATER) += tcc_snor_updater/

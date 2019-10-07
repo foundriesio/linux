@@ -2322,6 +2322,8 @@
 		reg = <0x15000000 0x4000>;
 		interrupts = <GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_BODA &clk_vpu VIDEOBUS_BODA_BUS &clk_vpu VIDEOBUS_BODA_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_BODA_BUS>, <&vpubus_rst VIDEOBUS_BODA_CORE>;
+		reset-names = "xoda_bus", "xoda_core";
 	};
 
 	jpu_dev_mgr {
@@ -2329,6 +2331,8 @@
 	    reg = <0x15180000 0x1000>;
 	    interrupts = <GIC_SPI 132 IRQ_TYPE_LEVEL_HIGH>;
 	    clocks = <&clk_fbus FBUS_VBUS &clk_vpu VIDEOBUS_JPEG>;
+		resets = <&vpubus_rst VIDEOBUS_JPEG>;
+		reset-names = "jpeg";
 	};
 
 	vpu_4k_d2_dev_mgr {
@@ -2336,6 +2340,8 @@
 		reg = <0x15200000 0xA000>;
 		interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVC &clk_fbus FBUS_BHEVC &clk_vpu VIDEOBUS_HEVC_BUS &clk_vpu VIDEOBUS_HEVC_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_HEVC_BUS>, <&vpubus_rst VIDEOBUS_HEVC_CORE>;
+		reset-names = "hevc_bus", "hevc_core";
 	};
 
 	/*

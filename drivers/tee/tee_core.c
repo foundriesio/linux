@@ -866,8 +866,13 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 }
 
+#ifdef CONFIG_ARM64
+#define pgprot_cached(prot) \
+	__pgprot_modify(prot, PTE_ATTRINDX_MASK, PTE_ATTRINDX(MT_NORMAL) | PTE_PXN | PTE_UXN)
+#else
 #define pgprot_cached(prot) \
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_WRITEALLOC)
+#endif
 
 static void tee_mmap_mem_open(struct vm_area_struct *vma)
 {

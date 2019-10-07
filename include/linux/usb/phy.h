@@ -178,7 +178,7 @@ struct usb_phy {
 	void (*bit_set_phy)(void __iomem *base, u32 offset, u32 value);
 	void (*bit_clear_phy)(void __iomem *base, u32 offset, u32 value);
 	void __iomem *(*get_base)(struct usb_phy *phy);
-#if defined (CONFIG_ARCH_TCC803X)
+#if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X) 
 	/* For PMIC gpio, Need to configuration after da9063 intializing */
 	int (*set_vbus_resource)(struct usb_phy *phy);
 	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address);

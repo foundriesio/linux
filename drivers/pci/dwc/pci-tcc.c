@@ -42,7 +42,6 @@ struct tcc_pcie {
 	bool				using_phy;
 	unsigned int		using_ext_ref_clk;
 	unsigned int		for_si_test;
-	unsigned int		suspend_mode;
 	struct phy		*phy;
 	unsigned 		*suspend_regs;
 };
@@ -126,21 +125,6 @@ struct tcc_pcie {
 #define PCIE_CFG_INTX_MASK		(0xF<<12|0xF<<8)
 
 
-static unsigned int pcie_i2c_full_reg[] = {
-	0x01, 0x00, 0x24, 0xe3, 0xb9, 0x69, 0x94, 0x19,
-	0x66, 0x13, 0x40, 0x1f, 0x38, 0x69, 0xfc, 0x00,
-	0x3b, 0xff, 0x0d, 0x00, 0x00, 0x04, 0x01, 0x04,
-	0x00, 0x43, 0x00,
-};
-
-static unsigned int pcie_phy_full_reg[] = {
-	0x21, 0x16, 0x6a, 0xfc, 0x48, 0x42, 0xbc, 0x20,
-	0xc4, 0x0c, 0x00, 0x81, 0x42, 0x00, 0x00, 0x0c,
-	0x40, 0x35, 0xfa, 0x20, 0x87, 0x3f, 0xb0, 0xa0,
-	0x00, 0x00, 0x08, 0x42, 0x00, 0x32, 0x04, 0x09,
-	0x00, 0x12, 0x00,
-};
-
 static inline void tcc_phy_writel(struct tcc_pcie *pcie, u32 val, u32 reg)
 {
 	writel(val, pcie->phy_base + reg);
@@ -159,25 +143,6 @@ static inline void tcc_cfg_write(struct tcc_pcie *pcie, u32 val, u32 reg, u32 ma
 static inline u32 tcc_cfg_read(struct tcc_pcie *pcie, u32 reg, u32 mask)
 {
 	return readl(pcie->cfg_base + reg) & mask;
-}
-
-static void tcc_pcie_assert_core_reset(struct tcc_pcie *tp)
-{
-	u32 val;
-
-	// Default value of ven_msg_fmt is wrong. must set to 0
-	tcc_cfg_write(tp, 0, PCIE_CFG00, PCIE_CFG00_VEN_MSG_FMT);
-
-	tcc_cfg_write(tp, 0, PCIE_CFG44, PCIE_CFG44_CFG_POWER_UP_RST);
-
-	for (val = 1 ; val < ARRAY_SIZE(pcie_i2c_full_reg) ; val++) {
-		if (val == 0xd)
-			continue;
-		tcc_phy_writel(tp, pcie_i2c_full_reg[val], val*4);
-	}
-
-	for (val = 1 ; val < ARRAY_SIZE(pcie_phy_full_reg) ; val++)
-		tcc_phy_writel(tp, pcie_phy_full_reg[val], val*4 + 0x20);
 }
 
 static void tcc_pcie_assert_phy_reset(struct tcc_pcie *tp)
@@ -212,7 +177,7 @@ static void tcc_pcie_power_off_phy(struct tcc_pcie *tp, int pwdn)
 	if (!pwdn)
 		return;
 
-	tcc_pcie_assert_phy_reset(tp);
+	//tcc_pcie_assert_phy_reset(tp);
 	tcc_cfg_write(tp, PCIE_CFG08_PHY_POWER_OFF, PCIE_CFG08, PCIE_CFG08_PHY_POWER_OFF);
 }
 
@@ -331,6 +296,7 @@ static int tcc_pcie_establish_link(struct tcc_pcie *tp)
 	}
 
 	printk("Link up\n");
+	clk_disable_unprepare(tp->clk_aux);
 
 	return 0;
 }
@@ -562,7 +528,6 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "using_ext_ref_clk", &tp->using_ext_ref_clk);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "for_si_test", &tp->for_si_test);
-	ret = of_property_read_u32(pdev->dev.of_node, "suspend_mode", &tp->suspend_mode);
 
 	tp->clk_phy = devm_clk_get(&pdev->dev, "pcie_phy");
 	if (IS_ERR(tp->clk_phy)) {
@@ -581,7 +546,7 @@ static int tcc_pcie_probe(struct platform_device *pdev)
 		ret = PTR_ERR(tp->clk_aux);
 		goto fail_clk_phy;
 	}
-	clk_set_rate(tp->clk_aux, 250000000);
+	clk_set_rate(tp->clk_aux, 125000000);
 	ret = clk_prepare_enable(tp->clk_aux);
 	if (ret)
 		goto fail_clk_phy;
@@ -671,8 +636,6 @@ static int __exit tcc_pcie_remove(struct platform_device *pdev)
 	
 	disable_irq(pp->irq);
 
-	tcc_pcie_assert_core_reset(tp);
-
 	clk_disable_unprepare(tp->clk_phy);
 	clk_disable_unprepare(tp->clk_hsio);
 
@@ -699,17 +662,14 @@ static int tcc_pcie_suspend_noirq(struct device *dev)
 	disable_irq(pp->irq);
 	memcpy(tp->suspend_regs, pci->dbi_base, TCC_PCIE_REG_BACKUP_SIZE);
 
-	if(tp->suspend_mode){
-	    gpio_direction_output(tp->reset_gpio, 0);
-	    tcc_pcie_power_off_phy(tp, 1);
-	}
+    gpio_direction_output(tp->reset_gpio, 0);
+	tcc_pcie_power_off_phy(tp, 1);
+
+	writel(0, tp->cfg_base + 0x1C); // CACTIVE Clear
+	mdelay(50);
 
 	if(!tp->using_ext_ref_clk)
 	    clk_disable_unprepare(tp->clk_ref_ext);
-	if(tp->suspend_mode){
-	    clk_disable_unprepare(tp->clk_apb);
-	    clk_disable_unprepare(tp->clk_aux);
-	}
 	clk_disable_unprepare(tp->clk_phy);
 	clk_disable_unprepare(tp->clk_hsio);
 
@@ -726,45 +686,29 @@ static int tcc_pcie_resume_noirq(struct device *dev)
 
 	clk_prepare_enable(tp->clk_hsio);
 	clk_prepare_enable(tp->clk_phy);
-	if(tp->suspend_mode){	
-	    clk_prepare_enable(tp->clk_aux);
-	    clk_prepare_enable(tp->clk_apb);
-	    tcc_pcie_power_on_phy(tp);
-	}
 	if(!tp->using_ext_ref_clk)	
 	    clk_prepare_enable(tp->clk_ref_ext);
 
+	clk_prepare_enable(tp->clk_aux);
+
 	if (!IS_ERR(tp->rst)) {
 		reset_control_assert(tp->rst);
-		/* TODO: add some delay if needed */
+		mdelay(10);
 		reset_control_deassert(tp->rst);
 	}
 
 	/* re-establish link */
-	if(tp->suspend_mode){	
 	if (IS_ENABLED(CONFIG_PCI_MSI)) {
 		if (pp->ops->msi_host_init) {
-//			int ret = 0;
-//			ret = pp->ops->msi_host_init(pp, &dw_pcie_msi_chip);
-//			if (ret < 0)
-//				return ret;
+		//	int ret = 0;
+		//	ret = pp->ops->msi_host_init(pp, &dw_pcie_msi_chip);
+		//	if (ret < 0)
+		//		return ret;
 		}
 	}
 
-   	    if (pp->ops->host_init) {
-		    tcc_pcie_establish_link(tp);
-		    tcc_pcie_enable_interrupts(tp);
-	    }
-
-	    tcc_pcie_cfg_write(pp, PCI_BASE_ADDRESS_0, 4, 0);
-
-	    /* program correct class for RC */
-	    tcc_pcie_cfg_write(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
-
-	    tcc_pcie_cfg_read(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
-	    val |= PORT_LOGIC_SPEED_CHANGE;
-	    tcc_pcie_cfg_write(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
-	}
+    tcc_pcie_establish_link(tp);
+    tcc_pcie_enable_interrupts(tp);
 
 	if (tp->suspend_regs)
 		memcpy(pci->dbi_base, tp->suspend_regs, TCC_PCIE_REG_BACKUP_SIZE);

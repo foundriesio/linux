@@ -29,14 +29,6 @@
 #include "tcc_adma.h"
 #include "tcc_adma_pcm.h"
 #include "asrc/tcc_asrc_drv.h"
-//#include "./asrc/tcc_asrc_m2m.h"
-
-//define: Playback/Capture by hw:0,0
-//#define TEST_BY_ALSA
-
-//#define FILE_PCM_PLAYBACK   "/dev/snd/pcmC0D0p"
-//#define FILE_PCM_CAPTURE    "/dev/snd/pcmC0D0c"
-//#define FILE_CONTROL        "/dev/snd/controlC0"
 
 //TCC803x ASRC block has 4 pairs.
 //Only 1 pair of TCC803x ASRC block supports multichannel.
@@ -72,9 +64,16 @@
 
 //This is for is_flag in structure of tcc_asrc_m2m_pcm
 #define IS_TRIG_STARTED 0x01
-#define IS_A7S_STARTED 0x02
+#define IS_A7S_STARTED 	0x02
 #define IS_ASRC_STARTED 0x04
 #define IS_ASRC_RUNNING 0x08
+
+#define IS_FLAG_GET 	0x00	// get is_flag value.
+#define IS_FLAG_RELEASE 0x01	// must be released.
+#define IS_FLAG_SET 	0x02	// must be set.
+#define IS_FLAG_RESET 	0x04	// must be set 0.
+#define IS_FLAG_APPLY 	0x08	// some part released. It is helpful when multi-is_flag released.
+//#define IS_FLAG_EDIT (IS_FLAG_GET | IS_FLAG_RELEASE | IS_FLAG_SET | IS_FLAG_RESET | IS_FLAG_APPLY)
 
 typedef enum {
 	TCC_ASRC_M2M_7_1CH = 0,
@@ -181,46 +180,5 @@ struct tcc_asrc_m2m_pcm {
 #endif
 	spinlock_t foot_locked;
 };
-#if 0
-struct tcc_asrc_m2m_pcm {
-	struct platform_device *pdev;
-	struct device *dev;
-	unsigned int dev_id;
-	struct tcc_asrc_pair_id *pair_id;
-	struct tcc_asrc_t *asrc;
-	struct tcc_asrc_param_t *asrc_m2m_param;
-	struct snd_pcm_substream *asrc_substream;
-	struct tcc_mid_buf *middle;
-	struct tcc_param_info *src;
-	struct tcc_param_info *dst;
-	struct tcc_app_buffer_info *app;
-	struct task_struct *kth_id;
-#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-	struct mbox_audio_device *mbox_audio_dev;
-    unsigned short mbox_cmd_type;
-	struct tcc_amd_cmdtype *amd_cmdtype;
-#endif
-	bool first_open;
-	char is_flag;
-	/*
-	#define IS_TRIG_STARTED 0x01
-	#define IS_A7S_STARTED 0x02
-	#define IS_ASRC_STARTED 0x04
-	#define IS_ASRC_RUNNING 0x08
-	*/
-	unsigned int interval; //ms
-	ssize_t Bwrote; //Bytes 
-	ssize_t Btail; //Bytes 
-#ifdef FOOTPRINT_LINKED_LIST
-	List *asrc_footprint;	//for TX
-#else
-	struct footprint *asrc_footprint;	//for TX
-#endif
-	wait_queue_head_t kth_wq;
-	atomic_t wakeup;
-	spinlock_t is_locked;
-	spinlock_t foot_locked;
-};
-#endif
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_

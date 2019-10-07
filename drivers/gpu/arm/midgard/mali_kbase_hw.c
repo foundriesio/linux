@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2012-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2012-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -62,9 +62,6 @@ void kbase_hw_set_features_mask(struct kbase_device *kbdev)
 		case GPU_ID2_PRODUCT_TGOX:
 			features = base_hw_features_tGOx;
 			break;
-		case GPU_ID2_PRODUCT_TKAX:
-			features = base_hw_features_tKAx;
-			break;
 		case GPU_ID2_PRODUCT_TEGX:
 			features = base_hw_features_tEGx;
 			break;
@@ -80,8 +77,11 @@ void kbase_hw_set_features_mask(struct kbase_device *kbdev)
 		case GPU_ID2_PRODUCT_TULX:
 			features = base_hw_features_tULx;
 			break;
-		case GPU_ID2_PRODUCT_TBOX:
-			features = base_hw_features_tBOx;
+		case GPU_ID2_PRODUCT_TDUX:
+			features = base_hw_features_tDUx;
+			break;
+		case GPU_ID2_PRODUCT_TODX:
+			features = base_hw_features_tODx;
 			break;
 		case GPU_ID2_PRODUCT_TIDX:
 			features = base_hw_features_tIDx;
@@ -126,6 +126,19 @@ void kbase_hw_set_features_mask(struct kbase_device *kbdev)
 
 	for (; *features != BASE_HW_FEATURE_END; features++)
 		set_bit(*features, &kbdev->hw_features_mask[0]);
+
+#if defined(CONFIG_MALI_JOB_DUMP) || defined(CONFIG_MALI_VECTOR_DUMP)
+	/* When dumping is enabled, need to disable flush reduction optimization
+	 * for GPUs on which it is safe to have only cache clean operation at
+	 * the end of job chain.
+	 * This is required to make job dumping work. There is some discrepancy
+	 * in the implementation of flush reduction optimization due to
+	 * unclear or ambiguous ARCH spec.
+	 */
+	if (kbase_hw_has_feature(kbdev, BASE_HW_FEATURE_CLEAN_ONLY_SAFE))
+		clear_bit(BASE_HW_FEATURE_FLUSH_REDUCTION,
+			&kbdev->hw_features_mask[0]);
+#endif
 }
 
 /**
@@ -197,20 +210,24 @@ static const enum base_hw_issue *kbase_hw_get_issues_for_new_id(
 		  {GPU_ID2_VERSION_MAKE(1, 0, 0), base_hw_issues_tGOx_r1p0},
 		  {U32_MAX, NULL} } },
 
-		{GPU_ID2_PRODUCT_TKAX,
-		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tKAx_r0p0},
-		  {U32_MAX, NULL} } },
-
 		{GPU_ID2_PRODUCT_TEGX,
 		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tEGx_r0p0},
 		  {U32_MAX, NULL} } },
 
 		{GPU_ID2_PRODUCT_TTRX,
 		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tTRx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 0, 3), base_hw_issues_tTRx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 1, 0), base_hw_issues_tTRx_r0p1},
+		  {GPU_ID2_VERSION_MAKE(0, 1, 1), base_hw_issues_tTRx_r0p1},
 		  {U32_MAX, NULL} } },
 
 		{GPU_ID2_PRODUCT_TNAX,
 		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tNAx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 0, 3), base_hw_issues_tNAx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 0, 4), base_hw_issues_tNAx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 0, 5), base_hw_issues_tNAx_r0p0},
+		  {GPU_ID2_VERSION_MAKE(0, 1, 0), base_hw_issues_tNAx_r0p1},
+		  {GPU_ID2_VERSION_MAKE(0, 1, 1), base_hw_issues_tNAx_r0p1},
 		  {U32_MAX, NULL} } },
 
 		{GPU_ID2_PRODUCT_TBEX,
@@ -221,8 +238,12 @@ static const enum base_hw_issue *kbase_hw_get_issues_for_new_id(
 		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tULx_r0p0},
 		  {U32_MAX, NULL} } },
 
-		{GPU_ID2_PRODUCT_TBOX,
-		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tBOx_r0p0},
+		{GPU_ID2_PRODUCT_TDUX,
+		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tDUx_r0p0},
+		  {U32_MAX, NULL} } },
+
+		{GPU_ID2_PRODUCT_TODX,
+		 {{GPU_ID2_VERSION_MAKE(0, 0, 0), base_hw_issues_tODx_r0p0},
 		  {U32_MAX, NULL} } },
 
 		{GPU_ID2_PRODUCT_TIDX,
@@ -461,9 +482,6 @@ int kbase_hw_set_issues_mask(struct kbase_device *kbdev)
 			case GPU_ID2_PRODUCT_TGOX:
 				issues = base_hw_issues_model_tGOx;
 				break;
-			case GPU_ID2_PRODUCT_TKAX:
-				issues = base_hw_issues_model_tKAx;
-				break;
 			case GPU_ID2_PRODUCT_TEGX:
 				issues = base_hw_issues_model_tEGx;
 				break;
@@ -479,8 +497,11 @@ int kbase_hw_set_issues_mask(struct kbase_device *kbdev)
 			case GPU_ID2_PRODUCT_TULX:
 				issues = base_hw_issues_model_tULx;
 				break;
-			case GPU_ID2_PRODUCT_TBOX:
-				issues = base_hw_issues_model_tBOx;
+			case GPU_ID2_PRODUCT_TDUX:
+				issues = base_hw_issues_model_tDUx;
+				break;
+			case GPU_ID2_PRODUCT_TODX:
+				issues = base_hw_issues_model_tODx;
 				break;
 			case GPU_ID2_PRODUCT_TIDX:
 				issues = base_hw_issues_model_tIDx;
