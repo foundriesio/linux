@@ -1101,4 +1101,17 @@ static inline int get_num_uars(struct mlx5_ib_dev *dev,
 	return get_uars_per_sys_page(dev, bfregi->lib_uar_4k) * bfregi->num_sys_pages;
 }
 
+static inline bool mlx5_ib_can_use_umr(struct mlx5_ib_dev *dev,
+				       bool do_modify_atomic)
+{
+	if (MLX5_CAP_GEN(dev->mdev, umr_modify_entity_size_disabled))
+		return false;
+
+	if (do_modify_atomic &&
+	    MLX5_CAP_GEN(dev->mdev, atomic) &&
+	    MLX5_CAP_GEN(dev->mdev, umr_modify_atomic_disabled))
+		return false;
+
+	return true;
+}
 #endif /* MLX5_IB_H */
