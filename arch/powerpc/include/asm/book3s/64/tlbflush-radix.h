@@ -44,4 +44,11 @@ extern void radix__flush_tlb_pwc(struct mmu_gather *tlb, unsigned long addr);
 extern void radix__flush_tlb_collapsed_pmd(struct mm_struct *mm, unsigned long addr);
 extern void radix__flush_tlb_all(void);
 
+extern void radix__flush_tlb_lpid_page(unsigned int lpid,
+					unsigned long addr,
+					unsigned long page_size);
+extern void radix__flush_pwc_lpid(unsigned int lpid);
+extern void radix__local_flush_tlb_lpid(unsigned int lpid);
+extern void radix__local_flush_tlb_lpid_guest(unsigned int lpid);
+
 #endif
