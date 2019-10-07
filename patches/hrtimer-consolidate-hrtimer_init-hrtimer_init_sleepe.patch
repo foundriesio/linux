@@ -26,7 +26,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -3423,10 +3423,9 @@ static bool blk_mq_poll_hybrid_sleep(str
+@@ -3428,10 +3428,9 @@ static bool blk_mq_poll_hybrid_sleep(str
  	kt = nsecs;
  
  	mode = HRTIMER_MODE_REL;
@@ -116,7 +116,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  				       current->timer_slack_ns,			\
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -2722,10 +2722,9 @@ static int futex_wait(u32 __user *uaddr,
+@@ -2692,10 +2692,9 @@ static int futex_wait(u32 __user *uaddr,
  	if (abs_time) {
  		to = &timeout;
  
@@ -130,7 +130,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  		hrtimer_set_expires_range_ns(&to->timer, *abs_time,
  					     current->timer_slack_ns);
  	}
-@@ -2824,9 +2823,8 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2794,9 +2793,8 @@ static int futex_lock_pi(u32 __user *uad
  
  	if (time) {
  		to = &timeout;
@@ -142,7 +142,7 @@ Signed-off-by: Anna-Maria Gleixner <anna-maria@linutronix.de>
  		hrtimer_set_expires(&to->timer, *time);
  	}
  
-@@ -3244,10 +3242,9 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3214,10 +3212,9 @@ static int futex_wait_requeue_pi(u32 __u
  
  	if (abs_time) {
  		to = &timeout;

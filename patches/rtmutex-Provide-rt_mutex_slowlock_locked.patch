@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1220,35 +1220,16 @@ static void rt_mutex_handle_deadlock(int
+@@ -1245,35 +1245,16 @@ static void rt_mutex_handle_deadlock(int
  	}
  }
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	set_current_state(state);
  
-@@ -1256,16 +1237,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1281,16 +1262,16 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	if (unlikely(timeout))
  		hrtimer_start_expires(&timeout->timer, HRTIMER_MODE_ABS);
  
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/*
-@@ -1273,6 +1254,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
+@@ -1298,6 +1279,34 @@ rt_mutex_slowlock(struct rt_mutex *lock,
  	 * unconditionally. We might have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
@@ -121,7 +121,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * This is the control structure for tasks blocked on a rt_mutex,
-@@ -156,6 +157,12 @@ extern bool __rt_mutex_futex_unlock(stru
+@@ -159,6 +160,12 @@ extern bool __rt_mutex_futex_unlock(stru
  				 struct wake_q_head *wqh);
  
  extern void rt_mutex_postunlock(struct wake_q_head *wake_q);

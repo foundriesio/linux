@@ -311,7 +311,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
-@@ -3507,6 +3552,7 @@ static void __sched notrace __schedule(b
+@@ -3548,6 +3593,7 @@ static void __sched notrace __schedule(b
  
  	next = pick_next_task(rq, prev, &rf);
  	clear_tsk_need_resched(prev);
@@ -319,7 +319,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	clear_preempt_need_resched();
  
  	if (likely(prev != next)) {
-@@ -3690,6 +3736,30 @@ static void __sched notrace preempt_sche
+@@ -3731,6 +3777,30 @@ static void __sched notrace preempt_sche
  	} while (need_resched());
  }
  
@@ -350,7 +350,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPT
  /*
   * this is the entry point to schedule() from in-kernel preemption
-@@ -3704,7 +3774,8 @@ asmlinkage __visible void __sched notrac
+@@ -3745,7 +3815,8 @@ asmlinkage __visible void __sched notrac
  	 */
  	if (likely(!preemptible()))
  		return;
@@ -360,7 +360,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_schedule_common();
  }
  NOKPROBE_SYMBOL(preempt_schedule);
-@@ -3731,6 +3802,9 @@ asmlinkage __visible void __sched notrac
+@@ -3772,6 +3843,9 @@ asmlinkage __visible void __sched notrac
  	if (likely(!preemptible()))
  		return;
  
@@ -370,7 +370,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -5496,7 +5570,9 @@ void init_idle(struct task_struct *idle,
+@@ -5537,7 +5611,9 @@ void init_idle(struct task_struct *idle,
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -381,7 +381,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -7250,6 +7326,7 @@ void migrate_disable(void)
+@@ -7287,6 +7363,7 @@ void migrate_disable(void)
  	}
  
  	preempt_disable();
@@ -389,7 +389,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	pin_current_cpu();
  
  	migrate_disable_update_cpus_allowed(p);
-@@ -7317,6 +7394,7 @@ void migrate_enable(void)
+@@ -7354,6 +7431,7 @@ void migrate_enable(void)
  			arg.dest_cpu = dest_cpu;
  
  			unpin_current_cpu();
@@ -397,7 +397,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			preempt_enable();
  
  			sleeping_lock_inc();
-@@ -7326,6 +7404,7 @@ void migrate_enable(void)
+@@ -7363,6 +7441,7 @@ void migrate_enable(void)
  		}
  	}
  	unpin_current_cpu();
@@ -461,7 +461,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Only set the backward buddy when the current task is still
  	 * on the rq. This can happen when a wakeup gets interleaved
-@@ -10281,7 +10281,7 @@ static void task_fork_fair(struct task_s
+@@ -10282,7 +10282,7 @@ static void task_fork_fair(struct task_s
  		 * 'current' within the tree based on its new key value.
  		 */
  		swap(curr->vruntime, se->vruntime);
@@ -470,7 +470,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	se->vruntime -= cfs_rq->min_vruntime;
-@@ -10305,7 +10305,7 @@ prio_changed_fair(struct rq *rq, struct
+@@ -10306,7 +10306,7 @@ prio_changed_fair(struct rq *rq, struct
  	 */
  	if (rq->curr == p) {
  		if (p->prio > oldprio)

@@ -48,6 +48,10 @@ printk-devkmsg-llseek-reset-clear-if-it-is-lost.patch
 printk-print-rate-limitted-message-as-info.patch
 printk-kmsg_dump-remove-mutex-usage.patch
 printk-devkmsg-read-Return-EPIPE-when-the-first-mess.patch
+printk-handle-iterating-while-buffer-changing.patch
+
+lib-smp_processor_id-Don-t-use-cpumask_equal.patch
+lib-ubsan-Don-t-seralize-UBSAN-report.patch
 
 ############################################################
 # POSTED
@@ -95,8 +99,7 @@ block-blk-mq-move-blk_queue_usage_counter_release-in.patch
 arm64-KVM-compute_layout-before-altenates-are-applie.patch
 of-allocate-free-phandle-cache-outside-of-the-devtre.patch
 kmemleak-Turn-kmemleak_lock-to-raw-spinlock-on-RT.patch
-futex-Make-the-futex_hash_bucket-lock-raw.patch
-futex-Delay-deallocation-of-pi_state.patch
+kmemleak-Change-the-lock-of-kmemleak_object-to-raw_s.patch
 
 # Deleting active timer
 timers-Introduce-expiry-spin-lock.patch
@@ -265,6 +268,12 @@ rtmutex-trylock-is-okay-on-RT.patch
 # compile fix due to rtmutex locks
 fs-nfs-turn-rmdir_sem-into-a-semaphore.patch
 
+# FUTEX/RTMUTEX
+futex-workaround-migrate_disable-enable-in-different.patch
+rtmutex-futex-prepare-rt.patch
+futex-requeue-pi-fix.patch
+futex-Ensure-lock-unlock-symetry-versus-pi_lock-and-.patch
+
 # RTMUTEX
 pid.h-include-atomic.h.patch
 arm-include-definition-for-cpumask_t.patch
@@ -277,6 +286,7 @@ rtmutex_dont_include_rcu.patch
 rtmutex-Provide-rt_mutex_slowlock_locked.patch
 rtmutex-export-lockdep-less-version-of-rt_mutex-s-lo.patch
 rtmutex-add-sleeping-lock-implementation.patch
+locking-rtmutex-Clean-pi_blocked_on-in-the-error-cas.patch
 rtmutex-add-mutex-implementation-based-on-rtmutex.patch
 rtmutex-add-rwsem-implementation-based-on-rtmutex.patch
 rtmutex-add-rwlock-implementation-based-on-rtmutex.patch

@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void task_contending(struct sched_dl_entity *dl_se, int flags)
-@@ -1292,7 +1292,7 @@ void init_dl_inactive_task_timer(struct
+@@ -1325,7 +1325,7 @@ void init_dl_inactive_task_timer(struct
  {
  	struct hrtimer *timer = &dl_se->inactive_timer;
  

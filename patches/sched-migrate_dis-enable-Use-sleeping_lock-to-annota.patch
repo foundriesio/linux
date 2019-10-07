@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (cpu != smp_processor_id()) {
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7318,7 +7318,10 @@ void migrate_enable(void)
+@@ -7355,7 +7355,10 @@ void migrate_enable(void)
  
  			unpin_current_cpu();
  			preempt_enable();

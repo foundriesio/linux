@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  extern void lru_cache_add_file(struct page *page);
 --- a/mm/compaction.c
 +++ b/mm/compaction.c
-@@ -2229,10 +2229,12 @@ compact_zone(struct compact_control *cc,
+@@ -2240,10 +2240,12 @@ compact_zone(struct compact_control *cc,
  				block_start_pfn(cc->migrate_pfn, cc->order);
  
  			if (last_migrated_pfn < current_block_start) {

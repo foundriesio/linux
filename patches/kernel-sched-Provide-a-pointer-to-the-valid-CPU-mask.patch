@@ -77,9 +77,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/sched/fair.c                        |   34 ++++++++++++------------
  kernel/sched/rt.c                          |    4 +-
  kernel/trace/trace_hwlat.c                 |    2 -
- lib/smp_processor_id.c                     |    2 -
  samples/trace_events/trace-events-sample.c |    2 -
- 23 files changed, 75 insertions(+), 73 deletions(-)
+ 22 files changed, 74 insertions(+), 72 deletions(-)
 
 --- a/arch/ia64/kernel/mca.c
 +++ b/arch/ia64/kernel/mca.c
@@ -424,7 +423,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 *  - any previously selected CPU might disappear through hotplug
  	 *
  	 * Use __set_task_cpu() to avoid calling sched_class::migrate_task_rq,
-@@ -4270,7 +4270,7 @@ static int __sched_setscheduler(struct t
+@@ -4311,7 +4311,7 @@ static int __sched_setscheduler(struct t
  			 * the entire root_domain to become SCHED_DEADLINE. We
  			 * will also fail if there's no bandwidth available.
  			 */
@@ -433,7 +432,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			    rq->rd->dl_bw.bw == 0) {
  				task_rq_unlock(rq, p, &rf);
  				return -EPERM;
-@@ -4869,7 +4869,7 @@ long sched_getaffinity(pid_t pid, struct
+@@ -4910,7 +4910,7 @@ long sched_getaffinity(pid_t pid, struct
  		goto out_unlock;
  
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
@@ -442,7 +441,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
  
  out_unlock:
-@@ -5446,7 +5446,7 @@ int task_can_attach(struct task_struct *
+@@ -5487,7 +5487,7 @@ int task_can_attach(struct task_struct *
  	 * allowed nodes is unnecessary.  Thus, cpusets are not
  	 * applicable for such threads.  This prevents checking for
  	 * success of set_cpus_allowed_ptr() on all attached tasks
@@ -451,7 +450,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 */
  	if (p->flags & PF_NO_SETAFFINITY) {
  		ret = -EINVAL;
-@@ -5473,7 +5473,7 @@ int migrate_task_to(struct task_struct *
+@@ -5514,7 +5514,7 @@ int migrate_task_to(struct task_struct *
  	if (curr_cpu == target_cpu)
  		return 0;
  
@@ -460,7 +459,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return -EINVAL;
  
  	/* TODO: This is not properly updating schedstats */
-@@ -5611,7 +5611,7 @@ static void migrate_tasks(struct rq *dea
+@@ -5652,7 +5652,7 @@ static void migrate_tasks(struct rq *dea
  		put_prev_task(rq, next);
  
  		/*
@@ -506,7 +505,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			 * We have to ensure that we have at least one bit
 --- a/kernel/sched/deadline.c
 +++ b/kernel/sched/deadline.c
-@@ -538,7 +538,7 @@ static struct rq *dl_task_offline_migrat
+@@ -539,7 +539,7 @@ static struct rq *dl_task_offline_migrat
  		 * If we cannot preempt any rq, fall back to pick any
  		 * online CPU:
  		 */
@@ -515,7 +514,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (cpu >= nr_cpu_ids) {
  			/*
  			 * Failed to find any suitable CPU.
-@@ -1824,7 +1824,7 @@ static void set_curr_task_dl(struct rq *
+@@ -1857,7 +1857,7 @@ static void set_curr_task_dl(struct rq *
  static int pick_dl_task(struct rq *rq, struct task_struct *p, int cpu)
  {
  	if (!task_running(rq, p) &&
@@ -524,7 +523,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return 1;
  	return 0;
  }
-@@ -1974,7 +1974,7 @@ static struct rq *find_lock_later_rq(str
+@@ -2007,7 +2007,7 @@ static struct rq *find_lock_later_rq(str
  		/* Retry if something changed. */
  		if (double_lock_balance(rq, later_rq)) {
  			if (unlikely(task_rq(task) != rq ||
@@ -718,17 +717,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto disable;
  
  	get_online_cpus();
---- a/lib/smp_processor_id.c
-+++ b/lib/smp_processor_id.c
-@@ -23,7 +23,7 @@ unsigned int check_preemption_disabled(c
- 	 * Kernel threads bound to a single CPU can safely use
- 	 * smp_processor_id():
- 	 */
--	if (cpumask_equal(&current->cpus_allowed, cpumask_of(this_cpu)))
-+	if (cpumask_equal(current->cpus_ptr, cpumask_of(this_cpu)))
- 		goto out;
- 
- 	/*
 --- a/samples/trace_events/trace-events-sample.c
 +++ b/samples/trace_events/trace-events-sample.c
 @@ -34,7 +34,7 @@ static void simple_thread_func(int cnt)

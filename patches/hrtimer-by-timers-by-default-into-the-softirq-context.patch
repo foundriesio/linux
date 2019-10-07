@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #else	/* CONFIG_SCHED_HRTICK */
 --- a/kernel/sched/deadline.c
 +++ b/kernel/sched/deadline.c
-@@ -1053,7 +1053,7 @@ void init_dl_task_timer(struct sched_dl_
+@@ -1086,7 +1086,7 @@ void init_dl_task_timer(struct sched_dl_
  {
  	struct hrtimer *timer = &dl_se->dl_timer;
  

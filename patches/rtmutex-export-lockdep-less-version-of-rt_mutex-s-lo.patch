@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1470,12 +1470,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
+@@ -1495,12 +1495,33 @@ rt_mutex_fastunlock(struct rt_mutex *loc
  		rt_mutex_postunlock(&wake_q);
  }
  
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
-@@ -1516,16 +1537,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
+@@ -1541,16 +1562,7 @@ EXPORT_SYMBOL_GPL(rt_mutex_lock);
   */
  int __sched rt_mutex_lock_interruptible(struct rt_mutex *lock)
  {
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_interruptible);
  
-@@ -1551,13 +1563,10 @@ int __sched __rt_mutex_futex_trylock(str
+@@ -1576,13 +1588,10 @@ int __sched __rt_mutex_futex_trylock(str
   * Returns:
   *  0          on success
   * -EINTR      when interrupted by a signal
@@ -83,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL_GPL(rt_mutex_lock_killable);
  
-@@ -1592,6 +1601,18 @@ rt_mutex_timed_lock(struct rt_mutex *loc
+@@ -1617,6 +1626,18 @@ rt_mutex_timed_lock(struct rt_mutex *loc
  }
  EXPORT_SYMBOL_GPL(rt_mutex_timed_lock);
  
@@ -102,7 +102,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * rt_mutex_trylock - try to lock a rt_mutex
   *
-@@ -1607,14 +1628,7 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1632,14 +1653,7 @@ int __sched rt_mutex_trylock(struct rt_m
  {
  	int ret;
  
@@ -118,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (ret)
  		mutex_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  
-@@ -1622,6 +1636,11 @@ int __sched rt_mutex_trylock(struct rt_m
+@@ -1647,6 +1661,11 @@ int __sched rt_mutex_trylock(struct rt_m
  }
  EXPORT_SYMBOL_GPL(rt_mutex_trylock);
  
@@ -132,7 +132,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -159,6 +159,9 @@ extern bool __rt_mutex_futex_unlock(stru
+@@ -162,6 +162,9 @@ extern bool __rt_mutex_futex_unlock(stru
  extern void rt_mutex_postunlock(struct wake_q_head *wake_q);
  /* RW semaphore special interface */
  

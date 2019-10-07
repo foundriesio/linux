@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		expires = timeval_to_ktime(value->it_value);
 --- a/kernel/time/posix-cpu-timers.c
 +++ b/kernel/time/posix-cpu-timers.c
-@@ -785,6 +785,7 @@ check_timers_list(struct list_head *time
+@@ -788,6 +788,7 @@ check_timers_list(struct list_head *time
  			return t->expires;
  
  		t->firing = 1;
@@ -106,7 +106,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		list_move_tail(&t->entry, firing);
  	}
  
-@@ -1127,6 +1128,20 @@ static inline int fastpath_timer_check(s
+@@ -1131,6 +1132,20 @@ static inline int fastpath_timer_check(s
  	return 0;
  }
  
@@ -127,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * This is called from the timer interrupt handler.  The irq handler has
   * already updated our counts.  We need to check if any timers fire now.
-@@ -1137,6 +1152,7 @@ void run_posix_cpu_timers(struct task_st
+@@ -1141,6 +1156,7 @@ void run_posix_cpu_timers(struct task_st
  	LIST_HEAD(firing);
  	struct k_itimer *timer, *next;
  	unsigned long flags;
@@ -135,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	lockdep_assert_irqs_disabled();
  
-@@ -1147,6 +1163,9 @@ void run_posix_cpu_timers(struct task_st
+@@ -1151,6 +1167,9 @@ void run_posix_cpu_timers(struct task_st
  	if (!fastpath_timer_check(tsk))
  		return;
  
@@ -145,7 +145,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!lock_task_sighand(tsk, &flags))
  		return;
  	/*
-@@ -1181,6 +1200,7 @@ void run_posix_cpu_timers(struct task_st
+@@ -1185,6 +1204,7 @@ void run_posix_cpu_timers(struct task_st
  		list_del_init(&timer->it.cpu.entry);
  		cpu_firing = timer->it.cpu.firing;
  		timer->it.cpu.firing = 0;
@@ -153,7 +153,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/*
  		 * The firing flag is -1 if we collided with a reset
  		 * of the timer, which already reported this
-@@ -1190,6 +1210,7 @@ void run_posix_cpu_timers(struct task_st
+@@ -1194,6 +1214,7 @@ void run_posix_cpu_timers(struct task_st
  			cpu_timer_fire(timer);
  		spin_unlock(&timer->it_lock);
  	}
@@ -161,7 +161,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -1308,6 +1329,8 @@ static int do_cpu_nanosleep(const clocki
+@@ -1314,6 +1335,8 @@ static int do_cpu_nanosleep(const clocki
  		spin_unlock_irq(&timer.it_lock);
  
  		while (error == TIMER_RETRY) {

@@ -12,7 +12,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -605,8 +605,16 @@ static void __blk_mq_complete_request(st
+@@ -606,8 +606,16 @@ static void __blk_mq_complete_request(st
  	}
  
  	cpu = get_cpu_light();

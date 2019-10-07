@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/pagemap.h>
  #include <linux/backing-dev-defs.h>
  #include <linux/wait.h>
-@@ -559,6 +560,7 @@ struct request_queue {
+@@ -562,6 +563,7 @@ struct request_queue {
  #endif
  	struct rcu_head		rcu_head;
  	wait_queue_head_t	mq_freeze_wq;
