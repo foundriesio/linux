@@ -80,7 +80,7 @@ typedef struct hevc_userdata_output_t
 
 typedef struct hdr10p_userdata_info_t
 {
-	uint32_t mOUI; //fixed value, 0x008B8490 for PB0 ~ PB4
+	unsigned int mOUI; //fixed value, 0x008B8490 for PB0 ~ PB4
 	/*
 		PB04 :
 			[7:6] : application version [1:0]
@@ -117,8 +117,8 @@ typedef struct hdr10p_userdata_info_t
 			[6] : vsif timming mode
 			[5:0] : reserved
 	*/
-	uint8_t mVendorPayload[24];	//PB4 ~ PB27
-	uint8_t mVendorPayloadLength; //real used payload among 24, PB4 ~ PB27.
+	unsigned char mVendorPayload[24];	//PB4 ~ PB27
+	unsigned char mVendorPayloadLength; //real used payload among 24, PB4 ~ PB27.
 
 }hdr10p_userdata_info_t;
 #endif
