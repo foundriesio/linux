@@ -1184,6 +1184,11 @@
 			};
 		};
 
+		pwr_mcu: pwr_mcu@50001014 {
+			compatible = "syscon";
+			reg = <0x50001014 0x4>;
+		};
+
 		pwr_irq: pwr@50001020 {
 			compatible = "st,stm32mp1-pwr";
 			reg = <0x50001020 0x100>;
