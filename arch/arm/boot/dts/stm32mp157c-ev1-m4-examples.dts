@@ -119,12 +119,6 @@
 	status = "okay";
 };
 
-&m4_timers1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&m4_pwm1_pins_a>;
-	status = "okay";
-};
-
 &m4_usart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&m4_usart3_pins_a>;
