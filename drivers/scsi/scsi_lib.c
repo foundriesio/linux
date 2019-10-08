@@ -644,19 +644,19 @@ static void scsi_mq_uninit_cmd(struct scsi_cmnd *cmd)
 static void scsi_release_buffers(struct scsi_cmnd *cmd)
 {
 	if (cmd->sdb.table.nents)
-		sg_free_table_chained(&cmd->sdb.table, SG_CHUNK_SIZE);
+		sg_free_table_chained(&cmd->sdb.table, 0);
 
 	memset(&cmd->sdb, 0, sizeof(cmd->sdb));
 
 	if (scsi_prot_sg_count(cmd))
-		sg_free_table_chained(&cmd->prot_sdb->table, SG_CHUNK_SIZE);
+		sg_free_table_chained(&cmd->prot_sdb->table, 0);
 }
 
 static void scsi_release_bidi_buffers(struct scsi_cmnd *cmd)
 {
 	struct scsi_data_buffer *bidi_sdb = cmd->request->next_rq->special;
 
-	sg_free_table_chained(&bidi_sdb->table, SG_CHUNK_SIZE);
+	sg_free_table_chained(&bidi_sdb->table, 0);
 	kmem_cache_free(scsi_sdb_cache, bidi_sdb);
 	cmd->request->next_rq->special = NULL;
 }
