@@ -64,7 +64,7 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
-	reg_sd1_vmmc: regulator-sd1-vmmc {
+	reg_sd1_vqmmc: regulator-sd1-vqmmc {
 		compatible = "regulator-gpio";
 		gpios = <&gpio5 9 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
