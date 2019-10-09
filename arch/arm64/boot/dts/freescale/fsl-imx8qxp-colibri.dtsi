@@ -960,13 +960,18 @@
 &usdhc2 {
 	bus-width = <4>;
 	cd-gpios = <&gpio3 9 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&reg_module_3v3>;
 	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-3 = <&pinctrl_usdhc2_sleep>, <&pinctrl_usdhc2_gpio_sleep>;
 	disable-wp;
+	/*
+	 * The PMIC on V1.0A HW generates 1.6V instead of 1.8V which creates
+	 * issues with certain SD cards, disable 1.8V signaling for now.
+	 */
+	no-1-8-v;
+	vmmc-supply = <&reg_module_3v3>;
 };
 
 &vpu_decoder {
