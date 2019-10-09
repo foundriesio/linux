@@ -69,14 +69,15 @@
 };
 
 &m4_i2c5 {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&i2c5_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_i2c5_pins_a>;
 	status = "okay";
 };
 
 &m4_qspi {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&qspi_clk_pins_a &qspi_bk1_pins_a &qspi_bk2_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_qspi_clk_pins_a &m4_qspi_bk1_pins_a
+		     &m4_qspi_bk2_pins_a>;
 	status = "okay";
 };
 
@@ -94,7 +95,7 @@
 
 		m4_led: m4_led {
 			compatible = "rproc-srm-dev";
-			pinctrl-names = "rproc_default";
+			pinctrl-names = "default";
 			pinctrl-0 = <&m4_leds_orange_pins>;
 			status = "okay";
 		};
@@ -106,27 +107,27 @@
 };
 
 &m4_spi1 {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&spi1_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_spi1_pins_a>;
 	status = "okay";
 };
 
 
 &m4_timers2 {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&pwm2_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_pwm2_pins_a>;
 	status = "okay";
 };
 
 &m4_timers1 {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&pwm1_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_pwm1_pins_a>;
 	status = "okay";
 };
 
 &m4_usart3 {
-	pinctrl-names = "rproc_default";
-	pinctrl-0 = <&usart3_pins_a>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&m4_usart3_pins_a>;
 	status = "okay";
 };
 
