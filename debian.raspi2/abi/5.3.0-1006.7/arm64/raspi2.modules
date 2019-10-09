@@ -1410,6 +1410,7 @@ hisi_femac
 hisi_sas_main
 hisi_sas_v1_hw
 hisi_sas_v2_hw
+hisi_zip
 hix5hd2_gmac
 hmc5843_core
 hmc5843_i2c
@@ -2660,6 +2661,7 @@ qcom_spmi-regulator
 qcserial
 qemu_fw_cfg
 qinfo_probe
+qm
 qm1d1c0042
 qmi_wwan
 qnx4
@@ -3121,6 +3123,7 @@ serpent_generic
 serport
 ses
 sfp
+sgl
 sgp30
 sh_veu
 sha1-ce
