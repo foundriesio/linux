@@ -12,7 +12,6 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
-#include <linux/pinctrl/pinctrl.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/remoteproc.h>
@@ -25,12 +24,6 @@ struct rproc_srm_clk_info {
 	struct clk *clk;
 	const char *name;
 	bool parent_enabled;
-};
-
-struct rproc_srm_pin_info {
-	struct list_head list;
-	unsigned int index;
-	char *name;
 };
 
 struct rproc_srm_regu_info {
@@ -53,12 +46,10 @@ struct rproc_srm_dev {
 	struct device *dev;
 	struct rproc_srm_core *core;
 	struct notifier_block nb;
-	struct pinctrl *pctrl;
 	bool early_boot;
 
 	struct list_head clk_list_head;
 	struct list_head regu_list_head;
-	struct list_head pin_list_head;
 	struct list_head irq_list_head;
 };
 
@@ -542,79 +533,6 @@ err_list:
 	return ret;
 }
 
-/* Pins */
-static void rproc_srm_dev_pins_put(struct rproc_srm_dev *rproc_srm_dev)
-{
-	struct device *dev = rproc_srm_dev->dev;
-	struct rproc_srm_pin_info *p, *tmp;
-
-	list_for_each_entry_safe(p, tmp, &rproc_srm_dev->pin_list_head, list) {
-		devm_kfree(dev, p->name);
-		devm_kfree(dev, p);
-		dev_dbg(dev, "remove pin cfg %d (%s)\n", p->index, p->name);
-		list_del(&p->list);
-	}
-
-	if (!IS_ERR_OR_NULL(rproc_srm_dev->pctrl)) {
-		devm_pinctrl_put(rproc_srm_dev->pctrl);
-		rproc_srm_dev->pctrl = NULL;
-	}
-}
-
-static int rproc_srm_dev_pins_get(struct rproc_srm_dev *rproc_srm_dev)
-{
-	struct device *dev = rproc_srm_dev->dev;
-	struct device_node *np = dev->of_node;
-	struct rproc_srm_pin_info *p;
-	int ret, nb_p;
-	unsigned int i;
-	const char *name;
-
-	if (!np)
-		return 0;
-
-	rproc_srm_dev->pctrl = devm_pinctrl_get(dev);
-	if (IS_ERR(rproc_srm_dev->pctrl))
-		return 0;
-
-	nb_p = of_property_count_strings(np, "pinctrl-names");
-	if (nb_p <= 0) {
-		dev_err(dev, "pinctrl-names not defined\n");
-		ret = -EINVAL;
-		goto err;
-	}
-
-	for (i = 0; i < nb_p; i++) {
-		p = devm_kzalloc(dev, sizeof(*p), GFP_KERNEL);
-		if (!p) {
-			ret = -ENOMEM;
-			goto err;
-		}
-
-		if (of_property_read_string_index(np, "pinctrl-names", i,
-						  &name)) {
-			dev_err(dev, "no pinctrl-names (pin %d)\n", i);
-			ret = -EINVAL;
-			goto err;
-		}
-		p->name = devm_kstrdup(dev, name, GFP_KERNEL);
-
-		/* pinctrl-names shall not be "default" (but "rproc_default") */
-		if (!strcmp(p->name, PINCTRL_STATE_DEFAULT))
-			dev_warn(dev, "pin config potentially overwritten!\n");
-
-		p->index = i;
-
-		list_add_tail(&p->list, &rproc_srm_dev->pin_list_head);
-		dev_dbg(dev, "found pin cfg %d (%s)\n", p->index, p->name);
-	}
-	return 0;
-
-err:
-	rproc_srm_dev_pins_put(rproc_srm_dev);
-	return ret;
-}
-
 /* Core */
 static int rproc_srm_dev_notify_cb(struct notifier_block *nb, unsigned long evt,
 				   void *data)
@@ -700,7 +618,7 @@ rproc_srm_dev_unbind(struct device *dev, struct device *master, void *data)
 	rproc_srm_dev_regus_unsetup(rproc_srm_dev);
 	rproc_srm_dev_clocks_unsetup(rproc_srm_dev);
 
-	/* For pins and IRQs: nothing to unsetup */
+	/* For IRQs: nothing to unsetup */
 }
 
 static int
@@ -719,7 +637,7 @@ rproc_srm_dev_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		return ret;
 
-	/* For pins and IRQs: nothing to setup */
+	/* For IRQs: nothing to setup */
 	return 0;
 }
 
@@ -748,20 +666,15 @@ static int rproc_srm_dev_probe(struct platform_device *pdev)
 	rproc_srm_dev->core = dev_get_drvdata(dev->parent);
 
 	INIT_LIST_HEAD(&rproc_srm_dev->clk_list_head);
-	INIT_LIST_HEAD(&rproc_srm_dev->pin_list_head);
 	INIT_LIST_HEAD(&rproc_srm_dev->regu_list_head);
 	INIT_LIST_HEAD(&rproc_srm_dev->irq_list_head);
 
-	/* Get clocks, regu, irqs and pinctrl */
+	/* Get clocks, regu and irqs */
 	ret = rproc_srm_dev_clocks_get(rproc_srm_dev);
 	if (ret)
 		return ret;
 
 	ret = rproc_srm_dev_regus_get(rproc_srm_dev);
-	if (ret)
-		goto err_get;
-
-	ret = rproc_srm_dev_pins_get(rproc_srm_dev);
 	if (ret)
 		goto err_get;
 
@@ -784,7 +697,6 @@ err_register:
 					   &rproc_srm_dev->nb);
 err_get:
 	rproc_srm_dev_irqs_put(rproc_srm_dev);
-	rproc_srm_dev_pins_put(rproc_srm_dev);
 	rproc_srm_dev_regus_put(rproc_srm_dev);
 	rproc_srm_dev_clocks_put(rproc_srm_dev);
 	return ret;
@@ -804,7 +716,6 @@ static int rproc_srm_dev_remove(struct platform_device *pdev)
 
 	rproc_srm_dev_irqs_put(rproc_srm_dev);
 	rproc_srm_dev_regus_put(rproc_srm_dev);
-	rproc_srm_dev_pins_put(rproc_srm_dev);
 	rproc_srm_dev_clocks_put(rproc_srm_dev);
 
 	return 0;
