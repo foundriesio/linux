@@ -95,7 +95,7 @@
 		m4_led: m4_led {
 			compatible = "rproc-srm-dev";
 			pinctrl-names = "rproc_default";
-			pinctrl-0 = <&leds_orange_pins>;
+			pinctrl-0 = <&m4_leds_orange_pins>;
 			status = "okay";
 		};
 	};
@@ -131,13 +131,9 @@
 };
 
 &pinctrl {
-	leds_orange_pins: leds_orange_test-0 {
+	m4_leds_orange_pins: m4-leds-orange-0 {
 		pins {
-			pinmux = <STM32_PINMUX('D', 8, GPIO)>;
-			bias-pull-up;
-			drive-push-pull;
-			output-low;
-			slew-rate = <0>;
+			pinmux = <STM32_PINMUX('D', 8, RSVD)>;
 		};
 	};
 };
