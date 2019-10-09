@@ -1399,22 +1399,32 @@
 
 /* Apalis MMC1 */
 &usdhc2 {
+	bus-width = <8>;
+	cd-gpios = <&gpio2 9 GPIO_ACTIVE_LOW>; /* Apalis MMC1_CD# */
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_mmc1_cd>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_mmc1_cd>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_mmc1_cd>;
-	bus-width = <8>;
-	cd-gpios = <&gpio2 9 GPIO_ACTIVE_LOW>; /* Apalis MMC1_CD# */
+	/*
+	 * The PMIC on V1.0A HW generates 1.6V instead of 1.8V which creates
+	 * issues with certain SD cards, disable 1.8V signaling for now.
+	 */
+	no-1-8-v;
 };
 
 /* Apalis SD1 */
 &usdhc3 {
+	bus-width = <4>;
+	cd-gpios = <&gpio4 12 GPIO_ACTIVE_LOW>; /* Apalis SD1_CD# */
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc3>, <&pinctrl_sd1_cd>;
 	pinctrl-1 = <&pinctrl_usdhc3_100mhz>, <&pinctrl_sd1_cd>;
 	pinctrl-2 = <&pinctrl_usdhc3_200mhz>, <&pinctrl_sd1_cd>;
-	bus-width = <4>;
-	cd-gpios = <&gpio4 12 GPIO_ACTIVE_LOW>; /* Apalis SD1_CD# */
+	/*
+	 * The PMIC on V1.0A HW generates 1.6V instead of 1.8V which creates
+	 * issues with certain SD cards, disable 1.8V signaling for now.
+	 */
+	no-1-8-v;
 };
 
 &vpu_decoder {
