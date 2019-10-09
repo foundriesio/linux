@@ -129,6 +129,10 @@ properties:
     description: If present indicates that we need to reset the PHY when we 
       detect a wakeup. This is due to a hardware errata.
 
+  wakeup-source:
+    $ref: /schemas/types.yaml#/definitions/flag
+    description: If present indicates this device has wakeup capabilities
+
 required:
   - compatible
   - reg
