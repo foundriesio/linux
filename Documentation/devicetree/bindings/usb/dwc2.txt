@@ -53,6 +53,7 @@ Refer to phy/phy-bindings.txt for generic phy consumer properties
   perform OTG operation, used on STM32MP1 SoCs.
 - usb-role-switch: use USB Role Switch to support dynamic dual role switch.
   Refer to usb/generic.txt
+- wakeup-source: bool flag to indicate this device has wakeup capabilities
 
 Deprecated properties:
 - g-use-dma: gadget DMA mode is automatically detected
