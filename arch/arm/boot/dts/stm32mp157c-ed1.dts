@@ -6,8 +6,8 @@
 /dts-v1/;
 
 #include "stm32mp157c.dtsi"
-#include "stm32mp157c-m4-srm.dtsi"
 #include "stm32mp157caa-pinctrl.dtsi"
+#include "stm32mp157c-m4-srm.dtsi"
 #include <dt-bindings/mfd/st,stpmic1.h>
 
 / {
