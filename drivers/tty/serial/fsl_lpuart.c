@@ -1416,8 +1416,10 @@ static void lpuart32_setup_watermark(struct lpuart_port *sport)
 		val = (0x1 << UARTWATER_RXWATER_OFF) |
 			(0x0 << UARTWATER_TXWATER_OFF);
 	} else {
-		val = lpuart32_read(&sport->port, UARTMODIR);
-		val = sport->rts_watermark << UARTMODIR_RTSWATER_S;
+		val = lpuart32_read(&sport->port, UARTMODIR) &
+				~UARTMODIR_RTSWATER_M;
+		val |= (sport->rts_watermark << UARTMODIR_RTSWATER_S) &
+				UARTMODIR_RTSWATER_M;
 		lpuart32_write(&sport->port, val, UARTMODIR);
 		val = (sport->rxfifo_watermark << UARTWATER_RXWATER_OFF) |
 			(sport->txfifo_watermark << UARTWATER_TXWATER_OFF);
