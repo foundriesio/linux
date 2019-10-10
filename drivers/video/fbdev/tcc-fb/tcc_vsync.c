@@ -133,10 +133,11 @@ static struct tcc_lcdc_image_update last_backup;
 
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 #include <video/tcc/tcc_lut_ioctl.h>
-#define UI_LUT 			LUT_COMP0
-#define UI_LUT_PLUGIN_CH 	0
-#define VIDEO_LUT 		LUT_COMP1
-#define VIDEO_LUT_PLUGIN_CH 	3
+#define UI_LUT 				LUT_COMP0
+#define UI_LUT_PLUGIN_CH 		0
+#define VIDEO_LUT 			LUT_COMP1
+#define LAST_VIDEO_LUT_PLUGIN_CH 	1
+#define VIDEO_LUT_PLUGIN_CH 		3
 
 static int debug_lut = 0;
 #define lut_prinfo(msg, ...) if (debug_lut) { pr_info("\x1b[1;38m TCC VSYNC: \x1b[0m" msg, ##__VA_ARGS__); }
@@ -144,9 +145,16 @@ static int debug_lut = 0;
 struct vsync_lut_into_t {
 	int content; /* 0: SDR, 1: HDR */
 	int output; /* 0: SDR, 1: HDR */
+	int plugin_ch;
+	int lastframe_mode; /* 0: video mode, 1: lastframe mode */
 };
 
-static struct vsync_lut_into_t vsync_lut_into = {0, };
+static struct vsync_lut_into_t vsync_lut_into = {
+	.content = 0,
+	.output = 0,
+	.plugin_ch = -1,
+	.lastframe_mode = 0
+};
 
 extern int lut_drv_api_get_plugin(unsigned int lut_number);
 extern int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch);
@@ -165,6 +173,8 @@ extern int tca_fb_divide_get_status(void);
 
 extern void tca_lcdc_set_onthefly(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
+extern void tca_scale_display_update_with_sync(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
+
 extern void tca_mvc_display_update(char hdmi_lcdc, struct tcc_lcdc_image_update *ImageInfo);
 extern struct tcc_dp_device *tca_fb_get_displayType(TCC_OUTPUT_TYPE check_type);
 
@@ -269,9 +279,10 @@ static int vsync_deinit_lut(void)
 		lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
 	}
 	memset(&vsync_lut_into, 0, sizeof(vsync_lut_into));
+	return 0;
 }
 
-static int vsync_process_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pImage)
+static int vsync_process_video_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pImage, VSYNC_CH_TYPE type)
 {
 	int ret = -1;
 	int lut_status, content, output;
@@ -320,14 +331,18 @@ static int vsync_process_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pI
 		}
 
 		if(vsync_lut_into.content != content ||
-				vsync_lut_into.output != output) {
+				vsync_lut_into.output != output || vsync_lut_into.plugin_ch != VIDEO_LUT_PLUGIN_CH) {
 
 			if(content == 0 && output == 1) {
 				/* SDR -> HDR */
 				lut_prinfo("%s contents is SDR, display is HDR >> plugin video_lut \r\n", __func__);
-				lut_drv_api_set_plugin(VIDEO_LUT, 1, VIDEO_LUT_PLUGIN_CH);
+				if(!vsync_lut_into.lastframe_mode) {
+					lut_drv_api_set_plugin(VIDEO_LUT, 1, VIDEO_LUT_PLUGIN_CH);
+				} else {
+					lut_prinfo("%s skip.. lastframe is enabled\r\n", __func__);
+				}
 			} else {
-				lut_prinfo("%s contents is %s, display is Ts >> unplug video_lut \r\n",
+				lut_prinfo("%s contents is %s, display is %s >> unplug video_lut \r\n",
 						__func__, (content==1)?"HDR":"SDR", (output==1)?"HDR":"SDR");
 				lut_drv_api_set_plugin(VIDEO_LUT, 0, VIDEO_LUT_PLUGIN_CH);
 			}
@@ -335,8 +350,32 @@ static int vsync_process_lut(tcc_video_disp *p, struct tcc_lcdc_image_update *pI
 			/* Store current stae */
 			vsync_lut_into.content = content;
 			vsync_lut_into.output = output;
+			vsync_lut_into.plugin_ch = VIDEO_LUT_PLUGIN_CH;
 		}
+		ret = 0;
 	} while(0);
+	return ret;
+}
+
+int vsync_process_lastframe_plugin_lut(void)
+{
+	if(vsync_lut_into.content == 0 && vsync_lut_into.output == 1) {
+		/* SDR -> HDR */
+		lut_drv_api_set_plugin(VIDEO_LUT, 1, LAST_VIDEO_LUT_PLUGIN_CH);
+		vsync_lut_into.plugin_ch = LAST_VIDEO_LUT_PLUGIN_CH;
+	}
+	vsync_lut_into.lastframe_mode  = 1;
+	return 0;
+}
+
+int vsync_process_lastframe_unplug_lut(void)
+{
+	if(vsync_lut_into.content == 0 && vsync_lut_into.output == 1) {
+		lut_drv_api_set_plugin(VIDEO_LUT, 1, VIDEO_LUT_PLUGIN_CH);
+		vsync_lut_into.plugin_ch = VIDEO_LUT_PLUGIN_CH;
+	}
+	vsync_lut_into.lastframe_mode = 0;
+	return 0;
 }
 #endif
 
@@ -3764,7 +3803,7 @@ TCC_VSYNC_PUSH_ERROR:
 	}
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 	if(err_type == 0) {
-		vsync_process_lut(p, input_image);
+		vsync_process_video_lut(p, input_image, type);
 	}
 #endif
 	ret = p->vsync_buffer.writeIdx;

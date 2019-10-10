@@ -202,6 +202,9 @@ extern int hdmi_get_VBlank(void);
 extern unsigned int hdmi_get_pixel_clock(void);
 #endif
 #if defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+extern int vsync_process_lastframe_plugin_lut(void);
+#endif
 extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
 #endif
@@ -879,6 +882,42 @@ static irqreturn_t tca_sub_display_handler(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+static void tca_fb_wait_for_video_rdma_eofr(struct tcc_dp_device *pdp_data)
+{
+	int ret;
+	int video_rdma_irq_id, irq_rdma_status;
+
+	int retry_count = 33000;
+
+	if(pdp_data != NULL) {
+		switch(pdp_data->DispNum) {
+			case 0:
+				video_rdma_irq_id = VIOC_INTR_RD0 + RDMA_VIDEO;
+				break;
+			case 1:
+				video_rdma_irq_id = VIOC_INTR_RD4 + RDMA_VIDEO;
+				break;
+			case 2:
+				video_rdma_irq_id = VIOC_INTR_RD8 + RDMA_VIDEO;
+				break;
+		}
+
+		vioc_intr_clear(video_rdma_irq_id, (1 << VIOC_RDMA_INTR_EOFR));
+		do {
+			irq_rdma_status = vioc_intr_get_status(video_rdma_irq_id);
+			if(irq_rdma_status & (1 << VIOC_RDMA_INTR_EOFR)) {
+				break;
+			}
+			udelay(1);
+		} while(--retry_count);
+		if(retry_count == 0) {
+			pr_err("%s timeout\r\n", __func__);
+		}
+	}
+}
+#endif
 
 void tca_vioc_displayblock_clock_select(struct tcc_dp_device *pDisplayInfo, int clk_src_hdmi_phy)
 {
@@ -4578,7 +4617,7 @@ struct tcc_dp_device *tca_get_displayType(TCC_OUTPUT_TYPE check_type)
 	return dp_device;
 }
 
-void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo)
+static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo, int process_lut_plugin)
 {
 	volatile void __iomem *pSC;
 	int iSCType;
@@ -4991,7 +5030,16 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 
 		VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, 0);
 
+		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+		if(process_lut_plugin) tca_fb_wait_for_video_rdma_eofr(pdp_data);
+		#endif
 		VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+		if(process_lut_plugin) {
+			vsync_process_lastframe_plugin_lut();
+			VIOC_RDMA_SetImageDisableNW(pdp_data->rdma_info[RDMA_VIDEO].virt_addr);
+		}
+		#endif
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 		if(VIOC_CONFIG_DV_GET_EDR_PATH())
@@ -5035,6 +5083,16 @@ void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_im
 
 	tcc_video_post_process(ImageInfo);
 #endif//
+}
+
+void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo)
+{
+	tca_scale_display_update_internal(pdp_data, ImageInfo, 0);
+}
+
+void tca_scale_display_update_with_sync(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo)
+{
+	tca_scale_display_update_internal(pdp_data, ImageInfo, 1);
 }
 
 void tca_mvc_display_update(char hdmi_lcdc, struct tcc_lcdc_image_update *ImageInfo)
