@@ -34,9 +34,13 @@ unsigned int mmu_base_pid;
 static int native_register_process_table(unsigned long base, unsigned long pg_sz,
 					 unsigned long table_size)
 {
-	unsigned long patb1 = base | table_size | PATB_GR;
+	unsigned long patb0, patb1;
 
-	partition_tb->patb1 = cpu_to_be64(patb1);
+	patb0 = be64_to_cpu(partition_tb[0].patb0);
+	patb1 = base | table_size | PATB_GR;
+
+	mmu_partition_table_set_entry(0, patb0, patb1);
+
 	return 0;
 }
 
@@ -532,8 +536,7 @@ void __init radix__early_init_mmu(void)
 	radix_init_pgtable();
 	/* Switch to the guard PID before turning on MMU */
 	radix__switch_mmu_context(NULL, &init_mm);
-	if (cpu_has_feature(CPU_FTR_HVMODE))
-		tlbiel_all();
+	tlbiel_all();
 }
 
 void radix__early_init_mmu_secondary(void)
@@ -553,8 +556,7 @@ void radix__early_init_mmu_secondary(void)
 	radix_init_iamr();
 
 	radix__switch_mmu_context(NULL, &init_mm);
-	if (cpu_has_feature(CPU_FTR_HVMODE))
-		tlbiel_all();
+	tlbiel_all();
 }
 
 void radix__mmu_cleanup_all(void)
