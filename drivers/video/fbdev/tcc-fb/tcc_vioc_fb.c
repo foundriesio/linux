@@ -2776,6 +2776,8 @@ static int tccfb_probe(struct platform_device *pdev)
 
 		tcc_dp_dt_parse_data(info_reg);
 
+		/* kobject_rename — change the name of an object */
+		kobject_rename(&pdev->dev.kobj, "tccfb");
 
 		strcpy(fbinfo_reg->fix.id, tccfb_driver_name);
 
