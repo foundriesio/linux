@@ -1032,11 +1032,9 @@ static int stm32_usart_init_port(struct stm32_port *stm32port,
 
 	stm32_usart_init_rs485(port, pdev);
 
-	if (stm32port->info->cfg.has_wakeup) {
-		stm32port->wakeirq = platform_get_irq(pdev, 1);
-		if (stm32port->wakeirq <= 0 && stm32port->wakeirq != -ENXIO)
-			return stm32port->wakeirq ? : -ENODEV;
-	}
+	if (stm32port->info->cfg.has_wakeup)
+		stm32port->wakeup_src = of_property_read_bool(pdev->dev.of_node,
+							      "wakeup-source");
 
 	stm32port->fifoen = stm32port->info->cfg.has_fifo;
 
@@ -1266,17 +1264,11 @@ static int stm32_usart_serial_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	if (stm32port->wakeirq > 0) {
-		ret = device_init_wakeup(&pdev->dev, true);
-		if (ret)
-			goto err_uninit;
-
-		ret = dev_pm_set_dedicated_wake_irq(&pdev->dev,
-						    stm32port->wakeirq);
+	if (stm32port->wakeup_src) {
+		device_set_wakeup_capable(&pdev->dev, true);
+		ret = dev_pm_set_wake_irq(&pdev->dev, stm32port->port.irq);
 		if (ret)
 			goto err_nowup;
-
-		device_set_wakeup_enable(&pdev->dev, false);
 	}
 
 	ret = uart_add_one_port(&stm32_usart_driver, &stm32port->port);
@@ -1301,14 +1293,13 @@ static int stm32_usart_serial_probe(struct platform_device *pdev)
 	return 0;
 
 err_wirq:
-	if (stm32port->wakeirq > 0)
+	if (stm32port->wakeup_src)
 		dev_pm_clear_wake_irq(&pdev->dev);
 
 err_nowup:
-	if (stm32port->wakeirq > 0)
-		device_init_wakeup(&pdev->dev, false);
+	if (stm32port->wakeup_src)
+		device_set_wakeup_capable(&pdev->dev, false);
 
-err_uninit:
 	clk_disable_unprepare(stm32port->clk);
 
 	return ret;
@@ -1347,7 +1338,7 @@ static int stm32_usart_serial_remove(struct platform_device *pdev)
 				  TX_BUF_L, stm32_port->tx_buf,
 				  stm32_port->tx_dma_buf);
 
-	if (stm32_port->wakeirq > 0) {
+	if (stm32_port->wakeup_src) {
 		dev_pm_clear_wake_irq(&pdev->dev);
 		device_init_wakeup(&pdev->dev, false);
 	}
@@ -1470,7 +1461,7 @@ static void __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
 	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	u32 val;
 
-	if (stm32_port->wakeirq <= 0)
+	if (!stm32_port->wakeup_src)
 		return;
 
 	if (enable) {
@@ -1494,10 +1485,8 @@ static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 
 	uart_suspend_port(&stm32_usart_driver, port);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev) || dev->power.wakeup_path)
 		stm32_usart_serial_en_wakeup(port, true);
-	else
-		stm32_usart_serial_en_wakeup(port, false);
 
 	if (uart_console(port) && !console_suspend_enabled) {
 		if (IS_ERR(stm32_port->console_pins)) {
@@ -1507,7 +1496,7 @@ static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 
 		pinctrl_select_state(dev->pins->p, stm32_port->console_pins);
 	} else {
-		if (device_may_wakeup(dev))
+		if (device_may_wakeup(dev) || dev->power.wakeup_path)
 			pinctrl_pm_select_idle_state(dev);
 		else
 			pinctrl_pm_select_sleep_state(dev);
@@ -1522,7 +1511,7 @@ static int __maybe_unused stm32_usart_serial_resume(struct device *dev)
 
 	pinctrl_pm_select_default_state(dev);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev) || dev->power.wakeup_path)
 		stm32_usart_serial_en_wakeup(port, false);
 
 	return uart_resume_port(&stm32_usart_driver, port);
