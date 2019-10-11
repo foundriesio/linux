@@ -9,7 +9,6 @@ Required properties:
 - reg: The address and length of the peripheral registers space
 - interrupts:
   - The interrupt line for the USART instance,
-  - An optional wake-up interrupt.
 - clocks: The input clock of the USART instance
 
 Optional properties:
@@ -28,10 +27,6 @@ Optional properties:
 - dmas: Phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
 - wakeup-source: Bool flag to indicate this device has wakeup capabilities
-- interrupt-names, if optional wake-up interrupt is used, should be:
-  - "event": The name for the interrupt line of the USART instance
-  - "wakeup": The name for the optional wake-up interrupt
-
 
 Note for dma using:
 - "tx" dma can be used without any constraint since it uses single
