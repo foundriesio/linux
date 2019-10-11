@@ -873,7 +873,7 @@ struct v4l2_plane {
 		__s32		fd;
 	} m;
 	__u32			data_offset;
-	__u32			reserved[11];
+	__u32			reserved[64];
 };
 
 /**
