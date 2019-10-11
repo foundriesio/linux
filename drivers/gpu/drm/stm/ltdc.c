@@ -436,9 +436,6 @@ static void ltdc_crtc_atomic_enable(struct drm_crtc *crtc,
 	/* Commit shadow registers = update planes at next vblank */
 	reg_set(ldev->regs, LTDC_SRCR, SRCR_VBR);
 
-	/* Enable LTDC */
-	reg_set(ldev->regs, LTDC_GCR, GCR_LTDCEN);
-
 	drm_crtc_vblank_on(crtc);
 }
 
@@ -451,9 +448,6 @@ static void ltdc_crtc_atomic_disable(struct drm_crtc *crtc,
 	DRM_DEBUG_DRIVER("\n");
 
 	drm_crtc_vblank_off(crtc);
-
-	/* disable LTDC */
-	reg_clear(ldev->regs, LTDC_GCR, GCR_LTDCEN);
 
 	/* disable IRQ */
 	reg_clear(ldev->regs, LTDC_IER, IER_RRIE | IER_FUIE | IER_TERRIE);
