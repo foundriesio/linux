@@ -79,14 +79,14 @@ int ipcDebugLevel = 1;
 		dev_err(dev, msg);             \
 }
 
-static int tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
 	int  ret =0;
 	unsigned int f_flag;
 	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
 
 	if (!filp->private_data )
-		return -ENODEV; 
+		return -ENODEV;
 
 	if(!(filp->f_flags & O_NONBLOCK))
 	{
@@ -95,7 +95,7 @@ static int tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_
 	else
 	{
 		f_flag = 0;
-	}	
+	}
 
 	if(ipc_dev != NULL)
 	{
@@ -119,18 +119,18 @@ static int tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_
 		eprintk(ipc_dev->dev, "%s : device not init\n", __func__);
 		ret = -ENXIO;
 	}
-	
+
 	return ret;
 }
 
-static int tcc_ipc_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t tcc_ipc_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	int  ret=0;
 	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
 
 	dprintk(ipc_dev->dev, "%s : In, data size(%d)\n", __func__, (int)count);
 	if (!filp->private_data )
-		return -ENODEV; 
+		return -ENODEV;
 
 	if(ipc_dev != NULL)
 	{
@@ -163,7 +163,7 @@ static int tcc_ipc_write(struct file *filp, const char __user *buf, size_t count
 		eprintk(ipc_dev->dev, "%s : device not init\n", __func__);
 		ret = -ENXIO;
 	}
-	
+
 	return ret;
 }
 
@@ -171,7 +171,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 {
 	int ret =0;
 	struct ipc_device *ipc_dev = container_of(inode->i_cdev, struct ipc_device, cdev);
-	
+
 	dprintk(ipc_dev->dev, "%s : In\n", __func__);
 
 	if(ipc_dev != NULL)
@@ -258,11 +258,11 @@ static int tcc_ipc_release(struct inode * inode, struct file * filp)
 	return 0;
 }
 
-static int tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
+static long tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 {
 	long ret = 0;
 	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
-	
+
 	switch(cmd) {
 		case IOCTL_IPC_SET_PARAM:
 			{
@@ -352,7 +352,7 @@ static int tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long arg
 	return ret;
 }
 
-static int tcc_ipc_poll( struct file *filp, poll_table *wait)
+static unsigned int tcc_ipc_poll( struct file *filp, poll_table *wait)
 {
 	unsigned int mask = 0;
 	int ret = -1;
