@@ -186,6 +186,13 @@
 	xceiver-supply = <&reg_module_3v3>;
 };
 
+/* Colibri optional CAN on UART_A TXD/RXD */
+&flexcan3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan3>;
+	xceiver-supply = <&reg_module_3v3>;
+};
+
 &gpio0 {
 	status = "okay";
 };
@@ -520,6 +527,14 @@
 			fsl,pins = <
 				SC_P_FLEXCAN1_TX_ADMA_FLEXCAN1_TX		0x21		/* SODIMM  55 */
 				SC_P_FLEXCAN1_RX_ADMA_FLEXCAN1_RX		0x21		/* SODIMM  63 */
+			>;
+		};
+
+		/* Colibri optional CAN on UART_A TXD/RXD */
+		pinctrl_flexcan3: flexcan2grp {
+			fsl,pins = <
+				SC_P_FLEXCAN2_TX_ADMA_FLEXCAN2_TX		0x21		/* SODIMM  35 */
+				SC_P_FLEXCAN2_RX_ADMA_FLEXCAN2_RX		0x21		/* SODIMM  33 */
 			>;
 		};
 
