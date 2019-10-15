@@ -110,13 +110,13 @@ static struct hisi_zip *find_zip_device_numa(int node)
 
 struct hisi_zip *find_zip_device(int node)
 {
-	struct hisi_zip *zip = NULL;
+	struct hisi_zip *zip;
 
 	mutex_lock(&hisi_zip_list_lock);
 #ifdef CONFIG_NUMA
 	zip = find_zip_device_numa(node);
 #else
-	zip = list_first_entry(&hisi_zip_list, struct hisi_zip, list);
+	zip = list_first_entry_or_null(&hisi_zip_list, struct hisi_zip, list);
 #endif
 	mutex_unlock(&hisi_zip_list_lock);
 
