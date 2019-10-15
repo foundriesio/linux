@@ -1533,7 +1533,6 @@
         telechips,pin-function = <0>;
     };
 
-/*
 	nsk_sc_io_clk: nsk_sc_io_clk {
 		telechips,pins = "gpa-26";
 		telechips,pin-function = <7>;
@@ -1568,5 +1567,4 @@
 		telechips,pins = "gpa-28";
 		telechips,pin-function = <0>;
 	};
-*/
 };
