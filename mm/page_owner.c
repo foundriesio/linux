@@ -115,7 +115,7 @@ void __reset_page_owner(struct page *page, unsigned int order)
 		page_ext = lookup_page_ext(page + i);
 		if (unlikely(!page_ext))
 			continue;
-		__clear_bit(PAGE_EXT_OWNER, &page_ext->flags);
+		__clear_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags);
 	}
 }
 
@@ -182,6 +182,7 @@ static inline void __set_page_owner_handle(struct page *page,
 		page_owner->gfp_mask = gfp_mask;
 		page_owner->last_migrate_reason = -1;
 		__set_bit(PAGE_EXT_OWNER, &page_ext->flags);
+		__set_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags);
 
 		page_ext = lookup_page_ext(page + i);
 	}
@@ -257,6 +258,7 @@ void __copy_page_owner(struct page *oldpage, struct page *newpage)
 	 * the new page, which will be freed.
 	 */
 	__set_bit(PAGE_EXT_OWNER, &new_ext->flags);
+	__set_bit(PAGE_EXT_OWNER_ACTIVE, &new_ext->flags);
 }
 
 void pagetypeinfo_showmixedcount_print(struct seq_file *m,
@@ -312,7 +314,7 @@ void pagetypeinfo_showmixedcount_print(struct seq_file *m,
 			if (unlikely(!page_ext))
 				continue;
 
-			if (!test_bit(PAGE_EXT_OWNER, &page_ext->flags))
+			if (!test_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags))
 				continue;
 
 			page_owner = get_page_owner(page_ext);
@@ -433,20 +435,25 @@ void __dump_page_owner(struct page *page)
 	mt = gfpflags_to_migratetype(gfp_mask);
 
 	if (!test_bit(PAGE_EXT_OWNER, &page_ext->flags)) {
-		pr_alert("page_owner info is not active (free page?)\n");
+		pr_alert("page_owner info is not present (never set?)\n");
 		return;
 	}
+
+	if (test_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags))
+		pr_alert("page_owner tracks the page as allocated\n");
+	else
+		pr_alert("page_owner tracks the page as freed\n");
+
+	pr_alert("page last allocated via order %u, migratetype %s, gfp_mask %#x(%pGg)\n",
+		 page_owner->order, migratetype_names[mt], gfp_mask, &gfp_mask);
 
 	handle = READ_ONCE(page_owner->handle);
 	if (!handle) {
-		pr_alert("page_owner info is not active (free page?)\n");
-		return;
+		pr_alert("page_owner allocation stack trace missing\n");
+	} else {
+		depot_fetch_stack(handle, &trace);
+		print_stack_trace(&trace, 0);
 	}
-
-	depot_fetch_stack(handle, &trace);
-	pr_alert("page allocated via order %u, migratetype %s, gfp_mask %#x(%pGg)\n",
-		 page_owner->order, migratetype_names[mt], gfp_mask, &gfp_mask);
-	print_stack_trace(&trace, 0);
 
 	if (page_owner->last_migrate_reason != -1)
 		pr_alert("page has been migrated, last migrate reason: %s\n",
@@ -507,6 +514,13 @@ read_page_owner(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 		 * because we don't hold the zone lock.
 		 */
 		if (!test_bit(PAGE_EXT_OWNER, &page_ext->flags))
+			continue;
+
+		/*
+		 * Although we do have the info about past allocation of free
+		 * pages, it's not relevant for current memory usage.
+		 */
+		if (!test_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags))
 			continue;
 
 		page_owner = get_page_owner(page_ext);
