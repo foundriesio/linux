@@ -44,6 +44,16 @@
 #include <linux/usb/phy.h>
 #include "hw.h"
 
+#ifndef BITSET
+#define BITSET(X, MASK)             ((X) |= (unsigned int)(MASK))
+#define BITSCLR(X, SMASK, CMASK)    ((X) = ((((unsigned int)(X)) | ((unsigned int)(SMASK))) & ~((unsigned int)(CMASK))) )
+#define BITCSET(X, CMASK, SMASK)    ((X) = ((((unsigned int)(X)) & ~((unsigned int)(CMASK))) | ((unsigned int)(SMASK))) )
+#define BITCLR(X, MASK)             ((X) &= ~((unsigned int)(MASK)) )
+#define BITXOR(X, MASK)             ((X) ^= (unsigned int)(MASK) )
+#define ISZERO(X, MASK)             (!(((unsigned int)(X))&((unsigned int)(MASK))))
+#define ISSET(X, MASK)              ((unsigned long)(X)&((unsigned long)(MASK)))
+#endif
+
 /*
  * Suggested defines for tracers:
  * - no_printk:    Disable tracing

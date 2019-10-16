@@ -58,6 +58,13 @@ typedef struct dwc_otg_phy_reg
 	volatile uint32_t  otgmux;             // 0x128  R/W    USB PHY OTG MUX Register
 } dwc_otg_phy_reg_t, *pdwc_otg_phy_reg;
 
+void __iomem* tcc_dwc_otg_get_base(struct usb_phy *phy)
+{
+	struct tcc_dwc_otg_device *phy_dev = container_of(phy, struct tcc_dwc_otg_device, phy);
+
+	return phy_dev->base;
+}
+
 static int dwc_otg_vbus_set(struct usb_phy *phy, int on_off)
 {
 	struct tcc_dwc_otg_device *phy_dev = container_of(phy, struct tcc_dwc_otg_device, phy);
@@ -340,6 +347,7 @@ static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device 
 	if (phy_dev->vbus_gpio)
 		phy_dev->phy.set_vbus		= dwc_otg_vbus_set;
 
+	phy_dev->phy.get_base			= tcc_dwc_otg_get_base;
 #ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT		/* 017.02.24 */
 	phy_dev->phy.get_dc_voltage_level = tcc_dwc_otg_get_dc_level;
 	phy_dev->phy.set_dc_voltage_level = tcc_dwc_otg_set_dc_level;

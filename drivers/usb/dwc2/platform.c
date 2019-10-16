@@ -80,6 +80,64 @@ static const char dwc2_driver_name[] = "dwc2";
  *   OTG  OTG  any    :  dr_mode
  */
 
+enum {
+	TXVRT,
+	CDT,
+	TPT,
+	TXRT,
+	TXREST,
+	TXHSXVT,
+	PCFG1_MAX
+};
+
+struct pcfg1_unit {
+	char*		reg_name;
+	uint32_t	offset;
+	uint32_t	mask;
+	char		str[256];
+};
+
+struct pcfg1_unit USB_PCFG1[] =
+{
+	/*name,     offset, mask*/
+	{"TXVRT  ", 0,      (0xF<<0)},
+	{"CDT    ", 4,      (0x7<<4)},
+	{"TXPPT  ", 7,      (0x1<<7)},
+	{"TP     ", 8,      (0x3<<8)},
+	{"TXRT   ", 10,     (0x3<<10)},
+	{"TXREST ", 12,     (0x3<<12)},
+	{"TXHSXVT", 14,     (0x3<<14)},
+};
+
+typedef struct _USBDEVPHYCFG	// Base : 0x11DA0100
+{
+	volatile unsigned int	U20DH_DEV_PCFG0;    // 0x00  USB 2.0 Host/Device PHY Configuration 0 Register
+	volatile unsigned int	U20DH_DEV_PCFG1;    // 0x04  USB 2.0 Host/Device PHY Configuration 1 Register
+	volatile unsigned int	U20DH_DEV_PCFG2;    // 0x08  USB 2.0 Host/Device PHY Configuration 2 Register
+	volatile unsigned int	U20DH_DEV_PCFG3;    // 0x0C  USB 2.0 Host/Device PHY Configuration 3 Register
+	volatile unsigned int	U20DH_DEV_PCFG4;    // 0x10  USB 2.0 Host/Device PHY Configuration 4 Register
+	volatile unsigned int	U20DH_DEV_LSTS;     // 0x14  USB 2.0 Host/Device Status Register
+	volatile unsigned int	U20DH_DEV_LCFG0;    // 0x18  USB 2.0 Host/Device LINK Configuration 0 Register
+	volatile unsigned int	reserved[3];        // 0x1C~24
+	volatile unsigned int	U20DH_SEL;          // 0x28  USB 2.0 Host/Device MUX Selection
+	volatile unsigned int	USB_VBUSVLD_SEL;    // 0x2C  USB 2.0 Host/Device VBUS Valid Signal Selection
+} USBDEVPHYCFG, *PUSBDEVPHYCFG;
+
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+typedef struct _USBMHSTPHYCFG	// Base : 0x11DA00DC
+{
+	volatile unsigned int	U20DH_HST_BCFG;     // 0xDC  USB 2.0 Host in Host/Device MUX Bus Configuration Register
+	volatile unsigned int	U20DH_HST_PCFG0;    // 0xE0  USB 2.0 Host in Host/Device MUX PHY Configuration 0 Register
+	volatile unsigned int	U20DH_HST_PCFG1;    // 0xE4  USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register
+	volatile unsigned int	U20DH_HST_PCFG2;    // 0xE8  USB 2.0 Host in Host/Device MUX PHY Configuration 2 Register
+	volatile unsigned int	U20DH_HST_PCFG3;    // 0xEC  USB 2.0 Host in Host/Device MUX PHY Configuration 3 Register
+	volatile unsigned int	U20DH_HST_PCFG4;    // 0xF0  USB 2.0 Host in Host/Device MUX PHY Configuration 4 Register
+	volatile unsigned int	U20DH_HST_STS;      // 0xF4  USB 2.0 Host in Host/Device MUX Status Register
+	volatile unsigned int	U20DH_HST_LCFG0;    // 0xF8  USB 2.0 Host in Host/Device MUX LINK Configuration 0 Register
+	volatile unsigned int	U20DH_HST_LCFG1;    // 0xFC  USB 2.0 Host in Host/Device MUX LINK Configuration 1 Register
+} USBMHSTPHYCFG, *PUSBMHSTPHYCFG;
+#endif
+
 #ifdef CONFIG_USB_DWC2_TCC
 #define TCC_DWC_SOFFN_USE
 #define TCC_DWC_SUSPSTS_USE
@@ -164,6 +222,162 @@ static ssize_t dwc2_tcc_vbus_store(struct device *dev, struct device_attribute *
     return count;
 }
 static DEVICE_ATTR(vbus, S_IRUGO | S_IWUSR, dwc2_tcc_vbus_show, dwc2_tcc_vbus_store);
+
+static char* dwc2_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char* str)
+{
+	uint32_t new_val, old_val;
+	int i;
+
+	for (i = 0; i < PCFG1_MAX; i++) {
+		old_val = (ISSET(old_reg, USB_PCFG1[i].mask)) >> (USB_PCFG1[i].offset);
+		new_val = (ISSET(new_reg, USB_PCFG1[i].mask)) >> (USB_PCFG1[i].offset);
+
+		if (old_val != new_val) {
+			sprintf(USB_PCFG1[i].str, "%s = 0x%X -> \x1b[1;33m0x%X\x1b[1;0m*\n",
+					USB_PCFG1[i].reg_name, old_val, new_val);
+		} else {
+			sprintf(USB_PCFG1[i].str, "%s = 0x%X\n", USB_PCFG1[i].reg_name, old_val);
+		}
+
+		strcat(str, USB_PCFG1[i].str);
+	}
+
+	return str;
+}
+
+/**
+ * Show the current value of the USB 2.0 Host/Device PHY Configuration 1 Register (U20DH_DEV_PCFG1)
+ */
+static ssize_t dwc2_pcfg1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	PUSBDEVPHYCFG pUSBDEVPHYCFG = (PUSBDEVPHYCFG)(hsotg->uphy->get_base(hsotg->uphy));
+	uint32_t pcfg1_val = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
+	char str[256] = {0};
+
+	return sprintf(buf, "U20DH_DEV_PCFG1 = 0x%08X\n%s", pcfg1_val,
+			dwc2_pcfg1_display(pcfg1_val, pcfg1_val, str));
+}
+
+/**
+ * Configure the current value of the USB 2.0 Host/Device PHY Configuration 1 Register (U20DH_DEV_PCFG1)
+ */
+static ssize_t dwc2_pcfg1_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	PUSBDEVPHYCFG pUSBDEVPHYCFG = (PUSBDEVPHYCFG)(hsotg->uphy->get_base(hsotg->uphy));
+	uint32_t old_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	char str[256] = {0};
+	int i;
+
+	if (count - 1 < 10 || 10 < count - 1 ) {
+		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		return count;
+	}
+
+	if ((buf[0] != '0') || (buf[1] != 'x')) {
+		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		return count;
+	}
+
+	for (i = 2; i < 10; i++) {
+		if ( (buf[i] >= '0' && buf[i] <= '9') ||
+				(buf[i] >= 'a' && buf[i] <= 'f') ||
+				(buf[i] >= 'A' && buf[i] <= 'F') )
+			continue;
+		else {
+			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
+			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			return count;
+		}
+	}
+
+	printk("U20DH_DEV_PCFG1 = 0x%08X\n", old_reg);
+	writel(new_reg, &pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
+	new_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
+
+	dwc2_pcfg1_display(old_reg, new_reg, str);
+	printk("%sU20DH_DEV_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+
+	return count;
+}
+static DEVICE_ATTR(dwc_pcfg1, S_IRUGO | S_IWUSR, dwc2_pcfg1_show, dwc2_pcfg1_store);
+
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+/**
+ * Show the current value of the USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register (U20DH_HST_PCFG1)
+ */
+static ssize_t dwc2_host_mux_pcfg1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	PUSBMHSTPHYCFG pUSBMHSTPHYCFG = (PUSBMHSTPHYCFG)(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
+	uint32_t pcfg1_val = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
+	char str[256] = {0};
+
+	return sprintf(buf, "U20DH_HST_PCFG1 = 0x%08X\n%s", pcfg1_val,
+			dwc2_pcfg1_display(pcfg1_val, pcfg1_val, str));
+}
+
+/**
+ * Configure the current value of the USB 2.0 Host in Host/Device MUX PHY Configuration 1 Register (U20DH_HST_PCFG1)
+ */
+static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+	PUSBMHSTPHYCFG pUSBMHSTPHYCFG = (PUSBMHSTPHYCFG)(hsotg->mhst_uphy->get_base(hsotg->mhst_uphy));
+	uint32_t old_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	char str[256] = {0};
+	int i;
+
+	if (count - 1 < 10 || 10 < count - 1 ) {
+		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		return count;
+	}
+
+	if ((buf[0] != '0') || (buf[1] != 'x')) {
+		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		return count;
+	}
+
+	for (i = 2; i < 10; i++) {
+		if ( (buf[i] >= '0' && buf[i] <= '9') ||
+				(buf[i] >= 'a' && buf[i] <= 'f') ||
+				(buf[i] >= 'A' && buf[i] <= 'F') )
+			continue;
+		else {
+			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
+			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			return count;
+		}
+	}
+
+	printk("U20DH_HST_PCFG1 = 0x%08X\n", old_reg);
+	writel(new_reg, &pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
+	new_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
+
+	dwc2_pcfg1_display(old_reg, new_reg, str);
+	printk("%sU20DH_HST_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+
+	return count;
+}
+static DEVICE_ATTR(dwc_host_mux_pcfg1, S_IRUGO | S_IWUSR, dwc2_host_mux_pcfg1_show, dwc2_host_mux_pcfg1_store);
+#endif
 
 #ifdef CONFIG_USB_DWC2_DUAL_ROLE
 static ssize_t dwc2_tcc_drd_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -768,6 +982,12 @@ static int dwc2_driver_remove(struct platform_device *dev)
 #endif
 	device_remove_file(&dev->dev, &dev_attr_vbus);
 #endif
+
+	device_remove_file(&dev->dev, &dev_attr_dwc_pcfg1);
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+	device_remove_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
+#endif
+
 	return 0;
 }
 
@@ -997,6 +1217,17 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		#endif //CONFIG_USB_DWC2_TCC_FIRST
 	#endif //CONFIG_USB_DWC2_DUAL_ROLE
 #endif //CONFIG_USB_DWC2_TCC
+
+	retval = device_create_file(&dev->dev, &dev_attr_dwc_pcfg1);
+
+	if (retval)
+		dev_err(hsotg->dev, "failed to create dwc_pcfg1\n");
+#ifdef CONFIG_USB_DWC2_TCC_MUX
+	retval = device_create_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
+
+	if (retval)
+		dev_err(hsotg->dev, "failed to create dwc_host_mux_pcfg1\n");
+#endif
 
 skip_mode_change:
 	return 0;
