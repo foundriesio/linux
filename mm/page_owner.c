@@ -23,12 +23,10 @@ struct page_owner {
 	gfp_t gfp_mask;
 	int last_migrate_reason;
 	depot_stack_handle_t handle;
-#ifdef CONFIG_DEBUG_PAGEALLOC
 	depot_stack_handle_t free_handle;
-#endif
 };
 
-static bool page_owner_disabled = true;
+static bool page_owner_enabled = false;
 DEFINE_STATIC_KEY_FALSE(page_owner_inited);
 
 static depot_stack_handle_t dummy_handle;
@@ -43,7 +41,7 @@ static int early_page_owner_param(char *buf)
 		return -EINVAL;
 
 	if (strcmp(buf, "on") == 0)
-		page_owner_disabled = false;
+		page_owner_enabled = true;
 
 	return 0;
 }
@@ -51,10 +49,7 @@ early_param("page_owner", early_page_owner_param);
 
 static bool need_page_owner(void)
 {
-	if (page_owner_disabled)
-		return false;
-
-	return true;
+	return page_owner_enabled;
 }
 
 static __always_inline depot_stack_handle_t create_dummy_stack(void)
@@ -88,7 +83,7 @@ static noinline void register_early_stack(void)
 
 static void init_page_owner(void)
 {
-	if (page_owner_disabled)
+	if (!page_owner_enabled)
 		return;
 
 	register_dummy_stack();
@@ -162,25 +157,18 @@ void __reset_page_owner(struct page *page, unsigned int order)
 {
 	int i;
 	struct page_ext *page_ext;
-#ifdef CONFIG_DEBUG_PAGEALLOC
 	depot_stack_handle_t handle = 0;
 	struct page_owner *page_owner;
 
-	if (debug_pagealloc_enabled())
-		handle = save_stack(GFP_NOWAIT | __GFP_NOWARN);
-#endif
+	handle = save_stack(GFP_NOWAIT | __GFP_NOWARN);
 
 	page_ext = lookup_page_ext(page);
 	if (unlikely(!page_ext))
 		return;
 	for (i = 0; i < (1 << order); i++) {
 		__clear_bit(PAGE_EXT_OWNER_ACTIVE, &page_ext->flags);
-#ifdef CONFIG_DEBUG_PAGEALLOC
-		if (debug_pagealloc_enabled()) {
-			page_owner = get_page_owner(page_ext);
-			page_owner->free_handle = handle;
-		}
-#endif
+		page_owner = get_page_owner(page_ext);
+		page_owner->free_handle = handle;
 		page_ext = page_ext_next(page_ext);
 	}
 }
@@ -470,7 +458,6 @@ void __dump_page_owner(struct page *page)
 		print_stack_trace(&trace, 0);
 	}
 
-#ifdef CONFIG_DEBUG_PAGEALLOC
 	handle = READ_ONCE(page_owner->free_handle);
 	if (!handle) {
 		pr_alert("page_owner free stack trace missing\n");
@@ -479,7 +466,6 @@ void __dump_page_owner(struct page *page)
 		depot_fetch_stack(handle, &trace);
 		print_stack_trace(&trace, 0);
 	}
-#endif
 
 	if (page_owner->last_migrate_reason != -1)
 		pr_alert("page has been migrated, last migrate reason: %s\n",
