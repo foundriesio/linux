@@ -277,18 +277,18 @@ struct kvm_rmap_head {
 struct kvm_mmu_page {
 	struct list_head link;
 	struct hlist_node hash_link;
-	bool unsync;
 
 	/*
 	 * The following two entries are used to key the shadow page in the
 	 * hash table.
 	 */
-	union kvm_mmu_page_role role;
 	gfn_t gfn;
+	union kvm_mmu_page_role role;
 
 	u64 *spt;
 	/* hold the gfn of each spte inside spt */
 	gfn_t *gfns;
+	bool unsync;
 	int root_count;          /* Currently serving as active root */
 	unsigned int unsync_children;
 	struct kvm_rmap_head parent_ptes; /* rmap pointers to parent sptes */

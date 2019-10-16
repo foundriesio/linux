@@ -1019,15 +1019,19 @@ enum kvm_stat_kind {
 
 struct kvm_stat_data {
 	int offset;
-	int mode;
 	struct kvm *kvm;
+#ifndef __GENKSYMS__
+	int mode;
+#endif
 };
 
 struct kvm_stats_debugfs_item {
 	const char *name;
 	int offset;
 	enum kvm_stat_kind kind;
+#ifndef __GENKSYMS__
 	int mode;
+#endif
 };
 extern struct kvm_stats_debugfs_item debugfs_entries[];
 extern struct dentry *kvm_debugfs_dir;
