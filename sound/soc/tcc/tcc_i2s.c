@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/fs.h>
 #include <linux/errno.h>
+#include <linux/gpio.h>
 
 #include <linux/delay.h>
 #include <linux/kthread.h>
@@ -36,6 +37,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
+#include <linux/of_gpio.h>
 #include <asm/io.h>
 
 #include <sound/soc.h>
@@ -60,6 +62,8 @@
 #define DEFAULT_BCLK_RATIO				(64) //32,48,64
 #define DEFAULT_DAI_SAMPLERATE			(32000) //for HDMI
 #define DEFAULT_DAI_FILTER_CLK_RATE		(300000000)
+
+#define USE_MUTE_GPIO
 
 enum tcc_i2s_block_type {
 	DAI_BLOCK_STEREO_TYPE= 0,
@@ -109,6 +113,12 @@ struct tcc_i2s_t {
 	uint32_t clk_rate;
 	struct tcc_adma_info dma_info;
 	struct dai_reg_t regs_backup; // for suspend/resume
+#ifdef USE_MUTE_GPIO
+	int32_t mute_gpio;			// for DSP_MUTE or AMP_MUTE
+	int32_t mute_gpio_flags;
+	int32_t stanby_gpio;		// for AMP_STANBY
+	int32_t stanby_gpio_flags;	
+#endif//USE_MUTE_GPIO
 };
 
 
@@ -731,6 +741,12 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 						tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
 						tcc_dai_tx_fifo_release(i2s->dai_reg);
 					}
+
+#ifdef USE_MUTE_GPIO
+					if (i2s->mute_gpio >= 0) {
+						gpio_set_value(i2s->mute_gpio, !(i2s->mute_gpio_flags)); //mute off
+					}
+#endif//USE_MUTE_GPIO
 				} else {
 					if (i2s->have_fifo_clear_bit)
 						tcc_dai_rx_fifo_clear(i2s->dai_reg);
@@ -752,6 +768,11 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 				tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 			} else {
 				if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+#ifdef USE_MUTE_GPIO
+					if (i2s->mute_gpio >= 0) {
+						gpio_set_value(i2s->mute_gpio, i2s->mute_gpio_flags); //mute on
+					}
+#endif//USE_MUTE_GPIO
 					tcc_dai_tx_enable(i2s->dai_reg, false);
 					tcc_dai_set_dao_mask(i2s->dai_reg, true, true, true, true, true);
 				} else {
@@ -969,6 +990,15 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 
 	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
 
+#ifdef USE_MUTE_GPIO
+	if (i2s->mute_gpio >= 0) {
+		gpio_set_value(i2s->mute_gpio, i2s->mute_gpio_flags); //mute on
+	}
+	if (i2s->stanby_gpio >= 0) {
+		gpio_set_value(i2s->stanby_gpio, !i2s->stanby_gpio_flags); //stanby off
+	}
+#endif//USE_MUTE_GPIO
+
 	pinctrl = pinctrl_get_select(dai->dev, "idle");
 	if(IS_ERR(pinctrl))
 		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
@@ -1000,6 +1030,15 @@ static int tcc_i2s_dai_resume(struct snd_soc_dai *dai)
 	struct pinctrl *pinctrl;
 
 	i2s_dai_dbg("(%d) %s\n", i2s->blk_no, __func__);
+
+#ifdef USE_MUTE_GPIO
+	if (i2s->mute_gpio >= 0) {
+		gpio_set_value(i2s->mute_gpio, i2s->mute_gpio_flags); //mute on
+	}
+	if (i2s->stanby_gpio >= 0) {
+		gpio_set_value(i2s->stanby_gpio, i2s->stanby_gpio_flags); //stanby on
+	}
+#endif//USE_MUTE_GPIO
 	
 	pinctrl = pinctrl_get_select(dai->dev, "default");
 	if(IS_ERR(pinctrl))
@@ -1152,6 +1191,9 @@ static void set_default_configrations(struct tcc_i2s_t *i2s)
 static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 {
 	uint32_t sample_rate = 0;
+#ifdef USE_MUTE_GPIO	
+	enum of_gpio_flags gpio_flags;
+#endif//USE_MUTE_GPIO
 
 	i2s->pdev = pdev;
 
@@ -1237,6 +1279,47 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	} else {
 		i2s->tdm_late_mode = false;
 	}
+
+#ifdef USE_MUTE_GPIO
+	if (of_get_property(pdev->dev.of_node, "mute-gpios", NULL)) {
+		i2s->mute_gpio = -1; 
+	} else {
+		i2s->mute_gpio = of_get_named_gpio_flags(pdev->dev.of_node, "mute-gpios", 0, &gpio_flags);
+		if(gpio_is_valid(i2s->mute_gpio)) {
+			i2s->mute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			i2s_dai_dbg("(%d) use mute gpio(%d)\n", i2s->blk_no, i2s->mute_gpio);
+			if (devm_gpio_request_one(&pdev->dev, 
+						i2s->mute_gpio, 
+						(i2s->mute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+						"mute-gpios")) {
+				printk("(%d) request gpio(%d) failed\n", i2s->blk_no, i2s->mute_gpio);
+				return -EINVAL;
+			}
+		} else {
+			printk(KERN_ERR "(%d) mute gpio(%d) is invalid\n", i2s->blk_no, i2s->mute_gpio);
+			return -EINVAL;
+		}
+	}
+	if (of_get_property(pdev->dev.of_node, "stanby-gpios", NULL)) {
+		i2s->stanby_gpio = -1;		
+	} else {
+		i2s->stanby_gpio = of_get_named_gpio_flags(pdev->dev.of_node, "stanby-gpios", 0, &gpio_flags);
+		if(gpio_is_valid(i2s->stanby_gpio)) {
+			i2s->stanby_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			i2s_dai_dbg("(%d) use stanby gpio(%d)\n", i2s->blk_no, i2s->stanby_gpio);
+			if (devm_gpio_request_one(&pdev->dev,
+				i2s->stanby_gpio,
+				(i2s->stanby_gpio_flags? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+				"stanby-gpios")) {
+				printk("(%d) request stanby gpio(%d) failed\n", i2s->blk_no, i2s->stanby_gpio);
+				return -EINVAL;
+			}
+		} else {
+			printk(KERN_ERR "(%d) stanby gpio(%d) is invalid\n", i2s->blk_no, i2s->stanby_gpio);
+			return -EINVAL;
+		}
+	}
+#endif//USE_MUTE_GPIO
 
 	return 0;
 }

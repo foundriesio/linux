@@ -490,6 +490,9 @@
 		pinctrl-0 = <&s1dai_clks &s1dai_d0>;
 		pinctrl-1 = <&mute_s1dai_d0>;
 		clock-frequency = <48000>;
+		//mute-gpios = <&gpc 18 1>;	//CODEC_MUTE	0: active high, 1: active low
+		mute-gpios = <&gpc 18 0>;	//AMP_MUTE	0: active high, 1: active low
+		stanby-gpios = <&gpc 16 0>;	//AMP_STBY	0: active high, 1: active low
 		status = "okay";
 	};
 
