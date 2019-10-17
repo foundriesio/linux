@@ -24,6 +24,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/of_irq.h>
 
 #include <video/tcc/tcc_cam_ioctrl.h>
+#include <video/tcc/videosource_ioctl.h>
 
 #include "videosource_common.h"
 #include "videosource_if.h"
