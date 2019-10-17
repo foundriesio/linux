@@ -2201,7 +2201,7 @@
 		viqe		= <&vioc_viqe		VIOC_VIQE>;
 		viqe_set	= <&viqe_hidden>;
 		deintls		= <&vioc_deintls	VIOC_DEINTLS>;
-		scaler		= <&vioc_scaler		VIOC_SCALER0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
