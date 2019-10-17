@@ -156,6 +156,12 @@ typedef struct {
 	int (* set_irq_handler)(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int enable);
 } SENSOR_FUNC_TYPE;
 
+enum {
+	VIDEOSOURCE_IOCTL_DEINITIALIZE,
+	VIDEOSOURCE_IOCTL_INITIALIZE,
+	VIDEOSOURCE_IOCTL_MAX,
+};
+
 extern TCC_SENSOR_INFO_TYPE videosource_info;
 extern SENSOR_FUNC_TYPE videosource_func;
 
