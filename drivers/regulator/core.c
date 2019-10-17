@@ -4181,20 +4181,30 @@ static int _regulator_suspend_prepare(struct device *dev, void *data)
 	int ret;
 	//printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 	mutex_lock(&rdev->mutex);
-	if (!rdev->desc->ops->set_mode)
+	#if defined(CONFIG_ARCH_TCC803X)
+	if (!rdev->desc->ops->set_mode || !rdev->desc->ops->set_current_limit)
 		printk("set_mode is not implemented\n");
 	else
 	{
-		ret = rdev->desc->ops->get_mode(rdev);
+		//ret = rdev->desc->ops->get_mode(rdev);
 		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-
 		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_NORMAL);
 		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+		if(ret)
+			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
 
 		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_NORMAL);
 		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-		ret = rdev->desc->ops->get_mode(rdev);
+		if(ret)
+			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+
+		//printk("Set Voltage =%d\n", rdev->constraints->min_uV);
+		ret = _regulator_do_set_voltage(rdev, rdev->constraints->min_uV, rdev->constraints->min_uV);
+		if(ret)
+			printk("[%s:%d]failed to set voltage(min) of pmic\n", __func__, __LINE__);
+		//printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
 	}
+	#endif
 	mutex_unlock(&rdev->mutex);
 
 	mutex_lock(&rdev->mutex);
@@ -4246,21 +4256,30 @@ static int _regulator_suspend_finish(struct device *dev, void *data)
 		if (ret)
 			dev_err(dev, "Failed to suspend regulator %d\n", ret);
 	}
-
-	if (!rdev->desc->ops->set_mode)
+	#if defined(CONFIG_ARCH_TCC803X)
+	if (!rdev->desc->ops->set_mode || !rdev->desc->ops->set_current_limit)
 		printk("set_mode is not implemented\n");
 	else
 	{
-		ret = rdev->desc->ops->get_mode(rdev);
+		//ret = rdev->desc->ops->get_mode(rdev);
 		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-
 		ret = rdev->desc->ops->set_mode(rdev, REGULATOR_MODE_FAST);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
+		if(ret)
+			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
 
 		ret = rdev->desc->ops->set_suspend_mode(rdev, REGULATOR_MODE_FAST);
-		//printk("\x1b[1;33m[%s:ret=%d]\x1b[0m\n", __func__, ret);
-		ret = rdev->desc->ops->get_mode(rdev);
+		if(ret)
+			printk("[%s:%d]failed to set mode of pmic\n", __func__, __LINE__);
+		//ret = rdev->desc->ops->get_mode(rdev);
+		
+		printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
+		ret = _regulator_do_set_voltage(rdev, rdev->constraints->max_uV, rdev->constraints->max_uV);
+		if(ret)
+			printk("[%s:%d]failed to set voltage(max) of pmic\n", __func__, __LINE__);
+		//printk("Get Voltage = %d\n", _regulator_get_voltage(rdev));
+
 	}
+	#endif
 unlock:
 	mutex_unlock(&rdev->mutex);
 

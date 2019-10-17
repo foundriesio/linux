@@ -156,7 +156,7 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 		return ERR_PTR(-EINVAL);
 	}
 
-	if ((flags & ~(TEE_SHM_SDP_MEM))) {
+	if ((flags & ~(TEE_SHM_DMA_BUF | TEE_SHM_SDP_MEM))) {
 		dev_err(teedev->dev.parent, "invalid shm flags 0x%x", flags);
 		return ERR_PTR(-EINVAL);
 	}
@@ -164,6 +164,7 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 	if (!tee_device_get(teedev))
 		return ERR_PTR(-EINVAL);
 
+	teedev_ctx_get(ctx);
 	shm = kzalloc(sizeof(*shm), GFP_KERNEL);
 	if (!shm) {
 		ret = ERR_PTR(-ENOMEM);
@@ -184,8 +185,19 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 		goto err_kfree;
 	}
 
-	if (ctx) {
-		teedev_ctx_get(ctx);
+	if (flags & TEE_SHM_DMA_BUF) {
+		DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
+
+		exp_info.ops = &tee_shm_dma_buf_ops;
+		exp_info.size = shm->size;
+		exp_info.flags = O_RDWR;
+		exp_info.priv = shm;
+
+		shm->dmabuf = dma_buf_export(&exp_info);
+		if (IS_ERR(shm->dmabuf)) {
+			ret = ERR_CAST(shm->dmabuf);
+			goto err_rem;
+		}
 	}
 
 	mutex_lock(&teedev->mutex);
@@ -193,10 +205,14 @@ struct tee_shm *tee_shm_sdp_register(struct tee_context *ctx, unsigned long addr
 	mutex_unlock(&teedev->mutex);
 
 	return shm;
-
+err_rem:
+	mutex_lock(&teedev->mutex);
+	idr_remove(&teedev->idr, shm->id);
+	mutex_unlock(&teedev->mutex);
 err_kfree:
 	kfree(shm);
 err_dev_put:
+	teedev_ctx_put(ctx);
 	tee_device_put(teedev);
 	return ret;
 }

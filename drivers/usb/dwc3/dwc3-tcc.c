@@ -734,8 +734,20 @@ static ssize_t dwc3_eyep_show(struct device *dev,
                 ISSET(val, 0x1) >> 0);
     }
 
-    return sprintf(buf,
-            "U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+	#if defined(CONFIG_ARCH_TCC803X)
+	if(system_rev == 0)
+	#endif
+	{
+		return sprintf(buf,
+			"U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
+	}
+	#if defined(CONFIG_ARCH_TCC803X)
+	else
+	{
+		return sprintf(buf,
+			"U30_FPCFG1 = 0x%08X\nTXVRT = %s\n", reg, str);
+	}
+	#endif
 }
 
 /**
