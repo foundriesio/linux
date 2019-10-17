@@ -139,6 +139,18 @@ typedef struct dolby_layer_str_t
 #if defined(CONFIG_ARCH_TCC803X)
 #define AnD_FB_SC	(VIOC_SCALER5)
 #define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC803X */
+#elif defined(CONFIG_ARCH_TCC897X)
+#if defined(CONFIG_PLATFORM_AVN)
+#define AnD_FB_SC	(VIOC_SCALER0)
+#define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC897X - CONFIG_PLATFORM_AVN */
+#else
+#define AnD_FB_SC	(VIOC_SCALER2)
+#define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC897X - !CONFIG_PLATFORM_AVN */
+#endif
+/* CONFIG_ARCH_TCC897X */
 #else
 #if defined(CONFIG_ANDROID)
 #define AnD_FB_SC	(VIOC_SCALER2)
