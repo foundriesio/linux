@@ -80,6 +80,8 @@
 #define FIX_TCC_MCLK_FS 256 //We support 256, 512, 1024 fs.
 #endif
 
+#define USE_MUTE_GPIO
+
 struct tcc_i2s_backup_reg {
 	unsigned int reg_damr;
 	unsigned int reg_davc;
@@ -92,6 +94,13 @@ struct tcc_i2s_data {
 	bool dai_en_ctrl;
 	bool cdif_bypass_en;
 
+#ifdef USE_MUTE_GPIO
+	int32_t mute_gpio;			// for DSP_MUTE or AMP_MUTE
+	int32_t mute_gpio_flags;
+	int32_t stanby_gpio;		// for AMP_STANBY
+	int32_t stanby_gpio_flags;	
+#endif//USE_MUTE_GPIO
+	
 	struct tcc_i2s_backup_reg *backup_dai;
 };
 
