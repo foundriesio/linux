@@ -65,15 +65,8 @@
 
 		port@1 {
 			reg = <1>;
-			dsi_ep1_out: endpoint {
-				remote-endpoint = <&panel_otm8009a_in>;
-			};
-		};
-
-		port@2 {
-			reg = <2>;
-			dsi_ep2_out: endpoint {
-				remote-endpoint = <&panel_nt35510_in>;
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in>;
 			};
 		};
 
@@ -93,22 +86,8 @@
 		status = "okay";
 
 		port {
-			panel_otm8009a_in: endpoint {
-				remote-endpoint = <&dsi_ep1_out>;
-			};
-		};
-	};
-
-	panel-nt35510@0 {
-		compatible = "novatek,nt35510";
-		reg = <0>;
-		reset-gpios = <&gpioe 4 GPIO_ACTIVE_LOW>;
-		power-supply = <&v3v3>;
-		status = "disabled";
-
-		port {
-			panel_nt35510_in: endpoint {
-				remote-endpoint = <&dsi_ep2_out>;
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out>;
 			};
 		};
 	};
