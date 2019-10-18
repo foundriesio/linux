@@ -1052,8 +1052,12 @@ static const struct drm_encoder_funcs ltdc_encoder_funcs = {
 static void ltdc_encoder_disable(struct drm_encoder *encoder)
 {
 	struct drm_device *ddev = encoder->dev;
+	struct ltdc_device *ldev = ddev->dev_private;
 
 	DRM_DEBUG_DRIVER("\n");
+
+	/* Disable LTDC */
+	reg_clear(ldev->regs, LTDC_GCR, GCR_LTDCEN);
 
 	/* Set to sleep state the pinctrl whatever type of encoder */
 	pinctrl_pm_select_sleep_state(ddev->dev);
@@ -1062,6 +1066,7 @@ static void ltdc_encoder_disable(struct drm_encoder *encoder)
 static void ltdc_encoder_enable(struct drm_encoder *encoder)
 {
 	struct drm_device *ddev = encoder->dev;
+	struct ltdc_device *ldev = ddev->dev_private;
 
 	DRM_DEBUG_DRIVER("\n");
 
@@ -1072,6 +1077,9 @@ static void ltdc_encoder_enable(struct drm_encoder *encoder)
 	 */
 	if (encoder->encoder_type == DRM_MODE_ENCODER_DPI)
 		pinctrl_pm_select_default_state(ddev->dev);
+
+	/* Enable LTDC */
+	reg_set(ldev->regs, LTDC_GCR, GCR_LTDCEN);
 }
 
 static const struct drm_encoder_helper_funcs ltdc_encoder_helper_funcs = {
