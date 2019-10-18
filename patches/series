@@ -152,7 +152,6 @@ powerpc-kvm-Disable-in-kernel-MPIC-emulation-for-PRE.patch
 power-disable-highmem-on-rt.patch
 mips-disable-highmem-on-rt.patch
 leds-trigger-disable-CPU-trigger-on-RT.patch
-cpufreq-drop-K8-s-driver-from-beeing-selected.patch
 md-disable-bcache.patch
 efi-Disable-runtime-services-on-RT.patch
 x86-Disable-HAVE_ARCH_JUMP_LABEL.patch
@@ -194,9 +193,6 @@ mm-perform-lru_add_drain_all-remotely.patch
 
 # MM vmstat
 mm-make-vmstat-rt-aware.patch
-
-# MM memory
-re-preempt_rt_full-arm-coredump-fails-for-cpu-3e-3d-4.patch
 
 # MM SLxB
 mm-enable-slub.patch
@@ -416,6 +412,11 @@ powerpc-preempt-lazy-support.patch
 arch-arm64-Add-lazy-preempt-support.patch
 arm64-preempt-Fixup-lazy-preempt.patch
 arm64-preempt-Check-preemption-level-before-looking-.patch
+
+# migrate_disable() again
+sched-migrate_enable-Use-select_fallback_rq.patch
+sched-Lazy-migrate_disable-processing.patch
+sched-migrate_enable-Use-stop_one_cpu_nowait.patch
 
 # DRIVERS
 connector-cn_proc-Protect-send_msg-with-a-local-lock.patch
