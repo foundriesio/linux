@@ -43,6 +43,8 @@ Optional properties:
   For STM32MP1 family only.
 - st,smbus-alert: enable the SMBus Alert feature
 - st,smbus-host-notify: enable the SMBus Host-Notify feature
+- wakeup-source: Enable the possibility to use the I2C as a wakeup-source
+  For STM32H7 and STM32MP1 only.
 
 Example:
 
