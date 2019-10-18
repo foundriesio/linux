@@ -589,9 +589,6 @@
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
 		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
-		//mute-gpios = <&gpe 15 1>;	//DSP_MUTE 0: active high, 1: active low
-		mute-gpios = <&gpma 1 0>;	//AMP_MUTE 0: active high, 1: active low
-		stanby-gpios = <&gpma 2 0>;	//AMP_STBY 0: active high, 1: active low
 		status = "okay";		
 
 	};
