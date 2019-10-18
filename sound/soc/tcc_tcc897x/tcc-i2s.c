@@ -31,14 +31,12 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h> /* __clk_is_enabled */
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
-#include <linux/of_gpio.h>
 #include <asm/io.h>
 
 #include <sound/core.h>
@@ -617,11 +615,7 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 				i2s_writel(0x10, pdai_reg+I2S_DAVC); /* Mute ON */
 				ret = tcc_i2s_tx_enable(substream, 1);
 				i2s_writel(0x0, pdai_reg+I2S_DAVC); /* Mute OFF */
-#ifdef USE_MUTE_GPIO
-				if (tcc_i2s->mute_gpio >= 0) {
-					gpio_set_value(tcc_i2s->mute_gpio, !tcc_i2s->mute_gpio_flags); //mute off
-				}
-#endif//USE_MUTE_GPIO
+
 				alsa_dbg("%s() -playback start ret=%d\n", __func__, ret);
 
 			} else {	//for SNDRV_PCM_STREAM_CAPTURE
@@ -655,11 +649,7 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 					pcm_writel(reg_value, pdai_reg+I2S_DAMR);
 					tcc_i2s->cdif_bypass_en = 0;
 				}
-#ifdef USE_MUTE_GPIO
-				if (tcc_i2s->mute_gpio >= 0) {
-					gpio_set_value(tcc_i2s->mute_gpio, tcc_i2s->mute_gpio_flags); //mute on
-				}
-#endif//USE_MUTE_GPIO
+
 			} else {	//for SNDRV_PCM_STREAM_CAPTURE
 				alsa_dbg("%s() +capture stop\n", __func__);
 #if !defined(CONFIG_ARCH_TCC897X) && !defined(CONFIG_ARCH_TCC570X)
@@ -748,15 +738,6 @@ static int tcc_i2s_suspend(struct device *dev)
 		tcc_i2s->backup_dai->reg_mccr1 = 0;
 	}
 
-#ifdef USE_MUTE_GPIO
-	if (tcc_i2s->mute_gpio >= 0) {
-		gpio_set_value(tcc_i2s->mute_gpio, tcc_i2s->mute_gpio_flags); //mute on
-	}
-	if (tcc_i2s->stanby_gpio >= 0) {
-		gpio_set_value(tcc_i2s->stanby_gpio, !tcc_i2s->stanby_gpio_flags); //stanby off
-	}
-#endif//USE_MUTE_GPIO
-
 	// Disable all about dai clk
 	if(__clk_is_enabled(prtd->ptcc_clk->af_pclk)) {
 		clk_disable_unprepare(prtd->ptcc_clk->af_pclk);
@@ -781,15 +762,6 @@ static int tcc_i2s_resume(struct device *dev)
 #endif
 
 	alsa_dai_dbg(prtd->id, "[%s] \n", __func__);
-
-#ifdef USE_MUTE_GPIO
-	if (tcc_i2s->mute_gpio >= 0) {
-		gpio_set_value(tcc_i2s->mute_gpio, tcc_i2s->mute_gpio_flags); //mute on
-	}
-	if (tcc_i2s->stanby_gpio >= 0) {
-		gpio_set_value(tcc_i2s->stanby_gpio, tcc_i2s->stanby_gpio_flags); //stanby on
-	}
-#endif//USE_MUTE_GPIO
 
 	// Enable all about dai clk
 	if(prtd->ptcc_clk->dai_hclk)
@@ -1024,10 +996,6 @@ static int soc_tcc_i2s_probe(struct platform_device *pdev)
 #if defined(CONFIG_ARCH_TCC802X)
 	struct audio_i2s_port *pi2s_port;
 #endif
-#ifdef USE_MUTE_GPIO
-	enum of_gpio_flags gpio_flags;
-#endif//USE_MUTE_GPIO
-
 	u32 clk_rate;
 	int ret = 0;
 
@@ -1184,48 +1152,6 @@ static int soc_tcc_i2s_probe(struct platform_device *pdev)
 	   printk("\n");
 	   */
 #endif
-
-#ifdef USE_MUTE_GPIO
-	if (of_get_property(pdev->dev.of_node, "mute-gpios", NULL)) {
-		tcc_i2s->mute_gpio = -1;
-	} else {		
-		tcc_i2s->mute_gpio = of_get_named_gpio_flags(pdev->dev.of_node, "mute-gpios", 0, &gpio_flags);
-		if(gpio_is_valid(tcc_i2s->mute_gpio)) {
-			tcc_i2s->mute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
-			alsa_dai_dbg(prtd->id, "use mute gpio(%d)\n", tcc_i2s->mute_gpio);
-			if (devm_gpio_request_one(&pdev->dev, 
-						tcc_i2s->mute_gpio, 
-						(tcc_i2s->mute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
-						"mute-gpios")) {
-				printk("(%d) request mute gpio(%d) failed\n", prtd->id, tcc_i2s->mute_gpio);
-				return -EINVAL;
-			}
-		} else {
-			printk(KERN_ERR "(%d) mute gpio(%d) is invalid\n", prtd->id, tcc_i2s->mute_gpio);
-			return -EINVAL;
-		}
-	}
-	
-	if (of_get_property(pdev->dev.of_node, "stanby-gpios", NULL)) {
-		tcc_i2s->stanby_gpio = -1;
-	} else {		
-		tcc_i2s->stanby_gpio = of_get_named_gpio_flags(pdev->dev.of_node, "stanby-gpios", 0, &gpio_flags);
-		if(gpio_is_valid(tcc_i2s->stanby_gpio)) {
-			tcc_i2s->stanby_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
-			alsa_dai_dbg(prtd->id, "use stanby gpio(%d)\n", tcc_i2s->stanby_gpio);
-			if (devm_gpio_request_one(&pdev->dev, 
-						tcc_i2s->stanby_gpio, 
-						(tcc_i2s->stanby_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
-						"stanby-gpios")) {
-				printk("(%d) request stanby gpio(%d) failed\n", prtd->id, tcc_i2s->stanby_gpio);
-				return -EINVAL;
-			}
-		} else {
-			printk(KERN_ERR "(%d) stanby gpio(%d) is invalid\n", prtd->id, tcc_i2s->stanby_gpio);
-			return -EINVAL;
-		}
-	}	
-#endif//USE_MUTE_GPIO	
 
 #if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC570X)
 	//TCC897x, TCC570x Audio3-I2S doesn't support multi-channel.
