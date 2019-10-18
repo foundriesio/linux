@@ -329,6 +329,8 @@ static void ccwchain_cda_free(struct ccwchain *chain, int idx)
 {
 	struct ccw1 *ccw = chain->ch_ccw + idx;
 
+	if (ccw_is_test(ccw) || ccw_is_noop(ccw) || ccw_is_tic(ccw))
+		return;
 	if (!ccw->count)
 		return;
 
@@ -481,7 +483,7 @@ static int ccwchain_fetch_tic(struct ccwchain *chain,
 		ccw_tail = ccw_head + (iter->ch_len - 1) * sizeof(struct ccw1);
 
 		if ((ccw_head <= ccw->cda) && (ccw->cda <= ccw_tail)) {
-			ccw->cda = (__u32) (addr_t) (iter->ch_ccw +
+			ccw->cda = (__u32) (addr_t) (((char *)iter->ch_ccw) +
 						     (ccw->cda - ccw_head));
 			return 0;
 		}
