@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/display/panel/raydium,rm68200.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Raydium RM68200 5.5" 720x1280 panel
+
+maintainers:
+  - Yannick Fertre <yannick.fertre@st.com>
+
+description:
+  The Raydium Semiconductor Corporation RM68200 is a 5.5" 720x1280 TFT LCD
+  panel connected using a MIPI-DSI video interface.
+
+properties:
+  compatible:
+    const: raydium,rm68200
+
+  power-supply: true
+  reset-gpios: true
+  backlight: true
+  port: true
+  reg: true
+
+required:
+  - compatible
+  - reg
+  - port
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    display0: display {
+      #address-cells = <1>;
+      #size-cells = <0>;
+      panel {
+        compatible = "raydium,rm68200";
+        reg = <0>;
+        reset-gpios = <&gpiof 15 GPIO_ACTIVE_LOW>;
+        power-supply = <&v1v8>;
+        port {
+          panel_in_dsi: endpoint {
+            remote-endpoint = <&controller_out_dsi>;
+          };
+        };
+      };
+    };
+
+...
