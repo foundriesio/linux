@@ -928,7 +928,7 @@ static bool pin_config_match(struct hda_codec *codec,
  * @fixlist: the fixup list
  * @match_all_pins: all valid pins must match with the table entries
  */
-void snd_hda_pick_pin_fixup(struct hda_codec *codec,
+void snd_hda_pick_pin_fixup2(struct hda_codec *codec,
 			    const struct snd_hda_pin_quirk *pin_quirk,
 			    const struct hda_fixup *fixlist,
 			    bool match_all_pins)
@@ -954,6 +954,15 @@ void snd_hda_pick_pin_fixup(struct hda_codec *codec,
 			return;
 		}
 	}
+}
+EXPORT_SYMBOL_GPL(snd_hda_pick_pin_fixup2);
+
+// XXX FIXME: SLE15 kABI compatibility
+void snd_hda_pick_pin_fixup(struct hda_codec *codec,
+			    const struct snd_hda_pin_quirk *pin_quirk,
+			    const struct hda_fixup *fixlist)
+{
+	snd_hda_pick_pin_fixup2(codec, pin_quirk, fixlist, true);
 }
 EXPORT_SYMBOL_GPL(snd_hda_pick_pin_fixup);
 
