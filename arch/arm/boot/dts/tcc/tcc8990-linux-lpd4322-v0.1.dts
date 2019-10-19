@@ -195,4 +195,14 @@
 			gpios = <&gpg 11 1>;
 		};
 	};
+
+        tcc-clkout-sample {
+                compatible = "clkout-sample";
+                clocks = <&clk_peri PERI_OUT1>;
+		clock-frequency = <100000000>; //100Mhz
+                pinctrl-names = "default";
+                pinctrl-0 = <&tco_out_sample>;
+        };
+
+
 };
