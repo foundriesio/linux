@@ -181,6 +181,8 @@ extern void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 extern void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
 
+extern unsigned int tca_fb_get_fifo_underrun_count(void);
+
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
 extern void tca_fb_mouse_set_icon(tcc_mouse_icon *mouse_icon);
 extern int tca_fb_mouse_move(unsigned int width, unsigned int height, tcc_mouse *mouse, struct tcc_dp_device *pdp_data);
@@ -2135,6 +2137,18 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 		}
 		break;
+
+	case TCC_LCDC_GET_DISP_FU_STATUS:
+	    {
+		    unsigned int fu_count=0;
+
+		    fu_count = tca_fb_get_fifo_underrun_count();
+
+		    if (copy_to_user((void *)arg, &fu_count, sizeof(unsigned int)))
+			    return -EFAULT;
+
+	    }
+	    break;
 
 	case TCC_LCDC_SET_COLOR_ENHANCE:
 		{

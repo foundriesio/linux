@@ -583,6 +583,8 @@ struct lcdc_colorenhance_params
 #define GET_2D_COMPRESSION_FB_INFO      0x0501
 #define CHECK_2D_COMPRESSION_EN         0x0502
 
+#define TCC_LCDC_GET_DISP_FU_STATUS     0x0601
+
 #define TCC_LCDC_SET_COLOR_ENHANCE      _IOW(TCCFB_IOCTL_MAGIC, 0x1111, struct lcdc_colorenhance_params)
 #define TCC_LCDC_SET_M2M_LASTFRAME      _IOW(TCCFB_IOCTL_MAGIC, 0x1110, unsigned int)
 #endif

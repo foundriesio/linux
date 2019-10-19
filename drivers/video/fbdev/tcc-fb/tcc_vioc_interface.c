@@ -323,6 +323,12 @@ void tca_fb_dump_underrun_state(void)
 }
 #endif
 
+unsigned int disp_fifo_underrun_count = 0;
+unsigned int tca_fb_get_fifo_underrun_count(void)
+{
+		return disp_fifo_underrun_count;
+}
+
 void tca_fb_mem_scale_init(void)
 {
 	pmap_t pmap;
@@ -753,6 +759,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 					#endif//
 				}
 				VIOCFifoUnderRun++;
+				disp_fifo_underrun_count++;
 			#endif
 		#endif
 			}
@@ -780,6 +787,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		}
 		#endif//
 		VIOCFifoUnderRun = 0;
+		disp_fifo_underrun_count = 0;
 		pr_info("%s DISABEL DONE Lcdc_num:%d 0x%p  STATUS:0x%x  \n",
 			__func__,fbdev->pdata.lcdc_number, fbdev->pdata.Mdp_data.ddc_info.virt_addr, dispblock_status);
 #endif
