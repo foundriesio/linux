@@ -91,6 +91,7 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_rdma.h>
+#include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_wmixer_ioctrl.h>
@@ -274,6 +275,8 @@ static char HDMI_video_mode = 0;
 unsigned int HDMI_video_width = 0;
 unsigned int HDMI_video_height = 0;
 unsigned int HDMI_video_hz = 0;
+
+unsigned int fb_chromakey_control_enabled = 0;
 
 #if defined(CONFIG_TCC_VTA)
 extern int vta_cmd_notify_change_status(const char *);
@@ -2012,6 +2015,57 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 			break;
 
+		case TCC_LCDC_FB_CHROMAKEY_CONTROL:
+		case TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL:
+			{
+				struct tcc_dp_device *pdp_data = NULL;
+
+				lcdc_chromakey_params chromakey_ctrl;
+				unsigned int chroma_en;
+				unsigned int key_r, key_g, key_b;
+				unsigned int mask_r, mask_g, mask_b;
+
+				if (cmd == TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL) {
+					if (NULL == memcpy((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
+						return -EFAULT;
+				} else {
+					if (copy_from_user((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
+						return -EFAULT;
+				}
+
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+
+				if(pdp_data)
+				{
+					if(pdp_data->wmixer_info.virt_addr)
+					{
+						chromakey_ctrl.lcdc_num = pdp_data->DispNum;
+						chromakey_ctrl.layer_num = RDMA_FB;
+
+						chroma_en = chromakey_ctrl.enable;
+						key_r  = chromakey_ctrl.chromaR & 0xffff;
+						key_g  = chromakey_ctrl.chromaG & 0xffff;
+						key_b  = chromakey_ctrl.chromaB & 0xffff;
+						mask_r = (chromakey_ctrl.chromaR >> 16) & 0xffff;
+						mask_g = (chromakey_ctrl.chromaG >> 16) & 0xffff;
+						mask_b = (chromakey_ctrl.chromaB >> 16) & 0xffff;
+
+						VIOC_WMIX_SetChromaKey(pdp_data->wmixer_info.virt_addr, chromakey_ctrl.layer_num, 
+											   chroma_en, key_r, key_g, key_b, mask_r, mask_g, mask_b);
+
+						VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
+
+						if(chroma_en == 1)
+							fb_chromakey_control_enabled = 1;
+						else
+							fb_chromakey_control_enabled = 0;
+
+						pr_info("FB_CHROMAKEY_CONTROL(%d), R[0x%04x] G[0x%04x] B[0x%04x], MR[0x%04x] MG[0x%04x] MB[0x%04x]\n",
+											chroma_en, key_r, key_g, key_b, mask_r, mask_g, mask_b);
+					}
+				}
+			}
+			break;
 
 	// VSYNC PART
 		case TCC_LCDC_REFER_VSYNC_ENABLE:

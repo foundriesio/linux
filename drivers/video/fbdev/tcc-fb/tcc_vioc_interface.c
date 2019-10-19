@@ -221,6 +221,8 @@ extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImag
 #endif
 #endif
 
+extern unsigned int fb_chromakey_control_enabled;
+
 int tccxxx_grp_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 int tccxxx_grp_release(struct inode *inode, struct file *filp);
 int tccxxx_grp_open(struct inode *inode, struct file *filp);
@@ -2119,14 +2121,17 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-	#else
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-	#endif//
+	if(fb_chromakey_control_enabled == 0)
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 	#if defined(CONFIG_SUPPORT_2D_COMPRESSION)
 	tca_vioc_configure_DEC100(base_addr, var, pRDMA);
@@ -2382,15 +2387,17 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
 
-
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-#else
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-#endif//
+	if(fb_chromakey_control_enabled == 0)
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
@@ -5278,14 +5285,17 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, layer, 0, 0);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-	#else
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-	#endif//
+	if(fb_chromakey_control_enabled == 0)
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt

@@ -573,6 +573,8 @@ struct lcdc_colorenhance_params
 #define TCC_LCDC_MOUSE_MOVE             0x0201
 #define TCC_LCDC_MOUSE_ICON             0x0202
 #define TCC_LCDC_FBCHANNEL_ONOFF        0x0203
+#define TCC_LCDC_FB_CHROMAKEY_CONTROL   0x0204
+#define TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL 0x1204
 
 
 #define TCC_LCDC_GET_DISPLAY_TYPE       0x0401
