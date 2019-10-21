@@ -547,7 +547,7 @@
 		};
 
 		i2c1: i2c@40012000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x40012000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 21 IRQ_TYPE_LEVEL_HIGH>,
@@ -561,13 +561,12 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x1>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x1>;
 			wakeup-source;
 			status = "disabled";
 		};
 
 		i2c2: i2c@40013000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x40013000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 22 IRQ_TYPE_LEVEL_HIGH>,
@@ -581,13 +580,12 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x2>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x2>;
 			wakeup-source;
 			status = "disabled";
 		};
 
 		i2c3: i2c@40014000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x40014000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 23 IRQ_TYPE_LEVEL_HIGH>,
@@ -601,13 +599,12 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x4>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x4>;
 			wakeup-source;
 			status = "disabled";
 		};
 
 		i2c5: i2c@40015000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x40015000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 25 IRQ_TYPE_LEVEL_HIGH>,
@@ -621,7 +618,6 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x10>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x10>;
 			wakeup-source;
 			status = "disabled";
 		};
@@ -1703,7 +1699,7 @@
 		};
 
 		i2c4: i2c@5c002000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x5c002000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 24 IRQ_TYPE_LEVEL_HIGH>,
@@ -1717,7 +1713,6 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x8>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x8>;
 			wakeup-source;
 			status = "disabled";
 		};
@@ -1749,7 +1744,7 @@
 		};
 
 		i2c6: i2c@5c009000 {
-			compatible = "st,stm32f7-i2c";
+			compatible = "st,stm32mp15-i2c";
 			reg = <0x5c009000 0x400>;
 			interrupt-names = "event", "error";
 			interrupts-extended = <&exti 54 IRQ_TYPE_LEVEL_HIGH>,
@@ -1763,7 +1758,6 @@
 			dma-names = "rx", "tx";
 			power-domains = <&pd_core>;
 			st,syscfg-fmp = <&syscfg 0x4 0x20>;
-			st,syscfg-fmp-clr = <&syscfg 0x44 0x20>;
 			wakeup-source;
 			status = "disabled";
 		};
