@@ -315,28 +315,8 @@ int btrfs_dev_replace_start(struct btrfs_fs_info *fs_info,
 	struct btrfs_device *tgt_device = NULL;
 	struct btrfs_device *src_device = NULL;
 
-	/* the disk copy procedure reuses the scrub code */
-	mutex_lock(&fs_info->volume_mutex);
 	ret = btrfs_find_device_by_devspec(fs_info, srcdevid,
 					    srcdev_name, &src_device);
-	if (ret) {
-		mutex_unlock(&fs_info->volume_mutex);
-		return ret;
-	}
-
-	if (btrfs_pinned_by_swapfile(fs_info, src_device)) {
-		btrfs_warn_in_rcu(fs_info,
-	  "cannot replace device %s (devid %llu) due to active swapfile",
-				 src_device->missing ? "<missing disk>" :
-				 rcu_str_deref(src_device->name),
-				 src_device->devid);
-		mutex_unlock(&fs_info->volume_mutex);
-		return -ETXTBSY;
-	}
-
-	ret = btrfs_init_dev_replace_tgtdev(fs_info, tgtdev_name,
-					    src_device, &tgt_device);
-	mutex_unlock(&fs_info->volume_mutex);
 	if (ret)
 		return ret;
 
@@ -352,6 +332,21 @@ int btrfs_dev_replace_start(struct btrfs_fs_info *fs_info,
 	} else if (PTR_ERR(trans) != -ENOENT) {
 		return PTR_ERR(trans);
 	}
+
+	if (btrfs_pinned_by_swapfile(fs_info, src_device)) {
+		btrfs_warn_in_rcu(fs_info,
+	  "cannot replace device %s (devid %llu) due to active swapfile",
+				 src_device->missing ? "<missing disk>" :
+				 rcu_str_deref(src_device->name),
+				 src_device->devid);
+		mutex_unlock(&fs_info->volume_mutex);
+		return -ETXTBSY;
+	}
+
+	ret = btrfs_init_dev_replace_tgtdev(fs_info, tgtdev_name,
+					    src_device, &tgt_device);
+	if (ret)
+		return ret;
 
 	btrfs_dev_replace_lock(dev_replace, 1);
 	switch (dev_replace->replace_state) {
