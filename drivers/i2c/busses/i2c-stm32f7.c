@@ -223,6 +223,7 @@ struct stm32f7_i2c_spec {
  * @fall_time: Fall time (ns)
  * @dnf: Digital filter coefficient (0-16)
  * @analog_filter: Analog filter delay (On/Off)
+ * @fmp_clr_offset: Fast Mode Plus clear register offset from set register
  */
 struct stm32f7_i2c_setup {
 	u32 speed_freq;
@@ -231,6 +232,7 @@ struct stm32f7_i2c_setup {
 	u32 fall_time;
 	u8 dnf;
 	bool analog_filter;
+	u32 fmp_clr_offset;
 };
 
 /**
@@ -324,12 +326,10 @@ struct stm32f7_i2c_alert {
  * slave)
  * @dma: dma data
  * @use_dma: boolean to know if dma is used in the current transfer
- * @sregmap: holds SYSCFG phandle for Fast Mode Plus bits
- * @cregmap: holds SYSCFG phandle for Fast Mode Plus clear bits
+ * @regmap: holds SYSCFG phandle for Fast Mode Plus bits
  * @regmap_sreg: register address for setting Fast Mode Plus bits
- * @regmap_smask: mask for Fast Mode Plus bits in set register
- * @regmap_creg: register address for setting Fast Mode Plus bits
- * @regmap_cmask: mask for Fast Mode Plus bits in set register
+ * @regmap_creg: register address for clearing Fast Mode Plus bits
+ * @regmap_mask: mask for Fast Mode Plus bits
  * @host: SMBus host protocol specific data
  * @alert: SMBus alert specific data
  * @wakeup_src: boolean to know if the device is a wakeup source
@@ -355,12 +355,10 @@ struct stm32f7_i2c_dev {
 	bool master_mode;
 	struct stm32_i2c_dma *dma;
 	bool use_dma;
-	struct regmap *sregmap;
-	struct regmap *cregmap;
+	struct regmap *regmap;
 	u32 regmap_sreg;
-	u32 regmap_smask;
 	u32 regmap_creg;
-	u32 regmap_cmask;
+	u32 regmap_mask;
 	struct stm32f7_i2c_host *host;
 	struct stm32f7_i2c_alert *alert;
 	bool wakeup_src;
@@ -417,6 +415,14 @@ static const struct stm32f7_i2c_setup stm32f7_setup = {
 	.fall_time = STM32F7_I2C_FALL_TIME_DEFAULT,
 	.dnf = STM32F7_I2C_DNF_DEFAULT,
 	.analog_filter = STM32F7_I2C_ANALOG_FILTER_ENABLE,
+};
+
+static const struct stm32f7_i2c_setup stm32mp15_setup = {
+	.rise_time = STM32F7_I2C_RISE_TIME_DEFAULT,
+	.fall_time = STM32F7_I2C_FALL_TIME_DEFAULT,
+	.dnf = STM32F7_I2C_DNF_DEFAULT,
+	.analog_filter = STM32F7_I2C_ANALOG_FILTER_ENABLE,
+	.fmp_clr_offset = 0x40,
 };
 
 static inline void stm32f7_i2c_set_bits(void __iomem *reg, u32 mask)
@@ -1904,24 +1910,23 @@ static int stm32f7_i2c_write_fm_plus_bits(struct stm32f7_i2c_dev *i2c_dev,
 					  bool enable)
 {
 	int ret;
-	u32 reg, mask;
 
 	if (i2c_dev->bus_rate <= I2C_FAST_RATE ||
-	    IS_ERR_OR_NULL(i2c_dev->sregmap)) {
+	    IS_ERR_OR_NULL(i2c_dev->regmap)) {
 		/* Optional */
 		return 0;
 	}
 
-	reg = i2c_dev->regmap_sreg;
-	mask = i2c_dev->regmap_smask;
-
-	if (IS_ERR(i2c_dev->cregmap))
-		ret = regmap_update_bits(i2c_dev->sregmap, reg, mask,
-					 enable ? mask : 0);
+	if (i2c_dev->regmap_sreg == i2c_dev->regmap_creg)
+		ret = regmap_update_bits(i2c_dev->regmap,
+					 i2c_dev->regmap_sreg,
+					 i2c_dev->regmap_mask,
+					 enable ? i2c_dev->regmap_mask : 0);
 	else
-		ret = regmap_write(enable ? i2c_dev->sregmap : i2c_dev->cregmap,
-				   enable ? reg : i2c_dev->regmap_creg,
-				   enable ? mask : i2c_dev->regmap_cmask);
+		ret = regmap_write(i2c_dev->regmap,
+				   enable ? i2c_dev->regmap_sreg :
+					    i2c_dev->regmap_creg,
+				   i2c_dev->regmap_mask);
 
 	return ret;
 }
@@ -1933,8 +1938,8 @@ static int stm32f7_i2c_setup_fm_plus_bits(struct platform_device *pdev,
 	int ret;
 	u32 reg, mask;
 
-	i2c_dev->sregmap = syscon_regmap_lookup_by_phandle(np, "st,syscfg-fmp");
-	if (IS_ERR(i2c_dev->sregmap)) {
+	i2c_dev->regmap = syscon_regmap_lookup_by_phandle(np, "st,syscfg-fmp");
+	if (IS_ERR(i2c_dev->regmap)) {
 		/* Optional */
 		return 0;
 	}
@@ -1948,20 +1953,8 @@ static int stm32f7_i2c_setup_fm_plus_bits(struct platform_device *pdev,
 		return ret;
 
 	i2c_dev->regmap_sreg = reg;
-	i2c_dev->regmap_smask = mask;
-	i2c_dev->cregmap = syscon_regmap_lookup_by_phandle(np,
-							   "st,syscfg-fmp-clr");
-	if (!IS_ERR(i2c_dev->cregmap)) {
-		ret = of_property_read_u32_index(np, "st,syscfg-fmp-clr", 1,
-						 &i2c_dev->regmap_creg);
-		if (ret)
-			return ret;
-
-		ret = of_property_read_u32_index(np, "st,syscfg-fmp-clr", 2,
-						 &i2c_dev->regmap_cmask);
-		if (ret)
-			return ret;
-	}
+	i2c_dev->regmap_creg = reg + i2c_dev->setup.fmp_clr_offset;
+	i2c_dev->regmap_mask = mask;
 
 	return stm32f7_i2c_write_fm_plus_bits(i2c_dev, 1);
 }
@@ -2528,6 +2521,7 @@ static const struct dev_pm_ops stm32f7_i2c_pm_ops = {
 
 static const struct of_device_id stm32f7_i2c_match[] = {
 	{ .compatible = "st,stm32f7-i2c", .data = &stm32f7_setup},
+	{ .compatible = "st,stm32mp15-i2c", .data = &stm32mp15_setup},
 	{},
 };
 MODULE_DEVICE_TABLE(of, stm32f7_i2c_match);
