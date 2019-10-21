@@ -904,7 +904,13 @@ struct drm_connector {
 	 *
 	 * Protected by @mutex.
 	 */
-	enum drm_connector_registration_state registration_state;
+#ifdef __GENKSYMS__
+	bool registered;
+#else
+	/* FIXME: using unsigned char to make sure the size alignment with bool above */
+	/* enum drm_connector_registration_state registration_state; */
+	unsigned char registration_state;
+#endif
 
 	/**
 	 * @modes:
