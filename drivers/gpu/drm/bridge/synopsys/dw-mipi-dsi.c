@@ -297,7 +297,13 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 	const struct dw_mipi_dsi_plat_data *pdata = dsi->plat_data;
 	struct drm_bridge *bridge;
 	struct drm_panel *panel;
-	int ret;
+	int i, nb_endpoints;
+	int ret = -ENODEV;
+
+	/* Get number of endpoints */
+	nb_endpoints = of_graph_get_endpoint_count(host->dev->of_node);
+	if (!nb_endpoints)
+		return -ENODEV;
 
 	if (device->lanes > dsi->plat_data->max_data_lanes) {
 		dev_err(dsi->dev, "the number of data lanes(%u) is too many\n",
@@ -310,8 +316,16 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 	dsi->format = device->format;
 	dsi->mode_flags = device->mode_flags;
 
-	ret = drm_of_find_panel_or_bridge(host->dev->of_node, 1, 0,
-					  &panel, &bridge);
+	for (i = 1; i < nb_endpoints; i++) {
+		ret = drm_of_find_panel_or_bridge(host->dev->of_node, i, 0,
+						  &panel, &bridge);
+		if (!ret)
+			break;
+		else if (ret == -EPROBE_DEFER)
+			return ret;
+	}
+
+	/* check if an error is returned >> no panel or bridge detected */
 	if (ret)
 		return ret;
 
