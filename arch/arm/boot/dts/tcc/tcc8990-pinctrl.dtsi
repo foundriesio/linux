@@ -1864,4 +1864,8 @@
 		telechips,pins = "gpa-28";
 		telechips,pin-function = <0>;
 	};
+	tco_out_sample: tco_out_sample {
+	        telechips,pins = "gpa-4";
+                telechips,pin-function = <5>;
+        };
 };
