@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/display/panel/novatek,nt35510.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Novatek NT35510 3.97" 480x800 panel
+
+maintainers:
+  - Yannick Fertre <yannick.fertre@st.com>
+
+description:
+  The Novatek NT35510 is a 3.97" 480x800 TFT LCD panel connected using
+  a MIPI-DSI video interface. Its backlight is managed through the DSI link.
+
+properties:
+  compatible:
+    const: novatek,nt35510
+
+  power-supply: true
+  reset-gpios: true
+  backlight: true
+  port: true
+  reg: true
+
+required:
+  - compatible
+  - reg
+  - port
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    display1: display {
+      #address-cells = <1>;
+      #size-cells = <0>;
+      panel {
+        compatible = "novatek,nt35510";
+        reg = <0>;
+        reset-gpios = <&gpioh 7 GPIO_ACTIVE_LOW>;
+        power-supply = <&v1v8>;
+
+        port {
+          panel_in_dsi: endpoint {
+            remote-endpoint = <&controller_out_dsi>;
+          };
+        };
+      };
+    };
+
+...
