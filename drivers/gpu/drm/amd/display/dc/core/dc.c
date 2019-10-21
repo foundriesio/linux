@@ -1452,7 +1452,7 @@ void dc_commit_updates_for_stream(struct dc *dc,
 	enum surface_update_type update_type;
 	struct dc_state *context;
 	struct dc_context *dc_ctx = dc->ctx;
-	int i, j;
+	int i;
 
 	stream_status = dc_stream_get_status(stream);
 	context = dc->current_state;
@@ -1495,17 +1495,6 @@ void dc_commit_updates_for_stream(struct dc *dc,
 			surface->address = srf_updates[i].flip_addr->address;
 			surface->flip_immediate = srf_updates[i].flip_addr->flip_immediate;
 
-		}
-
-		if (update_type >= UPDATE_TYPE_MED) {
-			for (j = 0; j < dc->res_pool->pipe_count; j++) {
-				struct pipe_ctx *pipe_ctx = &context->res_ctx.pipe_ctx[j];
-
-				if (pipe_ctx->plane_state != surface)
-					continue;
-
-				resource_build_scaling_params(pipe_ctx);
-			}
 		}
 	}
 
