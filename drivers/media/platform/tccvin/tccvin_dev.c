@@ -1082,12 +1082,20 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 	VIOC_WDMA_SetIreqMask(pWDMA, VIOC_WDMA_IREQ_ALL_MASK, 0x1);	// disable WDMA interrupt
 	VIOC_WDMA_SetImageDisable(pWDMA);
 
-	for(idxLoop=0; idxLoop<20; idxLoop++) {
-		VIOC_WDMA_GetStatus(pWDMA, &status);
-		if(status & VIOC_WDMA_IREQ_EOFR_MASK)
-			break;
-		else
-			msleep(1);
+	if (VIOC_WDMA_Get_CAddress(pWDMA) > 0UL) {
+		/* We set a criteria for a worst-case within 10-fps and
+		 * time-out to disable WDMA as 200ms. To be specific, in the
+		 * 10-fps environment, the worst case we assume, it has to
+		 * wait 200ms at least for 2 frame. */
+		for(idxLoop = 0; idxLoop < 20; idxLoop++) {
+			VIOC_WDMA_GetStatus(pWDMA, &status);
+			if(status & VIOC_WDMA_IREQ_EOFR_MASK) {
+				break;
+			}
+			else {
+				msleep(10);
+			}
+		}
 	}
 
 	if(cif->vioc_path.vin <= VIOC_VIN30) {
