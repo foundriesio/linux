@@ -20451,8 +20451,9 @@ lpfc_get_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 	struct sli4_hybrid_sgl *allocated_sgl = NULL;
 	struct lpfc_sli4_hdw_queue *hdwq = lpfc_buf->hdwq;
 	struct list_head *buf_list = &hdwq->sgl_list;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	if (likely(!list_empty(buf_list))) {
 		/* break off 1 chunk from the sgl_list */
@@ -20464,7 +20465,7 @@ lpfc_get_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 		}
 	} else {
 		/* allocate more */
-		spin_unlock_irq(&hdwq->hdwq_lock);
+		spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 		tmp = kmalloc_node(sizeof(*tmp), GFP_ATOMIC,
 				   cpu_to_node(smp_processor_id()));
 		if (!tmp) {
@@ -20486,7 +20487,7 @@ lpfc_get_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 			return NULL;
 		}
 
-		spin_lock_irq(&hdwq->hdwq_lock);
+		spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 		list_add_tail(&tmp->list_node, &lpfc_buf->dma_sgl_xtra_list);
 	}
 
@@ -20494,7 +20495,7 @@ lpfc_get_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 					struct sli4_hybrid_sgl,
 					list_node);
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 
 	return allocated_sgl;
 }
@@ -20518,8 +20519,9 @@ lpfc_put_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 	struct sli4_hybrid_sgl *tmp = NULL;
 	struct lpfc_sli4_hdw_queue *hdwq = lpfc_buf->hdwq;
 	struct list_head *buf_list = &hdwq->sgl_list;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	if (likely(!list_empty(&lpfc_buf->dma_sgl_xtra_list))) {
 		list_for_each_entry_safe(list_entry, tmp,
@@ -20532,7 +20534,7 @@ lpfc_put_sgl_per_hdwq(struct lpfc_hba *phba, struct lpfc_io_buf *lpfc_buf)
 		rc = -EINVAL;
 	}
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 	return rc;
 }
 
@@ -20553,8 +20555,9 @@ lpfc_free_sgl_per_hdwq(struct lpfc_hba *phba,
 	struct list_head *buf_list = &hdwq->sgl_list;
 	struct sli4_hybrid_sgl *list_entry = NULL;
 	struct sli4_hybrid_sgl *tmp = NULL;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	/* Free sgl pool */
 	list_for_each_entry_safe(list_entry, tmp,
@@ -20566,7 +20569,7 @@ lpfc_free_sgl_per_hdwq(struct lpfc_hba *phba,
 		kfree(list_entry);
 	}
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 }
 
 /**
@@ -20590,8 +20593,9 @@ lpfc_get_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 	struct fcp_cmd_rsp_buf *allocated_buf = NULL;
 	struct lpfc_sli4_hdw_queue *hdwq = lpfc_buf->hdwq;
 	struct list_head *buf_list = &hdwq->cmd_rsp_buf_list;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	if (likely(!list_empty(buf_list))) {
 		/* break off 1 chunk from the list */
@@ -20604,7 +20608,7 @@ lpfc_get_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 		}
 	} else {
 		/* allocate more */
-		spin_unlock_irq(&hdwq->hdwq_lock);
+		spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 		tmp = kmalloc_node(sizeof(*tmp), GFP_ATOMIC,
 				   cpu_to_node(smp_processor_id()));
 		if (!tmp) {
@@ -20631,7 +20635,7 @@ lpfc_get_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 		tmp->fcp_rsp = (struct fcp_rsp *)((uint8_t *)tmp->fcp_cmnd +
 				sizeof(struct fcp_cmnd));
 
-		spin_lock_irq(&hdwq->hdwq_lock);
+		spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 		list_add_tail(&tmp->list_node, &lpfc_buf->dma_cmd_rsp_list);
 	}
 
@@ -20639,7 +20643,7 @@ lpfc_get_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 					struct fcp_cmd_rsp_buf,
 					list_node);
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 
 	return allocated_buf;
 }
@@ -20664,8 +20668,9 @@ lpfc_put_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 	struct fcp_cmd_rsp_buf *tmp = NULL;
 	struct lpfc_sli4_hdw_queue *hdwq = lpfc_buf->hdwq;
 	struct list_head *buf_list = &hdwq->cmd_rsp_buf_list;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	if (likely(!list_empty(&lpfc_buf->dma_cmd_rsp_list))) {
 		list_for_each_entry_safe(list_entry, tmp,
@@ -20678,7 +20683,7 @@ lpfc_put_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 		rc = -EINVAL;
 	}
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 	return rc;
 }
 
@@ -20699,8 +20704,9 @@ lpfc_free_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 	struct list_head *buf_list = &hdwq->cmd_rsp_buf_list;
 	struct fcp_cmd_rsp_buf *list_entry = NULL;
 	struct fcp_cmd_rsp_buf *tmp = NULL;
+	unsigned long iflags;
 
-	spin_lock_irq(&hdwq->hdwq_lock);
+	spin_lock_irqsave(&hdwq->hdwq_lock, iflags);
 
 	/* Free cmd_rsp buf pool */
 	list_for_each_entry_safe(list_entry, tmp,
@@ -20713,5 +20719,5 @@ lpfc_free_cmd_rsp_buf_per_hdwq(struct lpfc_hba *phba,
 		kfree(list_entry);
 	}
 
-	spin_unlock_irq(&hdwq->hdwq_lock);
+	spin_unlock_irqrestore(&hdwq->hdwq_lock, iflags);
 }
