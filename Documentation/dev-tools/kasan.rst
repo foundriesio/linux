@@ -29,6 +29,9 @@ version 5.0 or later.
 KASAN works with both SLUB and SLAB memory allocators.
 For better bug detection and nicer reporting, enable CONFIG_STACKTRACE.
 
+To augment reports with last allocation and freeing stack of the physical page,
+it is recommended to enable also CONFIG_PAGE_OWNER and boot with page_owner=on.
+
 To disable instrumentation for specific files or directories, add a line
 similar to the following to the respective kernel Makefile:
 
