@@ -22,6 +22,9 @@ struct vmem_altmap {
 	unsigned long free;
 	unsigned long align;
 	unsigned long alloc;
+#ifndef __GENKSYMS__
+	const unsigned long end_pfn;
+#endif
 };
 
 /*
