@@ -84,6 +84,17 @@
 	status = "okay";
 };
 
+&gpio3 {
+	/*
+	 * Add GPIO3_10 as a wakeup source:
+	 * Pin:  SC_P_QSPI0A_DATA1 (SODIMM_45)
+	 * Type: SC_PAD_WAKEUP_RISE_EDGE
+	 * Line: GPIO3_IO10
+	 */
+	pad-wakeup = <157 6 10>;
+	pad-wakeup-num = <1>;
+ };
+
 &gpu_3d0 {
 	status = "okay";
 };
