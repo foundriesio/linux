@@ -7,6 +7,7 @@
 
 #include "stm32mp157c.dtsi"
 #include "stm32mp157xaa-pinctrl.dtsi"
+#include "stm32mp157c-m4-srm.dtsi"
 #include <dt-bindings/mfd/st,stpmic1.h>
 
 / {
