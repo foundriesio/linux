@@ -68,12 +68,9 @@
 #define detailk(msg...) //printk( "TCC_VPU_DEC: " msg);
 #define err(msg...) printk("TCC_VPU_DEC[Err]: "msg);
 
-struct mutex add_mutex;
-
 static void _vdec_inter_add_list(vpu_decoder_data *vdata, int cmd, void* args)
 {
-
-    mutex_lock(&add_mutex);
+    mutex_lock(&vdata->add_mutex);
     vdata->vdec_list[vdata->list_idx].type          = vdata->gsDecType;
     vdata->vdec_list[vdata->list_idx].cmd_type      = cmd;
 #ifdef CONFIG_SUPPORT_TCC_JPU
@@ -125,14 +122,12 @@ static void _vdec_inter_add_list(vpu_decoder_data *vdata, int cmd, void* args)
         vmgr_list_manager(&vdata->vdec_list[vdata->list_idx], LIST_ADD);
 
     vdata->list_idx = (vdata->list_idx + 1) == LIST_MAX ? (0) : (vdata->list_idx + 1);
-    mutex_unlock(&add_mutex);
+    mutex_unlock(&vdata->add_mutex);
 }
 
 static void _vdec_init_list(vpu_decoder_data *vdata )
 {
     int i;
-
-    mutex_init(&add_mutex);
 
     for (i = 0; i < LIST_MAX; i++) {
         vdata->vdec_list[i].comm_data = NULL;
@@ -2691,6 +2686,7 @@ int vdec_probe(struct platform_device *pdev)
     memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
     spin_lock_init(&(vdata->vComm_data.lock));
     init_waitqueue_head(&(vdata->vComm_data.wq));
+    mutex_init(&vdata->add_mutex);
 
     if (misc_register(vdata->misc))
     {

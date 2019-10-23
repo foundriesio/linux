@@ -248,6 +248,8 @@ typedef struct _vpu_decoder_data{
     unsigned char list_idx;
 
     VpuList_t vdec_list[LIST_MAX];
+	
+	struct mutex add_mutex;
 } vpu_decoder_data;
 #endif
 
@@ -275,6 +277,8 @@ typedef struct _vpu_encoder_data{
     unsigned char list_idx;
 
     VpuList_t venc_list[LIST_MAX];
+	
+	struct mutex add_mutex;
 } vpu_encoder_data;
 #endif
 #endif
