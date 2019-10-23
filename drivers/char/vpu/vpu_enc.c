@@ -61,6 +61,8 @@
 
 static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
 {
+    mutex_lock(&vdata->add_mutex);
+
     vdata->venc_list[vdata->list_idx].type          = vdata->gsEncType;
     vdata->venc_list[vdata->list_idx].cmd_type      = cmd;
 #ifdef CONFIG_SUPPORT_TCC_JPU
@@ -82,6 +84,8 @@ static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
         vmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
 
     vdata->list_idx = (vdata->list_idx+1)%LIST_MAX;
+	
+    mutex_unlock(&vdata->add_mutex);
 }
 
 static void _venc_init_list(vpu_encoder_data *vdata)
@@ -654,6 +658,7 @@ int venc_probe(struct platform_device *pdev)
     memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
     spin_lock_init(&(vdata->vComm_data.lock));
     init_waitqueue_head(&(vdata->vComm_data.wq));
+    mutex_init(&vdata->add_mutex);
 
     if (misc_register(vdata->misc))
     {
