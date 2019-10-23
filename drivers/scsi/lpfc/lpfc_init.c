@@ -64,12 +64,6 @@
 #include "lpfc_version.h"
 #include "lpfc_ids.h"
 
-char *_dump_buf_data;
-unsigned long _dump_buf_data_order;
-char *_dump_buf_dif;
-unsigned long _dump_buf_dif_order;
-spinlock_t _dump_buf_lock;
-
 /* Used when mapping IRQ vectors in a driver centric manner */
 uint16_t *lpfc_used_cpu;
 uint32_t lpfc_present_cpu;
@@ -7215,7 +7209,6 @@ lpfc_setup_bg(struct lpfc_hba *phba, struct Scsi_Host *shost)
 	uint32_t old_mask;
 	uint32_t old_guard;
 
-	int pagecnt = 10;
 	if (phba->cfg_prot_mask && phba->cfg_prot_guard) {
 		lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
 				"1478 Registering BlockGuard with the "
@@ -7252,56 +7245,6 @@ lpfc_setup_bg(struct lpfc_hba *phba, struct Scsi_Host *shost)
 				"layer, Bad protection parameters: %d %d\n",
 				old_mask, old_guard);
 	}
-
-	if (!_dump_buf_data) {
-		while (pagecnt) {
-			spin_lock_init(&_dump_buf_lock);
-			_dump_buf_data =
-				(char *) __get_free_pages(GFP_KERNEL, pagecnt);
-			if (_dump_buf_data) {
-				lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-					"9043 BLKGRD: allocated %d pages for "
-				       "_dump_buf_data at 0x%p\n",
-				       (1 << pagecnt), _dump_buf_data);
-				_dump_buf_data_order = pagecnt;
-				memset(_dump_buf_data, 0,
-				       ((1 << PAGE_SHIFT) << pagecnt));
-				break;
-			} else
-				--pagecnt;
-		}
-		if (!_dump_buf_data_order)
-			lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-				"9044 BLKGRD: ERROR unable to allocate "
-			       "memory for hexdump\n");
-	} else
-		lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-			"9045 BLKGRD: already allocated _dump_buf_data=0x%p"
-		       "\n", _dump_buf_data);
-	if (!_dump_buf_dif) {
-		while (pagecnt) {
-			_dump_buf_dif =
-				(char *) __get_free_pages(GFP_KERNEL, pagecnt);
-			if (_dump_buf_dif) {
-				lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-					"9046 BLKGRD: allocated %d pages for "
-				       "_dump_buf_dif at 0x%p\n",
-				       (1 << pagecnt), _dump_buf_dif);
-				_dump_buf_dif_order = pagecnt;
-				memset(_dump_buf_dif, 0,
-				       ((1 << PAGE_SHIFT) << pagecnt));
-				break;
-			} else
-				--pagecnt;
-		}
-		if (!_dump_buf_dif_order)
-			lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-			"9047 BLKGRD: ERROR unable to allocate "
-			       "memory for hexdump\n");
-	} else
-		lpfc_printf_log(phba, KERN_ERR, LOG_BG,
-			"9048 BLKGRD: already allocated _dump_buf_dif=0x%p\n",
-		       _dump_buf_dif);
 }
 
 /**
@@ -12937,19 +12880,6 @@ lpfc_exit(void)
 	pci_unregister_driver(&lpfc_driver);
 	fc_release_transport(lpfc_transport_template);
 	fc_release_transport(lpfc_vport_transport_template);
-	if (_dump_buf_data) {
-		printk(KERN_ERR	"9062 BLKGRD: freeing %lu pages for "
-				"_dump_buf_data at 0x%p\n",
-				(1L << _dump_buf_data_order), _dump_buf_data);
-		free_pages((unsigned long)_dump_buf_data, _dump_buf_data_order);
-	}
-
-	if (_dump_buf_dif) {
-		printk(KERN_ERR	"9049 BLKGRD: freeing %lu pages for "
-				"_dump_buf_dif at 0x%p\n",
-				(1L << _dump_buf_dif_order), _dump_buf_dif);
-		free_pages((unsigned long)_dump_buf_dif, _dump_buf_dif_order);
-	}
 	kfree(lpfc_used_cpu);
 	idr_destroy(&lpfc_hba_index);
 }

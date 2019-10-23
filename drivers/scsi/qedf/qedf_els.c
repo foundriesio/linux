@@ -201,8 +201,12 @@ static void qedf_rrq_compl(struct qedf_els_cb_arg *cb_arg)
 		   " orig xid = 0x%x, rrq_xid = 0x%x, refcount=%d\n",
 		   orig_io_req, orig_io_req->xid, rrq_req->xid, refcount);
 
-	/* This should return the aborted io_req to the command pool */
-	if (orig_io_req)
+	/*
+	 * This should return the aborted io_req to the command pool. Note that
+	 * we need to check the refcound in case the original request was
+	 * flushed but we get a completion on this xid.
+	 */
+	if (orig_io_req && refcount > 0)
 		kref_put(&orig_io_req->refcount, qedf_release_cmd);
 
 out_free:
@@ -229,6 +233,7 @@ int qedf_send_rrq(struct qedf_ioreq *aborted_io_req)
 	uint32_t sid;
 	uint32_t r_a_tov;
 	int rc;
+	int refcount;
 
 	if (!aborted_io_req) {
 		QEDF_ERR(NULL, "abort_io_req is NULL.\n");
@@ -236,6 +241,15 @@ int qedf_send_rrq(struct qedf_ioreq *aborted_io_req)
 	}
 
 	fcport = aborted_io_req->fcport;
+
+	if (!fcport) {
+		refcount = kref_read(&aborted_io_req->refcount);
+		QEDF_ERR(NULL,
+			 "RRQ work was queued prior to a flush xid=0x%x, refcount=%d.\n",
+			 aborted_io_req->xid, refcount);
+		kref_put(&aborted_io_req->refcount, qedf_release_cmd);
+		return -EINVAL;
+	}
 
 	/* Check that fcport is still offloaded */
 	if (!test_bit(QEDF_RPORT_SESSION_READY, &fcport->flags)) {
@@ -249,6 +263,19 @@ int qedf_send_rrq(struct qedf_ioreq *aborted_io_req)
 	}
 
 	qedf = fcport->qedf;
+
+	/*
+	 * Sanity check that we can send a RRQ to make sure that refcount isn't
+	 * 0
+	 */
+	refcount = kref_read(&aborted_io_req->refcount);
+	if (refcount != 1) {
+		QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_ELS,
+			  "refcount for xid=%x io_req=%p refcount=%d is not 1.\n",
+			  aborted_io_req->xid, aborted_io_req, refcount);
+		return -EINVAL;
+	}
+
 	lport = qedf->lport;
 	sid = fcport->sid;
 	r_a_tov = lport->r_a_tov;
@@ -353,12 +380,18 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 
 	rdata = fcport->rdata;
-	if (rdata) {
+	if (rdata && !kref_get_unless_zero(&rdata->kref)) {
+		fcport->rdata = NULL;
+		rdata = NULL;
+	}
+
+	if (rdata && rdata->rp_state == RPORT_ST_READY) {
 		lport = fcport->qedf->lport;
 		port_id = rdata->ids.port_id;
 		QEDF_ERR(&(fcport->qedf->dbg_ctx),
 		    "LOGO port_id=%x.\n", port_id);
 		fc_rport_logoff(rdata);
+		kref_put(&rdata->kref, fc_rport_destroy);
 		mutex_lock(&lport->disc.disc_mutex);
 		/* Recreate the rport and log back in */
 		rdata = fc_rport_create(lport, port_id);
@@ -368,6 +401,7 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 			fcport->rdata = rdata;
 		} else {
 			mutex_unlock(&lport->disc.disc_mutex);
+			fcport->rdata = NULL;
 		}
 	}
 	clear_bit(QEDF_RPORT_IN_RESET, &fcport->flags);

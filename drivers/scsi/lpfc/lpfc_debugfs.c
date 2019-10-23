@@ -1705,89 +1705,6 @@ out:
 	return rc;
 }
 
-static int
-lpfc_debugfs_dumpData_open(struct inode *inode, struct file *file)
-{
-	struct lpfc_debug *debug;
-	int rc = -ENOMEM;
-
-	if (!_dump_buf_data)
-		return -EBUSY;
-
-	debug = kmalloc(sizeof(*debug), GFP_KERNEL);
-	if (!debug)
-		goto out;
-
-	/* Round to page boundary */
-	pr_err("9059 BLKGRD:  %s: _dump_buf_data=0x%p\n",
-			__func__, _dump_buf_data);
-	debug->buffer = _dump_buf_data;
-	if (!debug->buffer) {
-		kfree(debug);
-		goto out;
-	}
-
-	debug->len = (1 << _dump_buf_data_order) << PAGE_SHIFT;
-	file->private_data = debug;
-
-	rc = 0;
-out:
-	return rc;
-}
-
-static int
-lpfc_debugfs_dumpDif_open(struct inode *inode, struct file *file)
-{
-	struct lpfc_debug *debug;
-	int rc = -ENOMEM;
-
-	if (!_dump_buf_dif)
-		return -EBUSY;
-
-	debug = kmalloc(sizeof(*debug), GFP_KERNEL);
-	if (!debug)
-		goto out;
-
-	/* Round to page boundary */
-	pr_err("9060 BLKGRD: %s: _dump_buf_dif=0x%p file=%pD\n",
-			__func__, _dump_buf_dif, file);
-	debug->buffer = _dump_buf_dif;
-	if (!debug->buffer) {
-		kfree(debug);
-		goto out;
-	}
-
-	debug->len = (1 << _dump_buf_dif_order) << PAGE_SHIFT;
-	file->private_data = debug;
-
-	rc = 0;
-out:
-	return rc;
-}
-
-static ssize_t
-lpfc_debugfs_dumpDataDif_write(struct file *file, const char __user *buf,
-		  size_t nbytes, loff_t *ppos)
-{
-	/*
-	 * The Data/DIF buffers only save one failing IO
-	 * The write op is used as a reset mechanism after an IO has
-	 * already been saved to the next one can be saved
-	 */
-	spin_lock(&_dump_buf_lock);
-
-	memset((void *)_dump_buf_data, 0,
-			((1 << PAGE_SHIFT) << _dump_buf_data_order));
-	memset((void *)_dump_buf_dif, 0,
-			((1 << PAGE_SHIFT) << _dump_buf_dif_order));
-
-	_dump_buf_done = 0;
-
-	spin_unlock(&_dump_buf_lock);
-
-	return nbytes;
-}
-
 static ssize_t
 lpfc_debugfs_dif_err_read(struct file *file, char __user *buf,
 	size_t nbytes, loff_t *ppos)
@@ -1994,17 +1911,6 @@ lpfc_debugfs_release(struct inode *inode, struct file *file)
 	struct lpfc_debug *debug = file->private_data;
 
 	kfree(debug->buffer);
-	kfree(debug);
-
-	return 0;
-}
-
-static int
-lpfc_debugfs_dumpDataDif_release(struct inode *inode, struct file *file)
-{
-	struct lpfc_debug *debug = file->private_data;
-
-	debug->buffer = NULL;
 	kfree(debug);
 
 	return 0;
@@ -4937,26 +4843,6 @@ static const struct file_operations lpfc_debugfs_op_cpucheck = {
 	.release =      lpfc_debugfs_release,
 };
 
-#undef lpfc_debugfs_op_dumpData
-static const struct file_operations lpfc_debugfs_op_dumpData = {
-	.owner =        THIS_MODULE,
-	.open =         lpfc_debugfs_dumpData_open,
-	.llseek =       lpfc_debugfs_lseek,
-	.read =         lpfc_debugfs_read,
-	.write =	lpfc_debugfs_dumpDataDif_write,
-	.release =      lpfc_debugfs_dumpDataDif_release,
-};
-
-#undef lpfc_debugfs_op_dumpDif
-static const struct file_operations lpfc_debugfs_op_dumpDif = {
-	.owner =        THIS_MODULE,
-	.open =         lpfc_debugfs_dumpDif_open,
-	.llseek =       lpfc_debugfs_lseek,
-	.read =         lpfc_debugfs_read,
-	.write =	lpfc_debugfs_dumpDataDif_write,
-	.release =      lpfc_debugfs_dumpDataDif_release,
-};
-
 #undef lpfc_debugfs_op_dif_err
 static const struct file_operations lpfc_debugfs_op_dif_err = {
 	.owner =	THIS_MODULE,
@@ -5352,30 +5238,6 @@ lpfc_debugfs_initialize(struct lpfc_vport *vport)
 			}
 		} else
 			phba->debug_dumpHostSlim = NULL;
-
-		/* Setup dumpData */
-		snprintf(name, sizeof(name), "dumpData");
-		phba->debug_dumpData =
-			debugfs_create_file(name, S_IFREG|S_IRUGO|S_IWUSR,
-				 phba->hba_debugfs_root,
-				 phba, &lpfc_debugfs_op_dumpData);
-		if (!phba->debug_dumpData) {
-			lpfc_printf_vlog(vport, KERN_ERR, LOG_INIT,
-				"0800 Cannot create debugfs dumpData\n");
-			goto debug_failed;
-		}
-
-		/* Setup dumpDif */
-		snprintf(name, sizeof(name), "dumpDif");
-		phba->debug_dumpDif =
-			debugfs_create_file(name, S_IFREG|S_IRUGO|S_IWUSR,
-				 phba->hba_debugfs_root,
-				 phba, &lpfc_debugfs_op_dumpDif);
-		if (!phba->debug_dumpDif) {
-			lpfc_printf_vlog(vport, KERN_ERR, LOG_INIT,
-				"0801 Cannot create debugfs dumpDif\n");
-			goto debug_failed;
-		}
 
 		/* Setup DIF Error Injections */
 		snprintf(name, sizeof(name), "InjErrLBA");
@@ -5868,12 +5730,6 @@ lpfc_debugfs_terminate(struct lpfc_vport *vport)
 
 		debugfs_remove(phba->debug_dumpHostSlim); /* HostSlim */
 		phba->debug_dumpHostSlim = NULL;
-
-		debugfs_remove(phba->debug_dumpData); /* dumpData */
-		phba->debug_dumpData = NULL;
-
-		debugfs_remove(phba->debug_dumpDif); /* dumpDif */
-		phba->debug_dumpDif = NULL;
 
 		debugfs_remove(phba->debug_InjErrLBA); /* InjErrLBA */
 		phba->debug_InjErrLBA = NULL;
