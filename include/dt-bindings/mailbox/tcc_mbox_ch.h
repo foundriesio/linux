@@ -7,7 +7,8 @@
 #define TCC_MBOX0_CH_SUSPEND        2
 #define TCC_MBOX0_CH_RESUME			3
 #define TCC_MBOX0_CH_SNOR_UPDATE	4
-#define TCC_MBOX0_CH_MAX			5
+#define TCC_MBOX0_CH_HLC			5
+#define TCC_MBOX0_CH_MAX			6
 
 /*  MBOX1 : A53 <-> A7S */
 #define TCC_MBOX1_CH_RESERVED		0

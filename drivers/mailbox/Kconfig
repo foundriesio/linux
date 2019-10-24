@@ -206,6 +206,11 @@ config TCC_MULTI_MAILBOX_AUDIO
 	depends on TCC_MULTI_MAILBOX
 	default n
 
+config TCC_MAILBOX_HLC
+	tristate "Telechips HLC Mailbox"
+	depends on TCC_MULTI_MAILBOX
+	default n
+
 config TCC_MAILBOX_SUSPEND
 	tristate "Telechips suspend Mailbox"
 	depends on OF
@@ -213,3 +218,4 @@ config TCC_MAILBOX_SUSPEND
 		Mailbox implementation for the Telechips suspend communication.
 
 endif
+

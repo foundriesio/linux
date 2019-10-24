@@ -1410,6 +1410,14 @@
 	   mboxes = <&mbox0 TCC_MBOX0_CH_RESUME>;
    };
 
+	hlc_mbox2: hlc_mbox@0 {
+	   compatible = "telechips,hlc-mbox";
+	   device-name = "hlc-mbox-dev-a53";
+	   mbox-names ="hlc-mbox-a53";
+	   mboxes = <&mbox0 TCC_MBOX0_CH_HLC>;
+   };
+
+
 	/* A53 <-> A7S */
 	mbox1: mbox@0x17A00000 {
 		compatible = "telechips,multichannel-mailbox";
