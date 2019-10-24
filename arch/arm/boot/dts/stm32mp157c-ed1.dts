@@ -298,6 +298,8 @@
 	bus-width = <4>;
 	vmmc-supply = <&vdd_sd>;
 	vqmmc-supply = <&sd_switch>;
+	sd-uhs-sdr12;
+	sd-uhs-sdr25;
 	status = "okay";
 };
 
