@@ -315,6 +315,9 @@ void force_signal_inject(int signal, int code, struct pt_regs *regs,
 	void __user *pc = (void __user *)instruction_pointer(regs);
 	const char *desc;
 
+	if (WARN_ON(!user_mode(regs)))
+		return;
+
 	switch (signal) {
 	case SIGILL:
 		desc = "undefined instruction";
@@ -368,8 +371,8 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	if (call_undef_hook(regs) == 0)
 		return;
 
-	force_signal_inject(SIGILL, ILL_ILLOPC, regs, 0);
 	BUG_ON(!user_mode(regs));
+	force_signal_inject(SIGILL, ILL_ILLOPC, regs, 0);
 }
 
 #define __user_cache_maint(insn, address, res)			\
