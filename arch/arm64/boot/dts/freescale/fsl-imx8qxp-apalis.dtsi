@@ -146,7 +146,6 @@
 	phy-handle = <&ethphy0>;
 	phy-mode = "rgmii";
 	phy-reset-duration = <10>;
-	phy-reset-post-delay = <200>;
 	phy-reset-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
 
 	mdio {
