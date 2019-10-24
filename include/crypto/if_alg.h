@@ -18,11 +18,15 @@
 #include <linux/if_alg.h>
 #include <linux/scatterlist.h>
 #include <linux/types.h>
+#ifndef __GENKSYMS__
 #include <linux/atomic.h>
+#endif
 #include <net/sock.h>
 
+#ifndef __GENKSYMS__
 #include <crypto/aead.h>
 #include <crypto/skcipher.h>
+#endif
 
 #define ALG_MAX_PAGES			16
 
@@ -156,7 +160,14 @@ struct af_alg_ctx {
 	struct af_alg_completion completion;
 
 	size_t used;
-	atomic_t rcvused;
+#ifdef __GENKSYMS__
+	size_t rcvused;
+#else
+	union {
+		atomic_t rcvused;
+		size_t rcvused_aligned;
+	};
+#endif
 
 	bool more;
 	bool merge;

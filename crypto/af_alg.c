@@ -21,7 +21,9 @@
 #include <linux/module.h>
 #include <linux/net.h>
 #include <linux/rwsem.h>
+#ifndef __GENKSYMS__
 #include <linux/sched/signal.h>
+#endif
 #include <linux/security.h>
 
 struct alg_type_list {
