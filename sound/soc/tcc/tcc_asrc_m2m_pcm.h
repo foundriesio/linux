@@ -123,6 +123,7 @@ typedef struct _List {
 	Node *head;
 	Node *tail;
 	int list_len;
+	spinlock_t foot_locked;
 } List;
 #else
 #define FOOTPRINT_LENGTH 300
@@ -132,6 +133,7 @@ struct footprint {
 	unsigned int head;
 	unsigned int tail;
 	unsigned int list_len;
+	spinlock_t foot_locked;
 };
 #endif
 
@@ -156,8 +158,9 @@ struct asrc_m2m_pcm_stream {
 	#define IS_ASRC_RUNNING 0x08
 	*/
 	unsigned int interval; //ms
-	ssize_t Bwrote; //Bytes 
-	ssize_t Btail; //Bytes 
+	ssize_t Bbuffer_pos;	//Bytes.
+	ssize_t Bperiod_pos;	//Bytes. 
+	ssize_t Btail;	//Bytes 
 	wait_queue_head_t kth_wq;
 	atomic_t wakeup;
 	spinlock_t is_locked;
@@ -178,7 +181,6 @@ struct tcc_asrc_m2m_pcm {
 #else
 	struct footprint *asrc_footprint;	//for playback
 #endif
-	spinlock_t foot_locked;
 };
 
 #endif //_TCC_ASRC_M2M_PCM_DT_H_
