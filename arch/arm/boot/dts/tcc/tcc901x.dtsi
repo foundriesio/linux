@@ -53,24 +53,24 @@
 		udma1 = &udma1;
 		udma2 = &udma2;
 		udma3 = &udma3;
-		wmixer_drv0 = &wmixer_drv0;
-		wmixer_drv1 = &wmixer_drv1;
-		scaler_drv1 = &scaler_drv1;
-		scaler_drv3 = &scaler_drv3;
-		attach_drv0 = &attach_drv0;
-		attach_drv1 = &attach_drv1;
-		vout_drv0 = &vout_drv0;
-		vout_drv1 = &vout_drv1;
-		wdma_drv0 = &wdma_drv0;
+		wmixer-drv0 = &wmixer_drv0;
+		wmixer-drv1 = &wmixer_drv1;
+		scaler-drv1 = &scaler_drv1;
+		scaler-drv3 = &scaler_drv3;
+		attach-drv0 = &attach_drv0;
+		attach-drv1 = &attach_drv1;
+		vout-drv0 = &vout_drv0;
+		vout-drv1 = &vout_drv1;
+		wdma-drv0 = &wdma_drv0;
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
 		sdhc0 = &sdhc0;
 		sdhc1 = &sdhc1;
 		sdhc2 = &sdhc2;
-		vqmmc_emmc = &vqmmc_emmc;
-		vqmmc_sd = &vqmmc_sd;
-		vqmmc_sdio = &vqmmc_sdio;
+		vqmmc-emmc = &vqmmc_emmc;
+		vqmmc-sd = &vqmmc_sd;
+		vqmmc-sdio = &vqmmc_sdio;
 	};
 
 	psci {
