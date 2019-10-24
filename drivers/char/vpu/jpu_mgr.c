@@ -353,19 +353,19 @@ static int _jmgr_internal_handler(void)
 
     if(jmgr_data.check_interrupt_detection)
     {
-        if(jmgr_data.oper_intr > 0)
+        if(atomic_read(&jmgr_data.oper_intr) > 0)
         {
             detailk("Success 1: jpu operation!! \n");
             ret_code = RETCODE_SUCCESS;
         }
         else
         {
-            ret = wait_event_interruptible_timeout(jmgr_data.oper_wq, jmgr_data.oper_intr > 0, msecs_to_jiffies(timeout));
+            ret = wait_event_interruptible_timeout(jmgr_data.oper_wq, atomic_read(&jmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
             if(jmgr_is_loadable() > 0)
                 ret_code = RETCODE_CODEC_EXIT;
             else
-            if(jmgr_data.oper_intr > 0)
+            if(atomic_read(&jmgr_data.oper_intr) > 0)
             {
                 detailk("Success 2: jpu operation!! \n");
 #if defined(FORCED_ERROR)
@@ -381,13 +381,13 @@ static int _jmgr_internal_handler(void)
             }
             else
             {
-                err("[CMD 0x%x][%d]: jpu timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", jmgr_data.current_cmd, ret, timeout, jmgr_data.oper_intr, jmgr_data.nDecode_Cmd, jmgr_data.szFrame_Len);
+                err("[CMD 0x%x][%d]: jpu timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", jmgr_data.current_cmd, ret, timeout, atomic_read(&jmgr_data.oper_intr), jmgr_data.nDecode_Cmd, jmgr_data.szFrame_Len);
                 vetc_dump_reg_all(jmgr_data.base_addr, "_jmgr_internal_handler timed_out");
                 ret_code = RETCODE_CODEC_EXIT;
             }
         }
 
-        jmgr_data.oper_intr = 0;
+        atomic_set(&jmgr_data.oper_intr, 0);
         jmgr_status_clear(jmgr_data.base_addr);
     }
 
@@ -967,7 +967,7 @@ static int _jmgr_cmd_release(char *str)
         }
 
 //////////////////////////////////////
-        jmgr_data.oper_intr = 0;
+        atomic_set(&jmgr_data.oper_intr, 0);
         jmgr_data.cmd_processing = 0;
 
         _jmgr_close_all(1);
@@ -1194,9 +1194,9 @@ static irqreturn_t _jmgr_isr_handler(int irq, void *dev_id)
 
     detailk("_jmgr_isr_handler \n");
 
-    spin_lock_irqsave(&(jmgr_data.oper_lock), flags);
-    jmgr_data.oper_intr++;
-    spin_unlock_irqrestore(&(jmgr_data.oper_lock), flags);
+//    spin_lock_irqsave(&(jmgr_data.oper_lock), flags);
+    atomic_inc(&jmgr_data.oper_intr);
+//    spin_unlock_irqrestore(&(jmgr_data.oper_lock), flags);
 
     wake_up_interruptible(&(jmgr_data.oper_wq));
 
@@ -1210,9 +1210,9 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
     }
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_jmgr_open In!! %d'th\n", jmgr_data.dev_file_opened);
-	jmgr_data.dev_file_opened++;
-	dprintk("_jmgr_open Out!! %d'th\n", jmgr_data.dev_file_opened);
+	dprintk("_jmgr_open In!! %d'th\n", atomic_read(&jmgr_data.dev_file_opened));
+	atomic_inc(&jmgr_data.dev_file_opened);
+	dprintk("_jmgr_open Out!! %d'th\n", atomic_read(&jmgr_data.dev_file_opened));
 #else
     mutex_lock(&jmgr_data.comm_data.file_mutex);
     _jmgr_cmd_open("file");
@@ -1227,11 +1227,11 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
 static int _jmgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_jmgr_release In!! %d'th\n", jmgr_data.dev_file_opened);
-	jmgr_data.dev_file_opened--;
+	dprintk("_jmgr_release In!! %d'th\n", atomic_read(&jmgr_data.dev_file_opened));
+	atomic_dec(&jmgr_data.dev_file_opened);
 	jmgr_data.nOpened_Count++;
 
-	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", jmgr_data.dev_file_opened, jmgr_data.nOpened_Count,
+	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&jmgr_data.dev_file_opened), jmgr_data.nOpened_Count,
 					jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4));
 #else
     mutex_lock(&jmgr_data.comm_data.file_mutex);
@@ -1484,6 +1484,10 @@ int jmgr_probe(struct platform_device *pdev)
     }
 
     jmgr_init_variable();
+	atomic_set(&jmgr_data.oper_intr, 0);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	atomic_set(&jmgr_data.dev_file_opened, 0);
+#endif
 
     jmgr_data.irq = platform_get_irq(pdev, 0);
     jmgr_data.nOpened_Count = 0;
@@ -1500,7 +1504,7 @@ int jmgr_probe(struct platform_device *pdev)
     jmgr_get_clock(pdev->dev.of_node);
 	jmgr_get_reset(pdev->dev.of_node);
 
-    spin_lock_init(&(jmgr_data.oper_lock));
+//    spin_lock_init(&(jmgr_data.oper_lock));
 //  spin_lock_init(&(jmgr_data.comm_data.lock));
 
     init_waitqueue_head(&jmgr_data.comm_data.thread_wq);

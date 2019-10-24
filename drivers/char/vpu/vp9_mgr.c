@@ -137,19 +137,19 @@ static int _vp9mgr_internal_handler(void)
 
     if(vp9mgr_data.check_interrupt_detection)
     {
-        if(vp9mgr_data.oper_intr > 0)
+        if(atomic_read(&vp9mgr_data.oper_intr) > 0)
         {
             detailk("Success 1: vp9 operation!! \n");
             ret_code = RETCODE_SUCCESS;
         }
         else
         {
-            ret = wait_event_interruptible_timeout(vp9mgr_data.oper_wq, vp9mgr_data.oper_intr > 0, msecs_to_jiffies(timeout));
+            ret = wait_event_interruptible_timeout(vp9mgr_data.oper_wq, atomic_read(&vp9mgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
             if(vp9mgr_is_loadable() > 0)
                 ret_code = RETCODE_CODEC_EXIT;
             else
-            if(vp9mgr_data.oper_intr > 0)
+            if(atomic_read(&vp9mgr_data.oper_intr) > 0)
             {
                 detailk("Success 2: vp9 operation!! \n");
 #if defined(FORCED_ERROR)
@@ -165,13 +165,13 @@ static int _vp9mgr_internal_handler(void)
             }
             else
             {
-                err("[CMD 0x%x][%d]: vp9 timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", vp9mgr_data.current_cmd, ret, timeout, vp9mgr_data.oper_intr, vp9mgr_data.nDecode_Cmd, vp9mgr_data.szFrame_Len);
+                err("[CMD 0x%x][%d]: vp9 timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", vp9mgr_data.current_cmd, ret, timeout, atomic_read(&vp9mgr_data.oper_intr), vp9mgr_data.nDecode_Cmd, vp9mgr_data.szFrame_Len);
                 vetc_dump_reg_all(vp9mgr_data.base_addr, "_vp9mgr_internal_handler timed_out");
                 ret_code = RETCODE_CODEC_EXIT;
             }
         }
 
-        vp9mgr_data.oper_intr = 0;
+        atomic_set(&vp9mgr_data.oper_intr, 0);
         vp9mgr_status_clear(vp9mgr_data.base_addr);
     }
 
@@ -673,7 +673,7 @@ static int _vp9mgr_cmd_release(char *str)
         }
 
 //////////////////////////////////////
-        vp9mgr_data.oper_intr = 0;
+        atomic_set(&vp9mgr_data.oper_intr, 0);
         vp9mgr_data.cmd_processing = 0;
 
         _vp9mgr_close_all(1);
@@ -890,9 +890,9 @@ static irqreturn_t _vp9mgr_isr_handler(int irq, void *dev_id)
 
     detailk("_vp9mgr_isr_handler \n");
 
-    spin_lock_irqsave(&(vp9mgr_data.oper_lock), flags);
-    vp9mgr_data.oper_intr++;
-    spin_unlock_irqrestore(&(vp9mgr_data.oper_lock), flags);
+//    spin_lock_irqsave(&(vp9mgr_data.oper_lock), flags);
+    atomic_sinc(&vp9mgr_data.oper_intr);
+//    spin_unlock_irqrestore(&(vp9mgr_data.oper_lock), flags);
 
     wake_up_interruptible(&(vp9mgr_data.oper_wq));
 
@@ -906,9 +906,9 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
     }
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vp9mgr_open In!! %d'th\n", vp9mgr_data.dev_file_opened);
-	vp9mgr_data.dev_file_opened++;
-	dprintk("_vp9mgr_open Out!! %d'th\n", vp9mgr_data.dev_file_opened);
+	dprintk("_vp9mgr_open In!! %d'th\n", atomic_read(&vp9mgr_data.dev_file_opened));
+	atomic_inc(&vp9mgr_data.dev_file_opened);
+	dprintk("_vp9mgr_open Out!! %d'th\n", atomic_read(&vp9mgr_data.dev_file_opened));
 #else
     mutex_lock(&vp9mgr_data.comm_data.file_mutex);
     _vp9mgr_cmd_open("file");
@@ -923,8 +923,8 @@ static int _vp9mgr_open(struct inode *inode, struct file *filp)
 static int _vp9mgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vp9mgr_release In!! %d'th\n", vp9mgr_data.dev_file_opened);
-	vp9mgr_data.dev_file_opened--;
+	dprintk("_vp9mgr_release In!! %d'th\n", atomic_read(&vp9mgr_data.dev_file_opened));
+	atomic_dec(&vp9mgr_data.dev_file_opened);
 	vp9mgr_data.nOpened_Count++;
 
 	printk("_vp9mgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", vmgr_data.dev_file_opened, vmgr_data.nOpened_Count,
@@ -1175,6 +1175,10 @@ int vp9mgr_probe(struct platform_device *pdev)
     }
 
     vp9mgr_init_variable();
+	atomic_set(&vp9mgr_data.oper_intr, 0);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	atomic_set(&vp9mgr_data.dev_file_opened, 0);
+#endif
 
     vp9mgr_data.irq = platform_get_irq(pdev, 0);
     vp9mgr_data.nOpened_Count = 0;
@@ -1191,7 +1195,7 @@ int vp9mgr_probe(struct platform_device *pdev)
     vp9mgr_get_clock(pdev->dev.of_node);
 	vp9mgr_get_reset(pdev->dev.of_node);
 
-    spin_lock_init(&(vp9mgr_data.oper_lock));
+//    spin_lock_init(&(vp9mgr_data.oper_lock));
 //  spin_lock_init(&(vp9mgr_data.comm_data.lock));
 
     init_waitqueue_head(&vp9mgr_data.comm_data.thread_wq);
