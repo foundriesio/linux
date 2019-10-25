@@ -216,7 +216,9 @@ static irqreturn_t tcc_mbox_isr(int irq, void *dev_id)
 		/* while ((readl_relaxed(mdev->mbox_base + MBOX_RXD_STS) & (1 << 31)) == 0); */
 	}
 
-	mbox_chan_received_data(&mdev->mbox.chans[0], (void *)mdev->msg);
+	if(mdev->mbox.chans[0].cl != NULL) {
+		mbox_chan_received_data(&mdev->mbox.chans[0], (void *)mdev->msg);
+	}
 
 	/* Set mbox received interrupt bit */
 	spin_lock_irqsave(&mdev->lock, flags);
