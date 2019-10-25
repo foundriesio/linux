@@ -439,7 +439,6 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 
 	if(dai_of_node) {
 		dai_link->cpu_of_node = dai_of_node;
-
 		if (platform_of_node) {
 			dai_link->platform_of_node = platform_of_node;
 		} else {
@@ -603,6 +602,11 @@ int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 	}
 
 	for (i=0; i<card_info->num_links; i++) {
+		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
+			//This is for T-sound device
+			//printk("T-sound dev-%d\n", i);
+			continue;
+		}
 		memcpy(&controls[i*ARRAY_SIZE(tcc_snd_controls)],
 				tcc_snd_controls,
 				sizeof(struct snd_kcontrol_new)* ARRAY_SIZE(tcc_snd_controls));
