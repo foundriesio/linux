@@ -876,6 +876,7 @@ extern void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
 extern int VIOC_CONFIG_Device_PlugState(unsigned int component, VIOC_PlugInOutCheck *VIOC_PlugIn);
 extern int VIOC_CONFIG_GetScaler_PluginToRDMA(unsigned int RdmaNum);
+extern int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(unsigned int RdmaNum);
 //map converter vioc config set
 extern int VIOC_CONFIG_GetMcNum_PluginRDMA(unsigned int *MC_NUM, unsigned int RdmaNum);
 extern int VIOC_CONFIG_SetMcNum_PluginRDMA(unsigned int McN, unsigned int RdmaNum, unsigned int SetClr);

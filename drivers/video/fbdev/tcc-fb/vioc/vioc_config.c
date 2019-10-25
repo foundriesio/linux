@@ -1558,6 +1558,21 @@ static unsigned int CalcPathSelectionInScaler(unsigned int RdmaNum)
 	return ret;
 }
 
+static unsigned int CalcPathSelectionInViqeDeinter(unsigned int RdmaNum)
+{
+	unsigned int ret = get_vioc_index(RdmaNum);
+
+	/* In our register, RDMA16/17 offsets are diffrent. */
+	if (RdmaNum == get_vioc_index(VIOC_RDMA16))
+		ret = VIOC_VIQE_RDMA_16;
+#if !defined(CONFIG_ARCH_TCC897X)
+	else if (RdmaNum == get_vioc_index(VIOC_RDMA17))
+		ret = VIOC_VIQE_RDMA_17;
+#endif
+
+	return ret;
+}
+
 int VIOC_CONFIG_GetScaler_PluginToRDMA(unsigned int RdmaNum)
 {
 	int i;
@@ -1580,13 +1595,13 @@ int VIOC_CONFIG_GetScaler_PluginToRDMA(unsigned int RdmaNum)
 	return -1;
 }
 
-int VIOC_CONFIG_GetViqe_PluginToRDMA(unsigned int RdmaNum)
+int VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(unsigned int RdmaNum)
 {
 	int i;
 	unsigned int rdma_idx;
 	VIOC_PlugInOutCheck VIOC_PlugIn;
 
-	rdma_idx = CalcPathSelectionInScaler(RdmaNum);
+	rdma_idx = CalcPathSelectionInViqeDeinter(RdmaNum);
 
 	for (i = get_vioc_index(VIOC_VIQE0); i <= VIOC_VIQE_MAX; i++) {
 		if (VIOC_CONFIG_Device_PlugState((VIOC_VIQE0 + i),
@@ -1597,6 +1612,17 @@ int VIOC_CONFIG_GetViqe_PluginToRDMA(unsigned int RdmaNum)
 		if (VIOC_PlugIn.enable &&
 		    VIOC_PlugIn.connect_device == rdma_idx)
 			return (VIOC_VIQE0 + i);
+	}
+	
+	for (i = get_vioc_index(VIOC_DEINTLS0); i <= VIOC_DEINTLS_MAX; i++) {
+		if (VIOC_CONFIG_Device_PlugState((VIOC_DEINTLS0 + i),
+						 &VIOC_PlugIn) ==
+		    VIOC_DEVICE_INVALID)
+			continue;
+
+		if (VIOC_PlugIn.enable &&
+		    VIOC_PlugIn.connect_device == rdma_idx)
+			return (VIOC_DEINTLS0 + i);
 	}
 
 	return -1;
