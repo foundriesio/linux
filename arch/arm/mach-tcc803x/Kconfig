@@ -35,10 +35,3 @@ config TCC803X_CA7S
 	depends on ARCH_TCC803X
 	help
 	  Select this option building a kernel for TCC803X Cortex-A7 Single Core.
-
-config TCC_CORE_RESET
-	bool "Telechips Core Reset Feature for TCC803x"
-	depends on ARCH_TCC803X && TCC_WATCHDOG
-	default n
-	help
-	  Select this option to enable core reset feature on TCC803x platform.
