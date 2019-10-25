@@ -156,6 +156,9 @@ static char tcc_scaler_run(struct scaler_drv_type *scaler)
 
 	dprintk("%s():  IN. \n", __func__);
 
+	if(VIOC_CONFIG_GetViqeDeintls_PluginToRDMA(get_vioc_index(scaler->rdma.id)) != -1)
+		scaler->info->src_winBottom = (scaler->info->src_winBottom>>2)<<2;
+
 	spin_lock_irq(&(scaler->data->cmd_lock));
 
 	dprintk("scaler %d src   add : 0x%x 0x%x 0x%x, fmt :0x%x IMG:(%d %d )%d %d %d %d \n", scaler->sc.id, 
