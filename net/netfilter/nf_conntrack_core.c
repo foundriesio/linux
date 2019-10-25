@@ -407,7 +407,7 @@ destroy_conntrack(struct nf_conntrack *nfct)
 	struct nf_conntrack_l4proto *l4proto;
 
 	pr_debug("destroy_conntrack(%p)\n", ct);
-	NF_CT_ASSERT(atomic_read(&nfct->use) == 0);
+	WARN_ON(atomic_read(&nfct->use) != 0);
 
 	if (unlikely(nf_ct_is_template(ct))) {
 		nf_ct_tmpl_free(ct);
@@ -763,12 +763,11 @@ __nf_conntrack_confirm(struct sk_buff *skb)
 	 * connections for unconfirmed conns.  But packet copies and
 	 * REJECT will give spurious warnings here.
 	 */
-	/* NF_CT_ASSERT(atomic_read(&ct->ct_general.use) == 1); */
 
 	/* No external references means no one else could have
 	 * confirmed us.
 	 */
-	NF_CT_ASSERT(!nf_ct_is_confirmed(ct));
+	WARN_ON(nf_ct_is_confirmed(ct));
 	pr_debug("Confirming conntrack %p\n", ct);
 	/* We have to check the DYING flag after unlink to prevent
 	 * a race against nf_ct_get_next_corpse() possibly called from
@@ -1170,7 +1169,7 @@ void nf_conntrack_free(struct nf_conn *ct)
 	/* A freed object has refcnt == 0, that's
 	 * the golden rule for SLAB_TYPESAFE_BY_RCU
 	 */
-	NF_CT_ASSERT(atomic_read(&ct->ct_general.use) == 0);
+	WARN_ON(atomic_read(&ct->ct_general.use) != 0);
 
 	nf_ct_ext_destroy(ct);
 	nf_ct_ext_free(ct);
@@ -1478,7 +1477,7 @@ void nf_conntrack_alter_reply(struct nf_conn *ct,
 	struct nf_conn_help *help = nfct_help(ct);
 
 	/* Should be unconfirmed, so not in hash table yet */
-	NF_CT_ASSERT(!nf_ct_is_confirmed(ct));
+	WARN_ON(nf_ct_is_confirmed(ct));
 
 	pr_debug("Altering reply tuple of %p to ", ct);
 	nf_ct_dump_tuple(newreply);
@@ -1500,7 +1499,7 @@ void __nf_ct_refresh_acct(struct nf_conn *ct,
 			  unsigned long extra_jiffies,
 			  int do_acct)
 {
-	NF_CT_ASSERT(skb);
+	WARN_ON(!skb);
 
 	/* Only update if this is not a fixed timeout */
 	if (test_bit(IPS_FIXED_TIMEOUT_BIT, &ct->status))
