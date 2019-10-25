@@ -66,6 +66,7 @@ static void xprt_free_allocation(struct rpc_rqst *req)
 	free_page((unsigned long)xbufp->head[0].iov_base);
 	xbufp = &req->rq_snd_buf;
 	free_page((unsigned long)xbufp->head[0].iov_base);
+	xprt_put(req->rq_xprt);
 	kfree(req);
 }
 
@@ -90,7 +91,7 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
 	if (req == NULL)
 		return NULL;
 
-	req->rq_xprt = xprt;
+	req->rq_xprt = xprt_get(xprt);
 	INIT_LIST_HEAD(&req->rq_list);
 	INIT_LIST_HEAD(&req->rq_bc_list);
 
