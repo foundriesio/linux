@@ -691,7 +691,7 @@ static unsigned int tcc_mbox_audio_poll(struct file *filp, struct poll_table_str
     return 0;
 }
 
-static int tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     struct mbox_audio_device *audio_dev = (struct mbox_audio_device *)filp->private_data;
 
@@ -735,11 +735,11 @@ static int tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t count
 
     dprintk("%s : copy_byte_size = %d, mbox_data_num = %d\n", __FUNCTION__, copy_byte_size, mbox_data_num);
 
-    return copy_byte_size;
+    return (ssize_t) copy_byte_size;
 
 }
 
-static int tcc_mbox_audio_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t tcc_mbox_audio_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	return 0;
 }
@@ -795,7 +795,7 @@ static int tcc_mbox_audio_release(struct inode * inode, struct file * filp)
 	return 0;
 }
 
-static int tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
+static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 {
     struct mbox_audio_device *audio_dev = (struct mbox_audio_device *)filp->private_data;
 	struct mbox_audio_data_header_t *header;
