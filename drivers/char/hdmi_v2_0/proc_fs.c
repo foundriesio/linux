@@ -816,18 +816,17 @@ ssize_t proc_read_audio_channel_mux(struct file *filp, char __user *usr_buf, siz
 ssize_t proc_write_debug(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
 {
         ssize_t size;
-	unsigned int audio_test_num;
+	unsigned int debug_param[2];
         struct hdmi_tx_dev *dev = PDE_DATA(file_inode(filp));
 
-        char *audio_test_buffer = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
+        char *debug_buffer = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
 
         do {
-                //pr_info("audio_test_buffer=0x%x\r\n", audio_test_buffer);
-                if (audio_test_buffer == NULL) {
+                if (debug_buffer == NULL) {
                         size =  -ENOMEM;
                         break;
                 }
-                size = simple_write_to_buffer(audio_test_buffer, cnt, off_set, buffer, cnt);
+                size = simple_write_to_buffer(debug_buffer, cnt, off_set, buffer, cnt);
                 if (size != cnt) {
 
                         if(size >= 0) {
@@ -835,13 +834,13 @@ ssize_t proc_write_debug(struct file *filp, const char __user *buffer, size_t cn
                                 break;
                         }
                 }
-                audio_test_buffer[cnt] = '\0';
-                //pr_info("audio_test_buffer=[%s]\r\n", audio_test_buffer);
+                debug_buffer[cnt] = '\0';
 
-                sscanf(audio_test_buffer, "%u", &audio_test_num);
-                devm_kfree(dev->parent_dev, audio_test_buffer);
+                sscanf(debug_buffer, "%u, %u", &debug_param[0], &debug_param[1]);
+                devm_kfree(dev->parent_dev, debug_buffer);
 
-		switch(audio_test_num) {
+		pr_info("HDMI Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
+		switch(debug_param[0]) {
 			case 0:
 				/* Nothing */
 				break;
