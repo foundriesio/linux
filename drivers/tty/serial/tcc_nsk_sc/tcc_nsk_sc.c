@@ -357,7 +357,30 @@ static long tcc_nsk_sc_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			return TCC_NSK_SC_ERROR_UNKNOWN;
 		}
 
+                stSCBuf.pucRxBuf = (unsigned char*)kmalloc(sizeof(unsigned char)*DRV_UART_SC_RX_BUF_SIZE, GFP_KERNEL);
+                stSCBuf.puiRxBufLen = (unsigned int*)kmalloc(sizeof(unsigned int), GFP_KERNEL);
+
 		iRet = tcc_nsk_sc_reset(stSCBuf.pucRxBuf, stSCBuf.puiRxBufLen);
+
+                if(copy_to_user((unsigned char*)((stTCC_NSK_SC_BUF*)arg)->pucRxBuf,(unsigned char*)stSCBuf.pucRxBuf, sizeof(unsigned char)*(*stSCBuf.puiRxBufLen))){
+                        eprintk("%s : copy_to_user failed\n", __func__);
+			kfree(stSCBuf.pucRxBuf);
+			kfree(stSCBuf.puiRxBufLen);
+                        mutex_unlock(&g_hNSKSCMutex);
+                        return TCC_NSK_SC_ERROR_UNKNOWN;
+                }
+		if(copy_to_user((unsigned int*)((stTCC_NSK_SC_BUF*)arg)->puiRxBufLen,(unsigned int*)stSCBuf.puiRxBufLen, sizeof(unsigned int))){
+                        eprintk("%s : copy_to_user failed\n", __func__);
+			kfree(stSCBuf.pucRxBuf);
+			kfree(stSCBuf.puiRxBufLen);
+                        mutex_unlock(&g_hNSKSCMutex);
+                        return TCC_NSK_SC_ERROR_UNKNOWN;
+                }
+
+		kfree(stSCBuf.pucRxBuf);
+		kfree(stSCBuf.puiRxBufLen);
+
+
 	} break;
 
 	case TCC_NSK_SC_IOCTL_SET_VCC_LEVEL: {
@@ -427,7 +450,31 @@ static long tcc_nsk_sc_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			mutex_unlock(&g_hNSKSCMutex);
 			return TCC_NSK_SC_ERROR_UNKNOWN;
 		}
+
+		stSCBuf.pucRxBuf = (unsigned char*)kmalloc(sizeof(unsigned char)*DRV_UART_SC_RX_BUF_SIZE, GFP_KERNEL);
+		stSCBuf.puiRxBufLen = (unsigned int*)kmalloc(sizeof(unsigned int), GFP_KERNEL);
+
 		iRet = tcc_nsk_sc_send_receive(stSCBuf);
+
+                if(copy_to_user((unsigned char*)((stTCC_NSK_SC_BUF*)arg)->pucRxBuf,(unsigned char*)stSCBuf.pucRxBuf, sizeof(unsigned char)*(*stSCBuf.puiRxBufLen))){
+                        eprintk("%s : copy_to_user failed\n", __func__);
+			kfree(stSCBuf.pucRxBuf);
+			kfree(stSCBuf.puiRxBufLen);
+                        mutex_unlock(&g_hNSKSCMutex);
+                        return TCC_NSK_SC_ERROR_UNKNOWN;
+                }
+
+		if(copy_to_user((unsigned int*)((stTCC_NSK_SC_BUF*)arg)->puiRxBufLen,(unsigned int*)stSCBuf.puiRxBufLen, sizeof(unsigned int))){
+                        eprintk("%s : copy_to_user failed\n", __func__);
+			kfree(stSCBuf.pucRxBuf);
+			kfree(stSCBuf.puiRxBufLen);
+                        mutex_unlock(&g_hNSKSCMutex);
+                        return TCC_NSK_SC_ERROR_UNKNOWN;
+                }
+
+		kfree(stSCBuf.pucRxBuf);
+		kfree(stSCBuf.puiRxBufLen);
+
 	} break;
 
 	default: {
