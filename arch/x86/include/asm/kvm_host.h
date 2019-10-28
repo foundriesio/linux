@@ -277,6 +277,7 @@ struct kvm_rmap_head {
 struct kvm_mmu_page {
 	struct list_head link;
 	struct hlist_node hash_link;
+	struct list_head lpage_disallowed_link;
 
 	/*
 	 * The following two entries are used to key the shadow page in the
@@ -295,6 +296,7 @@ struct kvm_mmu_page {
 
 	/* The page is obsolete if mmu_valid_gen != kvm->arch.mmu_valid_gen.  */
 	unsigned long mmu_valid_gen;
+	bool lpage_disallowed; /* Can't be replaced by an equiv large page */
 
 	DECLARE_BITMAP(unsync_child_bitmap, 512);
 
@@ -798,6 +800,7 @@ struct kvm_arch {
 	 */
 	struct list_head active_mmu_pages;
 	struct list_head zapped_obsolete_pages;
+	struct list_head lpage_disallowed_mmu_pages;
 	struct kvm_page_track_notifier_node mmu_sp_tracker;
 	struct kvm_page_track_notifier_head track_notifier_head;
 
@@ -875,6 +878,8 @@ struct kvm_arch {
 	bool x2apic_broadcast_quirk_disabled;
 
 	struct kvm_sev_info sev_info;
+
+	struct task_struct *nx_lpage_recovery_thread;
 };
 
 struct kvm_vm_stat {
@@ -888,6 +893,7 @@ struct kvm_vm_stat {
 	ulong mmu_unsync;
 	ulong remote_tlb_flush;
 	ulong lpages;
+	ulong nx_lpage_splits;
 	ulong max_mmu_page_hash_collisions;
 };
 
