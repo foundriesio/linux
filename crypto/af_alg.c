@@ -625,14 +625,14 @@ void af_alg_pull_tsgl(struct sock *sk, size_t used, struct scatterlist *dst,
 	struct af_alg_ctx *ctx = ask->private;
 	struct af_alg_tsgl *sgl;
 	struct scatterlist *sg;
-	unsigned int i, j;
+	unsigned int i, j = 0;
 
 	while (!list_empty(&ctx->tsgl_list)) {
 		sgl = list_first_entry(&ctx->tsgl_list, struct af_alg_tsgl,
 				       list);
 		sg = sgl->sg;
 
-		for (i = 0, j = 0; i < sgl->cur; i++) {
+		for (i = 0; i < sgl->cur; i++) {
 			size_t plen = min_t(size_t, used, sg[i].length);
 			struct page *page = sg_page(sg + i);
 
@@ -1188,8 +1188,10 @@ int af_alg_get_rsgl(struct sock *sk, struct msghdr *msg, int flags,
 
 		/* make one iovec available as scatterlist */
 		err = af_alg_make_sg(&rsgl->sgl, &msg->msg_iter, seglen);
-		if (err < 0)
+		if (err < 0) {
+			rsgl->sg_num_bytes = 0;
 			return err;
+		}
 
 		/* chain the new scatterlist with previous one */
 		if (areq->last_rsgl)
