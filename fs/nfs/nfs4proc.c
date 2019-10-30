@@ -1854,6 +1854,7 @@ _nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
 		nfs4_put_open_state(state);
 		state = ERR_PTR(-EAGAIN);
 	}
+	iput(inode);
 out:
 	nfs_release_seqid(data->o_arg.seqid);
 	return state;

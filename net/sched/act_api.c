@@ -814,6 +814,14 @@ static bool tcf_action_valid(int action)
 	return opcode <= TC_ACT_EXT_OPCODE_MAX || action == TC_ACT_UNSPEC;
 }
 
+static const struct nla_policy tcf_action_policy[TCA_ACT_MAX + 1] = {
+	[TCA_ACT_KIND]		= { .type = NLA_STRING },
+	[TCA_ACT_INDEX]		= { .type = NLA_U32 },
+	[TCA_ACT_COOKIE]	= { .type = NLA_BINARY,
+				    .len = TC_COOKIE_MAX_SIZE },
+	[TCA_ACT_OPTIONS]	= { .type = NLA_NESTED },
+};
+
 struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 				    struct nlattr *nla, struct nlattr *est,
 				    char *name, int ovr, int bind,
@@ -829,7 +837,7 @@ struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 	int err;
 
 	if (name == NULL) {
-		err = nla_parse_nested(tb, TCA_ACT_MAX, nla, NULL, extack);
+		err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 		if (err < 0)
 			goto err_out;
 		err = -EINVAL;
@@ -838,18 +846,10 @@ struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 			NL_SET_ERR_MSG(extack, "TC action kind must be specified");
 			goto err_out;
 		}
-		if (nla_strlcpy(act_name, kind, IFNAMSIZ) >= IFNAMSIZ) {
-			NL_SET_ERR_MSG(extack, "TC action name too long");
+		if (nla_strlcpy(act_name, kind, IFNAMSIZ) >= IFNAMSIZ)
 			goto err_out;
-		}
+
 		if (tb[TCA_ACT_COOKIE]) {
-			int cklen = nla_len(tb[TCA_ACT_COOKIE]);
-
-			if (cklen > TC_COOKIE_MAX_SIZE) {
-				NL_SET_ERR_MSG(extack, "TC cookie size above the maximum");
-				goto err_out;
-			}
-
 			cookie = nla_memdup_cookie(tb);
 			if (!cookie) {
 				NL_SET_ERR_MSG(extack, "No memory to generate TC cookie");
@@ -1087,7 +1087,7 @@ static struct tc_action *tcf_action_get_1(struct net *net, struct nlattr *nla,
 	int index;
 	int err;
 
-	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, NULL, extack);
+	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 	if (err < 0)
 		goto err_out;
 
@@ -1141,7 +1141,7 @@ static int tca_action_flush(struct net *net, struct nlattr *nla,
 
 	b = skb_tail_pointer(skb);
 
-	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, NULL, extack);
+	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 	if (err < 0)
 		goto err_out;
 
@@ -1430,7 +1430,7 @@ static struct nlattr *find_dump_kind(struct nlattr **nla)
 
 	if (tb[1] == NULL)
 		return NULL;
-	if (nla_parse_nested(tb2, TCA_ACT_MAX, tb[1], NULL, NULL) < 0)
+	if (nla_parse_nested(tb2, TCA_ACT_MAX, tb[1], tcf_action_policy, NULL) < 0)
 		return NULL;
 	kind = tb2[TCA_ACT_KIND];
 
