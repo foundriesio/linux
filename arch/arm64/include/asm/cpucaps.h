@@ -49,7 +49,7 @@
 #define ARM64_HAS_CNP				28
 #define ARM64_WORKAROUND_843419			29
 #define ARM64_SSBS				30
-#define ARM64_WORKAROUND_1188873		31
+#define ARM64_WORKAROUND_1418040		31
 
 /* kabi: reserve 32 - 40 for future cpu capabilities */
 #define ARM64_NCAPS				40
