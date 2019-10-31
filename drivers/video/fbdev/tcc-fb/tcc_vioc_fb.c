@@ -2165,17 +2165,80 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			else
 				return -EFAULT;
 
-			#ifdef CONFIG_ARCH_TCC803X
 			if(pdp_data)
 			{
 				if(pdp_data->ddc_info.virt_addr)
 				{
-					pr_info("lcdc:%d contrast:%d , brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x hue:0x%x\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.hue);
+					if(params.hue < 0x100){
+						VIOC_DISP_SetCENH_hue(pdp_data->ddc_info.virt_addr, params.hue);
+						VIOC_DISP_DCENH_hue_onoff(pdp_data->ddc_info.virt_addr, 1);
+					}
+					else
+						VIOC_DISP_DCENH_hue_onoff(pdp_data->ddc_info.virt_addr, 0);
+
+					if((params.brightness >= 0x400) && (params.saturation >= 0x400) && (params.contrast >= 0x400))
+						VIOC_DISP_DCENH_onoff(pdp_data->ddc_info.virt_addr, 0);
+					else{
+						if(params.brightness < 0x400)
+							VIOC_DISP_SetCENH_brightness(pdp_data->ddc_info.virt_addr, params.brightness);
+						if(params.saturation < 0x400)
+							VIOC_DISP_SetCENH_saturation(pdp_data->ddc_info.virt_addr, params.saturation);
+						if(params.contrast < 0x400)
+							VIOC_DISP_SetCENH_contrast(pdp_data->ddc_info.virt_addr, params.contrast);
+
+						VIOC_DISP_DCENH_onoff(pdp_data->ddc_info.virt_addr, 1);
+					}	
+						
+					#else //CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC897X
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x , brightness:0x%x hue:0x%x \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
 					VIOC_DISP_SetColorEnhancement(pdp_data->ddc_info.virt_addr,
 						(signed char)params.contrast, (signed char)params.brightness, (signed char)params.hue);
+					#endif			
 				}
 			}
-			#endif
+		}
+		break;
+	case TCC_LCDC_GET_COLOR_ENHANCE:
+		{
+			struct tcc_dp_device *pdp_data = NULL;
+			struct lcdc_colorenhance_params params;
+
+			if (copy_from_user((void *)&params, (const void *)arg, sizeof(struct lcdc_colorenhance_params))){
+				return -EFAULT;
+			}
+			if(params.lcdc_type== DD_MAIN)
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+			else if(params.lcdc_type== DD_SUB)
+				pdp_data = &ptccfb_info->pdata.Sdp_data;
+			else
+				return -EFAULT;
+
+			if(pdp_data)
+			{
+				if(pdp_data->ddc_info.virt_addr)
+				{
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+					VIOC_DISP_GetCENH_hue(pdp_data->ddc_info.virt_addr,&params.hue);
+					VIOC_DISP_GetCENH_brightness(pdp_data->ddc_info.virt_addr, &params.brightness);
+					VIOC_DISP_GetCENH_saturation(pdp_data->ddc_info.virt_addr, &params.saturation);
+					VIOC_DISP_GetCENH_contrast(pdp_data->ddc_info.virt_addr, &params.contrast);
+					VIOC_DISP_GetCENH_hue_onoff(pdp_data->ddc_info.virt_addr, &params.check_hue_onoff);					
+					VIOC_DISP_GetCENH_onoff(pdp_data->ddc_info.virt_addr, &params.check_colE_onoff);					
+					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x hue:0x%x onoff:%d\n", params.lcdc_type, params.hue, params.check_hue_onoff);
+					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x onoff:%d\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.check_colE_onoff);
+					#else //CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC897X
+
+					VIOC_DISP_GetColorEnhancement(pdp_data->ddc_info.virt_addr,
+						&params.contrast, &params.brightness, &params.hue);
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:%d contrast:%d brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
+					#endif			
+				}
+			}
+			if (copy_to_user((void *)arg, &params, sizeof(struct lcdc_colorenhance_params))){
+				return -EFAULT;
+			}
 		}
 		break;
 

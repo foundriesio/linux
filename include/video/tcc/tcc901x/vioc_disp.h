@@ -569,6 +569,10 @@ extern void VIOC_DISP_GetPosition(volatile void __iomem *reg, unsigned int *star
 extern void VIOC_DISP_SetColorEnhancement(volatile void __iomem *reg, signed char contrast, signed char brightness, signed char hue );
 extern void VIOC_DISP_GetColorEnhancement(volatile void __iomem *reg, signed char *contrast, signed char *brightness, signed char *hue );
 #else
+extern void VIOC_DISP_DCENH_hue_onoff(volatile void __iomem *reg, unsigned int onoff);
+extern void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff);
+extern void VIOC_DISP_GetCENH_hue_onoff(volatile void __iomem *reg, unsigned int *onoff);
+extern void VIOC_DISP_GetCENH_onoff(volatile void __iomem *reg, unsigned int *onoff);
 extern void VIOC_DISP_SetCENH_hue(volatile void __iomem *reg, unsigned int val);
 extern void VIOC_DISP_SetCENH_brightness(volatile void __iomem *reg, unsigned int val);
 extern void VIOC_DISP_SetCENH_saturation(volatile void __iomem *reg, unsigned int val);

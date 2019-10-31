@@ -503,6 +503,18 @@ struct  tcc_fb_extra_data
         unsigned int swapbf;
 };
 
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+struct lcdc_colorenhance_params
+{
+	unsigned int contrast;		// 0~0x3FF, default value 0x80
+	unsigned int saturation;	// 0~0x3FF, default value 0x0
+	unsigned int brightness;	// 0~0x3FF, default value 0x0
+	unsigned int hue;			// 0~0x1FF, default value 0x0
+	unsigned int lcdc_type;		//0 Main, 1: sencond
+	bool 		 check_hue_onoff;		// on:1, off:0
+	bool 		 check_colE_onoff;		// on:1, off:0
+};
+#else
 struct lcdc_colorenhance_params
 {
 	int contrast;  	// default value 0x20
@@ -510,6 +522,7 @@ struct lcdc_colorenhance_params
 	int hue;   		// default value 0x0
 	unsigned int lcdc_type;  //0 Main, 1: sencond
 };
+#endif
 
 #define LASTFRAME_FOR_RESOLUTION_CHANGE 0x1
 #define LASTFRAME_FOR_CODEC_CHANGE  0x2
@@ -586,5 +599,6 @@ struct lcdc_colorenhance_params
 #define TCC_LCDC_GET_DISP_FU_STATUS     0x0601
 
 #define TCC_LCDC_SET_COLOR_ENHANCE      _IOW(TCCFB_IOCTL_MAGIC, 0x1111, struct lcdc_colorenhance_params)
+#define TCC_LCDC_GET_COLOR_ENHANCE      _IOW(TCCFB_IOCTL_MAGIC, 0x1112, struct lcdc_colorenhance_params)
 #define TCC_LCDC_SET_M2M_LASTFRAME      _IOW(TCCFB_IOCTL_MAGIC, 0x1110, unsigned int)
 #endif
