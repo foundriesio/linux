@@ -29,6 +29,7 @@
 #include <linux/types.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/sed-opal.h>
+#include <linux/msi.h>
 
 #include "nvme.h"
 
@@ -1893,6 +1894,10 @@ static int nvme_setup_host_mem(struct nvme_dev *dev)
 		nvme_free_host_mem(dev);
 		return 0;
 	}
+
+#ifdef CONFIG_GENERIC_MSI_IRQ
+	suse_msi_set_irq_unmanaged(dev->dev);
+#endif
 
 	/*
 	 * If we already have a buffer allocated check if we can reuse it.

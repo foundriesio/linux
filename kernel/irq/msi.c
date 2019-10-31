@@ -15,6 +15,45 @@
 #include <linux/irqdomain.h>
 #include <linux/msi.h>
 #include <linux/slab.h>
+#if IS_ENABLED(CONFIG_HYPERV)
+#ifndef __GENKSYMS__
+#include "internals.h"
+#include <asm/hypervisor.h>
+#endif
+#endif
+
+/* Compensate the lack of matrix.c in pre-v4.20 kernels */
+int suse_msi_set_irq_unmanaged(struct device *dev)
+{
+#if IS_ENABLED(CONFIG_HYPERV)
+	struct msi_desc *msi_desc;
+	struct irq_desc *irq_desc;
+	struct cpumask *mask;
+	unsigned long flags;
+
+	if (x86_hyper_type != X86_HYPER_MS_HYPERV)
+		return 0;
+
+	for_each_msi_entry(msi_desc, dev) {
+		mask = kmalloc(sizeof(struct cpumask), GFP_KERNEL);
+		if (!mask)
+			return -ENOMEM;
+		cpumask_copy(mask, msi_desc->affinity);
+
+		/*
+		 * Set IRQ to unmanaged, and assign affinity_hint to be used by
+		 * irqbalance --hintpolicy=subset
+		 */
+		irq_desc = irq_get_desc_lock(msi_desc->irq, &flags,
+				IRQ_GET_DESC_CHECK_GLOBAL);
+		irqd_clear(&irq_desc->irq_data, IRQD_AFFINITY_MANAGED);
+		irq_desc->affinity_hint = mask;
+		irq_put_desc_unlock(irq_desc, flags);
+	}
+#endif
+	return 0;
+}
+EXPORT_SYMBOL_GPL(suse_msi_set_irq_unmanaged);
 
 /**
  * alloc_msi_entry - Allocate an initialize msi_entry
