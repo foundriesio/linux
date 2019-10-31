@@ -50,8 +50,10 @@
 #define ARM64_WORKAROUND_843419			29
 #define ARM64_SSBS				30
 #define ARM64_WORKAROUND_1418040		31
+#define ARM64_HAS_CACHE_IDC			32
+#define ARM64_HAS_CACHE_DIC			33
 
-/* kabi: reserve 32 - 40 for future cpu capabilities */
+/* kabi: reserve 34 - 40 for future cpu capabilities */
 #define ARM64_NCAPS				40
 
 #endif /* __ASM_CPUCAPS_H */
