@@ -1105,7 +1105,7 @@
 		sdmmc3: sdmmc@48004000 {
 			compatible = "arm,pl18x", "arm,primecell";
 			arm,primecell-periphid = <0x10153180>;
-			reg = <0x48004000 0x400>;
+			reg = <0x48004000 0x400>, <0x48005000 0x400>;
 			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC3_K>;
@@ -1453,7 +1453,7 @@
 		sdmmc1: sdmmc@58005000 {
 			compatible = "arm,pl18x", "arm,primecell";
 			arm,primecell-periphid = <0x10153180>;
-			reg = <0x58005000 0x1000>;
+			reg = <0x58005000 0x1000>, <0x58006000 0x1000>;
 			interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC1_K>;
@@ -1468,7 +1468,7 @@
 		sdmmc2: sdmmc@58007000 {
 			compatible = "arm,pl18x", "arm,primecell";
 			arm,primecell-periphid = <0x10153180>;
-			reg = <0x58007000 0x1000>;
+			reg = <0x58007000 0x1000>, <0x58008000 0x1000>;
 			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC2_K>;

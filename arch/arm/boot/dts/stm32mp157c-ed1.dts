@@ -300,6 +300,9 @@
 	vqmmc-supply = <&sd_switch>;
 	sd-uhs-sdr12;
 	sd-uhs-sdr25;
+	sd-uhs-sdr50;
+	sd-uhs-ddr50;
+	sd-uhs-sdr104;
 	status = "okay";
 };
 
