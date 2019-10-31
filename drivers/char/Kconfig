@@ -641,6 +641,13 @@ config TCC_LUT_DRV
     help
         TCC H/W look up table
 
+config TCC_PM_LUT_DRV
+    boolean "TCC PixelMapper LUT Driver"
+    default y
+    depends on (ARCH_TCC899X || ARCH_TCC901X) && !ARM64
+    help
+        TCC H/W 3D look up table
+
 config TCC_MEM
     bool "TCC MEM driver"
     default y

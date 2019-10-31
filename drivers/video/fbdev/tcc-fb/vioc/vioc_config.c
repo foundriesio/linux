@@ -600,6 +600,12 @@ int VIOC_AUTOPWR_Enalbe(unsigned int component, unsigned int onoff)
 			shift_bit = PWR_AUTOPD_FILT2D_SHIFT;
 			break;
 		#endif//
+
+		#ifdef CONFIG_VIOC_PIXEL_MAPPER
+		case get_vioc_type(VIOC_PIXELMAP):
+			shift_bit = PWR_AUTOPD_PM_SHIFT;
+			break;
+		#endif
 		default:
 			goto error;
 
@@ -624,6 +630,80 @@ error:
 
 	return -1;
 }
+
+
+int VIOC_CONFIG_PM_PlugChange(void)
+{
+	unsigned long value = 0;
+	unsigned int loop = 0;
+	bool pluged_pm_num= 0;
+	volatile void __iomem *pm0_reg, *pm1_reg;
+	volatile void __iomem *plug_out_reg=NULL, *plug_in_reg=NULL;
+	int path;
+
+	pm0_reg = CalcAddressViocComponent(VIOC_PIXELMAP0);
+	pm1_reg = CalcAddressViocComponent(VIOC_PIXELMAP1);
+	if (pm0_reg == NULL || pm1_reg == NULL)
+		goto error;
+
+	value = ((__raw_readl(pm0_reg) & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT);
+	if (value == VIOC_PATH_CONNECTED) {
+		pluged_pm_num = 0;
+		plug_out_reg = pm0_reg;
+		plug_in_reg = pm1_reg;
+	}
+	value = ((__raw_readl(pm1_reg) & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT);
+	if (value == VIOC_PATH_CONNECTED){
+		pluged_pm_num = 1;
+		plug_out_reg = pm1_reg;
+		plug_in_reg = pm0_reg;
+	}
+	if(plug_out_reg == NULL && plug_in_reg == NULL){
+		pr_warning("%s, all pixel_mapper were plugged-out!!\n", __func__);
+		return VIOC_PATH_DISCONNECTED;
+	}
+
+
+	//plug-out
+	path = (__raw_readl(plug_out_reg) & CFG_PATH_SEL_MASK);
+	value = (__raw_readl(plug_out_reg) & ~(CFG_PATH_EN_MASK));
+	__raw_writel(value, plug_out_reg);
+
+	//plug-in
+	value = (__raw_readl(plug_in_reg) & ~(CFG_PATH_SEL_MASK | CFG_PATH_EN_MASK));
+	value |= ((path << CFG_PATH_SEL_SHIFT) | (0x1 << CFG_PATH_EN_SHIFT));
+	__raw_writel(value, plug_in_reg);
+#if 0
+	if (__raw_readl(plug_in_reg) & CFG_PATH_ERR_MASK) {
+		pr_err("%s, plug-in path configuration error(ERR_MASK). pixel-mapper-%d device is busy. Path:%d\n",
+		       __func__, !pluged_pm_num, path);
+		value = (__raw_readl(plug_in_reg) & ~(CFG_PATH_EN_MASK));
+		__raw_writel(value, plug_in_reg);
+	}
+#endif	
+	loop = 50;
+	while (1) {
+		mdelay(1);
+		loop--;
+		value = ((__raw_readl(plug_in_reg) & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT);
+		if (value == VIOC_PATH_CONNECTED)
+			break;
+		if (loop < 1) {
+			pr_err("%s, plug-in path configuration error(TIMEOUT). pixel-mapper-%d device is busy.Path:%d\n",
+			       __func__, !pluged_pm_num, path);
+			return VIOC_DEVICE_BUSY;
+		}
+	}
+	__raw_writel(0x00000000, plug_out_reg);
+	return VIOC_PATH_CONNECTED;
+
+error:
+	pr_err("%s, in error\n", __func__);
+	WARN_ON(1);
+	return VIOC_DEVICE_INVALID;
+}
+EXPORT_SYMBOL(VIOC_CONFIG_PM_PlugChange);
+	
 
 int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 {
@@ -673,6 +753,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		path = CheckPixelMapPathSelection(select);
 		if (path < 0)
 			goto error;
+		VIOC_AUTOPWR_Enalbe(component, 0);		//for setting of lut table
 		break;
 	#endif//
 

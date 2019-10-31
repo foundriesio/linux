@@ -1580,6 +1580,7 @@ typedef struct{
 
 #ifdef CONFIG_VIOC_PIXEL_MAPPER
 extern int CheckPixelMapPathSelection(unsigned int component);
+extern int VIOC_CONFIG_PM_PlugChange(void);
 #endif//CONFIG_VIOC_PIXEL_MAPPER
 
 /* Interface APIs */
