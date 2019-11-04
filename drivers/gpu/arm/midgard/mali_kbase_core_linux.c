@@ -3388,7 +3388,7 @@ static int power_control_init(struct platform_device *pdev)
 	unsigned int i;
 #if defined(CONFIG_REGULATOR)
 	static const char *regulator_names[] = {
-		"vdd_mali", "shadercores" // TCC
+		"vdd_mali"// TCC
 	};
 	BUILD_BUG_ON(ARRAY_SIZE(regulator_names) < BASE_MAX_NR_CLOCKS_REGULATORS);
 #endif /* CONFIG_REGULATOR */
