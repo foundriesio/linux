@@ -240,14 +240,15 @@
  */
 #if (KERNEL_VERSION(4, 0, 0) <= LINUX_VERSION_CODE) || \
 			defined(LSK_OPPV2_BACKPORT)
+#ifdef CONFIG_ARCH_TCC
+#define BASE_MAX_NR_CLOCKS_REGULATORS (1)
+#else
 #define BASE_MAX_NR_CLOCKS_REGULATORS (2)
+#endif
 #else
 #define BASE_MAX_NR_CLOCKS_REGULATORS (1)
 #endif
 
-#ifdef CONFIG_ARCH_TCC899X
-#define BASE_MAX_NR_CLOCKS_REGULATORS (1)
-#endif
 /* Forward declarations */
 struct kbase_context;
 struct kbase_device;
