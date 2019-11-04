@@ -41,6 +41,9 @@ struct drm_vma_offset_node {
 	rwlock_t vm_lock;
 	struct drm_mm_node vm_node;
 	struct rb_root vm_files;
+#ifndef __GENKSYMS__
+	bool readonly:1;
+#endif
 };
 
 struct drm_vma_offset_manager {

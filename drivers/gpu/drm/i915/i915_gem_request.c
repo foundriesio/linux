@@ -253,6 +253,9 @@ static void mark_busy(struct drm_i915_private *i915)
 
 	intel_runtime_pm_get_noresume(i915);
 
+	if (NEEDS_RC6_CTX_CORRUPTION_WA(i915))
+		intel_uncore_forcewake_get(i915, FORCEWAKE_ALL);
+
 	/*
 	 * It seems that the DMC likes to transition between the DC states a lot
 	 * when there are no connected displays (no active power domains) during
