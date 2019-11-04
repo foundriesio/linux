@@ -873,7 +873,7 @@ static int scaler_drv_probe(struct platform_device *pdev)
 	if (scaler->vioc_intr == 0)
 		goto err_vioc_intr_alloc;
 
-	scaler->id = of_alias_get_id(pdev->dev.of_node, "scaler_drv");	
+	scaler->id = of_alias_get_id(pdev->dev.of_node, "scaler-drv");	
 
  	/* register scaler discdevice */
 	scaler->misc->minor = MISC_DYNAMIC_MINOR;
