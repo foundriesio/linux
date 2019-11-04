@@ -1843,8 +1843,8 @@
 			[KVM] Controls the sw workaround for bug
 			X86_BUG_ITLB_MULTIHIT.
 			force	: Always deploy workaround.
-			off	: Default. Never deploy workaround.
-			auto	: Deploy workaround based on presence of
+			off	: Never deploy workaround.
+			auto	: Default. Deploy workaround based on presence of
 				  X86_BUG_ITLB_MULTIHIT.
 
 			If the sw workaround is enabled for the host, guests
