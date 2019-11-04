@@ -129,6 +129,17 @@
 /* Todo:	xceiver-supply = <&reg_can_stby>; */
 };
 
+&gpio1 {
+	/*
+	 * Add GPIO1_26 as a wakeup source:
+	 * Pin:  SC_P_MIPI_DSI0_I2C0_SDA (MXM3_37)
+	 * Type: SC_PAD_WAKEUP_FALL_EDGE
+	 * Line: GPIO1_IO26
+	 */
+	pad-wakeup = <117 5 26>;
+	pad-wakeup-num = <1>;
+};
+
 &gpu_3d0 {
 	status = "okay";
 };
