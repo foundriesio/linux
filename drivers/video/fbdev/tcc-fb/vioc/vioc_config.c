@@ -631,7 +631,7 @@ error:
 	return -1;
 }
 
-
+#ifdef CONFIG_ARCH_TCC899X || CONFIG_ARCH_TCC901X
 int VIOC_CONFIG_PM_PlugChange(void)
 {
 	unsigned long value = 0;
@@ -703,7 +703,7 @@ error:
 	return VIOC_DEVICE_INVALID;
 }
 EXPORT_SYMBOL(VIOC_CONFIG_PM_PlugChange);
-	
+#endif	
 
 int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 {
