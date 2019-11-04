@@ -245,6 +245,9 @@
 #define BASE_MAX_NR_CLOCKS_REGULATORS (1)
 #endif
 
+#ifdef CONFIG_ARCH_TCC899X
+#define BASE_MAX_NR_CLOCKS_REGULATORS (1)
+#endif
 /* Forward declarations */
 struct kbase_context;
 struct kbase_device;
