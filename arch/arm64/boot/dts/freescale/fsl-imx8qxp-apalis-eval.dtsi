@@ -21,7 +21,7 @@
 
 		wakeup {
 			label = "Wake-Up";
-			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 26 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_WAKEUP>;
 			debounce-interval = <10>;
 			wakeup-source;
