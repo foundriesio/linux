@@ -1068,6 +1068,18 @@ static void ltdc_encoder_enable(struct drm_encoder *encoder)
 
 	DRM_DEBUG_DRIVER("\n");
 
+	/* Enable LTDC */
+	reg_set(ldev->regs, LTDC_GCR, GCR_LTDCEN);
+}
+
+static void ltdc_encoder_mode_set(struct drm_encoder *encoder,
+				  struct drm_display_mode *mode,
+				  struct drm_display_mode *adjusted_mode)
+{
+	struct drm_device *ddev = encoder->dev;
+
+	DRM_DEBUG_DRIVER("\n");
+
 	/*
 	 * Set to default state the pinctrl only with DPI type.
 	 * Others types like DSI, don't need pinctrl due to
@@ -1075,14 +1087,12 @@ static void ltdc_encoder_enable(struct drm_encoder *encoder)
 	 */
 	if (encoder->encoder_type == DRM_MODE_ENCODER_DPI)
 		pinctrl_pm_select_default_state(ddev->dev);
-
-	/* Enable LTDC */
-	reg_set(ldev->regs, LTDC_GCR, GCR_LTDCEN);
 }
 
 static const struct drm_encoder_helper_funcs ltdc_encoder_helper_funcs = {
 	.disable = ltdc_encoder_disable,
 	.enable = ltdc_encoder_enable,
+	.mode_set = ltdc_encoder_mode_set,
 };
 
 static int ltdc_encoder_init(struct drm_device *ddev, struct drm_bridge *bridge)
