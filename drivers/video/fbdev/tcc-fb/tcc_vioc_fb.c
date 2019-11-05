@@ -2169,7 +2169,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			{
 				if(pdp_data->ddc_info.virt_addr)
 				{
-					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x hue:0x%x\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.hue);
 					if(params.hue < 0x100){
 						VIOC_DISP_SetCENH_hue(pdp_data->ddc_info.virt_addr, params.hue);
@@ -2219,7 +2219,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			{
 				if(pdp_data->ddc_info.virt_addr)
 				{
-					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X)
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 					VIOC_DISP_GetCENH_hue(pdp_data->ddc_info.virt_addr,&params.hue);
 					VIOC_DISP_GetCENH_brightness(pdp_data->ddc_info.virt_addr, &params.brightness);
 					VIOC_DISP_GetCENH_saturation(pdp_data->ddc_info.virt_addr, &params.saturation);

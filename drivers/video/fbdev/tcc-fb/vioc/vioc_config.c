@@ -631,7 +631,7 @@ error:
 	return -1;
 }
 
-#ifdef CONFIG_ARCH_TCC899X || CONFIG_ARCH_TCC901X
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 int VIOC_CONFIG_PM_PlugChange(void)
 {
 	unsigned long value = 0;
