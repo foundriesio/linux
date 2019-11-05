@@ -184,6 +184,11 @@ int clp_disable_fh(struct zpci_dev *);
 int clp_get_state(u32 fid, enum zpci_state *state);
 
 #ifdef CONFIG_PCI
+static inline bool zpci_use_mio(struct zpci_dev *zdev)
+{
+	return static_branch_likely(&have_mio) && zdev->mio_capable;
+}
+
 /* Error handling and recovery */
 void zpci_event_error(void *);
 void zpci_event_availability(void *);
