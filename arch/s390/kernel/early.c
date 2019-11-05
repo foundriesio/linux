@@ -29,7 +29,6 @@
 #include <asm/sclp.h>
 #include <asm/facility.h>
 #include <asm/uv.h>
-#include <asm/pci_insn.h>
 #include "entry.h"
 
 /*
@@ -396,7 +395,6 @@ static __init void detect_machine_facilities(void)
 	}
 	if (test_facility(133))
 		S390_lowcore.machine_flags |= MACHINE_FLAG_GS;
-	enable_mio_ctl();
 }
 
 static inline void save_vector_registers(void)
