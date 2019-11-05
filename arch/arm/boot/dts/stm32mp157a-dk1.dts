@@ -696,3 +696,10 @@
 	phy-supply = <&vdd_usb>;
 	st,phy-tuning = <&usb_phy_tuning>;
 };
+
+&vrefbuf {
+	regulator-min-microvolt = <2500000>;
+	regulator-max-microvolt = <2500000>;
+	vdda-supply = <&vdd>;
+	status = "okay";
+};
