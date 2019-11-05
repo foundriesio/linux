@@ -29,4 +29,15 @@ source "drivers/staging/android/fiq_debugger/Kconfig"
 
 endif # if ANDROID
 
+config LINUX_ANDROID
+        bool "Linux Android Drivers"
+        ---help---
+          Enable support for various drivers of the Android platform needed on the Linux platform
+
+if LINUX_ANDROID
+
+source "drivers/staging/android/ion/Kconfig"
+
+endif # if LINUX_ANDROID
+
 endmenu
