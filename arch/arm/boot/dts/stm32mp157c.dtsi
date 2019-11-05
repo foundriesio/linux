@@ -192,6 +192,11 @@
 				reg = <1>;
 				status = "disabled";
 			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
+				status = "disabled";
+			};
 		};
 
 		timers3: timer@40001000 {
@@ -221,6 +226,11 @@
 				reg = <2>;
 				status = "disabled";
 			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
+				status = "disabled";
+			};
 		};
 
 		timers4: timer@40002000 {
@@ -246,6 +256,11 @@
 			timer@3 {
 				compatible = "st,stm32h7-timer-trigger";
 				reg = <3>;
+				status = "disabled";
+			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
 				status = "disabled";
 			};
 		};
@@ -275,6 +290,11 @@
 			timer@4 {
 				compatible = "st,stm32h7-timer-trigger";
 				reg = <4>;
+				status = "disabled";
+			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
 				status = "disabled";
 			};
 		};
@@ -661,6 +681,11 @@
 				reg = <0>;
 				status = "disabled";
 			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
+				status = "disabled";
+			};
 		};
 
 		timers8: timer@44001000 {
@@ -690,6 +715,11 @@
 			timer@7 {
 				compatible = "st,stm32h7-timer-trigger";
 				reg = <7>;
+				status = "disabled";
+			};
+
+			counter {
+				compatible = "st,stm32-timer-counter";
 				status = "disabled";
 			};
 		};
