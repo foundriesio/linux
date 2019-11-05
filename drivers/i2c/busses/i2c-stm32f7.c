@@ -1358,7 +1358,7 @@ static int stm32f7_i2c_get_free_slave_id(struct stm32f7_i2c_dev *i2c_dev,
 	}
 
 	for (i = STM32F7_I2C_MAX_SLAVE - 1; i > 0; i--) {
-		if (i == 1 && (slave->flags & I2C_CLIENT_TEN))
+		if (i == 2 && (slave->flags & I2C_CLIENT_TEN))
 			continue;
 		if (!i2c_dev->slave[i]) {
 			*id = i;
