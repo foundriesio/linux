@@ -9318,6 +9318,16 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 	    !test_bit(NOHZ_BALANCE_KICK, nohz_flags(this_cpu)))
 		goto end;
 
+	/*
+	 * Ensure this_rq's clock and load are up-to-date before we
+	 * rebalance since it's possible that they haven't been
+	 * updated for multiple schedule periods, i.e. many seconds.
+	 */
+	raw_spin_lock_irq(&this_rq->lock);
+	update_rq_clock(this_rq);
+	cpu_load_update_idle(this_rq);
+	raw_spin_unlock_irq(&this_rq->lock);
+
 	for_each_cpu(balance_cpu, nohz.idle_cpus_mask) {
 		if (balance_cpu == this_cpu || !idle_cpu(balance_cpu))
 			continue;
