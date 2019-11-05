@@ -82,15 +82,15 @@
 		udma1 = &udma1;
 		udma2 = &udma2;
 		udma3 = &udma3;
-		wmixer_drv0 = &wmixer_drv0;
-		wmixer_drv1 = &wmixer_drv1;
-		scaler_drv1 = &scaler_drv1;
-		scaler_drv3 = &scaler_drv3;
-		attach_drv0 = &attach_drv0;
-		attach_drv1 = &attach_drv1;
-		vout_drv0 = &vout_drv0;
-		vout_drv1 = &vout_drv1;
-		wdma_drv0 = &wdma_drv0;
+		wmixer-drv0 = &wmixer_drv0;
+		wmixer-drv1 = &wmixer_drv1;
+		scaler-drv1 = &scaler_drv1;
+		scaler-drv3 = &scaler_drv3;
+		attach-drv0 = &attach_drv0;
+		attach-drv1 = &attach_drv1;
+		vout-drv0 = &vout_drv0;
+		vout-drv1 = &vout_drv1;
+		wdma-drv0 = &wdma_drv0;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -107,10 +107,10 @@
 		vi2s2 = &vi2s2;
 		vi2s3 = &vi2s3;
 		asrc0  = &asrc0;
-		asrc_m2m_pcm0 = &asrc_m2m_pcm0;
-		asrc_m2m_pcm1 = &asrc_m2m_pcm1;
-		asrc_m2m_pcm2 = &asrc_m2m_pcm2;
-		asrc_m2m_pcm3 = &asrc_m2m_pcm3;
+		asrc-m2m-pcm0 = &asrc_m2m_pcm0;
+		asrc-m2m-pcm1 = &asrc_m2m_pcm1;
+		asrc-m2m-pcm2 = &asrc_m2m_pcm2;
+		asrc-m2m-pcm3 = &asrc_m2m_pcm3;
 	};
 
 	psci {
