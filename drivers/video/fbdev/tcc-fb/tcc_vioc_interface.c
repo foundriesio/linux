@@ -221,7 +221,9 @@ extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImag
 #endif
 #endif
 
+#ifdef CONFIG_FB_VIOC
 extern unsigned int fb_chromakey_control_enabled;
+#endif
 
 int tccxxx_grp_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 int tccxxx_grp_release(struct inode *inode, struct file *filp);
@@ -2129,7 +2131,9 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
 	//overlay setting
+#ifdef CONFIG_FB_VIOC
 	if(fb_chromakey_control_enabled == 0)
+#endif
 	{
 		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
@@ -2395,7 +2399,9 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
 
+#ifdef CONFIG_FB_VIOC
 	if(fb_chromakey_control_enabled == 0)
+#endif
 	{
 		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
@@ -5293,7 +5299,9 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, layer, 0, 0);
 	//overlay setting
+#ifdef CONFIG_FB_VIOC
 	if(fb_chromakey_control_enabled == 0)
+#endif
 	{
 		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
