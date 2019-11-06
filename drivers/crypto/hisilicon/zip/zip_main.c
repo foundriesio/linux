@@ -349,7 +349,11 @@ static void hisi_zip_hw_error_set_state(struct hisi_zip *hisi_zip, bool state)
 		writel(HZIP_CORE_INT_DISABLE, hisi_zip->qm.io_base +
 					      HZIP_CORE_INT_SOURCE);
 		/* enable ZIP hw error interrupts */
-		writel(0, hisi_zip->qm.io_base + HZIP_CORE_INT_MASK);
+		if (qm->ver == QM_HW_V2)
+			/* ignore ras */
+			writel(0x8, hisi_zip->qm.io_base + HZIP_CORE_INT_MASK);
+		else
+			writel(0, hisi_zip->qm.io_base + HZIP_CORE_INT_MASK);
 	} else {
 		/* disable ZIP hw error interrupts */
 		writel(HZIP_CORE_INT_DISABLE,
