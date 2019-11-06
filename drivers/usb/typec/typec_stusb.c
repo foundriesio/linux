@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/usb/role.h>
 #include <linux/usb/typec.h>
 
 #define STUSB_ALERT_STATUS			0x0B /* RC */
@@ -158,6 +159,9 @@ struct stusb {
 	enum typec_port_type	port_type;
 	enum typec_pwr_opmode	pwr_opmode;
 	bool			vbus_on;
+
+	struct usb_role_switch	*role_sw;
+	struct work_struct	wq_role_sw;
 };
 
 static bool stusb_reg_writeable(struct device *dev, unsigned int reg)
@@ -321,6 +325,51 @@ static enum typec_role stusb_get_vconn_role(u32 status)
 		return TYPEC_SINK;
 }
 
+static void stusb_set_role_sw(struct work_struct *work)
+{
+	struct stusb *chip = container_of(work, struct stusb, wq_role_sw);
+	enum usb_role usb_role = USB_ROLE_NONE;
+	u32 conn_status, vbus_status;
+	bool id, vbus;
+	int ret;
+
+	/* Check ID and Vbus to update state */
+	ret = regmap_read(chip->regmap, STUSB_CC_CONNECTION_STATUS,
+			  &conn_status);
+	if (ret)
+		return;
+
+	ret = regmap_read(chip->regmap, STUSB_VBUS_ENABLE_STATUS,
+			  &vbus_status);
+	if (ret)
+		return;
+
+	/* 0 = Device, 1 = Host */
+	id = STUSB_CC_DATA_ROLE(conn_status);
+
+	if (STUSB_CC_POWER_ROLE(conn_status)) /* Source */
+		vbus = !!(vbus_status & STUSB_VBUS_SOURCE_EN);
+	else /* Sink */
+		vbus = !!(vbus_status & STUSB_VBUS_SINK_EN);
+
+	dev_dbg(chip->dev, "role=%s vbus=%sable\n",
+		id ? "Host" : "Device", vbus ? "en" : "dis");
+
+	/*
+	 * !vbus = detached, so neither B-Session Valid nor A-Session Valid
+	 * !vbus = USB_ROLE_NONE
+	 * vbus = attached, so either B-Session Valid or A-Session Valid
+	 * vbus && !id = B-Session Valid = USB_ROLE_DEVICE
+	 * vbus && id = A-Session Valid = USB_ROLE_HOST
+	 */
+	if (vbus && id) /* Attached and A-Session Valid */
+		usb_role = USB_ROLE_HOST;
+	if (vbus && !id) /* Attached and B-Session Valid */
+		usb_role = USB_ROLE_DEVICE;
+
+	usb_role_switch_set_role(chip->role_sw, usb_role);
+}
+
 static int stusb_attach(struct stusb *chip, u32 status)
 {
 	struct typec_partner_desc desc;
@@ -352,6 +401,9 @@ static int stusb_attach(struct stusb *chip, u32 status)
 	typec_set_vconn_role(chip->port, stusb_get_vconn_role(status));
 	typec_set_data_role(chip->port, STUSB_CC_DATA_ROLE(status));
 
+	if (chip->role_sw)
+		queue_work(system_power_efficient_wq, &chip->wq_role_sw);
+
 	return 0;
 
 vbus_disable:
@@ -377,6 +429,9 @@ static void stusb_detach(struct stusb *chip, u32 status)
 		regulator_disable(chip->vdd_supply);
 		chip->vbus_on = false;
 	}
+
+	if (chip->role_sw)
+		queue_work(system_power_efficient_wq, &chip->wq_role_sw);
 }
 
 static irqreturn_t stusb_irq_handler(int irq, void *data)
@@ -624,6 +679,7 @@ static int stusb_probe(struct i2c_client *client,
 	const struct of_device_id *match;
 	struct regmap_config *regmap_config;
 	bool try_role;
+	struct fwnode_handle *fwnode;
 	int ret;
 
 	chip = devm_kzalloc(&client->dev, sizeof(struct stusb), GFP_KERNEL);
@@ -713,11 +769,7 @@ static int stusb_probe(struct i2c_client *client,
 	 */
 	typec_set_pwr_opmode(chip->port, chip->pwr_opmode);
 
-	if (client->irq) {
-		ret = stusb_irq_init(chip, client->irq);
-		if (ret)
-			goto port_unregister;
-	} else {
+	if (!client->irq) {
 		/*
 		 * If Source or Dual power role, need to enable VDD supply
 		 * providing Vbus if present. In case of interrupt support,
@@ -734,12 +786,34 @@ static int stusb_probe(struct i2c_client *client,
 			}
 			chip->vbus_on = true;
 		}
+
+		return 0;
 	}
 
-	dev_info(chip->dev, "STUSB driver registered\n");
+	fwnode = device_get_named_child_node(chip->dev, "connector");
+	chip->role_sw = fwnode_usb_role_switch_get(fwnode);
+	if (IS_ERR(chip->role_sw)) {
+		ret = PTR_ERR(chip->role_sw);
+		if (ret != -EPROBE_DEFER)
+			dev_err(chip->dev,
+				"Failed to get usb role switch: %d\n", ret);
+		goto port_unregister;
+	}
+
+	if (chip->role_sw)
+		INIT_WORK(&chip->wq_role_sw, stusb_set_role_sw);
+
+	ret = stusb_irq_init(chip, client->irq);
+	if (ret)
+		goto role_sw_put;
 
 	return 0;
 
+role_sw_put:
+	if (chip->role_sw) {
+		cancel_work_sync(&chip->wq_role_sw);
+		usb_role_switch_put(chip->role_sw);
+	}
 port_unregister:
 	typec_unregister_port(chip->port);
 all_reg_disable:
@@ -763,6 +837,11 @@ static int stusb_remove(struct i2c_client *client)
 
 	if (chip->vbus_on)
 		regulator_disable(chip->vdd_supply);
+
+	if (chip->role_sw) {
+		cancel_work_sync(&chip->wq_role_sw);
+		usb_role_switch_put(chip->role_sw);
+	}
 
 	typec_unregister_port(chip->port);
 

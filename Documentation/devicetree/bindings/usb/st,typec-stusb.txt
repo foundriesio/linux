@@ -16,6 +16,8 @@ Optional properties:
 
 USB-C connector attached to STUSB Type-C port controller can be described in
 an optional connector sub-node. Refer to ../connector/usb-connector.txt.
+In case role switch can be used, an optional port sub-node can be added. Refer
+to ../graph.txt.
 
 Example :
 
@@ -35,6 +37,12 @@ Example :
 			power-role = "dual";
 			power-opmode = "1.5A";
 			data-role = "dual";
+
+			port {
+				con_usbotg_hs_ep: endpoint {
+					remote-endpoint = <&usbotg_hs_ep>;
+				};
+			};
 		};
 	};
 

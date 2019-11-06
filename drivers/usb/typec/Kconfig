@@ -64,6 +64,7 @@ config TYPEC_TPS6598X
 config TYPEC_STUSB
 	tristate "STMicroelectronics STUSB Type-C controller driver"
 	depends on I2C
+	select USB_ROLE_SWITCH
 	help
 	  The STMicroelectronics STUSB Type-C controller driver that works
 	  with Type-C Port Controller Manager to provide USB Type-C
