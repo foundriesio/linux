@@ -454,7 +454,18 @@ static long tcc_nsk_sc_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 		stSCBuf.pucRxBuf = (unsigned char*)kmalloc(sizeof(unsigned char)*DRV_UART_SC_RX_BUF_SIZE, GFP_KERNEL);
 		stSCBuf.puiRxBufLen = (unsigned int*)kmalloc(sizeof(unsigned int), GFP_KERNEL);
 
+		if (g_iNSKSCState != TCC_NSK_SC_STATE_ACTIVATE)
+			tcc_nsk_sc_activate(TCC_NSK_SC_STATE_ACTIVATE);
+
 		iRet = tcc_nsk_sc_send_receive(stSCBuf);
+
+		if(iRet == TCC_NSK_SC_ERROR_INVALID_STATE) {
+			eprintk("%s : invalid state(%d)\n", __func__, iRet);
+			kfree(stSCBuf.pucRxBuf);
+			kfree(stSCBuf.puiRxBufLen);
+			mutex_unlock(&g_hNSKSCMutex);
+			return iRet;
+		}
 
                 if(copy_to_user((unsigned char*)((stTCC_NSK_SC_BUF*)arg)->pucRxBuf,(unsigned char*)stSCBuf.pucRxBuf, sizeof(unsigned char)*(*stSCBuf.puiRxBufLen))){
                         eprintk("%s : copy_to_user failed\n", __func__);
