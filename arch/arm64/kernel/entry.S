@@ -330,6 +330,21 @@ alternative_if ARM64_WORKAROUND_845719
 alternative_else_nop_endif
 #endif
 3:
+#ifdef CONFIG_ARM64_ERRATUM_1418040
+alternative_if_not ARM64_WORKAROUND_1418040
+	b	4f
+alternative_else_nop_endif
+	/*
+	 * if (x22.mode32 == cntkctl_el1.el0vcten)
+	 *     cntkctl_el1.el0vcten = ~cntkctl_el1.el0vcten
+	 */
+	mrs	x1, cntkctl_el1
+	eon	x0, x1, x22, lsr #3
+	tbz	x0, #1, 4f
+	eor	x1, x1, #2	// ARCH_TIMER_USR_VCT_ACCESS_EN
+	msr	cntkctl_el1, x1
+4:
+#endif
 	apply_ssbd 0, 5f, x0, x1
 5:
 	.endif
@@ -357,11 +372,11 @@ alternative_else_nop_endif
 	.if	\el == 0
 alternative_insn eret, nop, ARM64_UNMAP_KERNEL_AT_EL0
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
-	bne	4f
+	bne	5f
 	msr	far_el1, x30
 	tramp_alias	x30, tramp_exit_native
 	br	x30
-4:
+5:
 	tramp_alias	x30, tramp_exit_compat
 	br	x30
 #endif
@@ -594,7 +609,7 @@ el1_undef:
 	inherit_daif	pstate=x23, tmp=x2
 	mov	x0, sp
 	bl	do_undefinstr
-	ASM_BUG()
+	kernel_exit 1
 el1_dbg:
 	/*
 	 * Debug exception handling
@@ -702,9 +717,9 @@ el0_sync_compat:
 	cmp	x24, #ESR_ELx_EC_UNKNOWN	// unknown exception in EL0
 	b.eq	el0_undef
 	cmp	x24, #ESR_ELx_EC_CP15_32	// CP15 MRC/MCR trap
-	b.eq	el0_undef
+	b.eq	el0_cp15
 	cmp	x24, #ESR_ELx_EC_CP15_64	// CP15 MRRC/MCRR trap
-	b.eq	el0_undef
+	b.eq	el0_cp15
 	cmp	x24, #ESR_ELx_EC_CP14_MR	// CP14 MRC/MCR trap
 	b.eq	el0_undef
 	cmp	x24, #ESR_ELx_EC_CP14_LS	// CP14 LDC/STC trap
@@ -732,6 +747,17 @@ el0_irq_compat:
 el0_error_compat:
 	kernel_entry 0, 32
 	b	el0_error_naked
+
+el0_cp15:
+	/*
+	 * Trapped CP15 (MRC, MCR, MRRC, MCRR) instructions
+	 */
+	enable_daif
+	ct_user_exit
+	mov	x0, x25
+	mov	x1, sp
+	bl	do_cp15instr
+	b	ret_to_user
 #endif
 
 el0_da:
