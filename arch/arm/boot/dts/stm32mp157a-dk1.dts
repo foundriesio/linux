@@ -641,6 +641,13 @@
 	status = "disabled";
 };
 
+&usbotg_hs {
+	phys = <&usbphyc_port1 0>;
+	phy-names = "usb2-phy";
+	usb-role-switch;
+	status = "okay";
+};
+
 &usbphyc {
 	status = "okay";
 };
