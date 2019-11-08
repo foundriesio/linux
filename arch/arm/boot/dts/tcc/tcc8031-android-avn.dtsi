@@ -107,9 +107,10 @@
 };
 */
 
+#ifdef CONFIG_VIDEO_VIDEOSOURCE
 &videosource {
 	compatible = "telechips,videosource";
-	status = "disabled";
+	status = "okay";
 
 	pinctrl-names = "idle", "active";
 /* dm5886
@@ -140,6 +141,7 @@
 		mipi_csi2 = <&mipi_csi2>;
 	};
 };
+#endif
 
 &switch_reverse {
 	compatible = "telechips,switch_reverse";

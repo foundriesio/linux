@@ -91,6 +91,7 @@
 		vout-drv0 = &vout_drv0;
 		vout-drv1 = &vout_drv1;
 		wdma-drv0 = &wdma_drv0;
+#ifdef CONFIG_VIDEO_TCCVIN
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -98,6 +99,7 @@
 		videoinput4 = &videoinput4;
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
+#endif
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
@@ -476,12 +478,11 @@
 			no-map;
 		};
 
+#ifdef CONFIG_VIDEO_TCCVIN
 		/*-----------------------------------------------------------
 		 * Early/RearCamera Area
 		 *-----------------------------------------------------------
 		 */
-		/*
-		 * The camera solution operates in a7s. So a53 doesn't need reserved memory
 		rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
@@ -505,7 +506,7 @@
 			size = <PMAP_PARKING_GUI_SIZE>;
 			no-map;
 		};
-		*/
+#endif
 
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
@@ -3173,6 +3174,7 @@
 		status = "disabled";
 	};
 
+#ifdef CONFIG_VIDEO_TCCVIN
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
@@ -3186,7 +3188,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
 		wdma		= <&vioc_wdma		VIOC_WDMA05>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput1: videoinput@1 {
@@ -3202,7 +3204,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
 		wdma		= <&vioc_wdma		VIOC_WDMA07>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput2: videoinput@2 {
@@ -3263,6 +3265,7 @@
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		status		= "disabled";
 	};
+#endif
 
 	/*
 	 * Misc. Devices
@@ -3548,7 +3551,9 @@
 
 	thermal: thermal@14700000 {};
 
+#ifdef CONFIG_VIDEO_VIDEOSOURCE
 	videosource: videosource {};
+#endif
 
 	switch_reverse: switch_reverse {};
 
