@@ -165,3 +165,10 @@
 	};
 };
 
+&optee_memory {
+	status = "okay";
+};
+
+&optee {
+	status = "okay";
+};

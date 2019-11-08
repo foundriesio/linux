@@ -68,6 +68,11 @@
 			reg = <0xe8000000 0x8000000>;
 			no-map;
 		};
+
+		optee_memory: optee@0xfe000000 {
+			reg = <0xfe000000 0x02000000>;
+			no-map;
+		};
 	};
 
 	sram: sram@10050000 {
@@ -385,4 +390,8 @@
 
 &usbphyc_port1 {
 	phy-supply = <&vdd_usb>;
+};
+
+&optee {
+	status = "okay";
 };

@@ -75,6 +75,12 @@
 			reg = <0xd4000000 0x4000000>;
 			no-map;
 		};
+
+		optee_memory: optee@0xde000000 {
+			reg = <0xde000000 0x02000000>;
+			no-map;
+			status = "disabled";
+		};
 	};
 
 	sram: sram@10050000 {
