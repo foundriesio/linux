@@ -1,0 +1,37 @@
+What:           /sys/class/uacce/<dev_name>/api
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Api of the device, no requirement of the format
+                Application use the api to match the correct driver
+
+What:           /sys/class/uacce/<dev_name>/flags
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Attributes of the device, see UACCE_DEV_xxx flag defined in uacce.h
+
+What:           /sys/class/uacce/<dev_name>/available_instances
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Available instances left of the device
+                Return -ENODEV if uacce_ops get_available_instances is not provided
+
+What:           /sys/class/uacce/<dev_name>/algorithms
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Algorithms supported by this accelerator, separated by new line.
+
+What:           /sys/class/uacce/<dev_name>/region_mmio_size
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Size (bytes) of mmio region queue file
+
+What:           /sys/class/uacce/<dev_name>/region_dus_size
+Date:           Nov 2019
+KernelVersion:  5.5
+Contact:        linux-accelerators@lists.ozlabs.org
+Description:    Size (bytes) of dus region queue file
