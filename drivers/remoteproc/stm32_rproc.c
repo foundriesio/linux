@@ -40,6 +40,13 @@
 
 #define RSC_TBL_SIZE		(1024)
 
+#define COPRO_STATE_OFF		0
+#define COPRO_STATE_INIT	1
+#define COPRO_STATE_CRUN	2
+#define COPRO_STATE_CSTOP	3
+#define COPRO_STATE_STANDBY	4
+#define COPRO_STATE_CRASH	5
+
 struct stm32_syscon {
 	struct regmap *map;
 	u32 reg;
@@ -72,6 +79,7 @@ struct stm32_rproc {
 	struct reset_control *rst;
 	struct stm32_syscon hold_boot;
 	struct stm32_syscon pdds;
+	struct stm32_syscon copro_state;
 	int wdg_irq;
 	u32 nb_rmems;
 	struct stm32_rproc_mem *rmems;
@@ -561,6 +569,18 @@ static int stm32_rproc_stop(struct rproc *rproc)
 		}
 	}
 
+	/* update copro state to OFF */
+	if (ddata->copro_state.map) {
+		err = regmap_update_bits(ddata->copro_state.map,
+					 ddata->copro_state.reg,
+					 ddata->copro_state.mask,
+					 COPRO_STATE_OFF);
+		if (err) {
+			dev_err(&rproc->dev, "failed to set copro state\n");
+			return err;
+		}
+	}
+
 	/* Reset early_boot state as we stop the co-processor */
 	rproc->early_boot = false;
 
@@ -637,7 +657,7 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	struct stm32_syscon tz, rsctbl;
 	phys_addr_t rsc_pa;
 	u32 rsc_da;
-	unsigned int tzen;
+	unsigned int tzen, state;
 	int err, irq;
 
 	irq = platform_get_irq(pdev, 0);
@@ -703,7 +723,23 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 	if (err)
 		return err;
 
-	if (of_property_read_bool(np, "early-booted")) {
+	/* check if the coprocessor has been started from the bootloader */
+	err = stm32_rproc_get_syscon(np, "st,syscfg-copro-state",
+				     &ddata->copro_state);
+	if (err) {
+		/* no copro_state syscon (optional) */
+		dev_warn(dev, "copro_state not supported\n");
+		goto bail;
+	}
+
+	err = regmap_read(ddata->copro_state.map, ddata->copro_state.reg,
+			  &state);
+	if (err) {
+		dev_err(&rproc->dev, "failed to read copro state\n");
+		return err;
+	}
+
+	if (state == COPRO_STATE_CRUN) {
 		rproc->early_boot = true;
 
 		if (stm32_rproc_get_syscon(np, "st,syscfg-rsc-tbl", &rsctbl)) {
