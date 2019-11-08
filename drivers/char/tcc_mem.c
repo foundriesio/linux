@@ -145,16 +145,17 @@ int tccxxx_sync_player(int sync)
 }
 EXPORT_SYMBOL(tccxxx_sync_player);
 
+struct mutex ioctl_mutex;
 
 static int curr_displaying_idx[VPU_INST_MAX] = {-1, };
 static int curr_displayed_buffer_id[VPU_INST_MAX] = {-1,};
-struct mutex io_mutex;
+struct mutex buff_io_mutex;
 
 int set_displaying_index(unsigned long arg)
 {
     int ret = 0;
 
-    mutex_lock(&io_mutex);
+    mutex_lock(&buff_io_mutex);
     {
         vbuffer_manager vBuffSt;
         ret = 0;
@@ -171,7 +172,7 @@ int set_displaying_index(unsigned long arg)
             }
         }
     }
-    mutex_unlock(&io_mutex);
+    mutex_unlock(&buff_io_mutex);
 
     return ret;
 }
@@ -181,7 +182,7 @@ int get_displaying_index(int nInst)
 {
     int ret = 0;
 
-    mutex_lock(&io_mutex);
+    mutex_lock(&buff_io_mutex);
     {
         if( nInst < 0 || nInst >= VPU_INST_MAX ){
             ret = -1;
@@ -190,7 +191,7 @@ int get_displaying_index(int nInst)
             ret = curr_displaying_idx[nInst];
         }
     }
-    mutex_unlock(&io_mutex);
+    mutex_unlock(&buff_io_mutex);
 
     return ret;
 }
@@ -200,7 +201,7 @@ int set_buff_id(unsigned long arg)
 {
     int ret = 0;
 
-    mutex_lock(&io_mutex);
+    mutex_lock(&buff_io_mutex);
     {
         vbuffer_manager vBuffSt;
         ret = 0;
@@ -217,7 +218,7 @@ int set_buff_id(unsigned long arg)
             }
         }
     }
-    mutex_unlock(&io_mutex);
+    mutex_unlock(&buff_io_mutex);
 
     return ret;
 }
@@ -227,7 +228,7 @@ int get_buff_id(int nInst)
 {
     int ret = 0;
 
-    mutex_lock(&io_mutex);
+    mutex_lock(&buff_io_mutex);
     {
         if( nInst < 0 || nInst >= VPU_INST_MAX ){
             ret = -1;
@@ -236,7 +237,7 @@ int get_buff_id(int nInst)
             ret = curr_displayed_buffer_id[nInst];
         }
     }
-    mutex_unlock(&io_mutex);
+    mutex_unlock(&buff_io_mutex);
 
     return ret;
 }
@@ -244,7 +245,7 @@ EXPORT_SYMBOL(get_buff_id);
 
 #ifdef USE_UMP_RESERVED_SW_PMAP
 typedef struct {
-    unsigned int phy_addr;
+    stIonBuff_info info;
     unsigned int ref_count;
 }stUmp_sw_buffer;
 
@@ -279,7 +280,7 @@ static void ump_sw_mgmt_init(void)
 
 		for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 		{
-			ump_sw_buf[i].phy_addr = 0x00;
+			ump_sw_buf[i].info.phy_addr = 0x00;
 			ump_sw_buf[i].ref_count = 0x00;
 		}
 
@@ -330,7 +331,8 @@ static int ump_sw_mgmt_check_status(void)
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
 		if( ump_sw_buf[i].ref_count != 0 ){
-			ump_printk_check("%s :: [%d] = 0x%x/%d \n", __func__, i, ump_sw_buf[i].phy_addr, ump_sw_buf[i].ref_count);
+			ump_printk_check("%s :: [%2d] = 0x%x/%d %4dx%4d 0x%x\n", __func__, i,
+					ump_sw_buf[i].info.phy_addr, ump_sw_buf[i].ref_count, ump_sw_buf[i].info.width, ump_sw_buf[i].info.height, ump_sw_buf[i].info.size);
 			used_cnt++;
 		}
 	}
@@ -351,17 +353,17 @@ static void ump_sw_mgmt_write_recognition_addr(unsigned int index, unsigned int 
 	plat_priv->gralloc_phy_address = addr;
 }
 
-static void ump_sw_mgmt_register(unsigned int phy_addr)
+static void ump_sw_mgmt_register(stIonBuff_info *info)
 {
 	int i = 0;
     int bFound = 0;
-	ump_printk_info("%s with 0x%x \n", __func__, phy_addr);
+	ump_printk_info("%s with 0x%x \n", __func__, info->phy_addr);
 
 	ump_sw_mgmt_init();
 
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
-		if(ump_sw_buf[i].phy_addr == phy_addr){
+		if(ump_sw_buf[i].info.phy_addr == info->phy_addr){
             bFound = 1;
 			break;
 		}
@@ -370,27 +372,28 @@ static void ump_sw_mgmt_register(unsigned int phy_addr)
     if(!bFound){
     	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
     	{
-    		if(ump_sw_buf[i].phy_addr == 0x00)
+    		if(ump_sw_buf[i].info.phy_addr == 0x00)
     			break;
     	}
     }
 
 	if(i >= UMP_SW_BLOCK_MAX_CNT)
 	{
-		ump_printk_err("%s :: There is no empty room for 0x%x ! \n", __func__, phy_addr);
+		ump_printk_err("%s :: There is no empty room for 0x%x ! \n", __func__, info->phy_addr);
 		return;
 	}
 
-	ump_printk_info("%s :: [%d] = 0x%x/%d\n", __func__, i, phy_addr, ump_sw_buf[i].ref_count);
+	ump_printk_info("%s :: [%d] = 0x%x/%d\n", __func__, i, info->phy_addr, ump_sw_buf[i].ref_count);
 
     if(ump_sw_buf[i].ref_count == 0){
-    	ump_sw_mgmt_write_recognition_addr(i, phy_addr);
-		ump_printk_check("%s :: [%d] = 0x%x len: 0x%x\n", __func__, i, phy_addr, sizeof(TCC_PLATFORM_PRIVATE_PMEM_INFO));
+		memcpy(&ump_sw_buf[i].info, info, sizeof(stIonBuff_info));
+    	ump_sw_mgmt_write_recognition_addr(i, info->phy_addr);
+		ump_printk_check("%s :: [%2d] = 0x%x/%d %4dx%4d 0x%x\n", __func__, i,
+				ump_sw_buf[i].info.phy_addr, ump_sw_buf[i].ref_count, ump_sw_buf[i].info.width, ump_sw_buf[i].info.height, ump_sw_buf[i].info.size);
     }
-	ump_sw_buf[i].phy_addr = phy_addr;
     ump_sw_buf[i].ref_count += 1;
 
-	ump_printk_info("%s :: [%d] = 0x%x/%d \n", __func__, i, phy_addr, ump_sw_buf[i].ref_count);
+	ump_printk_info("%s :: [%d] = 0x%x/%d \n", __func__, i, info->phy_addr, ump_sw_buf[i].ref_count);
 
 }
 
@@ -408,7 +411,7 @@ static void ump_sw_mgmt_deregister(unsigned int phy_addr, bool autofree)
 
 	for(i = 0; i < UMP_SW_BLOCK_MAX_CNT; i++)
 	{
-		if(ump_sw_buf[i].phy_addr == phy_addr)
+		if(ump_sw_buf[i].info.phy_addr == phy_addr)
 			break;
 	}
 
@@ -423,10 +426,10 @@ static void ump_sw_mgmt_deregister(unsigned int phy_addr, bool autofree)
 		ump_sw_buf[i].ref_count = 0;
 		
 	if(ump_sw_buf[i].ref_count == 0){
-		ump_sw_buf[i].phy_addr = 0x00;
+		ump_sw_buf[i].info.phy_addr = 0x00;
 		ump_sw_mgmt_write_recognition_addr(i, phy_addr);
-		ump_printk_check("%s :: [%d] = 0x%x \n", __func__, i, phy_addr);
-   	}
+		ump_printk_check("%s :: [%d] = 0x%x autofree: %d\n", __func__, i, phy_addr, autofree);
+    }
 
 	ump_printk_info("%s :: [%d] = 0x%x/%d \n", __func__, i, phy_addr, ump_sw_buf[i].ref_count);
 
@@ -438,6 +441,8 @@ static void ump_sw_mgmt_deregister(unsigned int phy_addr, bool autofree)
 long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
+
+    mutex_lock(&ioctl_mutex);
 
     switch (cmd)
     {
@@ -575,24 +580,38 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 #ifdef USE_UMP_RESERVED_SW_PMAP
 	case TCC_REGISTER_UMP_SW_INFO:
+	case TCC_REGISTER_UMP_SW_INFO_KERNEL:
 	{
-		unsigned int phy_addr = 0x00;
+		stIonBuff_info info;
 
-		if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int)))
-			ret = -EFAULT;
-		else
-			ump_sw_mgmt_register(phy_addr);
+		if(cmd == TCC_REGISTER_UMP_SW_INFO){
+			if(copy_from_user(&info, (const void*)arg, sizeof(stIonBuff_info)))
+				ret = -EFAULT;
+			else{
+				ump_sw_mgmt_register(&info);
+				ret = 0;
+			}
+		}
+		else {
+			if(NULL == memcpy(&info, (const void*)arg, sizeof(stIonBuff_info)))
+				ret = -EFAULT;
+			else{
+				ump_sw_mgmt_register(&info);
+				ret = 0;
+			}
+		}
 	}
 	break;
 
 	case TCC_DEREGISTER_UMP_SW_INFO:
 	case TCC_DEREGISTER_UMP_SW_INFO_KERNEL:
+	case TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL:
 	{
 		unsigned int phy_addr = 0x00;
 
 		if(cmd == TCC_DEREGISTER_UMP_SW_INFO){
 			if(copy_from_user(&phy_addr, (const void*)arg, sizeof(unsigned int)))
-				return -EFAULT;
+				ret = -EFAULT;
 			else{
 				ump_sw_mgmt_deregister(phy_addr, 0);
 				ret = 0;
@@ -600,9 +619,9 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		else{
 			if(NULL == memcpy(&phy_addr, (const void*)arg, sizeof(unsigned int)))
-				return -EFAULT;
+				ret = -EFAULT;
 			else{
-				ump_sw_mgmt_deregister(phy_addr, 1);
+				ump_sw_mgmt_deregister(phy_addr, (cmd == TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL));
 				ret = 0;
 			}
 		}
@@ -615,6 +634,8 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             ret = -EFAULT;
             break;
     }
+
+    mutex_unlock(&ioctl_mutex);
 
     return ret;
 }
@@ -641,10 +662,6 @@ static int tmem_open(struct inode *inode, struct file *filp)
 static int tmem_release(struct inode *inode, struct file *filp)
 {
     dprintk("tmem_release  \n");
-
-#ifdef USE_UMP_RESERVED_SW_PMAP
-	ump_sw_mgmt_check_status();
-#endif
 
     return 0;
 }
@@ -760,7 +777,8 @@ static int __init tmem_init(void)
     tmem_class = class_create(THIS_MODULE, DEV_NAME);
     device_create(tmem_class, NULL, MKDEV(DEV_MAJOR, DEV_MINOR), NULL, DEV_NAME);
 
-    mutex_init(&io_mutex);
+    mutex_init(&buff_io_mutex);
+    mutex_init(&ioctl_mutex);
 
     return 0;
 }

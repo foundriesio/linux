@@ -42,8 +42,10 @@
 #define USE_UMP_RESERVED_SW_PMAP
 #ifdef USE_UMP_RESERVED_SW_PMAP
 #define TCC_REGISTER_UMP_SW_INFO            0x40
-#define TCC_DEREGISTER_UMP_SW_INFO          0x41
-#define TCC_DEREGISTER_UMP_SW_INFO_KERNEL   0x42
+#define TCC_REGISTER_UMP_SW_INFO_KERNEL     0x41
+#define TCC_DEREGISTER_UMP_SW_INFO          0x42
+#define TCC_DEREGISTER_UMP_SW_INFO_KERNEL   0x43
+#define TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL 0x44
 #endif
 
 typedef struct {
@@ -60,6 +62,13 @@ typedef struct {
 	unsigned int 	dv_vsvdb_size;
 	unsigned int	dv_ll_mode;
 } vHdmi_info;
+
+typedef struct {
+    unsigned int    phy_addr;
+    unsigned int    width;
+    unsigned int    height;
+	unsigned int	size;
+} stIonBuff_info;
 
 #endif //_TCC_MEM_IOCTL_H
 
