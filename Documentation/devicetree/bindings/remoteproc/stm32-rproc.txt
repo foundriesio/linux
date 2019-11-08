@@ -56,6 +56,11 @@ Optional properties:
 	1st cell: phandle to syscon block
 	2nd cell: register offset containing the resource table address
 	3rd cell: register bitmask for the resource table address
+- st,syscfg-copro-state: Reference to the system configuration which returns the
+		coprocessor state.
+	1st cell: phandle to syscon block
+	2nd cell: register offset containing the coprocessor state
+	3rd cell: register bitmask for the coprocessor state
 - st,auto-boot:	If defined, when remoteproc is probed, it loads the default
 		firmware and starts the remote processor.
 - early-booted:	If defined, when remoteproc tries to boot a firmware, it
