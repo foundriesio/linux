@@ -103,7 +103,7 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_PHYS:					//TCC
 	{
 		int result = 0;
-		result = ion_phys(data.phys.dmabuf_fd, &data.phys.paddr, &data.phys.len);
+		result = ion_phys(data.phys.dmabuf_fd, (phys_addr_t)&data.phys.paddr, &data.phys.len);
 		break;
 	}
 	default:

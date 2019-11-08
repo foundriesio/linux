@@ -2220,18 +2220,18 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				if(pdp_data->ddc_info.virt_addr)
 				{
 					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-					VIOC_DISP_GetCENH_hue(pdp_data->ddc_info.virt_addr,&params.hue);
-					VIOC_DISP_GetCENH_brightness(pdp_data->ddc_info.virt_addr, &params.brightness);
-					VIOC_DISP_GetCENH_saturation(pdp_data->ddc_info.virt_addr, &params.saturation);
-					VIOC_DISP_GetCENH_contrast(pdp_data->ddc_info.virt_addr, &params.contrast);
-					VIOC_DISP_GetCENH_hue_onoff(pdp_data->ddc_info.virt_addr, &params.check_hue_onoff);					
-					VIOC_DISP_GetCENH_onoff(pdp_data->ddc_info.virt_addr, &params.check_colE_onoff);					
+					VIOC_DISP_GetCENH_hue(pdp_data->ddc_info.virt_addr,(unsigned int *)&params.hue);
+					VIOC_DISP_GetCENH_brightness(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.brightness);
+					VIOC_DISP_GetCENH_saturation(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.saturation);
+					VIOC_DISP_GetCENH_contrast(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.contrast);
+					VIOC_DISP_GetCENH_hue_onoff(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.check_hue_onoff);					
+					VIOC_DISP_GetCENH_onoff(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.check_colE_onoff);					
 					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x hue:0x%x onoff:%d\n", params.lcdc_type, params.hue, params.check_hue_onoff);
 					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x onoff:%d\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.check_colE_onoff);
 					#else //CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC897X
 
 					VIOC_DISP_GetColorEnhancement(pdp_data->ddc_info.virt_addr,
-						&params.contrast, &params.brightness, &params.hue);
+						(signed char *)&params.contrast, (signed char *)&params.brightness, (signed char *)&params.hue);
 					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:%d contrast:%d brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
 					#endif			
 				}

@@ -80,7 +80,7 @@ void pm_lut_drv_set_last_frame(void)
 			last_frame_pm = 1;
 		else
 			last_frame_pm = 0;
-		vioc_pm_set_lut_table(last_frame_pm, &backup_pm_lut_cmd.table);	
+		vioc_pm_set_lut_table(last_frame_pm, (unsigned int *)&backup_pm_lut_cmd.table);	
 		ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+last_frame_pm, VIOC_RDMA01);
 		if (ret < 0)
 			pr_err("%s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
