@@ -80,6 +80,9 @@
 #define TCC803X_SDHC_CLK_TXDLY_DEF_TAP	15
 
 /* Telechips SDHC Specific Registers for others (such as TCC803x rev. 0, tcc899x, and so on)*/
+/* Specific registers of SDMMC registers */
+#define TCC_SDHC_VENDOR			0x78
+/* Specific registers of Channel Control registers */
 #define TCC_SDHC_TAPDLY			0x00
 #define TCC_SDHC_CAPREG0		0x04
 #define TCC_SDHC_CAPREG1		0x08
@@ -161,11 +164,14 @@ struct sdhci_tcc {
 	u32 clk_tx_tap;
 	u32 hs400_pos_tap;
 	u32 hs400_neg_tap;
+	u32 flags;
+#define TCC_SDHC_CLK_GATING (1 << 0) /* Enable Output SDCLK gating */
 	int controller_id;
 
 	int hw_reset;
 
 	struct dentry *tune_rtl_dbgfs;
+	struct dentry *clk_gating_dbgfs;
 };
 
 extern void sdhci_tcc_force_presence_change(struct platform_device *pdev, bool mmc_nonremovable);

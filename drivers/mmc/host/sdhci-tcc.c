@@ -187,6 +187,18 @@ static unsigned int sdhci_tcc_get_ro(struct sdhci_host *host)
 	return mmc_gpio_get_ro(host->mmc);
 }
 
+static void sdhci_tcc_reset(struct sdhci_host *host, u8 mask)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+
+	sdhci_reset(host, mask);
+
+	/* After reset, re-write the value to specific register */
+	if (tcc->flags & TCC_SDHC_CLK_GATING) {
+		writel(0x2, host->ioaddr + TCC_SDHC_VENDOR);
+	}
+}
+
 static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *host)
 {
 	struct device_node *np;
@@ -360,6 +372,11 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 			ret = 0;
 			pr_info("%s: no hw-reset pin, not support hw reset\n", mmc_hostname(host->mmc));
 		}
+	}
+
+	/* Enable Output SDCLK gating */
+	if (of_property_read_bool(np, "tcc-clk-gating")) {
+		tcc->flags |= TCC_SDHC_CLK_GATING;
 	}
 
 	return ret;
@@ -703,7 +720,7 @@ static const struct sdhci_ops sdhci_tcc803x_ops = {
 	.get_max_clock = sdhci_tcc803x_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
-	.reset = sdhci_reset,
+	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
