@@ -317,7 +317,7 @@
 		    <&pinctrl_gpio8>, <&pinctrl_qspi0a_gpios>,
 		    <&pinctrl_sata1_act>, <&pinctrl_reset_moci>,
 		    <&pinctrl_mmc1_gpios>, <&pinctrl_dap1_gpios>,
-		    <&pinctrl_parallel_csi>;
+		    <&pinctrl_parallel_csi>, <&pinctrl_wifi_sclk>;
 
 	apalis-imx8qxp {
 		/* Apalis AN1_ADC */
@@ -829,6 +829,12 @@
 		pinctrl_ad7879_int: ad7879-int {
 			fsl,pins = <
 				SC_P_MIPI_CSI0_I2C0_SCL_LSIO_GPIO3_IO05		0x21
+			>;
+		};
+
+		pinctrl_wifi_sclk: wifigrp {
+			fsl,pins = <
+				SC_P_SCU_BOOT_MODE3_SCU_DSC_RTC_CLOCK_OUTPUT_32K 0x20		/* WiFi Sleep clock */
 			>;
 		};
 	};
