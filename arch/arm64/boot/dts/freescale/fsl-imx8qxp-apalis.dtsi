@@ -1014,6 +1014,13 @@
 	};
 };
 
+/* Manage on-module USB WiFi */
+&usbphynop1 {
+	status = "okay";
+	reset-gpios = <&pcal6416_1 12 GPIO_ACTIVE_LOW>;
+	reset-on-resume;
+};
+
 /*
  * Apalis USB 3.0 Host. Serves USB 3.0 4-port hub on module and
  * USB 3.0 ports on-board
