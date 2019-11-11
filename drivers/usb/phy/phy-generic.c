@@ -57,28 +57,35 @@ void usb_phy_generic_unregister(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(usb_phy_generic_unregister);
 
-static int nop_set_suspend(struct usb_phy *x, int suspend)
-{
-	struct usb_phy_generic *nop = dev_get_drvdata(x->dev);
-
-	if (!IS_ERR(nop->clk)) {
-		if (suspend)
-			clk_disable_unprepare(nop->clk);
-		else
-			clk_prepare_enable(nop->clk);
-	}
-
-	return 0;
-}
-
 static void nop_reset(struct usb_phy_generic *nop)
 {
 	if (!nop->gpiod_reset)
 		return;
 
-	gpiod_set_value(nop->gpiod_reset, 1);
+	dev_dbg(nop->dev, "reset\n");
+
+	gpiod_set_value_cansleep(nop->gpiod_reset, 1);
 	usleep_range(10000, 20000);
-	gpiod_set_value(nop->gpiod_reset, 0);
+	gpiod_set_value_cansleep(nop->gpiod_reset, 0);
+}
+
+static int nop_set_suspend(struct usb_phy *x, int suspend)
+{
+	struct usb_phy_generic *nop = dev_get_drvdata(x->dev);
+
+	dev_dbg(x->dev, "%s\n", suspend ? "suspend" : "resume");
+
+	if (suspend) {
+		if (!IS_ERR(nop->clk))
+				clk_disable_unprepare(nop->clk);
+	} else {
+		if (!IS_ERR(nop->clk))
+			clk_prepare_enable(nop->clk);
+
+		if (nop->reset_on_resume)
+			nop_reset(nop);
+	}
+	return 0;
 }
 
 /* interface to regulator framework */
@@ -172,7 +179,7 @@ void usb_gen_phy_shutdown(struct usb_phy *phy)
 {
 	struct usb_phy_generic *nop = dev_get_drvdata(phy->dev);
 
-	gpiod_set_value(nop->gpiod_reset, 1);
+	gpiod_set_value_cansleep(nop->gpiod_reset, 1);
 
 	if (!IS_ERR(nop->clk))
 		clk_disable_unprepare(nop->clk);
@@ -232,6 +239,9 @@ int usb_phy_gen_create_phy(struct device *dev, struct usb_phy_generic *nop,
 		if (of_property_read_u32(node, "clock-frequency", &clk_rate))
 			clk_rate = 0;
 
+		nop->reset_on_resume =
+			of_property_read_bool(node, "reset-on-resume");
+
 		needs_vcc = of_property_read_bool(node, "vcc-supply");
 		nop->gpiod_reset = devm_gpiod_get_optional(dev, "reset",
 							   GPIOD_ASIS);
@@ -241,6 +251,8 @@ int usb_phy_gen_create_phy(struct device *dev, struct usb_phy_generic *nop,
 							 "vbus-detect",
 							 GPIOD_ASIS);
 			err = PTR_ERR_OR_ZERO(nop->gpiod_vbus);
+		} else {
+			nop->gpiod_reset = NULL;
 		}
 	} else if (pdata) {
 		type = pdata->type;
