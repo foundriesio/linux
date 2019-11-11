@@ -15,6 +15,7 @@ struct usb_phy_generic {
 	struct gpio_desc *gpiod_vbus;
 	struct regulator *vbus_draw;
 	bool vbus_draw_enabled;
+	bool reset_on_resume;
 	unsigned long mA;
 	unsigned int vbus;
 };
