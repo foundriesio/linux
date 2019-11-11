@@ -1014,6 +1014,15 @@
 	};
 };
 
+/*
+ * Apalis USB 3.0 Host. Serves USB 3.0 4-port hub on module and
+ * USB 3.0 ports on-board
+ */
+&usbotg3 {
+	dr_mode = "host";
+	status = "okay";
+};
+
 /* On-module eMMC */
 &usdhc1 {
 	bus-width = <8>;

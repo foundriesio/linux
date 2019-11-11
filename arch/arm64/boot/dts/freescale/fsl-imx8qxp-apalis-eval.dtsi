@@ -380,9 +380,7 @@
 };
 
 &usbotg3 {
-	dr_mode = "host";
 	vbus-regulator = <&reg_usb_host_vbus>;
-	status = "okay";
 };
 
 /* Apalis MMC1 */
