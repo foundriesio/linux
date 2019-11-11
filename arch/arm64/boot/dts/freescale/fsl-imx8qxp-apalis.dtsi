@@ -218,6 +218,12 @@
 		interrupt-parent = <&gpio4>;
 		interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
 		vcc-supply = <&reg_module_3v3>;
+		ngpios = <16>;
+		gpio-line-names = "HDMI1_CEC", "SPDIF1_IN", "SPDIF1_OUT",
+			"UART4_TXD", "UART1_DCD", "UART1_RI", "UART1_DSR",
+			"UART1_DTR", "PWM1", "Wi-Fi_WKUP_WLAN",
+			"Wi-Fi_W_DISABLE", "Wi-Fi_WKUP_BT", "Wi-Fi_PDn",
+			"Wi-Fi_WKUP_HOST", "DSI_SW_SEL", "HDMI1_HPD";
 	};
 
 	/* PCAL6416A GPIO Expander */
