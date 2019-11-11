@@ -635,11 +635,6 @@
 			reg = <0x410a1000 0x1000>;
 		};
 
-		sim: sim@410a3000 {
-			compatible = "fsl,imx7ulp-sim", "syscon";
-			reg = <0x410a3000 0x1000>;
-		};
-
 		qspi1: qspi@410A5000 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -651,12 +646,6 @@
 				 <&clks IMX7ULP_CLK_DUMMY>;
 			clock-names = "qspi_en", "qspi";
 			status = "disabled";
-		};
-
-		ocotp: ocotp@410a6000 {
-			compatible = "fsl,imx7ulp-ocotp";
-			reg = <0x410a6000 0x4000>;
-			clocks = <&clks IMX7ULP_CLK_DUMMY>;
 		};
 
 		gpu: gpu@41800000 {
@@ -676,6 +665,25 @@
 			clock-names = "gpu3d_clk", "gpu3d_shader_clk",
 				"gpu3d_axi_clk", "gpu2d_clk",
 				"gpu2d_axi_clk";
+		};
+	};
+
+	m4aips1: bus@41080000 {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x41080000 0x80000>;
+		ranges;
+
+		sim: sim@410a3000 {
+			compatible = "fsl,imx7ulp-sim", "syscon";
+			reg = <0x410a3000 0x1000>;
+		};
+
+		ocotp: ocotp-ctrl@410a6000 {
+			compatible = "fsl,imx7ulp-ocotp", "syscon";
+			reg = <0x410a6000 0x4000>;
+			clocks = <&clks IMX7ULP_CLK_DUMMY>;
 		};
 	};
 
