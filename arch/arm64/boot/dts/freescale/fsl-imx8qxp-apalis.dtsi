@@ -334,9 +334,9 @@
 				/* Apalis AN1_ADC1 */
 				SC_P_ADC_IN1_ADMA_ADC_IN1			0x60		/* MXM3 307 */
 				/* Apalis AN1_ADC2 */
-				SC_P_ADC_IN2_ADMA_ADC_IN2			0x60		/* MXM3 309 */
+				SC_P_ADC_IN4_ADMA_ADC_IN4			0x60		/* MXM3 309 */
 				/* Apalis AN1_TSWIP_ADC3 */
-				SC_P_ADC_IN3_ADMA_ADC_IN3			0x60		/* MXM3 311 */
+				SC_P_ADC_IN5_ADMA_ADC_IN5			0x60		/* MXM3 311 */
 			>;
 		};
 
