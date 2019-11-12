@@ -66,6 +66,11 @@
 	};
 };
 
+/* Apalis AN1_ADC */
+&adc0 {
+	status = "okay";
+};
+
 /* Apalis Parallel RGB */
 &adma_lcdif {
 	status = "okay";
