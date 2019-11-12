@@ -195,7 +195,7 @@ static void sdhci_tcc_reset(struct sdhci_host *host, u8 mask)
 
 	/* After reset, re-write the value to specific register */
 	if (tcc->flags & TCC_SDHC_CLK_GATING) {
-		writel(0x2, host->ioaddr + TCC_SDHC_VENDOR);
+		sdhci_writel(host, 0x2, TCC_SDHC_VENDOR);
 	}
 }
 
@@ -776,11 +776,12 @@ MODULE_DEVICE_TABLE(of, sdhci_tcc_of_match_table);
 
 static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 {
-	struct sdhci_tcc *tcc = (struct sdhci_tcc *)sf->private;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
 	u32 reg, en, result;
 
 	reg = readl(tcc->auto_tune_rtl_base);
-	if(tcc->controller_id < 0) {
+	if (tcc->controller_id < 0) {
 		seq_printf(sf, "controller-id is not specified.\n");
 		seq_printf(sf, "auto tune result register 0x08%x\n",
 			reg);
@@ -795,9 +796,33 @@ static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
+static int sdhci_tcc_clk_gating_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg, en;
+
+	reg = sdhci_readl(host, TCC_SDHC_VENDOR);
+	if (tcc->controller_id < 0) {
+		seq_printf(sf, "controller-id is not specified.\n");
+		seq_printf(sf, "clock gating register 0x08%x\n",
+			reg);
+	} else {
+		en = (reg >> 1) & 0x1;
+		seq_printf(sf, "%s\n", en? "enabled":"disabled");
+	}
+
+	return 0;
+}
+
 static int sdchi_tcc_tune_result_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, sdhci_tcc_tune_result_show, inode->i_private);
+}
+
+static int sdchi_tcc_clk_gating_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_clk_gating_show, inode->i_private);
 }
 
 static const struct file_operations sdhci_tcc_fops_tune_result = {
@@ -807,15 +832,21 @@ static const struct file_operations sdhci_tcc_fops_tune_result = {
 	.release	= single_release,
 };
 
+static const struct file_operations sdhci_tcc_fops_clk_gating = {
+	.open		= sdchi_tcc_clk_gating_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static struct dentry *sdhci_tcc_register_debugfs_file(struct sdhci_host *host,
 	const char *name, umode_t mode, const struct file_operations *fops)
 {
 	struct dentry *file = NULL;
-	struct sdhci_tcc *tcc = to_tcc(host);
 
 	if (host->mmc->debugfs_root)
 		file = debugfs_create_file(name, mode, host->mmc->debugfs_root,
-			tcc, fops);
+			host, fops);
 
 	if (IS_ERR_OR_NULL(file)) {
 		pr_err("Can't create %s. Perhaps debugfs is disabled.\n",
@@ -949,6 +980,14 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		} else {
 			dev_info(&pdev->dev, "support auto tune result accessing\n");
 		}
+	}
+
+	tcc->clk_gating_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_gating", S_IRUGO,
+			&sdhci_tcc_fops_clk_gating);
+	if(!tcc->clk_gating_dbgfs) {
+		dev_err(&pdev->dev, "failed to create clock_gating debugfs\n");
+	} else {
+		dev_info(&pdev->dev, "support auto clock gating accessing\n");
 	}
 #endif
 
