@@ -297,7 +297,8 @@ static int lt8912_connector_get_modes(struct drm_connector *connector)
 	struct lt8912 *lt = connector_to_lt8912(connector);
 	struct edid *edid;
 	struct display_timings *timings;
-	int i, num_modes = 0;
+	u32 bus_format = MEDIA_BUS_FMT_RGB888_1X24;
+	int i, ret, num_modes = 0;
 
 	/* Check if optional DDC I2C bus should be used. */
 	if (lt->ddc) {
@@ -345,6 +346,15 @@ static int lt8912_connector_get_modes(struct drm_connector *connector)
 			return 0;
 		}
 	}
+
+	connector->display_info.bus_flags = DRM_BUS_FLAG_DE_LOW |
+					    DRM_BUS_FLAG_PIXDATA_NEGEDGE;
+	ret = drm_display_info_set_bus_formats(&connector->display_info,
+					       &bus_format, 1);
+
+	if (ret)
+		return ret;
+
 	return num_modes;
 }
 
