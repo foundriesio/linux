@@ -307,6 +307,11 @@ struct kvm_mmu_page {
 
 	/* Number of writes since the last time traversal visited this page.  */
 	atomic_t write_flooding_count;
+
+#ifndef __GENKSYMS__
+	struct list_head lpage_disallowed_link;
+	bool lpage_disallowed; /* Can't be replaced by an equiv large page */
+#endif
 };
 
 struct kvm_pio_request {
@@ -872,6 +877,11 @@ struct kvm_arch {
 	bool x2apic_broadcast_quirk_disabled;
 
 	struct kvm_sev_info sev_info;
+
+#ifndef __GENKSYMS__
+	struct list_head lpage_disallowed_mmu_pages;
+	struct task_struct *nx_lpage_recovery_thread;
+#endif
 };
 
 struct kvm_vm_stat {
@@ -886,6 +896,9 @@ struct kvm_vm_stat {
 	ulong remote_tlb_flush;
 	ulong lpages;
 	ulong max_mmu_page_hash_collisions;
+#ifndef __GENKSYMS__
+	ulong nx_lpage_splits;
+#endif
 };
 
 struct kvm_vcpu_stat {
