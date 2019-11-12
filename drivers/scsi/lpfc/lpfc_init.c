@@ -38,6 +38,7 @@
 #include <linux/percpu.h>
 #include <linux/msi.h>
 #include <linux/bitops.h>
+#include <linux/crash_dump.h>
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_device.h>
@@ -7910,6 +7911,10 @@ lpfc_sli4_read_config(struct lpfc_hba *phba)
 			bf_get(lpfc_mbx_rd_conf_extnts_inuse, rd_config);
 		phba->sli4_hba.max_cfg_param.max_xri =
 			bf_get(lpfc_mbx_rd_conf_xri_count, rd_config);
+		/* Reduce resource usage in kdump environment */
+		if (is_kdump_kernel() &&
+		    phba->sli4_hba.max_cfg_param.max_xri > 512)
+			phba->sli4_hba.max_cfg_param.max_xri = 512;
 		phba->sli4_hba.max_cfg_param.xri_base =
 			bf_get(lpfc_mbx_rd_conf_xri_base, rd_config);
 		phba->sli4_hba.max_cfg_param.max_vpi =
