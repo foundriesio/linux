@@ -296,10 +296,10 @@
 /* GPSB */
 &gpsb0 {
 	status = "okay";
-	gpsb-port = <3>;
+	gpsb-port = <8>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&gpsb3_bus_idle>;
-	pinctrl-1 = <&gpsb3_bus_spi>;
+	pinctrl-0 = <&gpsb8_bus_idle>;
+	pinctrl-1 = <&gpsb8_bus_spi>;
 
 	#address-cells = <1>;
 	#size-cells = <0>;

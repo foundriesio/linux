@@ -251,7 +251,13 @@
 		telechips,pin-function = <6>;
 	};
 
-	gpsb8_bus: gpsb8_bus {
+	gpsb8_bus_idle: gpsb8_bus_idle {
+		telechips,pins = "gpf-17", "gpf-18", "gpf-19", "gpf-20";
+		telechips,pin-function = <0>;
+                telechips,output-low;
+	};
+
+	gpsb8_bus_spi: gpsb8_bus_spi {
 		telechips,pins = "gpf-17", "gpf-18", "gpf-19", "gpf-20";
 		telechips,pin-function = <6>;
 	};
