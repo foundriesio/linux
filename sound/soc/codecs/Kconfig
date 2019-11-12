@@ -1,4 +1,4 @@
-# Helper to resolve issues with configs that have SPI enabled but I2C
+
 # modular, meaning we can't build the codec driver in with I2C support.
 # We use an ordered list of conditional defaults to pick the appropriate
 # setting - SPI can't be modular so that case doesn't need to be covered.
@@ -1090,7 +1090,8 @@ config SND_SOC_WM8903
 	depends on I2C
 
 config SND_SOC_WM8904
-	tristate
+	tristate "Wolfson Microelectronics WM8904 CODEC"
+	depends on I2C
 
 config SND_SOC_WM8940
         tristate
