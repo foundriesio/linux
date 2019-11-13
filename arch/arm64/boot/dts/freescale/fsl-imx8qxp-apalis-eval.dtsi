@@ -240,6 +240,21 @@
 	status = "okay";
 };
 
+/* Apalis UART2 */
+&lpuart0 {
+	status = "okay";
+};
+
+/* Apalis UART3 */
+&lpuart2 {
+	status = "okay";
+};
+
+/* Apalis UART4 */
+&lpuart3 {
+	status = "okay";
+};
+
 &mipi_dsi1 {
 	status = "disabled";
 };
