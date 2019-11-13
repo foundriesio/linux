@@ -374,6 +374,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 					viqe_madi->info->first_frame = 0;
 					if(viqe_madi->info->skip_count > 0)
 						viqe_madi->info->skip_count -= 1;
+					result.dest_Yaddr = result.dest_Uaddr = result.dest_Vaddr = 0x00;
 				}
 				else
 				{
@@ -385,6 +386,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 					VIQE_MADI_Get_TargetImgBase((MadiADDR_Type)cur_yc_index, &result.dest_Yaddr, &result.dest_Uaddr);
 					//result.dest_Yaddr = viqe_madi->info->out_Yaddr[cur_yc_index];
 					//result.dest_Uaddr = viqe_madi->info->out_Caddr[cur_yc_index];
+					result.dest_Vaddr = 0x00;
 				}
 
 				VIQE_MADI_Change_Cfg();
