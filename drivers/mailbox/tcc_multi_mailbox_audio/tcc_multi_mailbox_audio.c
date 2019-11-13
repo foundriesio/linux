@@ -799,10 +799,10 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 {
     struct mbox_audio_device *audio_dev = (struct mbox_audio_device *)filp->private_data;
 	struct mbox_audio_data_header_t *header;
-	struct tcc_mbox_data mbox_data;
+	struct tcc_mbox_audio_msg mbox_audio_msg;
 	struct mbox_audio_tx_reply_data_t *reply_data;
 
-	struct tcc_mbox_data __user *argp = (struct tcc_mbox_data __user *)arg;
+	struct tcc_mbox_audio_msg __user *argp = (struct tcc_mbox_audio_msg __user *)arg;
 
 	unsigned int *msg;
 
@@ -819,13 +819,13 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 		return -EBUSY;
 	}
 
-	ret = copy_from_user(&mbox_data, argp, sizeof(struct tcc_mbox_data));
+	ret = copy_from_user(&mbox_audio_msg, argp, sizeof(struct tcc_mbox_audio_msg));
 	if(ret) {
 		eprintk("%s: unable to copy user paramters(%ld) \n", __FUNCTION__, ret);
 		goto err_ioctl;
 	}
 
-    msg = &(mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]);
+    msg = &(mbox_audio_msg.data[AUDIO_MBOX_HEADER_SIZE]);
 	
 	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
 
@@ -837,8 +837,8 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
     // get data
 	switch(cmd) {
 	case IOCTL_MBOX_AUDIO_CONTROL:
-	    header->usage = (mbox_data.cmd[0] >> 24) & 0x00FF;
-	    header->cmd_type = (mbox_data.cmd[0] >> 16) & 0x00FF;
+	    header->usage = (mbox_audio_msg.data[0] >> 24) & 0x00FF;
+	    header->cmd_type = (mbox_audio_msg.data[0] >> 16) & 0x00FF;
 		break;
 	case IOCTL_MBOX_AUDIO_PCM_SET_CONTROL:
 	    header->usage = MBOX_AUDIO_USAGE_SET;
@@ -917,7 +917,7 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 		ret = -EINVAL;
 		goto err_cmd;
 	}
-    header->msg_size = mbox_data.cmd[0] & 0x00FF;
+    header->msg_size = mbox_audio_msg.data[0] & 0x00FF;
     
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
             reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
@@ -929,17 +929,17 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
             ret = tcc_mbox_audio_send_command(audio_dev, header, msg, reply_data);
         
             if (ret >= 0) {
-                memset(&(mbox_data), 0, sizeof(struct tcc_mbox_data)); //init mbox_data
-                mbox_data.cmd[0] = ((MBOX_AUDIO_USAGE_REPLY << 24) & 0xFF000000) |
+                memset(&(mbox_audio_msg), 0, sizeof(struct tcc_mbox_audio_msg)); //init mbox_audio_msg
+                mbox_audio_msg.data[0] = ((MBOX_AUDIO_USAGE_REPLY << 24) & 0xFF000000) |
                     ((reply_data->cmd_type << 16) & 0x00FF0000) |
                     ((0x00 << 8) & 0x0000FF00) |
                     (reply_data->msg_size & 0x000000FF);
 
-                memcpy(&(mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]), reply_data->msg, sizeof(unsigned int) * reply_data->msg_size);
+                memcpy(&(mbox_audio_msg.data[AUDIO_MBOX_HEADER_SIZE]), reply_data->msg, sizeof(unsigned int) * reply_data->msg_size);
 
                 // don't copy data area
-                //if (copy_to_user(argp, &mbox_data, sizeof(struct tcc_mbox_data))) {
-                if (copy_to_user(argp, &(mbox_data.cmd[0]), sizeof(unsigned int) * MBOX_CMD_FIFO_SIZE)) {
+                //if (copy_to_user(argp, &mbox_audio_msg, sizeof(struct tcc_mbox_audio_msg))) {
+                if (copy_to_user(argp, &(mbox_audio_msg.data[0]), sizeof(unsigned int) * MBOX_AUDIO_CMD_SIZE)) {
                     eprintk("%s : copy to user fail..\n", __FUNCTION__);
                     ret = -EFAULT;
                 }
