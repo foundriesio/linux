@@ -249,11 +249,13 @@ static int _mcp25xxfd_cmd_readn_crc(struct spi_device *spi, u32 reg,
 static int mcp25xxfd_cmd_readn_crc(struct spi_device *spi, u32 reg,
 				   void *data, int n)
 {
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 	struct mcp25xxfd_priv *priv = spi_get_drvdata(spi);
+#endif
 	int ret;
 
 	for (; n > 0; n -= 254, reg += 254, data += 254) {
-#if defined(CONFIG_DEBUG_FS)
+#ifdef CONFIG_CAN_MCP25XXFD_DEBUG_FS
 		priv->stats.spi_crc_read++;
 		if (n > 254)
 			priv->stats.spi_crc_read_split++;
