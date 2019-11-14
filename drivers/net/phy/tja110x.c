@@ -2480,9 +2480,11 @@ static int __init nxp_init(void)
 {
 	int err;
 
-	pr_alert("NXP PHY: loading NXP PHY driver: [%s%s]\n",
-		 (managed_mode ? "managed mode" : "autonomous mode"),
-		 (no_poll ? ", polling disabled" : ""));
+	if (verbosity > 0) {
+		pr_alert("NXP PHY: loading NXP PHY driver: [%s%s]\n",
+			 (managed_mode ? "managed mode" : "autonomous mode"),
+			 (no_poll ? ", polling disabled" : ""));
+	}
 
 	err = phy_drivers_register(nxp_drivers, ARRAY_SIZE(nxp_drivers), THIS_MODULE);
 	if (err)
