@@ -56,6 +56,7 @@ obj-$(CONFIG_TCC_HDCP2_CORE_DRIVER) += hdcp2_core/
 
 obj-$(CONFIG_TCC_WDMA)              += tcc_wdma.o
 obj-$(CONFIG_TCC_LUT_DRV)           += tcc_lut.o
+obj-$(CONFIG_TCC_PM_LUT_DRV)        += tcc_pm_lut.o
 obj-$(CONFIG_TCC_VPU_DRV)           += vpu/
 obj-$(CONFIG_TCC_OUTPUT_STARTER)    += output_starter/
 obj-$(CONFIG_TCC_MEM)               += tcc_mem.o
@@ -88,8 +89,11 @@ obj-$(CONFIG_TCC_TCM_LPO)	+= tcc_tcm_lpo.o
 
 obj-$(CONFIG_TCC_IPC) += tcc_ipc/
 
+obj-$(CONFIG_TCC_RADIO_GPIO_CTRL) += tcc_dxb_ctrl/
 obj-$(CONFIG_TCC_DRAM_TOOL) 	+= tcc_dram_tool.o
 
 obj-$(CONFIG_TCC_HSIO_CIPHER)	+= tcc_cipher/
 obj-$(CONFIG_TCC_HSM)			+= tcc_hsm/
 obj-$(CONFIG_TCC_SNOR_UPDATER) += tcc_snor_updater/
+
+obj-$(CONFIG_TCC_AUX_DETECT) += tcc_aux_detect/

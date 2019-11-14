@@ -46,5 +46,12 @@ config GPIO_TCC_SAMPLE
         help
 		Telechips gpio sample driver.
 
+config CLKOUT_TCC_SAMPLE
+        default n
+        bool "TCC clkout sample driver"
+        help
+                Telechips clkout sample driver.
+
+
 source "drivers/misc/tcc/tcc_dsp/Kconfig"
 

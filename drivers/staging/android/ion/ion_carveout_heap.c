@@ -30,8 +30,6 @@
 
 static int autofree_debug = 0;
 #define dprintk(msg...)	if (autofree_debug) { printk( "autofree: " msg); }
-#define TCC_MEM "/dev/tmem"
-static struct file *tccmem_file = NULL;
 
 #define AUTO_FREE_BLK_LENGTH 6
 static int AUTO_FREE_BUF_LENGTH=50;
@@ -49,6 +47,55 @@ struct ion_carveout_heap {
 	int af_alloc_index;
 	int af_free_index;
 };
+
+#ifdef USE_UMP_RESERVED_SW_PMAP
+#define TCC_MEM "/dev/tmem"
+static struct file *tccmem_file = NULL;
+
+static void ump_reserved_sw_manager(unsigned int cmd, unsigned int paddr, unsigned int size, unsigned int width, unsigned int height)
+{
+	if(tccmem_file == NULL)
+	{
+		tccmem_file = filp_open(TCC_MEM, O_RDWR, 0666);
+		if(tccmem_file == NULL) {
+			pr_err("error: driver open fail (%s)\n", TCC_MEM);
+		}
+	}
+
+	if(tccmem_file) {
+		if(cmd == TCC_REGISTER_UMP_SW_INFO_KERNEL)
+		{
+			stIonBuff_info info;
+		
+			info.phy_addr 	= paddr;
+			info.size 		= size;
+			info.width 		= width;
+			info.height 	= height;
+		
+			if(tccmem_file->f_op->unlocked_ioctl(tccmem_file, cmd, &info) < 0){
+				pr_err("ERROR: TCC_REGISTER_UMP_SW_INFO_KERNEL paddr:0x%lx\n", paddr);
+		    }
+		}
+		else if( (cmd == TCC_DEREGISTER_UMP_SW_INFO_KERNEL) || (cmd == TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL))
+		{
+			if(tccmem_file->f_op->unlocked_ioctl(tccmem_file, cmd, &paddr) < 0){
+				pr_err("ERROR: TCC_DEREGISTER_UMP_SW_INFO_KERNEL paddr:0x%lx\n", paddr);
+		    }
+		}
+		else
+		{
+			pr_err("ERROR: UnKnown command 0x%x\n", cmd);
+		}
+	}
+
+	if(0)//tccmem_file)
+	{
+		filp_close(tccmem_file, 0);
+		tccmem_file = NULL;
+	}
+
+}
+#endif
 
 static void af_alloc(struct ion_buffer *buffer, struct ion_heap *heap)
 {
@@ -131,14 +178,6 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap, uns
 		container_of(heap, struct ion_carveout_heap, heap);
 	struct af_desc *af_bufinfo = carveout_heap->af_buf;
 
-	if(tccmem_file == NULL)
-	{
-		tccmem_file = filp_open(TCC_MEM, O_RDWR, 0666);
-		if(tccmem_file == NULL) {
-			pr_err("error: driver open fail (%s)\n", TCC_MEM);
-		}
-	}
-
 	if(gen_pool_avail(carveout_heap->pool) >= size)
 	{
 		i = AUTO_FREE_BLK_LENGTH;
@@ -154,10 +193,9 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap, uns
 				af_bufinfo[j].buffer = NULL;
 				af_bufinfo[j].valid = 0;
 				i--;
-				if(tccmem_file->f_op->unlocked_ioctl(tccmem_file, TCC_DEREGISTER_UMP_SW_INFO_KERNEL, &paddr) < 0){
-					pr_err("ERROR: TCC_DEREGISTER_UMP_SW_INFO_KERNEL paddr:0x%lx\n", paddr);
-				}
-
+			#ifdef USE_UMP_RESERVED_SW_PMAP
+				ump_reserved_sw_manager(TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL, paddr, 0, 0, 0);
+			#endif
 			}
 			j = (j + 1) % AUTO_FREE_BUF_LENGTH;
 			
@@ -178,9 +216,9 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap, uns
 				gen_pool_free(carveout_heap->pool, paddr, af_bufinfo[j].buffer->size);
 				af_bufinfo[j].buffer = NULL;
 				af_bufinfo[j].valid = 0;
-                if(tccmem_file->f_op->unlocked_ioctl(tccmem_file, TCC_DEREGISTER_UMP_SW_INFO_KERNEL, &paddr) < 0){
-					pr_err("ERROR: TCC_DEREGISTER_UMP_SW_INFO_KERNEL paddr:0x%lx\n", paddr);
-                }
+			#ifdef USE_UMP_RESERVED_SW_PMAP
+				ump_reserved_sw_manager(TCC_AUTOFREE_DEREGISTER_UMP_SW_INFO_KERNEL, paddr, 0, 0, 0);
+			#endif
 			}
 			j = (j + 1) % AUTO_FREE_BUF_LENGTH;
 
@@ -192,11 +230,6 @@ static int block_auto_free(struct ion_buffer *buffer, struct ion_heap *heap, uns
 		}
 	}
 	dprintk("%s Success. af_alloc_index=%d, af_free_index=%d, size=0x%lx, avail_size=0x%x\n", __func__, carveout_heap->af_alloc_index, carveout_heap->af_free_index, size, gen_pool_avail(carveout_heap->pool));
-	if(tccmem_file)
-	{
-		filp_close(tccmem_file, 0);
-		tccmem_file = NULL;
-	}
 
 	return 1;
 }
@@ -215,6 +248,10 @@ static unsigned long ion_carveout_allocate(struct ion_heap *heap,
 		return ION_CARVEOUT_ALLOCATE_FAIL;
 	}
 
+#ifdef USE_UMP_RESERVED_SW_PMAP
+	ump_reserved_sw_manager(TCC_REGISTER_UMP_SW_INFO_KERNEL, offset, size, 0, 0);
+#endif
+
 	return offset;
 }
 
@@ -226,8 +263,12 @@ static void ion_carveout_free(struct ion_heap *heap, unsigned long addr,
 
 	if (addr == ION_CARVEOUT_ALLOCATE_FAIL)
 		return;
-	gen_pool_free(carveout_heap->pool, addr, size);
+	gen_pool_free(carveout_heap->pool, addr, size);	
 	dprintk("%s-heap_name:%s, Free 0x%lx - 0x%lx avail_mem:0x%x\n", __func__, heap->name, addr, size, gen_pool_avail(carveout_heap->pool));
+
+#ifdef USE_UMP_RESERVED_SW_PMAP
+	ump_reserved_sw_manager(TCC_DEREGISTER_UMP_SW_INFO_KERNEL, addr, size, 0, 0);
+#endif
 }
 
 static int ion_carveout_heap_allocate(struct ion_heap *heap,

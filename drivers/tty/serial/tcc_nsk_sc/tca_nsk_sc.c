@@ -446,7 +446,7 @@ static void tca_nsk_sc_set_port_config(unsigned uEnable)
 
 static void tca_nsk_sc_set_peripheral_clock(unsigned uEnable)
 {
-#if 0
+#if 1
 	sDRV_UART_SC_CLK *pstClk = &gDRV_UART_SC_CLK;
 
 	if (uEnable) {
@@ -870,7 +870,7 @@ unsigned tca_nsk_sc_detect_card(void)
 	sDRV_UART_SC_PORT *pstPort = &gDRV_UART_SC_PORT;
 	int iPresence = 0;
 
-	gpio_set_value_cansleep(pstPort->Detect, 1);
+	gpio_direction_input(pstPort->Detect);
 	iPresence = gpio_get_value_cansleep(pstPort->Detect);
 
 	if (iPresence == 0)
@@ -1371,7 +1371,7 @@ int tca_nsk_sc_enable(void)
 	tca_nsk_sc_init_factor();
 
 	// Enable UART Peripheral Clock
-	// tca_nsk_sc_set_peripheral_clock(ENABLE);
+	tca_nsk_sc_set_peripheral_clock(ENABLE);
 
 	// Set UART Port Configuration
 	tca_nsk_sc_set_port_config(ENABLE);

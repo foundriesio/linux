@@ -91,6 +91,7 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_rdma.h>
+#include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_wmixer_ioctrl.h>
@@ -179,6 +180,8 @@ extern int tca_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *inf
 extern void tca_fb_activate_var(unsigned int dma_addr,  struct fb_var_screeninfo *var, struct tcc_dp_device *pdp_data);
 extern void tca_scale_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *ImageInfo);
 extern void tccfb1_set_par(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
+
+extern unsigned int tca_fb_get_fifo_underrun_count(void);
 
 #ifdef CONFIG_DIRECT_MOUSE_CTRL
 extern void tca_fb_mouse_set_icon(tcc_mouse_icon *mouse_icon);
@@ -274,6 +277,8 @@ static char HDMI_video_mode = 0;
 unsigned int HDMI_video_width = 0;
 unsigned int HDMI_video_height = 0;
 unsigned int HDMI_video_hz = 0;
+
+unsigned int fb_chromakey_control_enabled = 0;
 
 #if defined(CONFIG_TCC_VTA)
 extern int vta_cmd_notify_change_status(const char *);
@@ -2012,6 +2017,57 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			}
 			break;
 
+		case TCC_LCDC_FB_CHROMAKEY_CONTROL:
+		case TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL:
+			{
+				struct tcc_dp_device *pdp_data = NULL;
+
+				lcdc_chromakey_params chromakey_ctrl;
+				unsigned int chroma_en;
+				unsigned int key_r, key_g, key_b;
+				unsigned int mask_r, mask_g, mask_b;
+
+				if (cmd == TCC_LCDC_FB_CHROMAKEY_CONTROL_KERNEL) {
+					if (NULL == memcpy((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
+						return -EFAULT;
+				} else {
+					if (copy_from_user((void *)&chromakey_ctrl, (const void *)arg, sizeof(lcdc_chromakey_params)))
+						return -EFAULT;
+				}
+
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+
+				if(pdp_data)
+				{
+					if(pdp_data->wmixer_info.virt_addr)
+					{
+						chromakey_ctrl.lcdc_num = pdp_data->DispNum;
+						chromakey_ctrl.layer_num = RDMA_FB;
+
+						chroma_en = chromakey_ctrl.enable;
+						key_r  = chromakey_ctrl.chromaR & 0xffff;
+						key_g  = chromakey_ctrl.chromaG & 0xffff;
+						key_b  = chromakey_ctrl.chromaB & 0xffff;
+						mask_r = (chromakey_ctrl.chromaR >> 16) & 0xffff;
+						mask_g = (chromakey_ctrl.chromaG >> 16) & 0xffff;
+						mask_b = (chromakey_ctrl.chromaB >> 16) & 0xffff;
+
+						VIOC_WMIX_SetChromaKey(pdp_data->wmixer_info.virt_addr, chromakey_ctrl.layer_num, 
+											   chroma_en, key_r, key_g, key_b, mask_r, mask_g, mask_b);
+
+						VIOC_WMIX_SetUpdate(pdp_data->wmixer_info.virt_addr);
+
+						if(chroma_en == 1)
+							fb_chromakey_control_enabled = 1;
+						else
+							fb_chromakey_control_enabled = 0;
+
+						pr_info("FB_CHROMAKEY_CONTROL(%d), R[0x%04x] G[0x%04x] B[0x%04x], MR[0x%04x] MG[0x%04x] MB[0x%04x]\n",
+											chroma_en, key_r, key_g, key_b, mask_r, mask_g, mask_b);
+					}
+				}
+			}
+			break;
 
 	// VSYNC PART
 		case TCC_LCDC_REFER_VSYNC_ENABLE:
@@ -2082,6 +2138,18 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		}
 		break;
 
+	case TCC_LCDC_GET_DISP_FU_STATUS:
+	    {
+		    unsigned int fu_count=0;
+
+		    fu_count = tca_fb_get_fifo_underrun_count();
+
+		    if (copy_to_user((void *)arg, &fu_count, sizeof(unsigned int)))
+			    return -EFAULT;
+
+	    }
+	    break;
+
 	case TCC_LCDC_SET_COLOR_ENHANCE:
 		{
 			struct tcc_dp_device *pdp_data = NULL;
@@ -2097,17 +2165,80 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			else
 				return -EFAULT;
 
-			#ifdef CONFIG_ARCH_TCC803X
 			if(pdp_data)
 			{
 				if(pdp_data->ddc_info.virt_addr)
 				{
-					pr_info("lcdc:%d contrast:%d , brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x hue:0x%x\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.hue);
+					if(params.hue < 0x100){
+						VIOC_DISP_SetCENH_hue(pdp_data->ddc_info.virt_addr, params.hue);
+						VIOC_DISP_DCENH_hue_onoff(pdp_data->ddc_info.virt_addr, 1);
+					}
+					else
+						VIOC_DISP_DCENH_hue_onoff(pdp_data->ddc_info.virt_addr, 0);
+
+					if((params.brightness >= 0x400) && (params.saturation >= 0x400) && (params.contrast >= 0x400))
+						VIOC_DISP_DCENH_onoff(pdp_data->ddc_info.virt_addr, 0);
+					else{
+						if(params.brightness < 0x400)
+							VIOC_DISP_SetCENH_brightness(pdp_data->ddc_info.virt_addr, params.brightness);
+						if(params.saturation < 0x400)
+							VIOC_DISP_SetCENH_saturation(pdp_data->ddc_info.virt_addr, params.saturation);
+						if(params.contrast < 0x400)
+							VIOC_DISP_SetCENH_contrast(pdp_data->ddc_info.virt_addr, params.contrast);
+
+						VIOC_DISP_DCENH_onoff(pdp_data->ddc_info.virt_addr, 1);
+					}	
+						
+					#else //CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC897X
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x , brightness:0x%x hue:0x%x \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
 					VIOC_DISP_SetColorEnhancement(pdp_data->ddc_info.virt_addr,
 						(signed char)params.contrast, (signed char)params.brightness, (signed char)params.hue);
+					#endif			
 				}
 			}
-			#endif
+		}
+		break;
+	case TCC_LCDC_GET_COLOR_ENHANCE:
+		{
+			struct tcc_dp_device *pdp_data = NULL;
+			struct lcdc_colorenhance_params params;
+
+			if (copy_from_user((void *)&params, (const void *)arg, sizeof(struct lcdc_colorenhance_params))){
+				return -EFAULT;
+			}
+			if(params.lcdc_type== DD_MAIN)
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+			else if(params.lcdc_type== DD_SUB)
+				pdp_data = &ptccfb_info->pdata.Sdp_data;
+			else
+				return -EFAULT;
+
+			if(pdp_data)
+			{
+				if(pdp_data->ddc_info.virt_addr)
+				{
+					#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+					VIOC_DISP_GetCENH_hue(pdp_data->ddc_info.virt_addr,(unsigned int *)&params.hue);
+					VIOC_DISP_GetCENH_brightness(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.brightness);
+					VIOC_DISP_GetCENH_saturation(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.saturation);
+					VIOC_DISP_GetCENH_contrast(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.contrast);
+					VIOC_DISP_GetCENH_hue_onoff(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.check_hue_onoff);					
+					VIOC_DISP_GetCENH_onoff(pdp_data->ddc_info.virt_addr, (unsigned int *)&params.check_colE_onoff);					
+					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x hue:0x%x onoff:%d\n", params.lcdc_type, params.hue, params.check_hue_onoff);
+					pr_info("TCC_LCDC_GET_COLOR_ENHANCE lcdc:0x%x contrast:0x%x saturation:0x%x brightness:0x%x onoff:%d\n", params.lcdc_type, params.contrast, params.saturation, params.brightness, params.check_colE_onoff);
+					#else //CONFIG_ARCH_TCC803X, CONFIG_ARCH_TCC897X
+
+					VIOC_DISP_GetColorEnhancement(pdp_data->ddc_info.virt_addr,
+						(signed char *)&params.contrast, (signed char *)&params.brightness, (signed char *)&params.hue);
+					pr_info("TCC_LCDC_SET_COLOR_ENHANCE lcdc:%d contrast:%d brightness:%d hue:%d \n", params.lcdc_type, params.contrast, params.brightness, params.hue);
+					#endif			
+				}
+			}
+			if (copy_to_user((void *)arg, &params, sizeof(struct lcdc_colorenhance_params))){
+				return -EFAULT;
+			}
 		}
 		break;
 

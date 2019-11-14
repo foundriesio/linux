@@ -111,7 +111,7 @@
 	bt_reg_on-gpio = <&gpd 15 0>;
 	bt_wake-gpio = <&gpd 0 0>;
 	bt_hwake-gpio = <&gpd 9 0>;
-	bt_power_1p8v-gpio = <&gpf 27 0>;
+	bt_power_1p8v-gpio = <&gpd 7 0>;
 	//bt_power_3p3v-gpio = <&gpsd1 7 0>;
 	status = "okay";
 };

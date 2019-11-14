@@ -220,7 +220,7 @@ int32_t tcc_hsm_sp_cmd_run_cipher_by_dma( \
     uint32_t keyIndex, uint32_t srcAddr, uint32_t dstAddr, uint32_t srcSize, \
     uint32_t enc, uint32_t cwSel, uint32_t klIndex, uint32_t keyMode)
 {
- 	int32_t mbox_data[11] = {0, };
+ 	int32_t mbox_data[12] = {0, };
 	int32_t mbox_result = 0;
 	int32_t mbox_result_size = 0;
 	int32_t result = 0;
@@ -236,6 +236,7 @@ int32_t tcc_hsm_sp_cmd_run_cipher_by_dma( \
 	mbox_data[8] = klIndex;
 	mbox_data[9] = keyMode;
 	mbox_data[10] = 0;
+	mbox_data[11] = 0;
 
 	mbox_result_size = \
         sp_sendrecv_cmd(TCCHSM_CMD_RUN_CIPHER_BY_DMA, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));

@@ -197,12 +197,25 @@ void vmgr_put_reset(void)
 void vmgr_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(vbus_xoda_reset) {
-		reset_control_assert(vbus_xoda_reset);	/*msleep(1);*/	reset_control_deassert(vbus_xoda_reset);
-	}
-	if(vbus_core_reset) {
-		reset_control_assert(vbus_core_reset);	/*msleep(1);*/	reset_control_deassert(vbus_core_reset);
-	}
+    udelay(1000); //1ms
+
+    if (vbus_xoda_reset) {
+        reset_control_assert(vbus_xoda_reset);
+    }
+    if (vbus_core_reset) {
+        reset_control_assert(vbus_core_reset);
+    }
+
+    udelay(1000); //1ms
+
+    if (vbus_xoda_reset) {
+        reset_control_deassert(vbus_xoda_reset);
+    }
+    if (vbus_core_reset) {
+        reset_control_deassert(vbus_core_reset);
+    }
+
+    udelay(1000); //1ms
 #endif
 }
 

@@ -135,9 +135,10 @@
 	    vbus-gpio = <&gpa 27 0>;
 	};
 
+#ifdef CONFIG_VIDEO_VIDEOSOURCE
 	videosource {
 		compatible = "telechips,videosource";
-		status = "disabled";
+		status = "okay";
 
 		pinctrl-names = "idle", "active";
 /* dm5886
@@ -168,6 +169,7 @@
 			mipi_csi2 = <&mipi_csi2>;
 		};
 	};
+#endif
 
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
@@ -178,6 +180,17 @@
 
 		switch-gpios = <&gpma 15 1>;
 		switch-active = <0>;
+	};
+
+	aux_detect {
+		compatible = "telechips,aux_detect";
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aux_detect_ma14>;
+
+		aux-gpios = <&gpma 14 1>;
+		aux-active = <1>;
 	};
 
 	fbdisplay: fbdisplay@12000000 {

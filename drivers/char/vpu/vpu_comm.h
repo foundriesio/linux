@@ -147,14 +147,14 @@ typedef struct _mgr_data_t {
 #endif
     Mgr_CommData_t comm_data;
 
-    spinlock_t oper_lock;
-    unsigned int oper_intr;
+//    spinlock_t oper_lock;
+    atomic_t oper_intr;
     wait_queue_head_t oper_wq;
 
     MEM_ALLOC_INFO_t work_memInfo;
     atomic_t dev_opened;
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	unsigned char dev_file_opened;
+	atomic_t dev_file_opened;
 #endif
     unsigned char irq_reged;
 
@@ -167,7 +167,7 @@ typedef struct _mgr_data_t {
     int current_cmd;
     unsigned int szFrame_Len;
     unsigned int nDecode_Cmd;
-    unsigned int nOpened_Count;
+    unsigned int nOpened_Count; //To check total aging count!!
     unsigned int current_resolution;
 
     VDEC_RENDERED_BUFFER_t gsRender_fb_info;

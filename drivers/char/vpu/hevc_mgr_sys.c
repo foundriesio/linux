@@ -253,12 +253,21 @@ void hmgr_put_reset(void)
 void hmgr_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+	udelay(1000);
 	if(vbus_hevc_bus_reset) {
-		reset_control_assert(vbus_hevc_bus_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_bus_reset);
+		reset_control_assert(vbus_hevc_bus_reset);
 	}
 	if(vbus_hevc_core_reset) {
-		reset_control_assert(vbus_hevc_core_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_core_reset);
+		reset_control_assert(vbus_hevc_core_reset);
 	}
+	udelay(1000);
+	if(vbus_hevc_bus_reset) {
+		reset_control_deassert(vbus_hevc_bus_reset);
+	}
+	if(vbus_hevc_core_reset) {
+		reset_control_deassert(vbus_hevc_core_reset);
+	}
+	udelay(1000);
 #endif
 }
 

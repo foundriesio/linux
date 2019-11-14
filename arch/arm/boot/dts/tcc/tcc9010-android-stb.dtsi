@@ -14,7 +14,56 @@
 / {
 	model = "Telechips TCC9010 STB Board";
 	compatible = "telechips,tcc9010", "telechips,tcc901x";
+
+        tcc_nsk_sc: tcc_nsk_sc@16671000 {
+        };
+
 };
+
+        &tcc_nsk_sc {
+                compatible = "telechips,tcc-nsk-sc";
+                reg = <0x16671000 0xFF>,
+                        <0x16684000 0x1F>,
+                        <0x16051000 0x70>,
+                        <0x16020200 0x2F>;
+                /*interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;*/
+                /*interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;*/
+                interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_SMARTCARD7>; /* UART7 and SMARTCARD7 share a peripheral clock which is PERI UART7 */
+                clock-names = "smartcardclk", "apb_pclk";
+                clock-frequency = <108000000>;
+
+                iobus_dmareqsel_offset = <0x24>;
+                iobus_dmareqsel_value = <0x40000000>;
+                iobus_hrsten_offset = <0xc>;
+                iobus_hrsten_value = <0x200>;
+
+                dma_extreq_value = <0x40000000>;
+
+                uart_chnum = <7>;
+                uart_port = <7>;
+                uart_datmux_use = <1>;
+
+                tda8024_use = <1>;
+                rst_gpios =  <&gpd 9 0>;
+		//rst_gpios = <&gpf 10 0>;
+                detect_gpios = <&gpf 21 0>;
+                pwren_gpios = <&gpf 22 0>;
+                /*pwren_gpios = <&gpf 8 0>;*/
+                vccsel_gpios = <&gpf 8 0>;
+                clk_gpios = <&gpf 27 0>;
+                data_c7_gpios = <&gpf 26 0>;
+                data_c4_gpios = <&gpf 28 0>;
+                data_c8_gpios = <&gpf 29 0>;
+                pinctrl-names = "default", "gpio_C4", "gpio_C8", "gpio_C7", "gpio_C3";
+                pinctrl-0 = <&nsk_sc_ctrl>;
+                pinctrl-1 = <&nsk_sc_gpio_C4>;
+                pinctrl-2 = <&nsk_sc_gpio_C8>;
+                pinctrl-3 = <&nsk_sc_gpio_C7>;
+                pinctrl-4 = <&nsk_sc_gpio_C3>;
+                status = "okay";
+
+        };
 
 &chosen {
 };
@@ -247,10 +296,10 @@
 /* GPSB */
 &gpsb0 {
 	status = "okay";
-	gpsb-port = <3>;
+	gpsb-port = <8>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&gpsb3_bus_idle>;
-	pinctrl-1 = <&gpsb3_bus_spi>;
+	pinctrl-0 = <&gpsb8_bus_idle>;
+	pinctrl-1 = <&gpsb8_bus_spi>;
 
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -517,6 +566,7 @@
 			freq_max_cluster1 = <540000>;
 		};
 	};
+
 };
 
 &gpio_leds {

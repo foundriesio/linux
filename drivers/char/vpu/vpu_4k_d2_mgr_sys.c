@@ -319,15 +319,27 @@ void vmgr_4k_d2_put_reset(void)
 void vmgr_4k_d2_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(vbus_hevc_bus_reset) {
-		reset_control_assert(vbus_hevc_bus_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_bus_reset);
-	}
-	if(vbus_hevc_core_reset) {
-		reset_control_assert(vbus_hevc_core_reset);	/*msleep(1);*/	reset_control_deassert(vbus_hevc_core_reset);
-	}
+    udelay(1000); //1ms
+
+    if (vbus_hevc_bus_reset) {
+        reset_control_assert(vbus_hevc_bus_reset);
+    }
+    if (vbus_hevc_core_reset) {
+        reset_control_assert(vbus_hevc_core_reset);
+    }
+
+    udelay(1000); //1ms
+
+    if (vbus_hevc_bus_reset) {
+        reset_control_deassert(vbus_hevc_bus_reset);
+    }
+    if (vbus_hevc_core_reset) {
+        reset_control_deassert(vbus_hevc_core_reset);
+    }
+
+    udelay(1000); //1ms
 #endif
 }
-
 
 void vmgr_4k_d2_enable_irq(unsigned int irq)
 {

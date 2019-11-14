@@ -58,6 +58,7 @@ struct tcc_vir_i2s_t {
 	struct platform_device *pdev;
 //	uint32_t direction_type;
 	int dev_id;
+	struct snd_soc_dai_driver *pi2s_dai_drv;
 };
 
 static int tcc_vir_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
@@ -156,14 +157,14 @@ struct snd_soc_dai_driver tcc_vir_i2s_dai_drv = {
 	.playback = {
 		.stream_name = "I2S-Playback",
 		.channels_min = 2,
-		.channels_max = 8,
+		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_192000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
 	.capture = {
 		.stream_name = "I2S-Capture",
 		.channels_min = 2,
-		.channels_max = 8,
+		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_192000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
@@ -225,10 +226,11 @@ struct snd_soc_dai_driver tcc_vir_i2s_dai_drv[] = {
 */
 static void parse_vir_i2s_dt(struct platform_device *pdev, struct tcc_vir_i2s_t *vi2s)
 {
+	uint32_t play_ch_max=0, cap_ch_max=0;
 	vi2s->pdev = pdev;
 
 	vi2s->dev_id = of_alias_get_id(pdev->dev.of_node, "vi2s");
-	vir_i2s_dbg("%s - i2s : %p, dev_id[%d]\n", __func__, vi2s, vi2s->dev_id);
+	vir_i2s_dbg("%s - vi2s : %p, dev_id[%d]\n", __func__, vi2s, vi2s->dev_id);
 /*
 	if (of_property_read_bool(pdev->dev.of_node, "playback-only")) {
 		vi2s->direction_type = VIRTUAL_I2S_DTYPE_PLAYBACK;
@@ -243,15 +245,56 @@ static void parse_vir_i2s_dt(struct platform_device *pdev, struct tcc_vir_i2s_t 
 		vir_i2s_dbg("direction_type value is both\n");	
 	}
 */
+	of_property_read_u32(pdev->dev.of_node, "playback-channel-max", &play_ch_max);
+	vir_i2s_dbg("vi2s dev-%d playback-channel-max : %u\n", vi2s->dev_id, play_ch_max);	
+	of_property_read_u32(pdev->dev.of_node, "capture-channel-max", &cap_ch_max);
+	vir_i2s_dbg("vi2s dev-%d capture-channel-max : %u\n", vi2s->dev_id, cap_ch_max);	
+
+	if(vi2s->pi2s_dai_drv != NULL) {
+
+		vi2s->pi2s_dai_drv->name 	= tcc_vir_i2s_dai_drv.name;
+		vi2s->pi2s_dai_drv->suspend = tcc_vir_i2s_dai_drv.suspend;
+		vi2s->pi2s_dai_drv->resume 	= tcc_vir_i2s_dai_drv.resume;
+		vi2s->pi2s_dai_drv->ops 	= tcc_vir_i2s_dai_drv.ops;
+
+		vi2s->pi2s_dai_drv->playback.stream_name	= tcc_vir_i2s_dai_drv.playback.stream_name;
+		vi2s->pi2s_dai_drv->playback.channels_min	= tcc_vir_i2s_dai_drv.playback.channels_min;
+		if(play_ch_max != 0) { 
+			vi2s->pi2s_dai_drv->playback.channels_max	= play_ch_max; 
+		} else {
+			vi2s->pi2s_dai_drv->playback.channels_max	= tcc_vir_i2s_dai_drv.playback.channels_max;
+		}
+		vi2s->pi2s_dai_drv->playback.rates 			= tcc_vir_i2s_dai_drv.playback.rates;
+		vi2s->pi2s_dai_drv->playback.formats 		= tcc_vir_i2s_dai_drv.playback.formats;
+
+		vi2s->pi2s_dai_drv->capture.stream_name		= tcc_vir_i2s_dai_drv.capture.stream_name;
+		vi2s->pi2s_dai_drv->capture.channels_min	= tcc_vir_i2s_dai_drv.capture.channels_min;
+		if(cap_ch_max != 0) { 
+			vi2s->pi2s_dai_drv->capture.channels_max	= cap_ch_max; 
+		} else {
+			vi2s->pi2s_dai_drv->capture.channels_max	= tcc_vir_i2s_dai_drv.capture.channels_max;
+		}
+		vi2s->pi2s_dai_drv->capture.rates 			= tcc_vir_i2s_dai_drv.capture.rates;
+		vi2s->pi2s_dai_drv->capture.formats 		= tcc_vir_i2s_dai_drv.capture.formats;
+	} else {
+		pr_err("snd_soc_dai_driver setting failed\n");
+	}
 }
 
 static int tcc_vir_i2s_probe(struct platform_device *pdev)
 {
 	struct tcc_vir_i2s_t *vi2s;
+	struct snd_soc_dai_driver *ptcc_vir_i2s_dai_drv;
 	int ret = 0;
 
 	if ((vi2s = (struct tcc_vir_i2s_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_vir_i2s_t), GFP_KERNEL)) == NULL) {
 		return -ENOMEM;
+	}
+
+	if ((ptcc_vir_i2s_dai_drv = (struct snd_soc_dai_driver *)devm_kzalloc(&pdev->dev, sizeof(struct snd_soc_dai_driver), GFP_KERNEL)) == NULL) {
+		return -ENOMEM;
+	} else {
+		vi2s->pi2s_dai_drv = ptcc_vir_i2s_dai_drv;
 	}
 	//vir_i2s_dbg("%s\n", __func__);
 
@@ -260,7 +303,7 @@ static int tcc_vir_i2s_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, vi2s);
 
 //	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv[vi2s->direction_type], 1)) < 0) {
-	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv, 1)) < 0) {
+	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, vi2s->pi2s_dai_drv, 1)) < 0) {
 		pr_err("devm_snd_soc_register_component failed\n");
 		goto error;
 	}

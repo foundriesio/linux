@@ -635,6 +635,7 @@ int hdmi_api_dump_regs(void)
 		} else {
 			pr_err("## Failed to dump because hdmi linke was suspended\r\n");
 		}
+		mutex_unlock(&hdmi_apis.dev->mutex);
 	}while(0);
 	return 0;
 }

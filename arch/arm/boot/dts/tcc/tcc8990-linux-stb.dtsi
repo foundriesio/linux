@@ -259,6 +259,10 @@
 
 		tcc-mmc-reset = <&gpa 6 0>;
 
+		tcc-mmc-clk-out-tap = <2>;
+		tcc-mmc-cmd-tap = <2>;
+		tcc-mmc-data-tap = <2>;
+
 		vqmmc-supply = <&vqmmc_emmc>;
 	};
 

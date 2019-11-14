@@ -35,48 +35,164 @@
 #define pm_pr_info(msg...)	if (0) { pr_info( "vioc_pm: " msg); }
 
 
-static void __iomem *pPIXELMAPPER_reg[VIOC_PIXELMAP_MAX] = {0};
+static volatile void __iomem *pPIXELMAPPER_reg[VIOC_PIXELMAP_MAX] = {0};
+unsigned int lut_reg[729];
 
-// PIXEL MAPPER ctrl register
-#define PM_CTRL_REG 			(0x0)
+int vioc_pm_cal_lut_reg()
+{
+	int i=0;
 
-#define PM_CTRL_UPD_SHIFT 		(0x10)
-#define PM_CTRL_UPD_MASK  		(0x1 << PM_CTRL_UPD_SHIFT)
+	int R, G, B, start_R, start_G, start_B;
+	unsigned int lut_addr;
+	unsigned int nLUTSEL;
 
-#define PM_CTRL_AREA_EN_SHIFT 	(0x3)
-#define PM_CTRL_AREA_EN_MASK  	(0x1 << PM_CTRL_AREA_EN_SHIFT)
+	for (nLUTSEL=0; nLUTSEL<VIOC_PIXELMAP_LUT_NUM; nLUTSEL++)
+	{
 
-#define PM_CTRL_INT_SHIFT 		(0x2)
-#define PM_CTRL_INT_MASK  		(0x1 << PM_CTRL_INT_SHIFT)
+		switch (nLUTSEL) {
+			case 0:
+				start_R = 0; start_G = 0; start_B = 0;
+				break;
+			case 1:
+				start_R = 0; start_G = 0; start_B = 1;
+				break;
+			case 2:
+				start_R = 0; start_G = 1; start_B = 0;
+				break;
+			case 3:
+				start_R = 0; start_G = 1; start_B = 1;
+				break;
+			case 4:
+				start_R = 1; start_G = 0; start_B = 0;
+				break;
+			case 5:
+				start_R = 1; start_G = 0; start_B = 1;
+				break;
+			case 6:
+				start_R = 1; start_G = 1; start_B = 0;
+				break;
+			case 7:
+				start_R = 1; start_G = 1; start_B = 1;
+				break;
+			default:
+				start_R = 0; start_G = 0; start_B = 0;
+				break;
+		}
 
-#define PM_CTRL_BYP_SHIFT 		(0x1)
-#define PM_CTRL_BYP_MASK  		(0x1 << PM_CTRL_BYP_SHIFT)
+		for (R=start_R; R < 9; R = R + 2) {
+			for (G=start_G; G < 9; G = G + 2) {
+				for (B=start_B; B < 9; B = B + 2) {
+					switch (nLUTSEL) {
+					case 0:
+						//   lut_addr = ((B+1)/2) + 5*((G+1)/2) + 25*((R+1)/2);
+						lut_addr = ((B + 1) / 2) +  5 * ((G + 1) / 2) +	25 * ((R + 1) / 2);
+						break;
+					case 1:
+						// lut_addr = (B/2) + 4*((G+1)/2) + 20*((R+1)/2);
 
-//PIXEL MAPPER AREA Width register
-#define PM_AREA_W_REG			(0x4)
-#define PM_AREA_W_END_SHIFT	(0x10)
-#define PM_AREA_W_END_MASK	(0x1FFF << PM_AREA_W_END_SHIFT)
-#define PM_AREA_W_START_SHIFT	(0x0)
-#define PM_AREA_W_START_MASK	(0x1FFF << PM_AREA_W_START_SHIFT)
+						lut_addr = (B / 2) + 4 * ((G + 1) / 2) +   20 * ((R + 1) / 2);
+						break;
+					case 2:
+						//  lut_addr = ((B+1)/2) + 5*(G/2) + 20*((R+1)/2);
+						lut_addr = ((B + 1) / 2) + 5 * (G / 2) +   20 * ((R + 1) / 2);
+						break;
+					case 3:
+						//  lut_addr = (B/2) + 4*(G/2) + 16*((R+1)/2);
+						lut_addr = (B / 2) + 4 * (G / 2) +   16 * ((R + 1) / 2);
+						break;
+					case 4:
+						// lut_addr = ((B+1)/2) + 5*((G+1)/2) + 25*(R/2);
+						lut_addr = ((B + 1) / 2) +   5 * ((G + 1) / 2) +	   25 * (R / 2);
+						break;
+					case 5:
+						//  lut_addr = (B/2) + 4*((G+1)/2) + 20*(R/2);
+						lut_addr = (B / 2) + 4 * ((G + 1) / 2) + 20 * (R / 2);
+						break;
+					case 6:
+						//  lut_addr = ((B+1)/2) + 5*(G/2) + 20*(R/2);
+						lut_addr = ((B + 1) / 2) + 5 * (G / 2) + 20 * (R / 2);
+						break;
+					case 7:
+						// lut_addr = (B/2) + 4*(G/2) + 16*(R/2);
+						lut_addr = (B / 2) + 4 * (G / 2) + 16 * (R / 2);
+						break;
 
+					default:
+						return -1;
+					}
 
-//PIXEL MAPPER AREA Height register
-#define PM_AREA_H_REG			(0x8)
-#define PM_AREA_H_END_SHIFT	(0x10)
-#define PM_AREA_H_END_MASK	(0x1FFF << PM_AREA_H_END_SHIFT)
-#define PM_AREA_H_START_SHIFT	(0x0)
-#define PM_AREA_H_START_MASK	(0x1FFF << PM_AREA_H_START_SHIFT)
+					lut_reg[i] = (lut_addr * 0x4);
+					i++;
+				}
+			}
+		}
+	}
 
+	return 0;
+}
 
-//PIXEL MAPPER AREA Height register
-#define PM_LUT_SEL_REG			(0xC)
-#define PM_LUT_SEL_SHIFT		(0x0)
-#define PM_LUT_SEL_MASK		(0x3 << PM_LUT_SEL_SHIFT)
+int vioc_pm_set_lut_table(unsigned int PM_N, unsigned int *table)
+{
+	int i=0;
+	unsigned int nLUTSEL;
+	volatile void __iomem *table_reg, *setting_table_reg;
+	volatile void __iomem *reg;
+	volatile unsigned long value = 0;
 
-// PIXEL MAPPER TABLE register
-#define PM_LUT_TABLE_REG		(0x400)
+	int R, G, B, start_R, start_G, start_B;
+	unsigned int lut_addr;
 
-// PIXLE MAPPER
+	reg = get_pm_address(PM_N);
+	table_reg = reg + PM_LUT_TABLE_REG;
+	pm_pr_info("%s PM_N:%d 0x%p	0x%p	0x%p\n", __func__, PM_N, table_reg, reg, pPIXELMAPPER_reg[PM_N]);
+
+	for (nLUTSEL=0; nLUTSEL<VIOC_PIXELMAP_LUT_NUM; nLUTSEL++)
+	{
+		switch (nLUTSEL) {
+			case 0:
+				start_R = 0; start_G = 0; start_B = 0;
+				break;
+			case 1:
+				start_R = 0; start_G = 0; start_B = 1;
+				break;
+			case 2:
+				start_R = 0; start_G = 1; start_B = 0;
+				break;
+			case 3:
+				start_R = 0; start_G = 1; start_B = 1;
+				break;
+			case 4:
+				start_R = 1; start_G = 0; start_B = 0;
+				break;
+			case 5:
+				start_R = 1; start_G = 0; start_B = 1;
+				break;
+			case 6:
+				start_R = 1; start_G = 1; start_B = 0;
+				break;
+			case 7:
+				start_R = 1; start_G = 1; start_B = 1;
+				break;
+			default:
+				start_R = 0; start_G = 0; start_B = 0;
+				break;
+		}
+		// LUT select
+		__raw_writel(nLUTSEL, reg + PM_LUT_SEL_REG);
+		for (R=start_R; R < 9; R = R + 2) {
+			for (G=start_G; G < 9; G = G + 2) {
+				for (B=start_B; B < 9; B = B + 2) {
+					setting_table_reg = table_reg + lut_reg[i];
+					__raw_writel(table[i], setting_table_reg);
+
+					i++;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
 
 int vioc_pm_set_lut(unsigned int PM_N, unsigned int nLUTSEL)
 {
@@ -84,7 +200,7 @@ int vioc_pm_set_lut(unsigned int PM_N, unsigned int nLUTSEL)
 	volatile void __iomem *reg;
 	volatile unsigned long value = 0;
 
-	volatile unsigned int R, G, B;
+	int R, G, B, start_R, start_G, start_B;
 	volatile unsigned int Rout, Gout, Bout;
 	volatile unsigned int lut_addr;
 	volatile unsigned long long Rtmp, Gtmp, Btmp;
@@ -94,40 +210,40 @@ int vioc_pm_set_lut(unsigned int PM_N, unsigned int nLUTSEL)
 
 	switch (nLUTSEL) {
 		case 0:
-			R = 0; G = 0; B = 0;
+			start_R = 0; start_G = 0; start_B = 0;
 			break;
 		case 1:
-			R = 0; G = 0; B = 1;
+			start_R = 0; start_G = 0; start_B = 1;
 			break;
 		case 2:
-			R = 0; G = 1; B = 0;
+			start_R = 0; start_G = 1; start_B = 0;
 			break;
 		case 3:
-			R = 0; G = 1; B = 1;
+			start_R = 0; start_G = 1; start_B = 1;
 			break;
 		case 4:
-			R = 1; G = 0; B = 0;
+			start_R = 1; start_G = 0; start_B = 0;
 			break;
 		case 5:
-			R = 1; G = 0; B = 1;
+			start_R = 1; start_G = 0; start_B = 1;
 			break;
 		case 6:
-			R = 1; G = 1; B = 0;
+			start_R = 1; start_G = 1; start_B = 0;
 			break;
 		case 7:
-			R = 1; G = 1; B = 1;
+			start_R = 1; start_G = 1; start_B = 1;
 			break;
 		default:
-			R = 0; G = 0; B = 0;
+			start_R = 0; start_G = 0; start_B = 0;
 			break;
 	}
 
 	// LUT select
 	__raw_writel(nLUTSEL, reg + PM_LUT_SEL_REG);
 
-	for (R; R < 9; R = R + 2) {
-		for (G; G < 9; G = G + 2) {
-			for (B; B < 9; B = B + 2) {
+	for (R=start_R; R < 9; R = R + 2) {
+		for (G=start_G; G < 9; G = G + 2) {
+			for (B=start_B; B < 9; B = B + 2) {
 				switch (nLUTSEL) {
 				case 0:
 					//   lut_addr = ((B+1)/2) + 5*((G+1)/2) + 25*((R+1)/2);
@@ -713,6 +829,9 @@ static int __init vioc_pm_init(void)
 
 			if (pPIXELMAPPER_reg[i])
 				pr_info("vioc-pixel_mapper%d: 0x%p\n", i, pPIXELMAPPER_reg[i]);
+
+			vioc_pm_bypass(i, 1);
+			memset(&lut_reg, 0x0, sizeof(lut_reg));
 		}
 	}
 

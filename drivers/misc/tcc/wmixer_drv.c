@@ -1018,7 +1018,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
 
     wmixer->scaler_plug_status = 0;
 
-    wmixer->id = of_alias_get_id(pdev->dev.of_node, "wmixer_drv");
+    wmixer->id = of_alias_get_id(pdev->dev.of_node, "wmixer-drv");
 
 
     /* register wmixer discdevice */

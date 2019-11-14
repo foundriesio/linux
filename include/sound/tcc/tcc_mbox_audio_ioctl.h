@@ -18,6 +18,13 @@
 #define _TCC_MBOX_AUDIO_IOCTL_H_
 
 
+#define MBOX_AUDIO_CMD_SIZE     7
+
+struct tcc_mbox_audio_msg
+{
+    unsigned int    data[MBOX_AUDIO_CMD_SIZE];
+};
+
 /*****************************************************************************
 * define device file name
 *****************************************************************************/
@@ -29,30 +36,30 @@
 ******************************************************************************/
 #define IOCTL_MBOX_AUDIO_MAGIC 'Z'
 
-#define IOCTL_MBOX_AUDIO_PCM_SET_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x50, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_PCM_GET_CONTROL    _IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x51, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_PCM_REPLY_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x52, struct tcc_mbox_data)
+#define IOCTL_MBOX_AUDIO_PCM_SET_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x50, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_PCM_GET_CONTROL    _IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x51, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_PCM_REPLY_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x52, struct tcc_mbox_audio_msg)
 
-#define IOCTL_MBOX_AUDIO_CODEC_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x53, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_CODEC_GET_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x54, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_CODEC_REPLY_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x55, struct tcc_mbox_data)
+#define IOCTL_MBOX_AUDIO_CODEC_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x53, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_CODEC_GET_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x54, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_CODEC_REPLY_CONTROL    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x55, struct tcc_mbox_audio_msg)
 
-#define IOCTL_MBOX_AUDIO_EFFECT_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x56, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_EFFECT_GET_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x57, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_EFFECT_REPLY_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x58, struct tcc_mbox_data)
+#define IOCTL_MBOX_AUDIO_EFFECT_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x56, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_EFFECT_GET_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x57, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_EFFECT_REPLY_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x58, struct tcc_mbox_audio_msg)
 
-#define IOCTL_MBOX_AUDIO_POSITION_0_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x59, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_1_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5A, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_2_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5B, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_3_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5C, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_4_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5D, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_5_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5E, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_6_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5F, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_7_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x60, struct tcc_mbox_data)
-#define IOCTL_MBOX_AUDIO_POSITION_8_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x61, struct tcc_mbox_data)
+#define IOCTL_MBOX_AUDIO_POSITION_0_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x59, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_1_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5A, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_2_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5B, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_3_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5C, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_4_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5D, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_5_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5E, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_6_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x5F, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_7_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x60, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_POSITION_8_SET_CONTROL	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x61, struct tcc_mbox_audio_msg)
 
 //if app makes header directly, use below ioctl
-#define IOCTL_MBOX_AUDIO_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x62, struct tcc_mbox_data) 
+#define IOCTL_MBOX_AUDIO_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x62, struct tcc_mbox_audio_msg) 
 
 #endif//_TCC_MBOX_AUDIO_IOCTL_H_
 

@@ -176,26 +176,41 @@ void VIOC_DISP_GetPosition(volatile void __iomem *reg, unsigned int *startX,
 }
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+void VIOC_DISP_DCENH_hue_onoff(volatile void __iomem *reg, unsigned int onoff)
+{
+        unsigned long value;
+
+        value = (__raw_readl(reg + DCENH0) & ~(DCENH0_HEN_MASK));
+        value |= (onoff << DCENH0_HEN_SHIFT);
+        __raw_writel(value, reg + DCENH0);
+}
+
 void VIOC_DISP_DCENH_onoff(volatile void __iomem *reg, unsigned int onoff)
 {
-	unsigned long value;
+        unsigned long value;
 
-	onoff = !!onoff;
+        value = (__raw_readl(reg + DCENH1) & ~(DCENH1_ENE_MASK));
+        value |= (onoff << DCENH1_ENE_SHIFT);
+        __raw_writel(value, reg + DCENH1);
+}
 
-	value = (__raw_readl(reg + DCENH0) & DCENH0_HEN_MASK);
-	value |= (onoff << DCENH0_HEN_SHIFT);
-	__raw_writel(value, reg + DCENH0);
+void VIOC_DISP_GetCENH_hue_onoff(volatile void __iomem *reg, unsigned int *onoff)
+{
+	*onoff = (__raw_readl(reg + DCENH0) & DCENH0_HEN_MASK) >>
+		DCENH0_HEN_SHIFT;
+}
 
-	value = (__raw_readl(reg + DCENH1) & DCENH1_ENE_MASK);
-	value |= (onoff << DCENH1_ENE_SHIFT);
-	__raw_writel(value, reg + DCENH1);
+void VIOC_DISP_GetCENH_onoff(volatile void __iomem *reg, unsigned int *onoff)
+{
+        *onoff = (__raw_readl(reg + DCENH1) & DCENH1_ENE_MASK) >>
+		DCENH1_ENE_SHIFT;
 }
 
 void VIOC_DISP_SetCENH_hue(volatile void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 	value = (__raw_readl(reg + DCENH0) & ~(DCENH0_HUE_MASK));
-	value |= (val << DCENH0_HUE_SHIFT);
+	value |= ((val & 0xFF) << DCENH0_HUE_SHIFT);
 	__raw_writel(value, reg + DCENH0);
 }
 
@@ -203,7 +218,7 @@ void VIOC_DISP_SetCENH_brightness(volatile void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 	value = (__raw_readl(reg + DCENH1) & ~(DCENH1_BRIGHT_MASK));
-	value |= (val << DCENH1_BRIGHT_SHIFT);
+	value |= ((val & 0x3FF) << DCENH1_BRIGHT_SHIFT);
 	__raw_writel(value, reg + DCENH1);
 }
 
@@ -211,7 +226,7 @@ void VIOC_DISP_SetCENH_saturation(volatile void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 	value = (__raw_readl(reg + DCENH1) & ~(DCENH1_SAT_MASK));
-	value |= (val << DCENH1_SAT_SHIFT);
+	value |= ((val & 0x3FF) << DCENH1_SAT_SHIFT);
 	__raw_writel(value, reg + DCENH1);
 }
 
@@ -219,7 +234,7 @@ void VIOC_DISP_SetCENH_contrast(volatile void __iomem *reg, unsigned int val)
 {
 	unsigned long value;
 	value = (__raw_readl(reg + DCENH1) & ~(DCENH1_CONTRAST_MASK));
-	value |= (val << DCENH1_CONTRAST_SHIFT);
+	value |= ((val & 0x3FF) << DCENH1_CONTRAST_SHIFT);
 	__raw_writel(value, reg + DCENH1);
 }
 

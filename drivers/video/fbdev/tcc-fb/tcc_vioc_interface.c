@@ -139,6 +139,18 @@ typedef struct dolby_layer_str_t
 #if defined(CONFIG_ARCH_TCC803X)
 #define AnD_FB_SC	(VIOC_SCALER5)
 #define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC803X */
+#elif defined(CONFIG_ARCH_TCC897X)
+#if defined(CONFIG_PLATFORM_AVN)
+#define AnD_FB_SC	(VIOC_SCALER0)
+#define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC897X - CONFIG_PLATFORM_AVN */
+#else
+#define AnD_FB_SC	(VIOC_SCALER2)
+#define UI_CHROMA_EN	(0)
+/* CONFIG_ARCH_TCC897X - !CONFIG_PLATFORM_AVN */
+#endif
+/* CONFIG_ARCH_TCC897X */
 #else
 #if defined(CONFIG_ANDROID)
 #define AnD_FB_SC	(VIOC_SCALER2)
@@ -207,6 +219,10 @@ extern int vsync_process_lastframe_plugin_lut(void);
 #endif
 extern void set_hdmi_drm(HDMI_DRM_MODE mode, struct tcc_lcdc_image_update *pImage, unsigned int layer);
 #endif
+#endif
+
+#ifdef CONFIG_FB_VIOC
+extern unsigned int fb_chromakey_control_enabled;
 #endif
 
 int tccxxx_grp_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
@@ -308,6 +324,12 @@ void tca_fb_dump_underrun_state(void)
 #endif
 }
 #endif
+
+unsigned int disp_fifo_underrun_count = 0;
+unsigned int tca_fb_get_fifo_underrun_count(void)
+{
+		return disp_fifo_underrun_count;
+}
 
 void tca_fb_mem_scale_init(void)
 {
@@ -739,6 +761,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 					#endif//
 				}
 				VIOCFifoUnderRun++;
+				disp_fifo_underrun_count++;
 			#endif
 		#endif
 			}
@@ -766,6 +789,7 @@ irqreturn_t tca_main_display_handler(int irq, void *dev_id)
 		}
 		#endif//
 		VIOCFifoUnderRun = 0;
+		disp_fifo_underrun_count = 0;
 		pr_info("%s DISABEL DONE Lcdc_num:%d 0x%p  STATUS:0x%x  \n",
 			__func__,fbdev->pdata.lcdc_number, fbdev->pdata.Mdp_data.ddc_info.virt_addr, dispblock_status);
 #endif
@@ -2107,14 +2131,19 @@ void tca_fb_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo *va
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, lcd_layer, lcd_pos_x, lcd_pos_y);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-	#else
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-	#endif//
+#ifdef CONFIG_FB_VIOC
+	if(fb_chromakey_control_enabled == 0)
+#endif
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 	#if defined(CONFIG_SUPPORT_2D_COMPRESSION)
 	tca_vioc_configure_DEC100(base_addr, var, pRDMA);
@@ -2370,15 +2399,19 @@ void tca_fb_sc_rdma_active_var(unsigned int base_addr, struct fb_var_screeninfo 
 	VIOC_RDMA_SetImageBase(pRDMA, base_addr, 0, 0);
 #endif
 
-
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-#else
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-#endif//
+#ifdef CONFIG_FB_VIOC
+	if(fb_chromakey_control_enabled == 0)
+#endif
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, lcd_layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 	VIOC_RDMA_SetImageAlphaSelect(pRDMA, alpha_type);
 	VIOC_RDMA_SetImageAlphaEnable(pRDMA, alpha_blending_en);
@@ -5266,14 +5299,19 @@ void tca_fb_rdma_pandisplay(unsigned int layer, unsigned int base_addr, struct f
 	// default framebuffer
 	VIOC_WMIX_SetPosition(pWMIX, layer, 0, 0);
 	//overlay setting
-	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
-	#else
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
-	#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
-	VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
-	#endif
-	#endif//
+#ifdef CONFIG_FB_VIOC
+	if(fb_chromakey_control_enabled == 0)
+#endif
+	{
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0x3FF, 0x3FF, 0x3FF);
+		#else
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaR, chromaG, chromaB, 0xF8, 0xFC, 0xF8);
+		#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+		VIOC_WMIX_SetChromaKey(pWMIX, layer, chroma_en, chromaY, chromaU, chromaV, 0xF8, 0xFC, 0xF8);
+		#endif
+		#endif//
+	}
 
 
 	VIOC_RDMA_SetImageFormat(pRDMA, fmt);					//fmt

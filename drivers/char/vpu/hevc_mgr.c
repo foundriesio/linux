@@ -362,19 +362,19 @@ static int _hmgr_internal_handler(void)
 
     if(hmgr_data.check_interrupt_detection)
     {
-        if(hmgr_data.oper_intr > 0)
+        if(atomic_read(&hmgr_data.oper_intr) > 0)
         {
             detailk("Success 1: hevc operation!! \n");
             ret_code = RETCODE_SUCCESS;
         }
         else
         {
-            ret = wait_event_interruptible_timeout(hmgr_data.oper_wq, hmgr_data.oper_intr > 0, msecs_to_jiffies(timeout));
+            ret = wait_event_interruptible_timeout(hmgr_data.oper_wq, atomic_read(&hmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
             if(hmgr_is_loadable() > 0)
                 ret_code = RETCODE_CODEC_EXIT;
             else
-            if(hmgr_data.oper_intr > 0)
+            if(atomic_read(&hmgr_data.oper_intr) > 0)
             {
                 detailk("Success 2: hevc operation!! \n");
 #if defined(FORCED_ERROR)
@@ -390,14 +390,14 @@ static int _hmgr_internal_handler(void)
             }
             else
             {
-                err("[CMD 0x%x][%d]: hevc timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", hmgr_data.current_cmd, ret, timeout, hmgr_data.oper_intr, hmgr_data.nDecode_Cmd, hmgr_data.szFrame_Len);
+                err("[CMD 0x%x][%d]: hevc timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", hmgr_data.current_cmd, ret, timeout, atomic_read(&hmgr_data.oper_intr), hmgr_data.nDecode_Cmd, hmgr_data.szFrame_Len);
                 vetc_dump_reg_all(hmgr_data.base_addr, "_hmgr_internal_handler timed_out");
                 _hmgr_dump_status();
                 ret_code = RETCODE_CODEC_EXIT;
             }
         }
 
-        hmgr_data.oper_intr = 0;
+        atomic_set(&hmgr_data.oper_intr, 0);
         hmgr_status_clear(hmgr_data.base_addr);
     }
 
@@ -859,7 +859,7 @@ static int _hmgr_cmd_release(char *str)
         }
 
 //////////////////////////////////////
-        hmgr_data.oper_intr = 0;
+        atomic_set(&hmgr_data.oper_intr, 0);
         hmgr_data.cmd_processing = 0;
 
         _hmgr_close_all(1);
@@ -1080,9 +1080,9 @@ static irqreturn_t _hmgr_isr_handler(int irq, void *dev_id)
 
     detailk("_hmgr_isr_handler \n");
 
-    spin_lock_irqsave(&(hmgr_data.oper_lock), flags);
-    hmgr_data.oper_intr++;
-    spin_unlock_irqrestore(&(hmgr_data.oper_lock), flags);
+    //spin_lock_irqsave(&(hmgr_data.oper_lock), flags);
+    atomic_inc(&hmgr_data.oper_intr);
+    //spin_unlock_irqrestore(&(hmgr_data.oper_lock), flags);
 
     wake_up_interruptible(&(hmgr_data.oper_wq));
 
@@ -1096,9 +1096,9 @@ static int _hmgr_open(struct inode *inode, struct file *filp)
     }
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_hmgr_open In!! %d'th\n", hmgr_data.dev_file_opened);
-	hmgr_data.dev_file_opened++;
-	dprintk("_hmgr_open Out!! %d'th\n", hmgr_data.dev_file_opened);
+	dprintk("_hmgr_open In!! %d'th\n", atomic_read(&hmgr_data.dev_file_opened));
+	atomic_inc(&hmgr_data.dev_file_opened);
+	dprintk("_hmgr_open Out!! %d'th\n", atomic_read(&hmgr_data.dev_file_opened));
 #else
     mutex_lock(&hmgr_data.comm_data.file_mutex);
     _hmgr_cmd_open("file");
@@ -1113,11 +1113,11 @@ static int _hmgr_open(struct inode *inode, struct file *filp)
 static int _hmgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vmgr_release In!! %d'th\n", hmgr_data.dev_file_opened);
-	hmgr_data.dev_file_opened--;
+	dprintk("_vmgr_release In!! %d'th\n", atomic_read(&hmgr_data.dev_file_opened));
+	atomic_dec(&hmgr_data.dev_file_opened);
 	hmgr_data.nOpened_Count++;
 
-	printk("_hmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", hmgr_data.dev_file_opened, hmgr_data.nOpened_Count,
+	printk("_hmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&hmgr_data.dev_file_opened), hmgr_data.nOpened_Count,
 					hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
 #else
     mutex_lock(&hmgr_data.comm_data.file_mutex);
@@ -1365,6 +1365,10 @@ int hmgr_probe(struct platform_device *pdev)
     }
 
     hmgr_init_variable();
+	atomic_set(&hmgr_data.oper_intr, 0);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	atomic_set(&hmgr_data.dev_file_opened, 0);
+#endif
 
     hmgr_data.irq = platform_get_irq(pdev, 0);
     hmgr_data.nOpened_Count = 0;
@@ -1381,7 +1385,7 @@ int hmgr_probe(struct platform_device *pdev)
     hmgr_get_clock(pdev->dev.of_node);
 	hmgr_get_reset(pdev->dev.of_node);
 
-    spin_lock_init(&(hmgr_data.oper_lock));
+//    spin_lock_init(&(hmgr_data.oper_lock));
 //  spin_lock_init(&(hmgr_data.comm_data.lock));
 
     init_waitqueue_head(&hmgr_data.comm_data.thread_wq);

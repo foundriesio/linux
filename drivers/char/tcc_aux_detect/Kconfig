@@ -1,0 +1,15 @@
+# drivers/char/switch/Kconfig
+#
+# Copyright (c) 2010 Telechips Co., Ltd.
+#	http://www.telechips.com/
+#  <B100306@telechips.com>
+#
+# Licensed under GPL
+
+config TCC_AUX_DETECT
+	tristate "TCC Aux detect Driver"
+	default n
+	help
+		Choose this option if you want to use aux detect driver
+
+

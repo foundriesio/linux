@@ -49,6 +49,8 @@ obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc_multi_mbox_dev.o
 
 obj-$(CONFIG_TCC_MULTI_MAILBOX_AUDIO) += tcc_multi_mailbox_audio/
 
+obj-$(CONFIG_TCC_MAILBOX_HLC) += tcc_mailbox_hlc.o
+
 obj-$(CONFIG_TCC_MAILBOX_SUSPEND) += tcc_mailbox_suspend/
 
 tcc_multi_mbox_dev-y := tcc_multi_mbox.o

@@ -152,7 +152,7 @@ static unsigned int sz_enc_ext_remained_mem[3];
 static int vmem_allocated_count[VPU_MAX] = {0,};
 static MEM_ALLOC_INFO_t vmem_alloc_info[VPU_MAX][20];
 struct mutex mem_mutex;
-static int cntMem_Reference = 0;
+atomic_t cntMem_Reference;
 static int only_decmode = 0;
 
 static int vdec_used[VPU_INST_MAX] = {0,};
@@ -164,6 +164,8 @@ static int venc_used[VPU_INST_MAX] = {0,};
 static int           g_iMmapPropCnt = 0;
 static int           g_aiProperty[PAGE_TYPE_MAX];
 static unsigned long g_aulPageOffset[PAGE_TYPE_MAX];
+
+static char gMemConfigDone = 0;
 
 static void _vmem_set_page_type(phys_addr_t uiAddress, int iProperty)
 {
@@ -1932,7 +1934,7 @@ int vmem_init(void)
 			&& (vp9mgr_opened() == 0)
 #endif
 		){
-			if(!cntMem_Reference)
+			if(!atomic_read(&cntMem_Reference))
 			{
 				dprintk("_vmem_init_memory_info (work_total : 0x%x) \n", VPU_SW_ACCESS_REGION_SIZE);
 				if(0 > (ret = _vmem_init_memory_info())){
@@ -1977,7 +1979,7 @@ Error1:
 Success:
 		if(ret >= 0)
 		{
-			cntMem_Reference++;
+			atomic_inc(&cntMem_Reference);
 		}
 
 		mutex_unlock(&mem_mutex);
@@ -1990,8 +1992,13 @@ Success:
 int vmem_config(void)
 {
 	int ret = 0;
-	mutex_init(&mem_mutex);
-	_vmem_config_zero();
+
+	if(gMemConfigDone == 0) {
+		atomic_set(&cntMem_Reference, 0);
+		mutex_init(&mem_mutex);
+		_vmem_config_zero();
+		gMemConfigDone = 1;
+	}
 
 	return ret;
 //////////////////////////////////////
@@ -2000,17 +2007,17 @@ int vmem_config(void)
 void vmem_deinit(void)
 {
 	mutex_lock(&mem_mutex);
-	dprintk_mem("%s :: ref count: %d \n", __func__, cntMem_Reference);
-	if(cntMem_Reference > 0)
-		cntMem_Reference--;
+	dprintk_mem("%s :: ref count: %d \n", __func__, atomic_read(&cntMem_Reference));
+	if(atomic_read(&cntMem_Reference) > 0)
+		atomic_dec(&cntMem_Reference);
 	else
-		printk("%s :: strange ref-count :: %d\n", __func__, cntMem_Reference);
+		printk("%s :: strange ref-count :: %d\n", __func__, atomic_read(&cntMem_Reference));
 
-	if(!cntMem_Reference){
+	if(!atomic_read(&cntMem_Reference)){
 		_vmem_free_dedicated_buffer();
 		_vmem_deinit_memory_info();
 		_vmem_config_zero();
-		printk("%s :: all memory for VPU were released. ref-count :: %d\n", __func__, cntMem_Reference);
+		printk("%s :: all memory for VPU were released. ref-count :: %d\n", __func__, atomic_read(&cntMem_Reference));
 	}
 	mutex_unlock(&mem_mutex);
 }

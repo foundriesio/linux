@@ -24,6 +24,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/of_irq.h>
 
 #include <video/tcc/tcc_cam_ioctrl.h>
+#include <video/tcc/videosource_ioctl.h>
 
 #include "videosource_common.h"
 #include "videosource_if.h"
@@ -430,13 +431,15 @@ int videosource_if_change_mode(int mode) {
 
 int enabled;
 
-int videosource_open(void) {
-	int	ret = 0;
+int videosource_if_initialize(void) {
+	int					ret		= 0;
 
 	FUNCTION_IN
 
-	if(enabled == DISABLE) {
+	if(enabled == ENABLE) {
+		// power-up sequence
 		videosource_func.open();
+
 		videosource_if_change_mode(MODE_INIT);
 
 #if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
@@ -462,8 +465,6 @@ int videosource_open(void) {
             videosource_if_set_mipi_csi2_interrupt(&videosource_info, ON);
         }
 #endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-
-		enabled = ENABLE;
 	} else {
 		ret = -1;
 	}
@@ -472,14 +473,12 @@ int videosource_open(void) {
 	return ret;
 }
 
-int videosource_close(void) {
-	int	ret	= 0;
+int videosource_if_deinitialize(void) {
+	int					ret		= 0;
 
 	FUNCTION_IN
 
 	if(enabled == ENABLE) {
-		videosource_func.close();
-
 #if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 		if(!(strncmp(MODULE_NODE, "des_", 4))) {
 			videosource_if_init_mipi_csi2_interface(&videosource_info, OFF);
@@ -494,7 +493,8 @@ int videosource_close(void) {
 		}
 #endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
-		enabled = DISABLE;
+		// power-down sequence
+		videosource_func.close();
 	} else {
 		ret = -1;
 	}
@@ -504,19 +504,49 @@ int videosource_close(void) {
 }
 
 int videosource_if_open(struct inode * inode, struct file * file) {
-	return videosource_open();
+	int					ret		= 0;
+
+	FUNCTION_IN
+
+	if(enabled == DISABLE) {
+		enabled = ENABLE;
+	} else {
+		log("videosource is already enabled\n");
+		ret = -1;
+	}
+
+	FUNCTION_OUT
+	return ret;
 }
 
 int videosource_if_release(struct inode * inode, struct file * file) {
-	return videosource_close();
+	int					ret		= 0;
+
+	FUNCTION_IN
+
+	if(enabled == ENABLE) {
+		enabled = DISABLE;
+	} else {
+		log("videosource is already disabled\n");
+		ret = -1;
+	}
+
+	FUNCTION_OUT
+	return ret;
 }
 
 long videosource_if_ioctl(struct file * filp, unsigned int cmd, unsigned long arg) {
-//	tccvin_dev_t * vdev = video_drvdata(file);
-	int ret = 0;
+	int					ret		= 0;
 
-	dlog("cmd: 0x%08x\n", cmd);
 	switch(cmd) {
+	case VIDEOSOURCE_IOCTL_DEINITIALIZE:
+		ret = videosource_if_deinitialize();
+		break;
+
+	case VIDEOSOURCE_IOCTL_INITIALIZE:
+		ret = videosource_if_initialize();
+		break;
+
 	default:
 		log("The ioctl command(0x%x) is WRONG.\n", cmd);
 		return -EINVAL;

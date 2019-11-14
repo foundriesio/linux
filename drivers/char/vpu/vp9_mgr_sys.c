@@ -138,7 +138,11 @@ void vp9mgr_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
 	if(vbus_vp9_reset) {
-		reset_control_assert(vbus_vp9_reset);	/*msleep(1);*/	reset_control_deassert(vbus_vp9_reset);
+		udelay(1000);
+		reset_control_assert(vbus_vp9_reset);
+		udelay(1000);
+		reset_control_deassert(vbus_vp9_reset);
+		udelay(1000);
 	}
 #endif
 }

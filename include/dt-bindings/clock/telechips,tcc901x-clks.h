@@ -88,12 +88,12 @@
 #define	PERI_I2C3		57
 #define	PERI_UART0		58
 #define	PERI_UART1		59
-#define	PERI_UART2		60
-#define	PERI_UART3		61
-#define	PERI_UART4		62
-#define	PERI_UART5		63
-#define	PERI_UART6		64
-#define	PERI_UART7		65
+#define	PERI_RESERVED60		60
+#define	PERI_RESERVED61		61
+#define	PERI_RESERVED62		62
+#define	PERI_RESERVED63		63
+#define	PERI_RESERVED64		64
+#define PERI_UART7		65
 #define	PERI_GPSB0		66
 #define	PERI_GPSB1		67
 #define	PERI_GPSB2		68
@@ -211,20 +211,21 @@
 #define IOBUS_I2C_M7		 63 //31
 #define IOBUS_UART0		 64 // 0
 #define IOBUS_UART1		 65 // 1
-#define IOBUS_UART2		 66 // 2
-#define IOBUS_UART3		 67 // 3
-#define IOBUS_UART4		 68 // 4
-#define IOBUS_UART5		 69 // 5
-#define IOBUS_UART6		 70 // 6
+#define IOBUS_RESERVED66	 66 // 2
+#define IOBUS_RESERVED67	 67 // 3
+#define IOBUS_RESERVED68	 68 // 4
+#define IOBUS_RESERVED69	 69 // 5
+#define IOBUS_RESERVED70	 70 // 6
 #define IOBUS_UART7		 71 // 7
 #define IOBUS_SMARTCARD0	 72 // 8
 #define IOBUS_SMARTCARD1	 73 // 9
-#define IOBUS_SMARTCARD2	 74 //10
-#define IOBUS_SMARTCARD3	 75 //11
-#define IOBUS_SMARTCARD4	 76 //12
-#define IOBUS_SMARTCARD5	 77 //13
-#define IOBUS_SMARTCARD6	 78 //14
+#define IOBUS_RESERVED74	 74 //10
+#define IOBUS_RESERVED75	 75 //11
+#define IOBUS_RESERVED76	 76 //12
+#define IOBUS_RESERVED77	 77 //13
+#define IOBUS_RESERVED78	 78 //14
 #define IOBUS_SMARTCARD7	 79 //15
+
 #define IOBUS_UDMA0		 80 //16
 #define IOBUS_UDMA1		 81 //17
 #define IOBUS_UDMA2		 82 //18

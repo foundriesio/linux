@@ -411,6 +411,37 @@ static ssize_t ehci_testmode_write(struct file *file,
 
        return count;
 }
+
+static int ehci_prt_conn_sts_show(struct seq_file *s, void *unused)
+{
+	struct ehci_hcd     *ehci = s->private;
+	unsigned long       flags;
+	u32         reg;
+
+	spin_lock_irqsave(&ehci->lock, flags);
+	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	reg &= PORT_CONNECT;
+	spin_unlock_irqrestore(&ehci->lock, flags);
+
+	switch (reg) {
+		case USB_STATE_NOTATTACHED:
+			seq_printf(s, "NOT ATTACHED\n");
+			break;
+		case USB_STATE_ATTACHED:
+			seq_printf(s, "ATTACHED\n");
+			break;
+		default:
+			seq_printf(s, "UNKNOWN %d\n", reg);
+	}
+
+	return 0;
+}
+
+static int ehci_prt_conn_sts_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ehci_prt_conn_sts_show, inode->i_private);
+}
+
 #ifdef CONFIG_TCC_EH_ELECT_TST
 static const struct file_operations ehci_hub_level_fops = {
 	.owner		= THIS_MODULE,
@@ -431,6 +462,13 @@ static const struct file_operations ehci_testmode_fops = {
        .release        = single_release,
 };
 
+static const struct file_operations ehci_prt_conn_sts_fops = {
+	.owner          = THIS_MODULE,
+	.open           = ehci_prt_conn_sts_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
 
 static const struct file_operations debug_async_fops = {
 	.owner		= THIS_MODULE,
@@ -1176,6 +1214,10 @@ static inline void create_debug_files(struct ehci_hcd *ehci)
     if (!debugfs_create_file("testmode", S_IRUGO, ehci->debug_dir, ehci,
  	   &ehci_testmode_fops))
         goto file_error;
+
+	if (!debugfs_create_file("ehci_prt_conn_sts", S_IRUGO, ehci->debug_dir, ehci,
+				&ehci_prt_conn_sts_fops))
+		goto file_error;
 
 	if (!debugfs_create_file("async", S_IRUGO, ehci->debug_dir, bus,
 						&debug_async_fops))

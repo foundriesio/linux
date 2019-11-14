@@ -52,6 +52,13 @@ struct ehci_phy_reg
 	volatile uint32_t lcfg1;
 };
 
+void __iomem* tcc_ehci_get_base(struct usb_phy *phy)
+{
+	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+
+	return phy_dev->base;
+}
+
 /*
  * TOP Isolateion Control fuction
  */
@@ -212,10 +219,18 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Reset PHY Registers
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x83000025, &ehci_pcfg->pcfg0);
-	writel(0xE31C243A, &ehci_pcfg->pcfg1);
+	if (ehci_phy_dev->mux_port) {
+		writel(0xE31C243A, &ehci_pcfg->pcfg1);	// EHCI MUX Host PHY Configuration
+	} else {
+		writel(0xE31C243A, &ehci_pcfg->pcfg1);	// EHCI PHY Configuration
+	}
 	#else
 	writel(0x03000115, &ehci_pcfg->pcfg0);
-	writel(0x0334D175, &ehci_pcfg->pcfg1);
+	if (ehci_phy_dev->mux_port) {
+		writel(0x0334D175, &ehci_pcfg->pcfg1);	// EHCI MUX Host PHY Configuration
+	} else {
+		writel(0x0334D175, &ehci_pcfg->pcfg1);	// EHCI PHY Configuration
+	}
 	#endif
 	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 	writel(0x00000000, &ehci_pcfg->pcfg2);
@@ -405,6 +420,7 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	if (phy_dev->vbus_gpio)
 		phy_dev->phy.set_vbus		= tcc_ehci_vbus_set;
 
+	phy_dev->phy.get_base			= tcc_ehci_get_base;
 #ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT		/* 017.02.24 */
 	phy_dev->phy.get_dc_voltage_level = tcc_ehci_get_dc_level;
 	phy_dev->phy.set_dc_voltage_level = tcc_ehci_set_dc_level;

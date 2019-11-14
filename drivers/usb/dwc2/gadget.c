@@ -1538,6 +1538,7 @@ int dwc2_hsotg_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
 {
 	int dctl = dwc2_readl(hsotg->regs + DCTL);
 
+	printk("@0x%08X: 0x%08X\n", (unsigned int)(hsotg->regs + DCTL), dctl);
 	dctl &= ~DCTL_TSTCTL_MASK;
 	switch (testmode) {
 	case TEST_J:
@@ -1551,6 +1552,10 @@ int dwc2_hsotg_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
 		return -EINVAL;
 	}
 	dwc2_writel(dctl, hsotg->regs + DCTL);
+	udelay(100);
+	dctl = dwc2_readl(hsotg->regs + DCTL);
+	printk("@0x%08X: 0x%08X\n", (unsigned int)(hsotg->regs + DCTL), dctl);
+
 	return 0;
 }
 

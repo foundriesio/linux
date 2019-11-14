@@ -180,16 +180,16 @@ static int _vmgr_internal_handler(void)
     int timeout = 200;
 
     if (vmgr_data.check_interrupt_detection) {
-        if (vmgr_data.oper_intr > 0) {
+        if (atomic_read(&vmgr_data.oper_intr) > 0) {
             detailk("Success 1: vpu operation!! \n");
             ret_code = RETCODE_SUCCESS;
         } else {
-            ret = wait_event_interruptible_timeout(vmgr_data.oper_wq, vmgr_data.oper_intr > 0, msecs_to_jiffies(timeout));
+            ret = wait_event_interruptible_timeout(vmgr_data.oper_wq, atomic_read(&vmgr_data.oper_intr) > 0, msecs_to_jiffies(timeout));
 
             if (vmgr_is_loadable() > 0) {
                 ret_code = RETCODE_CODEC_EXIT;
             }
-            else if (vmgr_data.oper_intr > 0)
+            else if (atomic_read(&vmgr_data.oper_intr) > 0)
             {
                 detailk("Success 2: vpu operation!! \n");
             #if defined(FORCED_ERROR)
@@ -206,14 +206,14 @@ static int _vmgr_internal_handler(void)
             else
             {
                 err("[CMD 0x%x][%d]: vpu timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n",
-                        vmgr_data.current_cmd, ret, timeout, vmgr_data.oper_intr, vmgr_data.nDecode_Cmd, vmgr_data.szFrame_Len);
+                        vmgr_data.current_cmd, ret, timeout, atomic_read(&vmgr_data.oper_intr), vmgr_data.nDecode_Cmd, vmgr_data.szFrame_Len);
 
                 vetc_dump_reg_all(vmgr_data.base_addr, "_vmgr_internal_handler timed_out");
                 ret_code = RETCODE_CODEC_EXIT;
             }
         }
 
-        vmgr_data.oper_intr = 0;
+        atomic_set(&vmgr_data.oper_intr, 0);
         vmgr_status_clear(vmgr_data.base_addr);
     }
 
@@ -905,7 +905,7 @@ static int _vmgr_cmd_release(char *str)
         }
 
 //////////////////////////////////////
-        vmgr_data.oper_intr = 0;
+        atomic_set(&vmgr_data.oper_intr, 0);
         vmgr_data.cmd_processing = 0;
 
         _vmgr_close_all(1);
@@ -1258,9 +1258,9 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
 		detailk("_vmgr_isr_handler %d \n", cntInt_vpu);
 	}
 
-    spin_lock_irqsave(&(vmgr_data.oper_lock), flags);
-    vmgr_data.oper_intr++;
-    spin_unlock_irqrestore(&(vmgr_data.oper_lock), flags);
+//    spin_lock_irqsave(&(vmgr_data.oper_lock), flags);
+    atomic_inc(&vmgr_data.oper_intr);
+//    spin_unlock_irqrestore(&(vmgr_data.oper_lock), flags);
 
     wake_up_interruptible(&(vmgr_data.oper_wq));
 
@@ -1274,9 +1274,9 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
     }
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vmgr_open In!! %d'th\n", vmgr_data.dev_file_opened);
-	vmgr_data.dev_file_opened++;
-	dprintk("_vmgr_open Out!! %d'th\n", vmgr_data.dev_file_opened);
+	dprintk("_vmgr_open In!! %d'th\n", atomic_read(&vmgr_data.dev_file_opened));
+	atomic_inc(&vmgr_data.dev_file_opened);
+	dprintk("_vmgr_open Out!! %d'th\n", atomic_read(&vmgr_data.dev_file_opened));
 #else
     mutex_lock(&vmgr_data.comm_data.file_mutex);
     _vmgr_cmd_open("file");
@@ -1291,11 +1291,11 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
 static int _vmgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vmgr_release In!! %d'th\n", vmgr_data.dev_file_opened);
-	vmgr_data.dev_file_opened--;
+	dprintk("_vmgr_release In!! %d'th\n", atomic_read(&vmgr_data.dev_file_opened));
+	atomic_dec(&vmgr_data.dev_file_opened);
 	vmgr_data.nOpened_Count++;
 
-	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", vmgr_data.dev_file_opened, vmgr_data.nOpened_Count,
+	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&vmgr_data.dev_file_opened), vmgr_data.nOpened_Count,
 					vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4));
 #else
     mutex_lock(&vmgr_data.comm_data.file_mutex);
@@ -1664,6 +1664,10 @@ int vmgr_probe(struct platform_device *pdev)
     }
 
     vmgr_init_variable();
+	atomic_set(&vmgr_data.oper_intr, 0);
+#ifdef USE_DEV_OPEN_CLOSE_IOCTL
+	atomic_set(&vmgr_data.dev_file_opened, 0);
+#endif
 
     vmgr_data.irq = platform_get_irq(pdev, 0);
     vmgr_data.nOpened_Count = 0;
@@ -1680,7 +1684,7 @@ int vmgr_probe(struct platform_device *pdev)
     vmgr_get_clock(pdev->dev.of_node);
 	vmgr_get_reset(pdev->dev.of_node);
 
-    spin_lock_init(&(vmgr_data.oper_lock));
+//    spin_lock_init(&(vmgr_data.oper_lock));
     //  spin_lock_init(&(vmgr_data.comm_data.lock));
 
     init_waitqueue_head(&vmgr_data.comm_data.thread_wq);

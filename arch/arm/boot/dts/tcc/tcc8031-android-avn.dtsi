@@ -107,9 +107,10 @@
 };
 */
 
+#ifdef CONFIG_VIDEO_VIDEOSOURCE
 &videosource {
 	compatible = "telechips,videosource";
-	status = "disabled";
+	status = "okay";
 
 	pinctrl-names = "idle", "active";
 /* dm5886
@@ -140,6 +141,7 @@
 		mipi_csi2 = <&mipi_csi2>;
 	};
 };
+#endif
 
 &switch_reverse {
 	compatible = "telechips,switch_reverse";
@@ -474,7 +476,7 @@
 };
 
 /* sdr */
-/*
+
 &i2s2 {
 	compatible = "telechips,sdr";
 	dev-name = "tcc-iq01";
@@ -501,7 +503,7 @@
 	pinctrl-1 = <&m0dai1_bclk_idle &m0dai1_lrck_idle &m0dai1_dai0_idle>;
 	status = "okay";
 };
-*/
+
 
 &audio_chmux {
 	compatible = "telechips,audio-chmux-803x";
