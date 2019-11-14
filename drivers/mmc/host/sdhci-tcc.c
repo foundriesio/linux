@@ -304,6 +304,10 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 		dev_err(&pdev->dev, "unsupported version 0x%x\n", tcc->version);
 	}
 
+	if (!of_property_read_u64(np, "tcc-force-caps", &tcc->force_caps)) {
+		dev_info(&pdev->dev, "Capabilities registers are forcibly changed\n");
+	}
+
 	return ret;
 }
 
@@ -430,8 +434,15 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 	}
 
 	/* Configure CAPREG */
-	writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG0);
-	writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	if (tcc->force_caps) {
+		writel(lower_32_bits(tcc->force_caps),
+				tcc->chctrl_base + TCC_SDHC_CAPREG0);
+		writel(upper_32_bits(tcc->force_caps),
+				tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	} else {
+		writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG0);
+		writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	}
 
 	/* Configure TAPDLY */
 	if(tcc->version == 0) {

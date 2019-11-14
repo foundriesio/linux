@@ -164,6 +164,7 @@ struct sdhci_tcc {
 	u32 clk_tx_tap;
 	u32 hs400_pos_tap;
 	u32 hs400_neg_tap;
+	u64 force_caps;
 	u32 flags;
 #define TCC_SDHC_CLK_GATING (1 << 0) /* Enable Output SDCLK gating */
 	int controller_id;
