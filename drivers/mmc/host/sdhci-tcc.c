@@ -203,6 +203,7 @@ static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *hos
 {
 	struct device_node *np;
 	struct mmc_host *mmc;
+	struct sdhci_tcc *tcc = to_tcc(host);
 
 	np = pdev->dev.of_node;
 	if(!np) {
@@ -214,6 +215,9 @@ static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *hos
 	/* Force disable HS200 support */
 	if (of_property_read_bool(np, "tcc-disable-mmc-hs200"))
 		host->quirks2 |= SDHCI_QUIRK2_BROKEN_HS200;
+
+	/* Set the drive strength of device */
+	of_property_read_u32(np, "tcc-dev-ds", &tcc->drive_strength);
 
 	mmc->caps |= MMC_CAP_BUS_WIDTH_TEST;
 }
@@ -868,6 +872,26 @@ static struct dentry *sdhci_tcc_register_debugfs_file(struct sdhci_host *host,
 	return file;
 }
 
+static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
+		unsigned int max_dtr, int host_drv,
+		int card_drv, int *drv_type)
+{
+	struct sdhci_host *host = mmc_priv(card->host);
+	struct sdhci_tcc *tcc = to_tcc(host);
+	int drive_strength;
+
+	if ((1 << tcc->drive_strength) & card_drv) {
+		(*drv_type) = tcc->drive_strength;
+		drive_strength = tcc->drive_strength;
+	} else {
+		pr_err("%s: Not support drive strength Type %d\n",
+				mmc_hostname(host->mmc), tcc->drive_strength);
+		drive_strength = 0;
+	}
+
+	return drive_strength;
+}
+
 static int sdhci_tcc_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -974,6 +998,8 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 
 	if(tcc->soc_data->set_channel_configs)
 		tcc->soc_data->set_channel_configs(host);
+
+	host->mmc_host_ops.select_drive_strength = sdhci_tcc_select_drive_strength;
 
 	ret = sdhci_add_host(host);
 	if (ret)
