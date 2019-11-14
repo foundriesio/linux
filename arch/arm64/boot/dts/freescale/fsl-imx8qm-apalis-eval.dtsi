@@ -132,6 +132,17 @@
 	status = "okay";
 };
 
+&gpio2 {
+	/*
+	 * Add GPIO2_20 as a wakeup source:
+	 * Pin:  SC_P_SPI3_CS0 (MXM3_37/WAKE1_MICO)
+	 * Type: SC_PAD_WAKEUP_FALL_EDGE
+	 * Line: 20
+	 */
+	 pad-wakeup = <101 5 20>;
+	 pad-wakeup-num = <1>;
+};
+
 &gpu_3d0 {
 	status = "okay";
 };
