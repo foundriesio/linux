@@ -480,7 +480,7 @@ static int attach_drv_probe(struct platform_device *pdev)
     if (attach->vioc_intr == 0)
         goto err_vioc_intr_alloc;
 
-    attach->id = of_alias_get_id(pdev->dev.of_node, "attach_drv");
+    attach->id = of_alias_get_id(pdev->dev.of_node, "attach-drv");
 
     /* register attach discdevice */
     attach->misc->minor = MISC_DYNAMIC_MINOR;

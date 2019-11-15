@@ -2472,7 +2472,7 @@ static int parse_asrc_m2m_pcm_dt(struct platform_device *pdev, struct tcc_asrc_m
 	asrc_m2m_pcm->pdev = pdev;
 
     asrc_m2m_pcm->dev_id = -1;
-    asrc_m2m_pcm->dev_id = of_alias_get_id(pdev->dev.of_node, "asrc_m2m_pcm");
+    asrc_m2m_pcm->dev_id = of_alias_get_id(pdev->dev.of_node, "asrc-m2m-pcm");
 	if(asrc_m2m_pcm->dev_id < 0) {
 		asrc_m2m_pcm_dbg("[%s] ERROR!! id[%d] is wrong.\n", __func__, asrc_m2m_pcm->dev_id);
 		ret = -EINVAL;
