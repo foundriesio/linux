@@ -591,37 +591,55 @@ error_1:
 int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 {
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
-	uint32_t num_controls = ARRAY_SIZE(tcc_snd_controls) * card_info->num_links;
+	uint32_t num_links_no_tsnd=0, num_controls=0, offset_no_tsnd=0;
 	struct snd_kcontrol_new *controls;
 	int not_failed_name_count;
-	int i;
+	int i, j;
+
+	for (i=0; i<card_info->num_links; i++) { 
+		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
+			//This is for T-sound device
+			//printk("T-sound dev-%d\n", i);
+			continue;
+		}
+		num_links_no_tsnd ++;
+	}
+	num_controls = ARRAY_SIZE(tcc_snd_controls) * num_links_no_tsnd;
 
 	if ((controls= kzalloc(sizeof(struct snd_kcontrol_new) * num_controls, GFP_KERNEL)) == NULL) {
 		pr_err("amixer controls allocation failed\n");
 		return -ENOMEM;
 	}
 
-	for (i=0; i<card_info->num_links; i++) {
+	for (i=0; i<card_info->num_links; i++) { 
+	
 		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
-			//This is for T-sound device
-			//printk("T-sound dev-%d\n", i);
 			continue;
 		}
-		memcpy(&controls[i*ARRAY_SIZE(tcc_snd_controls)],
-				tcc_snd_controls,
-				sizeof(struct snd_kcontrol_new)* ARRAY_SIZE(tcc_snd_controls));
-	}
-
-	for (i=0; i<num_controls; i++) {
-		char tmp_name[255];
-
-		sprintf(tmp_name, KCONTROL_HDR"%d %s", (int)(i/ARRAY_SIZE(tcc_snd_controls)), controls[i].name);
-
-		if ((controls[i].name = kstrdup(tmp_name, GFP_KERNEL)) == NULL) {
-			pr_err("amixer controls name allocation failed : %d\n", i);
-			not_failed_name_count = i;
+		
+		if(offset_no_tsnd > num_links_no_tsnd) {
+			pr_err("num_links_no_tsnd counter is wrong : num_links_no_tsnd=%d, offset_no_tsnd=%d\n", num_links_no_tsnd, offset_no_tsnd);
+			not_failed_name_count = (int)(offset_no_tsnd*ARRAY_SIZE(tcc_snd_controls));
 			goto error1;
 		}
+
+		memcpy(&controls[(offset_no_tsnd*ARRAY_SIZE(tcc_snd_controls))],
+				tcc_snd_controls,
+				sizeof(struct snd_kcontrol_new)*ARRAY_SIZE(tcc_snd_controls));
+
+		for (j=0; j<ARRAY_SIZE(tcc_snd_controls); j++) {
+			char tmp_name[255];
+			int offset_controls=(int)(offset_no_tsnd*ARRAY_SIZE(tcc_snd_controls));
+
+			sprintf(tmp_name, KCONTROL_HDR"%d %s", i, controls[offset_controls+j].name);
+
+			if ((controls[offset_controls+j].name = kstrdup(tmp_name, GFP_KERNEL)) == NULL) {
+				pr_err("amixer controls name allocation failed : %d\n", (offset_controls + j));
+				not_failed_name_count = offset_controls + j;
+				goto error1;
+			}
+		}
+		offset_no_tsnd ++;
 	}
 
 	card->controls = controls;
