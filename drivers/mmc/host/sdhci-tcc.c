@@ -881,7 +881,6 @@ static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
 	int drive_strength;
 
 	if ((1 << tcc->drive_strength) & card_drv) {
-		(*drv_type) = tcc->drive_strength;
 		drive_strength = tcc->drive_strength;
 	} else {
 		pr_err("%s: Not support drive strength Type %d\n",
