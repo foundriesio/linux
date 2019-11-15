@@ -334,8 +334,6 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
 	if (chunks < chunks_per_page || chunks % chunks_per_page)
 		return -EINVAL;
 
-	headroom = ALIGN(headroom, 64);
-
 	size_chk = chunk_size - headroom - XDP_PACKET_HEADROOM;
 	if (size_chk < 0)
 		return -EINVAL;
