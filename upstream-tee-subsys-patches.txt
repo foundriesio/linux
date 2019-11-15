@@ -5,6 +5,34 @@ This is a list of all the patches that relates to the TEE subsystem. The
 text inside the brackets are the kernel version where it was introduced,
 followed by the sha1 hash in the upstream kernel tree.
 
+[v5.9-rc1] 5f178bb71e3a optee: enable support for multi-stage bus enumeration
+[v5.9-rc1] 58df195cd47d optee: use uuid for sysfs driver entry
+[v5.8-rc1] d8ed45c5dcd4 mmap locking API: use coccinelle to convert mmap_sem rwsem call sites
+[v5.8-rc1] 60b4000f5464 tee: fix crypto select
+[v5.8-rc1] c5b4312bea5d tee: optee: Add support for session login client UUID generation
+[v5.8-rc1] e33bcbab16d1 tee: add support for session's client UUID generation
+[v5.8-rc1] 104edb94cc4b tee: add private login method for kernel clients
+[v5.8-rc1] 2a6ba3f794e8 tee: enable support to register kernel memory
+[v5.8-rc1] 1115899e7aad tee: remove unnecessary NULL check in tee_shm_alloc()
+[v5.7-rc1] 758ecf13a41a tee: tee_shm_op_mmap(): use TEE_SHM_USER_MAPPED
+[v5.7-rc1] 5271b2011e44 tee: remove redundant teedev in struct tee_shm
+[v5.7-rc1] f1bbacedb0af tee: don't assign shm id for private shms
+[v5.7-rc1] c180f9bbe29a tee: remove unused tee_shm_priv_alloc()
+[v5.7-rc1] 59a135f6fb66 tee: remove linked list of struct tee_shm
+[v5.6] 36fa3e50085e tee: amdtee: out of bounds read in find_session()
+[v5.6-rc5] 483685bceedb tee: amdtee: fix memory leak in amdtee_open_session()
+[v5.6-rc4] 872d92dec353 tee: amdtee: amdtee depends on CRYPTO_DEV_CCP_DD
+[v5.6-rc1] 48d625e4c4ce tee: fix memory allocation failure checks on drv_data and amdtee
+[v5.6-rc1] 279c075dc1d2 tee: amdtee: remove redundant NULL check for pool
+[v5.6-rc1] f9568eae9247 tee: amdtee: rename err label to err_device_unregister
+[v5.6-rc1] 2929015535fa tee: amdtee: skip tee_device_unregister if tee_device_alloc fails
+[v5.6-rc1] f4c58c3758f9 tee: amdtee: print error message if tee not present
+[v5.6-rc1] 5ae63958a6de tee: amdtee: remove unused variable initialization
+[v5.6-rc1] bade7e1fbd34 tee: amdtee: check TEE status during driver initialization
+[v5.6-rc1] 757cc3e9ff1d tee: add AMD-TEE driver
+[v5.6-rc1] 1a74fa3894e7 tee: allow compilation of tee subsystem for AMD CPUs
+[v5.6-rc1] f349710e413a optee: model OP-TEE as a platform device/driver
+[v5.6-rc1] 42aa7c6eb3eb drm/tee_shm: Drop dma_buf_k(unmap) support
 [v5.5] 9e0caab8e0f9 tee: optee: Fix compilation issue with nommu
 [v5.5-rc7] 5a769f6ff439 optee: Fix multi page dynamic shm pool alloc
 [v5.5-rc1] 03212e347f94 tee: optee: fix device enumeration error handling
