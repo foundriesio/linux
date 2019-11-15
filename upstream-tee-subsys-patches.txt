@@ -5,6 +5,11 @@ This is a list of all the patches that relates to the TEE subsystem. The
 text inside the brackets are the kernel version where it was introduced,
 followed by the sha1 hash in the upstream kernel tree.
 
+[v5.5] 9e0caab8e0f9 tee: optee: Fix compilation issue with nommu
+[v5.5-rc7] 5a769f6ff439 optee: Fix multi page dynamic shm pool alloc
+[v5.5-rc1] 03212e347f94 tee: optee: fix device enumeration error handling
+[v5.5-rc1] a249dd200d03 tee: optee: Fix dynamic shm pool allocations
+[v5.5-rc1] 1832f2d8ff69 compat_ioctl: move more drivers to compat_ptr_ioctl
 [v5.4-rc1] 9f02b8f61f29 tee: optee: add might_sleep for RPC requests
 [v5.2-rc1] 9733b072a12a optee: allow to work without static shared memory
 [v5.1-rc1] 32356d309c22 tee: optee: update optee_msg.h and optee_smc.h to dual license
