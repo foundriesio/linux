@@ -10,6 +10,8 @@
 #include <sound/hda_component.h>
 #include <sound/hda_register.h>
 
+static DEFINE_MUTEX(hdac_bus_lock);
+
 static void hdac_acomp_release(struct device *dev, void *res)
 {
 }
@@ -71,13 +73,15 @@ int snd_hdac_display_power(struct hdac_bus *bus, unsigned int idx, bool enable)
 
 	dev_dbg(bus->dev, "display power %s\n",
 		enable ? "enable" : "disable");
+
+	mutex_lock(&hdac_bus_lock);
 	if (enable)
 		set_bit(idx, &bus->display_power_status);
 	else
 		clear_bit(idx, &bus->display_power_status);
 
 	if (!acomp || !acomp->ops)
-		return 0;
+		goto unlock;
 
 	if (bus->display_power_status) {
 		if (!bus->display_power_active) {
@@ -95,6 +99,8 @@ int snd_hdac_display_power(struct hdac_bus *bus, unsigned int idx, bool enable)
 		}
 	}
 
+ unlock:
+	mutex_unlock(&hdac_bus_lock);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_display_power);
