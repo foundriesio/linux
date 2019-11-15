@@ -1844,7 +1844,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 		goto probe_err1;
 	}
 
-	vout->id = of_alias_get_id(vout->v4l2_np, "vout_drv");
+	vout->id = of_alias_get_id(vout->v4l2_np, "vout-drv");
 
 	vdev->release = video_device_release;
 	vdev->ioctl_ops = &tcc_vout_ioctl_ops;
