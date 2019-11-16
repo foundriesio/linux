@@ -632,7 +632,11 @@ typedef struct srb {
 	struct kref cmd_kref;	/* need to migrate ref_count over to this */
 	void *priv;
 	unsigned int start_timer:1;
+	unsigned int abort:1;
+	unsigned int aborted:1;
+	unsigned int completed:1;
 	void (*put_fn)(struct kref *kref);
+	struct srb *cmd_sp;
 #endif
 } srb_t;
 
@@ -2489,8 +2493,10 @@ typedef struct fc_port {
 	u16 n2n_chip_reset;
 } fc_port_t;
 
-#define FC4_PRIORITY_NVME	0
-#define FC4_PRIORITY_FCP	1
+enum {
+	FC4_PRIORITY_NVME = 1,
+	FC4_PRIORITY_FCP  = 2,
+};
 
 #define QLA_FCPORT_SCAN		1
 #define QLA_FCPORT_FOUND	2

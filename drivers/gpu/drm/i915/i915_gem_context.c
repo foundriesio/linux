@@ -221,6 +221,8 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 			ce->ops->destroy(ce);
 	}
 
+	kfree(ctx->jump_whitelist);
+
 	kfree(ctx->name);
 	put_pid(ctx->pid);
 
@@ -383,6 +385,9 @@ __create_hw_context(struct drm_i915_private *dev_priv,
 		default_desc_template(dev_priv, dev_priv->mm.aliasing_ppgtt);
 
 	ctx->ggtt_offset_bias = dev_priv->ggtt.pin_bias;
+
+	ctx->jump_whitelist = NULL;
+	ctx->jump_whitelist_cmds = 0;
 
 	return ctx;
 
