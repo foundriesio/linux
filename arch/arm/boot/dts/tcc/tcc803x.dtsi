@@ -2880,6 +2880,14 @@
 	};
 */
 
+	fb_cr: fb_cr@12000000{
+		compatible = "telechips,fb_cr";
+		status = "okay";
+		telechips,num_comp = <2>; /* the number of interrupt source which is needed to be cleared */
+		telechips,vioc_comp = <VIOC_WDMA03 VIOC_DISP0>; /* android & linux video driver interrupt, fbdisplay interrupt */
+	};
+
+
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
 		reg = <0x12000000 0x10000>;
