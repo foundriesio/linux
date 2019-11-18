@@ -37,6 +37,8 @@
 
 #include <linux/amba/bus.h>
 
+#include <trace/events/iommu.h>
+
 #include "iommu-sva.h"
 
 /* MMIO registers */
@@ -1607,6 +1609,8 @@ static int arm_smmu_page_response(struct device *dev,
 		default:
 			return -EINVAL;
 		}
+		trace_smmu_resume(cmd.resume.sid, cmd.resume.stag,
+				  cmd.resume.resp);
 	} else if (master->can_fault) {
 		cmd.opcode		= CMDQ_OP_PRI_RESP;
 		cmd.substream_valid	= pasid_valid &&
@@ -1663,6 +1667,7 @@ static void arm_smmu_sync_cd(struct arm_smmu_domain *smmu_domain,
 		for (i = 0; i < master->num_streams; i++) {
 			cmd.cfgi.sid = master->streams[i].id;
 			arm_smmu_cmdq_issue_cmd(smmu, &cmd);
+			trace_smmu_cdsync(cmd.cfgi.sid, cmd.cfgi.ssid, cmd.cfgi.leaf);
 		}
 	}
 	spin_unlock_irqrestore(&smmu_domain->devices_lock, flags);
@@ -1705,6 +1710,7 @@ static void arm_smmu_write_cd_l1_desc(__le64 *dst,
 	u64 val = (table->ptr_dma & CTXDESC_L1_DESC_L2PTR_MASK) |
 		  CTXDESC_L1_DESC_VALID;
 
+	trace_smmu_l1cdwrite(val);
 	WRITE_ONCE(*dst, cpu_to_le64(val));
 }
 
@@ -1836,10 +1842,12 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 		unsigned int idx = ssid >> CTXDESC_SPLIT;
 		__le64 *l1ptr = smmu_domain->s1_cfg.l1ptr + idx * CTXDESC_L1_DESC_DWORDS;
 
+		trace_smmu_l1cdwrite(0);
 		WRITE_ONCE(*l1ptr, 0);
 		arm_smmu_sync_cd(smmu_domain, ssid, false);
 		arm_smmu_free_cd_leaf_table(smmu, table, CTXDESC_L2_ENTRIES);
 	} else {
+		trace_smmu_cdwrite(val);
 		WRITE_ONCE(cdptr[0], cpu_to_le64(val));
 		arm_smmu_sync_cd(smmu_domain, ssid, true);
 	}
@@ -2374,6 +2382,8 @@ static int arm_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt)
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
 	struct iommu_fault_event fault_evt = { };
 	struct iommu_fault *flt = &fault_evt.fault;
+
+	trace_smmu_evt(evt[0], evt[1], evt[2], evt[3]);
 
 	/* Stage-2 is always pinned at the moment */
 	if (evt[1] & EVTQ_1_S2)

@@ -11,6 +11,8 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 
+#include <trace/events/iommu.h>
+
 /**
  * struct iopf_queue - IO Page Fault queue
  * @wq: the fault workqueue
@@ -89,15 +91,19 @@ iopf_handle_single(struct iopf_fault *iopf)
 		return status;
 
 	mm = iommu_sva_find(prm->pasid);
-	if (IS_ERR_OR_NULL(mm))
+	if (IS_ERR_OR_NULL(mm)) {
+		trace_iopf(1);
 		return status;
+	}
 
 	down_read(&mm->mmap_sem);
 
 	vma = find_extend_vma(mm, prm->addr);
-	if (!vma)
+	if (!vma) {
 		/* Unmapped area */
+		trace_iopf(2);
 		goto out_put_mm;
+	}
 
 	if (prm->perm & IOMMU_FAULT_PERM_READ)
 		access_flags |= VM_READ;
@@ -115,11 +121,15 @@ iopf_handle_single(struct iopf_fault *iopf)
 	if (!(prm->perm & IOMMU_FAULT_PERM_PRIV))
 		fault_flags |= FAULT_FLAG_USER;
 
-	if (access_flags & ~vma->vm_flags)
+	if (access_flags & ~vma->vm_flags) {
 		/* Access fault */
+		trace_iopf(3);
 		goto out_put_mm;
+	}
 
 	ret = handle_mm_fault(vma, prm->addr, fault_flags);
+	if (ret & VM_FAULT_ERROR)
+		trace_iopf(4);
 	status = ret & VM_FAULT_ERROR ? IOMMU_PAGE_RESP_INVALID :
 		IOMMU_PAGE_RESP_SUCCESS;
 
@@ -327,6 +337,7 @@ int iopf_queue_flush_dev(struct device *dev, int pasid)
 	 * callback, the IOMMU driver makes sure that there are no such faults
 	 * left in the low-level queue.
 	 */
+	trace_iopf_flush(pasid, dev);
 	queue->flush(queue->flush_arg, dev, pasid);
 
 	flush_workqueue(queue->wq);
