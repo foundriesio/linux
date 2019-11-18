@@ -23,6 +23,14 @@ config FB_VIOC
 	  Framebuffer driver for Telechips VIOC series.
 	  If unsure, say N.
 
+config VIOC_CORERESET_SUPPORT
+	bool "Telechips VIOC core reset senario support"
+	depends on FB_TCC && ARCH_TCC
+	default y
+	help
+		VIOC interrupt cleaner for core reset senario.
+		If unsure, say N.
+
 config FB1_SUPPORT
 	bool "FB1 support"
 	default n
