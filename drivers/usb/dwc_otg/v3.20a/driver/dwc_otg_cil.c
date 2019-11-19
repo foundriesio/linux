@@ -1807,6 +1807,7 @@ void dwc_otg_enable_device_interrupts(dwc_otg_core_if_t * core_if)
 	}
 #if defined(CONFIG_DWC_INCOMP_ISOC)
 	intr_mask.b.incomplisoout = 1;//to enable checking Missed ISOC Interrupt
+	core_if->isoc_out_is_first = 1;
 #endif
 	if (!core_if->dma_desc_enable)
 		intr_mask.b.incomplisoin = 1;
