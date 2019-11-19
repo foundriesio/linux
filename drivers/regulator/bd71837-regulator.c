@@ -347,6 +347,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO1_MASK,
 		.enable_reg = BD71837_REG_LDO1_VOLT,
 		.enable_mask = LDO1_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	/*
@@ -362,6 +363,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.min_uV = 900000,
 		.enable_reg = BD71837_REG_LDO2_VOLT,
 		.enable_mask = LDO2_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	{
@@ -376,6 +378,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO3_MASK,
 		.enable_reg = BD71837_REG_LDO3_VOLT,
 		.enable_mask = LDO3_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	{
@@ -390,6 +393,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO4_MASK,
 		.enable_reg = BD71837_REG_LDO4_VOLT,
 		.enable_mask = LDO4_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	{
@@ -404,6 +408,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO5_MASK,
 		.enable_reg = BD71837_REG_LDO5_VOLT,
 		.enable_mask = LDO5_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	{
@@ -418,6 +423,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO6_MASK,
 		.enable_reg = BD71837_REG_LDO6_VOLT,
 		.enable_mask = LDO6_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 	{
@@ -432,6 +438,7 @@ static const struct regulator_desc bd71837_regulators[] = {
 		.vsel_mask = LDO7_MASK,
 		.enable_reg = BD71837_REG_LDO7_VOLT,
 		.enable_mask = LDO7_EN,
+		.enable_time = 1000,
 		.owner = THIS_MODULE,
 	},
 };
