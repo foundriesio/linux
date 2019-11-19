@@ -790,12 +790,6 @@ static void mcam_ctlr_image(struct mcam_camera *cam)
 	 * Make sure it knows we want to use hsync/vsync.
 	 */
 	mcam_reg_write_mask(cam, REG_CTRL0, C0_SIF_HVSYNC, C0_SIFM_MASK);
-	/*
-	 * This field controls the generation of EOF(DVP only)
-	 */
-	if (cam->bus_type != V4L2_MBUS_CSI2)
-		mcam_reg_set_bit(cam, REG_CTRL0,
-				C0_EOF_VSYNC | C0_VEDGE_CTRL);
 }
 
 
@@ -1159,12 +1153,6 @@ static void mcam_vb_stop_streaming(struct vb2_queue *vq)
 		return;
 	mcam_ctlr_stop_dma(cam);
 	/*
-	 * Reset the CCIC PHY after stopping streaming,
-	 * otherwise, the CCIC may be unstable.
-	 */
-	if (cam->ctlr_reset)
-		cam->ctlr_reset(cam);
-	/*
 	 * VB2 reclaims the buffers, so we need to forget
 	 * about them.
 	 */
@@ -1302,8 +1290,8 @@ static int mcam_vidioc_querycap(struct file *file, void *priv,
 {
 	struct mcam_camera *cam = video_drvdata(file);
 
-	strcpy(cap->driver, "marvell_ccic");
-	strcpy(cap->card, "marvell_ccic");
+	strscpy(cap->driver, "marvell_ccic", sizeof(cap->driver));
+	strscpy(cap->card, "marvell_ccic", sizeof(cap->card));
 	strlcpy(cap->bus_info, cam->bus_info, sizeof(cap->bus_info));
 	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE |
 		V4L2_CAP_READWRITE | V4L2_CAP_STREAMING;
@@ -1420,7 +1408,7 @@ static int mcam_vidioc_enum_input(struct file *filp, void *priv,
 		return -EINVAL;
 
 	input->type = V4L2_INPUT_TYPE_CAMERA;
-	strcpy(input->name, "Camera");
+	strscpy(input->name, "Camera", sizeof(input->name));
 	return 0;
 }
 

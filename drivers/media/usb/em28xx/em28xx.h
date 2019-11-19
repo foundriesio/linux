@@ -330,8 +330,14 @@ enum em28xx_usb_audio_type {
    address more than two different entries.
  */
 enum em28xx_amux {
+#ifndef __GENKSYMS__
+	EM28XX_AMUX_UNUSED = -1,
+	/* This is the only entry for em28xx tuner input */
+	EM28XX_AMUX_VIDEO = 0,	/* em28xx tuner, AC97 mixer Video */
+#else
 	/* This is the only entry for em28xx tuner input */
 	EM28XX_AMUX_VIDEO,	/* em28xx tuner, AC97 mixer Video */
+#endif
 
 	EM28XX_AMUX_LINE_IN,	/* AC97 mixer Line In */
 
@@ -724,6 +730,12 @@ struct em28xx {
 	struct media_device *media_dev;
 	struct media_entity input_ent[MAX_EM28XX_INPUT];
 	struct media_pad input_pad[MAX_EM28XX_INPUT];
+#endif
+
+#ifndef __GENKSYMS__
+	unsigned int is_webcam:1;
+	unsigned int has_msp34xx:1;
+	enum em28xx_amux amux_map[MAX_EM28XX_INPUT];
 #endif
 };
 

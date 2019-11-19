@@ -77,7 +77,7 @@ TRACE_EVENT(intel_memory_cxsr,
 			   for_each_intel_crtc(&dev_priv->drm, crtc) {
 				   __entry->frame[crtc->pipe] = intel_crtc_get_vblank_counter(crtc);
 				   __entry->scanline[crtc->pipe] = intel_get_crtc_scanline(crtc);
- 			   }
+			   }
 			   __entry->old = old;
 			   __entry->new = new;
 			   ),

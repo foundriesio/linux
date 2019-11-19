@@ -148,7 +148,7 @@ static inline unsigned int norm_maxw(struct em28xx *dev)
 {
 	struct em28xx_v4l2 *v4l2 = dev->v4l2;
 
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		return v4l2->sensor_xres;
 
 	if (dev->board.max_range_640_480)
@@ -161,7 +161,7 @@ static inline unsigned int norm_maxh(struct em28xx *dev)
 {
 	struct em28xx_v4l2 *v4l2 = dev->v4l2;
 
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		return v4l2->sensor_yres;
 
 	if (dev->board.max_range_640_480)
@@ -176,7 +176,7 @@ static int em28xx_vbi_supported(struct em28xx *dev)
 	if (disable_vbi == 1)
 		return 0;
 
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		return 0;
 
 	/* FIXME: check subdevices for VBI support */
@@ -976,7 +976,7 @@ static void em28xx_v4l2_create_entities(struct em28xx *dev)
 	}
 
 	/* Webcams don't have input connectors */
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		return;
 
 	/* Create entities for each input connector */
@@ -1279,7 +1279,7 @@ static void video_mux(struct em28xx *dev, int index)
 	v4l2_device_call_all(v4l2_dev, 0, video, s_routing,
 			     INPUT(index)->vmux, 0, 0);
 
-	if (dev->board.has_msp34xx) {
+	if (dev->has_msp34xx) {
 		if (dev->i2s_speed) {
 			v4l2_device_call_all(v4l2_dev, 0, audio,
 					     s_i2s_clock_freq, dev->i2s_speed);
@@ -1589,7 +1589,7 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	int rc = 0;
 
 	p->parm.capture.readbuffers = EM28XX_MIN_BUF;
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		rc = v4l2_device_call_until_err(&v4l2->v4l2_dev, 0,
 						video, g_parm, p);
 	else
@@ -1614,6 +1614,7 @@ static int vidioc_enum_input(struct file *file, void *priv,
 {
 	struct em28xx *dev = video_drvdata(file);
 	unsigned int       n;
+	int j;
 
 	n = i->index;
 	if (n >= MAX_EM28XX_INPUT)
@@ -1624,15 +1625,21 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	i->index = n;
 	i->type = V4L2_INPUT_TYPE_CAMERA;
 
-	strcpy(i->name, iname[INPUT(n)->type]);
+	strscpy(i->name, iname[INPUT(n)->type], sizeof(i->name));
 
 	if ((EM28XX_VMUX_TELEVISION == INPUT(n)->type))
 		i->type = V4L2_INPUT_TYPE_TUNER;
 
 	i->std = dev->v4l2->vdev.tvnorms;
 	/* webcams do not have the STD API */
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		i->capabilities = 0;
+
+	/* Dynamically generates an audioset bitmask */
+	i->audioset = 0;
+	for (j = 0; j < MAX_EM28XX_INPUT; j++)
+		if (dev->amux_map[j] != EM28XX_AMUX_UNUSED)
+			i->audioset |= 1 << j;
 
 	return 0;
 }
@@ -1659,59 +1666,119 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *a)
+static int em28xx_fill_audio_input(struct em28xx *dev,
+				   const char *s,
+				   struct v4l2_audio *a,
+				   unsigned int index)
 {
-	struct em28xx *dev = video_drvdata(file);
+	unsigned int idx = dev->amux_map[index];
 
-	switch (a->index) {
+	/*
+	 * With msp3400, almost all mappings use the default (amux = 0).
+	 * The only one may use a different value is WinTV USB2, where it
+	 * can also be SCART1 input.
+	 * As it is very doubtful that we would see new boards with msp3400,
+	 * let's just reuse the existing switch.
+	 */
+	if (dev->has_msp34xx && idx != EM28XX_AMUX_UNUSED)
+		idx = EM28XX_AMUX_LINE_IN;
+
+	switch (idx) {
 	case EM28XX_AMUX_VIDEO:
-		strcpy(a->name, "Television");
+		strscpy(a->name, "Television", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_LINE_IN:
-		strcpy(a->name, "Line In");
+		strscpy(a->name, "Line In", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_VIDEO2:
-		strcpy(a->name, "Television alt");
+		strscpy(a->name, "Television alt", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_PHONE:
-		strcpy(a->name, "Phone");
+		strscpy(a->name, "Phone", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_MIC:
-		strcpy(a->name, "Mic");
+		strscpy(a->name, "Mic", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_CD:
-		strcpy(a->name, "CD");
+		strscpy(a->name, "CD", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_AUX:
-		strcpy(a->name, "Aux");
+		strscpy(a->name, "Aux", sizeof(a->name));
 		break;
 	case EM28XX_AMUX_PCM_OUT:
-		strcpy(a->name, "PCM");
+		strscpy(a->name, "PCM", sizeof(a->name));
 		break;
+	case EM28XX_AMUX_UNUSED:
 	default:
 		return -EINVAL;
 	}
-
-	a->index = dev->ctl_ainput;
+	a->index = index;
 	a->capability = V4L2_AUDCAP_STEREO;
+
+	em28xx_videodbg("%s: audio input index %d is '%s'\n",
+			s, a->index, a->name);
 
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *a)
+static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
 {
 	struct em28xx *dev = video_drvdata(file);
 
 	if (a->index >= MAX_EM28XX_INPUT)
 		return -EINVAL;
-	if (0 == INPUT(a->index)->type)
+
+	return em28xx_fill_audio_input(dev, __func__, a, a->index);
+}
+
+static int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *a)
+{
+	struct em28xx *dev = video_drvdata(file);
+	int i;
+
+	for (i = 0; i < MAX_EM28XX_INPUT; i++)
+		if (dev->ctl_ainput == dev->amux_map[i])
+			return em28xx_fill_audio_input(dev, __func__, a, i);
+
+	/* Should never happen! */
+	return -EINVAL;
+}
+
+static int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *a)
+{
+	struct em28xx *dev = video_drvdata(file);
+	int idx, i;
+
+	if (a->index >= MAX_EM28XX_INPUT)
 		return -EINVAL;
 
-	dev->ctl_ainput = INPUT(a->index)->amux;
-	dev->ctl_aoutput = INPUT(a->index)->aout;
+	idx = dev->amux_map[a->index];
+
+	if (idx == EM28XX_AMUX_UNUSED)
+		return -EINVAL;
+
+	dev->ctl_ainput = idx;
+
+	/*
+	 * FIXME: This is wrong, as different inputs at em28xx_cards
+	 * may have different audio outputs. So, the right thing
+	 * to do is to implement VIDIOC_G_AUDOUT/VIDIOC_S_AUDOUT.
+	 * With the current board definitions, this would work fine,
+	 * as, currently, all boards fit.
+	 */
+	for (i = 0; i < MAX_EM28XX_INPUT; i++)
+		if (idx == dev->amux_map[i])
+			break;
+	if (i == MAX_EM28XX_INPUT)
+		return -EINVAL;
+
+	dev->ctl_aoutput = INPUT(i)->aout;
 
 	if (!dev->ctl_aoutput)
 		dev->ctl_aoutput = EM28XX_AOUT_MASTER;
+
+	em28xx_videodbg("%s: set audio input to %d\n", __func__,
+			dev->ctl_ainput);
 
 	return 0;
 }
@@ -1724,7 +1791,7 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	if (0 != t->index)
 		return -EINVAL;
 
-	strcpy(t->name, "Tuner");
+	strscpy(t->name, "Tuner", sizeof(t->name));
 
 	v4l2_device_call_all(&dev->v4l2->v4l2_dev, 0, tuner, g_tuner, t);
 	return 0;
@@ -1992,7 +2059,7 @@ static int radio_g_tuner(struct file *file, void *priv,
 	if (unlikely(t->index > 0))
 		return -EINVAL;
 
-	strcpy(t->name, "Radio");
+	strscpy(t->name, "Radio", sizeof(t->name));
 
 	v4l2_device_call_all(&dev->v4l2->v4l2_dev, 0, tuner, g_tuner, t);
 
@@ -2249,6 +2316,7 @@ static const struct v4l2_ioctl_ops video_ioctl_ops = {
 	.vidioc_try_fmt_vbi_cap     = vidioc_g_fmt_vbi_cap,
 	.vidioc_s_fmt_vbi_cap       = vidioc_g_fmt_vbi_cap,
 	.vidioc_enum_framesizes     = vidioc_enum_framesizes,
+	.vidioc_enumaudio           = vidioc_enumaudio,
 	.vidioc_g_audio             = vidioc_g_audio,
 	.vidioc_s_audio             = vidioc_s_audio,
 
@@ -2345,7 +2413,7 @@ static void em28xx_vdev_init(struct em28xx *dev,
 	*vfd		= *template;
 	vfd->v4l2_dev	= &dev->v4l2->v4l2_dev;
 	vfd->lock	= &dev->lock;
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		vfd->tvnorms = 0;
 
 	snprintf(vfd->name, sizeof(vfd->name), "%s %s",
@@ -2460,7 +2528,7 @@ static int em28xx_v4l2_init(struct em28xx *dev)
 	v4l2_ctrl_handler_init(hdl, 8);
 	v4l2->v4l2_dev.ctrl_handler = hdl;
 
-	if (dev->board.is_webcam)
+	if (dev->is_webcam)
 		v4l2->progressive = true;
 
 	/*
@@ -2472,7 +2540,7 @@ static int em28xx_v4l2_init(struct em28xx *dev)
 
 	/* request some modules */
 
-	if (dev->board.has_msp34xx)
+	if (dev->has_msp34xx)
 		v4l2_i2c_new_subdev(&v4l2->v4l2_dev,
 				    &dev->i2c_adap[dev->def_i2c_bus],
 				    "msp3400", 0, msp3400_addrs);
@@ -2561,7 +2629,7 @@ static int em28xx_v4l2_init(struct em28xx *dev)
 	INIT_LIST_HEAD(&dev->vidq.active);
 	INIT_LIST_HEAD(&dev->vbiq.active);
 
-	if (dev->board.has_msp34xx) {
+	if (dev->has_msp34xx) {
 		/* Send a reset to other chips via gpio */
 		ret = em28xx_write_reg(dev, EM2820_R08_GPIO_CTRL, 0xf7);
 		if (ret < 0) {
@@ -2655,7 +2723,7 @@ static int em28xx_v4l2_init(struct em28xx *dev)
 	v4l2->vdev.queue->lock = &v4l2->vb_queue_lock;
 
 	/* disable inapplicable ioctls */
-	if (dev->board.is_webcam) {
+	if (dev->is_webcam) {
 		v4l2_disable_ioctl(&v4l2->vdev, VIDIOC_QUERYSTD);
 		v4l2_disable_ioctl(&v4l2->vdev, VIDIOC_G_STD);
 		v4l2_disable_ioctl(&v4l2->vdev, VIDIOC_S_STD);

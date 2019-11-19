@@ -254,7 +254,7 @@ extern void pnv_cxl_cx4_teardown_msi_irqs(struct pci_dev *pdev);
 extern const struct pci_controller_ops pnv_cxl_cx4_ioda_controller_ops;
 
 /* pci-ioda-tce.c */
-#define POWERNV_IOMMU_DEFAULT_LEVELS	1
+#define POWERNV_IOMMU_DEFAULT_LEVELS	2
 #define POWERNV_IOMMU_MAX_LEVELS	5
 
 extern int pnv_tce_build(struct iommu_table *tbl, long index, long npages,

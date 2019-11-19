@@ -337,6 +337,9 @@ static void pseries_lpar_idle(void)
 	 * low power mode by ceding processor to hypervisor
 	 */
 
+	if (!prep_irq_for_idle())
+		return;
+
 	/* Indicate to hypervisor that we are idle. */
 	get_lppaca()->idle = 1;
 
@@ -757,6 +760,7 @@ static void __init pSeries_setup_arch(void)
 
 	pseries_setup_rfi_flush();
 	setup_stf_barrier();
+	pseries_lpar_read_hblkrm_characteristics();
 
 	/* By default, only probe PCI (can be overridden by rtas_pci) */
 	pci_add_flags(PCI_PROBE_ONLY);
@@ -786,6 +790,12 @@ static void __init pSeries_setup_arch(void)
 	}
 
 	ppc_md.pcibios_root_bridge_prepare = pseries_root_bridge_prepare;
+}
+
+static void pseries_panic(char *str)
+{
+	panic_flush_kmsg_end();
+	rtas_os_term(str);
 }
 
 static int __init pSeries_init_panel(void)
@@ -1016,7 +1026,7 @@ define_machine(pseries) {
 	.pcibios_fixup		= pSeries_final_fixup,
 	.restart		= rtas_restart,
 	.halt			= rtas_halt,
-	.panic			= rtas_os_term,
+	.panic			= pseries_panic,
 	.get_boot_time		= rtas_get_boot_time,
 	.get_rtc_time		= rtas_get_rtc_time,
 	.set_rtc_time		= rtas_set_rtc_time,

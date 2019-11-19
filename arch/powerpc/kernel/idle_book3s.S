@@ -544,7 +544,7 @@ pnv_restore_hyp_resource_arch300:
 	 */
 	blt	cr3,1f
 BEGIN_FTR_SECTION
-	PPC_INVALIDATE_ERAT
+	PPC_ISA_3_0_INVALIDATE_ERAT
 	ld	r1,PACAR1(r13)
 	ld	r4,_MMCR0(r1)
 	mtspr	SPRN_MMCR0,r4
