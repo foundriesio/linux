@@ -592,6 +592,36 @@ inline static void* tcc_vsync_get_buffer(tcc_vsync_buffer_t * buffer_t, int offs
 	}
 }
 
+inline static int tcc_vsync_buffer_check(tcc_video_disp *p, unsigned int ref_buffer_id)
+{
+	tcc_vsync_buffer_t *buffer_t = NULL;
+	int readable_count = 0;
+	int readIdx = 0;
+
+	if(!p->vsync_started) {
+		vprintk("vsync_started is not started!! return\n");
+		return -1;
+	}
+
+	buffer_t = &p->vsync_buffer;
+	readable_count = atomic_read( &buffer_t->readable_buff_count);
+	readIdx = buffer_t->readIdx;
+
+	printk("############# [%d] buffer check .. k_syncTS: %d, ref_buffer_id: %d ############\n",
+			p->type, tcc_vsync_get_time(p), ref_buffer_id);
+	while(readable_count > 0)
+	{
+		printk("[%d] : Buffer_ID[%d] - TS[%d] SyncTS[%d] \n", p->type,
+				buffer_t->stImage[readIdx].buffer_unique_id, buffer_t->stImage[readIdx].time_stamp, buffer_t->stImage[readIdx].sync_time);
+	
+		if(++readIdx >= buffer_t->max_buff_num)
+			readIdx = 0;
+		readable_count--;
+	}
+
+	return 0;
+}
+
 inline static int tcc_vsync_clean_buffer(tcc_vsync_buffer_t * buffer_t)
 {
 	if(buffer_t->readIdx == buffer_t->clearIdx || atomic_read(&buffer_t->valid_buff_count) == 0)
@@ -2755,6 +2785,31 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
 void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *input_image)
 {
+#if 0
+	if( (input_image->codec_id != tccvid_lastframe[type].LastImage.codec_id) 
+			|| (input_image->time_stamp < tccvid_lastframe[type].LastImage.time_stamp)
+			|| (input_image->sync_time < tccvid_lastframe[type].LastImage.sync_time)
+			|| (input_image->buffer_unique_id < tccvid_lastframe[type].LastImage.buffer_unique_id)
+	) {
+		int temp_type = type;
+		printk("@@@@@@@@@@@@@@@@@@ [%d] Input buffer is something wrong!! \n", type);
+		printk("[%d] ===> Codec_id [ 0x%x : 0x%x ] TS [ %d : %d ] SyncTS [ %d : %d ] Buffer_ID [ %d : %d ] Disp [ %dx%d %dx%d ]\n", type,
+				tccvid_lastframe[type].LastImage.codec_id, input_image->codec_id,
+				tccvid_lastframe[type].LastImage.time_stamp, input_image->time_stamp,
+				tccvid_lastframe[type].LastImage.sync_time, input_image->sync_time,
+				tccvid_lastframe[type].LastImage.buffer_unique_id, input_image->buffer_unique_id,
+				tccvid_lastframe[type].LastImage.Image_width, tccvid_lastframe[type].LastImage.Image_height,
+				input_image->Image_width, input_image->Image_height);
+
+		temp_type = (type == VSYNC_MAIN) ? VSYNC_SUB0 : VSYNC_MAIN;
+		printk("[%d] ===> Codec_id [ 0x%x ] TS [ %d ] SyncTS [ %d ] Buffer_ID [ %d ] Disp [ %dx%d ]\n", temp_type,
+				tccvid_lastframe[temp_type].LastImage.codec_id,
+				tccvid_lastframe[temp_type].LastImage.time_stamp,
+				tccvid_lastframe[temp_type].LastImage.sync_time,
+				tccvid_lastframe[temp_type].LastImage.buffer_unique_id,
+				tccvid_lastframe[temp_type].LastImage.Image_width, tccvid_lastframe[temp_type].LastImage.Image_height);
+	}
+#endif
 	memcpy(&tccvid_lastframe[type].LastImage, input_image, sizeof(struct tcc_lcdc_image_update));
 }
 EXPORT_SYMBOL(tcc_video_info_backup);
@@ -4009,6 +4064,16 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 					if (copy_to_user((int *)arg, &ret, sizeof(int))){
 						ret = -EFAULT;
 					}
+				}
+				break ;
+
+			case TCC_LCDC_VIDEO_CHECK_BUFFER_STATUS:
+				{
+					unsigned int ref_buffer_id = 0;
+					if (copy_from_user((void*)&ref_buffer_id, (const void*)arg, sizeof(unsigned int)))
+						ret = -EFAULT;
+					else
+						ret = tcc_vsync_buffer_check(p, ref_buffer_id);
 				}
 				break ;
 				
