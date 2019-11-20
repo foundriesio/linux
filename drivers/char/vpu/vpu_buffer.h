@@ -31,6 +31,7 @@
 
 //////////////////////////////////////
 // Memory Management!!
+extern int vmem_alloc_count(int type);
 extern int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info, vputype type);
 extern int vmem_proc_free_memory(vputype type);
 extern unsigned int vmem_get_free_memory(vputype type);

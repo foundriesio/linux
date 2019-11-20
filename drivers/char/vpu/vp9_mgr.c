@@ -229,6 +229,11 @@ static int _vp9mgr_process(vputype type, int cmd, int pHandle, void* args)
                                 arg->gsVp9DecInit.m_EntropySaveBuffer[PA], arg->gsVp9DecInit.m_EntropySaveBuffer[VA], arg->gsVp9DecInit.m_iEntropySaveBufferSize,
                                 arg->gsVp9DecInit.m_iFilePlayEnable, arg->gsVp9DecInit.m_iMaxResolution);
 
+					if(0 >= vmem_alloc_count(type)){
+						printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+						return RETCODE_FAILURE;
+					}
+
                     ret = tcc_vp9_dec(cmd & ~VPU_BASE_OP_KERNEL, (void*)(&arg->gsVp9DecHandle), (void*)(&arg->gsVp9DecInit), (void*)NULL);
                     if( ret != RETCODE_SUCCESS ){
                         printk("@@ Dec :: Init Done with ret(0x%x)\n", ret);

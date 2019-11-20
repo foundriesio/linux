@@ -658,6 +658,11 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                             arg->gsV4kd2DecInit.m_bEnableUserData, arg->gsV4kd2DecInit.m_bCbCrInterleaveMode,
                             arg->gsV4kd2DecInit.m_iFilePlayEnable);
 
+				if(0 >= vmem_alloc_count(type)){
+					printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+					return RETCODE_FAILURE;
+				}
+
                 ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (void*)(&arg->gsV4kd2DecHandle), (void*)(&arg->gsV4kd2DecInit), (void*)NULL);
                 if( ret != RETCODE_SUCCESS ){
                     printk("@@ Dec :: Init Done with ret(0x%x)\n", ret);

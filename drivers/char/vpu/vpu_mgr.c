@@ -286,6 +286,11 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                             arg->gsVpuDecInit.m_iFilePlayEnable, arg->gsVpuDecInit.m_iMaxResolution,
                             vmgr_data.bDiminishInputCopy);
 
+				if(0 >= vmem_alloc_count(type)){
+					printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+					return RETCODE_FAILURE;
+				}
+
                 ret = tcc_vpu_dec(cmd & ~VPU_BASE_OP_KERNEL, (void *)&arg->gsVpuDecHandle, (void *)&arg->gsVpuDecInit, (void *)NULL);
                 if (ret != RETCODE_SUCCESS) {
                     printk("@@ Dec-%d :: Init Done with ret(0x%x)\n", type, ret);
