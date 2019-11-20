@@ -44,6 +44,8 @@
 
 #define PORT3_LINK	1			//Port Sel(1~2)
 
+#define TCC_USE_MUTE_GPIO
+#define TCC_ALWAYS_PMDAC_ON
 
 #define AIF1	"AIF1"
 #define AIF2	"AIF2"
@@ -174,6 +176,13 @@ struct ak4601_priv {
 	int DIDL3;
 
 	uint8_t reg_backup[ARRAY_SIZE(ak4601_backup_reg_list)];
+
+#ifdef TCC_USE_MUTE_GPIO
+	int32_t mute_gpio;			// for DSP_MUTE or AMP_MUTE
+	int32_t mute_gpio_flags;
+	int32_t stanby_gpio;		// for AMP_STANBY
+	int32_t stanby_gpio_flags;	
+#endif//TCC_USE_MUTE_GPIO
 
 };
 
@@ -1995,9 +2004,15 @@ static const struct snd_soc_dapm_widget ak4601_dapm_widgets[] = {
 	SND_SOC_DAPM_ADC("ADC1", NULL, AK4601_08A_POWER_MANAGEMENT1, 5, 0),
 	SND_SOC_DAPM_ADC("ADC2", NULL, AK4601_08A_POWER_MANAGEMENT1, 4, 0),
 	SND_SOC_DAPM_ADC("ADCM", NULL, AK4601_08A_POWER_MANAGEMENT1, 3, 0),
+#ifdef TCC_ALWAYS_PMDAC_ON
+	SND_SOC_DAPM_DAC("DAC1", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DAC2", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DAC3", NULL, SND_SOC_NOPM, 0, 0),
+#else
 	SND_SOC_DAPM_DAC("DAC1", NULL, AK4601_08A_POWER_MANAGEMENT1, 2, 0),
 	SND_SOC_DAPM_DAC("DAC2", NULL, AK4601_08A_POWER_MANAGEMENT1, 1, 0),
 	SND_SOC_DAPM_DAC("DAC3", NULL, AK4601_08A_POWER_MANAGEMENT1, 0, 0),
+#endif//TCC_ALWAYS_PMDAC_ON
 //VOL
 	SND_SOC_DAPM_PGA("VOL1",SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("VOL2",SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -2534,7 +2549,12 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	
+#ifdef TCC_ALWAYS_PMDAC_ON	
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		rtd->pmdown_time = -1;
+#endif//TCC_ALWAYS_PMDAC_ON
 	int fsno, nmax;
 	int DIODLbit, addr, value, nPortNo;
 
@@ -2591,7 +2611,6 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	akdbgprt("\t[AK4601] %s setSDClock\n",__FUNCTION__);
-
 
 	ak4601->SDfs[nPortNo] = fsno;
 	setSDClock(codec, nPortNo);
@@ -2741,7 +2760,6 @@ static int ak4601_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	value = (doedge <<  7) + (diolsb <<  3) + (doslot <<  4);
 	snd_soc_update_bits(codec, addr, 0xB8, value);
 
-	
 	return 0;
 }
 
@@ -2897,20 +2915,43 @@ static int ak4601_writes(struct snd_soc_codec *codec, const u8 *tx, size_t wlen)
 static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 		enum snd_soc_bias_level level)
 {
+#ifdef TCC_USE_MUTE_GPIO
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+#endif//TCC_USE_MUTE_GPIO
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_ON\n");
+#ifdef TCC_USE_MUTE_GPIO
+		if (ak4601->mute_gpio >= 0) {
+				gpio_set_value(ak4601->mute_gpio, !ak4601->mute_gpio_flags); //mute off
+				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON mute off\n");
+		}
+#endif//TCC_USE_MUTE_GPIO		
 		break;
 	case SND_SOC_BIAS_PREPARE:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_PREPARE\n");
 		break;
 	case SND_SOC_BIAS_STANDBY:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_STANDBY\n");
+#ifdef TCC_USE_MUTE_GPIO		
+		if (snd_soc_codec_get_bias_level(codec) == SND_SOC_BIAS_OFF) {
+			if (ak4601->stanby_gpio >= 0) {
+				gpio_set_value(ak4601->stanby_gpio, ak4601->stanby_gpio_flags); //stanby on
+				akdbgprt("\t[AK4601] SND_SOC_BIAS_PREPARE stanby on\n");
+			}
+		}
+#endif//TCC_USE_MUTE_GPIO		
 		break;
 	case SND_SOC_BIAS_OFF:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_OFF\n");
+#ifdef TCC_USE_MUTE_GPIO		
+		if (ak4601->stanby_gpio >= 0) {
+			gpio_set_value(ak4601->stanby_gpio, !ak4601->stanby_gpio_flags); //stanby off
+			akdbgprt("\t[AK4601] SND_SOC_BIAS_OFF stanby off\n");
+		}
+#endif//TCC_USE_MUTE_GPIO		
 		break;
 	}
 	snd_soc_codec_get_dapm(codec)->bias_level = level;
@@ -2927,7 +2968,6 @@ static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 	} else {
 		akdbgprt("\t[AK4601] Mute OFF(%d)\n",__LINE__);
 	}
-
 	return 0;
 }
 
@@ -3103,6 +3143,10 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 
 	snd_soc_update_bits( ak4601->codec, AK4601_011_SYNC_DOMAIN_SELECT_1, 0x12, 0x12 );//LR/BICKx Output SDx
 
+#ifdef TCC_ALWAYS_PMDAC_ON
+	snd_soc_update_bits( ak4601->codec, AK4601_08A_POWER_MANAGEMENT1, 0x07, 0x07 );//DAC1,2,3 On
+#endif//TCC_ALWAYS_PMDAC_ON
+
 	return 0;
 }
 
@@ -3199,6 +3243,10 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 	struct device *dev;
 	struct device_node *np;
 
+#ifdef TCC_USE_MUTE_GPIO
+	enum of_gpio_flags gpio_flags;
+#endif//TCC_USE_MUTE_GPIO
+
 #ifdef AK4601_I2C_IF
 	dev = &(ak4601->i2c->dev);
 #else
@@ -3209,6 +3257,47 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 
 	if(!np)
 		return -1;
+
+#ifdef TCC_USE_MUTE_GPIO
+	ak4601->mute_gpio = of_get_named_gpio_flags(np, "mute-gpios", 0, &gpio_flags);
+	if(ak4601->mute_gpio < 0) {
+		ak4601->mute_gpio = -1;
+	} else { 
+		if(gpio_is_valid(ak4601->mute_gpio)) {
+			ak4601->mute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			printk("[AK4601] use mute gpio(%d)\n", ak4601->mute_gpio);
+			if (devm_gpio_request_one(dev, 
+						ak4601->mute_gpio, 
+						(ak4601->mute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+						"mute-gpios")) {
+				ak4601->mute_gpio = -1;
+				printk("[AK4601] request mute gpio(%d) failed\n", ak4601->mute_gpio);
+			}
+		} else {
+			ak4601->mute_gpio = -1;
+			printk("[AK4601] mute gpio(%d) is invalid\n", ak4601->mute_gpio);
+		}
+	}
+	ak4601->stanby_gpio = of_get_named_gpio_flags(np, "stanby-gpios", 0, &gpio_flags);
+	if(ak4601->stanby_gpio < 0) {
+		ak4601->stanby_gpio = -1;
+	} else { 
+		if(gpio_is_valid(ak4601->stanby_gpio)) {
+			ak4601->stanby_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			printk("[AK4601] use stanby gpio(%d)\n", ak4601->stanby_gpio);
+			if (devm_gpio_request_one(dev, 
+						ak4601->stanby_gpio, 
+						(ak4601->stanby_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+						"stanby-gpios")) {
+				ak4601->stanby_gpio = -1;
+				printk("[AK4601] request stanby gpio(%d) failed\n", ak4601->stanby_gpio);
+			}
+		} else {
+			ak4601->stanby_gpio = -1;
+			printk("[AK4601] stanby gpio(%d) is invalid\n", ak4601->stanby_gpio);
+		}
+	}
+#endif//TCC_USE_MUTE_GPIO
 
 	printk("[AK4601] Read PDN pin from device tree\n");
 
