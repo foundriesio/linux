@@ -1608,7 +1608,7 @@ static void handle_sigwake_event(struct task_struct *p)
 			sigismember(&pending, SIGSTOP)
 			|| sigismember(&pending, SIGINT))
 			evl_spin_lock(&thread->rq->lock);
-			thread->state &= ~T_SSTEP;
+			thread->state |= T_SSTEP;
 			evl_spin_unlock(&thread->rq->lock);
 	}
 
