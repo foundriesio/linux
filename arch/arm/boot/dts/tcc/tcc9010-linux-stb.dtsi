@@ -61,8 +61,8 @@
 		regulator-type = "voltage";
 		regulator-always-on;
 
-		gpios = <&gpd 25 0x4
-			 &gpd 24 0x4>;
+		gpios = <&gpd 17 0x4
+			 &gpd 16 0x4>;
 		gpios-states = <0 1>;
 
 		states = < 800000 0x0
@@ -551,11 +551,11 @@
 	run-control {
 		compatible = "gpio-leds";
 		green {
-			gpios = <&gpd 1 0>;
+			gpios = <&gpa 1 0>;
 			default-state = "on";
 		};
 		red {
-			gpios = <&gpd 0 1>;
+			gpios = <&gpa 2 1>;
 			default-state = "on";
 		};
 	};
