@@ -1067,7 +1067,10 @@ struct dwc_otg_core_if {
 	/** To store vendor ID, product ID */
 	uint16_t uiVID;
 	uint16_t uiPID;
-
+#if defined(CONFIG_DWC_INCOMP_ISOC)
+	int isoc_out_is_odd;
+	int isoc_out_is_first;
+#endif
 #if defined(CONFIG_TCC_DWC_OTG_HOST_MUX)
 	/** mux port owner status */
 	void __iomem		*ehci_regs;		/* device memory/io */
