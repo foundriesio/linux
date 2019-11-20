@@ -474,6 +474,11 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void* args)
                     }
                 #endif
 
+					if(0 >= vmem_alloc_count(type)){
+						printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+						return RETCODE_FAILURE;
+					}
+
                 #if defined(JPU_C5)
                     dprintk("@@ Dec :: Init In => Reg(0x%x/0x%x), Stream(0x%x/0x%x, 0x%x)\n",
                                 jmgr_data.base_addr, arg->gsJpuDecInit.m_RegBaseVirtualAddr,

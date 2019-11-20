@@ -158,6 +158,12 @@ static int only_decmode = 0;
 static int vdec_used[VPU_INST_MAX] = {0,};
 static int venc_used[VPU_INST_MAX] = {0,};
 
+int vmem_alloc_count(int type)
+{
+	if(type >= VPU_MAX)
+		return 0;
+	return vmem_allocated_count[type];
+}
 /////////////////////////////////////////
 // page type configuration
 #define PAGE_TYPE_MAX	16
