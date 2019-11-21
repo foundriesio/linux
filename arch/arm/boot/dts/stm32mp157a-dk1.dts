@@ -83,19 +83,6 @@
 		};
 	};
 
-	sram: sram@10050000 {
-		compatible = "mmio-sram";
-		reg = <0x10050000 0x10000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x10050000 0x10000>;
-
-		dma_pool: dma_pool@0 {
-			reg = <0x0 0x10000>;
-			pool;
-		};
-	};
-
 	led {
 		compatible = "gpio-leds";
 		blue {
@@ -603,6 +590,13 @@
 	bus-width = <4>;
 	vmmc-supply = <&v3v3>;
 	status = "disabled";
+};
+
+&sram {
+	dma_pool: dma_pool@0 {
+		reg = <0x50000 0x10000>;
+		pool;
+	};
 };
 
 &timers1 {

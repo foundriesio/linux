@@ -76,19 +76,6 @@
 		};
 	};
 
-	sram: sram@10050000 {
-		compatible = "mmio-sram";
-		reg = <0x10050000 0x10000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x10050000 0x10000>;
-
-		dma_pool: dma_pool@0 {
-			reg = <0x0 0x10000>;
-			pool;
-		};
-	};
-
 	aliases {
 		serial0 = &uart4;
 	};
@@ -402,6 +389,13 @@
 	vqmmc-supply = <&v3v3>;
 	mmc-ddr-3_3v;
 	status = "okay";
+};
+
+&sram {
+	dma_pool: dma_pool@0 {
+		reg = <0x50000 0x10000>;
+		pool;
+	};
 };
 
 &timers6 {
