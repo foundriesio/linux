@@ -46,10 +46,6 @@ static DEFINE_SPINLOCK(npu_context_lock);
  */
 #define ATSD_THRESHOLD (2*1024*1024)
 
-/*
- * Other types of TCE cache invalidation are not functional in the
- * hardware.
- */
 static struct pci_dev *get_pci_dev(struct device_node *dn)
 {
 	return PCI_DN(dn)->pcidev;

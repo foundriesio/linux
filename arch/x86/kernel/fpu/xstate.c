@@ -926,6 +926,23 @@ int arch_set_user_pkey_access(struct task_struct *tsk, int pkey,
 #endif /* ! CONFIG_ARCH_HAS_PKEYS */
 
 /*
+ * Weird legacy quirk: SSE and YMM states store information in the
+ * MXCSR and MXCSR_FLAGS fields of the FP area. That means if the FP
+ * area is marked as unused in the xfeatures header, we need to copy
+ * MXCSR and MXCSR_FLAGS if either SSE or YMM are in use.
+ */
+static inline bool xfeatures_mxcsr_quirk(u64 xfeatures)
+{
+	if (!(xfeatures & (XFEATURE_MASK_SSE|XFEATURE_MASK_YMM)))
+		return 0;
+
+	if (xfeatures & XFEATURE_MASK_FP)
+		return 0;
+
+	return 1;
+}
+
+/*
  * This is similar to user_regset_copyout(), but will not add offset to
  * the source data pointer or increment pos, count, kbuf, and ubuf.
  */
@@ -1005,7 +1022,15 @@ int copyout_from_xsaves(unsigned int pos, unsigned int count, void *kbuf,
 			if (offset + size >= count)
 				break;
 		}
+	}
 
+	if (xfeatures_mxcsr_quirk(header.xfeatures)) {
+		offset = offsetof(struct fxregs_state, mxcsr);
+		size = MXCSR_AND_FLAGS_SIZE;
+
+		ret = xstate_copyout(offset, size, kbuf, ubuf, &xsave->i387.mxcsr, 0, count);
+		if (ret)
+			return ret;
 	}
 
 	/*
@@ -1070,6 +1095,17 @@ int copyin_to_xsaves(const void *kbuf, const void __user *ubuf,
 					return -EFAULT;
 			}
 		}
+	}
+
+	if (xfeatures_mxcsr_quirk(xfeatures)) {
+		offset = offsetof(struct fxregs_state, mxcsr);
+		size = MXCSR_AND_FLAGS_SIZE;
+
+		if (kbuf)
+			memcpy(&xsave->i387.mxcsr, kbuf + offset, size);
+		else
+			if (__copy_from_user(&xsave->i387.mxcsr, ubuf + offset, size))
+				return -EFAULT;
 	}
 
 	/*
