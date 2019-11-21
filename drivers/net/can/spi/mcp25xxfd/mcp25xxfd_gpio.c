@@ -188,6 +188,12 @@ static int mcp25xxfd_gpio_setup_regs(struct mcp25xxfd_priv *priv)
 		priv->regs.iocon &= ~(MCP25XXFD_IOCON_XSTBYEN);
 	}
 
+	/* handle sof / clko */
+	if (priv->config.clock_odiv == 0)
+		priv->regs.iocon |= MCP25XXFD_IOCON_SOF;
+	else
+		priv->regs.iocon &= ~MCP25XXFD_IOCON_SOF;
+
 	/* update the iocon register */
 	return mcp25xxfd_cmd_write_regs(priv->spi, MCP25XXFD_IOCON,
 					&priv->regs.iocon, sizeof(u32));
