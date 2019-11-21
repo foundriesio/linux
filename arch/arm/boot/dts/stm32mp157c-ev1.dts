@@ -647,9 +647,8 @@
 };
 
 &spdifrx {
-	pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 	pinctrl-0 = <&spdifrx_pins_a>;
-	pinctrl-1 = <&spdifrx_sleep_pins_a>;
 	status = "okay";
 
 	spdifrx_port: port {
