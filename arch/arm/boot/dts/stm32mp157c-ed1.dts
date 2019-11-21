@@ -8,6 +8,7 @@
 #include "stm32mp157c.dtsi"
 #include "stm32mp157xaa-pinctrl.dtsi"
 #include "stm32mp157c-m4-srm.dtsi"
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mfd/st,stpmic1.h>
 
 / {
@@ -90,6 +91,16 @@
 
 	aliases {
 		serial0 = &uart4;
+	};
+
+	led {
+		compatible = "gpio-leds";
+		blue {
+			label = "heartbeat";
+			gpios = <&gpiod 9 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
 	};
 
 	sd_switch: regulator-sd_switch {
