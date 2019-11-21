@@ -46,6 +46,7 @@ struct mcp25xxfd_priv {
 		int clock_pll;
 		int clock_div2;
 		int clock_odiv;
+		int clock_allways_on;
 		/* gpio related */
 		bool gpio_open_drain;
 		bool gpio0_xstandby;

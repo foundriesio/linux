@@ -244,6 +244,10 @@ int mcp25xxfd_clock_stop(struct mcp25xxfd_priv *priv, int requestor_mask)
 {
 	int ret;
 
+	/* keep the clock on if explicitely configured */
+	if (priv->config.clock_allways_on)
+		return 0;
+
 	/* without a clock there is nothing we can do... */
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
@@ -366,9 +370,11 @@ static int mcp25xxfd_clock_of_parse(struct mcp25xxfd_priv *priv)
 	u32 val;
 	int ret;
 
-	priv->config.clock_div2 = false;
 	priv->config.clock_div2 =
 		of_property_read_bool(np, "microchip,clock-div2");
+
+	priv->config.clock_allways_on =
+		of_property_read_bool(np, "microchip,clock-allways-on");
 
 	priv->config.clock_odiv = 10;
 	ret = of_property_read_u32_index(np, "microchip,clock-out-div",
@@ -408,6 +414,7 @@ int mcp25xxfd_clock_init(struct mcp25xxfd_priv *priv)
 	mutex_init(&priv->clk_user_lock);
 
 	priv->config.clock_div2 = false;
+	priv->config.clock_allways_on = false;
 	priv->config.clock_odiv = 10;
 
 	ret = mcp25xxfd_clock_of_parse(priv);
