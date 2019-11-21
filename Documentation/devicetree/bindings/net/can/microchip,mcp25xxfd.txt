@@ -16,6 +16,11 @@ Optional properties:
  - microchip,clock-out-div = <0|1|2|4|10>: Clock output pin divider
 					   0 = Start of Frame output
 					   default: 10
+ - microchip,clock-allways-on: bool: Do not disable the clock if CAN
+				     is inactive. Thus a clock on the
+				     clko pin will not be stopped.
+				     This results in a higher standby
+				     current.
  - microchip,clock-div2: bool: divide the internal clock by 2
  - microchip,gpio-open-drain: bool: enable open-drain for all pins
                                     (except cantx)
