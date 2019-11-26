@@ -872,9 +872,12 @@ struct ath10k {
 	u8 cfg_tx_chainmask;
 	u8 cfg_rx_chainmask;
 
+#ifndef __GENKSYMS__
+	int last_wmi_vdev_start_status; /* moved here for kABI compatibility */
+#endif
+
 	struct completion install_key_done;
 
-	int last_wmi_vdev_start_status;
 	struct completion vdev_setup_done;
 
 	struct workqueue_struct *workqueue;
