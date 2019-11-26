@@ -214,14 +214,14 @@ static void i915_gem_context_free(struct i915_gem_context *ctx)
 	release_hw_id(ctx);
 	i915_ppgtt_put(ctx->ppgtt);
 
+	kfree(ctx->jump_whitelist);
+
 	for (n = 0; n < ARRAY_SIZE(ctx->__engine); n++) {
 		struct intel_context *ce = &ctx->__engine[n];
 
 		if (ce->ops)
 			ce->ops->destroy(ce);
 	}
-
-	kfree(ctx->jump_whitelist);
 
 	kfree(ctx->name);
 	put_pid(ctx->pid);

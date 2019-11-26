@@ -364,9 +364,13 @@ static int hclge_mac_update_stats_complete(struct hclge_dev *hdev, u32 desc_num)
 	u16 i, k, n;
 	int ret;
 
-	desc = kcalloc(desc_num, sizeof(struct hclge_desc), GFP_KERNEL);
+	/* This may be called inside atomic sections,
+	 * so GFP_ATOMIC is more suitalbe here
+	 */
+	desc = kcalloc(desc_num, sizeof(struct hclge_desc), GFP_ATOMIC);
 	if (!desc)
 		return -ENOMEM;
+
 	hclge_cmd_setup_basic_desc(&desc[0], HCLGE_OPC_STATS_MAC_ALL, true);
 	ret = hclge_cmd_send(&hdev->hw, desc, desc_num);
 	if (ret) {
@@ -2913,6 +2917,19 @@ static int hclge_reset_prepare_down(struct hclge_dev *hdev)
 	return ret;
 }
 
+static void hclge_reset_handshake(struct hclge_dev *hdev, bool enable)
+{
+	u32 reg_val;
+
+	reg_val = hclge_read_dev(&hdev->hw, HCLGE_NIC_CSQ_DEPTH_REG);
+	if (enable)
+		reg_val |= HCLGE_NIC_SW_RST_RDY;
+	else
+		reg_val &= ~HCLGE_NIC_SW_RST_RDY;
+
+	hclge_write_dev(&hdev->hw, HCLGE_NIC_CSQ_DEPTH_REG, reg_val);
+}
+
 static int hclge_reset_prepare_wait(struct hclge_dev *hdev)
 {
 #define HCLGE_RESET_SYNC_TIME 100
@@ -2961,8 +2978,7 @@ static int hclge_reset_prepare_wait(struct hclge_dev *hdev)
 
 	/* inform hardware that preparatory work is done */
 	msleep(HCLGE_RESET_SYNC_TIME);
-	hclge_write_dev(&hdev->hw, HCLGE_NIC_CSQ_DEPTH_REG,
-			HCLGE_NIC_CMQ_ENABLE);
+	hclge_reset_handshake(hdev, true);
 	dev_info(&hdev->pdev->dev, "prepare wait ok\n");
 
 	return ret;
@@ -3002,6 +3018,10 @@ static bool hclge_reset_err_handle(struct hclge_dev *hdev, bool is_timeout)
 	}
 
 	hclge_clear_reset_cause(hdev);
+
+	/* recover the handshake status when reset fail */
+	hclge_reset_handshake(hdev, true);
+
 	dev_err(&hdev->pdev->dev, "Reset fail!\n");
 	return false;
 }
@@ -3019,6 +3039,9 @@ static int hclge_reset_prepare_up(struct hclge_dev *hdev)
 	default:
 		break;
 	}
+
+	/* clear up the handshake status after re-initialize done */
+	hclge_reset_handshake(hdev, false);
 
 	return ret;
 }
@@ -5471,7 +5494,7 @@ static int hclge_add_fd_entry_by_arfs(struct hnae3_handle *handle, u16 queue_id,
 			return -ENOSPC;
 		}
 
-		rule = kzalloc(sizeof(*rule), GFP_KERNEL);
+		rule = kzalloc(sizeof(*rule), GFP_ATOMIC);
 		if (!rule) {
 			spin_unlock_bh(&hdev->fd_rule_lock);
 
@@ -5870,6 +5893,8 @@ static void hclge_ae_stop(struct hnae3_handle *handle)
 
 	for (i = 0; i < handle->kinfo.num_tqps; i++)
 		hclge_reset_tqp(handle, i);
+
+	hclge_config_mac_tnl_int(hdev, false);
 
 	/* Mac disable */
 	hclge_cfg_mac_mode(hdev, false);

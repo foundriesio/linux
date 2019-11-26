@@ -41,8 +41,18 @@
 
 /* Multi-queue arrangement for FCP EQ/CQ/WQ tuples */
 #define LPFC_HBA_HDWQ_MIN	0
-#define LPFC_HBA_HDWQ_MAX	128
-#define LPFC_HBA_HDWQ_DEF	0
+#define LPFC_HBA_HDWQ_MAX	256
+#define LPFC_HBA_HDWQ_DEF	LPFC_HBA_HDWQ_MIN
+
+/* irq_chann range, values */
+#define LPFC_IRQ_CHANN_MIN	0
+#define LPFC_IRQ_CHANN_MAX	256
+#define LPFC_IRQ_CHANN_DEF	LPFC_IRQ_CHANN_MIN
+
+/* FCP MQ queue count limiting */
+#define LPFC_FCP_MQ_THRESHOLD_MIN	0
+#define LPFC_FCP_MQ_THRESHOLD_MAX	256
+#define LPFC_FCP_MQ_THRESHOLD_DEF	8
 
 /*
  * Provide the default FCF Record attributes used by the driver
@@ -128,6 +138,23 @@ struct lpfc_rqb {
 struct lpfc_queue {
 	struct list_head list;
 	struct list_head wq_list;
+
+	/*
+	 * If interrupts are in effect on _all_ the eq's the footprint
+	 * of polling code is zero (except mode). This memory is chec-
+	 * ked for every io to see if the io needs to be polled and
+	 * while completion to check if the eq's needs to be rearmed.
+	 * Keep in same cacheline as the queue ptr to avoid cpu fetch
+	 * stalls. Using 1B memory will leave us with 7B hole. Fill
+	 * it with other frequently used members.
+	 */
+	uint16_t last_cpu;	/* most recent cpu */
+	uint16_t hdwq;
+	uint8_t	 qe_valid;
+	uint8_t  mode;	/* interrupt or polling */
+#define LPFC_EQ_INTERRUPT	0
+#define LPFC_EQ_POLL		1
+
 	struct list_head wqfull_list;
 	enum lpfc_sli4_queue_type type;
 	enum lpfc_sli4_queue_subtype subtype;
@@ -235,10 +262,8 @@ struct lpfc_queue {
 	struct delayed_work	sched_spwork;
 
 	uint64_t isr_timestamp;
-	uint16_t hdwq;
-	uint16_t last_cpu;	/* most recent cpu */
-	uint8_t	qe_valid;
 	struct lpfc_queue *assoc_qp;
+	struct list_head _poll_list;
 	void **q_pgs;	/* array to index entries per page */
 };
 
@@ -447,10 +472,16 @@ struct lpfc_hba;
 #define LPFC_SLI4_HANDLER_NAME_SZ	16
 struct lpfc_hba_eq_hdl {
 	uint32_t idx;
+	uint16_t irq;
 	char handler_name[LPFC_SLI4_HANDLER_NAME_SZ];
 	struct lpfc_hba *phba;
 	struct lpfc_queue *eq;
+	struct cpumask aff_mask;
 };
+
+#define lpfc_get_eq_hdl(eqidx) (&phba->sli4_hba.hba_eq_hdl[eqidx])
+#define lpfc_get_aff_mask(eqidx) (&phba->sli4_hba.hba_eq_hdl[eqidx].aff_mask)
+#define lpfc_get_irq(eqidx) (phba->sli4_hba.hba_eq_hdl[eqidx].irq)
 
 /*BB Credit recovery value*/
 struct lpfc_bbscn_params {
@@ -541,11 +572,10 @@ struct lpfc_sli4_lnk_info {
 #define LPFC_SLI4_HANDLER_CNT		(LPFC_HBA_IO_CHAN_MAX+ \
 					 LPFC_FOF_IO_CHAN_NUM)
 
-/* Used for IRQ vector to CPU mapping */
+/* Used for tracking CPU mapping attributes */
 struct lpfc_vector_map_info {
 	uint16_t	phys_id;
 	uint16_t	core_id;
-	uint16_t	irq;
 	uint16_t	eq;
 	uint16_t	hdwq;
 	uint16_t	flag;
@@ -888,6 +918,7 @@ struct lpfc_sli4_hba {
 	struct lpfc_vector_map_info *cpu_map;
 	uint16_t num_possible_cpu;
 	uint16_t num_present_cpu;
+	struct cpumask numa_mask;
 	uint16_t curr_disp_cpu;
 	struct lpfc_eq_intr_info __percpu *eq_info;
 	uint32_t conf_trunk;
