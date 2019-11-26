@@ -101,7 +101,7 @@ static inline struct reset_control *__devm_reset_control_get(
  * If this function is called more then once for the same reset_control it will
  * return -EBUSY.
  *
- * See reset_control_get_shared for details on shared references to
+ * See reset_control_get_shared() for details on shared references to
  * reset-controls.
  *
  * Use of id names is optional.
