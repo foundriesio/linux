@@ -375,8 +375,6 @@ static void io_mm_release(struct mmu_notifier *mn, struct mm_struct *mm)
 
 		trace_io_mm_exit(io_mm->pasid, dev);
 
-		iopf_queue_flush_dev(dev, io_mm->pasid);
-
 		if (sva->ops && sva->ops->mm_exit) {
 			if (sva->ops->mm_exit(dev, sva, bond->drvdata))
 				dev_WARN(dev, "possible leak of PASID %u",
