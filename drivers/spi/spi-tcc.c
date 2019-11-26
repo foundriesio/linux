@@ -380,9 +380,10 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 	/* Set SPI master mode */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_SLV);
 
-	/* Set CTF Mode */
-	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
-
+	if(tccspi->pd->ctf){
+		/* Set CTF Mode */
+		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
+	}
 	/* Set Tx and Rx FIFO threshold for interrupt/DMA request */
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN, TCC_GPSB_INTEN_CFGRTH_MASK, TCC_GPSB_INTEN_CFGRTH(0));
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN, TCC_GPSB_INTEN_CFGWTH_MASK, TCC_GPSB_INTEN_CFGWTH(0));
@@ -1038,12 +1039,16 @@ static void tcc_spi_set_cs(struct spi_device *spi, bool enable)
 		enable = !enable;
 
 	if(!enable) {
-		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
+		if(tccspi->pd->ctf){
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
+		}
 		if(!tccspi->pd->contm_support) {
 			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 		}
 	} else {
-		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
+		if(tccspi->pd->ctf){
+			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
+		}
 		if(!tccspi->pd->contm_support) {
 			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 		}
@@ -1257,12 +1262,18 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 #else
 	status = of_property_read_u32(np, "gpsb-port", &pd->port);
 	if(status != 0){
-		dev_err(dev, 
+		dev_err(dev,
 			"No SPI master port info.\n");
 		return NULL;
 	}
 	dev_info(dev, "port %d\n", pd->port);
 #endif
+
+	pd->ctf = true;
+	if(of_property_read_bool(np, "ctf-mode-disable")){
+		pd->ctf = false;
+	}
+	dev_info(dev, "GPSB ctf mode: %d\n", pd->ctf);
 
 	/*
 	 * TCC GPSB CH 3-5 don't have dedicated dma
