@@ -1542,7 +1542,7 @@ CONFIG_DRM_TEGRA                                policy<{'armhf-generic': 'm'}>
 CONFIG_DRM_TEGRA_DEBUG                          policy<{'armhf-generic': 'n'}>
 CONFIG_DRM_TEGRA_STAGING                        policy<{'armhf-generic': 'y'}>
 CONFIG_DRM_STI                                  policy<{'armhf': 'n'}>
-CONFIG_DRM_V3D                                  policy<{'arm64': 'm', 'armhf': 'm'}>note<LP:1850876>
+CONFIG_DRM_V3D                                  policy<{'arm64': 'n', 'armhf': 'n'}>note<LP:1853789>
 CONFIG_DRM_VC4                                  policy<{'arm64': 'm'}>
 CONFIG_DRM_ETNAVIV                              policy<{'armhf-generic': 'm'}>
 CONFIG_DRM_ETNAVIV_REGISTER_LOGGING             policy<{'armhf-generic': 'n'}>
