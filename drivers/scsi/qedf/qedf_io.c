@@ -1900,7 +1900,6 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 		goto out;
 	}
 
-	qedf = fcport->qedf;
 	rdata = fcport->rdata;
 
 	if (!rdata || !kref_get_unless_zero(&rdata->kref)) {
@@ -1910,41 +1909,42 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 	}
 
 	r_a_tov = rdata->r_a_tov;
+	qedf = fcport->qedf;
 	lport = qedf->lport;
 
 	if (lport->state != LPORT_ST_READY || !(lport->link_up)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "link is not ready\n");
 		rc = 1;
-		goto drop_rdata_kref;
+		goto out;
 	}
 
 	if (atomic_read(&qedf->link_down_tmo_valid) > 0) {
 		QEDF_ERR(&(qedf->dbg_ctx), "link_down_tmo active.\n");
 		rc = 1;
-		goto drop_rdata_kref;
+		goto out;
 	}
 
 	/* Ensure room on SQ */
 	if (!atomic_read(&fcport->free_sqes)) {
 		QEDF_ERR(&(qedf->dbg_ctx), "No SQ entries available\n");
 		rc = 1;
-		goto drop_rdata_kref;
+		goto out;
 	}
 
 	if (test_bit(QEDF_RPORT_UPLOADING_CONNECTION, &fcport->flags)) {
 		QEDF_ERR(&qedf->dbg_ctx, "fcport is uploading.\n");
 		rc = 1;
-		goto drop_rdata_kref;
+		goto out;
 	}
 
 	if (!test_bit(QEDF_CMD_OUTSTANDING, &io_req->flags) ||
 	    test_bit(QEDF_CMD_IN_CLEANUP, &io_req->flags) ||
 	    test_bit(QEDF_CMD_IN_ABORT, &io_req->flags)) {
 		QEDF_ERR(&qedf->dbg_ctx,
-			 "io_req xid=0x%x sc_cmd=%p already in cleanup or abort processing or already completed.\n",
-			 io_req->xid, io_req->sc_cmd);
+				"io_req xid=0x%x sc_cmd=%p already in cleanup or abort processing or already completed.\n",
+				io_req->xid, io_req->sc_cmd);
 		rc = 1;
-		goto drop_rdata_kref;
+		goto out;
 	}
 
 	kref_get(&io_req->refcount);
@@ -1977,8 +1977,6 @@ int qedf_initiate_abts(struct qedf_ioreq *io_req, bool return_scsi_cmd_on_abts)
 
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 
-drop_rdata_kref:
-	kref_put(&rdata->kref, fc_rport_destroy);
 out:
 	return rc;
 }
@@ -2030,7 +2028,7 @@ void qedf_process_abts_compl(struct qedf_ctx *qedf, struct fcoe_cqe *cqe,
 		QEDF_INFO(&(qedf->dbg_ctx), QEDF_LOG_SCSI_TM,
 		    "ABTS response - ACC Send RRQ after R_A_TOV\n");
 		io_req->event = QEDF_IOREQ_EV_ABORT_SUCCESS;
-		rc = kref_get_unless_zero(&io_req->refcount);	/* ID: 003 */
+		rc = kref_get_unless_zero(&io_req->refcount);
 		if (!rc) {
 			QEDF_INFO(&qedf->dbg_ctx, QEDF_LOG_SCSI_TM,
 				  "kref is already zero so ABTS was already completed or flushed xid=0x%x.\n",

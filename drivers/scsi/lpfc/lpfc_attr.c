@@ -176,7 +176,6 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 	int i;
 	int len = 0;
 	char tmp[LPFC_MAX_NVME_INFO_TMP_LEN] = {0};
-	unsigned long iflags = 0;
 
 	if (!(vport->cfg_enable_fc4_type & LPFC_ENABLE_NVME)) {
 		len = scnprintf(buf, PAGE_SIZE, "NVME Disabled\n");
@@ -347,7 +346,6 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 	if (strlcat(buf, "\nNVME Initiator Enabled\n", PAGE_SIZE) >= PAGE_SIZE)
 		goto buffer_done;
 
-	rcu_read_lock();
 	scnprintf(tmp, sizeof(tmp),
 		  "XRI Dist lpfc%d Total %d IO %d ELS %d\n",
 		  phba->brd_no,
@@ -355,7 +353,7 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 		  phba->sli4_hba.io_xri_max,
 		  lpfc_sli4_get_els_iocb_cnt(phba));
 	if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-		goto rcu_unlock_buf_done;
+		goto buffer_done;
 
 	/* Port state is only one of two values for now. */
 	if (localport->port_id)
@@ -371,15 +369,17 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 		  wwn_to_u64(vport->fc_nodename.u.wwn),
 		  localport->port_id, statep);
 	if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-		goto rcu_unlock_buf_done;
+		goto buffer_done;
+
+	spin_lock_irq(shost->host_lock);
 
 	list_for_each_entry(ndlp, &vport->fc_nodes, nlp_listp) {
 		nrport = NULL;
-		spin_lock_irqsave(&vport->phba->hbalock, iflags);
+		spin_lock(&vport->phba->hbalock);
 		rport = lpfc_ndlp_get_nrport(ndlp);
 		if (rport)
 			nrport = rport->remoteport;
-		spin_unlock_irqrestore(&vport->phba->hbalock, iflags);
+		spin_unlock(&vport->phba->hbalock);
 		if (!nrport)
 			continue;
 
@@ -398,39 +398,39 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 
 		/* Tab in to show lport ownership. */
 		if (strlcat(buf, "NVME RPORT       ", PAGE_SIZE) >= PAGE_SIZE)
-			goto rcu_unlock_buf_done;
+			goto unlock_buf_done;
 		if (phba->brd_no >= 10) {
 			if (strlcat(buf, " ", PAGE_SIZE) >= PAGE_SIZE)
-				goto rcu_unlock_buf_done;
+				goto unlock_buf_done;
 		}
 
 		scnprintf(tmp, sizeof(tmp), "WWPN x%llx ",
 			  nrport->port_name);
 		if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-			goto rcu_unlock_buf_done;
+			goto unlock_buf_done;
 
 		scnprintf(tmp, sizeof(tmp), "WWNN x%llx ",
 			  nrport->node_name);
 		if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-			goto rcu_unlock_buf_done;
+			goto unlock_buf_done;
 
 		scnprintf(tmp, sizeof(tmp), "DID x%06x ",
 			  nrport->port_id);
 		if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-			goto rcu_unlock_buf_done;
+			goto unlock_buf_done;
 
 		/* An NVME rport can have multiple roles. */
 		if (nrport->port_role & FC_PORT_ROLE_NVME_INITIATOR) {
 			if (strlcat(buf, "INITIATOR ", PAGE_SIZE) >= PAGE_SIZE)
-				goto rcu_unlock_buf_done;
+				goto unlock_buf_done;
 		}
 		if (nrport->port_role & FC_PORT_ROLE_NVME_TARGET) {
 			if (strlcat(buf, "TARGET ", PAGE_SIZE) >= PAGE_SIZE)
-				goto rcu_unlock_buf_done;
+				goto unlock_buf_done;
 		}
 		if (nrport->port_role & FC_PORT_ROLE_NVME_DISCOVERY) {
 			if (strlcat(buf, "DISCSRVC ", PAGE_SIZE) >= PAGE_SIZE)
-				goto rcu_unlock_buf_done;
+				goto unlock_buf_done;
 		}
 		if (nrport->port_role & ~(FC_PORT_ROLE_NVME_INITIATOR |
 					  FC_PORT_ROLE_NVME_TARGET |
@@ -438,14 +438,14 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 			scnprintf(tmp, sizeof(tmp), "UNKNOWN ROLE x%x",
 				  nrport->port_role);
 			if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-				goto rcu_unlock_buf_done;
+				goto unlock_buf_done;
 		}
 
 		scnprintf(tmp, sizeof(tmp), "%s\n", statep);
 		if (strlcat(buf, tmp, PAGE_SIZE) >= PAGE_SIZE)
-			goto rcu_unlock_buf_done;
+			goto unlock_buf_done;
 	}
-	rcu_read_unlock();
+	spin_unlock_irq(shost->host_lock);
 
 	if (!lport)
 		goto buffer_done;
@@ -505,11 +505,11 @@ lpfc_nvme_info_show(struct device *dev, struct device_attribute *attr,
 		  atomic_read(&lport->cmpl_fcp_err));
 	strlcat(buf, tmp, PAGE_SIZE);
 
-	/* RCU is already unlocked. */
+	/* host_lock is already unlocked. */
 	goto buffer_done;
 
- rcu_unlock_buf_done:
-	rcu_read_unlock();
+ unlock_buf_done:
+	spin_unlock_irq(shost->host_lock);
 
  buffer_done:
 	len = strnlen(buf, PAGE_SIZE);
@@ -1644,7 +1644,7 @@ lpfc_set_trunking(struct lpfc_hba *phba, char *buff_out)
 {
 	LPFC_MBOXQ_t *mbox = NULL;
 	unsigned long val = 0;
-	char *pval = 0;
+	char *pval = NULL;
 	int rc = 0;
 
 	if (!strncmp("enable", buff_out,
@@ -5287,7 +5287,7 @@ lpfc_fcp_cpu_map_show(struct device *dev, struct device_attribute *attr,
 			len += scnprintf(buf + len, PAGE_SIZE - len,
 					"CPU %02d not present\n",
 					phba->sli4_hba.curr_disp_cpu);
-		else if (cpup->irq == LPFC_VECTOR_MAP_EMPTY) {
+		else if (cpup->eq == LPFC_VECTOR_MAP_EMPTY) {
 			if (cpup->hdwq == LPFC_VECTOR_MAP_EMPTY)
 				len += scnprintf(
 					buf + len, PAGE_SIZE - len,
@@ -5300,10 +5300,10 @@ lpfc_fcp_cpu_map_show(struct device *dev, struct device_attribute *attr,
 			else
 				len += scnprintf(
 					buf + len, PAGE_SIZE - len,
-					"CPU %02d EQ %04d hdwq %04d "
+					"CPU %02d EQ None hdwq %04d "
 					"physid %d coreid %d ht %d ua %d\n",
 					phba->sli4_hba.curr_disp_cpu,
-					cpup->eq, cpup->hdwq, cpup->phys_id,
+					cpup->hdwq, cpup->phys_id,
 					cpup->core_id,
 					(cpup->flag & LPFC_CPU_MAP_HYPER),
 					(cpup->flag & LPFC_CPU_MAP_UNASSIGN));
@@ -5318,7 +5318,7 @@ lpfc_fcp_cpu_map_show(struct device *dev, struct device_attribute *attr,
 					cpup->core_id,
 					(cpup->flag & LPFC_CPU_MAP_HYPER),
 					(cpup->flag & LPFC_CPU_MAP_UNASSIGN),
-					cpup->irq);
+					lpfc_get_irq(cpup->eq));
 			else
 				len += scnprintf(
 					buf + len, PAGE_SIZE - len,
@@ -5329,7 +5329,7 @@ lpfc_fcp_cpu_map_show(struct device *dev, struct device_attribute *attr,
 					cpup->core_id,
 					(cpup->flag & LPFC_CPU_MAP_HYPER),
 					(cpup->flag & LPFC_CPU_MAP_UNASSIGN),
-					cpup->irq);
+					lpfc_get_irq(cpup->eq));
 		}
 
 		phba->sli4_hba.curr_disp_cpu++;
@@ -5699,6 +5699,19 @@ LPFC_ATTR_RW(nvme_embed_cmd, 1, 0, 2,
 	     "Embed NVME Command in WQE");
 
 /*
+ * lpfc_fcp_mq_threshold: Set the maximum number of Hardware Queues
+ * the driver will advertise it supports to the SCSI layer.
+ *
+ *      0    = Set nr_hw_queues by the number of CPUs or HW queues.
+ *      1,256 = Manually specify nr_hw_queue value to be advertised,
+ *
+ * Value range is [0,256]. Default value is 8.
+ */
+LPFC_ATTR_R(fcp_mq_threshold, LPFC_FCP_MQ_THRESHOLD_DEF,
+	    LPFC_FCP_MQ_THRESHOLD_MIN, LPFC_FCP_MQ_THRESHOLD_MAX,
+	    "Set the number of SCSI Queues advertised");
+
+/*
  * lpfc_hdw_queue: Set the number of Hardware Queues the driver
  * will advertise it supports to the NVME and  SCSI layers. This also
  * will map to the number of CQ/WQ pairs the driver will create.
@@ -5708,14 +5721,28 @@ LPFC_ATTR_RW(nvme_embed_cmd, 1, 0, 2,
  * A hardware IO queue maps (qidx) to a specific driver CQ/WQ.
  *
  *      0    = Configure the number of hdw queues to the number of active CPUs.
- *      1,128 = Manually specify how many hdw queues to use.
+ *      1,256 = Manually specify how many hdw queues to use.
  *
- * Value range is [0,128]. Default value is 0.
+ * Value range is [0,256]. Default value is 0.
  */
 LPFC_ATTR_R(hdw_queue,
 	    LPFC_HBA_HDWQ_DEF,
 	    LPFC_HBA_HDWQ_MIN, LPFC_HBA_HDWQ_MAX,
 	    "Set the number of I/O Hardware Queues");
+
+static inline void
+lpfc_assign_default_irq_numa(struct lpfc_hba *phba)
+{
+#if IS_ENABLED(CONFIG_X86)
+	/* If AMD architecture, then default is LPFC_IRQ_CHANN_NUMA */
+	if (boot_cpu_data.x86_vendor == X86_VENDOR_AMD)
+		phba->cfg_irq_numa = 1;
+	else
+		phba->cfg_irq_numa = 0;
+#else
+	phba->cfg_irq_numa = 0;
+#endif
+}
 
 /*
  * lpfc_irq_chann: Set the number of IRQ vectors that are available
@@ -5723,15 +5750,101 @@ LPFC_ATTR_R(hdw_queue,
  * of EQ / MSI-X vectors the driver will create. This should never be
  * more than the number of Hardware Queues
  *
- *      0     = Configure number of IRQ Channels to the number of active CPUs.
- *      1,128 = Manually specify how many IRQ Channels to use.
+ *	0		= Configure number of IRQ Channels to:
+ *			  if AMD architecture, number of CPUs on HBA's NUMA node
+ *			  otherwise, number of active CPUs.
+ *	[1,256]		= Manually specify how many IRQ Channels to use.
  *
- * Value range is [0,128]. Default value is 0.
+ * Value range is [0,256]. Default value is [0].
  */
-LPFC_ATTR_R(irq_chann,
-	    LPFC_HBA_HDWQ_DEF,
-	    LPFC_HBA_HDWQ_MIN, LPFC_HBA_HDWQ_MAX,
-	    "Set the number of I/O IRQ Channels");
+static uint lpfc_irq_chann = LPFC_IRQ_CHANN_DEF;
+module_param(lpfc_irq_chann, uint, 0444);
+MODULE_PARM_DESC(lpfc_irq_chann, "Set number of interrupt vectors to allocate");
+
+/* lpfc_irq_chann_init - Set the hba irq_chann initial value
+ * @phba: lpfc_hba pointer.
+ * @val: contains the initial value
+ *
+ * Description:
+ * Validates the initial value is within range and assigns it to the
+ * adapter. If not in range, an error message is posted and the
+ * default value is assigned.
+ *
+ * Returns:
+ * zero if value is in range and is set
+ * -EINVAL if value was out of range
+ **/
+static int
+lpfc_irq_chann_init(struct lpfc_hba *phba, uint32_t val)
+{
+	const struct cpumask *numa_mask;
+
+	if (phba->cfg_use_msi != 2) {
+		lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
+				"8532 use_msi = %u ignoring cfg_irq_numa\n",
+				phba->cfg_use_msi);
+		phba->cfg_irq_numa = 0;
+		phba->cfg_irq_chann = LPFC_IRQ_CHANN_MIN;
+		return 0;
+	}
+
+	/* Check if default setting was passed */
+	if (val == LPFC_IRQ_CHANN_DEF)
+		lpfc_assign_default_irq_numa(phba);
+
+	if (phba->cfg_irq_numa) {
+		numa_mask = &phba->sli4_hba.numa_mask;
+
+		if (cpumask_empty(numa_mask)) {
+			lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
+					"8533 Could not identify NUMA node, "
+					"ignoring cfg_irq_numa\n");
+			phba->cfg_irq_numa = 0;
+			phba->cfg_irq_chann = LPFC_IRQ_CHANN_MIN;
+		} else {
+			phba->cfg_irq_chann = cpumask_weight(numa_mask);
+			lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
+					"8543 lpfc_irq_chann set to %u "
+					"(numa)\n", phba->cfg_irq_chann);
+		}
+	} else {
+		if (val > LPFC_IRQ_CHANN_MAX) {
+			lpfc_printf_log(phba, KERN_INFO, LOG_INIT,
+					"8545 lpfc_irq_chann attribute cannot "
+					"be set to %u, allowed range is "
+					"[%u,%u]\n",
+					val,
+					LPFC_IRQ_CHANN_MIN,
+					LPFC_IRQ_CHANN_MAX);
+			phba->cfg_irq_chann = LPFC_IRQ_CHANN_MIN;
+			return -EINVAL;
+		}
+		phba->cfg_irq_chann = val;
+	}
+
+	return 0;
+}
+
+/**
+ * lpfc_irq_chann_show - Display value of irq_chann
+ * @dev: class converted to a Scsi_host structure.
+ * @attr: device attribute, not used.
+ * @buf: on return contains a string with the list sizes
+ *
+ * Returns: size of formatted string.
+ **/
+static ssize_t
+lpfc_irq_chann_show(struct device *dev, struct device_attribute *attr,
+		    char *buf)
+{
+	struct Scsi_Host *shost = class_to_shost(dev);
+	struct lpfc_vport *vport = (struct lpfc_vport *)shost->hostdata;
+	struct lpfc_hba *phba = vport->phba;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", phba->cfg_irq_chann);
+}
+
+static DEVICE_ATTR_RO(lpfc_irq_chann);
 
 /*
 # lpfc_enable_hba_reset: Allow or prevent HBA resets to the hardware.
@@ -5927,7 +6040,7 @@ lpfc_ras_fwlog_buffsize_set(struct lpfc_hba  *phba, uint val)
 	if (phba->cfg_ras_fwlog_buffsize == val)
 		return 0;
 
-	if (phba->cfg_ras_fwlog_func == PCI_FUNC(phba->pcidev->devfn))
+	if (phba->cfg_ras_fwlog_func != PCI_FUNC(phba->pcidev->devfn))
 		return -EINVAL;
 
 	spin_lock_irq(&phba->hbalock);
@@ -6065,6 +6178,7 @@ struct device_attribute *lpfc_hba_attrs[] = {
 	&dev_attr_lpfc_cq_poll_threshold,
 	&dev_attr_lpfc_cq_max_proc_limit,
 	&dev_attr_lpfc_fcp_cpu_map,
+	&dev_attr_lpfc_fcp_mq_threshold,
 	&dev_attr_lpfc_hdw_queue,
 	&dev_attr_lpfc_irq_chann,
 	&dev_attr_lpfc_suppress_rsp,
@@ -7140,6 +7254,7 @@ lpfc_get_hba_function_mode(struct lpfc_hba *phba)
 void
 lpfc_get_cfgparam(struct lpfc_hba *phba)
 {
+	lpfc_hba_log_verbose_init(phba, lpfc_log_verbose);
 	lpfc_fcp_io_sched_init(phba, lpfc_fcp_io_sched);
 	lpfc_ns_query_init(phba, lpfc_ns_query);
 	lpfc_fcp2_no_tgt_reset_init(phba, lpfc_fcp2_no_tgt_reset);
@@ -7210,6 +7325,7 @@ lpfc_get_cfgparam(struct lpfc_hba *phba)
 	/* Initialize first burst. Target vs Initiator are different. */
 	lpfc_nvme_enable_fb_init(phba, lpfc_nvme_enable_fb);
 	lpfc_nvmet_fb_size_init(phba, lpfc_nvmet_fb_size);
+	lpfc_fcp_mq_threshold_init(phba, lpfc_fcp_mq_threshold);
 	lpfc_hdw_queue_init(phba, lpfc_hdw_queue);
 	lpfc_irq_chann_init(phba, lpfc_irq_chann);
 	lpfc_enable_bbcr_init(phba, lpfc_enable_bbcr);
@@ -7244,7 +7360,6 @@ lpfc_get_cfgparam(struct lpfc_hba *phba)
 	phba->cfg_soft_wwpn = 0L;
 	lpfc_sg_seg_cnt_init(phba, lpfc_sg_seg_cnt);
 	lpfc_hba_queue_depth_init(phba, lpfc_hba_queue_depth);
-	lpfc_hba_log_verbose_init(phba, lpfc_log_verbose);
 	lpfc_aer_support_init(phba, lpfc_aer_support);
 	lpfc_sriov_nr_virtfn_init(phba, lpfc_sriov_nr_virtfn);
 	lpfc_request_firmware_upgrade_init(phba, lpfc_req_fw_upgrade);

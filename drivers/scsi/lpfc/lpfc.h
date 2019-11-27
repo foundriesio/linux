@@ -832,8 +832,10 @@ struct lpfc_hba {
 	uint32_t cfg_cq_poll_threshold;
 	uint32_t cfg_cq_max_proc_limit;
 	uint32_t cfg_fcp_cpu_map;
+	uint32_t cfg_fcp_mq_threshold;
 	uint32_t cfg_hdw_queue;
 	uint32_t cfg_irq_chann;
+	uint32_t cfg_irq_numa;
 	uint32_t cfg_suppress_rsp;
 	uint32_t cfg_nvme_oas;
 	uint32_t cfg_nvme_embed_cmd;
@@ -1212,6 +1214,13 @@ struct lpfc_hba {
 	uint64_t ktime_seg10_min;
 	uint64_t ktime_seg10_max;
 #endif
+
+	struct hlist_node cpuhp;	/* used for cpuhp per hba callback */
+	struct timer_list cpuhp_poll_timer;
+	struct list_head poll_list;	/* slowpath eq polling list */
+#define LPFC_POLL_HB	1		/* slowpath heartbeat */
+#define LPFC_POLL_FASTPATH	0	/* called from fastpath */
+#define LPFC_POLL_SLOWPATH	1	/* called from slowpath */
 };
 
 static inline struct Scsi_Host *
@@ -1301,6 +1310,26 @@ lpfc_phba_elsring(struct lpfc_hba *phba)
 	return &phba->sli.sli3_ring[LPFC_ELS_RING];
 }
 
+/**
+ * lpfc_next_online_numa_cpu - Finds next online CPU on NUMA node
+ * @numa_mask: Pointer to phba's numa_mask member.
+ * @start: starting cpu index
+ *
+ * Note: If no valid cpu found, then nr_cpu_ids is returned.
+ *
+ **/
+static inline unsigned int
+lpfc_next_online_numa_cpu(const struct cpumask *numa_mask, unsigned int start)
+{
+	unsigned int cpu_it;
+
+	for_each_cpu_wrap(cpu_it, numa_mask, start) {
+		if (cpu_online(cpu_it))
+			break;
+	}
+
+	return cpu_it;
+}
 /**
  * lpfc_sli4_mod_hba_eq_delay - update EQ delay
  * @phba: Pointer to HBA context object.
