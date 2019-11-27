@@ -120,18 +120,18 @@
 	status = "okay";
 };
 
-/* Apalis CAN2 */
-&flexcan2 {
-	/* define the following property to disable CAN-FD mode */
-	/* disable-fd-mode; */
-/* Todo:	xceiver-supply = <&reg_can_stby>; */
-};
-
 /* Apalis CAN1 */
 &flexcan1 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
-/* Todo:	xceiver-supply = <&reg_can_stby>; */
+	status = "okay";
+};
+
+/* Apalis CAN2 */
+&flexcan2 {
+	/* define the following property to disable CAN-FD mode */
+	/* disable-fd-mode; */
+	status = "okay";
 };
 
 &gpio1 {
