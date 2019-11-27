@@ -2518,7 +2518,7 @@ static int intel_pin2port(void *audio_ptr, int pin_nid)
 		base_nid = intel_base_nid(codec);
 		if (WARN_ON(pin_nid < base_nid || pin_nid >= base_nid + 3))
 			return -1;
-		return pin_nid - base_nid + 1; /* intel port is 1-based */
+		return pin_nid - base_nid + 1;
 	}
 
 	/*
@@ -2530,7 +2530,6 @@ static int intel_pin2port(void *audio_ptr, int pin_nid)
 			return i;
 	}
 
-	/* return -1 if pin number exceeds our expectation */
 	codec_info(codec, "Can't find the HDMI/DP port for pin %d\n", pin_nid);
 	return -1;
 }
@@ -2543,7 +2542,6 @@ static int intel_port2pin(struct hda_codec *codec, int port)
 		/* we assume only from port-B to port-D */
 		if (port < 1 || port > 3)
 			return 0;
-		/* intel port is 1-based */
 		return port + intel_base_nid(codec) - 1;
 	}
 
