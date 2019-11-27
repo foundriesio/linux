@@ -792,6 +792,9 @@ static int vim2m_start_streaming(struct vb2_queue *q, unsigned count)
 	struct vim2m_ctx *ctx = vb2_get_drv_priv(q);
 	struct vim2m_q_data *q_data = get_q_data(ctx, q->type);
 
+	if (V4L2_TYPE_IS_OUTPUT(q->type))
+		ctx->aborting = 0;
+
 	q_data->sequence = 0;
 	return 0;
 }
