@@ -323,7 +323,7 @@
 		    <&pinctrl_gpio8>, <&pinctrl_qspi0a_gpios>,
 		    <&pinctrl_sata1_act>, <&pinctrl_reset_moci>,
 		    <&pinctrl_mmc1_gpios>, <&pinctrl_dap1_gpios>,
-		    <&pinctrl_parallel_csi>, <&pinctrl_wifi_sclk>;
+		    <&pinctrl_wifi_sclk>;
 
 	apalis-imx8qxp {
 		/* Apalis AN1_ADC */
