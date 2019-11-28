@@ -57,10 +57,10 @@ void __dump_page(struct page *page, const char *reason)
 		pr_cont(" compound_mapcount: %d", compound_mapcount(page));
 	pr_cont("\n");
 	BUILD_BUG_ON(ARRAY_SIZE(pageflag_names) != __NR_PAGEFLAGS + 1);
-	if (PageAnon(page))
-		pr_warn("anon ");
-	else if (PageKsm(page))
+	if (PageKsm(page))
 		pr_warn("ksm ");
+	else if (PageAnon(page))
+		pr_warn("anon ");
 	else if (mapping) {
 		pr_warn("%ps ", mapping->a_ops);
 		if (mapping->host && mapping->host->i_dentry.first) {
