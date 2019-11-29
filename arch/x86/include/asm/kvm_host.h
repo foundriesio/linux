@@ -511,7 +511,6 @@ struct kvm_vcpu_arch {
 	u64 ia32_misc_enable_msr;
 	u64 smbase;
 	bool tpr_access_reporting;
-	bool xsaves_enabled;
 	u64 ia32_xss;
 
 	/*
@@ -719,6 +718,7 @@ struct kvm_vcpu_arch {
 	bool l1tf_flush_l1d;
 
 	u64 arch_capabilities;
+	bool xsaves_enabled;
 #endif
 };
 
