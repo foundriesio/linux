@@ -720,6 +720,7 @@ struct kvm_vcpu_arch {
 
 #ifndef __GENKSYMS__
 	u64 arch_capabilities;
+	bool xsaves_enabled;
 #endif
 };
 
