@@ -718,6 +718,7 @@ struct kvm_vcpu_arch {
 	bool l1tf_flush_l1d;
 
 	u64 arch_capabilities;
+	bool xsaves_enabled;
 #endif
 };
 
