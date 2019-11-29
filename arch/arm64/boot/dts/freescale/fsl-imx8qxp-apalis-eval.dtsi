@@ -369,14 +369,19 @@
 	#size-cells = <0>;
 	status = "disabled";
 
-	port@1 {
-		reg = <1>;
-
-		parallel_csi_ep: endpoint {
-			data-lanes = <1 2>;
-			remote-endpoint = <&adv7280_ep>;
-		};
-	};
+	/**
+	 * Todo: The ADV7280 driver does not yet support this remote endpoint /
+	 * port linking between the chain.
+	 *
+	 * port@1 {
+	 * 	reg = <1>;
+	 *
+	 *	parallel_csi_ep: endpoint {
+	 *		data-lanes = <1 2>;
+	 * 		remote-endpoint = <&parallel_csi_ep>;
+	 * 	};
+	 * };
+	 */
 };
 
 /* On-module GPIO Expander */
