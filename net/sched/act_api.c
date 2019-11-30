@@ -815,11 +815,11 @@ static bool tcf_action_valid(int action)
 }
 
 static const struct nla_policy tcf_action_policy[TCA_ACT_MAX + 1] = {
-       [TCA_ACT_KIND]          = { .type = NLA_STRING },
-       [TCA_ACT_INDEX]         = { .type = NLA_U32 },
-       [TCA_ACT_COOKIE]        = { .type = NLA_BINARY,
-                                   .len = TC_COOKIE_MAX_SIZE },
-       [TCA_ACT_OPTIONS]       = { .type = NLA_NESTED },
+	[TCA_ACT_KIND]		= { .type = NLA_STRING },
+	[TCA_ACT_INDEX]		= { .type = NLA_U32 },
+	[TCA_ACT_COOKIE]	= { .type = NLA_BINARY,
+				    .len = TC_COOKIE_MAX_SIZE },
+	[TCA_ACT_OPTIONS]	= { .type = NLA_NESTED },
 };
 
 struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
@@ -837,8 +837,7 @@ struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 	int err;
 
 	if (name == NULL) {
-		err = nla_parse_nested(tb, TCA_ACT_MAX, nla,
-				tcf_action_policy, extack);
+		err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 		if (err < 0)
 			goto err_out;
 		err = -EINVAL;
@@ -1088,8 +1087,7 @@ static struct tc_action *tcf_action_get_1(struct net *net, struct nlattr *nla,
 	int index;
 	int err;
 
-	err = nla_parse_nested(tb, TCA_ACT_MAX, nla,
-			tcf_action_policy, extack);
+	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 	if (err < 0)
 		goto err_out;
 
@@ -1143,8 +1141,7 @@ static int tca_action_flush(struct net *net, struct nlattr *nla,
 
 	b = skb_tail_pointer(skb);
 
-	err = nla_parse_nested(tb, TCA_ACT_MAX, nla,
-			tcf_action_policy, extack);
+	err = nla_parse_nested(tb, TCA_ACT_MAX, nla, tcf_action_policy, extack);
 	if (err < 0)
 		goto err_out;
 
