@@ -87,7 +87,8 @@
 	};
 
 	reg_eth_phy: regulator-eth-phy {
-		compatible = "regulator-fixed";
+		compatible = "regulator-fixed-clock";
+		regulator-boot-on;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		regulator-name = "eth_phy";
