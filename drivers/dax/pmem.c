@@ -70,6 +70,7 @@ static int dax_pmem_probe(struct device *dev)
 	struct nd_namespace_common *ndns;
 	struct nd_dax *nd_dax = to_nd_dax(dev);
 	struct nd_pfn *nd_pfn = &nd_dax->nd_pfn;
+	struct nd_region *nd_region = to_nd_region(dev->parent);
 
 	ndns = nvdimm_namespace_common_probe(dev);
 	if (IS_ERR(ndns))
@@ -132,7 +133,7 @@ static int dax_pmem_probe(struct device *dev)
 	if (rc != 2)
 		return -EINVAL;
 
-	dax_region = alloc_dax_region(dev, region_id, &res,
+	dax_region = alloc_dax_region(dev, region_id, &res, nd_region->target_node,
 			le32_to_cpu(pfn_sb->align), addr, PFN_DEV|PFN_MAP);
 	if (!dax_region)
 		return -ENOMEM;

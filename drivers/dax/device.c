@@ -100,7 +100,7 @@ static void dax_region_unregister(void *region)
 }
 
 struct dax_region *alloc_dax_region(struct device *parent, int region_id,
-		struct resource *res, unsigned int align, void *addr,
+		struct resource *res, int target_node, unsigned int align, void *addr,
 		unsigned long pfn_flags)
 {
 	struct dax_region *dax_region;

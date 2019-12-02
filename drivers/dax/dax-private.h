@@ -24,6 +24,7 @@
  * @dev: parent device backing this region
  * @align: allocation and mapping alignment for child dax devices
  * @res: physical address range of the region
+ * @target_node: effective numa node if this memory range is onlined
  * @pfn_flags: identify whether the pfns are paged back or not
  */
 struct dax_region {
@@ -34,6 +35,7 @@ struct dax_region {
 	struct device *dev;
 	unsigned int align;
 	struct resource res;
+	int target_node;
 	unsigned long pfn_flags;
 };
 
@@ -41,6 +43,7 @@ struct dax_region {
  * struct dev_dax - instance data for a subdivision of a dax region
  * @region - parent region
  * @dax_dev - core dax functionality
+ * @target_node: effective numa node if dev_dax memory range is onlined
  * @dev - device core
  * @id - child id in the region
  * @num_resources - number of physical address extents in this device
@@ -49,6 +52,7 @@ struct dax_region {
 struct dev_dax {
 	struct dax_region *region;
 	struct dax_device *dax_dev;
+	int target_node;
 	struct device dev;
 	int id;
 	int num_resources;

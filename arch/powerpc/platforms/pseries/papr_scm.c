@@ -342,6 +342,7 @@ static int papr_scm_nvdimm_init(struct papr_scm_priv *p)
 	target_nid = dev_to_node(&p->pdev->dev);
 	online_nid = papr_scm_node(target_nid);
 	ndr_desc.numa_node = online_nid;
+	ndr_desc.target_node = ndr_desc.numa_node;
 	ndr_desc.res = &p->res;
 	ndr_desc.of_node = p->dn;
 	ndr_desc.provider_data = p;
