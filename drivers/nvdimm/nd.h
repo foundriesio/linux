@@ -157,13 +157,16 @@ struct nd_region {
 	u16 ndr_mappings;
 	u64 ndr_size;
 	u64 ndr_start;
-	int id, num_lanes, ro, numa_node, target_node;
+	int id, num_lanes, ro, numa_node;
 	void *provider_data;
 	struct kernfs_node *bb_state;
 	struct badblocks bb;
 	struct nd_interleave_set *nd_set;
 	struct nd_percpu_lane __percpu *lane;
 	struct nd_mapping mapping[0];
+#ifndef __GENKSYMS__
+	int target_node;
+#endif
 };
 
 struct nd_blk_region {

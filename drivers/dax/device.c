@@ -99,7 +99,7 @@ static void dax_region_unregister(void *region)
 	dax_region_put(dax_region);
 }
 
-struct dax_region *alloc_dax_region(struct device *parent, int region_id,
+struct dax_region *__alloc_dax_region(struct device *parent, int region_id,
 		struct resource *res, int target_node, unsigned int align, void *addr,
 		unsigned long pfn_flags)
 {
@@ -141,6 +141,15 @@ struct dax_region *alloc_dax_region(struct device *parent, int region_id,
 	if (devm_add_action_or_reset(parent, dax_region_unregister, dax_region))
 		return NULL;
 	return dax_region;
+}
+EXPORT_SYMBOL_GPL(__alloc_dax_region);
+
+struct dax_region *alloc_dax_region(struct device *parent, int region_id,
+		struct resource *res, unsigned int align, void *addr,
+		unsigned long pfn_flags)
+{
+	return __alloc_dax_region(parent, region_id, res, NUMA_NO_NODE,
+				  align, addr, pfn_flags);
 }
 EXPORT_SYMBOL_GPL(alloc_dax_region);
 

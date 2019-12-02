@@ -133,7 +133,7 @@ static int dax_pmem_probe(struct device *dev)
 	if (rc != 2)
 		return -EINVAL;
 
-	dax_region = alloc_dax_region(dev, region_id, &res, nd_region->target_node,
+	dax_region = __alloc_dax_region(dev, region_id, &res, nd_region->target_node,
 			le32_to_cpu(pfn_sb->align), addr, PFN_DEV|PFN_MAP);
 	if (!dax_region)
 		return -ENOMEM;
