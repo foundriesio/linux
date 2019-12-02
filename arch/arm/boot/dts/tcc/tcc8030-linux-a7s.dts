@@ -877,14 +877,6 @@
 		status = "okay";
 	};
 
-	/* switch ipc for A7S */
-	switch_reverse_ipc: switch_reverse_ipc {
-		compatible = "telechips,switch_reverse_ipc";
-		device-name = "switch_reverse_ipc";
-		mbox-names ="switch_reverse_ipc";
-		mboxes = <&mbox1 TCC_MBOX1_CH_SWITCH>;
-	};
-
 	gpio_keys_polled {
 		compatible = "gpio-keys-polled";
 		#address-cells = <1>;
