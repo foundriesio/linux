@@ -4605,6 +4605,9 @@ int stmmac_resume(struct device *dev)
 
 	netif_device_attach(ndev);
 
+	if (ndev->phydev)
+		phy_start(ndev->phydev);
+
 	mutex_lock(&priv->lock);
 
 	stmmac_reset_queues_param(priv);
@@ -4628,9 +4631,6 @@ int stmmac_resume(struct device *dev)
 			   __func__);
 		goto init_error;
 	}
-
-	if (ndev->phydev)
-		phy_start(ndev->phydev);
 
 	stmmac_hw_setup(ndev, false);
 	stmmac_init_tx_coalesce(priv);
