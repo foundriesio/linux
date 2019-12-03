@@ -1,0 +1,41 @@
+variables:
+# uncomment for the pipeline debug purpose
+# CI_DEBUG_TRACE: "true"
+  CI_IMAGE: gitlab.int.toradex.com:4567/philippe.schenker/linux-toradex/ci-kernel-builder:latest
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  GIT_STRATEGY: fetch
+
+stages:
+  - build-kernel
+
+build_kernel:
+  stage: build-kernel
+  image: $CI_IMAGE
+  script: |
+    echo "GCC used to build binaries is"
+    which ${CROSS_COMPILE}gcc
+    ${CROSS_COMPILE}gcc --version
+    echo -e "Arch is \e[36m$ARCH\e[39m"
+    echo $PWD
+    THREADS=$(grep processor /proc/cpuinfo -c)
+    echo "building with $THREADS parallel threads"
+    cd $CI_PROJECT_DIR
+    DEVICETREES=$(find arch/arm/boot/dts/ -regextype posix-extended -regex "^.*\/imx.*(apalis|colibri|verdin).*\.dts" | sed 's/arch\/arm\/boot\/dts\///' | sed 's/\.dts/\.dtb/')
+    make multi_v7_defconfig
+    echo -e "building: \n$DEVICETREES"
+    make $DEVICETREES
+    make -j $THREADS
+    make mrproper
+    source /select_64bit_toolchain.sh
+    echo "GCC used to build binaries is"
+    which ${CROSS_COMPILE}gcc
+    ${CROSS_COMPILE}gcc --version
+    echo -e "Arch is \e[36m$ARCH\e[39m"
+    DEVICETREES=$(find arch/arm64/boot/dts/ -regextype posix-extended -regex "^.*\/fsl.*(apalis|colibri|verdin).*\.dts" | sed 's/arch\/arm64\/boot\/dts\///' | sed 's/\.dts/\.dtb/')
+    make defconfig
+    echo -e "building: \n$DEVICETREES"
+    make $DEVICETREES
+    make -j $THREADS
+    make mrproper
