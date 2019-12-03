@@ -68,6 +68,10 @@ MODULE_AUTHOR("Eli Cohen <eli@mellanox.com>");
 MODULE_DESCRIPTION("Mellanox Connect-IB HCA IB driver");
 MODULE_LICENSE("Dual BSD/GPL");
 
+static int ipoib_enhanced = 1;
+module_param(ipoib_enhanced, int, 0444);
+MODULE_PARM_DESC(ipoib_enhanced, "Enable IPoIB enhanced for capable devices (default = 1) (0-1)");
+
 static char mlx5_version[] =
 	DRIVER_NAME ": Mellanox Connect-IB Infiniband driver v"
 	DRIVER_VERSION "\n";
@@ -705,6 +709,7 @@ static int mlx5_ib_query_device(struct ib_device *ibdev,
 		props->raw_packet_caps |= IB_RAW_PACKET_CAP_DELAY_DROP;
 
 	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads) &&
+		ipoib_enhanced &&
 	    MLX5_CAP_IPOIB_ENHANCED(mdev, csum_cap))
 		props->device_cap_flags |= IB_DEVICE_UD_IP_CSUM;
 
