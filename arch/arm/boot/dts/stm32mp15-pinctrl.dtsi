@@ -1307,7 +1307,6 @@
 	};
 };
 
-
 &pinctrl_z {
 	i2c2_pins_b2: i2c2-0 {
 		pins {
