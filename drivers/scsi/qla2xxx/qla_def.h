@@ -2411,6 +2411,7 @@ typedef struct fc_port {
 	unsigned int id_changed:1;
 	unsigned int scan_needed:1;
 	unsigned int n2n_flag:1;
+	unsigned int explicit_logout:1;
 
 #ifdef __GENKSYMS__
 	struct work_struct nvme_del_work;
@@ -4542,6 +4543,8 @@ typedef struct scsi_qla_host {
 	uint16_t	n2n_id;
 	struct list_head gpnid_list;
 	struct fab_scan scan;
+
+	unsigned int irq_offset;
 } scsi_qla_host_t;
 
 struct qla27xx_image_status {
