@@ -595,9 +595,13 @@ int nf_ct_frag6_gather(struct net *net, struct sk_buff *skb, u32 user)
 	hdr = ipv6_hdr(skb);
 	fhdr = (struct frag_hdr *)skb_transport_header(skb);
 
-	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU &&
-	    fhdr->frag_off & htons(IP6_MF))
+	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU / 2 &&
+	    fhdr->frag_off & htons(IP6_MF) &&
+	    fhdr->frag_off & htons(IP6_OFFSET) &&
+	    !net->ip6frag_strict_short) {
+		pr_debug("fragment too short\n");
 		return -EINVAL;
+	}
 
 	skb_orphan(skb);
 	fq = fq_find(net, fhdr->identification, user, &hdr->saddr, &hdr->daddr,
