@@ -709,7 +709,6 @@ static int mlx5_ib_query_device(struct ib_device *ibdev,
 		props->raw_packet_caps |= IB_RAW_PACKET_CAP_DELAY_DROP;
 
 	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads) &&
-		ipoib_enhanced &&
 	    MLX5_CAP_IPOIB_ENHANCED(mdev, csum_cap))
 		props->device_cap_flags |= IB_DEVICE_UD_IP_CSUM;
 
@@ -4031,7 +4030,8 @@ static void *mlx5_ib_add(struct mlx5_core_dev *mdev)
 	dev->ib_dev.get_port_immutable  = mlx5_port_immutable;
 	dev->ib_dev.get_dev_fw_str      = get_dev_fw_str;
 	dev->ib_dev.get_vector_affinity	= mlx5_ib_get_vector_affinity;
-	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads))
+	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads) &&
+		ipoib_enhanced)
 		dev->ib_dev.alloc_rdma_netdev	= mlx5_ib_alloc_rdma_netdev;
 
 	if (mlx5_core_is_pf(mdev)) {
