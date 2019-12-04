@@ -716,6 +716,7 @@
 	pinctrl-0 = <&usart3_pins_a>;
 	pinctrl-1 = <&usart3_sleep_pins_a>;
 	pinctrl-2 = <&usart3_idle_pins_a>;
+	st,hw-flow-ctrl;
 	status = "disabled";
 };
 
