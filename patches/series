@@ -49,9 +49,11 @@ printk-print-rate-limitted-message-as-info.patch
 printk-kmsg_dump-remove-mutex-usage.patch
 printk-devkmsg-read-Return-EPIPE-when-the-first-mess.patch
 printk-handle-iterating-while-buffer-changing.patch
+printk-hack-out-emergency-loglevel-usage.patch
 
 lib-smp_processor_id-Don-t-use-cpumask_equal.patch
 lib-ubsan-Don-t-seralize-UBSAN-report.patch
+x86-fpu-Don-t-cache-access-to-fpu_fpregs_owner_ctx.patch
 
 ############################################################
 # POSTED
@@ -297,6 +299,7 @@ ptrace-fix-ptrace-vs-tasklist_lock-race.patch
 rtmutex-annotate-sleeping-lock-context.patch
 sched-migrate_disable-fallback-to-preempt_disable-in.patch
 locking-don-t-check-for-__LINUX_SPINLOCK_TYPES_H-on-.patch
+locking-Make-spinlock_t-and-rwlock_t-a-RCU-section-o.patch
 
 # RCU
 rcu-Eliminate-softirq-processing-from-rcutree.patch
@@ -409,6 +412,7 @@ x86-preempt-lazy.patch
 x86-preempt-Check-preemption-level-before-looking-at.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
+powerpc-Fixup-compile-and-lazy-preempt.patch
 arch-arm64-Add-lazy-preempt-support.patch
 arm64-preempt-Fixup-lazy-preempt.patch
 arm64-preempt-Check-preemption-level-before-looking-.patch
@@ -417,6 +421,7 @@ arm64-preempt-Check-preemption-level-before-looking-.patch
 sched-migrate_enable-Use-select_fallback_rq.patch
 sched-Lazy-migrate_disable-processing.patch
 sched-migrate_enable-Use-stop_one_cpu_nowait.patch
+sched-core-migrate_enable-must-access-takedown_cpu_t.patch
 
 # DRIVERS
 connector-cn_proc-Protect-send_msg-with-a-local-lock.patch
