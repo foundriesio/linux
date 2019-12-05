@@ -231,14 +231,6 @@ static int imx7ulp_wdt_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void imx7ulp_wdt_shutdown(struct platform_device *pdev)
-{
-	struct imx7ulp_wdt *wdt = platform_get_drvdata(pdev);
-
-	if (watchdog_active(&wdt->wdd))
-		imx7ulp_wdt_stop(&wdt->wdd);
-}
-
 #ifdef CONFIG_PM_SLEEP
 /* Disable watchdog before suspend */
 static int imx7ulp_wdt_suspend(struct device *dev)
@@ -277,7 +269,6 @@ MODULE_DEVICE_TABLE(of, imx7ulp_wdt_dt_ids);
 static struct platform_driver imx7ulp_wdt_driver = {
 	.probe		= imx7ulp_wdt_probe,
 	.remove		= imx7ulp_wdt_remove,
-	.shutdown	= imx7ulp_wdt_shutdown,
 	.driver		= {
 		.name	= "imx7ulp-wdt",
 		.pm	= &imx7ulp_wdt_pm_ops,
