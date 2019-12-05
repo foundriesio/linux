@@ -452,7 +452,7 @@ static struct acpi_platform_list plat_list[] = {
 int ghes_edac_register(struct ghes *ghes, struct device *dev)
 {
 	bool fake = false;
-	int rc, num_dimm = 0;
+	int rc = 0, num_dimm = 0;
 	struct mem_ctl_info *mci;
 	struct ghes_edac_pvt *pvt;
 	struct edac_mc_layer layers[1];
