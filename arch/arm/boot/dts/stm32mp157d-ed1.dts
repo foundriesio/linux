@@ -6,15 +6,15 @@
 /dts-v1/;
 
 #include "stm32mp157.dtsi"
-#include "stm32mp15xc.dtsi"
+#include "stm32mp15xd.dtsi"
 #include "stm32mp15-pinctrl.dtsi"
 #include "stm32mp15xxaa-pinctrl.dtsi"
 #include "stm32mp157c-m4-srm.dtsi"
 #include "stm32mp15xx-edx.dtsi"
 
 / {
-	model = "STMicroelectronics STM32MP157C eval daughter";
-	compatible = "st,stm32mp157c-ed1", "st,stm32mp157";
+	model = "STMicroelectronics STM32MP157D eval daughter";
+	compatible = "st,stm32mp157d-ed1", "st,stm32mp157";
 
 	chosen {
 		stdout-path = "serial0:115200n8";
@@ -25,13 +25,8 @@
 	};
 
 	reserved-memory {
-		gpu_reserved: gpu@f6000000 {
-			reg = <0xf6000000 0x8000000>;
-			no-map;
-		};
-
-		optee_memory: optee@0xfe000000 {
-			reg = <0xfe000000 0x02000000>;
+		gpu_reserved: gpu@f8000000 {
+			reg = <0xf8000000 0x8000000>;
 			no-map;
 		};
 	};
@@ -43,9 +38,5 @@
 
 &gpu {
 	contiguous-area = <&gpu_reserved>;
-	status = "okay";
-};
-
-&optee {
 	status = "okay";
 };
