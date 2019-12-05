@@ -53,17 +53,6 @@
 			reg = <0x38000000 0x10000>;
 			no-map;
 		};
-
-		gpu_reserved: gpu@da000000 {
-			reg = <0xda000000 0x4000000>;
-			no-map;
-		};
-
-		optee_memory: optee@0xde000000 {
-			reg = <0xde000000 0x02000000>;
-			no-map;
-			status = "disabled";
-		};
 	};
 
 	led {
