@@ -535,7 +535,8 @@ int inet_dgram_connect(struct socket *sock, struct sockaddr *uaddr,
 	if (uaddr->sa_family == AF_UNSPEC)
 		return sk->sk_prot->disconnect(sk, flags);
 
-	if (!inet_sk(sk)->inet_num && inet_autobind(sk))
+	if (!inet_sk(sk)->inet_num && !sk->sk_prot->no_autobind &&
+	    inet_autobind(sk))
 		return -EAGAIN;
 	return sk->sk_prot->connect(sk, uaddr, addr_len);
 }

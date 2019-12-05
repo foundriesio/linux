@@ -564,8 +564,10 @@ static int ipv6_frag_rcv(struct sk_buff *skb)
 		return 1;
 	}
 
-	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU &&
-	    fhdr->frag_off & htons(IP6_MF))
+	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU / 2 &&
+	    fhdr->frag_off & htons(IP6_MF) &&
+	    fhdr->frag_off & htons(IP6_OFFSET) &&
+	    !net->ip6frag_strict_short)
 		goto fail_hdr;
 
 	fq = fq_find(net, fhdr->identification, &hdr->saddr, &hdr->daddr,
@@ -626,6 +628,13 @@ static struct ctl_table ip6_frags_ns_ctl_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_jiffies,
 	},
+	{
+		.procname	= "ip6frag_strict_short",
+		.data		= &init_net.ip6frag_strict_short,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_jiffies,
+	},
 	{ }
 };
 
@@ -659,6 +668,7 @@ static int __net_init ip6_frags_ns_sysctl_register(struct net *net)
 		table[1].data = &net->ipv6.frags.low_thresh;
 		table[1].extra2 = &net->ipv6.frags.high_thresh;
 		table[2].data = &net->ipv6.frags.timeout;
+		table[3].data = &net->ip6frag_strict_short;
 
 		/* Don't export sysctls to unprivileged users */
 		if (net->user_ns != &init_user_ns)
@@ -727,6 +737,10 @@ static int __net_init ipv6_frags_init_net(struct net *net)
 	net->ipv6.frags.high_thresh = IPV6_FRAG_HIGH_THRESH;
 	net->ipv6.frags.low_thresh = IPV6_FRAG_LOW_THRESH;
 	net->ipv6.frags.timeout = IPV6_FRAG_TIMEOUT;
+	if (net_eq(net, &init_net))
+		net->ip6frag_strict_short = 0;
+	else
+		net->ip6frag_strict_short = init_net.ip6frag_strict_short;
 
 	inet_frags_init_net(&net->ipv6.frags);
 
