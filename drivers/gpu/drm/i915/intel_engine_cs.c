@@ -1486,10 +1486,9 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 		   i915_reset_engine_count(error, engine),
 		   i915_reset_count(error));
 
-	rcu_read_lock();
-
 	drm_printf(m, "\tRequests:\n");
 
+	spin_lock_irqsave(&engine->timeline.lock, flags);
 	rq = list_first_entry(&engine->timeline.requests,
 			      struct i915_request, link);
 	if (&rq->link != &engine->timeline.requests)
@@ -1517,8 +1516,7 @@ void intel_engine_dump(struct intel_engine_cs *engine,
 
 		print_request_ring(m, rq);
 	}
-
-	rcu_read_unlock();
+	spin_unlock_irqrestore(&engine->timeline.lock, flags);
 
 	if (intel_runtime_pm_get_if_in_use(engine->i915)) {
 		intel_engine_print_registers(engine, m);
