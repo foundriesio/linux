@@ -592,13 +592,17 @@ inline static void* tcc_vsync_get_buffer(tcc_vsync_buffer_t * buffer_t, int offs
 	}
 }
 
+static unsigned int vsync_intr_count = 0;
+static unsigned int vsync_intr_proc[VSYNC_MAX] = {0,};
+
 inline static int tcc_vsync_buffer_check(tcc_video_disp *p, unsigned int ref_buffer_id)
 {
 	tcc_vsync_buffer_t *buffer_t = NULL;
 	int readable_count = 0;
+	int valid_count = 0;
 	int readIdx = 0;
 
-	if(!p->vsync_started) {
+	if(!p->vsync_started || !p->isVsyncRunning) {
 		vprintk("vsync_started is not started!! return\n");
 		return -1;
 	}
@@ -606,9 +610,10 @@ inline static int tcc_vsync_buffer_check(tcc_video_disp *p, unsigned int ref_buf
 	buffer_t = &p->vsync_buffer;
 	readable_count = atomic_read( &buffer_t->readable_buff_count);
 	readIdx = buffer_t->readIdx;
+	valid_count = atomic_read(&buffer_t->valid_buff_count);
 
-	printk("############# [%d] buffer check .. k_syncTS: %d, ref_buffer_id: %d ############\n",
-			p->type, tcc_vsync_get_time(p), ref_buffer_id);
+	printk("############# [%d] intr[%d/%d] last[%d] m2m[%d/%d] buffer check .. k_syncTS: %d, read(%d)/valid(%d) ref_buffer_id: %d ############\n",
+			p->type, vsync_intr_proc[p->type], vsync_intr_count, tccvid_lastframe[p->type].enabled, p->output_toMemory, p->m2m_mode, tcc_vsync_get_time(p), readable_count, valid_count, ref_buffer_id);
 	while(readable_count > 0)
 	{
 		printk("[%d] : Buffer_ID[%d] - TS[%d] SyncTS[%d] \n", p->type,
@@ -653,8 +658,9 @@ inline static int tcc_vsync_clean_buffer(tcc_vsync_buffer_t * buffer_t)
 	return atomic_read(&buffer_t->valid_buff_count);
 }
 
-static int tcc_vsync_pop_all_buffer(tcc_vsync_buffer_t * buffer_t, int who_call)
+static int tcc_vsync_pop_all_buffer(tcc_video_disp *p, int caller_line)
 {
+	tcc_vsync_buffer_t * buffer_t = &p->vsync_buffer;
 
 	if(atomic_read(&buffer_t->valid_buff_count) == 0)
 	{
@@ -681,7 +687,7 @@ static int tcc_vsync_pop_all_buffer(tcc_vsync_buffer_t * buffer_t, int who_call)
 	buffer_t->writeIdx = buffer_t->readIdx = buffer_t->clearIdx;
 	atomic_set( &buffer_t->readable_buff_count,0);
 	
-	printk("[%d] pop_all_buffer readIdx %d writeIdx %d clearIdx %d valid %d readable %d \n", who_call,
+	printk("[%d] who:%d pop_all_buffer readIdx %d writeIdx %d clearIdx %d valid %d readable %d \n", p->type, caller_line,
 				buffer_t->readIdx,buffer_t->writeIdx,buffer_t->clearIdx, atomic_read(&buffer_t->valid_buff_count), atomic_read( &buffer_t->readable_buff_count));
 	return 0;
 }
@@ -972,7 +978,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 		{
 			if (tcc_vsync_pop_buffer(&p->vsync_buffer) < 0) {
 				if(popped_count > 0){
-					dprintk_drop("%s:0 skipped buffer(%d) and no display \n", p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count);
+					dprintk_drop("[%d] %s:0 skipped buffer(%d) and no display \n", p->type, p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count);
 				}
 				return;
 			}
@@ -999,7 +1005,7 @@ static void tcc_vsync_display_update(tcc_video_disp *p)
 	}
 
 	if(popped_count > 1){
-		dprintk_drop("%s:1 skipped buffer(p:[%d]) r:[%d -> %d]) \n",
+		dprintk_drop("[%d] %s:1 skipped buffer(p:[%d]) r:[%d -> %d]) \n", p->type,
 				pNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count, readable_buff_cnt+1, tcc_video_get_readable_count(p));
 	}
 
@@ -1247,7 +1253,7 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 		readable_buff_cnt = tcc_video_get_readable_count(p);
 		readable_buff_cnt--;
 		if( readable_buff_cnt < 0 ){
-			dprintk_drop("%s: no available buffer(%d) \n", p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", readable_buff_cnt);
+			dprintk_drop("[%d] %s: no available buffer(%d) \n", p->type, p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", readable_buff_cnt);
 		}
 
 		for(i=0; i < readable_buff_cnt; i++)
@@ -1264,7 +1270,7 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 			{
 				if (tcc_vsync_pop_buffer(&p->vsync_buffer) < 0){
 					if(popped_count > 0){
-						dprintk_drop("%s:0 skipped buffer(%d) and no display \n", p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count);
+						dprintk_drop("[%d] %s:0 skipped buffer(%d) and no display \n", p->type, p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count);
 					}
 					return;
 				}
@@ -1286,7 +1292,7 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 		}
 
 		if(popped_count > 1){
-			dprintk_drop("%s:1 skipped buffer(p:[%d]) r:[%d -> %d]) \n",
+			dprintk_drop("[%d] %s:1 skipped buffer(p:[%d]) r:[%d -> %d]) \n", p->type,
 						p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", popped_count, readable_buff_cnt+1, tcc_video_get_readable_count(p));
 		}
 
@@ -1302,7 +1308,7 @@ static void tcc_vsync_display_update_forDeinterlaced(tcc_video_disp *p)
 			return;
 
 		if(p->vsync_buffer.last_cleared_buff_id > p->pIntlNextImage->buffer_unique_id){
-			dprintk_drop("%s:error wierd buffer id[%d >= %d]\n",
+			dprintk_drop("[%d] %s:error wierd buffer id[%d >= %d]\n", p->type,
 						p->pIntlNextImage->Lcdc_layer == RDMA_VIDEO ? "M" : "S", p->pIntlNextImage->buffer_unique_id, p->vsync_buffer.last_cleared_buff_id);
 		}
 //		printk("mt(%d), st(%d)\n", p->pIntlNextImage->time_stamp, current_time) ;
@@ -1596,14 +1602,18 @@ static irqreturn_t tcc_vsync_handler_for_video(int irq, void *dev_id)
 		vioc_intr_clear(vsync->vioc_intr->id, vsync->vioc_intr->bits);
 	}
 
+	vsync_intr_count++;
 	for(type = VSYNC_MAIN; type < VSYNC_MAX; type++) {
 #if !defined(USE_ALWAYS_UNPLUGGED_INT)
 		#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
-		if(tccvid_lastframe[VSYNC_MAIN].enabled)
-			return IRQ_HANDLED;
+		if(tccvid_lastframe[type].enabled) {
+			continue;
+		}
 		#endif
-		if(tcc_vsync_isVsyncRunning(type))
+		if(tcc_vsync_isVsyncRunning(type)) {
+			vsync_intr_proc[type] += 1;
 			display_vsync(&tccvid_vsync[type]);
+		}
 #endif
 	}
 
@@ -1761,7 +1771,7 @@ static int tcc_vsync_calculate_syncTime(tcc_video_disp *p, int currentTime, VSYN
 
 #if !defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 		if(!p->firstFrameFlag)
-			printk("changed base time : %d, add time: %d diffTime %d fps(%d)\n",base_time+avgTime, avgTime,diffTime, p->video_frame_rate);
+			printk("[%d] changed base time : %d, add time: %d diffTime %d fps(%d)\n", type, base_time+avgTime, avgTime,diffTime, p->video_frame_rate);
 #endif
 	}
 	
@@ -1898,7 +1908,7 @@ static int tcc_vsync_push_preprocess(tcc_video_disp *p, struct tcc_dp_device *pd
 
 Error_Proc:
 	spin_lock_irq(&vsync_lockDisp);
-	tcc_vsync_pop_all_buffer(&p->vsync_buffer, 0);
+	tcc_vsync_pop_all_buffer(p, __LINE__);
 	p->vsync_buffer.last_cleared_buff_id = input_image_info->buffer_unique_id;
 	vprintk("[%d] %s : cleared buffer (%d -> %d) \n", type, __func__, input_image_info->buffer_unique_id, p->vsync_buffer.last_cleared_buff_id);
 	spin_unlock_irq(&vsync_lockDisp);
@@ -2066,7 +2076,7 @@ static int tcc_vsync_push_bypass_frame(tcc_video_disp *p, struct tcc_dp_device *
 		memcpy(&p->vsync_buffer.curr_displaying_imgInfo, input_image_info, sizeof(struct tcc_lcdc_image_update));
 
 		spin_lock_irq(&vsync_lockDisp);
-		tcc_vsync_pop_all_buffer(&p->vsync_buffer, 0);
+		tcc_vsync_pop_all_buffer(p, __LINE__);
 		p->vsync_buffer.last_cleared_buff_id = input_image_info->buffer_unique_id;
 		spin_unlock_irq(&vsync_lockDisp);
 
@@ -2192,6 +2202,7 @@ static int tcc_vsync_push_process(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 	if(tcc_vsync_push_buffer(p, &p->vsync_buffer, input_image_info) < 0)
 	{
 		printk("critical error: vsync buffer full by fault buffer controll\n");
+		tcc_vsync_buffer_check(p, 0);
 	}
 
 	spin_unlock_irq(&vsync_lock) ;
@@ -2363,12 +2374,12 @@ err_vsync_start:
 	return ret;
 }
 
-static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
+static void tcc_vsync_end(tcc_video_disp *p, unsigned int keep_display)
 {
 	#if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
-	printk("### END_VSYNC_%d started:%d SelectMode:%d LastFrame[%d]\n", type, p->vsync_started, Output_SelectMode, tccvid_lastframe[type].LastImage.enable);
+	printk("### END_VSYNC_%d started:%d SelectMode:%d LastFrame[%d]\n", p->type, p->vsync_started, Output_SelectMode, tccvid_lastframe[p->type].LastImage.enable);
 	#else
-	printk("### END_VSYNC_%d started:%d SelectMode:%d \n", type, p->vsync_started, Output_SelectMode);
+	printk("### END_VSYNC_%d started:%d SelectMode:%d \n", p->type, p->vsync_started, Output_SelectMode);
 	#endif
 
 	#if defined(CONFIG_TCC_VTA)
@@ -2384,14 +2395,14 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 			tcc_timer_disable(vsync_timer);
 		#endif
 
-		if(tcc_vsync_get_isVsyncRunning(type) && !video_display_disable_check)
+		if(tcc_vsync_get_isVsyncRunning(p->type) && !video_display_disable_check)
 		{
 			tca_vsync_video_display_disable();
 			video_display_disable_check = 1;
 		}
 
 		spin_lock_irq(&vsync_lock) ;
-		tcc_vsync_pop_all_buffer(&p->vsync_buffer, 1);
+		tcc_vsync_pop_all_buffer(p, __LINE__);
 		spin_unlock_irq(&vsync_lock) ;
 
 		p->skipFrameStatus = 1;
@@ -2406,7 +2417,7 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 				TCC_VIQE_DI_DeInit60Hz();
 			}
 			else if(p->output_toMemory && p->m2m_mode) {
-				if (type == VSYNC_MAIN)
+				if (p->type == VSYNC_MAIN)
 					TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
 				else
 					TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
@@ -2414,7 +2425,7 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 		}
 		else if(p->output_toMemory && p->m2m_mode)
 		{
-			if (type == VSYNC_MAIN)
+			if (p->type == VSYNC_MAIN)
 				TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
 			else
 				TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
@@ -2422,13 +2433,18 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 		#endif
 
 		memset(&ImageInfo, 0x00, sizeof(struct tcc_lcdc_image_update));
-		ImageInfo.enable = 0;
-		if (type == VSYNC_MAIN)
+		if (p->type == VSYNC_MAIN) {
+			ImageInfo.enable = 0;
 			ImageInfo.Lcdc_layer = RDMA_VIDEO;
-		else
+		}
+		else {			
+			ImageInfo.enable = (keep_display) ? 1 : 0;
 			ImageInfo.Lcdc_layer = RDMA_VIDEO_SUB;
+		}
 
-		if(Output_SelectMode != TCC_OUTPUT_NONE) {
+		printk("&&&&&&&&& ---->[%d]  Channel enable(%d) \n", p->type, ImageInfo.enable);
+
+		if( (Output_SelectMode != TCC_OUTPUT_NONE) && (ImageInfo.enable == 0) ) {
 			struct tcc_dp_device *dp_device = tca_fb_get_displayType(Output_SelectMode);
 			if(dp_device) {
 				if(Output_SelectMode == TCC_OUTPUT_HDMI){
@@ -2471,16 +2487,19 @@ static void tcc_vsync_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 	}
 
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
-	if(!tccvid_lastframe[type].support)
-		tccvid_lastframe[type].LastImage.enable = 0;
+	if(!tccvid_lastframe[p->type].support)
+		tccvid_lastframe[p->type].LastImage.enable = 0;
 
-	tccvid_lastframe[type].CurrImage.enable = 0;
-	tccvid_lastframe[type].CurrImage.buffer_unique_id = 0xFFFFFFFF;
+	tccvid_lastframe[p->type].CurrImage.enable = 0;
+	tccvid_lastframe[p->type].CurrImage.buffer_unique_id = 0xFFFFFFFF;
 
 	#ifdef CONFIG_DISPLAY_EXT_FRAME
 	if(!restricted_ExtFrame)
 	#endif
-		tcc_ctrl_ext_frame(0);
+	{
+		//if( (p->type == VSYNC_MAIN) || ((p->type == VSYNC_SUB0) && (!keep_display)))
+			tcc_ctrl_ext_frame(0);
+	}
 #endif
 }
 
@@ -2788,7 +2807,7 @@ void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *inp
 #if 0
 	if( (input_image->codec_id != tccvid_lastframe[type].LastImage.codec_id) 
 			|| (input_image->time_stamp < tccvid_lastframe[type].LastImage.time_stamp)
-			|| (input_image->sync_time < tccvid_lastframe[type].LastImage.sync_time)
+			|| ((input_image->sync_time + 200) < tccvid_lastframe[type].LastImage.sync_time)
 			|| (input_image->buffer_unique_id < tccvid_lastframe[type].LastImage.buffer_unique_id)
 	) {
 		int temp_type = type;
@@ -2808,8 +2827,15 @@ void tcc_video_info_backup(VSYNC_CH_TYPE type, struct tcc_lcdc_image_update *inp
 				tccvid_lastframe[temp_type].LastImage.sync_time,
 				tccvid_lastframe[temp_type].LastImage.buffer_unique_id,
 				tccvid_lastframe[temp_type].LastImage.Image_width, tccvid_lastframe[temp_type].LastImage.Image_height);
+				
+		if((input_image->sync_time + 200) < tccvid_lastframe[type].LastImage.sync_time)
+		{
+			tcc_video_disp *p = &tccvid_vsync[type];
+			tcc_vsync_buffer_check(p, 0);
+		}
 	}
 #endif
+
 	memcpy(&tccvid_lastframe[type].LastImage, input_image, sizeof(struct tcc_lcdc_image_update));
 }
 EXPORT_SYMBOL(tcc_video_info_backup);
@@ -2859,7 +2885,7 @@ int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo)
 					tccvid_lastframe[type].LastImage.codec_id, ImageInfo->codec_id);
 			return 0;
 		}
-		printk("----> %s :: last-frame[%d] will be cleared : %dx%d, 0x%x \n", __func__, type, ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->addr0);
+		printk("&&&&&&&&& ----> %s :: last-frame[%d] will be cleared : %dx%d, 0x%x \n", __func__, type, ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->addr0);
 		tccvid_lastframe[type].enabled = tccvid_lastframe[type].reason.Resolution = tccvid_lastframe[type].reason.Codec = 0;
 	}
 	spin_unlock_irq(&LastFrame_lockDisp);
@@ -3193,7 +3219,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			if(p->vsync_started == 1){
 				msleep(p->vsync_interval*2);
 				spin_lock_irq(&vsync_lock);
-				tcc_vsync_pop_all_buffer(&p->vsync_buffer, 2);
+				tcc_vsync_pop_all_buffer(p, __LINE__);
 				spin_unlock_irq(&vsync_lock);				
 			}
 			else{
@@ -3242,7 +3268,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				return 0;
 			}
 	#endif
-			printk("---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x)!! \n",
+			printk("&&&&&&&&& ---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x)!! \n",
 					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, target_address);
 
 			if( (ret = tcc_move_video_last_frame(lastUpdated, p->deinterlace_mode, target_address, target_size, LAST_FRAME_FORMAT)) < 0 ){
@@ -3268,7 +3294,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			lastUpdated->private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
 		#endif
 
-			printk("###[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME RDMA(0x%p) :: Start info(%dx%d), Reason(0x%x) \n", type, dp_device->rdma_info[RDMA_LASTFRM].virt_addr,
+			printk("&&&&&&&&& ---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME RDMA(0x%p) :: Start info(%dx%d), Reason(0x%x) \n", type, dp_device->rdma_info[RDMA_LASTFRM].virt_addr,
 						lastUpdated->Frame_width, lastUpdated->Frame_height, iLastFrame.reason);
 
 			{
@@ -3325,7 +3351,7 @@ Screen_off:
 
 			if(p->vsync_started == 1){
 				spin_lock_irq(&vsync_lock);
-				tcc_vsync_pop_all_buffer(&p->vsync_buffer, 11);
+				tcc_vsync_pop_all_buffer(p, __LINE__);
 				spin_unlock_irq(&vsync_lock);
 			}
 
@@ -3356,7 +3382,7 @@ Screen_off:
 						spin_unlock_irq(&LastFrame_lockDisp);
 					}
 
-					printk("---->[%d]  black TCC_LCDC_VIDEO_KEEP_LASTFRAME. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
+					printk("&&&&&&&&& ---->[%d]  black TCC_LCDC_VIDEO_KEEP_LASTFRAME. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
 								lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
 					return 0;		
 				}
@@ -3375,7 +3401,7 @@ Screen_off:
 				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type);
 				spin_unlock_irq(&LastFrame_lockDisp);
 
-				printk("---->[%d]  fake TCC_LCDC_VIDEO_KEEP_LASTFRAME to diable only RDMA channel. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
+				printk("&&&&&&&&& ---->[%d]  fake TCC_LCDC_VIDEO_KEEP_LASTFRAME to diable only RDMA channel. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
 								lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
 				return -100;
 			}
@@ -3397,7 +3423,7 @@ Screen_off:
 			}
 
 			spin_lock_irq(&LastFrame_lockDisp);
-			printk("---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME Start info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type, lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
+			printk("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME Start info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type, lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
 
 			switch(p->outputMode)
 			{
@@ -3417,14 +3443,14 @@ Screen_off:
 					break;
 			}
 
-			printk("---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
+			printk("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
 			spin_unlock_irq(&LastFrame_lockDisp);
 
 			return -0x100;
 		}
 		else
 		{
-			printk("fake[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME skip :: reason(p->outputMode == %d)  \n", type, p->outputMode);
+			printk("&&&&&&&&& ---->fake[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME skip :: reason(p->outputMode == %d)  \n", type, p->outputMode);
 		}
 	}
 
@@ -3449,14 +3475,14 @@ void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset)
     {
         if( tccvid_lastframe[type].pRDMA != NULL /*&& tccvid_lastframe[type].nCount >= 2*/){
             VIOC_RDMA_SetImageDisable(tccvid_lastframe[type].pRDMA);
-			printk("----> lastframe[%d] cleared(%d)!! 0x%p \n", type, tccvid_lastframe[type].nCount, tccvid_lastframe[type].pRDMA);
+		printk("&&&&&&&&& ----> lastframe[%d] cleared(%d)!! 0x%p \n", type, tccvid_lastframe[type].nCount, tccvid_lastframe[type].pRDMA);
 			tccvid_lastframe[type].pRDMA = NULL;
         }
     }
 	tccvid_lastframe[type].nCount += 1;
 
 	if(reset){
-		dprintk("----> lastframe[%d] reset variables \n", type);
+		dprintk("&&&&&&&&& ----> lastframe[%d] reset variables \n", type);
 		tccvid_lastframe[type].enabled = tccvid_lastframe[type].reason.Resolution = tccvid_lastframe[type].reason.Codec = 0;
 		tccvid_lastframe[type].LastImage.enable = 0;
 	}
@@ -3867,7 +3893,7 @@ TCC_VSYNC_PUSH_ERROR:
 }
 
 
-struct mutex vsync_io_mutex;
+struct mutex vsync_io_mutex[VSYNC_MAX];
 static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYPE type)
 {
 	int ret = 0;
@@ -3875,7 +3901,9 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 	tcc_video_disp *p = &tccvid_vsync[type];
 	p->type = type;
 
-	mutex_lock(&vsync_io_mutex);
+	dprintk("%s-%d :: cmd: 0x%x arg: 0x%x\n", __func__, __LINE__, cmd, (void*)arg);
+
+	mutex_lock(&vsync_io_mutex[type]);
 	{
 		switch (cmd) {
 		
@@ -3941,14 +3969,31 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 
 			case TCC_LCDC_VIDEO_END_VSYNC:
 			case TCC_LCDC_VIDEO_END_VSYNC_KERNEL:
-				tcc_vsync_end(p, type);
-				break ;
+				{
+					unsigned int keep_display = 0;
+
+					if (cmd == TCC_LCDC_VIDEO_END_VSYNC_KERNEL) {
+						if (NULL == memcpy((void *)&keep_display, (const void *)arg, sizeof(unsigned int)))
+						{
+							printk("fatal error :: copy err");
+							ret = 0;
+						}
+					} else {
+						if (copy_from_user((void *)&keep_display, (const void *)arg, sizeof(unsigned int)))
+						{
+							printk("fatal error :: copy err");
+							ret = 0;
+						}
+					}
+					tcc_vsync_end(p, keep_display);
+				}
+				break;
 
 			case TCC_LCDC_VIDEO_SET_SIZE_CHANGE:
 				#if 0
 				printk("### SET_SIZE_CHANGE, firstFrame(%d) deint_mode(%d) \n", p->firstFrameFlag, p->deinterlace_mode);
 				spin_lock_irq(&vsync_lock) ;
-				tcc_vsync_pop_all_buffer(&p->vsync_buffer, 4);
+				tcc_vsync_pop_all_buffer(p, __LINE__);
 				spin_unlock_irq(&vsync_lock) ;
 				#endif
 				break ;
@@ -4209,8 +4254,8 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 					tccvid_lastframe[type].enabled = 0;
 					Output_SelectMode = TCC_OUTPUT_NONE;
 
-					dprintk("TCC_LCDC_SET_M2M_LASTFRAME \n");
-					dprintk(" LastFrame=%d Output_SelectMode=%d\n",tccvid_lastframe[type].enabled, Output_SelectMode);
+					dprintk("[%d] TCC_LCDC_SET_M2M_LASTFRAME \n", type);
+					dprintk("[%d] LastFrame=%d Output_SelectMode=%d\n", type,tccvid_lastframe[type].enabled, Output_SelectMode);
 
 					if(Output_SelectMode == TCC_OUTPUT_NONE){
 						if (LCD_LCDC_NUM)
@@ -4407,7 +4452,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 	}
 
 Error:
-	mutex_unlock(&vsync_io_mutex);
+	mutex_unlock(&vsync_io_mutex[type]);
 	
 	return ret;
 }
@@ -4663,7 +4708,7 @@ void tcc_video_clear_frame(tcc_video_disp *p, int idx, int who_call)
 	printk("video frame clear %d called by %d\n", syncBufferIdx, who_call) ;
 
 	spin_lock_irq(&vsync_lock) ;
-	tcc_vsync_pop_all_buffer(&p->vsync_buffer, 5);
+	tcc_vsync_pop_all_buffer(p, __LINE__);
 	spin_unlock_irq(&vsync_lock) ;
 	//printk("valid video fram count %d\n", p->vsync_buffer.valid_buff_count) ;
 
@@ -4741,7 +4786,7 @@ void tcc_video_skip_frame_start(tcc_video_disp *p, VSYNC_CH_TYPE type)
 	vprintk("[%d] video fram skip start\n", type);
 	printk("TCC_LCDC_VIDEO_SKIP_FRAME_START\n") ;
 	spin_lock_irq(&vsync_lock) ;
-	tcc_vsync_pop_all_buffer(&p->vsync_buffer, 6);
+	tcc_vsync_pop_all_buffer(p, __LINE__);
 	spin_unlock_irq(&vsync_lock);
 	p->skipFrameStatus = 1;
 }
@@ -4752,7 +4797,7 @@ void tcc_video_skip_frame_end(tcc_video_disp *p, VSYNC_CH_TYPE type)
 	{
 		vprintk("[%d] video fram skip end\n", type);
 		spin_lock_irq(&vsync_lock) ;
-		tcc_vsync_pop_all_buffer(&p->vsync_buffer, 7);
+		tcc_vsync_pop_all_buffer(p, __LINE__);
 		spin_unlock_irq(&vsync_lock);
 		printk("[%d] TCC_LCDC_VIDEO_SKIP_FRAME_END\n", type);
 
@@ -4964,8 +5009,8 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 		}
 	}
 	#endif
-	//tcc_vsync_pop_all_buffer(&tccvid_vsync[0].vsync_buffer, 8);
-	//tcc_vsync_pop_all_buffer(&tccvid_vsync[1].vsync_buffer, 9);
+	//tcc_vsync_pop_all_buffer(&tccvid_vsync[0], __LINE__);
+	//tcc_vsync_pop_all_buffer(&tccvid_vsync[1], __LINE__);
 #endif
 
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME) 
@@ -4981,13 +5026,14 @@ void tcc_vsync_reset_all(void)
 	for (i=0; i<VSYNC_MAX; i++) {
 		memset( &tccvid_vsync[i], 0, sizeof( tcc_video_disp) );
 		tccvid_vsync[i].firstFrameFlag = 1;
+		tccvid_vsync[i].type = i;
 	}
 }
 
 void tcc_vsync_if_pop_all_buffer(tcc_video_disp *p)
 {
 	spin_lock_irq(&vsync_lock);
-	tcc_vsync_pop_all_buffer(&p->vsync_buffer, 10);
+	tcc_vsync_pop_all_buffer(p, __LINE__);
 	spin_unlock_irq(&vsync_lock);
 }
 
@@ -5065,7 +5111,7 @@ static int tcc_vsync3_release(struct inode *inode, struct file *filp)
 	if(g_is_vsync3_opened == 0) {
 		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB2];
 		if(p->isVsyncRunning)
-			tcc_vsync_end(p, VSYNC_SUB2);
+			tcc_vsync_end(p, 0);
 
 		if(!g_is_vsync0_opened) {
 			tca_vsync_video_display_disable();
@@ -5094,6 +5140,11 @@ static int tcc_vsync3_open(struct inode *inode, struct file *filp)
 	dprintk("%s(%d)\n", __func__, g_is_vsync3_opened);
 	if (g_is_vsync3_opened++)
 		return 0;
+
+	{
+		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB2];
+		p->type = VSYNC_SUB2;
+	}
 
 #ifdef USE_VSYNC_TIMER
 	if (vsync_timer && !g_is_vsync0_opened) {
@@ -5125,7 +5176,7 @@ static int tcc_vsync2_release(struct inode *inode, struct file *filp)
 	if(g_is_vsync2_opened == 0) {
 		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB1];
 		if(p->isVsyncRunning)
-			tcc_vsync_end(p, VSYNC_SUB1);
+			tcc_vsync_end(p, 0);
 
 		if(!g_is_vsync0_opened) {
 			tca_vsync_video_display_disable();
@@ -5154,6 +5205,11 @@ static int tcc_vsync2_open(struct inode *inode, struct file *filp)
 	dprintk("%s(%d)\n", __func__, g_is_vsync2_opened);
 	if (g_is_vsync2_opened++)
 		return 0;
+
+	{
+		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB1];
+		p->type = VSYNC_SUB1;
+	}
 
 #ifdef USE_VSYNC_TIMER
 	if (vsync_timer && !g_is_vsync0_opened) {
@@ -5188,7 +5244,7 @@ static int tcc_vsync1_release(struct inode *inode, struct file *filp)
 	{
 		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB0];
 		if(p->isVsyncRunning)
-			tcc_vsync_end(p, VSYNC_SUB0);
+			tcc_vsync_end(p, 0);
 
 		if(!g_is_vsync0_opened)
 		{
@@ -5225,6 +5281,11 @@ static int tcc_vsync1_open(struct inode *inode, struct file *filp)
 
 	if (g_is_vsync1_opened++)
 		return 0;
+
+	{
+		tcc_video_disp *p = &tccvid_vsync[VSYNC_SUB0];
+		p->type = VSYNC_SUB0;
+	}
 
 	#ifdef USE_VSYNC_TIMER
 	if (vsync_timer && !g_is_vsync0_opened) {
@@ -5267,7 +5328,7 @@ static int tcc_vsync0_release(struct inode *inode, struct file *filp)
 	{
 		tcc_video_disp *p = &tccvid_vsync[VSYNC_MAIN];
 		if(p->isVsyncRunning)
-			tcc_vsync_end(p, VSYNC_MAIN);
+			tcc_vsync_end(p, 0);
 
 		if(!g_is_vsync1_opened)
 		{
@@ -5305,6 +5366,11 @@ static int tcc_vsync0_open(struct inode *inode, struct file *filp)
 
 	if (g_is_vsync0_opened++)
 		return 0;
+
+	{
+		tcc_video_disp *p = &tccvid_vsync[VSYNC_MAIN];
+		p->type = VSYNC_MAIN;
+	}
 
 	#ifdef USE_VSYNC_TIMER
 	if (vsync_timer && !g_is_vsync1_opened) {
@@ -5646,7 +5712,11 @@ static int __init tcc_vsync_init(void)
 	}
 	spin_lock_init(&LastFrame_lockDisp);
 #endif
-	mutex_init(&vsync_io_mutex);
+
+	for(type = VSYNC_MAIN; type < VSYNC_MAX; type++)
+	{
+		mutex_init(&vsync_io_mutex[type]);
+	}
 
 #ifdef CONFIG_DISPLAY_EXT_FRAME
 	mutex_init(&ext_mutex);
