@@ -179,20 +179,33 @@ static int imx8_wdt_probe(struct platform_device *pdev)
 	wdt->parent = &pdev->dev;
 	watchdog_set_drvdata(wdt, NULL);
 
-	err = watchdog_init_timeout(wdt, DEFAULT_TIMEOUT, &pdev->dev);
+	err = watchdog_init_timeout(wdt, timeout, &pdev->dev);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init the wdog timeout:%d\n",
-				err);
+		dev_err(&pdev->dev, "Failed to init watchdog timeout:%d\n", err);
 		return err;
 	}
 
 	err = watchdog_register_device(wdt);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to register watchdog device\n");
+		dev_err(&pdev->dev, "Failed to register watchdog device: %d\n", err);
 		return err;
 	}
 
-	return register_scu_notifier(&imx8_wdt_notifier);
+	err = register_scu_notifier(&imx8_wdt_notifier);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to register scu notifier: %d\n", err);
+		goto scu_err;
+	}
+
+	dev_info(&pdev->dev, "initialized (timeout=%d sec, nowayout=%d)\n",
+		 timeout, nowayout);
+
+	return 0;
+
+scu_err:
+	watchdog_unregister_device(wdt);
+
+	return err;
 }
 
 static int imx8_wdt_remove(struct platform_device *pdev)
@@ -200,6 +213,8 @@ static int imx8_wdt_remove(struct platform_device *pdev)
 	struct watchdog_device *wdt = platform_get_drvdata(pdev);
 
 	imx8_wdt_stop(wdt);
+
+	unregister_scu_notifier(&imx8_wdt_notifier);
 
 	watchdog_unregister_device(wdt);
 
