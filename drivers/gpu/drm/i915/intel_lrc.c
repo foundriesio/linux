@@ -1153,7 +1153,7 @@ struct sched_cache {
 };
 
 static struct intel_engine_cs *
-sched_lock_engine(const struct i915_sched_node *node,
+sched_lock_engine(struct i915_sched_node *node,
 		  struct intel_engine_cs *locked,
 		  struct sched_cache *cache)
 {
