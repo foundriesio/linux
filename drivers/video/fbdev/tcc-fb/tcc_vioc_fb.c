@@ -2749,17 +2749,17 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 	}
 #endif
 
-	#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	dprintk("%s: plane(%d) fbi(%p) phy(0x%llx)=>virt(%p) size(0x%x)\n", __func__, plane, fbi, fbi->map_dma, fbi->map_cpu, fbi->map_size);
-	#else
+#else
 	dprintk("%s: plane(%d) fbi(%p) phy(0x%x)=>virt(%p) size(0x%x)\n", __func__, plane, fbi, fbi->map_dma, fbi->map_cpu, fbi->map_size);
-	#endif
+#endif
 
 	if (fbi->map_cpu) {
-		/*
-		 * prevent initial garbage on screen
-		 */
-	#if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
+		/* prevent initial garbage on screen */
+
+#ifndef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
+#if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
 		volatile void __iomem * pWDMA;
 		pWDMA = VIOC_WDMA_GetAddress(fbi->pdata.Mdp_data.DispNum);
 		VIOC_WDMA_SetImageFormat(pWDMA, (fbi->fb->var.bits_per_pixel==32)?TCC_LCDC_IMG_FMT_RGB888:TCC_LCDC_IMG_FMT_RGB565);
@@ -2768,11 +2768,11 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 		VIOC_WDMA_SetImageBase(pWDMA, (unsigned int)fbi->map_dma, 0, 0);
 		VIOC_WDMA_SetImageEnable(pWDMA, 0);
 		dprintk("%s: keep bootlogo (doen't clear mem)\n", __func__);
-	#else
+#else
 		memset_io(fbi->map_cpu, 0x00, fbi->map_size);
 		dprintk("%s: clear fb mem\n", __func__);
-	#endif
-
+#endif
+#endif
 		fbi->screen_dma		= fbi->map_dma;
 		fbi->fb->screen_base	= fbi->map_cpu;
 		fbi->fb->fix.smem_start  = fbi->screen_dma;

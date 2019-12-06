@@ -168,18 +168,18 @@ void vioc_sub_disp_composite_disable(int disp_num)
 	VIOC_DISP_TurnOff(pDISP);
 	DPRINTF("[%s] VIOC_DISP_TurnOff(%d)\n", __func__, disp_num);
 
-	#if defined(CONFIG_FB_TCC_COMPOSITE)
+#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT) || defined(CONFIG_FB_TCC_COMPOSITE)
 	/*
 	 * Disconnect tvo/bvo & disable clk, if composite was enabled.
 	 */
 	VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_SDVENC, disp_num);
 	VIOC_DDICONFIG_NTSCPAL_SetEnable(pDDICfg, 0, disp_num);
 	VIOC_DDICONFIG_SetPWDN(pDDICfg, DDICFG_TYPE_NTSCPAL, 0);
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_DDICONFIG_DAC_PWDN_Control(pDDICfg, 0);
-	#endif
+#endif
 	DPRINTF("[%s] Disable composite output\n", __func__);
-	#endif
+#endif
 }
 
 void tcc_output_starter_memclr(int img_width, int img_height)
@@ -749,8 +749,12 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * TCC_OUTPUT_STARTER_NORMAL - HDMI
 		 */
+#ifdef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
+		printk("CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT is enabled. Skip calling tcc_output_starter_hdmi_v2_0.\n");
+#else
 		printk("OUTPUT_STARTER_NORMAL: hdmi\n");
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
+#endif
 
 		/* Disable sub disp (composite) */
 		printk("OUTPUT_STARTER_NORMAL: turn off sub display\n");
