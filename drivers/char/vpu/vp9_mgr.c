@@ -616,7 +616,7 @@ static int _vp9mgr_cmd_open(char *str)
         vp9mgr_data.clk_limitation = 1;
         vp9mgr_data.cmd_processing = 0;
 
-		vp9mgr_hw_reset();
+		vp9mgr_hw_reset(0);
         vp9mgr_enable_irq(vp9mgr_data.irq);
         if(1)
         {
@@ -688,6 +688,8 @@ static int _vp9mgr_cmd_release(char *str)
         vp9mgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+
+		vp9mgr_hw_reset(1);
     }
 
     vp9mgr_disable_clock(0);
@@ -749,7 +751,8 @@ static long _vp9mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             break;
 
         case VPU_HW_RESET:
-			vp9mgr_hw_reset();
+			vp9mgr_hw_reset(1);
+			vp9mgr_hw_reset(0);
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:

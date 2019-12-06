@@ -76,6 +76,7 @@ typedef struct wait_list_entry{
 static wait_list_entry_t wait_entry_info;
 static unsigned int use_wait_list = 0;
 #define IsUseWaitList() (unsigned int)use_wait_list
+extern void vmgr_waitlist_init_pending(int type, int force_clear);
 #endif
 
 VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd);
@@ -432,7 +433,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                     }
 
                     if (wait_condition) {
-                        wprintk("[%d] start waiting...\n", type);
+                        dprintk("@@@@@@ =====> [%d] start waiting...\n", type);
                         wait_entry_info.wait_dec_status = 1;
                         wait_entry_info.type = type;
                         wait_entry_info.cmd_type = cmd;
@@ -486,10 +487,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 dprintk("@@ Dec-%d :: VPU_DEC_CLOSED !! \n", type);
 
             #ifdef USE_WAIT_LIST
-                if (IsUseWaitList() && wait_entry_info.wait_dec_status == 1){
-                    wait_entry_info.wait_dec_status = 0;
-                    wprintk("[%d] end waiting with closing VPU\n", type);
-                }
+				vmgr_waitlist_init_pending(type, 0);
             #endif
 
                 vmgr_set_close(type, 1, 1);
@@ -855,7 +853,7 @@ static int _vmgr_cmd_open(char *str)
         vmgr_data.clk_limitation = 1;
         vmgr_data.cmd_processing = 0;
 
-		vmgr_hw_reset();
+		vmgr_hw_reset(0);
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -920,6 +918,8 @@ static int _vmgr_cmd_release(char *str)
         vmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+		
+		vmgr_hw_reset(1);
     }
 
     vmgr_disable_clock(0, 0);
@@ -932,6 +932,7 @@ static int _vmgr_cmd_release(char *str)
 	return 0;
 }
 
+static unsigned int hangup_rel_count = 0;
 static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -1004,7 +1005,8 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
 
         case VPU_HW_RESET:
-			vmgr_hw_reset();
+			vmgr_hw_reset(1);
+			vmgr_hw_reset(0);
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1235,6 +1237,12 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	#endif
 
+		case VPU_TRY_HANGUP_RELEASE:
+			hangup_rel_count++;
+			printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
+            //tcc_vpu_dec_esc(1, 0, 0, 0);
+		break;
+
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1401,7 +1409,7 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
                 }
 
                 data = (VpuList_t*)args;
-                *(data->vpu_result) |= RET1;
+                *(data->vpu_result) |= RET4_WAIT;
                 list_add_tail(&data->list, &vmgr_data.comm_data.wait_list);cmd_queued_fot_wait_list++;
                 break;
 
@@ -1429,6 +1437,16 @@ VpuList_t* vmgr_waitlist_manager(VpuList_t* args, unsigned int cmd)
 Error:
     return ret;
 }
+
+void vmgr_waitlist_init_pending(int type, int force_clear)
+{	
+	if (IsUseWaitList()) {
+		if((wait_entry_info.type == type) || force_clear){
+			wait_entry_info.wait_dec_status = 0;		
+			printk("@@@@@@ =====> [%d] end waiting with closing VPU\n", type);
+		}
+	}
+}
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -1441,7 +1459,11 @@ static int _vmgr_operation(void)
     int is_from_wait_list = 0;
 #endif
 
-    while (!vmgr_list_manager(NULL, LIST_IS_EMPTY)) {
+    while ((!vmgr_list_manager(NULL, LIST_IS_EMPTY)) 
+#ifdef USE_WAIT_LIST
+			|| (!vmgr_waitlist_manager(NULL, LIST_IS_EMPTY))
+#endif
+	) {
         vmgr_data.cmd_processing = 1;
         oper_finished = 1;
 
@@ -1490,6 +1512,7 @@ static int _vmgr_operation(void)
                     return 0;
                 }
 
+				*(oper_data->vpu_result) &= ~RET4_WAIT;
                 *(oper_data->vpu_result) |= RET2;
             }
         } else
@@ -1524,6 +1547,10 @@ static int _vmgr_operation(void)
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
                 	vmgr_restore_clock(0, atomic_read(&vmgr_data.dev_opened));
                     _vmgr_close_all(1);
+
+				#ifdef USE_WAIT_LIST
+					vmgr_waitlist_init_pending(oper_data->type, 1);
+				#endif
                 }
             }
         } else {

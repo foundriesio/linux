@@ -919,7 +919,7 @@ static int _jmgr_cmd_open(char *str)
         jmgr_data.clk_limitation = 1;
         jmgr_data.cmd_processing = 0;
 
-		jmgr_hw_reset();
+		jmgr_hw_reset(0);
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -982,6 +982,8 @@ static int _jmgr_cmd_release(char *str)
         jmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+		
+		jmgr_hw_reset(1);
     }
 
     jmgr_disable_clock(0, 0);
@@ -1046,7 +1048,8 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			jmgr_hw_reset();
+			jmgr_hw_reset(1);
+			jmgr_hw_reset(0);
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:

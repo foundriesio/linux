@@ -58,7 +58,7 @@ extern void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void vp9mgr_get_reset(struct device_node *node);
 extern void vp9mgr_put_reset(void);
-extern void vp9mgr_hw_reset(void);
+extern void vp9mgr_hw_reset(int reset);
 
 extern void vp9mgr_enable_irq(unsigned int irq);
 extern void vp9mgr_disable_irq(unsigned int irq);
