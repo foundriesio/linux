@@ -70,6 +70,7 @@
 
 #define LIST_MAX 10
 
+#define RET4_WAIT   0X00010000
 #define RET3        0x00008000
 #define RET2        0x00004000
 #define RET1        0x00002000

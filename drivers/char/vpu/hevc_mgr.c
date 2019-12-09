@@ -810,7 +810,7 @@ static int _hmgr_cmd_open(char *str)
         hmgr_data.clk_limitation = 1;
         hmgr_data.cmd_processing = 0;
 
-		hmgr_hw_reset();
+		hmgr_hw_reset(0);
         hmgr_enable_irq(hmgr_data.irq);
         vetc_reg_init(hmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -874,6 +874,7 @@ static int _hmgr_cmd_release(char *str)
         hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+		hmgr_hw_reset(1);
     }
 
     hmgr_disable_clock(0);
@@ -937,7 +938,8 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			hmgr_hw_reset();
+			hmgr_hw_reset(1);
+			hmgr_hw_reset(0);
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:

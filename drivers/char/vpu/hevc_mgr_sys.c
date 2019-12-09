@@ -201,6 +201,7 @@ void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
 #if 1
 	int opened_count = opened_cnt;
 
+    hmgr_hw_reset(1);
     while(opened_count)
     {
         hmgr_disable_clock(vbus_no_ctrl);
@@ -216,8 +217,10 @@ void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
         if(opened_count > 0)
             opened_count--;
     }
+    hmgr_hw_reset(0);
 #else
-    hmgr_hw_reset();
+    hmgr_hw_reset(1);
+    hmgr_hw_reset(0);
 #endif
 }
 
@@ -250,24 +253,28 @@ void hmgr_put_reset(void)
 #endif
 }
 
-void hmgr_hw_reset(void)
+void hmgr_hw_reset(int reset)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	udelay(1000);
-	if(vbus_hevc_bus_reset) {
-		reset_control_assert(vbus_hevc_bus_reset);
+	if(reset) {
+		udelay(1000);
+		if(vbus_hevc_bus_reset) {
+			reset_control_assert(vbus_hevc_bus_reset);
+		}
+		if(vbus_hevc_core_reset) {
+			reset_control_assert(vbus_hevc_core_reset);
+		}
 	}
-	if(vbus_hevc_core_reset) {
-		reset_control_assert(vbus_hevc_core_reset);
+	else {
+		udelay(1000);
+		if(vbus_hevc_bus_reset) {
+			reset_control_deassert(vbus_hevc_bus_reset);
+		}
+		if(vbus_hevc_core_reset) {
+			reset_control_deassert(vbus_hevc_core_reset);
+		}
+		udelay(1000);
 	}
-	udelay(1000);
-	if(vbus_hevc_bus_reset) {
-		reset_control_deassert(vbus_hevc_bus_reset);
-	}
-	if(vbus_hevc_core_reset) {
-		reset_control_deassert(vbus_hevc_core_reset);
-	}
-	udelay(1000);
 #endif
 }
 
