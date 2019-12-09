@@ -65,7 +65,6 @@
 	};
 };
 
-
 &m_can1 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&m_can1_pins_a>;
