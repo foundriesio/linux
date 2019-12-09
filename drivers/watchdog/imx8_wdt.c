@@ -35,7 +35,8 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 
 static unsigned int timeout = DEFAULT_TIMEOUT;
 module_param(timeout, uint, 0000);
-MODULE_PARM_DESC(timeout, "Watchdog timeout in seconds (default="
+MODULE_PARM_DESC(timeout, "Watchdog timeout in seconds 1<= timeout <="
+				__MODULE_STRING(MAX_TIMEOUT) " (default="
 				__MODULE_STRING(DEFAULT_TIMEOUT) ")");
 
 static struct watchdog_device imx8_wdd;
@@ -73,6 +74,8 @@ static int imx8_wdt_start(struct watchdog_device *wdog)
 	if (res.a0)
 		return res.a0;
 
+	dev_dbg(wdog->parent, "Watchdog started\n");
+
 	return 0;
 }
 
@@ -82,6 +85,8 @@ static int imx8_wdt_stop(struct watchdog_device *wdog)
 
 	arm_smccc_smc(FSL_SIP_SRTC, FSL_SIP_SRTC_STOP_WDOG, 0, 0, 0, 0, 0, 0,
 			&res);
+
+	dev_dbg(wdog->parent, "Watchdog stopped\n");
 
 	return res.a0;
 }
@@ -95,6 +100,8 @@ static int imx8_wdt_set_timeout(struct watchdog_device *wdog,
 
 	arm_smccc_smc(FSL_SIP_SRTC, FSL_SIP_SRTC_SET_TIMEOUT_WDOG,
 			timeout * 1000, 0, 0, 0, 0, 0, &res);
+
+	dev_dbg(wdog->parent, "Set timeout to %d seconds\n", timeout);
 
 	return res.a0;
 }
@@ -112,6 +119,8 @@ static int imx8_wdt_set_pretimeout(struct watchdog_device *wdog,
 	arm_smccc_smc(FSL_SIP_SRTC, FSL_SIP_SRTC_SET_PRETIME_WDOG,
 		      (wdog->timeout - new_pretimeout) * 1000, 0, 0, 0,
 		      0, 0, &res);
+
+	dev_dbg(wdog->parent, "Set pretimeout to %d seconds\n", new_pretimeout);
 
 	return res.a0;
 }
