@@ -51,7 +51,6 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "okay";
-	phy-dsi-supply = <&reg18>;
 
 	ports {
 		#address-cells = <1>;
