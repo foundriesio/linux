@@ -129,6 +129,16 @@ static inline int backlight_update_status(struct backlight_device *bd)
 	return ret;
 }
 
+/**
+ * backlight_put - Drop backlight reference
+ * @bd: the backlight device to put
+ */
+static inline void backlight_put(struct backlight_device *bd)
+{
+	if (bd)
+		put_device(&bd->dev);
+}
+
 extern struct backlight_device *backlight_device_register(const char *name,
 	struct device *dev, void *devdata, const struct backlight_ops *ops,
 	const struct backlight_properties *props);
@@ -167,6 +177,22 @@ struct backlight_device *of_find_backlight_by_node(struct device_node *node);
 #else
 static inline struct backlight_device *
 of_find_backlight_by_node(struct device_node *node)
+{
+	return NULL;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_BACKLIGHT_CLASS_DEVICE)
+struct backlight_device *of_find_backlight(struct device *dev);
+struct backlight_device *devm_of_find_backlight(struct device *dev);
+#else
+static inline struct backlight_device *of_find_backlight(struct device *dev)
+{
+	return NULL;
+}
+
+static inline struct backlight_device *
+devm_of_find_backlight(struct device *dev)
 {
 	return NULL;
 }
