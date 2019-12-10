@@ -40,8 +40,6 @@
 #define NB_CRTC 1
 #define CRTC_MASK GENMASK(NB_CRTC - 1, 0)
 
-#define MAX_IRQ 4
-
 #define HWVER_10200 0x010200
 #define HWVER_10300 0x010300
 #define HWVER_20101 0x020101
@@ -1158,12 +1156,14 @@ static int ltdc_get_caps(struct drm_device *ddev)
 		ldev->caps.pad_max_freq_hz = 90000000;
 		if (ldev->caps.hw_version == HWVER_10200)
 			ldev->caps.pad_max_freq_hz = 65000000;
+		ldev->caps.nb_irq = 2;
 		break;
 	case HWVER_20101:
 		ldev->caps.reg_ofs = REG_OFS_4;
 		ldev->caps.pix_fmt_hw = ltdc_pix_fmt_a1;
 		ldev->caps.non_alpha_only_l1 = false;
 		ldev->caps.pad_max_freq_hz = 150000000;
+		ldev->caps.nb_irq = 4;
 		break;
 	default:
 		return -ENODEV;
@@ -1284,23 +1284,6 @@ int ltdc_load(struct drm_device *ddev)
 	reg_clear(ldev->regs, LTDC_IER,
 		  IER_LIE | IER_RRIE | IER_FUIE | IER_TERRIE);
 
-	for (i = 0; i < MAX_IRQ; i++) {
-		irq = platform_get_irq(pdev, i);
-		if (irq == -EPROBE_DEFER)
-			goto err;
-
-		if (irq < 0)
-			continue;
-
-		ret = devm_request_threaded_irq(dev, irq, ltdc_irq,
-						ltdc_irq_thread, IRQF_ONESHOT,
-						dev_name(dev), ddev);
-		if (ret) {
-			DRM_ERROR("Failed to register LTDC interrupt\n");
-			goto err;
-		}
-	}
-
 	ret = ltdc_get_caps(ddev);
 	if (ret) {
 		DRM_ERROR("hardware identifier (0x%08x) not supported!\n",
@@ -1309,6 +1292,23 @@ int ltdc_load(struct drm_device *ddev)
 	}
 
 	DRM_DEBUG_DRIVER("ltdc hw version 0x%08x\n", ldev->caps.hw_version);
+
+	for (i = 0; i < ldev->caps.nb_irq; i++) {
+		irq = platform_get_irq(pdev, i);
+		if (irq < 0) {
+			ret = irq;
+			goto err;
+		}
+
+		ret = devm_request_threaded_irq(dev, irq, ltdc_irq,
+						ltdc_irq_thread, IRQF_ONESHOT,
+						dev_name(dev), ddev);
+		if (ret) {
+			DRM_ERROR("Failed to register LTDC interrupt\n");
+			goto err;
+		}
+
+	}
 
 	crtc = devm_kzalloc(dev, sizeof(*crtc), GFP_KERNEL);
 	if (!crtc) {
