@@ -101,6 +101,7 @@
 	dmic0: dmic-0 {
 		compatible = "dmic-codec";
 		#sound-dai-cells = <1>;
+		sound-name-prefix = "dmic0";
 		status = "okay";
 
 		port {
@@ -113,6 +114,7 @@
 	dmic1: dmic-1 {
 		compatible = "dmic-codec";
 		#sound-dai-cells = <1>;
+		sound-name-prefix = "dmic1";
 		status = "okay";
 
 		port {
@@ -125,6 +127,7 @@
 	dmic2: dmic-2 {
 		compatible = "dmic-codec";
 		#sound-dai-cells = <1>;
+		sound-name-prefix = "dmic2";
 		status = "okay";
 
 		port {
@@ -137,6 +140,7 @@
 	dmic3: dmic-3 {
 		compatible = "dmic-codec";
 		#sound-dai-cells = <1>;
+		sound-name-prefix = "dmic3";
 		status = "okay";
 
 		port {
