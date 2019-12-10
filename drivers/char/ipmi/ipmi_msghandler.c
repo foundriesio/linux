@@ -3698,6 +3698,17 @@ int ipmi_add_smi(struct module         *owner,
 }
 EXPORT_SYMBOL(ipmi_add_smi);
 
+/* Compatibility layer to preserve kABI */
+int ipmi_register_smi(const struct ipmi_smi_handlers *handlers,
+		      void		    *send_info,
+		      struct device         *si_dev,
+		      unsigned char         slave_addr)
+{
+	pr_warn("Warning: legacy ipmi_register_smi does not protect against module removal\n");
+	return ipmi_add_smi(NULL, handlers, send_info, si_dev, slave_addr);
+}
+EXPORT_SYMBOL(ipmi_register_smi);
+
 static void deliver_smi_err_response(struct ipmi_smi *intf,
 				     struct ipmi_smi_msg *msg,
 				     unsigned char err)

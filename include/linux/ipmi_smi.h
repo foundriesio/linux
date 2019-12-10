@@ -226,8 +226,13 @@ int ipmi_add_smi(struct module            *owner,
 		 struct device            *dev,
 		 unsigned char            slave_addr);
 
-#define ipmi_register_smi(handlers, send_info, dev, slave_addr) \
+#define ipmi_register_smi_owner(handlers, send_info, dev, slave_addr) \
 	ipmi_add_smi(THIS_MODULE, handlers, send_info, dev, slave_addr)
+
+int ipmi_register_smi(const struct ipmi_smi_handlers *handlers,
+		      void                     *send_info,
+		      struct device            *dev,
+		      unsigned char            slave_addr);
 
 /*
  * Remove a low-level interface from the IPMI driver.  This will
