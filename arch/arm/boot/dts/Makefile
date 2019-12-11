@@ -1077,7 +1077,8 @@ dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8995-android-ott-lpd4321-v0.1.dtb \
 	tcc/tcc8995-android-mini-lpd4321-v0.1.dtb \
 	tcc/tcc8995-android-mini-lpd4321-v0.2.dtb \
-	tcc/tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtb
+	tcc/tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtb \
+	tcc/tcc8995-android-4la-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-android-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -1096,7 +1097,8 @@ else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8990-linux-lpd4322-v0.1.dtb \
 	tcc/tcc8995-linux-ott-lpd4321-v0.1.dtb \
-	tcc/tcc8995-linux-mini-lpd4321-v0.2.dtb
+	tcc/tcc8995-linux-mini-lpd4321-v0.2.dtb \
+	tcc/tcc8995-linux-4la-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC897X) += \
 	tcc/tcc8971-linux-lcn-3.0.dtb
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -1127,7 +1129,8 @@ dtbo-y += \
 	tcc/overlay-tcc8995-android-ott-lpd4321-v0.1.dtbo \
 	tcc/overlay-tcc8995-android-mini-lpd4321-v0.1.dtbo \
 	tcc/overlay-tcc8995-android-mini-lpd4321-v0.2.dtbo \
-	tcc/overlay-tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtbo
+	tcc/overlay-tcc8995-android-mini-tcm3840-lpd4321-v0.1.dtbo \
+	tcc/overlay-tcc8995-android-4la-lpd4321-v0.1.dtbo
 
 dtb-y += \
 	tcc/tcc8031-soc.dtb

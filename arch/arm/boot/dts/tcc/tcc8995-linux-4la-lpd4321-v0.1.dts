@@ -1,0 +1,145 @@
+/*
+ * Device tree for Telechips TCC8990 STB board
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License as
+ *     published by the Free Software Foundation; either version 2 of the
+ *     License, or (at your option) any later version.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include "tcc8995-linux-4la.dtsi"
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+	/* SDIO */
+	sdhc@16460000 {
+		status = "okay";
+		controller-id = <2>;
+		bus-width = <4>;
+		max-frequency = <200000000>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&sd2_1_idle>;
+		pinctrl-1 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+		//channel-mux = <1>;
+
+		cd-inverted;
+		//wp-inverted;
+		//non-removable;
+		//broken-cd;
+		keep-power-in-suspend;
+		//enable-sdio-wakeup;
+		//cap-power-off-card;
+		cap-sdio-irq;
+		cap2-no-sleep-cmd;
+		cap-bus-width-test;
+
+		//wp-gpios = <&gpb 7 0>;
+		//cd-gpios = <&gpext1 5 0>;
+		vctrl-gpio = <&gpc 25 0>;
+		//pwr-gpio = <&gpext2 7 0>;
+
+		//cd-polling;
+		wifi-polling;
+
+		/* High-speed SDR */
+		//cap-sd-highspeed;
+		//cap-mmc-highspeed;
+
+		/* High-speed DDR(emmc & SD3.0 DDR50) */
+		//cap-1-8V-ddr;
+		//cap-uhs-ddr50;
+
+		/* SD3.0 Common */
+		cap-vdd-165-195;
+
+		/* SD3.0 SDR12 */
+		//cap-uhs-sdr12;
+
+		/* SD3.0 SDR25 */
+		//cap-uhs-sdr25;
+		//cap-uhs-driver_type_a;
+
+		/* SD3.0 SDR50 */
+		//cap-uhs-sdr50;
+		//cap-uhs-driver_type_c;
+
+		/* SD3.0 SDR104 */
+		cap-uhs-sdr104;
+		cap-uhs-driver_type_d;
+		cap-uhs-cmd23;
+		cap-adma;
+
+		/* eMMC HS200 */
+		//mmc-hs200-1_8v;
+		//cap-uhs-driver_type_d;
+		//cap-uhs-cmd23;
+		//cap-adma;
+	};
+
+	tcm3800 {
+		compatible = "telechips, tcm3800";
+		wifi_pwr-gpio = <&gpf 30 0>;
+		wlreg_on-gpio = <&gpg 15 0>;
+		wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+
+	tcc_bluetooth {
+		compatible = "telechips, tcc_bluetooth";
+		bt_power-gpio = <&gpf 30 0>; /* BTWIFI_VBAT_EN */
+		bt_reg_on-gpio = <&gpc 21 0>;
+		bt_wake-gpio = <&gpc 20 0>;
+		bt_hwake-gpio = <&gpc 22 0>;
+		bt_power_1p8v-gpio = <&gpg 4 0>;
+		status = "okay";
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		autorepeat;
+		button@0 {
+			label = "Macro Key";
+			linux,code = <112>;
+			gpios = <&gpa 3 1>;
+		};
+	};
+};

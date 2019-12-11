@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC8990 STB board
+ *
+ * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
+*/
+
+#ifndef DT_OVERLAY
+/dts-v1/;
+#endif
+
+#include "tcc8995-android-4la.dtsi"
+
+#if 0   // 0 : force detect, 1 : not force detect
+/* SDIO */
+&sdhc2 {
+	status = "okay";
+	controller-id = <2>;
+	bus-width = <4>;
+	max-frequency = <200000000>;
+	pinctrl-names = "default", "active";
+	pinctrl-0 = <&sd2_1_idle>;
+	pinctrl-1 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
+	//channel-mux = <1>;
+
+	cd-inverted;
+	//wp-inverted;
+	//non-removable;
+	//broken-cd;
+	keep-power-in-suspend;
+	//enable-sdio-wakeup;
+	//cap-power-off-card;
+	cap-sdio-irq;
+	cap2-no-sleep-cmd;
+	cap-bus-width-test;
+
+	//wp-gpios = <&gpb 7 0>;
+	//cd-gpios = <&gpext1 5 0>;
+	vctrl-gpio = <&gpc 25 0>;
+	//pwr-gpio = <&gpext2 7 0>;
+
+	//cd-polling;
+	wifi-polling;
+
+	/* High-speed SDR */
+	//cap-sd-highspeed;
+	//cap-mmc-highspeed;
+
+	/* High-speed DDR(emmc & SD3.0 DDR50) */
+	//cap-1-8V-ddr;
+	//cap-uhs-ddr50;
+
+	/* SD3.0 Common */
+	cap-vdd-165-195;
+
+	/* SD3.0 SDR12 */
+	//cap-uhs-sdr12;
+
+	/* SD3.0 SDR25 */
+	//cap-uhs-sdr25;
+	//cap-uhs-driver_type_a;
+
+	/* SD3.0 SDR50 */
+	//cap-uhs-sdr50;
+	//cap-uhs-driver_type_c;
+
+	/* SD3.0 SDR104 */
+	cap-uhs-sdr104;
+	cap-uhs-driver_type_d;
+	cap-uhs-cmd23;
+	cap-adma;
+
+	/* eMMC HS200 */
+	//mmc-hs200-1_8v;
+	//cap-uhs-driver_type_d;
+	//cap-uhs-cmd23;
+	//cap-adma;
+};
+
+&tcm3800 {
+	compatible = "telechips, tcm3800";
+	wifi_pwr-gpio = <&gpf 30 0>;
+	wlreg_on-gpio = <&gpg 15 0>;
+	wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+	//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+};
+#else
+&vqmmc_sdio {
+	compatible = "regulator-gpio";
+	regulator-name = "vqmmc_sdio";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-type = "voltage";
+	regulator-ramp-delay = <10>;
+	regulator-always-on;
+
+	gpios = <&gpg 9 0x4>;	//SD_VOLCTL
+	gpios-states = <0>;
+	states = < 1800000 0x0 3300000 0x1>;
+};
+
+&sdhc2 {
+	compatible = "telechips,tcc-sdhci";
+	//tcc-mmc-channel-mux = <2>;
+	//tcc-mmc-clk-out-tap = <29>;
+	//tcc-mmc-cmd-tap = <4>;
+	//tcc-mmc-data-tap = <4>;
+
+	//non-removable;
+	keep-power-in-suspend;
+	cap-sdio-irq;
+
+	pwr-gpio = <&gpa 5 0>;	//SD PWRCTL
+	vqmmc-supply = <&vqmmc_sdio>;
+
+	cd-force-presence-change;
+
+	tcm38xx {
+		compatible = "telechips,tcm38xx";
+		wifi_pwr-gpio = <&gpf 30 0>;
+		wlreg_on-gpio = <&gpg 15 0>;
+		wifi_pwr_1p8v-gpio = <&gpg 4 0>;
+		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
+	};
+};
+#endif
+
+&tcc_bluetooth {
+	compatible = "telechips, tcc_bluetooth";
+	bt_power-gpio = <&gpf 30 0>; /* BTWIFI_VBAT_EN */
+	bt_reg_on-gpio = <&gpc 21 0>;
+	bt_wake-gpio = <&gpc 20 0>;
+	bt_hwake-gpio = <&gpc 22 0>;
+	bt_power_1p8v-gpio = <&gpg 4 0>;
+	status = "okay";
+};
+
+&gpio_keys_polled {
+        compatible = "gpio-keys-polled";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        poll-interval = <100>;
+        autorepeat;
+        button@0 {
+                label = "BT Auto Pair Key";
+                linux,code = <218>;
+                gpios = <&gpa 3 1>;
+        };
+        button@1 {
+                label = "Power Key";
+                linux,code = <116>;
+                gpios = <&gpf 16 1>;
+        };
+};
