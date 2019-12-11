@@ -394,6 +394,8 @@ enum {
 
 #define VMCB_AVIC_APIC_BAR_MASK		0xFFFFFFFFFF000ULL
 
+static DEFINE_MUTEX(sev_deactivate_lock);
+static DEFINE_MUTEX(sev_bitmap_lock);
 static unsigned int max_sev_asid;
 static unsigned int min_sev_asid;
 static unsigned long *sev_asid_bitmap;
@@ -1671,25 +1673,22 @@ static int avic_init_backing_page(struct kvm_vcpu *vcpu)
 	return 0;
 }
 
-static void __sev_asid_free(int asid)
+static void sev_asid_free(int asid)
 {
 	struct svm_cpu_data *sd;
 	int cpu, pos;
 
+	mutex_lock(&sev_bitmap_lock);
+
 	pos = asid - 1;
-	clear_bit(pos, sev_asid_bitmap);
+	__clear_bit(pos, sev_asid_bitmap);
 
 	for_each_possible_cpu(cpu) {
 		sd = per_cpu(svm_data, cpu);
 		sd->sev_vmcbs[pos] = NULL;
 	}
-}
 
-static void sev_asid_free(struct kvm *kvm)
-{
-	struct kvm_sev_info *sev = &kvm->arch.sev_info;
-
-	__sev_asid_free(sev->asid);
+	mutex_unlock(&sev_bitmap_lock);
 }
 
 static void sev_unbind_asid(struct kvm *kvm, unsigned int handle)
@@ -1706,10 +1705,20 @@ static void sev_unbind_asid(struct kvm *kvm, unsigned int handle)
 
 	/* deactivate handle */
 	data->handle = handle;
+
+	/*
+	 * Guard against a parallel DEACTIVATE command before the DF_FLUSH
+	 * command has completed.
+	 */
+	mutex_lock(&sev_deactivate_lock);
+
 	sev_guest_deactivate(data, NULL);
 
 	wbinvd_on_all_cpus();
 	sev_guest_df_flush(NULL);
+
+	mutex_unlock(&sev_deactivate_lock);
+
 	kfree(data);
 
 	decommission = kzalloc(sizeof(*decommission), GFP_KERNEL);
@@ -1851,7 +1860,7 @@ static void sev_vm_destroy(struct kvm *kvm)
 	mutex_unlock(&kvm->lock);
 
 	sev_unbind_asid(kvm, sev->handle);
-	sev_asid_free(kvm);
+	sev_asid_free(sev->asid);
 }
 
 static void avic_vm_destroy(struct kvm *kvm)
@@ -6188,14 +6197,21 @@ static int sev_asid_new(void)
 {
 	int pos;
 
+	mutex_lock(&sev_bitmap_lock);
+
 	/*
 	 * SEV-enabled guest must use asid from min_sev_asid to max_sev_asid.
 	 */
 	pos = find_next_zero_bit(sev_asid_bitmap, max_sev_asid, min_sev_asid - 1);
-	if (pos >= max_sev_asid)
+	if (pos >= max_sev_asid) {
+		mutex_unlock(&sev_bitmap_lock);
 		return -EBUSY;
+	}
 
-	set_bit(pos, sev_asid_bitmap);
+	__set_bit(pos, sev_asid_bitmap);
+
+	mutex_unlock(&sev_bitmap_lock);
+
 	return pos + 1;
 }
 
@@ -6223,7 +6239,7 @@ static int sev_guest_init(struct kvm *kvm, struct kvm_sev_cmd *argp)
 	return 0;
 
 e_free:
-	__sev_asid_free(asid);
+	sev_asid_free(asid);
 	return ret;
 }
 
@@ -6233,9 +6249,18 @@ static int sev_bind_asid(struct kvm *kvm, unsigned int handle, int *error)
 	int asid = sev_get_asid(kvm);
 	int ret;
 
+	/*
+	 * Guard against a DEACTIVATE command before the DF_FLUSH command
+	 * has completed.
+	 */
+	mutex_lock(&sev_deactivate_lock);
+
 	wbinvd_on_all_cpus();
 
 	ret = sev_guest_df_flush(error);
+
+	mutex_unlock(&sev_deactivate_lock);
+
 	if (ret)
 		return ret;
 
