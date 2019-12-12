@@ -401,7 +401,7 @@
 	status = "okay";
 
 	ov5640_mipi: ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi_v3";
+		compatible = "ovti,ov5640_mipi";
 		assigned-clock-parents = <&clk IMX8MM_CLK_24M>;
 		assigned-clock-rates = <0>, <24000000>;
 		assigned-clocks = <&clk IMX8MM_CLK_CLKO1_SRC>,
