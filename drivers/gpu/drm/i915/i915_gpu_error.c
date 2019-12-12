@@ -1460,6 +1460,7 @@ static void gem_record_rings(struct i915_gpu_state *error)
 		struct intel_engine_cs *engine = i915->engine[i];
 		struct drm_i915_error_engine *ee = &error->engine[i];
 		struct i915_request *request;
+		unsigned long flags;
 
 		ee->engine_id = -1;
 
@@ -1472,10 +1473,11 @@ static void gem_record_rings(struct i915_gpu_state *error)
 		error_record_engine_waiters(engine, ee);
 		error_record_engine_execlists(engine, ee);
 
+		spin_lock_irqsave(&engine->timeline.lock, flags);
 		request = i915_gem_find_active_request(engine);
 		if (request) {
 			struct i915_gem_context *ctx = request->gem_context;
-			struct intel_ring *ring;
+			struct intel_ring *ring = request->ring;
 
 			ee->vm = ctx->ppgtt ? &ctx->ppgtt->vm : &ggtt->vm;
 
@@ -1505,7 +1507,6 @@ static void gem_record_rings(struct i915_gpu_state *error)
 			ee->rq_post = request->postfix;
 			ee->rq_tail = request->tail;
 
-			ring = request->ring;
 			ee->cpu_ring_head = ring->head;
 			ee->cpu_ring_tail = ring->tail;
 			ee->ringbuffer =
@@ -1513,6 +1514,7 @@ static void gem_record_rings(struct i915_gpu_state *error)
 
 			engine_record_requests(engine, request, ee);
 		}
+		spin_unlock_irqrestore(&engine->timeline.lock, flags);
 
 		ee->hws_page =
 			i915_error_object_create(i915,

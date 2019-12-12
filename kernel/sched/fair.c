@@ -6641,8 +6641,11 @@ static void set_last_buddy(struct sched_entity *se)
 	if (entity_is_task(se) && unlikely(task_of(se)->policy == SCHED_IDLE))
 		return;
 
-	for_each_sched_entity(se)
+	for_each_sched_entity(se) {
+		if (WARN_ON_ONCE(!se->on_rq))
+			return;
 		cfs_rq_of(se)->last = se;
+	}
 }
 
 static void set_next_buddy(struct sched_entity *se)
@@ -6650,8 +6653,11 @@ static void set_next_buddy(struct sched_entity *se)
 	if (entity_is_task(se) && unlikely(task_of(se)->policy == SCHED_IDLE))
 		return;
 
-	for_each_sched_entity(se)
+	for_each_sched_entity(se) {
+		if (WARN_ON_ONCE(!se->on_rq))
+			return;
 		cfs_rq_of(se)->next = se;
+	}
 }
 
 static void set_skip_buddy(struct sched_entity *se)

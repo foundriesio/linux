@@ -2076,10 +2076,10 @@ static int try_smi_init(struct smi_info *new_smi)
 
 	dev_set_drvdata(new_smi->io.dev, new_smi);
 
-	rv = ipmi_register_smi(&handlers,
-			       new_smi,
-			       new_smi->io.dev,
-			       new_smi->io.slave_addr);
+	rv = ipmi_register_smi_owner(&handlers,
+				     new_smi,
+				     new_smi->io.dev,
+				     new_smi->io.slave_addr);
 	if (rv) {
 		dev_err(new_smi->io.dev,
 			"Unable to register device: error %d\n",
