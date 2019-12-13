@@ -186,6 +186,7 @@ intel_pch_type(const struct drm_i915_private *dev_priv, unsigned short id)
 		WARN_ON(!IS_CANNONLAKE(dev_priv) && !IS_COFFEELAKE(dev_priv));
 		return PCH_CNP;
 	case INTEL_PCH_CMP_DEVICE_ID_TYPE:
+	case INTEL_PCH_CMP2_DEVICE_ID_TYPE:
 		DRM_DEBUG_KMS("Found Comet Lake PCH (CMP)\n");
 		WARN_ON(!IS_COFFEELAKE(dev_priv));
 		/* CometPoint is CNP Compatible */
@@ -1658,7 +1659,6 @@ static int i915_drm_suspend_late(struct drm_device *dev, bool hibernation)
 	i915_gem_suspend_late(dev_priv);
 
 	intel_display_set_init_power(dev_priv, false);
-	i915_rc6_ctx_wa_suspend(dev_priv);
 	intel_uncore_suspend(dev_priv);
 
 	/*
@@ -1884,8 +1884,6 @@ static int i915_drm_resume_early(struct drm_device *dev)
 		intel_power_domains_init_hw(dev_priv, true);
 	else
 		intel_display_set_init_power(dev_priv, true);
-
-	i915_rc6_ctx_wa_resume(dev_priv);
 
 	intel_engines_sanitize(dev_priv);
 

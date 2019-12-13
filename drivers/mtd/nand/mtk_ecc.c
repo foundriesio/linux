@@ -326,10 +326,11 @@ int mtk_ecc_enable(struct mtk_ecc *ecc, struct mtk_ecc_config *config)
 
 	mtk_ecc_wait_idle(ecc, op);
 	mtk_ecc_config(ecc, config);
-	writew(ECC_OP_ENABLE, ecc->regs + ECC_CTL_REG(op));
 
 	init_completion(&ecc->done);
 	writew(ECC_IRQ_EN, ecc->regs + ECC_IRQ_REG(op));
+
+	writew(ECC_OP_ENABLE, ecc->regs + ECC_CTL_REG(op));
 
 	return 0;
 }

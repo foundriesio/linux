@@ -454,6 +454,21 @@ is_valid_oplock_break(char *buffer, struct TCP_Server_Info *srv)
 		   le16_to_cpu(pSMB->hdr.Status.DosError.Error)) {
 			return true;
 		} else {
+			/*
+			 * NetApp servers seem to return invalid error codes on
+			 * response.
+			 */
+			if (pSMB->hdr.Flags2 & SMBFLG2_ERR_STATUS) {
+				if (le32_to_cpu(pSMB->hdr.Status.CifsError) == (NT_STATUS_UNSUCCESSFUL))
+					return true;
+				pr_warn_once("VFS: server returned unhandled error code on oplock response: 0x%08x\n",
+					     le32_to_cpu(pSMB->hdr.Status.CifsError));
+			} else {
+				if (le16_to_cpu(pSMB->hdr.Status.DosError.Error) == ERRgeneral)
+					return true;
+				pr_warn_once("VFS: server returned unhandled error code on oplock response: 0x%04x\n",
+					     le16_to_cpu(pSMB->hdr.Status.DosError.Error));
+			}
 			return false; /* on valid oplock brk we get "request" */
 		}
 	}

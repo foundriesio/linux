@@ -1860,7 +1860,12 @@ static DEVICE_ATTR(range, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH, hidpp
 static void hidpp_ff_destroy(struct ff_device *ff)
 {
 	struct hidpp_ff_private_data *data = ff->private;
+	struct hid_device *hid = data->hidpp->hid_dev;
 
+	hid_info(hid, "Unloading HID++ force feedback.\n");
+
+	device_remove_file(&hid->dev, &dev_attr_range);
+	destroy_workqueue(data->wq);
 	kfree(data->effect_ids);
 }
 
@@ -1980,31 +1985,6 @@ static int hidpp_ff_init(struct hidpp_device *hidpp, u8 feature_index)
 
 	return 0;
 }
-
-static int hidpp_ff_deinit(struct hid_device *hid)
-{
-	struct hid_input *hidinput = list_entry(hid->inputs.next, struct hid_input, list);
-	struct input_dev *dev = hidinput->input;
-	struct hidpp_ff_private_data *data;
-
-	if (!dev) {
-		hid_err(hid, "Struct input_dev not found!\n");
-		return -EINVAL;
-	}
-
-	hid_info(hid, "Unloading HID++ force feedback.\n");
-	data = dev->ff->private;
-	if (!data) {
-		hid_err(hid, "Private data not found!\n");
-		return -EINVAL;
-	}
-
-	destroy_workqueue(data->wq);
-	device_remove_file(&hid->dev, &dev_attr_range);
-
-	return 0;
-}
-
 
 /* ************************************************************************** */
 /*                                                                            */
@@ -3092,10 +3072,6 @@ static void hidpp_remove(struct hid_device *hdev)
 
 	sysfs_remove_group(&hdev->dev.kobj, &ps_attribute_group);
 
-	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920) {
-		hidpp_ff_deinit(hdev);
-		hid_hw_close(hdev);
-	}
 	hid_hw_stop(hdev);
 	cancel_work_sync(&hidpp->work);
 	mutex_destroy(&hidpp->send_mutex);

@@ -269,6 +269,9 @@ struct iwl_rx_cmd_buffer {
 	bool _page_stolen;
 	u32 _rx_page_order;
 	unsigned int truesize;
+#ifndef __GENKSYMS__
+	u8 status;
+#endif
 };
 
 static inline void *rxb_addr(struct iwl_rx_cmd_buffer *r)

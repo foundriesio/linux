@@ -297,8 +297,12 @@ void nvme_cancel_request(struct request *req, void *data, bool reserved)
 	dev_dbg_ratelimited(((struct nvme_ctrl *) data)->device,
 				"Cancelling I/O %d", req->tag);
 
+	/* don't abort one completed request */
+	if (blk_mq_request_completed(req))
+		return;
+
 	nvme_req(req)->status = NVME_SC_ABORT_REQ;
-	blk_mq_complete_request(req);
+	blk_mq_complete_request_sync(req);
 
 }
 EXPORT_SYMBOL_GPL(nvme_cancel_request);

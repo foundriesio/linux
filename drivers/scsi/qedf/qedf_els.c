@@ -190,8 +190,11 @@ static void qedf_rrq_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Original io_req is NULL, rrq_req = %p.\n", rrq_req);
 		goto out_free;
+	}
 
 	if (rrq_req->event != QEDF_IOREQ_EV_ELS_TMO &&
 	    rrq_req->event != QEDF_IOREQ_EV_ELS_ERR_DETECT)
@@ -361,8 +364,10 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 	u32 port_id;
 	unsigned long flags;
 
-	if (!fcport)
+	if (!fcport) {
+		QEDF_ERR(NULL, "fcport is NULL.\n");
 		return;
+	}
 
 	spin_lock_irqsave(&fcport->rport_lock, flags);
 	if (test_bit(QEDF_RPORT_IN_RESET, &fcport->flags) ||
@@ -379,18 +384,12 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 	spin_unlock_irqrestore(&fcport->rport_lock, flags);
 
 	rdata = fcport->rdata;
-	if (rdata && !kref_get_unless_zero(&rdata->kref)) {
-		fcport->rdata = NULL;
-		rdata = NULL;
-	}
-
-	if (rdata && rdata->rp_state == RPORT_ST_READY) {
+	if (rdata) {
 		lport = fcport->qedf->lport;
 		port_id = rdata->ids.port_id;
 		QEDF_ERR(&(fcport->qedf->dbg_ctx),
 		    "LOGO port_id=%x.\n", port_id);
 		fc_rport_logoff(rdata);
-		kref_put(&rdata->kref, fc_rport_destroy);
 		mutex_lock(&lport->disc.disc_mutex);
 		/* Recreate the rport and log back in */
 		rdata = fc_rport_create(lport, port_id);
@@ -400,7 +399,6 @@ void qedf_restart_rport(struct qedf_rport *fcport)
 			fcport->rdata = rdata;
 		} else {
 			mutex_unlock(&lport->disc.disc_mutex);
-			fcport->rdata = NULL;
 		}
 	}
 	clear_bit(QEDF_RPORT_IN_RESET, &fcport->flags);
@@ -429,8 +427,11 @@ static void qedf_l2_els_compl(struct qedf_els_cb_arg *cb_arg)
 	 * If we are flushing the command just free the cb_arg as none of the
 	 * response data will be valid.
 	 */
-	if (els_req->event == QEDF_IOREQ_EV_ELS_FLUSH)
+	if (els_req->event == QEDF_IOREQ_EV_ELS_FLUSH) {
+		QEDF_ERR(NULL, "els_req xid=0x%x event is flush.\n",
+			 els_req->xid);
 		goto free_arg;
+	}
 
 	fcport = els_req->fcport;
 	mp_req = &(els_req->mp_req);
@@ -543,8 +544,10 @@ static void qedf_srr_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(NULL, "orig_io_req is NULL.\n");
 		goto out_free;
+	}
 
 	clear_bit(QEDF_CMD_SRR_SENT, &orig_io_req->flags);
 
@@ -558,8 +561,11 @@ static void qedf_srr_compl(struct qedf_els_cb_arg *cb_arg)
 		   orig_io_req, orig_io_req->xid, srr_req->xid, refcount);
 
 	/* If a SRR times out, simply free resources */
-	if (srr_req->event == QEDF_IOREQ_EV_ELS_TMO)
+	if (srr_req->event == QEDF_IOREQ_EV_ELS_TMO) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "ELS timeout rec_xid=0x%x.\n", srr_req->xid);
 		goto out_put;
+	}
 
 	/* Normalize response data into struct fc_frame */
 	mp_req = &(srr_req->mp_req);
@@ -732,8 +738,11 @@ void qedf_process_seq_cleanup_compl(struct qedf_ctx *qedf,
 	cb_arg = io_req->cb_arg;
 
 	/* If we timed out just free resources */
-	if (io_req->event == QEDF_IOREQ_EV_ELS_TMO || !cqe)
+	if (io_req->event == QEDF_IOREQ_EV_ELS_TMO || !cqe) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "cqe is NULL or timeout event (0x%x)", io_req->event);
 		goto free;
+	}
 
 	/* Kill the timer we put on the request */
 	cancel_delayed_work_sync(&io_req->timeout_work);
@@ -836,8 +845,10 @@ static void qedf_rec_compl(struct qedf_els_cb_arg *cb_arg)
 
 	orig_io_req = cb_arg->aborted_io_req;
 
-	if (!orig_io_req)
+	if (!orig_io_req) {
+		QEDF_ERR(NULL, "orig_io_req is NULL.\n");
 		goto out_free;
+	}
 
 	if (rec_req->event != QEDF_IOREQ_EV_ELS_TMO &&
 	    rec_req->event != QEDF_IOREQ_EV_ELS_ERR_DETECT)
@@ -849,8 +860,12 @@ static void qedf_rec_compl(struct qedf_els_cb_arg *cb_arg)
 		   orig_io_req, orig_io_req->xid, rec_req->xid, refcount);
 
 	/* If a REC times out, free resources */
-	if (rec_req->event == QEDF_IOREQ_EV_ELS_TMO)
+	if (rec_req->event == QEDF_IOREQ_EV_ELS_TMO) {
+		QEDF_ERR(&qedf->dbg_ctx,
+			 "Got TMO event, orig_io_req %p orig_io_xid=0x%x.\n",
+			 orig_io_req, orig_io_req->xid);
 		goto out_put;
+	}
 
 	/* Normalize response data into struct fc_frame */
 	mp_req = &(rec_req->mp_req);

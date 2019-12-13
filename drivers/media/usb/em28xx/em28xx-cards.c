@@ -2667,6 +2667,8 @@ EXPORT_SYMBOL_GPL(em28xx_tuner_callback);
 static inline void em28xx_set_model(struct em28xx *dev)
 {
 	dev->board = em28xx_boards[dev->model];
+	dev->has_msp34xx = dev->board.has_msp34xx;
+	dev->is_webcam = dev->board.is_webcam;
 
 	/* Those are the default values for the majority of boards
 	   Use those values if not specified otherwise at boards entry
@@ -2838,7 +2840,7 @@ static int em28xx_hint_board(struct em28xx *dev)
 {
 	int i;
 
-	if (dev->board.is_webcam) {
+	if (dev->is_webcam) {
 		if (dev->em28xx_sensor == EM28XX_MT9V011) {
 			dev->model = EM2820_BOARD_SILVERCREST_WEBCAM;
 		} else if (dev->em28xx_sensor == EM28XX_MT9M001 ||
@@ -2926,15 +2928,18 @@ static int em28xx_hint_board(struct em28xx *dev)
 
 static void em28xx_card_setup(struct em28xx *dev)
 {
+	int i, j, idx;
+	bool duplicate_entry;
+
 	/*
 	 * If the device can be a webcam, seek for a sensor.
 	 * If sensor is not found, then it isn't a webcam.
 	 */
-	if (dev->board.is_webcam) {
+	if (dev->is_webcam) {
 		em28xx_detect_sensor(dev);
 		if (dev->em28xx_sensor == EM28XX_NOSENSOR)
 			/* NOTE: error/unknown sensor/no sensor */
-			dev->board.is_webcam = 0;
+			dev->is_webcam = 0;
 	}
 
 	switch (dev->model) {
@@ -2996,7 +3001,7 @@ static void em28xx_card_setup(struct em28xx *dev)
 
 		if (tv.audio_processor == TVEEPROM_AUDPROC_MSP) {
 			dev->i2s_speed = 2048000;
-			dev->board.has_msp34xx = 1;
+			dev->has_msp34xx = 1;
 		}
 		break;
 	}
@@ -3078,6 +3083,32 @@ static void em28xx_card_setup(struct em28xx *dev)
 	/* Allow override tuner type by a module parameter */
 	if (tuner >= 0)
 		dev->tuner_type = tuner;
+
+	/*
+	 * Dynamically generate a list of valid audio inputs for this
+	 * specific board, mapping them via enum em28xx_amux.
+	 */
+
+	idx = 0;
+	for (i = 0; i < MAX_EM28XX_INPUT; i++) {
+		if (!INPUT(i)->type)
+			continue;
+
+		/* Skip already mapped audio inputs */
+		duplicate_entry = false;
+		for (j = 0; j < idx; j++) {
+			if (INPUT(i)->amux == dev->amux_map[j]) {
+				duplicate_entry = true;
+				break;
+			}
+		}
+		if (duplicate_entry)
+			continue;
+
+		dev->amux_map[idx++] = INPUT(i)->amux;
+	}
+	for (; idx < MAX_EM28XX_INPUT; idx++)
+		dev->amux_map[idx] = EM28XX_AMUX_UNUSED;
 }
 
 void em28xx_setup_xc3028(struct em28xx *dev, struct xc2028_ctrl *ctl)
@@ -3673,7 +3704,7 @@ static int em28xx_usb_probe(struct usb_interface *interface,
 	}
 
 	if (usb_xfer_mode < 0) {
-		if (dev->board.is_webcam)
+		if (dev->is_webcam)
 			try_bulk = 1;
 		else
 			try_bulk = 0;

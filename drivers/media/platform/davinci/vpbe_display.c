@@ -518,7 +518,7 @@ vpbe_disp_calculate_scale_factor(struct vpbe_display *disp_dev,
 		else if (v_scale == 4)
 			layer_info->v_zoom = ZOOM_X4;
 		if (v_exp)
-			layer_info->h_exp = V_EXP_6_OVER_5;
+			layer_info->v_exp = V_EXP_6_OVER_5;
 	} else {
 		/* no scaling, only cropping. Set display area to crop area */
 		cfg->ysize = expected_ysize;
@@ -813,10 +813,12 @@ static int vpbe_display_enum_fmt(struct file *file, void  *priv,
 	fmt->index = index;
 	fmt->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	if (index == 0) {
-		strcpy(fmt->description, "YUV 4:2:2 - UYVY");
+		strscpy(fmt->description, "YUV 4:2:2 - UYVY",
+			sizeof(fmt->description));
 		fmt->pixelformat = V4L2_PIX_FMT_UYVY;
 	} else {
-		strcpy(fmt->description, "Y/CbCr 4:2:0");
+		strscpy(fmt->description, "Y/CbCr 4:2:0",
+			sizeof(fmt->description));
 		fmt->pixelformat = V4L2_PIX_FMT_NV12;
 	}
 

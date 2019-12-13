@@ -2436,7 +2436,6 @@ fc_remove_host(struct Scsi_Host *shost)
 
 	/* Remove any vports */
 	list_for_each_entry_safe(vport, next_vport, &fc_host->vports, peers) {
-		list_del(&vport->peers);
 		vport->flags |= FC_VPORT_DELETING;
 		fc_queue_work(shost, &vport->vport_delete_work);
 	}

@@ -521,9 +521,10 @@ static void mlx5_fw_tracer_clean_ready_list(struct mlx5_fw_tracer *tracer)
 		list_del(&str_frmt->list);
 }
 
-static void mlx5_tracer_print_trace(struct tracer_string_format *str_frmt,
-				    struct mlx5_core_dev *dev,
-				    u64 trace_timestamp)
+static noinline
+void mlx5_tracer_print_trace(struct tracer_string_format *str_frmt,
+			     struct mlx5_core_dev *dev,
+			     u64 trace_timestamp)
 {
 	char	tmp[512];
 

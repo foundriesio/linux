@@ -865,12 +865,17 @@ out:
  * rds_message is getting to be quite complicated, and we'd like to allocate
  * it all in one go. This figures out how big it needs to be up front.
  */
-static int rds_rm_size(struct msghdr *msg, int data_len)
+static int rds_rm_size(struct msghdr *msg, int data_len,
+		       struct rds_iov_vector_arr *vct)
 {
 	struct cmsghdr *cmsg;
 	int size = 0;
 	int cmsg_groups = 0;
 	int retval;
+	struct rds_iov_vector *iov, *tmp_iov;
+
+	if (data_len < 0)
+		return -EINVAL;
 
 	for_each_cmsghdr(cmsg, msg) {
 		if (!CMSG_OK(msg, cmsg))
@@ -881,8 +886,24 @@ static int rds_rm_size(struct msghdr *msg, int data_len)
 
 		switch (cmsg->cmsg_type) {
 		case RDS_CMSG_RDMA_ARGS:
+			if (vct->indx >= vct->len) {
+				vct->len += vct->incr;
+				tmp_iov =
+					krealloc(vct->vec,
+						 vct->len *
+						 sizeof(struct rds_iov_vector),
+						 GFP_KERNEL);
+				if (!tmp_iov) {
+					vct->len -= vct->incr;
+					return -ENOMEM;
+				}
+				vct->vec = tmp_iov;
+			}
+			iov = &vct->vec[vct->indx];
+			memset(iov, 0, sizeof(struct rds_iov_vector));
+			vct->indx++;
 			cmsg_groups |= 1;
-			retval = rds_rdma_extra_size(CMSG_DATA(cmsg));
+			retval = rds_rdma_extra_size(CMSG_DATA(cmsg), iov);
 			if (retval < 0)
 				return retval;
 			size += retval;
@@ -919,10 +940,11 @@ static int rds_rm_size(struct msghdr *msg, int data_len)
 }
 
 static int rds_cmsg_send(struct rds_sock *rs, struct rds_message *rm,
-			 struct msghdr *msg, int *allocated_mr)
+			 struct msghdr *msg, int *allocated_mr,
+			 struct rds_iov_vector_arr *vct)
 {
 	struct cmsghdr *cmsg;
-	int ret = 0;
+	int ret = 0, ind = 0;
 
 	for_each_cmsghdr(cmsg, msg) {
 		if (!CMSG_OK(msg, cmsg))
@@ -936,7 +958,10 @@ static int rds_cmsg_send(struct rds_sock *rs, struct rds_message *rm,
 		 */
 		switch (cmsg->cmsg_type) {
 		case RDS_CMSG_RDMA_ARGS:
-			ret = rds_cmsg_rdma_args(rs, rm, cmsg);
+			if (ind >= vct->indx)
+				return -ENOMEM;
+			ret = rds_cmsg_rdma_args(rs, rm, cmsg, &vct->vec[ind]);
+			ind++;
 			break;
 
 		case RDS_CMSG_RDMA_DEST:
@@ -1037,6 +1062,13 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	long timeo = sock_sndtimeo(sk, nonblock);
 	struct rds_conn_path *cpath;
 	size_t total_payload_len = payload_len, rdma_payload_len = 0;
+	struct rds_iov_vector_arr vct;
+	int ind;
+
+	memset(&vct, 0, sizeof(vct));
+
+	/* expect 1 RDMA CMSG per rds_sendmsg. can still grow if more needed. */
+	vct.incr = 1;
 
 	/* Mirror Linux UDP mirror of BSD error message compatibility */
 	/* XXX: Perhaps MSG_MORE someday */
@@ -1085,7 +1117,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	}
 
 	/* size of rm including all sgs */
-	ret = rds_rm_size(msg, payload_len);
+	ret = rds_rm_size(msg, payload_len, &vct);
 	if (ret < 0)
 		goto out;
 
@@ -1097,11 +1129,9 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 
 	/* Attach data to the rm */
 	if (payload_len) {
-		rm->data.op_sg = rds_message_alloc_sgs(rm, ceil(payload_len, PAGE_SIZE));
-		if (!rm->data.op_sg) {
-			ret = -ENOMEM;
+		rm->data.op_sg = rds_message_alloc_sgs(rm, ceil(payload_len, PAGE_SIZE), &ret);
+		if (!rm->data.op_sg)
 			goto out;
-		}
 		ret = rds_message_copy_from_user(rm, &msg->msg_iter);
 		if (ret)
 			goto out;
@@ -1127,7 +1157,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	}
 
 	/* Parse any control messages the user may have included. */
-	ret = rds_cmsg_send(rs, rm, msg, &allocated_mr);
+	ret = rds_cmsg_send(rs, rm, msg, &allocated_mr, &vct);
 	if (ret) {
 		/* Trigger connection so that its ready for the next retry */
 		if (ret ==  -EAGAIN)
@@ -1197,9 +1227,18 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 		queue_delayed_work(rds_wq, &cpath->cp_send_w, 1);
 
 	rds_message_put(rm);
+
+	for (ind = 0; ind < vct.indx; ind++)
+		kfree(vct.vec[ind].iov);
+	kfree(vct.vec);
+
 	return payload_len;
 
 out:
+	for (ind = 0; ind < vct.indx; ind++)
+		kfree(vct.vec[ind].iov);
+	kfree(vct.vec);
+
 	/* If the user included a RDMA_MAP cmsg, we allocated a MR on the fly.
 	 * If the sendmsg goes through, we keep the MR. If it fails with EAGAIN
 	 * or in any other way, we need to destroy the MR again */
