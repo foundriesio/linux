@@ -99,6 +99,7 @@ do {									\
  * @notification_enabled: whether the IRQ was requested successfully
  * @power_fault_detected: whether a power fault was detected by the hardware
  *	that has not yet been cleared by the user
+ * @ist_running: flag to keep user request waiting while IRQ thread is running
  */
 struct controller {
 	struct mutex ctrl_lock;
@@ -118,6 +119,7 @@ struct controller {
 	struct mutex lock;
 	struct delayed_work work;
 	struct hotplug_slot *hotplug_slot;
+	unsigned int ist_running;
 	int request_result;
 	wait_queue_head_t requester;
 };
