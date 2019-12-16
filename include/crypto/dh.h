@@ -39,11 +39,15 @@
 struct dh {
 	void *key;
 	void *p;
+#ifndef __GENKSYMS__
 	void *q;
+#endif
 	void *g;
 	unsigned int key_size;
 	unsigned int p_size;
+#ifndef __GENKSYMS__
 	unsigned int q_size;
+#endif
 	unsigned int g_size;
 };
 
