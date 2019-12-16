@@ -91,14 +91,12 @@ Cc: stable-rt@vger.kernel.org
 Link: https://lkml.kernel.org/r/20191128085306.hxfa2o3knqtu4wfn@linutronix.de
 Link: https://bugzilla.kernel.org/show_bug.cgi?id=205663
 ---
- arch/x86/include/asm/fpu/internal.h | 2 +-
+ arch/x86/include/asm/fpu/internal.h |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/x86/include/asm/fpu/internal.h b/arch/x86/include/asm/fpu/internal.h
-index 4c95c365058aa..44c48e34d7994 100644
 --- a/arch/x86/include/asm/fpu/internal.h
 +++ b/arch/x86/include/asm/fpu/internal.h
-@@ -509,7 +509,7 @@ static inline void __fpu_invalidate_fpregs_state(struct fpu *fpu)
+@@ -509,7 +509,7 @@ static inline void __fpu_invalidate_fpre
  
  static inline int fpregs_state_valid(struct fpu *fpu, unsigned int cpu)
  {
@@ -107,6 +105,3 @@ index 4c95c365058aa..44c48e34d7994 100644
  }
  
  /*
--- 
-2.24.0
-

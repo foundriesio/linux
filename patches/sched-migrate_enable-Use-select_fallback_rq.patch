@@ -10,11 +10,9 @@ contains a CPU that is !active.
 Signed-off-by: Scott Wood <swood@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/sched/core.c | 25 ++++++++++---------------
+ kernel/sched/core.c |   25 ++++++++++---------------
  1 file changed, 10 insertions(+), 15 deletions(-)
 
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 93b4ae1ecaff8..bfd160e90797a 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -7405,6 +7405,7 @@ void migrate_enable(void)
@@ -56,6 +54,3 @@ index 93b4ae1ecaff8..bfd160e90797a 100644
  
  			unpin_current_cpu();
  			preempt_lazy_enable();
--- 
-2.23.0
-

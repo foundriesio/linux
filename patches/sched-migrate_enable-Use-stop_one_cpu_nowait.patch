@@ -11,13 +11,11 @@ the point of migrating us to another cpu).
 Signed-off-by: Scott Wood <swood@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/stop_machine.h |  2 ++
- kernel/sched/core.c          | 22 +++++++++++++---------
- kernel/stop_machine.c        |  7 +++++--
+ include/linux/stop_machine.h |    2 ++
+ kernel/sched/core.c          |   22 +++++++++++++---------
+ kernel/stop_machine.c        |    7 +++++--
  3 files changed, 20 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/stop_machine.h b/include/linux/stop_machine.h
-index 6d3635c86dbeb..82fc686ddd9eb 100644
 --- a/include/linux/stop_machine.h
 +++ b/include/linux/stop_machine.h
 @@ -26,6 +26,8 @@ struct cpu_stop_work {
@@ -29,11 +27,9 @@ index 6d3635c86dbeb..82fc686ddd9eb 100644
  };
  
  int stop_one_cpu(unsigned int cpu, cpu_stop_fn_t fn, void *arg);
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 5cb2a519b8bf2..6383ade320f23 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1051,6 +1051,7 @@ static struct rq *move_queued_task(struct rq *rq, struct rq_flags *rf,
+@@ -1051,6 +1051,7 @@ static struct rq *move_queued_task(struc
  struct migration_arg {
  	struct task_struct *task;
  	int dest_cpu;
@@ -41,7 +37,7 @@ index 5cb2a519b8bf2..6383ade320f23 100644
  };
  
  /*
-@@ -1086,6 +1087,11 @@ static int migration_cpu_stop(void *data)
+@@ -1086,6 +1087,11 @@ static int migration_cpu_stop(void *data
  	struct task_struct *p = arg->task;
  	struct rq *rq = this_rq();
  	struct rq_flags rf;
@@ -53,7 +49,7 @@ index 5cb2a519b8bf2..6383ade320f23 100644
  
  	/*
  	 * The original target CPU might have gone down and we might
-@@ -1108,9 +1114,9 @@ static int migration_cpu_stop(void *data)
+@@ -1108,9 +1114,9 @@ static int migration_cpu_stop(void *data
  	 */
  	if (task_rq(p) == rq) {
  		if (task_on_rq_queued(p))
@@ -91,11 +87,9 @@ index 5cb2a519b8bf2..6383ade320f23 100644
  	}
  
  out:
-diff --git a/kernel/stop_machine.c b/kernel/stop_machine.c
-index 2b5a6754646f5..fa53a472dd443 100644
 --- a/kernel/stop_machine.c
 +++ b/kernel/stop_machine.c
-@@ -85,8 +85,11 @@ static bool cpu_stop_queue_work(unsigned int cpu, struct cpu_stop_work *work)
+@@ -85,8 +85,11 @@ static bool cpu_stop_queue_work(unsigned
  	enabled = stopper->enabled;
  	if (enabled)
  		__cpu_stop_queue_work(stopper, work, &wakeq);
@@ -109,6 +103,3 @@ index 2b5a6754646f5..fa53a472dd443 100644
  	raw_spin_unlock_irqrestore(&stopper->lock, flags);
  
  	wake_up_q(&wakeq);
--- 
-2.23.0
-

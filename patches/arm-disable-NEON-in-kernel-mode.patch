@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -2135,7 +2135,7 @@ config NEON
+@@ -2136,7 +2136,7 @@ config NEON
  
  config KERNEL_MODE_NEON
  	bool "Support for NEON in kernel mode"

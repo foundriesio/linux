@@ -30,17 +30,15 @@ added local_lock.
 Signed-off-by: Scott Wood <swood@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/cpu.h    |   4 -
- include/linux/sched.h  |  11 +--
- init/init_task.c       |   4 +
- kernel/cpu.c           | 103 +++++++++--------------
- kernel/sched/core.c    | 180 +++++++++++++++++------------------------
- kernel/sched/sched.h   |   4 +
- lib/smp_processor_id.c |   3 +
+ include/linux/cpu.h    |    4 -
+ include/linux/sched.h  |   11 +-
+ init/init_task.c       |    4 +
+ kernel/cpu.c           |  103 ++++++++++------------------
+ kernel/sched/core.c    |  180 +++++++++++++++++++------------------------------
+ kernel/sched/sched.h   |    4 +
+ lib/smp_processor_id.c |    3 
  7 files changed, 128 insertions(+), 181 deletions(-)
 
-diff --git a/include/linux/cpu.h b/include/linux/cpu.h
-index f4a772c12d140..2df500fdcbc44 100644
 --- a/include/linux/cpu.h
 +++ b/include/linux/cpu.h
 @@ -113,8 +113,6 @@ extern void cpu_hotplug_disable(void);
@@ -52,7 +50,7 @@ index f4a772c12d140..2df500fdcbc44 100644
  
  #else /* CONFIG_HOTPLUG_CPU */
  
-@@ -126,8 +124,6 @@ static inline int  cpus_read_trylock(void) { return true; }
+@@ -126,8 +124,6 @@ static inline int  cpus_read_trylock(voi
  static inline void lockdep_assert_cpus_held(void) { }
  static inline void cpu_hotplug_disable(void) { }
  static inline void cpu_hotplug_enable(void) { }
@@ -61,11 +59,9 @@ index f4a772c12d140..2df500fdcbc44 100644
  
  #endif	/* !CONFIG_HOTPLUG_CPU */
  
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 7e892e727f126..c6872b38bf770 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -229,6 +229,8 @@ extern void io_schedule_finish(int token);
+@@ -229,6 +229,8 @@ extern void io_schedule_finish(int token
  extern long io_schedule_timeout(long timeout);
  extern void io_schedule(void);
  
@@ -93,15 +89,13 @@ index 7e892e727f126..c6872b38bf770 100644
  # endif
  #endif
  #ifdef CONFIG_PREEMPT_RT_FULL
-@@ -2074,4 +2073,6 @@ static inline void rseq_syscall(struct pt_regs *regs)
+@@ -2072,4 +2071,6 @@ static inline void rseq_syscall(struct p
  
  #endif
  
 +extern struct task_struct *takedown_cpu_task;
 +
  #endif
-diff --git a/init/init_task.c b/init/init_task.c
-index e402413dc47d5..c0c7618fd2fb9 100644
 --- a/init/init_task.c
 +++ b/init/init_task.c
 @@ -81,6 +81,10 @@ struct task_struct init_task
@@ -115,11 +109,9 @@ index e402413dc47d5..c0c7618fd2fb9 100644
  	.mm		= NULL,
  	.active_mm	= &init_mm,
  	.restart_block	= {
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 25afa2bb1a2cf..e1bf3c698a321 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -76,11 +76,6 @@ static DEFINE_PER_CPU(struct cpuhp_cpu_state, cpuhp_state) = {
+@@ -76,11 +76,6 @@ static DEFINE_PER_CPU(struct cpuhp_cpu_s
  	.fail = CPUHP_INVALID,
  };
  
@@ -219,7 +211,7 @@ index 25afa2bb1a2cf..e1bf3c698a321 100644
  	struct cpuhp_cpu_state *st = per_cpu_ptr(&cpuhp_state, cpu);
  	int err;
  
-@@ -941,17 +893,38 @@ static int takedown_cpu(unsigned int cpu)
+@@ -941,17 +893,38 @@ static int takedown_cpu(unsigned int cpu
  	 */
  	irq_lock_sparse();
  
@@ -262,7 +254,7 @@ index 25afa2bb1a2cf..e1bf3c698a321 100644
  #endif
  		/* CPU refused to die */
  		irq_unlock_sparse();
-@@ -971,8 +944,8 @@ static int takedown_cpu(unsigned int cpu)
+@@ -971,8 +944,8 @@ static int takedown_cpu(unsigned int cpu
  	wait_for_ap_thread(st, false);
  	BUG_ON(st->state != CPUHP_AP_IDLE_DEAD);
  
@@ -273,11 +265,9 @@ index 25afa2bb1a2cf..e1bf3c698a321 100644
  #endif
  	/* Interrupts are moved away from the dying cpu, reenable alloc/free */
  	irq_unlock_sparse();
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index bfd160e90797a..5cb2a519b8bf2 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1126,7 +1126,8 @@ static int migration_cpu_stop(void *data)
+@@ -1126,7 +1126,8 @@ static int migration_cpu_stop(void *data
  void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask)
  {
  	cpumask_copy(&p->cpus_mask, new_mask);
@@ -287,7 +277,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  }
  
  #if defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT_BASE)
-@@ -1137,8 +1138,7 @@ int __migrate_disabled(struct task_struct *p)
+@@ -1137,8 +1138,7 @@ int __migrate_disabled(struct task_struc
  EXPORT_SYMBOL_GPL(__migrate_disabled);
  #endif
  
@@ -297,7 +287,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  {
  	struct rq *rq = task_rq(p);
  	bool queued, running;
-@@ -1167,20 +1167,6 @@ static void __do_set_cpus_allowed_tail(struct task_struct *p,
+@@ -1167,20 +1167,6 @@ static void __do_set_cpus_allowed_tail(s
  		set_curr_task(rq, p);
  }
  
@@ -318,7 +308,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  /*
   * Change a given task's CPU affinity. Migrate the thread to a
   * proper CPU and schedule it away if the CPU it's executing on
-@@ -1239,7 +1225,8 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
+@@ -1239,7 +1225,8 @@ static int __set_cpus_allowed_ptr(struct
  	}
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -328,7 +318,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  		goto out;
  
  	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
-@@ -3502,6 +3489,8 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
+@@ -3502,6 +3489,8 @@ pick_next_task(struct rq *rq, struct tas
  	BUG();
  }
  
@@ -337,7 +327,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  /*
   * __schedule() is the main scheduler function.
   *
-@@ -3572,6 +3561,9 @@ static void __sched notrace __schedule(bool preempt)
+@@ -3572,6 +3561,9 @@ static void __sched notrace __schedule(b
  	rq_lock(rq, &rf);
  	smp_mb__after_spinlock();
  
@@ -347,7 +337,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  	/* Promote REQ to ACT */
  	rq->clock_update_flags <<= 1;
  	update_rq_clock(rq);
-@@ -5822,6 +5814,8 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
+@@ -5822,6 +5814,8 @@ static void migrate_tasks(struct rq *dea
  		BUG_ON(!next);
  		put_prev_task(rq, next);
  
@@ -356,7 +346,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  		/*
  		 * Rules for changing task_struct::cpus_mask are holding
  		 * both pi_lock and rq->lock, such that holding either
-@@ -7317,14 +7311,9 @@ update_nr_migratory(struct task_struct *p, long delta)
+@@ -7317,14 +7311,9 @@ update_nr_migratory(struct task_struct *
  static inline void
  migrate_disable_update_cpus_allowed(struct task_struct *p)
  {
@@ -371,7 +361,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  }
  
  static inline void
-@@ -7342,54 +7331,35 @@ migrate_enable_update_cpus_allowed(struct task_struct *p)
+@@ -7342,54 +7331,35 @@ migrate_enable_update_cpus_allowed(struc
  
  void migrate_disable(void)
  {
@@ -388,12 +378,12 @@ index bfd160e90797a..5cb2a519b8bf2 100644
 +		current->pinned_on_cpu = smp_processor_id();
  #endif
 -		return;
--	}
+ 	}
 -#ifdef CONFIG_SCHED_DEBUG
 -	if (unlikely(p->migrate_disable_atomic)) {
 -		tracing_off();
 -		WARN_ON_ONCE(1);
- 	}
+-	}
 -#endif
  
 -	if (p->migrate_disable) {
@@ -482,9 +472,7 @@ index bfd160e90797a..5cb2a519b8bf2 100644
  		task_rq_unlock(rq, p, &rf);
  
 -		p->migrate_disable_update = 0;
-+		preempt_lazy_enable();
-+		preempt_enable();
- 
+-
 -		WARN_ON(smp_processor_id() != cpu);
 -		if (!cpumask_test_cpu(cpu, &p->cpus_mask)) {
 -			struct migration_arg arg = { p };
@@ -494,7 +482,9 @@ index bfd160e90797a..5cb2a519b8bf2 100644
 -			update_rq_clock(rq);
 -			arg.dest_cpu = select_fallback_rq(cpu, p);
 -			task_rq_unlock(rq, p, &rf);
--
++		preempt_lazy_enable();
++		preempt_enable();
+ 
 -			unpin_current_cpu();
 -			preempt_lazy_enable();
 -			preempt_enable();
@@ -574,8 +564,6 @@ index bfd160e90797a..5cb2a519b8bf2 100644
 +{
 +}
  #endif
-diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
-index 9c1bbd67e9711..2e4db417049dd 100644
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
 @@ -952,6 +952,10 @@ struct rq {
@@ -589,11 +577,9 @@ index 9c1bbd67e9711..2e4db417049dd 100644
  };
  
  #ifdef CONFIG_FAIR_GROUP_SCHED
-diff --git a/lib/smp_processor_id.c b/lib/smp_processor_id.c
-index bd95716532889..5f2618d346c42 100644
 --- a/lib/smp_processor_id.c
 +++ b/lib/smp_processor_id.c
-@@ -23,6 +23,9 @@ unsigned int check_preemption_disabled(const char *what1, const char *what2)
+@@ -23,6 +23,9 @@ unsigned int check_preemption_disabled(c
  	 * Kernel threads bound to a single CPU can safely use
  	 * smp_processor_id():
  	 */
@@ -603,6 +589,3 @@ index bd95716532889..5f2618d346c42 100644
  	if (current->nr_cpus_allowed == 1)
  		goto out;
  
--- 
-2.23.0
-

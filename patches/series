@@ -422,6 +422,8 @@ sched-migrate_enable-Use-select_fallback_rq.patch
 sched-Lazy-migrate_disable-processing.patch
 sched-migrate_enable-Use-stop_one_cpu_nowait.patch
 sched-core-migrate_enable-must-access-takedown_cpu_t.patch
+sched-migrate_enable-Busy-loop-until-the-migration-r.patch
+lib-smp_processor_id-Adjust-check_preemption_disable.patch
 
 # DRIVERS
 connector-cn_proc-Protect-send_msg-with-a-local-lock.patch

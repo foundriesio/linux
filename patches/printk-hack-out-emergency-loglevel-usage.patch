@@ -10,14 +10,12 @@ generated during normal operation.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c | 13 +++----------
+ kernel/printk/printk.c |   13 +++----------
  1 file changed, 3 insertions(+), 10 deletions(-)
 
-diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index 9d9523431..2b4616fd4 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1767,15 +1767,8 @@ static void call_console_drivers(u64 seq, const char *ext_text, size_t ext_len,
+@@ -1767,15 +1767,8 @@ static void call_console_drivers(u64 seq
  			con->wrote_history = 1;
  			con->printk_seq = seq - 1;
  		}
@@ -34,7 +32,7 @@ index 9d9523431..2b4616fd4 100644
  			if (con->printk_seq < seq)
  				con->printk_seq = seq;
  			continue;
-@@ -3161,7 +3154,7 @@ static bool console_can_emergency(int level)
+@@ -3161,7 +3154,7 @@ static bool console_can_emergency(int le
  	for_each_console(con) {
  		if (!(con->flags & CON_ENABLED))
  			continue;
@@ -43,7 +41,7 @@ index 9d9523431..2b4616fd4 100644
  			return true;
  		if (con->write && (con->flags & CON_BOOT))
  			return true;
-@@ -3177,7 +3170,7 @@ static void call_emergency_console_drivers(int level, const char *text,
+@@ -3177,7 +3170,7 @@ static void call_emergency_console_drive
  	for_each_console(con) {
  		if (!(con->flags & CON_ENABLED))
  			continue;
@@ -52,6 +50,3 @@ index 9d9523431..2b4616fd4 100644
  			con->write_atomic(con, text, text_len);
  			continue;
  		}
--- 
-2.19.0
-

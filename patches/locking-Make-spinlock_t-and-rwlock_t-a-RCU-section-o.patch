@@ -10,15 +10,13 @@ which would disables preemption on !RT) acquired.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/locking/rtmutex.c   | 6 ++++++
- kernel/locking/rwlock-rt.c | 6 ++++++
+ kernel/locking/rtmutex.c   |    6 ++++++
+ kernel/locking/rwlock-rt.c |    6 ++++++
  2 files changed, 12 insertions(+)
 
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index cf09f8e7ed0f4..602eb7821a1b1 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1141,6 +1141,7 @@ void __sched rt_spin_lock_slowunlock(struct rt_mutex *lock)
+@@ -1143,6 +1143,7 @@ void __sched rt_spin_lock_slowunlock(str
  void __lockfunc rt_spin_lock(spinlock_t *lock)
  {
  	sleeping_lock_inc();
@@ -26,7 +24,7 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  	migrate_disable();
  	spin_acquire(&lock->dep_map, 0, 0, _RET_IP_);
  	rt_spin_lock_fastlock(&lock->lock, rt_spin_lock_slowlock);
-@@ -1156,6 +1157,7 @@ void __lockfunc __rt_spin_lock(struct rt_mutex *lock)
+@@ -1158,6 +1159,7 @@ void __lockfunc __rt_spin_lock(struct rt
  void __lockfunc rt_spin_lock_nested(spinlock_t *lock, int subclass)
  {
  	sleeping_lock_inc();
@@ -34,7 +32,7 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  	migrate_disable();
  	spin_acquire(&lock->dep_map, subclass, 0, _RET_IP_);
  	rt_spin_lock_fastlock(&lock->lock, rt_spin_lock_slowlock);
-@@ -1169,6 +1171,7 @@ void __lockfunc rt_spin_unlock(spinlock_t *lock)
+@@ -1171,6 +1173,7 @@ void __lockfunc rt_spin_unlock(spinlock_
  	spin_release(&lock->dep_map, 1, _RET_IP_);
  	rt_spin_lock_fastunlock(&lock->lock, rt_spin_lock_slowunlock);
  	migrate_enable();
@@ -42,7 +40,7 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  	sleeping_lock_dec();
  }
  EXPORT_SYMBOL(rt_spin_unlock);
-@@ -1200,6 +1203,7 @@ int __lockfunc rt_spin_trylock(spinlock_t *lock)
+@@ -1202,6 +1205,7 @@ int __lockfunc rt_spin_trylock(spinlock_
  	ret = __rt_mutex_trylock(&lock->lock);
  	if (ret) {
  		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
@@ -50,7 +48,7 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  	} else {
  		migrate_enable();
  		sleeping_lock_dec();
-@@ -1216,6 +1220,7 @@ int __lockfunc rt_spin_trylock_bh(spinlock_t *lock)
+@@ -1218,6 +1222,7 @@ int __lockfunc rt_spin_trylock_bh(spinlo
  	ret = __rt_mutex_trylock(&lock->lock);
  	if (ret) {
  		sleeping_lock_inc();
@@ -58,7 +56,7 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  		migrate_disable();
  		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  	} else
-@@ -1232,6 +1237,7 @@ int __lockfunc rt_spin_trylock_irqsave(spinlock_t *lock, unsigned long *flags)
+@@ -1234,6 +1239,7 @@ int __lockfunc rt_spin_trylock_irqsave(s
  	ret = __rt_mutex_trylock(&lock->lock);
  	if (ret) {
  		sleeping_lock_inc();
@@ -66,11 +64,9 @@ index cf09f8e7ed0f4..602eb7821a1b1 100644
  		migrate_disable();
  		spin_acquire(&lock->dep_map, 0, 1, _RET_IP_);
  	}
-diff --git a/kernel/locking/rwlock-rt.c b/kernel/locking/rwlock-rt.c
-index c3b91205161cc..0ae8c62ea8320 100644
 --- a/kernel/locking/rwlock-rt.c
 +++ b/kernel/locking/rwlock-rt.c
-@@ -310,6 +310,7 @@ int __lockfunc rt_read_trylock(rwlock_t *rwlock)
+@@ -310,6 +310,7 @@ int __lockfunc rt_read_trylock(rwlock_t
  	ret = do_read_rt_trylock(rwlock);
  	if (ret) {
  		rwlock_acquire_read(&rwlock->dep_map, 0, 1, _RET_IP_);
@@ -78,7 +74,7 @@ index c3b91205161cc..0ae8c62ea8320 100644
  	} else {
  		migrate_enable();
  		sleeping_lock_dec();
-@@ -327,6 +328,7 @@ int __lockfunc rt_write_trylock(rwlock_t *rwlock)
+@@ -327,6 +328,7 @@ int __lockfunc rt_write_trylock(rwlock_t
  	ret = do_write_rt_trylock(rwlock);
  	if (ret) {
  		rwlock_acquire(&rwlock->dep_map, 0, 1, _RET_IP_);
@@ -102,7 +98,7 @@ index c3b91205161cc..0ae8c62ea8320 100644
  	migrate_disable();
  	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
  	do_write_rt_lock(rwlock);
-@@ -358,6 +362,7 @@ void __lockfunc rt_read_unlock(rwlock_t *rwlock)
+@@ -358,6 +362,7 @@ void __lockfunc rt_read_unlock(rwlock_t
  	rwlock_release(&rwlock->dep_map, 1, _RET_IP_);
  	do_read_rt_unlock(rwlock);
  	migrate_enable();
@@ -110,7 +106,7 @@ index c3b91205161cc..0ae8c62ea8320 100644
  	sleeping_lock_dec();
  }
  EXPORT_SYMBOL(rt_read_unlock);
-@@ -367,6 +372,7 @@ void __lockfunc rt_write_unlock(rwlock_t *rwlock)
+@@ -367,6 +372,7 @@ void __lockfunc rt_write_unlock(rwlock_t
  	rwlock_release(&rwlock->dep_map, 1, _RET_IP_);
  	do_write_rt_unlock(rwlock);
  	migrate_enable();
@@ -118,6 +114,3 @@ index c3b91205161cc..0ae8c62ea8320 100644
  	sleeping_lock_dec();
  }
  EXPORT_SYMBOL(rt_write_unlock);
--- 
-2.24.0
-

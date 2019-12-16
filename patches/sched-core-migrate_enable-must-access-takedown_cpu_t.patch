@@ -11,15 +11,13 @@ Don't use takedown_cpu_task in !HOTPLUG_CPU.
 Reported-by: Dick Hollenbeck <dick@softplc.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/cpu.c        | 2 ++
- kernel/sched/core.c | 2 ++
+ kernel/cpu.c        |    2 ++
+ kernel/sched/core.c |    2 ++
  2 files changed, 4 insertions(+)
 
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 123ad9626cc7f..81a6e5068972c 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -887,7 +887,9 @@ static int take_cpu_down(void *_param)
+@@ -877,7 +877,9 @@ static int take_cpu_down(void *_param)
  	return 0;
  }
  
@@ -29,11 +27,9 @@ index 123ad9626cc7f..81a6e5068972c 100644
  
  static int takedown_cpu(unsigned int cpu)
  {
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index bd26257eb2358..8bea013b2baf5 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8212,9 +8212,11 @@ void migrate_enable(void)
+@@ -7384,9 +7384,11 @@ void migrate_enable(void)
  
  	p->migrate_disable = 0;
  	rq->nr_pinned--;
@@ -45,6 +41,3 @@ index bd26257eb2358..8bea013b2baf5 100644
  
  	if (!p->migrate_disable_scheduled)
  		goto out;
--- 
-2.24.0
-

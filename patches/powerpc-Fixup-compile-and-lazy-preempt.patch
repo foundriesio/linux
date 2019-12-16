@@ -1,4 +1,3 @@
-From 722fba3af8da86eb5ccc78fde3a82f2ff42e120f Mon Sep 17 00:00:00 2001
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Tue, 3 Dec 2019 18:06:20 +0100
 Subject: [PATCH] powerpc: Fixup compile and lazy-preempt
@@ -12,15 +11,13 @@ lazy-counter and flags from the R9 but R2 should be used.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/powerpc/kernel/entry_32.S | 4 ++--
- include/linux/preempt.h        | 4 ++--
+ arch/powerpc/kernel/entry_32.S |    4 ++--
+ include/linux/preempt.h        |    4 ++--
  2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/powerpc/kernel/entry_32.S b/arch/powerpc/kernel/entry_32.S
-index d37b373104502..004944258387b 100644
 --- a/arch/powerpc/kernel/entry_32.S
 +++ b/arch/powerpc/kernel/entry_32.S
-@@ -893,10 +893,10 @@ user_exc_return:		/* r10 contains MSR_KERNEL here */
+@@ -893,10 +893,10 @@ user_exc_return:		/* r10 contains MSR_KE
  	bne	restore_kuap
  	andi.	r8,r8,_TIF_NEED_RESCHED
  	bne+	1f
@@ -33,8 +30,6 @@ index d37b373104502..004944258387b 100644
  	andi.	r0,r0,_TIF_NEED_RESCHED_LAZY
  	beq+	restore_kuap
  1:
-diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index d559e3a0379c2..7653dd58b4b21 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -100,9 +100,9 @@
@@ -49,6 +44,3 @@ index d559e3a0379c2..7653dd58b4b21 100644
  
  #else
  
--- 
-2.24.0
-
