@@ -184,9 +184,19 @@ enum {
 
 #define NLA_TYPE_MAX (__NLA_TYPE_MAX - 1)
 
+enum nla_policy_validation {
+	NLA_VALIDATE_NONE,
+	NLA_VALIDATE_RANGE,
+	NLA_VALIDATE_MIN,
+	NLA_VALIDATE_MAX,
+};
+
 /**
  * struct nla_policy - attribute validation policy
  * @type: Type of attribute or NLA_UNSPEC
+ * @validation_type: type of attribute validation done in addition to
+ *	type-specific validation (e.g. range), see
+ *	&enum nla_policy_validation
  * @len: Type specific length of payload
  *
  * Policies are defined as arrays of this struct, the array must be
@@ -210,6 +220,24 @@ enum {
  *    NLA_BITFIELD32      A 32-bit bitmap/bitselector attribute
  *    All other            Minimum length of attribute payload
  *
+ * Meaning of `min' and `max' fields, use via NLA_POLICY_MIN, NLA_POLICY_MAX
+ * and NLA_POLICY_RANGE:
+ *    NLA_U8,
+ *    NLA_U16,
+ *    NLA_U32,
+ *    NLA_U64,
+ *    NLA_S8,
+ *    NLA_S16,
+ *    NLA_S32,
+ *    NLA_S64              These are used depending on the validation_type
+ *                         field, if that is min/max/range then the minimum,
+ *                         maximum and both are used (respectively) to check
+ *                         the value of the integer attribute.
+ *                         struct size both limits are s16, so you cannot
+ *                         enforce a range that doesn't fall within the range
+ *                         of s16 - do that as usual in the code instead.
+ *    All other            Unused - but note that it's a union
+ *
  * Example:
  * static const struct nla_policy my_policy[ATTR_MAX+1] = {
  * 	[ATTR_FOO] = { .type = NLA_U16 },
@@ -219,9 +247,15 @@ enum {
  * };
  */
 struct nla_policy {
-	u16		type;
+	u8		type;
+	u8		validation_type;
 	u16		len;
-	void            *validation_data;
+	union {
+		const void *validation_data;
+		struct {
+			s16 min, max;
+		};
+	};
 };
 
 /**
@@ -276,6 +310,32 @@ int nla_append(struct sk_buff *skb, int attrlen, const void *data);
 /**************************************************************************
  * Netlink Messages
  **************************************************************************/
+
+#define __NLA_ENSURE(condition) (sizeof(char[1 - 2*!(condition)]) - 1)
+#define NLA_ENSURE_INT_TYPE(tp)				\
+	(__NLA_ENSURE(tp == NLA_S8 || tp == NLA_U8 ||	\
+		      tp == NLA_S16 || tp == NLA_U16 ||	\
+		      tp == NLA_S32 || tp == NLA_U32 ||	\
+		      tp == NLA_S64 || tp == NLA_U64) + tp)
+
+#define NLA_POLICY_RANGE(tp, _min, _max) {		\
+	.type = NLA_ENSURE_INT_TYPE(tp),		\
+	.validation_type = NLA_VALIDATE_RANGE,		\
+	.min = _min,					\
+	.max = _max					\
+}
+
+#define NLA_POLICY_MIN(tp, _min) {			\
+	.type = NLA_ENSURE_INT_TYPE(tp),		\
+	.validation_type = NLA_VALIDATE_MIN,		\
+	.min = _min,					\
+}
+
+#define NLA_POLICY_MAX(tp, _max) {			\
+	.type = NLA_ENSURE_INT_TYPE(tp),		\
+	.validation_type = NLA_VALIDATE_MAX,		\
+	.max = _max,					\
+}
 
 /**
  * nlmsg_msg_size - length of netlink message not including padding
