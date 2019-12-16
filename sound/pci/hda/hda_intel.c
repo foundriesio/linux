@@ -1425,7 +1425,6 @@ static bool atpx_present(void)
 				return true;
 			}
 		}
-		pci_dev_put(pdev);
 	}
 	return false;
 }
