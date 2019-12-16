@@ -200,8 +200,7 @@ cfg80211_get_dev_from_info(struct net *netns, struct genl_info *info)
 	return __cfg80211_rdev_from_attrs(netns, info->attrs);
 }
 
-static int validate_beacon_head(const struct nlattr *attr,
-				struct netlink_ext_ack *extack)
+static int validate_beacon_head(const struct nlattr *attr)
 {
 	const u8 *data = nla_data(attr);
 	unsigned int len = nla_len(attr);
@@ -228,7 +227,6 @@ static int validate_beacon_head(const struct nlattr *attr,
 		return 0;
 
 err:
-	NL_SET_ERR_MSG_ATTR(extack, attr, "malformed beacon head");
 	return -EINVAL;
 }
 

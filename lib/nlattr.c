@@ -52,8 +52,7 @@ static int validate_nla_bitfield32(const struct nlattr *nla,
 }
 
 static int nla_validate_int_range(const struct nla_policy *pt,
-				  const struct nlattr *nla,
-				  struct netlink_ext_ack *extack)
+				  const struct nlattr *nla)
 {
 	bool validate_min, validate_max;
 	s64 value;
@@ -89,8 +88,6 @@ static int nla_validate_int_range(const struct nla_policy *pt,
 		/* treat this one specially, since it may not fit into s64 */
 		if ((validate_min && nla_get_u64(nla) < pt->min) ||
 		    (validate_max && nla_get_u64(nla) > pt->max)) {
-			NL_SET_ERR_MSG_ATTR(extack, nla,
-					    "integer out of range");
 			return -ERANGE;
 		}
 		return 0;
@@ -101,8 +98,6 @@ static int nla_validate_int_range(const struct nla_policy *pt,
 
 	if ((validate_min && value < pt->min) ||
 	    (validate_max && value > pt->max)) {
-		NL_SET_ERR_MSG_ATTR(extack, nla,
-				    "integer out of range");
 		return -ERANGE;
 	}
 
@@ -114,6 +109,7 @@ static int validate_nla(const struct nlattr *nla, int maxtype,
 {
 	const struct nla_policy *pt;
 	int minlen = 0, attrlen = nla_len(nla), type = nla_type(nla);
+	int err = -ERANGE;
 
 	if (type <= 0 || type > maxtype)
 		return 0;
@@ -199,13 +195,13 @@ static int validate_nla(const struct nlattr *nla, int maxtype,
 	case NLA_VALIDATE_RANGE:
 	case NLA_VALIDATE_MIN:
 	case NLA_VALIDATE_MAX:
-		err = nla_validate_int_range(pt, nla, extack);
+		err = nla_validate_int_range(pt, nla);
 		if (err)
 			return err;
 		break;
 	case NLA_VALIDATE_FUNCTION:
 		if (pt->validate) {
-			err = pt->validate(nla, extack);
+			err = pt->validate(nla);
 			if (err)
 				return err;
 		}
