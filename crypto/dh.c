@@ -10,6 +10,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/fips.h>
 #include <crypto/internal/kpp.h>
 #include <crypto/kpp.h>
 #include <crypto/dh.h>
@@ -65,7 +66,7 @@ static int dh_set_params(struct dh_ctx *ctx, struct dh *params)
 	if (!ctx->p)
 		return -EINVAL;
 
-	if (params->q && params->q_size) {
+	if (fips_enabled && params->q && params->q_size) {
 		ctx->q = mpi_read_raw_data(params->q, params->q_size);
 		if (!ctx->q)
 			return -EINVAL;
@@ -175,9 +176,11 @@ static int dh_compute_value(struct kpp_request *req)
 			ret = -EINVAL;
 			goto err_free_val;
 		}
-		ret = dh_is_pubkey_valid(ctx, base);
-		if (ret)
-			goto err_free_val;
+		if (fips_enabled) {
+			ret = dh_is_pubkey_valid(ctx, base);
+			if (ret)
+				goto err_free_val;
+		}
 	} else {
 		base = ctx->g;
 	}
