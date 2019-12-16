@@ -137,7 +137,7 @@ typedef struct dolby_layer_str_t
 //#define TEST_SC_NO_PLUGIN_IN_BYPASS_CASE
 
 #if defined(CONFIG_ARCH_TCC803X)
-#define AnD_FB_SC	(VIOC_SCALER5)
+#define AnD_FB_SC	(VIOC_SCALER3)
 #define UI_CHROMA_EN	(0)
 /* CONFIG_ARCH_TCC803X */
 #elif defined(CONFIG_ARCH_TCC897X)
@@ -169,6 +169,8 @@ typedef struct dolby_layer_str_t
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 #define DIV_FB_SC       (VIOC_SCALER4)
+#elif defined(CONFIG_ARCH_TCC803X)
+#define DIV_FB_SC	(VIOC_SCALER5)
 #else
 #define DIV_FB_SC       (VIOC_SCALER3)
 #endif
