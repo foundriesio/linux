@@ -17,11 +17,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
-@@ -877,7 +877,9 @@ static int take_cpu_down(void *_param)
+@@ -887,7 +887,9 @@ static int take_cpu_down(void *_param)
  	return 0;
  }
  
-+#ifdef CONFIG_PREEMPT_RT_BASE
++#ifdef CONFIG_PREEMPT_RT
  struct task_struct *takedown_cpu_task;
 +#endif
  
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -7384,9 +7384,11 @@ void migrate_enable(void)
+@@ -8129,9 +8129,11 @@ void migrate_enable(void)
  
  	p->migrate_disable = 0;
  	rq->nr_pinned--;

@@ -41,7 +41,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  }
  
  static void free_stripe(struct kmem_cache *sc, struct stripe_head *sh)
-@@ -6817,6 +6819,7 @@ static int raid456_cpu_up_prepare(unsign
+@@ -6821,6 +6823,7 @@ static int raid456_cpu_up_prepare(unsign
  			__func__, cpu);
  		return -ENOMEM;
  	}
@@ -51,7 +51,7 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
  
 --- a/drivers/md/raid5.h
 +++ b/drivers/md/raid5.h
-@@ -637,6 +637,7 @@ struct r5conf {
+@@ -634,6 +634,7 @@ struct r5conf {
  	int			recovery_disabled;
  	/* per cpu variables */
  	struct raid5_percpu {

@@ -9,6 +9,8 @@ concurrent priority boosting going on.
 Use cpu_chill() instead of cpu_relax() to let the system
 make progress.
 
+[bigeasy: After all those changes that occured over the years, this one hunk is
+left and should not cause any starvation on -RT anymore]
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---

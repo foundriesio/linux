@@ -31,6 +31,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #include <linux/rculist.h>
 +#include <linux/atomic.h>
+ #include <linux/wait.h>
+ #include <linux/refcount.h>
  
- enum pid_type
- {

@@ -36,12 +36,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -1781,7 +1781,7 @@ config SHUFFLE_PAGE_ALLOCATOR
+@@ -1893,7 +1893,7 @@ config SHUFFLE_PAGE_ALLOCATOR
  
  config SLUB_CPU_PARTIAL
  	default y
 -	depends on SLUB && SMP
-+	depends on SLUB && SMP && !PREEMPT_RT_FULL
++	depends on SLUB && SMP && !PREEMPT_RT
  	bool "SLUB per cpu partial cache"
  	help
- 	  Per cpu partial caches accellerate objects allocation and freeing
+ 	  Per cpu partial caches accelerate objects allocation and freeing

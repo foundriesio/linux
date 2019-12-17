@@ -13,7 +13,7 @@ Date: Thu, 17 May 2012 09:35:11 +0530
   kfree_skb() is called. But in RT, kfree_skb() might
   gets scheduled out, so it expects non atomic context.
 
-3)When CONFIG_PREEMPT_RT_FULL is not defined,
+3)When CONFIG_PREEMPT_RT is not defined,
  migrate_enable(), migrate_disable() maps to
  preempt_enable() and preempt_disable(), so no
  change in functionality in case of non-RT.
@@ -37,7 +37,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4519,7 +4519,7 @@ static int netif_rx_internal(struct sk_b
+@@ -4438,7 +4438,7 @@ static int netif_rx_internal(struct sk_b
  		struct rps_dev_flow voidflow, *rflow = &voidflow;
  		int cpu;
  
@@ -46,7 +46,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		rcu_read_lock();
  
  		cpu = get_rps_cpu(skb->dev, skb, &rflow);
-@@ -4529,14 +4529,14 @@ static int netif_rx_internal(struct sk_b
+@@ -4448,14 +4448,14 @@ static int netif_rx_internal(struct sk_b
  		ret = enqueue_to_backlog(skb, cpu, &rflow->last_qtail);
  
  		rcu_read_unlock();

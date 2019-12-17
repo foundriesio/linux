@@ -16,8 +16,8 @@ Signed-off-by: Liu Haitao <haitao.liu@windriver.com>
 Signed-off-by: Yongxin Liu <yongxin.liu@windriver.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- mm/kmemleak.c |   72 +++++++++++++++++++++++++++++-----------------------------
- 1 file changed, 36 insertions(+), 36 deletions(-)
+ mm/kmemleak.c |   68 +++++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 34 insertions(+), 34 deletions(-)
 
 --- a/mm/kmemleak.c
 +++ b/mm/kmemleak.c
@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	unsigned int flags;		/* object status flags */
  	struct list_head object_list;
  	struct list_head gray_list;
-@@ -560,7 +560,7 @@ static struct kmemleak_object *create_ob
+@@ -585,7 +585,7 @@ static struct kmemleak_object *create_ob
  	INIT_LIST_HEAD(&object->object_list);
  	INIT_LIST_HEAD(&object->gray_list);
  	INIT_HLIST_HEAD(&object->area_list);
@@ -39,7 +39,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	atomic_set(&object->use_count, 1);
  	object->flags = OBJECT_ALLOCATED;
  	object->pointer = ptr;
-@@ -642,9 +642,9 @@ static void __delete_object(struct kmeml
+@@ -667,9 +667,9 @@ static void __delete_object(struct kmeml
  	 * Locking here also ensures that the corresponding memory block
  	 * cannot be freed when it is being scanned.
  	 */
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	put_object(object);
  }
  
-@@ -716,9 +716,9 @@ static void paint_it(struct kmemleak_obj
+@@ -739,9 +739,9 @@ static void paint_it(struct kmemleak_obj
  {
  	unsigned long flags;
  
@@ -63,25 +63,25 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void paint_ptr(unsigned long ptr, int color)
-@@ -778,7 +778,7 @@ static void add_scan_area(unsigned long
- 		goto out;
- 	}
+@@ -798,7 +798,7 @@ static void add_scan_area(unsigned long
+ 	if (scan_area_cache)
+ 		area = kmem_cache_alloc(scan_area_cache, gfp_kmemleak_mask(gfp));
  
 -	spin_lock_irqsave(&object->lock, flags);
 +	raw_spin_lock_irqsave(&object->lock, flags);
- 	if (size == SIZE_MAX) {
- 		size = object->pointer + object->size - ptr;
- 	} else if (ptr + size > object->pointer + object->size) {
-@@ -794,7 +794,7 @@ static void add_scan_area(unsigned long
+ 	if (!area) {
+ 		pr_warn_once("Cannot allocate a scan area, scanning the full object\n");
+ 		/* mark the object for full scan to avoid false positives */
+@@ -820,7 +820,7 @@ static void add_scan_area(unsigned long
  
  	hlist_add_head(&area->node, &object->area_list);
  out_unlock:
 -	spin_unlock_irqrestore(&object->lock, flags);
 +	raw_spin_unlock_irqrestore(&object->lock, flags);
- out:
  	put_object(object);
  }
-@@ -817,9 +817,9 @@ static void object_set_excess_ref(unsign
+ 
+@@ -842,9 +842,9 @@ static void object_set_excess_ref(unsign
  		return;
  	}
  
@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	put_object(object);
  }
  
-@@ -839,9 +839,9 @@ static void object_no_scan(unsigned long
+@@ -864,9 +864,9 @@ static void object_no_scan(unsigned long
  		return;
  	}
  
@@ -105,21 +105,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	put_object(object);
  }
  
-@@ -902,11 +902,11 @@ static void early_alloc(struct early_log
- 			       log->min_count, GFP_ATOMIC);
- 	if (!object)
- 		goto out;
--	spin_lock_irqsave(&object->lock, flags);
-+	raw_spin_lock_irqsave(&object->lock, flags);
- 	for (i = 0; i < log->trace_len; i++)
- 		object->trace[i] = log->trace[i];
- 	object->trace_len = log->trace_len;
--	spin_unlock_irqrestore(&object->lock, flags);
-+	raw_spin_unlock_irqrestore(&object->lock, flags);
- out:
- 	rcu_read_unlock();
- }
-@@ -1096,9 +1096,9 @@ void __ref kmemleak_update_trace(const v
+@@ -1026,9 +1026,9 @@ void __ref kmemleak_update_trace(const v
  		return;
  	}
  
@@ -131,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	put_object(object);
  }
-@@ -1346,7 +1346,7 @@ static void scan_block(void *_start, voi
+@@ -1268,7 +1268,7 @@ static void scan_block(void *_start, voi
  		 * previously acquired in scan_object(). These locks are
  		 * enclosed by scan_mutex.
  		 */
@@ -140,7 +126,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/* only pass surplus references (object already gray) */
  		if (color_gray(object)) {
  			excess_ref = object->excess_ref;
-@@ -1355,7 +1355,7 @@ static void scan_block(void *_start, voi
+@@ -1277,7 +1277,7 @@ static void scan_block(void *_start, voi
  			excess_ref = 0;
  			update_refs(object);
  		}
@@ -149,7 +135,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		if (excess_ref) {
  			object = lookup_object(excess_ref, 0);
-@@ -1364,9 +1364,9 @@ static void scan_block(void *_start, voi
+@@ -1286,9 +1286,9 @@ static void scan_block(void *_start, voi
  			if (object == scanned)
  				/* circular reference, ignore */
  				continue;
@@ -161,7 +147,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  	raw_spin_unlock_irqrestore(&kmemleak_lock, flags);
-@@ -1402,7 +1402,7 @@ static void scan_object(struct kmemleak_
+@@ -1324,7 +1324,7 @@ static void scan_object(struct kmemleak_
  	 * Once the object->lock is acquired, the corresponding memory block
  	 * cannot be freed (the same lock is acquired in delete_object).
  	 */
@@ -170,7 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (object->flags & OBJECT_NO_SCAN)
  		goto out;
  	if (!(object->flags & OBJECT_ALLOCATED))
-@@ -1421,9 +1421,9 @@ static void scan_object(struct kmemleak_
+@@ -1344,9 +1344,9 @@ static void scan_object(struct kmemleak_
  			if (start >= end)
  				break;
  
@@ -182,7 +168,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		} while (object->flags & OBJECT_ALLOCATED);
  	} else
  		hlist_for_each_entry(area, &object->area_list, node)
-@@ -1431,7 +1431,7 @@ static void scan_object(struct kmemleak_
+@@ -1354,7 +1354,7 @@ static void scan_object(struct kmemleak_
  				   (void *)(area->start + area->size),
  				   object);
  out:
@@ -191,7 +177,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -1484,7 +1484,7 @@ static void kmemleak_scan(void)
+@@ -1407,7 +1407,7 @@ static void kmemleak_scan(void)
  	/* prepare the kmemleak_object's */
  	rcu_read_lock();
  	list_for_each_entry_rcu(object, &object_list, object_list) {
@@ -200,7 +186,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef DEBUG
  		/*
  		 * With a few exceptions there should be a maximum of
-@@ -1501,7 +1501,7 @@ static void kmemleak_scan(void)
+@@ -1424,7 +1424,7 @@ static void kmemleak_scan(void)
  		if (color_gray(object) && get_object(object))
  			list_add_tail(&object->gray_list, &gray_list);
  
@@ -209,7 +195,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	rcu_read_unlock();
  
-@@ -1569,14 +1569,14 @@ static void kmemleak_scan(void)
+@@ -1492,14 +1492,14 @@ static void kmemleak_scan(void)
  	 */
  	rcu_read_lock();
  	list_for_each_entry_rcu(object, &object_list, object_list) {
@@ -226,7 +212,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	rcu_read_unlock();
  
-@@ -1596,7 +1596,7 @@ static void kmemleak_scan(void)
+@@ -1519,7 +1519,7 @@ static void kmemleak_scan(void)
  	 */
  	rcu_read_lock();
  	list_for_each_entry_rcu(object, &object_list, object_list) {
@@ -235,7 +221,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (unreferenced_object(object) &&
  		    !(object->flags & OBJECT_REPORTED)) {
  			object->flags |= OBJECT_REPORTED;
-@@ -1606,7 +1606,7 @@ static void kmemleak_scan(void)
+@@ -1529,7 +1529,7 @@ static void kmemleak_scan(void)
  
  			new_leaks++;
  		}
@@ -244,7 +230,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	rcu_read_unlock();
  
-@@ -1758,10 +1758,10 @@ static int kmemleak_seq_show(struct seq_
+@@ -1681,10 +1681,10 @@ static int kmemleak_seq_show(struct seq_
  	struct kmemleak_object *object = v;
  	unsigned long flags;
  
@@ -257,7 +243,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return 0;
  }
  
-@@ -1791,9 +1791,9 @@ static int dump_str_object_info(const ch
+@@ -1714,9 +1714,9 @@ static int dump_str_object_info(const ch
  		return -EINVAL;
  	}
  
@@ -269,7 +255,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	put_object(object);
  	return 0;
-@@ -1812,11 +1812,11 @@ static void kmemleak_clear(void)
+@@ -1735,11 +1735,11 @@ static void kmemleak_clear(void)
  
  	rcu_read_lock();
  	list_for_each_entry_rcu(object, &object_list, object_list) {

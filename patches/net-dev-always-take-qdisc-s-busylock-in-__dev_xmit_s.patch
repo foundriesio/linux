@@ -20,11 +20,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3509,7 +3509,11 @@ static inline int __dev_xmit_skb(struct
+@@ -3426,7 +3426,11 @@ static inline int __dev_xmit_skb(struct
  	 * This permits qdisc->running owner to get the lock more
  	 * often and dequeue packets faster.
  	 */
-+#ifdef CONFIG_PREEMPT_RT_FULL
++#ifdef CONFIG_PREEMPT_RT
 +	contended = true;
 +#else
  	contended = qdisc_is_running(q);

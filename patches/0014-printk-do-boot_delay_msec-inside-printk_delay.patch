@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1497,6 +1497,21 @@ SYSCALL_DEFINE3(syslog, int, type, char
+@@ -1507,6 +1507,21 @@ SYSCALL_DEFINE3(syslog, int, type, char
  	return do_syslog(type, buf, len, SYSLOG_FROM_READER);
  }
  
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void print_console_dropped(struct console *con, u64 count)
  {
  	char text[64];
-@@ -1578,20 +1593,6 @@ static void call_console_drivers(u64 seq
+@@ -1588,20 +1603,6 @@ static void call_console_drivers(u64 seq
  	}
  }
  
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline u32 printk_caller_id(void)
  {
  	return in_task() ? task_pid_nr(current) :
-@@ -2565,10 +2566,8 @@ static int printk_kthread_func(void *dat
+@@ -2575,10 +2576,8 @@ static int printk_kthread_func(void *dat
  		console_lock();
  		call_console_drivers(master_seq, ext_text,
  				     ext_len, text, len);

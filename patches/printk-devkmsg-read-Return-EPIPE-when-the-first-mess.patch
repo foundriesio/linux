@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -703,14 +703,10 @@ static ssize_t devkmsg_read(struct file
+@@ -713,14 +713,10 @@ static ssize_t devkmsg_read(struct file
  		goto out;
  	}
  

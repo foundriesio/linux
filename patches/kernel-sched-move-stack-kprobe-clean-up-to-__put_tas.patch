@@ -7,13 +7,15 @@ There is no need to free the stack before the task struct (except for reasons
 mentioned in commit 68f24b08ee89 ("sched/core: Free the stack early if
 CONFIG_THREAD_INFO_IN_TASK")). This also comes handy on -RT because we can't
 free memory in preempt disabled region.
+vfree_atomic() delays the memory cleanup to a worker. Since we move everything
+to the RCU callback, we can also free it immediately.
 
 Cc: stable-rt@vger.kernel.org #for kprobe_flush_task()
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/fork.c       |   10 ++++++++++
+ kernel/fork.c       |   12 +++++++++++-
  kernel/sched/core.c |    9 ---------
- 2 files changed, 10 insertions(+), 9 deletions(-)
+ 2 files changed, 11 insertions(+), 10 deletions(-)
 
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
@@ -25,7 +27,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/vmacache.h>
  #include <linux/nsproxy.h>
  #include <linux/capability.h>
-@@ -742,6 +743,15 @@ void __put_task_struct(struct task_struc
+@@ -289,7 +290,7 @@ static inline void free_thread_stack(str
+ 			return;
+ 		}
+ 
+-		vfree_atomic(tsk->stack);
++		vfree(tsk->stack);
+ 		return;
+ 	}
+ #endif
+@@ -750,6 +751,15 @@ void __put_task_struct(struct task_struc
  	WARN_ON(refcount_read(&tsk->usage));
  	WARN_ON(tsk == current);
  
@@ -43,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	security_task_free(tsk);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2721,15 +2721,6 @@ static struct rq *finish_task_switch(str
+@@ -3253,15 +3253,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  
@@ -56,6 +67,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		/* Task is done with its stack. */
 -		put_task_stack(prev);
 -
- 		put_task_struct(prev);
+ 		put_task_struct_rcu_user(prev);
  	}
  

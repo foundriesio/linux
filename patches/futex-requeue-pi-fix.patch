@@ -2,7 +2,7 @@ From: Steven Rostedt <rostedt@goodmis.org>
 Date: Tue, 14 Jul 2015 14:26:34 +0200
 Subject: futex: Fix bug on when a requeued RT task times out
 
-Requeue with timeout causes a bug with PREEMPT_RT_FULL.
+Requeue with timeout causes a bug with PREEMPT_RT.
 
 The bug comes from a timed out condition.
 
@@ -65,11 +65,11 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -1785,6 +1786,34 @@ int __rt_mutex_start_proxy_lock(struct r
+@@ -1779,6 +1780,34 @@ int __rt_mutex_start_proxy_lock(struct r
  	if (try_to_take_rt_mutex(lock, task, NULL))
  		return 1;
  
-+#ifdef CONFIG_PREEMPT_RT_FULL
++#ifdef CONFIG_PREEMPT_RT
 +	/*
 +	 * In PREEMPT_RT there's an added race.
 +	 * If the task, that we are about to requeue, times out,

@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * Kernel threads bound to a single CPU can safely use
  	 * smp_processor_id():
  	 */
--	if (cpumask_equal(&current->cpus_allowed, cpumask_of(this_cpu)))
+-	if (cpumask_equal(current->cpus_ptr, cpumask_of(this_cpu)))
 +	if (current->nr_cpus_allowed == 1)
  		goto out;
  

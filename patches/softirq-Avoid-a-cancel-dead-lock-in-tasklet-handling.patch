@@ -4,7 +4,7 @@ Subject: [PATCH] softirq: Avoid a cancel dead-lock in tasklet handling due to
  preemptible-softirq
 
 A pending / active tasklet which is preempted by a task on the same CPU
-will spin indefinitely becauase the tasklet makes no progress.
+will spin indefinitely because the tasklet makes no progress.
 To avoid this deadlock we can disable BH which will acquire the
 softirq-lock which will force the completion of the softirq and so the
 tasklet.
@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -625,7 +625,10 @@ static inline void tasklet_unlock(struct
+@@ -626,7 +626,10 @@ static inline void tasklet_unlock(struct
  
  static inline void tasklet_unlock_wait(struct tasklet_struct *t)
  {

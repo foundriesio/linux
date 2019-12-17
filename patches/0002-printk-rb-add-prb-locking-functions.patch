@@ -67,7 +67,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +#endif /*_LINUX_PRINTK_RINGBUFFER_H */
 --- a/lib/Makefile
 +++ b/lib/Makefile
-@@ -30,7 +30,7 @@ endif
+@@ -26,7 +26,7 @@ endif
  
  lib-y := ctype.o string.o vsprintf.o cmdline.o \
  	 rbtree.o radix-tree.o timerqueue.o xarray.o \

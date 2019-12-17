@@ -7,6 +7,10 @@ the complex waitqueue variant. Use simple waitqueues which reduces the
 contention on the waitqueue lock.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+[cminyard@mvista.com: Move __prepare_to_swait() into the do loop because
+  swake_up_locked() removes the waiter on wake from the queue while in the
+  original code it is not the case]
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  arch/powerpc/platforms/ps3/device-init.c            |    4 +-
  drivers/net/wireless/intersil/orinoco/orinoco_usb.c |    4 +-
@@ -18,9 +22,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  kernel/power/hibernate.c                            |    7 ++++
  kernel/power/suspend.c                              |    4 ++
  kernel/sched/completion.c                           |   34 ++++++++++----------
- kernel/sched/core.c                                 |   10 ++++-
  kernel/sched/swait.c                                |   21 +++++++++++-
- 12 files changed, 75 insertions(+), 31 deletions(-)
+ 11 files changed, 67 insertions(+), 29 deletions(-)
 
 --- a/arch/powerpc/platforms/ps3/device-init.c
 +++ b/arch/powerpc/platforms/ps3/device-init.c
@@ -50,7 +53,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	default:
 --- a/drivers/usb/gadget/function/f_fs.c
 +++ b/drivers/usb/gadget/function/f_fs.c
-@@ -1708,7 +1708,7 @@ static void ffs_data_put(struct ffs_data
+@@ -1715,7 +1715,7 @@ static void ffs_data_put(struct ffs_data
  		pr_info("%s(): freeing\n", __func__);
  		ffs_data_clear(ffs);
  		BUG_ON(waitqueue_active(&ffs->ev.waitq) ||
@@ -61,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		kfree(ffs->dev_name);
 --- a/drivers/usb/gadget/legacy/inode.c
 +++ b/drivers/usb/gadget/legacy/inode.c
-@@ -343,7 +343,7 @@ ep_io (struct ep_data *epdata, void *buf
+@@ -344,7 +344,7 @@ ep_io (struct ep_data *epdata, void *buf
  	spin_unlock_irq (&epdata->dev->lock);
  
  	if (likely (value == 0)) {
@@ -70,7 +73,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (value != 0) {
  			spin_lock_irq (&epdata->dev->lock);
  			if (likely (epdata->ep != NULL)) {
-@@ -352,7 +352,7 @@ ep_io (struct ep_data *epdata, void *buf
+@@ -353,7 +353,7 @@ ep_io (struct ep_data *epdata, void *buf
  				usb_ep_dequeue (epdata->ep, epdata->req);
  				spin_unlock_irq (&epdata->dev->lock);
  
@@ -119,7 +122,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/include/linux/suspend.h
 +++ b/include/linux/suspend.h
-@@ -196,6 +196,12 @@ struct platform_s2idle_ops {
+@@ -197,6 +197,12 @@ struct platform_s2idle_ops {
  	void (*end)(void);
  };
  
@@ -146,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/power/hibernate.c
 +++ b/kernel/power/hibernate.c
-@@ -688,6 +688,10 @@ static int load_image_and_restore(void)
+@@ -689,6 +689,10 @@ static int load_image_and_restore(void)
  	return error;
  }
  
@@ -157,7 +160,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * hibernate - Carry out system hibernation, including saving the image.
   */
-@@ -701,6 +705,8 @@ int hibernate(void)
+@@ -702,6 +706,8 @@ int hibernate(void)
  		return -EPERM;
  	}
  
@@ -166,7 +169,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	lock_system_sleep();
  	/* The snapshot device should not be opened while we're running */
  	if (!atomic_add_unless(&snapshot_device_available, -1, 0)) {
-@@ -777,6 +783,7 @@ int hibernate(void)
+@@ -778,6 +784,7 @@ int hibernate(void)
  	atomic_inc(&snapshot_device_available);
   Unlock:
  	unlock_system_sleep();
@@ -176,7 +179,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return error;
 --- a/kernel/power/suspend.c
 +++ b/kernel/power/suspend.c
-@@ -605,6 +605,8 @@ static int enter_state(suspend_state_t s
+@@ -594,6 +594,8 @@ static int enter_state(suspend_state_t s
  	return error;
  }
  
@@ -185,7 +188,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * pm_suspend - Externally visible function for suspending the system.
   * @state: System sleep state to enter.
-@@ -619,6 +621,7 @@ int pm_suspend(suspend_state_t state)
+@@ -608,6 +610,7 @@ int pm_suspend(suspend_state_t state)
  	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
  		return -EINVAL;
  
@@ -193,7 +196,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
  	error = enter_state(state);
  	if (error) {
-@@ -628,6 +631,7 @@ int pm_suspend(suspend_state_t state)
+@@ -617,6 +620,7 @@ int pm_suspend(suspend_state_t state)
  		suspend_stats.success++;
  	}
  	pr_info("suspend exit\n");
@@ -241,12 +244,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		DECLARE_SWAITQUEUE(wait);
  
 -		__add_wait_queue_entry_tail_exclusive(&x->wait, &wait);
-+		__prepare_to_swait(&x->wait, &wait);
  		do {
  			if (signal_pending_state(state, current)) {
  				timeout = -ERESTARTSYS;
  				break;
  			}
++			__prepare_to_swait(&x->wait, &wait);
  			__set_current_state(state);
 -			spin_unlock_irq(&x->wait.lock);
 +			raw_spin_unlock_irq(&x->wait.lock);
@@ -297,32 +300,6 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return true;
  }
  EXPORT_SYMBOL(completion_done);
---- a/kernel/sched/core.c
-+++ b/kernel/sched/core.c
-@@ -7160,7 +7160,10 @@ void migrate_disable(void)
- 		return;
- 	}
- #ifdef CONFIG_SCHED_DEBUG
--	WARN_ON_ONCE(p->migrate_disable_atomic);
-+	if (unlikely(p->migrate_disable_atomic)) {
-+		tracing_off();
-+		WARN_ON_ONCE(1);
-+	}
- #endif
- 
- 	if (p->migrate_disable) {
-@@ -7190,7 +7193,10 @@ void migrate_enable(void)
- 	}
- 
- #ifdef CONFIG_SCHED_DEBUG
--	WARN_ON_ONCE(p->migrate_disable_atomic);
-+	if (unlikely(p->migrate_disable_atomic)) {
-+		tracing_off();
-+		WARN_ON_ONCE(1);
-+	}
- #endif
- 
- 	WARN_ON_ONCE(p->migrate_disable <= 0);
 --- a/kernel/sched/swait.c
 +++ b/kernel/sched/swait.c
 @@ -32,6 +32,25 @@ void swake_up_locked(struct swait_queue_
@@ -351,7 +328,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void swake_up_one(struct swait_queue_head *q)
  {
  	unsigned long flags;
-@@ -69,7 +88,7 @@ void swake_up_all(struct swait_queue_hea
+@@ -70,7 +89,7 @@ void swake_up_all(struct swait_queue_hea
  }
  EXPORT_SYMBOL(swake_up_all);
  

@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -2147,15 +2147,7 @@ static void ptrace_stop(int exit_code, i
+@@ -2197,16 +2197,8 @@ static void ptrace_stop(int exit_code, i
  		if (gstop_done && ptrace_reparented(current))
  			do_notify_parent_cldstop(current, false, why);
  
@@ -25,7 +25,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -		 */
 -		preempt_disable();
  		read_unlock(&tasklist_lock);
--		preempt_enable_no_resched();
  		cgroup_enter_frozen();
+-		preempt_enable_no_resched();
  		freezable_schedule();
  		cgroup_leave_frozen(true);
+ 	} else {

@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	printk("  --------------------------------------------------------------------------\n");
  
-+#ifndef CONFIG_PREEMPT_RT_FULL
++#ifndef CONFIG_PREEMPT_RT
  	/*
  	 * irq-context testcases:
  	 */

@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1767,15 +1767,8 @@ static void call_console_drivers(u64 seq
+@@ -1777,15 +1777,8 @@ static void call_console_drivers(u64 seq
  			con->wrote_history = 1;
  			con->printk_seq = seq - 1;
  		}
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (con->printk_seq < seq)
  				con->printk_seq = seq;
  			continue;
-@@ -3161,7 +3154,7 @@ static bool console_can_emergency(int le
+@@ -3171,7 +3164,7 @@ static bool console_can_emergency(int le
  	for_each_console(con) {
  		if (!(con->flags & CON_ENABLED))
  			continue;
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			return true;
  		if (con->write && (con->flags & CON_BOOT))
  			return true;
-@@ -3177,7 +3170,7 @@ static void call_emergency_console_drive
+@@ -3187,7 +3180,7 @@ static void call_emergency_console_drive
  	for_each_console(con) {
  		if (!(con->flags & CON_ENABLED))
  			continue;

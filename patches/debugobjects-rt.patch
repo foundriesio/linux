@@ -11,12 +11,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/lib/debugobjects.c
 +++ b/lib/debugobjects.c
-@@ -376,7 +376,10 @@ static void
+@@ -533,7 +533,10 @@ static void
  	struct debug_obj *obj;
  	unsigned long flags;
  
 -	fill_pool();
-+#ifdef CONFIG_PREEMPT_RT_FULL
++#ifdef CONFIG_PREEMPT_RT
 +	if (preempt_count() == 0 && !irqs_disabled())
 +#endif
 +		fill_pool();

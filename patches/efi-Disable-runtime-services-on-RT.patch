@@ -28,12 +28,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -87,7 +87,7 @@ struct mm_struct efi_mm = {
+@@ -68,7 +68,7 @@ struct mm_struct efi_mm = {
  
  struct workqueue_struct *efi_rts_wq;
  
 -static bool disable_runtime;
-+static bool disable_runtime = IS_ENABLED(CONFIG_PREEMPT_RT_BASE);
++static bool disable_runtime = IS_ENABLED(CONFIG_PREEMPT_RT);
  static int __init setup_noefi(char *arg)
  {
  	disable_runtime = true;

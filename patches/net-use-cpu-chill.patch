@@ -10,8 +10,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
  net/packet/af_packet.c |    5 +++--
- net/rds/ib_rdma.c      |    3 ++-
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 --- a/net/packet/af_packet.c
 +++ b/net/packet/af_packet.c
@@ -41,22 +40,3 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
  		}
  		prb_close_block(pkc, pbd, po, status);
---- a/net/rds/ib_rdma.c
-+++ b/net/rds/ib_rdma.c
-@@ -34,6 +34,7 @@
- #include <linux/slab.h>
- #include <linux/rculist.h>
- #include <linux/llist.h>
-+#include <linux/delay.h>
- 
- #include "rds_single_path.h"
- #include "ib_mr.h"
-@@ -222,7 +223,7 @@ static inline void wait_clean_list_grace
- 	for_each_online_cpu(cpu) {
- 		flag = &per_cpu(clean_list_grace, cpu);
- 		while (test_bit(CLEAN_LIST_BUSY_BIT, flag))
--			cpu_relax();
-+			cpu_chill();
- 	}
- }
- 

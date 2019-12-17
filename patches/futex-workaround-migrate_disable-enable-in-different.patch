@@ -2,12 +2,18 @@ From: Thomas Gleixner <tglx@linutronix.de>
 Date: Wed, 8 Mar 2017 14:23:35 +0100
 Subject: [PATCH] futex: workaround migrate_disable/enable in different context
 
-migrate_disable()/migrate_enable() takes a different path in atomic() vs
-!atomic() context. These little hacks ensure that we don't underflow / overflow
-the migrate code counts properly while we lock the hb lockwith interrupts
-enabled and unlock it with interrupts disabled.
+migrate_enable() invokes __schedule() and it expects a preempt count of one.
+Holding a raw_spinlock_t with disabled interrupts should not allow scheduling.
+
+These little hacks ensure that we don't schedule while we lock the hb lockwith
+interrupts enabled and unlock it with interrupts disabled.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+[XXX: As per PeterZ suggesstion
+	set_thread_flag(TIF_NEED_RESCHED); preempt_fold_need_resched()
+ would trigger a scheduler invocation on the last preempt_enable() which in
+ turn would allow to drop this.
+]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/futex.c |   18 ++++++++++++++++++
@@ -15,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -2865,6 +2865,14 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2980,6 +2980,14 @@ static int futex_lock_pi(u32 __user *uad
  	 * before __rt_mutex_start_proxy_lock() is done.
  	 */
  	raw_spin_lock_irq(&q.pi_state->pi_mutex.wait_lock);
@@ -30,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock(q.lock_ptr);
  	/*
  	 * __rt_mutex_start_proxy_lock() unconditionally enqueues the @rt_waiter
-@@ -2873,6 +2881,7 @@ static int futex_lock_pi(u32 __user *uad
+@@ -2988,6 +2996,7 @@ static int futex_lock_pi(u32 __user *uad
  	 */
  	ret = __rt_mutex_start_proxy_lock(&q.pi_state->pi_mutex, &rt_waiter, current);
  	raw_spin_unlock_irq(&q.pi_state->pi_mutex.wait_lock);
@@ -38,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (ret) {
  		if (ret == 1)
-@@ -3021,10 +3030,19 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3136,10 +3145,19 @@ static int futex_unlock_pi(u32 __user *u
  		 * rt_waiter. Also see the WARN in wake_futex_pi().
  		 */
  		raw_spin_lock_irq(&pi_state->pi_mutex.wait_lock);

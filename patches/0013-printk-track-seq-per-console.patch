@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1497,6 +1497,16 @@ SYSCALL_DEFINE3(syslog, int, type, char
+@@ -1507,6 +1507,16 @@ SYSCALL_DEFINE3(syslog, int, type, char
  	return do_syslog(type, buf, len, SYSLOG_FROM_READER);
  }
  
@@ -41,7 +41,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void format_text(struct printk_log *msg, u64 seq,
  			char *ext_text, size_t *ext_len,
  			char *text, size_t *len, bool time)
-@@ -1530,7 +1540,7 @@ static void format_text(struct printk_lo
+@@ -1540,7 +1550,7 @@ static void format_text(struct printk_lo
   * log_buf[start] to log_buf[end - 1].
   * The console_lock must be held.
   */
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				 const char *text, size_t len)
  {
  	struct console *con;
-@@ -1548,6 +1558,19 @@ static void call_console_drivers(const c
+@@ -1558,6 +1568,19 @@ static void call_console_drivers(const c
  		if (!cpu_online(raw_smp_processor_id()) &&
  		    !(con->flags & CON_ANYTIME))
  			continue;
@@ -70,7 +70,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (con->flags & CON_EXTENDED)
  			con->write(con, ext_text, ext_len);
  		else
-@@ -1787,7 +1810,7 @@ static ssize_t msg_print_ext_header(char
+@@ -1797,7 +1820,7 @@ static ssize_t msg_print_ext_header(char
  static ssize_t msg_print_ext_body(char *buf, size_t size,
  				  char *dict, size_t dict_len,
  				  char *text, size_t text_len) { return 0; }
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				 const char *text, size_t len) {}
  static size_t msg_print_text(const struct printk_log *msg, bool syslog,
  			     bool time, char *buf, size_t size) { return 0; }
-@@ -2540,8 +2563,9 @@ static int printk_kthread_func(void *dat
+@@ -2550,8 +2573,9 @@ static int printk_kthread_func(void *dat
  			    &len, printk_time);
  
  		console_lock();

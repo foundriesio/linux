@@ -12,11 +12,11 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/sched/features.h
 +++ b/kernel/sched/features.h
-@@ -46,11 +46,16 @@ SCHED_FEAT(LB_BIAS, false)
+@@ -45,11 +45,16 @@ SCHED_FEAT(DOUBLE_TICK, false)
   */
  SCHED_FEAT(NONTASK_CAPACITY, true)
  
-+#ifdef CONFIG_PREEMPT_RT_FULL
++#ifdef CONFIG_PREEMPT_RT
 +SCHED_FEAT(TTWU_QUEUE, false)
 +#else
 +
