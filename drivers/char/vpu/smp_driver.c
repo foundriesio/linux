@@ -40,13 +40,13 @@ int vpu_optee_open(void) {
         struct tee_client_uuid uuid = TA_VPU_UUID;
         int rc = tee_client_open_ta(&uuid, NULL, &context);
         if (rc) {
-            printk("[%s] tee_client_open_ta: error = %d (0x%x), Check uboot and sest img\n", __func__, rc, rc);
+            dprintk("[%s] tee_client_open_ta: error = %d (0x%x), Check uboot and sest img\n", __func__, rc, rc);
             return rc;
         }
-        printk("[%s] tee_client_open_ta \n", __func__);
+        dprintk("[%s] tee_client_open_ta \n", __func__);
     }
     vpu_tee_client_count++;
-    printk("[%s] tee client count [%d] \n", __func__, vpu_tee_client_count);
+    dprintk("[%s] tee client count [%d] \n", __func__, vpu_tee_client_count);
     return 0;
 }
 
@@ -90,13 +90,13 @@ int vpu_optee_fw_read(int type) {
 
 int vpu_optee_close(void) {
     vpu_tee_client_count--;
-    printk("[%s] tee client count [%d]\n", __func__, vpu_tee_client_count);
+    dprintk("[%s] tee client count [%d]\n", __func__, vpu_tee_client_count);
 
     if (vpu_tee_client_count <= 0) {
         tee_client_close_ta(context);
         vpu_tee_client_count = 0;
         context = NULL;
-        printk("[%s] tee_client_close_ta\n", __func__);
+        dprintk("[%s] tee_client_close_ta\n", __func__);
     }
     return 0;
 }

@@ -57,7 +57,7 @@ extern void hmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void hmgr_get_reset(struct device_node *node);
 extern void hmgr_put_reset(void);
-extern void hmgr_hw_reset(void);
+extern void hmgr_hw_reset(int reset);
 
 extern void hmgr_enable_irq(unsigned int irq);
 extern void hmgr_disable_irq(unsigned int irq);

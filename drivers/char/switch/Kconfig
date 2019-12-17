@@ -1,21 +1,14 @@
 # drivers/char/switch/Kconfig
 #
-# Copyright (c) 2010-2011 Telechips Co., Ltd.
+# Copyright (c) 2010 Telechips Co., Ltd.
 #	http://www.telechips.com/
 # Jay <B150095@telechips.com>
 #
 # Licensed under GPL
 
 config SWITCH_REVERSE
-	tristate "Swith for Reverse"
+	tristate "Reverse Switch Driver"
 	default n
 	help
-	  Say Y here to enable GPIO based switch support.
-
-config SWITCH_REVERSE_IPC
-	tristate "Reverse Switch IPC Driver for TCC803x"
-	default n
-	depends on (TCC_MULTI_MAILBOX && SWITCH_REVERSE)
-	help
-		Choose this option if you want to use reverse switch ipc driver
+		Choose this option if you want to use reverse switch driver
 

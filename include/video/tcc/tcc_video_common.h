@@ -161,6 +161,7 @@ typedef struct dec_user_info_t {
 #define VPU_ENABLE_JPU_CLOCK            206
 #define VPU_DISABLE_JPU_CLOCK           207
 #define VPU_CHECK_INSTANCE_AVAILABLE    208
+#define VPU_TRY_HANGUP_RELEASE			209
 
 #define VPU_TRY_FORCE_CLOSE             500
 #define VPU_TRY_CLK_RESTORE             501

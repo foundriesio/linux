@@ -37,13 +37,13 @@
 #include <linux/of_device.h>
 #include <linux/types.h>
 #include <linux/miscdevice.h>
+#include <linux/proc_fs.h>
 #include <asm/io.h>
-
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.6"
+#define LUT_VERSION "v1.7"
 
 #define TCC_LUT_DEBUG	0
 #define dprintk(msg, ...) if(TCC_LUT_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
@@ -57,6 +57,16 @@ struct lut_drv_type {
 	unsigned int dev_max;
 	unsigned int vioc_max;
 	struct miscdevice *misc;
+
+	/* proc fs */
+        struct proc_dir_entry	*proc_dir;
+        struct proc_dir_entry	*proc_debug;
+	#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
+	unsigned int Gamma_vioc_lut_3[1024];
+	unsigned int Gamma_vioc_lut_4[1024];
+	unsigned int Gamma_vioc_lut_5[1024];
+	unsigned int Gamma_vioc_lut_6[1024];
+	#endif
 };
 
 struct lut_drv_type *lut_api = NULL;
@@ -214,6 +224,27 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					pr_err("%s TCC_LUT_SET invalid lut number[%d]\r\n", __func__, lut_cmd->lut_number);
 					break;
 				}
+				
+				#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
+				switch(lut_number) {
+					case 3:
+						pr_err("TCC_LUT_SET LUT_COMP0R\r\n");
+						memcpy(lut->Gamma_vioc_lut_3, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
+						break;
+					case 4:
+						pr_err("TCC_LUT_SET LUT_COMP0Y\r\n");
+						memcpy(lut->Gamma_vioc_lut_4, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
+						break;
+					case 5:
+						pr_err("TCC_LUT_SET LUT_COMP1R\r\n");
+						memcpy(lut->Gamma_vioc_lut_5, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
+						break;
+					case 6:
+						pr_err("TCC_LUT_SET LUT_COMP1Y\r\n");
+						memcpy(lut->Gamma_vioc_lut_6, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
+						break;
+				}
+				#endif
 
 				tcc_set_lut_table(VIOC_LUT + lut_number, lut_cmd->Gamma);
 				kfree(lut_cmd);
@@ -264,6 +295,26 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					#endif
 
 					dprintk("TCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", lut_number);
+					#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
+					switch(lut_number) {
+						case 3:
+							pr_err("TCC_LUT_SET LUT_COMP0R\r\n");
+							memcpy(lut->Gamma_vioc_lut_3, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
+							break;
+						case 4:
+							pr_err("TCC_LUT_SET LUT_COMP0Y\r\n");
+							memcpy(lut->Gamma_vioc_lut_4, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
+							break;
+						case 5:
+							pr_err("TCC_LUT_SET LUT_COMP1R\r\n");
+							memcpy(lut->Gamma_vioc_lut_5, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
+							break;
+						case 6:
+							pr_err("TCC_LUT_SET LUT_COMP1Y\r\n");
+							memcpy(lut->Gamma_vioc_lut_6, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
+							break;
+					}
+					#endif
 	                                tcc_set_lut_table(VIOC_LUT + lut_number, lut_value_set_ex->Gamma);
 					ret = 0;
 				}while(0);
@@ -427,6 +478,110 @@ static struct file_operations lut_drv_fops = {
 	.release		= lut_drv_release,
 };
 
+static ssize_t proc_lut_write_debug(struct file *filp, const char __user *buffer, size_t cnt, loff_t *off_set)
+{
+        ssize_t size;
+	unsigned int debug_param[2];
+        struct lut_drv_type *lut = PDE_DATA(file_inode(filp));
+
+        char *debug_buffer = devm_kzalloc(lut->misc->parent, cnt+1, GFP_KERNEL);
+
+        do {
+                if (debug_buffer == NULL) {
+                        size =  -ENOMEM;
+                        break;
+                }
+                size = simple_write_to_buffer(debug_buffer, cnt, off_set, buffer, cnt);
+                if (size != cnt) {
+
+                        if(size >= 0) {
+                                size = -EIO;
+                                break;
+                        }
+                }
+                debug_buffer[cnt] = '\0';
+
+                sscanf(debug_buffer, "%u, %u", &debug_param[0], &debug_param[1]);
+                devm_kfree(lut->misc->parent, debug_buffer);
+
+		pr_info("LUT Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
+		switch(debug_param[0]) {
+			case 0:
+				/* Nothing */
+				break;
+			case 1: {
+					/* Dump */
+					int i;
+					int lug_enable[2];
+					int plugin_in_ch[2];
+
+					lug_enable[0] = tcc_get_lut_enable(VIOC_LUT_COMP0);
+					lug_enable[1] = tcc_get_lut_enable(VIOC_LUT_COMP1);
+
+					plugin_in_ch[0] = tcc_get_lut_plugin(VIOC_LUT_COMP0);
+					plugin_in_ch[1] = tcc_get_lut_plugin(VIOC_LUT_COMP1);
+
+					if(lug_enable[0] == 0) {
+						pr_err("%s LUT0 is not plugined\r\n", __func__);
+					} else {
+						pr_err("%s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[0]);
+						#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
+						pr_err("Dump RGB Table\r\n");
+						for(i=0;i<16;i++) {
+							pr_err("0x%08x ", lut->Gamma_vioc_lut_3[i]);
+						}
+						pr_err("\r\nDump Y Table\r\n");
+						for(i=0;i<16;i++) {
+							pr_err("0x%08x ", lut->Gamma_vioc_lut_4[i]);
+						}
+						pr_err("\r\n\r\n");
+						#endif
+					}
+					if(lug_enable[1] == 0) {
+						pr_err("%s LUT1 is not plugined\r\n", __func__);
+					} else {
+						pr_err("%s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[1]);
+						#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
+						pr_err("Dump RGB Table\r\n");
+						for(i=0;i<16;i++) {
+							pr_err("0x%08x ", lut->Gamma_vioc_lut_3[i]);
+						}
+						pr_err("\r\nDump Y Table\r\n");
+						for(i=0;i<16;i++) {
+							pr_err("0x%08x ", lut->Gamma_vioc_lut_4[i]);
+						}
+						pr_err("\r\n");
+						#endif
+					}
+				}
+				break;
+		}
+        } while(0);
+
+        return size;
+}
+
+
+static int proc_open(struct inode *inode, struct file *filp)
+{
+	try_module_get(THIS_MODULE);
+	return 0;
+}
+
+static int proc_close(struct inode *inode, struct file *filp)
+{
+	module_put(THIS_MODULE);
+	return 0;
+}
+
+
+static const struct file_operations proc_fops_lut_debug= {
+        .owner   = THIS_MODULE,
+        .open    = proc_open,
+        .release = proc_close,
+        .write   = proc_lut_write_debug,
+};
+
 static int lut_drv_probe(struct platform_device *pdev)
 {
 	struct lut_drv_type *lut;
@@ -461,6 +616,18 @@ static int lut_drv_probe(struct platform_device *pdev)
 		goto err_misc_register;
 
 	platform_set_drvdata(pdev, lut);
+
+	/* ProcFS */
+	lut->proc_dir = proc_mkdir("tcc_lut", NULL);
+	if(lut->proc_dir == NULL){
+		pr_err("%s:Could not create file system @ /proc/tcc_lut\n", __func__);
+	} else {
+		lut->proc_debug = proc_create_data("debug", S_IFREG | S_IWUGO,
+			lut->proc_dir, &proc_fops_lut_debug, lut);
+		if(lut->proc_debug == NULL){
+			pr_err("%s:Could not create file system @ /proc/tcc_lut/debug\n", __func__);
+		}
+	}
 
 	/* Copy lut to lut_api to support external APIs */
 	lut_api = lut;

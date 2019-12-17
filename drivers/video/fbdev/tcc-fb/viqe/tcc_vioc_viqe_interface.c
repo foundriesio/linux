@@ -1461,7 +1461,10 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetDstSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		if (VIOC_CONFIG_DMAPath_Support()) {
@@ -1490,7 +1493,10 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetDstSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		if (VIOC_CONFIG_DMAPath_Support()) {
@@ -1584,8 +1590,10 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetDstSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, scaler->info->Image_width, scaler->info->Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-
-		VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
@@ -1823,7 +1831,10 @@ void TCC_VIQE_Scaler_Sub_Repeat60Hz_M2M(struct tcc_lcdc_image_update *input_imag
 		VIOC_SC_SetDstSize(pSC_SCALERBase, input_image->buffer_Image_width, input_image->buffer_Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, input_image->buffer_Image_width, input_image->buffer_Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
@@ -1911,7 +1922,10 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetDstSize(pSC_SCALERBase, scaler_sub->info->Image_width, scaler_sub->info->Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, scaler_sub->info->Image_width, scaler_sub->info->Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		if(VIOC_CONFIG_DMAPath_Support()) {
@@ -1939,7 +1953,10 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetDstSize(pSC_SCALERBase, scaler_sub->info->Image_width, scaler_sub->info->Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, scaler_sub->info->Image_width, scaler_sub->info->Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		if(VIOC_CONFIG_DMAPath_Support()) {
@@ -2045,7 +2062,10 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 			VIOC_SC_SetOutSize(pSC_SCALERBase, scaler_sub->info->Image_width, scaler_sub->info->Image_height);
 		}
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
+		{
+			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
+		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.

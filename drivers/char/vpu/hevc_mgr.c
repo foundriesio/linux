@@ -455,6 +455,11 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void* args)
                                 arg->gsHevcDecInit.m_bEnableUserData, arg->gsHevcDecInit.m_bCbCrInterleaveMode,
                                 arg->gsHevcDecInit.m_iFilePlayEnable);
 
+					if(0 >= vmem_alloc_count(type)){
+						printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+						return RETCODE_FAILURE;
+					}
+
                     ret = tcc_hevc_dec(cmd & ~VPU_BASE_OP_KERNEL, (void*)(&arg->gsHevcDecHandle), (void*)(&arg->gsHevcDecInit), (void*)NULL);
                     if( ret != RETCODE_SUCCESS ){
                         printk("@@ Dec :: Init Done with ret(0x%x)\n", ret);
@@ -805,7 +810,7 @@ static int _hmgr_cmd_open(char *str)
         hmgr_data.clk_limitation = 1;
         hmgr_data.cmd_processing = 0;
 
-		hmgr_hw_reset();
+		hmgr_hw_reset(0);
         hmgr_enable_irq(hmgr_data.irq);
         vetc_reg_init(hmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -869,6 +874,7 @@ static int _hmgr_cmd_release(char *str)
         hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+		hmgr_hw_reset(1);
     }
 
     hmgr_disable_clock(0);
@@ -932,7 +938,8 @@ static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			hmgr_hw_reset();
+			hmgr_hw_reset(1);
+			hmgr_hw_reset(0);
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:

@@ -1468,14 +1468,6 @@
 		status = "disabled";
 	};
 
-	/* switch ipc for A53 */
-	switch_reverse_ipc: switch_reverse_ipc {
-		compatible = "telechips,switch_reverse_ipc";
-		device-name = "switch_reverse_ipc";
-		mbox-names ="switch_reverse_ipc";
-		mboxes = <&mbox1 TCC_MBOX1_CH_SWITCH>;
-	};
-
 	/* snor updater driver*/
 	snor_updater: snor_updater {
 		compatible = "telechips,snor_updater";

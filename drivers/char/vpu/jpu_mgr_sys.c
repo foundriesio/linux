@@ -108,6 +108,8 @@ void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
 #if 1
 	int opened_count = opened_cnt;
 
+	jmgr_hw_reset(1);
+
     while(opened_count)
     {
         jmgr_disable_clock(vbus_no_ctrl, 0);
@@ -123,9 +125,10 @@ void jmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
         if(opened_count > 0)
             opened_count--;
     }
-	jmgr_hw_reset();
+	jmgr_hw_reset(0);
 #else
-    jmgr_hw_reset();
+	jmgr_hw_reset(1);
+    jmgr_hw_reset(0);
 #endif
 }
 
@@ -150,15 +153,19 @@ void jmgr_put_reset(void)
 #endif
 }
 
-void jmgr_hw_reset(void)
+void jmgr_hw_reset(int reset)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
 	if(vbus_jpeg_reset) {
-		udelay(1000);
-		reset_control_assert(vbus_jpeg_reset);
-		udelay(1000);
-		reset_control_deassert(vbus_jpeg_reset);
-		udelay(1000);
+		if(reset) {
+			udelay(1000);
+			reset_control_assert(vbus_jpeg_reset);
+		}
+		else {
+			udelay(1000);
+			reset_control_deassert(vbus_jpeg_reset);
+			udelay(1000);
+		}
 	}
 #endif
 }

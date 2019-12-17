@@ -7,5 +7,4 @@
 # Licensed under GPL
 
 obj-$(CONFIG_SWITCH_REVERSE)		+= switch_reverse.o
-obj-$(CONFIG_SWITCH_REVERSE_IPC)	+= switch_reverse_ipc.o
 

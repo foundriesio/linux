@@ -658,6 +658,11 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                             arg->gsV4kd2DecInit.m_bEnableUserData, arg->gsV4kd2DecInit.m_bCbCrInterleaveMode,
                             arg->gsV4kd2DecInit.m_iFilePlayEnable);
 
+				if(0 >= vmem_alloc_count(type)){
+					printk("@@ Dec-%d ######################## No Buffer allocation\n", type);
+					return RETCODE_FAILURE;
+				}
+
                 ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, (void*)(&arg->gsV4kd2DecHandle), (void*)(&arg->gsV4kd2DecInit), (void*)NULL);
                 if( ret != RETCODE_SUCCESS ){
                     printk("@@ Dec :: Init Done with ret(0x%x)\n", ret);
@@ -1065,7 +1070,7 @@ static int _vmgr_4k_d2_cmd_open(char *str)
         vmgr_4k_d2_data.clk_limitation = 1;
         vmgr_4k_d2_data.cmd_processing = 0;
 
-		vmgr_4k_d2_hw_reset();
+		vmgr_4k_d2_hw_reset(0);
         vmgr_4k_d2_enable_irq(vmgr_4k_d2_data.irq);
         //vetc_reg_init(vmgr_4k_d2_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -1131,6 +1136,8 @@ static int _vmgr_4k_d2_cmd_release(char *str)
         vmgr_4k_d2_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+		
+		vmgr_4k_d2_hw_reset(1);
     }
 
     vmgr_4k_d2_disable_clock(0, 0);
@@ -1143,6 +1150,7 @@ static int _vmgr_4k_d2_cmd_release(char *str)
 	return 0;
 }
 
+static unsigned int hangup_rel_count = 0;
 static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
@@ -1194,7 +1202,8 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
             break;
 
         case VPU_HW_RESET:
-			vmgr_4k_d2_hw_reset();
+			vmgr_4k_d2_hw_reset(1);
+			vmgr_4k_d2_hw_reset(0);
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1313,6 +1322,12 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
 			_vmgr_4k_d2_cmd_release("cmd");
 		break;
 	#endif
+
+		case VPU_TRY_HANGUP_RELEASE:
+			hangup_rel_count++;
+			printk(" vpu_4k_d2 ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
+            //tcc_vpu_4k_d2_dec_esc(1, 0, 0, 0);
+		break;
 
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);

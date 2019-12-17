@@ -373,7 +373,8 @@
 
 	/* GPSB */
 	gpsb0@16900000 {
-		status = "okay";
+		/* example */
+		status = "disabled";
 		gpsb-port = <3>;
 		pinctrl-names = "idle", "active";
 		pinctrl-0 = <&gpsb3_bus_idle>;

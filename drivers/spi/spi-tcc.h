@@ -236,6 +236,9 @@ struct tcc_spi_pl_data {
 
 	/* CONTM support */
 	unsigned int contm_support;
+
+	/* Continuous mode */
+	bool ctf;
 };
 
 /* TCC GPSB SPI Master Data */
@@ -277,9 +280,6 @@ struct tcc_spi{
 
 	/* SCLK */
 	unsigned int 		clk;
-
-	/* Continuous mode */
-	unsigned int		ctf;
 
 	/* Pin-control */
 	struct pinctrl *pinctrl;

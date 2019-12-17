@@ -1626,30 +1626,36 @@ int VIOC_CONFIG_Device_PlugState(unsigned int component,
 
 static unsigned int CalcPathSelectionInScaler(unsigned int RdmaNum)
 {
-	unsigned int ret = get_vioc_index(RdmaNum);
+	unsigned int ret;
 
 	/* In our register, RDMA16/17 offsets are diffrent. */
-	if (RdmaNum == get_vioc_index(VIOC_RDMA16))
+	if (VIOC_RDMA16 == RdmaNum) {
 		ret = VIOC_SC_RDMA_16;
 #if !defined(CONFIG_ARCH_TCC897X)
-	else if (RdmaNum == get_vioc_index(VIOC_RDMA17))
+	} else if (VIOC_RDMA17 == RdmaNum) {
 		ret = VIOC_SC_RDMA_17;
 #endif
+	} else {
+		ret = get_vioc_index(RdmaNum);
+	}
 
 	return ret;
 }
 
 static unsigned int CalcPathSelectionInViqeDeinter(unsigned int RdmaNum)
 {
-	unsigned int ret = get_vioc_index(RdmaNum);
+	unsigned int ret;
 
 	/* In our register, RDMA16/17 offsets are diffrent. */
-	if (RdmaNum == get_vioc_index(VIOC_RDMA16))
+	if (VIOC_RDMA16 == RdmaNum) {
 		ret = VIOC_VIQE_RDMA_16;
 #if !defined(CONFIG_ARCH_TCC897X)
-	else if (RdmaNum == get_vioc_index(VIOC_RDMA17))
+	} else if (VIOC_RDMA17 == RdmaNum) {
 		ret = VIOC_VIQE_RDMA_17;
 #endif
+	} else {
+		ret = get_vioc_index(RdmaNum);
+	}
 
 	return ret;
 }

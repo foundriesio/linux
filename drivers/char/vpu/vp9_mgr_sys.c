@@ -92,6 +92,7 @@ void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
 #if 1
 	int opened_count = opened_cnt;
 
+    vp9mgr_hw_reset(1);
     while(opened_count)
     {
         vp9mgr_disable_clock(vbus_no_ctrl);
@@ -107,8 +108,10 @@ void vp9mgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
         if(opened_count > 0)
             opened_count--;
     }
+    vp9mgr_hw_reset(0);
 #else
-    vp9mgr_hw_reset();
+    vp9mgr_hw_reset(1);
+	vp9mgr_hw_reset(0);
 #endif
 }
 
@@ -134,15 +137,19 @@ void vp9mgr_put_reset(void)
 #endif
 }
 
-void vp9mgr_hw_reset(void)
+void vp9mgr_hw_reset(int reset)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
 	if(vbus_vp9_reset) {
-		udelay(1000);
-		reset_control_assert(vbus_vp9_reset);
-		udelay(1000);
-		reset_control_deassert(vbus_vp9_reset);
-		udelay(1000);
+		if(rest) {
+			udelay(1000);
+			reset_control_assert(vbus_vp9_reset);
+		}
+		else {
+			udelay(1000);
+			reset_control_deassert(vbus_vp9_reset);
+			udelay(1000);
+		}
 	}
 #endif
 }

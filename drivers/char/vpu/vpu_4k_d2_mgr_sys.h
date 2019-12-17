@@ -58,7 +58,7 @@ extern void vmgr_4k_d2_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void vmgr_4k_d2_get_reset(struct device_node *node);
 extern void vmgr_4k_d2_put_reset(void);
-extern void vmgr_4k_d2_hw_reset(void);
+extern void vmgr_4k_d2_hw_reset(int reset);
 
 extern void vmgr_4k_d2_enable_irq(unsigned int irq);
 extern void vmgr_4k_d2_disable_irq(unsigned int irq);

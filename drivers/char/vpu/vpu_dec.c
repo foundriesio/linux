@@ -690,7 +690,7 @@ static int _vdec_proc_clear_bufferflag(vpu_decoder_data *vdata, void *arg, bool 
             break;
     #endif
     #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
-            ase STD_VP9:
+        case STD_VP9:
                 detailk("%s ::_vp9_proc_clear_bufferflag : %d !!\n", vdata->misc->name, vdata->gsDecClearBuffer_index);
             break;
     #endif

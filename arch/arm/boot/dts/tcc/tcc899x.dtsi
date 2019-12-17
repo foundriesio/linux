@@ -2533,7 +2533,7 @@
 		reg = <0x1 0x0>;	/* Dummy regs. */
 		clocks = <&clk_ddi DDIBUS_VIOC>;
 		rdmas = <&vioc_rdma VIOC_RDMA13>;
-		scalers = <&vioc_scaler VIOC_SCALER3>;	/* id:0, path:19 */
+		scalers = <&vioc_scaler VIOC_SCALER5>;	/* id:0, path:19 */
 		wmixs = <&vioc_wmix VIOC_WMIX3>;	/* id:3, path:- TODO: WMIX_MAX occurs error*/
 		wdmas = <&vioc_wdma VIOC_WDMA03>;
 		status = "disabled";

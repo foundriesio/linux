@@ -4885,9 +4885,18 @@ exit_xfercompl:
 #ifdef DEBUG_EP0
 				DWC_DEBUGPL(DBG_PCD, "EP%d SETUP Done\n", epnum);
 #endif
+				deptsiz0_data_t doeptsize0 = {.d32 = 0 };
+				doeptsize0.d32 = DWC_READ_REG32(&core_if->dev_if->
+									out_ep_regs[ep->dwc_ep.num]->doeptsiz);
+
+				if (doeptsize0.b.supcnt == 3) {
+					DWC_DEBUGPL(DBG_ANY, "Rolling over!!!!!!!\n");
+					ep->dwc_ep.stp_rollover = 1;
+				}
 				CLEAR_OUT_EP_INTR(core_if, epnum, setup);
 
 				handle_ep0(pcd);
+				ep->dwc_ep.stp_rollover = 0;
 			}
 
 			/** OUT EP BNA Intr */
@@ -5193,25 +5202,31 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 					DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
 				break;
 		}
-		else if (depctl.b.epena && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC) && (depctl.b.dpid == 0))
-		{
-			DWC_DEBUGPL(DBG_PCDV,"##(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d##\n", i, dwc_ep->num,
-				 depctl.b.dpid,depctl.b.setd0pid, depctl.b.setd1pid, core_if->frame_num);
-			if (core_if->frame_num & 0x1) {
-				depctl.b.setd0pid = 0;
-				depctl.b.setd1pid = 1;
-				DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
-				/*
-				dwc_udelay(10);
-				depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
-				DWC_DEBUGPL(DBG_PCDV,"##dpid=%d(d0=%d/d1=%d)##\n", depctl.b.dpid, depctl.b.setd0pid, depctl.b.setd1pid);
-				core_if->dev_if->isoc_ep = dwc_ep;
-				*/
-				deptsiz.d32 =
-						DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
-				break;
-			}
-		}
+		else if (depctl.b.epena && (depctl.b.dpid != (core_if->frame_num & 0x1)) && (dwc_ep->type == DWC_OTG_EP_TYPE_ISOC))
+        {
+            DWC_DEBUGPL(DBG_PCDV,"##(%d)ep->num(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d##, core_if->odd=%d\n", i, dwc_ep->num,
+                    depctl.b.dpid,depctl.b.setd0pid, depctl.b.setd1pid, core_if->frame_num, core_if->isoc_out_is_odd);
+            if (core_if->isoc_out_is_first) {
+                core_if->isoc_out_is_odd = !(core_if->frame_num & 0x1);
+                core_if->isoc_out_is_first = 0;
+            }
+            //Force to set Data PID Data when PID is not matched to frame number.
+            if (core_if->frame_num & 0x1 && core_if->isoc_out_is_odd) {
+                depctl.b.setd1pid = 1;
+            } else if (!(core_if->frame_num & 0x1) && !core_if->isoc_out_is_odd) {
+                depctl.b.setd0pid = 1;
+            }
+            DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl, depctl.d32);
+
+            //   dwc_udelay(10);
+            //   depctl.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doepctl);
+            //   DWC_DEBUGPL(DBG_PCDV,"##dpid=%d(d0=%d/d1=%d)##\n", depctl.b.dpid, depctl.b.setd0pid, depctl.b.setd1pid);
+            //   core_if->dev_if->isoc_ep = dwc_ep;
+
+            deptsiz.d32 =
+                DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
+            break;
+        }
 #else
 		if (depctl.b.epena && depctl.b.dpid == (core_if->frame_num & 0x1)) {
 			core_if->dev_if->isoc_ep = dwc_ep;
