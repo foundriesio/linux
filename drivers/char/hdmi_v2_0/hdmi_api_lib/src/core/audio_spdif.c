@@ -10,7 +10,7 @@
 
 #include <core/audio_spdif.h>
 #include <core/audio_i2s.h>
-
+#include <core/main_controller.h>
 #include <hdmi_api_lib/src/core/audio/audio_sample_spdif_reg.h>
 
 void _audio_spdif_reset_fifo(struct hdmi_tx_dev *dev)
@@ -53,6 +53,9 @@ void audio_spdif_config(struct hdmi_tx_dev *dev, audioParams_t *audio)
 	// Disable I2S
 	audio_i2s_select(dev, 0);
 	_audio_i2s_data_enable(dev,0x0);
+
+	/* Fix bitstream issue */
+	mc_audio_spdif_reset(dev, 0);
 
 	_audio_spdif_reset_fifo(dev);
 	audio_spdif_interrupt_mask(dev, 0);
