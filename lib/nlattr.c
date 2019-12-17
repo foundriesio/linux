@@ -51,65 +51,11 @@ static int validate_nla_bitfield32(const struct nlattr *nla,
 	return 0;
 }
 
-static int nla_validate_int_range(const struct nla_policy *pt,
-				  const struct nlattr *nla)
-{
-	bool validate_min, validate_max;
-	s64 value;
-
-	validate_min = pt->validation_type == NLA_VALIDATE_RANGE ||
-		       pt->validation_type == NLA_VALIDATE_MIN;
-	validate_max = pt->validation_type == NLA_VALIDATE_RANGE ||
-		       pt->validation_type == NLA_VALIDATE_MAX;
-
-	switch (pt->type) {
-	case NLA_U8:
-		value = nla_get_u8(nla);
-		break;
-	case NLA_U16:
-		value = nla_get_u16(nla);
-		break;
-	case NLA_U32:
-		value = nla_get_u32(nla);
-		break;
-	case NLA_S8:
-		value = nla_get_s8(nla);
-		break;
-	case NLA_S16:
-		value = nla_get_s16(nla);
-		break;
-	case NLA_S32:
-		value = nla_get_s32(nla);
-		break;
-	case NLA_S64:
-		value = nla_get_s64(nla);
-		break;
-	case NLA_U64:
-		/* treat this one specially, since it may not fit into s64 */
-		if ((validate_min && nla_get_u64(nla) < pt->min) ||
-		    (validate_max && nla_get_u64(nla) > pt->max)) {
-			return -ERANGE;
-		}
-		return 0;
-	default:
-		WARN_ON(1);
-		return -EINVAL;
-	}
-
-	if ((validate_min && value < pt->min) ||
-	    (validate_max && value > pt->max)) {
-		return -ERANGE;
-	}
-
-	return 0;
-}
-
 static int validate_nla(const struct nlattr *nla, int maxtype,
 			const struct nla_policy *policy)
 {
 	const struct nla_policy *pt;
 	int minlen = 0, attrlen = nla_len(nla), type = nla_type(nla);
-	int err = -ERANGE;
 
 	if (type <= 0 || type > maxtype)
 		return 0;
@@ -185,27 +131,6 @@ static int validate_nla(const struct nlattr *nla, int maxtype,
 
 		if (attrlen < minlen)
 			return -ERANGE;
-	}
-
-	/* further validation */
-	switch (pt->validation_type) {
-	case NLA_VALIDATE_NONE:
-		/* nothing to do */
-		break;
-	case NLA_VALIDATE_RANGE:
-	case NLA_VALIDATE_MIN:
-	case NLA_VALIDATE_MAX:
-		err = nla_validate_int_range(pt, nla);
-		if (err)
-			return err;
-		break;
-	case NLA_VALIDATE_FUNCTION:
-		if (pt->validate) {
-			err = pt->validate(nla);
-			if (err)
-				return err;
-		}
-		break;
 	}
 
 	return 0;
