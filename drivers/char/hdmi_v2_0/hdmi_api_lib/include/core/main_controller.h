@@ -31,9 +31,9 @@ void mc_audio_sampler_clock_enable(struct hdmi_tx_dev *dev, u8 bit);
 //
 //void mc_audio_hbr_reset(struct hdmi_tx_dev *dev, u8 bit);
 //
-//void mc_audio_spdif_reset(struct hdmi_tx_dev *dev, u8 bit);
+void mc_audio_spdif_reset(struct hdmi_tx_dev *dev, u8 bit);
 //
-//void mc_audio_i2s_reset(struct hdmi_tx_dev *dev, u8 bit);
+void mc_audio_i2s_reset(struct hdmi_tx_dev *dev, u8 bit);
 //
 //void mc_pixel_repetition_clock_reset(struct hdmi_tx_dev *dev, u8 bit);
 //

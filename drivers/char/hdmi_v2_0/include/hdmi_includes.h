@@ -34,9 +34,9 @@
 //#define HDMI_DEV_SCDC_DEBUG
 
 #if defined(HDMI_DEV_SCDC_DEBUG)
-#define HDMI_DRV_VERSION        "2.0.5d"
+#define HDMI_DRV_VERSION        "2.0.6d"
 #else
-#define HDMI_DRV_VERSION        "2.0.5"
+#define HDMI_DRV_VERSION        "2.0.6"
 #endif
 
 // HDMI COMPONENTS
