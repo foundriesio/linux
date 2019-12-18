@@ -9,7 +9,6 @@
  */
 #include <linux/kernel.h>
 #include <linux/export.h>
-#include <linux/fips.h>
 #include <linux/err.h>
 #include <linux/string.h>
 #include <crypto/dh.h>
@@ -31,8 +30,7 @@ static inline const u8 *dh_unpack_data(void *dst, const void *src, size_t size)
 
 static inline int dh_data_size(const struct dh *p)
 {
-	return p->key_size + p->p_size + (fips_enabled ? p->q_size : 0) +
-		p->g_size;
+	return p->key_size + p->p_size + p->q_size + p->g_size;
 }
 
 int crypto_dh_key_len(const struct dh *p)
@@ -58,13 +56,11 @@ int crypto_dh_encode_key(char *buf, unsigned int len, const struct dh *params)
 	ptr = dh_pack_data(ptr, &secret, sizeof(secret));
 	ptr = dh_pack_data(ptr, &params->key_size, sizeof(params->key_size));
 	ptr = dh_pack_data(ptr, &params->p_size, sizeof(params->p_size));
-	if (fips_enabled)
-		ptr = dh_pack_data(ptr, &params->q_size, sizeof(params->q_size));
+	ptr = dh_pack_data(ptr, &params->q_size, sizeof(params->q_size));
 	ptr = dh_pack_data(ptr, &params->g_size, sizeof(params->g_size));
 	ptr = dh_pack_data(ptr, params->key, params->key_size);
 	ptr = dh_pack_data(ptr, params->p, params->p_size);
-	if (fips_enabled)
-		ptr = dh_pack_data(ptr, params->q, params->q_size);
+	ptr = dh_pack_data(ptr, params->q, params->q_size);
 	dh_pack_data(ptr, params->g, params->g_size);
 
 	return 0;
@@ -85,8 +81,7 @@ int crypto_dh_decode_key(const char *buf, unsigned int len, struct dh *params)
 
 	ptr = dh_unpack_data(&params->key_size, ptr, sizeof(params->key_size));
 	ptr = dh_unpack_data(&params->p_size, ptr, sizeof(params->p_size));
-	if (fips_enabled)
-		ptr = dh_unpack_data(&params->q_size, ptr, sizeof(params->q_size));
+	ptr = dh_unpack_data(&params->q_size, ptr, sizeof(params->q_size));
 	ptr = dh_unpack_data(&params->g_size, ptr, sizeof(params->g_size));
 	if (secret.len != crypto_dh_key_len(params))
 		return -EINVAL;
@@ -96,8 +91,7 @@ int crypto_dh_decode_key(const char *buf, unsigned int len, struct dh *params)
 	 * some drivers assume otherwise.
 	 */
 	if (params->key_size > params->p_size ||
-	    params->g_size > params->p_size ||
-	    (fips_enabled && (params->q_size > params->p_size)) )
+	    params->g_size > params->p_size || params->q_size > params->p_size)
 		return -EINVAL;
 
 	/* Don't allocate memory. Set pointers to data within
@@ -107,7 +101,7 @@ int crypto_dh_decode_key(const char *buf, unsigned int len, struct dh *params)
 	params->p = (void *)(ptr + params->key_size);
 	params->q = (void *)(ptr + params->key_size + params->p_size);
 	params->g = (void *)(ptr + params->key_size + params->p_size +
-			     (fips_enabled ? params->q_size : 0) );
+			     params->q_size);
 
 	/*
 	 * Don't permit 'p' to be 0.  It's not a prime number, and it's subject
@@ -118,9 +112,60 @@ int crypto_dh_decode_key(const char *buf, unsigned int len, struct dh *params)
 		return -EINVAL;
 
 	/* It is permissible to not provide Q. */
-	if (fips_enabled && params->q_size == 0)
+	if (params->q_size == 0)
 		params->q = NULL;
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(crypto_dh_decode_key);
+
+
+#undef dh
+#undef crypto_dh_key_len
+#undef crypto_dh_encode_key
+#undef crypto_dh_decode_key
+
+static inline int dh_data_size_no_q(const struct dh *p)
+{
+	return p->key_size + p->p_size + p->g_size;
+}
+
+int crypto_dh_key_len(const struct dh *p)
+{
+	return DH_KPP_SECRET_MIN_SIZE + dh_data_size_no_q(p);
+}
+EXPORT_SYMBOL_GPL(crypto_dh_key_len);
+
+int crypto_dh_encode_key(char *buf, unsigned int len, const struct dh *old_params)
+{
+	struct dh_q params = {
+		.q_size = 0, .q = NULL,
+		.key_size = old_params->key_size,
+		.p_size = old_params->p_size,
+		.g_size = old_params->g_size,
+		.key = old_params->key,
+		.p = old_params->p,
+		.g = old_params->g,
+	};
+	return crypto_dh_encode_key_q(buf, len, &params);
+
+}
+EXPORT_SYMBOL_GPL(crypto_dh_encode_key);
+
+int crypto_dh_decode_key(const char *buf, unsigned int len, struct dh *old_params)
+{
+	struct dh_q params;
+	int ret = crypto_dh_decode_key_q(buf, len, &params);
+	if (ret)
+		return ret;
+	if (params.q_size)
+		return -EOPNOTSUPP;
+	old_params->key_size = params.key_size;
+	old_params->p_size = params.p_size;
+	old_params->g_size = params.g_size;
+	old_params->key = params.key;
+	old_params->p = params.p;
+	old_params->g = params.g;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(crypto_dh_decode_key);
