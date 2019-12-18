@@ -33,10 +33,10 @@ struct dh {
 };
 
 /* kABI we added the q parameter to struct dh so interface of these functions changed. */
+#define dh dh_q
 #define crypto_dh_key_len crypto_dh_key_len_q
 #define crypto_dh_encode_key crypto_dh_encode_key_q
 #define crypto_dh_decode_key crypto_dh_decode_key_q
-#define dh dh_q
 
 /**
  * DOC: DH Helper Functions

@@ -125,6 +125,8 @@ EXPORT_SYMBOL_GPL(crypto_dh_decode_key);
 #undef crypto_dh_encode_key
 #undef crypto_dh_decode_key
 
+#define DH_KPP_SECRET_MIN_SIZE_NO_Q (sizeof(struct kpp_secret) + 3 * sizeof(int))
+
 static inline int dh_data_size_no_q(const struct dh *p)
 {
 	return p->key_size + p->p_size + p->g_size;
@@ -132,7 +134,7 @@ static inline int dh_data_size_no_q(const struct dh *p)
 
 int crypto_dh_key_len(const struct dh *p)
 {
-	return DH_KPP_SECRET_MIN_SIZE + dh_data_size_no_q(p);
+	return DH_KPP_SECRET_MIN_SIZE_NO_Q + dh_data_size_no_q(p);
 }
 EXPORT_SYMBOL_GPL(crypto_dh_key_len);
 
