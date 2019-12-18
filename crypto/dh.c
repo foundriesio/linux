@@ -13,6 +13,7 @@
 #include <crypto/internal/kpp.h>
 #include <crypto/kpp.h>
 #include <crypto/dh.h>
+#include <linux/fips.h>
 #include <linux/mpi.h>
 
 struct dh_ctx {
@@ -175,9 +176,11 @@ static int dh_compute_value(struct kpp_request *req)
 			ret = -EINVAL;
 			goto err_free_val;
 		}
-		ret = dh_is_pubkey_valid(ctx, base);
-		if (ret)
-			goto err_free_base;
+		if (fips_enabled) {
+			ret = dh_is_pubkey_valid(ctx, base);
+			if (ret)
+				goto err_free_base;
+		}
 	} else {
 		base = ctx->g;
 	}
