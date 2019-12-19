@@ -630,9 +630,10 @@ static void stm32_flush_buffer(struct uart_port *port)
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 
 	if (stm32_port->tx_ch) {
-		spin_lock(&port->lock);
-		dmaengine_terminate_async(stm32_port->tx_ch);
+		/* Avoid deadlock with the DMA engine callback */
 		spin_unlock(&port->lock);
+		dmaengine_terminate_async(stm32_port->tx_ch);
+		spin_lock(&port->lock);
 
 		stm32_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
 		stm32_port->tx_dma_busy = false;
