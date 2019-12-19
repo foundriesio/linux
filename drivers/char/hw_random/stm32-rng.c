@@ -135,7 +135,10 @@ static int stm32_rng_probe(struct platform_device *ofdev)
 		return PTR_ERR(priv->clk);
 
 	priv->rst = devm_reset_control_get(&ofdev->dev, NULL);
-	if (!IS_ERR(priv->rst)) {
+	if (IS_ERR(priv->rst)) {
+		if (PTR_ERR(priv->rst) != -ENOENT)
+			return PTR_ERR(priv->rst);
+	} else {
 		reset_control_assert(priv->rst);
 		udelay(2);
 		reset_control_deassert(priv->rst);
