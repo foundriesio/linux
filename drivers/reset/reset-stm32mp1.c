@@ -9,15 +9,17 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/reset-controller.h>
+#include <linux/slab.h>
 
-#define CLR_OFFSET 0x4
+#define STM32MP1_RESET_ID_MASK	GENMASK(15, 0)
 
 #define STM32_RCC_TZCR 0x0
-#define CLR_OFFSET 0x4
-
+#define CLR_OFFSET		0x4
 #define STM32MP1_SVC_RCC 0x82001000
 
 struct stm32_reset_data {
@@ -132,39 +134,59 @@ static const struct of_device_id stm32_reset_dt_ids[] = {
 	{ /* sentinel */ },
 };
 
-static int stm32_reset_probe(struct platform_device *pdev)
+static void __init stm32mp1_reset_init(struct device_node *np)
 {
-	struct device *dev = &pdev->dev;
-	struct stm32_reset_data *data;
-	void __iomem *membase;
-	struct resource *res;
+	void __iomem *base;
+	const struct of_device_id *match;
+	struct stm32_reset_data *data = NULL;
+	int ret;
 
-	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+	base = of_iomap(np, 0);
+	if (!base) {
+		pr_err("%pOFn: unable to map resource", np);
+		of_node_put(np);
+		return;
+	}
+
+	soc_secured = readl(base + STM32_RCC_TZCR) & 0x1;
+
+	match = of_match_node(stm32_reset_dt_ids, np);
+	if (!match) {
+		pr_err("%s: match data not found\n", __func__);
+		goto err;
+	}
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
-		return -ENOMEM;
+		goto err;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	membase = devm_ioremap_resource(dev, res);
-	if (IS_ERR(membase))
-		return PTR_ERR(membase);
-
-	data->membase = membase;
+	data->membase = base;
 	data->rcdev.owner = THIS_MODULE;
-	data->rcdev.nr_resets = resource_size(res) * BITS_PER_BYTE;
 	data->rcdev.ops = &stm32_reset_ops;
-	data->rcdev.of_node = dev->of_node;
+	data->rcdev.of_node = np;
+	data->rcdev.nr_resets = STM32MP1_RESET_ID_MASK;
 
-	soc_secured = readl(membase + STM32_RCC_TZCR) & 0x1;
+	ret = reset_controller_register(&data->rcdev);
+	if (!ret)
+		return;
 
-	return devm_reset_controller_register(dev, &data->rcdev);
+err:
+	pr_err("stm32mp1 reset failed to initialize\n");
+	if (data)
+		kfree(data);
+	if (base)
+		iounmap(base);
+	of_node_put(np);
 }
 
-static struct platform_driver stm32_reset_driver = {
-	.probe	= stm32_reset_probe,
-	.driver = {
-		.name		= "stm32mp1-reset",
-		.of_match_table	= stm32_reset_dt_ids,
-	},
-};
-
-builtin_platform_driver(stm32_reset_driver);
+/*
+ * RCC reset and clock drivers bind to the same RCC node.
+ * Register RCC reset driver at init through clock of table,
+ * clock driver for RCC will register at probe time.
+ */
+static void __init stm32mp1_reset_of_init_drv(struct device_node *np)
+{
+	of_node_clear_flag(np, OF_POPULATED);
+	stm32mp1_reset_init(np);
+}
+OF_DECLARE_1(clk, stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_reset_of_init_drv);

@@ -14,9 +14,11 @@
 #include <linux/io.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mm.h>
+#include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -2729,25 +2731,26 @@ static void __iomem *rcc_base;
 
 static int stm32_rcc_init_pwr(struct device_node *np);
 
-static void stm32mp1_rcc_init(struct device_node *np)
+static int stm32mp1_rcc_init(struct device_node *np)
 {
+	int ret;
+
 	rcc_base = of_iomap(np, 0);
 	if (!rcc_base) {
 		pr_err("%pOFn: unable to map resource", np);
 		of_node_put(np);
-		return;
+		return -ENOMEM;
 	}
 
-	if (stm32_rcc_init(np, rcc_base, stm32mp1_match_data)) {
+	ret = stm32_rcc_init(np, rcc_base, stm32mp1_match_data);
+	if (ret) {
 		iounmap(rcc_base);
 		of_node_put(np);
-		return;
+		return ret;
 	}
 
-	stm32_rcc_init_pwr(np);
+	return stm32_rcc_init_pwr(np);
 }
-
-CLK_OF_DECLARE_DRIVER(stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_rcc_init);
 
 /*
  * RCC POWER
@@ -3086,3 +3089,34 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 
 	return 0;
 }
+
+static int stm32mp1_rcc_clocks_probe(struct platform_device *pdev)
+{
+	return stm32mp1_rcc_init(dev_of_node(&pdev->dev));
+}
+
+static int stm32mp1_rcc_clocks_remove(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *child, *np = dev->of_node;
+
+	for_each_available_child_of_node(np, child)
+		of_clk_del_provider(child);
+
+	return 0;
+}
+
+static struct platform_driver stm32mp1_rcc_clocks_driver = {
+	.driver	= {
+		.name = "stm32mp1_rcc",
+		.of_match_table = stm32mp1_match_data,
+	},
+	.probe = stm32mp1_rcc_clocks_probe,
+	.remove = stm32mp1_rcc_clocks_remove,
+};
+
+static int __init stm32mp1_clocks_init(void)
+{
+	return platform_driver_register(&stm32mp1_rcc_clocks_driver);
+}
+core_initcall(stm32mp1_clocks_init);
