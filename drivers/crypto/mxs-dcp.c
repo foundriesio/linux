@@ -33,7 +33,6 @@
 
 #define DCP_ALIGNMENT	64
 
-
 /*
  * Null hashes to align with hw behavior on imx6sl and ull
  * these are flipped for consistency with hw output
@@ -596,20 +595,8 @@ static int mxs_dcp_run_sha(struct ahash_request *req)
 	desc->payload = 0;
 	desc->status = 0;
 
-	/*
-	 * Align driver with hw behavior when generating null hashes
-	 */
-	if (rctx->init && rctx->fini && desc->size == 0 &&
-	    sdcp->enable_sha_workaround) {
-		struct hash_alg_common *halg = crypto_hash_alg_common(tfm);
-		const uint8_t *sha_buf =
-			(actx->alg == MXS_DCP_CONTROL1_HASH_SELECT_SHA1) ?
-			sha1_null_hash : sha256_null_hash;
-		memcpy(sdcp->coh->sha_out_buf, sha_buf, halg->digestsize);
-		ret = 0;
-		goto done_run;
-	}
-
+==== BASE ====
+==== BASE ====
 	/* Set HASH_TERM bit for last transfer block. */
 	if (rctx->fini) {
 		digest_phys = dma_map_single(sdcp->dev, sdcp->coh->sha_out_buf,

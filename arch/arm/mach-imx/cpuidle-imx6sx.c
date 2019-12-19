@@ -233,6 +233,15 @@ int __init imx6sx_cpuidle_init(void)
 #endif
 
 	imx6_set_int_mem_clk_lpm(true);
+	imx6_enable_rbc(false);
+	/*
+	 * set ARM power up/down timing to the fastest,
+	 * sw2iso and sw can be set to one 32K cycle = 31us
+	 * except for power up sw2iso which need to be
+	 * larger than LDO ramp up time.
+	 */
+	imx_gpc_set_arm_power_up_timing(0xf, 1);
+	imx_gpc_set_arm_power_down_timing(1, 1);
 
 	if (imx_get_soc_revision() >= IMX_CHIP_REVISION_1_2) {
 		/*
