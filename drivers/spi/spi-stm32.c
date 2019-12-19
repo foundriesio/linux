@@ -1872,8 +1872,17 @@ static int stm32_spi_probe(struct platform_device *pdev)
 		goto err_clk_disable;
 	}
 
-	rst = devm_reset_control_get_exclusive(&pdev->dev, NULL);
-	if (!IS_ERR(rst)) {
+	rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
+	if (rst) {
+		if (IS_ERR(rst)) {
+			ret = PTR_ERR(rst);
+			if (ret != -EPROBE_DEFER)
+				dev_err(&pdev->dev, "reset get failed: %d\n",
+					ret);
+
+			goto err_clk_disable;
+		}
+
 		reset_control_assert(rst);
 		udelay(2);
 		reset_control_deassert(rst);
@@ -1902,17 +1911,29 @@ static int stm32_spi_probe(struct platform_device *pdev)
 	master->transfer_one = stm32_spi_transfer_one;
 	master->unprepare_message = stm32_spi_unprepare_msg;
 
-	spi->dma_tx = dma_request_slave_channel(spi->dev, "tx");
-	if (!spi->dma_tx)
-		dev_warn(&pdev->dev, "failed to request tx dma channel\n");
-	else
-		master->dma_tx = spi->dma_tx;
+	spi->dma_tx = dma_request_chan(spi->dev, "tx");
+	if (IS_ERR(spi->dma_tx)) {
+		ret = PTR_ERR(spi->dma_tx);
+		spi->dma_tx = NULL;
+		if (ret == -EPROBE_DEFER)
+			goto err_dma_release;
+		else if (ret != -ENODEV)
+			dev_warn(&pdev->dev, "failed to request tx dma: %d\n",
+				 ret);
+	}
+	master->dma_tx = spi->dma_tx;
 
-	spi->dma_rx = dma_request_slave_channel(spi->dev, "rx");
-	if (!spi->dma_rx)
-		dev_warn(&pdev->dev, "failed to request rx dma channel\n");
-	else
-		master->dma_rx = spi->dma_rx;
+	spi->dma_rx = dma_request_chan(spi->dev, "rx");
+	if (IS_ERR(spi->dma_rx)) {
+		ret = PTR_ERR(spi->dma_rx);
+		spi->dma_rx = NULL;
+		if (ret == -EPROBE_DEFER)
+			goto err_dma_release;
+		else if (ret != -ENODEV)
+			dev_warn(&pdev->dev, "failed to request rx dma: %d\n",
+				 ret);
+	}
+	master->dma_rx = spi->dma_rx;
 
 	if (spi->dma_tx || spi->dma_rx)
 		master->can_dma = stm32_spi_can_dma;
