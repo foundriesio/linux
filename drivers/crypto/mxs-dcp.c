@@ -595,8 +595,6 @@ static int mxs_dcp_run_sha(struct ahash_request *req)
 	desc->payload = 0;
 	desc->status = 0;
 
-==== BASE ====
-==== BASE ====
 	/* Set HASH_TERM bit for last transfer block. */
 	if (rctx->fini) {
 		digest_phys = dma_map_single(sdcp->dev, sdcp->coh->sha_out_buf,
