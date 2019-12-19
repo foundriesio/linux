@@ -603,7 +603,8 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 	usbphyc->clk = devm_clk_get(dev, 0);
 	if (IS_ERR(usbphyc->clk)) {
 		ret = PTR_ERR(usbphyc->clk);
-		dev_err(dev, "clk get failed: %d\n", ret);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "clk get failed: %d\n", ret);
 		return ret;
 	}
 
