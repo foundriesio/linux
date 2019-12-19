@@ -6,6 +6,7 @@
  */
 
 #include <linux/arm-smccc.h>
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
@@ -116,7 +117,7 @@ static DEFINE_SPINLOCK(rlock);
 #define RCC_CIER		0x414
 #define RCC_CIFR		0x418
 
-#define RCC_CLR	0x4
+#define RCC_CLR			0x4
 
 static const char * const ref12_parents[] = {
 	"ck_hsi", "ck_hse"
@@ -337,7 +338,8 @@ struct clock_config {
 				const struct clock_config *cfg);
 };
 
-#define NO_ID ~0
+#define NO_ID		GENMASK(30, 0)
+#define SECURE		BIT(31)
 
 struct gate_cfg {
 	u32 reg_off;
@@ -370,20 +372,17 @@ struct stm32_gate_cfg {
 	struct gate_cfg		*gate;
 	struct stm32_mgate	*mgate;
 	const struct clk_ops	*ops;
-	const struct clk_ops	*ops_sec;
 };
 
 struct stm32_div_cfg {
 	struct div_cfg		*div;
 	const struct clk_ops	*ops;
-	const struct clk_ops	*ops_sec;
 };
 
 struct stm32_mux_cfg {
 	struct mux_cfg		*mux;
 	struct stm32_mmux	*mmux;
 	const struct clk_ops	*ops;
-	const struct clk_ops	*ops_sec;
 };
 
 /* STM32 Composite clock */
@@ -392,11 +391,6 @@ struct stm32_composite_cfg {
 	const struct stm32_div_cfg	*div;
 	const struct stm32_mux_cfg	*mux;
 };
-
-static inline int _is_soc_secured(void __iomem *base)
-{
-	return readl_relaxed(base) & 0x1;
-}
 
 static struct clk_hw *
 _clk_hw_register_gate(struct device *dev,
@@ -552,9 +546,9 @@ static struct clk_hw *_get_stm32_div(void __iomem *base,
 	return &div->hw;
 }
 
-static struct clk_hw *
-_get_stm32_gate(void __iomem *base,
-		const struct stm32_gate_cfg *cfg, spinlock_t *lock)
+static struct clk_hw *_get_stm32_gate(void __iomem *base,
+				      const struct stm32_gate_cfg *cfg,
+				      spinlock_t *lock)
 {
 	struct stm32_clk_mgate *mgate;
 	struct clk_gate *gate;
@@ -614,9 +608,6 @@ clk_stm32_register_gate_ops(struct device *dev,
 	if (cfg->ops)
 		init.ops = cfg->ops;
 
-	if (cfg->ops_sec && _is_soc_secured(base))
-		init.ops = cfg->ops_sec;
-
 	hw = _get_stm32_gate(base, cfg, lock);
 	if (IS_ERR(hw))
 		return ERR_PTR(-ENOMEM);
@@ -655,9 +646,6 @@ clk_stm32_register_composite(struct device *dev,
 
 			if (cfg->mux->ops)
 				mux_ops = cfg->mux->ops;
-
-			if (cfg->mux->ops_sec && _is_soc_secured(base))
-				mux_ops = cfg->mux->ops_sec;
 		}
 	}
 
@@ -669,9 +657,6 @@ clk_stm32_register_composite(struct device *dev,
 
 			if (cfg->div->ops)
 				div_ops = cfg->div->ops;
-
-			if (cfg->div->ops_sec && _is_soc_secured(base))
-				div_ops = cfg->div->ops_sec;
 		}
 	}
 
@@ -683,9 +668,6 @@ clk_stm32_register_composite(struct device *dev,
 
 			if (cfg->gate->ops)
 				gate_ops = cfg->gate->ops;
-
-			if (cfg->gate->ops_sec && _is_soc_secured(base))
-				gate_ops = cfg->gate->ops_sec;
 		}
 	}
 
@@ -1069,7 +1051,6 @@ static struct clk_hw *clk_register_cktim(struct device *dev, const char *name,
 struct stm32_pll_cfg {
 	u32 offset;
 	const struct clk_ops *ops;
-	const struct clk_ops *ops_sec;
 };
 
 static struct clk_hw *_clk_register_pll(struct device *dev,
@@ -1232,8 +1213,7 @@ _clk_stm32_register_composite(struct device *dev,
 	.func		= _clk_stm32_register_gate,\
 }
 
-#define _STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags, _mgate, _ops,\
-					_ops_sec)\
+#define _STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags, _mgate, _ops)\
 	(&(struct stm32_gate_cfg) {\
 		&(struct gate_cfg) {\
 			.reg_off	= _gate_offset,\
@@ -1242,7 +1222,6 @@ _clk_stm32_register_composite(struct device *dev,
 		},\
 		.mgate		= _mgate,\
 		.ops		= _ops,\
-		.ops_sec	= _ops_sec,\
 	})
 
 #define _STM32_MGATE(_mgate)\
@@ -1250,14 +1229,14 @@ _clk_stm32_register_composite(struct device *dev,
 
 #define _GATE(_gate_offset, _gate_bit_idx, _gate_flags)\
 	_STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags,\
-		    NULL, NULL, NULL)\
+		    NULL, NULL)\
 
 #define _GATE_MP1(_gate_offset, _gate_bit_idx, _gate_flags)\
 	_STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags,\
-		    NULL, &mp1_gate_clk_ops, NULL)\
+		    NULL, &mp1_gate_clk_ops)\
 
 #define _MGATE_MP1(_mgate)\
-	.gate = &per_gate_cfg[_mgate]
+	&per_gate_cfg[_mgate]
 
 #define GATE_MP1(_id, _name, _parent, _flags, _offset, _bit_idx, _gate_flags)\
 	STM32_GATE(_id, _name, _parent, _flags,\
@@ -1268,8 +1247,8 @@ _clk_stm32_register_composite(struct device *dev,
 		   _STM32_MGATE(_mgate))
 
 #define _STM32_DIV(_div_offset, _div_shift, _div_width,\
-		   _div_flags, _div_table, _ops, _ops_sec)\
-	.div = &(struct stm32_div_cfg) {\
+		   _div_flags, _div_table, _ops)\
+	(&(struct stm32_div_cfg) {\
 		&(struct div_cfg) {\
 			.reg_off	= _div_offset,\
 			.shift		= _div_shift,\
@@ -1278,15 +1257,14 @@ _clk_stm32_register_composite(struct device *dev,
 			.table		= _div_table,\
 		},\
 		.ops		= _ops,\
-		.ops_sec	= _ops_sec,\
-	}
+	})
 
 #define _DIV(_div_offset, _div_shift, _div_width, _div_flags, _div_table)\
 	_STM32_DIV(_div_offset, _div_shift, _div_width,\
-		   _div_flags, _div_table, NULL, NULL)\
+		   _div_flags, _div_table, NULL)
 
-#define _STM32_MUX(_offset, _shift, _width, _mux_flags, _mmux, _ops, _ops_sec)\
-	.mux = &(struct stm32_mux_cfg) {\
+#define _STM32_MUX(_offset, _shift, _width, _mux_flags, _mmux, _ops)\
+	(&(struct stm32_mux_cfg) {\
 		&(struct mux_cfg) {\
 			.reg_off	= _offset,\
 			.shift		= _shift,\
@@ -1296,19 +1274,18 @@ _clk_stm32_register_composite(struct device *dev,
 		},\
 		.mmux		= _mmux,\
 		.ops		= _ops,\
-		.ops_sec	= _ops_sec,\
-	}
+	})
 
 #define _MUX(_offset, _shift, _width, _mux_flags)\
-	_STM32_MUX(_offset, _shift, _width, _mux_flags, NULL, NULL, NULL)
+	_STM32_MUX(_offset, _shift, _width, _mux_flags, NULL, NULL)
 
-#define _MMUX(_mmux) .mux = &ker_mux_cfg[_mmux]
+#define _MMUX(_mmux)		&ker_mux_cfg[_mmux]
 
-#define PARENT(_parent) ((const char *[]) { _parent})
+#define PARENT(_parent)		((const char *[]) { _parent})
 
-#define _NO_MUX .mux = NULL
-#define _NO_DIV .div = NULL
-#define _NO_GATE .gate = NULL
+#define _NO_MUX			NULL
+#define _NO_DIV			NULL
+#define _NO_GATE		NULL
 
 #define COMPOSITE(_id, _name, _parents, _flags, _gate, _mux, _div)\
 {\
@@ -1318,9 +1295,9 @@ _clk_stm32_register_composite(struct device *dev,
 	.num_parents	= ARRAY_SIZE(_parents),\
 	.flags		= _flags,\
 	.cfg		= &(struct stm32_composite_cfg) {\
-		_gate,\
-		_mux,\
-		_div,\
+		.gate = (_gate),\
+		.mux = (_mux),\
+		.div = (_div),\
 	},\
 	.func		= _clk_stm32_register_composite,\
 }
@@ -1334,580 +1311,11 @@ _clk_stm32_register_composite(struct device *dev,
 		       _MGATE_MP1(_mgate),\
 		       _MMUX(_mmux),\
 		       _NO_DIV)
+
 /*
  *
  * Security management
- *
  */
-
-#define STM32_SVC_RCC	0x82001000
-#define STM32_WRITE	0x1
-#define STM32_SET_BITS	0x2
-#define STM32_CLR_BITS	0x3
-
-#define STM32_SMC_RCC_OPP 0x82001009
-#define STM32_SMC_RCC_OPP_SET	0
-#define STM32_SMC_RCC_OPP_ROUND	1
-
-#define SMC(class, op, address, val)\
-	({\
-	struct arm_smccc_res res;\
-	arm_smccc_smc(class, op, address, val,\
-			0, 0, 0, 0, &res);\
-	})
-
-static u32 stm32_clk_writel_secure(u32 value, void __iomem *reg)
-{
-	struct arm_smccc_res res;
-	u32 address;
-
-	address = offset_in_page(reg);
-
-	arm_smccc_smc(STM32_SVC_RCC, STM32_WRITE, address, value, 0, 0, 0,
-		      0, &res);
-
-	if (res.a0)
-		pr_warn("%s: Failed to write in secure mode at 0x%x (err = %ld)\n"
-				, __func__
-				, address
-				, res.a0);
-
-	return res.a0;
-}
-
-static u32 stm32_clk_bit_secure(u32 cmd, u32 value, void __iomem *reg)
-{
-	struct arm_smccc_res res;
-	u32 address;
-
-	address = offset_in_page(reg);
-
-	arm_smccc_smc(STM32_SVC_RCC, cmd, address, value, 0, 0, 0,
-		      0, &res);
-
-	if (res.a0)
-		pr_warn("%s: Failed to write in secure mode at 0x%x (err = %ld)\n"
-				, __func__
-				, address
-				, res.a0);
-
-	return res.a0;
-}
-
-static void clk_sgate_endisable(struct clk_hw *hw, int enable)
-{
-	struct clk_gate *gate = to_clk_gate(hw);
-	unsigned long flags = 0;
-	u32 cmd;
-
-	spin_lock_irqsave(gate->lock, flags);
-
-	if (enable)
-		cmd = STM32_SET_BITS;
-	else
-		cmd = STM32_CLR_BITS;
-
-	stm32_clk_bit_secure(cmd, BIT(gate->bit_idx), gate->reg);
-
-	spin_unlock_irqrestore(gate->lock, flags);
-}
-
-static int clk_sgate_enable(struct clk_hw *hw)
-{
-	clk_sgate_endisable(hw, 1);
-
-	return 0;
-}
-
-static void clk_sgate_disable(struct clk_hw *hw)
-{
-	clk_sgate_endisable(hw, 0);
-}
-
-static const struct clk_ops clk_sgate_ops = {
-	.enable = clk_sgate_enable,
-	.disable = clk_sgate_disable,
-	.is_enabled = clk_gate_is_enabled,
-};
-
-static u8 clk_smux_get_parent(struct clk_hw *hw)
-{
-	return clk_mux_ops.get_parent(hw);
-}
-
-static int clk_smux_set_parent(struct clk_hw *hw, u8 index)
-{
-	struct clk_mux *mux = to_clk_mux(hw);
-	u32 val;
-	unsigned long flags = 0;
-
-	if (mux->table) {
-		index = mux->table[index];
-	} else {
-		if (mux->flags & CLK_MUX_INDEX_BIT)
-			index = 1 << index;
-
-		if (mux->flags & CLK_MUX_INDEX_ONE)
-			index++;
-	}
-
-	spin_lock_irqsave(mux->lock, flags);
-
-	val = readl(mux->reg);
-	val &= ~(mux->mask << mux->shift);
-	val |= index << mux->shift;
-
-	stm32_clk_writel_secure(val, mux->reg);
-
-	spin_unlock_irqrestore(mux->lock, flags);
-
-	return 0;
-}
-
-static const struct clk_ops clk_smux_ops = {
-	.get_parent = clk_smux_get_parent,
-	.set_parent = clk_smux_set_parent,
-	.determine_rate = __clk_mux_determine_rate,
-};
-
-static struct clk_hw *clk_hw_register_smux(struct device *dev,
-					   const char *name,
-					   const char * const *parent_names,
-					   u8 num_parents,
-					   unsigned long flags,
-					   void __iomem *reg, u8 shift,
-					   u8 width,
-					   u8 clk_mux_flags,
-					   spinlock_t *lock)
-{
-	u32 mask = BIT(width) - 1;
-	struct clk_mux *mux;
-	struct clk_hw *hw;
-	struct clk_init_data init;
-	int ret;
-
-	/* allocate the mux */
-	mux = kzalloc(sizeof(*mux), GFP_KERNEL);
-	if (!mux)
-		return ERR_PTR(-ENOMEM);
-
-	init.name = name;
-
-	init.ops = &clk_smux_ops;
-
-	init.flags = flags;
-	init.parent_names = parent_names;
-	init.num_parents = num_parents;
-
-	/* struct clk_mux assignments */
-	mux->reg = reg;
-	mux->shift = shift;
-	mux->mask = mask;
-	mux->flags = clk_mux_flags;
-	mux->lock = lock;
-	mux->table = NULL;
-	mux->hw.init = &init;
-
-	hw = &mux->hw;
-	ret = clk_hw_register(dev, hw);
-	if (ret) {
-		kfree(mux);
-		hw = ERR_PTR(ret);
-	}
-
-	return hw;
-}
-
-static struct clk_hw *
-__clk_hw_register_mux(struct device *dev,
-		      struct clk_hw_onecell_data *clk_data,
-		      void __iomem *base, spinlock_t *lock,
-		      const struct clock_config *cfg)
-{
-	struct mux_cfg *mux_cfg = cfg->cfg;
-
-	if (!_is_soc_secured(base))
-		return clk_hw_register_mux(dev, cfg->name, cfg->parent_names,
-					   cfg->num_parents, cfg->flags,
-					   mux_cfg->reg_off + base,
-					   mux_cfg->shift,
-					   mux_cfg->width, mux_cfg->mux_flags,
-					   lock);
-	else
-		return clk_hw_register_smux(dev, cfg->name,
-					    cfg->parent_names,
-					    cfg->num_parents, cfg->flags,
-					    mux_cfg->reg_off + base,
-					    mux_cfg->shift,
-					    mux_cfg->width,
-					    mux_cfg->mux_flags,
-					    lock);
-}
-
-struct clk_div_secure {
-	struct clk_divider div;
-	u8 secure;
-};
-
-#define to_clk_div_secure(_hw) container_of(_hw, struct clk_div_secure, div)
-
-static unsigned long clk_sdivider_recalc_rate(struct clk_hw *hw,
-					      unsigned long parent_rate)
-{
-	return clk_divider_ops.recalc_rate(hw, parent_rate);
-}
-
-static long clk_sdivider_round_rate(struct clk_hw *hw, unsigned long rate,
-				    unsigned long *prate)
-{
-	return clk_divider_ops.round_rate(hw, rate, prate);
-}
-
-#define div_mask(width) ((1 << (width)) - 1)
-
-static int clk_sdivider_set_rate(struct clk_hw *hw, unsigned long rate,
-				 unsigned long parent_rate)
-{
-	struct clk_divider *divider = to_clk_divider(hw);
-	int value;
-	unsigned long flags = 0;
-	u32 val;
-
-	value = divider_get_val(rate, parent_rate, divider->table,
-				divider->width, divider->flags);
-
-	if (value < 0)
-		return value;
-
-	spin_lock_irqsave(divider->lock, flags);
-
-	if (divider->flags & CLK_DIVIDER_HIWORD_MASK) {
-		val = div_mask(divider->width) << (divider->shift + 16);
-	} else {
-		val = readl(divider->reg);
-		val &= ~(div_mask(divider->width) << divider->shift);
-	}
-	val |= (u32)value << divider->shift;
-
-	stm32_clk_writel_secure(val, divider->reg);
-
-	spin_unlock_irqrestore(divider->lock, flags);
-
-	return 0;
-}
-
-static const struct clk_ops clk_sdivider_ops = {
-	.recalc_rate = clk_sdivider_recalc_rate,
-	.round_rate = clk_sdivider_round_rate,
-	.set_rate = clk_sdivider_set_rate,
-};
-
-static const struct clk_ops clk_sdivider_pll1_p_ops = {
-	.recalc_rate = clk_sdivider_recalc_rate,
-};
-
-static struct clk_hw *
-clk_hw_register_sdivider_table(struct device *dev, const char *name,
-			       const char *parent_name,
-			       unsigned long flags,
-			       void __iomem *reg,
-			       u8 shift, u8 width,
-			       u8 clk_divider_flags,
-			       const struct clk_div_table *table,
-			       spinlock_t *lock)
-{
-	struct clk_divider *div;
-	struct clk_hw *hw;
-	struct clk_init_data init;
-	int ret;
-
-	/* allocate the divider */
-	div = kzalloc(sizeof(*div), GFP_KERNEL);
-	if (!div)
-		return ERR_PTR(-ENOMEM);
-
-	init.name = name;
-	if (clk_divider_flags & CLK_DIVIDER_READ_ONLY)
-		init.ops = &clk_divider_ro_ops;
-	else
-		init.ops = &clk_sdivider_ops;
-
-	init.flags = flags;
-	init.parent_names = (parent_name ? &parent_name : NULL);
-	init.num_parents = (parent_name ? 1 : 0);
-
-	/* struct clk_divider assignments */
-	div->reg = reg;
-	div->shift = shift;
-	div->width = width;
-	div->flags = clk_divider_flags;
-	div->lock = lock;
-	div->hw.init = &init;
-	div->table = table;
-
-	/* register the clock */
-	hw = &div->hw;
-
-	ret = clk_hw_register(dev, hw);
-	if (ret) {
-		kfree(div);
-		hw = ERR_PTR(ret);
-	}
-
-	return hw;
-}
-
-static struct clk_hw *
-__clk_hw_register_divider_table(struct device *dev,
-				struct clk_hw_onecell_data *clk_data,
-				void __iomem *base, spinlock_t *lock,
-				const struct clock_config *cfg)
-{
-	struct div_cfg *div_cfg = cfg->cfg;
-
-	if (!_is_soc_secured(base))
-		return clk_hw_register_divider_table(dev, cfg->name,
-						     cfg->parent_name,
-						     cfg->flags,
-						     div_cfg->reg_off + base,
-						     div_cfg->shift,
-						     div_cfg->width,
-						     div_cfg->div_flags,
-						     div_cfg->table,
-						     lock);
-	else
-		return clk_hw_register_sdivider_table(dev, cfg->name,
-						      cfg->parent_name,
-						      cfg->flags,
-						      div_cfg->reg_off + base,
-						      div_cfg->shift,
-						      div_cfg->width,
-						      div_cfg->div_flags,
-						      div_cfg->table,
-						      lock);
-}
-
-static long clk_pll1_round_rate(struct clk_hw *hw, unsigned long rate,
-					  unsigned long *prate)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(STM32_SMC_RCC_OPP, STM32_SMC_RCC_OPP_ROUND, rate, 0, 0, 0,
-		      0, 0, &res);
-
-	return res.a1;
-}
-
-static int pll1_set_rate(struct clk_hw *hw, unsigned long rate,
-					unsigned long parent_rate)
-{
-	SMC(STM32_SMC_RCC_OPP, STM32_SMC_RCC_OPP_SET, rate, 0);
-
-	return 0;
-}
-
-static const struct clk_ops pll1_ops = {
-	.enable		= pll_enable,
-	.disable	= pll_disable,
-	.recalc_rate	= pll_recalc_rate,
-	.round_rate	= clk_pll1_round_rate,
-	.set_rate	= pll1_set_rate,
-	.is_enabled	= pll_is_enabled,
-};
-
-static struct clk_hw *_clk_sregister_pll(struct device *dev,
-					struct clk_hw_onecell_data *clk_data,
-					void __iomem *base, spinlock_t *lock,
-					const struct clock_config *cfg)
-{
-	struct stm32_pll_cfg *stm_pll_cfg = cfg->cfg;
-
-	if (!_is_soc_secured(base))
-		return clk_register_pll(dev, cfg->name, cfg->parent_name,
-					base + stm_pll_cfg->offset, cfg->flags,
-					stm_pll_cfg->ops, lock);
-	else
-		return clk_register_pll(dev, cfg->name, cfg->parent_name,
-					base + stm_pll_cfg->offset, cfg->flags,
-					stm_pll_cfg->ops_sec, lock);
-}
-
-#define PLL_1(_id, _name, _parent, _flags, _offset)\
-{\
-	.id		= _id,\
-	.name		= _name,\
-	.parent_name	= _parent,\
-	.flags		= _flags,\
-	.cfg		=  &(struct stm32_pll_cfg) {\
-		.offset		= _offset,\
-		.ops		= &pll_ops,\
-		.ops_sec	= &pll1_ops,\
-	},\
-	.func		= _clk_sregister_pll,\
-}
-
-static int mp1_sgate_clk_enable(struct clk_hw *hw)
-{
-	struct clk_gate *gate = to_clk_gate(hw);
-	unsigned long flags = 0;
-
-	spin_lock_irqsave(gate->lock, flags);
-
-	stm32_clk_bit_secure(STM32_SET_BITS, BIT(gate->bit_idx),
-			     gate->reg);
-
-	spin_unlock_irqrestore(gate->lock, flags);
-
-	return 0;
-}
-
-static void mp1_sgate_clk_disable(struct clk_hw *hw)
-{
-	struct clk_gate *gate = to_clk_gate(hw);
-	unsigned long flags = 0;
-
-	spin_lock_irqsave(gate->lock, flags);
-
-	stm32_clk_bit_secure(STM32_SET_BITS, BIT(gate->bit_idx),
-			     gate->reg + RCC_CLR);
-
-	spin_unlock_irqrestore(gate->lock, flags);
-}
-
-static const struct clk_ops mp1_sgate_clk_ops = {
-	.enable		= mp1_sgate_clk_enable,
-	.disable	= mp1_sgate_clk_disable,
-	.is_enabled	= clk_gate_is_enabled,
-};
-
-static int mp1_s_mgate_clk_enable(struct clk_hw *hw)
-{
-	struct clk_gate *gate = to_clk_gate(hw);
-	struct stm32_clk_mgate *clk_mgate = to_clk_mgate(gate);
-
-	clk_mgate->mgate->flag |= clk_mgate->mask;
-
-	mp1_sgate_clk_enable(hw);
-
-	return  0;
-}
-
-static void mp1_s_mgate_clk_disable(struct clk_hw *hw)
-{
-	struct clk_gate *gate = to_clk_gate(hw);
-	struct stm32_clk_mgate *clk_mgate = to_clk_mgate(gate);
-
-	clk_mgate->mgate->flag &= ~clk_mgate->mask;
-
-	if (clk_mgate->mgate->flag == 0)
-		mp1_sgate_clk_disable(hw);
-}
-
-static const struct clk_ops mp1_s_mgate_clk_ops = {
-	.enable		= mp1_s_mgate_clk_enable,
-	.disable	= mp1_s_mgate_clk_disable,
-	.is_enabled	= clk_gate_is_enabled,
-
-};
-
-static u8 clk_s_mmux_get_parent(struct clk_hw *hw)
-{
-	return clk_smux_ops.get_parent(hw);
-}
-
-static int clk_s_mmux_set_parent(struct clk_hw *hw, u8 index)
-{
-	struct clk_mux *mux = to_clk_mux(hw);
-	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
-	struct clk_hw *hwp;
-	int ret, n;
-
-	ret = clk_smux_ops.set_parent(hw, index);
-	if (ret)
-		return ret;
-
-	hwp = clk_hw_get_parent(hw);
-
-	for (n = 0; n < clk_mmux->mmux->nbr_clk; n++)
-		if (clk_mmux->mmux->hws[n] != hw)
-			clk_hw_reparent(clk_mmux->mmux->hws[n], hwp);
-
-	return 0;
-}
-
-static const struct clk_ops clk_s_mmux_ops = {
-	.get_parent = clk_s_mmux_get_parent,
-	.set_parent = clk_s_mmux_set_parent,
-	.determine_rate = __clk_mux_determine_rate,
-};
-
-#define SMUX(_id, _name, _parents, _flags,\
-	     _offset, _shift, _width, _mux_flags)\
-{\
-	.id		= _id,\
-	.name		= _name,\
-	.parent_names	= _parents,\
-	.num_parents	= ARRAY_SIZE(_parents),\
-	.flags		= _flags,\
-	.cfg =  &(struct mux_cfg) {\
-		.reg_off	= _offset,\
-		.shift		= _shift,\
-		.width		= _width,\
-		.mux_flags	= _mux_flags,\
-	},\
-	.func = __clk_hw_register_mux,\
-}
-
-#define SDIV_TABLE(_id, _name, _parent, _flags, _offset, _shift, _width,\
-		   _div_flags, _div_table)\
-{\
-	.id		= _id,\
-	.name		= _name,\
-	.parent_name	= _parent,\
-	.flags		= _flags,\
-	.cfg =  &(struct div_cfg) {\
-		.reg_off	= _offset,\
-		.shift		= _shift,\
-		.width		= _width,\
-		.div_flags	= _div_flags,\
-		.table		= _div_table,\
-	},\
-	.func = __clk_hw_register_divider_table,\
-}
-
-#define SDIV(_id, _name, _parent, _flags, _offset, _shift, _width,\
-	     _div_flags)\
-	SDIV_TABLE(_id, _name, _parent, _flags, _offset, _shift, _width,\
-		   _div_flags, NULL)
-
-#define _S_GATE(_gate_offset, _gate_bit_idx, _gate_flags)\
-	_STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags,\
-		    NULL, NULL, &clk_sgate_ops)
-
-#define SGATE(_id, _name, _parent, _flags, _offset, _bit_idx, _gate_flags)\
-	STM32_GATE(_id, _name, _parent, _flags,\
-		   _S_GATE(_offset, _bit_idx, _gate_flags))
-
-#define _S_GATE_MP1(_gate_offset, _gate_bit_idx, _gate_flags)\
-	_STM32_GATE(_gate_offset, _gate_bit_idx, _gate_flags,\
-		    NULL, &mp1_gate_clk_ops, &mp1_sgate_clk_ops)
-
-#define SGATE_MP1(_id, _name, _parent, _flags, _offset, _bit_idx, _gate_flags)\
-	STM32_GATE(_id, _name, _parent, _flags,\
-		   _S_GATE_MP1(_offset, _bit_idx, _gate_flags))
-
-#define _S_DIV(_div_offset, _div_shift, _div_width, _div_flags, _div_table)\
-	_STM32_DIV(_div_offset, _div_shift, _div_width,\
-		   _div_flags, _div_table, NULL, &clk_sdivider_ops)
-
-#define _S_MUX(_offset, _shift, _width, _mux_flags)\
-	_STM32_MUX(_offset, _shift, _width, _mux_flags,\
-		   NULL, NULL, &clk_smux_ops)
-
-#define _S_PLL1_P_DIV(_div_offset, _div_shift, _div_width, _div_flags,\
-		      _div_table)\
-	_STM32_DIV(_div_offset, _div_shift, _div_width,\
-		   _div_flags, _div_table, NULL, &clk_sdivider_pll1_p_ops)
 
 enum {
 	G_SAI1,
@@ -2026,8 +1434,7 @@ enum {
 
 static struct stm32_mgate mp1_mgate[G_LAST];
 
-#define _K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
-	       _mgate, _ops, _ops_sec)\
+#define _K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags, _mgate, _ops)\
 	[_id] = {\
 		&(struct gate_cfg) {\
 			.reg_off	= _gate_offset,\
@@ -2036,24 +1443,15 @@ static struct stm32_mgate mp1_mgate[G_LAST];
 		},\
 		.mgate		= _mgate,\
 		.ops		= _ops,\
-		.ops_sec	= _ops_sec,\
 	}
 
 #define K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags)\
 	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
-	       NULL, &mp1_gate_clk_ops, NULL)
-
-#define K_GATE_S(_id, _gate_offset, _gate_bit_idx, _gate_flags)\
-	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
-	       NULL, &mp1_gate_clk_ops, &mp1_sgate_clk_ops)
+	       NULL, &mp1_gate_clk_ops)
 
 #define K_MGATE(_id, _gate_offset, _gate_bit_idx, _gate_flags)\
 	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
-	       &mp1_mgate[_id], &mp1_mgate_clk_ops, NULL)
-
-#define K_MGATE_S(_id, _gate_offset, _gate_bit_idx, _gate_flags)\
-	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
-	       &mp1_mgate[_id], &mp1_mgate_clk_ops, &mp1_s_mgate_clk_ops)
+	       &mp1_mgate[_id], &mp1_mgate_clk_ops)
 
 /* Peripheral gates */
 static struct stm32_gate_cfg per_gate_cfg[G_LAST] = {
@@ -2119,17 +1517,17 @@ static struct stm32_gate_cfg per_gate_cfg[G_LAST] = {
 	K_MGATE(G_DSI,		RCC_APB4ENSETR, 4, 0),
 	K_MGATE(G_LTDC,		RCC_APB4ENSETR, 0, 0),
 
-	K_GATE_S(G_STGEN,	RCC_APB5ENSETR, 20, 0),
-	K_GATE_S(G_BSEC,	RCC_APB5ENSETR, 16, 0),
-	K_GATE_S(G_IWDG1,	RCC_APB5ENSETR, 15, 0),
-	K_GATE_S(G_TZPC,	RCC_APB5ENSETR, 13, 0),
-	K_GATE_S(G_TZC2,	RCC_APB5ENSETR, 12, 0),
-	K_GATE_S(G_TZC1,	RCC_APB5ENSETR, 11, 0),
-	K_GATE_S(G_RTCAPB,	RCC_APB5ENSETR, 8, 0),
-	K_MGATE_S(G_USART1,	RCC_APB5ENSETR, 4, 0),
-	K_MGATE_S(G_I2C6,	RCC_APB5ENSETR, 3, 0),
-	K_MGATE_S(G_I2C4,	RCC_APB5ENSETR, 2, 0),
-	K_MGATE_S(G_SPI6,	RCC_APB5ENSETR, 0, 0),
+	K_GATE(G_STGEN,		RCC_APB5ENSETR, 20, 0),
+	K_GATE(G_BSEC,		RCC_APB5ENSETR, 16, 0),
+	K_GATE(G_IWDG1,		RCC_APB5ENSETR, 15, 0),
+	K_GATE(G_TZPC,		RCC_APB5ENSETR, 13, 0),
+	K_GATE(G_TZC2,		RCC_APB5ENSETR, 12, 0),
+	K_GATE(G_TZC1,		RCC_APB5ENSETR, 11, 0),
+	K_GATE(G_RTCAPB,	RCC_APB5ENSETR, 8, 0),
+	K_MGATE(G_USART1,	RCC_APB5ENSETR, 4, 0),
+	K_MGATE(G_I2C6,		RCC_APB5ENSETR, 3, 0),
+	K_MGATE(G_I2C4,		RCC_APB5ENSETR, 2, 0),
+	K_MGATE(G_SPI6,		RCC_APB5ENSETR, 0, 0),
 
 	K_MGATE(G_SDMMC3,	RCC_AHB2ENSETR, 16, 0),
 	K_MGATE(G_USBO,		RCC_AHB2ENSETR, 8, 0),
@@ -2158,11 +1556,11 @@ static struct stm32_gate_cfg per_gate_cfg[G_LAST] = {
 	K_GATE(G_GPIOB,		RCC_AHB4ENSETR, 1, 0),
 	K_GATE(G_GPIOA,		RCC_AHB4ENSETR, 0, 0),
 
-	K_GATE_S(G_BKPSRAM,	RCC_AHB5ENSETR, 8, 0),
-	K_MGATE_S(G_RNG1,	RCC_AHB5ENSETR, 6, 0),
-	K_GATE_S(G_HASH1,	RCC_AHB5ENSETR, 5, 0),
-	K_GATE_S(G_CRYP1,	RCC_AHB5ENSETR, 4, 0),
-	K_GATE_S(G_GPIOZ,	RCC_AHB5ENSETR, 0, 0),
+	K_GATE(G_BKPSRAM,	RCC_AHB5ENSETR, 8, 0),
+	K_MGATE(G_RNG1,		RCC_AHB5ENSETR, 6, 0),
+	K_GATE(G_HASH1,		RCC_AHB5ENSETR, 5, 0),
+	K_GATE(G_CRYP1,		RCC_AHB5ENSETR, 4, 0),
+	K_GATE(G_GPIOZ,		RCC_AHB5ENSETR, 0, 0),
 
 	K_GATE(G_USBH,		RCC_AHB6ENSETR, 24, 0),
 	K_GATE(G_CRC1,		RCC_AHB6ENSETR, 20, 0),
@@ -2223,7 +1621,7 @@ enum {
 
 static struct stm32_mmux ker_mux[M_LAST];
 
-#define _K_MUX(_id, _offset, _shift, _width, _mux_flags, _mmux, _ops, _ops_sec)\
+#define _K_MUX(_id, _offset, _shift, _width, _mux_flags, _mmux, _ops)\
 	[_id] = {\
 		&(struct mux_cfg) {\
 			.reg_off	= _offset,\
@@ -2234,24 +1632,15 @@ static struct stm32_mmux ker_mux[M_LAST];
 		},\
 		.mmux		= _mmux,\
 		.ops		= _ops,\
-		.ops_sec	= _ops_sec,\
 	}
 
 #define K_MUX(_id, _offset, _shift, _width, _mux_flags)\
 	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
-			NULL, NULL, NULL)
-
-#define K_MUX_S(_id, _offset, _shift, _width, _mux_flags)\
-	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
-			NULL, NULL, &clk_smux_ops)
+			NULL, NULL)
 
 #define K_MMUX(_id, _offset, _shift, _width, _mux_flags)\
 	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
-			&ker_mux[_id], &clk_mmux_ops, NULL)
-
-#define K_MMUX_S(_id, _offset, _shift, _width, _mux_flags)\
-	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
-			&ker_mux[_id], &clk_mmux_ops, &clk_s_mmux_ops)
+			&ker_mux[_id], &clk_mmux_ops)
 
 static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
 	/* Kernel multi mux */
@@ -2267,7 +1656,7 @@ static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
 	K_MMUX(M_UART78, RCC_UART78CKSELR, 0, 3, 0),
 	K_MMUX(M_SAI1, RCC_SAI1CKSELR, 0, 3, 0),
 	K_MMUX(M_ETHCK, RCC_ETHCKSELR, 0, 2, 0),
-	K_MMUX_S(M_I2C46, RCC_I2C46CKSELR, 0, 3, 0),
+	K_MMUX(M_I2C46, RCC_I2C46CKSELR, 0, 3, 0),
 
 	/*  Kernel simple mux */
 	K_MUX(M_RNG2, RCC_RNG2CKSELR, 0, 2, 0),
@@ -2288,64 +1677,78 @@ static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
 	K_MUX(M_ADC12, RCC_ADCCKSELR, 0, 2, 0),
 	K_MUX(M_DSI, RCC_DSICKSELR, 0, 1, 0),
 	K_MUX(M_CKPER, RCC_CPERCKSELR, 0, 2, 0),
-	K_MUX_S(M_RNG1, RCC_RNG1CKSELR, 0, 2, 0),
-	K_MUX_S(M_STGEN, RCC_STGENCKSELR, 0, 2, 0),
-	K_MUX_S(M_USART1, RCC_UART1CKSELR, 0, 3, 0),
-	K_MUX_S(M_SPI6, RCC_SPI6CKSELR, 0, 3, 0),
+	K_MUX(M_RNG1, RCC_RNG1CKSELR, 0, 2, 0),
+	K_MUX(M_STGEN, RCC_STGENCKSELR, 0, 2, 0),
+	K_MUX(M_USART1, RCC_UART1CKSELR, 0, 3, 0),
+	K_MUX(M_SPI6, RCC_SPI6CKSELR, 0, 3, 0),
 };
 
+/*
+ * On stm32mp15x, when TZEN is enabled, secure firmware provides
+ * the secure clocks RCC clock driver relies on. Firmware registers
+ * the following clocks in the Linux clock tree:
+ * "ck_hse", "ck_hsi", "ck_csi", "ck_lse", "ck_lsi",
+ * "pll2_q", "pll2_r", "ck_mpu", "ck_axi",
+ * "bsec", "cryp1", "gpioz", "hash1", "i2c4_k", "i2c6_k", "iwdg1", "rng1_k",
+ * "ck_rtc", "rtcapb", "spi6_k" and "usart1_k".
+ * For these clocks and there dependencies, SECURE bit is set in clock
+ * identifier field id to state which clocks RCC clock driver does not register
+ * because it has limited or no access to.
+ */
 static const struct clock_config stm32mp1_clock_cfg[] = {
 	/* Oscillator divider */
-	DIV(NO_ID, "clk-hsi-div", "clk-hsi", CLK_DIVIDER_POWER_OF_TWO,
+	DIV(NO_ID | SECURE, "clk-hsi-div", "clk-hsi", CLK_DIVIDER_POWER_OF_TWO,
 	    RCC_HSICFGR, 0, 2, CLK_DIVIDER_READ_ONLY),
 
-	/*  External / Internal Oscillators */
-	SGATE_MP1(CK_HSE, "ck_hse", "clk-hse", 0, RCC_OCENSETR, 8, 0),
-	/* ck_csi is used by IO compensation and should be critical */
-	SGATE_MP1(CK_CSI, "ck_csi", "clk-csi", CLK_IS_CRITICAL,
-		  RCC_OCENSETR, 4, 0),
-	SGATE_MP1(CK_HSI, "ck_hsi", "clk-hsi-div", 0, RCC_OCENSETR, 0, 0),
-	SGATE(CK_LSI, "ck_lsi", "clk-lsi", 0, RCC_RDLSICR, 0, 0),
-	SGATE(CK_LSE, "ck_lse", "clk-lse", 0, RCC_BDCR, 0, 0),
+	/* External / Internal Oscillators */
+	GATE_MP1(CK_HSE | SECURE, "ck_hse", "clk-hse", 0, RCC_OCENSETR, 8, 0),
+	GATE_MP1(CK_HSI | SECURE, "ck_hsi", "clk-hsi-div", 0,
+		 RCC_OCENSETR, 0, 0),
+	/* ck_csi is used by IO compensation and shall be critical */
+	GATE_MP1(CK_CSI | SECURE, "ck_csi", "clk-csi",
+		 CLK_IS_CRITICAL, RCC_OCENSETR, 4, 0),
+	GATE(CK_LSI | SECURE, "ck_lsi", "clk-lsi", 0, RCC_RDLSICR, 0, 0),
+	GATE(CK_LSE | SECURE, "ck_lse", "clk-lse", 0, RCC_BDCR, 0, 0),
 
 	FIXED_FACTOR(CK_HSE_DIV2, "clk-hse-div2", "ck_hse", 0, 1, 2),
 
-	/* ref clock pll */
-	MUX(NO_ID, "ref1", ref12_parents, CLK_OPS_PARENT_ENABLE, RCC_RCK12SELR,
-	    0, 2, CLK_MUX_READ_ONLY),
+	/* Reference for PLL clocks */
+	MUX(NO_ID | SECURE, "ref1", ref12_parents, CLK_OPS_PARENT_ENABLE,
+	    RCC_RCK12SELR, 0, 2, CLK_MUX_READ_ONLY),
 
-	MUX(NO_ID, "ref3", ref3_parents, CLK_OPS_PARENT_ENABLE, RCC_RCK3SELR,
-	    0, 2, CLK_MUX_READ_ONLY),
+	MUX(NO_ID, "ref3", ref3_parents, CLK_OPS_PARENT_ENABLE,
+	    RCC_RCK3SELR, 0, 2, CLK_MUX_READ_ONLY),
 
-	MUX(NO_ID, "ref4", ref4_parents, CLK_OPS_PARENT_ENABLE, RCC_RCK4SELR,
-	    0, 2, CLK_MUX_READ_ONLY),
+	MUX(NO_ID, "ref4", ref4_parents, CLK_OPS_PARENT_ENABLE,
+	    RCC_RCK4SELR, 0, 2, CLK_MUX_READ_ONLY),
 
 	/* PLLs */
-	PLL_1(PLL1, "pll1", "ref1", CLK_IGNORE_UNUSED, RCC_PLL1CR),
-	PLL(PLL2, "pll2", "ref1", CLK_IGNORE_UNUSED, RCC_PLL2CR),
+	PLL(PLL1 | SECURE, "pll1", "ref1", CLK_IGNORE_UNUSED, RCC_PLL1CR),
+	PLL(PLL2 | SECURE, "pll2", "ref1", CLK_IGNORE_UNUSED, RCC_PLL2CR),
 	PLL(PLL3, "pll3", "ref3", CLK_IGNORE_UNUSED, RCC_PLL3CR),
 	PLL(PLL4, "pll4", "ref4", CLK_IGNORE_UNUSED, RCC_PLL4CR),
 
 	/* ODF */
-	COMPOSITE(PLL1_P, "pll1_p", PARENT("pll1"), CLK_SET_RATE_PARENT,
-		  _S_GATE(RCC_PLL1CR, 4, 0),
+	COMPOSITE(PLL1_P | SECURE, "pll1_p", PARENT("pll1"),
+		  CLK_SET_RATE_PARENT,
+		  _GATE(RCC_PLL1CR, 4, 0),
 		  _NO_MUX,
-		  _S_PLL1_P_DIV(RCC_PLL1CFGR2, 0, 7, 0, NULL)),
+		  _DIV(RCC_PLL1CFGR2, 0, 7, 0, NULL)),
 
-	COMPOSITE(PLL2_P, "pll2_p", PARENT("pll2"), 0,
-		  _S_GATE(RCC_PLL2CR, 4, 0),
+	COMPOSITE(PLL2_P | SECURE, "pll2_p", PARENT("pll2"), 0,
+		  _GATE(RCC_PLL2CR, 4, 0),
 		  _NO_MUX,
-		  _S_DIV(RCC_PLL2CFGR2, 0, 7, 0, NULL)),
+		  _DIV(RCC_PLL2CFGR2, 0, 7, 0, NULL)),
 
-	COMPOSITE(PLL2_Q, "pll2_q", PARENT("pll2"), 0,
-		  _S_GATE(RCC_PLL2CR, 5, 0),
+	COMPOSITE(PLL2_Q | SECURE, "pll2_q", PARENT("pll2"), 0,
+		  _GATE(RCC_PLL2CR, 5, 0),
 		  _NO_MUX,
-		  _S_DIV(RCC_PLL2CFGR2, 8, 7, 0, NULL)),
+		  _DIV(RCC_PLL2CFGR2, 8, 7, 0, NULL)),
 
-	COMPOSITE(PLL2_R, "pll2_r", PARENT("pll2"), CLK_IS_CRITICAL,
-		  _S_GATE(RCC_PLL2CR, 6, 0),
+	COMPOSITE(PLL2_R | SECURE, "pll2_r", PARENT("pll2"), CLK_IS_CRITICAL,
+		  _GATE(RCC_PLL2CR, 6, 0),
 		  _NO_MUX,
-		  _S_DIV(RCC_PLL2CFGR2, 16, 7, 0, NULL)),
+		  _DIV(RCC_PLL2CFGR2, 16, 7, 0, NULL)),
 
 	COMPOSITE(PLL3_P, "pll3_p", PARENT("pll3"), 0,
 		  _GATE(RCC_PLL3CR, 4, 0),
@@ -2381,21 +1784,22 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	MUX(CK_PER, "ck_per", per_src, CLK_OPS_PARENT_ENABLE,
 	    RCC_CPERCKSELR, 0, 2, 0),
 
-	SMUX(CK_MPU, "ck_mpu", cpu_src, CLK_OPS_PARENT_ENABLE |
-	     CLK_SET_RATE_PARENT | CLK_IS_CRITICAL,
-	     RCC_MPCKSELR, 0, 2, 0),
+	MUX(CK_MPU | SECURE, "ck_mpu", cpu_src,
+	    CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_PARENT |
+	    CLK_IS_CRITICAL,
+	    RCC_MPCKSELR, 0, 2, 0),
 
-	COMPOSITE(CK_AXI, "ck_axi", axi_src, CLK_IS_CRITICAL |
-		   CLK_OPS_PARENT_ENABLE,
-		   _NO_GATE,
-		   _S_MUX(RCC_ASSCKSELR, 0, 2, 0),
-		   _S_DIV(RCC_AXIDIVR, 0, 3, 0, axi_div_table)),
+	COMPOSITE(CK_AXI | SECURE, "ck_axi", axi_src,
+		  CLK_IS_CRITICAL | CLK_OPS_PARENT_ENABLE,
+		  _NO_GATE,
+		  _MUX(RCC_ASSCKSELR, 0, 2, 0),
+		  _DIV(RCC_AXIDIVR, 0, 3, 0, axi_div_table)),
 
-	COMPOSITE(CK_MCU, "ck_mcu", mcu_src, CLK_IS_CRITICAL |
-		   CLK_OPS_PARENT_ENABLE,
-		   _NO_GATE,
-		   _S_MUX(RCC_MSSCKSELR, 0, 2, 0),
-		   _S_DIV(RCC_MCUDIVR, 0, 4, 0, mcu_div_table)),
+	COMPOSITE(CK_MCU, "ck_mcu", mcu_src,
+		  CLK_IS_CRITICAL | CLK_OPS_PARENT_ENABLE,
+		  _NO_GATE,
+		  _MUX(RCC_MSSCKSELR, 0, 2, 0),
+		  _DIV(RCC_MCUDIVR, 0, 4, 0, mcu_div_table)),
 
 	DIV_TABLE(NO_ID, "pclk1", "ck_mcu", CLK_IGNORE_UNUSED, RCC_APB1DIVR, 0,
 		  3, CLK_DIVIDER_READ_ONLY, apb_div_table),
@@ -2487,18 +1891,18 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	PCLK(IWDG2, "iwdg2", "pclk4", 0, G_IWDG2),
 	PCLK(USBPHY, "usbphy", "pclk4", 0, G_USBPHY),
 	PCLK(STGENRO, "stgenro", "pclk4", 0, G_STGENRO),
-	PCLK(SPI6, "spi6", "pclk5", 0, G_SPI6),
-	PCLK(I2C4, "i2c4", "pclk5", 0, G_I2C4),
-	PCLK(I2C6, "i2c6", "pclk5", 0, G_I2C6),
-	PCLK(USART1, "usart1", "pclk5", 0, G_USART1),
-	PCLK(RTCAPB, "rtcapb", "pclk5", CLK_IGNORE_UNUSED |
-	     CLK_IS_CRITICAL, G_RTCAPB),
-	PCLK(TZC1, "tzc1", "ck_axi", CLK_IGNORE_UNUSED, G_TZC1),
-	PCLK(TZC2, "tzc2", "ck_axi", CLK_IGNORE_UNUSED, G_TZC2),
-	PCLK(TZPC, "tzpc", "pclk5", CLK_IGNORE_UNUSED, G_TZPC),
-	PCLK(IWDG1, "iwdg1", "pclk5", 0, G_IWDG1),
-	PCLK(BSEC, "bsec", "pclk5", CLK_IGNORE_UNUSED, G_BSEC),
-	PCLK(STGEN, "stgen", "pclk5", CLK_IGNORE_UNUSED, G_STGEN),
+	PCLK(SPI6 | SECURE, "spi6", "pclk5", 0, G_SPI6),
+	PCLK(I2C4 | SECURE, "i2c4", "pclk5", 0, G_I2C4),
+	PCLK(I2C6 | SECURE, "i2c6", "pclk5", 0, G_I2C6),
+	PCLK(USART1 | SECURE, "usart1", "pclk5", 0, G_USART1),
+	PCLK(RTCAPB | SECURE, "rtcapb", "pclk5",
+	     CLK_IGNORE_UNUSED | CLK_IS_CRITICAL, G_RTCAPB),
+	PCLK(TZC1 | SECURE, "tzc1", "ck_axi", CLK_IGNORE_UNUSED, G_TZC1),
+	PCLK(TZC2 | SECURE, "tzc2", "ck_axi", CLK_IGNORE_UNUSED, G_TZC2),
+	PCLK(TZPC | SECURE, "tzpc", "pclk5", CLK_IGNORE_UNUSED, G_TZPC),
+	PCLK(IWDG1 | SECURE, "iwdg1", "pclk5", 0, G_IWDG1),
+	PCLK(BSEC | SECURE, "bsec", "pclk5", CLK_IGNORE_UNUSED, G_BSEC),
+	PCLK(STGEN | SECURE, "stgen", "pclk5", CLK_IGNORE_UNUSED, G_STGEN),
 	PCLK(DMA1, "dma1", "ck_mcu", 0, G_DMA1),
 	PCLK(DMA2, "dma2", "ck_mcu",  0, G_DMA2),
 	PCLK(DMAMUX, "dmamux", "ck_mcu", 0, G_DMAMUX),
@@ -2523,11 +1927,12 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	PCLK(GPIOI, "gpioi", "ck_mcu", 0, G_GPIOI),
 	PCLK(GPIOJ, "gpioj", "ck_mcu", 0, G_GPIOJ),
 	PCLK(GPIOK, "gpiok", "ck_mcu", 0, G_GPIOK),
-	PCLK(GPIOZ, "gpioz", "ck_axi", CLK_IGNORE_UNUSED, G_GPIOZ),
-	PCLK(CRYP1, "cryp1", "ck_axi", CLK_IGNORE_UNUSED, G_CRYP1),
-	PCLK(HASH1, "hash1", "ck_axi", CLK_IGNORE_UNUSED, G_HASH1),
-	PCLK(RNG1, "rng1", "ck_axi", 0, G_RNG1),
-	PCLK(BKPSRAM, "bkpsram", "ck_axi", CLK_IGNORE_UNUSED, G_BKPSRAM),
+	PCLK(GPIOZ | SECURE, "gpioz", "ck_axi", CLK_IGNORE_UNUSED, G_GPIOZ),
+	PCLK(CRYP1 | SECURE, "cryp1", "ck_axi", CLK_IGNORE_UNUSED, G_CRYP1),
+	PCLK(HASH1 | SECURE, "hash1", "ck_axi", CLK_IGNORE_UNUSED, G_HASH1),
+	PCLK(RNG1 | SECURE, "rng1", "ck_axi", 0, G_RNG1),
+	PCLK(BKPSRAM | SECURE, "bkpsram", "ck_axi", CLK_IGNORE_UNUSED,
+	     G_BKPSRAM),
 	PCLK(MDMA, "mdma", "ck_axi", 0, G_MDMA),
 	PCLK(GPU, "gpu", "ck_axi", 0, G_GPU),
 	PCLK(ETHTX, "ethtx", "ck_axi", 0, G_ETHTX),
@@ -2548,30 +1953,31 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 	KCLK(SDMMC3_K, "sdmmc3_k", sdmmc3_src, 0, G_SDMMC3, M_SDMMC3),
 	KCLK(FMC_K, "fmc_k", fmc_src, 0, G_FMC, M_FMC),
 	KCLK(QSPI_K, "qspi_k", qspi_src, 0, G_QSPI, M_QSPI),
-	KCLK(RNG1_K, "rng1_k", rng_src, 0, G_RNG1, M_RNG1),
+	KCLK(RNG1_K | SECURE, "rng1_k", rng_src, 0, G_RNG1, M_RNG1),
 	KCLK(RNG2_K, "rng2_k", rng_src, 0, G_RNG2, M_RNG2),
 	KCLK(USBPHY_K, "usbphy_k", usbphy_src, 0, G_USBPHY, M_USBPHY),
-	KCLK(STGEN_K, "stgen_k",  stgen_src, CLK_IS_CRITICAL, G_STGEN, M_STGEN),
+	KCLK(STGEN_K | SECURE, "stgen_k",  stgen_src, CLK_IS_CRITICAL,
+	     G_STGEN, M_STGEN),
 	KCLK(SPDIF_K, "spdif_k", spdif_src, 0, G_SPDIF, M_SPDIF),
 	KCLK(SPI1_K, "spi1_k", spi123_src, 0, G_SPI1, M_SPI1),
 	KCLK(SPI2_K, "spi2_k", spi123_src, 0, G_SPI2, M_SPI23),
 	KCLK(SPI3_K, "spi3_k", spi123_src, 0, G_SPI3, M_SPI23),
 	KCLK(SPI4_K, "spi4_k", spi45_src, 0, G_SPI4, M_SPI45),
 	KCLK(SPI5_K, "spi5_k", spi45_src, 0, G_SPI5, M_SPI45),
-	KCLK(SPI6_K, "spi6_k", spi6_src, 0, G_SPI6, M_SPI6),
+	KCLK(SPI6_K | SECURE, "spi6_k", spi6_src, 0, G_SPI6, M_SPI6),
 	KCLK(CEC_K, "cec_k", cec_src, 0, G_CEC, M_CEC),
 	KCLK(I2C1_K, "i2c1_k", i2c12_src, 0, G_I2C1, M_I2C12),
 	KCLK(I2C2_K, "i2c2_k", i2c12_src, 0, G_I2C2, M_I2C12),
 	KCLK(I2C3_K, "i2c3_k", i2c35_src, 0, G_I2C3, M_I2C35),
 	KCLK(I2C5_K, "i2c5_k", i2c35_src, 0, G_I2C5, M_I2C35),
-	KCLK(I2C4_K, "i2c4_k", i2c46_src, 0, G_I2C4, M_I2C46),
-	KCLK(I2C6_K, "i2c6_k", i2c46_src, 0, G_I2C6, M_I2C46),
+	KCLK(I2C4_K | SECURE, "i2c4_k", i2c46_src, 0, G_I2C4, M_I2C46),
+	KCLK(I2C6_K | SECURE, "i2c6_k", i2c46_src, 0, G_I2C6, M_I2C46),
 	KCLK(LPTIM1_K, "lptim1_k", lptim1_src, 0, G_LPTIM1, M_LPTIM1),
 	KCLK(LPTIM2_K, "lptim2_k", lptim23_src, 0, G_LPTIM2, M_LPTIM23),
 	KCLK(LPTIM3_K, "lptim3_k", lptim23_src, 0, G_LPTIM3, M_LPTIM23),
 	KCLK(LPTIM4_K, "lptim4_k", lptim45_src, 0, G_LPTIM4, M_LPTIM45),
 	KCLK(LPTIM5_K, "lptim5_k", lptim45_src, 0, G_LPTIM5, M_LPTIM45),
-	KCLK(USART1_K, "usart1_k", usart1_src, 0, G_USART1, M_USART1),
+	KCLK(USART1_K | SECURE, "usart1_k", usart1_src, 0, G_USART1, M_USART1),
 	KCLK(USART2_K, "usart2_k", usart234578_src, 0, G_USART2, M_UART24),
 	KCLK(USART3_K, "usart3_k", usart234578_src, 0, G_USART3, M_UART35),
 	KCLK(UART4_K, "uart4_k", usart234578_src, 0, G_UART4, M_UART24),
@@ -2604,23 +2010,23 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 		  _DIV(RCC_ETHCKSELR, 4, 4, 0, NULL)),
 
 	/* RTC clock */
-	SDIV(NO_ID, "ck_hse_rtc", "ck_hse", 0, RCC_RTCDIVR, 0, 6, 0),
+	DIV(NO_ID | SECURE, "ck_hse_rtc", "ck_hse", 0, RCC_RTCDIVR, 0, 6, 0),
 
-	COMPOSITE(RTC, "ck_rtc", rtc_src, CLK_OPS_PARENT_ENABLE |
-		   CLK_SET_RATE_PARENT,
-		  _S_GATE(RCC_BDCR, 20, 0),
-		  _S_MUX(RCC_BDCR, 16, 2, 0),
+	COMPOSITE(RTC | SECURE, "ck_rtc", rtc_src,
+		  CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_PARENT,
+		  _GATE(RCC_BDCR, 20, 0),
+		  _MUX(RCC_BDCR, 16, 2, 0),
 		  _NO_DIV),
 
 	/* MCO clocks */
-	COMPOSITE(CK_MCO1, "ck_mco1", mco1_src, CLK_OPS_PARENT_ENABLE |
-		  CLK_SET_RATE_NO_REPARENT,
+	COMPOSITE(CK_MCO1, "ck_mco1", mco1_src,
+		  CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_NO_REPARENT,
 		  _GATE(RCC_MCO1CFGR, 12, 0),
 		  _MUX(RCC_MCO1CFGR, 0, 3, 0),
 		  _DIV(RCC_MCO1CFGR, 4, 4, 0, NULL)),
 
-	COMPOSITE(CK_MCO2, "ck_mco2", mco2_src, CLK_OPS_PARENT_ENABLE |
-		  CLK_SET_RATE_NO_REPARENT,
+	COMPOSITE(CK_MCO2, "ck_mco2", mco2_src,
+		  CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_NO_REPARENT,
 		  _GATE(RCC_MCO2CFGR, 12, 0),
 		  _MUX(RCC_MCO2CFGR, 0, 3, 0),
 		  _DIV(RCC_MCO2CFGR, 4, 4, 0, NULL)),
@@ -2639,12 +2045,21 @@ struct stm32_clock_match_data {
 	const struct clock_config *cfg;
 	unsigned int num;
 	unsigned int maxbinding;
+	bool rcc_is_secure;
 };
 
 static struct stm32_clock_match_data stm32mp1_data = {
 	.cfg		= stm32mp1_clock_cfg,
 	.num		= ARRAY_SIZE(stm32mp1_clock_cfg),
 	.maxbinding	= STM32MP1_LAST_CLK,
+	.rcc_is_secure	= false,
+};
+
+static struct stm32_clock_match_data stm32mp1_data_secure = {
+	.cfg		= stm32mp1_clock_cfg,
+	.num		= ARRAY_SIZE(stm32mp1_clock_cfg),
+	.maxbinding	= STM32MP1_LAST_CLK,
+	.rcc_is_secure	= true,
 };
 
 static const struct of_device_id stm32mp1_match_data[] = {
@@ -2652,8 +2067,13 @@ static const struct of_device_id stm32mp1_match_data[] = {
 		.compatible = "st,stm32mp1-rcc",
 		.data = &stm32mp1_data,
 	},
+	{
+		.compatible = "st,stm32mp1-rcc-secure",
+		.data = &stm32mp1_data_secure,
+	},
 	{ }
 };
+MODULE_DEVICE_TABLE(of, stm32mp1_match_data);
 
 static int stm32_register_hw_clk(struct device *dev,
 				 struct clk_hw_onecell_data *clk_data,
@@ -2712,6 +2132,9 @@ static int stm32_rcc_init(struct device_node *np,
 		hws[n] = ERR_PTR(-ENOENT);
 
 	for (n = 0; n < data->num; n++) {
+		if (data->rcc_is_secure && (data->cfg[n].id & SECURE))
+			continue;
+
 		err = stm32_register_hw_clk(NULL, clk_data, base, &rlock,
 					    &data->cfg[n]);
 		if (err) {
@@ -2727,29 +2150,35 @@ static int stm32_rcc_init(struct device_node *np,
 	return of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
 }
 
-static void __iomem *rcc_base;
-
-static int stm32_rcc_init_pwr(struct device_node *np);
+static int stm32_rcc_init_pwr(struct device_node *np, void __iomem *rcc_base);
 
 static int stm32mp1_rcc_init(struct device_node *np)
 {
-	int ret;
+	void __iomem *rcc_base;
+	int ret = -ENOMEM;
 
 	rcc_base = of_iomap(np, 0);
 	if (!rcc_base) {
 		pr_err("%pOFn: unable to map resource", np);
-		of_node_put(np);
-		return -ENOMEM;
+		goto out;
 	}
 
 	ret = stm32_rcc_init(np, rcc_base, stm32mp1_match_data);
+	if (ret)
+		goto out;
+
+	ret = stm32_rcc_init_pwr(np, rcc_base);
+
+out:
 	if (ret) {
-		iounmap(rcc_base);
+		if (rcc_base)
+			iounmap(rcc_base);
+		rcc_base = NULL;
+
 		of_node_put(np);
-		return ret;
 	}
 
-	return stm32_rcc_init_pwr(np);
+	return ret;
 }
 
 /*
@@ -2776,105 +2205,16 @@ static const struct reg lp_table[] = {
 	{ 0xB3C, 0x00000000 }, /* MLAHB */
 };
 
-struct sreg {
-	u32 address;
-	u32 secured;
-	u32 val;
-	u8 setclr;
-};
+#define SMC(class, op, address, val)\
+	({\
+	struct arm_smccc_res res;\
+	arm_smccc_smc(class, op, address, val,\
+			0, 0, 0, 0, &res);\
+	})
 
-#define SREG(_addr, _setclr, _sec) { \
-	.address = _addr,\
-	.setclr = _setclr,\
-	.secured = _sec,\
-	.val = 0,\
-}
-
-static struct sreg clock_gating[] = {
-	SREG(RCC_APB1ENSETR, 1, 0),
-	SREG(RCC_APB2ENSETR, 1, 0),
-	SREG(RCC_APB3ENSETR, 1, 0),
-	SREG(RCC_APB4ENSETR, 1, 0),
-	SREG(RCC_APB5ENSETR, 1, 1),
-	SREG(RCC_AHB5ENSETR, 1, 1),
-	SREG(RCC_AHB6ENSETR, 1, 0),
-	SREG(RCC_AHB2ENSETR, 1, 0),
-	SREG(RCC_AHB3ENSETR, 1, 0),
-	SREG(RCC_AHB4ENSETR, 1, 0),
-	SREG(RCC_MLAHBENSETR, 1, 0),
-	SREG(RCC_MCO1CFGR, 0, 0),
-	SREG(RCC_MCO2CFGR, 0, 0),
-	SREG(RCC_PLL4CFGR2, 0, 0),
-};
-
-struct smux {
-	u32 clk_id;
-	u32 mux_id;
-	struct clk_hw *hw;
-};
-
-#define KER_SRC(_clk_id, _mux_id)\
-{\
-	.clk_id = _clk_id,\
-	.mux_id = _mux_id,\
-}
-
-struct smux _mux_kernel[M_LAST] = {
-	KER_SRC(SDMMC1_K, M_SDMMC12),
-	KER_SRC(SDMMC3_K, M_SDMMC3),
-	KER_SRC(FMC_K, M_FMC),
-	KER_SRC(QSPI_K, M_QSPI),
-	KER_SRC(RNG1_K, M_RNG1),
-	KER_SRC(RNG2_K, M_RNG2),
-	KER_SRC(USBPHY_K, M_USBPHY),
-	KER_SRC(USBO_K, M_USBO),
-	KER_SRC(STGEN_K, M_STGEN),
-	KER_SRC(SPDIF_K, M_SPDIF),
-	KER_SRC(SPI1_K, M_SPI1),
-	KER_SRC(SPI2_K, M_SPI23),
-	KER_SRC(SPI4_K, M_SPI45),
-	KER_SRC(SPI6_K, M_SPI6),
-	KER_SRC(CEC_K, M_CEC),
-	KER_SRC(I2C1_K, M_I2C12),
-	KER_SRC(I2C3_K, M_I2C35),
-	KER_SRC(I2C4_K, M_I2C46),
-	KER_SRC(LPTIM1_K, M_LPTIM1),
-	KER_SRC(LPTIM2_K, M_LPTIM23),
-	KER_SRC(LPTIM4_K, M_LPTIM45),
-	KER_SRC(USART1_K, M_USART1),
-	KER_SRC(USART2_K, M_UART24),
-	KER_SRC(USART3_K, M_UART35),
-	KER_SRC(USART6_K, M_USART6),
-	KER_SRC(UART7_K, M_UART78),
-	KER_SRC(SAI1_K, M_SAI1),
-	KER_SRC(SAI2_K, M_SAI2),
-	KER_SRC(SAI3_K, M_SAI3),
-	KER_SRC(SAI4_K, M_SAI4),
-	KER_SRC(DSI_K, M_DSI),
-	KER_SRC(FDCAN_K, M_FDCAN),
-	KER_SRC(ADC12_K, M_ADC12),
-	KER_SRC(ETHCK_K, M_ETHCK),
-	KER_SRC(CK_PER, M_CKPER),
-};
-
-static struct sreg pll_clock[] = {
-	SREG(RCC_PLL3CR, 0, 0),
-	SREG(RCC_PLL4CR, 0, 0),
-};
-
-static struct sreg mcu_source[] = {
-	SREG(RCC_MCUDIVR, 0, 0),
-	SREG(RCC_MSSCKSELR, 0, 0),
-};
-
+#define STM32_SVC_RCC		0x82001000
+#define STM32_WRITE		0x1
 #define RCC_IRQ_FLAGS_MASK	0x110F1F
-#define RCC_STOP_MASK		(BIT(0) | BIT(1))
-#define RCC_RSTSR	0x408
-#define PWR_MPUCR	0x10
-#define PLL_EN		(BIT(0))
-#define STOP_FLAG	(BIT(5))
-#define SBF		(BIT(11))
-#define SBF_MPU		(BIT(12))
 
 static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
 {
@@ -2886,174 +2226,13 @@ static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
 	return IRQ_HANDLED;
 }
 
-static void stm32mp1_backup_sreg(struct sreg *sreg, int size)
-{
-	int i;
-
-	for (i = 0; i < size; i++)
-		sreg[i].val = readl_relaxed(rcc_base + sreg[i].address);
-}
-
-static void stm32mp1_restore_sreg(struct sreg *sreg, int size)
-{
-	int i;
-	u32 val, address, reg;
-	int soc_secured;
-
-	soc_secured = _is_soc_secured(rcc_base);
-
-	for (i = 0; i < size; i++) {
-		val = sreg[i].val;
-		address =  sreg[i].address;
-
-		reg = readl_relaxed(rcc_base + address);
-		if (reg == val)
-			continue;
-
-		if (soc_secured && sreg[i].secured) {
-			SMC(STM32_SVC_RCC, STM32_WRITE, address, val);
-			if (sreg[i].setclr)
-				SMC(STM32_SVC_RCC, STM32_WRITE,
-				    address + RCC_CLR, ~val);
-		} else {
-			writel_relaxed(val, rcc_base + address);
-			if (sreg[i].setclr)
-				writel_relaxed(~val,
-					       rcc_base + address + RCC_CLR);
-		}
-	}
-}
-
-static void stm32mp1_restore_pll(struct sreg *sreg, int size)
-{
-	int i;
-	u32 val;
-	void __iomem *address;
-
-	for (i = 0; i < size; i++) {
-		val = sreg[i].val;
-		address =  sreg[i].address + rcc_base;
-
-		/* if pll was off turn it on before */
-		if ((readl_relaxed(address) & PLL_EN) == 0) {
-			writel_relaxed(PLL_EN, address);
-			while ((readl_relaxed(address) & PLL_RDY) == 0)
-				;
-		}
-
-		/* 2sd step: restore odf */
-		writel_relaxed(val, address);
-	}
-}
-
-static void stm32mp1_backup_mux(struct device_node *np,
-				struct smux *smux, int size)
-{
-	int i;
-	struct of_phandle_args clkspec;
-
-	clkspec.np = np;
-	clkspec.args_count = 1;
-
-	for (i = 0; i < size; i++) {
-		clkspec.args[0] = smux[i].clk_id;
-		smux[i].hw = __clk_get_hw(of_clk_get_from_provider(&clkspec));
-	}
-}
-
-static void stm32mp1_restore_mux(struct smux *smux, int size)
-{
-	int i;
-	struct clk_hw *hw, *hwp1, *hwp2;
-	struct mux_cfg *mux;
-	u8 idx;
-
-	/* These MUX are glitch free.
-	 * Then we have to restore mux thru clock framework
-	 * to be sure that CLK_OPS_PARENT_ENABLE will be exploited
-	 */
-	for (i = 0; i < M_LAST; i++) {
-		/* get parent strored in clock framework */
-		hw = smux[i].hw;
-		hwp1 = clk_hw_get_parent(hw);
-
-		/* Get parent corresponding to mux register */
-		mux = ker_mux_cfg[smux[i].mux_id].mux;
-		idx = readl_relaxed(rcc_base + mux->reg_off) >> mux->shift;
-		idx &= (BIT(mux->width) - 1);
-		hwp2 = clk_hw_get_parent_by_index(hw, idx);
-
-		/* check if parent from mux & clock framework are differents */
-		if (hwp1 != hwp2) {
-			/* update first clock framework with the true parent */
-			clk_set_parent(hw->clk, hwp2->clk);
-
-			/* Restore now new parent */
-			clk_set_parent(hw->clk, hwp1->clk);
-		}
-	}
-}
-
-#define RCC_BIT_HSI	0
-#define RCC_BIT_CSI	4
-#define RCC_BIT_HSE	8
-
-#define RCC_CK_OSC_MASK (BIT(RCC_BIT_HSE) | BIT(RCC_BIT_CSI) | BIT(RCC_BIT_HSI))
-
-#define RCC_CK_XXX_KER_MASK (RCC_CK_OSC_MASK << 1)
-
-static int stm32mp1_clk_suspend(void)
-{
-	u32 reg;
-
-	/* Save pll regs */
-	stm32mp1_backup_sreg(pll_clock, ARRAY_SIZE(pll_clock));
-
-	/* Save mcu source */
-	stm32mp1_backup_sreg(mcu_source, ARRAY_SIZE(mcu_source));
-
-	/* Save clock gating regs */
-	stm32mp1_backup_sreg(clock_gating, ARRAY_SIZE(clock_gating));
-
-	/* Enable ck_xxx_ker clocks if ck_xxx was on */
-	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
-	writel_relaxed(reg << 1, rcc_base + RCC_OCENSETR);
-
-	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
-
-	return 0;
-}
-
-static void stm32mp1_clk_resume(void)
-{
-
-	/* Restore pll  */
-	stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
-
-	/* Restore mcu source */
-	stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
-
-	stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
-
-	stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
-
-	/* Disable ck_xxx_ker clocks */
-	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
-			     rcc_base + RCC_OCENSETR + RCC_CLR);
-}
-
-static struct syscore_ops stm32mp1_clk_ops = {
-	.suspend	= stm32mp1_clk_suspend,
-	.resume		= stm32mp1_clk_resume,
-};
-
 static struct irqaction rcc_irq = {
 	.name = "rcc irq",
 	.flags = IRQF_ONESHOT,
 	.handler = stm32mp1_rcc_irq_handler,
 };
 
-static int stm32_rcc_init_pwr(struct device_node *np)
+static int stm32_rcc_init_pwr(struct device_node *np, void __iomem *rcc_base)
 {
 	int irq;
 	int ret;
@@ -3072,27 +2251,52 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 		return ret;
 	}
 
-
 	/* Configure LPEN static table */
 	for (i = 0; i < ARRAY_SIZE(lp_table); i++)
 		writel_relaxed(lp_table[i].val, rcc_base + lp_table[i].address);
 
-	/* cleanup RCC flags */
-	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_CIFR, RCC_IRQ_FLAGS_MASK);
+	return 0;
+}
 
-	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_SREQCLRR, RCC_STOP_MASK);
+static int get_clock_deps(struct device *dev)
+{
+	const char *clock_deps_name[] = {
+		"hsi", "hse", "csi", "lsi", "lse",
+	};
+	size_t deps_size = sizeof(struct clk *) * ARRAY_SIZE(clock_deps_name);
+	struct clk **clk_deps;
+	int i;
 
-	/* Prepare kernel clock source backup */
-	stm32mp1_backup_mux(np, _mux_kernel, ARRAY_SIZE(_mux_kernel));
+	clk_deps = devm_kzalloc(dev, deps_size, GFP_KERNEL);
+	if (!clk_deps)
+		return -ENOMEM;
 
-	register_syscore_ops(&stm32mp1_clk_ops);
+	for (i = 0; i < ARRAY_SIZE(clock_deps_name); i++) {
+		struct clk *clk = of_clk_get_by_name(dev_of_node(dev),
+						     clock_deps_name[i]);
+
+		if (IS_ERR(clk)) {
+			if (PTR_ERR(clk) != -EINVAL && PTR_ERR(clk) != -ENOENT)
+				return PTR_ERR(clk);
+		} else {
+			/* Device gets a reference count on the clock */
+			clk_deps[i] = devm_clk_get(dev, __clk_get_name(clk));
+			clk_put(clk);
+		}
+	}
 
 	return 0;
 }
 
 static int stm32mp1_rcc_clocks_probe(struct platform_device *pdev)
 {
-	return stm32mp1_rcc_init(dev_of_node(&pdev->dev));
+	struct device *dev = &pdev->dev;
+	int ret = get_clock_deps(dev);
+
+	if (!ret)
+		ret = stm32mp1_rcc_init(dev_of_node(dev));
+
+	return ret;
 }
 
 static int stm32mp1_rcc_clocks_remove(struct platform_device *pdev)
