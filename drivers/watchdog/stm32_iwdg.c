@@ -163,7 +163,8 @@ static int stm32_iwdg_clk_init(struct platform_device *pdev,
 
 	wdt->clk_lsi = devm_clk_get(dev, "lsi");
 	if (IS_ERR(wdt->clk_lsi)) {
-		dev_err(dev, "Unable to get lsi clock\n");
+		if (PTR_ERR(wdt->clk_lsi) != -EPROBE_DEFER)
+			dev_err(dev, "Unable to get lsi clock\n");
 		return PTR_ERR(wdt->clk_lsi);
 	}
 
@@ -171,7 +172,8 @@ static int stm32_iwdg_clk_init(struct platform_device *pdev,
 	if (wdt->data->has_pclk) {
 		wdt->clk_pclk = devm_clk_get(dev, "pclk");
 		if (IS_ERR(wdt->clk_pclk)) {
-			dev_err(dev, "Unable to get pclk clock\n");
+			if (PTR_ERR(wdt->clk_pclk) != -EPROBE_DEFER)
+				dev_err(dev, "Unable to get pclk clock\n");
 			return PTR_ERR(wdt->clk_pclk);
 		}
 
