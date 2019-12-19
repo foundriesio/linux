@@ -1955,7 +1955,9 @@ static int stm32_cryp_probe(struct platform_device *pdev)
 
 	cryp->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(cryp->clk)) {
-		dev_err(dev, "Could not get clock\n");
+		if (PTR_ERR(cryp->clk) != -EPROBE_DEFER)
+			dev_err(dev, "Could not get clock\n");
+
 		return PTR_ERR(cryp->clk);
 	}
 
