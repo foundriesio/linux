@@ -271,7 +271,9 @@ static int stm32_crc_probe(struct platform_device *pdev)
 
 	crc->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(crc->clk)) {
-		dev_err(dev, "Could not get clock\n");
+		if (PTR_ERR(crc->clk) != -EPROBE_DEFER)
+			dev_err(dev, "Could not get clock\n");
+
 		return PTR_ERR(crc->clk);
 	}
 
