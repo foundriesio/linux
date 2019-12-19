@@ -162,7 +162,7 @@ static inline int hp_sel_input(struct snd_soc_component *component)
 static inline u16 mute_output(struct snd_soc_component *component,
 			      u16 mute_mask)
 {
-	unsigned int mute_reg;
+	unsigned int mute_reg = 0;
 
 	snd_soc_component_read(component, SGTL5000_CHIP_ANA_CTRL, &mute_reg);
 
@@ -180,7 +180,7 @@ static inline void restore_output(struct snd_soc_component *component,
 
 static void vag_power_on(struct snd_soc_component *component, u32 source)
 {
-	unsigned int ana_reg;
+	unsigned int ana_reg = 0;
 
 	snd_soc_component_read(component, SGTL5000_CHIP_ANA_POWER, &ana_reg);
 
@@ -228,7 +228,7 @@ static int vag_power_consumers(struct snd_soc_component *component,
 
 static void vag_power_off(struct snd_soc_component *component, u32 source)
 {
-	unsigned int ana_pwr;
+	unsigned int ana_pwr = SGTL5000_VAG_POWERUP;
 
 	snd_soc_component_read(component, SGTL5000_CHIP_ANA_POWER, &ana_pwr);
 
@@ -301,7 +301,7 @@ static int vag_and_mute_control(struct snd_soc_component *component,
 		SGTL5000_HP_MUTE,
 		/*
 		 * Masks for DAC_POWER_EVENT/ADC_POWER_EVENT.
-		 * Muxing DAC or ADC block have to wrapped with mute/unmute
+		 * Muxing DAC or ADC block have to be wrapped with mute/unmute
 		 * both headphones and line-out.
 		 */
 		SGTL5000_OUTPUTS_MUTE,
