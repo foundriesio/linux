@@ -1606,16 +1606,35 @@ static int stm32_fmc2_setup_interface(struct nand_chip *chip, int chipnr,
 /* DMA configuration */
 static int stm32_fmc2_dma_setup(struct stm32_fmc2_nfc *fmc2)
 {
-	int ret;
+	struct dma_chan *rx, *tx, *ecc;
+	int ret = 0;
 
-	fmc2->dma_tx_ch = dma_request_slave_channel(fmc2->dev, "tx");
-	fmc2->dma_rx_ch = dma_request_slave_channel(fmc2->dev, "rx");
-	fmc2->dma_ecc_ch = dma_request_slave_channel(fmc2->dev, "ecc");
+	tx = dma_request_chan(fmc2->dev, "tx");
+	rx = dma_request_chan(fmc2->dev, "rx");
+	ecc = dma_request_chan(fmc2->dev, "ecc");
 
-	if (!fmc2->dma_tx_ch || !fmc2->dma_rx_ch || !fmc2->dma_ecc_ch) {
-		dev_warn(fmc2->dev, "DMAs not defined in the device tree, polling mode is used\n");
-		return 0;
+	/* DMAs are not mandatory but at least wait for them to be probeb */
+	if (PTR_ERR(tx) == -EPROBE_DEFER || PTR_ERR(rx) == -EPROBE_DEFER ||
+	    PTR_ERR(ecc) == -EPROBE_DEFER)
+		ret = -EPROBE_DEFER;
+
+	if (IS_ERR(tx) || IS_ERR(rx) || IS_ERR(ecc)) {
+		if (!IS_ERR(tx))
+			dma_release_channel(tx);
+		if (!IS_ERR(rx))
+			dma_release_channel(rx);
+		if (!IS_ERR(ecc))
+			dma_release_channel(ecc);
+
+		if (ret != -EPROBE_DEFER)
+			dev_warn(fmc2->dev, "DMAs missing, use polling mode\n");
+
+		return ret;
 	}
+
+	fmc2->dma_tx_ch = tx;
+	fmc2->dma_rx_ch = rx;
+	fmc2->dma_ecc_ch = ecc;
 
 	ret = sg_alloc_table(&fmc2->dma_ecc_sg, FMC2_MAX_SG, GFP_KERNEL);
 	if (ret)
@@ -1948,7 +1967,7 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	/* DMA setup */
 	ret = stm32_fmc2_dma_setup(fmc2);
 	if (ret)
-		return ret;
+		goto err_dma_setup;
 
 	/* FMC2 init routine */
 	stm32_fmc2_init(fmc2);
@@ -1970,7 +1989,7 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 	/* Scan to find existence of the device */
 	ret = nand_scan(chip, nand->ncs);
 	if (ret)
-		goto err_scan;
+		goto err_dma_setup;
 
 	ret = mtd_device_register(mtd, NULL, 0);
 	if (ret)
@@ -1983,7 +2002,7 @@ static int stm32_fmc2_probe(struct platform_device *pdev)
 err_device_register:
 	nand_cleanup(chip);
 
-err_scan:
+err_dma_setup:
 	if (fmc2->dma_ecc_ch)
 		dma_release_channel(fmc2->dma_ecc_ch);
 	if (fmc2->dma_tx_ch)
