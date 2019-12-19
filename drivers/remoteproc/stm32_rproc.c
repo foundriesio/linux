@@ -684,7 +684,9 @@ static int stm32_rproc_parse_dt(struct platform_device *pdev)
 
 	ddata->rst = devm_reset_control_get_by_index(dev, 0);
 	if (IS_ERR(ddata->rst)) {
-		dev_err(dev, "failed to get mcu reset\n");
+		if (PTR_ERR(ddata->rst) != -EPROBE_DEFER)
+			dev_err(dev, "failed to get mcu reset\n");
+
 		return PTR_ERR(ddata->rst);
 	}
 
