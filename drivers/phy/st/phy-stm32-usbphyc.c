@@ -620,6 +620,10 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 		udelay(2);
 		reset_control_deassert(usbphyc->rst);
 	} else {
+		ret = PTR_ERR(usbphyc->rst);
+		if (ret == -EPROBE_DEFER)
+			goto clk_disable;
+
 		stm32_usbphyc_clr_bits(usbphyc->base + STM32_USBPHYC_PLL,
 				       PLLEN);
 	}
@@ -627,8 +631,10 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 	udelay(PLL_PWR_DOWN_TIME_US);
 
 	/* We have to ensure the PLL is disabled before phys initialization */
-	if (readl_relaxed(usbphyc->base + STM32_USBPHYC_PLL) & PLLEN)
-		return -EPROBE_DEFER;
+	if (readl_relaxed(usbphyc->base + STM32_USBPHYC_PLL) & PLLEN) {
+		ret = -EPROBE_DEFER;
+		goto clk_disable;
+	}
 
 	usbphyc->switch_setup = -EINVAL;
 	usbphyc->nphys = of_get_child_count(np);
