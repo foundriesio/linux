@@ -1216,7 +1216,9 @@ static int stm32_gpiolib_register_bank(struct stm32_pinctrl *pctl,
 
 	bank->clk = of_clk_get_by_name(np, NULL);
 	if (IS_ERR(bank->clk)) {
-		dev_err(dev, "failed to get clk (%ld)\n", PTR_ERR(bank->clk));
+		if (PTR_ERR(bank->clk) != -EPROBE_DEFER)
+			dev_err(dev, "failed to get clk (%ld)\n",
+				PTR_ERR(bank->clk));
 		return PTR_ERR(bank->clk);
 	}
 
