@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return true;
  }
  
-@@ -3532,7 +3533,7 @@ static void put_unbound_pool(struct work
+@@ -3538,7 +3539,7 @@ static void put_unbound_pool(struct work
  	 * manager and @pool gets freed with the flag set.
  	 */
  	spin_lock_irq(&pool->lock);
