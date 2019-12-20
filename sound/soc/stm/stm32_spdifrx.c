@@ -979,7 +979,11 @@ static int stm32_spdifrx_probe(struct platform_device *pdev)
 	}
 
 	rst = devm_reset_control_get_exclusive(&pdev->dev, NULL);
-	if (!IS_ERR(rst)) {
+	if (IS_ERR(rst)) {
+		if (PTR_ERR(rst) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+		dev_dbg(&pdev->dev, "no reset controller: %ld\n", PTR_ERR(rst));
+	} else {
 		reset_control_assert(rst);
 		udelay(2);
 		reset_control_deassert(rst);
