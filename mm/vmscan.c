@@ -2064,6 +2064,12 @@ static bool inactive_list_is_low(struct lruvec *lruvec, bool file,
 	unsigned long gb;
 
 	/*
+	 * spurious refault detection results in active list thrashing,
+	 * disable it - bsc#1156286
+	 */
+	actual_reclaim = false;
+
+	/*
 	 * If we don't have swap space, anonymous page deactivation
 	 * is pointless.
 	 */
@@ -2093,6 +2099,8 @@ static bool inactive_list_is_low(struct lruvec *lruvec, bool file,
 			inactive_ratio = 1;
 	}
 
+	/* bsc#1156286 - don't lose the tracepoint */
+	actual_reclaim = true;
 	if (actual_reclaim)
 		trace_mm_vmscan_inactive_list_is_low(pgdat->node_id, sc->reclaim_idx,
 			lruvec_lru_size(lruvec, inactive_lru, MAX_NR_ZONES), inactive,
