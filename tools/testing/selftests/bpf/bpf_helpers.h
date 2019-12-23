@@ -90,8 +90,6 @@ static int (*bpf_perf_event_read_value)(void *map, unsigned long long flags,
 static int (*bpf_perf_prog_read_value)(void *ctx, void *buf,
 				       unsigned int buf_size) =
 	(void *) BPF_FUNC_perf_prog_read_value;
-static int (*bpf_override_return)(void *ctx, unsigned long rc) =
-	(void *) BPF_FUNC_override_return;
 static int (*bpf_msg_redirect_map)(void *ctx, void *map, int key, int flags) =
 	(void *) BPF_FUNC_msg_redirect_map;
 static int (*bpf_msg_redirect_hash)(void *ctx,
