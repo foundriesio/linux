@@ -651,7 +651,7 @@ static noinline int device_list_add(const char *path,
 			path_bdev = lookup_bdev(path);
 			if (IS_ERR(path_bdev)) {
 				mutex_unlock(&fs_devices->device_list_mutex);
-				return ERR_CAST(path_bdev);
+				return PTR_ERR(path_bdev);
 			}
 
 			if (device->bdev != path_bdev) {
@@ -661,7 +661,7 @@ static noinline int device_list_add(const char *path,
 			"duplicate device fsid:devid for %pU:%llu old:%s new:%s",
 					disk_super->fsid, devid,
 					rcu_str_deref(device->name), path);
-				return ERR_PTR(-EEXIST);
+				return -EEXIST;
 			}
 			bdput(path_bdev);
 			btrfs_info_in_rcu(device->fs_info,
