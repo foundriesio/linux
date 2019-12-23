@@ -5412,12 +5412,13 @@ void btrfs_put_bbio(struct btrfs_bio *bbio)
  * replace.
  */
 static int __btrfs_map_block_for_discard(struct btrfs_fs_info *fs_info,
-					 u64 logical, u64 length,
+					 u64 logical, u64 *length_ret,
 					 struct btrfs_bio **bbio_ret)
 {
 	struct extent_map *em;
 	struct map_lookup *map;
 	struct btrfs_bio *bbio;
+	u64 length = *length_ret;
 	u64 offset;
 	u64 stripe_nr;
 	u64 stripe_nr_end;
@@ -5451,6 +5452,7 @@ static int __btrfs_map_block_for_discard(struct btrfs_fs_info *fs_info,
 
 	offset = logical - em->start;
 	length = min_t(u64, em->start + em->len - logical, length);
+	*length_ret = length;
 
 	stripe_len = map->stripe_len;
 	/*
@@ -5762,7 +5764,7 @@ static int __btrfs_map_block(struct btrfs_fs_info *fs_info,
 
 	if (op == BTRFS_MAP_DISCARD)
 		return __btrfs_map_block_for_discard(fs_info, logical,
-						     *length, bbio_ret);
+						     length, bbio_ret);
 
 	em = get_chunk_map(fs_info, logical, *length);
 	if (IS_ERR(em))
