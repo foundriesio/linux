@@ -1861,7 +1861,7 @@
 		dma-channels = <3>;
 		dma-requests = <32>;
 		channel-priority = <0>;
-		clocks = <&clk_io IOBUS_DMA>;
+		clocks = <&clk_io IOBUS_GDMA1>;
 		clock-names = "dmac3";
 
 		//access-control = <&dma3_ac>;
