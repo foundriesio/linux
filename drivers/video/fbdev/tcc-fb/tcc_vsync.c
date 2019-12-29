@@ -2668,19 +2668,22 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 	}
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
-	if( ret > 0 && inFframeInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0 )
+	if( inFframeInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0 )
 		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 162/100);
 	else
 #endif
 #ifdef CONFIG_VIOC_DTRC_DECOMP
-	if( ret > 0 && inFframeInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] == 0x1 )
+	if( inFframeInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] == 0x1 )
 		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 180/100);
 	else
 #endif
 		szStream = PAGE_ALIGN((((WmixerInfo->dst_img_width+31)>>5)<<5) * (((WmixerInfo->dst_img_height+31)>>5)<<5) * 3/2);
 
-	if(szStream > target_size)
+	if(szStream > target_size){
+		printk("tcc_move_video_frame_simple[%d] :: size error 0x%x(%dx%d*a) > 0x%x\n", inFframeInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO],
+					szStream, WmixerInfo->dst_img_width, WmixerInfo->dst_img_height, target_size);
 		return -2;
+	}
 
 	ret = file->f_op->unlocked_ioctl(file, TCC_WMIXER_IOCTRL_KERNEL, (unsigned long)WmixerInfo);
 
