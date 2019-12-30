@@ -3725,7 +3725,7 @@ int tcc_video_swap_vpu_frame(tcc_video_disp *p, int idx, WMIXER_INFO_TYPE *Wmixe
 			target_address = tccvid_lastframe[type].pmapBuff.base;
 		target_size = (tccvid_lastframe[type].pmapBuff.size / 2);
 
-		memcpy(TempImage, &tccvid_lastframe[type].LastImage, sizeof(struct tcc_lcdc_image_update));
+		memcpy(TempImage, &tccvid_lastframe[type].CurrImage, sizeof(struct tcc_lcdc_image_update));
 
 		ret = tcc_move_video_frame_simple(file, TempImage, WmixerInfo, target_address, target_size, TempImage->fmt);
 		if( ret > 0 )
