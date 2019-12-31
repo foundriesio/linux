@@ -250,10 +250,6 @@ KBUILD_CPPFLAGS += $(patsubst %,-I$(srctree)/%include,$(machdirs) $(platdirs))
 endif
 endif
 
-ifeq ($(CONFIG_EVL),y)
-KBUILD_CFLAGS += -Iarch/$(SRCARCH)/evl/include -Iinclude/evl
-endif
-
 export	TEXT_OFFSET GZFLAGS MMUEXT
 
 # If we have a machine-specific directory, then include it in the build.
