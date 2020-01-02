@@ -509,16 +509,16 @@
 &pinctrl_z {
 	m4_i2c4_pins_a: m4-i2c4-0 {
 		pins {
-			pinmux = <STM32_PINMUX('Z', 4, AF6)>, /* I2C4_SCL */
-				 <STM32_PINMUX('Z', 5, AF6)>; /* I2C4_SDA */
+			pinmux = <STM32_PINMUX('Z', 4, RSVD)>, /* I2C4_SCL */
+				 <STM32_PINMUX('Z', 5, RSVD)>; /* I2C4_SDA */
 		};
 	};
 
 	m4_spi1_pins_a: m4-spi1-0 {
 		pins {
-			pinmux = <STM32_PINMUX('Z', 0, AF5)>, /* SPI1_SCK */
-				 <STM32_PINMUX('Z', 2, AF5)>, /* SPI1_MOSI */
-				 <STM32_PINMUX('Z', 1, AF5)>; /* SPI1_MISO */
+			pinmux = <STM32_PINMUX('Z', 0, RSVD)>, /* SPI1_SCK */
+				 <STM32_PINMUX('Z', 2, RSVD)>, /* SPI1_MOSI */
+				 <STM32_PINMUX('Z', 1, RSVD)>; /* SPI1_MISO */
 		};
 	};
 };
