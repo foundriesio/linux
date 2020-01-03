@@ -1818,7 +1818,7 @@ static int tcc_vsync_push_preprocess(tcc_video_disp *p, struct tcc_dp_device *pd
 		else
 			p->perfect_vsync_flag = 0;
 
-		if((p->video_frame_rate > 0) && (p->video_frame_rate < display_hz/2))
+		if((p->video_frame_rate > 0) && (p->video_frame_rate <= display_hz/2))
 			p->duplicateUseFlag = 1;
 		else
 			p->duplicateUseFlag = 0;
@@ -2334,7 +2334,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 		else
 			p->perfect_vsync_flag = 0;
 
-		if((p->video_frame_rate > 0) && (p->video_frame_rate < display_hz/2))
+		if((p->video_frame_rate > 0) && (p->video_frame_rate <= display_hz/2))
 			p->duplicateUseFlag =1;
 
 		
