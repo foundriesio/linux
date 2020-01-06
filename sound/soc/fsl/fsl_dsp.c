@@ -71,6 +71,46 @@
 #include "fsl_dsp_pool.h"
 #include "fsl_dsp_xaf_api.h"
 
+#define DSP_DISABLE_FUSE		0x8
+#define DSP_DISABLE_MASK		0x1
+
+static int check_dsp_is_available(void)
+{
+	sc_ipc_t mu_ipc;
+	sc_ipc_id_t mu_id;
+	uint32_t fuse = 0xffff;
+	int ret;
+
+	ret = sc_ipc_getMuID(&mu_id);
+	if (ret) {
+		pr_err("sc_ipc_getMuID() can't obtain mu id SCI! %d\n",
+				ret);
+		return -EINVAL;
+	}
+
+	ret = sc_ipc_open(&mu_ipc, mu_id);
+	if (ret) {
+		pr_err("sc_ipc_getMuID() can't open MU channel to SCU! %d\n",
+				ret);
+		return -EINVAL;
+	}
+
+	ret = sc_misc_otp_fuse_read(mu_ipc, DSP_DISABLE_FUSE, &fuse);
+	sc_ipc_close(mu_ipc);
+	if (ret) {
+		pr_err("sc_misc_otp_fuse_read fail! %d\n", ret);
+		return -EINVAL;
+	}
+
+	pr_debug("mu_id = %d, fuse[%i] = 0x%x\n", mu_id, DSP_DISABLE_FUSE, fuse);
+	if (fuse & DSP_DISABLE_MASK) {
+		pr_info("%s: HiFi4 DSP not available on this silicon\n", __func__);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* ...allocate new client */
 struct xf_client *xf_client_alloc(struct fsl_dsp *dsp_priv)
 {
@@ -1159,7 +1199,22 @@ static struct platform_driver fsl_dsp_driver = {
 		.pm = &fsl_dsp_pm,
 	},
 };
-module_platform_driver(fsl_dsp_driver);
+
+static int __init fsl_dsp_driver_init(void)
+{
+	/* do not install the driver if no DSP is found */
+	if (check_dsp_is_available())
+		return -EINVAL;
+
+	return platform_driver_register(&fsl_dsp_driver);
+}
+module_init(fsl_dsp_driver_init);
+
+static void __exit fsl_dsp_driver_exit(void)
+{
+	platform_driver_unregister(&fsl_dsp_driver);
+}
+module_exit(fsl_dsp_driver_exit);
 
 MODULE_DESCRIPTION("Freescale DSP driver");
 MODULE_ALIAS("platform:fsl-dsp");
