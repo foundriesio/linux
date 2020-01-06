@@ -233,7 +233,7 @@ struct ib_srq *hns_roce_create_srq(struct ib_pd *pd,
 	srq->max = roundup_pow_of_two(srq_init_attr->attr.max_wr + 1);
 	srq->max_gs = srq_init_attr->attr.max_sge;
 
-	srq_desc_size = max(16, 16 * srq->max_gs);
+	srq_desc_size = roundup_pow_of_two(max(16, 16 * srq->max_gs));
 
 	srq->wqe_shift = ilog2(srq_desc_size);
 

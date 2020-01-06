@@ -14,6 +14,31 @@
 #define _CRYPTO_DH_
 
 /**
+ * struct dh - define a DH private key for old API without Q parameter
+ *
+ * @key:	Private DH key
+ * @p:		Diffie-Hellman parameter P
+ * @g:		Diffie-Hellman generator G
+ * @key_size:	Size of the private DH key
+ * @p_size:	Size of DH parameter P
+ * @g_size:	Size of DH generator G
+ */
+struct dh {
+	void *key;
+	void *p;
+	void *g;
+	unsigned int key_size;
+	unsigned int p_size;
+	unsigned int g_size;
+};
+
+/* kABI we added the q parameter to struct dh so interface of these functions changed. */
+#define dh dh_q
+#define crypto_dh_key_len crypto_dh_key_len_q
+#define crypto_dh_encode_key crypto_dh_encode_key_q
+#define crypto_dh_decode_key crypto_dh_decode_key_q
+
+/**
  * DOC: DH Helper Functions
  *
  * To use DH with the KPP cipher API, the following data structure and
@@ -29,17 +54,21 @@
  *
  * @key:	Private DH key
  * @p:		Diffie-Hellman parameter P
+ * @q:		Diffie-Hellman parameter Q
  * @g:		Diffie-Hellman generator G
  * @key_size:	Size of the private DH key
  * @p_size:	Size of DH parameter P
+ * @q_size:	Size of DH parameter Q
  * @g_size:	Size of DH generator G
  */
 struct dh {
 	void *key;
 	void *p;
+	void *q;
 	void *g;
 	unsigned int key_size;
 	unsigned int p_size;
+	unsigned int q_size;
 	unsigned int g_size;
 };
 
