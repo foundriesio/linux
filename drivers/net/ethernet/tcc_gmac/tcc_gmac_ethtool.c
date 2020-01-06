@@ -30,6 +30,8 @@
 #include <linux/ethtool.h>
 #include <linux/mii.h>
 #include <linux/phy.h>
+#include <linux/net_tstamp.h>
+#include <linux/ptp_clock_kernel.h>
 
 #include "tcc_gmac_ctrl.h"
 #include "tcc_gmac_drv.h"
@@ -334,6 +336,30 @@ static int tcc_gmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 	return 0;
 }
 
+int tcc_gmac_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
+{
+
+	struct tcc_gmac_priv *priv = netdev_priv(dev);
+
+	printk("%s.\n", __func__);
+	info->so_timestamping =
+		SOF_TIMESTAMPING_TX_HARDWARE |
+		SOF_TIMESTAMPING_RX_HARDWARE |
+		SOF_TIMESTAMPING_RAW_HARDWARE;
+
+#if defined(CONFIG_TCC_GMAC_PTP)
+	info->phc_index = ptp_clock_index(priv->ptp_clk);
+#endif
+
+	info->tx_types = (1 << HWTSTAMP_TX_OFF) |
+		(1 << HWTSTAMP_TX_ON);
+	info->rx_filters = (1 << HWTSTAMP_FILTER_NONE);
+	// (1 << HWTSTAMP_FILTER_ALL);
+
+	return 0;
+
+}
+
 static struct ethtool_ops tcc_gmac_ethtool_ops = {
 	.begin = tcc_gmac_check_if_running,
 	.get_drvinfo = tcc_gmac_ethtool_getdrvinfo,
@@ -351,6 +377,7 @@ static struct ethtool_ops tcc_gmac_ethtool_ops = {
 	.get_wol = tcc_gmac_get_wol,
 	.set_wol = tcc_gmac_set_wol,
 	.get_sset_count	= tcc_gmac_get_sset_count,
+	.get_ts_info = tcc_gmac_get_ts_info,
 };
 
 void tcc_gmac_set_ethtool_ops(struct net_device *netdev)
