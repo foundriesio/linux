@@ -398,6 +398,26 @@ config XILINX_GMII2RGMII
 	  the Reduced Gigabit Media Independent Interface(RGMII) between
 	  Ethernet physical media devices and the Gigabit Ethernet controller.
 
+config TCC_RTL9000_PHY
+       tristate "Drivers for RTL9000 PHYs Telechips support"
+       ---help---
+               Supports the RTL9000 PHYs for telechips evaluation board.
+
+if TCC_RTL9000_PHY
+choice
+       prompt "Select RTL9000 PHY Master/Slave mode"
+       depends on TCC_RTL9000_PHY
+       help
+
+config TCC_RTL9000_MASTER_MODE
+       bool "RTL9000 Master Mode"
+
+config TCC_RTL9000_SLAVE_MODE
+       bool "RTL9000 Slave Mode"
+
+endchoice
+endif
+
 
 config TCC_REALTEK_PHY
 	tristate "Drivers for Realtek PHYs Telechips support"
