@@ -2608,15 +2608,15 @@ static int hv_pci_probe(struct hv_device *hdev,
 
 	if (dom == HVPCI_DOM_INVALID) {
 		dev_err(&hdev->device,
-				"Unable to use dom# 0x%hx or other numbers", dom_req);
+			"Unable to use dom# 0x%hx or other numbers", dom_req);
 		ret = -EINVAL;
 		goto free_bus;
 	}
 
 	if (dom != dom_req)
 		dev_info(&hdev->device,
-				"PCI dom# 0x%hx has collision, using 0x%hx",
-				dom_req, dom);
+			 "PCI dom# 0x%hx has collision, using 0x%hx",
+			 dom_req, dom);
 
 	hbus->sysdata.domain = dom;
 

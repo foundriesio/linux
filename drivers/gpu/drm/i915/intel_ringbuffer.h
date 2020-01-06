@@ -569,10 +569,11 @@ struct intel_engine_cs {
 	struct atomic_notifier_head context_status_notifier;
 
 	struct intel_engine_hangcheck hangcheck;
-#define I915_ENGINE_USING_CMD_PARSER   BIT(0)
-#define I915_ENGINE_SUPPORTS_STATS     BIT(1)
-#define I915_ENGINE_HAS_PREEMPTION   BIT(2)
-#define I915_ENGINE_REQUIRES_CMD_PARSER        BIT(3)
+
+#define I915_ENGINE_USING_CMD_PARSER	BIT(0)
+#define I915_ENGINE_SUPPORTS_STATS	BIT(1)
+#define I915_ENGINE_HAS_PREEMPTION	BIT(2)
+#define I915_ENGINE_REQUIRES_CMD_PARSER	BIT(3)
 	unsigned int flags;
 
 	/*

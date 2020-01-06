@@ -272,6 +272,12 @@ long i915_request_wait(struct i915_request *rq,
 #define I915_WAIT_ALL		BIT(2) /* used by i915_gem_object_wait() */
 #define I915_WAIT_FOR_IDLE_BOOST BIT(3)
 
+static inline bool i915_request_signaled(const struct i915_request *rq)
+{
+	/* The request may live longer than its HWSP, so check flags first! */
+	return test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &rq->fence.flags);
+}
+
 static inline u32 intel_engine_get_seqno(struct intel_engine_cs *engine);
 
 /**

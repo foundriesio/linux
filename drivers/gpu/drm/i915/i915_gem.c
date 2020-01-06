@@ -3033,7 +3033,6 @@ struct i915_request *
 i915_gem_find_active_request(struct intel_engine_cs *engine)
 {
 	struct i915_request *request, *active = NULL;
-	unsigned long flags;
 
 	/*
 	 * We are called by the error capture, reset and to dump engine
@@ -3046,7 +3045,7 @@ i915_gem_find_active_request(struct intel_engine_cs *engine)
 	 * At all other times, we must assume the GPU is still running, but
 	 * we only care about the snapshot of this moment.
 	 */
-	spin_lock_irqsave(&engine->timeline.lock, flags);
+	lockdep_assert_held(&engine->timeline.lock);
 	list_for_each_entry(request, &engine->timeline.requests, link) {
 		if (__i915_request_completed(request, request->global_seqno))
 			continue;
@@ -3054,7 +3053,6 @@ i915_gem_find_active_request(struct intel_engine_cs *engine)
 		active = request;
 		break;
 	}
-	spin_unlock_irqrestore(&engine->timeline.lock, flags);
 
 	return active;
 }
@@ -4423,16 +4421,16 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 	struct i915_address_space *vm = &dev_priv->ggtt.vm;
 
 	return i915_gem_object_pin(obj, vm, view, size, alignment,
-			flags | PIN_GLOBAL);
+				   flags | PIN_GLOBAL);
 }
 
 struct i915_vma *
 i915_gem_object_pin(struct drm_i915_gem_object *obj,
-		struct i915_address_space *vm,
-		const struct i915_ggtt_view *view,
-		u64 size,
-		u64 alignment,
-		u64 flags)
+		    struct i915_address_space *vm,
+		    const struct i915_ggtt_view *view,
+		    u64 size,
+		    u64 alignment,
+		    u64 flags)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_vma *vma;

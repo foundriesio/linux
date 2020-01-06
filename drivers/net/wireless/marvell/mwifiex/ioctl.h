@@ -267,7 +267,12 @@ struct mwifiex_ds_encrypt_key {
 
 struct mwifiex_power_cfg {
 	u32 is_power_auto;
-	u32 power_level;
+#ifdef __GENKSYMS__
+	u32 is_power_fixed;
+#else
+	u32 is_power_fixed:1;
+	u32 power_level:1;
+#endif
 };
 
 struct mwifiex_ds_hs_cfg {

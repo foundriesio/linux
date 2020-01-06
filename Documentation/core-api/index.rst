@@ -20,6 +20,9 @@ Core utilities
    genericirq
    flexible-arrays
    errseq
+   protection-keys
+
+
 
 Interfaces for kernel debugging
 ===============================

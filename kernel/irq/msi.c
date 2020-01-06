@@ -15,15 +15,17 @@
 #include <linux/irqdomain.h>
 #include <linux/msi.h>
 #include <linux/slab.h>
-#ifdef CONFIG_HYPERV
+#if IS_ENABLED(CONFIG_HYPERV)
+#ifndef __GENKSYMS__
 #include "internals.h"
 #include <asm/hypervisor.h>
+#endif
 #endif
 
 /* Compensate the lack of matrix.c in pre-v4.20 kernels */
 int suse_msi_set_irq_unmanaged(struct device *dev)
 {
-#ifdef CONFIG_HYPERV
+#if IS_ENABLED(CONFIG_HYPERV)
 	struct msi_desc *msi_desc;
 	struct irq_desc *irq_desc;
 	struct cpumask *mask;

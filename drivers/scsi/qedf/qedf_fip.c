@@ -28,7 +28,7 @@ void qedf_fcoe_send_vlan_req(struct qedf_ctx *qedf)
 	skb = dev_alloc_skb(sizeof(struct fip_vlan));
 	if (!skb) {
 		QEDF_ERR(&qedf->dbg_ctx,
-				"Failed to allocate skb.\n");
+			 "Failed to allocate skb.\n");
 		return;
 	}
 

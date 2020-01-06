@@ -1148,8 +1148,14 @@ static struct i915_request *sched_to_request(struct i915_sched_node *node)
 	return container_of(node, struct i915_request, sched);
 }
 
+struct sched_cache {
+	struct i915_priolist *priolist;
+};
+
 static struct intel_engine_cs *
-sched_lock_engine(struct i915_sched_node *node, struct intel_engine_cs *locked)
+sched_lock_engine(struct i915_sched_node *node,
+		  struct intel_engine_cs *locked,
+		  struct sched_cache *cache)
 {
 	struct intel_engine_cs *engine = sched_to_request(node)->engine;
 
@@ -1157,6 +1163,7 @@ sched_lock_engine(struct i915_sched_node *node, struct intel_engine_cs *locked)
 
 	if (engine != locked) {
 		spin_unlock(&locked->timeline.lock);
+		memset(cache, 0, sizeof(*cache));
 		spin_lock(&engine->timeline.lock);
 	}
 
@@ -1166,11 +1173,11 @@ sched_lock_engine(struct i915_sched_node *node, struct intel_engine_cs *locked)
 static void execlists_schedule(struct i915_request *request,
 			       const struct i915_sched_attr *attr)
 {
-	struct i915_priolist *uninitialized_var(pl);
-	struct intel_engine_cs *engine, *last;
+	struct intel_engine_cs *engine;
 	struct i915_dependency *dep, *p;
 	struct i915_dependency stack;
 	const int prio = attr->priority;
+	struct sched_cache cache;
 	LIST_HEAD(dfs);
 
 	GEM_BUG_ON(prio == I915_PRIORITY_INVALID);
@@ -1240,7 +1247,7 @@ static void execlists_schedule(struct i915_request *request,
 		__list_del_entry(&stack.dfs_link);
 	}
 
-	last = NULL;
+	memset(&cache, 0, sizeof(cache));
 	engine = request->engine;
 	spin_lock_irq(&engine->timeline.lock);
 
@@ -1250,19 +1257,17 @@ static void execlists_schedule(struct i915_request *request,
 
 		INIT_LIST_HEAD(&dep->dfs_link);
 
-		engine = sched_lock_engine(node, engine);
+		engine = sched_lock_engine(node, engine, &cache);
 
 		if (prio <= node->attr.priority)
 			continue;
 
 		node->attr.priority = prio;
 		if (!list_empty(&node->link)) {
-			if (last != engine) {
-				pl = lookup_priolist(engine, prio);
-				last = engine;
-			}
-			GEM_BUG_ON(pl->priority != prio);
-			list_move_tail(&node->link, &pl->requests);
+			if (!cache.priolist)
+				cache.priolist =
+					lookup_priolist(engine, prio);
+			list_move_tail(&node->link, &cache.priolist->requests);
 		}
 
 		if (prio > engine->execlists.queue_priority &&

@@ -112,6 +112,9 @@ struct subchannel {
 	enum sch_todo todo;
 	struct work_struct todo_work;
 	struct schib_config config;
+#ifndef __GENKSYMS__
+	u64 dma_mask;
+#endif
 } __attribute__ ((aligned(8)));
 
 DECLARE_PER_CPU(struct irb, cio_irb);

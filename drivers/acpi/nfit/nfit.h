@@ -213,8 +213,8 @@ struct nfit_mem {
 enum scrub_flags {
 	ARS_BUSY,
 	ARS_CANCEL,
-	ARS_VALID,
 	ARS_POLL,
+	ARS_VALID,
 };
 
 struct acpi_nfit_desc {

@@ -652,6 +652,9 @@ static int __init early_debug_pagealloc(char *buf)
 {
 	bool enable = false;
 
+	/* Temporary workaround, bsc#1159096 */
+	return 0;
+
 	if (kstrtobool(buf, &enable))
 		return -EINVAL;
 

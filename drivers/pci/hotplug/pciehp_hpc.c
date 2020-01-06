@@ -442,6 +442,7 @@ int pciehp_set_raw_indicator_status(struct hotplug_slot *hotplug_slot,
 	struct controller *ctrl = hotplug_slot->private;
 	struct pci_dev *pdev = ctrl_dev(ctrl);
 
+	ctrl->ist_running = true;
 	pci_config_pm_runtime_get(pdev);
 	pcie_write_cmd_nowait(ctrl, status << 6,
 			      PCI_EXP_SLTCTL_AIC | PCI_EXP_SLTCTL_PIC);
@@ -645,6 +646,7 @@ static irqreturn_t pciehp_ist(int irq, void *dev_id)
 		pciehp_handle_presence_or_link_change(ctrl, events);
 	up_read(&ctrl->reset_lock);
 
+	ctrl->ist_running = false;
 	wake_up(&ctrl->requester);
 	return IRQ_HANDLED;
 }
