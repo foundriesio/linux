@@ -167,33 +167,33 @@ static int tcc_asrc_footprint_insert(List *list, unsigned int pos, ssize_t size)
 //Get list_len.
 static int tcc_asrc_footprint_get_length(List *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	int ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->list_len;
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
 //Get head position
 static unsigned int tcc_asrc_footprint_get_head_position(List *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	unsigned int ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->head->print_pos;
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
 //Get head byte
 static ssize_t tcc_asrc_footprint_get_head_inputbyte(List *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	ssize_t ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->head->input_byte;
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
@@ -294,33 +294,33 @@ static void tcc_asrc_footprint_dump(struct footprint *list)
 //Get list_len.
 static int tcc_asrc_footprint_get_length(struct footprint *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	int ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->list_len;
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
 //Get head position
 static unsigned int tcc_asrc_footprint_get_head_position(struct footprint *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	unsigned int ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->print_pos[list->head];
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
 //Get head byte
 static ssize_t tcc_asrc_footprint_get_head_inputbyte(struct footprint *list)
 {
-	unsigned long flags;
+	//unsigned long flags;
 	ssize_t ret=0;
-	spin_lock_irqsave(&list->foot_locked, flags);
+	//spin_lock_irqsave(&list->foot_locked, flags);
 	ret = list->input_byte[list->head];
-	spin_unlock_irqrestore(&list->foot_locked, flags);
+	//spin_unlock_irqrestore(&list->foot_locked, flags);
 	return ret;
 }
 
@@ -546,9 +546,10 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 
 			if(asrc_m2m_pcm->playback->Bperiod_pos >= asrc_m2m_pcm->playback->src->period_bytes) {
 				asrc_m2m_pcm->playback->Bperiod_pos = asrc_m2m_pcm->playback->Bperiod_pos - asrc_m2m_pcm->playback->src->period_bytes;
-				period_elapsed_en = true;
+				//period_elapsed_en = true;
 			}
 			len = tcc_asrc_footprint_delete(asrc_m2m_pcm->asrc_footprint, false);
+			period_elapsed_en = true;
 		} else {
 			//printk("[%s][%d]cur_pos=%d, pre_pos=%d, head_pos=%d, len=%d, mix_byte=%d\n", __func__, __LINE__, cur_pos, mix_pos, head_pos, len, (unsigned int)mix_byte);
 			break;
