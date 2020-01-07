@@ -1145,32 +1145,6 @@ int tccvin_allocate_preview_buffers(tccvin_dev_t * vdev) {
 		ret = -1;
     }
 
-	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
-	if(pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
-		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-			vdev->cif.pmap_viqe.name, \
-			vdev->cif.pmap_viqe.base, \
-			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
-			vdev->cif.pmap_viqe.size);
-	} else {
-		log("ERROR: get \"rearcamera_viqe\" pmap information.\n");
-		ret = -1;
-	}
-
-#ifdef CONFIG_OVERLAY_PGL
-	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
-	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
-		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
-			vdev->cif.pmap_pgl.name, \
-			vdev->cif.pmap_pgl.base, \
-			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
-			vdev->cif.pmap_pgl.size);
-	} else {
-		log("ERROR: get \"parking_gui\" pmap information.\n");
-		ret = -1;
-	}
-#endif//CONFIG_OVERLAY_PGL
-
 	for(idxBuf=0; idxBuf<nBuf; idxBuf++) {
 		req.index = idxBuf;
 		req.reserved = vdev->cif.pmap_preview.base + (vdev->v4l2.pix_format.width * vdev->v4l2.pix_format.height * 4 * idxBuf);
