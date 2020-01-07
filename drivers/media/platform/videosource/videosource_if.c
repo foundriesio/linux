@@ -611,8 +611,8 @@ int videosource_if_probe(struct platform_device * pdev) {
 		return ret;
 	}
 
-	// create video source's log attribute device
-	videosource_create_attr_log(dev);
+	// create video source's loglevel attribute device
+	videosource_create_attr_loglevel(dev);
 
 	FUNCTION_OUT
 	return ret;

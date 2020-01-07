@@ -379,8 +379,8 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	// set the video driver's data
 	video_set_drvdata(vdev->vid_dev, vdev);
 
-	// Create the tccvin_attr_debug sysfs
-	tccvin_create_attr_log(&pdev->dev);
+	// Create the tccvin_attr_loglevel sysfs
+	tccvin_create_attr_loglevel(&pdev->dev);
 
 #ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 	// switchmanager
