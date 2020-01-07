@@ -18,15 +18,15 @@ Suite 330, Boston, MA 02111-1307 USA
 #ifndef TCCVIN_COMMON_H
 #define TCCVIN_COMMON_H
 
-extern int					tccvin_debug;
+extern int					tccvin_loglevel;
 
 #define LOGLEVEL			LOGLEVEL_DEBUG
 #define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
-#define dlog(fmt, ...)		do { if(tccvin_debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
+#define dlog(fmt, ...)		do { if(tccvin_loglevel) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
 #define FUNCTION_IN			dlog("IN\n");
 #define FUNCTION_OUT		dlog("OUT\n");
 
-extern int tccvin_create_attr_log(struct device * dev);
+extern int tccvin_create_attr_loglevel(struct device * dev);
 
 #endif//TCCVIN_COMMON_H
 
