@@ -27,8 +27,13 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/kthread.h>
 
 #include <media/v4l2-common.h>
-
 #include <video/tcc/tcc_gpu_align.h>
+
+#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+#include <linux/fs.h>
+#include <video/tcc/vioc_mgr.h>
+#include <linux/mailbox/tcc_multi_mbox.h>
+#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
 #include "tccvin_common.h"
 #include "tccvin_dev.h"
@@ -130,6 +135,16 @@ unsigned int convert_format(unsigned int format, unsigned int from_type, unsigne
 	return ret;
 }
 
+/*
+ * tccvin_set_wdma_buf_addr
+ *
+ * - DESCRIPTION:
+ *	Set wdma's base address as a certain buffer address
+ *
+ * - PARAMETERS:
+ *	@vdev:		video-input path device's data
+ *	@idxBuf:	index of buffer to be set
+ */
 void tccvin_set_wdma_buf_addr(tccvin_dev_t * vdev, unsigned int idxBuf) {
 	volatile void __iomem	* pWDMA		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 	unsigned int			format		= vdev->v4l2.pix_format.pixelformat;
@@ -171,6 +186,19 @@ void tccvin_set_wdma_buf_addr(tccvin_dev_t * vdev, unsigned int idxBuf) {
 	VIOC_WDMA_SetImageBase(pWDMA, addr0, addr1, addr2);
 }
 
+/*
+ * tccvin_parse_device_tree
+ *
+ * - DESCRIPTION:
+ *	Parse video-input path's device tree
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:			Success
+ *	-ENODEV:	a certain device node is not found.
+ */
 int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	struct device_node		* main_node	= vdev->plt_dev->dev.of_node;
 	struct device_node		* vioc_node	= NULL;
@@ -378,21 +406,45 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	return 0;
 }
 
-#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
-#include <linux/fs.h>
-#include <video/tcc/vioc_mgr.h>
-#include <linux/mailbox/tcc_multi_mbox.h>
-#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
-int vioc_component_reset(unsigned int component, unsigned int mode) {
+/*
+ * tccvin_reset_vioc_path
+ *
+ * - DESCRIPTION:
+ *	Reset or clear a certain vioc component.
+ *	If vioc manager is enabled, try to ask to main core to reset or clear.
+ *	If no responce comes from main core, do it directly.
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ *	-1:		The vioc manager device is not found.
+ */
+int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
+	vioc_path_t				* vioc	= &vdev->cif.vioc_path;
+	int						vioc_component[] = {
+#ifdef CONFIG_OVERLAY_PGL
+		vioc->pgl,
+#endif
+		vioc->vin,
+		vioc->deintl,
+		vioc->scaler,
+		vioc->wmixer,
+		vioc->wdma,
+	};
+	int						idxComponent = 0, nComponent = 0;
 #if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 	struct file				* file		= NULL;
 	char					name[1024];
 	struct tcc_mbox_data	data;
-#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+#endif
 	int						ret = 0;
 
 	FUNCTION_IN
+
+	nComponent = sizeof(vioc_component) / sizeof(vioc_component[0]);
 
 #if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 	// open video-input driver
@@ -404,66 +456,77 @@ int vioc_component_reset(unsigned int component, unsigned int mode) {
 		return -1;
 	}
 
-	memset(&data, 0x0, sizeof(struct tcc_mbox_data));
-	data.cmd[1] = (VIOC_CMD_RESET & 0xFFFF) << 16;
-	data.data[0] = component;
-	data.data[1] = mode;
-	data.data_len = 2;
+	// reset
+	for(idxComponent=nComponent - 1; 0 <= idxComponent; idxComponent--) {
+		if(vioc_component[idxComponent] != -1) {
+			memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+			data.cmd[1] = (VIOC_CMD_RESET & 0xFFFF) << 16;
+			data.data[0] = (unsigned int)vioc_component[idxComponent];
+			data.data[1] = VIOC_CONFIG_RESET;
+			data.data_len = 2;
 
-	ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
-	if(ret  < 0) {
-		log("ERROR: IOCTL_VIOC_MGR_SET_RESET_KERNEL\n");
+			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
+			if(ret  < 0) {
+				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
+				goto err_viocmg;
+			}
+		}
+	}
+
+	// reset clear
+	for(idxComponent=0; idxComponent<nComponent; idxComponent++) {
+		if(vioc_component[idxComponent] != -1) {
+			memset(&data, 0x0, sizeof(struct tcc_mbox_data));
+			data.cmd[1] = (VIOC_CMD_RESET & 0xFFFF) << 16;
+			data.data[0] = (unsigned int)vioc_component[idxComponent];
+			data.data[1] = VIOC_CONFIG_CLEAR;
+			data.data_len = 2;
+
+			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
+			if(ret  < 0) {
+				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
+				goto err_viocmg;
+			}
+		}
 	}
 
 	// Close the video input device
 	filp_close(file, 0);
-#else
-	VIOC_CONFIG_SWReset(component, mode);
-#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+	goto end;
 
-	FUNCTION_OUT
-	return ret;
-}
-
-int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
-	vioc_path_t		* vioc	= &vdev->cif.vioc_path;
-
-	FUNCTION_IN
-
-	if(vdev->v4l2.preview_method == PREVIEW_DD) {
-		if(vioc->fifo	!= -1)	vioc_component_reset(vioc->fifo,	VIOC_CONFIG_RESET);
-		if(vioc->rdma	!= -1)	vioc_component_reset(vioc->rdma,	VIOC_CONFIG_RESET);
-	}
-	if(vioc->wdma	!= -1)	vioc_component_reset(vioc->wdma,		VIOC_CONFIG_RESET);
-	if(vioc->wmixer	!= -1)	vioc_component_reset(vioc->wmixer,		VIOC_CONFIG_RESET);
-	if(vioc->scaler	!= -1)	vioc_component_reset(vioc->scaler,		VIOC_CONFIG_RESET);
-	if(vioc->deintl	!= -1)	vioc_component_reset(vioc->deintl,		VIOC_CONFIG_RESET);
-	if(vioc->vin	!= -1)	vioc_component_reset(vioc->vin,			VIOC_CONFIG_RESET);
-#ifdef CONFIG_OVERLAY_PGL
-	if(vdev->v4l2.preview_method == PREVIEW_DD) {
-        if(vioc->pgl	!= -1)	vioc_component_reset(vioc->pgl,		VIOC_CONFIG_RESET);
-    }
+err_viocmg:
 #endif
-	mdelay(1);
-#ifdef CONFIG_OVERLAY_PGL
-    if(vdev->v4l2.preview_method == PREVIEW_DD) {
-        if(vioc->pgl	!= -1)	vioc_component_reset(vioc->pgl,		VIOC_CONFIG_CLEAR);
-    }
-#endif
-	if(vioc->vin	!= -1)	vioc_component_reset(vioc->vin,			VIOC_CONFIG_CLEAR);
-	if(vioc->deintl	!= -1)	vioc_component_reset(vioc->deintl,		VIOC_CONFIG_CLEAR);
-	if(vioc->scaler	!= -1)	vioc_component_reset(vioc->scaler,		VIOC_CONFIG_CLEAR);
-	if(vioc->wmixer	!= -1)	vioc_component_reset(vioc->wmixer,		VIOC_CONFIG_CLEAR);
-	if(vioc->wdma	!= -1)	vioc_component_reset(vioc->wdma,		VIOC_CONFIG_CLEAR);
-	if(vdev->v4l2.preview_method == PREVIEW_DD) {
-		if(vioc->rdma	!= -1)	vioc_component_reset(vioc->rdma,	VIOC_CONFIG_CLEAR);
-		if(vioc->fifo	!= -1)	vioc_component_reset(vioc->fifo,	VIOC_CONFIG_CLEAR);
+
+	// reset
+	for(idxComponent=nComponent - 1; 0 <= idxComponent; idxComponent--) {
+		if(vioc_component[idxComponent] != -1)
+			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_RESET);
 	}
+
+	// reset clear
+	for(idxComponent=0; idxComponent<nComponent; idxComponent++) {
+		if(vioc_component[idxComponent] != -1)
+			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_CLEAR);
+	}
+
+end:
 
 	FUNCTION_OUT
 	return 0;
 }
 
+/*
+ * tccvin_set_cif_port
+ *
+ * - DESCRIPTION:
+ *	Set cif port mux to receive video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 	unsigned int	vin_index	= (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
 	unsigned long	value		= 0;
@@ -477,6 +540,15 @@ int tccvin_set_cif_port(tccvin_dev_t * vdev) {
 	return 0;
 }
 
+/*
+ * tccvin_clear_buffer
+ *
+ * - DESCRIPTION:
+ *	Clear all buffers
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ */
 void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 //	struct v4l2_pix_format	* pix_format = &vdev->v4l2.pix_format;
 	int						idxBuf = 0, nBuf = vdev->v4l2.pp_num;
@@ -487,6 +559,18 @@ void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 }
 
 #ifdef CONFIG_OVERLAY_PGL
+/*
+ * tccvin_set_pgl
+ *
+ * - DESCRIPTION:
+ *	Set rdma component to read parking guideline image
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_pgl(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pRDMA		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
 
@@ -511,6 +595,18 @@ int tccvin_set_pgl(tccvin_dev_t * vdev) {
 }
 #endif//CONFIG_OVERLAY_PGL
 
+/*
+ * tccvin_set_vin
+ *
+ * - DESCRIPTION:
+ *	Set vin component to receive video data via cif port
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_vin(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pVIN		= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
 	TCC_SENSOR_INFO_TYPE	* vs_info	= vdev->cif.videosource_info;
@@ -562,6 +658,18 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	return 0;
 }
 
+/*
+ * tccvin_set_deinterlacer
+ *
+ * - DESCRIPTION:
+ *	Set viqe component to deinterlace interlaced video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 //	struct device_node * main_node	= vdev->plt_dev->dev.of_node;
 //	struct device_node * hdl_np		= NULL;
@@ -626,6 +734,19 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 	return 0;
 }
 
+/*
+ * tccvin_set_scaler
+ *
+ * - DESCRIPTION:
+ *	Set sclaer component to scale up or down
+ *
+ * - PARAMETERS:
+ *	@vdev:			video-input path device's data
+ *	@pix_format:	destination pixel format
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_scaler(tccvin_cif_t * cif, struct v4l2_pix_format * pix_format) {
 	volatile void __iomem	* pSC		= VIOC_SC_GetAddress(cif->vioc_path.scaler);
 
@@ -658,6 +779,18 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct v4l2_pix_format * pix_format) {
 	return 0;
 }
 
+/*
+ * tccvin_set_wmixer
+ *
+ * - DESCRIPTION:
+ *	Set video-input wmixer component to mix two or more video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pWMIXer	= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
 
@@ -726,6 +859,18 @@ int tccvin_set_ovp_value(tccvin_cif_t * cif) {
 	return 0;
 }
 
+/*
+ * tccvin_set_wdma
+ *
+ * - DESCRIPTION:
+ *	Set wdma component to write video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 int tccvin_set_wdma(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pWDMA		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 
@@ -822,6 +967,18 @@ void tccvin_set_fifo(tccvin_dev_t * vdev, int enable) {
 	}
 }
 
+/*
+ * list_get_entry_count
+ *
+ * - DESCRIPTION:
+ *	Set rdma component to read video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ */
 unsigned int list_get_entry_count(struct list_head * head) {
 	struct list_head	* list	= NULL;
 	struct tccvin_buf	* p = NULL;
