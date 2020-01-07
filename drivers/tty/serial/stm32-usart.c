@@ -1174,7 +1174,7 @@ static int stm32_usart_of_dma_rx_probe(struct stm32_port *stm32port,
 	cookie = dmaengine_submit(desc);
 	ret = dma_submit_error(cookie);
 	if (ret) {
-		dmaengine_terminate_sync(stm32port->tx_ch);
+		dmaengine_terminate_sync(stm32port->rx_ch);
 		goto config_err;
 	}
 
