@@ -85,7 +85,7 @@ void pm_lut_drv_set_last_frame(void)
 		ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+last_frame_pm, VIOC_RDMA01);
 		if (ret < 0)
 			pr_err("%s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
-		pr_info("pixel mapper-%d plug in to RDMA :0x%x \n", last_frame_pm, VIOC_RDMA01);
+		dprintk("pixel mapper-%d plug in to RDMA :0x%x \n", last_frame_pm, VIOC_RDMA01);
 	}
 }
 EXPORT_SYMBOL(pm_lut_drv_set_last_frame);
@@ -187,22 +187,21 @@ static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				}
 				else
 				{
-			                int support_plug = CheckPixelMapPathSelection(pm_lut_cmd.pm_lut_plug_in_ch);
-			                pr_info("pixel mapper 0  plug in to RDMA :0x%x \n", pm_lut_cmd.pm_lut_plug_in_ch);
+					int support_plug = CheckPixelMapPathSelection(pm_lut_cmd.pm_lut_plug_in_ch);
+					dprintk("pixel mapper 0  plug in to RDMA :0x%x \n", pm_lut_cmd.pm_lut_plug_in_ch);
 
-			                if( support_plug >= 0 ){
-			                        int ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+pm_lut_cmd.pm_lut_dev_num, pm_lut_cmd.pm_lut_plug_in_ch);
-						   if (ret < 0)
-						   	pr_err("%s pixelmapper plug in fail\n", __func__);
-			                }
+					if( support_plug >= 0 ){
+						int ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+pm_lut_cmd.pm_lut_dev_num, pm_lut_cmd.pm_lut_plug_in_ch);
+						if (ret < 0)
+							pr_err("%s pixelmapper plug in fail\n", __func__);
+					}
 				}
-				
 			}
-			return 0;			
+			return 0;
 
 		default:
 			printk(KERN_ALERT "not supported PM_LUT IOCTL(0x%x). \n", cmd);
-			break;			
+			break;
 	}
 
 	return 0;
