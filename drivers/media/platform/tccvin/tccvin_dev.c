@@ -466,7 +466,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 			data.data_len = 2;
 
 			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
-			if(ret  < 0) {
+			if(ret <= 0) {
 				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
 				goto err_viocmg;
 			}
@@ -483,7 +483,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 			data.data_len = 2;
 
 			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
-			if(ret  < 0) {
+			if(ret <= 0) {
 				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
 				goto err_viocmg;
 			}
