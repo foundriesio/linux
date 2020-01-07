@@ -19,40 +19,40 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #include "tccvin_common.h"
 
-int			tccvin_debug;
-atomic_t	tccvin_attr_debug;
+int			tccvin_loglevel;
+atomic_t	tccvin_attr_loglevel;
 
-ssize_t tccvin_attr_debug_show(struct device * dev, struct device_attribute * attr, char * buf) {
-	long val = atomic_read(&tccvin_attr_debug);
+ssize_t tccvin_attr_loglevel_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	long val = atomic_read(&tccvin_attr_loglevel);
 
 	sprintf(buf, "%ld\n", val);
 
 	return val;
 }
 
-ssize_t tccvin_attr_debug_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+ssize_t tccvin_attr_loglevel_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
 	long val;
 	int error = kstrtoul(buf, 10, &val);
 	if(error)
 		return error;
 
-	atomic_set(&tccvin_attr_debug, val);
-	tccvin_debug = val;
+	atomic_set(&tccvin_attr_loglevel, val);
+	tccvin_loglevel = val;
 
 	return count;
 }
 
-static DEVICE_ATTR(tccvin_attr_debug, S_IRUGO|S_IWUSR|S_IWGRP, tccvin_attr_debug_show, tccvin_attr_debug_store);
+static DEVICE_ATTR(tccvin_attr_loglevel, S_IRUGO|S_IWUSR|S_IWGRP, tccvin_attr_loglevel_show, tccvin_attr_loglevel_store);
 
-int tccvin_create_attr_log(struct device * dev) {
+int tccvin_create_attr_loglevel(struct device * dev) {
 	int		ret = 0;
 
-	ret = device_create_file(dev, &dev_attr_tccvin_attr_debug);
+	ret = device_create_file(dev, &dev_attr_tccvin_attr_loglevel);
 	if(ret < 0)
-		log("failed create sysfs: tccvin_attr_debug\n");
+		log("failed create sysfs: tccvin_attr_loglevel\n");
 
 	// set log level as default
-	atomic_set(&tccvin_attr_debug, LOGLEVEL);
+	atomic_set(&tccvin_attr_loglevel, LOGLEVEL);
 
 	return ret;
 }

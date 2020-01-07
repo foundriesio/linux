@@ -18,15 +18,15 @@ Suite 330, Boston, MA 02111-1307 USA
 #ifndef VIDEOSOURCE_COMMON_H
 #define VIDEOSOURCE_COMMON_H
 
-extern int					videosource_debug;
+extern int					videosource_loglevel;
 
 #define LOGLEVEL			LOGLEVEL_DEBUG
 #define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
-#define dlog(fmt, ...)		do { if(videosource_debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
+#define dlog(fmt, ...)		do { if(videosource_loglevel) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
 #define FUNCTION_IN			dlog("IN\n");
 #define FUNCTION_OUT		dlog("OUT\n");
 
-extern int videosource_create_attr_log(struct device * dev);
+extern int videosource_create_attr_loglevel(struct device * dev);
 
 #endif//VIDEOSOURCE_COMMON_H
 
