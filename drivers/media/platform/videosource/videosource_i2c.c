@@ -1,101 +1,67 @@
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 
+#include "videosource_types.h"
 #include "videosource_common.h"
-#include "videosource_i2c.h"
+#include "videosource_if.h"
 #include "videodecoder/videodecoder.h"
+#include "mipi-deserializer/mipi-deserializer.h"
 
-static struct i2c_client * videosource_i2c_client = NULL;
-
-int DDI_I2C_Write(unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
+int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned short reg_bytes, unsigned short data_bytes) {
 	unsigned short bytes = reg_bytes + data_bytes;
-#ifdef CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
-	static int try = 0;
-#endif//CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
 
-	if(i2c_master_send(videosource_i2c_client, data, bytes) != bytes) {
-		printk("write error!!!! \n");
-		printk(KERN_INFO "addr = 0x%x\n", videosource_i2c_client->addr);
-#ifdef CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
-		try = (try + 1) % 4;
-		videosource_i2c_client->addr = 0x60 + (0x01 * try);
-#endif//CONFIG_VIDEO_VIDEOSOURCE_VIDEODECODER_DM5886
+	if(i2c_master_send(client, data, bytes) != bytes) {
+		dlog("addr = 0x%x, write error!!!! \n", client->addr);
 		return -EIO;
 	}
 
 	return 0;
 }
 
-int DDI_I2C_Write_Remote(unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
+int DDI_I2C_Write_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned char* data, unsigned short reg_bytes, unsigned short data_bytes) {
 	unsigned short bytes = reg_bytes + data_bytes;
 	unsigned short source_addr;
 	static int try = 0;
 
-	source_addr = videosource_i2c_client->addr;
+	source_addr = client->addr;
 
-	videosource_i2c_client->addr = remote_addr;
+	client->addr = remote_addr;
 
-	if(i2c_master_send(videosource_i2c_client, data, bytes) != bytes) {
+	if(i2c_master_send(client, data, bytes) != bytes) {
 		printk("write error!!!! \n");
-		printk(KERN_INFO "addr = 0x%x\n", videosource_i2c_client->addr);
+		printk(KERN_INFO "addr = 0x%x\n", client->addr);
 		try = (try + 1) % 4;
-		videosource_i2c_client->addr = 0x60 + (0x01 * try);
+		client->addr = 0x60 + (0x01 * try);
 
-		videosource_i2c_client->addr = source_addr;
+		client->addr = source_addr;
 
 		return -EIO;
 	}
 
-	videosource_i2c_client->addr = source_addr;
+	client->addr = source_addr;
 
 	return 0;
 }
 
-int cam_i2c_read(const struct i2c_client * client, unsigned char * cmd, unsigned char cmd_len, unsigned char * val, unsigned char val_len) {
-	int ret;
-	struct i2c_adapter *adap = client->adapter;
-	struct i2c_msg msgs[2];
-
-	/* msg for cmd */
-	msgs[0].addr = client->addr;
-	msgs[0].len = cmd_len;
-	msgs[0].buf = cmd;
-	msgs[0].flags = client->flags & I2C_M_TEN;
-
-	/* msg for read */
-	msgs[1].addr = client->addr;
-	msgs[1].len = val_len;
-	msgs[1].buf = val;
-	msgs[1].flags = client->flags & I2C_M_TEN;
-	msgs[1].flags |= I2C_M_RD;
-
-	ret = i2c_transfer(adap, msgs, 2);
-
-	/*
-	 * If everything went ok (i.e. 1 msg transmitted), return #bytes
-	 * transmitted, else error code.
-	 */
-	return (ret == 2) ? 0 : ret;
-}
-
-int DDI_I2C_Read(unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
+int DDI_I2C_Read(struct i2c_client * client, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
 	unsigned char data[2];
 
 	if(reg_bytes == 2) {
@@ -105,12 +71,12 @@ int DDI_I2C_Read(unsigned short reg, unsigned char reg_bytes, unsigned char * va
 		data[0]= (u8)reg&0xff;
 	}
 
-	if(i2c_master_send(videosource_i2c_client, data, reg_bytes) != reg_bytes) {
+	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
 		printk("write error for read!!!! \n");
 		return -EIO;
 	}
 
-	if(i2c_master_recv(videosource_i2c_client, val, val_bytes) != val_bytes) {
+	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
 		printk("read error!!!! \n");
 		return -EIO;
 	}
@@ -118,7 +84,7 @@ int DDI_I2C_Read(unsigned short reg, unsigned char reg_bytes, unsigned char * va
 	return 0;
 }
 
-int DDI_I2C_Read_Remote(unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
+int DDI_I2C_Read_Remote(struct i2c_client * client, unsigned short remote_addr, unsigned short reg, unsigned char reg_bytes, unsigned char * val, unsigned short val_bytes) {
 	unsigned char data[2];
 	unsigned short source_addr;
 
@@ -129,50 +95,110 @@ int DDI_I2C_Read_Remote(unsigned short remote_addr, unsigned short reg, unsigned
 		data[0]= (u8)reg&0xff;
 	}
 
-	source_addr = videosource_i2c_client->addr;
+	source_addr = client->addr;
 
-	videosource_i2c_client->addr = remote_addr;
+	client->addr = remote_addr;
 
-	if(i2c_master_send(videosource_i2c_client, data, reg_bytes) != reg_bytes) {
+	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
 		printk("write error for read!!!! \n");
-		videosource_i2c_client->addr = source_addr;
+		client->addr = source_addr;
 		return -EIO;
 	}
 
-	if(i2c_master_recv(videosource_i2c_client, val, val_bytes) != val_bytes) {
+	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
 		printk("read error!!!! \n");
-		videosource_i2c_client->addr = source_addr;
+		client->addr = source_addr;
 		return -EIO;
 	}
 
-	videosource_i2c_client->addr = source_addr;
+	client->addr = source_addr;
 
 	return 0;
 }
 
-static const struct i2c_device_id videosource_i2c_id[] = {
-	{ "tcc-cam-sensor", 0, },
+static const struct i2c_device_id videosource_id_table[] = {
+	{ MODULE_NAME, 0, },
 	{ }
 };
 
-static struct of_device_id videosource_i2c_of_match[] = {
-	{ .compatible = CAM_I2C_NAME },
+static struct of_device_id videosource_of_match[] = {
+	{
+		.compatible = "intersil,isl79988",
+		.data		= &videosource_isl79988,
+	},
+	{
+		.compatible	= "maxim,max9286",
+		.data		= &videosource_max9286,
+	},
+#if 0
+	{
+		.compatible	= "ti,ds90ub964"
+		.data		= &videosource_ds90ub964,
+	},
+#endif
 	{}
 };
-MODULE_DEVICE_TABLE(of, videosource_i2c_of_match);
+MODULE_DEVICE_TABLE(of, videosource_of_match);
 
-static int videosource_i2c_probe(struct i2c_client * client, const struct i2c_device_id * id) {
-	videosource_i2c_client = client;
+int videosource_i2c_probe(struct i2c_client * client, const struct i2c_device_id * id) {
+	videosource_t				* vdev		= NULL;
+	const struct of_device_id	* of_id		= NULL;
+	int							index		= 0;
+	int							ret			= 0;
 
-	printk(KERN_INFO "%s() name = %s, addr = 0x%x, client = 0x%p \n", \
-		__func__, client->name, (client->addr)<<1, videosource_i2c_client);
+	// allocate and clear memory for a videosource device
+	vdev = kzalloc(sizeof(videosource_t), GFP_KERNEL);
+	if(vdev == NULL) {
+		log("ERROR: Allocate a videosource device struct.\n");
+		return -ENOMEM;
+	}
 
-	return 0;
+	of_id = of_match_node(videosource_of_match, client->dev.of_node);
+	if(!of_id) {
+		log("ERROR: of_match_node\n");
+		ret = -ENODEV;
+		goto goto_free_videosource_data;
+	}
+
+	// get the videosource's index from its alias
+	index = of_alias_get_id(client->dev.of_node, MODULE_NAME);
+
+	// set the specific videosource information
+	vdev = (videosource_t *)of_id->data;
+
+	// set the i2c device
+	vdev->client = client;
+
+	log("videosource[%d] name: %s, type: %d, addr: 0x%x, client: 0x%p\n", \
+		index, client->name, vdev->type, (client->addr)<<1, client);
+
+	// register videosource_if
+	videosource_if_probe(vdev);
+
+	goto goto_end;
+
+goto_free_videosource_data:
+	// free the videosource data
+	kfree(vdev);
+
+goto_end:
+	FUNCTION_OUT
+	return ret;
 }
 
-static int videosource_i2c_remove(struct i2c_client * client) {
-	videosource_i2c_client = NULL;
+int videosource_i2c_remove(struct i2c_client * client) {
+	videosource_t		* vdev	= i2c_get_clientdata(client);
 
+	FUNCTION_IN
+
+	// unregister videosource_if
+	videosource_if_remove(vdev);
+
+	// free the videosource data
+	kfree(vdev);
+	client = NULL;
+
+	FUNCTION_OUT
 	return 0;
 }
 
@@ -180,19 +206,19 @@ static struct i2c_driver videosource_i2c_driver = {
 	.probe		= videosource_i2c_probe,
 	.remove		= videosource_i2c_remove,
 	.driver		= {
-		.name			= "tcc-cam-sensor",
-		.of_match_table	= of_match_ptr(videosource_i2c_of_match),
+		.name			= MODULE_NAME,
+		.of_match_table	= of_match_ptr(videosource_of_match),
 	},
-	.id_table	= videosource_i2c_id,
+	.id_table	= videosource_id_table,
 };
 
-static int __init videosource_i2c_init(void) {
+static int __init videosource_init(void) {
 	return i2c_add_driver(&videosource_i2c_driver);
 }
-module_init(videosource_i2c_init);
+module_init(videosource_init);
 
-static void __exit videosource_i2c_exit(void) {
+static void __exit videosource_exit(void) {
 	i2c_del_driver(&videosource_i2c_driver);
 }
-module_exit(videosource_i2c_exit);
+module_exit(videosource_exit);
 
