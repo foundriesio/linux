@@ -54,6 +54,12 @@
 		stdout-path = &uart0;
 	};
 
+	aliases {
+		videosource0 = &videosource0;
+		videosource1 = &videosource1;
+		videosource2 = &videosource2;
+	};
+
 	pcie@11800000 {
 		reset-gpio = <&gpc 30 0>;
 		//status = "okay";
@@ -134,42 +140,6 @@
 	    vbus-ctrl-able;
 	    vbus-gpio = <&gpa 27 0>;
 	};
-
-#ifdef CONFIG_VIDEO_VIDEOSOURCE
-	videosource {
-		compatible = "telechips,videosource";
-		status = "okay";
-
-		pinctrl-names = "idle", "active";
-/* dm5886
-		pinctrl-0 = <&cam0_16bit_idle>;
-		pinctrl-1 = <&cam0_clk &cam0_data_16bit>;
-*/
-		pinctrl-0 = <&cam0_8bit_idle>;
-		pinctrl-1 = <&cam0_clk &cam0_data_8bit>;
-
-		atv_dm5886 {
-			rst-gpios = <&gpb 14 1>;
-		};
-
-		atv_isl79988 {
-			rst-gpios = <&gpb 14 1>;
-		};
-
-		des_ds90ub964 {
-			pwd-gpios = <&gpg 5 1>;
-			intb-gpios = <&gph 11 1>;
-//			intb-gpios = <&gpma 15 1>;
-			mipi_csi2 = <&mipi_csi2>;
-		};
-
-		des_max9286 {
-			pwd-gpios = <&gpg 5 1>;
-			intb-gpios = <&gph 11 1>;
-			mipi_csi2 = <&mipi_csi2>;
-		};
-	};
-#endif
 
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
@@ -372,26 +342,28 @@
 			};
 		}; /* pmic da9063 */
 
-		videosource@ds90ub964 {
-			compatible  = "videosource,ds90ub964";
-			reg = <0x30>;   // 0x60 >> 1
-		};
-
-		videosource@max9286 {
-			compatible  = "videosource,max9286";
-			reg = <0x48>;   // 0x90 >> 1
-		};
-
-		videosource@dm5886 {
-			compatible	= "videosource,dm5886";
-			reg		= <0x60>;	// 0xC0 >> 1
+		videosource0: videodecoder_isl79988 {
+			compatible	= "intersil,isl79988";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_8bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
 			rst-gpios	= <&gpb 14 1>;
-		};
-
-		videosource@isl79988 {
-			compatible	= "videosource,isl79988";
 			reg		= <0x44>;	// 0x88 >> 1
-			rst-gpios	= <&gpb 14 1>;
+		};
+
+		videosource1: deserializer_max9286 {
+			compatible	= "maxim,max9286";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x48>;	// 0x90 >> 1
+		};
+
+		videosource2: deserializer_ds90ub964 {
+			compatible	= "ti,ds90ub964";
+			cifport		= <5>;
+			reg		= <0x30>;	// 0x60 >> 1
 		};
 	};
 

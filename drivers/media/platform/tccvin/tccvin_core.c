@@ -1,23 +1,24 @@
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
+#include <linux/platform_device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-device.h>
 
@@ -43,6 +44,12 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 	mutex_lock(&vdev->v4l2.lock);
 
 	switch(cmd) {
+	case VIDIOC_SET_VIDEOSOURCE_FORMAT:
+		vdev->cif.videosource_format	= *(videosource_format_t *)arg;
+		vdev->cif.cif_port				= vdev->cif.videosource_format.cif_port;
+		vdev->v4l2.skip_frame			= vdev->cif.videosource_format.capture_skip_frame;
+		break;
+
 	case VIDIOC_QUERYCAP:
 		tccvin_v4l2_querycap(vdev, (struct v4l2_capability *)arg);
 		break;
@@ -253,11 +260,11 @@ int tccvin_core_open(struct file * file) {
 
 	if((vdev->vid_dev != NULL) && (vdev->vid_dev->minor == minor)) {
 		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-		if(vdev->is_dev_opened == DISABLE) {
+		if(vdev->is_dev_opened == 0) {
 			// init the v4l2 data
 			tccvin_v4l2_init(vdev);
 
-			vdev->is_dev_opened  = ENABLE;
+			vdev->is_dev_opened  = 1;
 		}
 		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
 	} else {
@@ -277,11 +284,11 @@ int tccvin_core_release(struct file * file) {
 
 	if((vdev->vid_dev != NULL) && (vdev->vid_dev->minor == minor)) {
 		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-		if(vdev->is_dev_opened == ENABLE) {
+		if(vdev->is_dev_opened == 1) {
 			// deinit the v4l2 data
 			tccvin_v4l2_deinit(vdev);
 
-			vdev->is_dev_opened  = DISABLE;
+			vdev->is_dev_opened  = 0;
 		}
 		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
 	} else {

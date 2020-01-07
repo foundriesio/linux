@@ -1,46 +1,72 @@
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
-
-#include <linux/delay.h>
-#include <linux/spinlock.h>
-#include <linux/module.h>
+#include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/of_address.h>
 #include <linux/interrupt.h>
 #include <linux/of_irq.h>
+#include <linux/string.h>
+#include <linux/kdev_t.h>
+#include <linux/cdev.h>
 
-#include <video/tcc/tcc_cam_ioctrl.h>
-#include <video/tcc/videosource_ioctl.h>
+#include <video/tcc/vioc_ddicfg.h>
+
+#include <linux/uaccess.h>
 
 #include "videosource_common.h"
 #include "videosource_if.h"
-#include "videodecoder/videodecoder.h"
-
-#include <linux/clk.h>
 #include "mipi-csi2/mipi-csi2.h"
 
-TCC_SENSOR_INFO_TYPE videosource_info;
-SENSOR_FUNC_TYPE videosource_func;
+#include "../../../pinctrl/core.h"
+#include "../../../pinctrl/tcc/pinctrl-tcc.h"
+
+#define NUM_OVERLAY_FORMATS 2
+
+struct tcc_pinctrl {
+	struct device *dev;
+
+	void __iomem *base;
+
+	struct pinctrl_desc pinctrl_desc;
+
+	struct pinctrl_dev *pctldev;
+
+	struct tcc_pinconf *pin_configs;
+	int nconfigs;
+
+	struct tcc_pinctrl_ops *ops;
+
+	struct pinctrl_pin_desc *pins;
+	unsigned int npins;
+
+	struct tcc_pin_bank *pin_banks;
+	unsigned int nbanks;
+
+	struct tcc_pin_group *groups;
+	unsigned int ngroups;
+
+	struct tcc_pinmux_function *functions;
+	unsigned int nfunctions;
+};
 
 volatile void __iomem *  ddicfg_base;
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-static struct clk * 	 mipi_csi2_clk;
-static unsigned int 	 mipi_csi2_frequency;
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
+struct clk * 	 mipi_csi2_clk;
+unsigned int 	 mipi_csi2_frequency;
 
 //extern irqreturn_t ds90ub964_irq_thread_handler(int irq, void * client_data);
 
@@ -77,37 +103,83 @@ const static struct v4l2_fmtdesc videosource_format[] = {
 };
 #define NUM_CAPTURE_FORMATS ARRAY_SIZE(videosource_format)
 
-unsigned int sensor_control[] = {
-	V4L2_CID_BRIGHTNESS,
-	V4L2_CID_AUTO_WHITE_BALANCE,
-	V4L2_CID_ISO,
-	V4L2_CID_EFFECT,
-	V4L2_CID_FLIP,
-	V4L2_CID_SCENE,
-	V4L2_CID_METERING_EXPOSURE,
-	V4L2_CID_EXPOSURE,
-	V4L2_CID_FOCUS_MODE,
-	V4L2_CID_FLASH
-};
-
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
-    unsigned int intr_status0 = 0;
-    unsigned int intr_status1 = 0;
+	unsigned int intr_status0 = 0, intr_status1 = 0, intr_mask0 = 0, intr_mask1 = 0;
+	unsigned int idx = 0;
 
-    intr_status0 = MIPI_CSIS_Get_CSIS_Interrupt_Src(0);
-    intr_status1 = MIPI_CSIS_Get_CSIS_Interrupt_Src(1);
+	intr_status0 = MIPI_CSIS_Get_CSIS_Interrupt_Src(0);
+	intr_status1 = MIPI_CSIS_Get_CSIS_Interrupt_Src(1);
 
-    printk("%s interrupt status 0x%x / 0x%x \n", __func__, intr_status0, intr_status1);
+	intr_mask0 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(0);
+	intr_mask1 = MIPI_CSIS_Get_CSIS_Interrupt_Mask(1);
 
-    // clear interrupt
-    MIPI_CSIS_Set_CSIS_Interrupt_Src(0, intr_status0);
-    MIPI_CSIS_Set_CSIS_Interrupt_Src(0, intr_status1);    
+	log("interrupt status 0x%x / 0x%x \n", intr_status0, intr_status1);
+
+	intr_status0 &= intr_mask0;
+	intr_status1 &= intr_mask1;
+
+	/* interruptsource register 0 */
+	if(intr_status0 & CIM_MSK_FrameStart_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status0 & ((1 << idx) << CIM_MSK_FrameStart_SHIFT))
+				log("[CH%d] FrameStart packet is received \n", idx);
+		}
+	}
+	if(intr_status0 & CIM_MSK_FrameEnd_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status0 & ((1 << idx) << CIM_MSK_FrameEnd_SHIFT))
+				log("[CH%d] FrameEnd packet is received \n", idx);
+		}
+	}
+	if(intr_status0 & CIM_MSK_ERR_SOT_HS_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_SOT_HS_SHIFT) )
+				log("[Lane%d] Start of transmission error \n", idx);
+		}
+	}
+	if(intr_status0 & CIM_MSK_ERR_LOST_FS_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_LOST_FS_SHIFT))
+				log("[CH%d] Lost of Frame Start packet \n", idx);
+		}
+	}
+	if(intr_status0 & CIM_MSK_ERR_LOST_FE_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status0 & ((1 << idx) << CIM_MSK_ERR_LOST_FE_SHIFT))
+				log("[CH%d] Lost of Frame End packet \n", idx);
+		}
+	}
+	if(intr_status0 & CIM_MSK_ERR_OVER_MASK) {
+		log("Image FIFO overflow interrupt \n");
+	}
+	if(intr_status0 & CIM_MSK_ERR_WRONG_CFG_MASK) {
+		log("Wrong configuration \n");
+	}
+	if(intr_status0 & CIM_MSK_ERR_ECC_MASK) {
+		log("ECC error \n");
+	}
+	if(intr_status0 & CIM_MSK_ERR_CRC_MASK) {
+		log("CRC error \n");
+	}
+	if(intr_status0 & CIM_MSK_ERR_ID_MASK) {
+		log("Unknown ID error \n");
+	}
+
+	/* interruptsource register 1 */
+	if(intr_status1 & CIM_MSK_LINE_END_MASK) {
+		for(idx = 0; idx<4; idx++) {
+			if(intr_status1 & ((1 << idx) << CIM_MSK_LINE_END_SHIFT))
+				log("[CH%d] End of specific line \n", idx);
+		}
+	}
+
+	// clear interrupt
+	MIPI_CSIS_Set_CSIS_Interrupt_Src(0, intr_status0);
+	MIPI_CSIS_Set_CSIS_Interrupt_Src(1, intr_status1);
 
 	return IRQ_HANDLED;
-//    return IRQ_WAKE_THREAD;
+//	  return IRQ_WAKE_THREAD;
 }
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
 int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	int					index	= fmt->index;
@@ -137,105 +209,117 @@ int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	return 0;
 }
 
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-int videosource_if_parse_mipi_csi2_dt_data(struct device_node * dev_node) {
-	struct device_node * mipi_csis_node = NULL;
-	struct device_node * ddicfg_node	= NULL;
+int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * videosource_node) {
+	struct device_node	* node	= NULL;
+	int					ret		= 0;
 
-	mipi_csis_node = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
-//		mipi_csis_node = of_parse_phandle(videosource_node, "mipi_csi2", 0);
+	if(videosource_node) {
+		// get cif port
+		of_property_read_u32_index(videosource_node, "cifport", 0, &vdev->format.cif_port);
+		log("cif port: %d\n", vdev->format.cif_port);
 
-	if(mipi_csis_node) {
-		// Configure the MIPI clock
-		mipi_csi2_clk = of_clk_get(mipi_csis_node, 0);
+		vdev->gpio.pwr_port = of_get_named_gpio_flags(videosource_node, "pwr-gpios", 0, &vdev->gpio.pwr_value);
+		vdev->gpio.pwd_port = of_get_named_gpio_flags(videosource_node, "pwd-gpios", 0, &vdev->gpio.pwd_value);
+		vdev->gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &vdev->gpio.rst_value);
 
-		if(IS_ERR(mipi_csi2_clk)) {
-			log("failed to get mipi_csi2_clk\n");
-			return -ENODEV;
-		}
-		else {
-			of_property_read_u32(mipi_csis_node, "clock-frequency", &mipi_csi2_frequency);
-			if(mipi_csi2_frequency == 0) {
-				log("failed to get mipi_csi2_frequency\n");
+		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+			// interrupt pin
+			vdev->gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &vdev->gpio.intb_value);
+
+			// mipi-csi2
+			node = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
+			if(node) {
+				// Configure the MIPI clock
+				mipi_csi2_clk = of_clk_get(node, 0);
+				if(IS_ERR(mipi_csi2_clk)) {
+					log("failed to get mipi_csi2_clk\n");
+					return -ENODEV;
+				} else {
+					of_property_read_u32(node, "clock-frequency", &mipi_csi2_frequency);
+					if(mipi_csi2_frequency == 0) {
+						log("failed to get mipi_csi2_frequency\n");
+						return -ENODEV;
+					} else {
+						clk_set_rate(mipi_csi2_clk, mipi_csi2_frequency);
+						clk_prepare_enable(mipi_csi2_clk);
+					}
+				}
+
+				vdev->format.des_info.csi2_irq = irq_of_parse_and_map(node, 0);
+				vdev->format.des_info.gdb_irq = irq_of_parse_and_map(node, 1);
+
+				log("%s mipi clock : %d Hz\n", __func__, mipi_csi2_frequency);
+				log("csi2 irq num : %d, Generic data buffer irq num : %d\n", \
+					vdev->format.des_info.csi2_irq, vdev->format.des_info.gdb_irq);
+			} else {
+				log("Fail mipi_csi2_node\n");
 				return -ENODEV;
 			}
-			else {
-				clk_set_rate(mipi_csi2_clk, mipi_csi2_frequency);
-				clk_prepare_enable(mipi_csi2_clk);
+
+			// ddi config
+			node = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
+			if (node == NULL) {
+				log("cann't find DDI Config node \n");
+				return -ENODEV;
+			} else {
+				ddicfg_base = (volatile void __iomem *)of_iomap(node, 0);
+				log("ddicfg addr: %p\n", ddicfg_base);
 			}
 		}
-
-		videosource_info.des_info.csi2_irq = irq_of_parse_and_map(mipi_csis_node, 0);
-		videosource_info.des_info.gdb_irq = irq_of_parse_and_map(mipi_csis_node,1);
-
-		log("%s mipi clock : %d Hz\n", __func__, mipi_csi2_frequency);
-		log("csi2 irq num : %d, Generic data buffer irq num : %d \n", \
-				videosource_info.des_info.csi2_irq, videosource_info.des_info.gdb_irq);
-	}
-	else {
-		log("Fail mipi_csi2_node \n");
-		return -ENODEV;
-	}
-
-	ddicfg_node = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
-	if (ddicfg_node == NULL) {
-		log("cann't find DDI Config node \n");
-		return -ENODEV;
-	}
-	else {
-		ddicfg_base = (volatile void __iomem *)of_iomap(ddicfg_node, 0);
-		log("%s addr :%p \n", __func__, ddicfg_base);
-	}
-
-	return 0;
-}
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-
-int videosource_if_parse_gpio_dt_data(struct device_node * dev_node) {
-	struct device_node * videosource_node = NULL;
-
-	videosource_node = of_find_node_by_name(dev_node, MODULE_NODE);
-	if(videosource_node) {
-		videosource_info.gpio.pwr_port = of_get_named_gpio_flags(videosource_node, "pwr-gpios", 0, &videosource_info.gpio.pwr_value);
-		videosource_info.gpio.pwd_port = of_get_named_gpio_flags(videosource_node, "pwd-gpios", 0, &videosource_info.gpio.pwd_value);
-		videosource_info.gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &videosource_info.gpio.rst_value);
-		videosource_info.gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &videosource_info.gpio.intb_value);
-
-		if(0 < videosource_info.gpio.pwr_port) {
-			log("pwr: port = %3d, curr val = %d, set val = %d\n",	\
-				videosource_info.gpio.pwr_port, gpio_get_value(videosource_info.gpio.pwr_port), videosource_info.gpio.pwr_value);
-			gpio_request(videosource_info.gpio.pwr_port, "camera power");
-			gpio_direction_output(videosource_info.gpio.pwr_port, videosource_info.gpio.pwr_value);
-		}
-		if(0 < videosource_info.gpio.pwd_port) {
-			log("pwd: port = %3d, curr val = %d, set val = %d\n",	\
-				videosource_info.gpio.pwd_port, gpio_get_value(videosource_info.gpio.pwd_port), videosource_info.gpio.pwd_value);
-			gpio_request(videosource_info.gpio.pwd_port, "camera power down");
-			gpio_direction_output(videosource_info.gpio.pwd_port, videosource_info.gpio.pwd_value);
-		}
-		if(0 < videosource_info.gpio.rst_port) {
-			log("rst: port = %3d, curr val = %d, set val = %d\n",	\
-				videosource_info.gpio.rst_port, gpio_get_value(videosource_info.gpio.rst_port), videosource_info.gpio.rst_value);
-			gpio_request(videosource_info.gpio.rst_port, "camera reset");
-			gpio_direction_output(videosource_info.gpio.rst_port, videosource_info.gpio.rst_value);
-		}
-		if(0 < videosource_info.gpio.intb_port) {
-			log("intb: port = %3d, curr val = %d \n",	\
-				videosource_info.gpio.intb_port, gpio_get_value(videosource_info.gpio.intb_port));
-			gpio_request(videosource_info.gpio.intb_port, "camera interrupt");
-			gpio_direction_input(videosource_info.gpio.intb_port);
-		}
-
 	} else {
 		printk("could not find sensor module node!! \n");
 		return -ENODEV;
 	}
 
+	return ret;
+}
+
+int videosource_request_gpio(videosource_t * vdev) {
+	FUNCTION_IN
+
+	if(0 < vdev->gpio.pwr_port) {
+		log("pwr: port = %3d, curr val = %d, set val = %d\n",	\
+			vdev->gpio.pwr_port, gpio_get_value(vdev->gpio.pwr_port), vdev->gpio.pwr_value);
+		gpio_request(vdev->gpio.pwr_port, "camera power");
+		gpio_direction_output(vdev->gpio.pwr_port, vdev->gpio.pwr_value);
+	}
+	if(0 < vdev->gpio.pwd_port) {
+		log("pwd: port = %3d, curr val = %d, set val = %d\n",	\
+			vdev->gpio.pwd_port, gpio_get_value(vdev->gpio.pwd_port), vdev->gpio.pwd_value);
+		gpio_request(vdev->gpio.pwd_port, "camera power down");
+		gpio_direction_output(vdev->gpio.pwd_port, vdev->gpio.pwd_value);
+	}
+	if(0 < vdev->gpio.rst_port) {
+		log("rst: port = %3d, curr val = %d, set val = %d\n",	\
+			vdev->gpio.rst_port, gpio_get_value(vdev->gpio.rst_port), vdev->gpio.rst_value);
+		gpio_request(vdev->gpio.rst_port, "camera reset");
+		gpio_direction_output(vdev->gpio.rst_port, vdev->gpio.rst_value);
+	}
+	if(0 < vdev->gpio.intb_port) {
+		log("intb: port = %3d, curr val = %d \n",	\
+			vdev->gpio.intb_port, gpio_get_value(vdev->gpio.intb_port));
+		gpio_request(vdev->gpio.intb_port, "camera interrupt");
+		gpio_direction_input(vdev->gpio.intb_port);
+	}
+
+	FUNCTION_OUT
 	return 0;
 }
 
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-int videosource_if_init_mipi_csi2_interface(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int onOff) {
+int videosource_free_gpio(videosource_t * vdev) {
+	FUNCTION_IN
+
+	// free port gpios
+	if(0 < vdev->gpio.intb_port)	gpio_free(vdev->gpio.intb_port);
+	if(0 < vdev->gpio.pwr_port)		gpio_free(vdev->gpio.pwr_port);
+	if(0 < vdev->gpio.pwd_port)		gpio_free(vdev->gpio.pwd_port);
+	if(0 < vdev->gpio.rst_port)		gpio_free(vdev->gpio.rst_port);
+
+	FUNCTION_OUT
+	return 0;
+}
+
+int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
 	unsigned int idx = 0;
 
 	if(onOff) {
@@ -264,33 +348,33 @@ int videosource_if_init_mipi_csi2_interface(TCC_SENSOR_INFO_TYPE * sensor_info, 
 		/*
 		 * Set D-PHY Common control
 		 */
-		log("hssettle value : 0x%x \n", sensor_info->des_info.hssettle);
-		MIPI_CSIS_Set_DPHY_Common_Control(sensor_info->des_info.hssettle, \
-											sensor_info->des_info.clksettlectl, \
+		log("hssettle value : 0x%x \n", format->des_info.hssettle);
+		MIPI_CSIS_Set_DPHY_Common_Control(format->des_info.hssettle, \
+											format->des_info.clksettlectl, \
 											ON, \
 											OFF, \
 											OFF, \
-											sensor_info->des_info.data_lane_num, \
+											format->des_info.data_lane_num, \
 											ON);
 
 
-		for(idx = 0; idx < sensor_info->des_info.input_ch_num ; idx++) {
+		for(idx = 0; idx < format->des_info.input_ch_num ; idx++) {
 			MIPI_CSIS_Set_ISP_Configuration(idx, \
-											sensor_info->des_info.pixel_mode, \
+											format->des_info.pixel_mode, \
 											OFF, \
 											OFF, \
-											sensor_info->des_info.data_format, \
+											format->des_info.data_format, \
 											idx);
-			MIPI_CSIS_Set_ISP_Resolution(idx, sensor_info->width , sensor_info->height);
+			MIPI_CSIS_Set_ISP_Resolution(idx, format->width , format->height);
 		}
 
 		MIPI_CSIS_Set_CSIS_Clock_Control(0x0, 0xf);
 
-		MIPI_CSIS_Set_CSIS_Common_Control(sensor_info->des_info.input_ch_num, \
+		MIPI_CSIS_Set_CSIS_Common_Control(format->des_info.input_ch_num, \
 											0x0, \
 											ON, \
-											sensor_info->des_info.interleave_mode, \
-											sensor_info->des_info.data_lane_num, \
+											format->des_info.interleave_mode, \
+											format->des_info.data_lane_num, \
 											OFF, \
 											OFF, \
 											ON);
@@ -311,27 +395,34 @@ int videosource_if_init_mipi_csi2_interface(TCC_SENSOR_INFO_TYPE * sensor_info, 
 	return 0;
 }
 
-int videosource_if_set_mipi_csi2_interrupt(TCC_SENSOR_INFO_TYPE * sensor_info, unsigned int onOff) {
+int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
 	if(onOff) {
 		// clear interrupt
 		MIPI_CSIS_Set_CSIS_Interrupt_Src(0, \
-                CIM_MSK_FrameStart_MASK | CIM_MSK_FrameEnd_MASK | CIM_MSK_ERR_SOT_HS_MASK | \
-                CIM_MSK_ERR_LOST_FS_MASK | CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
-                CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK);
+						CIM_MSK_FrameStart_MASK | CIM_MSK_FrameEnd_MASK | \
+						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
+						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
+						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
+						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK);
 
 		MIPI_CSIS_Set_CSIS_Interrupt_Src(1, \
 						CIM_MSK_LINE_END_MASK);
 
-//		  if(request_threaded_irq(videosource_info.des_info.csi2_irq, videosource_if_mipi_csi2_isr, ds90ub964_irq_thread_handler, 0, "mipi_csi2", NULL)) {
-//		  if(request_irq(videosource_info.des_info.csi2_irq, videosource_if_mipi_csi2_isr, IRQF_SHARED, "mipi_csi2", "mipi_csi2")) {
-        if(request_irq(videosource_info.des_info.csi2_irq, videosource_if_mipi_csi2_isr, 0, "mipi_csi2", NULL)) {
-			printk("fail request irq(%d) \n", videosource_info.des_info.csi2_irq);
+//		  if(request_threaded_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, ds90ub964_irq_thread_handler, 0, "mipi_csi2", NULL)) {
+//		  if(request_irq(vdev->format.des_info.csi2_irq, videosource_if_mipi_csi2_isr, IRQF_SHARED, "mipi_csi2", "mipi_csi2")) {
+		if(request_irq(vdev->format.des_info.csi2_irq, \
+						videosource_if_mipi_csi2_isr, \
+						0, \
+						"mipi_csi2", \
+						NULL)) {
+			printk("fail request irq(%d) \n", vdev->format.des_info.csi2_irq);
 		}
 		else {
 			// unmask interrupt
 			MIPI_CSIS_Set_CSIS_Interrupt_Mask(0, \
-                    CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | CIM_MSK_ERR_LOST_FE_MASK | \
-                    CIM_MSK_ERR_OVER_MASK | CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
+						CIM_MSK_ERR_SOT_HS_MASK | CIM_MSK_ERR_LOST_FS_MASK | \
+						CIM_MSK_ERR_LOST_FE_MASK | CIM_MSK_ERR_OVER_MASK | \
+						CIM_MSK_ERR_WRONG_CFG_MASK | CIM_MSK_ERR_ECC_MASK | \
 						CIM_MSK_ERR_CRC_MASK | CIM_MSK_ERR_ID_MASK, \
 						0);
 
@@ -341,193 +432,249 @@ int videosource_if_set_mipi_csi2_interrupt(TCC_SENSOR_INFO_TYPE * sensor_info, u
 		}
 	}
 	else {
-//		  free_irq(videosource_info.des_info.csi2_irq, "mipi_csi2");
-		free_irq(videosource_info.des_info.csi2_irq, NULL);
+//		  free_irq(vdev->format.des_info.csi2_irq, "mipi_csi2");
+		free_irq(vdev->format.des_info.csi2_irq, NULL);
 	}
 
 	return 0;
 }
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
 
-/* Initialize the sensor.
- * This routine allocates and initializes the data structure for the sensor,
- * powers up the sensor, registers the I2C driver, and sets a default image
- * capture format in pix.  The capture format is not actually programmed
- * into the sensor by this routine.
- * This function must return a non-NULL value to indicate that
- * initialization is successful.
- */
-int videosource_if_init(void) {
-#if 0
-	/* Make the default capture format QVGA YUV422 */
-	videosource_info.width = videosource_info.sensor_sizes[0].width;
-	videosource_info.height = videosource_info.sensor_sizes[0].height;
-	videosource_info.data_format = V4L2_PIX_FMT_YUYV;
-	sensor_try_format();
-#endif
-
-	return 0;
-}
-
-void videosource_if_set(int index) {
-	sensor_info_init(&videosource_info);
-}
-
-void videosource_if_api_connect(int index) {
-	sensor_init_fnc(&videosource_func);
-}
-
-void sensor_delay(int ms) {
-	unsigned int msec = ms / 10; //10msec unit
-
-	if(!msec)	msleep(1);
-	else		msleep(msec);
-}
-
-void sensor_port_enable(int port) {
-	if(0 < port) gpio_set_value_cansleep(port, ON);
-}
-
-void sensor_port_disable(int port) {
-	if(0 < port) gpio_set_value_cansleep(port, OFF);
-}
-
-int sensor_get_port(int port) {
-	if(port < 0) return -1;
-	return gpio_get_value(port);
-}
-
-int videosource_if_set_port(struct device * dev, int enable) {
+int videosource_set_port(videosource_t * vdev, int enable) {
 	struct pinctrl		* pinctrl	= NULL;
 	int					ret			= 0;
 
 	FUNCTION_IN
 
-	// pinctrl
-	pinctrl = pinctrl_get_select(dev, (enable == ENABLE) ? "active" : "idle");
-	if(IS_ERR(pinctrl)) {
-		pinctrl_put(pinctrl);
-		printk(KERN_ERR "%s: pinctrl select failed\n", __func__);
-		return -1;
+#ifdef CONFIG_ARCH_TCC803X
+	if(vdev->type != VIDEOSOURCE_TYPE_MIPI)
+#endif//CONFIG_ARCH_TCC803X
+	{
+		// pinctrl
+		pinctrl = pinctrl_get_select(&vdev->client->dev, (enable == ENABLE) ? "active" : "idle");
+		if(IS_ERR(pinctrl)) {
+			pinctrl_put(pinctrl);
+			printk(KERN_ERR "%s: pinctrl select failed\n", __func__);
+			return -1;
+		}
 	}
 
 	FUNCTION_OUT
 	return ret;
 }
 
-int videosource_if_change_mode(int mode) {
+#define GPIO_FUNC					0x30
+
+static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, unsigned pin,
+		       void __iomem **reg, unsigned *offset)
+{
+	struct tcc_pin_bank *bank = pctl->pin_banks;
+
+	while (pin >= bank->base && (bank->base + bank->npins - 1) < pin)
+		++bank;
+
+	*reg = pctl->base + bank->reg_base;
+	*offset = pin - bank->base;
+}
+
+int videosource_if_check_cif_port(struct device * dev, int enable) {
+	struct pinctrl			* pinctrl	= NULL;
+	struct pinctrl_state	* state		= NULL;
+	struct pinctrl_setting	* setting	= NULL;
+	char					name[1024];
+	int						ret			= 0;
+
+	// get pinctrl
+	pinctrl = pinctrl_get(dev);
+	if(IS_ERR(pinctrl)) {
+		log("ERROR: pinctrl_get returned %p\n", pinctrl);
+		return -1;//p;
+	}
+
+	// get state of pinctrl
+	sprintf(name, "%s", (enable == ENABLE) ? "active" : "idle");
+	state = pinctrl_lookup_state(pinctrl, name);
+	if(IS_ERR(state)) {
+		log("ERROR: pinctrl_lookup_state returned %p\n", state);
+		pinctrl_put(pinctrl);
+		return -1;//ERR_CAST(state);
+	}
+
+	// check if the current port configuration is the same as the expected one
+	list_for_each_entry(setting, &state->settings, node) {
+		if(setting->type == PIN_MAP_TYPE_CONFIGS_GROUP) {
+			struct pinctrl_dev			* pctldev	= setting->pctldev;
+			const struct pinctrl_ops	* pctlops	= pctldev->desc->pctlops;
+
+			struct tcc_pinctrl			* pctl		= pinctrl_dev_get_drvdata(pctldev);
+	
+			if(pctlops->get_group_pins) {
+				const unsigned		* pins			= NULL;
+				unsigned			num_pins		= 0;
+				int					idxPin			= 0;
+				unsigned long		expected_func	= 0;
+				unsigned long		current_func	= 0;
+
+				// get the original pinctrl configuration information
+				ret = pctlops->get_group_pins(pctldev, setting->data.mux.group, &pins, &num_pins);
+				expected_func = tcc_pinconf_unpack_value(*setting->data.configs.configs);
+
+				// get the current pinctrl configuration information
+				for(idxPin = 0; idxPin < num_pins; idxPin++) {
+					unsigned		group	= setting->data.mux.group;
+					void __iomem	* reg	= NULL;
+					unsigned int	offset;
+					unsigned int	shift;
+
+					// get an offset of the pin
+					tcc_pin_to_reg(pctl, pctl->groups[group].pins[idxPin], &reg, &offset);
+
+					// get the register address
+					reg += GPIO_FUNC + 4 * (offset / 8);
+
+					// get the shift for the pin
+					shift = 4 * (offset % 8);
+
+					// get the function of the pin
+					current_func = (readl(reg) >> shift) & 0xF;
+
+					// check if the current function is the same as the expected function value
+					if(expected_func != current_func) {
+						log("%s [%02d] - expected_func: %lu, current_func: %lu\n", pctl->pins->name, pins[idxPin], expected_func, current_func);
+						ret = -1;
+					}
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+int videosource_if_change_mode(videosource_t * vdev, int mode) {
 	int		ret	= 0;
 
 	dlog("mode: 0x%08x\n", mode);
-	if(videosource_func.change_mode == NULL) {
+	if(vdev->driver.change_mode == NULL) {
 		log("The function to change the mode is NULL\n");
 		return -1;
 	} else {
-		ret = videosource_func.change_mode(mode);
+		ret = vdev->driver.change_mode(vdev->client, mode);
 	}
 
 	return ret;
 }
 
-int enabled;
+int videosource_if_check_status(videosource_t * vdev) {
+	int		ret	= 0;
 
-int videosource_if_initialize(void) {
-	int					ret		= 0;
-
-	FUNCTION_IN
-
-	if(enabled == ENABLE) {
-		// power-up sequence
-		videosource_func.open();
-
-		videosource_if_change_mode(MODE_INIT);
-
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-        if(!(strncmp(MODULE_NODE, "des_", 4))) {            
-            // init remote serializer
-            videosource_if_change_mode(MODE_SERDES_REMOTE_SER);
-
-            // enable deserializer frame sync
-            videosource_if_change_mode(MODE_SERDES_FSYNC);
-
-#if 0
-            // allocate deserializer interrupt 
-            videosource_func.set_irq_handler(&videosource_info, ON);
-            
-            // enable deserializer interrupt
-    		videosource_if_change_mode(MODE_SERDES_INTERRUPT);
-#endif
-
-            // set mipi-csi2 interface
-            videosource_if_init_mipi_csi2_interface(&videosource_info, ON);
-
-            // enable mipi-csi2 interrupt
-            videosource_if_set_mipi_csi2_interrupt(&videosource_info, ON);
-        }
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
+	if(vdev->driver.check_status == NULL) {
+		dlog("The function to check the video source's status is NULL\n");
+		return -1;
 	} else {
-		ret = -1;
+		ret = vdev->driver.check_status(vdev->client);
+		if(ret == 1)
+			dlog("videosource is working\n");
 	}
 
-	FUNCTION_OUT
-	return ret;
-}
-
-int videosource_if_deinitialize(void) {
-	int					ret		= 0;
-
-	FUNCTION_IN
-
-	if(enabled == ENABLE) {
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-		if(!(strncmp(MODULE_NODE, "des_", 4))) {
-			videosource_if_init_mipi_csi2_interface(&videosource_info, OFF);
-
-			// disable mipi-csi2 interrupt
-			videosource_if_set_mipi_csi2_interrupt(&videosource_info, OFF);
-
-#if 0
-			// disable deserializer interrupt
-			videosource_func.set_irq_handler(&videosource_info, OFF);
-#endif
-		}
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-
-		// power-down sequence
-		videosource_func.close();
-	} else {
-		ret = -1;
-	}
-
-	FUNCTION_OUT
 	return ret;
 }
 
 int videosource_if_open(struct inode * inode, struct file * file) {
+	videosource_t		* vdev	= container_of(inode->i_cdev, videosource_t, cdev);
+	int					status	= 0;
 	int					ret		= 0;
 
 	FUNCTION_IN
 
-	if(enabled == DISABLE) {
-		enabled = ENABLE;
+	if(vdev->enabled == DISABLE) {
+		// open port
+		videosource_set_port(vdev, ENABLE);
+
+		// request gpio
+		videosource_request_gpio(vdev);
+
+		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+			vdev->driver.open(&vdev->gpio);
+			if(videosource_if_check_status(vdev) != 1) {
+				ret = -1;
+				goto err_device;
+			}
+		}
+		else {
+			status = videosource_if_check_status(vdev);
+		}
+
+		if(status != 1) {	// if the video source is not working now.
+			vdev->driver.open(&vdev->gpio);
+			videosource_if_change_mode(vdev, MODE_INIT);
+
+			if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+				// init remote serializer
+				videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
+
+				// enable deserializer frame sync
+				videosource_if_change_mode(vdev, MODE_SERDES_FSYNC);
+
+	#if 0
+				// allocate deserializer interrupt
+				vdev->driver.set_irq_handler(&vdev->gpio, ON);
+
+				// enable deserializer interrupt
+				videosource_if_change_mode(vdev, MODE_SERDES_INTERRUPT);
+	#endif
+
+				// set mipi-csi2 interface
+				videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
+
+				// enable mipi-csi2 interrupt
+				videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
+			} else {
+				videosource_if_check_status(vdev);
+			}
+		}
+
+		file->private_data = vdev;
+
+		vdev->enabled = ENABLE;
 	} else {
-		log("videosource is already enabled\n");
 		ret = -1;
 	}
+
+err_device:
 
 	FUNCTION_OUT
 	return ret;
 }
 
 int videosource_if_release(struct inode * inode, struct file * file) {
+	videosource_t		* vdev	= container_of(inode->i_cdev, videosource_t, cdev);
 	int					ret		= 0;
 
 	FUNCTION_IN
 
-	if(enabled == ENABLE) {
-		enabled = DISABLE;
+	if(vdev->enabled == ENABLE) {
+		vdev->driver.close(&vdev->gpio);
+
+		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
+			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
+
+			// disable mipi-csi2 interrupt
+			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, OFF);
+
+#if 0
+			// disable deserializer interrupt
+			vdev->driver.set_irq_handler(&vdev->gpio, OFF);
+#endif
+		}
+
+		// free gpio
+		videosource_free_gpio(vdev);
+
+		// close port
+		videosource_set_port(vdev, DISABLE);
+
+		vdev->enabled = DISABLE;
 	} else {
-		log("videosource is already disabled\n");
 		ret = -1;
 	}
 
@@ -536,15 +683,26 @@ int videosource_if_release(struct inode * inode, struct file * file) {
 }
 
 long videosource_if_ioctl(struct file * filp, unsigned int cmd, unsigned long arg) {
+	videosource_t		* vdev	= filp->private_data;
 	int					ret		= 0;
 
 	switch(cmd) {
 	case VIDEOSOURCE_IOCTL_DEINITIALIZE:
-		ret = videosource_if_deinitialize();
 		break;
 
 	case VIDEOSOURCE_IOCTL_INITIALIZE:
-		ret = videosource_if_initialize();
+		break;
+
+	case VIDEOSOURCE_IOCTL_CHECK_STATUS:
+		break;
+
+	case VIDEOSOURCE_IOCTL_GET_VIDEOSOURCE_FORMAT:
+		dlog("VIDEOSOURCE_IOCTL_GET_VIDEOSOURCE_FORMAT\n");
+		ret = copy_to_user((void __user *)arg, (const void *)&vdev->format, sizeof(vdev->format));
+		if(ret < 0) {
+			log("ERROR: unable to copy the paramter(%d)\n", ret);
+			ret = -1;
+		}
 		break;
 
 	default:
@@ -562,108 +720,95 @@ struct file_operations videosource_if_fops = {
 	.unlocked_ioctl = videosource_if_ioctl,
 };
 
-#define VIDEOSOURCE_IF_MODULE_NAME	"videosource"
-#define VIDEOSOURCE_IF_DEV_MAJOR	227
-#define VIDEOSOURCE_IF_DEV_MINOR	0
-
-static struct class * videosource_if_class;
-
-int videosource_if_probe(struct platform_device * pdev) {
-	struct device		* dev	= &pdev->dev;
-	int					ret		= 0;
-
+int videosource_if_probe(videosource_t * vdev) {
+	int		index		= 0;
+	char	name[32]	= "";
+	int		ret			= 0;
 	FUNCTION_IN
 
-	videosource_if_set(0/* id */);
-
-	if((ret = videosource_if_parse_gpio_dt_data(dev->of_node)) < 0) {
+	// parse the videosource's device tree
+	if((ret = videosource_parse_gpio_dt_data(vdev, vdev->client->dev.of_node)) < 0) {
 		printk(KERN_ERR "ERROR: cannot initialize gpio port\n");
 		return ret;
 	}
 
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-	if(!(strncmp(MODULE_NODE, "des_", 4))) {
-		if((ret = videosource_if_parse_mipi_csi2_dt_data(dev->of_node)) < 0) {
-			printk(KERN_ERR "ERROR: videosource_if_parse_mipi_csi2_dt_data\n");
-			return ret;
-		}
-	}
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
+	// get the videosource's index from its alias
+	index = of_alias_get_id(vdev->client->dev.of_node, MODULE_NAME);
 
-	videosource_if_api_connect(0);
+	// set the charactor device name
+	sprintf(name, "%s%d", MODULE_NAME, index);
 
-	if((ret = videosource_if_init() < 0)) {
-		printk(KERN_ERR "ERROR: cannot initialize sensor\n");
+	// allocate a charactor device region
+	ret = alloc_chrdev_region(&vdev->cdev_region, 0, 1, name);
+	if(ret < 0) {
+		log("ERROR: Allocate a charactor device region for the \"%s\"\n", name);
 		return ret;
 	}
 
-	// open port
-	videosource_if_set_port(dev, ENABLE);
-
-	if((ret = register_chrdev(VIDEOSOURCE_IF_DEV_MAJOR, VIDEOSOURCE_IF_MODULE_NAME, &videosource_if_fops)) < 0) {
-		printk(KERN_ERR "ERROR: cannot register the videosource_if driver\n");
-		return ret;
+	// create the videosource class
+	vdev->cdev_class = class_create(THIS_MODULE, name);
+	if(vdev->cdev_class == NULL) {
+		log("ERROR: Create the \"%s\" class\n", name);
+		goto goto_unregister_chrdev_region;
 	}
 
-	videosource_if_class = class_create(THIS_MODULE, VIDEOSOURCE_IF_MODULE_NAME);
-	if(NULL == device_create(videosource_if_class, NULL, MKDEV(VIDEOSOURCE_IF_DEV_MAJOR, VIDEOSOURCE_IF_DEV_MINOR), NULL, VIDEOSOURCE_IF_MODULE_NAME)) {
-		printk(KERN_INFO "%s device_create failed\n", __FUNCTION__);
-		return ret;
+	// create a videosource device file system
+	if(device_create(vdev->cdev_class, NULL, vdev->cdev_region, NULL, name) == NULL) {
+		log("ERROR: Create the \"%s\" device file\n", name);
+		goto goto_destroy_class;
+	}
+
+	// register the videosource device as a charactor device
+	cdev_init(&vdev->cdev, &videosource_if_fops);
+	ret = cdev_add(&vdev->cdev, vdev->cdev_region, 1);
+	if(ret < 0) {
+		log("ERROR: Register the \"%s\" device as a charactor device\n", name);
+		goto goto_destroy_device;
 	}
 
 	// create video source's loglevel attribute device
-	videosource_create_attr_loglevel(dev);
+	videosource_create_attr_loglevel(&vdev->client->dev);
 
+	goto goto_end;
+
+goto_destroy_device:
+	// destroy the videosource device file system
+	device_destroy(vdev->cdev_class, vdev->cdev_region);
+	
+goto_destroy_class:
+	// destroy the videosource class
+	class_destroy(vdev->cdev_class);
+
+goto_unregister_chrdev_region:
+	// unregister the charactor device region
+	unregister_chrdev_region(vdev->cdev_region, 1);
+
+goto_end:
 	FUNCTION_OUT
 	return ret;
 }
 
-int videosource_if_remove(struct platform_device * pdev) {
-	struct device		* dev	= &pdev->dev;
-
+int videosource_if_remove(videosource_t * vdev) {
+	int		ret	= 0;
 	FUNCTION_IN
 
-	// close port
-	videosource_if_set_port(dev, DISABLE);
+	// unregister the videosource device
+	cdev_del(&vdev->cdev);
 
-	// free port gpios
-	if(0 < videosource_info.gpio.pwr_port) gpio_free(videosource_info.gpio.pwr_port);
-	if(0 < videosource_info.gpio.pwd_port) gpio_free(videosource_info.gpio.pwd_port);
-	if(0 < videosource_info.gpio.rst_port) gpio_free(videosource_info.gpio.rst_port);
+	// destroy the videosource device file system
+	device_destroy(vdev->cdev_class, vdev->cdev_region);
 
-#if defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-	if(!(strncmp(MODULE_NODE, "des_", 4))) {
+	// destroy the videosource class
+	class_destroy(vdev->cdev_class);
+
+	// unregister the charactor device region
+	unregister_chrdev_region(vdev->cdev_region, 1);
+
+	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 		clk_disable(mipi_csi2_clk);
 	}
-#endif//defined(VIDEO_VIDEOSOURCE_VIDEODECODER_DS90UB964)
-
-	// unregister the videosource_if device as a char device.
-	device_destroy(videosource_if_class, MKDEV(VIDEOSOURCE_IF_DEV_MAJOR, VIDEOSOURCE_IF_DEV_MINOR));
-	class_destroy(videosource_if_class);
-	unregister_chrdev(VIDEOSOURCE_IF_DEV_MAJOR, VIDEOSOURCE_IF_MODULE_NAME);
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
-
-static struct of_device_id videosource_if_of_match[] = {
-	{ .compatible = "telechips,videosource" },
-};
-MODULE_DEVICE_TABLE(of, videosource_if_of_match);
-
-static struct platform_driver videosource_if_driver = {
-	.probe		= videosource_if_probe,
-	.remove		= videosource_if_remove,
-	.driver		= {
-		.name			= VIDEOSOURCE_IF_MODULE_NAME,
-		.owner			= THIS_MODULE,
-		.of_match_table	= of_match_ptr(videosource_if_of_match)
-	},
-};
-module_platform_driver(videosource_if_driver);
-
-MODULE_DESCRIPTION("Telechips Video-Source Interface Driver");
-MODULE_VERSION("v1.0");
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Telechips.Co.Ltd");
 

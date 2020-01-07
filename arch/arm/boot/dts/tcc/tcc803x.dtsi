@@ -36,7 +36,7 @@
 		reg = <0xF0000000 0x00040000>;
 	};
 
-	aliases {
+	aliases: aliases {
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -3178,7 +3178,6 @@
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3194,7 +3193,6 @@
 	videoinput1: videoinput@1 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		5>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3210,7 +3208,6 @@
 	videoinput2: videoinput@2 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		rdma		= <&vioc_rdma		VIOC_RDMA13>;
 		vin		= <&vioc_vin		VIOC_VIN20>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3226,7 +3223,6 @@
 	videoinput3: videoinput@3 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -3242,7 +3238,6 @@
 	videoinput4: videoinput@4 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
 		status		= "disabled";
@@ -3251,7 +3246,6 @@
 	videoinput5: videoinput@5 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
 		status		= "disabled";
@@ -3260,7 +3254,6 @@
 	videoinput6: videoinput@6 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
 		status		= "disabled";

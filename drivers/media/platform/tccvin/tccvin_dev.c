@@ -1,20 +1,19 @@
-
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -40,7 +39,9 @@ Suite 330, Boston, MA 02111-1307 USA
 
 #define	DRIVER_NAME		"avn-camera"
 
+#ifndef CONFIG_TCC803X_CA7S
 static unsigned int NORMAL_OVP = 24;
+#endif//CONFIG_TCC803X_CA7S
 static unsigned int RCAM_OVP = 16;
 
 #define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
@@ -258,6 +259,17 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		return -ENODEV;
 	}
 
+	// cif port
+	vdev->cif.cif_port = -1;
+	vioc_node = of_find_compatible_node(NULL, NULL, "telechips,cif-port");
+	if(vioc_node != NULL) {
+		vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
+		dlog("%10s: 0x%p\n", "CIF Port", vdev->cif.cifport_addr);
+	} else {
+		log("ERROR: The CIF port node is NULL\n");
+		return -ENODEV;
+	}
+
 	// VIN
 	vdev->cif.vioc_path.vin = -1;
 	vioc_node = of_parse_phandle(main_node, "vin", 0);
@@ -269,20 +281,6 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		}
 	} else {
 		log("ERROR: \"vin\" node is not found.\n");
-		return -ENODEV;
-	}
-
-	// cif port
-	vdev->cif.cif_port = -1;
-	vioc_node = of_parse_phandle(main_node, "cifport", 0);
-	if(vioc_node != NULL) {
-		of_property_read_u32_index(main_node, "cifport", 1, &vdev->cif.cif_port);
-		if(vdev->cif.cif_port != -1) {
-			vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
-			dlog("%10s[%2d]: 0x%p\n", "CIF Port", vdev->cif.cif_port, vdev->cif.cifport_addr);
-		}
-	} else {
-		log("ERROR: The CIF port node is NULL\n");
 		return -ENODEV;
 	}
 
@@ -684,7 +682,7 @@ int tccvin_set_pgl(tccvin_dev_t * vdev) {
  */
 int tccvin_set_vin(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pVIN		= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
-	TCC_SENSOR_INFO_TYPE	* vs_info	= vdev->cif.videosource_info;
+	videosource_format_t	* vs_info	= &vdev->cif.videosource_format;
 
 	unsigned int	data_order			= vs_info->data_order;
 	unsigned int	data_format			= vs_info->data_format;
@@ -715,12 +713,12 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetImageCropOffset(pVIN, 0, 0);
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
-	if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-		(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
+	if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
+		(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
 		((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
 		(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
 
-		if(!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED))
+		if(!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED))
 			VIOC_VIN_SetY2REnable(pVIN, ON);
 	}
 	else {
@@ -751,9 +749,9 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 
 	volatile void __iomem	* pVIQE	= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
 
-	unsigned int	interlaced		= !!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED);
-	unsigned int	width			= vdev->cif.videosource_info->width;
-	unsigned int	height			= vdev->cif.videosource_info->height >> interlaced;
+	unsigned int	interlaced		= !!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED);
+	unsigned int	width			= vdev->cif.videosource_format.width;
+	unsigned int	height			= vdev->cif.videosource_format.height >> interlaced;
 
 	unsigned int	viqe_width		= 0;
 	unsigned int	viqe_height		= 0;
@@ -791,8 +789,8 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 	if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
 		VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.deintl, vdev->cif.vioc_path.vin);
 
-		if(((vdev->cif.videosource_info->data_format == FMT_YUV422_16BIT) || \
-			(vdev->cif.videosource_info->data_format == FMT_YUV422_8BIT)) && \
+		if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
+			(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
 		   ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
 			(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
 			VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
@@ -828,16 +826,16 @@ int tccvin_set_scaler(tccvin_cif_t * cif, struct v4l2_pix_format * pix_format) {
 	unsigned int	width	= pix_format->width;
 	unsigned int	height	= pix_format->height;
 
-	unsigned int	crop_x	= cif->videosource_info->crop_x;
-	unsigned int	crop_y	= cif->videosource_info->crop_y;
+	unsigned int	crop_x	= cif->videosource_format.crop_x;
+	unsigned int	crop_y	= cif->videosource_format.crop_y;
 
-	unsigned int	crop_w	= cif->videosource_info->crop_w;
-	unsigned int	crop_h	= cif->videosource_info->crop_h;
+	unsigned int	crop_w	= cif->videosource_format.crop_w;
+	unsigned int	crop_h	= cif->videosource_format.crop_h;
 
 	FUNCTION_IN
 	dlog("SC: 0x%p, Output Size - width: %d, height: %d\n", pSC, width, height);
 
-	if((cif->videosource_info->width != pix_format->width || cif->videosource_info->height != pix_format->height) || \
+	if((cif->videosource_format.width != pix_format->width || cif->videosource_format.height != pix_format->height) || \
 			(crop_w != 0 || crop_h != 0)) {
 			// Plug the scaler in
 			VIOC_CONFIG_PlugIn(cif->vioc_path.scaler, cif->vioc_path.vin);
@@ -983,7 +981,7 @@ int tccvin_set_rdma(tccvin_dev_t * vdev) {
 	unsigned int	width		= vdev->v4l2.pix_format.width;
 	unsigned int	height		= vdev->v4l2.pix_format.height;
 	unsigned int	format		= convert_format(vdev->v4l2.pix_format.pixelformat, FORMAT_TYPE_V4L2, FORMAT_TYPE_VIOC);
-	unsigned int	y2r			= DISABLE;
+	unsigned int	y2r			= 0;
 
 	buf_addr_t		* buf_addr	= &vdev->cif.preview_buf_addr[0];
 
@@ -1006,7 +1004,7 @@ int tccvin_set_rdma(tccvin_dev_t * vdev) {
 	case V4L2_PIX_FMT_NV21:
 	case V4L2_PIX_FMT_NV16:
 	case V4L2_PIX_FMT_NV61:
-		y2r	= ENABLE;
+		y2r	= 1;
 		break;
 	}
 	VIOC_RDMA_SetImageY2REnable(pRDMA, y2r);
@@ -1257,7 +1255,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 	tccvin_set_vin(vdev);
 
 	// set deinterlacer
-	if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+	if(!!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED)) {
 		// set Deinterlacer
 		tccvin_set_deinterlacer(vdev);
 	}
@@ -1281,7 +1279,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 		tccvin_set_rdma(vdev);
 
 		// set fifo
-		tccvin_set_fifo(vdev, ENABLE);
+		tccvin_set_fifo(vdev, 1);
 
 		// set wmixer_out
 #ifndef CONFIG_TCC803X_CA7S
@@ -1312,7 +1310,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 		tccvin_set_wmixer_out(cif, NORMAL_OVP);
 
 		// set fifo
-		tccvin_set_fifo(vdev, DISABLE);
+		tccvin_set_fifo(vdev, 0);
 
 		// set rdma
 //		tccvin_set_rdma(vdev);
@@ -1344,7 +1342,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 			VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.scaler);
 		}
 
-		if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
+		if(!!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED)) {
 			VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.deintl, &vioc_plug_state);
 			if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
 				VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl);
@@ -1374,7 +1372,7 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 
 	FUNCTION_IN
 
-	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == DISABLE)) {
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 0)) {
 		vdev->cif.vioc_intr.id   = -1;
 		vdev->cif.vioc_intr.bits = -1;
 
@@ -1388,11 +1386,11 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 #endif
 		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFF_MASK;
 
-		if(vdev->cif.vioc_irq_reg == DISABLE) {
+		if(vdev->cif.vioc_irq_reg == 0) {
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			ret = request_irq(vdev->cif.vioc_irq_num, tccvin_wdma_isr, IRQF_SHARED, vdev->vid_dev->name, vdev);
 			vioc_intr_enable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
-			vdev->cif.vioc_irq_reg = ENABLE;
+			vdev->cif.vioc_irq_reg = 1;
 		} else {
 			log("ERROR: The irq(%d) is already registered.\n", vdev->cif.vioc_irq_num);
 			return -1;
@@ -1411,12 +1409,12 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 
 	FUNCTION_IN
 
-	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == ENABLE)) {
-		if(vdev->cif.vioc_irq_reg == ENABLE) {
+	if((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 1)) {
+		if(vdev->cif.vioc_irq_reg == 1) {
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vioc_intr_disable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			free_irq(vdev->cif.vioc_irq_num, vdev);
-			vdev->cif.vioc_irq_reg = DISABLE;
+			vdev->cif.vioc_irq_reg = 0;
 		} else {
 			log("ERROR: The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
 			return -1;
@@ -1662,22 +1660,6 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	if(ret != 0) {
 		log("ERROR: tccvin_enable_clock returns %d\n", ret);
 		return ret;
-	}
-
-	// get a video source
-#ifdef CONFIG_VIDEO_VIDEOSOURCE
-	vdev->cif.videosource_info				= &videosource_info;
-#endif//CONFIG_VIDEO_VIDEOSOURCE
-	if(vdev->cif.videosource_info == NULL) {
-		log("ERROR: videosource_info is NULL.\n");
-		return -1;
-	}
-
-	vdev->v4l2.skip_frame					= vdev->cif.videosource_info->capture_skip_frame;
-
-	// get a pmap for capture
-	if(!!(vdev->cif.videosource_info->interlaced & V4L2_DV_INTERLACED)) {
-		pmap_get_info("rearcamera_viqe", &vdev->cif.pmap_viqe);
 	}
 
 	vdev->cif.is_handover_needed			= 0;

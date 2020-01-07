@@ -1,6 +1,6 @@
 # drivers/media/platform/videosource/Kconfig
 #
-# Copyright (c) 2010-2011 Telechips Co., Ltd.
+# Copyright (c) 2010 Telechips Co., Ltd.
 #	http://www.telechips.com/
 # Jay <B150095@telechips.com>
 #
@@ -9,8 +9,4 @@
 config VIDEO_VIDEOSOURCE
 	bool "Video Source"
 	default n
-
-if VIDEO_VIDEOSOURCE
-source drivers/media/platform/videosource/videodecoder/Kconfig
-endif#VIDEO_VIDEOSOURCE
 

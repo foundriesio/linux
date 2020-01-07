@@ -1,33 +1,32 @@
 /****************************************************************************
-One line to give the program's name and a brief idea of what it does.
-Copyright (C) 2013 Telechips Inc.
-
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
+ *
+ * Copyright (C) 2013 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
 #include <linux/delay.h>
 #include <linux/gpio.h>
 
-#include "../videosource_if.h"
+#include "../videosource_common.h"
 #include "../videosource_i2c.h"
-#include "videodecoder.h"
 
-#define DM5886_WIDTH			1920
-#define DM5886_HEIGHT			1080
+#define WIDTH			1920
+#define HEIGHT			1080
 
-struct capture_size sensor_sizes[] = {
-	{DM5886_WIDTH, DM5886_HEIGHT},
-	{DM5886_WIDTH, DM5886_HEIGHT}
+static struct capture_size sensor_sizes[] = {
+	{WIDTH, HEIGHT},
+	{WIDTH, HEIGHT}
 };
 
 static struct videosource_reg sensor_camera_ntsc[] = {
@@ -102,7 +101,7 @@ static struct videosource_reg * videosource_reg_table_list[] = {
 	sensor_camera_ntsc,
 };
 
-static int write_regs_dm5886(const struct videosource_reg * list) {
+static int write_regs(struct i2c_client * client, const struct videosource_reg * list) {
 	unsigned char data[4];
 	unsigned char bytes;
 	int ret, err_cnt = 0;
@@ -111,11 +110,11 @@ static int write_regs_dm5886(const struct videosource_reg * list) {
 		bytes = 0;
 		data[bytes++]= (unsigned char)list->reg&0xff;
 		data[bytes++]= (unsigned char)list->val&0xff;
-			
-		ret = DDI_I2C_Write(data, 1, 1);
+
+		ret = DDI_I2C_Write(client, data, 1, 1);
 		if(ret) {
 			if(4 <= ++err_cnt) {
-				printk("ERROR: Sensor I2C !!!! \n"); 
+				printk("ERROR: Sensor I2C !!!! \n");
 				return ret;
 			}
 		} else {
@@ -131,31 +130,35 @@ static int write_regs_dm5886(const struct videosource_reg * list) {
 	return 0;
 }
 
-int dm5886_open(void) {
+static int open(videosource_gpio_t * gpio) {
 	int ret = 0;
 
-	printk("%s - %s\n", __func__, MODULE_NODE);
+	FUNCTION_IN
 
-	sensor_port_disable(videosource_info.gpio.rst_port);
+	sensor_port_disable(gpio->rst_port);
 	mdelay(20);
 
-	sensor_port_enable(videosource_info.gpio.rst_port);
+	sensor_port_enable(gpio->rst_port);
 	mdelay(20);
 
+	FUNCTION_OUT
 	return ret;
 }
 
-int dm5886_close(void) {
-	sensor_port_disable(videosource_info.gpio.rst_port);
-	sensor_port_disable(videosource_info.gpio.pwr_port);
-	sensor_port_disable(videosource_info.gpio.pwd_port);
+static int close(videosource_gpio_t * gpio) {
+	FUNCTION_IN
 
-	sensor_delay(5);
+	sensor_port_disable(gpio->rst_port);
+	sensor_port_disable(gpio->pwr_port);
+	sensor_port_disable(gpio->pwd_port);
 
+	mdelay(5);
+
+	FUNCTION_OUT
 	return 0;
 }
 
-int dm5886_change_mode(int mode) {
+static int change_mode(struct i2c_client * client, int mode) {
 	int	entry	= sizeof(videosource_reg_table_list) / sizeof(videosource_reg_table_list[0]);
 	int	ret		= 0;
 
@@ -164,46 +167,52 @@ int dm5886_change_mode(int mode) {
 		return -1;
 	}
 
-	ret = write_regs_dm5886(videosource_reg_table_list[mode]);
+	ret = write_regs(client, videosource_reg_table_list[mode]);
 	mdelay(100);
 
 	return ret;
 }
 
-void sensor_info_init(TCC_SENSOR_INFO_TYPE * sensor_info) {
-	sensor_info->width				= DM5886_WIDTH;
-	sensor_info->height				= DM5886_HEIGHT - 1;
-	sensor_info->crop_x             = 0;
-	sensor_info->crop_y             = 0;
-	sensor_info->crop_w             = 0;
-	sensor_info->crop_h             = 0;
-	sensor_info->interlaced			= V4L2_DV_INTERLACED;	// V4L2_DV_PROGRESSIVE
-	sensor_info->polarities			= 0;					// V4L2_DV_VSYNC_POS_POL | V4L2_DV_HSYNC_POS_POL | V4L2_DV_PCLK_POS_POL;
-	sensor_info->data_order			= ORDER_RGB;
-	sensor_info->data_format		= FMT_YUV422_16BIT;		// data format
-	sensor_info->bit_per_pixel		= 16;					// bit per pixel
-	sensor_info->gen_field_en		= OFF;
-	sensor_info->de_active_low		= ACT_LOW;
-	sensor_info->field_bfield_low	= OFF;
-	sensor_info->vs_mask			= OFF;
-	sensor_info->hsde_connect_en	= OFF;
-	sensor_info->intpl_en			= OFF;
-	sensor_info->conv_en			= ON;					// OFF: BT.601 / ON: BT.656
+videosource_t videosource_dm5886 = {
+	.type							= VIDEOSOURCE_TYPE_VIDEODECODER,
 
-	sensor_info->capture_w			= DM5886_WIDTH;
-	sensor_info->capture_h			= (DM5886_HEIGHT / 2) - 1;
+	.format = {
+		.width						= WIDTH,
+		.height						= HEIGHT - 1,
+		.crop_x 					= 0,
+		.crop_y 					= 0,
+		.crop_w 					= 0,
+		.crop_h 					= 0,
+		.interlaced					= V4L2_DV_INTERLACED,	// V4L2_DV_PROGRESSIVE
+		.polarities					= 0,					// V4L2_DV_VSYNC_POS_POL | V4L2_DV_HSYNC_POS_POL | V4L2_DV_PCLK_POS_POL,
+		.data_order					= ORDER_RGB,
+		.data_format				= FMT_YUV422_16BIT,		// data format
+		.bit_per_pixel				= 16,					// bit per pixel
+		.gen_field_en				= OFF,
+		.de_active_low				= ACT_LOW,
+		.field_bfield_low			= OFF,
+		.vs_mask					= OFF,
+		.hsde_connect_en			= OFF,
+		.intpl_en					= OFF,
+		.conv_en					= ON,					// OFF: BT.601 / ON: BT.656
+		.se 						= OFF,
+		.fvs						= OFF,
 
-	sensor_info->capture_zoom_offset_x	= 0;
-	sensor_info->capture_zoom_offset_y	= 0;
-	sensor_info->cam_capchg_width		= 720;
-	sensor_info->framerate			= 15;
-	sensor_info->capture_skip_frame 	= 0;
-	sensor_info->sensor_sizes		= sensor_sizes;
-}
+		.capture_w					= WIDTH,
+		.capture_h					= (HEIGHT / 2) - 1,
 
-void sensor_init_fnc(SENSOR_FUNC_TYPE * sensor_func) {
-	sensor_func->open			= dm5886_open;
-	sensor_func->close			= dm5886_close;
-	sensor_func->change_mode	= dm5886_change_mode;
-}
+		.capture_zoom_offset_x		= 0,
+		.capture_zoom_offset_y		= 0,
+		.cam_capchg_width			= 720,
+		.framerate					= 15,
+		.capture_skip_frame 		= 0,
+		.sensor_sizes				= sensor_sizes,
+	},
+
+	.driver = {
+		.open						= open,
+		.close						= close,
+		.change_mode				= change_mode,
+	},
+};
 

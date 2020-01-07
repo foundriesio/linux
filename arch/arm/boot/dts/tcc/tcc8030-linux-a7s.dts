@@ -49,6 +49,9 @@
 		i2c7 = &i2c7;
 		fb0 = &fb0;
 		fb1 = &fb1;
+		videosource0 = &videosource0;
+		videosource1 = &videosource1;
+		videosource2 = &videosource2;
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		i2s0 = &i2s0;
@@ -274,20 +277,28 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c12_bus>;
 
-		videosource@isl79988 {
-			compatible	= "videosource,isl79988";
-			reg		= <0x44>;	// 0x88 >> 1
+		videosource0: videodecoder_isl79988 {
+			compatible	= "intersil,isl79988";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_8bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
 			rst-gpios	= <&gpb 14 1>;
+			reg		= <0x44>;	// 0x88 >> 1
 		};
 
-		videosource@ds90ub964 {
-			compatible  = "videosource,ds90ub964";
-			reg = <0x30>;   // 0x60 >> 1
+		videosource1: deserializer_max9286 {
+			compatible	= "maxim,max9286";
+			cifport		= <5>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x48>;	// 0x90 >> 1
 		};
 
-		videosource@max9286 {
-			compatible  = "videosource,max9286";
-			reg = <0x48>;   // 0x90 >> 1
+		videosource2: deserializer_ds90ub964 {
+			compatible	= "ti,ds90ub964";
+			cifport		= <5>;
+			reg		= <0x30>;	// 0x60 >> 1
 		};
 	};
 
@@ -760,32 +771,6 @@
 		status = "okay";
 	};
 
-	videosource {
-		compatible = "telechips,videosource";
-		status = "okay";
-
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&cam0_8bit_idle>;
-		pinctrl-1 = <&cam0_clk &cam0_data_8bit>;
-
-		atv_isl79988 {
-			rst-gpios = <&gpb 14 1>;
-		};
-
-		des_ds90ub964 {
-			pwd-gpios = <&gpg 5 1>;
-			intb-gpios = <&gph 11 1>;
-//			intb-gpios = <&gpma 15 1>;
-			mipi_csi2 = <&mipi_csi2>;
-		};
-
-		des_max9286 {
-			pwd-gpios = <&gpg 5 1>;
-			intb-gpios = <&gph 11 1>;
-			mipi_csi2 = <&mipi_csi2>;
-		};
-	};
-
 	switch_reverse {
 		compatible = "telechips,switch_reverse";
 		status = "okay";
@@ -800,7 +785,6 @@
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
 		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		vin		= <&vioc_vin		VIOC_VIN00>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
@@ -816,7 +800,6 @@
 	videoinput1: videoinput@1 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		5>;
 		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		vin		= <&vioc_vin		VIOC_VIN10>;
 		viqe		= <&vioc_viqe		VIOC_VIQE1>;
