@@ -211,6 +211,32 @@
 	};
 };
 
+/* H/W Demux */
+&hwdemux {
+	compatible = "telechips,hwdemux";
+	status = "okay";
+};
+
+&tcc_ex_tsif0 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-id = <2>;
+	tsif-port = <2>;
+	port-mux = <2>;
+	clocks = <&clk_peri PERI_TSRX0>;
+	clock-names = "tsrx0";
+	status = "okay";
+};
+
+&tcc_ex_tsif1 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-id = <3>;
+	tsif-port = <3>;
+	port-mux = <3>;
+	clocks = <&clk_peri PERI_TSRX1>;
+	clock-names = "tsrx1";
+	status = "okay";
+};
+
 /* USB 3.0 DRD */
 &dwc3_phy {
 	status = "okay";
