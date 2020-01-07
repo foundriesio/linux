@@ -3132,18 +3132,20 @@ int tcc_origin_video_off_for_last_frame(tcc_video_disp *p, struct tcc_dp_device 
 			TCC_VIQE_DI_DeInit60Hz();
 		}
         else if(p->output_toMemory && p->m2m_mode) {
-			if (type == VSYNC_MAIN)
+			if (type == VSYNC_MAIN) {
 				TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
-			else
-				TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+			} else {
+				TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+			}
 		}
 	}
 	else if(p->output_toMemory && p->m2m_mode)
 	{
-		if (type == VSYNC_MAIN)
+		if (type == VSYNC_MAIN) {
 			TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
-		else
-			TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+		} else {
+			TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+		}
 	}
 #endif
 
