@@ -47,7 +47,8 @@
 
 typedef struct vioc_path {
 	int				vin;
-	int				deintl;	// deinterlacer: viqe / deintl_s
+	int				viqe;
+	int				deintl_s;
 	int				scaler;
 	int				pgl;
 	int				wmixer;
