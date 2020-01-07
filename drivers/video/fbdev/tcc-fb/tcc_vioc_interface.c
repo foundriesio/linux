@@ -4657,6 +4657,7 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 	volatile void __iomem *pSC;
 	int iSCType;
 	unsigned int lcd_width = 0, lcd_height = 0;
+	unsigned int rdma_en = 0;
 
 //	pr_info("%s enable:%d, layer:%d, addr:0x%x, ts:%d, fmt:%d, Fw:%d, Fh:%d, Iw:%d, Ih:%d, fmt:%d onthefly:%d  map :%d \n", __func__, ImageInfo->enable, ImageInfo->Lcdc_layer, ImageInfo->addr0, ImageInfo->time_stamp,
 //			ImageInfo->fmt,ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->Image_width, ImageInfo->Image_height, ImageInfo->fmt, ImageInfo->on_the_fly, ImageInfo->private_data.optional_info[16]);
@@ -5066,13 +5067,22 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 		VIOC_RDMA_SetImageIntl(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr, 0);
 
 		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
-		if(process_lut_plugin) tca_fb_wait_for_video_rdma_eofr(pdp_data);
+		if(process_lut_plugin){
+			VIOC_RDMA_GetImageEnable(pdp_data->rdma_info[RDMA_VIDEO].virt_addr, &rdma_en);
+			if(!rdma_en  && !ImageInfo->deinterlace_mode)
+				tca_map_convter_wait_done(VIOC_MC0 + nDeCompressor_Main);
+			else if(rdma_en)
+				tca_fb_wait_for_video_rdma_eofr(pdp_data);
+		}
 		#endif
 		VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
 		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 		if(process_lut_plugin) {
 			vsync_process_lastframe_plugin_lut();
-			VIOC_RDMA_SetImageDisableNW(pdp_data->rdma_info[RDMA_VIDEO].virt_addr);
+			if(!rdma_en && !ImageInfo->deinterlace_mode)
+				tca_map_convter_onoff(VIOC_MC0 + nDeCompressor_Main, 0, 0);
+			else if(rdma_en)
+				VIOC_RDMA_SetImageDisableNW(pdp_data->rdma_info[RDMA_VIDEO].virt_addr);
 		}
 		#endif
 
