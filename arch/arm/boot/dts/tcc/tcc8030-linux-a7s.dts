@@ -138,27 +138,31 @@
                         size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
                 };
 
+		/*-----------------------------------------------------------
+		 * RearCamera Memory (synchronized with bootloader)
+		 *-----------------------------------------------------------
+		 */
 		rearcamera_viqe: rearcamera_viqe {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera_viqe";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_VIQE_SIZE>;
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA_VIQE>;
 			no-map;
 		};
 
 		rearcamera: rearcamera {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "rearcamera";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_REARCAMERA_SIZE>;
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_REARCAMERA>;
 			no-map;
 		};
 
 		parking_gui: parking_gui {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_PARKING_GUI_SIZE>;
+			alloc-ranges = <REARCAMERA_MEM_BASE REARCAMERA_MEM_SIZE>;
+			size = <PMAP_SIZE_PARKING_GUI>;
 			no-map;
 		};
 	};

@@ -1094,7 +1094,41 @@ int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned 
 	return 0;
 }
 
-int tccvin_allocate_buffers(tccvin_dev_t * vdev) {
+int tccvin_allocate_essential_buffers(tccvin_dev_t * vdev) {
+	struct v4l2_buffer	req;
+	int					idxBuf = 0, nBuf = 4;
+	int					ret = 0;
+
+	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
+	if(pmap_get_info(vdev->cif.pmap_viqe.name, &(vdev->cif.pmap_viqe)) == 1) {
+		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+			vdev->cif.pmap_viqe.name, \
+			vdev->cif.pmap_viqe.base, \
+			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
+			vdev->cif.pmap_viqe.size);
+	} else {
+		log("ERROR: get \"rearcamera_viqe\" pmap information.\n");
+		ret = -1;
+	}
+
+#ifdef CONFIG_OVERLAY_PGL
+	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
+	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
+		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
+			vdev->cif.pmap_pgl.name, \
+			vdev->cif.pmap_pgl.base, \
+			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
+			vdev->cif.pmap_pgl.size);
+	} else {
+		log("ERROR: get \"parking_gui\" pmap information.\n");
+		ret = -1;
+	}
+#endif//CONFIG_OVERLAY_PGL
+
+    return ret;
+}
+
+int tccvin_allocate_preview_buffers(tccvin_dev_t * vdev) {
 	struct v4l2_buffer	req;
 	int					idxBuf = 0, nBuf = 4;
 	int					ret = 0;
@@ -1602,6 +1636,9 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	init_waitqueue_head(&vdev->v4l2.frame_wait);
 	INIT_WORK(&vdev->v4l2.wdma_work, wdma_work_thread);
 
+	// allocate essential buffers
+	tccvin_allocate_essential_buffers(vdev);
+
 	FUNCTION_OUT
 	return ret;
 }
@@ -1707,7 +1744,7 @@ int tccvin_v4l2_reqbufs(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 
 	case V4L2_MEMORY_USERPTR:
 		// allocate frame buffer memory
-		tccvin_allocate_buffers(vdev);
+		tccvin_allocate_preview_buffers(vdev);
 		break;
 
 	case V4L2_MEMORY_OVERLAY:
