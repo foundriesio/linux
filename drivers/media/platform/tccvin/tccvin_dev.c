@@ -304,13 +304,14 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 #endif//CONFIG_OVERLAY_PGL
 
 	// VIQE
-	vdev->cif.vioc_path.deintl = -1;
+	vdev->cif.vioc_path.viqe = -1;
+	vdev->cif.vioc_path.deintl_s = -1;
 	vioc_node = of_parse_phandle(main_node, "viqe", 0);
 	if(vioc_node) {
-		of_property_read_u32_index(main_node, "viqe", 1, &vdev->cif.vioc_path.deintl);
-		if(vdev->cif.vioc_path.deintl != -1) {
-			address = VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
-			dlog("%10s[%2d]: 0x%p\n", "VIQE", get_vioc_index(vdev->cif.vioc_path.deintl), address);
+		of_property_read_u32_index(main_node, "viqe", 1, &vdev->cif.vioc_path.viqe);
+		if(vdev->cif.vioc_path.viqe != -1) {
+			address = VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe);
+			dlog("%10s[%2d]: 0x%p\n", "VIQE", get_vioc_index(vdev->cif.vioc_path.viqe), address);
 		}
 	} else {
 		dlog("\"viqe\" node is not found.\n");
@@ -318,11 +319,10 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		// DEINTL_S
 		vioc_node = of_parse_phandle(main_node, "deintls", 0);
 		if(vioc_node) {
-			vdev->cif.vioc_path.deintl = -1;
-			of_property_read_u32_index(main_node, "deintls", 1, &vdev->cif.vioc_path.deintl);
-			if(vdev->cif.vioc_path.deintl != -1) {
-				address = VIOC_DEINTLS_GetAddress();//vdev->cif.vioc_path.deintl);
-				dlog("%10s[%2d]: 0x%p\n", "DEINTL_S", get_vioc_index(vdev->cif.vioc_path.deintl), address);
+			of_property_read_u32_index(main_node, "deintls", 1, &vdev->cif.vioc_path.deintl_s);
+			if(vdev->cif.vioc_path.deintl_s != -1) {
+				address = VIOC_DEINTLS_GetAddress();//vdev->cif.vioc_path.deintl_s);
+				dlog("%10s[%2d]: 0x%p\n", "DEINTL_S", get_vioc_index(vdev->cif.vioc_path.deintl_s), address);
 			}
 		} else {
 			dlog("\"deintls\" node is not found.\n");
@@ -475,7 +475,8 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 		vioc->pgl,
 #endif
 		vioc->vin,
-		vioc->deintl,
+		vioc->viqe,
+		vioc->deintl_s,
 		vioc->scaler,
 		vioc->wmixer,
 		vioc->wdma,
@@ -541,7 +542,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 	goto end;
 
 err_viocmg:
-#endif
+#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
 	// reset
 	for(idxComponent=nComponent - 1; 0 <= idxComponent; idxComponent--) {
@@ -555,7 +556,9 @@ err_viocmg:
 			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_CLEAR);
 	}
 
+#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 end:
+#endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
 	FUNCTION_OUT
 	return 0;
@@ -717,15 +720,18 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 
 	VIOC_VIN_SetSEEnable(pVIN, se);
 	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
+
+	log("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_format.data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
+	log("vdev->v4l2.pix_format.pixelformat: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->v4l2.pix_format.pixelformat, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
 	if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
 		(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
 		((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
 		(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
 
-		if(!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED))
+		log("vdev->cif.videosource_format.interlaced: 0x%08x\n", vdev->cif.videosource_format.interlaced);
+		if(!((vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED) && (vdev->cif.vioc_path.viqe != -1)))
 			VIOC_VIN_SetY2REnable(pVIN, ON);
-	}
-	else {
+	} else {
 		VIOC_VIN_SetY2REnable(pVIN, OFF);
 	}
 
@@ -748,67 +754,78 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
  *	0:		Success
  */
 int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
-//	struct device_node * main_node	= vdev->plt_dev->dev.of_node;
-//	struct device_node * hdl_np		= NULL;
-
-	volatile void __iomem	* pVIQE	= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
-
-	unsigned int	interlaced		= !!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED);
-	unsigned int	width			= vdev->cif.videosource_format.width;
-	unsigned int	height			= vdev->cif.videosource_format.height >> interlaced;
-
-	unsigned int	viqe_width		= 0;
-	unsigned int	viqe_height		= 0;
-	unsigned int	format			= VIOC_VIQE_FMT_YUV422;
-	unsigned int	bypass_deintl	= VIOC_VIQE_DEINTL_MODE_3D;
-	unsigned int	offset			= width * height * 2 * 2;
-	unsigned int	deintl_base0	= vdev->cif.pmap_viqe.base;
-	unsigned int	deintl_base1	= deintl_base0 + offset;
-	unsigned int	deintl_base2	= deintl_base1 + offset;
-	unsigned int	deintl_base3	= deintl_base2 + offset;
-
-	unsigned int	cdf_lut_en		= OFF;
-	unsigned int	his_en			= OFF;
-	unsigned int	gamut_en		= OFF;
-	unsigned int	d3d_en			= OFF;
-	unsigned int	deintl_en		= ON;
-//	unsigned int	* viqe_set_reg1	= NULL;
-//	unsigned int	* viqe_set_reg2	= NULL;
+	int		ret	= 0;
 
 	FUNCTION_IN
-	dlog("VIQE: 0x%p, Source Size - width: %d, height: %d\n", pVIQE, width, height);
+
+	if(vdev->cif.vioc_path.viqe != -1) {
+		volatile void __iomem	* pVIQE			= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe);
+
+		unsigned int			interlaced		= !!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED);
+		unsigned int			width			= vdev->cif.videosource_format.width;
+		unsigned int			height			= vdev->cif.videosource_format.height >> interlaced;
+
+		unsigned int			viqe_width		= 0;
+		unsigned int			viqe_height		= 0;
+		unsigned int			format			= VIOC_VIQE_FMT_YUV422;
+		unsigned int			bypass_deintl	= VIOC_VIQE_DEINTL_MODE_3D;
+		unsigned int			offset			= width * height * 2 * 2;
+		unsigned int			deintl_base0	= vdev->cif.pmap_viqe.base;
+		unsigned int			deintl_base1	= deintl_base0 + offset;
+		unsigned int			deintl_base2	= deintl_base1 + offset;
+		unsigned int			deintl_base3	= deintl_base2 + offset;
+
+		unsigned int			cdf_lut_en		= OFF;
+		unsigned int			his_en			= OFF;
+		unsigned int			gamut_en		= OFF;
+		unsigned int			d3d_en			= OFF;
+		unsigned int			deintl_en		= ON;
+
+//		struct device_node		* node			= NULL;
+//		unsigned int			* viqe_set_reg1	= NULL;
+//		unsigned int			* viqe_set_reg2	= NULL;
+
+		dlog("VIQE: 0x%p, Source Size - width: %d, height: %d\n", pVIQE, width, height);
 
 #if 0
-	if(!(hdl_np = of_parse_phandle(main_node, "viqe_set", 0))) {
-		printk("could not find cam_viqe_set node!! \n");
-	} else {
-		viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 2 : 0);
-		viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, is_VIOC_REMAP ? 3 : 1);
+		if(!(hdl_np = of_parse_phandle(vdev->plt_dev->dev.of_node, "viqe_set", 0))) {
+			printk("could not find cam_viqe_set node!! \n");
+		} else {
+			viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, 0);
+			viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, 1);
 
-		BITCSET(*viqe_set_reg1,1<<3,1<<3);
-		BITCSET(*viqe_set_reg2,1<<8 | 1<<9 , 1<<8 | 1<<9);
-	}
+			BITCSET(*viqe_set_reg1,1<<3,1<<3);
+			BITCSET(*viqe_set_reg2,1<<8 | 1<<9 , 1<<8 | 1<<9);
+		}
 #endif
 
-	if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
-		VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.deintl, vdev->cif.vioc_path.vin);
+		if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
+			VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.viqe, vdev->cif.vioc_path.vin);
 
-		if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
-			(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
-		   ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
-			(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
-			VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
-			VIOC_VIQE_SetImageY2REnable(pVIQE, ON);
+			if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
+				(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
+			   ((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
+				(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
+				VIOC_VIQE_SetImageY2RMode(pVIQE, 2);
+				VIOC_VIQE_SetImageY2REnable(pVIQE, ON);
+			}
+			VIOC_VIQE_SetControlRegister(pVIQE, viqe_width, viqe_height, format);
+			VIOC_VIQE_SetDeintlRegister(pVIQE, format, OFF, viqe_width, viqe_height, bypass_deintl,	\
+				deintl_base0, deintl_base1, deintl_base2, deintl_base3);
+			VIOC_VIQE_SetControlEnable(pVIQE, cdf_lut_en, his_en, gamut_en, d3d_en, deintl_en);
+			VIOC_VIQE_SetDeintlModeWeave(pVIQE);
 		}
-		VIOC_VIQE_SetControlRegister(pVIQE, viqe_width, viqe_height, format);
-		VIOC_VIQE_SetDeintlRegister(pVIQE, format, OFF, viqe_width, viqe_height, bypass_deintl,	\
-			deintl_base0, deintl_base1, deintl_base2, deintl_base3);
-		VIOC_VIQE_SetControlEnable(pVIQE, cdf_lut_en, his_en, gamut_en, d3d_en, deintl_en);
-		VIOC_VIQE_SetDeintlModeWeave(pVIQE);
+	} else if(vdev->cif.vioc_path.deintl_s != -1) {
+		if(vdev->cif.vioc_path.vin <= VIOC_VIN30) {
+			VIOC_CONFIG_PlugIn(vdev->cif.vioc_path.deintl_s, vdev->cif.vioc_path.vin);
+		}
+	} else {
+		log("There is no available deinterlacer\n");
+		ret = -1;
 	}
 
 	FUNCTION_OUT
-	return 0;
+	return ret;
 }
 
 /*
@@ -1347,9 +1364,18 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 		}
 
 		if(!!(vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED)) {
-			VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.deintl, &vioc_plug_state);
-			if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
-				VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl);
+			if(vdev->cif.vioc_path.viqe != -1) {
+				VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.viqe, &vioc_plug_state);
+				if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
+					VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.viqe);
+				}
+			} else if(vdev->cif.vioc_path.deintl_s != -1) {
+				VIOC_CONFIG_Device_PlugState(vdev->cif.vioc_path.deintl_s, &vioc_plug_state);
+				if(vioc_plug_state.enable && vioc_plug_state.connect_statue == VIOC_PATH_CONNECTED) {
+					VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl_s);
+				}
+			} else {
+				log("ERROR: There is no available deinterlacer\n");
 			}
 		}
 	}
@@ -1492,7 +1518,8 @@ int tccvin_diagnostics_videoinput_path(tccvin_dev_t * vdev) {
 		{ (unsigned int *)VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl),		12 },
 #endif//CONFIG_OVERLAY_PGL
 		{ (unsigned int *)VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin),			16 },
-//		{ (unsigned int *)VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl),		 4 },
+//		{ (unsigned int *)VIOC_VIQE_GetAddress(vdev->cif.vioc_path.viqe),		 4 },
+//		{ (unsigned int *)VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl_s),	 4 },
 		{ (unsigned int *)VIOC_SC_GetAddress(vdev->cif.vioc_path.scaler),		 8 },
 		{ (unsigned int *)VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer),		28 },
 		{ (unsigned int *)VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma),		18 },
