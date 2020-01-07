@@ -347,4 +347,7 @@ extern unsigned int VIOC_VIN_IsEnable(volatile void __iomem *reg);
 extern void VIOC_VIN_SetDemuxPort(volatile void __iomem *reg, unsigned int p0, unsigned int p1, unsigned int p2, unsigned int p3);
 extern void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode);
 extern void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable);
+extern void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se);
+extern void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs);
+
 #endif

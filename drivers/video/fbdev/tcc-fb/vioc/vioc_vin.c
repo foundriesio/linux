@@ -242,6 +242,25 @@ void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable)
 	__raw_writel(val, reg + VD_CTRL);
 }
 
+void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + VIN_CTRL) &
+	       ~(VIN_CTRL_SE_MASK));
+	val |= (((se & 0x1) << VIN_CTRL_SE_SHIFT));
+	__raw_writel(val, reg + VIN_CTRL);
+}
+
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + VIN_MISC) & ~(VIN_MISC_FVS_MASK));
+	val |= ((fvs & 0x1) << VIN_MISC_FVS_SHIFT);
+	__raw_writel(val, reg + VIN_MISC);
+}
+#endif
+
 volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 {
 	Num = get_vioc_index(Num);
