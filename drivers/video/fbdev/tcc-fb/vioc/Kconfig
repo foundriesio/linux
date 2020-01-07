@@ -53,7 +53,7 @@ config VIOC_AFBCDEC
 config VIOC_PIXEL_MAPPER
     bool "Support VIOC PIXEL MAPPER(3D LUT)"
     depends on (ARCH_TCC899X || ARCH_TCC901X)
-    default y
+    default n
     help
         This is 3D LUT block in VIOC.
 

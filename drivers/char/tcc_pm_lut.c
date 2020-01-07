@@ -67,12 +67,13 @@ struct pm_lut_drv_type {
 	struct miscdevice		*misc;
 };
 
+extern int VIOC_AUTOPWR_Enalbe(unsigned int component, unsigned int onoff);
+
 void pm_lut_drv_set_last_frame(void)
 {
 	int pixelmapper_plug;
 	unsigned int last_frame_pm;
 	pixelmapper_plug = CheckPixelMapPathSelection(VIOC_RDMA01);
-	pr_info("pixel mapper plug in to RDMA :0x%x \n", VIOC_RDMA01);
 
 	if( pixelmapper_plug >= 0 ){
 		int ret = 0;
@@ -80,12 +81,39 @@ void pm_lut_drv_set_last_frame(void)
 			last_frame_pm = 1;
 		else
 			last_frame_pm = 0;
-		vioc_pm_set_lut_table(last_frame_pm, (unsigned int *)&backup_pm_lut_cmd.table);	
+		vioc_pm_set_lut_table(last_frame_pm, (unsigned int *)&backup_pm_lut_cmd.table);
 		ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+last_frame_pm, VIOC_RDMA01);
 		if (ret < 0)
 			pr_err("%s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
+		pr_info("pixel mapper-%d plug in to RDMA :0x%x \n", last_frame_pm, VIOC_RDMA01);
 	}
 }
+EXPORT_SYMBOL(pm_lut_drv_set_last_frame);
+
+void pm_lut_drv_last_frame_plugout(void)
+{
+	VIOC_PlugInOutCheck VIOC_lastframe_PlugIn;
+	unsigned int component = 0;
+	int ret =0;
+
+	if(VIOC_CONFIG_Device_PlugState(VIOC_PIXELMAP0, &VIOC_lastframe_PlugIn) == VIOC_DEVICE_CONNECTED){
+		if(VIOC_lastframe_PlugIn.connect_device == 1 && (VIOC_lastframe_PlugIn.connect_statue==VIOC_PATH_CONNECTED))
+			component = VIOC_PIXELMAP0;
+	}
+
+	if(VIOC_CONFIG_Device_PlugState(VIOC_PIXELMAP1, &VIOC_lastframe_PlugIn) == VIOC_DEVICE_CONNECTED){
+		if(VIOC_lastframe_PlugIn.connect_device == 1 && (VIOC_lastframe_PlugIn.connect_statue==VIOC_PATH_CONNECTED))
+			component = VIOC_PIXELMAP1;
+	}
+
+	if(component) {
+	ret = VIOC_CONFIG_PlugOut(component);
+	if (ret < 0)
+		pr_err("%s pixel_mapper_%d plug out fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
+	}
+}
+EXPORT_SYMBOL(pm_lut_drv_last_frame_plugout);
+
 static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	switch(cmd) {
@@ -95,7 +123,6 @@ static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				VIOC_PlugInOutCheck VIOC_PlugIn;
 				int next_set_pm = VIOC_DEVICE_INVALID;
 				unsigned long value = 0;
-
 
 				pm_lut_cmd = kmalloc(sizeof(struct VIOC_PM_LUT_VALUE_SET), GFP_KERNEL);
 
@@ -181,8 +208,6 @@ static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	return 0;
 }
 
-
-
 static int pm_lut_drv_open(struct inode *inode, struct file *filp)
 {
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
@@ -195,8 +220,6 @@ static int pm_lut_drv_open(struct inode *inode, struct file *filp)
 	pm_lut->dev_opened++;
 	return ret;
 }
-
-
 
 static int pm_lut_drv_release(struct inode *inode, struct file *filp)
 {
@@ -238,13 +261,13 @@ static int pm_lut_drv_probe(struct platform_device *pdev)
 		goto err_misc_register;
 	
 	platform_set_drvdata(pdev, pm_lut);
-       vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP0));
-       vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP1));
+	VIOC_AUTOPWR_Enalbe(VIOC_PIXELMAP0, 0);
+	VIOC_AUTOPWR_Enalbe(VIOC_PIXELMAP1, 0);
+	vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP0));
+	vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP1));
 	vioc_pm_cal_lut_reg();
 	pr_info("%s: :%s, Driver Initialized  pm_lut set num :0x%x\n",__func__, pdev->name, TCC_PM_LUT_SET);
 	return 0;
-
-
 
 err_misc_register:
 	misc_deregister(pm_lut->misc);
@@ -275,7 +298,6 @@ static int pm_lut_drv_resume(struct platform_device *pdev)
 {
 	return 0;
 }
-
 
 static struct of_device_id pm_lut_of_match[] = {
 	{ .compatible = "telechips,vioc_pixel_mapper" },
@@ -310,10 +332,6 @@ static void __exit pm_lut_drv_exit(void)
 module_init(pm_lut_drv_init);
 module_exit(pm_lut_drv_exit);
 
-
 MODULE_AUTHOR("Telechips.");
 MODULE_DESCRIPTION("Telechips look up table Driver");
 MODULE_LICENSE("GPL");
-
-
-

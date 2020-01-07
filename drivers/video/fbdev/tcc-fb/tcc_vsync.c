@@ -69,7 +69,9 @@
 #include <video/tcc/tcc_lut_ioctl.h>
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_lut.h>
-
+#ifdef CONFIG_ARCH_TCC899X
+#include <video/tcc/vioc_pixel_mapper.h>
+#endif
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_config.h>
@@ -129,7 +131,6 @@ volatile void __iomem * pExtFrame_RDMABase = NULL;
 static struct tcc_lcdc_image_update last_backup;
 #endif
 #endif
-
 
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 #include <video/tcc/tcc_lut_ioctl.h>
@@ -267,6 +268,11 @@ struct tcc_vsync_display_info_t vsync_vioc0_disp;
 static int tcc_vsync_mvc_status = 0;
 static int tcc_vsync_mvc_overlay_priority = 0;
 
+
+#ifdef CONFIG_TCC_PM_LUT_DRV
+extern void pm_lut_drv_set_last_frame(void);
+extern void pm_lut_drv_last_frame_plugout(void);
+#endif
 
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 static int vsync_deinit_lut(void)
@@ -2008,7 +2014,39 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 			input_image_info->Image_width = input_image_info->Frame_width;
 	}
 	#endif
-	
+
+#ifdef CONFIG_TCC_PM_LUT_DRV
+	if(p->firstFrameFlag && (input_image_info->Lcdc_layer == RDMA_VIDEO))
+	{
+		int pixelmapper_plug;
+		int plug_status = -1;
+		pixelmapper_plug = CheckPixelMapPathSelection(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
+
+		if( pixelmapper_plug >= 0 ){
+			int ret = 0;
+			VIOC_PlugInOutCheck VIOC_PlugIn;
+
+			if(VIOC_CONFIG_Device_PlugState(VIOC_PIXELMAP0, &VIOC_PlugIn) == VIOC_DEVICE_CONNECTED){
+				if(VIOC_PlugIn.connect_device == get_vioc_index(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num)&& (VIOC_PlugIn.connect_statue==VIOC_PATH_CONNECTED) &&VIOC_PlugIn.enable)
+					plug_status = 0;
+			}
+
+			if(VIOC_CONFIG_Device_PlugState(VIOC_PIXELMAP1, &VIOC_PlugIn) == VIOC_DEVICE_CONNECTED){
+				if(VIOC_PlugIn.connect_device == get_vioc_index(pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num)&& (VIOC_PlugIn.connect_statue==VIOC_PATH_CONNECTED) &&VIOC_PlugIn.enable)
+					plug_status = 1;
+			}
+
+			pr_info("pixel mapper-%d plug in to RDMA :0x%x \n", plug_status, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
+			if(plug_status == -1){
+				ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP0, pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
+				if (ret < 0)
+					pr_err("%s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
+				pr_info("pixel mapper 0 plug in to RDMA :0x%x \n", pdp_data->rdma_info[input_image_info->Lcdc_layer].blk_num);
+			}
+		}
+	}
+#endif
+
 	if(p->deinterlace_mode && p->firstFrameFlag &&!p->interlace_bypass_lcdc)
 	{
 		if(p->outputMode == TCC_OUTPUT_LCD ||p->outputMode == TCC_OUTPUT_NONE )
@@ -3311,6 +3349,9 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				tccvid_lastframe[type].pRDMA = dp_device->rdma_info[RDMA_LASTFRM].virt_addr;
 
 				spin_lock_irq(&LastFrame_lockDisp);
+				#ifdef CONFIG_TCC_PM_LUT_DRV
+					pm_lut_drv_set_last_frame();
+				#endif
 				tca_scale_display_update(dp_device, lastUpdated);
 				spin_unlock_irq(&LastFrame_lockDisp);
 			}
@@ -3478,6 +3519,9 @@ void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset)
     {
         if( tccvid_lastframe[type].pRDMA != NULL /*&& tccvid_lastframe[type].nCount >= 2*/){
             VIOC_RDMA_SetImageDisable(tccvid_lastframe[type].pRDMA);
+#ifdef CONFIG_TCC_PM_LUT_DRV
+			pm_lut_drv_last_frame_plugout();
+#endif
 		printk("&&&&&&&&& ----> lastframe[%d] cleared(%d)!! 0x%p \n", type, tccvid_lastframe[type].nCount, tccvid_lastframe[type].pRDMA);
 			tccvid_lastframe[type].pRDMA = NULL;
         }
