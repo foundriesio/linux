@@ -120,9 +120,57 @@ struct format_conversion format_conversion_table[] = {
 	},
 };
 
+atomic_t	tccvin_attr_diagnostics;
+
+ssize_t tccvin_attr_diagnostics_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	long val = atomic_read(&tccvin_attr_diagnostics);
+
+	sprintf(buf, "%ld\n", val);
+
+	return val;
+}
+
+ssize_t tccvin_attr_diagnostics_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+	long val;
+	int error = kstrtoul(buf, 10, &val);
+	if(error)
+		return error;
+
+	atomic_set(&tccvin_attr_diagnostics, val);
+
+	return count;
+}
+
+static DEVICE_ATTR(tccvin_attr_diagnostics, S_IRUGO|S_IWUSR|S_IWGRP, tccvin_attr_diagnostics_show, tccvin_attr_diagnostics_store);
+
+int tccvin_create_attr_diagnostics(struct device * dev) {
+	int		ret = 0;
+
+	ret = device_create_file(dev, &dev_attr_tccvin_attr_diagnostics);
+	if(ret < 0)
+		log("failed create sysfs: tccvin_attr_diagnostics\n");
+
+	return ret;
+}
+
+/*
+ * convert_format
+ *
+ * - DESCRIPTION:
+ *	Convert pixel color format between vioc and v4l2
+ *
+ * - PARAMETERS:
+ *	@format:		pixel format (can be a vioc color format or a v4l2 color format)
+ *	@from_type:		source pixel color type
+ *	@to_type:		destination pixel color type
+ *
+ * - RETURNS:
+ *	-1:		any proper pixel color format is not found.
+ *	Others:	destination pixel color format
+ */
 unsigned int convert_format(unsigned int format, unsigned int from_type, unsigned int to_type) {
 	int idxEntry = 0, nEntry = sizeof(format_conversion_table) / sizeof(format_conversion_table[0]);
-	unsigned int	ret = 0;
+	unsigned int	ret = (unsigned int)-1;
 
 	for(idxEntry=0; idxEntry<nEntry; idxEntry++) {
 		if(format_conversion_table[idxEntry].format[from_type] == format) {
@@ -516,10 +564,10 @@ end:
 }
 
 /*
- * tccvin_set_cif_port
+ * tccvin_map_cif_port
  *
  * - DESCRIPTION:
- *	Set cif port mux to receive video data
+ *	Map cif port to receive video data
  *
  * - PARAMETERS:
  *	@vdev:	video-input path device's data
@@ -527,17 +575,44 @@ end:
  * - RETURNS:
  *	0:		Success
  */
-int tccvin_set_cif_port(tccvin_dev_t * vdev) {
+int tccvin_map_cif_port(tccvin_dev_t * vdev) {
 	unsigned int	vin_index	= (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
-	unsigned long	value		= 0;
+	unsigned int	value		= 0;
 
 	value = ((__raw_readl(vdev->cif.cifport_addr) & ~(0xF << (vin_index * 4))) | (vdev->cif.cif_port << (vin_index * 4)));
 	__raw_writel(value, vdev->cif.cifport_addr);
 
 	value = __raw_readl(vdev->cif.cifport_addr);
-	log("CIF Port - port num: 0x%d, vin index: %d, register value: 0x%08lx\n", vdev->cif.cif_port, vin_index, value);
+	log("CIF Port: %d, VIN Index: %d, Register Value: 0x%08x\n", vdev->cif.cif_port, vin_index, value);
 
 	return 0;
+}
+
+/*
+ * tccvin_check_cif_port_mapping
+ *
+ * - DESCRIPTION:
+ *	Check cif port mapping to receive video data
+ *
+ * - PARAMETERS:
+ *	@vdev:	video-input path device's data
+ *
+ * - RETURNS:
+ *	0:		Success
+ * -1:		Failure
+ */
+int tccvin_check_cif_port_mapping(tccvin_dev_t * vdev) {
+	unsigned int	vin_index	= (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
+	unsigned int	cif_port	= 0;
+	int				ret			= 0;
+
+	cif_port = ((__raw_readl(vdev->cif.cifport_addr) >> (vin_index * 4)) & (0xF));
+	if(cif_port != vdev->cif.cif_port) {
+		log("CIF Port Mapping is WRONG - CIF Port: %d / %d, VIN Index: %d\n", cif_port, vdev->cif.cif_port, vin_index);
+		ret = -1;
+	}
+
+	return ret;
 }
 
 /*
@@ -1167,8 +1242,8 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 	// clear framebuffer
 	tccvin_clear_buffer(vdev);
 
-	// set cif-port
-	tccvin_set_cif_port(vdev);
+	// map cif-port
+	tccvin_map_cif_port(vdev);
 
 	// reset vioc path
 	tccvin_reset_vioc_path(vdev);
@@ -1355,59 +1430,6 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 	return ret;
 }
 
-void test_registers(tccvin_dev_t * vdev) {
-	struct reg_test {
-		unsigned int * reg;
-		unsigned int cnt;
-	};
-
-#ifdef CONFIG_OVERLAY_PGL
-	volatile void __iomem	* pPGL			= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
-#endif//CONFIG_OVERLAY_PGL
-	volatile void __iomem	* pVIN			= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
-	volatile void __iomem	* pVIQE 		= VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl);
-	volatile void __iomem	* pSC			= VIOC_SC_GetAddress(vdev->cif.vioc_path.scaler);
-	volatile void __iomem	* pWMIXer		= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
-	volatile void __iomem	* pWDMA 		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
-
-	int i = 0;
-
-	struct reg_test regList[] = {
-		{ (unsigned int *)pVIN,			16 },
-#ifdef CONFIG_OVERLAY_PGL
-		{ (unsigned int *)pPGL,			12 },
-#endif//CONFIG_OVERLAY_PGL
-		{ (unsigned int *)pVIQE,		 4 },
-		{ (unsigned int *)pSC,			 8 },
-		{ (unsigned int *)pWMIXer,		28 },
-		{ (unsigned int *)pWDMA,		18 },
-#if 0
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_SC0 + vdev->vioc.scaler.index),  1 },
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_DEINTLS), 1 },
-		{ (unsigned int *)VIOC_CONFIG_GetPathStruct(VIOC_VIQE), 1 },
-#endif
-	};
-	unsigned int * addr;
-	unsigned int idxLoop, nReg, idxReg;
-
-	for(i=0; i<3; i++) {
-		printk("\n\n");
-
-		for(idxLoop=0; idxLoop<sizeof(regList)/sizeof(regList[0]); idxLoop++) {
-			addr = regList[idxLoop].reg;
-			nReg = regList[idxLoop].cnt;
-
-			for(idxReg=0; idxReg<nReg; idxReg++) {
-				if((idxReg%4) == 0)
-				printk("\n%08x: ", (unsigned int)(addr + idxReg));
-				printk("%08x ", *(addr + idxReg));
-			}
-			printk("\n");
-		}
-		printk("\n\n");
-	}
-}
-
 int tccvin_check_wdma_counter(tccvin_dev_t * vdev) {
 	volatile void __iomem	* pWDMA	= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 
@@ -1431,8 +1453,79 @@ int tccvin_check_wdma_counter(tccvin_dev_t * vdev) {
 	return -1;
 }
 
+void tccvin_dump_register(unsigned int * addr, unsigned int word) {
+	unsigned int	idxReg, nReg = word;
+
+	for(idxReg=0; idxReg<nReg; idxReg++) {
+		if((idxReg % 4) == 0)
+			printk("%08x: ", (unsigned int)(addr + idxReg));
+		printk("%08x ", *(addr + idxReg));
+		if(((idxReg + 1) % 4) == 0)
+			printk("\n");
+	}
+	printk("\n");
+}
+
+int tccvin_diagnostics_cif_port_mapping(tccvin_dev_t * vdev) {
+	int		ret	= 0;
+
+	log("Diagnostics of cif port mapping\n");
+
+	ret = tccvin_check_cif_port_mapping(vdev);
+	log("CIF Port Mapping is %s\n", (ret == 0) ? "OKAY" : "WRONG");
+	if(ret < 0) {
+		tccvin_dump_register(vdev->cif.cifport_addr, 1);
+	}
+	
+	return ret;
+}
+
+int tccvin_diagnostics_videoinput_path(tccvin_dev_t * vdev) {
+	struct tccvin_diagnostics_reg_info {
+		unsigned int	* addr;
+		unsigned int	count;
+	};
+	struct tccvin_diagnostics_reg_info	list[] = {
+#ifdef CONFIG_OVERLAY_PGL
+		{ (unsigned int *)VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl),		12 },
+#endif//CONFIG_OVERLAY_PGL
+		{ (unsigned int *)VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin),			16 },
+//		{ (unsigned int *)VIOC_VIQE_GetAddress(vdev->cif.vioc_path.deintl),		 4 },
+		{ (unsigned int *)VIOC_SC_GetAddress(vdev->cif.vioc_path.scaler),		 8 },
+		{ (unsigned int *)VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer),		28 },
+		{ (unsigned int *)VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma),		18 },
+	};
+	unsigned int idxList = 0, nList = sizeof(list)/sizeof(list[0]);
+	int		ret	= 0;
+
+	log("Diagnostics of video-input path\n");
+
+	for(idxList=0; idxList<nList; idxList++) {
+		tccvin_dump_register(list[idxList].addr, list[idxList].count);
+	}
+	printk("\n\n");
+
+	return ret;
+}
+
+int tccvin_diagnostics(tccvin_dev_t * vdev) {
+	int		idxLoop = 0, nLoop = 1;
+	int		ret	= 0;
+
+	for(idxLoop=0; idxLoop<nLoop; idxLoop++) {
+		// check cif port mapping
+		tccvin_diagnostics_cif_port_mapping(vdev);
+
+		// check video-input path
+		tccvin_diagnostics_videoinput_path(vdev);
+	}
+
+	return ret;
+}
+
 int tccvin_monitor_thread(void * data) {
-	tccvin_dev_t * vdev = (tccvin_dev_t *)data;
+	tccvin_dev_t	* vdev = (tccvin_dev_t *)data;
+	int				diagnostics_enable = 0;
 
 	FUNCTION_IN
 
@@ -1443,9 +1536,12 @@ int tccvin_monitor_thread(void * data) {
 			break;
 
 		if(tccvin_check_wdma_counter(vdev) == -1) {
-			log("ERROR: Recovery mode will be entered\n");
+			// Diagnostics
+			diagnostics_enable = atomic_read(&tccvin_attr_diagnostics);
+			if(diagnostics_enable == 1)
+				tccvin_diagnostics(vdev);
 
-			test_registers(vdev);
+			log("ERROR: Recovery mode will be entered\n");
 
 			tccvin_stop_stream(vdev);
 

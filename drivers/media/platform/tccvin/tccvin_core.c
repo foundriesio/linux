@@ -382,6 +382,9 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	// Create the tccvin_attr_loglevel sysfs
 	tccvin_create_attr_loglevel(&pdev->dev);
 
+	// Create the tccvin_attr_diagnostics sysfs
+	tccvin_create_attr_diagnostics(&pdev->dev);
+
 #ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
 	// switchmanager
 	tccvin_switchmanager_probe(vdev);
