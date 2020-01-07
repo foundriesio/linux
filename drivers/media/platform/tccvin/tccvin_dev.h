@@ -164,6 +164,7 @@ typedef struct tcc_dev {
 	int							cam_streaming;
 } tccvin_dev_t;
 
+extern int tccvin_create_attr_diagnostics(struct device * dev);
 extern int	tccvin_v4l2_init(tccvin_dev_t * vdev);
 extern int	tccvin_v4l2_deinit(tccvin_dev_t * vdev);
 extern void	tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap);
