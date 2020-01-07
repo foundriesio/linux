@@ -687,7 +687,7 @@ static int tcc_vsync_pop_all_buffer(tcc_video_disp *p, int caller_line)
 	buffer_t->writeIdx = buffer_t->readIdx = buffer_t->clearIdx;
 	atomic_set( &buffer_t->readable_buff_count,0);
 	
-	printk("[%d] who:%d pop_all_buffer readIdx %d writeIdx %d clearIdx %d valid %d readable %d \n", p->type, caller_line,
+	dprintk("[%d] who:%d pop_all_buffer readIdx %d writeIdx %d clearIdx %d valid %d readable %d \n", p->type, caller_line,
 				buffer_t->readIdx,buffer_t->writeIdx,buffer_t->clearIdx, atomic_read(&buffer_t->valid_buff_count), atomic_read( &buffer_t->readable_buff_count));
 	return 0;
 }
@@ -2201,7 +2201,7 @@ static int tcc_vsync_push_process(tcc_video_disp *p, struct tcc_dp_device *pdp_d
 	input_image_info->viqe_queued = 0;
 	if(tcc_vsync_push_buffer(p, &p->vsync_buffer, input_image_info) < 0)
 	{
-		printk("critical error: vsync buffer full by fault buffer controll\n");
+		pr_err("critical error: vsync buffer full by fault buffer controll\n");
 		tcc_vsync_buffer_check(p, 0);
 	}
 
@@ -2254,7 +2254,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 	spin_lock_irq(&LastFrame_lockDisp);
 	if(tccvid_lastframe[type].enabled && tccvid_lastframe[type].reason.Resolution == 0 && tccvid_lastframe[type].reason.Codec == 0){
 		tccvid_lastframe[type].enabled = 0;
-		printk("----> LastFrame[%d] = 0 in TCC_LCDC_VIDEO_START_VSYNC \n", type);
+		dprintk("----> LastFrame[%d] = 0 in TCC_LCDC_VIDEO_START_VSYNC \n", type);
 	}
 	spin_unlock_irq(&LastFrame_lockDisp);
 #endif
@@ -2334,7 +2334,7 @@ static int tcc_vsync_start(tcc_video_disp *p, struct tcc_lcdc_image_update *inpu
 		else
 			p->perfect_vsync_flag = 0;
 
-		if((p->video_frame_rate > 0) && (p->video_frame_rate <= display_hz/2))
+		if(type ==0 && (p->video_frame_rate > 0) && (p->video_frame_rate <= display_hz/2))
 			p->duplicateUseFlag =1;
 
 		
@@ -2888,7 +2888,7 @@ int tcc_video_check_last_frame(struct tcc_lcdc_image_update *ImageInfo)
 					tccvid_lastframe[type].LastImage.codec_id, ImageInfo->codec_id);
 			return 0;
 		}
-		printk("&&&&&&&&& ----> %s :: last-frame[%d] will be cleared : %dx%d, 0x%x \n", __func__, type, ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->addr0);
+		dprintk("&&&&&&&&& ----> %s :: last-frame[%d] will be cleared : %dx%d, 0x%x \n", __func__, type, ImageInfo->Frame_width, ImageInfo->Frame_height, ImageInfo->addr0);
 		tccvid_lastframe[type].enabled = tccvid_lastframe[type].reason.Resolution = tccvid_lastframe[type].reason.Codec = 0;
 	}
 	spin_unlock_irq(&LastFrame_lockDisp);
@@ -3425,8 +3425,8 @@ Screen_off:
 				lastUpdated->addr2 = WmixerInfo.dst_v_addr;
 			}
 
+			pr_info("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME Start info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type, lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
 			spin_lock_irq(&LastFrame_lockDisp);
-			printk("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME Start info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type, lastUpdated->Frame_width, lastUpdated->Frame_height, tccvid_lastframe[type].reason.Resolution, tccvid_lastframe[type].reason.Codec);
 
 			switch(p->outputMode)
 			{
@@ -3446,8 +3446,8 @@ Screen_off:
 					break;
 			}
 
-			printk("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
 			spin_unlock_irq(&LastFrame_lockDisp);
+			pr_info("&&&&&&&&& ---->[%d] fake TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
 
 			return -0x100;
 		}
