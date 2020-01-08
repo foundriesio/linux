@@ -149,7 +149,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	}
 
 	ret = write_regs(client, videosource_reg_table_list[mode]);
-	mdelay(300);
+	mdelay(600);
 
 	return ret;
 }

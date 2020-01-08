@@ -482,7 +482,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 		vioc->wdma,
 	};
 	int						idxComponent = 0, nComponent = 0;
-#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+#if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 	struct file				* file		= NULL;
 	char					name[1024];
 	struct tcc_mbox_data	data;
@@ -493,7 +493,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 
 	nComponent = sizeof(vioc_component) / sizeof(vioc_component[0]);
 
-#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+#if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 	// open video-input driver
 	sprintf(name, "/dev/vioc_mgr_a7s");
 
@@ -556,7 +556,7 @@ err_viocmg:
 			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_CLEAR);
 	}
 
-#if defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
+#if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 end:
 #endif//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)
 
@@ -584,7 +584,7 @@ int tccvin_map_cif_port(tccvin_dev_t * vdev) {
 	__raw_writel(value, vdev->cif.cifport_addr);
 
 	value = __raw_readl(vdev->cif.cifport_addr);
-	log("CIF Port: %d, VIN Index: %d, Register Value: 0x%08x\n", vdev->cif.cif_port, vin_index, value);
+	dlog("CIF Port: %d, VIN Index: %d, Register Value: 0x%08x\n", vdev->cif.cif_port, vin_index, value);
 
 	return 0;
 }
@@ -634,7 +634,7 @@ void tccvin_clear_buffer(tccvin_dev_t * vdev) {
 	}
 }
 
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 /*
  * tccvin_set_pgl
  *
@@ -725,14 +725,14 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
 
-	log("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_format.data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
-	log("vdev->v4l2.pix_format.pixelformat: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->v4l2.pix_format.pixelformat, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
+	dlog("vdev->cif.videosource_format.data_format: 0x%08x, FMT_YUV422_16BIT: 0x%08x, FMT_YUV422_8BIT: 0x%08x\n", vdev->cif.videosource_format.data_format, FMT_YUV422_16BIT, FMT_YUV422_8BIT);
+	dlog("vdev->v4l2.pix_format.pixelformat: 0x%08x, V4L2_PIX_FMT_RGB24: 0x%08x, V4L2_PIX_FMT_RGB32: 0x%08x\n", vdev->v4l2.pix_format.pixelformat, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_RGB32);
 	if(((vdev->cif.videosource_format.data_format == FMT_YUV422_16BIT) || \
 		(vdev->cif.videosource_format.data_format == FMT_YUV422_8BIT)) && \
 		((vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB24) ||	\
 		(vdev->v4l2.pix_format.pixelformat == V4L2_PIX_FMT_RGB32))) {
 
-		log("vdev->cif.videosource_format.interlaced: 0x%08x\n", vdev->cif.videosource_format.interlaced);
+		dlog("vdev->cif.videosource_format.interlaced: 0x%08x\n", vdev->cif.videosource_format.interlaced);
 		if(!((vdev->cif.videosource_format.interlaced & V4L2_DV_INTERLACED) && (vdev->cif.vioc_path.viqe != -1)))
 			VIOC_VIN_SetY2REnable(pVIN, ON);
 	} else {
@@ -1332,7 +1332,9 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 
 	if(vdev->v4l2.preview_method == PREVIEW_DD) {
 		// set wmixer_out
+#ifndef CONFIG_TCC803X_CA7S
 		tccvin_set_wmixer_out(cif, NORMAL_OVP);
+#endif//CONFIG_TCC803X_CA7S
 
 		// set fifo
 		tccvin_set_fifo(vdev, 0);
@@ -1716,6 +1718,29 @@ int tccvin_v4l2_enum_fmt(struct v4l2_fmtdesc * fmt) {
 	return ret;
 }
 
+int tccvin_g_operation_mode(tccvin_dev_t * vdev, int * mode) {
+	int		ret = 0;
+
+	* mode = vdev->v4l2.preview_method;
+	dlog("mode: 0x%08x\n", * mode);
+
+	return ret;
+}
+
+int tccvin_s_operation_mode(tccvin_dev_t * vdev, int * mode) {
+	int		ret = 0;
+
+	if((* mode == PREVIEW_V4L2) || (* mode == PREVIEW_DD)) {
+		vdev->v4l2.preview_method = * mode;
+		log("mode: 0x%08x\n", * mode);
+	} else {
+		log("ERROR: The operation mode is WRONG, mode: 0x%08x\n", * mode);
+		ret = -1;
+	}
+
+	return ret;
+}
+
 void tccvin_v4l2_g_fmt(tccvin_dev_t * vdev, struct v4l2_format * format) {
 	FUNCTION_IN
 
@@ -1913,13 +1938,13 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 	return ret;
 }
 
-int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
+int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int is_handover_needed) {
 	int		ret = 0;
     int     skip = 0;
 	FUNCTION_IN
 
-	// update the preview method
-	vdev->v4l2.preview_method	= * preview_method;
+	// update the is_handover_needed
+	vdev->cif.is_handover_needed	= is_handover_needed;
 
 	log("preview method: %s\n", (vdev->v4l2.preview_method == PREVIEW_V4L2) ? "PREVIEW_V4L2" : "PREVIEW_DD");
 
@@ -1938,10 +1963,10 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 		return 0;
 	}
 
-	if(tccvin_check_wdma_counter(vdev) == 0) {
-		log("Video-Input Path(%d) is already working\n", vdev->vid_dev->minor);
+	if(0) {//tccvin_check_wdma_counter(vdev) == 0) {
+		dlog("Video-Input Path(%d) is already working\n", vdev->vid_dev->minor);
 	} else {
-		log("Video-Input Path(%d) is NOT working\n", vdev->vid_dev->minor);
+		dlog("Video-Input Path(%d) is NOT working\n", vdev->vid_dev->minor);
 		ret = tccvin_start_stream(vdev);
 		if(ret < 0) {
 			log("ERROR: Start Stream\n");
@@ -1961,7 +1986,7 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 	return ret;
 }
 
-int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int * preview_method) {
+int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int is_handover_needed) {
 	int		ret = 0;
 
 	FUNCTION_IN
