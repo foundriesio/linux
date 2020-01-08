@@ -73,7 +73,7 @@
 #endif /* NO_WIN32 */
 
 /* Uncomment the following line to activate all traces in the code */
-#define  SiTRACES
+//#define  SiTRACES
 
 /* Uncomment the following line to activate SPI FW download */
 #ifndef   LINUX_ST_SDK2_I2C

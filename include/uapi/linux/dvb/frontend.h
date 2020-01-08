@@ -547,7 +547,16 @@ enum fe_interleaving {
 #define DTV_STAT_ERROR_BLOCK_COUNT	68
 #define DTV_STAT_TOTAL_BLOCK_COUNT	69
 
-#define DTV_MAX_COMMAND		DTV_STAT_TOTAL_BLOCK_COUNT
+#define DTV_STAT_SSI					70
+#define DTV_STAT_SQI					71
+#define DTV_STAT_BER					72
+#define DTV_STAT_RSSI					73
+#define DTV_STAT_PER					74
+
+/* DVB-S */
+#define DTV_DVBS_BSCAN_ABORT			75
+
+#define DTV_MAX_COMMAND		DTV_DVBS_BSCAN_ABORT
 
 /**
  * enum fe_pilot - Type of pilot tone
@@ -879,7 +888,12 @@ struct dtv_properties {
  * is closed, this flag will be automatically turned off when the device is
  * reopened read-write.
  */
-#define FE_TUNE_MODE_ONESHOT 0x01
+#define FE_TUNE_MODE_ONESHOT		0x00000001
+/* Added by WS Jang for DVB-S Blind Scan */
+#define FE_TUNE_MODE_BSCAN_INIT		0x00000002
+#define FE_TUNE_MODE_BSCAN_NEXT		0x00000004
+#define FE_TUNE_MODE_BSCAN_END		0x00000008
+//
 
 /* Digital TV Frontend API calls */
 
