@@ -2652,7 +2652,7 @@ int tcc_move_video_frame_simple( struct file *file, struct tcc_lcdc_image_update
 #ifdef CONFIG_VIOC_MAP_DECOMP
 	if(inFframeInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0) {
 		if(inFframeInfo->private_data.mapConv_info.m_uiLumaBitDepth != 8) {
-			Frame_height = Frame_height * 2;
+			Frame_height = Frame_height * 3;
 		}
 	}
 	else  
