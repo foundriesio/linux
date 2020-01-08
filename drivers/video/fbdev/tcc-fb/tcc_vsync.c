@@ -3369,7 +3369,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				spin_unlock_irq(&LastFrame_lockDisp);
 			}
 Screen_off:
-			tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type, 1)
+			tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type, 1);
 			printk("###[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
 		}
 		else
