@@ -187,8 +187,12 @@ extern int	tccvin_v4l2_s_input(tccvin_dev_t * vdev, struct v4l2_input * input);
 extern int	tccvin_v4l2_try_fmt(struct v4l2_format * fmt);
 extern int tccvin_set_wmixer_out(tccvin_cif_t * cif, unsigned int ovp);
 extern int tccvin_set_ovp_value(tccvin_cif_t * cif);
+extern int tccvin_check_wdma_counter(tccvin_dev_t * vdev);
+extern void tccvin_dump_register(unsigned int * addr, unsigned int word);
+extern int tccvin_diagnostics(tccvin_dev_t * vdev);
 extern void	tccvin_check_path_status(tccvin_dev_t * vdev, int * status);
 extern int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned int height, unsigned int pixelformat);
+extern int tccvin_allocate_preview_buffers(tccvin_dev_t * vdev);
 
 #endif//TCCVIN_DEV_H
 
