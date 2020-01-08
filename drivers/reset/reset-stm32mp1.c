@@ -4,6 +4,7 @@
  * Author: Gabriel Fernandez <gabriel.fernandez@st.com> for STMicroelectronics.
  */
 
+#include <dt-bindings/reset/stm32mp1-resets.h>
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -19,26 +20,32 @@
 
 #define STM32MP1_SVC_RCC 0x82001000
 
-#define SMT32_SPI6_R 3136
-#define STM32_AXIM_R 3216
-#define STM32_MCU_R 8225
-
 struct stm32_reset_data {
 	struct reset_controller_dev	rcdev;
 	void __iomem			*membase;
 };
 
-static int soc_secured;
+static bool soc_secured;
 
-static int is_stm32_id_secured(unsigned long id)
+static bool is_stm32_id_secured(unsigned long id)
 {
-	if (id >= SMT32_SPI6_R && id <= STM32_AXIM_R)
-		return 1;
-
-	if (id == STM32_MCU_R)
-		return 1;
-
-	return 0;
+	switch (id) {
+	case AXIM_R:
+	case CRYP1_R:
+	case GPIOZ_R:
+	case HASH1_R:
+	case I2C4_R:
+	case I2C6_R:
+	case MCU_R:
+	case MDMA_R:
+	case RNG1_R:
+	case SPI6_R:
+	case STGEN_R:
+	case USART1_R:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static int reset_stm32_secure_update(struct reset_controller_dev *rcdev,
