@@ -30,7 +30,9 @@
 
 #include "videosource_common.h"
 #include "videosource_if.h"
+#ifdef CONFIG_ARCH_TCC803X
 #include "mipi-csi2/mipi-csi2.h"
+#endif//CONFIG_ARCH_TCC803X
 
 #include "../../../pinctrl/core.h"
 #include "../../../pinctrl/tcc/pinctrl-tcc.h"
@@ -64,9 +66,11 @@ struct tcc_pinctrl {
 	unsigned int nfunctions;
 };
 
+#ifdef CONFIG_ARCH_TCC803X
 volatile void __iomem *  ddicfg_base;
 struct clk * 	 mipi_csi2_clk;
 unsigned int 	 mipi_csi2_frequency;
+#endif//CONFIG_ARCH_TCC803X
 
 //extern irqreturn_t ds90ub964_irq_thread_handler(int irq, void * client_data);
 
@@ -103,6 +107,7 @@ const static struct v4l2_fmtdesc videosource_format[] = {
 };
 #define NUM_CAPTURE_FORMATS ARRAY_SIZE(videosource_format)
 
+#ifdef CONFIG_ARCH_TCC803X
 static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
 	unsigned int intr_status0 = 0, intr_status1 = 0, intr_mask0 = 0, intr_mask1 = 0;
 	unsigned int idx = 0;
@@ -180,6 +185,7 @@ static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
 	return IRQ_HANDLED;
 //	  return IRQ_WAKE_THREAD;
 }
+#endif//CONFIG_ARCH_TCC803X
 
 int videosource_if_enum_pixformat(struct v4l2_fmtdesc * fmt) {
 	int					index	= fmt->index;
@@ -222,6 +228,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 		vdev->gpio.pwd_port = of_get_named_gpio_flags(videosource_node, "pwd-gpios", 0, &vdev->gpio.pwd_value);
 		vdev->gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &vdev->gpio.rst_value);
 
+#ifdef CONFIG_ARCH_TCC803X
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			// interrupt pin
 			vdev->gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &vdev->gpio.intb_value);
@@ -266,6 +273,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 				log("ddicfg addr: %p\n", ddicfg_base);
 			}
 		}
+#endif//CONFIG_ARCH_TCC803X
 	} else {
 		printk("could not find sensor module node!! \n");
 		return -ENODEV;
@@ -295,12 +303,14 @@ int videosource_request_gpio(videosource_t * vdev) {
 		gpio_request(vdev->gpio.rst_port, "camera reset");
 		gpio_direction_output(vdev->gpio.rst_port, vdev->gpio.rst_value);
 	}
+#ifdef CONFIG_ARCH_TCC803X
 	if(0 < vdev->gpio.intb_port) {
 		log("intb: port = %3d, curr val = %d \n",	\
 			vdev->gpio.intb_port, gpio_get_value(vdev->gpio.intb_port));
 		gpio_request(vdev->gpio.intb_port, "camera interrupt");
 		gpio_direction_input(vdev->gpio.intb_port);
 	}
+#endif//CONFIG_ARCH_TCC803X
 
 	FUNCTION_OUT
 	return 0;
@@ -310,7 +320,9 @@ int videosource_free_gpio(videosource_t * vdev) {
 	FUNCTION_IN
 
 	// free port gpios
+#ifdef CONFIG_ARCH_TCC803X
 	if(0 < vdev->gpio.intb_port)	gpio_free(vdev->gpio.intb_port);
+#endif//CONFIG_ARCH_TCC803X
 	if(0 < vdev->gpio.pwr_port)		gpio_free(vdev->gpio.pwr_port);
 	if(0 < vdev->gpio.pwd_port)		gpio_free(vdev->gpio.pwd_port);
 	if(0 < vdev->gpio.rst_port)		gpio_free(vdev->gpio.rst_port);
@@ -319,6 +331,7 @@ int videosource_free_gpio(videosource_t * vdev) {
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_TCC803X
 int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
 	unsigned int idx = 0;
 
@@ -438,6 +451,7 @@ int videosource_if_set_mipi_csi2_interrupt(videosource_t * vdev, videosource_for
 
 	return 0;
 }
+#endif//CONFIG_ARCH_TCC803X
 
 int videosource_set_port(videosource_t * vdev, int enable) {
 	struct pinctrl		* pinctrl	= NULL;
@@ -593,6 +607,7 @@ int videosource_if_open(struct inode * inode, struct file * file) {
 		// request gpio
 		videosource_request_gpio(vdev);
 
+#ifdef CONFIG_ARCH_TCC803X
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			vdev->driver.open(&vdev->gpio);
 			if(videosource_if_check_status(vdev) != 1) {
@@ -601,13 +616,17 @@ int videosource_if_open(struct inode * inode, struct file * file) {
 			}
 		}
 		else {
+#endif//CONFIG_ARCH_TCC803X
 			status = videosource_if_check_status(vdev);
+#ifdef CONFIG_ARCH_TCC803X
 		}
+#endif//CONFIG_ARCH_TCC803X
 
 		if(status != 1) {	// if the video source is not working now.
 			vdev->driver.open(&vdev->gpio);
 			videosource_if_change_mode(vdev, MODE_INIT);
 
+#ifdef CONFIG_ARCH_TCC803X
 			if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 				// init remote serializer
 				videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
@@ -629,8 +648,11 @@ int videosource_if_open(struct inode * inode, struct file * file) {
 				// enable mipi-csi2 interrupt
 				videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
 			} else {
+#endif//CONFIG_ARCH_TCC803X
 				videosource_if_check_status(vdev);
+#ifdef CONFIG_ARCH_TCC803X
 			}
+#endif//CONFIG_ARCH_TCC803X
 		}
 
 		file->private_data = vdev;
@@ -655,6 +677,7 @@ int videosource_if_release(struct inode * inode, struct file * file) {
 	if(vdev->enabled == ENABLE) {
 		vdev->driver.close(&vdev->gpio);
 
+#ifdef CONFIG_ARCH_TCC803X
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
 
@@ -666,6 +689,7 @@ int videosource_if_release(struct inode * inode, struct file * file) {
 			vdev->driver.set_irq_handler(&vdev->gpio, OFF);
 #endif
 		}
+#endif//CONFIG_ARCH_TCC803X
 
 		// free gpio
 		videosource_free_gpio(vdev);
@@ -804,9 +828,11 @@ int videosource_if_remove(videosource_t * vdev) {
 	// unregister the charactor device region
 	unregister_chrdev_region(vdev->cdev_region, 1);
 
+#ifdef CONFIG_ARCH_TCC803X
 	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 		clk_disable(mipi_csi2_clk);
 	}
+#endif//CONFIG_ARCH_TCC803X
 
 	FUNCTION_OUT
 	return ret;
