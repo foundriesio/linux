@@ -1172,7 +1172,7 @@ static irqreturn_t tccvin_wdma_isr(int irq, void * client_data) {
 	// preview operation.
 	if(vdev->v4l2.oper_mode == OPER_PREVIEW) {
 		VIOC_WDMA_GetStatus(pWDMABase, &status);
-		if(status & VIOC_WDMA_IREQ_EOFF_MASK) {
+		if(status & VIOC_WDMA_IREQ_EOFR_MASK) {
 			schedule_work(&vdev->v4l2.wdma_work);
 
 			vdev->v4l2.wakeup_int = 1;
@@ -1420,7 +1420,7 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 #else
 		vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
 #endif
-		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFF_MASK;
+		vdev->cif.vioc_intr.bits	= VIOC_WDMA_IREQ_EOFR_MASK;
 
 		if(vdev->cif.vioc_irq_reg == 0) {
 			vioc_intr_clear(vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
