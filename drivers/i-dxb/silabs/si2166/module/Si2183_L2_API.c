@@ -540,6 +540,7 @@
 
 /* Si2183 API Specific Includes */
 /* Before including the headers, define SiLevel and SiTAG */
+
 #define   SiLEVEL          2
 
 #include "Si2183_L2_API.h"               /* Include file for this code */
@@ -4965,124 +4966,165 @@ signed   int   Si2183_L2_lock_to_carrier   (Si2183_L2_Context *front_end
   Parameter:  rf, the frequency to tune at
   Returns:    rf
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Tune               (Si2183_L2_Context *front_end, signed   int rf)
+signed int Si2183_L2_Tune(Si2183_L2_Context *front_end, signed int rf)
 {
-#ifdef    TUNERTER_API
-  #define Si2183_USING_SILABS_TER_TUNER
-#else  /* TUNERTER_API */
-  #ifdef    SILABS_TER_TUNER_API
-    #define Si2183_USING_SILABS_TER_TUNER
-  #endif /* SILABS_TER_TUNER_API */
-#endif /* TUNERTER_API */
+	#ifdef TUNERTER_API
+	#define Si2183_USING_SILABS_TER_TUNER
+	#else	/* TUNERTER_API */
+	#ifdef SILABS_TER_TUNER_API
+	#define Si2183_USING_SILABS_TER_TUNER
+	#endif	/* SILABS_TER_TUNER_API */
+	#endif	/* TUNERTER_API */
 
-#ifdef    Si2183_USING_SILABS_TER_TUNER
-    char bw;
-    char modulation;
-#endif /* Si2183_USING_SILABS_TER_TUNER */
+	#ifdef Si2183_USING_SILABS_TER_TUNER
+	char bw;
+	char modulation;
+	#endif	/* Si2183_USING_SILABS_TER_TUNER */
 
-    SiTRACE("Si2183_L2_Tune at %d\n",rf);
+	SiTRACE("Si2183_L2_Tune at %d\n", rf);
 
- #ifdef    INDIRECT_I2C_CONNECTION
-  /*  I2C connection will be done later on, depending on the media */
- #else  /* INDIRECT_I2C_CONNECTION */
-    Si2183_L2_Tuner_I2C_Enable(front_end);
- #endif /* INDIRECT_I2C_CONNECTION */
+	#ifdef INDIRECT_I2C_CONNECTION
+	/*  I2C connection will be done later on, depending on the media */
+	#else	/* INDIRECT_I2C_CONNECTION */
+	Si2183_L2_Tuner_I2C_Enable(front_end);
+	#endif	/* INDIRECT_I2C_CONNECTION */
 
-#ifdef    TERRESTRIAL_FRONT_END
-    if (front_end->demod->media == Si2183_TERRESTRIAL) {
- #ifdef    INDIRECT_I2C_CONNECTION
-      front_end->f_TER_tuner_enable(front_end->callback);
- #endif /* INDIRECT_I2C_CONNECTION */
-#ifdef    DEMOD_DVB_T2
-      Si2183_L2_TER_FEF (front_end, 0);
-#endif /* DEMOD_DVB_T2 */
-#ifdef    Si2183_USING_SILABS_TER_TUNER
-      if (front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBC  ) {
-        modulation = L1_RF_TER_TUNER_MODULATION_DVBC;
-        bw         = 8;
-      } else {
-        modulation = L1_RF_TER_TUNER_MODULATION_DVBT;
-        switch (front_end->demod->prop->dd_mode.bw) {
-          case Si2183_DD_MODE_PROP_BW_BW_1D7MHZ   : bw = BW_1P7MHZ; break;
-          case Si2183_DD_MODE_PROP_BW_BW_5MHZ     : bw = BW_6MHZ  ; break;
-          case Si2183_DD_MODE_PROP_BW_BW_6MHZ     : bw = BW_6MHZ  ; break;
-          case Si2183_DD_MODE_PROP_BW_BW_7MHZ     : bw = BW_7MHZ  ; break;
-          case Si2183_DD_MODE_PROP_BW_BW_8MHZ     : bw = BW_8MHZ  ; break;
-          default: {
-            SiTRACE("Si2183_L2_Tune: Invalid dd_mode.bw (%d)\n", front_end->demod->prop->dd_mode.bw);
-            SiERROR("Si2183_L2_Tune: Invalid dd_mode.bw\n");
-            bw = 8; break;
-          }
-        }
-      }
-      if (front_end->demod->prop->dd_mode.bw == Si2183_DD_MODE_PROP_BW_BW_1D7MHZ ) {
-          SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 1); /* TER tuner dtv_internal_zif.dvbt set to LIF */
-      } else {
-        if ( (front_end->demod->prop->dd_mode.modulation  == Si2183_DD_MODE_PROP_MODULATION_DVBT )
-#ifdef    DEMOD_DVB_T2
-           | (front_end->demod->prop->dd_mode.modulation  == Si2183_DD_MODE_PROP_MODULATION_DVBT2)
-           | ((front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT   )
-            &(front_end->demod->prop->dd_mode.auto_detect == Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2))
-#endif /* DEMOD_DVB_T2 */
-          ) {
-          SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 0); /* TER tuner dtv_internal_zif.dvbt set to ZIF*/
-        }
-      }
-#ifdef    DEMOD_DVB_C2
-      if (front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBC2 ) {
-          SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 1); /* TER tuner dtv_internal_zif.dvbt set to LIF */
-      }
-#endif /* DEMOD_DVB_C2 */
-#ifdef    DEMOD_ISDB_T
-      if (front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_ISDBT ) {
-          modulation = L1_RF_TER_TUNER_MODULATION_ISDBT;
-      }
-#endif /* DEMOD_ISDB_T */
-#endif /* Si2183_USING_SILABS_TER_TUNER */
-      L1_RF_TER_TUNER_Tune       (front_end->tuner_ter , rf);
-#ifdef    DEMOD_DVB_T2
-      /* Activate FEF management in all cases where the signal can be DVB-T2 */
-      if (   (front_end->demod->prop->dd_mode.modulation  == Si2183_DD_MODE_PROP_MODULATION_DVBT2)
-          | ((front_end->demod->prop->dd_mode.modulation  == Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT)
-            &(front_end->demod->prop->dd_mode.auto_detect == Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2))
-         ) { Si2183_L2_TER_FEF (front_end, 1); }
-#endif /* DEMOD_DVB_T2 */
- #ifdef    INDIRECT_I2C_CONNECTION
-      front_end->f_TER_tuner_disable(front_end->callback);
- #endif /* INDIRECT_I2C_CONNECTION */
-    }
-#endif /* TERRESTRIAL_FRONT_END */
+	#ifdef TERRESTRIAL_FRONT_END
+	if(front_end->demod->media == Si2183_TERRESTRIAL)
+	{
+		#ifdef INDIRECT_I2C_CONNECTION
+		front_end->f_TER_tuner_enable(front_end->callback);
+		#endif	/* INDIRECT_I2C_CONNECTION */
+		#ifdef DEMOD_DVB_T2
+		Si2183_L2_TER_FEF(front_end, 0);
+		#endif	/* DEMOD_DVB_T2 */
+		#ifdef Si2183_USING_SILABS_TER_TUNER
+		if(front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBC)
+		{
+			modulation = L1_RF_TER_TUNER_MODULATION_DVBC;
+			bw = 8;
+		}
+		else
+		{
+			modulation = L1_RF_TER_TUNER_MODULATION_DVBT;
 
-#ifdef    DEMOD_DVB_S_S2_DSS
-    if (front_end->demod->media == Si2183_SATELLITE  ) {
- #ifdef    INDIRECT_I2C_CONNECTION
-      front_end->f_SAT_tuner_enable(front_end->callback);
- #endif /* INDIRECT_I2C_CONNECTION */
-#ifdef    UNICABLE_COMPATIBLE
-      if (front_end->lnb_type == UNICABLE_LNB_TYPE_UNICABLE) {
-        rf = front_end->f_Unicable_tune(front_end->callback, rf);
-        SiTRACE(" Unicable L2_TUNE returning rf=%d\n",rf);
-      } else {
-#endif /* UNICABLE_COMPATIBLE */
-        L1_RF_SAT_TUNER_Tune (front_end->tuner_sat, rf);
-#ifdef    UNICABLE_COMPATIBLE
-      }
-#endif /* UNICABLE_COMPATIBLE */
- #ifdef    INDIRECT_I2C_CONNECTION
-      front_end->f_SAT_tuner_disable(front_end->callback);
- #endif /* INDIRECT_I2C_CONNECTION */
-    }
-#endif /* DEMOD_DVB_S_S2_DSS */
+			switch(front_end->demod->prop->dd_mode.bw)
+			{
+			case Si2183_DD_MODE_PROP_BW_BW_1D7MHZ:
+				bw = BW_1P7MHZ;
+				break;
+			case Si2183_DD_MODE_PROP_BW_BW_5MHZ:
+				bw = BW_6MHZ;
+				break;
+			case Si2183_DD_MODE_PROP_BW_BW_6MHZ:
+				bw = BW_6MHZ;
+				break;
+			case Si2183_DD_MODE_PROP_BW_BW_7MHZ:
+				bw = BW_7MHZ;
+				break;
+			case Si2183_DD_MODE_PROP_BW_BW_8MHZ:
+				bw = BW_8MHZ;
+				break;
+			default:
+				{
+					SiTRACE("Si2183_L2_Tune: Invalid dd_mode.bw (%d)\n", front_end->demod->prop->dd_mode.bw);
+					SiERROR("Si2183_L2_Tune: Invalid dd_mode.bw\n");
+					bw = 8;
+					break;
+				}
+			}
+		}
 
-   #ifdef    INDIRECT_I2C_CONNECTION
-   #else  /* INDIRECT_I2C_CONNECTION */
-    Si2183_L2_Tuner_I2C_Disable(front_end);
-   #endif /* INDIRECT_I2C_CONNECTION */
-#ifdef   Si2183_FFT_CAPABILITY
-    if ( front_end->misc_infos & 0x00001000 ) { Si2183_L2_FFT(front_end, 0, rf); }
-#endif /* Si2183_FFT_CAPABILITY */
+		if(front_end->demod->prop->dd_mode.bw == Si2183_DD_MODE_PROP_BW_BW_1D7MHZ)
+		{
+			SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 1); /* TER tuner dtv_internal_zif.dvbt set to LIF */
+		}
+		else
+		{
+			if((front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBT)
+				#ifdef DEMOD_DVB_T2
+				| (front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBT2)
+				| ((front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT)
+				& (front_end->demod->prop->dd_mode.auto_detect == Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2))
+				#endif	/* DEMOD_DVB_T2 */
+			)
+			{
+				SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 0); /* TER tuner dtv_internal_zif.dvbt set to ZIF*/
+			}
+		}
 
-    return rf;
+		#ifdef DEMOD_DVB_C2
+		if(front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBC2)
+		{
+			SiLabs_TER_Tuner_DTV_INTERNAL_ZIF_DVBT(front_end->tuner_ter, 1); /* TER tuner dtv_internal_zif.dvbt set to LIF */
+		}
+		#endif	/* DEMOD_DVB_C2 */
+		#ifdef DEMOD_ISDB_T
+		if(front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_ISDBT)
+		{
+			modulation = L1_RF_TER_TUNER_MODULATION_ISDBT;
+		}
+		#endif	/* DEMOD_ISDB_T */
+		#endif	/* Si2183_USING_SILABS_TER_TUNER */
+
+		L1_RF_TER_TUNER_Tune(front_end->tuner_ter, rf);
+
+		#ifdef DEMOD_DVB_T2
+		/* Activate FEF management in all cases where the signal can be DVB-T2 */
+		if((front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_DVBT2) 
+			| ((front_end->demod->prop->dd_mode.modulation == Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT) 
+			& (front_end->demod->prop->dd_mode.auto_detect == Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2))
+		)
+		{
+			Si2183_L2_TER_FEF(front_end, 1);
+		}
+		#endif	/* DEMOD_DVB_T2 */
+
+		#ifdef INDIRECT_I2C_CONNECTION
+		front_end->f_TER_tuner_disable(front_end->callback);
+		#endif	/* INDIRECT_I2C_CONNECTION */
+	}
+	#endif	/* TERRESTRIAL_FRONT_END */
+
+	#ifdef DEMOD_DVB_S_S2_DSS
+	if(front_end->demod->media == Si2183_SATELLITE)
+	{
+		#ifdef INDIRECT_I2C_CONNECTION
+		front_end->f_SAT_tuner_enable(front_end->callback);
+		#endif	/* INDIRECT_I2C_CONNECTION */
+
+		#ifdef UNICABLE_COMPATIBLE
+		if(front_end->lnb_type == UNICABLE_LNB_TYPE_UNICABLE)
+		{
+			rf = front_end->f_Unicable_tune(front_end->callback, rf);
+
+			SiTRACE(" Unicable L2_TUNE returning rf=%d\n", rf);
+		}
+		else
+		{
+		#endif	/* UNICABLE_COMPATIBLE */
+			L1_RF_SAT_TUNER_Tune(front_end->tuner_sat, rf);
+		#ifdef UNICABLE_COMPATIBLE
+		}
+		#endif	/* UNICABLE_COMPATIBLE */
+		#ifdef INDIRECT_I2C_CONNECTION
+		front_end->f_SAT_tuner_disable(front_end->callback);
+		#endif	/* INDIRECT_I2C_CONNECTION */
+	}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+
+	#ifdef INDIRECT_I2C_CONNECTION
+	#else	/* INDIRECT_I2C_CONNECTION */
+	Si2183_L2_Tuner_I2C_Disable(front_end);
+	#endif	/* INDIRECT_I2C_CONNECTION */
+	#ifdef Si2183_FFT_CAPABILITY
+	if(front_end->misc_infos & 0x00001000)
+	{
+		Si2183_L2_FFT(front_end, 0, rf);
+	}
+	#endif	/* Si2183_FFT_CAPABILITY */
+
+	return rf;
 }
 /************************************************************************************************************************
   Si2183_L2_Get_RF function
@@ -5728,314 +5770,434 @@ unsigned char Si2183_L2_Set_Invert_Spectrum (Si2183_L2_Context *front_end)
   Parameter:  maxSNRHalfdB max SNR 1/2 dB                x    x                                   x
   Returns:    0 if successful, otherwise an error.
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Channel_Seek_Init  (Si2183_L2_Context *front_end, signed   int rangeMin, signed   int rangeMax, signed   int seekBWHz, signed   int seekStepHz, signed   int minSRbps, signed   int maxSRbps, signed   int minRSSIdBm, signed   int maxRSSIdBm, signed   int minSNRHalfdB, signed   int maxSNRHalfdB)
+signed int Si2183_L2_Channel_Seek_Init(
+	Si2183_L2_Context *front_end, 
+	signed int rangeMin, 
+	signed int rangeMax, 
+	signed int seekBWHz, 
+	signed int seekStepHz, 
+	signed int minSRbps, 
+	signed int maxSRbps, 
+	signed int minRSSIdBm, 
+	signed int maxRSSIdBm, 
+	signed int minSNRHalfdB, 
+	signed int maxSNRHalfdB)
 {
-  signed   int modulation;
-  modulation = 0; /* to avoid compiler error */
-  Si2183_L1_GET_REV(front_end->demod);
-  SiTRACE("Si21%02d", front_end->demod->rsp->get_rev.pn);
-  if ((front_end->demod->rsp->get_rev.mcm_die) != Si2183_GET_REV_RESPONSE_MCM_DIE_SINGLE) {  SiTRACE("2");  }
-  if (front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_A) {
-      SiTRACE(" A");
-  } else if (front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_B) {
-      SiTRACE(" B");
-  } else if (front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_C) {
-      SiTRACE(" C");
-  } else if (front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_D) {
-      SiTRACE(" D");
-  } else {
-      SiTRACE(" chiprev %d", front_end->demod->rsp->get_rev.chiprev);
-  }
-  SiTRACE(" ROM %d NVM %c_%cb%d ", front_end->demod->rsp->part_info.romid
-         , front_end->demod->rsp->part_info.pmajor
-         , front_end->demod->rsp->part_info.pminor
-         , front_end->demod->rsp->part_info.pbuild
-         );
-  if (front_end->demod->rsp->get_rev.mcm_die == Si2183_GET_REV_RESPONSE_MCM_DIE_DIE_A) {
-      SiTRACE(" die A");
-  } else if (front_end->demod->rsp->get_rev.mcm_die == Si2183_GET_REV_RESPONSE_MCM_DIE_DIE_B) {
-      SiTRACE("%s die B");
-  }
-  SiTRACE(" Running FW %c_%cb%d\n", front_end->demod->rsp->get_rev.cmpmajor
-         , front_end->demod->rsp->get_rev.cmpminor
-         , front_end->demod->rsp->get_rev.cmpbuild
-          );
-#ifdef    TERRESTRIAL_FRONT_END
-  if (front_end->demod->media == Si2183_TERRESTRIAL) {
-    SiTRACE("media TERRESTRIAL\n");
-    front_end->tuneUnitHz   =    1;
-  }
-#endif /* TERRESTRIAL_FRONT_END */
-#ifdef    DEMOD_DVB_S_S2_DSS
-  if (front_end->demod->media == Si2183_SATELLITE  ) {
-    SiTRACE("media SATELLITE\n");
-    front_end->tuneUnitHz   = 1000;
-   /* Set SAT tuner LPF to max to allow blindscan (in kHz) */
-    Si2183_L2_SAT_LPF(front_end, 100000);
-  }
-#endif /* DEMOD_DVB_S_S2_DSS */
-  SiTRACE ("blindscan_interaction >> (init  ) Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
-  Si2183_L1_SCAN_CTRL (front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
-  /* Check detection standard based on dd_mode.modulation and dd_mode.auto_detect */
-  SiTRACE("standard %d, dd_mode.modulation %d, dd_mode.auto_detect %d\n",  front_end->standard, front_end->demod->prop->dd_mode.modulation, front_end->demod->prop->dd_mode.auto_detect);
-  switch (front_end->demod->prop->dd_mode.modulation) {
-    case Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT : {
-      switch (front_end->demod->prop->dd_mode.auto_detect) {
-#ifdef    DEMOD_DVB_S_S2_DSS
-        case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2     : {
-          modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS2;
-          break;
-        }
-        case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS : {
-          modulation = Si2183_DD_MODE_PROP_MODULATION_DSS;
-          break;
-        }
-#endif /* DEMOD_DVB_S_S2_DSS */
-#ifdef    DEMOD_DVB_T2
-        case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2     : {
-          modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT2;
-          break;
-        }
-#endif /* DEMOD_DVB_T2 */
-        default : {
-          SiTRACE("AUTO DETECT '%d' is not managed by Si2183_L2_Channel_Seek_Init\n", front_end->demod->prop->dd_mode.auto_detect);
-          break;
-        }
-      }
-      break;
-    }
-#ifdef    DEMOD_DVB_S_S2_DSS
-    case Si2183_DD_MODE_PROP_MODULATION_DSS  :
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS :
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS2: {
-      modulation = front_end->demod->prop->dd_mode.modulation;
-      break;
-    }
-#endif /* DEMOD_DVB_S_S2_DSS */
-#ifdef    DEMOD_DVB_C
-    case Si2183_DD_MODE_PROP_MODULATION_DVBC :
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_DVB_C2
-    case Si2183_DD_MODE_PROP_MODULATION_DVBC2:
-#endif /* DEMOD_DVB_C2 */
-#ifdef    DEMOD_DVB_T2
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_ISDB_T
-    case Si2183_DD_MODE_PROP_MODULATION_ISDBT:
-#endif /* DEMOD_ISDB_T */
-#ifdef    DEMOD_DVB_T
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT : {
-      modulation = front_end->demod->prop->dd_mode.modulation;
-      break;
-    }
-#endif /* DEMOD_DVB_T */
-    default : {
-      SiTRACE("'%d' modulation (%s) is not managed by Si2183_L2_Channel_Seek_Init\n", front_end->demod->prop->dd_mode.modulation, Si2183_standardName(front_end->demod->prop->dd_mode.modulation));
-      return ERROR_Si2183_ERR;
-      break;
-    }
-  }
-  SiTRACE("Si2183_L2_Channel_Seek_Init for %s (%d)\n", Si2183_standardName(modulation), modulation );
-  switch (modulation) {
-#ifdef    DEMOD_DVB_S_S2_DSS
-    case Si2183_DD_MODE_PROP_MODULATION_DSS  :
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS :
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS2: {
-      if (front_end->auto_detect_SAT==1) {
-        front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
-        /* Trick to avoid slowing down AUTO SAT mode when not using DSS: */
-        /*  AUTO_DVB_S_S2_DSS is only used if the input standard is DSS  */
-        if (modulation == Si2183_DD_MODE_PROP_MODULATION_DSS) {
-          front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS;
-        } else {
-          front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2;
-        }
-      }
-      if (front_end->demod->MIS_capability) {
-        Si2183_L1_DVBS2_STREAM_SELECT  (front_end->demod, 0, Si2183_DVBS2_STREAM_SELECT_CMD_STREAM_SEL_MODE_AUTO);
-      }
-      SiTRACE("DVB-S AFC range %d DVB-S2 AFC range %d\n", front_end->demod->prop->dvbs_afc_range.range_khz, front_end->demod->prop->dvbs2_afc_range.range_khz );
-#ifdef   UNICABLE_COMPATIBLE
-      if (front_end->lnb_type == UNICABLE_LNB_TYPE_UNICABLE) {
-        if (front_end->unicable_mode == 2) {
-          front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw  =   360;
-        } else {
-          front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw  =   480;
-        }
-        front_end->demod->prop->scan_sat_unicable_min_tune_step.scan_sat_unicable_min_tune_step  =  50;
-      } else {
-        front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw  =     0;
-        front_end->demod->prop->scan_sat_unicable_min_tune_step.scan_sat_unicable_min_tune_step  =   0;
-      }
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_UNICABLE_BW_PROP_CODE);
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_UNICABLE_MIN_TUNE_STEP_PROP_CODE  );
-      front_end->demod->prop->dd_mode.invert_spectrum = Si2183_L2_Set_Invert_Spectrum(front_end);
-#endif /* UNICABLE_COMPATIBLE */
-      break;
-    }
-#endif /* DEMOD_DVB_S_S2_DSS */
-#ifdef    DEMOD_DVB_C
-    case Si2183_DD_MODE_PROP_MODULATION_DVBC :
-     /* Forcing BW to 8 MHz for DVB-C */
-      seekBWHz = 8000000;
-      front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_DVBC;
-      front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
-#ifdef    Si2167B_BLINDSCAN_PATCH
-      if  ((((front_end->demod->rsp->part_info.part == 65 ) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B'))
-         || ((front_end->demod->rsp->part_info.part == 67 ) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B'))
-        ) & ((front_end->demod->rsp->part_info.pmajor == '2') & (front_end->demod->rsp->part_info.pminor == '2')) ) {
-        front_end->previous_standard = 2;
-        front_end->Si2183_init_done  = 0;
-        front_end->demod->load_DVB_C_Blindlock_Patch = 1;
-        Si2183_L2_switch_to_standard(front_end, Si2183_DD_MODE_PROP_MODULATION_DVBC, 0);
-      }
-#endif /* Si2167B_BLINDSCAN_PATCH */
-      front_end->demod->prop->dvbc_constellation.constellation = Si2183_DVBC_CONSTELLATION_PROP_CONSTELLATION_AUTO;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_CONSTELLATION_PROP_CODE);
-      front_end->cable_lock_afc_range_khz = front_end->demod->prop->dvbc_afc_range.range_khz;
-      front_end->demod->prop->dvbc_afc_range.range_khz = 200;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_AFC_RANGE_PROP_CODE);
-      SiTRACE("DVB-C AFC range set to %d for blindscan/blindlock\n", front_end->demod->prop->dvbc_afc_range.range_khz);
-      break;
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_MCNS
-    case Si2183_DD_MODE_PROP_MODULATION_MCNS :
-     /* Forcing BW to 8 MHz for MCNS */
-      seekBWHz = 8000000;
-      front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_MCNS;
-      front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
-      front_end->demod->prop->mcns_constellation.constellation = Si2183_MCNS_CONSTELLATION_PROP_CONSTELLATION_AUTO;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_CONSTELLATION_PROP_CODE);
-      front_end->cable_lock_afc_range_khz = front_end->demod->prop->mcns_afc_range.range_khz;
-      front_end->demod->prop->mcns_afc_range.range_khz = 200;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_AFC_RANGE_PROP_CODE);
-      SiTRACE("MCNS AFC range set to %d for blindscan/blindlock\n", front_end->demod->prop->mcns_afc_range.range_khz);
-      break;
-#endif /* DEMOD_MCNS */
-#ifdef    DEMOD_DVB_T2
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_T
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT :
-      front_end->demod->prop->dvbt_hierarchy.stream = Si2183_DVBT_HIERARCHY_PROP_STREAM_HP;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBT_HIERARCHY_PROP_CODE);
-      SiTRACE("DVB-T AFC range %d\n", front_end->demod->prop->dvbt_afc_range.range_khz);
-#ifdef    DEMOD_DVB_T2
-      if (front_end->auto_detect_TER==1) {
-        front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
-        front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2;
-      }
-      SiTRACE("DVB-T2 AFC range %d\n", front_end->demod->prop->dvbt2_afc_range.range_khz);
-      Si2183_L1_DVBT2_PLP_SELECT    (front_end->demod, 0, Si2183_DVBT2_PLP_SELECT_CMD_PLP_ID_SEL_MODE_AUTO);
-#endif /* DEMOD_DVB_T2 */
-      break;
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_ISDB_T
-    case Si2183_DD_MODE_PROP_MODULATION_ISDBT :
-      front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_ISDBT;
-      SiTRACE("ISDB-T AFC range %d\n", front_end->demod->prop->isdbt_afc_range.range_khz);
-      break;
-#endif /* DEMOD_ISDB_T */
-#ifdef    DEMOD_DVB_C2
-    case Si2183_DD_MODE_PROP_MODULATION_DVBC2:
-      front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_DVBC2;
-      front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
-      front_end->demod->prop->dd_mode.bw          = seekBWHz/1000000;
-      SiTRACE("DVB-C2 AFC range %d\n", front_end->demod->prop->dvbc2_afc_range.range_khz);
-      break;
-#endif /* DEMOD_DVB_C2 */
-    default : {
-      SiTRACE("'%d' modulation (%s) is not managed by Si2183_L2_Channel_Seek_Init\n", modulation, Si2183_standardName(modulation));
-      break;
-    }
-  }
+	signed int modulation;
 
-  front_end->seekBWHz     = seekBWHz;
-  front_end->seekStepHz   = seekStepHz;
-  front_end->minSRbps     = minSRbps;
-  front_end->maxSRbps     = maxSRbps;
-  front_end->rangeMin     = rangeMin;
-  front_end->rangeMax     = rangeMax;
-  front_end->minRSSIdBm   = minRSSIdBm;
-  front_end->maxRSSIdBm   = maxRSSIdBm;
-  front_end->minSNRHalfdB = minSNRHalfdB;
-  front_end->maxSNRHalfdB = maxSNRHalfdB;
-  front_end->cumulativeScanTime    = 0;
-  front_end->cumulativeTimeoutTime = 0;
-  front_end->nbTimeouts   = 0;
-  front_end->nbDecisions  = 0;
-  front_end->seekAbort    = 0;
+	modulation = 0; /* to avoid compiler error */
 
-  SiTRACE("Si2183_L2_Channel_Seek_Init with %d to  %d, sawBW %d, minSR %d, maxSR %d\n", front_end->rangeMin, front_end->rangeMax, front_end->seekBWHz, front_end->minSRbps, front_end->maxSRbps);
-  SiTRACE("spectrum inversion %d\n",front_end->demod->prop->dd_mode.invert_spectrum );
-  front_end->demod->prop->scan_fmin.scan_fmin                   = (int)((front_end->rangeMin*front_end->tuneUnitHz)/65536);
-  front_end->demod->prop->scan_fmax.scan_fmax                   = (int)((front_end->rangeMax*front_end->tuneUnitHz)/65536);
+	Si2183_L1_GET_REV(front_end->demod);
 
-  front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min = front_end->minSRbps/1000;
-  front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max = front_end->maxSRbps/1000;
+	SiTRACE("Si21%02d", front_end->demod->rsp->get_rev.pn);
 
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_FMIN_PROP_CODE);
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_FMAX_PROP_CODE);
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SYMB_RATE_MIN_PROP_CODE);
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SYMB_RATE_MAX_PROP_CODE);
+	if((front_end->demod->rsp->get_rev.mcm_die) != Si2183_GET_REV_RESPONSE_MCM_DIE_SINGLE)
+	{
+		SiTRACE("2");
+	}
 
+	if(front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_A)
+	{
+		SiTRACE(" A");
+	}
+	else if(front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_B)
+	{
+		SiTRACE(" B");
+	}
+	else if(front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_C)
+	{
+		SiTRACE(" C");
+	}
+	else if(front_end->demod->rsp->get_rev.chiprev == Si2183_PART_INFO_RESPONSE_CHIPREV_D)
+	{
+		SiTRACE(" D");
+	}
+	else
+	{
+		SiTRACE(" chiprev %d", front_end->demod->rsp->get_rev.chiprev);
+	}
 
+	SiTRACE(" ROM %d NVM %c_%cb%d ", front_end->demod->rsp->part_info.romid, front_end->demod->rsp->part_info.pmajor, front_end->demod->rsp->part_info.pminor, front_end->demod->rsp->part_info.pbuild);
 
-  front_end->demod->prop->scan_ien.buzien           = Si2183_SCAN_IEN_PROP_BUZIEN_ENABLE  ; /* (default 'DISABLE') */
-  front_end->demod->prop->scan_ien.reqien           = Si2183_SCAN_IEN_PROP_REQIEN_ENABLE  ; /* (default 'DISABLE') */
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_IEN_PROP_CODE);
+	if(front_end->demod->rsp->get_rev.mcm_die == Si2183_GET_REV_RESPONSE_MCM_DIE_DIE_A)
+	{
+		SiTRACE(" die A");
+	}
+	else if(front_end->demod->rsp->get_rev.mcm_die == Si2183_GET_REV_RESPONSE_MCM_DIE_DIE_B)
+	{
+		SiTRACE("%s die B");
+	}
 
-  front_end->demod->prop->scan_int_sense.reqnegen   = Si2183_SCAN_INT_SENSE_PROP_REQNEGEN_DISABLE ; /* (default 'DISABLE') */
-  front_end->demod->prop->scan_int_sense.reqposen   = Si2183_SCAN_INT_SENSE_PROP_REQPOSEN_ENABLE  ; /* (default 'ENABLE') */
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_INT_SENSE_PROP_CODE);
+	SiTRACE(" Running FW %c_%cb%d\n", front_end->demod->rsp->get_rev.cmpmajor, front_end->demod->rsp->get_rev.cmpminor, front_end->demod->rsp->get_rev.cmpbuild);
 
+	#ifdef TERRESTRIAL_FRONT_END
+	if(front_end->demod->media == Si2183_TERRESTRIAL)
+	{
+		SiTRACE("media TERRESTRIAL\n");
+		front_end->tuneUnitHz = 1;
+	}
+	#endif	/* TERRESTRIAL_FRONT_END */
 
-#ifdef    TERRESTRIAL_FRONT_END
-#ifdef    ALLOW_Si2183_BLINDSCAN_DEBUG
-  front_end->demod->prop->scan_ter_config.scan_debug = 0x0f;
-#endif /* ALLOW_Si2183_BLINDSCAN_DEBUG */
-  if (front_end->demod->media == Si2183_TERRESTRIAL) {
-    front_end->demod->prop->scan_ter_config.analog_bw     = Si2183_SCAN_TER_CONFIG_PROP_ANALOG_BW_8MHZ;
-    if ( front_end->rangeMin == front_end->rangeMax ) {
-      front_end->demod->prop->scan_ter_config.mode        = Si2183_SCAN_TER_CONFIG_PROP_MODE_BLIND_LOCK;
-      SiTRACE("Blindlock < %8d %8d > < %8d %8d >\n", front_end->demod->prop->scan_fmin.scan_fmin, front_end->demod->prop->scan_fmax.scan_fmax, front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min, front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max);
-    } else {
-      front_end->demod->prop->scan_ter_config.mode        = Si2183_SCAN_TER_CONFIG_PROP_MODE_BLIND_SCAN;
-      SiTRACE("Blindscan < %8d %8d > < %8d %8d >\n", front_end->demod->prop->scan_fmin.scan_fmin, front_end->demod->prop->scan_fmax.scan_fmax, front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min, front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max);
-    }
-    front_end->demod->prop->scan_ter_config.search_analog = Si2183_SCAN_TER_CONFIG_PROP_SEARCH_ANALOG_DISABLE;
-    Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_TER_CONFIG_PROP_CODE);
-    if (seekBWHz == 1700000) {
-      front_end->demod->prop->dd_mode.bw = Si2183_DD_MODE_PROP_BW_BW_1D7MHZ;
-    } else {
-      front_end->demod->prop->dd_mode.bw = seekBWHz/1000000;
-    }
-  }
-#endif /* TERRESTRIAL_FRONT_END */
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_DD_MODE_PROP_CODE);
+	#ifdef DEMOD_DVB_S_S2_DSS
+	if(front_end->demod->media == Si2183_SATELLITE)
+	{
+		SiTRACE("media SATELLITE\n");
+		front_end->tuneUnitHz = 1000;
+		/* Set SAT tuner LPF to max to allow blindscan (in kHz) */
+		Si2183_L2_SAT_LPF(front_end, 100000);
+	}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
 
-#ifdef    DEMOD_DVB_S_S2_DSS
-#ifdef    ALLOW_Si2183_BLINDSCAN_DEBUG
-  front_end->demod->prop->scan_sat_config.scan_debug = 0x03;
-#endif /* ALLOW_Si2183_BLINDSCAN_DEBUG */
-  if (front_end->demod->media == Si2183_SATELLITE  ) {
-    front_end->demod->prop->scan_sat_config.analog_detect = Si2183_SCAN_SAT_CONFIG_PROP_ANALOG_DETECT_ENABLED;
-    front_end->demod->prop->scan_sat_config.reserved1     =  0;
-    front_end->demod->prop->scan_sat_config.reserved2     = 12;
-    Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_CONFIG_PROP_CODE);
-  }
-#endif /* DEMOD_DVB_S_S2_DSS */
-  Si2183_L1_DD_RESTART  (front_end->demod);
+	SiTRACE("blindscan_interaction >> (init  ) Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
 
-  Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
-  SiTRACE("blindscan_status leaving Seek_Init %s\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status) );
-  /* Preparing the next call to Si2183_L1_SCAN_CTRL which needs to be a 'START'*/
-  front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_START;
-  front_end->handshakeOn       = 0;
-  front_end->searchStartTime   = system_time();
-  SiTRACE("blindscan_handshake : Seek_Next will return every ~%d ms\n", front_end->handshakePeriod_ms );
-  return 0;
+	Si2183_L1_SCAN_CTRL(front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT, 0);
+
+	/* Check detection standard based on dd_mode.modulation and dd_mode.auto_detect */
+	SiTRACE("standard %d, dd_mode.modulation %d, dd_mode.auto_detect %d\n", 
+		front_end->standard, front_end->demod->prop->dd_mode.modulation, front_end->demod->prop->dd_mode.auto_detect);
+
+	switch(front_end->demod->prop->dd_mode.modulation)
+	{
+	case Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT:
+		{
+			switch(front_end->demod->prop->dd_mode.auto_detect)
+			{
+			#ifdef DEMOD_DVB_S_S2_DSS
+			case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2:
+				{
+					modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS2;
+					break;
+				}
+			case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS:
+				{
+					modulation = Si2183_DD_MODE_PROP_MODULATION_DSS;
+					break;
+				}
+			#endif /* DEMOD_DVB_S_S2_DSS */
+			#ifdef DEMOD_DVB_T2
+			case Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2:
+				{
+					modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT2;
+					break;
+				}
+			#endif /* DEMOD_DVB_T2 */
+			default:
+				{
+					SiTRACE("AUTO DETECT '%d' is not managed by Si2183_L2_Channel_Seek_Init\n", front_end->demod->prop->dd_mode.auto_detect);
+					break;
+				}
+			}
+			break;
+		}
+	#ifdef DEMOD_DVB_S_S2_DSS
+	case Si2183_DD_MODE_PROP_MODULATION_DSS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS2:
+		{
+			modulation = front_end->demod->prop->dd_mode.modulation;
+			break;
+		}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+	#ifdef DEMOD_DVB_C
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC:
+	#endif	/* DEMOD_DVB_C */
+	#ifdef DEMOD_DVB_C2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC2:
+	#endif	/* DEMOD_DVB_C2 */
+	#ifdef DEMOD_DVB_T2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+	#endif	/* DEMOD_DVB_T2 */
+	#ifdef DEMOD_ISDB_T
+	case Si2183_DD_MODE_PROP_MODULATION_ISDBT:
+	#endif	/* DEMOD_ISDB_T */
+	#ifdef DEMOD_DVB_T
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+		{
+			modulation = front_end->demod->prop->dd_mode.modulation;
+			break;
+		}
+	#endif /* DEMOD_DVB_T */
+	default:
+		{
+			SiTRACE("'%d' modulation (%s) is not managed by Si2183_L2_Channel_Seek_Init\n", 
+				front_end->demod->prop->dd_mode.modulation, Si2183_standardName(front_end->demod->prop->dd_mode.modulation));
+
+			return ERROR_Si2183_ERR;
+			break;
+		}
+	}
+
+	SiTRACE("Si2183_L2_Channel_Seek_Init for %s (%d)\n", Si2183_standardName(modulation), modulation);
+
+	switch(modulation)
+	{
+	#ifdef DEMOD_DVB_S_S2_DSS
+	case Si2183_DD_MODE_PROP_MODULATION_DSS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS2:
+		{
+			if(front_end->auto_detect_SAT == 1)
+			{
+				front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
+
+				/* Trick to avoid slowing down AUTO SAT mode when not using DSS: */
+				/*  AUTO_DVB_S_S2_DSS is only used if the input standard is DSS  */
+				if(modulation == Si2183_DD_MODE_PROP_MODULATION_DSS)
+				{
+					front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS;
+				}
+				else
+				{
+					front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2;
+				}
+			}
+
+			if(front_end->demod->MIS_capability)
+			{
+				Si2183_L1_DVBS2_STREAM_SELECT(front_end->demod, 0, Si2183_DVBS2_STREAM_SELECT_CMD_STREAM_SEL_MODE_AUTO);
+			}
+
+			SiTRACE("DVB-S AFC range %d DVB-S2 AFC range %d\n", front_end->demod->prop->dvbs_afc_range.range_khz, front_end->demod->prop->dvbs2_afc_range.range_khz);
+
+			#ifdef UNICABLE_COMPATIBLE
+			if(front_end->lnb_type == UNICABLE_LNB_TYPE_UNICABLE)
+			{
+				if(front_end->unicable_mode == 2)
+				{
+					front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw = 360;
+				}
+				else
+				{
+					front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw = 480;
+				}
+
+				front_end->demod->prop->scan_sat_unicable_min_tune_step.scan_sat_unicable_min_tune_step = 50;
+			}
+			else
+			{
+				front_end->demod->prop->scan_sat_unicable_bw.scan_sat_unicable_bw = 0;
+				front_end->demod->prop->scan_sat_unicable_min_tune_step.scan_sat_unicable_min_tune_step = 0;
+			}
+
+			Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_UNICABLE_BW_PROP_CODE);
+			Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_UNICABLE_MIN_TUNE_STEP_PROP_CODE);
+
+			front_end->demod->prop->dd_mode.invert_spectrum = Si2183_L2_Set_Invert_Spectrum(front_end);
+			#endif /* UNICABLE_COMPATIBLE */
+			break;
+		}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+	#ifdef DEMOD_DVB_C
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC:
+		/* Forcing BW to 8 MHz for DVB-C */
+		seekBWHz = 8000000;
+		front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBC;
+		front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
+
+		#ifdef Si2167B_BLINDSCAN_PATCH
+		if((((front_end->demod->rsp->part_info.part == 65) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B')) 
+				|| ((front_end->demod->rsp->part_info.part == 67) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B')))
+			& ((front_end->demod->rsp->part_info.pmajor == '2') & (front_end->demod->rsp->part_info.pminor == '2')))
+		{
+			front_end->previous_standard = 2;
+			front_end->Si2183_init_done  = 0;
+			front_end->demod->load_DVB_C_Blindlock_Patch = 1;
+
+			Si2183_L2_switch_to_standard(front_end, Si2183_DD_MODE_PROP_MODULATION_DVBC, 0);
+		}
+		#endif	/* Si2167B_BLINDSCAN_PATCH */
+
+		front_end->demod->prop->dvbc_constellation.constellation = Si2183_DVBC_CONSTELLATION_PROP_CONSTELLATION_AUTO;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_CONSTELLATION_PROP_CODE);
+
+		front_end->cable_lock_afc_range_khz = front_end->demod->prop->dvbc_afc_range.range_khz;
+		front_end->demod->prop->dvbc_afc_range.range_khz = 200;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_AFC_RANGE_PROP_CODE);
+
+		SiTRACE("DVB-C AFC range set to %d for blindscan/blindlock\n", front_end->demod->prop->dvbc_afc_range.range_khz);
+		break;
+	#endif	/* DEMOD_DVB_C */
+	#ifdef DEMOD_MCNS
+	case Si2183_DD_MODE_PROP_MODULATION_MCNS:
+		/* Forcing BW to 8 MHz for MCNS */
+		seekBWHz = 8000000;
+		front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_MCNS;
+		front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
+		front_end->demod->prop->mcns_constellation.constellation = Si2183_MCNS_CONSTELLATION_PROP_CONSTELLATION_AUTO;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_CONSTELLATION_PROP_CODE);
+
+		front_end->cable_lock_afc_range_khz = front_end->demod->prop->mcns_afc_range.range_khz;
+		front_end->demod->prop->mcns_afc_range.range_khz = 200;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_AFC_RANGE_PROP_CODE);
+
+		SiTRACE("MCNS AFC range set to %d for blindscan/blindlock\n", front_end->demod->prop->mcns_afc_range.range_khz);
+		break;
+	#endif	/* DEMOD_MCNS */
+	#ifdef DEMOD_DVB_T2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+	#endif	/* DEMOD_DVB_T2 */
+	#ifdef DEMOD_DVB_T
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+		front_end->demod->prop->dvbt_hierarchy.stream = Si2183_DVBT_HIERARCHY_PROP_STREAM_HP;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBT_HIERARCHY_PROP_CODE);
+
+		SiTRACE("DVB-T AFC range %d\n", front_end->demod->prop->dvbt_afc_range.range_khz);
+
+		#ifdef DEMOD_DVB_T2
+		if(front_end->auto_detect_TER == 1)
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
+			front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2;
+		}
+
+		SiTRACE("DVB-T2 AFC range %d\n", front_end->demod->prop->dvbt2_afc_range.range_khz);
+
+		Si2183_L1_DVBT2_PLP_SELECT(front_end->demod, 0, Si2183_DVBT2_PLP_SELECT_CMD_PLP_ID_SEL_MODE_AUTO);
+		#endif	/* DEMOD_DVB_T2 */
+		break;
+	#endif	/* DEMOD_DVB_T */
+	#ifdef DEMOD_ISDB_T
+	case Si2183_DD_MODE_PROP_MODULATION_ISDBT:
+		front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_ISDBT;
+
+		SiTRACE("ISDB-T AFC range %d\n", front_end->demod->prop->isdbt_afc_range.range_khz);
+		break;
+	#endif	/* DEMOD_ISDB_T */
+	#ifdef DEMOD_DVB_C2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC2:
+		front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBC2;
+		front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_NONE;
+		front_end->demod->prop->dd_mode.bw = seekBWHz / 1000000;
+
+		SiTRACE("DVB-C2 AFC range %d\n", front_end->demod->prop->dvbc2_afc_range.range_khz);
+		break;
+	#endif /* DEMOD_DVB_C2 */
+	default:
+		{
+			SiTRACE("'%d' modulation (%s) is not managed by Si2183_L2_Channel_Seek_Init\n", modulation, Si2183_standardName(modulation));
+			break;
+		}
+	}
+
+	front_end->seekBWHz 				= seekBWHz;
+	front_end->seekStepHz 				= seekStepHz;
+	front_end->minSRbps 				= minSRbps;
+	front_end->maxSRbps 				= maxSRbps;
+	front_end->rangeMin 				= rangeMin;
+	front_end->rangeMax 				= rangeMax;
+	front_end->minRSSIdBm 				= minRSSIdBm;
+	front_end->maxRSSIdBm 				= maxRSSIdBm;
+	front_end->minSNRHalfdB 			= minSNRHalfdB;
+	front_end->maxSNRHalfdB 			= maxSNRHalfdB;
+	front_end->cumulativeScanTime 		= 0;
+	front_end->cumulativeTimeoutTime 	= 0;
+	front_end->nbTimeouts 				= 0;
+	front_end->nbDecisions 				= 0;
+	front_end->seekAbort 				= 0;
+
+	SiTRACE("Si2183_L2_Channel_Seek_Init with %d to  %d, sawBW %d, minSR %d, maxSR %d\n", front_end->rangeMin, front_end->rangeMax, front_end->seekBWHz, front_end->minSRbps, front_end->maxSRbps);
+	SiTRACE("spectrum inversion %d\n",front_end->demod->prop->dd_mode.invert_spectrum);
+
+	front_end->demod->prop->scan_fmin.scan_fmin = (int)((front_end->rangeMin * front_end->tuneUnitHz) / 65536);
+	front_end->demod->prop->scan_fmax.scan_fmax = (int)((front_end->rangeMax * front_end->tuneUnitHz) / 65536);
+
+	front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min = front_end->minSRbps / 1000;
+	front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max = front_end->maxSRbps / 1000;
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_FMIN_PROP_CODE);
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_FMAX_PROP_CODE);
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SYMB_RATE_MIN_PROP_CODE);
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SYMB_RATE_MAX_PROP_CODE);
+
+	front_end->demod->prop->scan_ien.buzien = Si2183_SCAN_IEN_PROP_BUZIEN_ENABLE; /* (default 'DISABLE') */
+	front_end->demod->prop->scan_ien.reqien = Si2183_SCAN_IEN_PROP_REQIEN_ENABLE; /* (default 'DISABLE') */
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_IEN_PROP_CODE);
+
+	front_end->demod->prop->scan_int_sense.reqnegen = Si2183_SCAN_INT_SENSE_PROP_REQNEGEN_DISABLE; /* (default 'DISABLE') */
+	front_end->demod->prop->scan_int_sense.reqposen = Si2183_SCAN_INT_SENSE_PROP_REQPOSEN_ENABLE; /* (default 'ENABLE') */
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_INT_SENSE_PROP_CODE);
+
+	#ifdef TERRESTRIAL_FRONT_END
+	#ifdef ALLOW_Si2183_BLINDSCAN_DEBUG
+	front_end->demod->prop->scan_ter_config.scan_debug = 0x0f;
+	#endif	/* ALLOW_Si2183_BLINDSCAN_DEBUG */
+	if(front_end->demod->media == Si2183_TERRESTRIAL)
+	{
+		front_end->demod->prop->scan_ter_config.analog_bw = Si2183_SCAN_TER_CONFIG_PROP_ANALOG_BW_8MHZ;
+		if(front_end->rangeMin == front_end->rangeMax)
+		{
+			front_end->demod->prop->scan_ter_config.mode = Si2183_SCAN_TER_CONFIG_PROP_MODE_BLIND_LOCK;
+
+			SiTRACE("Blindlock < %8d %8d > < %8d %8d >\n", 
+				front_end->demod->prop->scan_fmin.scan_fmin, 
+				front_end->demod->prop->scan_fmax.scan_fmax, 
+				front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min, 
+				front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max);
+		}
+		else
+		{
+			front_end->demod->prop->scan_ter_config.mode = Si2183_SCAN_TER_CONFIG_PROP_MODE_BLIND_SCAN;
+
+			SiTRACE("Blindscan < %8d %8d > < %8d %8d >\n", 
+				front_end->demod->prop->scan_fmin.scan_fmin, 
+				front_end->demod->prop->scan_fmax.scan_fmax, 
+				front_end->demod->prop->scan_symb_rate_min.scan_symb_rate_min, 
+				front_end->demod->prop->scan_symb_rate_max.scan_symb_rate_max);
+		}
+
+		front_end->demod->prop->scan_ter_config.search_analog = Si2183_SCAN_TER_CONFIG_PROP_SEARCH_ANALOG_DISABLE;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_TER_CONFIG_PROP_CODE);
+
+		if(seekBWHz == 1700000)
+		{
+			front_end->demod->prop->dd_mode.bw = Si2183_DD_MODE_PROP_BW_BW_1D7MHZ;
+		}
+		else
+		{
+			front_end->demod->prop->dd_mode.bw = seekBWHz / 1000000;
+		}
+	}
+	#endif	/* TERRESTRIAL_FRONT_END */
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_DD_MODE_PROP_CODE);
+
+	#ifdef DEMOD_DVB_S_S2_DSS
+	#ifdef ALLOW_Si2183_BLINDSCAN_DEBUG
+	front_end->demod->prop->scan_sat_config.scan_debug = 0x03;
+	#endif	/* ALLOW_Si2183_BLINDSCAN_DEBUG */
+
+	if(front_end->demod->media == Si2183_SATELLITE)
+	{
+		front_end->demod->prop->scan_sat_config.analog_detect = Si2183_SCAN_SAT_CONFIG_PROP_ANALOG_DETECT_ENABLED;
+		front_end->demod->prop->scan_sat_config.reserved1 =  0;
+		front_end->demod->prop->scan_sat_config.reserved2 = 12;
+
+		Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_SAT_CONFIG_PROP_CODE);
+	}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+
+	Si2183_L1_DD_RESTART(front_end->demod);
+
+	Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
+
+	SiTRACE("blindscan_status leaving Seek_Init %s\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status));
+
+	/* Preparing the next call to Si2183_L1_SCAN_CTRL which needs to be a 'START'*/
+	front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_START;
+	front_end->handshakeOn = 0;
+	front_end->searchStartTime = system_time();
+
+	SiTRACE("blindscan_handshake : Seek_Next will return every ~%d ms\n", front_end->handshakePeriod_ms);
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: Si2183_L2_Channel_Seek_Next
@@ -6046,759 +6208,1066 @@ signed   int  Si2183_L2_Channel_Seek_Init  (Si2183_L2_Context *front_end, signed
   Returns:    1 if channel is found, 0 otherwise (either abort or end of range)
               Any other value represents the time spent searching (if front_end->handshakeUsed == 1)
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Channel_Seek_Next  (Si2183_L2_Context *front_end
-                                           , signed   int *standard
-                                           , signed   int *freq
-                                           , signed   int *bandwidth_Hz
-#ifdef    DEMOD_DVB_T
-                                           , signed   int *stream
-#endif /* DEMOD_DVB_T*/
-                                           , unsigned int *symbol_rate_bps
-#ifdef    DEMOD_DVB_C
-                                           , signed   int *constellation
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_DVB_C2
-                                           , signed   int *num_data_slice
-#endif /* DEMOD_DVB_C2*/
-                                           , signed   int *num_plp
-#ifdef    DEMOD_DVB_T2
-                                           , signed   int *T2_base_lite
-#endif /* DEMOD_DVB_T2 */
-                                           )
+signed int Si2183_L2_Channel_Seek_Next(
+	Si2183_L2_Context *front_end, 
+	signed int *standard, 
+	signed int *freq, 
+	signed int *bandwidth_Hz
+	#ifdef DEMOD_DVB_T
+	, signed int *stream
+	#endif	/* DEMOD_DVB_T*/
+	, unsigned int *symbol_rate_bps
+	#ifdef DEMOD_DVB_C
+	, signed int *constellation
+	#endif	/* DEMOD_DVB_C */
+	#ifdef DEMOD_DVB_C2
+	, signed int *num_data_slice
+	#endif	/* DEMOD_DVB_C2*/
+	, signed int *num_plp
+	#ifdef DEMOD_DVB_T2
+	, signed int *T2_base_lite
+	#endif	/* DEMOD_DVB_T2 */
+	)
 {
-    signed   int  return_code;
-    unsigned int  seek_freq;
-    signed   int  seek_freq_kHz;
-    signed   int  channelIncrement;
-    signed   int  seekStartTime;    /* seekStartTime    is used to trace the time spent in Si2183_L2_Channel_Seek_Next and is only set when entering the function                            */
-    signed   int  buzyStartTime;    /* buzyStartTime    is used to trace the time spent waiting for scan_status.buz to be different from 'BUZY'                                              */
-    signed   int  timeoutDelay;
-    signed   int  handshakeDelay;
-    signed   int  searchDelay;
-    signed   int  decisionDelay;
-    signed   int  max_lock_time_ms;
-    signed   int  min_lock_time_ms;
-    signed   int  max_decision_time_ms;
-    signed   int  blind_mode;
-    signed   int  skip_resume;
-    signed   int  start_resume;
-    signed   int  previous_scan_status;
-    unsigned char jump_to_next_channel;
-    L1_Si2183_Context *api;
-    /* init all flags to avoid compiler warnings */
-    return_code          = 0; /* To avoid code checker warning */
-    seek_freq            = 0; /* To avoid code checker warning */
-    seek_freq_kHz        = 0; /* To avoid code checker warning */
-    channelIncrement     = 0; /* To avoid code checker warning */
-    seekStartTime        = 0; /* To avoid code checker warning */
-    buzyStartTime        = 0; /* To avoid code checker warning */
-    timeoutDelay         = 0; /* To avoid code checker warning */
-    handshakeDelay       = 0; /* To avoid code checker warning */
-    max_lock_time_ms     = 0; /* To avoid code checker warning */
-    min_lock_time_ms     = 0; /* To avoid code checker warning */
-    max_decision_time_ms = 0; /* To avoid code checker warning */
-    skip_resume          = 0; /* To avoid code checker warning */
-    previous_scan_status = 0; /* To avoid code checker warning */
-    searchDelay          = 0; /* To avoid code checker warning */
-    start_resume         = 0; /* To avoid code checker warning */
+	signed int return_code;
+	unsigned int seek_freq;
+	signed int seek_freq_kHz;
+	signed int channelIncrement;
+	signed int seekStartTime;    /* seekStartTime    is used to trace the time spent in Si2183_L2_Channel_Seek_Next and is only set when entering the function                            */
+	signed int buzyStartTime;    /* buzyStartTime    is used to trace the time spent waiting for scan_status.buz to be different from 'BUZY'                                              */
+	signed int timeoutDelay;
+	signed int handshakeDelay;
+	signed int searchDelay;
+	signed int decisionDelay;
+	signed int max_lock_time_ms;
+	signed int min_lock_time_ms;
+	signed int max_decision_time_ms;
+	signed int blind_mode;
+	signed int skip_resume;
+	signed int start_resume;
+	signed int previous_scan_status;
+	unsigned char jump_to_next_channel;
+	L1_Si2183_Context *api;
 
-    api = front_end->demod;
+	/* init all flags to avoid compiler warnings */
+	return_code 			= 0; /* To avoid code checker warning */
+	seek_freq 				= 0; /* To avoid code checker warning */
+	seek_freq_kHz 			= 0; /* To avoid code checker warning */
+	channelIncrement 		= 0; /* To avoid code checker warning */
+	seekStartTime 			= 0; /* To avoid code checker warning */
+	buzyStartTime 			= 0; /* To avoid code checker warning */
+	timeoutDelay 			= 0; /* To avoid code checker warning */
+	handshakeDelay 			= 0; /* To avoid code checker warning */
+	max_lock_time_ms 		= 0; /* To avoid code checker warning */
+	min_lock_time_ms 		= 0; /* To avoid code checker warning */
+	max_decision_time_ms 	= 0; /* To avoid code checker warning */
+	skip_resume 			= 0; /* To avoid code checker warning */
+	previous_scan_status 	= 0; /* To avoid code checker warning */
+	searchDelay 			= 0; /* To avoid code checker warning */
+	start_resume 			= 0; /* To avoid code checker warning */
 
-    blind_mode   = 0;
+	api = front_end->demod;
 
-    /* Clear all return values which may not be used depending on the standard */
-    *bandwidth_Hz    = 0;
-#ifdef    DEMOD_DVB_T
-    *stream          = 0;
-#endif /* DEMOD_DVB_T*/
-    *symbol_rate_bps = 0;
-#ifdef    DEMOD_DVB_C
-    *constellation   = 0;
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_DVB_T2
-     *num_plp        = 0;
-     *T2_base_lite   = 0;
-#endif /* DEMOD_DVB_T2*/
-#ifdef    DEMOD_DVB_C2
-#ifndef   DEMOD_DVB_T2
-     *num_plp        = 0;
-#endif /* DEMOD_DVB_T2*/
-     *num_data_slice = 0;
-#endif /* DEMOD_DVB_C2*/
+	blind_mode = 0;
 
-    if (front_end->seekAbort) {
-      SiTRACE("Si2183_L2_Channel_Seek_Next : previous run aborted. Please Si2183_L2_Channel_Seek_Init to perform a new search.\n");
-      return 0;
-    }
+	/* Clear all return values which may not be used depending on the standard */
+	*bandwidth_Hz = 0;
 
-    SiTRACE("front_end->demod->standard %d (%s)\n",front_end->demod->standard, Si2183_standardName(front_end->demod->standard) );
+	#ifdef DEMOD_DVB_T
+	*stream = 0;
+	#endif	/* DEMOD_DVB_T*/
+	*symbol_rate_bps = 0;
 
-    /* Setting max and max lock times and blind_mode flag */
-    switch ( front_end->demod->standard )
-    {
-#ifdef    DEMOD_DVB_T2
-      /* For T/T2 detection, use the max value between Si2183_DVBT_MAX_LOCK_TIME and Si2183_DVBT2_MAX_LOCK_TIME */
-      /* With Si2183-A, it's Si2183_DVBT2_MAX_LOCK_TIME                                                         */
-      /* This value will be refined as soon as the standard is known, i.e. when PCL = 1                         */
-      case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_T
-      case Si2183_DD_MODE_PROP_MODULATION_DVBT: {
-        blind_mode = 0;
-#ifndef   DEMOD_DVB_T2
-        max_lock_time_ms = Si2183_DVBT_MAX_LOCK_TIME;
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_T2
-          max_lock_time_ms = Si2183_DVBT2_MAX_LOCK_TIME;
-#endif /* DEMOD_DVB_T2 */
-        min_lock_time_ms = Si2183_DVBT_MIN_LOCK_TIME;
-        break;
-      }
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_ISDB_T
-      case Si2183_DD_MODE_PROP_MODULATION_ISDBT: {
-        blind_mode = 0;
-        max_lock_time_ms = Si2183_ISDBT_MAX_LOCK_TIME;
-        min_lock_time_ms = Si2183_ISDBT_MIN_LOCK_TIME;
-        break;
-      }
-#endif /* DEMOD_ISDB_T */
-#ifdef    DEMOD_DVB_C
-      case Si2183_DD_MODE_PROP_MODULATION_DVBC : {
-        blind_mode = 1;
-        max_lock_time_ms = Si2183_DVBC_MAX_SCAN_TIME;
-        min_lock_time_ms = Si2183_DVBC_MIN_LOCK_TIME;
-        break;
-      }
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_DVB_C2
-      case Si2183_DD_MODE_PROP_MODULATION_DVBC2: {
-        blind_mode = 0;
-        max_lock_time_ms = Si2183_DVBC2_MAX_LOCK_TIME;
-        min_lock_time_ms = Si2183_DVBC2_MIN_LOCK_TIME;
-        break;
-      }
-#endif /* DEMOD_DVB_C2 */
-#ifdef    DEMOD_DVB_S_S2_DSS
-      case Si2183_DD_MODE_PROP_MODULATION_DSS  :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBS :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBS2: {
-        blind_mode = 1;
-        max_lock_time_ms = Si2183_SAT_MAX_SEARCH_TIME;
-        min_lock_time_ms = Si2183_DVBS_MIN_LOCK_TIME;
-        break;
-      }
-#endif /* DEMOD_DVB_S_S2_DSS */
-      default                                  : {
-        SiTRACE("'%d' standard (%s) is not managed by Si2183_L2_Channel_Seek_Next\n", front_end->demod->prop->dd_mode.modulation, Si2183_standardName(front_end->demod->prop->dd_mode.modulation));
-        front_end->seekAbort = 1;
-        return 0;
-        break;
-      }
-    }
-    SiTRACE("blindscan : max_lock_time_ms %d\n", max_lock_time_ms);
+	#ifdef DEMOD_DVB_C
+	*constellation = 0;
+	#endif	/* DEMOD_DVB_C */
 
-    seekStartTime = system_time();
+	#ifdef DEMOD_DVB_T2
+	*num_plp = 0;
+	*T2_base_lite = 0;
+	#endif	/* DEMOD_DVB_T2*/
 
-    if (front_end->handshakeUsed == 0) {
-      start_resume = 1;
-      front_end->searchStartTime = seekStartTime;
-    }
-    if (front_end->handshakeUsed == 1) {
-      min_lock_time_ms = 0;
-      /* Recalled after handshaking    */
-      if (front_end->handshakeOn == 1) {
-        /* Skip tuner and demod settings */
-        start_resume = 0;
-        SiTRACE("blindscan_handshake : recalled after   handshake. Skipping tuner and demod settings\n");
-      }
-      /* When recalled after a lock */
-      if (front_end->handshakeOn == 0) {
-        /* Allow tuner and demod settings */
-        start_resume = 1;
-        if (blind_mode == 1) { /* DVB-C / DVB-S / DVB-S2 / MCNS */
-          if (front_end->demod->cmd->scan_ctrl.action == Si2183_SCAN_CTRL_CMD_ACTION_START) {
-            SiTRACE("blindscan_handshake : no handshake : starting.\n");
-          } else {
-            SiTRACE("blindscan_handshake : no handshake : resuming.\n");
-          }
-        }
-        front_end->searchStartTime = seekStartTime;
-      }
-    }
-    front_end->handshakeStart_ms = seekStartTime;
+	#ifdef DEMOD_DVB_C2
+	#ifndef DEMOD_DVB_T2
+	*num_plp = 0;
+	#endif	/* DEMOD_DVB_T2*/
+	*num_data_slice = 0;
+	#endif	/* DEMOD_DVB_C2*/
 
-  #ifdef    DEMOD_DVB_T2
-    if (start_resume == 1) {
-      /* Enabling FEF control for T/T2 */
-      switch ( front_end->demod->standard )
-      {
-        case Si2183_DD_MODE_PROP_MODULATION_DVBT2 :
-        case Si2183_DD_MODE_PROP_MODULATION_DVBT  : {
-         #ifdef    INDIRECT_I2C_CONNECTION
-          front_end->f_TER_tuner_enable(front_end->callback);
-         #else  /* INDIRECT_I2C_CONNECTION */
-          Si2183_L2_Tuner_I2C_Enable(front_end);
-         #endif /* INDIRECT_I2C_CONNECTION */
-          Si2183_L2_TER_FEF (front_end,1);
-        #ifdef    INDIRECT_I2C_CONNECTION
-          front_end->f_TER_tuner_disable(front_end->callback);
-        #else  /* INDIRECT_I2C_CONNECTION */
-          Si2183_L2_Tuner_I2C_Disable(front_end);
-        #endif /* INDIRECT_I2C_CONNECTION */
-          Si2183_L1_DVBT2_PLP_SELECT    (front_end->demod, 0, Si2183_DVBT2_PLP_SELECT_CMD_PLP_ID_SEL_MODE_AUTO);
-          break;
-        }
-        default                                   : {
-          break;
-        }
-      }
-    }
-  #endif /* DEMOD_DVB_T2 */
+	if(front_end->seekAbort)
+	{
+		SiTRACE("Si2183_L2_Channel_Seek_Next : previous run aborted. Please Si2183_L2_Channel_Seek_Init to perform a new search.\n");
+		return 0;
+	}
 
-    max_decision_time_ms = max_lock_time_ms;
+	SiTRACE("front_end->demod->standard %d (%s)\n", front_end->demod->standard, Si2183_standardName(front_end->demod->standard));
 
-    /* Select TER channel increment (this value will only be used for 'TER' scanning) */
-    channelIncrement = front_end->seekStepHz;
+	/* Setting max and max lock times and blind_mode flag */
+	switch(front_end->demod->standard)
+	{
+	#ifdef DEMOD_DVB_T2
+	/* For T/T2 detection, use the max value between Si2183_DVBT_MAX_LOCK_TIME and Si2183_DVBT2_MAX_LOCK_TIME */
+	/* With Si2183-A, it's Si2183_DVBT2_MAX_LOCK_TIME                                                         */
+	/* This value will be refined as soon as the standard is known, i.e. when PCL = 1                         */
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+	#endif	/* DEMOD_DVB_T2 */
+	#ifdef DEMOD_DVB_T
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+		{
+			blind_mode = 0;
+			#ifndef DEMOD_DVB_T2
+			max_lock_time_ms = Si2183_DVBT_MAX_LOCK_TIME;
+			#endif	/* DEMOD_DVB_T2 */
+			#ifdef DEMOD_DVB_T2
+			max_lock_time_ms = Si2183_DVBT2_MAX_LOCK_TIME;
+			#endif	/* DEMOD_DVB_T2 */
+			min_lock_time_ms = Si2183_DVBT_MIN_LOCK_TIME;
+			break;
+		}
+	#endif	/* DEMOD_DVB_T */
+	#ifdef DEMOD_ISDB_T
+	case Si2183_DD_MODE_PROP_MODULATION_ISDBT:
+		{
+			blind_mode = 0;
+			max_lock_time_ms = Si2183_ISDBT_MAX_LOCK_TIME;
+			min_lock_time_ms = Si2183_ISDBT_MIN_LOCK_TIME;
+			break;
+		}
+	#endif	/* DEMOD_ISDB_T */
+	#ifdef DEMOD_DVB_C
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC:
+		{
+			blind_mode = 1;
+			max_lock_time_ms = Si2183_DVBC_MAX_SCAN_TIME;
+			min_lock_time_ms = Si2183_DVBC_MIN_LOCK_TIME;
+			break;
+		}
+	#endif	/* DEMOD_DVB_C */
+	#ifdef DEMOD_DVB_C2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC2:
+		{
+			blind_mode = 0;
+			max_lock_time_ms = Si2183_DVBC2_MAX_LOCK_TIME;
+			min_lock_time_ms = Si2183_DVBC2_MIN_LOCK_TIME;
+			break;
+		}
+	#endif	/* DEMOD_DVB_C2 */
+	#ifdef DEMOD_DVB_S_S2_DSS
+	case Si2183_DD_MODE_PROP_MODULATION_DSS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS:
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS2:
+		{
+			blind_mode = 1;
+			max_lock_time_ms = Si2183_SAT_MAX_SEARCH_TIME;
+			min_lock_time_ms = Si2183_DVBS_MIN_LOCK_TIME;
+			break;
+		}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+	default:
+		{
+			SiTRACE("'%d' standard (%s) is not managed by Si2183_L2_Channel_Seek_Next\n", 
+				front_end->demod->prop->dd_mode.modulation, Si2183_standardName(front_end->demod->prop->dd_mode.modulation));
 
-    /* Start Seeking */
-    SiTRACE("Si2183_L2_Channel_Seek_Next front_end->rangeMin %10d,front_end->rangeMax %10d blind_mode %d\n", front_end->rangeMin,front_end->rangeMax, blind_mode);
+			front_end->seekAbort = 1;
+			return 0;
+			break;
+		}
+	}
 
-    seek_freq = front_end->rangeMin;
+	SiTRACE("blindscan : max_lock_time_ms %d\n", max_lock_time_ms);
 
-  if (blind_mode == 0) { /* DVB-T / DVB-T2 / ISDB-T / DVB-C2 */
+	seekStartTime = system_time();
 
-    while ( seek_freq <= front_end->rangeMax )
-    {
-      if (start_resume) {
-        /* Call the Si2183_L2_Tune command to tune the frequency */
-        SiTRACE ("Seek_Next: Si2183_L2_Tune (front_end, %10d)\n", seek_freq);
-        if ( (Si2183_L2_Tune (front_end, seek_freq ) - seek_freq) != 0) {
-          /* Manage possible tune error */
-          SiTRACE("Si2183_L2_Channel_Seek_Next Tune error at %d, aborting (skipped)\n", seek_freq);
-          front_end->seekAbort = 1;
-          return 0;
-        }
-        front_end->ddRestartTime = system_time();
-      #ifdef    DEMOD_DVB_C2
-        if (front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBC2) {
-        /* For DVB-C2, make sure to store tuned_rf_freq and be in ID_SEL_MODE_AUTO
-         (this may have been changed by the application while browsing through Data Slices and PLPs) */
-          if (front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode != Si2183_DVBC2_DS_PLP_SELECT_CMD_ID_SEL_MODE_AUTO) {
-              front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode  = Si2183_DVBC2_DS_PLP_SELECT_CMD_ID_SEL_MODE_AUTO;
-              front_end->demod->cmd->dvbc2_ds_plp_select.ds_id        = 0;
-            Si2183_L1_DVBC2_DS_PLP_SELECT      (front_end->demod,
-                                                front_end->demod->cmd->dvbc2_ds_plp_select.plp_id,
-                                                front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode,
-                                                front_end->demod->cmd->dvbc2_ds_plp_select.ds_id);
-          }
-          front_end->demod->cmd->dvbc2_ctrl.action        = Si2183_DVBC2_CTRL_CMD_ACTION_START;
-          front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq = seek_freq;
-        /* For DVB-C2, store tuned_rf_freq in the part using Si2183_L1_DVBC2_CTRL */
-          Si2183_L1_DVBC2_CTRL (front_end->demod, front_end->demod->cmd->dvbc2_ctrl.action , front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq);
-          system_wait(2); /* Waiting 2 ms to have dvbc2_ctrl.tuned_rf_freq processed by the part before DD_RESTART */
-          SiTRACE   ("Si2183_L2_Channel_Seek_Next 'dvbc2_ctrl/START' took %3d ms\n", system_time() - front_end->ddRestartTime);
-        }
-      #endif /* DEMOD_DVB_C2 */
-        front_end->ddRestartTime = system_time();
-        Si2183_L1_DD_RESTART            (front_end->demod);
-        SiTRACE   ("Si2183_L2_Channel_Seek_Next 'reset' took %3d ms\n", system_time() - front_end->ddRestartTime);
-        /* In non-blind mode, the time-out reference is the last DD_RESTART or DVBC2_CTRL */
-        front_end->timeoutStartTime = system_time();
-        /* as we will not lock in less than min_lock_time_ms, wait a while... */
-        system_wait(min_lock_time_ms);
-      }
+	if(front_end->handshakeUsed == 0)
+	{
+		start_resume = 1;
+		front_end->searchStartTime = seekStartTime;
+	}
 
-      jump_to_next_channel = 0;
+	if(front_end->handshakeUsed == 1)
+	{
+		min_lock_time_ms = 0;
 
-      while (!jump_to_next_channel) {
+		/* Recalled after handshaking */
+		if(front_end->handshakeOn == 1)
+		{
+			/* Skip tuner and demod settings */
+			start_resume = 0;
+			SiTRACE("blindscan_handshake : recalled after   handshake. Skipping tuner and demod settings\n");
+		}
 
-#ifdef    DEMOD_DVB_T
-        if ((front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBT)
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_DVB_T2
-          | (front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBT2)
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_T
-          ) {
-          return_code = Si2183_L1_DD_STATUS(api, Si2183_DD_STATUS_CMD_INTACK_CLEAR);
-          if (return_code != NO_Si2183_ERROR) {
-            SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DD_STATUS (T/T2) error at %d, aborting\n", seek_freq);
-            front_end->handshakeOn = 0;
-            front_end->seekAbort   = 1;
-            return 0;
-          }
-          Si2183_L1_DD_EXT_AGC_TER (api,
-                                    Si2183_DD_EXT_AGC_TER_CMD_AGC_1_MODE_NO_CHANGE,
-                                    api->cmd->dd_ext_agc_ter.agc_1_inv,
-                                    Si2183_DD_EXT_AGC_TER_CMD_AGC_2_MODE_NO_CHANGE,
-                                    api->cmd->dd_ext_agc_ter.agc_2_inv,
-                                    api->cmd->dd_ext_agc_ter.agc_1_kloop,
-                                    api->cmd->dd_ext_agc_ter.agc_2_kloop,
-                                    api->cmd->dd_ext_agc_ter.agc_1_min,
-                                    api->cmd->dd_ext_agc_ter.agc_2_min );
+		/* When recalled after a lock */
+		if(front_end->handshakeOn == 0)
+		{
+			/* Allow tuner and demod settings */
+			start_resume = 1;
 
-          searchDelay = system_time() - front_end->searchStartTime;
+			if(blind_mode == 1)	/* DVB-C / DVB-S / DVB-S2 / MCNS */
+			{
+				if(front_end->demod->cmd->scan_ctrl.action == Si2183_SCAN_CTRL_CMD_ACTION_START)
+				{
+					SiTRACE("blindscan_handshake : no handshake : starting.\n");
+				}
+				else
+				{
+					SiTRACE("blindscan_handshake : no handshake : resuming.\n");
+				}
+			}
 
-          if ( (front_end->demod->rsp->dd_status.dl  == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK  ) & ( front_end->demod->rsp->dd_status.rsqstat_bit5   == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE ) ) {
-            /* Check PCL to refine the max_lock_time_ms value if the standard has been detected */
-            if   (front_end->demod->rsp->dd_status.pcl        == Si2183_DD_STATUS_RESPONSE_PCL_LOCKED) {
-              if (front_end->demod->rsp->dd_status.modulation == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT ) { max_lock_time_ms = Si2183_DVBT_MAX_LOCK_TIME ;}
-            }
-          }
-          if ( (front_end->demod->rsp->dd_status.dl  == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK  ) & ( front_end->demod->rsp->dd_status.rsqstat_bit5   == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_CHANGE    ) ) {
-            decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            SiTRACE ("NO DVBT/T2. Jumping from  %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", seek_freq, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
-            if(seek_freq==front_end->rangeMax) {front_end->rangeMin=seek_freq;}
-            seek_freq = seek_freq + channelIncrement;
-            jump_to_next_channel = 1;
-            start_resume         = 1;
-            break;
-          }
-          if ( (front_end->demod->rsp->dd_status.dl  == Si2183_DD_STATUS_RESPONSE_DL_LOCKED   ) & ( front_end->demod->rsp->dd_status.rsqstat_bit5   == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE ) ) {
-            *standard     = front_end->demod->rsp->dd_status.modulation;
-            if (*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT ) {
-              Si2183_L1_DVBT_STATUS (api, Si2183_DVBT_STATUS_CMD_INTACK_CLEAR);
-              front_end->detected_rf = seek_freq + front_end->demod->rsp->dvbt_status.afc_freq*1000;
-              if (front_end->demod->rsp->dvbt_status.hierarchy == Si2183_DVBT_STATUS_RESPONSE_HIERARCHY_NONE) {
-                *stream       = Si2183_DVBT_HIERARCHY_PROP_STREAM_HP;
-              } else {
-                *stream       = front_end->demod->prop->dvbt_hierarchy.stream;
-              }
-              *bandwidth_Hz = front_end->demod->prop->dd_mode.bw*1000000;
-              *freq         = front_end->detected_rf;
-              decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-              SiTRACE ("DVB-T  lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf)/1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
-            }
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_DVB_T2
-            if (*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT2) {
-           #ifdef    INDIRECT_I2C_CONNECTION
-             front_end->f_TER_tuner_enable(front_end->callback);
-           #else  /* INDIRECT_I2C_CONNECTION */
-             Si2183_L2_Tuner_I2C_Enable(front_end);
-           #endif /* INDIRECT_I2C_CONNECTION */
-              Si2183_L2_TER_FEF (front_end,1);
-           #ifdef    INDIRECT_I2C_CONNECTION
-             front_end->f_TER_tuner_disable(front_end->callback);
-           #else  /* INDIRECT_I2C_CONNECTION */
-             Si2183_L2_Tuner_I2C_Disable(front_end);
-           #endif /* INDIRECT_I2C_CONNECTION */
-              Si2183_L1_DVBT2_STATUS (api, Si2183_DVBT2_STATUS_CMD_INTACK_CLEAR);
-              *num_plp = api->rsp->dvbt2_status.num_plp;
-              front_end->detected_rf = seek_freq + front_end->demod->rsp->dvbt2_status.afc_freq*1000;
-              decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-              SiTRACE ("DVB-T2 lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf)/1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
-              switch (front_end->demod->prop->dd_mode.bw) {
-                case Si2183_DD_MODE_PROP_BW_BW_1D7MHZ : { *bandwidth_Hz =                                    1700000; break; }
-                default                               : { *bandwidth_Hz = front_end->demod->prop->dd_mode.bw*1000000; break; }
-              }
-              *T2_base_lite = api->rsp->dvbt2_status.t2_mode + 1; /* Adding 1 to match dvbt2_mode.lock_mode values (0='ANY', 1='T2-Base', 2='T2-Lite')*/
-              *freq         = front_end->detected_rf;
-            }
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_T
-            /* Set min seek_freq for next seek */
-            front_end->rangeMin = seek_freq + front_end->seekBWHz;
-            /* Return 1 to signal that the Si2183 is locked on a valid channel */
-            front_end->handshakeOn = 0;
-            return 1;
-          }
-        }
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_ISDB_T
-        if ( front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_ISDBT ) {
+			front_end->searchStartTime = seekStartTime;
+		}
+	}
 
-          return_code = Si2183_L1_DD_STATUS(api, Si2183_DD_STATUS_CMD_INTACK_CLEAR);
-          if (return_code != NO_Si2183_ERROR) {
-            SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DD_STATUS (ISDBT) error at %d, aborting\n", seek_freq);
-            front_end->handshakeOn = 0;
-            front_end->seekAbort   = 1;
-            return 0;
-          }
+	front_end->handshakeStart_ms = seekStartTime;
 
-          searchDelay = system_time() - front_end->searchStartTime;
+	#ifdef DEMOD_DVB_T2
+	if(start_resume == 1)
+	{
+		/* Enabling FEF control for T/T2 */
+		switch(front_end->demod->standard)
+		{
+		case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+		case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+			{
+				#ifdef INDIRECT_I2C_CONNECTION
+				front_end->f_TER_tuner_enable(front_end->callback);
+				#else	/* INDIRECT_I2C_CONNECTION */
+				Si2183_L2_Tuner_I2C_Enable(front_end);
+				#endif	/* INDIRECT_I2C_CONNECTION */
+				Si2183_L2_TER_FEF(front_end, 1);
+				#ifdef INDIRECT_I2C_CONNECTION
+				front_end->f_TER_tuner_disable(front_end->callback);
+				#else	/* INDIRECT_I2C_CONNECTION */
+				Si2183_L2_Tuner_I2C_Disable(front_end);
+				#endif	/* INDIRECT_I2C_CONNECTION */
+				Si2183_L1_DVBT2_PLP_SELECT(front_end->demod, 0, Si2183_DVBT2_PLP_SELECT_CMD_PLP_ID_SEL_MODE_AUTO);
+				break;
+			}
+		default:
+			{
+				break;
+			}
+		}
+	}
+	#endif	/* DEMOD_DVB_T2 */
 
-          if ( (front_end->demod->rsp->dd_status.dl  == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK  ) & ( front_end->demod->rsp->dd_status.rsqstat_bit5   == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_CHANGE   ) ) {
-            decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            SiTRACE ("NO ISDB-T. Jumping from  %10d after %7d ms. Delay from DD_RESTART %4d ms AGC1 %3d AGC2 %3d\n", seek_freq, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_1_level, api->rsp->dd_ext_agc_ter.agc_2_level);
-            if(seek_freq==front_end->rangeMax) {front_end->rangeMin=seek_freq;}
-            seek_freq = seek_freq + channelIncrement;
-            jump_to_next_channel = 1;
-            start_resume         = 1;
-            break;
-          }
-          if ( (front_end->demod->rsp->dd_status.dl  == Si2183_DD_STATUS_RESPONSE_DL_LOCKED   ) & ( front_end->demod->rsp->dd_status.rsqstat_bit5   == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE ) ) {
-            *standard     = front_end->demod->rsp->dd_status.modulation;
-            if (*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_ISDBT ) {
-              Si2183_L1_ISDBT_STATUS (api, Si2183_ISDBT_STATUS_CMD_INTACK_CLEAR);
-              front_end->detected_rf = seek_freq + front_end->demod->rsp->isdbt_status.afc_freq*1000;
-              *bandwidth_Hz = front_end->demod->prop->dd_mode.bw*1000000;
-              *freq         = front_end->detected_rf;
-              decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-              SiTRACE ("ISDB-T  lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf)/1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
-            }
-            /* Set min seek_freq for next seek */
-            front_end->rangeMin = seek_freq + front_end->seekBWHz;
-            /* Return 1 to signal that the Si2183 is locked on a valid channel */
-            front_end->handshakeOn = 0;
-            return 1;
-          }
-        }
-#endif /* DEMOD_ISDB_T */
-#ifdef    DEMOD_DVB_C2
-        if ( front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBC2 ) {
-          return_code = Si2183_L1_DVBC2_STATUS   (api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
-          if (return_code != NO_Si2183_ERROR) {
-            SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DVBC2_STATUS (DVBC2) error at %d, aborting\n", seek_freq);
-            front_end->handshakeOn = 0;
-            front_end->seekAbort   = 1;
-            return 0;
-          }
+	max_decision_time_ms = max_lock_time_ms;
 
-          searchDelay = system_time() - front_end->searchStartTime;
-          if ( ( front_end->demod->rsp->dvbc2_status.notdvbc2 == Si2183_DVBC2_STATUS_RESPONSE_NOTDVBC2_NOT_DVBC2   ) ) {
-            decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            SiTRACE ("NOT DVB-C2 flag set at %10d/%d Mhz after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, front_end->demod->prop->dd_mode.bw, searchDelay, decisionDelay);
-            if(seek_freq==front_end->rangeMax) {front_end->rangeMin=seek_freq;}
-            seek_freq = seek_freq + channelIncrement;
-            jump_to_next_channel = 1;
-            start_resume         = 1;
-            /* No channel detected, increment the frequency */
-            decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            SiTRACE ("Seek_Next jumping  from  %10d to %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, seek_freq + channelIncrement, searchDelay, decisionDelay);
-            break;
-          }
-          if ( ( front_end->demod->rsp->dvbc2_status.pcl      == Si2183_DVBC2_STATUS_RESPONSE_PCL_LOCKED           ) ) {
-            *standard     = Si2183_DD_MODE_PROP_MODULATION_DVBC2;
-            /* Locked on L1 Block, retrieve C2 rf_freq */
-            decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            SiTRACE ("DVB-C2 PCL lock ( = 'C2 signalling detected') at %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, searchDelay, decisionDelay);
-            Si2183_L1_DVBC2_STATUS   (api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
-            /* If not tuned on rf_freq, retune */
-            front_end->detected_rf = front_end->demod->rsp->dvbc2_status.rf_freq;
-            if (front_end->demod->rsp->dvbc2_status.rf_freq != seek_freq) {
-              seek_freq = front_end->demod->rsp->dvbc2_status.rf_freq;
-              Si2183_L2_Tune (front_end, front_end->demod->rsp->dvbc2_status.rf_freq );
-              front_end->demod->cmd->dvbc2_ctrl.action        = Si2183_DVBC2_CTRL_CMD_ACTION_START;
-              front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq = seek_freq;
-              /* For DVB-C2, start the lock process using Si2183_L1_DVBC2_CTRL */
-              Si2183_L1_DVBC2_CTRL (front_end->demod, front_end->demod->cmd->dvbc2_ctrl.action , front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq);
-              SiTRACE   ("Si2183_L2_Channel_Seek_Next retuning at %10d\n", seek_freq);
-              front_end->ddRestartTime = system_time();
-              /* Wait for relock on rf_freq */
-              while (system_time() - front_end->ddRestartTime < max_lock_time_ms) {
-                Si2183_L1_DVBC2_STATUS   (api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
-                if (front_end->demod->rsp->dvbc2_status.dl == Si2183_DD_STATUS_RESPONSE_DL_LOCKED) { break; }
-              }
-            }
-            /* Locked on rf_freq, retrieve C2 system num_data_slice */
-            Si2183_L1_DVBC2_SYS_INFO (api);
-            *num_data_slice = front_end->demod->rsp->dvbc2_sys_info.num_dslice;
-            *bandwidth_Hz   = front_end->demod->prop->dd_mode.bw*1000000;
-            *freq           = front_end->demod->rsp->dvbc2_status.rf_freq;
-            SiTRACE ("DVB-C2  rf_freq %10ld start_frequency_hz %10ld c2_bandwidth_hz %10ld front_end->seekBWHz %d. front_end->rangeMin %10d\n", front_end->demod->rsp->dvbc2_status.rf_freq, front_end->demod->rsp->dvbc2_sys_info.start_frequency_hz, front_end->demod->rsp->dvbc2_sys_info.c2_bandwidth_hz, front_end->seekBWHz, front_end->rangeMin );
-            /* Set min seek_freq for next seek */
-            front_end->rangeMin = front_end->demod->rsp->dvbc2_sys_info.start_frequency_hz + front_end->demod->rsp->dvbc2_sys_info.c2_bandwidth_hz + front_end->demod->prop->dd_mode.bw*1000000/2;
-            /* Return 1 to signal that the Si2183 is locked on a valid channel */
-            front_end->handshakeOn = 0;
-            return 1;
-          }
-        }
-#endif /* DEMOD_DVB_C2 */
+	/* Select TER channel increment (this value will only be used for 'TER' scanning) */
+	channelIncrement = front_end->seekStepHz;
 
-        /* timeout management (this should only trigger if the channel is very difficult, i.e. when pcl = 1 and dl = 0 until the timeout) */
-        timeoutDelay = system_time() - front_end->timeoutStartTime;
-        if (timeoutDelay >= max_lock_time_ms) {
-          decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeTimeoutTime = front_end->cumulativeTimeoutTime + decisionDelay; front_end->nbTimeouts++;
-          SiTRACE ("----------- Timeout from  %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, timeoutDelay, decisionDelay);
-/*          SiERROR ("Timeout (blind_mode = 0)\n");*/
-          seek_freq = seek_freq + channelIncrement;
-          jump_to_next_channel = 1;
-          start_resume         = 1;
-          break;
-        }
+	/* Start Seeking */
+	SiTRACE("Si2183_L2_Channel_Seek_Next front_end->rangeMin %10d, front_end->rangeMax %10d blind_mode %d\n", front_end->rangeMin,front_end->rangeMax, blind_mode);
 
-        if (front_end->handshakeUsed) {
-          handshakeDelay = system_time() - front_end->handshakeStart_ms;
-          if (handshakeDelay >= front_end->handshakePeriod_ms) {
-            SiTRACE ("blindscan_handshake : handshake after %5d ms (at %10d). (search delay %6d ms) %*s\n", handshakeDelay, front_end->rangeMin, searchDelay, (searchDelay)/1000,"*");
-           *freq                   = seek_freq;
-            front_end->rangeMin    = seek_freq;
-            front_end->handshakeOn = 1;
-            /* The application will check handshakeStart_ms to know whether the blindscan is ended or not */
-            return searchDelay + 2; /* Make sure we don't return '0' or '1' from here */
-          } else {
-            SiTRACE ("blindscan_handshake : no handshake yet. (handshake delay %6d ms, search delay %6d ms)\n", handshakeDelay, searchDelay);
-          }
-        }
-      /* Check seekAbort flag (set in case of timeout or by the top-level application) */
+	seek_freq = front_end->rangeMin;
 
-      if (front_end->seekAbort) {
-        /* Abort the SCAN loop to allow it to restart with the new rangeMin frequency */
-        SiTRACE ("seek_next no blind_mode >> (abort!)    Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
-                  Si2183_L1_SCAN_CTRL (front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
-        front_end->handshakeOn = 0;
-        return 0;
-        break;
-      }
-        /* Check status every n ms */
-        system_wait(10);
-      }
-    }
-  }
+	if(blind_mode == 0)	/* DVB-T / DVB-T2 / ISDB-T / DVB-C2 */
+	{
+		while(seek_freq <= front_end->rangeMax)
+		{
+			if(start_resume)
+			{
+				/* Call the Si2183_L2_Tune command to tune the frequency */
+				SiTRACE("Seek_Next: Si2183_L2_Tune (front_end, %10d)\n", seek_freq);
 
-  if (blind_mode == 1) { /* DVB-C / DVB-S / DVB-S2 / MCNS */
+				if((Si2183_L2_Tune(front_end, seek_freq) - seek_freq) != 0)
+				{
+					/* Manage possible tune error */
+					SiTRACE("Si2183_L2_Channel_Seek_Next Tune error at %d, aborting (skipped)\n", seek_freq);
 
-    if (front_end->tuneUnitHz == 1) {
-      seek_freq_kHz = seek_freq/1000;
-    } else {
-      seek_freq_kHz = seek_freq;
-    }
+					front_end->seekAbort = 1;
+					return 0;
+				}
 
-    previous_scan_status = api->rsp->scan_status.scan_status;
+				front_end->ddRestartTime = system_time();
 
-    /* Checking blindscan status before issuing a 'start' or 'resume' */
-    Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
-    SiTRACE("blindscan_status      %s buz %d\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status),front_end->demod->rsp->scan_status.buz );
+				#ifdef DEMOD_DVB_C2
+				if(front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBC2)
+				{
+					/* For DVB-C2, make sure to store tuned_rf_freq and be in ID_SEL_MODE_AUTO
+					(this may have been changed by the application while browsing through Data Slices and PLPs) */
+					if(front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode != Si2183_DVBC2_DS_PLP_SELECT_CMD_ID_SEL_MODE_AUTO)
+					{
+						front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode = Si2183_DVBC2_DS_PLP_SELECT_CMD_ID_SEL_MODE_AUTO;
+						front_end->demod->cmd->dvbc2_ds_plp_select.ds_id = 0;
 
-    if (front_end->demod->rsp->scan_status.scan_status != previous_scan_status) {
-      SiTRACE ("scan_status changed from %s to %s\n", Si2183_L2_Trace_Scan_Status(previous_scan_status), Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status));
-    }
+						Si2183_L1_DVBC2_DS_PLP_SELECT(
+							front_end->demod, 
+							front_end->demod->cmd->dvbc2_ds_plp_select.plp_id, 
+							front_end->demod->cmd->dvbc2_ds_plp_select.id_sel_mode, 
+							front_end->demod->cmd->dvbc2_ds_plp_select.ds_id);
+					}
 
-    if (start_resume) {
-      /* Wait for scan_status.buz to be '0' before issuing SCAN_CTRL */
-      buzyStartTime = system_time();
-      while (front_end->demod->rsp->scan_status.buz == Si2183_SCAN_STATUS_RESPONSE_BUZ_BUSY) {
-        Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
-        SiTRACE ("blindscan_interaction ?? (buzy)   Si2183_L1_SCAN_STATUS scan_status.buz %d after %d ms\n", front_end->demod->rsp->scan_status.buz, system_time() - buzyStartTime);
-        if (system_time() - buzyStartTime > 100) {
-        SiTRACE ("blindscan_interaction -- (error)  Si2183_L1_SCAN_STATUS is always 'BUZY'\n");
-          return 0;
-        }
-      }
-      if (front_end->demod->cmd->scan_ctrl.action == Si2183_SCAN_CTRL_CMD_ACTION_START) {
-        SiTRACE ("blindscan_interaction >> (start ) Si2183_L1_SCAN_CTRL( front_end->demod, %d, %8d) \n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
-      } else {
-        SiTRACE ("blindscan_interaction >> (resume) Si2183_L1_SCAN_CTRL( front_end->demod, %d, %8d) \n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
-      }
-      return_code = Si2183_L1_SCAN_CTRL (front_end->demod,               front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
-      front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_RESUME;
-      if (return_code != NO_Si2183_ERROR) {
-        SiTRACE ("blindscan_interaction -- (error1) Si2183_L1_SCAN_CTRL %d      ERROR at %10d (%d)\n!!!!!!!!!!!!!!!!!!!!!!!\n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz, front_end->demod->rsp->scan_status.scan_status);
-        SiTRACE("scan_status.buz %d\n", front_end->demod->rsp->scan_status.buz);
-        return 0;
-      }
-      /* In blind mode, the timeout reference is the SCAN_CTRL */
-      front_end->timeoutStartTime = system_time();
-    }
-    front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_RESUME;
+					front_end->demod->cmd->dvbc2_ctrl.action = Si2183_DVBC2_CTRL_CMD_ACTION_START;
+					front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq = seek_freq;
 
-    /* The actual search loop... */
-    while ( 1 ) {
+					/* For DVB-C2, store tuned_rf_freq in the part using Si2183_L1_DVBC2_CTRL */
+					Si2183_L1_DVBC2_CTRL(front_end->demod, front_end->demod->cmd->dvbc2_ctrl.action, front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq);
 
-      Si2183_L1_CheckStatus (front_end->demod);
+					system_wait(2); /* Waiting 2 ms to have dvbc2_ctrl.tuned_rf_freq processed by the part before DD_RESTART */
 
-      searchDelay = system_time() - front_end->searchStartTime;
+					SiTRACE("Si2183_L2_Channel_Seek_Next 'dvbc2_ctrl/START' took %3d ms\n", system_time() - front_end->ddRestartTime);
+				}
+				#endif	/* DEMOD_DVB_C2 */
 
-      if ( (front_end->demod->status->scanint == Si2183_STATUS_SCANINT_TRIGGERED) ) {
+				front_end->ddRestartTime = system_time();
 
-        /* There is an interaction with the FW, refresh the timeoutStartTime */
-        front_end->timeoutStartTime = system_time();
+				Si2183_L1_DD_RESTART(front_end->demod);
 
-        Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_CLEAR);
-        SiTRACE("blindscan_status      %s\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status) );
-        skip_resume = 0;
+				SiTRACE("Si2183_L2_Channel_Seek_Next 'reset' took %3d ms\n", system_time() - front_end->ddRestartTime);
 
-        buzyStartTime = system_time();
-        while (front_end->demod->rsp->scan_status.buz == Si2183_SCAN_STATUS_RESPONSE_BUZ_BUSY) {
-          Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
-          SiTRACE ("blindscan_interaction ?? (buzy)   Si2183_L1_SCAN_STATUS status.scanint %d scan_status.buz %d after %d ms\n", front_end->demod->rsp->scan_status.STATUS->scanint, front_end->demod->rsp->scan_status.buz, system_time() - buzyStartTime);
-          if (system_time() - buzyStartTime > 100) {
-            SiTRACE ("blindscan_interaction -- (error)  Si2183_L1_SCAN_STATUS is always 'BUZY'\n");
-            return 0;
-          }
-        }
+				/* In non-blind mode, the time-out reference is the last DD_RESTART or DVBC2_CTRL */
+				front_end->timeoutStartTime = system_time();
 
-        switch (front_end->demod->rsp->scan_status.scan_status) {
-          case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_TUNE_REQUEST          : {
-            SiTRACE ("blindscan_interaction -- (tune  ) SCAN TUNE_REQUEST at %8ld kHz. misc 0x%08x\n", front_end->demod->rsp->scan_status.rf_freq, front_end->misc_infos);
-            if (front_end->tuneUnitHz == 1) {
-              seek_freq = Si2183_L2_Tune (front_end, front_end->demod->rsp->scan_status.rf_freq*1000 );
-              seek_freq_kHz = seek_freq/1000;
-            } else {
-              seek_freq = Si2183_L2_Tune (front_end, front_end->demod->rsp->scan_status.rf_freq );
-              seek_freq_kHz = seek_freq;
-            }
-            *freq = front_end->rangeMin = seek_freq;
-            /* as we will not lock in less than min_lock_time_ms, wait a while... */
-            system_wait(min_lock_time_ms);
-            break;
-          }
-          case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_DIGITAL_CHANNEL_FOUND : {
-            *standard        = front_end->demod->rsp->scan_status.modulation;
-            switch (front_end->demod->rsp->scan_status.modulation) {
-#ifdef    DEMOD_DVB_C
-              case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBC : {
-                *freq            = front_end->demod->rsp->scan_status.rf_freq*1000;
-                *symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate*1000;
-                Si2183_L1_DVBC_STATUS(front_end->demod, Si2183_DVBC_STATUS_CMD_INTACK_OK);
-                front_end->demod->prop->dvbc_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
-                *constellation   = front_end->demod->rsp->dvbc_status.constellation;
-                break;
-              }
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_MCNS
-              case Si2183_SCAN_STATUS_RESPONSE_MODULATION_MCNS : {
-                *freq            = front_end->demod->rsp->scan_status.rf_freq*1000;
-                *symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate*1000;
-                Si2183_L1_MCNS_STATUS(front_end->demod, Si2183_MCNS_STATUS_CMD_INTACK_OK);
-                front_end->demod->prop->mcns_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
-                *constellation   = front_end->demod->rsp->mcns_status.constellation;
-                break;
-              }
-#endif /* DEMOD_MCNS */
-#ifdef    DEMOD_DVB_S_S2_DSS
-              case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DSS   :
-              case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS  :
-              case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2 : {
-                *freq            = front_end->demod->rsp->scan_status.rf_freq;
-                *symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate*1000;
-                if (*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS ) { front_end->demod->prop->dvbs_symbol_rate.rate  = front_end->demod->rsp->scan_status.symb_rate; }
-                if (*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2) { front_end->demod->prop->dvbs2_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate; }
-                if (*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2) {
-                    Si2183_L1_DVBS2_STATUS(front_end->demod, 0);
-                    *num_plp = front_end->demod->rsp->dvbs2_status.num_is;
-                }
-                front_end->tuner_sat->RF = *freq;
-                break;
-              }
-#endif /* DEMOD_DVB_S_S2_DSS */
-              default : {
-                SiTRACE("Si2183_L2_Channel_Seek_Next DIGITAL_CHANNEL_FOUND error at %d: un-handled modulation (%d), aborting (skipped)\n", seek_freq, front_end->demod->rsp->scan_status.modulation);
-                front_end->seekAbort = 1;
-                return 0;
-                break;
-              }
-            }
-            /* When locked, clear scanint before returning from SeekNext, to avoid seeing it again on the 'RESUME', with fast i2c platforms */
-            Si2183_L1_SCAN_STATUS (front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_CLEAR);
-            SiTRACE ("blindscan_interaction -- (locked) SCAN DIGITAL lock at %d kHz after %7d ms. modulation %3d (%s). symbol_rate_bps %d. misc 0x%08x\n", *freq, searchDelay, *standard, Si2183_standardName(*standard), *symbol_rate_bps, front_end->misc_infos );
-            SiTRACE ("if_freq_shift          %d\n", Si2183_L1_GET_REG (front_end->demod, 28, 92, 4) );
-            SiTRACE ("freq_corr_sat          %d\n", Si2183_L1_GET_REG (front_end->demod, 27,232, 5) );
-            SiTRACE ("spectral_inv_status_s2 %d\n", Si2183_L1_GET_REG (front_end->demod, 33,175, 5) );
-            SiTRACE ("spectral_inv_status_cs %d\n", Si2183_L1_GET_REG (front_end->demod,  0,123,18) );
-            front_end->handshakeOn = 0;
-            decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            return 1;
-            break;
-          }
-          case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_ERROR                 : {
-            SiTRACE ("blindscan_interaction -- (error2) SCAN error at %d after %4d ms\n", seek_freq/1000, searchDelay);
-            SiERROR ("SCAN status returns 'ERROR'\n");
-            front_end->handshakeOn = 0;
-            decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            return 0;
-            break;
-          }
-          case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_SEARCHING             : {
-            SiTRACE("SCAN Searching...\n");
-            skip_resume = 1;
-            break;
-          }
-          case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_ENDED                 : {
-            SiTRACE ("blindscan_interaction -- (ended ) SCAN ENDED at %d. misc 0x%08x\n", seek_freq, front_end->misc_infos );
-            Si2183_L1_SCAN_CTRL (front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
-            front_end->handshakeOn = 0;
-            decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-            return 0;
-            break;
-          }
-#ifdef    ALLOW_Si2183_BLINDSCAN_DEBUG
-           case  Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_DEBUG                 : {
-            SiTRACE ("blindscan_interaction -- (debug) SCAN DEBUG code %d\n", front_end->demod->rsp->scan_status.symb_rate);
-            switch (front_end->demod->rsp->scan_status.symb_rate) {
-              case 4: { /* SPECTRUM */
-                if ( front_end->misc_infos & 0x00010000 ) { Si2183_plot(front_end, "spectrum", 0, seek_freq); }
-                break;
-              }
-              case 9: { /* TRYLOCK */
-                if ( front_end->misc_infos & 0x00100000 ) { Si2183_plot(front_end, "trylock", 0, seek_freq); }
-                break;
-              }
-              default: { break; }
-            }
-            /* There has been a debug request by the FW, refresh the timeoutStartTime */
-            front_end->timeoutStartTime = system_time();
-            break;
-          }
-#else  /* ALLOW_Si2183_BLINDSCAN_DEBUG */
-           case  63                 : {
-             SiERROR("blindscan_interaction -- (warning) You probably run a DEBUG fw, so you need to define ALLOW_Si2183_BLINDSCAN_DEBUG at project level\n");
-             break;
-           }
-#endif /* ALLOW_Si2183_BLINDSCAN_DEBUG */
-          default : {
-            SiTRACE("unknown scan_status %d\n", front_end->demod->rsp->scan_status.scan_status);
-            skip_resume = 1;
-            break;
-          }
-        }
+				/* as we will not lock in less than min_lock_time_ms, wait a while... */
+				system_wait(min_lock_time_ms);
+			}
 
-        if (skip_resume == 0) {
-          SiTRACE ("blindscan_interaction >> (resume) Si2183_L1_SCAN_CTRL( front_end->demod, %d, %8d)\n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
-          return_code = Si2183_L1_SCAN_CTRL (front_end->demod,              front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
-          if (return_code != NO_Si2183_ERROR) {
-            SiTRACE ( "Si2183_L1_SCAN_CTRL ERROR at %d (%d)\n!!!!!!!!!!!!!!!!!!!!!!!\n", seek_freq_kHz, front_end->demod->rsp->scan_status.scan_status);
-            SiERROR ( "Si2183_L1_SCAN_CTRL 'RESUME' ERROR during seek loop\n");
-          }
-        }
-      }
+			jump_to_next_channel = 0;
 
-      /* timeout management (this should never happen if timeout values are correctly set) */
-      timeoutDelay = system_time() - front_end->timeoutStartTime;
-      if (timeoutDelay >= max_decision_time_ms) {
-        SiTRACE ("blindscan_interaction -- (timeout) Scan decision timeout from  %d after %d ms. Check your timeout limits!\n", seek_freq_kHz, timeoutDelay);
-        SiERROR ("Scan decision timeout (blind_mode = 1)\n");
-        Si2183_L2_Health_Check(front_end);
-        front_end->seekAbort   = 1;
-        front_end->handshakeOn = 0;
-        decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-        break;
-      }
+			while(!jump_to_next_channel)
+			{
+				#ifdef DEMOD_DVB_T
+				if((front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBT)
+				#endif	/* DEMOD_DVB_T */
+				#ifdef DEMOD_DVB_T2
+					| (front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBT2)
+				#endif	/* DEMOD_DVB_T2 */
+				#ifdef DEMOD_DVB_T
+				)
+				{
+					return_code = Si2183_L1_DD_STATUS(api, Si2183_DD_STATUS_CMD_INTACK_CLEAR);
 
-      if (front_end->handshakeUsed) {
-        handshakeDelay = system_time() - front_end->handshakeStart_ms;
-        if (handshakeDelay >= front_end->handshakePeriod_ms) {
-          SiTRACE ("blindscan_handshake : handshake after %5d ms (at %10d). (search delay %6d ms) %*s\n", handshakeDelay, front_end->rangeMin, searchDelay, (searchDelay)/1000,"*");
-         *freq                    = seek_freq;
-          front_end->handshakeOn = 1;
-          decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-          /* The application will check handshakeStart_ms to know whether the blindscan is ended or not */
-          return searchDelay + 2; /* Make sure we don't return '0' or '1' from here */
-        } else {
-          SiTRACE ("blindscan_handshake : no handshake yet. (handshake delay %6d ms, search delay %6d ms)\n", handshakeDelay, searchDelay);
-        }
-      }
+					if(return_code != NO_Si2183_ERROR)
+					{
+						SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DD_STATUS (T/T2) error at %d, aborting\n", seek_freq);
 
-      /* Check seekAbort flag (set in case of timeout or by the top-level application) */
-      if (front_end->seekAbort) {
-        /* Abort the SCAN loop to allow it to restart with the new rangeMin frequency */
-        SiTRACE ("blindscan_interaction >> (abort!) Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
-                  Si2183_L1_SCAN_CTRL (front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
-        front_end->handshakeOn = 0;
-        decisionDelay   = system_time() - seekStartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
-        return 0;
-        break;
-      }
+						front_end->handshakeOn = 0;
+						front_end->seekAbort = 1;
+						return 0;
+					}
 
-      /* Check status every 100 ms */
-      system_wait(100);
+					Si2183_L1_DD_EXT_AGC_TER(
+						api, 
+						Si2183_DD_EXT_AGC_TER_CMD_AGC_1_MODE_NO_CHANGE, 
+						api->cmd->dd_ext_agc_ter.agc_1_inv, 
+						Si2183_DD_EXT_AGC_TER_CMD_AGC_2_MODE_NO_CHANGE, 
+						api->cmd->dd_ext_agc_ter.agc_2_inv, 
+						api->cmd->dd_ext_agc_ter.agc_1_kloop, 
+						api->cmd->dd_ext_agc_ter.agc_2_kloop, 
+						api->cmd->dd_ext_agc_ter.agc_1_min, 
+						api->cmd->dd_ext_agc_ter.agc_2_min);
 
-    }
-  }
-  front_end->handshakeOn = 0;
-  return 0;
+					searchDelay = system_time() - front_end->searchStartTime;
+
+					if((front_end->demod->rsp->dd_status.dl == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK) 
+						& (front_end->demod->rsp->dd_status.rsqstat_bit5 == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE))
+					{
+						/* Check PCL to refine the max_lock_time_ms value if the standard has been detected */
+						if(front_end->demod->rsp->dd_status.pcl == Si2183_DD_STATUS_RESPONSE_PCL_LOCKED)
+						{
+							if(front_end->demod->rsp->dd_status.modulation == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT)
+							{
+								max_lock_time_ms = Si2183_DVBT_MAX_LOCK_TIME;
+							}
+						}
+					}
+
+					if((front_end->demod->rsp->dd_status.dl == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK) 
+						& (front_end->demod->rsp->dd_status.rsqstat_bit5 == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_CHANGE))
+					{
+						decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						SiTRACE("NO DVBT/T2. Jumping from  %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", seek_freq, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
+
+						if(seek_freq==front_end->rangeMax)
+						{
+							front_end->rangeMin = seek_freq;
+						}
+
+						seek_freq = seek_freq + channelIncrement;
+
+						jump_to_next_channel = 1;
+						start_resume         = 1;
+						break;
+					}
+
+					if((front_end->demod->rsp->dd_status.dl == Si2183_DD_STATUS_RESPONSE_DL_LOCKED) 
+						& (front_end->demod->rsp->dd_status.rsqstat_bit5 == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE))
+					{
+						*standard = front_end->demod->rsp->dd_status.modulation;
+
+						if(*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT)
+						{
+							Si2183_L1_DVBT_STATUS(api, Si2183_DVBT_STATUS_CMD_INTACK_CLEAR);
+
+							front_end->detected_rf = seek_freq + front_end->demod->rsp->dvbt_status.afc_freq * 1000;
+
+							if(front_end->demod->rsp->dvbt_status.hierarchy == Si2183_DVBT_STATUS_RESPONSE_HIERARCHY_NONE)
+							{
+								*stream = Si2183_DVBT_HIERARCHY_PROP_STREAM_HP;
+							}
+							else
+							{
+								*stream = front_end->demod->prop->dvbt_hierarchy.stream;
+							}
+
+							*bandwidth_Hz = front_end->demod->prop->dd_mode.bw * 1000000;
+							*freq = front_end->detected_rf;
+							decisionDelay = system_time() - front_end->ddRestartTime;
+							front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+							SiTRACE("DVB-T  lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf) / 1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
+						}
+						#endif	/* DEMOD_DVB_T */
+						#ifdef DEMOD_DVB_T2
+						if(*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_DVBT2)
+						{
+							#ifdef INDIRECT_I2C_CONNECTION
+							front_end->f_TER_tuner_enable(front_end->callback);
+							#else	/* INDIRECT_I2C_CONNECTION */
+							Si2183_L2_Tuner_I2C_Enable(front_end);
+							#endif	/* INDIRECT_I2C_CONNECTION */
+							Si2183_L2_TER_FEF(front_end,1);
+							#ifdef INDIRECT_I2C_CONNECTION
+							front_end->f_TER_tuner_disable(front_end->callback);
+							#else	/* INDIRECT_I2C_CONNECTION */
+							Si2183_L2_Tuner_I2C_Disable(front_end);
+							#endif	/* INDIRECT_I2C_CONNECTION */
+
+							Si2183_L1_DVBT2_STATUS(api, Si2183_DVBT2_STATUS_CMD_INTACK_CLEAR);
+
+							*num_plp = api->rsp->dvbt2_status.num_plp;
+							front_end->detected_rf = seek_freq + front_end->demod->rsp->dvbt2_status.afc_freq * 1000;
+							decisionDelay = system_time() - front_end->ddRestartTime;
+							front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+							SiTRACE("DVB-T2 lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf) / 1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
+
+							switch(front_end->demod->prop->dd_mode.bw)
+							{
+							case Si2183_DD_MODE_PROP_BW_BW_1D7MHZ:
+								{
+									*bandwidth_Hz = 1700000;
+									break;
+								}
+							default:
+								{
+									*bandwidth_Hz = front_end->demod->prop->dd_mode.bw * 1000000;
+									break;
+								}
+							}
+
+							*T2_base_lite = api->rsp->dvbt2_status.t2_mode + 1; /* Adding 1 to match dvbt2_mode.lock_mode values (0='ANY', 1='T2-Base', 2='T2-Lite')*/
+							*freq = front_end->detected_rf;
+						}
+						#endif	/* DEMOD_DVB_T2 */
+
+						#ifdef DEMOD_DVB_T
+						/* Set min seek_freq for next seek */
+						front_end->rangeMin = seek_freq + front_end->seekBWHz;
+						/* Return 1 to signal that the Si2183 is locked on a valid channel */
+						front_end->handshakeOn = 0;
+						return 1;
+					}
+				}
+				#endif	/* DEMOD_DVB_T */
+
+				#ifdef DEMOD_ISDB_T
+				if(front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_ISDBT)
+				{
+					return_code = Si2183_L1_DD_STATUS(api, Si2183_DD_STATUS_CMD_INTACK_CLEAR);
+
+					if(return_code != NO_Si2183_ERROR)
+					{
+						SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DD_STATUS (ISDBT) error at %d, aborting\n", seek_freq);
+
+						front_end->handshakeOn = 0;
+						front_end->seekAbort = 1;
+						return 0;
+					}
+
+					searchDelay = system_time() - front_end->searchStartTime;
+
+					if((front_end->demod->rsp->dd_status.dl == Si2183_DD_STATUS_RESPONSE_DL_NO_LOCK) 
+						& (front_end->demod->rsp->dd_status.rsqstat_bit5 == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_CHANGE))
+					{
+						decisionDelay = system_time() - front_end->ddRestartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						SiTRACE("NO ISDB-T. Jumping from  %10d after %7d ms. Delay from DD_RESTART %4d ms AGC1 %3d AGC2 %3d\n", 
+							seek_freq, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_1_level, api->rsp->dd_ext_agc_ter.agc_2_level);
+
+						if(seek_freq == front_end->rangeMax)
+						{
+							front_end->rangeMin = seek_freq;
+						}
+
+						seek_freq = seek_freq + channelIncrement;
+
+						jump_to_next_channel = 1;
+						start_resume = 1;
+						break;
+					}
+
+					if((front_end->demod->rsp->dd_status.dl == Si2183_DD_STATUS_RESPONSE_DL_LOCKED) 
+						& (front_end->demod->rsp->dd_status.rsqstat_bit5 == Si2183_DD_STATUS_RESPONSE_RSQSTAT_BIT5_NO_CHANGE))
+					{
+						*standard = front_end->demod->rsp->dd_status.modulation;
+
+						if(*standard == Si2183_DD_STATUS_RESPONSE_MODULATION_ISDBT)
+						{
+							Si2183_L1_ISDBT_STATUS(api, Si2183_ISDBT_STATUS_CMD_INTACK_CLEAR);
+
+							front_end->detected_rf = seek_freq + front_end->demod->rsp->isdbt_status.afc_freq * 1000;
+							*bandwidth_Hz = front_end->demod->prop->dd_mode.bw * 1000000;
+							*freq = front_end->detected_rf;
+							decisionDelay = system_time() - front_end->ddRestartTime;
+							front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+							SiTRACE("ISDB-T  lock at %10d after %7d ms. Delay from DD_RESTART %4d ms AGC2 %3d\n", (front_end->detected_rf) / 1000, searchDelay, decisionDelay, api->rsp->dd_ext_agc_ter.agc_2_level);
+						}
+
+						/* Set min seek_freq for next seek */
+						front_end->rangeMin = seek_freq + front_end->seekBWHz;
+						/* Return 1 to signal that the Si2183 is locked on a valid channel */
+						front_end->handshakeOn = 0;
+						return 1;
+					}
+				}
+				#endif	/* DEMOD_ISDB_T */
+
+				#ifdef DEMOD_DVB_C2
+				if(front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DVBC2)
+				{
+					return_code = Si2183_L1_DVBC2_STATUS(api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
+
+					if(return_code != NO_Si2183_ERROR)
+					{
+						SiTRACE("Si2183_L2_Channel_Seek_Next: Si2183_L1_DVBC2_STATUS (DVBC2) error at %d, aborting\n", seek_freq);
+
+						front_end->handshakeOn = 0;
+						front_end->seekAbort = 1;
+						return 0;
+					}
+
+					searchDelay = system_time() - front_end->searchStartTime;
+
+					if((front_end->demod->rsp->dvbc2_status.notdvbc2 == Si2183_DVBC2_STATUS_RESPONSE_NOTDVBC2_NOT_DVBC2))
+					{
+						decisionDelay = system_time() - front_end->ddRestartTime; front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						SiTRACE("NOT DVB-C2 flag set at %10d/%d Mhz after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, front_end->demod->prop->dd_mode.bw, searchDelay, decisionDelay);
+
+						if(seek_freq == front_end->rangeMax)
+						{
+							front_end->rangeMin = seek_freq;
+						}
+
+						seek_freq = seek_freq + channelIncrement;
+
+						jump_to_next_channel = 1;
+						start_resume = 1;
+
+						/* No channel detected, increment the frequency */
+						decisionDelay = system_time() - front_end->ddRestartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						SiTRACE("Seek_Next jumping  from  %10d to %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, seek_freq + channelIncrement, searchDelay, decisionDelay);
+						break;
+					}
+
+					if((front_end->demod->rsp->dvbc2_status.pcl == Si2183_DVBC2_STATUS_RESPONSE_PCL_LOCKED))
+					{
+						*standard = Si2183_DD_MODE_PROP_MODULATION_DVBC2;
+
+						/* Locked on L1 Block, retrieve C2 rf_freq */
+						decisionDelay = system_time() - front_end->ddRestartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						SiTRACE("DVB-C2 PCL lock ( = 'C2 signalling detected') at %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, searchDelay, decisionDelay);
+
+						Si2183_L1_DVBC2_STATUS(api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
+
+						/* If not tuned on rf_freq, retune */
+						front_end->detected_rf = front_end->demod->rsp->dvbc2_status.rf_freq;
+
+						if(front_end->demod->rsp->dvbc2_status.rf_freq != seek_freq)
+						{
+							seek_freq = front_end->demod->rsp->dvbc2_status.rf_freq;
+
+							Si2183_L2_Tune(front_end, front_end->demod->rsp->dvbc2_status.rf_freq);
+
+							front_end->demod->cmd->dvbc2_ctrl.action = Si2183_DVBC2_CTRL_CMD_ACTION_START;
+							front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq = seek_freq;
+
+							/* For DVB-C2, start the lock process using Si2183_L1_DVBC2_CTRL */
+							Si2183_L1_DVBC2_CTRL(front_end->demod, front_end->demod->cmd->dvbc2_ctrl.action, front_end->demod->cmd->dvbc2_ctrl.tuned_rf_freq);
+
+							SiTRACE("Si2183_L2_Channel_Seek_Next retuning at %10d\n", seek_freq);
+
+							front_end->ddRestartTime = system_time();
+
+							/* Wait for relock on rf_freq */
+							while(system_time() - front_end->ddRestartTime < max_lock_time_ms)
+							{
+								Si2183_L1_DVBC2_STATUS(api, Si2183_DVBC2_STATUS_CMD_INTACK_CLEAR);
+
+								if(front_end->demod->rsp->dvbc2_status.dl == Si2183_DD_STATUS_RESPONSE_DL_LOCKED)
+								{
+									break;
+								}
+							}
+						}
+
+						/* Locked on rf_freq, retrieve C2 system num_data_slice */
+						Si2183_L1_DVBC2_SYS_INFO(api);
+
+						*num_data_slice = front_end->demod->rsp->dvbc2_sys_info.num_dslice;
+						*bandwidth_Hz = front_end->demod->prop->dd_mode.bw * 1000000;
+						*freq = front_end->demod->rsp->dvbc2_status.rf_freq;
+
+						SiTRACE("DVB-C2  rf_freq %10ld start_frequency_hz %10ld c2_bandwidth_hz %10ld front_end->seekBWHz %d. front_end->rangeMin %10d\n", 
+							front_end->demod->rsp->dvbc2_status.rf_freq, front_end->demod->rsp->dvbc2_sys_info.start_frequency_hz, 
+							front_end->demod->rsp->dvbc2_sys_info.c2_bandwidth_hz, front_end->seekBWHz, front_end->rangeMin);
+
+						/* Set min seek_freq for next seek */
+						front_end->rangeMin = front_end->demod->rsp->dvbc2_sys_info.start_frequency_hz + front_end->demod->rsp->dvbc2_sys_info.c2_bandwidth_hz + front_end->demod->prop->dd_mode.bw * 1000000 / 2;
+
+						/* Return 1 to signal that the Si2183 is locked on a valid channel */
+						front_end->handshakeOn = 0;
+						return 1;
+					}
+				}
+				#endif	/* DEMOD_DVB_C2 */
+
+				/* timeout management (this should only trigger if the channel is very difficult, i.e. when pcl = 1 and dl = 0 until the timeout) */
+				timeoutDelay = system_time() - front_end->timeoutStartTime;
+
+				if(timeoutDelay >= max_lock_time_ms)
+				{
+					decisionDelay = system_time() - front_end->ddRestartTime;
+					front_end->cumulativeTimeoutTime = front_end->cumulativeTimeoutTime + decisionDelay; front_end->nbTimeouts++;
+
+					SiTRACE("----------- Timeout from  %10d after %7d ms. Delay from DD_RESTART %4d ms\n", seek_freq, timeoutDelay, decisionDelay);
+
+					/*          SiERROR ("Timeout (blind_mode = 0)\n");*/
+					seek_freq = seek_freq + channelIncrement;
+
+					jump_to_next_channel = 1;
+					start_resume = 1;
+					break;
+				}
+
+				if(front_end->handshakeUsed)
+				{
+					handshakeDelay = system_time() - front_end->handshakeStart_ms;
+
+					if(handshakeDelay >= front_end->handshakePeriod_ms)
+					{
+						SiTRACE("blindscan_handshake : handshake after %5d ms (at %10d). (search delay %6d ms) %*s\n", handshakeDelay, front_end->rangeMin, searchDelay, (searchDelay) / 1000,"*");
+
+						*freq = seek_freq;
+						front_end->rangeMin = seek_freq;
+						front_end->handshakeOn = 1;
+
+						/* The application will check handshakeStart_ms to know whether the blindscan is ended or not */
+						return searchDelay + 2; /* Make sure we don't return '0' or '1' from here */
+					}
+					else
+					{
+						SiTRACE("blindscan_handshake : no handshake yet. (handshake delay %6d ms, search delay %6d ms)\n", handshakeDelay, searchDelay);
+					}
+				}
+				/* Check seekAbort flag (set in case of timeout or by the top-level application) */
+
+				if(front_end->seekAbort)
+				{
+					/* Abort the SCAN loop to allow it to restart with the new rangeMin frequency */
+					SiTRACE("seek_next no blind_mode >> (abort!)    Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
+
+					Si2183_L1_SCAN_CTRL(front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT, 0);
+
+					front_end->handshakeOn = 0;
+					return 0;
+					break;
+				}
+				/* Check status every n ms */
+				system_wait(10);
+			}
+		}
+	}
+
+	if(blind_mode == 1)	/* DVB-C / DVB-S / DVB-S2 / MCNS */
+	{
+		if(front_end->tuneUnitHz == 1)
+		{
+			seek_freq_kHz = seek_freq / 1000;
+		}
+		else
+		{
+			seek_freq_kHz = seek_freq;
+		}
+
+		previous_scan_status = api->rsp->scan_status.scan_status;
+
+		/* Checking blindscan status before issuing a 'start' or 'resume' */
+		Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
+
+		SiTRACE("blindscan_status      %s buz %d\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status), front_end->demod->rsp->scan_status.buz);
+
+		if(front_end->demod->rsp->scan_status.scan_status != previous_scan_status)
+		{
+			SiTRACE("scan_status changed from %s to %s\n", 
+				Si2183_L2_Trace_Scan_Status(previous_scan_status), 
+				Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status));
+		}
+
+		if(start_resume)
+		{
+			/* Wait for scan_status.buz to be '0' before issuing SCAN_CTRL */
+			buzyStartTime = system_time();
+
+			while(front_end->demod->rsp->scan_status.buz == Si2183_SCAN_STATUS_RESPONSE_BUZ_BUSY)
+			{
+				Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
+
+				SiTRACE("blindscan_interaction ?? (buzy)   Si2183_L1_SCAN_STATUS scan_status.buz %d after %d ms\n", front_end->demod->rsp->scan_status.buz, system_time() - buzyStartTime);
+
+				if(system_time() - buzyStartTime > 100)
+				{
+					SiTRACE("blindscan_interaction -- (error)  Si2183_L1_SCAN_STATUS is always 'BUZY'\n");
+					return 0;
+				}
+			}
+
+			if(front_end->demod->cmd->scan_ctrl.action == Si2183_SCAN_CTRL_CMD_ACTION_START)
+			{
+				SiTRACE("blindscan_interaction >> (start ) Si2183_L1_SCAN_CTRL( front_end->demod, %d, %8d) \n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
+			}
+			else
+			{
+				SiTRACE("blindscan_interaction >> (resume) Si2183_L1_SCAN_CTRL( front_end->demod, %d, %8d) \n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
+			}
+
+			return_code = Si2183_L1_SCAN_CTRL(front_end->demod, front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
+
+			front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_RESUME;
+
+			if(return_code != NO_Si2183_ERROR)
+			{
+				SiTRACE("blindscan_interaction -- (error1) Si2183_L1_SCAN_CTRL %d      ERROR at %10d (%d)\n!!!!!!!!!!!!!!!!!!!!!!!\n", 
+					front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz, front_end->demod->rsp->scan_status.scan_status);
+
+				SiTRACE("scan_status.buz %d\n", front_end->demod->rsp->scan_status.buz);
+				return 0;
+			}
+
+			/* In blind mode, the timeout reference is the SCAN_CTRL */
+			front_end->timeoutStartTime = system_time();
+		}
+
+		front_end->demod->cmd->scan_ctrl.action = Si2183_SCAN_CTRL_CMD_ACTION_RESUME;
+
+		/* The actual search loop... */
+		while(1)
+		{
+			Si2183_L1_CheckStatus(front_end->demod);
+
+			searchDelay = system_time() - front_end->searchStartTime;
+
+			if((front_end->demod->status->scanint == Si2183_STATUS_SCANINT_TRIGGERED))
+			{
+				/* There is an interaction with the FW, refresh the timeoutStartTime */
+				front_end->timeoutStartTime = system_time();
+
+				Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_CLEAR);
+
+				SiTRACE("blindscan_status      %s\n", Si2183_L2_Trace_Scan_Status(front_end->demod->rsp->scan_status.scan_status));
+
+				skip_resume = 0;
+
+				buzyStartTime = system_time();
+
+				while(front_end->demod->rsp->scan_status.buz == Si2183_SCAN_STATUS_RESPONSE_BUZ_BUSY)
+				{
+					Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_OK);
+
+					SiTRACE("blindscan_interaction ?? (buzy)   Si2183_L1_SCAN_STATUS status.scanint %d scan_status.buz %d after %d ms\n", 
+						front_end->demod->rsp->scan_status.STATUS->scanint, front_end->demod->rsp->scan_status.buz, system_time() - buzyStartTime);
+
+					if(system_time() - buzyStartTime > 100)
+					{
+						SiTRACE("blindscan_interaction -- (error)  Si2183_L1_SCAN_STATUS is always 'BUZY'\n");
+						return 0;
+					}
+				}
+
+				switch(front_end->demod->rsp->scan_status.scan_status)
+				{
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_TUNE_REQUEST:
+					{
+						SiTRACE("blindscan_interaction -- (tune  ) SCAN TUNE_REQUEST at %8ld kHz. misc 0x%08x\n", front_end->demod->rsp->scan_status.rf_freq, front_end->misc_infos);
+
+						if(front_end->tuneUnitHz == 1)
+						{
+							seek_freq = Si2183_L2_Tune(front_end, front_end->demod->rsp->scan_status.rf_freq * 1000);
+							seek_freq_kHz = seek_freq / 1000;
+						}
+						else
+						{
+							seek_freq = Si2183_L2_Tune(front_end, front_end->demod->rsp->scan_status.rf_freq);
+							seek_freq_kHz = seek_freq;
+						}
+
+						*freq = front_end->rangeMin = seek_freq;
+
+						/* as we will not lock in less than min_lock_time_ms, wait a while... */
+						system_wait(min_lock_time_ms);
+						break;
+					}
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_DIGITAL_CHANNEL_FOUND:
+					{
+						*standard = front_end->demod->rsp->scan_status.modulation;
+
+						switch(front_end->demod->rsp->scan_status.modulation)
+						{
+						#ifdef DEMOD_DVB_C
+						case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBC:
+							{
+								*freq = front_end->demod->rsp->scan_status.rf_freq * 1000;
+								*symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate * 1000;
+
+								Si2183_L1_DVBC_STATUS(front_end->demod, Si2183_DVBC_STATUS_CMD_INTACK_OK);
+
+								front_end->demod->prop->dvbc_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
+
+								*constellation = front_end->demod->rsp->dvbc_status.constellation;
+								break;
+							}
+						#endif	/* DEMOD_DVB_C */
+						#ifdef DEMOD_MCNS
+						case Si2183_SCAN_STATUS_RESPONSE_MODULATION_MCNS:
+							{
+								*freq = front_end->demod->rsp->scan_status.rf_freq * 1000;
+								*symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate * 1000;
+
+								Si2183_L1_MCNS_STATUS(front_end->demod, Si2183_MCNS_STATUS_CMD_INTACK_OK);
+
+								front_end->demod->prop->mcns_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
+
+								*constellation = front_end->demod->rsp->mcns_status.constellation;
+								break;
+							}
+						#endif	/* DEMOD_MCNS */
+						#ifdef DEMOD_DVB_S_S2_DSS
+						case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DSS:
+						case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS:
+						case Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2:
+							{
+								*freq = front_end->demod->rsp->scan_status.rf_freq;
+								*symbol_rate_bps = front_end->demod->rsp->scan_status.symb_rate * 1000;
+
+								if(*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS)
+								{
+									front_end->demod->prop->dvbs_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
+								}
+
+								if(*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2)
+								{
+									front_end->demod->prop->dvbs2_symbol_rate.rate = front_end->demod->rsp->scan_status.symb_rate;
+								}
+
+								if(*standard == Si2183_SCAN_STATUS_RESPONSE_MODULATION_DVBS2)
+								{
+									Si2183_L1_DVBS2_STATUS(front_end->demod, 0);
+
+									*num_plp = front_end->demod->rsp->dvbs2_status.num_is;
+								}
+
+								front_end->tuner_sat->RF = *freq;
+								break;
+							}
+						#endif	/* DEMOD_DVB_S_S2_DSS */
+						default:
+							{
+								SiTRACE("Si2183_L2_Channel_Seek_Next DIGITAL_CHANNEL_FOUND error at %d: un-handled modulation (%d), aborting (skipped)\n", seek_freq, front_end->demod->rsp->scan_status.modulation);
+
+								front_end->seekAbort = 1;
+								return 0;
+								break;
+							}
+						}
+
+						/* When locked, clear scanint before returning from SeekNext, to avoid seeing it again on the 'RESUME', with fast i2c platforms */
+						Si2183_L1_SCAN_STATUS(front_end->demod, Si2183_SCAN_STATUS_CMD_INTACK_CLEAR);
+
+						SiTRACE("blindscan_interaction -- (locked) SCAN DIGITAL lock at %d kHz after %7d ms. modulation %3d (%s). symbol_rate_bps %d. misc 0x%08x\n", 
+							*freq, searchDelay, *standard, Si2183_standardName(*standard), *symbol_rate_bps, front_end->misc_infos);
+
+						SiTRACE("if_freq_shift          %d\n", Si2183_L1_GET_REG(front_end->demod, 28, 92, 4));
+						SiTRACE("freq_corr_sat          %d\n", Si2183_L1_GET_REG(front_end->demod, 27, 232, 5));
+						SiTRACE("spectral_inv_status_s2 %d\n", Si2183_L1_GET_REG(front_end->demod, 33, 175, 5));
+						SiTRACE("spectral_inv_status_cs %d\n", Si2183_L1_GET_REG(front_end->demod, 0, 123, 18));
+
+						front_end->handshakeOn = 0;
+						decisionDelay = system_time() - seekStartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+
+						return 1;
+						break;
+					}
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_ERROR:
+					{
+						SiTRACE("blindscan_interaction -- (error2) SCAN error at %d after %4d ms\n", seek_freq / 1000, searchDelay);
+						SiERROR("SCAN status returns 'ERROR'\n");
+
+						front_end->handshakeOn = 0;
+						decisionDelay = system_time() - seekStartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+						return 0;
+						break;
+					}
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_SEARCHING:
+					{
+						SiTRACE("SCAN Searching...\n");
+						skip_resume = 1;
+						break;
+					}
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_ENDED:
+					{
+						SiTRACE("blindscan_interaction -- (ended ) SCAN ENDED at %d. misc 0x%08x\n", seek_freq, front_end->misc_infos);
+
+						Si2183_L1_SCAN_CTRL(front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT, 0);
+
+						front_end->handshakeOn = 0;
+						decisionDelay = system_time() - seekStartTime;
+						front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+						return 0;
+						break;
+					}
+				#ifdef ALLOW_Si2183_BLINDSCAN_DEBUG
+				case Si2183_SCAN_STATUS_RESPONSE_SCAN_STATUS_DEBUG:
+					{
+						SiTRACE("blindscan_interaction -- (debug) SCAN DEBUG code %d\n", front_end->demod->rsp->scan_status.symb_rate);
+
+						switch(front_end->demod->rsp->scan_status.symb_rate)
+						{
+						case 4:
+							{ /* SPECTRUM */
+								if(front_end->misc_infos & 0x00010000)
+								{
+									Si2183_plot(front_end, "spectrum", 0, seek_freq);
+								}
+								break;
+							}
+						case 9:
+							{ /* TRYLOCK */
+								if(front_end->misc_infos & 0x00100000)
+								{
+									Si2183_plot(front_end, "trylock", 0, seek_freq);
+								}
+								break;
+							}
+						default:
+							{
+								break;
+							}
+						}
+						/* There has been a debug request by the FW, refresh the timeoutStartTime */
+						front_end->timeoutStartTime = system_time();
+						break;
+					}
+				#else	/* ALLOW_Si2183_BLINDSCAN_DEBUG */
+				case 63:
+					{
+						SiERROR("blindscan_interaction -- (warning) You probably run a DEBUG fw, so you need to define ALLOW_Si2183_BLINDSCAN_DEBUG at project level\n");
+						break;
+					}
+				#endif	/* ALLOW_Si2183_BLINDSCAN_DEBUG */
+				default:
+					{
+						SiTRACE("unknown scan_status %d\n", front_end->demod->rsp->scan_status.scan_status);
+						skip_resume = 1;
+						break;
+					}
+				}
+
+				if(skip_resume == 0)
+				{
+					SiTRACE("blindscan_interaction >> (resume) Si2183_L1_SCAN_CTRL(front_end->demod, %d, %8d)\n", front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
+
+					return_code = Si2183_L1_SCAN_CTRL(front_end->demod, front_end->demod->cmd->scan_ctrl.action, seek_freq_kHz);
+
+					if(return_code != NO_Si2183_ERROR)
+					{
+						SiTRACE("Si2183_L1_SCAN_CTRL ERROR at %d (%d)\n!!!!!!!!!!!!!!!!!!!!!!!\n", seek_freq_kHz, front_end->demod->rsp->scan_status.scan_status);
+						SiERROR("Si2183_L1_SCAN_CTRL 'RESUME' ERROR during seek loop\n");
+					}
+				}
+			}
+
+			/* timeout management (this should never happen if timeout values are correctly set) */
+			timeoutDelay = system_time() - front_end->timeoutStartTime;
+
+			if(timeoutDelay >= max_decision_time_ms)
+			{
+				SiTRACE("blindscan_interaction -- (timeout) Scan decision timeout from  %d after %d ms. Check your timeout limits!\n", seek_freq_kHz, timeoutDelay);
+				SiERROR("Scan decision timeout (blind_mode = 1)\n");
+
+				Si2183_L2_Health_Check(front_end);
+
+				front_end->seekAbort = 1;
+				front_end->handshakeOn = 0;
+				decisionDelay = system_time() - seekStartTime;
+				front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+				break;
+			}
+
+			if(front_end->handshakeUsed)
+			{
+				handshakeDelay = system_time() - front_end->handshakeStart_ms;
+
+				if(handshakeDelay >= front_end->handshakePeriod_ms)
+				{
+					SiTRACE("blindscan_handshake : handshake after %5d ms (at %10d). (search delay %6d ms) %*s\n", handshakeDelay, front_end->rangeMin, searchDelay, (searchDelay) / 1000, "*");
+
+					*freq = seek_freq;
+					front_end->handshakeOn = 1;
+					decisionDelay = system_time() - seekStartTime;
+					front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+					/* The application will check handshakeStart_ms to know whether the blindscan is ended or not */
+					return searchDelay + 2; /* Make sure we don't return '0' or '1' from here */
+				}
+				else
+				{
+					SiTRACE("blindscan_handshake : no handshake yet. (handshake delay %6d ms, search delay %6d ms)\n", handshakeDelay, searchDelay);
+				}
+			}
+
+			/* Check seekAbort flag (set in case of timeout or by the top-level application) */
+			if(front_end->seekAbort)
+			{
+				/* Abort the SCAN loop to allow it to restart with the new rangeMin frequency */
+				SiTRACE("blindscan_interaction >> (abort!) Si2183_L1_SCAN_CTRL( front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT)\n");
+
+				Si2183_L1_SCAN_CTRL(front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
+
+				front_end->handshakeOn = 0;
+				decisionDelay = system_time() - seekStartTime;
+				front_end->cumulativeScanTime = front_end->cumulativeScanTime + decisionDelay; front_end->nbDecisions++;
+				return 0;
+				break;
+			}
+
+			/* Check status every 100 ms */
+			system_wait(100);
+		}
+	}
+
+	front_end->handshakeOn = 0;
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: Si2183_L2_Channel_Seek_Abort
@@ -6808,12 +7277,14 @@ signed   int  Si2183_L2_Channel_Seek_Next  (Si2183_L2_Context *front_end
   Parameter:  Pointer to Si2183 Context
   Returns:    0 if successful, otherwise an error.
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Channel_Seek_Abort (Si2183_L2_Context *front_end)
+signed int Si2183_L2_Channel_Seek_Abort(Si2183_L2_Context *front_end)
 {
-  front_end->seekAbort   = 1;
-  front_end->handshakeOn = 0;
-  Si2183_L1_SCAN_CTRL (front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
-  return 0;
+	front_end->seekAbort = 1;
+	front_end->handshakeOn = 0;
+
+	Si2183_L1_SCAN_CTRL(front_end->demod, Si2183_SCAN_CTRL_CMD_ACTION_ABORT , 0);
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: Si2183_L2_Channel_Lock_Abort
@@ -6823,15 +7294,19 @@ signed   int  Si2183_L2_Channel_Seek_Abort (Si2183_L2_Context *front_end)
   Parameter:  Pointer to Si2183 Context
   Returns:    0 if successful, otherwise an error.
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Channel_Lock_Abort (Si2183_L2_Context *front_end)
+signed int Si2183_L2_Channel_Lock_Abort(Si2183_L2_Context *front_end)
 {
-  if (front_end->handshakeUsed == 0 ) {
-    front_end->lockAbort   = 1;
-  }
-  if (front_end->handshakeUsed == 1 ) {
-    front_end->handshakeOn = 0;
-  }
-  return 0;
+	if(front_end->handshakeUsed == 0)
+	{
+		front_end->lockAbort = 1;
+	}
+
+	if(front_end->handshakeUsed == 1)
+	{
+		front_end->handshakeOn = 0;
+	}
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: Si2183_L2_Channel_Seek_End
@@ -6841,102 +7316,165 @@ signed   int  Si2183_L2_Channel_Lock_Abort (Si2183_L2_Context *front_end)
   Parameter:  Pointer to Si2183 Context
   Returns:    0 if successful, otherwise an error.
 ************************************************************************************************************************/
-signed   int  Si2183_L2_Channel_Seek_End   (Si2183_L2_Context *front_end)
+signed int Si2183_L2_Channel_Seek_End(Si2183_L2_Context *front_end)
 {
-  front_end = front_end; /* To avoid compiler warning */
-#ifdef    DEMOD_DVB_C
-#ifdef    Si2167B_BLINDSCAN_PATCH
-  if  ((((front_end->demod->rsp->part_info.part == 67 ) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B'))
-     || ((front_end->demod->rsp->part_info.part == 65 ) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B'))
-    ) & ((front_end->demod->rsp->part_info.pmajor == '2') & (front_end->demod->rsp->part_info.pminor == '2')) ) {
-    switch (front_end->demod->standard)
-    {
-      case Si2183_DD_MODE_PROP_MODULATION_MCNS    :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBC    : {
-        front_end->previous_standard = Si2183_DD_MODE_PROP_MODULATION_DVBT;
-        front_end->demod->load_DVB_C_Blindlock_Patch = 0;
-        front_end->Si2183_init_done = 0;
-        Si2183_L2_switch_to_standard(front_end, Si2183_DD_MODE_PROP_MODULATION_DVBC, 0);
-        break;
-      }
-      default: break;
-    }
-  }
-#endif /* Si2167B_BLINDSCAN_PATCH */
-#endif /* DEMOD_DVB_C */
+	front_end = front_end; /* To avoid compiler warning */
 
-  front_end->demod->prop->scan_ien.buzien           = Si2183_SCAN_IEN_PROP_BUZIEN_DISABLE ; /* (default 'DISABLE') */
-  front_end->demod->prop->scan_ien.reqien           = Si2183_SCAN_IEN_PROP_REQIEN_DISABLE ; /* (default 'DISABLE') */
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_IEN_PROP_CODE);
-  SiTRACE("front_end->cumulativeScanTime    %d %d'%d'' (%d decisions)\n", front_end->cumulativeScanTime   , front_end->cumulativeScanTime   /60000, (front_end->cumulativeScanTime   /1000)%60, front_end->nbDecisions );
-  SiTRACE("front_end->cumulativeTimeoutTime %d %d'%d'' (%d timeouts )\n", front_end->cumulativeTimeoutTime, front_end->cumulativeTimeoutTime/60000, (front_end->cumulativeTimeoutTime/1000)%60, front_end->nbTimeouts  );
-  switch (front_end->demod->standard)
-  {
-#ifdef    DEMOD_DVB_T
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT    : { front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT ; break; }
-#endif /* DEMOD_DVB_T */
-#ifdef    DEMOD_DVB_C
-    case Si2183_DD_MODE_PROP_MODULATION_DVBC    : {
-      front_end->demod->prop->dvbc_afc_range.range_khz = front_end->cable_lock_afc_range_khz;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_AFC_RANGE_PROP_CODE);
-      SiTRACE("DVB-C AFC range set back to %d\n", front_end->demod->prop->dvbc_afc_range.range_khz);
-      front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBC ; break;
-    }
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_MCNS
-    case Si2183_DD_MODE_PROP_MODULATION_MCNS    : {
-      front_end->demod->prop->mcns_afc_range.range_khz = front_end->cable_lock_afc_range_khz;
-      Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_AFC_RANGE_PROP_CODE);
-      SiTRACE("MCNS  AFC range set back to %d\n", front_end->demod->prop->mcns_afc_range.range_khz);
-      front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_MCNS ; break;
-    }
-#endif /* DEMOD_MCNS */
-#ifdef    DEMOD_DVB_T2
-    case Si2183_DD_MODE_PROP_MODULATION_DVBT2   : { front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT2; break; }
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_S_S2_DSS
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS    : { front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS ; break; }
-    case Si2183_DD_MODE_PROP_MODULATION_DVBS2   : { front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS2; break; }
-    case Si2183_DD_MODE_PROP_MODULATION_DSS     : { front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DSS  ; break; }
-#endif /* DEMOD_DVB_S_S2_DSS */
-    default                                     : { SiTRACE("UNKNOWN standard %d\n", front_end->demod->standard); break;}
-  }
+	#ifdef DEMOD_DVB_C
+	#ifdef Si2167B_BLINDSCAN_PATCH
+	if((((front_end->demod->rsp->part_info.part == 67) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B')) 
+		|| ((front_end->demod->rsp->part_info.part == 65) & (front_end->demod->rsp->part_info.chiprev + 0x40 == 'B'))) 
+		& ((front_end->demod->rsp->part_info.pmajor == '2') & (front_end->demod->rsp->part_info.pminor == '2')))
+	{
+		switch(front_end->demod->standard)
+		{
+		case Si2183_DD_MODE_PROP_MODULATION_MCNS:
+		case Si2183_DD_MODE_PROP_MODULATION_DVBC:
+			{
+				front_end->previous_standard = Si2183_DD_MODE_PROP_MODULATION_DVBT;
+				front_end->demod->load_DVB_C_Blindlock_Patch = 0;
+				front_end->Si2183_init_done = 0;
 
-#ifdef    DEMOD_DVB_T2
-  SiTRACE("auto_detect_TER %d\n",front_end->auto_detect_TER);
-  if (front_end->auto_detect_TER) {
-    switch (front_end->demod->standard)
-    {
-      case Si2183_DD_MODE_PROP_MODULATION_DVBT    :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBT2   : {
-        front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
-        front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2;
-      }
-      default                                     : { break;}
-    }
-  }
-#endif /* DEMOD_DVB_T2 */
-#ifdef    DEMOD_DVB_S_S2_DSS
-  if (front_end->auto_detect_SAT) {
-    switch (front_end->demod->standard)
-    {
-      case Si2183_DD_MODE_PROP_MODULATION_DSS     :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBS    :
-      case Si2183_DD_MODE_PROP_MODULATION_DVBS2   : {
-        front_end->demod->prop->dd_mode.modulation  = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
-        if (front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DSS) {
-          front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS;
-        } else {
-          front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2;
-        }
-      }
-      default                                     : { break;}
-    }
-  }
-#endif /* DEMOD_DVB_S_S2_DSS */
-  Si2183_L1_SetProperty2(front_end->demod, Si2183_DD_MODE_PROP_CODE);
+				Si2183_L2_switch_to_standard(front_end, Si2183_DD_MODE_PROP_MODULATION_DVBC, 0);
+				break;
+			}
+		default:
+			break;
+		}
+	}
+	#endif	/* Si2167B_BLINDSCAN_PATCH */
+	#endif	/* DEMOD_DVB_C */
 
-  return 0;
+	front_end->demod->prop->scan_ien.buzien = Si2183_SCAN_IEN_PROP_BUZIEN_DISABLE;	/* (default 'DISABLE') */
+	front_end->demod->prop->scan_ien.reqien = Si2183_SCAN_IEN_PROP_REQIEN_DISABLE;	/* (default 'DISABLE') */
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_SCAN_IEN_PROP_CODE);
+
+	SiTRACE("front_end->cumulativeScanTime    %d %d'%d'' (%d decisions)\n", 
+		front_end->cumulativeScanTime, front_end->cumulativeScanTime / 60000, (front_end->cumulativeScanTime / 1000) % 60, front_end->nbDecisions);
+
+	SiTRACE("front_end->cumulativeTimeoutTime %d %d'%d'' (%d timeouts )\n", 
+		front_end->cumulativeTimeoutTime, front_end->cumulativeTimeoutTime / 60000, 
+		(front_end->cumulativeTimeoutTime / 1000) % 60, front_end->nbTimeouts);
+
+	switch(front_end->demod->standard)
+	{
+	#ifdef DEMOD_DVB_T
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT;
+			break;
+		}
+	#endif	/* DEMOD_DVB_T */
+	#ifdef DEMOD_DVB_C
+	case Si2183_DD_MODE_PROP_MODULATION_DVBC:
+		{
+			front_end->demod->prop->dvbc_afc_range.range_khz = front_end->cable_lock_afc_range_khz;
+
+			Si2183_L1_SetProperty2(front_end->demod, Si2183_DVBC_AFC_RANGE_PROP_CODE);
+
+			SiTRACE("DVB-C AFC range set back to %d\n", front_end->demod->prop->dvbc_afc_range.range_khz);
+
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBC;
+			break;
+		}
+	#endif	/* DEMOD_DVB_C */
+	#ifdef DEMOD_MCNS
+	case Si2183_DD_MODE_PROP_MODULATION_MCNS:
+		{
+			front_end->demod->prop->mcns_afc_range.range_khz = front_end->cable_lock_afc_range_khz;
+
+			Si2183_L1_SetProperty2(front_end->demod, Si2183_MCNS_AFC_RANGE_PROP_CODE);
+
+			SiTRACE("MCNS  AFC range set back to %d\n", front_end->demod->prop->mcns_afc_range.range_khz);
+
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_MCNS;
+			break;
+		}
+	#endif	/* DEMOD_MCNS */
+	#ifdef DEMOD_DVB_T2
+	case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBT2;
+			break;
+		}
+	#endif	/* DEMOD_DVB_T2 */
+	#ifdef DEMOD_DVB_S_S2_DSS
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS:
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS;
+			break;
+		}
+	case Si2183_DD_MODE_PROP_MODULATION_DVBS2:
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DVBS2;
+			break;
+		}
+	case Si2183_DD_MODE_PROP_MODULATION_DSS:
+		{
+			front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_DSS;
+			break;
+		}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+	default:
+		{
+			SiTRACE("UNKNOWN standard %d\n", front_end->demod->standard);
+			break;
+		}
+	}
+
+	#ifdef DEMOD_DVB_T2
+	SiTRACE("auto_detect_TER %d\n",front_end->auto_detect_TER);
+
+	if(front_end->auto_detect_TER)
+	{
+		switch(front_end->demod->standard)
+		{
+		case Si2183_DD_MODE_PROP_MODULATION_DVBT:
+		case Si2183_DD_MODE_PROP_MODULATION_DVBT2:
+			{
+				front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
+				front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_T_T2;
+			}
+		default:
+			{
+				break;
+			}
+		}
+	}
+	#endif	/* DEMOD_DVB_T2 */
+
+	#ifdef DEMOD_DVB_S_S2_DSS
+	if(front_end->auto_detect_SAT)
+	{
+		switch(front_end->demod->standard)
+		{
+		case Si2183_DD_MODE_PROP_MODULATION_DSS:
+		case Si2183_DD_MODE_PROP_MODULATION_DVBS:
+		case Si2183_DD_MODE_PROP_MODULATION_DVBS2:
+			{
+				front_end->demod->prop->dd_mode.modulation = Si2183_DD_MODE_PROP_MODULATION_AUTO_DETECT;
+
+				if(front_end->demod->standard == Si2183_DD_MODE_PROP_MODULATION_DSS)
+				{
+					front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2_DSS;
+				}
+				else
+				{
+					front_end->demod->prop->dd_mode.auto_detect = Si2183_DD_MODE_PROP_AUTO_DETECT_AUTO_DVB_S_S2;
+				}
+			}
+		default:
+			{
+				break;
+			}
+		}
+	}
+	#endif	/* DEMOD_DVB_S_S2_DSS */
+
+	Si2183_L1_SetProperty2(front_end->demod, Si2183_DD_MODE_PROP_CODE);
+
+	return 0;
 }
 #ifdef    SATELLITE_FRONT_END
 /************************************************************************************************************************

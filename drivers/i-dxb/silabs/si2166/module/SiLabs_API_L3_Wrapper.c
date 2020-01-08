@@ -3894,17 +3894,27 @@ signed   int  SiLabs_API_SAT_tuner_I2C_connection   (SILABS_FE_Context *front_en
   Parameter:  handshake_mode,   (0='OFF', 1='ON')
   Parameter:  handshake_period_ms, the duration of each handshake period in ms
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Handshake_Setup            (SILABS_FE_Context *front_end,    signed   int handshake_mode, signed   int handshake_period_ms)
+signed int SiLabs_API_Handshake_Setup(SILABS_FE_Context *front_end, signed int handshake_mode, signed int handshake_period_ms)
 {
-  SiTRACE("API CALL CONFIG: SiLabs_API_Handshake_Setup          (front_end, %d, %d);\n", handshake_mode, handshake_period_ms);
-  front_end           = front_end;           /* To avoid compiler warning if not used */
-  handshake_mode      = handshake_mode;      /* To avoid compiler warning if not used */
-  handshake_period_ms = handshake_period_ms; /* To avoid compiler warning if not used */
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183  ) { front_end->Si2183_FE->handshakeUsed  = handshake_mode; front_end->Si2183_FE->handshakePeriod_ms  = handshake_period_ms; return handshake_mode*handshake_period_ms; }
-#endif /* Si2183_COMPATIBLE */
-  SiTRACE("SiLabs_API_Handshake_Setup not supporting the current chip '%d'/'0x%x'\n", front_end->chip, front_end->chip);
-  return 0;
+	SiTRACE("API CALL CONFIG: SiLabs_API_Handshake_Setup          (front_end, %d, %d);\n", handshake_mode, handshake_period_ms);
+
+	front_end 				= front_end;			/* To avoid compiler warning if not used */
+	handshake_mode 			= handshake_mode;		/* To avoid compiler warning if not used */
+	handshake_period_ms 	= handshake_period_ms;	/* To avoid compiler warning if not used */
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		front_end->Si2183_FE->handshakeUsed 		= handshake_mode;
+		front_end->Si2183_FE->handshakePeriod_ms 	= handshake_period_ms;
+
+		return handshake_mode * handshake_period_ms;
+	}
+	#endif	/* Si2183_COMPATIBLE */
+
+	SiTRACE("SiLabs_API_Handshake_Setup not supporting the current chip '%d'/'0x%x'\n", front_end->chip, front_end->chip);
+
+	return 0;
 }
 /************************************************************************************************************************
   SiLabs_API_SPI_Setup function
@@ -5720,24 +5730,38 @@ signed   int  SiLabs_API_Tuner_I2C_Disable          (SILABS_FE_Context *front_en
   Parameter:  max SNR 1/2 dB
   Returns:    0 if successful, otherwise an error.
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Channel_Seek_Init          (SILABS_FE_Context *front_end,
-                                            signed   int rangeMin,     signed   int rangeMax,
-                                            signed   int seekBWHz,     signed   int seekStepHz,
-                                            signed   int minSRbps,     signed   int maxSRbps,
-                                            signed   int minRSSIdBm,   signed   int maxRSSIdBm,
-                                            signed   int minSNRHalfdB, signed   int maxSNRHalfdB)
+signed int SiLabs_API_Channel_Seek_Init(
+	SILABS_FE_Context *front_end, 
+	signed int rangeMin, 
+	signed int rangeMax, 
+	signed int seekBWHz, 
+	signed int seekStepHz, 
+	signed int minSRbps, 
+	signed int maxSRbps, 
+	signed int minRSSIdBm, 
+	signed int maxRSSIdBm, 
+	signed int minSNRHalfdB, 
+	signed int maxSNRHalfdB)
 {
-  SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Init (front_end, rangeMin %d, rangeMax %d, seekBWHz %d, seekStepHz %d, minSRbps %d, maxSRbps %d, minRSSIdBm %d, maxRSSIdBm %d, minSNRHalfdB %d, maxSNRHalfdB %d);\n", rangeMin, rangeMax, seekBWHz, seekStepHz, minSRbps, maxSRbps, minRSSIdBm, maxRSSIdBm, minSNRHalfdB, maxSNRHalfdB);
-  //jerrycai, rounding error.
-#ifdef    UNICABLE_COMPATIBLE
-//  front_end->unicable->inBlindScan = 1;
-#endif // UNICABLE_COMPATIBLE
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183 ) { return Si2183_L2_Channel_Seek_Init (front_end->Si2183_FE,  rangeMin, rangeMax, seekBWHz, seekStepHz, minSRbps, maxSRbps, minRSSIdBm, maxRSSIdBm, minSNRHalfdB, maxSNRHalfdB); }
-#endif /* Si2183_COMPATIBLE */
-  SiTRACE("Unknown chip '%d'\n", front_end->chip);
-  SiERROR("SiLabs_API_Channel_Seek_Init Unknown chip\n");
-  return 1;
+	SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Init (front_end, rangeMin %d, rangeMax %d, seekBWHz %d, seekStepHz %d, minSRbps %d, maxSRbps %d, minRSSIdBm %d, maxRSSIdBm %d, minSNRHalfdB %d, maxSNRHalfdB %d);\n", 
+		rangeMin, rangeMax, seekBWHz, seekStepHz, minSRbps, maxSRbps, minRSSIdBm, maxRSSIdBm, minSNRHalfdB, maxSNRHalfdB);
+
+	//jerrycai, rounding error.
+	#ifdef UNICABLE_COMPATIBLE
+	//  front_end->unicable->inBlindScan = 1;
+	#endif	// UNICABLE_COMPATIBLE
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		return Si2183_L2_Channel_Seek_Init(front_end->Si2183_FE, rangeMin, rangeMax, seekBWHz, seekStepHz, minSRbps, maxSRbps, minRSSIdBm, maxRSSIdBm, minSNRHalfdB, maxSNRHalfdB);
+	}
+	#endif /* Si2183_COMPATIBLE */
+
+	SiTRACE("Unknown chip '%d'\n", front_end->chip);
+	SiERROR("SiLabs_API_Channel_Seek_Init Unknown chip\n");
+
+	return 1;
 }
 /************************************************************************************************************************
   NAME: SiLabs_API_Channel_Seek_Next
@@ -5745,73 +5769,104 @@ signed   int  SiLabs_API_Channel_Seek_Init          (SILABS_FE_Context *front_en
   Parameter:  Pointer to SILABS_FE_Context
   Returns:    1 if channel is found, 0 if abort or end of range, any other value is the handshake duration
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Channel_Seek_Next          (SILABS_FE_Context *front_end,    signed   int *standard, signed   int *freq, signed   int *bandwidth_Hz, signed   int *stream, unsigned int *symbol_rate_bps, signed   int *constellation, signed   int *polarization, signed   int *band, signed   int *num_data_slice, signed   int *num_plp, signed   int *T2_base_lite)
+signed int SiLabs_API_Channel_Seek_Next(
+	SILABS_FE_Context *front_end, 
+	signed int *standard, 
+	signed int *freq, 
+	signed int *bandwidth_Hz, 
+	signed int *stream, 
+	unsigned int *symbol_rate_bps, 
+	signed int *constellation, 
+	signed int *polarization, 
+	signed int *band, 
+	signed int *num_data_slice, 
+	signed int *num_plp, 
+	signed int *T2_base_lite)
 {
-  signed   int seek_result;
-  num_data_slice = num_data_slice;/* to avoid compiler warning if not used */
-  num_plp        = num_plp;       /* to avoid compiler warning if not used */
-  bandwidth_Hz   = bandwidth_Hz;  /* to avoid compiler warning if not used */
-  polarization   = polarization;  /* to avoid compiler warning if not used */
-  band           = band;          /* to avoid compiler warning if not used */
-  *num_data_slice = 0;            /* set to '0' by default (to avoid processing DS   for standards not supporting this feature) */
-  *num_plp        = 0;            /* set to '0' by default (to avoid processing MPLP for standards not supporting this feature) */
-  *T2_base_lite   = 0;            /* set to '0' by default (to avoid processing T2 lite for standards not supporting this feature) */
-  seek_result     = -1;
-  SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Next (front_end, &standard, &freq, &bandwidth_Hz, &stream, &symbol_rate_bps, &constellation, &polarization, &band, &num_data_slice, &num_plp, &T2_base_lite);\n");
-  SiTRACE("SiLabs_API_Channel_Seek_Next config_code 0x%06x\n", front_end->config_code);
+	signed int seek_result;
 
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183 ) {
-      seek_result = Si2183_L2_Channel_Seek_Next (front_end->Si2183_FE, standard, freq
-                                           , bandwidth_Hz
-#ifdef    DEMOD_DVB_T
-                                           , stream
-#endif /* DEMOD_DVB_T*/
-                                           , symbol_rate_bps
-#ifdef    DEMOD_DVB_C
-                                           , constellation
-#endif /* DEMOD_DVB_C */
-#ifdef    DEMOD_DVB_C2
-                                           , num_data_slice
-#endif /* DEMOD_DVB_C2*/
-                                           , num_plp
-#ifdef    DEMOD_DVB_T2
-                                           , T2_base_lite
-#endif /* DEMOD_DVB_T2 */
-                                           );
-  }
-#endif /* Si2183_COMPATIBLE */
-#ifdef    SATELLITE_FRONT_END
-  *polarization = front_end->polarization;
-  *band         = front_end->band;
-#endif /* SATELLITE_FRONT_END */
-  if (seek_result ==  1) {
-    *standard = Custom_standardCode(front_end, *standard);
-    front_end->standard = *standard;
-    /* Translate demod-specific values to CUSTOM values */
-    switch (*standard)
-    {
-      case SILABS_DVB_T : {
-        *stream        = Custom_streamCode (front_end, *stream);
-        break;
-      }
-      case SILABS_DVB_C : {
-        *constellation = Custom_constelCode(front_end, *constellation);
-        break;
-      }
-      default           : {
-        break;
-      }
-    }
-    return 1;
-  }
-  if (seek_result >   1) {
-    return seek_result;
-  }
-  if (seek_result == -1) {
-    SiTRACE("Chip '%d' not handled by SiLabs_API_Channel_Seek_Next\n", front_end->chip);
-  }
-  return 0;
+	num_data_slice 	= num_data_slice;	/* to avoid compiler warning if not used */
+	num_plp 		= num_plp;			/* to avoid compiler warning if not used */
+	bandwidth_Hz 	= bandwidth_Hz;		/* to avoid compiler warning if not used */
+	polarization 	= polarization;		/* to avoid compiler warning if not used */
+	band 			= band;				/* to avoid compiler warning if not used */
+
+	*num_data_slice 	= 0;			/* set to '0' by default (to avoid processing DS   for standards not supporting this feature) */
+	*num_plp 			= 0;			/* set to '0' by default (to avoid processing MPLP for standards not supporting this feature) */
+	*T2_base_lite 		= 0;			/* set to '0' by default (to avoid processing T2 lite for standards not supporting this feature) */
+
+	seek_result = -1;
+
+	SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Next (front_end, &standard, &freq, &bandwidth_Hz, &stream, &symbol_rate_bps, &constellation, &polarization, &band, &num_data_slice, &num_plp, &T2_base_lite);\n");
+	SiTRACE("SiLabs_API_Channel_Seek_Next config_code 0x%06x\n", front_end->config_code);
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		seek_result = Si2183_L2_Channel_Seek_Next(front_end->Si2183_FE, standard, freq
+			, bandwidth_Hz
+			#ifdef DEMOD_DVB_T
+			, stream
+			#endif	/* DEMOD_DVB_T*/
+			, symbol_rate_bps
+			#ifdef DEMOD_DVB_C
+			, constellation
+			#endif	/* DEMOD_DVB_C */
+			#ifdef DEMOD_DVB_C2
+			, num_data_slice
+			#endif	/* DEMOD_DVB_C2*/
+			, num_plp
+			#ifdef DEMOD_DVB_T2
+			, T2_base_lite
+			#endif	/* DEMOD_DVB_T2 */
+		);
+	}
+	#endif	/* Si2183_COMPATIBLE */
+
+	#ifdef SATELLITE_FRONT_END
+	*polarization 	= front_end->polarization;
+	*band 			= front_end->band;
+	#endif	/* SATELLITE_FRONT_END */
+
+	if(seek_result == 1)
+	{
+		*standard = Custom_standardCode(front_end, *standard);
+
+		front_end->standard = *standard;
+
+		/* Translate demod-specific values to CUSTOM values */
+		switch(*standard)
+		{
+		case SILABS_DVB_T:
+			{
+				*stream = Custom_streamCode(front_end, *stream);
+				break;
+			}
+		case SILABS_DVB_C:
+			{
+				*constellation = Custom_constelCode(front_end, *constellation);
+				break;
+			}
+		default:
+			{
+				break;
+			}
+		}
+
+		return 1;
+	}
+
+	if(seek_result > 1)
+	{
+		return seek_result;
+	}
+
+	if(seek_result == -1)
+	{
+		SiTRACE("Chip '%d' not handled by SiLabs_API_Channel_Seek_Next\n", front_end->chip);
+	}
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: SiLabs_API_Channel_Seek_Abort
@@ -5819,19 +5874,26 @@ signed   int  SiLabs_API_Channel_Seek_Next          (SILABS_FE_Context *front_en
   Parameter:  Pointer to SILABS_FE_Context
   Returns:    1 if successful, 0 otherwise
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Channel_Seek_Abort         (SILABS_FE_Context *front_end)
+signed int SiLabs_API_Channel_Seek_Abort(SILABS_FE_Context *front_end)
 {
-  SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Abort (front_end);\n");
-  //jerrycai, rounding error.
-#ifdef    UNICABLE_COMPATIBLE
-//	  front_end->unicable->inBlindScan = 0;
-#endif // UNICABLE_COMPATIBLE
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183 ) { return Si2183_L2_Channel_Seek_Abort (front_end->Si2183_FE); }
-#endif /* Si2183_COMPATIBLE */
-  SiTRACE("Unknown chip '%d'\n", front_end->chip);
-  SiERROR("SiLabs_API_Channel_Seek_Abort Unknown chip\n");
-  return 0;
+	SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_Abort (front_end);\n");
+
+	// jerrycai, rounding error.
+	#ifdef UNICABLE_COMPATIBLE
+//	front_end->unicable->inBlindScan = 0;
+	#endif	// UNICABLE_COMPATIBLE
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		return Si2183_L2_Channel_Seek_Abort(front_end->Si2183_FE);
+	}
+	#endif	/* Si2183_COMPATIBLE */
+
+	SiTRACE("Unknown chip '%d'\n", front_end->chip);
+	SiERROR("SiLabs_API_Channel_Seek_Abort Unknown chip\n");
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: SiLabs_API_Channel_Lock_Abort
@@ -5839,19 +5901,26 @@ signed   int  SiLabs_API_Channel_Seek_Abort         (SILABS_FE_Context *front_en
   Parameter:  Pointer to SILABS_FE_Context
   Returns:    1 if successful, 0 otherwise
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Channel_Lock_Abort         (SILABS_FE_Context *front_end)
+signed int SiLabs_API_Channel_Lock_Abort(SILABS_FE_Context *front_end)
 {
-  SiTRACE("API CALL LOCK  : SiLabs_API_Channel_Lock_Abort (front_end);\n");
-  //jerrycai, rounding error.
-#ifdef    UNICABLE_COMPATIBLE
-//	  front_end->unicable->inBlindScan = 0;
-#endif // UNICABLE_COMPATIBLE
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183 ) { return Si2183_L2_Channel_Lock_Abort (front_end->Si2183_FE); }
-#endif /* Si2183_COMPATIBLE */
-  SiTRACE("Unknown chip '%d'\n", front_end->chip);
-  SiERROR("SiLabs_API_Channel_Lock_Abort Unknown chip\n");
-  return 0;
+	SiTRACE("API CALL LOCK  : SiLabs_API_Channel_Lock_Abort (front_end);\n");
+
+	// jerrycai, rounding error.
+	#ifdef UNICABLE_COMPATIBLE
+//	front_end->unicable->inBlindScan = 0;
+	#endif	// UNICABLE_COMPATIBLE
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		return Si2183_L2_Channel_Lock_Abort(front_end->Si2183_FE);
+	}
+	#endif	/* Si2183_COMPATIBLE */
+
+	SiTRACE("Unknown chip '%d'\n", front_end->chip);
+	SiERROR("SiLabs_API_Channel_Lock_Abort Unknown chip\n");
+
+	return 0;
 }
 /************************************************************************************************************************
   NAME: SiLabs_API_Channel_Seek_End
@@ -5859,19 +5928,26 @@ signed   int  SiLabs_API_Channel_Lock_Abort         (SILABS_FE_Context *front_en
   Parameter:  Pointer to SILABS_FE_Context
   Returns:    1 if successful, 0 otherwise
 ************************************************************************************************************************/
-signed   int  SiLabs_API_Channel_Seek_End           (SILABS_FE_Context *front_end)
+signed int SiLabs_API_Channel_Seek_End(SILABS_FE_Context *front_end)
 {
-  SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_End (front_end);\n");
-  //jerrycai, rounding error.
-#ifdef    UNICABLE_COMPATIBLE
-//	  front_end->unicable->inBlindScan = 0;
-#endif // UNICABLE_COMPATIBLE
-#ifdef    Si2183_COMPATIBLE
-  if (front_end->chip ==   0x2183 ) { return Si2183_L2_Channel_Seek_End (front_end->Si2183_FE); }
-#endif /* Si2183_COMPATIBLE */
-  SiTRACE("Unknown chip '%d'\n", front_end->chip);
-  SiERROR("SiLabs_API_Channel_Seek_End Unknown chip\n");
-  return 0;
+	SiTRACE("API CALL SEEK  : SiLabs_API_Channel_Seek_End (front_end);\n");
+
+	// jerrycai, rounding error.
+	#ifdef UNICABLE_COMPATIBLE
+//	front_end->unicable->inBlindScan = 0;
+	#endif	// UNICABLE_COMPATIBLE
+
+	#ifdef Si2183_COMPATIBLE
+	if(front_end->chip == 0x2183)
+	{
+		return Si2183_L2_Channel_Seek_End(front_end->Si2183_FE);
+	}
+	#endif	/* Si2183_COMPATIBLE */
+
+	SiTRACE("Unknown chip '%d'\n", front_end->chip);
+	SiERROR("SiLabs_API_Channel_Seek_End Unknown chip\n");
+
+	return 0;
 }
 #ifdef    SATELLITE_FRONT_END
 /************************************************************************************************************************

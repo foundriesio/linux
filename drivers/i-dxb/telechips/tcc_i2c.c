@@ -51,8 +51,7 @@ int tcc_i2c_init(void)
 {
 	if(g_p_adapter != NULL)
 	{
-		printk("[TCC_I2C] i2c adapter is not NULL!\n");
-		return -1;
+		return 0;
 	}
 
 	g_p_adapter = i2c_get_adapter(TCC_I2C_CH);
