@@ -2085,10 +2085,15 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 		if(p->output_toMemory && p->m2m_mode)
 		{
 			dprintk("first m2m TCC_excuteVIQE_60Hz \n") ;
-			if(input_image_info->Lcdc_layer == RDMA_VIDEO)
+			if(input_image_info->Lcdc_layer == RDMA_VIDEO) {
 				TCC_VIQE_DI_Init60Hz_M2M(Output_SelectMode, input_image_info);
-			else
+			} else {
+				#ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
+				TCC_VIQE_DI_Init60Hz_M2M(Output_SelectMode, input_image_info);
+				#else
 				TCC_VIQE_DI_Sub_Init60Hz_M2M(Output_SelectMode, input_image_info);
+				#endif
+			}
 		}
 	}
 
@@ -2471,12 +2476,11 @@ static void tcc_vsync_end(tcc_video_disp *p, unsigned int keep_display)
 		#endif
 
 		memset(&ImageInfo, 0x00, sizeof(struct tcc_lcdc_image_update));
+		ImageInfo.enable = (keep_display && (p->output_toMemory && p->m2m_mode)) ? 1 : 0;
 		if (p->type == VSYNC_MAIN) {
 			ImageInfo.enable = 0;
 			ImageInfo.Lcdc_layer = RDMA_VIDEO;
-		}
-		else {			
-			ImageInfo.enable = (keep_display) ? 1 : 0;
+		} else {
 			ImageInfo.Lcdc_layer = RDMA_VIDEO_SUB;
 		}
 
@@ -3123,7 +3127,7 @@ int tcc_move_video_last_frame(struct tcc_lcdc_image_update* lastUpdated, char bI
 	return 0;
 }
 
-int tcc_origin_video_off_for_last_frame(tcc_video_disp *p, struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *lastUpdated, VSYNC_CH_TYPE type)
+int tcc_origin_video_off_for_last_frame(tcc_video_disp *p, struct tcc_dp_device *pdp_data, struct tcc_lcdc_image_update *lastUpdated, VSYNC_CH_TYPE type, int ch_disable)
 {
 #ifdef TCC_VIDEO_DISPLAY_DEINTERLACE_MODE
 	if(p->deinterlace_mode &&!p->interlace_bypass_lcdc)
@@ -3149,19 +3153,21 @@ int tcc_origin_video_off_for_last_frame(tcc_video_disp *p, struct tcc_dp_device 
 	}
 #endif
 
-	lastUpdated->enable 		= 0;
-	if (type == VSYNC_MAIN) {
+	if(ch_disable) {
+		lastUpdated->enable = 0;
+		if (type == VSYNC_MAIN) {
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
-		if((DV_PROC_CHECK & DV_DUAL_MODE) == DV_DUAL_MODE){
-			lastUpdated->Lcdc_layer = RDMA_VIDEO_SUB;
-			tcc_video_rdma_off(pdp_data, lastUpdated, p->outputMode, 0);
-		}
+			if((DV_PROC_CHECK & DV_DUAL_MODE) == DV_DUAL_MODE){
+				lastUpdated->Lcdc_layer = RDMA_VIDEO_SUB;
+				tcc_video_rdma_off(pdp_data, lastUpdated, p->outputMode, 0);
+			}
 #endif
-		lastUpdated->Lcdc_layer 	= RDMA_VIDEO;
-	} else {
-		lastUpdated->Lcdc_layer 	= RDMA_VIDEO_SUB;
+			lastUpdated->Lcdc_layer = RDMA_VIDEO;
+		} else {
+			lastUpdated->Lcdc_layer = RDMA_VIDEO_SUB;
+		}
+		tcc_video_rdma_off(pdp_data, lastUpdated, p->outputMode, 0);
 	}
-	tcc_video_rdma_off(pdp_data, lastUpdated, p->outputMode, 0);
 
 	return 0;
 }
@@ -3246,7 +3252,10 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 		target_address = tccvid_lastframe[type].pmapBuff.base;
 	target_size = (tccvid_lastframe[type].pmapBuff.size / 2);
 
-	if(type == VSYNC_MAIN && tccvid_lastframe[type].support && target_size)
+	dprintk("######## LAST-FRAME[%d] :: support[%d] pmap[0x%x] m2m[%d/%d] \n", type, tccvid_lastframe[type].support, target_size, p->output_toMemory, p->m2m_mode);
+	if( ((type == VSYNC_MAIN && !(p->output_toMemory && p->m2m_mode)) || (type == VSYNC_SUB0 && !(p->output_toMemory && p->m2m_mode)))
+		&& (tccvid_lastframe[type].support && target_size)
+	)
 	{
 		if( p->outputMode == TCC_OUTPUT_HDMI || p->outputMode== TCC_OUTPUT_COMPOSITE || p->outputMode == TCC_OUTPUT_COMPONENT
 #ifdef TCC_LCD_VIDEO_DISPLAY_BY_VSYNC_INT
@@ -3276,7 +3285,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 			//if(lastUpdated->private_data.optional_info[VID_OPT_CONTENT_TYPE] == ATTR_DV_WITHOUT_BC){
 			if(lastUpdated->private_data.optional_info[VID_OPT_HAVE_DOLBYVISION_INFO] != 0){
 				spin_lock_irq(&LastFrame_lockDisp);
-				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type);
+				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type, 1);
 				spin_unlock_irq(&LastFrame_lockDisp);
 
 				printk("---->[%d]  TCC_LCDC_VIDEO_KEEP_LASTFRAME to diable only (DV)RDMA channel. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
@@ -3311,8 +3320,8 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				return 0;
 			}
 	#endif
-			printk("&&&&&&&&& ---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x)!! \n",
-					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, target_address);
+			printk("&&&&&&&&& ---->[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME(%d) called with reason(%d), out-Mode(%d) target(0x%x/0x%x) MC(%d)!! \n",
+					type, tccvid_lastframe[type].support, iLastFrame.reason, p->outputMode, target_address, target_size, lastUpdated->private_data.optional_info[VID_OPT_HAVE_MC_INFO]);
 
 			if( (ret = tcc_move_video_last_frame(lastUpdated, p->deinterlace_mode, target_address, target_size, LAST_FRAME_FORMAT)) < 0 ){
 				goto Screen_off;
@@ -3358,7 +3367,7 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				spin_unlock_irq(&LastFrame_lockDisp);
 			}
 Screen_off:
-			tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type);
+			tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type, 1)
 			printk("###[%d] TCC_LCDC_VIDEO_KEEP_LASTFRAME End \n", type);
 		}
 		else
@@ -3439,12 +3448,19 @@ Screen_off:
 			}
 			else if( (tccvid_lastframe[type].reason.Codec)
 				|| (type == VSYNC_SUB0)
-				|| (type == VSYNC_MAIN && !tccvid_lastframe[type].support)
+				|| (type == VSYNC_MAIN /*&& !tccvid_lastframe[type].support*/)
 				|| (target_size == 0)
 			)
 			{
+		#if 1
+				int ch_disable = 1;
+				if(p->output_toMemory && p->m2m_mode) {
+					dprintk("&&&&&&&&& ---->[%d]  fake TCC_LCDC_VIDEO_KEEP_LASTFRAME \n", type);
+					ch_disable = 0;;
+				}
+		#endif
 				spin_lock_irq(&LastFrame_lockDisp);
-				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type);
+				tcc_origin_video_off_for_last_frame(p, dp_device, lastUpdated, type, ch_disable);
 				spin_unlock_irq(&LastFrame_lockDisp);
 
 				printk("&&&&&&&&& ---->[%d]  fake TCC_LCDC_VIDEO_KEEP_LASTFRAME to diable only RDMA channel. info(%dx%d), resolution_changed(%d), codec_changed(%d) \n", type,
@@ -3517,7 +3533,8 @@ void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset)
 		return;
 	}
 
-    if(tccvid_lastframe[type].support)
+	//last-frame has to be disabled regardless of support option!!
+	//if(tccvid_lastframe[type].support)
     {
         if( tccvid_lastframe[type].pRDMA != NULL /*&& tccvid_lastframe[type].nCount >= 2*/){
             VIOC_RDMA_SetImageDisable(tccvid_lastframe[type].pRDMA);
@@ -4279,7 +4296,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 			case TCC_LCDC_VIDEO_CTRL_LAST_FRAME:
 				{
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
-					dprintk("%s-%d :: TCC_LCDC_VIDEO_CTRL_LAST_FRAME ========= %d \n", __func__, __LINE__, (int)arg);
+					dprintk("%s-%d :: TCC_LCDC_VIDEO_CTRL_LAST_FRAME[%d] ========= %d \n", __func__, __LINE__, type, (int)arg);
 					//tcc_video_ctrl_last_frame(type, (int)arg);
 #endif
 				}
@@ -5750,14 +5767,20 @@ static int __init tcc_vsync_init(void)
 	memset(&tccvid_lastframe[0], 0x00, sizeof(tcc_video_lastframe));
 	memset(&tccvid_lastframe[1], 0x00, sizeof(tcc_video_lastframe));
 
-	tcc_video_ctrl_last_frame(type, 0);
+	pmap_get_info("fb_wmixer", &tccvid_lastframe[type].pmapBuff);
+	tcc_video_ctrl_last_frame(type, 1);
+	printk("%s :: Main LastFrame(%d/%d) - wmixer base:0x%08x/0x%x \n", __func__,
+				tccvid_lastframe[type].support, tccvid_lastframe[type].enabled,
+				tccvid_lastframe[type].pmapBuff.base, tccvid_lastframe[type].pmapBuff.size );
 
 	type = VSYNC_SUB0;
 	#ifdef CONFIG_USE_SUB_MULTI_FRAME
 	for(type = VSYNC_SUB0; type < VSYNC_MAX; type++)
 	#endif
 	{
-		tcc_video_ctrl_last_frame(type, 0);
+		// SKBB :: for sub otf, can use same pmap region because otf between main and sub is only one.
+		pmap_get_info("fb_wmixer", &tccvid_lastframe[type].pmapBuff);
+		tcc_video_ctrl_last_frame(type, 1);
 	}
 	spin_lock_init(&LastFrame_lockDisp);
 #endif
