@@ -1502,7 +1502,7 @@ int tccvin_diagnostics_cif_port_mapping(tccvin_dev_t * vdev) {
 	ret = tccvin_check_cif_port_mapping(vdev);
 	log("CIF Port Mapping is %s\n", (ret == 0) ? "OKAY" : "WRONG");
 	if(ret < 0) {
-		tccvin_dump_register(vdev->cif.cifport_addr, 1);
+		tccvin_dump_register((unsigned int *)vdev->cif.cifport_addr, 1);
 	}
 	
 	return ret;
@@ -1538,80 +1538,22 @@ int tccvin_diagnostics_videoinput_path(tccvin_dev_t * vdev) {
 }
 
 int tccvin_diagnostics(tccvin_dev_t * vdev) {
+	int		diagnostics_enable = 0;
 	int		idxLoop = 0, nLoop = 1;
 	int		ret	= 0;
 
-	for(idxLoop=0; idxLoop<nLoop; idxLoop++) {
-		// check cif port mapping
-		tccvin_diagnostics_cif_port_mapping(vdev);
+	diagnostics_enable = atomic_read(&tccvin_attr_diagnostics);
+	if(diagnostics_enable == 1) {
+		for(idxLoop=0; idxLoop<nLoop; idxLoop++) {
+			// check cif port mapping
+			tccvin_diagnostics_cif_port_mapping(vdev);
 
-		// check video-input path
-		tccvin_diagnostics_videoinput_path(vdev);
+			// check video-input path
+			tccvin_diagnostics_videoinput_path(vdev);
+		}
 	}
 
 	return ret;
-}
-
-int tccvin_monitor_thread(void * data) {
-	tccvin_dev_t	* vdev = (tccvin_dev_t *)data;
-	int				diagnostics_enable = 0;
-
-	FUNCTION_IN
-
-	while(1) {
-		msleep(500);
-
-		if(kthread_should_stop())
-			break;
-
-		if(tccvin_check_wdma_counter(vdev) == -1) {
-			// Diagnostics
-			diagnostics_enable = atomic_read(&tccvin_attr_diagnostics);
-			if(diagnostics_enable == 1)
-				tccvin_diagnostics(vdev);
-
-			log("ERROR: Recovery mode will be entered\n");
-
-			tccvin_stop_stream(vdev);
-
-#ifdef CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
-			videosource_close();
-
-			videosource_open();
-			videosource_if_change_mode(0);
-#endif//CONFIG_VIDEO_TCCVIN_SWITCHMANAGER
-
-			tccvin_start_stream(vdev);
-		}
-	}
-	FUNCTION_OUT
-	return 0;
-}
-
-int tccvin_start_monitor(tccvin_dev_t * vdev) {
-	vdev->v4l2.threadRecovery = kthread_run(tccvin_monitor_thread, vdev, "threadRecovery");
-	if(IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
-		log("ERROR: FAILED kthread_run\n");
-		vdev->v4l2.threadRecovery = NULL;
-
-		return -1;
-	}
-	return 0;
-}
-
-int tccvin_stop_monitor(tccvin_dev_t * vdev) {
-    int retVal = 0;
-
-	if(!IS_ERR_OR_NULL(vdev->v4l2.threadRecovery)) {
-	    retVal = kthread_stop(vdev->v4l2.threadRecovery);
-		if(retVal != 0) {
-			log("ERROR: FAILED kthread_stop(%d) \n", retVal);
-			return -1;
-	    }
-
-		vdev->v4l2.threadRecovery = NULL;
-	}
-	return 0;
 }
 
 
@@ -2009,12 +1951,6 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int * preview_method) {
 			log("ERROR: Request IRQ\n");
 			return ret;
 		}
-	} else if(vdev->v4l2.preview_method == PREVIEW_DD) {
-		ret = tccvin_start_monitor(vdev);
-		if(ret < 0) {
-			log("ERROR: FAILED start_monitor\n");
-			return ret;
-		}
 	}
 
 	FUNCTION_OUT
@@ -2030,13 +1966,6 @@ int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int * preview_method) {
 		ret = tccvin_free_irq(vdev);
 		if(ret < 0) {
 			log("ERROR: Free IRQ\n");
-			return ret;
-		}
-	}
-	else if(vdev->v4l2.preview_method == PREVIEW_DD) {
-		ret = tccvin_stop_monitor(vdev);
-		if(ret < 0) {
-			log("ERROR: FAILED stop_monitor\n");
 			return ret;
 		}
 	}
@@ -2097,7 +2026,8 @@ void tccvin_check_path_status(tccvin_dev_t * vdev, int * status) {
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
 		* status = vdev->v4l2.wakeup_int;
 	} else {
-		* status = tccvin_check_wdma_counter(vdev);
+		* status = (tccvin_check_wdma_counter(vdev) == 0) ? 1 : 0;
 	}
+	dlog("status: %d\n", * status);
 }
 

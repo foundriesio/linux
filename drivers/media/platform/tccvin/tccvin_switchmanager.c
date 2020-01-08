@@ -25,6 +25,11 @@
 #include "tccvin_switchmanager.h"
 #include "../videosource/videosource_if.h"
 
+static unsigned int NORMAL_OVP = 24;
+static unsigned int RCAM_OVP = 16;
+
+extern int tccvin_allocate_buffers(tccvin_dev_t * vdev);
+extern int tccvin_set_wmixer_out(tccvin_cif_t * cif, unsigned int ovp);
 extern struct lcd_panel *tccfb_get_panel(void);
 
 int tccvin_switchmanager_start_preview(tccvin_dev_t * vdev) {
@@ -51,6 +56,8 @@ int tccvin_switchmanager_start_preview(tccvin_dev_t * vdev) {
 		// start stream
 		ret = tccvin_v4l2_streamon(vdev, &vdev->v4l2.preview_method);
 
+		tccvin_set_wmixer_out(&vdev->cif, RCAM_OVP);
+
 		vdev->cam_streaming = 1;
 	}
 	dlog("cam_streaming = %d, preview_method = %d\n", vdev->cam_streaming, vdev->v4l2.preview_method);
@@ -66,6 +73,8 @@ int tccvin_switchmanager_stop_preview(tccvin_dev_t * vdev) {
 
 	dlog("cam_streaming = %d, preview_method = %d\n", vdev->cam_streaming, vdev->v4l2.preview_method);
 	if((vdev->v4l2.preview_method == PREVIEW_DD) && (vdev->cam_streaming != 0)) {
+		tccvin_set_wmixer_out(&vdev->cif, NORMAL_OVP);
+
 		// stop preview
 		ret = tccvin_v4l2_streamoff(vdev, &vdev->v4l2.preview_method);
 
@@ -109,6 +118,19 @@ int tccvin_switchmanager_monitor_thread(void * data) {
 				tccvin_switchmanager_start_preview(vdev);
 			} else {
 				tccvin_switchmanager_stop_preview(vdev);
+			}
+		} else {
+			if((vdev->v4l2.preview_method == PREVIEW_DD) && (vdev->cam_streaming == 1)) {
+				if(tccvin_check_wdma_counter(vdev) == -1) {
+					// Diagnostics
+					tccvin_diagnostics(vdev);
+					tccvin_dump_register(vdev);
+
+					log("ERROR: Recovery mode will be entered\n");
+
+					tccvin_switchmanager_stop_preview(vdev);
+					tccvin_switchmanager_start_preview(vdev);
+				}
 			}
 		}
 
@@ -188,8 +210,10 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 	// open a videoinput path
 	dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
 	if(vdev->is_dev_opened == DISABLE) {
+		int		width = 0, height = 0;
+#ifdef CONFIG_FB_VIOC
 		struct lcd_panel * lcd_panel_info;
-		lcd_panel_info = tccfb_get_panel();
+#endif//CONFIG_FB_VIOC
 
 		// init the v4l2 data
 		tccvin_v4l2_init(vdev);
@@ -197,8 +221,15 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 		// set preview method as direct display
 		vdev->v4l2.preview_method = PREVIEW_DD;
 
+#ifdef CONFIG_FB_VIOC
+		lcd_panel_info = tccfb_get_panel();
+		
 		log("pannel size is %d x %d \n", lcd_panel_info->xres, lcd_panel_info->yres);
 		tccvin_cif_set_resolution(vdev, lcd_panel_info->xres, lcd_panel_info->yres, V4L2_PIX_FMT_RGB32);
+#endif//CONFIG_FB_VIOC
+
+		// allocate buffers
+		tccvin_allocate_preview_buffers(vdev);
 
 		vdev->is_dev_opened  = ENABLE;
 	}
