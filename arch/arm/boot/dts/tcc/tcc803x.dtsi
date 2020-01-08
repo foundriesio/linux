@@ -1634,7 +1634,7 @@
 		interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_io IOBUS_I2C_S0>;
+		clocks = <&clk_io IOBUS_I2C_S3>;
 		id = <3>;
 		status = "disabled";
 
