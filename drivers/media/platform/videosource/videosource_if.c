@@ -593,90 +593,65 @@ int videosource_if_check_status(videosource_t * vdev) {
 	return ret;
 }
 
-int videosource_if_open(struct inode * inode, struct file * file) {
-	videosource_t		* vdev	= container_of(inode->i_cdev, videosource_t, cdev);
-	int					status	= 0;
+int videosource_if_initialize(videosource_t * vdev) {
 	int					ret		= 0;
 
 	FUNCTION_IN
 
-	if(vdev->enabled == DISABLE) {
+	if(vdev->enabled == ENABLE) {
 		// open port
 		videosource_set_port(vdev, ENABLE);
 
 		// request gpio
 		videosource_request_gpio(vdev);
 
+		// power-up sequence
+		vdev->driver.open(&vdev->gpio);
+
+		// set videosource in init mode
+		videosource_if_change_mode(vdev, MODE_INIT);
+
 #ifdef CONFIG_ARCH_TCC803X
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
-			vdev->driver.open(&vdev->gpio);
-			if(videosource_if_check_status(vdev) != 1) {
-				ret = -1;
-				goto err_device;
-			}
-		}
-		else {
+			// init remote serializer
+			videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
+
+			// enable deserializer frame sync
+			videosource_if_change_mode(vdev, MODE_SERDES_FSYNC);
+
+#if 0
+			// allocate deserializer interrupt
+			vdev->driver.set_irq_handler(&vdev->gpio, ON);
+
+			// enable deserializer interrupt
+			videosource_if_change_mode(vdev, MODE_SERDES_INTERRUPT);
+#endif
+
+			// set mipi-csi2 interface
+			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
+
+			// enable mipi-csi2 interrupt
+			videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
+		} else {
 #endif//CONFIG_ARCH_TCC803X
-			status = videosource_if_check_status(vdev);
+			videosource_if_check_status(vdev);
 #ifdef CONFIG_ARCH_TCC803X
 		}
 #endif//CONFIG_ARCH_TCC803X
-
-		if(status != 1) {	// if the video source is not working now.
-			vdev->driver.open(&vdev->gpio);
-			videosource_if_change_mode(vdev, MODE_INIT);
-
-#ifdef CONFIG_ARCH_TCC803X
-			if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
-				// init remote serializer
-				videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
-
-				// enable deserializer frame sync
-				videosource_if_change_mode(vdev, MODE_SERDES_FSYNC);
-
-	#if 0
-				// allocate deserializer interrupt
-				vdev->driver.set_irq_handler(&vdev->gpio, ON);
-
-				// enable deserializer interrupt
-				videosource_if_change_mode(vdev, MODE_SERDES_INTERRUPT);
-	#endif
-
-				// set mipi-csi2 interface
-				videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, ON);
-
-				// enable mipi-csi2 interrupt
-				videosource_if_set_mipi_csi2_interrupt(vdev, &vdev->format, ON);
-			} else {
-#endif//CONFIG_ARCH_TCC803X
-				videosource_if_check_status(vdev);
-#ifdef CONFIG_ARCH_TCC803X
-			}
-#endif//CONFIG_ARCH_TCC803X
-		}
-
-		file->private_data = vdev;
-
-		vdev->enabled = ENABLE;
 	} else {
 		ret = -1;
 	}
-
-err_device:
 
 	FUNCTION_OUT
 	return ret;
 }
 
-int videosource_if_release(struct inode * inode, struct file * file) {
-	videosource_t		* vdev	= container_of(inode->i_cdev, videosource_t, cdev);
+int videosource_if_deinitialize(videosource_t * vdev) {
 	int					ret		= 0;
 
 	FUNCTION_IN
 
 	if(vdev->enabled == ENABLE) {
-		vdev->driver.close(&vdev->gpio);
-
 #ifdef CONFIG_ARCH_TCC803X
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
@@ -691,14 +666,50 @@ int videosource_if_release(struct inode * inode, struct file * file) {
 		}
 #endif//CONFIG_ARCH_TCC803X
 
+		// power-down sequence
+		vdev->driver.close(&vdev->gpio);
+
 		// free gpio
 		videosource_free_gpio(vdev);
 
 		// close port
 		videosource_set_port(vdev, DISABLE);
+	} else {
+		ret = -1;
+	}
 
+	FUNCTION_OUT
+	return ret;
+}
+
+int videosource_if_open(struct inode * inode, struct file * file) {
+	videosource_t		* vdev  = container_of(inode->i_cdev, videosource_t, cdev);
+	int					ret		= 0;
+
+	FUNCTION_IN
+
+	if(vdev->enabled == DISABLE) {
+		file->private_data = vdev;
+		vdev->enabled = ENABLE;
+	} else {
+		log("videosource is already enabled\n");
+		ret = -1;
+	}
+
+	FUNCTION_OUT
+	return ret;
+}
+
+int videosource_if_release(struct inode * inode, struct file * file) {
+	videosource_t		* vdev	= container_of(inode->i_cdev, videosource_t, cdev);
+	int					ret		= 0;
+
+	FUNCTION_IN
+
+	if(vdev->enabled == ENABLE) {
 		vdev->enabled = DISABLE;
 	} else {
+		log("videosource is already disabled\n");
 		ret = -1;
 	}
 
@@ -712,12 +723,15 @@ long videosource_if_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 
 	switch(cmd) {
 	case VIDEOSOURCE_IOCTL_DEINITIALIZE:
+		ret = videosource_if_deinitialize(vdev);
 		break;
 
 	case VIDEOSOURCE_IOCTL_INITIALIZE:
+		ret = videosource_if_initialize(vdev);
 		break;
 
 	case VIDEOSOURCE_IOCTL_CHECK_STATUS:
+		ret = videosource_if_check_status(vdev);
 		break;
 
 	case VIDEOSOURCE_IOCTL_GET_VIDEOSOURCE_FORMAT:

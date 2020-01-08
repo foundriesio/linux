@@ -54,6 +54,14 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		tccvin_v4l2_querycap(vdev, (struct v4l2_capability *)arg);
 		break;
 
+	case VIDIOC_G_OPERATION_MODE:
+		tccvin_g_operation_mode(vdev, (int *)arg);
+		break;
+
+	case VIDIOC_S_OPERATION_MODE:
+		ret = tccvin_s_operation_mode(vdev, (int *)arg);
+		break;
+
 	case VIDIOC_ENUM_FMT:
 		ret = tccvin_v4l2_enum_fmt((struct v4l2_fmtdesc *)arg);
 		break;
@@ -107,11 +115,11 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		break;
 
 	case VIDIOC_STREAMON:
-		ret = tccvin_v4l2_streamon(vdev, (int *)arg);
+		ret = tccvin_v4l2_streamon(vdev, *(int *)arg);
 		break;
 
 	case VIDIOC_STREAMOFF:
-		ret = tccvin_v4l2_streamoff(vdev, (int *)arg);
+		ret = tccvin_v4l2_streamoff(vdev, *(int *)arg);
 		break;
 
 	case VIDIOC_G_PARM:
@@ -260,7 +268,10 @@ int tccvin_core_open(struct file * file) {
 
 	if((vdev->vid_dev != NULL) && (vdev->vid_dev->minor == minor)) {
 		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-		if(vdev->is_dev_opened == 0) {
+		if(vdev->is_dev_opened == 1) {
+			log("video-input path[%d] is busy\n", vdev->plt_dev->id);
+			return -EBUSY;
+		} else {
 			// init the v4l2 data
 			tccvin_v4l2_init(vdev);
 
