@@ -19,6 +19,11 @@ config OVERLAY_PGL
 	depends on VIDEO_TCCVIN
 	default n
 
+config OVERLAY_DPGL
+	bool "Support Dynamic Parking Guide Line"
+	depends on VIDEO_TCCVIN && OVERLAY_PGL
+	default n
+
 config VIDEO_TCCVIN_SWITCHMANAGER
 	bool "Telechips Video-Input SwitchManager Driver"
 	depends on VIDEO_TCCVIN
@@ -27,5 +32,10 @@ config VIDEO_TCCVIN_SWITCHMANAGER
 config VIDEO_TCCVIN_PRESET_VIDEOSOURCE
 	bool "Videosource is pre-set on bootloader"
 	depends on VIDEO_TCCVIN_SWITCHMANAGER
+	default n
+
+config VIDEO_TCCVIN_SAFE_ASSURE
+	bool "Support Safe Assure Function for Video-Input Path"
+	depends on ARCH_TCC803X && VIDEO_TCCVIN
 	default n
 

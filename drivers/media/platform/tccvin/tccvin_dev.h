@@ -116,9 +116,18 @@ enum PREVIEW_METHOD {
 #endif
 
 #define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
+#if defined(CONFIG_OVERLAY_DPGL)
+#define PGL_BG_R			(0)
+#define PGL_BG_G			(0)
+#define PGL_BG_B			(0)
+#else
 #define PGL_BG_R			(0xff)
 #define PGL_BG_G			(0xff)
 #define PGL_BG_B			(0xff)
+#endif
+#define PGL_BGM_R			(0xff)
+#define PGL_BGM_G			(0xff)
+#define PGL_BGM_B			(0xff)
 
 struct tccvin_buf {
 	struct v4l2_buffer			buf;
