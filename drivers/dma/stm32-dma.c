@@ -1968,8 +1968,10 @@ static int stm32_dma_probe(struct platform_device *pdev)
 
 	dmadev->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dmadev->clk)) {
-		dev_err(&pdev->dev, "Error: Missing controller clock\n");
-		return PTR_ERR(dmadev->clk);
+		ret = PTR_ERR(dmadev->clk);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Can't get clock\n");
+		return ret;
 	}
 
 	ret = clk_prepare_enable(dmadev->clk);
@@ -1982,7 +1984,11 @@ static int stm32_dma_probe(struct platform_device *pdev)
 						"st,mem2mem");
 
 	rst = devm_reset_control_get(&pdev->dev, NULL);
-	if (!IS_ERR(rst)) {
+	if (IS_ERR(rst)) {
+		ret = PTR_ERR(rst);
+		if (ret == -EPROBE_DEFER)
+			goto err_clk;
+	} else {
 		reset_control_assert(rst);
 		udelay(2);
 		reset_control_deassert(rst);
@@ -2038,17 +2044,23 @@ static int stm32_dma_probe(struct platform_device *pdev)
 		mchan = &chan->mchan;
 		if (dmadev->sram_pool) {
 			snprintf(name, sizeof(name), "ch%d", chan->id);
-			mchan->chan = dma_request_slave_channel(dd->dev, name);
-			if (!mchan->chan)
+			mchan->chan = dma_request_chan(dd->dev, name);
+			if (IS_ERR(mchan->chan)) {
+				ret = PTR_ERR(mchan->chan);
+				mchan->chan = NULL;
+				if (ret == -EPROBE_DEFER)
+					goto err_dma;
+
 				dev_info(&pdev->dev,
 					 "can't request MDMA chan for %s\n",
 					 name);
+			}
 		}
 	}
 
 	ret = dma_async_device_register(dd);
 	if (ret)
-		goto clk_free;
+		goto err_dma;
 
 	for (i = 0; i < STM32_DMA_MAX_CHANNELS; i++) {
 		chan = &dmadev->chan[i];
@@ -2089,7 +2101,11 @@ static int stm32_dma_probe(struct platform_device *pdev)
 
 err_unregister:
 	dma_async_device_unregister(dd);
-clk_free:
+err_dma:
+	for (i = 0; i < STM32_DMA_MAX_CHANNELS; i++)
+		if (dmadev->chan[i].mchan.chan)
+			dma_release_channel(dmadev->chan[i].mchan.chan);
+err_clk:
 	clk_disable_unprepare(dmadev->clk);
 
 	return ret;
@@ -2168,10 +2184,11 @@ static struct platform_driver stm32_dma_driver = {
 		.of_match_table = stm32_dma_of_match,
 		.pm = &stm32_dma_pm_ops,
 	},
+	.probe = stm32_dma_probe,
 };
 
 static int __init stm32_dma_init(void)
 {
-	return platform_driver_probe(&stm32_dma_driver, stm32_dma_probe);
+	return platform_driver_register(&stm32_dma_driver);
 }
 device_initcall(stm32_dma_init);
