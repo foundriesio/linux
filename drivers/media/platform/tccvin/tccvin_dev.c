@@ -1109,7 +1109,8 @@ int tccvin_v4l2_init_buffer_list(tccvin_dev_t * vdev) {
 		buf = &vdev->v4l2.static_buf[idxBuf];
 		INIT_LIST_HEAD(&buf->buf_list);
 		list_add_tail(&buf->buf_list, &vdev->v4l2.capture_buf_list);
-		buf->buf.flags |= (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE);
+		buf->buf.flags |= V4L2_BUF_FLAG_QUEUED;
+		buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 	}
 
 	capture_buf_entry_count	= list_get_entry_count(&vdev->v4l2.capture_buf_list);
@@ -1141,7 +1142,6 @@ void wdma_work_thread(struct work_struct * data) {
 			// Move the current capture buffer to the display buffer list.
 			list_move_tail(&curr_buf->buf_list, &vdev->v4l2.display_buf_list);
 
-			curr_buf->buf.flags &= ~V4L2_BUF_FLAG_QUEUED;
 			curr_buf->buf.flags |= V4L2_BUF_FLAG_DONE;
 
 			// Get the next capture buffer.
@@ -1868,7 +1868,9 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 //	FUNCTION_IN
 
 	// Check the buffer index is valid.
-	if(!((0 <= buf->index) && (buf->index < vdev->v4l2.pp_num))) {
+	if(!((0 <= buf->index) && \
+		(buf->index < vdev->v4l2.pp_num) && \
+		((cif_buf->buf.flags & V4L2_BUF_FLAG_QUEUED) != V4L2_BUF_FLAG_QUEUED))) {
 		log("ERROR: The buffer index(%d) is WRONG.\n", buf->index);
 		return -EAGAIN;
 	}
@@ -1914,9 +1916,6 @@ int tccvin_v4l2_dqbuf(struct file * file, struct v4l2_buffer * buf) {
 
 		// Clear the flag V4L2_BUF_FLAG_QUEUED
 		cif_buf->buf.flags &= ~V4L2_BUF_FLAG_QUEUED;
-
-		// clear the flag V4L2_BUF_FLAG_DONE
-		cif_buf->buf.flags &= ~V4L2_BUF_FLAG_DONE;
 
 		memcpy(buf, &(cif_buf->buf), sizeof(struct v4l2_buffer));
 	}
