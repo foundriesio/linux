@@ -18,7 +18,7 @@
 
 #define TCC_SIP_SET_RESET_REASON	0x82003002
 
-#ifndef CONFIG_ARM_PSCI
+#if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 static void __iomem *pmu_usstatus;
 #endif
 
@@ -30,7 +30,7 @@ static int tcc_reboot_mode_write(struct reboot_mode_driver *reboot,
 	dev_dbg(reboot->dev, "magic=%x\n", magic);
 
 	printk("%s %d @@@@@@@@@@@@ magic = %x \n",__func__,__LINE__,magic);
-#ifdef CONFIG_ARM_PSCI
+#if defined(CONFIG_ARM_PSCI) || defined(CONFIG_ARM64)
 	arm_smccc_smc(TCC_SIP_SET_RESET_REASON, magic, 0, 0,
 			0, 0, 0, 0, &res);
 #else
@@ -49,7 +49,7 @@ static int tcc_reboot_mode_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
-#ifndef CONFIG_ARM_PSCI
+#if !defined(CONFIG_ARM_PSCI) && !defined(CONFIG_ARM64)
 	pmu_usstatus = of_iomap(np, 0);
 	if (!pmu_usstatus) {
 		dev_err(&pdev->dev, "failed to iomap (%ld)\n",
