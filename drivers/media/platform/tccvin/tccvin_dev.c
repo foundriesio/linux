@@ -899,9 +899,9 @@ int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	unsigned int key_R		= PGL_BG_R;
 	unsigned int key_G		= PGL_BG_G;
 	unsigned int key_B		= PGL_BG_B;
-	unsigned int key_mask_R	= ((PGL_BG_R >> 3) << 3 );
-	unsigned int key_mask_G	= ((PGL_BG_G >> 3) << 3 );
-	unsigned int key_mask_B	= ((PGL_BG_B >> 3) << 3 );
+	unsigned int key_mask_R	= ((PGL_BGM_R >> 3) << 3 );
+	unsigned int key_mask_G	= ((PGL_BGM_G >> 3) << 3 );
+	unsigned int key_mask_B	= ((PGL_BGM_B >> 3) << 3 );
 #endif//CONFIG_OVERLAY_PGL
 
 	FUNCTION_IN
@@ -913,7 +913,6 @@ int tccvin_set_wmixer(tccvin_dev_t * vdev) {
 	VIOC_WMIX_SetPosition(pWMIXer, 1, 0, 0);
 	VIOC_WMIX_SetChromaKey(pWMIXer, layer, ON, key_R, key_G, key_B, key_mask_R, key_mask_G, key_mask_B);
 	VIOC_WMIX_SetUpdate(pWMIXer);
-
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, ON);	// ON: Mixing mode / OFF: Bypass mode
 #else
 	VIOC_CONFIG_WMIXPath(vdev->cif.vioc_path.vin, OFF);	// ON: Mixing mode / OFF: Bypass mode
@@ -1193,8 +1192,6 @@ int tccvin_cif_set_resolution(tccvin_dev_t * vdev, unsigned int width, unsigned 
 }
 
 int tccvin_allocate_essential_buffers(tccvin_dev_t * vdev) {
-	struct v4l2_buffer	req;
-	int					idxBuf = 0, nBuf = 4;
 	int					ret = 0;
 
 	strcpy(vdev->cif.pmap_viqe.name, "rearcamera_viqe");
@@ -1209,7 +1206,7 @@ int tccvin_allocate_essential_buffers(tccvin_dev_t * vdev) {
 		ret = -1;
 	}
 
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 	strcpy(vdev->cif.pmap_pgl.name, "parking_gui");
 	if(pmap_get_info(vdev->cif.pmap_pgl.name, &(vdev->cif.pmap_pgl)) == 1) {
 		dlog("[PMAP] %s: 0x%08x ~ 0x%08x (0x%08x)\n",
@@ -1272,7 +1269,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 	tccvin_reset_vioc_path(vdev);
 
 	// set rdma for Parking Guide Line
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 	tccvin_set_pgl(vdev);
 #endif
 
@@ -1388,7 +1385,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 
 	VIOC_VIN_SetEnable(VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin), OFF); // disable VIN
 
-#ifdef CONFIG_OVERLAY_PGL
+#if defined(CONFIG_OVERLAY_PGL) && !defined(CONFIG_OVERLAY_DPGL)
 	// disable pgl
 	VIOC_RDMA_SetImageDisable(pPGL);
 #endif//CONFIG_OVERLAY_PGL
