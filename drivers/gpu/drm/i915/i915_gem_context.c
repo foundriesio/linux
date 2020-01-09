@@ -798,8 +798,7 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 
 	if (client_is_banned(file_priv)) {
 		DRM_DEBUG("client %s[%d] banned from creating ctx\n",
-			  current->comm,
-			  pid_nr(get_task_pid(current, PIDTYPE_PID)));
+			  current->comm, task_pid_nr(current));
 
 		return -EIO;
 	}
