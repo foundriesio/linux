@@ -61,19 +61,12 @@
 #define SNOR_UPDATER_DEV_NAME        "tcc_snor_updater"
 #define SNOR_UPDATER_DEV_MINOR       0
 
-int updaterDebugLevel = 1;
+int updater_verbose_mode = 0;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 void snor_updater_receive_message(struct mbox_client *client, void *message);
 
@@ -86,10 +79,10 @@ void snor_updater_receive_message(struct mbox_client *client, void *message)
 	int i;
 	for(i=0;i<7;i++)
 	{
-		dprintk(updater_dev->dev,"%s : cmd[%d] = [0x%02x]\n", __func__,i, msg->cmd[i]);
+		dprintk(updater_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
 	}
 
-	dprintk(updater_dev->dev,"%s : data size (%d)\n", __func__,msg->data_len);
+	dprintk(updater_dev->dev,"data size (%d)\n", msg->data_len);
 
 	snor_updater_wake_up(updater_dev, msg);
 }
@@ -100,7 +93,7 @@ static int snor_updater_open(struct inode * inode, struct file * filp)
 	int ret = SNOR_UPDATER_SUCCESS;
 	struct snor_updater_device *snor_updater_dev = container_of(inode->i_cdev, struct snor_updater_device, cdev);
 	
-	dprintk(snor_updater_dev->dev, "%s : In\n", __func__);
+	iprintk(snor_updater_dev->dev, "In\n");
 
 	if(snor_updater_dev != NULL)
 	{
@@ -126,14 +119,14 @@ static int snor_updater_open(struct inode * inode, struct file * filp)
 		}
 		else
 		{
-			eprintk(snor_updater_dev->dev, "%s : snor updater open fail - already open\n", __func__);
+			eprintk(snor_updater_dev->dev, "snor updater open fail - already open\n");
 			ret = -EBUSY;
 		}
 		mutex_unlock(&snor_updater_dev->devMutex);
 	}
 	else
 	{
-		eprintk(snor_updater_dev->dev, "%s : device not init\n", __func__);
+		eprintk(snor_updater_dev->dev, "device not init\n");
 		ret = -ENXIO;
 	}
 
@@ -148,7 +141,7 @@ static int snor_updater_release(struct inode * inode, struct file * filp)
 	if(snor_updater_dev != NULL)
 	{
 		mutex_lock(&snor_updater_dev->devMutex);
-		dprintk(snor_updater_dev->dev,  "%s : In\n", __func__);
+		iprintk(snor_updater_dev->dev, "In\n");
 		
 		if(snor_updater_dev->mbox_ch != NULL)
 		{
@@ -171,7 +164,7 @@ static long snor_updater_ioctl(struct file * filp, unsigned int cmd, unsigned lo
 	long ret = 0;
 
 	struct snor_updater_device *updater_dev = (struct snor_updater_device *)filp->private_data;
-	
+	iprintk(updater_dev->dev,"cmd : (0x%x)\n", cmd);
 	switch(cmd) {
 		case IOCTL_UPDATE_START:
 			{
@@ -244,12 +237,12 @@ static long snor_updater_ioctl(struct file * filp, unsigned int cmd, unsigned lo
 			}
 			break;
 		default:
-			dprintk(updater_dev->dev,"%s : snor update error: unrecognized ioctl (0x%x)\n", __func__,cmd);
+			wprintk(updater_dev->dev,"unrecognized ioctl (%d)\n", cmd);
 			ret = -EINVAL;
 			break;
 	}
 
-	dprintk(updater_dev->dev,"%s : snor update result: (0x%x)\n", __func__,ret);
+	iprintk(updater_dev->dev,"result: (%ld)\n", ret);
 	return ret;
 }
 
@@ -270,7 +263,7 @@ static int snor_updater_probe(struct platform_device *pdev) {
 
 	struct snor_updater_device *updater_dev = NULL;
 
-	dprintk(&pdev->dev, "%s : in \n",__func__);
+	iprintk(&pdev->dev, "in\n");
 
 	updater_dev = devm_kzalloc(&pdev->dev, sizeof(struct snor_updater_device), GFP_KERNEL);
 	if(!updater_dev)
@@ -279,7 +272,7 @@ static int snor_updater_probe(struct platform_device *pdev) {
 	platform_set_drvdata(pdev, updater_dev);
 
 	of_property_read_string(pdev->dev.of_node,"mbox-names", &updater_dev->mbox_name);
-	dprintk(&pdev->dev, "%s : mbox-names(%s)\n",__func__, updater_dev->mbox_name);
+	iprintk(&pdev->dev, "mbox-names(%s)\n",updater_dev->mbox_name);
 
 	result = alloc_chrdev_region(&updater_dev->devnum, SNOR_UPDATER_DEV_MINOR, 1, SNOR_UPDATER_DEV_NAME);
 	if (result) {
@@ -314,7 +307,7 @@ static int snor_updater_probe(struct platform_device *pdev) {
 	updater_dev->isOpened = 0;
 	updater_dev->waitQueue._condition = 0;
 
-	dprintk(updater_dev->dev, "Successfully registered\n");
+	iprintk(updater_dev->dev, "Successfully registered\n");
 	return ret;
 
 

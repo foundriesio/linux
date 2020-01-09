@@ -1,27 +1,19 @@
-/****************************************************************************************
- *   FileName    : tcc_ipc_cmd.c
- *   Description : 
- ****************************************************************************************
+/****************************************************************************
  *
- *   TCC Version 1.0
- *   Copyright (c) Telechips Inc.
- *   All rights reserved 
- 
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not limited 
-to re-distribution in source or binary form is strictly prohibited.
-This source code is provided ¡°AS IS¡± and nothing contained in this source code 
-shall constitute any express or implied warranty of any kind, including without limitation, 
-any warranty of merchantability, fitness for a particular purpose or non-infringement of any patent, 
-copyright or other third party intellectual property right. 
-No warranty is made, express or implied, regarding the information¡¯s accuracy, 
-completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability arising from, 
-out of or in connection with this source code or the use in the source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure Agreement 
-between Telechips and Company.
-*
-****************************************************************************************/
+ * Copyright (C) 2018 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 #include <linux/interrupt.h>
 #include <linux/kthread.h>
 #include <linux/cdev.h>
@@ -35,19 +27,12 @@ between Telechips and Company.
 #include "tcc_ipc_mbox.h"
 #include "tcc_ipc_cmd.h"
 
-extern int ipcDebugLevel;
+extern int ipc_verbose_mode;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(ipc_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 #define MBOX_TIMEOUT		100	//ms
 #define ACK_TIMEOUT			500	//ms
@@ -129,13 +114,13 @@ IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev, IPC_CHAR *data, IPC_UINT32 
 			ret = ipc_cmd_wait_event_timeout(ipc_dev, WRITE_CMD, sendMsg.cmd[0],ACK_TIMEOUT);
 			if(ret != IPC_SUCCESS)
 			{
-				eprintk(ipc_dev->dev,"%s : cmd ack timeout\n",__func__);
+				wprintk(ipc_dev->dev,"cmd ack timeout\n");
 			}
 		}
 	}
 	else
 	{
-		eprintk(ipc_dev->dev, "%s : Data write error : input size(%d)\n",__func__, size);
+		eprintk(ipc_dev->dev, "Data write error : input size(%d)\n",size);
 		ret =IPC_ERR_ARGUMENT;
 	}
 	return ret;
@@ -164,7 +149,7 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 		ret = ipc_cmd_wait_event_timeout(ipc_dev, CTL_CMD, sendMsg.cmd[0],ACK_TIMEOUT);
 		if(ret != IPC_SUCCESS)
 		{
-			eprintk(ipc_dev->dev,"%s : cmd ack timeout\n",__func__);
+			wprintk(ipc_dev->dev,"cmd ack timeout\n");
 		}
 	}
 

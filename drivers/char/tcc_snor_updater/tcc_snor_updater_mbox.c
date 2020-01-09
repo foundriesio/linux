@@ -26,19 +26,12 @@
 #include "tcc_snor_updater_typedef.h"
 #include "tcc_snor_updater_mbox.h"
 
-extern int updaterDebugLevel;
+extern int updater_verbose_mode;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 static void mbox_msg_sent(struct mbox_client *client, void *message, int r);
 
@@ -49,12 +42,12 @@ int snor_updater_mailbox_send(struct snor_updater_device *updater_dev, struct tc
 	if((updater_dev !=NULL)&&(ipc_msg!=NULL))
 	{
 		int i;
-		dprintk(updater_dev->dev,"%s : snor updaer msg(0x%p)\n", __func__, (void *)ipc_msg);
+		dprintk(updater_dev->dev,"snor updaer msg(0x%p)\n", (void *)ipc_msg);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
-			dprintk(updater_dev->dev,"%s : cmd[%d]: (0x%02x)\n", __func__, i, ipc_msg->cmd[i]);
+			dprintk(updater_dev->dev,"cmd[%d]: (0x%02x)\n", i, ipc_msg->cmd[i]);
 		}
-		dprintk(updater_dev->dev,"%s : data size(%d)\n", __func__, ipc_msg->data_len);
+		dprintk(updater_dev->dev,"data size(%d)\n", ipc_msg->data_len);
 
 		(void)mbox_send_message(updater_dev->mbox_ch, ipc_msg);
 		mbox_client_txdone(updater_dev->mbox_ch,0);
@@ -62,7 +55,7 @@ int snor_updater_mailbox_send(struct snor_updater_device *updater_dev, struct tc
 	}
 	else
 	{
-		eprintk(updater_dev->dev, "%s :  Invalid Arguements\n", __func__);
+		eprintk(updater_dev->dev, "Invalid Arguements\n");
 		ret = SNOR_UPDATER_ERR_ARGUMENT;
 	}
 
@@ -87,7 +80,7 @@ struct mbox_chan *snor_updater_request_channel(struct platform_device *pdev, con
 
 	channel = mbox_request_channel_byname(client, name);
 	if (IS_ERR(channel)) {
-		dev_err(&pdev->dev, "Failed to request %s channel\n", name);
+		eprintk(&pdev->dev, "Failed to request %s channel\n", name);
 		return NULL;
 	}
 
@@ -97,9 +90,9 @@ struct mbox_chan *snor_updater_request_channel(struct platform_device *pdev, con
 static void mbox_msg_sent(struct mbox_client *client, void *message, int r)
 {
 	if (r)
-		dev_warn(client->dev, "Message could not be sent: %d\n", r);
+		eprintk(client->dev, "Message could not be sent: %d\n", r);
 	else {
-		dev_dbg(client->dev, "Message sent\n");
+		dprintk(client->dev, "Message sent\n");
 	}
 }
 
