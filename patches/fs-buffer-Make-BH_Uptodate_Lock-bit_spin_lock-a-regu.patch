@@ -102,7 +102,7 @@ after
  	return;
  }
  EXPORT_SYMBOL(end_buffer_async_write);
-@@ -3368,6 +3362,7 @@ struct buffer_head *alloc_buffer_head(gf
+@@ -3345,6 +3339,7 @@ struct buffer_head *alloc_buffer_head(gf
  	struct buffer_head *ret = kmem_cache_zalloc(bh_cachep, gfp_flags);
  	if (ret) {
  		INIT_LIST_HEAD(&ret->b_assoc_buffers);

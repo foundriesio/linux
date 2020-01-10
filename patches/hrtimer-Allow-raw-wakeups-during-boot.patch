@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1816,7 +1816,7 @@ static void __hrtimer_init_sleeper(struc
+@@ -1819,7 +1819,7 @@ static void __hrtimer_init_sleeper(struc
  	 * expiry.
  	 */
  	if (IS_ENABLED(CONFIG_PREEMPT_RT)) {
