@@ -18,54 +18,12 @@
 
 #define STM32MP1_RESET_ID_MASK	GENMASK(15, 0)
 
-#define STM32_RCC_TZCR 0x0
 #define CLR_OFFSET		0x4
-#define STM32MP1_SVC_RCC 0x82001000
 
 struct stm32_reset_data {
 	struct reset_controller_dev	rcdev;
 	void __iomem			*membase;
 };
-
-static bool soc_secured;
-
-static bool is_stm32_id_secured(unsigned long id)
-{
-	switch (id) {
-	case AXIM_R:
-	case CRYP1_R:
-	case GPIOZ_R:
-	case HASH1_R:
-	case I2C4_R:
-	case I2C6_R:
-	case MCU_R:
-	case MDMA_R:
-	case RNG1_R:
-	case SPI6_R:
-	case STGEN_R:
-	case USART1_R:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static int reset_stm32_secure_update(struct reset_controller_dev *rcdev,
-				     unsigned long id, bool assert)
-{
-	struct arm_smccc_res res;
-	int bank = id / BITS_PER_LONG;
-	int offset = id % BITS_PER_LONG;
-
-	if (assert)
-		arm_smccc_smc(STM32MP1_SVC_RCC, 0x1, (bank * 4),
-			      BIT(offset), 0, 0, 0, 0, &res);
-	else
-		arm_smccc_smc(STM32MP1_SVC_RCC, 0x1, (bank * 4) + CLR_OFFSET,
-			      BIT(offset), 0, 0, 0, 0, &res);
-
-	return 0;
-}
 
 static inline struct stm32_reset_data *
 to_stm32_reset_data(struct reset_controller_dev *rcdev)
@@ -94,18 +52,12 @@ static int stm32_reset_update(struct reset_controller_dev *rcdev,
 static int stm32_reset_assert(struct reset_controller_dev *rcdev,
 			      unsigned long id)
 {
-	if (soc_secured && is_stm32_id_secured(id))
-		return reset_stm32_secure_update(rcdev, id, true);
-
 	return stm32_reset_update(rcdev, id, true);
 }
 
 static int stm32_reset_deassert(struct reset_controller_dev *rcdev,
 				unsigned long id)
 {
-	if (soc_secured && is_stm32_id_secured(id))
-		return reset_stm32_secure_update(rcdev, id, false);
-
 	return stm32_reset_update(rcdev, id, false);
 }
 
@@ -147,8 +99,6 @@ static void __init stm32mp1_reset_init(struct device_node *np)
 		of_node_put(np);
 		return;
 	}
-
-	soc_secured = readl(base + STM32_RCC_TZCR) & 0x1;
 
 	match = of_match_node(stm32_reset_dt_ids, np);
 	if (!match) {
