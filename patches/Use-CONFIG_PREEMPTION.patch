@@ -896,7 +896,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  fast_exc_return_irq:
 --- a/arch/powerpc/kernel/traps.c
 +++ b/arch/powerpc/kernel/traps.c
-@@ -251,14 +251,19 @@ NOKPROBE_SYMBOL(oops_end);
+@@ -260,12 +260,17 @@ static char *get_mmu_str(void)
  
  static int __die(const char *str, struct pt_regs *regs, long err)
  {
@@ -907,11 +907,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	if (IS_ENABLED(CONFIG_PREEMPTION))
 +		pr = IS_ENABLED(CONFIG_PREEMPT_RT) ? " PREEMPT_RT" : " PREEMPT";
 +
- 	printk("%s PAGE_SIZE=%luK%s%s%s%s%s%s%s %s\n",
+ 	printk("%s PAGE_SIZE=%luK%s%s%s%s%s%s %s\n",
  	       IS_ENABLED(CONFIG_CPU_LITTLE_ENDIAN) ? "LE" : "BE",
- 	       PAGE_SIZE / 1024,
- 	       early_radix_enabled() ? " MMU=Radix" : "",
- 	       early_mmu_has_feature(MMU_FTR_HPTE_TABLE) ? " MMU=Hash" : "",
+ 	       PAGE_SIZE / 1024, get_mmu_str(),
 -	       IS_ENABLED(CONFIG_PREEMPT) ? " PREEMPT" : "",
 +	       pr,
  	       IS_ENABLED(CONFIG_SMP) ? " SMP" : "",
