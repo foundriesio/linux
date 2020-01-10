@@ -62,7 +62,9 @@
 			};
 		};
 	};
+};
 
+&i2c2 {
 	gt9147: goodix_ts@5d {
 		compatible = "goodix,gt9147";
 		reg = <0x5d>;
