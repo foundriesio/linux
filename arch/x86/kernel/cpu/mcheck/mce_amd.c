@@ -202,12 +202,12 @@ void (*deferred_error_int_vector)(void) = default_deferred_error_interrupt;
 
 static void get_smca_bank_info(unsigned int bank)
 {
-	unsigned int i, hwid_mcatype, cpu = smp_processor_id();
+	unsigned int i, hwid_mcatype;
 	struct smca_hwid *s_hwid;
 	u32 high, instance_id;
 
-	/* Collect bank_info using CPU 0 for now. */
-	if (cpu)
+	/* Return early if this bank was already initialized. */
+	if (smca_banks[bank].hwid && smca_banks[bank].hwid->hwid_mcatype != 0)
 		return;
 
 	if (rdmsr_safe(MSR_AMD64_SMCA_MCx_IPID(bank), &instance_id, &high)) {
@@ -221,11 +221,6 @@ static void get_smca_bank_info(unsigned int bank)
 	for (i = 0; i < ARRAY_SIZE(smca_hwid_mcatypes); i++) {
 		s_hwid = &smca_hwid_mcatypes[i];
 		if (hwid_mcatype == s_hwid->hwid_mcatype) {
-
-			WARN(smca_banks[bank].hwid,
-			     "Bank %s already initialized!\n",
-			     smca_get_name(s_hwid->bank_type));
-
 			smca_banks[bank].hwid = s_hwid;
 			smca_banks[bank].id = instance_id;
 			smca_banks[bank].sysfs_id = s_hwid->count++;
