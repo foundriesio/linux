@@ -62,7 +62,6 @@
 #if defined(CONFIG_VIOC_DTRC_DECOMP)
 #   define _DTRC_COMP_SUPPORT_
 #endif
-
 #if defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2)
 #   define _VPU_4K_D2_INCLUDE_
 #endif
@@ -167,9 +166,9 @@ typedef struct dec_user_info_t {
 #define VPU_TRY_CLK_RESTORE             501
 #define VPU_TRY_OPEN_DEV                502
 #define VPU_TRY_CLOSE_DEV               503
-
 #define VPU_GET_FREEMEM_SIZE    40
 #define VPU_HW_RESET            50
+#define VPU_DEBUG_ISR           60
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /* Macro constants of VPU Command: DECODER */
@@ -216,7 +215,6 @@ typedef struct dec_user_info_t {
 
 #define V_DEC_TRY_OPEN_DEV                  66
 #define V_DEC_TRY_CLOSE_DEV                 67
-
 #define V_DEC_OP_CODE_MAX                   V_DEC_TRY_CLOSE_DEV
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +232,6 @@ typedef struct dec_user_info_t {
 #define V_ENC_PUT_HEADER_RESULT     19
 #define V_ENC_ENCODE_RESULT         20
 #define V_ENC_FREE_MEMORY           21
-
 #define V_ENC_TRY_OPEN_DEV          51
 #define V_ENC_TRY_CLOSE_DEV         52
 
@@ -259,12 +256,10 @@ typedef struct dec_user_info_t {
 
 #define VPU_GET_FREEMEM_SIZE_KERNEL		( VPU_KERNEL_OP_BASE + VPU_GET_FREEMEM_SIZE)
 #define VPU_HW_RESET_KERNEL 			( VPU_KERNEL_OP_BASE + VPU_HW_RESET)
-
 #define VPU_TRY_FORCE_CLOSE_KERNEL      ( VPU_KERNEL_OP_BASE + VPU_TRY_FORCE_CLOSE)
 #define VPU_TRY_CLK_RESTORE_KERNEL      ( VPU_KERNEL_OP_BASE + VPU_TRY_CLK_RESTORE)
 #define VPU_TRY_OPEN_DEV_KERNEL         ( VPU_KERNEL_OP_BASE + VPU_TRY_OPEN_DEV)
 #define VPU_TRY_CLOSE_DEV_KERNEL        ( VPU_KERNEL_OP_BASE + VPU_TRY_CLOSE_DEV)
-
 
 #define DEVICE_INITIALIZE_KERNEL 		( V_DEC_KERNEL_OP_BASE + DEVICE_INITIALIZE)
 #define V_DEC_INIT_KERNEL		 		( V_DEC_KERNEL_OP_BASE + V_DEC_INIT)
@@ -304,5 +299,4 @@ typedef struct dec_user_info_t {
 
 #define V_DEC_TRY_OPEN_DEV_KERNEL    ( V_DEC_KERNEL_OP_BASE + V_DEC_TRY_OPEN_DEV)
 #define V_DEC_TRY_CLOSE_DEV_KERNEL    ( V_DEC_KERNEL_OP_BASE + V_DEC_TRY_CLOSE_DEV)
-
 #endif // _VIDEO_COMMON_H_lif defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC803X)

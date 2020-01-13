@@ -79,6 +79,15 @@ static unsigned int use_wait_list = 0;
 extern void vmgr_waitlist_init_pending(int type, int force_clear);
 #endif
 
+#ifdef DEBUG_VPU_K
+typedef struct debug_vpu_k_isr_t {
+    int ret_code_vmgr_hdr;
+    unsigned int vpu_k_isr_cnt_hit;
+    unsigned int wakeup_interrupt_cnt;
+} debug_vpu_k_isr_t;
+debug_vpu_k_isr_t vpu_isr_param_debug;
+static unsigned int cntwk_vpu = 0;
+#endif
 VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd);
 /////////////////////////////////////////////////////////////////////////////
 
@@ -213,7 +222,11 @@ static int _vmgr_internal_handler(void)
                 ret_code = RETCODE_CODEC_EXIT;
             }
         }
-
+        #ifdef DEBUG_VPU_K
+        vpu_isr_param_debug.ret_code_vmgr_hdr = ret_code;
+        dprintk("[_vmgr_internal_handler] : ret_code (%d), cntInt_vpu (%d), cntwk_vpu (%d), vmgr_data.oper_intr (%d) \n",
+			ret_code, cntInt_vpu, cntwk_vpu, vmgr_data.oper_intr);
+        #endif
         atomic_set(&vmgr_data.oper_intr, 0);
         vmgr_status_clear(vmgr_data.base_addr);
     }
@@ -1242,7 +1255,18 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
             //tcc_vpu_dec_esc(1, 0, 0, 0);
 		break;
-
+    #ifdef DEBUG_VPU_K
+        case VPU_DEBUG_ISR:
+        {
+            vpu_isr_param_debug.vpu_k_isr_cnt_hit = cntInt_vpu;
+			vpu_isr_param_debug.wakeup_interrupt_cnt = cntwk_vpu /*vmgr_data.oper_intr*/;
+            /*//err("[Jun] vpu_k_isr_cnt_hit[%d], wakeup_interrupt_cnt[%d] !!!\n",
+                    vpu_isr_param_debug.vpu_k_isr_cnt_hit, vpu_isr_param_debug.wakeup_interrupt_cnt);//*/
+            if (copy_to_user((void*)arg, &vpu_isr_param_debug, sizeof(debug_vpu_k_isr_t)) )
+                ret = -EFAULT;
+        }
+        break;
+    #endif
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1276,7 +1300,9 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
 //    spin_unlock_irqrestore(&(vmgr_data.oper_lock), flags);
 
     wake_up_interruptible(&(vmgr_data.oper_wq));
-
+	#ifdef DEBUG_VPU_K
+	cntwk_vpu++;
+	#endif
     return IRQ_HANDLED;
 }
 
