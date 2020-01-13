@@ -131,11 +131,11 @@ static u64 file_extent_end(struct extent_buffer *leaf,
 	return end;
 }
 
-static int check_extent_data_item(struct btrfs_fs_info *fs_info,
-				  struct extent_buffer *leaf,
+static int check_extent_data_item(struct extent_buffer *leaf,
 				  struct btrfs_key *key, int slot,
 				  struct btrfs_key *prev_key)
 {
+	struct btrfs_fs_info *fs_info = leaf->fs_info;
 	struct btrfs_file_extent_item *fi;
 	u32 sectorsize = fs_info->sectorsize;
 	u32 item_size = btrfs_item_size_nr(leaf, slot);
@@ -829,7 +829,7 @@ static int check_leaf_item(struct btrfs_fs_info *fs_info,
 
 	switch (key->type) {
 	case BTRFS_EXTENT_DATA_KEY:
-		ret = check_extent_data_item(fs_info, leaf, key, slot, prev_key);
+		ret = check_extent_data_item(leaf, key, slot, prev_key);
 		break;
 	case BTRFS_EXTENT_CSUM_KEY:
 		ret = check_csum_item(leaf, key, slot);
