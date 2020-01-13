@@ -819,8 +819,7 @@ static int check_inode_item(struct btrfs_fs_info *fs_info,
 /*
  * Common point to switch the item-specific validation.
  */
-static int check_leaf_item(struct btrfs_fs_info *fs_info,
-			   struct extent_buffer *leaf,
+static int check_leaf_item(struct extent_buffer *leaf,
 			   struct btrfs_key *key, int slot,
 			   struct btrfs_key *prev_key)
 {
@@ -844,14 +843,14 @@ static int check_leaf_item(struct btrfs_fs_info *fs_info,
 		break;
 	case BTRFS_CHUNK_ITEM_KEY:
 		chunk = btrfs_item_ptr(leaf, slot, struct btrfs_chunk);
-		ret = btrfs_check_chunk_valid(fs_info, leaf, chunk,
+		ret = btrfs_check_chunk_valid(leaf->fs_info, leaf, chunk,
 					      key->offset);
 		break;
 	case BTRFS_DEV_ITEM_KEY:
-		ret = check_dev_item(fs_info, leaf, key, slot);
+		ret = check_dev_item(leaf->fs_info, leaf, key, slot);
 		break;
 	case BTRFS_INODE_ITEM_KEY:
-		ret = check_inode_item(fs_info, leaf, key, slot);
+		ret = check_inode_item(leaf->fs_info, leaf, key, slot);
 		break;
 	}
 	return ret;
@@ -1001,7 +1000,7 @@ static int check_leaf(struct btrfs_fs_info *fs_info, struct extent_buffer *leaf,
 			 * Check if the item size and content meet other
 			 * criteria
 			 */
-			ret = check_leaf_item(fs_info, leaf, &key, slot, &prev_key);
+			ret = check_leaf_item(leaf, &key, slot, &prev_key);
 			if (ret < 0)
 				return ret;
 		}
