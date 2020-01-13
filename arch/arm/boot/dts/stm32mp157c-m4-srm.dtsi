@@ -813,8 +813,8 @@
 		m4_dfsdm: dfsdm@4400d000 {
 			compatible = "rproc-srm-dev";
 			reg = <0x4400d000 0x800>;
-			clocks = <&rcc DFSDM_K>;
-			clock-names = "dfsdm";
+			clocks = <&rcc DFSDM_K>, <&rcc ADFSDM_K>;
+			clock-names = "dfsdm", "audio";
 			status = "disabled";
 		};
 		m4_m_can1: can@4400e000 {
