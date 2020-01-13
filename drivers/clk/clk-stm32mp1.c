@@ -1327,6 +1327,7 @@ _clk_stm32_register_composite(struct device *dev,
 		       _MGATE_MP1(_mgate),\
 		       _MMUX(_mmux),\
 		       _NO_DIV)
+
 /*
  *
  * Security management
