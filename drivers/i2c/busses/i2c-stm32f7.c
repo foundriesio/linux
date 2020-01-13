@@ -2252,9 +2252,6 @@ static int stm32f7_i2c_probe(struct platform_device *pdev)
 		i2c_dev->dma = NULL;
 	else if (IS_ERR(i2c_dev->dma)) {
 		ret = PTR_ERR(i2c_dev->dma);
-		if (ret != -EPROBE_DEFER)
-			dev_err(&pdev->dev,
-				"Failed to request dma error %i\n", ret);
 		goto fmp_clear;
 	}
 
