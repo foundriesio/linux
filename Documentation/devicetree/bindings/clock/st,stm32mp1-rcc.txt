@@ -12,7 +12,7 @@ binding usage.
 
 
 Required properties:
-- compatible: "st,stm32mp1-rcc", "syscon"
+- compatible: "st,stm32mp1-rcc-secure", "st,stm32mp1-rcc", "syscon"
 - reg: should be register base and length as documented in the datasheet
 - #clock-cells: 1, device nodes should specify the clock in their
   "clocks" property, containing a phandle to the clock device node,
@@ -23,7 +23,8 @@ Required properties:
 
 Example:
 	rcc: rcc@50000000 {
-		compatible = "st,stm32mp1-rcc", "syscon";
+		compatible = "st,stm32mp1-rcc-secure", "st,stm32mp1-rcc",
+			     "syscon";
 		reg = <0x50000000 0x1000>;
 		#clock-cells = <1>;
 		#reset-cells = <1>;
