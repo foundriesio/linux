@@ -182,7 +182,7 @@
  * @oar1: Own address 1 register
  * @oar2: Own address 2 register
  * @pecr: PEC register
- * @timingr: Timing register
+ * @tmgr: Timing register
  */
 struct stm32f7_i2c_regs {
 	u32 cr1;
@@ -321,6 +321,7 @@ struct stm32f7_i2c_alert {
  * @timing: I2C computed timings
  * @slave: list of slave devices registered on the I2C bus
  * @slave_running: slave device currently used
+ * @regs: registers backup for suspend/resume
  * @slave_dir: transfer direction for the current slave device
  * @master_mode: boolean to know in which mode the I2C is running (master or
  * slave)
