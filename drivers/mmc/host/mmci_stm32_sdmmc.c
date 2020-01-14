@@ -263,9 +263,8 @@ static void mmci_sdmmc_set_pwrreg(struct mmci_host *host, unsigned int pwr)
 	struct mmc_ios ios = host->mmc->ios;
 	struct sdmmc_dlyb *dlyb = host->variant_priv;
 
-	/* adds OF options and preserves voltage switch bits */
-	pwr = host->pwr_reg_add |
-		(host->pwr_reg & (MCI_STM32_VSWITCHEN | MCI_STM32_VSWITCH));
+	/* adds OF options */
+	pwr = host->pwr_reg_add;
 
 	sdmmc_dlyb_input_ck(dlyb);
 
@@ -290,6 +289,10 @@ static void mmci_sdmmc_set_pwrreg(struct mmci_host *host, unsigned int pwr)
 		 */
 		writel(MCI_IRQENABLE | host->variant->start_err,
 		       host->base + MMCIMASK0);
+
+		/* preserves voltage switch bits */
+		pwr |= host->pwr_reg & (MCI_STM32_VSWITCHEN |
+					MCI_STM32_VSWITCH);
 
 		/*
 		 * After a power-cycle state, we must set the SDMMC in
