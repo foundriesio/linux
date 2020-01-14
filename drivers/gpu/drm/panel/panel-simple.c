@@ -1439,7 +1439,7 @@ static const struct panel_desc logictechno_lt161010_2nh = {
 };
 
 static const struct display_timing logictechno_lt170410_2whc_timing = {
-	.pixelclock = { 68900000, 71100000, 7340000 },
+	.pixelclock = { 68900000, 71100000, 73400000 },
 	.hactive = { 1280, 1280, 1280 },
 	.hfront_porch = { 23, 60, 71 },
 	.hback_porch = { 23, 60, 71 },
