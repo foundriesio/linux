@@ -618,7 +618,7 @@ static void vmap_debug_free_range(unsigned long start, unsigned long end)
 	 * This is going to be *slow* (linear kernel virtual address debugging
 	 * doesn't do a broadcast TLB flush so it is a lot faster).
 	 */
-	if (debug_pagealloc_enabled()) {
+	if (debug_pagealloc_enabled_static()) {
 		vunmap_page_range(start, end);
 		flush_tlb_kernel_range(start, end);
 	}
