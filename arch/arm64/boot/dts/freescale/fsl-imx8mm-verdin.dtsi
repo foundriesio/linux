@@ -24,10 +24,11 @@
 		gpio = <&gpio2 20 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_reg_eth>;
+		regulator-boot-on;
 		regulator-name = "V3.3_ETH";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-		startup-delay-us = <1000000>;
+		startup-delay-us = <200000>;
 	};
 
 	reg_usb_otg1_vbus: regulator-usb-otg1 {
