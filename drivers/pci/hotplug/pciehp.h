@@ -113,6 +113,9 @@ struct controller {
 	unsigned int cmd_busy:1;
 	unsigned int link_active_reporting:1;
 	unsigned int notification_enabled:1;
+#ifndef __GENKSYMS__
+	bool always_heed_presense_bit;
+#endif
 	unsigned int power_fault_detected;
 	atomic_t pending_events;
 	u8 state;
