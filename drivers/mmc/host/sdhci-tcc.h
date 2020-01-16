@@ -172,6 +172,8 @@ struct sdhci_tcc {
 
 	int hw_reset;
 
+	struct dentry *tap_dly_dbgfs;
+	struct dentry *clk_dly_dbgfs;
 	struct dentry *tune_rtl_dbgfs;
 	struct dentry *clk_gating_dbgfs;
 };
