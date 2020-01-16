@@ -691,6 +691,258 @@ unsigned int sdhci_tcc803x_clk_get_max_clock(struct sdhci_host *host)
 	return -ENOTSUPP;
 }
 
+#ifdef CONFIG_SDHCI_TCC_USE_SW_TUNING
+/*
+ * Note: Sometimes developer want to measure the rx tap windows.
+ *       This functions is for testing the rx sampling tap delay (e.g. itap).
+ *
+ *       The algorithm of it to select the tap is different from the controller own.
+ *
+ *       We do not recommand to use it. Please use it for test only.
+ */
+static void sdhci_tcc_set_itap(struct sdhci_host *host, u32 itap)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 vals = 0;
+
+	vals = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	vals &= ~TCC_SDHC_TAPDLY_ITAP_SEL_MASK;
+	vals |= (TCC_SDHC_TAPDLY_ITAP_EN(1) | TCC_SDHC_TAPDLY_ITAP_SEL(itap));
+	writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+
+	pr_debug("%s: set itap 0x%x\n", mmc_hostname(host->mmc),
+		readl(tcc->chctrl_base + TCC_SDHC_TAPDLY)
+	);
+}
+
+static void sdhci_tcc_start_tuning(struct sdhci_host *host)
+{
+	u16 ctrl;
+
+	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	ctrl |= SDHCI_CTRL_EXEC_TUNING;
+	if (host->quirks2 & SDHCI_QUIRK2_TUNING_WORK_AROUND)
+		ctrl |= SDHCI_CTRL_TUNED_CLK;
+	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
+
+	host->flags &= ~(SDHCI_REQ_USE_DMA | SDHCI_USE_SDMA | SDHCI_USE_ADMA);
+}
+
+static void sdhci_tcc_end_tuning(struct sdhci_host *host)
+{
+	host->flags |= (SDHCI_REQ_USE_DMA | SDHCI_USE_SDMA | SDHCI_USE_ADMA);
+}
+
+static int sdhci_tcc_execute_sw_tuning(struct sdhci_host *host, u32 opcode)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	unsigned int min, max, avg;
+	struct tcc_sdhci_itap_window windows[20];
+	struct tcc_sdhci_itap_window *cur_window;
+	unsigned int window_count, i;
+	int err = 0;
+
+	sdhci_tcc_start_tuning(host);
+
+	memset(windows, 0, sizeof(struct tcc_sdhci_itap_window) * 20);
+	window_count = 0;
+	cur_window = NULL;
+
+	/* Execute tuning */
+	for(i = 0; i < TCC_SDHC_TAPDLY_ITAP_MAX; i++) {
+		if(tcc->soc_data->set_channel_itap != NULL)
+			tcc->soc_data->set_channel_itap(host, i);
+		if(!mmc_send_tuning(host->mmc, opcode, NULL)) {
+			/* if data is same as pattern */
+			if(cur_window == NULL) {
+				cur_window = &windows[window_count];
+				cur_window->start = i;
+				window_count++;
+			}
+			cur_window->end = i;
+			cur_window->width = cur_window->end - cur_window->start + 1;
+			pr_debug("%s: tap %d success\n", mmc_hostname(host->mmc), i);
+		} else {
+			/* if data is different from pattern */
+			cur_window = NULL;
+			pr_debug("%s: tap %d failed\n", mmc_hostname(host->mmc), i);
+		}
+	}
+
+	/* Select tap delay */
+	if(window_count == 0) {
+		/* if there is not window, set delay tap to zero and return error */
+		pr_info("%s: failed to find windows\n", mmc_hostname(host->mmc));
+		avg = 0;
+		err = -EIO;
+	} else {
+		if(window_count > 1) {
+			if((windows[0].start == 0) &&
+					(windows[window_count-1].end == TCC_SDHC_TAPDLY_ITAP_MAX - 1)) {
+				/* Merge Window */
+				windows[window_count].start = windows[window_count-1].start;
+				windows[window_count].end = windows[0].end + TCC_SDHC_TAPDLY_ITAP_MAX;
+				windows[window_count].width = windows[window_count].end - windows[window_count].start + 1;
+				window_count++;
+
+				pr_info("%s:  ## merging window...\n", mmc_hostname(host->mmc));
+				pr_info("%s:  ## top: window[0] s %d e %d w %d\n", mmc_hostname(host->mmc),
+					windows[0].start, windows[0].end, windows[0].width);
+				pr_info("%s:  ## bottom: window[%d] s %d e %d w %d\n", mmc_hostname(host->mmc),
+						window_count-1, windows[window_count - 1].start,
+						windows[window_count - 1].end, windows[window_count - 1].width);
+			}
+		}
+
+		/* Select the Widest Window */
+		cur_window = NULL;
+		for(i = 0; i < window_count; i++) {
+			if(i == 0) {
+				cur_window = &windows[i];
+			} else {
+				if(cur_window->width < windows[i].width)
+					cur_window = &windows[i];
+			}
+			pr_info("%s: windows[%d] start %d end %d width %d\n",
+					mmc_hostname(host->mmc), i,
+					windows[i].start, windows[i].end, windows[i].width);
+		}
+
+		min = cur_window->start;
+		max = cur_window->end;
+
+		/* Select Tap */
+		avg = ((min + max) / 2) % TCC_SDHC_TAPDLY_ITAP_MAX;
+	}
+
+	pr_info("%s: selected tap %d\n", mmc_hostname(host->mmc), avg);
+
+	if(tcc->soc_data->set_channel_itap != NULL)
+		tcc->soc_data->set_channel_itap(host, avg);
+
+	sdhci_tcc_end_tuning(host);
+
+	return err;
+}
+
+static void sdhci_tcc_read_block_pio(struct sdhci_host *host)
+{
+	unsigned long flags;
+	size_t blksize, len, chunk;
+	u32 uninitialized_var(scratch);
+	u8 *buf;
+
+	blksize = host->data->blksz;
+	chunk = 0;
+
+	local_irq_save(flags);
+
+	while (blksize) {
+		BUG_ON(!sg_miter_next(&host->sg_miter));
+
+		len = min(host->sg_miter.length, blksize);
+
+		blksize -= len;
+		host->sg_miter.consumed = len;
+
+		buf = host->sg_miter.addr;
+
+		while (len) {
+			if (chunk == 0) {
+				scratch = sdhci_readl(host, SDHCI_BUFFER);
+				chunk = 4;
+			}
+
+			*buf = scratch & 0xFF;
+
+			buf++;
+			scratch >>= 8;
+			chunk--;
+			len--;
+		}
+	}
+
+	sg_miter_stop(&host->sg_miter);
+
+	local_irq_restore(flags);
+}
+
+static void sdhci_tcc_finish_mrq(struct sdhci_host *host, struct mmc_request *mrq)
+{
+	int i;
+
+	if (host->cmd && host->cmd->mrq == mrq)
+		host->cmd = NULL;
+
+	if (host->data_cmd && host->data_cmd->mrq == mrq)
+		host->data_cmd = NULL;
+
+	if (host->data && host->data->mrq == mrq)
+		host->data = NULL;
+
+	for (i = 0; i < SDHCI_MAX_MRQS; i++) {
+		if (host->mrqs_done[i] == mrq) {
+			WARN_ON(1);
+			return;
+		}
+	}
+
+	for (i = 0; i < SDHCI_MAX_MRQS; i++) {
+		if (!host->mrqs_done[i]) {
+			host->mrqs_done[i] = mrq;
+			break;
+		}
+	}
+
+	WARN_ON(i >= SDHCI_MAX_MRQS);
+
+	tasklet_schedule(&host->finish_tasklet);
+}
+
+static u32 sdhci_tcc_irq(struct sdhci_host *host, u32 intmask)
+{
+	u32 command;
+	int err = 0;
+	u16 ctrl;
+
+	command = SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND));
+	if (command == MMC_SEND_TUNING_BLOCK ||
+	    command == MMC_SEND_TUNING_BLOCK_HS200) {
+		if (intmask & SDHCI_INT_DATA_AVAIL) {
+			if (host->blocks == 0) {
+				err = -EIO;
+			} else {
+				if (host->data->flags & MMC_DATA_READ) {
+					while (sdhci_readl(host, SDHCI_PRESENT_STATE) & SDHCI_DATA_AVAILABLE) {
+						sdhci_tcc_read_block_pio(host);
+
+						host->blocks--;
+						if (host->blocks == 0)
+							break;
+					}
+				} else {
+					err = -EIO;
+				}
+			}
+
+			host->data_cmd->error = 0;
+			sdhci_tcc_finish_mrq(host, host->data_cmd->mrq);
+		}
+
+		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+		if (!(ctrl & SDHCI_CTRL_EXEC_TUNING)) {
+			if (ctrl & SDHCI_CTRL_TUNED_CLK) {
+				/* if tuning is already success, ignore below interrupts */
+				sdhci_writel(host, (SDHCI_INT_RESPONSE | SDHCI_INT_DATA_END), SDHCI_INT_STATUS);
+				intmask &= ~(SDHCI_INT_RESPONSE | SDHCI_INT_DATA_END);
+			}
+		}
+	}
+
+	return intmask;
+}
+#endif
+
 static void sdhci_tcc_set_clock(struct sdhci_host *host, unsigned int clock)
 {
 	/*
@@ -729,6 +981,13 @@ static const struct sdhci_ops sdhci_tcc_ops = {
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
+#ifdef CONFIG_SDHCI_TCC_USE_SW_TUNING
+	.platform_execute_tuning = sdhci_tcc_execute_sw_tuning,
+	.irq = sdhci_tcc_irq,
+#else
+	.platform_execute_tuning = NULL,
+	.irq = NULL,
+#endif
 };
 
 static const struct sdhci_ops sdhci_tcc803x_ops = {
@@ -739,6 +998,13 @@ static const struct sdhci_ops sdhci_tcc803x_ops = {
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
+#ifdef CONFIG_SDHCI_TCC_USE_SW_TUNING
+	.platform_execute_tuning = sdhci_tcc_execute_sw_tuning,
+	.irq = sdhci_tcc_irq,
+#else
+	.platform_execute_tuning = NULL,
+	.irq = NULL,
+#endif
 };
 
 static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
@@ -760,6 +1026,7 @@ static const struct sdhci_tcc_soc_data soc_data_tcc897x = {
 	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc897x_set_channel_configs,
 	.set_core_clock = NULL,
+	.set_channel_itap = NULL,
 	.sdhci_tcc_quirks = 0,
 };
 
@@ -768,6 +1035,11 @@ static const struct sdhci_tcc_soc_data soc_data_tcc803x = {
 	.parse_channel_configs = sdhci_tcc803x_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc803x_set_channel_configs,
 	.set_core_clock = sdhci_tcc803x_set_core_clock,
+#ifdef CONFIG_SDHCI_TCC_USE_SW_TUNING
+	.set_channel_itap = sdhci_tcc_set_itap,
+#else
+	.set_channel_itap = NULL,
+#endif
 	.sdhci_tcc_quirks = 0,
 };
 
@@ -776,6 +1048,11 @@ static const struct sdhci_tcc_soc_data soc_data_tcc = {
 	.parse_channel_configs = sdhci_tcc_parse_channel_configs,
 	.set_channel_configs = sdhci_tcc_set_channel_configs,
 	.set_core_clock = NULL,
+#ifdef CONFIG_SDHCI_TCC_USE_SW_TUNING
+	.set_channel_itap = sdhci_tcc_set_itap,
+#else
+	.set_channel_itap = NULL,
+#endif
 	.sdhci_tcc_quirks = 0,
 };
 
