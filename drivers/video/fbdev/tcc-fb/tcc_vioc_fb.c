@@ -836,12 +836,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				break;
 			}
 #endif
-#if defined(CONFIG_USE_DISPLAY_FB_LOCK)
-			if(fb_lock){
-				//pr_err(" display is locked !!! fb_lock : %d \n", fb_lock);
-				break;
-			}
-#endif
 			mutex_lock(&ptccfb_info->output_lock);
 
 			if (!ptccfb_info->output_on) {
@@ -1416,7 +1410,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			if(!pdp_data->FbPowerState) {
 				return 0;
 			}
-
 
 			memset(&var, 0, sizeof(struct fb_var_screeninfo));
 			var.xres = sc_info.width;
