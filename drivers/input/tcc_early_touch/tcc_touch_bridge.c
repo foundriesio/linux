@@ -1,3 +1,20 @@
+/****************************************************************************
+*
+* Copyright (C) 2018 Telechips Inc.
+*
+* This program is free software; you can redistribute it and/or modify it under the terms
+* of the GNU General Public License as published by the Free Software Foundation;
+* either version 2 of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+* without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+* PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+* Suite 330, Boston, MA 02111-1307 USA
+****************************************************************************/
+
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -13,14 +30,6 @@
 #define TOUCH_BRIDGE_NAME       "tcc_touch_bridge"
 #define TOUCH_BRIDGE_MINOR		0
 
-static int debug = 0;
-
-#define dprintk(msg...)                                \
-{                                                      \
-	if (debug)  	                                   \
-        printk(KERN_DEBUG "(D)" msg);		           \
-}
-
 typedef struct _mbox_list {
 	struct tcc_mbox_data 	msg;
 	struct list_head    	queue;
@@ -34,21 +43,16 @@ typedef struct _mbox_queue {
 	struct list_head       queue;
 }mbox_queue;
 
-static struct class *tcc_touch_bridge_class;
-static int tcc_touch_bridge_major_num;
 static const char * tcc_touch_bridge_mbox_name;
 struct mbox_chan *tcc_touch_bridge_channel;
 struct tcc_mbox_data sendMsg;
 struct mbox_client client;
 mbox_queue ttb_queue;
 
-
 static void ttb_event(struct input_handle *handle, unsigned int type, unsigned int code, int value)
 {
 	unsigned long flags;
 	mbox_list *ttb_list = NULL;
-	dprintk("Event. Dev: %s, Type: %d, Code: %d, Value: %d\n",
-				       dev_name(&handle->dev->dev), type, code, value);
 
 	switch(code)
 	{
@@ -79,6 +83,8 @@ static void ttb_event(struct input_handle *handle, unsigned int type, unsigned i
 			list_add_tail(&ttb_list->queue, &ttb_queue.queue);
 			spin_unlock_irqrestore(&ttb_queue.queue_lock, flags);
 			kthread_queue_work(&ttb_queue.kworker, &ttb_queue.pump_messages);
+			printk(KERN_DEBUG "[DEBUG][EARLY_TOUCH_BRIDGE]Event. Dev: %s, X:%d, Y: %d, Pressed: %d\n",
+			       dev_name(&handle->dev->dev), sendMsg.cmd[0], sendMsg.cmd[1], sendMsg.cmd[2]);
 		}
 	}
 }
@@ -107,23 +113,23 @@ static int ttb_connect(struct input_handler *handler, struct input_dev *dev,
 		goto err_unregister_handle;
 
 
-	dprintk("Connected device: %s (%s at %s)\n",
+	printk(KERN_INFO "[INFO][EARLY_TOUCH_BRIDGE]Connected device: %s (%s at %s)\n",
 		dev_name(&dev->dev), dev->name ?: "unknown", dev->phys ?: "unknown");
 
 	return 0;
 
 err_unregister_handle:
-	printk(KERN_ERR "Connected device: Err1");
+	printk(KERN_ERR "[ERROR][EARLY_TOUCH_BRIDGE]Connected device: unregister_handle");
 	input_unregister_handle(handle);
 err_free_handle:
-	printk(KERN_ERR "Connected device: Err2");
+	printk(KERN_ERR "[ERROR][EARLY_TOUCH_BRIDGE]Connected device: free_handle");
 	kfree(handle);
 	return error;
 }
 
 static void ttb_disconnect(struct input_handle *handle)
 {
-	dprintk("Disconnected device: %s\n",
+	printk(KERN_INFO "[INFO][EARLY_TOUCH_BRIDGE]Disconnected device: %s\n",
        dev_name(&handle->dev->dev));
 
 	input_close_device(handle);
@@ -164,7 +170,6 @@ static void ttb_pump_messages(struct kthread_work *work)
 	list_for_each_entry_safe(ttb_list, ttb_list_tmp, &ttb_queue.queue, queue)
 	{
 		spin_unlock_irqrestore(&ttb_queue.queue_lock, flags);
-		//send touch data to a7s
 		(void)mbox_send_message(tcc_touch_bridge_channel, &sendMsg);
 		mbox_client_txdone(tcc_touch_bridge_channel,0);
 		spin_lock_irqsave(&ttb_queue.queue_lock, flags);
@@ -181,10 +186,6 @@ static int tcc_touch_bridge_probe(struct platform_device *pdev)
 
 	input_register_handler(&ttb_handler);
 
-	tcc_touch_bridge_major_num = register_chrdev(0, TOUCH_BRIDGE_NAME, &ttb_handler);
-	tcc_touch_bridge_class = class_create(THIS_MODULE, TOUCH_BRIDGE_NAME);
-	device_create(tcc_touch_bridge_class, NULL, MKDEV(tcc_touch_bridge_major_num, TOUCH_BRIDGE_MINOR), NULL, TOUCH_BRIDGE_NAME);
-
 	of_property_read_string(pdev->dev.of_node,"mbox-names", &tcc_touch_bridge_mbox_name);
 	client.dev = &pdev->dev;
 	client.rx_callback = receive_message;
@@ -194,11 +195,11 @@ static int tcc_touch_bridge_probe(struct platform_device *pdev)
 	client.tx_tout = 10;
 	tcc_touch_bridge_channel = mbox_request_channel_byname(&client, tcc_touch_bridge_mbox_name);
 
-	dprintk("Prove TCC_TB Device\n");
+	printk(KERN_INFO "[INFO][EARLY_TOUCH_BRIDGE]Prove TCC_TB Device\n");
 	kthread_init_worker(&ttb_queue.kworker);
 	ttb_queue.kworker_task = kthread_run(kthread_worker_fn,&ttb_queue.kworker,"ttb_thread");
 	if (IS_ERR(ttb_queue.kworker_task)) {
-		printk(KERN_ERR "%s : failed to create message pump task\n", __func__);
+		printk(KERN_ERR "[ERROR][EARLY_TOUCH_BRIDGE]%s : failed to create message pump task\n", __func__);
 		return -ENOMEM;
 	}
 	kthread_init_work(&ttb_queue.pump_messages, ttb_pump_messages);
@@ -210,10 +211,7 @@ static int tcc_touch_bridge_remove(struct platform_device * pdev)
 	kthread_flush_worker(&ttb_queue.kworker);
 	kthread_stop(ttb_queue.kworker_task);
 	mbox_free_channel(tcc_touch_bridge_channel);
-	device_destroy(tcc_touch_bridge_class, MKDEV(tcc_touch_bridge_major_num, TOUCH_BRIDGE_MINOR));
-	class_destroy(tcc_touch_bridge_class);
-	unregister_chrdev(tcc_touch_bridge_major_num, TOUCH_BRIDGE_NAME);
-	dprintk("Remove TCC_TB Device\n");
+	printk(KERN_INFO "[INFO][EARLY_TOUCH_BRIDGE]Remove TCC_TB Device\n");
 	return 0;
 }
 
