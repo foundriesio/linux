@@ -3,6 +3,7 @@
 
 #include <asm/system_info.h>
 #include <linux/mmc/host.h>
+#include <linux/mmc/mmc.h>
 #include "sdhci-pltfm.h"
 
 /* Telechips SDHC Specific Registers for TCC897x */
@@ -94,6 +95,7 @@
 #define TCC_SDHC_CD_WP			0x4C
 
 #define TCC_SDHC_TAPDLY_TUNE_CNT(x)		((x & 0x3F) << 16)
+#define TCC_SDHC_TAPDLY_ITAP_MAX		(32)
 #define TCC_SDHC_TAPDLY_ITAP_SEL(x)		((x & 0x1F) << 0)
 #define TCC_SDHC_TAPDLY_ITAP_SEL_MASK	(TCC_SDHC_TAPDLY_ITAP_SEL(0x1F))
 #define TCC_SDHC_TAPDLY_ITAP_EN(x)		((x & 0x1) << 5)
@@ -143,6 +145,7 @@ struct sdhci_tcc_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	int (*parse_channel_configs)(struct platform_device *, struct sdhci_host *);
 	void (*set_channel_configs)(struct sdhci_host *);
+	void (*set_channel_itap)(struct sdhci_host *, u32 itap);
 	int (*set_core_clock)(struct sdhci_host *);
 	u32 sdhci_tcc_quirks;
 };
@@ -176,6 +179,12 @@ struct sdhci_tcc {
 	struct dentry *clk_dly_dbgfs;
 	struct dentry *tune_rtl_dbgfs;
 	struct dentry *clk_gating_dbgfs;
+};
+
+struct tcc_sdhci_itap_window {
+	unsigned int start;
+	unsigned int end;
+	unsigned int width;
 };
 
 extern void sdhci_tcc_force_presence_change(struct platform_device *pdev, bool mmc_nonremovable);
