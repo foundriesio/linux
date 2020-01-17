@@ -34,11 +34,11 @@ struct dax_region {
 	struct kref kref;
 	struct device *dev;
 	unsigned int align;
-	struct resource res;
-	unsigned long pfn_flags;
 #ifndef __GENKSYMS__
 	int target_node;
 #endif
+	struct resource res;
+	unsigned long pfn_flags;
 };
 
 /**
@@ -58,8 +58,5 @@ struct dev_dax {
 	int id;
 	int num_resources;
 	struct resource res[0];
-#ifndef __GENKSYMS__
-	int target_node;
-#endif
 };
 #endif

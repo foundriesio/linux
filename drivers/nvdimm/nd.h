@@ -155,6 +155,9 @@ struct nd_region {
 	struct device *pfn_seed;
 	struct device *dax_seed;
 	u16 ndr_mappings;
+#ifndef __GENKSYMS__
+	int target_node;
+#endif
 	u64 ndr_size;
 	u64 ndr_start;
 	int id, num_lanes, ro, numa_node;
@@ -164,9 +167,6 @@ struct nd_region {
 	struct nd_interleave_set *nd_set;
 	struct nd_percpu_lane __percpu *lane;
 	struct nd_mapping mapping[0];
-#ifndef __GENKSYMS__
-	int target_node;
-#endif
 };
 
 struct nd_blk_region {

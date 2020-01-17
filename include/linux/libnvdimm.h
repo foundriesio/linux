@@ -123,6 +123,9 @@ struct nd_region_desc {
 	struct resource *res;
 	struct nd_mapping_desc *mapping;
 	u16 num_mappings;
+#ifndef __GENKSYMS__
+	int target_node;
+#endif
 	const struct attribute_group **attr_groups;
 	struct nd_interleave_set *nd_set;
 	void *provider_data;
@@ -130,9 +133,6 @@ struct nd_region_desc {
 	int numa_node;
 	unsigned long flags;
 	struct device_node *of_node;
-#ifndef __GENKSYMS__
-	int target_node;
-#endif
 };
 
 struct device;
