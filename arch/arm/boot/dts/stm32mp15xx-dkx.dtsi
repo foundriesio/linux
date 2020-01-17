@@ -146,6 +146,10 @@
 	sram = <&dma_pool>;
 };
 
+&dts {
+	status = "okay";
+};
+
 &ethernet0 {
 	status = "okay";
 	pinctrl-0 = <&ethernet0_rgmii_pins_a>;
