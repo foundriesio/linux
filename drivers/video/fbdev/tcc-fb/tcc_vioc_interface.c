@@ -195,6 +195,10 @@ extern void fb_quickboot_lastframe_display_release(void);
 #endif
 #endif//CONFIG_HIBERNATION
 
+#if defined(CONFIG_USE_DISPLAY_FB_LOCK)
+extern unsigned int fb_lock;
+#endif
+
 extern TCC_OUTPUT_TYPE Output_SelectMode;
 extern void tcc_plugout_for_composite(int ch_layer);
 extern void tcc_plugout_for_component(int ch_layer);
