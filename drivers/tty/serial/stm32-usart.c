@@ -1196,10 +1196,12 @@ static int stm32_of_dma_rx_probe(struct stm32_port *stm32port,
 	int ret;
 
 	/* Request DMA RX channel */
-	stm32port->rx_ch = dma_request_slave_channel(dev, "rx");
-	if (!stm32port->rx_ch) {
+	stm32port->rx_ch = dma_request_chan_linked(dev, "rx");
+	if (IS_ERR(stm32port->rx_ch)) {
+		ret = PTR_ERR(stm32port->rx_ch);
+		stm32port->rx_ch = NULL;
 		dev_dbg(dev, "cannot get the DMA channel.\n");
-		return -ENODEV;
+		return ret;
 	}
 	stm32port->rx_buf = dma_alloc_coherent(&pdev->dev, RX_BUF_L,
 						 &stm32port->rx_dma_buf,
@@ -1229,7 +1231,7 @@ config_err:
 			  stm32port->rx_dma_buf);
 
 alloc_err:
-	dma_release_channel(stm32port->rx_ch);
+	dma_release_chan_linked(dev, stm32port->rx_ch);
 	stm32port->rx_ch = NULL;
 
 	return ret;
@@ -1342,7 +1344,7 @@ static int stm32_serial_probe(struct platform_device *pdev)
 
 err_dma:
 	if (stm32port->rx_ch)
-		dma_release_channel(stm32port->rx_ch);
+		dma_release_chan_linked(&pdev->dev, stm32port->rx_ch);
 
 	if (stm32port->rx_dma_buf)
 		dma_free_coherent(&pdev->dev,
@@ -1392,7 +1394,7 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	writel_relaxed(cr3, port->membase + ofs->cr3);
 
 	if (stm32_port->rx_ch)
-		dma_release_channel(stm32_port->rx_ch);
+		dma_release_chan_linked(&pdev->dev, stm32_port->rx_ch);
 
 	if (stm32_port->rx_dma_buf)
 		dma_free_coherent(&pdev->dev,
