@@ -2534,14 +2534,22 @@ static inline bool page_is_poisoned(struct page *page) { return false; }
 #endif
 
 #ifdef CONFIG_DEBUG_PAGEALLOC
-#ifdef CONFIG_DEBUG_PAGEALLOC_ENABLE_DEFAULT
-DECLARE_STATIC_KEY_TRUE(_debug_pagealloc_enabled);
-#else
+extern bool _debug_pagealloc_enabled_early;
 DECLARE_STATIC_KEY_FALSE(_debug_pagealloc_enabled);
-#endif
+extern void init_debug_pagealloc(void);
 extern void __kernel_map_pages(struct page *page, int numpages, int enable);
 
 static inline bool debug_pagealloc_enabled(void)
+{
+	return IS_ENABLED(CONFIG_DEBUG_PAGEALLOC) &&
+		_debug_pagealloc_enabled_early;
+}
+
+/*
+ * For use in fast paths after init_debug_pagealloc() has run, or when a
+ * false negative result is not harmful when called too early.
+ */
+static inline bool debug_pagealloc_enabled_static(void)
 {
 	if (!IS_ENABLED(CONFIG_DEBUG_PAGEALLOC))
 		return false;
@@ -2552,7 +2560,7 @@ static inline bool debug_pagealloc_enabled(void)
 static inline void
 kernel_map_pages(struct page *page, int numpages, int enable)
 {
-	if (!debug_pagealloc_enabled())
+	if (!debug_pagealloc_enabled_static())
 		return;
 
 	__kernel_map_pages(page, numpages, enable);
@@ -2566,7 +2574,12 @@ kernel_map_pages(struct page *page, int numpages, int enable) {}
 #ifdef CONFIG_HIBERNATION
 static inline bool kernel_page_present(struct page *page) { return true; }
 #endif	/* CONFIG_HIBERNATION */
+static inline void init_debug_pagealloc(void) {}
 static inline bool debug_pagealloc_enabled(void)
+{
+	return false;
+}
+static inline bool debug_pagealloc_enabled_static(void)
 {
 	return false;
 }
