@@ -161,18 +161,6 @@
 	vqmmc-supply = <&vqmmc_emmc>;
 };
 
-#if 0   // 0 : force detect, 1 : not force detect
-/* SDIO */
-&sdhc2 {
-	//status = "okay";
-	controller-id = <2>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-	pinctrl-0 = <&sd2_1_4_idle>;
-	pinctrl-1 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
-};
-#else
 &sdhc2 {
 	status = "okay";
 	controller-id = <2>;
@@ -181,7 +169,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sd2_1_clk &sd2_1_cmd &sd2_1_bus4>;
 };
-#endif
 
 &hdmi_tx_20 {
 	status = "okay";

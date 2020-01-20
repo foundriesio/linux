@@ -729,19 +729,6 @@
 };
 
 /* SDIO */
-#if 0 // 0: force detect, 1: not force detect
-&sdhc2 {
-	status = "okay";
-	compatible = "telechips,tcc-sdhc";
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-	pinctrl-0 = <&sd2_bus4_idle>;
-	pinctrl-1 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
-	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
-	clock-names = "mmc_fclk", "mmc_hclk";
-};
-#else
 &sdhc2 {
 	status = "okay";
 	bus-width = <4>;
@@ -751,7 +738,6 @@
 	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
 	clock-names = "mmc_fclk", "mmc_hclk";
 };
-#endif
 
 /* bluetooth */
 &tcc_bluetooth {

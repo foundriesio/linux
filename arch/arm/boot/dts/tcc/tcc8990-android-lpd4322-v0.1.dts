@@ -12,80 +12,6 @@
 
 #include "tcc8990-android-stb.dtsi"
 
-#if 0 // 0 : force detect, 1 : not force detect
-/* SDIO */
-&sdhc0 {
-	status = "okay";
-	controller-id = <0>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-	pinctrl-0 = <&sd0_2_4_idle>;
-	pinctrl-1 = <&sd0_2_clk &sd0_2_cmd &sd0_2_bus4>;
-	channel-mux = <2>; // 0b10, gpsd1
-
-	cd-inverted;
-	//wp-inverted;
-	//non-removable;
-	//broken-cd;
-	keep-power-in-suspend;
-	//enable-sdio-wakeup;
-	//cap-power-off-card;
-	cap-sdio-irq;
-	cap2-no-sleep-cmd;
-	cap-bus-width-test;
-
-	//wp-gpios = <&gpb 7 0>;
-	//cd-gpios = <&gpext1 5 0>;
-	//vctrl-gpio = <&gpsd 10 0>;
-	//pwr-gpio = <&gpext2 7 0>;
-
-	//cd-polling;
-	wifi-polling;
-
-	/* High-speed SDR */
-	//cap-sd-highspeed;
-	//cap-mmc-highspeed;
-
-	/* High-speed DDR(emmc & SD3.0 DDR50) */
-	//cap-1-8V-ddr;
-	//cap-uhs-ddr50;
-
-	/* SD3.0 Common */
-	cap-vdd-165-195;
-
-	/* SD3.0 SDR12 */
-	//cap-uhs-sdr12;
-
-	/* SD3.0 SDR25 */
-	//cap-uhs-sdr25;
-	//cap-uhs-driver_type_a;
-
-	/* SD3.0 SDR50 */
-	//cap-uhs-sdr50;
-	//cap-uhs-driver_type_c;
-
-	/* SD3.0 SDR104 */
-	cap-uhs-sdr104;
-	cap-uhs-driver_type_d;
-	cap-uhs-cmd23;
-	cap-adma;
-
-	/* eMMC HS200 */
-	//mmc-hs200-1_8v;
-	//cap-uhs-driver_type_d;
-	//cap-uhs-cmd23;
-	//cap-adma;
-};
-
-&tcm3800 {
-	compatible = "telechips, tcm3800";
-	wifi_pwr-gpio = <&gpsd1 10 0>;
-	wlreg_on-gpio = <&gpe 15 0>;
-	wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
-	wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
-};
-#else
 &vqmmc_sdio {
 	compatible = "regulator-fixed";
 	regulator-name = "vqmmc_sdio";
@@ -113,7 +39,6 @@
 		wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
 };
-#endif
 
 &tcc_bluetooth {
 	compatible = "telechips, tcc_bluetooth";

@@ -171,17 +171,6 @@
 };
 
 /* SDIO */
-#if 0   // 0 : force detect, 1 : not force detect
-&sdhc0 {
-	status = "okay";
-	controller-id = <0>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-	pinctrl-0 = <&sd0_2_idle>;
-	pinctrl-1 = <&sd0_2_clk &sd0_2_cmd &sd0_2_bus4>;
-};
-#else
 &sdhc0 {
 	status = "okay";
 	controller-id = <0>;
@@ -190,7 +179,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sd0_2_clk &sd0_2_cmd &sd0_2_bus4>;
 };
-#endif
 
 /* eMMC */
 &vqmmc_emmc {

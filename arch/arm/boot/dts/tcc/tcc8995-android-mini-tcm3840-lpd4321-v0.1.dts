@@ -40,81 +40,6 @@
 	gpios = <&gpf 5 0x4>;
 };
 
-#if 0   // 0 : force detect, 1 : not force detect
-/* SDIO */
-&sdhc2 {
-	status = "okay";
-	controller-id = <2>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-
-	tcc-mmc-clk-out-tap = <29>;
-	tcc-mmc-cmd-tap = <4>;
-	tcc-mmc-data-tap = <4>;
-
-	cd-inverted;
-	//wp-inverted;
-	//non-removable;
-	//broken-cd;
-	keep-power-in-suspend;
-	//enable-sdio-wakeup;
-	//cap-power-off-card;
-	cap-sdio-irq;
-	cap2-no-sleep-cmd;
-	cap-bus-width-test;
-
-	//wp-gpios = <&gpb 7 0>;
-	//cd-gpios = <&gpext1 5 0>;
-	//vctrl-gpio = <&gpsd 10 0>;
-	//pwr-gpio = <&gpext2 7 0>;
-
-	//cd-polling;
-	wifi-polling;
-
-	/* High-speed SDR */
-	//cap-sd-highspeed;
-	//cap-mmc-highspeed;
-
-	/* High-speed DDR(emmc & SD3.0 DDR50) */
-	//cap-1-8V-ddr;
-	//cap-uhs-ddr50;
-
-	/* SD3.0 Common */
-	//cap-vdd-165-195;
-
-	/* SD3.0 SDR12 */
-	//cap-uhs-sdr12;
-
-	/* SD3.0 SDR25 */
-	//cap-uhs-sdr25;
-	//cap-uhs-driver_type_a;
-
-	/* SD3.0 SDR50 */
-	//cap-uhs-sdr50;
-	//cap-uhs-driver_type_c;
-
-	/* SD3.0 SDR104 */
-	cap-uhs-sdr104;
-	cap-uhs-driver_type_d;
-	cap-uhs-cmd23;
-	cap-adma;
-
-	/* eMMC HS200 */
-	//mmc-hs200-1_8v;
-	//cap-uhs-driver_type_d;
-	//cap-uhs-cmd23;
-	//cap-adma;
-};
-
-&tcm3800 {
-	compatible = "telechips, tcm3800";
-	wifi_pwr-gpio = <&gpf 30 0>;
-	wlreg_on-gpio = <&gpd 16 0>;
-	wifi_pwr_1p8v-gpio = <&gpf 27 0>;
-	//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
-};
-#else
 &vqmmc_sdio {
 	compatible = "regulator-fixed";
 	regulator-name = "vqmmc_sdio";
@@ -146,7 +71,6 @@
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
 };
-#endif
 
 /* USB 3.0 DRD */
 &dwc3_phy {

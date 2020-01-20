@@ -29,79 +29,6 @@
 	vqmmc-supply = <&vdd_ldo3>;
 };
 
-#if 0 // 0: force detect, 1: not force detect
-/* SDIO */
-&sdhc2 { // Wi-Fi tcm3800
-	status = "okay";
-	compatible = "telechips,tcc-sdhc";
-	controller-id = <2>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default", "active";
-	pinctrl-0 = <&sd2_bus4_idle>;
-	pinctrl-1 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
-	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2 &clk_peri PERI_OUT5>;
-	clock-names = "mmc_fclk", "mmc_hclk", "ext32";
-		
-	tcc-mmc-clk-out-tap = <0>;
-	tcc-mmc-cmd-tap = <0>;
-	tcc-mmc-data-tap = <0>;
-
-	cd-inverted;
-	//wp-inverted;
-	//non-removable;
-	//broken-cd;
-	keep-power-in-suspend;
-	//enable-sdio-wakeup;
-	//cap-power-off-card;
-	cap-sdio-irq;
-	cap2-no-sleep-cmd;
-	cap-bus-width-test;
-
-	//wp-gpios = <&gpb 7 0>;
-	//cd-gpios = <&gpext1 5 0>;
-	//vctrl-gpio = <&gpsd 10 0>;
-	//pwr-gpio = <&gpext2 7 0>;
-
-	wifi-polling;
-	ext32-enable; // make_rtc
-
-	/*cap-sd-highspeed;*/
-	/*cap-mmc-highspeed;*/
-
-	/* High-speed DDR(emmc & SD3.0 DDR50) */
-	//cap-1-8V-ddr;
-	//cap-uhs-ddr50;
-
-	/* SD3.0 Common */
-	cap-vdd-165-195;
-
-	/* SD3.0 SDR12 */
-	//cap-uhs-sdr12;
-
-	/* SD3.0 SDR25 */
-	//cap-uhs-sdr25;
-	//cap-uhs-driver_type_a;
-
-	/* SD3.0 SDR50 */
-	//cap-uhs-sdr50;
-	//cap-uhs-driver_type_c;
-
-	/* SD3.0 SDR104 */
-	cap-uhs-sdr104;
-	cap-uhs-driver_type_d;
-	cap-uhs-cmd23;
-	cap-adma;
-};
-
-&tcm3800 {
-	compatible = "telechips, tcm3800";
-	wifi_pwr-gpio = <&gpsd2 6 0>;
-	wlreg_on-gpio = <&gpsd2 8 0>;
-	//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
-	//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
-};
-#else
 /* SDIO */
 &vqmmc_sdio {
 	compatible = "regulator-fixed";
@@ -128,7 +55,6 @@
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
 };
-#endif
 
 &tcc_timer {
 	/* Timer 0 is used for WIFI LPO */
