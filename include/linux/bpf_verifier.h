@@ -38,7 +38,9 @@ enum bpf_reg_liveness {
 	REG_LIVE_NONE = 0, /* reg hasn't been read or written this branch */
 	REG_LIVE_READ, /* reg was read, so we're sensitive to initial value */
 	REG_LIVE_WRITTEN, /* reg was written first, screening off later reads */
+#ifndef __GENKSYMS__
 	REG_LIVE_DONE = 4, /* liveness won't be updating this register anymore */
+#endif
 };
 
 struct bpf_reg_state {
@@ -151,7 +153,9 @@ struct bpf_verifier_state {
 struct bpf_verifier_state_list {
 	struct bpf_verifier_state state;
 	struct bpf_verifier_state_list *next;
+#ifndef __GENKSYMS__
 	int miss_cnt, hit_cnt;
+#endif
 };
 
 /* Possible states for alu_state member. */
@@ -231,8 +235,9 @@ struct bpf_verifier_env {
 	struct bpf_insn_aux_data *insn_aux_data; /* array of per-insn state */
 	struct bpf_verifier_log log;
 	struct bpf_subprog_info subprog_info[BPF_MAX_SUBPROGS + 1];
-	struct bpf_verifier_state_list *free_list;
 	u32 subprog_cnt;
+#ifndef __GENKSYMS__
+	struct bpf_verifier_state_list *free_list;
 	/* number of instructions analyzed by the verifier */
 	u32 insn_processed;
 	/* total verification time */
@@ -248,6 +253,7 @@ struct bpf_verifier_env {
 	u32 peak_states;
 	/* longest register parentage chain walked for liveness marking */
 	u32 longest_mark_read_walk;
+#endif
 };
 
 void bpf_verifier_vlog(struct bpf_verifier_log *log, const char *fmt,
