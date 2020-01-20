@@ -796,7 +796,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	bne	r4, r0, restore_all
 --- a/arch/parisc/Kconfig
 +++ b/arch/parisc/Kconfig
-@@ -81,7 +81,7 @@ config STACK_GROWSUP
+@@ -82,7 +82,7 @@ config STACK_GROWSUP
  config GENERIC_LOCKBREAK
  	bool
  	default y
@@ -1412,7 +1412,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -3654,6 +3654,8 @@ print_trace_header(struct seq_file *m, s
+@@ -3660,6 +3660,8 @@ print_trace_header(struct seq_file *m, s
  		   "desktop",
  #elif defined(CONFIG_PREEMPT)
  		   "preempt",

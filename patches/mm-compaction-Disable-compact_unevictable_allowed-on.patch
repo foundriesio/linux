@@ -5,7 +5,7 @@ Subject: [PATCH] mm/compaction: Disable compact_unevictable_allowed on RT
 Since commit
     5bbe3547aa3ba ("mm: allow compaction of unevictable pages")
 
-it is allowed to examine mlocked pages for pages to compact by default.
+it is allowed to examine mlocked pages and compact them by default.
 On -RT even minor pagefaults are problematic because it may take a few
 100us to resolve them and until then the task is blocked.
 

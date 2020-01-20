@@ -11,7 +11,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
-@@ -678,11 +678,9 @@ void handle_IPI(int ipinr, struct pt_reg
+@@ -682,11 +682,9 @@ void handle_IPI(int ipinr, struct pt_reg
  		break;
  
  	case IPI_CPU_BACKTRACE:
