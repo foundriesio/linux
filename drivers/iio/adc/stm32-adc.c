@@ -1641,6 +1641,7 @@ static int stm32_adc_single_conv(struct iio_dev *indio_dev,
 
 	stm32_adc_conv_irq_disable(adc);
 
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
@@ -1858,6 +1859,7 @@ static int stm32_adc_update_scan_mode(struct iio_dev *indio_dev,
 	adc->num_conv = bitmap_weight(scan_mask, indio_dev->masklength);
 
 	ret = stm32_adc_conf_scan_seq(indio_dev, scan_mask);
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
@@ -2053,6 +2055,7 @@ static int stm32_adc_debugfs_reg_access(struct iio_dev *indio_dev,
 	else
 		*readval = stm32_adc_readl(adc, reg);
 
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
@@ -2210,6 +2213,7 @@ err_clr_trig:
 err_clr_awd:
 	stm32_adc_awd_clear(adc);
 err_pm_put:
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
@@ -2252,6 +2256,7 @@ static void __stm32_adc_buffer_predisable(struct iio_dev *indio_dev)
 
 	stm32_adc_awd_clear(adc);
 
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 }
@@ -2663,6 +2668,7 @@ static int stm32_adc_probe(struct platform_device *pdev)
 		goto err_hw_stop;
 	}
 
+	pm_runtime_mark_last_busy(dev->parent);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
