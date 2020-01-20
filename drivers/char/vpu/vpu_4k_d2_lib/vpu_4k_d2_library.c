@@ -20,6 +20,18 @@ int tcc_vpu_4k_d2_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pPa
 }
 EXPORT_SYMBOL(tcc_vpu_4k_d2_dec);
 
+int tcc_vpu_4k_d2_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
+{
+	return 0;
+}
+EXPORT_SYMBOL(tcc_vpu_4k_d2_dec_esc);
+
+int tcc_vpu_4k_d2_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
+{
+	return 0;
+}
+EXPORT_SYMBOL(tcc_vpu_4k_d2_dec_ext);
+
 MODULE_AUTHOR("Telechips.");
 MODULE_DESCRIPTION("TCC 4K VP9/HEVC library");
 MODULE_LICENSE("Proprietary");

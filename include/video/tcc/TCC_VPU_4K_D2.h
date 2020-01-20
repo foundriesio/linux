@@ -452,8 +452,8 @@ typedef struct vpu_4K_D2_dec_init_t
 
 	//! Callback Func
 	void* (*m_Memcpy ) ( void*, const void*, unsigned int, unsigned int );	//!< memcpy
-	void  (*m_Memset ) ( void*, int, unsigned int, unsigned int );			//!< memset
-	int   (*m_Interrupt ) ( void );								//!< hw interrupt (return value is always 0)
+	void  (*m_Memset ) ( void*, int, unsigned int, unsigned int );		//!< memset
+	int   (*m_Interrupt ) ( unsigned int );					//!< hw interrupt (return value is always 0)
 	void* (*m_Ioremap ) ( unsigned int, unsigned int );
 	void  (*m_Iounmap ) ( void* );
 	unsigned int (*m_reg_read)(void *, unsigned int);

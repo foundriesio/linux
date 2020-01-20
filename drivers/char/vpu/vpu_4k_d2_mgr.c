@@ -84,8 +84,8 @@ static struct task_struct *kidle_task = NULL;
 extern void do_gettimeofday(struct timeval *tv);
 #endif
 extern int tcc_vpu_4k_d2_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-//extern int tcc_vpu_4k_d2_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-//extern int tcc_vpu_4k_d2_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+extern int tcc_vpu_4k_d2_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+extern int tcc_vpu_4k_d2_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 
 VpuList_t* vmgr_4k_d2_list_manager(VpuList_t* args, unsigned int cmd);
 /////////////////////////////////////////////////////////////////////////////
@@ -553,51 +553,89 @@ int vmgr_4k_d2_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result
     return 1;
 }
 
-static int _vmgr_4k_d2_internal_handler(void)
+static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 {
     int ret, ret_code = RETCODE_SUCCESS;
+    unsigned long flags;
+    unsigned int vint_reason = 0;
+	int oper_inst = 0, cnt = 0;
     int timeout = 200;
 
     if(vmgr_4k_d2_data.check_interrupt_detection)
     {
-        if(atomic_read(&vmgr_4k_d2_data.oper_intr) > 0)
+        oper_inst = atomic_read(&vmgr_4k_d2_data.oper_intr);
+        if(oper_inst & reason)
         {
             detailk("Success 1: vpu-4k-d2 vp9/hevc operation!! \n");
             ret_code = RETCODE_SUCCESS;
         }
-        else
-        {
-            ret = wait_event_interruptible_timeout(vmgr_4k_d2_data.oper_wq, atomic_read(&vmgr_4k_d2_data.oper_intr) > 0, msecs_to_jiffies(timeout));
+		else
+		{
+	        for (cnt=0; cnt<timeout; cnt+=5)
+	        {
+	            ret = wait_event_interruptible_timeout(vmgr_4k_d2_data.oper_wq, (oper_inst & reason), msecs_to_jiffies(5));
+	            if (ret == 0/*TIMEOUT*/)
+	            {
+	                vint_reason = vetc_reg_read(vmgr_4k_d2_data.base_addr, 0x004C/*W5_VPU_VINT_REASON*/);
 
-            if(vmgr_4k_d2_is_loadable() > 0)
-                ret_code = RETCODE_CODEC_EXIT;
-            else
-            if(atomic_read(&vmgr_4k_d2_data.oper_intr) > 0)
-            {
-                detailk("Success 2: vpu-4k-d2 vp9/hevc operation!! \n");
-            #if defined(FORCED_ERROR)
-                if(forced_error_count-- <= 0)
-                {
-                    ret_code = RETCODE_CODEC_EXIT;
-                    forced_error_count = FORCED_ERR_CNT;
-                    //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "_vmgr_4k_d2_internal_handler force-timed_out");
-                    //_vpu_4k_d2_dump_status();
-                }
-                else
-            #endif
-                ret_code = RETCODE_SUCCESS;
-            }
-            else
-            {
-                err("[CMD 0x%x][%d]: vpu-4k-d2 vp9/hevc timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", vmgr_4k_d2_data.current_cmd, ret, timeout, atomic_read(&vmgr_4k_d2_data.oper_intr), vmgr_4k_d2_data.nDecode_Cmd, vmgr_4k_d2_data.szFrame_Len);
-                //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "_vmgr_4k_d2_internal_handler timed_out");
-                //_vpu_4k_d2_dump_status();
-                ret_code = RETCODE_CODEC_EXIT;
-            }
-        }
+	                oper_inst = atomic_read(&vmgr_4k_d2_data.oper_intr);
+					oper_inst |= vint_reason;
+	            }
+	            else if (ret < 0/*-ERESTARTSYS(Interrupted by a signal*/)
+	            {
+					err("ERESTARTSYS\n");
+	                break;
+	            }
+	            else
+	            {
+					oper_inst = atomic_read(&vmgr_4k_d2_data.oper_intr);
+	            }
 
-        atomic_set(&vmgr_4k_d2_data.oper_intr, 0);
+	            if(vmgr_4k_d2_is_loadable() > 0)
+	                ret_code = RETCODE_CODEC_EXIT;
+	            else
+	            if(oper_inst & reason)
+	            {
+	                detailk("Success 2: vpu-4k-d2 vp9/hevc operation!! \n");
+	            #if defined(FORCED_ERROR)
+	                if(forced_error_count-- <= 0)
+	                {
+	                    ret_code = RETCODE_CODEC_EXIT;
+	                    forced_error_count = FORCED_ERR_CNT;
+	                    //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "_vmgr_4k_d2_internal_handler force-timed_out");
+	                    //_vpu_4k_d2_dump_status();
+	                }
+	                else
+	                {
+	            #endif
+	                    ret_code = RETCODE_SUCCESS;
+	                    break;
+	            #if defined(FORCED_ERROR)
+	                }
+	            #endif
+	            }
+	        }
+
+	        if (cnt >= timeout)
+	        {
+	            err("[CMD 0x%x][%d]: vpu-4k-d2 vp9/hevc timed_out(ref %d msec) => oper_intr[%d]!! [%d]th frame len %d\n", vmgr_4k_d2_data.current_cmd, ret, timeout, vmgr_4k_d2_data.oper_intr, vmgr_4k_d2_data.nDecode_Cmd, vmgr_4k_d2_data.szFrame_Len);
+	            //vetc_dump_reg_all(vmgr_4k_d2_data.base_addr, "_vmgr_4k_d2_internal_handler timed_out");
+	            //_vpu_4k_d2_dump_status();
+	            ret_code = RETCODE_CODEC_EXIT;
+	        }
+		}
     }
+
+	if (ret_code == RETCODE_SUCCESS)
+	{
+		atomic_andnot(reason, &vmgr_4k_d2_data.oper_intr);
+	}
+
+    #ifdef DEBUG_VPU_4K_D2_K
+    vpu_4k_d2_isr_param_debug.ret_code_vmgr_hdr = ret_code;
+    dprintk("[_vmgr_4k_d2_internal_handler] : ret_code (%d), cntInt_4kd2 (%d), cntwk_4kd2 (%d), vmgr_4k_d2_data.oper_intr (%d) \n",
+         ret_code, cntInt_4kd2, cntwk_4kd2, vmgr_4k_d2_data.oper_intr);
+    #endif
 
     return ret_code;
 }
@@ -638,11 +676,12 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
                 arg->gsV4kd2DecInit.m_RegBaseVirtualAddr = (codec_addr_t)vmgr_4k_d2_data.base_addr;
                 arg->gsV4kd2DecInit.m_Memcpy            = (void* (*) ( void*, const void*, unsigned int, unsigned int))vetc_memcpy;
                 arg->gsV4kd2DecInit.m_Memset            = (void  (*) ( void*, int, unsigned int, unsigned int))vetc_memset;
-                arg->gsV4kd2DecInit.m_Interrupt         = (int  (*) ( void ))_vmgr_4k_d2_internal_handler;
+                arg->gsV4kd2DecInit.m_Interrupt         = (int  (*) ( unsigned int ))_vmgr_4k_d2_internal_handler;
                 arg->gsV4kd2DecInit.m_Ioremap           = (void* (*) ( phys_addr_t, unsigned int))vetc_ioremap;
                 arg->gsV4kd2DecInit.m_Iounmap           = (void  (*) ( void* ))vetc_iounmap;
                 arg->gsV4kd2DecInit.m_reg_read          = (unsigned int (*)(void *, unsigned int))vetc_reg_read;
                 arg->gsV4kd2DecInit.m_reg_write         = (void (*)(void *, unsigned int, unsigned int))vetc_reg_write;
+                arg->gsV4kd2DecInit.m_Usleep            = (void (*)(unsigned int, unsigned int))usleep_range;
 
                 vmgr_4k_d2_data.check_interrupt_detection = 1;
 
@@ -915,7 +954,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void* args)
             case VPU_UPDATE_WRITE_BUFFER_PTR_KERNEL:
             {
                 VPU_4K_D2_RINGBUF_SETBUF_PTRONLY_t *arg = (VPU_4K_D2_RINGBUF_SETBUF_PTRONLY_t *)args;
-                //vmgr_4k_d2_data.check_interrupt_detection = 1;
+                vmgr_4k_d2_data.check_interrupt_detection = 1;
                 ret = tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL, &pHandle, (void*)(arg->iCopiedSize), (void*)(arg->iFlushBuf));
             }
             break;
@@ -1373,6 +1412,7 @@ static long _vmgr_4k_d2_compat_ioctl(struct file *file, unsigned int cmd, unsign
 static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 {
     unsigned long flags;
+    unsigned int reason;
 
 	cntInt_4kd2++;
 
@@ -1380,9 +1420,9 @@ static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 		detailk("_vmgr_4k_d2_isr_handler %d \n", cntInt_4kd2);
 	}
 
-//    spin_lock_irqsave(&(vmgr_4k_d2_data.oper_lock), flags);
-    atomic_inc(&vmgr_4k_d2_data.oper_intr);
-//    spin_unlock_irqrestore(&(vmgr_4k_d2_data.oper_lock), flags);
+	reason = vetc_reg_read(vmgr_4k_d2_data.base_addr, 0x004C/*W5_VPU_VINT_REASON*/);
+
+	atomic_or(reason, &vmgr_4k_d2_data.oper_intr);
     #ifdef DEBUG_VPU_4K_D2_K
     cntwk_4kd2++;
     #endif

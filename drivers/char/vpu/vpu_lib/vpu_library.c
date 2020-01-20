@@ -21,6 +21,20 @@ int tcc_vpu_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
 }
 EXPORT_SYMBOL(tcc_vpu_dec);
 
+int
+tcc_vpu_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
+{
+    return 0;
+}
+EXPORT_SYMBOL(tcc_vpu_dec_esc);
+
+int
+tcc_vpu_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
+{
+    return 0;
+}
+EXPORT_SYMBOL(tcc_vpu_dec_ext);
+
 #if !defined(VPU_D6)
 int tcc_vpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 )
 {

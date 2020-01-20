@@ -43,6 +43,7 @@
 #define VPU_REGISTER_DUMP
 //#define VPU_REGISTER_INIT
 #define USE_WAIT_LIST // for interlaced format with fileplay-mode or all format with ring-mode
+#define DEBUG_VPU_K //for debug vpu drv in userspace side (e.g. omx)
 
 //#define FORCED_ERROR //For test purpose!!
 #ifdef FORCED_ERROR
@@ -54,14 +55,16 @@ static int forced_error_count = FORCED_ERR_CNT;
 // Control only once!!
 static mgr_data_t vmgr_data;
 static struct task_struct *kidle_task = NULL;
+static unsigned int cntInt_vpu = 0;
 
 #ifdef CONFIG_VPU_TIME_MEASUREMENT
 extern void do_gettimeofday(struct timeval *tv);
 #endif
 extern int tcc_vpu_dec( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-//extern codec_result_t tcc_vpu_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-//extern codec_result_t tcc_vpu_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+extern codec_result_t tcc_vpu_dec_esc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+extern codec_result_t tcc_vpu_dec_ext( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
+    defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 extern int tcc_vpu_enc( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 #endif
 
@@ -275,6 +278,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void* args)
                 arg->gsVpuDecInit.m_Iounmap   = (void  (*) ( void* ))vetc_iounmap;
                 arg->gsVpuDecInit.m_reg_read  = (unsigned int (*)(void *, unsigned int))vetc_reg_read;
                 arg->gsVpuDecInit.m_reg_write = (void (*)(void *, unsigned int, unsigned int))vetc_reg_write;
+                arg->gsVpuDecInit.m_Usleep    = (void (*)(unsigned int, unsigned int))usleep_range;
 
             #ifdef USE_WAIT_LIST
                 vmgr_set_fileplay_mode(type, arg->gsVpuDecInit.m_iFilePlayEnable);
@@ -844,7 +848,6 @@ static int _vmgr_external_all_close(int wait_ms)
     return 0;
 }
 
-static unsigned int cntInt_vpu = 0;
 static int _vmgr_cmd_open(char *str)
 {
 	int ret = 0;
