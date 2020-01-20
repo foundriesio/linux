@@ -1313,10 +1313,6 @@ static int stm32_serial_probe(struct platform_device *pdev)
 		device_set_wakeup_enable(&pdev->dev, false);
 	}
 
-	ret = uart_add_one_port(&stm32_usart_driver, &stm32port->port);
-	if (ret)
-		goto err_wirq;
-
 	ret = stm32_of_dma_rx_probe(stm32port, pdev);
 	if (ret)
 		dev_info(&pdev->dev, "interrupt mode used for rx (no dma)\n");
@@ -1327,6 +1323,10 @@ static int stm32_serial_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, &stm32port->port);
 
+	ret = uart_add_one_port(&stm32_usart_driver, &stm32port->port);
+	if (ret)
+		goto err_dma;
+
 	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -1334,7 +1334,27 @@ static int stm32_serial_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_wirq:
+err_dma:
+	if (stm32port->rx_ch) {
+		dmaengine_terminate_async(stm32port->rx_ch);
+		dma_release_channel(stm32port->rx_ch);
+	}
+
+	if (stm32port->rx_dma_buf)
+		dma_free_coherent(&pdev->dev,
+				  RX_BUF_L, stm32port->rx_buf,
+				  stm32port->rx_dma_buf);
+
+	if (stm32port->tx_ch) {
+		dmaengine_terminate_async(stm32port->tx_ch);
+		dma_release_channel(stm32port->tx_ch);
+	}
+
+	if (stm32port->tx_dma_buf)
+		dma_free_coherent(&pdev->dev,
+				  TX_BUF_L, stm32port->tx_buf,
+				  stm32port->tx_dma_buf);
+
 	if (stm32port->wakeirq > 0)
 		dev_pm_clear_wake_irq(&pdev->dev);
 
@@ -1357,6 +1377,8 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	u32 cr3;
 
 	pm_runtime_get_sync(&pdev->dev);
+
+	err = uart_remove_one_port(&stm32_usart_driver, port);
 
 	stm32_clr_bits(port, ofs->cr1, USART_CR1_PEIE);
 	cr3 = readl_relaxed(port->membase + ofs->cr3);
@@ -1393,8 +1415,6 @@ static int stm32_serial_remove(struct platform_device *pdev)
 	}
 
 	clk_disable_unprepare(stm32_port->clk);
-
-	err = uart_remove_one_port(&stm32_usart_driver, port);
 
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
