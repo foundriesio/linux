@@ -800,7 +800,9 @@ struct ftrace_ret_stack {
 	unsigned long fp;
 #endif
 #ifdef HAVE_FUNCTION_GRAPH_RET_ADDR_PTR
+#if !(defined(__GENKSYMS__) && defined(CONFIG_S390))
 	unsigned long *retp;
+#endif
 #endif
 };
 
