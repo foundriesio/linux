@@ -35,9 +35,7 @@ ENTRY(startup_continue)
 #
 	larl	%r14,init_task
 	stg	%r14,__LC_CURRENT
-	larl	%r15,init_thread_union+THREAD_SIZE
-	stg	%r15,__LC_KERNEL_STACK	# set end of kernel stack
-	aghi	%r15,-STACK_FRAME_OVERHEAD
+	larl	%r15,init_thread_union+THREAD_SIZE-STACK_FRAME_OVERHEAD
 #
 # Save ipl parameters, clear bss memory, initialize storage key for kernel pages,
 # and create a kernel NSS if the SAVESYS= parm is defined
