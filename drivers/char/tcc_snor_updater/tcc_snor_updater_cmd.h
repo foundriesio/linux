@@ -18,10 +18,10 @@
 #ifndef TCC_SNOR_UPDATER_CMD_H
 #define TCC_SNOR_UPDATER_CMD_H
 
-#define CMD_TYPE_MASK 	0xFFFF0000
+#define CMD_TYPE_MASK 	(0xFFFF0000U)
 
-#define SNOR_UPDATE_ACK			1
-#define SNOR_UPDATE_NACK		2
+#define SNOR_UPDATE_ACK			(1)
+#define SNOR_UPDATE_NACK		(2)
 
 typedef enum{
 	NACK_FIRMWARE_LOAD_FAIL = 1,

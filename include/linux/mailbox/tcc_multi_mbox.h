@@ -1,5 +1,3 @@
-#ifndef __TCC_MULTI_MBOX__
-#define __TCC_MULTI_MBOX__
 /****************************************************************************
  *
  * Copyright (C) 2018 Telechips Inc.
@@ -17,8 +15,12 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#define MBOX_CMD_FIFO_SIZE			7
-#define MBOX_DATA_FIFO_SIZE		128
+#ifndef TCC_MULTI_MBOX_H
+#define TCC_MULTI_MBOX_H
+
+
+#define MBOX_CMD_FIFO_SIZE		(7)
+#define MBOX_DATA_FIFO_SIZE		(128)
 
 /*
 MBOX has 8 cmd fifo but user can only use 7 cmd fifo.
@@ -36,11 +38,9 @@ Cmd fifo[0] sis used inside mbox drvier for channel ID.
 */
 struct tcc_mbox_data
 {
-	unsigned	int 	cmd[MBOX_CMD_FIFO_SIZE];
+	unsigned int 	cmd[MBOX_CMD_FIFO_SIZE];
 	unsigned int 	data[MBOX_DATA_FIFO_SIZE];
 	unsigned int 	data_len;
 };
 
-
-
-#endif /* __TCC_MULTI_MBOX__ */
+#endif

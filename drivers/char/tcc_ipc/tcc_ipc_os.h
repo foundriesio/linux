@@ -15,10 +15,10 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __TCC_IPC_OS_H__
-#define __TCC_IPC_OS_H__
+#ifndef TCC_IPC_OS_H
+#define TCC_IPC_OS_H
 
-#define TICK_PER_MS		1
+#define TICK_PER_MS		(1U)
 
 IPC_INT32 ipc_get_usec(void);
 IPC_UINT64 ipc_get_msec(void);
@@ -35,5 +35,5 @@ void ipc_read_wake_up(struct ipc_device *ipc_dev);
 void ipc_os_resouce_init(struct ipc_device *ipc_dev);
 void ipc_os_resouce_release(struct ipc_device *ipc_dev);
 
-#endif /* __TCC_IPC_OS_H__ */
+#endif
 

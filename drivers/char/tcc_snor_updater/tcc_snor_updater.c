@@ -56,13 +56,6 @@
 #include "tcc_snor_updater_crc8.h"
 #include "tcc_snor_updater.h"
 
-extern int updater_verbose_mode;
-
-#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
-
 int snor_update_start(struct snor_updater_device *updater_dev)
 {
 	int ret = SNOR_UPDATER_ERR_ARGUMENT;
@@ -86,20 +79,24 @@ int snor_update_done(struct snor_updater_device *updater_dev)
 int snor_update_fw(struct snor_updater_device *updater_dev, tcc_snor_update_param	*fwInfo)
 {
 	int ret = SNOR_UPDATER_ERR_ARGUMENT;
-	if(updater_dev != NULL)
+	if((updater_dev != NULL)&&(fwInfo != NULL))
 	{
 		ret = send_fw_start(updater_dev, fwInfo->start_address, fwInfo->partition_size, fwInfo->image_size);
 		if(ret == SNOR_UPDATER_SUCCESS)
 		{
-			unsigned int imageOffset, remainSize;
-			unsigned int currentCount, totalCount, fwDataSize;
+			unsigned int imageOffset;
+			unsigned int remainSize;
+			unsigned int currentCount;
+			unsigned int totalCount;
+			unsigned int fwDataSize;
 			unsigned int fwdataCRC;
 
-			imageOffset =0;
-			currentCount =0;
+			imageOffset = 0;
+			currentCount = 0;
 			remainSize = fwInfo->image_size;
-			totalCount = fwInfo->image_size/MAX_FW_BUF_SIZE;
-			if(fwInfo->image_size % MAX_FW_BUF_SIZE != 0)
+			totalCount = fwInfo->image_size/(unsigned int)MAX_FW_BUF_SIZE;
+
+			if(fwInfo->image_size % (unsigned int)MAX_FW_BUF_SIZE != (unsigned int)0)
 			{
 				totalCount++;
 			}
@@ -107,10 +104,10 @@ int snor_update_fw(struct snor_updater_device *updater_dev, tcc_snor_update_para
 			for(currentCount=0; currentCount < totalCount; currentCount++)
 			{
 				ret = SNOR_UPDATER_SUCCESS;
-				if(remainSize >= MAX_FW_BUF_SIZE)
+				if(remainSize >= (unsigned int)MAX_FW_BUF_SIZE)
 				{
-					fwDataSize = MAX_FW_BUF_SIZE;
-					remainSize -= MAX_FW_BUF_SIZE;
+					fwDataSize = (unsigned int)MAX_FW_BUF_SIZE;
+					remainSize -= (unsigned int)MAX_FW_BUF_SIZE;
 				}
 				else
 				{
@@ -119,7 +116,7 @@ int snor_update_fw(struct snor_updater_device *updater_dev, tcc_snor_update_para
 				}
 
 				fwdataCRC = tcc_snor_calc_crc8(&fwInfo->image[imageOffset], fwDataSize);
-				ret = send_fw_send(updater_dev, (fwInfo->start_address + imageOffset), currentCount+1, totalCount, &fwInfo->image[imageOffset], fwDataSize, fwdataCRC);
+				ret = send_fw_send(updater_dev, (fwInfo->start_address + imageOffset), currentCount+(unsigned int)1, totalCount, &fwInfo->image[imageOffset], fwDataSize, fwdataCRC);
 				if(ret != SNOR_UPDATER_SUCCESS)
 				{
 					break;

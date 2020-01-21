@@ -26,13 +26,6 @@
 #include "tcc_snor_updater_typedef.h"
 #include "tcc_snor_updater_mbox.h"
 
-extern int updater_verbose_mode;
-
-#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
-
 static void mbox_msg_sent(struct mbox_client *client, void *message, int r);
 
 int snor_updater_mailbox_send(struct snor_updater_device *updater_dev, struct tcc_mbox_data * ipc_msg)
@@ -55,7 +48,7 @@ int snor_updater_mailbox_send(struct snor_updater_device *updater_dev, struct tc
 	}
 	else
 	{
-		eprintk(updater_dev->dev, "Invalid Arguements\n");
+		(void)printk(KERN_ERR "[ERROR][%s][%s]Invalid Arguements\n", (const char *)LOG_TAG, __FUNCTION__);
 		ret = SNOR_UPDATER_ERR_ARGUMENT;
 	}
 
@@ -69,19 +62,23 @@ struct mbox_chan *snor_updater_request_channel(struct platform_device *pdev, con
 
 	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
 	if (!client)
-		return ERR_PTR(-ENOMEM);
+	{
+		channel = NULL;
+	}
+	else
+	{
+		client->dev = &pdev->dev;
+		client->rx_callback = handler;
+		client->tx_done = mbox_msg_sent;
+		client->tx_block = false;
+		client->knows_txdone = false;
+		client->tx_tout = 10;
 
-	client->dev = &pdev->dev;
-	client->rx_callback = handler;
-	client->tx_done = mbox_msg_sent;
-	client->tx_block = false;
-	client->knows_txdone = false;
-	client->tx_tout = 10;
-
-	channel = mbox_request_channel_byname(client, name);
-	if (IS_ERR(channel)) {
-		eprintk(&pdev->dev, "Failed to request %s channel\n", name);
-		return NULL;
+		channel = mbox_request_channel_byname(client, name);
+		if (IS_ERR(channel)) {
+			eprintk(&pdev->dev, "Failed to request %s channel\n", name);
+			channel = NULL;
+		}
 	}
 
 	return channel;
@@ -89,10 +86,13 @@ struct mbox_chan *snor_updater_request_channel(struct platform_device *pdev, con
 
 static void mbox_msg_sent(struct mbox_client *client, void *message, int r)
 {
-	if (r)
-		eprintk(client->dev, "Message could not be sent: %d\n", r);
-	else {
-		dprintk(client->dev, "Message sent\n");
+	if(client != NULL)
+	{
+		if (r)
+			eprintk(client->dev, "Message could not be sent: %d\n", r);
+		else {
+			dprintk(client->dev, "Message sent\n");
+		}
 	}
 }
 

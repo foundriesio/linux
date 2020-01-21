@@ -15,13 +15,13 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __TCC_IPC_MBOX_H__
-#define __TCC_IPC_MBOX_H__
+#ifndef TCC_IPC_MBOX_H
+#define TCC_IPC_MBOX_H
 
 typedef void (*ipc_mbox_receive)(struct mbox_client *, void * );
 
 IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ipc_msg);
-struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const char *name, ipc_mbox_receive handler);
+struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const IPC_CHAR *name, ipc_mbox_receive handler);
 
 
-#endif /* __TCC_IPC_MBOX_H__ */
+#endif

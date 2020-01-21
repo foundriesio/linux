@@ -15,8 +15,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_IPC_H
-#define _TCC_IPC_H
+#ifndef TCC_IPC_H
+#define TCC_IPC_H
 
 #include <uapi/linux/tcc/tcc_ipc.h>
 

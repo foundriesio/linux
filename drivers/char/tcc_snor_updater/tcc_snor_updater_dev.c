@@ -58,15 +58,10 @@
 #include "tcc_snor_updater_cmd.h"
 #include "tcc_snor_updater.h"
 
-#define SNOR_UPDATER_DEV_NAME        "tcc_snor_updater"
-#define SNOR_UPDATER_DEV_MINOR       0
+#define SNOR_UPDATER_DEV_NAME        ("tcc_snor_updater")
+#define SNOR_UPDATER_DEV_MINOR       (0)
 
-int updater_verbose_mode = 0;
-
-#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
+int updater_verbose_mode =0;
 
 void snor_updater_receive_message(struct mbox_client *client, void *message);
 
@@ -93,10 +88,10 @@ static int snor_updater_open(struct inode * inode, struct file * filp)
 	int ret = SNOR_UPDATER_SUCCESS;
 	struct snor_updater_device *snor_updater_dev = container_of(inode->i_cdev, struct snor_updater_device, cdev);
 	
-	iprintk(snor_updater_dev->dev, "In\n");
-
-	if(snor_updater_dev != NULL)
+	if((snor_updater_dev != NULL)&&(filp != NULL))
 	{
+		iprintk(snor_updater_dev->dev, "In\n");
+
 		mutex_lock(&snor_updater_dev->devMutex);
 		if(snor_updater_dev->isOpened == 0)
 		{
@@ -161,88 +156,91 @@ static int snor_updater_release(struct inode * inode, struct file * filp)
 
 static long snor_updater_ioctl(struct file * filp, unsigned int cmd, unsigned long arg)
 {
-	long ret = 0;
+	long ret = -EINVAL;
 
-	struct snor_updater_device *updater_dev = (struct snor_updater_device *)filp->private_data;
-	iprintk(updater_dev->dev,"cmd : (0x%x)\n", cmd);
-	switch(cmd) {
-		case IOCTL_UPDATE_START:
-			{
-				int ack;
-				/* send mbox & wait ack */
-				ack= snor_update_start(updater_dev);
-				if(ack == SNOR_UPDATER_SUCCESS)
+	if(filp != NULL)
+	{
+		struct snor_updater_device *updater_dev = (struct snor_updater_device *)filp->private_data;
+		iprintk(updater_dev->dev,"cmd : (0x%x)\n", cmd);
+		switch(cmd) {
+			case IOCTL_UPDATE_START:
 				{
-					ret =0;
-				}
-				else
-				{
-					ret =-EAGAIN;
-				}			
-			}
-			break;
-		case IOCTL_UPDATE_DONE:
-			{
-				int ack;
-				/* send mbox & wait ack */
-				ack= snor_update_done(updater_dev);
-				if(ack == SNOR_UPDATER_SUCCESS)
-				{
-					ret = 0;
-				}
-				else
-				{
-					ret =-EAGAIN;
-				}
-			}
-			break;
-		case IOCTL_FW_UPDATE:
-			{
-				tcc_snor_update_param	fwInfo;
-				if(copy_from_user(&fwInfo, (void*)arg, sizeof(tcc_snor_update_param))==0)
-				{
-					unsigned char *userBuffer = fwInfo.image;
-					fwInfo.image = (unsigned char *)kmalloc(fwInfo.image_size, GFP_KERNEL);
-					if(fwInfo.image  != NULL)
+					int ack;
+					/* send mbox & wait ack */
+					ack= snor_update_start(updater_dev);
+					if(ack == SNOR_UPDATER_SUCCESS)
 					{
-						/* update fw image */
-						if(copy_from_user(fwInfo.image, (void*)userBuffer, fwInfo.image_size)==0)
-						{
-							ret = snor_update_fw(updater_dev, &fwInfo);
-							if(ret == SNOR_UPDATER_SUCCESS)
-							{
-								ret =0;
-							}
-							else
-							{
-								ret =-EAGAIN;
-							}
-						}
-						else
-						{
-							ret =-EINVAL;
-						}
-
-						kfree(fwInfo.image);
+						ret =0;
 					}
 					else
 					{
-						ret =-ENOMEM;
+						ret =-EAGAIN;
 					}
 				}
-				else
+				break;
+			case IOCTL_UPDATE_DONE:
 				{
-					ret =-EINVAL;
+					int ack;
+					/* send mbox & wait ack */
+					ack= snor_update_done(updater_dev);
+					if(ack == SNOR_UPDATER_SUCCESS)
+					{
+						ret = 0;
+					}
+					else
+					{
+						ret =-EAGAIN;
+					}
 				}
-			}
-			break;
-		default:
-			wprintk(updater_dev->dev,"unrecognized ioctl (%d)\n", cmd);
-			ret = -EINVAL;
-			break;
-	}
+				break;
+			case IOCTL_FW_UPDATE:
+				{
+					tcc_snor_update_param	fwInfo;
+					if(copy_from_user((void *)&fwInfo, (const void*)arg, sizeof(tcc_snor_update_param))==(unsigned long)0)
+					{
+						unsigned char *userBuffer = fwInfo.image;
+						fwInfo.image = (unsigned char *)kmalloc(fwInfo.image_size, GFP_KERNEL);
+						if(fwInfo.image  != NULL)
+						{
+							/* update fw image */
+							if(copy_from_user((void *)fwInfo.image, (const void*)userBuffer, (unsigned long)fwInfo.image_size)== (unsigned long)0)
+							{
+								ret = snor_update_fw(updater_dev, &fwInfo);
+								if(ret == SNOR_UPDATER_SUCCESS)
+								{
+									ret =0;
+								}
+								else
+								{
+									ret =-EAGAIN;
+								}
+							}
+							else
+							{
+								ret =-EINVAL;
+							}
 
-	iprintk(updater_dev->dev,"result: (%ld)\n", ret);
+							kfree(fwInfo.image);
+						}
+						else
+						{
+							ret =-ENOMEM;
+						}
+					}
+					else
+					{
+						ret =-EINVAL;
+					}
+				}
+				break;
+			default:
+				wprintk(updater_dev->dev,"unrecognized ioctl (%d)\n", cmd);
+				ret = -EINVAL;
+				break;
+		}
+
+		iprintk(updater_dev->dev,"result: (%ld)\n", ret);
+	}
 	return ret;
 }
 
@@ -267,71 +265,85 @@ static int snor_updater_probe(struct platform_device *pdev) {
 
 	updater_dev = devm_kzalloc(&pdev->dev, sizeof(struct snor_updater_device), GFP_KERNEL);
 	if(!updater_dev)
-		return -ENOMEM;
+	{
+		ret = -ENOMEM;
+	}
+	else
+	{
+		platform_set_drvdata(pdev, updater_dev);
 
-	platform_set_drvdata(pdev, updater_dev);
+		of_property_read_string(pdev->dev.of_node,"mbox-names", &updater_dev->mbox_name);
+		iprintk(&pdev->dev, "mbox-names(%s)\n",updater_dev->mbox_name);
 
-	of_property_read_string(pdev->dev.of_node,"mbox-names", &updater_dev->mbox_name);
-	iprintk(&pdev->dev, "mbox-names(%s)\n",updater_dev->mbox_name);
+		result = alloc_chrdev_region(&updater_dev->devnum, SNOR_UPDATER_DEV_MINOR, 1, SNOR_UPDATER_DEV_NAME);
+		if (result) {
+			eprintk(&pdev->dev, "alloc_chrdev_region error %d\n", result);
+			ret = result;
+		}
+		else
+		{
+			cdev_init(&updater_dev->cdev, &snor_updater_ctrl_fops);
+			updater_dev->cdev.owner = THIS_MODULE;
+			result = cdev_add(&updater_dev->cdev, updater_dev->devnum, 1);
+			if (result != 0) {
+				eprintk(&pdev->dev, "cdev_add error %d\n", result);
+			}
+			else
+			{
+				updater_dev->class = class_create(THIS_MODULE,SNOR_UPDATER_DEV_NAME);
+				if (IS_ERR(updater_dev->class)) {
+					result = PTR_ERR(updater_dev->class);
+					eprintk(&pdev->dev, "class_create error %d\n", result);
+				}
+				else
+				{
+					updater_dev->dev = device_create(updater_dev->class, &pdev->dev, updater_dev->devnum, NULL, SNOR_UPDATER_DEV_NAME);
+					if (IS_ERR(updater_dev->dev)) {
+						result = PTR_ERR(updater_dev->dev);
+						eprintk(&pdev->dev, "device_create error %d\n", result);
+						class_destroy(updater_dev->class);
+					}
+				}
 
-	result = alloc_chrdev_region(&updater_dev->devnum, SNOR_UPDATER_DEV_MINOR, 1, SNOR_UPDATER_DEV_NAME);
-	if (result) {
-		eprintk(&pdev->dev, "alloc_chrdev_region error %d\n", result);
-		return result;
+				if(result != 0)
+				{
+					cdev_del(&updater_dev->cdev);
+				}
+			}
+
+			if(result == 0)
+			{
+				updater_dev->pdev =  pdev;
+				mutex_init(&updater_dev->devMutex);
+				updater_dev->isOpened = 0;
+				updater_dev->waitQueue._condition = 0;
+				ret = 0;
+
+				iprintk(updater_dev->dev, "Successfully registered\n");
+			}
+			else
+			{
+				unregister_chrdev_region(updater_dev->devnum, 1);
+				ret = result;
+			}
+		}
 	}
 
-	cdev_init(&updater_dev->cdev, &snor_updater_ctrl_fops);
-	updater_dev->cdev.owner = THIS_MODULE;
-	result = cdev_add(&updater_dev->cdev, updater_dev->devnum, 1);
-	if (result) {
-		eprintk(&pdev->dev, "cdev_add error %d\n", result);
-		goto cdev_add_error;
-	}	
-
-	updater_dev->class = class_create(THIS_MODULE,SNOR_UPDATER_DEV_NAME);
-	if (IS_ERR(updater_dev->class)) {
-		result = PTR_ERR(updater_dev->class);
-		eprintk(&pdev->dev, "class_create error %d\n", result);
-		goto class_create_error;
-	}
-
-	updater_dev->dev = device_create(updater_dev->class, &pdev->dev, updater_dev->devnum, NULL, SNOR_UPDATER_DEV_NAME);
-	if (IS_ERR(updater_dev->dev)) {
-		result = PTR_ERR(updater_dev->dev);
-		eprintk(&pdev->dev, "device_create error %d\n", result);
-		goto device_create_error;
-	}
-
-	updater_dev->pdev =  pdev;
-	mutex_init(&updater_dev->devMutex);
-	updater_dev->isOpened = 0;
-	updater_dev->waitQueue._condition = 0;
-
-	iprintk(updater_dev->dev, "Successfully registered\n");
 	return ret;
 
-
-device_create_error:
-	class_destroy(updater_dev->class);
-
-class_create_error:
-	cdev_del(&updater_dev->cdev);
-
-cdev_add_error:
-	unregister_chrdev_region(updater_dev->devnum, 1);
-
-	return result;
 }
+
 
 static int snor_updater_remove(struct platform_device * pdev)
 {
 	struct snor_updater_device *updater_dev = platform_get_drvdata(pdev);
-
-	device_destroy(updater_dev->class, updater_dev->devnum);
-	class_destroy(updater_dev->class);
-	cdev_del(&updater_dev->cdev);
-	unregister_chrdev_region(updater_dev->devnum, 1);
-	
+	if(updater_dev != NULL)
+	{
+		device_destroy(updater_dev->class, updater_dev->devnum);
+		class_destroy(updater_dev->class);
+		cdev_del(&updater_dev->cdev);
+		unregister_chrdev_region(updater_dev->devnum, 1);
+	}
 	return 0;
 }
 

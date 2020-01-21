@@ -15,17 +15,17 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __TCC_IPC_CTL_H__
-#define __TCC_IPC_CTL_H__
+#ifndef TCC_IPC_CTL_H
+#define TCC_IPC_CTL_H
 
-#define IPC_O_BLOCK 	0x0001
+#define IPC_O_BLOCK 	(0x0001)
 
-#define REQUEST_OPEN_TIMEOUT	100	//ms
-#define MAX_READ_TIMEOUT	50	//ms
+#define REQUEST_OPEN_TIMEOUT	(100)	//ms
+#define MAX_READ_TIMEOUT		(50)	//ms
 
 void ipc_flush(struct ipc_device *ipc_dev);
 void ipc_struct_init(struct ipc_device *ipc_dev);
-int ipc_set_buffer(struct ipc_device *ipc_dev);
+IPC_INT32 ipc_set_buffer(struct ipc_device *ipc_dev);
 void ipc_clear_buffer(struct ipc_device *ipc_dev);
 void receive_message(struct mbox_client *client, void *message);
 IPC_INT32 ipc_workqueue_initialize(struct ipc_device *ipc_dev);

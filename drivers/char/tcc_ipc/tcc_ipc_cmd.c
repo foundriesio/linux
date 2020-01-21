@@ -27,21 +27,14 @@
 #include "tcc_ipc_mbox.h"
 #include "tcc_ipc_cmd.h"
 
-extern int ipc_verbose_mode;
-
-#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define dprintk(dev, msg, ...)	do { if(ipc_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
-
-#define MBOX_TIMEOUT		100	//ms
-#define ACK_TIMEOUT			500	//ms
+#define MBOX_TIMEOUT		(100)	//ms
+#define ACK_TIMEOUT			(500)	//ms
 
 IPC_UINT32 get_sequential_ID(struct ipc_device *ipc_dev)
 {
 	spin_lock(&ipc_dev->ipc_handler.spinLock);
 	ipc_dev->ipc_handler.seqID++;
-	if(ipc_dev->ipc_handler.seqID == 0xFFFFFFFF)
+	if(ipc_dev->ipc_handler.seqID == 0xFFFFFFFFU)
 	{
 		ipc_dev->ipc_handler.seqID = 1;
 	}
@@ -56,7 +49,7 @@ IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev)
 	struct tcc_mbox_data sendMsg;
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
-	sendMsg.cmd[1] = (CTL_CMD<<16)|(IPC_OPEN);
+	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_OPEN);
 	sendMsg.cmd[2] = 0;
 	sendMsg.cmd[3] = 0;
 	sendMsg.cmd[4] = 0;
@@ -77,7 +70,7 @@ IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev)
 	struct tcc_mbox_data sendMsg;
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
-	sendMsg.cmd[1] = (CTL_CMD<<16)|(IPC_CLOSE);
+	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_CLOSE);
 	sendMsg.cmd[2] = 0;
 	sendMsg.cmd[3] = 0;
 	sendMsg.cmd[4] = 0;
@@ -90,26 +83,26 @@ IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev)
 	return ret;
 }
 
-IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev, IPC_CHAR *data, IPC_UINT32 size)
+IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev, IPC_CHAR *ipc_data, IPC_UINT32 size)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
-	if((size <= IPC_TXBUFFER_SIZE)&&(data != NULL))
+	if((size <= IPC_TXBUFFER_SIZE)&&(ipc_data != NULL))
 	{
 		sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
-		sendMsg.cmd[1] = (WRITE_CMD<<16)|(IPC_WRITE);
+		sendMsg.cmd[1] = ((IPC_UINT32)WRITE_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_WRITE);
 		sendMsg.cmd[2] = size;	
 		sendMsg.cmd[3] = 0;
 		sendMsg.cmd[4] = 0;
 		sendMsg.cmd[5] = 0;
 		sendMsg.cmd[6] = 0;
 
-		memcpy(&sendMsg.data ,data, (unsigned long)size);
-		sendMsg.data_len = (size+3)/4;
+		memcpy((void *)&sendMsg.data ,(const void *)ipc_data, (size_t)size);
+		sendMsg.data_len = ((size + 3U)/4U);
 		ipc_cmd_wake_preset(ipc_dev, WRITE_CMD, sendMsg.cmd[0]);
 		ret = ipc_mailbox_send(ipc_dev, &sendMsg);
-		if(ret == IPC_SUCCESS)
+		if(ret == (IPC_INT32)IPC_SUCCESS)
 		{
 			ret = ipc_cmd_wait_event_timeout(ipc_dev, WRITE_CMD, sendMsg.cmd[0],ACK_TIMEOUT);
 			if(ret != IPC_SUCCESS)
@@ -133,7 +126,7 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 	struct tcc_mbox_data sendMsg;
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
-	sendMsg.cmd[1] = (CTL_CMD<<16)|(IPC_SEND_PING);
+	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16U)|((IPC_UINT32)IPC_SEND_PING);
 	sendMsg.cmd[2] = 0;
 	sendMsg.cmd[3] = 0;
 	sendMsg.cmd[4] = 0;
@@ -144,7 +137,7 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 
 	ipc_cmd_wake_preset(ipc_dev, CTL_CMD, sendMsg.cmd[0]);
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
-	if(ret == IPC_SUCCESS)
+	if(ret == (IPC_INT32)IPC_SUCCESS)
 	{
 		ret = ipc_cmd_wait_event_timeout(ipc_dev, CTL_CMD, sendMsg.cmd[0],ACK_TIMEOUT);
 		if(ret != IPC_SUCCESS)
@@ -163,7 +156,7 @@ IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev, IPC_UINT32 seqID, IpcCmdType 
 	struct tcc_mbox_data sendMsg;
 
 	sendMsg.cmd[0] = seqID;
-	sendMsg.cmd[1] = (cmdType<<16)|(IPC_ACK);
+	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)|((IPC_UINT32)IPC_ACK);
 	sendMsg.cmd[2] = sourcCmd;
 	sendMsg.cmd[3] = 0;
 	sendMsg.cmd[4] = 0;

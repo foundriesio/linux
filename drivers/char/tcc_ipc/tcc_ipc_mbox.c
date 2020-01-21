@@ -28,23 +28,16 @@
 #include "tcc_ipc_os.h"
 #include "tcc_ipc_mbox.h"
 
-extern int ipc_verbose_mode;
-
-#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
-#define dprintk(dev, msg, ...)	do { if(ipc_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
-
 static void tcc_msg_sent(struct mbox_client *client, void *message, int r);
 
 IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ipc_msg)
 {
-	IPC_INT32 ret = IPC_ERR_NOTREADY;
+	IPC_INT32 ret;
 
 	if((ipc_dev !=NULL)&&(ipc_msg!=NULL))
 	{
-		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
-		int i;
+		IpcHandler *ipc_handle = &ipc_dev->ipc_handler;
+		IPC_INT32 i;
 		dprintk(ipc_dev->dev,"ipc_msg(0x%p)\n",(void *)ipc_msg);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
@@ -52,53 +45,67 @@ IPC_INT32 ipc_mailbox_send(struct ipc_device *ipc_dev, struct tcc_mbox_data * ip
 		}
 		dprintk(ipc_dev->dev,"data size(%d)\n", ipc_msg->data_len);
 
-		mutex_lock(&ipc_handler->mboxMutex);
+		mutex_lock(&ipc_handle->mboxMutex);
 		(void)mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
 		mbox_client_txdone(ipc_dev->mbox_ch,0);
-		mutex_unlock(&ipc_handler->mboxMutex);
+		mutex_unlock(&ipc_handle->mboxMutex);
 		ret = IPC_SUCCESS;
 	}
 	else
 	{
-		eprintk(ipc_dev->dev, "Invalid Arguements\n");
+		printk(KERN_ERR "[ERROR][%s]%s: Invalid Arguements\n", (const IPC_CHAR *)LOG_TAG, __FUNCTION__);
 		ret = IPC_ERR_ARGUMENT;
 	}
 
 	return ret;
 }
 
-struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const char *name, ipc_mbox_receive handler)
+struct mbox_chan *ipc_request_channel(struct platform_device *pdev, const IPC_CHAR *name, ipc_mbox_receive handler)
 {
 	struct mbox_client *client;
-	struct mbox_chan *channel;
+	struct mbox_chan *channel = NULL;
 
-	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
-	if (!client)
-		return ERR_PTR(-ENOMEM);
+	if((pdev != NULL)&&(name != NULL)&&(handler != NULL))
+	{
+		client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
+		if (!client)
+		{
+			channel = ERR_PTR(-ENOMEM);
+		}
+		else
+		{
 
-	client->dev = &pdev->dev;
-	client->rx_callback = handler;
-	client->tx_done = tcc_msg_sent;
-	client->tx_block = false;
-	client->knows_txdone = false;
-	client->tx_tout = 10;
+			client->dev = &pdev->dev;
+			client->rx_callback = handler;
+			client->tx_done = &tcc_msg_sent;
+			client->tx_block = (bool)false;
+			client->knows_txdone = (bool)false;
+			client->tx_tout = 10;
 
-	channel = mbox_request_channel_byname(client, name);
-	if (IS_ERR(channel)) {
-		eprintk(&pdev->dev, "Failed to request %s channel\n", name);
-		return NULL;
+			channel = mbox_request_channel_byname(client, name);
+			if (IS_ERR(channel)) {
+				eprintk(&pdev->dev, "Failed to request %s channel\n", name);
+				channel = ERR_PTR(-EINVAL);
+			}
+		}
 	}
-
+	else
+	{
+		channel = ERR_PTR(-EINVAL);
+	}
 	return channel;
 }
 
 static void tcc_msg_sent(struct mbox_client *client, void *message, int r)
 {
-	if (r)
-		eprintk(client->dev, "Message could not be sent: %d\n", r);
-	else {
-		dprintk(client->dev, "Message sent\n");
+	if(client != NULL)
+	{
+		if (r != 0)
+			eprintk(client->dev, "Message could not be sent: %d\n", r);
+		else {
+			dprintk(client->dev, "Message sent\n");
+		}
+
+		(void)message;
 	}
 }
-
-

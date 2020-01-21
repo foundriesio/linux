@@ -18,9 +18,9 @@
 #ifndef TCC_SNOR_UPDATER_TYPEDEF_H
 #define TCC_SNOR_UPDATER_TYPEDEF_H
 
-#define LOG_TAG "SNOR_UPDATE_DRV"
+#define LOG_TAG ("SNOR_UPDATE_DRV")
 
-#define MAX_FW_BUF_SIZE		256
+#define MAX_FW_BUF_SIZE		(256)
 
 #define SNOR_UPDATER_SUCCESS					(0)		/* Success */
 #define SNOR_UPDATER_ERR_COMMON					(-1)		/* common error*/
@@ -69,5 +69,14 @@ struct snor_updater_device
 	struct mutex devMutex;			/* common mutex*/
 	snor_updater_wait_queue waitQueue;
  };
+
+typedef char update_char;
+
+extern int updater_verbose_mode;
+
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), (const update_char *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), (const update_char *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const update_char *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode == 1) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const update_char *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 #endif

@@ -15,18 +15,18 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __TCC_IPC_TYPE_DEF_H__
-#define __TCC_IPC_TYPE_DEF_H__
+#ifndef TCC_IPC_TYPE_DEF_H
+#define TCC_IPC_TYPE_DEF_H
 
 #ifndef NULL
 #define NULL	(0)
 #endif
 
-#define LOG_TAG    "TCC_IPC"
+#define LOG_TAG    ("TCC_IPC")
 
-#define IPC_RXBUFFER_SIZE	512 * 1024
-#define IPC_TXBUFFER_SIZE   	512
-#define IPC_MAX_WRITE_SIZE   	4 * 1024
+#define IPC_RXBUFFER_SIZE		(512U * 1024)
+#define IPC_TXBUFFER_SIZE   	(512U)
+#define IPC_MAX_WRITE_SIZE   	(4096U)
 
 #define Hw37		(1LL << 37)
 #define Hw36		(1LL << 36)
@@ -34,39 +34,39 @@
 #define Hw34		(1LL << 34)
 #define Hw33		(1LL << 33)
 #define Hw32		(1LL << 32)
-#define Hw31		0x80000000
-#define Hw30		0x40000000
-#define Hw29		0x20000000
-#define Hw28		0x10000000
-#define Hw27		0x08000000
-#define Hw26		0x04000000
-#define Hw25		0x02000000
-#define Hw24		0x01000000
-#define Hw23		0x00800000
-#define Hw22		0x00400000
-#define Hw21		0x00200000
-#define Hw20		0x00100000
-#define Hw19		0x00080000
-#define Hw18		0x00040000
-#define Hw17		0x00020000
-#define Hw16		0x00010000
-#define Hw15		0x00008000
-#define Hw14		0x00004000
-#define Hw13		0x00002000
-#define Hw12		0x00001000
-#define Hw11		0x00000800
-#define Hw10		0x00000400
-#define Hw9		0x00000200
-#define Hw8		0x00000100
-#define Hw7		0x00000080
-#define Hw6		0x00000040
-#define Hw5		0x00000020
-#define Hw4		0x00000010
-#define Hw3		0x00000008
-#define Hw2		0x00000004
-#define Hw1		0x00000002
-#define Hw0		0x00000001
-#define HwZERO	0x00000000
+#define Hw31		(0x80000000U)
+#define Hw30		(0x40000000U)
+#define Hw29		(0x20000000U)
+#define Hw28		(0x10000000U)
+#define Hw27		(0x08000000U)
+#define Hw26		(0x04000000U)
+#define Hw25		(0x02000000U)
+#define Hw24		(0x01000000U)
+#define Hw23		(0x00800000U)
+#define Hw22		(0x00400000U)
+#define Hw21		(0x00200000U)
+#define Hw20		(0x00100000U)
+#define Hw19		(0x00080000U)
+#define Hw18		(0x00040000U)
+#define Hw17		(0x00020000U)
+#define Hw16		(0x00010000U)
+#define Hw15		(0x00008000U)
+#define Hw14		(0x00004000U)
+#define Hw13		(0x00002000U)
+#define Hw12		(0x00001000U)
+#define Hw11		(0x00000800U)
+#define Hw10		(0x00000400U)
+#define Hw9			(0x00000200U)
+#define Hw8			(0x00000100U)
+#define Hw7			(0x00000080U)
+#define Hw6			(0x00000040U)
+#define Hw5			(0x00000020U)
+#define Hw4			(0x00000010U)
+#define Hw3			(0x00000008U)
+#define Hw2			(0x00000004U)
+#define Hw1			(0x00000002U)
+#define Hw0			(0x00000001U)
+#define HwZERO		(0x00000000U)
 
 #ifndef	BITSET
 #define BITSET(X, MASK)				((X) |= (unsigned int)(MASK))
@@ -85,7 +85,7 @@
 #define IPC_ERR_COMMON				(-1)		/* common error*/
 #define IPC_ERR_BUSY				(-2)		/* IPC is busy. You got the return, After a while you should try.*/
 #define IPC_ERR_NOTREADY			(-3)		/* IPC is not ready. Other processor is not ready yet.*/
-#define IPC_ERR_TIMEOUT			(-4)		/* Other process is not responding. */
+#define IPC_ERR_TIMEOUT				(-4)		/* Other process is not responding. */
 #define IPC_ERR_WRITE				(-5)
 #define IPC_ERR_READ				(-6)
 #define IPC_ERR_BUFFER				(-7)
@@ -97,23 +97,26 @@ typedef		char				IPC_CHAR;                      /*  8-bit character : char						
 typedef		unsigned char		IPC_UCHAR;                      /*  8-bit unsigned character : unsigned char		*/
 typedef  	unsigned char		IPC_BOOLEAN;			/*  8-bit boolean or logical : unsigned  char		*/
 typedef  	unsigned char		IPC_UINT8;				/*  8-bit unsigned integer : unsigned  char			*/
-typedef		signed char		IPC_INT8;                   	/*  8-bit   signed integer : signed  char			*/
-typedef		unsigned short	IPC_UINT16;                   	/* 16-bit unsigned integer : unsigned  short		*/
+typedef		signed char			IPC_INT8;                   	/*  8-bit   signed integer : signed  char			*/
+typedef		unsigned short		IPC_UINT16;                   	/* 16-bit unsigned integer : unsigned  short		*/
 typedef		signed short		IPC_INT16;                   	/* 16-bit   signed integer : signed  short			*/
 typedef		unsigned int		IPC_UINT32;			/* 32-bit unsigned integer : unsigned  int			*/
 typedef		signed int			IPC_INT32;				/* 32-bit   signed integer : signed  int				*/
-typedef 		unsigned long  	IPC_UINT64;                      /* 64-bit unsigned integer                              */
-typedef    	signed long  		IPC_INT64;                      /* 64-bit   signed integer      					*/
+typedef 	unsigned long long  IPC_UINT64;                      /* 64-bit unsigned integer                              */
+typedef    	signed long long  	IPC_INT64;                      /* 64-bit   signed integer      					*/
+typedef		unsigned long		IPC_ULONG;			/*unsigned long			*/
+typedef		signed long			IPC_LONG;				/*signed long */
+
 
 typedef enum {
-	CTL_CMD =0x0000,
+	CTL_CMD = 0,
 	WRITE_CMD,
 	MAX_CMD_TYPE,
 }IpcCmdType;
 
 typedef enum {
 	/* control command */
-	IPC_OPEN = 0x0001,
+	IPC_OPEN = 0x0001U,
 	IPC_CLOSE,
 	IPC_SEND_PING,
 	IPC_WRITE,
@@ -122,14 +125,14 @@ typedef enum {
 }IpcCmdID;
 
 typedef enum {
-	IPC_NULL =0,
+	IPC_NULL = 0U,
 	IPC_INIT,
 	IPC_READY,			/*Buffer setting completed*/
 	IPC_MAX_STATUS,
 } IpcStatus;
 
 typedef enum {
-	IPC_BUF_NULL =0,
+	IPC_BUF_NULL = 0U,
 	IPC_BUF_READY,
 	IPC_BUF_BUSY,
 	IPC_BUF_MAX_STATUS,
@@ -216,12 +219,19 @@ struct ipc_device
 	struct cdev cdev;
 	struct class *class;
 	dev_t devnum;
-	const char *name;
-	const char *mbox_name;
+	const IPC_CHAR *name;
+	const IPC_CHAR *mbox_name;
 	struct mbox_chan *mbox_ch;
 	IpcHandler 	ipc_handler;
-	int ipc_available;
+	IPC_INT32 ipc_available;
  };
+
+extern IPC_INT32 ipc_verbose_mode;
+
+#define eprintk(dev, msg, ...)	((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
+#define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
+#define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__))
+#define dprintk(dev, msg, ...)	{ if(ipc_verbose_mode == (IPC_INT32)1) { (void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), (const IPC_CHAR *)LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } }
 
 
 #endif /* __TCC_IPC_TYPE_DEF_H__ */

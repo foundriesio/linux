@@ -15,13 +15,13 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef __TCC_IPC_BUFFER_H__
-#define __TCC_IPC_BUFFER_H__
+#ifndef TCC_IPC_BUFFER_H
+#define TCC_IPC_BUFFER_H
 
-#define	IPC_BUFFER_ERROR		(-1)
+#define	IPC_BUFFER_ERROR	(-1)
 #define	IPC_BUFFER_FULL		(-2)
-#define	IPC_BUFFER_EMPTY		(-3)
-#define	IPC_BUFFER_OK		0
+#define	IPC_BUFFER_EMPTY	(-3)
+#define	IPC_BUFFER_OK		(0)
 
 void	ipc_buffer_init(IPC_RINGBUF *pBufCtrl,IPC_UCHAR* buff,IPC_UINT32 size);
 IPC_INT32 ipc_push_one_byte(IPC_RINGBUF *pBufCtrl,IPC_UCHAR data);
@@ -33,8 +33,6 @@ IPC_INT32 ipc_buffer_data_available(const IPC_RINGBUF *pBufCtrl);
 IPC_INT32 ipc_buffer_free_space(const IPC_RINGBUF *pBufCtrl);
 void	ipc_buffer_set_head( IPC_RINGBUF *pBufCtrl, IPC_INT32 head);
 void	ipc_buffer_set_tail( IPC_RINGBUF *pBufCtrl, IPC_INT32 tail);
-IPC_UINT32 ipc_buffer_get_head(const IPC_RINGBUF *pBufCtrl);
-IPC_UINT32 ipc_buffer_get_tail(const IPC_RINGBUF *pBufCtrl);
 IPC_INT32 ipc_push_buffer(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size);
 IPC_INT32 ipc_push_buffer_overwrite(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size);
 IPC_INT32 ipc_pop_buffer(IPC_RINGBUF *pBufCtrl,IPC_UCHAR * buffer, IPC_UINT32 size);

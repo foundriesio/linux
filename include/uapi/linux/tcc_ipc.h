@@ -15,18 +15,18 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _UAPI_TCC_IPC_H
-#define _UAPI_TCC_IPC_H
+#ifndef UAPI_TCC_IPC_H
+#define UAPI_TCC_IPC_H
 
 #include <asm/ioctl.h>
 
-#define TCC_IPC_MAGIC 'I'
+#define TCC_IPC_MAGIC ('I')
 
-#define IOCTL_IPC_SET_PARAM	_IO(TCC_IPC_MAGIC ,1)
-#define IOCTL_IPC_GET_PARAM	_IO(TCC_IPC_MAGIC ,2)
-#define IOCTL_IPC_PING_TEST	_IO(TCC_IPC_MAGIC ,3)
-#define IOCTL_IPC_FLUSH			_IO(TCC_IPC_MAGIC ,4)
-#define IOCTL_IPC_ISREADY		_IO(TCC_IPC_MAGIC ,5)
+#define IOCTL_IPC_SET_PARAM		(_IO(TCC_IPC_MAGIC ,1))
+#define IOCTL_IPC_GET_PARAM		(_IO(TCC_IPC_MAGIC ,2))
+#define IOCTL_IPC_PING_TEST		(_IO(TCC_IPC_MAGIC ,3))
+#define IOCTL_IPC_FLUSH			(_IO(TCC_IPC_MAGIC ,4))
+#define IOCTL_IPC_ISREADY		(_IO(TCC_IPC_MAGIC ,5))
 
 typedef struct _tcc_ipc_ctl_param{
 	unsigned int vMin;			/* Timeout in deciseconds, when blocking mode*/
