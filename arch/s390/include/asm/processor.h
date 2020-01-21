@@ -161,6 +161,25 @@ struct thread_struct {
 
 typedef struct thread_struct thread_struct;
 
+/*
+ * Stack layout of a C stack frame.
+ */
+#ifndef __PACK_STACK
+struct stack_frame {
+	unsigned long back_chain;
+	unsigned long empty1[5];
+	unsigned long gprs[10];
+	unsigned int  empty2[8];
+};
+#else
+struct stack_frame {
+	unsigned long empty1[5];
+	unsigned int  empty2[8];
+	unsigned long gprs[10];
+	unsigned long back_chain;
+};
+#endif
+
 #define ARCH_MIN_TASKALIGN	8
 
 #define INIT_THREAD {							\
@@ -192,7 +211,11 @@ struct mm_struct;
 struct seq_file;
 struct pt_regs;
 
+typedef int (*dump_trace_func_t)(void *data, unsigned long address, int reliable);
+void dump_trace(dump_trace_func_t func, void *data,
+		struct task_struct *task, unsigned long sp);
 void show_registers(struct pt_regs *regs);
+
 void show_cacheinfo(struct seq_file *m);
 
 /* Free all resources held by a thread. */

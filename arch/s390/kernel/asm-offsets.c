@@ -13,7 +13,6 @@
 #include <asm/vdso.h>
 #include <asm/pgtable.h>
 #include <asm/gmap.h>
-#include <asm/stacktrace.h>
 
 /*
  * Make sure that the compiler is new enough. We want a compiler that

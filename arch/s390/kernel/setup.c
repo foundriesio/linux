@@ -65,7 +65,9 @@
 #include <asm/diag.h>
 #include <asm/os_info.h>
 #include <asm/sclp.h>
+#ifndef __GENKSYMS__
 #include <asm/stacktrace.h>
+#endif
 #include <asm/sysinfo.h>
 #include <asm/numa.h>
 #include <asm/alternative.h>
