@@ -162,8 +162,6 @@ int get_stack_info(unsigned long sp, struct task_struct *task,
 	if (!sp)
 		goto unknown;
 
-	task = task ? : current;
-
 	/* Check per-task stack */
 	if (in_task_stack(sp, task, info))
 		goto recursion_check;
@@ -197,8 +195,6 @@ static void show_trace(struct task_struct *task, unsigned long sp)
 	struct unwind_state state;
 
 	printk("Call Trace:\n");
-	if (!task)
-		task = current;
 	unwind_for_each_frame(&state, task, NULL, sp)
 		printk(state.reliable ? " [<%016lx>] %pSR \n" :
 					"([<%016lx>] %pSR)\n",
