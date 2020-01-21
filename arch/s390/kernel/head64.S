@@ -35,7 +35,7 @@ ENTRY(startup_continue)
 #
 	larl	%r14,init_task
 	stg	%r14,__LC_CURRENT
-	larl	%r15,init_thread_union+THREAD_SIZE-STACK_FRAME_OVERHEAD
+	larl	%r15,init_thread_union+THREAD_SIZE-STACK_FRAME_OVERHEAD-__PT_SIZE
 #
 # Save ipl parameters, clear bss memory, initialize storage key for kernel pages,
 # and create a kernel NSS if the SAVESYS= parm is defined
