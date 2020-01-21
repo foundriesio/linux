@@ -952,7 +952,7 @@ static int goodix_ts_probe(struct i2c_client *client,
 		panel = of_find_mipi_dsi_device_by_node(np);
 		of_node_put(np);
 		if (!panel)
-			return -ENOENT;
+			return -EPROBE_DEFER;
 		device_link_add(&client->dev, &panel->dev, DL_FLAG_STATELESS |
 				DL_FLAG_AUTOREMOVE_SUPPLIER);
 		put_device(&panel->dev);
