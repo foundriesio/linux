@@ -343,7 +343,7 @@ void enabled_wait(void);
 /*
  * Function to drop a processor into disabled wait state
  */
-static inline void __noreturn disabled_wait(unsigned long code)
+static __always_inline void __noreturn disabled_wait(unsigned long code)
 {
 	psw_t psw;
 
