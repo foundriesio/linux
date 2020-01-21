@@ -52,6 +52,7 @@
 #include <asm/sigp.h>
 #include <asm/idle.h>
 #include <asm/nmi.h>
+#include <asm/stacktrace.h>
 #include "entry.h"
 
 enum {
