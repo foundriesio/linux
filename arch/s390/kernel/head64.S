@@ -13,6 +13,7 @@
 #include <asm/asm-offsets.h>
 #include <asm/thread_info.h>
 #include <asm/page.h>
+#include <asm/ptrace.h>
 
 __HEAD
 ENTRY(startup_continue)
@@ -34,10 +35,9 @@ ENTRY(startup_continue)
 #
 	larl	%r14,init_task
 	stg	%r14,__LC_CURRENT
-	larl	%r15,init_thread_union
-	aghi	%r15,1<<(PAGE_SHIFT+THREAD_SIZE_ORDER) # init_task_union + THREAD_SIZE
+	larl	%r15,init_thread_union+THREAD_SIZE
 	stg	%r15,__LC_KERNEL_STACK	# set end of kernel stack
-	aghi	%r15,-160
+	aghi	%r15,-STACK_FRAME_OVERHEAD
 #
 # Save ipl parameters, clear bss memory, initialize storage key for kernel pages,
 # and create a kernel NSS if the SAVESYS= parm is defined

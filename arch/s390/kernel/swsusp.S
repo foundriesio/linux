@@ -196,8 +196,7 @@ pgm_check_entry:
 	brc	2,3b				/* busy, try again */
 
 	/* Suspend CPU not available -> panic */
-	larl	%r15,init_thread_union
-	ahi	%r15,1<<(PAGE_SHIFT+THREAD_SIZE_ORDER)
+	larl	%r15,init_thread_union+THREAD_SIZE-STACK_FRAME_OVERHEAD
 	larl	%r2,.Lpanic_string
 	lghi	%r1,0
 	sam31
