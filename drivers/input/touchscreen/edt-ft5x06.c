@@ -1180,6 +1180,18 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 	if (error)
 		return error;
 
+	np = of_parse_phandle(client->dev.of_node, "panel", 0);
+	if (np) {
+		panel = of_find_mipi_dsi_device_by_node(np);
+		of_node_put(np);
+		if (!panel)
+			return -EPROBE_DEFER;
+
+		device_link_add(&client->dev, &panel->dev, DL_FLAG_STATELESS |
+				DL_FLAG_AUTOREMOVE_SUPPLIER);
+		put_device(&panel->dev);
+	}
+
 	edt_ft5x06_ts_prepare_debugfs(tsdata, dev_driver_string(&client->dev));
 	device_init_wakeup(&client->dev, 1);
 
@@ -1188,18 +1200,6 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 		client->irq,
 		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1,
 		tsdata->reset_gpio ? desc_to_gpio(tsdata->reset_gpio) : -1);
-
-	np = of_parse_phandle(client->dev.of_node, "panel", 0);
-	if (np) {
-		panel = of_find_mipi_dsi_device_by_node(np);
-		of_node_put(np);
-		if (!panel)
-			return -ENOENT;
-
-		device_link_add(&client->dev, &panel->dev, DL_FLAG_STATELESS |
-				DL_FLAG_AUTOREMOVE_SUPPLIER);
-		put_device(&panel->dev);
-	}
 
 	return 0;
 }
