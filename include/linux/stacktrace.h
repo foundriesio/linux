@@ -21,6 +21,30 @@ unsigned int stack_trace_save_regs(struct pt_regs *regs, unsigned long *store,
 				   unsigned int size, unsigned int skipnr);
 unsigned int stack_trace_save_user(unsigned long *store, unsigned int size);
 
+struct stack_trace {
+	unsigned int nr_entries, max_entries;
+	unsigned long *entries;
+	int skip;	/* input argument: How many entries to skip */
+};
+
+extern void save_stack_trace(struct stack_trace *trace);
+extern void save_stack_trace_regs(struct pt_regs *regs,
+				  struct stack_trace *trace);
+extern void save_stack_trace_tsk(struct task_struct *tsk,
+				struct stack_trace *trace);
+extern int save_stack_trace_tsk_reliable(struct task_struct *tsk,
+					 struct stack_trace *trace);
+
+extern void print_stack_trace(struct stack_trace *trace, int spaces);
+extern int snprint_stack_trace(char *buf, size_t size,
+			struct stack_trace *trace, int spaces);
+
+#ifdef CONFIG_USER_STACKTRACE_SUPPORT
+extern void save_stack_trace_user(struct stack_trace *trace);
+#else
+# define save_stack_trace_user(trace)              do { } while (0)
+#endif
+
 /* Internal interfaces. Do not use in generic code */
 #ifdef CONFIG_ARCH_STACKWALK
 
@@ -58,31 +82,6 @@ int arch_stack_walk_reliable(stack_trace_consume_fn consume_entry, void *cookie,
 			     struct task_struct *task);
 void arch_stack_walk_user(stack_trace_consume_fn consume_entry, void *cookie,
 			  const struct pt_regs *regs);
-
-#else /* CONFIG_ARCH_STACKWALK */
-struct stack_trace {
-	unsigned int nr_entries, max_entries;
-	unsigned long *entries;
-	int skip;	/* input argument: How many entries to skip */
-};
-
-extern void save_stack_trace(struct stack_trace *trace);
-extern void save_stack_trace_regs(struct pt_regs *regs,
-				  struct stack_trace *trace);
-extern void save_stack_trace_tsk(struct task_struct *tsk,
-				struct stack_trace *trace);
-extern int save_stack_trace_tsk_reliable(struct task_struct *tsk,
-					 struct stack_trace *trace);
-
-extern void print_stack_trace(struct stack_trace *trace, int spaces);
-extern int snprint_stack_trace(char *buf, size_t size,
-			struct stack_trace *trace, int spaces);
-
-#ifdef CONFIG_USER_STACKTRACE_SUPPORT
-extern void save_stack_trace_user(struct stack_trace *trace);
-#else
-# define save_stack_trace_user(trace)              do { } while (0)
-#endif
 
 #endif /* !CONFIG_ARCH_STACKWALK */
 
