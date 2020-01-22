@@ -1995,7 +1995,8 @@ static int tcc_gmac_start_xmit_ch(struct sk_buff *skb, struct net_device *dev, u
 	return NETDEV_TX_OK;
 }
 
-u16 tcc_gmac_select_queue(struct net_device *dev, struct sk_buff *skb)
+u16 tcc_gmac_select_queue(struct net_device *dev, struct sk_buff *skb,
+		void *accel_priv, select_queue_fallback_t fallback)
 {
 #ifdef CONFIG_TCC_GMAC_FQTSS_SUPPORT
 	struct tcc_gmac_priv *priv = netdev_priv(dev);

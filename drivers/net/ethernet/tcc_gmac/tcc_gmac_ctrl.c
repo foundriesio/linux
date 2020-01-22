@@ -1380,7 +1380,7 @@ static int tcc_gmac_ptp_update_system_time(void __iomem *ioaddr,
 	return 0;
 }
 
-static int tcc_gmac_get_system_time(void __iomem *ioaddr, struct timespec *time)
+static int tcc_gmac_get_system_time(void __iomem *ioaddr, struct timespec64 *time)
 {
 	time->tv_sec = readl(ioaddr + GMAC_SYSTIME_SECONDS);
 	time->tv_nsec = readl(ioaddr + GMAC_SYSTIME_NANO_SECONDS);
