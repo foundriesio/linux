@@ -20,6 +20,8 @@
 #include "drm/drm_crtc_helper.h"
 #include "drm/drm_fourcc.h"
 #include "drm/drm_probe_helper.h"
+#include "drm/drm_drv.h"
+#include "drm/drm_vblank.h"
 #include "linux/clk.h"
 #include "linux/debugfs.h"
 #include "drm/drm_fb_cma_helper.h"
