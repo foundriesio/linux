@@ -297,7 +297,7 @@ struct tcc_gmac_ptp_ops {
 	void (*pps0_trig_disable)(void __iomem *ioaddr);
 	int (*update_system_time)(void __iomem *ioaddr, u32 sec, u32 nsec, bool addsub);
 	int (*set_system_time)(void __iomem *ioaddr, u32 sec, u32 nsec);
-	int (*get_system_time)(void __iomem *ioaddr, struct timespec *time);
+	int (*get_system_time)(void __iomem *ioaddr, struct timespec64 *time);
 	int (*snapshot_mode)(void __iomem *ioaddr, u32 rx_filter);
 };
 

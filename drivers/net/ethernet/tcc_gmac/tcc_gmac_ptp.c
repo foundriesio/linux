@@ -66,12 +66,12 @@ static int tcc_gmac_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
 	return g_ptp_ops->update_system_time(g_base_addr, ts.tv_sec, ts.tv_nsec, addsub);
 }
 
-static int tcc_gmac_ptp_gettime(struct ptp_clock_info *ptp, struct timespec *ts)
+static int tcc_gmac_ptp_gettime(struct ptp_clock_info *ptp, struct timespec64 *ts)
 {
 	return  g_ptp_ops->get_system_time(g_base_addr, ts);
 }
 
-static int tcc_gmac_ptp_settime(struct ptp_clock_info *ptp, const struct timespec *ts)
+static int tcc_gmac_ptp_settime(struct ptp_clock_info *ptp, const struct timespec64 *ts)
 {
 	return g_ptp_ops->set_system_time(g_base_addr, (u32)ts->tv_sec, (u32)ts->tv_sec);
 }
