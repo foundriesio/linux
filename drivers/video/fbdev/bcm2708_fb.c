@@ -1129,7 +1129,7 @@ static int bcm2708_fb_probe(struct platform_device *dev)
 
 	mutex_init(&fbdev->dma_mutex);
 
-	fbdev->cb_base = dma_alloc_writecombine(&dev->dev, SZ_64K,
+	fbdev->cb_base = dma_alloc_wc(&dev->dev, SZ_64K,
 						&fbdev->cb_handle,
 						GFP_KERNEL);
 	if (!fbdev->cb_base) {
@@ -1208,7 +1208,7 @@ static int bcm2708_fb_probe(struct platform_device *dev)
 free_dma_chan:
 	bcm_dma_chan_free(fbdev->dma_chan);
 free_cb:
-	dma_free_writecombine(&dev->dev, SZ_64K, fbdev->cb_base,
+	dma_free_wc(&dev->dev, SZ_64K, fbdev->cb_base,
 			      fbdev->cb_handle);
 free_fb:
 	dev_err(&dev->dev, "probe failed, err %d\n", ret);
@@ -1233,7 +1233,7 @@ static int bcm2708_fb_remove(struct platform_device *dev)
 		}
 	}
 
-	dma_free_writecombine(&dev->dev, SZ_64K, fbdev->cb_base,
+	dma_free_wc(&dev->dev, SZ_64K, fbdev->cb_base,
 			      fbdev->cb_handle);
 	bcm_dma_chan_free(fbdev->dma_chan);
 	free_irq(fbdev->dma_irq, fbdev);
