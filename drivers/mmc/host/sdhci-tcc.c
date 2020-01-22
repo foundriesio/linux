@@ -1119,7 +1119,7 @@ static int sdhci_tcc_tap_dly_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
-static int sdhci_tcc_tap_dly_store(struct file *file,
+static ssize_t sdhci_tcc_tap_dly_store(struct file *file,
 					const char __user *ubuf, size_t count, loff_t *ppos)
 {
 	struct seq_file *sf = file->private_data;
@@ -1159,7 +1159,7 @@ static int sdhci_tcc_clk_dly_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
-static int sdhci_tcc_clk_dly_store(struct file *file,
+static ssize_t sdhci_tcc_clk_dly_store(struct file *file,
 					const char __user *ubuf, size_t count, loff_t *ppos)
 {
 	struct seq_file *sf = file->private_data;
