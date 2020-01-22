@@ -99,6 +99,7 @@ struct optee {
 	struct tee_shm_pool *pool;
 	void *memremaped_shm;
 	u32 sec_caps;
+	struct tee_ioctl_version_tcc *ver;
 };
 
 struct optee_session {
