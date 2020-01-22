@@ -99,8 +99,6 @@ struct optee {
 	struct tee_shm_pool *pool;
 	void *memremaped_shm;
 	u32 sec_caps;
-	struct tee_device *cas_teedev;
-	struct optee_supp cas;
 };
 
 struct optee_session {
@@ -152,10 +150,6 @@ int optee_supp_recv(struct tee_context *ctx, u32 *func, u32 *num_params,
 		    struct tee_param *param);
 int optee_supp_send(struct tee_context *ctx, u32 ret, u32 num_params,
 		    struct tee_param *param);
-
-u32 optee_cas_thrd_req(struct tee_context *ctx, void *data, size_t size);
-int optee_cas_recv(struct tee_context *ctx, void **data, size_t *size);
-int optee_cas_send(struct tee_context *ctx, void *data, size_t size);
 
 u32 optee_do_call_with_arg(struct tee_context *ctx, phys_addr_t parg);
 int optee_open_session(struct tee_context *ctx,

@@ -467,13 +467,6 @@ struct optee_msg_arg {
 #define OPTEE_MSG_RPC_CMD_BENCH_REG	20
 
 /*
- * Send a command to CAS App on REE.
- *
- * [in] 
- */
-#define OPTEE_MSG_RPC_CMD_CASCALL	253
-
-/*
  * Print TEE Log message at REE Kernel layer.
  */
 #define OPTEE_MSG_RPC_CMD_PRINT		254
