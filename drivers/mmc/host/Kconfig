@@ -657,7 +657,7 @@ config MMC_VIA_SDMMC
 
 config MMC_TCC_SDHC
 	bool "Telechips SD/MMC Host Controller Driver - Legacy"
-	depends on MMC && ARCH_TCC
+	depends on MMC && ARCH_TCC897X
 	help
 	  This selects the Telechips Multimedia card Interface.
 	  If you have an TCC board with a Multimedia Card slot,
