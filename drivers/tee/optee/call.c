@@ -370,7 +370,7 @@ int optee_cancel_req(struct tee_context *ctx, u32 cancel_id, u32 session)
 {
 	struct optee_context_data *ctxdata = ctx->data;
 	struct tee_shm *shm;
-	struct optee_msg_arg *msg_arg;
+	struct optee_msg_arg *msg_arg = NULL;
 	phys_addr_t msg_parg;
 	struct optee_session *sess;
 
@@ -501,7 +501,7 @@ int optee_shm_register(struct tee_context *ctx, struct tee_shm *shm,
 		       struct page **pages, size_t num_pages)
 {
 	struct tee_shm *shm_arg = NULL;
-	struct optee_msg_arg *msg_arg;
+	struct optee_msg_arg *msg_arg = NULL;
 	u64 *pages_array;
 	phys_addr_t msg_parg;
 	int rc = 0;
@@ -542,7 +542,7 @@ out:
 int optee_shm_unregister(struct tee_context *ctx, struct tee_shm *shm)
 {
 	struct tee_shm *shm_arg;
-	struct optee_msg_arg *msg_arg;
+	struct optee_msg_arg *msg_arg = NULL;
 	phys_addr_t msg_parg;
 	int rc = 0;
 

@@ -358,10 +358,9 @@ static bool optee_msg_api_uid_is_optee_api(optee_invoke_fn *invoke_fn)
 	return false;
 }
 
-static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn)
+static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn, struct tee_ioctl_version_tcc *ver)
 {
 	extern void tee_set_version(unsigned int cmd, struct tee_ioctl_version_tcc *ver);
-	struct tee_ioctl_version_tcc ver;
 	union {
 		struct arm_smccc_res smccc;
 		struct optee_smc_call_get_os_revision_result result;
@@ -380,17 +379,19 @@ static void optee_msg_get_os_revision(optee_invoke_fn *invoke_fn)
 	else
 		pr_info("revision %lu.%lu", res.result.major, res.result.minor);
 
-	ver.major = res.result.major;
-	ver.minor = res.result.minor;
-	ver.tcc_rev = res.result.reserved1;
+	if (ver) {
+		ver->major = res.result.major;
+		ver->minor = res.result.minor;
+		ver->tcc_rev = res.result.reserved1;
 
-	invoke_fn(OPTEE_SMC_CALL_GET_OS_BUILDDATE, 0, 0, 0, 0, 0, 0, 0,
-		  &res.smccc);
+		invoke_fn(OPTEE_SMC_CALL_GET_OS_BUILDDATE, 0, 0, 0, 0, 0, 0, 0,
+			  &res.smccc);
 
-	ver.date = res.result.major;
-	ver.date = (ver.date<< 24) | (res.result.minor & 0xFFFFFF);
+		ver->date = res.result.major;
+		ver->date = (ver->date<< 24) | (res.result.minor & 0xFFFFFF);
 
-	tee_set_version(TEE_IOC_OS_VERSION, &ver);
+		tee_set_version(TEE_IOC_OS_VERSION, ver);
+	}
 }
 
 static bool optee_msg_api_revision_is_compatible(optee_invoke_fn *invoke_fn)
@@ -572,6 +573,7 @@ static struct optee *optee_probe(struct device_node *np)
 	struct optee *optee = NULL;
 	void *memremaped_shm = NULL;
 	struct tee_device *teedev;
+	struct tee_ioctl_version_tcc *version = NULL;
 	u32 sec_caps;
 	int rc;
 
@@ -584,7 +586,8 @@ static struct optee *optee_probe(struct device_node *np)
 		return ERR_PTR(-EINVAL);
 	}
 
-	optee_msg_get_os_revision(invoke_fn);
+	version = kzalloc(sizeof(*version), GFP_KERNEL);
+	optee_msg_get_os_revision(invoke_fn, version);
 
 	if (!optee_msg_api_revision_is_compatible(invoke_fn)) {
 		pr_warn("api revision mismatch\n");
@@ -647,9 +650,16 @@ static struct optee *optee_probe(struct device_node *np)
 
 	optee_enable_shm_cache(optee);
 
+	optee->ver = version;
+
 	pr_info("initialized driver\n");
 	return optee;
 err:
+	if (version) {
+		kfree(version);
+		version = NULL;
+	}
+
 	if (optee) {
 		/*
 		 * tee_device_unregister() is safe to call even if the
