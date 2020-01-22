@@ -730,101 +730,6 @@ static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
 	return 0;
 }
 
-static int tee_ioctl_cas_recv(struct tee_context *ctx,
-			       struct tee_ioctl_buf_data __user *ubuf)
-{
-	int rc;
-	struct tee_ioctl_buf_data buf;
-	void *data;
-	size_t size;
-
-	if (!ctx->teedev->desc->ops->cas_recv) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	if (copy_from_user(&buf, ubuf, sizeof(buf))) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -EFAULT;
-	}
-
-	rc = ctx->teedev->desc->ops->cas_recv(ctx, &data, &size);
-	if (rc) {
-		printk("%s:%d\n", __func__, __LINE__);
-		goto out;
-	}
-
-	if (buf.buf_len < size) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -ENOMEM;
-	}
-
-	if (copy_to_user((void *)buf.buf_ptr, data, size)) {
-		printk("%s:%d\n", __func__, __LINE__);
-				return -EINVAL;
-	}
-
-	buf.buf_len = size;
-	if (copy_to_user(ubuf, &buf, sizeof(buf))) {
-		printk("%s:%d\n", __func__, __LINE__);
-				return -EINVAL;
-	}
-
-	if (rc) {
-		printk("%s:%d\n", __func__, __LINE__);
-		goto out;
-	}
-
-out:
-	return rc;
-}
-
-static int tee_ioctl_cas_send(struct tee_context *ctx,
-			       struct tee_ioctl_buf_data __user *ubuf)
-{
-	int rc;
-	struct tee_ioctl_buf_data buf;
-	void *data;
-	size_t size;
-
-	if (!ctx->teedev->desc->ops->cas_send) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	if (copy_from_user(&buf, ubuf, sizeof(buf))) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -EFAULT;
-	}
-
-	if (!buf.buf_len) {
-		printk("%s:%d\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	data = kmalloc(buf.buf_len, GFP_KERNEL);
-	if (!data) {
-		buf.buf_len = 0;
-		goto exit;
-	}
-
-	if (copy_from_user(data, (void *)buf.buf_ptr, buf.buf_len)) {
-		kfree(data);
-		data = NULL;
-		buf.buf_len = 0;
-	}
-
-exit:
-	rc = ctx->teedev->desc->ops->cas_send(ctx, data, buf.buf_len);
-	if (rc)
-		printk("%s:%d\n", __func__, __LINE__);
-
-	if (data)
-		kfree(data);
-out:
-	return rc;
-}
-
 static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct tee_context *ctx = filp->private_data;
@@ -857,10 +762,6 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case TEE_IOC_CLIENT_VERSION:
 	case TEE_IOC_CALIB_VERSION:
 		return tee_ioctl_user_version(cmd, ctx, uarg);
-	case TEE_IOC_CAS_RECV:
-		return tee_ioctl_cas_recv(ctx, uarg);
-	case TEE_IOC_CAS_SEND:
-		return tee_ioctl_cas_send(ctx, uarg);
 	default:
 		return -EINVAL;
 	}
@@ -982,8 +883,7 @@ struct tee_device *tee_device_alloc(const struct tee_desc *teedesc,
 	}
 
 	snprintf(teedev->name, sizeof(teedev->name), "tee%s%d",
-		 teedesc->flags & TEE_DESC_PRIVILEGED ? "priv" : 
-		 (teedesc->flags & TEE_DESC_CAS ? "cas" : ""),
+		 teedesc->flags & TEE_DESC_PRIVILEGED ? "priv" : "",
 		 teedev->id - offs);
 
 	teedev->dev.class = tee_class;

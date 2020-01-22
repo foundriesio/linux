@@ -253,20 +253,6 @@ static int optee_open(struct tee_context *ctx)
 			return -EBUSY;
 		}
 	}
-	else if (teedev == optee->cas_teedev) {
-		bool busy = true;
-
-		mutex_lock(&optee->cas.mutex);
-		if (!optee->cas.ctx) {
-			busy = false;
-			optee->cas.ctx = ctx;
-		}
-		mutex_unlock(&optee->cas.mutex);
-		if (busy) {
-			kfree(ctxdata);
-			return -EBUSY;
-		}
-	}
 
 	mutex_init(&ctxdata->mutex);
 	INIT_LIST_HEAD(&ctxdata->sess_list);
@@ -323,8 +309,6 @@ static void optee_release(struct tee_context *ctx)
 
 	if (teedev == optee->supp_teedev)
 		optee_supp_release(&optee->supp);
-	else if (teedev == optee->cas_teedev)
-		optee_supp_release(&optee->cas);
 }
 
 static const struct tee_driver_ops optee_ops = {
@@ -360,21 +344,6 @@ static const struct tee_desc optee_supp_desc = {
 	.ops = &optee_supp_ops,
 	.owner = THIS_MODULE,
 	.flags = TEE_DESC_PRIVILEGED,
-};
-
-static const struct tee_driver_ops optee_cas_ops = {
-	.get_version = optee_get_version,
-	.open = optee_open,
-	.release = optee_release,
-	.cas_recv = optee_cas_recv,
-	.cas_send = optee_cas_send,
-};
-
-static const struct tee_desc optee_cas_desc = {
-	.name = DRIVER_NAME "-cas",
-	.ops = &optee_cas_ops,
-	.owner = THIS_MODULE,
-	.flags = TEE_DESC_CAS,
 };
 
 static bool optee_msg_api_uid_is_optee_api(optee_invoke_fn *invoke_fn)
@@ -661,14 +630,6 @@ static struct optee *optee_probe(struct device_node *np)
 	}
 	optee->supp_teedev = teedev;
 
-	teedev = tee_device_alloc(&optee_cas_desc, NULL, pool, optee);
-	if (IS_ERR(teedev)) {
-		rc = PTR_ERR(teedev);
-		goto err;
-	}
-	optee->cas_teedev = teedev;
-
-
 	rc = tee_device_register(optee->teedev);
 	if (rc)
 		goto err;
@@ -677,15 +638,10 @@ static struct optee *optee_probe(struct device_node *np)
 	if (rc)
 		goto err;
 
-	rc = tee_device_register(optee->cas_teedev);
-	if (rc)
-		goto err;
-
 	mutex_init(&optee->call_queue.mutex);
 	INIT_LIST_HEAD(&optee->call_queue.waiters);
 	optee_wait_queue_init(&optee->wait_queue);
 	optee_supp_init(&optee->supp);
-	optee_supp_init(&optee->cas);
 	optee->memremaped_shm = memremaped_shm;
 	optee->pool = pool;
 
@@ -700,7 +656,6 @@ err:
 		 * devices hasn't been registered with
 		 * tee_device_register() yet.
 		 */
-		tee_device_unregister(optee->cas_teedev);
 		tee_device_unregister(optee->supp_teedev);
 		tee_device_unregister(optee->teedev);
 		kfree(optee);
@@ -725,7 +680,6 @@ static void optee_remove(struct optee *optee)
 	 * The two devices has to be unregistered before we can free the
 	 * other resources.
 	 */
-	tee_device_unregister(optee->cas_teedev);
 	tee_device_unregister(optee->supp_teedev);
 	tee_device_unregister(optee->teedev);
 
@@ -733,7 +687,6 @@ static void optee_remove(struct optee *optee)
 	if (optee->memremaped_shm)
 		memunmap(optee->memremaped_shm);
 	optee_wait_queue_exit(&optee->wait_queue);
-	optee_supp_uninit(&optee->cas);
 	optee_supp_uninit(&optee->supp);
 	mutex_destroy(&optee->call_queue.mutex);
 

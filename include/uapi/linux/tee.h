@@ -446,18 +446,6 @@ struct tee_iocl_supp_send_arg {
 				     struct tee_ioctl_buf_data)
 
 /**
- * TEE_IOC_CAS_RECV/TEE_IOC_CAS_SEND - Receive a request for a cas function
- *
- * Takes a struct tee_ioctl_buf_data which contains a struct
- * tee_iocl_cas_recv_arg followed by any array of struct tee_param
- */
-#define TEE_IOC_CAS_RECV	_IOR(TEE_IOC_MAGIC, TEE_IOC_BASE + 14, \
-				     struct tee_ioctl_buf_data)
-
-#define TEE_IOC_CAS_SEND	_IOR(TEE_IOC_MAGIC, TEE_IOC_BASE + 15, \
-				     uint32_t)
-
-/**
  * struct tee_ioctl_shm_register_data - Shared memory register argument
  * @addr:      [in] Start address of shared memory to register
  * @length:    [in/out] Length of shared memory to register

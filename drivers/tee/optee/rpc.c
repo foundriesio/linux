@@ -436,31 +436,6 @@ bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 }
 
-static void handle_rpc_cas_cmd(struct tee_context *ctx,
-				struct optee_msg_arg *arg)
-{
-	struct tee_shm *shm;
-	void *vaddr;
-
-	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
-
-	if (arg->num_params != 1)
-		return;
-
-	if (!arg->params[0].u.tmem.size)
-		return;
-
-	shm = (struct tee_shm *)arg->params[0].u.tmem.shm_ref;
-	if (!shm)
-		return;
-
-	vaddr = tee_shm_get_va(shm, 0);
-	if (!vaddr)
-		return;
-
-	arg->ret = optee_cas_thrd_req(ctx, vaddr, arg->params[0].u.tmem.size);
-}
-
 static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 				struct tee_shm *shm,
 				struct optee_call_ctx *call_ctx)
@@ -492,9 +467,6 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		break;
 	case OPTEE_MSG_RPC_CMD_BENCH_REG:
 		handle_rpc_func_cmd_bm_reg(arg);
-		break;
-	case OPTEE_MSG_RPC_CMD_CASCALL:
-		handle_rpc_cas_cmd(ctx, arg);
 		break;
 	case OPTEE_MSG_RPC_CMD_PRINT:
 		handle_rpc_func_cmd_print(arg);
