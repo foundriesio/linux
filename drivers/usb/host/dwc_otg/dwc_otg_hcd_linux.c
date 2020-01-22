@@ -864,7 +864,7 @@ static int dwc_otg_urb_enqueue(struct usb_hcd *hcd,
 						   !(usb_pipein(urb->pipe))));
 
 	buf = urb->transfer_buffer;
-	if (hcd->self.uses_dma && !buf && urb->transfer_buffer_length) {
+	if (hcd_uses_dma(hcd) && !buf && urb->transfer_buffer_length) {
 		/*
 		 * Calculate virtual address from physical address,
 		 * because some class driver may not fill transfer_buffer.
