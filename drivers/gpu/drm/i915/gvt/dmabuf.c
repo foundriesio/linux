@@ -161,6 +161,7 @@ static struct drm_i915_gem_object *vgpu_create_gem(struct drm_device *dev,
 	drm_gem_private_object_init(dev, &obj->base,
 		info->size << PAGE_SHIFT);
 	i915_gem_object_init(obj, &intel_vgpu_gem_ops);
+	i915_gem_object_set_readonly(obj);
 
 	obj->read_domains = I915_GEM_DOMAIN_GTT;
 	obj->write_domain = 0;
