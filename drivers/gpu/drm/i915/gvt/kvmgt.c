@@ -48,6 +48,7 @@
 
 #include "i915_drv.h"
 #include "gvt.h"
+#include "mpt.h"
 
 static const struct intel_gvt_ops *intel_gvt_ops;
 
@@ -1786,6 +1787,29 @@ err_unlock:
 	mutex_unlock(&info->vgpu->vdev.cache_lock);
 	return ret;
 }
+
+int kvmgt_dma_pin_guest_page(unsigned long handle, dma_addr_t dma_addr)
+{
+	struct kvmgt_guest_info *info;
+	struct gvt_dma *entry;
+	int ret = 0;
+
+	if (!handle_valid(handle))
+		return -ENODEV;
+
+	info = (struct kvmgt_guest_info *)handle;
+
+	mutex_lock(&info->vgpu->vdev.cache_lock);
+	entry = __gvt_cache_find_dma_addr(info->vgpu, dma_addr);
+	if (entry)
+		kref_get(&entry->ref);
+	else
+		ret = -ENOMEM;
+	mutex_unlock(&info->vgpu->vdev.cache_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(kvmgt_dma_pin_guest_page);
 
 static void __gvt_dma_release(struct kref *ref)
 {
