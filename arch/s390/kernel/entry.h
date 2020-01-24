@@ -85,4 +85,7 @@ void verify_facilities(void);
 void gs_load_bc_cb(struct pt_regs *regs);
 void set_fs_fixup(void);
 
+unsigned long stack_alloc(void);
+void stack_free(unsigned long stack);
+
 #endif /* _ENTRY_H */
