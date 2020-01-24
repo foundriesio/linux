@@ -10,8 +10,10 @@
 #include <linux/stacktrace.h>
 #include <linux/kallsyms.h>
 #include <linux/export.h>
+#ifndef __GENKSYMS__
 #include <asm/stacktrace.h>
 #include <asm/unwind.h>
+#endif
 
 void save_stack_trace(struct stack_trace *trace)
 {
