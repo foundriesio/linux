@@ -14,6 +14,7 @@
 #include <asm/stacktrace.h>
 #include <asm/unwind.h>
 #endif
+#include <asm/kprobes.h>
 
 void arch_stack_walk(stack_trace_consume_fn consume_entry, void *cookie,
 		     struct task_struct *task, struct pt_regs *regs)
@@ -26,6 +27,48 @@ void arch_stack_walk(stack_trace_consume_fn consume_entry, void *cookie,
 		if (!addr || !consume_entry(cookie, addr, false))
 			break;
 	}
+}
+
+/*
+ * This function returns an error if it detects any unreliable features of the
+ * stack.  Otherwise it guarantees that the stack trace is reliable.
+ *
+ * If the task is not 'current', the caller *must* ensure the task is inactive.
+ */
+int arch_stack_walk_reliable(stack_trace_consume_fn consume_entry,
+			     void *cookie, struct task_struct *task)
+{
+	struct unwind_state state;
+	unsigned long addr;
+
+	unwind_for_each_frame(&state, task, NULL, 0) {
+		if (state.stack_info.type != STACK_TYPE_TASK)
+			return -EINVAL;
+
+		if (state.regs)
+			return -EINVAL;
+
+		addr = unwind_get_return_address(&state);
+		if (!addr)
+			return -EINVAL;
+
+#ifdef CONFIG_KPROBES
+		/*
+		 * Mark stacktraces with kretprobed functions on them
+		 * as unreliable.
+		 */
+		if (state.ip == (unsigned long)kretprobe_trampoline)
+			return -EINVAL;
+#endif
+
+		if (!consume_entry(cookie, addr, false))
+			return -EINVAL;
+	}
+
+	/* Check for stack corruption */
+	if (unwind_error(&state))
+		return -EINVAL;
+	return 0;
 }
 
 void save_stack_trace(struct stack_trace *trace)
