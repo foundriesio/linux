@@ -195,7 +195,7 @@ static int pcpu_alloc_lowcore(struct pcpu *pcpu, int cpu)
 	if (pcpu != &pcpu_devices[0]) {
 		pcpu->lowcore =	(struct lowcore *)
 			__get_free_pages(GFP_KERNEL | GFP_DMA, LC_ORDER);
-		nodat_stack = __get_free_pages(GFP_KERNEL, STACK_ORDER);
+		nodat_stack = __get_free_pages(GFP_KERNEL, THREAD_SIZE_ORDER);
 		if (!pcpu->lowcore || !nodat_stack)
 			goto out;
 		if (MACHINE_HAS_VX || MACHINE_HAS_GS) {
@@ -234,7 +234,7 @@ out:
 		if (mcesa_origin)
 			kmem_cache_free(pcpu_mcesa_cache,
 					(void *) mcesa_origin);
-		free_pages(nodat_stack, STACK_ORDER);
+		free_pages(nodat_stack, THREAD_SIZE_ORDER);
 		free_pages((unsigned long) pcpu->lowcore, LC_ORDER);
 	}
 	return -ENOMEM;
@@ -261,7 +261,7 @@ static void pcpu_free_lowcore(struct pcpu *pcpu)
 		mcesa_origin = pcpu->lowcore->mcesad & MCESA_ORIGIN_MASK;
 		kmem_cache_free(pcpu_mcesa_cache, (void *) mcesa_origin);
 	}
-	free_pages(nodat_stack, STACK_ORDER);
+	free_pages(nodat_stack, THREAD_SIZE_ORDER);
 	free_pages(lowcore, LC_ORDER);
 }
 

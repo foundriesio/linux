@@ -10,7 +10,7 @@
 #include <linux/const.h>
 
 /*
- * Size of kernel stack for each process
+ * General size of kernel stacks
  */
 #define THREAD_SIZE_ORDER 2
 #define THREAD_SIZE (PAGE_SIZE << THREAD_SIZE_ORDER)
@@ -19,6 +19,9 @@
 #include <asm/lowcore.h>
 #include <asm/page.h>
 #include <asm/processor.h>
+
+#define STACK_INIT_OFFSET \
+	(THREAD_SIZE - STACK_FRAME_OVERHEAD - sizeof(struct pt_regs))
 
 /*
  * low level task data that entry.S needs immediate access to
