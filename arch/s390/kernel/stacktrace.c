@@ -13,8 +13,8 @@
 #ifndef __GENKSYMS__
 #include <asm/stacktrace.h>
 #include <asm/unwind.h>
-#endif
 #include <asm/kprobes.h>
+#endif
 
 void arch_stack_walk(stack_trace_consume_fn consume_entry, void *cookie,
 		     struct task_struct *task, struct pt_regs *regs)
