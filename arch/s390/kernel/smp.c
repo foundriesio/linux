@@ -841,7 +841,7 @@ static void smp_start_secondary(void *cpuvoid)
 	restore_access_regs(S390_lowcore.access_regs_save_area);
 	__ctl_load(S390_lowcore.cregs_save_area, 0, 15);
 	__load_psw_mask(PSW_KERNEL_BITS | PSW_MASK_DAT);
-	CALL_ON_STACK(smp_init_secondary, S390_lowcore.kernel_stack, 0);
+	CALL_ON_STACK_NORETURN(smp_init_secondary, S390_lowcore.kernel_stack);
 }
 
 /* Upping and downing of CPUs */
