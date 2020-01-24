@@ -62,8 +62,8 @@ ENTRY(ftrace_caller)
 # See ftrace_enable_ftrace_graph_caller.
 ENTRY(ftrace_graph_caller)
 	j	ftrace_graph_caller_end
-	lg	%r2,(STACK_PTREGS_GPRS+14*8)(%r15)
-	lg	%r3,(STACK_PTREGS_PSW+8)(%r15)
+	lmg	%r2,%r3,(STACK_PTREGS_GPRS+14*8)(%r15)
+	lg	%r4,(STACK_PTREGS_PSW+8)(%r15)
 	brasl	%r14,prepare_ftrace_return
 	stg	%r2,(STACK_PTREGS_GPRS+14*8)(%r15)
 ftrace_graph_caller_end:
