@@ -15,6 +15,19 @@
 #include <asm/unwind.h>
 #endif
 
+void arch_stack_walk(stack_trace_consume_fn consume_entry, void *cookie,
+		     struct task_struct *task, struct pt_regs *regs)
+{
+	struct unwind_state state;
+	unsigned long addr;
+
+	unwind_for_each_frame(&state, task, regs, 0) {
+		addr = unwind_get_return_address(&state);
+		if (!addr || !consume_entry(cookie, addr, false))
+			break;
+	}
+}
+
 void save_stack_trace(struct stack_trace *trace)
 {
 	struct unwind_state state;
