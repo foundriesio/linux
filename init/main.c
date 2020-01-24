@@ -388,7 +388,7 @@ static void __init setup_command_line(char *command_line)
 
 static __initdata DECLARE_COMPLETION(kthreadd_done);
 
-static noinline void __ref rest_init(void)
+noinline void __ref rest_init(void)
 {
 	int pid;
 
@@ -490,6 +490,11 @@ static void __init mm_init(void)
 	init_espfix_bsp();
 	/* Should be run after espfix64 is set up. */
 	pti_init();
+}
+
+void __init __weak arch_call_rest_init(void)
+{
+	rest_init();
 }
 
 asmlinkage __visible void __init start_kernel(void)
@@ -689,7 +694,7 @@ asmlinkage __visible void __init start_kernel(void)
 	}
 
 	/* Do the rest non-__init'ed, we're now alive */
-	rest_init();
+	arch_call_rest_init();
 }
 
 /* Call all constructor functions linked into the kernel. */
