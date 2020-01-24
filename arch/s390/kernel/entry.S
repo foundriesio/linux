@@ -80,11 +80,31 @@ _PIF_WORK	= (_PIF_PER_TRAP | _PIF_SYSCALL_RESTART)
 #endif
 	.endm
 
-	.macro	CHECK_STACK stacksize,savearea
+	.macro	CHECK_STACK savearea
 #ifdef CONFIG_CHECK_STACK
-	tml	%r15,\stacksize - CONFIG_STACK_GUARD
+	tml	%r15,STACK_SIZE - CONFIG_STACK_GUARD
 	lghi	%r14,\savearea
 	jz	stack_overflow
+#endif
+	.endm
+
+	.macro	CHECK_VMAP_STACK savearea,oklabel
+#ifdef CONFIG_VMAP_STACK
+	lgr	%r14,%r15
+	nill	%r14,0x10000 - STACK_SIZE
+	oill	%r14,STACK_INIT
+	clg	%r14,__LC_KERNEL_STACK
+	je	\oklabel
+	clg	%r14,__LC_ASYNC_STACK
+	je	\oklabel
+	clg	%r14,__LC_NODAT_STACK
+	je	\oklabel
+	clg	%r14,__LC_RESTART_STACK
+	je	\oklabel
+	lghi	%r14,\savearea
+	j	stack_overflow
+#else
+	j	\oklabel
 #endif
 	.endm
 
@@ -99,11 +119,11 @@ _PIF_WORK	= (_PIF_PER_TRAP | _PIF_SYSCALL_RESTART)
 	brasl	%r14,cleanup_critical
 	tmhh	%r8,0x0001		# retest problem state after cleanup
 	jnz	1f
-0:	lg	%r14,__LC_ASYNC_STACK	# are we already on the async stack?
+0:	lg	%r14,__LC_ASYNC_STACK	# are we already on the target stack?
 	slgr	%r14,%r15
 	srag	%r14,%r14,STACK_SHIFT
 	jnz	2f
-	CHECK_STACK 1<<STACK_SHIFT,\savearea
+	CHECK_STACK \savearea
 	aghi	%r15,-(STACK_FRAME_OVERHEAD + __PT_SIZE)
 	j	3f
 1:	UPDATE_VTIME %r14,%r15,\timer
@@ -584,9 +604,10 @@ ENTRY(pgm_check_handler)
 	jnz	1f			# -> enabled, can't be a double fault
 	tm	__LC_PGM_ILC+3,0x80	# check for per exception
 	jnz	.Lpgm_svcper		# -> single stepped svc
-1:	CHECK_STACK STACK_SIZE,__LC_SAVE_AREA_SYNC
+1:	CHECK_STACK __LC_SAVE_AREA_SYNC
 	aghi	%r15,-(STACK_FRAME_OVERHEAD + __PT_SIZE)
-	j	4f
+	# CHECK_VMAP_STACK branches to stack_overflow or 4f
+	CHECK_VMAP_STACK __LC_SAVE_AREA_SYNC,4f
 2:	UPDATE_VTIME %r14,%r15,__LC_SYNC_ENTER_TIMER
 	BPENTER __TI_flags(%r12),_TIF_ISOLATE_BP
 	lg	%r15,__LC_KERNEL_STACK
@@ -1068,6 +1089,7 @@ ENTRY(mcck_int_handler)
 	mvc	__LC_MCCK_ENTER_TIMER(8),0(%r14)
 3:	TSTMSK	__LC_MCCK_CODE,(MCCK_CODE_PSW_MWP_VALID|MCCK_CODE_PSW_IA_VALID)
 	jno	.Lmcck_panic		# no -> skip cleanup critical
+	ssm	__LC_PGM_NEW_PSW	# turn dat on, keep irqs off
 	SWITCH_ASYNC __LC_GPREGS_SAVE_AREA+64,__LC_MCCK_ENTER_TIMER
 .Lmcck_skip:
 	lghi	%r14,__LC_GPREGS_SAVE_AREA+64
@@ -1095,7 +1117,6 @@ ENTRY(mcck_int_handler)
 	xc	__SF_BACKCHAIN(8,%r1),__SF_BACKCHAIN(%r1)
 	la	%r11,STACK_FRAME_OVERHEAD(%r1)
 	lgr	%r15,%r1
-	ssm	__LC_PGM_NEW_PSW	# turn dat on, keep irqs off
 	TSTMSK	__LC_CPU_FLAGS,_CIF_MCCK_PENDING
 	jno	.Lmcck_return
 	TRACE_IRQS_OFF
@@ -1114,7 +1135,7 @@ ENTRY(mcck_int_handler)
 	lpswe	__LC_RETURN_MCCK_PSW
 
 .Lmcck_panic:
-	lg	%r15,__LC_PANIC_STACK
+	lg	%r15,__LC_NODAT_STACK
 	la	%r11,STACK_FRAME_OVERHEAD(%r15)
 	j	.Lmcck_skip
 
@@ -1127,12 +1148,10 @@ ENTRY(restart_int_handler)
 	.insn	s,0xb2800000,__LC_LPP
 0:	stg	%r15,__LC_SAVE_AREA_RESTART
 	lg	%r15,__LC_RESTART_STACK
-	aghi	%r15,-__PT_SIZE			# create pt_regs on stack
-	xc	0(__PT_SIZE,%r15),0(%r15)
-	stmg	%r0,%r14,__PT_R0(%r15)
-	mvc	__PT_R15(8,%r15),__LC_SAVE_AREA_RESTART
-	mvc	__PT_PSW(16,%r15),__LC_RST_OLD_PSW # store restart old psw
-	aghi	%r15,-STACK_FRAME_OVERHEAD	# create stack frame on stack
+	xc	STACK_FRAME_OVERHEAD(__PT_SIZE,%r15),STACK_FRAME_OVERHEAD(%r15)
+	stmg	%r0,%r14,STACK_FRAME_OVERHEAD+__PT_R0(%r15)
+	mvc	STACK_FRAME_OVERHEAD+__PT_R15(8,%r15),__LC_SAVE_AREA_RESTART
+	mvc	STACK_FRAME_OVERHEAD+__PT_PSW(16,%r15),__LC_RST_OLD_PSW
 	xc	0(STACK_FRAME_OVERHEAD,%r15),0(%r15)
 	lg	%r1,__LC_RESTART_FN		# load fn, parm & source cpu
 	lg	%r2,__LC_RESTART_DATA
@@ -1150,14 +1169,14 @@ ENTRY(restart_int_handler)
 
 	.section .kprobes.text, "ax"
 
-#ifdef CONFIG_CHECK_STACK
+#if defined(CONFIG_CHECK_STACK) || defined(CONFIG_VMAP_STACK)
 /*
  * The synchronous or the asynchronous stack overflowed. We are dead.
  * No need to properly save the registers, we are going to panic anyway.
  * Setup a pt_regs so that show_trace can provide a good call trace.
  */
 stack_overflow:
-	lg	%r15,__LC_PANIC_STACK	# change to panic stack
+	lg	%r15,__LC_NODAT_STACK	# change to panic stack
 	la	%r11,STACK_FRAME_OVERHEAD(%r15)
 	stmg	%r0,%r7,__PT_R0(%r11)
 	stmg	%r8,%r9,__PT_PSW(%r11)

@@ -274,21 +274,11 @@ static inline void ftrace_free_init_mem(void) { }
 
 #ifdef CONFIG_STACK_TRACER
 
-#define STACK_TRACE_ENTRIES 500
-
-struct stack_trace;
-
-extern unsigned stack_trace_index[];
-extern struct stack_trace stack_trace_max;
-extern unsigned long stack_trace_max_size;
-extern arch_spinlock_t stack_trace_max_lock;
-
 extern int stack_tracer_enabled;
-void stack_trace_print(void);
-int
-stack_trace_sysctl(struct ctl_table *table, int write,
-		   void __user *buffer, size_t *lenp,
-		   loff_t *ppos);
+
+int stack_trace_sysctl(struct ctl_table *table, int write,
+		       void __user *buffer, size_t *lenp,
+		       loff_t *ppos);
 
 /* DO NOT MODIFY THIS VARIABLE DIRECTLY! */
 DECLARE_PER_CPU(int, disable_stack_tracer);
@@ -810,7 +800,9 @@ struct ftrace_ret_stack {
 	unsigned long fp;
 #endif
 #ifdef HAVE_FUNCTION_GRAPH_RET_ADDR_PTR
+#if !(defined(__GENKSYMS__) && defined(CONFIG_S390))
 	unsigned long *retp;
+#endif
 #endif
 };
 
