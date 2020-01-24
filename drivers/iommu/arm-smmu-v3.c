@@ -751,8 +751,8 @@ struct arm_smmu_master {
 	unsigned int			num_streams;
 	bool				ats_enabled;
 	bool				auxd_enabled;
-	bool				can_fault;
 	bool				stall_enabled;
+	bool				pri_supported;
 	bool				prg_resp_needs_ssid;
 	unsigned int			ssid_bits;
 };
@@ -1612,7 +1612,7 @@ static int arm_smmu_page_response(struct device *dev,
 		}
 		trace_smmu_resume(cmd.resume.sid, cmd.resume.stag,
 				  cmd.resume.resp);
-	} else if (master->can_fault) {
+	} else if (master->pri_supported) {
 		cmd.opcode		= CMDQ_OP_PRI_RESP;
 		cmd.substream_valid	= pasid_valid &&
 					  master->prg_resp_needs_ssid;
@@ -3274,6 +3274,11 @@ static bool arm_smmu_ats_supported(struct arm_smmu_master *master)
 }
 #endif
 
+static bool arm_smmu_iopf_supported(struct arm_smmu_master *master)
+{
+	return master->stall_enabled || master->pri_supported;
+}
+
 static void arm_smmu_enable_ats(struct arm_smmu_master *master)
 {
 	size_t stu;
@@ -3375,7 +3380,7 @@ static int arm_smmu_init_pri(struct arm_smmu_master *master)
 	if (master->ssid_bits)
 		master->prg_resp_needs_ssid = pci_prg_resp_pasid_required(pdev);
 
-	master->can_fault = true;
+	master->pri_supported = true;
 	return 0;
 }
 
@@ -3391,7 +3396,7 @@ static int arm_smmu_enable_pri(struct arm_smmu_master *master)
 	 */
 	size_t max_inflight_pprs = 16;
 
-	if (!master->can_fault || !dev_is_pci(master->dev))
+	if (!master->pri_supported)
 		return -ENOSYS;
 
 	pdev = to_pci_dev(master->dev);
@@ -3793,10 +3798,8 @@ static int arm_smmu_add_device(struct device *dev)
 		master->ssid_bits = min_t(u8, master->ssid_bits,
 					  CTXDESC_LINEAR_CDMAX);
 
-	if (fwspec->can_stall && smmu->features & ARM_SMMU_FEAT_STALLS) {
-		master->can_fault = true;
+	if (fwspec->can_stall && smmu->features & ARM_SMMU_FEAT_STALLS)
 		master->stall_enabled = true;
-	}
 
 	arm_smmu_init_pri(master);
 
@@ -3984,7 +3987,7 @@ static bool arm_smmu_dev_has_feature(struct device *dev,
 			return false;
 
 		/* SSID and IOPF support are mandatory for the moment */
-		if (!master->ssid_bits || !master->can_fault)
+		if (!master->ssid_bits || !arm_smmu_iopf_supported(master))
 			return false;
 		return true;
 	default:
@@ -4013,6 +4016,7 @@ static bool arm_smmu_dev_feature_enabled(struct device *dev,
 static int arm_smmu_dev_enable_sva(struct device *dev)
 {
 	int ret;
+	struct iopf_queue *iopfq = NULL;
 	struct arm_smmu_master *master = dev_to_master(dev);
 	struct iommu_sva_param param = {
 		.min_pasid = 1,
@@ -4025,28 +4029,25 @@ static int arm_smmu_dev_enable_sva(struct device *dev)
 	if (ret)
 		return ret;
 
-	ret = iopf_queue_add_device(master->stall_enabled ?
-				    master->smmu->evtq.iopf :
-				    master->smmu->priq.iopf, dev);
-	if (ret)
-		goto err_disable_sva;
+	if (master->pri_supported) {
+		iopfq = master->smmu->priq.iopf;
+		ret = iopf_queue_add_device(iopfq, dev);
+		if (ret)
+			goto err_disable_sva;
 
-	/*
-	 * Some devices appear as PCI but are actually on the AMBA bus and
-	 * support stall. Check if stall is enabled by firmware before trying to
-	 * enable PRI.
-	 */
-	if (master->stall_enabled)
-		return 0;
-
-	if (dev_is_pci(dev) && arm_smmu_enable_pri(master))
-		goto err_remove_device;
+		if (arm_smmu_enable_pri(master)) {
+			iopf_queue_remove_device(iopfq, dev);
+			goto err_disable_sva;
+		}
+	} else if (master->stall_enabled) {
+		iopfq = master->smmu->evtq.iopf;
+		ret = iopf_queue_add_device(iopfq, dev);
+		if (ret)
+			goto err_disable_sva;
+	}
 
 	return 0;
 
-err_remove_device:
-	iopf_queue_remove_device(master->smmu->evtq.iopf, dev);
-	iopf_queue_remove_device(master->smmu->priq.iopf, dev);
 err_disable_sva:
 	iommu_sva_disable(dev);
 	return ret;
