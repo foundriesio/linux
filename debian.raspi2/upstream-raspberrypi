@@ -1,3 +1,3 @@
 # The following upstream raspberrypi releases have been ported:
 [upstream-raspberrypi]:
-    rpi-5.3.y = 32ba05a62a80 ("bcm2708_fb: Disable warning when calling dma_alloc_coherent") [2020-01-24]
+    rpi-5.4.y = 9879128363e2 ("overlays: Use preferred compatible strings") [2020-01-27]
