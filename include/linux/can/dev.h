@@ -17,7 +17,9 @@
 #include <linux/can/error.h>
 #include <linux/can/led.h>
 #include <linux/can/netlink.h>
+#ifndef __GENKSYMS__
 #include <linux/can/skb.h>
+#endif
 #include <linux/netdevice.h>
 
 /*
