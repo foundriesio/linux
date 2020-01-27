@@ -163,7 +163,6 @@ adp5588-keys
 adp5589-keys
 adp8860_bl
 adp8870_bl
-ads1015
 ads7828
 ads7846
 ads7871
@@ -188,8 +187,6 @@ adxl372_i2c
 adxl372_spi
 adxrs450
 aegis128
-aegis128l
-aegis256
 aes-arm
 aes-arm-bs
 aes-arm-ce
@@ -261,7 +258,6 @@ arc_uart
 arcpgu
 arcx-anybus
 arcxcnn_bl
-argon-mem
 arizona-haptics
 arizona-i2c
 arizona-ldo1
@@ -623,7 +619,6 @@ crct10dif-arm-ce
 cros-ec-cec
 cros_ec_accel_legacy
 cros_ec_baro
-cros_ec_core
 cros_ec_debugfs
 cros_ec_dev
 cros_ec_i2c
@@ -789,7 +784,6 @@ dpot-dac
 drbd
 drm
 drm_kms_helper
-drop_monitor
 drv260x
 drv2665
 drv2667
@@ -1025,7 +1019,6 @@ fb_uc1701
 fb_upd161704
 fb_watterott
 fbtft
-fbtft_device
 fc0011
 fc0012
 fc0013
@@ -1041,7 +1034,6 @@ fit2
 fit3
 fixed
 flexcan
-flexfb
 fm_drv
 fmvj18x_cs
 fotg210-hcd
@@ -1575,7 +1567,6 @@ inv-mpu6050-i2c
 inv-mpu6050-spi
 io_edgeport
 io_ti
-ioc4
 iowarrior
 ip6_gre
 ip6_tables
@@ -1943,7 +1934,6 @@ lz4
 lz4_compress
 lz4hc
 lz4hc_compress
-m25p80
 m2m-deinterlace
 m62332
 m88ds3103
@@ -2125,7 +2115,6 @@ microread_i2c
 microtek
 minix
 mip6
-mipi-dbi
 mk712
 mkiss
 mlx90614
@@ -2148,8 +2137,6 @@ mmc_spi
 mms114
 mn88472
 mn88473
-morus1280
-morus640
 mos7720
 mos7840
 most_cdev
@@ -2194,7 +2181,6 @@ mt312
 mt352
 mt6311-regulator
 mt6323-regulator
-mt6397-core
 mt6397-regulator
 mt7530
 mt76
@@ -2715,7 +2701,6 @@ r8712u
 r8723bs
 r8a66597-hcd
 r8a66597-udc
-radio-bcm2048
 radio-keene
 radio-ma901
 radio-mr800
@@ -2888,7 +2873,6 @@ regmap-spmi
 regmap-w1
 regulator-haptic
 reiserfs
-remoteproc
 repaper
 reset-ti-syscon
 resistive-adc-touch
@@ -3491,7 +3475,6 @@ snd-usbmidi-lib
 snd-virmidi
 snd-vx-lib
 snd-vxpocket
-soc_button_array
 softdog
 softing
 sony-btf-mpx
@@ -3770,7 +3753,6 @@ tifm_7xx1
 tifm_core
 tilcdc
 timeriomem-rng
-tinydrm
 tipc
 tls
 tlv320aic23b
@@ -3995,7 +3977,6 @@ uss720
 uvcvideo
 uvesafb
 uwb
-v4l2-common
 v4l2-dv-timings
 v4l2-flash-led-class
 v4l2-fwnode
