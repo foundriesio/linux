@@ -84,15 +84,15 @@ channel: a phandle to the DMA controller plus the following four integer cells:
 	0x1: 1/2 full FIFO
 	0x2: 3/4 full FIFO
 	0x3: full FIFO
- -bit 2: Intermediate M2M transfer from/to DDR to/from SRAM throughout MDMA
-	0: MDMA not used to generate an intermediate M2M transfer
-	1: MDMA used to generate an intermediate M2M transfer.
- -bit 3-4: indicated SRAM Buffer size in (2^order)*PAGE_SIZE.
+ -bit 30-29: indicated SRAM Buffer size in (2^order)*PAGE_SIZE.
 	Order is given by those 2 bits starting at 0.
 	Valid only whether Intermediate M2M transfer is set.
 	For cyclic, whether Intermediate M2M transfer is chosen, any value can
 	be set: SRAM buffer size will rely on period size and not on this DT
 	value.
+ -bit 31: Intermediate M2M transfer from/to DDR to/from SRAM throughout MDMA
+	0: MDMA not used to generate an intermediate M2M transfer
+	1: MDMA used to generate an intermediate M2M transfer.
 
 Example:
 
