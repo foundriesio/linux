@@ -24,7 +24,6 @@ Build-Depends:
  libssl-dev <!stage1>,
  libaudit-dev <!stage1>,
  bc <!stage1>,
- python-dev <!stage1>,
  gawk <!stage1>,
  device-tree-compiler [powerpc] <!stage1>,
  u-boot-tools [powerpc] <!stage1>,
@@ -45,8 +44,8 @@ Build-Depends-Indep:
  python3-sphinx <!stage1>,
  python3-sphinx-rtd-theme <!stage1>,
  python3-docutils <!stage1>,
-Vcs-Git: git://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES= -b linux-raspi2
-Vcs-Browser: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES=/log/?h=raspi2
+Vcs-Git: git://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES= -b raspi2-5.4
+Vcs-Browser: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES=/log/?h=raspi2-5.4
 XS-Testsuite: autopkgtest
 #XS-Testsuite-Depends: gcc-4.7 binutils
 
