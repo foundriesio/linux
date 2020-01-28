@@ -465,11 +465,21 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		handle_rpc_func_cmd_bm_reg(arg);
 		break;
 	case OPTEE_MSG_RPC_CMD_PRINT:
-		/* under or equal 3.4.16 then print logs in the kernel */
-		if ((optee->ver->major <= 3) && (optee->ver->minor <= 4) && (optee->ver->tcc_rev <= 16))
-			handle_rpc_func_cmd_print(arg);
+		if (optee->ver == NULL) {
+			arg->ret = TEEC_SUCCESS;
+		}
+#if (1)
 		else
+			handle_rpc_func_cmd_print(arg);
+#else
+		else if ((optee->ver->major <= 3) && (optee->ver->minor <= 4) && (optee->ver->tcc_rev <= 16)) {
+			/* under or equal 3.4.16 then print logs in the kernel */
+			handle_rpc_func_cmd_print(arg);
+		}
+		else {
 			handle_rpc_supp_cmd(ctx, arg);
+		}
+#endif
 		break;
 	default:
 		handle_rpc_supp_cmd(ctx, arg);
