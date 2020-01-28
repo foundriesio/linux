@@ -3,12 +3,24 @@
  * Copyright 2019 Toradex
  */
 
+#include "dt-bindings/pwm/pwm.h"
 #include "fsl-imx8mm.dtsi"
 
 / {
 	chosen {
 		bootargs = "console=ttymxc0,115200 earlycon";
 		stdout-path = &uart1;
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_dsi_bkl_en>;
+		brightness-levels = <0 45 63 88 119 158 203 255>;
+		default-brightness-level = <4>;
+		enable-gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
+		pwms = <&pwm1 0 6666667 PWM_POLARITY_INVERTED>;
+		status = "okay";
 	};
 
 	/* fixed clock dedicated to SPI CAN controller */
@@ -688,9 +700,8 @@
 
 &iomuxc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_dsi_bkl_en>, <&pinctrl_gpio3>,
-		    <&pinctrl_gpio4>,<&pinctrl_gpio7>,
-		    <&pinctrl_gpio8>,<&pinctrl_gpio_hog1>,
+	pinctrl-0 = <&pinctrl_gpio3>, <&pinctrl_gpio4>, <&pinctrl_gpio7>,
+		    <&pinctrl_gpio8>, <&pinctrl_gpio_hog1>,
 		    <&pinctrl_gpio_hog2>, <&pinctrl_gpio_hog3>;
 
 	pinctrl_can1_int: can1intgrp {
