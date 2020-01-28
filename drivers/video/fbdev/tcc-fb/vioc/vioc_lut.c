@@ -44,10 +44,6 @@ static volatile void __iomem *pLUT_reg;
 #endif
 #define LUT_TABLE_R REG_VIOC_LUT(0x400)
 
-// LUT Control
-#define L_TABLE_SEL_SHIFT 0
-#define L_TABLE_SEL_MASK (0xF << L_TABLE_SEL_SHIFT)
-
 // LUT VIOCk Config
 #define L_CONFIG_SEL_SHIFT 0
 #define L_CONFIG_SEL_MASK (0xFF << L_CONFIG_SEL_SHIFT)
@@ -263,14 +259,14 @@ int tcc_set_lut_plugin(unsigned int lut_n, unsigned int plugComp)
 	// select lut config register
 	reg = (void __iomem *)LUT_CONFIG_R(lut_index);
 	lut_cfg_val = lut_readl(reg);
-	lut_cfg_val &= ~L_TABLE_SEL_MASK;
+	lut_cfg_val &= ~L_CONFIG_SEL_MASK;
 
 	plugin = lut_get_pluginComponent_index(plugComp);
 	if (plugin < 0) {
 		pr_err("%s plugcomp(0x%x) is out of range \r\n", __func__, plugComp);
 		goto plugComp_is_out_of_range;
 	}
-	lut_cfg_val |= ((unsigned int)plugin << L_TABLE_SEL_SHIFT);
+	lut_cfg_val |= ((unsigned int)plugin << L_CONFIG_SEL_SHIFT);
 	lut_writel(lut_cfg_val, reg);
 	ret = 0;
 
