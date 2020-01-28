@@ -1776,7 +1776,7 @@ int devm_namespace_enable(struct device *dev, struct nd_namespace_common *ndns,
 {
 	if (is_namespace_blk(&ndns->dev))
 		return 0;
-	return devm_nsio_enable(dev, to_nd_namespace_io(&ndns->dev), size);
+	return devm_nsio_enable_size(dev, to_nd_namespace_io(&ndns->dev), size);
 }
 EXPORT_SYMBOL_GPL(devm_namespace_enable);
 

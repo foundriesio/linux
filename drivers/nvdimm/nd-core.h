@@ -190,12 +190,19 @@ ssize_t nd_namespace_store(struct device *dev,
 		size_t len);
 struct nd_pfn *to_nd_pfn_safe(struct device *dev);
 #if IS_ENABLED(CONFIG_ND_CLAIM)
-int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio,
+int devm_nsio_enable_size(struct device *dev, struct nd_namespace_io *nsio,
 		resource_size_t size);
+int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio);
 void devm_nsio_disable(struct device *dev, struct nd_namespace_io *nsio);
 #else
-static inline int devm_nsio_enable(struct device *dev,
+static inline int devm_nsio_enable_size(struct device *dev,
 		struct nd_namespace_io *nsio, resource_size_t size)
+{
+	return -ENXIO;
+}
+
+static inline int devm_nsio_enable(struct device *dev,
+		struct nd_namespace_io *nsio)
 {
 	return -ENXIO;
 }

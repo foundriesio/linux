@@ -306,7 +306,7 @@ static int nsio_rw_bytes(struct nd_namespace_common *ndns,
 	return rc;
 }
 
-int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio,
+int devm_nsio_enable_size(struct device *dev, struct nd_namespace_io *nsio,
 		resource_size_t size)
 {
 	struct resource *res = &nsio->res;
@@ -330,6 +330,12 @@ int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio,
 	return PTR_ERR_OR_ZERO(nsio->addr);
 }
 
+int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio)
+{
+	devm_nsio_enable_size(dev, nsio, resource_size(&nsio->res));
+}
+EXPORT_SYMBOL_GPL(devm_nsio_enable);
+
 void devm_nsio_disable(struct device *dev, struct nd_namespace_io *nsio)
 {
 	struct resource *res = &nsio->res;
@@ -338,3 +344,4 @@ void devm_nsio_disable(struct device *dev, struct nd_namespace_io *nsio)
 	devm_exit_badblocks(dev, &nsio->bb);
 	devm_release_mem_region(dev, res->start, nsio->size);
 }
+EXPORT_SYMBOL_GPL(devm_nsio_disable);
