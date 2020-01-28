@@ -586,9 +586,6 @@ static struct optee *optee_probe(struct device_node *np)
 		return ERR_PTR(-EINVAL);
 	}
 
-	version = kzalloc(sizeof(*version), GFP_KERNEL);
-	optee_msg_get_os_revision(invoke_fn, version);
-
 	if (!optee_msg_api_revision_is_compatible(invoke_fn)) {
 		pr_warn("api revision mismatch\n");
 		return ERR_PTR(-EINVAL);
@@ -648,15 +645,16 @@ static struct optee *optee_probe(struct device_node *np)
 	optee->memremaped_shm = memremaped_shm;
 	optee->pool = pool;
 
-	optee_enable_shm_cache(optee);
+	optee->ver = kzalloc(sizeof(*version), GFP_KERNEL);
+	optee_msg_get_os_revision(invoke_fn, optee->ver);
 
-	optee->ver = version;
+	optee_enable_shm_cache(optee);
 
 	pr_info("initialized driver\n");
 	return optee;
 err:
-	if (version) {
-		kfree(version);
+	if (optee->ver) {
+		kfree(optee->ver);
 		version = NULL;
 	}
 
@@ -699,6 +697,9 @@ static void optee_remove(struct optee *optee)
 	optee_wait_queue_exit(&optee->wait_queue);
 	optee_supp_uninit(&optee->supp);
 	mutex_destroy(&optee->call_queue.mutex);
+
+	if (optee->ver)
+		kfree(optee->ver);
 
 	kfree(optee);
 }
