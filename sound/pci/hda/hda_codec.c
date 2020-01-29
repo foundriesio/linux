@@ -853,6 +853,7 @@ static void snd_hda_codec_dev_release(struct device *dev)
 /**
  * snd_hda_codec_new - create a HDA codec
  * @bus: the bus to assign
+ * @card: card for this codec
  * @codec_addr: the codec address
  * @codecp: the pointer to store the generated codec
  *
