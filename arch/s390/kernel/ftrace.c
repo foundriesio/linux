@@ -200,7 +200,8 @@ device_initcall(ftrace_plt_init);
  * Hook the return address and push it in the stack of return addresses
  * in current thread info.
  */
-unsigned long prepare_ftrace_return(unsigned long parent, unsigned long ip)
+unsigned long prepare_ftrace_return(unsigned long ra, unsigned long sp,
+				    unsigned long ip)
 {
 	struct ftrace_graph_ent trace;
 
@@ -214,12 +215,12 @@ unsigned long prepare_ftrace_return(unsigned long parent, unsigned long ip)
 	/* Only trace if the calling function expects to. */
 	if (!ftrace_graph_entry(&trace))
 		goto out;
-	if (ftrace_push_return_trace(parent, ip, &trace.depth, 0,
-				     NULL) == -EBUSY)
+	if (ftrace_push_return_trace(ra, ip, &trace.depth, 0,
+				     (void *) sp) == -EBUSY)
 		goto out;
-	parent = (unsigned long) return_to_handler;
+	ra = (unsigned long) return_to_handler;
 out:
-	return parent;
+	return ra;
 }
 NOKPROBE_SYMBOL(prepare_ftrace_return);
 

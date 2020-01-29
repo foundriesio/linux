@@ -33,6 +33,7 @@ EXPORT_SYMBOL(_mcount)
 ENTRY(ftrace_caller)
 	.globl	ftrace_regs_caller
 	.set	ftrace_regs_caller,ftrace_caller
+	stg	%r14,(__SF_GPRS+8*8)(%r15)	# save traced function caller
 	lgr	%r1,%r15
 #ifndef CC_USING_HOTPATCH
 	aghi	%r0,MCOUNT_RETURN_FIXUP
@@ -62,8 +63,8 @@ ENTRY(ftrace_caller)
 # See ftrace_enable_ftrace_graph_caller.
 ENTRY(ftrace_graph_caller)
 	j	ftrace_graph_caller_end
-	lg	%r2,(STACK_PTREGS_GPRS+14*8)(%r15)
-	lg	%r3,(STACK_PTREGS_PSW+8)(%r15)
+	lmg	%r2,%r3,(STACK_PTREGS_GPRS+14*8)(%r15)
+	lg	%r4,(STACK_PTREGS_PSW+8)(%r15)
 	brasl	%r14,prepare_ftrace_return
 	stg	%r2,(STACK_PTREGS_GPRS+14*8)(%r15)
 ftrace_graph_caller_end:
