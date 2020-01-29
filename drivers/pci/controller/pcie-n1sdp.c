@@ -61,6 +61,7 @@ static void __iomem *pci_n1sdp_map_bus(struct pci_bus *bus, unsigned int devfn,
 	unsigned int segment = bus->domain_nr;
 	unsigned int bdf_addr;
 	unsigned int table_count, i;
+	struct pci_dev *dev;
 
 	if (segment >= MAX_SEGMENTS ||
 	    busn < cfg->busr.start || busn > cfg->busr.end)
@@ -69,6 +70,14 @@ static void __iomem *pci_n1sdp_map_bus(struct pci_bus *bus, unsigned int devfn,
 	/* The PCIe root complex has a separate config space mapping. */
 	if (busn == 0 && devfn == 0)
 		return rc_remapped_addr[segment] + where;
+
+	dev = pci_get_domain_bus_and_slot(segment, busn, devfn);
+	if (dev && dev->is_virtfn)
+		return pci_ecam_map_bus(bus, devfn, where);
+
+	/* Accesses beyond the vendor ID always go to existing devices. */
+	if (where > 0)
+		return pci_ecam_map_bus(bus, devfn, where);
 
 	busn -= cfg->busr.start;
 	bdf_addr = (busn << cfg->ops->bus_shift) + (devfn << devfn_shift);
