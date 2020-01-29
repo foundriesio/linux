@@ -137,24 +137,24 @@ struct tcc_i2c {
 static void tcc_i2c_reg_dump(void __iomem *regs, void __iomem *port_cfg);
 static void tcc_i2c_reg_dump(void __iomem *regs, void __iomem *port_cfg)
 {
-	printk("I2C_PRES     : 0x%08x\n", i2c_readl(regs + I2C_PRES));
-	printk("I2C_CTRL     : 0x%08x\n", i2c_readl(regs + I2C_CTRL));
-//	printk("I2C_TXR      : 0x%08x\n", i2c_readl(regs + I2C_TXR));
-	printk("I2C_CMD      : 0x%08x\n", i2c_readl(regs + I2C_CMD));
-//	printk("I2C_RXR      : 0x%08x\n", i2c_readl(regs + I2C_RXR));
-	printk("I2C_SR       : 0x%08x\n", i2c_readl(regs + I2C_SR));
-	printk("I2C_TIME     : 0x%08x\n", i2c_readl(regs + I2C_TIME));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_PRES     : 0x%08x\n", i2c_readl(regs + I2C_PRES));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_CTRL     : 0x%08x\n", i2c_readl(regs + I2C_CTRL));
+//	printk(KERN_DEBUG "[DEBUG][I2C] I2C_TXR      : 0x%08x\n", i2c_readl(regs + I2C_TXR));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_CMD      : 0x%08x\n", i2c_readl(regs + I2C_CMD));
+//	printk(KERN_DEBUG "[DEBUG][I2C] I2C_RXR      : 0x%08x\n", i2c_readl(regs + I2C_RXR));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_SR       : 0x%08x\n", i2c_readl(regs + I2C_SR));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_TIME     : 0x%08x\n", i2c_readl(regs + I2C_TIME));
 #if defined(CONFIG_ARCH_TCC803X)
-	printk("I2C_TR1      : 0x%08x\n", i2c_readl(regs + I2C_TR1));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_TR1      : 0x%08x\n", i2c_readl(regs + I2C_TR1));
 #endif
 #ifdef TCC_USE_GFB_PORT
-	printk("I2C_PORT_CFG0: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG0));
-	printk("I2C_PORT_CFG1: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG1));
-	printk("I2C_IRQ_STS  : 0x%08x\n", i2c_readl(port_cfg + I2C_IRQ_STS));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_PORT_CFG0: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG0));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_PORT_CFG1: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG1));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_IRQ_STS  : 0x%08x\n", i2c_readl(port_cfg + I2C_IRQ_STS));
 #else
-	printk("I2C_PORT_CFG0: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG0));
-	printk("I2C_PORT_CFG2: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG2));
-	printk("I2C_IRQ_STS  : 0x%08x\n", i2c_readl(port_cfg + I2C_IRQ_STS));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_PORT_CFG0: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG0));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_PORT_CFG2: 0x%08x\n", i2c_readl(port_cfg + I2C_PORT_CFG2));
+	printk(KERN_DEBUG "[DEBUG][I2C] I2C_IRQ_STS  : 0x%08x\n", i2c_readl(port_cfg + I2C_IRQ_STS));
 #endif
 }
 #endif
@@ -210,8 +210,8 @@ static int tcc_i2c_bus_busy(struct tcc_i2c *i2c, int start_stop)
 		if(!start_stop && !(temp & (1<<6)))
 			break;
 		if (time_after(jiffies, orig_jiffies + msecs_to_jiffies(100))) {
-			dev_dbg(&i2c->adap.dev,
-				"<%s> I2C bus is busy\n", __func__);
+			dev_warn(&i2c->adap.dev,
+				"[WARN][I2C] <%s> I2C bus is busy\n", __func__);
 			return -ETIMEDOUT;
 		}
 		schedule();
@@ -235,7 +235,7 @@ static int wait_intr(struct tcc_i2c *i2c)
 		ret = wait_for_completion_timeout(&i2c->msg_complete, msecs_to_jiffies(timeout));
 		tcc_i2c_disable_irq(i2c);
 		if (ret == 0) {
-			dev_err(i2c->dev, "i2c cmd timeout (check sclk status)\n");
+			dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout (check sclk status)\n");
 			return -ETIMEDOUT;
 		}
 	} else{
@@ -246,12 +246,12 @@ static int wait_intr(struct tcc_i2c *i2c)
 			#if 0
 			cnt++;
 			if (cnt > 100000) {
-				dev_err(i2c->dev, "i2c cmd timeout - 0 (check sclk status)\n");
+				dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout - 0 (check sclk status)\n");
 				return -ETIMEDOUT;
 			}
 			#else
 			if (time_after(jiffies, orig_jiffies + msecs_to_jiffies(timeout))) {
-				dev_err(i2c->dev, "i2c cmd timeout - 0 (check sclk status)\n");
+				dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout - 0 (check sclk status)\n");
 				return -ETIMEDOUT;
 			}
 			#endif
@@ -264,12 +264,12 @@ static int wait_intr(struct tcc_i2c *i2c)
 				#if 0
 				cnt++;
 				if (cnt > 100000) {
-					dev_err(i2c->dev, "i2c cmd timeout - 1 (check sclk status)\n");
+					dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout - 1 (check sclk status)\n");
 					return -ETIMEDOUT;
 				}
 				#else
 				if (time_after(jiffies, orig_jiffies + msecs_to_jiffies(timeout))) {
-					dev_err(i2c->dev, "i2c cmd timeout - 1 (check sclk status)\n");
+					dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout - 1 (check sclk status)\n");
 					return -ETIMEDOUT;
 				}
 				#endif
@@ -329,19 +329,19 @@ static int tcc_i2c_acked(struct tcc_i2c *i2c)
 
 		if (time_after(jiffies, orig_jiffies + msecs_to_jiffies(I2C_ACK_TIMEOUT))) {
 			dev_dbg(&i2c->adap.dev,
-					"<%s> No ACK\n", __func__);
+					"[DEBUG][I2C] <%s> No ACK\n", __func__);
 			return -EIO;
 		}
 		schedule();
 	}
-	dev_dbg(&i2c->adap.dev, "<%s> ACK received\n", __func__);
+	dev_dbg(&i2c->adap.dev, "[DEBUG][I2C] <%s> ACK received\n", __func__);
 	return 0;
 }
 
 static int recv_i2c(struct tcc_i2c *i2c)
 {
 	int ret, i;
-	dev_dbg(&i2c->adap.dev, "READ [%x][%d]\n", i2c->msg->addr, i2c->msg->len);
+	dev_dbg(&i2c->adap.dev, "[DEBUG][I2C] READ [%x][%d]\n", i2c->msg->addr, i2c->msg->len);
 
 	ret = tcc_i2c_message_start(i2c, i2c->msg);
 	if(ret)
@@ -377,7 +377,7 @@ static int recv_i2c(struct tcc_i2c *i2c)
 static int send_i2c(struct tcc_i2c *i2c)
 {
 	int ret, i;
-	dev_dbg(&i2c->adap.dev, "SEND [%x][%d]", i2c->msg->addr, i2c->msg->len);
+	dev_dbg(&i2c->adap.dev, "[DEBUG][I2C] SEND [%x][%d]", i2c->msg->addr, i2c->msg->len);
 
 	ret = tcc_i2c_message_start(i2c, i2c->msg);
 	if(ret)
@@ -428,13 +428,13 @@ static int tcc_i2c_doxfer(struct tcc_i2c *i2c, struct i2c_msg *msgs, int num)
 		if (i2c->msg->flags & I2C_M_RD) {
 			ret = recv_i2c(i2c);
 			if (ret){
-				dev_dbg(i2c->dev, "receiving error addr 0x%x err %d\n", i2c->msg->addr, ret);
+				dev_dbg(i2c->dev, "[DEBUG][I2C] receiving error addr 0x%x err %d\n", i2c->msg->addr, ret);
 				goto fail;
 			 }
 		} else {
 			ret = send_i2c(i2c);
 			if (ret){
-				dev_dbg(i2c->dev, "sending error addr 0x%x err %d\n", i2c->msg->addr, ret);
+				dev_dbg(i2c->dev, "[DEBUG][I2C] sending error addr 0x%x err %d\n", i2c->msg->addr, ret);
 				goto fail;
 			}
 		}
@@ -454,8 +454,7 @@ fail:
 	return (ret < 0) ? ret : i;
 
 no_stop:
-	//printk("\x1b[1;33m[%s:%d] no stop\x1b[0m\n", __func__, __LINE__);
-	dev_dbg(i2c->dev, "do not send stop addr 0x%x\n", i2c->msg->addr);
+	//printk(KERN_DEBUG "[DEBUG][I2C] [%s:%d] no stop \n", __func__, __LINE__);
 	tcc_i2c_bus_busy(i2c, 1);
 	return (ret < 0) ? ret : i;
 }
@@ -479,7 +478,7 @@ static int tcc_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 		if (ret>0) {
 			return ret;
 		}
-		dev_dbg(&i2c->adap.dev, "Retrying transmission (%d)\n", retry);
+		dev_dbg(&i2c->adap.dev, "[DEBUG][I2C] Retrying transmission (%d)\n", retry);
 		udelay(100);
 	}
 	return ret;
@@ -524,8 +523,7 @@ static int tcc_i2c_set_port(struct tcc_i2c *i2c)
 	i2c_writel(pcfg_value, i2c->port_cfg + pcfg_offset);
 
 	pcfg_value = i2c_readl(i2c->port_cfg+pcfg_offset);
-	dev_dbg(&i2c->adap.dev, "[GFB]  SCL: 0x%X SDA: 0x%X pcfg@0x%X = %x\n",
-		i2c->port_mux[0], i2c->port_mux[1], (u32)i2c->port_cfg + pcfg_offset, pcfg_value);
+	printk(KERN_DEBUG "[DEBUG][I2C] [%s][GFB] SCL: 0x%X SDA: 0x%X pcfg0(x%X) = %x\n", __func__,i2c->port_mux[0], i2c->port_mux[1], (u32)i2c->port_cfg + pcfg_offset, pcfg_value);
 
 	return 0;
 }
@@ -591,11 +589,11 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 		i2c->pclk = of_clk_get(np, 0);
 
 	if(clk_prepare_enable(i2c->hclk) != 0) {
-		dev_err(i2c->dev, "can't do i2c_hclk clock enable\n");
+		dev_err(i2c->dev, "[ERROR][I2C] can't do i2c_hclk clock enable\n");
 		return -1;
 	}
 	if(clk_prepare_enable(i2c->pclk) != 0) {
-		dev_err(i2c->dev, "can't do i2c_pclk clock enable\n");
+		dev_err(i2c->dev, "[ERROR][I2C] can't do i2c_pclk clock enable\n");
 		return -1;
 	}
 	clk_set_rate(i2c->pclk, i2c->core_clk_rate);
@@ -617,8 +615,8 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 		}
 		i2c_writel(((i2c->pwh << 16) | (i2c->pwl)), i2c->regs+I2C_TR1);
 
-		dev_info(i2c->dev, "pulse-width-high: %d\n", i2c->pwh);
-		dev_info(i2c->dev, "pulse-width-low: %d\n", i2c->pwl);
+		dev_info(i2c->dev, "[INFO][I2C] pulse-width-high: %d\n", i2c->pwh);
+		dev_info(i2c->dev, "[INFO][I2C] pulse-width-low: %d\n", i2c->pwl);
 	}
 #endif
 
@@ -648,7 +646,7 @@ static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 	of_property_read_u32_array(np, "port-mux", i2c->port_mux,
 		(size_t)of_property_count_elems_of_size(np, "port-mux", sizeof(u32)));
 
-	//printk("\x1b[1;33mSCL: %d SDA: %d\x1b[0m\n", i2c->port_mux[0], i2c->port_mux[1]);
+	printk(KERN_INFO "[INFO][I2C] SCL: %d SDA: %d \n", i2c->port_mux[0], i2c->port_mux[1]);
 #else
 	of_property_read_u32(np, "port-mux", &i2c->port_mux);
 #endif
@@ -692,7 +690,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	/* get base register */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(&pdev->dev, "no mem resource?\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] no mem resource\n");
 		return -ENODEV;
 	}
 	i2c->regs = devm_ioremap_resource(&pdev->dev, res);
@@ -706,7 +704,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 
 	i2c->irq = platform_get_irq(pdev, 0);
 	if (i2c->irq < 0) {
-		dev_err(&pdev->dev, "no irq resource?\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] no irq resource\n");
 		ret = i2c->irq;
 		goto err_io;
 	}
@@ -722,7 +720,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	i2c->adap.retries = I2C_DEF_RETRIES;
 	i2c->dev = &(pdev->dev);
 	sprintf(i2c->adap.name, "%s", pdev->name);
-	printk(KERN_INFO "i2c: bus %d - sclk: %d kHz retry: %d irq mode: %d noise filter: %d\n",
+	dev_info(&pdev->dev, "[INFO][I2C] i2c: bus %d - sclk: %d kHz retry: %d irq mode: %d noise filter: %d\n",
 			i2c->core, (i2c->i2c_clk_rate/1000), i2c->adap.retries,
 			i2c->interrupt_mode, i2c->noise_filter);
 	spin_lock_init(&i2c->lock);
@@ -731,7 +729,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 #ifdef CONFIG_I2C_TCC_CM4
 	/* Disable recovery operation of M4 */
 	if(i2c->core == CONFIG_I2C_TCC_CM4_CH) {
-		printk(KERN_INFO "\x1b[1;33m[%s:%d] CM CTRL DISABLE RECOVERY (i2c ch %d)\x1b[0m\n", __func__, __LINE__, i2c->core);
+		printk(KERN_DEBUG "[DEBUG][I2C] [%s:%d] CM CTRL DISABLE RECOVERY (i2c ch %d)\n", __func__, __LINE__, i2c->core);
 		tcc_cm_ctrl_disable_recovery();
 	}
 #endif
@@ -743,7 +741,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 #ifdef CONFIG_I2C_TCC_CM4
 	/* Enable recovery operation of M4 */
 	if(i2c->core == CONFIG_I2C_TCC_CM4_CH) {
-		printk(KERN_INFO "\x1b[1;33m[%s:%d] CM CTRL ENABLE RECOVERY (i2c ch %d)\x1b[0m\n", __func__, __LINE__, i2c->core);
+		printk(KERN_DEBUG "[DEBUG][I2C] [%s:%d] CM CTRL ENABLE RECOVERY (i2c ch %d)\n", __func__, __LINE__, i2c->core);
 		tcc_cm_ctrl_enable_recovery();
 	}
 #endif
@@ -751,7 +749,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	if(i2c->interrupt_mode){
 		ret = request_irq(i2c->irq, tcc_i2c_isr, IRQF_SHARED, i2c->adap.name, i2c);
 		if(ret) {
-			dev_err(&pdev->dev, "Failed to request irq %i\n", i2c->irq);
+			dev_err(&pdev->dev, "[ERROR][I2C] Failed to request irq %i\n", i2c->irq);
 			return ret;
 		}
 	}
@@ -764,7 +762,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 
 	ret = i2c_add_numbered_adapter(&(i2c->adap));
 	if (ret < 0) {
-		printk("%s: failed to add bus\n", i2c->adap.name);
+		dev_err(&pdev->dev, "[ERROR][I2C] %s: failed to add bus\n", i2c->adap.name);
 		i2c_del_adapter(&i2c->adap);
 		goto err_clk;
 	}
@@ -776,7 +774,7 @@ err_clk:
 #ifdef CONFIG_I2C_TCC_CM4
 	/* Disable recovery operation of M4 */
 	if(i2c->core == CONFIG_I2C_TCC_CM4_CH) {
-		printk(KERN_INFO "\x1b[1;33m[%s:%d] CM CTRL DISABLE RECOVERY (i2c ch %d)\x1b[0m\n", __func__, __LINE__, i2c->core);
+		printk(KERN_DEBUG "[DEBUG][I2C] [%s:%d] CM CTRL DISABLE RECOVERY (i2c ch %d)\n", __func__, __LINE__, i2c->core);
 		tcc_cm_ctrl_disable_recovery();
 	}
 #endif
