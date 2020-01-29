@@ -330,6 +330,7 @@ extern "C" {
 #define STATUS2			2
 #define STATUS3			3
 
+#define TCC_REMOCON_NAME	"tcc_remocon"
 /* 1 unit = 1 / [IOBUS/(HwREMOCON->uCLKDIVIDE.bCLKDIVIDE.CLK_DIV)]
               = 1 / [156/(500*20)]  us
               = 64.1us

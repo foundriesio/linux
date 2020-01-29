@@ -41,36 +41,32 @@ extern unsigned long rmt_clk_rate;
 void tca_remocon_reg_dump(void)
 {
 	// for checking all of remote ctrl register.
-
-	printk("==============================================\n");
-	printk("CMD	   0x%08x\n", readl(remote_base + REMOTE_CMD_OFFSET));
-	printk("INPOL   0x%08x\n", readl(remote_base + REMOTE_INPOL_OFFSET));
-	printk("STA	   0x%08x\n", readl(remote_base + REMOTE_STA_OFFSET));
-	printk("FSR    0x%08x\n", readl(remote_base + REMOTE_FSR_OFFSET));
-	printk("BDD	   0x%08x\n", readl(remote_base + REMOTE_BDD_OFFSET));
-	printk("BDR0    0x%08x\n", readl(remote_base + REMOTE_BDR0_OFFSET));
-	printk("BDR1    0x%08x\n", readl(remote_base + REMOTE_BDR1_OFFSET));
-	printk("SD	   0x%08x\n", readl(remote_base + REMOTE_SD_OFFSET));
-	printk("DBD0    0x%08x\n", readl(remote_base + REMOTE_DBD0_OFFSET));
-	printk("DBD1    0x%08x\n", readl(remote_base + REMOTE_DBD1_OFFSET));
-	printk("RBD	   0x%08x\n", readl(remote_base + REMOTE_RBD_OFFSET));
-	printk("PBD00   0x%08x\n", readl(remote_base + REMOTE_PBD0_L_OFFSET));
-	printk("PBD01   0x%08x\n", readl(remote_base + REMOTE_PBD0_H_OFFSET));
-	printk("PBD10   0x%08x\n", readl(remote_base + REMOTE_PBD1_L_OFFSET));
-	printk("PBD10   0x%08x\n", readl(remote_base + REMOTE_PBD1_H_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] CMD	   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_CMD_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] INPOL   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_INPOL_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] STA	   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_STA_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] FSR    0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_FSR_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] BDD	   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_BDD_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] BDR0    0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_BDR0_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] BDR1    0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_BDR1_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] SD	   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_SD_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] DBD0    0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_DBD0_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] DBD1    0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_DBD1_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] RBD	   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_RBD_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD00   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD0_L_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD01   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD0_H_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD10   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD1_L_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD10   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD1_H_OFFSET));
 #if defined(CONFIG_ARCH_TCC896X)||defined(CONFIG_ARCH_TCC897x) || defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-	printk("PBD20   0x%08x\n", readl(remote_base + REMOTE_PBD2_L_OFFSET));
-	printk("PBD21   0x%08x\n", readl(remote_base + REMOTE_PBD2_H_OFFSET));
-	printk("PBD30   0x%08x\n", readl(remote_base + REMOTE_PBD3_L_OFFSET));
-	printk("PBD31   0x%08x\n", readl(remote_base + REMOTE_PBD3_H_OFFSET));
-	printk("RKD0   0x%08x\n", readl(remote_base + REMOTE_RKD0_OFFSET));
-	printk("RKD1   0x%08x\n", readl(remote_base + REMOTE_RKD1_OFFSET));
-	printk("PBM0   0x%08x\n", readl(remote_base + REMOTE_PBM0_OFFSET));
-	printk("PBM1   0x%08x\n", readl(remote_base + REMOTE_PBM1_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD20   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD2_L_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD21   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD2_H_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD30   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD3_L_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBD31   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBD3_H_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] RKD0   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_RKD0_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] RKD1   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_RKD1_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBM0   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBM0_OFFSET));
+	(void)printk(KERN_INFO "[INFO][%s] PBM1   0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_PBM1_OFFSET));
 #endif
-	printk("CLKDIV  0x%08x\n", readl(remote_base + REMOTE_CLKDIV_OFFSET));
-	printk("==============================================\n");
-
+	(void)printk(KERN_INFO "[INFO][%s] CLKDIV  0x%08x\n", TCC_REMOCON_NAME, readl(remote_base + REMOTE_CLKDIV_OFFSET));
 }
 
 
@@ -264,9 +260,6 @@ void    RemoconDivide (int state)
 	remote_clock_rate = rmt_clk_rate;
 	uiclock           = state == 1? 24*1000*1000:(remote_clock_rate);
 	uidiv             = uiclock/32768;
-
-	//printk("##[%s] , rmt_clk_rate : %d ,remote clock_rate : %d \n", __func__ , rmt_clk_rate, remote_clock_rate);
-	//printk("+++++++++++++++++++++++++++++++++++++[%d][%d]\n", uiclock, uidiv);
 
 	writel(readl(remote_base + REMOTE_CLKDIV_OFFSET) | (0xC8), remote_base + REMOTE_CLKDIV_OFFSET);
 	writel(readl(remote_base + REMOTE_CLKDIV_OFFSET) | (uidiv<<14), remote_base + REMOTE_CLKDIV_OFFSET);

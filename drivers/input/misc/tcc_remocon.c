@@ -166,7 +166,7 @@ unsigned int tcc_remocon_GetTickCount(void)
 
 	do_gettimeofday(&tTimeVal);
 
-	printk("%d sec %d usec\n", (int)tTimeVal.tv_sec, (int)tTimeVal.tv_usec);
+	(void)printk(KERN_INFO "[INFO][%s] %d sec %d usec\n", TCC_REMOCON_NAME, (int)tTimeVal.tv_sec, (int)tTimeVal.tv_usec);
 
 	return tTimeVal.tv_sec * 1000 + tTimeVal.tv_usec / 1000;
 }
@@ -186,7 +186,7 @@ static void remocon_timer_handler(unsigned long data)
 		input_report_key(dev, rem->old_key, 0);
 		input_sync(dev);
 		if(debug_log==1)
-			printk("############### nRem=%d released(timer)\n",rem->old_key);
+			(void)printk(KERN_DEBUG "[DEBUG][%s] ############### nRem=%d released(timer)\n", TCC_REMOCON_NAME, rem->old_key);
 		rem->status = KEY_RELEASED;
 		rem->old_key = NO_KEY;
 		Rem.Code = NO_KEY;
@@ -229,13 +229,13 @@ static void tca_rem_sendremocondata(unsigned int key_type)
 			del_timer(&remocon_timer);
 			if(rem->status==KEY_PRESSED) {
 				if(debug_log == 1)
-					printk("############### nRem=%d released\n",rem->old_key);
+					(void)printk(KERN_DEBUG "[DEBUG][%s] ############### nRem=%d released\n", TCC_REMOCON_NAME, rem->old_key);
 				input_report_key(dev, rem->old_key, 0);
 				input_sync(dev);
 				rem->status=KEY_RELEASED;
 			}
 			if(debug_log == 1)
-				printk("############### nRem=%d pressed\n", nRem);
+				(void)printk(KERN_DEBUG "[DEBUG][%s] ############### nRem=%d pressed\n", TCC_REMOCON_NAME, nRem);
 			rem->status = KEY_PRESSED;
 			input_report_key(dev, nRem, 1);
 			input_sync(dev);
@@ -248,14 +248,14 @@ static void tca_rem_sendremocondata(unsigned int key_type)
 				return;
 			// Check Repeat interval time
 			//		do_gettimeofday(&tevent);
-			//		printk("%d msec\n", ((int)tevent.tv_sec*1000)+((int)tevent.tv_usec/1000));
+			//		(void)printk(KERN_INFO "[INFO][%s] %d msec\n", TCC_REMOCON_NAME, ((int)tevent.tv_sec*1000)+((int)tevent.tv_usec/1000));
 			if(rem->old_key == REM_POWER)
 				repeatCheck = 15;
 
 			del_timer(&remocon_timer);
 			if(rem->status==KEY_PRESSED && Rem.repeatCount>repeatCheck) {
 				if(debug_log == 1)
-					printk("############### nRem=%d repeat=%d\n",rem->old_key, Rem.repeatCount);
+					(void)printk(KERN_DEBUG "[DEBUG][%s] ############### nRem=%d repeat=%d\n", TCC_REMOCON_NAME, rem->old_key, Rem.repeatCount);
 				if(Rem.repeatCount % REMOCON_REPEAT_FQ == 0)
 				{
 					input_event(dev, EV_KEY, rem->old_key, 2);    // repeat event
@@ -376,10 +376,10 @@ static void tcc_remocon_irq_work_queue_func(struct work_struct *work)
 				}
 				if(low_bit == 'S' || high_bit=='S') {
 					if(debug_log == 1)
-						printk("\n############### start\n");
+						(void)printk(KERN_DEBUG "[DEBUG][%s] \n############### start\n", TCC_REMOCON_NAME);
 				}
 				if(debug_log == 1)
-					printk("%04x|%04x => %c%c  (%d)\n", low, high, low_bit, high_bit, i);
+					(void)printk(KERN_DEBUG "[DEBUG][%s] %04x|%04x => %c%c  (%d)\n", TCC_REMOCON_NAME, low, high, low_bit, high_bit, i);
 				if(low_bit == 'E')
 				{
 					low_err++;
@@ -416,13 +416,12 @@ static void tcc_remocon_irq_work_queue_func(struct work_struct *work)
 			get_keycode = tca_rem_getkeycodebyscancode(data);
 			if(debug_log==1)
 			{
-				printk("IR SCAN CODE : 0x%x ID : 0x%x (%d) \n", data, data_id, get_keycode);
-				printk(" ======================= \n");
+				(void)printk(KERN_DEBUG "[DEBUG][%s] IR SCAN CODE : 0x%x ID : 0x%x (%d) \n", TCC_REMOCON_NAME, data, data_id, get_keycode);
 			}
 			if(get_keycode > 0 && (readl(remote_base + REMOTE_BDR0_OFFSET) != 0) && (get_keycode != -1))
 			{
 				if(debug_log==1)
-					printk("Get New Key Code ! [%d] \n" ,get_keycode);
+					(void)printk(KERN_DEBUG "[DEBUG][%s] Get New Key Code ! [%d] \n", TCC_REMOCON_NAME, get_keycode);
 #if defined (CONFIG_VERIZON)
 				if(data_id == REMOCON_ID){
 #else
@@ -474,12 +473,12 @@ static int remocon_probe(struct platform_device *pdev)
 	remote_base = of_iomap(np,0);
 	remote_cfg_base = of_iomap(np,1);
 
-	printk("Get remocon driver [base address : 0x%08x] [cfg address : 0x%08x] \n", remote_base , remote_cfg_base);
+	(void)printk(KERN_INFO "[INFO][%s] Get remocon driver [base address : 0x%08x] [cfg address : 0x%08x] \n", TCC_REMOCON_NAME, remote_base, remote_cfg_base);
 
 	if (!pdev->dev.of_node){
 		struct clk *remote_clk = clk_get(NULL, "remocon");
 		if(IS_ERR(remote_clk)) {
-			printk("can't find remocon clk driver!");
+			(void)printk(KERN_ERR "[ERROR][%s] can't find remocon clk driver!", TCC_REMOCON_NAME);
 			remote_clk = NULL;
 		} else {
 			clk_enable(remote_clk);
@@ -487,7 +486,7 @@ static int remocon_probe(struct platform_device *pdev)
 		clk_set_rate(remote_clk, 24000000/4);
 
 		rmt_clk_rate = clk_get_rate(remote_clk);
-		printk("############## %s: remote clk_rate = %lu\n", __func__, rmt_clk_rate);
+		(void)printk(KERN_INFO "[INFO][%s] ############## %s: remote clk_rate = %lu\n", TCC_REMOCON_NAME, __func__, rmt_clk_rate);
 		}
 	}
 	else{
@@ -498,7 +497,7 @@ static int remocon_probe(struct platform_device *pdev)
 		st_remote_data.pclk = of_clk_get(st_remote_data.remote_np, 0);
 
 		if (IS_ERR(st_remote_data.pclk) ||IS_ERR(st_remote_data.hclk) ) {
-			printk(KERN_WARNING "REMOTE: failed to get remote clock\n");
+			(void)printk(KERN_ERR "[ERROR][%s] REMOTE: failed to get remote clock\n", TCC_REMOCON_NAME);
 			st_remote_data.pclk = NULL;
 			st_remote_data.hclk = NULL;
 			return -ENODEV;
@@ -510,14 +509,14 @@ static int remocon_probe(struct platform_device *pdev)
 			
 			of_property_read_u32(st_remote_data.remote_np, "clock-frequency", &st_remote_data.core_clk_rate);
 
-			printk("Telechips Remote Controller [irq_port:%d], [core_clk_rate:%d]\n", st_remote_data.irq_port, st_remote_data.core_clk_rate);
+			(void)printk(KERN_INFO "[INFO][%s] Telechips Remote Controller [irq_port:%d], [core_clk_rate:%d]\n", TCC_REMOCON_NAME, st_remote_data.irq_port, st_remote_data.core_clk_rate);
 
 			of_property_read_u32(st_remote_data.remote_np, "wakeupsrc",&get_gpio);
 			tcc_remocon_rmcfg(get_gpio);
 			clk_set_rate(st_remote_data.pclk, st_remote_data.core_clk_rate/4);
 				
 			rmt_clk_rate = clk_get_rate(st_remote_data.pclk);
-			printk(" %s: remote clk_rate = %lu\n", __func__, rmt_clk_rate);
+			(void)printk(KERN_INFO "[INFO][%s] %s: remote clk_rate = %lu\n", TCC_REMOCON_NAME, __func__, rmt_clk_rate);
 		}
 	}
 
@@ -566,17 +565,17 @@ static int remocon_probe(struct platform_device *pdev)
 	{
 		INIT_WORK(&st_remote_data.irq_work, tcc_remocon_irq_work_queue_func);
 #if defined(TCC_PM_SLEEP_WFI_USED) && defined(CONFIG_SLEEP_MODE)
-	printk("IR request_irq with WFI mode\n");
+	(void)printk(KERN_INFO "[INFO][%s] IR request_irq with WFI mode\n", TCC_REMOCON_NAME);
 	ret =  request_threaded_irq(st_remote_data.irq_port, NULL , remocon_handler ,IRQF_ONESHOT, DEVICE_NAME, rem);
 #else
-	printk("IR request_irq\n");
+	(void)printk(KERN_INFO "[INFO][%s] IR request_irq\n", TCC_REMOCON_NAME);
 	ret =  request_threaded_irq(st_remote_data.irq_port, NULL , remocon_handler ,IRQF_ONESHOT, DEVICE_NAME, rem);
 #endif
 	}
 
 	if (ret)
 	{
-		printk("IR remote request_irq error\n");
+		(void)printk(KERN_ERR "[ERROR][%s] IR remote request_irq error\n", TCC_REMOCON_NAME);
 		goto error_irq;
 	}
 
@@ -699,13 +698,13 @@ static struct platform_driver remocon_driver =
 
 static int __init remocon_init(void)
 {
-	printk("Telechips Remote Controller Driver Init\n");
+	(void)printk(KERN_INFO "[INFO][%s] Telechips Remote Controller Driver Init\n", TCC_REMOCON_NAME);
 	return platform_driver_register(&remocon_driver);
 }
 
 static void __exit remocon_exit(void)
 {
-	printk("Telechips Remote Controller Driver Exit \n");
+	(void)printk(KERN_INFO "[INFO][%s] Telechips Remote Controller Driver Exit \n", TCC_REMOCON_NAME);
 	platform_driver_unregister(&remocon_driver);
 }
 
