@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <soc/tcc/timer.h>
 
+#define TCC_TIMER_NAME		"tcc_timer"
 #define timer_readl		__raw_readl
 #define timer_writel		__raw_writel
 
@@ -198,7 +199,7 @@ struct tcc_timer* tcc_register_timer(struct device *dev, unsigned long usec, irq
 		k = MAX_TCKSEL;
 		srch_k = k;
 		ref[srch_k] = max_ref;
-		printk("%s: cannot get the correct timer\n", __func__);
+		(void)printk(KERN_ERR "[%s] %s: cannot get the correct timer\n", TCC_TIMER_NAME, __func__);
 	}
 
 	timer_res[i].used = 1;
@@ -229,7 +230,7 @@ void tcc_unregister_timer(struct tcc_timer *timer)
 	if (timer->id < 0 || timer->id >= TCC_TIMER_MAX)
 		BUG();
 	if (timer_res[timer->id].used == 0)
-		printk("%s: id:%d is not registered index\n", __func__, timer->id);
+		(void)printk(KERN_WARNING "[%s] %s: id:%d is not registered index\n", TCC_TIMER_NAME,  __func__, timer->id);
 
 	free_irq(timer_res[timer->id].virq, &(timer_res[timer->id]));
 	timer_writel(0x0, reg+TCC_TCFG);
@@ -306,7 +307,7 @@ static int __init tcc_init_timer(struct device_node *np)
 	timer_base = of_iomap(np, 0);
 	
 	if (of_property_read_u32(np, "clock-frequency", &rate)) {
-		printk("%s: Can't read clock-frequency\n", __func__);
+		(void)printk(KERN_ERR "[%s] %s: Can't read clock-frequency\n", TCC_TIMER_NAME, __func__);
 		rate = 12000000;
 	}
 	timer_clk = of_clk_get(np, 0);
@@ -322,7 +323,7 @@ static int __init tcc_init_timer(struct device_node *np)
 		if (i >= TCC_TIMER_MAX)
 #endif
 			clk_set_rate(timer_clk, rate);
-		printk("%s: clk_rate: %lu\n", __func__, clk_get_rate(timer_clk));
+		(void)printk(KERN_INFO "[%s] %s: clk_rate: %lu\n", TCC_TIMER_NAME, __func__, clk_get_rate(timer_clk));
 		clk_prepare_enable(timer_clk);
 	}
 	clk_rate = clk_get_rate(timer_clk);
