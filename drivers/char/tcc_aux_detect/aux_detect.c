@@ -30,9 +30,14 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
-static int					debug = 0;
-#define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
-#define dlog(fmt, ...)		do { if(debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
+static int aux_verbose_mode = 0;
+
+#define elog(fmt, ...)		printk(KERN_ERR "[ERROR][AUX_DET_DRV]%s : " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
+#define wlog(fmt, ...)		printk(KERN_WARNING "[WARN][AUX_DET_DRV]%s : " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
+#define ilog(fmt, ...)		printk(KERN_INFO "[INFO][AUX_DET_DRV]%s : " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
+#define dlog(fmt, ...)		printk(KERN_DEBUG "[DEBUG][AUX_DET_DRV]%s : " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
+#define vlog(fmt, ...)      do { if(aux_verbose_mode) { printk(KERN_DEBUG "[DEBUG][AUX_DEV_DRV]%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
+
 #define FUNCTION_IN			dlog("IN\n");
 #define FUNCTION_OUT		dlog("OUT\n");
 
@@ -66,28 +71,35 @@ void aux_detect_set_state(long state) {
 	atomic_set(&aux_detect_status, state);
 }
 
+static int pre_aux_status = 0;
+
 ssize_t aux_detect_status_show(struct device * dev, struct device_attribute * attr, char * buf) {
 	struct aux_detect_data		* data		= pdata;
-	int								gear_value	= -1;
-	int								ret			= -1;
+	int	aux_value	= -1;
+	int	ret	= -1;
 
 	if((data->aux_detect_gpio != -1) && (data->aux_active != -1)) {
-		gear_value = !!gpio_get_value(data->aux_detect_gpio);
-		ret = (gear_value == data->aux_active);
-		dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->aux_detect_gpio, gear_value, data->aux_active, ret);
+		aux_value = !!gpio_get_value(data->aux_detect_gpio);
+		ret = (aux_value == data->aux_active);
+		vlog("gpio: %d, value: %d, active: %d, result: %d\n", data->aux_detect_gpio, aux_value, data->aux_active, ret);
+		if(pre_aux_status != ret)
+		{
+			dlog("aux status change: %d -> %d\n", pre_aux_status, ret);
+		}
+		pre_aux_status = ret;
+
 	} else {
-		log("HW Switch is not supported, gpio: %d, active: %d\n", data->aux_detect_gpio, data->aux_active);
+		elog("HW Switch is not supported, gpio: %d, active: %d\n", data->aux_detect_gpio, data->aux_active);
 		ret = 0;
 	}
 
-	dlog("aux detect status: %d\n", ret);
+	vlog("aux detect status: %d\n", ret);
 
 	return sprintf(buf, "%d\n", ret);
 }
 
 ssize_t aux_detect_status_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
-
-	log("Not support write to aux detect");
+	ilog("Not support write to aux detect");
 
 	return 0;
 }
@@ -101,20 +113,25 @@ int aux_detect_is_enabled(void) {
 }
 
 int aux_detect_check_state(void) {
-	struct aux_detect_data		* data		= pdata;
-	int								gear_value	= -1;
-	int								ret			= -1;
+	struct aux_detect_data	* data = pdata;
+	int	aux_value = -1;
+	int	ret	= -1;
 
 	if((data->aux_detect_gpio != -1) && (data->aux_active != -1)) {
-		gear_value = !!gpio_get_value(data->aux_detect_gpio);
-		ret = (gear_value == data->aux_active);
-		dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->aux_detect_gpio, gear_value, data->aux_active, ret);
+		aux_value = !!gpio_get_value(data->aux_detect_gpio);
+		ret = (aux_value == data->aux_active);
+		vlog("gpio: %d, value: %d, active: %d, result: %d\n", data->aux_detect_gpio, aux_value, data->aux_active, ret);
+		if(pre_aux_status != ret)
+		{
+			dlog("aux status change: %d -> %d\n", pre_aux_status, ret);
+		}
+		pre_aux_status = ret;
 	} else {
-		log("HW Switch is not supported, gpio: %d, active: %d\n", data->aux_detect_gpio, data->aux_active);
+		elog("HW Switch is not supported, gpio: %d, active: %d\n", data->aux_detect_gpio, data->aux_active);
 		ret = aux_detect_get_state();
 	}
 
-	dlog("aux detect status: %d\n", ret);
+	vlog("aux detect status: %d\n", ret);
 
 	return ret;
 }
@@ -127,17 +144,17 @@ long aux_detect_ioctl(struct file * filp, unsigned int cmd, unsigned long arg) {
 
 	case AUX_IOCTL_CMD_GET_STATE:
 		state = aux_detect_check_state();
-		dlog("state: %d\n", state);
+		ilog("state: %d\n", state);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&state, sizeof(state))) < 0) {
-			log("FAILED: copy_to_user\n");
+			elog("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
 		}
 		break;
 
 	default:
-		log("FAILED: Unsupported command\n");
+		elog("FAILED: Unsupported command\n");
 		ret = -1;
 		break;
 	}
@@ -169,20 +186,20 @@ int aux_detect_probe(struct platform_device * pdev) {
 	/* Allocate a charactor device region */
 	ret = alloc_chrdev_region(&aux_detect_dev_region, 0, 1, MODULE_NAME);
 	if(ret < 0) {
-		log("ERROR: Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
+		elog("Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
 		return ret;
 	}
 	
 	/* Create class */
 	aux_detect_class = class_create(THIS_MODULE, MODULE_NAME);
 	if(aux_detect_class == NULL) {
-		log("ERROR: Create the \"%s\" class\n", MODULE_NAME);
+		elog("Create the \"%s\" class\n", MODULE_NAME);
 		goto goto_unregister_chrdev_region;
 	}
 
 	/* Create the Reverse Switch device file system */
 	if(device_create(aux_detect_class, NULL, aux_detect_dev_region, NULL, MODULE_NAME) == NULL) {
-		log("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
+		elog("Create the \"%s\" device file\n", MODULE_NAME);
 		goto goto_destroy_class;
 	}
 
@@ -190,7 +207,7 @@ int aux_detect_probe(struct platform_device * pdev) {
 	cdev_init(&aux_detect_cdev, &aux_detect_fops);
 	ret = cdev_add(&aux_detect_cdev, aux_detect_dev_region, 1);
 	if(ret < 0) {
-		log("ERROR: Register the \"%s\" device as a charactor device\n", MODULE_NAME);
+		elog("Register the \"%s\" device as a charactor device\n", MODULE_NAME);
 		goto goto_destroy_device;
 	}
 
@@ -206,7 +223,7 @@ int aux_detect_probe(struct platform_device * pdev) {
 	/* pinctrl */
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
 	if(IS_ERR(pinctrl))
-		log("%s: pinctrl select failed\n", MODULE_NAME);
+		elog("%s: pinctrl select failed\n", MODULE_NAME);
 	else
 		pinctrl_put(pinctrl);
 
@@ -216,21 +233,19 @@ int aux_detect_probe(struct platform_device * pdev) {
 		data->aux_detect_gpio	= of_get_named_gpio(pdev->dev.of_node, "aux-gpios", 0);
 		of_property_read_u32_index(pdev->dev.of_node, "aux-active", 0, &data->aux_active);
 	} else {
-		log("\"switch-gpios\" node is not found.\n");
+		elog("\"switch-gpios\" node is not found.\n");
 	}
-	log("switch-gpios: %d, switch-active: %d\n", data->aux_detect_gpio, data->aux_active);
+	ilog("switch-gpios: %d, switch-active: %d\n", data->aux_detect_gpio, data->aux_active);
 
-	data->enabled		= 0;
+	data->enabled = 0;
 
 	/* Create the aux_detect_status sysfs */
 	ret = device_create_file(&pdev->dev, &dev_attr_aux_detect_status);
 	if(ret < 0)
-		log("failed create sysfs, aux_detect_status\r\n");
-
+		elog("failed create sysfs, aux_detect_status\r\n");
 
 	FUNCTION_OUT
 	return 0;
-
 
 goto_destroy_device:
 	device_destroy(aux_detect_class, aux_detect_dev_region);

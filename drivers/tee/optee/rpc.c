@@ -423,8 +423,12 @@ static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
 	if (!va)
 		goto bad;
 
-	//printk("%s", va);
-	pr_info("%s", va);
+	if (!strncmp(va, "E/", 2))
+		pr_err("%s", va);
+	else if (!strncmp(va, "I/", 2))
+		pr_info("%s", va);
+	else
+		pr_debug("%s", va);
 
 	arg->ret = TEEC_SUCCESS;
 	return;

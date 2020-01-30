@@ -1111,7 +1111,16 @@ static struct dtv_cmds_h dtv_cmds[DTV_MAX_COMMAND + 1] = {
 	_DTV_CMD(DTV_STAT_POST_ERROR_BIT_COUNT, 0, 0),
 	_DTV_CMD(DTV_STAT_POST_TOTAL_BIT_COUNT, 0, 0),
 	_DTV_CMD(DTV_STAT_ERROR_BLOCK_COUNT, 0, 0),
-	_DTV_CMD(DTV_STAT_TOTAL_BLOCK_COUNT, 0, 0),
+	_DTV_CMD(DTV_STAT_TOTAL_BLOCK_COUNT, 0, 0), 
+
+	_DTV_CMD(DTV_STAT_SSI, 0, 0), 
+	_DTV_CMD(DTV_STAT_SQI, 0, 0), 
+	_DTV_CMD(DTV_STAT_BER, 0, 0), 
+	_DTV_CMD(DTV_STAT_RSSI, 0, 0), 
+	_DTV_CMD(DTV_STAT_PER, 0, 0), 
+
+	/* DVB-S */
+	_DTV_CMD(DTV_DVBS_BSCAN_ABORT, 1, 0), 
 };
 
 static void dtv_property_dump(struct dvb_frontend *fe,
@@ -1534,6 +1543,21 @@ static int dtv_property_process_get(struct dvb_frontend *fe,
 	case DTV_STAT_TOTAL_BLOCK_COUNT:
 		tvp->u.st = c->block_count;
 		break;
+	case DTV_STAT_SSI:
+		tvp->u.st = c->ssi;
+		break;
+	case DTV_STAT_SQI:
+		tvp->u.st = c->sqi;
+		break;
+	case DTV_STAT_BER:
+		tvp->u.st = c->ber;
+		break;
+	case DTV_STAT_RSSI:
+		tvp->u.st = c->rssi;
+		break;
+	case DTV_STAT_PER:
+		tvp->u.st = c->per;
+		break;
 	default:
 		dev_dbg(fe->dvb->device,
 			"%s: FE property %d doesn't exist\n",
@@ -1940,6 +1964,8 @@ static int dtv_property_process_set(struct dvb_frontend *fe,
 			c->lna = LNA_AUTO;
 		break;
 
+	case DTV_DVBS_BSCAN_ABORT:
+		break;
 	default:
 		return -EINVAL;
 	}

@@ -629,6 +629,12 @@ struct dtv_frontend_properties {
 	struct dtv_fe_stats	block_error;
 	struct dtv_fe_stats	block_count;
 
+	struct dtv_fe_stats	ssi;
+	struct dtv_fe_stats	sqi;
+	struct dtv_fe_stats	ber;
+	struct dtv_fe_stats	rssi;
+	struct dtv_fe_stats	per;
+
 	/* private: */
 	/* Cache State */
 	u32			state;

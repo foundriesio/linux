@@ -1,27 +1,19 @@
-/****************************************************************************************
- *   FileName    : tcc_ipc_ctl.c
- *   Description : 
- ****************************************************************************************
+/****************************************************************************
  *
- *   TCC Version 1.0
- *   Copyright (c) Telechips Inc.
- *   All rights reserved 
- 
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written permission of Telechips including not limited 
-to re-distribution in source or binary form is strictly prohibited.
-This source code is provided ¡°AS IS¡± and nothing contained in this source code 
-shall constitute any express or implied warranty of any kind, including without limitation, 
-any warranty of merchantability, fitness for a particular purpose or non-infringement of any patent, 
-copyright or other third party intellectual property right. 
-No warranty is made, express or implied, regarding the information¡¯s accuracy, 
-completeness, or performance. 
-In no event shall Telechips be liable for any claim, damages or other liability arising from, 
-out of or in connection with this source code or the use in the source code. 
-This source code is provided subject to the terms of a Mutual Non-Disclosure Agreement 
-between Telechips and Company.
-*
-****************************************************************************************/
+ * Copyright (C) 2018 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -49,19 +41,12 @@ between Telechips and Company.
 #include "tcc_ipc_cmd.h"
 #include "tcc_ipc_ctl.h"
 
-extern int ipcDebugLevel;
+extern int ipc_verbose_mode;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(ipc_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 static IPC_INT32 ipc_add_queue_and_work(ipc_receiveQueue *ipc, ipc_receive_list *ipc_list);
 static void ipc_pump_messages(struct kthread_work *work);
@@ -143,13 +128,13 @@ int ipc_set_buffer(struct ipc_device *ipc_dev)
 			}
 			else
 			{
-				eprintk(ipc_dev->dev, "%s : memory alloc fail\n", __func__);
+				eprintk(ipc_dev->dev, "memory alloc fail\n");
 				ret =-1;
 			}
 		}
 		else
 		{
-			eprintk(ipc_dev->dev, "%s : memory alloc fail\n", __func__);
+			eprintk(ipc_dev->dev, "memory alloc fail\n");
 			ret =-1;
 		}
 		
@@ -189,16 +174,16 @@ void receive_message(struct mbox_client *client, void *message)
 	struct tcc_mbox_data *msg = (struct tcc_mbox_data *)message;
 	struct platform_device *pdev = to_platform_device(client->dev);
 	struct ipc_device *ipc_dev = platform_get_drvdata(pdev);
-	//struct ipc_device *ipc_dev = dev_get_drvdata(client->dev);
+
 	IpcCmdType cmdType;
 	IpcCmdID	cmdID ;
 	IPC_INT32 i;
 	for(i=0;i<7;i++)
 	{
-		dprintk(ipc_dev->dev,"%s : cmd[%d] = [0x%02x]\n", __func__,i, msg->cmd[i]);
+		dprintk(ipc_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
 	}
 
-	dprintk(ipc_dev->dev,"%s : data size (%d)\n", __func__,msg->data_len);
+	dprintk(ipc_dev->dev,"data size (%d)\n",msg->data_len);
 
 	cmdType = (msg->cmd[1] & CMD_TYPE_MASK ) >>16;
 	cmdID = (msg->cmd[1] & CMD_ID_MASK);
@@ -248,13 +233,13 @@ void receive_message(struct mbox_client *client, void *message)
 			}
 			else
 			{
-				eprintk(ipc_dev->dev,"%s : memory allocation failed\n", __func__);
+				eprintk(ipc_dev->dev,"memory allocation failed\n");
 			}
 		}
 	}
 	else
 	{
-		dprintk(ipc_dev->dev,"%s, receive unknown cmd [%d]\n", __func__, cmdType);
+		eprintk(ipc_dev->dev,"receive unknown cmd [%d]\n",cmdType);
 	}	
 }
 
@@ -308,7 +293,7 @@ static IPC_INT32 ipc_receive_queue_init(ipc_receiveQueue *ipc, ipc_receive_queue
 			&ipc->kworker,
 			name);
 	if (IS_ERR(ipc->kworker_task)) {
-		printk(KERN_ERR "%s : failed to create message pump task\n", __func__);
+		printk(KERN_ERR "[ERROR][%s] %s : failed to create message pump task\n", LOG_TAG,__func__);
 		return -ENOMEM;
 	}
 	kthread_init_work(&ipc->pump_messages, ipc_pump_messages);
@@ -381,7 +366,7 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 					int i;
 
 					readSize = pMsg->cmd[2];
-					dprintk(ipc_dev->dev,"%s : ipc recevie size(%d)\n", __func__,readSize);
+					dprintk(ipc_dev->dev,"ipc recevie size(%d)\n", readSize);
 					if(readSize > 0)
 					{
 						IPC_UINT32 freeSpace;
@@ -390,10 +375,10 @@ static void ipc_receive_writecmd(void *device_info, struct tcc_mbox_data  * pMsg
 
 						ipc_handler->readBuffer.status = IPC_BUF_BUSY;
 						freeSpace = ipc_buffer_free_space(&ipc_handler->readRingBuffer);
-						dprintk(ipc_dev->dev,"%s : ipc freeSpace size(%d)\n", __func__,freeSpace);
+						dprintk(ipc_dev->dev,"ipc freeSpace size(%d)\n", freeSpace);
 						for(i=0;i<readSize; i++)
 						{
-							dprintk(ipc_dev->dev,"%s : ipc data[%d] : [0x%x]\n", __func__,i, pMsg->data[i]);
+							dprintk(ipc_dev->dev,"ipc data[%d] : [0x%x]\n", i, pMsg->data[i]);
 						}
 						
 						if(freeSpace > readSize)
@@ -490,7 +475,7 @@ void ipc_workqueue_release(struct ipc_device *ipc_dev)
 	{
 		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;
 
-		dprintk(ipc_dev->dev,  "%s : In\n", __func__);
+		iprintk(ipc_dev->dev, "\n");
 		(void)deregister_receive_queue(&ipc_handler->receiveQueue[CTL_CMD]);
 		(void)deregister_receive_queue(&ipc_handler->receiveQueue[WRITE_CMD]);
 	}
@@ -516,7 +501,7 @@ IPC_INT32 ipc_initialize(struct ipc_device *ipc_dev)
 
 void ipc_release(struct ipc_device *ipc_dev)
 {
-	dprintk(ipc_dev->dev,  "%s : In\n", __func__);
+	iprintk(ipc_dev->dev,  "\n");
 	/* wake up pending thread */
 	ipc_read_wake_up(ipc_dev);
 	ipc_cmd_all_wake_up(ipc_dev);
@@ -553,7 +538,7 @@ static IPC_INT32 ipc_write_data(struct ipc_device *ipc_dev, IPC_UCHAR *buff, IPC
 			}
 			else
 			{
-				eprintk(ipc_dev->dev, "%s : IPC Write ACK Timeout\n", __func__);
+				wprintk(ipc_dev->dev, "IPC Write ACK Timeout\n");
 				break;
 			}			
 
@@ -576,7 +561,7 @@ IPC_INT32 ipc_write(struct ipc_device *ipc_dev, IPC_UCHAR *buff, IPC_UINT32 size
 		if(ipc_handler->ipcStatus < IPC_READY)
 		{
 			ipc_try_connection(ipc_dev);
-			dprintk(ipc_dev->dev, "%s : IPC Not Ready\n", __func__);
+			iprintk(ipc_dev->dev, "IPC Not Ready\n");
 		}
 		else
 		{
@@ -590,7 +575,7 @@ static IPC_INT32 ipc_read_data(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_U
 {
 	IPC_INT32 ret = 0;	//return read size
 
-	dprintk(ipc_dev->dev, "%s: \n", __func__);
+	dprintk(ipc_dev->dev, "\n");
 	if((ipc_dev != NULL)&&(buff != NULL)&&(size > 0))
 	{
 		IpcHandler *ipc_handler = &ipc_dev->ipc_handler;	
@@ -698,8 +683,8 @@ IPC_INT32 ipc_read(struct ipc_device *ipc_dev,IPC_UCHAR *buff, IPC_UINT32 size, 
 		if((ipc_handler->ipcStatus < IPC_READY)||(ipc_handler->readBuffer.status<IPC_BUF_READY))
 		{
 			ipc_try_connection(ipc_dev);
-			dprintk(ipc_dev->dev, "%s : IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
-				__func__,ipc_handler->ipcStatus,ipc_handler->readBuffer.status);
+			iprintk(ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+				ipc_handler->ipcStatus,ipc_handler->readBuffer.status);
 		}
 
 		ret = ipc_read_data(ipc_dev, buff, size, flag);

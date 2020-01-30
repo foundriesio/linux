@@ -643,8 +643,9 @@ config TCC_LUT_DRV
 
 config TCC_PM_LUT_DRV
     boolean "TCC PixelMapper LUT Driver"
-    default y
+    default n
     depends on (ARCH_TCC899X || ARCH_TCC901X) && !ARM64
+    depends on VIOC_PIXEL_MAPPER
     help
         TCC H/W 3D look up table
 

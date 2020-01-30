@@ -830,6 +830,101 @@ static int sdhci_tcc_clk_gating_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
+static int sdhci_tcc_tap_dly_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg;
+
+	reg = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	seq_printf(sf, "0x%08x\n", reg);
+
+	return 0;
+}
+
+static int sdhci_tcc_tap_dly_store(struct file *file,
+					const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *sf = file->private_data;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	char buf[16] = {0, };
+	u32 reg = 0;
+
+	if(copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if(kstrtouint(buf, 0, &reg))
+		return -EFAULT;
+
+	writel(reg, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	reg = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	tcc->clk_out_tap = (reg & TCC_SDHC_TAPDLY_OTAP_SEL_MASK) >> 8;
+
+	return count;
+}
+
+static int sdhci_tcc_clk_dly_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg, ch, shift;
+
+	ch = (u32)tcc->controller_id;
+	shift = 0;
+	if(ch == 1)
+		shift = 16;
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg = (reg >> shift) & 0x1F;
+	seq_printf(sf, "%d\n", reg);
+
+	return 0;
+}
+
+static int sdhci_tcc_clk_dly_store(struct file *file,
+					const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *sf = file->private_data;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	char buf[16] = {0, };
+	u32 reg, val, ch, shift;
+
+	if(copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if(kstrtouint(buf, 0, &val))
+		return -EFAULT;
+
+	/* Configure CLK TX TAPDLY */
+	ch = (u32)tcc->controller_id;
+	shift = 0;
+	if(ch == 1)
+		shift = 16;
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
+	reg |= TCC803X_SDHC_MK_TX_CLKDLY(ch, val);
+	writel(reg, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg = (reg >> shift) & 0x1F;
+	tcc->clk_tx_tap = reg;
+
+	return count;
+}
+
+static int sdhci_tcc_tap_dly_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_tap_dly_show, inode->i_private);
+}
+
+static int sdhci_tcc_clk_dly_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_clk_dly_show, inode->i_private);
+}
+
 static int sdchi_tcc_tune_result_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, sdhci_tcc_tune_result_show, inode->i_private);
@@ -839,6 +934,22 @@ static int sdchi_tcc_clk_gating_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, sdhci_tcc_clk_gating_show, inode->i_private);
 }
+
+static const struct file_operations sdhci_tcc_fops_tap_dly = {
+	.open		= sdhci_tcc_tap_dly_open,
+	.read		= seq_read,
+	.write		= sdhci_tcc_tap_dly_store,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations sdhci_tcc_fops_clk_dly = {
+	.open		= sdhci_tcc_clk_dly_open,
+	.read		= seq_read,
+	.write		= sdhci_tcc_clk_dly_store,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 
 static const struct file_operations sdhci_tcc_fops_tune_result = {
 	.open		= sdchi_tcc_tune_result_open,
@@ -1005,6 +1116,21 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		goto err_pclk_disable;
 
 #if defined(CONFIG_DEBUG_FS)
+
+	tcc->tap_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "tap_delay", S_IRUGO | S_IWUSR,
+			&sdhci_tcc_fops_tap_dly);
+	if(!tcc->tap_dly_dbgfs) {
+		dev_err(&pdev->dev, "failed to create tap_delay debugfs\n");
+	}
+
+	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc803x-sdhci")) {
+		tcc->clk_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_delay", S_IRUGO | S_IWUSR,
+				&sdhci_tcc_fops_clk_dly);
+		if(!tcc->clk_gating_dbgfs) {
+			dev_err(&pdev->dev, "failed to create clock_delay debugfs\n");
+		}
+	}
+
 	tcc->auto_tune_rtl_base = of_iomap(pdev->dev.of_node, 3);
 	if(!tcc->auto_tune_rtl_base) {
 		dev_dbg(&pdev->dev, "not support auto tune result accessing\n");

@@ -419,18 +419,26 @@
 };
 
 &gpsb0 {
-	status = "disabled";  // enable = "okay"
-	gpsb-port = <6>;
+	status = "okay";
+	gpsb-port = <22>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&gpsb6_bus_idle>;
-	pinctrl-1 = <&gpsb6_bus_spi>;
+	pinctrl-0 = <&gpsb22_bus_idle>;
+	pinctrl-1 = <&gpsb22_bus_spi>;
+
+	/* cs-gpios */
+	cs-gpios = <&gpg 8 0>,<&gpa 30 0>;
 
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spidev@0 {
 		compatible = "rohm,dh2228fv";
 		reg = <0>;
-		spi-max-frequency = <2000000>;
+		spi-max-frequency = <20000000>;
+	};
+	spidev@1 {
+		compatible = "rohm,dh2228fv";
+		reg = <1>;
+		spi-max-frequency = <20000000>;
 	};
 };
 

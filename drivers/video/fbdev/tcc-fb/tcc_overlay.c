@@ -415,10 +415,17 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			break;
 
 		case OVERLAY_SET_OVP:
+		case OVERLAY_SET_OVP_KERNEL:
 			{
 				unsigned int ovp;
-				if(copy_from_user(&ovp, (unsigned int *)arg, sizeof(unsigned int)))
+				if (cmd == OVERLAY_SET_OVP_KERNEL) {
+					ovp = (unsigned int)arg;
+				} else {
+					if (copy_from_user(&ovp, (unsigned int *)arg, sizeof(unsigned int))) {
+						pr_err("OVERLAY_SET_OVP copy_from_user failed\n");
 					return -EFAULT;
+					}
+				}
 
 				if(ovp > 29) {
 					printk("wrong ovp number: %d \n", ovp);
@@ -431,11 +438,18 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 			break;
 
 		case OVERLAY_GET_OVP:
+		case OVERLAY_GET_OVP_KERNEL:
 			{
 				unsigned int ovp;
 				VIOC_WMIX_GetOverlayPriority(overlay_drv->wmix.reg, &ovp);
-				if(copy_to_user((unsigned int *)arg, &ovp, sizeof(unsigned int)))
+				if (cmd == OVERLAY_GET_OVP_KERNEL) {
+					*(unsigned long *)arg = ovp;
+				} else {
+					if (copy_to_user((unsigned int *)arg, &ovp, sizeof(unsigned int))) {
+						pr_err("OVERLAY_SET_OVP copy_to_user failed\n");
 					return -EFAULT;
+			}
+				}
 			}
 			break;
 

@@ -316,6 +316,30 @@
 		telechips,pin-function = <5>;
 	};
 
+	tsrx0_idle: tsrx0_idle {
+		telechips,pins = "gpd-8", "gpd-10", "gpd-9", "gpd-7";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	tsrx0_active: tsrx0_active {
+		telechips,pins = "gpd-8", "gpd-10", "gpd-9", "gpd-7";
+		telechips,pin-function = <1>;
+		telechips,input-enable;
+	};
+/*
+	tsrx0_idle_parallel: tsrx0_idle_parallel {
+		telechips,pins = "gpd-8", "gpd-10", "gpd-9", "gpd-7", "gpd-6", "gpd-5", "gpd-4", "gpd-3", "gpd-2", "gpd-1", "gpd-0";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	tsrx0_active_parallel: tsrx0_active_parallel {
+		telechips,pins = "gpd-8", "gpd-10", "gpd-9", "gpd-7", "gpd-6", "gpd-5", "gpd-4", "gpd-3", "gpd-2", "gpd-1", "gpd-0";
+		telechips,pin-function = <1>;
+		telechips,input-enable;
+	};
+*/
 
 	tsrx1_idle: tsrx1_idle {
 		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3";
@@ -328,6 +352,7 @@
 		telechips,pin-function = <2>;
 		telechips,input-enable;
 	};
+
 	tsrx1_idle_parallel: tsrx1_idle_parallel {
 		telechips,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3", "gpe-4", "gpe-5", "gpe-6", "gpe-7", "gpe-8", "gpe-9", "gpe-10";
 		telechips,pin-function = <0>;
@@ -365,6 +390,30 @@
 		telechips,input-enable;
 	};
 */
+
+	tsrx3_idle: tsrx3_idle {
+		telechips,pins = "gpf-0", "gpf-1", "gpf-2", "gpf-3";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	tsrx3_active: tsrx3_active {
+		telechips,pins = "gpf-0", "gpf-1", "gpf-2", "gpf-3";
+		telechips,pin-function = <3>;
+		telechips,input-enable;
+	};
+
+	tsrx3_idle_parallel: tsrx3_idle_parallel {
+		telechips,pins = "gpf-0", "gpf-1", "gpf-2", "gpf-3",  "gpf-4", "gpf-5", "gpf-6", "gpf-7", "gpf-8", "gpf-9", "gpf-10";
+		telechips,pin-functions = <0>;
+		telechips,output-low;
+	};
+
+	tsrx3_active_parallel: tsrx3_active_parallel {
+		telechips,pins = "gpf-0", "gpf-1", "gpf-2", "gpf-3",  "gpf-4", "gpf-5", "gpf-6", "gpf-7", "gpf-8", "gpf-9", "gpf-10";
+		telechips,pin-functions = <3>;
+		telechips,input-enable;
+	};
 
 	uart0_data: uart0_data {
 		telechips,pins = "gpa-13", "gpa-14";

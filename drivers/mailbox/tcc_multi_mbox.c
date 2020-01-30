@@ -29,20 +29,6 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <dt-bindings/mailbox/tcc_mbox_ch.h>
 
-int debugLevel = 1;
-
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (debugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (debugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
-
 #define Hw37		(1LL << 37)
 #define Hw36		(1LL << 36)
 #define Hw35		(1LL << 35)
@@ -125,6 +111,15 @@ int debugLevel = 1;
 #define DATA_SCOUNT_MASK		0x0000FFFF
 
 #define MBOX_TIMEOUT	3000 	/*3000 usec */
+
+#define LOG_TAG	"MULTI_CH_MBOX_DRV"
+
+int mbox_verbose_mode = 0;
+
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(mbox_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 struct tcc_mbox_device
 {
@@ -263,7 +258,7 @@ static int mbox_receive_queue_init(mbox_receiveQueue *mbox_queue, mbox_receive_q
 			&mbox_queue->kworker,
 			name);
 	if (IS_ERR(mbox_queue->kworker_task)) {
-		printk(KERN_ERR "%s : failed to create message pump task\n", __func__);
+		printk(KERN_ERR "[ERROR][%s]%s : failed to create message pump task\n", LOG_TAG, __func__);
 		return -ENOMEM;
 	}
 	kthread_init_work(&mbox_queue->pump_messages, mbox_pump_messages);
@@ -309,28 +304,26 @@ static int tcc_multich_mbox_send(struct mbox_chan *chan, void *data)
 
 	if (!msg)
 	{
-		eprintk(mdev->mbox.dev,"%s : massge is emtpy\n", __func__);
-		//return -EINVAL;
+		eprintk(mdev->mbox.dev,"massge is emtpy\n");
 		goto exit;
 	}
 
-	dprintk(mdev->mbox.dev,"%s : msg(0x%p)\n", __func__, (void *)msg);
+	dprintk(mdev->mbox.dev,"msg(0x%p)\n", (void *)msg);
 	for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 	{
-		dprintk(mdev->mbox.dev,"%s : cmd[%d]: (0x%02x)\n", __func__, i, msg->cmd[i]);
+		dprintk(mdev->mbox.dev,"cmd[%d]: (0x%02x)\n", i, msg->cmd[i]);
 	}
-	dprintk(mdev->mbox.dev,"%s : data size(%d)\n", __func__, msg->data_len);
+	dprintk(mdev->mbox.dev,"data size(%d)\n", msg->data_len);
 
 	if (msg->data_len > MBOX_DATA_FIFO_SIZE)
 	{
-		eprintk(mdev->mbox.dev,"%s : mbox data fifo is too big. Data fifo size(%d), input size(%d)\n", __func__, MBOX_DATA_FIFO_SIZE,msg->data_len);
-		//return -ENOMEM;
-		eprintk(mdev->mbox.dev,"%s : msg(0x%p)\n", __func__, (void *)msg);
+		eprintk(mdev->mbox.dev,"mbox data fifo is too big. Data fifo size(%d), input size(%d)\n", MBOX_DATA_FIFO_SIZE,msg->data_len);
+		eprintk(mdev->mbox.dev,"msg(0x%p)\n", (void *)msg);
 		for(i=0; i<(MBOX_CMD_FIFO_SIZE);i++)
 		{
-			eprintk(mdev->mbox.dev,"%s : cmd[%d]: (0x%02x)\n", __func__, i, msg->cmd[i]);
+			eprintk(mdev->mbox.dev,"cmd[%d]: (0x%02x)\n", i, msg->cmd[i]);
 		}
-		eprintk(mdev->mbox.dev,"%s : data size(%d)\n", __func__, msg->data_len);
+		eprintk(mdev->mbox.dev,"data size(%d)\n", msg->data_len);
 		goto exit;
 	}
 
@@ -399,7 +392,7 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 	struct mbox_client *cl =chan->cl;
 	int ret=0;
 
-	dprintk(mdev->mbox.dev,"%s : In\n", __func__);
+	iprintk(mdev->mbox.dev,"In\n");
 	/* enable channel*/
 	mutex_lock(&mdev->lock);
 

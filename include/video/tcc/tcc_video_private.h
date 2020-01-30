@@ -190,6 +190,19 @@ enum optional_info_description {
 	VID_OPT_MAX
 };
 
+enum vid_opt_flag_description {
+    VOF_FIRST_SEEKED_FRAME  = 0x00000001,
+    VOF_DISPLAY_DIRECTLY    = 0x00000002,
+    VOF_DXB_IPTV            = 0x00000010,
+    VOF_OTT_IPTV            = 0x00000020,
+    VOF_DISCONTINUITY_FRAME = 0x00002000,
+    VOF_M2M_PATH_FRAME      = 0x00010000,
+    VOF_OTF_PTAH_FRAME      = 0x00020000,
+    VOF_ODD_FIRST_FRAME     = 0x10000000,
+    VOF_INTERLACE_ONE_FIELD = 0x20000000,
+    VOF_INTERLACED_FRAME    = 0x40000000,
+};
+
 typedef struct TCC_PLATFORM_PRIVATE_PMEM_INFO
 {
 	unsigned int gralloc_phy_address;			// Never change the value and position(1st)!!

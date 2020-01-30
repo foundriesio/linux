@@ -45,6 +45,7 @@
 #define VPU_4K_D2_REGISTER_DUMP
 #define VPU_4K_D2_DUMP_STATUS
 //#define VPU_4K_D2_REGISTER_INIT
+#define DEBUG_VPU_4K_D2_K //To debug vpu drv in usersapce side (e.g. omx)
 
 //#define FORCED_ERROR //For test purpose!!
 #ifdef FORCED_ERROR
@@ -64,6 +65,16 @@ static int forced_error_count = FORCED_ERR_CNT;
 #define W5_VPU_FIO_DATA             0x0024
 #endif
 
+#ifdef DEBUG_VPU_4K_D2_K
+typedef struct debug_4k_d2_k_isr_t {
+    int ret_code_vmgr_hdr;
+    unsigned int vpu_k_isr_cnt_hit;
+    unsigned int wakeup_interrupt_cnt;
+} debug_4k_d2_k_isr_t;
+debug_4k_d2_k_isr_t vpu_4k_d2_isr_param_debug;
+static unsigned int cntInt_4kd2 = 0;
+static unsigned int cntwk_4kd2 = 0;
+#endif
 /////////////////////////////////////////////////////////////////////////////
 // Control only once!!
 static mgr_data_t vmgr_4k_d2_data;
@@ -1048,7 +1059,7 @@ static int _vmgr_4k_d2_external_all_close(int wait_ms)
     return 0;
 }
 
-static unsigned int cntInt_4kd2 = 0;
+//static unsigned int cntInt_4kd2 = 0;
 static int _vmgr_4k_d2_cmd_open(char *str)
 {
 	int ret = 0;
@@ -1329,6 +1340,18 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
             //tcc_vpu_4k_d2_dec_esc(1, 0, 0, 0);
 		break;
 
+    #ifdef DEBUG_VPU_4K_D2_K
+        case VPU_DEBUG_ISR:
+            { 
+                vpu_4k_d2_isr_param_debug.vpu_k_isr_cnt_hit = cntInt_4kd2;
+                vpu_4k_d2_isr_param_debug.wakeup_interrupt_cnt = cntwk_4kd2;
+                /*//err("[Jun] vpu_k_isr_cnt_hit[%d], wakeup_interrupt_cnt[%d] !!!\n",
+                         vpu_isr_param_debug.vpu_k_isr_cnt_hit, vpu_isr_param_debug.wakeup_interrupt_cnt);//*/
+                if (copy_to_user((void*)arg, &vpu_4k_d2_isr_param_debug, sizeof(debug_4k_d2_k_isr_t)) )
+                    ret = -EFAULT;
+            } 
+            break;
+    #endif
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
@@ -1360,7 +1383,9 @@ static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 //    spin_lock_irqsave(&(vmgr_4k_d2_data.oper_lock), flags);
     atomic_inc(&vmgr_4k_d2_data.oper_intr);
 //    spin_unlock_irqrestore(&(vmgr_4k_d2_data.oper_lock), flags);
-
+    #ifdef DEBUG_VPU_4K_D2_K
+    cntwk_4kd2++;
+    #endif
     wake_up_interruptible(&(vmgr_4k_d2_data.oper_wq));
 
     return IRQ_HANDLED;
@@ -1383,7 +1408,9 @@ static int _vmgr_4k_d2_open(struct inode *inode, struct file *filp)
 #endif
 
     filp->private_data = &vmgr_4k_d2_data;
-
+        #ifdef DEBUG_VPU_4K_D2_K
+        cntwk_4kd2 = 0;
+        #endif
     return 0;
 }
 

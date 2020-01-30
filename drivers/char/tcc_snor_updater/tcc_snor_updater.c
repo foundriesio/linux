@@ -56,20 +56,12 @@
 #include "tcc_snor_updater_crc8.h"
 #include "tcc_snor_updater.h"
 
-extern int updaterDebugLevel;
+extern int updater_verbose_mode;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
-
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 int snor_update_start(struct snor_updater_device *updater_dev)
 {

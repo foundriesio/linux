@@ -156,7 +156,7 @@ static int screen_debug = 0;
 #define FB_NUM_BUFFERS 3
 
 #if defined(CONFIG_USE_DISPLAY_FB_LOCK)
-static unsigned int fb_lock = false;   //TO FORBID UPDATE
+unsigned int fb_lock = false;   //TO FORBID UPDATE
 #endif
 
 #ifdef CONFIG_TCC_SCREEN_SHARE
@@ -836,12 +836,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				break;
 			}
 #endif
-#if defined(CONFIG_USE_DISPLAY_FB_LOCK)
-			if(fb_lock){
-				//pr_err(" display is locked !!! fb_lock : %d \n", fb_lock);
-				break;
-			}
-#endif
 			mutex_lock(&ptccfb_info->output_lock);
 
 			if (!ptccfb_info->output_on) {
@@ -1416,7 +1410,6 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			if(!pdp_data->FbPowerState) {
 				return 0;
 			}
-
 
 			memset(&var, 0, sizeof(struct fb_var_screeninfo));
 			var.xres = sc_info.width;
@@ -2907,7 +2900,7 @@ static int tccfb_probe(struct platform_device *pdev)
 
 		tcc_dp_dt_parse_data(info_reg);
 
-		/* kobject_rename — change the name of an object */
+		/* kobject_rename - change the name of an object */
 		kobject_rename(&pdev->dev.kobj, "tccfb");
 
 		strcpy(fbinfo_reg->fix.id, tccfb_driver_name);

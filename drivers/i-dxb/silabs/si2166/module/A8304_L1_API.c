@@ -50,7 +50,7 @@ void  L1_A8304_WriteBytes     (A8304_Context *context) {
   context->TSD  = ((context->A8304_BYTES[1])>>6)&0x01;
   context->UVLO = ((context->A8304_BYTES[1])>>7)&0x01;
 
-  printf("\033[1;33m""A8304 status byte: 0x%02x DIS %d, CPOK %d, OCP %d, PNG %d, TSD %d, UVLO %d""\033[0m\n",
+  SiTRACE("\033[1;33m""A8304 status byte: 0x%02x DIS %d, CPOK %d, OCP %d, PNG %d, TSD %d, UVLO %d""\033[0m\n",
           context->A8304_BYTES[1],
           context->DIS,
           context->CPOK,
@@ -90,7 +90,7 @@ int   L1_A8304_RState (A8304_Context *context){
   context->TSD  = ((context->A8304_BYTES[1])>>6)&0x01;
   context->UVLO = ((context->A8304_BYTES[1])>>7)&0x01;
 
-  printf("\033[1;33m""A8304 status byte: 0x%02x DIS %d, CPOK %d, OCP %d, PNG %d, TSD %d, UVLO %d""\033[0m\n",
+  SiTRACE("\033[1;33m""A8304 status byte: 0x%02x DIS %d, CPOK %d, OCP %d, PNG %d, TSD %d, UVLO %d""\033[0m\n",
           context->A8304_BYTES[1],
           context->DIS,
           context->CPOK,

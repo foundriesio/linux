@@ -163,10 +163,23 @@ static unsigned int sdhci_tcc_get_ro(struct sdhci_host *host)
 	return mmc_gpio_get_ro(host->mmc);
 }
 
+static void sdhci_tcc_reset(struct sdhci_host *host, u8 mask)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+
+	sdhci_reset(host, mask);
+
+	/* After reset, re-write the value to specific register */
+	if (tcc->flags & TCC_SDHC_CLK_GATING) {
+		sdhci_writel(host, 0x2, TCC_SDHC_VENDOR);
+	}
+}
+
 static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *host)
 {
 	struct device_node *np;
 	struct mmc_host *mmc;
+	struct sdhci_tcc *tcc = to_tcc(host);
 
 	np = pdev->dev.of_node;
 	if(!np) {
@@ -178,6 +191,9 @@ static void sdhci_tcc_parse(struct platform_device *pdev, struct sdhci_host *hos
 	/* Force disable HS200 support */
 	if (of_property_read_bool(np, "tcc-disable-mmc-hs200"))
 		host->quirks2 |= SDHCI_QUIRK2_BROKEN_HS200;
+
+	/* Set the drive strength of device */
+	of_property_read_u32(np, "tcc-dev-ds", &tcc->drive_strength);
 
 	mmc->caps |= MMC_CAP_BUS_WIDTH_TEST;
 }
@@ -268,6 +284,10 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 		dev_err(&pdev->dev, "unsupported version 0x%x\n", tcc->version);
 	}
 
+	if (!of_property_read_u64(np, "tcc-force-caps", &tcc->force_caps)) {
+		dev_info(&pdev->dev, "Capabilities registers are forcibly changed\n");
+	}
+
 	return ret;
 }
 
@@ -338,6 +358,11 @@ static int sdhci_tcc_parse_configs(struct platform_device *pdev, struct sdhci_ho
 		}
 	}
 
+	/* Enable Output SDCLK gating */
+	if (of_property_read_bool(np, "tcc-clk-gating")) {
+		tcc->flags |= TCC_SDHC_CLK_GATING;
+	}
+
 	return ret;
 }
 
@@ -389,8 +414,15 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 	}
 
 	/* Configure CAPREG */
-	writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG0);
-	writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	if (tcc->force_caps) {
+		writel(lower_32_bits(tcc->force_caps),
+				tcc->chctrl_base + TCC_SDHC_CAPREG0);
+		writel(upper_32_bits(tcc->force_caps),
+				tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	} else {
+		writel(TCC_SDHC_CAPARG0_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG0);
+		writel(TCC_SDHC_CAPARG1_DEF, tcc->chctrl_base + TCC_SDHC_CAPREG1);
+	}
 
 	/* Configure TAPDLY */
 	if(tcc->version == 0) {
@@ -519,11 +551,18 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 	} else if(tcc->version == 1){
 		if(!is_tcc803x_support_hs400(host)) {
 			unsigned int vals;
+
+			/* disable peri clock */
 			clk_disable_unprepare(pltfm_host->clk);
+
+			/* select sdcore clock */
 			vals = readl(tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
 			vals &= ~(TCC803X_SDHC_CORE_CLK_CLK_SEL(1));
 			writel(vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG0);
+
+			/* enable peri clock */
 			clk_prepare_enable(pltfm_host->clk);
+
 			ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
 		} else {
 			unsigned int peri_clock, core_clock, vals;
@@ -662,7 +701,7 @@ static const struct sdhci_ops sdhci_tcc_ops = {
 	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
-	.reset = sdhci_reset,
+	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
@@ -672,7 +711,7 @@ static const struct sdhci_ops sdhci_tcc803x_ops = {
 	.get_max_clock = sdhci_tcc803x_clk_get_max_clock,
 	.set_clock = sdhci_tcc_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
-	.reset = sdhci_reset,
+	.reset = sdhci_tcc_reset,
 	.hw_reset = sdhci_tcc_hw_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
 	.get_ro = sdhci_tcc_get_ro,
@@ -728,11 +767,12 @@ MODULE_DEVICE_TABLE(of, sdhci_tcc_of_match_table);
 
 static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 {
-	struct sdhci_tcc *tcc = (struct sdhci_tcc *)sf->private;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
 	u32 reg, en, result;
 
 	reg = readl(tcc->auto_tune_rtl_base);
-	if(tcc->controller_id < 0) {
+	if (tcc->controller_id < 0) {
 		seq_printf(sf, "controller-id is not specified.\n");
 		seq_printf(sf, "auto tune result register 0x08%x\n",
 			reg);
@@ -747,13 +787,155 @@ static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
+static int sdhci_tcc_clk_gating_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg, en;
+
+	reg = sdhci_readl(host, TCC_SDHC_VENDOR);
+	if (tcc->controller_id < 0) {
+		seq_printf(sf, "controller-id is not specified.\n");
+		seq_printf(sf, "clock gating register 0x08%x\n",
+			reg);
+	} else {
+		en = (reg >> 1) & 0x1;
+		seq_printf(sf, "%s\n", en? "enabled":"disabled");
+	}
+
+	return 0;
+}
+
+static int sdhci_tcc_tap_dly_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg;
+
+	reg = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	seq_printf(sf, "0x%08x\n", reg);
+
+	return 0;
+}
+
+static int sdhci_tcc_tap_dly_store(struct file *file,
+					const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *sf = file->private_data;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	char buf[16] = {0, };
+	u32 reg = 0;
+
+	if(copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if(kstrtouint(buf, 0, &reg))
+		return -EFAULT;
+
+	writel(reg, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	reg = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	tcc->clk_out_tap = (reg & TCC_SDHC_TAPDLY_OTAP_SEL_MASK) >> 8;
+
+	return count;
+}
+
+static int sdhci_tcc_clk_dly_show(struct seq_file *sf, void *data)
+{
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 reg, ch, shift;
+
+	ch = (u32)tcc->controller_id;
+	shift = 0;
+	if(ch == 1)
+		shift = 16;
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg = (reg >> shift) & 0x1F;
+	seq_printf(sf, "%d\n", reg);
+
+	return 0;
+}
+
+static int sdhci_tcc_clk_dly_store(struct file *file,
+					const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *sf = file->private_data;
+	struct sdhci_host *host = (struct sdhci_host *)sf->private;
+	struct sdhci_tcc *tcc = to_tcc(host);
+	char buf[16] = {0, };
+	u32 reg, val, ch, shift;
+
+	if(copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if(kstrtouint(buf, 0, &val))
+		return -EFAULT;
+
+	/* Configure CLK TX TAPDLY */
+	ch = (u32)tcc->controller_id;
+	shift = 0;
+	if(ch == 1)
+		shift = 16;
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
+	reg |= TCC803X_SDHC_MK_TX_CLKDLY(ch, val);
+	writel(reg, tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+
+	reg = readl(tcc->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
+	reg = (reg >> shift) & 0x1F;
+	tcc->clk_tx_tap = reg;
+
+	return count;
+}
+
+static int sdhci_tcc_tap_dly_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_tap_dly_show, inode->i_private);
+}
+
+static int sdhci_tcc_clk_dly_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_clk_dly_show, inode->i_private);
+}
+
 static int sdchi_tcc_tune_result_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, sdhci_tcc_tune_result_show, inode->i_private);
 }
 
+static int sdchi_tcc_clk_gating_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sdhci_tcc_clk_gating_show, inode->i_private);
+}
+
+static const struct file_operations sdhci_tcc_fops_tap_dly = {
+	.open		= sdhci_tcc_tap_dly_open,
+	.read		= seq_read,
+	.write		= sdhci_tcc_tap_dly_store,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations sdhci_tcc_fops_clk_dly = {
+	.open		= sdhci_tcc_clk_dly_open,
+	.read		= seq_read,
+	.write		= sdhci_tcc_clk_dly_store,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static const struct file_operations sdhci_tcc_fops_tune_result = {
 	.open		= sdchi_tcc_tune_result_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations sdhci_tcc_fops_clk_gating = {
+	.open		= sdchi_tcc_clk_gating_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
@@ -763,11 +945,10 @@ static struct dentry *sdhci_tcc_register_debugfs_file(struct sdhci_host *host,
 	const char *name, umode_t mode, const struct file_operations *fops)
 {
 	struct dentry *file = NULL;
-	struct sdhci_tcc *tcc = to_tcc(host);
 
 	if (host->mmc->debugfs_root)
 		file = debugfs_create_file(name, mode, host->mmc->debugfs_root,
-			tcc, fops);
+			host, fops);
 
 	if (IS_ERR_OR_NULL(file)) {
 		pr_err("Can't create %s. Perhaps debugfs is disabled.\n",
@@ -776,6 +957,25 @@ static struct dentry *sdhci_tcc_register_debugfs_file(struct sdhci_host *host,
 	}
 
 	return file;
+}
+
+static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
+		unsigned int max_dtr, int host_drv,
+		int card_drv, int *drv_type)
+{
+	struct sdhci_host *host = mmc_priv(card->host);
+	struct sdhci_tcc *tcc = to_tcc(host);
+	int drive_strength;
+
+	if ((1 << tcc->drive_strength) & card_drv) {
+		drive_strength = tcc->drive_strength;
+	} else {
+		pr_err("%s: Not support drive strength Type %d\n",
+				mmc_hostname(host->mmc), tcc->drive_strength);
+		drive_strength = 0;
+	}
+
+	return drive_strength;
 }
 
 static int sdhci_tcc_probe(struct platform_device *pdev)
@@ -885,11 +1085,28 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	if(tcc->soc_data->set_channel_configs)
 		tcc->soc_data->set_channel_configs(host);
 
+	host->mmc_host_ops.select_drive_strength = sdhci_tcc_select_drive_strength;
+
 	ret = sdhci_add_host(host);
 	if (ret)
 		goto err_pclk_disable;
 
 #if defined(CONFIG_DEBUG_FS)
+
+	tcc->tap_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "tap_delay", S_IRUGO | S_IWUSR,
+			&sdhci_tcc_fops_tap_dly);
+	if(!tcc->tap_dly_dbgfs) {
+		dev_err(&pdev->dev, "failed to create tap_delay debugfs\n");
+	}
+
+	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc803x-sdhci")) {
+		tcc->clk_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_delay", S_IRUGO | S_IWUSR,
+				&sdhci_tcc_fops_clk_dly);
+		if(!tcc->clk_gating_dbgfs) {
+			dev_err(&pdev->dev, "failed to create clock_delay debugfs\n");
+		}
+	}
+
 	tcc->auto_tune_rtl_base = of_iomap(pdev->dev.of_node, 3);
 	if(!tcc->auto_tune_rtl_base) {
 		dev_dbg(&pdev->dev, "not support auto tune result accessing\n");
@@ -901,6 +1118,14 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		} else {
 			dev_info(&pdev->dev, "support auto tune result accessing\n");
 		}
+	}
+
+	tcc->clk_gating_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_gating", S_IRUGO,
+			&sdhci_tcc_fops_clk_gating);
+	if(!tcc->clk_gating_dbgfs) {
+		dev_err(&pdev->dev, "failed to create clock_gating debugfs\n");
+	} else {
+		dev_info(&pdev->dev, "support auto clock gating accessing\n");
 	}
 #endif
 

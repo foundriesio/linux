@@ -26,19 +26,12 @@
 #include "tcc_snor_updater_mbox.h"
 #include "tcc_snor_updater_cmd.h"
 
-extern int updaterDebugLevel;
+extern int updater_verbose_mode;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (updaterDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(updater_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 #define MBOX_TIMEOUT		1000	//ms
 #define ACK_TIMEOUT			5000	//ms
@@ -130,7 +123,7 @@ int send_update_start(struct snor_updater_device *updater_dev)
 		ret = snor_updater_wait_event_timeout(updater_dev, UPDATE_READY,&receiveMsg, ACK_TIMEOUT);
 		if(ret != SNOR_UPDATER_SUCCESS)
 		{
-			eprintk(updater_dev->dev,"%s : cmd ack timeout\n",__func__);
+			eprintk(updater_dev->dev,"cmd ack timeout\n");
 		}
 		else
 		{
@@ -140,17 +133,17 @@ int send_update_start(struct snor_updater_device *updater_dev)
 				{
 					if(receiveMsg.cmd[2]  == NACK_FIRMWARE_LOAD_FAIL)
 					{
-						eprintk(updater_dev->dev,"%s : SNOR subfirmware load fail\n",__func__);
+						eprintk(updater_dev->dev,"SNOR subfirmware load fail\n");
 						ret = SNOR_UPDATER_ERR_SNOR_FIRMWARE_FAIL;
 					}
 					else if(receiveMsg.cmd[2]  == NACK_SNOR_INIT_FAIL)
 					{
-						eprintk(updater_dev->dev,"%s : SNOR init fail\n",__func__);
+						eprintk(updater_dev->dev,"SNOR init fail\n");
 						ret = SNOR_UPDATER_ERR_SNOR_INIT_FAIL;
 					}
 					else
 					{
-						eprintk(updater_dev->dev,"%s : SNOR Nack cmd[2] : (%d)\n",__func__, receiveMsg.cmd[2]);
+						eprintk(updater_dev->dev,"SNOR Nack cmd[2] : (%d)\n",receiveMsg.cmd[2]);
 						ret = SNOR_UPDATER_ERR_UNKNOWN_CMD;
 					}
 				}
@@ -158,8 +151,8 @@ int send_update_start(struct snor_updater_device *updater_dev)
 			else
 			{
 
-				eprintk(updater_dev->dev,"%s : receive unknown cmd : [%d][%d][%d]\n",\
-					__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+				eprintk(updater_dev->dev,"receive unknown cmd : [%d][%d][%d]\n",\
+					receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 				ret = SNOR_UPDATER_ERR_TIMEOUT;
 			}
 		}
@@ -189,7 +182,7 @@ int send_update_done(struct snor_updater_device *updater_dev)
 		ret = snor_updater_wait_event_timeout(updater_dev, UPDATE_COMPLETE,&receiveMsg, ACK_TIMEOUT);
 		if(ret != SNOR_UPDATER_SUCCESS)
 		{
-			eprintk(updater_dev->dev,"%s : cmd ack timeout\n",__func__);
+			eprintk(updater_dev->dev,"cmd ack timeout\n");
 		}
 		else
 		{
@@ -197,14 +190,14 @@ int send_update_done(struct snor_updater_device *updater_dev)
 			{
 				if(receiveMsg.cmd[1] != SNOR_UPDATE_ACK)
 				{
-					eprintk(updater_dev->dev,"%s : receive nack cmd - %d\n",__func__, receiveMsg.cmd[2]);
+					eprintk(updater_dev->dev,"receive nack cmd - %d\n",receiveMsg.cmd[2]);
 					ret = SNOR_UPDATER_ERR_NACK;
 				}
 			}
 			else
 			{
-				eprintk(updater_dev->dev,"%s : receive unknown cmd : [%d][%d][%d]\n",\
-					__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+				eprintk(updater_dev->dev,"receive unknown cmd : [%d][%d][%d]\n",\
+					receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 				ret = SNOR_UPDATER_ERR_TIMEOUT;
 			}
 		}
@@ -234,7 +227,7 @@ int send_fw_start(struct snor_updater_device *updater_dev, unsigned int fwStartA
 		ret = snor_updater_wait_event_timeout(updater_dev, UPDATE_FW_READY,&receiveMsg, ERASE_TIMEOUT);
 		if(ret != SNOR_UPDATER_SUCCESS)
 		{
-			eprintk(updater_dev->dev,"%s : cmd ack timeout\n",__func__);
+			eprintk(updater_dev->dev,"cmd ack timeout\n");
 		}
 		else
 		{
@@ -242,8 +235,8 @@ int send_fw_start(struct snor_updater_device *updater_dev, unsigned int fwStartA
 			{
 				if(receiveMsg.cmd[1] != SNOR_UPDATE_ACK)
 				{
-					eprintk(updater_dev->dev,"%s : receive NACK : [%d][%d]\n",\
-						__func__, receiveMsg.cmd[1], receiveMsg.cmd[2]);
+					eprintk(updater_dev->dev,"receive NACK : [%d][%d]\n",\
+						receiveMsg.cmd[1], receiveMsg.cmd[2]);
 					if(receiveMsg.cmd[2]  == NACK_SNOR_ACCESS_FAIL)
 					{
 						ret = SNOR_UPDATER_ERR_SNOR_ACCESS_FAIL;
@@ -260,8 +253,8 @@ int send_fw_start(struct snor_updater_device *updater_dev, unsigned int fwStartA
 			}
 			else
 			{
-				eprintk(updater_dev->dev,"%s : receive unknown cmd : [%d][%d][%d]\n",\
-					__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+				eprintk(updater_dev->dev,"receive unknown cmd : [%d][%d][%d]\n",\
+					receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 				ret =SNOR_UPDATER_ERR_TIMEOUT;
 			}
 		}
@@ -302,7 +295,7 @@ int send_fw_send(struct snor_updater_device *updater_dev,
 		ret = snor_updater_wait_event_timeout(updater_dev, UPDATE_FW_SEND_ACK,&receiveMsg, ACK_TIMEOUT);
 		if(ret != SNOR_UPDATER_SUCCESS)
 		{
-			eprintk(updater_dev->dev,"%s : cmd ack timeout\n",__func__);
+			eprintk(updater_dev->dev,"cmd ack timeout\n");
 		}
 		else
 		{
@@ -310,15 +303,15 @@ int send_fw_send(struct snor_updater_device *updater_dev,
 			{
 				if(receiveMsg.cmd[1] != SNOR_UPDATE_ACK)
 				{
-					eprintk(updater_dev->dev,"%s : receive NACK : [%d][%d][%d]\n",\
-						__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+					eprintk(updater_dev->dev,"receive NACK : [%d][%d][%d]\n",\
+						receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 					ret = SNOR_UPDATE_NACK;
 				}
 			}
 			else
 			{
-				eprintk(updater_dev->dev,"%s : receive unknown cmd : [%d][%d][%d]\n",\
-					__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+				eprintk(updater_dev->dev,"receive unknown cmd : [%d][%d][%d]\n",\
+					receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 				ret =SNOR_UPDATER_ERR_TIMEOUT;
 			}
 		}
@@ -348,7 +341,7 @@ int send_fw_done(struct snor_updater_device *updater_dev)
 		ret = snor_updater_wait_event_timeout(updater_dev, UPDATE_FW_COMPLETE,&receiveMsg, ACK_TIMEOUT);
 		if(ret != SNOR_UPDATER_SUCCESS)
 		{
-			eprintk(updater_dev->dev,"%s : cmd ack timeout\n",__func__);
+			eprintk(updater_dev->dev,"cmd ack timeout\n");
 		}
 		else
 		{
@@ -361,8 +354,8 @@ int send_fw_done(struct snor_updater_device *updater_dev)
 			}
 			else
 			{
-				eprintk(updater_dev->dev,"%s : receive unknown cmd : [%d][%d][%d]\n",\
-					__func__, receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
+				eprintk(updater_dev->dev,"receive unknown cmd : [%d][%d][%d]\n",\
+					receiveMsg.cmd[0], receiveMsg.cmd[1],receiveMsg.cmd[2]);
 				ret = SNOR_UPDATER_ERR_TIMEOUT;
 			}
 		}

@@ -392,16 +392,6 @@ static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned l
 			}
 			break;
 
-        case IOCTL_DXB_CTRL_SET_INTERFACE:
-			{
-				int mode = 0;
-				if (copy_from_user((void *)&mode, (const void *)arg, sizeof(int)) == 0)
-				{
-					hwdmx_set_interface_cmd(-1, mode);
-				}
-			}
-			break;
-
 		default:
 			{
 				if (gIsdbtCtrl->board_type < BOARD_MAX)

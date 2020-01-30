@@ -1197,6 +1197,10 @@ static void tcc_gmac_adjust_link(struct net_device *dev)
 	
 	spin_lock_irqsave(&priv->lock, flags);
 	if (phydev->link) {
+
+#ifdef CONFIG_TCC_RTL9000_PHY
+		netif_carrier_on(dev);
+#endif
 		u32 ctrl = readl(ioaddr + MAC_CTRL_REG);
 
 
@@ -1282,11 +1286,16 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 		// for kernel-v4.14
-		if (bus->mdio_map[phy_addr]) {
-			phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
-			pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
-			break;    
-		} 
+			if (bus->mdio_map[phy_addr]) {
+#ifdef CONFIG_TCC_RTL9000_PHY
+				if (phy_addr == 1)
+#endif
+				{
+					phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
+					pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
+					break;    
+				}
+			} 
 #if 0
 		if (bus->phy_map[phy_addr]) {
 			phy = bus->phy_map[phy_addr];
@@ -1516,13 +1525,13 @@ int tcc_gmac_set_adjust_bandwidth_reservation(struct net_device *dev)
 			break;
 	}
 
-	// SR CLASS A
+	// SR CLASS B
 	priv->hw->dma[1]->idle_slope_credit(ioaddr, credit_arg_ch1.idle_slope);
 	priv->hw->dma[1]->send_slope_credit(ioaddr, credit_arg_ch1.send_slope);
 	priv->hw->dma[1]->hi_credit(ioaddr, credit_arg_ch1.hi_credit);
 	priv->hw->dma[1]->lo_credit(ioaddr, credit_arg_ch1.lo_credit);
 
-	// SR CLASS B
+	// SR CLASS A
 	priv->hw->dma[2]->idle_slope_credit(ioaddr, credit_arg_ch2.idle_slope);
 	priv->hw->dma[2]->send_slope_credit(ioaddr, credit_arg_ch2.send_slope);
 	priv->hw->dma[2]->hi_credit(ioaddr, credit_arg_ch2.hi_credit);
@@ -2458,7 +2467,7 @@ static const struct net_device_ops tcc_gmac_netdev_ops = {
 	.ndo_start_xmit = tcc_gmac_start_xmit,
 	.ndo_set_rx_mode = tcc_gmac_set_rx_mode,
 	.ndo_change_mtu = tcc_gmac_change_mtu,
-//	.ndo_select_queue = tcc_gmac_select_queue,
+	.ndo_select_queue = tcc_gmac_select_queue,
 	
 #ifdef TCC_GMAC_VLAN_TAG_USED
 //	.ndo_vlan_rx_register = tcc_gmac_vlan_rx_register,

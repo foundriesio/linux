@@ -161,7 +161,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 			dev_err(dwc->dev, "failed to initialize host\n");
 		} else {
 			if (dwc->usb2_phy) {
-				dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
+				//dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
 				otg_set_vbus(dwc->usb2_phy->otg, true);
 			}
 			if (dwc->usb2_generic_phy)
@@ -172,7 +172,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 		dwc3_event_buffers_setup(dwc);
 
 		if (dwc->usb2_phy) {
-			dwc->usb2_phy->set_vbus(dwc->usb2_phy, 0);
+			//dwc->usb2_phy->set_vbus(dwc->usb2_phy, 0);
 			otg_set_vbus(dwc->usb2_phy->otg, false);
 		}
 		if (dwc->usb2_generic_phy)

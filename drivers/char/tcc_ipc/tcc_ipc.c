@@ -65,19 +65,12 @@
 #define IPC_DEV_NAME        "tcc_ipc"
 #define IPC_DEV_MINOR       0
 
-int ipcDebugLevel = 1;
+int ipc_verbose_mode = 0;
 
-#define dprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 1)                                     \
-		dev_info(dev, msg);           \
-}
-
-#define eprintk(dev, msg...)                                \
-{                                                      \
-	if (ipcDebugLevel > 0)                                     \
-		dev_err(dev, msg);             \
-}
+#define eprintk(dev, msg, ...)	dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define wprintk(dev, msg, ...)	dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define iprintk(dev, msg, ...)	dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__)
+#define dprintk(dev, msg, ...)	do { if(ipc_verbose_mode) { dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), LOG_TAG,__FUNCTION__, ##__VA_ARGS__); } } while(0)
 
 static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
@@ -99,7 +92,7 @@ static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, l
 
 	if(ipc_dev != NULL)
 	{
-		dprintk(ipc_dev->dev,  "%s : In\n", __func__);	
+		dprintk(ipc_dev->dev, "In\n");
 		ret = ipc_read(ipc_dev,buf, (IPC_UINT32)count, f_flag);
 		if(ret < 0)
 		{
@@ -116,7 +109,7 @@ static ssize_t tcc_ipc_read(struct file *filp, char __user *buf, size_t count, l
 	}
 	else
 	{
-		eprintk(ipc_dev->dev, "%s : device not init\n", __func__);
+		eprintk(ipc_dev->dev, "device not init\n");
 		ret = -ENXIO;
 	}
 
@@ -128,7 +121,7 @@ static ssize_t tcc_ipc_write(struct file *filp, const char __user *buf, size_t c
 	int  ret=0;
 	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
 
-	dprintk(ipc_dev->dev, "%s : In, data size(%d)\n", __func__, (int)count);
+	dprintk(ipc_dev->dev, "In, data size(%d)\n",(int)count);
 	if (!filp->private_data )
 		return -ENODEV;
 
@@ -160,7 +153,7 @@ static ssize_t tcc_ipc_write(struct file *filp, const char __user *buf, size_t c
 	}
 	else
 	{
-		eprintk(ipc_dev->dev, "%s : device not init\n", __func__);
+		eprintk(ipc_dev->dev, "device not init\n");
 		ret = -ENXIO;
 	}
 
@@ -172,7 +165,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 	int ret =0;
 	struct ipc_device *ipc_dev = container_of(inode->i_cdev, struct ipc_device, cdev);
 
-	dprintk(ipc_dev->dev, "%s : In\n", __func__);
+	iprintk(ipc_dev->dev, "In\n");
 
 	if(ipc_dev != NULL)
 	{
@@ -180,7 +173,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 		if (ipc_dev->ipc_available !=0)
 		{
 			spin_unlock(&ipc_dev->ipc_handler.spinLock);
-			eprintk(ipc_dev->dev, "%s : ipc open fail - already open\n", __func__);
+			eprintk(ipc_dev->dev, "ipc open fail - already open\n");
 			ret = -EBUSY;
 			goto ipc_open_error;
 		}
@@ -196,7 +189,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 		ret = (int)ipc_initialize(ipc_dev);
 		if(ret !=0)
 		{
-			eprintk(ipc_dev->dev, "%s : ipc open fail\n", __func__);
+			eprintk(ipc_dev->dev, "ipc init fail\n");
 			goto ipc_workqueue_error;
 		}
 		
@@ -208,7 +201,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 		}
 
 		filp->private_data = ipc_dev;
-		dprintk(ipc_dev->dev, "%s : open device name (%s), use mbox-name(%s)\n", __func__, ipc_dev->name, ipc_dev->mbox_name);
+		iprintk(ipc_dev->dev, "open device name (%s), use mbox-name(%s)\n",ipc_dev->name, ipc_dev->mbox_name);
 
 		spin_lock(&ipc_dev->ipc_handler.spinLock);
 		ipc_dev->ipc_available = 1;
@@ -217,7 +210,7 @@ static int tcc_ipc_open(struct inode * inode, struct file * filp)
 	}
 	else
 	{
-		eprintk(ipc_dev->dev, "%s : device not init\n", __func__);
+		eprintk(ipc_dev->dev, "device not init\n");
 		ret = -ENXIO;
 	}
 	return ret;
@@ -238,7 +231,7 @@ static int tcc_ipc_release(struct inode * inode, struct file * filp)
 
 	if(ipc_dev != NULL)
 	{
-		dprintk(ipc_dev->dev,  "%s : In\n", __func__);
+		iprintk(ipc_dev->dev,  "In\n");
 		(void)ipc_send_close(ipc_dev);
 		
 		if(ipc_dev->mbox_ch != NULL)
@@ -344,7 +337,7 @@ static long tcc_ipc_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 			}
 			break;
 		default:
-			dprintk(ipc_dev->dev,"%s : ipc error: unrecognized ioctl (0x%x)\n", __func__,cmd);
+			dprintk(ipc_dev->dev,"ipc error: unrecognized ioctl (0x%x)\n",cmd);
 			ret = -EINVAL;
 		break;
 	}
@@ -358,15 +351,15 @@ static unsigned int tcc_ipc_poll( struct file *filp, poll_table *wait)
 	int ret = -1;
 
 	struct ipc_device *ipc_dev = (struct ipc_device *)filp->private_data;
-	dprintk(ipc_dev->dev, "%s : In\n", __func__);
+	dprintk(ipc_dev->dev, "In\n");
 
 	if(ipc_dev != NULL)
 	{
 		if((ipc_dev->ipc_handler.ipcStatus < IPC_READY)||(ipc_dev->ipc_handler.readBuffer.status<IPC_BUF_READY))
 		{
 			ipc_try_connection(ipc_dev);
-			dprintk(ipc_dev->dev, "%s : IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
-				__func__,ipc_dev->ipc_handler.ipcStatus,ipc_dev->ipc_handler.readBuffer.status);
+			dprintk(ipc_dev->dev, "IPC Not Ready : ipc status(%d), Buffer status(%d)\n",
+				ipc_dev->ipc_handler.ipcStatus,ipc_dev->ipc_handler.readBuffer.status);
 		}
 
 		spin_lock(&ipc_dev->ipc_handler.spinLock);
@@ -390,7 +383,7 @@ static unsigned int tcc_ipc_poll( struct file *filp, poll_table *wait)
 			mask |= POLLIN | POLLRDNORM;
 		}
 	}
-	dprintk(ipc_dev->dev, "%s : Out(%d)\n", __func__, mask);
+	dprintk(ipc_dev->dev, "Out(%d)\n",mask);
 
 	return mask;
 }
@@ -414,7 +407,7 @@ static int tcc_ipc_probe(struct platform_device *pdev) {
 
 	struct ipc_device *ipc_dev = NULL;
 
-	dprintk(&pdev->dev, "%s : in \n",__func__);
+	iprintk(&pdev->dev, "In \n");
 
 	ipc_dev = devm_kzalloc(&pdev->dev, sizeof(struct ipc_device), GFP_KERNEL);
 	if(!ipc_dev)
@@ -424,7 +417,7 @@ static int tcc_ipc_probe(struct platform_device *pdev) {
 
 	of_property_read_string(pdev->dev.of_node,"device-name", &ipc_dev->name);
 	of_property_read_string(pdev->dev.of_node,"mbox-names", &ipc_dev->mbox_name);
-	dprintk(&pdev->dev, "%s : in, device name(%s), mbox-names(%s)\n",__func__,ipc_dev->name, ipc_dev->mbox_name);
+	iprintk(&pdev->dev, "device name(%s), mbox-names(%s)\n",ipc_dev->name, ipc_dev->mbox_name);
 
 	result = alloc_chrdev_region(&ipc_dev->devnum, IPC_DEV_MINOR, 1, ipc_dev->name);
 	if (result) {
@@ -460,7 +453,7 @@ static int tcc_ipc_probe(struct platform_device *pdev) {
 
 	ipc_dev->ipc_available = 0;
 
-	dprintk(ipc_dev->dev, "Successfully registered\n");
+	iprintk(ipc_dev->dev, "Successfully registered\n");
 	return ret;
 
 
@@ -537,7 +530,7 @@ int tcc_ipc_resume(struct platform_device *pdev)
 			ret = (int)ipc_initialize(ipc_dev);
 			if(ret !=0)
 			{
-				eprintk(ipc_dev->dev, "%s : ipc open fail\n", __func__);
+				eprintk(ipc_dev->dev, "ipc open fail\n");
 				goto ipc_workqueue_error;
 			}
 			

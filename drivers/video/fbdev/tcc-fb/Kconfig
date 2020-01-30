@@ -276,7 +276,7 @@ config EXT_FRAME_VIDEO_EFFECT
 
 config USE_DISPLAY_FB_LOCK
 	bool "Blocking fb display update"
-	depends on (FB_TCC && PLATFORM_AVN) && ANDROID
+	depends on FB_TCC && ANDROID
 	default n
 	help
 	 To use maintain boot init logo display until finish boot

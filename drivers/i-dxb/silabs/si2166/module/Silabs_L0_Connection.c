@@ -852,7 +852,7 @@ void  SiTraceFunction        (unsigned char level, const char *tag, const char *
     const char *pfunc;
     va_list     ap;
     if (trace_output_type == TRACE_NONE) return;
-    if (SiTraceLevelEnabled(level)==0)   return;
+    if (SiTraceLevelEnabled(level)==0)   return;	
     /* print the line line number in trace_linenumber */
     trace_linenumber = linenumber;
     pname=name;
@@ -978,12 +978,24 @@ int  L0_ErrorMessage (void) {
   Returns:    The current system time in milliseconds
   Porting:    Needs to use the final system call for time retrieval
 ************************************************************************************************************************/
-int     system_wait          (int time_ms) {
-  unsigned long ticks1, ticks2;
-  ticks1=system_time() + time_ms;
-  ticks2=ticks1;
-  while (ticks2<=ticks1) {ticks2=system_time();}
-  return (int)ticks2;
+#include <linux/delay.h>
+int system_wait(int time_ms)
+{
+	unsigned long ticks1, ticks2;
+
+	ticks1 = system_time() + time_ms;
+	ticks2 = ticks1;
+
+	#if 0
+	while(ticks2 <= ticks1)
+	{
+		ticks2 = system_time();
+	}
+	#else
+	msleep(time_ms);
+	#endif
+
+	return (int)ticks2;
 }
 /************************************************************************************************************************
   system_time function
