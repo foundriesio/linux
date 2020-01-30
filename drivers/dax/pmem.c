@@ -75,22 +75,22 @@ static int dax_pmem_probe(struct device *dev)
 	ndns = nvdimm_namespace_common_probe(dev);
 	if (IS_ERR(ndns))
 		return PTR_ERR(ndns);
-	nsio = to_nd_namespace_io(&ndns->dev);
 
 	dax_pmem = devm_kzalloc(dev, sizeof(*dax_pmem), GFP_KERNEL);
 	if (!dax_pmem)
 		return -ENOMEM;
 
 	/* parse the 'pfn' info block via ->rw_bytes */
-	rc = devm_nsio_enable(dev, nsio);
+	rc = devm_namespace_enable(dev, ndns, nd_info_block_reserve());
 	if (rc)
 		return rc;
 	rc = nvdimm_setup_pfn(nd_pfn, &dax_pmem->pgmap);
 	if (rc)
 		return rc;
-	devm_nsio_disable(dev, nsio);
+	devm_namespace_disable(dev, ndns);
 
 	pfn_sb = nd_pfn->pfn_sb;
+	nsio = to_nd_namespace_io(&ndns->dev);
 
 	if (!devm_request_mem_region(dev, nsio->res.start,
 				resource_size(&nsio->res),
