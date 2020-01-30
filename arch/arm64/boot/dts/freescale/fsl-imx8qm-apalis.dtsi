@@ -38,6 +38,31 @@
 		};
 	};
 
+	imx8qm-pm {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pd_3v3_brd_scfw: PD_3V3LDO1 {
+		compatible = "nxp,imx8-pd";
+		reg = <SC_R_NONE>;
+		#power-domain-cells = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pd_3v3_eth: PD_3V3ETH {
+			reg = <SC_R_BOARD_R0>;
+			#power-domain-cells = <0>;
+			power-domains = <&pd_3v3_brd_scfw>;
+			};
+		};
+	};
+
+	/* Power management bus used for powering down phy in suspend */
+	pmbus {
+		compatible = "simple-pm-bus";
+		power-domains = <&pd_3v3_eth>;
+	};
+
 	pcie_sata_refclk: clock-generator {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
