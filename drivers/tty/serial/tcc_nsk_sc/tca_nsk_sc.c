@@ -81,9 +81,9 @@
 //#define DEBUG_TCA_NSK_SC
 #ifdef DEBUG_TCA_NSK_SC
 #undef dprintk
-#define dprintk(msg...) printk("tca_nsk_sc: " msg);
+#define dprintk(msg...) printk(KERN_DEBUG "[DEBUG][SMARTCARD]" msg);
 #undef eprintk
-#define eprintk(msg...) printk("tca_nsk_sc: err: " msg);
+#define eprintk(msg...) printk(KERN_ERR "[ERROR][SMARTCARD]" msg);
 #else
 #undef dprintk
 #define dprintk(msg...)
