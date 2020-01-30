@@ -247,7 +247,7 @@ static int tcc_get_group_pins(struct pinctrl_dev *pctldev, unsigned selector,
 static void tcc_pin_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
 		unsigned offset)
 {
-	pr_info("%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	//seq_printf(s, "%s", dev_name(pctldev->dev));
 }
 
@@ -273,20 +273,20 @@ static int tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	if (of_find_property(np, "telechips,pin-function", NULL))
 		++nmaps;
 	if (!nmaps) {
-		dev_err(pctl->dev, "node %s does not have either config "
-				"or function configurations\n", np->name);
+		printk(KERN_ERR "node %s does not have either config "
+			"or function configurations\n", np->name);
 		return -EINVAL;
 	}
 
 	*map = kzalloc(sizeof(struct pinctrl_map) * nmaps, GFP_KERNEL);
 	if (!*map) {
-		dev_err(pctl->dev, "failed to allocate memory for maps\n");
+		printk(KERN_ERR "failed to allocate memory for maps\n");
 		return -ENOMEM;
 	}
 	configs = kzalloc(sizeof(unsigned long) * num_configs, GFP_KERNEL);
 	if (!configs) {
-		dev_err(pctl->dev,
-				"failed to allocate memory for configs\n");
+		printk(KERN_ERR
+			"failed to allocate memory for configs\n");
 		return -ENOMEM;
 	}
 
@@ -334,7 +334,7 @@ skip_config:
 static void tcc_dt_free_map(struct pinctrl_dev *pctldev,
 		struct pinctrl_map *map, unsigned num_maps)
 {
-	pr_info("%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	kfree(map);
 }
 
@@ -544,13 +544,13 @@ static int tcc_pinconf_group_set(struct pinctrl_dev *pctldev,
 static void tcc_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 		struct seq_file *s, unsigned pin_id)
 {
-	pr_info("%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 }
 
 static void tcc_pinconf_group_dbg_show(struct pinctrl_dev *pctldev,
 		struct seq_file *s, unsigned group)
 {
-	pr_info("%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 }
 
 static const struct pinconf_ops tcc_pinconf_ops = {
@@ -574,7 +574,7 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 
 	*pins = devm_kzalloc(pctl->dev, *npins * sizeof(unsigned int), GFP_KERNEL);
 	if (!*pins) {
-		dev_err(pctl->dev, "failed to allocate memory for pins\n");
+		printk(KERN_ERR "failed to allocate memory for pins\n");
 		return -ENOMEM;
 	}
 
@@ -586,8 +586,8 @@ static int tcc_pinctrl_parse_dt_pins(struct tcc_pinctrl *pctl,
 			}
 		}
 		if (i == pctl->npins) {
-			dev_err(pctl->dev, "invalid pin %s for %s node\n",
-					pin_name, np->name);
+			printk(KERN_ERR "invalid pin %s for %s node\n",
+				pin_name, np->name);
 			devm_kfree(pctl->dev, *pins);
 			return -EINVAL;
 		}
@@ -608,17 +608,17 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 
 	ngroups = of_get_child_count(np);
 	if (ngroups <= 0) {
-		dev_err(&pdev->dev, "no groups defined\n");
+		printk(KERN_ERR "no groups defined\n");
 		return -EINVAL;
 	}
-	dev_dbg(&pdev->dev, "%d groups defined\n", ngroups);
+	printk(KERN_DEBUG "%d groups defined\n", ngroups);
 
 	pctl->ngroups = ngroups;
 	pctl->groups = devm_kzalloc(&pdev->dev,
 			ngroups * sizeof(struct tcc_pin_group),
 			GFP_KERNEL);
 	if (!pctl->groups) {
-		dev_err(&pdev->dev, "failed to allocate groups\n");
+		printk(KERN_ERR "failed to allocate groups\n");
 		return -ENOMEM;
 	}
 
@@ -626,7 +626,7 @@ static int tcc_pinctrl_parse_dt(struct platform_device *pdev,
 			ngroups * sizeof(struct tcc_pinmux_function),
 			GFP_KERNEL);
 	if (!pctl->functions) {
-		dev_err(&pdev->dev, "failed to alloate functions\n");
+		printk(KERN_ERR "failed to alloate functions\n");
 		return -ENOMEM;
 	}
 
@@ -684,7 +684,7 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 
 	irq_cnt = tcc_pinctrl_get_irq_count(pdev);
 	if(irq_cnt < 1) {
-		dev_err(dev, "failed to get irq count\n");
+		printk(KERN_ERR "failed to get irq count\n");
 		return -ENOMEM;
 	}
 	ext_irq->size = irq_cnt;
@@ -698,15 +698,15 @@ static int tcc_pinctrl_get_irq(struct platform_device *pdev, struct tcc_pinctrl_
 			GFP_KERNEL);
 
 	if(!match) {
-		dev_err(dev, "failed to alloc extinr_match\n");
+		printk(KERN_ERR "failed to alloc extinr_match\n");
 		return -ENOMEM;
 	}
 
 	for(i = 0; i < ext_irq->size; i++) {
 		irq = platform_get_irq(pdev, i);
 		if(irq < 0) {
-			dev_err(dev, "failed to get irq (count %d, %d)\n",
-					ext_irq->size, i);
+			printk(KERN_ERR "failed to get irq (count %d, %d)\n",
+				ext_irq->size, i);
 			return -ENOMEM;
 		}
 
@@ -735,18 +735,18 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	/* Getting IRQs */
 	soc_data->irq = devm_kzalloc(&pdev->dev, sizeof(struct tcc_pinctrl_ext_irq), GFP_KERNEL);
 	if(!soc_data->irq) {
-		dev_err(&pdev->dev, "failed to alloc ext irq data mem\n");
+		printk(KERN_ERR "failed to alloc ext irq data mem\n");
 		return -ENOMEM;
 	}
 	ret = tcc_pinctrl_get_irq(pdev, soc_data->irq);
 	if(ret < 0) {
-		dev_err(&pdev->dev, "failed to get irqs %d\n", ret);
+		printk(KERN_ERR "failed to get irqs %d\n", ret);
 		return ret;
 	}
 
 	pctl = devm_kzalloc(&pdev->dev, sizeof(struct tcc_pinctrl), GFP_KERNEL);
 	if (!pctl) {
-		dev_err(&pdev->dev, "failed to allocate pinctrl data\n");
+		printk(KERN_ERR "failed to allocate pinctrl data\n");
 		return -ENOMEM;
 	}
 
@@ -763,7 +763,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 			sizeof(struct tcc_pin_bank),
 			GFP_KERNEL);
 	if (!pctl->pin_banks) {
-		dev_err(&pdev->dev, "failed to allocate pin banks\n");
+		printk(KERN_ERR "failed to allocate pin banks\n");
 		return -ENOMEM;
 	}
 
@@ -775,20 +775,20 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		ret = of_property_read_u32_index(np, "reg", 0,
 				&bank->reg_base);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "failed to get bank reg base\n");
+			printk(KERN_ERR "failed to get bank reg base\n");
 			return -EINVAL;
 		}
 
 		ret = of_property_read_u32_index(np, "reg", 1,
 				&bank->pin_base);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "failed to get pin base\n");
+			printk(KERN_ERR "failed to get pin base\n");
 			return -EINVAL;
 		}
 
 		ret = of_property_read_u32_index(np, "reg", 2, &bank->npins);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "failed to get pin numbers\n");
+			printk(KERN_ERR "failed to get pin numbers\n");
 			return -EINVAL;
 		}
 
@@ -804,7 +804,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	pindesc = devm_kzalloc(&pdev->dev, sizeof(struct pinctrl_pin_desc) * pctl->npins,
 			GFP_KERNEL);
 	if (!pindesc) {
-		dev_err(&pdev->dev, "failed to allocate pin descriptors\n");
+		printk(KERN_ERR "failed to allocate pin descriptors\n");
 		return -ENOMEM;
 	}
 
@@ -837,7 +837,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 	pctl->pctldev = pinctrl_register(&pctl->pinctrl_desc, &pdev->dev,
 			pctl);
 	if (!pctl->pctldev) {
-		dev_err(&pdev->dev, "failed to register pinctrl driver\n");
+		printk(KERN_ERR "failed to register pinctrl driver\n");
 		return -EINVAL;
 	}
 
@@ -853,7 +853,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 		bank->gpio_chip.label = bank->name;
 		ret = gpiochip_add(&bank->gpio_chip);
 		if (ret) {
-			dev_err(&pdev->dev, "failed to register gpio chip\n");
+			printk(KERN_ERR "failed to register gpio chip\n");
 			continue;
 		}
 
@@ -869,7 +869,7 @@ int tcc_pinctrl_probe(struct platform_device *pdev,
 
 	ret = tcc_pinctrl_parse_dt(pdev, pctl);
 	if (ret) {
-		dev_err(&pdev->dev, "failed to parse dt properties\n");
+		printk(KERN_ERR "failed to parse dt properties\n");
 		return ret;
 	}
 
