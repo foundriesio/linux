@@ -332,7 +332,7 @@ int devm_nsio_enable_size(struct device *dev, struct nd_namespace_io *nsio,
 
 int devm_nsio_enable(struct device *dev, struct nd_namespace_io *nsio)
 {
-	devm_nsio_enable_size(dev, nsio, resource_size(&nsio->res));
+	return devm_nsio_enable_size(dev, nsio, resource_size(&nsio->res));
 }
 EXPORT_SYMBOL_GPL(devm_nsio_enable);
 
