@@ -147,18 +147,28 @@
 #define wr_regb(port, reg, val) \
 	do { __raw_writeb(val, portaddr(port, reg)); } while(0)
 
+#define DEBUG_UART 0
 
 /* configuration defines */
-#if 0
-#define dbg(fmt,arg...) printk("==== tcc uart: "fmt, ##arg);
+/* uart err debug */
+#if DEBUG_UART
+#define dbg_err(fmt,arg...) printk(KERN_ERR "[ERROR][UART]"fmt, ##arg);
+#define dbg_on 1
+#else /* no debug */
+#define dbg_err(x...) do {} while(0)
+#define dbg_on 0
+#endif
+/* uart debug */
+#if DEBUG_UART
+#define dbg(fmt,arg...) printk(KERN_DEBUG "[DEBUG][UART]"fmt, ##arg);
 #define dbg_on 1
 #else /* no debug */
 #define dbg(x...) do {} while(0)
 #define dbg_on 0
 #endif
 /* uart pm debug */
-#if 0
-#define pm_dbg(fmt,arg...) printk("==== tcc uart pm: "fmt, ##arg);
+#if DEBUG_UART
+#define pm_dbg(fmt,arg...) printk(KERN_DEBUG "[DEBUG][UARTPM]"fmt, ##arg);
 #else /* no debug */
 #define pm_dbg(x...) do {} while(0)
 #endif
@@ -816,7 +826,7 @@ static int tcc_serial_tx_dma_probe(struct uart_port *port)
 
 	tp->chan_tx = dma_request_slave_channel(port->dev, "tx");
 	if(tp->chan_tx == NULL) {
-		dev_dbg(port->dev, "Failed to request slave tx\n");
+		dbg_err("Failed to request slave tx\n");
 		return -1;
 	}
 
@@ -826,7 +836,7 @@ static int tcc_serial_tx_dma_probe(struct uart_port *port)
 
 	ret = dmaengine_slave_config(tp->chan_tx, &tx_conf);
 	if(ret) {
-		dev_err(port->dev, "Config DMA Tx failed\n");
+		dbg_err("Config DMA Tx failed\n");
 	}
 
 	if(!tcc_malloc_dma_buf(&(tp->tx_dma_buffer), UART_XMIT_SIZE)) {
@@ -890,7 +900,7 @@ static int tcc_serial_rx_dma_probe(struct uart_port *port)
 
 	tp->chan_rx = dma_request_slave_channel(port->dev, "rx");
 	if(tp->chan_rx == NULL) {
-		dev_dbg(port->dev, "Failed to request slave rx\n");
+		dbg_err("Failed to request slave rx\n");
 		return -1;
 	}
 
@@ -900,7 +910,7 @@ static int tcc_serial_rx_dma_probe(struct uart_port *port)
 
 	ret = dmaengine_slave_config(tp->chan_rx, &rx_conf);
 	if(ret) {
-		dev_err(port->dev, "Config DMA Rx failed\n");
+		dbg_err("Config DMA Rx failed\n");
 	}
 
 	if(!tcc_malloc_dma_buf(&(tp->rx_dma_buffer), SERIAL_RX_DMA_BUF_SIZE)) {
@@ -996,8 +1006,8 @@ static int tcc_serial_startup(struct uart_port *port)
 	//set cpu for processing of irq
 	//irq_set_affinity(port->irq, cpumask_of(1));
 	retval = request_irq(port->irq, tcc_serial_interrupt,
-			IRQF_SHARED, tp->name , port);
-	printk("request serial irq:%d,retval:%d\n", port->irq, retval);
+			     IRQF_SHARED, tp->name , port);
+	dbg("request serial irq:%d,retval:%d\n", port->irq, retval);
 
 	tp->rx_residue = 0;
 	tcc_serial_dma_probe(port);
@@ -1445,7 +1455,7 @@ static int tcc_serial_portcfg(struct device_node *np, struct uart_port *port)
 			iounmap(portcfg_base);
 	}
 	else {
-		dev_err(port->dev, "UART%d failed port cofiguration\n", port->line);
+		dbg_err("UART%d failed port cofiguration\n", port->line);
 		return -EINVAL;
 	}
 
@@ -1473,19 +1483,19 @@ static int tcc_serial_probe(struct platform_device *dev)
 
 	mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!mem) {
-		dev_err(&dev->dev, "[UART%d] no memory resource?\n", id);
+		dbg_err("[UART%d] no memory resource?\n", id);
 		return -EINVAL;
 	}
 	port->membase = devm_ioremap_resource(&dev->dev, mem);
 	if (!port->membase) {
-		dev_err(port->dev, "failed to ioremap\n");
+		dbg_err("failed to ioremap\n");
 		return -ENOMEM;
 	}
 
 	port->mapbase  = mem->start;
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
-		dev_err(port->dev, "[UART%d] no irq resource?\n", id);
+		dbg_err("[UART%d] no irq resource?\n", id);
 		return -ENODEV;
 	}
 
@@ -1532,7 +1542,7 @@ static int tcc_serial_probe(struct platform_device *dev)
 
 	ret = uart_add_one_port(&tcc_uart_drv, &tp->port);
 	if (ret) {
-		dev_err(port->dev, "uart_add_one_port failure\n");
+		dbg_err("uart_add_one_port failure\n");
 		goto probe_err;
 	}
 
@@ -1591,7 +1601,7 @@ static int __init tcc_serial_modinit(void)
 
 	ret = uart_register_driver(&tcc_uart_drv);
 	if (ret < 0) {
-		dbg(KERN_ERR "failed to register UART driver\n");
+		dbg_err("failed to register UART driver\n");
 		return ret;
 	}
 
@@ -1775,7 +1785,7 @@ static struct console tcc_serial_console = {
  */
 static int tcc_console_init(void)
 {
-	//	dbg("%s\n", __func__);
+	dbg("%s\n", __func__);
 
 	register_console(&tcc_serial_console);
 
