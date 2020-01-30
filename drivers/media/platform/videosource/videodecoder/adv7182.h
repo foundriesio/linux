@@ -15,12 +15,12 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef ISL79988_H
-#define ISL79988_H
+#ifndef ADV7182_H
+#define ADV7182_H
 
 #include "../videosource_types.h"
 
-extern videosource_t videosource_isl79988;
+extern videosource_t videosource_adv7182;
 
-#endif//ISL79988_H
+#endif//ADV7182_H
 
