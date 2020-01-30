@@ -1044,7 +1044,7 @@ static void tcc_gmac_init_rx_desc(struct dma_desc *p, unsigned int ring_size,
 				int disable_rx_ic)
 {
 	int i;
-	printk(" %s : ring_size %d \n ",__func__,ring_size);
+	printk(KERN_INFO "[INFO][GMAC]  %s : ring_size %d \n ",__func__,ring_size);
 	for (i = 0; i < ring_size; i++) {
 #ifdef CONFIG_TCC_GMAC_PTP
 		p->des01.erx.ipc_csum_error = 1; //timestamp available
@@ -1066,7 +1066,7 @@ static void tcc_gmac_init_tx_desc(struct dma_desc *p, unsigned int ring_size)
 {
 	int i;
 
-	printk(" %s : ring_size %d \n ",__func__,ring_size);
+	printk(KERN_INFO "[INFO][GMAC] %s : ring_size %d \n ",__func__,ring_size);
 	for (i = 0; i < ring_size; i++) {
 		p->des01.etx.own = 0;
 		if (i == ring_size - 1)
