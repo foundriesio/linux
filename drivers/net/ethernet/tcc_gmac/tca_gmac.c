@@ -42,11 +42,11 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 	char *phy_str;
 
 	if (of_property_read_u32(np, "index", &dt_info->index)) {
-		printk("gmac index not exist\n");
+		printk(KERN_ERR "[ERROR][GMAC] gmac index not exist\n");
 		return -EINVAL;
 	}
 	else {
-		printk("gmac index : %d\n", dt_info->index);
+		printk(KERN_INFO "[INFO][GAMC] gmac index : %d\n", dt_info->index);
 	}
 
 	gmac_base = of_iomap(np,0); 
@@ -83,7 +83,7 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 		PHY_INTERFACE_MODE_NA;
 
 	if (dt_info->phy_inf == PHY_INTERFACE_MODE_NA) {
-		printk("unknown phy interface : %d\n", dt_info->phy_inf);
+		printk(KERN_ERR "[ERROR][GMAC] unknown phy interface : %d\n", dt_info->phy_inf);
 		return -EINVAL;
 	}
 
@@ -125,14 +125,14 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 		if(ret)
 			of_property_read_u32(np, "txclk-o-dly", &dt_info->txclk_o_dly);
 
-		printk("System_rev = 0x%04x, txclk_o_dly = %d\n", system_rev, dt_info->txclk_o_dly);
+		printk(KERN_INFO "[INFO][GMAC] System_rev = 0x%04x, txclk_o_dly = %d\n", system_rev, dt_info->txclk_o_dly);
 	}
 #endif
 
 #if defined(CONFIG_ARCH_TCC899X)
-	printk("TCC899X GMAC] get system_rev : %d !!\n", system_rev);
+	printk(KERN_INFO "[INFO][GMAC] get system_rev : %d !!\n", system_rev);
 #if defined(CONFIG_TCC8990_MPW2_SOCKET)
-	printk("TCC899X GMAC] Set tunning value for tcc8990_mpw2_socket_board!!\n");
+	printk(KERN_INFO "[INFO][GMAC] Set tunning value for tcc8990_mpw2_socket_board!!\n");
 	of_property_read_u32(np, "txclk-o-dly_mpw2_sk", &dt_info->txclk_o_dly);
 	of_property_read_u32(np, "txclk-o-inv_mpw2_sk", &dt_info->txclk_o_inv);
 	of_property_read_u32(np, "rxclk-i-dly_mpw2_sk", &dt_info->rxclk_i_dly);
@@ -140,7 +140,7 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 #else
 	if(system_rev == 0x1)
 	{
-		printk("TCC899X GMAC] Set tunning value for tcc899x_mpw2!!\n");
+		printk(KERN_INFO "[INFO][GMAC] Set tunning value for tcc899x_mpw2!!\n");
 		of_property_read_u32(np, "txclk-o-dly_es", &dt_info->txclk_o_dly);
 		of_property_read_u32(np, "txclk-o-inv_es", &dt_info->txclk_o_inv);
 		of_property_read_u32(np, "rxclk-i-dly_es", &dt_info->rxclk_i_dly);
@@ -162,8 +162,8 @@ int tca_gmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info)
 	dt_info->rxdv_dly = 31;
 #endif
 #endif
-	printk("txc_dly : %d , txc_inv : %d\n", dt_info->txclk_o_dly, dt_info->txclk_o_inv);
-	printk("rxc_dly : %d , rxc_inv : %d\n", dt_info->rxclk_i_dly, dt_info->rxclk_i_inv);
+	printk(KERN_INFO "[INFO][GMAC] txc_dly : %d , txc_inv : %d\n", dt_info->txclk_o_dly, dt_info->txclk_o_inv);
+	printk(KERN_INFO "[INFO][GMAC] rxc_dly : %d , rxc_inv : %d\n", dt_info->rxclk_i_dly, dt_info->rxclk_i_inv);
 
 	return 0;
 }
@@ -193,10 +193,10 @@ void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info)
 				clk_set_rate(dt_info->gmac_clk, 125*1000*1000);
 				break;
 		}
-		printk("gmac_clk : %lu\n", clk_get_rate(dt_info->gmac_clk));
+		printk(KERN_INFO "[INFO][GMAC] gmac_clk : %lu\n", clk_get_rate(dt_info->gmac_clk));
 	}
 	else {
-		printk("dt_info->gmac_clk is not exist\n");
+		printk(KERN_ERR "[ERROR][GMAC] dt_info->gmac_clk is not exist\n");
 	}
 
 	if (dt_info->ptp_clk) {
@@ -228,10 +228,10 @@ void tca_gmac_clk_disable(struct gmac_dt_info_t *dt_info)
 unsigned int tca_gmac_get_hsio_clk(struct gmac_dt_info_t *dt_info)
 {
 	if(dt_info->hsio_clk) {
-		printk("hsio_clk : %lu\n", clk_get_rate(dt_info->hsio_clk));
+		printk(KERN_INFO "[INFO][GMAC] hsio_clk : %lu\n", clk_get_rate(dt_info->hsio_clk));
 		return clk_get_rate(dt_info->hsio_clk);
 	}
-	printk("dt_info->hsio_clk is not exist\n");
+	printk(KERN_ERR "[ERROR][GMAC} dt_info->hsio_clk is not exist\n");
 	return 0;
 }
 

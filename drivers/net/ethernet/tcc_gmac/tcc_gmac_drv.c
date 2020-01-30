@@ -249,7 +249,7 @@ static int get_board_mac(char *mac)
 		for(i=0;i<ETH_ALEN;i++)
 		{
 			mac_addr[i]=(char_to_num(g_board_mac[i*3+1]) &0xF)|(char_to_num(g_board_mac[i*3])&0xF)<<4;
-			pr_debug("mac_addr[%d] %x mac %x %x \n",i,mac_addr[i],g_board_mac[i*3],g_board_mac[i*3+1]);
+			printk(KERN_INFO "[INFO][GMAC] mac_addr[%d] %x mac %x %x \n",i,mac_addr[i],g_board_mac[i*3],g_board_mac[i*3+1]);
 		}
 	}
 
@@ -410,11 +410,11 @@ static void init_tx_dma_desc_rings(struct net_device *dev, unsigned int ch)
 	dma->dirty_tx = 0;
 	dma->cur_tx = 0;
 	
-	printk("%s : ch %d txsize %d \n",__func__, ch, txsize);
+	printk(KERN_INFO "[INFO][GMAC] %s : ch %d txsize %d \n",__func__, ch, txsize);
 	
-	pr_debug("--] init_tx_desc: : before \n");
+	printk(KERN_INFO "[INFO][GMAC] --] init_tx_desc: : before \n");
 	priv->hw->desc->init_tx_desc(dma->dma_tx, txsize);
-	pr_debug("--] init_tx_desc: : done \n");
+	printk(KERN_INFO "[INFO][GMAC] --] init_tx_desc: : done \n");
 
 	if (netif_msg_hw(priv)) {
 		pr_info("ch %d TX descriptor ring:\n", ch);
@@ -431,7 +431,7 @@ static void init_rx_dma_desc_rings(struct net_device *dev, unsigned int ch)
 	unsigned int bfsize = priv->dma_buf_sz;
 	int buff2_needed = 0, dis_ic = 0;
 
-	printk("%s : dev->mtu %d \n",__func__,dev->mtu);
+	printk(KERN_INFO "[INFO][GMAC] %s : dev->mtu %d \n",__func__,dev->mtu);
     /* Set the Buffer size according to the MTU;
  	 * indeed, in case of jumbo we need to bump-up the buffer sizes.
  	 */
@@ -499,13 +499,13 @@ static void init_rx_dma_desc_rings(struct net_device *dev, unsigned int ch)
 	priv->dma_buf_sz = bfsize;
 	buf_sz = bfsize;
 	
-	printk("%s : dirty_rx %d dma_buf_sz %d \n",__func__,priv->rx_dma_ch[ch].dirty_rx,buf_sz);
+	printk(KERN_INFO "[INFO][GMAC] %s : dirty_rx %d dma_buf_sz %d \n",__func__,priv->rx_dma_ch[ch].dirty_rx,buf_sz);
 
-	pr_debug("--] init_rx_desc: : before \n");
+	printk(KERN_INFO "[INFO][GMAC] --] init_rx_desc: : before \n");
 
 	/* Clear the Rx/Tx descriptors */
 	priv->hw->desc->init_rx_desc(priv->rx_dma_ch[ch].dma_rx, rxsize, dis_ic);
-	pr_debug("--] init_rx_desc: : done \n");
+	printk(KERN_INFO "[INFO][GMAC] --] init_rx_desc: : done \n");
 
 	if (netif_msg_hw(priv)) {
 		pr_info("RX descriptor ring:\n");
@@ -1282,7 +1282,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	char phy_id[MII_BUS_ID_SIZE + 3];
 	char bus_id[MII_BUS_ID_SIZE];
 	
-	pr_debug("--] tcc_gmac_phy_probe: :\n");
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_phy_probe: :\n");
 
 	for (phy_addr=0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 		// for kernel-v4.14
@@ -1292,7 +1292,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 #endif
 				{
 					phy = (struct phy_device*)(bus->mdio_map[phy_addr]);
-					pr_info("Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
+			printk(KERN_INFO "[INFO][GMAC] Phy Addr : %d, Phy Chip ID : 0x%08x\n", phy_addr, phy->phy_id);
 					break;    
 				}
 			} 
@@ -1306,7 +1306,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 	}
 
 	if (!phy) {
-			pr_info("No Phy found\n");
+			printk(KERN_ERR "[ERROR][GMAC] No Phy found\n");
 			return -1;
 	}
 
@@ -1325,7 +1325,7 @@ static int tcc_gmac_phy_probe(struct net_device *dev)
 #endif
 	priv->phy_addr = phy_addr;
 	priv->phydev = phy;
-	pr_debug("--] tcc_gmac_phy_probe:  phy_addr %x :\n",priv->phy_addr);
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_phy_probe:  phy_addr %x :\n",priv->phy_addr);
 
 #else
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
@@ -1394,6 +1394,7 @@ static int tcc_gmac_mdio_register(struct net_device *dev)
 	bus->read = tcc_gmac_mdio_read;
 	bus->write = tcc_gmac_mdio_write;
 	bus->reset= tcc_gmac_mdio_reset;
++	printk(KERN_INFO "[INFO][GMAC] ");
 	snprintf(bus->id, MII_BUS_ID_SIZE, "0");
 	bus->priv = dev;
 //	bus->irq = irq_list;
@@ -1574,8 +1575,8 @@ static int tcc_gmac_open(struct net_device *dev)
 		}
 	}
 
-	pr_debug("--] tcc_gmac_open: :\n");
-	printk("NUMS_OF_DMA_CH : %d\n", NUMS_OF_DMA_CH);
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_open: :\n");
+	printk(KERN_INFO "[INFO][GMAC] NUMS_OF_DMA_CH : %d\n", NUMS_OF_DMA_CH);
 
 	switch(tca_gmac_get_phy_interface(&priv->dt_info)) {
 		case PHY_INTERFACE_MODE_MII:
@@ -1591,7 +1592,7 @@ static int tcc_gmac_open(struct net_device *dev)
 			pin = devm_pinctrl_get_select(priv->device, "rgmii");
 			break;
 		default:
-			printk("unknown phy interface\n");
+			printk(KERN_ERR "[ERROR][GMAC] unknown phy interface\n");
 			return -EINVAL;
 			break;
 	}
@@ -1625,20 +1626,20 @@ static int tcc_gmac_open(struct net_device *dev)
 	priv->hw->clk_rate = calc_mdio_clk_rate(tca_gmac_get_hsio_clk(&priv->dt_info));
 
 	if (!priv->is_mdio_registered) {
-		pr_debug("\tMDIO bus priv->pbl %d ",priv->pbl );
+		printk(KERN_INFO "[INFO][GMAC] \tMDIO bus priv->pbl %d ",priv->pbl );
 		ret = tcc_gmac_mdio_register(dev);
 		if (ret < 0)
 			return -1;
 		priv->is_mdio_registered = 1;
-		pr_debug("registered!\n");
+		printk(KERN_INFO "[INFO][GMAC] registered!\n");
 	}
 	if (tcc_gmac_phy_probe(dev)) {
-		pr_warning("%s: No PHY found\n", dev->name);
+		printk(KERN_ERR "[ERROR][GMAC] No Phy found\n");
 		tca_gmac_phy_pwr_off(&priv->dt_info);
 		tca_gmac_clk_disable(&priv->dt_info);
 		return -1;
 	}
-	pr_debug("--] tcc_gmac_phy_probe done:dev->name %s dev_addr %x \n",
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_phy_probe done:dev->name %s dev_addr %x \n",
 				dev->name,(unsigned int)dev->dev_addr);
 
 	ret = request_irq(dev->irq, tcc_gmac_irq_handler, IRQF_SHARED, dev->name, dev);
@@ -1663,7 +1664,7 @@ static int tcc_gmac_open(struct net_device *dev)
 		if (priv->hw->dma[i]->init(ioaddr, priv->pbl, 
 									priv->tx_dma_ch[i].dma_tx_phy, 
 									priv->rx_dma_ch[i].dma_rx_phy)) {
-				pr_err("%s : DMA Initialization failed\n", __func__);
+				printk(KERN_ERR "[ERROR][GMAC] %s : DMA Initialization failed\n", __func__);
 				tca_gmac_clk_disable(&priv->dt_info);
 				tca_gmac_phy_pwr_off(&priv->dt_info);
 				return -1;
@@ -1695,10 +1696,10 @@ static int tcc_gmac_open(struct net_device *dev)
 	priv->tx_timestamp_on = false;
 #endif
 
-	pr_debug("--] DMA initialization done: ");
-	pr_debug("buf sz %d pbl %d \n", priv->dma_buf_sz,priv->pbl);
+	printk(KERN_INFO "[INFO][GMAC] --] DMA initialization done: ");
+	printk(KERN_INFO "[INFO][GMAC] buf sz %d pbl %d \n", priv->dma_buf_sz,priv->pbl);
 	for (i=0; i<NUMS_OF_DMA_CH; i++) {
-		pr_debug("\tch%d tx %d rx %d \n", 
+		printk(KERN_INFO "[INFO][GMAC] \tch%d tx %d rx %d \n", 
 				i, priv->tx_dma_ch[i].dma_tx_size, priv->rx_dma_ch[i].dma_rx_size);
 	}
 
@@ -1740,11 +1741,11 @@ static int tcc_gmac_open(struct net_device *dev)
 	}
 	/* Phy Start */
 	if (priv->phydev) {
-		pr_debug("--] phy_start: :\n");
+		printk(KERN_INFO "[INFO][GMAC] --] phy_start: :\n");
 		netif_carrier_off(dev);
 		phy_start(priv->phydev);
 	}
-	pr_debug("--] tcc_gmac_open done: :ioaddr %x \n",(unsigned int)ioaddr);
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_open done: :ioaddr %x \n",(unsigned int)ioaddr);
 
 #ifdef CONFIG_TCC_GMAC_PTP
 	priv->ptp_clk = tcc_gmac_ptp_probe(dev);
@@ -1781,7 +1782,7 @@ static int tcc_gmac_stop(struct net_device *dev)
 	struct tcc_gmac_priv *priv = netdev_priv(dev);
 	int i;
 
-	pr_debug("--] tcc_gmac_stop: :\n");
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_stop: :\n");
 
 
 #if 1
@@ -2492,7 +2493,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	int ret = 0;
 	int err = 0;
 	
-	pr_debug("--] tcc_gmac_probe: :\n");
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_probe: :\n");
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	
@@ -2544,7 +2545,7 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	pr_debug("--] tcc_gmac_setup: :\n");
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_setup: :\n");
 	
 	priv->wolenabled = priv->hw->pmt;
 #if defined(CONFIG_TCC_WAKE_ON_LAN)
@@ -2590,25 +2591,25 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	err = get_board_mac(mac_addr);
 
 	if (of_get_property(np, "ecid-mac-addr", NULL)) {
-		printk("ecid-mac-addr\n");
+		printk(KERN_INFO "[INFO][GMAC] ecid-mac-addr\n");
 		if (tca_get_mac_addr_from_ecid(dev->dev_addr)) {
 			memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
 		}
 	} else {
 		if(err<0)
 		{
-			printk("Using ECID mac_addr.\n");
+			printk(KERN_INFO "[INFO][GMAC] Using ECID mac_addr.\n");
 			if(tca_get_mac_addr_from_ecid(dev->dev_addr)){
-				printk("Fail to get ECID MAC address. Set default mac address.\n");
+				printk(KERN_ERR "[ERROR][GMAC] Fail to get ECID MAC address. Set default mac address.\n");
 				memcpy(dev->dev_addr, default_mac_addr, ETH_ALEN);
 			}
 		}else{
-			printk("Using User mac_addr from FWDN.\n");
+			printk(KERN_INFO "[INFO][GMAC] Using User mac_addr from FWDN.\n");
 			memcpy(dev->dev_addr, mac_addr, ETH_ALEN);
 		}
 	}
 	
-	pr_debug("mac_addr - %02x:%02x:%02x:%02x:%02x:%02x\n", dev->dev_addr[0],
+	printk(KERN_INFO "[INFO][GMAC] mac_addr - %02x:%02x:%02x:%02x:%02x:%02x\n", dev->dev_addr[0],
 														dev->dev_addr[1],
 														dev->dev_addr[2],
 														dev->dev_addr[3],
@@ -2677,7 +2678,7 @@ static struct platform_driver tcc_gmac_driver = {
 
 static int __init tcc_gmac_init(void)
 {
-	pr_debug("--] tcc_gmac_init: :\n");
+	printk(KERN_INFO "[INFO][GMAC] --] tcc_gmac_init: :\n");
 	return platform_driver_register(&tcc_gmac_driver);
 }
 
