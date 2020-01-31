@@ -1,7 +1,7 @@
 /*
  * linux/drivers/mmc/host/tcc_sdhc.c
  *
- * Author:  <linux@telechips.com>
+ * Author:  Telechips Inc.
  * Created: Octo 18, 2010
  * Description: SD/MMC Host Driver for Telechips Boards.
  *
@@ -75,7 +75,7 @@
 
 #ifdef CONFIG_TCC_MMC_SDHC_DEBUG
 #define TCC_SDHC_DBG(level, id, x...) \
-	((level & tcc_sdhc_dbg_level) && (id & tcc_sdhc_dbg_channel)) ? printk(x) : 0
+	((level & tcc_sdhc_dbg_level) && (id & tcc_sdhc_dbg_channel)) ? printk(KERN_DEBUG "[DEBUG][SDHC] " x) : 0
 #else
 #define TCC_SDHC_DBG(level, id, x...)
 #endif
@@ -83,7 +83,7 @@
 #define DRIVER_NAME		"tcc-sdhc"
 
 #define DETECT_TIMEOUT		(HZ/2)
-	
+
 #define SDMMC_FIFO_CNT		1024
 #define SDMMC_TIMEOUT_TICKS	(1000*HZ/1000)	/* 1000ms */
 #define TCC_MMC_GET_CMD(c) ((c>>24) & 0x3f)
@@ -116,7 +116,7 @@ static inline void mmc_writew(struct tcc_mmc_host *host, u16 b,
 
 static inline int mmc_readl(struct tcc_mmc_host *host, unsigned offset)
 {
-    return readl(host->base + offset);
+	return readl(host->base + offset);
 }
 
 static inline void mmc_writel(struct tcc_mmc_host *host, u32 b,
@@ -140,17 +140,17 @@ void tcc_mmc_clock_control(struct tcc_mmc_host *host, int onoff)
 
 static void tcc_mmc_dumpregs(struct tcc_mmc_host *host)
 {
-	int i = 0, j = 0;
+	int i = 0;
 	TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "=========== REGISTER DUMP (%s)===========\n",
-		mmc_hostname(host->mmc));
+			mmc_hostname(host->mmc));
 
 	for(i = 0; i < 15; i++)
 	{
-		for(j = 0; j < 4; j++)
-		{
-			TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "0x%08x ", mmc_readl(host, ((0x4)*j + (0x10)*i)));
-		}
-		TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "\n");
+		TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "0x%08x 0x%08x 0x%08x 0x%08x\n",
+				mmc_readl(host, (0x0 + (0x10)*i)),
+				mmc_readl(host, (0x4 + (0x10)*i)),
+				mmc_readl(host, (0x8 + (0x10)*i)),
+				mmc_readl(host, (0xc + (0x10)*i)));
 	}
 	TCC_SDHC_DBG(DEBUG_LEVEL_DUMP, host->controller_id, "===========================================\n");
 }
@@ -165,7 +165,7 @@ static struct clk *rtc_clk = NULL;
 int make_rtc(struct device_node *np, struct tcc_mmc_host *host)
 {
 	//tcc_gpio_config(TCC_GPB(29), GPIO_FN12);
-    TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s\n", __func__);
+	TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s\n", __func__);
 
 	if (rtc_clk == NULL) {
 		rtc_clk = of_clk_get(np, 2);
@@ -182,7 +182,7 @@ int make_rtc(struct device_node *np, struct tcc_mmc_host *host)
 		TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "rtc_clk = %d\n", (int)clk_get_rate(rtc_clk));
 	}
 
-    return 0;
+	return 0;
 }
 
 static int tcc_sw_reset(struct tcc_mmc_host *host, uint8_t rst_bits)
@@ -190,7 +190,7 @@ static int tcc_sw_reset(struct tcc_mmc_host *host, uint8_t rst_bits)
 	int timeout = 1000;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return -EHOSTDOWN;
 	}
 
@@ -205,7 +205,7 @@ static int tcc_sw_reset(struct tcc_mmc_host *host, uint8_t rst_bits)
 		mdelay(1);
 	}
 	if (!timeout) {
-		printk(KERN_ERR "%s: timed out waiting for reset\n", mmc_hostname(host->mmc));
+		printk(KERN_ERR "[ERROR][SDHC] %s: timed out waiting for reset\n", mmc_hostname(host->mmc));
 		tcc_mmc_dumpregs(host);
 		return -ETIMEDOUT;
 	}
@@ -241,7 +241,7 @@ static void tcc_mmc_poll_event(unsigned long data)
 
 	if (host == NULL) {
 		return;// -EHOSTDOWN;
-    }
+	}
 
 	if(host->mmc->detect_change == 0)
 	{
@@ -283,7 +283,7 @@ static void tcc_mmc_poll_event(unsigned long data)
 static char *tcc_mmc_kmap_atomic(struct scatterlist *sg, unsigned long *flags)
 {
 	if((sg == NULL)||(flags == NULL)) {
-		printk("[mmc:NULL] %s(sg:%x, flags:%x)\n", __func__, (u32)sg, (u32)flags);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(sg:%x, flags:%x)\n", __func__, (u32)sg, (u32)flags);
 		return 0;
 	}
 
@@ -294,7 +294,7 @@ static char *tcc_mmc_kmap_atomic(struct scatterlist *sg, unsigned long *flags)
 static void tcc_mmc_kunmap_atomic(void *buffer, unsigned long *flags)
 {
 	if((buffer == NULL)||(flags == NULL)) {
-		printk("[mmc:NULL] %s(buffer:%x, flags:%x)\n", __func__, (u32)buffer, (u32)flags);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(buffer:%x, flags:%x)\n", __func__, (u32)buffer, (u32)flags);
 		return;
 	}
 
@@ -318,7 +318,7 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 	unsigned long flags;
 
 	if((host == NULL)||(data == NULL)) {
-		printk("[mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
+		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
 		return -EHOSTDOWN;
 	}
 
@@ -439,9 +439,9 @@ static int tcc_mmc_adma_table_pre(struct tcc_mmc_host *host, struct mmc_data *da
 				host->align_addr, 128 * 4, direction);
 	}
 
-	host->adma_addr = dma_map_single(mmc_dev(host->mmc),	host->adma_desc, (128 * 2 + 1) * 4, DMA_TO_DEVICE);
+	host->adma_addr = dma_map_single(mmc_dev(host->mmc), host->adma_desc, (128 * 2 + 1) * 4, DMA_TO_DEVICE);
 
-//	printk("ADMA address: 0x%x\n",host->adma_addr);
+//	printk(KERN_DEBUG "[DEBUG][SDHC] ADMA address: 0x%x\n",host->adma_addr);
 
 	if (dma_mapping_error(mmc_dev(host->mmc), host->adma_addr))
 		goto unmap_entries;
@@ -470,7 +470,7 @@ static void tcc_mmc_adma_table_post(struct tcc_mmc_host *host, struct mmc_data *
 	unsigned long flags;
 
 	if((host == NULL)||(data == NULL)) {
-		printk("[mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, data:%x)\n", __func__, (u32)host, (u32)data);
 		return;// -EHOSTDOWN;
 	}
 
@@ -515,7 +515,7 @@ static void tcc_mmc_finish_data(struct tcc_mmc_host *host)
 	u16 blocks;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -550,7 +550,7 @@ static void tcc_mmc_finish_data(struct tcc_mmc_host *host)
 	data->bytes_xfered = data->blksz * (data->blocks - blocks);
 
 	if (!data->error && blocks) {
-		printk(KERN_ERR "%s: Controller signalled completion even "
+		printk(KERN_ERR "[ERROR][SDHC] %s: Controller signalled completion even "
 				"though there were blocks left.\n",
 				mmc_hostname(host->mmc));
 		data->error = -EIO;
@@ -688,7 +688,7 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 	unsigned int uiIntStatusEn;
 
 	if((host == NULL)||(cmd == NULL)) {
-		printk("[mmc:NULL] %s(host:%x, cmd:%x)\n", __func__, (u32)host, (u32)cmd);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, cmd:%x)\n", __func__, (u32)host, (u32)cmd);
 		return;// -EHOSTDOWN;
 	}
 
@@ -710,7 +710,7 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 
 	while (mmc_readl(host, TCCSDHC_PRESENT_STATE) & mask) {
 		if (timeout == 0) {
-			printk(KERN_ERR "%s: Controller never released "
+			printk(KERN_ERR "[ERROR][SDHC] %s: Controller never released "
 					"inhibit bit(s).\n", mmc_hostname(host->mmc));
 			tcc_mmc_dumpregs(host);
 			cmd->error = -EIO;
@@ -764,7 +764,7 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 					cmd_reg |= HwSD_COM_TRANS_ACMD23; // auto CMD23 enable
 					mmc_writel(host, host->mrq->sbc->arg, TCCSDHC_DMA_ADDRESS);
 					//if (host->mrq->sbc->arg & 0x80000000)
-					//	printk("\x1b[1;32m %s: 0x%08X \x1b[0m\n", __func__, host->mrq->sbc->arg);
+					//	printk(KERN_DEBUG "[DEBUG][SDHC] %s: 0x%08X\n", __func__, host->mrq->sbc->arg);
 				}
 			}
 		}
@@ -886,7 +886,7 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 	if (host->is_in_tuning_mode) {
 		int flags = SG_MITER_ATOMIC | SG_MITER_TO_SG;
 		sg_miter_start(&host->sg_miter, cmd->data->sg, cmd->data->sg_len, flags);
-		/*printk("[%s] sg_miter_start : sg_len(%d)\n", __func__, cmd->data->sg_len);*/
+		/*printk(KERN_DEBUG "[DEBUG][SDHC] [%s] sg_miter_start : sg_len(%d)\n", __func__, cmd->data->sg_len);*/
 		cmd_reg |= HwSD_COM_TRANS_DATSEL | HwSD_COM_TRANS_DIR | Hw20 | Hw19;
 		mmc_writel(host, 0x0, TCCSDHC_DMA_ADDRESS);
 	}
@@ -902,7 +902,7 @@ static void tcc_mmc_start_command(struct tcc_mmc_host *host, struct mmc_command 
 static void tcc_mmc_finish_command(struct tcc_mmc_host *host)
 {
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -951,7 +951,7 @@ static void tcc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	unsigned long flags;
 
 	if((mmc == NULL)||(host == NULL)||(mrq == NULL)) {
-		printk("[mmc:NULL] %s(mmc:%x, host:%x, mrq:%x)\n", __func__, (u32)mmc, (u32)host, (u32)mrq);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x, mrq:%x)\n", __func__, (u32)mmc, (u32)host, (u32)mrq);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1011,7 +1011,7 @@ static void tcc_hw_set_high_speed(struct mmc_host *mmc, int hs)
 	u8 host_ctrl = 0;
 
 	if((mmc == NULL)||(host == NULL)) {
-		printk("[mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1092,7 +1092,7 @@ static void tcc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		while (!(mmc_readl(host, TCCSDHC_CLOCK_CONTROL) & HwSDCLKSEL_INCLK_STABLE)) {
 			if (timeout == 0)
 			{
-				printk("%s: Internal clock never stablized.\n", mmc_hostname(host->mmc));
+				printk(KERN_WARNING "[WARN][SDHC] %s: Internal clock never stablized.\n", mmc_hostname(host->mmc));
 				tcc_mmc_dumpregs(host);
 				break;
 			}
@@ -1226,7 +1226,7 @@ static void tcc_sdio_hw_enable_int(struct mmc_host *mmc, uint32_t sigs)
 	uint32_t stat_en;
 
 	if((mmc == NULL)||(host == NULL)) {
-		printk("[mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1245,7 +1245,7 @@ static void tcc_sdio_hw_disable_int(struct mmc_host *mmc, uint32_t sigs)
 	uint32_t stat_en;
 
 	if((mmc == NULL)||(host == NULL)) {
-		printk("[mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x, host:%x)\n", __func__, (u32)mmc, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1260,7 +1260,7 @@ static void tcc_sdio_hw_disable_int(struct mmc_host *mmc, uint32_t sigs)
 static void tcc_sdio_enable_card_int(struct mmc_host *mmc)
 {
 	if(mmc == NULL) {
-		printk("[mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1270,7 +1270,7 @@ static void tcc_sdio_enable_card_int(struct mmc_host *mmc)
 static void tcc_sdio_disable_card_int(struct mmc_host *mmc)
 {
 	if(mmc == NULL) {
-		printk("[mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(mmc:%x)\n", __func__, (u32)mmc);
 		return;// -EHOSTDOWN;
 	}
 
@@ -1296,7 +1296,7 @@ static void tcc_mmc_check_status(struct tcc_mmc_host *host)
 	int ret = 0;
 
 	if((host == NULL)||(host->mmc == NULL)) {
-		printk("[mmc:NULL] %s(host:%x, host->mmc:%x)\n", __func__, (u32)host, (u32)(host->mmc));
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, host->mmc:%x)\n", __func__, (u32)host, (u32)(host->mmc));
 		return;// -EHOSTDOWN;
 	}
 
@@ -1361,17 +1361,17 @@ static irqreturn_t tcc_mmc_cd_irq(int irq, void *dev_id)
 static void tcc_mmc_cmd_irq(struct tcc_mmc_host *host, u32 intmask)
 {
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
 	BUG_ON(intmask == 0);
 
 	if (!host->cmd) {
-		printk(KERN_ERR "%s: Got command interrupt 0x%08x even "
+		printk(KERN_ERR "[ERROR][SDHC] %s: Got command interrupt 0x%08x even "
 				"though no command operation was in progress.\n",
 				mmc_hostname(host->mmc), (unsigned)intmask);
-	    tcc_mmc_dumpregs(host);
+		tcc_mmc_dumpregs(host);
 		return;
 	}
 
@@ -1391,12 +1391,12 @@ static void tcc_mmc_cmd_irq(struct tcc_mmc_host *host, u32 intmask)
 static void tcc_mmc_data_irq(struct tcc_mmc_host *host, u32 intmask)
 {
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
 	BUG_ON(intmask == 0);
-    
+
 	if (!host->data) {
 		/*
 		 * A data end interrupt is sent together with the response
@@ -1405,7 +1405,7 @@ static void tcc_mmc_data_irq(struct tcc_mmc_host *host, u32 intmask)
 		if (intmask & HwSDINT_STATUS_TDONE)
 			return;
 
-		printk(KERN_ERR "%s: Got data interrupt 0x%08x even "
+		printk(KERN_ERR "[ERROR][SDHC] %s: Got data interrupt 0x%08x even "
 				"though no data operation was in progress.\n",
 				mmc_hostname(host->mmc), (unsigned)intmask);
 		tcc_mmc_dumpregs(host);
@@ -1462,7 +1462,7 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 	unsigned int cmd;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return IRQ_HANDLED;// -EHOSTDOWN;
 	}
 
@@ -1483,7 +1483,7 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 				mmc_readl(host, TCCSDHC_ACMD12_ERR));
 		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, " Command : 0x%08x ",
 				mmc_readl(host, TCCSDHC_TRANSFER_MODE));
-		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, " response 1/0 : 0x%08x\n", 
+		TCC_SDHC_DBG(DEBUG_LEVEL_IRQ, host->controller_id, " response 1/0 : 0x%08x\n",
 				mmc_readl(host, TCCSDHC_RESPONSE10));
 	}
 
@@ -1532,7 +1532,7 @@ static irqreturn_t tcc_mmc_interrupt_handler(int irq, void *dev_id)
 		}
 
 		if(IntStatus & HwSDINT_STATUS_ACMD){
-			errstat = mmc_readl(host, TCCSDHC_ACMD12_ERR); // clear AMCD error status register 
+			errstat = mmc_readl(host, TCCSDHC_ACMD12_ERR); // clear AMCD error status register
 		}
 		mmc_writel(host, IntStatus, TCCSDHC_INT_STATUS);
 	}
@@ -1581,7 +1581,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 #if defined(CONFIG_ARCH_TCC898X)
 	if(system_rev < 0x0002) {
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: TCC898X_rev0 and rev1 can't execute auto tuning.\n", mmc_hostname(host->mmc));
-		printk("[%s] Manual tuning is required.\n", __func__);
+		printk(KERN_INFO "[INFO][SDHC] [%s] Manual tuning is required.\n", __func__);
 
 		//writel(0x00000000, host->chctrl_base + TCCSDHC_CHCTRL_DLY0);
 		//writel(0x00000000, host->chctrl_base + TCCSDHC_CHCTRL_DLY1);
@@ -1716,7 +1716,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		}
 
 		if(!host->tuning_done) {
-			printk("[%s] Timeout waiting for "
+			printk(KERN_ERR "[ERROR][SDHC] [%s] Timeout waiting for "
 					"Buffer Read Ready interrupt during tuninig "
 					"procedrue, falling back to fixed sampling "
 					"clock\n", __func__);
@@ -1737,13 +1737,13 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		{
 #ifdef CONFIG_TCC_MMC_SDHC_DEBUG
 		unsigned int dbg2 =  readl(host->chctrl_base + TCCSDHC_CHCTRL_DBG2);
-#endif
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: dbg2 : 0x%08x\n",
 				mmc_hostname(host->mmc), dbg2);
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_count[5:0] : 0x%02x\n",
 				mmc_hostname(host->mmc), ((dbg2 >> 3) & 0x3f));
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: tuningfsm_numseqmatch[5:0] : 0x%02x\n",
 				mmc_hostname(host->mmc), ((dbg2 >> 9) & 0x3f));
+#endif
 		TCC_SDHC_DBG(DEBUG_LEVEL_TUNING, host->controller_id, "%s: [%d] ACMD12_ERR : 0x%08x\n\n",
 				mmc_hostname(host->mmc), tuning_count, tuning_status);
 		}
@@ -1760,7 +1760,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	}
 
 	if (!(tuning_status & TCCSDHC_TUNED_CLOCK)) {
-		printk("[%s] Tuning procedure failed, falling back to fixed sampling clock\n", __func__);
+		printk(KERN_ERR "[ERROR][SDHC] [%s] Tuning procedure failed, falling back to fixed sampling clock\n", __func__);
 		tuning_status &= ~TCCSDHC_TUNED_CLOCK;
 		tuning_status &= ~TCCSDHC_EXEC_TUNING;
 		mmc_writel(host, tuning_status, TCCSDHC_ACMD12_ERR);
@@ -1874,7 +1874,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		blocks = kmalloc(blksz, GFP_KERNEL);
 		sg_init_one(&sg, blocks, blksz);
 
-		//printk("blocks : %d, blksz : %d\n", blocks, blksz);
+		//printk(KERN_DEBUG "[DEBUG][SDHC] blocks : %d, blksz : %d\n", blocks, blksz);
 
 		mrq.cmd = &cmd;
 		mrq.data = &data;
@@ -1902,7 +1902,7 @@ static int tcc_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		}
 
 		if(!host->tuning_done) {
-			printk("[%s] Timeout waiting for "
+			printk(KERN_ERR "[ERROR][SDHC] [%s] Timeout waiting for "
 					"Buffer Read Ready interrupt during tuninig "
 					"procedrue, falling back to fixed sampling "
 					"clock\n", __func__);
@@ -1983,7 +1983,7 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 {
 	struct tcc_mmc_host *host = mmc_priv(mmc);
 	uint32_t temp_reg, temp_val;
-	long dwMaxClockRate = host->peri_clk; 
+	long dwMaxClockRate = host->peri_clk;
 	int i=0;
 	int ret;
 	u32 clk_div = 0;
@@ -2002,7 +2002,7 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 
 	if(ios-> clock == 0)
 		ios->clock = 400000;
-	if (ios->clock != 0) 
+	if (ios->clock != 0)
 	{
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg & (~HwSDCLKSEL_SCK_EN | ~HwSDCLKSEL_INCLK_EN),
@@ -2010,7 +2010,7 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 
 		mmc_writel(host, get_sdr_mode(host),
 				TCCSDHC_ACMD12_ERR);
-		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180) 
+		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180)
 		{
 			if(gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
 				tcc_mmc_gpio_set_value(host->tcc_hw.vctrl_gpio, 0);
@@ -2074,7 +2074,7 @@ static int tcc_mmc_start_signal_voltage_switch(struct mmc_host *mmc,
 				HwSDCLKSEL_INCLK_STABLE)) {
 			udelay(100);
 		}
- 	
+
 		temp_reg = mmc_readl(host, TCCSDHC_CLOCK_CONTROL);
 		mmc_writew(host, temp_reg | (HwSDCLKSEL_SCK_EN),
 			   TCCSDHC_CLOCK_CONTROL);
@@ -2165,7 +2165,7 @@ static void tcc_mmc_tasklet_finish(unsigned long param)
 	host = (struct tcc_mmc_host *)param;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
@@ -2221,14 +2221,14 @@ static void tcc_mmc_timeout_timer(unsigned long data)
 	host = (struct tcc_mmc_host*)data;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
 
 	if (host->mrq) {
-		printk(KERN_ERR "%s: Timeout waiting for hardware "
+		printk(KERN_ERR "[ERROR][SDHC] %s: Timeout waiting for hardware "
 				"interrupt.\n", mmc_hostname(host->mmc));
 		tcc_mmc_dumpregs(host);
 
@@ -2255,7 +2255,7 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 	struct tcc_mmc_tap_delays *tap_delays = &host->tcc_tap_delays;
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return;// -EHOSTDOWN;
 	}
 	if (host->fclk > 0)
@@ -2263,7 +2263,7 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 	else
 		clk_set_rate(host->fclk, 25*1000*1000);
 	host->peri_clk = clk_get_rate(host->fclk);
-	dev_dbg(host->dev, "clock %lu\n", host->peri_clk);
+	dev_dbg(host->dev, "[DEBUG][SDHC] clock %lu\n", host->peri_clk);
 
 	mmc_writel(host, 0xfffff0ff, TCCSDHC_INT_ENABLE);
 	mmc_writel(host, 0xffffffff, TCCSDHC_SIGNAL_ENABLE);
@@ -2283,10 +2283,10 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 	temp_val |= 0x00F00000; // disable command conflict
 	writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SDCTRL);
 
-	temp_val = (host->mmc->caps & 
+	temp_val = (host->mmc->caps &
 			(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 | MMC_CAP_UHS_SDR104)) ?
 		0x07070707: 0x0F0F0F0F;
-	switch (host->controller_id % 4) 
+	switch (host->controller_id % 4)
 	{
 		case 0:
 			writel(temp_val, host->chctrl_base + TCCSDMMC_CHCTRL_SD0CMDDAT);
@@ -2309,7 +2309,7 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 			writel(0x00000007, host->chctrl_base + TCCSDMMC_CHCTRL_SD3CAPREG1);
 			break;
 		default:
-			printk("%s: failed to init mmc channel configuration...\n", __func__);
+			printk(KERN_ERR "[ERROR][SDHC] %s: failed to init mmc channel configuration...\n", __func__);
 			break;
 	}
 #else // CONFIG_ARCH_TCC898X || CONFIG_ARCH_TCC802X
@@ -2334,20 +2334,20 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 		u32 vals, i;
 
 		writel(tap_delays->clk_tap_delay, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
-		pr_debug(DRIVER_NAME "%d: set clk-out-tap 0x%08x @0x%p\n",
+		pr_debug("[DEBUG][SDHC] %d: set clk-out-tap 0x%08x @0x%p\n",
 			ch, vals, host->chctrl_base + TCCSDHC_CHCTRL_TAPDLY);
 
 		/* Configure CMD TAPDLY */
 		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->cmd_tap_delay);
 		writel(vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
-		pr_debug(DRIVER_NAME "%d: set cmd-tap 0x%08x @0x%p\n",
+		pr_debug("[DEBUG][SDHC] %d: set cmd-tap 0x%08x @0x%p\n",
 			ch, vals, host->chctrl_base + TCC803X_SDHC_CMDDLY(ch));
 
 		/* Configure DATA TAPDLY */
 		vals = TCC803X_SDHC_MK_TAPDLY(tap_delays->data01_tap_delay);
 		for(i = 0; i < 8; i++) {
 			writel(vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
-			pr_debug(DRIVER_NAME "%d: set data%d-tap 0x%08x @0x%p\n",
+			pr_debug("[DEBUG][SDHC] %d: set data%d-tap 0x%08x @0x%p\n",
 				ch, i, vals, host->chctrl_base + TCC803X_SDHC_DATADLY(ch, i));
 		}
 
@@ -2356,7 +2356,7 @@ static void init_mmc_host(struct tcc_mmc_host *host,
 		vals &= ~TCC803X_SDHC_MK_TX_CLKDLY(ch, 0x1F);
 		vals |= TCC803X_SDHC_MK_TX_CLKDLY(ch, tap_delays->clk_tx_tap_delay);
 		writel(vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
-		pr_debug(DRIVER_NAME "%d: set clk-tx-tap 0x%08x @0x%p\n",
+		pr_debug("[DEBUG][SDHC] %d: set clk-tx-tap 0x%08x @0x%p\n",
 				ch, vals, host->chctrl_base + TCC803X_SDHC_TX_CLKDLY_OFFSET(ch));
 	}
 #endif
@@ -2468,7 +2468,7 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 		host->mmc->caps |= MMC_CAP_DRIVER_TYPE_C;
 	if (of_find_property(np, "cap-uhs-driver_type_d", &len))
 		host->mmc->caps |= MMC_CAP_DRIVER_TYPE_D;
-	
+
 	if (of_find_property(np, "cap-vdd-165-195", &len))
 		host->mmc->ocr_avail |= MMC_VDD_165_195;
 
@@ -2494,13 +2494,13 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 	TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: host->tcc_hw.vctrl_gpio(%d)\n", mmc_hostname(host->mmc), host->tcc_hw.vctrl_gpio);
 	if (gpio_is_valid(host->tcc_hw.vctrl_gpio)) {
 		ret = devm_gpio_request_one(&host->mmc->class_dev,
-				host->tcc_hw.vctrl_gpio, 
+				host->tcc_hw.vctrl_gpio,
 				GPIOF_OUT_INIT_HIGH,
 				"tcc_sdhc: voltage control gpio");
 		if (ret < 0)
 			TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: failed to request vctrl gpio\n", mmc_hostname(host->mmc));
 	}
-	
+
 	/* Try to get supply */
 	ret = mmc_regulator_get_supply(host->mmc);
 	if(!ret) {
@@ -2517,7 +2517,7 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 		mdelay(10); // for hardware reset
 
 		ret = devm_gpio_request_one(&host->mmc->class_dev,
-				host->tcc_hw.pwr_gpio, 
+				host->tcc_hw.pwr_gpio,
 				GPIOF_OUT_INIT_HIGH,
 				"tcc_sdhc: power control gpio");
 		if (ret < 0)
@@ -2534,7 +2534,7 @@ static int tcc_mmc_parse_dt(struct tcc_mmc_host *host, struct device_node *np)
 		mdelay(10); // for hardware reset
 
 		ret = devm_gpio_request_one(&host->mmc->class_dev,
-				host->tcc_hw.rst_gpio, 
+				host->tcc_hw.rst_gpio,
 				GPIOF_OUT_INIT_HIGH,
 				"tcc_sdhc: reset control gpio");
 		if (ret < 0)
@@ -2559,12 +2559,12 @@ static void tcc_mmc_wifi_check_sdio30(struct tcc_mmc_host *host)
 }
 
 static int tcc_mmc_probe(struct platform_device *pdev)
-{       
+{
 	struct mmc_host *mmc;
 	struct tcc_mmc_host *host = NULL;
 	struct device_node *np = pdev->dev.of_node;
 	const struct of_device_id *match;
-    struct resource res;
+	struct resource res;
 	int ret = 0;
 
 	match = of_match_device(tcc_mmc_of_match, &pdev->dev);
@@ -2579,7 +2579,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	host = mmc_priv(mmc);
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_ERR "[ERROR][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return -ENODEV;// -EHOSTDOWN;
 	}
 
@@ -2596,7 +2596,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	host->tcc_tap_delays.data67_tap_delay = TCCSDHC_MK_DATADLY(TCCSDHC_DATADLY_DEF_TAP);
 
 	if (of_property_read_u32(np, "controller-id", &host->controller_id) < 0) {
-		printk("\"conrtoller-id\" property is missing...\n");
+		printk(KERN_ERR "[ERROR][SDHC] \"conrtoller-id\" property is missing...\n");
 		goto error;
 	}
 
@@ -2608,12 +2608,12 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	host->fclk = of_clk_get(np, 0);
 	if (!host->fclk) {
-		printk("%s: SDHC core %d can't get mmc peri clock\n", mmc_hostname(host->mmc), host->controller_id);
+		printk(KERN_ERR "[ERROR][SDHC] %s: SDHC core %d can't get mmc peri clock\n", mmc_hostname(host->mmc), host->controller_id);
 		goto error;
 	}
 	host->hclk = of_clk_get(np, 1);
 	if (!host->hclk) {
-		printk("%s: SDHC core %d can't get mmc hclk clock\n", mmc_hostname(host->mmc), host->controller_id);
+		printk(KERN_ERR "[ERROR][SDHC] %s: SDHC core %d can't get mmc hclk clock\n", mmc_hostname(host->mmc), host->controller_id);
 		goto error;
 	}
 	clk_prepare_enable(host->fclk);
@@ -2621,7 +2621,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	host->base = of_iomap(np, 0);
 	if (!host->base) {
-		printk("%s: failed to get sdhc base address\n", mmc_hostname(host->mmc));
+		printk(KERN_ERR "[ERROR][SDHC] %s: failed to get sdhc base address\n", mmc_hostname(host->mmc));
 		return -ENOMEM;
 	} else {
         of_address_to_resource(np, 0, &res);
@@ -2631,7 +2631,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	host->chctrl_base = of_iomap(np, 1);
 	if (!host->chctrl_base) {
-		printk("%s: failed to get channel control base address\n", mmc_hostname(host->mmc));
+		printk(KERN_ERR "[ERROR][SDHC] %s: failed to get channel control base address\n", mmc_hostname(host->mmc));
 		return -ENOMEM;
 	} else {
         of_address_to_resource(np, 1, &res);
@@ -2643,7 +2643,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 	{
 		host->chmux_base = of_iomap(np, 2);
 		if (!host->chmux_base) {
-			printk("%s: failed to get channel-mux base address\n", mmc_hostname(host->mmc));
+			printk(KERN_WARNING "[WARN][SDHC] %s: failed to get channel-mux base address\n", mmc_hostname(host->mmc));
 		} else {
 			unsigned temp_val = 0;
 			if(of_property_read_u32(np, "channel-mux", &temp_val) == 0) {
@@ -2660,9 +2660,9 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	host->auto_tune_rtl_base = of_iomap(np, 3);
 	if(!host->auto_tune_rtl_base) {
-		dev_info(host->dev, "not support auto tune rtl register\n");
+		dev_info(host->dev, "[INFO][SDHC] not support auto tune rtl register\n");
 	} else {
-		dev_info(host->dev, "auto tune rtl base 0x%x\n", host->auto_tune_rtl_base);
+		dev_info(host->dev, "[INFO][SDHC] auto tune rtl base 0x%x\n", host->auto_tune_rtl_base);
 	}
 
 	host->irq = platform_get_irq(pdev, 0);
@@ -2681,7 +2681,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 			make_rtc(np, host);
 		}
 	}
-	
+
 	TCC_SDHC_DBG(DEBUG_LEVEL_INFO, host->controller_id, "%s: host->cd_irq(%d)\n", mmc_hostname(host->mmc), host->cd_irq);
 	host->flags =0;
 
@@ -2710,7 +2710,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 		if (!host->adma_desc || !host->align_buffer) {
 			kfree(host->adma_desc);
 			kfree(host->align_buffer);
-			printk(KERN_WARNING "%s: Unable to allocate ADMA "
+			printk(KERN_WARNING "[WARN][SDHC] %s: Unable to allocate ADMA "
 					"buffers. Falling back to standard DMA.\n",
 					mmc_hostname(mmc));
 			host->flags &= ~TCC_MMC_USE_ADMA;
@@ -2777,7 +2777,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 			IRQ_TYPE_LEVEL_HIGH,
 			mmc_hostname(host->mmc), host);
 	if (ret) {
-		printk("%s: failed to get IRQ %d, ret1(%d)\n", mmc_hostname(host->mmc), host->irq, ret);
+		printk(KERN_ERR "[ERROR][SDHC] %s: failed to get IRQ %d, ret1(%d)\n", mmc_hostname(host->mmc), host->irq, ret);
 		goto error;
 	}
 
@@ -2795,7 +2795,7 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 				host->cdirq_desc, host);
 
 		if (ret) {
-			printk("%s: failed to get IRQ %d, ret2(%d)\n",
+			printk(KERN_ERR "[ERROR][SDHC] %s: failed to get IRQ %d, ret2(%d)\n",
 					mmc_hostname(host->mmc), host->irq, ret);
 			goto error;
 		}
@@ -2809,12 +2809,12 @@ static int tcc_mmc_probe(struct platform_device *pdev)
 
 	tcc_mmc_wifi_check_sdio30(host);
 
-	printk("%s: Telechips SD/MMC Host Controller #%d is initialized.\n",
+	printk(KERN_INFO "[INFO][SDHC] %s: Telechips SD/MMC Host Controller #%d is initialized.\n",
 			mmc_hostname(host->mmc), host->controller_id);
 	return ret;
 
 error:
-	printk("%s: failed to initialize Telechips SD/MMC Host Controller #%d\n",
+	printk(KERN_INFO "[INFO][SDHC] %s: failed to initialize Telechips SD/MMC Host Controller #%d\n",
 			mmc_hostname(host->mmc), host->controller_id);
 	return ret;
 }
@@ -2855,7 +2855,7 @@ static int tcc_mmc_suspend(struct device *dev)
 	struct mmc_host *mmc = host->mmc;
 
 	if((host == NULL)||(mmc == NULL)) {
-		printk("[mmc:NULL] %s(host:%x, mmc:%x)\n", __func__, (u32)host, (u32)mmc);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x, mmc:%x)\n", __func__, (u32)host, (u32)mmc);
 		return 0;// -EHOSTDOWN;
 	}
 
@@ -2871,13 +2871,13 @@ static int tcc_mmc_resume(struct device *dev)
 	struct tcc_mmc_host *host = platform_get_drvdata(pdev);
 
 	if(host == NULL) {
-		printk("[mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
+		printk(KERN_WARNING "[WARN][SDHC] [mmc:NULL] %s(host:%x)\n", __func__, (u32)host);
 		return 0;// -EHOSTDOWN;
 	}
 
 	if(host->chmux_base != NULL) {
 		writel(host->channel_mux, host->chmux_base);
-		printk("%s set channel mux %d(@%p) during resume\n",
+		printk(KERN_INFO "[INFO][SDHC] %s set channel mux %d(@%p) during resume\n",
 			mmc_hostname(host->mmc), readl(host->chmux_base), host->chmux_base);
 	}
 
@@ -2950,4 +2950,4 @@ module_exit(tcc_mmc_exit);
 MODULE_DESCRIPTION("Telechips SD/MMC/SDIO Card driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS(DRIVER_NAME);
-MODULE_AUTHOR("Telechips Inc. linux@telechips.com");
+MODULE_AUTHOR("Telechips Inc.");
