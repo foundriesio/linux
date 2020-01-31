@@ -218,10 +218,10 @@ static inline unsigned long mt_adc_read(struct adc_device *adc, int adc_num, int
 		}
 		else
 		{
-			printk("%s : invalid channel number(ADC%d - %d)!\n", __func__, adc_num, ch);
+			printk(KERN_ERR "[ERROR][ADC] %s : invalid channel number(ADC%d - %d)!\n", __func__, adc_num, ch);
 		}
 		#else
-		printk("%s : ADC core0 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core0 is disabled!!\n", __func__);
 		#endif
 	}
 	else if (adc_num == 1)
@@ -269,10 +269,10 @@ static inline unsigned long mt_adc_read(struct adc_device *adc, int adc_num, int
 		}
 		else
 		{
-			printk("%s : invalid channel number(ADC%d - %d)!\n", __func__, adc_num, ch);
+			printk(KERN_ERR "[ERROR][ADC] %s : invalid channel number(ADC%d - %d)!\n", __func__, adc_num, ch);
 		}
 		#else
-		printk("%s : ADC core1 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core1 is disabled!!\n", __func__);
 		#endif
 	}
 
@@ -351,7 +351,7 @@ unsigned long mt_adc_auto_scan(struct adc_device *adc, int adc_num, unsigned int
 
 		if ((adc_readl(adc->regs+ADC0CFG_REG)) & ADCCFG_SM)
 		{
-			for(i=0; i<MAX_CH0_ADC_CHANNEL; i++)
+			for(i = 0; i < MAX_CH0_ADC_CHANNEL; i++)
 			{
 				//check channel mask
 				if(mask & (0xf<<(i*4)))
@@ -366,7 +366,7 @@ unsigned long mt_adc_auto_scan(struct adc_device *adc, int adc_num, unsigned int
 				timeout--;
 				if (!timeout)
 				{
-					printk("%s : timeout! - data=0x%x, flag=0x%x\n", __func__, data, flag);
+					printk(KERN_ERR "[ERROR][ADC]%s : timeout! - data=0x%x, flag=0x%x\n", __func__, data, flag);
 				}
 				//printk("%s : data=0x%x, flag=0x%x\n", __func__, data, flag);
 			}while(flag!=mask_flag && !timeout); //wait for valid data
@@ -390,7 +390,7 @@ unsigned long mt_adc_auto_scan(struct adc_device *adc, int adc_num, unsigned int
 			}
 	    }
 		#else
-		printk("%s : ADC core0 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core0 is disabled!!\n", __func__);
 		#endif
 	}
 	else if (adc_num == 1) {
@@ -491,7 +491,7 @@ unsigned long mt_adc_auto_scan(struct adc_device *adc, int adc_num, unsigned int
 				timeout--;
 				if (!timeout)
 				{
-					printk("%s : timeout! - data=0x%x, flag=0x%x\n", __func__, data, flag);
+					printk(KERN_ERR "[ERROR][ADC] %s : timeout! - data=0x%x, flag=0x%x\n", __func__, data, flag);
 				}
 				//printk("%s : data=0x%x, flag=0x%x\n", __func__,data, flag);
 			}while(flag!=mask_flag && timeout); //wait for valid data
@@ -529,7 +529,7 @@ unsigned long mt_adc_auto_scan(struct adc_device *adc, int adc_num, unsigned int
 			}
 	    }
 		#else
-		printk("%s : ADC core1 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core1 is disabled!!\n", __func__);
 		#endif
 
 	}
@@ -550,7 +550,7 @@ void mt_adc_dma_config(
 	unsigned int uCHCTRL;
        #ifdef USE_DMA_IRQ
        register_int_handler((41+32), &IRQHandlerDMA, NULL);
-       printk("Open IOB DMA END\n");
+       printk(KERN_DEBUG "[DEBUG][ADC] Open IOB DMA END\n");
        #endif
 
        pADC_DMA->ST_SADR0            = nSrcAddr;
@@ -561,7 +561,7 @@ void mt_adc_dma_config(
 
        if      (ADC_CH ==0) pADC_DMA->EXTREQ0  = 1<<8;
        else if (ADC_CH ==1) pADC_DMA->EXTREQ0  = 1<<9;
-       else                 printk("DMA REQ_SEL FAIL!!!");
+       else                 printk(KERN_ERR "[ERROR][ADC] DMA REQ_SEL FAIL!!!");
 
 	   uCHCTRL = (1<<0xf) | //continuous transfer, start address doesn't reset
 	 			 (1<<0xb) | //lock
@@ -587,7 +587,7 @@ void  ADC_DmaFlagWait(uint nCH)
     } while (flag==0);
     pADC_DMA->CHCTRL0 |= flag;
 
-    printf("DMA Transfer finish ...!!! \n");
+    printk(KERN_DEBUG "[DEBUG][ADC] DMA Transfer finish ...!!! \n");
 }
 
 #ifdef USE_GDMA
@@ -682,7 +682,7 @@ unsigned long mt_adc_auto_scan_dma(struct adc_device *adc, int adc_num, unsigned
 	        udelay(10);
 	    }
 		#else
-		printk("%s : ADC core0 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core0 is disabled!!\n", __func__);
 		#endif
 	}
 	else if (adc_num == 1) {
@@ -761,7 +761,7 @@ unsigned long mt_adc_auto_scan_dma(struct adc_device *adc, int adc_num, unsigned
 			udelay(10);
 	    }
 		#else
-		printk("%s : ADC core1 is disabled!!\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s : ADC core1 is disabled!!\n", __func__);
 		#endif
 	}
 	return 0;
@@ -774,7 +774,7 @@ unsigned long tcc_mt_adc_getdata(struct tcc_mt_adc_client *client)
 	BUG_ON(!client);
 
 	if (!adc) {
-		printk(KERN_ERR "%s: failed to find adc device\n", __func__);
+		printk(KERN_ERR "[ERROR][ADC] %s: failed to find adc device\n", __func__);
 		return -EINVAL;
 	}
 
@@ -798,7 +798,7 @@ struct tcc_mt_adc_client *tcc_mt_adc_register(struct device *dev, int adc_num, i
 
 	client = devm_kzalloc(dev, sizeof(struct tcc_mt_adc_client), GFP_KERNEL);
 	if (!client) {
-		 dev_err(dev, "no memory for adc client\n");
+		 dev_err(dev, "[ERROR][ADC] no memory for adc client\n");
 		 return NULL;
 	}
 	//printk("%s : ch = %d, mask = 0x%x, mask2 = 0x%x\n", __func__, ch, mask, mask2);
@@ -833,11 +833,11 @@ static int tcc_mt_adc_probe(struct platform_device *pdev)
 	u32 clk_rate;
 	int ret = -ENODEV;
 	int err;
-	printk("%s\n", __func__);
+	dev_dbg(&pdev->dev, "[DEBUG][ADC] [%s]\n", __func__);
 	n++;
 	adc = devm_kzalloc(&pdev->dev, sizeof(struct adc_device), GFP_KERNEL);
 	if (adc == NULL) {
-		dev_err(&pdev->dev, "failed to allocate adc_device\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] failed to allocate adc_device\n");
 		return -ENOMEM;
 	}
 	adc->dev = &pdev->dev;
@@ -845,30 +845,30 @@ static int tcc_mt_adc_probe(struct platform_device *pdev)
 	/* get adc/pmu register addresses */
 	adc->regs = of_iomap(pdev->dev.of_node, 0);
 	if (!adc->regs) {
-		dev_err(&pdev->dev, "failed to get adc registers\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] failed to get adc registers\n");
 		ret = -ENXIO;
 		goto err_get_reg_addrs;
 	}
 	adc->pmu_regs = of_iomap(pdev->dev.of_node, 1);
 	if (!adc->pmu_regs) {
-		dev_err(&pdev->dev, "failed to get pmu registers\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] failed to get pmu registers\n");
 		ret = -ENXIO;
 		goto err_get_reg_addrs;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "clock-frequency", &clk_rate);
 	if (ret) {
-		dev_err(&pdev->dev, "Can not get clock frequency value\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] Can not get clock frequency value\n");
 		goto err_get_property;
 	}
 	ret = of_property_read_u32(pdev->dev.of_node, "ckin-frequency", &adc->ckin);
 	if (ret) {
-		dev_err(&pdev->dev, "Can not get adc ckin value\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] Can not get adc ckin value\n");
 		goto err_get_property;
 	}
 	ret = of_property_read_u32(pdev->dev.of_node, "adc-delay", &adc->delay);
 	if (ret) {
-		dev_err(&pdev->dev, "Can not get ADC Dealy value\n");
+		dev_err(&pdev->dev, "[ERROR][ADC] Can not get ADC Dealy value\n");
 		goto err_get_property;
 	}
 	//adc->is_12bit_res = of_property_read_bool(pdev->dev.of_node, "adc-12bit-resolution");
@@ -907,7 +907,7 @@ static int tcc_mt_adc_probe(struct platform_device *pdev)
 	if(ret)
 		goto err_phyclk;
 
-	dev_info(&pdev->dev, "attached driver\n");
+	dev_info(&pdev->dev, "[INFO][ADC] attached driver\n");
 	adc_dev = adc;
 /*
 	err = of_platform_populate(pdev->dev.of_node, NULL, NULL, adc->dev);
@@ -922,32 +922,39 @@ static int tcc_mt_adc_probe(struct platform_device *pdev)
 		unsigned int i;
 		unsigned int tmp_buff[10];
 		unsigned int * tmp_prt = &tmp_buff[0];
-		printk("\x1b[1;34m[%s:%d Test!!!(%p)]\x1b[0m\n", __func__, __LINE__, tmp_prt);
+		printk(KERN_DEBUG "[DEBUG][ADC][%s:%d Test!!!(%p)]\n", __func__, __LINE__, tmp_prt);
 
 		while (1)
 		{
 			memset(tmp_buff, 0x0, (sizeof(unsigned int)*MAX_CH0_ADC_CHANNEL));
+
 			mt_adc_auto_scan(adc, 0, tmp_prt, 0xf0f0f0f0, 0x0);
-			for (i=0; i<MAX_CH0_ADC_CHANNEL; i++)
-				printk("%s : %d channel : %d\n", __func__, i+2, (*(tmp_prt+i)) & 0x00000fff);
+			for (i = 0; i < MAX_CH0_ADC_CHANNEL; i++){
+				printk(KERN_DEBUG "[DEBUG][ADC] %s : %d channel : %d\n", __func__, i+2, (*(tmp_prt+i)) & 0x00000fff);
+			}
 			mdelay(1);
-			for (i=0; i<MAX_CH0_ADC_CHANNEL; i++)
-				printk("ADC0 ch%d : %d\n", i+2, mt_adc_read(adc, 0, i+2));
 
+			for (i = 0; i < MAX_CH0_ADC_CHANNEL; i++){
+				printk(KERN_DEBUG "[DEBUG][ADC] ADC0 ch%d : %d\n", i+2, mt_adc_read(adc, 0, i+2));
+			}
 			mdelay(1);
+
 			memset(tmp_buff, 0x0, (sizeof(unsigned int)*MAX_CH1_ADC_CHANNEL));
-			mt_adc_auto_scan(adc, 1, tmp_prt, 0x0F0F0F0F, 0x0F);
-			for (i=0; i<MAX_CH1_ADC_CHANNEL; i++)
-				printk("%s : %d channel : %d\n", __func__, i, (*(tmp_prt+i)) & 0x00000fff);
-			mdelay(1);
-			for (i=0; i<MAX_CH1_ADC_CHANNEL; i++)
-				printk("ADC0 ch%d : %d\n", i, mt_adc_read(adc, 1, i));
 
-			printk("++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+			mt_adc_auto_scan(adc, 1, tmp_prt, 0x0F0F0F0F, 0x0F);
+			for (i = 0; i < MAX_CH1_ADC_CHANNEL; i++){
+				printk(KERN_DEBUG "[DEBUG][ADC] %s : %d channel : %d\n", __func__, i, (*(tmp_prt+i)) & 0x00000fff);
+			}
+			mdelay(1);
+
+			for (i=0; i<MAX_CH1_ADC_CHANNEL; i++)
+				printk(KERN_DEBUG "[DEBUG][ADC] ADC0 ch%d : %d\n", i, mt_adc_read(adc, 1, i));
+
+			printk(KERN_DEBUG "[DEBUG][ADC] ++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 			mdelay(500);
 		}
 	}
-	printk("\x1b[1;31m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][ADC][%s:%d]\n", __func__, __LINE__);
 #endif
 	return 0;
 err_phyclk:
@@ -1007,7 +1014,7 @@ static SIMPLE_DEV_PM_OPS(mt_adc_pm_ops, tcc_mt_adc_suspend, tcc_mt_adc_resume);
 static ssize_t tcc_adc_show(struct device *_dev,
                              struct device_attribute *attr, char *buf)
 {
-       return sprintf(buf, "Input adc channel number!\n");
+       return sprintf(buf, "[DEBUG][ADC] Input adc channel number!\n");
 }
 
 static ssize_t tcc_adc_store(struct device *_dev,
@@ -1015,20 +1022,20 @@ static ssize_t tcc_adc_store(struct device *_dev,
                                   const char *buf, size_t count)
 {
        uint32_t ch = simple_strtoul(buf, NULL, 10);
-	   uint32_t core=0;
+       uint32_t core=0;
        unsigned long data = 0;
-	   if(ch >= 10) {
-	   	core = 1;
-		ch = ch - 10;
-	   }
-	   else {
-	   	core = 0;
-	   }
-	   printk("core = %d / Ch = %d\n", core, ch);
+       if(ch >= 10) {
+	       core = 1;
+	       ch = ch - 10;
+       }
+       else{
+	       core = 0;
+       }
+       printk(KERN_INFO "[INFO][ADC] core = %d / Ch = %d\n", core, ch);
        spin_lock(&adc_spin_lock);
        data = mt_adc_read(adc_dev, core ,ch);
        spin_unlock(&adc_spin_lock);
-       printk("[Get ADC %d : value = 0x%x]\n", ch, data);
+       printk(KERN_INFO "[INFO][ADC] Get ADC %d : value = 0x%x\n", ch, data);
 
        return count;
 }

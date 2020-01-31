@@ -202,7 +202,7 @@ unsigned long tcc_adc_getdata(struct tcc_adc_client *client)
 
 	if (!adc)
 	{
-		tcc_pr_err("failed to find adc device");
+		tcc_pr_err("[ERROR][ADC] failed to find adc device\n");
 		return -EINVAL;
 	}
 
@@ -230,7 +230,7 @@ struct tcc_adc_client *tcc_adc_register(struct device *dev, int ch)
 	client = devm_kzalloc(dev, sizeof(struct tcc_adc_client), GFP_KERNEL);
 	if (!client)
 	{
-		 tcc_pr_err("no memory for adc client");
+		 tcc_pr_err("[ERROR][ADC] no memory for adc client\n");
 		 return NULL;
 	}
 	client->dev = dev;
@@ -260,12 +260,12 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	u32 clk_rate;
 	int ret = -ENODEV;
 
-	tcc_pr_info("%s", __func__);
+	printk(KERN_DEBUG "[DEBUG][ADC] [%s]\n", __func__);
 
 	adc = devm_kzalloc(&pdev->dev, sizeof(struct adc_device), GFP_KERNEL);
 	if (adc == NULL)
 	{
-		tcc_pr_err("failed to allocate adc_device");
+		tcc_pr_err("[ERROR][ADC] failed to allocate adc_device\n");
 		return -ENOMEM;
 	}
 
@@ -275,7 +275,7 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	adc->regs = of_iomap(pdev->dev.of_node, 0);
 	if (!adc->regs)
 	{
-		tcc_pr_err("failed to get adc registers");
+		tcc_pr_err("[ERROR][ADC] failed to get adc registers\n");
 		ret = -ENXIO;
 		goto err_get_reg_addrs;
 	}
@@ -283,28 +283,28 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	adc->pmu_regs = of_iomap(pdev->dev.of_node, 1);
 	if (!adc->pmu_regs)
 	{
-		tcc_pr_err("failed to get pmu registers");
+		tcc_pr_err("[ERROR][ADC] failed to get pmu registers\n");
 		ret = -ENXIO;
 		goto err_get_reg_addrs;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "clock-frequency", &clk_rate);
 	if (ret) {
-		tcc_pr_err("Can not get clock frequency value");
+		tcc_pr_err("[ERROR][ADC] Can not get clock frequency value\n");
 		goto err_get_property;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "ckin-frequency", &adc->ckin);
 	if (ret)
 	{
-		tcc_pr_err("Can not get adc ckin value");
+		tcc_pr_err("[ERROR][ADC] Can not get adc ckin value\n");
 		goto err_get_property;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "adc-delay", &adc->delay);
 	if (ret)
 	{
-		tcc_pr_err("Can not get ADC Dealy value");
+		tcc_pr_err("[ERROR][ADC] Can not get ADC Dealy value\n");
 		goto err_get_property;
 	}
 
@@ -338,7 +338,7 @@ static int tcc_adc_probe(struct platform_device *pdev)
 	spin_lock_init(&adc_spin_lock);
 
 	adc_power_ctrl(adc, 1);
-	tcc_pr_info("attached driver");
+	tcc_pr_info("[INFO][ADC] attached driver\n");
 	adc_dev = adc;
 /*
 	err = of_platform_populate(pdev->dev.of_node, NULL, NULL, adc->dev);
@@ -356,12 +356,11 @@ static int tcc_adc_probe(struct platform_device *pdev)
 		unsigned int i;
 		while(1)
 		{
-			for (i=2; i<10; i++)
+			for (i = 2; i < 10; i++)
 			{
-		 		printk("[TCC_ADC] data%d = 0x%x\n", i, (unsigned int)adc_read(adc, i));
+				tcc_pr_debug("[DEBUG][ADC] data%d = 0x%x\n", i, (unsigned int)adc_read(adc, i));
 				mdelay(100);
 			}
-			printk("\n");
 		}
 	}
 #endif
@@ -406,7 +405,7 @@ static SIMPLE_DEV_PM_OPS(adc_pm_ops, tcc_adc_suspend, tcc_adc_resume);
 static ssize_t tcc_adc_show(struct device *_dev,
 			      struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "Input adc channel number!\n");
+	return sprintf(buf, "[DEBUG][ADC] Input adc channel number!\n");
 }
 
 static ssize_t tcc_adc_store
@@ -421,7 +420,7 @@ static ssize_t tcc_adc_store
 	spin_lock(&adc_spin_lock);
 	data = adc_read(adc_dev, ch);
 	spin_unlock(&adc_spin_lock);
-	printk("[Get ADC %d : value = 0x%x]\n", ch, (unsigned int)data);
+	printk(KERN_INFO "[INFO][ADC] Get ADC %d : value = 0x%x\n", ch, (unsigned int)data);
 
 	return count;
 }
