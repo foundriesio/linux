@@ -1,6 +1,6 @@
-/* 
+/*
  * Author:  <linux@telechips.com>
- * Created: 10th Jun, 2008 
+ * Created: 10th Jun, 2008
  * Description: Telechips Linux SPI Driver
  *
  * Copyright (c) Telechips, Inc.
@@ -289,7 +289,7 @@ static void tca_spi_hwinit(struct tca_spi_handle *h)
 	TCC_GPSB_BITSET(h->regs + TCC_GPSB_MODE, Hw6);
 #endif
 	if(tca_spi_readl(h->regs + TCC_GPSB_MODE) & Hw6)
-		printk("\x1b[1;33m[%s:%d] Telechips SPI Master Loop-back Test Enabled.\x1b[0m\n", __func__, __LINE__);
+		dev_dbg(h->dev, "[DEBUG][SPI] [%s] Telechips SPI Master Loop-back Test Enabled.\n", __func__);
 }
 
 static void tca_spi_hwinit_slave(struct tca_spi_handle *h)
@@ -340,9 +340,9 @@ static void tca_spi_set_port(struct tca_spi_handle *h, struct tca_spi_port_confi
 		TCC_GPSB_BITCSET(gpsb_pcf_regs + pcfg_offset, (Hw8-Hw0)<<(i *TCC_GPSB_PCFG_SHIFT), port->gpsb_port[i] << (i *TCC_GPSB_PCFG_SHIFT));
 	}
 
-	printk(KERN_NOTICE "%s [GFB]: SDI: 0x%X, SCLK: 0x%X, SFRM: 0x%X, SDO: 0x%X\n", __func__,
+	dev_info(h->dev, "[INFO][SPI] [%s][GFB]: SDI: 0x%X, SCLK: 0x%X, SFRM: 0x%X, SDO: 0x%X\n", __func__,
 			port->gpsb_port[0], port->gpsb_port[1], port->gpsb_port[2], port->gpsb_port[3]);
-	printk(KERN_NOTICE "%s [CH:%d] PCFG(@0x%X): 0x%x\n", __func__,
+	dev_info(h->dev, "[INFO][SPI] [%s][CH:%d] PCFG(@0x%X): 0x%x\n", __func__,
 			h->gpsb_channel, (unsigned int)(gpsb_pcf_regs + pcfg_offset), tca_spi_readl(gpsb_pcf_regs + pcfg_offset));
 }
 static void tca_spi_clear_port(struct tca_spi_handle *h)
@@ -362,7 +362,7 @@ static void tca_spi_set_port(struct tca_spi_handle *h, struct tca_spi_port_confi
 	gpsb_channel = h->gpsb_channel;
 	gpsb_port    = h->gpsb_port;
 
-	printk(KERN_NOTICE "%s: PORT: %d\n", __func__, port->gpsb_port);
+	dev_info(h->dev, "[INFO][SPI] [%s] CH: %d PORT: %d\n", __func__, gpsb_channel, port->gpsb_port);
 
 	if(h->gpsb_channel <= 3)
 		TCC_GPSB_BITCSET(gpsb_pcf_regs + TCC_GPSB_PCFG0, (Hw8-Hw0)<<(gpsb_channel*8), gpsb_port<<(gpsb_channel*8));
@@ -380,8 +380,8 @@ static void tca_spi_set_port(struct tca_spi_handle *h, struct tca_spi_port_confi
 			if (_gpsb_port == gpsb_port) {
 				TCC_GPSB_BITCSET(gpsb_pcf_regs + TCC_GPSB_PCFG0, (Hw8-Hw0)<<(i*8), 0xFF<<(i*8));
 
-				dev_dbg(h->dev,
-						"warning port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
+				dev_warn(h->dev,
+						"[WARN][SPI] warning port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
 						gpsb_channel, gpsb_port, i, _gpsb_port,
 						tca_spi_readl(gpsb_pcf_regs + TCC_GPSB_PCFG0),
 						tca_spi_readl(gpsb_pcf_regs + TCC_GPSB_PCFG1));
@@ -393,8 +393,8 @@ static void tca_spi_set_port(struct tca_spi_handle *h, struct tca_spi_port_confi
 			if (_gpsb_port == gpsb_port) {
 				TCC_GPSB_BITCSET(gpsb_pcf_regs + TCC_GPSB_PCFG1, (Hw8-Hw0)<<((i-4)*8), 0xFF<<((i-4)*8));
 
-				dev_dbg(h->dev,
-						"warning port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
+				dev_warn(h->dev,
+						"[WARN][SPI] warning port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
 						gpsb_channel, gpsb_port, i, _gpsb_port,
 						tca_spi_readl(gpsb_pcf_regs + TCC_GPSB_PCFG0),
 						tca_spi_readl(gpsb_pcf_regs + TCC_GPSB_PCFG1));
@@ -552,7 +552,7 @@ int tca_spi_register_pids(tca_spi_handle_t *h, unsigned int *pids, unsigned int 
 	int ret = 0, gpsb_channel = -1;
 	gpsb_channel = h->gpsb_channel;
 
-	//supporting pids is 32 
+	//supporting pids is 32
 	if (count <= 32) {
 #ifdef CONFIG_ARM64
 		void __iomem *PIDT;
@@ -583,19 +583,19 @@ int tca_spi_register_pids(tca_spi_handle_t *h, unsigned int *pids, unsigned int 
 				PIDT = h->pid_regs + (4*i);
 				tca_spi_writel(pids[i] & 0x1FFFFFFF, PIDT);
 				TCC_GPSB_BITSET(PIDT, pid_ch);
-				printk("PIDT 0x%p : 0x%08X\n", PIDT, tca_spi_readl(PIDT));
+				dev_dbg(h->dev, "[DEBUG][SPI] PIDT 0x%p : 0x%08X\n", PIDT, tca_spi_readl(PIDT));
 #else
 				PIDT = (volatile unsigned long *)(h->pid_regs+4*i);//(volatile unsigned long *)tcc_p2v(HwGPSB_PIDT(i));
 				*PIDT = pids[i] & 0x1FFFFFFF;
 				BITSET(*PIDT, pid_ch);
-				printk("PIDT 0x%08X : 0x%08X\n", (unsigned int)PIDT, (unsigned int)*PIDT);
+				dev_dbg(h->dev, "[DEBUG][SPI] PIDT 0x%08X : 0x%08X\n", (unsigned int)PIDT, (unsigned int)*PIDT);
 #endif
 			}
 			h->set_mpegts_pidmode(h, 1);
-		} 
+		}
 	}
 	else {
-		printk("tsif: PID TABLE is so big !!!\n");
+		dev_err(h->dev, "[ERROR][SPI] tsif: PID TABLE is so big !!!\n");
 		ret = -EINVAL;
 	}
 	return ret;

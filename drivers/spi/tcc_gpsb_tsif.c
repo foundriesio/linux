@@ -186,7 +186,7 @@ static int tcc_gpsb_tsif_set_external_tsdemux(struct file *filp, int (*decoder)(
 			tsdemux_extern_handle[devid].call_decoder_index = max_dec_packet; //every max_dec_packet calling isr, call decoder
 		else
 			tsdemux_extern_handle[devid].call_decoder_index = 1;
-		printk("%s::%d::max_dec_packet[%d]int_packet[%d]\n", __func__, __LINE__, tsdemux_extern_handle[devid].call_decoder_index, tsif_handle[devid].dma_intr_packet_cnt);
+		printk(KERN_DEBUG "[DEBUG][SPI] %s::%d::max_dec_packet[%d]int_packet[%d]\n", __func__, __LINE__, tsdemux_extern_handle[devid].call_decoder_index, tsif_handle[devid].dma_intr_packet_cnt);
 	}
 
 	return 0;
@@ -216,7 +216,7 @@ static ssize_t show_port(struct device *dev, struct device_attribute *attr, char
 static ssize_t store_port(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 #ifdef TCC_USE_GFB_PORT
-	printk("Does not support set port due to using GFB port\n");
+	printk(KERN_WARNING "[WARN][SPI] Does not support set port due to using GFB port\n");
 	return count;
 #else
 	u32 port;
@@ -224,7 +224,7 @@ static ssize_t store_port(struct device *dev, struct device_attribute *attr, con
 	port = simple_strtoul(buf, (char **)NULL, 16);
 	/* valid port: 0xC, 0xD, 0xE */
 	if (port > 20 ) {
-		printk("tcc-tsif: invalid port! (use 0xc/d/e)\n");
+		printk(KERN_ERR "[ERROR][SPI] tcc-tsif: invalid port! (use 0xc/d/e)\n");
 		return -EINVAL;
 	}
 
@@ -244,7 +244,7 @@ static bool tcc_tsif_dma_filter(struct dma_chan *chan, void *pdata)
 
 	if(!tspi)
 	{
-		printk("\x1b[1;33m[%s:%d] tspi is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] tspi is NULL!!\n", __func__, __LINE__);
 		return false;
 	}
 
@@ -254,7 +254,7 @@ static bool tcc_tsif_dma_filter(struct dma_chan *chan, void *pdata)
 		return true;
 	}
 	else {
-		printk("\x1b[1;33m[%s:%d] dma_dev(%p) != dev(%p)\x1b[0m\n", __func__, __LINE__,
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] dma_dev(%p) != dev(%p)\n", __func__, __LINE__,
 				dma_slave->dma_dev, chan->device->dev);
 		return false;
 	}
@@ -309,7 +309,7 @@ static int tcc_tsif_dma_slave_config(struct tca_spi_handle *tspi, struct dma_sla
 
 	if(!tspi->dma.chan_rx)
 	{
-		printk("\x1b[1;33m[%s:%d] RX DMA channel is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] RX DMA channel is NULL!!\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -325,7 +325,7 @@ static int tcc_tsif_dma_slave_config(struct tca_spi_handle *tspi, struct dma_sla
 	tcc_tsif_dma_slave_config_addr_width(slave_config, bytes_per_word);
 	if(dmaengine_slave_config(tspi->dma.chan_rx, slave_config))
 	{
-		printk("\x1b[1;33m[%s:%d] Failed to configrue rx dma channel. \x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] Failed to configrue rx dma channel.\n", __func__, __LINE__);
 		ret = -EINVAL;
 	}
 
@@ -343,7 +343,7 @@ static int tcc_tsif_dma_submit(struct tca_spi_handle *tspi)
 
 	if(!rxchan)
 	{
-		printk("\x1b[1;33m[%s:%d] rxchan(%p) is NULL\x1b[0m\n", __func__, __LINE__,rxchan);	
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] rxchan(%p) is NULL\n", __func__, __LINE__,rxchan);
 		return -ENODEV;
 	}
 
@@ -360,7 +360,7 @@ static int tcc_tsif_dma_submit(struct tca_spi_handle *tspi)
 	// Config dma slave
 	if(tcc_tsif_dma_slave_config(tspi, &slave_config, bytes_per_word))
 	{
-		printk("\x1b[1;33m[%s:%d] Slave config failed.\x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] Slave config failed.\n", __func__, __LINE__);
 		return -ENOMEM;
 	}
 
@@ -370,7 +370,7 @@ static int tcc_tsif_dma_submit(struct tca_spi_handle *tspi)
 			DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if(!rxdesc)
 	{
-		printk("\x1b[1;33m[%s:%d] Preparing RX DMA Desc.\x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] Preparing RX DMA Desc.\n", __func__, __LINE__);
 		goto err_dma;
 	}
 
@@ -389,7 +389,7 @@ static int tcc_tsif_dma_submit(struct tca_spi_handle *tspi)
 	cookie = dmaengine_submit(rxdesc);
 	if(dma_submit_error(cookie))
 	{
-		printk("\x1b[1;33m[%s:%d] RX Desc. submitting error! (cookie: %X) \x1b[0m\n", __func__, __LINE__,(unsigned int)cookie);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] RX Desc. submitting error! (cookie: %X)\n", __func__, __LINE__,(unsigned int)cookie);
 		goto err_dma;
 	}
 
@@ -417,7 +417,7 @@ static int tcc_tsif_dma_configuration(struct platform_device *pdev, struct tca_s
 	tspi->dma.chan_rx = dma_request_slave_channel_compat(mask,tcc_tsif_dma_filter,&tspi->dma,dev,"rx");
 	if(!tspi->dma.chan_rx)
 	{
-		printk("\x1b[1;33m[%s:%d] DMA RX channel request Error!\x1b[0m\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][SPI] [%s:%d] DMA RX channel request Error!\n", __func__, __LINE__);
 		ret = -EBUSY;
 		goto error;
 	}
@@ -426,7 +426,7 @@ static int tcc_tsif_dma_configuration(struct platform_device *pdev, struct tca_s
 	if(ret)
 		goto error;
 
-	printk("\x1b[1;33mUsing %s (RX) for DMA trnasfers\x1b[0m\n",
+	printk(KERN_DEBUG "[DEBUG][SPI] Using %s (RX) for DMA trnasfers\n",
 			dma_chan_name(tspi->dma.chan_rx));
 
 	return 0;
@@ -462,7 +462,7 @@ static void tcc_gpsb_tsif_parse_dt(struct device_node *np, struct tca_spi_port_c
 	of_property_read_u32_array(np, "gpsb-port", pgpios->gpsb_port,
 			(size_t)of_property_count_elems_of_size(np, "gpsb-port", sizeof(u32)));
 
-	printk("\x1b[1;33mSDI: %d, SCLK: %d, SFRM: %d, SDO: %d\x1b[0m\n",
+	printk(KERN_INFO "[INFO][SPI] SDI: %d, SCLK: %d, SFRM: %d, SDO: %d \n",
 			pgpios->gpsb_port[0], pgpios->gpsb_port[1], pgpios->gpsb_port[2], pgpios->gpsb_port[3]);
 #else
 	of_property_read_u32(np, "gpsb-port", &pgpios->gpsb_port);
@@ -494,7 +494,7 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 		if(g_static_dma) {
 			g_static_dma->buf_size = ALLOC_DMA_SIZE;
 			g_static_dma->v_addr = dma_alloc_writecombine(0, g_static_dma->buf_size, &g_static_dma->dma_addr, GFP_KERNEL);
-			printk("tcc-tsif : dma buffer alloc @0x%X(Phy=0x%X), size:%d\n", (unsigned int)g_static_dma->v_addr, (unsigned int)g_static_dma->dma_addr, g_static_dma->buf_size);
+			dev_dbg(&pdev->dev, "[DEBUG][SPI] tcc-tsif : dma buffer alloc @0x%X(Phy=0x%X), size:%d\n", (unsigned int)g_static_dma->v_addr, (unsigned int)g_static_dma->dma_addr, g_static_dma->buf_size);
 			if(g_static_dma->v_addr == NULL) {
 				kfree(g_static_dma);
 				g_static_dma = NULL;
@@ -510,7 +510,7 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!regs) {
 		dev_err(&pdev->dev,
-				"Found SPI TSIF with no register addr. Check %s setup!\n",
+				"[ERROR][SPI] Found SPI TSIF with no register addr. Check %s setup!\n",
 				dev_name(&pdev->dev));
 		return -ENXIO;
 	}
@@ -519,7 +519,7 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	regs1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!regs1) {
 		dev_err(&pdev->dev,
-				"Found SPI TSIF PCFG with no register addr. Check %s setup!\n",
+				"[ERROR][SPI] Found SPI TSIF PCFG with no register addr. Check %s setup!\n",
 				dev_name(&pdev->dev));
 		return -ENXIO;
 	}
@@ -528,7 +528,7 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (!regs2) {
 		dev_err(&pdev->dev,
-				"Found SPI TSIF PID Table with no register addr. Check %s setup!\n",
+				"[ERROR][SPI] Found SPI TSIF PID Table with no register addr. Check %s setup!\n",
 				dev_name(&pdev->dev));
 		return -ENXIO;
 	}
@@ -545,10 +545,10 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 	tcc_gpsb_tsif_parse_dt(pdev->dev.of_node, &tmpcfg);
 	if(of_find_property(pdev->dev.of_node, "normal-slave", 0)) {
 		tsif_pri[tmpcfg.gpsb_id].normal_slave = 1;
-		printk("\x1b[1;32m[%s:%d] TSIF [%d] Normal Slave mode.\x1b[0m\n", __func__, __LINE__, tmpcfg.gpsb_id);
+		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] TSIF [%d] Normal Slave mode.\n", __func__, __LINE__, tmpcfg.gpsb_id);
 	} else {
 		tsif_pri[tmpcfg.gpsb_id].normal_slave = 0;
-		//printk("\x1b[1;33m[%s:%d] TSIF [%d] TSIF mode.\x1b[0m\n", __func__, __LINE__,tmpcfg.gpsb_id);
+		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] TSIF [%d] TSIF mode.\x1b[0m\n", __func__, __LINE__,tmpcfg.gpsb_id);
 	}
 #endif
 
@@ -577,28 +577,28 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 		tsif_pri[id].ac_reg = devm_ioremap(&pdev->dev, regs3->start, regs3->end - regs3->start + 1);
 
 		if (!of_property_read_u32_array(pdev->dev.of_node, "access-control0", ac_val, 2)) {
-			dev_dbg(&pdev->dev, "access-control0 start:0x%x limit:0x%x\n",
+			dev_dbg(&pdev->dev, "[DEBUG][SPI] access-control0 start:0x%x limit:0x%x\n",
 					ac_val[0], ac_val[1]);
 			writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC0_START);
 			writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC0_LIMIT);
 		}
 		if (!of_property_read_u32_array(
 					pdev->dev.of_node, "access-control1", ac_val, 2)) {
-			dev_dbg(&pdev->dev, "access-control1 start:0x%x limit:0x%x\n",
+			dev_dbg(&pdev->dev, "[DEBUG][SPI] access-control1 start:0x%x limit:0x%x\n",
 					ac_val[0], ac_val[1]);
 			writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC1_START);
 			writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC1_LIMIT);
 		}
 		if (!of_property_read_u32_array(
 					pdev->dev.of_node, "access-control2", ac_val, 2)) {
-			dev_dbg(&pdev->dev, "access-control2 start:0x%x limit:0x%x\n",
+			dev_dbg(&pdev->dev, "[DEBUG][SPI] access-control2 start:0x%x limit:0x%x\n",
 					ac_val[0], ac_val[1]);
 			writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC2_START);
 			writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC2_LIMIT);
 		}
 		if (!of_property_read_u32_array(
 					pdev->dev.of_node, "access-control3", ac_val, 2)) {
-			dev_dbg(&pdev->dev, "access-control3 start:0x%x limit:0x%x\n",
+			dev_dbg(&pdev->dev, "[DEBUG][SPI] access-control3 start:0x%x limit:0x%x\n",
 					ac_val[0], ac_val[1]);
 			writel(ac_val[0], tsif_pri[id].ac_reg + TCC_GPSB_AC3_START);
 			writel(ac_val[1], tsif_pri[id].ac_reg + TCC_GPSB_AC3_LIMIT);
@@ -633,25 +633,25 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 
 	if(tsif_pri[id].gdma_use)	// GDMA Register (if does not use GDMA Address is NULL)
 	{
-		printk("\x1b[1;32m[%s:%d] GPSB id: %d (GDMA)\x1b[0m\n", __func__, __LINE__,id );
+		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] GPSB id: %d (GDMA)\n", __func__, __LINE__,id );
 		ret = tcc_tsif_dma_configuration(pdev, &tsif_handle[id]);
 		if(ret != 0)
 		{
-			printk("\x1b[1;33m[%s:%d] tcc dma engine configration fail!!\x1b[0m\n", __func__, __LINE__);
+			dev_dbg(&pdev->dev, "[ERROR][SPI] [%s:%d] tcc dma engine configration fail!!\n", __func__, __LINE__);
 			return -ENXIO;
 		}
 	}
 	else
 	{
-		printk("\x1b[1;31m[%s:%d] GPSB id: %d (Dedicated DMA)\x1b[0m\n", __func__, __LINE__, id );
+		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] GPSB id: %d (Dedicated DMA)\n", __func__, __LINE__, id );
 	}
 
-	printk(KERN_NOTICE "Telechips TSIF ID:%d, %p, %u, %s, %lu\n", id, (void __iomem *)(u32)(regs->start), (u32)(regs->end), regs->name, regs->flags);
+	dev_info(&pdev->dev, "[INFO][SPI] Telechips TSIF ID:%d, %p, %u, %s, %lu\n", id, (void __iomem *)(u32)(regs->start), (u32)(regs->end), regs->name, regs->flags);
 #ifdef TCC_USE_GFB_PORT
-	printk("[%s:%d]%d, %d, %p, %s, ret = %d\n",__func__, __LINE__,
+	dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d]%d, %d, %p, %s, ret = %d\n",__func__, __LINE__,
 			pdev->id, irq, tsif_pri[id].reg_base, port_cfg[id].name, ret);
 #else
-	printk("[%s:%d]%d, %d, %p, %d, %s, ret = %d\n",__func__, __LINE__,
+	dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d]%d, %d, %p, %d, %s, ret = %d\n",__func__, __LINE__,
 			pdev->id, irq, tsif_pri[id].reg_base, port_cfg[id].gpsb_port, port_cfg[id].name, ret);
 #endif
 	//printk(KERN_NOTICE "Telechips TSIF Bus:%d, IRQ:%d, Address:%x, port:%d, name:%s\n",
@@ -707,8 +707,8 @@ static int tcc_gpsb_tsif_remove(struct platform_device *pdev)
 static void tea_free_dma_linux(struct tea_dma_buf *tdma, struct device *dev)
 {
 #ifdef      SUPORT_USE_SRAM
-#else    
-	if(g_static_dma){        
+#else
+	if(g_static_dma){
 		return;
 	}
 
@@ -718,7 +718,7 @@ static void tea_free_dma_linux(struct tea_dma_buf *tdma, struct device *dev)
 		}
 		memset(tdma, 0, sizeof(struct tea_dma_buf));
 	}
-#endif    
+#endif
 }
 
 static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, struct device *dev)
@@ -726,15 +726,15 @@ static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, stru
 #ifdef      SUPORT_USE_SRAM
 	tdma->buf_size = SRAM_TOT_PACKET*MPEG_PACKET_SIZE;
 	tdma->v_addr = (void *)SRAM_VIR_ADDR;
-	tdma->dma_addr = (unsigned int)SRAM_PHY_ADDR;        
-	printk("tcc_tsif: alloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
+	tdma->dma_addr = (unsigned int)SRAM_PHY_ADDR;
+	printk(KERN_DEBUG "[DEBUG][SPI] tcc_tsif: alloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
 			(unsigned int)tdma->v_addr,
 			(unsigned int)tdma->dma_addr,
 			tdma->buf_size);
 	return 0;
-#else    
+#else
 	int ret = -1;
-	if(g_static_dma){        
+	if(g_static_dma){
 		tdma->buf_size = g_static_dma->buf_size;
 		tdma->v_addr = g_static_dma->v_addr;
 		tdma->dma_addr = g_static_dma->dma_addr;
@@ -752,7 +752,7 @@ static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, stru
 		ret = tdma->v_addr ? 0 : 1;
 	}
 	return ret;
-#endif    
+#endif
 }
 
 static irqreturn_t tcc_gpsb_tsif_dma_handler(int irq, void *dev_id)
@@ -894,7 +894,7 @@ static ssize_t tcc_gpsb_tsif_read(struct file *filp, char *buf, size_t len, loff
 		if(!tca_spi_is_use_gdma(&tsif_handle[id]) && !tca_spi_is_normal_slave(&tsif_handle[id]))	// if use dedicated DMA
 		{
 			if(tsif_pri[id].packet_read_count != len/packet_size)
-				printk("set packet_read_count=%d\n", (int)len/packet_size);
+				printk(KERN_DEBUG "[DEBUG][SPI] set packet_read_count=%d\n", (int)len/packet_size);
 			tsif_pri[id].packet_read_count = len/packet_size;
 		}
 
@@ -1012,13 +1012,13 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 			{
 				struct tcc_tsif_param param;
 				if (tcc_gpsb_tsif_copy_from_user(&param, (void *)arg, sizeof(struct tcc_tsif_param))) {
-					printk("cannot copy from user tcc_tsif_param in IOCTL_TSIF_DMA_START !!! \n");
+					printk(KERN_ERR "[ERROR][SPI] cannot copy from user tcc_tsif_param in IOCTL_TSIF_DMA_START !!! \n");
 					return -EFAULT;
 				}
 
 				if (((packet_size * param.ts_total_packet_cnt) > tsif_handle[id].dma_total_size)
 						|| (param.ts_total_packet_cnt <= 0)) {
-					printk("so big ts_total_packet_cnt[%d:%d] !!! \n", (packet_size * param.ts_total_packet_cnt), tsif_handle[id].dma_total_size);
+					printk(KERN_WARNING "[WARN][SPI] so big ts_total_packet_cnt[%d:%d] !!! \n", (packet_size * param.ts_total_packet_cnt), tsif_handle[id].dma_total_size);
 					param.ts_total_packet_cnt = tsif_handle[id].dma_total_size/(packet_size*param.ts_intr_packet_cnt);
 				}
 
@@ -1039,7 +1039,7 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 
 				if(tsif_handle[id].dma_total_packet_cnt == tsif_handle[id].dma_intr_packet_cnt)
 				{
-					printk("## Warning! total_packet_cnt[%d] and intr_packet_cnt[%d] is same!! ##\n## --> intr_packet_cnt is set to [%d] ##\n",
+					printk(KERN_WARNING "[WARN][SPI] ## Warning! total_packet_cnt[%d] and intr_packet_cnt[%d] is same!! ## --> intr_packet_cnt is set to [%d] ##\n",
 							tsif_handle[id].dma_total_packet_cnt,tsif_handle[id].dma_intr_packet_cnt,
 							tsif_handle[id].dma_total_packet_cnt / TCC_GPSB_TSIF_DEF_INTR_INTERVAL);
 					tsif_handle[id].dma_intr_packet_cnt = tsif_handle[id].dma_total_packet_cnt / TCC_GPSB_TSIF_DEF_INTR_INTERVAL;
@@ -1090,7 +1090,7 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 				param.ts_total_packet_cnt = tsif_handle[id].dma_total_size / TSIF_PACKET_SIZE;
 				param.ts_intr_packet_cnt = 1;
 				if (tcc_gpsb_tsif_copy_from_user((void *)arg, (void *)&param, sizeof(struct tcc_tsif_param))) {
-					printk("cannot copy to user tcc_tsif_param in IOCTL_TSIF_GET_MAX_DMA_SIZE !!! \n");
+					printk(KERN_ERR "[ERROR][SPI] cannot copy to user tcc_tsif_param in IOCTL_TSIF_GET_MAX_DMA_SIZE !!! \n");
 					return -EFAULT;
 				}
 			}
@@ -1100,7 +1100,7 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 			{
 				struct tcc_tsif_pid_param param;
 				if (tcc_gpsb_tsif_copy_from_user(&param, (void *)arg, sizeof(struct tcc_tsif_pid_param))) {
-					printk("cannot copy from user tcc_tsif_pid_param in IOCTL_TSIF_SET_PID !!! \n");
+					printk(KERN_ERR "[ERROR][SPI] cannot copy from user tcc_tsif_pid_param in IOCTL_TSIF_SET_PID !!! \n");
 					return -EFAULT;
 				}
 				ret = tca_spi_register_pids(&tsif_handle[id], param.pid_data, param.valid_data_cnt);
@@ -1115,7 +1115,7 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 		case IOCTL_TSIF_RESET:
 			break;
 		default:
-			printk("tsif: unrecognized ioctl (0x%X)\n", cmd);
+			printk(KERN_ERR "[ERROR][SPI] tsif: unrecognized ioctl (0x%X)\n", cmd);
 			ret = -EINVAL;
 			break;
 	}
@@ -1154,7 +1154,7 @@ static int tcc_gpsb_tsif_init(int id)
 				&port_cfg[id],
 				tsif_pri[id].name,
 				dev)) {
-		printk("%s: tca_spi_init error !!!!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] %s: tca_spi_init error !!!!!\n", __func__);
 		ret = -EBUSY;
 		goto err_spi;
 	}
@@ -1186,8 +1186,8 @@ static int tcc_gpsb_tsif_init(int id)
 	if(!tca_spi_is_use_gdma(&tsif_handle[id])) // if use dedicated DMA
 		ret = request_irq(tsif_handle[id].irq, tcc_gpsb_tsif_dma_handler, IRQF_SHARED, tsif_pri[id].name, &tsif_handle[id]);
 
-	if (ret) { 
-		goto err_irq; 
+	if (ret) {
+		goto err_irq;
 	}
 
 	tsif_handle[id].set_packet_cnt(&tsif_handle[id], packet_size);
@@ -1238,7 +1238,7 @@ static int tcc_gpsb_tsif_open(struct inode *inode, struct file *filp)
 		return -EBUSY;
 
 	if (IS_ERR(gpsb_pclk[minor_number]) ||IS_ERR(gpsb_hclk[minor_number]) ) {
-		printk(KERN_WARNING "TSIF#%d: failed to get gpsb clock\n", minor_number);
+		printk(KERN_ERR "[ERROR][SPI] TSIF#%d: failed to get gpsb clock\n", minor_number);
 		return -EINVAL;
 	}
 
@@ -1247,7 +1247,7 @@ static int tcc_gpsb_tsif_open(struct inode *inode, struct file *filp)
 
 	pinctrl = pinctrl_get_select(tsif_pri[minor_number].dev, "active");
 	if(IS_ERR(pinctrl))
-		printk("%s : pinctrl active error[0x%p]\n", __func__, pinctrl);
+		printk(KERN_ERR "[ERROR][SPI] %s : pinctrl active error[0x%p]\n", __func__, pinctrl);
 
 	mutex_lock(&(tsif_pri[minor_number].mutex));
 
@@ -1256,12 +1256,12 @@ static int tcc_gpsb_tsif_open(struct inode *inode, struct file *filp)
 
 	ret = tcc_gpsb_tsif_init(minor_number);
 	if(ret) {
-		printk("%s : tcc_gpsb_tsif_init failed(%d)\n", __func__, ret);
+		printk(KERN_ERR "[ERROR][SPI] %s : tcc_gpsb_tsif_init failed(%d)\n", __func__, ret);
 		clk_disable_unprepare(gpsb_pclk[minor_number]);
 		clk_disable_unprepare(gpsb_hclk[minor_number]);
 		pinctrl = pinctrl_get_select(tsif_pri[minor_number].dev, "idle");
 		if(IS_ERR(pinctrl))
-			printk("%s : pinctrl idle error[0x%p]\n", __func__, pinctrl);
+			printk(KERN_ERR "[ERROR][SPI] %s : pinctrl idle error[0x%p]\n", __func__, pinctrl);
 		else
 			pinctrl_put(pinctrl);
 	}
@@ -1300,7 +1300,7 @@ static int tcc_gpsb_tsif_release(struct inode *inode, struct file *filp)
 
 		pinctrl = pinctrl_get_select(tsif_pri[minor_number].dev, "idle");
 		if(IS_ERR(pinctrl))
-			printk("%s : pinctrl idle error[0x%p]\n", __func__, pinctrl);
+			printk(KERN_ERR "[ERROR][SPI] %s : pinctrl idle error[0x%p]\n", __func__, pinctrl);
 		else
 			pinctrl_put(pinctrl);
 	}
@@ -1401,7 +1401,7 @@ static int __init tsif_init(void)
 
 	cdev_init(&tsif_device_cdev, &tcc_tsif_fops);
 	if ((ret = cdev_add(&tsif_device_cdev, dev, TSIF_MINOR_NUMBER)) != 0) {
-		printk(KERN_ERR "tsif: unable register character device\n");
+		printk(KERN_ERR "[ERROR][SPI] tsif: unable register character device\n");
 		goto tsif_init_error;
 	}
 

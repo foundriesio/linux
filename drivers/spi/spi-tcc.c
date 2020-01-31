@@ -51,7 +51,7 @@
 static struct tcc_spi_pl_data *tcc_spi_get_pl_data(struct tcc_spi *tccspi)
 {
 	if(!tccspi) {
-		printk("[%s] tcc_spi is null!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is null!\n", __func__);
 		return NULL;
 	}
 
@@ -75,28 +75,28 @@ static void tcc_spi_regs_dump(struct tcc_spi *tccspi)
 	struct tcc_spi_pl_data *pd;
 	int gpsb_channel = -1;
 
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	pd = tcc_spi_get_pl_data(tccspi);
 	if(pd)
 		gpsb_channel = pd->gpsb_channel;
 
 	base = tccspi->base;
-	dev_dbg(tccspi->dev, "##\tGPSB REGS DUMP [CH: %d][@%X]\t##\n", gpsb_channel, (unsigned int)base);
-	dev_dbg(tccspi->dev, "STAT\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_STAT));
-	dev_dbg(tccspi->dev, "INTEN\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_INTEN));
-	dev_dbg(tccspi->dev, "MODE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_MODE));
-	dev_dbg(tccspi->dev, "CTRL\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_CTRL));
-	dev_dbg(tccspi->dev, "EVTCTRL\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_EVTCTRL));
-	dev_dbg(tccspi->dev, "CCV\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_CCV));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] ##\tGPSB REGS DUMP [CH: %d][@%X]\t##\n", gpsb_channel, (unsigned int)base);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] STAT\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_STAT));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] INTEN\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_INTEN));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] MODE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_MODE));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] CTRL\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_CTRL));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] EVTCTRL\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_EVTCTRL));
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] CCV\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_CCV));
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
-		dev_dbg(tccspi->dev, "TXBASE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_TXBASE));
-		dev_dbg(tccspi->dev, "RXBASE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_RXBASE));
-		dev_dbg(tccspi->dev, "PACKET\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_PACKET));
-		dev_dbg(tccspi->dev, "DMACTR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMACTR));
-		dev_dbg(tccspi->dev, "DMASTR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMASTR));
-		dev_dbg(tccspi->dev, "DMAICR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMAICR));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] TXBASE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_TXBASE));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] RXBASE\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_RXBASE));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] PACKET\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_PACKET));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] DMACTR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMACTR));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] DMASTR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMASTR));
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] DMAICR\t: 0x%08X\n", tcc_spi_readl(base + TCC_GPSB_DMAICR));
 	}
 }
 #else
@@ -108,7 +108,7 @@ static void tcc_spi_regs_dump(struct tcc_spi *tccspi)
 /* Clear TCC GPSB DMA Packet counter */
 static void tcc_spi_clear_packet_cnt(struct tcc_spi *tccspi)
 {
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
 		/* Clear GPSB DMA Packet counter */
@@ -122,7 +122,7 @@ static void tcc_spi_set_packet_size(struct tcc_spi *tccspi, unsigned int size)
 {
 	if(!tcc_spi_is_use_gdma(tccspi)) {
 		tcc_spi_writel(TCC_GPSB_PACKET_SIZE(size), tccspi->base + TCC_GPSB_PACKET);
-		dev_dbg(tccspi->dev, "%s size: %d packet reg 0x%08X\n",
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] size: %d packet reg 0x%08X\n",
 			__func__, size, tcc_spi_readl(tccspi->base + TCC_GPSB_PACKET));
 	}
 }
@@ -130,7 +130,7 @@ static void tcc_spi_set_packet_size(struct tcc_spi *tccspi, unsigned int size)
 /* Clear Tx and Rx FIFO counter */
 static void tcc_spi_clear_fifo(struct tcc_spi *tccspi)
 {
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	/* Clear Tx and Rx FIFO counter */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CRF | TCC_GPSB_MODE_CWF);
@@ -145,7 +145,7 @@ static void tcc_spi_set_port(struct tcc_spi *tccspi)
 	struct tcc_spi_pl_data *pd = tcc_spi_get_pl_data(tccspi);
 
 	if(!pd) {
-		printk("[%s] tcc_pl_data is not exist",__func__);
+		dev_err(tccspi->dev, "[ERROR][SPI] [%s] tcc_pl_data is not exist",__func__);
 		return;
 	}
 
@@ -156,7 +156,7 @@ static void tcc_spi_set_port(struct tcc_spi *tccspi)
 	}
 
 	dev_info(tccspi->dev,
-		"ch %d pcfg(@0x%08X) 0x%08X\n",
+		"[INFO][SPI] ch %d pcfg(@0x%08X) 0x%08X\n",
 		pd->gpsb_channel, (unsigned int)(tccspi->pcfg + pcfg_offset),
 		tcc_spi_readl(tccspi->pcfg + pcfg_offset));
 }
@@ -173,7 +173,7 @@ static void TCC_GPSB_PCFG_CSET(struct tcc_spi *tccspi, int ch, int cmsk, int sms
 /* Clear on port configuration */
 static void tcc_spi_clear_port(struct tcc_spi *tccspi, int channel)
 {
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 	TCC_GPSB_PCFG_CSET(tccspi, channel, 0xFF, 0xFF);
 }
 
@@ -188,7 +188,7 @@ static int tcc_spi_get_port(struct tcc_spi *tccspi, int channel)
 		ret = (tcc_spi_readl(tccspi->pcfg + TCC_GPSB_PCFG1) >> ((channel-4) * 8));
 
 	ret &= 0xFF;
-	dev_dbg(tccspi->dev, "%s channel: %d port: %d\n", __func__, channel, ret);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] channel: %d port: %d\n", __func__, channel, ret);
 
 	return ret & 0xFF;
 }
@@ -200,7 +200,7 @@ static void tcc_spi_set_port(struct tcc_spi *tccspi)
 	struct tcc_spi_pl_data *pd = tcc_spi_get_pl_data(tccspi);
 
 	if(!pd) {
-		printk("[%s] tcc_pl_data is not exist",__func__);
+		dev_err(tccspi->dev, "[ERROR][SPI] [%s] tcc_pl_data is not exist\n",__func__);
 		return;
 	}
 
@@ -208,15 +208,13 @@ static void tcc_spi_set_port(struct tcc_spi *tccspi)
 	port = pd->port;
 
 	if((channel < 0) || (port < 0)) {
-		printk("channel(%d), port(%d) is wrong number !\n", channel, port);
+		dev_err(tccspi->dev, "[ERROR][SPI] channel(%d), port(%d) is wrong number !\n", channel, port);
 		return;
 	}
 
-	dev_dbg(tccspi->dev, "%s channel: %d port: %d\n", __func__, channel, port);
-
 	/* Set the port */
 	TCC_GPSB_PCFG_CSET(tccspi,channel,0xFF,port);
-	dev_info(tccspi->dev, "set port config. ch - %d port - %d\n",channel, port);
+	dev_info(tccspi->dev, "[INFO][SPI] set port config. ch - %d port - %d\n",channel, port);
 
 	/* Check the port setting conflict */
 	for(i=0;i<TCC_GPSB_MAX_CH;i++) {
@@ -225,15 +223,15 @@ static void tcc_spi_set_port(struct tcc_spi *tccspi)
 		_port = tcc_spi_get_port(tccspi, i);
 		if(_port == port) {
 			tcc_spi_clear_port(tccspi, i);
-			dev_dbg(tccspi->dev,
-				"port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
+			dev_warn(tccspi->dev,
+				"[WARN][SPI] port conflict! [[ch %d[%d]]] : ch %d[%d] pcfg0: 0x%08X pcfg1: 0x%08X\n",
 				channel, port, i, _port,
 				tcc_spi_readl(tccspi->pcfg + TCC_GPSB_PCFG0),
 				tcc_spi_readl(tccspi->pcfg + TCC_GPSB_PCFG1));
 		}
 	}
 
-	dev_dbg(tccspi->dev, "%s pcfg0: 0x%08X pcfg1: 0x%08X\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] pcfg0: 0x%08X pcfg1: 0x%08X\n",
 		__func__,
 		tcc_spi_readl(tccspi->pcfg + TCC_GPSB_PCFG0),
 		tcc_spi_readl(tccspi->pcfg + TCC_GPSB_PCFG1)
@@ -268,7 +266,7 @@ static void tcc_spi_set_bit_width(struct tcc_spi *tccspi, unsigned int width)
 		}
 	}
 
-	dev_dbg(tccspi->dev, "%s bitwidth: %d endian: %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] bitwidth: %d endian: %d\n",
 		__func__, width, (int)(val & BIT(4)));
 }
 
@@ -286,20 +284,20 @@ static int tcc_spi_set_clk(struct tcc_spi *tccspi, unsigned int clk, unsigned in
 
 	if(!clk) {
 		dev_err(tccspi->dev,
-			"clk err (%u)\n",
+			"[ERROR][SPI] clk err (%u)\n",
 			clk);
 		return -EINVAL;
 	}
 
 	if(!pd) {
 		dev_err(tccspi->dev,
-			"pl data is null!\n");
+			"[ERROR][SPI] pl data is null!\n");
 		return -EINVAL;
 	}
 
 	if(!pd->pclk) {
 		dev_err(tccspi->dev,
-			"pclk is null!!\n");
+			"[ERROR][SPI] pclk is null!!\n");
 		return -EINVAL;
 	}
 
@@ -311,7 +309,7 @@ static int tcc_spi_set_clk(struct tcc_spi *tccspi, unsigned int clk, unsigned in
 	pclk = _clk * (divldv + 1) * 2;
 	clk_set_rate(pd->pclk,pclk);
 
-	dev_dbg(tccspi->dev, "%s sclk: %d Hz divldv: %d pclk: %lu Hz\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] sclk: %d Hz divldv: %d pclk: %lu Hz\n",
 		__func__, _clk, divldv, clk_get_rate(pd->pclk));
 
 	return 0;
@@ -345,7 +343,7 @@ static int tcc_spi_set_mode(struct tcc_spi *tccspi, unsigned int mode)
 	else
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_LB);
 
-	dev_dbg(tccspi->dev, "%s mode: 0x%X (mode reg: 0x%08X)\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] mode: 0x%X (mode reg: 0x%08X)\n",
 		__func__, mode, tcc_spi_readl(tccspi->base + TCC_GPSB_MODE));
 
 	return 0;
@@ -391,7 +389,7 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 	/* Enable operation */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 }
 
 /* Set TCC GPSB DMA Tx and Rx base address and DMA request */
@@ -400,7 +398,7 @@ static int tcc_spi_set_dma_addr(struct tcc_spi *tccspi, dma_addr_t tx, dma_addr_
 	int ret  = 0;
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
-		dev_dbg(tccspi->dev, "%s - dedicated dma\n", __func__);
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] - dedicated dma\n", __func__);
 		/* Set Base address */
 		tcc_spi_writel((tx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_TXBASE);
 		tcc_spi_writel((rx & 0xFFFFFFFF), tccspi->base + TCC_GPSB_RXBASE);
@@ -423,10 +421,10 @@ static int tcc_spi_set_dma_addr(struct tcc_spi *tccspi, dma_addr_t tx, dma_addr_
 /* Stop transfer */
 static void tcc_spi_stop_dma(struct tcc_spi *tccspi)
 {
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
-		dev_dbg(tccspi->dev, "%s - dedicated dma\n", __func__);
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] - dedicated dma\n", __func__);
 		/* Disable DMA Tx and Rx request */
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMACTR, TCC_GPSB_DMACTR_DTE | TCC_GPSB_DMACTR_DRE);
 
@@ -441,10 +439,10 @@ static void tcc_spi_stop_dma(struct tcc_spi *tccspi)
 /* Start transfer */
 static void tcc_spi_start_dma(struct tcc_spi *tccspi)
 {
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(!tcc_spi_is_use_gdma(tccspi)) {
-		dev_dbg(tccspi->dev, "%s - dedicated dma\n", __func__);
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] - dedicated dma\n", __func__);
 		/* Set GPSB DMA address mode (Multiple address mode) */
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMACTR, TCC_GPSB_DMACTR_RXAM_MASK | TCC_GPSB_DMACTR_TXAM_MASK);
 
@@ -477,7 +475,7 @@ static int tcc_spi_init_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 	v_addr = dma_alloc_writecombine(dev, tccspi->dma_buf_size, &dma_addr, GFP_KERNEL);
 	//v_addr = dma_alloc_coherent(dev, tccspi->dma_buf_size, &dma_addr, GFP_KERNEL);
 	if(!v_addr) {
-		dev_err(tccspi->dev, "Fail to allocate the dma buffer\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Fail to allocate the dma buffer\n");
 		return -ENOMEM;
 	}
 
@@ -491,7 +489,7 @@ static int tcc_spi_init_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 		tccspi->tx_buf.size = tccspi->dma_buf_size;
 	}
 
-	dev_dbg(tccspi->dev, "%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem,
 		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
@@ -518,7 +516,7 @@ static void tcc_spi_deinit_dma_buf(struct tcc_spi *tccspi, int dma_to_mem)
 	dma_free_writecombine(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 	//dma_free_coherent(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 
-	dev_dbg(tccspi->dev, "%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem,
 		(unsigned int)v_addr, (unsigned int)dma_addr, tccspi->dma_buf_size);
 
@@ -539,7 +537,7 @@ static void tcc_spi_txbuf_copy_client_to_spi(struct tcc_spi *tccspi, struct spi_
 	//dma_sync_single_for_device(tccspi->dev, tccspi->tx_buf.dma_addr,
 	//			tccspi->tx_buf.size, DMA_TO_DEVICE);
 
-	dev_dbg(tccspi->dev, "%s tx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] tx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
 		__func__, (unsigned int)xfer->tx_buf, tccspi->cur_tx_pos, (unsigned int)tccspi->tx_buf.v_addr);
 }
 
@@ -558,7 +556,7 @@ static void tcc_spi_rxbuf_copy_client_to_spi(struct tcc_spi *tccspi, struct spi_
 	//dma_sync_single_for_device(tccspi->dev, tccspi->rx_buf.dma_addr,
 	//			tccspi->rx_buf.size, DMA_FROM_DEVICE);
 
-	dev_dbg(tccspi->dev, "%s rx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] rx - client_buf: 0x%X offset: 0x%X spi_buf: 0x%08X\n",
 		__func__, (unsigned int)xfer->rx_buf, tccspi->cur_rx_pos, (unsigned int)tccspi->rx_buf.v_addr);
 }
 
@@ -571,13 +569,13 @@ static int tcc_spi_check_dma_irq_status(struct tcc_spi *tccspi)
 
 	pd = tcc_spi_get_pl_data(tccspi);
 	if(!pd) {
-		printk("[%s]tcc_spi pd is null!!\n", __func__);
+		dev_err(tccspi->dev, "[ERROR][SPI] [%s] tcc_spi pd is null!!\n", __func__);
 		return -EINVAL;
 	}
 
 	ch = pd->gpsb_channel;
 	if(ch < 0) {
-		printk("[%s]gpsb channel is wrong number (ch: %d)!!\n", __func__, ch);
+		dev_err(tccspi->dev, "[ERROR][SPI] [%s] gpsb channel is wrong number (ch: %d)!!\n", __func__, ch);
 		return -EINVAL;
 	}
 	offset = (ch * 2) + 1;
@@ -586,7 +584,7 @@ static int tcc_spi_check_dma_irq_status(struct tcc_spi *tccspi)
 	/* Check dma irq status */
 	ret = (((val >> offset) & 0x1) == 0);
 
-	dev_dbg(tccspi->dev, "%s irq_status: %d\n", __func__, ret);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] irq_status: %d\n", __func__, ret);
 
 	return ret;
 }
@@ -599,7 +597,7 @@ static irqreturn_t tcc_spi_dma_irq(int irq, void *data)
 	unsigned int dmaicr;
 
 	if(!tccspi) {
-		printk("[%s]tccspi is null ! (irq: %d)\n", __func__, irq);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null ! (irq: %d)\n", __func__, irq);
 		return IRQ_NONE;
 	}
 
@@ -610,9 +608,9 @@ static irqreturn_t tcc_spi_dma_irq(int irq, void *data)
 
 	/* Handle DMA done interrupt */
 	dmaicr = tcc_spi_readl(tccspi->base + TCC_GPSB_DMAICR);
-	dev_dbg(tccspi->dev, "%s dmaicr: 0x%08X\n", __func__, dmaicr);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] dmaicr: 0x%08X\n", __func__, dmaicr);
 	if(dmaicr & TCC_GPSB_DMAICR_ISD) {
-		dev_dbg(tccspi->dev, "%s irq %d - channel :%d\n", __func__, irq, tccspi->pd->gpsb_channel);
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] irq %d - channel :%d\n", __func__, irq, tccspi->pd->gpsb_channel);
 
 		/* Stop dma operation to hanlde buffer */
 		tcc_spi_stop_dma(tccspi);
@@ -653,7 +651,7 @@ static bool tcc_spi_dma_engine_filter(struct dma_chan *chan, void *pdata)
 
 	if(!tccdma)
 	{
-		printk("[%s] tcc_spi_gdma is NULL!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi_gdma is NULL!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -663,7 +661,7 @@ static bool tcc_spi_dma_engine_filter(struct dma_chan *chan, void *pdata)
 		return 0;
 	}
 	else {
-		dev_err(chan->device->dev,"dma_dev(%p) != dev(%p)\n",
+		dev_err(chan->device->dev,"[ERROR][SPI] dma_dev(%p) != dev(%p)\n",
 			dma_slave->dma_dev, chan->device->dev);
 		return -ENODEV;
 	}
@@ -686,11 +684,11 @@ static void tcc_dma_engine_tx_callback(void *data)
 
 	if(!tccspi)
 	{
-		printk("[%s] tcc_spi is NULL!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
 		return;
 	}
 
-	dev_dbg(tccspi->dev, "%s gpsb channel %d \n", __func__, tccspi->pd->gpsb_channel);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] gpsb channel %d \n", __func__, tccspi->pd->gpsb_channel);
 }
 
 /* dma-engine rx channel callback */
@@ -701,11 +699,11 @@ static void tcc_dma_engine_rx_callback(void *data)
 
 	if(!tccspi)
 	{
-		printk("[%s] tcc_spi is NULL!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is NULL!!\n", __func__);
 		return;
 	}
 
-	dev_dbg(tccspi->dev, "%s gpsb channel %d \n", __func__, tccspi->pd->gpsb_channel);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] gpsb channel %d \n", __func__, tccspi->pd->gpsb_channel);
 
 	/* Stop dma operation */
 	tcc_spi_stop_dma(tccspi);
@@ -762,7 +760,7 @@ static int tcc_spi_dma_engine_slave_config(struct tcc_spi *tccspi, struct dma_sl
 	tcc_spi_dma_engine_slave_config_addr_width(slave_config, bytes_per_word, 1);
 	if(dmaengine_slave_config(tccspi->dma.chan_tx, slave_config))
 	{
-		dev_err(tccspi->dev, "Failed to configrue tx dma channel.\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed to configrue tx dma channel.\n");
 		ret = -EINVAL;
 	}
 
@@ -771,7 +769,7 @@ static int tcc_spi_dma_engine_slave_config(struct tcc_spi *tccspi, struct dma_sl
 	tcc_spi_dma_engine_slave_config_addr_width(slave_config, bytes_per_word, 0);
 	if(dmaengine_slave_config(tccspi->dma.chan_rx, slave_config))
 	{
-		dev_err(tccspi->dev, "Failed to configrue rx dma channel.\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed to configrue rx dma channel.\n");
 		ret = -EINVAL;
 	}
 
@@ -792,7 +790,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 	u8 bytes_per_word;
 
 	if(!rxchan || !txchan) {
-		dev_err(tccspi->dev,"rxchan(%p) or txchan(%p) are NULL\n",rxchan,txchan);
+		dev_err(tccspi->dev,"[ERROR][SPI] rxchan(%p) or txchan(%p) are NULL\n",rxchan,txchan);
 		return -ENODEV;
 	}
 
@@ -801,7 +799,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 	bytes_per_word = (bits_per_word / 8);
 	len = flen / bytes_per_word;
 	if(!len) {
-		dev_err(tccspi->dev,"dma xfer len err, bpw %d len %d\n",
+		dev_err(tccspi->dev,"[ERROR][SPI] dma xfer len err, bpw %d len %d\n",
 			bits_per_word, len);
 		return -EINVAL;
 	}
@@ -819,7 +817,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 	/* Config dma slave */
 	if(tcc_spi_dma_engine_slave_config(tccspi, &slave_config, bytes_per_word))
 	{
-		dev_err(tccspi->dev, "Slave config failed.\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Slave config failed.\n");
 		return -ENOMEM;
 	}
 
@@ -829,7 +827,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 		DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if(!txdesc)
 	{
-		dev_err(tccspi->dev, "Failed preparing TX DMA Desc.\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed preparing TX DMA Desc.\n");
 		goto err_dma;
 	}
 
@@ -841,7 +839,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 		DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
 	if(!rxdesc)
 	{
-		dev_err(tccspi->dev, "Failed preparing RX DMA Desc.\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed preparing RX DMA Desc.\n");
 		goto err_dma;
 	}
 
@@ -865,14 +863,14 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 	cookie = dmaengine_submit(txdesc);
 	if(dma_submit_error(cookie))
 	{
-		dev_err(tccspi->dev, "TX Desc. submitting error! (cookie: %X)\n", (unsigned int)cookie);
+		dev_err(tccspi->dev, "[ERROR][SPI] TX Desc. submitting error! (cookie: %X)\n", (unsigned int)cookie);
 		goto err_dma;
 	}
 
 	cookie = dmaengine_submit(rxdesc);
 	if(dma_submit_error(cookie))
 	{
-		dev_err(tccspi->dev, "RX Desc. submitting error! (cookie: %X)\n", (unsigned int)cookie);
+		dev_err(tccspi->dev, "[ERROR][SPI] RX Desc. submitting error! (cookie: %X)\n", (unsigned int)cookie);
 		goto err_dma;
 	}
 
@@ -884,7 +882,7 @@ static int tcc_spi_dma_engine_submit(struct tcc_spi *tccspi, u32 flen)
 err_dma:
 	/* Stop dma */
 	tcc_spi_stop_dma_engine(tccspi);
-	dev_err(tccspi->dev, "err! terminate dma-engine\n");
+	dev_err(tccspi->dev, "[ERROR][SPI] terminate dma-engine\n");
 
 	return -ENOMEM;
 }
@@ -904,7 +902,7 @@ static int tcc_spi_dma_engine_probe(struct platform_device *pdev, struct tcc_spi
 	//tccspi->dma.chan_tx = dma_request_slave_channel(dev, "tx");
 	if(!tccspi->dma.chan_tx)
 	{
-		dev_err(dev, "DMA TX channel request Error!(%p)\n",tccspi->dma.chan_tx);
+		dev_err(dev, "[ERROR][SPI] DMA TX channel request Error!(%p)\n",tccspi->dma.chan_tx);
 		ret = -EBUSY;
 		goto error;
 	}
@@ -913,7 +911,7 @@ static int tcc_spi_dma_engine_probe(struct platform_device *pdev, struct tcc_spi
 	//tccspi->dma.chan_rx = dma_request_slave_channel(dev, "rx");
 	if(!tccspi->dma.chan_rx)
 	{
-		dev_err(dev, "DMA RX channel request Error!(%p)\n",tccspi->dma.chan_rx);
+		dev_err(dev, "[ERROR][SPI] DMA RX channel request Error!(%p)\n",tccspi->dma.chan_rx);
 		ret = -EBUSY;
 		goto error;
 	}
@@ -922,7 +920,7 @@ static int tcc_spi_dma_engine_probe(struct platform_device *pdev, struct tcc_spi
 	if(ret)
 		goto error;
 
-	dev_info(dev, "DMA-engine Tx(%s) Rx(%s)\n",
+	dev_info(dev, "[INFO][SPI] DMA-engine Tx(%s) Rx(%s)\n",
 		dma_chan_name(tccspi->dma.chan_tx),dma_chan_name(tccspi->dma.chan_rx));
 
 	return 0;
@@ -958,10 +956,10 @@ static int tcc_spi_setup(struct spi_device *spi)
 	unsigned int bits;
 
 	if(!tccspi) {
-		dev_err(tccspi->dev, "tcc_spi data is not exist\n");
+		printk(KERN_ERR "[ERROR][SPI] tcc_spi data is not exist\n");
 		return -ENXIO;
 	}
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(!spi->controller_state) {
 		spi->controller_state = (void *)true;
@@ -973,7 +971,7 @@ static int tcc_spi_setup(struct spi_device *spi)
 			sprintf(cs_gpio_name,"tcc_spi_cs_gpio_%d", spi->chip_select);
 			ret = gpio_request(spi->cs_gpio, cs_gpio_name);
 			if(ret) {
-				dev_err(&spi->dev, "gpio_request err 1 (gpio %d ret %d)\n",
+				dev_err(&spi->dev, "[ERROR][SPI] gpio_request err 1 (gpio %d ret %d)\n",
 					spi->cs_gpio, ret);
 			}
 			gpio_direction_output(spi->cs_gpio, !(spi->mode & SPI_CS_HIGH));
@@ -982,7 +980,7 @@ static int tcc_spi_setup(struct spi_device *spi)
 
 	if(spi->chip_select > spi->master->num_chipselect) {
         dev_err(tccspi->dev,
-                "setup: invalid chipselect %u (%u defined)\n",
+                "[ERROR][SPI] setup: invalid chipselect %u (%u defined)\n",
                 spi->chip_select, spi->master->num_chipselect);
         return -EINVAL;
 	}
@@ -1013,10 +1011,10 @@ static void tcc_spi_cleanup(struct spi_device *spi)
 		return;
 
 	if(!tccspi) {
-		printk("[%s] tcc_spi is null\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tcc_spi is null\n", __func__);
 		return;
 	}
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(gpio_is_valid(spi->cs_gpio))
 		gpio_free(spi->cs_gpio);
@@ -1031,7 +1029,7 @@ static void tcc_spi_set_cs(struct spi_device *spi, bool enable)
 {
 	struct tcc_spi *tccspi = spi_master_get_devdata(spi->master);
 
-	dev_dbg(tccspi->dev, "%s contm %d en %d\n",
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] contm %d en %d\n",
 		__func__, tccspi->pd->contm_support, enable);
 
 	/* When do not use cs-gpios, SPI_CS_HIGH is set when call spi_setup() */
@@ -1063,20 +1061,20 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 	int status, timeout_ms;
 
 	if(!tccspi) {
-		printk("[%s] tccspi is null!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
-	dev_dbg(tccspi->dev, "%s\n", __func__);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	if(!xfer) {
-		dev_err(tccspi->dev, "xfer is null\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] xfer is null\n");
 		status = -EINVAL;
 		goto exit;
 	}
 
 	if (!(xfer->tx_buf || xfer->rx_buf) && xfer->len) {
-		dev_err(tccspi->dev, "missing rx or tx buf\n");
+		dev_err(tccspi->dev, "[ERROR][SPI] missing rx or tx buf\n");
 		status =  -EINVAL;
 		goto exit;
 	}
@@ -1094,7 +1092,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 	tccspi->current_xfer = xfer;
 	tccspi->current_remaining_bytes = xfer->len;
 
-	dev_dbg(tccspi->dev, "%s xfer length %d\n", __func__, xfer->len);
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] xfer length %d\n", __func__, xfer->len);
 
 	while(tccspi->current_remaining_bytes) {
 		int len = 0;
@@ -1107,14 +1105,14 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 			len = tccspi->dma_buf_size;
 			tccspi->tx_packet_remain = 1;
 			dev_dbg(tccspi->dev,
-				"remain %d xfer %d\n",
+				"[DEBUG][SPI] remain %d xfer %d\n",
 				tccspi->current_remaining_bytes,
 				len);
 		} else {
 			len = tccspi->current_remaining_bytes;
 			tccspi->tx_packet_remain = 0;
 			dev_dbg(tccspi->dev,
-				"xfer %d\n",
+				"[DEBUG][SPI] xfer %d\n",
 				len);
 		}
 
@@ -1135,7 +1133,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 			ret = tcc_spi_dma_engine_submit(tccspi, len);
 			if(ret) {
 				dev_err(tccspi->dev,
-					"spi dma transfer err %d\n", ret);
+					"[ERROR][SPI] spi dma transfer err %d\n", ret);
 				status = ret;
 
 				if(tcc_spi_is_use_gdma(tccspi)) {
@@ -1157,7 +1155,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 		ret = wait_for_completion_timeout(&tccspi->xfer_complete, msecs_to_jiffies(timeout_ms));
 		if(!ret) {
 			dev_err(tccspi->dev,
-				"spi trasfer timeout (%d ms), err %d\n", timeout_ms, ret);
+				"[ERROR][SPI] spi trasfer timeout (%d ms), err %d\n", timeout_ms, ret);
 			tcc_spi_regs_dump(tccspi);
 			status = -EIO;
 
@@ -1176,7 +1174,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 		tcc_spi_rxbuf_copy_client_to_spi(tccspi, xfer, len);
 
 		tccspi->current_remaining_bytes -= len;
-		dev_dbg(tccspi->dev, "completed remain %d xfered %d\n",
+		dev_dbg(tccspi->dev, "[DEBUG][SPI] completed remain %d xfered %d\n",
 			tccspi->current_remaining_bytes, len);
 	}
 
@@ -1221,7 +1219,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	int status;
 
 	if(!np) {
-		dev_err(dev, "no dt node defined\n");
+		dev_err(dev, "[ERROR][SPI] no dt node defined\n");
 		return NULL;
 	}
 
@@ -1234,7 +1232,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	status = of_property_read_u32(np, "gpsb-id", &pd->id);
 	if(status != 0){
 		dev_err(dev,
-			"No SPI master id.\n");
+			"[ERROR][SPI] No SPI master id.\n");
 		return NULL;
 	}
 
@@ -1242,7 +1240,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	pd->name = np->name;
 	pd->gpsb_channel = tcc_spi_get_gpsb_ch(pd);
 	if(pd->gpsb_channel < 0) {
-		dev_err(dev, "wrong spi driver name (%s)\n", np->name);
+		dev_err(dev, "[ERROR][SPI] wrong spi driver name (%s)\n", np->name);
 		return NULL;
 	}
 
@@ -1253,27 +1251,27 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		(size_t)of_property_count_elems_of_size(np, "gpsb-port", sizeof(u32)));
 	if(status != 0){
 		dev_err(dev,
-			"No SPI master port info.\n");
+			"[ERROR][SPI] No SPI master port info.\n");
 		return NULL;
 	}
 
-	dev_info(dev, "sdi: %d sclk: %d sfrm: %d sdo: %d\n",
+	dev_info(dev, "[INFO][SPI] sdi: %d sclk: %d sfrm: %d sdo: %d\n",
 		pd->port[0], pd->port[1], pd->port[2], pd->port[3]);
 #else
 	status = of_property_read_u32(np, "gpsb-port", &pd->port);
 	if(status != 0){
 		dev_err(dev,
-			"No SPI master port info.\n");
+			"[ERROR][SPI] No SPI master port info.\n");
 		return NULL;
 	}
-	dev_info(dev, "port %d\n", pd->port);
+	dev_info(dev, "[INFO][SPI] port %d\n", pd->port);
 #endif
 
 	pd->ctf = true;
 	if(of_property_read_bool(np, "ctf-mode-disable")){
 		pd->ctf = false;
 	}
-	dev_info(dev, "GPSB ctf mode: %d\n", pd->ctf);
+	dev_info(dev, "[INFO][SPI] GPSB ctf mode: %d\n", pd->ctf);
 
 	/*
 	 * TCC GPSB CH 3-5 don't have dedicated dma
@@ -1281,7 +1279,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	 */
 	if(pd->gpsb_channel > 2) {
 		pd->dma_enable = 1;
-		dev_dbg(dev, "gpsb ch %d - use gdma\n", pd->gpsb_channel);
+		dev_dbg(dev, "[DEBUG][SPI] gpsb ch %d - use gdma\n", pd->gpsb_channel);
 	}
 	else {
 		pd->dma_enable = 0;
@@ -1292,7 +1290,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	pd->hclk = of_clk_get(np, 1);
 	if(IS_ERR(pd->pclk) || IS_ERR(pd->hclk)) {
 		dev_err(dev,
-			"No SPI master clock info.\n");
+			"[ERROR][SPI] No SPI master clock info.\n");
 		return NULL;
 	}
 
@@ -1320,20 +1318,20 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	if(!pdev->dev.of_node)
 		return -EINVAL;
 
-	dev_info(dev, "%s\n", __func__);
+	dev_dbg(dev, "[DEBUG][SPI] [%s]\n", __func__);
 
 	/* Get TCC GPSB SPI master platform data */
 	pd = tcc_spi_parse_dt(dev);
 	if(!pd) {
 		dev_err(dev,
-			"No TCC SPI master platform data.\n");
+			"[ERROR][SPI] No TCC SPI master platform data.\n");
 		return -ENODEV;
 	}
 
 	master = spi_alloc_master(dev, sizeof(struct tcc_spi));
 	if(!master) {
-		dev_err(dev, 
-			"SPI Master memory allocation failed.\n");
+		dev_err(dev,
+			"[ERROR][SPI] SPI memory allocation failed.\n");
 		return -ENOMEM;
 	}
 
@@ -1364,7 +1362,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	ret = dma_set_coherent_mask(dev, DMA_BIT_MASK(32));
 	if(ret) {
 		dev_err(dev,
-			"Failed to set dma mask\n");
+			"[ERROR][SPI] Failed to set dma mask\n");
 		goto exit_free_master;
 	}
 	if(!dev->dma_mask)
@@ -1376,7 +1374,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if(!regs) {
 		dev_err(dev,
-			"No SPI Master base register addr.\n");
+			"[ERROR][SPI] No SPI base register addr.\n");
 		ret = -ENXIO;
 		goto exit_free_master;
 	}
@@ -1388,7 +1386,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if(!regs) {
 		dev_err(dev,
-			"No SPI Master PCFG register addr.\n");
+			"[ERROR][SPI] No SPI PCFG register addr.\n");
 		ret = -ENXIO;
 		goto exit_free_master;
 	}
@@ -1401,7 +1399,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		if (!of_property_read_u32_array(pdev->dev.of_node,
 					"access-control0", ac_val, 2)) {
 			dev_dbg(&pdev->dev,
-				"access-control0 start:0x%x limit:0x%x\n",
+				"[DEBUG][SPI] access-control0 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC0_START);
 			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC0_LIMIT);
@@ -1409,7 +1407,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		if (!of_property_read_u32_array(pdev->dev.of_node,
 					"access-control1", ac_val, 2)) {
 			dev_dbg(&pdev->dev,
-				"access-control1 start:0x%x limit:0x%x\n",
+				"[DEBUG][SPI] access-control1 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC1_START);
 			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC1_LIMIT);
@@ -1417,7 +1415,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		if (!of_property_read_u32_array(pdev->dev.of_node,
 					"access-control2", ac_val, 2)) {
 			dev_dbg(&pdev->dev,
-				"access-control2 start:0x%x limit:0x%x\n",
+				"[DEBUG][SPI] access-control2 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC2_START);
 			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC2_LIMIT);
@@ -1425,7 +1423,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		if (!of_property_read_u32_array(pdev->dev.of_node,
 					"access-control3", ac_val, 2)) {
 			dev_dbg(&pdev->dev,
-				"access-control3 start:0x%x limit:0x%x\n",
+				"[DEBUG][SPI] access-control3 start:0x%x limit:0x%x\n",
 				ac_val[0], ac_val[1]);
 			writel(ac_val[0], tccspi->ac + TCC_GPSB_AC3_START);
 			writel(ac_val[1], tccspi->ac + TCC_GPSB_AC3_LIMIT);
@@ -1442,7 +1440,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tccspi->irq = platform_get_irq(pdev, 0);
 	if(tccspi->irq < 0) {
 		dev_err(dev,
-			"No SPI Master IRQ Number.\n");
+			"[ERROR][SPI] No SPI IRQ Number.\n");
 		ret = -ENXIO;
 		goto exit_free_master;
 	}
@@ -1452,7 +1450,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		ret = tcc_spi_dma_engine_probe(pdev, tccspi);
 		if(ret < 0) {
 			dev_err(dev,
-				"Failed to get dma-engine\n");
+				"[ERROR][SPI] Failed to get dma-engine\n");
 			goto exit_free_master;
 		}
 	} else {
@@ -1460,7 +1458,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 						IRQF_SHARED, dev_name(dev), master);
 		if(ret < 0) {
 			dev_err(dev,
-					"Failed to enter irq handler\n");
+				"[ERROR][SPI] Failed to enter irq handler\n");
 			ret = -ENXIO;
 			goto exit_free_master;
 		}
@@ -1470,7 +1468,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tccspi->pinctrl = devm_pinctrl_get_select(dev, "active");
 	if(IS_ERR(tccspi->pinctrl)) {
 		dev_err(dev,
-			"Failed to get pinctrl (active state)\n");
+			"[ERROR][SPI] Failed to get pinctrl (active state)\n");
 		ret = -ENXIO;
 		goto exit_free_master;
 	}
@@ -1480,7 +1478,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	ret = tcc_spi_init_dma_buf(tccspi, 1);
 	if(ret < 0) {
 		dev_err(dev,
-			"Failed to allocate rx dma buffer\n");
+			"[ERROR][SPI] Failed to allocate rx dma buffer\n");
 		goto exit_free_master;
 	}
 
@@ -1488,7 +1486,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	ret = tcc_spi_init_dma_buf(tccspi, 0);
 	if(ret < 0) {
 		dev_err(dev,
-			"Failed to allocate tx dma buffer\n");
+			"[ERROR][SPI] Failed to allocate tx dma buffer\n");
 		goto exit_rx_dma_free;
 	}
 
@@ -1500,20 +1498,20 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	ret = devm_spi_register_master(dev, master);
 	if(ret) {
 		dev_err(dev,
-			"No SPI Master IRQ Number.\n");
+			"[ERROR][SPI] No SPI IRQ Number.\n");
 		goto exit_tx_dma_free;
 	}
 
 	/* Enable clock */
 	ret = clk_prepare_enable(pd->hclk);
 	if(ret) {
-		dev_err(dev, "Failed to enable hclk\n");
+		dev_err(dev, "[ERROR][SPI] Failed to enable hclk\n");
 		goto exit_tx_dma_free;
 	}
 
 	ret = clk_prepare_enable(pd->pclk);
 	if(ret) {
-		dev_err(dev, "Failed to enable pclk\n");
+		dev_err(dev, "[ERROR][SPI] Failed to enable pclk\n");
 		goto exit_unprepare_clk;
 	}
 
@@ -1527,7 +1525,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tcc_spi_set_port(tccspi);
 
 #ifdef TCC_USE_GFB_PORT
-	dev_info(dev, "TCC SPI Master[%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI Master [%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
@@ -1538,7 +1536,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		tcc_spi_is_use_gdma(tccspi),
 		master->num_chipselect);
 #else
-	dev_info(dev, "TCC SPI Master[%s] Id: %d [ch:%d @%X][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI Master [%s] Id: %d [ch:%d @%X][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
@@ -1571,7 +1569,7 @@ static int tcc_spi_remove(struct platform_device *pdev)
 	unsigned long flags;
 
 	if(!tccspi) {
-		printk("[%s] tccspi is null!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1581,7 +1579,7 @@ static int tcc_spi_remove(struct platform_device *pdev)
 	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "idle");
 	if(IS_ERR(tccspi->pinctrl)) {
 		dev_err(tccspi->dev,
-			"Failed to get pinctrl (idle state)\n");
+			"[ERROR][SPI] Failed to get pinctrl (idle state)\n");
 		return -ENODEV;
 	}
 
@@ -1617,7 +1615,7 @@ static int tcc_spi_suspend(struct device *dev)
 	unsigned long flags;
 
 	if(!tccspi) {
-		printk("[%s] tccspi is null!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1645,7 +1643,7 @@ static int tcc_spi_resume(struct device *dev)
 	int status;
 
 	if(!tccspi) {
-		printk("[%s] tccspi is null!!\n", __func__);
+		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1656,14 +1654,14 @@ static int tcc_spi_resume(struct device *dev)
 	if(pd->hclk)  {
 		status = clk_prepare_enable(pd->hclk);
 		if(status) {
-			dev_err(tccspi->dev, "Failed to enable hclk\n");
+			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
 			return status;
 		}
 	}
 	if(pd->pclk)  {
 		status = clk_prepare_enable(pd->pclk);
 		if(status) {
-			dev_err(tccspi->dev, "Failed to enable pclk\n");
+			dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable pclk\n");
 			return status;
 		}
 	}
