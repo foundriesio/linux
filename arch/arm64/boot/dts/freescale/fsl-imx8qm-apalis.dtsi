@@ -244,6 +244,9 @@
 
 		ethphy0: ethernet-phy@7 {
 			compatible = "ethernet-phy-ieee802.3-c22";
+			interrupt-parent = <&gpio1>;
+			interrupts = <5 IRQ_TYPE_LEVEL_LOW>;
+			micrel,led-mode = <0>;
 			reg = <7>;
 		};
 	};
@@ -1014,6 +1017,8 @@
 				SC_P_ENET0_REFCLK_125M_25M_CONN_ENET0_REFCLK_125M_25M	0x06000020
 				/* On-module ETH_RESET# */
 				SC_P_LVDS1_GPIO01_LSIO_GPIO1_IO11		0x06000020
+				/* On-module ETH_INT# */
+				SC_P_LVDS0_GPIO01_LSIO_GPIO1_IO05		0x04000060
 			>;
 		};
 
