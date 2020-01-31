@@ -2464,8 +2464,6 @@ int dquot_quota_on_mount(struct super_block *sb, char *qf_name,
 	if (!error)
 		error = vfs_load_quota_inode(d_inode(dentry), type, format_id,
 				DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
-
-out:
 	dput(dentry);
 	return error;
 }
