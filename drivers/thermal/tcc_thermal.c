@@ -203,7 +203,7 @@ static int tcc_thermal_read(struct tcc_thermal_data *data)
 
     if( code_temp < THERMAL_MIN_DATA || code_temp > THERMAL_MAX_DATA)
     {
-        printk("Wrong thermal data received\n");
+        printk(KERN_ERR "[ERROR][T-SENSOR] Wrong thermal data received\n");
         return -ENODATA;
     }
     celsius_temp = code_to_temp(data->cal_data, code_temp);
@@ -242,7 +242,7 @@ static int tcc_set_mode(struct thermal_zone_device *thermal,
             enum thermal_device_mode mode)
 {
     if (!thermal_zone->therm_dev) {
-        pr_notice("thermal zone not registered\n");
+        printk(KERN_ERR "[ERROR][T-SENSOR] thermal zone not registered\n");
         return 0;
     }
 
@@ -258,7 +258,7 @@ static int tcc_get_temp(struct thermal_zone_device *thermal,
     void *data;
 
     if (!thermal_zone->sensor_conf) {
-        pr_info("Temperature sensor not initialised\n");
+        printk(KERN_ERR "[ERROR][T-SENSOR] Temperature sensor not initialised\n");
         return -EINVAL;
     }
     data = thermal_zone->sensor_conf->private_data;
@@ -383,10 +383,10 @@ static int tcc_bind(struct thermal_zone_device *thermal,
             if (cluster_idx == CL_ONE) {
                 cpufreq_get_policy(&policy, CLUST1_POLICY_CORE);
                 if (clip_data->freq_clip_max_cluster1 > policy.max) {
-                    pr_warn("%s: CL_ZERO throttling freq(%d) is greater than policy max(%d)\n", __func__, clip_data->freq_clip_max_cluster1, policy.max);
+                    printk(KERN_ERR "[ERROR][T-SENSOR] %s: CL_ZERO throttling freq(%d) is greater than policy max(%d)\n", __func__, clip_data->freq_clip_max_cluster1, policy.max);
                     clip_data->freq_clip_max_cluster1 = policy.max;
                 } else if (clip_data->freq_clip_max_cluster1 < policy.min) {
-                    pr_warn("%s: CL_ZERO throttling freq(%d) is less than policy min(%d)\n", __func__, clip_data->freq_clip_max_cluster1, policy.min);
+                    printk(KERN_ERR "[ERROR][T-SENSOR] %s: CL_ZERO throttling freq(%d) is less than policy min(%d)\n", __func__, clip_data->freq_clip_max_cluster1, policy.min);
                     clip_data->freq_clip_max_cluster1 = policy.min;
                 }
 
@@ -394,10 +394,10 @@ static int tcc_bind(struct thermal_zone_device *thermal,
             } else if (cluster_idx == CL_ZERO) {
                 cpufreq_get_policy(&policy, CLUST0_POLICY_CORE);
                 if (clip_data->freq_clip_max > policy.max) {
-                    pr_warn("%s: CL_ONE throttling freq(%d) is greater than policy max(%d)\n", __func__, clip_data->freq_clip_max, policy.max);
+                    printk(KERN_ERR "[ERROR][T-SENSOR] %s: CL_ONE throttling freq(%d) is greater than policy max(%d)\n", __func__, clip_data->freq_clip_max, policy.max);
                     clip_data->freq_clip_max = policy.max;
                 } else if (clip_data->freq_clip_max < policy.min) {
-                    pr_warn("%s: CL_ONE throttling freq(%d) is less than policy min(%d)\n", __func__, clip_data->freq_clip_max, policy.min);
+                    printk(KERN_ERR "[ERROR][T-SENSOR] %s: CL_ONE throttling freq(%d) is less than policy min(%d)\n", __func__, clip_data->freq_clip_max, policy.min);
                     clip_data->freq_clip_max = policy.min;
                 }
 
@@ -422,7 +422,7 @@ static int tcc_bind(struct thermal_zone_device *thermal,
                                     THERMAL_NO_LIMIT, 0, THERMAL_WEIGHT_DEFAULT)) {
                                     //level, 0, THERMAL_WEIGHT_DEFAULT)) {
                                     //level, 0)) {
-                    pr_err("error binding cdev inst %d\n", i);
+                    printk(KERN_ERR "[ERROR][T-SENSOR] error binding cdev inst %d\n", i);
                     ret = -EINVAL;
                 }
                 thermal_zone->bind = true;
@@ -467,7 +467,7 @@ static int tcc_unbind(struct thermal_zone_device *thermal,
         case THERMAL_TRIP_PASSIVE:
             if (thermal_zone_unbind_cooling_device(thermal, i,
                                 cdev)) {
-                pr_err("error unbinding cdev inst=%d\n", i);
+                printk(KERN_ERR "[ERROR][T-SENSOR] error unbinding cdev inst=%d\n", i);
                 ret = -EINVAL;
             }
             thermal_zone->bind = false;
@@ -512,7 +512,7 @@ static int tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
     struct cpufreq_policy policy;
 
     if (!sensor_conf || !sensor_conf->read_temperature) {
-        pr_err("Temperature sensor not initialised\n");
+        printk(KERN_ERR "[ERROR][T-SENSOR] Temperature sensor not initialised\n");
         return -EINVAL;
     }
 
@@ -563,13 +563,13 @@ static int tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
             thermal_zone->sensor_conf->trip_data.trip_count, 0, NULL, &tcc_dev_ops, NULL, delay_passive, delay_idle);
 
     if (IS_ERR(thermal_zone->therm_dev)) {
-        pr_err("Failed to register thermal zone device\n");
+        printk(KERN_ERR "[ERROR][T-SENSOR] Failed to register thermal zone device\n");
         ret = PTR_ERR(thermal_zone->therm_dev);
         goto err_unregister;
     }
     thermal_zone->mode = THERMAL_DEVICE_ENABLED;
 
-    pr_info("TCC: Kernel Thermal management registered\n");
+    printk(KERN_INFO "[INFO][T-SENSOR] TCC: Kernel Thermal management registered\n");
 
     return 0;
 
@@ -594,7 +594,7 @@ static void tcc_unregister_thermal(void)
     }
 
     kfree(thermal_zone);
-    pr_info("TCC: Kernel Thermal management unregistered\n");
+    printk(KERN_INFO "[INFO][T-SENSOR] TCC: Kernel Thermal management unregistered\n");
 }
 
 static void tcc_thermal_get_efuse(struct platform_device *pdev)
@@ -630,8 +630,8 @@ static void tcc_thermal_get_efuse(struct platform_device *pdev)
     else
 	    data->cal_data->cal_type = TYPE_NONE;
 
-    printk("%s. trim_val: %08x\n", __func__, data->temp_trim1);
-    printk("%s. cal_type: %d\n", __func__, data->cal_data->cal_type);
+    printk(KERN_INFO "[INFO][T-SENSOR] %s. trim_val: %08x\n", __func__, data->temp_trim1);
+    printk(KERN_INFO "[INFO][T-SENSOR] %s. cal_type: %d\n", __func__, data->cal_data->cal_type);
     
     switch (data->cal_data->cal_type) {
         case TYPE_TWO_POINT_TRIMMING:
@@ -687,42 +687,42 @@ static inline struct  tcc_thermal_platform_data *tcc_thermal_parse_dt(
 
     if(of_property_read_u32(np, "throttle_count", &pdata->freq_tab_count))
     {
-        pr_err("failed to get throttle_count from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get throttle_count from dt\n");
         goto err_parse_dt;
     }
     if(of_property_read_u32(np, "throttle_active_count", &pdata->size[THERMAL_TRIP_ACTIVE]))
     {
-        pr_err("failed to get throttle_active_count from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get throttle_active_count from dt\n");
         goto err_parse_dt;
     }
     if(of_property_read_u32(np, "throttle_passive_count", &pdata->size[THERMAL_TRIP_PASSIVE]))
     {
-        pr_err("failed to get throttle_passive_count from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get throttle_passive_count from dt\n");
         goto err_parse_dt;
     }
 
     for (i = 0; i < pdata->freq_tab_count; i++) {
         ret = parse_throttle_data(np, pdata, i);
         if (ret) {
-            pr_err("Failed to load throttle data(%d)\n", i);
+            pr_err("[ERROR][T-SENSOR]Failed to load throttle data(%d)\n", i);
             goto err_parse_dt;
         }
     }
     
     if(of_property_read_u32(np, "polling-delay-idle", &delay_idle))
     {
-        pr_err("failed to get polling-delay from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get polling-delay from dt\n");
         delay_idle = IDLE_INTERVAL;
     }
     if(of_property_read_u32(np, "polling-delay-passive", &delay_passive))
     {
-        pr_err("failed to get polling-delay from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get polling-delay from dt\n");
         delay_passive = PASSIVE_INTERVAL;
     }
     
     if(of_property_read_string(np, "cal_type", &tmp_str))
     {
-        pr_err("failed to get cal_type from dt\n");
+        pr_err("[ERROR][T-SENSOR]failed to get cal_type from dt\n");
         goto err_parse_dt;
     }
 
@@ -736,7 +736,7 @@ static inline struct  tcc_thermal_platform_data *tcc_thermal_parse_dt(
     return pdata;
 
 err_parse_dt:
-    dev_err(&pdev->dev, "Parsing device tree data error.\n");
+    dev_err(&pdev->dev, "[ERROR][T-SENSOR] Parsing device tree data error.\n");
     return NULL;
 }
 
@@ -750,28 +750,28 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     if (!pdata)
         pdata = tcc_thermal_parse_dt(pdev);
 
-	printk("tcc_thermal_probe %s \n", __func__);
+	printk(KERN_INFO "[INFO][T-SENSOR] tcc_thermal_probe %s \n", __func__);
 
 #ifdef CONFIG_ARM_TCC_MP_CPUFREQ
 		init_mp_cpumask_set();
 #endif
 
     if (!pdata) {
-        dev_err(&pdev->dev, "No platform init thermal data supplied.\n");
+        dev_err(&pdev->dev, "[ERROR][T-SENSOR]No platform init thermal data supplied.\n");
         return -ENODEV;
     }
 
     data = devm_kzalloc(&pdev->dev, sizeof(struct tcc_thermal_data), GFP_KERNEL);
     if (!data)
     {
-        dev_err(&pdev->dev, "Failed to allocate thermal driver structure\n");
+        dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to allocate thermal driver structure\n");
         return -ENOMEM;
     }
 
     data->cal_data = devm_kzalloc(&pdev->dev, sizeof(struct cal_thermal_data),
                     GFP_KERNEL);
     if (!data->cal_data) {
-        dev_err(&pdev->dev, "Failed to allocate cal thermal data structure\n");
+        dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to allocate cal thermal data structure\n");
         return -ENOMEM;
     }
 
@@ -781,7 +781,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     {
         data->res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
         if (!data->res) {
-            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
             return -ENODEV;
         }
         data->control = devm_ioremap_resource(&pdev->dev, data->res);
@@ -795,7 +795,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     {
         data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
         if (!data->res) {
-            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
             return -ENODEV;
         }
         data->temp_code = devm_ioremap_resource(&pdev->dev, data->res);
@@ -810,7 +810,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     {
         data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
         if (!data->res) {
-            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
         }
         data->ecid_conf = devm_ioremap_resource(&pdev->dev, data->res);
     }
@@ -821,7 +821,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     {
         data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
         if (!data->res) {
-            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
         }
         data->ecid_user0_reg1 = devm_ioremap_resource(&pdev->dev, data->res);
     }
@@ -830,7 +830,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     data->tsen_power = of_clk_get(pdev->dev.of_node, 0);
     if(data->tsen_power)
 	if(clk_prepare_enable(data->tsen_power) != 0) {
-	    dev_err(&pdev->dev, "fail to enable temp sensor power\n");
+	    dev_err(&pdev->dev, "[ERROR][T-SENSOR]fail to enable temp sensor power\n");
         }
 #endif
 
@@ -873,7 +873,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     thermal_zone = kzalloc(sizeof(struct tcc_thermal_zone), GFP_KERNEL);
     ret = tcc_thermal_init(data);
     if (ret) {
-        dev_err(&pdev->dev, "Failed to initialize thermal\n");
+        dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to initialize thermal\n");
         return ret;
     }
     
@@ -882,11 +882,11 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     ret = tcc_register_thermal(&tcc_sensor_conf);
     if(ret)
     {
-        dev_err(&pdev->dev, "Failed to register tcc_thermal\n");
+        dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to register tcc_thermal\n");
         goto err_thermal;
     }
 
-    pr_info("TCC thermal zone is registered\n");
+    printk(KERN_INFO "[INFO][T-SENSOR] TCC thermal zone is registered\n");
     return 0;
 
 err_thermal:
