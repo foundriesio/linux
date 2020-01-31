@@ -5,7 +5,7 @@
  * Copyright (C) 2014-2019 Telechips Inc.
  */
 
-#define pr_fmt(fmt)	"tcc_clk: " fmt
+#define pr_fmt(fmt)	"[tcc_clk] " fmt
 
 #include <linux/version.h>
 #include <linux/clkdev.h>
@@ -27,6 +27,8 @@
 #define DEFINE_DEBUGFS_ATTRIBUTE DEFINE_SIMPLE_ATTRIBUTE
 #endif
 
+#define clk_err(x, ...)	printk(KERN_ERR "[ERROR]" pr_fmt(x), ##__VA_ARGS__)
+
 struct tcc_clk {
 	struct clk_hw hw;
 	struct clk_ops *ops;
@@ -46,6 +48,7 @@ static struct tcc_ckc_ops *ckc_ops = NULL;
 #define IGNORE_CLK_DISABLE
 #endif
 
+#ifdef CONFIG_DEBUG_FS
 static int tcc_debugfs_clk_enabled(void *data, u64 *val)
 {
 	struct tcc_clk *tcc = (struct tcc_clk *) data;
@@ -67,9 +70,11 @@ static int debugfs_clk_src_get(void *data, u64 *val)
 	return 0;
 }
 DEFINE_DEBUGFS_ATTRIBUTE(clk_src_fops, debugfs_clk_src_get, NULL, "%llu\n");
+#endif
 
 static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
 {
+#ifdef CONFIG_DEBUG_FS
 	struct tcc_clk *tcc = to_tcc_clk(hw);
 
 	clk_debugfs_add_file(hw, "clk_enabled", S_IRUGO, tcc,
@@ -78,6 +83,9 @@ static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
 	clk_debugfs_add_file(hw, "clk_source", S_IRUGO, tcc,
 			&clk_src_fops);
 	return 0;
+#else
+	return 0;
+#endif
 }
 
 static struct clk *tcc_onecell_get(struct of_phandle_args *clkspec, void *data)
@@ -111,14 +119,14 @@ static int tcc_clk_register(struct device_node *np, struct clk_ops *ops)
 
 	clk_data = kzalloc(sizeof(struct clk_onecell_data), GFP_KERNEL);
 	if (!clk_data) {
-		pr_err("failed to allocate clock provider context (%ld)\n",
+		clk_err("failed to allocate clock provider context (%ld)\n",
 			PTR_ERR(clk_data));
 		return -ENOMEM;
 	}
 
 	clk_data->clks = kcalloc(num_clks, sizeof(struct clk *), GFP_KERNEL);
 	if (!clk_data->clks) {
-		pr_err("failed to allocate clks (%ld)\n",
+		clk_err("failed to allocate clks (%ld)\n",
 				PTR_ERR(clk_data->clks));
 		kfree(clk_data);
 		return -ENOMEM;
@@ -133,7 +141,7 @@ static int tcc_clk_register(struct device_node *np, struct clk_ops *ops)
 
 		tcc_clk = kzalloc(sizeof(tcc_clk), GFP_KERNEL);
 		if (!tcc_clk) {
-			pr_err("failed to allocate tcc clk\n");
+			clk_err("failed to allocate tcc clk\n");
 			ret = PTR_ERR(tcc_clk);
 			goto err;
 		}
@@ -170,13 +178,13 @@ static int tcc_clk_register(struct device_node *np, struct clk_ops *ops)
 
 		clk = clk_register(NULL, &tcc_clk->hw);
 		if (IS_ERR_OR_NULL(clk)) {
-			pr_err("failed to register clk '%s'\n", clk_name);
+			clk_err("failed to register clk '%s' (%ld)\n", clk_name, PTR_ERR(clk));
 			kfree(tcc_clk);
 			continue;
 		}
 		ret = clk_register_clkdev(clk, clk_name, NULL);
 		if (ret) {
-			pr_err("failed to register clkdev '%s' (%d)\n",
+			clk_err("failed to register clkdev '%s' (%d)\n",
 					clk_name, ret);
 			clk_unregister(clk);
 			kfree(tcc_clk);
