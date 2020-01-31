@@ -1288,9 +1288,9 @@
 			interrupts-extended = <&intc GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 44 1>;
 			interrupt-names = "event", "wakeup";
-			g-rx-fifo-size = <256>;
+			g-rx-fifo-size = <512>;
 			g-np-tx-fifo-size = <32>;
-			g-tx-fifo-size = <128 128 64 64 64 64 32 32>;
+			g-tx-fifo-size = <256 16 16 16 16 16 16 16>;
 			dr_mode = "otg";
 			usb33d-supply = <&usb33>;
 			power-domains = <&pd_core>;
