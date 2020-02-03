@@ -92,6 +92,20 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
+	reg_module_wifi: regulator-module-wifi {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_wifi_pdn>;
+		regulator-name = "wifi_pwrdn_fake_regulator";
+		regulator-settling-time-us = <100>;
+
+		regulator-state-mem {
+			regulator-off-in-suspend;
+		};
+	};
+
 	reg_pcie_switch: regulator-pcie-switch {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
@@ -1131,12 +1145,17 @@
 		/* On-module Wi-Fi */
 		pinctrl_wifi: wifigrp {
 			fsl,pins = <
-				/* On-module Wi-Fi_POWER_DOWN */
-				SC_P_MIPI_CSI0_GPIO0_01_LSIO_GPIO1_IO28		0x06000021
 				/* On-module Wi-Fi_SUSCLK_32k */
 				SC_P_SCU_GPIO0_07_SCU_DSC_RTC_CLOCK_OUTPUT_32K	0x06000021
 				/* On-module Wi-Fi_PCIE_W_DISABLE */
 				SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO1_IO24		0x06000021
+			>;
+		};
+
+		pinctrl_wifi_pdn: wifipdngrp {
+			fsl,pins = <
+				/* On-module Wi-Fi_POWER_DOWN */
+				SC_P_MIPI_CSI0_GPIO0_01_LSIO_GPIO1_IO28		0x06000021
 			>;
 		};
 	};
@@ -1264,7 +1283,7 @@
 		 <&pcie_sata_refclk_gate>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
-	/*epdev_on-supply = <&epdev_on>;*/
+	epdev_on-supply = <&reg_module_wifi>;
 	ext_osc = <1>;
 	fsl,max-link-speed = <1>;
 	reset-gpio = <&gpio5 0 GPIO_ACTIVE_LOW>;
