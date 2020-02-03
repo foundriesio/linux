@@ -108,7 +108,7 @@ static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
 
 	struct tcc_rtc_data *tcc_rtc = class_dev;
 
-	printk("[tcc_rtc_alarmirq][%u]", irq);
+	printk(KERN_INFO "[INFO][tcc-rtc][tcc_rtc_alarmirq][%u]", irq);
 	//local_irq_disable();
 
 	BITSET(rtc_reg(RTCCON), Hw1);			// RTC Register write enabled
@@ -119,7 +119,7 @@ static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
 	BITSET(rtc_reg(RTCIM), Hw2);			// Change Operation Mode from PowerDown Mode to Normal Operation Mode.
 	BITCLR(rtc_reg(RTCPEND), 0xFFFFFFFF);	// PEND bit Clear - Clear RTC Wake-Up pin.
 	BITSET(rtc_reg(RTCSTR), Hw6|Hw7);		// RTC Alarm, wake-up interrupt pending clear
-	printk("RTCIM[%#x] RTCPEND[%#x] RTCSTR[%#x]\n", rtc_readl(tcc_rtc->regs + RTCIM), rtc_readl(tcc_rtc->regs + RTCPEND), rtc_readl(tcc_rtc->regs + RTCSTR));
+	printk(KERN_INFO "[INFO][tcc-rtc]RTCIM[%#x] RTCPEND[%#x] RTCSTR[%#x]\n", rtc_readl(tcc_rtc->regs + RTCIM), rtc_readl(tcc_rtc->regs + RTCPEND), rtc_readl(tcc_rtc->regs + RTCSTR));
 
 
 	BITCLR(rtc_reg(RTCCON), Hw1);			// RTC Register write Disable
@@ -130,7 +130,7 @@ static irqreturn_t tcc_rtc_alarmirq(int irq, void *class_dev)
 	rtc_update_irq(tcc_rtc->rtc_dev, 1, RTC_AF | RTC_IRQF);
 
 #ifdef RTC_PMWKUP_TEST
-	printk("\x1b[1;33mRTC TEST : %s __________________ \x1b[0m\n", __func__);
+	printk(KERN_INFO "[INFO][tcc-rtc]\x1b[1;33mRTC TEST : %s __________________ \x1b[0m\n", __func__);
 	atomic_set(&irq_flag, 0);
 #endif
 
@@ -143,7 +143,7 @@ static void tcc_rtc_setaie(struct device *dev, int to)
 	struct tcc_rtc_data *tcc_rtc = dev_get_drvdata(dev);
 	unsigned int tmp;
 
-	printk("%s: aie=%d\n", __func__, to);
+	printk(KERN_DEBUG "[DEBUG][tcc-rtc]%s: aie=%d\n", __func__, to);
 
 	rtc_writel( rtc_readl(tcc_rtc->regs + RTCCON) | Hw1, tcc_rtc->regs + RTCCON);
 	rtc_writel( rtc_readl(tcc_rtc->regs + INTCON) | Hw0, tcc_rtc->regs + INTCON);
@@ -178,7 +178,7 @@ static int tcc_rtc_gettime(struct device *dev, struct rtc_time *rtc_tm)
 
 	if(pTime.wYear > 2037)
 	{
-		printk("RTC year is over 2037\n");
+		printk(KERN_INFO "[INFO][tcc-rtc]RTC year is over 2037\n");
 		pTime.wYear = 2037;
 	}
 
@@ -190,7 +190,7 @@ static int tcc_rtc_gettime(struct device *dev, struct rtc_time *rtc_tm)
 	rtc_tm->tm_mon  = pTime.wMonth - 1;
 	rtc_tm->tm_year = pTime.wYear - 1900;
 
-	printk("read time %04d/%02d/%02d %02d:%02d:%02d\n",
+	printk(KERN_INFO "[INFO][tcc-rtc]read time %04d/%02d/%02d %02d:%02d:%02d\n",
 			pTime.wYear, pTime.wMonth, pTime.wDay,
 			pTime.wHour, pTime.wMinute, pTime.wSecond);
 
@@ -214,7 +214,7 @@ static int tcc_rtc_settime(struct device *dev, struct rtc_time *tm)
 	pTime.wMonth        = tm->tm_mon + 1;
 	pTime.wYear         = tm->tm_year + 1900;
 
-	printk("set time %02d/%02d/%02d %02d:%02d:%02d\n",
+	printk(KERN_INFO "[INFO][tcc-rtc]set time %02d/%02d/%02d %02d:%02d:%02d\n",
 			pTime.wYear, pTime.wMonth, pTime.wDay,
 			pTime.wHour, pTime.wMinute,  pTime.wSecond);
 
@@ -232,7 +232,7 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	struct rtc_time *alm_tm = &alrm->time;
 	unsigned int alm_en, alm_pnd;
 	rtctime pTime;
-	printk("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][tcc-rtc]%s\n", __func__);
 
 	local_irq_disable();
 
@@ -245,7 +245,7 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alrm->enabled = (alm_en & Hw7) ? 1 : 0;
 	alrm->pending = (alm_pnd & Hw0) ? 1 : 0;
 
-	printk(" alrm->enabled = %d, alm_en = %d\n", alrm->enabled, alm_en);
+	printk(KERN_INFO "[INFO][tcc-rtc] alrm->enabled = %d, alm_en = %d\n", alrm->enabled, alm_en);
 
 	rtc_writel( rtc_readl(tcc_rtc->regs + INTCON) & ~Hw0, tcc_rtc->regs + INTCON);
 	rtc_writel( rtc_readl(tcc_rtc->regs + RTCCON) & ~Hw1, tcc_rtc->regs + RTCCON);
@@ -259,7 +259,7 @@ static int tcc_rtc_getalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alm_tm->tm_mon  = pTime.wMonth - 1;
 	alm_tm->tm_year = pTime.wYear - 1900;
 
-	printk("read alarm %02x %02x/%02x/%02x %02x:%02x:%02x\n",
+	printk(KERN_INFO "[INFO][tcc-rtc]read alarm %02x %02x/%02x/%02x %02x:%02x:%02x\n",
 			alm_en,
 			pTime.wYear, pTime.wMonth, pTime.wDay,
 			pTime.wHour, pTime.wMinute, pTime.wSecond);
@@ -338,7 +338,7 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 
 	int ret = 0;
 
-	printk("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][tcc-rtc]%s\n", __func__);
 
 	alrm->enabled = 1;
 
@@ -349,7 +349,7 @@ static int tcc_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	pTime.wMonth    = tm->tm_mon + 1;
 	pTime.wYear     = tm->tm_year + 1900;
 
-	printk("set alarm %02d/%02d/%02d %02d:%02d:%02d \n",
+	printk(KERN_INFO "[INFO][tcc-rtc]set alarm %02d/%02d/%02d %02d:%02d:%02d \n",
 			pTime.wYear, pTime.wMonth, pTime.wDay,
 			pTime.wHour, pTime.wMinute, pTime.wSecond);
 
@@ -469,7 +469,7 @@ static int tcc_rtc_ioctl(struct device *dev,
 {
 	unsigned int ret = -ENOIOCTLCMD;
 
-printk("%s %d\n",__func__,__LINE__);
+printk(KERN_DEBUG "[DEBUG][tcc-rtc]%s %d\n",__func__,__LINE__);
 	switch (cmd) {
 		case RTC_AIE_OFF:
 			tcc_rtc_setaie(dev, 0);
@@ -540,12 +540,12 @@ static int cmp_rtc_gettime(struct device *dev)
 
 	pTime = rtc_time_to_rtctime(now_time);
 
-	printk("\x1b[1;33mRTC TEST : now irq time %04d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
+	printk(KERN_INFO "\x1b[1;33m[INFO][tcc-rtc]RTC TEST : now irq time %04d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
 			pTime.wYear, pTime.wMonth, pTime.wDay,
 			pTime.wHour, pTime.wMinute, pTime.wSecond);
 
 	if (check_time(pTime, pTime_test)) {
-		printk("\x1b[1;31mRTC TEST : _______________________ alarm un-matched time.\x1b[0m\n");
+		printk(KERN_INFO "\x1b[1;31m[INFO][tcc-rtc]RTC TEST : _______________________ alarm un-matched time.\x1b[0m\n");
 	}
 
 	return 0;
@@ -587,7 +587,7 @@ static int tcc_alarm_test(void *arg)
 	int ret = 0;
 	int set_sec = 0;
 
-	printk("\x1b[1;35mRTC TEST :  __________________ %s START\x1b[0m\n", __func__);
+	printk(KERN_INFO "\x1b[1;35m[INFO][tcc-rtc]RTC TEST :  __________________ %s START\x1b[0m\n", __func__);
 	msleep(30000);
 
 	do {
@@ -604,7 +604,7 @@ static int tcc_alarm_test(void *arg)
 		if (set_sec >= 60)
 			break;
 
-		printk("\x1b[1;35mRTC TEST : Set Alarm - sec[%d]\x1b[0m\n", set_sec);
+		printk(KERN_INFO "\x1b[1;35m[INFO][tcc-rtc]RTC TEST : Set Alarm - sec[%d]\x1b[0m\n", set_sec);
 		tcc_rtc_gettime(dev, tm);
 
 		if ( tm->tm_sec >= (set_sec -2) )   // -2 is delay time to set alarm.
@@ -637,7 +637,7 @@ static int tcc_alarm_test(void *arg)
 		pTime.wMonth    = tm->tm_mon + 1;
 		pTime.wYear     = tm->tm_year + 1900;
 	
-		printk("\x1b[1;33mRTC TEST : set alarm %02d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
+		printk(KERN_INFO "\x1b[1;33m[INFO][tcc-rtc]RTC TEST : set alarm %02d/%02d/%02d %02d:%02d:%02d\x1b[0m\n",
 				pTime.wYear, pTime.wMonth, pTime.wDay,
 				pTime.wHour, pTime.wMinute, pTime.wSecond);
 
@@ -650,7 +650,7 @@ static int tcc_alarm_test(void *arg)
 		cmp_rtc_gettime(dev);
 	} while(1);
 
-	printk("\x1b[1;34mRTC TEST : Alarm Test is finished.\x1b[0m\n");
+	printk(KERN_INFO "\x1b[1;34m[INFO][tcc-rtc]RTC TEST : Alarm Test is finished.\x1b[0m\n");
 
 	return 0;
 }
@@ -667,28 +667,28 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 
 	tcc_rtc = devm_kzalloc(&pdev->dev, sizeof(struct tcc_rtc_data), GFP_KERNEL);
 	if (!tcc_rtc) {
-		dev_err(&pdev->dev, "failed to allocate memory\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to allocate memory\n");
 		return -ENOMEM;
 	}
 	platform_set_drvdata(pdev, tcc_rtc);
 
 	tcc_rtc->regs = of_iomap(pdev->dev.of_node, 0);
 	if (tcc_rtc->regs == NULL) {
-		printk("failed RTC of_iomap()\n");
+		printk(KERN_ERR "[ERROR][tcc-rtc]failed RTC of_iomap()\n");
 		ret = -ENOMEM;
 		goto err_get_dt_property;
 	}
 
 	tcc_rtc->irq = platform_get_irq(pdev, 0);
 	if (tcc_rtc->irq <= 0) {
-		dev_err(&pdev->dev, "no irq for alarm\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]no irq for alarm\n");
 		ret = -ENOENT;
 		goto err_get_dt_property;
 	}
 
 	tcc_rtc->hclk = of_clk_get(pdev->dev.of_node, 1);
 	if (IS_ERR(tcc_rtc->hclk)) {
-		dev_err(&pdev->dev, "failed to get hclk\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to get hclk\n");
 		ret = -ENXIO;
 		goto err_get_hclk;
 	}
@@ -696,7 +696,7 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 
 	tcc_rtc->fclk = of_clk_get(pdev->dev.of_node, 0);
 	if (IS_ERR(tcc_rtc->fclk)) {
-		dev_err(&pdev->dev, "failed to get fclk\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]failed to get fclk\n");
 		ret = -ENXIO;
 		goto err_get_fclk;
 	}
@@ -756,15 +756,15 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 
 		tca_rtc_settime(tcc_rtc->regs, &pTime);
 
-		printk("RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
+		printk(KERN_INFO "[INFO][tcc-rtc]RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
 				pTime.wYear, pTime.wMonth, pTime.wDay,
 				pTime.wHour, pTime.wMinute, pTime.wSecond);
 	}
 
-	printk("tcc_rtc: alarm irq %d\n", tcc_rtc->irq);
+	printk(KERN_INFO "[INFO][tcc-rtc]tcc_rtc: alarm irq %d\n", tcc_rtc->irq);
 
 	if (tcc_rtc->irq < 0) {
-		dev_err(&pdev->dev, "no irq for alarm\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]no irq for alarm\n");
 		return -ENOENT;
 	}
 
@@ -775,7 +775,7 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 	/* register RTC and exit */
 	tcc_rtc->rtc_dev = rtc_device_register(pdev->name, &pdev->dev, &tcc_rtcops, THIS_MODULE);
 	if (IS_ERR(tcc_rtc->rtc_dev)) {
-		dev_err(&pdev->dev, "cannot attach rtc\n");
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]cannot attach rtc\n");
 		ret = PTR_ERR(tcc_rtc->rtc_dev);
 		goto err_nortc;
 	}
@@ -784,7 +784,7 @@ static int tcc_rtc_probe(struct platform_device *pdev)
 	//    if(request_irq(tcc_rtc->irq, tcc_rtc_alarmirq, IRQF_DISABLED, DRV_NAME, rtc)) {
 	ret = devm_request_irq(&pdev->dev, tcc_rtc->irq, tcc_rtc_alarmirq, 0, DRV_NAME, tcc_rtc);
 	if (ret) {
-		dev_err(&pdev->dev, "%s: RTC timer interrupt IRQ%d already claimed\n",
+		dev_err(&pdev->dev, "[ERROR][tcc-rtc]%s: RTC timer interrupt IRQ%d already claimed\n",
 			pdev->name, tcc_rtc->irq);
 		goto err_request_irq;
 	}
@@ -874,7 +874,7 @@ static int tcc_rtc_restore(struct device *dev)
 
 		tca_rtc_settime(tcc_rtc->regs, &pTime);
 
-		printk("RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
+		printk(KERN_INFO "[INFO][tcc-rtc]RTC Invalied Time, Set Time %04d/%02d/%02d %02d:%02d:%02d\n",
 				pTime.wYear, pTime.wMonth, pTime.wDay,
 				pTime.wHour, pTime.wMinute, pTime.wSecond);
 	}

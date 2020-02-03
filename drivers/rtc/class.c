@@ -64,7 +64,7 @@ static int rtc_suspend(struct device *dev)
 	/* snapshot the current RTC and system time at suspend*/
 	err = rtc_read_time(rtc, &tm);
 	if (err < 0) {
-		pr_debug("%s:  fail to read rtc time\n", dev_name(&rtc->dev));
+		pr_debug("[DEBUG][RTC]%s:  fail to read rtc time\n", dev_name(&rtc->dev));
 		return 0;
 	}
 
@@ -113,7 +113,7 @@ static int rtc_resume(struct device *dev)
 	getnstimeofday64(&new_system);
 	err = rtc_read_time(rtc, &tm);
 	if (err < 0) {
-		pr_debug("%s:  fail to read rtc time\n", dev_name(&rtc->dev));
+		pr_debug("[DEBUG][RTC]%s:  fail to read rtc time\n", dev_name(&rtc->dev));
 		return 0;
 	}
 
@@ -121,7 +121,7 @@ static int rtc_resume(struct device *dev)
 	new_rtc.tv_nsec = 0;
 
 	if (new_rtc.tv_sec < old_rtc.tv_sec) {
-		pr_debug("%s:  time travel!\n", dev_name(&rtc->dev));
+		pr_debug("[DEBUG][RTC]%s:  time travel!\n", dev_name(&rtc->dev));
 		return 0;
 	}
 
@@ -199,7 +199,7 @@ static int rtc_device_get_id(struct device *dev)
 	if (of_id >= 0) {
 		id = ida_simple_get(&rtc_ida, of_id, of_id + 1, GFP_KERNEL);
 		if (id < 0)
-			dev_warn(dev, "/aliases ID %d not available\n", of_id);
+			dev_warn(dev, "[WARN][RTC]/aliases ID %d not available\n", of_id);
 	}
 
 	if (id < 0)
@@ -254,20 +254,20 @@ struct rtc_device *rtc_device_register(const char *name, struct device *dev,
 
 	err = cdev_device_add(&rtc->char_dev, &rtc->dev);
 	if (err) {
-		dev_warn(&rtc->dev, "%s: failed to add char device %d:%d\n",
+		dev_warn(&rtc->dev, "[WARN][RTC]%s: failed to add char device %d:%d\n",
 			 name, MAJOR(rtc->dev.devt), rtc->id);
 
 		/* This will free both memory and the ID */
 		put_device(&rtc->dev);
 		goto exit;
 	} else {
-		dev_dbg(&rtc->dev, "%s: dev (%d:%d)\n", name,
+		dev_dbg(&rtc->dev, "[DEBUG][RTC]%s: dev (%d:%d)\n", name,
 			MAJOR(rtc->dev.devt), rtc->id);
 	}
 
 	rtc_proc_add_device(rtc);
 
-	dev_info(dev, "rtc core: registered %s as %s\n",
+	dev_info(dev, "[INFO][RTC]rtc core: registered %s as %s\n",
 			name, dev_name(&rtc->dev));
 
 	return rtc;
@@ -276,7 +276,7 @@ exit_ida:
 	ida_simple_remove(&rtc_ida, id);
 
 exit:
-	dev_err(dev, "rtc core: unable to register %s, err = %d\n",
+	dev_err(dev, "[ERROR][RTC]rtc core: unable to register %s, err = %d\n",
 			name, err);
 	return ERR_PTR(err);
 }
@@ -442,10 +442,10 @@ int __rtc_register_device(struct module *owner, struct rtc_device *rtc)
 
 	err = cdev_device_add(&rtc->char_dev, &rtc->dev);
 	if (err)
-		dev_warn(rtc->dev.parent, "failed to add char device %d:%d\n",
+		dev_warn(rtc->dev.parent, "[WARN][RTC]failed to add char device %d:%d\n",
 			 MAJOR(rtc->dev.devt), rtc->id);
 	else
-		dev_dbg(rtc->dev.parent, "char device (%d:%d)\n",
+		dev_dbg(rtc->dev.parent, "[DEBUG][RTC]char device (%d:%d)\n",
 			MAJOR(rtc->dev.devt), rtc->id);
 
 	rtc_proc_add_device(rtc);
@@ -453,7 +453,7 @@ int __rtc_register_device(struct module *owner, struct rtc_device *rtc)
 	rtc_nvmem_register(rtc);
 
 	rtc->registered = true;
-	dev_info(rtc->dev.parent, "registered as %s\n",
+	dev_info(rtc->dev.parent, "[INFO][RTC]registered as %s\n",
 		 dev_name(&rtc->dev));
 
 	return 0;
@@ -464,7 +464,7 @@ static int __init rtc_init(void)
 {
 	rtc_class = class_create(THIS_MODULE, "rtc");
 	if (IS_ERR(rtc_class)) {
-		pr_err("couldn't create class\n");
+		pr_err("[ERROR][RTC]couldn't create class\n");
 		return PTR_ERR(rtc_class);
 	}
 	rtc_class->pm = RTC_CLASS_DEV_PM_OPS;

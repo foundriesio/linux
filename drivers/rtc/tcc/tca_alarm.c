@@ -244,7 +244,7 @@ volatile int tca_alarm_disable(void __iomem *pRTC)
 	//PRTC pRTC = (PRTC)rtcbaseaddress;
 
 	if (pRTC == NULL) {
-		printk("failed RTC ioremap()\n");
+		printk(KERN_ERR "[ERROR][tcc-rtc]failed RTC ioremap()\n");
 	}
 	else {
 		//BITCLR(pRTC->RTCCON, Hw7|Hw6);	// Disable - Wake Up Interrupt Output(Hw7), Alarm Interrupt Output(Hw6)
