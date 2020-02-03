@@ -64,14 +64,14 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev, struct device_a
 	char val, cnt;
 	unsigned long flags;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_dbg(dev, "[DEBUG][I2C] %s\n", __func__);
 
 	i2c = dev_get_drvdata(dev);
 	ret = simple_strtoul(buf, NULL, 16);
 	val = (char)(ret & 0xFF);
 
 	if(IS_ERR(i2c)) {
-		printk(KERN_ERR "%s null pointer err\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s: null pointer err\n", __func__);
 		return 0;
 	}
 
@@ -79,9 +79,9 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev, struct device_a
 		/* PIO mode */
 		ret = tcc_i2c_slave_push_one_byte(i2c, val, 0);
 		if(ret != 0) {
-			printk("failed to push 0x%02x at queue\n", val);
+			dev_err(i2c->dev, "[ERROR][I2C] failed to push 0x%02x at queue\n", val);
 		} else {
-			printk("0x%02x\n", val);
+			dev_dbg(i2c->dev, "[DEBUG][I2C] send 0x%02x\n", val);
 			/* Check whether tx fifo level interrupt */
 			status = i2c_slave_readl(i2c->regs + I2C_INT);
 			if((status & BIT(1)) == 0) {
@@ -106,14 +106,14 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev, struct device_a
 				i2c_slave_writel(status, i2c->regs + I2C_INT);
 			}
 		}
-		dev_info(dev, "tx fifo cnt 0x%x\n", tcc_i2c_slave_tx_fifo_cnt(i2c));
+		dev_info(dev, "[INFO][I2C] tx fifo cnt 0x%x\n", tcc_i2c_slave_tx_fifo_cnt(i2c));
 	} else {
 		/* DMA mode */
 		spin_lock_irqsave(&i2c->lock, flags);
 		if(i2c->is_tx_dma_running != 0) {
 			ret = tcc_i2c_slave_push_one_byte(i2c, val, 0);
 			if(ret != 0) {
-				printk("failed to push 0x%02x at queue\n", val);
+				dev_err(i2c->dev, "[ERROR][I2C] failed to push 0x%02x at queue\n", val);
 			}
 			spin_unlock_irqrestore(&i2c->lock, flags);
 		} else {
@@ -121,7 +121,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev, struct device_a
 			spin_unlock_irqrestore(&i2c->lock, flags);
 
 			memcpy(i2c->dma.tx_v_addr, &val, sizeof(char));
-			dev_dbg(i2c->dev, "start tx dma (dma_buf 1 byte)\n");
+			dev_dbg(i2c->dev, "[DEBUG][I2C] start tx dma (dma_buf 1 byte)\n");
 
 			/* Enable Tx DMA request */
 			i2c_slave_writel(
@@ -142,7 +142,7 @@ static ssize_t tcc_i2c_slave_fifo_byte_store(struct device *dev, struct device_a
 				i2c->tx_buf.circ.tail = i2c->tx_buf.circ.head;
 				spin_unlock_irqrestore(&i2c->tx_buf.lock, flags);
 
-				dev_err(i2c->dev, "failed to submit tx dma-engine descriptor\n");
+				dev_err(i2c->dev, "[ERROR][I2C] failed to submit tx dma-engine descriptor\n");
 			}
 		}
 	}
@@ -157,23 +157,23 @@ static ssize_t tcc_i2c_slave_fifo_byte_show(struct device *dev, struct device_at
 	int ret;
 	char val;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_dbg(dev, "[DEBUG][I2C] %s\n", __func__);
 
 	i2c = dev_get_drvdata(dev);
 
 	if(IS_ERR(i2c)) {
-		printk(KERN_ERR "%s null pointer err\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s null pointer err\n", __func__);
 		return 0;
 	}
 
-	dev_info(dev, "rx fifo cnt 0x%x\n", tcc_i2c_slave_rx_fifo_cnt(i2c));
-	
+	dev_info(i2c->dev, "[INFO][I2C] rx fifo cnt 0x%x\n", tcc_i2c_slave_rx_fifo_cnt(i2c));
+
 	ret = tcc_i2c_slave_pop_one_byte(i2c, &val, 1);
 	if(ret != 0) {
 		return sprintf(buf, "no rx data\n");
 	}
 
-	return sprintf(buf, "0x%02x\n", val);
+	return sprintf(buf, "read 0x%02x\n", val);
 }
 
 DEVICE_ATTR(fifo_byte, S_IRUSR | S_IWUSR, tcc_i2c_slave_fifo_byte_show, tcc_i2c_slave_fifo_byte_store);
@@ -190,7 +190,7 @@ static int tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
 	v_addr = dma_alloc_writecombine(dev, i2c->buf_size, &dma_addr, GFP_KERNEL);
 	//v_addr = dma_alloc_coherent(dev, tccspi->dma_buf_size, &dma_addr, GFP_KERNEL);
 	if(!v_addr) {
-		dev_err(i2c->dev, "Fail to allocate the dma buffer (%s)\n",
+		dev_err(i2c->dev, "[ERROR][I2C] Fail to allocate the dma buffer (%s)\n",
 			(dma_to_mem != 0) ? "rx" : "tx");
 		return -ENOMEM;
 	}
@@ -212,7 +212,7 @@ static int tcc_i2c_slave_init_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
 
 	memset(buf->v_addr, 0, buf->size);
 
-	dev_dbg(i2c->dev,"%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(i2c->dev,"[DEBUG][I2C] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem, (unsigned int)v_addr, dma_addr, i2c->buf_size);
 
 	return 0;
@@ -242,7 +242,7 @@ static void tcc_i2c_slave_deinit_buf(struct tcc_i2c_slave *i2c, int dma_to_mem)
 	dma_free_writecombine(i2c->dev, i2c->buf_size, v_addr, dma_addr);
 	//dma_free_coherent(tccspi->dev, tccspi->dma_buf_size, v_addr, dma_addr);
 
-	dev_dbg(i2c->dev,"%s dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
+	dev_dbg(i2c->dev,"[DEBUG][I2C] [%s] dma_to_mem: %d v_addr: 0x%08X dma_addr: 0x%08X size: %d\n",
 		__func__, dma_to_mem, (unsigned int)v_addr, dma_addr, i2c->buf_size);
 
 }
@@ -260,7 +260,7 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 	intr_mask = status & 0xFFF;
 	status = status & (intr_mask << 16);
 	mbf = i2c_slave_readl(i2c->regs + I2C_MBF);
-	dev_dbg(i2c->dev, "i2c slave status 0x%08x intr_mask 0x%08d mbf 0x%08x\n",
+	dev_dbg(i2c->dev, "[DEBUG][I2C] slave status 0x%08x intr_mask 0x%08d mbf 0x%08x\n",
 		status, intr_mask, mbf);
 
 	if((status & BIT(25)) != 0) {
@@ -277,7 +277,7 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 					data = ((data >> ((i-4) * 8)) & 0xFF);
 				}
 				val = (char)(data & 0xFF);
-				dev_dbg(i2c->dev, "Data buffer has been read by master (s_addr 0x%02x val 0x%02x)\n", 
+				dev_dbg(i2c->dev, "[DEBUG][I2C] Data buffer has been read by master (s_addr 0x%02x val 0x%02x)\n",
 					i, data);
 			}
 		}
@@ -297,17 +297,17 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 					data = ((data >> ((i-4) * 8)) & 0xFF);
 				}
 				val = (char)(data & 0xFF);
-				dev_dbg(i2c->dev, "Data buffer has been written by master (s_addr 0x%02x val 0x%02x)\n", 
+				dev_dbg(i2c->dev, "[DEBUG][I2C] Data buffer has been written by master (s_addr 0x%02x val 0x%02x)\n",
 					i, data);
 			}
-		} 
+		}
 	}
-	
+
 	if(mbf != 0) {
 		i2c_slave_writel(i2c_slave_readl(i2c->regs + I2C_MB0), i2c->regs + I2C_MB0);
 		i2c_slave_writel(i2c_slave_readl(i2c->regs + I2C_MB1), i2c->regs + I2C_MB1);
 	}
-	
+
 	if((status & BIT(16)) != 0) {
 		unsigned int stat, circ_q_cnt;
 		cnt = 0;
@@ -315,10 +315,10 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 			val = i2c_slave_readb(i2c->regs + I2C_DPORT);
 			val = val & 0xFF;
 			cnt++;
-			
+
 			ret = tcc_i2c_slave_push_one_byte(i2c, val, 1);
 			if(ret != 0) {
-				dev_err(i2c->dev, "Rx buffer is full\n");
+				dev_err(i2c->dev, "[ERROR][I2C] Rx buffer is full\n");
 			}
 
 			stat = i2c_slave_readl(i2c->regs + I2C_INT);
@@ -326,18 +326,18 @@ static irqreturn_t tcc_i2c_slave_isr(int irq, void *arg)
 				break;
 			}
 		}
-		dev_dbg(i2c->dev, "Rx FIFO level interrupt, status 0x%08x, get %d\n", status, cnt);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] Rx FIFO level interrupt, status 0x%08x, get %d\n", status, cnt);
 
 		circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
 		if(circ_q_cnt >= i2c->poll_count) {
 			wake_up(&i2c->wait_q);
-			dev_dbg(i2c->dev, "Rx count(%d) is over poll count(%d) - wakeup\n",
+			dev_dbg(i2c->dev, "[DEBUG][I2C] Rx count(%d) is over poll count(%d) - wakeup\n",
 				circ_q_cnt, i2c->poll_count);
 		}
 	}
 
 	if((status & BIT(17)) != 0) {
-		dev_dbg(i2c->dev, "Tx FIFO level interrupt, status 0x%08x\n", status);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] Tx FIFO level interrupt, status 0x%08x\n", status);
 		cnt = tcc_i2c_slave_tx_fifo_cnt(i2c);
 		while(1) {
 			ret = tcc_i2c_slave_pop_one_byte(i2c, &val, 0);
@@ -457,7 +457,7 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 		if(minor < TCC_I2C_SLV_MAX_NUM) {
 			filp->private_data = &i2c_slave_priv[minor];
 		} else {
-			printk(KERN_ERR "%s wrong minor number %d\n", __func__, minor);
+			printk(KERN_ERR "[ERROR][I2C] %s: wrong minor number %d\n", __func__, minor);
 			return -EINVAL;
 		}
 	}
@@ -474,7 +474,7 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	if(!i2c->read_buf) {
 		i2c->read_buf = kmalloc(i2c->rw_buf_size, GFP_KERNEL);
 		if (!i2c->read_buf) {
-			dev_err(i2c->dev, "failed to alloc read buf mem\n");
+			dev_err(i2c->dev, "[ERROR][I2C] failed to alloc read buf mem\n");
 			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENOMEM;
 			goto memerr;
@@ -484,19 +484,19 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	if(!i2c->write_buf) {
 		i2c->write_buf = kmalloc(i2c->rw_buf_size, GFP_KERNEL);
 		if (!i2c->write_buf) {
-			dev_err(i2c->dev, "failed to alloc write buf mem\n");
+			dev_err(i2c->dev, "[ERROR][I2C] failed to alloc write buf mem\n");
 			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENOMEM;
 			goto memerr;
 		}
 	}
-	dev_dbg(i2c->dev, "success alloc read/write buf mem (%d)\n",
+	dev_dbg(i2c->dev, "[DEBUG][I2C] success alloc read/write buf mem (%d)\n",
 		i2c->rw_buf_size);
-	
+
 	/* set port mux */
 	ret = tcc_i2c_slave_set_port(i2c);
 	if(ret != 0) {
-		dev_err(i2c->dev, "failed to create attr\n");
+		dev_err(i2c->dev, "[ERROR][I2C] failed to create attr\n");
 		spin_unlock_irqrestore(&i2c->lock, flags);
 		ret = -ENXIO;
 		goto memerr;
@@ -504,13 +504,13 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 
 	if(i2c->hclk != 0) {
 		if(clk_prepare_enable(i2c->hclk) != 0) {
-			dev_err(i2c->dev, "can't do i2c slave hclk clock enable\n");
+			dev_err(i2c->dev, "[ERROR][I2C] can't do i2c slave hclk clock enable\n");
 			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENXIO;
 			goto memerr;
 		}
 	} else {
-		dev_err(i2c->dev, "failed to enable i2c slave clock\n");
+		dev_err(i2c->dev, "[ERROR][I2C] failed to enable i2c slave clock\n");
 		spin_unlock_irqrestore(&i2c->lock, flags);
 		ret = -ENXIO;
 		goto memerr;
@@ -518,7 +518,7 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 
 	ret = request_irq(i2c->irq, tcc_i2c_slave_isr, IRQF_SHARED, dev_name(i2c->dev), i2c);
 	if(ret) {
-		dev_err(i2c->dev, "failed to request irq %i\n", i2c->irq);
+		dev_err(i2c->dev, "[ERROR][I2C] failed to request irq %i\n", i2c->irq);
 		spin_unlock_irqrestore(&i2c->lock, flags);
 		goto clkerr;
 	}
@@ -535,7 +535,7 @@ static int tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 
 	i2c->is_tx_dma_running = 0;
 
-	dev_dbg(i2c->dev, "%s\n", __func__);
+	dev_dbg(i2c->dev, "[DEBUG][I2C] %s\n", __func__);
 
 	spin_unlock_irqrestore(&i2c->lock, flags);
 
@@ -571,7 +571,7 @@ static int tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 
 	i2c = (struct tcc_i2c_slave *)filp->private_data;
 
-	dev_dbg(i2c->dev, "%s\n", __func__);
+	dev_dbg(i2c->dev, "[DEBUG][I2C] %s\n", __func__);
 
 	spin_lock_irqsave(&i2c->lock, flags);
 
@@ -619,7 +619,7 @@ static ssize_t tcc_i2c_slave_read(struct file * filp, char *buf, size_t sz, loff
 	size_t	_sz, offset, rd_sz;
 
 	if(filp->private_data == NULL) {
-		printk(KERN_ERR "%s priv data is invalid\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s: priv data is invalid\n", __func__);
 		return -EFAULT;
 	}
 
@@ -633,7 +633,7 @@ static ssize_t tcc_i2c_slave_read(struct file * filp, char *buf, size_t sz, loff
 		if(rd_sz != 0) {
 			err = copy_to_user(buf + offset, i2c->read_buf, rd_sz);
 			if(err != 0) {
-				dev_err(i2c->dev, "failed to copy_to_user\n");
+				dev_err(i2c->dev, "[ERROR][I2C] failed to copy_to_user\n");
 				return err;
 			}
 		} else {
@@ -659,7 +659,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 	size_t	_sz, offset, wr_sz;
 
 	if(filp->private_data == NULL) {
-		printk(KERN_ERR "%s priv data is invalid\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s: priv data is invalid\n", __func__);
 		return 0;
 	}
 
@@ -671,7 +671,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 		wr_sz = (_sz > i2c->rw_buf_size) ? i2c->rw_buf_size : _sz;
 		err = copy_from_user(i2c->write_buf, buf + offset, wr_sz);
 		if(err != 0) {
-			dev_err(i2c->dev, "failed to copy_to_user\n");
+			dev_err(i2c->dev, "[ERROR][I2C] failed to copy_to_user\n");
 			return err;
 		}
 		wr_sz = tcc_i2c_slave_push(i2c, i2c->write_buf, wr_sz, 0);
@@ -688,7 +688,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 	if(offset == 0)
 		return offset;
 
-	dev_dbg(i2c->dev, "succeed to push data(%d)", offset);
+	dev_dbg(i2c->dev, "[DEBUG][I2C] succeed to push data(%d)", offset);
 
 	if(i2c->dma.chan_tx == NULL) {
 		/* PIO mode */
@@ -717,7 +717,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 			status |= BIT(1);
 			i2c_slave_writel(status, i2c->regs + I2C_INT);
 		}
-		dev_dbg(i2c->dev, "tx fifo cnt 0x%x\n", tcc_i2c_slave_tx_fifo_cnt(i2c));
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: tx fifo cnt 0x%x\n", __func__, tcc_i2c_slave_tx_fifo_cnt(i2c));
 	}else {
 		/* DMA mode */
 		spin_lock_irqsave(&i2c->lock, flags);
@@ -729,10 +729,10 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 
 			copy_size = tcc_i2c_slave_pop(i2c, i2c->dma.tx_v_addr, i2c->dma.size, 0);
 			if(copy_size == 0) {
-				dev_err(i2c->dev, "failed to pop data from tx fifo\n");
+				dev_err(i2c->dev, "[ERROR][I2C] failed to pop data from tx fifo\n");
 				return copy_size;
 			}
-			dev_dbg(i2c->dev, "start tx dma (size %d)\n", copy_size);
+			dev_dbg(i2c->dev, "[DEBUG][I2C] start tx dma (size %d)\n", copy_size);
 
 			/* Enable Tx DMA request */
 			i2c_slave_writel(
@@ -754,7 +754,7 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf, size_t sz
 				i2c->tx_buf.circ.tail = i2c->tx_buf.circ.head;
 				spin_unlock_irqrestore(&i2c->tx_buf.lock, flags);
 
-				dev_err(i2c->dev, "failed to submit tx dma-engine descriptor\n");
+				dev_err(i2c->dev, "[ERROR][I2C] failed to submit tx dma-engine descriptor\n");
 			} else {
 				ret = offset;
 			}
@@ -773,7 +773,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 	int ret = 0;
 
 	if(filp->private_data == NULL) {
-		printk(KERN_ERR "%s priv data is invalid\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s: priv data is invalid\n", __func__);
 		return -EFAULT;
 	}
 
@@ -789,7 +789,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 
 		/* set i2c slave address */
 		if(addr > 0x7F) {
-			dev_err(i2c->dev, "%s slave address is invalid addr 0x%02X\n", __func__, (unsigned int)addr);
+			dev_err(i2c->dev, "[ERROR][I2C] %s: slave address is invalid addr 0x%02X\n", __func__, (unsigned int)addr);
 			ret =  -EINVAL;
 			break;
 		}
@@ -801,7 +801,7 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 
 		ret = tcc_i2c_slave_hwinit(i2c);
 		if (ret != 0) {
-			dev_err(i2c->dev, "failed to enable i2c slave core err %d\n",
+			dev_err(i2c->dev, "[ERROR][I2C] failed to enable i2c slave core err %d\n",
 				ret);
 			ret = -EFAULT;
 			break;
@@ -812,12 +812,10 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 
 		spin_unlock_irqrestore(&i2c->lock, flags);
 
-		dev_dbg(i2c->dev, "%s set slave addr 0x%x\n", __func__, i2c->addr);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: set slave addr 0x%x\n", __func__, i2c->addr);
 		break;
 	case IOCTL_I2C_SLAVE_GET_ADDR:
 		/* Get address */
-		dev_dbg(i2c->dev, "%s get slave addr 0x%x\n", __func__, i2c->addr);
-
 		spin_lock_irqsave(&i2c->lock, flags);
 
 		ret = i2c_slave_readl(i2c->regs + I2C_ADDR);
@@ -825,24 +823,25 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 
 		spin_unlock_irqrestore(&i2c->lock, flags);
 
+		dev_dbg(i2c->dev, "[DEBUG][I2C]%s get slave addr 0x%x\n", __func__, ret);
 		break;
 	case IOCTL_I2C_SLAVE_SET_MB:
 		/* Set memory buffers (MB0/MB1), sub-address 0x00 - 0x07 */
 		memset(val, 0xFF, sizeof(unsigned char) * 2);
 		if(copy_from_user(val, (void *)arg, sizeof(unsigned char) * 2)) {
 			ret = -EFAULT;
-			dev_err(i2c->dev, "%s:%d failed to copy mem from user\n", __func__, __LINE__);
+			dev_err(i2c->dev, "[ERROR][I2C] [%s:%d] failed to copy mem from user\n", __func__, __LINE__);
 			break;
 		}
 
 		if(val[0] > 0x07) {
 			ret = -EINVAL;
-			dev_err(i2c->dev, "%s:%d wrong sub address 0x%02x\n", __func__, __LINE__, val[0]);
+			dev_err(i2c->dev, "[ERROR][I2C] [%s:%d] wrong sub address 0x%02x\n", __func__, __LINE__, val[0]);
 			break;
 		}
 
 		addr = val[0];
-		dev_dbg(i2c->dev, "%s set 0x%02x at 0x%02x\n", __func__, addr, val[1]);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: set 0x%02x at 0x%02x\n", __func__, addr, val[1]);
 
 		spin_lock_irqsave(&i2c->lock, flags);
 
@@ -857,23 +856,23 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 			temp = temp | ((val[1] & 0xFF) << ((addr - 4) * 8));
 			i2c_slave_writel(temp, i2c->regs + I2C_MB1);
 		}
-		
+
 		spin_unlock_irqrestore(&i2c->lock, flags);
 
 		ret = 0;
 		break;
-		
+
 	case IOCTL_I2C_SLAVE_GET_MB:
 		/* Get memory buffers (MB0/MB1), sub-address 0x00 - 0x07 */
 		if(copy_from_user(&addr, (void *)arg, sizeof(addr)) != 0) {
 			ret = -EFAULT;
-			dev_err(i2c->dev, "%s:%d failed to copy mem from user\n", __func__, __LINE__);
+			dev_err(i2c->dev, "[ERROR][I2C] [%s:%d] failed to copy mem from user\n", __func__, __LINE__);
 			break;
 		}
 
 		if(addr > 0x07) {
 			ret = -EINVAL;
-			dev_err(i2c->dev, "%s:%d wrong sub address 0x%02x\n", __func__, __LINE__, addr);
+			dev_err(i2c->dev, "[ERROR][I2C] [%s:%d] wrong sub address 0x%02x\n", __func__, __LINE__, addr);
 			break;
 		}
 
@@ -889,19 +888,19 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 
 		spin_unlock_irqrestore(&i2c->lock, flags);
 
-		dev_dbg(i2c->dev, "%s get sub address 0x%02x = 0x%02x\n", __func__, addr, ret);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: get sub address 0x%02x = 0x%02x\n", __func__, addr, ret);
 		break;
 	case IOCTL_I2C_SLAVE_SET_POLL_CNT:
 		/* Get memory buffers (MB0/MB1), sub-address 0x00 - 0x07 */
 		if(copy_from_user(&count, (void *)arg, sizeof(count)) != 0) {
 			ret = -EFAULT;
-			dev_err(i2c->dev, "%s:%d failed to copy mem from user\n", __func__, __LINE__);
+			dev_err(i2c->dev, "[ERROR][I2C] [%s:%d] failed to copy mem from user\n", __func__, __LINE__);
 			break;
 		}
 
 		if(count > i2c->buf_size) {
 			i2c->poll_count = i2c->buf_size;
-			dev_dbg(i2c->dev, "poll count(%d) is bigger than queue size(%d), poll count %d\n",
+			dev_dbg(i2c->dev, "[DEBUG][I2C] poll count(%d) is bigger than queue size(%d), poll count %d\n",
 				count, i2c->buf_size, i2c->poll_count);
 		} else {
 			i2c->poll_count = count;
@@ -922,14 +921,14 @@ static long tcc_i2c_slave_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 			ret = tcc_i2c_slave_dma_dma_engine_submit(i2c, tcc_i2c_slave_rx_dma_callback, i2c,
 				i2c->poll_count, 1);
 			if(ret != 0) {
-				dev_err(i2c->dev, "failed to submit rx dma-engine descriptor\n");
+				dev_err(i2c->dev, "[ERROR][I2C] %s: failed to submit rx dma-engine descriptor\n", __func__);
 			}
 		} else {
 			/* PIO mode - enable Rx FIFO level interrupt */
 			i2c_slave_writel((i2c_slave_readl(i2c->regs + I2C_INT) | BIT(0)), i2c->regs + I2C_INT);
 			ret = 0;
 		}
-		dev_dbg(i2c->dev, "%s set poll count %d\n", __func__, i2c->poll_count);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] %s: set poll count %d\n", __func__, i2c->poll_count);
 		break;
 	default:
 		ret = -EINVAL;
@@ -946,7 +945,7 @@ static unsigned int tcc_i2c_slave_poll(struct file *filp, struct poll_table_stru
 	unsigned long flags;
 
 	if(filp->private_data == NULL) {
-		printk(KERN_ERR "%s priv data is invalid\n", __func__);
+		printk(KERN_ERR "[ERROR][I2C] %s: priv data is invalid\n", __func__);
 		return -EFAULT;
 	}
 
@@ -956,7 +955,7 @@ static unsigned int tcc_i2c_slave_poll(struct file *filp, struct poll_table_stru
 	circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
 	spin_unlock_irqrestore(&i2c->rx_buf.lock, flags);
 	if(circ_q_cnt >= i2c->poll_count) {
-		dev_dbg(i2c->dev, "Rx count(%d) is over poll count(%d)\n",
+		dev_dbg(i2c->dev, "[DEBUG][I2C] Rx count(%d) is over poll count(%d)\n",
 			circ_q_cnt, i2c->poll_count);
 		return (POLL_IN | POLLRDNORM);
 	}
@@ -967,7 +966,7 @@ static unsigned int tcc_i2c_slave_poll(struct file *filp, struct poll_table_stru
 	circ_q_cnt = circ_cnt(&(i2c->rx_buf.circ), i2c->buf_size);
 	spin_unlock_irqrestore(&i2c->rx_buf.lock, flags);
 	if(circ_q_cnt >= i2c->poll_count) {
-		dev_dbg(i2c->dev, "Rx count(%d) is over poll count(%d)\n",
+		dev_dbg(i2c->dev, "[DEBUG][I2C] Rx count(%d) is over poll count(%d)\n",
 			circ_q_cnt, i2c->poll_count);
 		return (POLL_IN | POLLRDNORM);
 	}
@@ -1001,7 +1000,7 @@ static int tcc_i2c_slave_parse_dt(struct device_node *np, struct tcc_i2c_slave *
 	ret = of_property_read_u32(np, "port-mux", &i2c->port_mux);
 #endif
 	if(ret != 0) {
-		dev_err(i2c->dev, "failed to get port-mux\n");
+		dev_err(i2c->dev, "[ERROR][I2C] %s: failed to get port-mux\n", __func__);
 		return ret;
 	}
 	return 0;
@@ -1028,12 +1027,12 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(pdev->dev.of_node, "id", &id);
 	if(ret != 0) {
-		dev_err(&pdev->dev, "failed to get id\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get id\n");
 		return ret;
 	}
 
 	if(id >= TCC_I2C_SLV_MAX_NUM) {
-		dev_err(&pdev->dev, "wrong id %d\n", id);
+		dev_err(&pdev->dev, "[ERROR][I2C] wrong id %d\n", id);
 		return -EINVAL;
 	}
 
@@ -1044,69 +1043,69 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 	/* get base register */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(&pdev->dev, "failed to get base address\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get base address\n");
 		return -ENODEV;
 	}
 
 	i2c->phy_regs = res->start;
-	dev_dbg(&pdev->dev, "base 0x%08x\n", i2c->phy_regs);
+	dev_dbg(&pdev->dev, "[DEBUB][I2C] base 0x%08x\n", i2c->phy_regs);
 
 	i2c->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(i2c->regs)) {
 		ret = PTR_ERR(i2c->regs);
-		dev_err(&pdev->dev, "failed to remap base address\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to remap base address\n");
 		return ret;
 	}
 
 	/* get i2c port config register */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!res) {
-		dev_err(&pdev->dev, "failed to get port config address\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get port config address\n");
 		return -ENODEV;
 	}
 
-	dev_dbg(&pdev->dev, "port 0x%08x\n", res->start);
+	dev_dbg(&pdev->dev, "[DEBUG][I2C] port 0x%08x\n", res->start);
 
 	i2c->port_cfg = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(i2c->port_cfg)) {
 		ret = PTR_ERR(i2c->port_cfg);
-		dev_err(&pdev->dev, "failed to remap port config address\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to remap port config address\n");
 		return ret;
 	}
 
 	/* get port config info */
 	ret = tcc_i2c_slave_parse_dt(pdev->dev.of_node, i2c);
 	if(ret != 0) {
-		dev_err(&pdev->dev, "failed to get port-mux and id\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get port-mux and id\n");
 		return ret;
 	}
 
 	/* get byte command register */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (res) {
-		dev_info(&pdev->dev, "set memory bus byte command masking register\n");
-		dev_dbg(&pdev->dev, "byte command register 0x%08x\n", res->start);
+		dev_info(&pdev->dev, "[INFO][I2C] set memory bus byte command masking register\n");
+		dev_dbg(&pdev->dev, "[DEBUG][I2C] byte command register 0x%08x\n", res->start);
 		byte_cmd = devm_ioremap_resource(&pdev->dev, res);
 		if (i2c_slave_readl(byte_cmd) == 0xFFFF0000) {
 			byte_cmd_val = 0xFFF00000 | ((i2c->phy_regs >> 16) & 0x0000FFF0);
-			dev_dbg(&pdev->dev, "byte command write value = 0x%08x\n", byte_cmd_val);
+			dev_dbg(&pdev->dev, "[DEBUG][I2C] byte command write value = 0x%08x\n", byte_cmd_val);
 			i2c_slave_writel(byte_cmd_val, byte_cmd);
 		}
-		dev_dbg(&pdev->dev, "byte command read value  = 0x%08x\n", i2c_slave_readl(byte_cmd));
+		dev_dbg(&pdev->dev, "[DEBUG][I2C] byte command read value  = 0x%08x\n", i2c_slave_readl(byte_cmd));
 	}
 
 	/* get i2c irq number */
 	i2c->irq = platform_get_irq(pdev, 0);
 	if (i2c->irq < 0) {
-		dev_err(&pdev->dev, "failed to get irq number\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get irq number\n");
 		return i2c->irq;
 	}
-	dev_dbg(&pdev->dev, "irq 0x%08x\n", i2c->irq);
+	dev_dbg(&pdev->dev, "[DEBUG][I2C] irq 0x%08x\n", i2c->irq);
 
 	/* get and set iobus clk */
 	i2c->hclk = of_clk_get(pdev->dev.of_node, 0);
 	if(i2c->hclk == NULL) {
-		dev_err(&pdev->dev, "failed to get clock info\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to get clock info\n");
 		return -ENXIO;
 	}
 
@@ -1123,13 +1122,13 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 	ret = tcc_i2c_slave_init_buf(i2c, 1);
 	if(ret != 0) {
 		dev_err(&pdev->dev,
-			"Failed to allocate rx dma buffer\n");
+			"[ERROR][I2C] Failed to allocate rx dma buffer\n");
 		goto err_clk;
 	}
 	ret = tcc_i2c_slave_init_buf(i2c, 0);
 	if(ret != 0) {
 		dev_err(&pdev->dev,
-			"Failed to allocate tx dma buffer\n");
+			"[ERROR][I2C] Failed to allocate tx dma buffer\n");
 		goto err_mem_rx;
 	}
 
@@ -1139,7 +1138,7 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
     dev = device_create(tcc_i2c_slave_class, NULL, MKDEV(tcc_i2c_slave_major, i2c->id),
 		NULL, TCC_I2C_SLV_DEV_NAMES, i2c->id);
 	if(IS_ERR(dev)) {
-		dev_err(&pdev->dev, "failed to create device\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to create device\n");
 		ret = PTR_ERR(dev);
 		goto err_mem_tx;
 	}
@@ -1149,35 +1148,35 @@ static int tcc_i2c_slave_probe(struct platform_device *pdev)
 
 	ret = device_create_file(&pdev->dev, &dev_attr_fifo_byte);
 	if(ret != 0) {
-		dev_err(&pdev->dev, "failed to create attr (fifo byte)\n");
+		dev_err(&pdev->dev, "[ERROR][I2C] failed to create attr (fifo byte)\n");
 		goto err_dev;
 	}
 
 	ret = tcc_i2c_slave_dma_engine_probe(pdev, i2c);
 	if(ret != 0) {
-		dev_dbg(&pdev->dev, "i2c slave ch %d - TX/RX PIO mode\n", i2c->id);
+		dev_dbg(&pdev->dev, "[DEBUG][I2C] slave ch %d - TX/RX PIO mode\n", i2c->id);
 	}
 
 	if(i2c->dma.chan_tx != NULL) {
-		dev_info(&pdev->dev, "i2c slave ch %d - Tx DMA mode(%s %p)\n", i2c->id,
+		dev_info(&pdev->dev, "[INFO][I2C] slave ch %d - Tx DMA mode(%s %p)\n", i2c->id,
 			dma_chan_name(i2c->dma.chan_tx), i2c->dma.chan_tx);
 	} else {
-		dev_info(&pdev->dev, "i2c slave ch %d - Tx PIO mode\n", i2c->id);
+		dev_info(&pdev->dev, "[INFO][I2C] slave ch %d - Tx PIO mode\n", i2c->id);
 	}
 
 	if(i2c->dma.chan_rx != NULL) {
-		dev_info(&pdev->dev, "i2c slave ch %d - Rx DMA mode(%s %p)\n", i2c->id,
+		dev_info(&pdev->dev, "[INFO][I2C] slave ch %d - Rx DMA mode(%s %p)\n", i2c->id,
 			dma_chan_name(i2c->dma.chan_rx), i2c->dma.chan_rx);
 	} else {
-		dev_info(&pdev->dev, "i2c slave ch %d - Rx PIO mode\n", i2c->id);
+		dev_info(&pdev->dev, "[INFO][I2C] slave ch %d - Rx PIO mode\n", i2c->id);
 	}
 
-	dev_dbg(&pdev->dev, "i2c debugging log is enabled\n");
+	dev_dbg(&pdev->dev, "[DEBUG][I2C] debugging log is enabled\n");
 #ifdef TCC_USE_GFB_PORT
-	dev_info(&pdev->dev, "i2c slave ch %d @0x%08x gfb(scl %d sda %d)\n",
+	dev_info(&pdev->dev, "[INFO][I2C] slave ch %d @0x%08x gfb(scl %d sda %d)\n",
 		i2c->id, (unsigned int)i2c->regs, i2c->port_mux[0], i2c->port_mux[1]);
 #else
-	dev_info(&pdev->dev, "i2c slave ch %d @0x%08x port %d\n",
+	dev_info(&pdev->dev, "[INFO][I2C] slave ch %d @0x%08x port %d\n",
 		i2c->id, (unsigned int)i2c->regs, i2c->port_mux);
 #endif
 
@@ -1244,13 +1243,13 @@ static int tcc_i2c_slave_resume(struct device *dev)
 
 	if(i2c->hclk) {
 		if(clk_prepare_enable(i2c->hclk) != 0) {
-			dev_err(dev, "can't do i2c slave hclk clock enable\n");
+			dev_err(i2c->dev, "[ERROR][I2C] can't do i2c slave hclk clock enable\n");
 			return -ENXIO;
 		}
 	}
 	ret = tcc_i2c_slave_hwinit(i2c);
 	if (ret != 0) {
-		dev_err(dev, "failed to set clock and port configurations err %d\n",
+		dev_err(i2c->dev, "[ERROR][I2C] failed to set clock and port configurations err %d\n",
 			ret);
 		clk_disable_unprepare(i2c->hclk);
 		return ret;
@@ -1295,7 +1294,7 @@ static int __init tcc_i2c_slave_init(void)
 
 	ret = register_chrdev(0, TCC_I2C_SLV_CHRDEV_NAME, &tcc_i2c_slv_fops);
 	if(ret < 0) {
-		printk(KERN_ERR "tcc-i2c-slave : failed to register character device ret %d\n", ret);
+		printk(KERN_ERR "[ERROR][I2C] %s: failed to register character device ret %d\n", __func__, ret);
 		return ret;
 	}
 
@@ -1303,23 +1302,23 @@ static int __init tcc_i2c_slave_init(void)
 
 	tcc_i2c_slave_class = class_create(THIS_MODULE, TCC_I2C_SLV_CHRDEV_CLASS_NAME);
 	if(IS_ERR(tcc_i2c_slave_class)) {
-		printk(KERN_ERR "tcc-i2c-slave : failed to create class\n");
+		printk(KERN_ERR "[ERROR][I2C] %s: failed to create class\n", __func__);
 		ret = PTR_ERR(tcc_i2c_slave_class);
 		goto init_err;
 	}
 
 	ret = platform_driver_register(&tcc_i2c_slave_driver);
 	if(ret != 0) {
-		printk(KERN_ERR "tcc-i2c-slave : failed to create class\n");
+		printk(KERN_ERR "[ERROR][I2C] %s: failed to create class\n", __func__);
 		goto init_err;
 	}
 
-	printk("\x1b[32m[tcc_i2c_slave_init] Complete\n\x1b[0m");
+	printk(KERN_DEBUG "[DEBUG][I2C] %s: Complete\n", __func__);
 
 	return ret;
 init_err:
 	unregister_chrdev(tcc_i2c_slave_major, TCC_I2C_SLV_CHRDEV_NAME);
-	
+
 	return ret;
 }
 
