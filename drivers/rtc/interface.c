@@ -31,14 +31,14 @@ static int __rtc_read_time(struct rtc_device *rtc, struct rtc_time *tm)
 		memset(tm, 0, sizeof(struct rtc_time));
 		err = rtc->ops->read_time(rtc->dev.parent, tm);
 		if (err < 0) {
-			dev_dbg(&rtc->dev, "read_time: fail to read: %d\n",
+			dev_dbg(&rtc->dev, "[DEBUG][RTC]read_time: fail to read: %d\n",
 				err);
 			return err;
 		}
 
 		err = rtc_valid_tm(tm);
 		if (err < 0)
-			dev_dbg(&rtc->dev, "read_time: rtc_time isn't valid\n");
+			dev_dbg(&rtc->dev, "[DEBUG][RTC]read_time: rtc_time isn't valid\n");
 	}
 	return err;
 }
@@ -248,7 +248,7 @@ int __rtc_read_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 	 * case, especially for PCs.
 	 */
 	case day:
-		dev_dbg(&rtc->dev, "alarm rollover: %s\n", "day");
+		dev_dbg(&rtc->dev, "[DEBUG][RTC]alarm rollover: %s\n", "day");
 		t_alm += 24 * 60 * 60;
 		rtc_time64_to_tm(t_alm, &alarm->time);
 		break;
@@ -259,7 +259,7 @@ int __rtc_read_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 	 * this type of alarm.
 	 */
 	case month:
-		dev_dbg(&rtc->dev, "alarm rollover: %s\n", "month");
+		dev_dbg(&rtc->dev, "[DEBUG][RTC]alarm rollover: %s\n", "month");
 		do {
 			if (alarm->time.tm_mon < 11)
 				alarm->time.tm_mon++;
@@ -274,7 +274,7 @@ int __rtc_read_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 
 	/* Year rollover ... easy except for leap years! */
 	case year:
-		dev_dbg(&rtc->dev, "alarm rollover: %s\n", "year");
+		dev_dbg(&rtc->dev, "[DEBUG][RTC]alarm rollover: %s\n", "year");
 		do {
 			alarm->time.tm_year++;
 		} while (!is_leap_year(alarm->time.tm_year + 1900)
@@ -282,14 +282,14 @@ int __rtc_read_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
 		break;
 
 	default:
-		dev_warn(&rtc->dev, "alarm rollover not handled\n");
+		dev_warn(&rtc->dev, "[WARN][RTC]alarm rollover not handled\n");
 	}
 
 	err = rtc_valid_tm(&alarm->time);
 
 done:
 	if (err) {
-		dev_warn(&rtc->dev, "invalid alarm value: %d-%d-%d %d:%d:%d\n",
+		dev_warn(&rtc->dev, "[WARN][RTC]invalid alarm value: %d-%d-%d %d:%d:%d\n",
 			alarm->time.tm_year + 1900, alarm->time.tm_mon + 1,
 			alarm->time.tm_mday, alarm->time.tm_hour, alarm->time.tm_min,
 			alarm->time.tm_sec);
@@ -908,7 +908,7 @@ reprogram:
 			timer = container_of(next, struct rtc_timer, node);
 			timerqueue_del(&rtc->timerqueue, &timer->node);
 			timer->enabled = 0;
-			dev_err(&rtc->dev, "__rtc_set_alarm: err=%d\n", err);
+			dev_err(&rtc->dev, "[ERROR][RTC]__rtc_set_alarm: err=%d\n", err);
 			goto again;
 		}
 	} else

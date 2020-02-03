@@ -452,7 +452,7 @@ void rtc_dev_prepare(struct rtc_device *rtc)
 		return;
 
 	if (rtc->id >= RTC_DEV_MAX) {
-		dev_dbg(&rtc->dev, "too many RTC devices\n");
+		dev_dbg(&rtc->dev, "[DEBUG][RTC]too many RTC devices\n");
 		return;
 	}
 
@@ -473,7 +473,7 @@ void __init rtc_dev_init(void)
 
 	err = alloc_chrdev_region(&rtc_devt, 0, RTC_DEV_MAX, "rtc");
 	if (err < 0)
-		pr_err("failed to allocate char dev region\n");
+		pr_err("[ERROR][RTC]failed to allocate char dev region\n");
 }
 
 void __exit rtc_dev_exit(void)
