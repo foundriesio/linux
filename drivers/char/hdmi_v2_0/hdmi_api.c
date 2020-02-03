@@ -178,7 +178,7 @@ void hdmi_api_AvMute(int enable)
 	dpr_info("%s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
                 mutex_lock(&hdmi_apis.dev->mutex);
@@ -194,24 +194,24 @@ int hdmi_api_vsif_update(productParams_t *productParams)
 	dpr_info("%s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
                 if(productParams == NULL) {
-                        pr_err("%s productParams is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s productParams is NULL\r\n", __func__);
                         break;
                 }
 
                 mutex_lock(&hdmi_apis.dev->mutex);
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
                         ret = vendor_Configure(hdmi_apis.dev, productParams);
                 } else {
-                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&hdmi_apis.dev->mutex);
         }while(0);
@@ -225,18 +225,18 @@ int hdmi_api_vsif_update_for_hdr_10p(productParams_t *productParams)
 	dpr_info("%s\r\n", __func__);;
 	do {
 		if(hdmi_apis.dev == NULL) {
-			pr_err("%s device is not ready(NULL)\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
 			break;
 		}
 		if(productParams == NULL) {
-			pr_err("%s productParams is NULL\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s productParams is NULL\r\n", __func__);
 			break;
 		}
 
 		mutex_lock(&hdmi_apis.dev->mutex);
 		if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
 			if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-				pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+				printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
 				mutex_unlock(&hdmi_apis.dev->mutex);
 				break;
 			}
@@ -247,7 +247,7 @@ int hdmi_api_vsif_update_for_hdr_10p(productParams_t *productParams)
 			}
 			ret = vendor_Configure(hdmi_apis.dev, productParams);
 		} else {
-			pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+			printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
 		}
 		mutex_unlock(&hdmi_apis.dev->mutex);
 	}while(0);
@@ -265,24 +265,24 @@ int hdmi_api_vsif_update_by_index(int index)
         productParams_t productParams;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
 
                 videoParams = (videoParams_t*)hdmi_apis.dev->videoParam;
 
                 if(videoParams == NULL) {
-                        pr_err("%s videoParams is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s videoParams is NULL\r\n", __func__);
                         break;
                 }
 
                 if(hdmi_apis.dev->dolbyvision_visf_list == NULL) {
-                        pr_err("%s dolbyvision vsif is empty\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dolbyvision vsif is empty\r\n", __func__);
                         break;
                 }
 
                 if(index < 0 || index > 5) {
-                        pr_err("%s index(%d) is out of range\r\n", __func__, index);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s index(%d) is out of range\r\n", __func__, index);
                         break;
                 }
 
@@ -291,7 +291,7 @@ int hdmi_api_vsif_update_by_index(int index)
                 mutex_lock(&hdmi_apis.dev->mutex);
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
@@ -325,7 +325,7 @@ int hdmi_api_vsif_update_by_index(int index)
                         }
                         ret = vendor_Configure(hdmi_apis.dev, &productParams);
                 } else {
-                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&hdmi_apis.dev->mutex);
         }while(0);
@@ -367,26 +367,26 @@ static int hdmi_api_update_avi_infoframe(videoParams_t *videoParam)
 	dpr_info("%s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
                 if(videoParam == NULL) {
-                        pr_err("%s videoParam is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s videoParam is NULL\r\n", __func__);
                         break;
                 }
 		if(hdmi_apis.dev->videoParam == NULL) {
-			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s videoParam of dev is NULL\r\n", __func__);
                         break;
 		}
 
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 break;
                         }
 
 			if(packets_Configure(hdmi_apis.dev, videoParam, NULL) < 0) {
-				pr_err("%s failed packets_Configure <%d>\r\n", __func__, __LINE__);
+				printk(KERN_ERR "[ERROR][HDMI_V20]%s failed packets_Configure <%d>\r\n", __func__, __LINE__);
                                 break;
 			}
 			/* Update Video parameters */
@@ -409,7 +409,7 @@ static int hdmi_api_update_avi_infoframe(videoParams_t *videoParam)
 
 			ret = 0;
                 } else {
-                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                 }
         }while(0);
         return ret;
@@ -434,17 +434,17 @@ int hdmi_api_update_colorimetry(
 	dpr_info("%s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
 		if(hdmi_apis.dev->videoParam == NULL) {
-			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s videoParam of dev is NULL\r\n", __func__);
                         break;
 		}
                 mutex_lock(&hdmi_apis.dev->mutex);
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
@@ -454,7 +454,7 @@ int hdmi_api_update_colorimetry(
 
 			ret = hdmi_api_update_avi_infoframe(&videoParam);
                 } else {
-                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&hdmi_apis.dev->mutex);
         }while(0);
@@ -488,18 +488,18 @@ int hdmi_api_update_quantization(int quantization_range)
 	dpr_info("%s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
-                        pr_err("%s device is not ready(NULL)\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
                         break;
                 }
 
 		if(hdmi_apis.dev->videoParam == NULL) {
-			pr_err("%s videoParam of dev is NULL\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s videoParam of dev is NULL\r\n", __func__);
                         break;
 		}
                 mutex_lock(&hdmi_apis.dev->mutex);
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
@@ -526,7 +526,7 @@ int hdmi_api_update_quantization(int quantization_range)
 
 			ret = hdmi_api_update_avi_infoframe(&videoParam);
                 } else {
-                        pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&hdmi_apis.dev->mutex);
         }while(0);
@@ -539,13 +539,13 @@ int hdmi_api_dump_regs(void)
 	unsigned int i, reg_val;
 	do {
 		if(hdmi_apis.dev == NULL) {
-			pr_err("%s device is not ready(NULL)\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
 			break;
 		}
 		mutex_lock(&hdmi_apis.dev->mutex);
                 if(!dwc_hdmi_is_suspended(hdmi_apis.dev)) {
                         if(!test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
-                                pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
@@ -633,7 +633,7 @@ int hdmi_api_dump_regs(void)
 			}
 			printk("\r\n");
 		} else {
-			pr_err("## Failed to dump because hdmi linke was suspended\r\n");
+			printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to dump because hdmi linke was suspended\r\n");
 		}
 		mutex_unlock(&hdmi_apis.dev->mutex);
 	}while(0);

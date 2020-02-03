@@ -78,7 +78,7 @@ int packets_Configure(struct hdmi_tx_dev *dev, videoParams_t * video, productPar
 {
 	do {
 		if(video->mHdmi == DVI){
-			pr_err(" %s DVI mode selected: packets not configured\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20] %s DVI mode selected: packets not configured\r\n", __func__);
 			break;
 		}
 
@@ -262,7 +262,7 @@ int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 *
         int ret = -1;
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
@@ -277,7 +277,7 @@ int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 *
 		}
 		fc_vsd_vendor_OUI(dev, oui);
         	if (fc_vsd_vendor_payload(dev, payload, length)) {
-                        pr_err("%s failed to set payload\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed to set payload\r\n", __func__);
         		break;
         	}
         	if (autoSend) {

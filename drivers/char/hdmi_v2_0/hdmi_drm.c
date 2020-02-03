@@ -35,7 +35,7 @@ static int drm_infoframe_verification(struct hdmi_tx_dev *dev, DRM_Packet_t * dr
 
         do {
                 if(drmparm == NULL) {
-                        pr_err("%s drmparm is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s drmparm is NULL\r\n", __func__);
                         break;
                 }
                 if(drmparm->mInfoFrame.version != 1) {
@@ -76,11 +76,11 @@ static void drm_update(struct hdmi_tx_dev *dev)
 static void drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 {
         if(dev == NULL) {
-                pr_err("%s dev is NULL\r\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                 return;
         }
         if(drmparm == NULL) {
-                pr_err("%s drmparm is NULL\r\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s drmparm is NULL\r\n", __func__);
                 return;
         }
 	hdmi_dev_write(dev,FC_DRM_HB0_DATA_BYTE, drmparm->mInfoFrame.version);
@@ -160,12 +160,12 @@ int hdmi_apply_drm(struct hdmi_tx_dev *dev)
 	int ret = -1;
 	do {
 		if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
 		if(dev->drmParm == NULL) {
-                        pr_err("%s drmParm is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s drmParm is NULL\r\n", __func__);
                         break;
                 }
 
@@ -195,17 +195,17 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
         int ret = -1;
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
                 if(drmparm == NULL) {
-                        pr_err("%s drmparm is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s drmparm is NULL\r\n", __func__);
                         break;
                 }
 
 		if(dev->drmParm == NULL) {
-                        pr_err("%s dev->drmParm is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev->drmParm is NULL\r\n", __func__);
                         break;
                 }
 

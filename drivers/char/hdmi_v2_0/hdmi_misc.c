@@ -91,7 +91,7 @@ void dwc_hdmi_hw_reset(struct hdmi_tx_dev *dev, int reset_on)
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
@@ -472,10 +472,10 @@ unsigned int hdmi_get_current_output_vic(struct hdmi_tx_dev *dev)
                                         }
                                 }
                         } else {
-				pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+				printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
 			}
                 } else {
-			pr_err("## Failed to get vic because hdmi linke was suspended\r\n");
+			printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to get vic because hdmi linke was suspended\r\n");
 		}
         }
         return vic;
@@ -522,7 +522,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
         struct hdmi_tx_dev *dev = (struct hdmi_tx_dev *)file->private_data;
 
 	if(dev == NULL){
-		pr_err("%s:hdmi_tx_dev device is NULL\n", FUNC_NAME);
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:hdmi_tx_dev device is NULL\n", FUNC_NAME);
                 ret = -EINVAL;
                 goto end_process;
 	}
@@ -533,13 +533,13 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         dwc_hdmi_ioctl_data hdmi_data;
         		if(copy_from_user(&hdmi_data, (void __user *)arg, sizeof(dwc_hdmi_ioctl_data))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
         		hdmi_data.value = hdmi_dev_read(dev, hdmi_data.address);
 
         		if(copy_to_user((void __user *)arg, &hdmi_data, sizeof(dwc_hdmi_ioctl_data))) {
-                                pr_err("%s:READ:  reg 0x%08x [-EIO]\n", FUNC_NAME, hdmi_data.address);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s:READ:  reg 0x%08x [-EIO]\n", FUNC_NAME, hdmi_data.address);
                                 break;
                         }
                         ret = 0;
@@ -550,16 +550,16 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         dwc_hdmi_ioctl_data hdmi_data;
         		if(copy_from_user(&hdmi_data, (void __user *)arg, sizeof(dwc_hdmi_ioctl_data)) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
         		}
         		if(hdmi_dev_write(dev, hdmi_data.address, hdmi_data.value)) {
                                 ret = -EIO;
-                                pr_err("%s:WRITE: reg 0x%08x [-EIO]\n", __func__, hdmi_data.address);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s:WRITE: reg 0x%08x [-EIO]\n", __func__, hdmi_data.address);
         			break;
         		}
                         if(copy_to_user((void __user *)arg, &hdmi_data, sizeof(dwc_hdmi_ioctl_data))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         ret = 0;
@@ -570,7 +570,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
         case FB_HDMI_GET_HDCP22:
                 if(copy_to_user((void __user *)arg, &dev->hdcp22, sizeof(dev->hdcp22))) {
-                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
                 ret = 0;
@@ -585,7 +585,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
                         if(time_log != NULL) {
                                 if(copy_from_user(&time_log, (void __user *)arg, 100)) {
-                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
                                 do_gettimeofday(&curr_val);
@@ -616,14 +616,14 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         char* tmp_pointer;
 
                         if(copy_from_user(&log_data, (void __user *)arg, sizeof(log_data))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         tmp_pointer = (char __user *)log_data.data;
                         log_data.data = memdup_user(tmp_pointer, log_data.len);
                         if (IS_ERR_OR_NULL(log_data.data)) {
                                 ret = PTR_ERR(log_data.data);
-                                pr_err("HDMI_DRV_LOG memdup_user failed (ret=%d)\r\n", (int)ret);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]HDMI_DRV_LOG memdup_user failed (ret=%d)\r\n", (int)ret);
                                 break;
                         }
                         pr_info("%s\r\n", log_data.data);
@@ -639,7 +639,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         mutex_lock(&dev->mutex);
                         data = test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
                         if(copy_to_user((void __user *)arg, &data, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -652,7 +652,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         unsigned int data ;
                         if(copy_from_user(&data, (void __user *)arg, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         mutex_lock(&dev->mutex);
@@ -694,7 +694,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         mutex_lock(&dev->mutex);
                         data = dwc_hdmi_is_suspended(dev);
                         if(copy_to_user((void __user *)arg, &data, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -709,7 +709,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         mutex_lock(&dev->mutex);
                         data = test_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status);
                         if(copy_to_user((void __user *)arg, &data, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -723,7 +723,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         #ifdef CONFIG_PM
                         int data ;
                         if(copy_from_user(&data, (void __user *)arg, sizeof(int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         ret = hdmi_tx_blank(dev, data);
@@ -736,7 +736,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         hdmi_soc_features soc_features;
                         hdmi_get_soc_features(dev, &soc_features);
                         if(copy_to_user((void __user *)arg, &soc_features, sizeof(soc_features))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
 				break;
                         }
 			ret = 0;
@@ -748,7 +748,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 hdmi_board_features board_features;
                                 hdmi_get_board_features(dev, &board_features);
                                 if(copy_to_user((void __user *)arg, &board_features, sizeof(board_features))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
                                 ret = 0;
@@ -760,7 +760,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         hdmi_dolbyvision_vsif_transfer_data transfer_data;
 
                         if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
@@ -776,7 +776,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if (IS_ERR_OR_NULL(dev->dolbyvision_visf_list)) {
                                 ret = PTR_ERR(dev->dolbyvision_visf_list);
                                 dev->dolbyvision_visf_list = NULL;
-                                pr_err("HDMI_STORE_DOLBYVISION_VSIF_LIST memdup_user failed (ret=%d)\r\n", (int)ret);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]HDMI_STORE_DOLBYVISION_VSIF_LIST memdup_user failed (ret=%d)\r\n", (int)ret);
                                 break;
                         }
                         memcpy(dev->dolbyvision_visf_list, transfer_data.vsif_list, transfer_data.size);
@@ -788,15 +788,15 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         dwc_hdmi_dtd_data dtd_param;
                         if(copy_from_user(&dtd_param, (void __user *)arg, sizeof(dtd_param))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         if(hdmi_dtd_fill(&dtd_param.dtd, dtd_param.code, dtd_param.refreshRate)) {
-                                pr_err("%s invalid code (%d) and (%d)hz\r\n", __func__, dtd_param.code, dtd_param.refreshRate);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s invalid code (%d) and (%d)hz\r\n", __func__, dtd_param.code, dtd_param.refreshRate);
                                 break;
                         }
                         if(copy_to_user((void __user *)arg, &dtd_param, sizeof(dtd_param))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         ret = 0;
@@ -812,7 +812,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 unsigned char *data_ptrs;
                                 dwc_hdmi_ddc_transfer_data transfer_data;
                                 if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
-                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
 
@@ -820,17 +820,17 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 data_ptrs = memdup_user((u8 __user *)transfer_data.data, transfer_data.len);
                                 if (IS_ERR_OR_NULL(data_ptrs)) {
                                         ret = PTR_ERR(data_ptrs);
-                                        pr_err("HDMI_DDC_WRITE_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]HDMI_DDC_WRITE_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 ret = hdmi_ddc_write(dev, transfer_data.i2cAddr, transfer_data.addr, transfer_data.len, transfer_data.data);
                                 kfree(data_ptrs);
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to hdmi_ddc_write because hdmi linke was suspended \r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdmi_ddc_write because hdmi linke was suspended \r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -842,14 +842,14 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 unsigned char* data_ptrs;
                                 dwc_hdmi_ddc_transfer_data transfer_data;
                                 if(copy_from_user(&transfer_data, (void __user *)arg, sizeof(transfer_data))) {
-                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 data_ptrs = devm_kmalloc(dev->parent_dev, transfer_data.len, GFP_KERNEL);
                                 if (IS_ERR_OR_NULL(data_ptrs)) {
                                         ret = PTR_ERR(data_ptrs);
-                                        pr_err("HDMI_DDC_READ_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]HDMI_DDC_READ_DATA memdup_user failed (ret=%d)\r\n", (int)ret);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
@@ -858,14 +858,14 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         switch(transfer_data.i2cAddr) {
                                                 case 0x50:
 							/* HDMI EDID */
-                                                        pr_err("## Failed to edid read\r\n");
+                                                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to edid read\r\n");
                                                         break;
                                                 case 0x74:
 							/* HDMI HDCP */
-                                                        pr_err("## Failed to hdcp read\r\n");
+                                                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdcp read\r\n");
                                                         break;
                                                 default:
-                                                        pr_err("## Failed to i2c unknown(0x%x) read\r\n", transfer_data.i2cAddr);
+                                                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to i2c unknown(0x%x) read\r\n", transfer_data.i2cAddr);
                                                         break;
                                         }
                                         devm_kfree(dev->parent_dev, data_ptrs);
@@ -873,7 +873,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         break;
                                 }
                                 if(copy_to_user(transfer_data.data, data_ptrs, transfer_data.len)) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         devm_kfree(dev->parent_dev, data_ptrs);
                                         mutex_unlock(&dev->mutex);
                                         break;
@@ -881,10 +881,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 devm_kfree(dev->parent_dev, data_ptrs);
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to hdmi_ddc_read because hdmi linke was suspended \r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdmi_ddc_read because hdmi linke was suspended \r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -896,21 +896,21 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 unsigned int version;
                                 ret = scdc_read_sink_version(dev, &version);
                                 if (ret < 0) {
-                                        pr_err("## Failed to scdc_read_sink_version\r\n");
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_read_sink_version\r\n");
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 if(copy_to_user((void __user *)arg, &version, sizeof(version))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to scdc_read_sink_version because hdmi linke was suspended \r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_read_sink_version because hdmi linke was suspended \r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -922,21 +922,21 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 unsigned int version;
                                 ret = scdc_read_source_version(dev, &version);
                                 if (ret < 0) {
-                                        pr_err("## Failed to scdc_read_source_version\r\n");
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_read_source_version\r\n");
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 if(copy_to_user((void __user *)arg, &version, sizeof(version))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to scdc_read_source_version because hdmi linke was suspended \r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_read_source_version because hdmi linke was suspended \r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -947,16 +947,16 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 				unsigned int version;
 				if(copy_from_user(&version, (void __user *)arg, sizeof(unsigned int))) {
-                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
 				}
                                 ret = scdc_write_source_version(dev, version);
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to scdc_write_source_version because hdmi linke was suspended \r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_write_source_version because hdmi linke was suspended \r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -968,10 +968,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 hdmi_i2cddc_bus_clear(dev);
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to scdc_write_source_version because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to scdc_write_source_version because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&dev->mutex);
                 break;
@@ -982,7 +982,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 ret = scdc_set_tmds_bit_clock_ratio_and_scrambling(dev, 0, 0);
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
@@ -994,14 +994,14 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int enable;
                                 if(copy_from_user(&enable, (void __user *)arg, sizeof(int))) {
-                                        pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 scrambling(dev, (uint8_t)enable);
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
@@ -1013,13 +1013,13 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int enable = scdc_scrambling_status(dev);
                                 if(copy_to_user((void __user *)arg, &enable, sizeof(enable))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
@@ -1031,7 +1031,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int wait_time_ms = scrambling_get_wait_time();
                                 if(copy_to_user((void __user *)arg, &wait_time_ms, sizeof(wait_time_ms))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
@@ -1047,13 +1047,13 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                 int tmds_config_status = scdc_tmds_config_status(dev);
                                 if(copy_to_user((void __user *)arg, &tmds_config_status, sizeof(tmds_config_status))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         mutex_unlock(&dev->mutex);
                                         break;
                                 }
                                 ret = 0;
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
@@ -1069,7 +1069,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         ret = scdc_error_detection(dev, &hdmi_scdc_error_data);
                                         if(!ret && (void __user *)arg != NULL) {
                                                 if(copy_to_user((void __user *)arg, &hdmi_scdc_error_data, sizeof(struct hdmi_scdc_error_data))) {
-                                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                         mutex_unlock(&dev->mutex);
                                                         break;
                                                 }
@@ -1077,7 +1077,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         }
                                 }
                         }else {
-                                //pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                //printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 }
                 mutex_unlock(&dev->mutex);
@@ -1090,10 +1090,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 		ret = audio_Initialize(dev);
                 		pr_info("HDMI Audio Init!!!\n");
                         }else {
-                                pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                         }
                 } else {
-                        pr_err("## Failed to audio_Initialize because hdmi linke was suspended\r\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to audio_Initialize because hdmi linke was suspended\r\n");
                 }
                 mutex_unlock(&dev->mutex);
 		break;
@@ -1102,7 +1102,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         audioParams_t   audioParam;
                         if(copy_from_user(&audioParam, (void __user *)arg, sizeof(audioParams_t))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
@@ -1112,10 +1112,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         memcpy(dev->audioParam, &audioParam, sizeof(audioParam));
                                         ret = audio_Configure(dev, &audioParam);
                 		}else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
                         } else {
-                                pr_err("## Failed to audio_Configure because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to audio_Configure because hdmi linke was suspended\r\n");
                         }
                         mutex_unlock(&dev->mutex);
 	        }
@@ -1125,7 +1125,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         int hotplug_irq_enable;
                         if(copy_from_user(&hotplug_irq_enable, (void __user *)arg, sizeof(hotplug_irq_enable))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
@@ -1138,10 +1138,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         }
                                         ret = 0;
                                 }else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
                         }else {
-                                pr_err("## Failed to hdmi_hpd_enable because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdmi_hpd_enable because hdmi linke was suspended\r\n");
                         }
 			dev->hotplug_irq_enable = hotplug_irq_enable;
                         mutex_unlock(&dev->mutex);
@@ -1151,7 +1151,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
         case HDMI_HPD_GET_STATUS:
                 mutex_lock(&dev->mutex);
                 if(copy_to_user((void __user *)arg, &dev->hotplug_status, sizeof(int))) {
-                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                         mutex_unlock(&dev->mutex);
                         break;
                 }
@@ -1163,7 +1163,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         productParams_t productParams;
                         if(copy_from_user(&productParams, (void __user *)arg, sizeof(productParams_t))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
@@ -1173,11 +1173,11 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                                         ret = vendor_Configure(dev, &productParams);
                                 } else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
 
                                 }
                         } else {
-                                pr_err("## Failed to vendor_Configure because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to vendor_Configure because hdmi linke was suspended\r\n");
                         }
                         mutex_unlock(&dev->mutex);
                 }
@@ -1188,7 +1188,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         void fc_force_output(struct hdmi_tx_dev *dev, int enable);
                         unsigned int magic;
                         if(copy_from_user(&magic, (void __user *)arg, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
 
@@ -1205,7 +1205,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         int pre_config = 0;
                         if(copy_to_user((void __user *)arg, &pre_config, sizeof(int))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -1223,7 +1223,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
 
                         if(copy_from_user(&api_data, (void __user *)arg, api_size)) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         // Need Validate Check.!!
@@ -1262,7 +1262,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                 {
                         unsigned int magic;
                         if(copy_from_user(&magic, (void __user *)arg, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         BUG_ON(magic != HDMI_API_DISABLE_MAGIC);
@@ -1280,7 +1280,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		{
 			unsigned int magic, val;
 			if(copy_from_user(&magic, (void __user *)arg, sizeof(unsigned int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
 			}
 			BUG_ON((magic & HDMI_API_PHY_MASK_MAGIC) != HDMI_API_PHY_MASK_MAGIC);
@@ -1292,10 +1292,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                         dwc_hdmi_phy_mask(dev, val);
                                         ret = 0;
                                 } else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
                         } else {
-                                pr_err("## Failed to dwc_hdmi_phy_mask because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to dwc_hdmi_phy_mask because hdmi linke was suspended\r\n");
                         }
 			mutex_unlock(&dev->mutex);
 		}
@@ -1305,7 +1305,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		{
 			DRM_Packet_t DRMParm;
                         if(copy_from_user(&DRMParm, (void __user *)arg, sizeof(DRM_Packet_t))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         mutex_lock(&dev->mutex);
@@ -1347,7 +1347,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                         }
                         //printk("drm valid=%d\r\n", valid);
                         if(copy_to_user((void __user *)arg, &valid, sizeof(valid))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -1361,7 +1361,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		{
 			int update;
                         if(copy_from_user(&update, (void __user *)arg, sizeof(int))) {
-                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                 break;
                         }
                         mutex_lock(&dev->mutex);
@@ -1378,12 +1378,12 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 	case HDMI_API_GET_DRM_CONFIG:
 		{
 			if(dev->drmParm == NULL) {
-				pr_err("%s drmParm is NULL at line(%d)\r\n", __func__, __LINE__);
+				printk(KERN_ERR "[ERROR][HDMI_V20]%s drmParm is NULL at line(%d)\r\n", __func__, __LINE__);
 				break;
 			}
 			mutex_lock(&dev->mutex);
 			if(copy_to_user((void __user *)arg, dev->drmParm, sizeof(DRM_Packet_t))) {
-                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
                                 break;
                         }
@@ -1399,10 +1399,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 				if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 					_HDCP22CtrlRegReset(dev);
 				} else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
 			} else {
-                                pr_err("## Failed to hdcp22ctrl reg reset because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdcp22ctrl reg reset because hdmi linke was suspended\r\n");
                         }
 			ret = 0;
 			mutex_unlock(&dev->mutex);
@@ -1417,10 +1417,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 					int rx_sense = hdmi_phy_get_rx_sense_status(dev);
 					ret = copy_to_user((void __user *)arg, &rx_sense, sizeof(rx_sense));
 				} else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
 			}else {
-                                pr_err("## Failed to hdmi_phy_get_rxsense because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdmi_phy_get_rxsense because hdmi linke was suspended\r\n");
                         }
 			mutex_unlock(&dev->mutex);
 		}
@@ -1434,10 +1434,10 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 					int hdcp22_status = _HDCP22RegStatusRead(dev);
 					ret = copy_to_user((void __user *)arg, &hdcp22_status, sizeof(hdcp22_status));
 				} else {
-                                        pr_err(" HDMI is not powred <%d>\r\n", __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V20] HDMI is not powred <%d>\r\n", __LINE__);
                                 }
 			}else {
-                                pr_err("## Failed to hdcp22_status because hdmi linke was suspended\r\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to hdcp22_status because hdmi linke was suspended\r\n");
                         }
 			mutex_unlock(&dev->mutex);
 		}
@@ -1445,7 +1445,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 
 	default:
 		if (dev->verbose >= VERBOSE_IO)
-                        pr_err("%s:IOCTL (0x%x) is unknown!\n", FUNC_NAME, cmd);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:IOCTL (0x%x) is unknown!\n", FUNC_NAME, cmd);
 		break;
 	}
 
