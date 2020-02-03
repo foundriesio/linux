@@ -123,6 +123,14 @@ static const struct i2c_device_id videosource_id_table[] = {
 
 static struct of_device_id videosource_of_match[] = {
 	{
+		.compatible = "analogdevices,adv7182",
+		.data		= &videosource_adv7182,
+	},
+	{
+		.compatible = "davicom,dm5886",
+		.data		= &videosource_dm5886,
+	},
+	{
 		.compatible = "intersil,isl79988",
 		.data		= &videosource_isl79988,
 	},

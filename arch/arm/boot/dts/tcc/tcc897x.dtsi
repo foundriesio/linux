@@ -2195,7 +2195,6 @@
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		4>;
 		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		vin		= <&vioc_vin		VIOC_VIN30>;
 		viqe		= <&vioc_viqe		VIOC_VIQE>;
