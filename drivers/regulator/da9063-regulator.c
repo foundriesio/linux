@@ -211,7 +211,7 @@ static int da9063_buck_set_mode(struct regulator_dev *rdev, unsigned mode)
 	default:
 		return -EINVAL;
 	}
-	printk("Set PMIC mode : %d\n", val);
+	printk(KERN_INFO "[INFO][Regulator]Set PMIC mode : %d\n", val);
 
 	return regmap_field_write(regl->mode, val);
 }
@@ -232,7 +232,7 @@ static unsigned da9063_buck_get_mode(struct regulator_dev *rdev)
 	ret = regmap_field_read(regl->mode, &val);
 	if (ret < 0)
 		return ret;
-	printk("Get PMIC mode : %d\n", val);
+	printk(KERN_INFO "[INFO][Regulator]Get PMIC mode : %d\n", val);
 
 	switch (val) {
 	default:
@@ -667,7 +667,7 @@ static struct da9063_regulators_pdata *da9063_parse_regulators_dt(
 
 	node = of_get_child_by_name(pdev->dev.parent->of_node, "regulators");
 	if (!node) {
-		dev_err(&pdev->dev, "Regulators device node not found\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Regulators device node not found\n");
 		return ERR_PTR(-ENODEV);
 	}
 
@@ -675,7 +675,7 @@ static struct da9063_regulators_pdata *da9063_parse_regulators_dt(
 				 ARRAY_SIZE(da9063_matches));
 	of_node_put(node);
 	if (num < 0) {
-		dev_err(&pdev->dev, "Failed to match regulators\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to match regulators\n");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -737,7 +737,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 
 	if (IS_ERR(regl_pdata) || regl_pdata->n_regulators == 0) {
 		dev_err(&pdev->dev,
-			"No regulators defined for the platform\n");
+			"[ERROR][Regulator]No regulators defined for the platform\n");
 		return -ENODEV;
 	}
 
@@ -747,7 +747,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 			break;
 	}
 	if (!model->regulator_info) {
-		dev_err(&pdev->dev, "Chip model not recognised (%u)\n",
+		dev_err(&pdev->dev, "[ERROR][Regulator]Chip model not recognised (%u)\n",
 			da9063->model);
 		return -ENODEV;
 	}
@@ -755,7 +755,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 	ret = regmap_read(da9063->regmap, DA9063_REG_CONFIG_H, &val);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
-			"Error while reading BUCKs configuration\n");
+			"[ERROR][Regulator]Error while reading BUCKs configuration\n");
 		return ret;
 	}
 	bcores_merged = val & DA9063_BCORE_MERGE;
@@ -851,7 +851,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 						     &config);
 		if (IS_ERR(regl->rdev)) {
 			dev_err(&pdev->dev,
-				"Failed to register %s regulator\n",
+				"[ERROR][Regulator]Failed to register %s regulator\n",
 				regl->desc.name);
 			return PTR_ERR(regl->rdev);
 		}
@@ -862,7 +862,7 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 	/* LDOs overcurrent event support */
 	irq = platform_get_irq_byname(pdev, "LDO_LIM");
 	if (irq < 0) {
-		dev_err(&pdev->dev, "Failed to get IRQ.\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to get IRQ.\n");
 		return irq;
 	}
 
@@ -871,11 +871,11 @@ static int da9063_regulator_probe(struct platform_device *pdev)
 				IRQF_TRIGGER_LOW | IRQF_ONESHOT,
 				"LDO_LIM", regulators);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to request LDO_LIM IRQ.\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to request LDO_LIM IRQ.\n");
 		return ret;
 	}
 #else
-	dev_info(&pdev->dev, "Skip requesting LOD_LIM IRQ\n");
+	dev_info(&pdev->dev, "[INFO][Regulator]Skip requesting LOD_LIM IRQ\n");
 #endif
 
 	return 0;

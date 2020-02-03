@@ -52,7 +52,7 @@ static int dummy_regulator_probe(struct platform_device *pdev)
 	dummy_regulator_rdev = regulator_register(&dummy_desc, &config);
 	if (IS_ERR(dummy_regulator_rdev)) {
 		ret = PTR_ERR(dummy_regulator_rdev);
-		pr_err("Failed to register regulator: %d\n", ret);
+		pr_err("[ERROR][Regulator]Failed to register regulator: %d\n", ret);
 		return ret;
 	}
 
@@ -74,20 +74,20 @@ void __init regulator_dummy_init(void)
 
 	dummy_pdev = platform_device_alloc("reg-dummy", -1);
 	if (!dummy_pdev) {
-		pr_err("Failed to allocate dummy regulator device\n");
+		pr_err("[ERROR][Regulator]Failed to allocate dummy regulator device\n");
 		return;
 	}
 
 	ret = platform_device_add(dummy_pdev);
 	if (ret != 0) {
-		pr_err("Failed to register dummy regulator device: %d\n", ret);
+		pr_err("[ERROR][Regulator]Failed to register dummy regulator device: %d\n", ret);
 		platform_device_put(dummy_pdev);
 		return;
 	}
 
 	ret = platform_driver_register(&dummy_regulator_driver);
 	if (ret != 0) {
-		pr_err("Failed to register dummy regulator driver: %d\n", ret);
+		pr_err("[ERROR][Regulator]Failed to register dummy regulator driver: %d\n", ret);
 		platform_device_unregister(dummy_pdev);
 	}
 }

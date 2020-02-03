@@ -366,7 +366,7 @@ int devm_regulator_bulk_register_supply_alias(struct device *dev,
 
 err:
 	dev_err(dev,
-		"Failed to create supply alias %s,%s -> %s,%s\n",
+		"[ERROR][Regulator]Failed to create supply alias %s,%s -> %s,%s\n",
 		id[i], dev_name(dev), alias_id[i], dev_name(alias_dev));
 
 	while (--i >= 0)

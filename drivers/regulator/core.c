@@ -40,15 +40,15 @@
 #include "internal.h"
 
 #define rdev_crit(rdev, fmt, ...)					\
-	pr_crit("%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_crit("[CRIT][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 #define rdev_err(rdev, fmt, ...)					\
-	pr_err("%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_err("[ERROR][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 #define rdev_warn(rdev, fmt, ...)					\
-	pr_warn("%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_warn("[WARN][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 #define rdev_info(rdev, fmt, ...)					\
-	pr_info("%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_info("[INFO][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 #define rdev_dbg(rdev, fmt, ...)					\
-	pr_debug("%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
+	pr_debug("[DEBUG][Regulator]%s: " fmt, rdev_get_name(rdev), ##__VA_ARGS__)
 
 static DEFINE_MUTEX(regulator_list_mutex);
 static LIST_HEAD(regulator_map_list);
@@ -1600,7 +1600,7 @@ struct regulator *_regulator_get(struct device *dev, const char *id,
 	}
 
 	if (id == NULL) {
-		pr_err("get() with no identifier\n");
+		pr_err("[ERROR][Regulator]get() with no identifier\n");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -3650,7 +3650,7 @@ int regulator_bulk_enable(int num_consumers,
 err:
 	for (i = 0; i < num_consumers; i++) {
 		if (consumers[i].ret < 0)
-			pr_err("Failed to enable %s: %d\n", consumers[i].supply,
+			pr_err("[ERROR][Regulator]Failed to enable %s: %d\n", consumers[i].supply,
 			       consumers[i].ret);
 		else
 			regulator_disable(consumers[i].consumer);
@@ -3687,11 +3687,11 @@ int regulator_bulk_disable(int num_consumers,
 	return 0;
 
 err:
-	pr_err("Failed to disable %s: %d\n", consumers[i].supply, ret);
+	pr_err("[ERROR][Regulator]Failed to disable %s: %d\n", consumers[i].supply, ret);
 	for (++i; i < num_consumers; ++i) {
 		r = regulator_enable(consumers[i].consumer);
 		if (r != 0)
-			pr_err("Failed to re-enable %s: %d\n",
+			pr_err("[ERROR][Regulator]Failed to re-enable %s: %d\n",
 			       consumers[i].supply, r);
 	}
 
@@ -4538,7 +4538,7 @@ static int __init regulator_init(void)
 
 	debugfs_root = debugfs_create_dir("regulator", NULL);
 	if (!debugfs_root)
-		pr_warn("regulator: Failed to create debugfs directory\n");
+		pr_warn("[WARN][Regulator]regulator: Failed to create debugfs directory\n");
 
 	debugfs_create_file("supply_map", 0444, debugfs_root, NULL,
 			    &supply_map_fops);
