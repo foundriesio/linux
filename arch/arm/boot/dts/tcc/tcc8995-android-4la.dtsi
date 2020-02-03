@@ -23,18 +23,17 @@
 	compatible = "regulator-gpio";
 
 	regulator-name = "vdd_cpu0";
-	regulator-min-microvolt = < 800000>;
-	regulator-max-microvolt = <1000000>;
+	regulator-min-microvolt = <800000>;
+        regulator-max-microvolt = <900000>;
 	regulator-type = "voltage";
 	regulator-always-on;
 
 	gpios = <&gpf 22 0x4>;	//CPU_VOLCTL0
 
-	gpios-states = <0>;
+	gpios-states = <1>;
 
-	states = < 800000 0x1
-		900000 0x2
-		1000000 0x3
+        states = < 800000 0x0
+                900000 0x1
 	>;
 
 	startup-delay-us = <100000>;
@@ -45,17 +44,16 @@
 	compatible = "regulator-gpio";
 
 	regulator-name = "vdd_mali";
-	regulator-min-microvolt = <700000>;
-	regulator-max-microvolt = <900000>;
+	regulator-min-microvolt = <760000>;
+	regulator-max-microvolt = <800000>;
 	regulator-type = "voltage";
 	regulator-always-on;
 
 	gpios = <&gpf 21 0x4>;	//GB_VOLCTL1, GB_VOLCTL0
-	gpios-states = <0>;
+	gpios-states = <1>;
 
-	states = < 700000 0x1
-		800000 0x2
-		900000 0x3
+	states = < 760000 0x0
+		800000 0x1
 		>;
 
 	startup-delay-us = <100000>;
@@ -198,7 +196,6 @@
 	regulator-ramp-delay = <10>;
 	regulator-always-on;
 
-	//gpios = <&gpa 4 0x4>;	//EMMC_VOLCTL
 	gpios-states = <0>;
 	states = < 1800000 0x0
 		3300000 0x1
@@ -279,7 +276,7 @@
 
 // DXB
 &i2c1 {
-	port-mux = <8>;
+	port-mux = <12>;
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;	//gpf 19, 20
@@ -305,6 +302,12 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&tsrx3_idle>;	//gpf 0, 1, 2, 3
 	pinctrl-1 = <&tsrx3_active>;
+	//pinctrl-0 = <&tsrx3_idle_parallel>;	//gpf 0,1,2,3,4,5,6,7,8,9,10
+	//pinctrl-1 = <&tsrx3_active_parallel>;
+
+	clocks = <&clk_peri PERI_TSRX3>;
+	clock-names = "tsrx3";
+	status = "okay";
 };
 
 &tcc_hwdmx_tsif1 {
@@ -313,6 +316,25 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&tsrx0_idle>;	//gpd 8, 10, 9, 7
 	pinctrl-1 = <&tsrx0_active>;
+
+	clocks = <&clk_peri PERI_TSRX0>;
+	clock-names = "tsrx0";
+	status = "okay";
+};
+
+&si_power {
+	compatible = "telechips,si_power";
+	pw-gpios = <&gpd 0 0>;
+	/*PD, RST, IRQ, SDO*/
+	si0-gpios = <0>, <&gpd 17 0>, <0>, <0>;
+	/*PD, RST, IRQ, SDO*/
+	si1-gpios = <0>, <&gpg 14 0>, <0>, <0>;
+	/* LNB POWER */
+	lnb-gpios = <&gpg 6 0>;
+};
+
+&tcc_isdbt_ctrl {
+	compatible = "telechips,tcc_isdbt_ctrl";
 };
 
 /* TODO: Need to modify it

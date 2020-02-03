@@ -11,6 +11,48 @@
 
 #include "tcc8995-android-4la.dtsi"
 
+&cpu_opp_table {
+        compatible = "operating-points-v2";
+        opp-shared;
+
+        opp0 {
+                opp-hz = /bits/ 64 <1400000000>;
+                opp-microvolt = <900000>;
+                clock-latency-ns = <300000>;
+        };
+
+        opp1 {
+                opp-hz = /bits/ 64 <1250000000>;
+                opp-microvolt = <900000>;
+                clock-latency-ns = <300000>;
+        };
+
+        opp2 {
+                opp-hz = /bits/ 64 <1100000000>;
+                opp-microvolt = <800000>;
+                clock-latency-ns = <300000>;
+        };
+
+};
+
+&gpu_opp_table {
+	opp@200000000 {
+		opp-hz = /bits/ 64 <200000000>;
+		opp-microvolt = <760000>;
+		opp-core-mask = /bits/ 64 <0x3>;
+	};
+	opp@300000000 {
+		opp-hz = /bits/ 64 <300000000>;
+		opp-microvolt = <760000>;
+		opp-core-mask = /bits/ 64 <0x3>;
+	};
+	opp@400000000 {
+		opp-hz = /bits/ 64 <400000000>;
+		opp-microvolt = <760000>;
+		opp-core-mask = /bits/ 64 <0x3>;
+	};
+};
+
 &vqmmc_sdio {
 	compatible = "regulator-gpio";
 	regulator-name = "vqmmc_sdio";
@@ -77,3 +119,8 @@
                 gpios = <&gpf 16 1>;
         };
 };
+
+&smartcard {
+	status = "disabled";
+};
+
