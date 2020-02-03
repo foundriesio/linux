@@ -1095,7 +1095,7 @@ static int sdhci_tcc_tap_dly_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
-static int sdhci_tcc_tap_dly_store(struct file *file,
+static ssize_t sdhci_tcc_tap_dly_store(struct file *file,
 					const char __user *ubuf, size_t count, loff_t *ppos)
 {
 	struct seq_file *sf = file->private_data;
@@ -1135,7 +1135,7 @@ static int sdhci_tcc_clk_dly_show(struct seq_file *sf, void *data)
 	return 0;
 }
 
-static int sdhci_tcc_clk_dly_store(struct file *file,
+static ssize_t sdhci_tcc_clk_dly_store(struct file *file,
 					const char __user *ubuf, size_t count, loff_t *ppos)
 {
 	struct seq_file *sf = file->private_data;
@@ -1247,7 +1247,7 @@ static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
 	if ((1 << tcc->drive_strength) & card_drv) {
 		drive_strength = tcc->drive_strength;
 	} else {
-		pr_err("[ERROR][SDHC] %s: Not support drive strength Type %d\n",
+		pr_warn("[WARN][SDHC] %s: Not support drive strength Type %d\n",
 				mmc_hostname(host->mmc), tcc->drive_strength);
 		drive_strength = 0;
 	}

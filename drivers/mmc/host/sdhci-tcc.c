@@ -772,7 +772,7 @@ static int sdhci_tcc_execute_sw_tuning(struct sdhci_host *host, u32 opcode)
 	/* Select tap delay */
 	if(window_count == 0) {
 		/* if there is not window, set delay tap to zero and return error */
-		pr_info("[DEBUG][SDHC] %s: failed to find windows\n", mmc_hostname(host->mmc));
+		pr_info("[INFO][SDHC] %s: failed to find windows\n", mmc_hostname(host->mmc));
 		avg = 0;
 		err = -EIO;
 	} else {
