@@ -209,7 +209,7 @@ of_get_gpio_regulator_config(struct device *dev, struct device_node *np,
 	/* Fetch states. */
 	proplen = of_property_count_u32_elems(np, "states");
 	if (proplen < 0) {
-		dev_err(dev, "No 'states' property found\n");
+		dev_err(dev, "[ERROR][Regulator]No 'states' property found\n");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -270,7 +270,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 
 	drvdata->desc.name = kstrdup(config->supply_name, GFP_KERNEL);
 	if (drvdata->desc.name == NULL) {
-		dev_err(&pdev->dev, "Failed to allocate supply name\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to allocate supply name\n");
 		return -ENOMEM;
 	}
 
@@ -279,7 +279,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 					 config->nr_gpios * sizeof(struct gpio),
 					 GFP_KERNEL);
 		if (drvdata->gpios == NULL) {
-			dev_err(&pdev->dev, "Failed to allocate gpio data\n");
+			dev_err(&pdev->dev, "[ERROR][Regulator]Failed to allocate gpio data\n");
 			ret = -ENOMEM;
 			goto err_name;
 		}
@@ -289,7 +289,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 		if (ret) {
 			if (ret != -EPROBE_DEFER)
 				dev_err(&pdev->dev,
-					"Could not obtain regulator setting GPIOs: %d\n",
+					"[ERROR][Regulator]Could not obtain regulator setting GPIOs: %d\n",
 					ret);
 			goto err_memgpio;
 		}
@@ -300,7 +300,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 					 sizeof(struct gpio_regulator_state),
 				  GFP_KERNEL);
 	if (drvdata->states == NULL) {
-		dev_err(&pdev->dev, "Failed to allocate state data\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to allocate state data\n");
 		ret = -ENOMEM;
 		goto err_stategpio;
 	}
@@ -321,7 +321,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 		drvdata->desc.ops = &gpio_regulator_current_ops;
 		break;
 	default:
-		dev_err(&pdev->dev, "No regulator type set\n");
+		dev_err(&pdev->dev, "[ERROR][Regulator]No regulator type set\n");
 		ret = -EINVAL;
 		goto err_memstate;
 	}
@@ -359,7 +359,7 @@ static int gpio_regulator_probe(struct platform_device *pdev)
 	drvdata->dev = regulator_register(&drvdata->desc, &cfg);
 	if (IS_ERR(drvdata->dev)) {
 		ret = PTR_ERR(drvdata->dev);
-		dev_err(&pdev->dev, "Failed to register regulator: %d\n", ret);
+		dev_err(&pdev->dev, "[ERROR][Regulator]Failed to register regulator: %d\n", ret);
 		goto err_memstate;
 	}
 

@@ -95,7 +95,7 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (!ret)
 		constraints->settling_time_up = pval;
 	if (constraints->settling_time_up && constraints->settling_time) {
-		pr_warn("%s: ambiguous configuration for settling time, ignoring 'regulator-settling-time-up-us'\n",
+		pr_warn("[WARN][Regulator]%s: ambiguous configuration for settling time, ignoring 'regulator-settling-time-up-us'\n",
 			np->name);
 		constraints->settling_time_up = 0;
 	}
@@ -105,7 +105,7 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (!ret)
 		constraints->settling_time_down = pval;
 	if (constraints->settling_time_down && constraints->settling_time) {
-		pr_warn("%s: ambiguous configuration for settling time, ignoring 'regulator-settling-time-down-us'\n",
+		pr_warn("[WARN][Regulator]%s: ambiguous configuration for settling time, ignoring 'regulator-settling-time-down-us'\n",
 			np->name);
 		constraints->settling_time_down = 0;
 	}
@@ -127,11 +127,11 @@ static void of_get_regulation_constraints(struct device_node *np,
 		if (desc && desc->of_map_mode) {
 			mode = desc->of_map_mode(pval);
 			if (mode == REGULATOR_MODE_INVALID)
-				pr_err("%s: invalid mode %u\n", np->name, pval);
+				pr_err("[ERROR][Regulator]%s: invalid mode %u\n", np->name, pval);
 			else
 				constraints->initial_mode = mode;
 		} else {
-			pr_warn("%s: mapping for mode %d not defined\n",
+			pr_warn("[WARN][Regulator]%s: mapping for mode %d not defined\n",
 				np->name, pval);
 		}
 	}
@@ -166,12 +166,12 @@ static void of_get_regulation_constraints(struct device_node *np,
 			if (desc && desc->of_map_mode) {
 				mode = desc->of_map_mode(pval);
 				if (mode == REGULATOR_MODE_INVALID)
-					pr_err("%s: invalid mode %u\n",
+					pr_err("[ERROR][Regulator]%s: invalid mode %u\n",
 					       np->name, pval);
 				else
 					suspend_state->mode = mode;
 			} else {
-				pr_warn("%s: mapping for mode %d not defined\n",
+				pr_warn("[WARN][Regulator]%s: mapping for mode %d not defined\n",
 					np->name, pval);
 			}
 		}
@@ -304,7 +304,7 @@ int of_regulator_match(struct device *dev, struct device_node *node,
 							   match->desc);
 			if (!match->init_data) {
 				dev_err(dev,
-					"failed to parse DT for regulator %s\n",
+					"[ERROR][Regulator]failed to parse DT for regulator %s\n",
 					child->name);
 				of_node_put(child);
 				return -EINVAL;
@@ -338,7 +338,7 @@ struct regulator_init_data *regulator_of_get_init_data(struct device *dev,
 		search = of_node_get(dev->of_node);
 
 	if (!search) {
-		dev_dbg(dev, "Failed to find regulator container node '%s'\n",
+		dev_dbg(dev, "[ERROR][Regulator]Failed to find regulator container node '%s'\n",
 			desc->regulators_node);
 		return NULL;
 	}
@@ -354,7 +354,7 @@ struct regulator_init_data *regulator_of_get_init_data(struct device *dev,
 		init_data = of_get_regulator_init_data(dev, child, desc);
 		if (!init_data) {
 			dev_err(dev,
-				"failed to parse DT for regulator %s\n",
+				"[ERROR][Regulator]failed to parse DT for regulator %s\n",
 				child->name);
 			break;
 		}
@@ -362,7 +362,7 @@ struct regulator_init_data *regulator_of_get_init_data(struct device *dev,
 		if (desc->of_parse_cb) {
 			if (desc->of_parse_cb(child, desc, config)) {
 				dev_err(dev,
-					"driver callback failed to parse DT for regulator %s\n",
+					"[ERROR][Regulator]driver callback failed to parse DT for regulator %s\n",
 					child->name);
 				init_data = NULL;
 				break;
