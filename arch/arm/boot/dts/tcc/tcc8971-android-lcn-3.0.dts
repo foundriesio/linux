@@ -50,6 +50,11 @@
 	model = "Telechips TCC8971 LCN Board SV3.0";
 	compatible = "telechips,tcc8971-lcn", "telechips,tcc897x";
 
+	aliases {
+		videosource0 = &videosource0;
+		videosource1 = &videosource1;
+	};
+
 	ckc@74000000 {
 		adjust-audio-clk;	/* adjust audio clock for A2DP plaing */
 	};
@@ -120,14 +125,24 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c18_bus>;
 
-		videosource@adv7182 {
-			compatible = "videosource,adv7182";
-			reg = <0x21>;	// 0x42 >> 1
+		videosource0: videodecoder_adv7182 {
+			compatible	= "analogdevices,adv7182";
+			pinctrl-names	= "idle", "active";
+			cifport         = <4>;
+			pinctrl-0	= <&cam4_idle>;
+			pinctrl-1	= <&cam4_clk &cam4_data>;
+			rst-gpios	= <&gpe  4 1>;
+			reg		= <0x21>;	// 0x42 >> 1
 		};
 
-		videosource@dm5886 {
-			compatible = "videosource,dm5886";
-			reg = <0x60>;	// 0xC0 >> 1
+		videosource1: videodecoder_dm5886 {
+			compatible	= "davicom,dm5886";
+			pinctrl-names	= "idle", "active";
+			cifport         = <1>;
+			pinctrl-0	= <&cam1_idle>;
+			pinctrl-1	= <&cam1_clk &cam1_hsync &cam1_vsync &cam1_data &cam1_fld &cam1_de>;
+                        rst-gpios	= <&gpf 11 1>;
+			reg		= <0x60>;	// 0xC0 >> 1
 		};
 	};
 
@@ -557,19 +572,6 @@
 		telechips,audio-codec = <&ak4601 &dummy &dummy &dummy>;
 
 		status="okay";
-	};
-
-	videosource {
-		compatible = "telechips,videosource";
-		status = "okay";
-
-		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&cam4_idle>;
-		pinctrl-1 = <&cam4_clk &cam4_data>;
-
-		atv_adv7182 {
-			rst-gpios = <&gpe  4 1>;
-		};
 	};
 
 	switch_reverse {
