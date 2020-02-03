@@ -4299,7 +4299,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				{
 #if defined(CONFIG_HDMI_DISPLAY_LASTFRAME)
 					dprintk("%s-%d :: TCC_LCDC_VIDEO_CTRL_LAST_FRAME[%d] ========= %d \n", __func__, __LINE__, type, (int)arg);
-					//tcc_video_ctrl_last_frame(type, (int)arg);
+					tcc_video_ctrl_last_frame(type, (int)arg);
 #endif
 				}
 				break;
