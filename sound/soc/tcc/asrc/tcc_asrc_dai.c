@@ -44,13 +44,6 @@
 #include "tcc_asrc_pcm.h"
 #include "tcc_asrc_drv.h"
 
-#undef asrc_dai_dbg
-#if 0
-#define asrc_dai_dbg(f, a...)	printk("<ASRC DAI>" f, ##a)
-#else
-#define asrc_dai_dbg(f, a...)
-#endif
-
 #define TCC_ASRC_SUPPORTED_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
 #define TCC_ASRC_SUPPORTED_RATES	(SNDRV_PCM_RATE_8000_192000)
 
@@ -80,7 +73,7 @@ static int tcc_asrc_dai_startup(struct snd_pcm_substream *substream, struct snd_
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_dai_get_drvdata(dai);
 	int asrc_pair = dai->id;
 
-	asrc_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s - active : %d\n", __func__, dai->active);
 	asrc->pair[asrc_pair].stat.started = 1;
 
 	return 0;
@@ -91,8 +84,8 @@ static void tcc_asrc_dai_shutdown(struct snd_pcm_substream *substream, struct sn
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_dai_get_drvdata(dai);
 	int asrc_pair = dai->id;
 
-	asrc_dai_dbg("%s - active : %d\n", __func__, dai->active);
-	asrc_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s - active : %d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s\n", __func__);
 
 	tcc_asrc_stop(asrc, asrc_pair);
 
@@ -112,12 +105,12 @@ static int tcc_asrc_dai_hw_params(struct snd_pcm_substream *substream,
 	enum tcc_asrc_drv_bitwidth_t asrc_bitwidth;
 	enum tcc_asrc_drv_ch_t asrc_channels;
 
-	asrc_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s\n", __func__);
 
-	asrc_dai_dbg("dai->id : %d\n", dai->id);
-	asrc_dai_dbg("format : 0x%08x\n", format);
-	asrc_dai_dbg("rate : %d\n", rate);
-	asrc_dai_dbg("channels : %d\n", channels);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] dai->id : %d\n", dai->id);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] format : 0x%08x\n", format);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] rate : %d\n", rate);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] channels : %d\n", channels);
 
 	asrc_bitwidth = (format == SNDRV_PCM_FORMAT_S24_LE) ? TCC_ASRC_24BIT : TCC_ASRC_16BIT;
 	asrc_channels = (channels == 8) ? TCC_ASRC_NUM_OF_CH_8 :
@@ -161,10 +154,10 @@ static int tcc_asrc_dai_trigger(struct snd_pcm_substream *substream, int cmd, st
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_dai_dbg("TRIGGER_START, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_CARD] TRIGGER_START, PLAY\n");
 				tcc_asrc_tx_fifo_enable(asrc, asrc_pair, 1);
 			} else {
-				asrc_dai_dbg("TRIGGER_START, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_CARD] TRIGGER_START, CAPTURE\n");
 				tcc_asrc_rx_fifo_enable(asrc, asrc_pair, 1);
 			}
 			break;
@@ -172,10 +165,10 @@ static int tcc_asrc_dai_trigger(struct snd_pcm_substream *substream, int cmd, st
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_dai_dbg("TRIGGER_STOP, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_CARD] TRIGGER_STOP, PLAY\n");
 				tcc_asrc_tx_fifo_enable(asrc, asrc_pair, 0);
 			} else {
-				asrc_dai_dbg("TRIGGER_STOP, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_CARD] TRIGGER_STOP, CAPTURE\n");
 				tcc_asrc_rx_fifo_enable(asrc, asrc_pair, 0);
 			}
 			break;
@@ -189,7 +182,7 @@ static int tcc_asrc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_dai_get_drvdata(dai);
 	int asrc_pair = dai->id;
 
-	asrc_dai_dbg("%s - asrc_pair : %d, clk_id :%d, freq:%d, dir :%d\n", __func__, asrc_pair, clk_id, freq, dir);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s - asrc_pair : %d, clk_id :%d, freq:%d, dir :%d\n", __func__, asrc_pair, clk_id, freq, dir);
 
 	if (clk_id == TCC_ASRC_CLKID_PERI_DAI_RATE) { //sample rate
 		asrc->pair[asrc_pair].hw.peri_dai_rate = freq;
@@ -203,7 +196,7 @@ static int tcc_asrc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned
 			tcc_asrc_set_m2p_mux_select(asrc, freq, asrc_pair);
 		}
 	} else {
-		printk("%s - clk_id is invalid\n", __func__);
+		printk(KERN_ERR "[ERROR][ASRC_CARD] %s - clk_id is invalid\n", __func__);
 		return -EINVAL;
 	}
 
@@ -367,7 +360,7 @@ static int mcaudio_mux_put(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_val
 	if ((asrc->pair[asrc_pair].hw.path == TCC_ASRC_M2P_PATH) && (asrc->pair[asrc_pair].hw.peri_dai == mcaudio_ch)) {
 		tcc_asrc_set_m2p_mux_select(asrc, mcaudio_ch, asrc_pair);
 	} else {
-		pr_err("ASRC Pair%d isn't M2P path or its target(%d) isn't MCAudio%d\n", 
+		printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC Pair%d isn't M2P path or its target(%d) isn't MCAudio%d\n", 
 			asrc_pair, asrc->pair[asrc_pair].hw.peri_dai, mcaudio_ch);
 	}
 	return 0;

@@ -45,13 +45,6 @@
 
 #include "tcc_audio_chmux.h"
 
-#undef chmux_dbg
-#if 0
-#define chmux_dbg(f, a...)	printk("<ASoC CHMUX>" f, ##a)
-#else
-#define chmux_dbg(f, a...)
-#endif
-
 #define MAX_ARRAY (10)
 
 struct tcc_audio_chmux_t {
@@ -75,7 +68,7 @@ static void tcc_audio_dai_chmux_setup(struct tcc_audio_chmux_t *chmux)
 	for (i=0; i<chmux->dai_arr_sz; i++) {
 		port = chmux->dai_arr[i];
 
-		chmux_dbg("dai[%d] : %d\n", i, port);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] dai[%d] : %d\n", i, port);
 
 		iobuscfg_dai_chmux(chmux->reg, i, port);
 	}
@@ -89,7 +82,7 @@ static void tcc_audio_cdif_chmux_setup(struct tcc_audio_chmux_t *chmux)
 	for (i=0; i<chmux->cdif_arr_sz; i++) {
 		port = chmux->cdif_arr[i];
 
-		chmux_dbg("cdif[%d] : %d\n", i, port);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] cdif[%d] : %d\n", i, port);
 
 		iobuscfg_cdif_chmux(chmux->reg, i, port);
 	}
@@ -103,7 +96,7 @@ static void tcc_audio_spdif_chmux_setup(struct tcc_audio_chmux_t *chmux)
 	for (i=0; i<chmux->spdif_arr_sz; i++) {
 		port = chmux->spdif_arr[i];
 
-		chmux_dbg("spdif[%d] : %d\n", i, port);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] spdif[%d] : %d\n", i, port);
 
 		iobuscfg_spdif_chmux(chmux->reg, i, port);
 	}
@@ -140,7 +133,7 @@ static ssize_t tcc_dai_chmux_store(struct device *dev, struct device_attribute *
 
 	idx = 0;
 	while ((tok = strsep(&string, sep)) != NULL) {
-		chmux_dbg("[%d] %s\n", idx, tok);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX-DAI][%d] %s\n", idx, tok);
 		if (kstrtouint(tok, 10, &value) == 0) {
 			chmux->dai_arr[idx] = value;
 		}
@@ -180,7 +173,7 @@ static ssize_t tcc_cdif_chmux_store(struct device *dev, struct device_attribute 
 
 	idx = 0;
 	while ((tok = strsep(&string, sep)) != NULL) {
-		chmux_dbg("[%d] %s\n", idx, tok);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX-CDIF][%d] %s\n", idx, tok);
 		if (kstrtouint(tok, 10, &value) == 0) {
 			chmux->cdif_arr[idx] = value;
 		}
@@ -220,7 +213,7 @@ static ssize_t tcc_spdif_chmux_store(struct device *dev, struct device_attribute
 
 	idx = 0;
 	while ((tok = strsep(&string, sep)) != NULL) {
-		chmux_dbg("[%d] %s\n", idx, tok);
+		printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX-SPDIF][%d] %s\n", idx, tok);
 		if (kstrtouint(tok, 10, &value) == 0) {
 			chmux->spdif_arr[idx] = value;
 		}
@@ -256,11 +249,11 @@ static int parse_audio_chmux_dt(struct platform_device *pdev, struct tcc_audio_c
     chmux->reg = of_iomap(np, 0);
     if (IS_ERR((void *)chmux->reg)) {
         chmux->reg = NULL;
-		pr_err("reg is NULL\n");
+		printk(KERN_ERR "[ERROR][AUDIO_CHMUX] reg is NULL\n");
 		return -EINVAL;
 	}
 
-	chmux_dbg("reg=%p\n", chmux->reg);
+	printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] reg=%p\n", chmux->reg);
 
 	chmux->dai_arr_sz = of_property_count_elems_of_size(np, "dai", sizeof(uint32_t));
 	if (chmux->dai_arr_sz < 0)
@@ -285,16 +278,16 @@ static int tcc_audio_chmux_probe(struct platform_device *pdev)
 	struct tcc_audio_chmux_t *chmux;
 	int ret;
 
-	chmux_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] %s\n", __func__);
 
 	if ((chmux = (struct tcc_audio_chmux_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_audio_chmux_t), GFP_KERNEL)) == NULL) {
 		return -ENOMEM;
 	}
 
-	chmux_dbg("%s - chmux : %p\n", __func__, chmux);
+	printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] %s - chmux : %p\n", __func__, chmux);
 
 	if ((ret = parse_audio_chmux_dt(pdev, chmux)) < 0) {
-		pr_err("%s : Fail to parse chmux dt\n", __func__);
+		printk(KERN_ERR "[ERROR][AUDIO_CHMUX] %s : Fail to parse chmux dt\n", __func__);
 		goto error;
 	}
 
@@ -302,7 +295,7 @@ static int tcc_audio_chmux_probe(struct platform_device *pdev)
 
 	ret = sysfs_create_files(&pdev->dev.kobj, tcc_audio_chmux_attributes);
 	if(ret) {
-		pr_err("failed create sysfs\r\n");
+		printk(KERN_ERR "[ERROR][AUDIO_CHMUX] failed create sysfs\r\n");
 	}
 
 	tcc_audio_chmux_setup(chmux);
@@ -318,7 +311,7 @@ static int tcc_audio_chmux_remove(struct platform_device *pdev)
 {
 	struct tcc_audio_chmux_t *chmux = (struct tcc_audio_chmux_t*)platform_get_drvdata(pdev);
 
-	chmux_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] %s\n", __func__);
 
 	devm_kfree(&pdev->dev, chmux);
 
@@ -334,7 +327,7 @@ static int tcc_audio_chmux_resume(struct platform_device *pdev)
 {
 	struct tcc_audio_chmux_t *chmux = (struct tcc_audio_chmux_t*)platform_get_drvdata(pdev);
 
-	chmux_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][AUDIO_CHMUX] %s\n", __func__);
 
 	tcc_audio_chmux_setup(chmux);
 

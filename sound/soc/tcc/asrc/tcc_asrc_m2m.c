@@ -45,13 +45,6 @@
 #include "tcc_asrc.h"
 #include "tcc_pl080.h"
 
-#undef dprintk 
-#if 0
-#define dprintk(f, a...)	printk("<ASRC M2M>" f, ##a)
-#else
-#define dprintk(f, a...)
-#endif
-
 #define X1_RATIO_SHIFT22				(1 << 22)
 
 #define TX_PERIOD_CNT					(4)
@@ -107,10 +100,10 @@ static int tcc_pl080_setup_tx_list(struct tcc_asrc_t *asrc, int asrc_pair, uint3
 	}
 
 	if (last_sz < TRANSFER_UNIT_BYTES) {
-		dprintk("%s last_sz : %d\n", __func__, last_sz);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s last_sz : %d\n", __func__, last_sz);
 		last_sz = TRANSFER_UNIT_BYTES;
 	}
-	dprintk("%s cnt:%d, last_sz:%d\n", __func__, cnt, last_sz);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s cnt:%d, last_sz:%d\n", __func__, cnt, last_sz);
 
 	for (i=0; i<cnt; i++) {
 		asrc->pair[asrc_pair].txbuf.lli_virt[i].src_addr = asrc->pair[asrc_pair].txbuf.phys + (i*PERIOD_BYTES);
@@ -186,12 +179,12 @@ static int tcc_pl080_setup_rx_list(struct tcc_asrc_t *asrc, int asrc_pair)
 static int tcc_asrc_m2m_pair_chk(struct tcc_asrc_t *asrc, int asrc_pair)
 {
 	if ((asrc_pair >= NUM_OF_ASRC_PAIR) || (asrc_pair < 0)) {
-		pr_err("param's pair >= NUM_OF_ASRC_PAIR\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] param's pair >= NUM_OF_ASRC_PAIR\n");
 		return -EINVAL;
 	}
 
 	if (asrc->pair[asrc_pair].hw.path != TCC_ASRC_M2M_PATH) {
-		pr_err("pair(%d) is not M2M path\n", asrc_pair);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] pair(%d) is not M2M path\n", asrc_pair);
 		return -EINVAL;
 	}
 
@@ -213,33 +206,33 @@ int tcc_asrc_m2m_start(struct tcc_asrc_t *asrc,
 	}
 
 	if (asrc->pair[asrc_pair].stat.started) {
-		printk("Device is already started\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] Device is already started\n");
 		return -EBUSY;
 	}
 
-	dprintk("pair         : %d\n", asrc_pair);
-	dprintk("src_bitwidth : %d\n", src_bitwidth);
-	dprintk("dst_bitwidth : %d\n", dst_bitwidth);
-	dprintk("channels     : %d\n", channels);
-	dprintk("ratio        : 0x%08x\n", ratio_shift22);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] pair         : %d\n", asrc_pair);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] src_bitwidth : %d\n", src_bitwidth);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] dst_bitwidth : %d\n", dst_bitwidth);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] channels     : %d\n", channels);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] ratio        : 0x%08x\n", ratio_shift22);
 
 	if (asrc->pair[asrc_pair].hw.max_channel < chs[channels]) {
-		pr_err("param's cfg channels > pair's max_channel\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] param's cfg channels > pair's max_channel\n");
 		return -EINVAL;
 	}
 	if ((ratio_shift22 >> 22) > UP_SAMPLING_MAX_RATIO) {
-		pr_err("Ratio is out of range. UP_SAMPLING_MAX_RATIO : %d\n", UP_SAMPLING_MAX_RATIO);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] Ratio is out of range. UP_SAMPLING_MAX_RATIO : %d\n", UP_SAMPLING_MAX_RATIO);
 		return -EINVAL;
 	}
 	if (ratio_shift22 * DN_SAMPLING_MAX_RATIO  < X1_RATIO_SHIFT22) {
-		pr_err("Ratio is out of range. DN_SAMPLING_MAX_RATIO : %d\n", DN_SAMPLING_MAX_RATIO);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] Ratio is out of range. DN_SAMPLING_MAX_RATIO : %d\n", DN_SAMPLING_MAX_RATIO);
 		return -EINVAL;
 	}
 
 #ifdef CONFIG_ARCH_TCC802X
 	if (asrc->chip_rev_xx) {
 		if (ratio_shift22 < X1_RATIO_SHIFT22) {
-			pr_err("TCC802x Rev XX can't use down-sampling\n");
+			printk(KERN_ERR "[ERROR][ASRC_M2M] TCC802x Rev XX can't use down-sampling\n");
 			return -EINVAL;
 		}
 	}
@@ -253,7 +246,7 @@ int tcc_asrc_m2m_start(struct tcc_asrc_t *asrc,
 	asrc->pair[asrc_pair].stat.read_offset = 0;
 	asrc->pair[asrc_pair].stat.started = 0;
 
-	dprintk("TCC_ASRC_M2M_PATH Sync Mode\n");
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] TCC_ASRC_M2M_PATH Sync Mode\n");
 
 	tcc_asrc_m2m_sync_setup(asrc,
 							asrc_pair,
@@ -269,7 +262,7 @@ int tcc_asrc_m2m_start(struct tcc_asrc_t *asrc,
 	asrc->pair[asrc_pair].cfg.channels = channels;
 
 	asrc->pair[asrc_pair].stat.started = 1;
-	dprintk("%s - Device is started(%d)\n", __func__, asrc_pair);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - Device is started(%d)\n", __func__, asrc_pair);
 
 	return 0;
 }
@@ -351,12 +344,12 @@ static int __tcc_asrc_m2m_push_data(struct tcc_asrc_t *asrc, int asrc_pair, uint
 	}
 
 	if (!asrc->pair[asrc_pair].stat.started) {
-		printk("%s - Device is not started(%d)\n", __func__, asrc_pair);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s - Device is not started(%d)\n", __func__, asrc_pair);
 		return -EIO;
 	}
 
 	if (size > TX_BUFFER_BYTES) {
-		printk("%s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
 		return -EINVAL;
 	}
 
@@ -377,7 +370,7 @@ static int __tcc_asrc_m2m_push_data(struct tcc_asrc_t *asrc, int asrc_pair, uint
 #endif
 
 	if (!wait_for_completion_io_timeout(&asrc->pair[asrc_pair].comp, msecs_to_jiffies(WRITE_TIMEOUT)))  {
-		printk("%s timeout\n", __func__);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s timeout\n", __func__);
 		tcc_pl080_dump_regs(asrc->pl080_reg);
 		tcc_asrc_dump_regs(asrc->asrc_reg);
 		return -ETIME;
@@ -388,15 +381,15 @@ static int __tcc_asrc_m2m_push_data(struct tcc_asrc_t *asrc, int asrc_pair, uint
 
 int tcc_asrc_m2m_push_data(struct tcc_asrc_t *asrc, int asrc_pair, void *data, uint32_t size)
 {
-	dprintk("%s - size:%d\n", __func__, size);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - size:%d\n", __func__, size);
 
 	if (size > TX_BUFFER_BYTES) {
-		printk("%s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
 		return -EINVAL;
 	}
 
 	if (data == NULL) {
-		pr_err("push_data buf is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] push_data buf is NULL\n");
 		return -EINVAL;
 	}
 
@@ -407,20 +400,20 @@ int tcc_asrc_m2m_push_data(struct tcc_asrc_t *asrc, int asrc_pair, void *data, u
 
 static int tcc_asrc_m2m_push_data_from_user(struct tcc_asrc_t *asrc, int asrc_pair, void __user *data, uint32_t size)
 {
-	dprintk("%s - size:%d\n", __func__, size);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - size:%d\n", __func__, size);
 
 	if (size > TX_BUFFER_BYTES) {
-		printk("%s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s error - size is over %d\n", __func__, TX_BUFFER_BYTES);
 		return -EINVAL;
 	}
 
 	if (data == NULL) {
-		pr_err("push_data buf is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] push_data buf is NULL\n");
 		return -EINVAL;
 	}
 
 	if (copy_from_user(asrc->pair[asrc_pair].txbuf.virt, data, size) != 0) {
-		pr_err("data read failed\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] data read failed\n");
 		return -EAGAIN;
 	}
 
@@ -432,19 +425,19 @@ int tcc_asrc_m2m_pop_data(struct tcc_asrc_t * asrc, int asrc_pair, void *data, u
 	uint32_t rxsize = (size < asrc->pair[asrc_pair].stat.readable_size) ? size : asrc->pair[asrc_pair].stat.readable_size;
 	//int ret;
 
-	dprintk("%s - size:%d\n", __func__, size);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - size:%d\n", __func__, size);
 
 	if (tcc_asrc_m2m_pair_chk(asrc, asrc_pair) < 0) {
 		return -EINVAL;
 	}
 
 	if (!asrc->pair[asrc_pair].stat.started) {
-		printk("%s - Device is not started(%d)\n", __func__, asrc_pair);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s - Device is not started(%d)\n", __func__, asrc_pair);
 		return -EIO;
 	}
 
 	if (data == NULL) {
-		pr_err("pop_data buf is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] pop_data buf is NULL\n");
 		return -EINVAL;
 	}
 
@@ -463,19 +456,19 @@ static int tcc_asrc_m2m_pop_data_to_user(struct tcc_asrc_t * asrc, int asrc_pair
 	uint32_t rxsize = (size < asrc->pair[asrc_pair].stat.readable_size) ? size : asrc->pair[asrc_pair].stat.readable_size;
 	int ret;
 
-	dprintk("%s - size:%d\n", __func__, size);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - size:%d\n", __func__, size);
 
 	if (tcc_asrc_m2m_pair_chk(asrc, asrc_pair) < 0) {
 		return -EINVAL;
 	}
 
 	if (!asrc->pair[asrc_pair].stat.started) {
-		printk("%s - Device is not started(%d)\n", __func__, asrc_pair);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s - Device is not started(%d)\n", __func__, asrc_pair);
 		return -EIO;
 	}
 
 	if (data == NULL) {
-		pr_err("pop_data buf is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] pop_data buf is NULL\n");
 		return -EINVAL;
 	}
 
@@ -528,8 +521,8 @@ static int tcc_asrc_resources_allocation(struct tcc_asrc_t *asrc, uint32_t idx)
 {
 	struct device *dev = &asrc->pdev->dev;
 
-	dprintk("TX_BUFFER_BYTES :0x%08x\n", TX_BUFFER_BYTES);
-	dprintk("RX_BUFFER_BYTES :0x%08x\n", RX_BUFFER_BYTES);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] TX_BUFFER_BYTES :0x%08x\n", TX_BUFFER_BYTES);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] RX_BUFFER_BYTES :0x%08x\n", RX_BUFFER_BYTES);
 
 	spin_lock_init(&asrc->pair[idx].lock);
 	mutex_init(&asrc->pair[idx].m);
@@ -543,16 +536,16 @@ static int tcc_asrc_resources_allocation(struct tcc_asrc_t *asrc, uint32_t idx)
 	asrc->pair[idx].rxbuf.lli_virt = dma_alloc_writecombine(dev, sizeof(struct pl080_lli)*RX_PERIOD_CNT, &asrc->pair[idx].rxbuf.lli_phys, GFP_KERNEL);
 
 	if (!asrc->pair[idx].txbuf.virt)
-		printk("asrc->pair[%d].txbuf.virt failed\n", idx);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] asrc->pair[%d].txbuf.virt failed\n", idx);
 
 	if (!asrc->pair[idx].txbuf.lli_virt)
-		printk("asrc->pair[%d].txbuf.lli_virt failed\n", idx);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] asrc->pair[%d].txbuf.lli_virt failed\n", idx);
 
 	if (!asrc->pair[idx].rxbuf.virt)
-		printk("asrc->pair[%d].rxbuf.virt failed\n", idx);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] asrc->pair[%d].rxbuf.virt failed\n", idx);
 
 	if (!asrc->pair[idx].rxbuf.lli_virt)
-		printk("asrc->pair[%d].rxbuf.lli_virt failed\n", idx);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] asrc->pair[%d].rxbuf.lli_virt failed\n", idx);
 
 	memset(asrc->pair[idx].txbuf.virt, 0, TX_BUFFER_BYTES);
 	memset(asrc->pair[idx].txbuf.lli_virt, 0, sizeof(struct pl080_lli)*TX_PERIOD_CNT);
@@ -560,10 +553,10 @@ static int tcc_asrc_resources_allocation(struct tcc_asrc_t *asrc, uint32_t idx)
 	memset(asrc->pair[idx].rxbuf.virt, 0, RX_BUFFER_BYTES);
 	memset(asrc->pair[idx].rxbuf.lli_virt, 0, sizeof(struct pl080_lli)*RX_PERIOD_CNT);
 
-	dprintk("txbuf(%d) - v:%p, p:0x%llu\n", idx, asrc->pair[idx].txbuf.virt, asrc->pair[idx].txbuf.phys);
-	dprintk("txbuf(%d)_lli - v:%p, p:0x%llu\n", idx, asrc->pair[idx].txbuf.lli_virt, asrc->pair[idx].txbuf.lli_phys);
-	dprintk("rxbuf(%d) - v:%p, p:%llu\n", idx, asrc->pair[idx].rxbuf.virt, asrc->pair[idx].rxbuf.phys);
-	dprintk("rxbuf(%d)_lli - v:%p, p:%llu\n", idx, asrc->pair[idx].rxbuf.lli_virt, asrc->pair[idx].rxbuf.lli_phys);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] txbuf(%d) - v:%p, p:0x%llu\n", idx, asrc->pair[idx].txbuf.virt, asrc->pair[idx].txbuf.phys);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] txbuf(%d)_lli - v:%p, p:0x%llu\n", idx, asrc->pair[idx].txbuf.lli_virt, asrc->pair[idx].txbuf.lli_phys);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] rxbuf(%d) - v:%p, p:%llu\n", idx, asrc->pair[idx].rxbuf.virt, asrc->pair[idx].rxbuf.phys);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] rxbuf(%d)_lli - v:%p, p:%llu\n", idx, asrc->pair[idx].rxbuf.lli_virt, asrc->pair[idx].rxbuf.lli_phys);
 
 	return 0;
 }
@@ -578,10 +571,10 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 	uint32_t asrc_fifo_in_status;
 	uint32_t asrc_fifo_out_status;
 
-	dprintk("%s(%d)\n", __func__, asrc_pair);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s(%d)\n", __func__, asrc_pair);
 
 	if (asrc->pair[asrc_pair].hw.path != TCC_ASRC_M2M_PATH) {
-		dprintk("%s - it's not m2m path\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - it's not m2m path\n", __func__);
 		return -1;
 	}
 	
@@ -590,7 +583,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 		pl080_tx_ch_cfg_reg = readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_tx_ch));
 
 		if (!(pl080_tx_ch_cfg_reg & PL080_CONFIG_ACTIVE)) {
-			dprintk("DMA Tx De-activated\n");
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] DMA Tx De-activated\n");
 			break;
 		} 	
 	}
@@ -599,7 +592,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 		asrc_fifo_in_status = tcc_asrc_get_fifo_in_status(asrc->asrc_reg, asrc_pair);
 
 		if (asrc_fifo_in_status & (1 << 30)) {
-			dprintk("FIFO In Cleared\n");
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] FIFO In Cleared\n");
 			break;
 		} 	
 	}
@@ -610,7 +603,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
 
 		if (asrc_fifo_out_status & (1 << 30)) {
-			dprintk("FIFO Out Cleared\n");
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] FIFO Out Cleared\n");
 			break;
 		} 	
 	}
@@ -623,7 +616,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 		pl080_rx_ch_cfg_reg = readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_rx_ch));
 
 		if (!(pl080_rx_ch_cfg_reg & PL080_CONFIG_ACTIVE)) {
-			dprintk("DMA Tx/Rx De-activated\n");
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] DMA Tx/Rx De-activated\n");
 			break;
 		} 	
 	}
@@ -632,9 +625,9 @@ int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 	asrc->pair[asrc_pair].stat.readable_size = rx_dst_addr - asrc->pair[asrc_pair].rxbuf.phys;
 	asrc->pair[asrc_pair].stat.read_offset = 0;
 
-	dprintk("rx_dst_addr      : 0x%08x\n", rx_dst_addr);
-	dprintk("rxbuf.phys   : 0x%llu\n", asrc->pair[asrc_pair].rxbuf.phys);
-	dprintk("readable_size : 0x%08x\n", asrc->pair[asrc_pair].stat.readable_size);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] rx_dst_addr      : 0x%08x\n", rx_dst_addr);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] rxbuf.phys   : 0x%llu\n", asrc->pair[asrc_pair].rxbuf.phys);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] readable_size : 0x%08x\n", asrc->pair[asrc_pair].stat.readable_size);
 
 	tcc_asrc_rx_dma_stop(asrc, asrc_pair);
 	tcc_asrc_tx_dma_stop(asrc, asrc_pair);
@@ -668,13 +661,13 @@ static void tcc_asrc_kernel_test(struct tcc_asrc_t *asrc)
 
 	read_fp = filp_open(RD_FILE_PATH, O_RDONLY, S_IRUSR|S_IWUSR);
 	if (read_fp == NULL) {
-		pr_err("%s open failed\n", RD_FILE_PATH);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s open failed\n", RD_FILE_PATH);
 		return;
 	}
 
 	write_fp = filp_open(WR_FILE_PATH, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 	if (write_fp == NULL) {
-		pr_err("%s open failed\n", RD_FILE_PATH);
+		printk(KERN_ERR "[ERROR][ASRC_M2M] %s open failed\n", RD_FILE_PATH);
 		return;
 	}
 
@@ -738,10 +731,10 @@ static long tcc_asrc_ioctl(struct file *flip, unsigned int cmd, unsigned long ar
 	struct tcc_asrc_param_t param;
 	int ret = 0;
 
-	dprintk("%s - %d\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - %d\n", __func__, __LINE__);
 
 	if (copy_from_user(&param, (const void *)arg, sizeof(struct tcc_asrc_param_t)) != 0) {
-		pr_err("paramer reading failed\n");
+		printk(KERN_ERR "[ERROR][ASRC_M2M] paramer reading failed\n");
 		return -EAGAIN;
 	}
 
@@ -756,23 +749,23 @@ static long tcc_asrc_ioctl(struct file *flip, unsigned int cmd, unsigned long ar
 			ret = tcc_asrc_m2m_stop(asrc, param.pair);
 			break;
 		case IOCTL_TCC_ASRC_M2M_PUSH_PCM:
-			dprintk("IOCTL_TCC_ASRC_PUSH_PCM\n");
-			dprintk("param.u.pcm.buf : %p\n", param.u.pcm.buf);
-			dprintk("param.u.pcm.size: 0x%08x\n", (uint32_t)param.u.pcm.size);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] IOCTL_TCC_ASRC_PUSH_PCM\n");
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] param.u.pcm.buf : %p\n", param.u.pcm.buf);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] param.u.pcm.size: 0x%08x\n", (uint32_t)param.u.pcm.size);
 			ret = tcc_asrc_m2m_push_data_from_user(asrc, param.pair, param.u.pcm.buf, param.u.pcm.size);
 			break;
 		case IOCTL_TCC_ASRC_M2M_POP_PCM:
-			dprintk("IOCTL_TCC_ASRC_POP_PCM\n");
-			dprintk("param.u.pcm.buf : %p\n", param.u.pcm.buf);
-			dprintk("param.u.pcm.size: 0x%08x\n", (uint32_t)param.u.pcm.size);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] IOCTL_TCC_ASRC_POP_PCM\n");
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] param.u.pcm.buf : %p\n", param.u.pcm.buf);
+		printk(KERN_DEBUG "[DEBUG][ASRC_M2M] param.u.pcm.size: 0x%08x\n", (uint32_t)param.u.pcm.size);
 			ret = tcc_asrc_m2m_pop_data_to_user(asrc, param.pair, param.u.pcm.buf, param.u.pcm.size);
 			break;
 		case IOCTL_TCC_ASRC_M2M_SET_VOL:
-			dprintk("IOCTL_TCC_ASRC_SET_VOL : 0x%x\n", param.u.volume_gain);
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] IOCTL_TCC_ASRC_SET_VOL : 0x%x\n", param.u.volume_gain);
 			tcc_asrc_m2m_volume_gain(asrc, param.pair, param.u.volume_gain);
 			break;
 		case IOCTL_TCC_ASRC_M2M_SET_VOL_RAMP:
-			dprintk("IOCTL_TCC_ASRC_SET_VOL_RAMP\n");
+			printk(KERN_DEBUG "[DEBUG][ASRC_M2M] IOCTL_TCC_ASRC_SET_VOL_RAMP\n");
 			tcc_asrc_m2m_volume_ramp(asrc, param.pair,
 					param.u.volume_ramp.gain,
 					param.u.volume_ramp.dn_time,
@@ -804,7 +797,7 @@ static int tcc_asrc_open(struct inode *inode, struct file *flip)
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)dev_get_drvdata(misc->parent);
 	int ret = 0;
 
-	dprintk("%s - %d\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - %d\n", __func__, __LINE__);
 	asrc->m2m_open_cnt++;
 
 	return ret;
@@ -816,7 +809,7 @@ static int tcc_asrc_release(struct inode *inode, struct file *flip)
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)dev_get_drvdata(misc->parent);
 	int i;
 
-	dprintk("%s - %d\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] %s - %d\n", __func__, __LINE__);
 	asrc->m2m_open_cnt--;
 
 	if (asrc->m2m_open_cnt == 0) {
@@ -859,8 +852,8 @@ int tcc_asrc_m2m_drvinit(struct platform_device *pdev)
 		}
 	}
 
-	dprintk("TX_BUFFER_BYTES : %d\n", TX_BUFFER_BYTES);
-	dprintk("RX_BUFFER_BYTES : %d\n", RX_BUFFER_BYTES);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] TX_BUFFER_BYTES : %d\n", TX_BUFFER_BYTES);
+	printk(KERN_DEBUG "[DEBUG][ASRC_M2M] RX_BUFFER_BYTES : %d\n", RX_BUFFER_BYTES);
 
 	tcc_asrc_misc_device.parent = &pdev->dev;
 
