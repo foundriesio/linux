@@ -42,6 +42,13 @@ config ANDROID_BINDER_IPC_SELFTEST
 	  exhaustively with combinations of various buffer sizes and
 	  alignments.
 
+config ANDROID_AB_UPDATE
+   bool "Android A/B Update"
+   depends on ARCH_TCC803X
+   ---help---
+      If enabled, supports Android A/B update feature. This
+      allows devicetree early mount for vendor partition subject to A/B.
+
 endif # if ANDROID
 
 endmenu

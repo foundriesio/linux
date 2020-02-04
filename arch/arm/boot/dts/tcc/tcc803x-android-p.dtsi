@@ -14,7 +14,12 @@
 			dev = "/dev/block/platform/16440000.sdhc/by-name/vendor";
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
+#if !defined(CONFIG_ANDROID_AB_UPDATE)
 			fsmgr_flags = "wait";
+#else
+            fsmgr_flags = "wait,slotselect";
+#endif
+
 		};
 	};
 };
