@@ -85,7 +85,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 	// Map DWC HDMI TX Core
 	dev->dwc_hdmi_tx_core_io = of_iomap(node, PROTO_HDMI_TX_CORE);
 	if(dev->dwc_hdmi_tx_core_io == NULL){
-		pr_err("%s:Unable to map resource\n", __func__);
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map resource\n", __func__);
                 ret = -ENODEV;
                 goto end_process;
 
@@ -94,7 +94,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 	// Map HDMI TX PHY interface
 	dev->hdmi_tx_phy_if_io = of_iomap(node, PROTO_HDMI_TX_PHY); // TXPHY_IF_ADDRESS,
 	if(dev->hdmi_tx_phy_if_io == NULL){
-		pr_err("%s:Unable to map hdmi_tx_phy_if_base_addr resource\n",
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map hdmi_tx_phy_if_base_addr resource\n",
 				__func__);
                 ret = -ENODEV;
                 goto end_process;
@@ -103,7 +103,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 
 	dev->io_bus = of_iomap(node, PROTO_HDMI_TX_IO_BASE);
 	if(dev->io_bus == NULL){
-	    pr_err("%s:Unable to map io_bus base address resource\n",
+	    printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map io_bus base address resource\n",
 	                    __func__);
 	    ret = -ENODEV;
 	    goto end_process;
@@ -112,7 +112,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         // Find DDI_BUS Node
         ddibus_np = of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
         if(ddibus_np == NULL) {
-                pr_err("%s:Unable to map ddibus resource\n",
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map ddibus resource\n",
                                 __func__);
                 ret = -ENODEV;
                 goto end_process;
@@ -121,7 +121,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         // Map DDI_Bus interface
         dev->ddibus_io = of_iomap(ddibus_np, 0);
         if(dev->ddibus_io == NULL){
-                pr_err("%s:Unable to map ddibus_io base address resource\n",
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map ddibus_io base address resource\n",
                                 __func__);
                 ret = -ENODEV;
                 goto end_process;
@@ -137,7 +137,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         for(of_loop = HDMI_CLK_INDEX_PERI; of_loop < HDMI_CLK_INDEX_MAX; of_loop++) {
                 dev->clk[of_loop] = of_clk_get(node, of_loop);
                 if (IS_ERR(dev->clk[of_loop])) {
-                        pr_err("%s:Unable to map hdmi clock (%d)\n",
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map hdmi clock (%d)\n",
                                 __func__, of_loop);
                         ret = -ENODEV;
                         goto end_process;
@@ -147,7 +147,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
         // Parse Clock Freq
         ret = of_property_read_u32(node, "clock-frequency", &dev->clk_freq_apb);
         if(ret < 0) {
-                pr_err("%s:Unable to map hdmi pclk frequency\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map hdmi pclk frequency\n", __func__);
                 ret = -ENODEV;
                 goto end_process;
         }
@@ -155,7 +155,7 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 
         if(of_property_read_u32(node, "audio_if_selection_ofst", &dev->hdmi_audio_if_sel_ofst) < 0) {
                 dev->hdmi_audio_if_sel_ofst = 0xff;
-                pr_err("%s:Unable to map audio source offset\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map audio source offset\n", __func__);
         }
 
         if(of_property_read_u32(node, "audio_rx_tx_chmux", &dev->hdmi_rx_tx_chmux) < 0) {
@@ -214,17 +214,17 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
         do {
 
                 if(dev == NULL) {
-                        pr_err("%s hdmi_tx_dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s hdmi_tx_dev is NULL\r\n", __func__);
                         break;
                 }
                 if(dev->parent_dev == NULL) {
-                        pr_err("%s hdmi_tx_dev->parent_dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s hdmi_tx_dev->parent_dev is NULL\r\n", __func__);
                         break;
                 }
 
                 node = dev->parent_dev->of_node;
                 if(node == NULL) {
-                        pr_err("%s of_node is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s of_node is NULL\r\n", __func__);
                         break;
                 }
 
@@ -241,27 +241,27 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                 // Map HDMI TX PHY interface
                 io_i2c_map = of_iomap(node, PROTO_HDMI_TX_I2C_MAP);
                 if(io_i2c_map == NULL){
-                        pr_err("%s:Unable to map i2c mapping resource\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map i2c mapping resource\n", __func__);
                         ret = -ENODEV;
                         goto end_process;
                 }
                 ret = of_property_read_u32_index(node, "hdmi_i2c_port_mapping", 0, &i2c_mapping_offset);
                 if(ret < 0) {
-                        pr_err("%s:Unable to map i2c_mapping_offset\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map i2c_mapping_offset\n", __func__);
                         ret = -ENODEV;
                         goto end_process;
                 }
 
                 ret = of_property_read_u32_index(node, "hdmi_i2c_port_mapping", 1, &i2c_mapping_mask);
                 if(ret < 0) {
-                        pr_err("%s:Unable to map i2c_mapping_mask\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map i2c_mapping_mask\n", __func__);
                         ret = -ENODEV;
                         goto end_process;
                 }
 
                 ret = of_property_read_u32_index(node, "hdmi_i2c_port_mapping", 2, &i2c_mapping_val);
                 if(ret < 0) {
-                        pr_err("%s:Unable to map i2c_mapping_val\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Unable to map i2c_mapping_val\n", __func__);
                         ret = -ENODEV;
                         goto end_process;
                 }
@@ -461,7 +461,7 @@ int hdmi_tx_suspend(struct device *dev)
                         hdmi_tx_dev->display_clock_enable_count = backups[1];
                         set_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status);
                 } else {
-			pr_err("%s already suspended\r\n", __func__);
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s already suspended\r\n", __func__);
 		}
 	}
         return 0;
@@ -582,7 +582,7 @@ hdmi_tx_init(struct platform_device *pdev){
         pr_info("****************************************\n");
         dev = alloc_mem("HDMI TX Device", sizeof(struct hdmi_tx_dev), NULL);
         if(dev == NULL){
-                pr_err("%s:Could not allocated hdmi_tx_dev\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not allocated hdmi_tx_dev\n", __func__);
                 return -ENOMEM;
         }
 

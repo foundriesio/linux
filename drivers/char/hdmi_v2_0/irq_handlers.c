@@ -72,7 +72,7 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
                         if(state & 0x3){
                                 hdmi_irq_clear_bit(dev, I2C_DDC, IH_I2CM_STAT0_I2CMASTERDONE_MASK);
                                 //The I2C communication interrupts must be masked - they will be handled by polling in the eDDC block
-                                pr_err("%s:I2C DDC interrupt received 0x%x - mask interrupt", __func__, state);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s:I2C DDC interrupt received 0x%x - mask interrupt", __func__, state);
                         }
                         // SCDC_READREQ
                         else if(state & 0x4){
@@ -127,7 +127,7 @@ dwc_hdmi_tx_hpd_irq_handler(int irq, void *dev_id)
         struct hdmi_tx_dev *dev =  (struct hdmi_tx_dev *)dev_id;
 
         if(dev == NULL) {
-                pr_err("%s: irq_dev is NULL\r\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s: irq_dev is NULL\r\n", __func__);
                 goto end_handler;
         }
         /* disable hpd irq */
@@ -150,13 +150,13 @@ dwc_hdmi_tx_handler(int irq, void *dev_id)
         uint32_t decode;
 
         if(irq_dev == NULL) {
-                pr_err("%s: irq_dev is NULL\r\n", FUNC_NAME);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s: irq_dev is NULL\r\n", FUNC_NAME);
                 goto end_handler;
         }
 
         dev = (struct hdmi_tx_dev *)irq_dev->dev;
         if(dev == NULL) {
-                pr_err("%s: dev is NULL\r\n", FUNC_NAME);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s: dev is NULL\r\n", FUNC_NAME);
                 goto end_handler;
         }
 
@@ -207,13 +207,13 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
         dev->hotplug_irq = -1;
         if (gpio_is_valid(dev->hotplug_gpio)) {
                 if(devm_gpio_request(dev->parent_dev, dev->hotplug_gpio, "hdmi_hotplug") < 0 ) {
-                        pr_err("%s failed get gpio request\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s failed get gpio request\r\n", __func__);
                 } else {
                         gpio_direction_input(dev->hotplug_gpio);
                         dev->hotplug_irq = gpio_to_irq(dev->hotplug_gpio);
 
                         if(dev->hotplug_irq < 0) {
-                                pr_err("%s can not convert gpio to irq\r\n", __func__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s can not convert gpio to irq\r\n", __func__);
                                 ret = -1;
                         } else {
                                 pr_info("%s using gpio hotplug interrupt (%d)\r\n", __func__, dev->hotplug_irq);
@@ -228,7 +228,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                 dwc_hdmi_tx_set_hotplug_interrupt(dev, 1);
                         }
                         if(ret < 0) {
-                                pr_err("%s failed request interrupt for hotplug\r\n", __func__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed request interrupt for hotplug\r\n", __func__);
                         }
                 }
         }
@@ -238,7 +238,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                dwc_hdmi_tx_handler, IRQF_SHARED,
                                "dwc_hdmi_tx_handler", &dev->irq_dev[HDMI_IRQ_TX_CORE]);
         if (ret){
-                pr_err("%s:Could not register dwc_hdmi_tx interrupt\n",
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not register dwc_hdmi_tx interrupt\n",
                         FUNC_NAME);
         }
 
@@ -248,7 +248,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                dwc_hdmi_tx_cec_handler, IRQF_SHARED,
                                "dwc_hdmi_tx_cec_handler", &dev->irq_dev[HDMI_IRQ_TX_CEC]);
         if (ret){
-                pr_err("%s:Could not register dwc_hdmi_tx_cec interrupt\n",
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not register dwc_hdmi_tx_cec interrupt\n",
                         FUNC_NAME);
         }
         #endif

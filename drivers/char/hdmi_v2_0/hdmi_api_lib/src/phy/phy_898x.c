@@ -2022,7 +2022,7 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
                 };
         }
         if(!phy_regs) {
-                pr_err("%s with %dHz %d pixel is failed\r\n", __func__, pixel_clock, color_depth);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s with %dHz %d pixel is failed\r\n", __func__, pixel_clock, color_depth);
                 ret = -1;
                 goto end_process;
         }

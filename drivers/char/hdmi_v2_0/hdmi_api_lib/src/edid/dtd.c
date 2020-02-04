@@ -304,7 +304,7 @@ int hdmi_dtd_fill(dtd_t * dtd, u32 code, u32 refreshRate)
 
 	p_dtd = get_dtd(code, refreshRate);
 	if(p_dtd == NULL){
-		pr_err("VIC code [%d] with refresh rate [%dHz] is not supported", code, refreshRate);
+		printk(KERN_ERR "[ERROR][HDMI_V20]VIC code [%d] with refresh rate [%dHz] is not supported", code, refreshRate);
 		return -1;
 	}
 	p_dtd->mLimitedToYcc420 = 0;

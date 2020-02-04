@@ -96,7 +96,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
         do {
 
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
                 video = (videoParams_t*)dev->videoParam;
@@ -104,19 +104,19 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 product = (productParams_t*)dev->productParam;
 
                 if(video == NULL || product == NULL) {
-                        pr_err("%s invalid parameters: video = %p, product = %p \r\n", __func__, video, product);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s invalid parameters: video = %p, product = %p \r\n", __func__, video, product);
                         break;
                 }
 
                 /* Suspend status */
                 if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s skip, because hdmi linke was suspended \r\n", __func__);
                         break;
                 }
 
                 /* Power status */
                 if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                 }
 
                 // Reset HDMI
@@ -144,7 +144,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
                 ret = video_Configure(dev, video);
                 if (ret < 0) {
-                        pr_err("%s:Could not configure video", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not configure video", __func__);
                         break;
                 }
 
@@ -157,7 +157,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                         audio_Initialize(dev);
                         ret = audio_Configure(dev, audio);
                         if(ret == FALSE){
-                                pr_err("%s Audio not configured\r\n", __func__);
+                                printk(KERN_ERR "[ERROR][HDMI_V20]%s Audio not configured\r\n", __func__);
                                 ret = -1;
                                 break;
                         }
@@ -180,7 +180,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
                 // Packets
                 if(packets_Configure(dev, video, product) < 0) {
-                        pr_err("%s Could not configure packets\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s Could not configure packets\r\n", __func__);
                         break;
                 }
 
@@ -188,7 +188,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 
 		/* Configure the hdmi phy */
                 if(dwc_hdmi_phy_config(dev, video) < 0) {
-                        pr_err("%s Cann't settig HDMI PHY\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s Cann't settig HDMI PHY\r\n", __func__);
                         ret = -1;
                         break;
                 }
@@ -226,7 +226,7 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
@@ -234,13 +234,13 @@ int hdmi_api_Disable(struct hdmi_tx_dev *dev)
 
                 /* Suspend status */
                 if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s skip, because hdmi linke was suspended \r\n", __func__);
                         break;
                 }
 
                 /* Power status */
                 if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -276,19 +276,19 @@ void hdmi_api_avmute_core(struct hdmi_tx_dev *dev, int enable, uint8_t caller)
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
                 /* Suspend status */
                 if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s skip, because hdmi linke was suspended \r\n", __func__);
                         break;
                 }
 
                 /* Power status */
                 if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -309,19 +309,19 @@ void hdmi_api_avmute(struct hdmi_tx_dev *dev, int enable)
 {
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s dev is NULL\r\n", __func__);
                         break;
                 }
 
                 /* Suspend status */
                 if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
-                        pr_err("%s skip, because hdmi linke was suspended \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s skip, because hdmi linke was suspended \r\n", __func__);
                         break;
                 }
 
                 /* Power status */
                 if(!test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
-                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                         break;
                 }
 

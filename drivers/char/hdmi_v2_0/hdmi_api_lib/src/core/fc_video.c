@@ -227,7 +227,7 @@ int fc_video_config_timing(struct hdmi_tx_dev *dev, videoParams_t *video)
         LOG_TRACE();
 
         if((dev == NULL) || (video == NULL)){
-                pr_err("%s Invalid arguments: dev=%p; video=%p", __func__, dev, video);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s Invalid arguments: dev=%p; video=%p", __func__, dev, video);
                 return FALSE;
         }
 
@@ -305,7 +305,7 @@ int fc_video_config_default(struct hdmi_tx_dev *dev)
 int fc_video_config(struct hdmi_tx_dev *dev, videoParams_t *video)
 {
         if((dev == NULL) || (video == NULL)){
-                pr_err("%s Invalid arguments: dev=%p; video=%p", __func__, dev, video);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s Invalid arguments: dev=%p; video=%p", __func__, dev, video);
                 return FALSE;
         }
 

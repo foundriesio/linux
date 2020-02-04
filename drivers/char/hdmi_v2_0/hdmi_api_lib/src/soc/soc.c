@@ -55,11 +55,11 @@ int hdmi_get_soc_features(struct hdmi_tx_dev *dev, hdmi_soc_features *soc_featur
 			#if defined(CONFIG_ARCH_TCC803X)
                         clk = of_clk_get_by_name(dev->parent_dev->of_node, "ddi_bus");
                         if(IS_ERR(clk)) {
-				pr_err("%s ddi_bus is unknown\r\n", __func__);
+				printk(KERN_ERR "[ERROR][HDMI_V20]%s ddi_bus is unknown\r\n", __func__);
 				soc_features->max_tmds_mhz = 340;
 			} else {
                                 if(clk_get_rate(clk) < 594000000) {
-					pr_err("%s ddi_bus under 594Mhz\r\n", __func__);
+					printk(KERN_ERR "[ERROR][HDMI_V20]%s ddi_bus under 594Mhz\r\n", __func__);
                                         soc_features->max_tmds_mhz = 340;
                                 }
                         }

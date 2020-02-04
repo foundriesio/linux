@@ -94,14 +94,14 @@ ssize_t proc_write_hdcp22(struct file *filp, const char __user *buffer, size_t c
 	// Check size of the input buffer
 	if(cnt != sizeof(uint32_t)){
 //		if(dev->verbose >= VERBOSE_IO)
-			pr_err("%s:Sizes do not match [%d != %d]\n", FUNC_NAME,
+			printk(KERN_ERR "[ERROR][HDMI_V20]%s:Sizes do not match [%d != %d]\n", FUNC_NAME,
 				(int)cnt, (int)sizeof(uint32_t));
 		return -1;
 	}
 
 	// Copy buffers
 	if(copy_from_user(&hdcp22, buffer, cnt)) {
-                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                 return -EFAULT;
 	}
         dev->hdcp22 = hdcp22;
@@ -308,10 +308,10 @@ ssize_t proc_write_ddc_check(struct file *filp, const char __user *buffer, size_
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
                         hdmi_ddc_check(dev, ddc_addr, ddc_len);
                 }else {
-                        pr_err("%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]%s HDMI is not powred <%d>\r\n", __func__, __LINE__);
                 }
         } else {
-                pr_err("##%s Failed to hdmi_ddc_check because hdmi linke was suspended \r\n", __func__);
+                printk(KERN_ERR "[ERROR][HDMI_V20]##%s Failed to hdmi_ddc_check because hdmi linke was suspended \r\n", __func__);
         }
         mutex_unlock(&dev->mutex);
 
@@ -703,7 +703,7 @@ ssize_t proc_write_dv_vsif(struct file *filp, const char __user *buffer, size_t 
                 devm_kfree(dev->parent_dev, dv_vsfi_buf);
 
                 if(dv_vsif_index < 0 || dv_vsif_index > 6) {
-                        pr_err("invalid index %d\r\n", dv_vsif_index);
+                        printk(KERN_ERR "[ERROR][HDMI_V20]invalid index %d\r\n", dv_vsif_index);
                         break;
                 }
                 hdmi_api_vsif_update_by_index(dv_vsif_index);
@@ -986,13 +986,13 @@ proc_close(struct inode *inode, struct file *filp){
 
 void proc_interface_init(struct hdmi_tx_dev *dev){
 	if(dev == NULL){
-		pr_err("%s:Device is null\n", FUNC_NAME);
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Device is null\n", FUNC_NAME);
 		return;
 	}
 
 	dev->hdmi_proc_dir = proc_mkdir("hdmi_tx", NULL);
 	if(dev->hdmi_proc_dir == NULL){
-		pr_err("%s:Could not create file system @ /proc/hdmi_tx\n",
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @ /proc/hdmi_tx\n",
 			FUNC_NAME);
 	}
 
@@ -1002,7 +1002,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	dev->hdmi_proc_hpd = proc_create_data("hpd", S_IFREG | S_IRUGO,
 			dev->hdmi_proc_dir, &proc_fops_hpd, dev);
 	if(dev->hdmi_proc_hpd == NULL){
-		pr_err("%s:Could not create file system @"
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
 				" /proc/hdmi_tx/hpd\n", FUNC_NAME);
 	}
 
@@ -1010,7 +1010,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_hpd_lock = proc_create_data("hpd_lock", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_hpd_lock, dev);
         if(dev->hdmi_proc_hpd_lock == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/hpd_lock\n", FUNC_NAME);
         }
 
@@ -1018,7 +1018,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	dev->hdmi_proc_rxsense = proc_create_data("rxsense", S_IFREG | S_IRUGO,
 			dev->hdmi_proc_dir, &proc_fops_rxsense, dev);
 	if(dev->hdmi_proc_rxsense == NULL){
-		pr_err("%s:Could not create file system @"
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
 				" /proc/hdmi_tx/rxsense\n", FUNC_NAME);
 	}
 
@@ -1028,7 +1028,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	dev->hdmi_proc_hdcp_status = proc_create_data("hdcp_status", S_IFREG | S_IRUGO,
 			dev->hdmi_proc_dir, &proc_fops_hdcp_status, dev);
 	if(dev->hdmi_proc_hdcp_status == NULL){
-		pr_err("%s:Could not create file system @"
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
 				" /proc/hdmi_tx/hdcp_status\n", FUNC_NAME);
 	}
 
@@ -1038,7 +1038,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	dev->hdmi_proc_hdcp22 = proc_create_data("hdcp22", S_IFREG | S_IWUGO,
 			dev->hdmi_proc_dir, &proc_fops_hdcp22, dev);
 	if(dev->hdmi_proc_hdcp22 == NULL){
-		pr_err("%s:Could not create file system @"
+		printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
 				" /proc/hdmi_tx/hdcp22\n", FUNC_NAME);
 	}
 
@@ -1046,7 +1046,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_scdc_check = proc_create_data("scdc_check", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_scdc_check, dev);
         if(dev->hdmi_proc_scdc_check == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/scdc_check\n", FUNC_NAME);
         }
 
@@ -1054,7 +1054,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_ddc_check = proc_create_data("ddc_check", S_IFREG | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_ddc_check, dev);
         if(dev->hdmi_proc_ddc_check == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/ddc_check\n", FUNC_NAME);
         }
 
@@ -1063,7 +1063,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_edid_machine_id = proc_create_data("edid_machine_id", S_IFREG | S_IRUGO | S_IWUGO,
                   dev->hdmi_proc_dir, &proc_fops_edid_machine_id, dev);
         if(dev->hdmi_proc_edid_machine_id == NULL){
-          pr_err("%s:Could not create file system @"
+          printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                           " /proc/hdmi_tx/edid_machine_id\n", FUNC_NAME);
         }
         #endif
@@ -1073,7 +1073,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_drm = proc_create_data("drm", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_drm, dev);
         if(dev->hdmi_proc_drm == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/drm\n", FUNC_NAME);
         }
         #endif
@@ -1083,7 +1083,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_phy_regs = proc_create_data("phy_regs", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_phy_regs, dev);
         if(dev->hdmi_proc_phy_regs == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/phy_regs\n", FUNC_NAME);
         }
         #endif
@@ -1092,7 +1092,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_vsif = proc_create_data("vsif", S_IFREG | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_vsif, dev);
         if(dev->hdmi_proc_vsif == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/vsif\n", FUNC_NAME);
         }
         #endif
@@ -1102,7 +1102,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_dv_vsif = proc_create_data("dv_vsif", S_IFREG | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_dv_vsif, dev);
         if(dev->hdmi_proc_dv_vsif == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/dv_vsif\n", FUNC_NAME);
         }
         #endif
@@ -1111,7 +1111,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         dev->hdmi_proc_audio_channel_mux = proc_create_data("audio_channel_mux", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_audio_channel_mux, dev);
         if(dev->hdmi_proc_audio_channel_mux == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/audio_channel_mux\n", FUNC_NAME);
         }
         #endif
@@ -1119,7 +1119,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	dev->hdmi_proc_debug = proc_create_data("debug", S_IFREG | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_debug, dev);
         if(dev->hdmi_proc_debug == NULL){
-                pr_err("%s:Could not create file system @"
+                printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not create file system @"
                                 " /proc/hdmi_tx/debug\n", FUNC_NAME);
         }
 
