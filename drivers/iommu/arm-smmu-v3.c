@@ -1835,7 +1835,7 @@ static int __arm_smmu_write_ctx_desc(struct arm_smmu_domain *smmu_domain,
 		table->entries++;
 	}
 
-	if (table->entries == 0) {
+	if (smmu_domain->s1_cfg.l1ptr && table->entries == 0) {
 		/*
 		 * FIXME: make this nicer, and generic. For now only L2 tables
 		 * can be freed this way.
