@@ -138,7 +138,7 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
 
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_I2SREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_i2s_io;
                         offset -= HDMIDP_I2SREG(0);
@@ -146,9 +146,9 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
                         hdmi_io = (volatile void __iomem *)dev->hdmi_spdif_io;
                         offset -= HDMIDP_SPDIFREG(0);
                 } else if(offset >= HDMIDP_AESREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
@@ -156,9 +156,9 @@ static unsigned int hdmi_audio_reg_read(struct tcc_hdmi_audio_dev *dev, unsigned
         }
 
         if(hdmi_io == NULL) {
-                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
         } else {
-                //pr_info(" >> Read (%p)\r\n", (void*)(hdmi_io + offset));
+                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Read (%p)\r\n", (void*)(hdmi_io + offset));
                 val = ioread32((void*)(hdmi_io + offset));
         }
         return val;
@@ -174,7 +174,7 @@ static void hdmi_audio_reg_write(struct tcc_hdmi_audio_dev *dev, unsigned int da
 
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_I2SREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_i2s_io;
                         offset -= HDMIDP_I2SREG(0);
@@ -182,18 +182,18 @@ static void hdmi_audio_reg_write(struct tcc_hdmi_audio_dev *dev, unsigned int da
                         hdmi_io = (volatile void __iomem *)dev->hdmi_spdif_io;
                         offset -= HDMIDP_SPDIFREG(0);
                 } else if(offset >= HDMIDP_AESREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMI_SSREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
         if(hdmi_io == NULL) {
-                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
         } else {
-                //pr_info(" >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
+                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
                 iowrite32(data, (void*)(hdmi_io + offset));
         }
 }
@@ -223,35 +223,35 @@ static irqreturn_t audio_spdif_handler(int irq, void *dev_id)
 
                         #if AUDIO_DEBUG
                         if (status & SPDIF_CLK_RECOVERY_FAIL_MASK) {
-                                pr_info("SPDIFKERN_INFO_CLK_RECOVERY_FAIL_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIFKERN_INFO_CLK_RECOVERY_FAIL_MASK\n");
                         }
 
                         if (status & SPDIF_STATUS_RECOVERED_MASK) {
-                                pr_info("SPDIF_STATUS_RECOVERED_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_STATUS_RECOVERED_MASK\n");
                         }
 
                         if (status & SPDIF_PREAMBLE_DETECTED_MASK) {
-                                pr_info("SPDIF_PREAMBLE_DETECTED_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_PREAMBLE_DETECTED_MASK\n");
                         }
 
                         if (status & SPDIF_HEADER_NOT_DETECTED_MASK) {
-                                pr_info("SPDIF_HEADER_NOT_DETECTED_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_HEADER_NOT_DETECTED_MASK\n");
                         }
 
                         if (status & SPDIF_HEADER_DETECTED_MASK) {
-                                pr_info("SPDIF_HEADER_DETECTED_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_HEADER_DETECTED_MASK\n");
                         }
 
                         if (status & SPDIF_PAPD_NOT_DETECTED_MASK) {
-                                pr_info("SPDIF_PAPD_NOT_DETECTED_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_PAPD_NOT_DETECTED_MASK\n");
                         }
 
                         if (status & SPDIF_ABNORMAL_PD_MASK) {
-                                pr_info("SPDIF_ABNORMAL_PD_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_ABNORMAL_PD_MASK\n");
                         }
 
                         if (status & SPDIF_BUFFER_OVERFLOW_MASK) {
-                                pr_info("SPDIF_BUFFER_OVERFLOW_MASK\n");
+                                printk(KERN_INFO "[INFO][HDMI_V14] SPDIF_BUFFER_OVERFLOW_MASK\n");
                         }
                         #endif
                         // clear pending bit
@@ -463,7 +463,7 @@ static void tcc_hdmi_audio_set_clock(struct tcc_hdmi_audio_dev *dev, unsigned in
                                         tcc_ckc_set_hdmi_audio_src(PERI_ADAI0);
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
-                                        //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
+                                        //printk(KERN_INFO "[INFO][HDMI_V14] %s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
                                 }
                                 break;
 
@@ -481,7 +481,7 @@ static void tcc_hdmi_audio_set_clock(struct tcc_hdmi_audio_dev *dev, unsigned in
                                         tcc_ckc_set_hdmi_audio_src(PERI_SPDIF3);
                                         clk_set_rate(dev->pclk, clk_rate);
                                         clk_prepare_enable(dev->pclk);
-                                        //pr_info("%s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
+                                        //printk(KERN_INFO "[INFO][HDMI_V14] %s audio clock %dHz\r\n", __func__, clk_get_rate(dev->pclk));
                                 }
                                 break;
                 }
@@ -626,7 +626,7 @@ static int setCUVCodingType(struct tcc_hdmi_audio_dev *dev, enum CUVAudioCoding 
                                 break;
                 };
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_0);
                 }
@@ -735,7 +735,7 @@ static int setCUVChannelNum(struct tcc_hdmi_audio_dev *dev, enum CUVChannelNumbe
                                 break;
                 }
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_2);
                 }
@@ -823,7 +823,7 @@ static int setCUVWordLength(struct tcc_hdmi_audio_dev *dev, enum CUVWordLength l
                                 break;
                 }
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                 } else {
                         hdmi_audio_reg_write(dev, reg, HDMI_SS_I2S_CH_ST_4);
                 }
@@ -864,7 +864,7 @@ static int setI2SParameter(struct tcc_hdmi_audio_dev *dev, struct I2SParameter i
                                 break;
                 }
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -889,7 +889,7 @@ static int setI2SParameter(struct tcc_hdmi_audio_dev *dev, struct I2SParameter i
                                 break;
                 }
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -914,7 +914,7 @@ static int setI2SParameter(struct tcc_hdmi_audio_dev *dev, struct I2SParameter i
                                 break;
                 }
                 if(ret < 0) {
-                        pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
                 hdmi_audio_reg_write(dev, reg , HDMI_SS_I2S_CON_2);
@@ -933,13 +933,13 @@ static int audio_open(struct inode *inode, struct file *file)
         if(dev != NULL) {
                 file->private_data = dev;
                 if(++dev->open_cnt == 1) {
-                        pr_info("%s clock enable\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V14] %s clock enable\r\n", __func__);
                         if(dev->pclk != NULL)
                                 clk_prepare_enable(dev->pclk);
                         if(dev->hclk != NULL)
                                 clk_prepare_enable(dev->hclk);
                 }
-                pr_info("%s (%d)\n", __func__, dev->open_cnt);
+                printk(KERN_INFO "[INFO][HDMI_V14] %s (%d)\n", __func__, dev->open_cnt);
                 ret = 0;
         }
         return ret;
@@ -956,14 +956,14 @@ static int audio_release(struct inode *inode, struct file *file)
 
                 if(dev->open_cnt > 0) {
                         if(--dev->open_cnt == 0) {
-                                pr_info("%s clock disable\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V14] %s clock disable\r\n", __func__);
                                 if(dev->pclk != NULL)
                                         clk_disable_unprepare(dev->pclk);
                                 if(dev->hclk != NULL)
                                         clk_disable_unprepare(dev->hclk);
                         }
                 }
-                pr_info("%s (%d)\n", __func__, dev->open_cnt);
+                printk(KERN_INFO "[INFO][HDMI_V14] %s (%d)\n", __func__, dev->open_cnt);
                 ret = 0;
         }
         return ret;
@@ -996,12 +996,12 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         io_debug("AUDIO: ioctl(AUDIO_IOC_SET_AUDIOINPUT)\n");
 
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         if (setAudioInputPort(dev, val) < 0) {
-                                                pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         dev->audio_params.inputPort = val;
@@ -1013,7 +1013,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_AUDIOINPUT)\n");
                                         if(copy_to_user((void __user *)arg, &dev->audio_params.inputPort, sizeof(enum HDMIAudioPort))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1025,12 +1025,12 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_CUV_SET_SAMPLEFREQ)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         if (setCUVSampleFreq(dev, val) < 0) {
-                                                pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         dev->audio_params.sampleFreq = val;
@@ -1042,7 +1042,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_CUV_SET_SAMPLEFREQ)\n");
                                         if(copy_to_user((void __user *)arg, &dev->audio_params.sampleFreq, sizeof(enum SamplingFreq ))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1054,12 +1054,12 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_CUV_SET_CODINGTYPE)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         if (setCUVCodingType(dev, val) < 0) {
-                                                pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -1074,7 +1074,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_CUV_SET_CODINGTYPE)\n");
 
                                         if(copy_to_user((void __user *)arg, &dev->coding_type, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1087,7 +1087,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_AUDIOFORMATCODE_INFO)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -1100,7 +1100,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                 {
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_AUDIOFORMATCODE_INFO)\n");
                                         if(copy_to_user((void __user *)arg, &dev->audio_params.formatCode, sizeof(enum AudioFormat))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1113,12 +1113,12 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_CUV_SET_CHANNELNUMBER)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         if (setCUVChannelNum(dev, val) < 0) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -1132,7 +1132,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         //          int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_CUV_SET_CHANNELNUMBER)\n");
                                         if(copy_to_user((void __user *)arg, &dev->audio_params.channelNum, sizeof(enum ChannelNum))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1144,12 +1144,12 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_CUV_SET_WORDLENGTH)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         if (setCUVWordLength(dev, val) < 0) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1161,7 +1161,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_CUV_SET_WORDLENGTH)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -1175,7 +1175,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         //          int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_CUV_SET_WORDLENGTH)\n");
                                         if(copy_to_user((void __user *)arg, &dev->lpcm_word_length, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1188,7 +1188,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_SPDIF_SET_CODINGTYPE)\n");
 
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -1213,13 +1213,13 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         int val;
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_SPDIF_SET_SAMPLEFREQ)\n");
                                         if(copy_from_user(&val, (void __user *)arg, sizeof(int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
 
                                         if (setSPDIFSampleFreq(dev, val) < 0) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1232,13 +1232,13 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_SET_I2S_PARAMETER)\n");
                                         if(copy_from_user(&i2s, (void __user *)arg, sizeof(struct I2SParameter))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
                                         ret = setI2SParameter(dev, i2s);
                                         if(ret < 0) {
-                                                pr_err("%s invalid param at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s invalid param at line(%d)\r\n", __func__, __LINE__);
                                         } else {
                                                 memcpy(&dev->audio_params.i2sParam, &i2s, sizeof(struct I2SParameter));
                                         }
@@ -1251,7 +1251,7 @@ static long  audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
                                         io_debug( "AUDIO: ioctl(AUDIO_IOC_GET_I2S_PARAMETER)\n");
                                         if(copy_to_user((void __user *)arg, &dev->audio_params.i2sParam, sizeof(struct I2SParameter))) {
-                                                pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         ret = 0;
@@ -1326,9 +1326,9 @@ static int hdmi_audio_suspend(struct device *dev)
 
         if(tcc_hdmi_audio_dev != NULL) {
                 if(tcc_hdmi_audio_dev->runtime_suspend) {
-                        pr_info("hdmi audio runtime suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hdmi audio runtime suspend\r\n");
                 } else {
-                        pr_info("hdmi audio suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hdmi audio suspend\r\n");
                 }
                 if(!tcc_hdmi_audio_dev->suspend) {
                         tcc_hdmi_audio_dev->suspend = 1 ;
@@ -1343,9 +1343,9 @@ static int hdmi_audio_resume(struct device *dev)
 
         if(tcc_hdmi_audio_dev != NULL) {
                 if(tcc_hdmi_audio_dev->runtime_suspend) {
-                        pr_info("hdmi audio runtime suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hdmi audio runtime suspend\r\n");
                 } else {
-                        pr_info("hdmi audio suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hdmi audio suspend\r\n");
                 }
                 if(tcc_hdmi_audio_dev->suspend  && !tcc_hdmi_audio_dev->runtime_suspend) {
                         tcc_hdmi_audio_dev->suspend = 0;
@@ -1426,13 +1426,13 @@ static int audio_probe(struct platform_device *pdev)
                 dev->pclk = of_clk_get(pdev->dev.of_node, 0);
 
                 if (IS_ERR_OR_NULL(dev->hclk)) {
-                        pr_err("HDMI: failed to get hdmi hclk\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi hclk\n");
                         dev->hclk = NULL;
                         break;
                 }
 
                 if (IS_ERR_OR_NULL(dev->pclk)) {
-                        pr_err("HDMI: failed to get hdmi pclk\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi pclk\n");
                         dev->pclk = NULL;
                         break;
                 }
@@ -1442,7 +1442,7 @@ static int audio_probe(struct platform_device *pdev)
                 {
                         dev->spidf_pclk = of_clk_get(np, 0);
                         if (IS_ERR_OR_NULL(dev->spidf_pclk)){
-                                pr_err("HDMI: failed to get hdmi spdif pclk\n");
+                                printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi spdif pclk\n");
                                 dev->spidf_pclk  = NULL;
                                 break;
                         }
@@ -1456,29 +1456,29 @@ static int audio_probe(struct platform_device *pdev)
 
                 dev->hdmi_ctrl_io = of_iomap(pdev->dev.of_node, 0);
                 if(dev->hdmi_ctrl_io == NULL){
-                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
                 dev->hdmi_spdif_io = of_iomap(pdev->dev.of_node, 1);
                 if(dev->hdmi_spdif_io == NULL){
-                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
                 dev->hdmi_i2s_io = of_iomap(pdev->dev.of_node, 2);
                 if(dev->hdmi_i2s_io == NULL){
-                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
 
                 dev->audio_irq = of_irq_to_resource(pdev->dev.of_node, 0, NULL);
                 if (dev->audio_irq < 0) {
-                        pr_err("%s failed get irq for hdmi audio\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed get irq for hdmi audio\r\n", __func__);
                         break;
                 }
 
                 dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL);
                 if(dev->misc == NULL) {
-                        pr_err("%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
                         ret = -ENOMEM;
                         break;
                 }
@@ -1489,10 +1489,10 @@ static int audio_probe(struct platform_device *pdev)
                 ret = misc_register(dev->misc);
 
                 if(ret < 0) {
-                        pr_err("%s failed misc_register for hdmi audio\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed misc_register for hdmi audio\r\n", __func__);
                         break;
                 }
-                pr_info("%s:HDMI Audio driver %s\n", __func__, SRC_VERSION);
+                printk(KERN_INFO "[INFO][HDMI_V14] %s:HDMI Audio driver %s\n", __func__, SRC_VERSION);
 
                 dev_set_drvdata(dev->pdev, dev);
 
@@ -1501,7 +1501,7 @@ static int audio_probe(struct platform_device *pdev)
 
                 ret = devm_request_irq(dev->pdev, dev->audio_irq, audio_spdif_handler, IRQF_SHARED, "hdmi-spdif", dev);
                 if(ret < 0) {
-                        pr_err("%s failed request interrupt for hotplug\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed request interrupt for hotplug\r\n", __func__);
                 }
 
                 if(dev->pclk != NULL) {

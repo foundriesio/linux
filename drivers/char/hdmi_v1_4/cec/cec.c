@@ -113,18 +113,18 @@ static unsigned int cec_reg_read(struct tcc_hdmi_cec_dev *dev, unsigned offset){
        
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_CECREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
                         offset -= HDMIDP_CECREG(0);
                 } else if(offset >= HDMIDP_I2SREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_AESREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
@@ -132,9 +132,9 @@ static unsigned int cec_reg_read(struct tcc_hdmi_cec_dev *dev, unsigned offset){
         }
 
         if(hdmi_io == NULL) {
-                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
         } else {
-                //pr_info(" >> Read (%p)\r\n", (void*)(hdmi_io + offset));
+                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Read (%p)\r\n", (void*)(hdmi_io + offset));
                 val = ioread32((void*)(hdmi_io + offset));
         }
         return val;
@@ -149,27 +149,27 @@ static void cec_reg_write(struct tcc_hdmi_cec_dev *dev, unsigned int data, unsig
        
         if(dev != NULL) {
                 if(offset >= HDMIDP_PHYREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_CECREG(0)) {
                         hdmi_io = (volatile void __iomem *)dev->hdmi_cec_io;
                         offset -= HDMIDP_CECREG(0);
                 } else if(offset >= HDMIDP_I2SREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_SPDIFREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_AESREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMIREG(0)) {
-                        pr_err("%s output range at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s output range at line(%d)\r\n", __func__, __LINE__);
                 } else if(offset >= HDMIDP_HDMI_SSREG(0)) { 
                         hdmi_io = (volatile void __iomem *)dev->hdmi_ctrl_io;
                         offset -= HDMIDP_HDMI_SSREG(0);
                 }
         }
         if(hdmi_io == NULL) {
-                pr_err("%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
+                printk(KERN_ERR "[ERROR][HDMI_V14]%s hdmi_io is NULL at offset(0x%x)\r\n", __func__, offset);
         } else {
-                //pr_info(" >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
+                //printk(KERN_INFO "[INFO][HDMI_V14]  >> Write(%p) = 0x%x\r\n", (void*)(hdmi_io + offset), data);
                 iowrite32(data, (void*)(hdmi_io + offset));
         }
 }
@@ -196,7 +196,7 @@ static int cec_blank(struct tcc_hdmi_cec_dev *dev, int blank_mode)
         int ret = -EINVAL;
         struct device *pdev = NULL;
         
-        pr_info("%s : blank(mode=%d)\n",__func__, blank_mode);
+        printk(KERN_INFO "[INFO][HDMI_V14] %s : blank(mode=%d)\n",__func__, blank_mode);
         
         if(dev != NULL) {
                 pdev = dev->pdev;
@@ -248,11 +248,11 @@ static void cec_set_divider(struct tcc_hdmi_cec_dev *dev)
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
                         break;
                 }
                 if(dev->ipclk == NULL) {
-                        pr_err("%s ipclk is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s ipclk is NULL\r\n", __func__);
                         break;
                 }
         	source_bus_clk = clk_get_rate(dev->ipclk);
@@ -613,7 +613,7 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s parameter is null at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s parameter is null at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
 
@@ -636,7 +636,7 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
 
                 if (copy_to_user(buffer, dev->rx.buffer, dev->rx.size)) {
                         spin_unlock_irq(&dev->rx.lock);
-                        pr_err("CEC: copy_to_user() failed!\n");
+                        printk(KERN_ERR "[ERROR][HDMI_V14]CEC: copy_to_user() failed!\n");
                         break;
                 }
 
@@ -654,7 +654,7 @@ ssize_t cec_read(struct file *file, char __user *buffer, size_t count, loff_t *p
                                 len+= sprintf(msg_debug+len, "[%02x] ", dev->rx.buffer[loop]);
                         }
                         msg_debug[len] = 0;
-                        pr_info("%s\r\n", msg_debug);
+                        printk(KERN_INFO "[INFO][HDMI_V14] %s\r\n", msg_debug);
                 }
                 #endif
 
@@ -673,21 +673,21 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s parameter is null at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s parameter is null at line(%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
                 }
 
                 /* check data size */
                 if (count > CEC_TX_BUFF_SIZE || count == 0) {
-                        pr_err("%s count is inavlid at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s count is inavlid at line(%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
                 }
 
                 if (copy_from_user(dev->tx.buffer, buffer, count))
                 {
-                        pr_err("%s copy_from_user is failed at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s copy_from_user is failed at line(%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
                 }
@@ -700,7 +700,7 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
                                 len += sprintf(msg_debug+len, "[%02x] ", dev->tx.buffer[loop]);
                         }
                         msg_debug[len] = 0;
-                        pr_info("%s\r\n", msg_debug);
+                        printk(KERN_INFO "[INFO][HDMI_V14] %s\r\n", msg_debug);
                 }
                 #endif
 
@@ -738,7 +738,7 @@ ssize_t cec_write(struct file *file, const char __user *buffer, size_t count, lo
 
                 /* wait for interrupt */
                 if (0 == wait_event_interruptible_timeout(dev->tx.waitq, atomic_read(&dev->tx.state) != STATE_TX, msecs_to_jiffies(10))) {
-                        //pr_err("%s wait failed at line (%d)\r\n", __func__, __LINE__);
+                        //printk(KERN_ERR "[ERROR][HDMI_V14]%s wait failed at line (%d)\r\n", __func__, __LINE__);
                         count = 0;
                         break;
                 }
@@ -781,7 +781,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         io_debug( "CEC: ioctl(CEC_IOC_SETLADDR)\n");
                                 
                                         if(copy_from_user(&laddr, (void __user *)arg, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
 
@@ -798,7 +798,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         unsigned int uiData;
                                         io_debug( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
                                         if(copy_from_user(&uiData, (void __user *)arg, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         DPRINTK( "CEC: SendData = 0x%02x\n", uiData);
@@ -816,7 +816,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                         case CEC_IOC_GETRESUMESTATUS:
                                 io_debug( "CEC: ioctl(CEC_IOC_GETRESUMESTATUS)\n");
                                 if(copy_to_user((void __user *)arg, &dev->resume, sizeof(unsigned int))) {
-                                        pr_err("%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
                                 ret = 0;
@@ -826,7 +826,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         unsigned int resume_status;
                                         io_debug( "CEC: ioctl(CEC_IOC_SENDDATA)\n");
                                         if(copy_from_user(&resume_status, (void __user *)arg, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                                         dev->resume = (resume_status > 0)?1:0;
@@ -838,7 +838,7 @@ long  cec_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                                         unsigned int cmd;
                                         io_debug("CEC: ioctl(CEC_IOC_BLANK)\r\n");
                                         if(copy_from_user(&cmd, (void __user *)arg, sizeof(unsigned int))) {
-                                                pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
+                                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                                 break;
                                         }
                       
@@ -888,7 +888,7 @@ static int cec_suspend(struct device *dev)
 {
         struct tcc_hdmi_cec_dev *tcc_hdmi_cec_dev;
         
-        pr_info("### %s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V14] ### %s \n", __func__);
         
         if(dev != NULL) {
                 tcc_hdmi_cec_dev = (struct tcc_hdmi_cec_dev *)dev_get_drvdata(dev);
@@ -910,7 +910,7 @@ static int cec_resume(struct device *dev)
 {
         struct tcc_hdmi_cec_dev *tcc_hdmi_cec_dev;
         
-        pr_info("### %s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V14] ### %s \n", __func__);
         
         if(dev != NULL) {
                 tcc_hdmi_cec_dev = (struct tcc_hdmi_cec_dev *)dev_get_drvdata(dev);
@@ -996,19 +996,19 @@ static int cec_probe(struct platform_device *pdev)
                 
                 dev->pclk = of_clk_get(pdev->dev.of_node, 0);
                 if (IS_ERR_OR_NULL(dev->pclk)) {
-                    pr_err("HDMI: failed to get hdmi hclk\n");
+                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi hclk\n");
                     dev->pclk = NULL;
                     break;
                 }
                 dev->hclk = of_clk_get(pdev->dev.of_node, 1);
                 if (IS_ERR_OR_NULL(dev->hclk)) {
-                    pr_err("HDMI: failed to get hdmi hclk\n");
+                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi hclk\n");
                     dev->hclk = NULL;
                     break;
                 }
                 dev->ipclk = of_clk_get(pdev->dev.of_node, 2);
                 if (IS_ERR_OR_NULL(dev->ipclk)) {
-                    pr_err("HDMI: failed to get hdmi ipclk\n");
+                    printk(KERN_ERR "[ERROR][HDMI_V14]HDMI: failed to get hdmi ipclk\n");
                     dev->ipclk = NULL;
                     break;
                 }
@@ -1021,24 +1021,24 @@ static int cec_probe(struct platform_device *pdev)
 
                 dev->cec_irq = of_irq_to_resource(pdev->dev.of_node, 0, NULL);
                 if (dev->cec_irq < 0) {
-                        pr_err("%s failed get irq for hdmi cec\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed get irq for hdmi cec\r\n", __func__);
                         break;
                 }
 
                 dev->hdmi_ctrl_io = of_iomap(pdev->dev.of_node, 0);
                 if(dev->hdmi_ctrl_io == NULL){
-                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
                 dev->hdmi_cec_io = of_iomap(pdev->dev.of_node, 1);
                 if(dev->hdmi_cec_io == NULL){
-                        pr_err("%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to map hdmi ctrl resource at line(%d)\n", __func__, __LINE__);
                         break;
                 }
 
                 dev->misc = devm_kzalloc(&pdev->dev, sizeof(struct miscdevice), GFP_KERNEL); 
                 if(dev->misc == NULL) {
-                        pr_err("%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s:Unable to createe hdmi misc at line(%d)\n", __func__, __LINE__);
                         ret = -ENOMEM;
                         break;
                 }
@@ -1048,12 +1048,12 @@ static int cec_probe(struct platform_device *pdev)
                 dev->misc->parent = dev->pdev;
                 ret = misc_register(dev->misc);
                 if(ret < 0) {
-                        pr_err("%s failed misc_register for hdmi cec\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed misc_register for hdmi cec\r\n", __func__);
                         break;
                 }
                 dev_set_drvdata(dev->pdev, dev);
 
-                pr_info("%s:HDMI CEC driver %s\n", __func__, SRC_VERSION);
+                printk(KERN_INFO "[INFO][HDMI_V14] %s:HDMI CEC driver %s\n", __func__, SRC_VERSION);
 
                 init_waitqueue_head(&dev->tx.waitq);
                 init_waitqueue_head(&dev->rx.waitq);
@@ -1062,12 +1062,12 @@ static int cec_probe(struct platform_device *pdev)
                 cec_disable_interrupts(dev);
                 ret = devm_request_irq(dev->pdev, dev->cec_irq, cec_irq_handler, IRQF_SHARED, "hdmi-cec", dev);
                 if(ret < 0) {
-                        pr_err("%s failed request interrupt for cec\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed request interrupt for cec\r\n", __func__);
                 }
                 
                 dev->rx.buffer = devm_kmalloc(&pdev->dev, CEC_RX_BUFF_SIZE, GFP_KERNEL);
                 if (dev->rx.buffer == NULL) {
-                        pr_err("%s failed kmalloc \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed kmalloc \r\n", __func__);
                         ret = -1;
                         break;
                 }
@@ -1075,7 +1075,7 @@ static int cec_probe(struct platform_device *pdev)
 
                 dev->tx.buffer = devm_kmalloc(&pdev->dev, CEC_TX_BUFF_SIZE, GFP_KERNEL);
                 if (dev->tx.buffer == NULL) {
-                        pr_err("%s failed kmalloc \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed kmalloc \r\n", __func__);
                         ret = -1;
                         break;
                 }

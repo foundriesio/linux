@@ -111,14 +111,14 @@ static void hpd_set_hotplug_interrupt(struct hpd_dev *dev, int enable)
                                 dev->hotplug_irq_enabled = 1;
                                 enable_irq(dev->hotplug_irq);
                         } else {
-                                pr_info("%s already enable irq\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V14] %s already enable irq\r\n", __func__);
                         }
                 } else {
                         if(dev->hotplug_irq_enabled) {
                                 dev->hotplug_irq_enabled = 0;
                                 disable_irq(dev->hotplug_irq);
                         } else {
-                                pr_info("%s disable irq\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V14] %s disable irq\r\n", __func__);
                         }
                         cancel_work_sync(&dev->tx_hotplug_handler);
                 }
@@ -148,7 +148,7 @@ static void hpd_hotplug_thread(struct work_struct *work)
 
                 /* If match is less than 4, it is assumed to be noise. */
                 if(match >= 4) {
-			pr_info("\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);      
+			printk(KERN_INFO "[INFO][HDMI_V14] \e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);      
 
                         dev->hotplug_real_status = current_hpd;
                         if(dev->hotplug_locked == 0) {
@@ -197,12 +197,12 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                 dev->hotplug_irq = -1;
                 if (gpio_is_valid(dev->hotplug_gpio)) {
                         if(devm_gpio_request(dev->pdev, dev->hotplug_gpio, "hdmi_hotplug") < 0 ) {
-                                pr_err("%s failed get gpio request\r\n", __func__);
+                                printk(KERN_ERR "[ERROR][HDMI_V14]%s failed get gpio request\r\n", __func__);
                         } else {
                                 gpio_direction_input(dev->hotplug_gpio);
                                 dev->hotplug_irq = gpio_to_irq(dev->hotplug_gpio);
                                 if(dev->hotplug_irq < 0) {
-                                        pr_err("%s can not convert gpio to irq\r\n", __func__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V14]%s can not convert gpio to irq\r\n", __func__);
                                         ret = -1;
                                 } else {
                                         dev->hotplug_status = dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
@@ -213,7 +213,7 @@ static int hpd_init_interrupts(struct hpd_dev *dev)
                                         hpd_set_hotplug_interrupt(dev, 1);
                                 }
                                 if(ret < 0) {
-                                        pr_err("%s failed request interrupt for hotplug\r\n", __func__);
+                                        printk(KERN_ERR "[ERROR][HDMI_V14]%s failed request interrupt for hotplug\r\n", __func__);
                                 }
                         }
                 }
@@ -275,7 +275,7 @@ static int hpd_blank(struct hpd_dev *dev, int blank_mode)
 	int ret = -EINVAL;
         struct device *pdev = (dev!=NULL)?dev->pdev:NULL;
 
-        pr_info("%s : blank(mode=%d)\n",__func__, blank_mode);
+        printk(KERN_INFO "[INFO][HDMI_V14] %s : blank(mode=%d)\n",__func__, blank_mode);
         if(pdev != NULL) {
                 #ifdef CONFIG_PM
         	switch(blank_mode)
@@ -312,7 +312,7 @@ int hpd_start(struct hpd_dev *dev)
         if(dev != NULL) {
                 dev->hotplug_irq_enable = 1;
                 if(dev->suspend) {
-                        pr_err("%s hpd is suspended\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hpd is suspended\r\n", __func__);
                 } else {
                         mutex_lock(&dev->mutex);
                         dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
@@ -328,7 +328,7 @@ int hpd_stop(struct hpd_dev *dev)
         if(dev != NULL) {
                 dev->hotplug_irq_enable = 0;
                 if(dev->suspend) {
-                        pr_err("%s hpd is suspended\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s hpd is suspended\r\n", __func__);
                 } else {
                         mutex_lock(&dev->mutex);
                         dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
@@ -377,9 +377,9 @@ static int hpd_suspend(struct device *dev)
 
         if(hpd_dev != NULL) {
                 if(hpd_dev->runtime_suspend) {
-                        pr_info("hpd_runtime_suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hpd_runtime_suspend\r\n");
                 } else {
-                        pr_info("hpd_suspend\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V14] hpd_suspend\r\n");
                 }
 	        hpd_set_hotplug_interrupt(hpd_dev, 0);
         }
@@ -389,7 +389,7 @@ static int hpd_suspend(struct device *dev)
 static int hpd_resume(struct device *dev)
 {
         struct hpd_dev *hpd_dev = (struct hpd_dev *)(dev!=NULL)?dev_get_drvdata(dev):NULL;
-        pr_info("hpd_resume\r\n");                        
+        printk(KERN_INFO "[INFO][HDMI_V14] hpd_resume\r\n");                        
         if(hpd_dev != NULL) {
                 hpd_dev->hotplug_real_status = gpio_get_value(hpd_dev->hotplug_gpio);
                 if(!hpd_dev->runtime_suspend) {
@@ -474,7 +474,7 @@ static int hpd_probe(struct platform_device *pdev)
         int ret = -ENOMEM;
         struct hpd_dev *dev = NULL;
         do {
-                pr_info("%s: HDMI HPD driver %s\n", __func__, VERSION);
+                printk(KERN_INFO "[INFO][HDMI_V14] %s: HDMI HPD driver %s\n", __func__, VERSION);
                 dev = devm_kzalloc(&pdev->dev, sizeof(struct hpd_dev), GFP_KERNEL);
                 if (dev == NULL) {
                         break;
