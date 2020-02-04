@@ -394,13 +394,13 @@ int TccCECInterface_Init(struct tcc_hdmi_cec_dev *dev)
         
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL \r\n", __func__);
                         break;
                 }
                 
         	dev->fake_ir_dev = input_allocate_device();
                 if(dev->fake_ir_dev == NULL) {
-                        pr_err("%s input device is null \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s input device is null \r\n", __func__);
         		break;
         	}
 
@@ -415,7 +415,7 @@ int TccCECInterface_Init(struct tcc_hdmi_cec_dev *dev)
 
         	ret = input_register_device(dev->fake_ir_dev);
         	if (ret) {
-                        pr_err("%s input_register_device is failed \r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s input_register_device is failed \r\n", __func__);
                         break;
             	}
 
@@ -659,7 +659,7 @@ static int TccCECInterface_SendData(struct tcc_hdmi_cec_dev * dev, unsigned int 
 
         do {
                 if(dev == NULL) {
-                        pr_err("%s dev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s dev is NULL\r\n", __func__);
                         break;
                 }
                                 
@@ -699,7 +699,7 @@ int TccCECInterface_ParseMessage(struct tcc_hdmi_cec_dev * dev, int size)
         do {
                 buffer = (dev != NULL)?dev->rx.buffer:NULL;
                 if(buffer == NULL) {
-                        pr_err("%s buffer is NULL at line(%d)\r\n", __func__, __LINE__);
+                        printk(KERN_ERR "[ERROR][HDMI_V14]%s buffer is NULL at line(%d)\r\n", __func__, __LINE__);
                         break;
                 }
                 initiator = (buffer[0] >> 4) & 0xF;
