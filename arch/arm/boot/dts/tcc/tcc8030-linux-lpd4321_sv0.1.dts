@@ -216,3 +216,7 @@
 		gpios = <&gpa 11 0>;
 	};
 };
+
+&ictc {
+	status = "okay";
+};

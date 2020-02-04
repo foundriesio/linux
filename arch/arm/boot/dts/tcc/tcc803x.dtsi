@@ -3551,4 +3551,40 @@
 	switch_reverse: switch_reverse {};
 
 	tm123xdhp90: tm123xdhp90 {};
+
+	ictc: ictc {
+		compatible = "telechips,ictc";
+		status = "disabled";
+		reg = <0x16055000 0x4d>;
+		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_peri PERI_IC_TC>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ictc_f_in>;
+		f-in-gpio = <&gph 5 0>;
+		//f-in-rtc-wkup;
+		r-edge = <100>;
+		f-edge = <100>;
+		edge-matching-value = <100>;
+		time-out = <0>;
+		duty-rounding-value = <0x0ffffff0>;
+		prd-rounding-value = <0x0fffffff0>;
+		flt-f-mode = <0x3>;
+		flt-r-mode = <0x3>;
+		cmp-err-sel = <0>;
+		abs-sel = <0>;
+		edge-sel = <0>;
+		tck-pol = <0>;
+		tck-sel = <0>;
+		lock-en = <0>;
+		//r-edge-int;
+		//f-edge-int;
+		//df-cnt-full-int;
+		f-chg-int;
+		//d-chg-int;
+		//e-cnt-full-int;
+		//to-cnt-full-int;
+		//nf-ed-cnt-full-int;
+		//time-stamp-cnt;
+
+		  };
 };

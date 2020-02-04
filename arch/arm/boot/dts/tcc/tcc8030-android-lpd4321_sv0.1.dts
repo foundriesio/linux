@@ -89,3 +89,7 @@
 &vioc_mgr0 {
 	status = "okay";
 };
+
+&ictc {
+	status = "okay";
+};

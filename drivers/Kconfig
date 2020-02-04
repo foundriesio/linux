@@ -213,4 +213,6 @@ source "drivers/mux/Kconfig"
 
 source "drivers/gator/Kconfig"
 
+source "drivers/ictc/Kconfig"
+
 endmenu
