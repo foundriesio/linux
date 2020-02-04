@@ -24,13 +24,6 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
-#undef snd_card_dbg
-#if 0
-#define snd_card_dbg(f, a...)    printk("<SNDCARD>" f, ##a)
-#else
-#define snd_card_dbg(f, a...)
-#endif
-
 #define DRIVER_NAME			("tcc-vir-snd-card")
 #define DAI_LINK_MAX		(10)
 #define KCONTROL_HDR		"Device"
@@ -105,8 +98,8 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	of_property_read_string(node, "stream-name", &stream_name);
 	of_property_read_string(node, "codec,dai-name", &codec_dai_name);
 
-	snd_card_dbg("\t\tstream_name : %s\n", stream_name);
-	snd_card_dbg("\t\tcodec_dai_name: %s\n", codec_dai_name);
+	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \t\tstream_name : %s\n", stream_name);
+	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \t\tcodec_dai_name: %s\n", codec_dai_name);
 
 	if(dai_of_node) {
 		dai_link->cpu_of_node = dai_of_node;
@@ -147,7 +140,7 @@ static int tcc_vir_snd_card_sub_dai_link(struct device_node *node,
 	}
 
 	if(dai_link->playback_only && dai_link->capture_only) {
-		pr_err("no enabled DAI link,  This will activate both.");
+		printk(KERN_ERR "[ERROR][VIR_SOUND_CARD] no enabled DAI link,  This will activate both.");
 		dai_link->playback_only = false;
 		dai_link->capture_only = false;
 	}
@@ -171,7 +164,7 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 	if (card_info->num_links > DAI_LINK_MAX) {
 		return -EINVAL;
 	}
-	snd_card_dbg("num_links : %d\n", card_info->num_links);
+	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] num_links : %d\n", card_info->num_links);
 
 	if ((card_info->dai_link = kzalloc(sizeof(struct snd_soc_dai_link) * card_info->num_links, GFP_KERNEL)) == NULL) {
 		ret = -ENOMEM;
@@ -188,7 +181,7 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 		int i = 0;
 
 		for_each_child_of_node(node, np) {
-			snd_card_dbg("\tlink %d:\n", i);
+			printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] \tlink %d:\n", i);
 			if (i < card_info->num_links) {
 				ret = tcc_vir_snd_card_sub_dai_link(np, &card_info->dai_link[i]);
 				i++;
@@ -211,7 +204,7 @@ int parse_tcc_vir_snd_card_dt(struct platform_device *pdev, struct snd_soc_card 
 			goto error_5;
 		}
 		card_info->codec_conf[i].of_node = card_info->dai_link[i].cpu_of_node;
-		snd_card_dbg("name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
+		printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
 	}
 
 	card->codec_conf = card_info->codec_conf;
@@ -254,7 +247,7 @@ static int tcc_vir_snd_card_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	snd_card_dbg("%s %s \n",__func__,card->name);
+	printk(KERN_DEBUG "[DEBUG][VIR_SOUND_CARD] %s %s \n",__func__,card->name);
 
 	parse_tcc_vir_snd_card_dt(pdev, card);
 	card->driver_name = DRIVER_NAME;

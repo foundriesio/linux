@@ -40,13 +40,6 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
-#undef vir_i2s_dbg
-#if 0
-#define vir_i2s_dbg(f, a...)	printk("<VIRTUAL I2S>" f, ##a)
-#else
-#define vir_i2s_dbg(f, a...)
-#endif
-#define vir_i2s_dbg_err(f, a...)	printk("<VIRTUAL I2S> ERROR" f, ##a)
 /*
 enum tcc_vir_i2s_direction_type {
 	VIRTUAL_I2S_DTYPE_PLAYBACK = 0,
@@ -66,7 +59,7 @@ static int tcc_vir_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	struct tcc_vir_i2s_t *vi2s = (struct tcc_vir_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 	switch(fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 		case SND_SOC_DAIFMT_I2S:
 			break;
@@ -75,7 +68,7 @@ static int tcc_vir_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
 		default:
-			vir_i2s_dbg_err("[%s][%d][dev-%d] format does not supported\n", __func__, __LINE__, vi2s->dev_id);
+			printk(KERN_ERR "[ERROR][VIR_I2S][%s][%d][dev-%d] format does not supported\n", __func__, __LINE__, vi2s->dev_id);
 			ret = -ENOTSUPP;
 	}
 		 						
@@ -84,13 +77,13 @@ static int tcc_vir_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 
 static int tcc_vir_i2s_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 	return 0;
 }
 
 static void tcc_vir_i2s_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 }
  
 static int tcc_vir_i2s_hw_params(struct snd_pcm_substream *substream,
@@ -103,16 +96,16 @@ static int tcc_vir_i2s_hw_params(struct snd_pcm_substream *substream,
 	int sample_rate = params_rate(params);
 	int ret = 0;
 
-	vir_i2s_dbg("%s - format : 0x%08x\n", __func__, format);
-	vir_i2s_dbg("%s - sample_rate : %d\n", __func__, sample_rate);
-	vir_i2s_dbg("%s - channels : %d\n", __func__, channels);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s - format : 0x%08x\n", __func__, format);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s - sample_rate : %d\n", __func__, sample_rate);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s - channels : %d\n", __func__, channels);
 */
 	return ret;
 }
 
 static int tcc_vir_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 	return 0;
 }
 
@@ -120,7 +113,7 @@ static int tcc_vir_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_s
 static int tcc_vir_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
 {
 	int ret;
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 	ret = 0;
 	return ret;
 }
@@ -140,13 +133,13 @@ struct snd_soc_component_driver tcc_vir_i2s_component_drv = {
 
 static int tcc_vir_i2s_suspend(struct snd_soc_dai *dai)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
     return 0;
 }
 
 static int tcc_vir_i2s_resume(struct snd_soc_dai *dai)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
     return 0;
 }
 
@@ -230,25 +223,25 @@ static void parse_vir_i2s_dt(struct platform_device *pdev, struct tcc_vir_i2s_t 
 	vi2s->pdev = pdev;
 
 	vi2s->dev_id = of_alias_get_id(pdev->dev.of_node, "vi2s");
-	vir_i2s_dbg("%s - vi2s : %p, dev_id[%d]\n", __func__, vi2s, vi2s->dev_id);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s - vi2s : %p, dev_id[%d]\n", __func__, vi2s, vi2s->dev_id);
 /*
 	if (of_property_read_bool(pdev->dev.of_node, "playback-only")) {
 		vi2s->direction_type = VIRTUAL_I2S_DTYPE_PLAYBACK;
-		vir_i2s_dbg("direction_type value is playback-only\n");	
+		printk(KERN_DEBUG "[DEBUG][VIR_I2S] direction_type value is playback-only\n");	
 	}
 	else if(of_property_read_bool(pdev->dev.of_node, "capture-only")) {
 		vi2s->direction_type = VIRTUAL_I2S_DTYPE_CAPTURE;
-		vir_i2s_dbg("direction_type value is caputre-only\n");	
+		printk(KERN_DEBUG "[DEBUG][VIR_I2S] direction_type value is caputre-only\n");	
 	}
 	else {
 		vi2s->direction_type = VIRTUAL_I2S_DTYPE_BOTH;
-		vir_i2s_dbg("direction_type value is both\n");	
+		printk(KERN_DEBUG "[DEBUG][VIR_I2S] direction_type value is both\n");	
 	}
 */
 	of_property_read_u32(pdev->dev.of_node, "playback-channel-max", &play_ch_max);
-	vir_i2s_dbg("vi2s dev-%d playback-channel-max : %u\n", vi2s->dev_id, play_ch_max);	
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] vi2s dev-%d playback-channel-max : %u\n", vi2s->dev_id, play_ch_max);	
 	of_property_read_u32(pdev->dev.of_node, "capture-channel-max", &cap_ch_max);
-	vir_i2s_dbg("vi2s dev-%d capture-channel-max : %u\n", vi2s->dev_id, cap_ch_max);	
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] vi2s dev-%d capture-channel-max : %u\n", vi2s->dev_id, cap_ch_max);	
 
 	if(vi2s->pi2s_dai_drv != NULL) {
 
@@ -277,7 +270,7 @@ static void parse_vir_i2s_dt(struct platform_device *pdev, struct tcc_vir_i2s_t 
 		vi2s->pi2s_dai_drv->capture.rates 			= tcc_vir_i2s_dai_drv.capture.rates;
 		vi2s->pi2s_dai_drv->capture.formats 		= tcc_vir_i2s_dai_drv.capture.formats;
 	} else {
-		pr_err("snd_soc_dai_driver setting failed\n");
+		printk(KERN_ERR "[ERROR][VIR_I2S] snd_soc_dai_driver setting failed\n");
 	}
 }
 
@@ -296,7 +289,7 @@ static int tcc_vir_i2s_probe(struct platform_device *pdev)
 	} else {
 		vi2s->pi2s_dai_drv = ptcc_vir_i2s_dai_drv;
 	}
-	//vir_i2s_dbg("%s\n", __func__);
+	//printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 
 	parse_vir_i2s_dt(pdev, vi2s);
 
@@ -304,10 +297,10 @@ static int tcc_vir_i2s_probe(struct platform_device *pdev)
 
 //	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, &tcc_vir_i2s_dai_drv[vi2s->direction_type], 1)) < 0) {
 	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_vir_i2s_component_drv, vi2s->pi2s_dai_drv, 1)) < 0) {
-		pr_err("devm_snd_soc_register_component failed\n");
+		printk(KERN_ERR "[ERROR][VIR_I2S] devm_snd_soc_register_component failed\n");
 		goto error;
 	}
-	vir_i2s_dbg("devm_snd_soc_register_component success\n");
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] devm_snd_soc_register_component success\n");
 
 	return 0;
 
@@ -318,7 +311,7 @@ error:
 
 static int tcc_vir_i2s_remove(struct platform_device *pdev)
 {
-	vir_i2s_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][VIR_I2S] %s\n", __func__);
 	return 0;
 }
 

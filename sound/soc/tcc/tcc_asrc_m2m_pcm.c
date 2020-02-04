@@ -42,19 +42,8 @@
 
 #include "tcc_asrc_m2m_pcm.h"
 
-#define CHECK_OVERRUN	(1)
+#define CHECK_OVERRUN	(0)
 #define CHECK_ASRC_M2M_ELAPSED_TIME	(0)
-
-#undef asrc_m2m_pcm_dbg
-#if 0
-#define asrc_m2m_pcm_dbg(f, a...)	printk("<ASRC M2M PCM>" f, ##a)
-#define asrc_m2m_pcm_dbg_id(id, f, a...)	printk("<ASRC M2M PCM-%d>" f, id, ##a)
-#else
-#define asrc_m2m_pcm_dbg(f, a...)
-#define asrc_m2m_pcm_dbg_id(id, f, a...)	//printk("<ASRC M2M PCM-%d>" f, id, ##a)
-#endif
-#define asrc_m2m_pcm_dbg_err(f, a...)	printk("<ASRC M2M PCM>" f, ##a)
-#define asrc_m2m_pcm_dbg_id_err(id, f, a...)	printk("<ASRC M2M PCM-%d>" f, id, ##a)
 
 static void tcc_asrc_m2m_pcm_stream_reset(struct asrc_m2m_pcm_stream *strm, bool prepare);
 static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream);
@@ -140,7 +129,7 @@ static int tcc_asrc_footprint_insert(List *list, unsigned int pos, ssize_t size)
 	new_node = (Node *)kzalloc(sizeof(Node), GFP_KERNEL);
 	if(!new_node) {
 		spin_unlock_irqrestore(&list->foot_locked, flags);
-		printk("[%s][%d]ERROR!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d]ERROR!!\n", __func__, __LINE__);
         return -EFAULT;
 	}
 
@@ -208,7 +197,7 @@ static int tcc_asrc_footprint_delete(List *list, bool all)
 	if(all == false) {
 		if(list->list_len <= 0) {
 			spin_unlock_irqrestore(&list->foot_locked, flags);
-			printk("[%s][%d]There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d]There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
 			return -EFAULT;
 		} else if(list->list_len == 1) {
 			kfree(list->tail);
@@ -262,7 +251,7 @@ static int tcc_asrc_footprint_insert(struct footprint *list, unsigned int pos, s
 		list->tail ++;
 	} else if(list->list_len >= FOOTPRINT_LENGTH) {
 		spin_unlock_irqrestore(&list->foot_locked, flags);
-		printk("[%s][%d]There is no footprint (len=%d, head=%d, tail=%d)\n", __func__, __LINE__, list->list_len, list->head, list->tail);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d]There is no footprint (len=%d, head=%d, tail=%d)\n", __func__, __LINE__, list->list_len, list->head, list->tail);
 		return -1;
 	}
 	if(list->tail >= FOOTPRINT_LENGTH) {
@@ -277,7 +266,7 @@ static int tcc_asrc_footprint_insert(struct footprint *list, unsigned int pos, s
 
 	return ret;
 }
-
+#if 0 //For Debug
 //Dump the List.
 static void tcc_asrc_footprint_dump(struct footprint *list)
 {
@@ -286,11 +275,11 @@ static void tcc_asrc_footprint_dump(struct footprint *list)
 
 	spin_lock_irqsave(&list->foot_locked, flags);
 	for(i=0; i<FOOTPRINT_LENGTH; i++) {
-		printk("pos[%d]=%d, size[%d]=%d\n", i, list->print_pos[i], i, list->input_byte[i]);
+		printk(KERN_ERR "[ERROR][T-sound_PCM] pos[%d]=%d, size[%d]=%d\n", i, list->print_pos[i], i, list->input_byte[i]);
 	} 
 	spin_unlock_irqrestore(&list->foot_locked, flags);
 }
-
+#endif
 //Get list_len.
 static int tcc_asrc_footprint_get_length(struct footprint *list)
 {
@@ -334,7 +323,7 @@ static int tcc_asrc_footprint_delete(struct footprint *list, bool all)
 	if(all == false) {
 		if(list->list_len <= 0) {
 			spin_unlock_irqrestore(&list->foot_locked, flags);
-			printk("[%s][%d]There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] There is no footprint (len=%d)\n", __func__, __LINE__, list->list_len);
 			return -EFAULT;
 		} else if(list->list_len == 1) {
 			goto list_delete_all;	
@@ -369,7 +358,7 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_ACTION] = {0,};
 
     if (substream == NULL) {
-        pr_err("%s - substream is NULL\n", __func__);
+        printk(KERN_ERR "[ERROR][T-sound_PCM][%s] substream is NULL\n", __func__);
         return -EFAULT;
     }
 
@@ -388,7 +377,7 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
         action_value = PCM_VALUE_ACTION_STOP;
         break;
     default :
-        pr_err("%s - invalid command\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] invalid command\n", __func__);
         return -EINVAL;
     }
 
@@ -405,7 +394,7 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
 
     tcc_mbox_audio_send_message(mbox_audio_dev, &mbox_header, mbox_msg, NULL);
 
-    asrc_m2m_pcm_dbg("[%s] mbox message : device = 0x%02x, action = 0x%01x\n", __func__, mbox_msg[1], mbox_msg[2]);
+    printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] mbox message : device = 0x%02x, action = 0x%01x\n", __func__, mbox_msg[1], mbox_msg[2]);
 
     return 0;
 }
@@ -421,7 +410,7 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
     unsigned int mbox_msg[MBOX_MSG_SIZE_FOR_PARAMS] = {0};
 
     if (asrc_m2m_pcm == NULL) {
-        printk("%s - asrc_m2m_pcm is NULL\n", __func__);
+        printk(KERN_WARNING "[WARN][T-sound_PCM][%s] asrc_m2m_pcm is NULL\n", __func__);
         return -EFAULT;
     }
 
@@ -435,10 +424,10 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
 		phy_address = asrc_m2m_pcm->capture->middle->dma_buf->addr;
 	}
 	if (!phy_address) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] fail to get phy addr\n", __func__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM-%d][%s] fail to get phy addr\n", asrc_m2m_pcm->dev_id, __func__);
 		return -EFAULT;
 	}
-    //printk("[%s] phy_address = 0x%08x\n", __func__, phy_address);
+    //printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] phy_address = 0x%08x\n", __func__, phy_address);
     mbox_header.usage = MBOX_AUDIO_USAGE_SET;
     mbox_header.cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
     mbox_header.msg_size = MBOX_MSG_SIZE_FOR_PARAMS;
@@ -452,7 +441,7 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
 
     tcc_mbox_audio_send_message(asrc_m2m_pcm->mbox_audio_dev, &mbox_header, mbox_msg, NULL);
 
-    asrc_m2m_pcm_dbg("[%s] mbox message : device = 0x%02x, tx_rx = 0x%01x, buffer address = 0x%x, buffer size = %u\n", __func__, mbox_msg[1], mbox_msg[2], mbox_msg[3], mbox_msg[4]);
+    printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] mbox message : device = 0x%02x, tx_rx = 0x%01x, buffer address = 0x%x, buffer size = %u\n", __func__, mbox_msg[1], mbox_msg[2], mbox_msg[3], mbox_msg[4]);
 
     return 0;
 }
@@ -466,14 +455,14 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 	int len=0;
 
     if (asrc_m2m_pcm == NULL) {
-        printk("%s - asrc_m2m_pcm is NULL\n", __func__);
+        printk(KERN_ERR "[ERROR][T-sound_PCM][%s] asrc_m2m_pcm is NULL\n", __func__);
 		return;
     }
 
 	if(asrc_m2m_pcm->playback->asrc_substream != NULL) {
 		substream = asrc_m2m_pcm->playback->asrc_substream;
 	} else {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! asrc_m2m_pcm->asrc_substream is null!!\n");
+		printk(KERN_WARNING "[WARN][T-sound_PCM-%d] asrc_m2m_pcm->asrc_substream is null!!\n", asrc_m2m_pcm->dev_id);
 		return;
 	}
 
@@ -583,7 +572,7 @@ static void playback_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 					if(substream) {
 						snd_pcm_period_elapsed(substream);
 					} else {
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "ERROR!! asrc_m2m_pcm->asrc_substream set to null during drain!!\n");
+						printk(KERN_ERR "[ERROR][T-sound_PCM-%d] ERROR!! asrc_m2m_pcm->asrc_substream set to null during drain!!\n", asrc_m2m_pcm->dev_id);
 						break;
 					}
 				}
@@ -602,11 +591,11 @@ static void capture_for_mbox_callback(struct tcc_asrc_m2m_pcm *asrc_m2m_pcm)
 #if	(CHECK_OVERRUN == 1)
 	if((asrc_m2m_pcm->capture->middle->cur_pos > asrc_m2m_pcm->capture->middle->pre_pos)
 			&&(read_pos > asrc_m2m_pcm->capture->middle->pre_pos)&&(read_pos < asrc_m2m_pcm->capture->middle->cur_pos)) {
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
+		printk(KERN_ERR "[ERROR][T-sound_PCM-%d] overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->dev_id, asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
 
 	} else if((asrc_m2m_pcm->capture->middle->cur_pos < asrc_m2m_pcm->capture->middle->pre_pos)
 			&&((read_pos > asrc_m2m_pcm->capture->middle->pre_pos)||(read_pos < asrc_m2m_pcm->capture->middle->cur_pos))) {
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
+		printk(KERN_ERR "[ERROR][T-sound_PCM-%d] overrun?! pre_pos=%u, read_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->dev_id, asrc_m2m_pcm->capture->middle->pre_pos, read_pos, asrc_m2m_pcm->capture->middle->cur_pos);
 	}
 #endif
 
@@ -624,12 +613,12 @@ static void tcc_asrc_m2m_pcm_mbox_callback(void *data, unsigned int *msg, unsign
 	char Ctemp=0;
 
 	if (asrc_m2m_pcm == NULL) {
-		printk("[%s] Cannot get asrc_m2m_pcm driver data\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] Cannot get asrc_m2m_pcm driver data\n", __func__);
 		return;
 	}
 
     if ((cmd_type != asrc_m2m_pcm->playback->mbox_cmd_type) && (cmd_type != asrc_m2m_pcm->capture->mbox_cmd_type)) {
-		printk("[%s] Invalid cmd type between msg[%u], playback[%u] and capture[%u]\n", __func__, cmd_type, asrc_m2m_pcm->playback->mbox_cmd_type, asrc_m2m_pcm->capture->mbox_cmd_type);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] Invalid cmd type between msg[%u], playback[%u] and capture[%u]\n", __func__, cmd_type, asrc_m2m_pcm->playback->mbox_cmd_type, asrc_m2m_pcm->capture->mbox_cmd_type);
 		return;
     }
 
@@ -667,10 +656,10 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
 	struct task_struct *pkth_id=NULL;
 
-	asrc_m2m_pcm_dbg("%s, id=%d\n", __func__, substream->pcm->device);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] id=%d\n", __func__, substream->pcm->device);
 
 	if(asrc_m2m_pcm == NULL) {
-		pr_err("%s - asrc_m2m_pcm is NULL\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] asrc_m2m_pcm is NULL\n", __func__);
 		return -EFAULT;
 	}
 
@@ -727,7 +716,7 @@ static int tcc_asrc_m2m_pcm_open(struct snd_pcm_substream *substream)
 #endif
 	}
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
     return 0;
 }
 
@@ -737,7 +726,7 @@ static int tcc_asrc_m2m_pcm_close(struct snd_pcm_substream *substream)
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
 	int ret=0;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] start\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s] start\n", asrc_m2m_pcm->dev_id, __func__);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
@@ -776,12 +765,12 @@ static int tcc_asrc_m2m_pcm_close(struct snd_pcm_substream *substream)
 
 /*
 	if (asrc_m2m_pcm->kth_id != NULL) { 
-		asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 		kthread_stop(asrc_m2m_pcm->kth_id);
 		asrc_m2m_pcm->kth_id = NULL;
 	}
 */
-	asrc_m2m_pcm_dbg("[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d] end\n", __func__, __LINE__);
     return 0;
 }
 
@@ -789,7 +778,7 @@ static int tcc_asrc_m2m_pcm_mmap(struct snd_pcm_substream *substream, struct vm_
 {
     struct snd_pcm_runtime *runtime = substream->runtime;
 
-	asrc_m2m_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s]\n", __func__);
 
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma, runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
 }
@@ -811,11 +800,11 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	enum tcc_asrc_drv_ch_t asrc_channels;
 	uint64_t ratio_shift22;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "format : 0x%08x\n", format);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "channels : %d\n", channels);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "period_bytes : %u\n", period_bytes);
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "buffer_bytes : %u\n", buffer_bytes);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] format : 0x%08x\n", asrc_m2m_pcm->dev_id, format);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] channels : %d\n", asrc_m2m_pcm->dev_id, channels);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] period_bytes : %u\n", asrc_m2m_pcm->dev_id, period_bytes);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] buffer_bytes : %u\n", asrc_m2m_pcm->dev_id, buffer_bytes);
 
 	memset(substream->dma_buffer.area, 0, buffer_bytes);
 
@@ -881,7 +870,7 @@ static int tcc_asrc_m2m_pcm_hw_params(struct snd_pcm_substream *substream, struc
 #endif
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 	return 0;
 }
 
@@ -892,7 +881,7 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 	char Ctemp=0;
 	int ret = -1;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 	} else {
@@ -920,7 +909,7 @@ static int tcc_asrc_m2m_pcm_hw_free(struct snd_pcm_substream *substream)
 		snd_pcm_set_runtime_buffer(substream, NULL);
 		ret=0;
 	} else {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "%s-error\n", __func__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM-%d] %s-error\n", asrc_m2m_pcm->dev_id, __func__);
 	}
 
 	return ret;
@@ -934,7 +923,7 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 	char Ctemp=0;
 	int ret=0;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
@@ -943,7 +932,7 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 	}
 
 	if((Ctemp & IS_ASRC_STARTED) != 0) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] ASRC stop yet.\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s] ASRC stop yet.\n", asrc_m2m_pcm->dev_id, __func__);
 		tcc_asrc_m2m_pcm_asrc_stop(substream);
 	}
 
@@ -975,7 +964,7 @@ static int tcc_asrc_m2m_pcm_prepare(struct snd_pcm_substream *substream)
 
 	memset(runtime->dma_area, 0x00, runtime->dma_bytes);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 	return 0;
 }
 
@@ -990,10 +979,10 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 	char Ctemp=0;
 	int ret=-1;
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	if(asrc_m2m_pcm == NULL) {
-		asrc_m2m_pcm_dbg_err("[%s][%d] error!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] error!\n", __func__, __LINE__);
 		return -EFAULT;
 	} else {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
@@ -1002,7 +991,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 			pasrc_param = asrc_m2m_pcm->capture->asrc_m2m_param;
 		}
 		if(pasrc_param == NULL) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] error!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			return -EFAULT;
 		}
 	}
@@ -1019,11 +1008,11 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START, PLAY\n", asrc_m2m_pcm->dev_id);
 				if(!(Ctemp & IS_ASRC_STARTED)) {
 					if((asrc_m2m_pcm->playback->pair_id == 99)
 						&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+						printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 						ret = -EINVAL;
 						goto error_trigger;
 
@@ -1041,7 +1030,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 
 					Ctemp |= IS_ASRC_STARTED;
 				} else {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START already, PLAY\n");
+					printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START already, PLAY\n", asrc_m2m_pcm->dev_id);
 				}
 /*
 	//ref. code
@@ -1061,16 +1050,16 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 #if 0//def CONFIG_TCC_MULTI_MAILBOX_AUDIO
 				ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 				if(ret < 0) {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+					printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 				}
 #endif
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START end ret=%d, PLAY\n", ret);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START end ret=%d, PLAY\n", asrc_m2m_pcm->dev_id, ret);
 			} else {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START, CAPTURE\n", asrc_m2m_pcm->dev_id);
 				if(!(Ctemp & IS_ASRC_STARTED)) {
 					if((asrc_m2m_pcm->capture->pair_id == 99)
 						&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
-						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+						printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 						ret = -EINVAL;
 						goto error_trigger;
 
@@ -1089,18 +1078,18 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 					Ctemp |= IS_ASRC_STARTED;
 
 				} else {
-					asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START already, CAPTURE\n");
+					printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START already, CAPTURE\n", asrc_m2m_pcm->dev_id);
 					return -EINVAL;
 				}
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 				ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 				if(ret < 0) {
-					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+					printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 				} else {
 					Ctemp |= IS_A7S_STARTED;
 				}
 #endif
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_START end ret=%d, CAPTURE\n", ret);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_START end ret=%d, CAPTURE\n", asrc_m2m_pcm->dev_id, ret);
 			}
 
 			Ctemp |= IS_TRIG_STARTED;
@@ -1126,20 +1115,20 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 			ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, cmd);
 			if(ret < 0) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 			} else {
 				Ctemp &= ~IS_A7S_STARTED;
 			}
 #endif
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_STOP, PLAY\n", asrc_m2m_pcm->dev_id);
 
 				tcc_is_flag_update(asrc_m2m_pcm->playback, Ctemp, IS_FLAG_APPLY);
 
 				atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 				wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 			} else {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_TRIGGER_STOP, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_TRIGGER_STOP, CAPTURE\n", asrc_m2m_pcm->dev_id);
 
 				tcc_is_flag_update(asrc_m2m_pcm->capture, Ctemp, IS_FLAG_APPLY);
 
@@ -1151,7 +1140,7 @@ static int tcc_asrc_m2m_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 			return -EINVAL;
 	}
 error_trigger:
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	return ret;
 }
@@ -1165,7 +1154,7 @@ static snd_pcm_uframes_t tcc_asrc_m2m_pcm_pointer(struct snd_pcm_substream *subs
 	snd_pcm_uframes_t ret=0;
 
 	if(asrc_m2m_pcm == NULL) {
-		asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 		return bytes_to_frames(runtime, 0);
 	}
 
@@ -1174,7 +1163,7 @@ static snd_pcm_uframes_t tcc_asrc_m2m_pcm_pointer(struct snd_pcm_substream *subs
 	} else {
 		ret = asrc_m2m_pcm->capture->app->pre_pos;
 	}
-	//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ret=%d\n", (int)ret);
+	//printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ret=%d\n", asrc_m2m_pcm->dev_id, (int)ret);
 	return ret;
 }
 
@@ -1260,16 +1249,16 @@ static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream)
 	}
 /*	//for debug
 	if(timeout > 2) {
-		asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] Ctemp=0x%08x, timeout=%d \n", __func__, __LINE__, Ctemp, timeout);
+		printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] Ctemp=0x%08x, timeout=%d \n", asrc_m2m_pcm->dev_id, __func__, __LINE__, Ctemp, timeout);
 	}
 */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 
 		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP, PLAY\n");
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_STOP, PLAY\n", asrc_m2m_pcm->dev_id);
 		if((asrc_m2m_pcm->playback->pair_id == 99)
 				&&(asrc_m2m_pcm->playback->src->rate != asrc_m2m_pcm->playback->dst->rate)) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			ret = -EINVAL;
 			goto error_pcm_asrc_stop;
 
@@ -1288,15 +1277,14 @@ static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream)
 		//atomic_set(&asrc_m2m_pcm->playback->wakeup, 1);
 		//wake_up_interruptible(&(asrc_m2m_pcm->playback->kth_wq));
 
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP ret=%d, PLAY\n", ret);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_STOP ret=%d, PLAY\n", asrc_m2m_pcm->dev_id, ret);
 	} else {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP, CAPTURE\n");
-			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
-
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_STOP, CAPTURE\n", asrc_m2m_pcm->dev_id);
+		Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 
 		if((asrc_m2m_pcm->capture->pair_id == 99)
 				&&(asrc_m2m_pcm->capture->src->rate != asrc_m2m_pcm->capture->dst->rate)) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			ret = -EINVAL;
 			goto error_pcm_asrc_stop;
 
@@ -1314,7 +1302,7 @@ static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream)
 		
 		//atomic_set(&asrc_m2m_pcm->capture->wakeup, 1);
 		//wake_up_interruptible(&(asrc_m2m_pcm->capture->kth_wq));
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ASRC_STOP ret=%d, CAPTURE\n", ret);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] ASRC_STOP ret=%d, CAPTURE\n", asrc_m2m_pcm->dev_id, ret);
 	}
 error_pcm_asrc_stop:
 	return ret;
@@ -1327,16 +1315,16 @@ static void tcc_pcm_app_position_update(unsigned int dev_id, struct asrc_m2m_pcm
 
 	if((!strm) || (!runtime)) {
 		if(!runtime) {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] runtime is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] runtime is wrong!\n", dev_id, __func__, __LINE__);
 		} else {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] strm is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] strm is wrong!\n", dev_id, __func__, __LINE__);
 		}
 	} else {
 	/*	//ref. code
 		Ftemp = bytes_to_frames(runtime, read_byte);
 		Btemp = frames_to_bytes(runtime, Ftemp);
 		if(Btemp != read_byte) {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%d] read_byte=%d, Btemp=%d\n", __LINE__, read_byte, Btemp);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%d] read_byte=%d, Btemp=%d\n", dev_id, __LINE__, read_byte, Btemp);
 		}
    */
 		//check ptr size for update
@@ -1363,9 +1351,9 @@ static void tcc_pcm_app_position_rewind(unsigned int dev_id, struct asrc_m2m_pcm
 
 	if((!strm) || (!runtime)) {
 		if(!runtime) {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] runtime is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] runtime is wrong!\n", dev_id, __func__, __LINE__);
 		} else {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] strm is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] strm is wrong!\n", dev_id, __func__, __LINE__);
 		}
 	} else {
 		//rewind ptr info.
@@ -1393,9 +1381,9 @@ static snd_pcm_uframes_t tcc_pcm_app_rewind_check(unsigned int dev_id, struct as
 
 	if((!strm) || (!runtime)) {
 		if(!runtime) {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] runtime is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] runtime is wrong!\n", dev_id, __func__, __LINE__);
 		} else {
-			asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] strm is wrong!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] strm is wrong!\n", dev_id, __func__, __LINE__);
 		}
 		//ret = -EINVAL;
 	} else {
@@ -1411,39 +1399,39 @@ static snd_pcm_uframes_t tcc_pcm_app_rewind_check(unsigned int dev_id, struct as
 			}
 			if((buffer_base < buffer_boundary)
 				&&((cur_ptr < buffer_base) || (cur_ptr > buffer_boundary))) {
-				asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				//ret = -EINVAL;
 			} else if((buffer_base > buffer_boundary)
 				&&((cur_ptr < buffer_base) && (cur_ptr > buffer_boundary))) {
-				asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				//ret = -EINVAL;
 			} else {
 				if((cur_ptr <= pre_ptr) && (buffer_base <= cur_ptr)) { 
 					ret = pre_ptr - cur_ptr;
-				//	asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				//	printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				} else {
 					//There is no rewind.
 					ret = 0;
-				//	asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				//	printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				}
 			}
 		} else {
 			buffer_base = runtime->boundary - runtime->buffer_size + pre_ptr;
 			buffer_boundary = pre_ptr + runtime->buffer_size;
 			if((cur_ptr < buffer_base) && (cur_ptr > buffer_boundary)) {
-				asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] is wrong! pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				//ret = -EINVAL;
 			} else {
 				if(cur_ptr <= pre_ptr) { 
 					ret = pre_ptr - cur_ptr;
-				//	asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				//	printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				} else if((cur_ptr > pre_ptr) && (buffer_base <= cur_ptr)) {
 					ret = runtime->boundary - cur_ptr + pre_ptr;
-				//	asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				//	printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				} else {
 					//There is no rewind.
 					ret = 0;
-				//	asrc_m2m_pcm_dbg_id_err(dev_id, "[%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
+				//	printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] cur_ptr[%lu] pre_ptr[%lu], pre_pos[%lu], buffer_size[%lu], boundary[%lu]\n", dev_id, __func__, __LINE__, cur_ptr, pre_ptr, pre_pos, runtime->buffer_size, runtime->boundary);
 				}
 			}
 		}
@@ -1482,7 +1470,7 @@ static char tcc_is_flag_update(struct asrc_m2m_pcm_stream *strm, char is_flag, c
 			strm->is_flag &= is_flag;
 			break;
 		default:
-			printk("[%s][%d] ERROR!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] ERROR!!\n", __func__, __LINE__);
 			break;
 	}
 	ret = strm->is_flag;
@@ -1518,7 +1506,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			||((Ctemp & IS_TRIG_STARTED) == 0)
 			||((Ctemp & IS_ASRC_STARTED) == 0)) {
 
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] readable_byte: %d, is_flag=0x%02x\n", asrc_m2m_pcm->dev_id, readable_byte, (unsigned int)Ctemp);
 			ret = 0;
 			break;//return 0;
 		} else {
@@ -1560,7 +1548,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 		} else {
 			if(asrc_m2m_pcm->capture->pair_id == 99) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
+				printk(KERN_WARNING "[WARN][T-sound_PCM-%d][%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
 				
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
@@ -1570,13 +1558,13 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			writeable_byte = tcc_asrc_m2m_push_data(asrc, asrc_m2m_pcm->capture->pair_id, pin_buf+read_pos, read_byte);
 			if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			} else if(writeable_byte < 0) {
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", __func__, __LINE__, read_byte, writeable_byte, Ctemp);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, read_byte, writeable_byte, Ctemp);
 
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = writeable_byte;
@@ -1593,7 +1581,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 			if(Wtemp < 0) {
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, 0, IS_FLAG_GET);
 
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[%d] Wtemp[%d] Ctemp[0x%02x]!\n", __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writeable_byte[%d] Wtemp[%d] Ctemp[0x%02x]!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
 
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = Wtemp;
@@ -1619,7 +1607,7 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 				if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 					
-					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
+					printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				} else {
 					memset(ptemp_buf, 0, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				}
@@ -1634,9 +1622,8 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 
 #ifdef TAIL_DEBUG
 			if(asrc_m2m_pcm->capture->Btail != cap_tail) {
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
-				"[%s][%d] Btail=%d, write_pos=%d, Wtemp=%d, Btemp=%d, read_byte=%d, readable_byte=%d, writeable_byte=%d!! \n"
-				, __func__, __LINE__, asrc_m2m_pcm->capture->Btail, write_pos, Wtemp, Btemp, read_byte, readable_byte, writeable_byte);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] Btail=%d, write_pos=%d, Wtemp=%d, Btemp=%d, read_byte=%d, readable_byte=%d, writeable_byte=%d!! \n"
+				, asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->capture->Btail, write_pos, Wtemp, Btemp, read_byte, readable_byte, writeable_byte);
 			}
 
 			cap_tail = asrc_m2m_pcm->capture->Btail;
@@ -1648,13 +1635,13 @@ static int tcc_ptr_update_function_for_capture(struct snd_pcm_substream *psubstr
 		}
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "ERROR!! readable_byte: %d\n", readable_byte);
+			printk(KERN_WARNING "[WARN][T-sound_PCM-%d] ERROR!! readable_byte: %d\n", asrc_m2m_pcm->dev_id, readable_byte);
 			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->capture, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 			/////ASRC Running end
 			ret = -1;
 			break;
 		}
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, read_byte: %d, pre_pos: %d\n", readable_byte, read_byte, asrc_m2m_pcm->capture->middle->pre_pos);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] readable_byte: %d, read_byte: %d, pre_pos: %d\n", asrc_m2m_pcm->dev_id, readable_byte, read_byte, asrc_m2m_pcm->capture->middle->pre_pos);
 	}
 	return ret;
 }
@@ -1694,17 +1681,17 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     			temp=0;
     
     			if(cur_pos >= pre_pos) {
-    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
+    				//printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d]cur=%d, pre=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, cur_pos, pre_pos);
     				readable_byte = cur_pos - pre_pos;
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d]ERROR!! ret: %d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							readable_byte = 0;
     					}
     				}
     			} else {			
-    				//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%d, pre=%d\n", __func__, __LINE__, cur_pos, pre_pos);
+    				//printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d]cur=%d, pre=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, cur_pos, pre_pos);
 					
     				//1st part copy for in_buf
     				readable_byte = mid_buffer_bytes - pre_pos;
@@ -1712,7 +1699,7 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0){
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d]ERROR!! ret: %d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							readable_byte = 0;
 							cur_pos = 0;
     					}
@@ -1724,7 +1711,7 @@ static int tcc_ptr_update_thread_for_capture(void *data)
     				if(readable_byte > 0) {
     					ret = tcc_ptr_update_function_for_capture(substream, readable_byte, max_cpy_byte);
     					if(ret < 0) {
-    						asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d]ERROR!! ret: %d\n", __func__, __LINE__, ret);
+    						printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d]ERROR!! ret: %d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							readable_byte = 0;
     					}
     				}
@@ -1767,7 +1754,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 				||((Ctemp & IS_TRIG_STARTED) == 0)
 				||((Ctemp & IS_ASRC_STARTED) == 0)) {
 
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "readable_byte: %d, is_flag=0x%02x\n", readable_byte, (unsigned int)Ctemp);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d] readable_byte: %d, is_flag=0x%02x\n", asrc_m2m_pcm->dev_id, readable_byte, (unsigned int)Ctemp);
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
 			break;
 #else
@@ -1805,7 +1792,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			Wtemp = read_byte;
 		} else {
 			if(asrc_m2m_pcm->playback->pair_id == 99) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
+				printk(KERN_WARNING "[WARN][T-sound_PCM-%d][%s][%d] ERROR!! asrc pair_id[%d] is wrong\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->playback->pair_id);
 
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
@@ -1816,14 +1803,14 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			
 			if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 			
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = -1;
 				break;
 			} else if(writeable_byte < 0) {
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", __func__, __LINE__, read_byte, writeable_byte, Ctemp);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! read_byte[%d] writeable_byte[%d] Ctemp[0x%02x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, read_byte, writeable_byte, Ctemp);
 
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = writeable_byte;
@@ -1839,7 +1826,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 			if(Wtemp < 0) {
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, 0, IS_FLAG_GET);
 
-				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writealble_byte[%d] Wtemp[%d] Ctemp[0x%08x]!?\n", __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
+				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writealble_byte[%d] Wtemp[%d] Ctemp[0x%08x]!?\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, Wtemp, Ctemp);
 
 				Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 				ret = Wtemp;
@@ -1859,7 +1846,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 				if(writeable_byte > TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST) {
 
-					asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
+					printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! writeable_byte[0x%08x] is bigger than max[0x%08x]\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, writeable_byte, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				} else {
 					memset(ptemp_buf, 0, TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 				}
@@ -1874,7 +1861,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 		ret += read_byte;
 		readable_byte -= read_byte;
 		if(readable_byte < 0) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! readable_byte=%d, max_asrc_byte=%d, ret=%d\n", __func__, __LINE__, readable_byte, max_asrc_byte, ret);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! readable_byte=%d, max_asrc_byte=%d, ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, readable_byte, max_asrc_byte, ret);
 
 			Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_ASRC_RUNNING, IS_FLAG_RELEASE);
 			ret = -1;
@@ -1883,7 +1870,7 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 		len = tcc_asrc_footprint_insert(asrc_m2m_pcm->asrc_footprint, asrc_m2m_pcm->playback->middle->cur_pos, read_byte);
 		if(len <= 0) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! len=%d\n", __func__, __LINE__, len);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! len=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, len);
 			//tcc_asrc_footprint_dump(asrc_m2m_pcm->asrc_footprint);
 			ret = -1;
 			break;
@@ -1893,11 +1880,11 @@ static ssize_t tcc_appl_ptr_check_function_for_play(struct tcc_asrc_m2m_pcm *asr
 
 		if((write_pos > pre_pos)
 				&&(asrc_m2m_pcm->playback->middle->cur_pos > pre_pos)&&(write_pos > asrc_m2m_pcm->playback->middle->cur_pos)) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d] overrun?! pre_pos=%u, write_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->dev_id, pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
 
 		} else if((write_pos < pre_pos)
 				&&((asrc_m2m_pcm->playback->middle->cur_pos > pre_pos)||(write_pos > asrc_m2m_pcm->playback->middle->cur_pos))) {
-			asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "overrun?? pre_pos=%u, write_pos=%u, cur_pos=%u\n", pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
+			printk(KERN_ERR "[ERROR][T-sound_PCM-%d] overrun?? pre_pos=%u, write_pos=%u, cur_pos=%u\n", asrc_m2m_pcm->dev_id, pre_pos, write_pos, asrc_m2m_pcm->playback->middle->cur_pos);
 		}
 #endif
 #ifdef PERFORM_ASRC_MULTIPLE_TIME
@@ -1936,7 +1923,7 @@ wait_check_play:
 			runtime = substream->runtime;
 
 			if((!substream) || (!rtd) || (!runtime)) {
-				asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] is_flag=0x%02x\n", __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
+				printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] is_flag=0x%02x\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, (unsigned int)asrc_m2m_pcm->playback->is_flag);
 				goto wait_check_play;
 			}
 
@@ -1948,7 +1935,7 @@ wait_check_play:
 				rewind_frames = tcc_pcm_app_rewind_check(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, cur_appl_ptr);
 				if(rewind_frames > 0) {
 					//rewind debug
-					//asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "rewind_frames=%lu, dbg_pre_ptr=%lu, cur_ptr=%lu, pre_ptr=%lu\n", rewind_frames, dbg_pre_ptr, cur_appl_ptr, pre_appl_ptr);
+					//printk(KERN_ERR "[ERROR][T-sound_PCM-%d] rewind_frames=%lu, dbg_pre_ptr=%lu, cur_ptr=%lu, pre_ptr=%lu\n", asrc_m2m_pcm->dev_id, rewind_frames, dbg_pre_ptr, cur_appl_ptr, pre_appl_ptr);
 					//tcc_pcm_app_position_rewind(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, rewind_frames);
 					continue;
 				}
@@ -1970,7 +1957,7 @@ wait_check_play:
 				pin_buf = substream->dma_buffer.area;
 
 				if(cur_appl_ofs > pre_appl_ofs) {
-					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
+					//printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
 					Ftemp = cur_appl_ofs - pre_appl_ofs;
 					readable_byte = frames_to_bytes(runtime, Ftemp);
 					read_pos = frames_to_bytes(runtime, asrc_m2m_pcm->playback->app->pre_pos) + asrc_m2m_pcm->playback->Btail;
@@ -1996,7 +1983,7 @@ wait_check_play:
 						printk("asrc m2m elapsed time : %03d usec, %ldbytes\n", elapsed_usecs, ret);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							goto max_cpy_tx;
 						} else {
 							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
@@ -2004,15 +1991,14 @@ wait_check_play:
 						
 #ifdef TAIL_DEBUG
 						if(asrc_m2m_pcm->playback->Btail != play_tail) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
-							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
-							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
+							printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
 						}
 						play_tail = asrc_m2m_pcm->playback->Btail;
 #endif
 					}
 				} else {	//(cur_appl_ofs > pre_appl_ofs)?
-					//asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
+					//printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d]cur=%lu, pre=%lu, cur_ptr=%lu, pre_ptr=%lu\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, cur_appl_ofs, pre_appl_ofs, cur_appl_ptr, pre_appl_ptr);
 
 					//1st part copy for in_buf
 					Ftemp = runtime->buffer_size - pre_appl_ofs;
@@ -2026,7 +2012,7 @@ wait_check_play:
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf+read_pos);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							goto max_cpy_tx;
 						} else {
 							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
@@ -2034,9 +2020,8 @@ wait_check_play:
 
 #ifdef TAIL_DEBUG
 						if(asrc_m2m_pcm->playback->Btail != play_tail) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
-							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
-							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
+							printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
 						}
 						play_tail = asrc_m2m_pcm->playback->Btail;
 #endif
@@ -2062,7 +2047,7 @@ wait_check_play:
 						ret = tcc_appl_ptr_check_function_for_play(asrc_m2m_pcm, readable_byte, max_cpy_byte, pin_buf);
 #endif
 						if(ret < 0) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+							printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 							goto max_cpy_tx;
 						} else {
 							tcc_pcm_app_position_update(asrc_m2m_pcm->dev_id, asrc_m2m_pcm->playback, runtime, ret);
@@ -2070,9 +2055,8 @@ wait_check_play:
 
 #ifdef TAIL_DEBUG
 						if(asrc_m2m_pcm->playback->Btail != play_tail) {
-							asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, 
-							"[%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
-							, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
+							printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] Btail=%d, read_pos=%d, Ftemp=%lu, Btemp=%d, ret=%d, readable_byte=%d!! \n"
+							, asrc_m2m_pcm->dev_id, __func__, __LINE__, asrc_m2m_pcm->playback->Btail, read_pos, Ftemp, Btemp, ret, readable_byte);
 						}
 						play_tail = asrc_m2m_pcm->playback->Btail;
 #endif
@@ -2091,7 +2075,7 @@ max_cpy_tx:
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
         			ret = tcc_asrc_m2m_pcm_set_action_to_mbox(asrc_m2m_pcm->mbox_audio_dev, substream, SNDRV_PCM_TRIGGER_START);
         			if(ret < 0) {
-        				asrc_m2m_pcm_dbg_id_err(asrc_m2m_pcm->dev_id, "[%s][%d] ERROR!! ret=%d\n", __func__, __LINE__, ret);
+        				printk(KERN_ERR "[ERROR][T-sound_PCM-%d][%s][%d] ERROR!! ret=%d\n", asrc_m2m_pcm->dev_id, __func__, __LINE__, ret);
 					} else {
 						Ctemp = tcc_is_flag_update(asrc_m2m_pcm->playback, IS_A7S_STARTED, IS_FLAG_SET);
         			}
@@ -2126,35 +2110,35 @@ static int tcc_asrc_m2m_pcm_stream_init(struct device *dev, struct asrc_m2m_pcm_
 	if(strm->asrc_m2m_param == NULL) {
 		asrc_m2m_param = (struct tcc_asrc_param_t*)devm_kzalloc(dev, sizeof(struct tcc_asrc_param_t), GFP_KERNEL);
 		if(!asrc_m2m_param) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_asrc_m2m_param;
 		} else {
 			memset(asrc_m2m_param, 0, sizeof(struct tcc_asrc_param_t));
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] asrc_m2m_param is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] asrc_m2m_param is already allocated!!\n", __func__, __LINE__);
 		asrc_m2m_param = NULL; 
 	}
 
 	if(strm->asrc_substream == NULL) {
 		asrc_substrm = (struct snd_pcm_substream*)devm_kzalloc(dev, sizeof(struct snd_pcm_substream), GFP_KERNEL);
 		if(!asrc_substrm) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_asrc_substrm;
 		} else {
 			memset(asrc_substrm, 0, sizeof(struct snd_pcm_substream));
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] asrc_substreamm is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] asrc_substreamm is already allocated!!\n", __func__, __LINE__);
 		asrc_substrm = NULL; 
 	}
 
 	if(strm->middle == NULL) {
 		middle = (struct tcc_mid_buf*)devm_kzalloc(dev, sizeof(struct tcc_mid_buf), GFP_KERNEL);
 		if(!middle) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_middle;
 		} else {
@@ -2163,7 +2147,7 @@ static int tcc_asrc_m2m_pcm_stream_init(struct device *dev, struct asrc_m2m_pcm_
 
 		middle->dma_buf = (struct snd_dma_buffer *)kzalloc(sizeof(struct snd_dma_buffer), GFP_KERNEL);
 		if(!middle->dma_buf) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_middle_buf;
 		} else {
@@ -2172,56 +2156,56 @@ static int tcc_asrc_m2m_pcm_stream_init(struct device *dev, struct asrc_m2m_pcm_
 
 		middle->ptemp_buf = (unsigned char *)kzalloc(sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST, GFP_KERNEL);
 		if(!middle->ptemp_buf) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_middle_temp_buf;
 		} else {
 			memset(middle->ptemp_buf, 0, sizeof(unsigned char)*TCC_ASRC_MAX_SIZE*MID_BUFFER_CONST);
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] middle is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] middle is already allocated!!\n", __func__, __LINE__);
 		middle = NULL; 
 	}
 
 	if(strm->src == NULL) {
 		src = (struct tcc_param_info*)devm_kzalloc(dev, sizeof(struct tcc_param_info), GFP_KERNEL);
 		if(!src) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_src;
 		} else {
 			memset(src, 0, sizeof(struct tcc_param_info));
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] src is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] src is already allocated!!\n", __func__, __LINE__);
 		src = NULL; 
 	}
 
 	if(strm->dst == NULL) {
 		dst = (struct tcc_param_info*)devm_kzalloc(dev, sizeof(struct tcc_param_info), GFP_KERNEL);
 		if(!dst) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_dst;
 		} else {
 			memset(dst, 0, sizeof(struct tcc_param_info));
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] dst is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] dst is already allocated!!\n", __func__, __LINE__);
 		dst = NULL; 
 	}
 
 	if(strm->app == NULL) {
 		app = (struct tcc_app_buffer_info*)devm_kzalloc(dev, sizeof(struct tcc_app_buffer_info), GFP_KERNEL);
 		if(!app) {
-			asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_app;
 		} else {
 			memset(app, 0, sizeof(struct tcc_app_buffer_info));
 		}
 	} else {
-		asrc_m2m_pcm_dbg("[%s][%d] app is already allocated!!\n", __func__, __LINE__);
+		printk(KERN_WARNING "[WARN][T-sound_PCM][%s][%d] app is already allocated!!\n", __func__, __LINE__);
 		app = NULL; 
 	}
 
@@ -2306,11 +2290,11 @@ static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	if(asrc_m2m_pcm) {
 		pdev = asrc_m2m_pcm->pdev;
 	} else {
-		asrc_m2m_pcm_dbg_err("[%s][%d] ERROR!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] ERROR!!\n", __func__, __LINE__);
 		return -1;
 	}
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	ret = dma_coerce_mask_and_coherent(card->dev, DMA_BIT_MASK(32));
 	if (ret) {
@@ -2328,7 +2312,7 @@ static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	if(playback) {
 		ret = tcc_asrc_m2m_pcm_stream_init(&pdev->dev, asrc_m2m_pcm->playback);
 		if(ret != 0) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] Error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			goto error_playback_stream_init;
 		}
 
@@ -2338,7 +2322,7 @@ static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)
 		asrc_m2m_pcm->asrc_footprint = (struct footprint *)kzalloc(sizeof(struct footprint), GFP_KERNEL);
 #endif
 		if(!asrc_m2m_pcm->asrc_footprint) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] Error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			ret = -ENOMEM;
 			goto error_footprint;
 		} else {
@@ -2354,7 +2338,7 @@ static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	if(capture) {
 		ret = tcc_asrc_m2m_pcm_stream_init(&pdev->dev, asrc_m2m_pcm->capture);
 		if(ret != 0) {
-			asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] Error!!\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] Error!!\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 			goto error_capture_stream_init;
 		}
 
@@ -2384,7 +2368,7 @@ static int tcc_asrc_m2m_pcm_new(struct snd_soc_pcm_runtime *rtd)
 		init_waitqueue_head(&asrc_m2m_pcm->capture->kth_wq);
 		spin_lock_init(&asrc_m2m_pcm->capture->is_locked);
 	}
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	return 0;
 	
@@ -2411,12 +2395,12 @@ static void tcc_asrc_m2m_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)snd_soc_platform_get_drvdata(rtd->platform);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 	snd_pcm_lib_preallocate_free_for_all(pcm);
 	snd_dma_free_pages(asrc_m2m_pcm->playback->middle->dma_buf);
 	snd_dma_free_pages(asrc_m2m_pcm->capture->middle->dma_buf);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 }
 
 
@@ -2431,11 +2415,11 @@ static int tcc_asrc_m2m_pcm_suspend(struct platform_device *pdev, pm_message_t s
 {
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)platform_get_drvdata(pdev);
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] start\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 
 	if(asrc_m2m_pcm->playback->first_open == true) {
 		if (asrc_m2m_pcm->playback->kth_id != NULL) { 
-			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 			kthread_stop(asrc_m2m_pcm->playback->kth_id);
 			asrc_m2m_pcm->playback->kth_id = NULL;
 		}
@@ -2444,7 +2428,7 @@ static int tcc_asrc_m2m_pcm_suspend(struct platform_device *pdev, pm_message_t s
 
 	if(asrc_m2m_pcm->capture->first_open == true) {
 		if (asrc_m2m_pcm->capture->kth_id != NULL) { 
-			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 			kthread_stop(asrc_m2m_pcm->capture->kth_id);
 			asrc_m2m_pcm->capture->kth_id = NULL;
 		}
@@ -2452,7 +2436,7 @@ static int tcc_asrc_m2m_pcm_suspend(struct platform_device *pdev, pm_message_t s
 	}
 
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
     return 0;
 }
 
@@ -2475,25 +2459,25 @@ static int parse_asrc_m2m_pcm_dt(struct platform_device *pdev, struct tcc_asrc_m
     asrc_m2m_pcm->dev_id = -1;
     asrc_m2m_pcm->dev_id = of_alias_get_id(pdev->dev.of_node, "asrc-m2m-pcm");
 	if(asrc_m2m_pcm->dev_id < 0) {
-		asrc_m2m_pcm_dbg("[%s] ERROR!! id[%d] is wrong.\n", __func__, asrc_m2m_pcm->dev_id);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] id[%d] is wrong.\n", __func__, asrc_m2m_pcm->dev_id);
 		ret = -EINVAL;
 		goto error_dev_id;
 	}
-	asrc_m2m_pcm_dbg("[%s] dev_id[%u]\n", __func__, asrc_m2m_pcm->dev_id);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] dev_id[%u]\n", __func__, asrc_m2m_pcm->dev_id);
 	
 	if((of_property_read_u32(pdev->dev.of_node, "playback-pair-id", &itemp)) >= 0) {
 		asrc_m2m_pcm->playback->pair_id = itemp;
 	} else {
 		asrc_m2m_pcm->playback->pair_id = 99;
 	}
-	asrc_m2m_pcm_dbg("[%s] playback_pair_id[%u]\n", __func__, asrc_m2m_pcm->playback->pair_id);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] playback_pair_id[%u]\n", __func__, asrc_m2m_pcm->playback->pair_id);
 
 	if((of_property_read_u32(pdev->dev.of_node, "capture-pair-id", &itemp)) >= 0) {
 		asrc_m2m_pcm->capture->pair_id = itemp;
 	} else {
 		asrc_m2m_pcm->capture->pair_id = 99;
 	}
-	asrc_m2m_pcm_dbg("[%s] capture_pair_id[%u]\n", __func__, asrc_m2m_pcm->capture->pair_id);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] capture_pair_id[%u]\n", __func__, asrc_m2m_pcm->capture->pair_id);
 
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 	if((of_property_read_u32(pdev->dev.of_node, "playback-amd-cmd", &itemp)) >= 0) {
@@ -2505,7 +2489,7 @@ static int parse_asrc_m2m_pcm_dt(struct platform_device *pdev, struct tcc_asrc_m
 	} else {
 		asrc_m2m_pcm->playback->mbox_cmd_type = 99;
 	}
-	asrc_m2m_pcm_dbg("[%s] playback-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->playback->mbox_cmd_type);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] playback-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->playback->mbox_cmd_type);
 
 	if((of_property_read_u32(pdev->dev.of_node, "capture-amd-cmd", &itemp)) >= 0) {
 		if((itemp >= 0x0)&&(itemp < 0x9)) {	//0~5: playback stream to mixer, 6~8: general
@@ -2516,10 +2500,10 @@ static int parse_asrc_m2m_pcm_dt(struct platform_device *pdev, struct tcc_asrc_m
 	} else {
 		asrc_m2m_pcm->capture->mbox_cmd_type = 99;
 	}
-	asrc_m2m_pcm_dbg("[%s] capture-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->capture->mbox_cmd_type);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] capture-amd-cmd[%u]\n", __func__, (unsigned int)asrc_m2m_pcm->capture->mbox_cmd_type);
 
 	if((asrc_m2m_pcm->playback->mbox_cmd_type == 99)&&(asrc_m2m_pcm->capture->mbox_cmd_type == 99)) {
-		asrc_m2m_pcm_dbg_err("[%s] ERROR!! cmdtype number is wrong! Please check device tree.\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] ERROR!! cmdtype number is wrong! Please check device tree.\n", __func__);
 	}
 #endif
 error_dev_id:
@@ -2537,11 +2521,11 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 	//struct snd_pcm_substream *asrc_substream;
 	struct device_node *of_node_asrc;
 
-	asrc_m2m_pcm_dbg("[%s][%d] start\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d] start\n", __func__, __LINE__);
 
 	asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_asrc_m2m_pcm), GFP_KERNEL);
 	if(!asrc_m2m_pcm) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
 		goto error_pcm;
 	} else {
@@ -2550,7 +2534,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 
 	asrc = (struct tcc_asrc_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_asrc_t), GFP_KERNEL);
 	if(!asrc) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
 		goto error_asrc;
 	} else {
@@ -2559,7 +2543,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 
 	playback_strm = (struct asrc_m2m_pcm_stream*)devm_kzalloc(&pdev->dev, sizeof(struct asrc_m2m_pcm_stream), GFP_KERNEL);
 	if(!playback_strm) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
 		goto error_playback_strm;
 	} else {
@@ -2568,7 +2552,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 
 	capture_strm = (struct asrc_m2m_pcm_stream*)devm_kzalloc(&pdev->dev, sizeof(struct asrc_m2m_pcm_stream), GFP_KERNEL);
 	if(!capture_strm) {
-		asrc_m2m_pcm_dbg("[%s][%d] Error!!\n", __func__, __LINE__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s][%d] Error!!\n", __func__, __LINE__);
 		ret = -ENOMEM;
 		goto error_capture_strm;
 	} else {
@@ -2577,14 +2561,14 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 
 	of_node_asrc = of_parse_phandle(pdev->dev.of_node, "asrc", 0); 
 	if(of_node_asrc == NULL) {
-		asrc_m2m_pcm_dbg("[%s] ERROR!! of_node_asrc is NULL!\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] ERROR!! of_node_asrc is NULL!\n", __func__);
 		ret = -EINVAL;
 		goto error_of_node;
 	}
 
 	asrc = tcc_asrc_get_handle_by_node(of_node_asrc);
 	if(asrc == NULL) {
-		asrc_m2m_pcm_dbg("[%s] ERROR!! asrc is NULL!\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s] ERROR!! asrc is NULL!\n", __func__);
 		ret = -EINVAL;
 		goto error_of_node;
 	}
@@ -2594,7 +2578,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 	asrc_m2m_pcm->capture = capture_strm;
 
 	if((ret = parse_asrc_m2m_pcm_dt(pdev, asrc_m2m_pcm)) < 0) {
-		pr_err("%s : Fail to parse asrc_m2m_pcm dt\n", __func__);
+		printk(KERN_ERR "[ERROR][T-sound_PCM][%s]: Fail to parse asrc_m2m_pcm dt\n", __func__);
 		goto error_parse;
 	}
 
@@ -2603,7 +2587,7 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
     asrc_m2m_pcm->mbox_audio_dev = get_tcc_mbox_audio_device();
     if (asrc_m2m_pcm->mbox_audio_dev == NULL) {
-		asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s] ERROR!! mbox_audio_dev is NULL!\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s] ERROR!! mbox_audio_dev is NULL!\n", asrc_m2m_pcm->dev_id, __func__);
 		goto error_mailbox;
     }
 #endif
@@ -2612,16 +2596,18 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_platform(&pdev->dev, &tcc_asrc_m2m_pcm_platform);
 	if (ret < 0) {
-		printk("tcc_asrc_m2m_pcm_platform_register failed\n");
+		printk(KERN_ERR "[ERROR][T-sound_PCM] tcc_asrc_m2m_pcm_platform_register failed\n");
 		goto error_register;
 	}
-	//asrc_m2m_pcm_dbg("tcc_asrc_m2m_pcm_platform_register success\n");
+	//printk(KERN_DEBUG "[DEBUG][T-sound_PCM] tcc_asrc_m2m_pcm_platform_register success\n");
 
-	asrc_m2m_pcm_dbg_id(asrc_m2m_pcm->dev_id, "[%s][%d] end\n", __func__, __LINE__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s][%d] end\n", asrc_m2m_pcm->dev_id, __func__, __LINE__);
 	return ret;
 
 error_register:
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 error_mailbox:
+#endif
 error_parse:
 error_of_node:
 	devm_kfree(&pdev->dev, capture_strm);
@@ -2638,11 +2624,11 @@ error_pcm:
 static int tcc_asrc_m2m_pcm_remove(struct platform_device *pdev)
 {
 	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm*)platform_get_drvdata(pdev);
-	asrc_m2m_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s]\n", __func__);
 
 	if(asrc_m2m_pcm->playback->first_open == true) {
 		if (asrc_m2m_pcm->playback->kth_id != NULL) { 
-			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 			kthread_stop(asrc_m2m_pcm->playback->kth_id);
 			asrc_m2m_pcm->playback->kth_id = NULL;
 		}
@@ -2651,7 +2637,7 @@ static int tcc_asrc_m2m_pcm_remove(struct platform_device *pdev)
 
 	if(asrc_m2m_pcm->capture->first_open == true) {
 		if (asrc_m2m_pcm->capture->kth_id != NULL) { 
-			asrc_m2m_pcm_dbg("[%s][%d]\n", __func__, __LINE__);
+			printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s][%d]\n", __func__, __LINE__);
 			kthread_stop(asrc_m2m_pcm->capture->kth_id);
 			asrc_m2m_pcm->capture->kth_id = NULL;
 		}

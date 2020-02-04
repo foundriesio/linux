@@ -28,7 +28,6 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 
-
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
@@ -49,7 +48,6 @@
 #include <linux/cdev.h>
 #include <asm/atomic.h>
 
-
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 
@@ -68,18 +66,6 @@
 
 #define AUDIO_MBOX_FOR_A53					0
 #define AUDIO_MBOX_FOR_A7S					1
-
-//#define MBOX_AUDIO_DEBUG
-
-#define LOG_TAG    "SND_MBOX_AUDIO "
-
-#ifdef MBOX_AUDIO_DEBUG    
-#define dprintk(msg...)    printk(LOG_TAG  msg);		
-#else
-#define dprintk(msg...)    do {} while (0) 			
-#endif
-
-#define eprintk(msg...)    printk(KERN_ERR LOG_TAG  msg);
 
 #ifndef CONFIG_OF
 static struct mbox_audio_device *global_audio_dev;
@@ -101,7 +87,7 @@ static int tcc_mbox_audio_send_message_to_channel(struct mbox_audio_device *audi
 	mbox_client_txdone(audio_dev->mbox_ch,0);
 
 	if (ret < 0) {
-        eprintk("%s : Failed to send message via mailbox\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Failed to send message via mailbox\n", __FUNCTION__);
 	}
 
 	return ret;
@@ -113,7 +99,7 @@ static unsigned short tcc_mbox_audio_get_available_tx_instance(struct mbox_audio
 	int i;
 
     if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio device..\n", __FUNCTION__);
 		return -ENODEV;
 	}
 
@@ -124,7 +110,7 @@ static unsigned short tcc_mbox_audio_get_available_tx_instance(struct mbox_audio
 		instance_num++;
     }
 
-	dprintk("%s : available tx_instance = %d\n", __FUNCTION__, instance_num);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : available tx_instance = %d\n", __FUNCTION__, instance_num);
 
 	return instance_num;
 
@@ -133,40 +119,40 @@ static unsigned short tcc_mbox_audio_get_available_tx_instance(struct mbox_audio
 int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox_audio_data_header_t *header, unsigned int *msg, struct mbox_audio_tx_reply_data_t *reply)
 {
     struct tcc_mbox_data *mbox_data;
-	struct mbox_audio_tx_t *tx;
+	struct mbox_audio_tx_t *tx = NULL;
 
 	unsigned short tx_instance = 0;
 	
 	int ret;
 
     if (audio_dev == NULL) {
-        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio device..\n", __FUNCTION__);
         return -ENODEV;
     }
 
 	if (header == NULL) {
-		eprintk("%s : Cannot get header information..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get header information..\n", __FUNCTION__);
 		return -ENOMEM;
 	}
 
 
 	if (header->msg_size > AUDIO_MBOX_MESSAGE_SIZE || header->msg_size <= 0) {
-		eprintk("%s : msg_size error (msg_size = %d).\n", __FUNCTION__, header->msg_size);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : msg_size error (msg_size = %d).\n", __FUNCTION__, header->msg_size);
 		return -EINVAL;
 	}
 
 	if (header->usage > MBOX_AUDIO_USAGE_MAX) {
-		eprintk("%s : usage exceed (usage = 0x%04x).\n", __FUNCTION__, header->usage);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : usage exceed (usage = 0x%04x).\n", __FUNCTION__, header->usage);
 		return -EINVAL;
 	}
 
 	if (header->cmd_type > MBOX_AUDIO_CMD_TYPE_MAX) {
-		eprintk("%s : msg_size exceed (cmd_type = 0x%04x).\n", __FUNCTION__, header->cmd_type);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : msg_size exceed (cmd_type = 0x%04x).\n", __FUNCTION__, header->cmd_type);
 		return -EINVAL;
 	}
 
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST && reply == NULL) {
-		eprintk("%s : if use MBOX_AUDIO_USAGE_REQUEST, reply must not NULL", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : if use MBOX_AUDIO_USAGE_REQUEST, reply must not NULL", __FUNCTION__);
 		return -EINVAL; 
 	}
 
@@ -183,7 +169,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
             spin_unlock(&tx->lock);
 		} else {
 			header->tx_instance = 99; //tmp value, noti the error instance to sender
-			eprintk("%s : there is no available tx instance to reply.\n", __FUNCTION__);
+			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : there is no available tx instance to reply.\n", __FUNCTION__);
 			return -EINVAL;
 		}
     }
@@ -191,7 +177,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
     //packing mbox data
     mbox_data = kzalloc(sizeof(struct tcc_mbox_data), GFP_KERNEL);
     if (mbox_data == NULL) {
-        eprintk("%s : Cannot alloc mbox_data\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc mbox_data\n", __FUNCTION__);
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
 		spin_lock(&tx->lock);
   		atomic_set(&tx->wakeup, 0);
@@ -210,11 +196,11 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
     //payload //TODO : assume msg_size as unsigned int
     memcpy(&(mbox_data->cmd[AUDIO_MBOX_HEADER_SIZE]), msg, sizeof(unsigned int) * header->msg_size); 
 
-	dprintk("%s : usage = 0x%04x, type = 0x%04x, available tx = %d, msg_size = %d, command = 0x%08x\n",
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : usage = 0x%04x, type = 0x%04x, available tx = %d, msg_size = %d, command = 0x%08x\n",
 	__FUNCTION__,  header->usage, header->cmd_type, header->tx_instance, header->msg_size, mbox_data->cmd[1]);
 
 	if (tcc_mbox_audio_send_message_to_channel(audio_dev, mbox_data) < 0) {
-		eprintk("%s : send failed.\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : send failed.\n", __FUNCTION__);
 		if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
             spin_lock(&tx->lock);
   		    atomic_set(&tx->wakeup, 0);
@@ -231,7 +217,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
     //wait reply with tx if need
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
 		if (wait_event_interruptible_timeout(tx->wait, atomic_read(&tx->wakeup), CMD_TIMEOUT) <= 0) {
-			eprintk("%s : timeout error to get reply message.\n", __FUNCTION__);
+			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : timeout error to get reply message.\n", __FUNCTION__);
             spin_lock(&tx->lock);
 			atomic_set(&tx->wakeup, 0);
 			tx->reserved = 0; //need mutex?
@@ -242,7 +228,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 
 		//after getting data from mbox
         if (tx->reply.updated == 1) {
-			dprintk("%s : received reply data from tx = %d, type = 0x%04x, msg_size = %d, msg[0] = 0x%08x\n", 
+			printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received reply data from tx = %d, type = 0x%04x, msg_size = %d, msg[0] = 0x%08x\n", 
 				__FUNCTION__, tx_instance, tx->reply.cmd_type, tx->reply.msg_size, tx->reply.msg[0]);
             //reply should be alloc in caller previously!!
             //TODO : determine the way 1. memcpy to caller's reply variable or 2. caller use audio_dev->tx.reply directly (no need memcpy)
@@ -251,7 +237,7 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 			memcpy(reply->msg, tx->reply.msg, sizeof(unsigned int) * tx->reply.msg_size);
 			ret = tx_instance;
         } else { //Do not need....
-            eprintk("%s : reply get data. but no updated.\n", __FUNCTION__);
+            printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : reply get data. but no updated.\n", __FUNCTION__);
 			ret = -EINVAL;
         }
 
@@ -276,7 +262,7 @@ static int tcc_mbox_audio_user_queue_reset(struct mbox_audio_user_queue_t *user_
     struct mbox_audio_cmd_t *audio_usr_msg_tmp = NULL;
 
     if (user_queue == NULL) {
-        eprintk("%s : user_queue is null..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : user_queue is null..\n", __FUNCTION__);
         return -ENOMEM;
     }
 
@@ -312,7 +298,7 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
     int user_queue_size = 0, i = 0;
 
     if (audio_dev == NULL) {
-        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio device..\n", __FUNCTION__);
         return -ENODEV;
     }
 
@@ -334,14 +320,14 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
         audio_usr_msg = kzalloc(sizeof(struct mbox_audio_cmd_t), GFP_KERNEL);
 
         if (audio_usr_msg == NULL) {
-            eprintk("%s : Cannot alloc audio_usr_msg information..\n", __FUNCTION__);
+            printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc audio_usr_msg information..\n", __FUNCTION__);
             return -ENOMEM;
         }
 
         //check whether queue is pending, if queue size > 10, regard user cannot process queueing message and delete all.
         user_queue_size = atomic_read(&(audio_dev->user_queue.uq_size));
         if (user_queue_size >= MAX_USER_QUEUE_SIZE) {
-            dprintk("%s : assume the command reader(user) is destroyed..\n", __FUNCTION__);
+            printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : assume the command reader(user) is destroyed..\n", __FUNCTION__);
             tcc_mbox_audio_user_queue_reset(&audio_dev->user_queue);
         }
 
@@ -365,7 +351,7 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
         //after queueing, wake up polling wait queue
         wake_up(&(audio_dev->user_queue.uq_wait));
     }
-	dprintk("%s : receive and set message : cmd_type = 0x%04x, msg_size = %d, cmd = 0x%08x\n", 
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : receive and set message : cmd_type = 0x%04x, msg_size = %d, cmd = 0x%08x\n", 
             __FUNCTION__, cmd_type, msg_size, msg[0]);
 
 	return 0;
@@ -377,23 +363,23 @@ static int tcc_mbox_audio_process_replied_message(struct mbox_audio_device *audi
 	struct mbox_audio_tx_t *tx;
 
     if (audio_dev == NULL) {
-        eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio device..\n", __FUNCTION__);
         return -ENODEV;
     }
 
 	if (index >= TX_MAX_REPLY_COUNT) {
-		eprintk("%s : invalid tx instance number..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : invalid tx instance number..\n", __FUNCTION__);
 		return -EINVAL;
 	}
 
 	tx = &(audio_dev->tx[index]);
 
 	if (tx->reserved == 0) {
-		eprintk("%s : Try to use non-reserved tx..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Try to use non-reserved tx..\n", __FUNCTION__);
 		return -EINVAL;
 	}
 
-	dprintk("%s : message was replied. store them and wake up!! \n", __FUNCTION__);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : message was replied. store them and wake up!! \n", __FUNCTION__);
 
     //do not send pointer because msg will be freed soon.
     tx->reply.cmd_type = cmd_type;
@@ -419,9 +405,9 @@ static void tcc_mbox_audio_message_sent(struct mbox_client *client, void *messag
 	name = dev_name(cl->dev);
 
 	if (r) {
-		eprintk("%s : Message could not be sent: %d\n", __FUNCTION__, r);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Message could not be sent: %d\n", __FUNCTION__, r);
 	} else {
-        dprintk("%s, Message sent!! from devt = %d, dev_name = %s\n", __FUNCTION__, cl->dev->devt ,name);
+        printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s, Message sent!! from devt = %d, dev_name = %s\n", __FUNCTION__, cl->dev->devt ,name);
 	}
 }
 
@@ -436,7 +422,7 @@ static void tcc_audio_mbox_rx_cmd_handler(void *device_info, struct tcc_mbox_dat
     int result;
 
     if(mbox_data == NULL || audio_dev == NULL) {
-		eprintk("%s : no data or no mbox_audio_device to use\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : no data or no mbox_audio_device to use\n", __FUNCTION__);
 		return;
     }
 
@@ -448,7 +434,7 @@ static void tcc_audio_mbox_rx_cmd_handler(void *device_info, struct tcc_mbox_dat
 
 	msg = &(mbox_data->cmd[1]);
 
-	dprintk("%s : usage = 0x%04x, type = 0x%04x, tx_instance tx = %d, msg_size = %d\n", __FUNCTION__, usage, cmd_type, tx_instance, msg_size);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : usage = 0x%04x, type = 0x%04x, tx_instance tx = %d, msg_size = %d\n", __FUNCTION__, usage, cmd_type, tx_instance, msg_size);
 
 	//TODO : We should consider where we process the request & reply usage between worker thread and recieved callback thread...
 	// 1. process in worker thread : slower than processing in callback thread
@@ -468,7 +454,7 @@ static void tcc_audio_mbox_rx_cmd_handler(void *device_info, struct tcc_mbox_dat
 	//note. a7s do not receive this usage, because a7s do not send request
 	    result = tcc_mbox_audio_process_replied_message(audio_dev, cmd_type, msg, msg_size, tx_instance);
 	    if (result < 0) {
-			eprintk("%s : MBOX_AUDIO_USAGE_REPLY : error to process replied msg.. sender may timeout. result = %d\n", __FUNCTION__, result);
+			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : MBOX_AUDIO_USAGE_REPLY : error to process replied msg.. sender may timeout. result = %d\n", __FUNCTION__, result);
 	    }
 		return;
 	default :
@@ -486,7 +472,7 @@ static void tcc_mbox_audio_rx_work(struct kthread_work *work)
 	struct mbox_audio_cmd_t *audio_msg = NULL;
 	struct mbox_audio_cmd_t *audio_msg_tmp = NULL;
 
-    dprintk("%s : work start of %d ++ \n", __FUNCTION__, rx->handle);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : work start of %d ++ \n", __FUNCTION__, rx->handle);
 
     spin_lock_irq(&rx->lock);
     list_for_each_entry_safe(audio_msg, audio_msg_tmp, &rx->list, list) {
@@ -501,7 +487,7 @@ static void tcc_mbox_audio_rx_work(struct kthread_work *work)
     }
     spin_unlock_irq(&rx->lock);
 
-	dprintk("%s : work end -- list_empty = %d\n", __FUNCTION__, list_empty(&rx->list) );
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : work end -- list_empty = %d\n", __FUNCTION__, list_empty(&rx->list) );
 
 } 
 
@@ -521,15 +507,15 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 
 	unsigned short cmd_type;
 
-    dprintk("%s : received start++\n", __FUNCTION__);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received start++\n", __FUNCTION__);
 
 	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio mbox device...\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device...\n", __FUNCTION__);
 		return;
 	}
 
 	if (audio_dev->mbox_audio_ready != DRV_STATUS_READY) {
-		eprintk("%s : Audio mbox device is not yet ready...\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Audio mbox device is not yet ready...\n", __FUNCTION__);
 		return;
 	}
 
@@ -537,7 +523,7 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	audio_msg = kzalloc(sizeof(struct mbox_audio_cmd_t), GFP_KERNEL);
 
 	if(audio_msg == NULL) {
-		eprintk("%s : error - unable to alloc memory(%ld)\n", __FUNCTION__, PTR_ERR(audio_msg));
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : error - unable to alloc memory(%ld)\n", __FUNCTION__, PTR_ERR(audio_msg));
 		return;
 	}
 
@@ -560,7 +546,7 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	} else if (cmd_type >= 0) {
 	    rx_queue_handle = cmd_type;
 	} else {
-	    eprintk("%s : invalid cmd type.. forcibly use RX_QUEUE_FOR_COMMAND.\n", __FUNCTION__);
+	    printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : invalid cmd type.. forcibly use RX_QUEUE_FOR_COMMAND.\n", __FUNCTION__);
 	    rx_queue_handle = RX_QUEUE_FOR_COMMAND;
 	}
 
@@ -572,7 +558,7 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
     //run worker thread to process command at queue
     kthread_queue_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
 
-	dprintk("%s : received end--\n", __FUNCTION__);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received end--\n", __FUNCTION__);
 
 
 }
@@ -598,7 +584,7 @@ static struct mbox_chan *audio_request_channel(struct platform_device *pdev, con
 
 	channel = mbox_request_channel_byname(client, name);
 	if (IS_ERR(channel)) {
-		eprintk("%s : Failed to request %s channel\n", __FUNCTION__, name);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Failed to request %s channel\n", __FUNCTION__, name);
 		return NULL;
 	}
 
@@ -623,10 +609,10 @@ static long tcc_mbox_audio_rx_init(struct mbox_audio_rx_t *rx, const char *name,
 
 	rx->task = kthread_run(kthread_worker_fn, &rx->kworker, name);
 
-    dprintk("%s : rx work thread = %d(%s)\n", __FUNCTION__, rx->handle, rx->name);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : rx work thread = %d(%s)\n", __FUNCTION__, rx->handle, rx->name);
 
 	if(IS_ERR(rx->task)) {
-		eprintk("%s : Fail to kthread_run(%ld) \n", __FUNCTION__, PTR_ERR(rx->task));
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Fail to kthread_run(%ld) \n", __FUNCTION__, PTR_ERR(rx->task));
 		return PTR_ERR(rx->task);
 	}
 
@@ -646,7 +632,6 @@ static int tcc_mbox_audio_tx_init(struct mbox_audio_tx_t *tx, int num)
 
     tx->reserved = 0;
 	tx->reply.updated = 0;
-
 	init_waitqueue_head(&tx->wait);
 
 	return 0;
@@ -672,19 +657,19 @@ static unsigned int tcc_mbox_audio_poll(struct file *filp, struct poll_table_str
     struct mbox_audio_device *audio_dev = (struct mbox_audio_device *)filp->private_data;
 
     if (audio_dev == NULL) {
-        eprintk("%s : Cannot get audio mbox device..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device..\n", __FUNCTION__);
         return 0;
     }
 
     if (atomic_read(&audio_dev->user_queue.uq_size) > 0) {
-        dprintk("%s : return POLLIN.. already queue has set %d messages \n", __FUNCTION__, atomic_read(&audio_dev->user_queue.uq_size));
+        printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : return POLLIN.. already queue has set %d messages \n", __FUNCTION__, atomic_read(&audio_dev->user_queue.uq_size));
         return (POLLIN | POLLRDNORM);
     }
 
     poll_wait(filp, &(audio_dev->user_queue.uq_wait), wait);
 
     if (atomic_read(&audio_dev->user_queue.uq_size) > 0) {
-        dprintk("%s : return POLLIN..  queue has set %d messages after poll_wait.\n", __FUNCTION__, atomic_read(&audio_dev->user_queue.uq_size));
+        printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : return POLLIN..  queue has set %d messages after poll_wait.\n", __FUNCTION__, atomic_read(&audio_dev->user_queue.uq_size));
         return (POLLIN | POLLRDNORM);
     }
 
@@ -704,11 +689,11 @@ static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t c
 
     // error handling
     if (count < byte_size_per_mbox_data || count % byte_size_per_mbox_data != 0) {
-        eprintk("%s : Buffer size should be MBOX_CMD_FIFO_SIZE * 4 times..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Buffer size should be MBOX_CMD_FIFO_SIZE * 4 times..\n", __FUNCTION__);
         return -EINVAL;
     }
     if (audio_dev == NULL) {
-        eprintk("%s : Cannot get audio mbox device..\n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device..\n", __FUNCTION__);
         return -ENODEV;
     }
 
@@ -716,12 +701,12 @@ static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t c
     list_for_each_entry_safe(audio_usr_msg, audio_usr_msg_tmp, &(audio_dev->user_queue.list), list) {
         mutex_unlock(&(audio_dev->user_queue.uq_lock));
         if (copy_byte_size >= count) {
-            eprintk("%s : read size (%d) is exceed the user count (%zd)\n", __FUNCTION__, copy_byte_size, count);
+            printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : read size (%d) is exceed the user count (%zd)\n", __FUNCTION__, copy_byte_size, count);
             break;
         }
-        dprintk("%s : read count = %zd, copy_byte_size = %d\n", __FUNCTION__, count, copy_byte_size);
+        printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : read count = %zd, copy_byte_size = %d\n", __FUNCTION__, count, copy_byte_size);
         if (copy_to_user(buf + copy_byte_size, &(audio_usr_msg->mbox_data.cmd[0]), sizeof(unsigned int) * MBOX_CMD_FIFO_SIZE)) {
-            eprintk("%s : copy to user fail on %d-th mbox data.\n", __FUNCTION__, (mbox_data_num+1));
+            printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : copy to user fail on %d-th mbox data.\n", __FUNCTION__, (mbox_data_num+1));
             return -EFAULT;
         }
         mbox_data_num++;
@@ -733,7 +718,7 @@ static ssize_t tcc_mbox_audio_read(struct file *filp, char __user *buf, size_t c
     }
     mutex_unlock(&(audio_dev->user_queue.uq_lock));
 
-    dprintk("%s : copy_byte_size = %d, mbox_data_num = %d\n", __FUNCTION__, copy_byte_size, mbox_data_num);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : copy_byte_size = %d, mbox_data_num = %d\n", __FUNCTION__, copy_byte_size, mbox_data_num);
 
     return (ssize_t) copy_byte_size;
 
@@ -749,12 +734,12 @@ static int tcc_mbox_audio_open(struct inode * inode, struct file * filp)
     struct mbox_audio_device *audio_dev = container_of(inode->i_cdev, struct mbox_audio_device, c_dev);
 
 	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio mbox device..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device..\n", __FUNCTION__);
 		return -ENODEV;
 	}
 
 	if (audio_dev->mbox_audio_ready != DRV_STATUS_READY) {
-		eprintk("%s : Audio mbox device is not yet ready...\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Audio mbox device is not yet ready...\n", __FUNCTION__);
 		return -EBUSY;
 	}
 
@@ -768,7 +753,7 @@ static int tcc_mbox_audio_open(struct inode * inode, struct file * filp)
 
 	filp->private_data = audio_dev;
 
-	dprintk("%s : user opens the mbox_audio_device. current users = %d\n", __FUNCTION__, audio_dev->users);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : user opens the mbox_audio_device. current users = %d\n", __FUNCTION__, audio_dev->users);
 	
 	return 0;
 }
@@ -778,7 +763,7 @@ static int tcc_mbox_audio_release(struct inode * inode, struct file * filp)
     struct mbox_audio_device *audio_dev = container_of(inode->i_cdev, struct mbox_audio_device, c_dev);
 
 	if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio device..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio device..\n", __FUNCTION__);
 		return -ENODEV;
 	}
 
@@ -790,7 +775,7 @@ static int tcc_mbox_audio_release(struct inode * inode, struct file * filp)
 	}
 	mutex_unlock(&audio_dev->lock);
 
-	dprintk("%s : user releases the mbox_audio_device. remain users = %d\n", __FUNCTION__, audio_dev->users);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : user releases the mbox_audio_device. remain users = %d\n", __FUNCTION__, audio_dev->users);
 
 	return 0;
 }
@@ -810,18 +795,18 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 
     // error handling
     if (audio_dev == NULL) {
-		eprintk("%s : Cannot get audio mbox device..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device..\n", __FUNCTION__);
 		return -ENODEV;
 	}
 
 	if (audio_dev->mbox_audio_ready != DRV_STATUS_READY) {
-		eprintk("%s : Audio mbox device is not yet ready...\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Audio mbox device is not yet ready...\n", __FUNCTION__);
 		return -EBUSY;
 	}
 
 	ret = copy_from_user(&mbox_audio_msg, argp, sizeof(struct tcc_mbox_audio_msg));
 	if(ret) {
-		eprintk("%s: unable to copy user paramters(%ld) \n", __FUNCTION__, ret);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s: unable to copy user paramters(%ld) \n", __FUNCTION__, ret);
 		goto err_ioctl;
 	}
 
@@ -830,7 +815,7 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 	header = kzalloc(sizeof(struct mbox_audio_data_header_t), GFP_KERNEL);
 
     if (header == NULL) {
-        eprintk("%s: unable to alloc header \n", __FUNCTION__);
+        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s: unable to alloc header \n", __FUNCTION__);
         return -ENOMEM;
     }
 
@@ -913,7 +898,7 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_8;
 		break;
 	default:
-		eprintk("%s : Invalid command (%d)\n", __FUNCTION__, cmd);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Invalid command (%d)\n", __FUNCTION__, cmd);
 		ret = -EINVAL;
 		goto err_cmd;
 	}
@@ -922,7 +907,7 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
             reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
             if (reply_data == NULL) {
-                eprintk("%s : Cannot alloc reply_data for request.\n", __FUNCTION__);
+                printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc reply_data for request.\n", __FUNCTION__);
                 ret = -ENOMEM;
                 goto err_cmd;
             }
@@ -940,7 +925,7 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
                 // don't copy data area
                 //if (copy_to_user(argp, &mbox_audio_msg, sizeof(struct tcc_mbox_audio_msg))) {
                 if (copy_to_user(argp, &(mbox_audio_msg.data[0]), sizeof(unsigned int) * MBOX_AUDIO_CMD_SIZE)) {
-                    eprintk("%s : copy to user fail..\n", __FUNCTION__);
+                    printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : copy to user fail..\n", __FUNCTION__);
                     ret = -EFAULT;
                 }
             }
@@ -982,7 +967,7 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 
 	audio_dev = devm_kzalloc(&pdev->dev, sizeof(struct mbox_audio_device), GFP_KERNEL);
 	if(!audio_dev) {
-		eprintk("%s : Cannot alloc audio device..\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc audio device..\n", __FUNCTION__);
 		return -ENOMEM;
 	}
 
@@ -1005,7 +990,7 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
     //create and register character device
 	result = alloc_chrdev_region(&audio_dev->dev_num, MBOX_AUDIO_DEV_MINOR, 1, audio_dev->dev_name);
 	if (result) {
-		eprintk("%s : alloc_chrdev_region error %d\n", __FUNCTION__, result);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : alloc_chrdev_region error %d\n", __FUNCTION__, result);
 		return result;
 	}
 
@@ -1014,14 +999,14 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 
 	result = cdev_add(&audio_dev->c_dev, audio_dev->dev_num, 1);
 	if (result) {
-		eprintk("%s : cdev_add error %d\n",  __FUNCTION__, result);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : cdev_add error %d\n",  __FUNCTION__, result);
 		goto cdev_add_error;
 	}	
 
 	audio_dev->class = class_create(THIS_MODULE, audio_dev->dev_name);
 	if (IS_ERR(audio_dev->class)) {
 		result = PTR_ERR(audio_dev->class);
-		eprintk("%s : class_create error %d\n", __FUNCTION__, result);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : class_create error %d\n", __FUNCTION__, result);
 		goto class_create_error;
 	}
 
@@ -1029,14 +1014,14 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 	audio_dev->dev = device_create(audio_dev->class, &pdev->dev, audio_dev->dev_num, NULL, audio_dev->dev_name);
 	if (IS_ERR(audio_dev->dev)) {
 		result = PTR_ERR(audio_dev->dev);
-		eprintk("%s : device_create error %d\n", __FUNCTION__, result);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : device_create error %d\n", __FUNCTION__, result);
 		goto device_create_error;
 	}
 
 	audio_dev->mbox_ch = audio_request_channel(pdev, audio_dev->mbox_name);
 	if (audio_dev->mbox_ch == NULL) {
 		result = -EPROBE_DEFER;
-		eprintk("%s : ipc_request_channel error: %d\n", __FUNCTION__, result);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : ipc_request_channel error: %d\n", __FUNCTION__, result);
 		goto mbox_request_channel_error;
 	}
 
@@ -1050,7 +1035,7 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
     for (i = 0; i < TX_MAX_REPLY_COUNT; i++) {
 		if (tcc_mbox_audio_tx_init(&audio_dev->tx[i], i)) {
 			result =  -EFAULT;
-    	    eprintk("%s : tcc_mbox_audio_tx_init error: %d\n", __FUNCTION__, result);
+    	    printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : tcc_mbox_audio_tx_init error: %d\n", __FUNCTION__, result);
     	    goto mbox_init_tx_queue_error;
 		}
     }
@@ -1059,7 +1044,7 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 		sprintf(rx_name, "mbox_audio_rx_%d", i);
         if (tcc_mbox_audio_rx_init(&audio_dev->rx[i], rx_name, i)) {
     		result =  -EFAULT;
-    	    eprintk("%s : tcc_mbox_audio_rx_init error: %d\n", __FUNCTION__, result);
+    	    printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : tcc_mbox_audio_rx_init error: %d\n", __FUNCTION__, result);
     	    goto mbox_init_rx_queue_error;
         }
 	}
@@ -1074,11 +1059,11 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 
 #ifndef CONFIG_OF	
 	global_audio_dev = audio_dev;
-    dprintk("%s : global_audio_dev dev_name:%s, mbox_name:%s, dev_num:%d\n", __FUNCTION__, global_audio_dev->dev_name, global_audio_dev->mbox_name, global_audio_dev->dev_num);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : global_audio_dev dev_name:%s, mbox_name:%s, dev_num:%d\n", __FUNCTION__, global_audio_dev->dev_name, global_audio_dev->mbox_name, global_audio_dev->dev_num);
 #endif
 
 	audio_dev->mbox_audio_ready = DRV_STATUS_READY;
-	dprintk("%s : Successfully registered!!!\n", __FUNCTION__);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : Successfully registered!!!\n", __FUNCTION__);
 
 	return 0;
 
