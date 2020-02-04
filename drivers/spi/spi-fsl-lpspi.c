@@ -416,7 +416,7 @@ static int fsl_lpspi_config(struct fsl_lpspi_data *fsl_lpspi)
 	fsl_lpspi_set_watermark(fsl_lpspi);
 
 	if (!fsl_lpspi->is_slave)
-		temp = CFGR1_MASTER;
+		temp = CFGR1_PCSCFG | CFGR1_MASTER | CFGR1_NOSTALL;
 	else
 		temp = CFGR1_PINCFG;
 	if (fsl_lpspi->config.mode & SPI_CS_HIGH)

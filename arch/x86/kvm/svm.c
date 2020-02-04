@@ -299,7 +299,7 @@ static int vgif = true;
 module_param(vgif, int, 0444);
 
 static void svm_set_cr0(struct kvm_vcpu *vcpu, unsigned long cr0);
-static void svm_flush_tlb(struct kvm_vcpu *vcpu);
+static void svm_flush_tlb(struct kvm_vcpu *vcpu, bool invalidate_gpa);
 static void svm_complete_interrupts(struct vcpu_svm *svm);
 
 static int nested_svm_exit_handled(struct vcpu_svm *svm);
@@ -608,8 +608,14 @@ static int get_npt_level(struct kvm_vcpu *vcpu)
 static void svm_set_efer(struct kvm_vcpu *vcpu, u64 efer)
 {
 	vcpu->arch.efer = efer;
-	if (!npt_enabled && !(efer & EFER_LMA))
-		efer &= ~EFER_LME;
+
+	if (!npt_enabled) {
+		/* Shadow paging assumes NX to be available.  */
+		efer |= EFER_NX;
+
+		if (!(efer & EFER_LMA))
+			efer &= ~EFER_LME;
+	}
 
 	to_svm(vcpu)->vmcb->save.efer = efer | EFER_SVME;
 	mark_dirty(to_svm(vcpu)->vmcb, VMCB_CR);
@@ -1567,7 +1573,11 @@ static void avic_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	if (!kvm_vcpu_apicv_active(vcpu))
 		return;
 
-	if (WARN_ON(h_physical_id >= AVIC_MAX_PHYSICAL_ID_COUNT))
+	/*
+	 * Since the host physical APIC id is 8 bits,
+	 * we can support host APIC ID upto 255.
+	 */
+	if (WARN_ON(h_physical_id > AVIC_PHYSICAL_ID_ENTRY_HOST_PHYSICAL_ID_MASK))
 		return;
 
 	entry = READ_ONCE(*(svm->avic_physical_id_cache));
@@ -2093,7 +2103,7 @@ static int svm_set_cr4(struct kvm_vcpu *vcpu, unsigned long cr4)
 		return 1;
 
 	if (npt_enabled && ((old_cr4 ^ cr4) & X86_CR4_PGE))
-		svm_flush_tlb(vcpu);
+		svm_flush_tlb(vcpu, true);
 
 	vcpu->arch.cr4 = cr4;
 	if (!npt_enabled)
@@ -2211,6 +2221,7 @@ static int pf_interception(struct vcpu_svm *svm)
 static int db_interception(struct vcpu_svm *svm)
 {
 	struct kvm_run *kvm_run = svm->vcpu.run;
+	struct kvm_vcpu *vcpu = &svm->vcpu;
 
 	if (!(svm->vcpu.guest_debug &
 	      (KVM_GUESTDBG_SINGLESTEP | KVM_GUESTDBG_USE_HW_BP)) &&
@@ -2221,6 +2232,8 @@ static int db_interception(struct vcpu_svm *svm)
 
 	if (svm->nmi_singlestep) {
 		disable_nmi_singlestep(svm);
+		/* Make sure we check for pending NMIs upon entry */
+		kvm_make_request(KVM_REQ_EVENT, vcpu);
 	}
 
 	if (svm->vcpu.guest_debug &
@@ -2431,7 +2444,7 @@ static void nested_svm_set_tdp_cr3(struct kvm_vcpu *vcpu,
 
 	svm->vmcb->control.nested_cr3 = __sme_set(root);
 	mark_dirty(svm->vmcb, VMCB_NPT);
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static void nested_svm_inject_npf_exit(struct kvm_vcpu *vcpu,
@@ -2929,6 +2942,14 @@ static int nested_svm_vmexit(struct vcpu_svm *svm)
 	kvm_mmu_reset_context(&svm->vcpu);
 	kvm_mmu_load(&svm->vcpu);
 
+	/*
+	 * Drop what we picked up for L2 via svm_complete_interrupts() so it
+	 * doesn't end up in L1.
+	 */
+	svm->vcpu.arch.nmi_injected = false;
+	kvm_clear_exception_queue(&svm->vcpu);
+	kvm_clear_interrupt_queue(&svm->vcpu);
+
 	return 0;
 }
 
@@ -3096,7 +3117,7 @@ static bool nested_svm_vmrun(struct vcpu_svm *svm)
 	svm->nested.intercept_exceptions = nested_vmcb->control.intercept_exceptions;
 	svm->nested.intercept            = nested_vmcb->control.intercept;
 
-	svm_flush_tlb(&svm->vcpu);
+	svm_flush_tlb(&svm->vcpu, true);
 	svm->vmcb->control.int_ctl = nested_vmcb->control.int_ctl | V_INTR_MASKING_MASK;
 	if (nested_vmcb->control.int_ctl & V_INTR_MASKING_MASK)
 		svm->vcpu.arch.hflags |= HF_VINTR_MASK;
@@ -4574,7 +4595,7 @@ static void update_cr8_intercept(struct kvm_vcpu *vcpu, int tpr, int irr)
 		set_cr_intercept(svm, INTERCEPT_CR8_WRITE);
 }
 
-static void svm_set_virtual_x2apic_mode(struct kvm_vcpu *vcpu, bool set)
+static void svm_set_virtual_apic_mode(struct kvm_vcpu *vcpu)
 {
 	return;
 }
@@ -4620,6 +4641,11 @@ static void svm_deliver_avic_intr(struct kvm_vcpu *vcpu, int vec)
 		       kvm_cpu_get_apicid(vcpu->cpu));
 	else
 		kvm_vcpu_wake_up(vcpu);
+}
+
+static bool svm_dy_apicv_has_pending_interrupt(struct kvm_vcpu *vcpu)
+{
+	return false;
 }
 
 static void svm_ir_list_del(struct vcpu_svm *svm, struct amd_iommu_pi_data *pi)
@@ -4927,7 +4953,7 @@ static int svm_set_tss_addr(struct kvm *kvm, unsigned int addr)
 	return 0;
 }
 
-static void svm_flush_tlb(struct kvm_vcpu *vcpu)
+static void svm_flush_tlb(struct kvm_vcpu *vcpu, bool invalidate_gpa)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
 
@@ -5268,7 +5294,7 @@ static void svm_set_cr3(struct kvm_vcpu *vcpu, unsigned long root)
 
 	svm->vmcb->save.cr3 = __sme_set(root);
 	mark_dirty(svm->vmcb, VMCB_CR);
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static void set_tdp_cr3(struct kvm_vcpu *vcpu, unsigned long root)
@@ -5282,7 +5308,7 @@ static void set_tdp_cr3(struct kvm_vcpu *vcpu, unsigned long root)
 	svm->vmcb->save.cr3 = kvm_read_cr3(vcpu);
 	mark_dirty(svm->vmcb, VMCB_CR);
 
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static int is_disabled(void)
@@ -5319,6 +5345,13 @@ static bool svm_cpu_has_accelerated_tpr(void)
 
 static bool svm_has_emulated_msr(int index)
 {
+	switch (index) {
+	case MSR_IA32_MCG_EXT_CTL:
+		return false;
+	default:
+		break;
+	}
+
 	return true;
 }
 
@@ -5686,7 +5719,7 @@ static struct kvm_x86_ops svm_x86_ops __ro_after_init = {
 	.enable_nmi_window = enable_nmi_window,
 	.enable_irq_window = enable_irq_window,
 	.update_cr8_intercept = update_cr8_intercept,
-	.set_virtual_x2apic_mode = svm_set_virtual_x2apic_mode,
+	.set_virtual_apic_mode = svm_set_virtual_apic_mode,
 	.get_enable_apicv = svm_get_enable_apicv,
 	.refresh_apicv_exec_ctrl = svm_refresh_apicv_exec_ctrl,
 	.load_eoi_exitmap = svm_load_eoi_exitmap,
@@ -5724,6 +5757,7 @@ static struct kvm_x86_ops svm_x86_ops __ro_after_init = {
 
 	.pmu_ops = &amd_pmu_ops,
 	.deliver_posted_interrupt = svm_deliver_avic_intr,
+	.dy_apicv_has_pending_interrupt = svm_dy_apicv_has_pending_interrupt,
 	.update_pi_irte = svm_update_pi_irte,
 	.setup_mce = svm_setup_mce,
 };

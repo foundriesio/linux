@@ -162,10 +162,10 @@ static int imx_snvs_pwrkey_probe(struct platform_device *pdev)
 		return error;
 	}
 
+	device_init_wakeup(&pdev->dev, pdata->wakeup);
+
 	pdata->input = input;
 	platform_set_drvdata(pdev, pdata);
-
-	device_init_wakeup(&pdev->dev, pdata->wakeup);
 
 	error = devm_request_irq(&pdev->dev, pdata->irq,
 			       imx_snvs_pwrkey_interrupt,

@@ -438,8 +438,8 @@ static int fsl_esai_set_dai_tdm_slot(struct snd_soc_dai *dai, u32 tx_mask,
 
 	esai_priv->slot_width = slot_width;
 	esai_priv->slots = slots;
-	esai_priv->tx_mask    = tx_mask;
-	esai_priv->rx_mask    = rx_mask;
+	esai_priv->tx_mask = tx_mask;
+	esai_priv->rx_mask = rx_mask;
 
 	return 0;
 }
@@ -555,6 +555,11 @@ static int fsl_esai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	mask = ESAI_xCR_xFSL | ESAI_xCR_xFSR | ESAI_xCR_xWA;
 	regmap_update_bits(esai_priv->regmap, REG_ESAI_TCR, mask, xcr);
 	regmap_update_bits(esai_priv->regmap, REG_ESAI_RCR, mask, xcr);
+
+	mask = ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP | ESAI_xCCR_xFSP |
+		ESAI_xCCR_xFSD | ESAI_xCCR_xCKD;
+	regmap_update_bits(esai_priv->regmap, REG_ESAI_TCCR, mask, xccr);
+	regmap_update_bits(esai_priv->regmap, REG_ESAI_RCCR, mask, xccr);
 
 	return 0;
 }
@@ -699,6 +704,18 @@ static int fsl_esai_trigger(struct snd_pcm_substream *substream, int cmd,
 		for (i = 0; tx && i < channels; i++)
 			regmap_write(esai_priv->regmap, REG_ESAI_ETDR, 0x0);
 
+		/*
+		 * When set the TE/RE in the end of enablement flow, there
+		 * will be channel swap issue for multi data line case.
+		 * In order to workaround this issue, we switch the bit
+		 * enablement sequence to below sequence
+		 * 1) clear the xSMB & xSMA: which is done in probe and
+		 *                           stop state.
+		 * 2) set TE/RE
+		 * 3) set xSMB
+		 * 4) set xSMA:  xSMA is the last one in this flow, which
+		 *               will trigger esai to start.
+		 */
 		regmap_update_bits(esai_priv->regmap, REG_ESAI_xCR(tx),
 				   tx ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK,
 				   tx ? ESAI_xCR_TE(pins) : ESAI_xCR_RE(pins));
@@ -1142,6 +1159,9 @@ static int fsl_esai_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to enable ESAI: %d\n", ret);
 		return ret;
 	}
+
+	esai_priv->tx_mask = 0xFFFFFFFF;
+	esai_priv->rx_mask = 0xFFFFFFFF;
 
 	/* Clear the TSMA, TSMB, RSMA, RSMB */
 	regmap_write(esai_priv->regmap, REG_ESAI_TSMA, 0);
