@@ -1115,8 +1115,8 @@ static int xlvbd_alloc_gendisk(blkif_sector_t capacity,
 	if (!VDEV_IS_EXTENDED(info->vdevice)) {
 		err = xen_translate_vdev(info->vdevice, &minor, &offset);
 		if (err)
-			return err;		
- 		nr_parts = PARTS_PER_DISK;
+			return err;
+		nr_parts = PARTS_PER_DISK;
 	} else {
 		minor = BLKIF_MINOR_EXT(info->vdevice);
 		nr_parts = PARTS_PER_EXT_DISK;
@@ -1312,11 +1312,11 @@ static void blkif_free_ring(struct blkfront_ring_info *rinfo)
 		}
 
 free_shadow:
-		kfree(rinfo->shadow[i].grants_used);
+		kvfree(rinfo->shadow[i].grants_used);
 		rinfo->shadow[i].grants_used = NULL;
-		kfree(rinfo->shadow[i].indirect_grants);
+		kvfree(rinfo->shadow[i].indirect_grants);
 		rinfo->shadow[i].indirect_grants = NULL;
-		kfree(rinfo->shadow[i].sg);
+		kvfree(rinfo->shadow[i].sg);
 		rinfo->shadow[i].sg = NULL;
 	}
 
@@ -1355,7 +1355,7 @@ static void blkif_free(struct blkfront_info *info, int suspend)
 	for (i = 0; i < info->nr_rings; i++)
 		blkif_free_ring(&info->rinfo[i]);
 
-	kfree(info->rinfo);
+	kvfree(info->rinfo);
 	info->rinfo = NULL;
 	info->nr_rings = 0;
 }
@@ -1909,7 +1909,7 @@ static int negotiate_mq(struct blkfront_info *info)
 	if (!info->nr_rings)
 		info->nr_rings = 1;
 
-	info->rinfo = kzalloc(sizeof(struct blkfront_ring_info) * info->nr_rings, GFP_KERNEL);
+	info->rinfo = kvzalloc(sizeof(struct blkfront_ring_info) * info->nr_rings, GFP_KERNEL);
 	if (!info->rinfo) {
 		xenbus_dev_fatal(info->xbdev, -ENOMEM, "allocating ring_info structure");
 		return -ENOMEM;
@@ -2232,12 +2232,12 @@ static int blkfront_setup_indirect(struct blkfront_ring_info *rinfo)
 	}
 
 	for (i = 0; i < BLK_RING_SIZE(info); i++) {
-		rinfo->shadow[i].grants_used = kzalloc(
+		rinfo->shadow[i].grants_used = kvzalloc(
 			sizeof(rinfo->shadow[i].grants_used[0]) * grants,
 			GFP_NOIO);
-		rinfo->shadow[i].sg = kzalloc(sizeof(rinfo->shadow[i].sg[0]) * psegs, GFP_NOIO);
+		rinfo->shadow[i].sg = kvzalloc(sizeof(rinfo->shadow[i].sg[0]) * psegs, GFP_NOIO);
 		if (info->max_indirect_segments)
-			rinfo->shadow[i].indirect_grants = kzalloc(
+			rinfo->shadow[i].indirect_grants = kvzalloc(
 				sizeof(rinfo->shadow[i].indirect_grants[0]) *
 				INDIRECT_GREFS(grants),
 				GFP_NOIO);
@@ -2254,11 +2254,11 @@ static int blkfront_setup_indirect(struct blkfront_ring_info *rinfo)
 
 out_of_memory:
 	for (i = 0; i < BLK_RING_SIZE(info); i++) {
-		kfree(rinfo->shadow[i].grants_used);
+		kvfree(rinfo->shadow[i].grants_used);
 		rinfo->shadow[i].grants_used = NULL;
-		kfree(rinfo->shadow[i].sg);
+		kvfree(rinfo->shadow[i].sg);
 		rinfo->shadow[i].sg = NULL;
-		kfree(rinfo->shadow[i].indirect_grants);
+		kvfree(rinfo->shadow[i].indirect_grants);
 		rinfo->shadow[i].indirect_grants = NULL;
 	}
 	if (!list_empty(&rinfo->indirect_pages)) {
