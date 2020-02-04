@@ -56,7 +56,7 @@
 /********************* Need to be optimized by customer ******************/
 //##################################################################################################################################################
 
-#define SUPPORT_ROTATION  // Enable in case supporting the display-device or video-contents rotation (90/180/270) // have to have rotation h/w block
+//#define SUPPORT_ROTATION  // Enable in case supporting the display-device or video-contents rotation (90/180/270) // have to have rotation h/w block
 
 //***************************** DISPLAY ******************************/
 #define PRIMARY_FRAMEBUFFER_WIDTH			1920
