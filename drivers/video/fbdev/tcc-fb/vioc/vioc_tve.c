@@ -32,7 +32,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "\e[33mvioc_tvo:\e[0m " msg); }
+#define dprintk(msg...)	if (debug) { printk("\e[33m[DBG][TVO]\e[0m " msg); }
 
 static struct clk *tve_clk_ntscpal;
 static struct clk *tve_clk_dac;
@@ -560,7 +560,7 @@ void internal_tve_init(void)
 		internal_tve_enable(0, 0);
 		internal_tve_clock_onoff(0);
 	} else {
-		pr_err("%s: can't find vioc tve \n", __func__);
+		pr_err("[ERR][TVO] %s: can't find vioc tve \n", __func__);
 	}
 }
 
@@ -672,13 +672,13 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 	data = (crc << 14) | key;
 	internal_tve_set_cgms(odd_field_en, even_field_en, data);
 
-	printk("CGMS-A %s - Composite\n", (odd_field_en | even_field_en) ? "ON" : "OFF");
+	pr_info("[INF][TVO] CGMS-A %s - Composite\n", (odd_field_en | even_field_en) ? "ON" : "OFF");
 }
 
 volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
 {
 	if (pTve_VEN == NULL)
-		pr_err("%s: ADDRESS NULL \n", __func__);
+		pr_err("[ERR][TVO] %s: ADDRESS NULL \n", __func__);
 
 	return pTve_VEN;
 }
@@ -686,7 +686,7 @@ volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
 volatile void __iomem *VIOC_TVE_GetAddress(void)
 {
 	if (pTve == NULL)
-		pr_err("%s: ADDRESS NULL \n", __func__);
+		pr_err("[ERR][TVO] %s: ADDRESS NULL \n", __func__);
 
 	return pTve;
 }
@@ -696,24 +696,24 @@ static int __init vioc_tve_init(void)
 	struct device_node *ViocTve_np;
 	ViocTve_np = of_find_compatible_node(NULL, NULL, "telechips,tcc-tve");
 	if (ViocTve_np == NULL) {
-		pr_info("vioc-tve: disabled\n");
+		pr_info("[INF][TVO] disabled\n");
 	} else {
 		pTve = (volatile void __iomem *)of_iomap(ViocTve_np, 0);
 		if (pTve)
-			pr_info("vioc-pTve: 0x%p\n", pTve);
+			pr_info("[INF][TVO] 0x%p\n", pTve);
 
 		pTve_VEN = (volatile void __iomem *)of_iomap(ViocTve_np, 1);
 		if (pTve_VEN)
-			pr_info("vioc-pTve_VEN: 0x%p\n", pTve_VEN);
+			pr_info("[INF][TVO] vioc-pTve_VEN: 0x%p\n", pTve_VEN);
 
 		/* get clock information */
 		tve_clk_ntscpal = of_clk_get(ViocTve_np, 0);
 		if (tve_clk_ntscpal == NULL)
-			pr_err("%s: can not get ntscpal clock\n", __func__);
+			pr_err("[ERR][TVO] %s: can not get ntscpal clock\n", __func__);
 
 		tve_clk_dac = of_clk_get(ViocTve_np, 1);
 		if (tve_clk_dac == NULL)
-			pr_err("%s: can not get dac clock\n", __func__);
+			pr_err("[ERR][TVO] %s: can not get dac clock\n", __func__);
 	}
 	return 0;
 }

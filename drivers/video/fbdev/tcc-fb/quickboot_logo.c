@@ -115,12 +115,11 @@ unsigned count;
 int load_565rle_image(char *filename)
 {
 	int fd, err = 0;
-	printk(KERN_WARNING "~~  %s:  %s   \n",__func__, filename);
+	pr_info("[INF][LOGO] %s:  %s   \n",__func__, filename);
 
 	data = NULL;
 	if( (fd = sys_open(filename, O_RDONLY, 0)) < 0 ) {
-		printk(KERN_WARNING "%s: Can not open %s\n", 
-			__FUNCTION__, filename);
+		pr_err("[ERR][LOGO] %s: Can not open %s\n", __func__, filename);
 		return -ENOENT;
 	}
 	if( (count = (unsigned)sys_lseek(fd, (off_t)0, 2)) == 0 ) {
@@ -132,7 +131,7 @@ int load_565rle_image(char *filename)
 	sys_lseek(fd, (off_t)0, 0);
 	data = (unsigned short *)kmalloc(count, GFP_KERNEL);
 	if( !data ) {
-		printk(KERN_WARNING "%s: Can not alloc data\n", __FUNCTION__);
+		pr_err("[ERR][LOGO] %s: Can not alloc data\n", __func__);
 		err = -ENOMEM;
 		goto err_logo_close_file;
 	}
@@ -158,7 +157,7 @@ int load_image_display(void)
 
 	info = registered_fb[0];
 	if( !info ) {
-		printk(KERN_WARNING "%s: Can not access framebuffer\n", __FUNCTION__);
+		pr_err("[ERR][LOGO] %s: Can not access framebuffer\n", __func__);
 		return -ENODEV;
 	}
 	
@@ -185,11 +184,9 @@ EXPORT_SYMBOL(load_image_display);
 int load_image_free(void)
 {
 	if(data != NULL)	{
-		printk(KERN_WARNING "%s:  \n", __FUNCTION__);
 		kfree(data);
 		return 0;
 	}
-	printk(KERN_WARNING "%s : ERROR  \n", __FUNCTION__);
 	return (-ENOMEM);
 }
 EXPORT_SYMBOL(load_image_free);

@@ -365,13 +365,13 @@ volatile void __iomem *VIOC_DTRC_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pDTRC_reg[Num] == NULL) {
-		pr_err("DTRC num:%d ADDRESS is Null \n", Num);
+		pr_err("[ERR][DTRC] num:%d ADDRESS is Null \n", Num);
 		goto err;
 	}
 
 	return pDTRC_reg[Num];
 err:
-	pr_err("%s Num:%d max:%d \n", __func__, Num, VIOC_DTRC_MAX);
+	pr_err("[ERR][DTRC] %s Num:%d max:%d \n", __func__, Num, VIOC_DTRC_MAX);
 	return NULL;
 }
 
@@ -391,9 +391,9 @@ void VIOC_DTRC_DUMP(unsigned int vioc_id, unsigned int size)
 	if (pReg == NULL)
 		return;
 
-	printk("DTRC-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][DTRC] DTRC-%d :: 0x%p \n", Num, pReg);
 	while (cnt < size) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][DTRC] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -402,7 +402,7 @@ void VIOC_DTRC_DUMP(unsigned int vioc_id, unsigned int size)
 	return;
 
 err:
-	pr_err("%s Num:%d max:%d \n", __func__, Num, VIOC_DTRC_MAX);
+	pr_err("[ERR][DTRC] %s Num:%d max:%d \n", __func__, Num, VIOC_DTRC_MAX);
 	return;
 }
 
@@ -412,13 +412,13 @@ static int __init vioc_dtrc_init(void)
 	ViocDTRC_np =
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_dtrc");
 	if (ViocDTRC_np == NULL) {
-		pr_info("vioc-dtrc: disabled\n");
+		pr_info("[INF][DTRC] vioc-dtrc: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_DTRC_MAX; i++) {
 			pDTRC_reg[i] = (volatile void __iomem *)of_iomap(ViocDTRC_np, i);
 
 			if (pDTRC_reg[i])
-				pr_info("vioc-dtrc%d: 0x%p\n", i, pDTRC_reg[i]);
+				pr_info("[INF][DTRC] vioc-dtrc%d: 0x%p\n", i, pDTRC_reg[i]);
 		}
 	}
 

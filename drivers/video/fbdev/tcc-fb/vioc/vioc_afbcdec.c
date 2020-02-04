@@ -350,10 +350,10 @@ void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	if (pReg == NULL)
 		pReg = (char *)VIOC_AFBCDec_GetAddress(vioc_id);
 
-	printk("AFBC_DEC-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][AFBC] AFBC_DEC-%d :: 0x%p \n", Num, pReg);
 
 	while (cnt < 0x100) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][AFBC] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -362,7 +362,7 @@ void VIOC_AFBCDec_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, AFBCDec_MAX_N);
+	pr_err("[ERR][AFBC] err %s Num:%d , max :%d \n", __func__, Num, AFBCDec_MAX_N);
 	return;
 }
 
@@ -373,12 +373,12 @@ volatile void __iomem *VIOC_AFBCDec_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pAFBCDec_reg[Num] == NULL)
-		pr_err("%s pAFBCDec_reg:%p \n", __func__, pAFBCDec_reg[Num]);
+		pr_err("[ERR][AFBC] %s pAFBCDec_reg:%p \n", __func__, pAFBCDec_reg[Num]);
 
 	return pAFBCDec_reg[Num];
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, AFBCDec_MAX_N);
+	pr_err("[ERR][AFBC] err %s Num:%d , max :%d \n", __func__, Num, AFBCDec_MAX_N);
 	return NULL;
 }
 
@@ -389,14 +389,14 @@ static int __init vioc_afbc_dec_init(void)
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_afbc_dec");
 
 	if (pViocAFBCDec_np == NULL) {
-		pr_info("vioc-afbc_dec: disabled\n");
+		pr_info("[INF][AFBC] vioc-afbc_dec: disabled\n");
 	} else {
 		for (i = 0; i < AFBCDec_MAX_N; i++) {
 			pAFBCDec_reg[i] = (volatile void __iomem *)of_iomap(pViocAFBCDec_np,
 								is_VIOC_REMAP ? (i + AFBCDec_MAX_N) : i);
 
 			if (pAFBCDec_reg[i])
-				pr_info("vioc-afbc_dec%d: 0x%p\n", i, pAFBCDec_reg[i]);
+				pr_info("[INF][AFBC] vioc-afbc_dec%d: 0x%p\n", i, pAFBCDec_reg[i]);
 		}
 	}
 	return 0;

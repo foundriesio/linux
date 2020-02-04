@@ -31,7 +31,7 @@ volatile void __iomem *pDEINTLS_reg = NULL;
 volatile void __iomem *VIOC_DEINTLS_GetAddress(void)
 {
 	if (pDEINTLS_reg == NULL)
-		pr_err("%s: address NULL \n", __func__);
+		pr_err("[ERR][DEINTLS] %s: address NULL \n", __func__);
 
 	return pDEINTLS_reg;
 }
@@ -41,13 +41,13 @@ static int __init vioc_deintls_init(void)
 	struct device_node *dev_np;
 	dev_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_deintls");
 	if (dev_np == NULL) {
-		pr_info("vioc-deintls: disabled\n");
+		pr_info("[INF][DEINTLS] disabled\n");
 	} else {
 		pDEINTLS_reg = (volatile void __iomem *)of_iomap(dev_np,
 						(is_VIOC_REMAP ? 1 : 0));
 
 		if (pDEINTLS_reg)
-			pr_info("vioc-deintls: 0x%p\n", pDEINTLS_reg);
+			pr_info("[INF][DEINTLS] 0x%p\n", pDEINTLS_reg);
 	}
 
 	return 0;

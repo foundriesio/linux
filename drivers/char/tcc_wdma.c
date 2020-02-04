@@ -71,7 +71,7 @@
 #include <video/tcc/vioc_disp.h>
 
 #define WDMA_DEBUG 	0
-#define dprintk(msg...) 	if(WDMA_DEBUG) { printk("WDMA: " msg); }
+#define dprintk(msg...) 	if(WDMA_DEBUG) { printk("[DBG][WDMA] " msg); }
 // to debug wdma image : image buffer set to 0x12 before writing the image data by WDMA block.
 //#define WDMA_IMAGE_DEBUG
 #define CHECKING_NUM 					(0x12)
@@ -151,7 +151,7 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int tccxxx_wdma_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		printk(KERN_ERR	"wdma: this address is not allowed. \n");
+		pr_err("[ERR][WDMA] this address is not allowed. \n");
 		return -EAGAIN;
 	}
 
@@ -179,7 +179,7 @@ unsigned int wdma_queue_list_init(struct wdma_queue_list *frame_list, struct vio
 
 	if(!frame_list->data)
 	{
-		printk(KERN_ERR "wdma queue list kmalloc() failed!\n");
+		pr_err("[ERR][WDMA] queue list kmalloc() failed!\n");
 		return -1;
 	}
 
@@ -194,7 +194,7 @@ unsigned int wdma_queue_list_init(struct wdma_queue_list *frame_list, struct vio
 	frame_list->wbuf_list = kmalloc(frame_list->q_max_cnt * sizeof(struct wdma_buffer_list), GFP_KERNEL);
 
 	if(!frame_list->wbuf_list)	{
-		pr_err("list alloc error \n");
+		pr_err("[ERR][WDMA] list alloc error \n");
 		goto list_alloc_fail;
 	}
 	
@@ -222,7 +222,7 @@ unsigned int wdma_queue_list_init(struct wdma_queue_list *frame_list, struct vio
 
 list_alloc_fail:
 	kfree(frame_list->data);
-	printk(KERN_ERR "wdma queue list kmalloc() failed!\n");
+	pr_err("[ERR][WDMA] queue list kmalloc() failed!\n");
 	return -1;
 }
 
@@ -337,7 +337,7 @@ char tc_wdrv_wdma_path_set(struct tcc_wdma_dev *pwdma_data, struct vioc_wdma_fra
 	
 	panel = tccfb_get_panel();
 	
-	printk("%s pwdma_data:%p , data_info: %p, buffer: %p ...panel:%p \n", __func__, pwdma_data, data_info, buffer, panel);
+	pr_info("[INF][WDMA] %s pwdma_data:%p , data_info: %p, buffer: %p ...panel:%p \n", __func__, pwdma_data, data_info, buffer, panel);
 	spin_lock_irq(&(pwdma_data->cmd_lock));
 
 	buffer->status = WRITING_S;
@@ -421,7 +421,7 @@ char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 	panel = tccfb_get_panel();
 
 	if(copy_from_user((void *)&ImageCfg, (const void __user *)argp, sizeof(ImageCfg))){
-		pr_err("### %s error \n",__func__);
+		pr_err("[ERR][WDMA] ### %s error \n",__func__);
 		return -EFAULT;
 	}
 
@@ -456,7 +456,7 @@ char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 	if((Wmix_Width ==0) || (Wmix_Height ==0) || (DDevice == 0))
 	{
 		pwdma_data->block_operating = 0;
-		printk("Error tccxxx_wdma_ctrl W:%d H:%d DD-Power:%d \n", Wmix_Width, Wmix_Height, DDevice);
+		pr_err("[ERR][WDMA] tccxxx_wdma_ctrl W:%d H:%d DD-Power:%d \n", Wmix_Width, Wmix_Height, DDevice);
 		return 0;
 	}
 
@@ -537,7 +537,7 @@ char tccxxx_wdma_ctrl(unsigned long argp, struct tcc_wdma_dev *pwdma_data)
 	ret = wait_event_interruptible_timeout(pwdma_data->poll_wq, pwdma_data->block_operating == 0, msecs_to_jiffies(100));
 	if(ret <= 0) {
 		pwdma_data->block_operating = 0;
-		printk("wdma time out: %d, Line: %d. \n", ret, __LINE__);
+		pr_warn("[WAR][WDMA] time out: %d, Line: %d. \n", ret, __LINE__);
 	}
 
 	if(pwdma_data->sc.reg)
@@ -669,7 +669,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					wbuffer.frame_x =  wdma_data->frame_list.data->frame_x;
 					wbuffer.frame_y =  wdma_data->frame_list.data->frame_y;
 
-					 printk("\n[WDMA Driver] Y : 0x%08x U : 0x%08x V : 0x%08x fmt : %d X : %d Y : %d \n",
+					 pr_info("[INF][WDMA] Y : 0x%08x U : 0x%08x V : 0x%08x fmt : %d X : %d Y : %d \n",
 					 		wbuffer.buff_Yaddr , wbuffer.buff_Uaddr , wbuffer.buff_Vaddr , wbuffer.frame_fmt , wbuffer.frame_x , wbuffer.frame_y);
 
 					wdma_set_index_of_status(&wdma_data->frame_list, wbuffer.index, UPLOAD_S);
@@ -682,7 +682,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 				mutex_unlock(&wdma_data->io_mutex);
 				
-				printk("~~~~~~~~~~~~~~ index : %d  before_id : %d \n",wbuffer.index,  before_id);
+				pr_info("[INF][WDMA] index : %d  before_id : %d \n",wbuffer.index,  before_id);
 				return 0;
 			}
 		case 0x102:
@@ -690,7 +690,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				unsigned int before_id, cur_id;
 				before_id = wdma_find_index_of_status(&wdma_data->frame_list, UPLOAD_S);
 				cur_id = wdma_find_index_of_status(&wdma_data->frame_list, WRITED_S);
-				printk("~~~~~~~~~~~~~~ index : %d  before_id : %d \n",cur_id,  before_id);
+				pr_info("[INF][WDMA] index : %d  before_id : %d \n",cur_id,  before_id);
 				return 0;
 			}
 
@@ -718,14 +718,14 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(200));
 				if(ret <= 0) {
 					wdma_data->block_operating = 0;
-					printk("ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+					pr_info("[INF][WDMA] ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
 				}
 				ret = 0;
 			}
 			
 			if(ret >= 0) {
 				if(wdma_data->block_operating >= 1) {
-					printk("wdma driver :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n", 	\
+					pr_info("[INF][WDMA] wdma driver :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n", 	\
 								wdma_data->block_operating, wdma_data->block_waiting, wdma_data->cmd_count, wdma_data->poll_count);
 				}
 
@@ -752,7 +752,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0) {
 						wdma_data->block_operating = 0;
-						printk("[%d]: wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+						pr_info("[INF][WDMA] [%d]: wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
 					}
 					wdma_data->block_waiting = 0;					
 					ret = 0;
@@ -765,7 +765,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 				if(!cmd_data.frame_x || !cmd_data.frame_y)
 				{
-					printk("TC_WDRV_COUNT_START size error : size : %d x %d \n", cmd_data.frame_x , cmd_data.frame_y);
+					pr_info("[INF][WDMA] TC_WDRV_COUNT_START size error : size : %d x %d \n", cmd_data.frame_x , cmd_data.frame_y);
 					mutex_unlock(&wdma_data->io_mutex);
 					return -EFAULT;
 				}
@@ -822,7 +822,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						}
 
 						if(checking_loop >= CHECKING_AREA(wdma_data->frame_list.data->frame_x, wdma_data->frame_list.data->frame_y))
-							pr_err("get buffer image is same with CHECKING_NUM  checking_area : %d  \n", 
+							pr_err("[ERR][WDMA] get buffer image is same with CHECKING_NUM  checking_area : %d  \n", 
 							CHECKING_AREA(wdma_data->frame_list.data->frame_x, wdma_data->frame_list.data->frame_y));
 					}
 					#endif//
@@ -862,7 +862,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 				if(ret <= 0) {
 					wdma_data->block_operating = 0;
-					printk("ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+					pr_info("[INF][WDMA] ret: %d : wdma 0 timed_out block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
 				}
 				wdma_data->block_waiting = 0;
 
@@ -901,7 +901,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = wait_event_interruptible_timeout(wdma_data->cmd_wq, wdma_data->block_operating == 0, msecs_to_jiffies(30));
 
 			if(ret <= 0)	{
-				printk("wdma [%d]  block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
+				pr_info("[INF][WDMA] [%d]  block_operation:%d!! cmd_count:%d \n", ret, wdma_data->block_waiting, wdma_data->cmd_count);
 			}
 			wdma_data->block_waiting = 0;
 			wdma_data->block_operating = 0;
@@ -915,7 +915,7 @@ long tccxxx_wdma_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 			
 		default:
-			printk(KERN_ALERT "not supported WMIXER IOCTL(0x%x). \n", cmd);
+			pr_err("[ERR][WDMA] not supported WMIXER IOCTL(0x%x). \n", cmd);
 			break;			
 	}
 
@@ -941,7 +941,7 @@ int tccxxx_wdma_release(struct inode *inode, struct file *filp)
 		}
 
 		if(ret <= 0) {
- 			printk("[%d]: wdma timed_out block_operation: %d, block_waiting:%d  cmd_count: %d. \n", 
+ 			pr_info("[INF][WDMA] [%d]: wdma timed_out block_operation: %d, block_waiting:%d  cmd_count: %d. \n", 
 				ret, (pwdma_data->block_operating), pwdma_data->block_waiting, pwdma_data->cmd_count);
 		}
 
@@ -980,13 +980,13 @@ int tccxxx_wdma_open(struct inode *inode, struct file *filp)
 		vioc_intr_enable(pwdma_data->irq, pwdma_data->vioc_intr->id, pwdma_data->vioc_intr->bits);
 
 		if( request_irq(pwdma_data->irq, tccxxx_wdma_handler, IRQF_SHARED, "wdma", pwdma_data) < 0){
-			pr_err("failed to aquire irq\n");
+			pr_err("[ERR][WDMA] failed to aquire irq\n");
 			return -EFAULT;
 		}
 
 		if(ret) {
 			clk_disable_unprepare(pwdma_data->wdma_clk);
-			pr_err("failed to aquire wdma request_irq. \n");
+			pr_err("[ERR][WDMA] failed to aquire wdma request_irq. \n");
 			return -EFAULT;
 		}
 
@@ -1012,7 +1012,7 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev, struct tcc_wdma_dev *
 	if(vioc_node)
 	{
 		if(of_property_read_u32(vioc_node, "telechips,fbdisplay_num",&pwdma_data->fb_dd_num)){
-			pr_err( "could not find  telechips,fbdisplay_nubmer\n");
+			pr_err("[ERR][WDMA] could not find  telechips,fbdisplay_nubmer\n");
 			ret = -ENODEV;
 		}
 
@@ -1022,7 +1022,7 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev, struct tcc_wdma_dev *
 			np = of_find_node_by_name(vioc_node, "fbdisplay0");
 
 		if(!np){
-			pr_err(" %s could not fine fb node \n",__func__);
+			pr_err("[ERR][WDMA] %s could not fine fb node \n",__func__);
 			return -ENODEV;
 		}
 
@@ -1030,7 +1030,7 @@ static int tcc_wdma_parse_dt(struct platform_device *pdev, struct tcc_wdma_dev *
 		of_property_read_u32_index(np, "telechips,disp", 1, &index);
 
 		if (!disp_node) {
-			pr_err( "could not find disp node\n");
+			pr_err("[ERR][WDMA] could not find disp node\n");
 			ret = -ENODEV;
 		}else {
 			pwdma_data->disp_info.virt_addr= VIOC_DISP_GetAddress(index);
@@ -1088,7 +1088,7 @@ static int  tcc_wdma_probe(struct platform_device *pdev)
 		of_property_read_u32_index(pdev->dev.of_node, "scalers", 1, &wdma_data->sc.id);
 		wdma_data->sc.reg = VIOC_SC_GetAddress(wdma_data->sc.id);
 	} else {
-		printk("could not find wdma_data node of %s driver. \n", wdma_data->misc->name);
+		pr_info("[INF][WDMA] could not find wdma_data node of %s driver. \n", wdma_data->misc->name);
 		wdma_data->sc.reg = NULL;
 	}
 
@@ -1097,7 +1097,7 @@ static int  tcc_wdma_probe(struct platform_device *pdev)
 		of_property_read_u32_index(pdev->dev.of_node, "wmixs", 1, &wdma_data->wmix.id);
 		wdma_data->wmix.reg = VIOC_WMIX_GetAddress(wdma_data->wmix.id);
 	} else {
-		printk("could not find wmix node of %s driver. \n", wdma_data->misc->name);
+		pr_info("[INF][WDMA] could not find wmix node of %s driver. \n", wdma_data->misc->name);
 		wdma_data->wmix.reg = NULL;
 	}
 
@@ -1109,7 +1109,7 @@ static int  tcc_wdma_probe(struct platform_device *pdev)
 		wdma_data->vioc_intr->id	= VIOC_INTR_WD0 + get_vioc_index(wdma_data->wdma.id);
 		wdma_data->vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
 	} else {
-		printk("could not find wdma node of %s driver. \n", wdma_data->misc->name);
+		pr_info("[INF][WDMA] could not find wdma node of %s driver. \n", wdma_data->misc->name);
 		wdma_data->wdma.reg = NULL;
 	}
 	spin_lock_init(&(wdma_data->poll_lock));
@@ -1165,7 +1165,7 @@ static struct platform_driver tcc_wdma_driver = {
 
 static int __init tcc_wdma_init(void)
 {
-	printk(KERN_INFO " %s\n", __func__);
+	pr_info("[INF][WDMA] %s\n", __func__);
 	return platform_driver_register(&tcc_wdma_driver);
 }
 

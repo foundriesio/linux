@@ -186,12 +186,12 @@ volatile void __iomem *VIOC_MC_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pMC_reg[Num] == NULL)
-		pr_err("%s num:%d \n", __func__, Num);
+		pr_err("[ERR][MC] %s num:%d \n", __func__, Num);
 
 	return pMC_reg[Num];
 
 err:
-	pr_err("%s Num:%d max:%d \n", __func__, Num, VIOC_MC_MAX);
+	pr_err("[ERR][MC] %s Num:%d max:%d \n", __func__, Num, VIOC_MC_MAX);
 	return NULL;
 }
 
@@ -226,9 +226,9 @@ void VIOC_MC_DUMP(unsigned int vioc_id)
 
 	pReg = VIOC_MC_GetAddress(Num);
 
-	printk("MapConvertor :: 0x%p \n", pReg);
+	pr_debug("[DBG][MC] 0x%p \n", pReg);
 	while (cnt < 0x100) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][MC] %p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -237,7 +237,7 @@ void VIOC_MC_DUMP(unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("%s Num:%d max:%d \n", __func__, Num, VIOC_MC_MAX);
+	pr_err("[ERR][MC] %s Num:%d max:%d \n", __func__, Num, VIOC_MC_MAX);
 	return;
 }
 
@@ -248,14 +248,14 @@ static int __init vioc_mc_init(void)
 
 	ViocMC_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_mc");
 	if (ViocMC_np == NULL) {
-		pr_info("vioc-mc: disabled\n");
+		pr_info("[INF][MC] disabled\n");
 	} else {
 		for (i = 0; i < MC_MAX_N; i++) {
 			pMC_reg[i] = (volatile void __iomem *)of_iomap(ViocMC_np,
 							is_VIOC_REMAP ? (i + MC_MAX_N) : i);
 
 			if (pMC_reg[i])
-				pr_info("vioc-mc%d: 0x%p\n", i, pMC_reg[i]);
+				pr_info("[INF][MC] vioc-mc%d: 0x%p\n", i, pMC_reg[i]);
 		}
 	}
 

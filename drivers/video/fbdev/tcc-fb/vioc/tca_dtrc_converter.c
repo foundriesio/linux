@@ -83,7 +83,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 		VIOC_DTRC_GetAddress(component_num);
 
 	if (HwVIOC_DTRC_RDMA == NULL) {
-		pr_err("%s: HwVIOC_DTRC_RDMA is null\n", __func__);
+		pr_err("[ERR][DTRC] %s: HwVIOC_DTRC_RDMA is null\n", __func__);
 		return;
 	}
 
@@ -96,7 +96,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 
 
 	if (loop >= MAX_WAIT_TIEM) {
-		printk("%s wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
+		pr_info("[INF][DTRC] %s wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
 		       __func__, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_CTRL),
 		       loop, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_IRQ));
 	}
@@ -108,7 +108,7 @@ void tca_dtrc_convter_wait_done(unsigned int component_num)
 	}
 
 	if (loop >= MAX_WAIT_TIEM) {
-		printk("%s UPD wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
+		pr_info("[INF][DTRC] %s UPD wait max count stauts info :  uCTRL:0x%08x loop: %08x  STATUS %08x \n",
 		       __func__, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_CTRL),
 		       loop, __raw_readl(HwVIOC_DTRC_RDMA + DTRC_IRQ));
 	}
@@ -146,13 +146,13 @@ void tca_dtrc_convter_onoff(unsigned int component_num, unsigned int onoff,
 		tca_dtrc_convter_wait_done(
 			component_num); // no need to wait because
 				   // VIOC_CONFIG_DMAPath_UnSet() will check it.
-		// printk("%s-%d :: OFF done \n", __func__, __LINE__);
+		// pr_info("[INF][DTRC] %s-%d :: OFF done \n", __func__, __LINE__);
 	}
 }
 
 void tca_dtrc_convter_swreset(unsigned int component_num)
 {
-	// printk("%s-%d :: %d\n", __func__, __LINE__, component_num);
+	// pr_info("[INF][DTRC] %s-%d :: %d\n", __func__, __LINE__, component_num);
 	VIOC_CONFIG_SWReset(component_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(component_num, VIOC_CONFIG_CLEAR);
 }
@@ -204,7 +204,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 
 #if 0  // debug log
 	{
-		printk("DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d], ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
+		pr_info("[INF][DTRC] DTRC[%d] >> R[0x%x/0x%x/0x%x] M[%d] idx[%d], ID[%d] W:%d(%d) H:%d(%d) S(%d/%d) C:0x%8x/0x%8x T:0x%8x/0x%8x Str(%d) bpp(%d/%d) crop(%d/%d~%dx%d)\n", dtrc_num,
 			__raw_readl(HwVIOC_DTRC_RDMA+DTRC_CTRL), __raw_readl(HwVIOC_DTRC_RDMA+DTRC_BASE0), __raw_readl(HwVIOC_DTRC_RDMA+DTRC_IRQ),
 			ImageInfo->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO], ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
 			ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID], ImageInfo->Frame_width, ImageInfo->private_data.dtrcConv_info.m_iWidth,
@@ -219,7 +219,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 	}
 #endif //
 
-	// printk("D-Unique[%d] :: %d[0x%x] Curr[0x%x/0x%x]\n",
+	// pr_info("[INF][DTRC] D-Unique[%d] :: %d[0x%x] Curr[0x%x/0x%x]\n",
 	// ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
 	//		ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX],
 	//ImageInfo->private_data.dtrcConv_info.m_CompressedY[0],
@@ -251,7 +251,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 		YCmp = ImageInfo->private_data.offset[0];
 		UVCmp = ImageInfo->private_data.offset[1];
 	} else {
-		printk("do not support this kind of data format \n");
+		pr_warn("[WAR][DTRC] do not support this kind of data format \n");
 		return;
 	}
 
@@ -358,7 +358,7 @@ void tca_dtrc_convter_set(unsigned int component_num,
 				VIOC_V_DV_Turnon(pDisp_DV, NULL);
 			}
 		} else {
-			pr_err("@@@@@@@@@@ 2 @@@@@@@@@ Should be implement other layer configuration. \n");
+			pr_err("[ERR][DTRC] @@@@@@@@@@ 2 @@@@@@@@@ Should be implement other layer configuration. \n");
 			return;
 		}
 	}
@@ -408,18 +408,18 @@ void tca_dtrc_convter_driver_set(unsigned int component_num, unsigned int Fwidth
 		VIOC_DTRC_GetAddress(component_num);
 
 #if 0  // debug log
-	printk(">>>>[%d] DTRC width: %d(%d) height: %d(%d) Compressed: 0x%8x / 0x%8x   Table: 0x%8x / 0x%8x \n",
+	printk("[DBG][DTRC] >>>>[%d] DTRC width: %d(%d) height: %d(%d) Compressed: 0x%8x / 0x%8x   Table: 0x%8x / 0x%8x \n",
 		dtrc_num, Fwidth, dtrcConv_info->m_iWidth,
 		Fheight, dtrcConv_info->m_iHeight,
 		dtrcConv_info->m_CompressedY[0], dtrcConv_info->m_CompressedCb[0],
 		dtrcConv_info->m_CompressionTableLuma[0], dtrcConv_info->m_CompressionTableChroma[0]);
 
-	printk("Stride (%d) bitDepth (Luma:%d Croma:%d) \n",
+	printk("[DBG][DTRC] Stride (%d) bitDepth (Luma:%d Croma:%d) \n",
 		dtrcConv_info->m_iPicStride,
 		dtrcConv_info->m_iBitDepthLuma,
 		dtrcConv_info->m_iBitDepthChroma);
 
-	printk("* dtrc converter info end  *  \n");
+	printk("[DBG][DTRC] * dtrc converter info end  *  \n");
 #endif //
 	width = dtrcConv_info->m_iWidth;
 	height = dtrcConv_info->m_iHeight;

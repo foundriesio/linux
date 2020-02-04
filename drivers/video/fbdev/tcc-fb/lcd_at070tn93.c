@@ -44,7 +44,7 @@ static struct lcd_gpio_data lcd_at070tn93;
 
 static int at070tn93_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -135,14 +135,14 @@ static int at070tn93_parse_dt(struct device_node *np)
 	if(np)
 	{
 		if (of_property_read_u32(np, "lcd-gpio-port", &lcd_at070tn93.gpio_port_num)){
-			pr_err( "lcd-gpio-port\n");
+			pr_err("[ERR][LCD] lcd-gpio-port\n");
 		}
 
 		lcd_at070tn93.power_on = of_get_named_gpio(np, "power-on-gpios", 0);
 
 		if(!gpio_is_valid(lcd_at070tn93.power_on))
 		{
-			printk("%s: err to get power_on gpios: %d\n", __func__, lcd_at070tn93.power_on);
+			pr_err("[ERR][LCD] %s: err to get power_on gpios: %d\n", __func__, lcd_at070tn93.power_on);
 			lcd_at070tn93.power_on = -1;
 		} else {
 			gpio_request(lcd_at070tn93.power_on, "lcd_on");
@@ -153,7 +153,7 @@ static int at070tn93_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(lcd_at070tn93.display_on))
 		{
-			printk("%s: err to get display_on gpios: ret:%x\n", __func__, lcd_at070tn93.display_on);
+			pr_err("[ERR][LCD] %s: err to get display_on gpios: ret:%x\n", __func__, lcd_at070tn93.display_on);
 			lcd_at070tn93.display_on = -1;
 		} else {
 			gpio_request(lcd_at070tn93.display_on, "lcd_display");
@@ -164,18 +164,18 @@ static int at070tn93_parse_dt(struct device_node *np)
 		
 		if(!gpio_is_valid(lcd_at070tn93.reset))
 		{
-			printk("%s: err to get display_on gpios: ret:%x\n", __func__, lcd_at070tn93.reset);
+			pr_err("[ERR][LCD] %s: err to get display_on gpios: ret:%x\n", __func__, lcd_at070tn93.reset);
 			lcd_at070tn93.display_on = -1;
 		} else {
 			gpio_request(lcd_at070tn93.reset, "lcd_reset");
 			gpio_direction_output(lcd_at070tn93.reset, 1);
 		}
 
-		printk("%s  power : %d display :%d \n",__func__, lcd_at070tn93.power_on,lcd_at070tn93.display_on);
+		pr_debug("[DBG][LCD] %s  power : %d display :%d \n",__func__, lcd_at070tn93.power_on,lcd_at070tn93.display_on);
 
 	}
 	else{
-		printk(" %s parse err !!! \n",__func__);
+		pr_err("[ERR][LCD] %s parse err !!! \n",__func__);
 		return -ENODEV;
 
 	}
@@ -185,7 +185,7 @@ static int at070tn93_parse_dt(struct device_node *np)
 
 static int at070tn93_probe(struct platform_device *pdev)
 {
-	printk("%s : %d\n", __func__, 0);
+	pr_debug("[DBG][LCD] %s : %d\n", __func__, 0);
 
 	mutex_init(&panel_lock);
 

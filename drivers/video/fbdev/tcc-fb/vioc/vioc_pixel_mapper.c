@@ -32,7 +32,7 @@
 
 //#define PIXEL_MAPPER_INITIALIZE
 
-#define pm_pr_info(msg...)	if (0) { pr_info( "vioc_pm: " msg); }
+#define pm_pr_info(msg...)	if (0) { printk("[DBG][PIXELMAP] " msg); }
 
 
 static volatile void __iomem *pPIXELMAPPER_reg[VIOC_PIXELMAP_MAX] = {0};
@@ -822,13 +822,13 @@ static int __init vioc_pm_init(void)
 	ViocPM_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_pixel_mapper");
 
 	if (ViocPM_np == NULL) {
-		pr_info("vioc-pixel_mapper: disabled\n");
+		pr_info("[INF][PIXELMAP] disabled\n");
 	} else {
 		for (i = 0; i <  VIOC_PIXELMAP_MAX; i++) {
 			pPIXELMAPPER_reg[i] = of_iomap(ViocPM_np, i);
 
 			if (pPIXELMAPPER_reg[i])
-				pr_info("vioc-pixel_mapper%d: 0x%p\n", i, pPIXELMAPPER_reg[i]);
+				pr_info("[INF][PIXELMAP] vioc-pixel_mapper%d: 0x%p\n", i, pPIXELMAPPER_reg[i]);
 
 			vioc_pm_bypass(i, 1);
 			memset(&lut_reg, 0x0, sizeof(lut_reg));

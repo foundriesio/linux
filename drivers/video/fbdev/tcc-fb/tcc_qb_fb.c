@@ -51,7 +51,7 @@ EXPORT_SYMBOL(drm_fb_virt_addr);
 #endif
 
 static int debug = 0;
-#define dprintk(msg...) if(debug) { printk("VIOC_I :" msg); }
+#define dprintk(msg...) if(debug) { printk("[DBG][QB_FB] " msg); }
 
 #define fb_width(fb)	((fb)->var.xres)
 #define fb_height(fb)	((fb)->var.yres)
@@ -95,11 +95,14 @@ int fb_quickboot_lastframe_display(void)
 	struct fb_info *info = registered_fb[0];
 	unsigned int size = QUICKBOOT_IMG_BUFF_SIZE(info);
 
-	printk(KERN_WARNING "~~  %s:  \n",__func__);
+	pr_info("[INF][QB_FB] %s:  \n",__func__);
 
-	if (!info) {
-		printk(KERN_WARNING "%s: Can not access framebuffer\n",__func__);
+#ifndef CONFIG_DRM_TCC
+	if (info == NULL) {
+		pr_err("[ERR][QB_FB] %s: Can not access framebuffer\n",__func__);
+		goto exit;
 	}
+#endif
 
 	QB_Lastframe_cpu = dma_alloc_writecombine(0, size, &QB_Lastframe_dma, GFP_KERNEL); //virtual 
 
@@ -124,6 +127,7 @@ int fb_quickboot_lastframe_display(void)
 
 free_memory:
 	dma_free_writecombine(0,size,QB_Lastframe_cpu, QB_Lastframe_dma);
+exit:
 	dprintk(" %s QB fb init failed.\n",__func__);
 	return 0;
 }
@@ -170,11 +174,11 @@ int fb_quickboot_progress_bar(int percent)
 	 pfbi = info->par;
 
         if (!info) {
-            pr_err("%s: Can not access framebuffer\n",  __func__);
+            pr_err("[ERR][QB_FB] %s: Can not access framebuffer\n",  __func__);
         }
 
 	if(!mem_init)	{    
-		pr_info("~~  %s:  \n",__func__);
+		pr_info("[INF][QB_FB] %s:  \n", __func__);
 
 		img_width = fb_width(info);
 		img_height = fb_height(info);
@@ -282,11 +286,11 @@ int fb_hibernation_user_logo(char *rle_filename)
 	oldfs = get_fs();		//setting for sys_open
 	set_fs(get_ds());		//setting for sys_open
 
-	printk(KERN_WARNING "~~  %s:  %s\n",__func__, rle_filename);
+	pr_info("[INF][QB_FB] %s:  %s\n",__func__, rle_filename);
 
 	fd = sys_open(rle_filename, O_RDONLY, 0);
 	if (fd < 0) {
-		printk(KERN_WARNING "%s: Can not open %s\n",
+		pr_err("[ERR][QB_FB] %s: Can not open %s\n",
 				__func__, rle_filename);
 		return -ENOENT;
 	}
@@ -299,13 +303,13 @@ int fb_hibernation_user_logo(char *rle_filename)
 	sys_lseek(fd, (off_t)0, 0);
 	data = kmalloc(count, GFP_KERNEL);
 	if (!data) {
-		printk(KERN_WARNING "%s: Can not alloc data\n", __func__);
+		pr_err("[ERR][QB_FB] %s: Can not alloc data\n", __func__);
 		err = -ENOMEM;
 		goto err_logo_close_file;
 	}
 
 	if ((unsigned)sys_read(fd, (char *)data, count) != count) {
-		printk(KERN_WARNING "%s: Can not read file \n",__func__);
+		pr_err("[ERR][QB_FB] %s: Can not read file \n",__func__);
 		err = -EIO;
 		goto err_logo_free_data;
 	}
@@ -318,7 +322,7 @@ err_logo_close_file:
 
 	set_fs(oldfs);
 
-	dprintk(KERN_WARNING "~~  %s:  %s  err:%d end \n",__func__, rle_filename, err);
+	dprintk(KERN_WARNING "%s: %s err:%d end\n",__func__, rle_filename, err);
 
 	return err;
 }
@@ -345,8 +349,7 @@ int fb_hibernation_logo(char *rle_filename)
 
 	fd = sys_open(rle_filename, O_RDONLY, 0);
 	if (fd < 0) {
-		printk(KERN_WARNING "%s: Can not open %s\n",
-				__func__, rle_filename);
+		pr_err("[ERR][QB_FB] %s: Can not open %s\n", __func__, rle_filename);
 		return -ENOENT;
 	}
 	count = (unsigned)sys_lseek(fd, (off_t)0, 2);
@@ -358,13 +361,13 @@ int fb_hibernation_logo(char *rle_filename)
 	sys_lseek(fd, (off_t)0, 0);
 	data = kmalloc(count, GFP_KERNEL);
 	if (!data) {
-		printk(KERN_WARNING "%s: Can not alloc data\n", __func__);
+		pr_err("[ERR][QB_FB] %s: Can not alloc data\n", __func__);
 		err = -ENOMEM;
 		goto err_logo_close_file;
 	}
 
 	if ((unsigned)sys_read(fd, (char *)data, count) != count) {
-		printk(KERN_WARNING "%s: Can not read file \n",__func__);
+		pr_err("[ERR][QB_FB] %s: Can not read file \n",__func__);
 		err = -EIO;
 		goto err_logo_free_data;
 	}
@@ -372,9 +375,10 @@ int fb_hibernation_logo(char *rle_filename)
 	info = registered_fb[0];
 
 	if (!info) {
-		printk(KERN_WARNING "%s: Can not access framebuffer\n",
+		pr_err("[ERR][QB_FB] %s: Can not access framebuffer\n",
 				__func__);
-		return -ENODEV;
+		err = -ENODEV;
+		goto err_logo_free_data;
 	}
 
 	fbi = info->par;
@@ -385,7 +389,7 @@ int fb_hibernation_logo(char *rle_filename)
 	bits = (char *)(info->screen_base) + (info->var.xres * info->var.yoffset * (info->var.bits_per_pixel/8));
 
 
-	dprintk(KERN_WARNING "%s: registered_fb xres=[%d] yres=[%d] bpp=[%d]\n",__func__,info->var.xres,info->var.yres,info->var.bits_per_pixel );
+	dprintk("%s: registered_fb xres=[%d] yres=[%d] bpp=[%d]\n",__func__,info->var.xres,info->var.yres,info->var.bits_per_pixel );
 
 	while (count > 3) {
 		unsigned n = ptr[0];
@@ -414,7 +418,7 @@ err_logo_close_file:
 
 	set_fs(oldfs);
 
-	dprintk(KERN_WARNING "~~  %s:  %s  err:%d end \n",__func__, rle_filename, err);
+	dprintk("%s: %s err:%d end\n",__func__, rle_filename, err);
 
 	return err;
 
@@ -441,7 +445,7 @@ int fb_hibernation_enter(void)
 			memcpy(info->backup_map_cpu[i], info->map_cpu + Addroffset, FrameSize);
 		}
 		else	{
-			pr_info("Error fb alloc :%d addr:0x%p  offset:%d \n", i, info->backup_map_cpu[i], Addroffset);
+			pr_info("[INF][QB_FB] n/a: backup_map_cpu[%d]\n", i);
 			break;
 		}
 	}
@@ -501,9 +505,9 @@ void fb_quickboot_resume(struct tccfb_info *info)
 	unsigned int i = 0, FrameSize  = 0;
 	struct tcc_dp_device *pdp_data = &info->pdata.Mdp_data;	
 
-	printk("\x1b[1;38m  %s \n", __func__);
-	pr_info("%s do_hibernation:%d do_hibernate_boot:%d size:%d  %d  FrameSize:%d\n", __func__,do_hibernation, do_hibernate_boot, info->map_size, sizeof(info->backup_map_cpu)/sizeof(info->backup_map_cpu[0]), FrameSize);
-	printk("\x1b[0m");
+	pr_info("[INF][QB_FB] %s do_hibernation:%d do_hibernate_boot:%d size:%d  %d  FrameSize:%d\n",
+		__func__, do_hibernation, do_hibernate_boot, info->map_size,
+		sizeof(info->backup_map_cpu)/sizeof(info->backup_map_cpu[0]), FrameSize);
 	
 	if(do_hibernation)
 	{
@@ -512,7 +516,7 @@ void fb_quickboot_resume(struct tccfb_info *info)
 			FrameSize = info->fb->var.xres * info->fb->var.yres * info->fb->var.bits_per_pixel/8;
 			for(i = 0; i < sizeof(info->backup_map_cpu)/sizeof(info->backup_map_cpu[0]); i++)
 			{
-				pr_info("%d %p \n", i, info->backup_map_cpu[i]);
+				pr_info("[INF][QB_FB] %d %p \n", i, info->backup_map_cpu[i]);
 				if(info->backup_map_cpu[i]){
 					memcpy(info->map_cpu + (i * FrameSize), info->backup_map_cpu[i], FrameSize);
 			             kfree(info->backup_map_cpu[i]);

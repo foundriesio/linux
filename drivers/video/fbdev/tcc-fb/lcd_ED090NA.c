@@ -62,7 +62,7 @@ static struct lcd_gpio_data lvds_ed090na;
 
 static int ed090na_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -75,7 +75,7 @@ static int ed090na_set_power(struct lcd_panel *panel, int on, struct tcc_dp_devi
 	volatile void __iomem *pDDICfg = VIOC_DDICONFIG_GetAddress();
 	unsigned int P, M, S, VSEL, TC;
 
-	printk("%s : %d\n", __func__, on);
+	pr_info("[INF][LCD] %s : %d\n", __func__, on);
 	if(!pDDICfg)
 		return -ENODEV;
 
@@ -190,7 +190,7 @@ static void ed090na_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(lvds_ed090na.power_on))
 		{
-			printk("%s: err to get power_on gpios: ret:%x\n", __func__, lvds_ed090na.power_on);
+			pr_err("[ERR][LCD] %s: err to get power_on gpios: ret:%x\n", __func__, lvds_ed090na.power_on);
 			lvds_ed090na.power_on = -1;
 		} else {
 			gpio_request(lvds_ed090na.power_on, "lcd_on");
@@ -201,7 +201,7 @@ static void ed090na_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(lvds_ed090na.display_on))
 		{
-			printk("%s: err to get (lvds_fld0800.display_on) gpios: ret:%x\n", __func__, lvds_ed090na.display_on);
+			pr_err("[ERR][LCD] %s: err to get (lvds_fld0800.display_on) gpios: ret:%x\n", __func__, lvds_ed090na.display_on);
 			lvds_ed090na.display_on = -1;
 		} else {
 			gpio_request(lvds_ed090na.display_on, "lvds_display");
@@ -212,7 +212,7 @@ static void ed090na_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(lvds_ed090na.reset))
 		{
-			printk("%s: err to get reset gpios: ret:%x\n", __func__, lvds_ed090na.reset);
+			pr_err("[ERR][LCD] %s: err to get reset gpios: ret:%x\n", __func__, lvds_ed090na.reset);
 			lvds_ed090na.reset = -1;
 		} else {
 			gpio_request(lvds_ed090na.reset, "lcd_reset");
@@ -223,7 +223,7 @@ static void ed090na_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(ed090na_lvds_stby))
 		{
-			printk("%s: err to get lvds_stby gpios: ret:%x\n", __func__, ed090na_lvds_stby);
+			pr_err("[ERR][LCD] %s: err to get lvds_stby gpios: ret:%x\n", __func__, ed090na_lvds_stby);
 			ed090na_lvds_stby = -1;
 		} else {
 			gpio_request(ed090na_lvds_stby, "lcd_stbyb");
@@ -234,7 +234,7 @@ static void ed090na_parse_dt(struct device_node *np)
 
 		if(!gpio_is_valid(ed090na_lvds_power))
 		{
-			printk("%s: err to get lvds_power gpios: ret:%x\n", __func__, ed090na_lvds_power);
+			pr_err("[ERR][LCD] %s: err to get lvds_power gpios: ret:%x\n", __func__, ed090na_lvds_power);
 			ed090na_lvds_power = -1;
 		} else {
 			gpio_request(ed090na_lvds_power, "lvds_power");
@@ -248,8 +248,7 @@ static int ed090na_probe(struct platform_device *pdev)
 {
 	struct device_node *np;
 
-	printk("%s : %s\n", __func__,  pdev->name);
-	printk(" ###### %s ###### \n",__func__);
+	pr_debug("[DBG][LCD] %s : %s\n", __func__,  pdev->name);
 
 	mutex_init(&panel_lock);
 
@@ -262,7 +261,7 @@ static int ed090na_probe(struct platform_device *pdev)
        lvds_clk = of_clk_get(np, 0);
 
        if(IS_ERR(lvds_clk)){
-               printk(" ED090NA : failed to get lvds clock \n");
+               pr_err("[ERR][LCD] ED090NA : failed to get lvds clock \n");
                lvds_clk = NULL;
                return -ENODEV;
        }
@@ -302,7 +301,7 @@ static struct platform_driver ed090na_lcd = {
 
 static __init int ed090na_init(void)
 {
-	printk("~ %s ~ \n", __func__);
+	pr_debug("[DBG][LCD] %s\n", __func__);
 	return platform_driver_register(&ed090na_lcd);
 }
 static __exit void ed090na_exit(void)

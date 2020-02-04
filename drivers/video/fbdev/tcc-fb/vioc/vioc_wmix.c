@@ -403,9 +403,9 @@ void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 			return;
 	}
 
-	printk("WMIX-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][WMIX] WMIX-%d :: 0x%p \n", Num, pReg);
 	while (cnt < 0x70) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -414,7 +414,7 @@ void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("Error :: %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
+	pr_err("[ERR][WMIX] %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
 	return;
 }
 
@@ -426,13 +426,13 @@ volatile void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pWMIX_reg[Num] == NULL) {
-		pr_err("WMIXER num:%d ADDRESS is Null \n", Num);
+		pr_err("[ERR][WMIX] WMIXER num:%d ADDRESS is Null \n", Num);
 		goto err;
 	}
 
 	return pWMIX_reg[Num];
 err:
-	pr_err("Error :: %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
+	pr_err("[ERR][WMIX] %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
 	return NULL;
 }
 
@@ -442,14 +442,14 @@ static int __init vioc_wmixer_init(void)
 	ViocWmixer_np =
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_wmix");
 	if (ViocWmixer_np == NULL) {
-		pr_info("vioc-wmix: disabled\n");
+		pr_info("[INF][WMIX] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WMIX_MAX; i++) {
 			pWMIX_reg[i] = (volatile void __iomem *)of_iomap(ViocWmixer_np,
 							is_VIOC_REMAP ? (i + VIOC_WMIX_MAX) : i);
 
 			if (pWMIX_reg[i])
-				pr_info("vioc-wmix%d: 0x%p\n", i, pWMIX_reg[i]);
+				pr_info("[INF][WMIX] vioc-wmix%d: 0x%p\n", i, pWMIX_reg[i]);
 		}
 	}
 

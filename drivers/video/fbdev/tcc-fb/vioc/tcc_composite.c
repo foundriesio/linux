@@ -120,7 +120,7 @@ extern char fb_power_state;
 static int debug = 0;
 #define dprintk(msg...) \
 	if (debug) { \
-		printk("tcc_composite: " msg); \
+		printk("[DBG][COMPOSITE] " msg); \
 	}
 
 #define TCC_LCDC1_USE
@@ -626,7 +626,7 @@ void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
 {
 	COMPOSITE_MODE_TYPE composite_mode;
 
-	printk("%s mode=%d, lcdc_num=%d\n", __func__, mode, Composite_LCDC_Num);
+	pr_info("[INF][COMPOSITE] %s mode=%d, lcdc_num=%d\n", __func__, mode, Composite_LCDC_Num);
 
 	#if COMPOSITE_CLK_SEQUENCE_TYPE >= 2
 	tcc_composite_clock_onoff(1);
@@ -658,7 +658,7 @@ void tcc_composite_start(TCC_COMPOSITE_MODE_TYPE mode)
 #ifdef CONFIG_PM
 static int composite_enable(void)
 {
-	pr_info("%s\n", __func__);
+	pr_info("[INF][COMPOSITE] %s\n", __func__);
 
 	pm_runtime_get_sync(pdev_composite);
 
@@ -667,7 +667,7 @@ static int composite_enable(void)
 
 static int composite_disable(void)
 {
-	pr_info("%s\n", __func__);
+	pr_info("[INF][COMPOSITE] %s\n", __func__);
 
 	pm_runtime_put_sync(pdev_composite);
 
@@ -679,7 +679,7 @@ static int composite_blank(int blank_mode)
 {
 	int ret = 0;
 
-	pr_info("%s : blank(mode=%d)\n", __func__, blank_mode);
+	pr_info("[INF][COMPOSITE] %s : blank(mode=%d)\n", __func__, blank_mode);
 
 #ifdef CONFIG_PM
 	if ((pdev_composite->power.usage_count.counter == 1) &&
@@ -687,7 +687,7 @@ static int composite_blank(int blank_mode)
 		// usage_count = 1 ( resume ), blank_mode = 0 ( FB_BLANK_UNBLANK
 		// ) is stable state when booting don't call runtime_suspend or
 		// resume state
-		// printk("%s ### state = [%d] count =[%d] power_cnt=[%d]
+		// pr_info("[INF][COMPOSITE] %s ### state = [%d] count =[%d] power_cnt=[%d]
 		// \n",__func__,blank_mode, pdev_composite->power.usage_count,
 		// pdev_composite->power.usage_count.counter);
 		return 0;
@@ -811,7 +811,7 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 				dprintk("TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n", enable);
 			} else {
 				switch_data->send_composite_event(switch_data, TCC_COMPOSITE_OFF);
-				printk("TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n", enable);
+				pr_info("[INF][COMPOSITE] TCC_COMPOSITE_IOCTL_HPD_SWITCH_STATUS enable = %d\n", enable);
 			}
 		}
 	#endif
@@ -954,7 +954,7 @@ static long tcc_composite_ioctl(struct file *file, unsigned int cmd,
 	}
 
 	default:
-		pr_err(" Unsupported IOCTL!!!\n");
+		pr_err("[ERR][COMPOSITE]  Unsupported IOCTL!!!\n");
 		break;
 	}
 
@@ -984,7 +984,7 @@ static int tcc_composite_release(struct inode *inode, struct file *file)
 #ifdef CONFIG_PM
 int composite_runtime_suspend(struct device *dev)
 {
-	pr_info("%s:  \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s:  \n", __FUNCTION__);
 
 	if (tcc_composite_started) {
 		#if 1 // defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
@@ -997,14 +997,14 @@ int composite_runtime_suspend(struct device *dev)
 
 	gCompositeSuspendStatus = 1;
 
-	pr_info("%s: finish \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s: finish \n", __FUNCTION__);
 
 	return 0;
 }
 
 int composite_runtime_resume(struct device *dev)
 {
-	pr_info("%s:  \n", __FUNCTION__);
+	pr_info("[INF][COMPOSITE] %s:  \n", __FUNCTION__);
 
 	#if 1 // defined(CONFIG_TCC_DISPLAY_LCD_CVBS)
 	if (tcc_composite_attached_cvbs)
@@ -1024,7 +1024,7 @@ static int composite_suspend(struct device *dev)
 	tcc_composite_end();
 	gLinuxCompositeSuspendStatus = 1;
 	#endif
-	pr_info("%s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
+	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
 		gCompositeSuspendStatus);
 
 	#if COMPOSITE_CLK_SEQUENCE_TYPE == 3
@@ -1038,7 +1038,7 @@ static int composite_resume(struct device *dev)
 {
 	/* Linux Platform */
 
-	printk("%s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
+	pr_info("[INF][COMPOSITE] %s: gCompositeSuspendStatus = %d\n", __FUNCTION__,
 	       gCompositeSuspendStatus);
 
 	return 0;
@@ -1077,13 +1077,13 @@ static int composite_parse_dt(struct device_node *np)
 		pComposite_SCALER = VIOC_SC_GetAddress(index);
 		Composite_Scaler_Num = index;
 	} else {
-		pr_err("%s, could not find scaler node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find scaler node\n", __func__);
 		ret = -ENODEV;
 	}
 
 	pComposite_DDICFG = VIOC_DDICONFIG_GetAddress();
 	if (pComposite_DDICFG == NULL) {
-		pr_err("%s, could not get ddi_config \n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not get ddi_config \n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1091,7 +1091,7 @@ static int composite_parse_dt(struct device_node *np)
 	np_fb = of_find_compatible_node(NULL, NULL, "telechips,vioc-fb");
 
 	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num", &Composite_Disp_Num)) {
-		pr_err("%s, could not find fbdisplay_num\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find fbdisplay_num\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1111,7 +1111,7 @@ static int composite_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1, &index);
 		pComposite_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find disp node\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1120,7 +1120,7 @@ static int composite_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1, &index);
 		pComposite_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("%s, could not find wmixer node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1132,7 +1132,7 @@ static int composite_parse_dt(struct device_node *np)
 		pComposite_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 		Composite_RDMA_VIDEO_Num = index;
 	} else {
-		pr_err("%s, could not find rdma node\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find rdma node\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1142,7 +1142,7 @@ static int composite_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1, &index);
 		pComposite_Attach_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find disp node for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1151,7 +1151,7 @@ static int composite_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1, &index);
 		pComposite_Attach_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("%s, could not find wmixer node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find wmixer node for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1162,11 +1162,11 @@ static int composite_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3, &index);
 		pComposite_Attach_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 	} else {
-		pr_err("%s, could not find rdma node for attached output\n", __func__);
+		pr_err("[ERR][COMPOSITE] %s, could not find rdma node for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 
-	pr_info("%s, Composite_LCDC_Num = %d\n", __func__, Composite_Disp_Num);
+	pr_info("[INF][COMPOSITE] %s, Composite_LCDC_Num = %d\n", __func__, Composite_Disp_Num);
 	return ret;
 }
 #else
@@ -1177,14 +1177,13 @@ static int composite_parse_dt(struct device_node *np)
 
 static int composite_probe(struct platform_device *pdev)
 {
-	pr_info("%s\n", __func__);
+	pr_info("[INF][COMPOSITE] %s\n", __func__);
 
 	pdev_composite = &pdev->dev;
 	composite_parse_dt(pdev->dev.of_node);
 
 	if (misc_register(&tcc_composite_misc_device)) {
-		printk(KERN_WARNING
-		       "COMPOSITE: Couldn't register device 10, %d.\n",
+		pr_warn("[WAR][COMPOSITE] Couldn't register device 10, %d.\n",
 		       COMPOSITE_MINOR);
 		return -EBUSY;
 	}
@@ -1206,7 +1205,7 @@ static int composite_probe(struct platform_device *pdev)
 
 static int composite_remove(struct platform_device *pdev)
 {
-	pr_info("%s LCDC:%d \n", __func__, Composite_LCDC_Num);
+	pr_info("[INF][COMPOSITE] %s LCDC:%d \n", __func__, Composite_LCDC_Num);
 
 	misc_deregister(&tcc_composite_misc_device);
 

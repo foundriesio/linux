@@ -60,11 +60,11 @@ static volatile void __iomem *pLUT_reg;
 
 #define dpr_info(msg, ...)                                                     	\
 	if (TCC_LUT_DEBUG) {                                                   	\
-		pr_info(msg, ##__VA_ARGS__);					\
+		printk("[DBG][LUT] " msg, ##__VA_ARGS__);					\
 	}
 #define drp_table_info(msg,...)                                                 	\
 	if (TCC_LUT_DEBUG_TABLE) {                                             	\
-		pr_info(msg, ##__VA_ARGS__);                                   	\
+		printk("[DBG][LUT] " msg, ##__VA_ARGS__);                                   	\
 	}
 
 int lut_get_pluginComponent_index(unsigned int tvc_n)
@@ -344,7 +344,7 @@ int tcc_get_lut_update_pend(unsigned int lut_n)
 volatile void __iomem *VIOC_LUT_GetAddress(void)
 {
 	if (pLUT_reg == NULL)
-		pr_err("%s ADDRESS NULL \n", __func__);
+		pr_err("[ERR][LUT] %s ADDRESS NULL \n", __func__);
 
 	return pLUT_reg;
 }
@@ -355,13 +355,13 @@ static int __init vioc_lut_init(void)
 
 	ViocLUT_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_lut");
 	if (ViocLUT_np == NULL) {
-		pr_info("vioc-lut: disabled\n");
+		pr_info("[INF][LUT] disabled\n");
 	} else {
 		pLUT_reg = (volatile void __iomem *)of_iomap(ViocLUT_np,
 					is_VIOC_REMAP ? 1 : 0);
 
 		if (pLUT_reg)
-			pr_info("vioc-lut: 0x%p\n", pLUT_reg);
+			pr_info("[INF][LUT] 0x%p\n", pLUT_reg);
 	}
 
 	return 0;

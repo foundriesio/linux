@@ -29,7 +29,7 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/vioc_filter2D.h>
 
-#define pm_pr_info(msg...)	if (0) { pr_info( "vioc_filter2D: " msg); }
+#define pm_pr_info(msg...)	if (0) { printk( "[DBG][FILT2D] " msg); }
 
 #define F2D_CTRL_REG 			(0x0)
 
@@ -562,40 +562,40 @@ void filt2d_main(void)
 
 	if (filt2d_dbg_print) // debug
 	{
-		printk("\n\n<<F2D>>\n");
-		printk("MODE    : %d %d %d - %d %d %d - %d %d %d \n",
+		pr_debug("\n\n[DBG][FILT2D] <<F2D>>\n");
+		pr_debug("MODE    : %d %d %d - %d %d %d - %d %d %d \n",
 		       f2d_mode.hpf0_en, f2d_mode.hpf1_en, f2d_mode.hpf2_en,
 		       f2d_mode.bypass0_en, f2d_mode.bypass1_en,
 		       f2d_mode.bypass2_en, f2d_mode.simple0_mode,
 		       f2d_mode.simple1_mode, f2d_mode.simple2_mode);
-		printk("LPF     : %d %d %d \n", f2d_lpf_strength.ch0,
+		pr_debug("LPF     : %d %d %d \n", f2d_lpf_strength.ch0,
 		       f2d_lpf_strength.ch1, f2d_lpf_strength.ch2);
-		printk("HPF     : %d %d %d \n", f2d_hpf_strength.ch0,
+		pr_debug("HPF     : %d %d %d \n", f2d_hpf_strength.ch0,
 		       f2d_hpf_strength.ch1, f2d_hpf_strength.ch2);
-		printk("SCOEFF0 : ");
+		pr_debug("SCOEFF0 : ");
 		for (i = 0; i < 10; i++) {
 			unsigned int *pt =
 				(unsigned int *)&f2d_scoeff[0].para[0];
-			printk("%d ", pt[i]);
+			pr_debug("%d ", pt[i]);
 		}
-		printk("\n");
-		printk("SCOEFF1 : ");
+		pr_debug("\n");
+		pr_debug("SCOEFF1 : ");
 		for (i = 0; i < 10; i++) {
 			unsigned int *pt =
 				(unsigned int *)&f2d_scoeff[1].para[0];
-			printk("%d ", pt[i]);
+			pr_debug("%d ", pt[i]);
 		}
-		printk("\n");
-		printk("SCOEFF2 : ");
+		pr_debug("\n");
+		pr_debug("SCOEFF2 : ");
 		for (i = 0; i < 10; i++) {
 			unsigned int *pt =
 				(unsigned int *)&f2d_scoeff[2].para[0];
-			printk("%d ", pt[i]);
+			pr_debug("%d ", pt[i]);
 		}
-		printk("\n");
-		printk("DIV     : pos(%d) dtog(%d) den(%d) \n", f2d_div.pos,
+		pr_debug("\n");
+		pr_debug("DIV     : pos(%d) dtog(%d) den(%d) \n", f2d_div.pos,
 		       f2d_div.dtog, f2d_div.den);
-		printk("EN      : <%d> \n", f2d_en);
+		pr_debug("EN      : <%d> \n", f2d_en);
 	}
 
 	/*
@@ -682,13 +682,13 @@ int filt2d_ioctl(unsigned int cmd, unsigned long arg)
 		memcpy(&f2d_en, (F2D_MODE_PARAM *)arg, sizeof(f2d_en));
 
 		if (bak_f2d_en != f2d_en) {
-			printk("** F2D - %s **\n", f2d_en ? "ON" : "OFF");
+			pr_info("[DBG][FILT2D] ** F2D - %s **\n", f2d_en ? "ON" : "OFF");
 		}
 		filt2d_main();
 		break;
 
 	default:
-		pr_err(KERN_ALERT "not supported FILT2D_IOCTL(0x%x)\n", cmd);
+		pr_err("[ERR][FILT2D] not supported FILT2D_IOCTL(0x%x)\n", cmd);
 		break;
 	}
 
@@ -809,7 +809,7 @@ static int __init test_wdma_api(void)
 			filt2d_enable(VIOC_F2D0, 1);
 			VIOC_WDMA_SetImageBase(wdma_reg, Dest0 , Dest1, Dest2);
 			VIOC_WDMA_SetImageEnable (wdma_reg, 0);
-			printk("address : 0x%08x   strength :%d  \n",Dest0, i);
+			pr_info("[INF][FILT2D] address : 0x%08x   strength :%d  \n",Dest0, i);
 			msleep(1000);
 		}
 	}
@@ -827,7 +827,7 @@ static int __init test_wdma_api(void)
 			filt2d_enable(VIOC_F2D0, 1);
 			VIOC_WDMA_SetImageBase(wdma_reg, Dest0 , Dest1, Dest2);
 			VIOC_WDMA_SetImageEnable (wdma_reg, 0);
-			printk("address : 0x%08x    \n",Dest0);
+			pr_info("[INF][FILT2D] address : 0x%08x    \n",Dest0);
 			msleep(1000);
 
 	}
@@ -845,7 +845,7 @@ static int __init test_wdma_api(void)
 
 	}
 
-	printk("~~~~~~~~~~~~~~~~~~~~%s ~~~~~~~~~~~~~~~~~~~~~\n", __func__);
+	pr_info("[INF][FILT2D] ~~~~~~~~~~~~~~~~~~~~%s ~~~~~~~~~~~~~~~~~~~~~\n", __func__);
 			filt2d_enable(VIOC_F2D0, 0);
 
 }
@@ -932,7 +932,7 @@ static int __init test_disp_api(unsigned int Nrdma_n, unsigned int front)
 	VIOC_RDMA_SetImageUpdate	(rdma_reg);
 
 
-	printk("End %d ~~ %lx  %lx ~~\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg));
+	pr_info("[INF][FILT2D] End %d ~~ %lx  %lx ~~\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg));
 
 	msleep(20000);
 	printk(" done \n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg));
@@ -942,7 +942,7 @@ static int __init test_disp_api(unsigned int Nrdma_n, unsigned int front)
 	VIOC_CONFIG_PlugOut(VIOC_F2D1);
 
 
-	printk("\n ~~~~~~~RDMA : %d FRONT : %d~~~~~~~ \n", Nrdma_n, front);
+	pr_info("[INF][FILT2D] ~~~~~~~RDMA : %d FRONT : %d~~~~~~~ \n", Nrdma_n, front);
 
 
 }
@@ -958,7 +958,7 @@ static int __init test_f2d_api(void)
 		test_disp_api(i, 1);
 		msleep(200);
 	}
-	pr_info("%s end \n", __func__);
+	pr_info("[INF][FILT2D] %s end \n", __func__);
 	while(1);
 }
 
@@ -975,14 +975,14 @@ volatile void __iomem *VIOC_Filter2D_GetAddress(unsigned int vioc_filter2d_id)
 		goto err;
 
 	if (pF2D_reg[Num] == NULL) {
-		pr_err("filter 2D address is NULL \n");
+		pr_err("[ERR][FILT2D] filter 2D address is NULL \n");
 		goto err;
 	}
 
 	return pF2D_reg[Num];;
 
 err:
-	pr_err("%s Num:%d max num:%d \n", __func__, Num, VIOC_F2D_MAX);
+	pr_err("[ERR][FILT2D] %s Num:%d max num:%d \n", __func__, Num, VIOC_F2D_MAX);
 	return NULL;
 }
 
@@ -995,13 +995,13 @@ static int __init vioc_filter2D_init(void)
 	ViocFilter2D_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_filter2D");
 
 	if (ViocFilter2D_np == NULL) {
-		pr_info("vioc-filter2d: disabled\n");
+		pr_info("[INF][FILT2D] vioc-filter2d: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_F2D_MAX; i++) {
 			pF2D_reg[i] = of_iomap(ViocFilter2D_np, i);
 
 			if (pF2D_reg[i])
-				pr_info("vioc-filter2d%d: 0x%p\n", i, pF2D_reg[i]);
+				pr_info("[INF][FILT2D] vioc-filter2d%d: 0x%p\n", i, pF2D_reg[i]);
 		}
 	}
 

@@ -72,7 +72,7 @@ static int debug	   = 0;
 #endif
 
 
-#define dprintk(msg...)	if (debug) { printk( "tcc_overlay: " msg); }
+#define dprintk(msg...)	if (debug) { printk("[DBG][OVERLAY] " msg); }
 
 #define	DEFAULT_OVERLAY_N		3
 #define OVERLAY_LAYER_MAX		(4)
@@ -155,7 +155,7 @@ static void tcc_overlay_configure_AFBCDEC(volatile void __iomem *pAFBC_Dec, unsi
 static int tcc_overlay_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
-		pr_err(KERN_ERR  "overlay: this address is not allowed \n");
+		pr_err("[ERR][OVERLAY] this address is not allowed \n");
 		return -EAGAIN;
 	}
 
@@ -185,7 +185,7 @@ static int tcc_overlay_display_shared_screen(overlay_shared_buffer_t buffer_cfg,
 	unsigned int layer = 0;
 	dprintk("%s addr:0x%x  fmt : 0x%x position:%d %d  size: %d %d \n", __func__, buffer_cfg.src_addr, buffer_cfg.fmt, buffer_cfg.dst_x, buffer_cfg.dst_y, buffer_cfg.dst_w, buffer_cfg.dst_h);
 	if((buffer_cfg.layer < 0) || (buffer_cfg.layer >= OVERLAY_LAYER_MAX)){
-		printk("%s error : invalid layer:%d\n", __func__, buffer_cfg.layer);
+		pr_err("[ERR][OVERLAY] %s: invalid layer:%d\n", __func__, buffer_cfg.layer);
 		return -1;
 	}
 	dprintk("layer number :%d  last layer:%d  chage : %d n", overlay_drv->layer_n, overlay_drv->layer_nlast, buffer_cfg.layer);
@@ -393,11 +393,11 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 
 				VIOC_WMIX_SetOverlayPriority(overlay_drv->wmix.reg, 0xC);
 				if(overlay_layer < 4) {
-					printk("layer number :%d  last layer:%d  chage : %d \n", overlay_drv->layer_n, overlay_drv->layer_nlast, overlay_layer);
+					pr_info("[INF][OVERLAY] layer number :%d  last layer:%d  chage : %d \n", overlay_drv->layer_n, overlay_drv->layer_nlast, overlay_layer);
 					overlay_drv->layer_n = overlay_layer;
 				}
 				else {
-					printk("wrong layer number :%d  cur layer:%d \n", overlay_layer, overlay_drv->layer_nlast);
+					pr_err("[ERR][OVERLAY] wrong layer number :%d  cur layer:%d \n", overlay_layer, overlay_drv->layer_nlast);
 				}
 				return 0;
 			}
@@ -422,13 +422,13 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 					ovp = (unsigned int)arg;
 				} else {
 					if (copy_from_user(&ovp, (unsigned int *)arg, sizeof(unsigned int))) {
-						pr_err("OVERLAY_SET_OVP copy_from_user failed\n");
+						pr_err("[ERR][OVERLAY] OVERLAY_SET_OVP copy_from_user failed\n");
 					return -EFAULT;
 					}
 				}
 
 				if(ovp > 29) {
-					printk("wrong ovp number: %d \n", ovp);
+					pr_err("[ERR][OVERLAY] wrong ovp number: %d \n", ovp);
 					return -EINVAL;
 				}
 
@@ -446,7 +446,7 @@ static long tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long
 					*(unsigned long *)arg = ovp;
 				} else {
 					if (copy_to_user((unsigned int *)arg, &ovp, sizeof(unsigned int))) {
-						pr_err("OVERLAY_SET_OVP copy_to_user failed\n");
+						pr_err("[ERR][OVERLAY] OVERLAY_SET_OVP copy_to_user failed\n");
 					return -EFAULT;
 			}
 				}
@@ -469,7 +469,7 @@ static int tcc_overlay_release(struct inode *inode, struct file *file)
 	
 	overlay_drv->open_cnt--;
 	
-	dprintk(" ===========> tcc_overlay_release num:%d \n", overlay_drv->open_cnt);
+	dprintk("tcc_overlay_release num:%d \n", overlay_drv->open_cnt);
 
 	if(overlay_drv->open_cnt==0)
 	{
@@ -525,7 +525,7 @@ static int tcc_overlay_open(struct inode *inode, struct file *file)
 	overlay_drv->open_cnt++;
 	clk_prepare_enable(overlay_drv->clk);
 
-	dprintk(" ===========> tcc_overlay_open num:%d \n", overlay_drv->open_cnt);
+	dprintk("tcc_overlay_open num:%d \n", overlay_drv->open_cnt);
 
 	return 0;	
 }
@@ -593,7 +593,7 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 		dprintk("%s-%d :: fd_num(%d) => rdma[%d]: %d %d/%p\n", __func__, __LINE__, overlay_drv->fb_dd_num, i, index, overlay_drv->rdma[i].id, overlay_drv->rdma[i].reg);
 
 		if (IS_ERR((void*)overlay_drv->rdma[i].reg)) {
-			printk("could not find rdmas node of %s driver. \n", overlay_drv->misc->name);
+			pr_info("[INF][OVERLAY] rdma node of layer%d is n/a\n", i);
 			overlay_drv->rdma[i].reg = NULL;
 		}
 	}
@@ -602,7 +602,7 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "rdma_init_layer", &overlay_drv->layer_n);
 	if (ret || overlay_drv->layer_n > 3)
 	    overlay_drv->layer_nlast = overlay_drv->layer_n = DEFAULT_OVERLAY_N;
-	printk("overlay driver init layer :%d\n", overlay_drv->layer_n);
+	pr_info("[INF][OVERLAY] overlay driver init layer :%d\n", overlay_drv->layer_n);
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 	overlay_drv->afbc_dec.reg = NULL;
@@ -618,7 +618,7 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 	dprintk("%s-%d :: fd_num(%d) => wmix[%d]: %d %d/%p\n", __func__, __LINE__, overlay_drv->fb_dd_num, i, index, overlay_drv->wmix.id, overlay_drv->wmix.reg);
 
 	if (IS_ERR((void*)overlay_drv->wmix.reg)) {
-		printk("could not find wmix node of %s driver. \n", overlay_drv->misc->name);
+		pr_err("[ERR][OVERLAY] could not find wmix node of %s driver. \n", overlay_drv->misc->name);
 		overlay_drv->wmix.reg = NULL;
 	}
 	overlay_drv->open_cnt = 0;
@@ -629,11 +629,11 @@ static int tcc_overlay_probe(struct platform_device *pdev)
 
 err_overlay_drv_init:
 	kfree(overlay_drv->misc);
-	printk("err_overlay_drv_init. \n");
+	pr_err("[ERR][OVERLAY] err_overlay_drv_init. \n");
 
 err_overlay_drv_misc:
 	kfree(overlay_drv);
-	printk("err_overlay_drv_misc. \n");
+	pr_err("[ERR][OVERLAY] err_overlay_drv_misc. \n");
 
 	return ret;
 }
@@ -656,7 +656,7 @@ static int tcc_overlay_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if(overlay_drv->open_cnt != 0)
 	{	
-		pr_info("tcc_overlay_suspend %d opened\n", overlay_drv->open_cnt);
+		pr_info("[INF][OVERLAY] tcc_overlay_suspend %d opened\n", overlay_drv->open_cnt);
 		clk_disable_unprepare(overlay_drv->clk);
 	}
 	return 0;
@@ -668,7 +668,7 @@ static int tcc_overlay_resume(struct platform_device *pdev)
 
 	if(overlay_drv->open_cnt != 0)
 	{	
-		pr_info("tcc_overlay_resume %d opened\n", overlay_drv->open_cnt);
+		pr_info("[INF][OVERLAY] tcc_overlay_resume %d opened\n", overlay_drv->open_cnt);
 		clk_prepare_enable(overlay_drv->clk);
 		tcc_overlay_display_video_buffer(overlay_drv->overBuffCfg, overlay_drv);
 	}

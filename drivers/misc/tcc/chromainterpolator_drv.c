@@ -51,7 +51,7 @@
 #include <video/tcc/vioc_global.h>
 
 #define TCC_CP_DEBUG	0
-#define dprintk(msg...)		if(TCC_CP_DEBUG) { printk("\x1b[1;38m CTIL: \x1b[0m " msg); }
+#define dprintk(msg...)	if(TCC_CP_DEBUG) { printk("[DBG][CHROMA_I] " msg); }
 
 struct chromainterp_drv_type {
 	unsigned int  			dev_opened;
@@ -113,7 +113,7 @@ static long chromainterp_drv_ioctl(struct file *filp, unsigned int cmd, unsigned
 			break;
 
 		default:
-			printk(KERN_ALERT "not supported LUT IOCTL(0x%x). \n", cmd);
+			pr_err("[ERR][CHROMA_I] not supported LUT IOCTL(0x%x). \n", cmd);
 			break;			
 	}
 
@@ -180,7 +180,7 @@ static int chromainterp_drv_probe(struct platform_device *pdev)
 	
 	platform_set_drvdata(pdev, chromainterp);
 
-	pr_info("%s: :%s, Driver Initialized  \n",__func__, pdev->name);
+	pr_info("[INF][CHROMA_I] %s: :%s, Driver Initialized  \n",__func__, pdev->name);
 
 	return 0;
 
@@ -191,7 +191,7 @@ err_misc_register:
 err_misc_alloc:
 	kfree(chromainterp->misc);
 	kfree(chromainterp);
-	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	pr_err("[ERR][CHROMA_I] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 

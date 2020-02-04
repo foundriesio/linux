@@ -81,7 +81,7 @@ static int attach_drv_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct attach_drv_type *attach = dev_get_drvdata(misc->parent);
 
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		pr_err("error in %s: %s: Address range is not allowed.\n", __func__, attach->misc->name);
+		pr_err("[ERR][ATTACH] %s: %s: Address range is not allowed.\n", __func__, attach->misc->name);
 		return -EAGAIN;
 	}
 
@@ -178,7 +178,7 @@ static void attach_drv_ctrl(struct attach_drv_type *attach)
 	if(attach_info->mode == ATTACH_CAPTURE_MODE) {
 		if(wait_event_interruptible_timeout(attach->poll_wq, (atomic_read(&attach->block_operating) == 0), msecs_to_jiffies(500)) <= 0) {
 			atomic_set(&attach->block_operating, 0);
-			pr_err("error in %s: %s time-out \n", __func__, attach->misc->name);
+			pr_err("[ERR][ATTACH] %s: %s time-out \n", __func__, attach->misc->name);
 		}
 	}
 }
@@ -232,14 +232,14 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
     struct attach_drv_type *attach = dev_get_drvdata(misc->parent);
     int ret = 0;
 
-//	pr_info("%s(): %s: cmd(%d) \n", __func__, attach->misc->name, cmd);
+//	pr_debug("[DBG][ATTACH] %s(): %s: cmd(%d) \n", __func__, attach->misc->name, cmd);
 
 	if(atomic_read(&attach->block_operating)) {
 		atomic_set(&attach->block_waiting, 1);
 		ret = wait_event_interruptible_timeout(attach->cmd_wq, (atomic_read(&attach->block_waiting) == 0), msecs_to_jiffies(200));
 		if(ret <= 0) {
 			atomic_set(&attach->block_waiting, 0);
-			pr_err("error in %s: %s timed_out block_waiting:%d!! \n",
+			pr_err("[ERR][ATTACH] %s: %s timed_out block_waiting:%d!! \n",
 					__func__, attach->misc->name, atomic_read(&attach->block_waiting));
 		}
 		ret = 0;
@@ -252,7 +252,7 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 memcpy(attach->info,(ATTACH_INFO_TYPE*)arg, sizeof(ATTACH_INFO_TYPE));
             }else{
                 if(copy_from_user(attach->info, (ATTACH_INFO_TYPE *)arg, sizeof(ATTACH_INFO_TYPE))) {
-                    pr_err("error in %s: Not Supported copy_from_user(%d). \n", __func__, cmd);
+                    pr_err("[ERR][ATTACH] %s: Not Supported copy_from_user(%d). \n", __func__, cmd);
                     ret = -EFAULT;
                 }
             }
@@ -271,18 +271,18 @@ static long attach_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				} else {
 					unsigned int addr = attach->info->addr_y[idx];
 					if(copy_to_user((unsigned long *)arg, &addr, sizeof(unsigned int))) {
-						pr_err("error in %s: Not Supported copy_to_user(%d). \n", __func__, cmd);
+						pr_err("[ERR][ATTACH] %s: Not Supported copy_to_user(%d). \n", __func__, cmd);
 						ret = -EFAULT;
 					}
 				}
 			} else {
-				pr_err("error in %s: %s driver is not running(%d). \n",
+				pr_err("[ERR][ATTACH] %s: %s driver is not running(%d). \n",
 						__func__, attach->misc->name, attach->info->mode);
 				ret = -EBUSY;
 			}
 			break;
         default:
-            pr_err("error in %s: not supported %s IOCTL(0x%x). \n", __func__, attach->misc->name, cmd);
+            pr_err("[ERR][ATTACH] %s: not supported %s IOCTL(0x%x). \n", __func__, attach->misc->name, cmd);
 			ret = -EINVAL;
             break;
     }
@@ -312,7 +312,7 @@ static int attach_drv_release(struct inode *inode, struct file *filp)
 		atomic_set(&attach->block_waiting, 1);
 		if(wait_event_interruptible_timeout(attach->cmd_wq, (atomic_read(&attach->block_waiting) == 0), msecs_to_jiffies(200)) <= 0) {
 			atomic_set(&attach->block_waiting, 0);
-				pr_err("error in %s: %s timed_out block_waiting:%d!! \n", __func__,
+				pr_err("[ERR][ATTACH] %s: %s timed_out block_waiting:%d!! \n", __func__,
 						attach->misc->name, atomic_read(&attach->block_waiting));
 			}
 		}
@@ -343,7 +343,7 @@ static int attach_drv_release(struct inode *inode, struct file *filp)
 			clk_disable_unprepare(attach->clk);
 	}
 
-	pr_info("%s_release OUT:  %d'th. \n", attach->misc->name, atomic_read(&attach->dev_opened));
+	pr_info("[INF][ATTACH] %s_release OUT:  %d'th. \n", attach->misc->name, atomic_read(&attach->dev_opened));
 
 	return 0;
 }
@@ -376,7 +376,7 @@ static int attach_drv_open(struct inode *inode, struct file *filp)
 			if (ret) {
 				if (attach->clk)
 					clk_disable_unprepare(attach->clk);
-				pr_err("error in %s: failed to aquire %s request_irq. \n", __func__, attach->misc->name);
+				pr_err("[ERR][ATTACH] %s: failed to aquire %s request_irq. \n", __func__, attach->misc->name);
 				return -EFAULT;
 			}
 			vioc_intr_enable(attach->irq, attach->vioc_intr->id, attach->vioc_intr->bits);
@@ -386,7 +386,7 @@ static int attach_drv_open(struct inode *inode, struct file *filp)
 		atomic_inc(&attach->dev_opened);
 	}
 
-    pr_info("%s_open OUT:  %d'th. \n", attach->misc->name, atomic_read(&attach->dev_opened));
+    pr_info("[INF][ATTACH] %s_open OUT:  %d'th. \n", attach->misc->name, atomic_read(&attach->dev_opened));
 
     return ret;
 }
@@ -417,7 +417,7 @@ static void attach_drv_parse_dt(struct attach_drv_type *attach, struct device_no
             attach->rdma.reg = NULL;
         }
     } else {
-        pr_err("error in %s: could not find rdma node of %s driver. \n", __func__, attach->misc->name);
+        pr_err("[ERR][ATTACH] %s: could not find rdma node of %s driver. \n", __func__, attach->misc->name);
         attach->rdma.reg = NULL;
     }
 
@@ -427,7 +427,7 @@ static void attach_drv_parse_dt(struct attach_drv_type *attach, struct device_no
         attach->wmix.reg = VIOC_WMIX_GetAddress(index);
         attach->wmix.id = index;
     } else {
-        pr_err("error in %s: could not find wmix node of %s driver. \n", __func__, attach->misc->name);
+        pr_err("[ERR][ATTACH] %s: could not find wmix node of %s driver. \n", __func__, attach->misc->name);
         attach->wmix.reg = NULL;
     }
 
@@ -437,7 +437,7 @@ static void attach_drv_parse_dt(struct attach_drv_type *attach, struct device_no
         attach->sc.reg = VIOC_SC_GetAddress(index);
         attach->sc.id = index;
     } else {
-        pr_err("error in %s: could not find attach node of %s driver. \n", __func__, attach->misc->name);
+        pr_err("[ERR][ATTACH] %s: could not find attach node of %s driver. \n", __func__, attach->misc->name);
         attach->sc.reg = NULL;
     }
 
@@ -450,7 +450,7 @@ static void attach_drv_parse_dt(struct attach_drv_type *attach, struct device_no
         attach->vioc_intr->id   = VIOC_INTR_WD0 + get_vioc_index(attach->wdma.id);
         attach->vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
     } else {
-        pr_err("error in %s: could not find wdma node of %s driver. \n", __func__, attach->misc->name);
+        pr_err("[ERR][ATTACH] %s: could not find wdma node of %s driver. \n", __func__, attach->misc->name);
         attach->wdma.reg = NULL;
     }
 }
@@ -505,7 +505,7 @@ static int attach_drv_probe(struct platform_device *pdev)
 	atomic_set(&attach->block_operating, 0);
 	atomic_set(&attach->block_waiting, 0);
 
-    pr_info("%s: id:%d, Attach Driver Initialized\n", pdev->name, attach->id);
+    pr_info("[INF][ATTACH] %s: id:%d, Attach Driver Initialized\n", pdev->name, attach->id);
     return 0;
 
     misc_deregister(attach->misc);
@@ -518,7 +518,7 @@ err_info_alloc:
 err_misc_alloc:
     kfree(attach);
 
-    printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+    pr_info("[INF][ATTACH] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
     return ret;
 }
 

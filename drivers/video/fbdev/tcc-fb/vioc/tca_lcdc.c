@@ -73,7 +73,7 @@ void tca_lcdc_interrupt_onoff(char onoff, char lcdc)
 
 	pDISPBase = VIOC_DISP_GetAddress(lcdc);
 	if (pDISPBase == NULL) {
-		pr_err("%s: pDISPBase is null\n", __func__);
+		pr_err("[ERR][LCDC] %s: pDISPBase is null\n", __func__);
 		return;
 	}
 

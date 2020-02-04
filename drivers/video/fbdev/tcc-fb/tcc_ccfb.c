@@ -126,7 +126,7 @@ static void init_ccfb_dev(void)
 
 static int tccxxx_ccfb_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
 		printk(KERN_ERR  "ccfb: this address is not allowed \n");
@@ -151,7 +151,7 @@ static int tccxxx_ccfb_act_clock(ccfb_dev_config_t *dev, int lcdc_num)
 {
 	char *pDevName[2]={"lcdc0", "lcdc1"};
 
-	dprintk("==> %s (%d)\n", __func__, lcdc_num);
+	dprintk("[DBG][CCFB] %s (%d)\n", __func__, lcdc_num);
 
 	if((dev == NULL) || ((lcdc_num < 0) && (lcdc_num >= 2)))
 	{
@@ -161,7 +161,7 @@ static int tccxxx_ccfb_act_clock(ccfb_dev_config_t *dev, int lcdc_num)
 
 	dev->pLcdcClk[lcdc_num] = clk_get(0, pDevName[lcdc_num]);
 	if (IS_ERR(dev->pLcdcClk[lcdc_num])){
-		printk(KERN_ERR "%s clock get fail.\n", pDevName[lcdc_num]);
+		printk(KERN_ERR "[ERR][CCFB] %s clock get fail.\n", pDevName[lcdc_num]);
 		return -EIO;
 	}
 	clk_enable(dev->pLcdcClk[lcdc_num]);	
@@ -184,7 +184,7 @@ static int tccxxx_ccfb_deact_clock(ccfb_dev_config_t *dev)
 {
 	int i;
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 
 	for(i = 0 ; i<MAX_LCDC_NUM ; i++)
 	{
@@ -201,7 +201,7 @@ static int tccxxx_ccfb_deact_clock(ccfb_dev_config_t *dev)
 #if 0
 static int tccxxx_ccfb_lcdc_enable(ccfb_dev_config_t *dev)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(dev->pCurLcdc){
 		VIOC_RDMA_SetImageEnable	(dev->pCurLcdc);
@@ -213,7 +213,7 @@ static int tccxxx_ccfb_lcdc_enable(ccfb_dev_config_t *dev)
 
 static int tccxxx_ccfb_lcdc_disable(ccfb_dev_config_t *dev)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(dev->pCurLcdc){
 		VIOC_RDMA_SetImageDisable	(dev->pCurLcdc);
@@ -244,7 +244,7 @@ static int tccxxx_ccfb_set_config(ccfb_dev_config_t *dev, ccfb_config_t *arg)
 	int ret = -ENODEV;
 	ccfb_config_t cfg;
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(copy_from_user((void*)&cfg, (void *)arg, sizeof(ccfb_config_t)))
 		return -EFAULT;	
@@ -302,15 +302,15 @@ static int tccxxx_ccfb_disp_update(ccfb_dev_config_t *dev, unsigned int* arg)
 {
 	unsigned int cur_addr;
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(copy_from_user((void*)&cur_addr, (void *)arg, sizeof(unsigned int)))
 	{
-		printk(KERN_ERR "error\n");
+		printk(KERN_ERR "[ERR][CCFB] error\n");
 		return -EFAULT;
 	}
 	
-	dprintk("updated address : 0x%08x\n", cur_addr);
+	dprintk("[DBG][CCFB] updated address : 0x%08x\n", cur_addr);
 #if 0
 	if(dev->pUiLcdc->LIC & Hw28){
 		printk("==>>> [%s] WARNING : UI is enabled.\n", __func__);
@@ -358,7 +358,7 @@ static long tccxxx_ccfb_ioctl(struct file *file, unsigned int cmd, unsigned long
 	int ret = -EPERM;
 	ccfb_dev_config_t	*dev = get_ccfb_dev();
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	switch(cmd)
 	{
@@ -401,7 +401,7 @@ static long tccxxx_ccfb_ioctl(struct file *file, unsigned int cmd, unsigned long
 			break;
 
 		default:
-			printk("%s - Unsupported IOCTL!!!(0x%X)\n", __func__, cmd);
+			pr_warn("[WAN][CCFB] %s - Unsupported IOCTL!!!(0x%X)\n", __func__, cmd);
 			ret = -EINVAL;
 			break;
 	}
@@ -413,17 +413,17 @@ static int tccxxx_ccfb_release(struct inode *inode, struct file *file)
 {
 	ccfb_dev_config_t *dev = get_ccfb_dev();
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 
 	if(dev->cur_state == CCFB_STATE_CLOSED)
 	{
-		printk("WARNING : ccfb already closed.\n");
+		pr_warn("[WAN][CCFB] ccfb already closed.\n");
 		return 0;
 	}
 
 	if((dev->cur_state == CCFB_STATE_RUNNING)||(dev->cur_state == CCFB_STATE_PAUSE))
 	{
-		dprintk("==> [%s] ccfb is still running... ccfb close trying...\n", __func__);
+		dprintk("[DBG][CCFB] [%s] ccfb is still running... ccfb close trying...\n", __func__);
 		tccxxx_ccfb_lcdc_disable(dev);
 		//tccxxx_ccfb_deact_clock(dev);
 	}
@@ -450,11 +450,11 @@ static int tccxxx_ccfb_open(struct inode *inode, struct file *file)
 {
 	ccfb_dev_config_t *dev = get_ccfb_dev();
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	if(dev->cur_state != CCFB_STATE_CLOSED)
 	{
-		printk("WARNING : ccfb already opened.\n");
+		pr_warn("[WAN][CCFB] ccfb already opened.\n");
 		return 0;
 	}
 
@@ -488,7 +488,7 @@ static struct miscdevice ccfb_misc_device =
 
 static int tcc_ccfb_probe(struct platform_device *pdev)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 
 	init_ccfb_dev();
 	
@@ -503,7 +503,7 @@ static int tcc_ccfb_probe(struct platform_device *pdev)
 
 static int tcc_ccfb_remove(struct platform_device *pdev)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	misc_deregister(&ccfb_misc_device);
 	return 0;
@@ -516,7 +516,7 @@ static int tcc_ccfb_suspend(struct platform_device *pdev, pm_message_t state)
 #if 0
 	ccfb_dev_config_t	*dev = get_ccfb_dev();
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 
 	dev->cur_state = CCFB_STATE_PAUSE;
 	msleep_interruptible(50);
@@ -533,7 +533,7 @@ static int tcc_ccfb_resume(struct platform_device *pdev)
 #if 0
 	ccfb_dev_config_t	*dev = get_ccfb_dev();
 
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 
 	tccxxx_ccfb_act_clock(dev, dev->act_lcdc_idx);
 	*(dev->pCurLcdc) = active_lcdc_backup;
@@ -568,7 +568,7 @@ static struct platform_driver tcc_ccfb_driver = {
 
 static int __init tccxxx_ccfb_init(void)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	platform_device_register(&tcc_ccfb_device);
 	platform_driver_register(&tcc_ccfb_driver);
@@ -579,7 +579,7 @@ module_init(tccxxx_ccfb_init);
 
 static void __exit tccxxx_ccfb_exit(void)
 {
-	dprintk("==> %s\n", __func__);
+	dprintk("[DBG][CCFB] %s\n", __func__);
 	
 	platform_driver_unregister(&tcc_ccfb_driver);
 	platform_device_unregister(&tcc_ccfb_device);

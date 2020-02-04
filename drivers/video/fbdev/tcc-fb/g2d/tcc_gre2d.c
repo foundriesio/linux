@@ -583,7 +583,7 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 
 	if(index > 256)
 	{
-		printk("[%s:%d] Invalid index value(%d)\n",__func__, __LINE__, index);
+		pr_err("[ERR][G2D] Invalid index value(%d)\n",__func__, __LINE__, index);
 		return;
 	}
 
@@ -604,7 +604,7 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 		//pClut[index] = data;
 	}
 	else {
-		printk("[%s:%d] invalid ch for clut\n", __func__, __LINE__);
+		pr_err("[ERR][G2D] [%s:%d] invalid ch for clut\n", __func__, __LINE__);
 	}
 }
 #endif /* TCC_OVERLAY_MIXER_CLUT_SUPPORT */
@@ -612,7 +612,7 @@ void GRE_2D_ClutCtrl(unsigned int ch, unsigned int index, unsigned int data)
 volatile void __iomem* GRE_2D_GetAddress(void)
 {
 	if(pGre2D_reg == NULL){
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][G2D] %s \n", __func__);
 		return NULL;
 	}
 
@@ -629,10 +629,10 @@ void GRE_2D_DUMP(void)
 
 	pReg = GRE_2D_GetAddress();
 
-	printk("GRE_2D :: 0%p \n", pReg);
+	pr_info("[INF][G2D] GRE_2D :: 0%p \n", pReg);
 	while(cnt < 0x100)
 	{
-		printk("%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg+cnt, __raw_readl(pReg+cnt), __raw_readl(pReg+cnt+0x4), __raw_readl(pReg+cnt+0x8), __raw_readl(pReg+cnt+0xC));
+		pr_debug("[DBG][G2D] %p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg+cnt, __raw_readl(pReg+cnt), __raw_readl(pReg+cnt+0x4), __raw_readl(pReg+cnt+0x8), __raw_readl(pReg+cnt+0xC));
 		cnt += 0x10;
 	}
 }
@@ -641,18 +641,18 @@ static int __init gre2d_init(void)
 {
 	pGre2D_np = of_find_compatible_node(NULL, NULL, "telechips,graphic.2d");
 	if(pGre2D_np == NULL)
-		pr_info("vioc-g2d: disabled\n");
+		pr_info("[INF][G2D] vioc-g2d: disabled\n");
 
 	pGre2D_reg = of_iomap(pGre2D_np, 0);
 	if(pGre2D_reg)
-		pr_info("vioc-g2d: 0x%p\n", pGre2D_reg);
+		pr_info("[INF][G2D] vioc-g2d: 0x%p\n", pGre2D_reg);
 /*
 	else {
 		struct resource res;
 		int rc;
 
 		rc = of_address_to_resource(pGre2D_np, 0, &res);
-		pr_info("%s GRE_2D: 0x%x ~ 0x%x \n", __func__, res.start, res.end);
+		pr_info("[INF][G2D] %s GRE_2D: 0x%x ~ 0x%x \n", __func__, res.start, res.end);
 	}
 */
 

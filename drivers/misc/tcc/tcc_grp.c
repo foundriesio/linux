@@ -55,7 +55,7 @@ extern G2D_DITHERING_TYPE gG2D_Dithering_type;
 extern unsigned char gG2D_Dithering_en;
 
 static int debug  = 0;
-#define dprintk(msg...)	if (debug) { printk( "tcc_grp: " msg); }
+#define dprintk(msg...)	if (debug) { printk("[DBG][GRP] " msg); }
 
 #if 0
 #define GRP_DBG(msg...)		printk(msg)
@@ -119,7 +119,7 @@ void g2d_drv_response_check(struct g2d_data	*data, unsigned int responsetype)
 
 		ret = wait_event_interruptible_timeout(data->poll_wq,  data->block_operating == 0, msecs_to_jiffies(500));
 		if(ret <= 0) {
-			printk("G2D time out :%d Line :%d \n", __LINE__, ret);
+			pr_warn("[WAR][GRP] G2D time out :%d Line :%d \n", __LINE__, ret);
 		}
 	}
 }
@@ -543,7 +543,7 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int g2d_drv_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
-		printk(KERN_ERR  "grp: this address is not allowed \n");
+		pr_err("[ERR][GRP] this address is not allowed \n");
 		return -EAGAIN;
 	}
 
@@ -645,7 +645,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line ret:%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line ret:%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -680,7 +680,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;					
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -713,7 +713,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -747,7 +747,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;					
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -782,7 +782,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;					
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -837,7 +837,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					g2d->data->block_waiting = 1;
 					ret = wait_event_interruptible_timeout(g2d->data->cmd_wq, g2d->data->block_operating == 0, msecs_to_jiffies(200));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d block:%d \n", __LINE__, ret, g2d->data->block_operating);
 						g2d->data->block_operating = 0;
 					}
 				}
@@ -855,7 +855,7 @@ static long g2d_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				if((g2d_p1.responsetype == G2D_INTERRUPT) || (g2d_p1.responsetype == G2D_POLLING))	{
 					ret = wait_event_interruptible_timeout(g2d->data->poll_wq,  g2d->data->block_operating == 0, msecs_to_jiffies(500));
 					if(ret <= 0){
-						printk("G2D time out :%d Line :%d \n", __LINE__, ret);
+						pr_warn("[WAR][GRP] G2D time out :%d Line :%d \n", __LINE__, ret);
 					}
 				}
 			}
@@ -924,7 +924,7 @@ int g2d_drv_open(struct inode *inode, struct file *filp)
 		if (ret) {
 			if (g2d->clk)
 				clk_disable_unprepare(g2d->clk);
-			printk("failed to aquire %s request_irq. \n", g2d->misc->name);
+			pr_err("[ERR][GRP] aquire %s request_irq. \n", g2d->misc->name);
 			ret = -EFAULT;
 			goto Open_Error;
 		}
@@ -1020,7 +1020,7 @@ err_data_alloc:
 err_misc_alloc:
 	kfree(g2d);
 
-	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	pr_err("[ERR][GRP] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 

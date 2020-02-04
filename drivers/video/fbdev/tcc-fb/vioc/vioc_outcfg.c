@@ -30,7 +30,7 @@
 
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "\e[33mvioc_outcfg:\e[0m " msg); }
+#define dprintk(msg...)	if (debug) { printk("\e[33m[DBG][OUTCFG]\e[0m " msg); }
 
 static volatile void __iomem *pOUTCFG_reg = NULL;
 
@@ -49,7 +49,7 @@ void VIOC_OUTCFG_SetOutConfig(unsigned nType, unsigned nDisp)
 		return;
 
 	nDisp = get_vioc_index(nDisp);
-	pr_info("%s : addr:%p nType:%d nDisp:%d \n", __func__, reg, nType,
+	pr_info("[INF][OUTCFG] %s : addr:%p nType:%d nDisp:%d \n", __func__, reg, nType,
 		nDisp);
 
 	switch (nType) {
@@ -74,7 +74,7 @@ void VIOC_OUTCFG_SetOutConfig(unsigned nType, unsigned nDisp)
 		val |= ((nDisp & 0x3) << MISC_MRGBSEL_SHIFT);
 		break;
 	default:
-		pr_err("%s, wrong type(0x%08x)\n", __func__, nType);
+		pr_err("[ERR][OUTCFG] %s, wrong type(0x%08x)\n", __func__, nType);
 		WARN_ON(1);
 		return;
 		break;
@@ -109,7 +109,7 @@ void VIOC_OUTCFG_BVO_SetOutConfig(unsigned int nDisp)
 volatile void __iomem *VIOC_OUTCONFIG_GetAddress(void)
 {
 	if (pOUTCFG_reg == NULL)
-		pr_err("%s pOUTCFG_reg is NULL \n", __func__);
+		pr_err("[ERR][OUTCFG] %s pOUTCFG_reg is NULL \n", __func__);
 
 	return pOUTCFG_reg;
 }
@@ -119,9 +119,9 @@ void VIOC_OUTCONFIG_DUMP(void)
 	unsigned int cnt = 0;
 	volatile void __iomem *pReg = VIOC_OUTCONFIG_GetAddress();
 
-	printk("OUTCONFIG :: 0x%p \n", pReg);
+	pr_debug("[DBG][OUTCFG] %p \n", pReg);
 	while (cnt < 0x10) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][OUTCFG] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -136,12 +136,12 @@ static int __init vioc_outputconfig_init(void)
 	ViocOutputConfig_np =
 		of_find_compatible_node(NULL, NULL, "telechips,output_config");
 	if (ViocOutputConfig_np == NULL) {
-		pr_info("vioc-outcfg: disabled [this is mandatory for vioc display]\n");
+		pr_info("[INF][OUTCFG] vioc-outcfg: disabled [this is mandatory for vioc display]\n");
 	} else {
 		pOUTCFG_reg = of_iomap(ViocOutputConfig_np, 0);
 
 		if (pOUTCFG_reg)
-				pr_info("vioc-outcfg: 0x%p\n", pOUTCFG_reg);
+				pr_info("[INF][OUTCFG] vioc-outcfg: 0x%p\n", pOUTCFG_reg);
 	}
 	return 0;
 }

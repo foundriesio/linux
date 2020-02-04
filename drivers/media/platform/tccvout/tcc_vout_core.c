@@ -78,7 +78,7 @@ static unsigned int nFrame_t1 = 0;
 static unsigned int nFrame_t2 = 0;
 extern unsigned int HDMI_video_width;
 extern unsigned int HDMI_video_height;
-#define dvprintk(msg...) //printk( "dolby-vision[vout]: " msg);
+#define dvprintk(msg...) //printk("[WAR][VOUT-DV] " msg);
 #endif
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
@@ -238,7 +238,7 @@ static void vout_check_format(struct vioc_rdma *rdma, unsigned int fmt)
 	case DEC_FMT_422V:
 	case DEC_FMT_400:
 	default:
-		printk(KERN_ERR VOUT_NAME ": unknown format(%d) \n", fmt);
+		pr_err("[ERR][VOUT] unknown format(%d) \n", fmt);
 		break;
 	}
 
@@ -282,7 +282,7 @@ static void vout_pop_buffer(struct tcc_vout_device *vout)
 	atomic_dec(&vout->readable_buff_count);
 	if(atomic_read(&vout->readable_buff_count) < 0)
 		atomic_set(&vout->readable_buff_count, 0);
-//	printk("%s: popIdx: %d readable_buff_count: %d\n", __func__,vout->popIdx, atomic_read(&vout->readable_buff_count));
+//	pr_debug("[DBG][VOUT] %s: popIdx: %d readable_buff_count: %d\n", __func__,vout->popIdx, atomic_read(&vout->readable_buff_count));
 }
 
 static void vout_clear_buffer(struct tcc_vout_device *vout, struct v4l2_buffer *buf)
@@ -313,7 +313,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 	/* get pmap for deintl_bufs */
 	memcpy(&vout->deintl_pmap.name, kasprintf(GFP_KERNEL, "v4l2_vout%d", vout->id), sizeof(VOUT_MEM_PATH_PMAP_NAME));
 	if (vout_get_pmap(&vout->deintl_pmap)) {
-		printk(KERN_ERR VOUT_NAME ": vout_get_pmap(%s)\n", vout->deintl_pmap.name);
+		pr_err("[ERR][VOUT] vout_get_pmap(%s)\n", vout->deintl_pmap.name);
 		return -1;
 	}
 
@@ -347,7 +347,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 		}
 	} else {
 		if (!vout->opened) {
-			printk(KERN_ERR VOUT_NAME ": not open vout driver.\n");
+			pr_err("[ERR][VOUT] not open vout driver.\n");
 			return -EBUSY;
 		}
 
@@ -391,7 +391,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 		vioc->m2m_wmix.ovp = vioc->m2m_subplane_wmix.ovp = 24;
 		break;
 	default:
-		printk("invalid m2m_rdma(%d) index\n", vioc->m2m_rdma.id);
+		pr_err("[ERR][VOUT] invalid m2m_rdma(%d) index\n", vioc->m2m_rdma.id);
 		return -1;
 	}
 
@@ -416,7 +416,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 
 		vioc->m2m_wdma.vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
 		if(vioc->m2m_wdma.vioc_intr == 0) {
-			printk("memory allocation faiil (vioc->m2m_wdma)\n");
+			pr_err("[ERR][VOUT] memory allocation faiil (vioc->m2m_wdma)\n");
 			return -ENOMEM;
 		}
 		vioc->m2m_wdma.vioc_intr->id = VIOC_INTR_WD0 + get_vioc_index(vioc->m2m_wdma.id);
@@ -465,7 +465,7 @@ int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout)
 				#endif
 				dprintk("VIQE < vir_addr = 0x%p , id = %d \n", vioc->viqe.addr, get_vioc_index(vioc->viqe.id));
 			} else {
-				printk("could not find viqe node of vout driver. \n");
+				pr_err("[ERR][VOUT] could not find viqe node of vout driver. \n");
 			}
 		}
 	}
@@ -543,7 +543,7 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 			vioc->wmix.pos = get_vioc_index(vioc->rdma.id);
 		break;
 	default:
-		printk("invalid rdma(%d) index\n", get_vioc_index(vioc->rdma.id));
+		pr_err("[ERR][VOUT] invalid rdma(%d) index\n", get_vioc_index(vioc->rdma.id));
 		return -1;
 	}
 
@@ -562,7 +562,9 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 	case VIOC_RDMA01:
 	case VIOC_RDMA02:
 	case VIOC_RDMA05:
+#if !defined(CONFIG_ARCH_TCC899X)
 	case VIOC_RDMA06:
+#endif
 	case VIOC_RDMA09:
 	case VIOC_RDMA10:
 		if(get_vioc_index(vioc->wmix.id))
@@ -571,7 +573,7 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 			vioc->subplane_wmix.pos = get_vioc_index(vioc->subplane_rdma.id);
 		break;
 	default:
-		printk("invalid subplane_rdma(%d) index\n", vioc->subplane_rdma.id);
+		pr_err("[ERR][VOUT] invalid subplane_rdma(%d) index\n", vioc->subplane_rdma.id);
 		return -1;
 	}
 
@@ -587,7 +589,7 @@ int vout_set_vout_path(struct tcc_vout_device *vout)
 		#ifdef CONFIG_VOUT_USE_VSYNC_INT
 		vioc->disp.vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
 		if(vioc->disp.vioc_intr == 0) {
-			printk("memory allocation faiil (vioc->disp)\n");
+			pr_err("[ERR][VOUT] memory allocation faiil (vioc->disp)\n");
 			return -ENOMEM;
 		}
 		vioc->disp.irq = irq_of_parse_and_map(dev_np, get_vioc_index(vioc->disp.id));
@@ -645,7 +647,7 @@ int vout_vioc_set_default(struct tcc_vout_device *vout)
 	if(vout->vout_timer == NULL) {
 		vout->vout_timer = tcc_register_timer(NULL, 1000/*msec*/, NULL);
 		if (IS_ERR(vout->vout_timer)) {
-			printk(KERN_ERR "%s: cannot register tcc timer. ret:0x%p\n", __func__, vout->vout_timer);
+			pr_err("[ERR][VOUT] %s: cannot register tcc timer. ret:0x%p\n", __func__, vout->vout_timer);
 			vout->vout_timer = NULL;
 		}
 	}
@@ -868,7 +870,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 		viqe_deintl_base[3] = viqe_deintl_base[2] + img_size;
 
 		if ((viqe_deintl_base[3] + img_size) > (pmap_viqe.base + pmap_viqe.size)) {
-			printk(KERN_ERR VOUT_NAME ": pmap_viqe no space\n");
+			pr_err("[ERR][VOUT] pmap_viqe no space\n");
 			//return -ENOBUFS;
 		}
 	} else if (deinterlace == VOUT_DEINTL_VIQE_2D) {
@@ -976,7 +978,7 @@ void vout_onthefly_dv_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		}
 		else
 		{
-			printk("%s-%d type mismatch(%d != %d)\n", __func__, __LINE__, vioc_get_out_type(), buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE]);
+			pr_err("[ERR][VOUT] %s-%d type mismatch(%d != %d)\n", __func__, __LINE__, vioc_get_out_type(), buf->m.planes[MPLANE_VID].reserved[VID_DOLBY_REG_OUT_TYPE]);
 		}
 	}
 }
@@ -1228,7 +1230,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		base1 = vout->qbufs[buf->index].img_base1;
 		base2 = vout->qbufs[buf->index].img_base2;
 	} else {
-		printk(KERN_ERR VOUT_NAME ": invalid qbuf v4l2_memory\n");
+		pr_err("[ERR][VOUT] invalid qbuf v4l2_memory\n");
 	}
 
 	if (V4L2_FIELD_INTERLACED_BT == vout->src_pix.field)
@@ -1448,7 +1450,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			#ifdef CONFIG_ARCH_TCC803X
 			tca_map_convter_swreset(VIOC_MC0);
 			if(VIOC_CONFIG_MCPath(vioc->wmix.id, VIOC_MC0) < 0) {
-				printk(KERN_ERR"%s[%d]: HW Decompresser can not be connected on %s\n",
+				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
 						__func__, __LINE__, vout->vdev->name);
 				return;
 			}
@@ -1582,7 +1584,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			#endif
 		}
 		else {
-			printk("Not support for DTRC on this chipset type!! \n");
+			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!! \n");
 		}
 		#endif
 	}
@@ -1593,7 +1595,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 			int component_num = VIOC_CONFIG_DMAPath_Select(vioc->rdma.id);
 
 			if((int)component_num < 0)
-				pr_info(" %s  : RDMA :%d dma path selection none\n", __func__, vioc->rdma.id);
+				pr_info("[INF][VOUT] %s  : RDMA :%d dma path selection none\n", __func__, vioc->rdma.id);
 			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
@@ -1672,7 +1674,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 				if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
 					if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
-						printk(KERN_ERR"failed VIQE%d reconnection\n", vioc->viqe.id);
+						pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 					dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 					vout->frame_count = 0;
 					force_process = 1;
@@ -1915,7 +1917,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 		base1 = vout->qbufs[buf->index].img_base1;
 		base2 = vout->qbufs[buf->index].img_base2;
 	} else {
-		printk(KERN_ERR VOUT_NAME ": invalid qbuf v4l2_memory\n");
+		pr_err("[ERR][VOUT] invalid qbuf v4l2_memory\n");
 	}
 
 	if (V4L2_FIELD_INTERLACED_BT == vout->src_pix.field)
@@ -2152,7 +2154,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			#ifdef CONFIG_ARCH_TCC803X
 			tca_map_convter_swreset(VIOC_MC1);
 			if(VIOC_CONFIG_MCPath(vioc->m2m_wmix.id, VIOC_MC1) < 0) {
-				printk(KERN_ERR"%s[%d]: HW Decompresser can not be connected on %s\n",
+				pr_err("[ERR][VOUT] %s[%d]: HW Decompresser can not be connected on %s\n",
 						__func__, __LINE__, vout->vdev->name);
 				return;
 			}
@@ -2275,7 +2277,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			vout_m2m_ctrl(vioc, 1);
 		}
 		else {
-			printk("Not support for DTRC on this chipset type!! \n");
+			pr_err("[ERR][VOUT] Not support for DTRC on this chipset type!! \n");
 		}
 		#endif
 	}
@@ -2286,7 +2288,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 			int component_num = VIOC_CONFIG_DMAPath_Select(vioc->m2m_rdma.id);
 
 			if(component_num < 0)
-				pr_info(" %s  : RDMA :%d dma path selection none\n", __func__, vioc->m2m_rdma.id);
+				pr_info("[INF][VOUT] %s  : RDMA :%d dma path selection none\n", __func__, vioc->m2m_rdma.id);
 			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
@@ -2353,7 +2355,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 				VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 				if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
 					if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
-						printk(KERN_ERR"failed VIQE%d reconnection\n", vioc->viqe.id);
+						pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 					dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 					vout->frame_count = 0;
 					force_process = 1;
@@ -2471,7 +2473,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 	{
 next_field:
 		if (wait_event_interruptible_timeout(vout->frame_wait, vout->wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
-			printk(KERN_ERR VOUT_NAME ": [interlace] handler timeout\n");
+			pr_err("[ERR][VOUT] [interlace] handler timeout\n");
 			if(!vout->firstFieldFlag)
 				atomic_inc(&vout->displayed_buff_count);
 		}
@@ -2502,7 +2504,7 @@ next_field:
 	else
 	{
 		if (wait_event_interruptible_timeout(vout->frame_wait, vout->wakeup_int == 1, msecs_to_jiffies(200)) <= 0) {
-			printk(KERN_ERR VOUT_NAME ": [progressive] handler timeout\n");
+			pr_err("[ERR][VOUT] [progressive] handler timeout\n");
 			atomic_inc(&vout->displayed_buff_count);
 		}
 		vout->wakeup_int = 0;
@@ -2633,7 +2635,7 @@ force_disp:
 					VIOC_CONFIG_Device_PlugState(vioc->viqe.id, &plugin_state);
 					if(!plugin_state.enable || plugin_state.connect_statue != VIOC_PATH_CONNECTED) {
 						if(deintl_viqe_setup(vout, vout->deinterlace, 1) < 0)
-							printk(KERN_ERR"failed VIQE%d reconnection\n", vioc->viqe.id);
+							pr_err("[ERR][VOUT] failed VIQE%d reconnection\n", vioc->viqe.id);
 						dprintk("reconnect VIQE%d\n", vioc->viqe.id);
 						vout->frame_count = 0;
 					}
@@ -2882,7 +2884,7 @@ static int vout_video_display_enable(struct tcc_vout_device *vout)
 		vout_intr_onoff(0, vout);
 		ret = request_irq(vioc->disp.irq, vsync_irq_handler, IRQF_SHARED, vout->vdev->name, vout);
 		if(ret)
-			printk(KERN_ERR VOUT_NAME ": vsync_irq_handler failed\n");
+			pr_err("[ERR][VOUT] vsync_irq_handler failed\n");
 		vout_intr_onoff(1, vout);
 	} else {
 		dprintk("disp%d interrupt has already been enabled \n", get_vioc_index(vioc->disp.id));
@@ -3191,7 +3193,7 @@ int vout_m2m_init(struct tcc_vout_device *vout)
 		vioc_intr_clear(vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 		ret = request_irq(vioc->m2m_wdma.irq, wdma_irq_handler, IRQF_SHARED, vout->vdev->name, vout);
 		if(ret)
-			printk(KERN_ERR VOUT_NAME ": wdma_irq_handler failed(%d)\n", ret);
+			pr_err("[ERR][VOUT] wdma_irq_handler failed(%d)\n", ret);
 		vioc_intr_enable(vioc->m2m_wdma.irq, vioc->m2m_wdma.vioc_intr->id, vioc->m2m_wdma.vioc_intr->bits);
 	}
 
@@ -3208,10 +3210,10 @@ void vout_otf_deinit(struct tcc_vout_device *vout)
 	bStep_Check = DEF_DV_CHECK_NUM;
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
-	printk("&&&&&&&&&&&&&&&&&&&&&& [[[%d = %d/%d/%d]]] \n", nFrame, nFrame_t0, nFrame_t1, nFrame_t2);
+	pr_debug("[DBG][VOUT] &&&&&&&&&&&&&&&&&&&&&& [[[%d = %d/%d/%d]]] \n", nFrame, nFrame_t0, nFrame_t1, nFrame_t2);
 
 	for(nFrame = 0; nFrame < nIdx_copy; nFrame++){
-		printk("^@New^^^^^^^^^^^^^ @@@ available(%d), %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
+		pr_debug("[DBG][VOUT] ^@New^^^^^^^^^^^^^ @@@ available(%d), %03d :: TS: %04ld  %d bpp #BL(0x%x, %dx%d (%dx%d), 0x%x fmt) #EL(0x%x, %dx%d (%dx%d)) #OSD(0x%x/0x%x) #Reg(0x%x) #Meta(0x%x)\n",
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_PLAYER_IDX], nFrame, nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_TIMESTAMP],
 				nCopy_ImageInfo[nFrame].private_data.optional_info[VID_OPT_BIT_DEPTH],
 				nCopy_ImageInfo[nFrame].private_data.offset[0],
@@ -3421,14 +3423,14 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 		/* get destination address */
 		ret = pmap_get_info("fb_wmixer", &lastframe_pbuf);
 		if(ret <= 0) {
-			printk("Error :: %s - Does not exist fb_wmixer pmap \n", __func__);
+			pr_err("[ERR][VOUT] %s - Does not exist fb_wmixer pmap \n", __func__);
 			ret = -1;
 			goto ERR_CAPTURE_PROCESS;
 		}
 		dprintk("wmixer base:0x%08x size:%d\n", lastframe_pbuf.base, lastframe_pbuf.size);
 
 		if(buf->m.planes == NULL) {
-			printk("Error :: %s - Does not allocate lastframe memory \n", __func__);
+			pr_err("[ERR][VOUT] %s - Does not allocate lastframe memory \n", __func__);
 			ret = -1;
 			goto ERR_CAPTURE_PROCESS;
 		}
@@ -3457,7 +3459,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 			base1 = vout->qbufs[buf->index].img_base1;
 			base2 = vout->qbufs[buf->index].img_base2;
 		} else {
-			printk(KERN_ERR "Invalid v4l2_memory(%d)\n", vout->memory);
+			pr_err("[ERR][VOUT] Invalid v4l2_memory(%d)\n", vout->memory);
 			return -100;
 		}
 
@@ -3492,7 +3494,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 			fbmixer.interlaced	= false;
 
 		if(lastframe_pbuf.size < (fbmixer.dst_img_width*fbmixer.dst_img_height*2)) {
-			printk(KERN_ERR VOUT_NAME": Not enough wmixer memory(addr:0x%08x size:%d) \n", lastframe_pbuf.base, lastframe_pbuf.size);
+			pr_err("[ERR][VOUT] Not enough wmixer memory(addr:0x%08x size:%d) \n", lastframe_pbuf.base, lastframe_pbuf.size);
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
 		}
@@ -3505,7 +3507,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 
 		file = filp_open(WMIXER_PATH, O_RDWR, 0666);
 		if(IS_ERR(file)) {
-			printk(KERN_ERR VOUT_NAME": Can not open %s device \n", WMIXER_PATH);
+			pr_err("[ERR][VOUT] Can not open %s device \n", WMIXER_PATH);
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
 		}
@@ -3513,7 +3515,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 		ret = file->f_op->unlocked_ioctl(file, TCC_WMIXER_ALPHA_SCALING_KERNEL, (unsigned long)&fbmixer);
 		filp_close(file, 0);
 		if(ret <= 0) {
-			printk(KERN_INFO "Fail TCC_WMIXER_ALPHA_SCALING_KERNEL(%d) \n", ret);
+			pr_err("[ERR][VOUT] Fail TCC_WMIXER_ALPHA_SCALING_KERNEL(%d) \n", ret);
 			enable_LastFrame = OFF;
 			ret = -100;
 			goto ERR_CAPTURE_PROCESS;
@@ -3521,7 +3523,7 @@ int vout_capture_last_frame(struct tcc_vout_device *vout, struct v4l2_buffer *bu
 
 		enable_LastFrame = ON;
 	} else {
-		printk(KERN_ERR VOUT_NAME": Null argument \n");
+		pr_err("[ERR][VOUT] Null argument \n");
 		ret = -100;
 		enable_LastFrame = OFF;
 	}
@@ -3553,7 +3555,7 @@ void vout_disp_last_frame(struct tcc_vout_device *vout)
 			VIOC_RDMA_SetImageEnable(vioc->lastframe_rdma.addr);
 			dprintk("(%d)\n", enable_LastFrame);
 		} else {
-			printk(KERN_ERR VOUT_NAME": Not Allocated HW-resource\n");
+			pr_err("[ERR][VOUT] Not Allocated HW-resource\n");
 		}
 	}
 }
@@ -3576,7 +3578,7 @@ void vout_video_post_process(struct tcc_vout_device *vout)
 			dprintk(" Clear HW last-frame layer (0x%p)\n", vioc->lastframe_rdma.addr);
 		}
 	} else {
-		printk(KERN_ERR VOUT_NAME": [error] Not Allocated HW-resource\n");
+		pr_err("[ERR][VOUT] Not Allocated HW-resource\n");
 	}
 }
 #endif

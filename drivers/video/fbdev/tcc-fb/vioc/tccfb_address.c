@@ -111,7 +111,7 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 	ddc_node = of_parse_phandle(np, "telechips,disp", 0);
 
 	if (!ddc_node) {
-		pr_err("could not find telechips,disp node\n");
+		pr_err("[ERR][FB_ADDR] could not find telechips,disp node\n");
 		ret = -ENODEV;
 	}
 	of_property_read_u32_index(np, "telechips,disp", 1, &index);
@@ -129,7 +129,7 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 	else if (dp_data->DispNum == get_vioc_index(VIOC_DISP1))
 		dp_data->ddc_clock = of_clk_get_by_name(ddc_node, "disp1-clk");
 	else
-		pr_err("could not find ddc clock. invalid display number:%d\n",
+		pr_err("[ERR][FB_ADDR] could not find ddc clock. invalid display number:%d\n",
 		       dp_data->DispNum);
 
 	BUG_ON(dp_data->ddc_clock == NULL);
@@ -138,21 +138,21 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 	// get wmixer number
 	of_property_read_u32_index(np, "telechips,wmixer", 1, &index);
 	if (!wmixer_node) {
-		pr_err("could not find wmixer node\n");
+		pr_err("[ERR][FB_ADDR] could not find wmixer node\n");
 		ret = -ENODEV;
 	} else {
 		dp_data->wmixer_info.virt_addr = VIOC_WMIX_GetAddress(index);
 		dp_data->wmixer_info.irq_num = irq_of_parse_and_map(
 			wmixer_node, get_vioc_index(index));
 		dp_data->wmixer_info.blk_num = index;
-		pr_info("wmixer %d 0x%p  irq:%d\n", get_vioc_index(index),
+		pr_info("[INF][FB_ADDR] wmixer %d 0x%p  irq:%d\n", get_vioc_index(index),
 			dp_data->wmixer_info.virt_addr,
 			dp_data->wmixer_info.irq_num);
 	}
 
 	rdma_node = of_parse_phandle(np, "telechips,rdma", 0);
 	if (!rdma_node) {
-		pr_err("could not find telechips,rdma node\n");
+		pr_err("[ERR][FB_ADDR] could not find telechips,rdma node\n");
 		ret = -ENODEV;
 	} else {
 		for (i = 0; i < RDMA_MAX_NUM; i++) {
@@ -170,24 +170,24 @@ unsigned int tcc_vioc_display_dt_parse(struct device_node *np,
 	// get wdma number
 	of_property_read_u32_index(np, "telechips,wdma", 1, &index);
 	if (!wdma_node) {
-		pr_err("could not find wdma node\n");
+		pr_err("[ERR][FB_ADDR] could not find wdma node\n");
 		ret = -ENODEV;
 	} else {
 		dp_data->wdma_info.virt_addr = VIOC_WDMA_GetAddress(index);
 		dp_data->wdma_info.irq_num =
 			irq_of_parse_and_map(wdma_node, get_vioc_index(index));
 		dp_data->wdma_info.blk_num = index;
-		pr_info("wdma %d 0x%p  irq:%d\n", get_vioc_index(index),
+		pr_info("[INF][FB_ADDR] wdma %d 0x%p  irq:%d\n", get_vioc_index(index),
 			dp_data->wdma_info.virt_addr,
 			dp_data->wdma_info.irq_num);
 	}
 
-	pr_info("ddc:%d %d, wmixer:%d rdma:%d wdma:%d\n",
+	pr_info("[INF][FB_ADDR] ddc:%d %d, wmixer:%d rdma:%d wdma:%d\n",
 		get_vioc_index(dp_data->ddc_info.blk_num), dp_data->DispNum,
 		get_vioc_index(dp_data->wmixer_info.blk_num),
 		get_vioc_index(dp_data->rdma_info[RDMA_FB].blk_num),
 		get_vioc_index(dp_data->wdma_info.blk_num));
-	pr_info("ddc:0x%p, wmixer:0x%p rdma:0x%p wdma:0x%p\n",
+	pr_info("[INF][FB_ADDR] ddc:0x%p, wmixer:0x%p rdma:0x%p wdma:0x%p\n",
 		dp_data->ddc_info.virt_addr, dp_data->wmixer_info.virt_addr,
 		dp_data->rdma_info[RDMA_FB].virt_addr,
 		dp_data->wdma_info.virt_addr);

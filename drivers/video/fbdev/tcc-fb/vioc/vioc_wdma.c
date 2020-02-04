@@ -393,14 +393,14 @@ volatile void __iomem *VIOC_WDMA_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pWDMA_reg[Num] == NULL) {
-		pr_err("pwdma null pointer address\n");
+		pr_err("[ERR][WDMA] pwdma null pointer address\n");
 		goto err;
 	}
 
 	return pWDMA_reg[Num];
 
 err:
-	pr_err("Error :: %s num:%d Max wdma num:%d \n", __func__, Num, VIOC_WDMA_MAX);
+	pr_err("[ERR][WDMA] %s num:%d Max wdma num:%d \n", __func__, Num, VIOC_WDMA_MAX);
 	return NULL;
 }
 
@@ -419,9 +419,9 @@ void VIOC_WDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 			return;
 	}
 
-	printk("WDMA-%d :: 0x%08lx\n", Num, (unsigned long)pReg);
+	pr_debug("[DBG][WDMA] WDMA-%d :: 0x%08lx\n", Num, (unsigned long)pReg);
 	while (cnt < 0x70) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -430,7 +430,7 @@ void VIOC_WDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("Error :: %s num:%d Max wdma num:%d \n", __func__, Num, VIOC_WDMA_MAX);
+	pr_err("[ERR][WDMA] %s num:%d Max wdma num:%d \n", __func__, Num, VIOC_WDMA_MAX);
 	return;
 }
 
@@ -439,14 +439,14 @@ static int __init vioc_wdma_init(void)
 	int i = 0;
 	ViocWdma_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_wdma");
 	if (ViocWdma_np == NULL) {
-		pr_info("vioc-wdma: disabled\n");
+		pr_info("[INF][WDMA] vioc-wdma: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_WDMA_MAX; i++) {
 			pWDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocWdma_np,
 							is_VIOC_REMAP ? (i + VIOC_WDMA_MAX) : i);
 
 			if (pWDMA_reg[i])
-				pr_info("vioc-wdma%d: 0x%p\n", i, pWDMA_reg[i]);
+				pr_info("[INF][WDMA] vioc-wdma%d: 0x%p\n", i, pWDMA_reg[i]);
 		}
 	}
 

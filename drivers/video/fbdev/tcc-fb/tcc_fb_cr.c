@@ -121,20 +121,20 @@ static int __init fb_cr_probe (struct platform_device *pdev)
 					vioc_intr_type = VIOC_INTR_WD0;
 					break;
 				default:
-					pr_err("%s : invalid vioc type\n",__func__);
+					pr_err("[ERR][FB_CR] %s : invalid vioc type\n",__func__);
 					return -EINVAL;
 					break;
 			}
 			irq_sts = vioc_intr_get_status(vioc_intr_type + get_vioc_index(vioc_comp));
-			printk("%s : vioc component = %d, irq sts = %x\n",__func__,vioc_intr_type + get_vioc_index(vioc_comp), irq_sts);
+			pr_debug("[DBG][FB_CR] %s : vioc component = %d, irq sts = %x\n",__func__,vioc_intr_type + get_vioc_index(vioc_comp), irq_sts);
 
 			//clear interrupt
 			vioc_intr_clear(vioc_intr_type + get_vioc_index(vioc_comp) , irq_sts);
 			irq_sts = vioc_intr_get_status(vioc_intr_type + get_vioc_index(vioc_comp));
-			printk("%s : after cleared. irq sts = %x\n",__func__,irq_sts);
+			pr_debug("[DBG][FB_CR] %s : after cleared. irq sts = %x\n",__func__,irq_sts);
 		}
 	}else{
-		pr_err("%s : invalid VIOC component number\n",__func__);
+		pr_err("[ERR][FB_CR] %s : invalid VIOC component number\n",__func__);
 		return -EINVAL;
 	}
 

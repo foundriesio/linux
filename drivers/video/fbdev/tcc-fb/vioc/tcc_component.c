@@ -117,7 +117,7 @@ extern char fb_power_state;
 
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...) if(debug){printk("tcc_component: " msg);}
+#define dprintk(msg...) if(debug){printk("[DBG][COMPONENT] " msg);}
 
 #define TCC_LCDC1_USE
 
@@ -436,7 +436,7 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 	/* set io ports for component output */
 	ret = VIOC_CONFIG_LCDPath_Select(Component_LCDC_Num, component_io_port_num);
 	if (ret < 0) {
-		pr_err("%s: invalid lcd(%d) lcd_if(%d)\n", __func__,
+		pr_err("[ERR][COMPONENT] %s: invalid lcd(%d) lcd_if(%d)\n", __func__,
 				Component_LCDC_Num, component_io_port_num);
 	}
 
@@ -599,7 +599,7 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_TCC_DV_IN)
 		dv_reg_phyaddr = dv_md_phyaddr = 0x00;
-		//pr_info("#### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
+		//pr_info("[INF][COMPONENT] #### DV EDR Mode ? format(%d), reg(0x%x)/meta(0x%x), outDevice(%d)/Disp_0(%p =? %p)\n",
 		//			mode->format, mode->dv_reg_phyaddr, mode->dv_md_phyaddr,
 		//			outDevice, pDISP, VIOC_DISP_GetAddress(0));
 		if( (!tcc_component_attached) && (dp_device->ddc_info.virt_addr == VIOC_DISP_GetAddress(0)) )
@@ -607,7 +607,7 @@ void tcc_component_set_lcd2tv(COMPONENT_MODE_TYPE mode, TCC_COMPONENT_START_TYPE
 			if(start.dv_reg_phyaddr)
 			{
 				struct lcdc_timimg_parms_t component_timing;
-				pr_info("#### DV EDR Mode!!! SDR with Component 0x%x \n", start.dv_reg_phyaddr);
+				pr_info("[INF][COMPONENT] #### DV EDR Mode!!! SDR with Component 0x%x \n", start.dv_reg_phyaddr);
 
 				component_timing.format = 0;
 
@@ -917,11 +917,11 @@ static long tcc_component_ioctl(struct file *file, unsigned int cmd,
 			if (enable) {
 				switch_data->send_component_event(
 					switch_data, TCC_COMPONENT_ON);
-				pr_info("TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
+				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
 			} else {
 				switch_data->send_component_event(
 					switch_data, TCC_COMPONENT_OFF);
-				pr_info("TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
+				pr_info("[INF][COMPONENT] TCC_COMPONENT_IOCTL_HPD_SWITCH_STATUS: enable(%d)\n", enable);
 			}
 		}
 		#endif
@@ -1140,7 +1140,7 @@ static int component_parse_dt(struct device_node *np)
 	np_fb = of_find_compatible_node(NULL, NULL, "telechips,vioc-fb");
 
 	if (of_property_read_u32(np_fb, "telechips,fbdisplay_num", &Component_Disp_Num)) {
-		pr_err("%s, could not find fbdisplay_num\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find fbdisplay_num\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1165,7 +1165,7 @@ static int component_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_1st, "telechips,disp", 1, &index);
 		pComponent_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp node\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp node\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1174,7 +1174,7 @@ static int component_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_1st, "telechips,wmixer", 1, &index);
 		pComponent_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp wmixer\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1186,7 +1186,7 @@ static int component_parse_dt(struct device_node *np)
 		pComponent_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 		Component_RDMA_VIDEO_Num = index;
 	} else {
-		pr_err("%s, could not find disp rdma\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp rdma\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1196,7 +1196,7 @@ static int component_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,disp", 1, &index);
 		pComponent_Attach_DISP = VIOC_DISP_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp node for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp node for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1205,7 +1205,7 @@ static int component_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,wmixer", 1, &index);
 		pComponent_Attach_WMIX = VIOC_WMIX_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp wmixer for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp wmixer for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 
@@ -1216,7 +1216,7 @@ static int component_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np_fb_2nd, "telechips,rdma", 1 + 3, &index);
 		pComponent_Attach_RDMA_VIDEO = VIOC_RDMA_GetAddress(index);
 	} else {
-		pr_err("%s, could not find disp rdma for attached output\n", __func__);
+		pr_err("[ERR][COMPONENT] %s, could not find disp rdma for attached output\n", __func__);
 		ret = -ENODEV;
 	}
 	printk("%s, Component_LCDC_Num = %d \n", __func__, Component_Disp_Num);
@@ -1231,7 +1231,7 @@ static int component_parse_dt(struct device_node *np)
 
 static int component_probe(struct platform_device *pdev)
 {
-	pr_info("%s\n", __func__);
+	pr_info("[INF][COMPONENT] %s\n", __func__);
 
 	pdev_component = &pdev->dev;
 

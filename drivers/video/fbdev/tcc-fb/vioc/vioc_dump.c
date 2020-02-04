@@ -106,7 +106,7 @@ static void tca_fb_dump_vioc_status(unsigned int device_id)
 
 	struct vioc_dump_t *dump_regs = NULL;
 
-	pr_err("%s %d\r\n", __func__, device_id);
+	pr_err("[ERR][VIOC_DUMP] %s %d\r\n", __func__, device_id);
 	if(device_id < 3) {
 		dump_regs = vioc_dump_regs[device_id];
 	}
@@ -166,7 +166,7 @@ static void tca_fb_dump_vioc_status(unsigned int device_id)
 		}
 
 	}else {
-		pr_err("%s dump_regs is NULL\r\n", __func__);
+		pr_err("[ERR][VIOC_DUMP] %s dump_regs is NULL\r\n", __func__);
 	}
 }
 
@@ -185,7 +185,7 @@ static void tca_fb_dump_disp_2(struct work_struct *work)
 
 void fb_dump_vioc_init(void)
 {
-	pr_err("%s \r\n", __func__);
+	pr_err("[ERR][VIOC_DUMP] %s \r\n", __func__);
 	vioc_dump_regs[0] = kmalloc(sizeof(struct vioc_dump_t), GFP_KERNEL);
 	vioc_dump_regs[1] = kmalloc(sizeof(struct vioc_dump_t), GFP_KERNEL);
 	vioc_dump_regs[2] = kmalloc(sizeof(struct vioc_dump_t), GFP_KERNEL);
@@ -198,7 +198,7 @@ EXPORT_SYMBOL(fb_dump_vioc_init);
 
 void fb_dump_vioc_deinit(void)
 {
-	pr_err("%s \r\n", __func__);
+	pr_err("[ERR][VIOC_DUMP] %s \r\n", __func__);
 	cancel_work_sync(&vioc_dump_handle_0);
 	cancel_work_sync(&vioc_dump_handle_1);
 	cancel_work_sync(&vioc_dump_handle_2);
@@ -250,7 +250,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 		if(vioc_reg != NULL) {
 			capture_vioc_raw(vioc_reg, &dump_regs->wmix.reg[0], 0x70);
 		}else {
-			pr_err("%s wmix is NULL\r\n", __func__);
+			pr_err("[ERR][VIOC_DUMP] %s wmix is NULL\r\n", __func__);
 			memset(dump_regs->wmix.reg, 0, sizeof(dump_regs->wmix.reg));
 		}
 
@@ -260,7 +260,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 			if(vioc_reg != NULL) {
 				capture_vioc_raw(vioc_reg, &dump_regs->scaler[idx].reg[0], 0x20);
 			} else {
-				pr_err("%s Scaler id[%d] is NULL\r\n", __func__, idx);
+				pr_err("[ERR][VIOC_DUMP] %s Scaler id[%d] is NULL\r\n", __func__, idx);
 				memset(dump_regs->scaler[idx].reg, 0, sizeof(dump_regs->scaler[idx].reg));
 			}
 		}
@@ -270,7 +270,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 		if(vioc_reg != NULL) {
 			capture_vioc_raw(vioc_reg, &dump_regs->irqconfig.reg[0], 0x100);
 		}else {
-			pr_err("%s ireqconfig is NULL\r\n", __func__);
+			pr_err("[ERR][VIOC_DUMP] %s ireqconfig is NULL\r\n", __func__);
 			memset(dump_regs->irqconfig.reg, 0, sizeof(dump_regs->irqconfig.reg));
 		}
 
@@ -279,7 +279,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 		if(vioc_reg != NULL) {
 			capture_vioc_raw(vioc_reg,  &dump_regs->mc[0].reg[0], 0x80);
 		}else {
-			pr_err("%s mc0 is NULL\r\n", __func__);
+			pr_err("[ERR][VIOC_DUMP] %s mc0 is NULL\r\n", __func__);
 			memset(dump_regs->mc[0].reg, 0, sizeof(dump_regs->mc[0].reg));
 		}
 
@@ -287,10 +287,10 @@ void fb_dump_vioc_status(unsigned int device_id)
 		if(vioc_reg != NULL) {
 			capture_vioc_raw(vioc_reg,  &dump_regs->mc[0].reg[0], 0x80);
 		}else {
-			pr_err("%s mc1 is NULL\r\n", __func__);
+			pr_err("[ERR][VIOC_DUMP] %s mc1 is NULL\r\n", __func__);
 			memset(dump_regs->mc[1].reg, 0, sizeof(dump_regs->mc[1].reg));
 		}
-		pr_err("%s finish\r\n", __func__);
+		pr_err("[ERR][VIOC_DUMP] %s finish\r\n", __func__);
 
 		switch(device_id) {
 			case 0:
@@ -304,7 +304,7 @@ void fb_dump_vioc_status(unsigned int device_id)
 				break;
 		}
 	} else {
-		pr_err("%s dump_regs is NULL\r\n", __func__);
+		pr_err("[ERR][VIOC_DUMP] %s dump_regs is NULL\r\n", __func__);
 	}
 }
 EXPORT_SYMBOL(fb_dump_vioc_status);

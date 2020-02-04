@@ -158,7 +158,7 @@ void tcc_set_ddi_lvds_config(void)
 	unsigned int value = 0;
 
 	if (IS_ERR((void *)reg)) {
-		pr_err("ddi lvds address error");
+		pr_err("[ERR][LVDS] ddi lvds address error");
 		return;
 	}
 
@@ -179,10 +179,10 @@ static int __init vioc_lvds_init(void)
 
 	ViocLVDS_np = of_find_compatible_node(NULL, NULL, "telechips,lvds_phy");
 	if (ViocLVDS_np == NULL) {
-		pr_info("lvds_phy : disabled \n");
+		pr_info("[INF][LVDS] lvds_phy : disabled \n");
 	} else {
 			pLVDS_reg = (volatile void __iomem *)of_iomap(ViocLVDS_np, 0);
-			pr_info("lvds_phy address :  0x%p\n", pLVDS_reg);
+			pr_info("[INF][LVDS] lvds_phy address :  0x%p\n", pLVDS_reg);
 	}
 	return 0;
 }

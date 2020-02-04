@@ -59,7 +59,7 @@
 #include <video/tcc/vioc_global.h>
 
 #define TCC_PM_LUT_DEBUG	0
-#define dprintk(msg...)		if(TCC_PM_LUT_DEBUG) { printk("\x1b[1;38m TCC PM_LUT: \x1b[0m " msg); }
+#define dprintk(msg...)		if(TCC_PM_LUT_DEBUG) { printk("[DBG][PM_LUT] " msg); }
 struct VIOC_PM_LUT_VALUE_SET backup_pm_lut_cmd;
 
 struct pm_lut_drv_type {
@@ -84,7 +84,7 @@ void pm_lut_drv_set_last_frame(void)
 		vioc_pm_set_lut_table(last_frame_pm, (unsigned int *)&backup_pm_lut_cmd.table);
 		ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+last_frame_pm, VIOC_RDMA01);
 		if (ret < 0)
-			pr_err("%s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
+			pr_err("[ERR][PM_LUT] %s pixel_mapper_%d plug in fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
 		dprintk("pixel mapper-%d plug in to RDMA :0x%x \n", last_frame_pm, VIOC_RDMA01);
 	}
 }
@@ -109,7 +109,7 @@ void pm_lut_drv_last_frame_plugout(void)
 	if(component) {
 	ret = VIOC_CONFIG_PlugOut(component);
 	if (ret < 0)
-		pr_err("%s pixel_mapper_%d plug out fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
+		pr_err("[ERR][PM_LUT] %s pixel_mapper_%d plug out fail\n", __func__, get_vioc_index(VIOC_PIXELMAP0));
 	}
 }
 EXPORT_SYMBOL(pm_lut_drv_last_frame_plugout);
@@ -128,7 +128,7 @@ static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 				if(copy_from_user((void *)pm_lut_cmd, (const void *)arg, sizeof(struct VIOC_PM_LUT_VALUE_SET))){
 					kfree(pm_lut_cmd);
-					printk("%s copy from user fail\n", __func__);
+					pr_err("[ERR][PM_LUT] %s copy from user fail\n", __func__);
 					return -EFAULT;
 				}
 				
@@ -193,14 +193,14 @@ static long pm_lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 					if( support_plug >= 0 ){
 						int ret = VIOC_CONFIG_PlugIn(VIOC_PIXELMAP+pm_lut_cmd.pm_lut_dev_num, pm_lut_cmd.pm_lut_plug_in_ch);
 						if (ret < 0)
-							pr_err("%s pixelmapper plug in fail\n", __func__);
+							pr_err("[ERR][PM_LUT] %s pixelmapper plug in fail\n", __func__);
 					}
 				}
 			}
 			return 0;
 
 		default:
-			printk(KERN_ALERT "not supported PM_LUT IOCTL(0x%x). \n", cmd);
+			pr_err("[ERR][PM_LUT] not supported PM_LUT IOCTL(0x%x). \n", cmd);
 			break;
 	}
 
@@ -265,7 +265,7 @@ static int pm_lut_drv_probe(struct platform_device *pdev)
 	vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP0));
 	vioc_pm_initialize_set(get_vioc_index(VIOC_PIXELMAP1));
 	vioc_pm_cal_lut_reg();
-	pr_info("%s: :%s, Driver Initialized  pm_lut set num :0x%x\n",__func__, pdev->name, TCC_PM_LUT_SET);
+	pr_info("[INF][PM_LUT] %s: :%s, Driver Initialized  pm_lut set num :0x%x\n",__func__, pdev->name, TCC_PM_LUT_SET);
 	return 0;
 
 err_misc_register:
@@ -274,7 +274,7 @@ err_misc_register:
 err_misc_alloc:
 	kfree(pm_lut->misc);
 	kfree(pm_lut);
-	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	pr_err("[ERR][PM_LUT] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 

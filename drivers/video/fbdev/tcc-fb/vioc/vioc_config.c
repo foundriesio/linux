@@ -40,7 +40,7 @@ extern int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned 
 #endif
 
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "VIOC_Config: " msg); }
+#define dprintk(msg...)	if (debug) { printk("[DBG][VIOC_CONFIG] " msg); }
 
 int vioc_config_sc_rdma_sel[] = {
 	0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,  0x8,
@@ -372,7 +372,7 @@ static volatile void __iomem *CalcAddressViocComponent(unsigned int component)
 #endif//
 
 	default:
-		printk("%s-%d :: ERROR :: wierd component(0x%x) type(0x%x) index(%d) \n", __func__, __LINE__, component, get_vioc_type(component), get_vioc_index(component));
+		pr_err("[ERR][VIOC_CONFIG] %s-%d: wierd component(0x%x) type(0x%x) index(%d) \n", __func__, __LINE__, component, get_vioc_type(component), get_vioc_index(component));
 		WARN_ON(1);
 		reg = NULL;
 		break;
@@ -395,7 +395,7 @@ static int CheckScalerPathSelection(unsigned int component)
 		ret = vioc_config_sc_wdma_sel[get_vioc_index(component)];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -414,7 +414,7 @@ static int CheckViqePathSelection(unsigned int component)
 		ret = vioc_config_viqe_vin_sel[get_vioc_index(component)/2];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -433,7 +433,7 @@ int CheckSarPathSelection(unsigned int component)
 		ret = vioc_config_sar_vin_sel[get_vioc_index(component)/2];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -454,7 +454,7 @@ int CheckPixelMapPathSelection(unsigned int component)
 		ret = vioc_config_pixel_mapper_vin_sel[get_vioc_index(component)/2];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -481,7 +481,7 @@ static int Check2dFilterPathSelection(unsigned int component)
 		ret = vioc_config_2d_filter_disp_sel[get_vioc_index(component)];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -501,7 +501,7 @@ static int CheckChromaInterpolatorPathSelection(unsigned int component)
 		ret = vioc_config_chroma_interpolator_rdma_sel[get_vioc_index(component)];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -519,7 +519,7 @@ static int CheckAFBCDecPathSelection(unsigned int component)
 		ret = vioc_config_AFBCDec_rdma_sel[get_vioc_index(component)];
 		break;
 	default:
-		pr_err("%s, wrong path parameter(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong path parameter(0x%08x)\n", __func__,
 		       component);
 		ret = -1;
 		break;
@@ -548,7 +548,7 @@ static int CheckMCPathSelection(unsigned int component, unsigned int mc)
 	}
 
 	if (ret < 0)
-		pr_err("%s, ret:%d wrong path parameter(Path: 0x%08x MC: 0x%08x)\n",
+		pr_err("[ERR][VIOC_CONFIG] %s, ret:%d wrong path parameter(Path: 0x%08x MC: 0x%08x)\n",
 		       __func__, ret, component, mc);
 
 	return ret;
@@ -625,7 +625,7 @@ int VIOC_AUTOPWR_Enalbe(unsigned int component, unsigned int onoff)
 	return 0;
 
 error:
-	pr_err("%s, in error, Type :0x%x onoff:%d \n",
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, Type :0x%x onoff:%d \n",
 		__func__, component, onoff);
 
 	return -1;
@@ -659,7 +659,7 @@ int VIOC_CONFIG_PM_PlugChange(void)
 		plug_in_reg = pm0_reg;
 	}
 	if(plug_out_reg == NULL && plug_in_reg == NULL){
-		pr_warning("%s, all pixel_mapper were plugged-out!!\n", __func__);
+		pr_warn("%s, all pixel_mapper were plugged-out!!\n", __func__);
 		return VIOC_PATH_DISCONNECTED;
 	}
 
@@ -698,7 +698,7 @@ int VIOC_CONFIG_PM_PlugChange(void)
 	return VIOC_PATH_CONNECTED;
 
 error:
-	pr_err("%s, in error\n", __func__);
+	pr_err("[ERR][VIOC_CONFIG] %s, in error\n", __func__);
 	WARN_ON(1);
 	return VIOC_DEVICE_INVALID;
 }
@@ -775,7 +775,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 
 
 	default:
-		pr_err("%s, wrong component type:(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong component type:(0x%08x)\n", __func__,
 		       component);
 		goto error;
 	}
@@ -785,8 +785,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		value = ((__raw_readl(reg) & CFG_PATH_SEL_MASK) >>
 			 CFG_PATH_SEL_SHIFT);
 		if (value != path) {
-			pr_warning(
-				"%s, VIOC(T:%d I:%d) is plugged-out by force (from 0x%08lx to %d)!!\n",
+			pr_warn("[WAN][VIOC_CONFIG] %s, VIOC(T:%d I:%d) is plugged-out by force (from 0x%08lx to %d)!!\n",
 				__func__, get_vioc_type(component),
 				get_vioc_index(component), value, path);
 			VIOC_CONFIG_PlugOut(component);
@@ -798,7 +797,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 	__raw_writel(value, reg);
 
 	if (__raw_readl(reg) & CFG_PATH_ERR_MASK) {
-		pr_err("%s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+		pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
 		       __func__, get_vioc_type(component),
 		       get_vioc_index(component), path);
 		value = (__raw_readl(reg) & ~(CFG_PATH_EN_MASK));
@@ -814,7 +813,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		if (value == VIOC_PATH_CONNECTED)
 			break;
 		if (loop < 1) {
-			pr_err("%s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+			pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
 			       __func__, get_vioc_type(component),
 			       get_vioc_index(component), path);
 			return VIOC_DEVICE_BUSY;
@@ -823,7 +822,7 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 	return VIOC_PATH_CONNECTED;
 
 error:
-	pr_err("%s, in error, Type :0x%x Select:0x%x cfg_reg:0x%x \n", __func__,
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, Type :0x%x Select:0x%x cfg_reg:0x%x \n", __func__,
 	       component, select, __raw_readl(reg));
 	WARN_ON(1);
 	return VIOC_DEVICE_INVALID;
@@ -853,7 +852,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(unsigned int component, unsigned int select, uns
 
 
 	default:
-		pr_err("%s, wrong component type:(0x%08x)\n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong component type:(0x%08x)\n", __func__,
 		       component);
 		goto error;
 	}
@@ -866,8 +865,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(unsigned int component, unsigned int select, uns
 		value = ((__raw_readl(reg) & CFG_PATH_SEL_MASK) >>
 			 CFG_PATH_SEL_SHIFT);
 		if (value != path) {
-			pr_warning(
-				"%s, VIOC(T:%d I:%d) is plugged-out by force (from 0x%08lx to %d)!!\n",
+			pr_warn("[WAN][VIOC_CONFIG] %s, VIOC(T:%d I:%d) is plugged-out by force (from 0x%08lx to %d)!!\n",
 				__func__, get_vioc_type(component),
 				get_vioc_index(component), value, path);
 			VIOC_CONFIG_PlugOut(component);
@@ -879,7 +877,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(unsigned int component, unsigned int select, uns
 	__raw_writel(value, reg);
 
 	if (__raw_readl(reg) & CFG_PATH_ERR_MASK) {
-		pr_err("%s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+		pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
 		       __func__, get_vioc_type(component),
 		       get_vioc_index(component), path);
 		value = (__raw_readl(reg) & ~(CFG_PATH_EN_MASK));
@@ -895,7 +893,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(unsigned int component, unsigned int select, uns
 		if (value == VIOC_PATH_CONNECTED)
 			break;
 		if (loop < 1) {
-			pr_err("%s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+			pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
 			       __func__, get_vioc_type(component),
 			       get_vioc_index(component), path);
 			return VIOC_DEVICE_BUSY;
@@ -904,7 +902,7 @@ int VIOC_CONFIG_FILTER2D_PlugIn(unsigned int component, unsigned int select, uns
 	return VIOC_PATH_CONNECTED;
 
 error:
-	pr_err("%s, in error, Type :0x%x Select:0x%x cfg_reg:0x%x \n", __func__,
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, Type :0x%x Select:0x%x cfg_reg:0x%x \n", __func__,
 	       component, select, __raw_readl(reg));
 	WARN_ON(1);
 
@@ -926,7 +924,7 @@ int VIOC_CONFIG_PlugOut(unsigned int component)
 	value = ((__raw_readl(reg) & CFG_PATH_STS_MASK) >> CFG_PATH_STS_SHIFT);
 	if (value == VIOC_PATH_DISCONNECTED) {
 		__raw_writel(0x00000000, reg);
-		pr_warning("%s, VIOC(T:%d I:%d) was already plugged-out!!\n",
+		pr_warn("[WAN][VIOC_CONFIG] %s, VIOC(T:%d I:%d) was already plugged-out!!\n",
 			   __func__, get_vioc_type(component),
 			   get_vioc_index(component));
 		return VIOC_PATH_DISCONNECTED;
@@ -936,7 +934,7 @@ int VIOC_CONFIG_PlugOut(unsigned int component)
 	__raw_writel(value, reg);
 
 	if (__raw_readl(reg) & CFG_PATH_ERR_MASK) {
-		pr_err("%s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d)\n",
+		pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d)\n",
 		       __func__, get_vioc_type(component),
 		       get_vioc_index(component));
 		value = (__raw_readl(reg) & ~(CFG_PATH_EN_MASK));
@@ -953,7 +951,7 @@ int VIOC_CONFIG_PlugOut(unsigned int component)
 		if (value == VIOC_PATH_DISCONNECTED)
 			break;
 		if (loop < 1) {
-			pr_err("%s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d)\n",
+			pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d)\n",
 			       __func__, get_vioc_type(component),
 			       get_vioc_index(component));
 			return VIOC_DEVICE_BUSY;
@@ -962,7 +960,7 @@ int VIOC_CONFIG_PlugOut(unsigned int component)
 	__raw_writel(0x00000000, reg);
 	return VIOC_PATH_DISCONNECTED;
 error:
-	pr_err("%s, in error, Type :0x%x cfg_reg:0x%x \n", __func__, component,
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, Type :0x%x cfg_reg:0x%x \n", __func__, component,
 	       __raw_readl(reg));
 	WARN_ON(1);
 	return VIOC_DEVICE_INVALID;
@@ -1173,12 +1171,12 @@ int VIOC_CONFIG_AFBCDECPath(unsigned int AFBCDecPath, unsigned int rdmaPath, uns
 	default :
 		goto error;
 	};
-	//printk("%s RDMA(%d) with AFBC(%d) :: On(%d)- 0x%08lx \n", __func__, get_vioc_index(rdmaPath), get_vioc_index(AFBCDecPath), on, value);
+	//pr_debug("[DBG][VIOC_CONFIG] %s RDMA(%d) with AFBC(%d) :: On(%d)- 0x%08lx \n", __func__, get_vioc_index(rdmaPath), get_vioc_index(AFBCDecPath), on, value);
 	__raw_writel(value, reg);
 	return VIOC_PATH_CONNECTED;
 
 error:
-	pr_err("%s, in error, AFBCDecPath(%d) :0x%x rdmaPath:0x%x cfg_reg:0x%x \n",
+	pr_err("[ERR][VIOC_CONFIG] %s, in error, AFBCDecPath(%d) :0x%x rdmaPath:0x%x cfg_reg:0x%x \n",
 	       __func__, on, get_vioc_index(AFBCDecPath), rdmaPath, __raw_readl(reg));
 	WARN_ON(1);
 	return VIOC_DEVICE_INVALID;
@@ -1317,7 +1315,7 @@ int VIOC_CONFIG_MCPath(unsigned int component, unsigned int mc)
 
 error:
 	if(ret < 0) {
-		pr_err("%s, in error, Path: 0x%x MC: %x cfg_reg:0x%x \n", __func__,
+		pr_err("[ERR][VIOC_CONFIG] %s, in error, Path: 0x%x MC: %x cfg_reg:0x%x \n", __func__,
 				component, mc, __raw_readl(reg));
 	}
 	return ret;
@@ -1341,7 +1339,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 	volatile void __iomem *reg = pIREQ_reg;
 
 	if (mode != VIOC_CONFIG_RESET && mode != VIOC_CONFIG_CLEAR) {
-		pr_err("%s, in error, invalid mode:%d\n", __func__, mode);
+		pr_err("[ERR][VIOC_CONFIG] %s, in error, invalid mode:%d\n", __func__, mode);
 		return;
 	}
 
@@ -1590,7 +1588,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 #endif
 
 	default:
-		pr_err("%s, wrong component(0x%08x)\n", __func__, component);
+		pr_err("[ERR][VIOC_CONFIG] %s, wrong component(0x%08x)\n", __func__, component);
 		WARN_ON(1);
 	}
 }
@@ -1832,7 +1830,7 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 			break;
 #endif
 		default:
-			printk("%s-%d :: not support this component(0x%x) \n", __func__, __LINE__, component);
+			pr_info("[INF][VIOC_CONFIG] %s-%d :: not support this component(0x%x) \n", __func__, __LINE__, component);
 			return;
 	}
 
@@ -1848,12 +1846,12 @@ void VIOC_CONFIG_DV_EX_VIOC_PROC(unsigned int component)
 			if(pSC){
 				VIOC_SC_SetBypass(pSC, 1);
 				VIOC_SC_SetOutSize(pSC, 0, 0);
-				// printk("%s-%d scaler(%d) reinit \n", __func__,
+				// pr_info("[INF][VIOC_CONFIG] %s-%d scaler(%d) reinit \n", __func__,
 				// 		__LINE__, nPlugged_scaler-VIOC_SCALER0);
 				VIOC_SC_SetUpdate(pSC);
 			}
 			else {
-				printk("Plugged SC(%d)/VIQE(%d) \n", nPlugged_scaler, nPlugged_viqe);
+				pr_info("[INF][VIOC_CONFIG] Plugged SC(%d)/VIQE(%d) \n", nPlugged_scaler, nPlugged_viqe);
 			}
 		}
 		else if (nPlugged_viqe >= 0) // VIQE
@@ -1981,7 +1979,7 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 		break;
 #endif
 	default:
-		printk("%s-%d :: ERROR :: cfg_path_reg for dma(0x%x) doesn't support \n", __func__, __LINE__, dma);
+		pr_info("[INF][VIOC_CONFIG] %s-%d :: ERROR :: cfg_path_reg for dma(0x%x) doesn't support \n", __func__, __LINE__, dma);
 		return -1;
 	}
 
@@ -1997,7 +1995,7 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 		path_sel = get_vioc_index(path);
 	}
 	else {
-		printk("%s-%d :: ERROR :: path(0x%x) is very wierd. \n", __func__, __LINE__, path);
+		pr_info("[INF][VIOC_CONFIG] %s-%d :: ERROR :: path(0x%x) is very wierd. \n", __func__, __LINE__, path);
 		return -1;
 	}
 
@@ -2036,7 +2034,7 @@ int VIOC_CONFIG_DMAPath_Set(unsigned int path, unsigned int dma)
 	return 0;
 
 error :
-	pr_err("vioc config plug in error : setting path : 0x%x dma:%x cfg_path_reg(0x%p):0x%x  before registe : 0x%08lx \n", path, dma, cfg_path_reg, readl(cfg_path_reg), value);
+	pr_err("[ERR][VIOC_CONFIG] vioc config plug in error : setting path : 0x%x dma:%x cfg_path_reg(0x%p):0x%x  before registe : 0x%08lx \n", path, dma, cfg_path_reg, readl(cfg_path_reg), value);
 	return -1;
 }
 
@@ -2053,7 +2051,7 @@ error :
 	// select config register.
 	cfg_path_reg = CalcAddressViocComponent(dma);
 	if (cfg_path_reg == NULL){
-		printk("%s-%d :: ERROR :: cfg_path_reg for dma(0x%x) is NULL \n", __func__, __LINE__, dma);
+		pr_info("[INF][VIOC_CONFIG] %s-%d :: ERROR :: cfg_path_reg for dma(0x%x) is NULL \n", __func__, __LINE__, dma);
 		return -1;
 	}
 
@@ -2069,7 +2067,7 @@ error :
 		break;
 #endif
 	default:
-		printk("%s-%d :: ERROR :: cfg_path_reg for dma(0x%x) doesn't support \n", __func__, __LINE__, dma);
+		pr_info("[INF][VIOC_CONFIG] %s-%d :: ERROR :: cfg_path_reg for dma(0x%x) doesn't support \n", __func__, __LINE__, dma);
 		return -1;
 	}
 
@@ -2097,7 +2095,7 @@ error :
 	return 0;
 
 error :
-	pr_err("%s  in error : setting  dma:%x cfg_path_cfg_path_reg(0x%p):0x%x  before cfg_path_registe : 0x%08lx \n", __func__, dma, cfg_path_reg, readl(cfg_path_reg), value);
+	pr_err("[ERR][VIOC_CONFIG] %s  in error : setting  dma:%x cfg_path_cfg_path_reg(0x%p):0x%x  before cfg_path_registe : 0x%08lx \n", __func__, dma, cfg_path_reg, readl(cfg_path_reg), value);
 	return -1;
 }
 
@@ -2183,7 +2181,7 @@ int VIOC_CONFIG_LCDPath_Select(unsigned int lcdx_sel, unsigned int lcdx_if)
 volatile void __iomem *VIOC_IREQConfig_GetAddress(void)
 {
 	if (pIREQ_reg == NULL)
-		pr_err("%s VIOC_IREQConfig:%p \n", __func__, pIREQ_reg);
+		pr_err("[ERR][VIOC_CONFIG] %s VIOC_IREQConfig:%p \n", __func__, pIREQ_reg);
 
 	return pIREQ_reg;
 }
@@ -2193,13 +2191,13 @@ void VIOC_IREQConfig_DUMP(unsigned int offset, unsigned int size)
 	unsigned int cnt = 0;
 
 	if (pIREQ_reg == NULL) {
-		pr_err("%s, VIOC_IREQConfig \n", __func__);
+		pr_err("[ERR][VIOC_CONFIG] %s, VIOC_IREQConfig \n", __func__);
 		return;
 	}
 
-	printk("VIOC_IREQConfig :: 0x%p \n", pIREQ_reg + offset);
+	pr_debug("[DBG][VIOC_CONFIG] VIOC_IREQConfig :: 0x%p \n", pIREQ_reg + offset);
 	while (cnt < size) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n",
+		pr_debug("[DBG][VIOC_CONFIG] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n",
 		       pIREQ_reg + offset + cnt, __raw_readl(pIREQ_reg + offset + cnt),
 		       __raw_readl(pIREQ_reg + offset + cnt + 0x4),
 		       __raw_readl(pIREQ_reg + offset + cnt + 0x8),
@@ -2216,12 +2214,12 @@ static int __init vioc_config_init(void)
 	ViocConfig_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_config");
 
 	if (ViocConfig_np == NULL) {
-		pr_info("vioc-config: disabled [this is mandatory for vioc display]\n");
+		pr_info("[INF][VIOC_CONFIG] disabled [this is mandatory for vioc display]\n");
 	} else {
 		pIREQ_reg = of_iomap(ViocConfig_np, is_VIOC_REMAP ? 1 : 0);
 
 		if (pIREQ_reg) {
-			pr_info("vioc-config: 0x%p\n", pIREQ_reg);
+			pr_info("[INF][VIOC_CONFIG] 0x%p\n", pIREQ_reg);
 			VIOC_CONFIG_DMAPath_Iint();
 		}
 	}

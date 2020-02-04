@@ -114,7 +114,7 @@ int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned i
 
 	if(!(fp = fopen("/proc/phys_mem", "r")))		
 	{
-		printk("/proc/phys_mem Open Error!!![%d]", cmd);
+		pr_err("[ERR][UTIL] /proc/phys_mem Open Error!!![%d]", cmd);
 		return 1;
 	}
 	
@@ -162,7 +162,7 @@ int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned i
 		{			
 			if(strcmp(name, nametofind) == 0)
 			{
-				printk("%s: 0x%x 0x%x\n", name, base_addr, size);
+				pr_info("[INF][UTIL] %s: 0x%x 0x%x\n", name, base_addr, size);
 				*puiBase = base_addr;
 				*puiSize = size;
 				return 0;
@@ -174,7 +174,7 @@ int tccutil_get_phy_mem_info(unsigned int cmd, unsigned int *puiBase, unsigned i
 		p++;
 	}
 
-	printk("%s :: Getting information fail(%d)", __func__, cmd);
+	pr_err("[ERR][UTIL] %s :: Getting information fail(%d)", __func__, cmd);
 	return 1; //error can't find
 }
 

@@ -125,12 +125,12 @@ int VIOC_LVDS_PHY_GetUpsampleRatio(unsigned int p_port, unsigned int s_port, uns
 		}
 
 		if(idx < (sizeof(ref_ratio_arr) / sizeof(ref_ratio_arr[0]))) {
-			pr_err("error in %s: can not get upsample ratio (%dMhz)\n",
+			pr_err("[ERR][LVDS] %s: can not get upsample ratio (%dMhz)\n",
 				__func__, (pxclk/1000000));
 			idx = -1;
 		}
 	} else {
-		pr_err("error in %s can not get hw address \n",
+		pr_err("[ERR][LVDS] %s can not get hw address \n",
 			__func__);
 	}
 end_func:
@@ -158,14 +158,14 @@ unsigned int VIOC_LVDS_PHY_GetRefCnt(unsigned int p_port, unsigned int s_port, u
 			pxclk = freq;
 
 		if((upsample_ratio > LVDS_PHY_UPSAMPLE_RATIO_MAX) || (upsample_ratio < 0)) {
-			pr_err("error in %s: invaild parameter (pxclk:%dMhz / upsample_ratio:%d)\n",
+			pr_err("[ERR][LVDS] %s: invaild parameter (pxclk:%dMhz / upsample_ratio:%d)\n",
 					__func__, (pxclk/1000000), upsample_ratio);
 			return 0;
 		}
 
 		return (((pxclk * 7 * ref_ratio_arr[upsample_ratio][1])/20)/24*16*16)/1000000;
 	} else {
-		pr_err("error in %s can not get hw address \n", __func__);
+		pr_err("[ERR][LVDS] %s can not get hw address \n", __func__);
 	}
 
 	return 0;
@@ -271,7 +271,7 @@ void VIOC_LVDS_PHY_SetUserMode(unsigned int port, unsigned int lane,
 			break;
 		case LVDS_PHY_LANE_MAX:
 		default:
-			pr_err("%s in error, invaild parameter(lane:%d)\n",
+			pr_err("[ERR][LVDS] %s: invaild parameter(lane:%d)\n",
 			       __func__, lane);
 			break;
 		}
@@ -298,7 +298,7 @@ void VIOC_LVDS_PHY_SetLaneSwap(unsigned int port, unsigned int lane, unsigned in
 			break;
 		case LVDS_PHY_LANE_MAX:
 		default:
-			pr_err("%s in error, invaild parameter(lane:%d)\n",
+			pr_err("[ERR][LVDS] %s: invaild parameter(lane:%d)\n",
 			       __func__, lane);
 			break;
 		}
@@ -540,7 +540,7 @@ void VIOC_LVDS_PHY_SetFcon(unsigned int port, unsigned int mode, unsigned int lo
 			break;
 		case LVDS_PHY_FCON_MAX:
 		default:
-			pr_err("%s in error, invaild parameter(mode: %d)\n",
+			pr_err("[ERR][LVDS] %s: invaild parameter(mode: %d)\n",
 					__func__, mode);
 			break;
 		}
@@ -580,7 +580,7 @@ void VIOC_LVDS_PHY_SetCFcon(unsigned int port, unsigned int mode, unsigned int e
 				}
 			}
 		}
-		pr_err("%s time out\n" ,__func__);
+		pr_err("[ERR][LVDS] %s time out\n" ,__func__);
 closed_loop:
 		/* Change loop mode to 'Closed' loop */
 		value = (__raw_readl(reg+LVDS_CTSET1) & ~(LVDS_CTSET1_MPLL_CTLCK_MASK));
@@ -610,7 +610,7 @@ void VIOC_LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
 			mdelay(1);
 		}
 	}
-	pr_err("%s time out\n",__func__);
+	pr_err("[ERR][LVDS] %s time out\n",__func__);
 }
 
 /* LVDS_PHY_FConEnable
@@ -646,7 +646,7 @@ void LVDS_PHY_StrobeWrite(volatile void __iomem *reg, unsigned int offset, unsig
 		if(__raw_readl(reg+LVDS_AUTO_STB_DONE) == 0x1) return;
 		mdelay(1);
 	}
-	pr_err("%s time out\n",__func__);
+	pr_err("[ERR][LVDS] %s time out\n",__func__);
 }
 
 /* VIOC_LVDS_PHY_Config
@@ -775,7 +775,7 @@ void VIOC_LVDS_PHY_StrobeConfig(unsigned int p_port, unsigned int s_port, unsign
 			}			break;
 		case LVDS_PHY_CONFIG_MAX:
 		default:
-			pr_err("%s in error, invaild parameter(step: %d)\n",
+			pr_err("[ERR][LVDS] %s: invaild parameter(step: %d)\n",
 					__func__, step);
 			break;
 		}
@@ -828,7 +828,7 @@ unsigned int VIOC_LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
 			mdelay(1);
 		}
 	}
-	pr_err("%s time out\n",__func__);
+	pr_err("[ERR][LVDS] %s time out\n",__func__);
 	end_func:
 		ret = readl(reg+LVDS_AUTO_STB_RDATA);
 		return ret;
@@ -837,10 +837,10 @@ unsigned int VIOC_LVDS_PHY_GetRegValue(unsigned int port, unsigned int offset)
 volatile void __iomem *VIOC_LVDS_PHY_GetAddress(unsigned int port)
 {
 	if (port >= LVDS_PHY_PORT_MAX)
-		pr_err("%s: wrong parameter - %d\n", __func__, port);
+		pr_err("[ERR][LVDS] %s: wrong parameter - %d\n", __func__, port);
 
 	if (pLVDS_reg[port] == NULL)
-		pr_err("%s: pLVDS_reg:%p \n", __func__, pLVDS_reg[port]);
+		pr_err("[ERR][LVDS] %s: pLVDS_reg:%p \n", __func__, pLVDS_reg[port]);
 
 	return pLVDS_reg[port];
 }
@@ -907,7 +907,7 @@ void VIOC_LVDS_WRAP_SetDataSwap(unsigned int ch,
 			__raw_writel(val, reg + TS_CFG);
 			break;
 		default:
-			pr_err("%s: invalid parameter(%d, %d)\n", __func__, ch,
+			pr_err("[ERR][LVDS] %s: invalid parameter(%d, %d)\n", __func__, ch,
 			       set);
 			break;
 		}
@@ -990,7 +990,7 @@ void VIOC_LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch,
 	}
 	return;
 error_mux_output:
-	pr_err("%s in error, invalid parameter(mux: %d, ch: %d) \n", __func__,
+	pr_err("[ERR][LVDS] %s: invalid parameter(mux: %d, ch: %d) \n", __func__,
 	       mux, ch);
 }
 
@@ -1031,7 +1031,7 @@ void VIOC_LVDS_WRAP_SetDataPath(unsigned int ch, unsigned int path,
 	}
 	return;
 error_data_path:
-	pr_err("%s in error, invalid parameter(ch: %d, path: %d) \n", __func__,
+	pr_err("[ERR][LVDS] %s: invalid parameter(ch: %d, path: %d) \n", __func__,
 	       ch, path);
 }
 
@@ -1065,7 +1065,7 @@ void VIOC_LVDS_WRAP_SetDataArray(unsigned int ch, unsigned int data[TXOUT_MAX_LI
 	}
 	return;
 error_data_array:
-	pr_err("%s in error, invalid parameter(ch: %d) \n",
+	pr_err("[ERR][LVDS] %s: invalid parameter(ch: %d) \n",
 			__func__, ch);
 }
 
@@ -1088,7 +1088,7 @@ void VIOC_LVDS_WRAP_SetAccessCode(void)
 void VIOC_LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset)
 {
 	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg + TS_SWRESET;
-	printk("%s called\n",__func__);
+	pr_info("[INF][LVDS] %s called\n", __func__);
 
 	if(reset){
 		switch(port){
@@ -1113,17 +1113,17 @@ static int __init vioc_lvds_init(void)
 
 	ViocLVDS_np = of_find_compatible_node(NULL, NULL, "telechips,lvds_phy");
 	if (ViocLVDS_np == NULL) {
-		pr_info("vioc-lvdsphy: disabled\n");
+		pr_info("[INF][LVDS] vioc-lvdsphy: disabled\n");
 	} else {
 		for (i = 0; i < LVDS_PHY_PORT_MAX; i++) {
 			pLVDS_reg[i] = (volatile void __iomem *)of_iomap(ViocLVDS_np, i);
 
 			if (pLVDS_reg[i])
-				pr_info("vioc-lvdsphy%d: 0x%p\n", i, pLVDS_reg[i]);
+				pr_info("[INF][LVDS] vioc-lvdsphy%d: 0x%p\n", i, pLVDS_reg[i]);
 		}
 		pLVDS_wrap_reg = (volatile void __iomem *)of_iomap(ViocLVDS_np , IDX_LVDS_WRAP);
 		if(pLVDS_wrap_reg)
-			pr_info("vioc-lvdswrap: 0x%p\n",pLVDS_wrap_reg);
+			pr_info("[INF][LVDS] vioc-lvdswrap: 0x%p\n",pLVDS_wrap_reg);
 	}
 	return 0;
 }

@@ -72,7 +72,7 @@ struct lcd_panel fld0800_panel;
 
 static int fld0800_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -83,7 +83,7 @@ static int fld0800_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_
 
 static int fld0800_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
-	printk("%s : %d\n", __func__, on);
+	pr_info("[INF][LCD] %s : %d\n", __func__, on);
 	mutex_lock(&lvds_fld0800.panel_lock);
 	fb_pdata->FbPowerState = panel->state = on;
 
@@ -266,7 +266,7 @@ static void fld0800_parse_dt(struct device_node *np)
 	if(np) {
 		lvds_fld0800.gpio.power_on= of_get_named_gpio(np, "power-on-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.power_on)) {
-			printk(" power-on-gpios: n/a\n");
+			pr_info("[INF][LCD] power-on-gpios: n/a\n");
 			lvds_fld0800.gpio.power_on = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.power_on, "lcd_on");
@@ -275,7 +275,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.display_on= of_get_named_gpio(np, "display-on-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.display_on)) {
-			printk(" display-on-gpios: n/a\n");
+			pr_info("[INF][LCD] display-on-gpios: n/a\n");
 			lvds_fld0800.gpio.display_on = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.display_on, "lvds_display");
@@ -284,7 +284,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.reset= of_get_named_gpio(np, "reset-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.reset)) {
-			printk(" reset-gpios: n/a\n");
+			pr_info("[INF][LCD] reset-gpios: n/a\n");
 			lvds_fld0800.gpio.reset = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.reset, "lcd_reset");
@@ -293,7 +293,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.stby = of_get_named_gpio(np, "lvds-stby-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.stby)) {
-			printk(" lvds-stby-gpios: n/a\n");
+			pr_info("[INF][LCD] lvds-stby-gpios: n/a\n");
 			lvds_fld0800.gpio.stby = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.stby, "lcd_stbyb");
@@ -302,7 +302,7 @@ static void fld0800_parse_dt(struct device_node *np)
 
 		lvds_fld0800.gpio.power= of_get_named_gpio(np, "lvds-power-gpios", 0);
 		if(!gpio_is_valid(lvds_fld0800.gpio.power)) {
-			printk(" lvds-power-gpios: n/a\n");
+			pr_info("[INF][LCD] lvds-power-gpios: n/a\n");
 			lvds_fld0800.gpio.power = -1;
 		} else {
 			gpio_request(lvds_fld0800.gpio.power, "lvds_power");
@@ -316,7 +316,7 @@ static int fld0800_probe(struct platform_device *pdev)
 	struct device_node *np;
 	unsigned int value;
 	
-	printk("%s: %s\n", __func__, pdev->name);
+	pr_debug("[DBG][LCD] %s: %s\n", __func__, pdev->name);
 
 	mutex_init(&lvds_fld0800.panel_lock);
 
@@ -327,7 +327,7 @@ static int fld0800_probe(struct platform_device *pdev)
 	np = of_parse_phandle(pdev->dev.of_node, "lvds0", 0);
 	lvds_fld0800.clk = of_clk_get(np, 0);
 	if(IS_ERR(lvds_fld0800.clk)){
-		pr_err("%s[%d]: failed to get lvds clock \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: failed to get lvds clock \n", __func__, __LINE__);
 		lvds_fld0800.clk = NULL;
 		return -ENODEV;
 	}
@@ -338,16 +338,16 @@ static int fld0800_probe(struct platform_device *pdev)
 	clk_prepare_enable(lvds_fld0800.clk);
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "ports", 0, &lvds_fld0800.main_port) < 0) {
-		pr_err("%s[%d]: the property does not exist \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		return -ENODEV;
 	}
-	pr_info("%s lvds - main_port: %d\n", __func__, lvds_fld0800.main_port);
+	pr_debug("[DBG][LCD] %s lvds - main_port: %d\n", __func__, lvds_fld0800.main_port);
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "ports", 1, &lvds_fld0800.sub_port) < 0) {
-		pr_err("%s[%d]: the property does not exist \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		lvds_fld0800.sub_port = LVDS_PHY_PORT_MAX;
 	}
-	pr_info("%s lvds - sub_port: %d\n", __func__, lvds_fld0800.sub_port);
+	pr_debug("[DBG][LCD] %s lvds - sub_port: %d\n", __func__, lvds_fld0800.sub_port);
 
 #endif
 

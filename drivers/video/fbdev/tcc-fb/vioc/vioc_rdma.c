@@ -164,7 +164,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 
 	/* Check RDMA is enabled */
 	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK)){
-		printk("rdma is enabled\n");
+		pr_info("[INF][RDMA] enabled\n");
 		return;
 	}
 
@@ -235,7 +235,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 		}
 	}
 	if (i == 60) {
-		pr_err("%s : [RDMA:0x%p] is not disabled, RDMASTAT.nREG = 0x%08lx, CTRL 0x%08lx i = %d \n",
+		pr_err("[ERR][RDMA] %s : [RDMA:0x%p] is not disabled, RDMASTAT.nREG = 0x%08lx, CTRL 0x%08lx i = %d \n",
 		       __func__, reg,
 		       (unsigned long)(__raw_readl(reg + RDMASTAT)),
 		       (unsigned long)(__raw_readl(reg + RDMACTRL)), i);
@@ -697,9 +697,9 @@ void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 			return;
 	}
 
-	printk("RDMA-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][RDMA] RDMA-%d :: 0x%p \n", Num, pReg);
 	while (cnt < 0x50) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -708,7 +708,7 @@ void VIOC_RDMA_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("Error :: %s Num:%d max num:%d \n", __func__, Num, VIOC_RDMA_MAX);
+	pr_err("[ERR][RDMA] %s Num:%d max num:%d \n", __func__, Num, VIOC_RDMA_MAX);
 	return;
 }
 
@@ -720,13 +720,13 @@ volatile void __iomem *VIOC_RDMA_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pRDMA_reg[Num] == NULL) {
-		pr_err("rdma address is NULL \n");
+		pr_err("[ERR][RDMA] rdma address is NULL \n");
 		goto err;
 	}
 
 	return pRDMA_reg[Num];
 err:
-	pr_err("Error :: %s Num:%d max num:%d \n", __func__, Num, VIOC_RDMA_MAX);
+	pr_err("[ERR][RDMA] %s Num:%d max num:%d \n", __func__, Num, VIOC_RDMA_MAX);
 	return NULL;
 }
 
@@ -735,14 +735,14 @@ static int __init vioc_rdma_init(void)
 	int i;
 	ViocRdma_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_rdma");
 	if (ViocRdma_np == NULL) {
-		pr_info("vioc-rdma: disabled\n");
+		pr_info("[INF][RDMA] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_RDMA_MAX; i++) {
 			pRDMA_reg[i] = (volatile void __iomem *)of_iomap(ViocRdma_np,
 							is_VIOC_REMAP ? (i + VIOC_RDMA_MAX) : i);
 
 			if (pRDMA_reg[i])
-				pr_info("vioc-rdma%d: 0x%p\n", i, pRDMA_reg[i]);
+				pr_info("[INF][RDMA] rdma%d: 0x%p\n", i, pRDMA_reg[i]);
 		}
 	}
 	return 0;

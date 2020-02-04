@@ -90,14 +90,14 @@ volatile void __iomem *VIOC_FIFO_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pFIFO_reg[Num] == NULL) {
-		pr_err("pfifo null pointer address\n");
+		pr_err("[ERR][FIFO] pfifo null pointer address\n");
 		goto err;
 	}
 
 	return pFIFO_reg[Num];
 
 err:
-	pr_err("%s num:%d Max fifo num:%d \n", __func__, Num, VIOC_FIFO_MAX);
+	pr_err("[ERR][FIFO] %s num:%d Max fifo num:%d \n", __func__, Num, VIOC_FIFO_MAX);
 	return NULL;
 }
 
@@ -106,14 +106,14 @@ static int __init vioc_fifo_init(void)
 	int i = 0;
 	ViocFifo_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_fifo");
 	if (ViocFifo_np == NULL) {
-		pr_info("vioc-fifo: disabled\n");
+		pr_info("[INF][FIFO] vioc-fifo: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_FIFO_MAX; i++) {
 			pFIFO_reg[i] = (volatile void __iomem *)of_iomap(ViocFifo_np,
 							is_VIOC_REMAP ? (i + VIOC_FIFO_MAX) : i);
 
 			if(pFIFO_reg[i])
-				pr_info("vioc-fifo%d: 0x%p\n", i, pFIFO_reg[i]);
+				pr_info("[INF][FIFO] vioc-fifo%d: 0x%p\n", i, pFIFO_reg[i]);
 		}
 	}
 	return 0;

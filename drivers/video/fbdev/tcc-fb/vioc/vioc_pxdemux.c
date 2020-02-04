@@ -55,7 +55,7 @@ void VIOC_PXDEMUX_SetConfigure(unsigned int idx, unsigned int lr,
 	}
 	return;
 error_set_cfg:
-	pr_err("%s in error, invalid parameter(idx: %d) \n", __func__, idx);
+	pr_err("[ERR][P_DEMUX] %s in error, invalid parameter(idx: %d) \n", __func__, idx);
 }
 
 /* VIOC_PXDEMUX_SetDataSwap
@@ -102,14 +102,14 @@ void VIOC_PXDEMUX_SetDataSwap(unsigned int idx, unsigned int ch,
 			__raw_writel(val, reg + offset);
 			break;
 		default:
-			pr_err("%s: invalid parameter(%d, %d)\n", __func__, ch,
+			pr_err("[ERR][P_DEMUX] %s: invalid parameter(%d, %d)\n", __func__, ch,
 			       set);
 			break;
 		}
 	}
 	return;
 error_data_swap:
-	pr_err("%s in error, invalid parameter(idx: %d, ch: %d, set: 0x%08x) \n",
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(idx: %d, ch: %d, set: 0x%08x) \n",
 	       __func__, idx, ch, set);
 }
 
@@ -205,7 +205,7 @@ void VIOC_PXDEMUX_SetMuxOutput(PD_MUX_TYPE mux, unsigned int ch,
 	}
 	return;
 error_mux_output:
-	pr_err("%s in error, invalid parameter(mux: %d, ch: %d) \n", __func__,
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(mux: %d, ch: %d) \n", __func__,
 	       mux, ch);
 }
 
@@ -246,7 +246,7 @@ void VIOC_PXDEMUX_SetDataPath(unsigned int ch, unsigned int path,
 	}
 	return;
 error_data_path:
-	pr_err("%s in error, invalid parameter(ch: %d, path: %d) \n", __func__,
+	pr_err("[ERR][P_DEMUX] %s: invalid parameter(ch: %d, path: %d) \n", __func__,
 	       ch, path);
 }
 
@@ -287,7 +287,7 @@ error_data_array:
 volatile void __iomem *VIOC_PXDEMUX_GetAddress(void)
 {
 	if (pPXDEMUX_reg == NULL)
-		pr_err("%s pPD:%p \n", __func__, pPXDEMUX_reg);
+		pr_err("[ERR][P_DEMUX] %s pPD:%p \n", __func__, pPXDEMUX_reg);
 
 	return pPXDEMUX_reg;
 }
@@ -298,12 +298,12 @@ static int __init vioc_pxdemux_init(void)
 	ViocPXDEMUX_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_pxdemux");
 
 	if (ViocPXDEMUX_np == NULL) {
-		pr_info("vioc-pxdemux: disabled\n");
+		pr_info("[INF][P_DEMUX] vioc-pxdemux: disabled\n");
 	} else {
 		pPXDEMUX_reg = (volatile void __iomem *)of_iomap(ViocPXDEMUX_np, 0);
 
 		if (pPXDEMUX_reg)
-			pr_info("vioc-pxdemux: 0x%p\n", pPXDEMUX_reg);
+			pr_info("[INF][P_DEMUX] vioc-pxdemux: 0x%p\n", pPXDEMUX_reg);
 	}
 	return 0;
 }

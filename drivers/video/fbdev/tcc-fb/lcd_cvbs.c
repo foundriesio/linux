@@ -65,7 +65,7 @@ static struct mutex panel_lock;
 
 static int cvbslcd_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -166,7 +166,7 @@ static int cvbslcd_probe(struct platform_device *pdev)
 {
 	unsigned int type;
 
-	printk("%s\n", __func__);
+	pr_debug("[DBG][LCD] %s\n", __func__);
 
 	mutex_init(&panel_lock);
 
@@ -217,7 +217,7 @@ static struct platform_driver cvbslcd_driver = {
 
 static __init int cvbslcd_init(void)
 {
-	printk("~ %s ~ \n", __func__);
+	pr_debug("[DBG][LCD] %sl\n", __func__);
 	return platform_driver_register(&cvbslcd_driver);
 }
 

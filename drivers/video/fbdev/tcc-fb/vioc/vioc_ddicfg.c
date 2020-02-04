@@ -25,7 +25,7 @@
 
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "\e[33mvioc_ddicfg:\e[0m " msg); }
+#define dprintk(msg...)	if (debug) { printk("\e[33m[DBG][DDICFG]\e[0m " msg); }
 
 static volatile void __iomem *pDDICFG_reg = NULL;
 
@@ -95,7 +95,7 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 		break;
 	#endif
 	default:
-		pr_err("%s: Wrong type:%d\n", __func__, type);
+		pr_err("[ERR][DDICFG] %s: Wrong type:%d\n", __func__, type);
 		break;
 	}
 
@@ -151,7 +151,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 		break;
 	#endif
 	default:
-		pr_err("%s: Wrong type:%d\n", __func__, type);
+		pr_err("[ERR][DDICFG] %s: Wrong type:%d\n", __func__, type);
 		break;
 	}
 
@@ -466,7 +466,7 @@ void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg, int path,
 				 unsigned int bit)
 {
 	if (path < 0) {
-		pr_err("%s: path:%d wrong path \n", __func__, path);
+		pr_err("[ERR][DDICFG] %s: path:%d wrong path \n", __func__, path);
 		return;
 	}
 
@@ -512,7 +512,7 @@ int VIOC_DDICONFIG_GetViocRemap(void)
 	}
 
 #if 0
-	printk("%s: chip(%s) remap(%s)\n", __func__,
+	pr_info("[INF][DDICFG] %s: chip(%s) remap(%s)\n", __func__,
 		system_rev ? "CS" : "ES",
 		val ? "on" : "off");
 #endif
@@ -538,9 +538,9 @@ void VIOC_DDICONFIG_DUMP(void)
 	unsigned int cnt = 0;
 	volatile void __iomem *pReg = VIOC_DDICONFIG_GetAddress();
 
-	printk("DDICONFIG :: 0x%p \n", pReg);
+	pr_debug("[DBG][DDICFG] DDICONFIG :: 0x%p \n", pReg);
 	while (cnt < 0x50) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][DDICFG] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -551,7 +551,7 @@ void VIOC_DDICONFIG_DUMP(void)
 volatile void __iomem *VIOC_DDICONFIG_GetAddress(void)
 {
 	if (pDDICFG_reg == NULL)
-		pr_err("%s pDDICFG_reg:%p \n", __func__, pDDICFG_reg);
+		pr_err("[ERR][DDICFG] %s pDDICFG_reg:%p \n", __func__, pDDICFG_reg);
 
 	return pDDICFG_reg;
 }
@@ -562,12 +562,12 @@ static int __init vioc_ddicfg_init(void)
 	ViocDDICONFIG_np =
 		of_find_compatible_node(NULL, NULL, "telechips,ddi_config");
 	if (ViocDDICONFIG_np == NULL) {
-		pr_info("vioc-ddicfg: disabled\n");
+		pr_info("[INF][DDICFG] vioc-ddicfg: disabled\n");
 	} else {
 		pDDICFG_reg = (volatile void __iomem *)of_iomap(ViocDDICONFIG_np, 0);
 
 		if (pDDICFG_reg)
-			pr_info("vioc-ddicfg: 0x%p\n", pDDICFG_reg);
+			pr_info("[INF][DDICFG] vioc-ddicfg: 0x%p\n", pDDICFG_reg);
 	}
 	return 0;
 }

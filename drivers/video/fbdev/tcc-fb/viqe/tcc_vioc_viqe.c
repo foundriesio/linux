@@ -36,7 +36,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tcc_vioc_viqe_interface.h"
 
 #if 0
-#define dprintk(msg...)	 { printk( "tcc_viqe: " msg); }
+#define dprintk(msg...)	 { printk("[DBG][VIQE] " msg); }
 #else
 #define dprintk(msg...)	 
 #endif
@@ -46,7 +46,7 @@ static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	int ret = 0;
 	VIQE_DI_TYPE viqe_arg;
 
-	dprintk(KERN_INFO "%s  (0x%x)  \n", __FUNCTION__, cmd);
+	dprintk("%s  (0x%x)  \n", __func__, cmd);
 
 	switch (cmd) {
 		case IOCTL_VIQE_INITIALIZE:
@@ -98,7 +98,7 @@ static long tcc_viqe_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 			break;
 
 		default:
-			printk("viqe: unrecognized ioctl (0x%x)\n", cmd); 
+			pr_warn("[WAN][VIQE] unrecognized ioctl (0x%x)\n", cmd); 
 			ret = -EINVAL;
 			break;
 	}
@@ -115,13 +115,13 @@ static long tcc_viqe_compat_ioctl(struct file *file, unsigned int cmd, unsigned 
 
 static int tcc_viqe_release(struct inode *inode, struct file *filp)
 {
-	printk("%s\n", __func__);
+	pr_info("[INF][VIQE] %s\n", __func__);
 	return 0;
 }
 
 static int tcc_viqe_open(struct inode *inode, struct file *filp)
 {
-	printk("%s\n", __func__);
+	pr_info("[INF][VIQE] %s\n", __func__);
 	return 0;
 }
 
@@ -149,14 +149,14 @@ static int __init tcc_viqe_init(void)
 	viqe_class = class_create(THIS_MODULE, VIQE_DEV_NAME);
 	device_create(viqe_class, NULL, MKDEV(VIQE_DEV_MAJOR, VIQE_DEV_MINOR), NULL, VIQE_DEV_NAME);
 
-	printk(KERN_INFO "%s\n", __FUNCTION__);
+	pr_info("[INF][VIQE] %s\n", __func__);
 	return 0;
 }
 
 static void __exit tcc_viqe_exit(void)
 {
 	unregister_chrdev(VIQE_DEV_MAJOR, VIQE_DEV_NAME);
-	printk(KERN_INFO "%s\n", __FUNCTION__);
+	pr_info("[INF][VIQE] %s\n", __func__);
 }
 
 module_init(tcc_viqe_init);

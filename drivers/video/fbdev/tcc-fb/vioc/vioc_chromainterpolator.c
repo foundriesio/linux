@@ -106,8 +106,8 @@ static int __init test_api(void)
 	Dest0 = 0x42300000;
 	Dest1 = Dest0 + (width * height);
 	Dest2 = Dest1 + (width * height);
-	printk("src  : 0x%08x    0x%08x  0x%08x \n", Src0, Src1, Src2);
-	printk("Dest: 0x%08x    0x%08x  0x%08x \n", Dest0, Dest1, Dest2);
+	pr_info("[INF][CHROMA_I] src  : 0x%08x    0x%08x  0x%08x \n", Src0, Src1, Src2);
+	pr_info("[INF][CHROMA_I] Dest: 0x%08x    0x%08x  0x%08x \n", Dest0, Dest1, Dest2);
 
 	// WMXIER
 	VIOC_WMIX_SetSize 			(wmix_reg, width, height);
@@ -140,10 +140,7 @@ static int __init test_api(void)
 	VIOC_WDMA_SetImageOffset (wdma_reg, VIOC_IMG_FMT_444SEP, width);
 	VIOC_WDMA_SetImageEnable (wdma_reg, 0);
 
-
-	printk("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	while(1);
-
 }
 #endif// CHROMA_INTERPOLATOR_TEST
 
@@ -155,12 +152,12 @@ volatile void __iomem *VIOC_ChromaInterpol_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pCHROMA_reg[Num] == NULL)
-		pr_err("%s - pDDICONFIG = %p\n", __func__, pCHROMA_reg[Num]);
+		pr_err("[ERR][CHROMA_I] %s - pDDICONFIG = %p\n", __func__, pCHROMA_reg[Num]);
 
 	return pCHROMA_reg[Num];
 
 err:
-	pr_err("%s Num:%d max num:%d \n", __func__, Num, VIOC_CINTPL_MAX);
+	pr_err("[ERR][CHROMA_I] %s Num:%d max num:%d \n", __func__, Num, VIOC_CINTPL_MAX);
 	return NULL;
 }
 
@@ -171,13 +168,13 @@ static int __init vioc_chromainterpolator_init(void)
 		of_find_compatible_node(NULL, NULL, "telechips,vioc_chroma_interpolator");
 
 	if (ViocChromaInter_np == NULL) {
-		pr_info("vioc-chroma_intpr: disabled\n");
+		pr_info("[INF][CHROMA_I] vioc-chroma_intpr: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_CINTPL_MAX; i++) {
 			pCHROMA_reg[i] = (volatile void __iomem *)of_iomap(ViocChromaInter_np, i);
 
 			if (pCHROMA_reg[i])
-				pr_info("vioc-chroma_intpr%d: 0x%p\n", i, pCHROMA_reg[i]);
+				pr_info("[INF][CHROMA_I] vioc-chroma_intpr%d: 0x%p\n", i, pCHROMA_reg[i]);
 		}
 	}
 	return 0;

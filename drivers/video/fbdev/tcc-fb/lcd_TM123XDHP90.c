@@ -102,7 +102,7 @@ struct lcd_panel tm123xdhp90_panel = {
 
 static int tm123xdhp90_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
+	pr_info("[INF][LCD] %s lcdc:%d DispOrder:%d \n", __func__, fb_pdata->ddc_info.blk_num, fb_pdata->DispOrder);
 
 	fb_pdata->FbPowerState = true;
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
@@ -113,7 +113,7 @@ static int tm123xdhp90_panel_init(struct lcd_panel *panel, struct tcc_dp_device 
 
 static int tm123xdhp90_set_power(struct lcd_panel *panel, int on, struct tcc_dp_device *fb_pdata)
 {
-	pr_info("%s : %d\n", __func__, on);
+	pr_info("[INF][LCD] %s : %d\n", __func__, on);
 
 	mutex_lock(&lvds_tm123xdhp90.panel_lock);
 	fb_pdata->FbPowerState = panel->state = on;
@@ -257,10 +257,10 @@ static int tm123xdhp90_set_power(struct lcd_panel *panel, int on, struct tcc_dp_
 		unsigned int status;
 		status = VIOC_LVDS_PHY_CheckStatus(lvds_tm123xdhp90.main_port, lvds_tm123xdhp90.sub_port);
 		if(!(status & 0x1))
-			pr_info("%s: LVDS_PHY Primary port(%d) is in death \n",
+			pr_info("[INF][LCD] %s: LVDS_PHY Primary port(%d) is in death \n",
 					__func__, lvds_tm123xdhp90.main_port);
 		if(!(status & 0x2))
-			pr_info("%s: LVDS_PHY Secondary port(%d) is in death \n",
+			pr_info("[INF][LCD] %s: LVDS_PHY Secondary port(%d) is in death \n",
 					__func__, lvds_tm123xdhp90.sub_port);
 	}
 	return 0;
@@ -272,7 +272,7 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 	if(np){
 		lvds_tm123xdhp90.gpio.power_on= of_get_named_gpio(np, "power-on-gpios", 0);
 		if(!gpio_is_valid(lvds_tm123xdhp90.gpio.power_on)) {
-			printk("%s: err to get power_on gpios: ret:%x\n", __func__, lvds_tm123xdhp90.gpio.power_on);
+			pr_info("[INF][LCD] %s: power_on gpios: n/a:%x\n", __func__, lvds_tm123xdhp90.gpio.power_on);
 			lvds_tm123xdhp90.gpio.power_on = -1;
 		} else {
 			gpio_request(lvds_tm123xdhp90.gpio.power_on, "lcd_on");
@@ -281,7 +281,7 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 
 		lvds_tm123xdhp90.gpio.reset= of_get_named_gpio(np, "reset-gpios", 0);
 		if(!gpio_is_valid(lvds_tm123xdhp90.gpio.reset)) {
-			printk("%s: err to get reset gpios: ret:%x\n", __func__, lvds_tm123xdhp90.gpio.reset);
+			pr_info("[INF][LCD] %s: get reset gpios: n/a:%x\n", __func__, lvds_tm123xdhp90.gpio.reset);
 			lvds_tm123xdhp90.gpio.reset = -1;
 		} else {
 			gpio_request(lvds_tm123xdhp90.gpio.reset, "lcd_reset");
@@ -290,7 +290,7 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 
 		lvds_tm123xdhp90.gpio.display_on= of_get_named_gpio(np, "display-on-gpios", 0);
 		if(!gpio_is_valid(lvds_tm123xdhp90.gpio.display_on)) {
-			printk("%s: err to get display_on gpios: ret:%x\n", __func__, lvds_tm123xdhp90.gpio.display_on);
+			pr_info("[INF][LCD] %s: display_on gpios: n/a:%x\n", __func__, lvds_tm123xdhp90.gpio.display_on);
 			lvds_tm123xdhp90.gpio.display_on = -1;
 		} else {
 			gpio_request(lvds_tm123xdhp90.gpio.display_on, "lvds_display");
@@ -299,7 +299,7 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 
 		lvds_tm123xdhp90.gpio.stby = of_get_named_gpio(np, "lvds-stby-gpios", 0);
 		if(!gpio_is_valid(lvds_tm123xdhp90.gpio.stby)) {
-			printk("%s: err to get lvds_stby gpios: ret:%x\n", __func__, lvds_tm123xdhp90.gpio.stby);
+			pr_info("[INF][LCD] %s: lvds_stby gpios: n/a:%x\n", __func__, lvds_tm123xdhp90.gpio.stby);
 			lvds_tm123xdhp90.gpio.stby = -1;
 		} else {
 			gpio_request(lvds_tm123xdhp90.gpio.stby, "lcd_stbyb");
@@ -308,7 +308,7 @@ static void tm123xdhp90_parse_dt(struct device_node *np)
 
 		lvds_tm123xdhp90.gpio.power= of_get_named_gpio(np, "lvds-power-gpios", 0);
 		if(!gpio_is_valid(lvds_tm123xdhp90.gpio.power)) {
-			printk("%s: err to get lvds_power gpios: ret:%x\n", __func__, lvds_tm123xdhp90.gpio.power);
+			pr_info("[INF][LCD] %s: lvds_power gpios: n/a:%x\n", __func__, lvds_tm123xdhp90.gpio.power);
 			lvds_tm123xdhp90.gpio.power = -1;
 		} else {
 			gpio_request(lvds_tm123xdhp90.gpio.power, "lvds_power");
@@ -322,7 +322,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	struct device_node *np;
 	unsigned int second_display = 0, value;
 
-	pr_info("%s : %s\n", __func__,  pdev->name);
+	pr_debug("[DBG][LCD] %s : %s\n", __func__,  pdev->name);
 
 	memset(&lvds_tm123xdhp90, 0x00, sizeof(struct lvds_data));
 
@@ -335,7 +335,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	np = of_parse_phandle(pdev->dev.of_node, "lvds0", 0);
 	lvds_tm123xdhp90.clk = of_clk_get(np, 0);
 	if(IS_ERR(lvds_tm123xdhp90.clk)){
-		pr_err("%s[%d]: failed to get lvds clock \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: failed to get lvds clock \n", __func__, __LINE__);
 		lvds_tm123xdhp90.clk = NULL;
 		return -ENODEV;
 	}
@@ -349,19 +349,19 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 #endif
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "ports", 0, &lvds_tm123xdhp90.main_port) < 0) {
-		pr_err("%s[%d]: the property does not exist \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		return -ENODEV;
 	}
 	pr_info("%s lvds - main_port: %d\n", __func__, lvds_tm123xdhp90.main_port);
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "ports", 1, &lvds_tm123xdhp90.sub_port) < 0) {
-		pr_err("%s[%d]: the property does not exist \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		return -ENODEV;
 	}
 	pr_info("%s lvds - sub_port: %d\n", __func__, lvds_tm123xdhp90.sub_port);
 
 	if(of_property_read_u32_index(pdev->dev.of_node, "mux_select", 1, &lvds_tm123xdhp90.lcdc_select) < 0) {
-		pr_err("%s[%d]: the property does not exist \n", __func__, __LINE__);
+		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
@@ -396,7 +396,7 @@ static struct platform_driver tm123xdhp90_lcd = {
 
 static __init int tm123xdhp90_init(void)
 {
-	printk("~ %s ~ \n", __func__);
+	pr_debug("[DBG][LCD] %s\n", __func__);
 	return platform_driver_register(&tm123xdhp90_lcd);
 }
 static __exit void tm123xdhp90_exit(void)

@@ -59,7 +59,7 @@ static int debug = 1;
 #else
 static int debug = 0;
 #endif
-#define dprintk(fmt, args...) if(debug) printk("\e[38m"fmt"\e[0m", ## args);
+#define dprintk(fmt, args...) if(debug) printk("\e[38m[DBG][MADI] "fmt"\e[0m", ## args);
 
 #define __madi_dreg_r	__raw_readl
 #define __madi_dreg_w	__raw_writel
@@ -123,13 +123,13 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int viqe_madi_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		printk(KERN_ERR	 "%s():  This address is not allowed. \n", __func__);
+		pr_err("[ERR][MADI] %s(): This address is not allowed. \n", __func__);
 		return -EAGAIN;
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
-		printk(KERN_ERR	 "%s():  Virtual address page port error. \n", __func__);
+		pr_err("[ERR][MADI] %s(): Virtual address page port error. \n", __func__);
 		return -EAGAIN;
 	}
 
@@ -225,7 +225,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 		case TCC_VIQE_MADI_INIT:
 			{
 				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(stVIQE_MADI_INIT_TYPE))) {
-					printk(KERN_ALERT "%s():  Error copy_from_user(%d)\n", __func__, cmd);
+					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 				else {
@@ -302,7 +302,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 				stVIQE_MADI_PROC_TYPE proc_info;
 
 				if(copy_from_user(&proc_info,(void *)arg, sizeof(stVIQE_MADI_PROC_TYPE))) {
-					printk(KERN_ALERT "%s():  Error copy_from_user(%d)\n", __func__, cmd);
+					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 				else
@@ -350,7 +350,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 						ret = wait_event_interruptible_timeout(viqe_madi->data->poll_wq,  viqe_madi->data->block_operating == 0, msecs_to_jiffies(200));
 						if (ret <= 0) {
 							viqe_madi->data->block_operating = 0;
-							printk("%s():  time out(%d), line(%d). \n", __func__, ret, __LINE__);
+							pr_warn("[WAR][MADI] %s(): time out(%d), line(%d). \n", __func__, ret, __LINE__);
 						}
 					} else if (proc_info.responsetype  == VIQE_MADI_NOWAIT) {
 						// TODO:
@@ -410,7 +410,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 				// ioctl /dev/viqe_madi 0x10001 0 8 1920 1080 0 0 256 256 0 8
 				// ioctl /dev/viqe_madi 0x10001 0 8 1920 1080 0 0 1920 1080 0 8
 				if(copy_from_user(&viqe_madi->info->init,(void *)arg, sizeof(stVIQE_MADI_INIT_TYPE))) {
-					printk(KERN_ALERT "%s():  Error copy_from_user(%d)\n", __func__, cmd);
+					pr_err("[ERR][MADI] %s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 				else {
@@ -449,7 +449,7 @@ static long viqe_madi_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 	#endif
 
 		default:
-			printk(KERN_ALERT "%s():  Not Supported viqe_madi_IOCTL(%d). \n", __func__, cmd);
+			pr_err("[ERR][MADI] %s(): Not Supported viqe_madi_IOCTL(%d). \n", __func__, cmd);
 			break;			
 	}
 
@@ -470,7 +470,7 @@ static int viqe_madi_release(struct inode *inode, struct file *filp)
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct viqe_madi_type	*viqe_madi = dev_get_drvdata(misc->parent);
 
-	dprintk("%s():  In -release(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, viqe_madi->data->dev_opened, viqe_madi->data->block_operating, \
+	dprintk("%s(): In -release(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, viqe_madi->data->dev_opened, viqe_madi->data->block_operating, \
 			viqe_madi->data->block_waiting, viqe_madi->data->cmd_count, viqe_madi->data->irq_reged);
 
 	if (viqe_madi->data->dev_opened > 0) {
@@ -483,7 +483,7 @@ static int viqe_madi_release(struct inode *inode, struct file *filp)
 			int ret = 0;
 			ret = wait_event_interruptible_timeout(viqe_madi->data->cmd_wq, viqe_madi->data->block_operating == 0, msecs_to_jiffies(200));
 			if (ret <= 0) {
-	 			printk("%s(%d):  timed_out block_operation:%d, cmd_count:%d. \n", __func__, ret, viqe_madi->data->block_waiting, viqe_madi->data->cmd_count);
+	 			printk("%s(%d): timed_out block_operation:%d, cmd_count:%d. \n", __func__, ret, viqe_madi->data->block_waiting, viqe_madi->data->cmd_count);
 			}
 		}
 #endif
@@ -502,7 +502,7 @@ static int viqe_madi_release(struct inode *inode, struct file *filp)
 	if (viqe_madi->ddi_madi_clk)
 		clk_disable_unprepare(viqe_madi->ddi_madi_clk);
 
-	dprintk("%s():  Out - release(%d). \n", __func__, viqe_madi->data->dev_opened);
+	dprintk("%s(): Out - release(%d). \n", __func__, viqe_madi->data->dev_opened);
 
 	return 0;
 }
@@ -513,7 +513,7 @@ static int viqe_madi_open(struct inode *inode, struct file *filp)
 	struct viqe_madi_type	*viqe_madi = dev_get_drvdata(misc->parent);
 	
 	int ret = 0;
-	printk("%s():  In -open(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, viqe_madi->data->dev_opened, viqe_madi->data->block_operating, \
+	pr_info("[INF][MADI] %s(): In -open(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, viqe_madi->data->dev_opened, viqe_madi->data->block_operating, \
 			viqe_madi->data->block_waiting, viqe_madi->data->cmd_count, viqe_madi->data->irq_reged);
 
 	if (viqe_madi->ddi_madi_clk)
@@ -540,7 +540,7 @@ static int viqe_madi_open(struct inode *inode, struct file *filp)
 
 	viqe_madi->data->dev_opened++;
 
-	printk("%s():  Out - open(%d). \n", __func__, viqe_madi->data->dev_opened);
+	pr_info("[INF][MADI] %s(): Out - open(%d). \n", __func__, viqe_madi->data->dev_opened);
 	return ret;
 }
 
@@ -568,7 +568,7 @@ static int viqe_madi_probe(struct platform_device *pdev)
 
 	viqe_madi->ddi_madi_clk = of_clk_get(pdev->dev.of_node, 0);
 	if (IS_ERR(viqe_madi->ddi_madi_clk)){
-		printk("%s-%d Error:: get clock 0 \n", __func__, __LINE__);
+		pr_err("[ERR][MADI] %s-%d Error:: get clock 0 \n", __func__, __LINE__);
 		viqe_madi->ddi_madi_clk = NULL;
 		ret = -EIO;
 		goto err_misc_alloc;
@@ -576,7 +576,7 @@ static int viqe_madi_probe(struct platform_device *pdev)
 
 	viqe_madi->peri_madi_clk = of_clk_get(pdev->dev.of_node, 1);
 	if (IS_ERR(viqe_madi->peri_madi_clk)){
-		printk("%s-%d Error:: get clock 1 \n", __func__, __LINE__);
+		pr_err("[ERR][MADI] %s-%d Error:: get clock 1 \n", __func__, __LINE__);
 		viqe_madi->peri_madi_clk = NULL;
 		ret = -EIO;
 		goto err_misc_alloc;
@@ -584,7 +584,7 @@ static int viqe_madi_probe(struct platform_device *pdev)
 
 	ret = clk_set_rate(viqe_madi->peri_madi_clk, 400000000);
 	if (ret) {
-		printk("%s-%d Clock rate change failed %d\n", __func__, __LINE__, ret);
+		pr_err("[ERR][MADI] %s-%d Clock rate change failed %d\n", __func__, __LINE__, ret);
 		ret = -EIO;
 		goto err_misc_alloc;
 	}
@@ -629,7 +629,7 @@ static int viqe_madi_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, viqe_madi);
 
-	pr_info("%s: viqe_madi Driver Initialized\n", pdev->name);
+	pr_info("[INF][MADI] %s: viqe_madi Driver Initialized\n", pdev->name);
 
 	return 0;
 
@@ -650,7 +650,7 @@ err_info_alloc:
 err_misc_alloc:
 	kfree(viqe_madi);
 
-	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	pr_err("[ERR][MADI] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 

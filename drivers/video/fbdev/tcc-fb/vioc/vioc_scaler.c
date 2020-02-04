@@ -83,7 +83,7 @@ unsigned int VIOC_SC_GetPlusSize(unsigned int src_height, unsigned dst_height)
 			plus_height += 1;
 	}
 
-//	printk("%s-%d :: %d -> %d scale, %d => %d\n", __func__, __LINE__, src_height, dst_height, plus_temp, plus_height);
+//	pr_info("[INF][SC] %s-%d :: %d -> %d scale, %d => %d\n", __func__, __LINE__, src_height, dst_height, plus_temp, plus_height);
 
 	return 0x4;
 //	return plus_height;
@@ -126,10 +126,10 @@ volatile void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (ViocSC_np == NULL) {
-		pr_err("%s VIOC_SC NULL : %p \n", __func__, ViocSC_np);
+		pr_err("[ERR][SC] %s VIOC_SC NULL : %p \n", __func__, ViocSC_np);
 	} else {
 		if (pScale[Num] == NULL)
-			pr_err("Error : scaler number over range %d : function:%s \n  ",
+			pr_err("[ERR][SC] scaler number over range %d : function:%s \n  ",
 			       Num, __func__);
 		else
 			pScaler = pScale[Num];
@@ -138,7 +138,7 @@ volatile void __iomem *VIOC_SC_GetAddress(unsigned int vioc_id)
 	return pScaler;
 
 err:
-	pr_err("Error:: %s Num:%d max num:%d \n", __func__, Num, VIOC_SCALER_MAX);
+	pr_err("[ERR][SC] %s Num:%d max num:%d \n", __func__, Num, VIOC_SCALER_MAX);
 	return NULL;	
 }
 
@@ -154,9 +154,9 @@ void VIOC_SCALER_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	if (pReg == NULL)
 		pReg = VIOC_SC_GetAddress(vioc_id);
 
-	printk("SCALER-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][SC] SCALER-%d :: 0x%p \n", Num, pReg);
 	while (cnt < 0x20) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -165,7 +165,7 @@ void VIOC_SCALER_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("Error:: %s Num:%d max num:%d \n", __func__, Num, VIOC_SCALER_MAX);
+	pr_err("[ERR][SC] %s Num:%d max num:%d \n", __func__, Num, VIOC_SCALER_MAX);
 	return;
 }
 
@@ -175,7 +175,7 @@ static int __init vioc_sc_init(void)
 	ViocSC_np = of_find_compatible_node(NULL, NULL, "telechips,scaler");
 
 	if (ViocSC_np == NULL) {
-		pr_err("cann't find vioc_scaler \n");
+		pr_err("[ERR][SC] cann't find vioc_scaler \n");
 	} else {
 		for (i = 0; i < VIOC_SCALER_MAX; i++)
 			pScale[i] = (volatile void __iomem *)of_iomap(ViocSC_np,

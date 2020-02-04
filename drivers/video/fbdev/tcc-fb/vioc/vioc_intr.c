@@ -146,7 +146,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 	else if( irq == vioc_base_irq_num[3] )
 		type_clr_offset = IRQMASKCLR3_0_OFFSET;
 	else {
-		pr_err("%s-%d :: irq(%d) is wierd. \n", __func__, __LINE__, irq);
+		pr_err("[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd. \n", __func__, __LINE__, irq);
 		return -1;
 	}
 #else
@@ -276,7 +276,7 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 		else if( irq == vioc_base_irq_num[3] )
 			type_set_offset = IRQMASKSET3_0_OFFSET;
 		else {
-			pr_err("%s-%d :: irq(%d) is wierd. \n", __func__, __LINE__, irq);
+			pr_err("[ERR][VIOC_INTR] %s-%d :: irq(%d) is wierd. \n", __func__, __LINE__, irq);
 			return -1;
 		}
 #else
@@ -643,17 +643,17 @@ static int __init vioc_intr_init(void)
 	ViocIntr_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_intr");
 
 	if (ViocIntr_np == NULL) {
-		pr_info("vioc-intr: disabled [this is mandatory for vioc display]\n");
+		pr_info("[INF][VIOC_INTR] disabled [this is mandatory for vioc display]\n");
 	} else {
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
 		int i = 0;
 		for(i = 0; i < VIOC_IRQ_MAX; i++) {
 			vioc_base_irq_num[i] = irq_of_parse_and_map(ViocIntr_np, i);
-			pr_info("vioc-intr%d: irq %d\n", i, vioc_base_irq_num[i]);
+			pr_info("[INF][VIOC_INTR] vioc-intr%d: irq %d\n", i, vioc_base_irq_num[i]);
 		}
 #else
 		vioc_base_irq_num[0] = irq_of_parse_and_map(ViocIntr_np, 0);
-		pr_info("vioc-intr%d : %d\n", 0, vioc_base_irq_num[0]);
+		pr_info("[INF][VIOC_INTR] vioc-intr%d : %d\n", 0, vioc_base_irq_num[0]);
 #endif
 	}
 

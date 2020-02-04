@@ -86,7 +86,7 @@ void tca_map_convter_wait_done(unsigned int component_num)
 
 	HwVIOC_MC = VIOC_MC_GetAddress(component_num);
 	if (HwVIOC_MC == NULL) {
-		pr_err("%s: HwVIOC_MC is null\n", __func__);
+		pr_err("[ERR][MAPC] %s: HwVIOC_MC is null\n", __func__);
 		return;
 	}
 
@@ -105,7 +105,7 @@ void tca_map_convter_wait_done(unsigned int component_num)
 	}
 
 	if ((loop >= MAX_WAIT_TIEM) || (upd_loop >= MAX_WAIT_TIEM))
-		pr_err("%s  Loop (EOF :0x%d  UPD:0x%x) \n", __func__, loop,
+		pr_err("[ERR][MAPC] %s  Loop (EOF :0x%d  UPD:0x%x) \n", __func__, loop,
 		       upd_loop);
 }
 
@@ -201,7 +201,7 @@ void tca_map_convter_set(unsigned int component_num,
 
 #if 0  // debug log
 	{
-		printk("MC[0x%x] >> R[0x%lx/0x%lx/0x%lx] M[%d] idx[%d], ID[%d] Buff:[%dx%d]%dx%d F:%dx%d I:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d)\n", component_num,
+		printk("[DBG][MAPC] MC[0x%x] >> R[0x%lx/0x%lx/0x%lx] M[%d] idx[%d], ID[%d] Buff:[%dx%d]%dx%d F:%dx%d I:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d)\n", component_num,
 				__raw_readl(HwVIOC_MC+MC_CTRL), __raw_readl(HwVIOC_MC+MC_FRM_BASE_Y), __raw_readl(HwVIOC_MC+MC_STAT),
 				ImageInfo->private_data.optional_info[VID_OPT_HAVE_MC_INFO], ImageInfo->private_data.optional_info[VID_OPT_DISP_OUT_IDX], ImageInfo->private_data.optional_info[VID_OPT_BUFFER_ID],
 				ImageInfo->private_data.optional_info[VID_OPT_FRAME_WIDTH], ImageInfo->private_data.optional_info[VID_OPT_FRAME_HEIGHT],
@@ -318,10 +318,10 @@ void tca_map_convter_set(unsigned int component_num,
 			}
 			else
 			{
-				pr_err("1 Dolby Out type mismatch (%d != %d)\n", vioc_get_out_type(), ImageInfo->private_data.dolbyVision_info.reg_out_type);
+				pr_err("[ERR][MAPC] 1 Dolby Out type mismatch (%d != %d)\n", vioc_get_out_type(), ImageInfo->private_data.dolbyVision_info.reg_out_type);
 			}
 		} else {
-			pr_err("@@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration. \n");
+			pr_err("[ERR][MAPC] @@@@@@@@@ 3 @@@@@@@@@@ Should be implement other layer configuration. \n");
 			return;
 		}
 	}
@@ -349,7 +349,7 @@ void tca_map_convter_driver_set(unsigned int component_num, unsigned int Fwidth,
 		VIOC_MC_GetAddress(component_num);
 #if 0  // debug log
 	{
-		printk("MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n", get_vioc_index(component_num),
+		printk("[DBG][MAPC] MC[%d] >> R[0x%lx/0x%lx/0x%lx] M[%d] F:%dx%d Str(%d/%d) C:0x%08x/0x%08x T:0x%08x/0x%08x bpp(%d/%d) crop(%d/%d~%dx%d) Reserved(%d)\n", get_vioc_index(component_num),
 				__raw_readl(HwVIOC_MC+MC_CTRL), __raw_readl(HwVIOC_MC+MC_FRM_BASE_Y), __raw_readl(HwVIOC_MC+MC_STAT),
 				1, Fwidth, Fheight,
 				mapConv_info->m_uiLumaStride, mapConv_info->m_uiChromaStride,

@@ -37,7 +37,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 //#define ADV7343_DBG
 #ifdef ADV7343_DBG
 #define dprintk(fmt, args...)                                                  \
-	printk("\e[33m[%s:%d] \e[0m" fmt, __func__, __LINE__, ##args);
+	printk("\e[33m[DBG][ADV7343][%s:%d] \e[0m" fmt, __func__, __LINE__, ##args);
 #else
 #define dprintk(fmt, args...)
 #endif
@@ -189,7 +189,7 @@ static int adv7343_i2c_write(unsigned char reg, unsigned char val)
 
 	ret = i2c_master_send(adv7343_i2c_client, data, bytes);
 	if (ret != bytes) {
-		pr_err("%s failed(%d). %s\n", __func__, ret,
+		pr_err("[ERR][ADV7343] %s failed(%d). %s\n", __func__, ret,
 		       adv7343_i2c_client == NULL ? "-ENODEV" : "");
 		return -EIO;
 	}
@@ -208,13 +208,13 @@ int adv7343_i2c_read(unsigned char reg, unsigned char *val)
 
 	bytes = 1;
 	if (i2c_master_send(adv7343_i2c_client, &reg, bytes) != bytes) {
-		pr_err("%s: read(w) failed.\n", __func__);
+		pr_err("[ERR][ADV7343] %s: read(w) failed.\n", __func__);
 		return -EIO;
 	}
 
 	bytes = 1;
 	if (i2c_master_recv(adv7343_i2c_client, val, bytes) != bytes) {
-		pr_err("%s: read(r) failed.\n", __func__);
+		pr_err("[ERR][ADV7343] %s: read(r) failed.\n", __func__);
 		return -EIO;
 	}
 
@@ -310,7 +310,7 @@ static int adv7343_set_mode(int mode, int input, int starter_flag)
 			err = adv7343_i2c_write(reg, val);
 
 		if (err < 0) {
-			pr_err("%s: Set mode i2c write error\n", __func__);
+			pr_err("[ERR][ADV7343] %s: Set mode i2c write error\n", __func__);
 			break;
 		}
 

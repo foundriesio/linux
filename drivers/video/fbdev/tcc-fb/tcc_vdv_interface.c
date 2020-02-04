@@ -96,7 +96,7 @@ static unsigned int hdmi_sz_vsvdb = 0;
 static char DV_RGB_Tunneling = 0;
 
 static int debug = 0;
-#define dprintk(msg...)	 if (debug) { printk( "vioc_v_dv: " msg); }
+#define dprintk(msg...)	 if (debug) { printk("[DBG][DV] " msg); }
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST)
 extern void tca_edr_inc_check_count(unsigned int nInt, unsigned int nTry, unsigned int nProc, unsigned int nUpdated, unsigned int bInit_all);
@@ -168,7 +168,8 @@ void __iomem * _get_virtual_address(unsigned int phy_addr)
 
 	if((phy_addr < pmap_dv_regs.base) || (phy_addr > (pmap_dv_regs.base + pmap_dv_regs.size)))
 	{
-		printk("Error: phy(0x%x) is more or less than available region(0x%x ~ 0x%x).\n", phy_addr, pmap_dv_regs.base, pmap_dv_regs.base + pmap_dv_regs.size); 
+		pr_err("[ERR][DV] phy(0x%x) is more or less than available region(0x%x ~ 0x%x).\n",
+			phy_addr, pmap_dv_regs.base, pmap_dv_regs.base + pmap_dv_regs.size); 
 		return 0x00;
 	}
 
@@ -252,7 +253,7 @@ void vioc_v_dv_set_output_color_format(unsigned int pxdw, unsigned int swap)
 			break;
 	}
 
-	printk("%s-%d :: color format %d :: pxdw(%d), swap(%d)\n",
+	pr_info("[INF][DV] %s-%d :: color format %d :: pxdw(%d), swap(%d)\n",
 					__func__, __LINE__, out_color_format, pxdw, swap);
 
 }
@@ -313,7 +314,7 @@ void voic_v_dv_set_hdmi_timming(struct lcdc_timimg_parms_t *mode, int bHDMI_Out,
 	VDE_VStart	= 10; //Need to fix
 	VDE_HStart	= 20; //Need to fix
 
-	pr_info("@@ Dolby-path (%d : 0-DOVI, 1-HDR10, 2-SDR(%d), 3-DOVI_LL) :: HDMI ? %d (%d khz):: %d / %d / %d / %d / %d / %d / %d / %d \n",
+	pr_info("[INF][DV] @@ Dolby-path (%d : 0-DOVI, 1-HDR10, 2-SDR(%d), 3-DOVI_LL) :: HDMI ? %d (%d khz):: %d / %d / %d / %d / %d / %d / %d / %d \n",
 			vioc_get_out_type(), DV_HDMI_noYUV422_OUT,
 			bHDMI_Out, DV_HDMI_CLK_Khz,
 			Hactive, Vactive, Hfront, Hsync, Hback, Vfront, Vsync, Vback);
@@ -1568,25 +1569,25 @@ int vioc_v_dv_prog(unsigned int meta_PhyAddr, unsigned int reg_PhyAddr, unsigned
 	}
 
 	if(reg_PhyAddr == 0x00){
-		pr_err("reg_PhyAddr is NULL \n");
+		pr_err("[ERR][DV] reg_PhyAddr is NULL \n");
 		return -1;
 	}
 
 	reg_VirtAddr = _get_virtual_address(reg_PhyAddr);
 	if(reg_VirtAddr == 0x00){
-		pr_err("reg_VirtAddr is NULL \n");
+		pr_err("[ERR][DV] reg_VirtAddr is NULL \n");
 		return -1;
 	}
 
 	if( ((DOVI == vioc_get_out_type()) || (DOVI_LL == vioc_get_out_type())) && meta_PhyAddr == 0x00) {
-		pr_err("meta_PhyAddr is NULL \n");
+		pr_err("[ERR][DV] meta_PhyAddr is NULL \n");
 		return -1;
 	}
 
 	if(meta_PhyAddr != 0x00){
 		meta_VirtAddr = _get_virtual_address(meta_PhyAddr);
 		if(meta_VirtAddr == 0x00){
-			pr_err("meta_VirtAddr is NULL \n");
+			pr_err("[ERR][DV] meta_VirtAddr is NULL \n");
 			return -1;
 		}
 		bMeta_CurrStatus = 1;
@@ -1650,10 +1651,10 @@ static int __init _vioc_v_dv_init(void)
 
 	pBase_vAddr = ioremap_nocache((unsigned int)pmap_dv_regs.base, PAGE_ALIGN(pmap_dv_regs.size));
 	if(pBase_vAddr == NULL){
-		pr_err("Regs ioremap failed \n");
+		pr_err("[ERR][DV] Regs ioremap failed \n");
 	}
 
-	pr_info("Pmap for Dolby :: Phy(0x%x - 0x%x) => Virt(0x%p) \n", (unsigned int)pmap_dv_regs.base, pmap_dv_regs.size, pBase_vAddr);
+	pr_info("[INF][DV] Pmap for Dolby :: Phy(0x%x - 0x%x) => Virt(0x%p) \n", (unsigned int)pmap_dv_regs.base, pmap_dv_regs.size, pBase_vAddr);
 
 	return 0;
 }

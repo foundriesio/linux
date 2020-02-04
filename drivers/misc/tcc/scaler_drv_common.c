@@ -78,10 +78,10 @@ extern int CheckSarPathSelection(unsigned int component);
 //#define  DUMP_REG
 
 static int debug	   = 0;
-#define dprintk(msg...)	if(debug) { 	printk( "\x1b[1;38m scaler_common:  " msg); printk(" \x1b[0m ");	}
+#define dprintk(msg...)	if(debug) { printk("[DBG][SCALER] " msg); }
 
 static int pldebug	   = 0;
-#define plug_debug(msg...)	if(pldebug) { printk("\x1b[1;32m scaler_common:  " msg); printk(" \x1b[0m "); }
+#define plug_debug(msg...) if(pldebug) { printk("[DBG][SCALER] " msg); }
 
 #define TCC_PA_VIOC_CFGINT	(HwVIOC_BASE + 0xA000)
 
@@ -164,13 +164,13 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int scaler_drv_common_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		printk(KERN_ERR	 "%s():  This address is not allowed. \n", __func__);
+		pr_err("[ERR][SCALER] %s(): This address is not allowed. \n", __func__);
 		return -EAGAIN;
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
-		printk(KERN_ERR	 "%s():  Virtual address page port error. \n", __func__);
+		pr_err("[ERR][SCALER] %s(): Virtual address page port error. \n", __func__);
 		return -EAGAIN;
 	}
 
@@ -212,12 +212,12 @@ int tcc_scaler_drv_common_set_path_resource(struct scaler_common_drv_type *scale
 		if(scaler->sc.mixer_bypass)
 			VIOC_CONFIG_WMIXPath(scaler->rdma.id, 1);
 		VIOC_CONFIG_PlugOut(scaler->sc.id);
-		printk("\x1b[1;38m SC(0x%x) Plugged-Out  \x1b[0m \n", scaler->sc.id);
+		pr_info("[INF][SCALER] SC(0x%x) Plugged-Out\n", scaler->sc.id);
 	}
 	else{
-		printk("\x1b[1;38m SC(0x%x) No Plugged-Out  \x1b[0m \n", scaler->sc.id);
+		pr_info("[INF][SCALER] SC(0x%x) No Plugged-Out\n", scaler->sc.id);
 	}
-	
+
 	scaler->rdma.id = VIOC_RDMA + vioc_resorce->rdma_num;
 	scaler->rdma.reg = 	VIOC_RDMA_GetAddress(scaler->rdma.id);
 
@@ -274,10 +274,10 @@ int tcc_scaler_drv_common_set_path_resource(struct scaler_common_drv_type *scale
 
 
 
-	printk("\x1b[1;38m Comp_Num:: rdma:0x%x wmixer:0x%x wdma:0x%x sc:0x%x sc_path:%s mixer_bypass(%d) \n ",
+	pr_info("[INF][SCALER] Comp_Num:: rdma:0x%x wmixer:0x%x wdma:0x%x sc:0x%x sc_path:%s mixer_bypass(%d) \n ",
 			scaler->rdma.id, scaler->wmix.id, scaler->wdma.id, scaler->sc.id, scaler->sc.path == 0 ? "front" : "rear", scaler->sc.mixer_bypass);
-	dprintk("\x1b[1;38m Register:: rdma:0x%p wmixer:0x%p wdma:0x%p sc:0x%p \n ", scaler->rdma.reg, scaler->wmix.reg, scaler->wdma.reg, scaler->sc.reg);
-	printk("INTR ID:%d bit :%d \x1b[0m  \n ", scaler->vioc_intr->id, scaler->vioc_intr->bits);
+	dprintk("Register:: rdma:0x%p wmixer:0x%p wdma:0x%p sc:0x%p \n ", scaler->rdma.reg, scaler->wmix.reg, scaler->wdma.reg, scaler->sc.reg);
+	pr_info("[INF][SCALER] INTR ID:%d bit :%d \n ", scaler->vioc_intr->id, scaler->vioc_intr->bits);
 	
 	return 0;
 }
@@ -320,7 +320,7 @@ static int tcc_scaler_drv_common_set_path_selection(struct scaler_common_drv_typ
 			return 0;
 
 		if(component_num < 0)
-			pr_info(" %s  : RDMA :0x%x dma path selection none\n", __func__, scaler->rdma.id);
+			pr_info("[INF][SCALER] %s: RDMA :0x%x dma path selection none\n", __func__, scaler->rdma.id);
 		else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX))){
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 		}
@@ -356,7 +356,7 @@ static int tcc_component_plug_in_set(struct scaler_common_drv_type *scaler)
 	#ifdef CONFIG_VIOC_PIXEL_MAPPER
 	if(scaler->pixel_mapper_n > 0) {
 		support_plug = CheckPixelMapPathSelection(scaler->rdma.id);
-		pr_info("pixel mapper 0x%x  plug in to RDMA :0x%x \n", scaler->pixel_mapper_n, scaler->rdma.id);
+		pr_info("[INF][SCALER] pixel mapper 0x%x  plug in to RDMA :0x%x \n", scaler->pixel_mapper_n, scaler->rdma.id);
 
 		if( support_plug >= 0 )
 			ret = VIOC_CONFIG_PlugIn((unsigned int)scaler->pixel_mapper_n, scaler->rdma.id);
@@ -703,7 +703,7 @@ static char tcc_scaler_drv_common_run(struct scaler_common_drv_type *scaler)
 		ret = wait_event_interruptible_timeout(scaler->data->poll_wq,  scaler->data->block_operating == 0, msecs_to_jiffies(500));
 		if (ret <= 0) {
 			scaler->data->block_operating = 0;
-			printk("%s():  time out(%d), line(%d). \n", __func__, ret, __LINE__);
+			printk("%s(): time out(%d), line(%d)\n", __func__, ret, __LINE__);
 		}
 		// look up table use
 		if(scaler->info->lut.use_lut) {
@@ -746,7 +746,7 @@ static irqreturn_t scaler_drv_common_handler(int irq, void *client_data)
 
 	vioc_intr_clear(scaler->vioc_intr->id, scaler->vioc_intr->bits);
 
-	dprintk("%s():  block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d). \n", __func__, 	\
+	dprintk("%s(): block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n", __func__, 	\
 			scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);		
 
 	if(scaler->data->block_operating >= 1)
@@ -788,7 +788,7 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 	struct scaler_common_drv_type	*scaler = dev_get_drvdata(misc->parent);
 	int ret = 0;
 
-	dprintk("%s():  cmd(%d), block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d). \n", __func__, 	\
+	dprintk("%s(): cmd(%d), block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n", __func__, 	\
 			cmd, scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);
 
 	switch(cmd) {
@@ -797,7 +797,7 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 				struct tc_scaler_path_set sc_drv_res;
 
 				if(copy_from_user(&sc_drv_res,(struct tc_scaler_path_set *)arg, sizeof(struct tc_scaler_path_set))) {
-					printk(KERN_ALERT "%s():  Error copy_from_user(%d)\n", __func__, cmd);
+					printk(KERN_ALERT "%s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 				mutex_lock(&scaler->data->io_mutex);
@@ -817,7 +817,7 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 			{
 				struct tc_scaler_filter2D_set sc_drv_filter_res;
 				if(copy_from_user(&sc_drv_filter_res,(struct tc_scaler_filter2D_set *)arg, sizeof(struct tc_scaler_filter2D_set))) {
-					printk(KERN_ALERT "%s():  Error copy_from_user(%d)\n", __func__, cmd);
+					printk(KERN_ALERT "%s(): Error copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 				mutex_lock(&scaler->data->io_mutex);
@@ -839,7 +839,7 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 				ret = wait_event_interruptible_timeout(scaler->data->cmd_wq, scaler->data->block_operating == 0, msecs_to_jiffies(200));
 				if(ret <= 0) {
 					scaler->data->block_operating = 0;
-					printk("%s(%d):  timed_out block_operation(%d), cmd_count(%d). \n", __func__, ret, scaler->data->block_waiting, scaler->data->cmd_count);
+					printk("%s(%d): timed_out block_operation(%d), cmd_count(%d)\n", __func__, ret, scaler->data->block_waiting, scaler->data->cmd_count);
 				}
 			#if 1//def DUMP_REG
 				VIOC_RDMA_DUMP(NULL, scaler->rdma.id);
@@ -856,14 +856,14 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 				memcpy(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE));
 			} else {
 				if(copy_from_user(scaler->info, (SCALER_TYPE*)arg, sizeof(SCALER_TYPE))) {
-					printk(KERN_ALERT "%s():  Not Supported copy_from_user(%d). \n", __func__, cmd);
+					pr_err("[ERR][SCALER] %s(): Not Supported copy_from_user(%d)\n", __func__, cmd);
 					ret = -EFAULT;
 				}
 			}
 
 			if(ret >= 0) {
 				if(scaler->data->block_operating >= 1) {
-					printk("%s():  block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d). \n", __func__, 	\
+					pr_warn("[WAR][SCALER] %s(): block_operating(%d), block_waiting(%d), cmd_count(%d), poll_count(%d)\n", __func__, 	\
 							scaler->data->block_operating, scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->poll_count);
 				}
 
@@ -878,7 +878,7 @@ static long scaler_drv_common_ioctl(struct file *filp, unsigned int cmd, unsigne
 			mutex_unlock(&scaler->data->io_mutex);
 			return ret;
 		default:
-			printk(KERN_ALERT "%s():  Not Supported SCALER0_IOCTL(%d). \n", __func__, cmd);
+			pr_err("[ERR][SCALER] %s(): Not Supported SCALER0_IOCTL(%d)\n", __func__, cmd);
 			break;			
 	}
 
@@ -899,7 +899,7 @@ static int scaler_drv_common_release(struct inode *inode, struct file *filp)
 	struct scaler_common_drv_type	*scaler = dev_get_drvdata(misc->parent);
 
 	int ret = 0;
-	dprintk("%s():  In -release(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, scaler->data->dev_opened, scaler->data->block_operating,
+	dprintk("%s(): In -release(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, scaler->data->dev_opened, scaler->data->block_operating,
 			scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->irq_reged);
 
 #ifdef DUMP_REG
@@ -923,7 +923,7 @@ static int scaler_drv_common_release(struct inode *inode, struct file *filp)
 				VIOC_IREQConfig_DUMP(0x40, 0x40); 	//Path_SC
 				VIOC_IREQConfig_DUMP(0x200, 0x80); 	//Path_RDMA
 	#endif//
-				printk("%s(%d):  timed_out block_operation:%d, cmd_count:%d. \n", __func__, ret, scaler->data->block_waiting, scaler->data->cmd_count);
+				pr_warn("[WAR][SCALER] %s(%d): timed_out block_operation:%d, cmd_count:%d. \n", __func__, ret, scaler->data->block_waiting, scaler->data->cmd_count);
 			}
 		}
 
@@ -961,7 +961,7 @@ static int scaler_drv_common_release(struct inode *inode, struct file *filp)
 	if (scaler->clk)
 		clk_disable_unprepare(scaler->clk);
 
-	dprintk("%s():  Out - release(%d). \n", __func__, scaler->data->dev_opened);
+	dprintk("%s(): Out - release(%d)\n", __func__, scaler->data->dev_opened);
 
 	return 0;
 }
@@ -973,7 +973,7 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 	struct tc_scaler_path_set vioc_resorce;
 
 	int ret = 0;
-	printk("%s():  In -open(%d), block(%d), wait(%d), cmd(%d), irq(%d) \n", __func__, scaler->data->dev_opened, scaler->data->block_operating, \
+	pr_info("[INF][SCALER] %s(): In -open(%d), block(%d), wait(%d), cmd(%d), irq(%d)\n", __func__, scaler->data->dev_opened, scaler->data->block_operating, \
 			scaler->data->block_waiting, scaler->data->cmd_count, scaler->data->irq_reged);
 
 	if (scaler->clk)
@@ -986,10 +986,10 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 		if (ret) {
 			if (scaler->clk)
 				clk_disable_unprepare(scaler->clk);
-			printk("failed(ret %d) to aquire %s request_irq(%d). \n", ret, scaler->misc->name, scaler->irq);
+			pr_err("[ERR][SCALER] (ret %d) to aquire %s request_irq(%d)\n", ret, scaler->misc->name, scaler->irq);
 			return -EFAULT;
 		}
-		dprintk("success(ret %d) to aquire %s request_irq(%d). \n", ret, scaler->misc->name, scaler->irq);
+		dprintk("success(ret %d) to aquire %s request_irq(%d)\n", ret, scaler->misc->name, scaler->irq);
 
 		#if 1 //scaler 1 drv
 		vioc_resorce.rdma_num = 16;
@@ -1022,7 +1022,7 @@ static int scaler_drv_common_open(struct inode *inode, struct file *filp)
 
 	scaler->data->dev_opened++;
 
-	printk("%s():  Out - open(%d). \n", __func__, scaler->data->dev_opened);
+	pr_info("[INF][SCALER] %s(): Out - open(%d)\n", __func__, scaler->data->dev_opened);
 	return ret;
 }
 
@@ -1089,7 +1089,7 @@ static int scaler_drv_common_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, scaler);
 
-	pr_info("%s: Scaler Driver Initialized\n", pdev->name);
+	pr_info("[INF][SCALER] %s: Scaler Driver Initialized\n", pdev->name);
 	
 	return 0;
 
@@ -1110,7 +1110,7 @@ err_info_alloc:
 err_misc_alloc:
 	kfree(scaler);
 
-	printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	pr_info("[INF][SCALER] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 

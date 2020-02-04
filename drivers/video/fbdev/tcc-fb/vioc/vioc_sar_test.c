@@ -105,7 +105,7 @@ void wdma_sar_off(void)
 	     plug_err = VIOC_CONFIG_PlugOut(VIOC_SAR0);
 
 	if(plug_err < 0)
-	    printk("%s SAR  plug out error %d \n", __func__, plug_err);
+	    pr_info("[INF][SAR] %s SAR  plug out error %d \n", __func__, plug_err);
 
 }
 #define INCLUDE_SAR
@@ -127,7 +127,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	mSarSRCSize_TotalCnt = sizeof(Sar_source_size)/sizeof(TS_Scaler_size);
 	
 	i = loop % mSarPath_TotalCnt;
-	printk("%s   loop:%d,   i : %d ", __func__, loop, i);
+	pr_info("[INF][SAR] %s   loop:%d,   i : %d ", __func__, loop, i);
 
 	rdma_n = Sar_test_Path[i].nRDMA;
 	wmix_n = Sar_test_Path[i].nMixer;
@@ -135,11 +135,11 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	scaler_n = 0;
 
 
-	printk("LOOP:%d  i:%d  rdma:%d wmixer:%d wdma:%d  scaler:%d \n",loop, i , rdma_n, wmix_n, wdma_n, scaler_n);
+	pr_info("[INF][SAR] LOOP:%d  i:%d  rdma:%d wmixer:%d wdma:%d  scaler:%d \n",loop, i , rdma_n, wmix_n, wdma_n, scaler_n);
 
 	err_plug = VIOC_CONFIG_PlugOut(VIOC_SCALER + scaler_n); // plugin position in scaler
 	if(err_plug < 0)
-		 printk("scaler:%d   plug out error :%d \n",scaler_n, err_plug);
+		 pr_info("[INF][SAR] scaler:%d   plug out error :%d \n",scaler_n, err_plug);
 
 #if 1
  	VIOC_CONFIG_SWReset(VIOC_WDMA + wdma_n, VIOC_CONFIG_RESET);
@@ -165,7 +165,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 	{
 		err_plug = VIOC_CONFIG_PlugOut(VIOC_SCALER + scaler_n); // plugin position in scaler
 		if(err_plug < 0)
-			 printk("**  scaler:%d   plug out error :%d \n",scaler_n, err_plug);
+			 pr_err("[ERR][SAR] **  scaler:%d   plug out error :%d \n",scaler_n, err_plug);
 	}
 
 #ifdef INCLUDE_SCALER
@@ -256,7 +256,7 @@ static int __init test_sar_wdma_api(unsigned int loop)
 
 	VIOC_SARIF_SetSize (width, height);
 	VIOC_SARIF_TurnOn();
-	printk("VIOC SARIF TurnOn ~~ \n");
+	pr_info("[INF][SAR] VIOC SARIF TurnOn ~~ \n");
 #endif//
 
 	// WDMA setting...
@@ -307,14 +307,14 @@ static int __init test_sar_wdma_api(unsigned int loop)
 				if (!(WDMAIRQSTS_EOFR_MASK & status )) 	{
 					msleep(100);					
 					VIOC_WDMA_GetStatus(wdma_reg, &status);				
-					printk("~~~~~status :0x%08x  ~~~~\n", status);
+					pr_info("[INF][SAR] ~~~~~status :0x%08x  ~~~~\n", status);
 				}
 				break;
 			}
 			msleep(100);
 		}
 		VIOC_WDMA_GetStatus(wdma_reg, &status);	
-		printk("~~~~~status :0x%08x  end loop :%d   == %d x %d ~~%d x %d ~~~~\n", status, i, width, height, dest_width, dest_height);
+		pr_info("[INF][SAR] ~~~~~status :0x%08x  end loop :%d   == %d x %d ~~%d x %d ~~~~\n", status, i, width, height, dest_width, dest_height);
 	}
 
 	VIOC_RDMA_SetImageDisable(rdma_reg);
@@ -348,7 +348,7 @@ static int __init test_wdma(void)
 	msleep(100);
 	i = 0;
 	while (1) {
-		printk("         start test_sar_wdma_api call loop:%d  ################### \n", i);
+		pr_info("[INF][SAR]          start test_sar_wdma_api call loop:%d  ################### \n", i);
 
 		test_sar_wdma_api(i);
 		i++;
@@ -473,7 +473,7 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 	VIOC_SARIF_SetSize (width, height);
 	VIOC_SARIF_TurnOn();
 
-	printk("Setting End %d ~~ Sar dma: %08lx UI: %08lx ~~\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg));
+	pr_info("[INF][SAR] Setting End %d ~~ Sar dma: %08lx UI: %08lx ~~\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg));
 	
 	msleep(2000);
 
@@ -488,7 +488,7 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 
 	ret = VIOC_CONFIG_PlugOut(VIOC_SAR0);
 	if(ret != 0) {
-		printk("PLUT OUT Sar error:%d ~~~~~~~ \n", ret);
+		pr_info("[INF][SAR] PLUT OUT Sar error:%d ~~~~~~~ \n", ret);
 //		while(1);
 	}
 	
@@ -497,7 +497,7 @@ static int __init test_disp_api(unsigned int Nrdma_n)
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 	msleep(26);
 
-	printk("off DMA: %d ~~ Sar dma: %08lx UI: %08lx ~~0x%08x\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg), disp_status);
+	pr_info("[INF][SAR] off DMA: %d ~~ Sar dma: %08lx UI: %08lx ~~0x%08x\n",Nrdma_n, __raw_readl(rdma_reg),__raw_readl(UIrdma_reg), disp_status);
 
 }
 
@@ -522,16 +522,16 @@ while(1){
 			if(rdma_n == 0)
 				continue;
 
-			printk("loop :%d rdma_n:%d \n", j * i , rdma_n);
+			pr_info("[INF][SAR] loop :%d rdma_n:%d \n", j * i , rdma_n);
 		//	test_disp_api(rdma_n);
 			test_disp_api(1);
 
 		}
 		msleep(10);
-		printk("\x1b[1;38m~~~~~~------J = %d------ ~~~~~~~  \x1b[0m \n", j);
+		pr_info("\x1b[1;38m[INF][SAR] ~~~~~~------J = %d------ ~~~~~~~  \x1b[0m \n", j);
 	}
 
-	printk("\x1b[1;38m~~~~~~wdma ~~~~~~~  \x1b[0m \n");
+	pr_info("\x1b[1;38m[INF][SAR] ~~~~~~wdma ~~~~~~~  \x1b[0m \n");
 
 	test_sar_wdma_api(0);
 	msleep(100);
@@ -543,7 +543,7 @@ while(1){
 	VIOC_CONFIG_SWReset(VIOC_SAR, VIOC_CONFIG_CLEAR);
 	msleep(50);
 
-	printk("\x1b[1;38m~~~~~~display ~~~~~~~  \x1b[0m \n");
+	pr_info("\x1b[1;38m[INF][SAR] ~~~~~~display ~~~~~~~  \x1b[0m \n");
 
 	VIOC_SAR_POWER_ONOFF(1);
 	for(i = 0; i < 30 ; i++)
@@ -556,7 +556,7 @@ while(1){
 	}
 	VIOC_SAR_POWER_ONOFF(0);
 }
-	printk("\x1b[1;38m~~~~~~test end ~~~~~~~  \x1b[0m \n");
+	pr_info("\x1b[1;38m[INF][SAR] ~~~~~~test end ~~~~~~~  \x1b[0m \n");
 	
 	while(1);
 }

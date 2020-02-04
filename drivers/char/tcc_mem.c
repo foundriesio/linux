@@ -60,7 +60,7 @@
 #define DEV_MINOR   1
 #define DEV_NAME    "tmem"
 
-#define dprintk(msg...) if (0) { printk( "tMEM: " msg); }
+#define dprintk(msg...) if (0) { printk("[DBG][TMEM] " msg); }
 
 #if defined(CONFIG_ARCH_TCC893X)
 #define VPU_BASE        0x75000000
@@ -254,9 +254,9 @@ static pmap_t pmap_ump_reserved_sw;
 static void* remap_ump_reserved_sw = NULL;
 static stUmp_sw_buffer ump_sw_buf[UMP_SW_BLOCK_MAX_CNT]; //physical address
 
-#define ump_printk_info(msg...) if (0) { printk( "UMP_RESERVED_SW: " msg); }
-#define ump_printk_check(msg...) if (0) { printk( "UMP_RESERVED_SW: " msg); }
-#define ump_printk_err(msg...) if (1) { printk( "UMP_RESERVED_SW: " msg); }
+#define ump_printk_info(msg...) if (0) { printk("[INF][UMP_RESERVED_SW] " msg); }
+#define ump_printk_check(msg...) if (0) { printk("[DBG][UMP_RESERVED_SW] " msg); }
+#define ump_printk_err(msg...) if (1) { printk("[ERR][UMP_RESERVED_SW] " msg); }
 
 static void ump_sw_mgmt_init(void)
 {
@@ -264,7 +264,7 @@ static void ump_sw_mgmt_init(void)
 		return;
 
 	if(0 > pmap_get_info("ump_reserved_sw", &pmap_ump_reserved_sw)){
-		printk("%s-%d : ump_reserved_sw allocation is failed.\n", __func__, __LINE__);
+		ump_printk_err("%s-%d : ump_reserved_sw allocation is failed.\n", __func__, __LINE__);
 		return;
 	}
 
@@ -630,7 +630,7 @@ long tmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
         default:
-            printk("Unsupported cmd(0x%x) for tmem_ioctl. \n", cmd);
+            ump_printk_err("Unsupported cmd(0x%x) for tmem_ioctl. \n", cmd);
             ret = -EFAULT;
             break;
     }
@@ -724,7 +724,7 @@ int range_is_allowed(unsigned long pfn, unsigned long size)
         }
     }
 
-    printk("Can't allow to mmap : size %ld, 0x%lx ~ 0x%lx \n", size, request_start, request_end);
+    pr_err("[ERR][TMEM] Can't allow to mmap : size %ld, 0x%lx ~ 0x%lx \n", size, request_start, request_end);
 
     return -1;
 }
@@ -735,7 +735,7 @@ static int tmem_mmap(struct file *file, struct vm_area_struct *vma)
     size_t size = vma->vm_end - vma->vm_start;
 
     if (range_is_allowed(vma->vm_pgoff, size) < 0) {
-        printk(KERN_ERR  "tmem: this address is not allowed \n");
+        pr_err("[ERR][TMEM] this address is not allowed \n");
         return -EPERM;
     }
 
@@ -747,7 +747,7 @@ static int tmem_mmap(struct file *file, struct vm_area_struct *vma)
                 vma->vm_pgoff,
                 size,
                 vma->vm_page_prot)) {
-        printk(KERN_ERR  "tmem: remap_pfn_range failed \n");
+        pr_err("[ERR][TMEM] remap_pfn_range failed \n");
         return -EAGAIN;
     }
     return 0;
@@ -773,7 +773,7 @@ static struct class *tmem_class;
 static int __init tmem_init(void)
 {
     if (register_chrdev(DEV_MAJOR, DEV_NAME, &tmem_fops))
-        printk(KERN_ERR "unable to get major %d for tMEM device\n", DEV_MAJOR);
+        pr_err("[ERR][TMEM] unable to get major %d for tMEM device\n", DEV_MAJOR);
     tmem_class = class_create(THIS_MODULE, DEV_NAME);
     device_create(tmem_class, NULL, MKDEV(DEV_MAJOR, DEV_MINOR), NULL, DEV_NAME);
 

@@ -45,7 +45,7 @@ unsigned int VIOC_OUTCFG_get_disp_size(void)
 {
 	if (pr_size_reg) {
 		unsigned int size = __raw_readl(pr_size_reg + OPL_SIZE);
-		printk("\e[33msize %dx%d\e[0m\n",
+		pr_info("\e[33m[INF][OUTCFG] size %dx%d\e[0m\n",
 		       ((size & CH_SIZE_WIDTH_MASK) >> CH_SIZE_WIDTH_SHIFT),
 		       ((size & CH_SIZE_HEIGHT_MASK) >> CH_SIZE_HEIGHT_SHIFT));
 		return size;
@@ -112,7 +112,7 @@ int VIOC_OUTCFG_dispStatus(int hdmi, int composite, int component, int sub_off,
 		}
 
 		ret = (__raw_readl(pr_reg + OPL_BLANK) & PR_CH_STATUS_MASK);
-		// printk("\e[33m %s: (b%d%d 0000 0%d%d%d) = 0x%x \e[0m \n",
+		// pr_debug("\e[33m[DBG][OUTCFG] %s: (b%d%d 0000 0%d%d%d) = 0x%x \e[0m \n",
 		// __func__, main_off, sub_off, component, composite, hdmi, ret);
 
 		return ret;

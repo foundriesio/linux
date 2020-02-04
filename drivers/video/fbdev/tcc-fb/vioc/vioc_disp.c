@@ -709,7 +709,7 @@ void VIOC_DISP_TurnOff(volatile void __iomem *reg)
 			VIOC_DV_IN_SetEnable(DV_IN_OFF);
 			VIOC_CONFIG_SWReset(VIOC_DV_IN, VIOC_CONFIG_RESET);
 			VIOC_CONFIG_SWReset(VIOC_DV_IN, VIOC_CONFIG_CLEAR);
-			printk("### DISP off => DV_IN off \n");
+			pr_info("[INF][DISP] ### DISP off => DV_IN off \n");
 		}
 		else
 			return;
@@ -865,9 +865,9 @@ void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 			return;
 	}
 
-	printk("DISP-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][DISP] DISP-%d :: 0x%p \n", Num, pReg);
 	while (cnt < 0x60) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][DISP] 0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -876,7 +876,7 @@ void VIOC_DISP_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, VIOC_DISP_MAX);
+	pr_err("[ERR][DISP] %s Num:%d , max :%d \n", __func__, Num, VIOC_DISP_MAX);
 	return;
 }
 
@@ -887,12 +887,12 @@ volatile void __iomem *VIOC_DISP_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pDISP_reg[Num] == NULL)
-		pr_err("num:%d ADDRESS NULL \n", Num);
+		pr_err("[ERR][DISP] num:%d ADDRESS NULL \n", Num);
 
 	return pDISP_reg[Num];
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, VIOC_DISP_MAX);
+	pr_err("[ERR][DISP] %s Num:%d , max :%d \n", __func__, Num, VIOC_DISP_MAX);
 	return NULL;
 }
 
@@ -903,14 +903,14 @@ static int __init vioc_disp_init(void)
 
 	ViocDisp_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_disp");
 	if (ViocDisp_np == NULL) {
-		pr_info("vioc-disp: disabled [this is mandatory for vioc display]\n");
+		pr_info("[INF][DISP] disabled [this is mandatory for vioc display]\n");
 	} else {
 		for (i = 0; i < VIOC_DISP_MAX; i++) {
 			pDISP_reg[i] = (volatile void __iomem *)of_iomap(ViocDisp_np,
 							is_VIOC_REMAP ? (i + VIOC_DISP_MAX) : i);
 
 			if (pDISP_reg[i])
-				pr_info("vioc-disp%d: 0x%p\n", i, pDISP_reg[i]);
+				pr_info("[INF][DISP] vioc-disp%d: 0x%p\n", i, pDISP_reg[i]);
 		}
 	}
 

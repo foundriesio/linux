@@ -268,12 +268,12 @@ volatile void __iomem *VIOC_VIN_GetAddress(unsigned int Num)
 		goto err;
 
 	if (pVIN_reg[Num] == NULL)
-		pr_err("num:%d ADDRESS NULL \n", Num);
+		pr_err("[ERR][VIN] num:%d ADDRESS NULL \n", Num);
 
 	return pVIN_reg[Num];
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, VIOC_VIN_MAX);
+	pr_err("[ERR][VIN] %s Num:%d , max :%d \n", __func__, Num, VIOC_VIN_MAX);
 	return NULL;
 }
 
@@ -284,14 +284,14 @@ static int __init vioc_vin_init(void)
 
 	ViocVin_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_vin");
 	if (ViocVin_np == NULL) {
-		pr_info("vioc-vin: disabled\n");
+		pr_info("[INF][VIN] disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIN_MAX; i++) {
 			pVIN_reg[i] = (volatile void __iomem *)of_iomap(ViocVin_np,
 							is_VIOC_REMAP ? (i + VIOC_VIN_MAX) : i);
 
 			if (pVIN_reg[i])
-				pr_info("vioc-vin%d: 0x%p\n", i, pVIN_reg[i]);
+				pr_info("[INF][VIN] vioc-vin%d: 0x%p\n", i, pVIN_reg[i]);
 		}
 	}
 

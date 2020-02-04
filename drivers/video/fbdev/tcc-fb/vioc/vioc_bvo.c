@@ -43,7 +43,7 @@ Suite 330, Boston, MA 02111-1307 USA
 
 /* Debugging stuff */
 static int debug = 0;
-#define dprintk(msg...)	if (debug) { printk( "\e[33mvioc_bvo:\e[0m " msg); }
+#define dprintk(msg...)	if (debug) { printk( "\e[33m[DBG][BVO]\e[0m " msg); }
 
 /*
  * Registers offset
@@ -370,7 +370,7 @@ static enum bvo_format bvo_get_format(unsigned int type)
 		break;
 
 	default:
-		pr_err("%s: not supported tve format(0x%x)\n", __func__, type);
+		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n", __func__, type);
 		bfmt = BVO_FMT_NTSC_M;
 		break;
 	}
@@ -403,7 +403,7 @@ static enum bvo_spec_type bvo_get_spec_type(enum bvo_format fmt)
 		break;
 
 	default:
-		pr_err("%s: not supported tve format(0x%x)\n", __func__, fmt);
+		pr_err("[ERR][BVO] %s: not supported tve format(0x%x)\n", __func__, fmt);
 		bspec = BVO_TIMING_NTSC;
 		break;
 	}
@@ -464,7 +464,7 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	regs = &bvo_regs_val[bfmt];
 
 	if (unlikely(bfmt != regs->bfmt)) {
-		pr_err("%s: need to check bvo format(%d!=%d)\n",
+		pr_err("[ERR][BVO] %s: need to check bvo format(%d!=%d)\n",
 				__func__, bfmt, regs->bfmt);
 	}
 
@@ -679,7 +679,7 @@ void internal_tve_set_config(COMPOSITE_MODE_TYPE type)
 	//msleep(60);
 
 	if (__raw_readl(pbvo + BVO_STARV1) != regs->STARV1) {
-		pr_err("\e[31m vioc_bvo: detect error status (0x%08x->0x%08x)\e[0m\n",
+		pr_err("[ERR][BVO] \e[31m vioc_bvo: detect error status (0x%08x->0x%08x)\e[0m\n",
 			regs->STARV1, __raw_readl(pbvo + BVO_STARV1));
 	}
 
@@ -748,7 +748,7 @@ void internal_tve_init(void)
 	//	internal_tve_enable(0, 0);
 	//	internal_tve_clock_onoff(0);
 	//} else {
-	//	pr_err("%s: can't find vioc bvo \n", __func__);
+	//	pr_err("[ERR][BVO] %s: can't find vioc bvo \n", __func__);
 	//}
 }
 
@@ -790,7 +790,7 @@ void internal_tve_mv(COMPOSITE_MODE_TYPE type, unsigned int enable)
 	case BVO_FMT_NTSC_J:
 	case BVO_FMT_PAL_NC_WSS:
 	default:
-		pr_err("%s: This format(%d) doesn't support MacroVison\n", __func__, fmt);
+		pr_err("[ERR][BVO] %s: This format(%d) doesn't support MacroVison\n", __func__, fmt);
 		break;
 	}
 
@@ -902,14 +902,14 @@ void internal_tve_set_cgms_helper(unsigned char odd_field_en,
 volatile void __iomem *VIOC_TVE_GetAddress(void)
 {
 	if (pbvo == NULL)
-		pr_err("%s: BVO address NULL\n", __func__);
+		pr_err("[ERR][BVO] %s: BVO address NULL\n", __func__);
 
 	return pbvo;
 }
 
 volatile void __iomem *VIOC_TVE_VEN_GetAddress(void)
 {
-	pr_err("%s: N/A (BVO)\n", __func__);
+	pr_err("[ERR][BVO] %s: N/A (BVO)\n", __func__);
 	return NULL;
 }
 
@@ -921,20 +921,20 @@ static int __init vioc_tve_init(void)
 
 	ViocTve_np = of_find_compatible_node(NULL, NULL, "telechips,tcc-tve");
 	if (ViocTve_np == NULL) {
-		pr_info("vioc-bvo: disabled\n");
+		pr_info("[INF][BVO] disabled\n");
 	} else {
 		pbvo = (volatile void __iomem *)of_iomap(ViocTve_np, 2);
 		if (pbvo)
-			pr_info("vioc-bvo: 0x%p\n", pbvo);
+			pr_info("[INF][BVO] 0x%p\n", pbvo);
 
 		/* get clock information */
 		tve_clk_ntscpal = of_clk_get(ViocTve_np, 0);
 		if (tve_clk_ntscpal == NULL)
-			pr_err("%s: can not get ntscpal clock\n", __func__);
+			pr_err("[ERR][BVO] %s: can not get ntscpal clock\n", __func__);
 
 		tve_clk_dac = of_clk_get(ViocTve_np, 1);
 		if (tve_clk_dac == NULL)
-			pr_err("%s: can not get dac clock\n", __func__);
+			pr_err("[ERR][BVO] %s: can not get dac clock\n", __func__);
 	}
 	return 0;
 }

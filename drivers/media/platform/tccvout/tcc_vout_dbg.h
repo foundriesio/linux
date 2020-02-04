@@ -21,22 +21,22 @@
 #include <linux/slab.h>
 
 #ifdef CONFIG_TCC_VOUT_DEBUG
-#define dprintk(fmt, args...) printk("\e[33m[vout]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
+#define dprintk(fmt, args...) printk("\e[33m[DBG][VOUT]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
 #else
 #define dprintk(fmt, args...)
 #endif
 #ifdef CONFIG_TCC_VOUT_DBG_BUF
-#define dbprintk(fmt, args...) printk("\e[36m[vout]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
+#define dbprintk(fmt, args...) printk("\e[36m[DBG][VOUT]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
 #else
 #define dbprintk(fmt, args...)
 #endif
 #ifdef CONFIG_TCC_VOUT_DBG_INT
-#define dtprintk(fmt, args...) printk("\e[35m[vout]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
+#define dtprintk(fmt, args...) printk("\e[35m[DBG][VOUT]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
 #else
 #define dtprintk(fmt, args...)
 #endif
 #ifdef CONFIG_TCC_VOUT_DBG_INFO
-#define diprintk(fmt, args...) printk("\e[33m[vout]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
+#define diprintk(fmt, args...) printk("\e[33m[DBG][VOUT]%s(%d) \e[0m" fmt, __func__, __LINE__, ## args);
 #else
 #define diprintk(fmt, args...)
 #endif

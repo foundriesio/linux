@@ -58,7 +58,7 @@ struct clk *peri_lcd0_clk = NULL;
 static int debug = 0;
 #define dprintk(msg...)	\
 	if (debug) {	\
-		printk("vioc_v_dv: " msg);	\
+		printk("[DBG][V_DV] " msg);	\
 	}
 
 static volatile void __iomem *get_v_dv_reg(volatile void __iomem *pRDMA)
@@ -364,7 +364,7 @@ void VIOC_V_DV_All_Turnoff()
 			pDisp_DV = get_v_dv_reg(pRdma_DV);
 			dprintk_dv_sequence("### Stream I/F [%d] Off Waiting~~ \n", nRdma);
 			if (0 == (ret = VIOC_DISP_Wait_DisplayDone(pDisp_DV))) {
-				printk("%s-%d DD Checking :: %d Stream-I/F (0x%x : 0-Timeout).\n",
+				pr_info("[INF][V_DV] %s-%d DD Checking :: %d Stream-I/F (0x%x : 0-Timeout).\n",
 				       __func__, __LINE__, nRdma, ret);
 			}
 
@@ -400,7 +400,7 @@ void VIOC_V_DV_Power(char on)
 					dprintk_dv_sequence("### V_DV : Use lcd0 clk, %d khz \n", vioc_v_dv_get_lcd0_clk_khz());
 					ret = clk_set_rate(peri_lcd0_clk, vioc_v_dv_get_lcd0_clk_khz()*1000);
 					if (ret) {
-						printk("%s-%d Clock rate change failed %d\n", __func__, __LINE__, ret);
+						pr_info("[INF][V_DV] %s-%d Clock rate change failed %d\n", __func__, __LINE__, ret);
 					}
 				}
 
@@ -548,7 +548,7 @@ void VIOC_V_DV_Base_Configure(int sx, int sy, int w, int h)
 volatile void __iomem *VIOC_DNG_GetAddress(void)
 {
 	if (pDNG_reg == NULL)
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][V_DV] %s \n", __func__);
 
 	return pDNG_reg;
 }
@@ -556,7 +556,7 @@ volatile void __iomem *VIOC_DNG_GetAddress(void)
 volatile void __iomem *VIOC_DV_GetAddress(DV_DISP_TYPE type)
 {
 	if (pVDV_reg[type] == NULL)
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][V_DV] %s \n", __func__);
 
 	return pVDV_reg[type];
 }
@@ -573,9 +573,9 @@ void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size)
 
 	pReg = VIOC_DV_GetAddress(type);
 
-	printk("DISP_DV :: 0x%p \n", pReg);
+	pr_debug("[DBG][V_DV] DISP_DV :: 0x%p \n", pReg);
 	while (cnt < size) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -586,7 +586,7 @@ void VIOC_DV_DUMP(DV_DISP_TYPE type, unsigned int size)
 volatile void __iomem *VIOC_DV_VEDR_GetAddress(VEDR_TYPE type)
 {
 	if (pVEDR_reg[type] == NULL)
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][V_DV] %s \n", __func__);
 
 	return pVEDR_reg[type];
 }
@@ -603,9 +603,9 @@ void VIOC_DV_VEDR_DUMP(VEDR_TYPE type, unsigned int size)
 		return;
 
 	pReg = VIOC_DV_VEDR_GetAddress(type);
-	printk("VEDR :: 0x%p \n", pReg);
+	pr_debug("[DBG][V_DV] VEDR :: 0x%p \n", pReg);
 	while (cnt < size) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -617,11 +617,11 @@ static int __init ddi_nexguard_init(void)
 {
 	pDNG_np = of_find_compatible_node(NULL, NULL, "telechips,ddi_nexguard");
 	if (pDNG_np == NULL)
-		pr_err("can not find ddi nextguard \n");
+		pr_err("[ERR][V_DV] can not find ddi nextguard \n");
 
 	pDNG_reg = (volatile void __iomem *)of_iomap(pDNG_np, 0);
 	if (pDNG_reg)
-		pr_info("%s DDI NexGuard: %p \n", __func__, pDNG_reg);
+		pr_info("[INF][V_DV] %s DDI NexGuard: %p \n", __func__, pDNG_reg);
 
 	return 0;
 }
@@ -633,13 +633,13 @@ static int __init vioc_disp_dv_init(void)
 
 	pVDV_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_disp_dv");
 	if (pVDV_np == NULL)
-		pr_err("can not find vioc DISP_DV \n");
+		pr_err("[ERR][V_DV] can not find vioc DISP_DV \n");
 
 	for (type = 0; type < EDR_MAX; type++) {
 		pVDV_reg[type] =
 			(volatile void __iomem *)of_iomap(pVDV_np, type);
 		if (pVDV_reg[type])
-			pr_info("%s disp_dv: 0x%p\n", __func__, pVDV_reg[type]);
+			pr_info("[INF][V_DV] %s disp_dv: 0x%p\n", __func__, pVDV_reg[type]);
 	}
 
 	return 0;

@@ -66,13 +66,13 @@ static ssize_t vioc_rdma_store(struct device *dev, struct device_attribute *attr
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
 	val = simple_strtoul(buf, NULL, 10);
 	if ((int)val < 0 || val > 7) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid rdma\n");
+		pr_err("[ERR][VOUT] invalid rdma\n");
 		return count;
 	}
 	dprintk("rdma%d -> rdma%d\n", vioc->rdma.id, val);
@@ -103,13 +103,13 @@ static ssize_t vioc_sc_store(struct device *dev, struct device_attribute *attr, 
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
 	val = simple_strtoul(buf, NULL, 10);
 	if ((int)val < 0 || val > 3) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid sc\n");
+		pr_err("[ERR][VOUT] invalid sc\n");
 		return count;
 	}
 	dprintk("sc%d -> sc%d\n", vioc->sc.id, val);
@@ -139,7 +139,7 @@ static ssize_t vioc_wmix_ovp_store(struct device *dev, struct device_attribute *
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -169,7 +169,7 @@ static ssize_t force_v4l2_memory_userptr_store(struct device *dev, struct device
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -196,7 +196,7 @@ static ssize_t vout_pmap_store(struct device *dev, struct device_attribute *attr
 	struct tcc_vout_device *vout = dev->platform_data;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -269,7 +269,7 @@ static ssize_t deinterlace_store(struct device *dev, struct device_attribute *at
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -300,14 +300,14 @@ static ssize_t deinterlace_rdma_store(struct device *dev, struct device_attribut
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
 	val = simple_strtoul(buf, NULL, 10);
 
 	if (!(val == 16 || val == 17)) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid rdma (use 16 or 17)\n");
+		pr_err("[ERR][VOUT] invalid rdma (use 16 or 17)\n");
 		return count;
 	}
 	dprintk("set(%d) -> m2m_rdma(%d)\n", vioc->m2m_rdma.id, val);
@@ -338,13 +338,13 @@ static ssize_t deinterlace_sc_store(struct device *dev, struct device_attribute 
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
 	val = simple_strtoul(buf, NULL, 10);
 	if ((int)val < 0 || val > 3) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid sc\n");
+		pr_err("[ERR][VOUT] invalid sc\n");
 		return count;
 	}
 	dprintk("sc%d -> sc%d\n", vioc->sc.id, val);
@@ -371,7 +371,7 @@ static ssize_t deintlerlace_pmap_store(struct device *dev, struct device_attribu
 	struct tcc_vout_device *vout = dev->platform_data;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -396,7 +396,7 @@ static ssize_t deinterlace_bufs_store(struct device *dev, struct device_attribut
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -423,13 +423,13 @@ static ssize_t deinterlace_bfield_store(struct device *dev, struct device_attrib
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
 	val = simple_strtoul(buf, NULL, 10);
 	if (val != 0 || val != 1) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid rdma's bfield. select 0(top-field first) or 1(bottom-field first)\n");
+		pr_err("[ERR][VOUT] invalid rdma's bfield. select 0(top-field first) or 1(bottom-field first)\n");
 		return count;
 	}
 	dprintk("set(%d) -> m2m_rdma.bf(%d)\n", vioc->m2m_rdma.bf, val);
@@ -452,7 +452,7 @@ static ssize_t deinterlace_force_store(struct device *dev, struct device_attribu
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 
@@ -480,7 +480,7 @@ static ssize_t otf_mode_store(struct device *dev, struct device_attribute *attr,
 	unsigned int val;
 
 	if (vout->status != TCC_VOUT_IDLE) {
-		printk(KERN_ERR VOUT_NAME ": [error] vout status is not idle\n");
+		pr_err("[ERR][VOUT] status is not idle\n");
 		return count;
 	}
 

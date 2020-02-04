@@ -173,14 +173,14 @@ void VIOC_DV_IN_SetSwap(
 volatile void __iomem *VIOC_DV_IN_GetAddress(void)
 {
 	if (pDVIN_reg == NULL){
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][DV_IN] %s \n", __func__);
 		goto err;
 	}
 
 	return pDVIN_reg;
 
 err:
-	pr_err("%s no remapped register \n", __func__);
+	pr_err("[ERR][DV_IN] %s no remapped register \n", __func__);
 	return NULL;
 }
 
@@ -208,15 +208,15 @@ void VIOC_DV_IN_DUMP(void)
 
 	pReg = VIOC_DV_IN_GetAddress();
 
-	printk("DV_IN :: 0%p \n", pReg);
+	pr_debug("[DBG][DV_IN] %p \n", pReg);
 	while (cnt < 0x20) {
-		printk("%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("[DBG][DV_IN] %p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __dvin_reg_r(pReg + cnt), __dvin_reg_r(pReg + cnt + 0x4),
 		       __dvin_reg_r(pReg + cnt + 0x8),
 		       __dvin_reg_r(pReg + cnt + 0xC));
 		cnt += 0x10;
 	}
-	printk("%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + 0x60,
+	pr_debug("[DBG][DV_IN] %p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + 0x60,
 	       __dvin_reg_r(pReg + 0x60), __dvin_reg_r(pReg + 0x60 + 0x4),
 	       __dvin_reg_r(pReg + 0x60 + 0x8),
 	       __dvin_reg_r(pReg + 0x60 + 0xC));
@@ -226,11 +226,11 @@ static int __init vioc_dvin_init(void)
 {
 	pDVIN_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_dv_in");
 	if (pDVIN_np == NULL) {
-		pr_info("vioc-dv_in: disabled\n");
+		pr_info("[INF][DV_IN] disabled\n");
 	} else {
 		pDVIN_reg = of_iomap(pDVIN_np, 0);
 		if (pDVIN_reg)
-			pr_info("vioc-dv_in: 0x%p\n", pDVIN_reg);
+			pr_info("[INF][DV_IN] 0x%p\n", pDVIN_reg);
 
 	}
 

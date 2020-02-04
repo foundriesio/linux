@@ -42,7 +42,7 @@ static int debug = 0;
 
 #define dprintk(msg...)                                                        \
 	if (debug) {                                                           \
-		printk("ths8200: " msg);                                       \
+		printk("[DBG][ths8200] " msg);                                       \
 	}
 
 static struct ths8200_std_info ths8200_video_720p_info[] = {
@@ -137,22 +137,22 @@ static int ths8200_i2c_probe(struct i2c_client *client,
 	if (np) {
 		ths8200_reset_port = of_get_named_gpio(np, "rst-gpios", 0);
 		if (gpio_is_valid(ths8200_reset_port)) {
-			pr_info("%s, reset port: 0x%02x\n", __func__,
+			pr_info("[INF][ths8200] %s, reset port: 0x%02x\n", __func__,
 			       ths8200_reset_port);
 			gpio_request(ths8200_reset_port, "ths8200-reset");
 			gpio_direction_output(ths8200_reset_port, 0);
 		} else {
-			pr_err("%s, err to get rst-gpios\n", __func__);
+			pr_err("[ERR][ths8200] %s, err to get rst-gpios\n", __func__);
 			ths8200_reset_port = -1;
 		}
 
 		ths8200_field_port = of_get_named_gpio(np, "field-gpios", 0);
 		if (gpio_is_valid(ths8200_field_port)) {
-			pr_debug("%s, field port: 0x%02x\n", __func__,
+			pr_debug("[DBG][ths8200] %s, field port: 0x%02x\n", __func__,
 			       ths8200_field_port);
 			gpio_request(ths8200_field_port, "ths8200-field");
 		} else {
-			pr_err("%s, err to get field-gpios\n", __func__);
+			pr_err("[ERR][ths8200] %s, err to get field-gpios\n", __func__);
 			ths8200_field_port = -1;
 		}
 	}

@@ -37,7 +37,7 @@
 #include <linux/of_irq.h>
 #include <asm/io.h>
 
-#define sar_pr_info(msg...)	if (0) { pr_info( "vioc_sar: " msg); }
+#define sar_pr_info(msg...)	if (0) { printk("[DBG][SAR] " msg); }
 
 #ifndef OFF
 #define OFF 	0
@@ -536,7 +536,7 @@ void VIOC_SAR_TurnOn(enum SARstrengh strength, unsigned int width,
 	volatile unsigned int deblk_strenth, deblk_boost, deblk_dr_th,
 		snr_der_str, snr_ent_str, swan_bypass = 0;
 	volatile unsigned long mask = 0;
-	printk("%s strength ::%d , width:%d , height:%d \n", __func__, strength, width, height);
+	pr_info("[INF][SAR] %s strength ::%d , width:%d , height:%d \n", __func__, strength, width, height);
 
 
 	switch (strength) {
@@ -580,7 +580,7 @@ void VIOC_SAR_TurnOn(enum SARstrengh strength, unsigned int width,
 	default:
 		return;
 	}
-	printk("%s strength ::%d , width:%d , height:%d \n", __func__, strength, width, height);
+	pr_info("[INF][SAR] %s strength ::%d , width:%d , height:%d \n", __func__, strength, width, height);
 // #define TEST_SAR
 
 #if 1
@@ -669,7 +669,7 @@ void VIOC_SAR_POWER_ONOFF(unsigned int onoff)
 		if(!IS_ERR(sar_ddi_clk))
 			clk_prepare_enable(sar_ddi_clk);
 
-		printk("%ld \n", clk_get_rate(sar_ddi_clk));
+		pr_info("[INF][SAR] %ld \n", clk_get_rate(sar_ddi_clk));
 		if(!IS_ERR(sar_peri_clk))		{
 			clk_set_rate(sar_peri_clk, 800000000);
 			clk_prepare_enable(sar_peri_clk);
@@ -727,13 +727,13 @@ static int __init vioc_sar_init(void)
 	ViocSarIn_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_sar");
 
 	if (ViocSarIn_np == NULL) {
-		pr_info("vioc-sar: disabled\n");
+		pr_info("[INF][SAR] disabled\n");
 	} else {
 		for (i = 0; i < SAR_BLOCK_MAX; i++) {
 			pSAR_reg[i] = of_iomap(ViocSarIn_np, i);
 
 			if (pSAR_reg[i])
-				pr_info("vioc_sar%d: 0x%p\n", i, pSAR_reg[i]);
+				pr_info("[INF][SAR] sar%d: 0x%p\n", i, pSAR_reg[i]);
 		}
 	}
 

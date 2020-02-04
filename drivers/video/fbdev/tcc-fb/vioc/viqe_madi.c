@@ -140,11 +140,11 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 			if ((nReg & 0x00FFFFFF) == pVDEInt_1_Info[i].offset) {
 				pVDEInt_1_Info[i].value = value;
 				if (0) { // pVDEInt_1_Info[i].offset < 0x80){
-					// printk("pVDEINT[0x%x] :: 0x%8x ->
+					// pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x ->
 					// 0x%8x \n", pVDEInt_Info[i].offset,
 					// pVDEInt_Info[i].value, value);
 					if (pVDEInt_1_Info[i].offset == 0x00) {
-						printk("pVDEINT[0x%x] :: 0x%8x -> 0x%8x \n",
+						pr_info("[INF][MADI] pVDEINT[0x%x] :: 0x%8x -> 0x%8x \n",
 						       pVDEInt_1_Info[i].offset,
 						       pVDEInt_1_Info[i].value,
 						       value);
@@ -172,7 +172,7 @@ static void _reg_w_ext(unsigned int value, volatile void __iomem *reg)
 			}
 		}
 	} else {
-		printk("Error :: %s-%d => worng setting 0x%p - 0x%x\n", __func__, __LINE__, reg, value);
+		pr_err("[ERR][MADI] %s-%d => worng setting 0x%p - 0x%x\n", __func__, __LINE__, reg, value);
 	}
 }
 
@@ -183,34 +183,34 @@ void _reg_print_ext(void)
 
 msleep(100);
 	szItem = sizeof(Data_Capture_IF) / sizeof(stMADI_Info);
-	printk("V_CAP_IF : %d \n", szItem);
+	pr_info("[INF][MADI] V_CAP_IF : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
-		printk("*(volatile unsigned int *)(V_NR + (0x%04x<<2)) = 0x%08x; \n",
+		pr_info(" *(volatile unsigned int *)(V_NR + (0x%04x<<2)) = 0x%08x; \n",
 		       pCap_Info[i].offset >> 2, pCap_Info[i].value);
 	}
 
 msleep(100);
 	szItem = sizeof(CPU_CLK_VDEINT_1) / sizeof(stMADI_Info);
-	printk("V_DEINT-1 : %d \n", szItem);
+	pr_info("[INF][MADI] V_DEINT-1 : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
-		printk("*(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
+		pr_info(" *(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
 		       pVDEInt_1_Info[i].offset >> 2, pVDEInt_1_Info[i].value);
 	}
 
 msleep(100);
 	szItem = sizeof(CPU_CLK_VDEINT_LUT) / sizeof(stMADI_Info);
-	printk("V_DEINT_LUT : %d \n", szItem);
+	pr_info("[INF][MADI] V_DEINT_LUT : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
-		printk("*(volatile unsigned int *)(V_DEINT_LUT + (0x%04x<<2)) = 0x%08x; \n",
+		pr_info(" *(volatile unsigned int *)(V_DEINT_LUT + (0x%04x<<2)) = 0x%08x; \n",
 		       pVDEInt_lut_Info[i].offset >> 2,
 		       pVDEInt_lut_Info[i].value);
 	}
 
 msleep(100);
 	szItem = sizeof(CPU_CLK_VDEINT_2) / sizeof(stMADI_Info);
-	printk("V_DEINT-2 : %d \n", szItem);
+	pr_info("[INF][MADI] V_DEINT-2 : %d \n", szItem);
 	for (i = 0; i < szItem; i++) {
-		printk("*(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
+		printk(" *(volatile unsigned int *)(V_DEINT + (0x%04x<<2)) = 0x%08x; \n",
 		       pVDEInt_2_Info[i].offset >> 2,
 		       pVDEInt_2_Info[i].value);
 	}
@@ -684,7 +684,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 	}
 
 	if (g_height >= 1080) {
-		printk("\e[33m madi: src(%dx%d), RES_1080i \e[0m\n", g_width, g_height);
+		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_1080i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_1080i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -692,7 +692,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_1080i[i].offset);
 		}
 	} else if (g_height >= 576) {
-		printk("\e[33m madi: src(%dx%d), RES_576i \e[0m\n", g_width, g_height);
+		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_576i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_576i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -700,7 +700,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_576i[i].offset);
 		}
 	} else if (g_height >= 480) {
-		printk("\e[33m madi: src(%dx%d), RES_480i \e[0m\n", g_width, g_height);
+		pr_info("\e[33m [INF][MADI] src(%dx%d), RES_480i \e[0m\n", g_width, g_height);
 		reg = VIQE_MADI_GetAddress(VMADI_DEINT);
 		szItem = sizeof(RES_480i) / sizeof(stMADI_Info);
 		for (i = 0; i < szItem; i++) {
@@ -708,7 +708,7 @@ void VIQE_MADI_SetBasicConfiguration(unsigned int odd_first)
 				     reg + RES_480i[i].offset);
 		}
 	} else {
-		printk("\e[33m madi: src(%dx%d) \e[0m\n", g_width, g_height);
+		pr_info("\e[33m [INF][MADI] src(%dx%d) \e[0m\n", g_width, g_height);
 	}
 
 	//if(odd_first)
@@ -723,7 +723,7 @@ void VIQE_MADI_Set_SrcImgBase(MadiADDR_Type type, unsigned int YAddr,
 	unsigned int y_value = 0x00, u_value = 0x00;
 
 	if (type >= MADI_ADDR_MAX) {
-		printk("%s ::Error wrong-type(%d)\n", __func__, type);
+		pr_err("[ERR][MADI] %s: wrong-type(%d)\n", __func__, type);
 		return;
 	}
 
@@ -812,7 +812,7 @@ void VIQE_MADI_Get_TargetImgBase(MadiADDR_Type type,
 	unsigned int y_value = 0x00, u_value = 0x00;
 
 	if (type >= MADI_ADDR_MAX) {
-		printk("%s ::Error wrong-type(%d)\n", __func__, type);
+		pr_err("[ERR][MADI] %s: wrong-type(%d)\n", __func__, type);
 		return;
 	}
 
@@ -858,7 +858,7 @@ void VIQE_MADI_Set_SrcImgSize(unsigned int width, unsigned int height, unsigned 
 	// crop_w = crop_h = 256;
 
 	if (width == 0 || height == 0) {
-		printk("%s ::Error wrong-size(%d x %d)\n", __func__, width,
+		pr_err("[ERR][MADI] %s: wrong-size(%d x %d)\n", __func__, width,
 		       height);
 		return;
 	}
@@ -977,7 +977,7 @@ void VIQE_MADI_Set_TargetImgSize(unsigned int src_width,
 	unsigned int reg_420 = 0;
 
 	if (out_width == 0 || out_height == 0) {
-		printk("%s ::Error wrong-size(%d x %d)\n", __func__, out_width,
+		pr_err("[ERR][MADI] %s: wrong-size(%d x %d)\n", __func__, out_width,
 		       out_height);
 		return;
 	}
@@ -1341,7 +1341,7 @@ msleep(500);
 			__madi_reg_w(0x00000000, reg+i);
 			value = __madi_reg_r(reg+i);
 			if(value != 0x00000000){
-				printk("%s :: Error-1 R/W 0x00-test failure => 0x%p(base+0x%x) : 0x%x \n", __func__, reg+i, i, value);
+				pr_debug("[DBG][MADI] %s :: Error-1 R/W 0x00-test failure => 0x%p(base+0x%x) : 0x%x \n", __func__, reg+i, i, value);
 				fail_count_0x00++;
 				msleep(10);
 			}
@@ -1350,13 +1350,13 @@ msleep(500);
 			__madi_reg_w(0xFFFFFFFF, reg+i);
 			value = __madi_reg_r(reg+i);
 			if(value != 0xFFFFFFFF){
-				printk("%s :: Error-2 R/W 0xff-test failure => 0x%p(base+0x%x) : 0x%x \n", __func__, reg+i, i, value);
+				pr_debug("[DBG][MADI] %s :: Error-2 R/W 0xff-test failure => 0x%p(base+0x%x) : 0x%x \n", __func__, reg+i, i, value);
 				fail_count_0xff++;
 				msleep(10);
 			}
 		}
 	}
-	printk("%s :: Total failure count => %d/%d : %d \n", __func__, fail_count_0xff, fail_count_0x00, total_count);
+	pr_debug("[DBG][MADI] %s :: Total failure count => %d/%d : %d \n", __func__, fail_count_0xff, fail_count_0x00, total_count);
 }
 #endif
 
@@ -1383,12 +1383,12 @@ volatile void __iomem *VIQE_MADI_GetAddress(VMADI_TYPE type)
 		goto err;
 
 	if (pMADI_reg[type] == NULL)
-		pr_err("%s \n", __func__);
+		pr_err("[ERR][MADI] %s \n", __func__);
 
 	return pMADI_reg[type];
 
 err:
-	pr_err("%s type:%d Max madi num:%d \n", __func__, type, VMADI_MAX);
+	pr_err("[ERR][MADI] %s type:%d Max madi num:%d \n", __func__, type, VMADI_MAX);
 	return NULL;
 }
 
@@ -1402,9 +1402,9 @@ void VIQE_MADI_DUMP(VMADI_TYPE type, unsigned int size)
 
 	pReg = VIQE_MADI_GetAddress(type);
 
-	printk("MADI :: 0%p \n", pReg);
+	pr_debug("[DBG][MADI] 0%p \n", pReg);
 	while (cnt < size) {
-		printk("%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __madi_reg_r(pReg + cnt), __madi_reg_r(pReg + cnt + 0x4),
 		       __madi_reg_r(pReg + cnt + 0x8),
 		       __madi_reg_r(pReg + cnt + 0xC));
@@ -1418,14 +1418,14 @@ static int __init viqe_madi_init(void)
 	pCap_Info = (stMADI_Info *)kzalloc(PAGE_ALIGN(sizeof(Data_Capture_IF)),
 					   GFP_KERNEL);
 	if (!pCap_Info)
-		pr_err("can not alloc pCap_Info buffer \n");
+		pr_err("[ERR][MADI] can not alloc pCap_Info buffer \n");
 	else
 		memcpy(pCap_Info, Data_Capture_IF, sizeof(Data_Capture_IF));
 
 	pVDEInt_1_Info = (stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_1)), GFP_KERNEL);
 	if (!pVDEInt_1_Info)
-		pr_err("can not alloc pVDEInt_1_Info buffer \n");
+		pr_err("[ERR][MADI] can not alloc pVDEInt_1_Info buffer \n");
 	else
 		memcpy(pVDEInt_1_Info, CPU_CLK_VDEINT_1,
 		       sizeof(CPU_CLK_VDEINT_1));
@@ -1433,7 +1433,7 @@ static int __init viqe_madi_init(void)
 	pVDEInt_lut_Info = (stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_LUT)), GFP_KERNEL);
 	if (!pVDEInt_lut_Info)
-		pr_err("can not alloc pVDEInt_lut_Info buffer \n");
+		pr_err("[ERR][MADI] can not alloc pVDEInt_lut_Info buffer \n");
 	else
 		memcpy(pVDEInt_lut_Info, CPU_CLK_VDEINT_LUT,
 		       sizeof(CPU_CLK_VDEINT_LUT));
@@ -1441,7 +1441,7 @@ static int __init viqe_madi_init(void)
 	pVDEInt_2_Info = (stMADI_Info *)kzalloc(
 		PAGE_ALIGN(sizeof(CPU_CLK_VDEINT_2)), GFP_KERNEL);
 	if (!pVDEInt_2_Info)
-		pr_err("can not alloc pVDEInt_2_Info buffer \n");
+		pr_err("[ERR][MADI] can not alloc pVDEInt_2_Info buffer \n");
 	else
 		memcpy(pVDEInt_2_Info, CPU_CLK_VDEINT_2,
 		       sizeof(CPU_CLK_VDEINT_2));
@@ -1454,7 +1454,7 @@ static int __init viqe_madi_init(void)
 #else
 	pMADI_np = of_find_compatible_node(NULL, NULL, "telechips,viqe_madi");
 	if (pMADI_np == NULL) {
-		pr_info("vioc-madi: disabled\n");
+		pr_info("[INF][MADI] vioc-madi: disabled\n");
 		return 0;
 	}
 
@@ -1465,7 +1465,7 @@ static int __init viqe_madi_init(void)
 		int rc;
 
 		rc = of_address_to_resource(pMADI_np, VMADI_CTRL_IF, &res);
-		pr_info("%s MADI[%d]: 0x%08lx ~ 0x%08lx \n", __func__, VMADI_CTRL_IF, (unsigned long)res.start, (unsigned long)res.end);
+		pr_info("[INF][MADI] %s MADI[%d]: 0x%08lx ~ 0x%08lx \n", __func__, VMADI_CTRL_IF, (unsigned long)res.start, (unsigned long)res.end);
 	}
 	else
 	{
@@ -1474,7 +1474,7 @@ static int __init viqe_madi_init(void)
 		pMADI_reg[VMADI_DEINT_LUT] = pMADI_reg[VMADI_DEINT] + 0x2000;
 		pMADI_reg[VMADI_TIMMING] = pMADI_reg[VMADI_DEINT_LUT] + 0x2000;
 
-		pr_info("%s MADI: 0x%p / 0x%p / 0x%p / 0x%p / 0x%p \n",
+		pr_info("[INF][MADI] %s: 0x%p / 0x%p / 0x%p / 0x%p / 0x%p \n",
 					__func__,
 					pMADI_reg[VMADI_CTRL_IF],
 					pMADI_reg[VMADI_CAP_IF],

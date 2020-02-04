@@ -39,7 +39,7 @@
 #endif
 //#define DOLBY_VISION_CHECK_SEQUENCE
 #if defined(DOLBY_VISION_CHECK_SEQUENCE)
-#define dprintk_dv_sequence(msg...) printk("" msg);
+#define dprintk_dv_sequence(msg...) printk("[DBG][DV] " msg);
 #else
 #define dprintk_dv_sequence(msg...)
 #endif

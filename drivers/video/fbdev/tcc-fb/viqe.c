@@ -176,7 +176,7 @@ viqe_render_frame (struct tcc_lcdc_image_update *input_image, unsigned int field
 		return;
 	
 	if ( viqe_queue_is_full (&g_viqe_render_queue) ) {
-		//printk ("[REND] queue is full ...\n");
+		//pr_info("[INF][VIQE] %s queue is full\n", __func__);
 		return;
 	}
 	

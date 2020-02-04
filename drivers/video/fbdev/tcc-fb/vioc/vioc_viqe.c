@@ -571,9 +571,9 @@ void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	if (pReg == NULL)
 		pReg = VIOC_VIQE_GetAddress(vioc_id);
 
-	printk("VIQE-%d :: 0x%p \n", Num, pReg);
+	pr_debug("[DBG][VIQE] VIQE-%d :: 0x%p \n", Num, pReg);
 	while (cnt < 0x300) {
-		printk("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
+		pr_debug("0x%p: 0x%08x 0x%08x 0x%08x 0x%08x \n", pReg + cnt,
 		       __raw_readl(pReg + cnt), __raw_readl(pReg + cnt + 0x4),
 		       __raw_readl(pReg + cnt + 0x8),
 		       __raw_readl(pReg + cnt + 0xC));
@@ -582,7 +582,7 @@ void VIOC_VIQE_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 	return;
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, VIOC_VIQE_MAX);
+	pr_err("[ERR][VIQE] err %s Num:%d , max :%d \n", __func__, Num, VIOC_VIQE_MAX);
 	return;
 
 }
@@ -595,12 +595,12 @@ volatile void __iomem *VIOC_VIQE_GetAddress(unsigned int vioc_id)
 		goto err;
 
 	if (pVIQE_reg[Num] == NULL)
-		pr_err("%s pVIQE:%p \n", __func__, pVIQE_reg[Num]);
+		pr_err("[ERR][VIQE] %s pVIQE:%p \n", __func__, pVIQE_reg[Num]);
 
 	return pVIQE_reg[Num];
 
 err:
-	pr_err("err %s Num:%d , max :%d \n", __func__, Num, VIOC_VIQE_MAX);
+	pr_err("[ERR][VIQE] %s Num:%d , max :%d \n", __func__, Num, VIOC_VIQE_MAX);
 	return NULL;
 }
 
@@ -610,14 +610,14 @@ static int __init vioc_viqe_init(void)
 
 	pViocVIQE_np = of_find_compatible_node(NULL, NULL, "telechips,vioc_viqe");
 	if (pViocVIQE_np == NULL) {
-		pr_info("vioc-viqe: disabled\n");
+		pr_info("[INF][VIQE] vioc-viqe: disabled\n");
 	} else {
 		for (i = 0; i < VIOC_VIQE_MAX; i++) {
 			pVIQE_reg[i] = (volatile void __iomem *)of_iomap(pViocVIQE_np,
 							is_VIOC_REMAP ? (i + VIOC_VIQE_MAX) : i);
 
 			if (pVIQE_reg[i])
-				pr_info("vioc-viqe%d: 0x%p\n", i, pVIQE_reg[i]);
+				pr_info("[INF][VIQE] vioc-viqe%d: 0x%p\n", i, pVIQE_reg[i]);
 		}
 	}
 	return 0;

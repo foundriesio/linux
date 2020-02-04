@@ -62,7 +62,7 @@ Suite 330, Boston, MA 02111-1307 USA
 
 /* Debugging stuff */
 static int debug = 0;
-#define DPRINTF(msg...)	if (debug) { printk( "tcc_output_starter: " msg); }
+#define DPRINTF(msg...)	if (debug) { printk("[DBG][O_STARTER] " msg); }
 
 enum
 {
@@ -200,7 +200,7 @@ void tcc_output_starter_memclr(int img_width, int img_height)
 			// Force Code.!!
 			VIOC_RDMA_SetImageBase(pRDMA, pmap_fb.base + (img_width*img_height*img_fmt_factor), 0, 0);
 		}
-		//printk("%s fb_paddr=0x%08x fb_laddr=0x%08x\n", __func__, pmap_fb.base, (unsigned int)pBaseAddr);
+		//pr_debug("[DBG][O_STARTER] %s fb_paddr=0x%08x fb_laddr=0x%08x\n", __func__, pmap_fb.base, (unsigned int)pBaseAddr);
 	}
 
 	if (pmap_attach.base) {
@@ -209,7 +209,7 @@ void tcc_output_starter_memclr(int img_width, int img_height)
 			memset_io(pBaseAddr, 0x00, pmap_attach.size/2);
  			iounmap(pBaseAddr);
 		}
-		//printk("%s attach_paddr=0x%08x attach_laddr=0x%08x\n", __func__, pmap_attach.base, (unsigned int)pBaseAddr);
+		//pr_debug("[DBG][O_STARTER] %s attach_paddr=0x%08x attach_laddr=0x%08x\n", __func__, pmap_attach.base, (unsigned int)pBaseAddr);
 	}
 }
 
@@ -229,7 +229,7 @@ void tcc_output_starter_composite(unsigned char lcdc_num, unsigned char type, st
 	struct device_node *np_parent = pdev->dev.of_node;
 	struct device_node *np_child;
 
-	printk("%s, lcdc_num=%d(%d), type=%d\n", __func__, Output_Starter_LCDC_Num, lcdc_num, type);
+	pr_info("[INF][O_STARTER] %s, lcdc_num=%d(%d), type=%d\n", __func__, Output_Starter_LCDC_Num, lcdc_num, type);
 
 	if (type >= STARTER_COMPOSITE_MAX)
 		type = default_composite_resolution;
@@ -361,7 +361,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 	unsigned int align_swap;
 	align_swap = 0;
 
-	printk("%s, lcdc_num=%d, type=%d\n", __func__, Output_Starter_LCDC_Num, type);
+	pr_info("[INF][O_STARTER] %s, lcdc_num=%d, type=%d\n", __func__, Output_Starter_LCDC_Num, type);
 
 	if(type >= STARTER_COMPONENT_MAX)
 		type = default_component_resolution;
@@ -386,7 +386,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 
 	ret = VIOC_CONFIG_LCDPath_Select(Output_Starter_LCDC_Num, component_io_port_num);
 	if (ret < 0) {
-		pr_err("%s: invalid lcd(%d) lcd_if(%d)\n", __func__,
+		pr_err("[ERR][O_STARTER] %s: invalid lcd(%d) lcd_if(%d)\n", __func__,
 				Output_Starter_LCDC_Num, component_io_port_num);
 	}
 
@@ -535,7 +535,7 @@ void tcc_output_starter_component(unsigned char lcdc_num, unsigned char type, st
 		unsigned int *pReg = (unsigned int *)pLCDC_CH;
 		for(i=0; i<32; i++)
 		{
-			printk("0x%08x: 0x%08x\n", pReg+i, *(pReg+i));
+			printk("[DBG][O_STARTER] 0x%08x: 0x%08x\n", pReg+i, *(pReg+i));
 		}
 	}
 	#endif
@@ -557,9 +557,9 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 	ret = of_property_read_u32(np, "persist_display_mode", &persist_display_mode);
 	if (ret) {
 		persist_display_mode = -1;
-		//printk("%s, using output_starter's display_mode from Kconfig\n", __func__);
+		//pr_debug("[DBG][O_STARTER] %s, using output_starter's display_mode from Kconfig\n", __func__);
 	} else {
-		//printk("%s, persist_display_mode(%d)\n", __func__, persist_display_mode);
+		//pr_debug("[DBG][O_STARTER] %s, persist_display_mode(%d)\n", __func__, persist_display_mode);
 	}
 
 
@@ -570,7 +570,7 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 		of_property_read_u32_index(np, "scaler", 1, &index);
 		pOutput_Starter_SCALER = VIOC_SC_GetAddress(index);
 	} else {
-		printk("%s, could not find scaler node\n", __func__);
+		pr_err("[ERR][O_STARTER] %s, could not find scaler node\n", __func__);
 		ret = -ENODEV;
 	}
 	#endif
@@ -578,7 +578,7 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 	/* get the information of vioc-fb device node*/
 	np_fb = of_find_compatible_node(NULL, NULL, "telechips,vioc-fb");
 	if(of_property_read_u32(np_fb, "telechips,fbdisplay_num", &Output_Starter_LCDC_Num)) {
-		pr_err("%s, could not find fbdisplay_num\n", __func__);
+		pr_err("[ERR][O_STARTER] %s, could not find fbdisplay_num\n", __func__);
 		ret = -ENODEV;
 	}
 	pOutput_Starter_DISP = VIOC_DISP_GetAddress(Output_Starter_LCDC_Num);
@@ -593,12 +593,12 @@ static int tcc_output_starter_parse_dt(struct device_node *np)
 		if(of_property_read_u32_index(np_fb_child, "telechips,rdma", 1+0, &index) == 0)
 			pOutput_Starter_RDMA = VIOC_RDMA_GetAddress(index);
 	} else {
-		pr_err( "%s, could not find fbdisplay node\n", __func__);
+		pr_err("[ERR][O_STARTER] %s, could not find fbdisplay node\n", __func__);
 		ret = -ENODEV;
 	}
 
 	ret = tcc_output_starter_parse_hdmi_dt(np);
-	//printk("%s, Output_Starter_LCDC_Num = %d \n", __func__, Output_Starter_LCDC_Num);
+	//pr_debug("[DBG][O_STARTER] %s, Output_Starter_LCDC_Num = %d \n", __func__, Output_Starter_LCDC_Num);
 
 	return ret;
 }
@@ -662,9 +662,9 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 
 	#if defined(CONFIG_OUTPUT_SKIP_KERNEL_LOGO)
 	if (!strncmp(boot_recovery_mode, "boot_recovery", 13)) {
-		printk("%s, boot mode is recovery mode\n", __func__);
+		pr_info("[INF][O_STARTER] %s, boot mode is recovery mode\n", __func__);
 	} else {
-		printk("%s, skip displaying kernel logo\n", __func__);
+		pr_info("[INF][O_STARTER] %s, skip displaying kernel logo\n", __func__);
 		return 0;
 	}
 	#endif
@@ -684,21 +684,21 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 
         if (output_starter_display_mode == 1 || output_starter_display_mode == 3) {
                 hdmi_detect = tcc_hdmi_detect_cable();
-                printk("%s hdmi cable = %d\r\n", __func__, hdmi_detect);
+                pr_info("[INF][O_STARTER] %s hdmi cable = %d\r\n", __func__, hdmi_detect);
                 if(!hdmi_detect) {
                         mdelay(10);
                         hdmi_detect = tcc_hdmi_detect_cable();
-                        printk("%s retry-hdmi cable = %d\r\n", __func__, hdmi_detect);
+                        pr_info("[INF][O_STARTER] %s retry-hdmi cable = %d\r\n", __func__, hdmi_detect);
                 }
         }
 
 	switch (output_starter_display_mode) {
 	case 1:
 		if (hdmi_detect == true) {
-			printk("AUTO_HDMI_CVBS: hdmi\n");
+			pr_info("[INF][O_STARTER] AUTO_HDMI_CVBS: hdmi\n");
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 		} else {
-			printk("AUTO_HDMI_CVBS: composite\n");
+			pr_info("[INF][O_STARTER] AUTO_HDMI_CVBS: composite\n");
 			tcc_output_starter_hdmi_disable();
 			tcc_output_starter_composite(lcdc_1st, default_composite_resolution, pdev);
 		}
@@ -708,13 +708,13 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * 1st output - HDMI
 		 */
-		printk("ATTACH_HDMI_CVBS: hdmi\n");
+		pr_info("[INF][O_STARTER] ATTACH_HDMI_CVBS: hdmi\n");
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 
 		/*
 		 * 2nd output - CVBS
 		 */
-		printk("ATTACH_HDMI_CVBS: composite\n");
+		pr_info("[INF][O_STARTER] ATTACH_HDMI_CVBS: composite\n");
 		#if defined(CONFIG_FB_TCC_COMPOSITE)
 		tcc_composite_attach(lcdc_2nd, default_composite_resolution, 1);
 		#endif
@@ -725,10 +725,10 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 * 1st output - HDMI or Component
 		 */
 		if (hdmi_detect == true) {
-			printk("ATTACH_DUAL_AUTO: hdmi\n");
+			pr_info("[INF][O_STARTER] ATTACH_DUAL_AUTO: hdmi\n");
 			tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 		} else {
-			printk("ATTACH_DUAL_AUTO: component\n");
+			pr_info("[INF][O_STARTER] ATTACH_DUAL_AUTO: component\n");
 			#if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
 			tcc_output_starter_hdmi_disable();
 			#endif
@@ -738,7 +738,7 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		/*
 		 * 2nd output - CVBS
 		 */
-		printk("ATTACH_DUAL_AUTO: composite\n");
+		pr_info("[INF][O_STARTER] ATTACH_DUAL_AUTO: composite\n");
 		#if defined(CONFIG_FB_TCC_COMPOSITE)
 		tcc_composite_attach(lcdc_2nd, default_composite_resolution, 1);
 		#endif
@@ -750,14 +750,14 @@ static int tcc_output_starter_probe(struct platform_device *pdev)
 		 * TCC_OUTPUT_STARTER_NORMAL - HDMI
 		 */
 #ifdef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
-		printk("CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT is enabled. Skip calling tcc_output_starter_hdmi_v2_0.\n");
+		pr_info("[INF][O_STARTER] CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT is enabled. Skip calling tcc_output_starter_hdmi_v2_0.\n");
 #else
-		printk("OUTPUT_STARTER_NORMAL: hdmi\n");
+		pr_info("[INF][O_STARTER] OUTPUT_STARTER_NORMAL: hdmi\n");
 		tcc_output_starter_hdmi_v2_0(lcdc_1st, pOutput_Starter_RDMA, pOutput_Starter_DISP);
 #endif
 
 		/* Disable sub disp (composite) */
-		printk("OUTPUT_STARTER_NORMAL: turn off sub display\n");
+		pr_info("[INF][O_STARTER] OUTPUT_STARTER_NORMAL: turn off sub display\n");
 		vioc_sub_disp_composite_disable(lcdc_2nd);
 		break;
 	}

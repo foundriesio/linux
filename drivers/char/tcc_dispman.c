@@ -603,7 +603,7 @@ static ssize_t tcc_output_dispdev_width_show(struct device *dev, struct device_a
 		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Sdp_data;
 	} else {
-		printk("%s Can't find  output , Main:%d, Sub :%d \n",
+		pr_err("[ERR][DISP_MAN] %s Can't find  output , Main:%d, Sub :%d \n",
 				__func__,
 				ptccfb_info->pdata.Mdp_data.DispDeviceType,
 				ptccfb_info->pdata.Sdp_data.DispDeviceType);
@@ -644,7 +644,7 @@ static ssize_t tcc_output_dispdev_height_show(struct device *dev, struct device_
 		|| (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_COMPONENT) ) {
 		pdp_data = &ptccfb_info->pdata.Sdp_data;
 	} else {
-		printk("%s Can't find  output , Main:%d, Sub :%d \n",
+		pr_err("[ERR][DISP_MAN] %s Can't find  output , Main:%d, Sub :%d \n",
 				__func__,
 				ptccfb_info->pdata.Mdp_data.DispDeviceType,
 				ptccfb_info->pdata.Sdp_data.DispDeviceType);
@@ -1614,7 +1614,7 @@ static struct attribute_group tcc_dispman_attribute_group = {
 int set_persist_display_mode(int persist_display_mode)
 {
 	atomic_set(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE], (unsigned long)persist_display_mode);
-	printk("set persist_display_mode(%d)\n", atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE]));
+	pr_info("[INF][DISP_MAN] set persist_display_mode(%d)\n", atomic_read(&tcc_dispman_attribute_data[MGEM_PERSIST_DISPLAY_MODE]));
 	return 0;
 }
 
@@ -1622,14 +1622,14 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int tcc_dispman_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
-		printk(KERN_ERR  "%s():  This address is not allowed. \n", __func__);
+		pr_err("[ERR][DISP_MAN] %s():  This address is not allowed. \n", __func__);
 		return -EAGAIN;
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	if(remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
 	{
-		printk(KERN_ERR  "%s():  Virtual address page port error. \n", __func__);
+		pr_err("[ERR][DISP_MAN] %s():  Virtual address page port error. \n", __func__);
 		return -EAGAIN;
 	}
 
@@ -1723,10 +1723,10 @@ int __init tcc_dispman_init(void)
 	if (register_chrdev(tcc_dispman_major, DEVICE_NAME, &tcc_dispman_fops)) {
 		tcc_dispman_major = register_chrdev(0, DEVICE_NAME, &tcc_dispman_fops);
 		if (tcc_dispman_major <= 0) {
-			printk (KERN_ERR "tcc_dispman: unable to register tcc_dispman device\n");
+			pr_err("[ERR][DISP_MAN] unable to register tcc_dispman device\n");
 			return -EIO;
 		}
-		printk(KERN_ERR "tcc_dispman: unable to register major %d. Registered %d instead\n", MANAGER_MAJOR_ID, tcc_dispman_major);
+		pr_err("[ERR][DISP_MAN] unable to register major %d. Registered %d instead\n", MANAGER_MAJOR_ID, tcc_dispman_major);
 	}
 
 	tcc_dispman_class = class_create(THIS_MODULE, DEVICE_NAME);
@@ -1757,7 +1757,7 @@ int __init tcc_dispman_init(void)
 	atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_VIDEO_HDMI_RESOLUTION], (unsigned long)999);
 
 	#ifdef CONFIG_TCC_DISPLAY_MODE_USE
-		printk("%s - STB Mode\n", __func__);
+		pr_info("[INF][DISP_MAN] %s - STB Mode\n", __func__);
 		// STB MODE
 		atomic_set(&tcc_dispman_attribute_data[MGEM_TCC_OUTPUT_MODE_STB], (unsigned long)1);
 
@@ -1799,7 +1799,7 @@ int __init tcc_dispman_init(void)
 
 	ret = sysfs_create_group(&tcc_dispman_dev->kobj, &tcc_dispman_attribute_group);
 	if(ret)
-		printk("failed create sysfs\r\n");
+		pr_err("[ERR][DISP_MAN] failed create sysfs\r\n");
 
 	return 0;
 }

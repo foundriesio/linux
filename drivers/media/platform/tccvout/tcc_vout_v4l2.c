@@ -158,7 +158,7 @@ void tcc_vout_hdmi_end( unsigned int type )
 {
 	struct tcc_vout_device *vout = (struct tcc_vout_device *)tcc_vout[get_vioc_index(type)];
 	if(vout->status == TCC_VOUT_RUNNING) {
-		printk("vsync interrupt disable\n");
+		pr_info("[INF][VOUT] vsync interrupt disable\n");
 
 		vout_intr_onoff(0, vout);
 		vout_ktimer_ctrl(vout, ON);
@@ -170,7 +170,7 @@ void tcc_vout_hdmi_start( unsigned int type )
 {
 	struct tcc_vout_device *vout = (struct tcc_vout_device *)tcc_vout[get_vioc_index(type)];
 	if(vout->status == TCC_VOUT_RUNNING) {
-		printk("vsync interrupt enable\n");
+		pr_info("[INF][VOUT] vsync interrupt enable\n");
 
 		vout_ktimer_ctrl(vout, OFF);
 		vout_intr_onoff(1, vout);
@@ -250,9 +250,7 @@ int tcc_vout_try_bpp(unsigned int pixelformat, enum v4l2_colorspace *colorspace)
 		break;
 
 	default:
-		printk(VOUT_NAME
-			": Not supported pixelformat(%c%c%c%c)\n",
-			fourcc2char(pixelformat));
+		pr_err("[ERR][VOUT] Not supported pixelformat(%c%c%c%c)\n", fourcc2char(pixelformat));
 		color = V4L2_COLORSPACE_JPEG;
 		bpp = 2;
 		break;
@@ -307,9 +305,7 @@ int tcc_vout_try_pix(unsigned int pixelformat)
 		pfmt = TCC_PFMT_RGB;
 		break;
 	default:
-		printk(VOUT_NAME
-			": Not supported pixelformat(%c%c%c%c)\n",
-			fourcc2char(pixelformat));
+		pr_err("[ERR][VOUT] Not supported pixelformat(%c%c%c%c)\n", fourcc2char(pixelformat));
 		pfmt = TCC_PFMT_YUV420;
 		break;
 	}
@@ -534,7 +530,7 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 		actual_bufs = MIN_DEINTLBUF_NUM;
 
 	if (2 > actual_bufs) {
-		printk(KERN_ERR VOUT_NAME ": [error] deintl_nr_bufs is not enough (%d).\n", actual_bufs);
+		pr_err("[ERR][VOUT] deintl_nr_bufs is not enough (%d).\n", actual_bufs);
 		return -ENOMEM;
 	}
 	dprintk("request deintl_nr_bufs(%d), actual buf(%d)\n", vout->deintl_nr_bufs, actual_bufs);
@@ -1002,7 +998,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh, struct v4l2_format 
 		vout->first_frame = 1;
 		ret = vout_m2m_init(vout);
 		if (ret) {
-			printk(KERN_ERR VOUT_NAME ": [error] deinterlace setup\n");
+			pr_err("[ERR][VOUT] deinterlace setup\n");
 			goto out_exit;
 		}
 
@@ -1055,7 +1051,7 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh, struct v4l2
 	memcpy(&vout->disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
 	vout_wmix_getsize(vout, &width, &height);
 	if((width == 0) || (height == 0)) {
-		printk(KERN_ERR VOUT_NAME": [error] output device size (%dx%d) \n", width, height);
+		pr_err("[ERR][VOUT] output device size (%dx%d) \n", width, height);
 		ret = -EBUSY;
 		goto overlay_exit;
 	}
@@ -1205,7 +1201,7 @@ static int vidioc_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffer
 			/* get pmap */
 			ret = vout_get_pmap(&vout->pmap);
 			if (ret) {
-				printk(KERN_ERR VOUT_NAME ": [error] vout_get_pmap(%s)\n", vout->pmap.name);
+				pr_err("[ERR][VOUT] vout_get_pmap(%s)\n", vout->pmap.name);
 				ret = -ENOMEM;
 				goto reqbufs_exit_err;
 			} else {
@@ -1225,7 +1221,7 @@ static int vidioc_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffer
 		} else if (V4L2_MEMORY_USERPTR == vout->memory) {
 			dprintk("V4L2_MEMORY_USERPTR: request buf(%d)\n", req->count);
 		} else {
-			printk(KERN_ERR VOUT_NAME ": [error] Invalid memory type(%d)\n", req->memory);
+			pr_err("[ERR][VOUT] Invalid memory type(%d)\n", req->memory);
 			ret = -EINVAL;
 			goto reqbufs_exit_err;
 		}
@@ -1240,14 +1236,14 @@ static int vidioc_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffer
 
 		ret = tcc_v4l2_buffer_set(vout, req);
 		if (ret < 0) {
-			printk(KERN_ERR VOUT_NAME ": [error] tcc_v4l2_buffer_set(%d)\n", ret);
+			pr_err("[ERR][VOUT] tcc_v4l2_buffer_set(%d)\n", ret);
 			goto reqbufs_exit;
 		}
 
 		vout->deintl_nr_bufs_count = 0;
 		ret = tcc_deintl_buffer_set(vout);
 		if (ret < 0) {
-			printk(KERN_ERR VOUT_NAME ": [error] tcc_deintl_buffer_set(%d)\n", ret);
+			pr_err("[ERR][VOUT] tcc_deintl_buffer_set(%d)\n", ret);
 			goto reqbufs_deintl_err;
 		}
 
@@ -1269,7 +1265,7 @@ reqbufs_deintl_err:
 reqbufs_exit_err:
 		mutex_unlock(&vout->lock);
 	} else {
-		printk(KERN_WARNING VOUT_NAME": [warning] any buffers are still mapped(%d)\n", vout->nr_qbufs);
+		pr_warn("[WAR][VOUT] any buffers are still mapped(%d)\n", vout->nr_qbufs);
 		req->count = vout->nr_qbufs;
 	}
 reqbufs_exit:
@@ -1377,7 +1373,7 @@ static int vidioc_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	int backupIdx;
 
 	if(atomic_read(&vout->readable_buff_count) == vout->nr_qbufs) {
-		printk(KERN_ERR VOUT_NAME": [error] buffer full \n");
+		pr_err("[ERR][VOUT] buffer full \n");
 		return -EIO;
 	}
 
@@ -1386,7 +1382,7 @@ static int vidioc_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 		vout->pushIdx = 0;
 
 	if(tcc_vout_buffer_copy(&vout->qbufs[vout->pushIdx].buf, buf, TO_KERNEL_SPACE) < 0) {
-		printk(KERN_ERR VOUT_NAME": [error] memory copy fail\n");
+		pr_err("[ERR][VOUT] memory copy fail\n");
 		vout->pushIdx = backupIdx;
 		return -EINVAL;
 	}
@@ -1423,7 +1419,7 @@ static int vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 
 	#ifdef CONFIG_VOUT_USE_VSYNC_INT
 	if(tcc_vout_buffer_copy(buf, &vout->qbufs[vout->clearIdx].buf, TO_USER_SPACE) < 0) {
-		printk(KERN_ERR VOUT_NAME": [error] memory copy fail\n");
+		pr_err("[ERR][VOUT] memory copy fail\n");
 		return -EINVAL;
 	}
 	#else
@@ -1448,7 +1444,7 @@ static int vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 		if(iQueue_Idx == vout->last_displayed_buf_idx)
 			return -EIO;
 
-		//printk("@@@@@@@@@@@@@ ZzaU :: %d -> %d =? %d \n", buf->index, iQueue_Idx, vout->last_displayed_buf_idx);
+		//pr_debug("[DBG][VOUT] @@@@@@@@@@@@@ ZzaU :: %d -> %d =? %d \n", buf->index, iQueue_Idx, vout->last_displayed_buf_idx);
 	}
 #endif
 
@@ -1495,7 +1491,7 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 	mutex_lock(&vout->lock);
 
 	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != i) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid v4l2_buf_type(%d)\n", i);
+		pr_err("[ERR][VOUT] invalid v4l2_buf_type(%d)\n", i);
 		return -EINVAL;
 	}
 
@@ -1523,7 +1519,7 @@ static int vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 	mutex_lock(&vout->lock);
 
 	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != i) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid v4l2_buf_type(%d)\n", i);
+		pr_err("[ERR][VOUT] invalid v4l2_buf_type(%d)\n", i);
 		return -EINVAL;
 	}
 
@@ -1552,7 +1548,7 @@ static long vout_param_handler(struct file *file, void *fh, bool valid_prio, uns
 
 	if (vout->status != TCC_VOUT_RUNNING) {
 		/* only allowed if streaming is started */
-		printk(KERN_ERR VOUT_NAME": [error] device not started yet(%d)\n", vout->status);
+		pr_err("[ERR][VOUT] device not started yet(%d)\n", vout->status);
 		return -EBUSY;
 	}
 
@@ -1606,13 +1602,13 @@ static int tcc_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		printk(KERN_ERR VOUT_NAME ": [error] range_is_allowed() failed\n");
+		pr_err("[ERR][VOUT] range_is_allowed() failed\n");
 		return -EAGAIN;
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	if (remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
-		printk(KERN_ERR VOUT_NAME ": [error] remap_pfn_range() failed\n");
+		pr_err("[ERR][VOUT] remap_pfn_range() failed\n");
 		return -EAGAIN;
 	}
 
@@ -1641,11 +1637,11 @@ static int tcc_vout_open(struct file *file)
 
 	vout = video_get_drvdata(vdev);
 	if (vout == NULL) {
-		printk(KERN_ERR VOUT_NAME ": [error] open failed(nodev)\n");
+		pr_err("[ERR][VOUT] open failed(nodev)\n");
 		return -ENODEV;
 	}
 	if (vout->opened) {
-		printk(KERN_ERR VOUT_NAME ": [error] tcc_vout only supports single open.\n");
+		pr_err("[ERR][VOUT] tcc_vout only supports single open.\n");
 		return -EBUSY;
 	}
 
@@ -1664,7 +1660,7 @@ static int tcc_vout_open(struct file *file)
 	 */
 	ret = vout_vioc_init(vout);
 	if (ret < 0) {
-		printk(KERN_ERR"\x1b[31mFAIL(%d) Could not open %s device.\x1b[0m \n", ret, vdev->name);
+		pr_err("[ERR][VOUT] FAIL(%d) Could not open %s device.\n", ret, vdev->name);
 		vout->status = TCC_VOUT_IDLE;
 		return ret;
 	}
@@ -1824,13 +1820,13 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	if(pdev->dev.of_node) {
 		vout->v4l2_np = pdev->dev.of_node;
 	} else {
-		printk(KERN_ERR VOUT_NAME ": [error] could not find vout driver node. \n");
+		pr_err("[ERR][VOUT] could not find vout driver node. \n");
 		ret = -ENODEV;
 		goto probe_err0;
 	}
 
 	if(v4l2_device_register(&pdev->dev, &vout->v4l2_dev) < 0){
-		printk(KERN_ERR VOUT_NAME ": [error] v4l2 register failed\n");
+		pr_err("[ERR][VOUT] v4l2 register failed\n");
 		ret = -ENODEV;
 		goto probe_err0;
 	}
@@ -1839,7 +1835,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	 */
 	vdev = vout->vdev = video_device_alloc();
 	if(!vdev) {
-		printk(KERN_ERR VOUT_NAME": [error] could not allocate video device struct \n");
+		pr_err("[ERR][VOUT] could not allocate video device struct \n");
 		ret = -ENODEV;
 		goto probe_err1;
 	}
@@ -1866,7 +1862,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	 */
 	ret = vout_vioc_set_default(vout);
 	if (ret < 0) {
-		printk(KERN_ERR VOUT_NAME ": [error] invalid vout vioc path\n");
+		pr_err("[ERR][VOUT] invalid vout vioc path\n");
 		goto probe_err1;
 	}
 
@@ -1883,7 +1879,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	/* Register the Video device width V4L2
 	 */
 	if(video_register_device(vdev, VFL_TYPE_GRABBER, vdev->minor) < 0){
-		printk(KERN_ERR VOUT_NAME ": [error] Counld not register Video for Linux device\n");
+		pr_err("[ERR][VOUT] Counld not register Video for Linux device\n");
 		ret = -ENODEV;
 		goto probe_err2;
 	}
@@ -1901,7 +1897,7 @@ static int tcc_vout_v4l2_probe(struct platform_device *pdev)
 	memset(&vout->lastframe, 0x0, sizeof(struct v4l2_buffer));
 	vout->lastframe.m.planes = kzalloc(sizeof(struct v4l2_plane) * MPLANE_NUM, GFP_KERNEL);
 	if(!vout->lastframe.m.planes) {
-		printk(KERN_ERR": [error] memory allocation fail\n");
+		pr_err("[ERR][VOUT] memory allocation fail\n");
 		ret = -ENOMEM;
 		goto probe_err2;
 	}

@@ -178,9 +178,9 @@ static atomic_t viqe_sub_m2m_init;
 static int gVIQE_Init_State = 0;
 
 static int debug = 0;
-#define dprintk(msg...)	 if (debug) { printk( "tcc_vioc_viqe_interface: " msg); }
-#define iprintk(msg...)  if (debug) { printk( "tcc_vioc_viqe_interface: " msg); }
-#define dvprintk(msg...)  if (debug) { printk( "DV_M2M: " msg); }
+#define dprintk(msg...)	 if (debug) { printk("[DBG][VIQE] " msg); }
+#define iprintk(msg...)  if (debug) { printk("[DBG][VIQE] " msg); }
+#define dvprintk(msg...)  if (debug) { printk("[DBG][VIQE] DV_M2M: " msg); }
 
 extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, unsigned int src_imgx, unsigned int  src_imgy,
 					unsigned int start_x, unsigned int start_y, unsigned int* Y, unsigned int* U,unsigned int* V);
@@ -209,7 +209,7 @@ void tcc_GetTimediff_ms(struct timeval time1)
 
 	if( t2.tv_sec <= time1.tv_sec && t2.tv_usec <= time1.tv_usec)
 	{
-		printk("Error :: strange Time-diff %2d.%2d <= %2d.%2d \n", t2.tv_sec, t2.tv_usec, time1.tv_sec, time1.tv_usec);
+		pr_warn("[WAR][VIQE] strange Time-diff %2d.%2d <= %2d.%2d \n", t2.tv_sec, t2.tv_usec, time1.tv_sec, time1.tv_usec);
 	}
 
 	time_diff_us = (t2.tv_sec- time1.tv_sec)*1000*1000;
@@ -333,7 +333,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 
 	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
 	{
-		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : memory allocation is failed.\n", __func__, __LINE__);
 		return;
 	}
 
@@ -354,7 +354,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 	framebufHeight = ((viqe_arg->srcHeight - viqe_arg->crop_top - viqe_arg->crop_bottom) >> 2) << 2;		// 4bit align
 #endif
 
-	printk("\x1b[1;38m TCC_VIQE_DI_Init, W:%d, H:%d, FMT:%s, OddFirst:%d, %s-%d \x1b[0m \n",
+	pr_info("[INF][VIQE] TCC_VIQE_DI_Init, W:%d, H:%d, FMT:%s, OddFirst:%d, %s-%d\n",
 			framebufWidth, framebufHeight, (img_fmt?"YUV422":"YUV420"), viqe_arg->OddFirst, 
 			viqe_arg->use_sDeintls ? "S-Deintls" : "VIQE", viqe_arg->use_Viqe0 ? 0:1);
 	
@@ -373,7 +373,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 		gUse_sDeintls = 1;
 		tcc_sdintls_swreset();
 		VIOC_CONFIG_PlugIn(viqe_common_info.gVIOC_Deintls, nRDMA);
-		printk("DEINTL-Simple\n");
+		pr_info("[INF][VIQE] DEINTL-Simple\n");
 	}
 	else
 	{
@@ -387,7 +387,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 			pVIQE = VIOC_VIQE_GetAddress(nVIQE);
 
 			if(gPMEM_VIQE_SIZE < (imgSize*4))
-				printk("### Error :0: Increase VIQE pmap size for VIQE!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
+				pr_warn("[WAR][VIQE] 0: Increase VIQE pmap size for VIQE!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
 			deintl_dma_base0	= gPMEM_VIQE_BASE;
 		}
 		else
@@ -396,7 +396,7 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 			pVIQE = VIOC_VIQE_GetAddress(nVIQE);
 
 			if((gPMEM_VIQE_SIZE/2) < (imgSize*4)){
-				printk("### Error :1: Increase VIQE pmap size for VIQE1!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
+				pr_warn("[WAR][VIQE] 1: Increase VIQE pmap size for VIQE1!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
 				deintl_dma_base0	= gPMEM_VIQE_BASE;
 			}
 			else{
@@ -434,12 +434,12 @@ void TCC_VIQE_DI_Init(VIQE_DI_TYPE *viqe_arg)
 		else
 			gbfield_30Hz =0;
 
-		printk("DEINTL-VIQE(%d)\n", nVIQE);
+		pr_info("[INF][VIQE] DEINTL-VIQE(%d)\n", nVIQE);
 #else
 		tcc_sdintls_swreset();
 		VIOC_CONFIG_PlugIn(viqe_common_info.gVIOC_Deintls, nRDMA);
 		gusingDI_S = 1;
-		printk("DEINTL-S\n");
+		pr_info("[INF][VIQE] DEINTL-S\n");
 #endif
 	}
 
@@ -511,7 +511,7 @@ void TCC_VIQE_DI_Run(VIQE_DI_TYPE *viqe_arg)
 		}
 		else{
 			if(!VIOC_PlugIn.enable) {
-				printk("%s VIQE block isn't pluged!!!\n", __func__);
+				pr_warn("[WAR][VIQE] %s VIQE block isn't pluged!!!\n", __func__);
 				return;
 			}
 		}
@@ -581,7 +581,7 @@ void TCC_VIQE_DI_DeInit(VIQE_DI_TYPE *viqe_arg)
 
 	gFrmCnt_30Hz = 0;
 
-	printk("TCC_VIQE_DI_DeInit\n");
+	pr_info("[INF][VIQE] TCC_VIQE_DI_DeInit\n");
 	if(gUse_sDeintls)
 	{
 		VIOC_CONFIG_PlugOut(viqe_common_info.gVIOC_Deintls);
@@ -620,7 +620,7 @@ void TCC_VIQE_DI_DeInit(VIQE_DI_TYPE *viqe_arg)
 static int video_queue_delete(struct video_queue_t *q)
 {
 	if(q == NULL) {
-		pr_err("queue data is NULL\n");
+		pr_err("[ERR][VIQE] queue data is NULL\n");
 		return -1;
 	}
 
@@ -652,7 +652,7 @@ static int video_queue_push( int type)
 	struct video_queue_t *q;
 	q = kzalloc(sizeof(struct video_queue_t), GFP_KERNEL);
 	if(!q) {
-		pr_err("%s can not alloc queue \n", __func__);
+		pr_err("[ERR][VIQE] %s can not alloc queue \n", __func__);
 		return -1;
 	}
 	q->type = type;
@@ -693,7 +693,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 
 	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
 	{
-		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : memory allocation is failed.\n", __func__, __LINE__);
 		return;
 	}
 
@@ -736,7 +736,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 		//If 2D(spatial) mode, these registers are ignored
 		imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
 		if(gPMEM_VIQE_SUB_SIZE < (imgSize*4)){
-			printk("### Error :2: Increase VIQE pmap size for Sub_m2m!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SUB_SIZE, (imgSize*4));
+			pr_err("[ERR][VIQE] 2: Increase VIQE pmap size for Sub_m2m!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SUB_SIZE, (imgSize*4));
 			deintl_dma_base0	= gPMEM_VIQE_BASE;
 		}
 		else{
@@ -760,7 +760,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 
 		atomic_set(&gFrmCnt_Sub_60Hz, 0);
 		gVIQE1_Init_State = 1;
-		printk("%s - VIQE1\n", __func__);
+		pr_info("[INF][VIQE] %s - VIQE1\n", __func__);
 #else
 		VIOC_RDMA_SetImageY2REnable(sub_m2m_info.pRDMABase_m2m, true);
 		VIOC_RDMA_SetImageY2RMode(sub_m2m_info.pRDMABase_m2m, 0x02); /* Y2RMode Default 0 (Studio Color) */
@@ -789,7 +789,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 			//If 2D(spatial) mode, these registers are ignored
 			imgSize = (framebufWidth * (framebufHeight / 2 ) * 4 * 3 / 2);
 			if(gPMEM_VIQE_SIZE < (imgSize*4)){
-				printk("### Error :3: Increase VIQE pmap size for Main_m2m!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
+				pr_warn("[WAR][VIQE] 3: Increase VIQE pmap size for Main_m2m!! Current(0x%x)/Need(0x%x) \n", gPMEM_VIQE_SIZE, (imgSize*4));
 			}
 			deintl_dma_base0	= gPMEM_VIQE_BASE;
 			deintl_dma_base1	= deintl_dma_base0 + imgSize;
@@ -812,7 +812,7 @@ void TCC_VIQE_DI_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_image_
 			atomic_set(&gFrmCnt_60Hz, 0);
 			gVIQE_Init_State = 1;
 		}
-		printk("%s - VIQE0\n", __func__);
+		pr_info("[INF][VIQE] %s - VIQE0\n", __func__);
 
 		#ifdef CONFIG_TCC_VIOCMG
 		if(viqe_lock == 0)
@@ -882,13 +882,13 @@ void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image, int rese
 #ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
 			if(gVIQE1_Init_State == 0)
 			{
-				printk("%s VIQE1 block isn't initailized\n", __func__);
+				pr_err("[ERR][VIQE] %s VIQE1 block isn't initailized\n", __func__);
 				return;
 			}
 
 			VIOC_CONFIG_Device_PlugState(viqe_common_info.gVIOC_VIQE1, &VIOC_PlugIn);
 			if(VIOC_PlugIn.enable == 0) {
-				printk("%s VIQE1 block isn't pluged!!!\n", __func__);
+				pr_err("[ERR][VIQE] %s VIQE1 block isn't pluged!!!\n", __func__);
 				return;
 			}
 
@@ -967,7 +967,7 @@ void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image, int rese
 
 			if(gVIQE_Init_State == 0)
 			{
-				printk("%s VIQE block isn't initailized\n", __func__);
+				pr_err("[ERR][VIQE] %s VIQE block isn't initailized\n", __func__);
 				return;
 			}
 
@@ -976,7 +976,7 @@ void TCC_VIQE_DI_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image, int rese
 
 			}
 			else {
-				printk("%s VIQE block isn't pluged!!!\n", __func__);
+				pr_err("[ERR][VIQE] %s VIQE block isn't pluged!!!\n", __func__);
 				return;
 			}
 
@@ -1033,9 +1033,9 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Run60Hz_M2M);
 
 void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 {
-	printk("%s - Layer:%d +\n", __func__, layer);
+	pr_info("[INF][VIQE] %s - Layer:%d +\n", __func__, layer);
 	#ifdef PRINT_OUT_M2M_MS
-	printk("Time Diff(ms) :: Max(%2d.%2d)/Min(%2d.%2d) => Avg(%2d.%2d) \n", (unsigned int)(time_gap_max_us/1000), (unsigned int)(time_gap_max_us%1000),
+	pr_info("[INF][VIQE] Time Diff(ms) :: Max(%2d.%2d)/Min(%2d.%2d) => Avg(%2d.%2d) \n", (unsigned int)(time_gap_max_us/1000), (unsigned int)(time_gap_max_us%1000),
 				(unsigned int)(time_gap_min_us/1000), (unsigned int)(time_gap_min_us%1000),
 				(unsigned int)((time_gap_total_us/time_gap_total_count)/1000), (unsigned int)((time_gap_total_us/time_gap_total_count)%1000));
 	#endif
@@ -1091,13 +1091,13 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 		#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 		dvprintk("%s-%d : Done(0x%x) \n", __func__, __LINE__, DV_PROC_CHECK);
 		if( (DV_PROC_CHECK & DV_DUAL_MODE) == DV_DUAL_MODE ){
-			printk("%s - Layer:%d +\n", __func__, RDMA_VIDEO_SUB);
+			pr_info("[INF][VIQE] %s - Layer:%d +\n", __func__, RDMA_VIDEO_SUB);
 			VIOC_RDMA_SetImageDisable(sub_m2m_info.pRDMABase_m2m);
 			VIOC_RDMA_SetImageY2REnable(sub_m2m_info.pRDMABase_m2m, true);
 			VIOC_RDMA_SetImageY2RMode(sub_m2m_info.pRDMABase_m2m, 0x02); /* Y2RMode Default 0 (Studio Color) */
 
 			TCC_VIQE_Scaler_Sub_Release60Hz_M2M();
-			printk("%s - Layer:%d -\n", __func__, RDMA_VIDEO_SUB);
+			pr_info("[INF][VIQE] %s - Layer:%d -\n", __func__, RDMA_VIDEO_SUB);
 			//DV_PROC_CHECK = 0; // will be inited tcc_scale_display_update()
 			dvprintk("%s-%d : DV_PROC_CHECK(%d) \n", __func__, __LINE__, DV_PROC_CHECK);
 		}
@@ -1109,7 +1109,7 @@ void TCC_VIQE_DI_DeInit60Hz_M2M(int layer)
 
 	TCC_VIQE_Scaler_DeInit_Buffer_M2M();
 
-	printk("%s - Layer:%d -\n", __func__, layer);
+	pr_info("[INF][VIQE] %s - Layer:%d -\n", __func__, layer);
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_DeInit60Hz_M2M);
 
@@ -1128,7 +1128,7 @@ void TCC_VIQE_DI_Sub_Init60Hz_M2M(TCC_OUTPUT_TYPE outputMode, struct tcc_lcdc_im
 
 		if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
 		{
-			printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+			pr_err("[ERR][VIQE] %s-%d : memory allocation is failed.\n", __func__, __LINE__);
 			goto m2m_init_scaler;
 		}
 
@@ -1212,7 +1212,7 @@ EXPORT_SYMBOL(TCC_VIQE_DI_Sub_Run60Hz_M2M);
 
 void TCC_VIQE_DI_Sub_DeInit60Hz_M2M(int layer)
 {
-	printk("%s - Layer:%d +\n", __func__, layer);
+	pr_info("[INF][VIQE] %s - Layer:%d +\n", __func__, layer);
 
 	if(atomic_read(&viqe_sub_m2m_init)) {
 		if (layer == RDMA_VIDEO_SUB) {
@@ -1234,7 +1234,7 @@ void TCC_VIQE_DI_Sub_DeInit60Hz_M2M(int layer)
 		atomic_set(&viqe_sub_m2m_init, 0);
 	}
 
-	printk("%s - Layer:%d -\n", __func__, layer);
+	pr_info("[INF][VIQE] %s - Layer:%d -\n", __func__, layer);
 }
 EXPORT_SYMBOL(TCC_VIQE_DI_Sub_DeInit60Hz_M2M);
 
@@ -1245,7 +1245,7 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 	int buffer_cnt = 0;
 
 	if(0 > pmap_get_info("viqe", &pmap_info)){
-		printk("%s-%d : viqe allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : viqe allocation is failed.\n", __func__, __LINE__);
 		return -1;
 	}
 	gPMEM_VIQE_BASE = pmap_info.base;
@@ -1253,18 +1253,18 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 
 #ifdef CONFIG_TCC_VIQE_FOR_SUB_M2M
 	if(0 > pmap_get_info("viqe1", &pmap_info)){
-		printk("%s-%d : viqe1 allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : viqe1 allocation is failed.\n", __func__, __LINE__);
 		return -2;
 	}
 	gPMEM_VIQE_SUB_BASE = pmap_info.base;
 	gPMEM_VIQE_SUB_SIZE = pmap_info.size;
-	printk("VIQE pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, gPMEM_VIQE_SUB_BASE, gPMEM_VIQE_SUB_SIZE);
+	pr_info("[INF][VIQE] pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, gPMEM_VIQE_SUB_BASE, gPMEM_VIQE_SUB_SIZE);
 #else
-	printk("VIQE pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, 0, 0);
+	pr_info("[INF][VIQE] pmap :: 0: 0x%x/0x%x, 1: 0x%x/0x%x \n", gPMEM_VIQE_BASE, gPMEM_VIQE_SIZE, 0, 0);
 #endif
 
 	if(0 > pmap_get_info("overlay", &pmap_info)){
-		printk("%s-%d : overlay allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : overlay allocation is failed.\n", __func__, __LINE__);
 		return -3;
 	}
 
@@ -1275,13 +1275,13 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 		for(buffer_cnt=0; buffer_cnt < BUFFER_CNT_FOR_M2M_MODE; buffer_cnt++)
 		{
 			overlay_buffer[0][buffer_cnt] = (unsigned int)pmap_info.base + (szBuffer * buffer_cnt);
-			printk("Overlay-0 :: %d/%d = 0x%x  \n", buffer_cnt, BUFFER_CNT_FOR_M2M_MODE, overlay_buffer[0][buffer_cnt]);
+			pr_info("[INF][VIQE] Overlay-0 :: %d/%d = 0x%x  \n", buffer_cnt, BUFFER_CNT_FOR_M2M_MODE, overlay_buffer[0][buffer_cnt]);
 		}
 	}
 
 	pmap_get_info("overlay1", &pmap_info);
 	if(0 > pmap_get_info("overlay1", &pmap_info)){
-		printk("%s-%d : overlay1 allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : overlay1 allocation is failed.\n", __func__, __LINE__);
 		return -4;
 	}
 	if(pmap_info.size)
@@ -1291,7 +1291,7 @@ int TCC_VIQE_Scaler_Init_Buffer_M2M(void)
 		for(buffer_cnt=0; buffer_cnt < BUFFER_CNT_FOR_M2M_MODE; buffer_cnt++)
 		{
 			overlay_buffer[1][buffer_cnt] = (unsigned int)pmap_info.base + (szBuffer * buffer_cnt);
-			printk("Overlay-1 :: %d/%d = 0x%x  \n", buffer_cnt, BUFFER_CNT_FOR_M2M_MODE, overlay_buffer[1][buffer_cnt]);
+			pr_info("[INF][VIQE] Overlay-1 :: %d/%d = 0x%x  \n", buffer_cnt, BUFFER_CNT_FOR_M2M_MODE, overlay_buffer[1][buffer_cnt]);
 		}
 	}
 
@@ -1351,24 +1351,26 @@ void TCC_VIQE_Scaler_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 		vioc_intr_clear(scaler->vioc_intr->id, scaler->vioc_intr->bits);
 		ret = request_irq(scaler->irq, TCC_VIQE_Scaler_Handler60Hz_M2M, IRQF_SHARED, "m2m-main", scaler);
 
-		if (ret) printk("failed to acquire scaler1 request_irq. \n");
+		if (ret) {
+			pr_err("[ERR][VIQE] failed to acquire scaler1 request_irq. \n");
+		}
 
 		vioc_intr_enable(scaler->irq, scaler->vioc_intr->id, scaler->vioc_intr->bits);
 		scaler->data->irq_reged = 1;
-		printk("%s() : Out - M2M-Main ISR(%d) registered(%d). \n", __func__, scaler->irq, scaler->data->irq_reged);
+		pr_info("[INF][VIQE] %s() : Out - M2M-Main ISR(%d) registered(%d). \n", __func__, scaler->irq, scaler->data->irq_reged);
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
 		if(!gUse_MapConverter && input_image->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0){
 			tca_map_convter_swreset(VIOC_MC1);
 			gUse_MapConverter |= MAIN_USED;
-			printk("Main-M2M :: MC Used. \n");
+			pr_info("[INF][VIQE] Main-M2M :: MC Used. \n");
 		}
 #endif
 #ifdef CONFIG_VIOC_DTRC
 		if(!gUse_DtrcConverter && input_image->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0){
 			tca_dtrc_convter_swreset(VIOC_DTRC1);
 			gUse_DtrcConverter |= MAIN_USED;
-			printk("Main-M2M :: DTRC Used. \n");
+			pr_info("[INF][VIQE] Main-M2M :: DTRC Used. \n");
 		}
 #endif
 
@@ -1427,11 +1429,11 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if(!gUse_MapConverter && input_image->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0){
 		//tca_map_convter_swreset(VIOC_MC1);
 		gUse_MapConverter |= MAIN_USED;
-		printk("Main-M2M :: MC Used. \n");
+		pr_info("[INF][VIQE] Main-M2M :: MC Used. \n");
 	}
 
 	if(scaler->info->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0 && !(gUse_MapConverter&MAIN_USED)){
-		printk("Error :: Main Map-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_MapConverter);
+		pr_err("[ERR][VIQE] Main Map-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_MapConverter);
 		return;
 	}
 	#endif
@@ -1439,11 +1441,11 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if(!gUse_DtrcConverter && input_image->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0){
 		//tca_dtrc_convter_swreset(VIOC_DTRC1);
 		gUse_DtrcConverter |= MAIN_USED;
-		printk("Main-M2M :: DTRC Used. \n");
+		pr_info("[INF][VIQE] Main-M2M :: DTRC Used. \n");
 	}
 
 	if(scaler->info->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0 && !(gUse_DtrcConverter&MAIN_USED)){
-		printk("Error :: Dtrc-Converter can't work because of gUse_DtrcConverter(0x%x) \n", gUse_DtrcConverter);
+		pr_err("[ERR][VIQE] Dtrc-Converter can't work because of gUse_DtrcConverter(0x%x) \n", gUse_DtrcConverter);
 		return;
 	}
 	#endif
@@ -1734,20 +1736,20 @@ void TCC_VIQE_Scaler_Sub_Init60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 
 		vioc_intr_enable(scaler_sub->irq, scaler_sub->vioc_intr->id, scaler_sub->vioc_intr->bits);
 		scaler_sub->data->irq_reged = 1;
-		printk("%s() : Out - M2M-Sub ISR(%d) registered(%d). \n", __func__, scaler_sub->irq, scaler_sub->data->irq_reged);
+		pr_info("[INF][VIQE] %s() : Out - M2M-Sub ISR(%d) registered(%d). \n", __func__, scaler_sub->irq, scaler_sub->data->irq_reged);
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
 		if(!gUse_MapConverter && input_image->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0){
 			tca_map_convter_swreset(VIOC_MC1);
 			gUse_MapConverter |= SUB_USED;
-			printk("Sub-M2M :: MC Used. \n");
+			pr_info("[INF][VIQE] Sub-M2M :: MC Used. \n");
 		}
 #endif
 #ifdef CONFIG_VIOC_DTRC
 		if(!gUse_DtrcConverter && input_image->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0){
 			tca_dtrc_convter_swreset(VIOC_DTRC1);
 			gUse_DtrcConverter |= SUB_USED;
-			printk("Sub-M2M :: DTRC Used. \n");
+			pr_info("[INF][VIQE] Sub-M2M :: DTRC Used. \n");
 		}
 #endif
 	}
@@ -1890,11 +1892,11 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if(!gUse_MapConverter && input_image->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0){
 		//tca_map_convter_swreset(VIOC_MC1);
 		gUse_MapConverter |= SUB_USED;
-		printk("Sub-M2M :: MC Used. \n");
+		pr_info("[INF][VIQE] Sub-M2M :: MC Used. \n");
 	}
 
 	if(scaler_sub->info->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0 && !(gUse_MapConverter&SUB_USED)){
-		printk("Error :: Sub Map-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_MapConverter);
+		pr_err("[ERR][VIQE] Sub Map-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_MapConverter);
 		return;
 	}
 #endif
@@ -1902,11 +1904,11 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if(!gUse_DtrcConverter && input_image->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0){
 		//tca_dtrc_convter_swreset(VIOC_DTRC1);
 		gUse_DtrcConverter |= SUB_USED;
-		printk("Sub-M2M :: DTRC Used. \n");
+		pr_info("[INF][VIQE] Sub-M2M :: DTRC Used. \n");
 	}
 
 	if(scaler_sub->info->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0 && !(gUse_DtrcConverter&SUB_USED)){
-		printk("Error :: Dtrc-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_DtrcConverter);
+		pr_err("[ERR][VIQE] Dtrc-Converter can't work because of gUse_MapConverter(0x%x) \n", gUse_DtrcConverter);
 		return;
 	}
 #endif
@@ -2336,7 +2338,7 @@ void TCC_VIQE_Display_Update60Hz_M2M(struct tcc_lcdc_image_update *input_image)
 				break;
 		}
 	}
-//	printk("update OUT\n");
+//	pr_info("[INF][VIQE] update OUT\n");
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2376,7 +2378,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 
 	if(0 > TCC_VIQE_Scaler_Init_Buffer_M2M())
 	{
-		printk("%s-%d : memory allocation is failed.\n", __func__, __LINE__);
+		pr_err("[ERR][VIQE] %s-%d : memory allocation is failed.\n", __func__, __LINE__);
 		return;
 	}
 
@@ -2438,7 +2440,7 @@ void TCC_VIQE_DI_Init60Hz(TCC_OUTPUT_TYPE outputMode, int lcdCtrlNum, struct tcc
 
 	VIOC_DISP_GetSize(pViqe_60hz_info->pDISPBase_60Hz, &lcd_width, &lcd_height);
 	if((!lcd_width) || (!lcd_height)) {
-		printk("%s invalid lcd size\n", __func__);
+		pr_err("[ERR][VIQE] %s invalid lcd size\n", __func__);
 		return;
 	}
 
@@ -2725,7 +2727,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 
 	VIOC_DISP_GetSize(pViqe_60hz_info->pDISPBase_60Hz, &lcd_width, &lcd_height);
 	if((!lcd_width) || (!lcd_height)) {
-		printk("%s invalid lcd size\n", __func__);
+		pr_err("[ERR][VIQE] %s invalid lcd size\n", __func__);
 		return;
 	}
 
@@ -2965,7 +2967,7 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 			}
 		}
 		else{
-			pr_err("@@@@@@@@@ 4 @@@@@@@@@@ Should be implement other layer configuration. \n");
+			pr_err("[ERR][VIQE] -4- Should be implement other layer configuration. \n");
 			return;
 		}
 	}
@@ -3016,7 +3018,7 @@ void TCC_VIQE_DI_DeInit60Hz(void)
 		}
 	}
 
-	printk("%s\n", __func__);
+	pr_info("[INF][VIQE] %s\n", __func__);
 
 #ifdef CONFIG_TCC_HDMI_DRIVER_V2_0
 	set_hdmi_drm(DRM_OFF, NULL, RDMA_VIDEO);
@@ -3069,37 +3071,37 @@ unsigned int tcc_viqe_commom_dt_parse(struct device_node *np, struct tcc_viqe_co
 	viqe_node0 = of_parse_phandle(np,"telechips,viqe,0", 0);
 	of_property_read_u32_index(np,"telechips,viqe,0", 1, &viqe_common_info->gVIOC_VIQE0);
 	if (!viqe_node0) {
-		pr_err( "could not find viqe_video viqe0 node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video viqe0 node\n");
 	}
 	else {
 		viqe_common_info->pVIQE0= VIOC_VIQE_GetAddress(viqe_common_info->gVIOC_VIQE0);
-		//pr_info("viqe_video viqe0 %d %x  \n", viqe_common_info->gVIOC_VIQE0, viqe_common_info->pVIQE0);
+		//pr_info("[INF][VIQE] viqe_video viqe0 %d %x  \n", viqe_common_info->gVIOC_VIQE0, viqe_common_info->pVIQE0);
 	}
 
 	viqe_node1 = of_parse_phandle(np,"telechips,viqe,1", 0);
 	of_property_read_u32_index(np,"telechips,viqe,1", 1, &viqe_common_info->gVIOC_VIQE1);
 	if (!viqe_node1) {
-		pr_err( "could not find viqe_video viqe1 node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video viqe1 node\n");
 
 		viqe_common_info->pVIQE1= viqe_common_info->pVIQE0;
 		viqe_common_info->gVIOC_VIQE1 = viqe_common_info->gVIOC_VIQE0;
 		not_exist_viqe1 = 1;
-		//pr_info("viqe_video viqe1(viqe0) %d %x  \n", index, viqe_common_info->pVIQE1);
+		//pr_info("[INF][VIQE] viqe_video viqe1(viqe0) %d %x  \n", index, viqe_common_info->pVIQE1);
 	}
 	else {
 		viqe_common_info->pVIQE1 = VIOC_VIQE_GetAddress(viqe_common_info->gVIOC_VIQE1);
-		//pr_info("viqe_video viqe1 %d %x  \n", viqe_common_info->gVIOC_VIQE1, viqe_common_info->pVIQE1);
+		//pr_info("[INF][VIQE] viqe_video viqe1 %d %x  \n", viqe_common_info->gVIOC_VIQE1, viqe_common_info->pVIQE1);
 	}
 
 	deintls_node = of_find_compatible_node(NULL, NULL, "telechips,vioc_deintls");
 	of_property_read_u32(np, "vioc_deintls", &viqe_common_info->gVIOC_Deintls);
 	if(deintls_node == NULL) {
-		pr_err("can not find vioc deintls \n");
+		pr_err("[ERR][VIQE] can not find vioc deintls \n");
 	} else {
 		viqe_common_info->pDEINTLS = VIOC_DEINTLS_GetAddress();
 		if (viqe_common_info->pDEINTLS == NULL)
 			pr_err("can not find vioc deintls address \n");
-		//pr_info("deintls 0x%p\n",viqe_common_info->pDEINTLS);
+		//pr_info("[INF][VIQE] deintls 0x%p\n",viqe_common_info->pDEINTLS);
 	}
 
 	of_property_read_u32(np, "board_num", &viqe_common_info->gBoard_stb);
@@ -3120,41 +3122,41 @@ unsigned int tcc_viqe_60hz_dt_parse(struct device_node *np, struct tcc_viqe_60hz
 	rdma_node = of_parse_phandle(np,"telechips,rdma,60", 0);
 	of_property_read_u32_index(np,"telechips,rdma,60", 1, &viqe_60hz_info->gVIQE_RDMA_num_60Hz);
 	if (!rdma_node) {
-		pr_err( "could not find viqe_video rdma_60hz node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video rdma_60hz node\n");
 	}
 	else {
 		viqe_60hz_info->pRDMABase_60Hz = VIOC_RDMA_GetAddress(viqe_60hz_info->gVIQE_RDMA_num_60Hz);
-		//pr_info("viqe_video rdma_60hz %d %x  \n", viqe_60hz_info->gVIQE_RDMA_num_60Hz, viqe_60hz_info->pRDMABase_60Hz);
+		//pr_info("[INF][VIQE] viqe_video rdma_60hz %d %x  \n", viqe_60hz_info->gVIQE_RDMA_num_60Hz, viqe_60hz_info->pRDMABase_60Hz);
 	}
 
 	wmixer_node = of_parse_phandle(np,"telechips,wmixer", 0);
 	of_property_read_u32_index(np,"telechips,wmixer", 1, &index);
 	if (!wmixer_node) {
-		pr_err( "could not find viqe_video wmixer node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video wmixer node\n");
 	}
 	else {
 		viqe_60hz_info->pWMIXBase_60Hz = VIOC_WMIX_GetAddress(index);
-		//pr_info("viqe_video wmixe_60hz %d %x  \n", index, viqe_60hz_info->pWMIXBase_60Hz);
+		//pr_info("[INF][VIQE] viqe_video wmixe_60hz %d %x  \n", index, viqe_60hz_info->pWMIXBase_60Hz);
 	}
 
 	disp_node = of_parse_phandle(np, "telechips,disp", 0);
 	of_property_read_u32_index(np,"telechips,disp", 1, &index);
 	if (!disp_node) {
-		pr_err( "could not find viqe_video display node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video display node\n");
 	}
 	else {
 		viqe_60hz_info->pDISPBase_60Hz= VIOC_DISP_GetAddress(index);
-		pr_info("viqe_video display_60hz 0x%x %p  \n", index, viqe_60hz_info->pDISPBase_60Hz);
+		pr_info("[INF][VIQE] viqe_video display_60hz 0x%x %p  \n", index, viqe_60hz_info->pDISPBase_60Hz);
 	}
 
 	scaler_node = of_parse_phandle(np, "telechips,sc", 0);
 	of_property_read_u32_index(np,"telechips,sc", 1, &viqe_60hz_info->gSCALER_num_60Hz);
 	if (!scaler_node) {
-		pr_err( "could not find viqe_video scaler node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video scaler node\n");
 	}
 	else {
 		viqe_60hz_info->pSCALERBase_60Hz= VIOC_SC_GetAddress(viqe_60hz_info->gSCALER_num_60Hz);
-		//pr_info("viqe_video scaler_60hz %d %x  \n", viqe_60hz_info->gSCALER_num_60Hz, viqe_60hz_info->pSCALERBase_60Hz);
+		//pr_info("[INF][VIQE] viqe_video scaler_60hz %d %x  \n", viqe_60hz_info->gSCALER_num_60Hz, viqe_60hz_info->pSCALERBase_60Hz);
 	}
 
 	iprintk("VIQE_60Hz Information. \n");
@@ -3179,11 +3181,11 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 	main_deintl_rdma_node = of_parse_phandle(main_deIntl,"telechips,main_rdma,m2m", 0);
 	of_property_read_u32_index(main_deIntl,"telechips,main_rdma,m2m", 1, &main_m2m_info->gVIQE_RDMA_num_m2m);
 	if (!main_deintl_rdma_node) {
-		pr_err( "could not find viqe_video main_rdma_m2m node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video main_rdma_m2m node\n");
 	}
 	else {
 		main_m2m_info->pRDMABase_m2m = VIOC_RDMA_GetAddress(main_m2m_info->gVIQE_RDMA_num_m2m);
-		//pr_info("main_video rdma_m2m %d %x  \n", index, main_m2m_info->pRDMABase_m2m);
+		//pr_info("[INF][VIQE] main_video rdma_m2m %d %x  \n", index, main_m2m_info->pRDMABase_m2m);
 	}
 
 	//Sub :: m2m_deIntl_info
@@ -3192,108 +3194,108 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 	sub_deintl_rdma_node = of_parse_phandle(sub_deIntl,"telechips,sub_rdma,m2m", 0);
 	of_property_read_u32_index(sub_deIntl,"telechips,sub_rdma,m2m", 1, &sub_m2m_info->gVIQE_RDMA_num_m2m);
 	if (!sub_deintl_rdma_node) {
-		pr_err( "could not find viqe_video sub_rdma_m2m node\n");
+		pr_err("[ERR][VIQE] could not find viqe_video sub_rdma_m2m node\n");
 	}
 	else {
 		sub_m2m_info->pRDMABase_m2m = VIOC_RDMA_GetAddress(sub_m2m_info->gVIQE_RDMA_num_m2m);
-		//pr_info("sub_video rdma_m2m %d %x  \n", index, main_m2m_info->pRDMABase_m2m);
+		//pr_info("[INF][VIQE] sub_video rdma_m2m %d %x  \n", index, main_m2m_info->pRDMABase_m2m);
 	}
 #else
 	// Simple DeInterlacer
 	sub_deintl_rdma_node = of_parse_phandle(sub_deIntl,"telechips,sub_rdma,m2m", 0);
 	of_property_read_u32_index(sub_deIntl,"telechips,sub_rdma,m2m", 1, &sub_m2m_info->gDEINTLS_RDMA_num_m2m);
 	if (!sub_deintl_rdma_node) {
-		pr_err( "could not find deintls_video sub_rdma_m2m node\n");
+		pr_err("[ERR][VIQE] could not find deintls_video sub_rdma_m2m node\n");
 	}
 	else {
 		sub_m2m_info->pRDMABase_m2m= VIOC_RDMA_GetAddress(sub_m2m_info->gDEINTLS_RDMA_num_m2m);
-		//pr_info("sub_video rdma_m2m %d %x  \n", index, sub_m2m_info->pRDMABase_m2m);
+		//pr_info("[INF][VIQE] sub_video rdma_m2m %d %x  \n", index, sub_m2m_info->pRDMABase_m2m);
 	}
 #endif
 
 	//Main :: m2m_deIntl_scaler
 	scaler = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_type_t), GFP_KERNEL);
 	if (scaler == NULL) {
-		printk("fail scaler kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler kzalloc\n");
 		return ret;
 	}
 
 	scaler->info = kzalloc(sizeof(struct tcc_lcdc_image_update), GFP_KERNEL);
 	if (scaler->info == NULL) {
-		printk("fail scaler->info kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->info kzalloc\n");
 		return ret;
 	}
 
 	scaler->data = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_data), GFP_KERNEL);
 	if (scaler->data == NULL) {
-		printk("fail scaler->data kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->data kzalloc\n");
 		return ret;
 	}
 
 	scaler->vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
 	if (scaler->vioc_intr == NULL) {
-		printk("fail scaler->vioc_intr kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->vioc_intr kzalloc\n");
 		return ret;
 	}
 
 	scaler->rdma = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler->rdma == NULL) {
-		printk("fail scaler->rdma kzalloc\n");
+		pr_err("[ERR][VIQE] ail scaler->rdma kzalloc\n");
 		return ret;
 	}
 
 	scaler->wmix= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler->wmix == NULL) {
-		printk("fail scaler->wmix kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->wmix kzalloc\n");
 		return ret;
 	}
 	scaler->sc= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler->sc == NULL) {
-		printk("fail scaler->sc kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->sc kzalloc\n");
 		return ret;
 	}
 
 	scaler->wdma= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler->wdma == NULL) {
-		printk("fail scaler->wdma kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler->wdma kzalloc\n");
 		return ret;
         }
 
 	 sc_rdma_node = of_parse_phandle(sc_main,"m2m_sc_rdma", 0);
 	 of_property_read_u32_index(sc_main,"m2m_sc_rdma", 1, &scaler->rdma->id);
 	if (!sc_rdma_node) {
-		pr_err( "could not find viqe_video rdma node of scaler\n");
+		pr_err("[ERR][VIQE] could not find viqe_video rdma node of scaler\n");
 	}
 	else {
 		scaler->rdma->reg = VIOC_RDMA_GetAddress(scaler->rdma->id);
-		//pr_info("main_video scaler->rdma[%d] %x  \n", scaler->rdma->id, scaler->rdma->reg);
+		//pr_info("[INF][VIQE] main_video scaler->rdma[%d] %x  \n", scaler->rdma->id, scaler->rdma->reg);
 	}
 
 	 sc_wmixer_node = of_parse_phandle(sc_main,"m2m_sc_wmix", 0);
 	 of_property_read_u32_index(sc_main,"m2m_sc_wmix", 1, &scaler->wmix->id);
 	if (!sc_wmixer_node) {
-		pr_err( "could not find viqe_video wmixer node of scaler\n");
+		pr_err("[ERR][VIQE] could not find viqe_video wmixer node of scaler\n");
 	}
 	else {
 		scaler->wmix->reg = VIOC_WMIX_GetAddress(scaler->wmix->id);
 		//of_property_read_u32(sc_main, "m2m_sc_wmix_path", &scaler->wmix->path);
-		//pr_info("main_video scaler->wmix[%d] %x  \n", scaler->wmix->id, scaler->wmix->reg);
+		//pr_info("[INF][VIQE] main_video scaler->wmix[%d] %x  \n", scaler->wmix->id, scaler->wmix->reg);
 	}
 
 	 sc_scaler_node = of_parse_phandle(sc_main,"m2m_sc_scaler", 0);
 	 of_property_read_u32_index(sc_main,"m2m_sc_scaler", 1, &scaler->sc->id);
 	if (!sc_scaler_node) {
-		pr_err( "could not find viqe_video scaler node of scaler\n");
+		pr_err("[ERR][VIQE] could not find viqe_video scaler node of scaler\n");
 	}
 	else {
 		scaler->sc->reg = VIOC_SC_GetAddress(scaler->sc->id);
-		//pr_info("main_video scaler->scalers[%d] %x  \n", scaler->sc->id, scaler->sc->reg);
+		//pr_info("[INF][VIQE] main_video scaler->scalers[%d] %x  \n", scaler->sc->id, scaler->sc->reg);
 	}
 
 	 sc_wdma_node = of_parse_phandle(sc_main,"m2m_sc_wdma", 0);
 	 of_property_read_u32_index(sc_main,"m2m_sc_wdma", 1, &scaler->wdma->id);
 	if (!sc_wdma_node) {
-		pr_err( "could not find viqe_videowdma node of scaler\n");
+		pr_err("[ERR][VIQE] could not find viqe_videowdma node of scaler\n");
 	}
 	else {
 		scaler->wdma->reg  = VIOC_WDMA_GetAddress(scaler->wdma->id);
@@ -3301,7 +3303,7 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 		scaler->irq = irq_of_parse_and_map(sc_wdma_node, get_vioc_index(scaler->wdma->id));
 		scaler->vioc_intr->id   = VIOC_INTR_WD0 + get_vioc_index(scaler->wdma->id);
 		scaler->vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
-		//pr_info("main_video scaler->wdmas[%d] %x  \n", scaler->wdma->id, scaler->wdma->reg);
+		//pr_info("[INF][VIQE] main_video scaler->wdmas[%d] %x  \n", scaler->wdma->id, scaler->wdma->reg);
 	}
 
 	of_property_read_u32(sc_main, "m2m_sc_settop_support", &scaler->settop_support);
@@ -3309,48 +3311,48 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 	//Sub :: m2m_deIntl_scaler
 	scaler_sub = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_type_t), GFP_KERNEL);
 	if (scaler_sub == NULL) {
-		printk("fail scaler_sub kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->info = kzalloc(sizeof(struct tcc_lcdc_image_update), GFP_KERNEL);
 	if (scaler_sub->info == NULL) {
-		printk("fail scaler_sub->info kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->info kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->data = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_data), GFP_KERNEL);
 	if (scaler_sub->data == NULL) {
-		printk("fail scaler_sub->data kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->data kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
 	if (scaler_sub->vioc_intr == NULL) {
-		printk("fail scaler_sub->vioc_intr kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->vioc_intr kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->rdma = kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler_sub->rdma == NULL) {
-		printk("fail scaler_sub->rdma kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->rdma kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->wmix= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler_sub->wmix == NULL) {
-		printk("fail scaler_sub->wmix kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->wmix kzalloc\n");
 		return ret;
 	}
 	scaler_sub->sc= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler_sub->sc == NULL) {
-		printk("fail scaler_sub->sc kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->sc kzalloc\n");
 		return ret;
 	}
 
 	scaler_sub->wdma= kzalloc(sizeof(struct tcc_viqe_m2m_scaler_vioc), GFP_KERNEL);
 	if (scaler_sub->wdma == NULL) {
-		printk("fail scaler_sub->wdma kzalloc\n");
+		pr_err("[ERR][VIQE] fail scaler_sub->wdma kzalloc\n");
 		return ret;
 	}
 
@@ -3361,34 +3363,34 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 	}
 	else {
 		scaler_sub->rdma->reg = VIOC_RDMA_GetAddress(scaler_sub->rdma->id);
-		//pr_info("sub_video scaler_sub->rdma[%d] %x  \n", scaler_sub->rdma->id, scaler_sub->rdma->reg);
+		//pr_info("[INF][VIQE] sub_video scaler_sub->rdma[%d] %x  \n", scaler_sub->rdma->id, scaler_sub->rdma->reg);
 	}
 
 	sc_wmixer_node = of_parse_phandle(sc_sub,"m2m_sc_wmix", 0);
 	of_property_read_u32_index(sc_sub,"m2m_sc_wmix", 1, &scaler_sub->wmix->id);
 	if (!sc_wmixer_node) {
-		pr_err( "could not find viqe_video wmixer node of scaler_sub\n");
+		pr_err("[ERR][VIQE] could not find viqe_video wmixer node of scaler_sub\n");
 	}
 	else {
 		scaler_sub->wmix->reg = VIOC_WMIX_GetAddress(scaler_sub->wmix->id);
 		//of_property_read_u32(sc_sub, "m2m_sc_wmix_path", &scaler_sub->wmix->path);
-		//pr_info("sub_video scaler_sub->wmix[%d] %x  \n", scaler_sub->wmix->id, scaler_sub->wmix->reg);
+		//pr_info("[INF][VIQE] sub_video scaler_sub->wmix[%d] %x  \n", scaler_sub->wmix->id, scaler_sub->wmix->reg);
 	}
 
 	sc_scaler_node = of_parse_phandle(sc_sub,"m2m_sc_scaler", 0);
 	of_property_read_u32_index(sc_sub,"m2m_sc_scaler", 1, &scaler_sub->sc->id);
 	if (!sc_scaler_node) {
-		pr_err( "could not find viqe_video scaler_sub node of scaler_sub\n");
+		pr_err("[ERR][VIQE] could not find viqe_video scaler_sub node of scaler_sub\n");
 	}
 	else {
 		scaler_sub->sc->reg = VIOC_SC_GetAddress(scaler_sub->sc->id);
-		//pr_info("sub_video scaler_sub->scalers[%d] %x  \n", scaler_sub->sc->id, scaler_sub->sc->reg);
+		//pr_info("[INF][VIQE] sub_video scaler_sub->scalers[%d] %x  \n", scaler_sub->sc->id, scaler_sub->sc->reg);
 	}
 
 	sc_wdma_node = of_parse_phandle(sc_sub,"m2m_sc_wdma", 0);
 	of_property_read_u32_index(sc_sub,"m2m_sc_wdma", 1, &scaler_sub->wdma->id);
 	if (!sc_wdma_node) {
-		pr_err( "could not find viqe_video wdma node of scaler_sub\n");
+		pr_err("[ERR][VIQE] could not find viqe_video wdma node of scaler_sub\n");
 	}
 	else {
 		scaler_sub->wdma->reg  = VIOC_WDMA_GetAddress(scaler_sub->wdma->id);
@@ -3396,7 +3398,7 @@ int tcc_viqe_m2m_dt_parse(struct device_node *main_deIntl, struct device_node *s
 		scaler_sub->irq = irq_of_parse_and_map(sc_wdma_node, get_vioc_index(scaler_sub->wdma->id));
 		scaler_sub->vioc_intr->id   = VIOC_INTR_WD0 + get_vioc_index(scaler_sub->wdma->id);
 		scaler_sub->vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
-		//pr_info("sub_video scaler_sub->wdmas[%d] %x  \n", scaler_sub->wdma->id, scaler_sub->wdma->reg);
+		//pr_info("[INF][VIQE] sub_video scaler_sub->wdmas[%d] %x  \n", scaler_sub->wdma->id, scaler_sub->wdma->reg);
 	}
 
 	of_property_read_u32(sc_sub, "m2m_sc_settop_support", &scaler_sub->settop_support);
@@ -3431,7 +3433,7 @@ static int tcc_viqe_probe(struct platform_device *pdev)
 	//viqe_common
 	viqe_common = of_find_node_by_name(dev->of_node, "tcc_viqe_viqe_common");
 	if(!viqe_common) {
-		pr_err( "could not find viqe_common node\n");
+		pr_err("[ERR][VIQE] could not find viqe_common node\n");
 		return -ENODEV;
 	}
 	tcc_viqe_commom_dt_parse(viqe_common, &viqe_common_info);
@@ -3443,16 +3445,16 @@ static int tcc_viqe_probe(struct platform_device *pdev)
 
 	if(viqe_common_info.gBoard_stb == 0) {
 		if (!lcd_60hz_node) {
-			pr_err( "could not find viqe_lcd node\n");
+			pr_err("[ERR][VIQE] could not find viqe_lcd node\n");
 			return -ENODEV;
 		}
 	} else {
 		if (!external_60Hz_node) {
-			pr_err( "could not find viqe_external node\n");
+			pr_err("[ERR][VIQE] could not find viqe_external node\n");
 			return -ENODEV;
 		}
 		if (!external_sub_60Hz_node) {
-			pr_err( "could not find viqe_external node\n");
+			pr_err("[ERR][VIQE] could not find viqe_external node\n");
 			return -ENODEV;
 		}
 	}
@@ -3474,7 +3476,7 @@ static int tcc_viqe_probe(struct platform_device *pdev)
 	m2m_scaler_sub_node = of_find_node_by_name(dev->of_node, "tcc_video_scaler_sub_m2m");
 
 	if(!m2m_deintl_main_node || !m2m_scaler_main_node || !m2m_deintl_sub_node || !m2m_scaler_sub_node) {
-		pr_err( "could not find m2m_viqe node\n");
+		pr_err("[ERR][VIQE] could not find m2m_viqe node\n");
 		return -ENODEV;
 	}
 

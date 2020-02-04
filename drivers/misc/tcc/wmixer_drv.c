@@ -44,8 +44,8 @@
 
 #include <video/tcc/vioc_intr.h>
 
-#define WMIXER_DEBUG        0
-#define dprintk(msg...)         if(WMIXER_DEBUG) { printk("WMIXER_DRV: " msg); }
+#define WMIXER_DEBUG	0
+#define dprintk(msg...)	if(WMIXER_DEBUG) { printk("[DBG][WMIXER] " msg); }
 
 #ifdef CONFIG_VIOC_MAP_DECOMP
 #include <video/tcc/tca_map_converter.h>
@@ -111,7 +111,7 @@ static int wmixer_drv_mmap(struct file *filp, struct vm_area_struct *vma)
     struct wmixer_drv_type *wmixer = dev_get_drvdata(misc->parent);
 
     if (range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-        printk(KERN_ERR "%s: %s: Address range is not allowed.\n", __func__, wmixer->misc->name);
+        pr_err("[ERR][WMIXER] %s: %s: Address range is not allowed.\n", __func__, wmixer->misc->name);
         return -EAGAIN;
     }
 
@@ -318,7 +318,7 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
         ret = wait_event_interruptible_timeout(wmixer->data->poll_wq, wmixer->data->block_operating == 0, msecs_to_jiffies(500));
         if (ret <= 0) {
             wmixer->data->block_operating = 0;
-            printk("%s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
+            pr_warn("[WAR][WMIXER] %s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
         }
     }
 
@@ -518,9 +518,9 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
         if (ret <= 0) {
             wmixer->data->block_operating = 0;
 #if defined(CONFIG_VIOC_MAP_DECOMP) || defined(CONFIG_VIOC_DTRC_DECOMP)
-            printk("%s(): %s time-out: %d, line: %d compressor_num 0x%x/%d. \n", __func__, wmixer->misc->name, ret, __LINE__, aps_info->src_fmt_ext_info, aps_info->mc_num);
+            pr_warn("[WAR][WMIXER] %s(): %s time-out: %d, line: %d compressor_num 0x%x/%d. \n", __func__, wmixer->misc->name, ret, __LINE__, aps_info->src_fmt_ext_info, aps_info->mc_num);
 #else
-            printk("%s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
+            pr_warn("[WAR][WMIXER] %s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
 #endif
         }
     }
@@ -601,7 +601,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
         ret = wait_event_interruptible_timeout(wmixer->data->poll_wq, wmixer->data->block_operating == 0, msecs_to_jiffies(500));
         if (ret <= 0) {
             wmixer->data->block_operating = 0;
-            printk("%s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
+            pr_warn("[WAR][WMIXER] %s(): %s time-out: %d, line: %d. \n", __func__, wmixer->misc->name, ret, __LINE__);
         }
     }
 
@@ -670,7 +670,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 ret = wait_event_interruptible_timeout(wmixer->data->cmd_wq, wmixer->data->block_operating == 0, msecs_to_jiffies(200));
                 if(ret <= 0) {
                     wmixer->data->block_operating = 0;
-                    printk("[%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", ret, wmixer->misc->name, wmixer->data->block_waiting, wmixer->data->cmd_count);
+                    pr_warn("[WAR][WMIXER] [%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", ret, wmixer->misc->name, wmixer->data->block_waiting, wmixer->data->cmd_count);
                 }
                 ret = 0;
             }
@@ -679,14 +679,14 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 memcpy(wmix_info,(WMIXER_INFO_TYPE*)arg, sizeof(WMIXER_INFO_TYPE));
             }else{
                 if(copy_from_user(wmix_info, (WMIXER_INFO_TYPE *)arg, sizeof(WMIXER_INFO_TYPE))) {
-                    printk(KERN_ALERT "Not Supported copy_from_user(%d). \n", cmd);
+                    pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                     ret = -EFAULT;
                 }
             }
 
             if(ret >= 0) {
                 if(wmixer->data->block_operating >= 1) {
-                    printk("scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n", \
+                    pr_info("[INF][WMIXER] scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n", \
                                 wmixer->data->block_operating, wmixer->data->block_waiting, wmixer->data->cmd_count, wmixer->data->poll_count);
                 }
 
@@ -701,7 +701,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
         case TCC_WMIXER_ALPHA_SCALING:
         case TCC_WMIXER_ALPHA_SCALING_KERNEL:
             if (wmixer->sc.reg == NULL) {
-                pr_warn("Warning: TCC_WMIXER_ALPHA_SCALING ioctl needs a sc\n");
+                pr_err("[ERR][WMIXER] TCC_WMIXER_ALPHA_SCALING ioctl needs a sc\n");
                 break;
             }
 
@@ -711,7 +711,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 ret = wait_event_interruptible_timeout(wmixer->data->cmd_wq, wmixer->data->block_operating == 0, msecs_to_jiffies(200));
                 if(ret <= 0) {
                     wmixer->data->block_operating = 0;
-                    printk("[%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", \
+                    pr_warn("[WAR][WMIXER] [%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", \
                         ret, wmixer->misc->name, wmixer->data->block_waiting, wmixer->data->cmd_count);
                 }
                 ret = 0;
@@ -722,14 +722,14 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
             else
             {
                 if(copy_from_user((void *)alpha_scalering, (const void *)arg, sizeof(WMIXER_ALPHASCALERING_INFO_TYPE))) {
-                        printk(KERN_ALERT "Not Supported copy_from_user(%d). \n", cmd);
+                        pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                         ret = -EFAULT;
                 }
             }
 
             if(ret >= 0) {
                 if(wmixer->data->block_operating >= 1) {
-                    printk("scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n",     \
+                    pr_info("[INF][WMIXER] scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n",     \
                             wmixer->data->block_operating, wmixer->data->block_waiting, wmixer->data->cmd_count, wmixer->data->poll_count);
                 }
 
@@ -761,7 +761,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
         case TCC_WMIXER_ALPHA_MIXING:
             if (wmixer->rdma1.reg == NULL) {
-                pr_warn("Warning: TCC_WMIXER_ALPHA_MIXING ioctl needs a rdma1\n");
+                pr_err("[ERR][WMIXER] TCC_WMIXER_ALPHA_MIXING ioctl needs a rdma1\n");
                 break;
             }
 
@@ -771,14 +771,14 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 ret = wait_event_interruptible_timeout(wmixer->data->cmd_wq, wmixer->data->block_operating == 0, msecs_to_jiffies(200));
                 if(ret <= 0) {
                     wmixer->data->block_operating = 0;
-                    printk("[%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", \
+                    pr_warn("[WAR][WMIXER] [%d]: %s: timed_out block_operation:%d!! cmd_count:%d \n", \
                         ret, wmixer->misc->name, wmixer->data->block_waiting, wmixer->data->cmd_count);
                 }
                 ret = 0;
             }
 
             if(copy_from_user(alpha_blending, (WMIXER_ALPHABLENDING_TYPE *)arg, sizeof(WMIXER_ALPHABLENDING_TYPE))) {
-                    printk(KERN_ALERT "Not Supported copy_from_user(%d). \n", cmd);
+                    pr_err("[ERR][WMIXER] Not Supported copy_from_user(%d). \n", cmd);
                     ret = -EFAULT;
             }
 
@@ -788,14 +788,14 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                     && (alpha_blending->dst_width != alpha_blending->src0_width)
                     && (alpha_blending->dst_height != alpha_blending->src0_height))
                 {
-                    printk("Cannot run hw-memcpy !!!\n");
+                    pr_err("[ERR][WMIXER] Cannot run hw-memcpy !!!\n");
                     ret = -EINVAL;
                 }
             }
 
             if(ret >= 0) {
                 if(wmixer->data->block_operating >= 1) {
-                    printk("scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n",     \
+                    pr_info("[INF][WMIXER] scaler + :: block_operating(%d) - block_waiting(%d) - cmd_count(%d) - poll_count(%d)!!!\n",     \
                                 wmixer->data->block_operating, wmixer->data->block_waiting, wmixer->data->cmd_count, wmixer->data->poll_count);
                 }
 
@@ -808,7 +808,7 @@ static long wmixer_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long 
             return ret;
 
         default:
-            printk(KERN_ALERT "not supported %s IOCTL(0x%x). \n", wmixer->misc->name, cmd);
+            pr_err("[ERR][WMIXER] not supported %s IOCTL(0x%x). \n", wmixer->misc->name, cmd);
             break;
     }
 
@@ -840,7 +840,7 @@ static int wmixer_drv_release(struct inode *inode, struct file *filp)
         }
 
         if (ret <= 0) {
-            printk("[%d]: %s timed_out block_operation: %d, cmd_count: %d. \n", \
+            pr_warn("[WAR][WMIXER] [%d]: %s timed_out block_operation: %d, cmd_count: %d. \n", \
                 ret, wmixer->misc->name, wmixer->data->block_waiting, wmixer->data->cmd_count);
         }
 
@@ -946,7 +946,7 @@ static int wmixer_drv_open(struct inode *inode, struct file *filp)
         if (ret) {
             if (wmixer->clk)
                 clk_disable_unprepare(wmixer->clk);
-            printk("failed to aquire %s request_irq. \n", wmixer->misc->name);
+            pr_err("[ERR][WMIXER] failed to aquire %s request_irq. \n", wmixer->misc->name);
             return -EFAULT;
         }
         vioc_intr_enable(wmixer->irq, wmixer->vioc_intr->id, wmixer->vioc_intr->bits);
@@ -955,7 +955,7 @@ static int wmixer_drv_open(struct inode *inode, struct file *filp)
             unsigned int component_num = VIOC_CONFIG_DMAPath_Select(wmixer->rdma0.id);
 
             if((int)component_num < 0) {
-                pr_info(" %s  : RDMA :%d dma path selection none\n", __func__, get_vioc_index(wmixer->rdma0.id));
+                pr_info("[INF][WMIXER] %s: RDMA :%d dma path selection none\n", __func__, get_vioc_index(wmixer->rdma0.id));
             }
             else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
                 VIOC_CONFIG_DMAPath_UnSet(component_num);
@@ -1041,7 +1041,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
             wmixer->rdma0.reg = NULL;
         }
     } else {
-        printk("could not find rdma0 node of %s driver. \n", wmixer->misc->name);
+        pr_warn("[WAR][WMIXER] could not find rdma0 node of %s driver. \n", wmixer->misc->name);
         wmixer->rdma0.reg = NULL;
     }
 
@@ -1054,7 +1054,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
             wmixer->rdma1.reg = NULL;
         }
     } else {
-        printk("could not find rdma1 node of %s driver. \n", wmixer->misc->name);
+        pr_warn("[WAR][WMIXER] could not find rdma1 node of %s driver. \n", wmixer->misc->name);
         wmixer->rdma1.reg = NULL;
     }
 
@@ -1064,7 +1064,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
         wmixer->sc.reg = VIOC_SC_GetAddress(index);
         wmixer->sc.id = index;
     } else {
-        printk("could not find scaler node of %s driver. \n", wmixer->misc->name);
+        pr_warn("[WAR][WMIXER] could not find scaler node of %s driver. \n", wmixer->misc->name);
         wmixer->sc.reg = NULL;
     }
 
@@ -1075,7 +1075,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
         wmixer->wmix.id = index;
         of_property_read_u32_index(pdev->dev.of_node, "wmixs", 2, &wmixer->wmix.path);
     } else {
-        printk("could not find wmix node of %s driver. \n", wmixer->misc->name);
+        pr_warn("[WAR][WMIXER] could not find wmix node of %s driver. \n", wmixer->misc->name);
         wmixer->wmix.reg = NULL;
     }
 
@@ -1088,7 +1088,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
         wmixer->vioc_intr->id   = VIOC_INTR_WD0 + get_vioc_index(wmixer->wdma.id);
         wmixer->vioc_intr->bits = VIOC_WDMA_IREQ_EOFR_MASK;
     } else {
-        printk("could not find wdma node of %s driver. \n", wmixer->misc->name);
+        pr_warn("[WAR][WMIXER] could not find wdma node of %s driver. \n", wmixer->misc->name);
         wmixer->wdma.reg = NULL;
     }
 
@@ -1102,7 +1102,7 @@ static int wmixer_drv_probe(struct platform_device *pdev)
 
     platform_set_drvdata(pdev, wmixer);
 
-    pr_info("%s: id:%d, Wmixer Driver Initialized\n", pdev->name, wmixer->id);
+    pr_info("[INF][WMIXER] %s: id:%d, Wmixer Driver Initialized\n", pdev->name, wmixer->id);
     return 0;
 
     misc_deregister(wmixer->misc);
@@ -1117,7 +1117,7 @@ err_info_alloc:
 err_misc_alloc:
     kfree(wmixer);
 
-    printk("%s: %s: err ret:%d \n", __func__, pdev->name, ret);
+    pr_err("[ERR][WMIXER] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
     return ret;
 }
 
