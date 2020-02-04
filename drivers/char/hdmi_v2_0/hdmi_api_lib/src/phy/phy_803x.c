@@ -1478,13 +1478,13 @@ void tcc_hdmi_phy_tuning(int hz, color_depth_t color_depth, unsigned char *phy_r
                         phy_parameters_index = 0;
                 } else {
                         if(phy_parameters_index < 0) {
-                                pr_info("%s using original regs\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s using original regs\r\n", __func__);
                                 break;
                         }
                 }
-                pr_info("%s find phy tune value\r\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s find phy tune value\r\n", __func__);
 
-                /* pr_info("%s dump %d %d %d %d %d\r\n", __func__,
+                /* printk(KERN_INFO "[INFO][HDMI_V20]%s dump %d %d %d %d %d\r\n", __func__,
                         phy_custom_parameters.valid,
                         phy_custom_parameters.clock_amplitude,
                         phy_custom_parameters.data_amplitude,
@@ -1587,16 +1587,16 @@ void tcc_hdmi_phy_dump(struct hdmi_tx_dev *dev)
         termination = phy_val[1] >> 6;
         termination = (termination>0)?(300/termination):0;
 
-        pr_info("\r\n PHY DUMP\r\n");
-        pr_info("--------------------------\r\n");
-        pr_info("[0x5C] 0x%02x\r\n", phy_val[0]);
-        pr_info("[0x60] 0x%02x\r\n", phy_val[1]);
-        pr_info("--------------------------\r\n");
-        pr_info("Clock Amplitude   = (%d) uA\r\n", clock_amplitude);
-        pr_info("Data Amplitude    = (%d) uA\r\n", data_amplitude);
-        pr_info("Data Pre Emphasis = (%d) uA\r\n", pre_emphasis);
-        pr_info("Termination       = (%d) Ohm\r\n", termination);
-        pr_info("--------------------------\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]\r\n PHY DUMP\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]--------------------------\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20][0x5C] 0x%02x\r\n", phy_val[0]);
+        printk(KERN_INFO "[INFO][HDMI_V20][0x60] 0x%02x\r\n", phy_val[1]);
+        printk(KERN_INFO "[INFO][HDMI_V20]--------------------------\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]Clock Amplitude   = (%d) uA\r\n", clock_amplitude);
+        printk(KERN_INFO "[INFO][HDMI_V20]Data Amplitude    = (%d) uA\r\n", data_amplitude);
+        printk(KERN_INFO "[INFO][HDMI_V20]Data Pre Emphasis = (%d) uA\r\n", pre_emphasis);
+        printk(KERN_INFO "[INFO][HDMI_V20]Termination       = (%d) Ohm\r\n", termination);
+        printk(KERN_INFO "[INFO][HDMI_V20]--------------------------\r\n");
 }
 
 static void tcc_hdmi_phy_mode_set_done(struct hdmi_tx_dev *dev, int done)
@@ -1642,7 +1642,7 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
         unsigned char phy_tune_regs[HDMI_PHY_REGS];
         unsigned int phy_offset;
 
-        //pr_info("%s %d %d %d %d %d\r\n", __func__, pixel_clock, tmds_clock, color_depth, scdc_present, scdc_lte_340);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s %d %d %d %d %d\r\n", __func__, pixel_clock, tmds_clock, color_depth, scdc_present, scdc_lte_340);
         phylist_max = sizeof(tcc_phy_config_regs)/sizeof(struct hdmi_phy_configs);
 
         for(phy_loop=0; phy_loop <  phylist_max; phy_loop++){
@@ -1660,7 +1660,7 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
 
         tcc_hdmi_phy_tuning(pixel_clock, (color_depth_t)color_depth, phy_regs);
 
-        pr_info("%s with %dHz %d pixel\r\n", __func__, pixel_clock, color_depth);
+        printk(KERN_INFO "[INFO][HDMI_V20]%s with %dHz %d pixel\r\n", __func__, pixel_clock, color_depth);
         if(!test_bit(HDMI_TX_STATUS_PHY_ALIVE, &dev->status)) {
                 // 1. i_presetn = 0 (ARESETn set to 1 -> reset)
                 VIOC_DDICONFIG_reset_hdmi_phy(dev->ddibus_io, 1);

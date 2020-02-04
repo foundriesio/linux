@@ -22,7 +22,7 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
 
         if(dev != NULL) {
                 if(dev->verbose >= VERBOSE_IRQ)
-                        pr_info("dwc_hdmi_tx_handler_thread\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20]dwc_hdmi_tx_handler_thread\r\n");
 
                 // Read HDMI TX IRQ
                 decode = hdmi_read_interrupt_decode(dev);
@@ -54,7 +54,7 @@ static void dwc_hdmi_tx_handler_thread(struct work_struct *work)
                                 dev->hotplug_real_status = hdmi_phy_hot_plug_detected(dev);
                                 hdmi_irq_clear_bit(dev, PHY, IH_PHY_STAT0_HPD_MASK);
                                 if(dev->verbose >= VERBOSE_IRQ)
-                                        pr_info(" >>>HPD :%d\r\n",dev->hotplug_real_status );
+                                        printk(KERN_INFO "[INFO][HDMI_V20] >>>HPD :%d\r\n",dev->hotplug_real_status );
                                 if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
                                         dev->hotplug_status = dev->hotplug_real_status;
                                 }
@@ -110,7 +110,7 @@ static void dwc_hdmi_tx_hotplug_thread(struct work_struct *work)
 
                 /* If match is less than 4, it is assumed to be noise. */
                 if(match >= 4) {
-			pr_info("\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);
+			printk(KERN_INFO "[INFO][HDMI_V20]\e[33mhotplug_real_status=%d \e[0m\r\n", current_hpd);
                         dev->hotplug_real_status = current_hpd;
                         if(!test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)) {
                                 dev->hotplug_status = dev->hotplug_real_status;
@@ -161,7 +161,7 @@ dwc_hdmi_tx_handler(int irq, void *dev_id)
         }
 
 	if(dev->verbose >= VERBOSE_BASIC)
-		pr_info("%s\n", FUNC_NAME);
+		printk(KERN_INFO "[INFO][HDMI_V20]%s\n", FUNC_NAME);
 
         decode = hdmi_read_interrupt_decode(dev);
         if(!decode) {
@@ -189,7 +189,7 @@ dwc_hdmi_tx_cec_handler(int irq, void *dev_id){
 	dev = dev_id;
 
 	if(dev->verbose >= VERBOSE_BASIC)
-		pr_info("%s\n", FUNC_NAME);
+		printk(KERN_INFO "[INFO][HDMI_V20]%s\n", FUNC_NAME);
 
 	return IRQ_HANDLED;
 }
@@ -216,7 +216,7 @@ dwc_init_interrupts(struct hdmi_tx_dev *dev)
                                 printk(KERN_ERR "[ERROR][HDMI_V20]%s can not convert gpio to irq\r\n", __func__);
                                 ret = -1;
                         } else {
-                                pr_info("%s using gpio hotplug interrupt (%d)\r\n", __func__, dev->hotplug_irq);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s using gpio hotplug interrupt (%d)\r\n", __func__, dev->hotplug_irq);
                                 dev->hotplug_status = dev->hotplug_real_status = gpio_get_value(dev->hotplug_gpio)?1:0;
                                 /* Disable IRQ auto enable */
                                 irq_set_status_flags(dev->hotplug_irq, IRQ_NOAUTOEN);
@@ -344,14 +344,14 @@ void dwc_hdmi_tx_set_hotplug_interrupt(struct hdmi_tx_dev *dev, int enable)
                                 dev->hotplug_irq_enabled = 1;
 	                	enable_irq(dev->hotplug_irq);
 			} else {
-			        pr_info("%s already enable irq\r\n", __func__);
+			        printk(KERN_INFO "[INFO][HDMI_V20]%s already enable irq\r\n", __func__);
 			}
 	        } else {
 			if(dev->hotplug_irq_enabled) {
                                 dev->hotplug_irq_enabled = 0;
 	                	disable_irq(dev->hotplug_irq);
 			} else {
-			        pr_info("%s disable irq\r\n", __func__);
+			        printk(KERN_INFO "[INFO][HDMI_V20]%s disable irq\r\n", __func__);
 			}
 	                cancel_work_sync(&dev->tx_hotplug_handler);
 	        }

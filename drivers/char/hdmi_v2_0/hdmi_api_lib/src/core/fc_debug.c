@@ -39,7 +39,7 @@ static void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
                                         dbg_val[0] = 0x00; /* B or Cb */
                                         dbg_val[1] = 0x00; /* G or Y */
                                         dbg_val[2] = 0x00; /* R or Cr */
-                                        //pr_info("\r\n%s RGB\r\n", __func__);
+                                        //printk(KERN_INFO "[INFO][HDMI_V20]\r\n%s RGB\r\n", __func__);
                                 default:
                                         break;
                                 case YCC444:
@@ -47,13 +47,13 @@ static void fc_force_video(struct hdmi_tx_dev *dev, u8 bit)
                                         dbg_val[0] = 0x80; /* B or Cb */
                                         dbg_val[1] = 0x00; /* G or Y */
                                         dbg_val[2] = 0x80; /* R or Cr */
-                                        //pr_info("\r\n%s YCC444 or YCC422\r\n", __func__);
+                                        //printk(KERN_INFO "[INFO][HDMI_V20]\r\n%s YCC444 or YCC422\r\n", __func__);
                                         break;
                                 case YCC420:
                                         dbg_val[0] = 0x80; /* B or Cb */
                                         dbg_val[1] = 0x00; /* G or Y */
                                         dbg_val[2] = 0x00; /* R or Cr */
-                                        //pr_info("\r\n%s YCC420\r\n", __func__);
+                                        //printk(KERN_INFO "[INFO][HDMI_V20]\r\n%s YCC420\r\n", __func__);
                                         break;
                         }
                 }

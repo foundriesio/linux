@@ -260,7 +260,7 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                                 do_gettimeofday(&current_timeval);
                                 diff_ms = scdc_time_diff_ms(&prev_status_timeval, &current_timeval);
                                 memcpy(&prev_status_timeval, &current_timeval, sizeof(current_timeval));
-                                pr_info("\x1b[33m"
+                                printk(KERN_INFO "[INFO][HDMI_V20]\x1b[33m"
                                    "C%d "
                                    "V%d%d "
                                    "V%d%d "
@@ -285,7 +285,7 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                 if(reg_value != dev->prev_scdc_status) {
                         dev->prev_scdc_status = reg_value;
                         if(test_bit(HDMI_TX_STATUS_SCDC_CHECK, &dev->status)) {
-                               pr_info("\x1b[33m"
+                               printk(KERN_INFO "[INFO][HDMI_V20]\x1b[33m"
                                   "TMDS_Config %02d, Scrambler Status %d"
                                   "\x1b[0m\r\n",
                                        (unsigned int)(test_bit(SCDC_STATUS_SET_TMDS, &hdmi_scdc_error_data->status) << 1) |
@@ -333,7 +333,7 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                                         do_gettimeofday(&current_timeval);
                                         diff_ms = scdc_time_diff_ms(&prev_ced_timeval, &current_timeval);
                                         memcpy(&prev_ced_timeval, &current_timeval, sizeof(current_timeval));
-                                        pr_info("\x1b[33m"
+                                        printk(KERN_INFO "[INFO][HDMI_V20]\x1b[33m"
                                            "CH0_%05x "
                                            "CH1_%05x "
                                            "CH2_%05x "
@@ -360,12 +360,12 @@ int scdc_error_detection_core(struct hdmi_tx_dev *dev, struct hdmi_scdc_error_da
                         switch(scdc_force_error_stage) {
                                 case 0:
                                         scdc_force_error_stage = 1;
-                                        //pr_info("%s start hdmi driver makes scdc error \r\n", __func__);
+                                        //printk(KERN_INFO "[INFO][HDMI_V20]%s start hdmi driver makes scdc error \r\n", __func__);
                                         break;
                                 case 1:
                                         scdc_force_error_stage = 0;
                                         clear_bit(HDMI_TX_STATUS_SCDC_FORCE_ERROR, &dev->status);
-                                        //pr_info("%s stop hdmi driver makes scdc error \r\n", __func__);
+                                        //printk(KERN_INFO "[INFO][HDMI_V20]%s stop hdmi driver makes scdc error \r\n", __func__);
                                         break;
                                 default:
                                         scdc_force_error_stage = 0;

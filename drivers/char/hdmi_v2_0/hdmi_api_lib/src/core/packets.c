@@ -49,13 +49,13 @@ int vendor_Configure(struct hdmi_tx_dev *dev, productParams_t *productParams)
                 prod = (productParams_t*)dev->productParam;
 
                 if(video->mHdmi == DVI) {
-                        pr_info("%s DVI mode do not support to send infoframe \r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s DVI mode do not support to send infoframe \r\n", __func__);
                         break;
                 }
 
                 if (productParams != NULL) {
                         if(productParams->mVendorPayloadLength > 24) {
-                                pr_info("%s mVendorPayloadLength is over 24\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s mVendorPayloadLength is over 24\r\n", __func__);
                                 productParams->mVendorPayloadLength = 24;
                         }
                         packets_VendorSpecificInfoFrame(dev, productParams->mOUI,
@@ -268,11 +268,11 @@ int packets_VendorSpecificInfoFrame(struct hdmi_tx_dev *dev, u32 oui, const u8 *
 
 	        fc_packets_AutoSend(dev,  0, VSD_TX);	/* prevent sending half the info. */
                 if(payload == NULL) {
-                        pr_info("%s to stop transmit vsif, because payload is NULL\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s to stop transmit vsif, because payload is NULL\r\n", __func__);
 			break;
                 }
 		if(length == 0) {
-                        //pr_info("%s to stop transmit vsif, because length is not valid\r\n", __func__);
+                        //printk(KERN_INFO "[INFO][HDMI_V20]%s to stop transmit vsif, because length is not valid\r\n", __func__);
 			break;
 		}
 		fc_vsd_vendor_OUI(dev, oui);

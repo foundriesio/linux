@@ -188,11 +188,11 @@ static int _read8(struct hdmi_tx_dev *dev, u8 i2cAddr, u8 segment, u8 pointer, u
                 hdmi_dev_write(dev, IH_I2CM_STAT0, IH_I2CM_STAT0_I2CMASTERERROR_MASK | IH_I2CM_STAT0_I2CMASTERDONE_MASK);
 
                 #if defined(DBG_I2C)
-                pr_info("I2CM_SLAVE = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SLAVE));
-                pr_info("I2CM_SEGADDR = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SEGADDR));
-                pr_info("I2CM_SEGPTR = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SEGPTR));
-                pr_info("I2CM_ADDRESS = 0x%x\r\n", hdmi_dev_read(dev, I2CM_ADDRESS));
-                pr_info("IH_I2CM_STAT0 = 0x%x\r\n", hdmi_dev_read(dev, IH_I2CM_STAT0));
+                printk(KERN_INFO "[INFO][HDMI_V20]I2CM_SLAVE = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SLAVE));
+                printk(KERN_INFO "[INFO][HDMI_V20]I2CM_SEGADDR = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SEGADDR));
+                printk(KERN_INFO "[INFO][HDMI_V20]I2CM_SEGPTR = 0x%x\r\n", hdmi_dev_read(dev, I2CM_SEGPTR));
+                printk(KERN_INFO "[INFO][HDMI_V20]I2CM_ADDRESS = 0x%x\r\n", hdmi_dev_read(dev, I2CM_ADDRESS));
+                printk(KERN_INFO "[INFO][HDMI_V20]IH_I2CM_STAT0 = 0x%x\r\n", hdmi_dev_read(dev, IH_I2CM_STAT0));
                 #endif
 
                 if(pointer)

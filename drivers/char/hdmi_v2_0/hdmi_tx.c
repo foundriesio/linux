@@ -160,24 +160,24 @@ of_parse_hdmi_dt(struct hdmi_tx_dev *dev, struct device_node *node){
 
         if(of_property_read_u32(node, "audio_rx_tx_chmux", &dev->hdmi_rx_tx_chmux) < 0) {
                 dev->hdmi_rx_tx_chmux =0xff;
-                //pr_info("%s: Invalide hdmi rx and tx mux selection register.\r\n", __func__);
+                //printk(KERN_INFO "[INFO][HDMI_V20]%s: Invalide hdmi rx and tx mux selection register.\r\n", __func__);
         }
 
         of_property_read_u32(node, "hdmi_phy_type", &dev->hdmi_phy_type);
         if(dev->hdmi_phy_type >= hdmi_phy_type_max) {
-                pr_info("%s: Invalide hdmi phy type. set default phy type\r\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s: Invalide hdmi phy type. set default phy type\r\n", __func__);
                 dev->hdmi_phy_type = 0;
         }
 
         if(of_property_read_u32(node, "hdmi_ref_src_clock", &dev->hdmi_ref_src_clk) < 0) {
-                pr_info("%s: Invalide hdmi reference source clock. set xin clock to reference source clock\r\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s: Invalide hdmi reference source clock. set xin clock to reference source clock\r\n", __func__);
                 dev->hdmi_ref_src_clk = 0;
         }
 
         // Update the verbose level
         of_property_read_u32(node, "verbose", &dev->verbose);
         if(dev->verbose >= VERBOSE_BASIC)
-                        pr_info("%s: verbose level is %d\n", __func__, dev->verbose);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s: verbose level is %d\n", __func__, dev->verbose);
         // Find the hotplug gpio..
         dev->hotplug_gpio = of_get_gpio(node, 0);
 
@@ -234,7 +234,7 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                 }
 
                 if(dev->ddc_disable) {
-                        pr_info("%s ddc is disabled.. \r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s ddc is disabled.. \r\n", __func__);
                         break;
                 }
 
@@ -270,7 +270,7 @@ static int of_parse_i2c_mapping(struct hdmi_tx_dev *dev){
                 val &= ~i2c_mapping_mask;
                 val |= i2c_mapping_val;
                 iowrite32(val, (void*)(io_i2c_map + i2c_mapping_offset));
-                pr_info("hdmi i2c mapping offset(0x%x), mask(0x%x), val(0x%x), read_val(0x%x)\r\n",
+                printk(KERN_INFO "[INFO][HDMI_V20]hdmi i2c mapping offset(0x%x), mask(0x%x), val(0x%x), read_val(0x%x)\r\n",
                                 i2c_mapping_offset,
                                 i2c_mapping_mask,
                                 i2c_mapping_val,
@@ -407,7 +407,7 @@ static void send_hdmi_output_event(struct work_struct *work)
                 snprintf(u_event_name, sizeof(u_event_name), "SWITCH_STATE=%d", test_bit(HDMI_TX_STATUS_OUTPUT_ON, &dev->status)?1:0);
                 u_events[0] = u_event_name;
                 u_events[1] = NULL;
-                pr_info("%s u_event(%s)\r\n", __func__, u_event_name);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s u_event(%s)\r\n", __func__, u_event_name);
                 kobject_uevent_env(&dev->parent_dev->kobj, KOBJ_CHANGE, u_events);
         }
 }
@@ -417,7 +417,7 @@ static void hdmi_tx_restore_hotpug_work(struct work_struct *work)
 {
         struct hdmi_tx_dev *dev = container_of((struct delayed_work *)work, struct hdmi_tx_dev, hdmi_restore_hotpug_work);
         if(dev != NULL) {
-                pr_info("%s restore hotplug_status\r\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s restore hotplug_status\r\n", __func__);
                 dev->hotplug_status = dev->hotplug_real_status;
         }
 }
@@ -431,7 +431,7 @@ int hdmi_tx_suspend(struct device *dev)
         struct hdmi_tx_dev *hdmi_tx_dev = (dev != NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
 	if(hdmi_tx_dev != NULL) {
-                pr_info("### hdmi_tx_suspend \r\n");
+                printk(KERN_INFO "[INFO][HDMI_V20]### hdmi_tx_suspend \r\n");
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status)) {
                         if(gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
                                 hdmi_tx_dev->hotplug_status = 0;
@@ -536,7 +536,7 @@ int hdmi_tx_runtime_suspend(struct device *dev)
 {
         struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
-        pr_info("### hdmi_tx_runtime_suspend\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]### hdmi_tx_runtime_suspend\r\n");
         if(hdmi_tx_dev != NULL) {
 		mutex_lock(&hdmi_tx_dev->mutex);
                 set_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status);
@@ -548,7 +548,7 @@ int hdmi_tx_runtime_suspend(struct device *dev)
 int hdmi_tx_runtime_resume(struct device *dev)
 {
         struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
-        pr_info("## hdmi_tx_runtime_resume\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]## hdmi_tx_runtime_resume\r\n");
         if(hdmi_tx_dev != NULL) {
                 mutex_lock(&hdmi_tx_dev->mutex);
                 clear_bit(HDMI_TX_STATUS_SUSPEND_L0, &hdmi_tx_dev->status);
@@ -577,9 +577,9 @@ hdmi_tx_init(struct platform_device *pdev){
         unsigned int val;
         struct hdmi_tx_dev *dev = NULL;
 
-        pr_info("****************************************\n");
-        pr_info("%s:HDMI driver %s\n", __func__, HDMI_DRV_VERSION);
-        pr_info("****************************************\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]****************************************\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]%s:HDMI driver %s\n", __func__, HDMI_DRV_VERSION);
+        printk(KERN_INFO "[INFO][HDMI_V20]****************************************\n");
         dev = alloc_mem("HDMI TX Device", sizeof(struct hdmi_tx_dev), NULL);
         if(dev == NULL){
                 printk(KERN_ERR "[ERROR][HDMI_V20]%s:Could not allocated hdmi_tx_dev\n", __func__);
@@ -592,7 +592,7 @@ hdmi_tx_init(struct platform_device *pdev){
         // Update the device node
         dev->parent_dev = &pdev->dev;
         dev->device_name = "HDMI_TX";
-        pr_info("%s:Driver's name '%s'\n", __func__, dev->device_name);
+        printk(KERN_INFO "[INFO][HDMI_V20]%s:Driver's name '%s'\n", __func__, dev->device_name);
 
         spin_lock_init(&dev->slock);
         spin_lock_init(&dev->slock_power);
@@ -622,13 +622,13 @@ hdmi_tx_init(struct platform_device *pdev){
 
         // Map memory blocks
         if(of_parse_hdmi_dt(dev, pdev->dev.of_node) < 0){
-                pr_info("%s:Map memory blocks failed\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:Map memory blocks failed\n", __func__);
                 ret = -ENOMEM;
                 goto free_mem;
         }
 
         if(of_parse_i2c_mapping(dev) < 0){
-                pr_info("%s:Map i2c mapping failed\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:Map i2c mapping failed\n", __func__);
                 ret = -ENOMEM;
                 goto free_mem;
         }
@@ -637,7 +637,7 @@ hdmi_tx_init(struct platform_device *pdev){
         dwc_init_interrupts(dev);
 
         // Proc file system
-        pr_info("%s:Init proc file system @ /proc/hdmi_tx\n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V20]%s:Init proc file system @ /proc/hdmi_tx\n", __func__);
         proc_interface_init(dev);
 
         // Now that everything is fine, let's add it to device list
@@ -672,7 +672,7 @@ hdmi_tx_init(struct platform_device *pdev){
                 #endif
         }
 
-        pr_info("%s done!!\r\n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V20]%s done!!\r\n", __func__);
         return ret;
 
 free_mem:
@@ -709,9 +709,9 @@ hdmi_tx_exit(struct platform_device *pdev){
         struct hdmi_tx_dev *dev;
         struct list_head *list;
 
-        pr_info("**************************************\n");
-        pr_info("%s:Removing HDMI module\n", __func__);
-        pr_info("**************************************\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]**************************************\n");
+        printk(KERN_INFO "[INFO][HDMI_V20]%s:Removing HDMI module\n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V20]**************************************\n");
 
         while(!list_empty(&devlist_global)){
                 list = devlist_global.next;
@@ -742,7 +742,7 @@ hdmi_tx_exit(struct platform_device *pdev){
                 #endif
 
 
-                pr_info("%s:Remove proc file system\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:Remove proc file system\n", __func__);
                 proc_interface_remove(dev);
 
                 dwc_deinit_interrupts(dev);
@@ -751,7 +751,7 @@ hdmi_tx_exit(struct platform_device *pdev){
                 dwc_hdmi_misc_deregister(dev);
 
                 // Release memory blocks
-                pr_info("%s:Release memory blocks\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:Release memory blocks\n", __func__);
                 release_memory_blocks(dev);
 
                 free_all_mem();

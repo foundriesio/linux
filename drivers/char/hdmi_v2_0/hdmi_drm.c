@@ -210,14 +210,14 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
                 }
 
                 if(drmparm->mInfoFrame.length == 0) {
-                        pr_info("%s remove drm meta data\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s remove drm meta data\r\n", __func__);
                         hdmi_reset_drmparm(dev->drmParm);
 
                         clear_bit(HDMI_TX_HDR_VALID, &dev->status);
                         clear_bit(HDMI_TX_HLG_VALID, &dev->status);
                         wake_up_interruptible(&dev->poll_wq);
                 } else {
-                        pr_info("%s valid drm meta data\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s valid drm meta data\r\n", __func__);
                         memcpy(dev->drmParm, drmparm, sizeof(DRM_Packet_t));
                         if(drm_infoframe_verification(dev, (DRM_Packet_t*)dev->drmParm)) {
                                 // HDR 0, 1, 2
@@ -234,7 +234,7 @@ int hdmi_update_drm_configure(struct hdmi_tx_dev *dev, DRM_Packet_t * drmparm)
 		                        clear_bit(HDMI_TX_HLG_VALID, &dev->status);
 				}
                                 wake_up_interruptible(&dev->poll_wq);
-                                //pr_info("%s eotf=%d\r\n", __func__, drmparm->mDescriptor_type1.EOTF);
+                                //printk(KERN_INFO "[INFO][HDMI_V20]%s eotf=%d\r\n", __func__, drmparm->mDescriptor_type1.EOTF);
                         } else {
                         	clear_bit(HDMI_TX_HDR_VALID, &dev->status);
 				clear_bit(HDMI_TX_HLG_VALID, &dev->status);

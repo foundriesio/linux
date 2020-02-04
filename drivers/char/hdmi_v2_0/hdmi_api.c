@@ -83,10 +83,10 @@ void hdmi_stop(void){
         if(hdmi_apis.dev != NULL) {
 		if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_apis.dev->status)) {
 	                if(test_bit(HDMI_TX_STATUS_OUTPUT_ON, &hdmi_apis.dev->status)) {
-	                        //pr_info("%s avmute\r\n", __func__);
+	                        //printk(KERN_INFO "[INFO][HDMI_V20]%s avmute\r\n", __func__);
 	                        hdmi_api_avmute(hdmi_apis.dev, 1);
 	                        mdelay(85);
-	                        //pr_info("%s hdmi api disable\r\n", __func__);
+	                        //printk(KERN_INFO "[INFO][HDMI_V20]%s hdmi api disable\r\n", __func__);
 	                        hdmi_api_Disable(hdmi_apis.dev);
 	                }
 		}
@@ -402,7 +402,7 @@ static int hdmi_api_update_avi_infoframe(videoParams_t *videoParam)
 	                }
 	                while(mc_timeout-- && mc_reg_val != 0xDF);
 			if(mc_timeout < 1) {
-				pr_info("%s main controller timeout \r\n",__func__);
+				printk(KERN_INFO "[INFO][HDMI_V20]%s main controller timeout \r\n",__func__);
 			}
 
 	                fc_video_VSyncPulseWidth(hdmi_apis.dev, videoParam->mDtd.mVSyncPulseWidth);
@@ -549,7 +549,7 @@ int hdmi_api_dump_regs(void)
                                 mutex_unlock(&hdmi_apis.dev->mutex);
                                 break;
                         }
-			pr_info("\r\nDUMP IRQ\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP IRQ\r\n");
 			for(i = 0x00000400; i <= 0x000007FC; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -558,7 +558,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP Video Sampler\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Video Sampler\r\n");
 			for(i = 0x00000800; i <= 0x0000081C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -567,7 +567,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP Video Packetizer\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Video Packetizer\r\n");
 			for(i = 0x00002000; i <= 0x0000201C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -576,7 +576,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP Frame Composer\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Frame Composer\r\n");
 			for(i = 0x00004000; i <= 0x00004C00; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -585,7 +585,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP PHY Configure\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP PHY Configure\r\n");
 			for(i = 0x0000C000; i <= 0x0000C0E0; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -594,7 +594,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP Audio Sample\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Sample\r\n");
 			for(i = 0x0000C400; i <= 0x0000C410; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -604,7 +604,7 @@ int hdmi_api_dump_regs(void)
 				}
 			}
 			printk("\r\n");
-			pr_info("\r\nDUMP Audio Packetizer\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Packetizer\r\n");
 			for(i = 0x0000C800; i <= 0x0000C81C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -613,7 +613,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP Audio Sample SPDIF\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Sample SPDIF\r\n");
 			for(i = 0x0000CC00; i <= 0x0000CC10; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
@@ -622,7 +622,7 @@ int hdmi_api_dump_regs(void)
 					printk("%02x ", reg_val);
 				}
 			}
-			pr_info("\r\nDUMP MainController\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP MainController\r\n");
 			for(i = 0x0001000; i <= 0x0001028; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {

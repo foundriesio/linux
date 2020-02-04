@@ -1957,10 +1957,10 @@ void tcc_hdmi_phy_dump(struct hdmi_tx_dev *dev)
         sq_regs[3][2] = hdmi_phy_read(dev, (0x3A << 2));
 
         // Dump
-        pr_info("CLK: %02x %02x %02x\r\n",  sq_regs[0][0], sq_regs[0][1], sq_regs[0][2]);
-        pr_info("CH0: %02x %02x %02x\r\n",  sq_regs[1][0], sq_regs[1][1], sq_regs[1][2]);
-        pr_info("CH1: %02x %02x %02x\r\n",  sq_regs[2][0], sq_regs[2][1], sq_regs[2][2]);
-        pr_info("CH2: %02x %02x %02x\r\n",  sq_regs[3][0], sq_regs[3][1], sq_regs[3][2]);
+        printk(KERN_INFO "[INFO][HDMI_V20]CLK: %02x %02x %02x\r\n",  sq_regs[0][0], sq_regs[0][1], sq_regs[0][2]);
+        printk(KERN_INFO "[INFO][HDMI_V20]CH0: %02x %02x %02x\r\n",  sq_regs[1][0], sq_regs[1][1], sq_regs[1][2]);
+        printk(KERN_INFO "[INFO][HDMI_V20]CH1: %02x %02x %02x\r\n",  sq_regs[2][0], sq_regs[2][1], sq_regs[2][2]);
+        printk(KERN_INFO "[INFO][HDMI_V20]CH2: %02x %02x %02x\r\n",  sq_regs[3][0], sq_regs[3][1], sq_regs[3][2]);
 }
 
 static void tcc_hdmi_phy_mode_set_done(struct hdmi_tx_dev *dev, int done)
@@ -2012,7 +2012,7 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
         struct PATCH_SQ_REGS hdmi_phy_rumtime;
         #endif
 
-        //pr_info("%s %d %d %d %d %d\r\n", __func__, pixel_clock, tmds_clock, color_depth, scdc_present, scdc_lte_340);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s %d %d %d %d %d\r\n", __func__, pixel_clock, tmds_clock, color_depth, scdc_present, scdc_lte_340);
         phylist_max = sizeof(tcc_phy_config_regs)/sizeof(struct hdmi_phy_configs);
 
         for(phy_loop=0; phy_loop <  phylist_max; phy_loop++){
@@ -2026,7 +2026,7 @@ int tcc_hdmi_phy_config(struct hdmi_tx_dev *dev, unsigned int pixel_clock, unsig
                 ret = -1;
                 goto end_process;
         }
-        pr_info("%s with %dHz %d pixel\r\n", __func__, pixel_clock, color_depth);
+        printk(KERN_INFO "[INFO][HDMI_V20]%s with %dHz %d pixel\r\n", __func__, pixel_clock, color_depth);
         if(!test_bit(HDMI_TX_STATUS_PHY_ALIVE, &dev->status)) {
                 // 1. i_presetn = 0 (ARESETn set to 1 -> reset)
                 VIOC_DDICONFIG_reset_hdmi_phy(dev->ddibus_io, 1);

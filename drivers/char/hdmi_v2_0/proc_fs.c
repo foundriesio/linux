@@ -106,7 +106,7 @@ ssize_t proc_write_hdcp22(struct file *filp, const char __user *buffer, size_t c
 	}
         dev->hdcp22 = hdcp22;
 	if(dev->verbose >= VERBOSE_IO)
-		pr_info("%s:HDCP 2.2 = %d\n", FUNC_NAME, dev->hdcp22);
+		printk(KERN_INFO "[INFO][HDMI_V20]%s:HDCP 2.2 = %d\n", FUNC_NAME, dev->hdcp22);
 
 	return cnt;
 }
@@ -163,7 +163,7 @@ ssize_t proc_write_hpd_lock(struct file *filp, const char __user *buffer, size_t
         mutex_unlock(&dev->mutex);
 
         if(dev->verbose >= VERBOSE_IO)
-                pr_info("%s:HPD LOCK = %d\n", FUNC_NAME, hpd_lock);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:HPD LOCK = %d\n", FUNC_NAME, hpd_lock);
 
         return cnt;
 }
@@ -223,7 +223,7 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
 
         scdc_buf[cnt] = '\0';
         ret = sscanf(scdc_buf, "%x", &scdc_check);
-        pr_info("scdc_check = 0x%x\r\n", scdc_check);
+        printk(KERN_INFO "[INFO][HDMI_V20]scdc_check = 0x%x\r\n", scdc_check);
         devm_kfree(dev->parent_dev, scdc_buf);
         if (ret < 0)
                 return ret;
@@ -247,7 +247,7 @@ ssize_t proc_write_scdc_check(struct file *filp, const char __user *buffer, size
         mutex_unlock(&dev->mutex);
 
         if(dev->verbose >= VERBOSE_IO)
-                pr_info("%s:SCDC CHECK = %d\n", FUNC_NAME, scdc_check);
+                printk(KERN_INFO "[INFO][HDMI_V20]%s:SCDC CHECK = %d\n", FUNC_NAME, scdc_check);
 
         return cnt;
 }
@@ -348,7 +348,7 @@ ssize_t proc_write_edid_machine_id(struct file *filp, const char __user *buffer,
         mutex_unlock(&dev->mutex);
 
         if(dev->verbose >= VERBOSE_IO)
-                pr_info("[%s] edid_machine_id = %d\n", FUNC_NAME, edid_machine_id);
+                printk(KERN_INFO "[INFO][HDMI_V20][%s] edid_machine_id = %d\n", FUNC_NAME, edid_machine_id);
 
         return cnt;
 }
@@ -427,7 +427,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                         drm_param.mDescriptor_type1.disp_primaries_x[0] = (1 << i);
                                         hdmi_update_drm_configure(dev, &drm_param);
                                         hdmi_apply_drm(dev);
-                                        pr_info("%s primaries_x[0] = %d\r\n", __func__,  i);
+                                        printk(KERN_INFO "[INFO][HDMI_V20]%s primaries_x[0] = %d\r\n", __func__,  i);
                                         msleep(1000);
                                 }
                                 break;
@@ -437,7 +437,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.disp_primaries_x[1] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s primaries_x[1] = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s primaries_x[1] = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -447,7 +447,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.disp_primaries_x[2] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s primaries_x[2] = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s primaries_x[2] = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -457,7 +457,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.disp_primaries_y[0] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s disp_primaries_y[0] = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s disp_primaries_y[0] = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -467,7 +467,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.disp_primaries_y[1] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s disp_primaries_y[1] = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s disp_primaries_y[1] = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -477,7 +477,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.disp_primaries_y[2] = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s disp_primaries_y[2] = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s disp_primaries_y[2] = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -488,7 +488,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.white_point_x = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s white_point_x = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s white_point_x = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -498,7 +498,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.white_point_y = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s white_point_y = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s white_point_y = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -508,7 +508,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.max_disp_mastering_luminance = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s max_disp_mastering_luminance = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s max_disp_mastering_luminance = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -518,7 +518,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.min_disp_mastering_luminance = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s min_disp_mastering_luminance = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s min_disp_mastering_luminance = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -528,7 +528,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.max_content_light_level = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s max_content_light_level = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s max_content_light_level = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -538,7 +538,7 @@ ssize_t proc_write_drm(struct file *filp, const char __user *buffer, size_t cnt,
                                 drm_param.mDescriptor_type1.max_frame_avr_light_level = (1 << i);
                                 hdmi_update_drm_configure(dev, &drm_param);
                                 hdmi_apply_drm(dev);
-                                pr_info("%s max_frame_avr_light_level = %d\r\n", __func__,  i);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s max_frame_avr_light_level = %d\r\n", __func__,  i);
                                 msleep(1000);
                                 }
                                 break;
@@ -580,12 +580,12 @@ ssize_t proc_write_phy_regs(struct file *filp, const char __user *buffer, size_t
                 if(0 == dwc_hdmi_proc_write_phy_regs(dev, phy_regs_buf)) {
                         size = cnt;
                         if(test_bit(HDMI_TX_HOTPLUG_STATUS_LOCK, &dev->status)){
-                                pr_info("%s hpd is locked\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s hpd is locked\r\n", __func__);
                         } else {
 
                                 dev->hotplug_status = 0;
                                 wake_up_interruptible(&dev->poll_wq);
-                                pr_info("%s set hotplug_status swing\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V20]%s set hotplug_status swing\r\n", __func__);
                                 schedule_delayed_work(&dev->hdmi_restore_hotpug_work, usecs_to_jiffies(1000000));
                         }
                 } else {
@@ -725,7 +725,7 @@ ssize_t proc_write_audio_channel_mux(struct file *filp, const char __user *buffe
         char *audio_channel_mux_buff = devm_kzalloc(dev->parent_dev, cnt+1, GFP_KERNEL);
 
         do {
-                pr_info("audio_channel_mux_buff=0x%x\r\n", audio_channel_mux_buff);
+                printk(KERN_INFO "[INFO][HDMI_V20]audio_channel_mux_buff=0x%x\r\n", audio_channel_mux_buff);
                 if (audio_channel_mux_buff == NULL) {
                         size =  -ENOMEM;
                         break;
@@ -739,7 +739,7 @@ ssize_t proc_write_audio_channel_mux(struct file *filp, const char __user *buffe
                         }
                 }
                 audio_channel_mux_buff[cnt] = '\0';
-                pr_info("audio_channel_mux_buff=[%s]\r\n", audio_channel_mux_buff);
+                printk(KERN_INFO "[INFO][HDMI_V20]audio_channel_mux_buff=[%s]\r\n", audio_channel_mux_buff);
 
                 sscanf(audio_channel_mux_buff, "%u,%u,%u", &i2s_channel_mux, &spdif_input_port, &spdif_channel_mux);
                 devm_kfree(dev->parent_dev, audio_channel_mux_buff);
@@ -747,7 +747,7 @@ ssize_t proc_write_audio_channel_mux(struct file *filp, const char __user *buffe
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(test_bit(HDMI_TX_STATUS_POWER_ON, &dev->status)) {
 
-                                pr_info("i2s_channel_mux(%d) spdif_input_port(%d) spdif_channel_mux(%d)\r\n", i2s_channel_mux, spdif_input_port, spdif_channel_mux);
+                                printk(KERN_INFO "[INFO][HDMI_V20]i2s_channel_mux(%d) spdif_input_port(%d) spdif_channel_mux(%d)\r\n", i2s_channel_mux, spdif_input_port, spdif_channel_mux);
                                 if(dev->hdmi_audio_if_sel_ofst != 0xff) {
                                         if(i2s_channel_mux > 2)
                                                 i2s_channel_mux = 2;
@@ -839,7 +839,7 @@ ssize_t proc_write_debug(struct file *filp, const char __user *buffer, size_t cn
                 sscanf(debug_buffer, "%u, %u", &debug_param[0], &debug_param[1]);
                 devm_kfree(dev->parent_dev, debug_buffer);
 
-		pr_info("HDMI Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
+		printk(KERN_INFO "[INFO][HDMI_V20]HDMI Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
 		switch(debug_param[0]) {
 			case 0:
 				/* Nothing */
@@ -997,7 +997,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	}
 
 	// HPD
-	//pr_info("%s:Installing /proc/hdmi_tx/hpd file\n", FUNC_NAME);
+	//printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/hpd file\n", FUNC_NAME);
 
 	dev->hdmi_proc_hpd = proc_create_data("hpd", S_IFREG | S_IRUGO,
 			dev->hdmi_proc_dir, &proc_fops_hpd, dev);
@@ -1023,7 +1023,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	}
 
 	// HDCP 2.2 status
-	//pr_info("%s:Installing /proc/hdmi_tx/hdcp2_status file\n", FUNC_NAME);
+	//printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/hdcp2_status file\n", FUNC_NAME);
 
 	dev->hdmi_proc_hdcp_status = proc_create_data("hdcp_status", S_IFREG | S_IRUGO,
 			dev->hdmi_proc_dir, &proc_fops_hdcp_status, dev);
@@ -1033,7 +1033,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 	}
 
 	// HDCP 2.2
-	//pr_info("%s:Installing /proc/hdmi_tx/hdcp22 file\n", FUNC_NAME);
+	//printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/hdcp22 file\n", FUNC_NAME);
 
 	dev->hdmi_proc_hdcp22 = proc_create_data("hdcp22", S_IFREG | S_IWUGO,
 			dev->hdmi_proc_dir, &proc_fops_hdcp22, dev);
@@ -1042,7 +1042,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
 				" /proc/hdmi_tx/hdcp22\n", FUNC_NAME);
 	}
 
-        //pr_info("%s:Installing /proc/hdmi_tx/scdc_check file\n", FUNC_NAME);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/scdc_check file\n", FUNC_NAME);
         dev->hdmi_proc_scdc_check = proc_create_data("scdc_check", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_scdc_check, dev);
         if(dev->hdmi_proc_scdc_check == NULL){
@@ -1050,7 +1050,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
                                 " /proc/hdmi_tx/scdc_check\n", FUNC_NAME);
         }
 
-        //pr_info("%s:Installing /proc/hdmi_tx/ddc_check file\n", FUNC_NAME);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/ddc_check file\n", FUNC_NAME);
         dev->hdmi_proc_ddc_check = proc_create_data("ddc_check", S_IFREG | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_ddc_check, dev);
         if(dev->hdmi_proc_ddc_check == NULL){
@@ -1059,7 +1059,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         }
 
         #if defined(CONFIG_TCC_RUNTIME_GET_EDID_ID)
-        //pr_info("%s:Installing /proc/hdmi_tx/edid_machine_id file\n", FUNC_NAME);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/edid_machine_id file\n", FUNC_NAME);
         dev->hdmi_proc_edid_machine_id = proc_create_data("edid_machine_id", S_IFREG | S_IRUGO | S_IWUGO,
                   dev->hdmi_proc_dir, &proc_fops_edid_machine_id, dev);
         if(dev->hdmi_proc_edid_machine_id == NULL){
@@ -1069,7 +1069,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         #endif
 
         #if defined(CONFIG_TCC_RUNTIME_DRM_TEST)
-        //pr_info("%s:Installing /proc/hdmi_tx/drm file\n", FUNC_NAME);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/drm file\n", FUNC_NAME);
         dev->hdmi_proc_drm = proc_create_data("drm", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_drm, dev);
         if(dev->hdmi_proc_drm == NULL){
@@ -1079,7 +1079,7 @@ void proc_interface_init(struct hdmi_tx_dev *dev){
         #endif
 
         #if defined(CONFIG_TCC_RUNTIME_TUNE_HDMI_PHY)
-        //pr_info("%s:Installing /proc/hdmi_tx/phy_regs file\n", FUNC_NAME);
+        //printk(KERN_INFO "[INFO][HDMI_V20]%s:Installing /proc/hdmi_tx/phy_regs file\n", FUNC_NAME);
         dev->hdmi_proc_phy_regs = proc_create_data("phy_regs", S_IFREG | S_IRUGO | S_IWUGO,
                         dev->hdmi_proc_dir, &proc_fops_phy_regs, dev);
         if(dev->hdmi_proc_phy_regs == NULL){

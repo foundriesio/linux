@@ -135,7 +135,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
 			 * packet configuration always even if HDMI ouput is not scrambled or HDCP is
 			 * not enabled. */
                         fc_video_hdcp_keepout(dev, 1);
-                        pr_info("NOTIFY: HDCP_Keepout\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20]NOTIFY: HDCP_Keepout\r\n");
                 } else {
                         dwc_hdmi_set_hdcp_keepout(dev);
                 }
@@ -152,7 +152,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 dev->hdmi_tx_ctrl.audio_on = (video->mHdmi == DVI)?0:1;
 
                 if(audio == NULL) {
-                        pr_info("%s there is no audio packet\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20]%s there is no audio packet\r\n", __func__);
                 }else {
                         audio_Initialize(dev);
                         ret = audio_Configure(dev, audio);
@@ -204,7 +204,7 @@ int hdmi_api_Configure(struct hdmi_tx_dev *dev)
                 }
                 while(mc_timeout-- && mc_reg_val != 0xDF);
 		if(mc_timeout < 1) {
-			pr_info("%s main controller timeout \r\n",__func__);
+			printk(KERN_INFO "[INFO][HDMI_V20]%s main controller timeout \r\n",__func__);
 		}
 
                 fc_video_VSyncPulseWidth(dev, video->mDtd.mVSyncPulseWidth);
