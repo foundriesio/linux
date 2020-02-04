@@ -3571,7 +3571,7 @@
 		flt-f-mode = <0x3>;
 		flt-r-mode = <0x3>;
 		cmp-err-sel = <0>;
-		abs-sel = <0>;
+		abs-sel = <1>;
 		edge-sel = <0>;
 		tck-pol = <0>;
 		tck-sel = <0>;
