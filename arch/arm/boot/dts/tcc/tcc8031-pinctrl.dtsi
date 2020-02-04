@@ -2367,5 +2367,11 @@
 		telechips,output-low = <0>;
 	};
 
+	ictc_f_in: ictc_f_in {
+		telechips,pins = "gph-5";
+		telechips,pin-function = <0>;
+		telechips,input-enable;
+	};
+
 /***************************************************************/
 };
