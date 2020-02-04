@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -1243,7 +1243,7 @@ static inline void prefetch_buddy(struct
+@@ -1236,7 +1236,7 @@ static inline void prefetch_buddy(struct
  }
  
  /*
@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Assumes all pages on list are in same zone, and of same order.
   * count is the number of pages to free.
   *
-@@ -1254,14 +1254,41 @@ static inline void prefetch_buddy(struct
+@@ -1247,14 +1247,41 @@ static inline void prefetch_buddy(struct
   * pinned" detection logic.
   */
  static void free_pcppages_bulk(struct zone *zone, int count,
@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	while (count) {
  		struct list_head *list;
-@@ -1293,7 +1320,7 @@ static void free_pcppages_bulk(struct zo
+@@ -1286,7 +1313,7 @@ static void free_pcppages_bulk(struct zo
  			if (bulkfree_pcp_prepare(page))
  				continue;
  
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			/*
  			 * We are going to put the page back to the global
-@@ -1308,26 +1335,6 @@ static void free_pcppages_bulk(struct zo
+@@ -1301,26 +1328,6 @@ static void free_pcppages_bulk(struct zo
  				prefetch_buddy(page);
  		} while (--count && --batch_free && !list_empty(list));
  	}
@@ -108,7 +108,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void free_one_page(struct zone *zone,
-@@ -2799,13 +2806,18 @@ void drain_zone_pages(struct zone *zone,
+@@ -2788,13 +2795,18 @@ void drain_zone_pages(struct zone *zone,
  {
  	unsigned long flags;
  	int to_drain, batch;
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  #endif
  
-@@ -2821,14 +2833,21 @@ static void drain_pages_zone(unsigned in
+@@ -2810,14 +2822,21 @@ static void drain_pages_zone(unsigned in
  	unsigned long flags;
  	struct per_cpu_pageset *pset;
  	struct per_cpu_pages *pcp;
@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -3056,7 +3075,10 @@ static void free_unref_page_commit(struc
+@@ -3045,7 +3064,10 @@ static void free_unref_page_commit(struc
  	pcp->count++;
  	if (pcp->count >= pcp->high) {
  		unsigned long batch = READ_ONCE(pcp->batch);

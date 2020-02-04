@@ -120,7 +120,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern int kptr_restrict;
 --- a/init/main.c
 +++ b/init/main.c
-@@ -693,7 +693,6 @@ asmlinkage __visible void __init start_k
+@@ -694,7 +694,6 @@ asmlinkage __visible void __init start_k
  	boot_init_stack_canary();
  
  	time_init();

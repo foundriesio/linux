@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -1629,6 +1629,7 @@ config KALLSYMS_BASE_RELATIVE
+@@ -1630,6 +1630,7 @@ config KALLSYMS_BASE_RELATIVE
  # syscall, maps, verifier
  config BPF_SYSCALL
  	bool "Enable bpf() system call"

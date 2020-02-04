@@ -72,7 +72,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -64,7 +64,8 @@ static void tick_do_update_jiffies64(kti
+@@ -65,7 +65,8 @@ static void tick_do_update_jiffies64(kti
  		return;
  
  	/* Reevaluate with jiffies_lock held */
@@ -82,7 +82,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	delta = ktime_sub(now, last_jiffies_update);
  	if (delta >= tick_period) {
-@@ -87,10 +88,12 @@ static void tick_do_update_jiffies64(kti
+@@ -91,10 +92,12 @@ static void tick_do_update_jiffies64(kti
  		/* Keep the tick_next_period variable up to date */
  		tick_next_period = ktime_add(last_jiffies_update, tick_period);
  	} else {
@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	update_wall_time();
  }
  
-@@ -101,12 +104,14 @@ static ktime_t tick_init_jiffy_update(vo
+@@ -105,12 +108,14 @@ static ktime_t tick_init_jiffy_update(vo
  {
  	ktime_t period;
  
@@ -114,7 +114,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return period;
  }
  
-@@ -661,10 +666,10 @@ static ktime_t tick_nohz_next_event(stru
+@@ -665,10 +670,10 @@ static ktime_t tick_nohz_next_event(stru
  
  	/* Read jiffies and the time when jiffies were updated last */
  	do {

@@ -1423,7 +1423,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -2279,7 +2279,7 @@ static void process_one_work(struct work
+@@ -2286,7 +2286,7 @@ static void process_one_work(struct work
  	}
  
  	/*

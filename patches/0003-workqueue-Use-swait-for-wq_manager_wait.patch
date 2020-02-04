@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static LIST_HEAD(workqueues);		/* PR: list of all workqueues */
  static bool workqueue_freezing;		/* PL: have wqs started freezing? */
-@@ -2137,7 +2138,7 @@ static bool manage_workers(struct worker
+@@ -2144,7 +2145,7 @@ static bool manage_workers(struct worker
  
  	pool->manager = NULL;
  	pool->flags &= ~POOL_MANAGER_ACTIVE;
@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return true;
  }
  
-@@ -3538,7 +3539,7 @@ static void put_unbound_pool(struct work
+@@ -3545,7 +3546,7 @@ static void put_unbound_pool(struct work
  	 * manager and @pool gets freed with the flag set.
  	 */
  	spin_lock_irq(&pool->lock);

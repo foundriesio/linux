@@ -189,7 +189,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	init_dl_bw(&rd->dl_bw);
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
-@@ -235,6 +235,7 @@ static void nohz_full_kick_func(struct i
+@@ -239,6 +239,7 @@ static void nohz_full_kick_func(struct i
  
  static DEFINE_PER_CPU(struct irq_work, nohz_full_kick_work) = {
  	.func = nohz_full_kick_func,

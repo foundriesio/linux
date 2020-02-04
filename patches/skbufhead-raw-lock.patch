@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void flush_all_backlogs(void)
-@@ -5878,7 +5881,9 @@ static int process_backlog(struct napi_s
+@@ -5879,7 +5882,9 @@ static int process_backlog(struct napi_s
  	while (again) {
  		struct sk_buff *skb;
  
@@ -100,7 +100,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			rcu_read_lock();
  			__netif_receive_skb(skb);
  			rcu_read_unlock();
-@@ -5886,9 +5891,9 @@ static int process_backlog(struct napi_s
+@@ -5887,9 +5892,9 @@ static int process_backlog(struct napi_s
  			if (++work >= quota)
  				return work;
  
@@ -111,7 +111,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		rps_lock(sd);
  		if (skb_queue_empty(&sd->input_pkt_queue)) {
  			/*
-@@ -6369,13 +6374,21 @@ static __latent_entropy void net_rx_acti
+@@ -6371,13 +6376,21 @@ static __latent_entropy void net_rx_acti
  	unsigned long time_limit = jiffies +
  		usecs_to_jiffies(netdev_budget_usecs);
  	int budget = netdev_budget;
@@ -133,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {
  		struct napi_struct *n;
  
-@@ -9892,10 +9905,13 @@ static int dev_cpu_dead(unsigned int old
+@@ -9893,10 +9906,13 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
@@ -148,7 +148,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return 0;
  }
-@@ -10206,8 +10222,9 @@ static int __init net_dev_init(void)
+@@ -10207,8 +10223,9 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  
