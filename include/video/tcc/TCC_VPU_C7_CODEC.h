@@ -25,22 +25,30 @@
 /*!
  ***********************************************************************
  *
+ * \file
+ *		TCC_VPU_C7.h
  * \date
- *			2018/09/04
- *			2018/05/18
- *      2018/04/02
- *      2018/03/13
- *      2017/04/10
+ *		2020/01/30
+ *		2018/09/04
+ *		2018/05/18
+ *		2018/04/02
+ *		2018/03/13
+ *		2017/04/10
+ * \author
+ *		AV algorithm group(AValgorithm@telechips.com) 
+ * \brief
+ *		main api
  * \version
- *			4.03.0.00(2018/09/04)
- *			4.02.0.00(2018/05/18)
- *      4.01.0.00(2018/04/02)
- *      4.00.0.00(2018/03/13)
- *      3.02.0.0(2017/04/10)
- *      2.11.0.0(2013/02/19)
- *      1.5.0.0(2012/04/17)
- *      1.0.0.0(2012/04/03)
- *      0.0.0.5(2011/12/16) : first beta release
+ *		4.04.0.00(2020/01/30) : Added sleep (m_Usleep) callback and Forcely escape (TCC_VPU_DEC_ESC, TCC_VPU_DEC_EXT) funtions on API
+ *		4.03.0.00(2018/09/04)
+ *		4.02.0.00(2018/05/18)
+ *		4.01.0.00(2018/04/02)
+ *		4.00.0.00(2018/03/13)
+ *		3.02.0.0(2017/04/10)
+ *		2.11.0.0(2013/02/19)
+ *		1.5.0.0(2012/04/17)
+ *		1.0.0.0(2012/04/03)
+ *		0.0.0.5(2011/12/16) : first beta release
  *
  ***********************************************************************
  */
@@ -235,8 +243,9 @@ typedef struct dec_init_t
     void  (*m_Iounmap ) ( void* );
     unsigned int (*m_reg_read)(void *, unsigned int);
     void (*m_reg_write)(void *, unsigned int, unsigned int);
+	void (*m_Usleep) (unsigned int, unsigned int);
 
-    unsigned int m_Reserved[37];        //!< Reserved.
+    unsigned int m_Reserved[36];        //!< Reserved.
 } dec_init_t;
 
 // ===========================================================================
@@ -274,8 +283,9 @@ typedef struct dec_init_64bit_t {
     unsigned long long cb_dummy_iounmap;
     unsigned long long cb_dummy_reg_read;
     unsigned long long cb_dummy_reg_write;
+	unsigned long long cb_dummy_usleep;
 
-    unsigned int m_Reserved[37];
+    unsigned int m_Reserved[36];
 } dec_init_64bit_t;
 // ===========================================================================
 
@@ -667,8 +677,15 @@ typedef struct enc_header_t
  *      If successful, TCC_VPU_ENC returns 0 or plus. Otherwise, it returns a minus value.
  ***********************************************************************
  */
-codec_result_t TCC_VPU_ENC(int Op, codec_handle_t *pHandle, void *pParam1, void *pParam2);
+codec_result_t
+TCC_VPU_ENC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+
+codec_result_t 
+TCC_VPU_DEC_ESC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+
+codec_result_t
+TCC_VPU_DEC_EXT( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 
 #endif
-#endif//_TCC_892x_VPU_CODEC_H_
+#endif // _TCC_VPU_C7_CODEC_H_
 
