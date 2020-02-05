@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
- * Copyright 2017-2019 Toradex
+ * Copyright 2017-2020 Toradex
  */
 
 #include <dt-bindings/pwm/pwm.h>
@@ -43,39 +43,76 @@
 		#size-cells = <0>;
 
 		pd_3v3_brd_scfw: PD_3V3LDO1 {
-		compatible = "nxp,imx8-pd";
-		reg = <SC_R_NONE>;
-		#power-domain-cells = <0>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		pd_3v3_eth: PD_3V3ETH {
-			reg = <SC_R_BOARD_R0>;
+			compatible = "nxp,imx8-pd";
+			reg = <SC_R_NONE>;
 			#power-domain-cells = <0>;
-			power-domains = <&pd_3v3_brd_scfw>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			pd_3v3_eth: PD_3V3ETH {
+				reg = <SC_R_BOARD_R0>;
+				#power-domain-cells = <0>;
+				power-domains = <&pd_3v3_brd_scfw>;
+			};
+
+			pd_3v3_ext_rgmii: PD_3V3EXTRGMII {
+				reg = <SC_R_BOARD_R1>;
+				#power-domain-cells = <0>;
+				power-domains = <&pd_3v3_brd_scfw>;
+			};
+
+			pd_1v8_ext_rgmii: PD_1V8EXTRGMII {
+				reg = <SC_R_BOARD_R2>;
+				#power-domain-cells = <0>;
+				power-domains = <&pd_3v3_brd_scfw>;
 			};
 		};
 	};
 
 	/* Power management bus used for powering down phy in suspend */
-	pmbus {
+	pmbus_onmodule_phy {
 		compatible = "simple-pm-bus";
 		power-domains = <&pd_3v3_eth>;
 	};
 
-	pcie_sata_refclk: clock-generator {
+	/*
+	 * Power management bus used for powering external RGMII rail.
+	 * use either <&pd_3v3_ext_rgmii> or <&pd_1v8_ext_rgmii>.
+	 * those two power domains are mutually exclusive
+	 */
+	pmbus_external_rgmii: pmbusextrgmii {
+		compatible = "simple-pm-bus";
+		power-domains = <&pd_1v8_ext_rgmii>;
+	};
+
+	pcie_sata_refclk: sata-clock-generator {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <100000000>;
 	};
 
-	pcie_sata_refclk_gate: ref-clock {
+	pcie_wifi_refclk: wifi-clock-generator {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
+
+	pcie_sata_refclk_gate: sata-ref-clock {
 		compatible = "gpio-gate-clock";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pcie_sata_refclk>;
 		#clock-cells = <0>;
 		clocks = <&pcie_sata_refclk>;
-		enable-gpios = <&gpio4 27 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;
+	};
+
+	pcie_wifi_refclk_gate: wifi-ref-clock {
+		compatible = "gpio-gate-clock";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pcie_wifi_refclk>;
+		#clock-cells = <0>;
+		clocks = <&pcie_wifi_refclk>;
+		enable-gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;
 	};
 
 	reg_module_3v3: regulator-module-3v3 {
@@ -260,7 +297,7 @@
 		ethphy0: ethernet-phy@7 {
 			compatible = "ethernet-phy-ieee802.3-c22";
 			interrupt-parent = <&gpio1>;
-			interrupts = <5 IRQ_TYPE_LEVEL_LOW>;
+			interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
 			micrel,led-mode = <0>;
 			reg = <7>;
 		};
@@ -307,18 +344,8 @@
 	assigned-clock-parents = <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>,
 				 <&clk IMX8QM_HDMI_AV_PLL_CLK>;
-	ddc-i2c-bus = <&i2c0>;
 	fsl,cec;
 	hdmi-ctrl-gpios = <&gpio1 30 GPIO_ACTIVE_HIGH>;
-};
-
-/* Apalis I2C2 (DDC) */
-&i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c0>;
-	#address-cells = <1>;
-	#size-cells = <0>;
-	clock-frequency = <100000>;
 };
 
 /* On-module I2C */
@@ -350,7 +377,7 @@
 	};
 
 	/* USB3503A */
-	usb3503@08 {
+	usb3503@8 {
 		compatible = "smsc,usb3503a";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_usb3503a>;
@@ -548,14 +575,6 @@
 			fsl,pins = <
 				SC_P_GPT1_CLK_DMA_I2C2_SCL		0x04000020
 				SC_P_GPT1_CAPTURE_DMA_I2C2_SDA		0x04000020
-			>;
-		};
-
-		/* Apalis I2C2 (DDC) */
-		pinctrl_lpi2c0: lpi2c0grp {
-			fsl,pins = <
-				SC_P_HDMI_TX0_TS_SCL_DMA_I2C0_SCL	0x04000022
-				SC_P_HDMI_TX0_TS_SDA_DMA_I2C0_SDA	0x04000022
 			>;
 		};
 
@@ -1033,7 +1052,7 @@
 				/* On-module ETH_RESET# */
 				SC_P_LVDS1_GPIO01_LSIO_GPIO1_IO11		0x06000020
 				/* On-module ETH_INT# */
-				SC_P_LVDS0_GPIO01_LSIO_GPIO1_IO05		0x04000060
+				SC_P_MIPI_CSI1_MCLK_OUT_LSIO_GPIO1_IO29		0x04000060
 			>;
 		};
 
@@ -1056,7 +1075,7 @@
 				SC_P_ENET0_RGMII_RXD3_LSIO_GPIO6_IO09		0x04000040
 				SC_P_ENET0_REFCLK_125M_25M_LSIO_GPIO4_IO15	0x04000040
 				SC_P_LVDS1_GPIO01_LSIO_GPIO1_IO11		0x04000040
-				SC_P_LVDS0_GPIO01_LSIO_GPIO1_IO05		0x04000040
+				SC_P_MIPI_CSI1_MCLK_OUT_LSIO_GPIO1_IO29		0x04000040
 			>;
 		};
 
@@ -1092,10 +1111,17 @@
 			>;
 		};
 
-		/* On-module PCIe_CTRL0_CLKREQ */
+		/* On-module PCIe_CLK_EN1 */
 		pinctrl_pcie_sata_refclk: pciesatarefclkgrp {
 			fsl,pins = <
-				SC_P_PCIE_CTRL0_CLKREQ_B_LSIO_GPIO4_IO27	0x00000021
+				SC_P_USDHC2_WP_LSIO_GPIO4_IO11		0x00000021
+			>;
+		};
+
+		/* On-module PCIe_CLK_EN2 */
+		pinctrl_pcie_wifi_refclk: pciewifirefclkgrp {
+			fsl,pins = <
+				SC_P_ESAI1_TX3_RX2_LSIO_GPIO2_IO11	0x00000021
 			>;
 		};
 
@@ -1280,7 +1306,7 @@
 		 <&clk IMX8QM_HSIO_PCIE_B_SLV_AXI_CLK>,
 		 <&clk IMX8QM_HSIO_PHY_X2_PCLK_1>,
 		 <&clk IMX8QM_HSIO_PCIE_B_DBI_AXI_CLK>,
-		 <&pcie_sata_refclk_gate>;
+		 <&pcie_wifi_refclk_gate>;
 	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi", "pcie_ext";
 	epdev_on-supply = <&reg_module_wifi>;
@@ -1512,11 +1538,6 @@
 	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_mmc1_cd>;
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_mmc1_cd>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_mmc1_cd>;
-	/*
-	 * The PMIC on V1.0A HW generates 1.6V instead of 1.8V which creates
-	 * issues with certain SD cards, disable 1.8V signaling for now.
-	 */
-	no-1-8-v;
 };
 
 /* Apalis SD1 */
@@ -1527,11 +1548,6 @@
 	pinctrl-0 = <&pinctrl_usdhc3>, <&pinctrl_sd1_cd>;
 	pinctrl-1 = <&pinctrl_usdhc3_100mhz>, <&pinctrl_sd1_cd>;
 	pinctrl-2 = <&pinctrl_usdhc3_200mhz>, <&pinctrl_sd1_cd>;
-	/*
-	 * The PMIC on V1.0A HW generates 1.6V instead of 1.8V which creates
-	 * issues with certain SD cards, disable 1.8V signaling for now.
-	 */
-	no-1-8-v;
 };
 
 &vpu_decoder {
