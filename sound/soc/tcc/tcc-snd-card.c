@@ -27,13 +27,6 @@
 
 #include "tcc_dai.h"
   
-#undef snd_card_dbg
-#if 0
-#define snd_card_dbg(f, a...)    printk("<ASoC SNDCARD>" f, ##a)
-#else
-#define snd_card_dbg(f, a...)
-#endif
-
 #define DRIVER_NAME			("tcc-snd-card")
 #define DAI_LINK_MAX		(10)
 #define KCONTROL_HDR		"Device"
@@ -110,7 +103,7 @@ static int tcc_snd_card_startup(struct snd_pcm_substream *substream)
 		snd_soc_dai_set_tdm_slot(cpu_dai, 0, 0, dai_info->tdm_slots, dai_info->tdm_width);
 		snd_soc_dai_set_tdm_slot(codec_dai, 0, 0, dai_info->tdm_slots, dai_info->tdm_width);
 
-		snd_card_dbg("%s - dai_fmt : 0x%08x\n", __func__, dai_info->dai_fmt);
+		printk(KERN_DEBUG "[DEBUG][SOUND_CARD] %s - dai_fmt : 0x%08x\n", __func__, dai_info->dai_fmt);
 
 		snd_soc_dai_set_fmt(cpu_dai, dai_info->dai_fmt);
 		snd_soc_dai_set_fmt(codec_dai, dai_info->dai_fmt);
@@ -434,8 +427,8 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 	of_property_read_string(node, "stream-name", &stream_name);
 	of_property_read_string(node, "codec,dai-name", &codec_dai_name);
 
-	snd_card_dbg("\t\tstream_name : %s\n", stream_name);
-	snd_card_dbg("\t\tcodec_dai_name: %s\n", codec_dai_name);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tstream_name : %s\n", stream_name);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tcodec_dai_name: %s\n", codec_dai_name);
 
 	if(dai_of_node) {
 		dai_link->cpu_of_node = dai_of_node;
@@ -465,37 +458,37 @@ static int tcc_snd_card_sub_dai_link(struct device_node *node,
 	dai_link->init = tcc_snd_card_dai_init;
 
 	if(of_property_read_bool(node, "playback-only")) {
-		snd_card_dbg("\t\tDAI link playback_only!\n");
+		printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tDAI link playback_only!\n");
 		dai_link->playback_only = true;
 	}
 
 	if(of_property_read_bool(node, "capture-only")) {
-		snd_card_dbg("\t\tDAI link capture only!\n");
+		printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tDAI link capture only!\n");
 		dai_link->capture_only = true;
 	}
 
 	if(dai_link->playback_only && dai_link->capture_only) {
-	     pr_err("no enabled DAI link,  This will activate both.");
+	     printk(KERN_ERR "[ERROR][SOUND_CARD] no enabled DAI link,  This will activate both.");
 	     dai_link->playback_only = false;
 	     dai_link->capture_only = false;
 	}
 
 	dai_info->dai_fmt = snd_soc_of_parse_daifmt(node, "codec,", NULL, NULL);
 	dai_link->dai_fmt = dai_info->dai_fmt;
-	snd_card_dbg("\t\tdai_fmt : 0x%08x\n", dai_info->dai_fmt);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tdai_fmt : 0x%08x\n", dai_info->dai_fmt);
 
 	// parse configrations
 	of_property_read_u32(node, "mclk_div", &dai_info->mclk_div);
-	snd_card_dbg("\t\tmclk_div : %d\n", dai_info->mclk_div);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tmclk_div : %d\n", dai_info->mclk_div);
 
 	of_property_read_u32(node, "bclk_ratio", &dai_info->bclk_ratio);
-	snd_card_dbg("\t\tbclk_ratio: %d\n", dai_info->bclk_ratio);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\tbclk_ratio: %d\n", dai_info->bclk_ratio);
 
 	of_property_read_u32(node, "tdm-slot-num", &dai_info->tdm_slots);
-	snd_card_dbg("\t\ttdm-slot-num : %d\n", dai_info->tdm_slots);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\ttdm-slot-num : %d\n", dai_info->tdm_slots);
 
 	of_property_read_u32(node, "tdm-slot-width", &dai_info->tdm_width);
-	snd_card_dbg("\t\ttdm-slot-width : %d\n", dai_info->tdm_width);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \t\ttdm-slot-width : %d\n", dai_info->tdm_width);
 
 	dai_info->is_updated = false;
 
@@ -518,7 +511,7 @@ int parse_tcc_snd_card_dt(struct platform_device *pdev, struct snd_soc_card *car
 	if (card_info->num_links > DAI_LINK_MAX) {
 		return -EINVAL;
 	}
-	snd_card_dbg("num_links : %d\n", card_info->num_links);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] num_links : %d\n", card_info->num_links);
 
 	if ((card_info->dai_link = kzalloc(sizeof(struct snd_soc_dai_link) * card_info->num_links, GFP_KERNEL)) == NULL) {
 		ret = -ENOMEM;
@@ -540,7 +533,7 @@ int parse_tcc_snd_card_dt(struct platform_device *pdev, struct snd_soc_card *car
 		int i = 0;
 
 		for_each_child_of_node(node, np) {
-			snd_card_dbg("\tlink %d:\n", i);
+			printk(KERN_DEBUG "[DEBUG][SOUND_CARD] \tlink %d:\n", i);
 			if (i < card_info->num_links) {
 				ret = tcc_snd_card_sub_dai_link(np, &card_info->dai_link[i], &card_info->dai_info[i]);
 				i++;
@@ -563,7 +556,7 @@ int parse_tcc_snd_card_dt(struct platform_device *pdev, struct snd_soc_card *car
 			goto error_5;
 		}
 		card_info->codec_conf[i].of_node = card_info->dai_link[i].cpu_of_node;
-		snd_card_dbg("name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
+		printk(KERN_DEBUG "[DEBUG][SOUND_CARD] name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
 	}
 
 	card->codec_conf = card_info->codec_conf;
@@ -599,7 +592,7 @@ int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 	for (i=0; i<card_info->num_links; i++) { 
 		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
 			//This is for T-sound device
-			//printk("T-sound dev-%d\n", i);
+			//printk(KERN_WARNING "[WARN][SOUND_CARD] T-sound dev-%d\n", i);
 			continue;
 		}
 		num_links_no_tsnd ++;
@@ -607,7 +600,7 @@ int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 	num_controls = ARRAY_SIZE(tcc_snd_controls) * num_links_no_tsnd;
 
 	if ((controls= kzalloc(sizeof(struct snd_kcontrol_new) * num_controls, GFP_KERNEL)) == NULL) {
-		pr_err("amixer controls allocation failed\n");
+		printk(KERN_ERR "[ERROR][SOUND_CARD] amixer controls allocation failed\n");
 		return -ENOMEM;
 	}
 
@@ -618,7 +611,7 @@ int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 		}
 		
 		if(offset_no_tsnd > num_links_no_tsnd) {
-			pr_err("num_links_no_tsnd counter is wrong : num_links_no_tsnd=%d, offset_no_tsnd=%d\n", num_links_no_tsnd, offset_no_tsnd);
+			printk(KERN_ERR "[ERROR][SOUND_CARD] num_links_no_tsnd counter is wrong : num_links_no_tsnd=%d, offset_no_tsnd=%d\n", num_links_no_tsnd, offset_no_tsnd);
 			not_failed_name_count = (int)(offset_no_tsnd*ARRAY_SIZE(tcc_snd_controls));
 			goto error1;
 		}
@@ -634,7 +627,7 @@ int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 			sprintf(tmp_name, KCONTROL_HDR"%d %s", i, controls[offset_controls+j].name);
 
 			if ((controls[offset_controls+j].name = kstrdup(tmp_name, GFP_KERNEL)) == NULL) {
-				pr_err("amixer controls name allocation failed : %d\n", (offset_controls + j));
+				printk(KERN_ERR "[ERROR][SOUND_CARD] amixer controls name allocation failed : %d\n", (offset_controls + j));
 				not_failed_name_count = offset_controls + j;
 				goto error1;
 			}
@@ -675,7 +668,7 @@ static int tcc_snd_card_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	snd_card_dbg("%s %s \n",__func__,card->name);
+	printk(KERN_DEBUG "[DEBUG][SOUND_CARD] %s %s \n",__func__,card->name);
 
 	parse_tcc_snd_card_dt(pdev, card);
 	tcc_snd_card_kcontrol_init(card);

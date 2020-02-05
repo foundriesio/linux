@@ -43,13 +43,6 @@
 #include "tcc_asrc_pcm.h"
 #include "tcc_asrc_drv.h"
 
-#undef asrc_pcm_dbg
-#if 0
-#define asrc_pcm_dbg(f, a...)	printk("<ASRC PCM>" f, ##a)
-#else
-#define asrc_pcm_dbg(f, a...)
-#endif
-
 #define MAX_BUFFER_BYTES		(262144)
 
 #define MIN_PERIOD_BYTES		(256)
@@ -183,8 +176,8 @@ static int tcc_asrc_pcm_open(struct snd_pcm_substream *substream)
 		.fifo_size = 16,
 	};
 
-	asrc_pcm_dbg("%s\n", __func__);
-	asrc_pcm_dbg("rtd->cpu_dai->id : %d\n", rtd->cpu_dai->id);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] rtd->cpu_dai->id : %d\n", rtd->cpu_dai->id);
 
 	snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, TRANSFER_UNIT_BYTES);
 	snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, TRANSFER_UNIT_BYTES);
@@ -202,7 +195,7 @@ static int tcc_asrc_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd     = substream->private_data;
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_platform_get_drvdata(rtd->platform);
 
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 	asrc->pair[rtd->cpu_dai->id].stat.substream = NULL;
     return 0;
 }
@@ -210,7 +203,7 @@ static int tcc_asrc_pcm_close(struct snd_pcm_substream *substream)
 static int tcc_asrc_pcm_mmap(struct snd_pcm_substream *substream, struct vm_area_struct *vma)
 {
     struct snd_pcm_runtime *runtime = substream->runtime;
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma, runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
 }
@@ -224,7 +217,7 @@ static int tcc_asrc_pcm_hw_params(struct snd_pcm_substream *substream, struct sn
 	size_t period_bytes = params_period_bytes(params);
 	size_t buffer_bytes = params_buffer_bytes(params);
 
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		tcc_pl080_setup_tx_ring(asrc, asrc_pair, period_bytes, buffer_bytes);
@@ -238,7 +231,7 @@ static int tcc_asrc_pcm_hw_params(struct snd_pcm_substream *substream, struct sn
 
 static int tcc_asrc_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 
 	memset(substream->dma_buffer.area, 0, substream->dma_buffer.bytes);
 	snd_pcm_set_runtime_buffer(substream, NULL);
@@ -247,7 +240,7 @@ static int tcc_asrc_pcm_hw_free(struct snd_pcm_substream *substream)
 
 static int tcc_asrc_pcm_prepare(struct snd_pcm_substream *substream)
 {
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 	return 0;
 }
 
@@ -257,16 +250,16 @@ static int tcc_asrc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_platform_get_drvdata(rtd->platform);
 	int asrc_pair = rtd->cpu_dai->id;
 
-	asrc_pcm_dbg("%s(%d)\n", __func__, rtd->cpu_dai->id);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s(%d)\n", __func__, rtd->cpu_dai->id);
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_pcm_dbg("TRIGGER_START, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_PCM] TRIGGER_START, PLAY\n");
 				tcc_asrc_tx_dma_start(asrc, asrc_pair);
 			} else {
-				asrc_pcm_dbg("TRIGGER_START, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_PCM] TRIGGER_START, CAPTURE\n");
 				tcc_asrc_rx_dma_start(asrc, asrc_pair);
 			}
 			break;
@@ -274,10 +267,10 @@ static int tcc_asrc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				asrc_pcm_dbg("TRIGGER_STOP, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_PCM] TRIGGER_STOP, PLAY\n");
 				tcc_asrc_tx_dma_stop(asrc, asrc_pair);
 			} else {
-				asrc_pcm_dbg("TRIGGER_STOP, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][ASRC_PCM] TRIGGER_STOP, CAPTURE\n");
 				tcc_asrc_rx_dma_stop(asrc, asrc_pair);
 			}
 			break;
@@ -303,7 +296,7 @@ static snd_pcm_uframes_t tcc_asrc_pcm_pointer(struct snd_pcm_substream *substrea
 		dma_cur = tcc_pl080_get_cur_dst_addr(asrc->pl080_reg, dma_rx_ch);
 	}
 
-//	asrc_pcm_dbg("%s - dma_addr : 0x%08x, dma_cur : 0x%08x\n", __func__, runtime->dma_addr, dma_cur);
+//	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s - dma_addr : 0x%08x, dma_cur : 0x%08x\n", __func__, runtime->dma_addr, dma_cur);
 
 	return bytes_to_frames(runtime, dma_cur - runtime->dma_addr);
 }
@@ -331,8 +324,8 @@ static int tcc_asrc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_dma_buffer *capture_buf = &capture_substream->dma_buffer;
 	int ret;
 
-	asrc_pcm_dbg("%s\n", __func__);
-	asrc_pcm_dbg("pair : %d\n", asrc_pair);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] pair : %d\n", asrc_pair);
 
 	if (play_substream && play_buf) {
 		ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, rtd->card->dev, MAX_BUFFER_BYTES, play_buf);
@@ -377,7 +370,7 @@ static void tcc_asrc_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	struct snd_dma_buffer *play_buf = &play_substream->dma_buffer;
 	struct snd_dma_buffer *capture_buf = &capture_substream->dma_buffer;
 
-	asrc_pcm_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s\n", __func__);
 
 	if (play_substream && play_buf) {
 		snd_dma_free_pages(play_buf);
@@ -390,7 +383,7 @@ static void tcc_asrc_pcm_free_dma_buffers(struct snd_pcm *pcm)
 
 int tcc_pl080_asrc_pcm_isr_ch(struct tcc_asrc_t *asrc, int asrc_pair)
 {
-//	asrc_pcm_dbg("%s - pair:%d\n", __func__, asrc_pair);
+//	printk(KERN_DEBUG "[DEBUG][ASRC_PCM] %s - pair:%d\n", __func__, asrc_pair);
 	snd_pcm_period_elapsed(asrc->pair[asrc_pair].stat.substream);
 
 	return 0;

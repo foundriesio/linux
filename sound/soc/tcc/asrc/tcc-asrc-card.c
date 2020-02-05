@@ -29,13 +29,6 @@
 #include "tcc_asrc_dai.h"
 #include "../tcc_dai.h"
 
-#undef asrc_card_dbg
-#if 0
-#define asrc_card_dbg(f, a...)	printk("<ASRC CARD>" f, ##a)
-#else
-#define asrc_card_dbg(f, a...)
-#endif
-
 #define DAI_LINK_MAX		(8) // ASRC_PAIR(4) + MCAUDIO(4)
 #define ASRC_BE_HDR			"MCAudio"
 
@@ -114,10 +107,10 @@ static int mcaudio_hw_params_fixup(struct snd_soc_pcm_runtime *rtd, struct snd_p
 	struct snd_mask *mask;
 	snd_pcm_format_t format;
 
-	asrc_card_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s\n", __func__);
 
 	if (dai_be >= NUM_OF_ASRC_MCAUDIO) {
-		pr_err("%s - dai_be(%d) is greater than or equal to NUM_OF_ASRC_MCAUDIO(%d)\n", 
+		printk(KERN_ERR "[ERROR][ASRC_CARD] %s - dai_be(%d) is greater than or equal to NUM_OF_ASRC_MCAUDIO(%d)\n", 
 				__func__, dai_be, NUM_OF_ASRC_MCAUDIO);
 		return -EINVAL;
 	}
@@ -144,10 +137,10 @@ static int mcaudio_init(struct snd_soc_pcm_runtime *rtd, uint32_t dai_be)
 	struct tcc_asrc_card_info_t *card_info = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
-	asrc_card_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s\n", __func__);
 
 	if (dai_be >= NUM_OF_ASRC_MCAUDIO) {
-		pr_err("%s - dai_be(%d) is greater than or equal to NUM_OF_ASRC_MCAUDIO(%d)\n", 
+		printk(KERN_ERR "[ERROR][ASRC_CARD] %s - dai_be(%d) is greater than or equal to NUM_OF_ASRC_MCAUDIO(%d)\n", 
 				__func__, dai_be, NUM_OF_ASRC_MCAUDIO);
 		return -EINVAL;
 	}
@@ -329,16 +322,16 @@ static int asrc_fe_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct tcc_asrc_card_info_t *card_info = snd_soc_card_get_drvdata(rtd->card);
-	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_dai_get_drvdata(cpu_dai);
+	//struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_dai_get_drvdata(cpu_dai);
 	struct tcc_asrc_dai_info_t *dai_info;
 	uint32_t asrc_pair = cpu_dai->id;
 
-	asrc_card_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s\n", __func__);
 
 	if (card_info) {
 		dai_info = asrc_get_dai_info_for_pair(card_info, asrc_pair);
 		if (dai_info == NULL) {
-			pr_err("dai_info is NULL\n");
+			printk(KERN_ERR "[ERROR][ASRC_CARD] dai_info is NULL\n");
 			return -EINVAL;
 		}
 
@@ -466,11 +459,11 @@ static int setup_dai_link(struct tcc_asrc_card_info_t *card_info)
 
 	card_info->num_links = check_pcm_count(card_info);
 	if (card_info->num_links > DAI_LINK_MAX) {
-		pr_err("num_links(%d) is greater than DAI_LINK_MAX(%d)\n", card_info->num_links, DAI_LINK_MAX);
+		printk(KERN_ERR "[ERROR][ASRC_CARD] num_links(%d) is greater than DAI_LINK_MAX(%d)\n", card_info->num_links, DAI_LINK_MAX);
 		return -EINVAL;
 	}
 
-	asrc_card_dbg("num_links : %d\n", card_info->num_links);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] num_links : %d\n", card_info->num_links);
 
 	dai_link = card_info->dai_link;
 
@@ -499,7 +492,7 @@ static int setup_dai_link(struct tcc_asrc_card_info_t *card_info)
 				dapm_routes->source = asrc_fe_play_widget[asrc_pair];
 				dapm_routes->connected = NULL;
 			} else {
-				pr_err("asrc_pair%d is not M2P path\n", asrc_pair);
+				printk(KERN_ERR "[ERROR][ASRC_CARD] asrc_pair%d is not M2P path\n", asrc_pair);
 				return -EINVAL;
 			}
 		}
@@ -520,7 +513,7 @@ static int setup_dai_link(struct tcc_asrc_card_info_t *card_info)
 				dapm_routes->source = mcaudio_capture_widget[dai_info->peri_dai];
 				dapm_routes->connected = NULL;
 			} else {
-				pr_err("asrc_pair%d is not P2M path\n", asrc_pair);
+				printk(KERN_ERR "[ERROR][ASRC_CARD] asrc_pair%d is not P2M path\n", asrc_pair);
 				return -EINVAL;
 			}
 		}
@@ -557,17 +550,17 @@ static int setup_dai_link(struct tcc_asrc_card_info_t *card_info)
 			return -ENOMEM;
 		}
 		card_info->codec_conf[i].of_node = dai_info->i2s_of_node;
-		asrc_card_dbg("name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] name_prefix(%d) : %s\n", i, card_info->codec_conf[i].name_prefix);
 
 		dai_link++;
 	}
 
 	for (i=0; i<DAI_LINK_MAX; i++) {
-		asrc_card_dbg("dai_link[%d].dai_fmt : 0x%08x\n", i, card_info->dai_link[i].dai_fmt);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] dai_link[%d].dai_fmt : 0x%08x\n", i, card_info->dai_link[i].dai_fmt);
 	}
 
 	for (i=0; i<card_info->num_dapm_routes; i++) {
-		asrc_card_dbg("sink : %s, source : %s\n", card_info->dapm_routes[i].sink, card_info->dapm_routes[i].source);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] sink : %s, source : %s\n", card_info->dapm_routes[i].sink, card_info->dapm_routes[i].source);
 	}
 
 	return 0;
@@ -580,12 +573,12 @@ static int parse_tcc_asrc_be_dai(struct device_node *np, struct tcc_asrc_card_in
 
 	dai_info->i2s_of_node = of_parse_phandle(np, "i2s", 0);
 	if (dai_info->i2s_of_node == NULL) {
-		pr_err("i2s node is not exist\n");
+		printk(KERN_ERR "[ERROR][ASRC_CARD] i2s node is not exist\n");
 		return -EINVAL;
 	}
 	dai_info->codec_of_node = of_parse_phandle(np, "codec", 0);
 
-	asrc_card_dbg("\ti2s_of_node=%p\n", dai_info->i2s_of_node);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \ti2s_of_node=%p\n", dai_info->i2s_of_node);
 
 	of_property_read_string(np, "codec,dai-name", &dai_info->codec_dai_name);
 
@@ -596,17 +589,17 @@ static int parse_tcc_asrc_be_dai(struct device_node *np, struct tcc_asrc_card_in
 		}
 	}
 	if (dai_info->peri_dai < 0) {
-		pr_err("ASRC can't connect the i2s block\n");
+		printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC can't connect the i2s block\n");
 		return -EINVAL;
 	}
-	asrc_card_dbg("\tperi_dai=%d\n", dai_info->peri_dai);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tperi_dai=%d\n", dai_info->peri_dai);
 
     dai_info->i2s_reg = of_iomap(dai_info->i2s_of_node, 0);
     if (IS_ERR((void *)dai_info->i2s_reg)) {
-		pr_err("i2s_reg is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_CARD] i2s_reg is NULL\n");
 		return -EINVAL;
 	}
-	asrc_card_dbg("\ti2s_reg=%p\n", dai_info->i2s_reg);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \ti2s_reg=%p\n", dai_info->i2s_reg);
 
 	dai_info->num_of_m2p_pairs = of_property_count_elems_of_size(np, "asrc-m2p-pairs", sizeof(uint32_t));
 	dai_info->num_of_m2p_pairs = (dai_info->num_of_m2p_pairs < 0) ? 0 : dai_info->num_of_m2p_pairs;
@@ -616,58 +609,58 @@ static int parse_tcc_asrc_be_dai(struct device_node *np, struct tcc_asrc_card_in
 	dai_info->num_of_p2m_pairs = (dai_info->num_of_p2m_pairs < 0) ? 0 : dai_info->num_of_p2m_pairs;
 	of_property_read_u32_array(np, "asrc-p2m-pairs", dai_info->p2m_pairs, dai_info->num_of_p2m_pairs);
 
-	asrc_card_dbg("\tnum_of_m2p_pairs: %d\n", dai_info->num_of_m2p_pairs);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tnum_of_m2p_pairs: %d\n", dai_info->num_of_m2p_pairs);
 	for (i=0; i<dai_info->num_of_m2p_pairs; i++) {
 		asrc_pair = dai_info->m2p_pairs[i];
 
 		if (asrc_pair >= NUM_OF_ASRC_PAIR) {
-			pr_err("ASRC Pair%d is bigger than NUM_OF_ASRC_PAIR(%d)\n", asrc_pair, NUM_OF_ASRC_PAIR);
+			printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC Pair%d is bigger than NUM_OF_ASRC_PAIR(%d)\n", asrc_pair, NUM_OF_ASRC_PAIR);
 			return -EINVAL;
 		}
 
 		if (card_info->asrc_path_type[asrc_pair] != TCC_ASRC_M2P_PATH) {
-			pr_err("ASRC Pair%d is not M2P path type\n", asrc_pair);
+			printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC Pair%d is not M2P path type\n", asrc_pair);
 			return -EINVAL;
 		}
-		asrc_card_dbg("\tm2p_pairs[%d]: %d\n", i, dai_info->m2p_pairs[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tm2p_pairs[%d]: %d\n", i, dai_info->m2p_pairs[i]);
 	}
 
-	asrc_card_dbg("\tnum_of_p2m_pairs: %d\n", dai_info->num_of_p2m_pairs);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tnum_of_p2m_pairs: %d\n", dai_info->num_of_p2m_pairs);
 	for (i=0; i<dai_info->num_of_p2m_pairs; i++) {
 		asrc_pair = dai_info->p2m_pairs[i];
 
 		if (asrc_pair >= NUM_OF_ASRC_PAIR) {
-			pr_err("ASRC Pair%d is bigger than NUM_OF_ASRC_PAIR(%d)\n", asrc_pair, NUM_OF_ASRC_PAIR);
+			printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC Pair%d is bigger than NUM_OF_ASRC_PAIR(%d)\n", asrc_pair, NUM_OF_ASRC_PAIR);
 			return -EINVAL;
 		}
 
 		if (card_info->asrc_path_type[asrc_pair] != TCC_ASRC_P2M_PATH) {
-			pr_err("ASRC Pair%d is not P2M path type\n", asrc_pair);
+			printk(KERN_ERR "[ERROR][ASRC_CARD] ASRC Pair%d is not P2M path type\n", asrc_pair);
 			return -EINVAL;
 		}
-		asrc_card_dbg("\tp2m_pairs[%d]: %d\n", i, dai_info->p2m_pairs[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tp2m_pairs[%d]: %d\n", i, dai_info->p2m_pairs[i]);
 	}
 
 	// parse configrations
 	dai_info->dai_fmt = snd_soc_of_parse_daifmt(np, "codec,", NULL, NULL);
-	asrc_card_dbg("\tdai_fmt : 0x%08x\n", dai_info->dai_fmt);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tdai_fmt : 0x%08x\n", dai_info->dai_fmt);
 
 	of_property_read_u32(np, "mclk_div", &dai_info->mclk_div);
-	asrc_card_dbg("\tmclk_div : %d\n", dai_info->mclk_div);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tmclk_div : %d\n", dai_info->mclk_div);
 
 	of_property_read_u32(np, "bclk_ratio", &dai_info->bclk_ratio);
-	asrc_card_dbg("\tbclk_ratio: %d\n", dai_info->bclk_ratio);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tbclk_ratio: %d\n", dai_info->bclk_ratio);
 
 	of_property_read_u32(np, "samplerate", &dai_info->samplerate);
 	dai_info->samplerate = (dai_info->samplerate == 0) ? 48000 : dai_info->samplerate;
-	asrc_card_dbg("\tsamplerate: %d\n", dai_info->samplerate);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tsamplerate: %d\n", dai_info->samplerate);
 
 	of_property_read_u32(np, "format", &dai_info->format);
-	asrc_card_dbg("\tformat: %d\n", dai_info->format);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tformat: %d\n", dai_info->format);
 
 	of_property_read_u32(np, "channels", &dai_info->channels);
 	dai_info->channels = (dai_info->channels == 0) ? 2 : dai_info->channels;
-	asrc_card_dbg("\tchannels: %d\n", dai_info->channels);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] \tchannels: %d\n", dai_info->channels);
 
 	return 0;
 }
@@ -681,7 +674,7 @@ static int parse_tcc_asrc_card_dt(struct platform_device *pdev, struct tcc_asrc_
 	memset(card_info, 0, sizeof(struct tcc_asrc_card_info_t));
 	card_info->asrc_of_node = of_parse_phandle(np, "asrc", 0);
 	if (card_info->asrc_of_node == NULL) {
-		pr_err("asrc node is not exist\n");
+		printk(KERN_ERR "[ERROR][ASRC_CARD] asrc node is not exist\n");
 		return -EINVAL;
 	}
 
@@ -689,7 +682,7 @@ static int parse_tcc_asrc_card_dt(struct platform_device *pdev, struct tcc_asrc_
 
 	for(i=0; i<NUM_OF_ASRC_MCAUDIO; i++) {
 		card_info->mcaudio_of_node[i] = of_parse_phandle(card_info->asrc_of_node, "mcaudio", i);
-		asrc_card_dbg("of_node_mcaudio[%d] : %p\n", i, card_info->mcaudio_of_node[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_CARD] of_node_mcaudio[%d] : %p\n", i, card_info->mcaudio_of_node[i]);
 	}
 
 	card_info->num_of_asrc_be = of_get_child_count(np);
@@ -699,7 +692,7 @@ static int parse_tcc_asrc_card_dt(struct platform_device *pdev, struct tcc_asrc_
 		int i = 0;
 
 		for_each_child_of_node(np, be_np) {
-			asrc_card_dbg("link %d:", i);
+			printk(KERN_DEBUG "[DEBUG][ASRC_CARD] link %d:", i);
 			if (i < NUM_OF_ASRC_MCAUDIO) {
 				if ((ret=parse_tcc_asrc_be_dai(be_np, card_info, &card_info->dai_info[i])) < 0) {
 					return ret;
@@ -739,15 +732,15 @@ static int tcc_asrc_card_probe(struct platform_device *pdev)
 		goto error_3;
 	}
 
-	asrc_card_dbg("%s %s \n",__func__,card->name);
+	printk(KERN_DEBUG "[DEBUG][ASRC_CARD] %s %s \n",__func__,card->name);
 
 	if ((ret = parse_tcc_asrc_card_dt(pdev, card_info)) < 0) {
-		printk("%s: device tree parsing error\n", __func__);
+		printk(KERN_ERR "[ERROR][ASRC_CARD] %s: device tree parsing error\n", __func__);
 		goto error_3;
 	}
 
 	if ((ret = setup_dai_link(card_info)) < 0) {
-		printk("%s: setup dai failed\n", __func__);
+		printk(KERN_ERR "[ERROR][ASRC_CARD] %s: setup dai failed\n", __func__);
 		goto error_3;
 	}
 

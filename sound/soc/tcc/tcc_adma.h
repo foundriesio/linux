@@ -722,7 +722,7 @@ static inline int tcc_adma_set_dai_tx_dma_buffer(void __iomem *base_addr,
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
 		if(adrcnt % 8 != 0) {
-			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+			printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
 		}
 		adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
 		txdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
@@ -781,7 +781,7 @@ static inline int tcc_adma_set_dai_rx_dma_buffer(void __iomem *base_addr,
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
 		if(adrcnt % 8 != 0) {
-			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+			printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
 		}
 		adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
 		rxdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
@@ -839,7 +839,7 @@ static inline int tcc_adma_set_spdif_tx_dma_buffer(void __iomem *base_addr, uint
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
 		if(adrcnt % 8 != 0) {
-			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+			printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
 		}
 		txspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		txspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
@@ -895,7 +895,7 @@ static inline int tcc_adma_set_spdif_cdif_rx_dma_buffer(void __iomem *base_addr,
 		uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
 		if(adrcnt % 8 != 0) {
-			printk("[%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
+			printk(KERN_WARNING "[WARN][DAI][%s][%d] Warning!! adrcnt value should be 8n.\n", __func__, __LINE__);
 		}
 		rxspadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt-1);
 		rxspadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;

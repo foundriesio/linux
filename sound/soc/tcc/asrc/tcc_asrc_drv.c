@@ -47,13 +47,6 @@
 #include "tcc_asrc.h"
 #include "tcc_pl080.h"
 
-#undef asrc_drv_dbg
-#if 0
-#define asrc_drv_dbg(f, a...)	printk("<ASRC DRV>" f, ##a)
-#else
-#define asrc_drv_dbg(f, a...)
-#endif
-
 #define DEFAULT_PERI_DAI_RATE	(48000)
 #define DEFAULT_PERI_DAI_FORMAT	(SNDRV_PCM_FORMAT_S16_LE)
 #define DEFAULT_PERI_DAI		(TCC_ASRC_PERI_DAI0)
@@ -365,7 +358,7 @@ int tcc_asrc_m2p_setup(struct tcc_asrc_t *asrc,
 	uint64_t ratio_shift22 = (1<<22);
 
 	if (tcc_asrc_check_supported_channel(asrc, asrc_pair, channels) < 0) {
-		printk("%s - asrc_pair %d supports max channel(%d)\n", __func__, asrc_pair, (int)asrc->pair[asrc_pair].hw.max_channel);
+		printk(KERN_ERR "[ERROR][ASRC_DRV] %s - asrc_pair %d supports max channel(%d)\n", __func__, asrc_pair, (int)asrc->pair[asrc_pair].hw.max_channel);
 		return -1;
 	}
 
@@ -501,7 +494,7 @@ int tcc_asrc_p2m_setup(struct tcc_asrc_t *asrc,
 	uint64_t ratio_shift22 = (1<<22);
 
 	if (tcc_asrc_check_supported_channel(asrc, asrc_pair, channels) < 0) {
-		printk("%s - asrc_pair %d supports max channel(%d)\n", __func__, asrc_pair, (int)asrc->pair[asrc_pair].hw.max_channel);
+		printk(KERN_ERR "[ERROR][ASRC_DRV] %s - asrc_pair %d supports max channel(%d)\n", __func__, asrc_pair, (int)asrc->pair[asrc_pair].hw.max_channel);
 		return -1;
 	}
 
@@ -547,7 +540,7 @@ static irqreturn_t tcc_pl080_isr(int irq, void *dev)
 	uint32_t int_status = readl(asrc->pl080_reg+PL080_INT_STATUS);
 	int i;
 
-	asrc_drv_dbg("%s(0x%08x)\n", __func__, int_status);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] %s(0x%08x)\n", __func__, int_status);
 	for (i=0; i<NUM_OF_ASRC_PAIR; i++) {
 		if (int_status & (1<<i)) {
 			writel(1<<i, asrc->pl080_reg+PL080_TC_CLEAR);
@@ -589,10 +582,10 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 	struct resource res;
 	int i;
 
-	asrc_drv_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] %s\n", __func__);
 
 	if ((of_node_dma = of_parse_phandle(pdev->dev.of_node, "dma", 0)) == NULL) {
-		printk("asrc)of_node_dma is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] of_node_dma is NULL\n");
 		return -EINVAL;
 	}
 
@@ -600,44 +593,44 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 	pdev_dma = of_find_device_by_node(of_node_dma);
 
 	if ((asrc->asrc_reg = of_iomap(of_node_asrc, 0)) == NULL) {
-		printk("asrc)asrc_reg is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_reg is NULL\n");
 		return -EINVAL;
 	}
 
 	if (of_address_to_resource(of_node_asrc, 0, &res) < 0 ) {
-		printk("asrc)asrc_reg_phys is error\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_reg_phys is error\n");
 		return -EINVAL;
 	}
 	asrc->asrc_reg_phys = res.start;
 
 	if ((asrc->pl080_reg = of_iomap(of_node_dma, 0)) == NULL) {
-		printk("asrc)pl080_reg is NULL\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] pl080_reg is NULL\n");
 		return -EINVAL;
 	}
 
 	for (i=0; i<NUM_OF_AUX_PERI_CLKS; i++) {
 		if (IS_ERR(asrc->aux_pclk[i]=of_clk_get(of_node_asrc, i))) {
-			printk("asrc)aux%d_pclk is NULL\n", i);
+			printk(KERN_ERR "[ERROR][ASRC_DRV] aux%d_pclk is NULL\n", i);
 			return PTR_ERR(asrc->aux_pclk[i]);
 		}
 	}
 
     if (IS_ERR(asrc->asrc_hclk=of_clk_get_by_name(of_node_asrc, "asrc_hclk"))) {
-		printk("asrc)asrc_hclk is invalid\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_hclk is invalid\n");
 		return PTR_ERR(asrc->asrc_hclk);
 	}
 
     if (IS_ERR(asrc->pl080_hclk = of_clk_get_by_name(of_node_dma, "pl080_hclk"))) {
-		printk("asrc)asrc_hclk is invalid\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_hclk is invalid\n");
 		return PTR_ERR(asrc->pl080_hclk);
 	}
 
 	if ((asrc->asrc_irq = platform_get_irq(pdev_asrc, 0)) < 0) {
-		printk("asrc)asrc_irq is invalid\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_irq is invalid\n");
 		return asrc->asrc_irq;
 	}
 	if ((asrc->pl080_irq = platform_get_irq(pdev_dma, 0)) < 0) {
-		printk("asrc)asrc_irq is invalid\n");
+		printk(KERN_ERR "[ERROR][ASRC_DRV] asrc_irq is invalid\n");
 		return asrc->asrc_irq;
 	}
 
@@ -673,16 +666,16 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 	for(i=0; i<NUM_OF_ASRC_MCAUDIO; i++) {
 		asrc->mcaudio_m2p_mux[i] = -1;
 	}
-	asrc_drv_dbg("asrc_reg : %p\n", asrc->asrc_reg);
-	asrc_drv_dbg("asrc_irq: %d\n", asrc->asrc_irq);
-	asrc_drv_dbg("pl080_reg : %p\n", asrc->pl080_reg);
-	asrc_drv_dbg("pl080_irq : %d\n", asrc->pl080_irq);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] asrc_reg : %p\n", asrc->asrc_reg);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] asrc_irq: %d\n", asrc->asrc_irq);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] pl080_reg : %p\n", asrc->pl080_reg);
+	printk(KERN_DEBUG "[DEBUG][ASRC_DRV] pl080_irq : %d\n", asrc->pl080_irq);
 
 	for(i=0; i<NUM_OF_ASRC_PAIR; i++) {
-		asrc_drv_dbg("max-ch-per-pair(%d) : %d\n", i, max_channel[i]);
-		asrc_drv_dbg("path_type(%d) : %d\n", i, path_type[i]);
-		asrc_drv_dbg("sync-mode(%d) : %d\n", i, sync_mode[i]);
-		asrc_drv_dbg("async-refclk(%d) : %d\n", i, async_refclk[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_DRV] max-ch-per-pair(%d) : %d\n", i, max_channel[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_DRV] path_type(%d) : %d\n", i, path_type[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_DRV] sync-mode(%d) : %d\n", i, sync_mode[i]);
+		printk(KERN_DEBUG "[DEBUG][ASRC_DRV] async-refclk(%d) : %d\n", i, async_refclk[i]);
 	}
 
 	return 0;
@@ -743,12 +736,12 @@ static int tcc_asrc_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	if (asrc == NULL) {
-		printk(KERN_WARNING "%s - kzalloc failed.\n", __func__);
+		printk(KERN_WARNING "[WARN][ASRC_DRV] %s - kzalloc failed.\n", __func__);
 		return -ENOMEM;
 	}
 
 	if ((ret = parse_asrc_dt(pdev, asrc)) < 0) {
-		printk("%s : Fail to parse asrc dt\n", __func__);
+		printk(KERN_ERR "[ERROR][ASRC_DRV] %s : Fail to parse asrc dt\n", __func__);
 		goto error;
 	}
 
@@ -767,7 +760,7 @@ static int tcc_asrc_probe(struct platform_device *pdev)
 
 	ret = request_irq(asrc->pl080_irq, tcc_pl080_isr, IRQF_TRIGGER_HIGH, "tcc-asrc-pl080", (void*)asrc);
 	if (ret < 0) {
-		printk("pl080 request_irq(%d) failed\n", asrc->pl080_irq);
+		printk(KERN_ERR "[ERROR][ASRC_DRV] pl080 request_irq(%d) failed\n", asrc->pl080_irq);
 		goto error;
 	}
 

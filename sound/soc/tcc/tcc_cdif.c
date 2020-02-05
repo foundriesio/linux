@@ -46,13 +46,6 @@
 #include "tcc_dai.h"
 #include "tcc_audio_chmux.h"
 
-#undef cdif_dai_dbg
-#if 0
-#define cdif_dai_dbg(f, a...)	printk("<ASoC CDIF DAI>" f, ##a)
-#else
-#define cdif_dai_dbg(f, a...)
-#endif
-
 #define DEFAULT_CDIF_FILTER_CLK_RATE	(300000000)
 #define DEFAULT_CDIF_BCLK_FS_MODE		(TCC_CDIF_BCLK_64FS_MODE)
 #define DEFAULT_CDIF_INTERFACE			(TCC_CDIF_INTERFACE_IIS)
@@ -86,7 +79,7 @@ int tcc_cdif_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 	int ret =  0;
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	spin_lock(&cdif->lock);
 	switch(ratio) {
@@ -96,7 +89,7 @@ int tcc_cdif_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
 			tcc_cdif_set_fs_mode(cdif->cdif_reg, ratio);
 			break;
 		default:
-			pr_err("(%d) does not supported\n", cdif->blk_no);
+			printk(KERN_ERR "[ERROR][CDIF-%d] does not supported\n", cdif->blk_no);
 			ret = -ENOTSUPP;
 			goto bclk_ratio_end;
 	}
@@ -113,39 +106,39 @@ static int tcc_cdif_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	spin_lock(&cdif->lock);
 
 	switch(fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 		case SND_SOC_DAIFMT_I2S:
-			cdif_dai_dbg("(%d) I2S DAIFMT\n", cdif->blk_no);
+			printk(KERN_DEBUG "[DEBUG][CDIF-%d] I2S DAIFMT\n", cdif->blk_no);
 			tcc_cdif_set_interface(cdif->cdif_reg, TCC_CDIF_INTERFACE_IIS);
 			break;
 		case SND_SOC_DAIFMT_RIGHT_J:
-			cdif_dai_dbg("(%d) RIGHT_J DAIFMT\n", cdif->blk_no);
+			printk(KERN_DEBUG "[DEBUG][CDIF-%d] RIGHT_J DAIFMT\n", cdif->blk_no);
 			tcc_cdif_set_interface(cdif->cdif_reg, TCC_CDIF_INTERFACE_RIGHT_JUSTIFED);
 			break;
 		case SND_SOC_DAIFMT_LEFT_J:
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
 		default:
-			pr_err("(%d) does not supported\n", cdif->blk_no);
+			printk(KERN_ERR "[ERROR][CDIF-%d] does not supported\n", cdif->blk_no);
 			ret = -ENOTSUPP;
 			goto dai_fmt_end;
 	}
 
 	switch(fmt & SND_SOC_DAIFMT_INV_MASK) {
 		case SND_SOC_DAIFMT_NB_NF:
-			cdif_dai_dbg("(%d) CLK NB_NF\n", cdif->blk_no);
+			printk(KERN_DEBUG "[DEBUG][CDIF-%d] CLK NB_NF\n", cdif->blk_no);
 			tcc_cdif_set_bitclk_polarity(cdif->cdif_reg, true);
 			break;
 		case SND_SOC_DAIFMT_IB_NF:
-			cdif_dai_dbg("(%d) CLK IB_NF\n", cdif->blk_no);
+			printk(KERN_DEBUG "[DEBUG][CDIF-%d] CLK IB_NF\n", cdif->blk_no);
 			tcc_cdif_set_bitclk_polarity(cdif->cdif_reg, false);
 			break;
 		default:
-			pr_err("cdif%d does not supported(0x%08x)\n", cdif->blk_no, fmt & SND_SOC_DAIFMT_INV_MASK);
+			printk(KERN_ERR "[ERROR][CDIF-%d] does not supported(0x%08x)\n", cdif->blk_no, fmt & SND_SOC_DAIFMT_INV_MASK);
 			ret = -ENOTSUPP;
 			goto dai_fmt_end;
 	}
@@ -160,7 +153,7 @@ static int tcc_cdif_startup(struct snd_pcm_substream *substream, struct snd_soc_
 {
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 
-	cdif_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s - active : %d\n", __func__, dai->active);
 
 	cdif->dma_info.dev_type = TCC_ADMA_CDIF;
 
@@ -171,8 +164,8 @@ static int tcc_cdif_startup(struct snd_pcm_substream *substream, struct snd_soc_
 
 static void tcc_cdif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-//	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
-//	cdif_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	//	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
+	//	printk(KERN_DEBUG "[DEBUG][CDIF] %s - active : %d\n", __func__, dai->active);
 }
 
 static int tcc_cdif_hw_params(struct snd_pcm_substream *substream,
@@ -188,7 +181,7 @@ static int tcc_cdif_trigger(struct snd_pcm_substream *substream, int cmd, struct
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	spin_lock(&cdif->lock);
 	switch (cmd) {
@@ -236,15 +229,15 @@ static int tcc_cdif_dai_suspend(struct snd_soc_dai *dai)
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	pinctrl = pinctrl_get_select(dai->dev, "idle");
 	if(IS_ERR(pinctrl))
-		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
+		printk(KERN_ERR "[ERROR][CDIF] %s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	tcc_cdif_reg_backup(cdif->cdif_reg, &cdif->reg_backup);
 
-    return 0;
+	return 0;
 }
 
 static int tcc_cdif_dai_resume(struct snd_soc_dai *dai)
@@ -252,11 +245,11 @@ static int tcc_cdif_dai_resume(struct snd_soc_dai *dai)
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	pinctrl = pinctrl_get_select(dai->dev, "default");
 	if(IS_ERR(pinctrl))
-		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
+		printk(KERN_ERR "[ERROR][CDIF] %s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 	tcc_dai_set_audio_filter_enable(cdif->dai_reg, true);
 
@@ -266,7 +259,7 @@ static int tcc_cdif_dai_resume(struct snd_soc_dai *dai)
 
 	tcc_cdif_reg_restore(cdif->cdif_reg, &cdif->reg_backup);
 
-    return 0;
+	return 0;
 }
 
 struct snd_soc_dai_driver tcc_cdif_dai_drv = {
@@ -292,7 +285,7 @@ static void cdif_initialize(struct tcc_cdif_t *cdif)
 	clk_set_rate(cdif->dai_pclk, cdif->clk_rate);
 	clk_prepare_enable(cdif->dai_pclk);
 
-	cdif_dai_dbg("%s - cdif->clk_rate:%d\n", __func__, cdif->clk_rate);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s - cdif->clk_rate:%d\n", __func__, cdif->clk_rate);
 
 	clk_set_rate(cdif->cdif_filter_clk, DEFAULT_CDIF_FILTER_CLK_RATE);
 	clk_prepare_enable(cdif->cdif_filter_clk);
@@ -314,57 +307,57 @@ static int parse_cdif_dt(struct platform_device *pdev, struct tcc_cdif_t *cdif)
 
 	cdif->blk_no = of_alias_get_id(pdev->dev.of_node, "cdif");
 
-	cdif_dai_dbg("blk_no : %d\n", cdif->blk_no);
+	printk(KERN_DEBUG "[DEBUG][CDIF] blk_no : %d\n", cdif->blk_no);
 
-    /* get dai info. */
-    cdif->cdif_reg = of_iomap(pdev->dev.of_node, 0);
-    if (IS_ERR((void *)cdif->cdif_reg)) {
-        cdif->cdif_reg = NULL;
-		pr_err("cdif_reg is NULL\n");
+	/* get dai info. */
+	cdif->cdif_reg = of_iomap(pdev->dev.of_node, 0);
+	if (IS_ERR((void *)cdif->cdif_reg)) {
+		cdif->cdif_reg = NULL;
+		printk(KERN_ERR "[ERROR][CDIF] cdif_reg is NULL\n");
 		return -EINVAL;
 	}
-	cdif_dai_dbg("cdif_reg=%p\n", cdif->cdif_reg);
+	printk(KERN_DEBUG "[DEBUG][CDIF] cdif_reg=%p\n", cdif->cdif_reg);
 
-    cdif->dai_reg = of_iomap(pdev->dev.of_node, 1);
-    if (IS_ERR((void *)cdif->dai_reg)) {
-        cdif->dai_reg = NULL;
-		pr_err("dai_reg is NULL\n");
+	cdif->dai_reg = of_iomap(pdev->dev.of_node, 1);
+	if (IS_ERR((void *)cdif->dai_reg)) {
+		cdif->dai_reg = NULL;
+		printk(KERN_ERR "[ERROR][CDIF] dai_reg is NULL\n");
 		return -EINVAL;
 	}
-	cdif_dai_dbg("dai_reg=%p\n", cdif->dai_reg);
+	printk(KERN_DEBUG "[DEBUG][CDIF] dai_reg=%p\n", cdif->dai_reg);
 
-    cdif->dai_pclk = of_clk_get(pdev->dev.of_node, 0);
-    if (IS_ERR(cdif->dai_pclk)) {
-		return -EINVAL;
-	}
-
-    cdif->dai_hclk = of_clk_get(pdev->dev.of_node, 1);
-    if (IS_ERR(cdif->dai_hclk)) {
+	cdif->dai_pclk = of_clk_get(pdev->dev.of_node, 0);
+	if (IS_ERR(cdif->dai_pclk)) {
 		return -EINVAL;
 	}
 
-    cdif->cdif_filter_clk= of_clk_get(pdev->dev.of_node, 2);
-    if (IS_ERR(cdif->cdif_filter_clk)) {
+	cdif->dai_hclk = of_clk_get(pdev->dev.of_node, 1);
+	if (IS_ERR(cdif->dai_hclk)) {
+		return -EINVAL;
+	}
+
+	cdif->cdif_filter_clk= of_clk_get(pdev->dev.of_node, 2);
+	if (IS_ERR(cdif->cdif_filter_clk)) {
 		return -EINVAL;
 	}
 
 #if defined(CONFIG_ARCH_TCC802X)
-    cdif->pcfg_reg = of_iomap(pdev->dev.of_node, 2);
-    if (IS_ERR((void *)cdif->pcfg_reg)) {
-        cdif->pcfg_reg = NULL;
-		pr_err("pcfg_reg is NULL\n");
+	cdif->pcfg_reg = of_iomap(pdev->dev.of_node, 2);
+	if (IS_ERR((void *)cdif->pcfg_reg)) {
+		cdif->pcfg_reg = NULL;
+		printk(KERN_ERR "[ERROR][CDIF] pcfg_reg is NULL\n");
 		return -EINVAL;
 	}
-	cdif_dai_dbg("pcfg_reg=0x%08x\n", cdif->pcfg_reg);
+	printk(KERN_DEBUG "[DEBUG][CDIF] pcfg_reg=0x%08x\n", cdif->pcfg_reg);
 
 	of_property_read_u8_array(pdev->dev.of_node, "port-mux", cdif->portcfg.port,
 			of_property_count_elems_of_size(pdev->dev.of_node, "port-mux", sizeof(char)));
 #endif
 
 	of_property_read_u32(pdev->dev.of_node, "clock-frequency", &cdif->clk_rate);
-	cdif_dai_dbg("clk_rate=%u\n", cdif->clk_rate);	
+	printk(KERN_DEBUG "[DEBUG][CDIF] clk_rate=%u\n", cdif->clk_rate);	
 	if (cdif->clk_rate > TCC_DAI_MAX_FREQ) {
-		pr_err("%s - CDIF peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_MAX_FREQ, cdif->clk_rate);
+		printk(KERN_ERR "[ERROR][CDIF] %s - CDIF peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_DAI_MAX_FREQ, cdif->clk_rate);
 		return -ENOTSUPP;
 	}
 
@@ -375,17 +368,17 @@ static int tcc_cdif_probe(struct platform_device *pdev)
 {
 	struct tcc_cdif_t *cdif;
 	int ret;
-	
-	cdif_dai_dbg("%s\n", __func__);
+
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	if ((cdif = (struct tcc_cdif_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_cdif_t), GFP_KERNEL)) == NULL) {
 		return -ENOMEM;
 	}
 
-	cdif_dai_dbg("%s - cdif : %p\n", __func__, cdif);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s - cdif : %p\n", __func__, cdif);
 
 	if ((ret = parse_cdif_dt(pdev, cdif)) < 0) {
-		pr_err("%s : Fail to parse cdif dt\n", __func__);
+		printk(KERN_ERR "[ERROR][CDIF] %s : Fail to parse cdif dt\n", __func__);
 		goto error;
 	}
 
@@ -394,10 +387,10 @@ static int tcc_cdif_probe(struct platform_device *pdev)
 	cdif_initialize(cdif);
 
 	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_cdif_component_drv, &tcc_cdif_dai_drv, 1)) < 0) {
-		pr_err("devm_snd_soc_register_component failed\n");
+		printk(KERN_ERR "[ERROR][CDIF] devm_snd_soc_register_component failed\n");
 		goto error;
 	}
-	cdif_dai_dbg("devm_snd_soc_register_component success\n");
+	printk(KERN_DEBUG "[DEBUG][CDIF] devm_snd_soc_register_component success\n");
 
 	return 0;
 
@@ -410,7 +403,7 @@ static int tcc_cdif_remove(struct platform_device *pdev)
 {
 	struct tcc_cdif_t *cdif = (struct tcc_cdif_t*)platform_get_drvdata(pdev);
 
-	cdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][CDIF] %s\n", __func__);
 
 	devm_kfree(&pdev->dev, cdif);
 

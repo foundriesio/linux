@@ -47,13 +47,6 @@
 
 #define SPDIF_BITRATE		(128) // subframe(32bit) * 2ch * 2(channel coding)
 
-#undef spdif_dai_dbg
-#if 0
-#define spdif_dai_dbg(f, a...)	printk("<ASoC SPDIF DAI>" f, ##a)
-#else
-#define spdif_dai_dbg(f, a...)
-#endif
-
 #define CHECK_SPDIF_HW_PARAM_ELAPSED_TIME	(0)
 
 struct tcc_spdif_t {
@@ -109,7 +102,7 @@ static int tcc_spdif_set_clk(struct snd_soc_dai *dai, struct snd_pcm_substream *
 
 	clk_rate = calc_spdif_clk(spdif, sample_rate); 
 	if (clk_rate > TCC_SPDIF_MAX_FREQ) {
-		pr_err("%s - SPDIF peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_SPDIF_MAX_FREQ, clk_rate);
+		printk(KERN_ERR "[ERROR][SPDIF] %s - SPDIF peri max frequency is %dHz. but you try %dHz\n", __func__, TCC_SPDIF_MAX_FREQ, clk_rate);
 		return -ENOTSUPP;
 	}
 	spdif->clk_rate = clk_rate; 
@@ -119,7 +112,7 @@ static int tcc_spdif_set_clk(struct snd_soc_dai *dai, struct snd_pcm_substream *
 		clk_set_rate(spdif->pclk, spdif->clk_rate);
 		clk_prepare_enable(spdif->pclk);
 
-		spdif_dai_dbg("spdif set_rate : %d, get_rate : %lu\n", spdif->clk_rate, clk_get_rate(spdif->pclk));
+		printk(KERN_DEBUG "[DEBUG][SPDIF] spdif set_rate : %d, get_rate : %lu\n", spdif->clk_rate, clk_get_rate(spdif->pclk));
 	}
 
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -146,7 +139,7 @@ static int tcc_spdif_startup(struct snd_pcm_substream *substream, struct snd_soc
 {
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 
-	spdif_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - active : %d\n", __func__, dai->active);
 
 	spdif->dma_info.dev_type = TCC_ADMA_SPDIF;
 
@@ -159,7 +152,7 @@ static void tcc_spdif_shutdown(struct snd_pcm_substream *substream, struct snd_s
 {
 	//struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 
-	spdif_dai_dbg("%s - active : %d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - active : %d\n", __func__, dai->active);
 }
 
 static int tcc_spdif_hw_params(struct snd_pcm_substream *substream,
@@ -177,8 +170,8 @@ static int tcc_spdif_hw_params(struct snd_pcm_substream *substream,
 	unsigned int elapsed_usecs;
 #endif
 
-	spdif_dai_dbg("%s - format : 0x%08x\n", __func__, format);
-	spdif_dai_dbg("%s - sample_rate : %d\n", __func__, sample_rate);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - format : 0x%08x\n", __func__, format);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - sample_rate : %d\n", __func__, sample_rate);
 
 #if	(CHECK_SPDIF_HW_PARAM_ELAPSED_TIME == 1)
 	do_gettimeofday(&start);
@@ -196,14 +189,14 @@ static int tcc_spdif_hw_params(struct snd_pcm_substream *substream,
 		tcc_spdif_tx_swap_enable(spdif->reg, false);
 
 		if(params->reserved[0] & 0x01) {
-			spdif_dai_dbg("%s - data format : DATA mode\n", __func__);
+			printk(KERN_DEBUG "[DEBUG][SPDIF] %s - data format : DATA mode\n", __func__);
 			tcc_spdif_tx_format(spdif->reg, TCC_SPDIF_TX_FORMAT_DATA);
 		} else {
-			spdif_dai_dbg("%s - data format : %d\n", __func__, spdif->data_format);
+			printk(KERN_DEBUG "[DEBUG][SPDIF] %s - data format : %d\n", __func__, spdif->data_format);
 			tcc_spdif_tx_format(spdif->reg, spdif->data_format);
 		}
 		
-		spdif_dai_dbg("%s - copyright : %d\n", __func__, spdif->copyright);
+		printk(KERN_DEBUG "[DEBUG][SPDIF] %s - copyright : %d\n", __func__, spdif->copyright);
 		tcc_spdif_tx_copyright(spdif->reg, spdif->copyright);
 		
 		switch (format) {
@@ -262,7 +255,7 @@ hw_params_end:
 	do_div(elapsed_usecs64, NSEC_PER_USEC);
 	elapsed_usecs = elapsed_usecs64;
 
-	printk("spdif hw_params's elapsed time : %03d usec\n", elapsed_usecs);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] spdif hw_params's elapsed time : %03d usec\n", elapsed_usecs);
 #endif
 
 	return ret;
@@ -272,15 +265,15 @@ static int tcc_spdif_hw_free(struct snd_pcm_substream *substream, struct snd_soc
 {
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 
-	spdif_dai_dbg("%s - active:%d\n", __func__, dai->active);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - active:%d\n", __func__, dai->active);
 
 	spin_lock(&spdif->lock);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		spdif_dai_dbg("%s - PLAY\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SPDIF] %s - PLAY\n", __func__);
 		tcc_spdif_tx_fifo_clear(spdif->reg, true);
 		tcc_spdif_tx_fifo_clear(spdif->reg, false);
 	} else {
-		spdif_dai_dbg("%s - CAPTURE\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SPDIF] %s - CAPTURE\n", __func__);
 	}
 	spin_unlock(&spdif->lock);
 
@@ -293,7 +286,7 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
 
-	spdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s\n", __func__);
 
 	spin_lock(&spdif->lock);
 	switch (cmd) {
@@ -301,12 +294,12 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				spdif_dai_dbg("TRIGGER_START, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][SPDIF] TRIGGER_START, PLAY\n");
 				tcc_spdif_tx_irq_enable(spdif->reg, true);
 				tcc_spdif_tx_data_valid(spdif->reg, true);
 				tcc_spdif_tx_enable(spdif->reg, true);
 			} else {
-				spdif_dai_dbg("TRIGGER_START, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][SPDIF] TRIGGER_START, CAPTURE\n");
 				tcc_spdif_rx_irq_enable(spdif->reg, true);
 				tcc_spdif_rx_enable(spdif->reg, true);
 			}
@@ -315,12 +308,12 @@ static int tcc_spdif_trigger(struct snd_pcm_substream *substream, int cmd, struc
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				spdif_dai_dbg("TRIGGER_STOP, PLAY\n");
+				printk(KERN_DEBUG "[DEBUG][SPDIF] TRIGGER_STOP, PLAY\n");
 				tcc_spdif_tx_enable(spdif->reg, false);
 				tcc_spdif_tx_data_valid(spdif->reg, false);
 				tcc_spdif_tx_irq_enable(spdif->reg, false);
 			} else {
-				spdif_dai_dbg("TRIGGER_STOP, CAPTURE\n");
+				printk(KERN_DEBUG "[DEBUG][SPDIF] TRIGGER_STOP, CAPTURE\n");
 				tcc_spdif_rx_enable(spdif->reg, false);
 				tcc_spdif_rx_irq_enable(spdif->reg, false);
 			}
@@ -339,7 +332,7 @@ int tcc_spdif_set_clkdiv(struct snd_soc_dai *dai, int div_id, int div)
 {
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 
-	spdif_dai_dbg("%s - div_id:%d, div:%d\n", __func__, div_id, div);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - div_id:%d, div:%d\n", __func__, div_id, div);
 
 	spdif->clk_ratio = div;
 
@@ -429,11 +422,11 @@ static int tcc_spdif_suspend(struct snd_soc_dai *dai)
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
 
-	spdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s\n", __func__);
 
 	pinctrl = pinctrl_get_select(dai->dev, "idle");
 	if(IS_ERR(pinctrl))
-		printk("%s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
+		printk(KERN_ERR "[ERROR][SPDIF] %s : pinctrl suspend error[0x%p]\n", __func__, pinctrl);
 
 	tcc_spdif_reg_backup(spdif->reg, &spdif->reg_backup);
 
@@ -445,11 +438,11 @@ static int tcc_spdif_resume(struct snd_soc_dai *dai)
 	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
 
-	spdif_dai_dbg("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s\n", __func__);
 
 	pinctrl = pinctrl_get_select(dai->dev, "default");
 	if(IS_ERR(pinctrl))
-		printk("%s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
+		printk(KERN_ERR "[ERROR][SPDIF] %s : pinctrl resume error[0x%p]\n", __func__, pinctrl);
 
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_spdif_portcfg(spdif->pcfg_reg, &spdif->portcfg);
@@ -492,7 +485,7 @@ static void spdif_initialize(struct tcc_spdif_t *spdif)
 	clk_set_rate(spdif->pclk, spdif->clk_rate);
 	clk_prepare_enable(spdif->pclk);
 
-	spdif_dai_dbg("%s - spdif->clk_rate:%d\n", __func__, spdif->clk_rate);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - spdif->clk_rate:%d\n", __func__, spdif->clk_rate);
 
 #if defined(CONFIG_ARCH_TCC802X)
 	tcc_gfb_spdif_portcfg(spdif->pcfg_reg, &spdif->portcfg);
@@ -511,16 +504,16 @@ static int parse_spdif_dt(struct platform_device *pdev, struct tcc_spdif_t *spdi
 	spdif->pdev = pdev;
 
 	spdif->blk_no = of_alias_get_id(pdev->dev.of_node, "spdif");
-	spdif_dai_dbg("spdif)blk_no : %d\n", spdif->blk_no);	
+	printk(KERN_DEBUG "[DEBUG][SPDIF] blk_no : %d\n", spdif->blk_no);	
 
     /* get dai info. */
     spdif->reg = of_iomap(pdev->dev.of_node, 0);
     if (IS_ERR((void *)spdif->reg)) {
         spdif->reg = NULL;
-		printk("spdif)spdif_reg is NULL\n");
+		printk(KERN_ERR "[ERROR][SPDIF] spdif_reg is NULL\n");
 		return -EINVAL;
 	} 
-	spdif_dai_dbg("spdif)spdif_reg=%p\n", spdif->reg);	
+	printk(KERN_DEBUG "[DEBUG][SPDIF] spdif_reg=%p\n", spdif->reg);	
 
     spdif->pclk = of_clk_get(pdev->dev.of_node, 0);
     if (IS_ERR(spdif->pclk)) {
@@ -533,19 +526,19 @@ static int parse_spdif_dt(struct platform_device *pdev, struct tcc_spdif_t *spdi
 	}
 
 	if (of_property_read_u32(pdev->dev.of_node, "clock-frequency", &spdif->clk_rate) < 0) {
-		printk("spdif)clock-frequency value is not exist\n");	
+		printk(KERN_ERR "[ERROR][SPDIF] clock-frequency value is not exist\n");	
 		return -EINVAL;
 	}
-	spdif_dai_dbg("spdif)clk_rate=%u\n", spdif->clk_rate);	
+	printk(KERN_DEBUG "[DEBUG][SPDIF] clk_rate=%u\n", spdif->clk_rate);	
 
 #if defined(CONFIG_ARCH_TCC802X)
     spdif->pcfg_reg = of_iomap(pdev->dev.of_node, 1);
     if (IS_ERR((void *)spdif->pcfg_reg)) {
         spdif->pcfg_reg = NULL;
-		pr_err("pcfg_reg is NULL\n");
+		printk(KERN_ERR "[ERROR][SPDIF] pcfg_reg is NULL\n");
 		return -EINVAL;
 	}
-	spdif_dai_dbg("pcfg_reg=0x%08x\n", spdif->pcfg_reg);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] pcfg_reg=0x%08x\n", spdif->pcfg_reg);
 
 	of_property_read_u8_array(pdev->dev.of_node, "port-mux", spdif->portcfg.port,
 			of_property_count_elems_of_size(pdev->dev.of_node, "port-mux", sizeof(char)));
@@ -559,17 +552,18 @@ static int tcc_spdif_probe(struct platform_device *pdev)
 	struct tcc_spdif_t *spdif;
 	int ret;
 
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s\n", __func__);
+
 	if ((spdif = (struct tcc_spdif_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_spdif_t), GFP_KERNEL)) == NULL) {
 		return -ENOMEM;
 	}
 
-	spdif_dai_dbg("%s\n", __func__);
-	spdif_dai_dbg("%s - spdif : %p\n", __func__, spdif);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s - spdif : %p\n", __func__, spdif);
 
 	set_default_configrations(spdif);
 
 	if ((ret = parse_spdif_dt(pdev, spdif)) < 0) {
-		printk("%s : Fail to parse spdif dt\n", __func__);
+		printk(KERN_ERR "[ERROR][SPDIF] %s : Fail to parse spdif dt\n", __func__);
 		goto error;
 	}
 
@@ -578,10 +572,10 @@ static int tcc_spdif_probe(struct platform_device *pdev)
 	spdif_initialize(spdif);
 
 	if ((ret = devm_snd_soc_register_component(&pdev->dev, &tcc_spdif_component_drv, &tcc_spdif_dai_drv, 1)) < 0) {
-		pr_err("devm_snd_soc_register_component failed\n");
+		printk(KERN_ERR "[ERROR][SPDIF] devm_snd_soc_register_component failed\n");
 		goto error;
 	}
-	spdif_dai_dbg("devm_snd_soc_register_component success\n");
+	printk(KERN_DEBUG "[DEBUG][SPDIF] devm_snd_soc_register_component success\n");
 
 	return 0;
 
@@ -594,7 +588,7 @@ static int tcc_spdif_remove(struct platform_device *pdev)
 {
 //	struct tcc_spdif_t *spdif = (struct tcc_spdif_t*)platform_get_drvdata(pdev);
 
-	printk("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SPDIF] %s\n", __func__);
 
 	return 0;
 }
