@@ -211,6 +211,8 @@ static int tcc_cipher_run_inner(unsigned char *srcAddr, unsigned char *dstAddr, 
 	dma_sync_single_for_cpu( cipher_dev->dev, cipher_dev->dstPhy, len, DMA_FROM_DEVICE );
 #endif //USE_REV_MEMORY
 
+	msleep(1);
+
 	/* Copy Cipher Text to Destination Buffer */
 	if( fromuser ) {
 		if( copy_to_user( dstAddr, cipher_dev->dstVir, len ) ) {
@@ -257,6 +259,8 @@ static int tcc_cipher_run_phy(unsigned char *srcAddr, unsigned char *dstAddr, un
     struct arm_smccc_res res;
 
     arm_smccc_smc(SIP_CRYPTO_CIPHER_RUN, (unsigned long)srcAddr, (unsigned long)dstAddr, len, 0, 0, 0, 0, &res); 
+
+    msleep(1);
 
 	return 0;
 }
