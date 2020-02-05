@@ -28,7 +28,7 @@
 //#define DBG_I2C
 
 #if defined(DBG_I2C)
-#define dpr_info(args...) pr_info(args)
+#define dpr_info(args...) printk(KERN_INFO "[INFO][HDMI_V20]" args)
 #else
 #define dpr_info(args...)
 #endif
@@ -353,11 +353,11 @@ int hdmi_ddc_check(struct hdmi_tx_dev *dev, int addr, int len)
                 if(len > 0) {
                         ret = hdmi_ddc_read(dev, (0xA0) >> 1, 0x0, 0x0, addr, len, data);
 
-                        printk("[0x%03x] ", addr);
+                        printk(KERN_INFO "[INFO][HDMI_V20][0x%03x] ", addr);
                         for(i = 0;i<len;i++) {
-                                printk("0x%02x ", data[i]);
+                                printk(KERN_INFO "[INFO][HDMI_V20]0x%02x ", data[i]);
                         }
-                        printk("\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20]\r\n");
                 }
         }
         return ret;

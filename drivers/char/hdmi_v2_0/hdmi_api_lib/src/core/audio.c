@@ -331,20 +331,20 @@ void tcc_hdmi_spdif_clock_config(struct hdmi_tx_dev *dev, audioParams_t * audio)
 			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF1);
 			#endif
-			printk("%s : clock config is spdif1 \n",__func__);
+			printk(KERN_INFO "[INFO][HDMI_V20]%s : clock config is spdif1 \n",__func__);
 		}
 		else
 		{
 			#if defined(CONFIG_ARCH_TCC898X)
 			tcc_ckc_set_hdmi_audio_src(PERI_MSPDIF0);
 			#endif
-			printk("%s : clock config is spdif0 \n",__func__);
+			printk(KERN_INFO "[INFO][HDMI_V20]%s : clock config is spdif0 \n",__func__);
 		}
 
 	    clk_set_rate(dev->clk[HDMI_CLK_INDEX_SPDIF],clk_rate);
 	    clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_SPDIF]);
 
-		printk("%s: HDMI SPDIF clk =  %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_SPDIF]));
+		printk(KERN_INFO "[INFO][HDMI_V20]%s: HDMI SPDIF clk =  %dHz\r\n", FUNC_NAME, (int)clk_get_rate(dev->clk[HDMI_CLK_INDEX_SPDIF]));
 	}
 }
 
@@ -444,12 +444,12 @@ int audio_Configure(struct hdmi_tx_dev *dev, audioParams_t * audio)
 	n = audio_ComputeN(dev, audio->mSamplingFrequency, pixel_clock);
 #if CTS_AUTO
 	_audio_clock_cts_auto(dev, n);
-	printk("<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(auto) \r\n",
+	printk(KERN_INFO "[INFO][HDMI_V20]<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(auto) \r\n",
 	__func__,pixel_clock,audio->mSamplingFrequency,n);
 #else
 	_audio_clock_cts(dev, cts);
 	_audio_clock_n(dev, n);
-	printk("<< [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(%d)\r\n",
+	printk(KERN_INFO "[INFO][HDMI_V20] << [%s] : TMDS Ratio(%dKHz), SamplingRate(%dHz), N(%d), CTS(%d)\r\n",
 	__func__,pixel_clock,audio->mSamplingFrequency,n,cts);
 #endif
 	mc_audio_sampler_clock_enable(dev, 0);

@@ -41,10 +41,10 @@ static int hdmi_find_irq_enable_entry(struct hdmi_tx_dev *dev)
         list_for_each(next, &dev->irq_enable_entry.list) {
             irq_enable_entry = list_entry(next, struct drv_enable_entry, list);
             if(dev->verbose >= VERBOSE_IO)
-                printk(" Remain IRQ ID=%d\r\n", irq_enable_entry->id);
+                printk(KERN_INFO "[INFO][HDMI_V20]  Remain IRQ ID=%d\r\n", irq_enable_entry->id);
             break;
         }
-        //printk("----\r\n");
+        //printk(KERN_INFO "[INFO][HDMI_V20] ----\r\n");
         return (irq_enable_entry != NULL)?1:0;
 
 }
@@ -72,14 +72,14 @@ static int hdmi_add_irq_enable_entry(struct hdmi_tx_dev *dev, unsigned int id)
 
         if(irq_enable_entry) {
                 // alread existed.
-                //printk(" hdmi_add_irq_enable_entry %d is already enabled\r\n", id);
+                //printk(KERN_INFO "[INFO][HDMI_V20]  hdmi_add_irq_enable_entry %d is already enabled\r\n", id);
                 result = 0;
         }
         else {
                 irq_enable_entry = kzalloc(sizeof(struct drv_enable_entry), GFP_ATOMIC);
 
                 if(!irq_enable_entry) {
-                        printk("out of memory\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20] out of memory\r\n");
                         result = -1;
                 }
                 else {
@@ -107,7 +107,7 @@ static int hdmi_remove_irq_enable_entry(struct hdmi_tx_dev *dev, unsigned int id
         }
         else {
                 // already remove..!
-                //printk(" hdmi_remove_irq_enable_entry %d is already enabled\r\n", id);
+                //printk(KERN_INFO "[INFO][HDMI_V20]  hdmi_remove_irq_enable_entry %d is already enabled\r\n", id);
                 result = 0;
         }
 

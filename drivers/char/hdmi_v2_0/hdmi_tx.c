@@ -323,7 +323,7 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated){
         if(alloc_list == NULL){
                 alloc_list = kzalloc(sizeof(struct mem_alloc), GFP_KERNEL);
                 if(alloc_list == NULL){
-                        printk( KERN_ERR "%s:Couldn't create alloc_list\n",
+                        printk(KERN_ERR "[ERROR][HDMI_V20] %s:Couldn't create alloc_list\n",
                         __func__);
                         return NULL;
                 }
@@ -338,7 +338,7 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated){
         // alloc pretended memory
         return_pnt = kzalloc(size, GFP_KERNEL);
         if(return_pnt == NULL){
-                printk( KERN_ERR "%s:Couldn't allocate memory: %s\n",
+                printk(KERN_ERR "[ERROR][HDMI_V20] %s:Couldn't allocate memory: %s\n",
                 __func__, info);
                 return NULL;
         }
@@ -346,7 +346,7 @@ alloc_mem(char *info, size_t size, struct mem_alloc *allocated){
         // alloc memory for the infostructure
         new = kzalloc(sizeof(struct mem_alloc), GFP_KERNEL);
         if(new == NULL){
-                printk( KERN_ERR "%s:Couldn't allocate memory for the "
+                printk(KERN_ERR "[ERROR][HDMI_V20] %s:Couldn't allocate memory for the "
                 "alloc_mem\n", __func__);
                 kfree(return_pnt);
                 return NULL;
@@ -388,7 +388,7 @@ free_all_mem(void){
                         // free allocated memory
                         kfree(this->pointer);
                         // free this memory
-                        printk( KERN_INFO "%s:Freeing: %s\n",
+                        printk(KERN_INFO "%s:Freeing: %s\n",
                         __func__, this->info);
                         kfree(this);
                 }
@@ -473,7 +473,7 @@ int hdmi_tx_resume(struct device *dev)
         struct hdmi_tx_dev *hdmi_tx_dev = (dev!=NULL)?(struct hdmi_tx_dev *)dev_get_drvdata(dev):NULL;
 
         // Nothing..!!
-        printk("### %s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V20] ### %s \n", __func__);
         if(hdmi_tx_dev != NULL) {
                 if(test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_tx_dev->status)) {
                         if(gpio_is_valid(hdmi_tx_dev->hotplug_gpio)) {
@@ -791,7 +791,7 @@ static __init int dwc_hdmi_init(void)
 
 static __exit void dwc_hdmi_exit(void)
 {
-        printk("%s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_V20] %s \n", __func__);
         platform_driver_unregister(&dwc_hdmi_tx_pdrv);
 }
 

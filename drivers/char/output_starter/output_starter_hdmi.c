@@ -135,7 +135,7 @@ static void tcc_output_starter_make_extra_data(videoParams_t *videoParam) {
 
         // check file
         if (videoParam == NULL) {
-                printk("%s videoParam is NULL\r\n", __func__);
+                printk(KERN_INFO "[INFO][HDMI] %s videoParam is NULL\r\n", __func__);
                 return ;
         }
 
@@ -297,7 +297,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
 
         do {
                 if(hdmi_dev == NULL) {
-                        pr_info("%s hdmi device is NULL\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI]%s hdmi device is NULL\r\n", __func__);
                         break;
                 }
                 // Initialize Video Param
@@ -312,13 +312,13 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
 
                 /* Update DTD */
                 if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, 0) < 0) {
-                        printk("Force 1280x720@60p\r\n");
+                        printk(KERN_INFO "[INFO][HDMI] Force 1280x720@60p\r\n");
                         dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
                 }
 
                 /* Update Pixel Clock */
                 hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, &video_param);
-                //pr_info("%s previous pixel_clock is %dHz\r\n", __func__, hdmi_dev->hdmi_tx_ctrl.pixel_clock);
+                //printk(KERN_INFO "[INFO][HDMI]%s previous pixel_clock is %dHz\r\n", __func__, hdmi_dev->hdmi_tx_ctrl.pixel_clock);
 
                 /* Get bootloader settings */
                 dev_video_param = (videoParams_t *)hdmi_dev->videoParam;
@@ -340,15 +340,15 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
 
                         /* Update DTD */
                         if(dwc_hdmi_get_video_dtd(&video_param.mDtd, video_param.mDtd.mCode, 0) < 0) {
-                                printk("Force 1280x720@60p\r\n");
+                                printk(KERN_INFO "[INFO][HDMI] Force 1280x720@60p\r\n");
                                 dwc_hdmi_get_video_dtd(&video_param.mDtd, 4, 60000); // FORCE 720P
                         }
 
                         /* Update Pixel Clock */
                         hdmi_dev->hdmi_tx_ctrl.pixel_clock = hdmi_phy_get_actual_tmds_bit_ratio_by_videoparam(hdmi_dev, &video_param);
-                        //pr_info("%s previous pixel_clock is %dHz\r\n", __func__, hdmi_dev->hdmi_tx_ctrl.pixel_clock);
+                        //printk(KERN_INFO "[INFO][HDMI]%s previous pixel_clock is %dHz\r\n", __func__, hdmi_dev->hdmi_tx_ctrl.pixel_clock);
 
-                        pr_info("HDMI MODE DIFF \r\n"
+                        printk(KERN_INFO "[INFO][HDMI]HDMI MODE DIFF \r\n"
                                 "hdmi mode     : %s > %s \r\n"
                                 "hdmi vic      : %d > %d \r\n"
                                 "hdmi encoding : %s > %s \r\n"
@@ -379,7 +379,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                         displaydevice_width = video_param.mDtd.mPixelRepetitionInput?(video_param.mDtd.mHActive>>1):video_param.mDtd.mHActive;
                         displaydevice_height = video_param.mDtd.mInterlaced?(video_param.mDtd.mVActive << 1):(video_param.mDtd.mVActive);
 
-                        printk("\r\ntcc_output_starter_hdmi_v2_0 %dx%d\r\n", displaydevice_width, displaydevice_height);
+                        printk(KERN_INFO "[INFO][HDMI] \r\ntcc_output_starter_hdmi_v2_0 %dx%d\r\n", displaydevice_width, displaydevice_height);
 
                         mHActive = video_param.mDtd.mHActive;
                         mHBlanking = video_param.mDtd.mHBlanking;
@@ -441,7 +441,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                                 clear_bit(16, &bits);
                                 iowrite32(bits, hdmi_dev->ddibus_io);
                                 if(hdmi_dev->verbose >= VERBOSE_IO)
-                                        printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
+                                        printk(KERN_INFO "[INFO][HDMI] ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
                                 VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP1);
                         }
                         else {
@@ -451,7 +451,7 @@ int tcc_output_starter_hdmi_v2_0(unsigned int display_device, volatile void __io
                                 clear_bit(17, &bits);
                                 iowrite32(bits, hdmi_dev->ddibus_io);
                                 if(hdmi_dev->verbose >= VERBOSE_IO)
-                                        printk("ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
+                                        printk(KERN_INFO "[INFO][HDMI] ddibus_io(0x%p) = 0x%x\r\n", hdmi_dev->ddibus_io, ioread32(hdmi_dev->ddibus_io));
                                 VIOC_OUTCFG_SetOutConfig(VIOC_OUTCFG_HDMI, VIOC_OUTCFG_DISP0);
                         }
 
@@ -542,7 +542,7 @@ int tcc_hdmi_detect_cable(void)
                                 hdmi_phy_enable_hpd_sense(hdmi_dev);
                                 ret = hdmi_phy_hot_plug_state(hdmi_dev);
                         } else {
-                                pr_err("%s hdmi is not poser on\r\n", __func__);
+                                printk(KERN_ERR "[ERROR][HDMI]%s hdmi is not poser on\r\n", __func__);
                         }
                 }
         } while(0);

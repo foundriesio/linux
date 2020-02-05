@@ -36,13 +36,13 @@ static int hdmi_cec_probe(struct platform_device *pdev){
         do {
 
                 if(pdev == NULL) {
-                        pr_err("%s: pdev is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_CEC] %s: pdev is NULL\r\n", __func__);
                         break;
                 }
 
                 dev = (void*)devm_kzalloc(&pdev->dev, sizeof(struct cec_device), GFP_KERNEL);
                 if(!dev){
-                        pr_err("%s:Could not allocated hdmi_tx_dev\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_CEC] %s:Could not allocated hdmi_tx_dev\n", __func__);
                         break;
                 }
 
@@ -54,7 +54,7 @@ static int hdmi_cec_probe(struct platform_device *pdev){
 
                 dev->device_name = "HDMI_CEC";
 
-                printk("%s:Driver's name '%s' v%s\n", __func__, dev->device_name, HDMI_CEC_VERSION);
+                printk(KERN_INFO "[INFO][HDMI_CEC] %s:Driver's name '%s' v%s\n", __func__, dev->device_name, HDMI_CEC_VERSION);
 
                 mutex_init(&dev->mutex);
 
@@ -70,26 +70,26 @@ static int hdmi_cec_probe(struct platform_device *pdev){
         			dev->clk[i] = of_clk_get(pdev->dev.of_node,i);
         		}
         	} else {
-        		printk("%s: device node is null!!!",__func__);
+        		printk(KERN_INFO "[INFO][HDMI_CEC] %s: device node is null!!!",__func__);
         		break;
         	}
 
                 if(dev->cec_core_io == NULL) {
-                        pr_err("%s cec_core_io is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_CEC] %s cec_core_io is NULL\r\n", __func__);
                         break;
                 }
                 if(dev->cec_irq_io == NULL) {
-                        pr_err("%s cec_irq_io is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_CEC] %s cec_irq_io is NULL\r\n", __func__);
                         break;
                 }
                 if(dev->cec_clk_sel == NULL) {
-                        pr_err("%s cec_clk_sel is NULL\r\n", __func__);
+                        printk(KERN_ERR "[ERROR][HDMI_CEC] %s cec_clk_sel is NULL\r\n", __func__);
                         break;
                 }
 
                 for(i = HDMI_CLK_CEC_INDEX_IOBUS; i < HDMI_CLK_CEC_INDEX_MAX; i++) {
                         if(IS_ERR(dev->clk[i])) {
-                                pr_err("%s clk[%d] is not valid\r\n", __func__, i);
+                                printk(KERN_ERR "[ERROR][HDMI_CEC] %s clk[%d] is not valid\r\n", __func__, i);
                                 break;
                         }
                 }
@@ -177,7 +177,7 @@ int hdmi_cec_suspend(struct device *dev)
 {
         int clk_enable_count;
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
-	printk("### %s \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
 
         if(hdmi_cec_dev != NULL) {
                 if(hdmi_cec_dev->cec_wakeup_enable) {
@@ -200,7 +200,7 @@ int hdmi_cec_resume(struct device *dev)
 {
         int clk_enable_count;
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
-	printk("### %s \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
         if(hdmi_cec_dev != NULL) {
 	        hdmi_cec_dev->standby_status = 0;
                 if(hdmi_cec_dev->cec_wakeup_enable) {
@@ -221,11 +221,11 @@ int hdmi_cec_resume(struct device *dev)
 int hdmi_cec_runtime_suspend(struct device *dev)
 {
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
-	printk("### %s \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
         if(hdmi_cec_dev != NULL) {
 	        hdmi_cec_dev->standby_status = 1;
         }
-	printk("### %s: finish \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s: finish \n", __func__);
 
 	return 0;
 }
@@ -234,11 +234,11 @@ int hdmi_cec_runtime_resume(struct device *dev)
 {
 	struct cec_device *hdmi_cec_dev = (struct cec_device *)dev_get_drvdata(dev);
 
-	printk("### %s \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
         if(hdmi_cec_dev != NULL) {
 	        hdmi_cec_dev->standby_status = 0;
         }
-	printk("### %s: finish \n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] ### %s: finish \n", __func__);
 
 	return 0;
 }
@@ -269,13 +269,13 @@ static struct platform_driver __refdata dwc_hdmi_cec_pdrv = {
 
 static __init int dwc_hdmi_cec_init(void)
 {
-        printk("%s \n", __FUNCTION__);
+        printk(KERN_INFO "[INFO][HDMI_CEC] %s \n", __FUNCTION__);
         return platform_driver_register(&dwc_hdmi_cec_pdrv);
 }
 
 static __exit void dwc_hdmi_cec_exit(void)
 {
-        printk("%s \n", __FUNCTION__);
+        printk(KERN_INFO "[INFO][HDMI_CEC] %s \n", __FUNCTION__);
         platform_driver_unregister(&dwc_hdmi_cec_pdrv);
 }
 

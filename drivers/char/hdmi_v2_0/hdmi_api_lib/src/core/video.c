@@ -27,7 +27,7 @@ int video_Configure(struct hdmi_tx_dev *dev, videoParams_t * video)
                 LOGGER(SNPS_ERROR,"DVI mode with pixel repetition: video not transmitted");
                 return -1;
         }
-        printk(" VIDEO VIC[%d] %s - %dBIT\r\n", video->mDtd.mCode, (video->mEncodingOut==RGB)?"RGB":(video->mEncodingOut==YCC444)?"YCC444":(video->mEncodingOut==YCC422)?"YCC422":(video->mEncodingOut==YCC420)?"YCC420":"UNKNOWN", (video->mColorResolution * 3));
+        printk(KERN_INFO "[INFO][HDMI_V20]  VIDEO VIC[%d] %s - %dBIT\r\n", video->mDtd.mCode, (video->mEncodingOut==RGB)?"RGB":(video->mEncodingOut==YCC444)?"YCC444":(video->mEncodingOut==YCC422)?"YCC422":(video->mEncodingOut==YCC420)?"YCC420":"UNKNOWN", (video->mColorResolution * 3));
 
         //fc_force_output(dev, 1);
 

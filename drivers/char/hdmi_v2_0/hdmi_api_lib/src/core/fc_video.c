@@ -171,9 +171,9 @@ void fc_video_timing_dump(struct hdmi_tx_dev *dev)
         unsigned int reg;
         unsigned int val, val1, val2, val3;
 
-        printk("Timing Dump\r\n");
+        printk(KERN_INFO "[INFO][HDMI_V20] Timing Dump\r\n");
         reg = hdmi_dev_read(dev, (FC_INVIDCONF));
-        printk(" SYNC VSYNC(%s), HSYNC(%s), DE(%s) %smode\r\n", (reg & (1<<6))?"High":"Low",  (reg & (1<<5))?"High":"Low", (reg & (1<<4))?"High":"Low", (reg & (1<<3))?"HDMI":"DVI");
+        printk(KERN_INFO "[INFO][HDMI_V20]  SYNC VSYNC(%s), HSYNC(%s), DE(%s) %smode\r\n", (reg & (1<<6))?"High":"Low",  (reg & (1<<5))?"High":"Low", (reg & (1<<4))?"High":"Low", (reg & (1<<3))?"HDMI":"DVI");
 
         // HACTIVE
         val = hdmi_dev_read(dev, (FC_INHACTIV0));
@@ -199,7 +199,7 @@ void fc_video_timing_dump(struct hdmi_tx_dev *dev)
         reg &= (FC_INHBLANK1_H_IN_BLANK_MASK | FC_INHBLANK1_H_IN_BLANK_12_MASK);
         val3 |= (reg << 8);
 
-        printk("HSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val, val1, val2, val3);
+        printk(KERN_INFO "[INFO][HDMI_V20] HSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val, val1, val2, val3);
 
         // VACTIVE
         val = hdmi_dev_read(dev, (FC_INVACTIV0));
@@ -217,7 +217,7 @@ void fc_video_timing_dump(struct hdmi_tx_dev *dev)
         // BLANK
         val3 = hdmi_dev_read(dev, (FC_INVBLANK));
 
-        printk("VSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val, val1, val2, val3);
+        printk(KERN_INFO "[INFO][HDMI_V20] VSYNC ACTIVE(%d), DELAY(%d), SYNC(%d), BLANK(%d)\r\n", val, val1, val2, val3);
 }
 
 int fc_video_config_timing(struct hdmi_tx_dev *dev, videoParams_t *video)

@@ -79,7 +79,7 @@ static void hdmi_api_wait_phylock(struct hdmi_tx_dev *dev)
         goto END_PROCESS;
 
         END_PROCESS:
-        printk("HDMI_LOCK=0x%x\r\n", phy_lock);
+        printk(KERN_INFO "[INFO][HDMI_V20]HDMI_LOCK=0x%x\r\n", phy_lock);
 
 }
 

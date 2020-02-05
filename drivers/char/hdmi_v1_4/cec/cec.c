@@ -64,7 +64,7 @@ Agreement between Telechips and Company.
 #define CEC_DEBUG 0
 
 #if CEC_DEBUG
-#define DPRINTK(...) pr_info(__VA_ARGS__)
+#define DPRINTK(...) printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
 #else
 #define DPRINTK(...)
 #endif
@@ -73,7 +73,7 @@ Agreement between Telechips and Company.
 
 #define HDMI_IOCTL_DEBUG 0
 #if HDMI_IOCTL_DEBUG 
-#define io_debug(...) pr_info(__VA_ARGS__)
+#define io_debug(...) printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
 #else
 #define io_debug(...)
 #endif
@@ -438,7 +438,7 @@ static void cec_stop(struct tcc_hdmi_cec_dev *dev)
                 cec_mask_rx_interrupts(dev);
                 cec_disable_interrupts(dev);
         }
-        printk("%s : wait_cnt = %d\n", __func__, wait_cnt);
+        printk(KERN_INFO "[INFO][HDMI_V14] %s : wait_cnt = %d\n", __func__, wait_cnt);
 
 }
 

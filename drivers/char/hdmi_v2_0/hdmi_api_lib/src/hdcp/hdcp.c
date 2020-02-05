@@ -460,7 +460,7 @@ void hdcp2p2Stop(struct hdmi_tx_dev *dev)
 		_HDCP22RegMask(dev, 0x3F);
 		_HDCP22RegMute(dev, 0x3F);
 		_HDCP22RegStat(dev, 0x3F);
-		// printk("HDCP_IDLE - interrupt_status : %d \n", interrupt_status);
+		// printk(KERN_INFO "[INFO][HDMI_V20] HDCP_IDLE - interrupt_status : %d \n", interrupt_status);
 	}
 }
 EXPORT_SYMBOL(hdcp2p2Stop);
@@ -490,7 +490,7 @@ u8 hdcp22_event_handler(struct hdmi_tx_dev *dev, int *param)
 	}
 	if (interrupt_status & HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST_MASK) {
 		dev->hdcp_status = HDCP2_AUTHENTICATION_LOST;
-		printk("%s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
+		printk(KERN_INFO "[INFO][HDMI_V20] %s:%s\n", __func__, "HDCP22REG_STAT_ST_HDCP_AUTHENTICATION_LOST");
 		if (dev->hotplug_status == 0 || hdmi_phy_get_rx_sense_status(dev) == 0) {
 			printk(KERN_INFO
 				"%s:%s, hpd : %d, rxsense : %d\n", __func__, "HDCP_IDLE", dev->hotplug_status,

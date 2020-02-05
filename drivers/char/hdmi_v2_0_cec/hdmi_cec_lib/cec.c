@@ -116,7 +116,7 @@ static int cec_CfgTxBuf(struct cec_device * dev, const char *buf, unsigned size)
 	int index;
 
 	if (size > CEC_TX_DATA_SIZE) {
-		printk("%s: invalid parameter\n",__func__);
+		printk(KERN_INFO "[INFO][HDMI_CEC] %s: invalid parameter\n",__func__);
 		return -1;
 	}
 
@@ -143,7 +143,7 @@ static int cec_CfgRxBuf(struct cec_device * dev, char *buf, unsigned size)
 	cnt = cec_dev_read(dev, CEC_RX_CNT);   /* mask 7-5? */
 	cnt = (cnt > size) ? size : cnt;
 	if (cnt > CEC_RX_DATA_SIZE) {
-		printk("%s: wrong byte count\n",__func__);
+		printk(KERN_INFO "[INFO][HDMI_CEC] %s: wrong byte count\n",__func__);
 		return -1;
 	}
 
@@ -216,7 +216,7 @@ static int cec_msgTx(struct cec_device * dev, const char *buf, unsigned size,
         				while (cec_GetSend(dev) != 0);
 
                                         #if 0 // for debuging
-        				printk("CEC interrupt status = 0x%08x \r\n",cec_dev_read(dev,IO_IH_CEC_STAT0));
+        				printk(KERN_INFO "[INFO][HDMI_CEC] CEC interrupt status = 0x%08x \r\n",cec_dev_read(dev,IO_IH_CEC_STAT0));
                                         #endif
 
         				if (cec_IntStatus(dev, CEC_MASK_NACK_MASK) != 0) {
@@ -271,7 +271,7 @@ int cec_clear_wakeup(struct cec_device * dev)
 int cec_check_wake_up_interrupt(struct cec_device * dev)
 {
 	cec_register_dump(dev);
-	printk("[%s] IH_CEC_STAT0(Offset=0x106) = 0x%08x, %s \n",__func__,cec_dev_read(dev,IO_IH_CEC_STAT0),
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] IH_CEC_STAT0(Offset=0x106) = 0x%08x, %s \n",__func__,cec_dev_read(dev,IO_IH_CEC_STAT0),
 		cec_dev_read_mask(dev,IO_IH_CEC_STAT0,CEC_MASK_WAKEUP_MASK) == 1 ? "Wake-up Interrupt Occurred" : "Wake-up Interrupt Not-occurred");
 	return 0;
 }
@@ -315,7 +315,7 @@ int cec_Disable(struct cec_device * dev, int wakeup)
                 cec_CfgLogicAddr(dev, BCST_ADDR, 1);
 	}
 
-	printk("%s: Wakeup status : %d \n",__func__,wakeup);
+	printk(KERN_INFO "[INFO][HDMI_CEC] %s: Wakeup status : %d \n",__func__,wakeup);
 	return 0;
 }
 
@@ -331,7 +331,7 @@ int cec_CfgLogicAddr(struct cec_device * dev, unsigned addr, int enable)
 	unsigned char regs;
 
 	if (addr > BCST_ADDR) {
-		printk("%s: invalid parameter",__func__);
+		printk(KERN_INFO "[INFO][HDMI_CEC] %s: invalid parameter",__func__);
 		return -1;
 	}
 	if (addr == BCST_ADDR) {
@@ -340,7 +340,7 @@ int cec_CfgLogicAddr(struct cec_device * dev, unsigned addr, int enable)
 			cec_dev_write(dev, CEC_ADDR_L, 0x00);
 			return 0;
 		} else {
-			printk("%s: cannot de-allocate broadcast logical address",__func__);
+			printk(KERN_INFO "[INFO][HDMI_CEC] %s: cannot de-allocate broadcast logical address",__func__);
 			return -1;
 		}
 	}
@@ -405,7 +405,7 @@ int cec_CfgSignalFreeTime(struct cec_device * dev, int time)
  */
 int cec_CfgBroadcastNAK(struct cec_device * dev, int enable)
 {
-//	printk("%s: %i\n",__func__,enable);
+//	printk(KERN_INFO "[INFO][HDMI_CEC] %s: %i\n",__func__,enable);
 	if (enable)
 		cec_dev_write(dev, CEC_CTRL, cec_dev_read(dev, CEC_CTRL) |  CEC_CTRL_BC_NACK_MASK);
 	else
@@ -424,7 +424,7 @@ int cec_CfgBroadcastNAK(struct cec_device * dev, int enable)
 int cec_ctrlReceiveFrame(struct cec_device * dev, char *buf, unsigned size)
 {
 	if (buf == NULL) {
-		printk("%s: invalid parameter\n",__func__);
+		printk(KERN_INFO "[INFO][HDMI_CEC] %s: invalid parameter\n",__func__);
 		return -1;
 	}
 	return cec_msgRx(dev, buf, size, 1000);
@@ -443,7 +443,7 @@ int cec_ctrlReceiveFrame(struct cec_device * dev, char *buf, unsigned size)
 int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size)
 {
 	if (buf == NULL || size >= CEC_TX_DATA_SIZE) {
-		printk("%s: invalid parameter\n",__func__);
+		printk(KERN_INFO "[INFO][HDMI_CEC] %s: invalid parameter\n",__func__);
 		return -1;
 	}
 
@@ -453,12 +453,12 @@ int cec_ctrlSendFrame(struct cec_device * dev, const char *buf, unsigned size)
 
 void cec_register_dump(struct cec_device * dev)
 {
-	printk("[%s] cec_ctrl(link offset = 0x7d00, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_CTRL,cec_dev_read(dev,CEC_CTRL));
-	printk("[%s] cec_mask(link offset = 0x7d02, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_MASK,cec_dev_read(dev,CEC_MASK));
-	printk("[%s] cec_addr_l(link offset = 0x7d05, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_L,cec_dev_read(dev,CEC_ADDR_L));
-	printk("[%s] cec_addr_h(link offset = 0x7d06, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_H,cec_dev_read(dev,CEC_ADDR_H));
-	printk("[%s] cec_lock(link offset = 0x7d30, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_LOCK,cec_dev_read(dev,CEC_LOCK));
-	printk("[%s] cec_wakeupctrl(link offset = 0x7d31, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_WAKEUPCTRL,cec_dev_read(dev,CEC_WAKEUPCTRL));
-	printk("[%s] ih_cec_stat0(link offset = 0x106, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_CEC_STAT0,cec_dev_read(dev,IO_IH_CEC_STAT0));
-	printk("[%s] ih_mute_cec_stat0(link offset = 0x186, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_MUTE_CEC_STAT0,cec_dev_read(dev,IO_IH_MUTE_CEC_STAT0));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_ctrl(link offset = 0x7d00, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_CTRL,cec_dev_read(dev,CEC_CTRL));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_mask(link offset = 0x7d02, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_MASK,cec_dev_read(dev,CEC_MASK));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_addr_l(link offset = 0x7d05, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_L,cec_dev_read(dev,CEC_ADDR_L));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_addr_h(link offset = 0x7d06, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_ADDR_H,cec_dev_read(dev,CEC_ADDR_H));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_lock(link offset = 0x7d30, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_LOCK,cec_dev_read(dev,CEC_LOCK));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] cec_wakeupctrl(link offset = 0x7d31, IO offset = 0x%04x) : 0x%08x\n",__func__,CEC_WAKEUPCTRL,cec_dev_read(dev,CEC_WAKEUPCTRL));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] ih_cec_stat0(link offset = 0x106, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_CEC_STAT0,cec_dev_read(dev,IO_IH_CEC_STAT0));
+	printk(KERN_INFO "[INFO][HDMI_CEC] [%s] ih_mute_cec_stat0(link offset = 0x186, IO offset = 0x%04x) : 0x%08x\n",__func__,IO_IH_MUTE_CEC_STAT0,cec_dev_read(dev,IO_IH_MUTE_CEC_STAT0));
 }

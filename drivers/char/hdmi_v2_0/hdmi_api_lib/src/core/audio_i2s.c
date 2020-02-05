@@ -101,7 +101,7 @@ void audio_i2s_configure(struct hdmi_tx_dev * dev, audioParams_t * audio)
 
 	audio_i2s_select(dev, 1);
 
-	printk("<< [%s] : %s, %s, %s\r\n",__func__,hdmi_dev_read_mask(dev,AUD_CONF2,AUD_CONF2_HBR_MASK) ? "HBR Stream" : "Non HBR"
+	printk(KERN_INFO "[INFO][HDMI_V20] << [%s] : %s, %s, %s\r\n",__func__,hdmi_dev_read_mask(dev,AUD_CONF2,AUD_CONF2_HBR_MASK) ? "HBR Stream" : "Non HBR"
 		,hdmi_dev_read_mask(dev,AUD_CONF2,AUD_CONF2_NLPCM_MASK) ? "Bitstream Mode" : "PCM Mode"
 		,hdmi_dev_read_mask(dev,AUD_CONF2,AUD_CONF2_INSERT_PCUV) ? "BPCUV Auto" : "BPCUV Manual");
 }

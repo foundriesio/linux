@@ -80,14 +80,14 @@ Agreement between Telechips and Company.
 #define HDMI_DEBUG_TIME 0
 
 #if HDMI_DEBUG
-#define dprintk(args...)   { printk( "hdmi1.4: " args); }
+#define dprintk(args...)   { printk(KERN_INFO "[INFO][HDMI_V14]" args); }
 #else
 #define dprintk(args...)
 #endif
 
 #define HDMI_IOCTL_DEBUG 0
 #if HDMI_IOCTL_DEBUG
-#define io_debug(...) pr_info(__VA_ARGS__)
+#define io_debug(...) printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
 #else
 #define io_debug(...)
 #endif
@@ -981,14 +981,14 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
 
         	#if (HDMI_DEBUG)
         	{
-        		printk("%s : freq = %d, phy_depth = %d, phy_reg_count = %d\n",__func__,(int)freq, phy_depth_index, phy_reg_count);
+        		printk(KERN_INFO "[INFO][HDMI_V14] %s : freq = %d, phy_depth = %d, phy_reg_count = %d\n",__func__,(int)freq, phy_depth_index, phy_reg_count);
 
         		for(phy_loop = 0; phy_loop < phy_reg_count; phy_loop++)
         		{
-        			printk("0x%02x ", phy_buffer[phy_loop]);
+        			printk(KERN_INFO "[INFO][HDMI_V14] 0x%02x ", phy_buffer[phy_loop]);
         		}
 
-        		printk("\n");
+        		printk(KERN_INFO "[INFO][HDMI_V14] \n");
         	}
         	#endif
 
@@ -1013,10 +1013,10 @@ static int hdmi_set_phy_freq(struct tcc_hdmi_dev *dev, enum PHYFreq freq)
                         unsigned int val;
         		for(phy_loop = 0; phy_loop < phy_reg_count; phy_loop++) {
         			val = hdmi_reg_read(dev, HDMIDP_PHYREG((phy_loop+1) << 2));
-        			printk("0x%02x ", val);
+        			printk(KERN_INFO "[INFO][HDMI_V14] 0x%02x ", val);
         		}
 
-        		printk("\n");
+        		printk(KERN_INFO "[INFO][HDMI_V14] \n");
         	}
         	#endif
                 ret = 0;
@@ -1048,7 +1048,7 @@ static int hdmi_set_phy_pwdn(struct tcc_hdmi_dev *dev, unsigned char enable)
         		#if (HDMI_DEBUG)
         		{
         			unsigned int reg = hdmi_reg_read(dev, HDMIDP_PHYREG(0x74));
-        			printk("Reg74  = 0x%02x \n", reg);
+        			printk(KERN_INFO "[INFO][HDMI_V14] Reg74  = 0x%02x \n", reg);
         		}
         		#endif
         	}
