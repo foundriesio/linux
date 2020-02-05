@@ -409,7 +409,9 @@ retry:
 		}
 	}
 
+#ifndef CONFIG_LOGO //TCC - to keep the kernel logo
 	ret = drm_atomic_commit(state);
+#endif
 
 out_state:
 	drm_atomic_clean_old_fb(dev, plane_mask, ret);
