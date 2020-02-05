@@ -46,26 +46,6 @@
 //#define TCC_SDR_RX_ISR_DEBUG 
 //#define TCC_SDR_READ_DEBUG
 
-#if 0
-#define SDR_DBG(fmt, args...)  printk("<SDR> "fmt, ##args)
-#else
-#define SDR_DBG(fmt, args...)  do { } while (0)
-#endif
-
-#define SDR_DBG_WARN(fmt, args...)  printk("<SDR_WARN> "fmt, ##args)
-
-#ifdef TCC_SDR_RX_ISR_DEBUG
-#define RX_ISR_DBG(fmt, args...)  printk("<RX_ISR> "fmt, ##args)
-#else
-#define RX_ISR_DBG(fmt, args...)  do { } while (0)
-#endif
-
-#ifdef TCC_SDR_READ_DEBUG
-#define READ_DBG(fmt, args...)  printk("<READ> "fmt, ##args)
-#else
-#define READ_DBG(fmt, args...)  do { } while (0)
-#endif
-
 #define SDR_MAX_PORT_NUM	(4)
 #define SDR_READ_TIMEOUT 1000
 
@@ -187,16 +167,16 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 {
 	uint32_t period_min=0, sz_check=0;
 	int ret=0;
-	SDR_DBG("%s\n", __func__);
-	SDR_DBG("eChannel : %d\n", p->eChannel);
-	SDR_DBG("eBitMode : %d\n", p->eBitMode);
-	SDR_DBG("eBitPolarity: %d\n", p->eBitPolarity);
-	SDR_DBG("eBufferSize : %d\n", p->eBufferSize);
-	SDR_DBG("ePeriodSize : %d\n", p->ePeriodSize);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] eChannel : %d\n", p->eChannel);
+	printk(KERN_DEBUG "[DEBUG][SDR] eBitMode : %d\n", p->eBitMode);
+	printk(KERN_DEBUG "[DEBUG][SDR] eBitPolarity: %d\n", p->eBitPolarity);
+	printk(KERN_DEBUG "[DEBUG][SDR] eBufferSize : %d\n", p->eBufferSize);
+	printk(KERN_DEBUG "[DEBUG][SDR] ePeriodSize : %d\n", p->ePeriodSize);
 
 	if(p->eRadioMode) {
 		if ((p->eChannel > 4)||(p->eChannel <= 0)) {
-			SDR_DBG_WARN("Warning!! eChannel[%d] should be 1/2/4. So, it is changed by defualt[%d]\n", p->eChannel, RADIO_MODE_DEFAULT_CHANNEL);
+			printk(KERN_WARNING "[WARN][SDR] eChannel[%d] should be 1/2/4. So, it is changed by defualt[%d]\n", p->eChannel, RADIO_MODE_DEFAULT_CHANNEL);
 			p->eChannel = RADIO_MODE_DEFAULT_CHANNEL;
 			ret = 1;
 		}
@@ -206,20 +186,20 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 				(p->eBitMode != 32) && (p->eBitMode != 40) &&
 				(p->eBitMode != 48) && (p->eBitMode != 60) &&
 				(p->eBitMode != 64) && (p->eBitMode != 80)) {
-			SDR_DBG_WARN("Warning!! eBitMode[%d] is wrong. So, it is changed by defualt[%d]\n", p->eBitMode, RADIO_MODE_DEFAULT_BITMODE);
+			printk(KERN_WARNING "[WARN][SDR] eBitMode[%d] is wrong. So, it is changed by defualt[%d]\n", p->eBitMode, RADIO_MODE_DEFAULT_BITMODE);
 			p->eBitMode = RADIO_MODE_DEFAULT_BITMODE;
 			ret = 1;
 		}
 		period_min = TCC_SDR_PERIOD_SZ_RADIO_MIN;
 	} else {	//I2S Slave Mode
 		if ((p->eChannel != 1)&&(p->eChannel != 2)&&(p->eChannel != 8)) {
-			SDR_DBG_WARN("Warning!! eChannel[%d] should be 2 or 8. So, it is changed by defualt[%d]\n", p->eChannel, I2S_MODE_DEFAULT_CHANNEL);
+			printk(KERN_WARNING "[WARN][SDR] eChannel[%d] should be 2 or 8. So, it is changed by defualt[%d]\n", p->eChannel, I2S_MODE_DEFAULT_CHANNEL);
 			p->eChannel = I2S_MODE_DEFAULT_CHANNEL; 
 			ret = 1;
 		}
 
 		if ((p->eBitMode != 16) && (p->eBitMode != 24)) {
-			SDR_DBG_WARN("Warning!! eBitMode[%d] is wrong. So, it is changed by defualt[%d]\n", p->eBitMode, RADIO_MODE_DEFAULT_BITMODE);
+			printk(KERN_WARNING "[WARN][SDR] eBitMode[%d] is wrong. So, it is changed by defualt[%d]\n", p->eBitMode, RADIO_MODE_DEFAULT_BITMODE);
 			p->eBitMode = I2S_MODE_DEFAULT_BITMODE; 
 			ret = 1;
 		}
@@ -227,7 +207,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 	}
 
 	if (p->eBufferSize < TCC_SDR_BUFFER_SZ_MIN) {
-		SDR_DBG_WARN("Warning!! eBufferSize[0x%08x] is wrong. So, it is changed by min[0x%08x]\n", p->eBufferSize, TCC_SDR_BUFFER_SZ_MIN);
+		printk(KERN_WARNING "[WARN][SDR] eBufferSize[0x%08x] is wrong. So, it is changed by min[0x%08x]\n", p->eBufferSize, TCC_SDR_BUFFER_SZ_MIN);
 		p->eBufferSize = TCC_SDR_BUFFER_SZ_MIN;
 		ret = 1;
 	}
@@ -247,7 +227,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 			if(p->eBufferSize/I2S_MODE_DEFAULT_PERIOD_DIV > period_min) 
 				period_min = p->eBufferSize/I2S_MODE_DEFAULT_PERIOD_DIV;
 		}
-		SDR_DBG_WARN("Warning!! ePeriodSize[0x%08x] is wrong. So, it is changed by min[0x%08x]\n", p->ePeriodSize, period_min);
+		printk(KERN_WARNING "[WARN][SDR] ePeriodSize[0x%08x] is wrong. So, it is changed by min[0x%08x]\n", p->ePeriodSize, period_min);
 		p->ePeriodSize = period_min;
 		ret = 1;
 	}
@@ -281,8 +261,8 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 	}
 
 	if (p->eBufferSize != (1<<sz_check)) {
-		SDR_DBG_WARN("buffer_bytes[%u] should be 2^N[%u]\n", p->eBufferSize, 1<<(sz_check+1));
-		SDR_DBG_WARN("buffer_bytes[%u] change to [%u]\n", p->eBufferSize, 1<<(sz_check+1));
+		printk(KERN_WARNING "[WARN][SDR] buffer_bytes[%u] should be 2^N[%u]\n", p->eBufferSize, 1<<(sz_check+1));
+		printk(KERN_WARNING "[WARN][SDR] buffer_bytes[%u] change to [%u]\n", p->eBufferSize, 1<<(sz_check+1));
 		p->eBufferSize = 1<<(sz_check+1);
 		sdr->buffer_bytes = 1<<(sz_check+1);
 		ret = 1;
@@ -293,8 +273,8 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 	sz_check = p->ePeriodSize % 32;
 	if(sz_check) {
 		sz_check = p->ePeriodSize/32;
-		SDR_DBG_WARN("period_bytes[%u] should be multiple of 32[%u]\n", p->ePeriodSize, sz_check*32);
-		SDR_DBG_WARN("period_bytes[%u] change to [%u]\n", p->ePeriodSize, sz_check*32);
+		printk(KERN_WARNING "[WARN][SDR] period_bytes[%u] should be multiple of 32[%u]\n", p->ePeriodSize, sz_check*32);
+		printk(KERN_WARNING "[WARN][SDR] period_bytes[%u] change to [%u]\n", p->ePeriodSize, sz_check*32);
 		p->ePeriodSize = sz_check*32;
 		sdr->period_bytes = p->ePeriodSize;
 		ret = 1;
@@ -329,8 +309,10 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 		if (sdr->opened && sdr->started) {
 			port->valid_sz += calc_valid_sz_offset(port->write_pos, cur_period_offset, port->dma_sz);	
 
-			RX_ISR_DBG("port(%d) valid_sz:0x%8x, read_pos:0x%8x, write_pos:0x%8x, new_write_pos:0x%8x\n",
+#ifdef TCC_SDR_RX_ISR_DEBUG 
+			printk(KERN_DEBUG "[DEBUG][SDR_RX_ISR] port(%d) valid_sz:0x%8x, read_pos:0x%8x, write_pos:0x%8x, new_write_pos:0x%8x\n",
 			i, port->valid_sz, port->read_pos, port->write_pos, cur_period_offset);
+#endif
 
 			if (port->valid_sz > port->dma_sz) { // Overrun
 				port->valid_sz = 0;
@@ -349,7 +331,7 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 	for (i=0; i<sdr->ports_num; i++) {
 		if (Overrun[i]) { // Overrun
 			if (sdr->opened && sdr->started) {
-				SDR_DBG("[dev-%d] %s - Overrun(%d), new_read_pos:0x%x, dma_sz:0x%x, valid_sz(%p):0x%x\n", 
+				printk(KERN_WARNING "[WARN][SDR][dev-%d] %s - Overrun(%d), new_read_pos:0x%x, dma_sz:0x%x, valid_sz(%p):0x%x\n", 
 						sdr->blk_no,__func__, i, sdr->port[i].read_pos, sdr->port[i].dma_sz, &sdr->port[i].valid_sz, sdr->port[i].valid_sz);
 
 			}
@@ -383,15 +365,15 @@ unsigned int tcc_sdr_copy_from_dma(struct tcc_sdr_t *sdr, uint32_t sdr_port, cha
 	int ret=0;
 
 	if (!sdr->started) {
-		SDR_DBG("%s - not started\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SDR] %s - not started\n", __func__);
 		return -1;
 	}
 	
 	ret = wait_event_interruptible_timeout(sdr->wq, port->valid_sz >= readcnt, msecs_to_jiffies(SDR_READ_TIMEOUT));
 
 	if(ret <= 0) {
-		SDR_DBG_WARN("%s - dev-%d timeout[%d]sec, ret=[%d].", __func__, sdr->blk_no, SDR_READ_TIMEOUT, ret);
-		SDR_DBG_WARN("Please check turner status.\n");
+		printk(KERN_ERR "[ERROR][SDR] %s - dev-%d timeout[%d]sec, ret=[%d].", __func__, sdr->blk_no, SDR_READ_TIMEOUT, ret);
+		printk(KERN_ERR "[ERROR][SDR] Please check turner status.\n");
 		return -1;
 	} 
 
@@ -401,7 +383,9 @@ unsigned int tcc_sdr_copy_from_dma(struct tcc_sdr_t *sdr, uint32_t sdr_port, cha
 		readcnt = port->valid_sz;
 	}
 
-	READ_DBG("<bf>(%d) base:0x%08x, len:0x%x\n", sdr_port, port->read_pos, readcnt);
+#ifdef TCC_SDR_READ_DEBUG
+	printk(KERN_DEBUG "[DEBUG][SDR_READ] <bf>(%d) base:0x%08x, len:0x%x\n", sdr_port, port->read_pos, readcnt);
+#endif
 
 	read_pos = port->read_pos;
 	new_read_pos = port->read_pos + readcnt;
@@ -417,7 +401,9 @@ unsigned int tcc_sdr_copy_from_dma(struct tcc_sdr_t *sdr, uint32_t sdr_port, cha
 
 	port->valid_sz -= readcnt;
 
-	READ_DBG("<ft>-valid_sz:0x%x, read_pos:0x%x, readcnt:0x%x\n", port->valid_sz, port->read_pos, readcnt);
+#ifdef TCC_SDR_READ_DEBUG
+	printk(KERN_DEBUG "[DEBUG][SDR_READ] <ft>-valid_sz:0x%x, read_pos:0x%x, readcnt:0x%x\n", port->valid_sz, port->read_pos, readcnt);
+#endif
 
 	spin_unlock_irqrestore(&sdr->lock, flags);
 
@@ -442,23 +428,23 @@ static void set_radio_dma_inbuffer(struct tcc_sdr_t *sdr, uint32_t length, gfp_t
 	uint32_t align_paddr;
 	int ret=0, i=0;
 
-	//SDR_DBG("period_bytes : %d\n", sdr->period_bytes);
+	//printk(KERN_DEBUG "[DEBUG][SDR] period_bytes : %d\n", sdr->period_bytes);
 
 #ifndef PREALLOCATE_DMA_BUFFER_MODE
 	if (sdr->dma_vaddr_base == NULL) {
 		sdr->dma_total_size = length * (sdr->ports_num+1); // plus 1 for align 
-		SDR_DBG("dma_total_size : %d\n", sdr->dma_total_size);
+		printk(KERN_DEBUG "[DEBUG][SDR] dma_total_size : %d\n", sdr->dma_total_size);
 		sdr->dma_vaddr_base = dma_alloc_coherent(&sdr->pdev->dev, sdr->dma_total_size, &sdr->dma_paddr_base, gfp);
-		SDR_DBG("dma_vaddr_base : %p\n", (void*)sdr->dma_vaddr_base);
+		printk(KERN_DEBUG "[DEBUG][SDR] dma_vaddr_base : %p\n", (void*)sdr->dma_vaddr_base);
 	} else {
-		SDR_DBG("dma buffer is already allocated\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] dma buffer is already allocated\n");
 	}
 
 	if ((mono_mode)&&(sdr->mono_dma_vaddr == NULL)) {
 		sdr->mono_dma_vaddr = dma_alloc_coherent(&sdr->pdev->dev, length, &sdr->mono_dma_paddr, GFP_KERNEL);
-		SDR_DBG("mono_dma_vaddr : %p\n", (void*)sdr->mono_dma_vaddr);
+		printk(KERN_DEBUG "[DEBUG][SDR] mono_dma_vaddr : %p\n", (void*)sdr->mono_dma_vaddr);
 	} else {
-		SDR_DBG("mono dma buffer is already allocated\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] mono dma buffer is already allocated\n");
 	}
 #endif
 	if((sdr->radio_mode)||((sdr->radio_mode == 0)&&(sdr->adrcnt_mode == false))) {
@@ -470,7 +456,7 @@ static void set_radio_dma_inbuffer(struct tcc_sdr_t *sdr, uint32_t length, gfp_t
 	align_vaddr = (ptrdiff_t)sdr->dma_vaddr_base + align_offset;
 	align_paddr = (uint32_t)sdr->dma_paddr_base + align_offset;
 
-	SDR_DBG("align_offset:0x%08x, align_vaddr:0x%08x, align_paddr:0x%08x\n",
+	printk(KERN_DEBUG "[DEBUG][SDR] align_offset:0x%08x, align_vaddr:0x%08x, align_paddr:0x%08x\n",
 			align_offset, align_vaddr, align_paddr);
 
 	for (i=0; i<sdr->ports_num; i++) {
@@ -481,20 +467,20 @@ static void set_radio_dma_inbuffer(struct tcc_sdr_t *sdr, uint32_t length, gfp_t
 
 		sdr->port[i].dma_sz = length;
 
-		SDR_DBG("port(%d) vaddr: %p\n", i, (void*)sdr->port[i].dma_vaddr);
+		printk(KERN_DEBUG "[DEBUG][SDR] port(%d) vaddr: %p\n", i, (void*)sdr->port[i].dma_vaddr);
 	}
 
 	if(sdr->radio_mode) {
 
 		ret = tcc_adma_set_rx_dma_params(sdr->adma_reg, length, sdr->period_bytes, sdr->bitmode, TCC_ADMA_BURST_CYCLE_16, mono_mode, sdr->radio_mode, sdr->ports_num, sdr->adrcnt_mode);
 		if(ret < 0) {
-			SDR_DBG("It has something wrong. ret = %d\n", ret);
+			printk(KERN_DEBUG "[DEBUG][SDR] It has something wrong. ret = %d\n", ret);
 		}
 
 		for (i=0; i<sdr->ports_num; i++) {
 			ret = tcc_adma_set_rx_dma_addr(sdr->adma_reg, (uint32_t)sdr->port[i].dma_paddr, (uint32_t)sdr->mono_dma_paddr, mono_mode, sdr->radio_mode, i);
 			if(ret < 0) {
-				SDR_DBG("It has something wrong. ret[%d] = %d\n", i, ret);
+				printk(KERN_DEBUG "[DEBUG][SDR] It has something wrong. ret[%d] = %d\n", i, ret);
 			}
 		}
 
@@ -502,13 +488,13 @@ static void set_radio_dma_inbuffer(struct tcc_sdr_t *sdr, uint32_t length, gfp_t
 
 		ret = tcc_adma_set_rx_dma_params(sdr->adma_reg, length, sdr->period_bytes, sdr->bitmode, TCC_ADMA_BURST_CYCLE_8, mono_mode, sdr->radio_mode, sdr->ports_num, sdr->adrcnt_mode);
 		if(ret < 0) {
-			SDR_DBG("It has something wrong. ret = %d\n", ret);
+			printk(KERN_DEBUG "[DEBUG][SDR] It has something wrong. ret = %d\n", ret);
 		}
 
 		for (i=0; i<sdr->ports_num; i++) {
 			ret = tcc_adma_set_rx_dma_addr(sdr->adma_reg, (uint32_t)sdr->port[i].dma_paddr, (uint32_t)sdr->mono_dma_paddr, mono_mode, sdr->radio_mode, i);
 			if(ret < 0) {
-				SDR_DBG("It has something wrong. ret[%d] = %d\n", i, ret);
+				printk(KERN_DEBUG "[DEBUG][SDR] It has something wrong. ret[%d] = %d\n", i, ret);
 			}
 		}
 	}
@@ -516,8 +502,8 @@ static void set_radio_dma_inbuffer(struct tcc_sdr_t *sdr, uint32_t length, gfp_t
 	tcc_adma_set_rx_dma_repeat_type(sdr->adma_reg, TCC_ADMA_REPEAT_FROM_CUR_ADDR);
 	tcc_adma_repeat_infinite_mode(sdr->adma_reg);
 
-	SDR_DBG("%s - HwRxDaParam [0x%X]\n", __func__, readl(sdr->adma_reg+TCC_ADMA_RXDAPARAM_OFFSET));
-	SDR_DBG("%s - HwRxDaTCnt [%d]\n", __func__, readl(sdr->adma_reg+TCC_ADMA_RXDATCNT_OFFSET));
+	printk(KERN_DEBUG "[DEBUG][SDR] %s - HwRxDaParam [0x%X]\n", __func__, readl(sdr->adma_reg+TCC_ADMA_RXDAPARAM_OFFSET));
+	printk(KERN_DEBUG "[DEBUG][SDR] %s - HwRxDaTCnt [%d]\n", __func__, readl(sdr->adma_reg+TCC_ADMA_RXDATCNT_OFFSET));
 
 }
 
@@ -588,7 +574,7 @@ int tcc_sdr_initialize(struct tcc_sdr_t *sdr, gfp_t gfp)
 			tcc_dai_set_multiport_mode(sdr->dai_reg, true);
 			tcc_adma_set_dai_rx_multi_ch(sdr->adma_reg, true, TCC_ADMA_MULTI_CH_MODE_7_1);
 		} else {
-			SDR_DBG("I2S Can't support %d channel mode\n", sdr->channels);
+			printk(KERN_DEBUG "[DEBUG][SDR] I2S Can't support %d channel mode\n", sdr->channels);
 		}
 	}
 
@@ -600,7 +586,7 @@ int tcc_sdr_deinitialize(struct tcc_sdr_t *sdr)
 {
 #ifndef PREALLOCATE_DMA_BUFFER_MODE
 	if(sdr->dma_vaddr_base != NULL) {
-		SDR_DBG("Free pre-allocated dma buffer\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] Free pre-allocated dma buffer\n");
 		dma_free_writecombine(&sdr->pdev->dev, sdr->dma_total_size, sdr->dma_vaddr_base, sdr->dma_paddr_base);
 		sdr->dma_vaddr_base = NULL;
 		sdr->dma_paddr_base = (dma_addr_t)NULL;
@@ -625,7 +611,7 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 	uint32_t i;
 
 	if (sdr->started) {
-		SDR_DBG("%s - already started\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SDR] %s - already started\n", __func__);
 		return -1;
 	}
 /*
@@ -661,11 +647,11 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 int tcc_sdr_stop(struct tcc_sdr_t *sdr)
 {
 	if (!sdr->started) {
-		SDR_DBG("%s - not started\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SDR] %s - not started\n", __func__);
 		return -1;
 	}
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	tcc_dai_set_rx_mute(sdr->dai_reg, true);
 
@@ -712,7 +698,7 @@ unsigned int tcc_sdr_poll(struct file *flip, struct poll_table_struct *wait)
 	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)dev_get_drvdata(misc->parent);
 	int i;
 
-	//SDR_DBG("%s\n", __func__);
+	//printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	for (i=0; i<sdr->ports_num; i++) {
 		if (sdr->port[i].valid_sz) {
@@ -745,7 +731,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 				if(!copy_from_user(&param, (const void *)arg, sizeof(HS_RADIO_RX_PARAM))){
 					ret = tcc_sdr_copy_from_dma(sdr, param.eIndex, param.eBuf, param.eReadCount);
 				}else{
-					SDR_DBG("HSI2S_RADIO_MODE_RX_DAI Fail!!\n");
+					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RADIO_MODE_RX_DAI Fail!!\n");
 				}
 			}
 			break;
@@ -756,32 +742,32 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 					param.eIndex = 0;
 					ret = tcc_sdr_copy_from_dma(sdr, param.eIndex, param.eBuf, param.eReadCount);
 				}else{
-					SDR_DBG("HSI2S_I2S_MODE_RX_DAI Fail!!\n");
+					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_I2S_MODE_RX_DAI Fail!!\n");
 				}
 			}
 			break;
 		case HSI2S_RX_START:
-			SDR_DBG("HSI2S_RX_START\n");
+			printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RX_START\n");
 			ret = tcc_sdr_start(sdr, GFP_KERNEL);
 			break;
 		case HSI2S_RX_STOP:
-			SDR_DBG("HSI2S_RX_STOP\n");
+			printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RX_STOP\n");
 			ret = tcc_sdr_stop(sdr);
 			break;
 		case HSI2S_SET_PARAMS:
-			SDR_DBG("HSI2S_SET_PARAMS\n");
+			printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_SET_PARAMS\n");
 			{
 				HS_I2S_PARAM param;
 				if(!copy_from_user(&param, (const void *)arg, sizeof(HS_I2S_PARAM))){
 					ret = tcc_sdr_set_param(sdr, &param);
 				} else {
-					SDR_DBG("HSI2S_SET_PARAMS Fail!!\n");
+					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_SET_PARAMS Fail!!\n");
 					ret = -EFAULT;
 					goto ioctl_end;
 				}
 
 				if (copy_to_user((void __user *)arg, (const void *)&param, sizeof(HS_I2S_PARAM)) != 0) { 
-					SDR_DBG("HSI2S_SET_PARAMS Fail!!\n");
+					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_SET_PARAMS Fail!!\n");
 					ret = -EFAULT;
 				}
 			}
@@ -796,7 +782,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 				}
 
 				if (copy_to_user((void __user *)arg, (const void *)valid, sizeof(uint32_t)*SDR_MAX_PORT_NUM) != 0) { 
-					SDR_DBG("HSI2S_GET_VALID_BYTES Fail!!\n");
+					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_GET_VALID_BYTES Fail!!\n");
 					ret = -EFAULT;
 				} else {
 					ret = 0;
@@ -804,7 +790,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 			}
 			break;
 		default:
-			SDR_DBG("CMD(0x%x)is not supported\n", cmd);
+			printk(KERN_DEBUG "[DEBUG][SDR] CMD(0x%x)is not supported\n", cmd);
 			ret = 0;
 			break;
 	}
@@ -820,13 +806,13 @@ int tcc_sdr_open(struct inode *inode, struct file *flip)
 	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)dev_get_drvdata(misc->parent);
 	int ret;
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 
 	ret = request_irq(sdr->adma_irq, tcc_sdr_isr, 0x0, "tcc-sdr", (void*)sdr);
 
 	if (sdr->opened == true) {
-		SDR_DBG("it is already opend.\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] it is already opend.\n");
 		return -EMFILE;
 	}
 
@@ -841,7 +827,7 @@ int tcc_sdr_release(struct inode *inode, struct file *flip)
 	struct miscdevice *misc = (struct miscdevice*)flip->private_data;
 	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)dev_get_drvdata(misc->parent);
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	free_irq(sdr->adma_irq, sdr);
 
@@ -875,10 +861,10 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 	sdr->dai_reg = of_iomap(pdev->dev.of_node, 0);
 	if (IS_ERR((void *)sdr->dai_reg)) {
 		sdr->dai_reg = NULL;
-		SDR_DBG("dai_reg is NULL\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] dai_reg is NULL\n");
 		return -EINVAL;
 	} else {
-		SDR_DBG("dai_reg=%p\n", sdr->dai_reg);	
+		printk(KERN_DEBUG "[DEBUG][SDR] dai_reg=%p\n", sdr->dai_reg);	
 	}
 
 	sdr->dai_pclk = of_clk_get(pdev->dev.of_node, 0);
@@ -894,12 +880,12 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 		sdr->dai_filter_clk = NULL;
 
 	if (of_property_read_u32(pdev->dev.of_node, "clock-frequency", &sdr->dai_clk_rate[1]) < 0) {
-		SDR_DBG("clock-frequency value is not exist\n");	
+		printk(KERN_DEBUG "[DEBUG][SDR] clock-frequency value is not exist\n");	
 		return -EINVAL;
 	}
 	sdr->dai_clk_rate[0] = (sdr->dai_clk_rate[1] > 48000)? 48000 : sdr->dai_clk_rate[1];
 	sdr->dai_clk_rate[1] = 1;
-	SDR_DBG("clk_rate=%u\n", sdr->dai_clk_rate[0]);
+	printk(KERN_DEBUG "[DEBUG][SDR] clk_rate=%u\n", sdr->dai_clk_rate[0]);
 
 	of_node_adma = of_parse_phandle(pdev->dev.of_node, "adma", 0);
 	/* get adma info */
@@ -908,26 +894,26 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 		if (IS_ERR((void *)sdr->adma_reg))
 			sdr->adma_reg = NULL;
 		else
-			SDR_DBG("adma_reg=%p\n", sdr->adma_reg);	
+			printk(KERN_DEBUG "[DEBUG][SDR] adma_reg=%p\n", sdr->adma_reg);	
 
 		sdr->adma_irq = of_irq_get(of_node_adma, 0);
 		/*
 		of_property_read_u32(of_node_adma, "adrcnt-mode", &sdr->adrcnt_mode);
-		SDR_DBG("adrcnt_mode : %u\n", sdr->adrcnt_mode);
+		printk(KERN_DEBUG "[DEBUG][SDR] adrcnt_mode : %u\n", sdr->adrcnt_mode);
 		if(sdr->adrcnt_mode) {
 			printk("[dev-%d] In radio mode, adrcnt_mode[%u] doesn't support.\n", sdr->blk_no, sdr->adrcnt_mode);
 		}
 		*/
 	} else {
-		SDR_DBG("of_node_adma is NULL\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] of_node_adma is NULL\n");
 		return -1;
 	}
 
 	if (of_property_read_string(pdev->dev.of_node, "dev-name", &devname) == 0) {
 		sdr->misc_dev->name = devname;
-		SDR_DBG("dev-name : %s\n", devname);
+		printk(KERN_DEBUG "[DEBUG][SDR] dev-name : %s\n", devname);
 	} else {
-		SDR_DBG("default dev-name\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] default dev-name\n");
 	}
 
 	of_property_read_u32(pdev->dev.of_node, "block-type", &sdr->dev_type);
@@ -939,7 +925,7 @@ static int tcc_sdr_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)kzalloc(sizeof(struct tcc_sdr_t), GFP_KERNEL);
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	memset(sdr, 0, sizeof(struct tcc_sdr_t));
 
@@ -950,7 +936,7 @@ static int tcc_sdr_probe(struct platform_device *pdev)
 	sdr->misc_dev->fops = &tcc_sdr_fops;
 
 	if ((ret = parse_sdr_dt(pdev, sdr)) < 0) {
-		SDR_DBG("%s : Fail to parse sdr dt\n", __func__);
+		printk(KERN_DEBUG "[DEBUG][SDR] %s : Fail to parse sdr dt\n", __func__);
 		return ret;
 	}
 
@@ -968,20 +954,20 @@ static int tcc_sdr_probe(struct platform_device *pdev)
 
 #ifdef PREALLOCATE_DMA_BUFFER_MODE 
 	sdr->dma_total_size = TCC_SDR_BUFFER_SZ_MAX * (SDR_MAX_PORT_NUM+1); // plus 1 for align 
-	SDR_DBG("dma_total_size : %d\n", sdr->dma_total_size);
+	printk(KERN_DEBUG "[DEBUG][SDR] dma_total_size : %d\n", sdr->dma_total_size);
 	sdr->dma_vaddr_base = dma_alloc_coherent(&sdr->pdev->dev, sdr->dma_total_size, &sdr->dma_paddr_base, GFP_KERNEL);
-	SDR_DBG("dma_vaddr_base : %p\n", (void*)sdr->dma_vaddr_base);
+	printk(KERN_DEBUG "[DEBUG][SDR] dma_vaddr_base : %p\n", (void*)sdr->dma_vaddr_base);
 
 	if (sdr->dma_vaddr_base == NULL) {
-		SDR_DBG("dma memory allocation failed\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] dma memory allocation failed\n");
 		return -ENOMEM;
 	}
 
 	sdr->mono_dma_vaddr = dma_alloc_coherent(&sdr->pdev->dev, TCC_SDR_BUFFER_SZ_MAX, &sdr->mono_dma_paddr, GFP_KERNEL);
-	SDR_DBG("mono_dma_vaddr : %p\n", (void*)sdr->mono_dma_vaddr);
+	printk(KERN_DEBUG "[DEBUG][SDR] mono_dma_vaddr : %p\n", (void*)sdr->mono_dma_vaddr);
 
 	if (sdr->mono_dma_vaddr == NULL) {
-		SDR_DBG("dma memory allocation failed\n");
+		printk(KERN_DEBUG "[DEBUG][SDR] dma memory allocation failed\n");
 		return -ENOMEM;
 	}
 #endif
@@ -989,7 +975,7 @@ static int tcc_sdr_probe(struct platform_device *pdev)
 	sdr->opened = false;
 
 	if (misc_register(sdr->misc_dev)) {
-		SDR_DBG(KERN_WARNING "Couldn't register device .\n");
+		printk(KERN_WARNING "[WARN][SDR] Couldn't register device .\n");
 		return -EBUSY;
 	}
 
@@ -1000,7 +986,7 @@ static int tcc_sdr_remove(struct platform_device *pdev)
 {
 	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)platform_get_drvdata(pdev);
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	if (sdr->dma_vaddr_base) {
 		dma_free_coherent(&sdr->pdev->dev, sdr->dma_total_size, sdr->dma_vaddr_base, sdr->dma_paddr_base);
@@ -1023,7 +1009,7 @@ static int tcc_sdr_suspend(struct platform_device *pdev, pm_message_t state)
 	//	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)platform_get_drvdata(pdev);
 	struct pinctrl *pinctrl;
 	
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 
 	pinctrl = pinctrl_get_select(&pdev->dev, "idle");
 	if(IS_ERR(pinctrl))
@@ -1038,7 +1024,7 @@ static int tcc_sdr_resume(struct platform_device *pdev)
 	//	struct tcc_sdr_t *sdr = (struct tcc_sdr_t*)platform_get_drvdata(pdev);
 	struct pinctrl *pinctrl;
 
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 	//tcc_sdr_start(sdr, GFP_ATOMIC);
 
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
@@ -1070,13 +1056,13 @@ static struct platform_driver tcc_sdr_driver = {
 
 static int __init tcc_sdr_init(void)
 {
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 	return platform_driver_register(&tcc_sdr_driver);
 }
 
 static void __exit tcc_sdr_exit(void)
 {
-	SDR_DBG("%s\n", __func__);
+	printk(KERN_DEBUG "[DEBUG][SDR] %s\n", __func__);
 	platform_driver_unregister(&tcc_sdr_driver);
 }
 //------------------------------------------------------
