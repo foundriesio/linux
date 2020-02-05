@@ -24,18 +24,6 @@
 
 #include <sound/tcc/utils/tcc_mbox_audio_utils.h>
 
-//#define MBOX_AUDIO_UTILS_DEBUG
-
-#define LOG_TAG    "SND_MBOX_AUDIO_UTILS "
-
-#ifdef MBOX_AUDIO_UTILS_DEBUG    
-#define dprintk(msg...)    printk(LOG_TAG  msg);		
-#else
-#define dprintk(msg...)    do {} while (0) 			
-#endif
-
-#define eprintk(msg...)    printk(KERN_ERR LOG_TAG  msg);
-
 /*****************************************************************************
  * APIs for get driver data
  *****************************************************************************/
@@ -47,7 +35,7 @@ struct mbox_audio_device *get_tcc_mbox_audio_device(void)
 
 	of_node_mbox_audio = of_find_compatible_node(NULL, NULL, "telechips,mailbox-audio");
     if ((pdev = of_find_device_by_node(of_node_mbox_audio)) == NULL) {
-		eprintk("%s : fail to get platform device from node.\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to get platform device from node.\n", __FUNCTION__);
 		return NULL;
     }
 
@@ -55,11 +43,11 @@ struct mbox_audio_device *get_tcc_mbox_audio_device(void)
 #else
     struct mbox_audio_device *mbox_audio = get_global_audio_dev();
     if (mbox_audio == NULL) {
-		eprintk("%s : global_audio_dev is null!!\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : global_audio_dev is null!!\n", __FUNCTION__);
 		return NULL;
     }
     
-    dprintk("%s, get mbox audio device\n", __FUNCTION__);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO_UTILS] %s, get mbox audio device\n", __FUNCTION__);
 	
 	return mbox_audio;
 #endif
@@ -83,24 +71,24 @@ struct mbox_audio_device *tcc_mbox_audio_register_set_kernel_callback(void *clie
 	struct mbox_audio_device *audio_dev;
 	
 	if (set_callback == NULL) {
-		eprintk("%s : fail to register due to set_callback is null.\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to register due to set_callback is null.\n", __FUNCTION__);
 		return NULL;
 	}
 
 	if (cmd_type > MBOX_AUDIO_CMD_TYPE_MAX) {
-		eprintk("%s : fail to register due to not supported cmd_type, %u.\n", __FUNCTION__, cmd_type);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to register due to not supported cmd_type, %u.\n", __FUNCTION__, cmd_type);
 		return NULL;
 	}
 
 	audio_dev = get_tcc_mbox_audio_device();
 
 	if (audio_dev == NULL) {
-		eprintk("%s : fail to register due to audio_dev is null.\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to register due to audio_dev is null.\n", __FUNCTION__);
 		return NULL;
     }
 
 	if (audio_dev->client[cmd_type].is_used > 0) {
-		eprintk("%s : warning.. client for cmd type(%u) is already used.. overrite it!!.\n", __FUNCTION__, cmd_type);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : warning.. client for cmd type(%u) is already used.. overrite it!!.\n", __FUNCTION__, cmd_type);
 	}
 
     mutex_lock(&audio_dev->lock);
@@ -109,7 +97,7 @@ struct mbox_audio_device *tcc_mbox_audio_register_set_kernel_callback(void *clie
 	audio_dev->client[cmd_type].is_used = 1;
 	mutex_unlock(&audio_dev->lock);
 
-	dprintk("%s : Successfully register set_callback of cmd_type %u.\n", __FUNCTION__, cmd_type);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO_UTILS] %s : Successfully register set_callback of cmd_type %u.\n", __FUNCTION__, cmd_type);
 
 	return audio_dev;
 
@@ -119,12 +107,12 @@ EXPORT_SYMBOL(tcc_mbox_audio_register_set_kernel_callback);
 int tcc_mbox_audio_unregister_set_kernel_callback(struct mbox_audio_device *audio_dev, unsigned short cmd_type) {
 
     if (audio_dev == NULL) {
-		eprintk("%s : fail to unregister due to audio_dev is null.\n", __FUNCTION__);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to unregister due to audio_dev is null.\n", __FUNCTION__);
 		return -ENODEV;
 	}
 
 	if (cmd_type > MBOX_AUDIO_CMD_TYPE_MAX) {
-		eprintk("%s : fail to unregister due to not supported cmd_type, %u.\n", __FUNCTION__, cmd_type);
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to unregister due to not supported cmd_type, %u.\n", __FUNCTION__, cmd_type);
 		return -ENODEV;
 	}
 
@@ -134,7 +122,7 @@ int tcc_mbox_audio_unregister_set_kernel_callback(struct mbox_audio_device *audi
 	audio_dev->client[cmd_type].is_used = 0;
 	mutex_unlock(&audio_dev->lock);
 
-	dprintk("%s : Successfully register set_callback of cmd_type %u.\n", __FUNCTION__, cmd_type);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO_UTILS] %s : Successfully register set_callback of cmd_type %u.\n", __FUNCTION__, cmd_type);
 
 	return 0;
 }
