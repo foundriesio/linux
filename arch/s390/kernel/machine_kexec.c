@@ -27,6 +27,7 @@
 #include <asm/cacheflush.h>
 #include <asm/os_info.h>
 #include <asm/set_memory.h>
+#include <asm/stacktrace.h>
 #include <asm/switch_to.h>
 #include <asm/nmi.h>
 
@@ -141,18 +142,29 @@ static noinline void __machine_kdump(void *image)
 }
 #endif
 
-/*
- * Check if kdump checksums are valid: We call purgatory with parameter "0"
- */
-static int kdump_csum_valid(struct kimage *image)
+static unsigned long do_start_kdump(unsigned long addr)
 {
-#ifdef CONFIG_CRASH_DUMP
+	struct kimage *image = (struct kimage *) addr;
 	int (*start_kdump)(int) = (void *)image->start;
 	int rc;
 
 	__arch_local_irq_stnsm(0xfb); /* disable DAT */
 	rc = start_kdump(0);
 	__arch_local_irq_stosm(0x04); /* enable DAT */
+	return rc;
+}
+
+/*
+ * Check if kdump checksums are valid: We call purgatory with parameter "0"
+ */
+static int kdump_csum_valid(struct kimage *image)
+{
+#ifdef CONFIG_CRASH_DUMP
+	int rc;
+
+	preempt_disable();
+	rc = CALL_ON_STACK(do_start_kdump, S390_lowcore.nodat_stack, 1, image);
+	preempt_enable();
 	return rc ? 0 : -EINVAL;
 #else
 	return -EINVAL;

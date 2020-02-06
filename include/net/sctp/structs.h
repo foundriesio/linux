@@ -1183,6 +1183,11 @@ struct sctp_ep_common {
 	/* What socket does this endpoint belong to?  */
 	struct sock *sk;
 
+	/* Cache netns and it won't change once set */
+#ifndef __GENKSYMS__
+	struct net *net;
+#endif
+
 	/* This is where we receive inbound chunks.  */
 	struct sctp_inq	  inqueue;
 

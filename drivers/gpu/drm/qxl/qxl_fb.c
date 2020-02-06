@@ -227,6 +227,11 @@ static int qxlfb_create(struct qxl_fbdev *qfbdev,
 	int depth = sizes->surface_depth;
 	void *shadow;
 
+	if (bpp != 32) {
+		DRM_ERROR("qxlfb: Only 32-bit color depth is supported\n");
+		return -EINVAL;
+	}
+
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 

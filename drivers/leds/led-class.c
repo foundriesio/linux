@@ -261,10 +261,14 @@ int of_led_classdev_register(struct device *parent, struct device_node *np,
 	if (ret < 0)
 		return ret;
 
+	mutex_init(&led_cdev->led_access);
+	mutex_lock(&led_cdev->led_access);
 	led_cdev->dev = device_create_with_groups(leds_class, parent, 0,
 				led_cdev, led_cdev->groups, "%s", name);
-	if (IS_ERR(led_cdev->dev))
+	if (IS_ERR(led_cdev->dev)) {
+		mutex_unlock(&led_cdev->led_access);
 		return PTR_ERR(led_cdev->dev);
+	}
 	led_cdev->dev->of_node = np;
 
 	if (ret)
@@ -275,6 +279,8 @@ int of_led_classdev_register(struct device *parent, struct device_node *np,
 		ret = led_add_brightness_hw_changed(led_cdev);
 		if (ret) {
 			device_unregister(led_cdev->dev);
+			led_cdev->dev = NULL;
+			mutex_unlock(&led_cdev->led_access);
 			return ret;
 		}
 	}
@@ -286,7 +292,6 @@ int of_led_classdev_register(struct device *parent, struct device_node *np,
 #ifdef CONFIG_LEDS_BRIGHTNESS_HW_CHANGED
 	led_cdev->brightness_hw_changed = -1;
 #endif
-	mutex_init(&led_cdev->led_access);
 	/* add to the list of leds */
 	down_write(&leds_list_lock);
 	list_add_tail(&led_cdev->node, &leds_list);
@@ -303,6 +308,8 @@ int of_led_classdev_register(struct device *parent, struct device_node *np,
 	led_trigger_set_default(led_cdev);
 #endif
 
+	mutex_unlock(&led_cdev->led_access);
+
 	dev_dbg(parent, "Registered led device: %s\n",
 			led_cdev->name);
 
@@ -318,6 +325,9 @@ EXPORT_SYMBOL_GPL(of_led_classdev_register);
  */
 void led_classdev_unregister(struct led_classdev *led_cdev)
 {
+	if (IS_ERR_OR_NULL(led_cdev->dev))
+		return;
+
 #ifdef CONFIG_LEDS_TRIGGERS
 	down_write(&led_cdev->trigger_lock);
 	if (led_cdev->trigger)

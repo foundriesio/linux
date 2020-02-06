@@ -2045,7 +2045,7 @@ void s390_reset_system(void)
 	lc = (struct lowcore *)(unsigned long) store_prefix();
 
 	/* Stack for interrupt/machine check handler */
-	lc->panic_stack = S390_lowcore.panic_stack;
+	lc->nodat_stack = S390_lowcore.nodat_stack;
 
 	/* Disable prefixing */
 	set_prefix(0);
