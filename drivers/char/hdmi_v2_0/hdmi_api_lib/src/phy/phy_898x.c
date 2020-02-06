@@ -2276,7 +2276,7 @@ int tcc_hdmi_proc_write_phy_regs(struct hdmi_tx_dev *dev, char *phy_regs_buf)
                 &proc_phy_regs.channel2[2]);
 
         devm_kfree(dev->parent_dev, phy_regs_buf);
-        printk("%s ret = %d:%d\r\n", __func__, ret, (sizeof(proc_phy_regs)/sizeof(unsigned int)));
+        printk(KERN_INFO "[INFO][HDMI_V20] %s ret = %d:%d\r\n", __func__, ret, (sizeof(proc_phy_regs)/sizeof(unsigned int)));
         if(ret != (sizeof(proc_phy_regs)/sizeof(unsigned int))) {
                 cnt = 0;
                 goto end_process;

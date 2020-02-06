@@ -33,7 +33,7 @@ NOTE: Tab size is 8
 //#define CEC_KERNEL_DEBUG
 
 #if defined(CEC_KERNEL_DEBUG)
-#define dpr_info(fmt,...) pr_info(fmt, ##__VA_ARGS__))
+#define dpr_info(fmt,...) printk(KERN_INFO "[INFO][HDMI_CEC] "fmt, ##__VA_ARGS__))
 #else
 #define dpr_info
 #endif
@@ -45,7 +45,7 @@ static int hdmi_cec_blank(struct cec_device *dev, int blank_mode)
 
 	struct device *pdev_cec = dev->parent_dev;
 
-	printk("%s : blank(mode=%d)\n", __func__, blank_mode);
+	printk(KERN_INFO "[INFO][HDMI_CEC] %s : blank(mode=%d)\n", __func__, blank_mode);
 
         if(pdev_cec != NULL) {
                 switch(blank_mode)
@@ -101,7 +101,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                 }
                                 mutex_lock(&dev->mutex);
                                 if(!wakeup && dev->cec_wakeup_enable > 1) {
-                                        pr_info("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
                                         dev->clk_enable_count = dev->reference_count;
                                         dev->cec_wakeup_enable = 0;
                                 } else {
@@ -122,8 +122,8 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                 }
 
         		        #ifdef CEC_KERNEL_DEBUG
-        			printk("%s: ioctl(CEC_IOC_SETLADDR)\n",__func__);
-        			printk("%s: logical address = 0x%02x\n", __func__, laddr);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] %s: ioctl(CEC_IOC_SETLADDR)\n",__func__);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] %s: logical address = 0x%02x\n", __func__, laddr);
         		        #endif
         			dev->l_address = laddr;
         			cec_CfgLogicAddr(dev,laddr, 1);
@@ -140,8 +140,8 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         break;
                                 }
         		        #ifdef CEC_KERNEL_DEBUG
-        			printk("%s: ioctl(CEC_IOC_CLEARLADDR)\n",__func__);
-        			printk("%s: logical address = 0x%02x\n", __func__, laddr);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] %s: ioctl(CEC_IOC_CLEARLADDR)\n",__func__);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] %s: logical address = 0x%02x\n", __func__, laddr);
         		        #endif
         			cec_CfgLogicAddr(dev,laddr, 0);
                                 ret = 0;
@@ -174,10 +174,10 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         break;
                                 }
         		        #ifdef CEC_KERNEL_DEBUG
-        			printk("\nCEC Tx(%d): ",dev->buf.size);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] \nCEC Tx(%d): ",dev->buf.size);
         			for(i = 0; i < dev->buf.size; i++)
-        			        printk("%02x ", dev->buf.send_buf[i]);
-        			printk("\n");
+        			        printk(KERN_INFO "[INFO][HDMI_CEC] %02x ", dev->buf.send_buf[i]);
+        			printk(KERN_INFO "[INFO][HDMI_CEC] \n");
         		        #endif
         			ret = cec_ctrlSendFrame(dev, dev->buf.send_buf, dev->buf.size);
         		}
@@ -193,10 +193,10 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
         			if(ret > 0)
         			{
         		                #ifdef CEC_KERNEL_DEBUG
-        				printk("\nCEC Rx(%d): ", (int)ret);
+        				printk(KERN_INFO "[INFO][HDMI_CEC] \nCEC Rx(%d): ", (int)ret);
         				for(i = 0; i < ret; i++)
-        				        printk("%02x ", dev->buf.recv_buf[i]);
-        				printk("\n");
+        				        printk(KERN_INFO "[INFO][HDMI_CEC] %02x ", dev->buf.recv_buf[i]);
+        				printk(KERN_INFO "[INFO][HDMI_CEC] \n");
         		                #endif
                                         if(copy_to_user((void __user *)arg, dev->buf.recv_buf, ret)) {
                                                 ret = -EFAULT;
@@ -250,7 +250,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                 }
                                 mutex_lock(&dev->mutex);
                                 if(!wakeup && dev->cec_wakeup_enable > 1) {
-                                        pr_info("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
                                         dev->clk_enable_count = dev->reference_count;
                                         dev->cec_wakeup_enable = 0;
                                 } else {
@@ -273,19 +273,19 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                pr_info("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
+                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
                                 if(copy_from_user(&cec_tx_data, (void __user *)arg, (cec_tx_data.size * sizeof(unsigned char )) + sizeof(int))) {
                                         ret = -EFAULT;
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                pr_info("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
+                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
 
                                 #ifdef CEC_KERNEL_DEBUG
-                                printk("\nCEC TxEx(%d): ",cec_tx_data.size);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] \nCEC TxEx(%d): ",cec_tx_data.size);
                                 for(i = 0; i < cec_tx_data.size; i++)
-                                        printk("%02x ", cec_tx_data.buff[i]);
-                                printk("\n");
+                                        printk(KERN_INFO "[INFO][HDMI_CEC] %02x ", cec_tx_data.buff[i]);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] \n");
                                 #endif
 
                                 memcpy(dev->buf.send_buf, cec_tx_data.buff, cec_tx_data.size);
@@ -312,10 +312,10 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
         			if(cec_rx_data.size >= 0) {
         		                #ifdef CEC_KERNEL_DEBUG
                                         if(cec_rx_data.size > 0) {
-                				printk("\nCEC RxEx(%d): ", cec_rx_data.size);
+                				printk(KERN_INFO "[INFO][HDMI_CEC] \nCEC RxEx(%d): ", cec_rx_data.size);
                 				for(i = 0; i < cec_rx_data.size; i++)
-                				        printk("%02x ", cec_rx_data.buff[i]);
-                				printk("\n");
+                				        printk(KERN_INFO "[INFO][HDMI_CEC] %02x ", cec_rx_data.buff[i]);
+                				printk(KERN_INFO "[INFO][HDMI_CEC] \n");
                                         }
         		                #endif
                                         if(copy_to_user((void __user *)arg, &cec_rx_data, (cec_rx_data.size * sizeof(unsigned char )) + sizeof(int))) {
@@ -358,7 +358,7 @@ static irqreturn_t cec_irq_handler(int irq, void *dev_id){
 
 	dev = dev_id;
 #endif
-	printk("%s\n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] %s\n", __func__);
 
 	return IRQ_HANDLED;
 }
@@ -372,7 +372,7 @@ static irqreturn_t cec_wake_up_irq_handler(int irq, void *dev_id){
 
 	dev = dev_id;
         #endif
-	printk("%s\n", __func__);
+	printk(KERN_INFO "[INFO][HDMI_CEC] %s\n", __func__);
 
 	return IRQ_HANDLED;
 }
@@ -397,13 +397,13 @@ void cec_power_on(struct cec_device *dev)
 {
         if(dev !=NULL) {
                 if(++dev->clk_enable_count == 1) {
-                        pr_info("%s cound = %d\r\n", __func__, dev->clk_enable_count);
+                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s cound = %d\r\n", __func__, dev->clk_enable_count);
 
                         if(!IS_ERR(dev->clk[HDMI_CLK_CEC_INDEX_IOBUS])) {
                                 clk_prepare_enable(dev->clk[HDMI_CLK_CEC_INDEX_IOBUS]);
                         }
                 } else {
-                        pr_info("%s is SKIP (cound is %d)\r\n", __func__, dev->clk_enable_count);
+                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s is SKIP (cound is %d)\r\n", __func__, dev->clk_enable_count);
                 }
         }
 }
@@ -414,9 +414,9 @@ void cec_power_off(struct cec_device *dev)
                 if(dev->clk_enable_count == 1) {
                         if(dev->cec_wakeup_enable) {
                                 dev->cec_wakeup_enable++;
-                                pr_info("%s is skipped because cec_wakeup_enable(%d) is setted\r\n", __func__, dev->cec_wakeup_enable);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s is skipped because cec_wakeup_enable(%d) is setted\r\n", __func__, dev->cec_wakeup_enable);
                         } else {
-                                pr_info("%s cound = %d\r\n", __func__, dev->clk_enable_count);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s cound = %d\r\n", __func__, dev->clk_enable_count);
 
                                 cec_clear_wakeup(dev);
 
@@ -439,7 +439,7 @@ static int hdmi_cec_open(struct inode *inode, struct file *file) {
         struct miscdevice *misc = (struct miscdevice *)file->private_data;
         struct cec_device *dev = dev_get_drvdata(misc->parent);
         #ifdef CEC_KERNEL_DEBUG
-        printk("### %s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
         #endif
         file->private_data = dev;
         if(dev != NULL) {
@@ -454,7 +454,7 @@ static int hdmi_cec_open(struct inode *inode, struct file *file) {
 static int hdmi_cec_release(struct inode *inode, struct file *file){
         struct cec_device *dev = (struct cec_device *)file->private_data;
         #ifdef CEC_KERNEL_DEBUG
-        printk("### %s \n", __func__);
+        printk(KERN_INFO "[INFO][HDMI_CEC] ### %s \n", __func__);
         #endif
         if(dev != NULL) {
                 mutex_lock(&dev->mutex);

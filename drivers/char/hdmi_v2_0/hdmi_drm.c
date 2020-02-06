@@ -39,19 +39,19 @@ static int drm_infoframe_verification(struct hdmi_tx_dev *dev, DRM_Packet_t * dr
                         break;
                 }
                 if(drmparm->mInfoFrame.version != 1) {
-                        printk("drm_infoframe_verification: versio is mismatch\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20] drm_infoframe_verification: versio is mismatch\r\n");
                         break;
                 }
                 if(drmparm->mInfoFrame.length < 1) {
-                        printk("drm_infoframe_verification: length is mismatch\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20] drm_infoframe_verification: length is mismatch\r\n");
                         break;
                 }
                 if(drmparm->mDescriptor_type1.EOTF > 3) {
-                        printk("drm_infoframe_verification: eotf is mismatch\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20] drm_infoframe_verification: eotf is mismatch\r\n");
                         break;
                 }
                 if(drmparm->mDescriptor_type1.Descriptor_ID > 0) {
-                        printk("drm_infoframe_verification: id is mismatch\r\n");
+                        printk(KERN_INFO "[INFO][HDMI_V20] drm_infoframe_verification: id is mismatch\r\n");
                      break;
                 }
                 valid = 1;

@@ -57,7 +57,7 @@ Agreement between Telechips and Company.
 #define HPD_DEBUG 	0
 #define HPD_DEBUG_GPIO 	0
 #if HPD_DEBUG
-#define DPRINTK(args...)    printk("hpd-gpio:" args)
+#define DPRINTK(args...)    printk(KERN_INFO "[INFO][HDMI_V14] hpd-gpio:" args)
 #else
 #define DPRINTK(args...)
 #endif

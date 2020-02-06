@@ -33,7 +33,7 @@ Agreement between Telechips and Company.
 #define CEC_INTERFACE_DEBUG 0
 
 #if CEC_INTERFACE_DEBUG
-#define DPRINTK(...)    pr_info(__VA_ARGS__)
+#define DPRINTK(...)    printk(KERN_INFO "[INFO][HDMI_V14]" __VA_ARGS__)
 #else
 #define DPRINTK(...)
 #endif

@@ -33,7 +33,7 @@ typedef enum {
 #endif
 
 #define LOGGER(level, format, ...)  \
-	do { if (hdmi_log_level >= level) printk("\e[33m[HDMI_TX]%s(%d) \e[0m" format, __func__, __LINE__, ##__VA_ARGS__); } while (0)
+	do { if (hdmi_log_level >= level) printk(KERN_INFO "[INFO][HDMI_V20] \e[33m[HDMI_TX]%s(%d) \e[0m" format, __func__, __LINE__, ##__VA_ARGS__); } while (0)
 
 extern int hdmi_log_level;
 

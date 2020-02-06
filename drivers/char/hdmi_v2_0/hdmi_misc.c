@@ -171,7 +171,7 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
         if(++dev->display_clock_enable_count == 1 &&
                 !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(dev->verbose >= VERBOSE_IO)
-                        printk("%s enable display clock\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20] %s enable display clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_DDIBUS])) {
                         clk_prepare_enable(dev->clk[HDMI_CLK_INDEX_DDIBUS]);
@@ -200,7 +200,7 @@ static void dwc_hdmi_phy_power_on(struct hdmi_tx_dev *dev)
                 }
         }
         if(dev->verbose >= VERBOSE_IO)
-                printk("%s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
+                printk(KERN_INFO "[INFO][HDMI_V20] %s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
         #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
         do_gettimeofday(&curr_val);
         printk(KERN_INFO "[INFO][HDMI_V20]%s - %dms\r\n", __func__, dwc_hdmi_get_time(&prev_val, &curr_val));
@@ -219,7 +219,7 @@ static void dwc_hdmi_phy_power_off(struct hdmi_tx_dev *dev)
 		dev->hdmi_tx_ctrl.pixel_clock = 0;
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(dev->verbose >= VERBOSE_IO)
-                                printk("%s disable display clock\r\n", __func__);
+                                printk(KERN_INFO "[INFO][HDMI_V20] %s disable display clock\r\n", __func__);
                         if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_ISOIP])) {
                                 clk_disable_unprepare(dev->clk[HDMI_CLK_INDEX_ISOIP]);
                         }
@@ -242,7 +242,7 @@ static void dwc_hdmi_phy_power_off(struct hdmi_tx_dev *dev)
                 }
         }
         if(dev->verbose >= VERBOSE_IO)
-                printk("%s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
+                printk(KERN_INFO "[INFO][HDMI_V20] %s dev->display_clock_enable_count=%d\r\n", __func__, dev->display_clock_enable_count);
 }
 
 
@@ -256,7 +256,7 @@ static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_r
         if(++dev->hdmi_clock_enable_count == 1 &&
                 !test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                 if(dev->verbose >= VERBOSE_IO)
-                        printk("%s enable hdmi clock\r\n", __func__);
+                        printk(KERN_INFO "[INFO][HDMI_V20] %s enable hdmi clock\r\n", __func__);
 
                 if(!IS_ERR(dev->clk[HDMI_CLK_INDEX_SPDIF])) {
                         clk_set_rate(dev->clk[HDMI_CLK_INDEX_SPDIF], HDMI_SPDIF_REF_CLK_RATE);
@@ -296,7 +296,7 @@ static void dwc_hdmi_link_power_on_core(struct hdmi_tx_dev *dev, int need_link_r
                 set_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
         }
         if(dev->verbose >= VERBOSE_IO)
-                printk("dwc_hdmi_link_power_on_core : dev->hdmi_clock_enable_count=%d\r\n", dev->hdmi_clock_enable_count);
+                printk(KERN_INFO "[INFO][HDMI_V20] dwc_hdmi_link_power_on_core : dev->hdmi_clock_enable_count=%d\r\n", dev->hdmi_clock_enable_count);
 
         #if defined(CONFIG_TCC_HDMI_TIME_PROFILE)
         do_gettimeofday(&curr_val);
@@ -316,7 +316,7 @@ static void dwc_hdmi_link_power_off(struct hdmi_tx_dev *dev)
                 clear_bit(HDMI_TX_STATUS_POWER_ON, &dev->status);
                 if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &dev->status)) {
                         if(dev->verbose >= VERBOSE_IO)
-                                printk("dwc_hdmi_link_power_off\r\n");
+                                printk(KERN_INFO "[INFO][HDMI_V20] dwc_hdmi_link_power_off\r\n");
                         dwc_hdmi_hw_reset(dev, 1);
 
                         // DISABLE HDMI LINK
@@ -340,7 +340,7 @@ static void dwc_hdmi_link_power_off(struct hdmi_tx_dev *dev)
                 }
         }
         if(dev->verbose >= VERBOSE_IO)
-                printk("%s : dev->hdmi_clock_enable_count=%d\r\n", __func__, dev->hdmi_clock_enable_count);
+                printk(KERN_INFO "[INFO][HDMI_V20] %s : dev->hdmi_clock_enable_count=%d\r\n", __func__, dev->hdmi_clock_enable_count);
 }
 
 
@@ -1345,7 +1345,7 @@ dwc_hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
                                 // HLG
                                 valid = 3;
                         }
-                        //printk("drm valid=%d\r\n", valid);
+                        //printk(KERN_INFO "[INFO][HDMI_V20] drm valid=%d\r\n", valid);
                         if(copy_to_user((void __user *)arg, &valid, sizeof(valid))) {
                                 printk(KERN_ERR "[ERROR][HDMI_V20]%s failed copy_to_user at line(%d)\r\n", __func__, __LINE__);
                                 mutex_unlock(&dev->mutex);
@@ -1519,7 +1519,7 @@ dwc_hdmi_poll(struct file *file, poll_table *wait){
         if(dev->verbose)
                 printk(KERN_INFO "[INFO][HDMI_V20]%s: poll function\n", FUNC_NAME);
 
-        //printk("+dwc_hdmi_poll\r\n");
+        //printk(KERN_INFO "[INFO][HDMI_V20] +dwc_hdmi_poll\r\n");
         poll_wait(file, &dev->poll_wq, wait);
 
         if(prev_hpd != dev->hotplug_status) {
@@ -1537,7 +1537,7 @@ dwc_hdmi_poll(struct file *file, poll_table *wait){
                 mask = POLLIN;
         }
 
-        //printk("-dwc_hdmi_poll\r\n");
+        //printk(KERN_INFO "[INFO][HDMI_V20] -dwc_hdmi_poll\r\n");
         return mask;
 }
 

@@ -58,7 +58,7 @@ int scdc_scrambling_status(struct hdmi_tx_dev *dev)
 		//LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x read failed ",__func__, SCDC_SINK_VER);
 		return 0;
 	}
-	//printk("scdc_scrambling_status = 0x%x\r\n", read_value & 0x1);
+	//printk(KERN_INFO "[INFO][HDMI_V20] scdc_scrambling_status = 0x%x\r\n", read_value & 0x1);
 	return (read_value & 0x01);
 }
 
@@ -84,7 +84,7 @@ int scdc_tmds_config_status(struct hdmi_tx_dev *dev)
                 //LOGGER(SNPS_ERROR, "%s: SCDC addr 0x%x read failed ",__func__, SCDC_SINK_VER);
                 return 0;
         }
-        //printk("scdc_tmds_config_status = 0x%x\r\n", read_value &0x2);
+        //printk(KERN_INFO "[INFO][HDMI_V20] scdc_tmds_config_status = 0x%x\r\n", read_value &0x2);
         return (read_value & 0x2);
 }
 

@@ -41,7 +41,7 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "include/hdmi_drm.h"
 
 #define HDMI_API_DEBUG 0
-#define dpr_info(msg, ...) if(HDMI_API_DEBUG) { pr_info(msg, ##__VA_ARGS__); }
+#define dpr_info(msg, ...) if(HDMI_API_DEBUG) { printk(KERN_INFO msg, ##__VA_ARGS__); }
 
 static struct {
         struct hdmi_tx_dev *dev;
@@ -79,7 +79,7 @@ void hdmi_start(void){
 EXPORT_SYMBOL(hdmi_start);
 
 void hdmi_stop(void){
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
 		if(!test_bit(HDMI_TX_STATUS_SUSPEND_L1, &hdmi_apis.dev->status)) {
 	                if(test_bit(HDMI_TX_STATUS_OUTPUT_ON, &hdmi_apis.dev->status)) {
@@ -96,7 +96,7 @@ EXPORT_SYMBOL(hdmi_stop);
 
 int hdmi_get_VBlank(void){
         int vblank = 0;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
                 if(test_bit(HDMI_TX_STATUS_POWER_ON, &hdmi_apis.dev->status)) {
                         vblank = hdmi_dev_read(hdmi_apis.dev, FC_INVBLANK);
@@ -112,7 +112,7 @@ unsigned int hdmi_get_refreshrate(void)
         unsigned int refreshrate = 0;
         videoParams_t *videoParams =
                 (hdmi_apis.dev != NULL)?(videoParams_t*)hdmi_apis.dev->videoParam:NULL;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(videoParams != NULL) {
                 refreshrate = hdmi_dtd_get_refresh_rate(&videoParams->mDtd);
                 if(refreshrate > 1000) {
@@ -125,7 +125,7 @@ EXPORT_SYMBOL(hdmi_get_refreshrate);
 
 void hdmi_set_activate_callback(void(*callback)(int, int), int fb, int stage)
 {
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         hdmi_apis.callback_hdmi_fbi = fb;
         hdmi_apis.callback_hdmi_stage = stage;
         hdmi_apis.callback = callback;
@@ -134,7 +134,7 @@ EXPORT_SYMBOL(hdmi_set_activate_callback);
 
 void hdmi_activate_callback(void)
 {
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.callback != NULL) {
                 hdmi_apis.callback(hdmi_apis.callback_hdmi_fbi, hdmi_apis.callback_hdmi_stage);
         }
@@ -143,7 +143,7 @@ EXPORT_SYMBOL(hdmi_activate_callback);
 
 void hdmi_set_drm(DRM_Packet_t * drmparm)
 {
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
                 hdmi_update_drm_configure(hdmi_apis.dev, drmparm);
         }
@@ -153,7 +153,7 @@ EXPORT_SYMBOL(hdmi_set_drm);
 int hdmi_get_hotplug_status(void)
 {
         int hotplug_status = 0;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
                 hotplug_status = hdmi_apis.dev->hotplug_status;
         }
@@ -164,7 +164,7 @@ EXPORT_SYMBOL(hdmi_get_hotplug_status);
 unsigned int hdmi_get_pixel_clock(void)
 {
         unsigned int pixel_clock = 0;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
                 pixel_clock = hdmi_apis.dev->hdmi_tx_ctrl.pixel_clock;
         }
@@ -175,7 +175,7 @@ EXPORT_SYMBOL(hdmi_get_pixel_clock);
 
 void hdmi_api_AvMute(int enable)
 {
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -191,7 +191,7 @@ EXPORT_SYMBOL(hdmi_api_AvMute);
 int hdmi_api_vsif_update(productParams_t *productParams)
 {
         int ret = -1;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -222,7 +222,7 @@ EXPORT_SYMBOL(hdmi_api_vsif_update);
 int hdmi_api_vsif_update_for_hdr_10p(productParams_t *productParams)
 {
 	int ret = -1;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
 	do {
 		if(hdmi_apis.dev == NULL) {
 			printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -241,7 +241,7 @@ int hdmi_api_vsif_update_for_hdr_10p(productParams_t *productParams)
 				break;
 			}
 			if(!test_bit(HDMI_TX_VSIF_UPDATE_FOR_HDR_10P, &hdmi_apis.dev->status)) {
-				dpr_info("%s has not permissions\r\n", __func__);
+				dpr_info("[INFO][HDMI_V20] %s has not permissions\r\n", __func__);
 				mutex_unlock(&hdmi_apis.dev->mutex);
 				break;
 			}
@@ -260,7 +260,7 @@ int hdmi_api_vsif_update_by_index(int index)
         int ret = -1;
         #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
         videoParams_t *videoParams;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         unsigned char* base_vsif = NULL;
         productParams_t productParams;
         do {
@@ -342,7 +342,7 @@ EXPORT_SYMBOL(hdmi_api_vsif_update_by_index);
  */
 void hdmi_api_power_control(int enable)
 {
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         if(hdmi_apis.dev != NULL) {
                 mutex_lock(&hdmi_apis.dev->mutex);
                 if(enable) {
@@ -364,7 +364,7 @@ static int hdmi_api_update_avi_infoframe(videoParams_t *videoParam)
         int ret = -1;
         int mc_timeout = 100;
         volatile unsigned int mc_reg_val;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -431,7 +431,7 @@ int hdmi_api_update_colorimetry(
 {
         int ret = -1;
 	videoParams_t videoParam;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -485,7 +485,7 @@ int hdmi_api_update_quantization(int quantization_range)
 {
         int ret = -1;
 	videoParams_t videoParam;
-	dpr_info("%s\r\n", __func__);;
+	dpr_info("[INFO][HDMI_V20] %s\r\n", __func__);;
         do {
                 if(hdmi_apis.dev == NULL) {
                         printk(KERN_ERR "[ERROR][HDMI_V20]%s device is not ready(NULL)\r\n", __func__);
@@ -553,85 +553,85 @@ int hdmi_api_dump_regs(void)
 			for(i = 0x00000400; i <= 0x000007FC; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Video Sampler\r\n");
 			for(i = 0x00000800; i <= 0x0000081C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Video Packetizer\r\n");
 			for(i = 0x00002000; i <= 0x0000201C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Frame Composer\r\n");
 			for(i = 0x00004000; i <= 0x00004C00; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP PHY Configure\r\n");
 			for(i = 0x0000C000; i <= 0x0000C0E0; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Sample\r\n");
 			for(i = 0x0000C400; i <= 0x0000C410; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
-			printk("\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20] \r\n");
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Packetizer\r\n");
 			for(i = 0x0000C800; i <= 0x0000C81C; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP Audio Sample SPDIF\r\n");
 			for(i = 0x0000CC00; i <= 0x0000CC10; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
 			printk(KERN_INFO "[INFO][HDMI_V20]\r\nDUMP MainController\r\n");
 			for(i = 0x0001000; i <= 0x0001028; i+=4) {
 				reg_val = hdmi_dev_read(hdmi_apis.dev, i);
 				if((i & 0xF) == 0) {
-					printk("\r\n[0x%08x] %02x ", i, reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] \r\n[0x%08x] %02x ", i, reg_val);
 				} else {
-					printk("%02x ", reg_val);
+					printk(KERN_INFO "[INFO][HDMI_V20] %02x ", reg_val);
 				}
 			}
-			printk("\r\n");
+			printk(KERN_INFO "[INFO][HDMI_V20] \r\n");
 		} else {
 			printk(KERN_ERR "[ERROR][HDMI_V20]## Failed to dump because hdmi linke was suspended\r\n");
 		}
