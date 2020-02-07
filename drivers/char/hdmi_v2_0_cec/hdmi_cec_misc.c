@@ -101,7 +101,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                 }
                                 mutex_lock(&dev->mutex);
                                 if(!wakeup && dev->cec_wakeup_enable > 1) {
-                                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        printk(KERN_INFO "[INFO][HDMI_CEC] (%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
                                         dev->clk_enable_count = dev->reference_count;
                                         dev->cec_wakeup_enable = 0;
                                 } else {
@@ -250,7 +250,7 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                 }
                                 mutex_lock(&dev->mutex);
                                 if(!wakeup && dev->cec_wakeup_enable > 1) {
-                                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
+                                        printk(KERN_INFO "[INFO][HDMI_CEC] (%s CEC_IOC_STOP : clean wakeup\r\n", __func__);
                                         dev->clk_enable_count = dev->reference_count;
                                         dev->cec_wakeup_enable = 0;
                                 } else {
@@ -273,13 +273,13 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
+                                printk(KERN_INFO "[INFO][HDMI_CEC] (%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
                                 if(copy_from_user(&cec_tx_data, (void __user *)arg, (cec_tx_data.size * sizeof(unsigned char )) + sizeof(int))) {
                                         ret = -EFAULT;
                                         pr_err("%s failed copy_from_user at line(%d)\r\n", __func__, __LINE__);
                                         break;
                                 }
-                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
+                                printk(KERN_INFO "[INFO][HDMI_CEC] (%s CEC_IOC_SENDDATA_EX write size=%d\r\n", __func__, cec_tx_data.size );
 
                                 #ifdef CEC_KERNEL_DEBUG
                                 printk(KERN_INFO "[INFO][HDMI_CEC] \nCEC TxEx(%d): ",cec_tx_data.size);
@@ -397,13 +397,13 @@ void cec_power_on(struct cec_device *dev)
 {
         if(dev !=NULL) {
                 if(++dev->clk_enable_count == 1) {
-                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s cound = %d\r\n", __func__, dev->clk_enable_count);
+                        printk(KERN_INFO "[INFO][HDMI_CEC] (%s cound = %d\r\n", __func__, dev->clk_enable_count);
 
                         if(!IS_ERR(dev->clk[HDMI_CLK_CEC_INDEX_IOBUS])) {
                                 clk_prepare_enable(dev->clk[HDMI_CLK_CEC_INDEX_IOBUS]);
                         }
                 } else {
-                        printk(KERN_INFO "[INFO][HDMI_CEC] ("%s is SKIP (cound is %d)\r\n", __func__, dev->clk_enable_count);
+                        printk(KERN_INFO "[INFO][HDMI_CEC] (%s is SKIP (cound is %d)\r\n", __func__, dev->clk_enable_count);
                 }
         }
 }
@@ -414,9 +414,9 @@ void cec_power_off(struct cec_device *dev)
                 if(dev->clk_enable_count == 1) {
                         if(dev->cec_wakeup_enable) {
                                 dev->cec_wakeup_enable++;
-                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s is skipped because cec_wakeup_enable(%d) is setted\r\n", __func__, dev->cec_wakeup_enable);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] (%s is skipped because cec_wakeup_enable(%d) is setted\r\n", __func__, dev->cec_wakeup_enable);
                         } else {
-                                printk(KERN_INFO "[INFO][HDMI_CEC] ("%s cound = %d\r\n", __func__, dev->clk_enable_count);
+                                printk(KERN_INFO "[INFO][HDMI_CEC] (%s cound = %d\r\n", __func__, dev->clk_enable_count);
 
                                 cec_clear_wakeup(dev);
 
