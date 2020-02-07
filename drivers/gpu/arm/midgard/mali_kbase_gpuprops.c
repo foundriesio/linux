@@ -161,7 +161,7 @@ static void kbase_gpuprops_get_props(base_gpu_props * const gpu_props, struct kb
         struct arm_smccc_res res;
         arm_smccc_smc(SIP_CHIP_NAME, 0, 0, 0, 0, 0, 0, 0, &res);
         //printk("%s %08X\n",__func__, res.a0);    // chip id
-
+	res.a0 = (res.a0 & 0xFFFF);
 	if(res.a0 == 0x8030 || res.a0 == 0x8031 || res.a0 == 0x8032 || res.a0 == 0x8035)	// MP3
 		gpu_props->raw_props.shader_present =
 			((u64) regdump.shader_present_hi << 32) +
