@@ -87,6 +87,8 @@ struct tcc_uart_port {
 	struct scatterlist tx_sg;
 	unsigned int rx_residue;
 	unsigned int tx_residue;
+	int dma_use_tx;
+	int dma_use_rx;
 	int tx_dma_probed;
 	int rx_dma_probed;
 	bool tx_dma_working;
