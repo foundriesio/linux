@@ -15,8 +15,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_DAI_H
-#define _TCC_DAI_H
+#ifndef TCC_DAI_H
+#define TCC_DAI_H
 
 #include <asm/io.h>
 #include <asm/system_info.h> //for chip revision info
@@ -26,11 +26,11 @@ typedef enum {
 	TCC_DAI_LSB_16 = 0,
 	TCC_DAI_LSB_24 = 1,
 	TCC_DAI_MSB_16 = 2,
-	TCC_DAI_MSB_24 = 3,
+	TCC_DAI_MSB_24 = 3
 } TCC_DAI_FMT;
 
 typedef enum {
-	TCC_DAI_CLKDIV_ID_MCLK_TO_BCLK = 0,
+	TCC_DAI_CLKDIV_ID_MCLK_TO_BCLK = 0
 } TCC_DAI_CLKDIV_ID;
 
 typedef enum {
@@ -44,19 +44,19 @@ typedef enum {
 	TCC_DAI_MCLK_TO_BCLK_DIV_24 = 24,
 	TCC_DAI_MCLK_TO_BCLK_DIV_32 = 32,
 	TCC_DAI_MCLK_TO_BCLK_DIV_48 = 48,
-	TCC_DAI_MCLK_TO_BCLK_DIV_64 = 64,
+	TCC_DAI_MCLK_TO_BCLK_DIV_64 = 64
 #endif
 } TCC_DAI_MCLK_DIV;
 
 typedef enum {
-	TCC_DAI_BCLK_RATIO_32 = 32,
-	TCC_DAI_BCLK_RATIO_48 = 48,
-	TCC_DAI_BCLK_RATIO_64 = 64,
+	TCC_DAI_BCLK_RATIO_32 = 32u,
+	TCC_DAI_BCLK_RATIO_48 = 48u,
+	TCC_DAI_BCLK_RATIO_64 = 64u
 } TCC_DAI_BCLK_RATIO;
 
 typedef enum {
 	TCC_DAI_PATH_ADMA = 0,
-	TCC_DAI_PATH_ASRC = 1,
+	TCC_DAI_PATH_ASRC = 1
 } TCC_DAI_PATH;
 
 struct dai_reg_t {
@@ -76,13 +76,13 @@ struct dai_reg_t {
 
 static inline void tcc_dai_dump(void __iomem *base_addr)
 {
-	printk("DAMR : 0x%08x\n", readl(base_addr+TCC_DAI_DAMR_OFFSET));
-	printk("DAVC : 0x%08x\n", readl(base_addr+TCC_DAI_DAVC_OFFSET));
-	printk("MCCR0: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR0_OFFSET));
-	printk("MCCR1: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR1_OFFSET));
-	printk("DRMR : 0x%08x\n", readl(base_addr+TCC_DAI_DRMR_OFFSET));
+	(void) printk("DAMR : 0x%08x\n", readl(base_addr+TCC_DAI_DAMR_OFFSET));
+	(void) printk("DAVC : 0x%08x\n", readl(base_addr+TCC_DAI_DAVC_OFFSET));
+	(void) printk("MCCR0: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR0_OFFSET));
+	(void) printk("MCCR1: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR1_OFFSET));
+	(void) printk("DRMR : 0x%08x\n", readl(base_addr+TCC_DAI_DRMR_OFFSET));
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
-	printk("DCLKDIV : 0x%08x\n", readl(base_addr+TCC_DAI_DCLKDIV_OFFSET));
+	(void) printk("DCLKDIV : 0x%08x\n", readl(base_addr+TCC_DAI_DCLKDIV_OFFSET));
 #endif
 }
 
@@ -160,7 +160,7 @@ static inline uint32_t tcc_dai_tx2rx_loopback_check(void __iomem *base_addr)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 
-	return _FLD2VAL(DAMR_DAI_TX2RX_LOOPBACK, value);
+	return FLD2VAL(DAMR_DAI_TX2RX_LOOPBACK, value);
 }
 
 static inline void tcc_dai_rx2tx_loopback_enable(void __iomem *base_addr, bool enable)
@@ -181,7 +181,7 @@ static inline uint32_t tcc_dai_rx2tx_loopback_check(void __iomem *base_addr)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 
-	return _FLD2VAL(DAMR_DAI_RX2TX_LOOPBACK, value);
+	return FLD2VAL(DAMR_DAI_RX2TX_LOOPBACK, value);
 }
 
 static inline void tcc_dai_dma_threshold_enable(void __iomem *base_addr, bool enable)
@@ -237,7 +237,7 @@ static inline void tcc_dai_set_right_j_mode(void __iomem *base_addr, uint32_t bc
 
 	// Right_j rx doesn't work well when bclk_ratio is 32fs. 
 	// but, the waveform is the same as left_j when bclk_ratio is 32fs
-	if (bclk_ratio == TCC_DAI_BCLK_RATIO_32) {
+	if (bclk_ratio == (uint32_t) TCC_DAI_BCLK_RATIO_32) {
 		value |= (DAMR_DAI_SYNC_LR_JUSTIFIED | DAMR_TX_JUSTIFIED_RIGHT | DAMR_RX_JUSTIFIED_LEFT | DAMR_DSP_IIS_MODE);
 	} else {
 		value |= (DAMR_DAI_SYNC_LR_JUSTIFIED | DAMR_TX_JUSTIFIED_RIGHT | DAMR_RX_JUSTIFIED_RIGHT | DAMR_DSP_IIS_MODE);
@@ -267,8 +267,8 @@ static inline void tcc_dai_set_i2s_tdm_mode(void __iomem *base_addr, uint32_t sl
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 
-	uint32_t frame_len = slots * I2S_TDM_MODE_SLOT_WIDTH;
-	uint32_t half_frame_len = frame_len / 2;
+	int32_t frame_len = (int32_t) slots * I2S_TDM_MODE_SLOT_WIDTH;
+	int32_t half_frame_len = frame_len / 2;
 
 	damr &= ~(DAMR_RX_JUSTIFIED_MODE_Msk
 			| DAMR_TX_JUSTIFIED_MODE_Msk
@@ -286,15 +286,18 @@ static inline void tcc_dai_set_i2s_tdm_mode(void __iomem *base_addr, uint32_t sl
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
-	mccr0 |= ((frame_len-1) << MCCR0_FRAME_SIZE_Pos);
-	mccr0 |= ((half_frame_len-1) << MCCR0_FRAME_END_POSTION_Pos);
+	frame_len -= 1;
+	half_frame_len -= 1;
+	mccr0 |= ((uint32_t)frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	mccr0 |= ((uint32_t)half_frame_len << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 	mccr0 |= MCCR0_TDM_MODE_0;
 
 	mccr0 |= MCCR0_FRAME_INVERT_ENABLE;
 	mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
-	if (lateMode == true)
+	if (lateMode == TRUE) {
 		mccr0 |= MCCR0_MODE_SELECT_ENABLE;
+	}
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
@@ -307,8 +310,8 @@ static inline void tcc_dai_set_cirrus_tdm_mode(void __iomem *base_addr, uint32_t
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
 
-	uint32_t frame_len = slots * CIRRUS_TDM_MODE_SLOT_WIDTH;
-	uint32_t half_frame_len = frame_len / 2;
+	int32_t frame_len = (int32_t) slots * CIRRUS_TDM_MODE_SLOT_WIDTH;
+	int32_t half_frame_len = frame_len / 2;
 
 	damr &= ~(DAMR_RX_JUSTIFIED_MODE_Msk
 			| DAMR_TX_JUSTIFIED_MODE_Msk
@@ -326,18 +329,20 @@ static inline void tcc_dai_set_cirrus_tdm_mode(void __iomem *base_addr, uint32_t
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
-	mccr0 |= ((frame_len-1) << MCCR0_FRAME_SIZE_Pos);
-	mccr0 |= ((half_frame_len-1) << MCCR0_FRAME_END_POSTION_Pos);
+	frame_len -= 1;
+	half_frame_len -= 1;
+	mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	mccr0 |= ((uint32_t) half_frame_len << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 	mccr0 |= MCCR0_TDM_MODE_0;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	if(system_rev == 0) { //ES
+	if(system_rev == (uint32_t)0) { //ES
 		mccr0 |= MCCR0_FRAME_BEGIN_NORMAL_MODE;
 	} else {
 		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
 		
-		if (late == true)
+		if (late == TRUE)
 			mccr0 |= MCCR0_CIRRUS_LATE_ENABLE;
 		else
 			mccr0 |= MCCR0_MODE_SELECT_ENABLE;
@@ -370,22 +375,22 @@ static inline void tcc_dai_set_dsp_tdm_mode(void __iomem *base_addr, uint32_t sl
 			 | MCCR0_FRAME_END_POSTION_Msk);
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
-	damr |= (slot_width == 24) ? (DAMR_DSP_WORD_LEN_24BIT) : (DAMR_DSP_WORD_LEN_16BIT);
+	damr |= (slot_width == (uint32_t)24) ? ((uint32_t) DAMR_DSP_WORD_LEN_24BIT) : ((uint32_t) DAMR_DSP_WORD_LEN_16BIT);
 
-	mccr0 |= ((DSP_TDM_MODE_FRAME_LENGTH-1) << MCCR0_FRAME_SIZE_Pos);
-	mccr0 |= (0 << MCCR0_FRAME_END_POSTION_Pos);
+	mccr0 |= ((uint32_t)(DSP_TDM_MODE_FRAME_LENGTH-1) << (uint32_t) MCCR0_FRAME_SIZE_Pos);
+	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-	if(system_rev == 0) { //ES
+	if(system_rev == (uint32_t) 0) { //ES
 		mccr0 |= MCCR0_TDM_MODE_1;
-		if(late == true)
+		if(late == TRUE)
 			mccr0 |= MCCR0_FRAME_BEGIN_MODE2; //DSP-B
 		else
 			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE; //DSP-A
 	} else {
 		mccr0 |= MCCR0_TDM_MODE_0;
-		if(late == true)
+		if(late == TRUE)
 			mccr0 |= MCCR0_MODE_SELECT_ENABLE; //DSP-B
 	}
 
@@ -393,13 +398,14 @@ static inline void tcc_dai_set_dsp_tdm_mode(void __iomem *base_addr, uint32_t sl
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
-static inline void tcc_dai_set_dsp_tdm_mode_valid_data(void __iomem *base_addr, uint32_t channels, uint32_t slot_width)
+static inline void tcc_dai_set_dsp_tdm_mode_valid_data(void __iomem *base_addr, int32_t channels, int32_t slot_width)
 {
 	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
+	int32_t value = ((channels-1) * slot_width) - 1;
 
 	mccr1 &= ~MCCR1_VALID_END_Msk;
 
-	mccr1 |= _VAL2FLD(MCCR1_VALID_END, ((channels-1) * slot_width) - 1);
+	mccr1 |= VAL2FLD(MCCR1_VALID_END, (uint32_t) value);
 
 	dai_writel(mccr1, base_addr + TCC_DAI_MCCR1_OFFSET);
 }
@@ -596,7 +602,7 @@ static inline void tcc_dai_set_dao_mask(void __iomem *base_addr, bool dao0, bool
 	dai_writel(value, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
-static inline void __tcc_dai_set_dao_path_sel(void __iomem *base_addr, TCC_DAI_PATH dao0, TCC_DAI_PATH dao1, TCC_DAI_PATH dao2, TCC_DAI_PATH dao3)
+static inline void tcc_dai_set_dao_path_sel_inner(void __iomem *base_addr, TCC_DAI_PATH dao0, TCC_DAI_PATH dao1, TCC_DAI_PATH dao2, TCC_DAI_PATH dao3)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
 
@@ -612,11 +618,11 @@ static inline void __tcc_dai_set_dao_path_sel(void __iomem *base_addr, TCC_DAI_P
 
 static inline void tcc_dai_set_dao_path_sel(void __iomem *base_addr, TCC_DAI_PATH path)
 {
-	__tcc_dai_set_dao_path_sel(base_addr, path, path, path, path);
+	tcc_dai_set_dao_path_sel_inner(base_addr, path, path, path, path);
 }
 
 
-static inline void tcc_dai_set_multiport_mode(void __iomem *base_addr, int enable)
+static inline void tcc_dai_set_multiport_mode(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 
