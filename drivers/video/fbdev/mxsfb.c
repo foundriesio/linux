@@ -478,7 +478,7 @@ static const struct fb_bitfield def_rgb444[] = {
 		.length = 0,
 	}
 };
-#endif
+#endif /* CONFIG_FB_MXC_OVERLAY */
 
 static const struct fb_bitfield def_rgb666[] = {
 	[RED] = {
@@ -2246,11 +2246,16 @@ static void mxsfb_overlay_suspend(struct mxsfb_info *fbi)
 		clk_disable_pix(fbi);
 	}
 }
-#endif
+#endif /* CONFIG_PM_SLEEP */
 
-#else
+#else /* CONFIG_FB_MXC_OVERLAY */
 static void mxsfb_overlay_init(struct mxsfb_info *fbi) {}
 static void mxsfb_overlay_exit(struct mxsfb_info *fbi) {}
+#endif /* CONFIG_FB_MXC_OVERLAY */
+
+#if !(defined(CONFIG_FB_MXC_OVERLAY) && defined(CONFIG_PM_SLEEP))
+static void mxsfb_overlay_resume(struct mxsfb_info *fbi) {}
+static void mxsfb_overlay_suspend(struct mxsfb_info *fbi) {}
 #endif
 
 static int mxsfb_probe(struct platform_device *pdev)
@@ -2501,7 +2506,7 @@ static int mxsfb_runtime_resume(struct device *dev)
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_PM */
 
 #ifdef CONFIG_PM_SLEEP
 static int mxsfb_suspend(struct device *pdev)
@@ -2540,7 +2545,7 @@ static int mxsfb_resume(struct device *pdev)
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_PM_SLEEP */
 
 static const struct dev_pm_ops mxsfb_pm_ops = {
 	SET_RUNTIME_PM_OPS(mxsfb_runtime_suspend, mxsfb_runtime_resume, NULL)
