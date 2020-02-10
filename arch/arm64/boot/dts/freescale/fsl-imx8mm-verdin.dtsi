@@ -128,7 +128,7 @@
 
 &clk {
 	assigned-clocks = <&clk IMX8MM_AUDIO_PLL1>, <&clk IMX8MM_AUDIO_PLL2>;
-	assigned-clock-rates = <786432000>, <722534400>;
+	assigned-clock-rates = <393216000>, <361267200>;
 };
 
 &csi1_bridge {
@@ -418,11 +418,10 @@
 	ov5640_mipi: ov5640_mipi@3c {
 		compatible = "ovti,ov5640_mipi";
 		assigned-clock-parents = <&clk IMX8MM_CLK_24M>;
-		assigned-clock-rates = <0>, <24000000>;
-		assigned-clocks = <&clk IMX8MM_CLK_CLKO1_SRC>,
-				  <&clk IMX8MM_CLK_CLKO1_DIV>;
+		assigned-clock-rates = <24000000>;
+		assigned-clocks = <&clk IMX8MM_CLK_CLKO1>;
 		clock-names = "csi_mclk";
-		clocks = <&clk IMX8MM_CLK_CLKO1_DIV>;
+		clocks = <&clk IMX8MM_CLK_CLKO1>;
 		csi_id = <0>;
 		mclk = <24000000>;
 		mclk_source = <0>;
@@ -633,9 +632,8 @@
 &sai2 {
 	#sound-dai-cells = <0>;
 	assigned-clock-parents = <&clk IMX8MM_AUDIO_PLL1_OUT>;
-	assigned-clock-rates = <0>, <24576000>;
-	assigned-clocks = <&clk IMX8MM_CLK_SAI2_SRC>,
-			  <&clk IMX8MM_CLK_SAI2_DIV>;
+	assigned-clock-rates = <24576000>;
+	assigned-clocks = <&clk IMX8MM_CLK_SAI2>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai2>;
 	status = "okay";
