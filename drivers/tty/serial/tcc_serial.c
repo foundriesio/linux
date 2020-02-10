@@ -183,7 +183,6 @@
 #define tcc_dev_to_port(__dev) (struct uart_port *)dev_get_drvdata(__dev)
 #define tx_enabled(port)	((port)->unused[0])
 #define rx_enabled(port)	((port)->unused[1])
-#define port_used(port)		((port)->quirks)
 
 struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 	[0] = {
@@ -197,6 +196,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 0,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART0),
+		.dma_use_tx	= 0,
+		.dma_use_tx	=0,
 		.name = "uart0"
 	},
 	[1] = {
@@ -210,6 +211,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 1,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART1),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart1"
 	},
 	[2] = {
@@ -223,6 +226,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 2,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART2),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart2"
 	},
 	[3] = {
@@ -236,6 +241,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 3,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART3),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart3"
 	},
 	[4] = {
@@ -249,6 +256,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 4,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART4),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart4"
 	},
 	[5] = {
@@ -262,6 +271,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 5,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART5),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart5"
 	},
 	[6] = {
@@ -275,6 +286,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 6,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART6),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart6"
 	},
 	[7] = {
@@ -288,6 +301,8 @@ struct tcc_uart_port tcc_serial_ports[NR_PORTS] = {
 			.line		= 7,
 		},
 		.base_addr      = tcc_p2v(TCC_PA_UART7),
+                .dma_use_tx     = 0,
+                .dma_use_tx     =0,
 		.name = "uart7"
 	},	
 };
@@ -727,7 +742,6 @@ static void tcc_serial_shutdown(struct uart_port *port)
 	wr_regl(port, OFFSET_IER, 0x0);
 	free_irq(port->irq, port);
 
-	port_used(port) = 0;	// for suspend/resume
 
 	dbg("%s   line[%d] out...\n", __func__, port->line);
 }
@@ -942,11 +956,16 @@ static int tcc_serial_dma_probe(struct uart_port *port)
 	wr_regl(port, OFFSET_MCR, rd_regl(port, OFFSET_MCR) | MCR_RTS);
 	wr_regl(port, OFFSET_AFT, 0x00000021);
 
+	if(tp->dma_use_rx)
 	if(tcc_serial_rx_dma_probe(port))
 		tp->rx_dma_probed = false;
 
+	if(tp->dma_use_tx)
 	if(tcc_serial_tx_dma_probe(port))
 		tp->tx_dma_probed = false;
+
+	dbg("dma probed rx : %d tx %d\n", tp->rx_dma_probed, tp->tx_dma_probed);
+	dbg("dma use rx : %d tx %d\n", tp->dma_use_rx, tp->dma_use_tx);
 
 	return 0;
 }
@@ -984,7 +1003,6 @@ static int tcc_serial_startup(struct uart_port *port)
 
 	tx_enabled(port) = 1;
 	rx_enabled(port) = 1;
-	port_used(port) = 1;	// for suspend/resume
 
 	/* clear interrupt */
 	wr_regl(port, OFFSET_IER, 0x0);
@@ -1139,7 +1157,6 @@ static void tcc_serial_set_termios(struct uart_port *port, struct ktermios *term
 		ulcon &= ~(LCR_EPS|LCR_PEN);
 	}
 
-	//	tcc_serial_input_buffer_set(tp->port.line, 1);
 
 	wr_regl(port, OFFSET_MCR, umcon);
 	wr_regl(port, OFFSET_LCR, (ulcon | LCR_DLAB));
@@ -1471,6 +1488,8 @@ static int tcc_serial_probe(struct platform_device *dev)
 	int irq;
 	int id;
 	int ret;
+	int i;
+	const char *str_dma;
 
 	if (np)
 		id = of_alias_get_id(np, "serial");
@@ -1519,6 +1538,23 @@ static int tcc_serial_probe(struct platform_device *dev)
 
 	tp->tx_dma_probed = false;
 	tp->rx_dma_probed = false;
+
+	for(i=0; i<2; i++){
+		if(of_property_read_string_index(np, "dma-names", i, &str_dma))
+		{
+			dbg_err("dma %s doesn't exist!\n", str_dma);
+		}
+		else
+		{
+			dbg_err("dma %s exist!\n", str_dma);
+			if(str_dma!=NULL)
+			if(!strcmp(str_dma, "tx"))
+				tp->dma_use_tx=1;
+			else
+				tp->dma_use_rx=1;
+		}
+	}
+
 
 	port->iotype	= UPIO_MEM;
 	port->irq	= irq;
