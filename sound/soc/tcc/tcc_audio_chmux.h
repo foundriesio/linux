@@ -15,8 +15,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_PORT_MUX_H_
-#define _TCC_PORT_MUX_H_
+#ifndef TCC_PORT_MUX_H
+#define TCC_PORT_MUX_H
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -37,30 +37,30 @@
 #define IOBUSCFG_CDIF_PORT_MAX		(3)
 #define IOBUSCFG_SPDIF_PORT_MAX		(3)
 
-static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_DAI0_CHMUX : IOBUS_CFG_DAI1_CHMUX;
 
 	if (port <= IOBUSCFG_DAI_PORT_MAX) {
-		chmux_writel(_VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
+		chmux_writel(VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
 	}
 }
 
-static inline void iobuscfg_cdif_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_cdif_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_CDIF0_CHMUX : IOBUS_CFG_CDIF1_CHMUX;
 
 	if (port <= IOBUSCFG_CDIF_PORT_MAX) {
-		chmux_writel(_VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
+		chmux_writel(VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
 	}
 }
 
-static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_SPDIF0_CHMUX : IOBUS_CFG_SPDIF1_CHMUX;
 
 	if (port <= IOBUSCFG_SPDIF_PORT_MAX) {
-		chmux_writel(_VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
+		chmux_writel(VAL2FLD(IOBUS_CFG_CHMUX_SEL, (1<<port)), iobuscfg_reg+offset);
 	}
 }
 
@@ -71,18 +71,18 @@ static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int id, int 
 #define IOBUSCFG_SPDIF_71CH_PORT_MAX	(6)
 #define IOBUSCFG_SPDIF_SRCH_PORT_MAX	(6)
 
-static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_DAI_71CH_CHMUX :
 					  (id == 1) ? IOBUS_CFG_DAI_71CH_CHMUX :
 					  (id == 2) ? IOBUS_CFG_DAI_71CH_CHMUX : IOBUS_CFG_DAI_SRCH_CHMUX;
 
-	uint32_t pos = (id == 0) ? IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos :
-				   (id == 1) ? IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos :
-				   (id == 2) ? IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos :
-				   (id == 3) ? IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos :
-				   (id == 4) ? IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Pos :
-				   (id == 5) ? IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Pos : IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Pos;
+	uint32_t pos = (id == 0) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos :
+				   (id == 1) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos :
+				   (id == 2) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos :
+				   (id == 3) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos :
+				   (id == 4) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Pos :
+				   (id == 5) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Pos : (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Pos;
 
 	uint32_t mask = (id == 0) ? IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Msk :
 					(id == 1) ? IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Msk :
@@ -99,19 +99,19 @@ static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int id, int po
 	value = readl(iobuscfg_reg + offset);
 	value &= ~mask;
 
-	if (((id < 3) && (port <= IOBUSCFG_DAI_71CH_PORT_MAX)) ||
-	 	((id >= 3) && (port <= IOBUSCFG_DAI_SRCH_PORT_MAX)))
-		value |= ((1 << port) << pos);
+	if (((id < 3) && (port <= (uint32_t) IOBUSCFG_DAI_71CH_PORT_MAX)) ||
+		((id >= 3) && (port <= (uint32_t) IOBUSCFG_DAI_SRCH_PORT_MAX)))
+		value |= (((uint32_t)1 << port) << pos);
 
 	chmux_writel(value, iobuscfg_reg + offset);
 }
 
-static inline void iobuscfg_cdif_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_cdif_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 
 }
 
-static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int id, int port)
+static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_SPDIF_71CH0_CHMUX :
 					  (id == 1) ? IOBUS_CFG_SPDIF_71CH0_CHMUX :
@@ -119,12 +119,12 @@ static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int id, int 
 					  (id == 3) ? IOBUS_CFG_SPDIF_SRCH0_CHMUX :
 					  (id == 4) ? IOBUS_CFG_SPDIF_SRCH0_CHMUX : IOBUS_CFG_SPDIF_SRCH1_CHMUX;
 
-	uint32_t pos = (id == 0) ? IOBUS_CFG_SPDIF_CHMUX_71CH0_0_SEL_Pos :
-				   (id == 1) ? IOBUS_CFG_SPDIF_CHMUX_71CH0_1_SEL_Pos :
-				   (id == 2) ? IOBUS_CFG_SPDIF_CHMUX_71CH1_2_SEL_Pos :
-				   (id == 3) ? IOBUS_CFG_SPDIF_CHMUX_SRCH0_0_SEL_Pos :
-				   (id == 4) ? IOBUS_CFG_SPDIF_CHMUX_SRCH0_1_SEL_Pos :
-				   (id == 5) ? IOBUS_CFG_SPDIF_CHMUX_SRCH1_2_SEL_Pos : IOBUS_CFG_SPDIF_CHMUX_SRCH1_3_SEL_Pos;
+	uint32_t pos = (id == 0) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_71CH0_0_SEL_Pos :
+				   (id == 1) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_71CH0_1_SEL_Pos :
+				   (id == 2) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_71CH1_2_SEL_Pos :
+				   (id == 3) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_SRCH0_0_SEL_Pos :
+				   (id == 4) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_SRCH0_1_SEL_Pos :
+				   (id == 5) ? (uint32_t) IOBUS_CFG_SPDIF_CHMUX_SRCH1_2_SEL_Pos : (uint32_t) IOBUS_CFG_SPDIF_CHMUX_SRCH1_3_SEL_Pos;
 
 	uint32_t mask = (id == 0) ? IOBUS_CFG_SPDIF_CHMUX_71CH0_0_SEL_Msk :
 					(id == 1) ? IOBUS_CFG_SPDIF_CHMUX_71CH0_1_SEL_Msk :
@@ -141,9 +141,9 @@ static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int id, int 
 	value = readl(iobuscfg_reg + offset);
 	value &= ~mask;
 
-	if (((id < 3) && (port <= IOBUSCFG_SPDIF_71CH_PORT_MAX)) ||
-		((id >= 3) && (port <= IOBUSCFG_SPDIF_SRCH_PORT_MAX)))
-		value |= ((1 << port) << pos);
+	if (((id < 3) && (port <= (uint32_t) IOBUSCFG_SPDIF_71CH_PORT_MAX)) ||
+		((id >= 3) && (port <= (uint32_t) IOBUSCFG_SPDIF_SRCH_PORT_MAX)))
+		value |= (((uint32_t) 1 << port) << pos);
 
 	chmux_writel(value, iobuscfg_reg + offset);
 }
@@ -181,19 +181,19 @@ static inline void tcc_gfb_i2s_portcfg(void __iomem *pcfg_reg, struct tcc_gfb_i2
 	pcfg1 &= ~(PCFG1_DAI_LRCK_Msk|PCFG1_DAI_BCLK_Msk|PCFG1_DAI_DO0_Msk|PCFG1_DAI_DO1_Msk);
 	pcfg2 &= ~(PCFG2_DAI_DO2_Msk|PCFG2_DAI_DO3_Msk|PCFG2_DAI_MCLK_Msk);
 
-	pcfg0 |= _VAL2FLD(PCFG0_DAI_DI0, port->dain[0]) |
-			 _VAL2FLD(PCFG0_DAI_DI1, port->dain[1]) |
-			 _VAL2FLD(PCFG0_DAI_DI2, port->dain[2]) |
-			 _VAL2FLD(PCFG0_DAI_DI3, port->dain[3]);
+	pcfg0 |= VAL2FLD(PCFG0_DAI_DI0, port->dain[0]) |
+			 VAL2FLD(PCFG0_DAI_DI1, port->dain[1]) |
+			 VAL2FLD(PCFG0_DAI_DI2, port->dain[2]) |
+			 VAL2FLD(PCFG0_DAI_DI3, port->dain[3]);
 
-	pcfg1 |= _VAL2FLD(PCFG1_DAI_DO0, port->daout[0]) |
-			 _VAL2FLD(PCFG1_DAI_DO1, port->daout[1]) |
-			 _VAL2FLD(PCFG1_DAI_BCLK, port->clk[1]) |
-			 _VAL2FLD(PCFG1_DAI_LRCK, port->clk[2]);
+	pcfg1 |= VAL2FLD(PCFG1_DAI_DO0, port->daout[0]) |
+			 VAL2FLD(PCFG1_DAI_DO1, port->daout[1]) |
+			 VAL2FLD(PCFG1_DAI_BCLK, port->clk[1]) |
+			 VAL2FLD(PCFG1_DAI_LRCK, port->clk[2]);
 
-	pcfg2 |= _VAL2FLD(PCFG2_DAI_DO2, port->daout[2]) |
-			 _VAL2FLD(PCFG2_DAI_DO3, port->daout[3]) |
-			 _VAL2FLD(PCFG2_DAI_MCLK, port->clk[0]);
+	pcfg2 |= VAL2FLD(PCFG2_DAI_DO2, port->daout[2]) |
+			 VAL2FLD(PCFG2_DAI_DO3, port->daout[3]) |
+			 VAL2FLD(PCFG2_DAI_MCLK, port->clk[0]);
 
 	chmux_writel(pcfg0, pcfg_reg + TCC_AUDIO_PCFG0_OFFSET);
 	chmux_writel(pcfg1, pcfg_reg + TCC_AUDIO_PCFG1_OFFSET);
@@ -206,8 +206,8 @@ static inline void tcc_gfb_spdif_portcfg(void __iomem *pcfg_reg, struct tcc_gfb_
 
 	pcfg3 &= ~(PCFG3_SPDIF_TX_Msk|PCFG3_SPDIF_RX_Msk);
 
-	pcfg3 |= _VAL2FLD(PCFG3_SPDIF_TX, port->port[0]) |
-			 _VAL2FLD(PCFG3_SPDIF_RX, port->port[1]);
+	pcfg3 |= VAL2FLD(PCFG3_SPDIF_TX, port->port[0]) |
+			 VAL2FLD(PCFG3_SPDIF_RX, port->port[1]);
 
 	chmux_writel(pcfg3, pcfg_reg + TCC_AUDIO_PCFG3_OFFSET);
 }
@@ -220,13 +220,13 @@ static inline void tcc_gfb_cdif_portcfg(void __iomem *pcfg_reg, struct tcc_gfb_c
 	pcfg2 &= ~(PCFG2_CD_DI_Msk);
 	pcfg3 &= ~(PCFG3_CD_BCLK_Msk|PCFG3_CD_LRCK_Msk);
 
-	pcfg2 |= _VAL2FLD(PCFG2_CD_DI, port->port[2]);
-	pcfg3 |= _VAL2FLD(PCFG3_CD_BCLK, port->port[0]) |
-			 _VAL2FLD(PCFG3_CD_LRCK, port->port[1]);
+	pcfg2 |= VAL2FLD(PCFG2_CD_DI, port->port[2]);
+	pcfg3 |= VAL2FLD(PCFG3_CD_BCLK, port->port[0]) |
+			 VAL2FLD(PCFG3_CD_LRCK, port->port[1]);
 
 	chmux_writel(pcfg2, pcfg_reg + TCC_AUDIO_PCFG2_OFFSET);
 	chmux_writel(pcfg3, pcfg_reg + TCC_AUDIO_PCFG3_OFFSET);
 }
 #endif /* CONFIG_ARCH_TCC802X */
 
-#endif /*_TCC_PORT_MUX_H_*/
+#endif /*TCC_PORT_MUX_H*/

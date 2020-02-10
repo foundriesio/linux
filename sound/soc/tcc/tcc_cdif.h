@@ -15,16 +15,16 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_CDIF_H
-#define _TCC_CDIF_H
+#ifndef TCC_CDIF_H
+#define TCC_CDIF_H
 
 #include <asm/io.h>
 #include "tcc_audio_hw.h"
 
 typedef enum {
-	TCC_CDIF_BCLK_32FS_MODE = 32,
-	TCC_CDIF_BCLK_48FS_MODE = 48,
-	TCC_CDIF_BCLK_64FS_MODE = 64,
+	TCC_CDIF_BCLK_32FS_MODE = 32u,
+	TCC_CDIF_BCLK_48FS_MODE = 48u,
+	TCC_CDIF_BCLK_64FS_MODE = 64u,
 } TCC_CDIF_BCLK_FS_MODE;
 
 typedef enum {
@@ -101,4 +101,4 @@ static inline void tcc_cdif_reg_restore(void __iomem *base_addr, struct cdif_reg
 	cdif_writel(regs->cicr, base_addr + TCC_CDIF_CICR_OFFSET);
 }
 
-#endif /*_TCC_CDIF_H */
+#endif /*TCC_CDIF_H */

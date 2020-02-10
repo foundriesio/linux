@@ -15,8 +15,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_ADMA_PCM_DT_H_
-#define _TCC_ADMA_PCM_DT_H_
+#ifndef TCC_ADMA_PCM_DT_H
+#define TCC_ADMA_PCM_DT_H
 
 #include "tcc_adma.h"
 
@@ -26,7 +26,7 @@ typedef enum {
 	TCC_ADMA_I2S_9_1CH = 2,
 	TCC_ADMA_SPDIF = 3,
 	TCC_ADMA_CDIF = 4,
-	TCC_ADMA_MAX,
+	TCC_ADMA_MAX = 5
 } TCC_ADMA_DEV_TYPE;
 
 struct tcc_adma_info {
@@ -34,4 +34,4 @@ struct tcc_adma_info {
 	bool tdm_mode;
 };
 
-#endif //_TCC_ADMA_PCM_DT_H_
+#endif //TCC_ADMA_PCM_DT_H

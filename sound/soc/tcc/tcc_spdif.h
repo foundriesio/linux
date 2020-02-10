@@ -15,8 +15,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef _TCC_SPDIF_H
-#define _TCC_SPDIF_H
+#ifndef TCC_SPDIF_H
+#define TCC_SPDIF_H
 
 #include <asm/io.h>
 #include "tcc_audio_hw.h"
@@ -106,12 +106,12 @@ struct spdif_reg_t {
 
 static inline void tcc_spdif_tx_dump(void __iomem *base_addr)
 {
-	printk("TX_VERSION : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_VERSION_OFFSET));
-	printk("TX_CONFIG  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET));
-	printk("TX_CHSTAT  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET));
-	printk("TX_INTMASK : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_INTMASK_OFFSET));
-	printk("TX_INTSTAT : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_INTSTAT_OFFSET));
-	printk("TX_DMACFG  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_DMACFG_OFFSET));
+	(void) printk("TX_VERSION : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_VERSION_OFFSET));
+	(void) printk("TX_CONFIG  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET));
+	(void) printk("TX_CHSTAT  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET));
+	(void) printk("TX_INTMASK : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_INTMASK_OFFSET));
+	(void) printk("TX_INTSTAT : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_INTSTAT_OFFSET));
+	(void) printk("TX_DMACFG  : 0x%08x\n", readl(base_addr + TCC_SPDIF_TX_DMACFG_OFFSET));
 }
 
 static inline void tcc_spdif_tx_enable(void __iomem *base_addr, bool enable)
@@ -161,7 +161,7 @@ static inline void tcc_spdif_tx_userdata_type(void __iomem *base_addr, TCC_SPDIF
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 
 	value &= ~SPDIF_TX_CONFIG_USERDATA_ENABLE_Msk;
-	value |= _VAL2FLD(SPDIF_TX_CONFIG_USERDATA_ENABLE, type);
+	value |= VAL2FLD(SPDIF_TX_CONFIG_USERDATA_ENABLE, (uint32_t) type);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 }
@@ -171,17 +171,18 @@ static inline void tcc_spdif_tx_chstat_type(void __iomem *base_addr, TCC_SPDIF_T
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 
 	value &= ~SPDIF_TX_CONFIG_CHSTAT_ENABLE_Msk;
-	value |=_VAL2FLD(SPDIF_TX_CONFIG_CHSTAT_ENABLE, type);
+	value |= VAL2FLD(SPDIF_TX_CONFIG_CHSTAT_ENABLE, (uint32_t) type);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 }
 
-static inline void tcc_spdif_tx_clk_ratio(void __iomem *base_addr, uint32_t ratio)
+static inline void tcc_spdif_tx_clk_ratio(void __iomem *base_addr, int32_t ratio)
 {
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
+	ratio -= 1;
 
 	value &= ~SPDIF_TX_CONFIG_RATIO_Msk;
-	value |= _VAL2FLD(SPDIF_TX_CONFIG_RATIO, ratio-1);
+	value |= VAL2FLD(SPDIF_TX_CONFIG_RATIO, (uint32_t) ratio);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 }
@@ -189,11 +190,12 @@ static inline void tcc_spdif_tx_clk_ratio(void __iomem *base_addr, uint32_t rati
 static inline void tcc_spdif_tx_bitmode(void __iomem *base_addr, uint32_t bitmode)
 {
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
+	int bitmode_tmp = (int32_t) bitmode;
 
-	bitmode = (bitmode > 16) ? bitmode - 16 : 0;
+	bitmode_tmp = (bitmode_tmp > 16) ? bitmode_tmp - 16 : 0;
 
 	value &= ~SPDIF_TX_CONFIG_MODE_Msk;
-	value |= _VAL2FLD(SPDIF_TX_CONFIG_MODE, bitmode);
+	value |= VAL2FLD(SPDIF_TX_CONFIG_MODE, (uint32_t) bitmode_tmp);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_CONFIG_OFFSET);
 }
@@ -217,7 +219,7 @@ static inline void tcc_spdif_tx_copyright(void __iomem *base_addr, TCC_SPDIF_TX_
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET);
 
 	value &= ~(SPDIF_TX_CHSTAT_COPYRIGHT_Msk);
-	if (copyright) {
+	if (copyright == TCC_SPDIF_TX_COPY_PERMITTED) {
 		value |= SPDIF_TX_CHSTAT_COPY_PERMITTED;
 	} else {
 		value |= SPDIF_TX_CHSTAT_COPY_INHIBITED;
@@ -231,7 +233,7 @@ static inline void tcc_spdif_tx_preemphasis(void __iomem *base_addr, TCC_SPDIF_T
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET);
 
 	value &= ~(SPDIF_TX_CHSTAT_PREEMPHASIS_Msk);
-	if (preemphasis) {
+	if (preemphasis == TCC_SPDIF_TX_PREEMPHASIS_50_15us) {
 		value |= SPDIF_TX_CHSTAT_COPY_PERMITTED;
 	} else {
 		value |= SPDIF_TX_CHSTAT_COPY_INHIBITED;
@@ -245,7 +247,7 @@ static inline void tcc_spdif_tx_status_generation(void __iomem *base_addr, TCC_S
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET);
 
 	value &= ~(SPDIF_TX_CHSTAT_STATUS_GEN_Msk);
-	if (gen) {
+	if (gen == TCC_SPDIF_TX_PRERECORDED_DATA) {
 		value |= SPDIF_TX_CHSTAT_STATUS_PRE_RECORDED;
 	} else {
 		value |= SPDIF_TX_CHSTAT_STATUS_NO_INDICATION;
@@ -259,7 +261,7 @@ static inline void tcc_spdif_tx_frequency(void __iomem *base_addr, TCC_SPDIF_TX_
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET);
 
 	value &= SPDIF_TX_CHSTAT_FREQ_Msk;
-	value |= _VAL2FLD(SPDIF_TX_CHSTAT_FREQ, freq);
+	value |= VAL2FLD(SPDIF_TX_CHSTAT_FREQ, (uint32_t) freq);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_CHSTAT_OFFSET);
 }
@@ -269,7 +271,7 @@ static inline void tcc_spdif_tx_fifo_threshold(void __iomem *base_addr, uint32_t
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_DMACFG_OFFSET);
 
 	value &= SPDIF_TX_DMACFG_FIFO_THRESHOLD_Msk;
-	value |= _VAL2FLD(SPDIF_TX_DMACFG_FIFO_THRESHOLD, threshold);
+	value |= VAL2FLD(SPDIF_TX_DMACFG_FIFO_THRESHOLD, threshold);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_DMACFG_OFFSET);
 }
@@ -300,7 +302,7 @@ static inline void tcc_spdif_tx_addr_mode(void __iomem *base_addr, TCC_SPDIF_TX_
 	} else if (mode == TCC_SPDIF_TX_ADDRESS_MODE_TYPE0) {
 		value |= SPDIF_TX_DMACFG_AMODE0_ENABLE;
 		value |= SPDIF_TX_DMACFG_AMODE1_DISABLE;
-	} else if (mode == TCC_SPDIF_TX_ADDRESS_MODE_TYPE1) {
+	} else { /*if (mode == TCC_SPDIF_TX_ADDRESS_MODE_TYPE1) {*/
 		value |= SPDIF_TX_DMACFG_AMODE0_ENABLE;
 		value |= SPDIF_TX_DMACFG_AMODE1_ENABLE;
 	}
@@ -341,7 +343,7 @@ static inline void tcc_spdif_tx_readaddr_mode(void __iomem *base_addr, TCC_SPDIF
 	uint32_t value = readl(base_addr + TCC_SPDIF_TX_DMACFG_OFFSET);
 
 	value &= ~SPDIF_TX_DMACFG_READADDR_MODE_Msk;
-	value |= _VAL2FLD(SPDIF_TX_DMACFG_READADDR_MODE, mode);
+	value |= VAL2FLD(SPDIF_TX_DMACFG_READADDR_MODE, (uint32_t) mode);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_TX_DMACFG_OFFSET);
 }
@@ -365,15 +367,15 @@ static inline void tcc_spdif_tx_buffers_clear(void __iomem *base_addr)
 	int i;
 
 	for (i=0; i<SPDIF_TX_USERDATA_BUF_COUNT; i++) {
-		spdif_writel(0, base_addr + TCC_SPDIF_TX_USERDATA_BUF_OFFSET + i*sizeof(uint32_t));
+		spdif_writel(0, base_addr + TCC_SPDIF_TX_USERDATA_BUF_OFFSET + (unsigned int) i*sizeof(uint32_t));
 	}
 
 	for (i=0; i<SPDIF_TX_CHSTAT_BUF_COUNT; i++) {
-		spdif_writel(0, base_addr + TCC_SPDIF_TX_CHSTAT_BUF_OFFSET + i*sizeof(uint32_t));
+		spdif_writel(0, base_addr + TCC_SPDIF_TX_CHSTAT_BUF_OFFSET + (unsigned int) i*sizeof(uint32_t));
 	}
 
 	for (i=0; i<SPDIF_TX_SAMPLEDATA_BUF_COUNT; i++) {
-		spdif_writel(0, base_addr + TCC_SPDIF_TX_SAMPLEDATA_BUF_OFFSET + i*sizeof(uint32_t));
+		spdif_writel(0, base_addr + TCC_SPDIF_TX_SAMPLEDATA_BUF_OFFSET + (unsigned int) i*sizeof(uint32_t));
 	}
 }
 
@@ -508,9 +510,14 @@ static inline void tcc_spdif_rx_store_parity_bit(void __iomem *base_addr, bool e
 static inline void tcc_spdif_rx_bitmode(void __iomem *base_addr, uint32_t bitwidth)
 {
 	uint32_t value = readl(base_addr + TCC_SPDIF_RX_CONFIG_OFFSET);
+	int32_t bitwidth_tmp = (int32_t) bitwidth - 16;
+
+	if (bitwidth < (uint32_t) 16) {
+		return;
+	}
 
 	value &= ~SPDIF_RX_CONFIG_MODE_Msk;
-	value |= _VAL2FLD(SPDIF_RX_CONFIG_MODE, bitwidth-16);
+	value |= VAL2FLD(SPDIF_RX_CONFIG_MODE, (uint32_t) bitwidth_tmp);
 
 	spdif_writel(value, base_addr + TCC_SPDIF_RX_CONFIG_OFFSET);
 }
@@ -567,4 +574,4 @@ static inline void tcc_spdif_reg_restore(void __iomem *base_addr, struct spdif_r
 	spdif_writel(regs->rx_intmask, base_addr + TCC_SPDIF_RX_INTMASK_OFFSET);
 }
 
-#endif /*_TCC_SPDIF_H*/
+#endif /*TCC_SPDIF_H*/

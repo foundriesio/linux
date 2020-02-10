@@ -52,7 +52,7 @@ struct tcc_adma_pcm_t {
 
 	struct clk *adma_hclk;
 	void __iomem *adma_reg;
-	uint32_t adma_irq;
+	int32_t adma_irq;
 	uint32_t have_hopcnt_clear_bit;
 	uint32_t adrcnt_mode;
 
@@ -84,12 +84,12 @@ struct tcc_adma_pcm_hw_t {
 static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 	[TCC_ADMA_I2S_STEREO] = {
 		.play = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -105,12 +105,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 			.fifo_size = 16,
 		},
 		.capture = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats      = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -128,12 +128,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 	},
 	[TCC_ADMA_I2S_7_1CH] = {
 		.play = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -149,12 +149,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 			.fifo_size = 16,
 		},
 		.capture = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats      = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -172,12 +172,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 	},
 	[TCC_ADMA_I2S_9_1CH] = {
 		.play = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -193,12 +193,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 			.fifo_size = 16,
 		},
 		.capture = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats      = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -216,12 +216,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 	},
 	[TCC_ADMA_SPDIF] = {
 		.play = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats = SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_48000,
@@ -237,12 +237,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 			.fifo_size = 16,
 		},
 		.capture = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats      = SNDRV_PCM_FMTBIT_U16_LE | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rates        = SNDRV_PCM_RATE_8000_48000,
@@ -260,12 +260,12 @@ static const struct tcc_adma_pcm_hw_t tcc_adma_hw[TCC_ADMA_MAX] = {
 	},
 	[TCC_ADMA_CDIF] = {
 		.capture = {
-			.info = (SNDRV_PCM_INFO_MMAP
-					| SNDRV_PCM_INFO_MMAP_VALID
-					| SNDRV_PCM_INFO_INTERLEAVED
-					| SNDRV_PCM_INFO_BLOCK_TRANSFER
-					| SNDRV_PCM_INFO_PAUSE
-					| SNDRV_PCM_INFO_RESUME),
+			.info = ((uint32_t)SNDRV_PCM_INFO_MMAP
+					| (uint32_t)SNDRV_PCM_INFO_MMAP_VALID
+					| (uint32_t)SNDRV_PCM_INFO_INTERLEAVED
+					| (uint32_t)SNDRV_PCM_INFO_BLOCK_TRANSFER
+					| (uint32_t)SNDRV_PCM_INFO_PAUSE
+					| (uint32_t)SNDRV_PCM_INFO_RESUME),
 
 			.formats      = SNDRV_PCM_FMTBIT_S16_LE,
 			.rates        = SNDRV_PCM_RATE_8000_192000,
@@ -288,26 +288,26 @@ static int tcc_adma_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)snd_soc_platform_get_drvdata(rtd->platform);
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
-
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	int ret = 0;
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if(dma_info == NULL) {
-		printk(KERN_ERR "[ERROR][AUDIO_DMA] %s - dma_info is NULL\n", __func__);
+		(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s - dma_info is NULL\n", __func__);
 		return -EFAULT;
 	}
 
-	if (adma_pcm->adrcnt_mode) {
-		snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 32);
+	if (adma_pcm->adrcnt_mode != 0u) {
+		(void) snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 32);
 	} else {
-		snd_pcm_hw_constraint_pow2(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES);
+		(void) snd_pcm_hw_constraint_pow2(substream->runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES);
 	}
-	snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 32);
+	(void) snd_pcm_hw_constraint_step(substream->runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 32);
 
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {  
-        snd_soc_set_runtime_hwparams(substream, &tcc_adma_hw[dma_info->dev_type].play);
+        (void) snd_soc_set_runtime_hwparams(substream, &tcc_adma_hw[dma_info->dev_type].play);
 		adma_pcm->dev[dma_info->dev_type].playback_substream = substream;
     } else {
-        snd_soc_set_runtime_hwparams(substream, &tcc_adma_hw[dma_info->dev_type].capture);
+        (void) snd_soc_set_runtime_hwparams(substream, &tcc_adma_hw[dma_info->dev_type].capture);
 		adma_pcm->dev[dma_info->dev_type].capture_substream = substream;
     }
 
@@ -317,13 +317,13 @@ static int tcc_adma_pcm_open(struct snd_pcm_substream *substream)
 			case TCC_ADMA_I2S_STEREO:
 			case TCC_ADMA_I2S_7_1CH:
 			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_tx_reset_enable(adma_pcm->adma_reg, false);
+				tcc_adma_dai_tx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			case TCC_ADMA_SPDIF:
-				tcc_adma_spdif_tx_reset_enable(adma_pcm->adma_reg, false);
+				tcc_adma_spdif_tx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			default:
-				return -EINVAL;
+				ret = -EINVAL;
 				break;
 		}
 	} else {
@@ -331,20 +331,20 @@ static int tcc_adma_pcm_open(struct snd_pcm_substream *substream)
 			case TCC_ADMA_I2S_STEREO:
 			case TCC_ADMA_I2S_7_1CH:
 			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, false);
+				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			case TCC_ADMA_SPDIF:
 			case TCC_ADMA_CDIF:
-				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, false);
+				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			default:
-				return -EINVAL;
+				ret = -EINVAL;
 				break;
 		}
 	}
 #endif
 
-    return 0;
+    return ret;
 }
 
 static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
@@ -352,8 +352,13 @@ static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = (struct snd_soc_pcm_runtime *)substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	int ret = 0;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+
+	if(dma_info == NULL) {
+		return -EFAULT;
+	}
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
@@ -361,13 +366,13 @@ static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
 			case TCC_ADMA_I2S_STEREO:
 			case TCC_ADMA_I2S_7_1CH:
 			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_tx_reset_enable(adma_pcm->adma_reg, true);
+				tcc_adma_dai_tx_reset_enable(adma_pcm->adma_reg, TRUE);
 				break;
 			case TCC_ADMA_SPDIF:
-				tcc_adma_spdif_tx_reset_enable(adma_pcm->adma_reg, true);
+				tcc_adma_spdif_tx_reset_enable(adma_pcm->adma_reg, TRUE);
 				break;
 			default:
-				return -EINVAL;
+				ret = -EINVAL;
 				break;
 		}
 	} else {
@@ -375,22 +380,23 @@ static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
 			case TCC_ADMA_I2S_STEREO:
 			case TCC_ADMA_I2S_7_1CH:
 			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, true);
+				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, TRUE);
 				break;
 			case TCC_ADMA_SPDIF:
 			case TCC_ADMA_CDIF:
-				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, true);
+				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, TRUE);
 				break;
 			default:
-				return -EINVAL;
+				ret = -EINVAL;
 				break;
 		}
 	}
+	if( ret != 0) {
+		return ret;
+	}
 #endif
 
-	if(dma_info == NULL) {
-		return -EFAULT;
-	}
+
 
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		adma_pcm->dev[dma_info->dev_type].playback_substream = NULL;
@@ -405,28 +411,29 @@ static int tcc_adma_pcm_mmap(struct snd_pcm_substream *substream, struct vm_area
 {
     struct snd_pcm_runtime *runtime = substream->runtime;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma, runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
 }
 
-static int tcc_adma_get_dbth_value(int channels, TCC_ADMA_DEV_TYPE dev_type, TCC_ADMA_BURST_SIZE burst_size, bool tdm_mode)
+static uint32_t tcc_adma_get_dbth_value(uint32_t channels, TCC_ADMA_DEV_TYPE dev_type, TCC_ADMA_BURST_SIZE burst_size, bool tdm_mode)
 {
 	//tdm, mono, 2ch, 4ch, 6ch, 8ch, 10ch
-	const int dbth_tbl_2ch[2][7] = {
+	const uint32_t dbth_tbl_2ch[2][7] = {
 		{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01}, // burst_4
 		{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01}, // burst_8
 	};
-	const int dbth_tbl_7_1ch[2][7] = {
+	const uint32_t dbth_tbl_7_1ch[2][7] = {
 		{0x0f, 0x07, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f}, // burst_4
 		{0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07}, // burst_8
 	};
-	const int dbth_tbl_9_1ch[2][7] = {
+	const uint32_t dbth_tbl_9_1ch[2][7] = {
 		{0x01, 0x01, 0x01, 0x07, 0x0b, 0x0f, 0x13}, // burst_4
 		{0x01, 0x01, 0x01, 0x03, 0x05, 0x07, 0x09}, // burst_8
 	};
-	int ch_idx = (tdm_mode) ? 0 : (channels / 2) + 1;
-	int burst_idx = (burst_size == TCC_ADMA_BURST_CYCLE_4) ? 0 : 1;
+	int32_t ch_idx, burst_idx;
+	ch_idx = (tdm_mode) ? 0 : (((int32_t)channels / 2) + 1);
+	burst_idx = (burst_size == TCC_ADMA_BURST_CYCLE_4) ? 0 : 1;
 
 	return (dev_type == TCC_ADMA_I2S_9_1CH) ? dbth_tbl_9_1ch[burst_idx][ch_idx] :
 		   (dev_type == TCC_ADMA_I2S_7_1CH) ? dbth_tbl_7_1ch[burst_idx][ch_idx] : dbth_tbl_2ch[burst_idx][ch_idx];
@@ -438,14 +445,15 @@ static int tcc_adma_i2s_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	int channels = params_channels(params);
-	size_t period_bytes = params_period_bytes(params);
-	size_t buffer_bytes = params_buffer_bytes(params);
+	uint32_t channels = params_channels(params);
+	uint32_t period_bytes = params_period_bytes(params);
+	uint32_t buffer_bytes = params_buffer_bytes(params);
 	snd_pcm_format_t format = params_format(params);
-	bool mono_mode = (channels == 1) ? true : false;
+	bool mono_mode = (channels == 1u) ? TRUE : FALSE;
 	bool multi_ch;
 	uint32_t dbth;
 	int ret;
+	bool adrcnt_mode;
 
 	TCC_ADMA_DATA_WIDTH data_width;
 	TCC_ADMA_MULTI_CH_MODE multi_mode;
@@ -456,11 +464,11 @@ static int tcc_adma_i2s_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	unsigned int elapsed_usecs;
 #endif
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] format : 0x%08x\n", format);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] channels : 0x%08x\n", channels);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] format : 0x%08x\n", format);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] channels : 0x%08x\n", channels);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
 
 #if	(CHECK_ADMA_HW_PARAM_ELAPSED_TIME == 1)
 	do_gettimeofday(&start);
@@ -468,37 +476,39 @@ static int tcc_adma_i2s_pcm_hw_params(struct snd_pcm_substream *substream, struc
 
 	data_width = (format == SNDRV_PCM_FORMAT_S24_LE) ? TCC_ADMA_DATA_WIDTH_24 : TCC_ADMA_DATA_WIDTH_16;
 
-	memset(substream->dma_buffer.area, 0, buffer_bytes);
+	(void) memset(substream->dma_buffer.area, 0, buffer_bytes);
+
+	adrcnt_mode = adma_pcm->adrcnt_mode > (uint32_t) 0 ? TRUE : FALSE;
 
 	if(dev_type == TCC_ADMA_I2S_9_1CH) {
-		multi_ch = false;
-		multi_mode = (channels < 3) ? TCC_ADMA_MULTI_CH_MODE_7_1 :
-					 (channels < 5) ? TCC_ADMA_MULTI_CH_MODE_3_1 :
-					 (channels < 7) ? TCC_ADMA_MULTI_CH_MODE_5_1_012 :
-					 (channels < 9) ? TCC_ADMA_MULTI_CH_MODE_5_1_013 : TCC_ADMA_MULTI_CH_MODE_7_1;
+		multi_ch = FALSE;
+		multi_mode = (channels < 3u) ? TCC_ADMA_MULTI_CH_MODE_7_1 :
+					 (channels < 5u) ? TCC_ADMA_MULTI_CH_MODE_3_1 :
+					 (channels < 7u) ? TCC_ADMA_MULTI_CH_MODE_5_1_012 :
+					 (channels < 9u) ? TCC_ADMA_MULTI_CH_MODE_5_1_013 : TCC_ADMA_MULTI_CH_MODE_7_1;
 	} else {
-		multi_ch = (channels > 2) ? true : false;
+		multi_ch = (channels > 2u) ? TRUE : FALSE;
 		multi_mode = TCC_ADMA_MULTI_CH_MODE_7_1;
 	}
 	
 	dbth = tcc_adma_get_dbth_value(channels, dev_type, CFG_DAI_BURST_CYCLE, tdm_mode);
 
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		ret = tcc_adma_set_dai_tx_dma_buffer(adma_pcm->adma_reg, substream->dma_buffer.addr, 
-			adma_pcm->mono_play.addr, buffer_bytes, period_bytes, data_width, CFG_DAI_BURST_CYCLE,
-			mono_mode, adma_pcm->adrcnt_mode);
+		ret = tcc_adma_set_dai_tx_dma_buffer(adma_pcm->adma_reg, (uint32_t) substream->dma_buffer.addr,
+			(uint32_t) adma_pcm->mono_play.addr, (int32_t)buffer_bytes, (int32_t)period_bytes, data_width, CFG_DAI_BURST_CYCLE,
+			mono_mode, adrcnt_mode);
 		if(ret < 0) {
-			printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] set dma out buffer : fail\n");
+			(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] set dma out buffer : fail\n");
 			return ret;
 		}
 
 		tcc_adma_set_dai_tx_multi_ch(adma_pcm->adma_reg, multi_ch, multi_mode);
 	} else {
-		ret = tcc_adma_set_dai_rx_dma_buffer(adma_pcm->adma_reg, substream->dma_buffer.addr, 
-			adma_pcm->mono_capture.addr, buffer_bytes, period_bytes, data_width, CFG_DAI_BURST_CYCLE,
-			mono_mode, adma_pcm->adrcnt_mode);
+		ret = tcc_adma_set_dai_rx_dma_buffer(adma_pcm->adma_reg, (uint32_t) substream->dma_buffer.addr,
+			(uint32_t) adma_pcm->mono_capture.addr, (int32_t)buffer_bytes, (int32_t)period_bytes, data_width, CFG_DAI_BURST_CYCLE,
+			mono_mode, adrcnt_mode);
 		if(ret < 0) {
-			printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] set dma out buffer : fail\n");
+			(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] set dma out buffer : fail\n");
 			return ret;
 		}
 
@@ -514,7 +524,7 @@ static int tcc_adma_i2s_pcm_hw_params(struct snd_pcm_substream *substream, struc
 	do_div(elapsed_usecs64, NSEC_PER_USEC);
 	elapsed_usecs = elapsed_usecs64;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adma hw_params's elapsed time : %03d usec\n", elapsed_usecs);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adma hw_params's elapsed time : %03d usec\n", elapsed_usecs);
 #endif
 
 	return 0;
@@ -525,28 +535,30 @@ static int tcc_adma_spdif_pcm_hw_params(struct snd_pcm_substream *substream, str
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	size_t period_bytes = params_period_bytes(params);
-	size_t buffer_bytes = params_buffer_bytes(params);
+	uint32_t period_bytes = params_period_bytes(params);
+	uint32_t buffer_bytes = params_buffer_bytes(params);
 	snd_pcm_format_t format = params_format(params);
 	TCC_ADMA_DATA_WIDTH data_width;
 	int ret;
+	bool adrcnt_mode;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] format : 0x%08x\n", format);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] format : 0x%08x\n", format);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
 
 	data_width = (format == SNDRV_PCM_FORMAT_S24_LE) ? TCC_ADMA_DATA_WIDTH_24 : TCC_ADMA_DATA_WIDTH_16;
 
-	memset(substream->dma_buffer.area, 0, buffer_bytes);
+	(void) memset(substream->dma_buffer.area, 0, buffer_bytes);
 
+	adrcnt_mode = adma_pcm->adrcnt_mode > (uint32_t) 0 ? TRUE : FALSE;
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		ret = tcc_adma_set_spdif_tx_dma_buffer(adma_pcm->adma_reg, substream->dma_buffer.addr, 
-				buffer_bytes, period_bytes, data_width, CFG_SPDIF_TX_BURST_CYCLE, adma_pcm->adrcnt_mode);
+		ret = tcc_adma_set_spdif_tx_dma_buffer(adma_pcm->adma_reg, (uint32_t) substream->dma_buffer.addr,
+				(int32_t)buffer_bytes, (int32_t)period_bytes, data_width, CFG_SPDIF_TX_BURST_CYCLE, adrcnt_mode);
 	} else {
 		tcc_adma_set_spdif_cdif_rx_path(adma_pcm->adma_reg, TCC_ADMA_SPDIF_CDIF_SEL_SPDIF);
-		ret = tcc_adma_set_spdif_cdif_rx_dma_buffer(adma_pcm->adma_reg, substream->dma_buffer.addr,
-				buffer_bytes, period_bytes, data_width, CFG_SPDIF_RX_BURST_CYCLE, adma_pcm->adrcnt_mode);
+		ret = tcc_adma_set_spdif_cdif_rx_dma_buffer(adma_pcm->adma_reg, (uint32_t) substream->dma_buffer.addr,
+				(int32_t)buffer_bytes, (int32_t)period_bytes, data_width, CFG_SPDIF_RX_BURST_CYCLE, adrcnt_mode);
 	}
 
 	return ret;
@@ -557,22 +569,25 @@ static int tcc_adma_cdif_pcm_hw_params(struct snd_pcm_substream *substream, stru
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	size_t period_bytes = params_period_bytes(params);
-	size_t buffer_bytes = params_buffer_bytes(params);
+	uint32_t period_bytes = params_period_bytes(params);
+	uint32_t buffer_bytes = params_buffer_bytes(params);
 	int ret;
+	bool adrcnt_mode;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] period_bytes : %u\n", period_bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] buffer_bytes : %u\n", buffer_bytes);
 
-	memset(substream->dma_buffer.area, 0, buffer_bytes);
+	(void) memset(substream->dma_buffer.area, 0, buffer_bytes);
+
+	adrcnt_mode = adma_pcm->adrcnt_mode > (uint32_t) 0 ? TRUE : FALSE;
 
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		ret = -1;
 	} else {
 		tcc_adma_set_spdif_cdif_rx_path(adma_pcm->adma_reg, TCC_ADMA_SPDIF_CDIF_SEL_CDIF);
-		ret = tcc_adma_set_spdif_cdif_rx_dma_buffer(adma_pcm->adma_reg, substream->dma_buffer.addr,
-				buffer_bytes, period_bytes, TCC_ADMA_DATA_WIDTH_16, CFG_CDIF_RX_BURST_CYCLE, adma_pcm->adrcnt_mode);
+		ret = tcc_adma_set_spdif_cdif_rx_dma_buffer(adma_pcm->adma_reg, (uint32_t) substream->dma_buffer.addr,
+				(int32_t)buffer_bytes, (int32_t)period_bytes, TCC_ADMA_DATA_WIDTH_16, CFG_CDIF_RX_BURST_CYCLE, adrcnt_mode);
 	}
 
 	return ret;
@@ -583,11 +598,12 @@ static int tcc_adma_pcm_hw_params(struct snd_pcm_substream *substream, struct sn
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
-	int ret = -1;
+	int ret;
 	unsigned long flags;
 
 	if(dma_info == NULL) {
-		return -EFAULT;
+		ret = -EFAULT;
+		return ret;
 	}
 
 	spin_lock_irqsave(&adma_pcm->lock, flags);
@@ -625,27 +641,31 @@ static int tcc_adma_i2s_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	bool ret;
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_STOP, PLAY\n");
-		tcc_adma_dai_tx_irq_enable(adma_pcm->adma_reg, false);
-		tcc_adma_dai_tx_dma_enable(adma_pcm->adma_reg, false);
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_STOP, PLAY\n");
+		tcc_adma_dai_tx_irq_enable(adma_pcm->adma_reg, FALSE);
+		tcc_adma_dai_tx_dma_enable(adma_pcm->adma_reg, FALSE);
+		ret = tcc_adma_dai_tx_dma_enable_check(adma_pcm->adma_reg);
+		while(ret) {
+			ret = tcc_adma_dai_tx_dma_enable_check(adma_pcm->adma_reg);
+		};
 
-		while(tcc_adma_dai_tx_dma_enable_check(adma_pcm->adma_reg) == true);
-
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_STOP, CAPTURE\n");
-		tcc_adma_dai_rx_irq_enable(adma_pcm->adma_reg, false);
-		tcc_adma_dai_rx_dma_enable(adma_pcm->adma_reg, false);
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_STOP, CAPTURE\n");
+		tcc_adma_dai_rx_irq_enable(adma_pcm->adma_reg, FALSE);
+		tcc_adma_dai_rx_dma_enable(adma_pcm->adma_reg, FALSE);
+		ret = tcc_adma_dai_rx_dma_enable_check(adma_pcm->adma_reg);
+		while(ret) {
+			ret = tcc_adma_dai_rx_dma_enable_check(adma_pcm->adma_reg);
+		}
 
-		while(tcc_adma_dai_rx_dma_enable_check(adma_pcm->adma_reg) == true);
-
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -658,20 +678,20 @@ static int tcc_adma_spdif_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_STOP, PLAY\n");
-		tcc_adma_spdif_tx_irq_enable(adma_pcm->adma_reg, false);
-		tcc_adma_spdif_tx_dma_enable(adma_pcm->adma_reg, false);
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_STOP, PLAY\n");
+		tcc_adma_spdif_tx_irq_enable(adma_pcm->adma_reg, FALSE);
+		tcc_adma_spdif_tx_dma_enable(adma_pcm->adma_reg, FALSE);
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_STOP, CAPTURE\n");
-		tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, false);
-		tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, false);
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_STOP, CAPTURE\n");
+		tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, FALSE);
+		tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, FALSE);
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -684,16 +704,16 @@ static int tcc_adma_cdif_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_STOP, PLAY\n");
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_STOP, PLAY\n");
 		return -EINVAL;
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_STOP, CAPTURE\n");
-		tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, false);
-		tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, false);
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_STOP, CAPTURE\n");
+		tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, FALSE);
+		tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, FALSE);
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -706,11 +726,11 @@ static int tcc_adma_pcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	int ret = -1;
+	int ret;
 	unsigned long flags;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
-	memset(substream->dma_buffer.area, 0, substream->dma_buffer.bytes);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) memset(substream->dma_buffer.area, 0, substream->dma_buffer.bytes);
 	snd_pcm_set_runtime_buffer(substream, NULL);
 
 	spin_lock_irqsave(&adma_pcm->lock, flags);
@@ -742,16 +762,16 @@ static int tcc_adma_i2s_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_PREPARE, PLAY\n");
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_PREPARE, PLAY\n");
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_PREPARE, CAPTURE\n");
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_PREPARE, CAPTURE\n");
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -764,16 +784,16 @@ static int tcc_adma_spdif_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_PREPARE, PLAY\n");
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_PREPARE, PLAY\n");
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_PREPARE, CAPTURE\n");
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_PREPARE, CAPTURE\n");
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -786,14 +806,14 @@ static int tcc_adma_cdif_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_PREPARE, PLAY\n");
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_PREPARE, PLAY\n");
 		return -EINVAL;
 	} else {
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_PREPARE, CAPTURE\n");
-		if (adma_pcm->have_hopcnt_clear_bit) {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_PREPARE, CAPTURE\n");
+		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
 	}
@@ -805,12 +825,12 @@ static int tcc_adma_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	int ret = -1;
+	int ret;
 	unsigned long flags;
 
 	spin_lock_irqsave(&adma_pcm->lock, flags);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 	switch (dma_info->dev_type) {
 		case TCC_ADMA_I2S_STEREO:
 		case TCC_ADMA_I2S_7_1CH:
@@ -837,21 +857,21 @@ static int tcc_adma_i2s_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	int ret = 0;
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_START, PLAY\n");
-				tcc_adma_dai_tx_irq_enable(adma_pcm->adma_reg, true);
-				tcc_adma_dai_tx_dma_enable(adma_pcm->adma_reg, true);
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_START, PLAY\n");
+				tcc_adma_dai_tx_irq_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_dai_tx_dma_enable(adma_pcm->adma_reg, TRUE);
 			} else {
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_START, CAPTURE\n");
-				tcc_adma_dai_rx_irq_enable(adma_pcm->adma_reg, true);
-				tcc_adma_dai_rx_dma_enable(adma_pcm->adma_reg, true);
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_START, CAPTURE\n");
+				tcc_adma_dai_rx_irq_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_dai_rx_dma_enable(adma_pcm->adma_reg, TRUE);
 			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
@@ -859,31 +879,33 @@ static int tcc_adma_i2s_pcm_trigger(struct snd_pcm_substream *substream, int cmd
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			break;
 		default:
-			return -EINVAL;
+			ret = -EINVAL;
+			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int tcc_adma_spdif_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
+	int ret = 0;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_START, PLAY\n");
-				tcc_adma_spdif_tx_irq_enable(adma_pcm->adma_reg, true);
-				tcc_adma_spdif_tx_dma_enable(adma_pcm->adma_reg, true);
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_START, PLAY\n");
+				tcc_adma_spdif_tx_irq_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_spdif_tx_dma_enable(adma_pcm->adma_reg, TRUE);
 			} else {
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_START, CAPTURE\n");
-				tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, true);
-				tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, true);
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_START, CAPTURE\n");
+				tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, TRUE);
 			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
@@ -891,30 +913,33 @@ static int tcc_adma_spdif_pcm_trigger(struct snd_pcm_substream *substream, int c
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			break;
 		default:
-			return -EINVAL;
+			ret = -EINVAL;
+			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int tcc_adma_cdif_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
+	int ret = 0;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_START, PLAY\n");
-				return -EINVAL;
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_START, PLAY\n");
+				ret = -EINVAL;
+				break;
 			} else {
-				printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_START, CAPTURE\n");
-				tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, true);
-				tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, true);
+				(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] CDIF_TRIGGER_START, CAPTURE\n");
+				tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_spdif_cdif_rx_dma_enable(adma_pcm->adma_reg, TRUE);
 			}
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
@@ -922,10 +947,11 @@ static int tcc_adma_cdif_pcm_trigger(struct snd_pcm_substream *substream, int cm
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			break;
 		default:
-			return -EINVAL;
+			ret= -EINVAL;
+			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int tcc_adma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -933,13 +959,14 @@ static int tcc_adma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tcc_adma_info *dma_info = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	int ret = -1;
 	unsigned long flags;
+	int ret;
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
 	if(dma_info == NULL) {
-		return -EFAULT;
+		ret = -EFAULT;
+		return ret;
 	}
 
 	spin_lock_irqsave(&adma_pcm->lock, flags);
@@ -972,23 +999,25 @@ static snd_pcm_uframes_t tcc_adma_i2s_pcm_pointer(struct snd_pcm_substream *subs
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	unsigned int dma_cur;
+	uint32_t dma_cur, base_cur;
 
-    if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
-		if (runtime->channels == 1) {
+	base_cur =  (uint32_t)(runtime->dma_addr & 0xffffffffu);
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (runtime->channels == 1u) {
 			dma_cur = tcc_adma_dai_tx_get_cur_mono_dma_addr(adma_pcm->adma_reg);
 		} else {
 			dma_cur = tcc_adma_dai_tx_get_cur_dma_addr(adma_pcm->adma_reg);
 		}
 	} else {
-		if (runtime->channels == 1) {
+		if (runtime->channels == 1u) {
 			dma_cur = tcc_adma_dai_rx_get_cur_mono_dma_addr(adma_pcm->adma_reg);
 		} else {
 			dma_cur = tcc_adma_dai_rx_get_cur_dma_addr(adma_pcm->adma_reg);
 		}
 	}
 
-	return bytes_to_frames(runtime, dma_cur - (uint32_t)(runtime->dma_addr & 0xffffffff));
+	return (snd_pcm_uframes_t)bytes_to_frames(runtime, (long)dma_cur - (long)base_cur);
 }
 
 static snd_pcm_uframes_t tcc_adma_spdif_pcm_pointer(struct snd_pcm_substream *substream)
@@ -996,15 +1025,17 @@ static snd_pcm_uframes_t tcc_adma_spdif_pcm_pointer(struct snd_pcm_substream *su
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	unsigned int dma_cur;
+	uint32_t dma_cur, base_cur;
 
-    if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
+	base_cur =  (uint32_t)(runtime->dma_addr & 0xffffffffu);
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		dma_cur = tcc_adma_spdif_tx_get_cur_dma_addr(adma_pcm->adma_reg);
 	} else {
 		dma_cur = tcc_adma_spdif_cdif_rx_get_cur_dma_addr(adma_pcm->adma_reg);
 	}
 
-	return bytes_to_frames(runtime, dma_cur - (uint32_t)(runtime->dma_addr & 0xffffffff));
+	return (snd_pcm_uframes_t)bytes_to_frames(runtime, (long)dma_cur - (long)base_cur);
 }
 
 static snd_pcm_uframes_t tcc_adma_cdif_pcm_pointer(struct snd_pcm_substream *substream)
@@ -1012,7 +1043,9 @@ static snd_pcm_uframes_t tcc_adma_cdif_pcm_pointer(struct snd_pcm_substream *sub
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t *)snd_soc_platform_get_drvdata(rtd->platform);
-	unsigned int dma_cur;
+	uint32_t dma_cur, base_cur;
+
+	base_cur =  (uint32_t)(runtime->dma_addr & 0xffffffffu);
 
     if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) { 
 		dma_cur = (unsigned int)0;
@@ -1020,7 +1053,7 @@ static snd_pcm_uframes_t tcc_adma_cdif_pcm_pointer(struct snd_pcm_substream *sub
 		dma_cur = tcc_adma_spdif_cdif_rx_get_cur_dma_addr(adma_pcm->adma_reg);
 	}
 
-	return bytes_to_frames(runtime, dma_cur - (uint32_t)(runtime->dma_addr & 0xffffffff));
+	return (snd_pcm_uframes_t)bytes_to_frames(runtime, (long)dma_cur - (long)base_cur);
 }
 
 static snd_pcm_uframes_t tcc_adma_pcm_pointer(struct snd_pcm_substream *substream)
@@ -1031,7 +1064,7 @@ static snd_pcm_uframes_t tcc_adma_pcm_pointer(struct snd_pcm_substream *substrea
 	snd_pcm_uframes_t ret;
 
 	if(dma_info == NULL) {
-		return bytes_to_frames(runtime, 0);
+		return (snd_pcm_uframes_t) bytes_to_frames(runtime, 0);
 	}
 
 	switch (dma_info->dev_type) {
@@ -1047,7 +1080,7 @@ static snd_pcm_uframes_t tcc_adma_pcm_pointer(struct snd_pcm_substream *substrea
 			ret = tcc_adma_cdif_pcm_pointer(substream);
 			break;
 		default:
-			ret = bytes_to_frames(runtime, 0);
+			ret = (snd_pcm_uframes_t) bytes_to_frames(runtime, 0);
 			break;
 	}
 
@@ -1070,57 +1103,59 @@ static struct snd_pcm_ops tcc_adma_pcm_ops = {
 static irqreturn_t tcc_adma_pcm_handler(int irq, void *dev_id)
 {
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)dev_id;
+	bool ret;
+	//(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
-	//printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
-
-	if (tcc_adma_dai_tx_irq_check(adma_pcm->adma_reg)) {
+	ret = tcc_adma_dai_tx_irq_check(adma_pcm->adma_reg);
+	if (ret) {
 		tcc_adma_dai_tx_irq_clear(adma_pcm->adma_reg);
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].playback_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_STEREO].playback_substream);
 		}
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_7_1CH].playback_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_7_1CH].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_7_1CH].playback_substream);
 		}
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_9_1CH].playback_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_9_1CH].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_9_1CH].playback_substream);
 		}
 	}
-
-	if (tcc_adma_dai_rx_irq_check(adma_pcm->adma_reg)) {
+	ret = tcc_adma_dai_rx_irq_check(adma_pcm->adma_reg);
+	if (ret) {
 		tcc_adma_dai_rx_irq_clear(adma_pcm->adma_reg);
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].capture_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_STEREO].capture_substream);
 		}
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_7_1CH].capture_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_7_1CH].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_7_1CH].capture_substream);
 		}
 
-		if (adma_pcm->dev[TCC_ADMA_I2S_9_1CH].capture_substream) {
+		if (adma_pcm->dev[TCC_ADMA_I2S_9_1CH].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_9_1CH].capture_substream);
 		}
 	}
 
-	if (tcc_adma_spdif_tx_irq_check(adma_pcm->adma_reg)) {
+	ret = tcc_adma_spdif_tx_irq_check(adma_pcm->adma_reg);
+	if (ret) {
 		tcc_adma_spdif_tx_irq_clear(adma_pcm->adma_reg);
 
-		if (adma_pcm->dev[TCC_ADMA_SPDIF].playback_substream) {
+		if (adma_pcm->dev[TCC_ADMA_SPDIF].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_SPDIF].playback_substream);
 		}
 	}
-
-	if (tcc_adma_spdif_cdif_rx_irq_check(adma_pcm->adma_reg)) {
+	ret = tcc_adma_spdif_cdif_rx_irq_check(adma_pcm->adma_reg);
+	if (ret) {
 		tcc_adma_spdif_cdif_rx_irq_clear(adma_pcm->adma_reg);
 
-		if (adma_pcm->dev[TCC_ADMA_SPDIF].capture_substream) {
+		if (adma_pcm->dev[TCC_ADMA_SPDIF].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_SPDIF].capture_substream);
 		} 
 
-		if (adma_pcm->dev[TCC_ADMA_CDIF].capture_substream) {
+		if (adma_pcm->dev[TCC_ADMA_CDIF].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_CDIF].capture_substream);
 		}
 	}
@@ -1133,28 +1168,25 @@ static int tcc_adma_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_card *card = rtd->card->snd_card;
 	struct snd_pcm *pcm	= rtd->pcm;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)snd_soc_platform_get_drvdata(rtd->platform);
+	u64 bit_mask =	(1ULL<<32)-1ULL;
 	int ret;
 
-	ret = dma_coerce_mask_and_coherent(card->dev, DMA_BIT_MASK(32));
-	if (ret) {
+	ret = dma_coerce_mask_and_coherent(card->dev, bit_mask);
+	if (ret < 0) {
 		return ret;
 	}
 
 	ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, card->dev, MAX_BUFFER_BYTES, &adma_pcm->mono_play);
-	if (ret) {
+	if (ret != 0) {
 		return ret;
 	}
 	ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, card->dev, MAX_BUFFER_BYTES, &adma_pcm->mono_capture);
-	if (ret) {
+	if (ret != 0) {
 		snd_dma_free_pages(&adma_pcm->mono_play);
 		return ret;
 	}
-
-	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
-			card->dev, MAX_BUFFER_BYTES, MAX_BUFFER_BYTES);
-	if (ret) {
-		return ret;
-	}
+	(void) snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
+						card->dev, MAX_BUFFER_BYTES, MAX_BUFFER_BYTES);
 
     return 0;
 }
@@ -1164,7 +1196,7 @@ static void tcc_adma_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)snd_soc_platform_get_drvdata(rtd->platform);
 
-	snd_pcm_lib_preallocate_free_for_all(pcm);
+	(void) snd_pcm_lib_preallocate_free_for_all(pcm);
 
 	snd_dma_free_pages(&adma_pcm->mono_play);
 	snd_dma_free_pages(&adma_pcm->mono_capture);
@@ -1182,10 +1214,11 @@ static int parse_pcm_dt(struct platform_device *pdev, struct tcc_adma_pcm_t *adm
 	adma_pcm->pdev = pdev;
 
 	adma_pcm->adma_reg = of_iomap(pdev->dev.of_node, 0);
-	if (IS_ERR((void *)adma_pcm->adma_reg))
+	if (IS_ERR(adma_pcm->adma_reg)) {
 		adma_pcm->adma_reg = NULL;
-	else
-		printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adma_reg=%p\n", adma_pcm->adma_reg);
+	} else {
+		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adma_reg=%p\n", adma_pcm->adma_reg);
+	}
 
 	adma_pcm->adma_irq = platform_get_irq(pdev, 0);
 
@@ -1194,11 +1227,11 @@ static int parse_pcm_dt(struct platform_device *pdev, struct tcc_adma_pcm_t *adm
 		return -EINVAL;
 	}
 
-	of_property_read_u32(pdev->dev.of_node, "have-hopcnt-clear", &adma_pcm->have_hopcnt_clear_bit);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] have_hopcnt_clear_bit : %u\n", adma_pcm->have_hopcnt_clear_bit);
+	(void) of_property_read_u32(pdev->dev.of_node, "have-hopcnt-clear", &adma_pcm->have_hopcnt_clear_bit);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] have_hopcnt_clear_bit : %u\n", adma_pcm->have_hopcnt_clear_bit);
 
-	of_property_read_u32(pdev->dev.of_node, "adrcnt-mode", &adma_pcm->adrcnt_mode);
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adrcnt_mode : %u\n", adma_pcm->adrcnt_mode);
+	(void) of_property_read_u32(pdev->dev.of_node, "adrcnt-mode", &adma_pcm->adrcnt_mode);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] adrcnt_mode : %u\n", adma_pcm->adrcnt_mode);
 
 	return 0;
 }
@@ -1217,36 +1250,42 @@ static int tcc_adma_pcm_resume(struct platform_device *pdev)
 
 static int tcc_adma_pcm_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	int ret;
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)devm_kzalloc(&pdev->dev, sizeof(struct tcc_adma_pcm_t), GFP_KERNEL);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
-	memset(adma_pcm, 0, sizeof(struct tcc_adma_pcm_t));
+	if(adma_pcm == NULL) {
+		(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : Fail to alloc adma_pcm dt\n", __func__);
+		return -ENOMEM;
+	}
 
-	if ((ret = parse_pcm_dt(pdev, adma_pcm)) < 0) {
-		printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : Fail to parse adma_pcm dt\n", __func__);
+	(void) memset(adma_pcm, 0, sizeof(struct tcc_adma_pcm_t));
+	ret = parse_pcm_dt(pdev, adma_pcm);
+
+	if (ret != 0) {
+		(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : Fail to parse adma_pcm dt\n", __func__);
 		return ret;
 	}
 
 	spin_lock_init(&adma_pcm->lock);
 
-	clk_prepare_enable(adma_pcm->adma_hclk);
+	(void) clk_prepare_enable(adma_pcm->adma_hclk);
 
 	platform_set_drvdata(pdev, adma_pcm);
 
-	ret = devm_request_irq(&pdev->dev, adma_pcm->adma_irq, tcc_adma_pcm_handler, IRQF_TRIGGER_HIGH, "adma-pcm", adma_pcm);
-	if (ret) {
-		printk(KERN_ERR "[ERROR][AUDIO_DMA] %s - devm_request_irq failed\n", __func__);
+	ret = devm_request_irq(&pdev->dev, (uint32_t) adma_pcm->adma_irq, tcc_adma_pcm_handler, IRQF_TRIGGER_HIGH, "adma-pcm", adma_pcm);
+	if (ret != 0) {
+		(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s - devm_request_irq failed\n", __func__);
 		return ret;
 	}
 
 	ret = snd_soc_register_platform(&pdev->dev, &tcc_adma_pcm_platform);
 	if (ret < 0) {
-		printk(KERN_ERR "[ERROR][AUDIO_DMA] tcc_adma_pcm_platform_register failed\n");
+		(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] tcc_adma_pcm_platform_register failed\n");
 		return ret;
 	}
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] tcc_adma_pcm_platform_register success\n");
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] tcc_adma_pcm_platform_register success\n");
 
 	return ret;
 }
@@ -1255,9 +1294,9 @@ static int tcc_adma_pcm_remove(struct platform_device *pdev)
 {
 	struct tcc_adma_pcm_t *adma_pcm = (struct tcc_adma_pcm_t*)platform_get_drvdata(pdev);
 
-	printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
+	(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] %s\n", __func__);
 
-	devm_free_irq(&pdev->dev, adma_pcm->adma_irq, adma_pcm);
+	devm_free_irq(&pdev->dev, (uint32_t) adma_pcm->adma_irq, adma_pcm);
 
 	devm_kfree(&pdev->dev, adma_pcm);
 
@@ -1266,7 +1305,7 @@ static int tcc_adma_pcm_remove(struct platform_device *pdev)
 
 static struct of_device_id tcc_adma_pcm_of_match[] = {
 	{ .compatible = "telechips,adma" },
-	{}
+	{ .compatible = ""}
 };
 MODULE_DEVICE_TABLE(of, tcc_adma_pcm_of_match);
 
