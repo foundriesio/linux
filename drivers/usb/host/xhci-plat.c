@@ -339,7 +339,7 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	{
 		ret = device_create_file(&pdev->dev, &dev_attr_xhci_tpl_support);
 		if (ret < 0) {
-			printk(KERN_ERR "Cannot register USB TPL Support attributes: %d\n",
+			printk(KERN_ERR "[ERROR][USB] Cannot register USB TPL Support attributes: %d\n",
 					ret);
 			goto put_usb3_hcd;
 		}

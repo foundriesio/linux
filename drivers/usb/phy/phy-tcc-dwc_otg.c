@@ -71,19 +71,19 @@ static int dwc_otg_vbus_set(struct usb_phy *phy, int on_off)
 	int retval = 0;
 
 	if (!phy_dev->vbus_gpio) {
-		printk("dwc_otg vbus ctrl disable.\n");
+		printk("[INFO][USB] dwc_otg vbus ctrl disable.\n");
 		return -1;
 	}
 
 	retval = gpio_request(phy_dev->vbus_gpio, "vbus_gpio_phy");
 	if(retval) {
-		dev_err(phy->dev, "can't requeest vbus gpio\n");
+		dev_err(phy->dev, "[ERROR][USB] can't requeest vbus gpio\n");
 		return retval;
 	}
 
 	retval = gpio_direction_output(phy_dev->vbus_gpio, on_off);
 	if(retval) {
-		dev_err(phy_dev->dev, "can't enable vbus (gpio ctrl err)\n");
+		dev_err(phy_dev->dev, "[ERROR][USB] can't enable vbus (gpio ctrl err)\n");
 		return retval;
 	}
 
@@ -124,7 +124,7 @@ static int tcc_dwc_otg_set_dc_level(struct usb_phy *phy, unsigned int level)
 	BITCSET(pcfg1_val, PCFG1_TXVRT_MASK, level << PCFG1_TXVRT_SHIFT);
 	writel(pcfg1_val, &dwc_otg_pcfg->pcfg1);
 
-	printk("cur dc level = %d\n", get_txvrt(pcfg1_val));
+	printk("[INFO][USB] cur dc level = %d\n", get_txvrt(pcfg1_val));
 
 	return 0;
 }
@@ -155,7 +155,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	struct dwc_otg_phy_reg	*dwc_otg_pcfg = (struct dwc_otg_phy_reg*)dwc_otg_phy_dev->base;
 	int i;
 
-	printk("dwc_otg PHY init\n");
+	printk("[INFO][USB] dwc_otg PHY init\n");
 	clk_reset(dwc_otg_phy_dev->hclk, 1);
 #if defined (CONFIG_TCC_DWC_OTG_HOST_MUX) || defined (CONFIG_USB_DWC2_TCC_MUX)
 	{
@@ -220,7 +220,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 		i++;
 		udelay(5);
 	}
-	printk("OTG PHY valid check %s\x1b[0m\n",i>=9999?"fail!":"pass.");
+	printk("[INFO][USB] OTG PHY valid check %s\x1b[0m\n",i>=9999?"fail!":"pass.");
 
 	//disable PHYVALID_EN -> no irq
 	writel(readl(&dwc_otg_pcfg->pcfg0) & ~(1<<20), &dwc_otg_pcfg->pcfg0);
@@ -244,7 +244,7 @@ int tcc_dwc_otg_phy_init(struct usb_phy *phy)
 #endif
 #if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
 	tcc_dwc_otg_set_dc_level(phy, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
-	printk("pcfg1: 0x%x txvrt: 0x%x\n",dwc_otg_pcfg->pcfg1,CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
+	printk("[INFO][USB] pcfg1: 0x%x txvrt: 0x%x\n",dwc_otg_pcfg->pcfg1,CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
 	clk_reset(dwc_otg_phy_dev->hclk, 0);
 
@@ -264,14 +264,14 @@ static int tcc_dwc_otg_set_phy_state(struct usb_phy *phy, int state)
 
 	if (state == USBPHY_MODE_START) {
 		BITCLR(dwc_otg_pcfg->pcfg0, (USBOTG_PCFG0_PHY_POR|USBOTG_PCFG0_SDI));
-		printk("dwc_otg PHY start\n");
+		printk("[INFO][USB] dwc_otg PHY start\n");
 		state = USBPHY_MODE_ON;
 	} else if (state == USBPHY_MODE_STOP) {
 		BITSET(dwc_otg_pcfg->pcfg0, (USBOTG_PCFG0_PHY_POR|USBOTG_PCFG0_SDI));
-		printk("dwc_otg PHY stop\n");
+		printk("[INFO][USB] dwc_otg PHY stop\n");
 		state = USBPHY_MODE_OFF;
 	} else {
-		printk("\x1b[1;31m[%s:%d]bad argument\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d]bad argument\x1b[0m\n", __func__, __LINE__);
 		state = -1;
 	}
 
@@ -290,7 +290,7 @@ static int tcc_dwc_otg_set_vbus_resource(struct usb_phy *phy)
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
 		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
 		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 			return -ENODEV;
 		}
 	} else {
@@ -313,7 +313,7 @@ static int tcc_dwc_otg_create_phy(struct device *dev, struct tcc_dwc_otg_device 
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
 		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
 		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 			return -ENODEV;
 		}
 	} else {
@@ -364,7 +364,7 @@ static int tcc_dwc_otg_phy_probe(struct platform_device *pdev)
 	struct tcc_dwc_otg_device *phy_dev;
 	int retval;
 
-	printk("%s:%s\n",pdev->dev.kobj.name, __func__);
+	printk("[INFO][USB] %s:%s\n",pdev->dev.kobj.name, __func__);
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
 
 	retval = tcc_dwc_otg_create_phy(dev, phy_dev);
@@ -374,7 +374,7 @@ static int tcc_dwc_otg_phy_probe(struct platform_device *pdev)
 	if (!request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
 				"dwc_otg_phy")) {
-		dev_dbg(&pdev->dev, "error reserving mapped memory\n");
+		dev_dbg(&pdev->dev, "[DEBUG][USB] error reserving mapped memory\n");
 		retval = -EFAULT;
 	}
 	phy_dev->base = (void __iomem*)ioremap_nocache((resource_size_t)pdev->resource[0].start,
@@ -386,7 +386,7 @@ static int tcc_dwc_otg_phy_probe(struct platform_device *pdev)
 
 	retval = usb_add_phy_dev(&phy_dev->phy);
 	if (retval) {
-		dev_err(&pdev->dev, "usb_add_phy failed\n");
+		dev_err(&pdev->dev, "[ERROR][USB] usb_add_phy failed\n");
 		return retval;
 	}
 
@@ -426,7 +426,7 @@ static int __init tcc_dwc_otg_phy_drv_init(void)
 
 	retval = platform_driver_register(&tcc_dwc_otg_phy_driver);
 	if (retval < 0)
-		printk(KERN_ERR "%s retval=%d\n", __func__, retval);
+		printk(KERN_ERR "[ERROR][USB] %s retval=%d\n", __func__, retval);
 
 	return retval;
 }

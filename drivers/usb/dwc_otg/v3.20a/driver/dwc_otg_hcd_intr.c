@@ -1983,7 +1983,7 @@ static void handle_hc_chhltd_intr_dma(dwc_otg_hcd_t * hcd,
 	} else if (hcint.b.xcs_xact && hcd->core_if->dma_desc_enable) {
 		handle_hc_xacterr_intr(hcd, hc, hc_regs, qtd);
 	} else if (hcint.b.ahberr && hcd->core_if->dma_desc_enable) {
-		printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 		handle_hc_ahberr_intr(hcd, hc, hc_regs, qtd);
 	} else if (hcint.b.bblerr) {
 		handle_hc_babble_intr(hcd, hc, hc_regs, qtd);
@@ -2128,7 +2128,7 @@ int32_t dwc_otg_hcd_handle_hc_n_intr(dwc_otg_hcd_t * dwc_otg_hcd, uint32_t num)
 		retval |= handle_hc_chhltd_intr(dwc_otg_hcd, hc, hc_regs, qtd);
 	}
 	if (hcint.b.ahberr) {
-		printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 		retval |= handle_hc_ahberr_intr(dwc_otg_hcd, hc, hc_regs, qtd);
 	}
 	if (hcint.b.stall) {

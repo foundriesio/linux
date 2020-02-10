@@ -125,7 +125,7 @@ static void ehci_platform_power_off(struct platform_device *dev)
 	for (phy_num = 0; phy_num < priv->num_phys; phy_num++) {
 		phy_power_off(priv->phys[phy_num]);
 		phy_exit(priv->phys[phy_num]);
-		dev_info(&dev->dev, "phy_exit(priv->phys[%d]\n", phy_num);
+		dev_info(&dev->dev, "[INFO][USB] phy_exit(priv->phys[%d]\n", phy_num);
 	}
 
 	for (clk = EHCI_MAX_CLKS - 1; clk >= 0; clk--)
@@ -170,13 +170,13 @@ static int ehci_platform_probe(struct platform_device *dev)
 	err = dma_coerce_mask_and_coherent(&dev->dev,
 		pdata->dma_mask_64 ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32));
 	if (err) {
-		dev_err(&dev->dev, "Error: DMA mask configuration failed\n");
+		dev_err(&dev->dev, "[ERROR][USB] Error: DMA mask configuration failed\n");
 		return err;
 	}
 
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
-		dev_err(&dev->dev, "no irq provided");
+		dev_err(&dev->dev, "[ERROR][USB] no irq provided");
 		return irq;
 	}
 
@@ -271,7 +271,7 @@ static int ehci_platform_probe(struct platform_device *dev)
 #ifndef CONFIG_USB_EHCI_BIG_ENDIAN_MMIO
 	if (ehci->big_endian_mmio) {
 		dev_err(&dev->dev,
-			"Error: CONFIG_USB_EHCI_BIG_ENDIAN_MMIO not set\n");
+			"[ERROR][USB] Error: CONFIG_USB_EHCI_BIG_ENDIAN_MMIO not set\n");
 		err = -EINVAL;
 		goto err_reset;
 	}
@@ -279,7 +279,7 @@ static int ehci_platform_probe(struct platform_device *dev)
 #ifndef CONFIG_USB_EHCI_BIG_ENDIAN_DESC
 	if (ehci->big_endian_desc) {
 		dev_err(&dev->dev,
-			"Error: CONFIG_USB_EHCI_BIG_ENDIAN_DESC not set\n");
+			"[ERROR][USB] Error: CONFIG_USB_EHCI_BIG_ENDIAN_DESC not set\n");
 		err = -EINVAL;
 		goto err_reset;
 	}
@@ -300,7 +300,7 @@ static int ehci_platform_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 	#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-	printk("%s : tpl_support!!\n", __func__);
+	printk("[INFO][USB] %s : tpl_support!!\n", __func__);
 	hcd->tpl_support = 1;
 	#endif
 
@@ -453,7 +453,7 @@ static int __init ehci_platform_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
-	pr_info("%s: " DRIVER_DESC "\n", hcd_name);
+	pr_info("[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
 
 	ehci_init_driver(&ehci_platform_hc_driver, &platform_overrides);
 	return platform_driver_register(&ehci_platform_driver);

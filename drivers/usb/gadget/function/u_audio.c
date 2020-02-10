@@ -134,7 +134,7 @@ static void f_uac2_work_reset(struct work_struct *data)
 	struct snd_uac_chip *uac2 = container_of(data, struct snd_uac_chip, work_reset);
 	u_audio_stop_capture(uac2->audio_dev);
 	u_audio_start_capture(uac2->audio_dev);
-	pr_info("[UAC2] %s : reset!!\n", __func__);
+	pr_info("[INFO][USB] [UAC2] %s : reset!!\n", __func__);
 }
 
 static int f_uac2_reset_monitor_thread(void *w)
@@ -159,7 +159,7 @@ static int f_uac2_reset_monitor_thread(void *w)
 	}
 
 	suc->thread_reset = NULL;
-	pr_info("%s : thread termination\n", __func__);
+	pr_info("[INFO][USB] %s : thread termination\n", __func__);
 }
 
 static void f_uac2_work_reset_while(struct work_struct *data)
@@ -177,7 +177,7 @@ static void f_uac2_work_reset_while(struct work_struct *data)
 			uac2->thread_reset = NULL;
 		}
 	}
-	pr_info("%s : termination while loop\n", __func__);
+	pr_info("[INFO][USB] %s : termination while loop\n", __func__);
 }
 
 #endif
@@ -223,19 +223,19 @@ static void f_uac2_capture_pcm (void)
     set_fs(KERNEL_DS);
 
     /* open a file */
-    printk("\x1b[1;33m[uac2 debug]Start capturing pcm data | (%susb_pcm.wav)\x1b[0m\n", dump_path);
+    printk("[INFO][USB] \x1b[1;33m[uac2 debug]Start capturing pcm data | (%susb_pcm.wav)\x1b[0m\n", dump_path);
     sprintf(filename, "%s%s", dump_path, "usb_pcm.wav");
     filp = filp_open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
     if (IS_ERR(filp)) {
-      printk("[uac2 debug] open error\n");
+      printk("[INFO][USB] [uac2 debug] open error\n");
     } else {
-      printk("[uac2 debug] open success\n");
+      printk("[INFO][USB] [uac2 debug] open success\n");
     }
 
     /* write example */
-    printk("[uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
+    printk("[INFO][USB] [uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
     vfs_write(filp, usb_buffer->buf, pcm_buff_size, &filp->f_pos);
-    printk("[uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
+    printk("[INFO][USB] [uac2 debug] filp->f_pos = %d\n", (int)filp->f_pos);
     filp_close(filp, NULL);  /* filp_close(filp, current->files) ?  */
     /* restore kernel memory setting */
     set_fs(old_fs);
@@ -272,7 +272,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
             usb_buffer->actual += req->actual;
         } else {
             capture_pcm = 0;
-            printk("[uac2 debug] end buffring!\n");
+            printk("[INFO][USB] [uac2 debug] end buffring!\n");
             schedule_work(&uac->work_capture);
         }
     }
@@ -283,7 +283,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 #endif
 	/* i/f shutting down */
 	if (!prm->ep_enabled || req->status == -ESHUTDOWN) {
-		pr_debug("%s : i/f shutting down\n", __func__);
+		pr_debug("[DEBUG][USB] %s : i/f shutting down\n", __func__);
 		return;
 	}
 	/*
@@ -291,14 +291,14 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	 * Afterall, the ISOCH xfers could fail legitimately.
 	 */
 	if (status)
-		pr_debug("%s: iso_complete status(%d) %d/%d\n",
+		pr_debug("[DEBUG][USB] %s: iso_complete status(%d) %d/%d\n",
 			__func__, status, req->actual, req->length);
 
 	substream = prm->ss;
 
 	/* Do nothing if ALSA isn't active */
 	if (!substream) {
-		pr_debug("%s : Do nothing if ALSA isn't active\n", __func__);
+		pr_debug("[DEBUG][USB] %s : Do nothing if ALSA isn't active\n", __func__);
 		goto exit;
 	}
 
@@ -357,7 +357,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	//if (complete_count % 1000 == 0 || complete_count == 1) {
 	if (1) {
 		tmp_pkt = (int *)req->buf;
-		printk(KERN_DEBUG "[UAC2] %s : prm->hw_ptr - %d, prm->period_size - %d , req->actual - %d, pending - %d, period_size - %d, tmp_pkt = 0x%08x, req->length = %d\n", 
+		printk(KERN_DEBUG "[DEBUG][USB] [UAC2] %s : prm->hw_ptr - %d, prm->period_size - %d , req->actual - %d, pending - %d, period_size - %d, tmp_pkt = 0x%08x, req->length = %d\n", 
 					 __func__, prm->hw_ptr, prm->period_size, req->actual, pending, prm->period_size, tmp_pkt[0], req->length);
 	}
 #endif
@@ -399,14 +399,14 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 
 	if ((hw_ptr % snd_pcm_lib_period_bytes(substream)) < req->actual) {
 #ifdef CONFIG_UAC20_DEBUG_ENABLE
-		printk(KERN_DEBUG "[UAC2] %s : hw_ptr = %d\n", __func__, hw_ptr);
+		printk(KERN_DEBUG "[DEBUG][USB] [UAC2] %s : hw_ptr = %d\n", __func__, hw_ptr);
 #endif
 		snd_pcm_period_elapsed(substream);
 	}
 
 exit:
 	if (usb_ep_queue(ep, req, GFP_ATOMIC))
-		dev_err(uac->card->dev, "%d Error!\n", __LINE__);
+		dev_err(uac->card->dev, "[ERROR][USB] %d Error!\n", __LINE__);
 }
 
 static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
@@ -427,7 +427,7 @@ static int uac_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	else
 		prm = &uac->c_prm;
 
-	printk("[UAC2]%s : cmd = %d\n", __func__, cmd);
+	printk("[INFO][USB] [UAC2]%s : cmd = %d\n", __func__, cmd);
 	spin_lock_irqsave(&prm->lock, flags);
 
 	/* Reset */
@@ -595,7 +595,7 @@ static inline void free_ep(struct uac_rtd_params *prm, struct usb_ep *ep)
 	}
 
 	if (usb_ep_disable(ep))
-		dev_err(uac->card->dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(uac->card->dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 }
 
 
@@ -635,7 +635,7 @@ int u_audio_start_capture(struct g_audio *audio_dev)
 		}
 
 		if (usb_ep_queue(ep, prm->ureq[i].req, GFP_ATOMIC))
-			dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 	}
 
 	return 0;
@@ -711,7 +711,7 @@ int u_audio_start_playback(struct g_audio *audio_dev)
 		}
 
 		if (usb_ep_queue(ep, prm->ureq[i].req, GFP_ATOMIC))
-			dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 	}
 
 	return 0;

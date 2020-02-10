@@ -443,7 +443,7 @@ dwc_otg_device_t *otg_dev = dwc_otg_drvdev(_dev);
 	if (offset < SZ_256K) {
 		otg_dev->os_dep.reg_offset = offset;
 	} else {
-		dev_err(_dev, "invalid offset\n");
+		dev_err(_dev, "[ERROR][USB] invalid offset\n");
 	}
 
 	return count;
@@ -473,7 +473,7 @@ dwc_otg_device_t *otg_dev = dwc_otg_drvdev(_dev);
 				"Reg@0x%06x = 0x%08x\n", otg_dev->os_dep.reg_offset,
 				val);
 	} else {
-		dev_err(_dev, "Invalid offset (0x%0x)\n", otg_dev->os_dep.reg_offset);
+		dev_err(_dev, "[ERROR][USB] Invalid offset (0x%0x)\n", otg_dev->os_dep.reg_offset);
 		return sprintf(buf, "invalid offset\n");
 	}
 }
@@ -491,14 +491,14 @@ dwc_otg_device_t *otg_dev = dwc_otg_drvdev(_dev);
 
 	volatile uint32_t *addr;
 	uint32_t val = simple_strtoul(buf, NULL, 16);
-	//dev_dbg(_dev, "Offset=0x%08x Val=0x%08x\n", otg_dev->reg_offset, val);
+	//dev_dbg(_dev, "[DEBUG][USB] Offset=0x%08x Val=0x%08x\n", otg_dev->reg_offset, val);
 	if (otg_dev->os_dep.reg_offset != 0xFFFFFFFF && 0 != otg_dev->os_dep.base) {
 		/* Calculate the address */
 		addr = (uint32_t *) (otg_dev->os_dep.reg_offset +
 				     (uint8_t *) otg_dev->os_dep.base);
 		DWC_WRITE_REG32(addr, val);
 	} else {
-		dev_err(_dev, "Invalid Register Offset (0x%08x)\n",
+		dev_err(_dev, "[ERROR][USB] Invalid Register Offset (0x%08x)\n",
 			otg_dev->os_dep.reg_offset);
 	}
 	return count;
@@ -935,7 +935,7 @@ dwc_otg_device_t *otg_dev = dwc_otg_drvdev(_dev);
 	int time;
 	int start_jiffies;
 
-	printk("HZ %d, MSEC_PER_JIFFIE %d, loops_per_jiffy %lu\n",
+	printk("[INFO][USB] HZ %d, MSEC_PER_JIFFIE %d, loops_per_jiffy %lu\n",
 	       HZ, MSEC_PER_JIFFIE, loops_per_jiffy);
 	start_jiffies = jiffies;
 	for (i = 0; i < RW_REG_COUNT; i++) {
@@ -963,7 +963,7 @@ dwc_otg_device_t *otg_dev = dwc_otg_drvdev(_dev);
 	int time;
 	int start_jiffies;
 
-	printk("HZ %d, MSEC_PER_JIFFIE %d, loops_per_jiffy %lu\n",
+	printk("[INFO][USB] HZ %d, MSEC_PER_JIFFIE %d, loops_per_jiffy %lu\n",
 	       HZ, MSEC_PER_JIFFIE, loops_per_jiffy);
 	reg_val = dwc_otg_get_gnptxfsiz(otg_dev->core_if);
 	start_jiffies = jiffies;
@@ -1237,16 +1237,16 @@ static ssize_t dwc_pcfg1_store(struct device *_dev,
 	int i;
 
 	if(count - 1 < 10 || 10 < count - 1 ) {
-		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 	if((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
@@ -1256,20 +1256,20 @@ static ssize_t dwc_pcfg1_store(struct device *_dev,
 			(buf[i]>='A'&&buf[i]<='F') )
 			continue;
 		else {
-			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
 				buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("USB20H_PCFG1 = 0x%08X\n", old_reg);
+	printk("[INFO][USB] USB20H_PCFG1 = 0x%08X\n", old_reg);
 	tcc_phy->pcfg1 = new_reg;
 	new_reg = tcc_phy->pcfg1;
 
 	dwc_pcfg1_display(old_reg,new_reg,str);
-	printk("%sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
+	printk("[INFO][USB] %sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
 
 	return count;
 }
@@ -1352,16 +1352,16 @@ static ssize_t dwc_host_mux_pcfg1_store(struct device *_dev,
 	int i;
 
 	if(count - 1 < 10 || 10 < count - 1 ) {
-		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 	if((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
@@ -1371,20 +1371,20 @@ static ssize_t dwc_host_mux_pcfg1_store(struct device *_dev,
 			(buf[i]>='A'&&buf[i]<='F') )
 			continue;
 		else {
-			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
 				buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("USB20H_PCFG1 = 0x%08X\n", old_reg);
+	printk("[INFO][USB] USB20H_PCFG1 = 0x%08X\n", old_reg);
 	writel(new_reg, pcfg1_addr);
 	new_reg = readl(pcfg1_addr);
 
 	dwc_host_mux_pcfg1_display(old_reg,new_reg,str);
-	printk("%sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
+	printk("[INFO][USB] %sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
 
 	return count;
 }
@@ -1443,7 +1443,7 @@ static ssize_t device_sq_test_store(struct device *_dev,
     if (!strncmp(buf, "on", 2)) {
         dev_sq_test = 1;
   		reg = DWC_READ_REG32(addr); 
-  		printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+  		printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
 
   		reg &= ~DCTL_TstCtl_MASK;
   		reg |= DCTL_TstCtl_TEST_PACKET;
@@ -1451,20 +1451,20 @@ static ssize_t device_sq_test_store(struct device *_dev,
 		DWC_WRITE_REG32(addr, reg);
 		udelay(100);
 		reg = DWC_READ_REG32(addr);
-		printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+		printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
     }
 
     if (!strncmp(buf, "off", 3)) {
 		dev_sq_test = 0;
 		reg = DWC_READ_REG32(addr);
-		printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+		printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
 
 		reg &= ~DCTL_TstCtl_MASK;
 
 		DWC_WRITE_REG32(addr, reg);
 		udelay(100);
 		reg = DWC_READ_REG32(addr);
-		printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+		printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
     }
 
     return count;
@@ -1482,7 +1482,7 @@ int dwc_set_test_mode(dwc_otg_core_if_t * core_if, int mode)
 	addr = core_if->host_if->hprt0;
 
 	reg = DWC_READ_REG32(addr);
-	printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+	printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
 	reg &= ~DWC_OTG_TESTMODE_MASK;
 
 	switch (mode) {
@@ -1501,7 +1501,7 @@ int dwc_set_test_mode(dwc_otg_core_if_t * core_if, int mode)
 	DWC_WRITE_REG32(addr, reg);
 	udelay(100);
 	reg = DWC_READ_REG32(addr);
-	printk("@0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
+	printk("[INFO][USB] @0x%08X: 0x%08X\n", io_v2p((u32)addr), reg);
 
 	return 0;
 }

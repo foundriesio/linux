@@ -74,7 +74,7 @@ void dwc_otg_hcd_connect_timeout(void *ptr)
 	/*printk("\x1b[1;33m[%s:%d]0x%08X\x1b[0m\n", __func__, __LINE__,reg & (0xf << 13));*/
 	if((reg & (0xf << 13)) != 0)
 	{
-		printk("\x1b[1;33m[%s:%d] Test Mode!!! [0x%X]\x1b[0m\n", __func__, __LINE__,DWC_READ_REG32(addr));
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Test Mode!!! [0x%X]\x1b[0m\n", __func__, __LINE__,DWC_READ_REG32(addr));
 		return;
 	}
 }
@@ -2198,7 +2198,7 @@ void elec_tst_do_setup(void)
 {
 	if(!elec_tst_is_setup)
 	{
-		printk("\x1b[1;31m[%s:%d] Params is not set.\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d] Params is not set.\x1b[0m\n", __func__, __LINE__);
 		return;
 	}
 	do_setup();
@@ -2207,7 +2207,7 @@ void elec_tst_do_in_ack(void)
 {
 	if(!elec_tst_is_setup)
 	{
-		printk("\x1b[1;31m[%s:%d] Params is not set.\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d] Params is not set.\x1b[0m\n", __func__, __LINE__);
 		return;
 	}
 	do_in_ack();

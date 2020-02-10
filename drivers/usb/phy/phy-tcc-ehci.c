@@ -72,12 +72,12 @@ static int tcc_ehci_phy_isolation(struct usb_phy *phy, int on_off)
 	if(on_off == ON) {
 		if(clk_prepare_enable(phy_dev->isol) != 0) {
 			dev_err(phy_dev->dev,
-			"can't do usb 2.0 phy enable\n");
+			"[ERROR][USB] can't do usb 2.0 phy enable\n");
 		}
 	} else if(on_off == OFF) {
 		clk_disable_unprepare(phy_dev->isol);
 	} else
-		printk("bad argument\n");
+		printk("[INFO][USB] bad argument\n");
 
 	return 0;
 }
@@ -91,19 +91,19 @@ static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 	int retval = 0;
 
 	if (!phy_dev->vbus_gpio) {
-		printk("ehci vbus ctrl disabled.\n");
+		printk("[INFO][USB] ehci vbus ctrl disabled.\n");
 		return -1;
 	}
 
 	retval = gpio_request(phy_dev->vbus_gpio, "vbus_gpio_phy");
 	if(retval) {
-		dev_err(phy->dev, "can't requeest vbus gpio\n");
+		dev_err(phy->dev, "[ERROR][USB] can't requeest vbus gpio\n");
 		return retval;
 	}
 
 	retval = gpio_direction_output(phy_dev->vbus_gpio, on_off);
 	if(retval) {
-		dev_err(phy_dev->dev, "can't enable vbus (gpio ctrl err)\n");
+		dev_err(phy_dev->dev, "[ERROR][USB] can't enable vbus (gpio ctrl err)\n");
 		return retval;
 	}
 
@@ -144,7 +144,7 @@ static int tcc_ehci_set_dc_level(struct usb_phy *phy, unsigned int level)
 	BITCSET(pcfg1_val, PCFG1_TXVRT_MASK, level << PCFG1_TXVRT_SHIFT);
 	writel(pcfg1_val, &ehci_pcfg->pcfg1);
 
-	printk("cur dc level = %d\n", get_txvrt(pcfg1_val));
+	printk("[INFO][USB] cur dc level = %d\n", get_txvrt(pcfg1_val));
 
 	return 0;
 }
@@ -168,7 +168,7 @@ static irqreturn_t chg_irq(int irq, void *data)
     struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg*)phy_dev->base;
     uint32_t pcfg2=0;
 
-	printk("Charging Detection!\n");
+	printk("[INFO][USB] Charging Detection!\n");
     //printk("pcfg2 = 0x%08x\n", readl(&ehci_pcfg->pcfg2));
     pcfg2 = readl(&ehci_pcfg->pcfg2);
     writel((pcfg2|(1<<9)), &ehci_pcfg->pcfg2);
@@ -283,7 +283,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 		i++;
 		udelay(5);
 	}
-	printk("EHCI PHY valid check %s\x1b[0m\n",i>=9999?"fail!":"pass.");
+	printk("[INFO][USB] EHCI PHY valid check %s\x1b[0m\n",i>=9999?"fail!":"pass.");
 
 	// Release Core Reset
 	writel(readl(&ehci_pcfg->lcfg0) | 0x30000000, &ehci_pcfg->lcfg0);
@@ -294,7 +294,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 
 #if defined (CONFIG_TCC_BC_12)	
 	writel(readl(&ehci_pcfg->pcfg4) | (1<<31), &ehci_pcfg->pcfg4);//clear irq
-	printk("%s : Not Mux host\n", __func__);
+	printk("[INFO][USB] %s : Not Mux host\n", __func__);
 	writel(readl(&ehci_pcfg->pcfg4) & ~(1<<30), &ehci_pcfg->pcfg4);//Disable VBUS Detect
 	
 	writel(readl(&ehci_pcfg->pcfg4) & ~(1<<31), &ehci_pcfg->pcfg4);//clear irq
@@ -322,12 +322,12 @@ static int tcc_ehci_phy_state_set(struct usb_phy *phy, int on_off)
 
 	if (on_off == ON) {
 		BITCLR(ehci_pcfg->pcfg0, (USB20_PCFG0_PHY_POR | USB20_PCFG0_PHY_SIDDQ));
-		printk("EHCI PHY start\n");
+		printk("[INFO][USB] EHCI PHY start\n");
 	} else if (on_off == OFF) {
 		BITSET(ehci_pcfg->pcfg0, (USB20_PCFG0_PHY_POR | USB20_PCFG0_PHY_SIDDQ));
-		printk("EHCI PHY stop\n");
+		printk("[INFO][USB] EHCI PHY stop\n");
 	}
-	printk("EHCI PHY pcfg0 : %08X\n", ehci_pcfg->pcfg0);
+	printk("[INFO][USB] EHCI PHY pcfg0 : %08X\n", ehci_pcfg->pcfg0);
 	return 0;
 }
 
@@ -360,7 +360,7 @@ static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
 		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
 		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 			return -ENODEV;
 		}
 	} else {
@@ -384,7 +384,7 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
 		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
 		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 			return -ENODEV;
 		}
 	} else {
@@ -444,7 +444,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	int irq, ret=0;
 #endif
 
-	printk("%s:%s\n",pdev->dev.kobj.name, __func__);
+	printk("[INFO][USB] %s:%s\n",pdev->dev.kobj.name, __func__);
 	phy_dev = devm_kzalloc(dev, sizeof(*phy_dev), GFP_KERNEL);
 
 	retval = tcc_ehci_create_phy(dev, phy_dev);
@@ -457,13 +457,13 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 		irq = platform_get_irq(pdev, 0);
 		if (irq <= 0) {
 			dev_err(&pdev->dev,
-					"Found HC with no IRQ. Check %s setup!\n",
+					"[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
 					dev_name(&pdev->dev));
 			retval = -ENODEV;
 		}
 		else
 		{
-			printk("%s: irq=%d\n", __func__, irq);
+			printk("[INFO][USB] %s: irq=%d\n", __func__, irq);
 			phy_dev->irq = irq;
 		}
 	}
@@ -472,7 +472,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	if (!request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
 				"ehci_phy")) {
-		dev_dbg(&pdev->dev, "error reserving mapped memory\n");
+		dev_dbg(&pdev->dev, "[DEBUG][USB] error reserving mapped memory\n");
 		retval = -EFAULT;
 	}
 	phy_dev->base = (void __iomem*)ioremap_nocache((resource_size_t)pdev->resource[0].start,
@@ -483,13 +483,13 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 	if (1) {//phy_dev->mux_port) {
 		ret = devm_request_irq(&pdev->dev, phy_dev->irq, chg_irq, IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
 		if (ret)
-			dev_err(&pdev->dev, "request irq failed\n");
+			dev_err(&pdev->dev, "[ERROR][USB] request irq failed\n");
 
 		disable_irq(phy_dev->irq);
 		/*
 		phy_dev->chg_det_thread = kthread_run(chg_det_monitor_thread, (void*)phy_dev, "chg_det_monitor");
 		if (IS_ERR(phy_dev->chg_det_thread)) {
-			printk("\x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
+			printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
 		}
 		*/
 	}
@@ -498,7 +498,7 @@ static int tcc_ehci_phy_probe(struct platform_device *pdev)
 
 	retval = usb_add_phy_dev(&phy_dev->phy);
 	if (retval) {
-		dev_err(&pdev->dev, "usb_add_phy failed\n");
+		dev_err(&pdev->dev, "[ERROR][USB] usb_add_phy failed\n");
 		return retval;
 	}
 
@@ -538,7 +538,7 @@ static int __init tcc_ehci_phy_drv_init(void)
 
 	retval = platform_driver_register(&tcc_ehci_phy_driver);
 	if (retval < 0)
-		printk(KERN_ERR "%s retval=%d\n", __func__, retval);
+		printk(KERN_ERR "[ERROR][USB] %s retval=%d\n", __func__, retval);
 
 	return retval;
 }

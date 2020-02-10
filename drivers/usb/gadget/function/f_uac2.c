@@ -92,16 +92,16 @@ static ssize_t uac20_capture_pcm_store(struct device *pdev, struct device_attrib
                 const char *buff, size_t size)
 {
     if (!strncmp(buff, "1", 1)) {
-        printk("[UAC2 debug]start dump pcm\n");
+        printk("[INFO][USB] [UAC2 debug]start dump pcm\n");
         sscanf(buff, "%d %s", &capture_pcm, pdump_path);
     }
     else if (!strncmp(buff, "0", 1)) {
-        printk("[UAC2 debug] pcm dump is disabled\n");
+        printk("[INFO][USB] [UAC2 debug] pcm dump is disabled\n");
         sscanf(buff, "%d", &capture_pcm);
     }
     else
     {
-        printk("[UAC2 debug] Wrong parm\n ex)echo 1 /data/data/ > uac20_capture_pcm (or) echo 0 > uac20_capture_pcm\n");
+        printk("[INFO][USB] [UAC2 debug] Wrong parm\n ex)echo 1 /data/data/ > uac20_capture_pcm (or) echo 0 > uac20_capture_pcm\n");
     }
 
     return size;
@@ -117,14 +117,14 @@ static ssize_t uac20_alt_store(struct device *dev, struct device_attribute *attr
 	struct platform_device *pdev = to_platform_device(dev);
 	struct f_uac2 *uac = container_of(pdev, struct f_uac2, pdev);
     if (!strncmp(buff, "1", 1)) {
-        printk("[UAC2 debug]alt = 1\n");
+        printk("[INFO][USB] [UAC2 debug]alt = 1\n");
 		u_audio_start_capture(&uac->g_audio);
 		uac->alt = 1;
 		schedule_work(&uac->work);
 
     }
     else if (!strncmp(buff, "0", 1)) {
-        printk("[UAC2 debug]]alt = 0\n");
+        printk("[INFO][USB] [UAC2 debug]]alt = 0\n");
 		u_audio_stop_capture(&uac->g_audio);
 		uac->alt = 0;
 		schedule_work(&uac->work);
@@ -620,7 +620,7 @@ static void uac2_work(struct work_struct *data)
 		uevent_envp = set_alt1;
 
 	kobject_uevent_env(&uac2->pdev.dev.kobj, KOBJ_CHANGE, uevent_envp);
-	printk("%s: sent uevent %s\n", __func__, uevent_envp[0]);
+	printk("[INFO][USB] %s: sent uevent %s\n", __func__, uevent_envp[0]);
 }
 #endif
 
@@ -698,7 +698,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 
 	ret = usb_interface_id(cfg, fn);
 	if (ret < 0) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return ret;
 	}
 	iad_desc.bFirstInterface = ret;
@@ -710,7 +710,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 
 	ret = usb_interface_id(cfg, fn);
 	if (ret < 0) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return ret;
 	}
 	std_as_out_if0_desc.bInterfaceNumber = ret;
@@ -720,7 +720,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 
 	ret = usb_interface_id(cfg, fn);
 	if (ret < 0) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return ret;
 	}
 	std_as_in_if0_desc.bInterfaceNumber = ret;
@@ -736,13 +736,13 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 
 	agdev->out_ep = usb_ep_autoconfig(gadget, &fs_epout_desc);
 	if (!agdev->out_ep) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
 	agdev->in_ep = usb_ep_autoconfig(gadget, &fs_epin_desc);
 	if (!agdev->in_ep) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
@@ -799,14 +799,14 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 
 	/* No i/f has more than 2 alt settings */
 	if (alt > 1) {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (intf == uac2->ac_intf) {
 		/* Control I/f has only 1 AltSetting - 0 */
 		if (alt) {
-			dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+			dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 			return -EINVAL;
 		}
 		return 0;
@@ -814,7 +814,7 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 
 	if (intf == uac2->as_out_intf) {
 		uac2->as_out_alt = alt;
-		printk("[UAC2] %s : ALT=%d\n", __func__, alt);
+		printk("[INFO][USB] [UAC2] %s : ALT=%d\n", __func__, alt);
 		if (alt)
 			ret = u_audio_start_capture(&uac2->g_audio);
 		else
@@ -831,7 +831,7 @@ afunc_set_alt(struct usb_function *fn, unsigned intf, unsigned alt)
 		else
 			u_audio_stop_playback(&uac2->g_audio);
 	} else {
-		dev_err(dev, "%s:%d Error!\n", __func__, __LINE__);
+		dev_err(dev, "[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -852,7 +852,7 @@ afunc_get_alt(struct usb_function *fn, unsigned intf)
 		return uac2->as_in_alt;
 	else
 		dev_err(&agdev->gadget->dev,
-			"%s:%d Invalid Interface %d!\n",
+			"[ERROR][USB] %s:%d Invalid Interface %d!\n",
 			__func__, __LINE__, intf);
 
 	return -EINVAL;
@@ -903,7 +903,7 @@ in_rq_cur(struct usb_function *fn, const struct usb_ctrlrequest *cr)
 		value = min_t(unsigned, w_length, 1);
 	} else {
 		dev_err(&agdev->gadget->dev,
-			"%s:%d control_selector=%d TODO!\n",
+			"[ERROR][USB] %s:%d control_selector=%d TODO!\n",
 			__func__, __LINE__, control_selector);
 	}
 
@@ -945,7 +945,7 @@ in_rq_range(struct usb_function *fn, const struct usb_ctrlrequest *cr)
 		memcpy(req->buf, &r, value);
 	} else {
 		dev_err(&agdev->gadget->dev,
-			"%s:%d control_selector=%d TODO!\n",
+			"[ERROR][USB] %s:%d control_selector=%d TODO!\n",
 			__func__, __LINE__, control_selector);
 	}
 
@@ -986,7 +986,7 @@ setup_rq_inf(struct usb_function *fn, const struct usb_ctrlrequest *cr)
 
 	if (intf != uac2->ac_intf) {
 		dev_err(&agdev->gadget->dev,
-			"%s:%d Error!\n", __func__, __LINE__);
+			"[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 		return -EOPNOTSUPP;
 	}
 
@@ -1014,7 +1014,7 @@ afunc_setup(struct usb_function *fn, const struct usb_ctrlrequest *cr)
 	if ((cr->bRequestType & USB_RECIP_MASK) == USB_RECIP_INTERFACE)
 		value = setup_rq_inf(fn, cr);
 	else
-		dev_err(&agdev->gadget->dev, "%s:%d Error!\n",
+		dev_err(&agdev->gadget->dev, "[ERROR][USB] %s:%d Error!\n",
 				__func__, __LINE__);
 
 	if (value >= 0) {
@@ -1023,7 +1023,7 @@ afunc_setup(struct usb_function *fn, const struct usb_ctrlrequest *cr)
 		value = usb_ep_queue(cdev->gadget->ep0, req, GFP_ATOMIC);
 		if (value < 0) {
 			dev_err(&agdev->gadget->dev,
-				"%s:%d Error!\n", __func__, __LINE__);
+				"[ERROR][USB] %s:%d Error!\n", __func__, __LINE__);
 			req->status = 0;
 		}
 	}

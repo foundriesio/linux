@@ -98,12 +98,12 @@ static int dwc2_restore_global_registers(struct dwc2_hsotg *hsotg)
 	struct dwc2_gregs_backup *gr;
 	int i;
 
-	dev_dbg(hsotg->dev, "%s\n", __func__);
+	dev_dbg(hsotg->dev, "[DEBUG][USB] %s\n", __func__);
 
 	/* Restore global regs */
 	gr = &hsotg->gr_backup;
 	if (!gr->valid) {
-		dev_err(hsotg->dev, "%s: no global registers to restore\n",
+		dev_err(hsotg->dev, "[ERROR][USB] %s: no global registers to restore\n",
 			__func__);
 		return -EINVAL;
 	}
@@ -154,21 +154,21 @@ int dwc2_exit_hibernation(struct dwc2_hsotg *hsotg, bool restore)
 	if (restore) {
 		ret = dwc2_restore_global_registers(hsotg);
 		if (ret) {
-			dev_err(hsotg->dev, "%s: failed to restore registers\n",
+			dev_err(hsotg->dev, "[ERROR][USB] %s: failed to restore registers\n",
 				__func__);
 			return ret;
 		}
 		if (dwc2_is_host_mode(hsotg)) {
 			ret = dwc2_restore_host_registers(hsotg);
 			if (ret) {
-				dev_err(hsotg->dev, "%s: failed to restore host registers\n",
+				dev_err(hsotg->dev, "[ERROR][USB] %s: failed to restore host registers\n",
 					__func__);
 				return ret;
 			}
 		} else {
 			ret = dwc2_restore_device_registers(hsotg);
 			if (ret) {
-				dev_err(hsotg->dev, "%s: failed to restore device registers\n",
+				dev_err(hsotg->dev, "[ERROR][USB] %s: failed to restore device registers\n",
 					__func__);
 				return ret;
 			}
@@ -194,7 +194,7 @@ int dwc2_enter_hibernation(struct dwc2_hsotg *hsotg)
 	/* Backup all registers */
 	ret = dwc2_backup_global_registers(hsotg);
 	if (ret) {
-		dev_err(hsotg->dev, "%s: failed to backup global registers\n",
+		dev_err(hsotg->dev, "[ERROR][USB] %s: failed to backup global registers\n",
 			__func__);
 		return ret;
 	}
@@ -202,14 +202,14 @@ int dwc2_enter_hibernation(struct dwc2_hsotg *hsotg)
 	if (dwc2_is_host_mode(hsotg)) {
 		ret = dwc2_backup_host_registers(hsotg);
 		if (ret) {
-			dev_err(hsotg->dev, "%s: failed to backup host registers\n",
+			dev_err(hsotg->dev, "[ERROR][USB] %s: failed to backup host registers\n",
 				__func__);
 			return ret;
 		}
 	} else {
 		ret = dwc2_backup_device_registers(hsotg);
 		if (ret) {
-			dev_err(hsotg->dev, "%s: failed to backup device registers\n",
+			dev_err(hsotg->dev, "[ERROR][USB] %s: failed to backup device registers\n",
 				__func__);
 			return ret;
 		}
@@ -250,7 +250,7 @@ static void dwc2_wait_for_mode(struct dwc2_hsotg *hsotg,
 	ktime_t end;
 	unsigned int timeout = 110;
 
-	dev_vdbg(hsotg->dev, "Waiting for %s mode\n",
+	dev_vdbg(hsotg->dev, "[DEBUG][USB] Waiting for %s mode\n",
 		 host_mode ? "host" : "device");
 
 	start = ktime_get();
@@ -259,7 +259,7 @@ static void dwc2_wait_for_mode(struct dwc2_hsotg *hsotg,
 		s64 ms;
 
 		if (dwc2_is_host_mode(hsotg) == host_mode) {
-			dev_vdbg(hsotg->dev, "%s mode set\n",
+			dev_vdbg(hsotg->dev, "[DEBUG][USB] %s mode set\n",
 				 host_mode ? "Host" : "Device");
 			break;
 		}
@@ -268,7 +268,7 @@ static void dwc2_wait_for_mode(struct dwc2_hsotg *hsotg,
 		ms = ktime_to_ms(ktime_sub(end, start));
 
 		if (ms >= (s64)timeout) {
-			dev_warn(hsotg->dev, "%s: Couldn't set %s mode\n",
+			dev_warn(hsotg->dev, "[WARN][USB] %s: Couldn't set %s mode\n",
 				 __func__, host_mode ? "host" : "device");
 			break;
 		}
@@ -319,7 +319,7 @@ int dwc2_core_reset(struct dwc2_hsotg *hsotg, bool skip_wait)
 	int count = 0;
 	bool wait_for_host_mode = false;
 
-	dev_vdbg(hsotg->dev, "%s()\n", __func__);
+	dev_vdbg(hsotg->dev, "[DEBUG][USB] %s()\n", __func__);
 
 	/*
 	 * If the current mode is host, either due to the force mode
@@ -350,7 +350,7 @@ int dwc2_core_reset(struct dwc2_hsotg *hsotg, bool skip_wait)
 		greset = dwc2_readl(hsotg->regs + GRSTCTL);
 		if (++count > 50) {
 			dev_warn(hsotg->dev,
-				 "%s() HANG! Soft Reset GRSTCTL=%0x\n",
+				 "[WARN][USB] %s() HANG! Soft Reset GRSTCTL=%0x\n",
 				 __func__, greset);
 			return -EBUSY;
 		}
@@ -363,7 +363,7 @@ int dwc2_core_reset(struct dwc2_hsotg *hsotg, bool skip_wait)
 		greset = dwc2_readl(hsotg->regs + GRSTCTL);
 		if (++count > 50) {
 			dev_warn(hsotg->dev,
-				 "%s() HANG! AHB Idle GRSTCTL=%0x\n",
+				 "[WARN][USB] %s() HANG! AHB Idle GRSTCTL=%0x\n",
 				 __func__, greset);
 			return -EBUSY;
 		}
@@ -405,7 +405,7 @@ static bool dwc2_force_mode(struct dwc2_hsotg *hsotg, bool host)
 	u32 set;
 	u32 clear;
 
-	dev_dbg(hsotg->dev, "Forcing mode to %s\n", host ? "host" : "device");
+	dev_dbg(hsotg->dev, "[DEBUG][USB] Forcing mode to %s\n", host ? "host" : "device");
 
 	/*
 	 * Force mode has no effect if the hardware is not OTG.
@@ -483,7 +483,7 @@ void dwc2_force_dr_mode(struct dwc2_hsotg *hsotg)
 		dwc2_clear_force_mode(hsotg);
 		break;
 	default:
-		dev_warn(hsotg->dev, "%s() Invalid dr_mode=%d\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s() Invalid dr_mode=%d\n",
 			 __func__, hsotg->dr_mode);
 		break;
 	}
@@ -522,58 +522,58 @@ void dwc2_dump_host_registers(struct dwc2_hsotg *hsotg)
 	u32 __iomem *addr;
 	int i;
 
-	dev_dbg(hsotg->dev, "Host Global Registers\n");
+	dev_dbg(hsotg->dev, "[DEBUG][USB] Host Global Registers\n");
 	addr = hsotg->regs + HCFG;
-	dev_dbg(hsotg->dev, "HCFG	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HCFG	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HFIR;
-	dev_dbg(hsotg->dev, "HFIR	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HFIR	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HFNUM;
-	dev_dbg(hsotg->dev, "HFNUM	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HFNUM	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HPTXSTS;
-	dev_dbg(hsotg->dev, "HPTXSTS	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HPTXSTS	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HAINT;
-	dev_dbg(hsotg->dev, "HAINT	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HAINT	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HAINTMSK;
-	dev_dbg(hsotg->dev, "HAINTMSK	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HAINTMSK	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	if (hsotg->params.dma_desc_enable) {
 		addr = hsotg->regs + HFLBADDR;
-		dev_dbg(hsotg->dev, "HFLBADDR @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HFLBADDR @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 	}
 
 	addr = hsotg->regs + HPRT0;
-	dev_dbg(hsotg->dev, "HPRT0	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HPRT0	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 
 	for (i = 0; i < hsotg->params.host_channels; i++) {
-		dev_dbg(hsotg->dev, "Host Channel %d Specific Registers\n", i);
+		dev_dbg(hsotg->dev, "[DEBUG][USB] Host Channel %d Specific Registers\n", i);
 		addr = hsotg->regs + HCCHAR(i);
-		dev_dbg(hsotg->dev, "HCCHAR	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCCHAR	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		addr = hsotg->regs + HCSPLT(i);
-		dev_dbg(hsotg->dev, "HCSPLT	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCSPLT	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		addr = hsotg->regs + HCINT(i);
-		dev_dbg(hsotg->dev, "HCINT	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCINT	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		addr = hsotg->regs + HCINTMSK(i);
-		dev_dbg(hsotg->dev, "HCINTMSK	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCINTMSK	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		addr = hsotg->regs + HCTSIZ(i);
-		dev_dbg(hsotg->dev, "HCTSIZ	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCTSIZ	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		addr = hsotg->regs + HCDMA(i);
-		dev_dbg(hsotg->dev, "HCDMA	 @0x%08lX : 0x%08X\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] HCDMA	 @0x%08lX : 0x%08X\n",
 			(unsigned long)addr, dwc2_readl(addr));
 		if (hsotg->params.dma_desc_enable) {
 			addr = hsotg->regs + HCDMAB(i);
-			dev_dbg(hsotg->dev, "HCDMAB	 @0x%08lX : 0x%08X\n",
+			dev_dbg(hsotg->dev, "[DEBUG][USB] HCDMAB	 @0x%08lX : 0x%08X\n",
 				(unsigned long)addr, dwc2_readl(addr));
 		}
 	}
@@ -593,82 +593,82 @@ void dwc2_dump_global_registers(struct dwc2_hsotg *hsotg)
 #ifdef DEBUG
 	u32 __iomem *addr;
 
-	dev_dbg(hsotg->dev, "Core Global Registers\n");
+	dev_dbg(hsotg->dev, "[DEBUG][USB] Core Global Registers\n");
 	addr = hsotg->regs + GOTGCTL;
-	dev_dbg(hsotg->dev, "GOTGCTL	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GOTGCTL	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GOTGINT;
-	dev_dbg(hsotg->dev, "GOTGINT	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GOTGINT	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GAHBCFG;
-	dev_dbg(hsotg->dev, "GAHBCFG	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GAHBCFG	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GUSBCFG;
-	dev_dbg(hsotg->dev, "GUSBCFG	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GUSBCFG	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GRSTCTL;
-	dev_dbg(hsotg->dev, "GRSTCTL	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GRSTCTL	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GINTSTS;
-	dev_dbg(hsotg->dev, "GINTSTS	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GINTSTS	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GINTMSK;
-	dev_dbg(hsotg->dev, "GINTMSK	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GINTMSK	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GRXSTSR;
-	dev_dbg(hsotg->dev, "GRXSTSR	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GRXSTSR	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GRXFSIZ;
-	dev_dbg(hsotg->dev, "GRXFSIZ	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GRXFSIZ	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GNPTXFSIZ;
-	dev_dbg(hsotg->dev, "GNPTXFSIZ	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GNPTXFSIZ	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GNPTXSTS;
-	dev_dbg(hsotg->dev, "GNPTXSTS	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GNPTXSTS	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GI2CCTL;
-	dev_dbg(hsotg->dev, "GI2CCTL	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GI2CCTL	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GPVNDCTL;
-	dev_dbg(hsotg->dev, "GPVNDCTL	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GPVNDCTL	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GGPIO;
-	dev_dbg(hsotg->dev, "GGPIO	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GGPIO	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GUID;
-	dev_dbg(hsotg->dev, "GUID	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GUID	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GSNPSID;
-	dev_dbg(hsotg->dev, "GSNPSID	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GSNPSID	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GHWCFG1;
-	dev_dbg(hsotg->dev, "GHWCFG1	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GHWCFG1	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GHWCFG2;
-	dev_dbg(hsotg->dev, "GHWCFG2	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GHWCFG2	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GHWCFG3;
-	dev_dbg(hsotg->dev, "GHWCFG3	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GHWCFG3	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GHWCFG4;
-	dev_dbg(hsotg->dev, "GHWCFG4	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GHWCFG4	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GLPMCFG;
-	dev_dbg(hsotg->dev, "GLPMCFG	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GLPMCFG	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GPWRDN;
-	dev_dbg(hsotg->dev, "GPWRDN	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GPWRDN	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + GDFIFOCFG;
-	dev_dbg(hsotg->dev, "GDFIFOCFG	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] GDFIFOCFG	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 	addr = hsotg->regs + HPTXFSIZ;
-	dev_dbg(hsotg->dev, "HPTXFSIZ	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] HPTXFSIZ	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 
 	addr = hsotg->regs + PCGCTL;
-	dev_dbg(hsotg->dev, "PCGCTL	 @0x%08lX : 0x%08X\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] PCGCTL	 @0x%08lX : 0x%08X\n",
 		(unsigned long)addr, dwc2_readl(addr));
 #endif
 }
@@ -684,11 +684,11 @@ void dwc2_flush_tx_fifo(struct dwc2_hsotg *hsotg, const int num)
 	u32 greset;
 	int count = 0;
 
-	dev_vdbg(hsotg->dev, "Flush Tx FIFO %d\n", num);
+	dev_vdbg(hsotg->dev, "[DEBUG][USB] Flush Tx FIFO %d\n", num);
 
 	/* Wait for AHB master IDLE state */
 	if (dwc2_hsotg_wait_bit_set(hsotg, GRSTCTL, GRSTCTL_AHBIDLE, 10000))
-		dev_warn(hsotg->dev, "%s:  HANG! AHB Idle GRSCTL\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s:  HANG! AHB Idle GRSCTL\n",
 			 __func__);
 
 	greset = GRSTCTL_TXFFLSH;
@@ -696,7 +696,7 @@ void dwc2_flush_tx_fifo(struct dwc2_hsotg *hsotg, const int num)
 	dwc2_writel(greset, hsotg->regs + GRSTCTL);
 
 	if (dwc2_hsotg_wait_bit_clear(hsotg, GRSTCTL, GRSTCTL_TXFFLSH, 10000))
-		dev_warn(hsotg->dev, "%s:  HANG! timeout GRSTCTL GRSTCTL_TXFFLSH\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s:  HANG! timeout GRSTCTL GRSTCTL_TXFFLSH\n",
 			 __func__);
 
 	/* Wait for at least 3 PHY Clocks */
@@ -712,11 +712,11 @@ void dwc2_flush_rx_fifo(struct dwc2_hsotg *hsotg)
 {
 	u32 greset;
 
-	dev_vdbg(hsotg->dev, "%s()\n", __func__);
+	dev_vdbg(hsotg->dev, "[DEBUG][USB] %s()\n", __func__);
 
 	/* Wait for AHB master IDLE state */
 	if (dwc2_hsotg_wait_bit_set(hsotg, GRSTCTL, GRSTCTL_AHBIDLE, 10000))
-		dev_warn(hsotg->dev, "%s:  HANG! AHB Idle GRSCTL\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s:  HANG! AHB Idle GRSCTL\n",
 			 __func__);
 
 	greset = GRSTCTL_RXFFLSH;
@@ -724,7 +724,7 @@ void dwc2_flush_rx_fifo(struct dwc2_hsotg *hsotg)
 
 	/* Wait for RxFIFO flush done */
 	if (dwc2_hsotg_wait_bit_clear(hsotg, GRSTCTL, GRSTCTL_RXFFLSH, 10000))
-		dev_warn(hsotg->dev, "%s: HANG! timeout GRSTCTL GRSTCTL_RXFFLSH\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s: HANG! timeout GRSTCTL GRSTCTL_RXFFLSH\n",
 			 __func__);
 
 	/* Wait for at least 3 PHY Clocks */

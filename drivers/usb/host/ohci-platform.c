@@ -157,7 +157,7 @@ static int ohci_platform_probe(struct platform_device *dev)
 
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
-		dev_err(&dev->dev, "no irq provided");
+		dev_err(&dev->dev, "[ERROR][USB] no irq provided");
 		return irq;
 	}
 
@@ -253,7 +253,7 @@ static int ohci_platform_probe(struct platform_device *dev)
 #ifndef CONFIG_USB_OHCI_BIG_ENDIAN_MMIO
 	if (ohci->flags & OHCI_QUIRK_BE_MMIO) {
 		dev_err(&dev->dev,
-			"Error: CONFIG_USB_OHCI_BIG_ENDIAN_MMIO not set\n");
+			"[ERROR][USB] Error: CONFIG_USB_OHCI_BIG_ENDIAN_MMIO not set\n");
 		err = -EINVAL;
 		goto err_reset;
 	}
@@ -261,7 +261,7 @@ static int ohci_platform_probe(struct platform_device *dev)
 #ifndef CONFIG_USB_OHCI_BIG_ENDIAN_DESC
 	if (ohci->flags & OHCI_QUIRK_BE_DESC) {
 		dev_err(&dev->dev,
-			"Error: CONFIG_USB_OHCI_BIG_ENDIAN_DESC not set\n");
+			"[ERROR][USB] Error: CONFIG_USB_OHCI_BIG_ENDIAN_DESC not set\n");
 		err = -EINVAL;
 		goto err_reset;
 	}
@@ -284,7 +284,7 @@ static int ohci_platform_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 	#ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-	printk("%s : tpl_support!!\n", __func__);
+	printk("[INFO][USB] %s : tpl_support!!\n", __func__);
 	hcd->tpl_support = 1;
 	#endif
 
@@ -428,7 +428,7 @@ static int __init ohci_platform_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
-	pr_info("%s: " DRIVER_DESC "\n", hcd_name);
+	pr_info("[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
 
 	ohci_init_driver(&ohci_platform_hc_driver, &platform_overrides);
 	return platform_driver_register(&ohci_platform_driver);

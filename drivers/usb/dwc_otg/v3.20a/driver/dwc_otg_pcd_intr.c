@@ -2579,12 +2579,12 @@ static void complete_ep(dwc_otg_pcd_ep_t * ep)
 			          req, "DMA_FREE WITH WORKQ");
 #else
 			if(pcd->pre_alloc_count==0)
-				printk("\x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+				printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 			else
 				pcd->pre_alloc_count--;
 
 			if(pcd->pre_alloc_count!=0)
-				printk("\x1b[1;33m[%s:%d]\x1b[0mpcd->pre_alloc_count: %d\n", __func__, __LINE__, pcd->pre_alloc_count);
+				printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0mpcd->pre_alloc_count: %d\n", __func__, __LINE__, pcd->pre_alloc_count);
 
 #endif /* TCC_DMA_FIX */
 		}
@@ -4458,9 +4458,9 @@ do { \
 						if(interval_ns > 1100000) {
 							if(time_print_skip_count > 2){
 								if(interval_ns > 2000000)
-									printk("\x1b[1;31misoc:%lu ns\x1b[0m\n", interval_ns);
+									printk("[INFO][USB] \x1b[1;31misoc:%lu ns\x1b[0m\n", interval_ns);
 								else if(interval_ns > 1100000)
-									printk("\x1b[1;33misoc:%lu ns\x1b[0m\n", interval_ns);
+									printk("[INFO][USB] \x1b[1;33misoc:%lu ns\x1b[0m\n", interval_ns);
 
 								time_print_skip_count = 0;
 							}
@@ -5231,7 +5231,7 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 		if (depctl.b.epena && depctl.b.dpid == (core_if->frame_num & 0x1)) {
 			core_if->dev_if->isoc_ep = dwc_ep;
 			deptsiz.d32 = DWC_READ_REG32(&core_if->dev_if->out_ep_regs[dwc_ep->num]->doeptsiz);
-			printk(KERN_DEBUG "#@(%d)ep->num(%d)/type(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d#@\n", i, dwc_ep->num, dwc_ep->type,
+			printk(KERN_DEBUG "[DEBUG][USB] #@(%d)ep->num(%d)/type(%d) => dpid=%d(d0=%d/d1=%d)/frame num=%d#@\n", i, dwc_ep->num, dwc_ep->type,
 				depctl.b.dpid,depctl.b.setd1pid, depctl.b.dpid, core_if->frame_num);
 			break;
 		}
@@ -5249,7 +5249,7 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 	}
 
 		if (!gintsts.b.goutnakeff) {
-//			printk(KERN_DEBUG "Set Global OUT NAK\n");
+//			printk(KERN_DEBUG "[INFO][USB] Set Global OUT NAK\n");
 			dctl.b.sgoutnak = 1;
 		}
 		//udelay(50); //for ISOC timing. sometimes interval is over than 1ms.This delay can make that interval valanced.

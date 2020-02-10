@@ -395,7 +395,7 @@ static int __init create_iap_bulk_endpoints(struct iap_dev *dev,
 	return 0;
 
 fail:
-	printk(KERN_ERR "iap_bind() could not allocate requests\n");
+	printk(KERN_ERR "[ERROR][USB] iap_bind() could not allocate requests\n");
 	return -1;
 }
 
@@ -621,7 +621,7 @@ static long iap_ioctl(struct file *fp, unsigned code, unsigned long value)
 
 static int iap_open(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "iap_open\n");
+	printk(KERN_INFO "[INFO][USB] iap_open\n");
 
 	if (atomic_xchg(&_iap_dev->open_excl, 1)) {
 		//iap_release(ip,fp);
@@ -641,7 +641,7 @@ static int iap_open(struct inode *ip, struct file *fp)
 
 static int iap_release(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "iap_release\n");
+	printk(KERN_INFO "[INFO][USB] iap_release\n");
 
 	WARN_ON(!atomic_xchg(&_iap_dev->open_excl, 0));
 	_iap_dev->disconnected = 0;
@@ -692,7 +692,7 @@ int iap_ctrlrequest(struct usb_composite_dev *cdev,
 		cdev->req->length = value;
 		value = usb_ep_queue(cdev->gadget->ep0, cdev->req, GFP_ATOMIC);
 		if (value < 0)
-			printk("%s: response queue error\n", __func__);
+			printk("[INFO][USB] %s: response queue error\n", __func__);
 	}
 
 	if (value == -EOPNOTSUPP)
@@ -783,7 +783,7 @@ static void iap_start_work(struct work_struct *data)
 {
 	char *envp[2] = { "IAP2=START", NULL };
 
-	printk(KERN_INFO "iap_start_work\n");
+	printk(KERN_INFO "[INFO][USB] iap_start_work\n");
 
 	kobject_uevent_env(&iap_device.this_device->kobj, KOBJ_CHANGE, envp);
 }
@@ -857,7 +857,7 @@ int iap_bind_config(struct usb_configuration *c)
 {
 	struct iap_dev *dev = _iap_dev;
 
-	printk(KERN_INFO "iap_bind_config\n");
+	printk(KERN_INFO "[INFO][USB] iap_bind_config\n");
 
 	dev->cdev = c->cdev;
 	dev->function.name = "iap2";
@@ -877,7 +877,7 @@ static int __iap_setup(struct iap_instance *fi_iap)
 	struct iap_dev *dev;
 	int ret;
 
-	printk(KERN_INFO "iap_setup\n");
+	printk(KERN_INFO "[INFO][USB] iap_setup\n");
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -908,7 +908,7 @@ static int __iap_setup(struct iap_instance *fi_iap)
 err:
 	_iap_dev = NULL;
 	kfree(dev);
-	printk(KERN_ERR "iap gadget driver failed to initialize\n");
+	printk(KERN_ERR "[ERROR][USB] iap gadget driver failed to initialize\n");
 	return ret;
 }
 
@@ -1009,7 +1009,7 @@ static struct usb_function_instance *iap_alloc_inst(void)
 	ret = iap_setup_configfs(fi_iap);
 	if (ret) {
 		kfree(fi_iap);
-		pr_err("Error setting iAP2\n");
+		pr_err("[ERROR][USB] Error setting iAP2\n");
 		return ERR_PTR(ret);
 	}
 
@@ -1036,11 +1036,11 @@ struct usb_function *function_alloc_iap(struct usb_function_instance *fi)
 	struct iap_dev *dev;
 
 	if (fi_iap->dev == NULL) {
-		pr_err("Error: Create iap function before linking"
+		pr_err("[ERROR][USB] Error: Create iap function before linking"
 				" iap function with a gadget configuration\n");
-		pr_err("\t1: Delete existing iap function if any\n");
-		pr_err("\t2: Create iap function\n");
-		pr_err("\t3: Create and symlink iap function"
+		pr_err("[ERROR][USB] \t1: Delete existing iap function if any\n");
+		pr_err("[ERROR][USB] \t2: Create iap function\n");
+		pr_err("[ERROR][USB] \t3: Create and symlink iap function"
 				" with a gadget configuration\n");
 		return NULL;
 	}

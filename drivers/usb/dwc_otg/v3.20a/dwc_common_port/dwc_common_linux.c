@@ -435,7 +435,7 @@ int DWC_AES_CBC(uint8_t *message, uint32_t messagelen, uint8_t *key, uint32_t ke
 
 	tfm = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
 	if (tfm == NULL) {
-		printk("failed to load transform for aes CBC\n");
+		printk("[INFO][USB] failed to load transform for aes CBC\n");
 		return -1;
 	}
 
@@ -659,7 +659,7 @@ void DWC_SPINLOCK(dwc_spinlock_t *lock)
 	if (lock)
 		spin_lock((spinlock_t *)lock);
 	else
-		printk("\x1b[1;31m[%s:%d]\x1b[0m %p\n", __func__, __LINE__, lock);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d]\x1b[0m %p\n", __func__, __LINE__, lock);
 		
 #endif
 }
@@ -670,7 +670,7 @@ void DWC_SPINUNLOCK(dwc_spinlock_t *lock)
 	if (lock)
 		spin_unlock((spinlock_t *)lock);
 	else
-		printk("\x1b[1;31m[%s:%d]\x1b[0m %p\n", __func__, __LINE__, lock);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d]\x1b[0m %p\n", __func__, __LINE__, lock);
 #endif
 }
 
@@ -1424,13 +1424,13 @@ static int dwc_common_port_init_module(void)
 {
 	int result = 0;
 
-	printk(KERN_DEBUG "Module dwc_common_port init\n" );
+	printk(KERN_DEBUG "[DEBUG][USB] Module dwc_common_port init\n" );
 
 #ifdef DWC_DEBUG_MEMORY
 	result = dwc_memory_debug_start(NULL);
 	if (result) {
 		printk(KERN_ERR
-		       "dwc_memory_debug_start() failed with error %d\n",
+		       "[ERROR][USB] dwc_memory_debug_start() failed with error %d\n",
 		       result);
 		return result;
 	}
@@ -1440,7 +1440,7 @@ static int dwc_common_port_init_module(void)
 	result = dwc_alloc_notification_manager(NULL, NULL);
 	if (result) {
 		printk(KERN_ERR
-		       "dwc_alloc_notification_manager() failed with error %d\n",
+		       "[ERROR][USB] dwc_alloc_notification_manager() failed with error %d\n",
 		       result);
 		return result;
 	}
@@ -1450,7 +1450,7 @@ static int dwc_common_port_init_module(void)
 
 static void dwc_common_port_exit_module(void)
 {
-	printk(KERN_DEBUG "Module dwc_common_port exit\n" );
+	printk(KERN_DEBUG "[DEBUG][USB] Module dwc_common_port exit\n" );
 
 #ifdef DWC_NOTIFYLIB
 	dwc_free_notification_manager();

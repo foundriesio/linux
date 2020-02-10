@@ -1276,7 +1276,7 @@ int ehci_hub_control(
 #endif
 /* TCC Embedded Host Electrical Test */
 #ifdef CONFIG_TCC_EH_ELECT_TST
-            printk("\x1b[1;33m[%s:%d] selector : %d\x1b[0m\n", __func__, __LINE__,selector);
+            printk("[INFO][USB] \x1b[1;33m[%s:%d] selector : %d\x1b[0m\n", __func__, __LINE__,selector);
             if (!selector || selector > 6)
 				goto error;
             if (selector == 6) {
@@ -1289,7 +1289,7 @@ int ehci_hub_control(
 				spin_unlock_irqrestore(&ehci->lock, flags);
                 ehci_quiesce(ehci);
                 /* HS_HOST_PORT_SUSPEND_RESUME */
-                printk("EHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", selector);
+                printk("[INFO][USB] EHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", selector);
 
 				/* Save current interrupt mask */
                 hostpc_reg = &ehci->regs->intr_enable;

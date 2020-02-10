@@ -1037,7 +1037,7 @@ static int usb_register_bus(struct usb_bus *bus)
 	mutex_lock(&usb_bus_idr_lock);
 	busnum = idr_alloc(&usb_bus_idr, bus, 1, USB_MAXBUS, GFP_KERNEL);
 	if (busnum < 0) {
-		pr_err("%s: failed to get bus number\n", usbcore_name);
+		pr_err("[ERROR][USB] %s: failed to get bus number\n", usbcore_name);
 		goto error_find_busnum;
 	}
 	bus->busnum = busnum;
@@ -1120,7 +1120,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 			usb_dev->lpm_capable = usb_device_supports_lpm(usb_dev);
 		} else if (usb_dev->speed >= USB_SPEED_SUPER) {
 			mutex_unlock(&usb_bus_idr_lock);
-			dev_dbg(parent_dev, "can't read %s bos descriptor %d\n",
+			dev_dbg(parent_dev, "[DEBUG][USB] can't read %s bos descriptor %d\n",
 					dev_name(&usb_dev->dev), retval);
 			return retval;
 		}
@@ -1748,7 +1748,7 @@ int usb_hcd_unlink_urb (struct urb *urb, int status)
 		if (retval == 0)
 			retval = -EINPROGRESS;
 		else if (retval != -EIDRM && retval != -EBUSY)
-			dev_dbg(&udev->dev, "hcd_unlink_urb %pK fail %d\n",
+			dev_dbg(&udev->dev, "[DEBUG][USB] hcd_unlink_urb %pK fail %d\n",
 					urb, retval);
 		usb_put_dev(udev);
 	}
@@ -2267,11 +2267,11 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 	int		status;
 	int		old_state = hcd->state;
 
-	dev_dbg(&rhdev->dev, "bus %ssuspend, wakeup %d\n",
+	dev_dbg(&rhdev->dev, "[DEBUG][USB] bus %ssuspend, wakeup %d\n",
 			(PMSG_IS_AUTO(msg) ? "auto-" : ""),
 			rhdev->do_remote_wakeup);
 	if (HCD_DEAD(hcd)) {
-		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "suspend");
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n", "suspend");
 		return 0;
 	}
 
@@ -2292,7 +2292,7 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 
 			status = hcd->driver->hub_status_data(hcd, buffer);
 			if (status != 0) {
-				dev_dbg(&rhdev->dev, "suspend raced with wakeup event\n");
+				dev_dbg(&rhdev->dev, "[DEBUG][USB] suspend raced with wakeup event\n");
 				hcd_bus_resume(rhdev, PMSG_AUTO_RESUME);
 				status = -EBUSY;
 			}
@@ -2304,7 +2304,7 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 			hcd->state = old_state;
 		}
 		spin_unlock_irq(&hcd_root_hub_lock);
-		dev_dbg(&rhdev->dev, "bus %s fail, err %d\n",
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] bus %s fail, err %d\n",
 				"suspend", status);
 	}
 	return status;
@@ -2316,10 +2316,10 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 	int		status;
 	int		old_state = hcd->state;
 
-	dev_dbg(&rhdev->dev, "usb %sresume\n",
+	dev_dbg(&rhdev->dev, "[DEBUG][USB] usb %sresume\n",
 			(PMSG_IS_AUTO(msg) ? "auto-" : ""));
 	if (HCD_DEAD(hcd)) {
-		dev_dbg(&rhdev->dev, "skipped %s of dead bus\n", "resume");
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] skipped %s of dead bus\n", "resume");
 		return 0;
 	}
 	if (!hcd->driver->bus_resume)
@@ -2359,7 +2359,7 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 		}
 	} else {
 		hcd->state = old_state;
-		dev_dbg(&rhdev->dev, "bus %s fail, err %d\n",
+		dev_dbg(&rhdev->dev, "[DEBUG][USB] bus %s fail, err %d\n",
 				"resume", status);
 		if (status != -ESHUTDOWN)
 			usb_hc_died(hcd);
@@ -2541,7 +2541,7 @@ struct usb_hcd *__usb_create_hcd(const struct hc_driver *driver,
 				GFP_KERNEL);
 		if (!hcd->address0_mutex) {
 			kfree(hcd);
-			dev_dbg(dev, "hcd address0 mutex alloc failed\n");
+			dev_dbg(dev, "[DEBUG][USB] hcd address0 mutex alloc failed\n");
 			return NULL;
 		}
 		mutex_init(hcd->address0_mutex);
@@ -2550,7 +2550,7 @@ struct usb_hcd *__usb_create_hcd(const struct hc_driver *driver,
 		if (!hcd->bandwidth_mutex) {
 			kfree(hcd->address0_mutex);
 			kfree(hcd);
-			dev_dbg(dev, "hcd bandwidth mutex alloc failed\n");
+			dev_dbg(dev, "[DEBUG][USB] hcd bandwidth mutex alloc failed\n");
 			return NULL;
 		}
 		mutex_init(hcd->bandwidth_mutex);
@@ -2705,19 +2705,19 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 				hcd->irq_descr, hcd);
 		if (retval != 0) {
 			dev_err(hcd->self.controller,
-					"request interrupt %d failed\n",
+					"[ERROR][USB] request interrupt %d failed\n",
 					irqnum);
 			return retval;
 		}
 		hcd->irq = irqnum;
-		dev_info(hcd->self.controller, "irq %d, %s 0x%08llx\n", irqnum,
+		dev_info(hcd->self.controller, "[INFO][USB] irq %d, %s 0x%08llx\n", irqnum,
 				(hcd->driver->flags & HCD_MEMORY) ?
 					"io mem" : "io base",
 					(unsigned long long)hcd->rsrc_start);
 	} else {
 		hcd->irq = 0;
 		if (hcd->rsrc_start)
-			dev_info(hcd->self.controller, "%s 0x%08llx\n",
+			dev_info(hcd->self.controller, "[INFO][USB] %s 0x%08llx\n",
 					(hcd->driver->flags & HCD_MEMORY) ?
 					"io mem" : "io base",
 					(unsigned long long)hcd->rsrc_start);
@@ -2798,7 +2798,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		}
 	}
 
-	dev_info(hcd->self.controller, "%s\n", hcd->product_desc);
+	dev_info(hcd->self.controller, "[INFO][USB] %s\n", hcd->product_desc);
 
 	/* Keep old behaviour if authorized_default is not in [0, 1]. */
 	if (authorized_default < 0 || authorized_default > 1) {
@@ -2823,7 +2823,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	 */
 	retval = hcd_buffer_create(hcd);
 	if (retval != 0) {
-		dev_dbg(hcd->self.sysdev, "pool alloc failed\n");
+		dev_dbg(hcd->self.sysdev, "[DEBUG][USB] pool alloc failed\n");
 		goto err_create_buf;
 	}
 
@@ -2833,7 +2833,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 
 	rhdev = usb_alloc_dev(NULL, &hcd->self, 0);
 	if (rhdev == NULL) {
-		dev_err(hcd->self.sysdev, "unable to allocate root hub\n");
+		dev_err(hcd->self.sysdev, "[ERROR][USB] unable to allocate root hub\n");
 		retval = -ENOMEM;
 		goto err_allocate_root_hub;
 	}
@@ -2880,7 +2880,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	if (hcd->driver->reset) {
 		retval = hcd->driver->reset(hcd);
 		if (retval < 0) {
-			dev_err(hcd->self.controller, "can't setup: %d\n",
+			dev_err(hcd->self.controller, "[ERROR][USB] can't setup: %d\n",
 					retval);
 			goto err_hcd_driver_setup;
 		}
@@ -2890,7 +2890,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	/* NOTE: root hub and controller capabilities may not be the same */
 	if (device_can_wakeup(hcd->self.controller)
 			&& device_can_wakeup(&hcd->self.root_hub->dev))
-		dev_dbg(hcd->self.controller, "supports USB remote wakeup\n");
+		dev_dbg(hcd->self.controller, "[DEBUG][USB] supports USB remote wakeup\n");
 
 	/* initialize tasklets */
 	init_giveback_urb_bh(&hcd->high_prio_bh);
@@ -2908,7 +2908,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	hcd->state = HC_STATE_RUNNING;
 	retval = hcd->driver->start(hcd);
 	if (retval < 0) {
-		dev_err(hcd->self.controller, "startup error %d\n", retval);
+		dev_err(hcd->self.controller, "[ERROR][USB] startup error %d\n", retval);
 		goto err_hcd_driver_start;
 	}
 
@@ -2919,7 +2919,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 
 	retval = sysfs_create_group(&rhdev->dev.kobj, &usb_bus_attr_group);
 	if (retval < 0) {
-		printk(KERN_ERR "Cannot register USB bus sysfs attributes: %d\n",
+		printk(KERN_ERR "[ERROR][USB] Cannot register USB bus sysfs attributes: %d\n",
 		       retval);
 		goto error_create_attr_group;
 	}
@@ -2931,7 +2931,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 			void * addr = ioremap(0x11d90010, 0x4);
 			writel((readl(addr) | 0x02000000), addr);
 			iounmap(addr);
-			dev_info(hcd->self.controller, "power down SS circit\n");
+			dev_info(hcd->self.controller, "[INFO][USB] power down SS circit\n");
 		}
 	}
 #endif
@@ -2999,7 +2999,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->self.root_hub;
 
-	dev_info(hcd->self.controller, "remove, state %x\n", hcd->state);
+	dev_info(hcd->self.controller, "[INFO][USB] remove, state %x\n", hcd->state);
 
 	usb_get_dev(rhdev);
 	sysfs_remove_group(&rhdev->dev.kobj, &usb_bus_attr_group);
@@ -3008,7 +3008,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	if (HC_IS_RUNNING (hcd->state))
 		hcd->state = HC_STATE_QUIESCING;
 
-	dev_dbg(hcd->self.controller, "roothub graceful disconnect\n");
+	dev_dbg(hcd->self.controller, "[DEBUG][USB] roothub graceful disconnect\n");
 	spin_lock_irq (&hcd_root_hub_lock);
 	hcd->rh_registered = 0;
 	spin_unlock_irq (&hcd_root_hub_lock);
@@ -3115,7 +3115,7 @@ void usb_mon_deregister (void)
 {
 
 	if (mon_ops == NULL) {
-		printk(KERN_ERR "USB: monitor was not registered\n");
+		printk(KERN_ERR "[ERROR][USB] USB: monitor was not registered\n");
 		return;
 	}
 	mon_ops = NULL;

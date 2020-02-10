@@ -351,7 +351,7 @@ void w_conn_id_status_change(void *p)
 	DWC_DEBUGPL(DBG_CIL, "gotgctl.b.conidsts=%d\n", gotgctl.b.conidsts);
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
-	printk("ID status change: \x1b[1;42m%s mode\x1b[0m\n",gotgctl.b.conidsts ? "Device" : "Host");
+	printk("[INFO][USB] ID status change: \x1b[1;42m%s mode\x1b[0m\n",gotgctl.b.conidsts ? "Device" : "Host");
 #endif
 
 	/* B-Device connector (Device Mode) */
@@ -1135,11 +1135,11 @@ void dwc_otg_display_disconnect_message(dwc_otg_core_if_t *core_if)
 	hprt0.d32 = DWC_READ_REG32(core_if->host_if->hprt0);
 
 #ifndef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT		/* 017.03.14 */
-	printk("Dwc_otg Disconnect Detected [HPRT0: 0x%08x]:",hprt0.d32);
+	printk("[INFO][USB] Dwc_otg Disconnect Detected [HPRT0: 0x%08x]:",hprt0.d32);
 	if(hprt0.b.prtovrcurrchng)
-		printk("\x1b[1;33m Port Overcurrent Changed.\x1b[0m\n");
+		printk("[INFO][USB] \x1b[1;33m Port Overcurrent Changed.\x1b[0m\n");
 	else
-		printk("\x1b[1;33m Device is detached.\x1b[0m\n");
+		printk("[INFO][USB] \x1b[1;33m Device is detached.\x1b[0m\n");
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 }
 
@@ -1220,7 +1220,7 @@ int32_t dwc_otg_handle_disconnect_intr(dwc_otg_core_if_t * core_if)
 				if(dwc_otg_hcd->fops->get_otg_vbus_off(dwc_otg_hcd))
 				{
 					dwc_otg_core_if_t *core_if = dwc_otg_hcd->core_if;
-					printk("\x1b[1;32m[%s:%d] otg_vbus_off is set. Turn off VBUS and cancle conn. timer.\x1b[0m\n", __func__, __LINE__);
+					printk("[INFO][USB] \x1b[1;32m[%s:%d] otg_vbus_off is set. Turn off VBUS and cancle conn. timer.\x1b[0m\n", __func__, __LINE__);
 					/* Turn off the VBUS */
 					DWC_WORKQ_SCHEDULE(core_if->wq_otg, vbus_ctrl_off_wq,
 							   core_if, "otg_vbus_off is set, turn off VBUS");

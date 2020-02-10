@@ -704,7 +704,7 @@ int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
 	u32             reg;
 
     reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-    printk("@0x%08X: 0x%08X\n",(unsigned int)&ehci->regs->port_status[0], reg);
+    printk("[INFO][USB] @0x%08X: 0x%08X\n",(unsigned int)&ehci->regs->port_status[0], reg);
     reg &= ~EHCI_PORTPMSC_TESTMODE_MASK;
 
     switch (mode) {
@@ -723,7 +723,7 @@ int ehci_set_test_mode(struct ehci_hcd *ehci, int mode)
     ehci_writel(ehci, reg, &ehci->regs->port_status[0]);
     udelay(100);
     reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-    printk("@0x%08X: 0x%08X\n", (unsigned int)&ehci->regs->port_status[0], reg);
+    printk("[INFO][USB] @0x%08X: 0x%08X\n", (unsigned int)&ehci->regs->port_status[0], reg);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ehci_set_test_mode);
@@ -1350,14 +1350,14 @@ static int __init ehci_hcd_init(void)
 	if (usb_disabled())
 		return -ENODEV;
 
-	printk(KERN_INFO "%s: " DRIVER_DESC "\n", hcd_name);
+	printk(KERN_INFO "[INFO][USB] %s: " DRIVER_DESC "\n", hcd_name);
 	set_bit(USB_EHCI_LOADED, &usb_hcds_loaded);
 	if (test_bit(USB_UHCI_LOADED, &usb_hcds_loaded) ||
 			test_bit(USB_OHCI_LOADED, &usb_hcds_loaded))
-		printk(KERN_WARNING "Warning! ehci_hcd should always be loaded"
+		printk(KERN_WARNING "[WARN][USB] Warning! ehci_hcd should always be loaded"
 				" before uhci_hcd and ohci_hcd, not after\n");
 
-	pr_debug("%s: block sizes: qh %zd qtd %zd itd %zd sitd %zd\n",
+	pr_debug("[DEBUG][USB] %s: block sizes: qh %zd qtd %zd itd %zd sitd %zd\n",
 		 hcd_name,
 		 sizeof(struct ehci_qh), sizeof(struct ehci_qtd),
 		 sizeof(struct ehci_itd), sizeof(struct ehci_sitd));

@@ -480,7 +480,7 @@ static void dwc2_check_param_tx_fifo_sizes(struct dwc2_hsotg *hsotg)
 		total += hsotg->params.g_tx_fifo_size[fifo];
 
 	if (total > dwc2_hsotg_tx_fifo_total_depth(hsotg) || !total) {
-		dev_warn(hsotg->dev, "%s: Invalid parameter g-tx-fifo-size, setting to default average\n",
+		dev_warn(hsotg->dev, "[WARN][USB] %s: Invalid parameter g-tx-fifo-size, setting to default average\n",
 			 __func__);
 		dwc2_set_param_tx_fifo_sizes(hsotg);
 	}
@@ -490,7 +490,7 @@ static void dwc2_check_param_tx_fifo_sizes(struct dwc2_hsotg *hsotg)
 
 		if (hsotg->params.g_tx_fifo_size[fifo] < min ||
 		    hsotg->params.g_tx_fifo_size[fifo] >  dptxfszn) {
-			dev_warn(hsotg->dev, "%s: Invalid parameter g_tx_fifo_size[%d]=%d\n",
+			dev_warn(hsotg->dev, "[WARN][USB] %s: Invalid parameter g_tx_fifo_size[%d]=%d\n",
 				 __func__, fifo,
 				 hsotg->params.g_tx_fifo_size[fifo]);
 			hsotg->params.g_tx_fifo_size[fifo] = dptxfszn;
@@ -501,7 +501,7 @@ static void dwc2_check_param_tx_fifo_sizes(struct dwc2_hsotg *hsotg)
 #define CHECK_RANGE(_param, _min, _max, _def) do {			\
 		if ((hsotg->params._param) < (_min) ||			\
 		    (hsotg->params._param) > (_max)) {			\
-			dev_warn(hsotg->dev, "%s: Invalid parameter %s=%d\n", \
+			dev_warn(hsotg->dev, "[WARN][USB] %s: Invalid parameter %s=%d\n", \
 				 __func__, #_param, hsotg->params._param); \
 			hsotg->params._param = (_def);			\
 		}							\
@@ -662,7 +662,7 @@ int dwc2_get_hwparams(struct dwc2_hsotg *hsotg)
 		return -ENODEV;
 	}
 
-	dev_dbg(hsotg->dev, "Core Release: %1x.%1x%1x%1x (snpsid=%x)\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] Core Release: %1x.%1x%1x%1x (snpsid=%x)\n",
 		hw->snpsid >> 12 & 0xf, hw->snpsid >> 8 & 0xf,
 		hw->snpsid >> 4 & 0xf, hw->snpsid & 0xf, hw->snpsid);
 

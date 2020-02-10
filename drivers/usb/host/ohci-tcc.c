@@ -127,7 +127,7 @@ int tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 	if(on_off == ON) {
 		if(clk_prepare_enable(tcc_ohci->hclk) != 0) {
 			dev_err(tcc_ohci->dev,
-				"can't do usb 2.0 hclk clock enable\n");
+				"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
 			return -1;
 		}
 	} else {
@@ -138,7 +138,7 @@ int tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 		}
 	}
 
-	//dev_info(tcc_ohci->dev, "clk %s\n", (on_off) ? "enable":"disable");
+	//dev_info(tcc_ohci->dev, "[INFO][USB] clk %s\n", (on_off) ? "enable":"disable");
 
 	return 0;
 }
@@ -153,7 +153,7 @@ int tcc_ohci_vbus_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 				err = regulator_enable(tcc_ohci->vbus_source);
 				if(err) {
 					dev_err(tcc_ohci->dev,
-						"can't enable vbus source\n");
+						"[ERROR][USB] can't enable vbus source\n");
 					return err;
 				}
 			}
@@ -171,7 +171,7 @@ static void tcc_ohci_phy_ctrl(struct tcc_ohci_hcd *tcc_ohci, int on_off)
 	//PHSIOBUSCFG pEHCIPHYCFG = (PHSIOBUSCFG)tcc_p2v(HwHSIOBUSCFG_BASE);
 	if(on_off == ON) {
 		if (!ehci_phy_set)
-			printk("ehci load first!\n");
+			printk("[INFO][USB] ehci load first!\n");
 
 	}
 	else if(on_off == OFF) {
@@ -245,7 +245,7 @@ static int tcc_ohci_select_pmm(unsigned long reg_base, int mode, int num_port, i
 		}
 		break;
 	default:
-		printk(KERN_ERR "Invalid mode %d, set to non-power switch mode.\n", mode);
+		printk(KERN_ERR "[ERROR][USB] Invalid mode %d, set to non-power switch mode.\n", mode);
 		ohci_reg->HcRhDescriptorA.nREG |= RH_A_NPS;
 	}
 
@@ -313,7 +313,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 	retval = tcc_ohci_parse_dt(pdev, tcc_ohci);
 	if(retval != 0){
 		if(retval != -1)
-			printk(KERN_ERR "ochi-tcc: Device table parsing failed\n");
+			printk(KERN_ERR "[ERROR][USB] ochi-tcc: Device table parsing failed\n");
 		retval = -EIO;
 		goto err0;
 	}
@@ -321,7 +321,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 	irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev,
-			"Found HC with no IRQ. Check %s setup!\n",
+			"[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
 			dev_name(&pdev->dev));
 		retval = -ENODEV;
 		goto err0;
@@ -331,7 +331,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev,
-			"Found HC with no register addr. Check %s setup!\n",
+			"[ERROR][USB] Found HC with no register addr. Check %s setup!\n",
 			dev_name(&pdev->dev));
 		retval = -ENODEV;
 		goto err1;
@@ -349,7 +349,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 	res1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!res1) {
 		dev_err(&pdev->dev,
-			"Found HC with no register addr. Check %s setup!\n",
+			"[ERROR][USB] Found HC with no register addr. Check %s setup!\n",
 			dev_name(&pdev->dev));
 		retval = -ENODEV;
 		goto err1;
@@ -372,14 +372,14 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 	/* USB HOST Power Enable */
 	if (tcc_ohci_vbus_ctrl(tcc_ohci, ON) != 0)
 	{
-		printk(KERN_ERR "ohci-tcc: USB HOST VBUS failed\n");
+		printk(KERN_ERR "[ERROR][USB] ohci-tcc: USB HOST VBUS failed\n");
 		retval = -EIO;
 		goto err2;
 	}
 
 	//if ((retval = tcc_start_hc(pdev->id, &pdev->dev)) < 0)
 	//{
-	//	printk(KERN_ERR "tcc_start_hc failed");
+	//	printk(KERN_ERR "[INFO][USB] tcc_start_hc failed");
 	//	goto err2;
 	//}
 
@@ -392,7 +392,7 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 
 	retval = device_create_file(&pdev->dev, &dev_attr_ohci_tpl_support);
 	if (retval < 0) {
-		printk(KERN_ERR "Cannot register USB TPL Support attributes: %d\n",
+		printk(KERN_ERR "[ERROR][USB] Cannot register USB TPL Support attributes: %d\n",
 		       retval);
 		goto err2;
 	}
@@ -407,7 +407,7 @@ err2:
 err1:
 	usb_put_hcd(hcd);
 err0:
-	dev_err(&pdev->dev, "init %s fail, %d\n",
+	dev_err(&pdev->dev, "[ERROR][USB] init %s fail, %d\n",
 		dev_name(&pdev->dev), retval);
 	
 	return retval;
@@ -461,7 +461,7 @@ static int ohci_tcc_start(struct usb_hcd *hcd)
 	}
 	if ((ret = ohci_run(ohci)) < 0)
 	{
-		dev_err(dev, "can't start %s", hcd->self.bus_name);
+		dev_err(dev, "[ERROR][USB] can't start %s", hcd->self.bus_name);
 		ohci_stop(hcd);
 		return ret;
 	}
@@ -618,13 +618,13 @@ static int tcc_ohci_parse_dt(struct platform_device *pdev, struct tcc_ohci_hcd *
 		tcc_ohci->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"hosten-gpio", 0);
 		if(!gpio_is_valid(tcc_ohci->host_en_gpio)){
-			dev_err(&pdev->dev, "can't find dev of node: host en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't find dev of node: host en gpio\n");
 			return -ENODEV;
 		}
 
 		err = gpio_request(tcc_ohci->host_en_gpio, "host_en_gpio");
 		if(err) {
-			dev_err(&pdev->dev, "can't requeest host_en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't requeest host_en gpio\n");
 			return err;
 		}
 	} else {
@@ -640,14 +640,14 @@ static int tcc_ohci_parse_dt(struct platform_device *pdev, struct tcc_ohci_hcd *
 		tcc_ohci->vbus_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"vbus-gpio", 0);
 		if(!gpio_is_valid(tcc_ohci->vbus_gpio)) {
-			dev_err(&pdev->dev, "can't find dev of node: vbus gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 
 			return -ENODEV;
 		}
 
 		err = gpio_request(tcc_ohci->vbus_gpio, "vbus_gpio");
 		if(err) {
-			dev_err(&pdev->dev, "can't requeest vbus gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't requeest vbus gpio\n");
 			return err;
 		}
 	} else {
@@ -662,7 +662,7 @@ static int tcc_ohci_parse_dt(struct platform_device *pdev, struct tcc_ohci_hcd *
 		tcc_ohci->vbus_source_ctrl = 1;
 		tcc_ohci->vbus_source = regulator_get(&pdev->dev, "vdd_ohci");
 		if (IS_ERR(tcc_ohci->vbus_source)) {
-			dev_err(&pdev->dev, "failed to get ohci vdd_source\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to get ohci vdd_source\n");
 			tcc_ohci->vbus_source = NULL;
 		}
 	} else {

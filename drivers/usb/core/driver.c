@@ -252,7 +252,7 @@ static int usb_probe_device(struct device *dev)
 	struct usb_device *udev = to_usb_device(dev);
 	int error = 0;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_dbg(dev, "[DEBUG][USB] %s\n", __func__);
 
 	/* TODO: Add real matching code */
 
@@ -289,7 +289,7 @@ static int usb_probe_interface(struct device *dev)
 	int error = -ENODEV;
 	int lpm_disable_error = -ENODEV;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_dbg(dev, "[DEBUG][USB] %s\n", __func__);
 
 	intf->needs_binding = 0;
 
@@ -297,10 +297,10 @@ static int usb_probe_interface(struct device *dev)
 		return error;
 
 	if (udev->authorized == 0) {
-		dev_err(&intf->dev, "Device is not authorized for usage\n");
+		dev_err(&intf->dev, "[ERROR][USB] Device is not authorized for usage\n");
 		return error;
 	} else if (intf->authorized == 0) {
-		dev_err(&intf->dev, "Interface %d is not authorized for usage\n",
+		dev_err(&intf->dev, "[ERROR][USB] Interface %d is not authorized for usage\n",
 				intf->altsetting->desc.bInterfaceNumber);
 		return error;
 	}
@@ -311,7 +311,7 @@ static int usb_probe_interface(struct device *dev)
 	if (!id)
 		return error;
 
-	dev_dbg(dev, "%s - got id\n", __func__);
+	dev_dbg(dev, "[DEBUG][USB] %s - got id\n", __func__);
 
 	error = usb_autoresume_device(udev);
 	if (error)
@@ -342,7 +342,7 @@ static int usb_probe_interface(struct device *dev)
 	if (driver->disable_hub_initiated_lpm) {
 		lpm_disable_error = usb_unlocked_disable_lpm(udev);
 		if (lpm_disable_error) {
-			dev_err(&intf->dev, "%s Failed to disable LPM for driver %s\n.",
+			dev_err(&intf->dev, "[ERROR][USB] %s Failed to disable LPM for driver %s\n.",
 					__func__, driver->name);
 			error = lpm_disable_error;
 			goto err;
@@ -845,11 +845,11 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 	if (usb_dev->devnum < 0) {
 		/* driver is often null here; dev_dbg() would oops */
-		pr_debug("usb %s: already deleted?\n", dev_name(dev));
+		pr_debug("[DEBUG][USB] usb %s: already deleted?\n", dev_name(dev));
 		return -ENODEV;
 	}
 	if (!usb_dev->bus) {
-		pr_debug("usb %s: bus removed?\n", dev_name(dev));
+		pr_debug("[DEBUG][USB] usb %s: bus removed?\n", dev_name(dev));
 		return -ENODEV;
 	}
 
@@ -899,10 +899,10 @@ int usb_register_device_driver(struct usb_device_driver *new_udriver,
 	retval = driver_register(&new_udriver->drvwrap.driver);
 
 	if (!retval)
-		pr_info("%s: registered new device driver %s\n",
+		pr_info("[INFO][USB] %s: registered new device driver %s\n",
 			usbcore_name, new_udriver->name);
 	else
-		printk(KERN_ERR "%s: error %d registering device "
+		printk(KERN_ERR "[ERROR][USB] %s: error %d registering device "
 			"	driver %s\n",
 			usbcore_name, retval, new_udriver->name);
 
@@ -919,7 +919,7 @@ EXPORT_SYMBOL_GPL(usb_register_device_driver);
  */
 void usb_deregister_device_driver(struct usb_device_driver *udriver)
 {
-	pr_info("%s: deregistering device driver %s\n",
+	pr_info("[INFO][USB] %s: deregistering device driver %s\n",
 			usbcore_name, udriver->name);
 
 	driver_unregister(&udriver->drvwrap.driver);
@@ -968,7 +968,7 @@ int usb_register_driver(struct usb_driver *new_driver, struct module *owner,
 	if (retval)
 		goto out_newid;
 
-	pr_info("%s: registered new interface driver %s\n",
+	pr_info("[INFO][USB] %s: registered new interface driver %s\n",
 			usbcore_name, new_driver->name);
 
 out:
@@ -977,7 +977,7 @@ out:
 out_newid:
 	driver_unregister(&new_driver->drvwrap.driver);
 
-	printk(KERN_ERR "%s: error %d registering interface "
+	printk(KERN_ERR "[ERROR][USB] %s: error %d registering interface "
 			"	driver %s\n",
 			usbcore_name, retval, new_driver->name);
 	goto out;
@@ -997,7 +997,7 @@ EXPORT_SYMBOL_GPL(usb_register_driver);
  */
 void usb_deregister(struct usb_driver *driver)
 {
-	pr_info("%s: deregistering interface driver %s\n",
+	pr_info("[INFO][USB] %s: deregistering interface driver %s\n",
 			usbcore_name, driver->name);
 
 	usb_remove_newid_files(driver);
@@ -1016,7 +1016,7 @@ void usb_forced_unbind_intf(struct usb_interface *intf)
 {
 	struct usb_driver *driver = to_usb_driver(intf->dev.driver);
 
-	dev_dbg(&intf->dev, "forced unbind\n");
+	dev_dbg(&intf->dev, "[DEBUG][USB] forced unbind\n");
 	usb_driver_release_interface(driver, intf);
 
 	/* Mark the interface for later rebinding */
@@ -1066,7 +1066,7 @@ static void usb_rebind_intf(struct usb_interface *intf)
 		intf->needs_binding = 0;
 		rc = device_attach(&intf->dev);
 		if (rc < 0)
-			dev_warn(&intf->dev, "rebind failed: %d\n", rc);
+			dev_warn(&intf->dev, "[WARN][USB] rebind failed: %d\n", rc);
 	}
 }
 
@@ -1153,7 +1153,7 @@ static int usb_suspend_device(struct usb_device *udev, pm_message_t msg)
 	status = udriver->suspend(udev, msg);
 
  done:
-	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1185,7 +1185,7 @@ static int usb_resume_device(struct usb_device *udev, pm_message_t msg)
 	status = udriver->resume(udev, msg);
 
  done:
-	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1203,10 +1203,10 @@ static int usb_suspend_interface(struct usb_device *udev,
 	/* at this time we know the driver supports suspend */
 	status = driver->suspend(intf, msg);
 	if (status && !PMSG_IS_AUTO(msg))
-		dev_err(&intf->dev, "suspend error %d\n", status);
+		dev_err(&intf->dev, "[ERROR][USB] suspend error %d\n", status);
 
  done:
-	dev_vdbg(&intf->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1244,21 +1244,21 @@ static int usb_resume_interface(struct usb_device *udev,
 		if (driver->reset_resume) {
 			status = driver->reset_resume(intf);
 			if (status)
-				dev_err(&intf->dev, "%s error %d\n",
+				dev_err(&intf->dev, "[ERROR][USB] %s error %d\n",
 						"reset_resume", status);
 		} else {
 			intf->needs_binding = 1;
-			dev_dbg(&intf->dev, "no reset_resume for driver %s?\n",
+			dev_dbg(&intf->dev, "[DEBUG][USB] no reset_resume for driver %s?\n",
 					driver->name);
 		}
 	} else {
 		status = driver->resume(intf);
 		if (status)
-			dev_err(&intf->dev, "resume error %d\n", status);
+			dev_err(&intf->dev, "[ERROR][USB] resume error %d\n", status);
 	}
 
 done:
-	dev_vdbg(&intf->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 
 	/* Later we will unbind the driver and/or reprobe, if necessary */
 	return status;
@@ -1339,7 +1339,7 @@ static int usb_suspend_both(struct usb_device *udev, pm_message_t msg)
 					     &devstat);
 			if (err) {
 				dev_err(&udev->dev,
-					"Failed to suspend device, error %d\n",
+					"[ERROR][USB] Failed to suspend device, error %d\n",
 					status);
 				goto done;
 			}
@@ -1368,7 +1368,7 @@ static int usb_suspend_both(struct usb_device *udev, pm_message_t msg)
 	}
 
  done:
-	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 	return status;
 }
 
@@ -1419,7 +1419,7 @@ static int usb_resume_both(struct usb_device *udev, pm_message_t msg)
 	usb_mark_last_busy(udev);
 
  done:
-	dev_vdbg(&udev->dev, "%s: status %d\n", __func__, status);
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: status %d\n", __func__, status);
 	if (!status)
 		udev->reset_resume = 0;
 	return status;
@@ -1562,7 +1562,7 @@ void usb_autosuspend_device(struct usb_device *udev)
 
 	usb_mark_last_busy(udev);
 	status = pm_runtime_put_sync_autosuspend(&udev->dev);
-	dev_vdbg(&udev->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&udev->dev.power.usage_count),
 			status);
 }
@@ -1594,7 +1594,7 @@ int usb_autoresume_device(struct usb_device *udev)
 	status = pm_runtime_get_sync(&udev->dev);
 	if (status < 0)
 		pm_runtime_put_sync(&udev->dev);
-	dev_vdbg(&udev->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&udev->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&udev->dev.power.usage_count),
 			status);
 	if (status > 0)
@@ -1624,7 +1624,7 @@ void usb_autopm_put_interface(struct usb_interface *intf)
 
 	usb_mark_last_busy(udev);
 	status = pm_runtime_put_sync(&intf->dev);
-	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
 }
@@ -1652,7 +1652,7 @@ void usb_autopm_put_interface_async(struct usb_interface *intf)
 
 	usb_mark_last_busy(udev);
 	status = pm_runtime_put(&intf->dev);
-	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
 }
@@ -1702,7 +1702,7 @@ int usb_autopm_get_interface(struct usb_interface *intf)
 	status = pm_runtime_get_sync(&intf->dev);
 	if (status < 0)
 		pm_runtime_put_sync(&intf->dev);
-	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
 	if (status > 0)
@@ -1735,7 +1735,7 @@ int usb_autopm_get_interface_async(struct usb_interface *intf)
 	status = pm_runtime_get(&intf->dev);
 	if (status < 0 && status != -EINPROGRESS)
 		pm_runtime_put_noidle(&intf->dev);
-	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
+	dev_vdbg(&intf->dev, "[DEBUG][USB] %s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
 	if (status > 0 || status == -EINPROGRESS)
@@ -1805,7 +1805,7 @@ static int autosuspend_check(struct usb_device *udev)
 		}
 	}
 	if (w && !device_can_wakeup(&udev->dev)) {
-		dev_dbg(&udev->dev, "remote wakeup needed for autosuspend\n");
+		dev_dbg(&udev->dev, "[DEBUG][USB] remote wakeup needed for autosuspend\n");
 		return -EOPNOTSUPP;
 	}
 
@@ -1816,7 +1816,7 @@ static int autosuspend_check(struct usb_device *udev)
 	 */
 	if (w && udev->parent == udev->bus->root_hub &&
 			bus_to_hcd(udev->bus)->cant_recv_wakeups) {
-		dev_dbg(&udev->dev, "HCD doesn't handle wakeup requests\n");
+		dev_dbg(&udev->dev, "[DEBUG][USB] HCD doesn't handle wakeup requests\n");
 		return -EOPNOTSUPP;
 	}
 
@@ -1922,7 +1922,7 @@ void usb_hnp_work(struct work_struct *work)
 
        err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
        if(err < 0)
-               printk("\x1b[1;33m[%s:%d] port suspend fail!! (%d)\x1b[0m\n", __func__, __LINE__,err);
+               printk("[INFO][USB] \x1b[1;33m[%s:%d] port suspend fail!! (%d)\x1b[0m\n", __func__, __LINE__,err);
 
 #if 0
        struct device *dev;

@@ -72,7 +72,7 @@ static int dwc3_get_dr_mode(struct dwc3 *dwc)
 	case DWC3_GHWPARAMS0_MODE_GADGET:
 		if (IS_ENABLED(CONFIG_USB_DWC3_HOST)) {
 			dev_err(dev,
-				"Controller does not support host mode.\n");
+				"[ERROR][USB] Controller does not support host mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_PERIPHERAL;
@@ -80,7 +80,7 @@ static int dwc3_get_dr_mode(struct dwc3 *dwc)
 	case DWC3_GHWPARAMS0_MODE_HOST:
 		if (IS_ENABLED(CONFIG_USB_DWC3_GADGET)) {
 			dev_err(dev,
-				"Controller does not support device mode.\n");
+				"[ERROR][USB] Controller does not support device mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_HOST;
@@ -94,7 +94,7 @@ static int dwc3_get_dr_mode(struct dwc3 *dwc)
 
 	if (mode != dwc->dr_mode) {
 		dev_warn(dev,
-			 "Configuration mismatch. dr_mode forced to %s\n",
+			 "[WARN][USB] Configuration mismatch. dr_mode forced to %s\n",
 			 mode == USB_DR_MODE_HOST ? "host" : "gadget");
 
 		dwc->dr_mode = mode;
@@ -158,7 +158,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 	case DWC3_GCTL_PRTCAP_HOST:
 		ret = dwc3_host_init(dwc);
 		if (ret) {
-			dev_err(dwc->dev, "failed to initialize host\n");
+			dev_err(dwc->dev, "[ERROR][USB] failed to initialize host\n");
 		} else {
 			if (dwc->usb2_phy) {
 				//dwc->usb2_phy->set_vbus(dwc->usb2_phy, 1);
@@ -180,7 +180,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 
 		ret = dwc3_gadget_init(dwc);
 		if (ret)
-			dev_err(dwc->dev, "failed to initialize peripheral\n");
+			dev_err(dwc->dev, "[ERROR][USB] failed to initialize peripheral\n");
 		break;
 	default:
 		break;
@@ -365,7 +365,7 @@ static int dwc3_alloc_event_buffers(struct dwc3 *dwc, unsigned length)
 
 	evt = dwc3_alloc_one_event_buffer(dwc, length);
 	if (IS_ERR(evt)) {
-		dev_err(dwc->dev, "can't allocate event buffer\n");
+		dev_err(dwc->dev, "[ERROR][USB] can't allocate event buffer\n");
 		return PTR_ERR(evt);
 	}
 	dwc->ev_buf = evt;
@@ -447,7 +447,7 @@ static int dwc3_setup_scratch_buffers(struct dwc3 *dwc)
 			dwc->nr_scratch * DWC3_SCRATCHBUF_SIZE,
 			DMA_BIDIRECTIONAL);
 	if (dma_mapping_error(dwc->sysdev, scratch_addr)) {
-		dev_err(dwc->sysdev, "failed to map scratch buffer\n");
+		dev_err(dwc->sysdev, "[ERROR][USB] failed to map scratch buffer\n");
 		ret = -EFAULT;
 		goto err0;
 	}
@@ -745,7 +745,7 @@ static void dwc3_core_setup_global_control(struct dwc3 *dwc)
 
 	/* check if current dwc3 is on simulation board */
 	if (dwc->hwparams.hwparams6 & DWC3_GHWPARAMS6_EN_FPGA) {
-		dev_info(dwc->dev, "Running with FPGA optmizations\n");
+		dev_info(dwc->dev, "[INFO][USB] Running with FPGA optmizations\n");
 		dwc->is_fpga = true;
 	}
 
@@ -787,7 +787,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	int			ret;
 
 	if (!dwc3_core_is_valid(dwc)) {
-		dev_err(dwc->dev, "this is not a DesignWare USB3 DRD Core\n");
+		dev_err(dwc->dev, "[ERROR][USB] this is not a DesignWare USB3 DRD Core\n");
 		ret = -ENODEV;
 		goto err0;
 	}
@@ -849,7 +849,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 
 	ret = dwc3_event_buffers_setup(dwc);
 	if (ret) {
-		dev_err(dwc->dev, "failed to setup event buffers\n");
+		dev_err(dwc->dev, "[ERROR][USB] failed to setup event buffers\n");
 		goto err4;
 	}
 
@@ -936,7 +936,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		} else if (ret == -EPROBE_DEFER) {
 			return ret;
 		} else {
-			dev_err(dev, "no usb2 phy configured\n");
+			dev_err(dev, "[ERROR][USB] no usb2 phy configured\n");
 			return ret;
 		}
 	}
@@ -948,7 +948,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		} else if (ret == -EPROBE_DEFER) {
 			return ret;
 		} else {
-			dev_err(dev, "no usb3 phy configured\n");
+			dev_err(dev, "[ERROR][USB] no usb3 phy configured\n");
 			return ret;
 		}
 	}
@@ -961,7 +961,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		} else if (ret == -EPROBE_DEFER) {
 			return ret;
 		} else {
-			dev_err(dev, "no usb2 phy configured\n");
+			dev_err(dev, "[ERROR][USB] no usb2 phy configured\n");
 			return ret;
 		}
 	}
@@ -974,7 +974,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		} else if (ret == -EPROBE_DEFER) {
 			return ret;
 		} else {
-			dev_err(dev, "no usb3 phy configured\n");
+			dev_err(dev, "[ERROR][USB] no usb3 phy configured\n");
 			return ret;
 		}
 	}
@@ -1001,7 +1001,7 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		ret = dwc3_gadget_init(dwc);
 		if (ret) {
 			if (ret != -EPROBE_DEFER)
-				dev_err(dev, "failed to initialize gadget\n");
+				dev_err(dev, "[ERROR][USB] failed to initialize gadget\n");
 			return ret;
 		}
 		break;
@@ -1018,7 +1018,7 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		ret = dwc3_host_init(dwc);
 		if (ret) {
 			if (ret != -EPROBE_DEFER)
-				dev_err(dev, "failed to initialize host\n");
+				dev_err(dev, "[ERROR][USB] failed to initialize host\n");
 			return ret;
 		}
 		break;
@@ -1027,12 +1027,12 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		ret = dwc3_drd_init(dwc);
 		if (ret) {
 			if (ret != -EPROBE_DEFER)
-				dev_err(dev, "failed to initialize dual-role\n");
+				dev_err(dev, "[ERROR][USB] failed to initialize dual-role\n");
 			return ret;
 		}
 		break;
 	default:
-		dev_err(dev, "Unsupported mode of operation %d\n", dwc->dr_mode);
+		dev_err(dev, "[ERROR][USB] Unsupported mode of operation %d\n", dwc->dr_mode);
 		return -EINVAL;
 	}
 
@@ -1162,7 +1162,7 @@ static void dwc3_check_params(struct dwc3 *dwc)
 
 	/* Check for proper value of imod_interval */
 	if (dwc->imod_interval && !dwc3_has_imod(dwc)) {
-		dev_warn(dwc->dev, "Interrupt moderation not supported\n");
+		dev_warn(dwc->dev, "[WARN][USB] Interrupt moderation not supported\n");
 		dwc->imod_interval = 0;
 	}
 
@@ -1186,7 +1186,7 @@ static void dwc3_check_params(struct dwc3 *dwc)
 	case USB_SPEED_SUPER_PLUS:
 		break;
 	default:
-		dev_err(dev, "invalid maximum_speed parameter %d\n",
+		dev_err(dev, "[ERROR][USB] invalid maximum_speed parameter %d\n",
 			dwc->maximum_speed);
 		/* fall through */
 	case USB_SPEED_UNKNOWN:
@@ -1224,7 +1224,7 @@ static int dwc3_probe(struct platform_device *pdev)
 	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(dev, "missing memory resource\n");
+		dev_err(dev, "[ERROR][USB] missing memory resource\n");
 		return -ENODEV;
 	}
 #if 0
@@ -1240,7 +1240,7 @@ static int dwc3_probe(struct platform_device *pdev)
 		ret = dma_set_mask_and_coherent(&pdev->dev,DMA_BIT_MASK(32));
 		if (ret)
 		{
-			printk("%s : Failed to alloc dma\n", __func__);
+			printk("[INFO][USB] %s : Failed to alloc dma\n", __func__);
 				return ret;
 		}
 	}
@@ -1284,7 +1284,7 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	ret = dwc3_alloc_event_buffers(dwc, DWC3_EVENT_BUFFERS_SIZE);
 	if (ret) {
-		dev_err(dwc->dev, "failed to allocate event buffers\n");
+		dev_err(dwc->dev, "[ERROR][USB] failed to allocate event buffers\n");
 		ret = -ENOMEM;
 		goto err2;
 	}
@@ -1299,7 +1299,7 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	ret = dwc3_core_init(dwc);
 	if (ret) {
-		dev_err(dev, "failed to initialize core\n");
+		dev_err(dev, "[ERROR][USB] failed to initialize core\n");
 		goto err4;
 	}
 

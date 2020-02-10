@@ -2440,7 +2440,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 			core_if->vbus_ctrl(core_if->dwc_otg_dev,1);
 			if(!core_if->dwc_otg_dev->probe_complete)
 			{
-				printk("\x1b[1;33m[%s:%d] Start Session\x1b[0m\n", __func__, __LINE__);			
+				printk("[INFO][USB] \x1b[1;33m[%s:%d] Start Session\x1b[0m\n", __func__, __LINE__);			
 				cil_hcd_session_start(core_if);
 			}
 		}
@@ -2553,7 +2553,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 			hptxfsiz = (DWC_READ_REG32(&global_regs->hptxfsiz) >> 16);
 			if (is_fifo_limitation() == TRUE) {
 				gdfifocfg.b.epinfobase = 0x1800;//rxfsiz + nptxfsiz + hptxfsiz;
-				printk("dwc_otg: epinfobase: 0x%08X\n", gdfifocfg.b.epinfobase);
+				printk("[INFO][USB] dwc_otg: epinfobase: 0x%08X\n", gdfifocfg.b.epinfobase);
 			} else {
 				gdfifocfg.b.epinfobase = gdfifocfg.b.gdfifocfg - MAX_EPINFO_SIZE;	//txfifosize.b.startaddr;
 			}			
@@ -2621,7 +2621,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 
 #ifdef CONFIG_TCC_DWC_HS_ELECT_TST
 			{
-				printk("[%s:%d]vbus on\n", __func__, __LINE__);
+				printk("[INFO][USB] [%s:%d]vbus on\n", __func__, __LINE__);
 				core_if->vbus_ctrl(core_if->dwc_otg_dev,1);
 			}
 #endif

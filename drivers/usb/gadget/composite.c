@@ -755,7 +755,7 @@ static void reset_config(struct usb_composite_dev *cdev)
 	cdev->delayed_status = 0;
 #if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
 	wake_lock_timeout(&usb_config_wake_lock, 1*HZ);
-	printk(KERN_INFO "%s : usb reset config wake unlock --\n", __func__);
+	printk(KERN_INFO "[INFO][USB] %s : usb reset config wake unlock --\n", __func__);
 #endif
 }
 
@@ -780,7 +780,7 @@ static int set_config(struct usb_composite_dev *cdev,
 					reset_config(cdev);
 #if defined (CONFIG_USB_CONFIGFS) && defined (CONFIG_ANDROID)
 				wake_lock(&usb_config_wake_lock);
-				printk(KERN_INFO "%s : usb set config wake lock ++\n", __func__);
+				printk(KERN_INFO "[INFO][USB] %s : usb set config wake lock ++\n", __func__);
 #endif
 				result = 0;
 				break;

@@ -62,7 +62,7 @@ int xhci_set_test_mode(struct xhci_hcd *xhci, int mode)
 	u32             reg;
 
 	reg = readl(&xhci->op_regs->port_power_base);
-	printk("@0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	printk("[INFO][USB] @0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
 	reg &= ~PORT_TSTCTRL_MASK;
 
 	switch (mode) {
@@ -82,7 +82,7 @@ int xhci_set_test_mode(struct xhci_hcd *xhci, int mode)
 	udelay(100);
 	reg = readl(&xhci->op_regs->port_power_base);
 
-	printk("@0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
+	printk("[INFO][USB] @0x%08X: 0x%08X\n", &xhci->op_regs->port_power_base, reg);
 	return 0;
 }
 
@@ -1286,11 +1286,11 @@ static int xhci_check_args(struct usb_hcd *hcd, struct usb_device *udev,
 	struct xhci_virt_device	*virt_dev;
 
 	if (!hcd || (check_ep && !ep) || !udev) {
-		pr_debug("xHCI %s called with invalid args\n", func);
+		pr_debug("[DEBUG][USB] xHCI %s called with invalid args\n", func);
 		return -EINVAL;
 	}
 	if (!udev->parent) {
-		pr_debug("xHCI %s called for root hub\n", func);
+		pr_debug("[DEBUG][USB] xHCI %s called for root hub\n", func);
 		return 0;
 	}
 
@@ -1819,7 +1819,7 @@ static int xhci_add_endpoint(struct usb_hcd *hcd, struct usb_device *udev,
 	 * for usb_set_interface() and usb_set_configuration() claim).
 	 */
 	if (xhci_endpoint_init(xhci, virt_dev, udev, ep, GFP_NOIO) < 0) {
-		dev_dbg(&udev->dev, "%s - could not initialize ep %#x\n",
+		dev_dbg(&udev->dev, "[DEBUG][USB] %s - could not initialize ep %#x\n",
 				__func__, ep->desc.bEndpointAddress);
 		return -ENOMEM;
 	}
@@ -1902,27 +1902,27 @@ static int xhci_configure_endpoint_result(struct xhci_hcd *xhci,
 		break;
 	case COMP_RESOURCE_ERROR:
 		dev_warn(&udev->dev,
-			 "Not enough host controller resources for new device state.\n");
+			 "[WARN][USB] Not enough host controller resources for new device state.\n");
 		ret = -ENOMEM;
 		/* FIXME: can we allocate more resources for the HC? */
 		break;
 	case COMP_BANDWIDTH_ERROR:
 	case COMP_SECONDARY_BANDWIDTH_ERROR:
 		dev_warn(&udev->dev,
-			 "Not enough bandwidth for new device state.\n");
+			 "[WARN][USB] Not enough bandwidth for new device state.\n");
 		ret = -ENOSPC;
 		/* FIXME: can we go back to the old state? */
 		break;
 	case COMP_TRB_ERROR:
 		/* the HCD set up something wrong */
-		dev_warn(&udev->dev, "ERROR: Endpoint drop flag = 0, "
+		dev_warn(&udev->dev, "[WARN][USB] ERROR: Endpoint drop flag = 0, "
 				"add flag = 1, "
 				"and endpoint is not disabled.\n");
 		ret = -EINVAL;
 		break;
 	case COMP_INCOMPATIBLE_DEVICE_ERROR:
 		dev_warn(&udev->dev,
-			 "ERROR: Incompatible device for endpoint configure command.\n");
+			 "[WARN][USB] ERROR: Incompatible device for endpoint configure command.\n");
 		ret = -ENODEV;
 		break;
 	case COMP_SUCCESS:
@@ -1952,27 +1952,27 @@ static int xhci_evaluate_context_result(struct xhci_hcd *xhci,
 		break;
 	case COMP_PARAMETER_ERROR:
 		dev_warn(&udev->dev,
-			 "WARN: xHCI driver setup invalid evaluate context command.\n");
+			 "[WARN][USB] WARN: xHCI driver setup invalid evaluate context command.\n");
 		ret = -EINVAL;
 		break;
 	case COMP_SLOT_NOT_ENABLED_ERROR:
 		dev_warn(&udev->dev,
-			"WARN: slot not enabled for evaluate context command.\n");
+			"[WARN][USB] WARN: slot not enabled for evaluate context command.\n");
 		ret = -EINVAL;
 		break;
 	case COMP_CONTEXT_STATE_ERROR:
 		dev_warn(&udev->dev,
-			"WARN: invalid context state for evaluate context command.\n");
+			"[WARN][USB] WARN: invalid context state for evaluate context command.\n");
 		ret = -EINVAL;
 		break;
 	case COMP_INCOMPATIBLE_DEVICE_ERROR:
 		dev_warn(&udev->dev,
-			"ERROR: Incompatible device for evaluate context command.\n");
+			"[WARN][USB] ERROR: Incompatible device for evaluate context command.\n");
 		ret = -ENODEV;
 		break;
 	case COMP_MAX_EXIT_LATENCY_TOO_LARGE_ERROR:
 		/* Max Exit Latency too large error */
-		dev_warn(&udev->dev, "WARN: Max Exit Latency too large\n");
+		dev_warn(&udev->dev, "[WARN][USB] WARN: Max Exit Latency too large\n");
 		ret = -EINVAL;
 		break;
 	case COMP_SUCCESS:
@@ -3945,12 +3945,12 @@ static int xhci_setup_device(struct usb_hcd *hcd, struct usb_device *udev,
 		ret = -EINVAL;
 		break;
 	case COMP_USB_TRANSACTION_ERROR:
-		dev_warn(&udev->dev, "Device not responding to setup %s.\n", act);
+		dev_warn(&udev->dev, "[WARN][USB] Device not responding to setup %s.\n", act);
 		ret = -EPROTO;
 		break;
 	case COMP_INCOMPATIBLE_DEVICE_ERROR:
 		dev_warn(&udev->dev,
-			 "ERROR: Incompatible device for setup %s command\n", act);
+			 "[WARN][USB] ERROR: Incompatible device for setup %s command\n", act);
 		ret = -ENODEV;
 		break;
 	case COMP_SUCCESS:
@@ -4345,7 +4345,7 @@ static u16 xhci_get_timeout_no_hub_lpm(struct usb_device *udev,
 		state_name = "U2";
 		break;
 	default:
-		dev_warn(&udev->dev, "%s: Can't get timeout for non-U1 or U2 state.\n",
+		dev_warn(&udev->dev, "[WARN][USB] %s: Can't get timeout for non-U1 or U2 state.\n",
 				__func__);
 		return USB3_LPM_DISABLED;
 	}
@@ -4354,11 +4354,11 @@ static u16 xhci_get_timeout_no_hub_lpm(struct usb_device *udev,
 		return USB3_LPM_DEVICE_INITIATED;
 
 	if (sel > max_sel_pel)
-		dev_dbg(&udev->dev, "Device-initiated %s disabled "
+		dev_dbg(&udev->dev, "[DEBUG][USB] Device-initiated %s disabled "
 				"due to long SEL %llu ms\n",
 				state_name, sel);
 	else
-		dev_dbg(&udev->dev, "Device-initiated %s disabled "
+		dev_dbg(&udev->dev, "[DEBUG][USB] Device-initiated %s disabled "
 				"due to long PEL %llu ms\n",
 				state_name, pel);
 	return USB3_LPM_DISABLED;
@@ -4418,7 +4418,7 @@ static u16 xhci_calculate_u1_timeout(struct xhci_hcd *xhci,
 	/* Prevent U1 if service interval is shorter than U1 exit latency */
 	if (usb_endpoint_xfer_int(desc) || usb_endpoint_xfer_isoc(desc)) {
 		if (xhci_service_interval_to_ns(desc) <= udev->u1_params.mel) {
-			dev_dbg(&udev->dev, "Disable U1, ESIT shorter than exit latency\n");
+			dev_dbg(&udev->dev, "[DEBUG][USB] Disable U1, ESIT shorter than exit latency\n");
 			return USB3_LPM_DISABLED;
 		}
 	}
@@ -4441,7 +4441,7 @@ static u16 xhci_calculate_u1_timeout(struct xhci_hcd *xhci,
 	 */
 	if (timeout_ns <= USB3_LPM_U1_MAX_TIMEOUT)
 		return timeout_ns;
-	dev_dbg(&udev->dev, "Hub-initiated U1 disabled "
+	dev_dbg(&udev->dev, "[DEBUG][USB] Hub-initiated U1 disabled "
 			"due to long timeout %llu ms\n", timeout_ns);
 	return xhci_get_timeout_no_hub_lpm(udev, USB3_LPM_U1);
 }
@@ -4482,7 +4482,7 @@ static u16 xhci_calculate_u2_timeout(struct xhci_hcd *xhci,
 	/* Prevent U2 if service interval is shorter than U2 exit latency */
 	if (usb_endpoint_xfer_int(desc) || usb_endpoint_xfer_isoc(desc)) {
 		if (xhci_service_interval_to_ns(desc) <= udev->u2_params.mel) {
-			dev_dbg(&udev->dev, "Disable U2, ESIT shorter than exit latency\n");
+			dev_dbg(&udev->dev, "[DEBUG][USB] Disable U2, ESIT shorter than exit latency\n");
 			return USB3_LPM_DISABLED;
 		}
 	}
@@ -4499,7 +4499,7 @@ static u16 xhci_calculate_u2_timeout(struct xhci_hcd *xhci,
 	 */
 	if (timeout_ns <= USB3_LPM_U2_MAX_TIMEOUT)
 		return timeout_ns;
-	dev_dbg(&udev->dev, "Hub-initiated U2 disabled "
+	dev_dbg(&udev->dev, "[DEBUG][USB] Hub-initiated U2 disabled "
 			"due to long timeout %llu ms\n", timeout_ns);
 	return xhci_get_timeout_no_hub_lpm(udev, USB3_LPM_U2);
 }
@@ -4577,9 +4577,9 @@ static int xhci_check_intel_tier_policy(struct usb_device *udev,
 	if (num_hubs < 2)
 		return 0;
 
-	dev_dbg(&udev->dev, "Disabling U1 link state for device"
+	dev_dbg(&udev->dev, "[DEBUG][USB] Disabling U1 link state for device"
 			" below second-tier hub.\n");
-	dev_dbg(&udev->dev, "Plug device into first-tier hub "
+	dev_dbg(&udev->dev, "[DEBUG][USB] Plug device into first-tier hub "
 			"to decrease power consumption.\n");
 	return -E2BIG;
 }
@@ -4613,7 +4613,7 @@ static u16 xhci_calculate_lpm_timeout(struct usb_hcd *hcd,
 	else if (state == USB3_LPM_U2)
 		state_name = "U2";
 	else {
-		dev_warn(&udev->dev, "Can't enable unknown link state %i\n",
+		dev_warn(&udev->dev, "[WARN][USB] Can't enable unknown link state %i\n",
 				state);
 		return timeout;
 	}
@@ -4645,7 +4645,7 @@ static u16 xhci_calculate_lpm_timeout(struct usb_hcd *hcd,
 		if (intf->dev.driver) {
 			driver = to_usb_driver(intf->dev.driver);
 			if (driver && driver->disable_hub_initiated_lpm) {
-				dev_dbg(&udev->dev, "Hub-initiated %s disabled "
+				dev_dbg(&udev->dev, "[DEBUG][USB] Hub-initiated %s disabled "
 						"at request of driver %s\n",
 						state_name, driver->name);
 				return xhci_get_timeout_no_hub_lpm(udev, state);
@@ -4702,7 +4702,7 @@ static int calculate_max_exit_latency(struct usb_device *udev,
 		mel_us = u2_mel_us;
 	/* xHCI host controller max exit latency field is only 16 bits wide. */
 	if (mel_us > MAX_EXIT) {
-		dev_warn(&udev->dev, "Link PM max exit latency of %lluus "
+		dev_warn(&udev->dev, "[WARN][USB] Link PM max exit latency of %lluus "
 				"is too big.\n", mel_us);
 		return -E2BIG;
 	}

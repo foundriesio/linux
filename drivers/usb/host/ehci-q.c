@@ -175,7 +175,7 @@ static void ehci_clear_tt_buffer(struct ehci_hcd *ehci, struct ehci_qh *qh,
 #ifdef CONFIG_DYNAMIC_DEBUG
 		struct usb_device *tt = urb->dev->tt->hub;
 		dev_dbg(&tt->dev,
-			"clear tt buffer port %d, a%d ep%d t%08x\n",
+			"[DEBUG][USB] clear tt buffer port %d, a%d ep%d t%08x\n",
 			urb->dev->ttport, urb->dev->devnum,
 			usb_pipeendpoint(urb->pipe), token);
 #endif /* CONFIG_DYNAMIC_DEBUG */

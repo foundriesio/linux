@@ -581,7 +581,7 @@ static struct config_group *function_make(
 	func_name = buf;
 	instance_name = strchr(func_name, '.');
 	if (!instance_name) {
-		pr_err("Unable to locate . in FUNC.INSTANCE\n");
+		pr_err("[ERROR][USB] Unable to locate . in FUNC.INSTANCE\n");
 		return ERR_PTR(-EINVAL);
 	}
 	*instance_name = '\0';
@@ -675,7 +675,7 @@ static struct config_group *config_desc_make(
 
 	num_str = strchr(buf, '.');
 	if (!num_str) {
-		pr_err("Unable to locate . in name.bConfigurationValue\n");
+		pr_err("[ERROR][USB] Unable to locate . in name.bConfigurationValue\n");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -1259,7 +1259,7 @@ static void purge_configs_funcs(struct gadget_info *gi)
 			list_move_tail(&f->list, &cfg->func_list);
 			if (f->unbind) {
 				dev_dbg(&gi->cdev.gadget->dev,
-				         "unbind function '%s'/%p\n",
+				         "[DEBUG][USB] unbind function '%s'/%p\n",
 				         f->name, f);
 				f->unbind(c, f);
 			}
@@ -1295,7 +1295,7 @@ static int configfs_composite_bind(struct usb_gadget *gadget,
 	ret = -EINVAL;
 
 	if (list_empty(&gi->cdev.configs)) {
-		pr_err("Need at least one configuration in %s.\n",
+		pr_err("[ERROR][USB] Need at least one configuration in %s.\n",
 				gi->composite.name);
 		goto err_comp_cleanup;
 	}
@@ -1306,7 +1306,7 @@ static int configfs_composite_bind(struct usb_gadget *gadget,
 
 		cfg = container_of(c, struct config_usb_cfg, c);
 		if (list_empty(&cfg->func_list)) {
-			pr_err("Config %s/%d of %s needs at least one function.\n",
+			pr_err("[ERROR][USB] Config %s/%d of %s needs at least one function.\n",
 			      c->label, c->bConfigurationValue,
 			      gi->composite.name);
 			goto err_comp_cleanup;
@@ -1421,7 +1421,7 @@ static void android_force_disconnect_event(void)
 
 	kobject_uevent_env(&android_device->kobj,
 				KOBJ_CHANGE, disconnected);
-	pr_info("%s: send uevent %s\n", __func__, disconnected[0]);
+	pr_info("[INFO][USB] %s: send uevent %s\n", __func__, disconnected[0]);
 }
 
 static void android_work(struct work_struct *data)
@@ -1452,26 +1452,26 @@ static void android_work(struct work_struct *data)
 	if (status[0]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, connected);
-		pr_info("%s: sent uevent %s\n", __func__, connected[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, connected[0]);
 		uevent_sent = true;
 	}
 
 	if (status[1]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, configured);
-		pr_info("%s: sent uevent %s\n", __func__, configured[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, configured[0]);
 		uevent_sent = true;
 	}
 
 	if (status[2]) {
 		kobject_uevent_env(&android_device->kobj,
 					KOBJ_CHANGE, disconnected);
-		pr_info("%s: sent uevent %s\n", __func__, disconnected[0]);
+		pr_info("[INFO][USB] %s: sent uevent %s\n", __func__, disconnected[0]);
 		uevent_sent = true;
 	}
 
 	if (!uevent_sent) {
-		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
+		pr_info("[INFO][USB] %s: did not send uevent (%d %d %p)\n", __func__,
 			gi->connected, gi->sw_connected, cdev->config);
 	}
 }

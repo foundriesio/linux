@@ -151,9 +151,9 @@ static int ep_enable(struct usb_ep *usb_ep,
 	/* Delete after check - MAS */
 #if 0
 	nat = (uint32_t) ep_desc->wMaxPacketSize;
-	printk(KERN_ALERT "%s: nat (before) =%d\n", __func__, nat);
+	printk(KERN_ALERT "[ALERT][USB] %s: nat (before) =%d\n", __func__, nat);
 	nat = (nat >> 11) & 0x03;
-	printk(KERN_ALERT "%s: nat (after) =%d\n", __func__, nat);
+	printk(KERN_ALERT "[ALERT][USB] %s: nat (after) =%d\n", __func__, nat);
 #endif
 	retval = dwc_otg_pcd_ep_enable(gadget_wrapper->pcd,
 				       (const uint8_t *)ep_desc,
@@ -759,7 +759,7 @@ static int dwc_otg_pcd_udc_start(struct usb_gadget *g,
 {
 	//int retval;
 
-	/*DWC_DEBUGPL(DBG_PCD,*/ printk("registering gadget driver '%s'\n",
+	/*DWC_DEBUGPL(DBG_PCD,*/ printk("[INFO][USB] registering gadget driver '%s'\n",
 		    driver->driver.name);
 
 	if (!driver ||
@@ -782,7 +782,7 @@ static int dwc_otg_pcd_udc_start(struct usb_gadget *g,
 	gadget_wrapper->driver = driver;
 	gadget_wrapper->gadget.dev.driver = &driver->driver;
 #if 0
-	/*DWC_DEBUGPL(DBG_PCD,*/ printk("bind to driver %s\n", driver->driver.name);
+	/*DWC_DEBUGPL(DBG_PCD,*/ printk("[INFO][USB] bind to driver %s\n", driver->driver.name);
 	retval = driver->bind(&gadget_wrapper->gadget,gadget_wrapper->driver);
 	if (retval) {
 		DWC_ERROR("bind to driver %s --> error %d\n",
@@ -820,7 +820,7 @@ static int dwc_otg_pcd_udc_stop(struct usb_gadget *g)
 
 	//driver->unbind(&gadget_wrapper->gadget);
 
-	printk("unregistered driver '%s'\n", gadget_wrapper->driver->driver.name);
+	printk("[INFO][USB] unregistered driver '%s'\n", gadget_wrapper->driver->driver.name);
 	gadget_wrapper->driver = NULL;
 	return 0;
 }
@@ -1420,7 +1420,7 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 {
 	int retval;
 
-	/*DWC_DEBUGPL(DBG_PCD,*/ printk("registering gadget driver '%s'\n",
+	/*DWC_DEBUGPL(DBG_PCD,*/ printk("[INFO][USB] registering gadget driver '%s'\n",
 		    driver->driver.name);
 
 	if (!driver || 
@@ -1443,7 +1443,7 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 	gadget_wrapper->driver = driver;
 	gadget_wrapper->gadget.dev.driver = &driver->driver;
 
-	/*DWC_DEBUGPL(DBG_PCD,*/ printk("bind to driver %s\n", driver->driver.name);
+	/*DWC_DEBUGPL(DBG_PCD,*/ printk("[INFO][USB] bind to driver %s\n", driver->driver.name);
 	retval = driver->bind(&gadget_wrapper->gadget,gadget_wrapper->driver);
 	if (retval) {
 		DWC_ERROR("bind to driver %s --> error %d\n",

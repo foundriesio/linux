@@ -140,19 +140,19 @@ int usb_choose_configuration(struct usb_device *udev)
 	}
 
 	if (insufficient_power > 0)
-		dev_info(&udev->dev, "rejected %d configuration%s "
+		dev_info(&udev->dev, "[INFO][USB] rejected %d configuration%s "
 			"due to insufficient available bus power\n",
 			insufficient_power, plural(insufficient_power));
 
 	if (best) {
 		i = best->desc.bConfigurationValue;
 		dev_dbg(&udev->dev,
-			"configuration #%d chosen from %d choice%s\n",
+			"[DEBUG][USB] configuration #%d chosen from %d choice%s\n",
 			i, num_configs, plural(num_configs));
 	} else {
 		i = -1;
 		dev_warn(&udev->dev,
-			"no configuration chosen from %d choice%s\n",
+			"[WARN][USB] no configuration chosen from %d choice%s\n",
 			num_configs, plural(num_configs));
 	}
 	return i;
@@ -167,15 +167,15 @@ static int generic_probe(struct usb_device *udev)
 	 * with the driver core and lets interface drivers bind to them.
 	 */
 	if (udev->authorized == 0)
-		dev_err(&udev->dev, "Device is not authorized for usage\n");
+		dev_err(&udev->dev, "[ERROR][USB] Device is not authorized for usage\n");
 	else {
 		c = usb_choose_configuration(udev);
 		if (c >= 0) {
 			err = usb_set_configuration(udev, c);
 			while (err && err != -ENODEV && i <= 5 ) {
-				dev_err(&udev->dev, "can't set config #%d, error %d\n",
+				dev_err(&udev->dev, "[ERROR][USB] can't set config #%d, error %d\n",
 					c, err);
-				dev_err(&udev->dev, "retrying %d ... usb_set_configuration()\n", i);
+				dev_err(&udev->dev, "[ERROR][USB] retrying %d ... usb_set_configuration()\n", i);
 				/* This need not be fatal.  The user can try to
 				 * set other configurations. */
 				err = usb_set_configuration(udev, c);

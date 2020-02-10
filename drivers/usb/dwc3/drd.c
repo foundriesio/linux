@@ -64,7 +64,7 @@ int dwc3_drd_init(struct dwc3 *dwc)
 		ret = extcon_register_notifier(dwc->edev, EXTCON_USB_HOST,
 					       &dwc->edev_nb);
 		if (ret < 0) {
-			dev_err(dwc->dev, "couldn't register cable notifier\n");
+			dev_err(dwc->dev, "[ERROR][USB] couldn't register cable notifier\n");
 			return ret;
 		}
 	}

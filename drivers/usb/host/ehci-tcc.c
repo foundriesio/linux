@@ -138,7 +138,7 @@ static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 	struct usb_phy *phy = tcc_ehci->transceiver;
 
 	if (!phy || !phy->set_phy_state) {
-		printk("[%s:%d]Phy driver is needed\n", __func__, __LINE__);
+		printk("[INFO][USB] [%s:%d]Phy driver is needed\n", __func__, __LINE__);
 	} else {
 		phy->set_phy_state(phy, on_off);
 		ehci_phy_set = 1;
@@ -149,13 +149,13 @@ static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		if(tcc_ehci->isol) {
 			if(clk_prepare_enable(tcc_ehci->isol) != 0) {
 				dev_err(tcc_ehci->dev,
-				"can't do usb 2.0 phy enable\n");
+				"[ERROR][USB] can't do usb 2.0 phy enable\n");
 			}
 		}
 		if(tcc_ehci->phy_clk) {
 			if(clk_prepare_enable(tcc_ehci->phy_clk) != 0) {
 				dev_err(tcc_ehci->dev,
-					"can't do usb 2.0 phy clk clock enable\n");
+					"[ERROR][USB] can't do usb 2.0 phy clk clock enable\n");
 			}
 			clk_set_rate(tcc_ehci->phy_clk, tcc_ehci->core_clk_rate_phy);
 		}
@@ -181,14 +181,14 @@ int tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		if(tcc_ehci->hclk) {
 			if(clk_prepare_enable(tcc_ehci->hclk) != 0) {
 				dev_err(tcc_ehci->dev,
-					"can't do usb 2.0 hclk clock enable\n");
+					"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
 				return -1;
 			}
 		}
 		if(tcc_ehci->pclk) {
 			if(clk_prepare_enable(tcc_ehci->pclk) != 0) {
 				dev_err(tcc_ehci->dev,
-					"can't do usb 2.0 hclk clock enable\n");
+					"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
 				return -1;
 			}
 			clk_set_rate(tcc_ehci->pclk, tcc_ehci->core_clk_rate);
@@ -257,16 +257,16 @@ static ssize_t ehci_pcfg1_store(struct device *_dev,
 	int i;
 
 	if(count - 1 < 10 || 10 < count - 1 ) {
-		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 	if((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
@@ -276,22 +276,22 @@ static ssize_t ehci_pcfg1_store(struct device *_dev,
 			(buf[i]>='A'&&buf[i]<='F') )
 			continue;
 		else {
-			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n", 
+			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n", 
 				buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
-			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > ehci_pcfg1\n\n");
+			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("USB20H_PCFG1 = 0x%08X\n", old_reg);
+	printk("[INFO][USB] USB20H_PCFG1 = 0x%08X\n", old_reg);
 	tcc_ehci_writel(new_reg, tcc_ehci->phy_regs + TCC_EHCI_PHY_PCFG1);
 	new_reg = tcc_ehci_readl(tcc_ehci->phy_regs + TCC_EHCI_PHY_PCFG1);
 	//writel(new_reg, &pEHCIPHYCFG->USB20H_PCFG1.nREG);
 	//new_reg = readl(&pEHCIPHYCFG->USB20H_PCFG1.nREG);
 
 	ehci_pcfg1_display(old_reg,new_reg,str);
-	printk("%sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
+	printk("[INFO][USB] %sUSB20H_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n",str, new_reg);
 
 	return count;
 }
@@ -374,7 +374,7 @@ static void tcc_ehci_phy_init(struct tcc_ehci_hcd *tcc_ehci)
 	struct usb_phy *phy = tcc_ehci->transceiver;
 
 	if (!phy && !phy->init)
-		printk("[%s:%d]Phy driver is needed\n", __func__, __LINE__);
+		printk("[INFO][USB] [%s:%d]Phy driver is needed\n", __func__, __LINE__);
 	else
 		phy->init(phy);
 }
@@ -389,7 +389,7 @@ int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 				err = regulator_enable(tcc_ehci->vbus_source);
 				if(err) {
 					dev_err(tcc_ehci->dev,
-						"can't enable vbus source\n");
+						"[ERROR][USB] can't enable vbus source\n");
 					return err;
 				}
 			}
@@ -400,7 +400,7 @@ int tcc_ehci_power_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		err = gpio_direction_output(tcc_ehci->host_en_gpio, 1);	/* Don't control gpio_hs_host_en because this power also supported in USB core. */
 		if(err) {
 			dev_err(tcc_ehci->dev,
-				"can't enable host\n");
+				"[ERROR][USB] can't enable host\n");
 			return err;
 		}
 	}
@@ -427,12 +427,12 @@ int tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 	struct usb_phy *phy = tcc_ehci->transceiver;
 
 	if (!vbus_control_enable) {
-		printk("ehci vbus ctrl disable.\n");
+		printk("[INFO][USB] ehci vbus ctrl disable.\n");
 		return -1;
 	}
 
 	if (!phy || !phy->set_vbus) {
-		printk("[%s:%d]Phy driver is needed\n", __func__, __LINE__);
+		printk("[INFO][USB] [%s:%d]Phy driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
 
@@ -518,12 +518,12 @@ static const struct dev_pm_ops ehci_tcc_pmops = {
 //{
 //	unsigned int base = addr;
 //
-//	printk("\x1b[1;33m-------------------------------------------------\x1b[0m\n");
+//	printk("[INFO][USB] \x1b[1;33m-------------------------------------------------\x1b[0m\n");
 //	for(base = addr; base < (addr+0x108); base += 4)
 //	{
-//		printk("\x1b[1;33m0x%08X : [0x%08X]\x1b[0m\n",base,*(volatile unsigned int *)(base));
+//		printk("[INFO][USB] \x1b[1;33m0x%08X : [0x%08X]\x1b[0m\n",base,*(volatile unsigned int *)(base));
 //	}
-//	printk("\x1b[1;33m-------------------------------------------------\x1b[0m\n");
+//	printk("[INFO][USB] \x1b[1;33m-------------------------------------------------\x1b[0m\n");
 //}
 
 #define EHCI_TCC_PMOPS &ehci_tcc_pmops
@@ -560,7 +560,7 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 	retval = tcc_ehci_parse_dt(pdev, tcc_ehci);
 	if(retval != 0){
 		if(retval != -1)
-			printk(KERN_ERR "ehci-tcc: Device table parsing failed\n");
+			printk(KERN_ERR "[ERROR][USB] ehci-tcc: Device table parsing failed\n");
 		retval = -EIO;
 		goto fail_create_hcd;
 	}
@@ -568,7 +568,7 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 	irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev,
-			"Found HC with no IRQ. Check %s setup!\n",
+			"[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
 			dev_name(&pdev->dev));
 		retval = -ENODEV;
 		goto fail_create_hcd;
@@ -587,7 +587,7 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev,
-			"Found HC with no register addr. Check %s setup!\n",
+			"[ERROR][USB] Found HC with no register addr. Check %s setup!\n",
 			dev_name(&pdev->dev));
 		retval = -ENODEV;
 		goto fail_request_resource;
@@ -602,7 +602,7 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 
 	/* USB HOST Power Enable */
 	if (tcc_ehci_power_ctrl(tcc_ehci, ON) != 0) {
-		printk(KERN_ERR "ehci-tcc: USB HOST VBUS Ctrl failed\n");
+		printk(KERN_ERR "[ERROR][USB] ehci-tcc: USB HOST VBUS Ctrl failed\n");
 		retval = -EIO;
 		goto fail_request_resource;
 	}
@@ -630,14 +630,14 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 
 	retval = sysfs_create_group(&pdev->dev.kobj, &usb_sq_attr_group);
 	if (retval < 0) {
-		printk(KERN_ERR "Cannot register USB SQ sysfs attributes: %d\n",
+		printk(KERN_ERR "[ERROR][USB] Cannot register USB SQ sysfs attributes: %d\n",
 		       retval);
 		goto fail_add_hcd;
 	}
 
 	retval = device_create_file(&pdev->dev, &dev_attr_ehci_tpl_support);
 	if (retval < 0) {
-		printk(KERN_ERR "Cannot register USB TPL Support attributes: %d\n",
+		printk(KERN_ERR "[ERROR][USB] Cannot register USB TPL Support attributes: %d\n",
 		       retval);
 		goto fail_add_hcd;
 	}
@@ -649,7 +649,7 @@ fail_add_hcd:
 fail_request_resource:
 	usb_put_hcd(hcd);
 fail_create_hcd:
-	dev_err(&pdev->dev, "init %s fail, %d\n",
+	dev_err(&pdev->dev, "[ERROR][USB] init %s fail, %d\n",
 		dev_name(&pdev->dev), retval);
 	
 	return retval;
@@ -706,13 +706,13 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev, struct tcc_ehci_hcd *
 		tcc_ehci->host_en_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"hosten-gpio", 0);
 		if(!gpio_is_valid(tcc_ehci->host_en_gpio)){
-			dev_err(&pdev->dev, "can't find dev of node: host en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't find dev of node: host en gpio\n");
 			return -ENODEV;
 		}
 
 		err = gpio_request(tcc_ehci->host_en_gpio, "host_en_gpio");
 		if(err) {
-			dev_err(&pdev->dev, "can't requeest host_en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't requeest host_en gpio\n");
 			return err;
 		}
 	} else {
@@ -727,7 +727,7 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev, struct tcc_ehci_hcd *
 #ifdef CONFIG_ARCH_TCC803X
 		err = tcc_ehci->transceiver->set_vbus_resource(tcc_ehci->transceiver);
 		if (err) {
-			dev_err(&pdev->dev, "failed to set a vbus resource\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
 		}
 #endif 
 		if (IS_ERR(tcc_ehci->transceiver)) {
@@ -745,7 +745,7 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev, struct tcc_ehci_hcd *
 
 		tcc_ehci->vbus_source = regulator_get(&pdev->dev, "vdd_v5p0");
 		if (IS_ERR(tcc_ehci->vbus_source)) {
-			dev_err(&pdev->dev, "failed to get ehci vdd_source\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to get ehci vdd_source\n");
 			tcc_ehci->vbus_source = NULL;
 		}
 	} else {

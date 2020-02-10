@@ -125,7 +125,7 @@ int dwc_otg_tcc_power_ctrl(struct dwc_otg_device *tcc, int on_off)
 		if(on_off == ON) {
 			err = regulator_enable(tcc->vbus_source);
 			if(err) {
-				printk("dwc_otg: can't enable vbus source\n");
+				printk("[INFO][USB] dwc_otg: can't enable vbus source\n");
 				return err;
 			}
 			mdelay(1);
@@ -360,7 +360,7 @@ static int tcc_otg_phy_init(dwc_otg_device_t *otg_dev)
 	struct usb_phy *phy = otg_dev->dwc_otg_phy;
 
 	if (!phy || !phy->init) {
-		printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+		printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
 
@@ -384,12 +384,12 @@ int tcc_otg_vbus_ctrl(dwc_otg_device_t *otg_dev, int on_off)
 	struct usb_phy *phy = otg_dev->dwc_otg_phy;
 
 	if (!vbus_control_enable) {
-		printk("dwc_otg vbus ctrl disable.\n");
+		printk("[INFO][USB] dwc_otg vbus ctrl disable.\n");
 		return -1;
 	}
 
 	if ( !phy || !phy->set_vbus ) {
-		printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+		printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
 
@@ -802,24 +802,24 @@ static ssize_t drdmode_store(struct device *dev, struct device_attribute *attr,
 
 	if (!strncmp(buf, "host", 4)) {
 		mode = DWC_OTG_MODE_HOST;
-		printk("[drd mode req: %s]\n", "\x1b[1;41mHost\x1b[0m");
+		printk("[INFO][USB] [drd mode req: %s]\n", "\x1b[1;41mHost\x1b[0m");
 	} else if (!strncmp(buf, "device", 6)) {
 		mode = DWC_OTG_MODE_DEVICE;
-		printk("[drd mode req: %s]\n", "\x1b[1;46mDevice\x1b[0m");
+		printk("[INFO][USB] [drd mode req: %s]\n", "\x1b[1;46mDevice\x1b[0m");
 	} else {
 		return count;
 	}
 
 	if (otg_dev->current_mode == 0xFF) {
-		printk("[drd mode changing to %s]\n",
+		printk("[INFO][USB] [drd mode changing to %s]\n",
 			(otg_dev->new_mode == DWC_OTG_MODE_HOST) ? "Host":"Device");
 		if(otg_dev->new_mode == mode){
-			printk("[drd mode req Filtering]\n");
+			printk("[INFO][USB] [drd mode req Filtering]\n");
 			return count;
 		}
 	}else{
 		if(otg_dev->current_mode == mode){
-			printk("[drd mode req Filtering]\n");
+			printk("[INFO][USB] [drd mode req Filtering]\n");
 			return count;
 		}
 	}
@@ -828,7 +828,7 @@ static ssize_t drdmode_store(struct device *dev, struct device_attribute *attr,
 
 	if (work_pending(work))
 	{
-		printk("[drd_store pending]\n");
+		printk("[INFO][USB] [drd_store pending]\n");
 		return count;
 	}
 
@@ -936,7 +936,7 @@ static struct platform_device *tcc_mux_hcd_create_pdev(dwc_otg_device_t *otg_dev
 
 	hcd = dev_get_drvdata(&hci_dev->dev);
 	if (hcd == NULL){
-		printk("\x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n", __func__, __LINE__);
 		while(1);
 	}
 	hcd->tpl_support = otg_dev->hcd_tpl_support;
@@ -1126,14 +1126,14 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 		 * phy type 0 = nano phy
 		 */
 		if (dwc_otg_device->phy_type == 1)
-			printk("pico phy\n");
+			printk("[INFO][USB] pico phy\n");
 		else if (dwc_otg_device->phy_type == 0)
-			printk("nano phy\n");
+			printk("[INFO][USB] nano phy\n");
 		else
-			printk("bad phy set!\n");
+			printk("[INFO][USB] bad phy set!\n");
 	} else {
 		dwc_otg_device->phy_type = 0;	// nano phy use
-		printk("nano phy\n");
+		printk("[INFO][USB] nano phy\n");
 	}
 
 	//===============================================
@@ -1145,13 +1145,13 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 		dwc_otg_device->otgen_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"otgen-gpio", 0);
 		if(!gpio_is_valid(dwc_otg_device->otgen_gpio)){
-			dev_err(&pdev->dev, "can't find dev of node: otg en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't find dev of node: otg en gpio\n");
 			return -ENODEV;
 		}
 
 		err = gpio_request(dwc_otg_device->otgen_gpio, "otgen_gpio");
 		if(err) {
-			dev_err(&pdev->dev, "can't requeest otg_en gpio\n");
+			dev_err(&pdev->dev, "[ERROR][USB] can't requeest otg_en gpio\n");
 			return err;
 		}
 	} else {
@@ -1167,12 +1167,12 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 #ifdef CONFIG_ARCH_TCC803X
 		err = dwc_otg_device->mhst_phy->set_vbus_resource(dwc_otg_device->mhst_phy);
 		if (err) {
-			dev_err(&pdev->dev, "failed to set a vbus resource\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
 		}
 #endif 
 		if (IS_ERR(dwc_otg_device->mhst_phy)) {
 			dwc_otg_device->mhst_phy = NULL;
-			printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+			printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 			return -1;
 		}
 	}
@@ -1182,12 +1182,12 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 #ifdef CONFIG_ARCH_TCC803X
 		err = dwc_otg_device->dwc_otg_phy->set_vbus_resource(dwc_otg_device->dwc_otg_phy);
 		if (err) {
-			dev_err(&pdev->dev, "failed to set a vbus resource\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
 		}
 #endif 
 		if (IS_ERR(dwc_otg_device->dwc_otg_phy)){
 			dwc_otg_device->dwc_otg_phy = NULL;
-			printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+			printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 			return -1;
 		}
 	}
@@ -1200,7 +1200,7 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 
 		dwc_otg_device->vbus_source = regulator_get(&pdev->dev, "vdd_v5p0");
 		if (IS_ERR(dwc_otg_device->vbus_source)) {
-			dev_err(&pdev->dev, "failed to get otg vdd_source\n");
+			dev_err(&pdev->dev, "[ERROR][USB] failed to get otg vdd_source\n");
 			dwc_otg_device->vbus_source = NULL;
 		}
 	} else {
@@ -1286,13 +1286,13 @@ static int dwc_otg_soffn_monitor_thread(void * work){
 	if(otg_dev->current_mode == DWC_OTG_MODE_DEVICE)
 		cil_pcd_disconnect(core_if);
 	else
-		printk("%s - mode changed(%d)", __func__, otg_dev->current_mode);
+		printk("[INFO][USB] %s - mode changed(%d)", __func__, otg_dev->current_mode);
 
 	otg_dev->dwc_otg_soffn_thread = NULL;
 
 	tcc_otg_vbus_ctrl(otg_dev, OFF); // VBUS off
 	msleep(200);
-	printk("dwc_otg device - Host Disconnected\n");
+	printk("[INFO][USB] dwc_otg device - Host Disconnected\n");
 
 	return 0;
 }
@@ -1357,7 +1357,7 @@ static int dwc_otg_soffn_monitor_thread(void * work){
 					cil_pcd_disconnect(core_if);
 				}
 				else
-					printk("%s - mode changed(%d)", __func__, otg_dev->current_mode);
+					printk("[INFO][USB] %s - mode changed(%d)", __func__, otg_dev->current_mode);
 				//dwc3_tcc_vbus_ctrl(0);				// VBUS OFF
 				//otg_dev->vbus_status = 0;
 				otg_dev->dwc_otg_soffn_thread = NULL;
@@ -1368,14 +1368,14 @@ static int dwc_otg_soffn_monitor_thread(void * work){
 		{
 			if(disconnect_check_cnt == DISCONNECT_CHECK_TRIES - 1)
 			{
-				printk("%s - sof isn't changed(%d : %d)! force disconnect! (Timeout : %d msec)\n",
+				printk("[INFO][USB] %s - sof isn't changed(%d : %d)! force disconnect! (Timeout : %d msec)\n",
 					__func__, old_number, new_number,(disconnect_check_period * DISCONNECT_CHECK_TRIES));
 				if(otg_dev->current_mode == DWC_OTG_MODE_DEVICE){
 					cil_pcd_disconnect(core_if);
 				}
 				else
 				{
-					printk("%s - not in device mode (%d)", __func__, otg_dev->current_mode);
+					printk("[INFO][USB] %s - not in device mode (%d)", __func__, otg_dev->current_mode);
 				}
 				//otg_dev->vbus_status = 0;
 				otg_dev->dwc_otg_soffn_thread = NULL;
@@ -1389,7 +1389,7 @@ static int dwc_otg_soffn_monitor_thread(void * work){
 	
 	}while(!kthread_should_stop());
 	tcc_otg_vbus_ctrl(otg_dev, OFF); // VBUS off
-	printk("dwc_otg device - Host Disconnected\n");
+	printk("[INFO][USB] dwc_otg device - Host Disconnected\n");
 	msleep(200);
 
 	return 0;
@@ -1459,7 +1459,7 @@ void dwc_otg_change_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 
 	if(core_if->phy_mode == USBPHY_MODE_OFF)
 	{
-		printk("\x1b[1;33m[%s:%d] USBPHY is in OFF state. Reset the USBPHY. (%s)\x1b[0m\n",
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] USBPHY is in OFF state. Reset the USBPHY. (%s)\x1b[0m\n",
 			__func__, __LINE__, mode == DWC_OTG_MODE_HOST ? "Host" : "Device");
 		tcc_otg_phy_init(otg_dev);
 	}
@@ -1500,7 +1500,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 		otg_dev->current_mode = 0xFF;  // drd mode change start
 		if (mode == DWC_OTG_MODE_HOST) {
 			int retry_cnt=0;
-			printk("dwc_otg switching to host role\n" );
+			printk("[INFO][USB] dwc_otg switching to host role\n" );
 
 			#ifdef TCC_DWC_SOFFN_USE
 			if(otg_dev->dwc_otg_soffn_thread != NULL)
@@ -1525,7 +1525,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 					
 					retry_cnt++;
 					msleep(50);
-					printk("[%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
+					printk("[INFO][USB] [%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
 				}
 			} while(retry_cnt < VBUS_CTRL_MAX);
 #endif
@@ -1533,7 +1533,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 		}
 
 		if (mode == DWC_OTG_MODE_DEVICE) {
-			printk("dwc_otg switching to device role\n");
+			printk("[INFO][USB] dwc_otg switching to device role\n");
 		}
 
 		#ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
@@ -1553,7 +1553,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 			// mux ehci host enable
 			otg_dev->core_if->mux_own = MUX_MODE_HOST;
 			if (!otg_dev->mhst_phy || !otg_dev->mhst_phy->init) {
-				printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+				printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 				return -1;
 			}
 			otg_dev->mhst_phy->init(otg_dev->mhst_phy);
@@ -1580,7 +1580,7 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 				/* Start up our control thread */
 				otg_dev->dwc_otg_soffn_thread = kthread_run(dwc_otg_soffn_monitor_thread, (void*)otg_dev, "dwc_otg-soffn");
 				if (IS_ERR(otg_dev->dwc_otg_soffn_thread)) {
-					printk("\x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
+					printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
 					res = PTR_ERR(otg_dev->dwc_otg_soffn_thread);
 				}
 			}
@@ -1588,9 +1588,9 @@ unsigned int dwc_otg_set_drd_mode(dwc_otg_device_t *otg_dev, unsigned int mode)
 		#endif /* TCC_DWC_SOFFN_USE*/
 
 		otg_dev->current_mode = mode; // drd mode change complete. current mode update
-		printk("[dwc_otg mode chage complete: %s]\n", (otg_dev->current_mode == DWC_OTG_MODE_HOST)? "Host":"Device");
+		printk("[INFO][USB] [dwc_otg mode chage complete: %s]\n", (otg_dev->current_mode == DWC_OTG_MODE_HOST)? "Host":"Device");
 	} else {
-		printk("Current mode is %s\n", (otg_dev->current_mode == DWC_OTG_MODE_HOST) ? "Host":"Device");
+		printk("[INFO][USB] Current mode is %s\n", (otg_dev->current_mode == DWC_OTG_MODE_HOST) ? "Host":"Device");
 		res = 0;
 	}
 
@@ -1623,14 +1623,14 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	//struct resource *resource;
 	int irq;
 
-	dev_dbg(&_dev->dev, "dwc_otg_driver_probe(%p)\n", _dev);
+	dev_dbg(&_dev->dev, "[DEBUG][USB] dwc_otg_driver_probe(%p)\n", _dev);
 #ifdef CONFIG_ARCH_TCC897X
 	get_tcc_chip_info();
 #endif
 
 	dwc_otg_device = DWC_ALLOC(sizeof(dwc_otg_device_t));
 	if (!dwc_otg_device) {
-		dev_err(&_dev->dev, "kmalloc of dwc_otg_device failed\n");
+		dev_err(&_dev->dev, "[ERROR][USB] kmalloc of dwc_otg_device failed\n");
 		return -ENOMEM;
 	}
 	g_dwc_otg = dwc_otg_device;
@@ -1648,8 +1648,8 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	if (!request_mem_region(_dev->resource[0].start,
 	                    _dev->resource[0].end - _dev->resource[0].start + 1,
 	                    "dwc_otg")) {
-		dev_dbg(&_dev->dev, "error reserving mapped memory\n");
-		printk("\x1b[1;31m[%s:%d]\x1b[0m\n", __func__, __LINE__);
+		dev_dbg(&_dev->dev, "[DEBUG][USB] error reserving mapped memory\n");
+		printk("[INFO][USB] \x1b[1;31m[%s:%d]\x1b[0m\n", __func__, __LINE__);
 		retval = -EFAULT;
 		goto fail;
 	}
@@ -1657,14 +1657,14 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	dwc_otg_device->os_dep.base = ioremap_nocache(_dev->resource[0].start,
                                   _dev->resource[0].end - _dev->resource[0].start + 1);
 
-	dev_dbg(&_dev->dev, "base=0x%08x\n", (unsigned)dwc_otg_device->os_dep.base);
+	dev_dbg(&_dev->dev, "[DEBUG][USB] base=0x%08x\n", (unsigned)dwc_otg_device->os_dep.base);
 
 	if (!dwc_otg_device->os_dep.base) {
-		dev_err(&_dev->dev, "ioremap() failed\n");
+		dev_err(&_dev->dev, "[ERROR][USB] ioremap() failed\n");
 		retval = -ENOMEM;
 		goto fail;
 	}
-	dev_dbg(&_dev->dev, "base=0x%08x\n",
+	dev_dbg(&_dev->dev, "[DEBUG][USB] base=0x%08x\n",
                 (unsigned)dwc_otg_device->os_dep.base);
 
 #ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
@@ -1674,10 +1674,10 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	dwc_otg_device->ehci_regs = (void __iomem*)_dev->resource[2].start;
 	dwc_otg_device->ehci_regs_size = _dev->resource[2].end - _dev->resource[2].start+1;
 
-	dev_dbg(&_dev->dev, "base=0x%08x\n", (unsigned)dwc_otg_device->ehci_regs);
+	dev_dbg(&_dev->dev, "[DEBUG][USB] base=0x%08x\n", (unsigned)dwc_otg_device->ehci_regs);
 
 	if (!dwc_otg_device->ehci_regs) {
-		dev_err(&_dev->dev, "ioremap() failed\n");
+		dev_err(&_dev->dev, "[ERROR][USB] ioremap() failed\n");
 		retval = -ENOMEM;
 		goto fail;
 	}
@@ -1688,10 +1688,10 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	dwc_otg_device->ohci_regs = (void __iomem*)_dev->resource[4].start;
 	dwc_otg_device->ohci_regs_size = _dev->resource[4].end - _dev->resource[4].start + 1;
 
-	dev_dbg(&_dev->dev, "base=0x%08x\n", (unsigned)dwc_otg_device->ohci_regs);
+	dev_dbg(&_dev->dev, "[DEBUG][USB] base=0x%08x\n", (unsigned)dwc_otg_device->ohci_regs);
 
 	if (!dwc_otg_device->ohci_regs) {
-		dev_err(&_dev->dev, "ioremap() failed\n");
+		dev_err(&_dev->dev, "[ERROR][USB] ioremap() failed\n");
 		retval = -ENOMEM;
 		goto fail;
 	}
@@ -1705,7 +1705,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 #else
 	dwc_otg_device->clk[0] = clk_get(NULL, "usb_otg");
 	if (IS_ERR(dwc_otg_device->clk[0])){
-		printk("ERR - usb_otg clk_get fail.\n");
+		printk("[ERROR][USB] ERR - usb_otg clk_get fail.\n");
 		goto fail;
 	}
 	clk_prepare_enable(dwc_otg_device->clk[0]);
@@ -1717,7 +1717,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 
 	platform_set_drvdata(_dev, dwc_otg_device);
 
-	dev_dbg(&_dev->dev, "dwc_otg_device=0x%p\n", dwc_otg_device);
+	dev_dbg(&_dev->dev, "[DEBUG][USB] dwc_otg_device=0x%p\n", dwc_otg_device);
 
 	/* Set tcc phyconfiguration address */
 	dwc_otg_device->core_if = dwc_otg_cil_alloc();
@@ -1740,7 +1740,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	 */
 	clk_prepare_enable(dwc_otg_device->hclk); // HSIO BUS CLK
 	clk_set_rate(dwc_otg_device->pclk, dwc_otg_device->core_clk_rate);
-	printk("dwc_otg tcc: clk rate %lu\n", clk_get_rate(dwc_otg_device->pclk));
+	printk("[INFO][USB] dwc_otg tcc: clk rate %lu\n", clk_get_rate(dwc_otg_device->pclk));
 
 	/*
 	 * Turn on DWC_otg phy clk
@@ -1750,7 +1750,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 
 	dwc_otg_device->core_if = dwc_otg_cil_init(dwc_otg_device->os_dep.base, dwc_otg_device->core_if);
 	if (!dwc_otg_device->core_if) {
-		dev_err(&_dev->dev, "CIL initialization failed!\n");
+		dev_err(&_dev->dev, "[ERROR][USB] CIL initialization failed!\n");
 		retval = -ENOMEM;
 		goto fail;
 	}
@@ -1764,7 +1764,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 
 	if (((dwc_otg_get_gsnpsid(dwc_otg_device->core_if) & 0xFFFFF000) !=	0x4F542000) &&
 		((dwc_otg_get_gsnpsid(dwc_otg_device->core_if) & 0xFFFFF000) != 0x4F543000)) {
-		dev_err(&_dev->dev, "Bad value for SNPSID: 0x%08x\n",
+		dev_err(&_dev->dev, "[ERROR][USB] Bad value for SNPSID: 0x%08x\n",
 			dwc_otg_get_gsnpsid(dwc_otg_device->core_if));
 		retval = -EINVAL;
 		goto fail;
@@ -1773,7 +1773,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	/*
 	 * Validate parameter values.
 	 */
-	dev_dbg(&_dev->dev, "Calling set_parameters\n");
+	dev_dbg(&_dev->dev, "[DEBUG][USB] Calling set_parameters\n");
 	if (set_parameters(dwc_otg_device->core_if)) {
 		retval = -EINVAL;
 		goto fail;
@@ -1782,14 +1782,14 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	/*
 	 * Create Device Attributes in sysfs
 	 */
-	dev_dbg(&_dev->dev, "Calling attr_create\n");
+	dev_dbg(&_dev->dev, "[DEBUG][USB] Calling attr_create\n");
 	dwc_otg_attr_create(_dev);
 
 	/*
 	 * Disable the global interrupt until all the interrupt
 	 * handlers are installed.
 	 */
-	dev_dbg(&_dev->dev, "Calling disable_global_interrupts\n");
+	dev_dbg(&_dev->dev, "[DEBUG][USB] Calling disable_global_interrupts\n");
 	dwc_otg_disable_global_interrupts(dwc_otg_device->core_if);
 
 	/*
@@ -1798,7 +1798,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	 */
 	irq = platform_get_irq(_dev, 0);
 	if (irq < 0) {
-		dev_err(&_dev->dev, "no irq? (irq=%d)\n", irq);
+		dev_err(&_dev->dev, "[ERROR][USB] no irq? (irq=%d)\n", irq);
 		retval = -ENODEV;
 		goto fail;
 	}
@@ -1824,11 +1824,11 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 		unsigned int cpu = CONFIG_TCC_DWC_IRQ_AFFINITY;
 		retval = irq_set_affinity(irq, cpumask_of(cpu));
 		if(retval) {
-			dev_err(&_dev->dev, "failed to set the irq affinity irq %d cpu %d err %d\n",
+			dev_err(&_dev->dev, "[ERROR][USB] failed to set the irq affinity irq %d cpu %d err %d\n",
 				irq, cpu, retval);
 			return retval;
 		}
-		dev_info(&_dev->dev, "set the irq(%d) affinity to cpu(%d)\n", irq, cpu);
+		dev_info(&_dev->dev, "[INFO][USB] set the irq(%d) affinity to cpu(%d)\n", irq, cpu);
 	}
 #endif
 
@@ -1856,7 +1856,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 #endif
 
 #ifdef CONFIG_TCC_DWC_OTG_HOST_MUX
-	printk("dwc_otg tcc: mux host enable\n");
+	printk("[INFO][USB] dwc_otg tcc: mux host enable\n");
 #else
 #ifndef DWC_DEVICE_ONLY
 	/*
@@ -1918,7 +1918,7 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	tcc_otg_vbus_ctrl(dwc_otg_device, dwc_otg_device->current_mode == DWC_OTG_MODE_DEVICE ? OFF : ON);
 	dwc_otg_change_drd_mode(dwc_otg_device, dwc_otg_device->current_mode);
 #else
-	printk("\x1b[1;43m ## DWC_OTG COMPLIANCE TEST MODE ##\x1b[0m\n");
+	printk("[INFO][USB] \x1b[1;43m ## DWC_OTG COMPLIANCE TEST MODE ##\x1b[0m\n");
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
 #if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) && defined(CONFIG_TCC_DWC_OTG_DUAL_FIRST_HOST)		/* 016.09.05 */
 	dwc_otg_device->current_mode = DWC_OTG_MODE_DEVICE;
@@ -1931,9 +1931,9 @@ static int dwc_otg_driver_probe(struct platform_device *_dev)
 	 * perform initial actions required for Internal ADP logic.
 	 */
 	if (!dwc_otg_get_param_adp_enable(dwc_otg_device->core_if)) {	
-        dev_dbg(&_dev->dev, "Calling enable_global_interrupts\n");
+        dev_dbg(&_dev->dev, "[DEBUG][USB] Calling enable_global_interrupts\n");
 		dwc_otg_enable_global_interrupts(dwc_otg_device->core_if);
-	    dev_dbg(&_dev->dev, "Done\n");
+	    dev_dbg(&_dev->dev, "[DEBUG][USB] Done\n");
 	} else{
 			dwc_otg_adp_start(dwc_otg_device->core_if, dwc_otg_is_host_mode(dwc_otg_device->core_if));
 	}
@@ -1962,7 +1962,7 @@ static int dwc_otg_driver_suspend(struct platform_device *pdev, pm_message_t sta
 	struct usb_phy *phy = dwc_otg_device->dwc_otg_phy;
 
 	int irq = platform_get_irq(pdev, 0);
-	printk("disable irq(%d)\n", irq);
+	printk("[INFO][USB] disable irq(%d)\n", irq);
 	disable_irq(irq);
 
 	dwc_otg_save_global_regs(dwc_otg_device->core_if);
@@ -2026,7 +2026,7 @@ static int dwc_otg_driver_resume(struct platform_device *pdev)
 
 	dwc_otg_enable_global_interrupts(dwc_otg_device->core_if);
 	
-	printk("enable irq(%d)\n", irq);
+	printk("[INFO][USB] enable irq(%d)\n", irq);
 	enable_irq(irq);
 	if (dwc_otg_device->current_mode == DWC_OTG_MODE_DEVICE) {
 		dwc_otg_set_drd_mode(dwc_otg_device, DWC_OTG_MODE_HOST);
@@ -2107,13 +2107,13 @@ static int __init dwc_otg_driver_init(void)
 	otg_wakelock_init();
 #endif /* TCC_OTG_WAKE_LOCK */
 
-	printk(KERN_INFO "%s: version %s (%s)\n", dwc_driver_name,
+	printk(KERN_INFO "[INFO][USB] %s: version %s (%s)\n", dwc_driver_name,
 	       DWC_DRIVER_VERSION, p);
-	printk(KERN_INFO "Working version %s\n", "No 007 - 10/24/2007");
+	printk(KERN_INFO "[INFO][USB] Working version %s\n", "No 007 - 10/24/2007");
 
 	retval = platform_driver_register(&dwc_otg_driver);
 	if (retval < 0) {
-		printk(KERN_ERR "%s retval=%d\n", __func__, retval);
+		printk(KERN_ERR "[ERROR][USB] %s retval=%d\n", __func__, retval);
 	
 	#if defined(TCC_OTG_WAKE_LOCK)
 		otg_wakelock_exit();
@@ -2137,14 +2137,14 @@ module_init(dwc_otg_driver_init);
  */
 static void __exit dwc_otg_driver_cleanup(void)
 {
-	printk(KERN_DEBUG "dwc_otg_driver_cleanup()\n");
+	printk(KERN_DEBUG "[DEBUG][USB] dwc_otg_driver_cleanup()\n");
 
 	//driver_remove_file(&dwc_otg_driver.driver, &driver_attr_debuglevel);
 	driver_remove_file(&dwc_otg_driver.driver, &driver_attr_version);
 	
 	platform_driver_unregister(&dwc_otg_driver);
 
-	printk(KERN_INFO "%s module removed\n", dwc_driver_name);
+	printk(KERN_INFO "[INFO][USB] %s module removed\n", dwc_driver_name);
 }
 
 module_exit(dwc_otg_driver_cleanup);

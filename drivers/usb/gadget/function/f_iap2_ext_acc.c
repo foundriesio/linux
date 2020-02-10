@@ -32,7 +32,7 @@
 #include "f_iap2_ext_acc.h"
 
 #if 0
-#define EA_DBG(stuff...)   printk(KERN_DEBUG "EA_DBG: " stuff)
+#define EA_DBG(stuff...)   printk(KERN_DEBUG "[INFO][USB] EA_DBG: " stuff)
 #else
 #define EA_DBG(stuff...)          do{}while(0)
 #endif
@@ -376,7 +376,7 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev *de
 
 	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
 	if (!ep) {
-		printk("usb_ep_autoconfig for ep_in failed\n");
+		printk("[INFO][USB] usb_ep_autoconfig for ep_in failed\n");
 		return -ENODEV;
 	}
 
@@ -387,7 +387,7 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev *de
 
 	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
 	if (!ep) {
-		printk("usb_ep_autoconfig for ep_out failed\n");
+		printk("[INFO][USB] usb_ep_autoconfig for ep_out failed\n");
 		return -ENODEV;
 	}
 
@@ -415,7 +415,7 @@ static int __init create_iap2_ext_acc_bulk_endpoints(struct iap2_ext_acc_dev *de
 	return 0;
 
 fail:
-	pr_err("iap2_ext_acc_bind() could not allocate requests\n");
+	pr_err("[ERROR][USB] iap2_ext_acc_bind() could not allocate requests\n");
 	while ((req = iap2_ext_acc_req_get(dev, &dev->tx_idle)))
 		iap2_ext_acc_request_free(req, dev->ep_in);
 	for (i = 0; i < IAP2_EXT_ACC_RX_REQ_MAX; i++)
@@ -582,7 +582,7 @@ static ssize_t iap2_ext_acc_write(struct file *fp, const char __user *buf,
 
 static int iap2_ext_acc_open(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "%s\n",__func__);
+	printk(KERN_INFO "[INFO][USB] %s\n",__func__);
 
 	if (atomic_xchg(&_iap2_ext_acc_dev->open_excl, 1)) {
 		//iap_release(ip,fp);
@@ -601,7 +601,7 @@ static int iap2_ext_acc_release(struct inode *ip, struct file *fp)
 
 	dev = fp->private_data;
 
-	printk(KERN_INFO "%s\n",__func__);
+	printk(KERN_INFO "[INFO][USB] %s\n",__func__);
 	EA_DBG("iap2_ext_acc gadget state: %d\n",_iap2_ext_acc_dev->state);
 
 	WARN_ON(!atomic_xchg(&dev->open_excl, 0));
@@ -682,7 +682,7 @@ static int iap2_ext_acc_function_bind(struct usb_configuration *c, struct usb_fu
 				 ARRAY_SIZE(iap2_ext_acc_string_defs));
 	if (IS_ERR(us))
 	{
-		printk("\x1b[1;33m[%s:%d] Failed to allocate string id for ALT0\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Failed to allocate string id for ALT0\x1b[0m\n", __func__, __LINE__);
 		return PTR_ERR(us);
 	}
 	iap2_ext_acc_interface_alt0_desc.iInterface = us[IAP2_EXT_ACC_INTF_ALT0_STRING_INDEX].id;
@@ -742,19 +742,19 @@ static void iap2_ext_acc_start_work(struct work_struct *work)
 	dev = (struct iap2_ext_acc_dev *)container_of(work, struct iap2_ext_acc_dev, start_work.work);
 	if(dev == NULL)
 	{
-		printk("\x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
 		return;
 	}
 	misc_dev = dev->misc_dev;
 
 	if(misc_dev)
 	{
-		printk("%s: Send uevent [%s]\n",__func__,envp[0]);
+		printk("[INFO][USB] %s: Send uevent [%s]\n",__func__,envp[0]);
 		kobject_uevent_env(&iap2_ext_acc_device.this_device->kobj, KOBJ_CHANGE, envp);
 	}
 	else
 	{
-		printk("\x1b[1;33m[%s:%d] Error: misc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Error: misc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
 	}
 }
 
@@ -771,7 +771,7 @@ static void iap2_ext_acc_alt_change(struct work_struct *work)
 	dev = (struct iap2_ext_acc_dev *)container_of(work, struct iap2_ext_acc_dev, alt_change_work.work);
 	if(dev == NULL)
 	{
-		printk("\x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Error: iap2_ext_acc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
 		return;
 	}
 
@@ -781,12 +781,12 @@ static void iap2_ext_acc_alt_change(struct work_struct *work)
 	{
 		if(dev->alt == 0)
 		{
-			printk("%s: Send uevent [%s]\n",__func__,alt0[0]);
+			printk("[INFO][USB] %s: Send uevent [%s]\n",__func__,alt0[0]);
 			kobject_uevent_env(&misc_dev->this_device->kobj, KOBJ_CHANGE, alt0);
 		}
 		else if(dev->alt == 1)
 		{
-			printk("%s: Send uevent [%s]\n",__func__,alt1[0]);
+			printk("[INFO][USB] %s: Send uevent [%s]\n",__func__,alt1[0]);
 			kobject_uevent_env(&misc_dev->this_device->kobj, KOBJ_CHANGE, alt1);
 		}
 		else
@@ -795,7 +795,7 @@ static void iap2_ext_acc_alt_change(struct work_struct *work)
 		}
 	}
 	else
-		printk("\x1b[1;33m[%s:%d] Error: misc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Error: misc_dev is NULL!!\x1b[0m\n", __func__, __LINE__);
 
 }
 
@@ -809,7 +809,7 @@ static int iap2_ext_acc_function_set_alt(struct usb_function *f,
 
 	ret = 0;
 
-	printk("%s intf: %d alt: %d\n", __func__, intf, alt);
+	printk("[INFO][USB] %s intf: %d alt: %d\n", __func__, intf, alt);
 
 	if(intf != dev->intf)
 	{
@@ -921,7 +921,7 @@ int iap2_ext_acc_bind_config(struct usb_configuration *c)
 		ret = usb_string_id(c->cdev);
 		if (ret < 0)
 		{
-			printk("\x1b[1;33m[%s:%d] Failed to allocate string id for ALT0\x1b[0m\n", __func__, __LINE__);
+			printk("[INFO][USB] \x1b[1;33m[%s:%d] Failed to allocate string id for ALT0\x1b[0m\n", __func__, __LINE__);
 			return ret;
 		}
 		iap2_ext_acc_string_defs[IAP2_EXT_ACC_INTF_ALT0_STRING_INDEX].id = ret;
@@ -932,7 +932,7 @@ int iap2_ext_acc_bind_config(struct usb_configuration *c)
 		ret = usb_string_id(c->cdev);
 		if (ret < 0)
 		{
-			printk("\x1b[1;33m[%s:%d] Failed to allocate string id for ALT1\x1b[0m\n", __func__, __LINE__);
+			printk("[INFO][USB] \x1b[1;33m[%s:%d] Failed to allocate string id for ALT1\x1b[0m\n", __func__, __LINE__);
 			return ret;
 		}
 		iap2_ext_acc_string_defs[IAP2_EXT_ACC_INTF_ALT1_STRING_INDEX].id = ret;
@@ -1015,7 +1015,7 @@ static int __iap2_ext_acc_setup(struct iap2_ext_acc_instance *fi_iap2_ext_acc)
 
 err:
 	kfree(dev);
-	pr_err("iAP2 Ext. Acc. Native Transport gadget driver failed to initialize\n");
+	pr_err("[ERROR][USB] iAP2 Ext. Acc. Native Transport gadget driver failed to initialize\n");
 	return ret;
 }
 
@@ -1115,7 +1115,7 @@ static struct usb_function_instance *iap2_ext_acc_alloc_inst(void)
 	ret = iap2_ext_acc_setup_configfs(fi_iap2_ext_acc);
 	if (ret) {
 		kfree(fi_iap2_ext_acc);
-		pr_err("Error setting iAP2 Ext Acc\n");
+		pr_err("[ERROR][USB] Error setting iAP2 Ext Acc\n");
 		return ERR_PTR(ret);
 	}
 
@@ -1142,11 +1142,11 @@ struct usb_function *function_alloc_iap2_ext_acc(struct usb_function_instance *f
 	struct iap2_ext_acc_dev *dev;
 
 	if (fi_iap2_ext_acc->dev == NULL) {
-		pr_err("Error: Create iap2_ext_acc function before linking"
+		pr_err("[ERROR][USB] Error: Create iap2_ext_acc function before linking"
 				" iap2_ext_acc function with a gadget configuration\n");
-		pr_err("\t1: Delete existing iap2_ext_acc function if any\n");
-		pr_err("\t2: Create iap2_ext_acc function\n");
-		pr_err("\t3: Create and symlink iap2_ext_acc function"
+		pr_err("[ERROR][USB] \t1: Delete existing iap2_ext_acc function if any\n");
+		pr_err("[ERROR][USB] \t2: Create iap2_ext_acc function\n");
+		pr_err("[ERROR][USB] \t3: Create and symlink iap2_ext_acc function"
 				" with a gadget configuration\n");
 		return NULL;
 	}

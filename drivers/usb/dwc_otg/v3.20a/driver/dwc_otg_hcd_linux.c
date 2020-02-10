@@ -143,7 +143,7 @@ static ssize_t dwc_tpl_support_store(struct device *_dev,
 
 	if(hcd == NULL)
 	{
-		printk("hcd is NULL!!\n");
+		printk("[INFO][USB] hcd is NULL!!\n");
 		return count;
 	}
 
@@ -473,7 +473,7 @@ int hcd_init(dwc_bus_dev_t *_dev)
 		hcd->usb_phy = devm_usb_get_phy_by_phandle(&_dev->dev, "telechips,dwc_otg_phy", 0);
 		if (IS_ERR(hcd->usb_phy)){
 			hcd->usb_phy = NULL;
-			printk("[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+			printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 			goto error1;
 		}
 	}
@@ -523,7 +523,7 @@ int hcd_init(dwc_bus_dev_t *_dev)
 	/* TPL Support Sysfs */
 	retval = device_create_file(&_dev->dev, &dev_attr_dwc_tpl_support);
 	if (retval < 0) {
-		printk("\x1b[1;33m[%s:%d] Fail to create TPL Support sysfs\x1b[0m\n", __func__, __LINE__);	
+		printk("[INFO][USB] \x1b[1;33m[%s:%d] Fail to create TPL Support sysfs\x1b[0m\n", __func__, __LINE__);	
 		goto error2;
 	}
 #endif /* CONFIG_TCC_DWC_HS_ELECT_TST */
@@ -709,7 +709,7 @@ static int dwc_otg_urb_enqueue(struct usb_hcd *hcd,
 
 	//if (!urb->transfer_buffer && urb->transfer_buffer_length)
 	//{
-	//	printk("\x1b[1;33m[%s:%d]\x1b[0murb->transfer_buffer: 0x%08X, urb->transfer_buffer_length: %d\n",
+	//	printk("[INFO][USB] \x1b[1;33m[%s:%d]\x1b[0murb->transfer_buffer: 0x%08X, urb->transfer_buffer_length: %d\n",
 	//		__func__, __LINE__, urb->transfer_buffer, urb->transfer_buffer_length);
 	//	
 	//	return -EINVAL;

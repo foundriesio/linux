@@ -559,7 +559,7 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 			void * addr = ioremap(0x11d90010, 0x4);
 			writel((readl(addr) | 0x02000000), addr);
 			iounmap(addr);
-			printk("KJS : %s\n", __func__);
+			printk("[INFO][USB] KJS : %s\n", __func__);
 			ss_down_control_first = 1;
 		}
 	}
@@ -1363,7 +1363,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				writel(temp, &xhci->op_regs->port_power_base);
 				temp = readl(&xhci->op_regs->port_power_base);
 
-				printk("\x1b[1;33mportpmsc: 0x%08x  \x1b[0m\n",temp);
+				printk("[INFO][USB] \x1b[1;33mportpmsc: 0x%08x  \x1b[0m\n",temp);
 			} else if (test_mode == 6) {
 				u32 irq_pending;
 
@@ -1376,7 +1376,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 				/* HS_HOST_PORT_SUSPEND_RESUME
 				*/
-				printk("xHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", test_mode);
+				printk("[INFO][USB] xHCI HS_HOST_PORT_SUSPEND_RESUME 0x%x\n", test_mode);
 
 				/* Save current interrupt mask */
 				spin_unlock_irqrestore(&xhci->lock, flags);

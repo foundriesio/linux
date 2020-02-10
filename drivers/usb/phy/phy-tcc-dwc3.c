@@ -147,19 +147,19 @@ static int tcc_dwc3_vbus_set(struct usb_phy *phy, int on_off)
 	int retval = 0;
 
 	if (!phy_dev->vbus_gpio) {
-		printk("dwc3 vbus ctrl disable.\n");
+		printk("[INFO][USB] dwc3 vbus ctrl disable.\n");
 		return -1;
 	}
 
 	retval = gpio_request(phy_dev->vbus_gpio, "vbus_gpio_phy");
 	if(retval) {
-		dev_err(phy->dev, "can't request vbus gpio\n");
+		dev_err(phy->dev, "[ERROR][USB] can't request vbus gpio\n");
 		return retval;
 	}
 
 	retval = gpio_direction_output(phy_dev->vbus_gpio, on_off);
 	if(retval) {
-		dev_err(phy_dev->dev, "can't enable vbus (gpio ctrl err)\n");
+		dev_err(phy_dev->dev, "[ERROR][USB] can't enable vbus (gpio ctrl err)\n");
 		return retval;
 	}
 
@@ -176,7 +176,7 @@ static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
 	PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)dwc3_phy_dev->base;
-	printk("Charging Detection!!\n");
+	printk("[INFO][USB] Charging Detection!!\n");
 	//printk("%s : pcfg2 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG2));
 	//printk("%s : pcfg4 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG4));
 	
@@ -198,7 +198,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
     {
         if((readl(&USBPHYCFG->FPHY_PCFG2) & (1<<22)) != 0)
         {
-           // printk("Chager Detecttion!!\n");
+           // printk("[INFO][USB] Chager Detecttion!!\n");
             //printk("pcfg2 = 0x%08x\n", readl(&USBPHYCFG->FPHY_PCFG2));
             break;
         }
@@ -208,7 +208,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 
     if(count == 0)
     {
-        printk("%s : failed to detect charging!!\n", __func__);
+        printk("[INFO][USB] %s : failed to detect charging!!\n", __func__);
     }
     else
     {
@@ -222,7 +222,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
     writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
     udelay(10);
     writel(readl(&USBPHYCFG->FPHY_PCFG4) & ~(1<<31), &USBPHYCFG->FPHY_PCFG4);//clear irq
-	printk("%s:Enable chg det!!!\n", __func__);
+	printk("[INFO][USB] %s:Enable chg det!!!\n", __func__);
 	//writel(readl(&USBPHYCFG->FPHY_PCFG2) |(1<<8) , &USBPHYCFG->FPHY_PCFG2); //enable chg det
 }
 
@@ -231,7 +231,7 @@ static irqreturn_t tcc_dwc3_chg_irq(int irq, void *data)
     struct tcc_dwc3_device *dwc3_phy_dev = (struct tcc_dwc3_device *)data;
     PUSBSSPHYCFG USBPHYCFG = (PUSBSSPHYCFG)dwc3_phy_dev->base;
 
-	printk("%s : CHGDET\n", __func__);
+	printk("[INFO][USB] %s : CHGDET\n", __func__);
 	writel(readl(&USBPHYCFG->U30_PINT) | (1<<22), &USBPHYCFG->U30_PINT);//clear irq
 	udelay(1);
 	writel(readl(&USBPHYCFG->U30_PINT) & ~(1<<22), &USBPHYCFG->U30_PINT);//clear irq
@@ -245,7 +245,7 @@ static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 {
     struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
     PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
-    printk("Charging Detection!!\n");
+    printk("[INFO][USB] Charging Detection!!\n");
     //printk("%s : pcfg2 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG2));
     //printk("%s : pcfg4 = 0x%x\n", __func__, readl(&USBPHYCFG->FPHY_PCFG4));
 
@@ -267,7 +267,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
     {
         if((readl(&USBPHYCFG->U30_PCFG1) & (1<<20)) != 0)
         {
-            printk("Chager Detecttion!!\n");
+            printk("[INFO][USB] Chager Detecttion!!\n");
             //printk("pcfg2 = 0x%08x\n", readl(&USBPHYCFG->FPHY_PCFG2));
             break;
         }
@@ -277,7 +277,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 
     if(count == 0)
     {
-        printk("%s : failed to detect charging!!\n", __func__);
+        printk("[INFO][USB] %s : failed to detect charging!!\n", __func__);
     }
     else
     {
@@ -291,7 +291,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
     //writel(readl(&USBPHYCFG->U30_PCFG4) | (1<<31), &USBPHYCFG->U30_PCFG4);//clear irq
     //udelay(10);
     //writel(readl(&USBPHYCFG->U30_PCFG4) & ~(1<<31), &USBPHYCFG->U30_PCFG4);//clear irq
-    printk("%s:Enable chg det!!!\n", __func__);
+    printk("[INFO][USB] %s:Enable chg det!!!\n", __func__);
     //writel(readl(&USBPHYCFG->FPHY_PCFG2) |(1<<8) , &USBPHYCFG->FPHY_PCFG2); //enable chg det
 }
 
@@ -300,7 +300,7 @@ static irqreturn_t tcc_dwc3_chg_irq(int irq, void *data)
     struct tcc_dwc3_device *dwc3_phy_dev = (struct tcc_dwc3_device *)data;
     PUSBPHYCFG USBPHYCFG = (PUSBPHYCFG)dwc3_phy_dev->base;
 
-    printk("%s : CHGDET\n", __func__);
+    printk("[INFO][USB] %s : CHGDET\n", __func__);
     writel(readl(&USBPHYCFG->U30_PINT) | (1<<22), &USBPHYCFG->U30_PINT);//clear irq
     udelay(1);
     writel(readl(&USBPHYCFG->U30_PINT) & ~(1<<22), &USBPHYCFG->U30_PINT);//clear irq
@@ -364,12 +364,12 @@ void dwc3_tcc_read_u30phy_reg_all (struct usb_phy *phy) {
 
 	for (i=0;i<0x37;i++) {
 		read_data = dwc3_tcc_read_u30phy_reg(phy,i);
-		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+		printk("[INFO][USB] addr:0x%08X value:0x%08X\n",i,read_data);
 	}
 	
 	for (i=0x1000;i<0x1030;i++) {
 		read_data = dwc3_tcc_read_u30phy_reg(phy,i);
-		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+		printk("[INFO][USB] addr:0x%08X value:0x%08X\n",i,read_data);
 	}
 }
 
@@ -494,12 +494,12 @@ void dwc3_tcc_read_ss_u30phy_reg_all (struct usb_phy *phy) {
 
 	for (i=0;i<0x37;i++) {
 		read_data = dwc3_tcc_read_ss_u30phy_reg(phy,i);
-		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+		printk("[INFO][USB] addr:0x%08X value:0x%08X\n",i,read_data);
 	}
 	
 	for (i=0x1000;i<0x1030;i++) {
 		read_data = dwc3_tcc_read_ss_u30phy_reg(phy,i);
-		printk("addr:0x%08X value:0x%08X\n",i,read_data);
+		printk("[INFO][USB] addr:0x%08X value:0x%08X\n",i,read_data);
 	}
 }
 
@@ -582,7 +582,7 @@ void dwc3_tcc898x_swreset(PUSBPHYCFG USBPHYCFG, int on_off)
 	else if(on_off == OFF)
 		BITSET(USBPHYCFG->U30_SWRESETN, Hw1);
 	else
-		printk("\x1b[1;31m[%s:%d]Wrong request!!\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d]Wrong request!!\x1b[0m\n", __func__, __LINE__);
 }
 int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 {
@@ -592,7 +592,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	unsigned int uTmp = 0;
 	int tmp_cnt;
 	
-	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
+	printk("[INFO][USB] %s %s\n", __func__, (on_off)?"ON":"OFF");
 	if(on_off== ON && is_suspend) {
 		//clk_reset(dwc3_phy_dev->hclk, 1);
 		//======================================================
@@ -632,7 +632,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			tmp_cnt++;
 			udelay(5);
 		}
-		printk("XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
+		printk("[INFO][USB] XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
 #endif
 		//======================================================
 		// Initialize all registers
@@ -674,7 +674,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 		BITCSET(USBPHYCFG->U30_PCFG3, TX_DEEMPH_6DB_MASK, dm_6db<< TX_DEEMPH_6DB_SHIFT);
 		BITCSET(USBPHYCFG->U30_PCFG3, TX_SWING_MASK, sw << TX_SWING_SHIFT);
-		printk("dwc3 tcc: PHY cfg - TX_DEEMPH 3.5dB: 0x%02x, TX_DEEMPH 6dB: 0x%02x, TX_SWING: 0x%02x\n", dm, dm_6db, sw);
+		printk("[INFO][USB] dwc3 tcc: PHY cfg - TX_DEEMPH 3.5dB: 0x%02x, TX_DEEMPH 6dB: 0x%02x, TX_SWING: 0x%02x\n", dm, dm_6db, sw);
 
 		USBPHYCFG->U30_PCFG4 	= 0x00200000;
 		USBPHYCFG->U30_PFLT  	= 0x00000351;
@@ -831,11 +831,11 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		dwc3_bit_set_phy(dwc3_phy_dev->h_base, DWC3_GUSB3PIPECTL(0), sel_dm << TX_DEEMPH_SET_SHIFT);
 
 		if(sel_dm == 0)
-			printk("dwc3 tcc: PHY cfg - 6dB de-emphasis\n");
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - 6dB de-emphasis\n");
 		else if (sel_dm == 1)
-			printk("dwc3 tcc: PHY cfg - 3.5dB de-emphasis (default)\n");
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - 3.5dB de-emphasis (default)\n");
 		else if (sel_dm == 2)
-			printk("dwc3 tcc: PHY cfg - de-emphasis\n");
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - de-emphasis\n");
 
 		//=====================================================================
 		// Rx EQ setting
@@ -861,7 +861,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			uTmp = dwc3_tcc_read_u30phy_reg(phy, 0x1006);
 			//printk("    Reload - RX-OVRD: 0x%08X\n", uTmp);
 			//printk("    Reload - RX_EQ: 0x%X\n", ((uTmp & 0x00000700 ) >> 8));
-			printk("dwc3 tcc: PHY cfg - RX EQ: 0x%x\n", ((uTmp & 0x00000700 ) >> 8));
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - RX EQ: 0x%x\n", ((uTmp & 0x00000700 ) >> 8));
 		}
 
 		//=====================================================================
@@ -888,7 +888,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			uTmp = dwc3_tcc_read_u30phy_reg(phy, 0x1024);
 			//printk("    Reload value - RX-ENPWR1: 0x%08X\n", uTmp);
 			//printk("    Reload value - RX_BOOST: 0x%X\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
-			printk("dwc3 tcc: PHY cfg - RX BOOST: 0x%x\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - RX BOOST: 0x%x\n", ((uTmp & RX_BOOST_MASK) >> RX_BOOST_SHIFT));
 		}
 
 		if ( ssc != 0xFF)
@@ -904,7 +904,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			dwc3_tcc_write_u30phy_reg(phy, 0x13, uTmp);
 
 			uTmp = dwc3_tcc_read_u30phy_reg(phy, 0x13);
-			printk("dwc3 tcc: PHY cfg - SSC_REF_CLK_SEL: 0x%x\n", uTmp & SSC_REF_CLK_SEL_MASK);
+			printk("[INFO][USB] dwc3 tcc: PHY cfg - SSC_REF_CLK_SEL: 0x%x\n", uTmp & SSC_REF_CLK_SEL_MASK);
 		}
 #endif
 		#if defined(CONFIG_ARCH_TCC898X)
@@ -927,25 +927,25 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	    //}
 		if(clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
            dev_err(dwc3_phy_dev->dev,
-                 "can't do xhci phy clk enable\n");
+                 "[ERROR][USB] can't do xhci phy clk enable\n");
         }
 		is_suspend = 0;
 	} else if (on_off == OFF && !is_suspend) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
-		printk("dwc3 tcc: PHY power down\n");
+		printk("[INFO][USB] dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
 		is_suspend = 1;
 	} else if (on_off == PHY_RESUME && is_suspend) {
 		is_suspend = 0;
-		printk("dwc3 tcc: PHY resume\n");
+		printk("[INFO][USB] dwc3 tcc: PHY resume\n");
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
 		mdelay(10);
 		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
 			dev_err(dwc3_phy_dev->dev,
-				"can't do xhci phy clk enable\n");
+				"[ERROR][USB] can't do xhci phy clk enable\n");
 		}
 	}
 	return 0;
@@ -961,7 +961,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	unsigned int cal_value = 0;
 	int tmp_cnt;
 
-	printk("%s %s\n", __func__, (on_off)?"ON":"OFF");
+	printk("[INFO][USB] %s %s\n", __func__, (on_off)?"ON":"OFF");
 	if(on_off== ON && is_suspend) {
 		//======================================================
 	    // 1.Power-on Reset
@@ -1014,7 +1014,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			tmp_cnt++;
 			udelay(5);
 		}
-		printk("XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
+		printk("[INFO][USB] XHCI PHY valid check %s\x1b[0m\n",tmp_cnt>=9999?"fail!":"pass.");
 
 		//======================================================
 		// Initialize all registers
@@ -1028,7 +1028,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			//Read calculated value
 			writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
 			uTmp = readl(dwc3_phy_dev->ref_base);
-			printk("2.0H status bus = 0x%08x\n", uTmp);
+			printk("[INFO][USB] 2.0H status bus = 0x%08x\n", uTmp);
 			cal_value = 0x0000F000&uTmp;
 			//printk("Cal_value = 0x%08x\n", cal_value);
 
@@ -1060,7 +1060,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 			//Read Override Bus
 			writel(Hw29|Hw26|Hw25, &USBPHYCFG->FPHY_PCFG3);
 			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
-			printk("2.0 REXT = 0x%08x\n", (0x0000F000&uTmp));
+			printk("[INFO][USB] 2.0 REXT = 0x%08x\n", (0x0000F000&uTmp));
 
 			tmp_cnt ++;
 		} while(((uTmp&0x0000F000) == 0) && (tmp_cnt < 5));
@@ -1116,14 +1116,14 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	    //}
 		if(clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
            dev_err(dwc3_phy_dev->dev,
-                 "can't do xhci phy clk enable\n");
+                 "[ERROR][USB] can't do xhci phy clk enable\n");
         }
 		is_suspend = 0;
 	} else if (on_off == OFF && !is_suspend) {
 		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		dev_info(dwc3_phy_dev->dev,
-				"dwc3 tcc: PHY power down\n");
+				"[INFO][USB] dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25|Hw24);
 		mdelay(10);
 		uTmp = USBPHYCFG->U30_PCFG0;
@@ -1131,10 +1131,10 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	} else if (on_off == PHY_RESUME && is_suspend) {
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25|Hw24);
 		dev_info(dwc3_phy_dev->dev,
-				"dwc3 tcc: PHY power up\n");
+				"[INFO][USB] dwc3 tcc: PHY power up\n");
 		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
 			dev_err(dwc3_phy_dev->dev,
-				"can't do xhci phy clk enable\n");
+				"[ERROR][USB] can't do xhci phy clk enable\n");
 		}
 		is_suspend = 0;
 	}
@@ -1181,7 +1181,7 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
 		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
 		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "can't find dev of node: vbus gpio\n");
+			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
 			return -ENODEV;
 		}
 	} else {
@@ -1196,7 +1196,7 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 	// PHY CLK
 	phy_dev->phy_clk = of_clk_get(dev->of_node, 0);
 	if (IS_ERR(phy_dev->phy_clk)) {
-		printk("xhci phy clk_get failed\n");
+		printk("[INFO][USB] xhci phy clk_get failed\n");
 		phy_dev->phy_clk = NULL;
 	}
 			
@@ -1243,20 +1243,20 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 
 	retval = tcc_dwc3_create_phy(dev, phy_dev);
 	if (retval) {
-		dev_err(&pdev->dev, "error create phy\n");
+		dev_err(&pdev->dev, "[ERROR][USB] error create phy\n");
 		return retval;
 	}
 #if defined (CONFIG_TCC_BC_12)
 	irq = platform_get_irq(pdev, 0);
 	if (irq <= 0) {
 		dev_err(&pdev->dev,
-				"Found HC with no IRQ. Check %s setup!\n",
+				"[ERROR][USB] Found HC with no IRQ. Check %s setup!\n",
 				dev_name(&pdev->dev));
 		retval = -ENODEV;
 	}
 	else
 	{
-		printk("%s: irq=%d\n", __func__, irq);
+		printk("[INFO][USB] %s: irq=%d\n", __func__, irq);
 		phy_dev->irq = irq;
 	}
 #endif
@@ -1264,7 +1264,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	//if (!request_mem_region(pdev->resource[0].start,
 	//			pdev->resource[0].end - pdev->resource[0].start + 1,
 	//			"dwc3_base")) {
-	//	dev_err(&pdev->dev, "error reserving mapped memory\n");
+	//	dev_err(&pdev->dev, "[ERROR][USB] error reserving mapped memory\n");
 	//	retval = -EFAULT;
 	//}
 	//phy_dev->h_base = (void __iomem*)ioremap_nocache((resource_size_t)pdev->resource[0].start,
@@ -1274,7 +1274,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	if (!request_mem_region(pdev->resource[0].start,
 				pdev->resource[0].end - pdev->resource[0].start + 1,
 				"dwc3_phy")) {
-		dev_err(&pdev->dev, "error reserving mapped memory\n");
+		dev_err(&pdev->dev, "[ERROR][USB] error reserving mapped memory\n");
 		retval = -EFAULT;
 	}
 	phy_dev->base = (void __iomem*)ioremap_nocache((resource_size_t)pdev->resource[0].start,
@@ -1284,7 +1284,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 #if defined (CONFIG_TCC_BC_12)
 	ret = devm_request_irq(&pdev->dev, phy_dev->irq, tcc_dwc3_chg_irq, IRQF_SHARED, pdev->dev.kobj.name, phy_dev);
 	if (ret)
-		dev_err(&pdev->dev, "request irq failed\n");
+		dev_err(&pdev->dev, "[ERROR][USB] request irq failed\n");
 
 	disable_irq(phy_dev->irq);
 	INIT_WORK(&phy_dev->dwc3_work, tcc_dwc3_set_cdp);
@@ -1299,10 +1299,10 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 
 	retval = usb_add_phy_dev(&phy_dev->phy);
 	if (retval) {
-		dev_err(&pdev->dev, "usb_add_phy failed\n");
+		dev_err(&pdev->dev, "[ERROR][USB] usb_add_phy failed\n");
 		return retval;
 	}
-	printk("%s:%s\n",pdev->dev.kobj.name, __func__);
+	printk("[INFO][USB] %s:%s\n",pdev->dev.kobj.name, __func__);
 
 	return retval;	
 }
@@ -1343,7 +1343,7 @@ static int __init tcc_dwc3_phy_drv_init(void)
 
 	retval = platform_driver_register(&tcc_dwc3_phy_driver);
 	if (retval < 0)
-		printk(KERN_ERR "%s retval=%d\n", __func__, retval);
+		printk(KERN_ERR "[ERROR][USB] %s retval=%d\n", __func__, retval);
 
 	return retval;
 }

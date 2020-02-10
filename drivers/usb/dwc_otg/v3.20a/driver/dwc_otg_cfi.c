@@ -1611,7 +1611,7 @@ printk("\x1b[1;31m[%s:%d]DWC_WRITE_REG32(&global_regs->dtxfsiz: %d\x1b[0m\n", __
 			DWC_WRITE_REG32(&global_regs->gnptxfsiz, nptxfsz_bak);
 
 			for (i = 0; i < core_if->hwcfg4.b.num_in_eps; i++) {
-				printk("\x1b[1;31m[%s:%d]DWC_WRITE_REG32(&global_regs->dtxfsiz: %d\x1b[0m\n", __func__, __LINE__, txfsz_bak[i]);
+				printk("[INFO][USB] \x1b[1;31m[%s:%d]DWC_WRITE_REG32(&global_regs->dtxfsiz: %d\x1b[0m\n", __func__, __LINE__, txfsz_bak[i]);
 				DWC_WRITE_REG32(&global_regs->dtxfsiz[i],
 						txfsz_bak[i]);
 			}

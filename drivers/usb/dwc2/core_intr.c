@@ -98,7 +98,7 @@ static void dwc2_handle_mode_mismatch_intr(struct dwc2_hsotg *hsotg)
 	/* Clear interrupt */
 	dwc2_writel(GINTSTS_MODEMIS, hsotg->regs + GINTSTS);
 
-	dev_warn(hsotg->dev, "Mode Mismatch Interrupt: currently in %s mode\n",
+	dev_warn(hsotg->dev, "[WARN][USB] Mode Mismatch Interrupt: currently in %s mode\n",
 		 dwc2_is_host_mode(hsotg) ? "Host" : "Device");
 }
 
@@ -116,12 +116,12 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 
 	gotgint = dwc2_readl(hsotg->regs + GOTGINT);
 	gotgctl = dwc2_readl(hsotg->regs + GOTGCTL);
-	dev_dbg(hsotg->dev, "++OTG Interrupt gotgint=%0x [%s]\n", gotgint,
+	dev_dbg(hsotg->dev, "[DEBUG][USB] ++OTG Interrupt gotgint=%0x [%s]\n", gotgint,
 		dwc2_op_state_str(hsotg));
 
 	if (gotgint & GOTGINT_SES_END_DET) {
 		dev_dbg(hsotg->dev,
-			" ++OTG Interrupt: Session End Detected++ (%s)\n",
+			"[DEBUG][USB]  ++OTG Interrupt: Session End Detected++ (%s)\n",
 			dwc2_op_state_str(hsotg));
 		gotgctl = dwc2_readl(hsotg->regs + GOTGCTL);
 
@@ -136,9 +136,9 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 			 * not succeed!
 			 */
 			if (gotgctl & GOTGCTL_DEVHNPEN) {
-				dev_dbg(hsotg->dev, "Session End Detected\n");
+				dev_dbg(hsotg->dev, "[DEBUG][USB] Session End Detected\n");
 				dev_err(hsotg->dev,
-					"Device Not Connected/Responding!\n");
+					"[ERROR][USB] Device Not Connected/Responding!\n");
 			}
 
 			/*
@@ -156,7 +156,7 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 
 	if (gotgint & GOTGINT_SES_REQ_SUC_STS_CHNG) {
 		dev_dbg(hsotg->dev,
-			" ++OTG Interrupt: Session Request Success Status Change++\n");
+			"[DEBUG][USB]  ++OTG Interrupt: Session Request Success Status Change++\n");
 		gotgctl = dwc2_readl(hsotg->regs + GOTGCTL);
 		if (gotgctl & GOTGCTL_SESREQSCS) {
 			if (hsotg->params.phy_type == DWC2_PHY_TYPE_PARAM_FS &&
@@ -215,9 +215,9 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 			gotgctl = dwc2_readl(hsotg->regs + GOTGCTL);
 			gotgctl &= ~(GOTGCTL_HNPREQ | GOTGCTL_DEVHNPEN);
 			dwc2_writel(gotgctl, hsotg->regs + GOTGCTL);
-			dev_dbg(hsotg->dev, "HNP Failed\n");
+			dev_dbg(hsotg->dev, "[DEBUG][USB] HNP Failed\n");
 			dev_err(hsotg->dev,
-				"Device Not Connected/Responding\n");
+				"[ERROR][USB] Device Not Connected/Responding\n");
 		}
 	}
 
@@ -229,10 +229,10 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 		 * handler will not get executed.
 		 */
 		dev_dbg(hsotg->dev,
-			" ++OTG Interrupt: Host Negotiation Detected++ (%s)\n",
+			"[DEBUG][USB]  ++OTG Interrupt: Host Negotiation Detected++ (%s)\n",
 			(dwc2_is_host_mode(hsotg) ? "Host" : "Device"));
 		if (dwc2_is_device_mode(hsotg)) {
-			dev_dbg(hsotg->dev, "a_suspend->a_peripheral (%d)\n",
+			dev_dbg(hsotg->dev, "[DEBUG][USB] a_suspend->a_peripheral (%d)\n",
 				hsotg->op_state);
 			spin_unlock(&hsotg->lock);
 			dwc2_hcd_disconnect(hsotg, false);
@@ -252,9 +252,9 @@ static void dwc2_handle_otg_intr(struct dwc2_hsotg *hsotg)
 
 	if (gotgint & GOTGINT_A_DEV_TOUT_CHG)
 		dev_dbg(hsotg->dev,
-			" ++OTG Interrupt: A-Device Timeout Change++\n");
+			"[DEBUG][USB]  ++OTG Interrupt: A-Device Timeout Change++\n");
 	if (gotgint & GOTGINT_DBNCE_DONE)
-		dev_dbg(hsotg->dev, " ++OTG Interrupt: Debounce Done++\n");
+		dev_dbg(hsotg->dev, "[DEBUG][USB]  ++OTG Interrupt: Debounce Done++\n");
 
 	/* Clear GOTGINT */
 	dwc2_writel(gotgint, hsotg->regs + GOTGINT);
@@ -282,7 +282,7 @@ static void dwc2_handle_conn_id_status_change_intr(struct dwc2_hsotg *hsotg)
 	gintmsk &= ~GINTSTS_SOF;
 	dwc2_writel(gintmsk, hsotg->regs + GINTMSK);
 
-	dev_dbg(hsotg->dev, " ++Connector ID Status Change Interrupt++  (%s)\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB]  ++Connector ID Status Change Interrupt++  (%s)\n",
 		dwc2_is_host_mode(hsotg) ? "Host" : "Device");
 
 	/*
@@ -315,7 +315,7 @@ static void dwc2_handle_session_req_intr(struct dwc2_hsotg *hsotg)
 	/* Clear interrupt */
 	dwc2_writel(GINTSTS_SESSREQINT, hsotg->regs + GINTSTS);
 
-	dev_dbg(hsotg->dev, "Session request interrupt - lx_state=%d\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] Session request interrupt - lx_state=%d\n",
 		hsotg->lx_state);
 
 	if (dwc2_is_device_mode(hsotg)) {
@@ -323,7 +323,7 @@ static void dwc2_handle_session_req_intr(struct dwc2_hsotg *hsotg)
 			ret = dwc2_exit_hibernation(hsotg, true);
 			if (ret && (ret != -ENOTSUPP))
 				dev_err(hsotg->dev,
-					"exit hibernation failed\n");
+					"[ERROR][USB] exit hibernation failed\n");
 		}
 
 		/*
@@ -348,11 +348,11 @@ static void dwc2_handle_wakeup_detected_intr(struct dwc2_hsotg *hsotg)
 	/* Clear interrupt */
 	dwc2_writel(GINTSTS_WKUPINT, hsotg->regs + GINTSTS);
 
-	dev_dbg(hsotg->dev, "++Resume or Remote Wakeup Detected Interrupt++\n");
-	dev_dbg(hsotg->dev, "%s lxstate = %d\n", __func__, hsotg->lx_state);
+	dev_dbg(hsotg->dev, "[DEBUG][USB] ++Resume or Remote Wakeup Detected Interrupt++\n");
+	dev_dbg(hsotg->dev, "[DEBUG][USB] %s lxstate = %d\n", __func__, hsotg->lx_state);
 
 	if (dwc2_is_device_mode(hsotg)) {
-		dev_dbg(hsotg->dev, "DSTS=0x%0x\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] DSTS=0x%0x\n",
 			dwc2_readl(hsotg->regs + DSTS));
 		if (hsotg->lx_state == DWC2_L2) {
 			u32 dctl = dwc2_readl(hsotg->regs + DCTL);
@@ -362,7 +362,7 @@ static void dwc2_handle_wakeup_detected_intr(struct dwc2_hsotg *hsotg)
 			dwc2_writel(dctl, hsotg->regs + DCTL);
 			ret = dwc2_exit_hibernation(hsotg, true);
 			if (ret && (ret != -ENOTSUPP))
-				dev_err(hsotg->dev, "exit hibernation failed\n");
+				dev_err(hsotg->dev, "[ERROR][USB] exit hibernation failed\n");
 
 			call_gadget(hsotg, resume);
 		}
@@ -395,7 +395,7 @@ static void dwc2_handle_disconnect_intr(struct dwc2_hsotg *hsotg)
 {
 	dwc2_writel(GINTSTS_DISCONNINT, hsotg->regs + GINTSTS);
 
-	dev_dbg(hsotg->dev, "++Disconnect Detected Interrupt++ (%s) %s\n",
+	dev_dbg(hsotg->dev, "[DEBUG][USB] ++Disconnect Detected Interrupt++ (%s) %s\n",
 		dwc2_is_host_mode(hsotg) ? "Host" : "Device",
 		dwc2_op_state_str(hsotg));
 
@@ -419,7 +419,7 @@ static void dwc2_handle_usb_suspend_intr(struct dwc2_hsotg *hsotg)
 	/* Clear interrupt */
 	dwc2_writel(GINTSTS_USBSUSP, hsotg->regs + GINTSTS);
 
-	dev_dbg(hsotg->dev, "USB SUSPEND\n");
+	dev_dbg(hsotg->dev, "[DEBUG][USB] USB SUSPEND\n");
 
 	if (dwc2_is_device_mode(hsotg)) {
 		/*
@@ -427,16 +427,16 @@ static void dwc2_handle_usb_suspend_intr(struct dwc2_hsotg *hsotg)
 		 * state is active
 		 */
 		dsts = dwc2_readl(hsotg->regs + DSTS);
-		dev_dbg(hsotg->dev, "DSTS=0x%0x\n", dsts);
+		dev_dbg(hsotg->dev, "[DEBUG][USB] DSTS=0x%0x\n", dsts);
 		dev_dbg(hsotg->dev,
-			"DSTS.Suspend Status=%d HWCFG4.Power Optimize=%d\n",
+			"[DEBUG][USB] DSTS.Suspend Status=%d HWCFG4.Power Optimize=%d\n",
 			!!(dsts & DSTS_SUSPSTS),
 			hsotg->hw_params.power_optimized);
 		if ((dsts & DSTS_SUSPSTS) && hsotg->hw_params.power_optimized) {
 			/* Ignore suspend request before enumeration */
 			if (!dwc2_is_device_connected(hsotg)) {
 				dev_dbg(hsotg->dev,
-					"ignore suspend request before enumeration\n");
+					"[DEBUG][USB] ignore suspend request before enumeration\n");
 				return;
 			}
 
@@ -444,7 +444,7 @@ static void dwc2_handle_usb_suspend_intr(struct dwc2_hsotg *hsotg)
 			if (ret) {
 				if (ret != -ENOTSUPP)
 					dev_err(hsotg->dev,
-						"enter hibernation failed\n");
+						"[ERROR][USB] enter hibernation failed\n");
 				goto skip_power_saving;
 			}
 
@@ -465,7 +465,7 @@ skip_power_saving:
 		}
 	} else {
 		if (hsotg->op_state == OTG_STATE_A_PERIPHERAL) {
-			dev_dbg(hsotg->dev, "a_peripheral->a_host\n");
+			dev_dbg(hsotg->dev, "[DEBUG][USB] a_peripheral->a_host\n");
 
 			/* Change to L2 (suspend) state */
 			hsotg->lx_state = DWC2_L2;
@@ -499,7 +499,7 @@ static u32 dwc2_read_common_intr(struct dwc2_hsotg *hsotg)
 
 	/* If any common interrupts set */
 	if (gintsts & gintmsk_common)
-		dev_dbg(hsotg->dev, "gintsts=%08x  gintmsk=%08x\n",
+		dev_dbg(hsotg->dev, "[DEBUG][USB] gintsts=%08x  gintmsk=%08x\n",
 			gintsts, gintmsk);
 
 	if (gahbcfg & GAHBCFG_GLBL_INTR_EN)
@@ -530,7 +530,7 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 	spin_lock(&hsotg->lock);
 
 	if (!dwc2_is_controller_alive(hsotg)) {
-		dev_warn(hsotg->dev, "Controller is dead\n");
+		dev_warn(hsotg->dev, "[WARN][USB] Controller is dead\n");
 		goto out;
 	}
 
@@ -567,7 +567,7 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 		 */
 		if (dwc2_is_device_mode(hsotg)) {
 			dev_dbg(hsotg->dev,
-				" --Port interrupt received in Device mode--\n");
+				"[DEBUG][USB]  --Port interrupt received in Device mode--\n");
 			dwc2_handle_usb_port_intr(hsotg);
 			retval = IRQ_HANDLED;
 		}
@@ -576,11 +576,11 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 		else if (dwc2_is_host_mode(hsotg)) {
 			u32 hprt0 = dwc2_readl(hsotg->regs + HPRT0);
 			dev_dbg(hsotg->dev,
-				" --Port interrupt received in Host mode, hprt0 : %08X--\n", hprt0);
+				"[DEBUG][USB]  --Port interrupt received in Host mode, hprt0 : %08X--\n", hprt0);
 			if(!(hprt0 & HPRT0_PWR)) {
 				hprt0 |= HPRT0_PWR;
 				dev_dbg(hsotg->dev,
-					" --HPRT0_PWR is %08X\n", hprt0);
+					"[DEBUG][USB]  --HPRT0_PWR is %08X\n", hprt0);
 				dwc2_writel(hprt0, hsotg->regs + HPRT0);
 				retval = IRQ_HANDLED;
 			}
@@ -595,7 +595,7 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
 	gotgint = dwc2_readl(hsotg->regs + GOTGINT);
 	if (gotgint & GOTGINT_MVC) {
 		dev_dbg(hsotg->dev,
-			" --OTG interrupt received mvc--\n");
+			"[DEBUG][USB]  --OTG interrupt received mvc--\n");
 		gotgint = 0;
 		gotgint |= GOTGINT_MVC;
 		dwc2_writel(gotgint, hsotg->regs + GOTGINT);

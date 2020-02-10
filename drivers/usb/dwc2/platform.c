@@ -150,7 +150,7 @@ int dwc2_tcc_power_ctrl(struct dwc2_hsotg *hsotg, int on_off)
         if(on_off == 1) {
             err = regulator_enable(hsotg->vbus_source);
             if(err) {
-                printk("dwc_otg: can't enable vbus source\n");
+                printk("[INFO][USB] dwc_otg: can't enable vbus source\n");
                 return err;
             }
             mdelay(1);
@@ -186,14 +186,14 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 	struct usb_phy *phy = hsotg->uphy;
 
 	if (!vbus_control_enable) {
-		dev_warn(hsotg->dev, "dwc_otg vbus ctrl disable.\n");
+		dev_warn(hsotg->dev, "[WARN][USB] dwc_otg vbus ctrl disable.\n");
 		return -1;
 	}
 	if (!phy || !phy->set_vbus) {
-		dev_err(hsotg->dev, "[%s:%d]PHY driver is needed\n", __func__, __LINE__);
+		dev_err(hsotg->dev, "[ERROR][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
-	dev_info(hsotg->dev, "%s : %s\n", __func__, on_off ? "on" : "off");
+	dev_info(hsotg->dev, "[INFO][USB] %s : %s\n", __func__, on_off ? "on" : "off");
 	hsotg->vbus_status = on_off;
 
 	return phy->set_vbus(phy, on_off);
@@ -272,17 +272,17 @@ static ssize_t dwc2_pcfg1_store(struct device *dev, struct device_attribute *att
 	int i;
 
 	if (count - 1 < 10 || 10 < count - 1 ) {
-		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 
 	if ((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
@@ -292,20 +292,20 @@ static ssize_t dwc2_pcfg1_store(struct device *dev, struct device_attribute *att
 				(buf[i] >= 'A' && buf[i] <= 'F') )
 			continue;
 		else {
-			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
 					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
-			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_pcfg1\n\n");
+			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("U20DH_DEV_PCFG1 = 0x%08X\n", old_reg);
+	printk("[INFO][USB] U20DH_DEV_PCFG1 = 0x%08X\n", old_reg);
 	writel(new_reg, &pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
 	new_reg = readl(&pUSBDEVPHYCFG->U20DH_DEV_PCFG1);
 
 	dwc2_pcfg1_display(old_reg, new_reg, str);
-	printk("%sU20DH_DEV_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+	printk("[INFO][USB] %sU20DH_DEV_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
 
 	return count;
 }
@@ -339,17 +339,17 @@ static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev, struct device_attri
 	int i;
 
 	if (count - 1 < 10 || 10 < count - 1 ) {
-		printk("\nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
-		printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-		printk("\t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
-		printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+		printk("[INFO][USB] \nThis argument length is \x1b[1;33mnot 10\x1b[0m\n\n");
+		printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) length of \x1b[1;32m0xXXXXXXXX\x1b[0m is 10\n");
+		printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 		return count;
 	}
 
 	if ((buf[0] != '0') || (buf[1] != 'x')) {
-		printk("\n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
-		printk("\tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-		printk("\t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
+		printk("[INFO][USB] \n\techo \x1b[1;32m%c%c\x1b[1;0mXXXXXXXX is \x1b[1;33mnot Ox\x1b[0m\n\n", buf[0], buf[1]);
+		printk("[INFO][USB] \tUsage : echo \x1b[1;32m0x\x1b[1;31mXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+		printk("[INFO][USB] \t\t1) \x1b[1;32m0\x1b[0m is binary number\x1b[0m)\n\n");
 		return count;
 	}
 
@@ -359,20 +359,20 @@ static ssize_t dwc2_host_mux_pcfg1_store(struct device *dev, struct device_attri
 				(buf[i] >= 'A' && buf[i] <= 'F') )
 			continue;
 		else {
-			printk("\necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
+			printk("[INFO][USB] \necho 0x%c%c%c%c%c%c%c%c is \x1b[1;33mnot hex\x1b[0m\n\n",
 					buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]);
-			printk("\tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
-			printk("\t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
+			printk("[INFO][USB] \tUsage : echo \x1b[1;31m0xXXXXXXXX\x1b[0m > dwc_host_mux_pcfg1\n\n");
+			printk("[INFO][USB] \t\t2) \x1b[1;32mX\x1b[0m is hex number(\x1b[1;31m0\x1b[0m to \x1b[1;31mf\x1b[0m)\n\n");
 			return count;
 		}
 	}
 
-	printk("U20DH_HST_PCFG1 = 0x%08X\n", old_reg);
+	printk("[INFO][USB] U20DH_HST_PCFG1 = 0x%08X\n", old_reg);
 	writel(new_reg, &pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
 	new_reg = readl(&pUSBMHSTPHYCFG->U20DH_HST_PCFG1);
 
 	dwc2_pcfg1_display(old_reg, new_reg, str);
-	printk("%sU20DH_HST_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
+	printk("[INFO][USB] %sU20DH_HST_PCFG1 = \x1b[1;33m0x%08X\x1b[1;0m\n", str, new_reg);
 
 	return count;
 }
@@ -398,19 +398,19 @@ static ssize_t dwc2_tcc_drd_mode_store(struct device *dev, struct device_attribu
 	int retval = 0;
 	if (!strncmp(buf, "host", 4)) {
 		if (hsotg->dr_mode == USB_DR_MODE_HOST || hsotg->dr_mode == USB_DR_MODE_OTG) {
-			dev_warn(hsotg->dev, "Already host mode!\n");
+			dev_warn(hsotg->dev, "[WARN][USB] Already host mode!\n");
 			goto error;
 		}
 		tmp_mode = USB_DR_MODE_HOST;
 	} else if (!strncmp(buf, "device", 6)) {
 		if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) {
-			dev_err(hsotg->dev, "Already device mode!\n");
+			dev_err(hsotg->dev, "[ERROR][USB] Already device mode!\n");
 			goto error;
 		}
 		tmp_mode = USB_DR_MODE_PERIPHERAL;
 	} else {
 error:
-		dev_warn(hsotg->dev, "Value is invalid!\n");
+		dev_warn(hsotg->dev, "[WARN][USB] Value is invalid!\n");
 		return count;
 	}
 
@@ -419,7 +419,7 @@ error:
 
 	if (work_pending(work))
 	{
-		dev_warn(hsotg->dev, "[drd_store pending]\n");
+		dev_warn(hsotg->dev, "[WARN][USB] [drd_store pending]\n");
 		return count;
 	}
 
@@ -465,12 +465,12 @@ static int dwc2_soffn_monitor_thread(void *w)
 			hsotg->driver->disconnect_tcc();
 	} else {
 		dev_warn(hsotg->dev,
-			"%s - mode changed (host)", __func__);
+			"[WARN][USB] %s - mode changed (host)", __func__);
 	}
 	hsotg->soffn_thread = NULL;
 
 	msleep(200);
-	dev_warn(hsotg->dev, "dwc2 device - Host Disconnected\n");	
+	dev_warn(hsotg->dev, "[WARN][USB] dwc2 device - Host Disconnected\n");	
 }
 #endif
 #endif
@@ -535,7 +535,7 @@ static struct platform_device *dwc2_create_mux_hcd_pdev(struct dwc2_hsotg *hsotg
 
 	hcd = dev_get_drvdata(&hci_dev->dev);
 	if (hcd == NULL) {
-		printk("\x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n", __func__, __LINE__);
+		printk("[INFO][USB] \x1b[1;31m[%s:%d](hcd == NULL)\x1b[0m\n", __func__, __LINE__);
 		while(1);
 	}
 	//hcd->tpl_support = hsotg->hcd_tpl_support;
@@ -620,14 +620,14 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 	if (dwc2_hw_is_device(hsotg)) {
 		if (IS_ENABLED(CONFIG_USB_DWC2_HOST)) {
 			dev_err(hsotg->dev,
-				"Controller does not support host mode.\n");
+				"[ERROR][USB] Controller does not support host mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_PERIPHERAL;
 	} else if (dwc2_hw_is_host(hsotg)) {
 		if (IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL)) {
 			dev_err(hsotg->dev,
-				"Controller does not support device mode.\n");
+				"[ERROR][USB] Controller does not support device mode.\n");
 			return -EINVAL;
 		}
 		mode = USB_DR_MODE_HOST;
@@ -639,12 +639,12 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 	}
 	if (mode != hsotg->dr_mode) {
 		dev_warn(hsotg->dev,
-			 "Configuration mismatch. dr_mode forced to %s\n",
+			 "[WARN][USB] Configuration mismatch. dr_mode forced to %s\n",
 			mode == USB_DR_MODE_HOST ? "host" : "device");
 
 		hsotg->dr_mode = mode;
 	}
-	dev_warn(hsotg->dev, "%s : dr_mode = %d\n", __func__, hsotg->dr_mode);
+	dev_warn(hsotg->dev, "[WARN][USB] %s : dr_mode = %d\n", __func__, hsotg->dr_mode);
 
 	return 0;
 }
@@ -694,7 +694,7 @@ int dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	int ret = __dwc2_lowlevel_hw_enable(hsotg);
 
-	dev_info(hsotg->dev, "%s : %d\n", __func__, __LINE__);
+	dev_info(hsotg->dev, "[INFO][USB] %s : %d\n", __func__, __LINE__);
 	if (ret == 0)
 		hsotg->ll_hw_enabled = true;
 	return ret;
@@ -743,7 +743,7 @@ int dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 {
 	int ret = __dwc2_lowlevel_hw_disable(hsotg);
 
-	dev_info(hsotg->dev, "%s : %d\n", __func__, __LINE__);
+	dev_info(hsotg->dev, "[INFO][USB] %s : %d\n", __func__, __LINE__);
 	if (ret == 0)
 		hsotg->ll_hw_enabled = false;
 	return ret;
@@ -756,7 +756,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->reset = devm_reset_control_get_optional(hsotg->dev, "dwc2");
 	if (IS_ERR(hsotg->reset)) {
 		ret = PTR_ERR(hsotg->reset);
-		dev_err(hsotg->dev, "error getting reset control %d\n", ret);
+		dev_err(hsotg->dev, "[ERROR][USB] error getting reset control %d\n", ret);
 		return ret;
 	}
 
@@ -771,7 +771,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	 */
 	hsotg->phy = devm_phy_get(hsotg->dev, "usb2-phy");
 	if (IS_ERR(hsotg->phy)) {
-		dev_warn(hsotg->dev, "[dwc2]usb-2phy is ERR %s\n", __func__);	
+		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]usb-2phy is ERR %s\n", __func__);	
 		ret = PTR_ERR(hsotg->phy);
 		switch (ret) {
 		case -ENODEV:
@@ -781,13 +781,13 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		case -EPROBE_DEFER:
 			return ret;
 		default:
-			dev_err(hsotg->dev, "error getting phy %d\n", ret);
+			dev_err(hsotg->dev, "[ERROR][USB] error getting phy %d\n", ret);
 			return ret;
 		}
 	}
 
 	if (!hsotg->phy) {
-		dev_warn(hsotg->dev, "[dwc2]hsotg->phy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->phy is NULL %s\n", __func__);
 #ifndef CONFIG_USB_DWC2_TCC
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
@@ -795,12 +795,12 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #ifdef CONFIG_ARCH_TCC803X
 		ret = hsotg->uphy->set_vbus_resource(hsotg->uphy);
 		if (ret) {
-			dev_err(hsotg->dev, "failed to set a vbus resource\n");
+			dev_err(hsotg->dev, "[ERROR][USB] failed to set a vbus resource\n");
 		}
 #endif 
 #endif
 		if (IS_ERR(hsotg->uphy)) {
-			dev_warn(hsotg->dev, "[dwc2]hsotg->uphy is NULL %s\n", __func__);
+			dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->uphy is NULL %s\n", __func__);
 			ret = PTR_ERR(hsotg->uphy);
 			switch (ret) {
 			case -ENODEV:
@@ -810,7 +810,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 			case -EPROBE_DEFER:
 				return ret;
 			default:
-				dev_err(hsotg->dev, "error getting usb phy %d\n",
+				dev_err(hsotg->dev, "[ERROR][USB] error getting usb phy %d\n",
 					ret);
 				return ret;
 			}
@@ -821,12 +821,12 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #ifdef CONFIG_ARCH_TCC803X
 	ret = hsotg->mhst_uphy->set_vbus_resource(hsotg->mhst_uphy);
 	if (ret) {
-		dev_err(hsotg->dev, "failed to set a vbus resource\n");
+		dev_err(hsotg->dev, "[ERROR][USB] failed to set a vbus resource\n");
 		return ret;
 	}
 #endif 
 	if (IS_ERR(hsotg->mhst_uphy)) {
-		dev_warn(hsotg->dev, "[dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
+		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
 		ret = PTR_ERR(hsotg->uphy);
 		switch (ret) {
 		case -ENODEV:
@@ -836,7 +836,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		case -EPROBE_DEFER:
 			return ret;
 		default:
-			dev_err(hsotg->dev, "error getting usb mhst phy %d\n",
+			dev_err(hsotg->dev, "[ERROR][USB] error getting usb mhst phy %d\n",
 					ret);
 			return ret;
 		}
@@ -858,7 +858,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->clk = devm_clk_get(hsotg->dev, "otg");
 	if (IS_ERR(hsotg->clk)) {
 		hsotg->clk = NULL;
-		dev_err(hsotg->dev, "cannot get otg clock\n");
+		dev_err(hsotg->dev, "[ERROR][USB] cannot get otg clock\n");
 	}
 #ifdef CONFIG_USB_DWC2_TCC
 	/* TCC vbus */
@@ -871,7 +871,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	ret = devm_regulator_bulk_get(hsotg->dev, ARRAY_SIZE(hsotg->supplies),
 				      hsotg->supplies);
 	if (ret) {
-		dev_err(hsotg->dev, "failed to request supplies: %d\n", ret);
+		dev_err(hsotg->dev, "[ERROR][USB] failed to request supplies: %d\n", ret);
 		return ret;
 	}
 #endif
@@ -912,7 +912,7 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 			else {
 				retry_cnt++;
 				msleep(50);
-				dev_warn(hsotg->dev, "[%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
+				dev_warn(hsotg->dev, "[WARN][USB] [%s]Retry to control vbus(%d)!\n", __func__, retry_cnt);
 			}
 		} while (retry_cnt < VBUS_CTRL_MAX);
 #endif
@@ -932,11 +932,11 @@ static void dwc2_change_dr_mode(struct work_struct *w)
 
 			hsotg->soffn_thread = kthread_run(dwc2_soffn_monitor_thread, (void *)hsotg, "dwc2-soffn");
 			if (IS_ERR(hsotg->soffn_thread)) {
-				dev_warn(hsotg->dev, "\x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
+				dev_warn(hsotg->dev, "[WARN][USB] \x1b[1;33m[%s:%d]\x1b[0m thread error\n", __func__, __LINE__);
 				res = PTR_ERR(hsotg->soffn_thread);
 			}
 		}
-		dev_warn(hsotg->dev, "Current mode is %s \n", (hsotg->dr_mode == USB_DR_MODE_HOST) ? "Host" : "Device");
+		dev_warn(hsotg->dev, "[WARN][USB] Current mode is %s \n", (hsotg->dr_mode == USB_DR_MODE_HOST) ? "Host" : "Device");
 	}
 
 	return res;
@@ -1050,7 +1050,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->regs))
 		return PTR_ERR(hsotg->regs);
 
-	dev_info(&dev->dev, "dwc2 controller mapped PA %08lx to VA %p\n",
+	dev_info(&dev->dev, "[INFO][USB] dwc2 controller mapped PA %08lx to VA %p\n",
 		(unsigned long)res->start, hsotg->regs);
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	/*
@@ -1061,7 +1061,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->ehci_regs))
 		return PTR_ERR(hsotg->ehci_regs);
 
-	dev_info(&dev->dev, "ehci controller mapped PA %08lx to VA %p SIZE %d\n",
+	dev_info(&dev->dev, "[INFO][USB] ehci controller mapped PA %08lx to VA %p SIZE %d\n",
 		(unsigned long)res->start, hsotg->ehci_regs, hsotg->ehci_regs_size);
 
 	/*
@@ -1072,7 +1072,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (IS_ERR(hsotg->ohci_regs))
 		return PTR_ERR(hsotg->ohci_regs);
 
-	dev_info(&dev->dev, "ohci controller mapped PA %08lx to VA %p SIZE %d\n",
+	dev_info(&dev->dev, "[INFO][USB] ohci controller mapped PA %08lx to VA %p SIZE %d\n",
 		(unsigned long)res->start, hsotg->ohci_regs, hsotg->ohci_regs_size);
 
 #endif
@@ -1084,11 +1084,11 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	hsotg->irq = platform_get_irq(dev, 0);
 	if (hsotg->irq < 0) {
-		dev_err(&dev->dev, "missing IRQ resource\n");
+		dev_err(&dev->dev, "[ERROR][USB] missing IRQ resource\n");
 		return hsotg->irq;
 	}
 
-	dev_info(hsotg->dev, "registering common handler for irq%d\n",
+	dev_info(hsotg->dev, "[INFO][USB] registering common handler for irq%d\n",
 		hsotg->irq);
 	retval = devm_request_irq(hsotg->dev, hsotg->irq,
 				  dwc2_handle_common_intr, IRQF_SHARED,
@@ -1098,10 +1098,10 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->ehci_irq = platform_get_irq(dev, 1);
 	if (hsotg->irq < 0) {
-		dev_err(&dev->dev, "missing IRQ resource\n");
+		dev_err(&dev->dev, "[ERROR][USB] missing IRQ resource\n");
 		return hsotg->ehci_irq;
 	}
-	dev_dbg(hsotg->dev, "ehci_irq's number is %d\n", hsotg->ehci_irq);	
+	dev_dbg(hsotg->dev, "[DEBUG][USB] ehci_irq's number is %d\n", hsotg->ehci_irq);	
 #endif
 
 	/* Set the irq affinity in order to handle the irq more stably */
@@ -1109,11 +1109,11 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	unsigned int cpu = 1;
 	retval = irq_set_affinity(hsotg->irq, cpumask_of(cpu));
 	if(retval) {
-		dev_err(hsotg->dev, "failed to set the irq affinity irq %d cpu %d err %d\n",
+		dev_err(hsotg->dev, "[ERROR][USB] failed to set the irq affinity irq %d cpu %d err %d\n",
 				hsotg->irq, cpu, retval);
 		return retval;
 	}
-	dev_info(hsotg->dev, "set the irq(%d) affinity to cpu(%d)\n", hsotg->irq, cpu);
+	dev_info(hsotg->dev, "[INFO][USB] set the irq(%d) affinity to cpu(%d)\n", hsotg->irq, cpu);
 
 	retval = dwc2_get_dr_mode(hsotg);
 	if (retval)
@@ -1174,7 +1174,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 #ifdef CONFIG_USB_DWC2_TCC
 	retval = device_create_file(&dev->dev, &dev_attr_vbus);
 	if (retval) 
-		dev_err(hsotg->dev, "failed to create vbus\n");
+		dev_err(hsotg->dev, "[ERROR][USB] failed to create vbus\n");
 	#ifdef CONFIG_USB_DWC2_DUAL_ROLE
 	hsotg->drd_wq = create_singlethread_workqueue("dwc2");
 	if (!hsotg->drd_wq) {
@@ -1183,7 +1183,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	INIT_WORK(&hsotg->drd_work, dwc2_change_dr_mode);
 	retval = device_create_file(&dev->dev, &dev_attr_drdmode);
 	if (retval)
-		dev_err(hsotg->dev, "failed to create dr_mode\n");
+		dev_err(hsotg->dev, "[ERROR][USB] failed to create dr_mode\n");
 
 		#ifdef CONFIG_USB_DWC2_TCC_FIRST_HOST //first host
 			#ifdef CONFIG_USB_DWC2_TCC_MUX
@@ -1202,7 +1202,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	if (work_pending(work))
 	{
-		dev_warn(hsotg->dev, "[drd_store pending]\n");
+		dev_warn(hsotg->dev, "[WARN][USB] [drd_store pending]\n");
 		return count;
 	}
 
@@ -1221,12 +1221,12 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_pcfg1);
 
 	if (retval)
-		dev_err(hsotg->dev, "failed to create dwc_pcfg1\n");
+		dev_err(hsotg->dev, "[ERROR][USB] failed to create dwc_pcfg1\n");
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_host_mux_pcfg1);
 
 	if (retval)
-		dev_err(hsotg->dev, "failed to create dwc_host_mux_pcfg1\n");
+		dev_err(hsotg->dev, "[ERROR][USB] failed to create dwc_host_mux_pcfg1\n");
 #endif
 
 skip_mode_change:
