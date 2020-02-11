@@ -39,7 +39,7 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 
 //	FUNCTION_IN
 
-	dlog("path index: %d, cmd: 0x%08x\n", vdev->plt_dev->id, cmd);
+	dlog("path index: %d, cmd: 0x%08x\n", vdev->vid_dev.num, cmd);
 
 	mutex_lock(&vdev->v4l2.lock);
 
@@ -262,25 +262,19 @@ long tccvin_core_ioctl(struct file * file, unsigned int cmd, unsigned long arg) 
 
 int tccvin_core_open(struct file * file) {
 	tccvin_dev_t	* vdev	= video_drvdata(file);
-	int				minor	= video_devdata(file)->minor;
 
 	FUNCTION_IN
 
-	if((vdev->vid_dev != NULL) && (vdev->vid_dev->minor == minor)) {
-		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-		if(vdev->is_dev_opened == 1) {
-			log("video-input path[%d] is busy\n", vdev->plt_dev->id);
-			return -EBUSY;
-		} else {
-			// init the v4l2 data
-			tccvin_v4l2_init(vdev);
-
-			vdev->is_dev_opened  = 1;
-		}
-		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
+	dlog("[%d] is_dev_opened: %d\n", vdev->vid_dev.num, vdev->is_dev_opened);
+	if(vdev->is_dev_opened == 1) {
+		log("video-input path[%d] is busy\n", vdev->vid_dev.num);
+		return -EBUSY;
 	} else {
-		dlog("[%s] video dev: 0x%p, video minor: %d, minor: %d\n", vdev->vid_dev->name, vdev->vid_dev, vdev->vid_dev->minor, minor);
-		return -ENODEV;
+		// init the v4l2 data
+		tccvin_v4l2_init(vdev);
+
+		vdev->is_dev_opened  = 1;
+		log("[%d] is_dev_opened: %d\n", vdev->vid_dev.num, vdev->is_dev_opened);
 	}
 
 	FUNCTION_OUT
@@ -289,22 +283,16 @@ int tccvin_core_open(struct file * file) {
 
 int tccvin_core_release(struct file * file) {
 	tccvin_dev_t	* vdev	= video_drvdata(file);
-	int				minor	= video_devdata(file)->minor;
 
 	FUNCTION_IN
 
-	if((vdev->vid_dev != NULL) && (vdev->vid_dev->minor == minor)) {
-		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-		if(vdev->is_dev_opened == 1) {
-			// deinit the v4l2 data
-			tccvin_v4l2_deinit(vdev);
+	dlog("[%d] is_dev_opened: %d\n", vdev->vid_dev.num, vdev->is_dev_opened);
+	if(vdev->is_dev_opened == 1) {
+		// deinit the v4l2 data
+		tccvin_v4l2_deinit(vdev);
 
-			vdev->is_dev_opened  = 0;
-		}
-		dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
-	} else {
-		dlog("[%s] video dev: 0x%p, video minor: %d, minor: %d\n", vdev->vid_dev->name, vdev->vid_dev, vdev->vid_dev->minor, minor);
-		return -ENODEV;
+		vdev->is_dev_opened  = 0;
+		log("[%d] is_dev_opened: %d\n", vdev->vid_dev.num, vdev->is_dev_opened);
 	}
 
 	FUNCTION_OUT
@@ -326,10 +314,6 @@ int tccvin_core_probe(struct platform_device * pdev) {
 
 	FUNCTION_IN
 
-	// Get the index from its alias
-	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
-	log("Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
-
 	// allocate and clear memory for a camera device
 	vdev = kzalloc(sizeof(tccvin_dev_t), GFP_KERNEL);
 	if(vdev == NULL) {
@@ -339,7 +323,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	memset(vdev, 0x00, sizeof(tccvin_dev_t));
 
 	if(pdev->dev.of_node) {
-		vdev->plt_dev = pdev;
+		vdev->dev_plt = &pdev->dev;
 
 		memset(&vdev->cif, 0x00, sizeof(tccvin_cif_t));
 		memset(&vdev->v4l2, 0x00, sizeof(tccvin_v4l2_t));
@@ -348,28 +332,21 @@ int tccvin_core_probe(struct platform_device * pdev) {
 		return -ENODEV;
 	}
 
-	// allocate and clear memory for a video device
-	vdev->vid_dev = video_device_alloc();
-	if(vdev->vid_dev == NULL) {
-		log("ERROR: Allocate a video device struct.\n");
-		return -ENOMEM;
-	}
-
 	// set the device ops
-	vdev->vid_dev->fops = &tccvin_core_fops;
+	vdev->vid_dev.fops = &tccvin_core_fops;
 
 	// allocate and clear memory for a v4l2 device
-	vdev->vid_dev->v4l2_dev = kzalloc(sizeof(struct v4l2_device), GFP_KERNEL);
-	if(vdev->vid_dev->v4l2_dev == NULL) {
+	vdev->vid_dev.v4l2_dev = kzalloc(sizeof(struct v4l2_device), GFP_KERNEL);
+	if(vdev->vid_dev.v4l2_dev == NULL) {
 		log("ERROR: Allocate a v4l2 device struct.\n");
 		return -ENOMEM;
 	}
 
 	// set the name of the video device as the platform device's one
-	strlcpy(vdev->vid_dev->name, pdev->name, sizeof(vdev->vid_dev->name));
+	strlcpy(vdev->vid_dev.name, pdev->name, sizeof(vdev->vid_dev.name));
 
 	// register a v4l2 device
-	ret = v4l2_device_register(&pdev->dev, vdev->vid_dev->v4l2_dev);
+	ret = v4l2_device_register(&pdev->dev, vdev->vid_dev.v4l2_dev);
 	if(!ret) {
 		dlog("Registered as a v4l2 device(%s).\n", pdev->name);
 	} else {
@@ -377,25 +354,27 @@ int tccvin_core_probe(struct platform_device * pdev) {
 		return -ENODEV;
 	}
 
-	// set the video device's minor as -1 (when failed)
-	vdev->vid_dev->minor = -1;
+	// Get the index from its alias
+	vdev->vid_dev.minor = of_alias_get_id(pdev->dev.of_node, "videoinput");
+	log("video-input path index: %d, name: %s\n", vdev->vid_dev.minor, pdev->name);
 
 	// set the release function
 	// it must be set for the failure to register a video device
-	vdev->vid_dev->release = video_device_release;
+	vdev->vid_dev.release = video_device_release;
 
 	// register a video device
-	ret = video_register_device(vdev->vid_dev, VFL_TYPE_GRABBER, vdev->vid_dev->minor);
+	// if success, the minor number will be a device number (minor -> num)
+	ret = video_register_device(&vdev->vid_dev, VFL_TYPE_GRABBER, vdev->vid_dev.minor);
 	if(!ret) {
-		dlog("Registered as a video device(%s).\n", vdev->vid_dev->name);
+		dlog("Registered as a video device(%s).\n", vdev->vid_dev.name);
 	} else {
-		log("ERROR: Register a video device(%d) struct.\n", vdev->vid_dev->minor);
-		video_device_release(vdev->vid_dev);
+		log("ERROR: Register a video device(%d) struct.\n", vdev->vid_dev.num);
+		video_device_release(&vdev->vid_dev);
 		return -ENODEV;
 	}
 
 	// set the video driver's data
-	video_set_drvdata(vdev->vid_dev, vdev);
+	video_set_drvdata(&vdev->vid_dev, vdev);
 
 	// Create the tccvin_attr_loglevel sysfs
 	tccvin_create_attr_loglevel(&pdev->dev);
@@ -418,17 +397,13 @@ int tccvin_core_remove(struct platform_device * pdev) {
 	FUNCTION_IN
 
 	// unregister the video device
-	video_unregister_device(vdev->vid_dev);
+	video_unregister_device(&vdev->vid_dev);
 
 	// unregister the v4l2 device
-	v4l2_device_unregister(vdev->vid_dev->v4l2_dev);
-	if(vdev->vid_dev->v4l2_dev != NULL) {
-		// free the memory for the v4l2 device
-		kfree(vdev->vid_dev->v4l2_dev);
-	}
+	v4l2_device_unregister(vdev->vid_dev.v4l2_dev);
 
 	// release(free) the video device
-	video_device_release(vdev->vid_dev);
+	video_device_release(&vdev->vid_dev);
 
 	// free the memory for the camera device
 	kfree(vdev);

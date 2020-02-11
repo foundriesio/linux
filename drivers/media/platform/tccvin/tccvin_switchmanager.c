@@ -208,7 +208,7 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 	mutex_init(&vdev->tccvin_switchmanager_lock);
 
 	// open a videoinput path
-	dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
+	dlog("[%d] is_dev_opened: %d\n", vdev->dev_id, vdev->is_dev_opened);
 	if(vdev->is_dev_opened == DISABLE) {
 		int		width = 0, height = 0;
 #ifdef CONFIG_FB_VIOC
@@ -233,7 +233,7 @@ int tccvin_switchmanager_probe(tccvin_dev_t * vdev) {
 
 		vdev->is_dev_opened  = ENABLE;
 	}
-	dlog("[%d] is_dev_opened: %d\n", vdev->plt_dev->id, vdev->is_dev_opened);
+	dlog("[%d] is_dev_opened: %d\n", vdev->dev_id, vdev->is_dev_opened);
 
 	// handover
 //	tccvin_switchmanager_handover_handler(vdev);

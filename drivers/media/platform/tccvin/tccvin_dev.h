@@ -136,7 +136,7 @@ struct tccvin_buf {
 
 typedef struct tccvin_v4l2 {
 	struct v4l2_input			input;			// video input
-	struct v4l2_pix_format		pix_format;		// pixel format
+	struct v4l2_format			format;			// format
 
 	enum cifoper_mode			oper_mode;		// operation mode
 	int							preview_method;	// 0: v4l2 / 1: directdisplay
@@ -161,8 +161,8 @@ typedef struct tccvin_v4l2 {
 } tccvin_v4l2_t;
 
 typedef struct tcc_dev {
-	struct platform_device		* plt_dev;
-	struct video_device			* vid_dev;
+	struct device				* dev_plt;
+	struct video_device			vid_dev;
 	unsigned int				is_dev_opened;
 
 	struct tccvin_cif			cif;
