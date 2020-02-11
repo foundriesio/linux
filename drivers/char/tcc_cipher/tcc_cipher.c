@@ -46,14 +46,6 @@
 
 #include <linux/tcc_cipher.h>
 
-static int cipher_data_debug = 0;
-module_param( cipher_data_debug, int, 0644 );
-MODULE_PARM_DESC( cipher_data_debug, "Turn on/off device data debugging (default:off)." );
-static int cipher_debug = 0;
-module_param( cipher_debug, int, 0644 );
-MODULE_PARM_DESC( cipher_debug, "Turn on/off device debugging (default:off)." );
-#define dprintk( msg... )	if( cipher_debug ) { printk( "tcc_cipher: " msg); }
-
 //#define MAJOR_ID		250
 //#define MINOR_ID		0
 
@@ -61,6 +53,23 @@ MODULE_PARM_DESC( cipher_debug, "Turn on/off device debugging (default:off)." );
 #ifdef USE_REV_MEMORY
 #include <soc/tcc/pmap.h>
 #endif
+
+#define DEBUG_TCC_CIPHER
+#ifdef DEBUG_TCC_CIPHER
+#undef dprintk
+#define dprintk(msg...)			printk(KERN_DEBUG "[DEBUG][TCCCIPHER] " msg);
+#undef eprintk
+#define eprintk(msg...)			printk(KERN_ERR "[ERROR][TCCCIPHER] " msg);
+#else
+#undef dprintk
+#define dprintk(msg...)
+#undef eprintk
+#define eprintk(msg...)			//printk(KERN_ERR "[ERROR][TCCCIPHER] " msg);
+#endif
+
+static int cipher_data_debug = 0;
+module_param( cipher_data_debug, int, 0644 );
+MODULE_PARM_DESC( cipher_data_debug, "Turn on/off device data debugging (default:off)." );
 
 static struct cipher_device
 {
@@ -227,17 +236,18 @@ static int tcc_cipher_run_inner(unsigned char *srcAddr, unsigned char *dstAddr, 
 		unsigned int *pDataAddr;
 
 		pDataAddr = (unsigned int *)cipher_dev->srcVir;
-		printk("\n[ Source Text ]\n");
+
+		dprintk("\n[ Source Text ]\n");
 		for( i = 0; i < ( len / 4 ); i+=4 ) {
-			printk("0x%08x 0x%08x 0x%08x 0x%08x\n", pDataAddr[i+0], pDataAddr[i+1], pDataAddr[i+2], pDataAddr[i+3]);
+			dprintk("0x%08x 0x%08x 0x%08x 0x%08x\n", pDataAddr[i+0], pDataAddr[i+1], pDataAddr[i+2], pDataAddr[i+3]);
 		}
 
 		pDataAddr = (unsigned int *)cipher_dev->dstVir;
-		printk("\n[ Dest Text ]\n");
+		dprintk("\n[ Dest Text ]\n");
 		for( i = 0; i < ( ( len * 2 ) / 4 ); i+=4 ) {
-			printk("0x%08x 0x%08x 0x%08x 0x%08x\n", pDataAddr[i+0], pDataAddr[i+1], pDataAddr[i+2], pDataAddr[i+3]);
+			dprintk("0x%08x 0x%08x 0x%08x 0x%08x\n", pDataAddr[i+0], pDataAddr[i+1], pDataAddr[i+2], pDataAddr[i+3]);
 		}
-		printk("\n");
+		dprintk("\n");
 	}
 
 	return 0;
@@ -366,7 +376,7 @@ static long tcc_cipher_ioctl(struct file *file, unsigned int cmd, unsigned long 
 			break;
 
 		default:
-			printk("err: unkown command(%d)\n", cmd);
+			eprintk("err: unkown command(%d)\n", cmd);
 			err = -ENOTTY;
 			break;
 	}
@@ -379,7 +389,7 @@ int tcc_cipher_open(struct inode *inode, struct file *filp)
     struct arm_smccc_res res;
 
 	if( cipher_dev->used ) {
-		printk("%s device already used", __func__);
+		eprintk("%s device already used", __func__);
 		return -EBUSY;
 	}
                                                           
@@ -407,7 +417,7 @@ int tcc_cipher_release(struct inode *inode, struct file *file)
 
 static int tcc_cipher_mmap(struct file *filp, struct vm_area_struct *vma) {
 	if( remap_pfn_range( vma, vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, pgprot_noncached( vma->vm_page_prot ) ) != 0 ) {
-		printk("%s remap_pfn_range error\n", __func__);
+		eprintk("%s remap_pfn_range error\n", __func__);
 		return -EAGAIN;
 	}
 	return 0;
@@ -442,22 +452,21 @@ static int tcc_cipher_probe(struct platform_device *pdev)
 
 	cipher_dev = devm_kzalloc( &pdev->dev, sizeof(struct cipher_device), GFP_KERNEL );
 	if( cipher_dev == NULL ) {
-		printk("%s failed to allocate cipher_device\n", __func__);
+		eprintk("%s failed to allocate cipher_device\n", __func__);
 		return -ENOMEM;
 	}
 
 	cipher_dev->dev = &pdev->dev;
 
 #ifdef USE_REV_MEMORY
-//	if (pmap_get_info("secure_hash", &pmap_secure_hash)) {
-	if (pmap_get_info("tsif", &pmap_secure_hash)) {
-		printk("pmap_secure_hash.base = %x, pmap_secure_hash.size = %d\n", pmap_secure_hash.base, pmap_secure_hash.size);
+	if (pmap_get_info("secure_hash", &pmap_secure_hash)) {
+		dprintk("pmap_secure_hash.base = %x, pmap_secure_hash.size = %d\n", pmap_secure_hash.base, pmap_secure_hash.size);
 
 		cipher_buffer_length = pmap_secure_hash.size;
 		cipher_dev->srcPhy = pmap_secure_hash.base;
 		cipher_dev->srcVir = ioremap_nocache(cipher_dev->srcPhy, cipher_buffer_length);
 		if (!cipher_dev->srcVir) {
-			printk("cipher_dev->srcPhy = %llx, cipher_dev->srcVir = %p\n", cipher_dev->srcPhy, cipher_dev->srcVir);
+			eprintk("cipher_dev->srcPhy = %llx, cipher_dev->srcVir = %p\n", cipher_dev->srcPhy, cipher_dev->srcVir);
 			return -1;
 		}
 
@@ -465,7 +474,7 @@ static int tcc_cipher_probe(struct platform_device *pdev)
 		cipher_dev->dstVir = cipher_dev->srcVir;
 	}
 	else {
-		printk("pmap_get_info failed\n");
+		eprintk("pmap_get_info failed\n");
 		return -1;
 	}
 #else //USE_REV_MEMORY
@@ -482,12 +491,12 @@ static int tcc_cipher_probe(struct platform_device *pdev)
 		return -1;
 	}
 
-    //printk("cipher_dev srcAddr[%p %p] dstAddr[%p %p]\n", cipher_dev->srcVir, cipher_dev->srcPhy, cipher_dev->dstVir, cipher_dev->dstPhy);
+    //dprintk("cipher_dev srcAddr[%p %p] dstAddr[%p %p]\n", cipher_dev->srcVir, cipher_dev->srcPhy, cipher_dev->dstVir, cipher_dev->dstPhy);
 #endif //USE_REV_MEMORY
 
 	if( misc_register( &cipher_misc_device ) )
 	{
-		printk("%s Couldn't register device\n", __func__);
+		eprintk("%s Couldn't register device\n", __func__);
 		dma_free_coherent( cipher_dev->dev, cipher_buffer_length, cipher_dev->srcVir, cipher_dev->srcPhy );
 		dma_free_coherent( cipher_dev->dev, cipher_buffer_length, cipher_dev->dstVir, cipher_dev->dstPhy );
 		return -EBUSY;
@@ -563,7 +572,7 @@ static int __init tcc_cipher_init( void )
 	dprintk("Telechips Cipher Driver Init\n");
 	result = platform_driver_register( &cipher_driver );
 	if( result ) {
-		dprintk("%s platform_driver_register err \n", __func__);
+		eprintk("%s platform_driver_register err \n", __func__);
 		return 0;
 	}
 
