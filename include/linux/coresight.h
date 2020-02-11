@@ -130,12 +130,16 @@ struct coresight_desc {
  * @chid_fwnode: remote component's fwnode handle.
  * @child_dev:	a @coresight_device representation of the component
 		connected to @outport.
+ * @inlink_name: Name for the "input" link
+ * @outlink_name: Name for the "output" link
  */
 struct coresight_connection {
 	int outport;
 	int child_port;
 	struct fwnode_handle *child_fwnode;
 	struct coresight_device *child_dev;
+	const char *inlink_name;
+	const char *outlink_name;
 };
 
 /**
