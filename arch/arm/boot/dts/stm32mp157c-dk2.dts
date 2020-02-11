@@ -69,13 +69,6 @@
 				remote-endpoint = <&panel_in>;
 			};
 		};
-
-		port@3 {
-			reg = <3>;
-			dsi_ep3_out: endpoint {
-				remote-endpoint = <&panel_rpi_in>;
-			};
-		};
 	};
 
 	panel_otm8009a: panel-otm8009a@0 {
@@ -115,18 +108,6 @@
 		touchscreen-size-y = <800>;
 		panel = <&panel_otm8009a>;
 		status = "okay";
-	};
-
-	rpi: panel@45 {
-		compatible = "raspberrypi,7inch-touchscreen-panel";
-		reg = <0x45>;
-		status = "disabled";
-
-		port {
-			panel_rpi_in: endpoint {
-				remote-endpoint = <&dsi_ep3_out>;
-			};
-		};
 	};
 };
 
