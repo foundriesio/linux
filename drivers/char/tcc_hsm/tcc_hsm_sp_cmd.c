@@ -45,14 +45,14 @@
 #define DEBUG_TCC_HSM_SP_CMD
 #ifdef DEBUG_TCC_HSM_SP_CMD
 #undef dprintk
-#define dprintk(msg...)			printk("tcc_hsm_sp_cmd: " msg);
+#define dprintk(msg...)			printk(KERN_DEBUG "[DEBUG][TCCHSM] " msg);
 #undef eprintk
-#define eprintk(msg...)			printk("tcc_hsm_sp_cmd: err: " msg);
+#define eprintk(msg...)			printk(KERN_ERR "[ERROR][TCCHSM] " msg);
 #else
 #undef dprintk
 #define dprintk(msg...)
 #undef eprintk
-#define eprintk(msg...)			//printk("tcc_hsm_sp_cmd: err: " msg);
+#define eprintk(msg...)			//printk(KERN_ERR "[ERROR][TCCHSM] " msg);
 #endif
 
 int32_t tcc_hsm_sp_cmd_get_version(uint32_t *major, uint32_t *minor)
