@@ -469,6 +469,7 @@
 			dmas = <&dmamux1 39 0x400 0x01>,
 			       <&dmamux1 40 0x400 0x01>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -494,6 +495,7 @@
 			dmas = <&dmamux1 61 0x400 0x01>,
 			       <&dmamux1 62 0x400 0x01>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -778,6 +780,7 @@
 			dmas = <&dmamux1 37 0x400 0x01>,
 			       <&dmamux1 38 0x400 0x01>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -803,6 +806,7 @@
 			dmas = <&dmamux1 83 0x400 0x01>,
 			       <&dmamux1 84 0x400 0x01>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -893,6 +897,7 @@
 			dmas = <&dmamux1 85 0x400 0x01>,
 			       <&dmamux1 86 0x400 0x01>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1660,6 +1665,7 @@
 			dmas = <&mdma1 34 0x0 0x40008 0x0 0x0 0x0>,
 			       <&mdma1 35 0x0 0x40002 0x0 0x0 0x0>;
 			dma-names = "rx", "tx";
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
