@@ -177,6 +177,7 @@ static void dwc2_set_stm32mp1_fsotg_params(struct dwc2_hsotg *hsotg)
 	p->i2c_enable = false;
 	p->activate_stm_fs_transceiver = true;
 	p->activate_stm_id_vb_detection = true;
+	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
 }
 
 static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_hsotg *hsotg)
@@ -190,7 +191,7 @@ static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_hsotg *hsotg)
 	p->host_rx_fifo_size = 440;
 	p->host_nperio_tx_fifo_size = 256;
 	p->host_perio_tx_fifo_size = 256;
-	p->power_down = false;
+	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
 }
 
 const struct of_device_id dwc2_of_match_table[] = {
