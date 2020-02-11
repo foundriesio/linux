@@ -744,176 +744,170 @@ static const struct clk_ops clk_mmux_ops = {
 };
 
 /* STM32 PLL */
-struct stm32_pll_obj {
+struct clk_pll_fractional_divider {
+	struct clk_hw hw;
+	void __iomem *mreg;
+	u8 mshift;
+	u8 mwidth;
+	u8 mflags;
+	void __iomem *nreg;
+	u8 nshift;
+	u8 nwidth;
+	u8 nflags;
+	void __iomem *freg;
+	u8 fshift;
+	u8 fwidth;
+
 	/* lock pll enable/disable registers */
 	spinlock_t *lock;
-	void __iomem *reg;
-	struct clk_hw hw;
 };
 
-#define to_pll(_hw) container_of(_hw, struct stm32_pll_obj, hw)
+#define to_pll_fractional_divider(_hw)\
+	container_of(_hw, struct clk_pll_fractional_divider, hw)
 
-#define PLL_ON		BIT(0)
-#define PLL_RDY		BIT(1)
-#define DIVN_MASK	0x1FF
-#define DIVM_MASK	0x3F
-#define DIVM_SHIFT	16
-#define DIVN_SHIFT	0
-#define FRAC_OFFSET	0xC
-#define FRAC_MASK	0x1FFF
-#define FRAC_SHIFT	3
-#define FRACLE		BIT(16)
-
-static int __pll_is_enabled(struct clk_hw *hw)
+static unsigned long clk_pll_frac_div_recalc_rate(struct clk_hw *hw,
+						  unsigned long parent_rate)
 {
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
+	struct clk_pll_fractional_divider *fd = to_pll_fractional_divider(hw);
+	u32 mmask = GENMASK(fd->mwidth - 1, 0) << fd->mshift;
+	u32 nmask = GENMASK(fd->nwidth - 1, 0) << fd->nshift;
+	u32 fmask = GENMASK(fd->fwidth - 1, 0) << fd->fshift;
+	unsigned long m, n, f;
+	u64 rate, frate = 0;
+	u32 val;
 
-	return readl_relaxed(clk_elem->reg) & PLL_ON;
+	val = readl(fd->mreg);
+	m = (val & mmask) >> fd->mshift;
+	if (fd->mflags & CLK_FRAC_DIVIDER_ZERO_BASED)
+		m++;
+
+	val = readl(fd->nreg);
+	n = (val & nmask) >> fd->nshift;
+	if (fd->nflags & CLK_FRAC_DIVIDER_ZERO_BASED)
+		n++;
+
+	if (!n || !m)
+		return parent_rate;
+
+	rate = (u64)parent_rate * n;
+	do_div(rate, m);
+
+	val = readl(fd->freg);
+	f = (val & fmask) >> fd->fshift;
+	if (f) {
+		frate = (u64)parent_rate * (u64)f;
+		do_div(frate, (m * (1 << fd->fwidth)));
+	}
+	return rate + frate;
 }
+
+static const struct clk_ops clk_pll_frac_div_ops = {
+	.recalc_rate	= clk_pll_frac_div_recalc_rate,
+};
+
+#define PLL_BIT_ON		0
+#define PLL_BIT_RDY		1
+#define PLL_MUX_SHIFT		0
+#define PLL_MUX_MASK		3
+#define PLL_DIVMN_OFFSET	4
+#define PLL_DIVM_SHIFT		16
+#define PLL_DIVM_WIDTH		6
+#define PLL_DIVN_SHIFT		0
+#define PLL_DIVN_WIDTH		9
+#define PLL_FRAC_OFFSET		0xC
+#define PLL_FRAC_SHIFT		3
+#define PLL_FRAC_WIDTH		13
 
 #define TIMEOUT 5
 
 static int pll_enable(struct clk_hw *hw)
 {
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
-	u32 reg;
-	unsigned long flags = 0;
-	unsigned int timeout = TIMEOUT;
+	struct clk_gate *gate = to_clk_gate(hw);
+	u32 timeout = TIMEOUT;
 	int bit_status = 0;
 
-	spin_lock_irqsave(clk_elem->lock, flags);
+	if (clk_gate_ops.is_enabled(hw))
+		return 0;
 
-	if (__pll_is_enabled(hw))
-		goto unlock;
+	clk_gate_ops.enable(hw);
 
-	reg = readl_relaxed(clk_elem->reg);
-	reg |= PLL_ON;
-	writel_relaxed(reg, clk_elem->reg);
-
-	/* We can't use readl_poll_timeout() because we can be blocked if
-	 * someone enables this clock before clocksource changes.
-	 * Only jiffies counter is available. Jiffies are incremented by
-	 * interruptions and enable op does not allow to be interrupted.
-	 */
 	do {
-		bit_status = !(readl_relaxed(clk_elem->reg) & PLL_RDY);
+		bit_status = !(readl_relaxed(gate->reg) & BIT(PLL_BIT_RDY));
 
 		if (bit_status)
 			udelay(120);
 
 	} while (bit_status && --timeout);
 
-unlock:
-	spin_unlock_irqrestore(clk_elem->lock, flags);
-
 	return bit_status;
 }
 
 static void pll_disable(struct clk_hw *hw)
 {
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
-	u32 reg;
-	unsigned long flags = 0;
+	if (!clk_gate_ops.is_enabled(hw))
+		return;
 
-	spin_lock_irqsave(clk_elem->lock, flags);
-
-	reg = readl_relaxed(clk_elem->reg);
-	reg &= ~PLL_ON;
-	writel_relaxed(reg, clk_elem->reg);
-
-	spin_unlock_irqrestore(clk_elem->lock, flags);
+	clk_gate_ops.disable(hw);
 }
 
-static u32 pll_frac_val(struct clk_hw *hw)
-{
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
-	u32 reg, frac = 0;
-
-	reg = readl_relaxed(clk_elem->reg + FRAC_OFFSET);
-	if (reg & FRACLE)
-		frac = (reg >> FRAC_SHIFT) & FRAC_MASK;
-
-	return frac;
-}
-
-static unsigned long pll_recalc_rate(struct clk_hw *hw,
-				     unsigned long parent_rate)
-{
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
-	u32 reg;
-	u32 frac, divm, divn;
-	u64 rate, rate_frac = 0;
-
-	reg = readl_relaxed(clk_elem->reg + 4);
-
-	divm = ((reg >> DIVM_SHIFT) & DIVM_MASK) + 1;
-	divn = ((reg >> DIVN_SHIFT) & DIVN_MASK) + 1;
-	rate = (u64)parent_rate * divn;
-
-	do_div(rate, divm);
-
-	frac = pll_frac_val(hw);
-	if (frac) {
-		rate_frac = (u64)parent_rate * (u64)frac;
-		do_div(rate_frac, (divm * 8192));
-	}
-
-	return rate + rate_frac;
-}
-
-static int pll_is_enabled(struct clk_hw *hw)
-{
-	struct stm32_pll_obj *clk_elem = to_pll(hw);
-	unsigned long flags = 0;
-	int ret;
-
-	spin_lock_irqsave(clk_elem->lock, flags);
-	ret = __pll_is_enabled(hw);
-	spin_unlock_irqrestore(clk_elem->lock, flags);
-
-	return ret;
-}
-
-static const struct clk_ops pll_ops = {
+const struct clk_ops pll_gate_ops = {
 	.enable		= pll_enable,
 	.disable	= pll_disable,
-	.recalc_rate	= pll_recalc_rate,
-	.is_enabled	= pll_is_enabled,
+	.is_enabled	= clk_gate_is_enabled,
 };
 
 static struct clk_hw *clk_register_pll(struct device *dev, const char *name,
-				       const char *parent_name,
+				       const char * const *parent_names,
+				       int num_parents,
 				       void __iomem *reg,
+				       void __iomem *mux_reg,
 				       unsigned long flags,
-				       const struct clk_ops *ops,
 				       spinlock_t *lock)
 {
-	struct stm32_pll_obj *element;
-	struct clk_init_data init;
-	struct clk_hw *hw;
-	int err;
+	struct clk_pll_fractional_divider *frac_div;
+	struct clk_gate *gate;
+	struct clk_mux *mux;
 
-	element = devm_kzalloc(dev, sizeof(*element), GFP_KERNEL);
-	if (!element)
+	mux = devm_kzalloc(dev, sizeof(*mux), GFP_KERNEL);
+	if (!mux)
 		return ERR_PTR(-ENOMEM);
 
-	init.name = name;
-	init.ops = ops;
-	init.flags = flags;
-	init.parent_names = &parent_name;
-	init.num_parents = 1;
+	mux->reg = mux_reg;
+	mux->shift = PLL_MUX_SHIFT;
+	mux->mask = PLL_MUX_MASK;
+	mux->flags = CLK_MUX_READ_ONLY;
+	mux->table = NULL;
+	mux->lock = lock;
 
-	element->hw.init = &init;
-	element->reg = reg;
-	element->lock = lock;
+	gate = devm_kzalloc(dev, sizeof(*gate), GFP_KERNEL);
+	if (!gate)
+		return ERR_PTR(-ENOMEM);
 
-	hw = &element->hw;
-	err = clk_hw_register(dev, hw);
+	gate->reg = reg;
+	gate->bit_idx = PLL_BIT_ON;
+	gate->flags = 0;
+	gate->lock = lock;
 
-	if (err)
-		return ERR_PTR(err);
+	frac_div = devm_kzalloc(dev, sizeof(*frac_div), GFP_KERNEL);
+	if (!frac_div)
+		return ERR_PTR(-ENOMEM);
 
-	return hw;
+	frac_div->mreg = reg + PLL_DIVMN_OFFSET;
+	frac_div->mshift = PLL_DIVM_SHIFT;
+	frac_div->mwidth = PLL_DIVM_WIDTH;
+	frac_div->mflags = CLK_FRAC_DIVIDER_ZERO_BASED;
+	frac_div->nreg = reg + PLL_DIVMN_OFFSET;
+	frac_div->nshift = PLL_DIVN_SHIFT;
+	frac_div->nwidth = PLL_DIVN_WIDTH;
+	frac_div->nflags = CLK_FRAC_DIVIDER_ZERO_BASED;
+	frac_div->freg = reg + PLL_FRAC_OFFSET;
+	frac_div->fshift = PLL_FRAC_SHIFT;
+	frac_div->fwidth = PLL_FRAC_WIDTH;
+
+	return clk_hw_register_composite(dev, name, parent_names, num_parents,
+					 &mux->hw, &clk_mux_ops,
+					 &frac_div->hw, &clk_pll_frac_div_ops,
+					 &gate->hw, &pll_gate_ops, flags);
 }
 
 /* Kernel Timer */
@@ -1048,6 +1042,7 @@ static struct clk_hw *clk_register_cktim(struct device *dev, const char *name,
 
 struct stm32_pll_cfg {
 	u32 offset;
+	u32 muxoff;
 	const struct clk_ops *ops;
 };
 
@@ -1058,9 +1053,11 @@ static struct clk_hw *_clk_register_pll(struct device *dev,
 {
 	struct stm32_pll_cfg *stm_pll_cfg = cfg->cfg;
 
-	return clk_register_pll(dev, cfg->name, cfg->parent_name,
-				base + stm_pll_cfg->offset, cfg->flags,
-				stm_pll_cfg->ops, lock);
+	return clk_register_pll(dev, cfg->name, cfg->parent_names,
+				cfg->num_parents,
+				base + stm_pll_cfg->offset,
+				base + stm_pll_cfg->muxoff,
+				cfg->flags, lock);
 }
 
 struct stm32_cktim_cfg {
@@ -1170,15 +1167,16 @@ _clk_stm32_register_composite(struct device *dev,
 	.func		= _clk_hw_register_mux,\
 }
 
-#define PLL(_id, _name, _parent, _flags, _offset)\
+#define PLL(_id, _name, _parents, _flags, _offset_p, _offset_mux)\
 {\
 	.id		= _id,\
 	.name		= _name,\
-	.parent_name	= _parent,\
-	.flags		= _flags,\
+	.parent_names	= _parents,\
+	.num_parents	= ARRAY_SIZE(_parents),\
+	.flags		= CLK_IGNORE_UNUSED | (_flags),\
 	.cfg		=  &(struct stm32_pll_cfg) {\
-		.offset = _offset,\
-		.ops	= &pll_ops\
+		.offset = _offset_p,\
+		.muxoff = _offset_mux,\
 	},\
 	.func		= _clk_register_pll,\
 }
@@ -1709,21 +1707,11 @@ static const struct clock_config stm32mp1_clock_cfg[] = {
 
 	FIXED_FACTOR(CK_HSE_DIV2, "clk-hse-div2", "ck_hse", 0, 1, 2),
 
-	/* Reference for PLL clocks */
-	MUX(NO_ID | SECURE, "ref1", ref12_parents, CLK_OPS_PARENT_ENABLE,
-	    RCC_RCK12SELR, 0, 2, CLK_MUX_READ_ONLY),
-
-	MUX(NO_ID, "ref3", ref3_parents, CLK_OPS_PARENT_ENABLE,
-	    RCC_RCK3SELR, 0, 2, CLK_MUX_READ_ONLY),
-
-	MUX(NO_ID, "ref4", ref4_parents, CLK_OPS_PARENT_ENABLE,
-	    RCC_RCK4SELR, 0, 2, CLK_MUX_READ_ONLY),
-
 	/* PLLs */
-	PLL(PLL1 | SECURE, "pll1", "ref1", CLK_IGNORE_UNUSED, RCC_PLL1CR),
-	PLL(PLL2 | SECURE, "pll2", "ref1", CLK_IGNORE_UNUSED, RCC_PLL2CR),
-	PLL(PLL3, "pll3", "ref3", CLK_IGNORE_UNUSED, RCC_PLL3CR),
-	PLL(PLL4, "pll4", "ref4", CLK_IGNORE_UNUSED, RCC_PLL4CR),
+	PLL(PLL1 | SECURE, "pll1", ref12_parents, 0, RCC_PLL1CR, RCC_RCK12SELR),
+	PLL(PLL2 | SECURE, "pll2", ref12_parents, 0, RCC_PLL2CR, RCC_RCK12SELR),
+	PLL(PLL3, "pll3", ref3_parents, 0, RCC_PLL3CR, RCC_RCK3SELR),
+	PLL(PLL4, "pll4", ref4_parents, 0, RCC_PLL4CR, RCC_RCK4SELR),
 
 	/* ODF */
 	COMPOSITE(PLL1_P | SECURE, "pll1_p", PARENT("pll1"),
