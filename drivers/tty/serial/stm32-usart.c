@@ -1317,7 +1317,7 @@ static int stm32_usart_serial_probe(struct platform_device *pdev)
 			goto err_deinit_port;
 	}
 
-	stm32port->rx_ch = dma_request_chan(&pdev->dev, "rx");
+	stm32port->rx_ch = dma_request_chan_linked(&pdev->dev, "rx");
 	if (PTR_ERR(stm32port->rx_ch) == -EPROBE_DEFER) {
 		ret = -EPROBE_DEFER;
 		goto err_wakeirq;
@@ -1337,7 +1337,7 @@ static int stm32_usart_serial_probe(struct platform_device *pdev)
 
 	if (stm32port->rx_ch && stm32_usart_of_dma_rx_probe(stm32port, pdev)) {
 		/* Fall back in interrupt mode */
-		dma_release_channel(stm32port->rx_ch);
+		dma_release_chan_linked(&pdev->dev, stm32port->rx_ch);
 		stm32port->rx_ch = NULL;
 	}
 
@@ -1381,7 +1381,7 @@ err_port:
 
 err_dma_rx:
 	if (stm32port->rx_ch)
-		dma_release_channel(stm32port->rx_ch);
+		dma_release_chan_linked(&pdev->dev, stm32port->rx_ch);
 
 err_wakeirq:
 	if (stm32port->wakeup_src)
@@ -1428,7 +1428,7 @@ static int stm32_usart_serial_remove(struct platform_device *pdev)
 
 	if (stm32_port->rx_ch) {
 		stm32_usart_of_dma_rx_remove(stm32_port, pdev);
-		dma_release_channel(stm32_port->rx_ch);
+		dma_release_chan_linked(&pdev->dev, stm32_port->rx_ch);
 	}
 
 	stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAT);
