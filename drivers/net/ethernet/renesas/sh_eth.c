@@ -124,8 +124,8 @@ static const u16 sh_eth_offset_gigabit[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[TSU_FWSL0]	= 0x0030,
 	[TSU_FWSL1]	= 0x0034,
 	[TSU_FWSLC]	= 0x0038,
-	[TSU_QTAG0]	= 0x0040,
-	[TSU_QTAG1]	= 0x0044,
+	[TSU_QTAGM0]	= 0x0040,
+	[TSU_QTAGM1]	= 0x0044,
 	[TSU_FWSR]	= 0x0050,
 	[TSU_FWINMK]	= 0x0054,
 	[TSU_ADQT0]	= 0x0048,
@@ -147,7 +147,7 @@ static const u16 sh_eth_offset_gigabit[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[FWNLCR0]	= 0x0090,
 	[FWALCR0]	= 0x0094,
 	[TXNLCR1]	= 0x00a0,
-	[TXALCR1]	= 0x00a0,
+	[TXALCR1]	= 0x00a4,
 	[RXNLCR1]	= 0x00a8,
 	[RXALCR1]	= 0x00ac,
 	[FWNLCR1]	= 0x00b0,
@@ -399,7 +399,7 @@ static const u16 sh_eth_offset_fast_sh3_sh2[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[FWNLCR0]	= 0x0090,
 	[FWALCR0]	= 0x0094,
 	[TXNLCR1]	= 0x00a0,
-	[TXALCR1]	= 0x00a0,
+	[TXALCR1]	= 0x00a4,
 	[RXNLCR1]	= 0x00a8,
 	[RXALCR1]	= 0x00ac,
 	[FWNLCR1]	= 0x00b0,
@@ -753,6 +753,7 @@ static struct sh_eth_cpu_data sh7757_data = {
 	.rpadir		= 1,
 	.rpadir_value   = 2 << 16,
 	.rtrate		= 1,
+	.dual_port	= 1,
 };
 
 #define SH_GIGA_ETH_BASE	0xfee00000UL
@@ -831,6 +832,7 @@ static struct sh_eth_cpu_data sh7757_data_giga = {
 	.no_trimd	= 1,
 	.no_ade		= 1,
 	.tsu		= 1,
+	.dual_port	= 1,
 };
 
 /* SH7734 */
@@ -901,6 +903,7 @@ static struct sh_eth_cpu_data sh7763_data = {
 	.tsu		= 1,
 	.irq_flags	= IRQF_SHARED,
 	.magic		= 1,
+	.dual_port	= 1,
 };
 
 static struct sh_eth_cpu_data sh7619_data = {
@@ -933,6 +936,7 @@ static struct sh_eth_cpu_data sh771x_data = {
 			  EESIPR_RRFIP | EESIPR_RTLFIP | EESIPR_RTSFIP |
 			  EESIPR_PREIP | EESIPR_CERFIP,
 	.tsu		= 1,
+	.dual_port	= 1,
 };
 
 static void sh_eth_set_default_cpu_data(struct sh_eth_cpu_data *cd)
@@ -1817,7 +1821,14 @@ static void sh_eth_adjust_link(struct net_device *ndev)
 {
 	struct sh_eth_private *mdp = netdev_priv(ndev);
 	struct phy_device *phydev = ndev->phydev;
+	unsigned long flags;
 	int new_state = 0;
+
+	spin_lock_irqsave(&mdp->lock, flags);
+
+	/* Disable TX and RX right over here, if E-MAC change is ignored */
+	if (mdp->cd->no_psr || mdp->no_ether_link)
+		sh_eth_rcv_snd_disable(ndev);
 
 	if (phydev->link) {
 		if (phydev->duplex != mdp->duplex) {
@@ -1837,17 +1848,20 @@ static void sh_eth_adjust_link(struct net_device *ndev)
 			sh_eth_modify(ndev, ECMR, ECMR_TXF, 0);
 			new_state = 1;
 			mdp->link = phydev->link;
-			if (mdp->cd->no_psr || mdp->no_ether_link)
-				sh_eth_rcv_snd_enable(ndev);
 		}
 	} else if (mdp->link) {
 		new_state = 1;
 		mdp->link = 0;
 		mdp->speed = 0;
 		mdp->duplex = -1;
-		if (mdp->cd->no_psr || mdp->no_ether_link)
-			sh_eth_rcv_snd_disable(ndev);
 	}
+
+	/* Enable TX and RX right over here, if E-MAC change is ignored */
+	if ((mdp->cd->no_psr || mdp->no_ether_link) && phydev->link)
+		sh_eth_rcv_snd_enable(ndev);
+
+	mmiowb();
+	spin_unlock_irqrestore(&mdp->lock, flags);
 
 	if (new_state && netif_msg_link(mdp))
 		phy_print_status(phydev);
@@ -1929,39 +1943,10 @@ static int sh_eth_get_link_ksettings(struct net_device *ndev,
 static int sh_eth_set_link_ksettings(struct net_device *ndev,
 				     const struct ethtool_link_ksettings *cmd)
 {
-	struct sh_eth_private *mdp = netdev_priv(ndev);
-	unsigned long flags;
-	int ret;
-
 	if (!ndev->phydev)
 		return -ENODEV;
 
-	spin_lock_irqsave(&mdp->lock, flags);
-
-	/* disable tx and rx */
-	sh_eth_rcv_snd_disable(ndev);
-
-	ret = phy_ethtool_ksettings_set(ndev->phydev, cmd);
-	if (ret)
-		goto error_exit;
-
-	if (cmd->base.duplex == DUPLEX_FULL)
-		mdp->duplex = 1;
-	else
-		mdp->duplex = 0;
-
-	if (mdp->cd->set_duplex)
-		mdp->cd->set_duplex(ndev);
-
-error_exit:
-	mdelay(1);
-
-	/* enable tx and rx */
-	sh_eth_rcv_snd_enable(ndev);
-
-	spin_unlock_irqrestore(&mdp->lock, flags);
-
-	return ret;
+	return phy_ethtool_ksettings_set(ndev->phydev, cmd);
 }
 
 /* If it is ever necessary to increase SH_ETH_REG_DUMP_MAX_REGS, the
@@ -2078,29 +2063,31 @@ static size_t __sh_eth_get_regs(struct net_device *ndev, u32 *buf)
 		add_reg(CSMR);
 	if (cd->select_mii)
 		add_reg(RMII_MII);
-	add_reg(ARSTR);
 	if (cd->tsu) {
+		add_tsu_reg(ARSTR);
 		add_tsu_reg(TSU_CTRST);
-		add_tsu_reg(TSU_FWEN0);
-		add_tsu_reg(TSU_FWEN1);
-		add_tsu_reg(TSU_FCM);
-		add_tsu_reg(TSU_BSYSL0);
-		add_tsu_reg(TSU_BSYSL1);
-		add_tsu_reg(TSU_PRISL0);
-		add_tsu_reg(TSU_PRISL1);
-		add_tsu_reg(TSU_FWSL0);
-		add_tsu_reg(TSU_FWSL1);
+		if (cd->dual_port) {
+			add_tsu_reg(TSU_FWEN0);
+			add_tsu_reg(TSU_FWEN1);
+			add_tsu_reg(TSU_FCM);
+			add_tsu_reg(TSU_BSYSL0);
+			add_tsu_reg(TSU_BSYSL1);
+			add_tsu_reg(TSU_PRISL0);
+			add_tsu_reg(TSU_PRISL1);
+			add_tsu_reg(TSU_FWSL0);
+			add_tsu_reg(TSU_FWSL1);
+		}
 		add_tsu_reg(TSU_FWSLC);
-		add_tsu_reg(TSU_QTAG0);
-		add_tsu_reg(TSU_QTAG1);
-		add_tsu_reg(TSU_QTAGM0);
-		add_tsu_reg(TSU_QTAGM1);
-		add_tsu_reg(TSU_FWSR);
-		add_tsu_reg(TSU_FWINMK);
-		add_tsu_reg(TSU_ADQT0);
-		add_tsu_reg(TSU_ADQT1);
-		add_tsu_reg(TSU_VTAG0);
-		add_tsu_reg(TSU_VTAG1);
+		if (cd->dual_port) {
+			add_tsu_reg(TSU_QTAGM0);
+			add_tsu_reg(TSU_QTAGM1);
+			add_tsu_reg(TSU_FWSR);
+			add_tsu_reg(TSU_FWINMK);
+			add_tsu_reg(TSU_ADQT0);
+			add_tsu_reg(TSU_ADQT1);
+			add_tsu_reg(TSU_VTAG0);
+			add_tsu_reg(TSU_VTAG1);
+		}
 		add_tsu_reg(TSU_ADSBSY);
 		add_tsu_reg(TSU_TEN);
 		add_tsu_reg(TSU_POST1);
@@ -2152,18 +2139,10 @@ static void sh_eth_get_regs(struct net_device *ndev, struct ethtool_regs *regs,
 
 static int sh_eth_nway_reset(struct net_device *ndev)
 {
-	struct sh_eth_private *mdp = netdev_priv(ndev);
-	unsigned long flags;
-	int ret;
-
 	if (!ndev->phydev)
 		return -ENODEV;
 
-	spin_lock_irqsave(&mdp->lock, flags);
-	ret = phy_start_aneg(ndev->phydev);
-	spin_unlock_irqrestore(&mdp->lock, flags);
-
-	return ret;
+	return phy_start_aneg(ndev->phydev);
 }
 
 static u32 sh_eth_get_msglevel(struct net_device *ndev)
@@ -2900,7 +2879,7 @@ static int sh_eth_vlan_rx_kill_vid(struct net_device *ndev,
 /* SuperH's TSU register init function */
 static void sh_eth_tsu_init(struct sh_eth_private *mdp)
 {
-	if (sh_eth_is_rz_fast_ether(mdp)) {
+	if (!mdp->cd->dual_port) {
 		sh_eth_tsu_write(mdp, 0, TSU_TEN); /* Disable all CAM entry */
 		sh_eth_tsu_write(mdp, TSU_FWSLC_POSTENU | TSU_FWSLC_POSTENL,
 				 TSU_FWSLC);	/* Enable POST registers */
@@ -2917,13 +2896,8 @@ static void sh_eth_tsu_init(struct sh_eth_private *mdp)
 	sh_eth_tsu_write(mdp, 0, TSU_FWSL0);
 	sh_eth_tsu_write(mdp, 0, TSU_FWSL1);
 	sh_eth_tsu_write(mdp, TSU_FWSLC_POSTENU | TSU_FWSLC_POSTENL, TSU_FWSLC);
-	if (sh_eth_is_gether(mdp)) {
-		sh_eth_tsu_write(mdp, 0, TSU_QTAG0);	/* Disable QTAG(0->1) */
-		sh_eth_tsu_write(mdp, 0, TSU_QTAG1);	/* Disable QTAG(1->0) */
-	} else {
-		sh_eth_tsu_write(mdp, 0, TSU_QTAGM0);	/* Disable QTAG(0->1) */
-		sh_eth_tsu_write(mdp, 0, TSU_QTAGM1);	/* Disable QTAG(1->0) */
-	}
+	sh_eth_tsu_write(mdp, 0, TSU_QTAGM0);	/* Disable QTAG(0->1) */
+	sh_eth_tsu_write(mdp, 0, TSU_QTAGM1);	/* Disable QTAG(1->0) */
 	sh_eth_tsu_write(mdp, 0, TSU_FWSR);	/* all interrupt status clear */
 	sh_eth_tsu_write(mdp, 0, TSU_FWINMK);	/* Disable all interrupt */
 	sh_eth_tsu_write(mdp, 0, TSU_TEN);	/* Disable all CAM entry */
