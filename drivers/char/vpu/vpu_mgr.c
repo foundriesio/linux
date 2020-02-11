@@ -77,7 +77,7 @@ typedef struct wait_list_entry{
 }wait_list_entry_t;
 
 static wait_list_entry_t wait_entry_info;
-static unsigned int use_wait_list = 0;
+static unsigned int use_wait_list = 1;
 #define IsUseWaitList() (unsigned int)use_wait_list
 extern void vmgr_waitlist_init_pending(int type, int force_clear);
 #endif
@@ -878,6 +878,9 @@ static int _vmgr_cmd_open(char *str)
 	        //return -ENOMEM;
     	}
 		cntInt_vpu = 0;
+		#ifdef DEBUG_VPU_K
+		cntwk_vpu = 0;
+		#endif
     }
     atomic_inc(&vmgr_data.dev_opened);
 
@@ -1302,10 +1305,12 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
     atomic_inc(&vmgr_data.oper_intr);
 //    spin_unlock_irqrestore(&(vmgr_data.oper_lock), flags);
 
-    wake_up_interruptible(&(vmgr_data.oper_wq));
-	#ifdef DEBUG_VPU_K
+#ifdef DEBUG_VPU_K
 	cntwk_vpu++;
-	#endif
+#endif
+
+    wake_up_interruptible(&(vmgr_data.oper_wq));
+
     return IRQ_HANDLED;
 }
 
