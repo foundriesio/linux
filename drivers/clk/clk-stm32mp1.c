@@ -1694,14 +1694,13 @@ static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
  * because it has limited or no access to.
  */
 static const struct clock_config stm32mp1_clock_cfg[] = {
-	/* Oscillator divider */
-	DIV(NO_ID | SECURE, "clk-hsi-div", "clk-hsi", CLK_DIVIDER_POWER_OF_TWO,
-	    RCC_HSICFGR, 0, 2, CLK_DIVIDER_READ_ONLY),
-
 	/* External / Internal Oscillators */
 	GATE_MP1(CK_HSE | SECURE, "ck_hse", "clk-hse", 0, RCC_OCENSETR, 8, 0),
-	GATE_MP1(CK_HSI | SECURE, "ck_hsi", "clk-hsi-div", 0,
-		 RCC_OCENSETR, 0, 0),
+	COMPOSITE(CK_HSI | SECURE, "ck_hsi", PARENT("clk-hsi"), 0,
+		  _GATE_MP1(RCC_OCENSETR, 0, 0),
+		  _NO_MUX,
+		  _DIV(RCC_HSICFGR, 0, 2, CLK_DIVIDER_POWER_OF_TWO |
+		       CLK_DIVIDER_READ_ONLY, NULL)),
 	/* ck_csi is used by IO compensation and shall be critical */
 	GATE_MP1(CK_CSI | SECURE, "ck_csi", "clk-csi",
 		 CLK_IS_CRITICAL, RCC_OCENSETR, 4, 0),
