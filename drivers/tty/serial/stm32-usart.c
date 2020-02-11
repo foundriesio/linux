@@ -720,6 +720,8 @@ static int stm32_usart_startup(struct uart_port *port)
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	const char *name = to_platform_device(port->dev)->name;
+	struct dma_async_tx_descriptor *desc = NULL;
+	dma_cookie_t cookie;
 	u32 val;
 	int ret;
 
@@ -733,11 +735,45 @@ static int stm32_usart_startup(struct uart_port *port)
 	if (ofs->rqr != UNDEF_REG)
 		stm32_usart_set_bits(port, ofs->rqr, USART_RQR_RXFRQ);
 
+	if (stm32_port->rx_ch) {
+		stm32_port->last_res = RX_BUF_L;
+		/* Prepare a DMA cyclic transaction */
+		desc = dmaengine_prep_dma_cyclic(stm32_port->rx_ch,
+						 stm32_port->rx_dma_buf,
+						 RX_BUF_L, RX_BUF_P,
+						 DMA_DEV_TO_MEM,
+						 DMA_PREP_INTERRUPT);
+		if (!desc) {
+			dev_err(port->dev, "rx dma prep cyclic failed\n");
+			ret = -ENODEV;
+			goto err;
+		}
+
+		desc->callback = stm32_usart_rx_dma_complete;
+		desc->callback_param = port;
+
+		/* Push current DMA transaction in the pending queue */
+		cookie = dmaengine_submit(desc);
+		ret = dma_submit_error(cookie);
+		if (ret) {
+			dmaengine_terminate_sync(stm32_port->rx_ch);
+			goto err;
+		}
+
+		/* Issue pending DMA requests */
+		dma_async_issue_pending(stm32_port->rx_ch);
+	}
+
 	/* RX enabling */
 	val = stm32_port->cr1_irq | USART_CR1_RE;
 	stm32_usart_set_bits(port, ofs->cr1, val);
 
 	return 0;
+
+err:
+	free_irq(port->irq, port);
+
+	return ret;
 }
 
 static void stm32_usart_shutdown(struct uart_port *port)
@@ -762,6 +798,9 @@ static void stm32_usart_shutdown(struct uart_port *port)
 		dev_err(port->dev, "transmission complete not set\n");
 
 	stm32_usart_clr_bits(port, ofs->cr1, val);
+
+	if (stm32_port->rx_ch)
+		dmaengine_terminate_sync(stm32_port->rx_ch);
 
 	free_irq(port->irq, port);
 }
@@ -1175,8 +1214,6 @@ static int stm32_usart_of_dma_rx_probe(struct stm32_port *stm32port,
 	struct uart_port *port = &stm32port->port;
 	struct device *dev = &pdev->dev;
 	struct dma_slave_config config;
-	struct dma_async_tx_descriptor *desc = NULL;
-	dma_cookie_t cookie;
 	int ret;
 
 	/* Request DMA RX channel */
@@ -1202,31 +1239,6 @@ static int stm32_usart_of_dma_rx_probe(struct stm32_port *stm32port,
 		ret = -ENODEV;
 		goto config_err;
 	}
-
-	/* Prepare a DMA cyclic transaction */
-	desc = dmaengine_prep_dma_cyclic(stm32port->rx_ch,
-					 stm32port->rx_dma_buf,
-					 RX_BUF_L, RX_BUF_P, DMA_DEV_TO_MEM,
-					 DMA_PREP_INTERRUPT);
-	if (!desc) {
-		dev_err(dev, "rx dma prep cyclic failed\n");
-		ret = -ENODEV;
-		goto config_err;
-	}
-
-	desc->callback = stm32_usart_rx_dma_complete;
-	desc->callback_param = port;
-
-	/* Push current DMA transaction in the pending queue */
-	cookie = dmaengine_submit(desc);
-	ret = dma_submit_error(cookie);
-	if (ret) {
-		dmaengine_terminate_sync(stm32port->rx_ch);
-		goto config_err;
-	}
-
-	/* Issue pending DMA requests */
-	dma_async_issue_pending(stm32port->rx_ch);
 
 	return 0;
 
@@ -1345,10 +1357,8 @@ err_port:
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
 
-	if (stm32port->rx_ch) {
-		dmaengine_terminate_async(stm32port->rx_ch);
+	if (stm32port->rx_ch)
 		dma_release_channel(stm32port->rx_ch);
-	}
 
 	if (stm32port->rx_dma_buf)
 		dma_free_coherent(&pdev->dev,
@@ -1401,10 +1411,8 @@ static int stm32_usart_serial_remove(struct platform_device *pdev)
 	cr3 &= ~USART_CR3_DDRE;
 	writel_relaxed(cr3, port->membase + ofs->cr3);
 
-	if (stm32_port->rx_ch) {
-		dmaengine_terminate_async(stm32_port->rx_ch);
+	if (stm32_port->rx_ch)
 		dma_release_channel(stm32_port->rx_ch);
-	}
 
 	if (stm32_port->rx_dma_buf)
 		dma_free_coherent(&pdev->dev,
