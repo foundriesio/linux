@@ -57,6 +57,7 @@ struct tcc_sdr_port_t {
 	uint32_t valid_sz;
 	uint32_t read_pos;
 	uint32_t write_pos;
+	int overrun;
 };
 
 struct tcc_sdr_t {
@@ -247,10 +248,15 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 
 
 	if(p->eRadioMode) {
+		int i;
 		sdr->radio_mode = 1;
 		sdr->ports_num = p->eChannel;
 		sdr->bitmode = p->eBitMode;
 		sdr->bit_polarity = p->eBitPolarity;
+
+		for(i=0;i<sdr->ports_num;i++)
+			sdr->port[i].overrun = 0;
+
 	} else {	//I2S Slave Mode
 		sdr->radio_mode = 0;
 		sdr->channels = p->eChannel;
@@ -258,6 +264,7 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, HS_I2S_PARAM *p)
 		sdr->bclk_ratio = DEFAULT_BCLK_RATIO; 
 		sdr->mclk_div = DEFAULT_MCLK_DIV; 
 		sdr->bitmode = p->eBitMode;
+		sdr->port[0].overrun = 0;
 	}
 
 	if (p->eBufferSize != (1<<sz_check)) {
@@ -292,7 +299,6 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 {
 	int i;
 	bool mono_mode = ((sdr->radio_mode == 0)&&(sdr->channels == 1))? true : false;
-	uint32_t Overrun[SDR_MAX_PORT_NUM] = {0};
 	uint32_t cur_period_offset;
 	unsigned long flags;
 
@@ -318,7 +324,7 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 				port->valid_sz = 0;
 				port->read_pos = cur_period_offset;
 
-				Overrun[i] = 1;
+				port->overrun = true;
 			}
 		}
 		port->write_pos = cur_period_offset;
@@ -329,7 +335,7 @@ void tcc_sdr_rx_isr(struct tcc_sdr_t *sdr)
 	wake_up_interruptible(&sdr->wq);
 
 	for (i=0; i<sdr->ports_num; i++) {
-		if (Overrun[i]) { // Overrun
+		if (sdr->port[i].overrun) { // Overrun
 			if (sdr->opened && sdr->started) {
 				printk(KERN_WARNING "[WARN][SDR][dev-%d] %s - Overrun(%d), new_read_pos:0x%x, dma_sz:0x%x, valid_sz(%p):0x%x\n", 
 						sdr->blk_no,__func__, i, sdr->port[i].read_pos, sdr->port[i].dma_sz, &sdr->port[i].valid_sz, sdr->port[i].valid_sz);
@@ -368,7 +374,13 @@ unsigned int tcc_sdr_copy_from_dma(struct tcc_sdr_t *sdr, uint32_t sdr_port, cha
 		printk(KERN_DEBUG "[DEBUG][SDR] %s - not started\n", __func__);
 		return -1;
 	}
-	
+
+	if(port->overrun){
+		printk(KERN_DEBUG "[DEBUG][SDR]dev-%d Overrun detected\n",sdr->blk_no);
+		port->overrun = false;
+		return -EPIPE;
+	}
+
 	ret = wait_event_interruptible_timeout(sdr->wq, port->valid_sz >= readcnt, msecs_to_jiffies(SDR_READ_TIMEOUT));
 
 	if(ret <= 0) {
@@ -622,6 +634,7 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 		sdr->port[i].valid_sz = 0;
 		sdr->port[i].read_pos = 0;
 		sdr->port[i].write_pos = 0;
+		sdr->port[i].overrun = 0;
 	}
 
 	tcc_adma_dai_rx_irq_enable(sdr->adma_reg, true);
@@ -733,6 +746,11 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 				}else{
 					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RADIO_MODE_RX_DAI Fail!!\n");
 				}
+				if(ret<0){
+					param.eReadCount = ret;
+					if(copy_to_user((const void *)arg, &param, sizeof(param)) != 0)
+						printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_RADIO_MODE_RX_DAI Fail!!\n");
+				}
 			}
 			break;
 		case HSI2S_I2S_MODE_RX_DAI:
@@ -743,6 +761,11 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 					ret = tcc_sdr_copy_from_dma(sdr, param.eIndex, param.eBuf, param.eReadCount);
 				}else{
 					printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_I2S_MODE_RX_DAI Fail!!\n");
+				}
+				if(ret<0){
+					param.eReadCount = ret;
+					if(copy_to_user((const void *)arg, &param, sizeof(param)) != 0)
+						printk(KERN_DEBUG "[DEBUG][SDR] HSI2S_I2S_MODE_RX_DAI Fail!!\n");
 				}
 			}
 			break;
