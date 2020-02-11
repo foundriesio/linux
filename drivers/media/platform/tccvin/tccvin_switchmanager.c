@@ -15,7 +15,6 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#include <linux/printk.h>
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <video/tcc/tcc_fb.h>
@@ -126,7 +125,7 @@ int tccvin_switchmanager_monitor_thread(void * data) {
 					tccvin_diagnostics(vdev);
 					tccvin_dump_register(vdev);
 
-					log("ERROR: Recovery mode will be entered\n");
+					loge("Recovery mode will be entered\n");
 
 					tccvin_switchmanager_stop_preview(vdev);
 					tccvin_switchmanager_start_preview(vdev);
@@ -145,12 +144,12 @@ int tcc_cam_swtichmanager_start_monitor(tccvin_dev_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->threadSwitching != NULL) {
-		printk(KERN_ERR "%s - FAILED: thread(0x%p) is not null\n", __func__, vdev->threadSwitching);
+		loge("thread(0x%p) is not null\n", vdev->threadSwitching);
 		return -1;
 	} else {
 		vdev->threadSwitching = kthread_run(tccvin_switchmanager_monitor_thread, (void *)vdev, "threadSwitching");
 		if(IS_ERR_OR_NULL(vdev->threadSwitching)) {
-			printk("%s - FAILED: kthread_run\n", __func__);
+			loge("switching thread is null\n");
 			vdev->threadSwitching = NULL;
 			return -1;
 		}
@@ -164,11 +163,11 @@ int tccvin_switchmanager_stop_monitor(tccvin_dev_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->threadSwitching == NULL) {
-		printk(KERN_ERR "%s - FAILED: thread(0x%p) is null\n", __func__, vdev->threadSwitching);
+		loge("thread(0x%p) is null\n", vdev->threadSwitching);
 		return -1;
 	} else {
 		if(kthread_stop(vdev->threadSwitching) != 0) {
-			printk("%s - FAILED: kthread_stop\n", __func__);
+			loge("switching thread is not stopped\n", __func__);
 			return -1;
 		}
 		vdev->threadSwitching = NULL;

@@ -41,8 +41,8 @@
 
 #ifndef CONFIG_TCC803X_CA7S
 static unsigned int NORMAL_OVP = 24;
-#endif//CONFIG_TCC803X_CA7S
 static unsigned int RCAM_OVP = 16;
+#endif//CONFIG_TCC803X_CA7S
 
 #define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
 
@@ -255,7 +255,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 	volatile void __iomem	* address	= NULL;
 
 	if(main_node == NULL) {
-		log("ERROR: tcc_camera device node is not found.\n");
+		logd("tcc_camera device node is not found.\n");
 		return -ENODEV;
 	}
 
@@ -266,7 +266,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
 		dlog("%10s: 0x%p\n", "CIF Port", vdev->cif.cifport_addr);
 	} else {
-		log("ERROR: The CIF port node is NULL\n");
+		loge("The CIF port node is NULL\n");
 		return -ENODEV;
 	}
 
@@ -280,7 +280,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 			dlog("%10s[%2d]: 0x%p\n", "VIN", get_vioc_index(vdev->cif.vioc_path.vin) / 2, address);	// "divide vin's index by 2 because of vin lut's index
 		}
 	} else {
-		log("ERROR: \"vin\" node is not found.\n");
+		loge("\"vin\" node is not found.\n");
 		return -ENODEV;
 	}
 
@@ -297,7 +297,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 				dlog("%10s[%2d]: 0x%p\n", "RDMA(PGL)", get_vioc_index(vdev->cif.vioc_path.pgl), address);
 			}
 		} else {
-			log("ERROR: \"rdma\" node is not found.\n");
+			loge("\"rdma\" node is not found.\n");
 			return -ENODEV;
 		}
 	}
@@ -370,7 +370,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 		vdev->cif.vioc_irq_num		= irq_of_parse_and_map(vioc_node, get_vioc_index(vdev->cif.vioc_path.wdma));
 		dlog("vdev->cif.vioc_irq_num: %d\n", vdev->cif.vioc_irq_num);
 	} else {
-		log("ERROR: \"wdma\" node is not found.\n");
+		loge("\"wdma\" node is not found.\n");
 		return -ENODEV;
 	}
 
@@ -405,7 +405,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 						dlog("%10s[%2d]: 0x%p\n", "RDMA", get_vioc_index(vdev->cif.vioc_path.rdma), address);
 					}
 				} else {
-					log("ERROR: \"rdma\" node is not found.\n");
+					loge("\"rdma\" node is not found.\n");
 					return -ENODEV;
 				}
 
@@ -419,7 +419,7 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 						dlog("%10s[%2d]: 0x%p\n", "WMIX", get_vioc_index(vdev->cif.vioc_path.wmixer_out), address);
 					}
 				} else {
-					log("ERROR: \"wmixer_out\" node is not found.\n");
+					loge("\"wmixer_out\" node is not found.\n");
 					return -ENODEV;
 				}
 
@@ -433,19 +433,19 @@ int tccvin_parse_device_tree(tccvin_dev_t * vdev) {
 						dlog("%10s[%2d]: 0x%p\n", "DISP", get_vioc_index(vdev->cif.vioc_path.disp), address);
 					}
 				} else {
-					log("ERROR: \"telechips,disp\" node is not found.\n");
+					loge("\"telechips,disp\" node is not found.\n");
 					return -ENODEV;
 				}
 			} else {
-				log("ERROR: \"fbdisplayn\" node is not found.\n");
+				loge("\"fbdisplayn\" node is not found.\n");
 				return -ENODEV;
 			}
 		} else {
-			log("ERROR: \"telechips,fbdisplay_num\" node is not found.\n");
+			loge("\"telechips,fbdisplay_num\" node is not found.\n");
 			return -ENODEV;
 		}
 	} else {
-		log("ERROR: \"telechips,vioc-fb\" node is not found.\n");
+		loge("\"telechips,vioc-fb\" node is not found.\n");
 		return -ENODEV;
 	}
 
@@ -514,7 +514,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 
 			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
 			if(ret <= 0) {
-				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
+				loge("[%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
 				goto err_viocmg;
 			}
 		}
@@ -531,7 +531,7 @@ int tccvin_reset_vioc_path(tccvin_dev_t * vdev) {
 
 			ret = file->f_op->unlocked_ioctl(file, IOCTL_VIOC_MGR_SET_RESET_KERNEL, (unsigned long)&data);
 			if(ret <= 0) {
-				log("ERROR: [%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
+				loge("[%d] IOCTL_VIOC_MGR_SET_RESET_KERNEL\n", idxComponent);
 				goto err_viocmg;
 			}
 		}
@@ -793,7 +793,7 @@ int tccvin_set_deinterlacer(tccvin_dev_t * vdev) {
 
 #if 0
 		if(!(hdl_np = of_parse_phandle(vdev->dev_plt->of_node, "viqe_set", 0))) {
-			printk("could not find cam_viqe_set node!! \n");
+			loge("could not find cam_viqe_set node!!\n");
 		} else {
 			viqe_set_reg1 = (unsigned int *)of_iomap(hdl_np, 0);
 			viqe_set_reg2 = (unsigned int *)of_iomap(hdl_np, 1);
@@ -1202,7 +1202,7 @@ int tccvin_allocate_essential_buffers(tccvin_dev_t * vdev) {
 			vdev->cif.pmap_viqe.base + vdev->cif.pmap_viqe.size, \
 			vdev->cif.pmap_viqe.size);
 	} else {
-		log("ERROR: get \"rearcamera_viqe\" pmap information.\n");
+		loge("get \"rearcamera_viqe\" pmap information.\n");
 		ret = -1;
 	}
 
@@ -1215,7 +1215,7 @@ int tccvin_allocate_essential_buffers(tccvin_dev_t * vdev) {
 			vdev->cif.pmap_pgl.base + vdev->cif.pmap_pgl.size, \
 			vdev->cif.pmap_pgl.size);
 	} else {
-		log("ERROR: get \"parking_gui\" pmap information.\n");
+		loge("get \"parking_gui\" pmap information.\n");
 		ret = -1;
 	}
 #endif//CONFIG_OVERLAY_PGL
@@ -1236,7 +1236,7 @@ int tccvin_allocate_preview_buffers(tccvin_dev_t * vdev) {
 			vdev->cif.pmap_preview.base + vdev->cif.pmap_preview.size, \
 			vdev->cif.pmap_preview.size);
     } else {
-		log("ERROR: get \"rearcamera\" pmap information.\n");
+		loge("get \"rearcamera\" pmap information.\n");
 		ret = -1;
     }
 
@@ -1378,7 +1378,7 @@ int tccvin_stop_stream(tccvin_dev_t * vdev) {
 					VIOC_CONFIG_PlugOut(vdev->cif.vioc_path.deintl_s);
 				}
 			} else {
-				log("ERROR: There is no available deinterlacer\n");
+				loge("There is no available deinterlacer\n");
 			}
 		}
 	}
@@ -1425,11 +1425,11 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 			vioc_intr_enable(vdev->cif.vioc_irq_num, vdev->cif.vioc_intr.id, vdev->cif.vioc_intr.bits);
 			vdev->cif.vioc_irq_reg = 1;
 		} else {
-			log("ERROR: The irq(%d) is already registered.\n", vdev->cif.vioc_irq_num);
+			loge("VIN[%d] The irq(%d) is already registered.\n", vdev->vid_dev.num, vdev->cif.vioc_irq_num);
 			return -1;
 		}
 	} else {
-		log("ERROR: The irq node is NOT found.\n");
+		loge("VIN[%d] The irq node is NOT found.\n", vdev->vid_dev.num);
 		return -1;
 	}
 
@@ -1449,11 +1449,11 @@ int tccvin_free_irq(tccvin_dev_t * vdev) {
 			free_irq(vdev->cif.vioc_irq_num, vdev);
 			vdev->cif.vioc_irq_reg = 0;
 		} else {
-			log("ERROR: The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
+			loge("The irq(%d) is NOT registered.\n", vdev->cif.vioc_irq_num);
 			return -1;
 		}
 	} else {
-		log("ERROR: The irq node is NOT found.\n");
+		loge("The irq node is NOT found.\n");
 		return -1;
 	}
 
@@ -1489,12 +1489,12 @@ void tccvin_dump_register(unsigned int * addr, unsigned int word) {
 
 	for(idxReg=0; idxReg<nReg; idxReg++) {
 		if((idxReg % 4) == 0)
-			printk("%08x: ", (unsigned int)(addr + idxReg));
-		printk("%08x ", *(addr + idxReg));
+			dlog("%08x: ", (unsigned int)(addr + idxReg));
+		dlog("%08x ", *(addr + idxReg));
 		if(((idxReg + 1) % 4) == 0)
-			printk("\n");
+			dlog("\n");
 	}
-	printk("\n");
+	dlog("\n");
 }
 
 int tccvin_diagnostics_cif_port_mapping(tccvin_dev_t * vdev) {
@@ -1530,12 +1530,12 @@ int tccvin_diagnostics_videoinput_path(tccvin_dev_t * vdev) {
 	unsigned int idxList = 0, nList = sizeof(list)/sizeof(list[0]);
 	int		ret	= 0;
 
-	log("Diagnostics of video-input path\n");
+	dlog("Diagnostics of video-input path\n");
 
 	for(idxList=0; idxList<nList; idxList++) {
 		tccvin_dump_register(list[idxList].addr, list[idxList].count);
 	}
-	printk("\n\n");
+	dlog("\n\n");
 
 	return ret;
 }
@@ -1572,7 +1572,7 @@ int tccvin_get_clock(tccvin_dev_t * vdev) {
 	vdev->cif.vioc_clk = of_clk_get(main_node, 0);
 	ret = -IS_ERR(vdev->cif.vioc_clk);
 	if(ret != 0) {
-		log("ERROR: Find the \"clock\" node\n");
+		loge("Find the \"clock\" node\n");
 	}
 
 	FUNCTION_OUT
@@ -1595,8 +1595,9 @@ int tccvin_enable_clock(tccvin_dev_t * vdev) {
 
 	if(!IS_ERR(vdev->cif.vioc_clk)) {
 		ret = clk_prepare_enable(vdev->cif.vioc_clk);
-		if(ret)
-			log("ERROR: clk_prepare_enable returns %d\n", ret);
+		if(ret) {
+			loge("clk_prepare_enable returns %d\n", ret);
+		}
 	}
 
 	FUNCTION_OUT
@@ -1620,21 +1621,21 @@ int tccvin_v4l2_init(tccvin_dev_t * vdev) {
 	// parse device tree
 	ret = tccvin_parse_device_tree(vdev);
 	if(ret != 0) {
-		log("ERROR: Parse the device tree.\n");
+		loge("Parse the device tree.\n");
 		return -ENODEV;
 	}
 
 	// get the vioc's clock
 	ret = tccvin_get_clock(vdev);
 	if(ret != 0) {
-		log("ERROR: tccvin_get_clock returns %d\n", ret);
+		loge("tccvin_get_clock returns %d\n", ret);
 		return ret;
 	}
 
 	// enable the vioc's clock
 	ret = tccvin_enable_clock(vdev);
 	if(ret != 0) {
-		log("ERROR: tccvin_enable_clock returns %d\n", ret);
+		loge("tccvin_enable_clock returns %d\n", ret);
 		return ret;
 	}
 
@@ -1729,9 +1730,9 @@ int tccvin_s_operation_mode(tccvin_dev_t * vdev, int * mode) {
 
 	if((* mode == PREVIEW_V4L2) || (* mode == PREVIEW_DD)) {
 		vdev->v4l2.preview_method = * mode;
-		log("mode: 0x%08x\n", * mode);
+		dlog("mode: 0x%08x\n", vdev->v4l2.preview_method);
 	} else {
-		log("ERROR: The operation mode is WRONG, mode: 0x%08x\n", * mode);
+		loge("The operation mode is WRONG, mode: 0x%08x\n", * mode);
 		ret = -1;
 	}
 
@@ -1748,7 +1749,7 @@ void tccvin_v4l2_g_fmt(tccvin_dev_t * vdev, struct v4l2_format * format) {
 		break;
 
 	default:
-		log("ERROR: The v4l2 type(0x%x) is WRONG.\n", format->type);
+		loge("The v4l2 type(0x%x) is WRONG.\n", format->type);
 		WARN_ON(1);
 	}
 
@@ -1767,7 +1768,7 @@ int tccvin_v4l2_s_fmt(tccvin_dev_t * vdev, struct v4l2_format * format) {
 		break;
 
 	default:
-		log("ERROR: The v4l2 type(0x%x) is WRONG.\n", format->type);
+		loge("The v4l2 type(0x%x) is WRONG.\n", format->type);
 		WARN_ON(1);
 	}
 
@@ -1785,7 +1786,7 @@ int tccvin_v4l2_reqbufs(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 	// check if total size asked to allocate memory is enough
 
 	if(req->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		log("reqbufs: video type invalid\n");
+		loge("video type invalid: %d\n", req->type);
 		return -EINVAL;
 	}
 
@@ -1805,7 +1806,7 @@ int tccvin_v4l2_reqbufs(tccvin_dev_t * vdev, struct v4l2_requestbuffers * req) {
 		break;
 
 	default:
-		printk("reqbufs: memory type invalid\n");
+		loge("reqbufs: memory type invalid\n");
 		return -EINVAL;
 	}
 
@@ -1852,7 +1853,7 @@ int tccvin_v4l2_querybuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 
 	// Check the buffer index is valid.
 	if(!((0 <= buf->index) && (buf->index < vdev->v4l2.pp_num))) {
-		printk(KERN_WARNING "querybuf error : index : %d / %d", index, vdev->v4l2.pp_num);
+		loge("index: %d, total: %d", index, vdev->v4l2.pp_num);
 		return -EINVAL;
 	} else {
 		* buf = vdev->v4l2.static_buf[index].buf;
@@ -1871,13 +1872,13 @@ int tccvin_v4l2_qbuf(tccvin_dev_t * vdev, struct v4l2_buffer * buf) {
 	if(!((0 <= buf->index) && \
 		(buf->index < vdev->v4l2.pp_num) && \
 		((cif_buf->buf.flags & V4L2_BUF_FLAG_QUEUED) != V4L2_BUF_FLAG_QUEUED))) {
-		log("ERROR: The buffer index(%d) is WRONG.\n", buf->index);
+		loge("The buffer index(%d) is WRONG.\n", buf->index);
 		return -EAGAIN;
 	}
 
 	// Check the buffer type is valid.
 	if(buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		log("ERROR: The buffer type(0x%08x) is WRONG.\n", buf->type);
+		loge("The buffer type(0x%08x) is WRONG.\n", buf->type);
 		return -EAGAIN;
 	}
 
@@ -1965,7 +1966,7 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int is_handover_needed) {
 		dlog("Video-Input Path(%d) is NOT working\n", vdev->vid_dev.num);
 		ret = tccvin_start_stream(vdev);
 		if(ret < 0) {
-			log("ERROR: Start Stream\n");
+			loge("Start Stream\n");
 			return -1;
 		}
 	}
@@ -1973,7 +1974,7 @@ int tccvin_v4l2_streamon(tccvin_dev_t * vdev, int is_handover_needed) {
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
 		ret = tccvin_request_irq(vdev);
 		if(ret < 0) {
-			log("ERROR: Request IRQ\n");
+			loge("Request IRQ\n");
 			return ret;
 		}
 	}
@@ -1990,14 +1991,14 @@ int tccvin_v4l2_streamoff(tccvin_dev_t * vdev, int is_handover_needed) {
 	if(vdev->v4l2.preview_method == PREVIEW_V4L2) {
 		ret = tccvin_free_irq(vdev);
 		if(ret < 0) {
-			log("ERROR: Free IRQ\n");
+			loge("Free IRQ\n");
 			return ret;
 		}
 	}
 
 	ret = tccvin_stop_stream(vdev);
 	if(ret < 0) {
-		log("ERROR: Stop Stream\n");
+		loge("Stop Stream\n");
 		return -1;
 	}
 

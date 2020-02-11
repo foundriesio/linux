@@ -218,7 +218,7 @@ long tccvin_core_do_ioctl(struct file * file, unsigned int cmd, void * arg) {
 		break;
 
 	default:
-		log("ERROR: VIDIOC command(0x%08x) is WRONG.\n", cmd);
+		loge("VIDIOC command(0x%08x) is WRONG.\n", cmd);
 		ret = -EINVAL;
 		WARN_ON(1);
 	}
@@ -240,7 +240,7 @@ unsigned int tccvin_core_poll(struct file * file, struct poll_table_struct * wai
 extern int range_is_allowed(unsigned long pfn, unsigned long size);
 int tccvin_core_mmap(struct file * file, struct vm_area_struct * vma) {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0) {
-		printk(KERN_ERR  "this address is not allowed \n");
+		loge("this address is not allowed\n");
 		return -EAGAIN;
 	}
 
@@ -317,7 +317,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	// allocate and clear memory for a camera device
 	vdev = kzalloc(sizeof(tccvin_dev_t), GFP_KERNEL);
 	if(vdev == NULL) {
-		log("ERROR: Allocate a tccvin device struct.\n");
+		loge("Allocate a tccvin device struct.\n");
 		return -ENOMEM;
 	}
 	memset(vdev, 0x00, sizeof(tccvin_dev_t));
@@ -328,7 +328,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 		memset(&vdev->cif, 0x00, sizeof(tccvin_cif_t));
 		memset(&vdev->v4l2, 0x00, sizeof(tccvin_v4l2_t));
 	} else {
-		log("ERROR: Find a tccvin device tree.\n");
+		loge("Find a tccvin device tree.\n");
 		return -ENODEV;
 	}
 
@@ -338,7 +338,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	// allocate and clear memory for a v4l2 device
 	vdev->vid_dev.v4l2_dev = kzalloc(sizeof(struct v4l2_device), GFP_KERNEL);
 	if(vdev->vid_dev.v4l2_dev == NULL) {
-		log("ERROR: Allocate a v4l2 device struct.\n");
+		loge("Allocate a v4l2 device struct.\n");
 		return -ENOMEM;
 	}
 
@@ -350,7 +350,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	if(!ret) {
 		dlog("Registered as a v4l2 device(%s).\n", pdev->name);
 	} else {
-		log("ERROR: Register a v4l2 device(%s) struct.\n", pdev->name);
+		loge("Register a v4l2 device(%s) struct.\n", pdev->name);
 		return -ENODEV;
 	}
 
@@ -368,7 +368,7 @@ int tccvin_core_probe(struct platform_device * pdev) {
 	if(!ret) {
 		dlog("Registered as a video device(%s).\n", vdev->vid_dev.name);
 	} else {
-		log("ERROR: Register a video device(%d) struct.\n", vdev->vid_dev.num);
+		loge("Register a video device(%d) struct.\n", vdev->vid_dev.num);
 		video_device_release(&vdev->vid_dev);
 		return -ENODEV;
 	}
