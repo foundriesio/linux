@@ -27,6 +27,16 @@ config LOGO_LINUX_CLUT224
 	bool "Standard 224-color Linux logo"
 	default y
 
+config LOGO_TCC_1280X720_CLUT224
+	bool "Telechips 224-color consumer 1280x720 logo"
+	depends on ANDROID
+	default n
+
+config LOGO_TCC_1920X1080_CLUT224
+	bool "Telechips 224-color consumer 1920x1080 logo"
+	depends on ANDROID
+	default n
+
 config LOGO_PRESERVE_WITHOUT_FB_INIT
        bool "Preserve boot logo from bootloader"
        default n
