@@ -178,10 +178,13 @@ struct ak4601_priv {
 	uint8_t reg_backup[ARRAY_SIZE(ak4601_backup_reg_list)];
 
 #ifdef TCC_USE_MUTE_GPIO
-	int32_t mute_gpio;			// for DSP_MUTE or AMP_MUTE
-	int32_t mute_gpio_flags;
+	int32_t cmute_gpio;			// for CODEC_MUTE
+	int32_t cmute_gpio_flags;
+	int32_t amute_gpio;			// for AMP_MUTE
+	int32_t amute_gpio_flags;
 	int32_t stanby_gpio;		// for AMP_STANBY
-	int32_t stanby_gpio_flags;	
+	int32_t stanby_gpio_flags;
+	int32_t playback_active;
 #endif//TCC_USE_MUTE_GPIO
 
 };
@@ -2549,12 +2552,6 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-#ifdef TCC_ALWAYS_PMDAC_ON	
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-
-	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		rtd->pmdown_time = -1;
-#endif//TCC_ALWAYS_PMDAC_ON
 	int fsno, nmax;
 	int DIODLbit, addr, value, nPortNo;
 
@@ -2924,9 +2921,16 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_ON:
 		akdbgprt("\t[AK4601] SND_SOC_BIAS_ON\n");
 #ifdef TCC_USE_MUTE_GPIO
-		if (ak4601->mute_gpio >= 0) {
-				gpio_set_value(ak4601->mute_gpio, !ak4601->mute_gpio_flags); //mute off
-				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON mute off\n");
+		if (ak4601->playback_active) {
+			mdelay(2);
+			if (ak4601->cmute_gpio >= 0) {	
+				gpio_set_value(ak4601->cmute_gpio, !ak4601->cmute_gpio_flags); //cmute off
+				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON cmute_gpio unmute\n");
+			}
+			if (ak4601->amute_gpio >= 0) {
+				gpio_set_value(ak4601->amute_gpio, !ak4601->amute_gpio_flags); //amute off
+				akdbgprt("\t[AK4601] SND_SOC_BIAS_ON amute_gpio unmute\n");
+			}
 		}
 #endif//TCC_USE_MUTE_GPIO		
 		break;
@@ -2961,11 +2965,38 @@ static int ak4601_set_bias_level(struct snd_soc_codec *codec,
 
 static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute) 
 {
+#ifdef TCC_USE_MUTE_GPIO
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(dai->codec);
+#endif//TCC_USE_MUTE_GPIO
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
 	if (mute) {
+#ifdef TCC_USE_MUTE_GPIO
+		if (ak4601->cmute_gpio >= 0) {
+			gpio_set_value(ak4601->cmute_gpio, ak4601->cmute_gpio_flags); //cmute on
+			akdbgprt("\t[AK4601] cmute_gpio mute(%d)\n",__LINE__);
+		}
+		if (ak4601->amute_gpio >= 0) {
+			gpio_set_value(ak4601->amute_gpio, ak4601->amute_gpio_flags); //amute on
+			akdbgprt("\t[AK4601] amute_gpio mute(%d)\n",__LINE__);
+		}
+#endif//TCC_USE_MUTE_GPIO
 		akdbgprt("\t[AK4601] Mute ON(%d)\n",__LINE__);
 	} else {
+#ifdef TCC_USE_MUTE_GPIO
+		if (snd_soc_codec_get_bias_level(dai->codec) == SND_SOC_BIAS_ON) {
+			mdelay(2);	
+			if (ak4601->cmute_gpio >= 0) {
+				gpio_set_value(ak4601->cmute_gpio, !ak4601->cmute_gpio_flags); //cmute off
+				akdbgprt("\t[AK4601] cmute_gpio unmute(%d)\n",__LINE__);
+			}
+			if (ak4601->amute_gpio >= 0) {
+				gpio_set_value(ak4601->amute_gpio, !ak4601->amute_gpio_flags); //amute off
+				akdbgprt("\t[AK4601] amute_gpio unmute(%d)\n",__LINE__);
+			}
+		}
+#endif//TCC_USE_MUTE_GPIO
+
 		akdbgprt("\t[AK4601] Mute OFF(%d)\n",__LINE__);
 	}
 	return 0;
@@ -3004,6 +3035,36 @@ int ak4601_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask, unsigned 
 	return 0;
 }
 
+#ifdef TCC_USE_MUTE_GPIO
+static int ak4601_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
+{
+    struct snd_soc_codec *codec = dai->codec;
+   	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+    int playback = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+
+    switch (cmd) {
+    case SNDRV_PCM_TRIGGER_STOP:
+    case SNDRV_PCM_TRIGGER_SUSPEND:
+    case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+        if (playback) {
+			ak4601->playback_active = 0;
+			akdbgprt("\t[AK4601] SNDRV_PCM_TRIGGER_STOP(%d)\n",__LINE__);
+         }
+        break;
+    case SNDRV_PCM_TRIGGER_START:
+    case SNDRV_PCM_TRIGGER_RESUME:
+    case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+        if (playback) {
+			ak4601->playback_active = 1;
+            akdbgprt("\t[AK4601] SNDRV_PCM_TRIGGER_START(%d)\n",__LINE__);
+        }
+        break;
+    default:
+        return -EINVAL;
+    }
+    return 0;
+}
+#endif//TCC_USE_MUTE_GPIO
 
 static struct snd_soc_dai_ops ak4601_dai_ops = {
 	.hw_params	= ak4601_hw_params,
@@ -3011,6 +3072,9 @@ static struct snd_soc_dai_ops ak4601_dai_ops = {
 	.set_fmt	= ak4601_set_dai_fmt,
 	.digital_mute = ak4601_set_dai_mute,
 	.set_tdm_slot = ak4601_set_tdm_slot,
+#ifdef TCC_USE_MUTE_GPIO
+	.trigger	= ak4601_trigger,
+#endif//TCC_USE_MUTE_GPIO
 };
 
 struct snd_soc_dai_driver ak4601_dai[] = {   
@@ -3147,6 +3211,9 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	snd_soc_update_bits( ak4601->codec, AK4601_08A_POWER_MANAGEMENT1, 0x07, 0x07 );//DAC1,2,3 On
 #endif//TCC_ALWAYS_PMDAC_ON
 
+#ifdef TCC_USE_MUTE_GPIO
+	ak4601->playback_active = 0;
+#endif//TCC_USE_MUTE_GPIO
 	return 0;
 }
 
@@ -3259,25 +3326,45 @@ static int ak4601_parse_dt(struct ak4601_priv *ak4601)
 		return -1;
 
 #ifdef TCC_USE_MUTE_GPIO
-	ak4601->mute_gpio = of_get_named_gpio_flags(np, "mute-gpios", 0, &gpio_flags);
-	if(ak4601->mute_gpio < 0) {
-		ak4601->mute_gpio = -1;
+	ak4601->cmute_gpio = of_get_named_gpio_flags(np, "cmute-gpios", 0, &gpio_flags);
+	if(ak4601->cmute_gpio < 0) {
+		ak4601->cmute_gpio = -1;
 	} else { 
-		if(gpio_is_valid(ak4601->mute_gpio)) {
-			ak4601->mute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
-			printk("[AK4601] use mute gpio(%d)\n", ak4601->mute_gpio);
+		if(gpio_is_valid(ak4601->cmute_gpio)) {
+			ak4601->cmute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			printk("[AK4601] use cmute gpio(%d)\n", ak4601->cmute_gpio);
 			if (devm_gpio_request_one(dev, 
-						ak4601->mute_gpio, 
-						(ak4601->mute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
-						"mute-gpios")) {
-				ak4601->mute_gpio = -1;
-				printk("[AK4601] request mute gpio(%d) failed\n", ak4601->mute_gpio);
+						ak4601->cmute_gpio, 
+						(ak4601->cmute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+						"cmute-gpios")) {
+				ak4601->cmute_gpio = -1;
+				printk("[AK4601] request cmute gpio(%d) failed\n", ak4601->cmute_gpio);
 			}
 		} else {
-			ak4601->mute_gpio = -1;
-			printk("[AK4601] mute gpio(%d) is invalid\n", ak4601->mute_gpio);
+			ak4601->cmute_gpio = -1;
+			printk("[AK4601] cmute gpio(%d) is invalid\n", ak4601->cmute_gpio);
 		}
 	}
+	ak4601->amute_gpio = of_get_named_gpio_flags(np, "amute-gpios", 0, &gpio_flags);
+	if(ak4601->amute_gpio < 0) {
+		ak4601->amute_gpio = -1;
+	} else { 
+		if(gpio_is_valid(ak4601->amute_gpio)) {
+			ak4601->amute_gpio_flags = (gpio_flags & OF_GPIO_ACTIVE_LOW)? 0 : 1;
+			printk("[AK4601] use amute gpio(%d)\n", ak4601->amute_gpio);
+			if (devm_gpio_request_one(dev, 
+						ak4601->amute_gpio, 
+						(ak4601->amute_gpio_flags ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW),
+						"amute-gpios")) {
+				ak4601->amute_gpio = -1;
+				printk("[AK4601] request amute gpio(%d) failed\n", ak4601->amute_gpio);
+			}
+		} else {
+			ak4601->amute_gpio = -1;
+			printk("[AK4601] amute gpio(%d) is invalid\n", ak4601->amute_gpio);
+		}
+	}
+
 	ak4601->stanby_gpio = of_get_named_gpio_flags(np, "stanby-gpios", 0, &gpio_flags);
 	if(ak4601->stanby_gpio < 0) {
 		ak4601->stanby_gpio = -1;
