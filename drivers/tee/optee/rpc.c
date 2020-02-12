@@ -24,6 +24,7 @@
 #include "optee_bench.h"
 #include "optee_private.h"
 #include "optee_smc.h"
+#include "../tee_trace.h"
 
 struct wq_entry {
 	struct list_head link;
@@ -409,8 +410,7 @@ void optee_rpc_finalize_call(struct optee_call_ctx *call_ctx)
 
 static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
 {
-	struct tee_shm *shm;
-	char *va;
+	struct tee_shm *shm = NULL;
 
 	if (arg->num_params != 1)
 		goto bad;
@@ -419,16 +419,7 @@ static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
 	if (!shm)
 		goto bad;
 
-	va = tee_shm_get_va(shm, 0);
-	if (!va)
-		goto bad;
-
-	if (!strncmp(va, "E/", 2))
-		pr_err("%s", va);
-	else if (!strncmp(va, "I/", 2))
-		pr_info("%s", va);
-	else
-		pr_debug("%s", va);
+	tee_trace_config((char *)shm->kaddr, arg->params[0].u.tmem.size);
 
 	arg->ret = TEEC_SUCCESS;
 	return;
@@ -472,18 +463,8 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		if (optee->ver == NULL) {
 			arg->ret = TEEC_SUCCESS;
 		}
-#if (1)
 		else
 			handle_rpc_func_cmd_print(arg);
-#else
-		else if ((optee->ver->major <= 3) && (optee->ver->minor <= 4) && (optee->ver->tcc_rev <= 16)) {
-			/* under or equal 3.4.16 then print logs in the kernel */
-			handle_rpc_func_cmd_print(arg);
-		}
-		else {
-			handle_rpc_supp_cmd(ctx, arg);
-		}
-#endif
 		break;
 	default:
 		handle_rpc_supp_cmd(ctx, arg);
