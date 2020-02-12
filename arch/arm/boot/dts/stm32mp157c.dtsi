@@ -156,7 +156,11 @@
 
 			trips {
 				cpu-crit {
-					temperature = <120000>;
+					/*
+					 * 120 degrees threshold can be set
+					 * for product limited to 650Mhz
+					 */
+					temperature = <100000>;
 					hysteresis = <0>;
 					type = "critical";
 				};
