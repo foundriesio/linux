@@ -573,6 +573,7 @@ static int stm32_dma_mdma_drain(struct stm32_dma_chan *chan)
 	u32 mdma_residue, mdma_wrote, dma_to_write, len;
 	struct dma_tx_state state;
 	int ret;
+	unsigned long flags;
 
 	/* DMA/MDMA chain: drain remaining data in SRAM */
 
@@ -594,11 +595,16 @@ static int stm32_dma_mdma_drain(struct stm32_dma_chan *chan)
 	/* Remaining data stuck in SRAM */
 	dma_to_write = mchan->sram_period - stm32_dma_get_remaining_bytes(chan);
 	if (dma_to_write > 0) {
+		spin_lock_irqsave_nested(&chan->vchan.lock, flags,
+					 SINGLE_DEPTH_NESTING);
+
+		/* Terminate current MDMA to initiate a new one */
+		dmaengine_terminate_async(mchan->chan);
+
 		/* Stop DMA current operation */
 		stm32_dma_disable_chan(chan);
 
-		/* Terminate current MDMA to initiate a new one */
-		dmaengine_terminate_all(mchan->chan);
+		spin_unlock_irqrestore(&chan->vchan.lock, flags);
 
 		/* Double buffer management */
 		src_buf = mchan->sram_buf +
@@ -619,7 +625,8 @@ static int stm32_dma_mdma_drain(struct stm32_dma_chan *chan)
 
 		status = dma_wait_for_async_tx(desc);
 		if (status != DMA_COMPLETE) {
-			dev_err(chan2dev(chan), "flush() dma_wait_for_async_tx error\n");
+			dev_err(chan2dev(chan),
+				"%s dma_wait_for_async_tx error\n", __func__);
 			dmaengine_terminate_async(mchan->chan);
 			return -EBUSY;
 		}
@@ -746,14 +753,19 @@ static int stm32_dma_dummy_memcpy_xfer(struct stm32_dma_chan *chan)
 
 static int stm32_dma_mdma_flush_remaining(struct stm32_dma_chan *chan)
 {
+	struct stm32_dma_device *dmadev = stm32_dma_get_dev(chan);
 	struct stm32_dma_mdma *mchan = &chan->mchan;
 	struct stm32_dma_sg_req *sg_req;
 	struct dma_device *ddev = mchan->chan->device;
 	struct dma_async_tx_descriptor *desc = NULL;
 	enum dma_status status;
 	dma_addr_t src_buf, dst_buf;
-	u32 residue, remain, len;
+	u32 residue, remain, len, dma_scr;
 	int ret;
+
+	dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(chan->id));
+	if (!(dma_scr & STM32_DMA_SCR_EN))
+		return -EPERM;
 
 	sg_req = &chan->desc->sg_req[chan->next_sg - 1];
 
@@ -770,8 +782,8 @@ static int stm32_dma_mdma_flush_remaining(struct stm32_dma_chan *chan)
 		       residue > (mchan->sram_period - remain)) {
 			if (time_after_eq(jiffies, dma_sync_wait_timeout)) {
 				dev_err(chan2dev(chan),
-					"%s timeout waiting for last bytes\n",
-					__func__);
+					"%s timeout pending last %d bytes\n",
+					__func__, residue);
 				return -EBUSY;
 			}
 			cpu_relax();
