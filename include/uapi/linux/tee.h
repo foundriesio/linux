@@ -221,6 +221,22 @@ struct tee_ioctl_version_tcc {
 #define TEE_IOC_CALIB_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 24, \
 				     struct tee_ioctl_version_tcc)
 
+/**
+ * struct tee_ioctl_trace_log
+ * @addr:	[in] dumpped trace base
+ * @size:	[in] dumpped trace size
+ */
+struct tee_ioctl_trace_log {
+	__u64 addr;
+	__u64 size;
+};
+
+/**
+ * TEE_IOC_GET_TRACE_LOG
+ */
+#define TEE_IOC_GET_TRACE_LOG	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
+				     struct tee_ioctl_trace_log)
+
 
 /**
  * struct tee_ioctl_buf_data - Variable sized buffer

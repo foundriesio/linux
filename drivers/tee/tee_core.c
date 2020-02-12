@@ -26,6 +26,7 @@
 #include <linux/mm.h>
 #include <asm/pgtable.h>
 #include "tee_private.h"
+#include "tee_trace.h"
 
 #define TEE_NUM_DEVICES	32
 
@@ -730,6 +731,21 @@ static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
 	return 0;
 }
 
+static int tee_ioctl_get_trace_log(struct tee_context *ctx,
+				struct tee_ioctl_trace_log __user *log)
+{
+	int wsize;
+
+	wsize = tee_trace_get_log(log->addr, log->size);
+
+	if (wsize < 0)
+		return wsize;
+
+	log->size = wsize;
+
+	return 0;
+}
+
 static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct tee_context *ctx = filp->private_data;
@@ -762,6 +778,8 @@ static long tee_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case TEE_IOC_CLIENT_VERSION:
 	case TEE_IOC_CALIB_VERSION:
 		return tee_ioctl_user_version(cmd, ctx, uarg);
+	case TEE_IOC_GET_TRACE_LOG:
+		return tee_ioctl_get_trace_log(ctx, uarg);
 	default:
 		return -EINVAL;
 	}
