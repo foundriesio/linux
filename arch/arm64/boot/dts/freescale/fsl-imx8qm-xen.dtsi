@@ -443,6 +443,11 @@
 	dmas = <&edma0a 1 0 0>, <&edma0a 0 0 1>;
 };
 
+&lpspi2 {
+	interrupt-parent = <&gic>;
+	dmas = <&edma0d 5 0 0>, <&edma0d 4 0 1>;
+};
+
 &lpspi3 {
 	interrupt-parent = <&gic>;
 	dmas = <&edma0d 7 0 0>, <&edma0d 6 0 1>;
