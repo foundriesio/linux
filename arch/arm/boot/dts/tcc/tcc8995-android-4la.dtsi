@@ -500,17 +500,14 @@
 
 &audio_chmux {
 	compatible = "telechips,audio-chmux-899x";
-	dai = <99 1>; // i2s0(x) i2s1(x)
+	dai = <0 1>; // i2s0(x) i2s1(x)
 	cdif = <99 99>; // cdif0(x) cdif1(x)
-	spdif = <1 99>; // spdif0(x) spdif1(x)
+	spdif = <99 1>; // spdif0(x) spdif1(x)
 	status = "okay";
 };
 
 &i2s0 {
-	pinctrl-names = "default", "idle";
-	pinctrl-0 = <&m0dai1_clks &m0dai1_dao0 &m0dai1_dai0>;
-	pinctrl-1 = <&m0dai1_clks_idle &m0dai1_dao0_idle &m0dai1_dai0_idle>;
-	status = "disable";
+	status = "okay";
 };
 
 &i2s1 {
@@ -520,18 +517,18 @@
 	status = "okay";
 };
 
-&spdif0 {
+&spdif0	{
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m0dai1_spdif_tx>;
 	pinctrl-1 = <&m0dai1_spdif_tx_idle>;
-	status = "okay";
+	status = "disable";
 };
 
-&spdif1 {
+&spdif1	{
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai1_spdif_tx>;
 	pinctrl-1 = <&m1dai1_spdif_tx_idle>;
-	status = "disable";
+	status = "okay";
 };
 
 &adma0 {
@@ -573,10 +570,22 @@
 	};
 
 	telechips,dai-link@1 {
-		stream-name="SPDIF_0_TX";
+		stream-name="I2S_0_HDMI_PATHTRU";
 
+		codec,format = "i2s"; // i2s, left_j, right_j
+		codec,continuous-clock;
+
+		mclk_div = <4>; // 4,6,8,16
+		bclk_ratio = <64>; // 32,48,64fs
 		pcm = <&adma0>;
-		dai = <&spdif0>;
+		dai = <&i2s0>;
+	};
+
+	telechips,dai-link@2 {
+		stream-name="SPDIF_1_TX";
+
+		pcm = <&adma1>;
+		dai = <&spdif1>;
 		playback-only;
 	};
 };
