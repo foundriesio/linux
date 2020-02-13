@@ -559,7 +559,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
     unsigned long flags;
     unsigned int vint_reason = 0;
 	int oper_inst = 0, cnt = 0;
-    int timeout = 200;
+    int timeout = 500;
 
     if(vmgr_4k_d2_data.check_interrupt_detection)
     {
