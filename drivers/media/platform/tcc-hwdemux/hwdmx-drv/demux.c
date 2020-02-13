@@ -109,7 +109,7 @@ static void tcc_dmx_ts_cc_debug(int mod)
 	if (ts_packet_chk_info != NULL) {
 		if (ts_packet_chk_info->packet != NULL) {
 			eprintk(
-				"\n[total:%llu / err:%d (%d sec)]\n", ts_packet_chk_info->total_cnt,
+				"\n[ERROR][HWDMX] [total:%llu / err:%d (%d sec)]\n", ts_packet_chk_info->total_cnt,
 				ts_packet_chk_info->total_err, (ts_packet_chk_info->debug_time * DEBUG_CHK_TIME));
 
 			if (mod) {
@@ -117,7 +117,9 @@ static void tcc_dmx_ts_cc_debug(int mod)
 
 				tmp = ts_packet_chk_info->packet;
 				do {
-					eprintk("\t\tpid:0x%04x => cnt:%llu err:%d\n", tmp->pid, tmp->cnt, tmp->err);
+					eprintk(
+						"[ERROR][HWDMX] \t\tpid:0x%04x => cnt:%llu err:%d\n", tmp->pid, tmp->cnt,
+						tmp->err);
 					tmp = tmp->next;
 				} while (tmp != NULL);
 			}
@@ -179,7 +181,7 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 		if (ts_packet_chk_info->packet == NULL) {
 			tmp = (ts_packet_chk_t *)kmalloc(sizeof(ts_packet_chk_t), GFP_ATOMIC);
 			if (tmp == NULL) {
-				eprintk("\t ts_packet_chk_t mem alloc err..\n");
+				eprintk("[ERROR][HWDMX] \t ts_packet_chk_t mem alloc err..\n");
 			}
 
 			memset(tmp, 0x0, sizeof(ts_packet_chk_t));
@@ -191,8 +193,8 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 			ts_packet_chk_info->packet_cnt++;
 
 			eprintk(
-				"\t>>>> create[%d] : 0x%04x / %02d\n", ts_packet_chk_info->packet_cnt, tmp->pid,
-				tmp->cc);
+				"[ERROR][HWDMX] \t>>>> create[%d] : 0x%04x / %02d\n",
+				ts_packet_chk_info->packet_cnt, tmp->pid, tmp->cc);
 		} else {
 			unsigned char new = 0;
 			unsigned int temp;
@@ -209,7 +211,7 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 							if (temp != tmp->err) {
 								ts_packet_chk_info->total_err += tmp->err - temp;
 								eprintk(
-									"\t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
+									"[ERROR][HWDMX] \t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
 									ts_packet_chk_info->debug_time, tmp->pid, tmp->cnt, tmp->err,
 									tmp->cc, cc);
 							}
@@ -220,7 +222,7 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 							if (temp != tmp->err) {
 								ts_packet_chk_info->total_err += tmp->err - temp;
 								eprintk(
-									"\t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
+									"[ERROR][HWDMX] \t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
 									ts_packet_chk_info->debug_time, tmp->pid, tmp->cnt, tmp->err,
 									tmp->cc, cc);
 							}
@@ -243,7 +245,7 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 
 				tmp = (ts_packet_chk_t *)kmalloc(sizeof(ts_packet_chk_t), GFP_ATOMIC);
 				if (tmp == NULL) {
-					eprintk("\t ts_packet_chk_t mem alloc err..\n");
+					eprintk("[ERROR][HWDMX] \t ts_packet_chk_t mem alloc err..\n");
 				}
 
 				memset(tmp, 0x0, sizeof(ts_packet_chk_t));
@@ -264,8 +266,8 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 				} while (1);
 
 				eprintk(
-					"\t>>>> create[%d] : 0x%04x / %02d\n", ts_packet_chk_info->packet_cnt, tmp->pid,
-					tmp->cc);
+					"[ERROR][HWDMX] \t>>>> create[%d] : 0x%04x / %02d\n",
+					ts_packet_chk_info->packet_cnt, tmp->pid, tmp->cc);
 			}
 		}
 
@@ -425,7 +427,7 @@ int tcc_dmx_can_write(int devid)
 					}
 					free = dvb_ringbuffer_free(buffer);
 					if ((size >> 3) > free) {
-						dprintk("%s return false\n", __FUNCTION__);
+						dprintk("[DEBUG][HWDMX] %s return false\n", __FUNCTION__);
 						mutex_unlock(&demux->mutex);
 						return 0;
 					}
@@ -476,7 +478,7 @@ int tcc_dmx_ts_callback(char *p1, int p1_size, char *p2, int p2_size, int devid)
 		if (demux->users > 0) {
 			if (p1 != NULL && p1_size > 0) {
 				if (p1[0] != 0x47) {
-					eprintk("packet error 1... [%x]\n", p1[0]);
+					eprintk("[ERROR][HWDMX] packet error 1... [%x]\n", p1[0]);
 					return -1;
 				} else {
 					/* no wraparound, dump olddma..newdma */
@@ -485,7 +487,7 @@ int tcc_dmx_ts_callback(char *p1, int p1_size, char *p2, int p2_size, int devid)
 			}
 			if (p2 != NULL && p2_size > 0) {
 				if (p2[0] != 0x47) {
-					eprintk("packet error 2... [%x]\n", p2[0]);
+					eprintk("[ERROR][HWDMX] packet error 2... [%x]\n", p2[0]);
 					return -1;
 				} else {
 					dvb_dmx_swfilter_packets(demux, p2, p2_size / 188);
@@ -549,7 +551,7 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 #if 0
                      if(crc_err)
                      {
-                        eprintk("[check section]should be checked crc result! : hwdemux:size[%d]crc_result[%d]\n", size, crc_err);
+                        eprintk("[ERROR][HWDMX] [check section]should be checked crc result! : hwdemux:size[%d]crc_result[%d]\n", size, crc_err);
                         hexdump(p, 32);
                      }
 #endif
@@ -574,7 +576,7 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 #ifdef TS_SECTION_CHK_MODE
 							hexdump(p, 64);
 							eprintk(
-								"[check section] section crc checking error !.section size[%d]crc_result[%d]\n",
+								"[ERROR][HWDMX] [check section] section crc checking error !.section size[%d]crc_result[%d]\n",
 								size, crc_err);
 #endif
 						}
@@ -588,7 +590,8 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 						secsize = 3 + ((p[1] & 0x0f) << 8) + p[2];
 						if (secsize != size) {
 							eprintk(
-								"[check section] section size mismatch!-[%d][%d]\n", secsize, size);
+								"[ERROR][HWDMX] [check section] section size mismatch!-[%d][%d]\n",
+								secsize, size);
 							hexdump(p, 64);
 							hexdump(p + size - 64, 64);
 						}
@@ -596,10 +599,10 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 							feed->feed.sec.crc_val = ~0;
 							if (demux->check_crc32(feed, p, size)) {
 								eprintk(
-									"[check section] section crc checking error !.section size[%d]\n",
+									"[ERROR][HWDMX] [check section] section crc checking error !.section size[%d]\n",
 									size);
 								eprintk(
-									"[check section] filter values [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X].\n",
+									"[ERROR][HWDMX] [check section] filter values [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X].\n",
 									secfilter->filter_value[0], secfilter->filter_value[1],
 									secfilter->filter_value[2], secfilter->filter_value[3],
 									secfilter->filter_value[4], secfilter->filter_value[5]);
@@ -621,10 +624,10 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 
 						if (has_error) {
 							eprintk(
-								"[check section] section matching error!.section size[%d] crc[%d] doneq[%d]\n",
+								"[ERROR][HWDMX] [check section] section matching error!.section size[%d] crc[%d] doneq[%d]\n",
 								size, feed->feed.sec.check_crc, dmxfilter->doneq);
 							eprintk(
-								"[check section] filter values [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X].\n",
+								"[ERROR][HWDMX] [check section] filter values [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X].\n",
 								secfilter->filter_value[0], secfilter->filter_value[1],
 								secfilter->filter_value[2], secfilter->filter_value[3],
 								secfilter->filter_value[4], secfilter->filter_value[5]);
@@ -653,7 +656,7 @@ static int tcc_dmx_start_feed(struct dvb_demux_feed *feed)
 		ts_packet_chk_info =
 			(ts_packet_chk_info_t *)kmalloc(sizeof(ts_packet_chk_info_t), GFP_ATOMIC);
 		if (ts_packet_chk_info == NULL) {
-			eprintk("\t ts_packet_chk_info_t mem alloc err..\n");
+			eprintk("[ERROR][HWDMX] \t ts_packet_chk_info_t mem alloc err..\n");
 		}
 		memset(ts_packet_chk_info, 0x0, sizeof(ts_packet_chk_info_t));
 #endif
@@ -671,7 +674,7 @@ static int tcc_dmx_start_feed(struct dvb_demux_feed *feed)
 		}
 	}
 
-	dprintk("%s(pid = 0x%x)\n", __FUNCTION__, feed->pid);
+	dprintk("[DEBUG][HWDMX] %s(pid = 0x%x)\n", __FUNCTION__, feed->pid);
 
 	return 0;
 }
@@ -715,7 +718,7 @@ static int tcc_dmx_stop_feed(struct dvb_demux_feed *feed)
 #endif
 	}
 
-	dprintk("%s(pid = 0x%x)\n", __FUNCTION__, feed->pid);
+	dprintk("[DEBUG][HWDMX] %s(pid = 0x%x)\n", __FUNCTION__, feed->pid);
 
 	return 0;
 }
@@ -754,7 +757,7 @@ int tcc_dmx_init(tcc_dmx_inst_t *inst)
 		inst->dmx[i].demux.write_to_decoder = tcc_dmx_write_to_decoder;
 
 		if (dvb_dmx_init(&inst->dmx[i].demux) < 0) {
-			eprintk("%s(fail - dvb_dmx_init)\n", __FUNCTION__);
+			eprintk("[ERROR][HWDMX] %s(fail - dvb_dmx_init)\n", __FUNCTION__);
 			return -1;
 		}
 
@@ -764,7 +767,7 @@ int tcc_dmx_init(tcc_dmx_inst_t *inst)
 		inst->dmx[i].dmxdev.demux->get_stc = tcc_dmx_get_stc;
 
 		if (dvb_dmxdev_init(&inst->dmx[i].dmxdev, inst->adapter) < 0) {
-			eprintk("%s(fail - dvb_dmxdev_init)\n", __FUNCTION__);
+			eprintk("[ERROR][HWDMX] %s(fail - dvb_dmxdev_init)\n", __FUNCTION__);
 			return -1;
 		}
 
@@ -772,7 +775,7 @@ int tcc_dmx_init(tcc_dmx_inst_t *inst)
 			inst->dmx[i].fe_hw[j].source = DMX_FRONTEND_0 + i;
 			if (inst->dmx[i].demux.dmx.add_frontend(&inst->dmx[i].demux.dmx, &inst->dmx[i].fe_hw[j])
 				< 0) {
-				eprintk("%s(fail - add_frontend fe_hw[%d])\n", __FUNCTION__, j);
+				eprintk("[ERROR][HWDMX] %s(fail - add_frontend fe_hw[%d])\n", __FUNCTION__, j);
 				return -1;
 			}
 		}
@@ -780,20 +783,20 @@ int tcc_dmx_init(tcc_dmx_inst_t *inst)
 		inst->dmx[i].fe_mem.source = DMX_MEMORY_FE;
 		if (inst->dmx[i].demux.dmx.add_frontend(&inst->dmx[i].demux.dmx, &inst->dmx[i].fe_mem)
 			< 0) {
-			eprintk("%s(fail - add_frontend fe_mem)\n", __FUNCTION__);
+			eprintk("[ERROR][HWDMX] %s(fail - add_frontend fe_mem)\n", __FUNCTION__);
 			return -1;
 		}
 
 		if (inst->dmx[i].demux.dmx.connect_frontend(&inst->dmx[i].demux.dmx, &inst->dmx[i].fe_hw[0])
 			< 0) {
-			eprintk("%s(fail - connect_frontend)\n", __FUNCTION__);
+			eprintk("[ERROR][HWDMX] %s(fail - connect_frontend)\n", __FUNCTION__);
 			return -1;
 		}
 	}
 
 	gInst[inst->adapter->num] = inst;
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 
 	return 0;
 }
@@ -815,7 +818,7 @@ int tcc_dmx_deinit(tcc_dmx_inst_t *inst)
 
 	kfree(inst->dmx);
 
-	dprintk("%s", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s", __FUNCTION__);
 
 	return 0;
 }

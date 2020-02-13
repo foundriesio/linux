@@ -120,14 +120,16 @@ int hwdmx_register(int devid, struct device *dev)
 	int result = 0;
 
 	if (tcc_hwdmx_tsif_rx_register(devid, dev) != 0) {
-		dev_err(dev, "%s:%d tcc_hwdmx_tsif_rx_register failed\n", __FUNCTION__, __LINE__);
+		dev_err(
+			dev, "[ERROR][HWDMX] %s:%d tcc_hwdmx_tsif_rx_register failed\n", __FUNCTION__,
+			__LINE__);
 		return -EFAULT;
 	}
 
 	if (dev != NULL
 		&& device_create(class, dev, MKDEV(majornum, devid), NULL, HWDMX_DEV_NAME "%d", devid)
 			== NULL) {
-		dev_err(dev, "%s:%d device_create failed\n", __FUNCTION__, __LINE__);
+		dev_err(dev, "[ERROR][HWDMX] %s:%d device_create failed\n", __FUNCTION__, __LINE__);
 		result = -EFAULT;
 		goto device_create_fail;
 	}
@@ -188,7 +190,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 	mutex_lock(&hwdmx_buf_mutex); //for writing multiple, it is critical section
 	result = copy_from_user(dma_vaddr, buf, count);
 	if (result != 0) {
-		pr_err("%s:%d copy_from_user fail\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] %s:%d copy_from_user fail\n", __func__, __LINE__);
 		result = -EFAULT;
 		goto out;
 	}
@@ -200,7 +202,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf, size_t cou
 		goto out;
 	}
 
-	// pr_info("%s:%d\n", __func__, count);
+	// pr_info("[INFO][HWDMX] %s:%d\n", __func__, count);
 	// HexDump((unsigned char *)gpvVirtAddr, 64);
 
 out:
@@ -245,7 +247,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 
 	dma_vaddr = dma_alloc_writecombine(&pdev->dev, HWDMX_RD_BUF_SIZE, &dma_paddr, GFP_KERNEL);
 	if (dma_vaddr == NULL) {
-		dev_err(&pdev->dev, "DMA alloc error.\n");
+		dev_err(&pdev->dev, "[ERROR][HWDMX] DMA alloc error.\n");
 		retval = -ENOMEM;
 		goto dma_alloc_fail;
 	}

@@ -101,13 +101,13 @@ static void tcc_tsif_running_feed(long unsigned int id)
 			break;
 		p_info = list_first_entry(&pTask->ts_packet_bank, struct packet_info, list);
 		if (p_info == NULL) {
-			eprintk("%s(%d):invalid NULL packet !!!\n", __func__, type);
+			eprintk("[ERROR][HWDMX] %s(%d):invalid NULL packet !!!\n", __func__, type);
 			break;
 		}
 		list_del(&p_info->list);
 
 		if (p_info->valid != 1) {
-			eprintk("%s(%d):invalid packet !!!\n", __func__, type);
+			eprintk("[ERROR][HWDMX] %s(%d):invalid packet !!!\n", __func__, type);
 			p_info->valid = 0;
 			continue;
 		}
@@ -166,7 +166,7 @@ static int tcc_tsif_parse_packet(char *p1, int p1_size, char *p2, int p2_size, i
 		pTask->ts_packet_list.current_index = index;
 		tasklet_schedule(&pTask->tsif_tasklet);
 	} else {
-		eprintk("%s(%d):no space in packet_bank !!![%d]\n", __func__, type, index);
+		eprintk("[ERROR][HWDMX] %s(%d):no space in packet_bank !!![%d]\n", __func__, type, index);
 		pTask->ts_packet_list.current_index = 0;
 		memset(pTask->ts_packet_list.ts_packet, 0, sizeof(struct packet_info) * TS_PACKET_LIST);
 		INIT_LIST_HEAD(&pTask->ts_packet_bank);
@@ -206,14 +206,14 @@ int tcc_tsif_init(tcc_tsif_inst_t *inst)
 	inst->tsif = kzalloc(inst->dev_num * sizeof(tcc_tsif_priv_t), GFP_KERNEL);
 
 	if (hwdmx_register(inst->adapter->num, inst->dev) != 0) {
-		eprintk("%s:%d hwdmx_register fails\n", __FUNCTION__, __LINE__);
+		eprintk("[ERROR][HWDMX] %s:%d hwdmx_register fails\n", __FUNCTION__, __LINE__);
 		kfree(inst->tsif);
 		return -EFAULT;
 	}
 
 	pinctrl = pinctrl_get_select(inst->dev, "active");
 	if(IS_ERR(pinctrl))
-		pr_info("%s : pinctrl active error[0x%p]\n", __func__, pinctrl);
+		pr_info("[INFO][HWDMX] %s : pinctrl active error[0x%p]\n", __func__, pinctrl);
 
 	for (i = 0; i < inst->dev_num; i++) {
 		mutex_init(&inst->tsif[i].mutex);
@@ -266,7 +266,7 @@ int tcc_tsif_start(unsigned int devid)
 		if (err != 0) {
 			pHandle->users = 0;
 			mutex_unlock(&pHandle->mutex);
-			eprintk("Failed to open tsif driver[ID=%d, Err=%d]\n", devid, err);
+			eprintk("[ERROR][HWDMX] Failed to open tsif driver[ID=%d, Err=%d]\n", devid, err);
 			return err;
 		}
 
@@ -319,7 +319,7 @@ int tcc_tsif_stop(unsigned int devid)
 			pHandle->users = 1;
 			mutex_unlock(&pHandle->mutex);
 
-			eprintk("Failed to close tsif driver[ID=%d, Err=%d]\n", devid, err);
+			eprintk("[ERROR][HWDMX] Failed to close tsif driver[ID=%d, Err=%d]\n", devid, err);
 			return err;
 		}
 	}
@@ -362,7 +362,7 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 		}
 		if (i == MAX_TS_CNT) {
 			if (j == MAX_TS_CNT) {
-				eprintk("Failed to add filter[pid = %d]\n", feed->pid);
+				eprintk("[ERROR][HWDMX] Failed to add filter[pid = %d]\n", feed->pid);
 				return -1;
 			}
 
@@ -380,7 +380,9 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 					param.f_pid = feed->pid;
 					param.f_size = 0;
 					if (hwdmx_remove_pid(&pHandle->demux, &param) != 0) {
-						eprintk("%s:%d : pid[%d] remove error\n", __func__, __LINE__, feed->pid);
+						eprintk(
+							"[ERROR][HWDMX] %s:%d : pid[%d] remove error\n", __func__, __LINE__,
+							feed->pid);
 					}
 					pHandle->sec_table.iNum--;
 				}
@@ -391,7 +393,9 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 			param.f_pid = feed->pid;
 			param.f_size = 0;
 			if (hwdmx_add_pid(&pHandle->demux, &param) != 0) {
-				eprintk("%s:%d : pid[%d] ts setting error\n", __func__, __LINE__, feed->pid);
+				eprintk(
+					"[ERROR][HWDMX] %s:%d : pid[%d] ts setting error\n", __func__, __LINE__,
+					feed->pid);
 				return -1;
 			}
 		}
@@ -428,7 +432,7 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 					}
 				}
 				if (i == MAX_TS_CNT) {
-					eprintk("Failed to add filter[pid = %d]\n", feed->pid);
+					eprintk("[ERROR][HWDMX] Failed to add filter[pid = %d]\n", feed->pid);
 					return -1;
 				}
 				pHandle->ts_table.iPID[i] = feed->pid;
@@ -439,7 +443,9 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 				param.f_pid = feed->pid;
 				param.f_size = 0;
 				if (hwdmx_add_pid(&pHandle->demux, &param) != 0) {
-					eprintk("%s:%d : pid[%d] ts setting error\n", __func__, __LINE__, feed->pid);
+					eprintk(
+						"[ERROR][HWDMX] %s:%d : pid[%d] ts setting error\n", __func__, __LINE__,
+						feed->pid);
 					return -1;
 				}
 				useSW = 1;
@@ -473,7 +479,8 @@ int tcc_tsif_set_pid(struct dvb_demux_feed *feed, unsigned int devid)
 				param.f_size = j;
 				if (hwdmx_add_pid(&pHandle->demux, &param) != 0) {
 					eprintk(
-						"%s:%d : pid[%d] section setting error\n", __func__, __LINE__, feed->pid);
+						"[ERROR][HWDMX] %s:%d : pid[%d] section setting error\n", __func__,
+						__LINE__, feed->pid);
 					return -1;
 				}
 				pHandle->sec_table.iNum++;
@@ -521,7 +528,7 @@ int tcc_tsif_remove_pid(struct dvb_demux_feed *feed, unsigned int devid)
 			}
 		}
 		if (i == MAX_TS_CNT) {
-			eprintk("Failed to remove filter[pid = %d]\n", feed->pid);
+			eprintk("[ERROR][HWDMX] Failed to remove filter[pid = %d]\n", feed->pid);
 			return -1;
 		}
 		if (pHandle->ts_table.iUsers[i] == 0) {
@@ -533,7 +540,9 @@ int tcc_tsif_remove_pid(struct dvb_demux_feed *feed, unsigned int devid)
 			param.f_size = 0;
 			if (hwdmx_remove_pid(&pHandle->demux, &param) != 0) {
 				if (param.f_pid != 0x2000) {
-					eprintk("%s:%d : pid[%d] ts remove error\n", __func__, __LINE__, feed->pid);
+					eprintk(
+						"[ERROR][HWDMX] %s:%d : pid[%d] ts remove error\n", __func__, __LINE__,
+						feed->pid);
 				}
 			}
 		}
@@ -560,8 +569,8 @@ int tcc_tsif_remove_pid(struct dvb_demux_feed *feed, unsigned int devid)
 					param.f_size = 0;
 					if (hwdmx_remove_pid(&pHandle->demux, &param) != 0) {
 						eprintk(
-							"%s:%d : pid[%d] section remove error\n", __func__, __LINE__,
-							feed->pid);
+							"[ERROR][HWDMX] %s:%d : pid[%d] section remove error\n", __func__,
+							__LINE__, feed->pid);
 						return -1;
 					}
 					pHandle->sec_table.iNum--;
@@ -580,8 +589,8 @@ int tcc_tsif_remove_pid(struct dvb_demux_feed *feed, unsigned int devid)
 							if (hwdmx_remove_pid(&pHandle->demux, &param) != 0) {
 								if (param.f_pid != 0x2000) {
 									eprintk(
-										"%s:%d : pid[%d] ts remove error\n", __func__, __LINE__,
-										feed->pid);
+										"[ERROR][HWDMX] %s:%d : pid[%d] ts remove error\n",
+										__func__, __LINE__, feed->pid);
 								}
 							}
 							j = MAX_TS_CNT;
@@ -661,7 +670,7 @@ int tcc_tsif_set_pcrpid(int on, struct dvb_demux_feed *feed, unsigned int devid)
 
 	mutex_unlock(&pHandle->mutex);
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 
 	return ret;
 }
