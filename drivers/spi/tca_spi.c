@@ -310,6 +310,10 @@ static void tca_spi_hwinit_slave(struct tca_spi_handle *h)
 	/* Set SPI Slave Mode, Disable SDO */
 	TCC_GPSB_BITSET(h->regs + TCC_GPSB_MODE, Hw2 | Hw5);
 
+#if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC897X)
+	/* Set SDOE, SDO is driven only when cs is active. */
+	TCC_GPSB_BITSET(h->regs + TCC_GPSB_EVTCTRL, Hw25);
+#endif
 	/* Enable Operation */
 	TCC_GPSB_BITSET(h->regs + TCC_GPSB_MODE, Hw3);
 }
