@@ -198,7 +198,7 @@ static irqreturn_t tcc_mbox_isr(int irq, void *dev_id)
 		return IRQ_NONE;
 
 	if (((readl_relaxed(mdev->mbox_base + MBOX_CMD_STS) >> 20) & 0xF) == 0) {
-		dev_err(mdev->mbox.dev, "Mailbox FIFO is empty\n");
+		dev_err(mdev->mbox.dev, "[ERROR][TCC_MBOX] Mailbox FIFO is empty\n");
 		return IRQ_HANDLED;
 	}
 
@@ -304,7 +304,7 @@ static int tcc_mbox_probe(struct platform_device *pdev)
 
 	ret = mbox_controller_register(&mdev->mbox);
 	if (ret < 0)
-		dev_err(&pdev->dev, "Failed to register mailbox: %d\n", ret);
+		dev_err(&pdev->dev, "[ERROR][TCC_MBOX] Failed to register mailbox: %d\n", ret);
 
 #ifndef MBOX_THREADED_IRQ
 	init_waitqueue_head(&mdev->wait);
