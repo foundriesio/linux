@@ -171,7 +171,7 @@ int MpegSys_ParseTs(unsigned char *p, MpegTsHeader *ts, unsigned int uiCheckPID)
 
 	switch (ts->adaptation_control) {
 	case TS_ADAPTATION_RESERVED:
-		// PKV_DTV_DEBUG(PKV_DEBUG_ERROR, "TS_ADAPTATION_RESERVED\n");
+		// PKV_DTV_DEBUG(PKV_DEBUG_ERROR, "[ERROR][HWDMX] TS_ADAPTATION_RESERVED\n");
 		/* discard this packet */
 		ts->payload_size = 0;
 		ts->payload = NULL;
@@ -179,7 +179,7 @@ int MpegSys_ParseTs(unsigned char *p, MpegTsHeader *ts, unsigned int uiCheckPID)
 
 	case TS_ADAPTATION_ONLY:
 		if (parseAdaptationField(p, &ts->adap) < 0) {
-			DTV_DEBUG(DEBUG_ERROR, "failed to parse adaptation\n");
+			DTV_DEBUG(DEBUG_ERROR, "[ERROR][HWDMX] failed to parse adaptation\n");
 			ret = -1;
 		}
 		ts->payload_size = 0;
@@ -188,13 +188,13 @@ int MpegSys_ParseTs(unsigned char *p, MpegTsHeader *ts, unsigned int uiCheckPID)
 
 	case TS_ADAPTATION_AND_PAYLOAD:
 		if (parseAdaptationField(p, &ts->adap) < 0) {
-			DTV_DEBUG(DEBUG_ERROR, "failed to parse adaptation\n");
+			DTV_DEBUG(DEBUG_ERROR, "[ERROR][HWDMX] failed to parse adaptation\n");
 			ret = -1;
 		} else {
 			ts->payload_size = MPEGSYS_TS_PACKETSIZE - (((int)p - (int)base) + ts->adap.length + 1);
 			if (ts->payload_size < 0) {
 				DTV_DEBUG(
-					DEBUG_ERROR, "(p-b): %d, adaptation_length: %d, 0x%x, 0x%x\n",
+					DEBUG_ERROR, "[ERROR][HWDMX] (p-b): %d, adaptation_length: %d, 0x%x, 0x%x\n",
 					(int)p - (int)base, ts->adap.length, base[0], base[1]);
 				ret = -1;
 			}

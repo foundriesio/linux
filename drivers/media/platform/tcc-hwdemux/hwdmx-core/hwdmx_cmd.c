@@ -114,7 +114,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 		int filter_type, filter_id, value1, value2, err_crc;
 
 		if (size != sizeof(int) * 10) {
-			pr_err("%s:%d size is wrong\n", __func__, __LINE__);
+			pr_err("[ERROR][HWDMX] %s:%d size is wrong\n", __func__, __LINE__);
 			return -1;
 		}
 
@@ -254,8 +254,9 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	int mbox_data[12], mbox_result;
 
 	pr_info(
-		"\n%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__, __LINE__, (u32)h->dma_buffer->dma_addr,
-		h->dma_buffer->v_addr, h->dma_buffer->buf_size, h->port_cfg.tsif_port);
+		"\n[INFO][HWDMX]%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__, __LINE__,
+		(u32)h->dma_buffer->dma_addr, h->dma_buffer->v_addr, h->dma_buffer->buf_size,
+		h->port_cfg.tsif_port);
 
 	if (session_cnt == 0) {
 		sp_set_callback(hwdmx_evt_handler);
@@ -292,7 +293,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	rsize = sp_sendrecv_cmd(
 		HWDMX_START_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
@@ -301,7 +302,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	if (result == 0) {
 		session_cnt++;
 	} else {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -326,7 +327,7 @@ int hwdmx_stop_cmd(struct tcc_tsif_handle *h)
 	rsize = sp_sendrecv_cmd(
 		HWDMX_STOP_CMD, &mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
@@ -336,10 +337,10 @@ int hwdmx_stop_cmd(struct tcc_tsif_handle *h)
 		buf_updated_cb[h->dmx_id] = NULL;
 		session_cnt--;
 	} else {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
-	pr_info("HWDMX_STOP_CMD Result : %d\n", result);
+	pr_info("[INFO][HWDMX] HWDMX_STOP_CMD Result : %d\n", result);
 
 out:
 	return result;
@@ -363,17 +364,17 @@ int hwdmx_set_pcrpid_cmd(struct tcc_tsif_handle *h, unsigned int pid)
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_PCRPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
-	pr_info("[DEMUX #%d]hwdmx_set_pcrpid(pid=%d)\n", h->dmx_id, pid);
+	pr_info("[INFO][HWDMX] [DEMUX #%d]hwdmx_set_pcrpid(pid=%d)\n", h->dmx_id, pid);
 
 out:
 	return result;
@@ -409,7 +410,7 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 	switch (feed->f_type) {
 	case SECTION:
 		if (feed->f_size > 16) {
-			pr_err("!!! filter size is over 16 then it sets to 16.\n");
+			pr_err("[ERROR][HWDMX] !!! filter size is over 16 then it sets to 16.\n");
 			feed->f_size = 16; // HWDMX can support less than 16 bytes filter size.
 		}
 #if 0
@@ -417,7 +418,7 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 			int i;
 			for (i = 0; i < feed->f_size; i++)
 				pr_info(
-					"[%d]C[0x%X]M[0x%X]M[0x%X]\n", i, feed->f_comp[i], feed->f_mask[i],
+					"[INFO][HWDMX][%d]C[0x%X]M[0x%X]M[0x%X]\n", i, feed->f_comp[i], feed->f_mask[i],
 					feed->f_mode[i]);
 		}
 #endif
@@ -433,7 +434,7 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 			"FltMask: ", DUMP_PREFIX_ADDRESS, feed->f_mask, feed->f_size);
 		print_hex_dump_bytes(
 			"FltMode: ", DUMP_PREFIX_ADDRESS, feed->f_mode, feed->f_size);
-		pr_info("%s:%d mbox_size: %d\n", __func__, __LINE__, 20 + feed->f_size * 3);
+		pr_info("[INFO][HWDMX] %s:%d mbox_size: %d\n", __func__, __LINE__, 20 + feed->f_size * 3);
 #endif
 		rsize = sp_sendrecv_cmd(
 			HWDMX_ADD_FILTER_CMD, mbox_data, 20 + feed->f_size * 3, &mbox_result, sizeof(mbox_result));
@@ -446,24 +447,26 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 		break;
 
 	default:
-		pr_err("[%s:%d] filter type is undefined\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] filter type is undefined\n", __func__, __LINE__);
 		goto out;
 		break;
 	}
 
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
-	pr_info("[DEMUX #%d]hwdmx_add_filter(type=%d, pid=%d)\n", h->dmx_id, feed->f_type, feed->f_pid);
+	pr_info(
+		"[INFO][HWDMX] [DEMUX #%d]hwdmx_add_filter(type=%d, pid=%d)\n", h->dmx_id, feed->f_type,
+		feed->f_pid);
 out:
 	return result;
 }
@@ -475,7 +478,8 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *f
 	int fid;
 
 	pr_info(
-		"[DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n", h->dmx_id, feed->f_type, feed->f_pid);
+		"[INFO][HWDMX][DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n", h->dmx_id, feed->f_type,
+		feed->f_pid);
 
 	fid = (feed->f_type == SECTION) ? feed->f_id : 0;
 	mbox_data[0] = h->dmx_id;
@@ -485,14 +489,14 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *f
 	rsize = sp_sendrecv_cmd(
 		HWDMX_DELETE_FILTER_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -506,11 +510,11 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 	int mbox_data[3], mbox_result;
 	static DEFINE_MUTEX(input_stream_mutex);
 
-	// pr_info("[DEMUX #%d]hwdmx_input_internal(buffer=[0x%X], size=%d)\n",
+	// pr_info("[INFO][HWDMX] [DEMUX #%d]hwdmx_input_internal(buffer=[0x%X], size=%d)\n",
 	// dmx_id, phy_addr, size);
 
 	if (session_cnt == 0) {
-		// pr_err("session count is zero\n");
+		// pr_err("[ERROR][HWDMX] session count is zero\n");
 		return -1;
 	}
 	mutex_lock(&input_stream_mutex); //for multiple demux, it is critical section
@@ -523,21 +527,21 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 	rsize = sp_sendrecv_cmd(
 		HWDMX_INPUT_STREAM_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
 	result =
 		wait_event_timeout(waitq_empty_bufevt, empty_bufevt_received == 1, msecs_to_jiffies(2000));
 	if (result == 0 && (empty_bufevt_received != 1)) {
-		pr_info("Timeout\n");
+		pr_info("[INFO][HWDMX] Timeout\n");
 	} else {
 		/* The condition (empty_bufevt_received == 1) is met before timeout */
 		result = 0;
@@ -563,14 +567,14 @@ int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
 	rsize = sp_sendrecv_cmd(
 			HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -596,14 +600,14 @@ int hwdmx_set_algo_cmd(struct tcc_tsif_handle *h, int algo,
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -626,14 +630,14 @@ int hwdmx_set_key_cmd(struct tcc_tsif_handle *h, int keytype, int keymode, int s
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_KEY_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -654,17 +658,17 @@ int hwdmx_set_iv_cmd(struct tcc_tsif_handle *h, int ividx, int size, void *iv)
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_IV_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
-	pr_info("%s, %d  \n", __func__, __LINE__);
+	pr_info("[INFO][HWDMX] %s, %d  \n", __func__, __LINE__);
 
 out:
 	return result;
@@ -698,14 +702,14 @@ int hwdmx_set_data_cmd(
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_DATA_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 
@@ -727,14 +731,14 @@ int hwdmx_run_cipher_cmd(int dmxid, int encmode, int cwsel, int klidx, int keymo
 	rsize = sp_sendrecv_cmd(
 		HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
-		pr_err("[%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
+		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
 		goto out;
 	}
 
 	result = mbox_result;
 	if (result != 0) {
-		pr_err("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
+		pr_err("[ERROR][HWDMX] [%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
 		goto out;
 	}
 

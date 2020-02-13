@@ -100,7 +100,7 @@ static int tcc_hwdmx_init(tcc_hwdmx_inst_t *inst, struct device *dev)
 	inst->tsif.adapter = &inst->adapter;
 	inst->tsif.dev = dev;
 	if (tcc_tsif_init(&inst->tsif) != 0) {
-		eprintk("%s:%d tcc_tsif_init failed\n", __FUNCTION__, __LINE__);
+		eprintk("[ERROR][HWDMX] %s:%d tcc_tsif_init failed\n", __FUNCTION__, __LINE__);
 		result = -EFAULT;
 		goto tcc_tsif_init_fail;
 	}
@@ -108,12 +108,12 @@ static int tcc_hwdmx_init(tcc_hwdmx_inst_t *inst, struct device *dev)
 	inst->dmx.dev_num = DMX_DEV_COUNT;
 	inst->dmx.adapter = &inst->adapter;
 	if (tcc_dmx_init(&inst->dmx) != 0) {
-		eprintk("%s:%d tcc_dmx_init failed\n", __FUNCTION__, __LINE__);
+		eprintk("[ERROR][HWDMX] %s:%d tcc_dmx_init failed\n", __FUNCTION__, __LINE__);
 		result = -EFAULT;
 		goto tcc_dmx_init_fail;
 	}
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 	return 0;
 
 tcc_dmx_init_fail:
@@ -137,7 +137,7 @@ static void tcc_hwdmx_deinit(tcc_hwdmx_inst_t *inst)
 
 	tcc_fe_deinit(&inst->fe);
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 }
 
 /*****************************************************************************
@@ -150,26 +150,26 @@ static int hwdmx_drv_probe(struct platform_device *pdev)
 
 	inst = kzalloc(sizeof(tcc_hwdmx_inst_t), GFP_KERNEL);
 	if (inst == NULL) {
-		eprintk("%s(kzalloc fail)\n", __FUNCTION__);
+		eprintk("[ERROR][HWDMX] %s(kzalloc fail)\n", __FUNCTION__);
 		return -ENOMEM;
 	}
 
 	if (dvb_register_adapter(&inst->adapter, pdev->name, THIS_MODULE, &pdev->dev, adapter_nr) < 0) {
-		eprintk("%s(Failed to register dvb adapter)\n", __FUNCTION__);
-		eprintk("%s:%d dvb_register_adapter failed\n", __FUNCTION__, __LINE__);
+		eprintk("[ERROR][HWDMX] %s(Failed to register dvb adapter)\n", __FUNCTION__);
+		eprintk("[ERROR][HWDMX] %s:%d dvb_register_adapter failed\n", __FUNCTION__, __LINE__);
 		result = -ENOMEM;
 		goto dvb_register_adapter_fail;
 	}
 
 	if (tcc_hwdmx_init(inst, &pdev->dev) != 0) {
-		eprintk("%s:%d tcc_hwdmx_init failed\n", __FUNCTION__, __LINE__);
+		eprintk("[ERROR][HWDMX] %s:%d tcc_hwdmx_init failed\n", __FUNCTION__, __LINE__);
 		result = -EFAULT;
 		goto tcc_hwdmx_init_fail;
 	}
 
 	inst->tsif_clk = of_clk_get(pdev->dev.of_node, 0);
 	if (IS_ERR(inst->tsif_clk)) {
-		dev_err(&pdev->dev, "TS RX clock not found.\n");
+		dev_err(&pdev->dev, "[ERROR][HWDMX] TS RX clock not found.\n");
 		return PTR_ERR(inst->tsif_clk);
 	}
 
@@ -205,7 +205,7 @@ static int hwdmx_drv_remove(struct platform_device *pdev)
 
 	kfree(inst);
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 
 	return 0;
 }
@@ -241,7 +241,7 @@ static struct platform_driver hwdmx_drv = {
 
 static int __init hwdmx_drv_init(void)
 {
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 
 	platform_driver_register(&hwdmx_drv);
 
@@ -252,7 +252,7 @@ static void __exit hwdmx_drv_exit(void)
 {
 	platform_driver_unregister(&hwdmx_drv);
 
-	dprintk("%s\n", __FUNCTION__);
+	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
 }
 
 module_init(hwdmx_drv_init);

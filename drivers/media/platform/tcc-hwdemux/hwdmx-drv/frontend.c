@@ -107,13 +107,16 @@ int tcc_fe_register(struct tcc_dxb_fe_driver *pdrv)
 						ret = 0;
 					}
 					else{
-						eprintk("Frontend[%d/%d] driver probe error !! \n",i,inst->dev_num);
+						eprintk(
+							"[ERROR][HWDMX] Frontend[%d/%d] driver probe error !! \n", i,
+							inst->dev_num);
 						dvb_unregister_frontend(&fe->fe);
 						dvb_frontend_detach(&fe->fe);
 						break;
 					}
 				}else{
-					eprintk("Frontend[%d/%d] registration failed!\n",i,inst->dev_num);
+					eprintk(
+						"[ERROR][HWDMX] Frontend[%d/%d] registration failed!\n", i, inst->dev_num);
 					dvb_frontend_detach(&fe->fe);
 					break;
 				}
