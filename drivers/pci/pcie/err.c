@@ -333,6 +333,7 @@ void pcie_do_nonfatal_recovery(struct pci_dev *dev)
 				"resume",
 				report_resume);
 
+	pci_aer_clear_device_status(dev);
 	pci_cleanup_aer_uncorrect_error_status(dev);
 	pci_info(dev, "AER: Device recovery successful\n");
 	return;
