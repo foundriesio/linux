@@ -111,15 +111,15 @@ static void GPIO_OUT_INIT(int pin)
 {
 	int rc;
 	if (!gpio_is_valid(pin)) {
-		eprintk("%s pin(0x%X) error\n", __FUNCTION__, pin);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error\n", __FUNCTION__, pin);
 		return;
 	}
 	rc = gpio_request(pin, NULL);
 	if (rc) {
-		eprintk("%s pin(0x%X) error(%d)\n", __FUNCTION__, pin, rc);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error(%d)\n", __FUNCTION__, pin, rc);
 		return;
 	}
-	dprintk("%s pin[0x%X] value[0]\n", __func__, pin);
+	dprintk("[DEBUG][HWDMX] %s pin[0x%X] value[0]\n", __func__, pin);
 	gpio_direction_output(pin, 0);
 }
 
@@ -127,25 +127,25 @@ static void GPIO_IN_INIT(int pin)
 {
 	int rc;
 	if (!gpio_is_valid(pin)) {
-		eprintk("%s pin(0x%X) error\n", __FUNCTION__, pin);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error\n", __FUNCTION__, pin);
 		return;
 	}
 	rc = gpio_request(pin, NULL);
 	if (rc) {
-		eprintk("%s pin(0x%X) error(%d)\n", __FUNCTION__, pin, rc);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error(%d)\n", __FUNCTION__, pin, rc);
 		return;
 	}
-	dprintk("%s pin[0x%X]\n", __func__, pin);
+	dprintk("[DEBUG][HWDMX] %s pin[0x%X]\n", __func__, pin);
 	gpio_direction_input(pin);
 }
 
 static void GPIO_SET_VALUE(int pin, int value)
 {
 	if (!gpio_is_valid(pin)) {
-		eprintk("%s pin(0x%X) error\n", __FUNCTION__, pin);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error\n", __FUNCTION__, pin);
 		return;
 	}
-	dprintk("%s pin[0x%X] value[%d]\n", __func__, pin, value);
+	dprintk("[DEBUG][HWDMX] %s pin[0x%X] value[%d]\n", __func__, pin, value);
 	if (gpio_cansleep(pin))
 		gpio_set_value_cansleep(pin, value);
 	else
@@ -155,10 +155,10 @@ static void GPIO_SET_VALUE(int pin, int value)
 static int GPIO_GET_VALUE(int pin)
 {
 	if (!gpio_is_valid(pin)) {
-		eprintk("%s pin(0x%X) error\n", __FUNCTION__, pin);
+		eprintk("[ERROR][HWDMX] %s pin(0x%X) error\n", __FUNCTION__, pin);
 		return -1;
 	}
-	dprintk("%s pin[0x%X]\n", __func__, pin);
+	dprintk("[DEBUG][HWDMX] %s pin[0x%X]\n", __func__, pin);
 	if (gpio_cansleep(pin))
 		return gpio_get_value_cansleep(pin);
 	else
@@ -167,7 +167,7 @@ static int GPIO_GET_VALUE(int pin)
 
 static void GPIO_FREE(int pin)
 {
-	dprintk("%s pin[0x%X]\n", __func__, pin);
+	dprintk("[DEBUG][HWDMX] %s pin[0x%X]\n", __func__, pin);
 	if (gpio_is_valid(pin)) {
 		gpio_free(pin);
 	}
@@ -267,7 +267,7 @@ static int tcc_isdbt_ctrl_ant_off(struct tcc_isdbt_ctrl_t *ctrl)
 
 static long tcc_isdbt_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	dprintk("%s cmd[0x%X]\n", __func__, cmd);
+	dprintk("[DEBUG][HWDMX] %s cmd[0x%X]\n", __func__, cmd);
 	switch (cmd)
 	{
 		// for HWDEMUX Cipher
@@ -429,14 +429,14 @@ static int tcc_isdbt_ctrl_release(struct inode *inode, struct file *filp)
 		kfree(h);
 		h = NULL;
 	}
-	dprintk("%s::%d\n", __FUNCTION__, __LINE__);
+	dprintk("[DEBUG][HWDMX] %s::%d\n", __FUNCTION__, __LINE__);
 
 	return 0;
 }
 
 static int tcc_isdbt_ctrl_open(struct inode *inode, struct file *filp)
 {
-	dprintk("%s::%d\n", __FUNCTION__, __LINE__);
+	dprintk("[DEBUG][HWDMX] %s::%d\n", __FUNCTION__, __LINE__);
 
 	if(h == NULL){
 		h = kzalloc(sizeof(struct tcc_tsif_handle), GFP_KERNEL);
@@ -490,14 +490,14 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 	major_num = res;
 	tcc_isdbt_ctrl_class = class_create(THIS_MODULE, ISDBT_CTRL_DEV_NAME);
 	if(NULL == device_create(tcc_isdbt_ctrl_class, NULL, MKDEV(major_num, ISDBT_CTRL_DEV_MINOR), NULL, ISDBT_CTRL_DEV_NAME))
-		eprintk("%s device_create failed\n", __FUNCTION__);
+		eprintk("[ERROR][HWDMX] %s device_create failed\n", __FUNCTION__);
 
 	gIsdbtCtrl = kzalloc(sizeof(struct tcc_isdbt_ctrl_t), GFP_KERNEL);
 	if (gIsdbtCtrl == NULL)
 		return -ENOMEM;
 
 	if (device_create_file(dev, &dev_attr_state))
-		eprintk("Failed to create file.\n");
+		eprintk("[ERROR][HWDMX] Failed to create file.\n");
 
 #ifdef CONFIG_OF
 	gIsdbtCtrl->gpio_dxb_on     = of_get_named_gpio(dev->of_node, "pw-gpios",   0);
@@ -515,11 +515,12 @@ static int tcc_isdbt_ctrl_probe(struct platform_device *pdev)
 	gIsdbtCtrl->gpio_ant_pwr            = of_get_named_gpio(dev->of_node, "ant-gpios",   0);
 	gIsdbtCtrl->gpio_check_ant_overload = of_get_named_gpio(dev->of_node, "ant-gpios",   1);
 #endif
-	dprintk("%s [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X]\n", __func__,
-	gIsdbtCtrl->gpio_dxb_on,
-	gIsdbtCtrl->gpio_dxb_0_pwdn, gIsdbtCtrl->gpio_dxb_0_rst, gIsdbtCtrl->gpio_dxb_0_irq, gIsdbtCtrl->gpio_dxb_0_sdo,
-	gIsdbtCtrl->gpio_dxb_1_pwdn, gIsdbtCtrl->gpio_dxb_1_rst, gIsdbtCtrl->gpio_dxb_1_irq, gIsdbtCtrl->gpio_dxb_1_sdo,
-	gIsdbtCtrl->gpio_ant_pwr, gIsdbtCtrl->gpio_check_ant_overload);
+	dprintk(
+		"[DEBUG][HWDMX] %s [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X]\n",
+		__func__, gIsdbtCtrl->gpio_dxb_on, gIsdbtCtrl->gpio_dxb_0_pwdn, gIsdbtCtrl->gpio_dxb_0_rst,
+		gIsdbtCtrl->gpio_dxb_0_irq, gIsdbtCtrl->gpio_dxb_0_sdo, gIsdbtCtrl->gpio_dxb_1_pwdn,
+		gIsdbtCtrl->gpio_dxb_1_rst, gIsdbtCtrl->gpio_dxb_1_irq, gIsdbtCtrl->gpio_dxb_1_sdo,
+		gIsdbtCtrl->gpio_ant_pwr, gIsdbtCtrl->gpio_check_ant_overload);
 
 	gIsdbtCtrl->board_type = BOARD_ISDBT_TCC353X;
 	gIsdbtCtrl->ant_ctrl_mode = PWRCTRL_AUTO;

@@ -128,7 +128,7 @@ static void itv_ts_cc_debug(int mod)
 	if (ts_packet_chk_info != NULL) {
 		if (ts_packet_chk_info->packet != NULL) {
 			pr_info(
-				"\n[total:%llu / err:%d (%d sec)]\n", ts_packet_chk_info->total_cnt,
+				"\n[INFO][HWDMX] [total:%llu / err:%d (%d sec)]\n", ts_packet_chk_info->total_cnt,
 				ts_packet_chk_info->total_err, (ts_packet_chk_info->debug_time * DEBUG_CHK_TIME));
 
 			if (mod) {
@@ -136,7 +136,9 @@ static void itv_ts_cc_debug(int mod)
 
 				tmp = ts_packet_chk_info->packet;
 				do {
-					pr_info("\t\tpid:0x%04x => cnt:%llu err:%d\n", tmp->pid, tmp->cnt, tmp->err);
+					pr_info(
+						"[INFO][HWDMX] \t\tpid:0x%04x => cnt:%llu err:%d\n", tmp->pid, tmp->cnt,
+						tmp->err);
 					tmp = tmp->next;
 				} while (tmp != NULL);
 			}
@@ -198,7 +200,7 @@ static void itv_ts_cc_check(unsigned char *buf)
 		if (ts_packet_chk_info->packet == NULL) {
 			tmp = (ts_packet_chk_t *)kmalloc(sizeof(ts_packet_chk_t), GFP_ATOMIC);
 			if (tmp == NULL) {
-				pr_err("\t ts_packet_chk_t mem alloc err..\n");
+				pr_err("[ERROR][HWDMX] \t ts_packet_chk_t mem alloc err..\n");
 			}
 
 			memset(tmp, 0x0, sizeof(ts_packet_chk_t));
@@ -210,8 +212,8 @@ static void itv_ts_cc_check(unsigned char *buf)
 			ts_packet_chk_info->packet_cnt++;
 
 			pr_info(
-				"\t>>>> create[%d] : 0x%04x / %02d\n", ts_packet_chk_info->packet_cnt, tmp->pid,
-				tmp->cc);
+				"[INFO][HWDMX] \t>>>> create[%d] : 0x%04x / %02d\n", ts_packet_chk_info->packet_cnt,
+				tmp->pid, tmp->cc);
 		} else {
 			unsigned char new = 0;
 			unsigned int temp;
@@ -228,7 +230,7 @@ static void itv_ts_cc_check(unsigned char *buf)
 							if (temp != tmp->err) {
 								ts_packet_chk_info->total_err += tmp->err - temp;
 								pr_info(
-									"\t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
+									"[INFO][HWDMX] \t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
 									ts_packet_chk_info->debug_time, tmp->pid, tmp->cnt, tmp->err,
 									tmp->cc, cc);
 							}
@@ -239,7 +241,7 @@ static void itv_ts_cc_check(unsigned char *buf)
 							if (temp != tmp->err) {
 								ts_packet_chk_info->total_err += tmp->err - temp;
 								pr_info(
-									"\t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
+									"[INFO][HWDMX] \t(%dmin) pid:0x%04x => cnt:%llu err:%d [%d -> %d]\n",
 									ts_packet_chk_info->debug_time, tmp->pid, tmp->cnt, tmp->err,
 									tmp->cc, cc);
 							}
@@ -262,7 +264,7 @@ static void itv_ts_cc_check(unsigned char *buf)
 
 				tmp = (ts_packet_chk_t *)kmalloc(sizeof(ts_packet_chk_t), GFP_ATOMIC);
 				if (tmp == NULL) {
-					pr_err("\t ts_packet_chk_t mem alloc err..\n");
+					pr_err("[ERROR][HWDMX] \t ts_packet_chk_t mem alloc err..\n");
 				}
 
 				memset(tmp, 0x0, sizeof(ts_packet_chk_t));
@@ -283,8 +285,8 @@ static void itv_ts_cc_check(unsigned char *buf)
 				} while (1);
 
 				pr_info(
-					"\t>>>> create[%d] : 0x%04x / %02d\n", ts_packet_chk_info->packet_cnt, tmp->pid,
-					tmp->cc);
+					"[INFO][HWDMX] \t>>>> create[%d] : 0x%04x / %02d\n",
+					ts_packet_chk_info->packet_cnt, tmp->pid, tmp->cc);
 			}
 		}
 
@@ -321,11 +323,11 @@ static int __maybe_unused rx_dma_buffer_alloc(int devid, struct tea_dma_buf *dma
 	}
 
 	pr_info(
-		"tsif: dma ts buffer alloc @0x%X(Phy=0x%X), size:%d\n", (unsigned int)dma->v_addr,
-		(unsigned int)dma->dma_addr, dma->buf_size);
+		"[INFO][HWDMX] tsif: dma ts buffer alloc @0x%X(Phy=0x%X), size:%d\n",
+		(unsigned int)dma->v_addr, (unsigned int)dma->dma_addr, dma->buf_size);
 	pr_info(
-		"tsif: dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n", (unsigned int)dma->v_sec_addr,
-		(unsigned int)dma->dma_sec_addr, dma->buf_sec_size);
+		"[INFO][HWDMX] tsif: dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n",
+		(unsigned int)dma->v_sec_addr, (unsigned int)dma->dma_sec_addr, dma->buf_sec_size);
 
 	return 0;
 }
@@ -333,11 +335,11 @@ static int __maybe_unused rx_dma_buffer_alloc(int devid, struct tea_dma_buf *dma
 static int __maybe_unused rx_dma_buffer_free(int devid, struct tea_dma_buf *dma)
 {
 	pr_info(
-		"tsif: dma ts buffer free @0x%X(Phy=0x%X), size:%d\n", (unsigned int)dma->v_addr,
-		(unsigned int)dma->dma_addr, dma->buf_size);
+		"[INFO][HWDMX] tsif: dma ts buffer free @0x%X(Phy=0x%X), size:%d\n",
+		(unsigned int)dma->v_addr, (unsigned int)dma->dma_addr, dma->buf_size);
 	pr_info(
-		"tsif: dma sec buffer free @0x%X(Phy=0x%X), size:%d\n", (unsigned int)dma->v_sec_addr,
-		(unsigned int)dma->dma_sec_addr, dma->buf_sec_size);
+		"[INFO][HWDMX] tsif: dma sec buffer free @0x%X(Phy=0x%X), size:%d\n",
+		(unsigned int)dma->v_sec_addr, (unsigned int)dma->dma_sec_addr, dma->buf_sec_size);
 
 	if (dma->v_addr)
 		dma_free_writecombine(tsif_ex_pri.dev[devid], dma->buf_size, dma->v_addr, dma->dma_addr);
@@ -357,7 +359,9 @@ static int rx_dma_alloc_buffer(int devid)
 
 	tsif_ex_pri.static_dma_buffer[devid] = kmalloc(sizeof(struct tea_dma_buf), GFP_KERNEL);
 	if (tsif_ex_pri.static_dma_buffer[devid] == NULL) {
-		dev_err(tsif_ex_pri.dev[devid], "%s:%d kmalloc failed\n", __FUNCTION__, __LINE__);
+		dev_err(
+			tsif_ex_pri.dev[devid], "[ERROR][HWDMX] %s:%d kmalloc failed\n", __FUNCTION__,
+			__LINE__);
 		return -ENOMEM;
 	}
 
@@ -374,7 +378,9 @@ static int rx_dma_alloc_buffer(int devid)
 	}
 
 	if (os + size > tsif_ex_pri.pmap_tsif.size) {
-		dev_err(tsif_ex_pri.dev[devid], "%s:%d dma buffer is not enough\n", __FUNCTION__, __LINE__);
+		dev_err(
+			tsif_ex_pri.dev[devid], "[ERROR][HWDMX] %s:%d dma buffer is not enough\n", __FUNCTION__,
+			__LINE__);
 		return -ENOMEM;
 	}
 
@@ -541,7 +547,7 @@ static int rx_updated_callback(
 		break;
 	}
 	default: {
-		pr_err("Invalid parameter: Filter Type : %d\n", ftype);
+		pr_err("[ERROR][HWDMX] Invalid parameter: Filter Type : %d\n", ftype);
 		break;
 	}
 	}
@@ -631,10 +637,10 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	}
 
 	pr_info(
-		"[TSIF-%d] dma ts buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
+		"[INFO][HWDMX] [TSIF-%d] dma ts buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
 		(unsigned int)dma_buffer->v_addr, (unsigned int)dma_buffer->dma_addr, dma_buffer->buf_size);
 	pr_info(
-		"[TSIF-%d] dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
+		"[INFO][HWDMX] [TSIF-%d] dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n", devid,
 		(unsigned int)dma_buffer->v_sec_addr, (unsigned int)dma_buffer->dma_sec_addr,
 		dma_buffer->buf_sec_size);
 	demux->tsif_ex_handle.dma_buffer = dma_buffer;
@@ -646,15 +652,15 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	}
 #if 0 // don't care
 	if(IS_ERR(pinctrl))
-		pr_info("%s : pinctrl active error[0x%p]\n", __func__, pinctrl);
+		pr_info("[INFO][HWDMX] %s : pinctrl active error[0x%p]\n", __func__, pinctrl);
 #endif
 
 	pr_info(
-		"%s-id[%d]:port[%d]pinctrl[0x%p]\n", __func__, demux->tsif_ex_handle.dmx_id,
+		"[INFO][HWDMX] %s-id[%d]:port[%d]pinctrl[0x%p]\n", __func__, demux->tsif_ex_handle.dmx_id,
 		demux->tsif_ex_handle.port_cfg.tsif_port, pinctrl);
 
 	if (hwdmx_start_cmd(&demux->tsif_ex_handle)) {
-		pr_err("%s: hwdmx_init error !!!!!\n", __func__);
+		pr_err("[ERROR][HWDMX] %s: hwdmx_init error !!!!!\n", __func__);
 
 #if !defined(USE_REV_MEMORY)
 		if (dma_buffer != NULL) {
@@ -687,7 +693,7 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 		ts_packet_chk_info =
 			(ts_packet_chk_info_t *)kmalloc(sizeof(ts_packet_chk_info_t), GFP_ATOMIC);
 		if (ts_packet_chk_info == NULL) {
-			pr_err("\t ts_packet_chk_info_t mem alloc err..\n");
+			pr_err("[ERROR][HWDMX] \t ts_packet_chk_info_t mem alloc err..\n");
 		}
 		memset(ts_packet_chk_info, 0x0, sizeof(ts_packet_chk_info_t));
 	}
@@ -902,7 +908,7 @@ int tcc_hwdmx_tsif_rx_register(int devid, struct device *dev)
 #ifdef CONFIG_OF
 	if (dev != NULL) {
 		of_property_read_u32(dev->of_node, "tsif-port", &tsif_ex_pri.port_cfg[devid].tsif_port);
-		pr_info("tsif_port: %d\n", tsif_ex_pri.port_cfg[devid].tsif_port);
+		pr_info("[INFO][HWDMX] tsif_port: %d\n", tsif_ex_pri.port_cfg[devid].tsif_port);
 	} else {
 		if(tsif_ex_pri.port_cfg[devid].tsif_port == 0xF) {
 			tsif_ex_pri.port_cfg[devid].tsif_port = 1;
@@ -914,7 +920,7 @@ int tcc_hwdmx_tsif_rx_register(int devid, struct device *dev)
 	hwdmx_tsif_num++;
 
 	if (rx_dma_alloc_buffer(devid) != 0) {
-		dev_err(dev, "%s:%d rx_dma_alloc buffer failed\n", __FUNCTION__, __LINE__);
+		dev_err(dev, "[ERROR][HWDMX] %s:%d rx_dma_alloc buffer failed\n", __FUNCTION__, __LINE__);
 		return -EFAULT;
 	}
 
@@ -956,8 +962,8 @@ int tcc_hwdmx_tsif_rx_init(struct device *dev)
 		goto out;
 	}
 	pr_info(
-		"tsif_ex: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n", tsif_ex_pri.pmap_tsif.base,
-		tsif_ex_pri.mem_base, tsif_ex_pri.pmap_tsif.size);
+		"[INFO][HWDMX] tsif_ex: pmap(PA: 0x%08x, VA: 0x%p, SIZE: 0x%x)\n",
+		tsif_ex_pri.pmap_tsif.base, tsif_ex_pri.mem_base, tsif_ex_pri.pmap_tsif.size);
 #endif /* USE_REV_MEMORY */
 
 #if defined(DEMUX_SYSFS)
