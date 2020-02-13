@@ -33,4 +33,4 @@ void tee_trace_config(char *base, uint32_t size);
  *    result > 0: copied buffer size
  *    result < 0: error
  */
-int tee_trace_get_log(uint64_t addr, uint64_t size);
+int tee_trace_get_log(uint64_t __user addr, uint64_t size);

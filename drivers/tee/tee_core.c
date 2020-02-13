@@ -732,16 +732,23 @@ static int tee_ioctl_user_version(unsigned int cmd, struct tee_context *ctx,
 }
 
 static int tee_ioctl_get_trace_log(struct tee_context *ctx,
-				struct tee_ioctl_trace_log __user *log)
+				struct tee_ioctl_trace_log __user *ulog)
 {
+	struct tee_ioctl_trace_log log;
 	int wsize;
 
-	wsize = tee_trace_get_log(log->addr, log->size);
+	if (copy_from_user(&log, ulog, sizeof(log)))
+		return -EFAULT;
+
+	wsize = tee_trace_get_log(log.addr, log.size);
 
 	if (wsize < 0)
 		return wsize;
 
-	log->size = wsize;
+	log.size = wsize;
+
+	if (copy_to_user(ulog, &log, sizeof(log)))
+		return -EFAULT;
 
 	return 0;
 }
