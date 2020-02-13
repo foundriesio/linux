@@ -1412,6 +1412,15 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 
 	memcpy(scaler->info, (struct tcc_lcdc_image_update*)input_image, sizeof(struct tcc_lcdc_image_update));
 	memcpy(&output_m2m_image, (struct tcc_lcdc_image_update*)input_image, sizeof(struct tcc_lcdc_image_update));
+	#ifdef CONFIG_VIOC_MAP_DECOMP
+	output_m2m_image.private_data.optional_info[VID_OPT_HAVE_MC_INFO] = 0;
+	output_m2m_image.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
+	#endif
+	#ifdef CONFIG_VIOC_DTRC
+	output_m2m_image.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] = 0;
+	output_m2m_image.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
+	#endif
+
 	dprintk("%s : %d(%d), %d(%d), intl(%d/%d), addr(0x%x)\n",__func__, output_m2m_image.buffer_unique_id, output_m2m_image.odd_first_flag,
 			input_image->buffer_unique_id, input_image->odd_first_flag,  input_image->frameInfo_interlace, input_image->deinterlace_mode,
 			input_image->addr0);
@@ -1454,9 +1463,6 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if( (gUse_MapConverter&MAIN_USED) && scaler->info->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 	{
 		dprintk("%s : Map-Converter Operation %d \n", __func__, scaler->info->private_data.optional_info[VID_OPT_HAVE_MC_INFO]);
-		// rdma
-		if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
-			VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 
 		// scaler
 		VIOC_SC_SetBypass(pSC_SCALERBase, 0);
@@ -1465,6 +1471,9 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -1486,9 +1495,6 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 	if( (gUse_DtrcConverter&MAIN_USED) && scaler->info->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0)
 	{
 		dprintk("%s : Dtrc-Converter Operation %d \n", __func__, scaler->info->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO]);
-		// rdma
-		if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
-			VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 
 		// scaler
 		VIOC_SC_SetBypass(pSC_SCALERBase, 0);
@@ -1497,6 +1503,9 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -1594,6 +1603,9 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler->sc->id, scaler->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -1601,39 +1613,33 @@ void TCC_VIQE_Scaler_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
 	}
 
-    VIOC_CONFIG_WMIXPath(scaler->rdma->id, 1); // wmixer op is mixing mode.
-    VIOC_WMIX_SetSize(pSC_WMIXBase, scaler->info->Image_width, scaler->info->Image_height);
-    VIOC_WMIX_SetUpdate(pSC_WMIXBase);
+	VIOC_CONFIG_WMIXPath(scaler->rdma->id, 1); // wmixer op is mixing mode.
+	VIOC_WMIX_SetSize(pSC_WMIXBase, scaler->info->Image_width, scaler->info->Image_height);
+	VIOC_WMIX_SetUpdate(pSC_WMIXBase);
 
-    VIOC_WDMA_SetImageFormat(pSC_WDMABase, dest_fmt);
-    VIOC_WDMA_SetImageSize(pSC_WDMABase, scaler->info->Image_width, scaler->info->Image_height);
-    VIOC_WDMA_SetImageOffset(pSC_WDMABase, dest_fmt, scaler->info->Image_width);
+	VIOC_WDMA_SetImageFormat(pSC_WDMABase, dest_fmt);
+	VIOC_WDMA_SetImageSize(pSC_WDMABase, scaler->info->Image_width, scaler->info->Image_height);
+	VIOC_WDMA_SetImageOffset(pSC_WDMABase, dest_fmt, scaler->info->Image_width);
 	if(scaler->info->dst_addr0 == 0)
 		scaler->info->dst_addr0 = TCC_VIQE_Scaler_Get_Buffer_M2M(input_image);
-    VIOC_WDMA_SetImageBase(pSC_WDMABase, (unsigned int)scaler->info->dst_addr0, (unsigned int)scaler->info->dst_addr1, (unsigned int)scaler->info->dst_addr2);
+	VIOC_WDMA_SetImageBase(pSC_WDMABase, (unsigned int)scaler->info->dst_addr0, (unsigned int)scaler->info->dst_addr1, (unsigned int)scaler->info->dst_addr2);
 
-    VIOC_WDMA_SetImageR2YEnable(pSC_WDMABase, 0);
-    VIOC_WDMA_SetImageEnable(pSC_WDMABase, 0);
-    VIOC_WDMA_SetIreqStatus(pSC_WDMABase, VIOC_WDMA_IREQ_ALL_MASK); // wdma status register all clear.
+	VIOC_WDMA_SetImageR2YEnable(pSC_WDMABase, 0);
+	VIOC_WDMA_SetImageEnable(pSC_WDMABase, 0);
+	VIOC_WDMA_SetIreqStatus(pSC_WDMABase, VIOC_WDMA_IREQ_ALL_MASK); // wdma status register all clear.
 
-    output_m2m_image.Frame_width = scaler->info->Image_width;
-    output_m2m_image.Frame_height = scaler->info->Image_height;
-    output_m2m_image.Image_width = scaler->info->Image_width;
-    output_m2m_image.Image_height = scaler->info->Image_height;
-    output_m2m_image.crop_left= 0;
-    output_m2m_image.crop_top= 0;
-    output_m2m_image.crop_right= scaler->info->Image_width;
-    output_m2m_image.crop_bottom= scaler->info->Image_height;
-    output_m2m_image.fmt = dest_fmt;
-    output_m2m_image.addr0 = scaler->info->dst_addr0;
-	#ifdef CONFIG_VIOC_MAP_DECOMP
-	output_m2m_image.private_data.optional_info[VID_OPT_HAVE_MC_INFO] = 0;
-	output_m2m_image.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
-	#endif
-	#ifdef CONFIG_VIOC_DTRC
-	output_m2m_image.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] = 0;
-	output_m2m_image.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
-	#endif
+	output_m2m_image.Frame_width = scaler->info->Image_width;
+	output_m2m_image.Frame_height = scaler->info->Image_height;
+	output_m2m_image.Image_width = scaler->info->Image_width;
+	output_m2m_image.Image_height = scaler->info->Image_height;
+	output_m2m_image.crop_left= 0;
+	output_m2m_image.crop_top= 0;
+	output_m2m_image.crop_right= scaler->info->Image_width;
+	output_m2m_image.crop_bottom= scaler->info->Image_height;
+	output_m2m_image.fmt = dest_fmt;
+	output_m2m_image.addr0 = scaler->info->dst_addr0;
+	output_m2m_image.addr1 = scaler->info->dst_addr1;
+	output_m2m_image.addr2 = scaler->info->dst_addr2;
 
 	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	dvprintk("%s-%d : Done(0x%x) \n", __func__, __LINE__, DV_PROC_CHECK);
@@ -1833,10 +1839,7 @@ void TCC_VIQE_Scaler_Sub_Repeat60Hz_M2M(struct tcc_lcdc_image_update *input_imag
 		VIOC_SC_SetDstSize(pSC_SCALERBase, input_image->buffer_Image_width, input_image->buffer_Image_height);
 		VIOC_SC_SetOutSize(pSC_SCALERBase, input_image->buffer_Image_width, input_image->buffer_Image_height);
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
-		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
-		{
-			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
-		}
+		VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
 
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
@@ -1884,6 +1887,15 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 
 	memcpy(scaler_sub->info, (struct tcc_lcdc_image_update*)input_image, sizeof(struct tcc_lcdc_image_update));
 	memcpy(&output_m2m_image_sub, (struct tcc_lcdc_image_update*)input_image, sizeof(struct tcc_lcdc_image_update));
+#ifdef CONFIG_VIOC_MAP_DECOMP
+	output_m2m_image_sub.private_data.optional_info[VID_OPT_HAVE_MC_INFO] = 0;
+	output_m2m_image_sub.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
+#endif
+#ifdef CONFIG_VIOC_DTRC
+	output_m2m_image_sub.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] = 0;
+	output_m2m_image_sub.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
+#endif
+
 	dvprintk("%s : %d(%d), %d(%d), intl(%d/%d)\n",__func__, output_m2m_image_sub.buffer_unique_id, output_m2m_image_sub.odd_first_flag, input_image->buffer_unique_id,
 			input_image->odd_first_flag,  input_image->frameInfo_interlace, input_image->deinterlace_mode);
     crop_width = scaler_sub->info->crop_right - scaler_sub->info->crop_left;
@@ -1915,9 +1927,6 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 #ifdef CONFIG_VIOC_MAP_DECOMP
 	if((gUse_MapConverter&SUB_USED) && scaler_sub->info->private_data.optional_info[VID_OPT_HAVE_MC_INFO] != 0)
 	{
-		// rdma
-		if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
-			VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 
 		// scaler
 		VIOC_SC_SetBypass(pSC_SCALERBase, 0);
@@ -1926,6 +1935,9 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -1946,9 +1958,6 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 #ifdef CONFIG_VIOC_DTRC
 	if((gUse_DtrcConverter&SUB_USED) && scaler_sub->info->private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] != 0)
 	{
-		// rdma
-		if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
-			VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 
 		// scaler
 		VIOC_SC_SetBypass(pSC_SCALERBase, 0);
@@ -1957,6 +1966,9 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -2066,6 +2078,9 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_SC_SetOutPosition(pSC_SCALERBase, 0, 0);
 		if(scaler_sub->sc->id != VIOC_CONFIG_GetScaler_PluginToRDMA(scaler_sub->rdma->id))
 		{
+			// rdma
+			if(__raw_readl(pSC_RDMABase+RDMACTRL) & RDMACTRL_IEN_MASK)
+				VIOC_RDMA_SetImageDisable(pSC_RDMABase);
 			VIOC_CONFIG_PlugIn(scaler_sub->sc->id, scaler_sub->rdma->id);
 		}
 		VIOC_SC_SetUpdate(pSC_SCALERBase);
@@ -2107,29 +2122,22 @@ void TCC_VIQE_Scaler_Sub_Run60Hz_M2M(struct tcc_lcdc_image_update* input_image)
 		VIOC_WDMA_SetImageBase(pSC_WDMABase, (unsigned int)scaler_sub->info->dst_addr0, (unsigned int)scaler_sub->info->dst_addr1, (unsigned int)scaler_sub->info->dst_addr2);
 	}
 
-    VIOC_WDMA_SetImageR2YEnable(pSC_WDMABase, 0);
-    VIOC_WDMA_SetImageEnable(pSC_WDMABase, 0);
-    VIOC_WDMA_SetIreqStatus(pSC_WDMABase, VIOC_WDMA_IREQ_ALL_MASK); // wdma status register all clear.
+	VIOC_WDMA_SetImageR2YEnable(pSC_WDMABase, 0);
+	VIOC_WDMA_SetImageEnable(pSC_WDMABase, 0);
+	VIOC_WDMA_SetIreqStatus(pSC_WDMABase, VIOC_WDMA_IREQ_ALL_MASK); // wdma status register all clear.
 
-    output_m2m_image_sub.Frame_width = scaler_sub->info->Image_width;
-    output_m2m_image_sub.Frame_height = scaler_sub->info->Image_height;
-    output_m2m_image_sub.Image_width = scaler_sub->info->Image_width;
-    output_m2m_image_sub.Image_height = scaler_sub->info->Image_height;
-    output_m2m_image_sub.crop_left= 0;
-    output_m2m_image_sub.crop_top= 0;
-    output_m2m_image_sub.crop_right= scaler_sub->info->Image_width;
-    output_m2m_image_sub.crop_bottom= scaler_sub->info->Image_height;
-    output_m2m_image_sub.fmt = dest_fmt;
-    output_m2m_image_sub.addr0 = scaler_sub->info->dst_addr0;
-
-#ifdef CONFIG_VIOC_MAP_DECOMP
-	output_m2m_image_sub.private_data.optional_info[VID_OPT_HAVE_MC_INFO] = 0;
-	output_m2m_image_sub.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
-#endif
-#ifdef CONFIG_VIOC_DTRC
-	output_m2m_image_sub.private_data.optional_info[VID_OPT_HAVE_DTRC_INFO] = 0;
-	output_m2m_image_sub.private_data.optional_info[VID_OPT_BIT_DEPTH] = 0;
-#endif
+	output_m2m_image_sub.Frame_width = scaler_sub->info->Image_width;
+	output_m2m_image_sub.Frame_height = scaler_sub->info->Image_height;
+	output_m2m_image_sub.Image_width = scaler_sub->info->Image_width;
+	output_m2m_image_sub.Image_height = scaler_sub->info->Image_height;
+	output_m2m_image_sub.crop_left= 0;
+	output_m2m_image_sub.crop_top= 0;
+	output_m2m_image_sub.crop_right= scaler_sub->info->Image_width;
+	output_m2m_image_sub.crop_bottom= scaler_sub->info->Image_height;
+	output_m2m_image_sub.fmt = dest_fmt;
+	output_m2m_image_sub.addr0 = scaler_sub->info->dst_addr0;
+	output_m2m_image_sub.addr1 = scaler_sub->info->dst_addr1;
+	output_m2m_image_sub.addr2 = scaler_sub->info->dst_addr2;
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	dvprintk("%s-%d : Done(0x%x) \n", __func__, __LINE__, DV_PROC_CHECK);
