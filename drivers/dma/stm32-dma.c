@@ -824,11 +824,13 @@ static void stm32_mdma_chan_complete(void *param,
 				     const struct dmaengine_result *result)
 {
 	struct stm32_dma_chan *chan = param;
+	int ret;
 
 	chan->busy = false;
 	if (result->result == DMA_TRANS_NOERROR) {
-		if (stm32_dma_mdma_flush_remaining(chan)) {
-			dev_err(chan2dev(chan), "Can't flush DMA\n");
+		ret = stm32_dma_mdma_flush_remaining(chan);
+		if (ret) {
+			dev_err(chan2dev(chan), "Can't flush DMA: %d\n", ret);
 			return;
 		}
 
