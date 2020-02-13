@@ -263,6 +263,7 @@ void pcie_do_fatal_recovery(struct pci_dev *dev, u32 service)
 		 * of the bridge and clear the error status of the bridge.
 		 */
 		pci_aer_clear_fatal_status(dev);
+		pci_aer_clear_device_status(dev);
 	}
 
 	if (result == PCI_ERS_RESULT_RECOVERED) {
