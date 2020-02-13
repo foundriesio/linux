@@ -2,6 +2,7 @@
 #include <linux/module.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 #include "tee_trace.h"
 
 #define LOG_MAX_SIZE	(4*1024 - 8)
@@ -31,7 +32,7 @@ void tee_trace_config(char *base, uint32_t size)
 	}
 }
 
-int tee_trace_get_log(uint64_t addr, uint64_t size)
+int tee_trace_get_log(uint64_t __user addr, uint64_t size)
 {
 	uint32_t head;
 	int wsize = 0;
@@ -44,7 +45,7 @@ int tee_trace_get_log(uint64_t addr, uint64_t size)
 
 	head = trace->log->head;
 	if (head >= LOG_MAX_SIZE) {
-		pr_err("%s: trace log head overflowed. head:0x%x\n", \
+		pr_err("[ERROR][OPTEE] %s: trace log head overflowed. head:0x%x\n", \
 			__func__, head);
 		return -EFAULT;
 	}
@@ -53,13 +54,15 @@ int tee_trace_get_log(uint64_t addr, uint64_t size)
 		wsize = head - trace->log->tail;
 		if (wsize > size)
 			wsize = size;
-		memcpy((void *)addr, &trace->base[trace->log->tail], wsize);
+		if (copy_to_user(addr, &trace->base[trace->log->tail], wsize))
+			return -EFAULT;
 	}
 	else if (trace->log->tail > head) {
 		wsize = LOG_MAX_SIZE - trace->log->tail;
 		if (wsize > size)
 			wsize = size;
-		memcpy((void *)addr, &trace->base[trace->log->tail], wsize);
+		if (copy_to_user(addr, &trace->base[trace->log->tail], wsize))
+			return -EFAULT;
 	}
 	trace->log->tail = trace->log->tail + wsize;
 
