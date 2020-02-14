@@ -265,6 +265,11 @@ static int rm68200_unprepare(struct drm_panel *panel)
 
 	msleep(120);
 
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+		msleep(20);
+	}
+
 	regulator_disable(ctx->supply);
 
 	ctx->prepared = false;
