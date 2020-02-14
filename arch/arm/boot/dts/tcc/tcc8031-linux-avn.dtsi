@@ -423,10 +423,9 @@
 		ak4601: ak4601@10 {
 			compatible = "akm,ak4601";
 			ak4601,pdn-gpio = <&gpe 14 0>;
-
-			cmute-gpios = <&gpe 15 1>;	//CODEC_MUTE    0: active high, 1: active low
-			amute-gpios = <&gpma 1 0>;	//AMP_MUTE      0: active high, 1: active low
-			stanby-gpios = <&gpma 2 0>;	//AMP_STBY      0: active high, 1: active low		
+			//mute-gpios = <&gpe 15 0>;     //CODEC_MUTE    0: active high, 1: active low
+			mute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
+			stanby-gpios = <&gpma 2 0>;     //AMP_STBY      0: active high, 1: active low
 			reg = <0x10>;
 		};
 	};
