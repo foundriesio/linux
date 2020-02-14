@@ -50,7 +50,7 @@ int videosource_create_attr_loglevel(struct device * dev) {
 
 	ret = device_create_file(dev, &dev_attr_videosource_attr_loglevel);
 	if(ret < 0)
-		log("failed create sysfs: videosource_attr_loglevel\n");
+		loge("failed create sysfs: videosource_attr_loglevel\n");
 
 	// set log level as default
 	atomic_set(&videosource_attr_loglevel, LOGLEVEL);

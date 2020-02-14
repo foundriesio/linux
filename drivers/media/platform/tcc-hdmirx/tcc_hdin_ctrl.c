@@ -25,7 +25,14 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tcc_hdin_main.h"
 
 static int debug	   = 0;
-#define dprintk(msg...)	if (debug) { printk( "tcc_hdin_ctrl: " msg); }
+
+#define LOG_MODULE_NAME "HDMI"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) if (debug) logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
 
 int hdin_ctrl_get_resolution(struct file *file)
 {
@@ -47,7 +54,7 @@ int hdin_ctrl_get_fps(int *nFrameRate)
 	}
 	else
 	{
-		printk("Sensor Driver dosen't have frame rate information!!\n");
+		log("Sensor Driver dosen't have frame rate information!!\n");
 		return -1;
 	}
 }
@@ -82,7 +89,7 @@ int hdin_ctrl_get_audio_output_signal(struct tcc_hdin_device *vdev)
 		}
 		else
 		{
-			printk("hdin audio is not operation....\n");
+			log("hdin audio is not operation....\n");
 			return false;
 		}
 	}
@@ -142,7 +149,7 @@ int hdin_ctrl_init(struct file *file)
 	struct tcc_hdin_device *dev = video_drvdata(file);
 	struct hdin_gpio *gpio = &dev->gpio;
 	
-	dprintk("interrupt pin value = %d \n",gpio_get_value(gpio->int_port));
+	logd("interrupt pin value = %d \n",gpio_get_value(gpio->int_port));
 
 	hdin_ctrl_port_disable(gpio->key_port);
 	hdin_ctrl_port_enable(gpio->key_port);
@@ -167,7 +174,7 @@ void hdin_ctrl_cleanup(struct file *file)
 {
 
 	struct tcc_hdin_device *dev = video_drvdata(file);
-	dprintk("hdin_enabled = [%d]\n", dev->hdin_enabled);
+	logd("hdin_enabled = [%d]\n", dev->hdin_enabled);
 	
 	if(dev->hdin_enabled)
 	{

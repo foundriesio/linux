@@ -27,7 +27,14 @@ Suite 330, Boston, MA 02111-1307 USA
 #include <linux/i2c.h>
 
 static int debug	   = 0;
-#define dprintk(msg...)	if (debug) { printk( "Tcc_hdin_i2c: " msg); }
+
+#define LOG_MODULE_NAME "HDMI"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) if (debug) logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
 
 // check for send & receive message.
 //#define HDIN_I2C_SEND
@@ -59,14 +66,14 @@ static int hdin_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
 	chip = kzalloc(sizeof(struct hdin_i2c_chip_info), GFP_KERNEL);
 	if(chip == NULL)
 	{
-		printk("\n tcc_hdin_i2c  :  no chip info. \n");
+		log("no chip info. \n");
 		return -ENOMEM;
 	}
 
 	chip->client = client;
 	i2c_set_clientdata(client, chip);
 	hdin_i2c_client = client;
-	printk(KERN_INFO "_______%s() : addr = 0x%x , hdin_i2c_client = 0x%p \n", __func__, (client->addr)<<1,hdin_i2c_client);
+	log("addr = 0x%x , hdin_i2c_client = 0x%p \n", (client->addr)<<1,hdin_i2c_client);
 
 	return 0;
 }
@@ -105,9 +112,7 @@ int DDI_I2C_Write_HDMI_IN(unsigned short reg, unsigned char* data, unsigned shor
 #if defined(HDIN_I2C_SEND)	
 	int i=0;  	//for debug
 #endif	
-
-	dprintk("DDI_I2C_Write_HDMI_IN \n");
-	
+	logd("DDI_I2C_Write_HDMI_IN \n");
 
 	if(reg_bytes == 2)
 	{
@@ -125,15 +130,15 @@ int DDI_I2C_Write_HDMI_IN(unsigned short reg, unsigned char* data, unsigned shor
 		memcpy(&buffer[1],data,data_bytes);
 	}
 #if defined(HDIN_I2C_SEND)
-	printk("I2C_Write_HDMI_IN : writing addr = 0x");
-	for(i=0;i<reg_bytes;i++)	printk("%02x",buffer[i]);
-	printk(", writing value = 0x");
-	for(i=reg_bytes;i<bytes;i++)printk("%02x",buffer[i]);
-	printk(" \n");
+	log("writing addr = 0x");
+	for(i=0;i<reg_bytes;i++) log("%02x",buffer[i]);
+	log(", writing value = 0x");
+	for(i=reg_bytes;i<bytes;i++) log("%02x",buffer[i]);
+	log(" \n");
 #endif
 	if(i2c_master_send(hdin_i2c_client, buffer, bytes) != bytes)
 	{
-		printk("write error!!!! \n");
+		log("write error!!!! \n");
 		return -EIO; 
 	}
 	return 0;
@@ -158,20 +163,20 @@ int DDI_I2C_Read_HDMI_IN(unsigned short reg, unsigned char reg_bytes, unsigned c
 	}
 	if(i2c_master_send(hdin_i2c_client, data, reg_bytes) != reg_bytes)
 	{
-	     printk("write error for read!!!! \n");			
+	     log("write error for read!!!! \n");
 	     return -EIO; 
 	}
 
 
 	if(i2c_master_recv(hdin_i2c_client, val, val_bytes) != val_bytes)
 	{
-		printk("read error!!!! \n");
+		log("read error!!!! \n");
 		return -EIO; 
 	}
 #if defined(HDIN_I2C_RECEIVE)
-	printk("I2C_Read_HDMI_IN : read addr = 0x");
-	for(i=0;i<reg_bytes;i++)	printk("%02x",data[i]);
-	printk(", read value = 0x%02x \n",*val);
+	log("I2C_Read_HDMI_IN : read addr = 0x");
+	for(i=0;i<reg_bytes;i++) log("%02x",data[i]);
+	log(", read value = 0x%02x \n",*val);
 #endif
     return 0;
 }
