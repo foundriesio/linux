@@ -19,6 +19,7 @@
 #include <linux/memory_hotplug.h>
 #include <linux/mm.h>
 #include <linux/mutex.h>
+#include <linux/radix-tree.h>
 #include <linux/stat.h>
 #include <linux/slab.h>
 
@@ -47,6 +48,13 @@ static struct bus_type memory_subsys = {
 	.online = memory_subsys_online,
 	.offline = memory_subsys_offline,
 };
+
+/*
+ * Memory blocks are cached in a local radix tree to avoid
+ * a costly linear search for the corresponding device on
+ * the subsystem bus.
+ */
+static RADIX_TREE(memory_blocks, GFP_KERNEL);
 
 static BLOCKING_NOTIFIER_HEAD(memory_chain);
 
@@ -544,6 +552,9 @@ store_soft_offline_page(struct device *dev,
 	pfn >>= PAGE_SHIFT;
 	if (!pfn_valid(pfn))
 		return -ENXIO;
+	/* Only online pages can be soft-offlined (esp., not ZONE_DEVICE). */
+	if (!pfn_to_online_page(pfn))
+		return -EIO;
 	ret = soft_offline_page(pfn_to_page(pfn), 0);
 	return ret == 0 ? count : ret;
 }
@@ -579,36 +590,21 @@ int __weak arch_get_memory_phys_device(unsigned long start_pfn)
 	return 0;
 }
 
-/*
- * A reference for the returned object is held and the reference for the
- * hinted object is released.
- */
-struct memory_block *find_memory_block_hinted(struct mem_section *section,
-					      struct memory_block *hint)
-{
-	int block_id = base_memory_block_id(__section_nr(section));
-	struct device *hintdev = hint ? &hint->dev : NULL;
-	struct device *dev;
-
-	dev = subsys_find_device_by_id(&memory_subsys, block_id, hintdev);
-	if (hint)
-		put_device(&hint->dev);
-	if (!dev)
-		return NULL;
-	return to_memory_block(dev);
-}
-
-/*
- * For now, we have a linear search to go find the appropriate
- * memory_block corresponding to a particular phys_index. If
- * this gets to be a real problem, we can always use a radix
- * tree or something here.
- *
- * This could be made generic for all device subsystems.
- */
 struct memory_block *find_memory_block(struct mem_section *section)
 {
-	return find_memory_block_hinted(section, NULL);
+	int block_id = base_memory_block_id(__section_nr(section));
+	struct memory_block *mem;
+
+	mem = radix_tree_lookup(&memory_blocks, block_id);
+	if (mem)
+		get_device(&mem->dev);
+	return mem;
+}
+
+struct memory_block *find_memory_block_hinted(struct mem_section *section,
+		struct memory_block *hint)
+{
+	return find_memory_block(section);
 }
 
 static struct attribute *memory_memblk_attrs[] = {
@@ -637,13 +633,25 @@ static const struct attribute_group *memory_memblk_attr_groups[] = {
 static
 int register_memory(struct memory_block *memory)
 {
+	int ret;
+
 	memory->dev.bus = &memory_subsys;
 	memory->dev.id = memory->start_section_nr / sections_per_block;
 	memory->dev.release = memory_block_release;
 	memory->dev.groups = memory_memblk_attr_groups;
 	memory->dev.offline = memory->state == MEM_OFFLINE;
 
-	return device_register(&memory->dev);
+	ret = device_register(&memory->dev);
+	if (ret) {
+		put_device(&memory->dev);
+		return ret;
+	}
+	ret = radix_tree_insert(&memory_blocks, memory->dev.id, memory);
+	if (ret) {
+		put_device(&memory->dev);
+		device_unregister(&memory->dev);
+	}
+	return ret;
 }
 
 static int init_memory_block(struct memory_block **memory,
@@ -730,6 +738,8 @@ static void
 unregister_memory(struct memory_block *memory)
 {
 	BUG_ON(memory->dev.bus != &memory_subsys);
+
+	WARN_ON(radix_tree_delete(&memory_blocks, memory->dev.id) == NULL);
 
 	/* drop the ref. we got in remove_memory_block() */
 	put_device(&memory->dev);
