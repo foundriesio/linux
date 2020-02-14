@@ -6,7 +6,7 @@ repo_list=(
 	"http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu/pool/main/l/linux-raspi2-5.4"
 )
 
-package_prefixes linux-image linux-modules
+package_prefixes linux-buildinfo
 
 getall armhf raspi2
 getall arm64 raspi2
