@@ -262,7 +262,7 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 
 			if(ret) {
 				if(4 <= ++err_cnt) {
-					printk("ERROR: Sensor I2C !!!! \n");
+					loge("Sensor I2C !!!! \n");
 					return ret;
 				}
 			} else {
@@ -277,14 +277,14 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 				}
 
 				if(list->val != value)
-					printk("ERROR : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
+					logd("ERROR :addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
 				else
-					printk("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
+					logd("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
 #endif
 
 #if 0
 				if((unsigned int)list->reg == (unsigned int)0x90) {
-	//				printk("%s - delay(1)\n", __func__);
+	//				logd("delay(1)\n");
 					mdelay(1);
 				}
 #endif
@@ -315,8 +315,8 @@ static void check_interrupt_status(struct i2c_client * client)
 	DDI_I2C_Read(client, 0x76, 1, &LINE_LEN_0, 1);
 	val |= LINE_LEN_0;
 
-//	printk("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
-	printk("line length  %d \n", val);
+//	logd("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
+	logd("line length  %d \n", val);
 
 	/*
 	 *	LINE_COUNT_1 = ReadI2C(0x73)
@@ -331,8 +331,8 @@ static void check_interrupt_status(struct i2c_client * client)
 	DDI_I2C_Read(client, 0x74, 1, &LINE_COUNT_0, 1);
 	val |= LINE_COUNT_0;
 
-//	printk("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
-	printk("line count %d \n", val);
+//	logd("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
+	logd("line count %d \n", val);
 
 #if 0
 	/*
@@ -341,23 +341,23 @@ static void check_interrupt_status(struct i2c_client * client)
 	DDI_I2C_Read(client, 0xDB, 1, &PORT_ISR_LO, 1);
 
 #if 1
-//	  printk("0xDB PORT_ISR_LO : 0x%x \n", PORT_ISR_LO); //# readout; cleared by RX_PORT_STS2
+//	  logd("0xDB PORT_ISR_LO : 0x%x \n", PORT_ISR_LO); //# readout; cleared by RX_PORT_STS2
 	if ((PORT_ISR_LO & 0x40) >> 6) {
-		printk("# IS_LINE_LEN_CHG INTERRUPT DETECTED \n");
+		logd("# IS_LINE_LEN_CHG INTERRUPT DETECTED \n");
 	}
 	if ((PORT_ISR_LO & 0x20) >> 5) {
-		printk( "# IS_LINE_CNT_CHG DETECTED \n");
+		logd( "# IS_LINE_CNT_CHG DETECTED \n");
 	}
 	if ((PORT_ISR_LO & 0x10) >> 4)
-		printk( "# IS_BUFFER_ERR DETECTED \n");
+		logd( "# IS_BUFFER_ERR DETECTED \n");
 	if ((PORT_ISR_LO & 0x08) >> 3)
-		printk( "# IS_CSI_RX_ERR DETECTED \n");
+		logd( "# IS_CSI_RX_ERR DETECTED \n");
 	if ((PORT_ISR_LO & 0x04) >> 2)
-		printk( "# IS_FPD3_PAR_ERR DETECTED \n");
+		logd( "# IS_FPD3_PAR_ERR DETECTED \n");
 	if ((PORT_ISR_LO & 0x02) >> 1)
-		printk( "# IS_PORT_PASS DETECTED \n");
+		logd( "# IS_PORT_PASS DETECTED \n");
 	if ((PORT_ISR_LO & 0x01) )
-		printk( "# IS_LOCK_STS DETECTED \n");
+		logd( "# IS_LOCK_STS DETECTED \n");
  #endif
 	/*
 	 *	PORT_ISR_HI = ReadI2C(0xDA)
@@ -365,14 +365,14 @@ static void check_interrupt_status(struct i2c_client * client)
 	DDI_I2C_Read(client, 0xDA, 1, &PORT_ISR_HI, 1);
 
 #if 0
-//	  printk("0xDA PORT_ISR_HI : 0x%x \n", PORT_ISR_HI); //# readout; cleared by RX_PORT_STS2
+//	  logd("0xDA PORT_ISR_HI : 0x%x \n", PORT_ISR_HI); //# readout; cleared by RX_PORT_STS2
 
 	if ((PORT_ISR_HI & 0x04) >> 2)
-		printk( "# IS_FPD3_ENC_ERR DETECTED \n");
+		logd( "# IS_FPD3_ENC_ERR DETECTED \n");
 	if ((PORT_ISR_HI & 0x02) >> 1)
-		printk( "# IS_BCC_SEQ_ERR DETECTED \n");
+		logd( "# IS_BCC_SEQ_ERR DETECTED \n");
 	if ((PORT_ISR_HI & 0x01) )
-		printk( "# IS_BCC_CRC_ERR DETECTED \n");
+		logd( "# IS_BCC_CRC_ERR DETECTED \n");
 #endif
 #endif
 
@@ -381,43 +381,43 @@ static void check_interrupt_status(struct i2c_client * client)
 	 */
 	DDI_I2C_Read(client, 0x4D, 1, &RX_PORT_STS1, 1);
 
-//	printk("0x4D RX_PORT_STS1 : 0x%x \n", RX_PORT_STS1);
+//	logd("0x4D RX_PORT_STS1 : 0x%x \n", RX_PORT_STS1);
 
 #if 0
 	if (((RX_PORT_STS1 & 0xc0) >> 6) == 3)
-		printk( "# RX_PORT_NUM = RX3 \n");
+		logd( "# RX_PORT_NUM = RX3 \n");
 	else if (((RX_PORT_STS1 & 0xc0) >> 6) == 2)
-		printk( "# RX_PORT_NUM = RX2 \n");
+		logd( "# RX_PORT_NUM = RX2 \n");
 	else if (((RX_PORT_STS1 & 0xc0) >> 6) == 1)
-		printk( "# RX_PORT_NUM = RX1 \n");
+		logd( "# RX_PORT_NUM = RX1 \n");
 	else if (((RX_PORT_STS1 & 0xc0) >> 6) == 0)
-		printk( "# RX_PORT_NUM = RX0 \n");
+		logd( "# RX_PORT_NUM = RX0 \n");
 #endif
 
 	if ((RX_PORT_STS1 & 0x20) >> 5)
-		printk( "# BCC_CRC_ERR DETECTED \n");
+		logd( "# BCC_CRC_ERR DETECTED \n");
 	if ((RX_PORT_STS1 & 0x10) >> 4)
-		printk( "# LOCK_STS_CHG DETECTED \n");
+		logd( "# LOCK_STS_CHG DETECTED \n");
 	if ((RX_PORT_STS1 & 0x08) >> 3)
-		printk( "# BCC_SEQ_ERROR DETECTED \n");
+		logd( "# BCC_SEQ_ERROR DETECTED \n");
 	if ((RX_PORT_STS1 & 0x04) >> 2)
-		printk( "# PARITY_ERROR DETECTED \n");
+		logd( "# PARITY_ERROR DETECTED \n");
 	if ((RX_PORT_STS1 & 0x02) >> 1)
-		printk( "# PORT_PASS=1 \n");
+		logd( "# PORT_PASS=1 \n");
 	if ((RX_PORT_STS1 & 0x01) )
-		printk( "# LOCK_STS=1 \n");
+		logd( "# LOCK_STS=1 \n");
 
 	/*
 	 *	RX_PORT_STS2 = ReadI2C(0x4E)
 	 */
 	DDI_I2C_Read(client, 0x4E, 1, &RX_PORT_STS2, 1);
 
-//	printk("0x4E RX_PORT_STS2 : 0x%x \n", RX_PORT_STS2);
+//	logd("0x4E RX_PORT_STS2 : 0x%x \n", RX_PORT_STS2);
 
 	if ((RX_PORT_STS2 & 0x80) >> 7)
-		printk( "# LINE_LEN_UNSTABLE DETECTED \n");
+		logd( "# LINE_LEN_UNSTABLE DETECTED \n");
 	if ((RX_PORT_STS2 & 0x40) >> 6) {
-		printk( "# LINE_LEN_CHG \n");
+		logd( "# LINE_LEN_CHG \n");
 
 		/*
 		 *	LINE_LEN_1 = ReadI2C(0x75)
@@ -432,21 +432,21 @@ static void check_interrupt_status(struct i2c_client * client)
 		DDI_I2C_Read(client, 0x76, 1, &LINE_LEN_0, 1);
 		val |= LINE_LEN_0;
 
-	//	printk("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
-		printk("line length  %d \n", val);
+	//	logd("line length high : 0x%x , line length low : 0x%x (%d) \n", LINE_LEN_1, LINE_LEN_0, val);
+		logd("line length  %d \n", val);
 	}
 	if ((RX_PORT_STS2 & 0x20) >> 5)
-		printk( "# FPD3_ENCODE_ERROR DETECTED \n");
+		logd( "# FPD3_ENCODE_ERROR DETECTED \n");
 	if ((RX_PORT_STS2 & 0x10) >> 4)
-		printk( "# BUFFER_ERROR DETECTED \n");
+		logd( "# BUFFER_ERROR DETECTED \n");
 	if ((RX_PORT_STS2 & 0x08) >> 3)
-		printk( "# CSI_ERR DETECTED \n");
+		logd( "# CSI_ERR DETECTED \n");
 	if ((RX_PORT_STS2 & 0x04) >> 2)
-		printk( "# FREQ_STABLE DETECTED \n");
+		logd( "# FREQ_STABLE DETECTED \n");
 	if ((RX_PORT_STS2 & 0x02) >> 1)
-		printk( "# NO_FPD3_CLK DETECTED \n");
+		logd( "# NO_FPD3_CLK DETECTED \n");
 	if ((RX_PORT_STS2 & 0x01) ) {
-		printk( "# LINE_CNT_CHG DETECTED \n");
+		logd( "# LINE_CNT_CHG DETECTED \n");
 
 		/*
 		 *	LINE_COUNT_1 = ReadI2C(0x73)
@@ -461,11 +461,11 @@ static void check_interrupt_status(struct i2c_client * client)
 		DDI_I2C_Read(client, 0x74, 1, &LINE_COUNT_0, 1);
 		val |= LINE_COUNT_0;
 
-	//	printk("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
-		printk("line count %d \n", val);
+	//	logd("line count high : 0x%x , line count low : 0x%x (%d) \n", LINE_COUNT_1, LINE_COUNT_0, val);
+		logd("line count %d \n", val);
 
 	}
-	printk("\n\n");
+	logd("\n\n");
 }
 
 static void process_interrupt(struct i2c_client * client) {
@@ -475,23 +475,23 @@ static void process_interrupt(struct i2c_client * client) {
 	FUNCTION_IN
 
 	if(DDI_I2C_Read(client, 0x24 , 1, &interrupt_sts, 1)) {
-	   printk("ERROR: Sensor I2C !!!! \n");
+	   logd("ERROR: Sensor I2C !!!! \n");
 	   return /*IRQ_HANDLED*/;
 	}
 
 	// find where does interrupt occurred
 	if ((interrupt_sts & 0x80) >> 7)
-		printk( "# GLOBAL INTERRUPT DETECTED \n");
+		logd( "# GLOBAL INTERRUPT DETECTED \n");
 
 	if ((interrupt_sts & 0x40) >> 6)
-		printk( "# RESERVED \n");
+		logd( "# RESERVED \n");
 
 	if ((interrupt_sts & 0x20) >> 5) {
-		printk( "# IS_CSI_TX1 DETECTED \n");
+		logd( "# IS_CSI_TX1 DETECTED \n");
 
 	}
 	if ((interrupt_sts & 0x10) >> 4) {
-		printk("# ====== IS_CSI_TX0 DETECTED \n");
+		logd("# ====== IS_CSI_TX0 DETECTED \n");
 
 		data[0] = 0x32;
 		data[1] = 0x01;
@@ -500,16 +500,16 @@ static void process_interrupt(struct i2c_client * client) {
 
 		DDI_I2C_Read(client, 0x37, 1, &retVal, 1);
 
-		printk("CSI_TX_ISR(0x37) : 0x%x \n", retVal);
+		logd("CSI_TX_ISR(0x37) : 0x%x \n", retVal);
 
 		if (((retVal & 0x08) >> 3) == 1)
-			printk( "# IS_CSI_SYNC_ERROR DETTECTED\n");
+			logd( "# IS_CSI_SYNC_ERROR DETTECTED\n");
 
-		printk("\n\n");
+		logd("\n\n");
 
 	}
 	if ((interrupt_sts & 0x08) >> 3) {
-		printk("# ====== IS_RX3 DETECTED \n");
+		logd("# ====== IS_RX3 DETECTED \n");
 
 		data[0] = 0x4c;
 		data[1] = 0x38;
@@ -519,7 +519,7 @@ static void process_interrupt(struct i2c_client * client) {
 		check_interrupt_status(client);
 	}
 	if ((interrupt_sts & 0x04) >> 2) {
-		printk("# ====== IS_RX2 DETECTED \n");
+		logd("# ====== IS_RX2 DETECTED \n");
 
 		data[0] = 0x4c;
 		data[1] = 0x24;
@@ -528,7 +528,7 @@ static void process_interrupt(struct i2c_client * client) {
 		check_interrupt_status(client);
 	}
 	if ((interrupt_sts & 0x02) >> 1) {
-		printk("# ====== IS_RX1 DETECTED \n");
+		logd("# ====== IS_RX1 DETECTED \n");
 
 		data[0] = 0x4c;
 		data[1] = 0x12;
@@ -538,7 +538,7 @@ static void process_interrupt(struct i2c_client * client) {
 
 	}
 	if ((interrupt_sts & 0x01) ) {
-		printk("# ====== IS_RX0 DETECTED \n");
+		logd("# ====== IS_RX0 DETECTED \n");
 
 		data[0] = 0x4c;
 		data[1] = 0x01;
@@ -564,12 +564,12 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 		if(0 < gpio->intb_port) {
 			des_irq_num = gpio_to_irq(gpio->intb_port);
 
-			printk("des_irq_num : %d \n", des_irq_num);
+			log("des_irq_num : %d \n", des_irq_num);
 
 //			if(request_irq(des_irq_num, irq_handler, IRQF_TRIGGER_FALLING, "ds90ub964", NULL)) {
 //			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_SHARED | IRQF_TRIGGER_FALLING, "ds90ub964", "ds90ub964")) {
 			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_TRIGGER_FALLING, "ds90ub964", NULL)) {
-				printk("fail request irq(%d) \n", des_irq_num);
+				loge("fail request irq(%d) \n", des_irq_num);
 
 				return -1;
 			}
@@ -615,7 +615,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	int	ret		= 0;
 
 	if((entry <= 0) || (mode < 0) || (entry <= mode)) {
-		printk("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
+		loge("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
 		return -1;
 	}
 

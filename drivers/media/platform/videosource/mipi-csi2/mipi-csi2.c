@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 
+#include "../videosource_common.h"
 #include "mipi-csi2.h"
 
 static struct device_node * 	mipi_csi2_np;
@@ -193,7 +194,7 @@ void MIPI_CSIS_Set_CSIS_Reset(unsigned int reset)
 
 	while(__raw_readl(reg) & CCTRL_SW_RESET_MASK) {
 		if(count > 50) {
-			pr_err("%s: fail reset \n", __func__);
+			loge("fail reset \n");
 			break;
 		}
 		mdelay(1);
@@ -317,11 +318,11 @@ static int __init mipi_csi2_init(void)
 	// Find mipi_csi2 node
 	mipi_csi2_np = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
 	if (mipi_csi2_np == NULL) {
-		pr_err("cann't find mipi csi2 node \n");
+		loge("cann't find mipi csi2 node \n");
 	}
 	else {
 		mipi_csi2_base = (volatile void __iomem *)of_iomap(mipi_csi2_np, 0);
-		printk("%s addr :%p \n", __func__, mipi_csi2_base);
+		log("addr :%p \n", mipi_csi2_base);
 	}
 
 #if 0

@@ -164,7 +164,7 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 
 			if(ret) {
 				if(4 <= ++err_cnt) {
-					printk("ERROR: Sensor I2C !!!! \n");
+					loge("Sensor I2C !!!! \n");
 					return ret;
 				}
 			} else {
@@ -179,14 +179,14 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 				}
 
 				if(list->val != value)
-					printk("ERROR : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
+					logd("ERROR : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
 				else
-					printk("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
+					logd("OK : addr(0x%x) write(0x%x) read(0x%x) \n", list->reg, list->val, value);
 #endif
 
 #if 0
 				if((unsigned int)list->reg == (unsigned int)0x90) {
-	//				printk("%s - delay(1)\n", __func__);
+	//				logd("delay(1)\n");
 					mdelay(1);
 				}
 #endif
@@ -213,12 +213,12 @@ static int set_irq_handler(videosource_gpio_t * gpio, unsigned int enable) {
 		if(0 < gpio->intb_port) {
 			des_irq_num = gpio_to_irq(gpio->intb_port);
 
-			printk("des_irq_num : %d \n", des_irq_num);
+			logd("des_irq_num : %d \n", des_irq_num);
 
 //			if(request_irq(des_irq_num, irq_handler, IRQF_SHARED | IRQF_TRIGGER_LOW, "max9286", "max9286"))
 //			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_SHARED | IRQF_TRIGGER_FALLING, "max9286", "max9286")) {
 			if(request_threaded_irq(des_irq_num, irq_handler, irq_thread_handler, IRQF_TRIGGER_FALLING, "max9286", NULL)) {
-				printk("fail request irq(%d) \n", des_irq_num);
+				loge("fail request irq(%d) \n", des_irq_num);
 
 				return -1;
 			}
@@ -264,7 +264,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	int	ret		= 0;
 
 	if((entry <= 0) || (mode < 0) || (entry <= mode)) {
-		printk("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
+		loge("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
 		return -1;
 	}
 
@@ -288,7 +288,7 @@ static int check_status(struct i2c_client * client) {
 
 	ret = DDI_I2C_Read(client, reg, 1, &val, 1);
 	if(ret) {
-		printk("ERROR: Sensor I2C !!!! \n");
+		loge("Sensor I2C !!!! \n");
 		return -1;
 	}
 

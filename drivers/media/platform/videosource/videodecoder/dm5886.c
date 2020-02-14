@@ -114,12 +114,12 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 		ret = DDI_I2C_Write(client, data, 1, 1);
 		if(ret) {
 			if(4 <= ++err_cnt) {
-				printk("ERROR: Sensor I2C !!!! \n");
+				loge("Sensor I2C !!!! \n");
 				return ret;
 			}
 		} else {
 			if((unsigned int)list->reg == (unsigned int)0x90) {
-//				printk("%s - delay(1)\n", __func__);
+//				logd("delay(1)\n");
 				mdelay(1);
 			}
 			err_cnt = 0;
@@ -163,7 +163,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	int	ret		= 0;
 
 	if((entry <= 0) || (mode < 0) || (entry <= mode)) {
-		printk("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
+		loge("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
 		return -1;
 	}
 

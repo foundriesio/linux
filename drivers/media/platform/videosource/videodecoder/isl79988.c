@@ -93,13 +93,13 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 		ret = DDI_I2C_Write(client, data, 1, 1);
 		if(ret) {
 			if(4 <= ++err_cnt) {
-				printk("ERROR: Sensor I2C !!!! \n");
+				loge("Sensor I2C !!!! \n");
 				return ret;
 			}
 		} else {
 #if 0
 			if((unsigned int)list->reg == (unsigned int)0x90) {
-//				printk("%s - delay(1)\n", __func__);
+//				log("delay(1)\n");
 				mdelay(1);
 			}
 #endif
@@ -144,7 +144,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 	int	ret		= 0;
 
 	if((entry <= 0) || (mode < 0) || (entry <= mode)) {
-		printk("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
+		loge("The list(%d) or the mode index(%d) is wrong\n", entry, mode);
 		return -1;
 	}
 
@@ -165,7 +165,7 @@ static int check_status(struct i2c_client * client) {
 	data[1] = 0x00;		// page 0
 	ret = DDI_I2C_Write(client, data, 1, 1);
 	if(ret) {
-		dlog("videosource is not working\n");
+		loge("videosource is not working\n");
 		return -1;
 	} else {
 		while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
@@ -174,12 +174,12 @@ static int check_status(struct i2c_client * client) {
 			ret = DDI_I2C_Read(client, reg, 1, &val, 1);
 			if(ret) {
 				if(3 <= ++err_cnt) {
-					printk("ERROR: Sensor I2C !!!! \n");
+					loge("Sensor I2C !!!! \n");
 					return -1;
 				}
 			} else {
 				if((val & 0x0F) != 0x03) {
-					printk("%s - reg: 0x%04x, val: 0x%02x\n", __func__, reg, val);
+					logd("reg: 0x%04x, val: 0x%02x\n", reg, val);
 					return 0;
 				}
 				err_cnt = 0;
