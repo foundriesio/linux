@@ -726,7 +726,23 @@ static int tcc_i2s_hw_free(struct snd_pcm_substream *substream, struct snd_soc_d
 	(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s - active:%d\n", i2s->blk_no, __func__, dai->active);
 
 	spin_lock(&i2s->lock);
-
+	if((system_rev == 0u) && (i2s->tdm_mode == TRUE)) { //ES
+		//nothing to do
+	} else {
+		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			if (i2s->have_fifo_clear_bit != 0u) {
+				tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
+				tcc_dai_rx_fifo_clear(i2s->dai_reg);
+			}
+			
+			tcc_dai_rx_enable(i2s->dai_reg, FALSE);
+					
+			if (i2s->have_fifo_clear_bit != 0u) {
+				tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
+				tcc_dai_rx_fifo_release(i2s->dai_reg);
+			}
+		}
+	}
 #if defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC898X)
 	if (i2s->tdm_mode == TRUE) {
 		struct dai_reg_t regs = {0};
@@ -776,16 +792,7 @@ static int tcc_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct 
 						tcc_dai_tx_fifo_release(i2s->dai_reg);
 					}
 				} else {
-					if (i2s->have_fifo_clear_bit != 0u) {
-						tcc_dai_rx_fifo_clear(i2s->dai_reg);
-					}
-
 					tcc_dai_rx_enable(i2s->dai_reg, TRUE);
-
-					if (i2s->have_fifo_clear_bit != 0u) {
-						tcc_i2s_fifo_clear_delay(i2s, GFP_ATOMIC);
-						tcc_dai_rx_fifo_release(i2s->dai_reg);
-					}
 				}
 			}
 			break;
