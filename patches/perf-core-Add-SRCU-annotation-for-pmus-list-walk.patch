@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
-@@ -10256,7 +10256,7 @@ static struct pmu *perf_init_event(struc
+@@ -10264,7 +10264,7 @@ static struct pmu *perf_init_event(struc
  		goto unlock;
  	}
  

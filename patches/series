@@ -449,6 +449,7 @@ drm-i915-disable-tracing-on-RT.patch
 drm-i915-skip-DRM_I915_LOW_LEVEL_TRACEPOINTS-with-NO.patch
 drm-i915-Don-t-disable-interrupts-for-intel_engine_b.patch
 drm-i915-Drop-the-IRQ-off-asserts.patch
+drm-i915-gt-use-a-LOCAL_IRQ_LOCK-in-__timeline_mark_.patch
 
 # CGROUPS
 # Revisit and Post
@@ -457,6 +458,26 @@ cpuset-Convert-callback_lock-to-raw_spinlock_t.patch
 # Security
 # -next, df323337e507a ("apparmor: Use a memory pool instead per-CPU caches")
 apparmor-use-a-locallock-instead-preempt_disable.patch
+
+# BPF
+0001-sched-Provide-migrate_disable-enable-inlines.patch
+0002-sched-Provide-cant_migrate.patch
+0003-bpf-Update-locking-comment-in-hashtab-code.patch
+0004-bpf-tracing-Remove-redundant-preempt_disable-in-__bp.patch
+0005-perf-bpf-Remove-preempt-disable-around-BPF-invocatio.patch
+0006-bpf-Don-t-iterate-over-possible-CPUs-with-interrupts.patch
+0007-bpf-Provide-BPF_PROG_RUN_PIN_ON_CPU-macro.patch
+0008-bpf-Replace-cant_sleep-with-cant_migrate.patch
+0009-bpf-Use-BPF_PROG_RUN_PIN_ON_CPU-at-simple-call-sites.patch
+0010-trace-bpf-Use-migrate-disable-in-trace_call_bpf.patch
+0011-bpf-tests-Use-migrate-disable-instead-of-preempt-dis.patch
+0012-bpf-Use-migrate_disable-enable-in-array-macros-and-c.patch
+0013-bpf-Use-migrate_disable-in-hashtab-code.patch
+0014-bpf-Use-migrate_disable-in-sys_bpf.patch
+0015-bpf-Factor-out-hashtab-bucket-lock-operations.patch
+0016-bpf-Prepare-hashtab-locking-for-PREEMPT_RT.patch
+0017-bpf-lpm-Make-locking-RT-friendly.patch
+0018-bpf-stackmap-Don-t-trylock-mmap_sem-with-PREEMPT_RT-.patch
 
 ################################################################################
 ################################################################################

@@ -1,0 +1,35 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Sun, 9 Feb 2020 21:00:46 +0100
+Subject: [PATCH 10/19] trace/bpf: Use migrate disable in trace_call_bpf()
+
+BPF does not require preemption disable. It only requires to stay on the
+same CPU while running a program. Reflect this by replacing
+preempt_disable/enable() with migrate_disable/enable() pairs. On a non-RT
+kernel this maps to preempt_disable/enable().
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/trace/bpf_trace.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/kernel/trace/bpf_trace.c
++++ b/kernel/trace/bpf_trace.c
+@@ -83,7 +83,7 @@ unsigned int trace_call_bpf(struct trace
+ 	if (in_nmi()) /* not supported yet */
+ 		return 1;
+ 
+-	preempt_disable();
++	migrate_disable();
+ 
+ 	if (unlikely(__this_cpu_inc_return(bpf_prog_active) != 1)) {
+ 		/*
+@@ -115,7 +115,7 @@ unsigned int trace_call_bpf(struct trace
+ 
+  out:
+ 	__this_cpu_dec(bpf_prog_active);
+-	preempt_enable();
++	migrate_enable();
+ 
+ 	return ret;
+ }

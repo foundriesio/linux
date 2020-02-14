@@ -102,7 +102,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define sched_preempt_enable_no_resched() \
  do { \
  	barrier(); \
-@@ -247,6 +267,13 @@ do { \
+@@ -269,6 +289,13 @@ do { \
  		__preempt_schedule(); \
  } while (0)
  
@@ -116,7 +116,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #else /* !CONFIG_PREEMPTION */
  #define preempt_enable() \
  do { \
-@@ -254,6 +281,12 @@ do { \
+@@ -276,6 +303,12 @@ do { \
  	preempt_count_dec(); \
  } while (0)
  
@@ -129,7 +129,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define preempt_enable_notrace() \
  do { \
  	barrier(); \
-@@ -320,7 +353,7 @@ do { \
+@@ -342,7 +375,7 @@ do { \
  } while (0)
  #define preempt_fold_need_resched() \
  do { \

@@ -1,0 +1,37 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Wed, 12 Feb 2020 21:23:06 +0100
+Subject: [PATCH 13/19] bpf: Use migrate_disable() in hashtab code
+
+The required protection is that the caller cannot be migrated to a
+different CPU as these places take either a hash bucket lock or might
+trigger a kprobe inside the memory allocator. Both scenarios can lead to
+deadlocks. The deadlock prevention is per CPU by incrementing a per CPU
+variable which temporarily blocks the invocation of BPF programs from perf
+and kprobes.
+
+Replace the preempt_disable/enable() pairs with migrate_disable/enable()
+pairs to prepare BPF to work on PREEMPT_RT enabled kernels. On a non-RT
+kernel this maps to preempt_disable/enable(), i.e. no functional change.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ kernel/bpf/hashtab.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/kernel/bpf/hashtab.c
++++ b/kernel/bpf/hashtab.c
+@@ -688,11 +688,11 @@ static void htab_elem_free_rcu(struct rc
+ 	 * we're calling kfree, otherwise deadlock is possible if kprobes
+ 	 * are placed somewhere inside of slub
+ 	 */
+-	preempt_disable();
++	migrate_disable();
+ 	__this_cpu_inc(bpf_prog_active);
+ 	htab_elem_free(htab, l);
+ 	__this_cpu_dec(bpf_prog_active);
+-	preempt_enable();
++	migrate_enable();
+ }
+ 
+ static void free_htab_elem(struct bpf_htab *htab, struct htab_elem *l)

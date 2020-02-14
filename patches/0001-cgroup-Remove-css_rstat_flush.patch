@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	prev_cputime_init(&cgrp->prev_cputime);
  
  	for_each_subsys(ss, ssid)
-@@ -5013,12 +5012,6 @@ static void css_release_work_fn(struct w
+@@ -5014,12 +5013,6 @@ static void css_release_work_fn(struct w
  	list_del_rcu(&css->sibling);
  
  	if (ss) {
@@ -67,7 +67,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		cgroup_idr_replace(&ss->css_idr, NULL, css->id);
  		if (ss->css_released)
  			ss->css_released(css);
-@@ -5080,7 +5073,6 @@ static void init_and_link_css(struct cgr
+@@ -5081,7 +5074,6 @@ static void init_and_link_css(struct cgr
  	css->id = -1;
  	INIT_LIST_HEAD(&css->sibling);
  	INIT_LIST_HEAD(&css->children);
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	css->serial_nr = css_serial_nr_next++;
  	atomic_set(&css->online_cnt, 0);
  
-@@ -5089,9 +5081,6 @@ static void init_and_link_css(struct cgr
+@@ -5090,9 +5082,6 @@ static void init_and_link_css(struct cgr
  		css_get(css->parent);
  	}
  
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	BUG_ON(cgroup_css(cgrp, ss));
  }
  
-@@ -5193,7 +5182,6 @@ static struct cgroup_subsys_state *css_c
+@@ -5194,7 +5183,6 @@ static struct cgroup_subsys_state *css_c
  err_list_del:
  	list_del_rcu(&css->sibling);
  err_free_css:

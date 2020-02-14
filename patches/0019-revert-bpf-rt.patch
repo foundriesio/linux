@@ -1,0 +1,38 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Mon, 10 Feb 2020 19:44:17 +0100
+Subject: [PATCH 19/19] revert-bpf-rt
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ init/Kconfig    | 1 -
+ net/kcm/Kconfig | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/init/Kconfig b/init/Kconfig
+index c9e5274d3704a..db06b61e4430c 100644
+--- a/init/Kconfig
++++ b/init/Kconfig
+@@ -1631,7 +1631,6 @@ config KALLSYMS_BASE_RELATIVE
+ # syscall, maps, verifier
+ config BPF_SYSCALL
+ 	bool "Enable bpf() system call"
+-	depends on !PREEMPT_RT
+ 	select BPF
+ 	select IRQ_WORK
+ 	default n
+diff --git a/net/kcm/Kconfig b/net/kcm/Kconfig
+index 20710110a716a..bf7e970fad656 100644
+--- a/net/kcm/Kconfig
++++ b/net/kcm/Kconfig
+@@ -3,7 +3,6 @@
+ config AF_KCM
+ 	tristate "KCM sockets"
+ 	depends on INET
+-	depends on !PREEMPT_RT
+ 	select BPF_SYSCALL
+ 	select STREAM_PARSER
+ 	---help---
+-- 
+2.25.0
+

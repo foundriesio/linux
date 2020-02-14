@@ -856,7 +856,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	bool
 --- a/arch/powerpc/kernel/entry_32.S
 +++ b/arch/powerpc/kernel/entry_32.S
-@@ -897,7 +897,7 @@ user_exc_return:		/* r10 contains MSR_KE
+@@ -898,7 +898,7 @@ user_exc_return:		/* r10 contains MSR_KE
  	bne-	0b
  1:
  
@@ -865,7 +865,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* check current_thread_info->preempt_count */
  	lwz	r0,TI_PREEMPT(r2)
  	cmpwi	0,r0,0		/* if non-zero, just restore regs and return */
-@@ -921,7 +921,7 @@ user_exc_return:		/* r10 contains MSR_KE
+@@ -922,7 +922,7 @@ user_exc_return:		/* r10 contains MSR_KE
  	 */
  	bl	trace_hardirqs_on
  #endif
@@ -1037,7 +1037,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  ENTRY(resume_kernel)
 --- a/arch/sparc/Kconfig
 +++ b/arch/sparc/Kconfig
-@@ -277,7 +277,7 @@ config US3_MC
+@@ -276,7 +276,7 @@ config US3_MC
  config GENERIC_LOCKBREAK
  	bool
  	default y
@@ -1381,7 +1381,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * either synchronize_rcu() or synchronize_rcu_expedited().  It is OK to
 --- a/kernel/rcu/tree_exp.h
 +++ b/kernel/rcu/tree_exp.h
-@@ -670,7 +670,7 @@ static void rcu_exp_handler(void *unused
+@@ -669,7 +669,7 @@ static void rcu_exp_handler(void *unused
  	}
  }
  
@@ -1392,7 +1392,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
 --- a/kernel/rcu/tree_plugin.h
 +++ b/kernel/rcu/tree_plugin.h
-@@ -788,7 +788,7 @@ static void __init rcu_bootup_announce(v
+@@ -789,7 +789,7 @@ static void __init rcu_bootup_announce(v
  }
  
  /*
@@ -1401,7 +1401,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * how many quiescent states passed, just if there was at least one since
   * the start of the grace period, this just sets a flag.  The caller must
   * have disabled preemption.
-@@ -838,7 +838,7 @@ void rcu_all_qs(void)
+@@ -839,7 +839,7 @@ void rcu_all_qs(void)
  EXPORT_SYMBOL_GPL(rcu_all_qs);
  
  /*

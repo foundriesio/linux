@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -2531,17 +2531,23 @@ static void __journal_remove_journal_hea
+@@ -2532,17 +2532,23 @@ static void __journal_remove_journal_hea
  	J_ASSERT_BH(bh, buffer_jbd(bh));
  	J_ASSERT_BH(bh, jh2bh(jh) == bh);
  	BUFFER_TRACE(bh, "remove journal_head");
@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	journal_free_journal_head(jh);
  }
  
-@@ -2559,9 +2565,11 @@ void jbd2_journal_put_journal_head(struc
+@@ -2560,9 +2566,11 @@ void jbd2_journal_put_journal_head(struc
  	if (!jh->b_jcount) {
  		__journal_remove_journal_head(bh);
  		jbd_unlock_bh_journal_head(bh);

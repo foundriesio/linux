@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -7043,10 +7043,10 @@ void mem_cgroup_swapout(struct page *pag
+@@ -7025,10 +7025,10 @@ void mem_cgroup_swapout(struct page *pag
  	mem_cgroup_charge_statistics(memcg, page, PageTransHuge(page),
  				     -nr_entries);
  	memcg_check_events(memcg, page);

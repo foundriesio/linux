@@ -1,0 +1,72 @@
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Sat, 8 Feb 2020 19:29:40 +0100
+Subject: [PATCH 01/19] sched: Provide migrate_disable/enable() inlines
+
+Currently code which solely needs to prevent migration of a task uses
+preempt_disable()/enable() pairs. This is the only reliable way to do so as
+setting the task affinity to a single CPU can be undone by a setaffinity
+operation from a different task/process. It's also significantly faster.
+
+RT provides a seperate migrate_disable/enable() mechanism which does not
+disable preemption to achieve the semantic requirements of a (almost) fully
+preemptible kernel.
+
+As it is unclear from looking at a given code path whether the intention is
+to disable preemption or migration, introduce migrate_disable/enable()
+inline functions which can be used to annotate code which merely needs to
+disable migration. Map them to preempt_disable/enable() for now. The RT
+substitution will be provided later.
+
+Code which is annotated that way documents that it has no requirement to
+protect against reentrancy of a preempting task. Either this is not
+required at all or the call sites are already serialized by other means.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@kernel.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Juri Lelli <juri.lelli@redhat.com>
+Cc: Vincent Guittot <vincent.guittot@linaro.org>
+Cc: Dietmar Eggemann <dietmar.eggemann@arm.com>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Ben Segall <bsegall@google.com>
+Cc: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/preempt.h |   26 ++++++++++++++++++++++++--
+ 1 file changed, 24 insertions(+), 2 deletions(-)
+
+--- a/include/linux/preempt.h
++++ b/include/linux/preempt.h
+@@ -218,8 +218,30 @@ static inline int __migrate_disabled(str
+ }
+ 
+ #else
+-#define migrate_disable()		preempt_disable()
+-#define migrate_enable()		preempt_enable()
++/**
++ * migrate_disable - Prevent migration of the current task
++ *
++ * Maps to preempt_disable() which also disables preemption. Use
++ * migrate_disable() to annotate that the intent is to prevent migration
++ * but not necessarily preemption.
++ *
++ * Can be invoked nested like preempt_disable() and needs the corresponding
++ * number of migrate_enable() invocations.
++ */
++#define migrate_disable()	preempt_disable()
++
++/**
++ * migrate_enable - Allow migration of the current task
++ *
++ * Counterpart to migrate_disable().
++ *
++ * As migrate_disable() can be invoked nested only the uttermost invocation
++ * reenables migration.
++ *
++ * Currently mapped to preempt_enable().
++ */
++#define migrate_enable()	preempt_enable()
++
+ static inline int __migrate_disabled(struct task_struct *p)
+ {
+ 	return 0;
