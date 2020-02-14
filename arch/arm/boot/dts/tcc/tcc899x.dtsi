@@ -2295,7 +2295,7 @@
 			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
 			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA02>;
 			telechips,disp = <&vioc_disp VIOC_DISP0>;
-			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER4>;
 			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_02>;
 			sc_rdma_num_60 = <VIOC_SC_RDMA_02>;
 		};

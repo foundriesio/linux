@@ -197,6 +197,13 @@ config TCC_VSYNC_DRV_CONTROL_LUT
 	help
 	  VSYNC driver can controls lookup table to plug-in or unplug to VIDEO RDMA
 
+config TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER
+    bool "VSYNC driver controls pixel mapper to supports function to control colors"
+	depends on TCC_VIDEO_DISPLAY_BY_VSYNC_INT && TCC_PM_LUT_DRV 
+	default n
+	help
+	  VSYNC driver can controls colors of video using pixel mapper
+	  
 config TCC_VIQE_FOR_SUB_M2M
 	bool "Support VIQE1 for SUB_M2M"
 	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X
@@ -486,3 +493,17 @@ config TCC_DISPLAY_HDMI_LVDS
 	
 
 endmenu	
+
+config TCC_VIDEO_S_FEATURE
+	bool "Enable Telechips 'S' feature for VIDEO"
+	depends on FB && (ARCH_TCC899X || ARCH_TCC901X)
+	select TCC_VIQE_FOR_SUB_M2M
+	select VIOC_PIXEL_MAPPER
+	select TCC_PM_LUT_DRV
+	select TCC_VSYNC_DRV_CONTROL_LUT
+	select TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER
+	default n
+	help
+	Enable Telechips 'S' feature for VIDEO
+	
+

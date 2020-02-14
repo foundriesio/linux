@@ -132,6 +132,11 @@ static struct tcc_lcdc_image_update last_backup;
 #endif
 #endif
 
+#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER)
+extern void pm_lut_drv_set_last_frame(void);
+extern void pm_lut_drv_last_frame_plugout(void);
+#endif
+
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 #include <video/tcc/tcc_lut_ioctl.h>
 #define UI_LUT 				LUT_COMP0
@@ -268,12 +273,6 @@ struct tcc_vsync_display_info_t vsync_vioc0_disp;
 static int tcc_vsync_mvc_status = 0;
 static int tcc_vsync_mvc_overlay_priority = 0;
 
-
-#ifdef CONFIG_TCC_PM_LUT_DRV
-extern void pm_lut_drv_set_last_frame(void);
-extern void pm_lut_drv_last_frame_plugout(void);
-#endif
-
 #if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 static int vsync_deinit_lut(void)
 {
@@ -317,11 +316,11 @@ static int vsync_process_video_lut(tcc_video_disp *p, struct tcc_lcdc_image_upda
 		if(lut_status == (VIOC_RDMA00 + UI_LUT_PLUGIN_CH)) {
 			/* Display is HDR : SDR to HDR */
 			output = 1;
-			lut_prinfo("display is HDR\n");
+			//lut_prinfo("display is HDR\n");
 		} else {
 			/* Display is SDR : SDR to SDR */
 			output = 0;
-			lut_prinfo("display is SDR\n");
+			//lut_prinfo("display is SDR\n");
 		}
 
 		/* HDR support */
@@ -2015,7 +2014,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 	}
 	#endif
 
-#ifdef CONFIG_TCC_PM_LUT_DRV
+	#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER)
 	if(p->firstFrameFlag && (input_image_info->Lcdc_layer == RDMA_VIDEO))
 	{
 		int pixelmapper_plug;
@@ -2045,7 +2044,7 @@ static int tcc_vsync_push_preprocess_deinterlacing(tcc_video_disp *p, struct tcc
 			}
 		}
 	}
-#endif
+	#endif
 
 	if(p->deinterlace_mode && p->firstFrameFlag &&!p->interlace_bypass_lcdc)
 	{
@@ -3361,11 +3360,11 @@ int tcc_video_last_frame(void *pVSyncDisp, struct stTcc_last_frame iLastFrame, s
 				lastUpdated->Lcdc_layer 	= RDMA_LASTFRM;
 				tccvid_lastframe[type].pRDMA = dp_device->rdma_info[RDMA_LASTFRM].virt_addr;
 
-				spin_lock_irq(&LastFrame_lockDisp);
-				#ifdef CONFIG_TCC_PM_LUT_DRV
-					pm_lut_drv_set_last_frame();
+				#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER)
+				pm_lut_drv_set_last_frame();
 				#endif
-				tca_scale_display_update(dp_device, lastUpdated);
+				spin_lock_irq(&LastFrame_lockDisp);				
+				tca_scale_display_update_with_sync(dp_device, lastUpdated);
 				spin_unlock_irq(&LastFrame_lockDisp);
 			}
 Screen_off:
@@ -3536,17 +3535,17 @@ void tcc_video_clear_last_frame(unsigned int lcdc_layer, bool reset)
 	}
 
 	//last-frame has to be disabled regardless of support option!!
-	//if(tccvid_lastframe[type].support)
-    {
         if( tccvid_lastframe[type].pRDMA != NULL /*&& tccvid_lastframe[type].nCount >= 2*/){
-            VIOC_RDMA_SetImageDisable(tccvid_lastframe[type].pRDMA);
-#ifdef CONFIG_TCC_PM_LUT_DRV
-			pm_lut_drv_last_frame_plugout();
-#endif
+            	VIOC_RDMA_SetImageDisable(tccvid_lastframe[type].pRDMA);
+		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER)
+		pm_lut_drv_last_frame_plugout();
+		#endif
+		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+		vsync_process_lastframe_unplug_lut();
+		#endif
 		pr_info("[INF][VSYNC] &&&&&&&&& ----> lastframe[%d] cleared(%d)!! 0x%p \n", type, tccvid_lastframe[type].nCount, tccvid_lastframe[type].pRDMA);
 			tccvid_lastframe[type].pRDMA = NULL;
         }
-    }
 	tccvid_lastframe[type].nCount += 1;
 
 	if(reset){
@@ -5085,6 +5084,10 @@ void tcc_vsync_hdmi_end(struct tcc_dp_device *pdp_data)
 	tcc_video_clear_last_frame(RDMA_VIDEO, false);
 	tcc_video_clear_last_frame(RDMA_VIDEO_SUB, false);
 #endif
+
+	#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
+	vsync_deinit_lut();
+	#endif
 }
 
 void tcc_vsync_reset_all(void)

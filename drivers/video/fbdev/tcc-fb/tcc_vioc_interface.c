@@ -375,7 +375,7 @@ unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer)
 		else if (Layer == RDMA_VIDEO)
 			return VIOC_SCALER1;
 		else // RDMA_VIDEO_SUB
-			return VIOC_SCALER3;
+		       return VIOC_SCALER4;
 	}
 #else
 	#ifdef CONFIG_PLATFORM_STB
@@ -4063,7 +4063,7 @@ void tca_edr_el_display_update(struct tcc_dp_device *pdp_data, struct tcc_lcdc_i
 			int component_num = VIOC_CONFIG_DMAPath_Select(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].blk_num);
 			if(component_num < 0)
 				pr_info("[INF][VIOC_I] %s  : RDMA :%d dma path selection none\n", __func__, get_vioc_index(pdp_data->rdma_info[el_ImageInfo.Lcdc_layer].blk_num));
-			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
+			else if((component_num < VIOC_RDMA00) || (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
 			// It is default path selection(VRDMA)
@@ -4929,7 +4929,8 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			if((component_num < VIOC_MC0 ) || (component_num > (VIOC_MC0 + VIOC_MC_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
-			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_MC0 + nDeCompressor_Main);
+			if(component_num != (VIOC_MC0 + nDeCompressor_Main))
+				VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, VIOC_MC0 + nDeCompressor_Main);
 		} else {
 			#ifdef CONFIG_ARCH_TCC803X
 			VIOC_CONFIG_MCPath(pdp_data->wmixer_info.blk_num, VIOC_MC0 + nDeCompressor_Main);
@@ -4973,9 +4974,10 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 			if((int)component_num < 0) {
 				pr_info("[INF][VIOC_I] %s  : RDMA :%d dma path selection none\n", __func__, get_vioc_index(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num));
 			}
-			else if((component_num < VIOC_RDMA00) && (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
+			else if((component_num < VIOC_RDMA00) || (component_num > (VIOC_RDMA00 + VIOC_RDMA_MAX)))
 				VIOC_CONFIG_DMAPath_UnSet(component_num);
 
+			if(component_num != pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num)
 			// It is default path selection(VRDMA)
 			VIOC_CONFIG_DMAPath_Set(pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num, pdp_data->rdma_info[ImageInfo->Lcdc_layer].blk_num);
 			#endif

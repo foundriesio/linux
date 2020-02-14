@@ -2750,7 +2750,10 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 
 	if (fbi->map_cpu) {
 		/* prevent initial garbage on screen */
-
+#if defined(CONFIG_TCC_VIDEO_S_FEATURE)
+		/* S fegture does not initialize framebuffer to black screen or kernel logo */
+		printk(KERN_ERR "[DEBUG][VIOCFB] keep bootlogo from 0x40000000 (doen't clear mem)\r\n");
+#else
 #ifndef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
 #if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
 		volatile void __iomem * pWDMA;
@@ -2766,6 +2769,7 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 		dprintk("%s: clear fb mem\n", __func__);
 #endif
 #endif
+#endif // CONFIG_TCC_VIDEO_S_FEATURE
 		fbi->screen_dma		= fbi->map_dma;
 		fbi->fb->screen_base	= fbi->map_cpu;
 		fbi->fb->fix.smem_start  = fbi->screen_dma;

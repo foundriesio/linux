@@ -41,6 +41,7 @@
  *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <generated/autoconf.h>
 
 #undef SZ_1MB
 #define SZ_1MB                          (1024*1024)
@@ -91,7 +92,9 @@
 #define SUPPORT_DISPLAY_MAX_HEIGHT      SECONDARY_TARGET_HEIGHT
 #endif
 
+#if defined(CONFIG_TCC_VIDEO_S_FEATURE)
 #define SUPPORT_VIDEO_PIP
+#endif
 #ifdef SUPPORT_VIDEO_PIP
 #define SUPPORT_PIP_MAX_WIDTH   1920
 #define SUPPORT_PIP_MAX_HEIGHT  1080
@@ -100,7 +103,9 @@
 //****************************** Camera ******************************/
 #define CAMERA_INPUT_WIDTH                      0
 #define CAMERA_INPUT_HEIGHT                     0
-
+#if defined(CONFIG_TCC_VIDEO_S_FEATURE)
+#define SUPPORT_CAMERA_CAPTURE          0
+#endif
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
