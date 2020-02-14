@@ -47,6 +47,15 @@
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_config.h>
 
+#define LOG_MODULE_NAME "VIOCM"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) logl(KERN_DEBUG,	fmt, ##__VA_ARGS__)
+#define dlog(fmt, ...) do { if(vioc_loglevel) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
+
 #define VIOC_MGR_DEV_MINOR		0
 
 typedef struct _vioc_mgr_tx_t {
@@ -145,7 +154,7 @@ int vioc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int dat
 		}
 		mutex_unlock(&vioc_mgr_device->rx.lock);
 	} else {
-		pr_info("warning in %s: Not Ready for work \n", __func__);
+		log("Not Ready for work\n");
 		ret = -100;
 	}
 
@@ -170,8 +179,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr, struct tcc_mb
 
 		if(data->cmd[0]) {
 			if(atomic_read(&vioc_mgr->rx.seq) > data->cmd[0]) {
-				pr_err("error in %s: already processed command(%d,%d)\n",
-						__func__, atomic_read(&vioc_mgr->rx.seq), data->cmd[1]);
+				loge("already processed command(%d,%d)\n", atomic_read(&vioc_mgr->rx.seq), data->cmd[1]);
 				return;
 			}
 		}
@@ -190,7 +198,7 @@ static void vioc_mgr_cmd_handler(struct vioc_mgr_device *vioc_mgr, struct tcc_mb
 		case VIOC_CMD_NULL:
 		case VIOC_CMD_MAX:
 		default:
-			pr_info("warning in %s: Invalid command(%d) \n", __func__, cmd);
+			log("Invalid command(%d)\n", cmd);
 			goto end_handler;
 		}
 
@@ -241,7 +249,7 @@ static void vioc_mgr_receive_message(struct mbox_client *client, void *mssg)
 	case VIOC_CMD_NULL:
 	case VIOC_CMD_MAX:
 	default:
-		pr_info("warning in %s: Invalid command(%d) \n", __func__, msg->cmd[1]);
+		log("Invalid command(%d)\n", msg->cmd[1]);
 		break;
 	}
 }
@@ -253,7 +261,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	long ret = 0;
 
 	if(atomic_read(&vioc_mgr->status) != VIOC_STS_READY) {
-		pr_err("error in %s: Not ready to send message \n", __func__);
+		loge("Not ready to send message\n");
 		ret = -100;
 		return ret;
 	}
@@ -266,7 +274,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		if(cmd == IOCTL_VIOC_MGR_SET_OVP) {
 			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
-				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
+				loge("Unable to copy the paramter(%ld)\n", ret);
 				goto err_ioctl;
 			}
 		} else if(cmd == IOCTL_VIOC_MGR_SET_OVP_KERNEL){
@@ -278,7 +286,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		if(cmd == IOCTL_VIOC_MGR_SET_POS) {
 			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
-				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
+				loge("Unable to copy the paramter(%ld)\n", ret);
 				goto err_ioctl;
 			}
 		} else if(cmd == IOCTL_VIOC_MGR_SET_POS_KERNEL){
@@ -290,7 +298,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		if(cmd == IOCTL_VIOC_MGR_SET_RESET) {
 			ret = copy_from_user(&data, (void *)arg, sizeof(struct tcc_mbox_data));
 			if(ret) {
-				pr_err("error in %s: unable to copy the paramter(%ld) \n", __func__, ret);
+				loge("Unable to copy the paramter(%ld)\n", ret);
 				goto err_ioctl;
 			}
 		} else if(cmd == IOCTL_VIOC_MGR_SET_RESET_KERNEL){
@@ -298,7 +306,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 		}
 		break;
 	default:
-		pr_info("warning in %s: Invalid command (%d)\n", __func__, cmd);
+		log("Invalid command (%d)\n", cmd);
 		ret = -EINVAL;
 		goto err_ioctl;
 	}
@@ -313,7 +321,7 @@ static long vioc_mgr_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 	vioc_mgr_send_message(vioc_mgr, &data);
 	ret = wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1, msecs_to_jiffies(100));
 	if(ret <= 0)
-		pr_err("error in %s: Timeout vioc_mgr_send_message(%ld)(%d) \n", __func__, ret, mbox_done);
+		loge("Timeout vioc_mgr_send_message(%ld)(%d) \n", ret, mbox_done);
 	mbox_done = 0;
 
 err_ioctl:
@@ -356,7 +364,7 @@ static struct mbox_chan *vioc_mgr_request_channel(struct vioc_mgr_device *vioc_m
 	vioc_mgr->cl.knows_txdone = false;
 	channel = mbox_request_channel_byname(&vioc_mgr->cl, name);
 	if(IS_ERR(channel)) {
-		pr_err("error in %s: Fail mbox_request_channel_byname(%s) \n", __func__, name);
+		loge("Fail mbox_request_channel_byname(%s)\n", name);
 		return NULL;
 	}
 
@@ -374,7 +382,7 @@ static int vioc_mgr_rx_init(struct vioc_mgr_device *vioc_mgr)
 	vioc_mgr->mbox_ch = vioc_mgr_request_channel(vioc_mgr, vioc_mgr->mbox_name);
 	if(IS_ERR(vioc_mgr->mbox_ch)) {
 		ret = PTR_ERR(vioc_mgr->mbox_ch);
-		pr_err("error in %s: Fail vioc_mgr_request_channel (%d)\n", __func__, ret);
+		loge("Fail vioc_mgr_request_channel(%d)\n", ret);
 		goto err_rx_init;
 	}
 
@@ -412,7 +420,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	ret = alloc_chrdev_region(&vioc_mgr->devt, VIOC_MGR_DEV_MINOR,
 			1, vioc_mgr->name);
 	if(ret) {
-		pr_err("error in %s: Fail alloc_chrdev_region(%d) \n", __func__, ret);
+		loge("Fail alloc_chrdev_region(%d) \n", ret);
 		return ret;
 	}
 
@@ -420,14 +428,14 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 	vioc_mgr->cdev.owner = THIS_MODULE;
 	ret = cdev_add(&vioc_mgr->cdev, vioc_mgr->devt, 1);
 	if(ret) {
-		pr_err("error in %s: Fail cdev_add(%d) \n", __func__, ret);
+		loge("Fail cdev_add(%d)\n", ret);
 		return ret;
 	}
 
 	vioc_mgr->class = class_create(THIS_MODULE, vioc_mgr->name);
 	if(IS_ERR(vioc_mgr->class)) {
 		ret = PTR_ERR(vioc_mgr->class);
-		pr_err("error in %s: Fail class_create(%d) \n", __func__, ret);
+		loge("Fail class_create(%d)\n", ret);
 		return ret;
 	}
 
@@ -435,7 +443,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 			vioc_mgr->devt, NULL, vioc_mgr->name);
 	if(IS_ERR(vioc_mgr->dev)) {
 		ret = PTR_ERR(vioc_mgr->dev);
-		pr_err("error in %s: Fail device_create(%d) \n", __func__, ret);
+		loge("Fail device_create(%d)\n", ret);
 		return ret;
 	}
 
@@ -445,13 +453,13 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	vioc_mgr_tx_init(vioc_mgr);
 	if(vioc_mgr_rx_init(vioc_mgr)) {
-		pr_err("error in %s: Fail vioc_mgr_rx_init \n", __func__);
+		loge("Fail vioc_mgr_rx_init\n");
 		return -EFAULT;
 	}
 
 	vioc_mgr_device = vioc_mgr;
 
-	pr_info("%s:%s Driver Initialized \n", __func__, vioc_mgr->name);
+	log("%s Driver Initialized \n", vioc_mgr->name);np
 
 	return ret;
 }

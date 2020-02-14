@@ -29,7 +29,7 @@ int DDI_I2C_Write(struct i2c_client * client, unsigned char * data, unsigned sho
 	unsigned short bytes = reg_bytes + data_bytes;
 
 	if(i2c_master_send(client, data, bytes) != bytes) {
-		dlog("addr = 0x%x, write error!!!! \n", client->addr);
+		loge("addr = 0x%x, write error!!!! \n", client->addr);
 		return -EIO;
 	}
 
@@ -46,8 +46,8 @@ int DDI_I2C_Write_Remote(struct i2c_client * client, unsigned short remote_addr,
 	client->addr = remote_addr;
 
 	if(i2c_master_send(client, data, bytes) != bytes) {
-		printk("write error!!!! \n");
-		printk(KERN_INFO "addr = 0x%x\n", client->addr);
+		loge("write error!!!! \n");
+		log("addr = 0x%x\n", client->addr);
 		try = (try + 1) % 4;
 		client->addr = 0x60 + (0x01 * try);
 
@@ -72,12 +72,12 @@ int DDI_I2C_Read(struct i2c_client * client, unsigned short reg, unsigned char r
 	}
 
 	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		printk("write error for read!!!! \n");
+		loge("write error for read!!!! \n");
 		return -EIO;
 	}
 
 	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		printk("read error!!!! \n");
+		loge("read error!!!! \n");
 		return -EIO;
 	}
 
@@ -100,13 +100,13 @@ int DDI_I2C_Read_Remote(struct i2c_client * client, unsigned short remote_addr, 
 	client->addr = remote_addr;
 
 	if(i2c_master_send(client, data, reg_bytes) != reg_bytes) {
-		printk("write error for read!!!! \n");
+		loge("write error for read!!!! \n");
 		client->addr = source_addr;
 		return -EIO;
 	}
 
 	if(i2c_master_recv(client, val, val_bytes) != val_bytes) {
-		printk("read error!!!! \n");
+		loge("read error!!!! \n");
 		client->addr = source_addr;
 		return -EIO;
 	}
@@ -157,13 +157,13 @@ int videosource_i2c_probe(struct i2c_client * client, const struct i2c_device_id
 	// allocate and clear memory for a videosource device
 	vdev = kzalloc(sizeof(videosource_t), GFP_KERNEL);
 	if(vdev == NULL) {
-		log("ERROR: Allocate a videosource device struct.\n");
+		loge("Allocate a videosource device struct.\n");
 		return -ENOMEM;
 	}
 
 	of_id = of_match_node(videosource_of_match, client->dev.of_node);
 	if(!of_id) {
-		log("ERROR: of_match_node\n");
+		loge("of_match_node\n");
 		ret = -ENODEV;
 		goto goto_free_videosource_data;
 	}

@@ -32,9 +32,14 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tcc_hdin_ctrl.h"
 #include "tcc_hdin_video.h"
 
-
 static int debug	   = 1;
-#define dprintk(msg...)	if(debug) { printk( "hdin_main : " msg); }
+#define LOG_MODULE_NAME "HDMI"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) if (debug) logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
 
 int hdin_videobuf_g_fmt(struct v4l2_format *fmt, struct tcc_hdin_device *vdev)
 {
@@ -81,14 +86,14 @@ int hdin_videobuf_reqbufs(struct v4l2_requestbuffers *req, struct tcc_hdin_devic
 	if(req->memory != V4L2_MEMORY_MMAP && req->memory != V4L2_MEMORY_USERPTR \
 		&& req->memory != V4L2_MEMORY_OVERLAY)
 	{
-		printk("reqbufs: memory type invalid\n");
+		log("reqbufs: memory type invalid\n");
 		
 		return -EINVAL;
 	}
 	
 	if(req->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 	{
-		printk("reqbufs: video type invalid\n");
+		log("reqbufs: video type invalid\n");
 		
 		return -EINVAL;
 	}
@@ -133,7 +138,7 @@ int hdin_videobuf_dqbuf(struct v4l2_buffer *buf, struct file *file)
 
 	if(file->f_flags & O_NONBLOCK)
 	{
-		printk("file->f_flags Fail!!\n");
+		log("file->f_flags Fail!!\n");
 		return -EAGAIN;
 	}
 
@@ -144,7 +149,7 @@ int hdin_videobuf_dqbuf(struct v4l2_buffer *buf, struct file *file)
 		if(wait_event_interruptible_timeout(data->frame_wait, data->wakeup_int == 1, msecs_to_jiffies(500)) <= 0)
 		{
 			dev->interrupt_status = 0; 
-			printk("Waiting an interrupt of WDMA...\n");
+			log("Waiting an interrupt of WDMA...\n");
 			return -EFAULT;
 		} 
 
@@ -224,23 +229,23 @@ static int hdin_main_module_open(struct file *file)
 	struct tcc_hdin_device *dev = video_drvdata(file);
 	int ret;
 
-	dprintk("hdin_main_module_open \n");
+	logd("hdin_main_module_open \n");
 	
 	if ((ret = hdin_ctrl_init(file)) < 0) 
 	{
-		printk(KERN_ERR DRIVER_NAME ": cannot initialize sensor\n");
+		loge("Cannot initialize sensor\n");
 		goto error;
 	}	
 	
 	if ((ret = hdin_video_init(dev)) < 0) 
 	{
-		printk(KERN_ERR DRIVER_NAME ": cannot initialize interface hardware\n");
+		loge("Cannot initialize interface hardware\n");
 		goto error;
 	}	
 
 	if ((ret = hdin_video_open(dev)) < 0)
 	{
-		printk (KERN_ERR DRIVER_NAME ": HDIN configuration failed\n");
+		loge("HDIN configuration failed\n");
 		goto error;
 	}
 
@@ -320,7 +325,7 @@ extern int range_is_allowed(unsigned long pfn, unsigned long size);
 static int hdin_main_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
-		printk(KERN_ERR  "hdin: this address is not allowed \n");
+		loge("hdin: this address is not allowed \n");
 		return -EAGAIN;
 	} 
 
@@ -342,7 +347,7 @@ static int hdin_main_release(struct file *file)
 {
 	struct tcc_hdin_device *vdev = video_drvdata(file);
 
-	dprintk("hdin release....\n");
+	logd("hdin release....\n");
 
 	hdin_video_close(file);
 
@@ -355,7 +360,7 @@ static int hdin_main_open(struct file *file)
 {
 	struct tcc_hdin_device *vdev = video_drvdata(file);
 
-	dprintk("hdin open.... \n");	
+	logd("hdin open.... \n");
 
 	if(vdev == NULL) return -ENODEV;
 
@@ -382,7 +387,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 {
 	struct tcc_hdin_device	*vdev;
 
-	printk("__________hdin_main_probe \n");
+	logd("hdin_main_probe \n");
 
 	vdev = kzalloc(sizeof(struct tcc_hdin_device),GFP_KERNEL);
 	if(vdev == NULL)
@@ -395,7 +400,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 	}
 	else
 	{
-		printk("could not find hdin node!! \n");
+		log("could not find hdin node!! \n");
 		return -ENODEV;	
 	}
 
@@ -403,7 +408,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 	
 	if (!vdev->vfd) 
 	{
-		printk(KERN_ERR DRIVER_NAME": could not allocate video device struct\n");
+		loge("Could not allocate video device struct\n");
 		return -ENOMEM;
 
 	}
@@ -411,7 +416,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 	vdev->vfd->v4l2_dev = kzalloc(sizeof(struct v4l2_device), GFP_KERNEL);
 
 	if(v4l2_device_register(&pdev->dev, vdev->vfd->v4l2_dev) < 0){
-		printk(KERN_ERR "%s : [error] v4l2 register failed\n", pdev->name);
+		loge("%s : [error] v4l2 register failed\n", pdev->name);
 		return -ENODEV;
 	}
 
@@ -425,7 +430,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 
 	if (video_register_device(vdev->vfd, VFL_TYPE_GRABBER, -1) < 0) 
 	{
-		printk(KERN_ERR DRIVER_NAME ": could not register Video for Linux device\n");
+		loge("Could not register Video for Linux device\n");
 		video_device_release(vdev->vfd);
 		return -ENODEV;
 	}
@@ -433,7 +438,7 @@ static int hdin_main_probe(struct platform_device *pdev)
 	video_set_drvdata(vdev->vfd, vdev);
 	platform_set_drvdata(pdev, vdev);
 
-	printk(KERN_INFO DRIVER_NAME ": registered device video%d [v4l2]\n", vdev->vfd->minor);
+	log("Registered device video%d [v4l2]\n", vdev->vfd->minor);
 
 	return 0;
 
@@ -443,7 +448,7 @@ static int hdin_main_remove(struct platform_device *pdev)
 {
 	struct tcc_hdin_device	*vdev = platform_get_drvdata(pdev);
 	
-	dprintk("hdin_main_remove \n");
+	logd("hdin_main_remove \n");
 
 	if(vdev->hdin_clk)
 		clk_put(vdev->hdin_clk);
@@ -497,14 +502,14 @@ static struct platform_driver hdmi_receiver_driver = {
 
 void __exit hdin_core_exit(void)
 {
-	dprintk("hdin_core_exit \n");
+	logd("hdin_core_exit \n");
 
 	return;
 }
 
 int __init hdin_core_init(void)
 {
-	dprintk("hdin init \n");
+	logd("hdin init \n");
 	
 	return 0;
 }

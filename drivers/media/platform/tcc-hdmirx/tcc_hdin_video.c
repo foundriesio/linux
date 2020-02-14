@@ -40,9 +40,15 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "tcc_hdin_ctrl.h"
 #include "tcc_hdin_video.h"
 
+static int debug = 0;
 
-static int debug	   = 1;
-#define dprintk(msg...)	if (debug) { printk( "hdin_video: " msg); }
+#define LOG_MODULE_NAME "HDMI"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, LOG_MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) if (debug) logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
 
 #define HDIN_USE_SCALER
 
@@ -86,7 +92,7 @@ int hdin_vioc_vin_main(struct tcc_hdin_device *vdev)
     width = dev->input_width;
     height = dev->input_height;
     
-    printk("[%s]VideoIn Resolution : %dx%d\n",__func__,width,height);
+    log("VideoIn Resolution : %dx%d\n",width,height);
     
     VIOC_CONFIG_WMIXPath(dev->vioc.wmixer.index, OFF); 		// VIN01 means LUT of VIN0 component
     VIOC_WMIX_SetUpdate(dev->vioc.wmixer.address);
@@ -144,7 +150,7 @@ int hdin_vioc_scaler_set(struct tcc_hdin_device *vdev)
     VIOC_SC_SetOutSize(dev->vioc.scaler.address, dw, dh);		// set output size in scaer
     VIOC_SC_SetUpdate(dev->vioc.scaler.address);					// Scaler update
 
-    dprintk("VIOC SC%d(%dx%d)\n", get_vioc_index(dev->vioc.scaler.index), dw, dh);
+    logd("VIOC SC%d(%dx%d)\n", get_vioc_index(dev->vioc.scaler.index), dw, dh);
     return 0;
 }
 #endif
@@ -170,7 +176,7 @@ int hdin_vioc_vin_wdma_set(struct tcc_hdin_device *vdev)
     dw = data->hdin_cfg.main_set.target_x;
     dh = data->hdin_cfg.main_set.target_y;
     fmt = VIOC_IMG_FMT_YUV420IL1;
-    dprintk("%s():  WDMA size[%dx%d], format[%d]. \n", __FUNCTION__, dw, dh, fmt);
+    logd("WDMA size[%dx%d], format[%d]. \n", dw, dh, fmt);
     VIOC_WDMA_SetImageFormat(dev->vioc.wdma.address, fmt);
     VIOC_WDMA_SetImageSize(dev->vioc.wdma.address, dw, dh);
     VIOC_WDMA_SetImageOffset(dev->vioc.wdma.address, fmt, dw);
@@ -346,7 +352,7 @@ int hdin_video_start_stream(struct tcc_hdin_device *vdev)
     struct TCC_HDIN *data = &dev->data;
     VIOC_PlugInOutCheck plug_in_status;
 	
-    dprintk("%s Start!! \n", __FUNCTION__);
+    logd("Start!! \n");
     VIOC_CONFIG_SWReset(dev->vioc.wdma.index,VIOC_CONFIG_RESET);
     VIOC_CONFIG_SWReset(dev->vioc.wmixer.index,VIOC_CONFIG_RESET);
 #ifdef HDIN_USE_SCALER
@@ -381,7 +387,7 @@ int hdin_video_start_stream(struct tcc_hdin_device *vdev)
         hdin_vioc_viqe_main(dev);
     }
     hdin_vioc_vin_wdma_set(dev);
-    dprintk("%s End!! \n", __FUNCTION__);
+    logd("End!! \n");
     return 0;
 }
 
@@ -391,7 +397,7 @@ int hdin_video_stop_stream(struct tcc_hdin_device *vdev)
     struct TCC_HDIN *data = &dev->data;
     VIOC_PlugInOutCheck plug_in_status;
     
-    dprintk("%s Start!! \n", __FUNCTION__);
+    logd("Start!! \n");
     mutex_lock(&data->lock);
     VIOC_WDMA_SetIreqMask(dev->vioc.wdma.address, VIOC_WDMA_IREQ_ALL_MASK, 0x1); // disable WDMA interrupt
     VIOC_WDMA_SetImageDisable(dev->vioc.wdma.address);
@@ -409,7 +415,7 @@ int hdin_video_stop_stream(struct tcc_hdin_device *vdev)
 #endif
     mutex_unlock(&data->lock);
     data->stream_state = STREAM_OFF;	
-    dprintk("%s End!! \n", __FUNCTION__);
+    logd("End!! \n");
     return 0;
 }
 
@@ -541,14 +547,14 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
     
     if(hdin_np)	{
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_wmixer", 0))) {
-            printk("could not find hdin wmixer node!! \n");
+            log("could not find hdin wmixer node!! \n");
             dev->vioc.wmixer.address = NULL;
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_wmixer", 1, &dev->vioc.wmixer.index);
             dev->vioc.wmixer.address = VIOC_WMIX_GetAddress(dev->vioc.wmixer.index);
         }
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_wdma", 0))) {
-            printk("could not find hdin wdma node!! \n");
+            log("could not find hdin wdma node!! \n");
             dev->vioc.wdma.address = NULL;
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_wdma", 1, &dev->vioc.wdma.index);
@@ -556,21 +562,21 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
         }
 #ifdef HDIN_USE_SCALER
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_scaler", 0))) {
-            printk("could not find hdin scaler node!! \n");
+            log("could not find hdin scaler node!! \n");
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_scaler", 1, &dev->vioc.scaler.index);
             dev->vioc.scaler.address	= VIOC_SC_GetAddress(dev->vioc.scaler.index);
         }
 #endif
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_videoin", 0))) {
-            printk("could not find hdin input node!! \n");
+            log("could not find hdin input node!! \n");
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_videoin", 1, &dev->vioc.vin.index);
             dev->vioc.vin.address = VIOC_VIN_GetAddress(dev->vioc.vin.index);
         }
 #if 0
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_lut", 0))) {
-            printk("could not find hdin input node!! \n");
+            log("could not find hdin input node!! \n");
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_lut", 1, &dev->vioc.lut.index);
             dev->vioc.lut.address = of_iomap(vioc_np, dev->vioc.lut.index);
@@ -578,7 +584,7 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
 
 		if(!(vioc_np = of_parse_phandle(hdin_np, "hdin_config", 0))) 
 		{
-			printk("could not find hdin irqe node!! \n");			
+			log("could not find hdin irqe node!! \n");
 		}
 		else
 		{
@@ -587,7 +593,7 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
 		}
 #endif
         if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_rx_viqe", 0))) {
-            printk("could not find hdin viqe node!! \n");
+            log("could not find hdin viqe node!! \n");
         } else {
             of_property_read_u32_index(hdin_np,"hdmi_rx_viqe", 1, &dev->vioc.viqe.index);
             dev->vioc.viqe.address = VIOC_VIQE_GetAddress(dev->vioc.viqe.index);
@@ -597,7 +603,7 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
 		//for TCC892X ~ 7X, HDMI IP has changed to other Vendor as Synopsys after TCC898X
 		if(!(vioc_np = of_parse_phandle(hdin_np, "hdmi_spdif_op", 0)))
 		{
-			//printk("could not find hdmi_spdif_op node!! \n");
+			//log("could not find hdmi_spdif_op node!! \n");
 			dev->hdmi_spdif_op_addr = 0;
 		}
 		else
@@ -607,7 +613,7 @@ void hdin_vioc_dt_parse_data(struct tcc_hdin_device *vdev)
 		}
 #endif
     }else {
-        printk("could not find hdin platform node!! \n");
+        log("could not find hdin platform node!! \n");
     }
 }
 
@@ -626,7 +632,7 @@ int hdin_video_irq_request(struct tcc_hdin_device *vdev)
         synchronize_irq(irq_num);
         data->vioc_intr = kzalloc(sizeof(struct vioc_intr_type), GFP_KERNEL);
         if (data->vioc_intr  == 0) {
-            printk("could not get hdin_data.vioc_intr !! \n");
+            log("could not get hdin_data.vioc_intr !! \n");
             return ret;
         }
         data->vioc_intr->id = VIOC_INTR_WD0 + get_vioc_index(dev->vioc.wdma.index);
@@ -635,7 +641,7 @@ int hdin_video_irq_request(struct tcc_hdin_device *vdev)
         ret = request_irq(irq_num, hdin_video_stream_isr, IRQF_SHARED, DRIVER_NAME,dev);
         vioc_intr_enable(irq_num,data->vioc_intr->id,data->vioc_intr->bits);
         if(ret) {
-            printk("failed to aquire hdin(wdma %d) request_irq. \n",data->vioc_intr->id);
+            log("failed to aquire hdin(wdma %d) request_irq. \n",data->vioc_intr->id);
         }
     }
     return ret;
@@ -667,7 +673,7 @@ int hdin_video_open(struct tcc_hdin_device *vdev)
     int ret = 0;
 
 	if(0 > pmap_get_info("video", &viqe_area)){
-		printk("%s-%d : viqe_area allocation is failed.\n", __func__, __LINE__);
+		loge("viqe_area allocation is failed.\n");
 		return -ENOMEM;
 	}
 
@@ -675,7 +681,7 @@ int hdin_video_open(struct tcc_hdin_device *vdev)
 
     if(!dev->hdin_irq) {
         if((ret = hdin_video_irq_request(dev)) < 0) {
-            printk("FAILED to aquire hdin irq(%d).\n", ret);
+            loge("FAILED to aquire hdin irq(%d).\n", ret);
             return ret;
         }
         dev->hdin_irq = 1;
@@ -706,7 +712,7 @@ int  hdin_video_init(struct tcc_hdin_device *vdev)
     struct tcc_hdin_device *dev = vdev;
     struct TCC_HDIN *data = &dev->data;
 
-    dprintk("hdin_video_init!! \n");
+    logd("hdin_video_init!! \n");
     if(dev->hdin_opend == OFF) {
         memset(data,0x00,sizeof(struct TCC_HDIN));
         dev->viqe_area = 0x00;
@@ -717,7 +723,7 @@ int  hdin_video_init(struct tcc_hdin_device *vdev)
             hdin_vioc_dt_parse_data(dev);
             hdin_set_port(dev);
         } else {
-            printk("could not find hdin node!! \n");
+            log("could not find hdin node!! \n");
             return -ENODEV;	
         }
         hdin_data_init((void*)dev);
