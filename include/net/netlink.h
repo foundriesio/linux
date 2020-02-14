@@ -171,7 +171,6 @@ enum {
 	NLA_FLAG,
 	NLA_MSECS,
 	NLA_NESTED,
-	NLA_NESTED_ARRAY,
 	NLA_NESTED_COMPAT,
 	NLA_NUL_STRING,
 	NLA_BINARY,
@@ -180,7 +179,10 @@ enum {
 	NLA_S32,
 	NLA_S64,
 	NLA_BITFIELD32,
+#ifndef __GENKSYMS__
 	NLA_REJECT,
+	NLA_NESTED_ARRAY,
+#endif
 	__NLA_TYPE_MAX,
 };
 
@@ -281,9 +283,21 @@ enum nla_policy_validation {
  * };
  */
 struct nla_policy {
-	u8		type;
-	u8		validation_type;
+#ifdef __GENKSYMS__
+	u16 type;
+#else
+#ifdef __BIG_ENDIAN
+	u8 validation_type;
+	u8 type;
+#else
+	u8 type;
+	u8 validation_type;
+#endif
+#endif
 	u16		len;
+#ifdef __GENKSYMS__
+	void	*validation_data;
+#else
 	union {
 		const void *validation_data;
 		struct {
@@ -292,6 +306,7 @@ struct nla_policy {
 		int (*validate)(const struct nlattr *attr,
 				struct netlink_ext_ack *extack);
 	};
+#endif
 };
 
 #define NLA_POLICY_NESTED(maxattr, policy) \
