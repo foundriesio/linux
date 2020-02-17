@@ -459,7 +459,7 @@ static int vioc_mgr_probe(struct platform_device *pdev)
 
 	vioc_mgr_device = vioc_mgr;
 
-	log("%s Driver Initialized \n", vioc_mgr->name);np
+	log("%s Driver Initialized \n", vioc_mgr->name);
 
 	return ret;
 }
