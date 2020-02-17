@@ -326,21 +326,6 @@ static int tcc_adma_pcm_open(struct snd_pcm_substream *substream)
 				ret = -EINVAL;
 				break;
 		}
-	} else {
-		switch (dma_info->dev_type) {
-			case TCC_ADMA_I2S_STEREO:
-			case TCC_ADMA_I2S_7_1CH:
-			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, FALSE);
-				break;
-			case TCC_ADMA_SPDIF:
-			case TCC_ADMA_CDIF:
-				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, FALSE);
-				break;
-			default:
-				ret = -EINVAL;
-				break;
-		}
 	}
 #endif
 
@@ -380,11 +365,11 @@ static int tcc_adma_pcm_close(struct snd_pcm_substream *substream)
 			case TCC_ADMA_I2S_STEREO:
 			case TCC_ADMA_I2S_7_1CH:
 			case TCC_ADMA_I2S_9_1CH:
-				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			case TCC_ADMA_SPDIF:
 			case TCC_ADMA_CDIF:
-				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, TRUE);
+				tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, FALSE);
 				break;
 			default:
 				ret = -EINVAL;
@@ -656,6 +641,7 @@ static int tcc_adma_i2s_pcm_hw_free(struct snd_pcm_substream *substream)
 		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
+		//tcc_adma_dai_tx_reset_enable(adma_pcm->adma_reg, TRUE);
 	} else {
 		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] DAI_TRIGGER_STOP, CAPTURE\n");
 		tcc_adma_dai_rx_irq_enable(adma_pcm->adma_reg, FALSE);
@@ -668,6 +654,7 @@ static int tcc_adma_i2s_pcm_hw_free(struct snd_pcm_substream *substream)
 		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_dai_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
+		tcc_adma_dai_rx_reset_enable(adma_pcm->adma_reg, TRUE);
 	}
 
 	return 0;
@@ -687,6 +674,7 @@ static int tcc_adma_spdif_pcm_hw_free(struct snd_pcm_substream *substream)
 		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_tx_hopcnt_clear(adma_pcm->adma_reg);
 		}
+		//tcc_adma_spdif_tx_reset_enable(adma_pcm->adma_reg, TRUE);
 	} else {
 		(void) printk(KERN_DEBUG "[DEBUG][AUDIO_DMA] SPDIF_TRIGGER_STOP, CAPTURE\n");
 		tcc_adma_spdif_cdif_rx_irq_enable(adma_pcm->adma_reg, FALSE);
@@ -694,6 +682,7 @@ static int tcc_adma_spdif_pcm_hw_free(struct snd_pcm_substream *substream)
 		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
+		tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, TRUE);
 	}
 
 	return 0;
@@ -716,6 +705,7 @@ static int tcc_adma_cdif_pcm_hw_free(struct snd_pcm_substream *substream)
 		if (adma_pcm->have_hopcnt_clear_bit != 0u) {
 			tcc_adma_spdif_cdif_rx_hopcnt_clear(adma_pcm->adma_reg);
 		}
+		tcc_adma_spdif_rx_reset_enable(adma_pcm->adma_reg, TRUE);
 	}
 
 	return 0;
@@ -1109,7 +1099,10 @@ static irqreturn_t tcc_adma_pcm_handler(int irq, void *dev_id)
 	ret = tcc_adma_dai_tx_irq_check(adma_pcm->adma_reg);
 	if (ret) {
 		tcc_adma_dai_tx_irq_clear(adma_pcm->adma_reg);
-
+		ret = tcc_adma_dai_tx_irq_check(adma_pcm->adma_reg);
+		if (ret) {
+			(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : DAI TX IRQ NOT CLEAR!\n", __func__);
+		}
 		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_STEREO].playback_substream);
 		}
@@ -1125,7 +1118,10 @@ static irqreturn_t tcc_adma_pcm_handler(int irq, void *dev_id)
 	ret = tcc_adma_dai_rx_irq_check(adma_pcm->adma_reg);
 	if (ret) {
 		tcc_adma_dai_rx_irq_clear(adma_pcm->adma_reg);
-
+		ret = tcc_adma_dai_rx_irq_check(adma_pcm->adma_reg);
+		if (ret) {
+			(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : DAI RX IRQ NOT CLEAR!\n", __func__);
+		}
 		if (adma_pcm->dev[TCC_ADMA_I2S_STEREO].capture_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_I2S_STEREO].capture_substream);
 		}
@@ -1142,7 +1138,10 @@ static irqreturn_t tcc_adma_pcm_handler(int irq, void *dev_id)
 	ret = tcc_adma_spdif_tx_irq_check(adma_pcm->adma_reg);
 	if (ret) {
 		tcc_adma_spdif_tx_irq_clear(adma_pcm->adma_reg);
-
+		ret = tcc_adma_spdif_tx_irq_check(adma_pcm->adma_reg);
+		if (ret) {
+			(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : SPDIF TX IRQ NOT CLEAR!\n", __func__);
+		}
 		if (adma_pcm->dev[TCC_ADMA_SPDIF].playback_substream != NULL) {
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_SPDIF].playback_substream);
 		}
@@ -1150,12 +1149,18 @@ static irqreturn_t tcc_adma_pcm_handler(int irq, void *dev_id)
 	ret = tcc_adma_spdif_cdif_rx_irq_check(adma_pcm->adma_reg);
 	if (ret) {
 		tcc_adma_spdif_cdif_rx_irq_clear(adma_pcm->adma_reg);
-
+		ret = tcc_adma_spdif_cdif_rx_irq_check(adma_pcm->adma_reg);
 		if (adma_pcm->dev[TCC_ADMA_SPDIF].capture_substream != NULL) {
+			if (ret) {
+				(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : SPDIF RX IRQ NOT CLEAR!\n", __func__);
+			}
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_SPDIF].capture_substream);
 		} 
 
 		if (adma_pcm->dev[TCC_ADMA_CDIF].capture_substream != NULL) {
+			if (ret) {
+				(void) printk(KERN_ERR "[ERROR][AUDIO_DMA] %s : CDIF RX IRQ NOT CLEAR!\n", __func__);
+			}
 			snd_pcm_period_elapsed(adma_pcm->dev[TCC_ADMA_CDIF].capture_substream);
 		}
 	}
