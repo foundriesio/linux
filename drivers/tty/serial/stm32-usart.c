@@ -1575,7 +1575,7 @@ static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 
 	uart_suspend_port(&stm32_usart_driver, port);
 
-	if (device_may_wakeup(dev) || dev->power.wakeup_path)
+	if (device_may_wakeup(dev) || device_wakeup_path(dev))
 		stm32_usart_serial_en_wakeup(port, true);
 
 	if (uart_console(port) && !console_suspend_enabled) {
@@ -1586,7 +1586,7 @@ static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 
 		pinctrl_select_state(dev->pins->p, stm32_port->console_pins);
 	} else {
-		if (device_may_wakeup(dev) || dev->power.wakeup_path)
+		if (device_may_wakeup(dev) || device_wakeup_path(dev))
 			pinctrl_pm_select_idle_state(dev);
 		else
 			pinctrl_pm_select_sleep_state(dev);
@@ -1601,7 +1601,7 @@ static int __maybe_unused stm32_usart_serial_resume(struct device *dev)
 
 	pinctrl_pm_select_default_state(dev);
 
-	if (device_may_wakeup(dev) || dev->power.wakeup_path)
+	if (device_may_wakeup(dev) || device_wakeup_path(dev))
 		stm32_usart_serial_en_wakeup(port, false);
 
 	return uart_resume_port(&stm32_usart_driver, port);
