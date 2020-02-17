@@ -131,6 +131,15 @@ static struct i2c_data_reg main_data_reg[] = {
         {0x00, 0x00, 0x00}
 };
 
+struct i2c_data_reg hdmi_rd_info[] = {
+        {DEFAULT_HDMI_ADDR, 0xea, 0x20},
+        {DEFAULT_HDMI_ADDR, 0xeb, 0xc4},
+        {DEFAULT_HDMI_ADDR, 0x00, 0x00},
+        {0x98, 0xea, 0x20},
+        {0x98, 0xeb, 0xc4},
+        {0x00, 0x00, 0x00}
+};
+
 static struct i2c_data_reg cp_data_reg[] = {
         {DEFAULT_CP_ADDR, 0x6C, 0x00}, /* ;default 0x10, ADI Recommended write */
         {DEFAULT_CP_ADDR, 0x8B, 0x40}, /* ;HS DE adjustment */
@@ -219,6 +228,52 @@ static int adv7613_panel_init(struct lcd_panel *panel, struct tcc_dp_device *fb_
         return ret;
 }
 
+static int adv763_check(struct adv7613_dev *dev, struct i2c_data_reg *i2c_data_reg)
+{
+
+        int ret = -1;
+        int val, loop, retry = 0;
+        struct regmap *regmap;
+        do {
+                if(dev == NULL) {
+                        pr_err("%s dev is null\r\n", __func__);
+                        break;
+                }
+                regmap = dev->i2c_regmap;
+                if(regmap == NULL) {
+                        pr_err("%s regmap is null\r\n", __func__);
+                        break;
+                }
+
+                for(loop = 0;
+                        !(i2c_data_reg[loop].addr == 0 &&
+                          i2c_data_reg[loop].reg == 0
+                          && i2c_data_reg[loop].val == 0); loop++) {
+                        if(DEFAULT_DELAY_ADDR == i2c_data_reg[loop].addr) {
+                                mdelay(i2c_data_reg[loop].val);
+                        } else {
+                                retry = 3;
+                                do {
+                                        regmap_read(regmap, i2c_data_reg[loop].reg, &val);
+                                        if(val != i2c_data_reg[loop].val) {
+                                                pr_info(" WARNING [%02d] A_0x%02x R_0x%02x 0x%02x : 0x%02x\r\n",
+                                                        loop, i2c_data_reg[loop].addr,
+                                                        i2c_data_reg[loop].reg, i2c_data_reg[loop].val, val);
+                                        } else {
+                                                break;
+                                        }
+                                }while((--retry) > 0);
+
+                                if(retry <= 0)
+                                return ret;
+                        }
+                }
+                ret = 0;
+        } while(0);
+
+        return ret;
+}
+
 static int adv763_update(struct adv7613_dev *dev, struct i2c_data_reg *i2c_data_reg)
 {
 
@@ -295,6 +350,12 @@ static int adv7613_set_power_internal(struct adv7613_dev *dev, int on)
                         mdelay(1);
                         if(gpio_is_valid(dev->gpio_reset))
                                 gpio_set_value(dev->gpio_reset, 1);
+
+                        client->addr = dev->i2c_slave_address.main;
+                        if(adv763_check(dev, hdmi_rd_info) < 0) {
+                                pr_err("%s failed set main reg\r\n", __func__);
+                                break;
+                        }
 
                         client->addr = dev->i2c_slave_address.main;
                         if(adv763_update(dev, main_data_reg) < 0) {
