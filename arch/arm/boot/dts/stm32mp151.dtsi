@@ -504,8 +504,10 @@
 		usart2: serial@4000e000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x4000e000 0x400>;
-			interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 27 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART2_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 43 0x400 0x5>,
 			       <&dmamux1 44 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -515,8 +517,10 @@
 		usart3: serial@4000f000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x4000f000 0x400>;
-			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 28 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART3_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 45 0x400 0x5>,
 			       <&dmamux1 46 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -526,8 +530,10 @@
 		uart4: serial@40010000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x40010000 0x400>;
-			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 30 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART4_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 63 0x400 0x5>,
 			       <&dmamux1 64 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -537,8 +543,10 @@
 		uart5: serial@40011000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x40011000 0x400>;
-			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 31 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART5_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 65 0x400 0x5>,
 			       <&dmamux1 66 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -641,8 +649,10 @@
 		uart7: serial@40018000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x40018000 0x400>;
-			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 32 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART7_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 79 0x400 0x5>,
 			       <&dmamux1 80 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -652,8 +662,10 @@
 		uart8: serial@40019000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x40019000 0x400>;
-			interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 33 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc UART8_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 81 0x400 0x5>,
 			       <&dmamux1 82 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -735,8 +747,10 @@
 		usart6: serial@44003000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x44003000 0x400>;
-			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 29 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&rcc USART6_K>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			dmas = <&dmamux1 71 0x400 0x5>,
 			       <&dmamux1 72 0x400 0x1>;
 			dma-names = "rx", "tx";
@@ -1636,9 +1650,11 @@
 		usart1: serial@5c000000 {
 			compatible = "st,stm32h7-uart";
 			reg = <0x5c000000 0x400>;
-			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&exti 26 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&scmi0_clk CK_SCMI0_USART1>;
 			resets = <&scmi0_reset RST_SCMI0_USART1>;
+			wakeup-source;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
