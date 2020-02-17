@@ -17,13 +17,19 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
-static int					debug = 0;
-#define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
-#define dlog(fmt, ...)		do { if(debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
+static int debug = 0;
 
-#define MODULE_NAME			"switch_gpio_reverse"
+#define MODULE_NAME "switch_gpio_reverse"
+
+#define logl(level, fmt, ...) printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...) logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...) logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...) logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...) logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
+#define dlog(fmt, ...) do { if(debug) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
+
+#define FUNCTION_IN	dlog("IN\n");
+#define FUNCTION_OUT	dlog("OUT\n");
 
 #define SWITCH_IOCTL_CMD_ENABLE			0x10
 #define SWITCH_IOCTL_CMD_DISABLE		0x11
@@ -171,14 +177,14 @@ long switch_reverse_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 		dlog("state: %d\n", state);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&state, sizeof(state))) < 0) {
-			log("FAILED: copy_to_user\n");
+			loge("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
 		}
 		break;
 
 	default:
-		log("FAILED: Unsupported command\n");
+		loge("FAILED: Unsupported command\n");
 		ret = -1;
 		break;
 	}
@@ -214,20 +220,20 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Allocate a charactor device region
 	ret = alloc_chrdev_region(&switch_reverse_dev_region, 0, 1, MODULE_NAME);
 	if(ret < 0) {
-		log("ERROR: Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
+		loge("ERROR: Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
 		return ret;
 	}
 	
 	// Create the CM control class
 	switch_reverse_class = class_create(THIS_MODULE, MODULE_NAME);
 	if(switch_reverse_class == NULL) {
-		log("ERROR: Create the \"%s\" class\n", MODULE_NAME);
+		loge("ERROR: Create the \"%s\" class\n", MODULE_NAME);
 		goto goto_unregister_chrdev_region;
 	}
 
 	// Create the CM control device file system
 	if(device_create(switch_reverse_class, NULL, switch_reverse_dev_region, NULL, MODULE_NAME) == NULL) {
-		log("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
+		loge("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
 		goto goto_destroy_class;
 	}
 
@@ -235,7 +241,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	cdev_init(&switch_reverse_cdev, &switch_reverse_fops);
 	ret = cdev_add(&switch_reverse_cdev, switch_reverse_dev_region, 1);
 	if(ret < 0) {
-		log("ERROR: Register the \"%s\" device as a charactor device\n", MODULE_NAME);
+		loge("ERROR: Register the \"%s\" device as a charactor device\n", MODULE_NAME);
 		goto goto_destroy_device;
 	}
 
@@ -252,7 +258,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// pinctrl
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
 	if(IS_ERR(pinctrl))
-		log("%s: pinctrl select failed\n", MODULE_NAME);
+		loge("%s: pinctrl select failed\n", MODULE_NAME);
 	else
 		pinctrl_put(pinctrl);
 
@@ -265,12 +271,12 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Create the switch_reverse_attr sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
 	if(ret < 0)
-		log("failed create sysfs\r\n");
+		loge("failed create sysfs\r\n");
 
 	// Create the switch_reverse_attr_debug sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr_debug);
 	if(ret < 0)
-		log("failed create sysfs: debug\r\n");
+		loge("failed create sysfs: debug\r\n");
 
 #ifdef ON_OFF_TEST
 	mutex_init(&switchmanager_lock);
@@ -322,7 +328,7 @@ int switch_reverse_remove(struct platform_device * pdev) {
 int switch_reverse_suspend(struct platform_device * pdev, pm_message_t state) {
 	FUNCTION_IN
 
-	log("");
+	dlog("");
 
 	FUNCTION_OUT
 	return 0;
@@ -331,7 +337,7 @@ int switch_reverse_suspend(struct platform_device * pdev, pm_message_t state) {
 int switch_reverse_resume(struct platform_device * pdev) {
 	FUNCTION_IN
 
-	log("");
+	dlog("");
 
 	FUNCTION_OUT
 	return 0;
