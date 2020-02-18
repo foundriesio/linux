@@ -28,7 +28,7 @@
  * \file
  *		TCC_VPU_C7.h
  * \date
- *		2020/01/30
+ *		2020/02/14
  *		2018/09/04
  *		2018/05/18
  *		2018/04/02
@@ -39,7 +39,7 @@
  * \brief
  *		main api
  * \version
- *		4.04.0.00(2020/01/30) : Added sleep (m_Usleep) callback and Forcely escape (TCC_VPU_DEC_ESC, TCC_VPU_DEC_EXT) funtions on API
+ *		4.04.1.00(2020/01/30) : Added sleep callback and Forcedly escape funtions on API & changed CnM FW (TELBBA-49(Subtitle), TELBBA-45)
  *		4.03.0.00(2018/09/04)
  *		4.02.0.00(2018/05/18)
  *		4.01.0.00(2018/04/02)
