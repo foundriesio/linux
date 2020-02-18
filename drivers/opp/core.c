@@ -980,9 +980,14 @@ static struct opp_table *_allocate_opp_table(struct device *dev, int index)
 	opp_table->clk = clk_get(dev, NULL);
 	if (IS_ERR(opp_table->clk)) {
 		ret = PTR_ERR(opp_table->clk);
-		if (ret != -EPROBE_DEFER)
+		if (ret != -EPROBE_DEFER) {
 			dev_dbg(dev, "%s: Couldn't find clock: %d\n", __func__,
 				ret);
+		}
+		else {
+			kfree(opp_table);
+			return ERR_PTR(-EPROBE_DEFER);
+		}
 	}
 
 	BLOCKING_INIT_NOTIFIER_HEAD(&opp_table->head);
@@ -1443,6 +1448,10 @@ struct opp_table *dev_pm_opp_set_supported_hw(struct device *dev,
 	struct opp_table *opp_table;
 
 	opp_table = dev_pm_opp_get_opp_table(dev);
+
+	if (PTR_ERR(opp_table) == -EPROBE_DEFER)
+		return opp_table;
+
 	if (!opp_table)
 		return ERR_PTR(-ENOMEM);
 
