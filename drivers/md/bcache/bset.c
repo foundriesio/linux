@@ -154,6 +154,7 @@ int __bch_keylist_realloc(struct keylist *l, unsigned int u64s)
 	return 0;
 }
 
+/* Pop the top key of keylist by pointing l->top to its previous key */
 struct bkey *bch_keylist_pop(struct keylist *l)
 {
 	struct bkey *k = l->keys;
@@ -167,6 +168,7 @@ struct bkey *bch_keylist_pop(struct keylist *l)
 	return l->top = k;
 }
 
+/* Pop the bottom key of keylist and update l->top_p */
 void bch_keylist_pop_front(struct keylist *l)
 {
 	l->top_p -= bkey_u64s(l->keys);
