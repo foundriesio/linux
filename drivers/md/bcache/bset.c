@@ -310,7 +310,6 @@ void bch_btree_keys_free(struct btree_keys *b)
 	t->tree = NULL;
 	t->data = NULL;
 }
-EXPORT_SYMBOL(bch_btree_keys_free);
 
 int bch_btree_keys_alloc(struct btree_keys *b,
 			 unsigned int page_order,
@@ -343,7 +342,6 @@ err:
 	bch_btree_keys_free(b);
 	return -ENOMEM;
 }
-EXPORT_SYMBOL(bch_btree_keys_alloc);
 
 void bch_btree_keys_init(struct btree_keys *b, const struct btree_keys_ops *ops,
 			 bool *expensive_debug_checks)
@@ -362,7 +360,6 @@ void bch_btree_keys_init(struct btree_keys *b, const struct btree_keys_ops *ops,
 	 * any more.
 	 */
 }
-EXPORT_SYMBOL(bch_btree_keys_init);
 
 /* Binary tree stuff for auxiliary search trees */
 
@@ -679,7 +676,6 @@ void bch_bset_init_next(struct btree_keys *b, struct bset *i, uint64_t magic)
 
 	bch_bset_build_unwritten_tree(b);
 }
-EXPORT_SYMBOL(bch_bset_init_next);
 
 /*
  * Build auxiliary binary tree 'struct bset_tree *t', this tree is used to
@@ -733,7 +729,6 @@ void bch_bset_build_written_tree(struct btree_keys *b)
 	     j = inorder_next(j, t->size))
 		make_bfloat(t, j);
 }
-EXPORT_SYMBOL(bch_bset_build_written_tree);
 
 /* Insert */
 
@@ -781,7 +776,6 @@ fix_right:	do {
 			j = j * 2 + 1;
 		} while (j < t->size);
 }
-EXPORT_SYMBOL(bch_bset_fix_invalidated_key);
 
 static void bch_bset_fix_lookup_table(struct btree_keys *b,
 				      struct bset_tree *t,
@@ -856,7 +850,6 @@ bool bch_bkey_try_merge(struct btree_keys *b, struct bkey *l, struct bkey *r)
 
 	return b->ops->key_merge(b, l, r);
 }
-EXPORT_SYMBOL(bch_bkey_try_merge);
 
 void bch_bset_insert(struct btree_keys *b, struct bkey *where,
 		     struct bkey *insert)
@@ -876,7 +869,6 @@ void bch_bset_insert(struct btree_keys *b, struct bkey *where,
 	bkey_copy(where, insert);
 	bch_bset_fix_lookup_table(b, t, where);
 }
-EXPORT_SYMBOL(bch_bset_insert);
 
 unsigned int bch_btree_insert_key(struct btree_keys *b, struct bkey *k,
 			      struct bkey *replace_key)
@@ -932,7 +924,6 @@ copy:	bkey_copy(m, k);
 merged:
 	return status;
 }
-EXPORT_SYMBOL(bch_btree_insert_key);
 
 /* Lookup */
 
@@ -1078,7 +1069,6 @@ struct bkey *__bch_bset_search(struct btree_keys *b, struct bset_tree *t,
 
 	return i.l;
 }
-EXPORT_SYMBOL(__bch_bset_search);
 
 /* Btree iterator */
 
@@ -1133,7 +1123,6 @@ struct bkey *bch_btree_iter_init(struct btree_keys *b,
 {
 	return __bch_btree_iter_init(b, iter, search, b->set);
 }
-EXPORT_SYMBOL(bch_btree_iter_init);
 
 static inline struct bkey *__bch_btree_iter_next(struct btree_iter *iter,
 						 btree_iter_cmp_fn *cmp)
@@ -1166,7 +1155,6 @@ struct bkey *bch_btree_iter_next(struct btree_iter *iter)
 	return __bch_btree_iter_next(iter, btree_iter_cmp);
 
 }
-EXPORT_SYMBOL(bch_btree_iter_next);
 
 struct bkey *bch_btree_iter_next_filter(struct btree_iter *iter,
 					struct btree_keys *b, ptr_filter_fn fn)
@@ -1202,7 +1190,6 @@ int bch_bset_sort_state_init(struct bset_sort_state *state,
 
 	return 0;
 }
-EXPORT_SYMBOL(bch_bset_sort_state_init);
 
 static void btree_mergesort(struct btree_keys *b, struct bset *out,
 			    struct btree_iter *iter,
@@ -1319,7 +1306,6 @@ void bch_btree_sort_partial(struct btree_keys *b, unsigned int start,
 
 	EBUG_ON(oldsize >= 0 && bch_count_data(b) != oldsize);
 }
-EXPORT_SYMBOL(bch_btree_sort_partial);
 
 void bch_btree_sort_and_fix_extents(struct btree_keys *b,
 				    struct btree_iter *iter,
@@ -1372,7 +1358,6 @@ void bch_btree_sort_lazy(struct btree_keys *b, struct bset_sort_state *state)
 out:
 	bch_bset_build_written_tree(b);
 }
-EXPORT_SYMBOL(bch_btree_sort_lazy);
 
 void bch_btree_keys_stats(struct btree_keys *b, struct bset_stats *stats)
 {
