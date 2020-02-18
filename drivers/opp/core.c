@@ -1608,8 +1608,12 @@ struct opp_table *dev_pm_opp_set_supported_hw(struct device *dev,
 	struct opp_table *opp_table;
 
 	opp_table = dev_pm_opp_get_opp_table(dev);
-	if (IS_ERR(opp_table))
+
+	if (PTR_ERR(opp_table) == -EPROBE_DEFER)
 		return opp_table;
+
+	if (!opp_table)
+		return ERR_PTR(-ENOMEM);
 
 	/* Make sure there are no concurrent readers while updating opp_table */
 	WARN_ON(!list_empty(&opp_table->opp_list));
