@@ -454,11 +454,12 @@ spidev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 			spi->max_speed_hz = tmp;
 			retval = spi_setup(spi);
-			if (retval >= 0)
+			if (retval) {
+				spi->max_speed_hz = save;
+			} else {
 				spidev->speed_hz = tmp;
-			else
 				dev_dbg(&spi->dev, "%d Hz (max)\n", tmp);
-			spi->max_speed_hz = save;
+			}
 		}
 		break;
 
