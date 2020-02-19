@@ -162,7 +162,7 @@ static long aux_detect_ioctl(struct file * filp, unsigned int cmd, unsigned long
 
 	case AUX_IOCTL_CMD_GET_STATE:
 		state = (long)aux_detect_check_state();
-		ilog("state: %d\n", state);
+		dlog("state: %d\n", state);
 
 		if(copy_to_user((void *)arg, (const void *)&state, (unsigned long)sizeof(state)) != (unsigned long) 0) {
 			elog("FAILED: copy_to_user\n");
