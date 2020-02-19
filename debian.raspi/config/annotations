@@ -3342,7 +3342,7 @@ CONFIG_MMC_SDHCI_DOVE                           policy<{'armhf': 'm'}>
 CONFIG_MMC_SDHCI_TEGRA                          policy<{'armhf-generic': 'm'}>
 CONFIG_MMC_SDHCI_PXAV3                          policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_MMC_SDHCI_F_SDH30                        policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
-CONFIG_MMC_SDHCI_IPROC                          policy<{'arm64': 'm'}>
+CONFIG_MMC_SDHCI_IPROC                          policy<{'arm64': 'y', 'armhf': 'y'}>
 CONFIG_MMC_SDHCI_MSM                            policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_MMC_SDHCI_BRCMSTB                        policy<{'arm64': 'm'}>
 #
@@ -7668,7 +7668,7 @@ CONFIG_VIRT_DRIVERS                             policy<{'amd64': 'y', 'arm64': '
 # Menu: Device Drivers >> Voltage and Current Regulator Support
 CONFIG_REGULATOR                                policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'i386': 'y', 'ppc64el': 'y', 's390x': 'n'}>
 CONFIG_REGULATOR_DEBUG                          policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'i386': 'n', 'ppc64el': 'n'}>
-CONFIG_REGULATOR_FIXED_VOLTAGE                  policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'y', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_REGULATOR_FIXED_VOLTAGE                  policy<{'amd64': 'm', 'arm64': 'y', 'armhf': 'y', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_VIRTUAL_CONSUMER               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_USERSPACE_CONSUMER             policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_88PM800                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
@@ -7695,7 +7695,7 @@ CONFIG_REGULATOR_DA9063                         policy<{'amd64': 'm', 'arm64': '
 CONFIG_REGULATOR_DA9210                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_DA9211                         policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_FAN53555                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
-CONFIG_REGULATOR_GPIO                           policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>
+CONFIG_REGULATOR_GPIO                           policy<{'amd64': 'm', 'arm64': 'y', 'armhf': 'y', 'i386': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_HI6421                         policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm'}>
 CONFIG_REGULATOR_HI655X                         policy<{'arm64': 'm', 'armhf': 'm'}>
 CONFIG_REGULATOR_ISL9305                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm'}>

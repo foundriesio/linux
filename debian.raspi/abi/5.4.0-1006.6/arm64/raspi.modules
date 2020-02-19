@@ -1028,7 +1028,6 @@ fdp
 fdp_i2c
 ff-memless
 fieldbus_dev
-fixed
 flexcan
 fm_drv
 fmvj18x_cs
@@ -1169,7 +1168,6 @@ gpio-mockup
 gpio-pca953x
 gpio-pcf857x
 gpio-pisosr
-gpio-regulator
 gpio-syscon
 gpio-tpic2810
 gpio-tps65086
@@ -3106,7 +3104,6 @@ scsi_transport_srp
 sctp
 sctp_diag
 sdhci-cadence
-sdhci-iproc
 sdhci-of-arasan
 sdhci-of-at91
 sdhci-xenon-driver
