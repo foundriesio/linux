@@ -12,7 +12,6 @@
 #include <linux/iio/trigger.h>
 #include <linux/mfd/stm32-timers.h>
 #include <linux/module.h>
-#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 
@@ -846,17 +845,13 @@ static int __maybe_unused stm32_timer_trigger_suspend(struct device *dev)
 	if (priv->enabled)
 		clk_disable(priv->clk);
 
-	return pinctrl_pm_select_sleep_state(dev);
+	return 0;
 }
 
 static int __maybe_unused stm32_timer_trigger_resume(struct device *dev)
 {
 	struct stm32_timer_trigger *priv = dev_get_drvdata(dev);
 	int ret;
-
-	ret = pinctrl_pm_select_default_state(dev);
-	if (ret)
-		return ret;
 
 	if (priv->enabled) {
 		ret = clk_enable(priv->clk);
