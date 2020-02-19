@@ -87,7 +87,6 @@ struct stm32_timer_trigger {
 	bool has_trgo2;
 	struct mutex lock; /* concurrent sysfs configuration */
 	unsigned int freq;
-	bool counter_en;
 	u32 cr1;
 	u32 cr2;
 	u32 psc;
@@ -507,7 +506,6 @@ static int stm32_counter_write_raw(struct iio_dev *indio_dev,
 				clk_disable(priv->clk);
 			}
 		}
-		priv->counter_en = !!val;
 		mutex_unlock(&priv->lock);
 		return 0;
 	}
@@ -880,18 +878,9 @@ static int stm32_tt_resume(struct device *dev)
 				   TIM_CR1_ARPE);
 		regmap_update_bits(priv->regmap, TIM_EGR, TIM_EGR_UG,
 				   TIM_EGR_UG);
-	}
-
-	if (priv->counter_en) {
-		/* restore counter value, count_direction */
-		regmap_write(priv->regmap, TIM_CNT, priv->cnt);
-		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_DIR,
-				   priv->cr1);
-	}
-
-	if (priv->freq || priv->counter_en)
 		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN,
 				   TIM_CR1_CEN);
+	}
 
 	return 0;
 }
