@@ -1130,6 +1130,9 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 	    }
 
 		cntInt_4kd2 = 0;
+		#ifdef DEBUG_VPU_4K_D2_K
+		cntwk_4kd2 = 0;
+		#endif
     }
     atomic_inc(&vmgr_4k_d2_data.dev_opened);
 
