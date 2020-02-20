@@ -30,7 +30,7 @@
 			no-map;
 		};
 
-		optee_memory: optee@0xfe000000 {
+		optee_memory: optee@fe000000 {
 			reg = <0xfe000000 0x02000000>;
 			no-map;
 		};
