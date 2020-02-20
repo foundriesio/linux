@@ -99,7 +99,15 @@ void teedev_ctx_put(struct tee_context *ctx)
 static void teedev_close_context(struct tee_context *ctx)
 {
 	tee_device_put(ctx->teedev);
-	teedev_ctx_put(ctx);
+	
+	// Telechips B160041 added 'while (kref_read(&ctx->refcount))' code.
+	// Put all kref count.
+	// This can not be a problem because teedev_close_context() is 
+	// always called when release optee context.
+	// The reason why added this code is due to allocated shared memory is not freed,
+	// when CA is closed accidently by segmentation falut or something like that while TA is running.
+	while (kref_read(&ctx->refcount))
+		teedev_ctx_put(ctx);
 }
 
 static int tee_open(struct inode *inode, struct file *filp)
