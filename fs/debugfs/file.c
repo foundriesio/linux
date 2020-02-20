@@ -47,11 +47,49 @@ const struct file_operations debugfs_noop_file_operations = {
 	.llseek =	noop_llseek,
 };
 
+/* kABI compatibility wrapper */
+int debugfs_use_file_start(const struct dentry *dentry, int *srcu_idx)
+{
+	/*
+	 * Make this a nop, remaining non-debugfs core users will get the
+	 * full proxy debugfs_full_proxy_file_operations forced on them,
+	 * c.f. the adapted debugfs_create_file_unsafe() compatibility
+	 * wrapper.
+	 */
+	return 0;
+}
+EXPORT_SYMBOL_GPL(debugfs_use_file_start);
+
+/* kABI compatibility wrapper */
+void debugfs_use_file_finish(int srcu_idx)
+{
+	/*
+	 * Make this a nop, c.f. the comment in debugfs_use_file_start()
+	 * above.
+	 */
+}
+EXPORT_SYMBOL_GPL(debugfs_use_file_finish);
+
+/*
+ * kABI compatibility: debugfs_use_file_start() and
+ * debugfs_use_file_finish() have been superseded by debugfs_file_get()
+ * and debugfs_file_put() respectively. All callers in this file have
+ * have been converted and there's no need for them to always get
+ * the full debugfs_full_proxy_file_operations imposed on them.
+ * Make them all use __debugfs_create_file_unsafe(), which corresponds
+ * 1:1 to upstream's debugfs_create_file_unsafe().
+ */
+struct dentry *__debugfs_create_file_unsafe(const char *name, umode_t mode,
+				   struct dentry *parent, void *data,
+				   const struct file_operations *fops);
+#define debugfs_create_file_unsafe __debugfs_create_file_unsafe
+
+
 #define F_DENTRY(filp) ((filp)->f_path.dentry)
 
 const struct file_operations *debugfs_real_fops(const struct file *filp)
 {
-	struct debugfs_fsdata *fsd = F_DENTRY(filp)->d_fsdata;
+	struct debugfs_fsdata *fsd = kabi_debugfs_d_fsdata(F_DENTRY(filp));
 
 	if ((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT) {
 		/*
@@ -86,7 +124,7 @@ int debugfs_file_get(struct dentry *dentry)
 	struct debugfs_fsdata *fsd;
 	void *d_fsd;
 
-	d_fsd = READ_ONCE(dentry->d_fsdata);
+	d_fsd = READ_ONCE(kabi_debugfs_d_fsdata(dentry));
 	if (!((unsigned long)d_fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT)) {
 		fsd = d_fsd;
 	} else {
@@ -98,9 +136,9 @@ int debugfs_file_get(struct dentry *dentry)
 					~DEBUGFS_FSDATA_IS_REAL_FOPS_BIT);
 		refcount_set(&fsd->active_users, 1);
 		init_completion(&fsd->active_users_drained);
-		if (cmpxchg(&dentry->d_fsdata, d_fsd, fsd) != d_fsd) {
+		if (cmpxchg(&kabi_debugfs_d_fsdata(dentry), d_fsd, fsd) != d_fsd) {
 			kfree(fsd);
-			fsd = READ_ONCE(dentry->d_fsdata);
+			fsd = READ_ONCE(kabi_debugfs_d_fsdata(dentry));
 		}
 	}
 
@@ -133,7 +171,7 @@ EXPORT_SYMBOL_GPL(debugfs_file_get);
  */
 void debugfs_file_put(struct dentry *dentry)
 {
-	struct debugfs_fsdata *fsd = READ_ONCE(dentry->d_fsdata);
+	struct debugfs_fsdata *fsd = READ_ONCE(kabi_debugfs_d_fsdata(dentry));
 
 	if (refcount_dec_and_test(&fsd->active_users))
 		complete(&fsd->active_users_drained);

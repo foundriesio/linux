@@ -170,8 +170,17 @@ static int debugfs_show_options(struct seq_file *m, struct dentry *root)
 static void debugfs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
-	if (S_ISLNK(inode->i_mode))
+	if (S_ISLNK(inode->i_mode)) {
 		kfree(inode->i_link);
+	} else if (S_ISREG(inode->i_mode)) {
+		/*
+		 * kABI workaround uses ->i_link in place of ->d->fs_data
+		 * for regular files.
+		 */
+		void *fsd = __kabi_debugfs_d_fsdata(inode);
+		if (!((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT))
+			kfree(fsd);
+	}
 	free_inode_nonrcu(inode);
 }
 
@@ -189,10 +198,11 @@ static const struct super_operations debugfs_super_operations = {
 
 static void debugfs_release_dentry(struct dentry *dentry)
 {
-	void *fsd = dentry->d_fsdata;
-
-	if (!((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT))
-		kfree(dentry->d_fsdata);
+	/*
+	 * Upstream does a kfree() on ->d_fsdata here. However,
+	 * for working around kABI, ->i_link is used instead.
+	 * The corresponding cleanup is found in debugfs_i_callback().
+	 */
 }
 
 static struct vfsmount *debugfs_automount(struct path *path)
@@ -367,7 +377,8 @@ static struct dentry *__debugfs_create_file(const char *name, umode_t mode,
 	inode->i_private = data;
 
 	inode->i_fop = proxy_fops;
-	dentry->d_fsdata = (void *)((unsigned long)real_fops |
+	dentry->d_fsdata = (void *)real_fops; /* Needed for kABI */
+	__kabi_debugfs_d_fsdata(inode) = (void *)((unsigned long)real_fops |
 				DEBUGFS_FSDATA_IS_REAL_FOPS_BIT);
 
 	d_instantiate(dentry, inode);
@@ -440,7 +451,7 @@ EXPORT_SYMBOL_GPL(debugfs_create_file);
  * DEFINE_DEBUGFS_ATTRIBUTE() is protected against file removals and
  * thus, may be used here.
  */
-struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
+struct dentry *__debugfs_create_file_unsafe(const char *name, umode_t mode,
 				   struct dentry *parent, void *data,
 				   const struct file_operations *fops)
 {
@@ -449,6 +460,45 @@ struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
 				fops ? &debugfs_open_proxy_file_operations :
 					&debugfs_noop_file_operations,
 				fops);
+}
+
+/*
+ * kABI compatibility wrapper: the original implementation from above
+ * corresponding 1:1 to upstream has been renamed.
+ */
+struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
+				   struct dentry *parent, void *data,
+				   const struct file_operations *fops)
+{
+	/*
+	 * This gets invoked from users outside of the debugfs core only.
+	 * Handle the case where users of the obsolete debugfs_use_file_start()
+	 * resp. debugfs_use_file_finish() (which are now nops) haven't been
+	 * converted to the new debugfs_file_get()/debugfs_file_put() API.
+	 * Protect their fops against file removal by wrapping them with a
+	 * debugfs_full_proxy_file_operations, i.e. simply forward this call
+	 * here to debugfs_create_file().
+	 * There are two cases:
+	 * 1.) The file_operations instance has been defined by means of the
+	 *     DEFINE_DEBUGFS_ATTRIBUTE() macro. In this case, all fops handlers
+	 *     are provided by the debugfs core itself and have been converted.
+	 *     This is the common case; in order to avoid the full proxy
+	 *     overhead, check for this and don't install the full proxy if
+	 *     positive.
+	 * 2.) All other cases, where the custom file_operation's handlers
+	 *     possibly implement their own file removal protection on the
+	 *     grounds of debugfs_use_file_start()/-_finish(). As their
+	 *     protection has become ineffective now, wrap them with
+	 *     the full proxy.
+	 */
+	if (fops && fops->read == debugfs_attr_read) {
+		/* This is safe, it's a DEFINE_DEBUGFS_ATTRIBUTE() fops. */
+		return __debugfs_create_file_unsafe(name, mode, parent, data,
+						    fops);
+	} else {
+		/* Not known to be safe, wrap it. */
+		return debugfs_create_file(name, mode, parent, data, fops);
+	}
 }
 EXPORT_SYMBOL_GPL(debugfs_create_file_unsafe);
 
@@ -639,7 +689,7 @@ static void __debugfs_remove_file(struct dentry *dentry, struct dentry *parent)
 	 * debugfs_fsdata instance at ->d_fsdata here (or both).
 	 */
 	smp_mb();
-	fsd = READ_ONCE(dentry->d_fsdata);
+	fsd = READ_ONCE(kabi_debugfs_d_fsdata(dentry));
 	if ((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT)
 		return;
 	if (!refcount_dec_and_test(&fsd->active_users))

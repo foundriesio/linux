@@ -33,4 +33,23 @@ struct debugfs_fsdata {
  */
 #define DEBUGFS_FSDATA_IS_REAL_FOPS_BIT BIT(0)
 
+/*
+ * The file removal protection series, upstream commit
+ * 7c8d469877b1 ("debugfs: add support for more elaborate ->d_fsdata")
+ * in particular, changed the semantics of S_IFREG files' dentry->d_fsdata.
+ * Before that change, the original, a pointer to the user-provided
+ * file_operations had been stored there and external modules might depend on
+ * this. Especially as debugfs_real_fops() used to be defined as an inline
+ * function in public include/linux/debugfs.h.
+ *
+ * Work around this by abusing the associated inode's ->i_link instead, which
+ * is unused for regular debugfs files. The dereference + cast dance below
+ * is to make the result an lvalue of type void *.
+ */
+#define __kabi_debugfs_d_fsdata(inode)			\
+	(*(void **)&(inode)->i_link)
+
+#define kabi_debugfs_d_fsdata(dentry)			\
+	__kabi_debugfs_d_fsdata(d_inode(dentry))
+
 #endif /* _DEBUGFS_INTERNAL_H_ */
