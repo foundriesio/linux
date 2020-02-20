@@ -2462,7 +2462,11 @@ static void tcc_vsync_end(tcc_video_disp *p, unsigned int keep_display)
 				if (p->type == VSYNC_MAIN)
 					TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
 				else
+					#if defined(CONFIG_TCC_VIQE_FOR_SUB_M2M)
+					TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+					#else
 					TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+					#endif
 			}
 		}
 		else if(p->output_toMemory && p->m2m_mode)
@@ -2470,7 +2474,11 @@ static void tcc_vsync_end(tcc_video_disp *p, unsigned int keep_display)
 			if (p->type == VSYNC_MAIN)
 				TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO);
 			else
+				#if defined(CONFIG_TCC_VIQE_FOR_SUB_M2M)
+				TCC_VIQE_DI_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+				#else
 				TCC_VIQE_DI_Sub_DeInit60Hz_M2M(RDMA_VIDEO_SUB);
+				#endif
 		}
 		#endif
 
