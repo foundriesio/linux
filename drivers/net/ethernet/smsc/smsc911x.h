@@ -26,7 +26,7 @@
 
 #define TX_FIFO_LOW_THRESHOLD	((u32)1600)
 #define SMSC911X_EEPROM_SIZE	((u32)128)
-#define USE_DEBUG		0
+#define USE_DEBUG		2
 
 /* This is the maximum number of packets to be received every
  * NAPI poll */
