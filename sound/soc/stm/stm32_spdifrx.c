@@ -932,7 +932,8 @@ static int stm32_spdifrx_parse_of(struct platform_device *pdev,
 	spdifrx->kclk = devm_clk_get(&pdev->dev, "kclk");
 	if (IS_ERR(spdifrx->kclk)) {
 		if (PTR_ERR(spdifrx->kclk) != -EPROBE_DEFER)
-			dev_err(&pdev->dev, "Could not get kclk\n");
+			dev_err(&pdev->dev, "Could not get kclk: %ld\n",
+				PTR_ERR(spdifrx->kclk));
 		return PTR_ERR(spdifrx->kclk);
 	}
 
