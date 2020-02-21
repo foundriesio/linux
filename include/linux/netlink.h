@@ -97,6 +97,11 @@ struct netlink_ext_ack {
 #define NL_SET_ERR_MSG_MOD(extack, msg)			\
 	NL_SET_ERR_MSG((extack), KBUILD_MODNAME ": " msg)
 
+#define NL_SET_BAD_ATTR(extack, attr) do {		\
+	if ((extack))					\
+		(extack)->bad_attr = (attr);		\
+} while (0)
+
 #define NL_SET_ERR_MSG_ATTR(extack, attr, msg) do {	\
 	static const char __msg[] = (msg);		\
 	struct netlink_ext_ack *__extack = (extack);	\
