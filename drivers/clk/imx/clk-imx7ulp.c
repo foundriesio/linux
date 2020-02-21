@@ -156,7 +156,7 @@ static void __init imx7ulp_clocks_init(struct device_node *scg_node)
 	clks[IMX7ULP_CLK_DMA1]		= imx_clk_gate("dma1", "nic1_bus", base + 0x20, 30);
 	clks[IMX7ULP_CLK_RGPIO2P1]	= imx_clk_gate("rgpio2p1", "nic1_bus",	base + 0x3c, 30);
 	clks[IMX7ULP_CLK_DMA_MUX1]	= imx_clk_gate("dma_mux1", "nic1_bus",	base + 0x84, 30);
-	clks[IMX7ULP_CLK_CAAM]		= imx_clk_gate("caam", "nic1_div",	base + 0x90, 30);
+	clks[IMX7ULP_CLK_CAAM]		= imx_clk_gate_flags("caam", "nic1_div", base + 0x90, 30, CLK_IGNORE_UNUSED);
 	clks[IMX7ULP_CLK_LPTPM4]	= imx7ulp_clk_composite("lptpm4",  periph_bus_sels, ARRAY_SIZE(periph_bus_sels), true, false, true, base + 0x94);
 	clks[IMX7ULP_CLK_LPTPM5]	= imx7ulp_clk_composite("lptmp5",  periph_bus_sels, ARRAY_SIZE(periph_bus_sels), true, false, true, base + 0x98);
 	clks[IMX7ULP_CLK_LPIT1]		= imx7ulp_clk_composite("lpit1",   periph_bus_sels, ARRAY_SIZE(periph_bus_sels), true, false, true, base + 0x9C);
@@ -213,7 +213,7 @@ static void __init imx7ulp_clocks_init(struct device_node *scg_node)
 	/* setting the rate for emmc/sd usage */
 	imx_clk_set_rate(clks[IMX7ULP_CLK_APLL_PFD1], 352800000);
 
-	pr_info("i.MX7ULP clock tree init done.\n");
+	pr_info("i.MX7ULP clock tree init done, caam configured by op-tee\n");
 }
 
 CLK_OF_DECLARE(imx7ulp, "fsl,imx7ulp-scg1", imx7ulp_clocks_init);
