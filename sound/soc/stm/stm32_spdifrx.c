@@ -989,11 +989,10 @@ static int stm32_spdifrx_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Reset controller error %ld\n",
 				PTR_ERR(rst));
 		return PTR_ERR(rst);
-	} else {
-		reset_control_assert(rst);
-		udelay(2);
-		reset_control_deassert(rst);
 	}
+	reset_control_assert(rst);
+	udelay(2);
+	reset_control_deassert(rst);
 
 	ret = devm_snd_soc_register_component(&pdev->dev,
 					      &stm32_spdifrx_component,
