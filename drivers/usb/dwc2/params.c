@@ -167,6 +167,8 @@ static void dwc2_set_stm32mp1_fsotg_params(struct dwc2_hsotg *hsotg)
 	p->activate_stm_fs_transceiver = true;
 	p->activate_stm_id_vb_detection = true;
 	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
+	p->host_support_fs_ls_low_power = true;
+	p->host_ls_low_power_phy_clk = true;
 }
 
 static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_hsotg *hsotg)
