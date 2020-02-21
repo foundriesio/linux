@@ -85,7 +85,7 @@ struct dentry *debugfs_create_automount(const char *name,
 					void *data);
 
 void debugfs_remove(struct dentry *dentry);
-#define debugfs_remove_recursive debugfs_remove
+void debugfs_remove_recursive(struct dentry *dentry);
 
 /* kABI compatibility dummies */
 int debugfs_use_file_start(const struct dentry *dentry, int *srcu_idx);
