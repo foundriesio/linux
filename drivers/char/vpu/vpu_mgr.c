@@ -908,7 +908,7 @@ static int _vmgr_cmd_release(char *str)
 			vmgr_data.external_proc = 1;
 			_vmgr_external_all_close(200);
 			vmgr_data.external_proc = 0;
-			_vmgr_wait_process(200);
+			//_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
 		}
 		vmgr_data.bVpu_already_proc_force_closed = false;
     #endif
@@ -1231,7 +1231,7 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				vmgr_data.external_proc = 1;
 				_vmgr_external_all_close(200);
 				vmgr_data.external_proc = 0;
-				_vmgr_wait_process(200);
+				//_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
 				vmgr_data.bVpu_already_proc_force_closed = true;
 			}
         }

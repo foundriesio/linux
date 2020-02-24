@@ -953,7 +953,7 @@ static int _jmgr_cmd_release(char *str)
 	        jmgr_data.external_proc = 1;
 	        _jmgr_external_all_close(200);
 	        jmgr_data.external_proc = 0;
-	        _jmgr_wait_process(200);
+	        //_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
 		}
 		jmgr_data.bVpu_already_proc_force_closed = false;
 #endif
@@ -1153,7 +1153,7 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				jmgr_data.external_proc = 1;
 				_jmgr_external_all_close(200);
 		        jmgr_data.external_proc = 0;
-				_jmgr_wait_process(200);
+				//_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
 				jmgr_data.bVpu_already_proc_force_closed = true;
 			}
         }
