@@ -1048,21 +1048,12 @@ static irqreturn_t stm32_dma_chan_irq(int irq, void *devid)
 	scr = stm32_dma_read(dmadev, STM32_DMA_SCR(chan->id));
 	sfcr = stm32_dma_read(dmadev, STM32_DMA_SFCR(chan->id));
 
-	if (status & STM32_DMA_TCI) {
-		stm32_dma_irq_clear(chan, STM32_DMA_TCI);
-		if (scr & STM32_DMA_SCR_TCIE)
-			stm32_dma_handle_chan_done(chan);
-		status &= ~STM32_DMA_TCI;
-	}
-	if (status & STM32_DMA_HTI) {
-		stm32_dma_irq_clear(chan, STM32_DMA_HTI);
-		status &= ~STM32_DMA_HTI;
-	}
 	if (status & STM32_DMA_FEI) {
 		stm32_dma_irq_clear(chan, STM32_DMA_FEI);
 		status &= ~STM32_DMA_FEI;
 		if (sfcr & STM32_DMA_SFCR_FEIE) {
-			if (!(scr & STM32_DMA_SCR_EN))
+			if (!(scr & STM32_DMA_SCR_EN) &&
+			    !(status & STM32_DMA_TCI))
 				dev_err(chan2dev(chan), "FIFO Error\n");
 			else
 				dev_dbg(chan2dev(chan), "FIFO over/underrun\n");
@@ -1075,6 +1066,19 @@ static irqreturn_t stm32_dma_chan_irq(int irq, void *devid)
 			dev_dbg(chan2dev(chan), "Direct mode overrun\n");
 		}
 	}
+
+	if (status & STM32_DMA_TCI) {
+		stm32_dma_irq_clear(chan, STM32_DMA_TCI);
+		if (scr & STM32_DMA_SCR_TCIE)
+			stm32_dma_handle_chan_done(chan);
+		status &= ~STM32_DMA_TCI;
+	}
+
+	if (status & STM32_DMA_HTI) {
+		stm32_dma_irq_clear(chan, STM32_DMA_HTI);
+		status &= ~STM32_DMA_HTI;
+	}
+
 	if (status) {
 		stm32_dma_irq_clear(chan, status);
 		dev_err(chan2dev(chan), "DMA error: status=0x%08x\n", status);
