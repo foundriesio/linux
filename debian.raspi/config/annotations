@@ -8350,7 +8350,7 @@ CONFIG_NLS_CODEPAGE_874                         policy<{'amd64': 'm', 'arm64': '
 CONFIG_NLS_ISO8859_8                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_NLS_CODEPAGE_1250                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_NLS_CODEPAGE_1251                        policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
-CONFIG_NLS_ASCII                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
+CONFIG_NLS_ASCII                                policy<{'amd64': 'm', 'arm64': 'y', 'armhf': 'y', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_NLS_ISO8859_1                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_NLS_ISO8859_2                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
 CONFIG_NLS_ISO8859_3                            policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'i386': 'm', 'ppc64el': 'm', 's390x': 'm'}>
