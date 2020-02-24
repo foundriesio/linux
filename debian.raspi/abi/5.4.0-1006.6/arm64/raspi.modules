@@ -365,7 +365,6 @@ baycom_ser_hdx
 bcache
 bch
 bcm-keypad
-bcm-phy-lib
 bcm-sba-raid
 bcm-sf2
 bcm203x
@@ -379,7 +378,6 @@ bcm590xx-regulator
 bcm5974
 bcm63138_nand
 bcm6368_nand
-bcm7xxx
 bcm87xx
 bcma
 bcma-hcd
@@ -448,7 +446,6 @@ brcmstb_nand
 brcmutil
 brd
 bridge
-broadcom
 bsd_comp
 btbcm
 btintel
@@ -1108,7 +1105,6 @@ gen_probe
 generic
 generic-adc-battery
 generic_bl
-genet
 geneve
 genwqe_card
 gf2k
@@ -2076,7 +2072,6 @@ md-cluster
 md4
 mdc800
 mdev
-mdio-bcm-unimac
 mdio-bitbang
 mdio-cavium
 mdio-gpio
