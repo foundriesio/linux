@@ -116,6 +116,8 @@ struct gic_chip_data {
 #define PIC_MODEA	0x1E0
 #define PIC_INTMASK	0x200
 #define PIC_ALLMASK	0x218
+#elif defined(CONFIG_ARCH_TCC805X)
+//TODO: TCC805X: set interrupt polarity
 #endif
 static void __iomem *pic_base;
 static void __iomem *gic_pol_base;
@@ -357,6 +359,8 @@ static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
 
 	return ret;
 }
+#elif defined(CONFIG_ARCH_TCC805X)
+//TODO: TCC805X: set interrupt polarity
 #else	// !defined(CONFIG_ARCH_TCC897X)
 static int tcc_pic_set_type(struct irq_data *d, unsigned int type)
 {
@@ -439,8 +443,11 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 		return -EINVAL;
 
 #ifdef CONFIG_ARCH_TCC
+#if !defined(CONFIG_ARCH_TCC805X)
+//TODO: TCC805X: set interrupt polarity
 	if (tcc_pic_set_type(d, type) != 0)
 		return -EINVAL;
+#endif
 
 	if (type == IRQ_TYPE_LEVEL_LOW)
 		type = IRQ_TYPE_LEVEL_HIGH;

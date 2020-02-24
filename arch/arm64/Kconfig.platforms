@@ -329,6 +329,21 @@ config ARCH_TCC898X
 	help
 	  This enables support for Telechips TCC898x SoC family
 
+config ARCH_TCC805X
+	bool "ARMv8 based Telechips TCC805x"
+	select ARM_GIC
+	select GENERIC_IRQ_CHIP
+	select ARM_AMBA
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select PM_OPP if PM
+	select PM_GENERIC_DOMAINS
+	select PINCTRL_TCC
+	select PCI_DOMAINS if PCI
+
+	help
+	  This enables support for Telechips TCC805x SoC family
+
 config ARCH_TCC803X
 	bool "ARMv8 based Telechips TCC803x"
 	select ARM_GIC
@@ -343,21 +358,6 @@ config ARCH_TCC803X
 
 	help
 	  This enables support for Telechips TCC803x SoC family
-
-config ARCH_TCC802X
-	bool "ARMv8 based Telechips TCC802x"
-	select ARM_GIC
-	select GENERIC_IRQ_CHIP
-	select ARM_AMBA
-	select CLKDEV_LOOKUP
-	select COMMON_CLK
-	select PM_OPP if PM
-	select PM_GENERIC_DOMAINS
-	select PINCTRL_TCC
-	select PCI_DOMAINS if PCI
-
-	help
-	  This enables support for Telechips TCC802x SoC family
 
 endchoice
 endif

@@ -5,3 +5,4 @@ obj-$(CONFIG_ARCH_TCC899X)	+= pinctrl-tcc899x.o
 obj-$(CONFIG_ARCH_TCC802X)	+= pinctrl-tcc802x.o
 obj-$(CONFIG_ARCH_TCC803X)	+= pinctrl-tcc803x.o
 obj-$(CONFIG_ARCH_TCC901X)	+= pinctrl-tcc901x.o
+obj-$(CONFIG_ARCH_TCC805X)	+= pinctrl-tcc805x.o

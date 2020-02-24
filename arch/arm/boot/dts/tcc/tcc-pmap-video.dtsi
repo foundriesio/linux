@@ -53,6 +53,8 @@
 	#include "tcc-pmap-897x-android-customized.dtsi"
 	#elif defined(CONFIG_ARCH_TCC901X)
 	#include "tcc-pmap-901x-android-customized.dtsi"
+	#elif defined(CONFIG_ARCH_TCC805X)
+	#include "tcc-pmap-805x-android-customized.dtsi"
 	#else
 	#error1
 	#endif
@@ -65,6 +67,8 @@
 	#include "tcc-pmap-897x-linux-customized.dtsi"
 	#elif defined(CONFIG_ARCH_TCC901X)
 	#include "tcc-pmap-901x-linux-customized.dtsi"
+	#elif defined(CONFIG_ARCH_TCC805X)
+	#include "tcc-pmap-805x-linux-customized.dtsi"
 	#else
 	#error2
 	#endif
@@ -121,8 +125,11 @@
 #define NUM_OF_MAIN_INSTANCE            (INST_1ST_USE + INST_2ND_USE)
 #define NUM_OF_SUB_INSTANCE             (INST_3RD_USE + INST_4TH_USE)
 
-
+#ifdef CONFIG_ARCH_TCC805X
+#define VPU_WORK_BUF_SIZE   0       // [Temporary] fix to compile .dtb
+#else
 #define VPU_WORK_BUF_SIZE	(WORK_CODE_PARA_BUF_SIZE)
+#endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
 #define WAVExxx_WORK_BUF_SIZE	(WAVE5_WORK_CODE_BUF_SIZE)

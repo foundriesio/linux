@@ -25,7 +25,7 @@
 
 #define TCC_PINCONF_SHIFT	8
 
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X)
 
 enum tcc_pinconf_param {
         TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -44,7 +44,7 @@ enum tcc_pinconf_param {
         TCC_PINCONF_PARAM_ECLK_SEL,
         TCC_PINCONF_PARAM_FUNC,
 };
-#elif CONFIG_ARCH_TCC802X
+#elif defined(CONFIG_ARCH_TCC802X)
 
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -63,7 +63,7 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_ECLK_SEL,
 };
 
-#elif CONFIG_ARCH_TCC899X
+#elif defined(CONFIG_ARCH_TCC899X)
 
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -81,7 +81,7 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_FAST_SLEW,
 };
 
-#elif CONFIG_ARCH_TCC898X
+#elif defined(CONFIG_ARCH_TCC898X)
 
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -99,7 +99,7 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_FAST_SLEW,
 };
 
-#elif CONFIG_ARCH_TCC897X
+#elif defined(CONFIG_ARCH_TCC897X)
 
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -117,7 +117,7 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_FAST_SLEW,
 };
 
-#elif CONFIG_ARCH_TCC901X
+#elif defined(CONFIG_ARCH_TCC901X)
 
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
@@ -135,6 +135,25 @@ enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_FAST_SLEW,
 };
 
+#elif defined(CONFIG_ARCH_TCC805X)
+
+enum tcc_pinconf_param {
+        TCC_PINCONF_PARAM_DRIVE_STRENGTH,
+        TCC_PINCONF_PARAM_NO_PULL,
+        TCC_PINCONF_PARAM_PULL_UP,
+        TCC_PINCONF_PARAM_PULL_DOWN,
+        TCC_PINCONF_PARAM_INPUT_ENABLE,
+        TCC_PINCONF_PARAM_OUTPUT_LOW,
+        TCC_PINCONF_PARAM_OUTPUT_HIGH,
+        TCC_PINCONF_PARAM_INPUT_BUFFER_ENABLE,
+        TCC_PINCONF_PARAM_INPUT_BUFFER_DISABLE,
+        TCC_PINCONF_PARAM_SCHMITT_INPUT,
+        TCC_PINCONF_PARAM_CMOS_INPUT,
+        TCC_PINCONF_PARAM_SLOW_SLEW,
+        TCC_PINCONF_PARAM_FAST_SLEW,
+        TCC_PINCONF_PARAM_ECLK_SEL,
+        TCC_PINCONF_PARAM_FUNC,
+};
 
 #endif
 

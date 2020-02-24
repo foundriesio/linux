@@ -15,6 +15,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-android-lpd4321-v0.1.dtb
+dtb-$(CONFIG_ARCH_TCC805X) += \
+	tcc8050-android-board-xxx.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc8990-linux-lpd4322-v0.1.dtb \
@@ -32,6 +34,8 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-linux-lpd4321-v0.1.dtb
+dtb-$(CONFIG_ARCH_TCC805X) += \
+	tcc8050-linux-board-xxx.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -42,6 +46,12 @@ dtbo-y += \
 	overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
 	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
 	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo
+
+dtb-y += \
+	tcc8050-soc.dtb
+
+dtbo-y += \
+	overlay-tcc8050-android-board-xxx.dtbo
 endif
 
 always         := $(dtb-y)

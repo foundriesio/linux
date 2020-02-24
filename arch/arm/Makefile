@@ -218,6 +218,7 @@ machine-$(CONFIG_ARCH_TANGO)		+= tango
 machine-$(CONFIG_ARCH_TCC897X)		+= tcc897x
 machine-$(CONFIG_ARCH_TCC899X)		+= tcc899x
 machine-$(CONFIG_ARCH_TCC803X)		+= tcc803x
+machine-$(CONFIG_ARCH_TCC805X)		+= tcc805x
 machine-$(CONFIG_ARCH_TCC901X)		+= tcc901x
 machine-$(CONFIG_ARCH_TEGRA)		+= tegra
 machine-$(CONFIG_ARCH_U300)		+= u300

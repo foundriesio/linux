@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device tree for Telechips TCC8050 AVN board
+ *
+ * Copyright (C) 2020 Telechips Inc.
+ */
+
+#ifndef DT_OVERLAY
+/dts-v1/;
+#endif
+
+#include "tcc8050-android-avn.dtsi"
+
+
+/ {
+	/* Describe here after remove this statement if you have something to be override. */
+};
