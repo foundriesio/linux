@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
 #include <linux/sched.h>
+#include <linux/sched/signal.h>
 #include "optee_bench.h"
 #include "optee_private.h"
 #include "optee_smc.h"
@@ -512,6 +513,8 @@ void optee_handle_rpc(struct tee_context *ctx, struct optee_rpc_param *param,
 		 * performed to let Linux take the interrupt through the normal
 		 * vector.
 		 */
+		if (fatal_signal_pending(current))
+			param->a5 = TEEC_ERROR_CANCEL;
 		break;
 	case OPTEE_SMC_RPC_FUNC_CMD:
 		shm = reg_pair_to_ptr(param->a1, param->a2);
