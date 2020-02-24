@@ -755,7 +755,7 @@ static int tcc_multich_mbox_probe(struct platform_device *pdev)
 
 				ret = devm_request_irq(&pdev->dev, mdev->irq,
 											tcc_multich_mbox_irq,
-											IRQF_ONESHOT|IRQF_TRIGGER_HIGH,
+											IRQF_ONESHOT,
 											dev_name(&pdev->dev),
 											mdev);
 				if (ret == 0 )
