@@ -383,14 +383,6 @@ static void stm32_usbphyc_clk48_unprepare(struct clk_hw *hw)
 	stm32_usbphyc_pll_disable(usbphyc);
 }
 
-static int stm32_usbphyc_clk48_is_enabled(struct clk_hw *hw)
-{
-	struct stm32_usbphyc *usbphyc = container_of(hw, struct stm32_usbphyc,
-						     clk48_hw);
-
-	return readl_relaxed(usbphyc->base + STM32_USBPHYC_PLL) & PLLEN;
-}
-
 static unsigned long stm32_usbphyc_clk48_recalc_rate(struct clk_hw *hw,
 						     unsigned long parent_rate)
 {
@@ -400,7 +392,6 @@ static unsigned long stm32_usbphyc_clk48_recalc_rate(struct clk_hw *hw,
 static const struct clk_ops usbphyc_clk48_ops = {
 	.prepare = stm32_usbphyc_clk48_prepare,
 	.unprepare = stm32_usbphyc_clk48_unprepare,
-	.is_enabled = stm32_usbphyc_clk48_is_enabled,
 	.recalc_rate = stm32_usbphyc_clk48_recalc_rate,
 };
 
@@ -430,10 +421,7 @@ static int stm32_usbphyc_clk48_register(struct stm32_usbphyc *usbphyc)
 	ret = of_clk_add_hw_provider(node, of_clk_hw_simple_get,
 				     &usbphyc->clk48_hw);
 	if (ret)
-		return ret;
-
-	ret = devm_add_action(usbphyc->dev, stm32_usbphyc_clk48_unregister,
-			      usbphyc);
+		clk_hw_unregister(&usbphyc->clk48_hw);
 
 	return ret;
 }
@@ -745,6 +733,14 @@ clk_disable:
 static int stm32_usbphyc_remove(struct platform_device *pdev)
 {
 	struct stm32_usbphyc *usbphyc = dev_get_drvdata(&pdev->dev);
+	int port;
+
+	stm32_usbphyc_clk48_unregister(usbphyc);
+
+	/* Ensure PHYs are not active, to allow PLL disabling */
+	for (port = 0; port < usbphyc->nphys; port++)
+		if (usbphyc->phys[port]->active)
+			stm32_usbphyc_phy_exit(usbphyc->phys[port]->phy);
 
 	clk_disable_unprepare(usbphyc->clk);
 
