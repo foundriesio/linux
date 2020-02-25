@@ -54,7 +54,9 @@ static int stm32_cpufreq_probe(struct platform_device *pdev)
 	priv->opps = dev_pm_opp_set_supported_hw(cpu_dev, &supported_hw, 1);
 	if (IS_ERR(priv->opps)) {
 		ret = PTR_ERR(priv->opps);
-		dev_err(&pdev->dev, "Failed to set supported opp: %d\n", ret);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to set supported opp: %d\n",
+				ret);
 		return ret;
 	}
 
