@@ -1420,6 +1420,7 @@
 		mode-normal = <BOOT_NORMAL>;
 		mode-bootloader = <BOOT_FASTBOOT>;
 		mode-recovery = <BOOT_RECOVERY>;
+		mode-tcupdate = <BOOT_TCUPDATE>;
 	};
 
 	ictc:ictc@0x16055000 {
