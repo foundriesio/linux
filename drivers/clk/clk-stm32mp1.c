@@ -308,6 +308,8 @@ static const struct clk_div_table ck_trace_div_table[] = {
 struct stm32_mmux {
 	u8 nbr_clk;
 	struct clk_hw *hws[MAX_MUX_CLK];
+	u8 saved_parent;
+	u8 enable_count;
 };
 
 struct stm32_clk_mmux {
@@ -740,6 +742,95 @@ static const struct clk_ops clk_mmux_ops = {
 	.get_parent	= clk_mmux_get_parent,
 	.set_parent	= clk_mmux_set_parent,
 	.determine_rate	= __clk_mux_determine_rate,
+};
+
+#define MMUX_SAFE_POSITION 0
+
+static int clk_mmux_set_safe_position(struct clk_hw *hw)
+{
+	struct clk_composite *composite = to_clk_composite(hw);
+	struct clk_hw *mux_hw = composite->mux_hw;
+	struct clk_mux *mux = to_clk_mux(mux_hw);
+	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
+
+	if (--clk_mmux->mmux->enable_count == 0) {
+		clk_mmux->mmux->saved_parent = clk_mmux_get_parent(mux_hw);
+		clk_mmux_set_parent(mux_hw, MMUX_SAFE_POSITION);
+	}
+
+	return 0;
+}
+
+static int clk_mmux_restore_parent(struct clk_hw *hw)
+{
+	struct clk_composite *composite = to_clk_composite(hw);
+	struct clk_hw *mux_hw = composite->mux_hw;
+	struct clk_mux *mux = to_clk_mux(mux_hw);
+	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
+
+	if (clk_mmux->mmux->enable_count == 0)
+		clk_mmux_set_parent(mux_hw, clk_mmux->mmux->saved_parent);
+
+	clk_mmux->mmux->enable_count++;
+
+	return 0;
+}
+
+static u8 clk_mmux_get_parent_safe(struct clk_hw *hw)
+{
+	struct clk_mux *mux = to_clk_mux(hw);
+	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
+
+	clk_mmux->mmux->saved_parent = clk_mmux_get_parent(hw);
+
+	return clk_mmux->mmux->saved_parent;
+}
+
+static int clk_mmux_set_parent_safe(struct clk_hw *hw, u8 index)
+{
+	struct clk_mux *mux = to_clk_mux(hw);
+	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
+
+	clk_mmux_set_parent(hw, index);
+	clk_mmux->mmux->saved_parent = index;
+
+	return 0;
+}
+
+static const struct clk_ops clk_mmux_safe_ops = {
+	.get_parent	= clk_mmux_get_parent_safe,
+	.set_parent	= clk_mmux_set_parent_safe,
+	.determine_rate	= __clk_mux_determine_rate,
+};
+
+static int mp1_mgate_clk_enable_safe(struct clk_hw *hw)
+{
+	struct clk_hw *composite_hw = __clk_get_hw(hw->clk);
+
+	clk_mmux_restore_parent(composite_hw);
+	mp1_mgate_clk_enable(hw);
+
+	return  0;
+}
+
+static void mp1_mgate_clk_disable_safe(struct clk_hw *hw)
+{
+	struct clk_gate *gate = to_clk_gate(hw);
+	struct stm32_clk_mgate *clk_mgate = to_clk_mgate(gate);
+	struct clk_hw *composite_hw = __clk_get_hw(hw->clk);
+
+	clk_mgate->mgate->flag &= ~clk_mgate->mask;
+
+	if (clk_mgate->mgate->flag == 0) {
+		clk_mmux_set_safe_position(composite_hw);
+		mp1_gate_clk_disable(hw);
+	}
+}
+
+static const struct clk_ops mp1_mgate_clk_safe_ops = {
+	.enable		= mp1_mgate_clk_enable_safe,
+	.disable	= mp1_mgate_clk_disable_safe,
+	.is_enabled	= clk_gate_is_enabled,
 };
 
 /* STM32 PLL */
@@ -1531,6 +1622,10 @@ static struct stm32_mgate mp1_mgate[G_LAST];
 	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
 	       &mp1_mgate[_id], &mp1_mgate_clk_ops)
 
+#define K_MGATE_SAFE(_id, _gate_offset, _gate_bit_idx, _gate_flags)\
+	_K_GATE(_id, _gate_offset, _gate_bit_idx, _gate_flags,\
+		&mp1_mgate[_id], &mp1_mgate_clk_safe_ops)
+
 /* Peripheral gates */
 static struct stm32_gate_cfg per_gate_cfg[G_LAST] = {
 	/* Multi gates */
@@ -1642,10 +1737,10 @@ static struct stm32_gate_cfg per_gate_cfg[G_LAST] = {
 
 	K_GATE(G_USBH,		RCC_AHB6ENSETR, 24, 0),
 	K_GATE(G_CRC1,		RCC_AHB6ENSETR, 20, 0),
-	K_MGATE(G_SDMMC2,	RCC_AHB6ENSETR, 17, 0),
-	K_MGATE(G_SDMMC1,	RCC_AHB6ENSETR, 16, 0),
-	K_MGATE(G_QSPI,		RCC_AHB6ENSETR, 14, 0),
-	K_MGATE(G_FMC,		RCC_AHB6ENSETR, 12, 0),
+	K_MGATE_SAFE(G_SDMMC2,	RCC_AHB6ENSETR, 17, 0),
+	K_MGATE_SAFE(G_SDMMC1,	RCC_AHB6ENSETR, 16, 0),
+	K_MGATE_SAFE(G_QSPI,	RCC_AHB6ENSETR, 14, 0),
+	K_MGATE_SAFE(G_FMC,	RCC_AHB6ENSETR, 12, 0),
 
 	K_GATE(G_ETHMAC,	RCC_AHB6ENSETR, 10, 0),
 	K_GATE(G_ETHRX,		RCC_AHB6ENSETR, 9, 0),
@@ -1720,9 +1815,13 @@ static struct stm32_mmux ker_mux[M_LAST];
 	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
 			&ker_mux[_id], &clk_mmux_ops)
 
+#define K_MMUX_SAFE(_id, _offset, _shift, _width, _mux_flags)\
+	_K_MUX(_id, _offset, _shift, _width, _mux_flags,\
+			&ker_mux[_id], &clk_mmux_safe_ops)
+
 static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
 	/* Kernel multi mux */
-	K_MMUX(M_SDMMC12, RCC_SDMMC12CKSELR, 0, 3, 0),
+	K_MMUX_SAFE(M_SDMMC12, RCC_SDMMC12CKSELR, 0, 3, 0),
 	K_MMUX(M_SPI23, RCC_SPI2S23CKSELR, 0, 3, 0),
 	K_MMUX(M_SPI45, RCC_SPI2S45CKSELR, 0, 3, 0),
 	K_MMUX(M_I2C12, RCC_I2C12CKSELR, 0, 3, 0),
@@ -1739,8 +1838,8 @@ static const struct stm32_mux_cfg ker_mux_cfg[M_LAST] = {
 	/*  Kernel simple mux */
 	K_MUX(M_RNG2, RCC_RNG2CKSELR, 0, 2, 0),
 	K_MUX(M_SDMMC3, RCC_SDMMC3CKSELR, 0, 3, 0),
-	K_MUX(M_FMC, RCC_FMCCKSELR, 0, 2, 0),
-	K_MUX(M_QSPI, RCC_QSPICKSELR, 0, 2, 0),
+	K_MMUX_SAFE(M_FMC, RCC_FMCCKSELR, 0, 2, 0),
+	K_MMUX_SAFE(M_QSPI, RCC_QSPICKSELR, 0, 2, 0),
 	K_MUX(M_USBPHY, RCC_USBCKSELR, 0, 2, 0),
 	K_MUX(M_USBO, RCC_USBCKSELR, 4, 1, 0),
 	K_MUX(M_SPDIF, RCC_SPDIFCKSELR, 0, 2, 0),
