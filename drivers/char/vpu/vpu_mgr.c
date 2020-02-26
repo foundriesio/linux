@@ -1477,9 +1477,11 @@ void vmgr_waitlist_init_pending(int type, int force_clear)
 	if (IsUseWaitList()) {
 		if((wait_entry_info.type == type) || force_clear){
 			wait_entry_info.wait_dec_status = 0;
-			printk("@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
+			printk(
+				"@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
 				wait_entry_info.type,
-				type, force_clear ? "RETCODE_CODEC_EXIT", "VPU_DEC_CLOSE"
+				type,
+				force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
 			);
 		}
 	}
