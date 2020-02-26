@@ -375,7 +375,11 @@ unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer)
 		else if (Layer == RDMA_VIDEO)
 			return VIOC_SCALER1;
 		else // RDMA_VIDEO_SUB
-		       return VIOC_SCALER4;
+		       	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		       	return VIOC_SCALER4;
+			#else
+			return VIOC_SCALER3;
+			#endif
 	}
 #else
 	#ifdef CONFIG_PLATFORM_STB
