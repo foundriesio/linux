@@ -133,7 +133,7 @@
 
 &vchiq {
 	/* Onboard audio */
-	audio: audio {
+	audio: bcm2835_audio {
 		compatible = "brcm,bcm2835-audio";
 		brcm,pwm-channels = <8>;
 		status = "disabled";
