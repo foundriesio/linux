@@ -137,7 +137,7 @@ int pci_iov_add_virtfn(struct pci_dev *dev, int id)
 	pci_read_config_word(dev, iov->pos + PCI_SRIOV_VF_DID, &virtfn->device);
 	rc = pci_setup_device(virtfn);
 	if (rc)
-		goto failed0;
+		goto failed1;
 
 	virtfn->dev.parent = dev->dev.parent;
 	virtfn->physfn = pci_dev_get(dev);
