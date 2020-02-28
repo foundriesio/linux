@@ -4,6 +4,7 @@
 [ ! -L 'arch/arm64/boot/dts/overlays' ] && ln -sf '../../../arm/boot/dts/overlays' 'arch/arm64/boot/dts/overlays'
 # Remove any files deleted from the orig.
 rm -f 'drivers/crypto/hisilicon/sgl.h'
+rm -f 'drivers/gpu/drm/amd/display/dc/calcs/dcn_calc_math.h'
 rm -f 'drivers/staging/vc04_services/bcm2835-camera/mmal-common.h'
 rm -f 'drivers/staging/vc04_services/bcm2835-camera/mmal-encodings.h'
 rm -f 'drivers/staging/vc04_services/bcm2835-camera/mmal-msg-common.h'
