@@ -1367,7 +1367,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void srcu_drive_gp(struct work_struct *wp)
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -2667,9 +2667,9 @@ EXPORT_SYMBOL_GPL(kfree_call_rcu);
+@@ -2668,9 +2668,9 @@ EXPORT_SYMBOL_GPL(kfree_call_rcu);
  
  /*
   * During early boot, any blocking grace-period wait automatically

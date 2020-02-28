@@ -1,6 +1,6 @@
 From: David Miller <davem@davemloft.net>
-Date: Sat, 7 Dec 2019 16:04:48 -0800
-Subject: [PATCH 12/19] bpf: Use migrate_disable/enable in array macros and
+Date: Mon, 24 Feb 2020 15:01:46 +0100
+Subject: [PATCH 15/22] bpf: Use migrate_disable/enable in array macros and
  cgroup/lirc code.
 
 Replace the preemption disable/enable with migrate_disable/enable() to
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		else					\
 --- a/include/linux/filter.h
 +++ b/include/linux/filter.h
-@@ -665,6 +665,7 @@ static inline u8 *bpf_skb_cb(struct sk_b
+@@ -669,6 +669,7 @@ static inline u8 *bpf_skb_cb(struct sk_b
  	return qdisc_skb_cb(skb)->data;
  }
  
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline u32 __bpf_prog_run_save_cb(const struct bpf_prog *prog,
  					 struct sk_buff *skb)
  {
-@@ -690,9 +691,9 @@ static inline u32 bpf_prog_run_save_cb(c
+@@ -694,9 +695,9 @@ static inline u32 bpf_prog_run_save_cb(c
  {
  	u32 res;
  

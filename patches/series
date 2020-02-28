@@ -119,15 +119,15 @@ smp-Add-a-smp_cond_func_t-argument-to-smp_call_funct.patch
 # 20200117090137.1205765-4-bigeasy@linutronix.de
 smp-Remove-allocation-mask-from-on_each_cpu_cond.patch
 
+# 20200224140726.1550689-1-bigeasy@linutronix.de
+drm-vmwgfx-Drop-preempt_disable-in-vmw_fifo_ping_hos.patch
+
 ############################################################
 # Ready for posting
 ############################################################
 
 # 20191015191821.11479-1-bigeasy@linutronix.de
 Use-CONFIG_PREEMPTION.patch
-
-# 20191017090500.ienqyium2phkxpdo@linutronix.de
-BPF-Disable-on-PREEMPT_RT.patch
 
 # WORKQUEUE, delay
 0001-workqueue-Don-t-assume-that-the-callback-has-interru.patch
@@ -460,24 +460,32 @@ cpuset-Convert-callback_lock-to-raw_spinlock_t.patch
 apparmor-use-a-locallock-instead-preempt_disable.patch
 
 # BPF
-0001-sched-Provide-migrate_disable-enable-inlines.patch
-0002-sched-Provide-cant_migrate.patch
+# TIP, 4e139c7711633365ebb52fbb63905395522a8413
+sched-Provide-cant_migrate.patch
+#
+# 2020-02-24 15:01 Thomas Gleixner [PATCH V3 00/22] bpf: Make BPF and PREEMPT_RT co-exist
+# https://lkml.kernel.org/r/20200224140131.461979697@linutronix.de
+0001-bpf-Tighten-the-requirements-for-preallocated-hash-m.patch
+0002-bpf-Enforce-preallocation-for-instrumentation-progra.patch
 0003-bpf-Update-locking-comment-in-hashtab-code.patch
 0004-bpf-tracing-Remove-redundant-preempt_disable-in-__bp.patch
-0005-perf-bpf-Remove-preempt-disable-around-BPF-invocatio.patch
-0006-bpf-Don-t-iterate-over-possible-CPUs-with-interrupts.patch
-0007-bpf-Provide-BPF_PROG_RUN_PIN_ON_CPU-macro.patch
-0008-bpf-Replace-cant_sleep-with-cant_migrate.patch
-0009-bpf-Use-BPF_PROG_RUN_PIN_ON_CPU-at-simple-call-sites.patch
-0010-trace-bpf-Use-migrate-disable-in-trace_call_bpf.patch
-0011-bpf-tests-Use-migrate-disable-instead-of-preempt-dis.patch
-0012-bpf-Use-migrate_disable-enable-in-array-macros-and-c.patch
-0013-bpf-Use-migrate_disable-in-hashtab-code.patch
-0014-bpf-Use-migrate_disable-in-sys_bpf.patch
-0015-bpf-Factor-out-hashtab-bucket-lock-operations.patch
-0016-bpf-Prepare-hashtab-locking-for-PREEMPT_RT.patch
-0017-bpf-lpm-Make-locking-RT-friendly.patch
-0018-bpf-stackmap-Don-t-trylock-mmap_sem-with-PREEMPT_RT-.patch
+0005-bpf-trace-Remove-EXPORT-from-trace_call_bpf.patch
+0005.5-bpf-disable-preemption-for-bpf-progs-attached-to-upr.patch
+0006-bpf-trace-Remove-redundant-preempt_disable-from-trac.patch
+0007-perf-bpf-Remove-preempt-disable-around-BPF-invocatio.patch
+0008-bpf-Remove-recursion-prevention-from-rcu-free-callba.patch
+0009-bpf-Dont-iterate-over-possible-CPUs-with-interrupts-.patch
+0010-bpf-Provide-bpf_prog_run_pin_on_cpu-helper.patch
+0011-bpf-Replace-cant_sleep-with-cant_migrate.patch
+0012-bpf-Use-bpf_prog_run_pin_on_cpu-at-simple-call-sites.patch
+0013-bpf-tests-Use-migrate-disable-instead-of-preempt-dis.patch
+0015-bpf-Use-migrate_disable-enable-in-array-macros-and-c.patch
+0016-bpf-Provide-recursion-prevention-helpers.patch
+0018-bpf-Replace-open-coded-recursion-prevention-in-sys_b.patch
+0019-bpf-Factor-out-hashtab-bucket-lock-operations.patch
+0020-bpf-Prepare-hashtab-locking-for-PREEMPT_RT.patch
+0021-bpf-lpm-Make-locking-RT-friendly.patch
+0022-bpf-stackmap-Dont-trylock-mmap_sem-with-PREEMPT_RT-a.patch
 
 ################################################################################
 ################################################################################
@@ -501,6 +509,7 @@ x86-preempt-lazy.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
 arch-arm64-Add-lazy-preempt-support.patch
+tracing-make-preempt_lazy-and-migrate_disable-counte.patch
 
 jump-label-rt.patch
 

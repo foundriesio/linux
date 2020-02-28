@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	security_task_free(tsk);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3253,15 +3253,6 @@ static struct rq *finish_task_switch(str
+@@ -3254,15 +3254,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

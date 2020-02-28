@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1680,7 +1680,7 @@ static int __set_cpus_allowed_ptr(struct
+@@ -1681,7 +1681,7 @@ static int __set_cpus_allowed_ptr(struct
  		goto out;
  	}
  

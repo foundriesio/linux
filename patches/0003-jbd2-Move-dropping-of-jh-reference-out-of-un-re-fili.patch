@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		jh = commit_transaction->t_forget;
  		spin_unlock(&journal->j_list_lock);
-@@ -1024,8 +1025,10 @@ void jbd2_journal_commit_transaction(jou
+@@ -1028,8 +1029,10 @@ void jbd2_journal_commit_transaction(jou
  				try_to_free = 1;
  		}
  		JBUFFER_TRACE(jh, "refile or unfile buffer");
@@ -86,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	return may_free;
  }
-@@ -2496,9 +2497,11 @@ void jbd2_journal_file_buffer(struct jou
+@@ -2498,9 +2499,11 @@ void jbd2_journal_file_buffer(struct jou
   * Called under j_list_lock
   * Called under jbd_lock_bh_state(jh2bh(jh))
   *
@@ -100,7 +100,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	int was_dirty, jlist;
  	struct buffer_head *bh = jh2bh(jh);
-@@ -2510,7 +2513,7 @@ void __jbd2_journal_refile_buffer(struct
+@@ -2512,7 +2515,7 @@ void __jbd2_journal_refile_buffer(struct
  	/* If the buffer is now unused, just drop it. */
  	if (jh->b_next_transaction == NULL) {
  		__jbd2_journal_unfile_buffer(jh);
@@ -109,7 +109,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/*
-@@ -2538,6 +2541,7 @@ void __jbd2_journal_refile_buffer(struct
+@@ -2540,6 +2543,7 @@ void __jbd2_journal_refile_buffer(struct
  
  	if (was_dirty)
  		set_buffer_jbddirty(bh);
@@ -117,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2549,15 +2553,18 @@ void __jbd2_journal_refile_buffer(struct
+@@ -2551,15 +2555,18 @@ void __jbd2_journal_refile_buffer(struct
  void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
  {
  	struct buffer_head *bh = jh2bh(jh);

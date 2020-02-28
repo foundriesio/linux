@@ -179,7 +179,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return error;
 --- a/kernel/power/suspend.c
 +++ b/kernel/power/suspend.c
-@@ -594,6 +594,8 @@ static int enter_state(suspend_state_t s
+@@ -595,6 +595,8 @@ static int enter_state(suspend_state_t s
  	return error;
  }
  
@@ -188,7 +188,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * pm_suspend - Externally visible function for suspending the system.
   * @state: System sleep state to enter.
-@@ -608,6 +610,7 @@ int pm_suspend(suspend_state_t state)
+@@ -609,6 +611,7 @@ int pm_suspend(suspend_state_t state)
  	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
  		return -EINVAL;
  
@@ -196,7 +196,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
  	error = enter_state(state);
  	if (error) {
-@@ -617,6 +620,7 @@ int pm_suspend(suspend_state_t state)
+@@ -618,6 +621,7 @@ int pm_suspend(suspend_state_t state)
  		suspend_stats.success++;
  	}
  	pr_info("suspend exit\n");

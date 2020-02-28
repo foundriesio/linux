@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Tue, 11 Feb 2020 14:57:12 +0100
-Subject: [PATCH 02/19] sched: Provide cant_migrate()
+Date: Fri, 14 Feb 2020 14:39:19 +0100
+Subject: [PATCH] sched: Provide cant_migrate()
 
 Some code pathes rely on preempt_disable() to prevent migration on a non RT
 enabled kernel. These preempt_disable/enable() pairs are substituted by
@@ -15,6 +15,7 @@ changed to a proper debug check along with the RT specific migration
 protection mechanism.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Link: https://lkml.kernel.org/r/20200214161503.070487511@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/kernel.h |    7 +++++++

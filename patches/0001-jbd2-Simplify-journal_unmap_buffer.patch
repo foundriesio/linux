@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * We cannot remove the buffer from checkpoint lists until the
  	 * transaction adding inode to orphan list (let's call it T)
-@@ -2332,7 +2329,6 @@ static int journal_unmap_buffer(journal_
+@@ -2334,7 +2331,6 @@ static int journal_unmap_buffer(journal_
  	 */
  	jh->b_modified = 0;
  	jbd2_journal_put_journal_head(jh);

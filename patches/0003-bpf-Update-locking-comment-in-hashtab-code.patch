@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 12 Feb 2020 20:19:02 +0100
-Subject: [PATCH 03/19] bpf: Update locking comment in hashtab code
+Date: Mon, 24 Feb 2020 15:01:34 +0100
+Subject: [PATCH 03/22] bpf: Update locking comment in hashtab code
 
 The comment where the bucket lock is acquired says:
 

@@ -1,16 +1,19 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Thu, 13 Feb 2020 16:44:33 +0100
-Subject: [PATCH 17/19] bpf, lpm: Make locking RT friendly
+Date: Mon, 24 Feb 2020 15:01:52 +0100
+Subject: [PATCH 21/22] bpf, lpm: Make locking RT friendly
 
-The LPM trie map cannot be used in context like perf, kprobes and tracing
-as they dynamically allocate memory. The memory allocation happens with a
-raw spinlock held which is a truly spinning lock on a PREEMPT RT enabled
-kernel which disables preemption and interrupts.
+The LPM trie map cannot be used in contexts like perf, kprobes and tracing
+as this map type dynamically allocates memory.
+
+The memory allocation happens with a raw spinlock held which is a truly
+spinning lock on a PREEMPT RT enabled kernel which disables preemption and
+interrupts.
 
 As RT does not allow memory allocation from such a section for various
-reasons, convert the raw spinlocks to regular spinlocks. On a RT enabled
-kernel these locks are substituted by 'sleeping' spinlocks which provide
-the proper protection but keep the code preemptible.
+reasons, convert the raw spinlock to a regular spinlock.
+
+On a RT enabled kernel these locks are substituted by 'sleeping' spinlocks
+which provide the proper protection but keep the code preemptible.
 
 On a non-RT kernel regular spinlocks map to raw spinlocks, i.e. this does
 not cause any functional change.

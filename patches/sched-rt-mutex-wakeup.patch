@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2523,6 +2523,8 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2524,6 +2524,8 @@ try_to_wake_up(struct task_struct *p, un
  	int cpu, success = 0;
  
  	preempt_disable();
@@ -45,7 +45,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (p == current) {
  		/*
  		 * We're waking current, this means 'p->on_rq' and 'task_cpu(p)
-@@ -2545,7 +2547,7 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2546,7 +2548,7 @@ try_to_wake_up(struct task_struct *p, un
  		trace_sched_wakeup(p);
  		goto out;
  	}
@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * If we are going to wake up a thread waiting for CONDITION we
  	 * need to ensure that CONDITION=1 done by the caller can not be
-@@ -2554,8 +2556,27 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2555,8 +2557,27 @@ try_to_wake_up(struct task_struct *p, un
  	 */
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
  	smp_mb__after_spinlock();
@@ -84,7 +84,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	trace_sched_waking(p);
  
-@@ -2647,9 +2668,12 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2648,9 +2669,12 @@ try_to_wake_up(struct task_struct *p, un
  	ttwu_queue(p, cpu, wake_flags);
  unlock:
  	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_enable();
  
  	return success;
-@@ -2672,6 +2696,18 @@ int wake_up_process(struct task_struct *
+@@ -2673,6 +2697,18 @@ int wake_up_process(struct task_struct *
  }
  EXPORT_SYMBOL(wake_up_process);
  

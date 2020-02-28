@@ -1,7 +1,7 @@
 From: David Miller <davem@davemloft.net>
-Date: Sat, 7 Dec 2019 16:04:57 -0800
-Subject: [PATCH 18/19] bpf/stackmap: Don't trylock mmap_sem with PREEMPT_RT
- and interrupts disabled
+Date: Mon, 24 Feb 2020 15:01:53 +0100
+Subject: [PATCH 22/22] bpf/stackmap: Dont trylock mmap_sem with PREEMPT_RT and
+ interrupts disabled
 
 In a RT kernel down_read_trylock() cannot be used from NMI context and
 up_read_non_owner() is another problematic issue.

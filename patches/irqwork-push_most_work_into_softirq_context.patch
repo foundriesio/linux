@@ -169,7 +169,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Synchronize against the irq_work @entry, ensures the entry is not
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -1096,6 +1096,7 @@ static int rcu_implicit_dynticks_qs(stru
+@@ -1097,6 +1097,7 @@ static int rcu_implicit_dynticks_qs(stru
  		    !rdp->rcu_iw_pending && rdp->rcu_iw_gp_seq != rnp->gp_seq &&
  		    (rnp->ffmask & rdp->grpmask)) {
  			init_irq_work(&rdp->rcu_iw, rcu_iw_handler);

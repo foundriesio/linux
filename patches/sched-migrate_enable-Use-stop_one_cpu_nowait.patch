@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int stop_one_cpu(unsigned int cpu, cpu_stop_fn_t fn, void *arg);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -1536,6 +1536,7 @@ static struct rq *move_queued_task(struc
+@@ -1537,6 +1537,7 @@ static struct rq *move_queued_task(struc
  struct migration_arg {
  	struct task_struct *task;
  	int dest_cpu;
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  /*
-@@ -1571,6 +1572,11 @@ static int migration_cpu_stop(void *data
+@@ -1572,6 +1573,11 @@ static int migration_cpu_stop(void *data
  	struct task_struct *p = arg->task;
  	struct rq *rq = this_rq();
  	struct rq_flags rf;
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * The original target CPU might have gone down and we might
-@@ -1593,9 +1599,9 @@ static int migration_cpu_stop(void *data
+@@ -1594,9 +1600,9 @@ static int migration_cpu_stop(void *data
  	 */
  	if (task_rq(p) == rq) {
  		if (task_on_rq_queued(p))
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	rq_unlock(rq, &rf);
  	raw_spin_unlock(&p->pi_lock);
-@@ -8144,7 +8150,8 @@ void migrate_enable(void)
+@@ -8151,7 +8157,8 @@ void migrate_enable(void)
  
  	WARN_ON(smp_processor_id() != cpu);
  	if (!is_cpu_allowed(p, cpu)) {
@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		struct rq_flags rf;
  
  		rq = task_rq_lock(p, &rf);
-@@ -8152,13 +8159,13 @@ void migrate_enable(void)
+@@ -8159,13 +8166,13 @@ void migrate_enable(void)
  		arg.dest_cpu = select_fallback_rq(cpu, p);
  		task_rq_unlock(rq, p, &rf);
  

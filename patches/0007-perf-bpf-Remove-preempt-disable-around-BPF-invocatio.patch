@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Sat, 8 Feb 2020 21:50:11 +0100
-Subject: [PATCH 05/19] perf/bpf: Remove preempt disable around BPF invocation
+Date: Mon, 24 Feb 2020 15:01:38 +0100
+Subject: [PATCH 07/22] perf/bpf: Remove preempt disable around BPF invocation
 
 The BPF invocation from the perf event overflow handler does not require to
 disable preemption because this is called from NMI or at least hard
