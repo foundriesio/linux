@@ -70,10 +70,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		len += msg_print_text(msg,
  				console_msg_format & MSG_FORMAT_SYSLOG,
  				printk_time, text + len, sizeof(text) - len);
-@@ -2811,17 +2796,6 @@ void register_console(struct console *ne
+@@ -2809,17 +2794,6 @@ void register_console(struct console *ne
+ 		 * for us.
+ 		 */
  		logbuf_lock_irqsave(flags);
- 		console_seq = syslog_seq;
- 		console_idx = syslog_idx;
 -		/*
 -		 * We're about to replay the log buffer.  Only do this to the
 -		 * just-registered console to avoid excessive message spam to
@@ -85,9 +85,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		 */
 -		exclusive_console = newcon;
 -		exclusive_console_stop_seq = console_seq;
+ 		console_seq = syslog_seq;
+ 		console_idx = syslog_idx;
  		logbuf_unlock_irqrestore(flags);
- 	}
- 	console_unlock();
 @@ -2833,6 +2807,10 @@ void register_console(struct console *ne
  	 * boot consoles, real consoles, etc - this is to ensure that end
  	 * users know there might be something in the kernel's log buffer that
