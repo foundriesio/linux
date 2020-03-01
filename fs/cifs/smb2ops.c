@@ -4133,6 +4133,7 @@ free_pages:
 
 	kfree(dw->ppages);
 	cifs_small_buf_release(dw->buf);
+	kfree(dw);
 }
 
 
@@ -4206,7 +4207,7 @@ receive_encrypted_read(struct TCP_Server_Info *server, struct mid_q_entry **mid,
 		dw->server = server;
 		dw->ppages = pages;
 		dw->len = len;
-		queue_work(cifsiod_wq, &dw->decrypt);
+		queue_work(decrypt_wq, &dw->decrypt);
 		*num_mids = 0; /* worker thread takes care of finding mid */
 		return -1;
 	}
