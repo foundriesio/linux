@@ -32,6 +32,7 @@
 #include <linux/mempool.h>
 #include <linux/highmem.h>
 #include <crypto/aead.h>
+#include <linux/sched/task.h>
 #include "smb2pdu.h"
 #include "cifsglob.h"
 #include "cifsproto.h"
@@ -599,6 +600,8 @@ smb2_mid_entry_alloc(const struct smb2_sync_hdr *shdr,
 	 * The default is for the mid to be synchronous, so the
 	 * default callback just wakes up the current task.
 	 */
+	get_task_struct(current);
+	temp->creator = current;
 	temp->callback = cifs_wake_up_task;
 	temp->callback_data = current;
 
