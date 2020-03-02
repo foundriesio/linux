@@ -101,6 +101,14 @@ static void mmd_write_reg(struct phy_device *dev, int device, int reg, int val)
 	phy_write(dev, 0x0e, val);
 }
 
+static int mmd_read_reg(struct phy_device *dev, int device, int reg)
+{
+	phy_write(dev, 0x0d, device);
+	phy_write(dev, 0x0e, reg);
+	phy_write(dev, 0x0d, (1 << 14) | device);
+	return phy_read(dev, 0x0e);
+}
+
 static int ksz9031rn_phy_fixup(struct phy_device *dev)
 {
 	/*
@@ -110,6 +118,33 @@ static int ksz9031rn_phy_fixup(struct phy_device *dev)
 	mmd_write_reg(dev, 2, 4, 0);
 	mmd_write_reg(dev, 2, 5, 0);
 	mmd_write_reg(dev, 2, 8, 0x003ff);
+
+	return 0;
+}
+
+#define KSZ9131_RXTXDLL_BYPASS	12
+
+static int ksz9131rn_phy_fixup(struct phy_device *dev)
+{
+	int tmp;
+
+	tmp = mmd_read_reg(dev, 2, 0x4c);
+	/* disable rxdll bypass (enable 2ns skew delay on RXC) */
+	tmp &= ~(1 << KSZ9131_RXTXDLL_BYPASS);
+	mmd_write_reg(dev, 2, 0x4c, tmp);
+
+	tmp = mmd_read_reg(dev, 2, 0x4d);
+	/* disable txdll bypass (enable 2ns skew delay on TXC) */
+	tmp &= ~(1 << KSZ9131_RXTXDLL_BYPASS);
+	mmd_write_reg(dev, 2, 0x4d, tmp);
+
+	/*
+	 * Subtract ~0.6ns from txdll = ~1.4ns delay.
+	 * leave RXC path untouched
+	 */
+	mmd_write_reg(dev, 2, 4, 0x007d);
+	mmd_write_reg(dev, 2, 6, 0xdddd);
+	mmd_write_reg(dev, 2, 8, 0x0007);
 
 	return 0;
 }
@@ -219,6 +254,8 @@ static void __init imx6q_enet_phy_init(void)
 				ksz9021rn_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_KSZ9031, MICREL_PHY_ID_MASK,
 				ksz9031rn_phy_fixup);
+		phy_register_fixup_for_uid(PHY_ID_KSZ9131, MICREL_PHY_ID_MASK,
+				ksz9131rn_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8031, 0xffffffef,
 				ar8031_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8035, 0xffffffef,
