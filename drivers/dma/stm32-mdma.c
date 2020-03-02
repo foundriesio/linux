@@ -1468,6 +1468,8 @@ static irqreturn_t stm32_mdma_irq_handler(int irq, void *devid)
 	/* Handle interrupt for the channel */
 	spin_lock(&chan->vchan.lock);
 	status = stm32_mdma_read(dmadev, STM32_MDMA_CISR(id));
+	/* Mask Channel ReQuest Active bit which can be set in case of MEM2MEM */
+	status &= ~STM32_MDMA_CISR_CRQA;
 	ccr = stm32_mdma_read(dmadev, STM32_MDMA_CCR(id));
 	ien = (ccr & STM32_MDMA_CCR_IRQ_MASK) >> 1;
 
