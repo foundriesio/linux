@@ -225,9 +225,11 @@ static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
 
 	memcpy(buf, etnaviv_domain->mtlb_cpu, SZ_4K);
 	buf += SZ_4K;
-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++, buf += SZ_4K)
-		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++)
+		if (v2_context->mtlb_cpu[i] & MMUv2_PTE_PRESENT) {
 			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
+			buf += SZ_4K;
+		}
 }
 
 static const struct etnaviv_iommu_ops etnaviv_iommu_ops = {
