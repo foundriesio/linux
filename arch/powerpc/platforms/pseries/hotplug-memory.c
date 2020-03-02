@@ -157,33 +157,34 @@ static bool find_aa_index(struct device_node *dr_node,
 	return true;
 }
 
-static u32 lookup_lmb_associativity_index(struct drmem_lmb *lmb, u32 *aa_index)
+static int update_lmb_associativity_index(struct drmem_lmb *lmb)
 {
 	struct device_node *parent, *lmb_node, *dr_node;
 	struct property *ala_prop;
 	const u32 *lmb_assoc;
+	u32 aa_index;
 	bool found;
 
 	parent = of_find_node_by_path("/");
 	if (!parent)
-		return false;
+		return -ENODEV;
 
 	lmb_node = dlpar_configure_connector(cpu_to_be32(lmb->drc_index),
 					     parent);
 	of_node_put(parent);
 	if (!lmb_node)
-		return false;
+		return -EINVAL;
 
 	lmb_assoc = of_get_property(lmb_node, "ibm,associativity", NULL);
 	if (!lmb_assoc) {
 		dlpar_free_cc_nodes(lmb_node);
-		return false;
+		return -ENODEV;
 	}
 
 	dr_node = of_find_node_by_path("/ibm,dynamic-reconfiguration-memory");
 	if (!dr_node) {
 		dlpar_free_cc_nodes(lmb_node);
-		return false;
+		return -ENODEV;
 	}
 
 	ala_prop = of_find_property(dr_node, "ibm,associativity-lookup-arrays",
@@ -191,50 +192,20 @@ static u32 lookup_lmb_associativity_index(struct drmem_lmb *lmb, u32 *aa_index)
 	if (!ala_prop) {
 		of_node_put(dr_node);
 		dlpar_free_cc_nodes(lmb_node);
-		return false;
-	}
-
-	found = find_aa_index(dr_node, ala_prop, lmb_assoc, aa_index);
-
-	dlpar_free_cc_nodes(lmb_node);
-	return found;
-}
-
-static int dlpar_add_device_tree_lmb(struct drmem_lmb *lmb)
-{
-	int rc, aa_index;
-	bool found;
-
-	lmb->flags |= DRCONF_MEM_ASSIGNED;
-
-	found = lookup_lmb_associativity_index(lmb, &aa_index);
-	if (!found) {
-		pr_err("Couldn't find associativity index for drc index %x\n",
-		       lmb->drc_index);
 		return -ENODEV;
 	}
 
+	found = find_aa_index(dr_node, ala_prop, lmb_assoc, &aa_index);
+
+	dlpar_free_cc_nodes(lmb_node);
+
+	if (!found) {
+		pr_err("Could not find LMB associativity\n");
+		return -1;
+	}
+
 	lmb->aa_index = aa_index;
-
-	rtas_hp_event = true;
-	rc = drmem_update_dt();
-	rtas_hp_event = false;
-
-	return rc;
-}
-
-static int dlpar_remove_device_tree_lmb(struct drmem_lmb *lmb)
-{
-	int rc;
-
-	lmb->flags &= ~DRCONF_MEM_ASSIGNED;
-	lmb->aa_index = 0xffffffff;
-
-	rtas_hp_event = true;
-	rc = drmem_update_dt();
-	rtas_hp_event = false;
-
-	return rc;
+	return 0;
 }
 
 static struct memory_block *lmb_to_memblock(struct drmem_lmb *lmb)
@@ -427,7 +398,7 @@ static int dlpar_remove_lmb(struct drmem_lmb *lmb)
 	/* Update memory regions for memory remove */
 	memblock_remove(lmb->base_addr, block_sz);
 
-	dlpar_remove_device_tree_lmb(lmb);
+	invalidate_lmb_associativity_index(lmb);
 	lmb_clear_nid(lmb);
 	lmb->flags &= ~DRCONF_MEM_ASSIGNED;
 
@@ -690,10 +661,8 @@ static int dlpar_add_lmb(struct drmem_lmb *lmb)
 	if (lmb->flags & DRCONF_MEM_ASSIGNED)
 		return -EINVAL;
 
-	rc = dlpar_add_device_tree_lmb(lmb);
+	rc = update_lmb_associativity_index(lmb);
 	if (rc) {
-		pr_err("Couldn't update device tree for drc index %x\n",
-		       lmb->drc_index);
 		dlpar_release_drc(lmb->drc_index);
 		return rc;
 	}
@@ -704,14 +673,14 @@ static int dlpar_add_lmb(struct drmem_lmb *lmb)
 	/* Add the memory */
 	rc = add_memory(lmb->nid, lmb->base_addr, block_sz);
 	if (rc) {
-		dlpar_remove_device_tree_lmb(lmb);
+		invalidate_lmb_associativity_index(lmb);
 		return rc;
 	}
 
 	rc = dlpar_online_lmb(lmb);
 	if (rc) {
 		remove_memory(lmb->nid, lmb->base_addr, block_sz);
-		dlpar_remove_device_tree_lmb(lmb);
+		invalidate_lmb_associativity_index(lmb);
 		lmb_clear_nid(lmb);
 	} else {
 		lmb->flags |= DRCONF_MEM_ASSIGNED;
@@ -957,6 +926,12 @@ int dlpar_memory(struct pseries_hp_errorlog *hp_elog)
 		pr_err("Invalid action (%d) specified\n", hp_elog->action);
 		rc = -EINVAL;
 		break;
+	}
+
+	if (!rc) {
+		rtas_hp_event = true;
+		rc = drmem_update_dt();
+		rtas_hp_event = false;
 	}
 
 	unlock_device_hotplug();
