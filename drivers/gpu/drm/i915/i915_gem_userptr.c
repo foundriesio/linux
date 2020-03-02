@@ -418,7 +418,7 @@ struct get_pages_work {
 #endif
 
 static int
-st_set_pages(struct sg_table **st, struct page **pvec, int num_pages)
+st_set_pages(struct sg_table **st, struct page **pvec, unsigned long num_pages)
 {
 	struct scatterlist *sg;
 	int ret, n;
@@ -452,7 +452,7 @@ err:
 
 static struct sg_table *
 __i915_gem_userptr_set_pages(struct drm_i915_gem_object *obj,
-			     struct page **pvec, int num_pages)
+			     struct page **pvec, unsigned long num_pages)
 {
 	struct sg_table *pages;
 	int ret;
@@ -512,9 +512,10 @@ __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 {
 	struct get_pages_work *work = container_of(_work, typeof(*work), work);
 	struct drm_i915_gem_object *obj = work->obj;
-	const int npages = obj->base.size >> PAGE_SHIFT;
+	const unsigned long npages = obj->base.size >> PAGE_SHIFT;
+	unsigned long pinned;
 	struct page **pvec;
-	int pinned, ret;
+	int ret;
 
 	ret = -ENOMEM;
 	pinned = 0;
@@ -618,7 +619,7 @@ __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj)
 static struct sg_table *
 i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 {
-	const int num_pages = obj->base.size >> PAGE_SHIFT;
+	const unsigned long num_pages = obj->base.size >> PAGE_SHIFT;
 	struct mm_struct *mm = obj->userptr.mm->mm;
 	struct page **pvec;
 	struct sg_table *pages;
