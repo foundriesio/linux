@@ -75,6 +75,15 @@ static const void *stm32h7_valids_table[][MAX_VALIDS] = {
 	{ }, /* timer 17 */
 };
 
+struct stm32_timer_trigger_regs {
+	u32 cr1;
+	u32 cr2;
+	u32 psc;
+	u32 arr;
+	u32 cnt;
+	u32 smcr;
+};
+
 struct stm32_timer_trigger {
 	struct device *dev;
 	struct regmap *regmap;
@@ -85,14 +94,8 @@ struct stm32_timer_trigger {
 	const void *valids;
 	bool has_trgo2;
 	struct mutex lock; /* concurrent sysfs configuration */
-	unsigned int freq;
-	u32 cr1;
-	u32 cr2;
-	u32 psc;
-	u32 arr;
-	u32 cnt;
-	u32 smcr;
 	struct list_head tr_list;
+	struct stm32_timer_trigger_regs bak;
 };
 
 struct stm32_timer_trigger_cfg {
@@ -226,7 +229,6 @@ static ssize_t stm32_tt_store_frequency(struct device *dev,
 		if (ret)
 			return ret;
 	}
-	priv->freq = freq;
 
 	return len;
 }
@@ -831,19 +833,20 @@ static int __maybe_unused stm32_timer_trigger_suspend(struct device *dev)
 {
 	struct stm32_timer_trigger *priv = dev_get_drvdata(dev);
 
-	/* Disable the timer */
-	if (priv->freq)
-		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN, 0);
-	/* Register contents may be lost depending on low power mode. */
-	regmap_read(priv->regmap, TIM_CR1, &priv->cr1);
-	regmap_read(priv->regmap, TIM_CR2, &priv->cr2);
-	regmap_read(priv->regmap, TIM_PSC, &priv->psc);
-	regmap_read(priv->regmap, TIM_ARR, &priv->arr);
-	regmap_read(priv->regmap, TIM_CNT, &priv->cnt);
-	regmap_read(priv->regmap, TIM_SMCR, &priv->smcr);
+	/* Only take care of enabled timer: don't disturb other MFD child */
+	if (priv->enabled) {
+		/* Backup registers that may get lost in low power mode */
+		regmap_read(priv->regmap, TIM_CR1, &priv->bak.cr1);
+		regmap_read(priv->regmap, TIM_CR2, &priv->bak.cr2);
+		regmap_read(priv->regmap, TIM_PSC, &priv->bak.psc);
+		regmap_read(priv->regmap, TIM_ARR, &priv->bak.arr);
+		regmap_read(priv->regmap, TIM_CNT, &priv->bak.cnt);
+		regmap_read(priv->regmap, TIM_SMCR, &priv->bak.smcr);
 
-	if (priv->enabled)
+		/* Disable the timer */
+		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN, 0);
 		clk_disable(priv->clk);
+	}
 
 	return 0;
 }
@@ -857,23 +860,18 @@ static int __maybe_unused stm32_timer_trigger_resume(struct device *dev)
 		ret = clk_enable(priv->clk);
 		if (ret)
 			return ret;
-	}
 
-	/* restore master/slave modes */
-	regmap_write(priv->regmap, TIM_SMCR, priv->smcr);
-	regmap_update_bits(priv->regmap, TIM_CR2, TIM_CR2_MMS | TIM_CR2_MMS2,
-			   priv->cr2);
+		/* restore master/slave modes */
+		regmap_write(priv->regmap, TIM_SMCR, priv->bak.smcr);
+		regmap_write(priv->regmap, TIM_CR2, priv->bak.cr2);
 
-	if (priv->freq) {
 		/* restore sampling_frequency (trgo / trgo2 triggers) */
-		regmap_write(priv->regmap, TIM_PSC, priv->psc);
-		regmap_write(priv->regmap, TIM_ARR, priv->arr);
-		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_ARPE,
-				   TIM_CR1_ARPE);
-		regmap_update_bits(priv->regmap, TIM_EGR, TIM_EGR_UG,
-				   TIM_EGR_UG);
-		regmap_update_bits(priv->regmap, TIM_CR1, TIM_CR1_CEN,
-				   TIM_CR1_CEN);
+		regmap_write(priv->regmap, TIM_PSC, priv->bak.psc);
+		regmap_write(priv->regmap, TIM_ARR, priv->bak.arr);
+		regmap_write(priv->regmap, TIM_CNT, priv->bak.cnt);
+
+		/* Also re-enables the timer */
+		regmap_write(priv->regmap, TIM_CR1, priv->bak.cr1);
 	}
 
 	return 0;
