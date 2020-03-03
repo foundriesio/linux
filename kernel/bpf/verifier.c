@@ -3309,6 +3309,11 @@ static int check_ld_abs(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		return -EINVAL;
 	}
 
+	if (!env->ops->gen_ld_abs) {
+		verbose(env, "bpf verifier is misconfigured\n");
+		return -EINVAL;
+	}
+
 	if (insn->dst_reg != BPF_REG_0 || insn->off != 0 ||
 	    BPF_SIZE(insn->code) == BPF_DW ||
 	    (mode == BPF_ABS && insn->src_reg != BPF_REG_0)) {
@@ -4676,6 +4681,25 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			if (issrc && isneg)
 				*patch++ = BPF_ALU64_IMM(BPF_MUL, off_reg, -1);
 			cnt = patch - insn_buf;
+
+			new_prog = bpf_patch_insn_data(env, i + delta, insn_buf, cnt);
+			if (!new_prog)
+				return -ENOMEM;
+
+			delta    += cnt - 1;
+			env->prog = prog = new_prog;
+			insn      = new_prog->insnsi + i + delta;
+			continue;
+		}
+
+		if (BPF_CLASS(insn->code) == BPF_LD &&
+		    (BPF_MODE(insn->code) == BPF_ABS ||
+		     BPF_MODE(insn->code) == BPF_IND)) {
+			cnt = env->ops->gen_ld_abs(insn, insn_buf);
+			if (cnt == 0 || cnt >= ARRAY_SIZE(insn_buf)) {
+				verbose(env, "bpf verifier is misconfigured\n");
+				return -EINVAL;
+			}
 
 			new_prog = bpf_patch_insn_data(env, i + delta, insn_buf, cnt);
 			if (!new_prog)
