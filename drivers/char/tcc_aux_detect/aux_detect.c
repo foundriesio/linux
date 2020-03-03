@@ -189,7 +189,8 @@ static int aux_detect_release(struct inode * inode, struct file * filp) {
 
 struct file_operations aux_detect_fops = {
 	.owner			= THIS_MODULE,
-	.unlocked_ioctl	= aux_detect_ioctl,
+	.compat_ioctl		= aux_detect_ioctl,
+	.unlocked_ioctl		= aux_detect_ioctl,
 	.open			= aux_detect_open,
 	.release		= aux_detect_release,
 };
