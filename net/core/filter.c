@@ -3199,8 +3199,8 @@ static bool sock_filter_is_valid_access(int off, int size,
 	return true;
 }
 
-static int bpf_gen_ld_abs(const struct bpf_insn *orig,
-			  struct bpf_insn *insn_buf)
+int bpf_gen_ld_abs(const struct bpf_insn *orig,
+		   struct bpf_insn *insn_buf)
 {
 	bool indirect = BPF_MODE(orig->code) == BPF_IND;
 	struct bpf_insn *insn = insn_buf;
@@ -3233,6 +3233,7 @@ static int bpf_gen_ld_abs(const struct bpf_insn *orig,
 
 	return insn - insn_buf;
 }
+EXPORT_SYMBOL(bpf_gen_ld_abs);
 
 static int tc_cls_act_prologue(struct bpf_insn *insn_buf, bool direct_write,
 			       const struct bpf_prog *prog)
@@ -3658,7 +3659,6 @@ const struct bpf_verifier_ops sk_filter_verifier_ops = {
 	.get_func_proto		= sk_filter_func_proto,
 	.is_valid_access	= sk_filter_is_valid_access,
 	.convert_ctx_access	= bpf_convert_ctx_access,
-	.gen_ld_abs		= bpf_gen_ld_abs,
 };
 
 const struct bpf_prog_ops sk_filter_prog_ops = {
@@ -3669,7 +3669,6 @@ const struct bpf_verifier_ops tc_cls_act_verifier_ops = {
 	.is_valid_access	= tc_cls_act_is_valid_access,
 	.convert_ctx_access	= tc_cls_act_convert_ctx_access,
 	.gen_prologue		= tc_cls_act_prologue,
-	.gen_ld_abs		= bpf_gen_ld_abs,
 };
 
 const struct bpf_verifier_ops tc_cls_act_analyzer_ops = {

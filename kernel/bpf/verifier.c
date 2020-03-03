@@ -3309,7 +3309,9 @@ static int check_ld_abs(struct bpf_verifier_env *env, struct bpf_insn *insn)
 		return -EINVAL;
 	}
 
-	if (!env->ops->gen_ld_abs) {
+	if (env->prog->type != BPF_PROG_TYPE_SOCKET_FILTER &&
+	    env->prog->type != BPF_PROG_TYPE_SCHED_CLS &&
+	    env->prog->type != BPF_PROG_TYPE_SCHED_ACT) {
 		verbose(env, "bpf verifier is misconfigured\n");
 		return -EINVAL;
 	}
@@ -4695,7 +4697,7 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 		if (BPF_CLASS(insn->code) == BPF_LD &&
 		    (BPF_MODE(insn->code) == BPF_ABS ||
 		     BPF_MODE(insn->code) == BPF_IND)) {
-			cnt = env->ops->gen_ld_abs(insn, insn_buf);
+			cnt = bpf_gen_ld_abs(insn, insn_buf);
 			if (cnt == 0 || cnt >= ARRAY_SIZE(insn_buf)) {
 				verbose(env, "bpf verifier is misconfigured\n");
 				return -EINVAL;
