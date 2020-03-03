@@ -94,6 +94,7 @@ struct stm32_timer_trigger {
 	u32 arr;
 	u32 cnt;
 	u32 smcr;
+	struct list_head tr_list;
 };
 
 struct stm32_timer_trigger_cfg {
@@ -386,10 +387,20 @@ static const struct attribute_group *stm32_trigger_attr_groups[] = {
 static const struct iio_trigger_ops timer_trigger_ops = {
 };
 
-static int stm32_setup_iio_triggers(struct stm32_timer_trigger *priv)
+static void stm32_unregister_iio_triggers(struct stm32_timer_trigger *priv)
+{
+	struct iio_trigger *tr;
+
+	list_for_each_entry(tr, &priv->tr_list, alloc_list)
+		iio_trigger_unregister(tr);
+}
+
+static int stm32_register_iio_triggers(struct stm32_timer_trigger *priv)
 {
 	int ret;
 	const char * const *cur = priv->triggers;
+
+	INIT_LIST_HEAD(&priv->tr_list);
 
 	while (cur && *cur) {
 		struct iio_trigger *trig;
@@ -417,9 +428,13 @@ static int stm32_setup_iio_triggers(struct stm32_timer_trigger *priv)
 
 		iio_trigger_set_drvdata(trig, priv);
 
-		ret = devm_iio_trigger_register(priv->dev, trig);
-		if (ret)
+		ret = iio_trigger_register(trig);
+		if (ret) {
+			stm32_unregister_iio_triggers(priv);
 			return ret;
+		}
+
+		list_add_tail(&trig->alloc_list, &priv->tr_list);
 		cur++;
 	}
 
@@ -787,7 +802,7 @@ static int stm32_timer_trigger_probe(struct platform_device *pdev)
 	stm32_timer_detect_trgo2(priv);
 	mutex_init(&priv->lock);
 
-	ret = stm32_setup_iio_triggers(priv);
+	ret = stm32_register_iio_triggers(priv);
 	if (ret)
 		return ret;
 
@@ -800,6 +815,9 @@ static int stm32_timer_trigger_remove(struct platform_device *pdev)
 {
 	struct stm32_timer_trigger *priv = platform_get_drvdata(pdev);
 	u32 val;
+
+	/* Unregister triggers before everything can be safely turned off */
+	stm32_unregister_iio_triggers(priv);
 
 	/* Check if nobody else use the timer, then disable it */
 	regmap_read(priv->regmap, TIM_CCER, &val);
