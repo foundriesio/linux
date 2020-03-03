@@ -32,6 +32,10 @@ config LOGO_TCC_1280X720_CLUT224
 	depends on ANDROID
 	default n
 
+config LOGO_TCC_1920X720_CLUT224
+	bool "Telechips 224-color ivi 1920x720 logo"
+	default n
+
 config LOGO_TCC_1920X1080_CLUT224
 	bool "Telechips 224-color consumer 1920x1080 logo"
 	depends on ANDROID

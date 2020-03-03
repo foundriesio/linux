@@ -82,6 +82,9 @@ const struct linux_logo * __ref fb_find_logo(int depth)
 		/* Telechips Linux logo */
 		logo = &logo_tcc_1280x720_clut224;
 #endif
+#ifdef CONFIG_LOGO_TCC_1920X720_CLUT224
+		logo = &logo_tcc_1920x720_clut224;
+#endif
 #ifdef CONFIG_LOGO_TCC_1920X1080_CLUT224
 		/* Telechips Linux logo */
 		logo = &logo_tcc_1920x1080_clut224;
