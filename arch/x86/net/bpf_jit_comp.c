@@ -18,15 +18,6 @@
 
 int bpf_jit_enable __read_mostly;
 
-/*
- * assembly code in arch/x86/net/bpf_jit.S
- */
-extern u8 sk_load_word[], sk_load_half[], sk_load_byte[];
-extern u8 sk_load_word_positive_offset[], sk_load_half_positive_offset[];
-extern u8 sk_load_byte_positive_offset[];
-extern u8 sk_load_word_negative_offset[], sk_load_half_negative_offset[];
-extern u8 sk_load_byte_negative_offset[];
-
 static u8 *emit_code(u8 *ptr, u32 bytes, unsigned int len)
 {
 	if (len == 1)
@@ -115,9 +106,6 @@ static void bpf_flush_icache(void *start, void *end)
 	set_fs(old_fs);
 }
 
-#define CHOOSE_LOAD_FUNC(K, func) \
-	((int)K < 0 ? ((int)K >= SKF_LL_OFF ? func##_negative_offset : func) : func##_positive_offset)
-
 /* pick a register outside of BPF range for JIT internal work */
 #define AUX_REG (MAX_BPF_JIT_REG + 1)
 
@@ -127,8 +115,8 @@ static void bpf_flush_icache(void *start, void *end)
  * register in load/store instructions, it always needs an
  * extra byte of encoding and is callee saved.
  *
- *  r9 caches skb->len - skb->data_len
- * r10 caches skb->data, and used for blinding (if enabled)
+ * Also x86-64 register R9 is unused. x86-64 register R10 is
+ * used for blinding (if enabled).
  */
 static const int reg2hex[] = {
 	[BPF_REG_0] = 0,  /* rax */
@@ -197,8 +185,6 @@ static void jit_fill_hole(void *area, unsigned int size)
 
 struct jit_context {
 	int cleanup_addr; /* epilogue code offset */
-	bool seen_ld_abs;
-	bool seen_ax_reg;
 };
 
 /* maximum number of bytes emitted while JITing one eBPF insn */
@@ -305,26 +291,6 @@ static void emit_bpf_tail_call(u8 **pprog)
 	*pprog = prog;
 }
 
-
-static void emit_load_skb_data_hlen(u8 **pprog)
-{
-	u8 *prog = *pprog;
-	int cnt = 0;
-
-	/* r9d = skb->len - skb->data_len (headlen)
-	 * r10 = skb->data
-	 */
-	/* mov %r9d, off32(%rdi) */
-	EMIT3_off32(0x44, 0x8b, 0x8f, offsetof(struct sk_buff, len));
-
-	/* sub %r9d, off32(%rdi) */
-	EMIT3_off32(0x44, 0x2b, 0x8f, offsetof(struct sk_buff, data_len));
-
-	/* mov %r10, off32(%rdi) */
-	EMIT3_off32(0x4c, 0x8b, 0x97, offsetof(struct sk_buff, data));
-	*pprog = prog;
-}
-
 static void emit_mov_imm32(u8 **pprog, bool sign_propagate,
 			   u32 dst_reg, const u32 imm32)
 {
@@ -392,8 +358,6 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image,
 {
 	struct bpf_insn *insn = bpf_prog->insnsi;
 	int insn_cnt = bpf_prog->len;
-	bool seen_ld_abs = ctx->seen_ld_abs | (oldproglen == 0);
-	bool seen_ax_reg = ctx->seen_ax_reg | (oldproglen == 0);
 	bool seen_exit = false;
 	u8 temp[BPF_MAX_INSN_SIZE + BPF_INSN_SAFETY];
 	int i, cnt = 0;
@@ -403,9 +367,6 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image,
 	emit_prologue(&prog, bpf_prog->aux->stack_depth,
 		      bpf_prog_was_classic(bpf_prog));
 
-	if (seen_ld_abs)
-		emit_load_skb_data_hlen(&prog);
-
 	for (i = 0; i < insn_cnt; i++, insn++) {
 		const s32 imm32 = insn->imm;
 		u32 dst_reg = insn->dst_reg;
@@ -413,12 +374,8 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image,
 		u8 b2 = 0, b3 = 0;
 		s64 jmp_offset;
 		u8 jmp_cond;
-		bool reload_skb_data;
 		int ilen;
 		u8 *func;
-
-		if (dst_reg == BPF_REG_AX || src_reg == BPF_REG_AX)
-			ctx->seen_ax_reg = seen_ax_reg = true;
 
 		switch (insn->code) {
 			/* ALU */
@@ -842,35 +799,12 @@ xadd:			if (is_imm8(insn->off))
 		case BPF_JMP | BPF_CALL:
 			func = (u8 *) __bpf_call_base + imm32;
 			jmp_offset = func - (image + addrs[i]);
-			if (seen_ld_abs) {
-				reload_skb_data = bpf_helper_changes_pkt_data(func);
-				if (reload_skb_data) {
-					EMIT1(0x57); /* push %rdi */
-					jmp_offset += 22; /* pop, mov, sub, mov */
-				} else {
-					EMIT2(0x41, 0x52); /* push %r10 */
-					EMIT2(0x41, 0x51); /* push %r9 */
-					/* need to adjust jmp offset, since
-					 * pop %r9, pop %r10 take 4 bytes after call insn
-					 */
-					jmp_offset += 4;
-				}
-			}
 			if (!imm32 || !is_simm32(jmp_offset)) {
 				pr_err("unsupported bpf func %d addr %p image %p\n",
 				       imm32, func, image);
 				return -EINVAL;
 			}
 			EMIT1_off32(0xE8, jmp_offset);
-			if (seen_ld_abs) {
-				if (reload_skb_data) {
-					EMIT1(0x5F); /* pop %rdi */
-					emit_load_skb_data_hlen(&prog);
-				} else {
-					EMIT2(0x41, 0x59); /* pop %r9 */
-					EMIT2(0x41, 0x5A); /* pop %r10 */
-				}
-			}
 			break;
 
 		case BPF_JMP | BPF_TAIL_CALL:
@@ -994,59 +928,6 @@ emit_jmp:
 				return -EFAULT;
 			}
 			break;
-
-		case BPF_LD | BPF_IND | BPF_W:
-			func = sk_load_word;
-			goto common_load;
-		case BPF_LD | BPF_ABS | BPF_W:
-			func = CHOOSE_LOAD_FUNC(imm32, sk_load_word);
-common_load:
-			ctx->seen_ld_abs = seen_ld_abs = true;
-			jmp_offset = func - (image + addrs[i]);
-			if (!func || !is_simm32(jmp_offset)) {
-				pr_err("unsupported bpf func %d addr %p image %p\n",
-				       imm32, func, image);
-				return -EINVAL;
-			}
-			if (BPF_MODE(insn->code) == BPF_ABS) {
-				/* mov %esi, imm32 */
-				EMIT1_off32(0xBE, imm32);
-			} else {
-				/* mov %rsi, src_reg */
-				EMIT_mov(BPF_REG_2, src_reg);
-				if (imm32) {
-					if (is_imm8(imm32))
-						/* add %esi, imm8 */
-						EMIT3(0x83, 0xC6, imm32);
-					else
-						/* add %esi, imm32 */
-						EMIT2_off32(0x81, 0xC6, imm32);
-				}
-			}
-			/* skb pointer is in R6 (%rbx), it will be copied into
-			 * %rdi if skb_copy_bits() call is necessary.
-			 * sk_load_* helpers also use %r10 and %r9d.
-			 * See bpf_jit.S
-			 */
-			if (seen_ax_reg)
-				/* r10 = skb->data, mov %r10, off32(%rbx) */
-				EMIT3_off32(0x4c, 0x8b, 0x93,
-					    offsetof(struct sk_buff, data));
-			EMIT1_off32(0xE8, jmp_offset); /* call */
-			break;
-
-		case BPF_LD | BPF_IND | BPF_H:
-			func = sk_load_half;
-			goto common_load;
-		case BPF_LD | BPF_ABS | BPF_H:
-			func = CHOOSE_LOAD_FUNC(imm32, sk_load_half);
-			goto common_load;
-		case BPF_LD | BPF_IND | BPF_B:
-			func = sk_load_byte;
-			goto common_load;
-		case BPF_LD | BPF_ABS | BPF_B:
-			func = CHOOSE_LOAD_FUNC(imm32, sk_load_byte);
-			goto common_load;
 
 		case BPF_JMP | BPF_EXIT:
 			if (seen_exit) {
