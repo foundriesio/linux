@@ -3599,4 +3599,21 @@
 		aux-active = <1>;
 	};
 
+	/* CM Bus Block */
+	hwdemux: cm_bus@19000000 {
+		status = "disabled";
+	};
+
+	tcc_hwdmx_tsif0: tcc_hwdmx_tsif@0 {
+		clocks = <&clk_peri PERI_TSRX0>;
+		clock-names = "tsrx0";
+	};
+
+	tcc_hwdmx_tsif1: tcc_hwdmx_tsif@1 {
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+	};
+
+	/* ISDB-T */
+	tcc_isdbt_ctrl: tcc_isdbt_ctrl{};
 };

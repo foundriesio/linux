@@ -794,3 +794,31 @@
 	dma-names = "tx", "rx";
 	status = "okay";
 };
+
+/* H/W Demux */
+&hwdemux {
+	compatible = "telechips,hwdemux";
+	status = "okay";
+};
+
+&tcc_hwdmx_tsif0 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <1>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&ts0_idle>;
+	pinctrl-1 = <&ts0_active>;
+	status = "okay";
+};
+
+&tcc_hwdmx_tsif1 {
+	compatible = "telechips,tcc89xx-hwdmx-tsif";
+	tsif-port = <2>;
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&ts1_idle>;
+	pinctrl-1 = <&ts1_active>;
+};
+
+/* ISDB-T */
+&tcc_isdbt_ctrl {
+	compatible = "telechips,tcc_isdbt_ctrl";
+};
