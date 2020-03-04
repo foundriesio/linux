@@ -2018,33 +2018,36 @@ static int __kvm_gfn_to_hva_cache_init(struct kvm_memslots *slots,
 	gfn_t end_gfn = (gpa + len - 1) >> PAGE_SHIFT;
 	gfn_t nr_pages_needed = end_gfn - start_gfn + 1;
 	gfn_t nr_pages_avail;
-	int r = start_gfn <= end_gfn ? 0 : -EINVAL;
 
-	ghc->gpa = gpa;
+	/* Update ghc->generation before performing any error checks. */
 	ghc->generation = slots->generation;
-	ghc->len = len;
-	ghc->hva = KVM_HVA_ERR_BAD;
+
+	if (start_gfn > end_gfn) {
+		ghc->hva = KVM_HVA_ERR_BAD;
+		return -EINVAL;
+	}
 
 	/*
 	 * If the requested region crosses two memslots, we still
 	 * verify that the entire region is valid here.
 	 */
-	while (!r && start_gfn <= end_gfn) {
+	for ( ; start_gfn <= end_gfn; start_gfn += nr_pages_avail) {
 		ghc->memslot = __gfn_to_memslot(slots, start_gfn);
 		ghc->hva = gfn_to_hva_many(ghc->memslot, start_gfn,
 					   &nr_pages_avail);
 		if (kvm_is_error_hva(ghc->hva))
-			r = -EFAULT;
-		start_gfn += nr_pages_avail;
+			return -EFAULT;
 	}
 
 	/* Use the slow path for cross page reads and writes. */
-	if (!r && nr_pages_needed == 1)
+	if (nr_pages_needed == 1)
 		ghc->hva += offset;
 	else
 		ghc->memslot = NULL;
 
-	return r;
+	ghc->gpa = gpa;
+	ghc->len = len;
+	return 0;
 }
 
 int kvm_gfn_to_hva_cache_init(struct kvm *kvm, struct gfn_to_hva_cache *ghc,
@@ -2995,12 +2998,14 @@ static int kvm_ioctl_create_device(struct kvm *kvm,
 	struct kvm_device_ops *ops = NULL;
 	struct kvm_device *dev;
 	bool test = cd->flags & KVM_CREATE_DEVICE_TEST;
+	int type;
 	int ret;
 
 	if (cd->type >= ARRAY_SIZE(kvm_device_ops_table))
 		return -ENODEV;
 
-	ops = kvm_device_ops_table[cd->type];
+	type = array_index_nospec(cd->type, ARRAY_SIZE(kvm_device_ops_table));
+	ops = kvm_device_ops_table[type];
 	if (ops == NULL)
 		return -ENODEV;
 
@@ -3015,7 +3020,7 @@ static int kvm_ioctl_create_device(struct kvm *kvm,
 	dev->kvm = kvm;
 
 	mutex_lock(&kvm->lock);
-	ret = ops->create(dev, cd->type);
+	ret = ops->create(dev, type);
 	if (ret < 0) {
 		mutex_unlock(&kvm->lock);
 		kfree(dev);

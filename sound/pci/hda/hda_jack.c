@@ -109,6 +109,7 @@ EXPORT_SYMBOL_GPL(snd_hda_jack_tbl_get_from_tag);
  * snd_hda_jack_tbl_new - create a jack-table entry for the given NID
  * @codec: the HDA codec
  * @nid: pin NID to assign
+ * @dev_id: pin device entry id
  */
 static struct hda_jack_tbl *
 snd_hda_jack_tbl_new(struct hda_codec *codec, hda_nid_t nid)
@@ -198,6 +199,7 @@ EXPORT_SYMBOL_GPL(snd_hda_jack_set_dirty_all);
  * snd_hda_pin_sense - execute pin sense measurement
  * @codec: the CODEC to sense
  * @nid: the pin NID to sense
+ * @dev_id: pin device entry id
  *
  * Execute necessary pin sense measurement and return its Presence Detect,
  * Impedance, ELD Valid etc. status bits.

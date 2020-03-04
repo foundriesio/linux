@@ -2921,6 +2921,7 @@ static bool amdgpu_device_ip_check_soft_reset(struct amdgpu_device *adev)
  * amdgpu_device_ip_pre_soft_reset - prepare for soft reset
  *
  * @adev: amdgpu_device pointer
+ * @state: clockgating state (gate or ungate)
  *
  * The list of all the hardware IPs that make up the asic is walked and the
  * pre_soft_reset callbacks are run if the block is hung.  pre_soft_reset
