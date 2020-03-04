@@ -69,6 +69,11 @@ properties:
   phy-names:
     const: usb
 
+  wakeup-source:
+    $ref: /schemas/types.yaml#/definitions/flag
+    description:
+      Indicate this device has wakeup capabilities.
+
 required:
   - compatible
   - reg
