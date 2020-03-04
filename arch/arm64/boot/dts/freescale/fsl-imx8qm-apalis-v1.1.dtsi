@@ -283,7 +283,6 @@
 	pinctrl-0 = <&pinctrl_fec1>;
 	pinctrl-1 = <&pinctrl_fec1_sleep>;
 	fsl,magic-packet;
-	fsl,rgmii_rxc_dly;
 	fsl,rgmii_txc_dly;
 	phy-handle = <&ethphy0>;
 	phy-mode = "rgmii";
