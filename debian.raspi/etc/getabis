@@ -1,13 +1,13 @@
 repo_list=(
-	"http://archive.ubuntu.com/ubuntu/pool/main/l/linux-raspi2"
-	"http://ports.ubuntu.com/ubuntu-ports/pool/main/l/linux-raspi2"
-	"http://archive.ubuntu.com/ubuntu/pool/universe/l/linux-raspi2"
-	"http://ports.ubuntu.com/ubuntu-ports/pool/universe/l/linux-raspi2"
-	"http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu/pool/main/l/linux-raspi2"
-	"http://ppa.launchpad.net/canonical-kernel-team/unstable/ubuntu/pool/main/l/linux-raspi2"
+	"http://archive.ubuntu.com/ubuntu/pool/main/l/linux-raspi"
+	"http://ports.ubuntu.com/ubuntu-ports/pool/main/l/linux-raspi"
+	"http://archive.ubuntu.com/ubuntu/pool/universe/l/linux-raspi"
+	"http://ports.ubuntu.com/ubuntu-ports/pool/universe/l/linux-raspi"
+	"http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu/pool/main/l/linux-raspi"
+	"http://ppa.launchpad.net/canonical-kernel-team/unstable/ubuntu/pool/main/l/linux-raspi"
 )
 
 package_prefixes linux-buildinfo
 
-getall armhf raspi2
-getall arm64 raspi2
+getall armhf raspi
+getall arm64 raspi
