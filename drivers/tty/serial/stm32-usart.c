@@ -26,7 +26,6 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pinctrl/devinfo.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_wakeirq.h>
@@ -1106,7 +1105,6 @@ static int stm32_usart_init_port(struct stm32_port *stm32port,
 {
 	struct uart_port *port = &stm32port->port;
 	struct resource *res;
-	struct pinctrl *uart_pinctrl;
 	int ret;
 
 	ret = platform_get_irq(pdev, 0);
@@ -1128,24 +1126,6 @@ static int stm32_usart_init_port(struct stm32_port *stm32port,
 							      "wakeup-source");
 
 	stm32port->fifoen = stm32port->info->cfg.has_fifo;
-
-	uart_pinctrl = devm_pinctrl_get(&pdev->dev);
-	if (IS_ERR(uart_pinctrl)) {
-		ret = PTR_ERR(uart_pinctrl);
-		if (ret != -ENODEV) {
-			dev_err(&pdev->dev, "Can't get pinctrl, error %d\n",
-				ret);
-			return ret;
-		}
-		stm32port->console_pins = ERR_PTR(-ENODEV);
-	} else {
-		stm32port->console_pins = pinctrl_lookup_state
-			(uart_pinctrl, "no_console_suspend");
-	}
-
-	if (IS_ERR(stm32port->console_pins) && PTR_ERR(stm32port->console_pins)
-	    != -ENODEV)
-		return PTR_ERR(stm32port->console_pins);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	port->membase = devm_ioremap_resource(&pdev->dev, res);
@@ -1571,21 +1551,19 @@ static void __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
 static int __maybe_unused stm32_usart_serial_suspend(struct device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(dev);
-	struct stm32_port *stm32_port = to_stm32_port(port);
 
 	uart_suspend_port(&stm32_usart_driver, port);
 
 	if (device_may_wakeup(dev) || device_wakeup_path(dev))
 		stm32_usart_serial_en_wakeup(port, true);
 
-	if (uart_console(port) && !console_suspend_enabled) {
-		if (IS_ERR(stm32_port->console_pins)) {
-			dev_err(dev, "no_console_suspend pinctrl not found\n");
-			return PTR_ERR(stm32_port->console_pins);
-		}
-
-		pinctrl_select_state(dev->pins->p, stm32_port->console_pins);
-	} else {
+	/*
+	 * When "no_console_suspend" is enabled, keep the pinctrl default state
+	 * and rely on bootloader stage to restore this state upon resume.
+	 * Otherwise, apply the idle or sleep states depending on wakeup
+	 * capabilities.
+	 */
+	if (console_suspend_enabled || !uart_console(port)) {
 		if (device_may_wakeup(dev) || device_wakeup_path(dev))
 			pinctrl_pm_select_idle_state(dev);
 		else

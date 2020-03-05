@@ -272,7 +272,6 @@ struct stm32_port {
 	bool fifoen;
 	bool wakeup_src;
 	int rdr_mask;		/* receive data register mask */
-	struct pinctrl_state *console_pins;
 	struct dma_tx_state state;
 	enum dma_status status;
 };
