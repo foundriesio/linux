@@ -274,13 +274,16 @@ static const struct mmu_notifier_ops kfd_process_mmu_notifier_ops = {
 	.release = kfd_process_notifier_release,
 };
 
+/*
+ * On return the kfd_process is fully operational and will be freed when the
+ * mm is released
+ */
 static struct kfd_process *create_process(const struct task_struct *thread)
 {
 	struct kfd_process *process;
 	int err = -ENOMEM;
 
 	process = kzalloc(sizeof(*process), GFP_KERNEL);
-
 	if (!process)
 		goto err_alloc_process;
 
@@ -289,23 +292,8 @@ static struct kfd_process *create_process(const struct task_struct *thread)
 	if (!process->queues)
 		goto err_alloc_queues;
 
-	process->pasid = kfd_pasid_alloc();
-	if (process->pasid == 0)
-		goto err_alloc_pasid;
-
 	mutex_init(&process->mutex);
-
 	process->mm = thread->mm;
-
-	/* register notifier */
-	process->mmu_notifier.ops = &kfd_process_mmu_notifier_ops;
-	err = __mmu_notifier_register(&process->mmu_notifier, process->mm);
-	if (err)
-		goto err_mmu_notifier;
-
-	hash_add_rcu(kfd_processes_table, &process->kfd_processes,
-			(uintptr_t)process->mm);
-
 	process->lead_thread = thread->group_leader;
 
 	process->queue_array_size = INITIAL_QUEUE_ARRAY_SIZE;
@@ -314,28 +302,39 @@ static struct kfd_process *create_process(const struct task_struct *thread)
 
 	kfd_event_init_process(process);
 
+	process->pasid = kfd_pasid_alloc();
+	if (process->pasid == 0)
+		goto err_alloc_pasid;
+
 	err = pqm_init(&process->pqm, process);
 	if (err != 0)
 		goto err_process_pqm_init;
 
 	/* init process apertures*/
-	process->is_32bit_user_mode = in_compat_syscall();
 	err = kfd_init_apertures(process);
 	if (err != 0)
 		goto err_init_apretures;
 
+	/* Must be last, have to use release destruction after this */
+	process->mmu_notifier.ops = &kfd_process_mmu_notifier_ops;
+	err = mmu_notifier_register(&process->mmu_notifier, process->mm);
+ 	if (err)
+		goto err_register_notifier;
+
+	hash_add_rcu(kfd_processes_table, &process->kfd_processes,
+			(uintptr_t)process->mm);
+
+
 	return process;
 
+err_register_notifier:
+	mmu_notifier_unregister_no_release(&process->mmu_notifier, process->mm);
 err_init_apretures:
 	pqm_uninit(&process->pqm);
 err_process_pqm_init:
-	hash_del_rcu(&process->kfd_processes);
-	synchronize_rcu();
-	mmu_notifier_unregister_no_release(&process->mmu_notifier, process->mm);
-err_mmu_notifier:
-	mutex_destroy(&process->mutex);
 	kfd_pasid_free(process->pasid);
 err_alloc_pasid:
+	mutex_destroy(&process->mutex);
 	kfree(process->queues);
 err_alloc_queues:
 	kfree(process);
