@@ -278,9 +278,6 @@ struct drm_i915_gem_object {
 		void *gvt_info;
 	};
 
-	/** for phys allocated objects */
-	struct drm_dma_handle *phys_handle;
-
 	struct reservation_object __builtin_resv;
 };
 

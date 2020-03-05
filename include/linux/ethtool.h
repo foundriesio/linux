@@ -407,4 +407,11 @@ struct ethtool_ops {
 	int	(*set_fecparam)(struct net_device *,
 				      struct ethtool_fecparam *);
 };
+
+bool ethtool_virtdev_validate_cmd(const struct ethtool_link_ksettings *cmd);
+int ethtool_virtdev_set_link_ksettings(struct net_device *dev,
+				       const struct ethtool_link_ksettings *cmd,
+				       u32 *dev_speed, u8 *dev_duplex);
+
+
 #endif /* _LINUX_ETHTOOL_H */
