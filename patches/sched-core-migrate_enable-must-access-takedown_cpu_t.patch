@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8136,9 +8136,11 @@ void migrate_enable(void)
+@@ -8147,9 +8147,11 @@ void migrate_enable(void)
  
  	p->migrate_disable = 0;
  	rq->nr_pinned--;

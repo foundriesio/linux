@@ -169,6 +169,8 @@ tpm-remove-tpm_dev_wq_lock.patch
 # 20191211232345.24810-1-robh@kernel.org
 of-Rework-and-simplify-phandle-cache-to-use-a-fixed-.patch
 
+mm-Warn-on-memory-allocation-in-non-preemptible-cont.patch
+
 ###############################################################
 # Stuff broken upstream and upstream wants something different
 ###############################################################

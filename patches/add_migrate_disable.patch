@@ -426,7 +426,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto out;
  
  	if (task_running(rq, p) || p->state == TASK_WAKING) {
-@@ -4028,6 +4038,8 @@ pick_next_task(struct rq *rq, struct tas
+@@ -4032,6 +4042,8 @@ pick_next_task(struct rq *rq, struct tas
  	BUG();
  }
  
@@ -435,7 +435,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * __schedule() is the main scheduler function.
   *
-@@ -4098,6 +4110,9 @@ static void __sched notrace __schedule(b
+@@ -4102,6 +4114,9 @@ static void __sched notrace __schedule(b
  	rq_lock(rq, &rf);
  	smp_mb__after_spinlock();
  
@@ -445,7 +445,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Promote REQ to ACT */
  	rq->clock_update_flags <<= 1;
  	update_rq_clock(rq);
-@@ -6340,6 +6355,7 @@ static void migrate_tasks(struct rq *dea
+@@ -6344,6 +6359,7 @@ static void migrate_tasks(struct rq *dea
  			break;
  
  		next = __pick_migrate_task(rq);
@@ -453,7 +453,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		/*
  		 * Rules for changing task_struct::cpus_mask are holding
-@@ -8035,3 +8051,162 @@ const u32 sched_prio_to_wmult[40] = {
+@@ -8046,3 +8062,162 @@ const u32 sched_prio_to_wmult[40] = {
  };
  
  #undef CREATE_TRACE_POINTS

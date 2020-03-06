@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -1550,7 +1550,7 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1554,7 +1554,7 @@ int jbd2_journal_forget (handle_t *handl
  	if (!J_EXPECT_JH(jh, !jh->b_committed_data,
  			 "inconsistent data on disk")) {
  		err = -EIO;
@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	/* keep track of whether or not this transaction modified us */
-@@ -1640,7 +1640,7 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1644,7 +1644,7 @@ int jbd2_journal_forget (handle_t *handl
  		if (!jh->b_cp_transaction) {
  			JBUFFER_TRACE(jh, "belongs to none transaction");
  			spin_unlock(&journal->j_list_lock);
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  
  		/*
-@@ -1650,7 +1650,7 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1654,7 +1654,7 @@ int jbd2_journal_forget (handle_t *handl
  		if (!buffer_dirty(bh)) {
  			__jbd2_journal_remove_checkpoint(jh);
  			spin_unlock(&journal->j_list_lock);
@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  
  		/*
-@@ -1663,10 +1663,9 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1667,10 +1667,9 @@ int jbd2_journal_forget (handle_t *handl
  		__jbd2_journal_file_buffer(jh, transaction, BJ_Forget);
  		spin_unlock(&journal->j_list_lock);
  	}

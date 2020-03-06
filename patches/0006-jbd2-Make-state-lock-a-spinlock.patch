@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -879,7 +879,7 @@ do_get_write_access(handle_t *handle, st
+@@ -877,7 +877,7 @@ do_get_write_access(handle_t *handle, st
  
   	start_lock = jiffies;
  	lock_buffer(bh);
@@ -137,7 +137,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* If it takes too long to lock the buffer, trace it */
  	time_lock = jbd2_time_diff(start_lock, jiffies);
-@@ -929,7 +929,7 @@ do_get_write_access(handle_t *handle, st
+@@ -927,7 +927,7 @@ do_get_write_access(handle_t *handle, st
  
  	error = -EROFS;
  	if (is_handle_aborted(handle)) {
@@ -146,7 +146,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto out;
  	}
  	error = 0;
-@@ -993,7 +993,7 @@ do_get_write_access(handle_t *handle, st
+@@ -991,7 +991,7 @@ do_get_write_access(handle_t *handle, st
  	 */
  	if (buffer_shadow(bh)) {
  		JBUFFER_TRACE(jh, "on shadow: sleep");
@@ -155,7 +155,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		wait_on_bit_io(&bh->b_state, BH_Shadow, TASK_UNINTERRUPTIBLE);
  		goto repeat;
  	}
-@@ -1014,7 +1014,7 @@ do_get_write_access(handle_t *handle, st
+@@ -1012,7 +1012,7 @@ do_get_write_access(handle_t *handle, st
  		JBUFFER_TRACE(jh, "generate frozen data");
  		if (!frozen_buffer) {
  			JBUFFER_TRACE(jh, "allocate memory for buffer");
@@ -164,7 +164,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			frozen_buffer = jbd2_alloc(jh2bh(jh)->b_size,
  						   GFP_NOFS | __GFP_NOFAIL);
  			goto repeat;
-@@ -1033,7 +1033,7 @@ do_get_write_access(handle_t *handle, st
+@@ -1031,7 +1031,7 @@ do_get_write_access(handle_t *handle, st
  	jh->b_next_transaction = transaction;
  
  done:
@@ -173,7 +173,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * If we are about to journal a buffer, then any revoke pending on it is
-@@ -1172,7 +1172,7 @@ int jbd2_journal_get_create_access(handl
+@@ -1173,7 +1173,7 @@ int jbd2_journal_get_create_access(handl
  	 * that case: the transaction must have deleted the buffer for it to be
  	 * reused here.
  	 */
@@ -182,7 +182,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	J_ASSERT_JH(jh, (jh->b_transaction == transaction ||
  		jh->b_transaction == NULL ||
  		(jh->b_transaction == journal->j_committing_transaction &&
-@@ -1207,7 +1207,7 @@ int jbd2_journal_get_create_access(handl
+@@ -1208,7 +1208,7 @@ int jbd2_journal_get_create_access(handl
  		jh->b_next_transaction = transaction;
  		spin_unlock(&journal->j_list_lock);
  	}
@@ -191,7 +191,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * akpm: I added this.  ext3_alloc_branch can pick up new indirect
-@@ -1275,13 +1275,13 @@ int jbd2_journal_get_undo_access(handle_
+@@ -1279,13 +1279,13 @@ int jbd2_journal_get_undo_access(handle_
  		committed_data = jbd2_alloc(jh2bh(jh)->b_size,
  					    GFP_NOFS|__GFP_NOFAIL);
  
@@ -207,7 +207,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			goto repeat;
  		}
  
-@@ -1289,7 +1289,7 @@ int jbd2_journal_get_undo_access(handle_
+@@ -1293,7 +1293,7 @@ int jbd2_journal_get_undo_access(handle_
  		committed_data = NULL;
  		memcpy(jh->b_committed_data, bh->b_data, bh->b_size);
  	}
@@ -216,7 +216,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out:
  	jbd2_journal_put_journal_head(jh);
  	if (unlikely(committed_data))
-@@ -1390,16 +1390,16 @@ int jbd2_journal_dirty_metadata(handle_t
+@@ -1394,16 +1394,16 @@ int jbd2_journal_dirty_metadata(handle_t
  	 */
  	if (jh->b_transaction != transaction &&
  	    jh->b_next_transaction != transaction) {
@@ -236,7 +236,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			if (jh->b_transaction == transaction &&
  			    jh->b_jlist != BJ_Metadata)
  				pr_err("JBD2: assertion failure: h_type=%u "
-@@ -1409,13 +1409,13 @@ int jbd2_journal_dirty_metadata(handle_t
+@@ -1413,13 +1413,13 @@ int jbd2_journal_dirty_metadata(handle_t
  				       jh->b_jlist);
  			J_ASSERT_JH(jh, jh->b_transaction != transaction ||
  					jh->b_jlist == BJ_Metadata);
@@ -252,7 +252,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (jh->b_modified == 0) {
  		/*
-@@ -1501,7 +1501,7 @@ int jbd2_journal_dirty_metadata(handle_t
+@@ -1505,7 +1505,7 @@ int jbd2_journal_dirty_metadata(handle_t
  	__jbd2_journal_file_buffer(jh, transaction, BJ_Metadata);
  	spin_unlock(&journal->j_list_lock);
  out_unlock_bh:
@@ -261,7 +261,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  out:
  	JBUFFER_TRACE(jh, "exit");
  	return ret;
-@@ -1539,11 +1539,13 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1543,11 +1543,13 @@ int jbd2_journal_forget (handle_t *handl
  
  	BUFFER_TRACE(bh, "entry");
  
@@ -279,7 +279,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Critical error: attempting to delete a bitmap buffer, maybe?
  	 * Don't do any jbd operations, and return an error. */
-@@ -1664,18 +1666,14 @@ int jbd2_journal_forget (handle_t *handl
+@@ -1668,18 +1670,14 @@ int jbd2_journal_forget (handle_t *handl
  		spin_unlock(&journal->j_list_lock);
  	}
  drop:
@@ -300,7 +300,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /**
-@@ -1874,7 +1872,7 @@ int jbd2_journal_stop(handle_t *handle)
+@@ -1878,7 +1876,7 @@ int jbd2_journal_stop(handle_t *handle)
   *
   * j_list_lock is held.
   *
@@ -309,7 +309,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  
  static inline void
-@@ -1898,7 +1896,7 @@ static inline void
+@@ -1902,7 +1900,7 @@ static inline void
   *
   * Called with j_list_lock held, and the journal may not be locked.
   *
@@ -318,7 +318,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  
  static inline void
-@@ -1930,7 +1928,7 @@ static void __jbd2_journal_temp_unlink_b
+@@ -1934,7 +1932,7 @@ static void __jbd2_journal_temp_unlink_b
  	transaction_t *transaction;
  	struct buffer_head *bh = jh2bh(jh);
  
@@ -327,7 +327,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	transaction = jh->b_transaction;
  	if (transaction)
  		assert_spin_locked(&transaction->t_journal->j_list_lock);
-@@ -1984,11 +1982,11 @@ void jbd2_journal_unfile_buffer(journal_
+@@ -1988,11 +1986,11 @@ void jbd2_journal_unfile_buffer(journal_
  
  	/* Get reference so that buffer cannot be freed before we unlock it */
  	get_bh(bh);
@@ -341,7 +341,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	jbd2_journal_put_journal_head(jh);
  	__brelse(bh);
  }
-@@ -1996,7 +1994,7 @@ void jbd2_journal_unfile_buffer(journal_
+@@ -2000,7 +1998,7 @@ void jbd2_journal_unfile_buffer(journal_
  /*
   * Called from jbd2_journal_try_to_free_buffers().
   *
@@ -350,7 +350,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  static void
  __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
-@@ -2083,10 +2081,10 @@ int jbd2_journal_try_to_free_buffers(jou
+@@ -2087,10 +2085,10 @@ int jbd2_journal_try_to_free_buffers(jou
  		if (!jh)
  			continue;
  
@@ -363,7 +363,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (buffer_jbd(bh))
  			goto busy;
  	} while ((bh = bh->b_this_page) != head);
-@@ -2107,7 +2105,7 @@ int jbd2_journal_try_to_free_buffers(jou
+@@ -2111,7 +2109,7 @@ int jbd2_journal_try_to_free_buffers(jou
   *
   * Called under j_list_lock.
   *
@@ -372,7 +372,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
  {
-@@ -2201,7 +2199,7 @@ static int journal_unmap_buffer(journal_
+@@ -2205,7 +2203,7 @@ static int journal_unmap_buffer(journal_
  
  	/* OK, we have data buffer in journaled mode */
  	write_lock(&journal->j_state_lock);
@@ -381,7 +381,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&journal->j_list_lock);
  
  	/*
-@@ -2282,10 +2280,10 @@ static int journal_unmap_buffer(journal_
+@@ -2286,10 +2284,10 @@ static int journal_unmap_buffer(journal_
  		 * for commit and try again.
  		 */
  		if (partial_page) {
@@ -394,7 +394,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			return -EBUSY;
  		}
  		/*
-@@ -2299,10 +2297,10 @@ static int journal_unmap_buffer(journal_
+@@ -2303,10 +2301,10 @@ static int journal_unmap_buffer(journal_
  		if (journal->j_running_transaction && buffer_jbddirty(bh))
  			jh->b_next_transaction = journal->j_running_transaction;
  		jh->b_modified = 0;
@@ -407,7 +407,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return 0;
  	} else {
  		/* Good, the buffer belongs to the running transaction.
-@@ -2326,10 +2324,10 @@ static int journal_unmap_buffer(journal_
+@@ -2330,10 +2328,10 @@ static int journal_unmap_buffer(journal_
  	 * here.
  	 */
  	jh->b_modified = 0;
@@ -420,7 +420,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  zap_buffer_unlocked:
  	clear_buffer_dirty(bh);
  	J_ASSERT_BH(bh, !buffer_jbddirty(bh));
-@@ -2416,7 +2414,7 @@ void __jbd2_journal_file_buffer(struct j
+@@ -2420,7 +2418,7 @@ void __jbd2_journal_file_buffer(struct j
  	int was_dirty = 0;
  	struct buffer_head *bh = jh2bh(jh);
  
@@ -429,7 +429,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	assert_spin_locked(&transaction->t_journal->j_list_lock);
  
  	J_ASSERT_JH(jh, jh->b_jlist < BJ_Types);
-@@ -2478,11 +2476,11 @@ void __jbd2_journal_file_buffer(struct j
+@@ -2482,11 +2480,11 @@ void __jbd2_journal_file_buffer(struct j
  void jbd2_journal_file_buffer(struct journal_head *jh,
  				transaction_t *transaction, int jlist)
  {
@@ -443,7 +443,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2492,7 +2490,7 @@ void jbd2_journal_file_buffer(struct jou
+@@ -2496,7 +2494,7 @@ void jbd2_journal_file_buffer(struct jou
   * buffer on that transaction's metadata list.
   *
   * Called under j_list_lock
@@ -452,7 +452,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * When this function returns true, there's no next transaction to refile to
   * and the caller has to drop jh reference through
-@@ -2503,7 +2501,7 @@ bool __jbd2_journal_refile_buffer(struct
+@@ -2507,7 +2505,7 @@ bool __jbd2_journal_refile_buffer(struct
  	int was_dirty, jlist;
  	struct buffer_head *bh = jh2bh(jh);
  
@@ -461,7 +461,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (jh->b_transaction)
  		assert_spin_locked(&jh->b_transaction->t_journal->j_list_lock);
  
-@@ -2549,17 +2547,13 @@ bool __jbd2_journal_refile_buffer(struct
+@@ -2553,17 +2551,13 @@ bool __jbd2_journal_refile_buffer(struct
   */
  void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
  {

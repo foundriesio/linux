@@ -1141,7 +1141,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * Some hypercalls issued by the toolstack can take many 10s of
-@@ -37,4 +37,4 @@ asmlinkage __visible void xen_maybe_pree
+@@ -39,4 +39,4 @@ asmlinkage __visible void xen_maybe_pree
  		__this_cpu_write(xen_in_preemptible_hcall, true);
  	}
  }
@@ -1381,7 +1381,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * either synchronize_rcu() or synchronize_rcu_expedited().  It is OK to
 --- a/kernel/rcu/tree_exp.h
 +++ b/kernel/rcu/tree_exp.h
-@@ -669,7 +669,7 @@ static void rcu_exp_handler(void *unused
+@@ -668,7 +668,7 @@ static void rcu_exp_handler(void *unused
  	}
  }
  
@@ -1412,7 +1412,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -3660,6 +3660,8 @@ print_trace_header(struct seq_file *m, s
+@@ -3662,6 +3662,8 @@ print_trace_header(struct seq_file *m, s
  		   "desktop",
  #elif defined(CONFIG_PREEMPT)
  		   "preempt",
@@ -1434,7 +1434,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * indefinitely requeue itself while all other CPUs are trapped in
 --- a/lib/Kconfig.debug
 +++ b/lib/Kconfig.debug
-@@ -1070,7 +1070,7 @@ config DEBUG_TIMEKEEPING
+@@ -1059,7 +1059,7 @@ config DEBUG_TIMEKEEPING
  
  config DEBUG_PREEMPT
  	bool "Debug preemptible kernel"
@@ -1510,7 +1510,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Same with comment on barrier() in slab_alloc_node() */
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -820,7 +820,7 @@ EXPORT_SYMBOL(dev_get_by_napi_id);
+@@ -819,7 +819,7 @@ EXPORT_SYMBOL(dev_get_by_napi_id);
   *
   *	The use of raw_seqcount_begin() and cond_resched() before
   *	retrying is required as we want to give the writers a chance

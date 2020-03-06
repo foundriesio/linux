@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct intel_engine_cs *engine =
 --- a/drivers/gpu/drm/i915/gt/intel_engine.h
 +++ b/drivers/gpu/drm/i915/gt/intel_engine.h
-@@ -349,7 +349,6 @@ void intel_engine_init_execlists(struct
+@@ -357,7 +357,6 @@ void intel_engine_init_execlists(struct
  void intel_engine_init_breadcrumbs(struct intel_engine_cs *engine);
  void intel_engine_fini_breadcrumbs(struct intel_engine_cs *engine);
  

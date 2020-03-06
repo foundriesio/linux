@@ -5,7 +5,6 @@ Subject: rtmutex: wire up RT's locking
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/Kbuild                   |    7 +++++++
  include/linux/mutex.h            |   20 +++++++++++++-------
  include/linux/rwsem.h            |   12 ++++++++++++
  include/linux/spinlock.h         |   12 +++++++++++-
@@ -15,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  kernel/locking/rwsem.c           |    7 +++++++
  kernel/locking/spinlock.c        |    7 +++++++
  kernel/locking/spinlock_debug.c  |    5 +++++
- 10 files changed, 80 insertions(+), 15 deletions(-)
+ 9 files changed, 73 insertions(+), 15 deletions(-)
 
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
