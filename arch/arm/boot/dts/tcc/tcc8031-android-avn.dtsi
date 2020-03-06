@@ -443,19 +443,19 @@
 };
 
 &gpsb1 {
-	status = "disabled";  // enable = "okay"
-	gpsb-port = <6>;
+	status = "okay";  // enable = "okay"
+	gpsb-port = <15>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&gpsb6_bus_idle>;
-	pinctrl-1 = <&gpsb6_bus_tsif>;
+	pinctrl-0 = <&gpsb15_bus_idle>;
+	pinctrl-1 = <&gpsb15_bus_tsif>;
 };
 
 &gpsb2 {
-	status = "disabled";  // enable = "okay"
-	gpsb-port = <7>;
+	status = "okay";  // enable = "okay"
+	gpsb-port = <16>;
 	pinctrl-names = "idle", "active";
-	pinctrl-0 = <&gpsb7_bus_idle>;
-	pinctrl-1 = <&gpsb7_bus_tsif>;
+	pinctrl-0 = <&gpsb16_bus_idle>;
+	pinctrl-1 = <&gpsb16_bus_tsif>;
 };
 
 /* sdr */
@@ -737,6 +737,16 @@
 	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
 	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
 	clock-names = "mmc_fclk", "mmc_hclk";
+};
+
+/* broadcast(DAB/DMB) */
+&tcc_dxb_ctrl {
+	compatible = "telechips,tcc_dxb_ctrl";
+	pw-gpios = <&gpa 23 0>;
+	dxb0-gpios = <&gpa 22 0>, <&gpa 21 0>, <0>, <0>;
+	dxb1-gpios = <&gpa 31 0>, <&gpa 25 0>, <0>, <0>;
+	ant-gpios = <0>, <0>;
+	tuner-gpios = <&gpg 0 0>, <&gpma 0 0>;
 };
 
 /* bluetooth */

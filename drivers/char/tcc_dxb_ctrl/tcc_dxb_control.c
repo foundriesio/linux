@@ -40,7 +40,7 @@
  ******************************************************************************/
 #define LOG_TAG    "[TCC_DXB_CTRL]"
 #define IRQF_DISABLED		0x00000020
-static int dev_debug = 0;
+static int dev_debug = 1;
 
 module_param(dev_debug, int, 0644);
 MODULE_PARM_DESC(dev_debug, "Turn on/off device debugging (default:off).");
@@ -96,6 +96,9 @@ struct tcc_dxb_ctrl_t
 	int gpio_check_ant_overload;
 
 	int irq_check_ant_overlaod;
+
+	int gpio_tuner_pwr;
+	int gpio_tuner_rst;
 };
 
 /*****************************************************************************
@@ -179,6 +182,7 @@ static void GPIO_FREE(int pin)
  * Baseband Functions
  ******************************************************************************/
 #include "tcc3171.h"
+#include "amfmtuner.h"
 
 struct baseband {
 	int type;
@@ -187,6 +191,7 @@ struct baseband {
 	int ant_ctrl;  // antenna power control (0: disable, 1: enable)
 } BB[] = {
 	{ BOARD_DXB_TCC3171,   TCC3171_IOCTL, 0, 0 },
+	{ BOARD_AMFM_TUNER,   amfmtuner_ioctl, 0, 0 },
 	/* don't not modify or remove next line. when add new device, add to above this line */
 	{ BOARD_DXB_UNDEFINED, NULL,         0, 0 } 
 };
@@ -361,7 +366,7 @@ static long tcc_dxb_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned lon
 					return -1;
 				}
 
-				dprintk("new_board_type=%d, bb_index=0\n", gDxbCtrl->board_type, gDxbCtrl->bb_index);
+				dprintk("new_board_type=%d, bb_index=%d\n", gDxbCtrl->board_type, gDxbCtrl->bb_index);
 				if (BB[gDxbCtrl->bb_index].ioctl != NULL)
 				{
 					return BB[gDxbCtrl->bb_index].ioctl(gDxbCtrl, cmd, arg);
@@ -403,6 +408,9 @@ static int tcc_dxb_ctrl_release(struct inode *inode, struct file *filp)
 
 	GPIO_FREE(gDxbCtrl->gpio_ant_pwr);
 	GPIO_FREE(gDxbCtrl->gpio_check_ant_overload);
+
+	GPIO_FREE(gDxbCtrl->gpio_tuner_rst);
+	GPIO_FREE(gDxbCtrl->gpio_tuner_pwr);
 
 	dprintk("%s::%d\n", __FUNCTION__, __LINE__);
 
@@ -490,12 +498,17 @@ static int tcc_dxb_ctrl_probe(struct platform_device *pdev)
 
 	gDxbCtrl->gpio_ant_pwr            = of_get_named_gpio(dev->of_node, "ant-gpios",   0);
 	gDxbCtrl->gpio_check_ant_overload = of_get_named_gpio(dev->of_node, "ant-gpios",   1);
+
+	gDxbCtrl->gpio_tuner_rst  = of_get_named_gpio(dev->of_node, "tuner-gpios", 0);
+	gDxbCtrl->gpio_tuner_pwr  = of_get_named_gpio(dev->of_node, "tuner-gpios", 1);
 #endif
-	dprintk("%s [0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X][0x%X]\n", __func__,
-	gDxbCtrl->gpio_dxb_on,
-	gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst, gDxbCtrl->gpio_dxb_0_irq, gDxbCtrl->gpio_dxb_0_sdo,
-	gDxbCtrl->gpio_dxb_1_pwdn, gDxbCtrl->gpio_dxb_1_rst, gDxbCtrl->gpio_dxb_1_irq, gDxbCtrl->gpio_dxb_1_sdo,
-	gDxbCtrl->gpio_ant_pwr, gDxbCtrl->gpio_check_ant_overload);
+	dprintk("%s [0x%X] [0x%X][0x%X][0x%X][0x%X] [0x%X][0x%X][0x%X][0x%X] [0x%X][0x%X]  [0x%X][0x%X]\n", __func__,
+		gDxbCtrl->gpio_dxb_on,
+		gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst, gDxbCtrl->gpio_dxb_0_irq, gDxbCtrl->gpio_dxb_0_sdo,
+		gDxbCtrl->gpio_dxb_1_pwdn, gDxbCtrl->gpio_dxb_1_rst, gDxbCtrl->gpio_dxb_1_irq, gDxbCtrl->gpio_dxb_1_sdo,
+		gDxbCtrl->gpio_ant_pwr, gDxbCtrl->gpio_check_ant_overload,
+		gDxbCtrl->gpio_tuner_rst, gDxbCtrl->gpio_tuner_pwr
+		);
 
 	gDxbCtrl->board_type = DEFAULT_BOARD_TYPE;
 	gDxbCtrl->bb_index = get_bb_index(gDxbCtrl->board_type);

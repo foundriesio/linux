@@ -28,6 +28,7 @@ typedef enum
 {
 	BOARD_DXB_UNDEFINED=0, /* don't not modify or remove this line. when add new device, add to below of this line */
 	BOARD_DXB_TCC3171=15,
+	BOARD_AMFM_TUNER=30,
 	BOARD_MAX
 }DXB_BOARD_TYPE;
 

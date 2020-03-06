@@ -3542,6 +3542,8 @@
 
 	tcc_bt_dev: tcc_bt_dev {};
 
+	tcc_dxb_ctrl: tcc_dxb_ctrl {};
+
 	thermal: thermal@14700000 {};
 
 #ifdef CONFIG_VIDEO_VIDEOSOURCE
