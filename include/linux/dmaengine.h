@@ -258,6 +258,9 @@ struct dma_chan {
 	/* sysfs */
 	int chan_id;
 	struct dma_chan_dev *dev;
+#ifdef CONFIG_DEBUG_FS
+	char *dbg_client_name;
+#endif
 
 	struct list_head device_node;
 	struct dma_chan_percpu __percpu *local;
@@ -802,6 +805,10 @@ struct dma_device {
 					    dma_cookie_t cookie,
 					    struct dma_tx_state *txstate);
 	void (*device_issue_pending)(struct dma_chan *chan);
+	/* debugfs support */
+#ifdef CONFIG_DEBUG_FS
+	void (*dbg_summary_show)(struct seq_file *s, struct dma_device *dev);
+#endif
 };
 
 static inline int dmaengine_slave_config(struct dma_chan *chan,
