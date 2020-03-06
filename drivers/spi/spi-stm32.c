@@ -883,20 +883,16 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 {
 	unsigned long flags;
 	u32 cfg1_clrb = 0, cfg1_setb = 0, cfg2_clrb = 0, cfg2_setb = 0;
-	u32 fthlv, mode, nb_words, tsize;
-	int ret = 0;
+	u32 fthlv, mode, nb_words, tsize, bpw;
+	int mbr, ret = 0;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
-	if (spi->cur_bpw != transfer->bits_per_word) {
-		u32 bpw;
+	spi->cur_bpw = transfer->bits_per_word;
+	bpw = spi->cur_bpw - 1;
 
-		spi->cur_bpw = transfer->bits_per_word;
-		bpw = spi->cur_bpw - 1;
-
-		cfg1_clrb |= SPI_CFG1_DSIZE;
-		cfg1_setb |= FIELD_PREP(SPI_CFG1_DSIZE, bpw);
-	}
+	cfg1_clrb |= SPI_CFG1_DSIZE;
+	cfg1_setb |= FIELD_PREP(SPI_CFG1_DSIZE, bpw);
 
 	spi->cur_fthlv = stm32_spi_prepare_fthlv(spi, transfer->len);
 	fthlv = spi->cur_fthlv - 1;
@@ -904,26 +900,21 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 	cfg1_clrb |= SPI_CFG1_FTHLV;
 	cfg1_setb |= FIELD_PREP(SPI_CFG1_FTHLV, fthlv);
 
-	if (spi->cur_speed != transfer->speed_hz) {
-		int mbr;
-
-		/* Update spi->cur_speed with real clock speed */
-		mbr = stm32_spi_prepare_mbr(spi, transfer->speed_hz);
-		if (mbr < 0) {
-			ret = mbr;
-			goto out;
-		}
-
-		transfer->speed_hz = spi->cur_speed;
-
-		cfg1_clrb |= SPI_CFG1_MBR;
-		cfg1_setb |= FIELD_PREP(SPI_CFG1_MBR, (u32)mbr);
+	/* Update spi->cur_speed with real clock speed */
+	mbr = stm32_spi_prepare_mbr(spi, transfer->speed_hz);
+	if (mbr < 0) {
+		ret = mbr;
+		goto out;
 	}
 
-	if (cfg1_clrb || cfg1_setb)
-		writel_relaxed((readl_relaxed(spi->base + STM32_SPI_CFG1) &
-				~cfg1_clrb) | cfg1_setb,
-			       spi->base + STM32_SPI_CFG1);
+	transfer->speed_hz = spi->cur_speed;
+
+	cfg1_clrb |= SPI_CFG1_MBR;
+	cfg1_setb |= FIELD_PREP(SPI_CFG1_MBR, (u32)mbr);
+
+	writel_relaxed((readl_relaxed(spi->base + STM32_SPI_CFG1) &
+			~cfg1_clrb) | cfg1_setb,
+		       spi->base + STM32_SPI_CFG1);
 
 	mode = SPI_FULL_DUPLEX;
 	if (spi_dev->mode & SPI_3WIRE) { /* MISO/MOSI signals shared */
@@ -944,12 +935,10 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		else if (!transfer->rx_buf)
 			mode = SPI_SIMPLEX_TX;
 	}
-	if (spi->cur_comm != mode) {
-		spi->cur_comm = mode;
+	spi->cur_comm = mode;
 
-		cfg2_clrb |= SPI_CFG2_COMM;
-		cfg2_setb |= FIELD_PREP(SPI_CFG2_COMM, mode);
-	}
+	cfg2_clrb |= SPI_CFG2_COMM;
+	cfg2_setb |= FIELD_PREP(SPI_CFG2_COMM, mode);
 
 	cfg2_clrb |= SPI_CFG2_MIDI;
 	if ((transfer->len > 1) && (spi->cur_midi > 0)) {
@@ -964,10 +953,9 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		cfg2_setb |= FIELD_PREP(SPI_CFG2_MIDI, midi);
 	}
 
-	if (cfg2_clrb || cfg2_setb)
-		writel_relaxed((readl_relaxed(spi->base + STM32_SPI_CFG2) &
-				~cfg2_clrb) | cfg2_setb,
-			       spi->base + STM32_SPI_CFG2);
+	writel_relaxed((readl_relaxed(spi->base + STM32_SPI_CFG2) &
+			~cfg2_clrb) | cfg2_setb,
+		       spi->base + STM32_SPI_CFG2);
 
 	if (spi->cur_bpw <= 8)
 		nb_words = transfer->len;
