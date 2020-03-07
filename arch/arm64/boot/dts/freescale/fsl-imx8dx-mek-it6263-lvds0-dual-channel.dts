@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 NXP
+ * Copyright 2020 NXP
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -12,5 +12,19 @@
  * GNU General Public License for more details.
  */
 
-#include "fsl-imx8qxp-mek.dtsi"
-#include "fsl-imx8x-mek-rpmsg.dtsi"
+#include "fsl-imx8dx-mek.dts"
+
+&i2c0_mipi_lvds0 {
+	lvds-to-hdmi-bridge@4c {
+		split-mode;
+	};
+};
+
+&ldb1 {
+	fsl,dual-channel;
+	power-domains = <&pd_mipi_dsi_0_dual_lvds>;
+};
+
+&ldb2 {
+	status = "disabled";
+};
