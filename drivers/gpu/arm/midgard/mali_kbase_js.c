@@ -451,10 +451,16 @@ int kbasep_js_devdata_init(struct kbase_device * const kbdev)
 	jsdd->scheduling_period_ns = DEFAULT_JS_SCHEDULING_PERIOD_NS;
 	jsdd->soft_stop_ticks = DEFAULT_JS_SOFT_STOP_TICKS;
 	jsdd->soft_stop_ticks_cl = DEFAULT_JS_SOFT_STOP_TICKS_CL;
-	jsdd->hard_stop_ticks_ss = DEFAULT_JS_HARD_STOP_TICKS_SS;
+	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8408))
+		jsdd->hard_stop_ticks_ss = DEFAULT_JS_HARD_STOP_TICKS_SS_8408;
+	else
+		jsdd->hard_stop_ticks_ss = DEFAULT_JS_HARD_STOP_TICKS_SS;
 	jsdd->hard_stop_ticks_cl = DEFAULT_JS_HARD_STOP_TICKS_CL;
 	jsdd->hard_stop_ticks_dumping = DEFAULT_JS_HARD_STOP_TICKS_DUMPING;
-	jsdd->gpu_reset_ticks_ss = DEFAULT_JS_RESET_TICKS_SS;
+	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8408))
+		jsdd->gpu_reset_ticks_ss = DEFAULT_JS_RESET_TICKS_SS_8408;
+	else
+		jsdd->gpu_reset_ticks_ss = DEFAULT_JS_RESET_TICKS_SS;
 	jsdd->gpu_reset_ticks_cl = DEFAULT_JS_RESET_TICKS_CL;
 	jsdd->gpu_reset_ticks_dumping = DEFAULT_JS_RESET_TICKS_DUMPING;
 	jsdd->ctx_timeslice_ns = DEFAULT_JS_CTX_TIMESLICE_NS;
@@ -1010,7 +1016,14 @@ static bool kbase_js_dep_validate(struct kbase_context *kctx,
 					ret = false;
 					break;
 				}
-
+				/* Cross-slot dependencies must not violate
+				 * PRLAM-8987 affinity restrictions */
+				if (kbase_hw_has_issue(kbdev,
+							BASE_HW_ISSUE_8987) &&
+						(js == 2 || dep_js == 2)) {
+					ret = false;
+					break;
+				}
 				has_x_dep = true;
 			}
 
@@ -2013,8 +2026,9 @@ bool kbase_js_is_atom_valid(struct kbase_device *kbdev,
 								BASE_JD_REQ_T)))
 		return false;
 
-	if ((katom->core_req & BASE_JD_REQ_JOB_SLOT) &&
-			(katom->jobslot >= BASE_JM_MAX_NR_SLOTS))
+	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8987) &&
+	    (katom->core_req & BASE_JD_REQ_ONLY_COMPUTE) &&
+	    (katom->core_req & (BASE_JD_REQ_CS | BASE_JD_REQ_T)))
 		return false;
 
 	return true;
@@ -2023,15 +2037,14 @@ bool kbase_js_is_atom_valid(struct kbase_device *kbdev,
 static int kbase_js_get_slot(struct kbase_device *kbdev,
 				struct kbase_jd_atom *katom)
 {
-	if (katom->core_req & BASE_JD_REQ_JOB_SLOT)
-		return katom->jobslot;
-
 	if (katom->core_req & BASE_JD_REQ_FS)
 		return 0;
 
 	if (katom->core_req & BASE_JD_REQ_ONLY_COMPUTE) {
 		if (katom->device_nr == 1 &&
 				kbdev->gpu_props.num_core_groups == 2)
+			return 2;
+		if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8987))
 			return 2;
 	}
 
@@ -2243,6 +2256,9 @@ static void js_return_worker(struct work_struct *data)
 
 	kbase_backend_complete_wq(kbdev, katom);
 
+	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8316))
+		kbase_as_poking_timer_release_atom(kbdev, kctx, katom);
+
 	kbasep_js_atom_retained_state_copy(&retained_state, katom);
 
 	mutex_lock(&js_devdata->queue_mutex);
@@ -2319,8 +2335,6 @@ static void js_return_worker(struct work_struct *data)
 	mutex_unlock(&js_devdata->queue_mutex);
 
 	katom->atom_flags &= ~KBASE_KATOM_FLAG_HOLDING_CTX_REF;
-	WARN_ON(kbasep_js_has_atom_finished(&retained_state));
-
 	kbasep_js_runpool_release_ctx_and_katom_retained_state(kbdev, kctx,
 							&retained_state);
 
@@ -2677,6 +2691,7 @@ void kbase_js_zap_context(struct kbase_context *kctx)
 	struct kbase_device *kbdev = kctx->kbdev;
 	struct kbasep_js_device_data *js_devdata = &kbdev->js_data;
 	struct kbasep_js_kctx_info *js_kctx_info = &kctx->jctx.sched_info;
+	int js;
 
 	/*
 	 * Critical assumption: No more submission is possible outside of the
@@ -2732,7 +2747,6 @@ void kbase_js_zap_context(struct kbase_context *kctx)
 	 */
 	if (!kbase_ctx_flag(kctx, KCTX_SCHEDULED)) {
 		unsigned long flags;
-		int js;
 
 		spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
 		for (js = 0; js < kbdev->gpu_props.num_job_slots; js++) {
@@ -2798,7 +2812,8 @@ void kbase_js_zap_context(struct kbase_context *kctx)
 		/* Cancel any remaining running jobs for this kctx - if any.
 		 * Submit is disallowed which takes effect immediately, so no
 		 * more new jobs will appear after we do this. */
-		kbase_backend_jm_kill_running_jobs_from_kctx(kctx);
+		for (js = 0; js < kbdev->gpu_props.num_job_slots; js++)
+			kbase_job_slot_hardstop(kctx, js, NULL);
 
 		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 		mutex_unlock(&js_kctx_info->ctx.jsctx_mutex);

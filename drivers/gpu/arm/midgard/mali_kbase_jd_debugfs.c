@@ -46,16 +46,18 @@ static void kbase_jd_debugfs_fence_info(struct kbase_jd_atom *atom,
 	switch (atom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE) {
 	case BASE_JD_REQ_SOFT_FENCE_TRIGGER:
 		res = kbase_sync_fence_out_info_get(atom, &info);
-		if (res == 0)
+		if (0 == res) {
 			seq_printf(sfile, "Sa([%p]%d) ",
 				   info.fence, info.status);
-		break;
+			break;
+		}
 	case BASE_JD_REQ_SOFT_FENCE_WAIT:
 		res = kbase_sync_fence_in_info_get(atom, &info);
-		if (res == 0)
+		if (0 == res) {
 			seq_printf(sfile, "Wa([%p]%d) ",
 				   info.fence, info.status);
-		break;
+			break;
+		}
 	default:
 		break;
 	}

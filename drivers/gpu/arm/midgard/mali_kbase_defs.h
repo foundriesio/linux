@@ -156,7 +156,7 @@
 #define KBASEP_AS_NR_INVALID     (-1)
 
 #define KBASE_LOCK_REGION_MAX_SIZE (63)
-#define KBASE_LOCK_REGION_MIN_SIZE (15)
+#define KBASE_LOCK_REGION_MIN_SIZE (11)
 
 #define KBASE_TRACE_SIZE_LOG2 8	/* 256 entries */
 #define KBASE_TRACE_SIZE (1 << KBASE_TRACE_SIZE_LOG2)
@@ -547,6 +547,8 @@ struct kbase_ext_res {
  *                         on the GPU.
  * @sched_priority:        Priority of the atom for Job scheduling, as per the
  *                         KBASE_JS_ATOM_SCHED_PRIO_*.
+ * @poking:                Indicates whether poking of MMU is ongoing for the atom,
+ *                         as a WA for the issue HW_ISSUE_8316.
  * @completed:             Wait queue to wait upon for the completion of atom.
  * @status:                Indicates at high level at what stage the atom is in,
  *                         as per KBASE_JD_ATOM_STATE_*, that whether it is not in
@@ -694,10 +696,11 @@ struct kbase_jd_atom {
 	/* Note: refer to kbasep_js_atom_retained_state, which will take a copy of some of the following members */
 	enum base_jd_event_code event_code;
 	base_jd_core_req core_req;
-	u8 jobslot;
 
 	u32 ticks;
 	int sched_priority;
+
+	int poking;
 
 	wait_queue_head_t completed;
 	enum kbase_jd_atom_state status;
@@ -853,6 +856,15 @@ struct kbase_device_info {
 	u32 features;
 };
 
+/** Poking state for BASE_HW_ISSUE_8316  */
+enum {
+	KBASE_AS_POKE_STATE_IN_FLIGHT     = 1<<0,
+	KBASE_AS_POKE_STATE_KILLING_POKE  = 1<<1
+};
+
+/** Poking state for BASE_HW_ISSUE_8316  */
+typedef u32 kbase_as_poke_state;
+
 struct kbase_mmu_setup {
 	u64	transtab;
 	u64	memattr;
@@ -883,18 +895,35 @@ struct kbase_fault {
  *                     and Page fault handling.
  * @work_pagefault:    Work item for the Page fault handling.
  * @work_busfault:     Work item for the Bus fault handling.
+ * @fault_type:        Type of fault which occured for this address space,
+ *                     regular/unexpected Bus or Page fault.
  * @pf_data:           Data relating to page fault.
  * @bf_data:           Data relating to bus fault.
  * @current_setup:     Stores the MMU configuration for this address space.
+ * @poke_wq:           Workqueue to process the work items queue for poking the
+ *                     MMU as a WA for BASE_HW_ISSUE_8316.
+ * @poke_work:         Work item to do the poking of MMU for this address space.
+ * @poke_refcount:     Refcount for the need of poking MMU. While the refcount is
+ *                     non zero the poking of MMU will continue.
+ *                     Protected by hwaccess_lock.
+ * @poke_state:        State indicating whether poking is in progress or it has
+ *                     been stopped. Protected by hwaccess_lock.
+ * @poke_timer:        Timer used to schedule the poking at regular intervals.
  */
 struct kbase_as {
 	int number;
 	struct workqueue_struct *pf_wq;
 	struct work_struct work_pagefault;
 	struct work_struct work_busfault;
+	enum kbase_mmu_fault_type fault_type;
 	struct kbase_fault pf_data;
 	struct kbase_fault bf_data;
 	struct kbase_mmu_setup current_setup;
+	struct workqueue_struct *poke_wq;
+	struct work_struct poke_work;
+	int poke_refcount;
+	kbase_as_poke_state poke_state;
+	struct hrtimer poke_timer;
 };
 
 /**
@@ -923,16 +952,14 @@ struct kbase_mmu_table {
 	struct kbase_context *kctx;
 };
 
-static inline int kbase_as_has_bus_fault(struct kbase_as *as,
-	struct kbase_fault *fault)
+static inline int kbase_as_has_bus_fault(struct kbase_as *as)
 {
-	return (fault == &as->bf_data);
+	return as->fault_type == KBASE_MMU_FAULT_TYPE_BUS;
 }
 
-static inline int kbase_as_has_page_fault(struct kbase_as *as,
-	struct kbase_fault *fault)
+static inline int kbase_as_has_page_fault(struct kbase_as *as)
 {
-	return (fault == &as->pf_data);
+	return as->fault_type == KBASE_MMU_FAULT_TYPE_PAGE;
 }
 
 struct kbasep_mem_device {
@@ -1399,9 +1426,6 @@ struct kbase_devfreq_queue_info {
  *                         previously entered protected mode.
  * @ipa:                   Top level structure for IPA, containing pointers to both
  *                         configured & fallback models.
- * @previous_frequency:    Previous frequency of GPU clock used for
- *                         BASE_HW_ISSUE_GPU2017_1336 workaround, This clock is
- *                         restored when L2 is powered on.
  * @job_fault_debug:       Flag to control the dumping of debug data for job faults,
  *                         set when the 'job_fault' debugfs file is opened.
  * @mali_debugfs_directory: Root directory for the debugfs files created by the driver
@@ -1482,6 +1506,8 @@ struct kbase_devfreq_queue_info {
  *                          Job Scheduler
  * @l2_size_override:       Used to set L2 cache size via device tree blob
  * @l2_hash_override:       Used to set L2 cache hash via device tree blob
+ * @policy_list:            A filtered list of policies available in the system.
+ * @policy_count:           Number of policies in the @policy_list.
  */
 struct kbase_device {
 	u32 hw_quirks_sc;
@@ -1628,9 +1654,8 @@ struct kbase_device {
 	} ipa;
 #endif /* CONFIG_DEVFREQ_THERMAL */
 #endif /* CONFIG_MALI_DEVFREQ */
-	unsigned long previous_frequency;
 
-	atomic_t job_fault_debug;
+	bool job_fault_debug;
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *mali_debugfs_directory;
@@ -1722,6 +1747,9 @@ struct kbase_device {
 	/* See KBASE_JS_*_PRIORITY_MODE for details. */
 	u32 js_ctx_scheduling_mode;
 
+
+	const struct kbase_pm_policy *policy_list[KBASE_PM_MAX_NUM_POLICIES];
+	int policy_count;
 };
 
 /**
@@ -2082,6 +2110,9 @@ struct kbase_sub_alloc {
  * @ext_res_meta_head:    A list of sticky external resources which were requested to
  *                        be mapped on GPU side, through a softjob atom of type
  *                        EXT_RES_MAP or STICKY_RESOURCE_MAP ioctl.
+ * @drain_pending:        Used to record that a flush/invalidate of the GPU caches was
+ *                        requested from atomic context, so that the next flush request
+ *                        can wait for the flush of GPU writes.
  * @age_count:            Counter incremented on every call to jd_submit_atom,
  *                        atom is assigned the snapshot of this counter, which
  *                        is used to determine the atom's age when it is added to
@@ -2132,7 +2163,7 @@ struct kbase_context {
 	struct rb_root reg_rbtree_exec;
 
 
-	DECLARE_BITMAP(cookies, BITS_PER_LONG);
+	unsigned long    cookies;
 	struct kbase_va_region *pending_regions[BITS_PER_LONG];
 
 	wait_queue_head_t event_queue;
@@ -2142,7 +2173,7 @@ struct kbase_context {
 	struct kbase_jd_context jctx;
 	atomic_t used_pages;
 	atomic_t         nonmapped_pages;
-	atomic_t permanent_mapped_pages;
+	unsigned long permanent_mapped_pages;
 
 	struct kbase_mem_pool_group mem_pools;
 
@@ -2220,6 +2251,8 @@ struct kbase_context {
 
 	struct list_head ext_res_meta_head;
 
+	atomic_t drain_pending;
+
 	u32 age_count;
 
 	u8 trim_level;
@@ -2268,7 +2301,6 @@ struct kbasep_gwt_list_element {
  *                                 which is mapped.
  * @gpu_addr:                      The GPU virtual address the resource is
  *                                 mapped to.
- * @ref:                           Reference count.
  *
  * External resources can be mapped into multiple contexts as well as the same
  * context multiple times.
@@ -2284,7 +2316,6 @@ struct kbase_ctx_ext_res_meta {
 	struct list_head ext_res_node;
 	struct kbase_mem_phy_alloc *alloc;
 	u64 gpu_addr;
-	u32 ref;
 };
 
 enum kbase_reg_access_type {
@@ -2320,7 +2351,7 @@ static inline bool kbase_device_is_cpu_coherent(struct kbase_device *kbdev)
 /* Maximum number of loops polling the GPU for a cache flush before we assume it must have completed */
 #define KBASE_CLEAN_CACHE_MAX_LOOPS     100000
 /* Maximum number of loops polling the GPU for an AS command to complete before we assume the GPU has hung */
-#define KBASE_AS_INACTIVE_MAX_LOOPS     100000000
+#define KBASE_AS_INACTIVE_MAX_LOOPS     100000
 
 /* JobDescriptorHeader - taken from the architecture specifications, the layout
  * is currently identical for all GPU archs. */

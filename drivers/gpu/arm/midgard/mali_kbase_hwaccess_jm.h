@@ -247,16 +247,14 @@ void kbase_job_check_leave_disjoint(struct kbase_device *kbdev,
 		struct kbase_jd_atom *target_katom);
 
 /**
- * kbase_backend_jm_kill_running_jobs_from_kctx - Kill all jobs that are
- *                               currently running on GPU from a context
+ * kbase_backend_jm_kill_jobs_from_kctx - Kill all jobs that are currently
+ *                                        running from a context
  * @kctx: Context pointer
  *
  * This is used in response to a page fault to remove all jobs from the faulting
  * context from the hardware.
- *
- * Caller must hold hwaccess_lock.
  */
-void kbase_backend_jm_kill_running_jobs_from_kctx(struct kbase_context *kctx);
+void kbase_backend_jm_kill_jobs_from_kctx(struct kbase_context *kctx);
 
 /**
  * kbase_jm_wait_for_zero_jobs - Wait for context to have zero jobs running, and
@@ -289,15 +287,6 @@ u32 kbase_backend_get_current_flush_id(struct kbase_device *kbdev);
  */
 void kbase_job_slot_hardstop(struct kbase_context *kctx, int js,
 				struct kbase_jd_atom *target_katom);
-
-/**
- * kbase_gpu_atoms_submitted_any() - Inspect whether there are any atoms
- * currently on the GPU
- * @kbdev:  Device pointer
- *
- * Return: true if there are any atoms on the GPU, false otherwise
- */
-bool kbase_gpu_atoms_submitted_any(struct kbase_device *kbdev);
 
 /* Object containing callbacks for enabling/disabling protected mode, used
  * on GPU which supports protected mode switching natively.

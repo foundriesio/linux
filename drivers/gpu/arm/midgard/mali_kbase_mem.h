@@ -140,12 +140,14 @@ struct kbase_mem_phy_alloc {
 	u8 group_id;
 
 	union {
+#if defined(CONFIG_DMA_SHARED_BUFFER)
 		struct {
 			struct dma_buf *dma_buf;
 			struct dma_buf_attachment *dma_attachment;
 			unsigned int current_mapping_usage_count;
 			struct sg_table *sgt;
 		} umm;
+#endif /* defined(CONFIG_DMA_SHARED_BUFFER) */
 		struct {
 			u64 stride;
 			size_t nents;
@@ -290,7 +292,7 @@ struct kbase_va_region {
 #define KBASE_REG_MEMATTR_INDEX(x)  (((x) & 7) << 16)
 #define KBASE_REG_MEMATTR_VALUE(x)  (((x) & KBASE_REG_MEMATTR_MASK) >> 16)
 
-#define KBASE_REG_PROTECTED         (1ul << 19)
+#define KBASE_REG_SECURE            (1ul << 19)
 
 #define KBASE_REG_DONT_NEED         (1ul << 20)
 
@@ -1258,6 +1260,10 @@ int kbasep_find_enclosing_gpu_mapping_start_and_offset(
 		struct kbase_context *kctx,
 		u64 gpu_addr, size_t size, u64 *start, u64 *offset);
 
+enum hrtimer_restart kbasep_as_poke_timer_callback(struct hrtimer *timer);
+void kbase_as_poking_timer_retain_atom(struct kbase_device *kbdev, struct kbase_context *kctx, struct kbase_jd_atom *katom);
+void kbase_as_poking_timer_release_atom(struct kbase_device *kbdev, struct kbase_context *kctx, struct kbase_jd_atom *katom);
+
 /**
  * kbase_alloc_phy_pages_helper - Allocates physical pages.
  * @alloc:              allocation object to add pages to
@@ -1590,22 +1596,6 @@ bool kbase_sticky_resource_release(struct kbase_context *kctx,
 		struct kbase_ctx_ext_res_meta *meta, u64 gpu_addr);
 
 /**
- * kbase_sticky_resource_release_force - Release a sticky resource.
- * @kctx:     kbase context.
- * @meta:     Binding metadata.
- * @gpu_addr: GPU address of the external resource.
- *
- * If meta is NULL then gpu_addr will be used to scan the metadata list and
- * find the matching metadata (if any), otherwise the provided meta will be
- * used and gpu_addr will be ignored.
- *
- * Return: True if the release found the metadata and the resource was
- * released.
- */
-bool kbase_sticky_resource_release_force(struct kbase_context *kctx,
-		struct kbase_ctx_ext_res_meta *meta, u64 gpu_addr);
-
-/**
  * kbase_sticky_resource_term - Terminate sticky resource management.
  * @kctx: kbase context
  */
@@ -1636,6 +1626,7 @@ static inline void kbase_mem_pool_unlock(struct kbase_mem_pool *pool)
 void kbase_mem_evictable_mark_reclaim(struct kbase_mem_phy_alloc *alloc);
 
 
+#if defined(CONFIG_DMA_SHARED_BUFFER)
 /**
  * kbase_mem_umm_map - Map dma-buf
  * @kctx: Pointer to the kbase context
@@ -1683,5 +1674,6 @@ void kbase_mem_umm_unmap(struct kbase_context *kctx,
  */
 int kbase_mem_do_sync_imported(struct kbase_context *kctx,
 		struct kbase_va_region *reg, enum kbase_sync_type sync_fn);
+#endif /* CONFIG_DMA_SHARED_BUFFER */
 
 #endif				/* _KBASE_MEM_H_ */
