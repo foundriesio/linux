@@ -428,17 +428,27 @@ int imx7ulp_set_lpm(enum ulp_cpu_pwr_mode mode)
 	 (1 << PSCI_0_2_POWER_STATE_AFFL_SHIFT) | \
 	 (PSCI_POWER_STATE_TYPE_STANDBY << PSCI_0_2_POWER_STATE_TYPE_SHIFT))
 
+#define MX7ULP_SHUTDOWN_POWERDWN_PARAM	\
+	((1 << PSCI_0_2_POWER_STATE_ID_SHIFT) | \
+	 (1 << PSCI_0_2_POWER_STATE_AFFL_SHIFT) | \
+	 (PSCI_POWER_STATE_TYPE_STANDBY << PSCI_0_2_POWER_STATE_TYPE_SHIFT))
+
 static int imx7ulp_suspend_finish(unsigned long val)
 {
 	u32 state;
 
 	if (val == 0)
 		state = MX7ULP_SUSPEND_POWERDWN_PARAM;
-	else
+	else if (val == 1)
 		state = MX7ULP_SUSPEND_STANDBY_PARAM;
+	else
+		state = MX7ULP_SHUTDOWN_POWERDWN_PARAM;
 
 	if (psci_ops.cpu_suspend)
 		return psci_ops.cpu_suspend(state, __pa(cpu_resume));
+
+	if (val == 2)
+		state = MX7ULP_SUSPEND_POWERDWN_PARAM;
 
 	imx7ulp_suspend_in_ocram_fn(suspend_ocram_base);
 
@@ -537,7 +547,7 @@ static int imx7ulp_pm_enter(suspend_state_t state)
 void imx7ulp_poweroff(void)
 {
 	imx7ulp_set_lpm(ULP_PM_VLLS);
-	cpu_suspend(0, imx7ulp_suspend_finish);
+	cpu_suspend(2, imx7ulp_suspend_finish);
 }
 
 static int imx7ulp_pm_valid(suspend_state_t state)
