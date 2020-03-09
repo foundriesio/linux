@@ -1,5 +1,5 @@
 /*
- * (C) COPYRIGHT 2019 Telechips Inc.
+ * (C) COPYRIGHT 2018 Telechips Inc.
  * (C) COPYRIGHT ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the

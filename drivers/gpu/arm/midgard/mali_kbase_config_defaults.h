@@ -150,6 +150,7 @@ enum {
  * Default minimum number of scheduling ticks before jobs are hard-stopped
  */
 #define DEFAULT_JS_HARD_STOP_TICKS_SS    (50) /* 5s */
+#define DEFAULT_JS_HARD_STOP_TICKS_SS_8408  (300) /* 30s */
 
 /**
  * Default minimum number of scheduling ticks before CL jobs are hard-stopped.
@@ -173,6 +174,7 @@ enum {
  * "stuck" job
  */
 #define DEFAULT_JS_RESET_TICKS_SS           (55) /* 5.5s */
+#define DEFAULT_JS_RESET_TICKS_SS_8408     (450) /* 45s */
 
 /**
  * Default minimum number of scheduling ticks before the GPU is reset to clear a

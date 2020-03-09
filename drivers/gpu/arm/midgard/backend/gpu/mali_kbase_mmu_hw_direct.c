@@ -48,7 +48,7 @@ static inline u64 lock_region(struct kbase_device *kbdev, u64 pfn,
 
 	/* gracefully handle num_pages being zero */
 	if (0 == num_pages) {
-		region |= KBASE_LOCK_REGION_MIN_SIZE;
+		region |= 11;
 	} else {
 		u8 region_width;
 
@@ -57,9 +57,8 @@ static inline u64 lock_region(struct kbase_device *kbdev, u64 pfn,
 			/* not pow2, so must go up to the next pow2 */
 			region_width += 1;
 		}
-		region_width = MAX(region_width, KBASE_LOCK_REGION_MIN_SIZE);
-
 		KBASE_DEBUG_ASSERT(region_width <= KBASE_LOCK_REGION_MAX_SIZE);
+		KBASE_DEBUG_ASSERT(region_width >= KBASE_LOCK_REGION_MIN_SIZE);
 		region |= region_width;
 	}
 
@@ -78,7 +77,7 @@ static int wait_ready(struct kbase_device *kbdev,
 		val = kbase_reg_read(kbdev, MMU_AS_REG(as_nr, AS_STATUS));
 
 	if (max_loops == 0) {
-		dev_err(kbdev->dev, "AS_ACTIVE bit stuck, might be caused by slow/unstable GPU clock or possible faulty FPGA connector\n");
+		dev_err(kbdev->dev, "AS_ACTIVE bit stuck\n");
 		return -1;
 	}
 
@@ -161,7 +160,11 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat)
 		as = &kbdev->as[as_no];
 
 		/* find the fault type */
-		if (bf_bits & (1 << as_no))
+		as->fault_type = (bf_bits & (1 << as_no)) ?
+				KBASE_MMU_FAULT_TYPE_BUS :
+				KBASE_MMU_FAULT_TYPE_PAGE;
+
+		if (kbase_as_has_bus_fault(as))
 			fault = &as->bf_data;
 		else
 			fault = &as->pf_data;
@@ -180,6 +183,7 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat)
 		fault->addr <<= 32;
 		fault->addr |= kbase_reg_read(kbdev, MMU_AS_REG(as_no,
 				AS_FAULTADDRESS_LO));
+
 		/* Mark the fault protected or not */
 		fault->protected_mode = kbdev->protected_mode;
 
@@ -203,7 +207,7 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat)
 					MMU_AS_REG(as_no, AS_FAULTEXTRA_LO));
 		}
 
-		if (kbase_as_has_bus_fault(as, fault)) {
+		if (kbase_as_has_bus_fault(as)) {
 			/* Mark bus fault as handled.
 			 * Note that a bus fault is processed first in case
 			 * where both a bus fault and page fault occur.
@@ -314,6 +318,25 @@ int kbase_mmu_hw_do_operation(struct kbase_device *kbdev, struct kbase_as *as,
 
 		/* Wait for the flush to complete */
 		ret = wait_ready(kbdev, as->number);
+
+		if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_9630)) {
+			/* Issue an UNLOCK command to ensure that valid page
+			   tables are re-read by the GPU after an update.
+			   Note that, the FLUSH command should perform all the
+			   actions necessary, however the bus logs show that if
+			   multiple page faults occur within an 8 page region
+			   the MMU does not always re-read the updated page
+			   table entries for later faults or is only partially
+			   read, it subsequently raises the page fault IRQ for
+			   the same addresses, the unlock ensures that the MMU
+			   cache is flushed, so updates can be re-read.  As the
+			   region is now unlocked we need to issue 2 UNLOCK
+			   commands in order to flush the MMU/uTLB,
+			   see PRLAM-8812.
+			 */
+			write_cmd(kbdev, as->number, AS_COMMAND_UNLOCK);
+			write_cmd(kbdev, as->number, AS_COMMAND_UNLOCK);
+		}
 	}
 
 	return ret;
