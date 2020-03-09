@@ -1203,7 +1203,6 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	if (work_pending(work))
 	{
 		dev_warn(hsotg->dev, "[WARN][USB] [drd_store pending]\n");
-		return count;
 	}
 
 	queue_work(hsotg->drd_wq, work);
