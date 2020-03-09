@@ -27,5 +27,8 @@ properties:
       - items:
           - enum:
               - arrow,stm32mp157a-avenger96 # Avenger96
-          - const: st,stm32mp157
+          - enum:
+              - st,stm32mp157
+              - st,stm32mp153
+              - st,stm32mp151
 ...
