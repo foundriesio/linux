@@ -25,6 +25,7 @@
 #include <linux/timer.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <uapi/linux/fcntl.h>
 #include "md-cluster.h"
 
 #define MaxSector (~(sector_t)0)
