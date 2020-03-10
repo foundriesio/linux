@@ -21,6 +21,9 @@ Required properties:
 - interrupts: Should contain a general interrupt line and a interrupt line
   to the wake-up of processor (CSTOP).
 
+Optional Properties:
+- clocks-boot-on : clock index array to be enabled during Kernel boot.
+
 Example:
 	rcc: rcc@50000000 {
 		compatible = "st,stm32mp1-rcc", "syscon";
@@ -29,6 +32,7 @@ Example:
 		#reset-cells = <1>;
 		interrupts = <GIC_SPI 5 IRQ_TYPE_NONE>,
 			     <GIC_SPI 145 IRQ_TYPE_NONE>;
+		clocks-boot-on = <LTDC_PX>;
 	};
 
 Specifying clocks

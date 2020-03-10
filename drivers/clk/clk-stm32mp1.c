@@ -2677,6 +2677,75 @@ static int stm32_register_hw_clk(struct device *dev,
 	return 0;
 }
 
+static struct stm32_clk_boot_on {
+	struct clk **clks;
+	int nb;
+} *clk_boot_on;
+
+static struct stm32_clk_boot_on *clk_boot_on;
+
+static int stm32_clk_boot_on_enable(struct device_node *np,
+				    struct clk_hw_onecell_data *clk_data)
+{
+	struct of_phandle_args clkspec;
+	struct property	*prop;
+	const __be32 *cur;
+	struct clk **clks;
+	int nb, count = 0;
+
+	nb = of_property_count_u32_elems(np, "clocks-boot-on");
+	if (!nb)
+		return 0;
+
+	clks = kcalloc(nb, sizeof(struct clk_bulk_data *), GFP_KERNEL);
+	if (!clks)
+		return -ENOMEM;
+
+	clk_boot_on = kzalloc(sizeof(*clk_boot_on), GFP_KERNEL);
+	if (!clk_boot_on) {
+		kfree(clks);
+		return -ENOMEM;
+	}
+  
+	of_property_for_each_u32(np, "clocks-boot-on", prop, cur,
+				 clkspec.args[0]) {
+		struct clk_hw *hw;
+
+		hw = of_clk_hw_onecell_get(&clkspec, clk_data);
+		if (IS_ERR(hw))
+			continue;
+
+		if (clk_prepare_enable(hw->clk)) {
+			pr_warn("can't enable clock %s !\n",
+				clk_hw_get_name(hw));
+			continue;
+		}
+
+		clks[count++] = hw->clk;
+	}
+
+	clk_boot_on->clks = clks;
+	clk_boot_on->nb = count;
+
+	return 0;
+}
+
+static int stm32_clk_boot_on_disable(void)
+{
+	int i;
+
+	if (clk_boot_on) {
+		for (i = 0; i < clk_boot_on->nb; i++)
+			clk_disable_unprepare(clk_boot_on->clks[i]);
+
+		kfree(clk_boot_on->clks);
+		kfree(clk_boot_on);
+	}
+
+	return 0;
+}
+late_initcall_sync(stm32_clk_boot_on_disable);
+
 static int stm32_rcc_init(struct device_node *np,
 			  void __iomem *base,
 			  const struct of_device_id *match_data)
@@ -2722,7 +2791,11 @@ static int stm32_rcc_init(struct device_node *np,
 		}
 	}
 
-	return of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
+	err = of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_data);
+	if (!err)
+		stm32_clk_boot_on_enable(np, clk_data);
+
+	return err;
 }
 
 static void __iomem *rcc_base;
