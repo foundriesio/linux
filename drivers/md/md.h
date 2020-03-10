@@ -583,6 +583,7 @@ struct md_personality
 #ifndef __GENKSYMS__
 	/* start up works that require md threads */
 	int (*start)(struct mddev *mddev);
+	void (*update_reshape_pos) (struct mddev *mddev);
 #endif
 };
 
