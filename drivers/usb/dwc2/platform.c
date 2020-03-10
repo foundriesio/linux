@@ -384,7 +384,7 @@ static ssize_t dwc2_tcc_drd_mode_show(struct device *dev, struct device_attribut
 {
 	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-	return sprintf(buf, "dwc2 dr_mode - %s\n", hsotg->dr_mode == USB_DR_MODE_HOST ? "HOST":"DEVICE");
+	return sprintf(buf, "dwc2 dr_mode - %s\n", hsotg->dr_mode == USB_DR_MODE_PERIPHERAL ? "DEVICE":"HOST");
 }
 
 static void dwc2_change_dr_mode(struct work_struct *);
