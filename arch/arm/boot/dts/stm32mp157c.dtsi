@@ -1345,6 +1345,7 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+			clocks-boot-on = <LTDC_PX>;
 		};
 
 		pwr: pwr@50001000 {
