@@ -755,7 +755,7 @@ static int clk_mmux_set_safe_position(struct clk_hw *hw)
 
 	if (--clk_mmux->mmux->enable_count == 0) {
 		clk_mmux->mmux->saved_parent = clk_mmux_get_parent(mux_hw);
-		clk_mmux_set_parent(mux_hw, MMUX_SAFE_POSITION);
+		clk_mux_ops.set_parent(mux_hw, MMUX_SAFE_POSITION);
 	}
 
 	return 0;
@@ -769,7 +769,7 @@ static int clk_mmux_restore_parent(struct clk_hw *hw)
 	struct stm32_clk_mmux *clk_mmux = to_clk_mmux(mux);
 
 	if (clk_mmux->mmux->enable_count == 0)
-		clk_mmux_set_parent(mux_hw, clk_mmux->mmux->saved_parent);
+		clk_mux_ops.set_parent(mux_hw, clk_mmux->mmux->saved_parent);
 
 	clk_mmux->mmux->enable_count++;
 
