@@ -1379,6 +1379,8 @@ static inline int dwc2_is_device_mode(struct dwc2_hsotg *hsotg)
 }
 
 int dwc2_drd_init(struct dwc2_hsotg *hsotg);
+void dwc2_drd_suspend(struct dwc2_hsotg *hsotg);
+void dwc2_drd_resume(struct dwc2_hsotg *hsotg);
 void dwc2_drd_exit(struct dwc2_hsotg *hsotg);
 
 /*

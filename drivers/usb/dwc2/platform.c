@@ -561,6 +561,8 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 	if (is_device_mode)
 		dwc2_hsotg_suspend(dwc2);
 
+	dwc2_drd_suspend(dwc2);
+
 	if (dwc2->params.power_down == DWC2_POWER_DOWN_PARAM_NONE) {
 		/*
 		 * Backup host registers when power_down param is 'none', if
@@ -664,6 +666,8 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 			return ret;
 		}
 	}
+
+	dwc2_drd_resume(dwc2);
 
 	if (dwc2_is_device_mode(dwc2))
 		ret = dwc2_hsotg_resume(dwc2);
