@@ -771,9 +771,8 @@ static void stm32_shutdown(struct uart_port *port)
 		val |= USART_CR1_FIFOEN;
 
 	ret = readl_relaxed_poll_timeout(port->membase + ofs->isr,
-						isr,
-						(isr & USART_SR_TC),
-						10, 100000);
+					 isr, (isr & USART_SR_TC),
+					 10, 100000);
 
 	if (ret)
 		dev_err(port->dev, "transmission complete not set\n");
@@ -817,7 +816,7 @@ static int stm32_get_databits(struct ktermios *termios)
 		break;
 	}
 
-	return (bits);
+	return bits;
 }
 
 static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
@@ -881,7 +880,8 @@ static void stm32_set_termios(struct uart_port *port, struct ktermios *termios,
 		cr1 |= USART_CR1_PCE;
 	}
 
-	/* Word length configuration:
+	/*
+	 * Word length configuration:
 	 * CS8 + parity, 9 bits word aka [M1:M0] = 0b01
 	 * CS7 or (CS6 + parity), 7 bits word aka [M1:M0] = 0b10
 	 * CS8 or (CS7 + parity), 8 bits word aka [M1:M0] = 0b00
