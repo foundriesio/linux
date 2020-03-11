@@ -4900,12 +4900,6 @@ int stmmac_resume(struct device *dev)
 		goto init_error;
 	}
 
-	if (!device_may_wakeup(priv->device)) {
-		rtnl_lock();
-		phylink_start(priv->phylink);
-		rtnl_unlock();
-	}
-
 	stmmac_hw_setup(ndev, false);
 	stmmac_init_coalesce(priv);
 	stmmac_set_rx_mode(ndev);
@@ -4916,6 +4910,12 @@ int stmmac_resume(struct device *dev)
 
 	mutex_unlock(&priv->lock);
 
+	if (!device_may_wakeup(priv->device)) {
+		rtnl_lock();
+		phylink_start(priv->phylink);
+		rtnl_unlock();
+	}
+
 	phylink_mac_change(priv->phylink, true);
 
 	return 0;
@@ -4924,6 +4924,7 @@ init_error:
 dma_desc_error:
 	if (ndev->phydev)
 		phy_disconnect(ndev->phydev);
+	mutex_unlock(&priv->lock);
 
 	return -1;
 }
