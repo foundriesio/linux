@@ -30,6 +30,20 @@
 		clock-frequency = <20000000>;
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		wakeup {
+			label = "Wake-Up";
+			gpios = <&gpio4 28 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WAKEUP>;
+			debounce-interval = <10>;
+			wakeup-source;
+		};
+	};
+
 	reg_ethphy: regulator-ethphy {
 		compatible = "regulator-fixed";
 		enable-active-high;
@@ -954,6 +968,12 @@
 	pinctrl_gpio_hpd: gpiohpdgrp {
 		fsl,pins = <
 			MX8MM_IOMUXC_NAND_RE_B_GPIO3_IO15	0x184		/* SODIMM 17 */
+		>;
+	};
+
+	pinctrl_gpio_keys: gpiokeysgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_SAI3_RXFS_GPIO4_IO28	0x1c4		/* SODIMM 252 */
 		>;
 	};
 
