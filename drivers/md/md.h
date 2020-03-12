@@ -131,6 +131,7 @@ struct md_rdev {
 		unsigned int size;	/* Size in sectors of the PPL space */
 		sector_t sector;	/* First sector of the PPL space */
 	} ppl;
+
 #ifndef __GENKSYMS__
 	/*
 	 * The members for check collision of write behind IOs.
@@ -504,6 +505,7 @@ struct mddev {
 					  * flush was started.
 					  */
 	mempool_t *wb_info_pool;
+	bool	fail_last_dev:1;
 #endif
 };
 
