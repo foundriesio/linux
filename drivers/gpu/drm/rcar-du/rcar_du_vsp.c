@@ -323,16 +323,23 @@ static const struct drm_plane_funcs rcar_du_vsp_plane_funcs = {
 int rcar_du_vsp_init(struct rcar_du_vsp *vsp)
 {
 	struct rcar_du_device *rcdu = vsp->dev;
+	const char *vsps_prop_name = "renesas,vsps";
 	struct platform_device *pdev;
 	struct device_node *np;
 	unsigned int i;
 	int ret;
 
 	/* Find the VSP device and initialize it. */
-	np = of_parse_phandle(rcdu->dev->of_node, "vsps", vsp->index);
+	np = of_parse_phandle(rcdu->dev->of_node, vsps_prop_name, vsp->index);
 	if (!np) {
-		dev_err(rcdu->dev, "vsps node not found\n");
-		return -ENXIO;
+		/* Backward compatibility with old DTBs. */
+		vsps_prop_name = "vsps";
+		np = of_parse_phandle(rcdu->dev->of_node, vsps_prop_name,
+				      vsp->index);
+		if (!np) {
+			dev_err(rcdu->dev, "vsps node not found\n");
+			return -ENXIO;
+		}
 	}
 
 	pdev = of_find_device_by_node(np);

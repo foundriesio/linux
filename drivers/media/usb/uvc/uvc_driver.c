@@ -1832,11 +1832,7 @@ static void uvc_delete(struct uvc_device *dev)
 	usb_put_intf(dev->intf);
 	usb_put_dev(dev->udev);
 
-	if (dev->vdev.dev)
-		v4l2_device_unregister(&dev->vdev);
 #ifdef CONFIG_MEDIA_CONTROLLER
-	if (media_devnode_is_registered(dev->mdev.devnode))
-		media_device_unregister(&dev->mdev);
 	media_device_cleanup(&dev->mdev);
 #endif
 
@@ -1903,6 +1899,15 @@ static void uvc_unregister_video(struct uvc_device *dev)
 
 		uvc_debugfs_cleanup_stream(stream);
 	}
+
+	uvc_status_unregister(dev);
+
+	if (dev->vdev.dev)
+		v4l2_device_unregister(&dev->vdev);
+#ifdef CONFIG_MEDIA_CONTROLLER
+	if (media_devnode_is_registered(dev->mdev.devnode))
+		media_device_unregister(&dev->mdev);
+#endif
 
 	/* Decrement the stream count and call uvc_delete explicitly if there
 	 * are no stream left.

@@ -93,7 +93,7 @@ static int max_requests = IBMVSCSI_MAX_REQUESTS_DEFAULT;
 static int max_events = IBMVSCSI_MAX_REQUESTS_DEFAULT + 2;
 static int fast_fail = 1;
 static int client_reserve = 1;
-static char partition_name[97] = "UNKNOWN";
+static char partition_name[96] = "UNKNOWN";
 static unsigned int partition_number = -1;
 static LIST_HEAD(ibmvscsi_head);
 static DEFINE_SPINLOCK(ibmvscsi_driver_lock);
@@ -263,7 +263,7 @@ static void gather_partition_info(void)
 
 	ppartition_name = of_get_property(of_root, "ibm,partition-name", NULL);
 	if (ppartition_name)
-		strncpy(partition_name, ppartition_name,
+		strlcpy(partition_name, ppartition_name,
 				sizeof(partition_name));
 	p_number_ptr = of_get_property(of_root, "ibm,partition-no", NULL);
 	if (p_number_ptr)
@@ -828,7 +828,7 @@ static void ibmvscsi_reset_host(struct ibmvscsi_host_data *hostdata)
 	atomic_set(&hostdata->request_limit, 0);
 
 	purge_requests(hostdata, DID_ERROR);
-	hostdata->reset_crq = 1;
+	hostdata->action = IBMVSCSI_HOST_ACTION_RESET;
 	wake_up(&hostdata->work_wait_q);
 }
 
@@ -1180,7 +1180,8 @@ static void login_rsp(struct srp_event_struct *evt_struct)
 		   be32_to_cpu(evt_struct->xfer_iu->srp.login_rsp.req_lim_delta));
 
 	/* If we had any pending I/Os, kick them */
-	scsi_unblock_requests(hostdata->host);
+	hostdata->action = IBMVSCSI_HOST_ACTION_UNBLOCK;
+	wake_up(&hostdata->work_wait_q);
 }
 
 /**
@@ -1276,14 +1277,12 @@ static void send_mad_capabilities(struct ibmvscsi_host_data *hostdata)
 	if (hostdata->client_migrated)
 		hostdata->caps.flags |= cpu_to_be32(CLIENT_MIGRATED);
 
-	strncpy(hostdata->caps.name, dev_name(&hostdata->host->shost_gendev),
+	strlcpy(hostdata->caps.name, dev_name(&hostdata->host->shost_gendev),
 		sizeof(hostdata->caps.name));
-	hostdata->caps.name[sizeof(hostdata->caps.name) - 1] = '\0';
 
 	location = of_get_property(of_node, "ibm,loc-code", NULL);
 	location = location ? location : dev_name(hostdata->dev);
-	strncpy(hostdata->caps.loc, location, sizeof(hostdata->caps.loc));
-	hostdata->caps.loc[sizeof(hostdata->caps.loc) - 1] = '\0';
+	strlcpy(hostdata->caps.loc, location, sizeof(hostdata->caps.loc));
 
 	req->common.type = cpu_to_be32(VIOSRP_CAPABILITIES_TYPE);
 	req->buffer = cpu_to_be64(hostdata->caps_addr);
@@ -1800,7 +1799,7 @@ static void ibmvscsi_handle_crq(struct viosrp_crq *crq,
 			/* We need to re-setup the interpartition connection */
 			dev_info(hostdata->dev, "Re-enabling adapter!\n");
 			hostdata->client_migrated = 1;
-			hostdata->reenable_crq = 1;
+			hostdata->action = IBMVSCSI_HOST_ACTION_REENABLE;
 			purge_requests(hostdata, DID_REQUEUE);
 			wake_up(&hostdata->work_wait_q);
 		} else {
@@ -2053,6 +2052,16 @@ static struct device_attribute ibmvscsi_host_config = {
 	.show = show_host_config,
 };
 
+static int ibmvscsi_host_reset(struct Scsi_Host *shost, int reset_type)
+{
+	struct ibmvscsi_host_data *hostdata = shost_priv(shost);
+
+	dev_info(hostdata->dev, "Initiating adapter reset!\n");
+	ibmvscsi_reset_host(hostdata);
+
+	return 0;
+}
+
 static struct device_attribute *ibmvscsi_attrs[] = {
 	&ibmvscsi_host_vhost_loc,
 	&ibmvscsi_host_vhost_name,
@@ -2079,6 +2088,7 @@ static struct scsi_host_template driver_template = {
 	.eh_host_reset_handler = ibmvscsi_eh_host_reset_handler,
 	.slave_configure = ibmvscsi_slave_configure,
 	.change_queue_depth = ibmvscsi_change_queue_depth,
+	.host_reset = ibmvscsi_host_reset,
 	.cmd_per_lun = IBMVSCSI_CMDS_PER_LUN_DEFAULT,
 	.can_queue = IBMVSCSI_MAX_REQUESTS_DEFAULT,
 	.this_id = -1,
@@ -2109,48 +2119,75 @@ static unsigned long ibmvscsi_get_desired_dma(struct vio_dev *vdev)
 
 static void ibmvscsi_do_work(struct ibmvscsi_host_data *hostdata)
 {
+	unsigned long flags;
 	int rc;
 	char *action = "reset";
 
-	if (hostdata->reset_crq) {
-		smp_rmb();
-		hostdata->reset_crq = 0;
-
+	spin_lock_irqsave(hostdata->host->host_lock, flags);
+	switch (hostdata->action) {
+	case IBMVSCSI_HOST_ACTION_UNBLOCK:
+		rc = 0;
+		break;
+	case IBMVSCSI_HOST_ACTION_RESET:
+		spin_unlock_irqrestore(hostdata->host->host_lock, flags);
 		rc = ibmvscsi_reset_crq_queue(&hostdata->queue, hostdata);
+		spin_lock_irqsave(hostdata->host->host_lock, flags);
 		if (!rc)
 			rc = ibmvscsi_send_crq(hostdata, 0xC001000000000000LL, 0);
 		vio_enable_interrupts(to_vio_dev(hostdata->dev));
-	} else if (hostdata->reenable_crq) {
-		smp_rmb();
+		break;
+	case IBMVSCSI_HOST_ACTION_REENABLE:
 		action = "enable";
+		spin_unlock_irqrestore(hostdata->host->host_lock, flags);
 		rc = ibmvscsi_reenable_crq_queue(&hostdata->queue, hostdata);
-		hostdata->reenable_crq = 0;
+		spin_lock_irqsave(hostdata->host->host_lock, flags);
 		if (!rc)
 			rc = ibmvscsi_send_crq(hostdata, 0xC001000000000000LL, 0);
-	} else
+		break;
+	case IBMVSCSI_HOST_ACTION_NONE:
+	default:
+		spin_unlock_irqrestore(hostdata->host->host_lock, flags);
 		return;
+	}
+
+	hostdata->action = IBMVSCSI_HOST_ACTION_NONE;
 
 	if (rc) {
 		atomic_set(&hostdata->request_limit, -1);
 		dev_err(hostdata->dev, "error after %s\n", action);
 	}
+	spin_unlock_irqrestore(hostdata->host->host_lock, flags);
 
 	scsi_unblock_requests(hostdata->host);
 }
 
-static int ibmvscsi_work_to_do(struct ibmvscsi_host_data *hostdata)
+static int __ibmvscsi_work_to_do(struct ibmvscsi_host_data *hostdata)
 {
 	if (kthread_should_stop())
 		return 1;
-	else if (hostdata->reset_crq) {
-		smp_rmb();
-		return 1;
-	} else if (hostdata->reenable_crq) {
-		smp_rmb();
-		return 1;
+	switch (hostdata->action) {
+	case IBMVSCSI_HOST_ACTION_NONE:
+		return 0;
+	case IBMVSCSI_HOST_ACTION_RESET:
+	case IBMVSCSI_HOST_ACTION_REENABLE:
+	case IBMVSCSI_HOST_ACTION_UNBLOCK:
+	default:
+		break;
 	}
 
-	return 0;
+	return 1;
+}
+
+static int ibmvscsi_work_to_do(struct ibmvscsi_host_data *hostdata)
+{
+	unsigned long flags;
+	int rc;
+
+	spin_lock_irqsave(hostdata->host->host_lock, flags);
+	rc = __ibmvscsi_work_to_do(hostdata);
+	spin_unlock_irqrestore(hostdata->host->host_lock, flags);
+
+	return rc;
 }
 
 static int ibmvscsi_work(void *data)
@@ -2345,13 +2382,13 @@ static int ibmvscsi_resume(struct device *dev)
  * ibmvscsi_device_table: Used by vio.c to match devices in the device tree we 
  * support.
  */
-static struct vio_device_id ibmvscsi_device_table[] = {
+static const struct vio_device_id ibmvscsi_device_table[] = {
 	{"vscsi", "IBM,v-scsi"},
 	{ "", "" }
 };
 MODULE_DEVICE_TABLE(vio, ibmvscsi_device_table);
 
-static struct dev_pm_ops ibmvscsi_pm_ops = {
+static const struct dev_pm_ops ibmvscsi_pm_ops = {
 	.resume = ibmvscsi_resume
 };
 
