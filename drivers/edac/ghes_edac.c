@@ -458,12 +458,16 @@ int ghes_edac_register(struct ghes *ghes, struct device *dev)
 	struct edac_mc_layer layers[1];
 	struct ghes_edac_dimm_fill dimm_fill;
 	unsigned long flags;
-	int idx;
+	int idx = -1;
 
-	/* Check if safe to enable on this system */
-	idx = acpi_match_platform_list(plat_list);
-	if (!force_load && idx < 0)
-		return -ENODEV;
+	if (IS_ENABLED(CONFIG_X86)) {
+		/* Check if safe to enable on this system */
+		idx = acpi_match_platform_list(plat_list);
+		if (!force_load && idx < 0)
+			return -ENODEV;
+	} else {
+		idx = 0;
+	}
 
 	/* finish another registration/unregistration instance first */
 	mutex_lock(&ghes_reg_mutex);
