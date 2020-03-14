@@ -374,7 +374,7 @@
 };
 
 &gpio {
-	compatible = "brcm,bcm2711-gpio";
+	compatible = "brcm,bcm2711-gpio", "brcm,bcm2835-gpio";
 	interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
 		     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>,
 		     <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
