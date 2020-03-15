@@ -585,6 +585,10 @@ struct md_personality
 	int (*congested)(struct mddev *mddev, int bits);
 	/* Changes the consistency policy of an active array. */
 	int (*change_consistency_policy)(struct mddev *mddev, const char *buf);
+
+#ifndef __GENKSYMS__
+	void (*update_reshape_pos) (struct mddev *mddev);
+#endif
 };
 
 struct md_sysfs_entry {
