@@ -608,7 +608,6 @@ static bool raid0_make_request(struct mddev *mddev, struct bio *bio)
 
 	orig_sector = sector;
 	zone = find_zone(mddev->private, &sector);
-
 	switch (conf->layout) {
 	case RAID0_ORIG_LAYOUT:
 		tmp_dev = map_sector(mddev, zone, orig_sector, &sector);
@@ -618,6 +617,11 @@ static bool raid0_make_request(struct mddev *mddev, struct bio *bio)
 		break;
 	default:
 		WARN("md/raid0:%s: Invalid layout\n", mdname(mddev));
+		bio_io_error(bio);
+		return true;
+	}
+
+	if (unlikely(is_mddev_broken(tmp_dev, "raid0"))) {
 		bio_io_error(bio);
 		return true;
 	}
