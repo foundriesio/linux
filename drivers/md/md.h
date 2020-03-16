@@ -483,7 +483,6 @@ struct mddev {
 	struct bio_set			*sync_set; /* for sync operations like
 						   * metadata and bitmap writes
 						   */
-
 #ifdef __GENKSYMS__
 	mempool_t			*flush_pool;
 	mempool_t			*flush_bio_pool;
@@ -508,6 +507,7 @@ struct mddev {
 					  */
 	struct work_struct flush_work;
 	mempool_t *wb_info_pool;
+	bool	fail_last_dev:1;
 #endif
 };
 
