@@ -75,10 +75,6 @@
 	status = "okay";
 };
 
-&dpu1 {
-	status = "okay";
-};
-
 /* Colibri Ethernet */
 &fec1 {
 	status = "okay";
@@ -95,10 +91,6 @@
 	pad-wakeup-num = <1>;
  };
 
-&gpu_3d0 {
-	status = "okay";
-};
-
 &i2c1 {
 	status = "okay";
 
@@ -107,10 +99,6 @@
 		compatible = "st,m41t0";
 		reg = <0x68>;
 	};
-};
-
-&imx8_gpu_ss {
-	status = "okay";
 };
 
 /* Colibri SPI */

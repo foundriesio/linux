@@ -146,6 +146,35 @@
 	status = "okay";
 };
 
+/* Display Prefetch Resolve, (Tiling) */
+&dpr1_channel1 {
+	status = "okay";
+};
+
+&dpr1_channel2 {
+	status = "okay";
+};
+
+&dpr1_channel3 {
+	status = "okay";
+};
+
+&dpr2_channel1 {
+	status = "okay";
+};
+
+&dpr2_channel2 {
+	status = "okay";
+};
+
+&dpr2_channel3 {
+	status = "okay";
+};
+
+&dpu1 {
+	status = "okay";
+};
+
 /* Colibri Ethernet */
 &fec1 {
 	pinctrl-names = "default", "sleep";
@@ -206,6 +235,10 @@
 };
 
 &gpio4 {
+	status = "okay";
+};
+
+&gpu_3d0 {
 	status = "okay";
 };
 
@@ -324,6 +357,10 @@
 		reset-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* SODIMM 106 */
                 status = "disabled";
         };
+};
+
+&imx8_gpu_ss {
+	status = "okay";
 };
 
 &iomuxc {
@@ -879,6 +916,46 @@
 
 &pd_dma_lpuart3 {
 	debug_console;
+};
+
+&pixel_combiner {
+	status = "okay";
+};
+
+&prg1 {
+	status = "okay";
+};
+
+&prg2 {
+	status = "okay";
+};
+
+&prg3 {
+	status = "okay";
+};
+
+&prg4 {
+	status = "okay";
+};
+
+&prg5 {
+	status = "okay";
+};
+
+&prg6 {
+	status = "okay";
+};
+
+&prg7 {
+	status = "okay";
+};
+
+&prg8 {
+	status = "okay";
+};
+
+&prg9 {
+	status = "okay";
 };
 
 /* Colibri PWM_A */
