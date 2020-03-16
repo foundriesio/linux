@@ -5710,15 +5710,8 @@ int md_run(struct mddev *mddev)
 			mddev->bitmap = bitmap;
 
 	}
-	if (err) {
-		mddev_detach(mddev);
-		if (mddev->private)
-			pers->free(mddev, mddev->private);
-		mddev->private = NULL;
-		module_put(pers->owner);
-		md_bitmap_destroy(mddev);
-		goto abort;
-	}
+	if (err)
+		goto bitmap_abort;
 
 	if (mddev->bitmap_info.max_write_behind > 0) {
 		bool creat_pool = false;
@@ -5734,13 +5727,7 @@ int md_run(struct mddev *mddev)
 						    sizeof(struct wb_info));
 			if (!mddev->wb_info_pool) {
 				err = -ENOMEM;
-				mddev_detach(mddev);
-				if (mddev->private)
-					pers->free(mddev, mddev->private);
-				mddev->private = NULL;
-				module_put(pers->owner);
-				md_bitmap_destroy(mddev);
-				goto abort;
+				goto bitmap_abort;
 			}
 		}
 	}
@@ -5802,6 +5789,13 @@ int md_run(struct mddev *mddev)
 	md_new_event(mddev);
 	return 0;
 
+bitmap_abort:
+	mddev_detach(mddev);
+	if (mddev->private)
+		pers->free(mddev, mddev->private);
+	mddev->private = NULL;
+	module_put(pers->owner);
+	md_bitmap_destroy(mddev);
 abort:
 	if (mddev->bio_set) {
 		bioset_free(mddev->bio_set);
