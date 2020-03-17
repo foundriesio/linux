@@ -3,8 +3,8 @@ version: null
 version-script: |
     . debian/debian.env
     dpkg-parsechangelog -l $DEBIAN/changelog -S version
-summary: The Canonical raspi2 Linux kernel
-description: The Canonical raspi2 Linux kernel
+summary: The Canonical raspi Linux kernel
+description: The Canonical raspi Linux kernel
 grade: stable
 confinement: strict
 type: kernel
@@ -14,7 +14,7 @@ parts:
     plugin: kernel
     source: .
     source-type: git
-    kconfigflavour: raspi2
+    kconfigflavour: raspi
     kconfigs:
       - CONFIG_DEBUG_INFO=n
     kernel-image-target: zImage

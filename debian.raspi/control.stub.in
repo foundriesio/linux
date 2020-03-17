@@ -44,8 +44,8 @@ Build-Depends-Indep:
  python3-sphinx <!stage1>,
  python3-sphinx-rtd-theme <!stage1>,
  python3-docutils <!stage1>,
-Vcs-Git: git://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES= -b raspi2-5.4
-Vcs-Browser: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES=/log/?h=raspi2-5.4
+Vcs-Git: git://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES= -b raspi
+Vcs-Browser: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/=SERIES=/log/?h=raspi
 XS-Testsuite: autopkgtest
 #XS-Testsuite-Depends: gcc-4.7 binutils
 
