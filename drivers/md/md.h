@@ -118,13 +118,6 @@ struct md_rdev {
 					   * in superblock.
 					   */
 
-	/*
-	 * The members for check collision of write behind IOs.
-	 */
-	struct list_head wb_list;
-	spinlock_t wb_list_lock;
-	wait_queue_head_t wb_io_wait;
-
 	struct work_struct del_work;	/* used for delayed sysfs removal */
 
 	struct kernfs_node *sysfs_state; /* handle for 'state'
@@ -138,6 +131,15 @@ struct md_rdev {
 		unsigned int size;	/* Size in sectors of the PPL space */
 		sector_t sector;	/* First sector of the PPL space */
 	} ppl;
+
+#ifndef __GENKSYMS__
+	/*
+	 * The members for check collision of write IOs.
+	 */
+	struct list_head serial_list;
+	spinlock_t serial_list_lock;
+	wait_queue_head_t serial_io_wait;
+#endif
 };
 enum flag_bits {
 	Faulty,			/* device is known to have a fault */
@@ -209,9 +211,9 @@ enum flag_bits {
 				 * it didn't fail, so don't use FailFast
 				 * any more for metadata
 				 */
-	WBCollisionCheck,	/*
-				 * multiqueue device should check if there
-				 * is collision between write behind bios.
+	CollisionCheck,		/*
+				 * check if there is collision between raid1
+				 * serial bios.
 				 */
 	Timeout,		/* Device fault due to timeout.
 				 * 'Faulty' is required to be set.
@@ -274,9 +276,9 @@ enum mddev_sb_flags {
 	MD_SB_NEED_REWRITE,	/* metadata write needs to be repeated */
 };
 
-#define NR_WB_INFOS	8
-/* record current range of write behind IOs */
-struct wb_info {
+#define NR_SERIAL_INFOS		8
+/* record current range of serialize IOs */
+struct serial_info {
 	sector_t lo;
 	sector_t hi;
 	struct list_head list;
@@ -509,7 +511,7 @@ struct mddev {
 					  * flush was started.
 					  */
 	struct work_struct flush_work;
-	mempool_t *wb_info_pool;
+	mempool_t *serial_info_pool;
 	bool	fail_last_dev:1;
 #endif
 };
@@ -758,7 +760,7 @@ extern struct bio *bio_alloc_mddev(gfp_t gfp_mask, int nr_iovecs,
 extern void md_reload_sb(struct mddev *mddev, int raid_disk);
 extern void md_update_sb(struct mddev *mddev, int force);
 extern void md_kick_rdev_from_array(struct md_rdev * rdev);
-extern void mddev_create_wb_pool(struct mddev *mddev, struct md_rdev *rdev,
+extern void mddev_create_serial_pool(struct mddev *mddev, struct md_rdev *rdev,
 				 bool is_suspend);
 struct md_rdev *md_find_rdev_nr_rcu(struct mddev *mddev, int nr);
 struct md_rdev *md_find_rdev_rcu(struct mddev *mddev, dev_t dev);
