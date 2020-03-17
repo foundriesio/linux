@@ -21,8 +21,6 @@
  * to the Free Software Foundation, Inc.,
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#define pr_fmt(fmt) "\x1b[1;38m TCC LUT: \x1b[0m" fmt
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -43,11 +41,9 @@
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_lut_ioctl.h>
 
-#define LUT_VERSION "v1.7"
+#define LUT_VERSION "v1.8"
 
 #define TCC_LUT_DEBUG	0
-#define dprintk(msg, ...) if(TCC_LUT_DEBUG) { printk("[DBG][LUT] " msg, ##__VA_ARGS__); }
-
 
 #define DEFAULT_DEV_MAX		2 /* 0: DEV0, 1: DEV1 and 2: DEV2 */
 #define DEFAULT_VIOC_MAX	6 /* 3: VIOC_LUT0, 4: VIOC_LUT1, 5: VIOC_LUT2 and 6: VIOC_LUT3 */
@@ -72,6 +68,7 @@ struct lut_drv_type {
 struct lut_drv_type *lut_api = NULL;
 
 static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch);
+static int lut_drv_set_plugin_extension(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch);
 
 /* External APIs */
 /* if lut is not plugged then return value will be -1 */
@@ -85,10 +82,10 @@ int lut_drv_api_get_plugin(unsigned int lut_number)
 				ret = tcc_get_lut_plugin(lut_number);
 			}
 		}else {
-			pr_err("[ERR][LUT] %s lut number %d is out of range\r\n", __func__, lut_number);
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n", __func__, lut_number);
 		}
 	} else {
-		pr_err("[ERR][LUT] %s may be lut driver does not probed\r\n", __func__);
+		printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s may be lut driver does not probed\r\n", __func__);
 	}
 	return ret;
 }
@@ -100,11 +97,23 @@ int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch)
 	if(lut_api != NULL) {
 		ret = lut_drv_set_plugin(lut_api, lut_number, plugin, plug_in_ch);
 	} else {
-		pr_err("[ERR][LUT] %s may be lut driver does not probed\r\n", __func__);
+		printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s may be lut driver does not probed\r\n", __func__);
 	}
 	return ret;
 }
 EXPORT_SYMBOL(lut_drv_api_set_plugin);
+
+int lut_drv_api_set_plugin_extension(unsigned int lut_number, int plugin, int plug_in_ch)
+{
+	int ret = -1;
+	if(lut_api != NULL) {
+		ret = lut_drv_set_plugin_extension(lut_api, lut_number, plugin, plug_in_ch);
+	} else {
+		printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s may be lut driver does not probed\r\n", __func__);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(lut_drv_api_set_plugin_extension);
 
 /* Internal APIs */
 static unsigned int lut_get_real_lut_table_number(unsigned int input_lut_number)
@@ -156,24 +165,78 @@ static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number,
 			break;
 		}
 		if(lut_number <= lut->dev_max) {
-			pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
 							__func__, lut_number);
 			break;
 		}
 
 		if(lut_number > lut->vioc_max) {
-			pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
 							__func__, lut_number);
 			break;
 		}
 
 		if(!plugin) {
-			dprintk("%s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#if TCC_LUT_DEBUG
+			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
 			tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
 		}
 		else	{
-			dprintk("%s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
-			tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + plug_in_ch);
+			#if TCC_LUT_DEBUG
+			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
+			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + plug_in_ch) < 0) {
+				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s failed plugin lut_number(%d) and ch(%d)\r\n", 
+					__func__, VIOC_LUT + lut_number, plug_in_ch);
+				break;
+			}
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
+		}
+		ret = 0;
+	}while(0);
+	return ret;
+}
+
+/*
+ * This api plugin RDMA/WDMA/VIN to LUT
+ * plugin_in_ch : VIOC_RDMA + num, VIOC_WDMA + num or VIOC_VIN + num
+*/
+static int lut_drv_set_plugin_extension(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch)
+{
+	int ret = -1;
+
+	do {
+		if(lut == NULL) {
+			break;
+		}
+		if(lut_number <= lut->dev_max) {
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(lut_number > lut->vioc_max) {
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
+							__func__, lut_number);
+			break;
+		}
+
+		if(!plugin) {
+			#if TCC_LUT_DEBUG
+			printk(KERN_ERR "[INF]\x1b[1;38m[LUT]\x1b[0m %s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
+			tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
+		}
+		else	{
+			#if TCC_LUT_DEBUG
+			printk(KERN_ERR "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
+			#endif
+			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, plug_in_ch) < 0) {
+				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s failed plugin lut_number(%d) and ch(%d)\r\n", 
+					__func__, VIOC_LUT + lut_number, plug_in_ch);
+				break;
+			}
 			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
 		}
 		ret = 0;
@@ -190,11 +253,13 @@ static int lut_drv_set_onoff(struct lut_drv_type *lut, unsigned int lut_number, 
 			break;
 		}
 		if(lut_number > lut->vioc_max) {
-			pr_err("[ERR][LUT] %s lut number %d is out of range\r\n",
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
 							__func__, lut_number);
 			break;
 		}
-		dprintk("lut num:%d enable:%d \n", VIOC_LUT + lut_number, onoff);
+		#if TCC_LUT_DEBUG
+		printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s lut num:%d enable:%d \n", __func__, VIOC_LUT + lut_number, onoff);
+		#endif
 		tcc_set_lut_enable(VIOC_LUT + lut_number, onoff);
 		ret = 0;
  	} while(0);
@@ -221,26 +286,34 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				}
 				lut_number = lut_get_real_lut_table_number(lut_cmd->lut_number);
 				if(lut_number == (unsigned int)-1 ) {
-					pr_err("[ERR][LUT] %s TCC_LUT_SET invalid lut number[%d]\r\n", __func__, lut_cmd->lut_number);
+					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET invalid lut number[%d]\r\n", __func__, lut_cmd->lut_number);
 					break;
 				}
 				
 				#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
 				switch(lut_number) {
 					case 3:
-						pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP0R\r\n");
+						#if TCC_LUT_DEBUG
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP0R\r\n");
+						#endif
 						memcpy(lut->Gamma_vioc_lut_3, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
 						break;
 					case 4:
-						pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP0Y\r\n");
+						#if TCC_LUT_DEBUG
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP0Y\r\n");
+						#endif
 						memcpy(lut->Gamma_vioc_lut_4, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
 						break;
 					case 5:
-						pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP1R\r\n");
+						#if TCC_LUT_DEBUG
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP1R\r\n");
+						#endif
 						memcpy(lut->Gamma_vioc_lut_5, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
 						break;
 					case 6:
-						pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP1Y\r\n");
+						#if TCC_LUT_DEBUG
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP1Y\r\n");
+						#endif
 						memcpy(lut->Gamma_vioc_lut_6, lut_cmd->Gamma, sizeof(unsigned int) * 1024);
 						break;
 				}
@@ -262,55 +335,64 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 				do {
 	                                if(lut_value_set_ex == NULL) {
-	                                        pr_err("[ERR][LUT] %s TCC_LUT_SET_EX out of memory\r\n", __func__);
+	                                        printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX out of memory\r\n", __func__);
 	                                        break;
 	                                }
 	                                if(copy_from_user((void *)lut_value_set_ex,
 	                                        (const void *)arg, sizeof(struct VIOC_LUT_VALUE_SET_EX))) {
-	                                        pr_err("[ERR][LUT] %s TCC_LUT_SET_EX failed copy from user\r\n", __func__);
+	                                        printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX failed copy from user\r\n", __func__);
 	                                        break;
 	                                }
 
 	                                if(LUT_TABLE_SIZE != lut_value_set_ex->lut_size) {
-	                                        pr_err("[ERR][LUT] %s TCC_LUT_SET_EX table size mismatch %d != %d\r\n",
+	                                        printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX table size mismatch %d != %d\r\n",
 	                                                __func__, LUT_TABLE_SIZE, lut_value_set_ex->lut_size);
 	                                        break;
 	                                }
 					lut_number = lut_get_real_lut_table_number(lut_value_set_ex->lut_number);
 					if(lut_number == (unsigned int)-1 ) {
-						pr_err("[ERR][LUT] %s TCC_LUT_SET_EX invalid lut number[%d]\r\n", __func__, lut_value_set_ex->lut_number);
+						printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX invalid lut number[%d]\r\n", __func__, lut_value_set_ex->lut_number);
 						break;
 					}
-					dprintk("TCC_LUT_SET_EX lut_sel = %d\r\n", lut_number);
+					#if TCC_LUT_DEBUG
+					printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX lut_sel = %d\r\n", __func__, lut_number);
+					#endif
 
 					/* Y Table? */
 					#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
-					dprintk("TCC_LUT_SET_EX para = %d\r\n", lut_value_set_ex->param);
+					#if TCC_LUT_DEBUG
+					printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_SET_EX para = %d\r\n", __func__, lut_value_set_ex->param);
+					#endif
 					if(lut_value_set_ex->param & 1) {
 						if(lut_number == 3 || lut_number == 5) {
 							lut_number++;
-							dprintk("TCC_LUT_SET_EX y-lut lut_sel = %d\r\n", lut_number);
+							#if TCC_LUT_DEBUG
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_SET_EX y-lut lut_sel = %d\r\n", __func__, lut_number);
+							#endif
 						}
 					}
 					#endif
 
-					dprintk("TCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", lut_number);
+					#if TCC_LUT_DEBUG
+					printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_SET_EX tcc_set_lut_table with lut_sel = %d\r\n", __func__, lut_number);
+					#endif
+
 					#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
 					switch(lut_number) {
 						case 3:
-							pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP0R\r\n");
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP0R\r\n");
 							memcpy(lut->Gamma_vioc_lut_3, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
 							break;
 						case 4:
-							pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP0Y\r\n");
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP0Y\r\n");
 							memcpy(lut->Gamma_vioc_lut_4, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
 							break;
 						case 5:
-							pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP1R\r\n");
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP1R\r\n");
 							memcpy(lut->Gamma_vioc_lut_5, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
 							break;
 						case 6:
-							pr_info("[INF][LUT] TCC_LUT_SET LUT_COMP1Y\r\n");
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  TCC_LUT_SET LUT_COMP1Y\r\n");
 							memcpy(lut->Gamma_vioc_lut_6, lut_value_set_ex->Gamma, sizeof(unsigned int) * 1024);
 							break;
 					}
@@ -343,10 +425,24 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
 					break;
 				if(lut_cmd.lut_number == (unsigned int)-1 ) {
-					pr_err("[ERR][LUT] %s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
+					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
 					break;
 				}
 				ret = lut_drv_set_plugin(lut, lut_cmd.lut_number, lut_cmd.enable, lut_cmd.lut_plug_in_ch);
+			}
+			break;
+
+		case TCC_LUT_PLUG_IN_EXT:
+			{
+				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
+
+				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
+					break;
+				if(lut_cmd.lut_number == (unsigned int)-1 ) {
+					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
+					break;
+				}
+				ret = lut_drv_set_plugin_extension(lut, lut_cmd.lut_number, lut_cmd.enable, lut_cmd.lut_plug_in_ch);
 			}
 			break;
 
@@ -356,7 +452,9 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
                                 if(copy_to_user((void __user *)arg, &lut_depth, sizeof(lut_depth))) {
                                         break;
                                 }
-				dprintk("TCC_LUT_GET_DEPTH LUT depth is  %d\r\n", lut_depth);
+				#if TCC_LUT_DEBUG
+				printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_GET_DEPTH LUT depth is  %d\r\n", __func__, lut_depth);
+				#endif
 				ret = 0;
                         }
                         break;
@@ -377,8 +475,10 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	                                lut_csc_22_23 = csc_coeff.csc_coeff_2[1] | (csc_coeff.csc_coeff_2[2] << 16);
 	                                lut_csc_31_32 = csc_coeff.csc_coeff_3[0] | (csc_coeff.csc_coeff_3[1] << 16);
 	                                lut_csc_33 = csc_coeff.csc_coeff_3[2];
-	                                dprintk("TCC_LUT_PRESET_SET csc (0x%x, 0x%x, 0x%x, 0x%x, 0x%x)\r\n",
-						lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33);
+	                                #if TCC_LUT_DEBUG
+					printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_PRESET_SET csc (0x%x, 0x%x, 0x%x, 0x%x, 0x%x)\r\n",
+						__func__, lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33);
+					#endif
 	                                tcc_set_lut_csc_coeff(lut_csc_11_12, lut_csc_13_21, lut_csc_22_23, lut_csc_31_32, lut_csc_33);
 				}
 				ret = 0;
@@ -390,7 +490,10 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				struct VIOC_LUT_MIX_CONFIG mix_config;
 				if(copy_from_user((void *)&mix_config, (const void *)arg, sizeof(struct VIOC_LUT_MIX_CONFIG)))
 						break;
-				dprintk("TCC_LUT_SET_MIX_CONIG r2y_sel(%d), bypass(%d)\r\n", mix_config.r2y_sel, mix_config.bypass);
+				#if TCC_LUT_DEBUG
+				printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_SET_MIX_CONIG r2y_sel(%d), bypass(%d)\r\n", 
+					__func__, mix_config.r2y_sel, mix_config.bypass);
+				#endif
 				tcc_set_mix_config(mix_config.r2y_sel, mix_config.bypass);
 				ret = 0;
 			}
@@ -405,14 +508,14 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
                                 if(copy_from_user((void *)&lut_update_pend,
                                         (const void *)arg, sizeof(struct VIOC_LUT_UPDATE_PEND))) {
-                                        pr_err("[ERR][LUT] %s TCC_LUT_GET_UPDATE_PEND failed copy from user\r\n", __func__);
+                                        printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_GET_UPDATE_PEND failed copy from user\r\n", __func__);
                                         break;
                                 }
 
 				#if defined(CONFIG_ARCH_TCC898X) ||defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 				lut_number = lut_get_real_lut_table_number(lut_update_pend.lut_number);
 				if(lut_number == (unsigned int)-1 ) {
-					pr_err("[ERR][LUT] %s TCC_LUT_GET_UPDATE_PEND invalid lut number[%d]\r\n", __func__, lut_update_pend.lut_number);
+					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_GET_UPDATE_PEND invalid lut number[%d]\r\n", __func__, lut_update_pend.lut_number);
 					break;
 				}
 
@@ -420,16 +523,19 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 				if(lut_update_pend.param & 1) {
 					if(lut_number == 3 || lut_number == 5) {
 						lut_number++;
-						dprintk("TCC_LUT_GET_UPDATE_PEND y-lut lut_sel = %d\r\n", lut_number);
+						#if TCC_LUT_DEBUG
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %sTCC_LUT_GET_UPDATE_PEND y-lut lut_sel = %d\r\n", 
+							__func__, lut_number);
+						#endif
 					}
 				}
-				//pr_info(" %s LUT\r\n", (lut_number == 4 || lut_number == 6)?"Y":"RGB");
+				//printk(KERN_INFO " %s LUT\r\n", (lut_number == 4 || lut_number == 6)?"Y":"RGB");
 				lut_update_pend.update_pend = tcc_get_lut_update_pend(lut_number);
 				#else
 				lut_update_pend.update_pend = 0;
 				#endif
                                 if(copy_to_user((void __user *)arg, &lut_update_pend, sizeof(struct VIOC_LUT_UPDATE_PEND))) {
-					pr_err("[ERR][LUT] %s TCC_LUT_GET_UPDATE_PEND failed copy to user\r\n", __func__);
+					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_GET_UPDATE_PEND failed copy to user\r\n", __func__);
                                         break;
                                 }
 				ret = 0;
@@ -437,7 +543,7 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			break;
 
 		default:
-			pr_err("[ERR][LUT] not supported LUT IOCTL(0x%x). \n", cmd);
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m  not supported LUT IOCTL(0x%x). \n", cmd);
 			break;
 	}
 
@@ -450,7 +556,9 @@ static int lut_drv_open(struct inode *inode, struct file *filp)
 	struct miscdevice	*misc = (struct miscdevice *)filp->private_data;
 	struct lut_drv_type	*lut = dev_get_drvdata(misc->parent);
 
-	dprintk("%s():  In -open(%d) \n", __func__, lut->dev_opened);
+	#if TCC_LUT_DEBUG
+	printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s In -open(%d) \n", __func__, lut->dev_opened);
+	#endif
 
 	if(lut != NULL) {
 		lut->dev_opened++;
@@ -466,7 +574,9 @@ static int lut_drv_release(struct inode *inode, struct file *filp)
 	if(lut != NULL && lut->dev_opened > 0) {
 		lut->dev_opened--;
 	}
-	dprintk("%s(): open(%d). \n", __func__, lut->dev_opened);
+	#if TCC_LUT_DEBUG
+	printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s open(%d). \n", __func__, lut->dev_opened);
+	#endif
 
 	return 0;
 }
@@ -504,14 +614,16 @@ static ssize_t proc_lut_write_debug(struct file *filp, const char __user *buffer
                 sscanf(debug_buffer, "%u, %u", &debug_param[0], &debug_param[1]);
                 devm_kfree(lut->misc->parent, debug_buffer);
 
-		pr_info("[INF][LUT] Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
+		printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  Debug Param  <%d, %d>\r\n", debug_param[0], debug_param[1]);
 		switch(debug_param[0]) {
 			case 0:
 				/* Nothing */
 				break;
 			case 1: {
-					/* Dump */
+					#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
 					int i;
+					#endif
+					/* Dump */
 					int lug_enable[2];
 					int plugin_in_ch[2];
 
@@ -522,35 +634,35 @@ static ssize_t proc_lut_write_debug(struct file *filp, const char __user *buffer
 					plugin_in_ch[1] = tcc_get_lut_plugin(VIOC_LUT_COMP1);
 
 					if(lug_enable[0] == 0) {
-						pr_info("[INF][LUT] %s LUT0 is not plugined\r\n", __func__);
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s LUT0 is not plugined\r\n", __func__);
 					} else {
-						pr_info("[INF][LUT] %s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[0]);
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[0]);
 						#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
-						pr_info("[INF][LUT] Dump RGB Table\r\n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  Dump RGB Table\r\n");
 						for(i=0;i<16;i++) {
-							pr_info("[INF][LUT] 0x%08x ", lut->Gamma_vioc_lut_3[i]);
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  0x%08x ", lut->Gamma_vioc_lut_3[i]);
 						}
-						pr_info("[INF][LUT] Dump Y Table\r\n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  Dump Y Table\r\n");
 						for(i=0;i<16;i++) {
-							pr_info("[INF][LUT] 0x%08x ", lut->Gamma_vioc_lut_4[i]);
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  0x%08x ", lut->Gamma_vioc_lut_4[i]);
 						}
-						pr_info("[INF][LUT]\n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m \n");
 						#endif
 					}
 					if(lug_enable[1] == 0) {
-						pr_info("[INF][LUT] %s LUT1 is not plugined\r\n", __func__);
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s LUT1 is not plugined\r\n", __func__);
 					} else {
-						pr_info("[INF][LUT] %s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[1]);
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s LUT is plugined to 0x%x\r\n", __func__, plugin_in_ch[1]);
 						#if defined(CONFIG_TCC_LUT_DEBUG_DUMP)
-						pr_info("[INF][LUT] Dump RGB Table\r\n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  Dump RGB Table\r\n");
 						for(i=0;i<16;i++) {
-							pr_info("[INF][LUT] 0x%08x ", lut->Gamma_vioc_lut_3[i]);
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  0x%08x ", lut->Gamma_vioc_lut_3[i]);
 						}
-						pr_info("[INF][LUT]\nDump Y Table\n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m \nDump Y Table\n");
 						for(i=0;i<16;i++) {
-							pr_info("[INF][LUT] 0x%08x ", lut->Gamma_vioc_lut_4[i]);
+							printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  0x%08x ", lut->Gamma_vioc_lut_4[i]);
 						}
-						pr_info("[INF][LUT] \n");
+						printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  \n");
 						#endif
 					}
 				}
@@ -599,7 +711,7 @@ static int lut_drv_probe(struct platform_device *pdev)
 	if(of_property_read_u32(pdev->dev.of_node, "vioc_max", &lut->vioc_max) < 0) {
 		lut->vioc_max = DEFAULT_VIOC_MAX;
 	}
-	pr_info("[INF][LUT] dev_max is %d and vioc_max is %d\r\n", lut->dev_max, lut->vioc_max);
+	printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m  dev_max is %d and vioc_max is %d\r\n", lut->dev_max, lut->vioc_max);
 
 	lut->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
 	if (lut->misc == NULL) {
@@ -620,19 +732,19 @@ static int lut_drv_probe(struct platform_device *pdev)
 	/* ProcFS */
 	lut->proc_dir = proc_mkdir("tcc_lut", NULL);
 	if(lut->proc_dir == NULL){
-		pr_err("[ERR][LUT] %s:Could not create file system @ /proc/tcc_lut\n", __func__);
+		printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s:Could not create file system @ /proc/tcc_lut\n", __func__);
 	} else {
 		lut->proc_debug = proc_create_data("debug", S_IFREG | S_IWUGO,
 			lut->proc_dir, &proc_fops_lut_debug, lut);
 		if(lut->proc_debug == NULL){
-			pr_err("[ERR][LUT] %s:Could not create file system @ /proc/tcc_lut/debug\n", __func__);
+			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s:Could not create file system @ /proc/tcc_lut/debug\n", __func__);
 		}
 	}
 
 	/* Copy lut to lut_api to support external APIs */
 	lut_api = lut;
 
-	pr_info("[INF][LUT] %s: :%s, Driver %s Initialized  lut set num :0x%x\n",__func__, LUT_VERSION, pdev->name, TCC_LUT_SET);
+	printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s: :%s, Driver %s Initialized  lut set num :0x%x\n",__func__, LUT_VERSION, pdev->name, TCC_LUT_SET);
 	return 0;
 
 err_misc_register:
@@ -641,7 +753,7 @@ err_misc_register:
 err_misc_alloc:
 	kfree(lut->misc);
 	kfree(lut);
-	pr_err("[ERR][LUT] %s: %s: err ret:%d \n", __func__, pdev->name, ret);
+	printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s: %s: err ret:%d \n", __func__, pdev->name, ret);
 	return ret;
 }
 
