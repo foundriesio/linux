@@ -278,7 +278,7 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
     }
 	if (complete_count % 5000 == 0 || complete_count == 1) {
 		tmp_pkt = (int *)req->buf;
-		//printk("[UAC2]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n", __func__, tmp_pkt[0], req->actual);
+		printk(KERN_DEBUG, "[DEBUG][USB][UAC2]%s : complete per 5000 , req->buf[0] = 0x%08x, req->actual = %d\n", __func__, tmp_pkt[0], req->actual);
 	}
 #endif
 	/* i/f shutting down */
@@ -351,15 +351,6 @@ static void u_audio_iso_complete(struct usb_ep *ep, struct usb_request *req)
 	if(compl_cnt_for_reset > 10000)
 		compl_cnt_for_reset = 0;
 #endif
-#endif
-#ifdef CONFIG_UAC20_DEBUG_ENABLE
-    ringbuff_offset = (unsigned int)prm->dma_area + hw_ptr; //for debugging UAC20 transfer
-	//if (complete_count % 1000 == 0 || complete_count == 1) {
-	if (1) {
-		tmp_pkt = (int *)req->buf;
-		printk(KERN_DEBUG "[DEBUG][USB] [UAC2] %s : prm->hw_ptr - %d, prm->period_size - %d , req->actual - %d, pending - %d, period_size - %d, tmp_pkt = 0x%08x, req->length = %d\n", 
-					 __func__, prm->hw_ptr, prm->period_size, req->actual, pending, prm->period_size, tmp_pkt[0], req->length);
-	}
 #endif
 	hw_ptr = prm->hw_ptr;
 
