@@ -926,8 +926,7 @@ next_slot:
 						root->root_key.objectid,
 						new_key.objectid,
 						start - extent_offset);
-				ret = btrfs_inc_extent_ref(trans, fs_info,
-						&ref);
+				ret = btrfs_inc_extent_ref(trans, root, &ref);
 				BUG_ON(ret); /* -ENOMEM */
 			}
 			key.offset = start;
@@ -1011,11 +1010,10 @@ delete_extent_item:
 						BTRFS_DROP_DELAYED_REF,
 						disk_bytenr, num_bytes, 0);
 				btrfs_init_data_ref(&ref,
-						root->root_key.objectid,
+ 						root->root_key.objectid,
 						key.objectid,
 						key.offset - extent_offset);
-				ret = btrfs_free_extent(trans, fs_info,
-						&ref);
+				ret = btrfs_free_extent(trans, root, &ref);
 				BUG_ON(ret); /* -ENOMEM */
 				inode_sub_bytes(inode,
 						extent_end - key.offset);
@@ -1310,7 +1308,7 @@ again:
 				       num_bytes, 0);
 		btrfs_init_data_ref(&ref, root->root_key.objectid, ino,
 				    orig_offset);
-		ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+		ret = btrfs_inc_extent_ref(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -1345,7 +1343,7 @@ again:
 		extent_end = other_end;
 		del_slot = path->slots[0] + 1;
 		del_nr++;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -1363,7 +1361,7 @@ again:
 		key.offset = other_start;
 		del_slot = path->slots[0];
 		del_nr++;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;

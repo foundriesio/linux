@@ -2215,9 +2215,10 @@ out:
 
 /* Can return -ENOMEM */
 int btrfs_inc_extent_ref(struct btrfs_trans_handle *trans,
-			 struct btrfs_fs_info *fs_info,
+			 struct btrfs_root *root,
 			 struct btrfs_ref *generic_ref)
 {
+	struct btrfs_fs_info *fs_info = root->fs_info;
 	int old_ref_mod, new_ref_mod;
 	int ret;
 
@@ -3383,11 +3384,11 @@ static int __btrfs_mod_ref(struct btrfs_trans_handle *trans,
 		parent = buf->start;
 	else
 		parent = 0;
+
 	if (inc)
 		action = BTRFS_ADD_DELAYED_REF;
 	else
 		action = BTRFS_DROP_DELAYED_REF;
-
 	for (i = 0; i < nritems; i++) {
 		if (level == 0) {
 			btrfs_item_key_to_cpu(buf, &key, i);
@@ -3411,11 +3412,9 @@ static int __btrfs_mod_ref(struct btrfs_trans_handle *trans,
 			generic_ref.real_root = root->root_key.objectid;
 			generic_ref.skip_qgroup = for_reloc;
 			if (inc)
-				ret = btrfs_inc_extent_ref(trans, fs_info,
-						&generic_ref);
+				ret = btrfs_inc_extent_ref(trans, root, &generic_ref);
 			else
-				ret = btrfs_free_extent(trans, fs_info,
-						&generic_ref);
+				ret = btrfs_free_extent(trans, root, &generic_ref);
 			if (ret)
 				goto fail;
 		} else {
@@ -3427,11 +3426,9 @@ static int __btrfs_mod_ref(struct btrfs_trans_handle *trans,
 			btrfs_init_tree_ref(&generic_ref, level - 1, ref_root);
 			generic_ref.skip_qgroup = for_reloc;
 			if (inc)
-				ret = btrfs_inc_extent_ref(trans, fs_info,
-						&generic_ref);
+				ret = btrfs_inc_extent_ref(trans, root, &generic_ref);
 			else
-				ret = btrfs_free_extent(trans, fs_info,
-						&generic_ref);
+				ret = btrfs_free_extent(trans, root, &generic_ref);
 			if (ret)
 				goto fail;
 		}
@@ -7307,9 +7304,10 @@ out:
 
 /* Can return -ENOMEM */
 int btrfs_free_extent(struct btrfs_trans_handle *trans,
-		      struct btrfs_fs_info *fs_info,
+		      struct btrfs_root *root,
 		      struct btrfs_ref *ref)
 {
+	struct btrfs_fs_info *fs_info = root->fs_info;
 	int old_ref_mod, new_ref_mod;
 	int ret;
 
@@ -8280,19 +8278,19 @@ static int alloc_reserved_tree_block(struct btrfs_trans_handle *trans,
 }
 
 int btrfs_alloc_reserved_file_extent(struct btrfs_trans_handle *trans,
-				     u64 root_objectid, u64 owner,
+				     struct btrfs_root *root, u64 owner,
 				     u64 offset, u64 ram_bytes,
 				     struct btrfs_key *ins)
 {
-	struct btrfs_fs_info *fs_info = trans->fs_info;
+	struct btrfs_fs_info *fs_info = root->fs_info;
 	struct btrfs_ref generic_ref = { 0 };
 	int ret;
 
-	BUG_ON(root_objectid == BTRFS_TREE_LOG_OBJECTID);
+	BUG_ON(root->root_key.objectid == BTRFS_TREE_LOG_OBJECTID);
 
 	btrfs_init_generic_ref(&generic_ref, BTRFS_ADD_DELAYED_EXTENT,
 			       ins->objectid, ins->offset, 0);
-	btrfs_init_data_ref(&generic_ref, root_objectid, owner, offset);
+	btrfs_init_data_ref(&generic_ref, root->root_key.objectid, owner, offset);
 	ret = btrfs_add_delayed_data_ref(fs_info, trans, &generic_ref,
 					 ram_bytes, NULL, NULL);
 	return ret;
@@ -8939,11 +8937,10 @@ skip:
 		 */
 		wc->drop_level = level;
 		find_next_key(path, level, &wc->drop_progress);
-
 		btrfs_init_generic_ref(&ref, BTRFS_DROP_DELAYED_REF, bytenr,
 				       fs_info->nodesize, parent);
 		btrfs_init_tree_ref(&ref, level - 1, root->root_key.objectid);
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret)
 			goto out_unlock;
 	}

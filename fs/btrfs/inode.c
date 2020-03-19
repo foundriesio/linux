@@ -2243,8 +2243,9 @@ static int insert_reserved_file_extent(struct btrfs_trans_handle *trans,
 	if (ret < 0)
 		goto out;
 	qg_released = ret;
-	ret = btrfs_alloc_reserved_file_extent(trans, root->root_key.objectid,
-			btrfs_ino(BTRFS_I(inode)), file_pos, qg_released, &ins);
+	ret = btrfs_alloc_reserved_file_extent(trans, root,
+					       btrfs_ino(BTRFS_I(inode)),
+					       file_pos, qg_released, &ins);
 out:
 	btrfs_free_path(path);
 
@@ -2701,7 +2702,7 @@ again:
 			       new->disk_len, 0);
 	btrfs_init_data_ref(&ref, backref->root_id, backref->inum,
 			    new->file_pos);  /* start - extent_offset */
-	ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+	ret = btrfs_inc_extent_ref(trans, root, &ref);
 	if (ret) {
 		btrfs_abort_transaction(trans, ret);
 		goto out_free_path;
@@ -4472,13 +4473,12 @@ delete:
 
 			btrfs_set_path_blocking(path);
 			bytes_deleted += extent_num_bytes;
-
 			btrfs_init_generic_ref(&ref, BTRFS_DROP_DELAYED_REF,
 					extent_start, extent_num_bytes, 0);
 			ref.real_root = root->root_key.objectid;
 			btrfs_init_data_ref(&ref, btrfs_header_owner(leaf),
 					ino, extent_offset);
-			ret = btrfs_free_extent(trans, fs_info, &ref);
+			ret = btrfs_free_extent(trans, root, &ref);
 			if (ret) {
 				btrfs_abort_transaction(trans, ret);
 				break;

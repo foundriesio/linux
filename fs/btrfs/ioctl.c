@@ -3806,7 +3806,6 @@ process_slot:
 
 				if (disko) {
 					struct btrfs_ref ref = { 0 };
-
 					inode_add_bytes(inode, datal);
 					btrfs_init_generic_ref(&ref,
 						BTRFS_ADD_DELAYED_REF, disko,
@@ -3816,7 +3815,8 @@ process_slot:
 						btrfs_ino(BTRFS_I(inode)),
 						new_key.offset - datao);
 					ret = btrfs_inc_extent_ref(trans,
-							fs_info, &ref);
+							root, &ref);
+
 					if (ret) {
 						btrfs_abort_transaction(trans,
 									ret);
