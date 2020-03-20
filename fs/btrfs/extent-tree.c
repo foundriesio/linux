@@ -5072,6 +5072,20 @@ static int flush_space(struct btrfs_fs_info *fs_info,
 		shrink_delalloc(root, num_bytes * 2, orig_bytes,
 				state == FLUSH_DELALLOC_WAIT);
 		break;
+	case FLUSH_DELAYED_REFS_NR:
+	case FLUSH_DELAYED_REFS:
+		trans = btrfs_join_transaction(root);
+		if (IS_ERR(trans)) {
+			ret = PTR_ERR(trans);
+			break;
+		}
+		if (state == FLUSH_DELAYED_REFS_NR)
+			nr = calc_reclaim_items_nr(fs_info, num_bytes);
+		else
+			nr = 0;
+		btrfs_run_delayed_refs(trans, trans->fs_info, nr);
+		btrfs_end_transaction(trans);
+		break;
 	case ALLOC_CHUNK:
 		trans = btrfs_join_transaction(root);
 		if (IS_ERR(trans)) {
