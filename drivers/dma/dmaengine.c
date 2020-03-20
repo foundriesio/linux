@@ -951,11 +951,6 @@ void dmaengine_put(void)
 		list_for_each_entry(chan, &device->channels, device_node)
 			dma_chan_put(chan);
 	}
-
-#ifdef CONFIG_DEBUG_FS
-	kfree(chan->dbg_client_name);
-	chan->dbg_client_name = NULL;
-#endif
 	mutex_unlock(&dma_list_mutex);
 }
 EXPORT_SYMBOL(dmaengine_put);
