@@ -1639,7 +1639,7 @@ struct bus_type pci_bus_type = {
 EXPORT_SYMBOL(pci_bus_type);
 
 #ifdef CONFIG_PCIEPORTBUS
-static int pcie_port_bus_match(struct device *dev, struct device_driver *drv)
+int pcie_port_bus_match(struct device *dev, struct device_driver *drv)
 {
 	struct pcie_device *pciedev;
 	struct pcie_port_service_driver *driver;
@@ -1659,12 +1659,6 @@ static int pcie_port_bus_match(struct device *dev, struct device_driver *drv)
 
 	return 1;
 }
-
-struct bus_type pcie_port_bus_type = {
-	.name		= "pci_express",
-	.match		= pcie_port_bus_match,
-};
-EXPORT_SYMBOL_GPL(pcie_port_bus_type);
 #endif
 
 static int __init pci_driver_init(void)
