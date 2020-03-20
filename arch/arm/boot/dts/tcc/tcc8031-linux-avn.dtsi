@@ -381,7 +381,15 @@
 			int-gpios = <&gpsd1 9 0x0>;
 			rst-gpios = <&gpb 16 0x0>;
 		};
+		mxt_touch@4a {
+			compatible = "atmel,maxtouch";
+			reg = <0x4a>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc_default>;
 
+			irq-gpios = <&gpsd1 9 0x0>;
+			reset-gpios = <&gpb 16 0x0>;
+		};
 		ga657x@5d {
 			compatible = "goodix,ga657x";
 			reg = <0x5d>;

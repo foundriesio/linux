@@ -27,6 +27,7 @@
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/gpio/consumer.h>
 #include <asm/unaligned.h>
@@ -2962,7 +2963,7 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	struct mxt_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	u32 *keymap;
-	int proplen, ret;
+	int proplen, ret, atmel_intr_port;
 
 	if (!np)
 		return ERR_PTR(-ENOENT);
@@ -2990,6 +2991,17 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	}
 
 	pdata->suspend_mode = MXT_SUSPEND_DEEP_SLEEP;
+
+	/* get IRQ Number */
+	atmel_intr_port = of_get_named_gpio(np, "irq-gpios", 0);
+	ret = gpio_is_valid(atmel_intr_port);
+	if(ret < 0){
+		dev_warn(&client->dev,
+				"%s: interrupt gpio %d is invalid.\n", __func__, atmel_intr_port);
+	}
+
+	client->irq = gpio_to_irq(atmel_intr_port);
+	pdata->irqflags |= IRQ_TYPE_EDGE_FALLING;
 
 	return pdata;
 }
