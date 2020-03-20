@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/dma-buf/dma-buf.c
 +++ b/drivers/dma-buf/dma-buf.c
-@@ -214,7 +214,7 @@ static __poll_t dma_buf_poll(struct file
+@@ -215,7 +215,7 @@ static __poll_t dma_buf_poll(struct file
  		return 0;
  
  retry:
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rcu_read_lock();
  
  	fobj = rcu_dereference(resv->fence);
-@@ -223,7 +223,7 @@ static __poll_t dma_buf_poll(struct file
+@@ -224,7 +224,7 @@ static __poll_t dma_buf_poll(struct file
  	else
  		shared_count = 0;
  	fence_excl = rcu_dereference(resv->fence_excl);
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		rcu_read_unlock();
  		goto retry;
  	}
-@@ -1189,12 +1189,12 @@ static int dma_buf_debug_show(struct seq
+@@ -1190,12 +1190,12 @@ static int dma_buf_debug_show(struct seq
  
  		robj = buf_obj->resv;
  		while (true) {

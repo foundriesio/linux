@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/cgroup.h
 +++ b/include/linux/cgroup.h
-@@ -750,9 +750,6 @@ static inline void cgroup_path_from_kern
+@@ -751,9 +751,6 @@ static inline void cgroup_path_from_kern
   */
  void cgroup_rstat_updated(struct cgroup *cgrp, int cpu);
  void cgroup_rstat_flush(struct cgroup *cgrp);

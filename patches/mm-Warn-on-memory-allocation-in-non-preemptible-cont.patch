@@ -14,6 +14,7 @@ Add a warning on RT if a memory allocation was attempted in not
 preemptible region.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Reviewed-by: Daniel Bristot de Oliveira <bristot@redhat.com>
 ---
  mm/slub.c |    6 ++++++
  1 file changed, 6 insertions(+)

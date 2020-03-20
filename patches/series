@@ -35,6 +35,8 @@ net-sched-dev_deactivate_many-use-msleep-1-instead-o.patch
 mm-vmalloc-remove-preempt_disable-enable-when-doing-.patch
 # 9090825fa99740f0c794f94b9cbd57ad79101228
 KVM-arm-arm64-Let-the-timer-expire-in-hardirq-contex.patch
+# 2c8bd58812ee3dbf0d78b566822f7eacd34bdd7b (tip)
+time-sched_clock-Expire-timer-in-hardirq-context.patch
 
 ############################################################
 # POSTED by others
@@ -256,13 +258,9 @@ oleg-signal-rt-fix.patch
 mm-page_alloc-rt-friendly-per-cpu-pages.patch
 
 # MM SWAP
-# mm-convert-swap-to-percpu-locked.patch
-# mm-perform-lru_add_drain_all-remotely.patch
-0001-mm-page_alloc-Split-drain_local_pages.patch
-0002-mm-swap-Add-static-key-dependent-pagevec-locking.patch
-0003-mm-swap-Access-struct-pagevec-remotely.patch
-0004-mm-swap-Enable-use_pvec_lock-nohz_full-dependent.patch
-mm-swap-Enable-use-pvec-lock-on-RT.patch
+mm-convert-swap-to-percpu-locked.patch
+mm-perform-lru_add_drain_all-remotely.patch
+mm-page_alloc-Use-migrate_disable-in-drain_local_pa.patch
 
 # PREEMPT NORT
 preempt-nort-rt-variants.patch
@@ -293,6 +291,7 @@ x86-kvm-require-const-tsc-for-rt.patch
 pci-switchtec-Don-t-use-completion-s-wait-queue.patch
 wait.h-include-atomic.h.patch
 completion-use-simple-wait-queues.patch
+swait-Remove-the-warning-with-more-than-two-waiters.patch
 
 # HRTIMERS
 # Check whether schedule_hrtimeout() could be hard always
@@ -510,6 +509,7 @@ preempt-lazy-support.patch
 x86-preempt-lazy.patch
 arm-preempt-lazy-support.patch
 powerpc-preempt-lazy-support.patch
+powerpc-Fix-lazy-preemption-for-powerpc-32bit.patch
 arch-arm64-Add-lazy-preempt-support.patch
 tracing-make-preempt_lazy-and-migrate_disable-counte.patch
 
