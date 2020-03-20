@@ -79,4 +79,5 @@ int tcc_hwdmx_tsif_rx_set_mode(struct tcc_hwdmx_tsif_rx_handle *demux, int algo,
 	int residual, int smsg, unsigned int numOfPids, unsigned short *pids);
 int tcc_hwdmx_tsif_rx_set_key(struct tcc_hwdmx_tsif_rx_handle *demux,
 				int keytype, int keymode, int size, void *key);
-
+void tcc_hwdmx_tsif_rx_set_debug_mode(int chk_time);
+int tcc_hwdmx_tsif_rx_get_debug_mode(void);

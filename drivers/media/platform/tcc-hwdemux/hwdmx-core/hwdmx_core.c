@@ -215,11 +215,19 @@ static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	int devid = (int)filp->private_data;
 
 	switch (cmd) {
-	case IOCTL_HWDMX_SET_INTERFACE:
-		hwdmx_set_interface_cmd(devid, arg);
-		return 0;
+		case IOCTL_HWDMX_SET_INTERFACE:
+			hwdmx_set_interface_cmd(devid, arg);
+		break;
+		
+		case IOCTL_HWDMX_SET_DEBUG_MODE:
+			tcc_hwdmx_tsif_rx_set_debug_mode(arg);
+		break;
+
+		default:
+			return -1;
 	}
-	return -1;
+
+	return 0;
 }
 
 static struct file_operations fops = {

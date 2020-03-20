@@ -60,8 +60,6 @@
 #define HWDMX_NUM 8
 #endif
 
-//#define TS_PACKET_CHK_MODE
-
 static DEFINE_SPINLOCK(timer_lock);
 static int hwdmx_tsif_num;
 
@@ -79,6 +77,7 @@ struct tcc_tsif_stat
 struct tcc_tsif_pri_handle
 {
 	int open_cnt;
+	int debug_chk_time;
 	struct mutex mutex;
 	struct tcc_hwdmx_tsif_rx_handle demux[HWDMX_NUM];
 	struct timer_list timer;
@@ -95,8 +94,7 @@ struct tcc_tsif_pri_handle
 };
 static struct tcc_tsif_pri_handle tsif_ex_pri;
 
-#ifdef TS_PACKET_CHK_MODE
-typedef struct
+typedef struct ts_packet_chk_t
 {
 	struct ts_packet_chk_t *next;
 
@@ -129,7 +127,7 @@ static void itv_ts_cc_debug(int mod)
 		if (ts_packet_chk_info->packet != NULL) {
 			pr_info(
 				"\n[INFO][HWDMX] [total:%llu / err:%d (%d sec)]\n", ts_packet_chk_info->total_cnt,
-				ts_packet_chk_info->total_err, (ts_packet_chk_info->debug_time * DEBUG_CHK_TIME));
+				ts_packet_chk_info->total_err, (ts_packet_chk_info->debug_time * tsif_ex_pri.debug_chk_time));
 
 			if (mod) {
 				ts_packet_chk_t *tmp = NULL;
@@ -294,16 +292,28 @@ static void itv_ts_cc_check(unsigned char *buf)
 		ts_packet_chk_info->cur_time = ((ts_packet_chk_info->time.tv_sec * 1000) & 0x00ffffff)
 			+ (ts_packet_chk_info->time.tv_usec / 1000);
 		if ((ts_packet_chk_info->cur_time - ts_packet_chk_info->prev_time)
-			> (DEBUG_CHK_TIME * 1000)) {
-			// itv_ts_cc_debug(0);
-			itv_ts_cc_debug(1);
+			> (tsif_ex_pri.debug_chk_time * 1000)) {
+			itv_ts_cc_debug(0);
+//			itv_ts_cc_debug(1);
 
 			ts_packet_chk_info->prev_time = ts_packet_chk_info->cur_time;
 			ts_packet_chk_info->debug_time++;
 		}
 	}
 }
-#endif //#ifdef TS_PACKET_CHK_MODE
+
+void tcc_hwdmx_tsif_rx_set_debug_mode(int chk_time)
+{
+pr_info(
+	"[INFO][HWDMX] \t>>>> tcc_hwdmx_tsif_rx_set_debug_mode, chk_time:%d(sec)\n", chk_time);
+	tsif_ex_pri.debug_chk_time = chk_time;
+}
+
+int tcc_hwdmx_tsif_rx_get_debug_mode(void)
+{
+	return tsif_ex_pri.debug_chk_time;
+}
+
 
 #ifndef USE_REV_MEMORY
 static int __maybe_unused rx_dma_buffer_alloc(int devid, struct tea_dma_buf *dma)
@@ -479,7 +489,7 @@ static int rx_parse_packet(
 			demux->ts_demux_feed_handle.index = 0;
 		}
 
-#ifdef TS_PACKET_CHK_MODE
+		if(tcc_hwdmx_tsif_rx_get_debug_mode())
 		{
 			int i;
 			if (p1 && p1_size) {
@@ -492,7 +502,6 @@ static int rx_parse_packet(
 					itv_ts_cc_check(p2 + i);
 			}
 		}
-#endif
 	}
 	return ret;
 }
@@ -688,7 +697,6 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 
 	mutex_unlock(&(tsif_ex_pri.mutex));
 
-#ifdef TS_PACKET_CHK_MODE
 	if (tsif_ex_pri.open_cnt == 1) {
 		ts_packet_chk_info =
 			(ts_packet_chk_info_t *)kmalloc(sizeof(ts_packet_chk_info_t), GFP_ATOMIC);
@@ -697,7 +705,6 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 		}
 		memset(ts_packet_chk_info, 0x0, sizeof(ts_packet_chk_info_t));
 	}
-#endif
 
 	return demux;
 }
@@ -744,14 +751,15 @@ int tcc_hwdmx_tsif_rx_stop(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int 
 		}
 	}
 	mutex_unlock(&(tsif_ex_pri.mutex));
-#ifdef TS_PACKET_CHK_MODE
 	if (tsif_ex_pri.open_cnt == 0) {
 		ts_packet_chk_t *tmp = NULL;
 		ts_packet_chk_t *tmp_ = NULL;
 
 		if (ts_packet_chk_info != NULL) {
 			if (ts_packet_chk_info->packet != NULL) {
-				itv_ts_cc_debug(1);
+				if(tcc_hwdmx_tsif_rx_get_debug_mode()) {
+					itv_ts_cc_debug(1);
+				}
 
 				tmp = ts_packet_chk_info->packet;
 				do {
@@ -764,7 +772,6 @@ int tcc_hwdmx_tsif_rx_stop(struct tcc_hwdmx_tsif_rx_handle *demux, unsigned int 
 			ts_packet_chk_info = NULL;
 		}
 	}
-#endif
 	return 0;
 }
 
