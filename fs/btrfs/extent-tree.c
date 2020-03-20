@@ -4724,8 +4724,10 @@ again:
 		goto out;
 	if (ret)
 		space_info->full = 1;
-	else
+	else {
 		ret = 1;
+		space_info->max_extent_size = 0;
+	}
 
 	space_info->force_alloc = CHUNK_ALLOC_NO_FORCE;
 out:
@@ -6663,6 +6665,7 @@ static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
 		space_info->bytes_readonly += num_bytes;
 	cache->reserved -= num_bytes;
 	space_info->bytes_reserved -= num_bytes;
+	space_info->max_extent_size = 0;
 
 	if (delalloc)
 		cache->delalloc_bytes -= num_bytes;
