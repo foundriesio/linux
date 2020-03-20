@@ -2578,22 +2578,33 @@ static void unselect_delayed_ref_head(struct btrfs_delayed_ref_root *delayed_ref
 	btrfs_delayed_ref_unlock(head);
 }
 
-static int cleanup_extent_op(struct btrfs_trans_handle *trans,
-			     struct btrfs_fs_info *fs_info,
-			     struct btrfs_delayed_ref_head *head)
+static struct btrfs_delayed_extent_op *cleanup_extent_op(
+					struct btrfs_delayed_ref_head *head)
 {
 	struct btrfs_delayed_extent_op *extent_op = head->extent_op;
+
+	if (!extent_op)
+		return NULL;
+	if (head->must_insert_reserved) {
+		head->extent_op = NULL;
+		btrfs_free_delayed_extent_op(extent_op);
+		return NULL;
+	}
+	return extent_op;
+}
+
+static int run_and_cleanup_extent_op(struct btrfs_trans_handle *trans,
+				     struct btrfs_delayed_ref_head *head)
+{
+	struct btrfs_delayed_extent_op *extent_op;
 	int ret;
 
+	extent_op = cleanup_extent_op(head);
 	if (!extent_op)
 		return 0;
 	head->extent_op = NULL;
-	if (head->must_insert_reserved) {
-		btrfs_free_delayed_extent_op(extent_op);
-		return 0;
-	}
 	spin_unlock(&head->lock);
-	ret = run_delayed_extent_op(trans, fs_info, head, extent_op);
+	ret = run_delayed_extent_op(trans, trans->fs_info, head, extent_op);
 	btrfs_free_delayed_extent_op(extent_op);
 	return ret ? ret : 1;
 }
@@ -2634,7 +2645,7 @@ static int cleanup_ref_head(struct btrfs_trans_handle *trans,
 
 	delayed_refs = &trans->transaction->delayed_refs;
 
-	ret = cleanup_extent_op(trans, fs_info, head);
+	ret = run_and_cleanup_extent_op(trans, head);
 	if (ret < 0) {
 		unselect_delayed_ref_head(delayed_refs, head);
 		btrfs_debug(fs_info, "run_delayed_extent_op returned %d", ret);
@@ -7196,12 +7207,8 @@ static noinline int check_ref_cleanup(struct btrfs_trans_handle *trans,
 	if (!RB_EMPTY_ROOT(&head->ref_tree))
 		goto out;
 
-	if (head->extent_op) {
-		if (!head->must_insert_reserved)
-			goto out;
-		btrfs_free_delayed_extent_op(head->extent_op);
-		head->extent_op = NULL;
-	}
+	if (cleanup_extent_op(head) != NULL)
+		goto out;
 
 	/*
 	 * waiting for the lock here would deadlock.  If someone else has it
