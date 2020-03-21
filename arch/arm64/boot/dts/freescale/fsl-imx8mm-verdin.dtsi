@@ -245,7 +245,7 @@
 	pinctrl-0 = <&pinctrl_flexspi0>;
 	status = "okay";
 
-#if 0 
+#if 0
 	flash0: mt25qu256aba@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
