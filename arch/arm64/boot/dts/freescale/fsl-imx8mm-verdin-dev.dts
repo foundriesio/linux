@@ -5,7 +5,7 @@
 
 /dts-v1/;
 
-#include "fsl-imx8mm-verdin.dtsi"
+#include "fsl-imx8mm-verdin-wifi.dtsi"
 
 / {
 	model = "Toradex Verdin iMX8M Mini WB on Verdin Development Board";
