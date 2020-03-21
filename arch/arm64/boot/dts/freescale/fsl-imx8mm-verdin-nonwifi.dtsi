@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
+/*
+ * Copyright 2020 Toradex
+ */
+
+#include "fsl-imx8mm-verdin.dtsi"
+
+&usdhc3 {
+	bus-width = <4>;
+	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-0 = <&pinctrl_usdhc3>;
+	pinctrl-1 = <&pinctrl_usdhc3_100mhz>;
+	pinctrl-2 = <&pinctrl_usdhc3_200mhz>;
+};
+
+&iomuxc {
+	pinctrl_tsp: tspgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_SAI1_RXD4_GPIO4_IO6	0x140		/* SODIMM 148 */
+			MX8MM_IOMUXC_SAI1_RXD5_GPIO4_IO7	0x140		/* SODIMM 152 */
+			MX8MM_IOMUXC_SAI1_RXD6_GPIO4_IO8	0x140		/* SODIMM 154 */
+			MX8MM_IOMUXC_SAI1_RXD7_GPIO4_IO9	0x140		/* SODIMM 179 */
+			MX8MM_IOMUXC_SAI1_TXD5_GPIO4_IO17	0x140		/* SODIMM 150 */
+		>;
+	};
+};
