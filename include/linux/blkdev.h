@@ -571,7 +571,7 @@ struct request_queue {
 	unsigned int		sg_reserved_size;
 	int			node;
 #ifdef CONFIG_BLK_DEV_IO_TRACE
-	struct blk_trace	*blk_trace;
+	struct blk_trace __rcu	*blk_trace;
 #endif
 	/*
 	 * for flush operations
@@ -621,6 +621,9 @@ struct request_queue {
 	u64			write_hints[BLK_MAX_WRITE_HINTS];
 #ifndef __GENKSYMS__
 	struct mutex		mq_freeze_lock;
+#ifdef CONFIG_BLK_DEV_IO_TRACE
+	struct mutex		blk_trace_mutex;
+#endif
 #endif
 };
 
