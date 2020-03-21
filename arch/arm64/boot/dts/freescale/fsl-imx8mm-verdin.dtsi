@@ -7,20 +7,17 @@
 #include "fsl-imx8mm.dtsi"
 
 / {
-	chosen {
-		bootargs = "console=ttymxc0,115200 earlycon";
-		stdout-path = &uart1;
-	};
-
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_dsi_bkl_en>;
-		brightness-levels = <0 45 63 88 119 158 203 255>;
-		default-brightness-level = <4>;
 		enable-gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
-		pwms = <&pwm1 0 6666667 PWM_POLARITY_INVERTED>;
-		status = "okay";
+		status = "disabled";
+	};
+
+	chosen {
+		bootargs = "console=ttymxc0,115200 earlycon";
+		stdout-path = &uart1;
 	};
 
 	/* fixed clock dedicated to SPI CAN controller */
@@ -113,7 +110,6 @@
 			"Microphone", "Microphone Jack",
 			"Headphone", "Headphone Jack",
 			"Line", "Line In Jack";
-
 		dailink_master: simple-audio-card,codec {
 			sound-dai = <&wm8904_1a>;
 			clocks = <&clk IMX8MM_CLK_SAI2_ROOT>;
@@ -129,6 +125,10 @@
 	arm-supply = <&buck2_reg>;
 };
 
+/*
+ * The AUDIO PLLs support max 650MHz, so use the suitable settings.
+ * Originally introduced by NXP in the NXP commit a4b0c7c3fadc7.
+ */
 &clk {
 	assigned-clocks = <&clk IMX8MM_AUDIO_PLL1>, <&clk IMX8MM_AUDIO_PLL2>;
 	assigned-clock-rates = <393216000>, <361267200>;
@@ -136,7 +136,6 @@
 
 &csi1_bridge {
 	fsl,mipi-mode;
-	status = "okay";
 
 	port {
 		csi1_ep: endpoint {
@@ -152,14 +151,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi2>;
 	cs-gpios = <&gpio5 13 GPIO_ACTIVE_LOW>;
-	status = "okay";
-
-	spidev20: spidev@0 {
-		compatible = "toradex,evalspi";
-		reg = <0>;
-		spi-max-frequency = <10000000>;
-		status = "okay";
-	};
 };
 
 /* On-module CAN controller 1 & 2 */
@@ -209,7 +200,6 @@
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pinctrl_fec1>;
 	pinctrl-1 = <&pinctrl_fec1_sleep>;
-	status = "okay";
 
 	mdio {
 		#address-cells = <1>;
@@ -231,8 +221,6 @@
 &flexspi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexspi0>;
-	status = "okay";
-
 #if 0
 	flash0: mt25qu256aba@0 {
 		#address-cells = <1>;
@@ -417,7 +405,6 @@
 	clock-frequency = <10000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
-	status = "okay";
 };
 
 /* Verdin I2C_3_HDMI N/A */
@@ -427,7 +414,6 @@
 	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c3>;
-	status = "okay";
 
 	ov5640_mipi: ov5640_mipi@3c {
 		compatible = "ovti,ov5640_mipi";
@@ -444,7 +430,7 @@
 		pwn-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
 		reg = <0x3c>;
 		rst-gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;
-		status = "okay";
+		status = "disabled";
 
 		port {
 			ov5640_mipi1_ep: endpoint {
@@ -459,7 +445,6 @@
 	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c4>;
-	status = "okay";
 
 	/* Audio Codec */
 	wm8904_1a: codec@1a {
@@ -468,6 +453,7 @@
 		clocks = <&clk IMX8MM_CLK_SAI2_ROOT>;
 		clock-names = "mclk";
 		reg = <0x1a>;
+		status = "disabled";
 	};
 
 	gpio_expander_21: gpio-expander@21 {
@@ -475,9 +461,10 @@
 		#gpio-cells = <2>;
 		gpio-controller;
 		reg = <0x21>;
+		status = "disabled";
 	};
 
-	bridge@2c {
+	lvds_bridge: bridge@2c {
 		compatible = "ti,sn65dsi83";
 		enable-gpios = <&gpio3 4 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
@@ -519,15 +506,15 @@
 	};
 
 	/* Current measurement into module VCC */
-	hwmon@40 {
+	hwmon: hwmon@40 {
 		compatible = "ti,ina219";
 		reg = <0x40>;
 		shunt-resistor = <10000>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	/* MIPI-DSI to HDMI adapter */
-	hdmi@48 {
+	mipi_dsi_hdmi: hdmi@48 {
 		compatible = "lontium,lt8912";
 		ddc-i2c-bus = <&i2c2>;
 		hpd-gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>;
@@ -536,6 +523,7 @@
 			    <&pinctrl_gpio2>;
 		reg = <0x48>;
 		reset-gpios = <&gpio5 5 GPIO_ACTIVE_LOW>;
+		status = "disabled";
 
 		port {
 			lt8912_1_in: endpoint {
@@ -556,17 +544,19 @@
 	};
 
 	/* EEPROM on display adapter boards */
-	eeprom_50: eeprom@50 {
+	eeprom_display: eeprom@50 {
 		compatible = "st,24c02";
 		pagesize = <16>;
 		reg = <0x50>;
+		status = "disabled";
 	};
 
 	/* EEPROM on Verdin Development board */
-	eeprom_57: eeprom@57 {
+	eeprom_dev_board: eeprom@57 {
 		compatible = "st,24c02";
 		pagesize = <16>;
 		reg = <0x57>;
+		status = "disabled";
 	};
 };
 
@@ -577,7 +567,6 @@
 &mipi_csi_1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
-	status = "okay";
 
 	port {
 		mipi1_sensor_ep: endpoint1 {
@@ -595,8 +584,6 @@
 };
 
 &mipi_dsi {
-	status = "okay";
-
 	port@1 {
 		mipi_dsi_bridge1_out: endpoint {
 			remote-endpoint = <&lt8912_1_in>;
@@ -610,12 +597,12 @@
 
 /* Verdin PCIE_1 */
 &pcie0 {
+	/* on-module ext oscillator */
 	clkreq-gpio = <&gpio2 19 GPIO_ACTIVE_HIGH>;
 	ext_osc = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie0>;
 	reset-gpio = <&gpio3 19 GPIO_ACTIVE_LOW>;
-	status = "okay";
 };
 
 /* Verdin PWM_3_DSI */
@@ -623,7 +610,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_1>;
 	#pwm-cells = <3>;
-	status = "okay";
 };
 
 /* Verdin PWM_1 */
@@ -631,7 +617,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_2>;
 	#pwm-cells = <3>;
-	status = "okay";
 };
 
 /* Verdin PWM_2 */
@@ -639,7 +624,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm_3>;
 	#pwm-cells = <3>;
-	status = "okay";
 };
 
 /* VERDIN I2S_1 */
@@ -650,14 +634,12 @@
 	assigned-clocks = <&clk IMX8MM_CLK_SAI2>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai2>;
-	status = "okay";
 };
 
 /* Verdin UART_3 */
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
-	status = "okay";
 };
 
 /* Verdin UART_1 */
@@ -665,7 +647,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
 	fsl,uart-has-rtscts;
-	status = "okay";
 };
 
 /* Verdin UART_2 */
@@ -673,7 +654,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	fsl,uart-has-rtscts;
-	status = "okay";
 };
 
 /* Verdin UART_4 */
@@ -684,7 +664,6 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart4>;
-	status = "disabled";
 };
 
 /* Verdin USB_1 */
@@ -693,7 +672,6 @@
 	picophy,dc-vol-level-adjust = <7>;
 	picophy,pre-emp-curr-control = <3>;
 	vbus-supply = <&reg_usb_otg1_vbus>;
-	status = "okay";
 };
 
 /* Verdin USB_2 */
@@ -702,7 +680,6 @@
 	picophy,dc-vol-level-adjust = <7>;
 	picophy,pre-emp-curr-control = <3>;
 	vbus-supply = <&reg_usb_otg2_vbus>;
-	status = "okay";
 };
 
 /* On-module eMMC */
@@ -728,7 +705,6 @@
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_cd>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_cd>;
 	vmmc-supply = <&reg_usdhc2_vmmc>;
-	status = "okay";
 };
 
 &vpu_g1 {
@@ -754,17 +730,18 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpio3>, <&pinctrl_gpio4>, <&pinctrl_gpio7>,
 		    <&pinctrl_gpio8>, <&pinctrl_gpio_hog1>,
-		    <&pinctrl_gpio_hog2>, <&pinctrl_gpio_hog3>;
+		    <&pinctrl_gpio_hog2>, <&pinctrl_gpio_hog3>,
+		    <&pinctrl_sai5>;
 
 	pinctrl_can1_int: can1intgrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO06_GPIO1_IO6	0x1c4
+			MX8MM_IOMUXC_GPIO1_IO06_GPIO1_IO6	0x1c4		/* CAN_1_SPI_INT#_1.8V */
 		>;
 	};
 
 	pinctrl_can2_int: can2intgrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO07_GPIO1_IO7	0x1c4
+			MX8MM_IOMUXC_GPIO1_IO07_GPIO1_IO7	0x1c4		/* CAN_2_SPI_INT#_1.8V */
 		>;
 	};
 
@@ -956,138 +933,138 @@
 	/* On-module I2C */
 	pinctrl_i2c1: i2c1grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_I2C1_SCL_I2C1_SCL		0x400001c6
-			MX8MM_IOMUXC_I2C1_SDA_I2C1_SDA		0x400001c6
+			MX8MM_IOMUXC_I2C1_SCL_I2C1_SCL		0x400001c6	/* PMIC_I2C_SCL */
+			MX8MM_IOMUXC_I2C1_SDA_I2C1_SDA		0x400001c6	/* PMIC_I2C_SDA */
 		>;
 	};
 
 	/* Verdin I2C_4_CSI */
 	pinctrl_i2c2: i2c2grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_I2C2_SCL_I2C2_SCL		0x400001c6	/* SODIMM 55 */
-			MX8MM_IOMUXC_I2C2_SDA_I2C2_SDA		0x400001c6	/* SODIMM 53 */
+			MX8MM_IOMUXC_I2C2_SCL_I2C2_SCL          0x400001c6      /* SODIMM 55 */
+			MX8MM_IOMUXC_I2C2_SDA_I2C2_SDA          0x400001c6      /* SODIMM 53 */
 		>;
 	};
 
 	/* Verdin I2C_2_DSI */
 	pinctrl_i2c3: i2c3grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_I2C3_SCL_I2C3_SCL		0x400001c6	/* SODIMM 95 */
-			MX8MM_IOMUXC_I2C3_SDA_I2C3_SDA		0x400001c6	/* SODIMM 93 */
+			MX8MM_IOMUXC_I2C3_SCL_I2C3_SCL          0x400001c6      /* SODIMM 95 */
+			MX8MM_IOMUXC_I2C3_SDA_I2C3_SDA          0x400001c6      /* SODIMM 93 */
 		>;
 	};
 
 	/* Verdin I2C_1 */
 	pinctrl_i2c4: i2c4grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_I2C4_SCL_I2C4_SCL		0x400001c6	/* SODIMM 14 */
-			MX8MM_IOMUXC_I2C4_SDA_I2C4_SDA		0x400001c6	/* SODIMM 12 */
+			MX8MM_IOMUXC_I2C4_SCL_I2C4_SCL          0x400001c6      /* SODIMM 14 */
+			MX8MM_IOMUXC_I2C4_SDA_I2C4_SDA          0x400001c6      /* SODIMM 12 */
 		>;
 	};
 
 	pinctrl_pcie0: pcie0grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI5_RXFS_GPIO3_IO19	0x6		/* SODIMM 244 */
+			MX8MM_IOMUXC_SAI5_RXFS_GPIO3_IO19       0x6             /* SODIMM 244 */
 			MX8MM_IOMUXC_SD2_RESET_B_GPIO2_IO19	0x6		/* PMIC_EN_PCIe_CLK */
 		>;
 	};
 
 	pinctrl_pmic: pmicirqgrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO03_GPIO1_IO3	0x41
+			MX8MM_IOMUXC_GPIO1_IO03_GPIO1_IO3	0x41		/* PMIC_INT# */
 		>;
 	};
 
 	pinctrl_pwm_1: pwm1grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO01_PWM1_OUT	0x6		/* SODIMM 19 */
+			MX8MM_IOMUXC_GPIO1_IO01_PWM1_OUT        0x6             /* SODIMM 19 */
 		>;
 	};
 
 	pinctrl_pwm_2: pwm2grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SPDIF_RX_PWM2_OUT		0x6		/* SODIMM 15 */
+			MX8MM_IOMUXC_SPDIF_RX_PWM2_OUT          0x6             /* SODIMM 15 */
 		>;
 	};
 
 	pinctrl_pwm_3: pwm3grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SPDIF_TX_PWM3_OUT		0x6		/* SODIMM 16 */
+			MX8MM_IOMUXC_SPDIF_TX_PWM3_OUT          0x6             /* SODIMM 16 */
 		>;
 	};
 
 	pinctrl_reg_eth: regethgrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SD2_WP_GPIO2_IO20		0x184
+			MX8MM_IOMUXC_SD2_WP_GPIO2_IO20		0x184		/* PMIC_EN_ETH */
 		>;
 	};
 
 	pinctrl_reg_usb1_en: regusb1engrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO12_GPIO1_IO12	0x184		/* SODIMM 155 */
+			MX8MM_IOMUXC_GPIO1_IO12_GPIO1_IO12      0x184           /* SODIMM 155 */
 		>;
 	};
 
 	pinctrl_reg_usb2_en: regusb2engrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO14_GPIO1_IO14	0x184		/* SODIMM 185 */
+			MX8MM_IOMUXC_GPIO1_IO14_GPIO1_IO14      0x184           /* SODIMM 185 */
 		>;
 	};
 
 	pinctrl_sai2: sai2grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI2_TXFS_SAI2_TX_SYNC	0xd6		/* SODIMM 32 */
-			MX8MM_IOMUXC_SAI2_TXC_SAI2_TX_BCLK	0xd6		/* SODIMM 30 */
-			MX8MM_IOMUXC_SAI2_MCLK_SAI2_MCLK	0xd6		/* SODIMM 38 */
-			MX8MM_IOMUXC_SAI2_RXD0_SAI2_RX_DATA0	0xd6		/* SODIMM 36 */
-			MX8MM_IOMUXC_SAI2_TXD0_SAI2_TX_DATA0	0xd6		/* SODIMM 34 */
+			MX8MM_IOMUXC_SAI2_TXFS_SAI2_TX_SYNC     0xd6            /* SODIMM 32 */
+			MX8MM_IOMUXC_SAI2_TXC_SAI2_TX_BCLK      0xd6            /* SODIMM 30 */
+			MX8MM_IOMUXC_SAI2_MCLK_SAI2_MCLK        0xd6            /* SODIMM 38 */
+			MX8MM_IOMUXC_SAI2_RXD0_SAI2_RX_DATA0    0xd6            /* SODIMM 36 */
+			MX8MM_IOMUXC_SAI2_TXD0_SAI2_TX_DATA0    0xd6            /* SODIMM 34 */
 		>;
 	};
 
 	pinctrl_sai5: sai5grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI5_RXD0_SAI5_RX_DATA0	0xd6		/* SODIMM 48 */
-			MX8MM_IOMUXC_SAI5_RXD1_SAI5_TX_SYNC	0xd6		/* SODIMM 44 */
-			MX8MM_IOMUXC_SAI5_RXD2_SAI5_TX_BCLK	0xd6		/* SODIMM 42 */
-			MX8MM_IOMUXC_SAI5_RXD3_SAI5_TX_DATA0	0xd6		/* SODIMM 46 */
+			MX8MM_IOMUXC_SAI5_RXD0_SAI5_RX_DATA0    0xd6            /* SODIMM 48 */
+			MX8MM_IOMUXC_SAI5_RXD1_SAI5_TX_SYNC     0xd6            /* SODIMM 44 */
+			MX8MM_IOMUXC_SAI5_RXD2_SAI5_TX_BCLK     0xd6            /* SODIMM 42 */
+			MX8MM_IOMUXC_SAI5_RXD3_SAI5_TX_DATA0    0xd6            /* SODIMM 46 */
 		>;
 	};
 
 	pinctrl_se050_ena: se050enagrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI1_TXD7_GPIO4_IO19	0x184
+			MX8MM_IOMUXC_SAI1_TXD7_GPIO4_IO19	0x184		/* PMIC_TPM_ENA */
 		>;
 	};
 
 	pinctrl_uart1: uart1grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI2_RXFS_UART1_TX		0x1c4		/* SODIMM 149 */
-			MX8MM_IOMUXC_SAI2_RXC_UART1_RX		0x1c4		/* SODIMM 147 */
+			MX8MM_IOMUXC_SAI2_RXFS_UART1_TX         0x1c4           /* SODIMM 149 */
+			MX8MM_IOMUXC_SAI2_RXC_UART1_RX          0x1c4           /* SODIMM 147 */
 		>;
 	};
 
 	pinctrl_uart2: uart2grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SAI3_TXFS_UART2_DCE_TX	0x1c4		/* SODIMM 129 */
-			MX8MM_IOMUXC_SAI3_TXC_UART2_DCE_RX	0x1c4		/* SODIMM 131 */
-			MX8MM_IOMUXC_SAI3_RXC_UART2_DCE_CTS_B	0x1c4		/* SODIMM 133 */
-			MX8MM_IOMUXC_SAI3_RXD_UART2_DCE_RTS_B	0x1c4		/* SODIMM 135 */
+			MX8MM_IOMUXC_SAI3_TXFS_UART2_DCE_TX     0x1c4           /* SODIMM 129 */
+			MX8MM_IOMUXC_SAI3_TXC_UART2_DCE_RX      0x1c4           /* SODIMM 131 */
+			MX8MM_IOMUXC_SAI3_RXC_UART2_DCE_CTS_B   0x1c4           /* SODIMM 133 */
+			MX8MM_IOMUXC_SAI3_RXD_UART2_DCE_RTS_B   0x1c4           /* SODIMM 135 */
 		>;
 	};
 
 	pinctrl_uart3: uart3grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_ECSPI1_SCLK_UART3_DCE_RX		0x1c4	/* SODIMM 137 */
-			MX8MM_IOMUXC_ECSPI1_MOSI_UART3_DCE_TX		0x1c4	/* SODIMM 139 */
-			MX8MM_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x1c4	/* SODIMM 141 */
-			MX8MM_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x1c4	/* SODIMM 143 */
+			MX8MM_IOMUXC_ECSPI1_SCLK_UART3_DCE_RX           0x1c4   /* SODIMM 137 */
+			MX8MM_IOMUXC_ECSPI1_MOSI_UART3_DCE_TX           0x1c4   /* SODIMM 139 */
+			MX8MM_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B        0x1c4   /* SODIMM 141 */
+			MX8MM_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B         0x1c4   /* SODIMM 143 */
 		>;
 	};
 
 	pinctrl_uart4: uart4grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_UART4_RXD_UART4_DCE_RX	0x1c4		/* SODIMM 151 */
-			MX8MM_IOMUXC_UART4_TXD_UART4_DCE_TX	0x1c4		/* SODIMM 153 */
+			MX8MM_IOMUXC_UART4_RXD_UART4_DCE_RX     0x1c4           /* SODIMM 151 */
+			MX8MM_IOMUXC_UART4_TXD_UART4_DCE_TX     0x1c4           /* SODIMM 153 */
 		>;
 	};
 
@@ -1141,52 +1118,53 @@
 
 	pinctrl_usdhc2_cd: usdhc2cdgrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CD_B_GPIO2_IO12	0x1c4		/* SODIMM 84 */
+			MX8MM_IOMUXC_SD2_CD_B_GPIO2_IO12        0x1c4           /* SODIMM 84 */
 		>;
 	};
 
 	pinctrl_usdhc2_pwr_en: usdhc2pwrengrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_NAND_CLE_GPIO3_IO5		0x184		/* SODIMM 76 */
+			MX8MM_IOMUXC_NAND_CLE_GPIO3_IO5         0x184           /* SODIMM 76 */
 		>;
 	};
 
 	pinctrl_usdhc2: usdhc2grp {
 		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK		0x190		/* SODIMM 78 */
-			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD		0x1d0		/* SODIMM 74 */
-			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0	0x1d0		/* SODIMM 80 */
-			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1	0x1d0		/* SODIMM 82 */
-			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2	0x1d0		/* SODIMM 70 */
-			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3	0x1d0		/* SODIMM 72 */
-			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT	0x1d0
+			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK         0x190           /* SODIMM 78 */
+			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD         0x1d0           /* SODIMM 74 */
+			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0     0x1d0           /* SODIMM 80 */
+			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1     0x1d0           /* SODIMM 82 */
+			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2     0x1d0           /* SODIMM 70 */
+			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3     0x1d0           /* SODIMM 72 */
+			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT  0x1d0
 		>;
 	};
 
 	pinctrl_usdhc2_100mhz: usdhc2grp100mhz {
 		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK		0x194
-			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD		0x1d4
-			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0	0x1d4
-			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1	0x1d4
-			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2	0x1d4
-			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3	0x1d4
-			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT	0x1d0
+			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK         0x194
+			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD         0x1d4
+			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0     0x1d4
+			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1     0x1d4
+			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2     0x1d4
+			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3     0x1d4
+			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT  0x1d0
 		>;
 	};
 
 	pinctrl_usdhc2_200mhz: usdhc2grp200mhz {
 		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK		0x196
-			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD		0x1d6
-			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0	0x1d6
-			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1	0x1d6
-			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2	0x1d6
-			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3	0x1d6
-			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT	0x1d0
+			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK         0x196
+			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD         0x1d6
+			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0     0x1d6
+			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1     0x1d6
+			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2     0x1d6
+			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3     0x1d6
+			MX8MM_IOMUXC_GPIO1_IO04_USDHC2_VSELECT  0x1d0
 		>;
 	};
 
+	/* On-module Wi-Fi/BT or SDHC interface on the X52 extention slot */
 	pinctrl_usdhc3: usdhc3grp {
 		fsl,pins = <
 			MX8MM_IOMUXC_NAND_WE_B_USDHC3_CLK	0x190
@@ -1222,7 +1200,7 @@
 
 	pinctrl_wdog: wdoggrp {
 		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B	0xc6
+			MX8MM_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B	0xc6		/* PMIC_WDI */
 		>;
 	};
 };
