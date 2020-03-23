@@ -1190,6 +1190,7 @@ struct btrfs_subvolume_writers {
 #define BTRFS_ROOT_FORCE_COW		6
 #define BTRFS_ROOT_MULTI_LOG_TASKS	7
 #define BTRFS_ROOT_DIRTY		8
+#define BTRFS_ROOT_DELETING		9
 #define BTRFS_ROOT_DEAD_RELOC_TREE	10
 /* Mark dead root stored on device whose cleanup needs to be resumed */
 #define BTRFS_ROOT_DEAD_TREE		11
