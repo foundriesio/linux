@@ -31,6 +31,7 @@ extern struct md_sysfs_entry r5c_journal_mode;
 extern void r5c_update_on_rdev_error(struct mddev *mddev,
 				     struct md_rdev *rdev);
 extern bool r5c_big_stripe_cached(struct r5conf *conf, sector_t sect);
+extern int r5l_start(struct r5l_log *log);
 
 extern struct dma_async_tx_descriptor *
 ops_run_partial_parity(struct stripe_head *sh, struct raid5_percpu *percpu,
@@ -43,6 +44,7 @@ extern void ppl_stripe_write_finished(struct stripe_head *sh);
 extern int ppl_modify_log(struct r5conf *conf, struct md_rdev *rdev, bool add);
 extern void ppl_quiesce(struct r5conf *conf, int quiesce);
 extern int ppl_handle_flush_request(struct r5l_log *log, struct bio *bio);
+extern struct md_sysfs_entry ppl_write_hint;
 
 static inline bool raid5_has_log(struct r5conf *conf)
 {
