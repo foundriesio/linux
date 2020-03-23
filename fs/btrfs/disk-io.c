@@ -1756,6 +1756,8 @@ static int cleaner_kthread(void *arg)
 	while (1) {
 		again = 0;
 
+		set_bit(BTRFS_FS_CLEANER_RUNNING, &fs_info->flags);
+
 		/* Make the cleaner go to sleep early. */
 		if (btrfs_need_cleaner_sleep(fs_info))
 			goto sleep;
@@ -1802,6 +1804,7 @@ static int cleaner_kthread(void *arg)
 		 */
 		btrfs_delete_unused_bgs(fs_info);
 sleep:
+		clear_bit(BTRFS_FS_CLEANER_RUNNING, &fs_info->flags);
 		if (kthread_should_park())
 			kthread_parkme();
 		if (kthread_should_stop())

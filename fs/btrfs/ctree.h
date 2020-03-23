@@ -759,6 +759,10 @@ struct btrfs_delayed_root;
  */
 #define BTRFS_FS_BALANCE_RUNNING		18
 
+
+/* Indicate that the cleaner thread is awake and doing something. */
+#define BTRFS_FS_CLEANER_RUNNING		19
+
 struct btrfs_fs_info {
 	u8 fsid[BTRFS_FSID_SIZE];
 	u8 chunk_tree_uuid[BTRFS_UUID_SIZE];
