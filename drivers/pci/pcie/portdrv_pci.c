@@ -236,24 +236,22 @@ static struct dmi_system_id __initdata pcie_portdrv_dmi_table[] = {
 	 {}
 };
 
+static void __init pcie_init_services(void)
+{
+	pcie_aer_init();
+	pcie_pme_init();
+	pcie_dpc_init();
+	pcie_hp_init();
+}
+
 static int __init pcie_portdrv_init(void)
 {
-	int retval;
-
 	if (pcie_ports_disabled)
 		return -EACCES;
 
+	pcie_init_services();
 	dmi_check_system(pcie_portdrv_dmi_table);
 
-	retval = pcie_port_bus_register();
-	if (retval) {
-		printk(KERN_WARNING "PCIE: bus_register error: %d\n", retval);
-		goto out;
-	}
-	retval = pci_register_driver(&pcie_portdriver);
-	if (retval)
-		pcie_port_bus_unregister();
- out:
-	return retval;
+	return pci_register_driver(&pcie_portdriver);
 }
 device_initcall(pcie_portdrv_init);

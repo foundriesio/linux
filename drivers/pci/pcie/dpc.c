@@ -194,7 +194,7 @@ static irqreturn_t dpc_handler(int irq, void *context)
 
 	reason = (status & PCI_EXP_DPC_STATUS_TRIGGER_RSN) >> 1;
 	ext_reason = (status & PCI_EXP_DPC_STATUS_TRIGGER_RSN_EXT) >> 5;
-	dev_warn(dev, "DPC %s detected, remove downstream devices\n",
+	dev_warn(dev, "DPC %s detected\n",
 		 (reason == 0) ? "unmasked uncorrectable error" :
 		 (reason == 1) ? "ERR_NONFATAL" :
 		 (reason == 2) ? "ERR_FATAL" :
@@ -214,7 +214,7 @@ static irqreturn_t dpc_handler(int irq, void *context)
 	}
 
 	/* We configure DPC so it only triggers on ERR_FATAL */
-	pcie_do_fatal_recovery(pdev, PCIE_PORT_SERVICE_DPC);
+	pcie_do_recovery(pdev, pci_channel_io_frozen, PCIE_PORT_SERVICE_DPC);
 
 	return IRQ_HANDLED;
 }
@@ -310,8 +310,7 @@ static struct pcie_port_service_driver dpcdriver = {
 	.reset_link	= dpc_reset_link,
 };
 
-static int __init dpc_service_init(void)
+int __init pcie_dpc_init(void)
 {
 	return pcie_port_service_register(&dpcdriver);
 }
-device_initcall(dpc_service_init);
