@@ -1076,7 +1076,7 @@ static int ghes_probe(struct platform_device *ghes_dev)
 
 	switch (generic->notify.type) {
 	case ACPI_HEST_NOTIFY_POLLED:
-		setup_deferrable_timer(&ghes->timer, ghes_poll_func,
+		setup_timer(&ghes->timer, ghes_poll_func,
 				       (unsigned long)ghes);
 		ghes_add_timer(ghes);
 		break;
