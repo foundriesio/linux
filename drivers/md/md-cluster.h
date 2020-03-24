@@ -28,6 +28,11 @@ struct md_cluster_operations {
 	int (*lock_all_bitmaps)(struct mddev *mddev);
 	void (*unlock_all_bitmaps)(struct mddev *mddev);
 	void (*update_size)(struct mddev *mddev, sector_t old_dev_sectors);
+
+#ifndef __GENKSYMS__
+	void (*resync_info_get)(struct mddev *mddev, sector_t *lo, sector_t *hi);
+	int (*resize_bitmaps)(struct mddev *mddev, sector_t newsize, sector_t oldsize);
+#endif
 };
 
 #endif /* _MD_CLUSTER_H */
