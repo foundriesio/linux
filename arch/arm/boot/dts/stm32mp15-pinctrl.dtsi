@@ -1210,7 +1210,7 @@
 		};
 		pins2 {
 			pinmux = <STM32_PINMUX('E', 7, AF7)>; /* USART7_RX */
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
@@ -1220,7 +1220,7 @@
 		};
 		pins2 {
 			pinmux = <STM32_PINMUX('E', 7, AF7)>; /* USART7_RX */
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
@@ -1314,7 +1314,7 @@
 		pins2 {
 			pinmux = <STM32_PINMUX('B', 12, AF8)>, /* USART3_RX */
 				 <STM32_PINMUX('B', 13, AF7)>; /* USART3_CTS_NSS */
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
@@ -1326,7 +1326,7 @@
 		};
 		pins2 {
 			pinmux = <STM32_PINMUX('B', 12, AF8)>; /* USART3_RX */
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
