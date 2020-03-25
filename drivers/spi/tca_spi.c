@@ -516,10 +516,10 @@ int tca_spi_init(tca_spi_handle_t *h,
 		tca_spi_set_port(h, port);
 
 		if (h->tea_dma_alloc) {
-			if (h->tea_dma_alloc(&(h->rx_dma), dma_size,h->dev) == 0) {
+			if (h->tea_dma_alloc(&(h->rx_dma), dma_size, h->dev, id) == 0) {
 				if (is_slave) {
 					ret = 0;
-				} else if (h->tea_dma_alloc(&(h->tx_dma), dma_size,h->dev) == 0 && h->tea_dma_alloc(&(h->tx_dma_1), dma_size,h->dev) == 0) {
+				} else if (h->tea_dma_alloc(&(h->tx_dma), dma_size, h->dev, id) == 0 && h->tea_dma_alloc(&(h->tx_dma_1), dma_size, h->dev, id) == 0) {
 					ret = 0;
 				}
 			}
@@ -536,11 +536,14 @@ void tca_spi_clean(tca_spi_handle_t *h)
 {
 	if (h) {
 		struct tcc_spi_dma	dma;
+		int id;
+
 		dma = h->dma;
+		id = h->id;
 		if (h->tea_dma_free) {
-			h->tea_dma_free(&(h->tx_dma), h->dev);
-			h->tea_dma_free(&(h->rx_dma), h->dev);
-			h->tea_dma_free(&(h->tx_dma_1), h->dev);
+			h->tea_dma_free(&(h->tx_dma), h->dev, id);
+			h->tea_dma_free(&(h->rx_dma), h->dev, id);
+			h->tea_dma_free(&(h->tx_dma_1), h->dev, id);
 		}
 
 		/* Clear PCFG (only one channel being used)*/

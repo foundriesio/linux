@@ -122,6 +122,11 @@ struct tca_spi_pri_handle {
 	unsigned int gdma_use;
 	struct device *dev;
 
+	/* SRAM Specific */
+	unsigned int sram_use;
+	unsigned int sram_addr;
+	unsigned int sram_size;
+
 	// Use for normal slave not broadcast
 	bool normal_slave;
 };
@@ -478,9 +483,9 @@ static void tcc_gpsb_tsif_parse_dt(struct device_node *np, struct tca_spi_port_c
 static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+	int ret1, ret2, i;
 	int irq = -1;
 	int id = -1;
-	int i;
 	unsigned int ac_val[2] = {0};
 	struct resource *regs = NULL;
 	struct resource *regs1 = NULL;
@@ -548,7 +553,15 @@ static int tcc_gpsb_tsif_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] TSIF [%d] Normal Slave mode.\n", __func__, __LINE__, tmpcfg.gpsb_id);
 	} else {
 		tsif_pri[tmpcfg.gpsb_id].normal_slave = 0;
-		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] TSIF [%d] TSIF mode.\x1b[0m\n", __func__, __LINE__,tmpcfg.gpsb_id);
+		dev_dbg(&pdev->dev, "[DEBUG][SPI] [%s:%d] TSIF [%d] TSIF mode.\n", __func__, __LINE__,tmpcfg.gpsb_id);
+	}
+	/* USE SRAM */
+	ret1 = of_property_read_u32(pdev->dev.of_node, "sram-addr", &tsif_pri[tmpcfg.gpsb_id].sram_addr);
+	ret2 = of_property_read_u32(pdev->dev.of_node, "sram-size", &tsif_pri[tmpcfg.gpsb_id].sram_size);
+	if((ret1 || ret2) != 0){
+	        tsif_pri[tmpcfg.gpsb_id].sram_use = 0;
+	}else{
+	        tsif_pri[tmpcfg.gpsb_id].sram_use = 1;
 	}
 #endif
 
@@ -704,10 +717,13 @@ static int tcc_gpsb_tsif_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void tea_free_dma_linux(struct tea_dma_buf *tdma, struct device *dev)
+static void tea_free_dma_linux(struct tea_dma_buf *tdma, struct device *dev, int id)
 {
-#ifdef      SUPORT_USE_SRAM
-#else
+	if(tsif_pri[id].sram_use){
+		iounmap(tdma->v_addr);
+		return;
+	}
+
 	if(g_static_dma){
 		return;
 	}
@@ -718,22 +734,24 @@ static void tea_free_dma_linux(struct tea_dma_buf *tdma, struct device *dev)
 		}
 		memset(tdma, 0, sizeof(struct tea_dma_buf));
 	}
-#endif
 }
 
-static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, struct device *dev)
+static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, struct device *dev, int id)
 {
-#ifdef      SUPORT_USE_SRAM
-	tdma->buf_size = SRAM_TOT_PACKET*MPEG_PACKET_SIZE;
-	tdma->v_addr = (void *)SRAM_VIR_ADDR;
-	tdma->dma_addr = (unsigned int)SRAM_PHY_ADDR;
-	printk(KERN_DEBUG "[DEBUG][SPI] tcc_tsif: alloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
-			(unsigned int)tdma->v_addr,
-			(unsigned int)tdma->dma_addr,
-			tdma->buf_size);
-	return 0;
-#else
 	int ret = -1;
+
+	if(tsif_pri[id].sram_use){
+		tdma->buf_size = tsif_pri[id].sram_size;
+		tdma->dma_addr = tsif_pri[id].sram_addr;
+		tdma->v_addr = ioremap_wc(tdma->dma_addr, tdma->buf_size);
+		printk(KERN_DEBUG "[DEBUG][SPI] tcc_tsif: alloc DMA buffer(SRAM) @0x%X(Phy=0x%X), size:0x%X\n",
+				(unsigned int)tdma->v_addr,
+				(unsigned int)tdma->dma_addr,
+				tdma->buf_size);
+		ret = tdma->v_addr ? 0 : 1;
+		return ret;
+	}
+
 	if(g_static_dma){
 		tdma->buf_size = g_static_dma->buf_size;
 		tdma->v_addr = g_static_dma->v_addr;
@@ -742,7 +760,7 @@ static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, stru
 	}
 
 	if (tdma) {
-		tea_free_dma_linux(tdma,dev);
+		tea_free_dma_linux(tdma, dev, id);
 		tdma->buf_size = size;
 		tdma->v_addr = dma_alloc_writecombine(dev, tdma->buf_size, &tdma->dma_addr, GFP_KERNEL);
 		//printk("tcc_tsif: alloc DMA buffer @0x%X(Phy=0x%X), size:%d\n",
@@ -752,7 +770,6 @@ static int tea_alloc_dma_linux(struct tea_dma_buf *tdma, unsigned int size, stru
 		ret = tdma->v_addr ? 0 : 1;
 	}
 	return ret;
-#endif
 }
 
 static irqreturn_t tcc_gpsb_tsif_dma_handler(int irq, void *dev_id)
@@ -1047,10 +1064,6 @@ static long  tcc_gpsb_tsif_ioctl(struct file *filp, unsigned int cmd, unsigned l
 
 				tsif_pri[id].packet_read_count =  tsif_handle[id].dma_intr_packet_cnt;
 
-#ifdef      SUPORT_USE_SRAM
-				tsif_handle[id].dma_total_packet_cnt = SRAM_TOT_PACKET;
-				tsif_handle[id].dma_intr_packet_cnt = SRAM_INT_PACKET;
-#endif
 				tsif_handle[id].clear_fifo_packet(&tsif_handle[id]);
 				tsif_handle[id].q_pos = 0;
 				tsif_handle[id].cur_q_pos = 0;

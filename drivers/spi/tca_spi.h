@@ -1,6 +1,6 @@
-/* 
+/*
  * Author:  <linux@telechips.com>
- * Created: 10th Jun, 2013 
+ * Created: 10th Jun, 2013
  * Description: LINUX SPI DRIVER FUNCTIONS
  *
  * Copyright (c) Telechips, Inc.
@@ -225,14 +225,6 @@ typedef struct _GPSBPORTCFG{
 
 #define WAIT_TIME_FOR_DMA_DONE (1000 * 8)
 
-#if defined(CONFIG_MACH_TCC8800) && defined(CONFIG_DRAM_DDR3)
-//#define     SUPORT_USE_SRAM
-#define     SRAM_PHY_ADDR      0x10001000
-#define     SRAM_VIR_ADDR      0xEFF01000
-#define     SRAM_TOT_PACKET    410
-#define     SRAM_INT_PACKET    1
-#endif
-
 #pragma pack(push, 4)
 struct tca_spi_regs {
 	volatile unsigned long PORT, STAT, INTEN, MODE, CTRL, EVTCTRL, CCV, 
@@ -258,8 +250,8 @@ struct tca_spi_port_config {
 };
 
 typedef struct tca_spi_handle tca_spi_handle_t;
-typedef int (*dma_alloc_f)(struct tea_dma_buf *tdma, unsigned int size, struct device *dev);
-typedef void (*dma_free_f)(struct tea_dma_buf *tdma, struct device *dev);
+typedef int (*dma_alloc_f)(struct tea_dma_buf *tdma, unsigned int size, struct device *dev, int id);
+typedef void (*dma_free_f)(struct tea_dma_buf *tdma, struct device *dev, int id);
 
 struct tcc_dma_slave
 {
@@ -355,7 +347,7 @@ struct tca_spi_handle {
 	do {\
 		if (S) tca_spi_writel(tca_spi_readl(R + TCC_GPSB_MODE) | Hw7,R + TCC_GPSB_MODE);\
 		else tca_spi_writel(tca_spi_readl(R + TCC_GPSB_MODE) & ~Hw7,R + TCC_GPSB_MODE);\
-	} while (0) 
+	} while (0)
 
 #ifdef __cplusplus
 extern "C" {
