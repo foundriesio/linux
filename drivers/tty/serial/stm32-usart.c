@@ -853,8 +853,10 @@ static void stm32_usart_shutdown(struct uart_port *port)
 
 	stm32_usart_clr_bits(port, ofs->cr1, val);
 
-	if (stm32_port->rx_ch)
+	if (stm32_port->rx_ch) {
+		stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
 		dmaengine_terminate_sync(stm32_port->rx_ch);
+	}
 
 	free_irq(port->irq, port);
 }
