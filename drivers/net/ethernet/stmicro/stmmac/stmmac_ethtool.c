@@ -706,7 +706,7 @@ static u32 stmmac_riwt2usec(u32 riwt, struct stmmac_priv *priv)
 			return 0;
 	}
 
-	return (riwt * 256) / (clk / 1000000);
+	return DIV_ROUND_UP(riwt * 256, clk / 1000000);
 }
 
 static int stmmac_get_coalesce(struct net_device *dev,
