@@ -3121,8 +3121,7 @@ again:
 	}
 
 	if (run_all) {
-		if (!list_empty(&trans->new_bgs))
-			btrfs_create_pending_block_groups(trans, fs_info);
+		btrfs_create_pending_block_groups(trans, fs_info);
 
 		spin_lock(&delayed_refs->lock);
 		node = rb_first(&delayed_refs->href_root);
