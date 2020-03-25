@@ -693,8 +693,14 @@ static int bpf_exec_tx_verdict(struct sk_msg *msg, struct sock *sk,
 
 	policy = !(flags & MSG_SENDPAGE_NOPOLICY);
 	psock = sk_psock_get(sk);
-	if (!psock || !policy)
-		return tls_push_record(sk, flags, record_type);
+	if (!psock || !policy) {
+		err = tls_push_record(sk, flags, record_type);
+		if (err && err != -EINPROGRESS) {
+			*copied -= sk_msg_free(sk, msg);
+			tls_free_open_rec(sk);
+		}
+		return err;
+	}
 more_data:
 	enospc = sk_msg_full(msg);
 	if (psock->eval == __SK_NONE)
@@ -712,7 +718,7 @@ more_data:
 	switch (psock->eval) {
 	case __SK_PASS:
 		err = tls_push_record(sk, flags, record_type);
-		if (err < 0) {
+		if (err && err != -EINPROGRESS) {
 			*copied -= sk_msg_free(sk, msg);
 			tls_free_open_rec(sk);
 			goto out_err;
@@ -906,7 +912,7 @@ alloc_encrypted:
 					num_async++;
 				else if (ret == -ENOMEM)
 					goto wait_for_memory;
-				else if (ret == -ENOSPC)
+				else if (ctx->open_rec && ret == -ENOSPC)
 					goto rollback_iter;
 				else if (ret != -EAGAIN)
 					goto send_end;
@@ -975,11 +981,12 @@ wait_for_memory:
 		ret = sk_stream_wait_memory(sk, &timeo);
 		if (ret) {
 trim_sgl:
-			tls_trim_both_msgs(sk, orig_size);
+			if (ctx->open_rec)
+				tls_trim_both_msgs(sk, orig_size);
 			goto send_end;
 		}
 
-		if (msg_en->sg.size < required_size)
+		if (ctx->open_rec && msg_en->sg.size < required_size)
 			goto alloc_encrypted;
 	}
 
@@ -1118,11 +1125,13 @@ wait_for_sndbuf:
 wait_for_memory:
 		ret = sk_stream_wait_memory(sk, &timeo);
 		if (ret) {
-			tls_trim_both_msgs(sk, msg_pl->sg.size);
+			if (ctx->open_rec)
+				tls_trim_both_msgs(sk, msg_pl->sg.size);
 			goto sendpage_end;
 		}
 
-		goto alloc_payload;
+		if (ctx->open_rec)
+			goto alloc_payload;
 	}
 
 	if (num_async) {

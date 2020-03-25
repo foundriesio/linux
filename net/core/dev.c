@@ -2790,6 +2790,8 @@ static u16 skb_tx_hash(const struct net_device *dev,
 
 	if (skb_rx_queue_recorded(skb)) {
 		hash = skb_get_rx_queue(skb);
+		if (hash >= qoffset)
+			hash -= qoffset;
 		while (unlikely(hash >= qcount))
 			hash -= qcount;
 		return hash + qoffset;
@@ -4260,14 +4262,14 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	/* Reinjected packets coming from act_mirred or similar should
 	 * not get XDP generic processing.
 	 */
-	if (skb_cloned(skb) || skb_is_tc_redirected(skb))
+	if (skb_is_tc_redirected(skb))
 		return XDP_PASS;
 
 	/* XDP packets must be linear and must have sufficient headroom
 	 * of XDP_PACKET_HEADROOM bytes. This is the guarantee that also
 	 * native XDP provides, thus we need to do it here as well.
 	 */
-	if (skb_is_nonlinear(skb) ||
+	if (skb_cloned(skb) || skb_is_nonlinear(skb) ||
 	    skb_headroom(skb) < XDP_PACKET_HEADROOM) {
 		int hroom = XDP_PACKET_HEADROOM - skb_headroom(skb);
 		int troom = skb->tail + skb->data_len - skb->end;
@@ -7525,6 +7527,23 @@ int __dev_set_mtu(struct net_device *dev, int new_mtu)
 }
 EXPORT_SYMBOL(__dev_set_mtu);
 
+int dev_validate_mtu(struct net_device *dev, int new_mtu)
+{
+	/* MTU must be positive, and in range */
+	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
+		net_err_ratelimited("%s: Invalid MTU %d requested, hw min %d\n",
+				    dev->name, new_mtu, dev->min_mtu);
+		return -EINVAL;
+	}
+
+	if (dev->max_mtu > 0 && new_mtu > dev->max_mtu) {
+		net_err_ratelimited("%s: Invalid MTU %d requested, hw max %d\n",
+				    dev->name, new_mtu, dev->max_mtu);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /**
  *	dev_set_mtu - Change maximum transfer unit
  *	@dev: device
@@ -7539,18 +7558,9 @@ int dev_set_mtu(struct net_device *dev, int new_mtu)
 	if (new_mtu == dev->mtu)
 		return 0;
 
-	/* MTU must be positive, and in range */
-	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
-		net_err_ratelimited("%s: Invalid MTU %d requested, hw min %d\n",
-				    dev->name, new_mtu, dev->min_mtu);
-		return -EINVAL;
-	}
-
-	if (dev->max_mtu > 0 && new_mtu > dev->max_mtu) {
-		net_err_ratelimited("%s: Invalid MTU %d requested, hw max %d\n",
-				    dev->name, new_mtu, dev->max_mtu);
-		return -EINVAL;
-	}
+	err = dev_validate_mtu(dev, new_mtu);
+	if (err)
+		return err;
 
 	if (!netif_device_present(dev))
 		return -ENODEV;
@@ -8422,8 +8432,10 @@ int register_netdevice(struct net_device *dev)
 		goto err_uninit;
 
 	ret = netdev_register_kobject(dev);
-	if (ret)
+	if (ret) {
+		dev->reg_state = NETREG_UNREGISTERED;
 		goto err_uninit;
+	}
 	dev->reg_state = NETREG_REGISTERED;
 
 	__netdev_update_features(dev);

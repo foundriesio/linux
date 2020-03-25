@@ -28,6 +28,7 @@
 #include <linux/compiler.h>
 #include <linux/cache.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
 #include <asm/errno.h>
 #endif
 

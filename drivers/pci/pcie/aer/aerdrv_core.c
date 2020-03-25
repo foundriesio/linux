@@ -53,22 +53,56 @@ int pci_disable_pcie_error_reporting(struct pci_dev *dev)
 }
 EXPORT_SYMBOL_GPL(pci_disable_pcie_error_reporting);
 
+void pci_aer_clear_device_status(struct pci_dev *dev)
+{
+	u16 sta;
+
+	pcie_capability_read_word(dev, PCI_EXP_DEVSTA, &sta);
+	pcie_capability_write_word(dev, PCI_EXP_DEVSTA, sta);
+}
+
 int pci_cleanup_aer_uncorrect_error_status(struct pci_dev *dev)
 {
 	int pos;
-	u32 status;
+	u32 status, sev;
 
 	pos = dev->aer_cap;
 	if (!pos)
 		return -EIO;
 
+	if (pcie_aer_get_firmware_first(dev))
+		return -EIO;
+
+	/* Clear status bits for ERR_NONFATAL errors only */
 	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, &status);
+	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_SEVER, &sev);
+	status &= ~sev;
 	if (status)
 		pci_write_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, status);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pci_cleanup_aer_uncorrect_error_status);
+
+void pci_aer_clear_fatal_status(struct pci_dev *dev)
+{
+	int pos;
+	u32 status, sev;
+
+	pos = dev->aer_cap;
+	if (!pos)
+		return;
+
+	if (pcie_aer_get_firmware_first(dev))
+		return;
+
+	/* Clear status bits for ERR_FATAL errors only */
+	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, &status);
+	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_SEVER, &sev);
+	status &= sev;
+	if (status)
+		pci_write_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, status);
+}
 
 int pci_cleanup_aer_error_status_regs(struct pci_dev *dev)
 {
@@ -81,6 +115,9 @@ int pci_cleanup_aer_error_status_regs(struct pci_dev *dev)
 
 	pos = dev->aer_cap;
 	if (!pos)
+		return -EIO;
+
+	if (pcie_aer_get_firmware_first(dev))
 		return -EIO;
 
 	port_type = pci_pcie_type(dev);
@@ -112,7 +149,7 @@ int pci_aer_init(struct pci_dev *dev)
 static int add_error_device(struct aer_err_info *e_info, struct pci_dev *dev)
 {
 	if (e_info->error_dev_num < AER_MAX_MULTI_ERR_DEVICES) {
-		e_info->dev[e_info->error_dev_num] = dev;
+		e_info->dev[e_info->error_dev_num] = pci_dev_get(dev);
 		e_info->error_dev_num++;
 		return 0;
 	}
@@ -257,10 +294,14 @@ static void handle_error_source(struct pcie_device *aerdev,
 		if (pos)
 			pci_write_config_dword(dev, pos + PCI_ERR_COR_STATUS,
 					info->status);
+		pci_aer_clear_device_status(dev);
 	} else if (info->severity == AER_NONFATAL)
-		pcie_do_nonfatal_recovery(dev);
+		pcie_do_recovery(dev, pci_channel_io_normal,
+				 PCIE_PORT_SERVICE_AER);
 	else if (info->severity == AER_FATAL)
-		pcie_do_fatal_recovery(dev, PCIE_PORT_SERVICE_AER);
+		pcie_do_recovery(dev, pci_channel_io_frozen,
+				 PCIE_PORT_SERVICE_AER);
+	pci_dev_put(dev);
 }
 
 #ifdef CONFIG_ACPI_APEI_PCIEAER
@@ -325,9 +366,11 @@ static void aer_recover_work_func(struct work_struct *work)
 		}
 		cper_print_aer(pdev, entry.severity, entry.regs);
 		if (entry.severity == AER_NONFATAL)
-			pcie_do_nonfatal_recovery(pdev);
+			pcie_do_recovery(pdev, pci_channel_io_normal,
+					 PCIE_PORT_SERVICE_AER);
 		else if (entry.severity == AER_FATAL)
-			pcie_do_fatal_recovery(pdev, PCIE_PORT_SERVICE_AER);
+			pcie_do_recovery(pdev, pci_channel_io_frozen,
+					 PCIE_PORT_SERVICE_AER);
 		pci_dev_put(pdev);
 	}
 }
@@ -363,8 +406,9 @@ int aer_get_device_error_info(struct pci_dev *dev, struct aer_err_info *info)
 			&info->mask);
 		if (!(info->status & ~info->mask))
 			return 0;
-	} else if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
-		info->severity == AER_NONFATAL) {
+	} else if (pci_pcie_type(dev) == PCI_EXP_TYPE_ROOT_PORT ||
+	           pci_pcie_type(dev) == PCI_EXP_TYPE_DOWNSTREAM ||
+		   info->severity == AER_NONFATAL) {
 
 		/* Link is still healthy for IO reads */
 		pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS,
