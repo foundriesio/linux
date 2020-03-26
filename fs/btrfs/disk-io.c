@@ -51,6 +51,7 @@
 #include "qgroup.h"
 #include "compression.h"
 #include "tree-checker.h"
+#include "space-info.h"
 
 #ifdef CONFIG_X86
 #include <asm/cpufeature.h>

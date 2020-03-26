@@ -39,6 +39,7 @@
 #include "math.h"
 #include "sysfs.h"
 #include "qgroup.h"
+#include "space-info.h"
 
 #undef SCRAMBLE_DELAYED_REFS
 
