@@ -190,7 +190,6 @@ struct btrfs_inode {
 
 	/* Hook into fs_info->delayed_iputs */
 	struct list_head delayed_iput;
-	long delayed_iput_count;
 
 	/*
 	 * To avoid races between lockless (i_mutex not held) direct IO writes
