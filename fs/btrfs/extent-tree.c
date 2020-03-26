@@ -68,9 +68,6 @@ static int alloc_reserved_tree_block(struct btrfs_trans_handle *trans,
 				     int level, struct btrfs_key *ins);
 static int find_next_key(struct btrfs_path *path, int level,
 			 struct btrfs_key *key);
-static void dump_space_info(struct btrfs_fs_info *fs_info,
-			    struct btrfs_space_info *info, u64 bytes,
-			    int dump_block_groups);
 static int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
 				    u64 ram_bytes, u64 num_bytes, int delalloc);
 static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
@@ -4438,7 +4435,7 @@ void check_system_chunk(struct btrfs_trans_handle *trans,
 	if (left < thresh && btrfs_test_opt(fs_info, ENOSPC_DEBUG)) {
 		btrfs_info(fs_info, "left=%llu, need=%llu, flags=%llu",
 			   left, thresh, type);
-		dump_space_info(fs_info, info, 0, 0);
+		btrfs_dump_space_info(fs_info, info, 0, 0);
 	}
 
 	if (left < thresh) {
@@ -5266,8 +5263,8 @@ static int reserve_metadata_bytes(struct btrfs_root *root,
 					      orig_bytes, 1);
 
 		if (btrfs_test_opt(fs_info, ENOSPC_DEBUG))
-			dump_space_info(fs_info, block_rsv->space_info,
-					orig_bytes, 0);
+			btrfs_dump_space_info(fs_info, block_rsv->space_info,
+					      orig_bytes, 0);
 	}
 	return ret;
 }
@@ -7863,62 +7860,6 @@ out:
 	return ret;
 }
 
-#define DUMP_BLOCK_RSV(fs_info, rsv_name)				\
-do {									\
-	struct btrfs_block_rsv *__rsv = &(fs_info)->rsv_name;		\
-	spin_lock(&__rsv->lock);					\
-	btrfs_info(fs_info, #rsv_name ": size %llu reserved %llu",	\
-		   __rsv->size, __rsv->reserved);			\
-	spin_unlock(&__rsv->lock);					\
-} while (0)
-
-static void dump_space_info(struct btrfs_fs_info *fs_info,
-			    struct btrfs_space_info *info, u64 bytes,
-			    int dump_block_groups)
-{
-	struct btrfs_block_group_cache *cache;
-	int index = 0;
-
-	spin_lock(&info->lock);
-	btrfs_info(fs_info, "space_info %llu has %llu free, is %sfull",
-		   info->flags,
-		   info->total_bytes - btrfs_space_info_used(info, true),
-		   info->full ? "" : "not ");
-	btrfs_info(fs_info,
-		"space_info total=%llu, used=%llu, pinned=%llu, reserved=%llu, may_use=%llu, readonly=%llu",
-		info->total_bytes, info->bytes_used, info->bytes_pinned,
-		info->bytes_reserved, info->bytes_may_use,
-		info->bytes_readonly);
-	btrfs_info(fs_info, "total_bytes_pinned=%lld",
-		   percpu_counter_sum(&info->total_bytes_pinned));
-	spin_unlock(&info->lock);
-
-	DUMP_BLOCK_RSV(fs_info, global_block_rsv);
-	DUMP_BLOCK_RSV(fs_info, trans_block_rsv);
-	DUMP_BLOCK_RSV(fs_info, chunk_block_rsv);
-	DUMP_BLOCK_RSV(fs_info, delayed_block_rsv);
-	DUMP_BLOCK_RSV(fs_info, delayed_refs_rsv);
-
-	if (!dump_block_groups)
-		return;
-
-	down_read(&info->groups_sem);
-again:
-	list_for_each_entry(cache, &info->block_groups[index], list) {
-		spin_lock(&cache->lock);
-		btrfs_info(fs_info,
-			"block group %llu has %llu bytes, %llu used %llu pinned %llu reserved %s",
-			cache->key.objectid, cache->key.offset,
-			btrfs_block_group_used(&cache->item), cache->pinned,
-			cache->reserved, cache->ro ? "[readonly]" : "");
-		btrfs_dump_free_space(cache, bytes);
-		spin_unlock(&cache->lock);
-	}
-	if (++index < BTRFS_NR_RAID_TYPES)
-		goto again;
-	up_read(&info->groups_sem);
-}
-
 int btrfs_reserve_extent(struct btrfs_root *root, u64 ram_bytes,
 			 u64 num_bytes, u64 min_alloc_size,
 			 u64 empty_size, u64 hint_byte,
@@ -7954,7 +7895,8 @@ again:
 				  "allocation failed flags %llu, wanted %llu",
 				  flags, num_bytes);
 			if (sinfo)
-				dump_space_info(fs_info, sinfo, num_bytes, 1);
+				btrfs_dump_space_info(fs_info, sinfo,
+						      num_bytes, 1);
 		}
 	}
 
@@ -9438,7 +9380,7 @@ out:
 		btrfs_info(cache->fs_info,
 			"sinfo_used=%llu bg_num_bytes=%llu min_allocable=%llu",
 			sinfo_used, num_bytes, min_allocable_bytes);
-		dump_space_info(cache->fs_info, cache->space_info, 0, 0);
+		btrfs_dump_space_info(cache->fs_info, cache->space_info, 0, 0);
 	}
 	return ret;
 }
@@ -9936,7 +9878,7 @@ int btrfs_free_block_groups(struct btrfs_fs_info *info)
 			    space_info->bytes_reserved > 0 ||
 			    space_info->bytes_may_use > 0 ||
 			    pinned != 0))
-			dump_space_info(info, space_info, 0, 0);
+			btrfs_dump_space_info(info, space_info, 0, 0);
 		list_del(&space_info->list);
 		for (i = 0; i < BTRFS_NR_RAID_TYPES; i++) {
 			struct kobject *kobj;

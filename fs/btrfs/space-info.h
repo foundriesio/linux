@@ -125,5 +125,8 @@ void btrfs_clear_space_info_full(struct btrfs_fs_info *info);
 int btrfs_can_overcommit(struct btrfs_root *root,
 			 struct btrfs_space_info *space_info, u64 bytes,
 			 enum btrfs_reserve_flush_enum flush);
+void btrfs_dump_space_info(struct btrfs_fs_info *fs_info,
+			   struct btrfs_space_info *info, u64 bytes,
+			   int dump_block_groups);
 
 #endif /* BTRFS_SPACE_INFO_H */
