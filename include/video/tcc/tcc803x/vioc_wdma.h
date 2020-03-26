@@ -99,8 +99,6 @@ typedef struct
 #define WDMACTRL_R2YMD_SHIFT			(9)	// RGB-toYUV Converter Mode Register
 #define WDMACTRL_R2Y_SHIFT			(8)	// RGB-toYUV Converter Enable Register
 #define WDMACTRL_BR_SHIFT			(7)	// Bit-Reverse in Byte
-#define WDMACTRL_FMT10FILL_SHIFT		(7)
-#define WDMACTRL_FMT10_SHIFT			(5)
 #define WDMACTRL_FMT_SHIFT			(0)	// Image Format Register
 
 #define WDMACTRL_INTL_MASK			(0x1 << WDMACTRL_INTL_SHIFT)
@@ -117,8 +115,6 @@ typedef struct
 #define WDMACTRL_SWAP_MASK			(0x7 << WDMACTRL_SWAP_SHIFT)
 #define WDMACTRL_R2YMD_MASK			(0x3 << WDMACTRL_R2YMD_SHIFT)
 #define WDMACTRL_R2Y_MASK			(0x1 << WDMACTRL_R2Y_SHIFT)
-#define WDMACTRL_FMT10FILL_MASK			(0x1 << WDMACTRL_FMT10FILL_SHIFT)
-#define WDMACTRL_FMT10_MASK			(0x3 << WDMACTRL_FMT10_SHIFT)
 #define WDMACTRL_FMT_MASK			(0x1F << WDMACTRL_FMT_SHIFT)
 
 /*
