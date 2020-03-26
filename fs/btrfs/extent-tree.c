@@ -75,8 +75,6 @@ static int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
 				    u64 ram_bytes, u64 num_bytes, int delalloc);
 static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
 				     u64 num_bytes, int delalloc);
-static int block_rsv_use_bytes(struct btrfs_block_rsv *block_rsv,
-			       u64 num_bytes);
 static int __reserve_metadata_bytes(struct btrfs_root *root,
 				    struct btrfs_space_info *space_info,
 				    u64 orig_bytes,
@@ -5259,7 +5257,7 @@ static int reserve_metadata_bytes(struct btrfs_root *root,
 	if (ret == -ENOSPC &&
 	    unlikely(root->orphan_cleanup_state == ORPHAN_CLEANUP_STARTED)) {
 		if (block_rsv != global_rsv &&
-		    !block_rsv_use_bytes(global_rsv, orig_bytes))
+		    !btrfs_block_rsv_use_bytes(global_rsv, orig_bytes))
 			ret = 0;
 	}
 	if (ret == -ENOSPC)
@@ -5290,8 +5288,7 @@ static struct btrfs_block_rsv *get_block_rsv(
 	return block_rsv;
 }
 
-static int block_rsv_use_bytes(struct btrfs_block_rsv *block_rsv,
-			       u64 num_bytes)
+int btrfs_block_rsv_use_bytes(struct btrfs_block_rsv *block_rsv, u64 num_bytes)
 {
 	int ret = -ENOSPC;
 	spin_lock(&block_rsv->lock);
@@ -5488,7 +5485,7 @@ int btrfs_block_rsv_migrate(struct btrfs_block_rsv *src,
 {
 	int ret;
 
-	ret = block_rsv_use_bytes(src, num_bytes);
+	ret = btrfs_block_rsv_use_bytes(src, num_bytes);
 	if (ret)
 		return ret;
 
@@ -8274,7 +8271,7 @@ use_block_rsv(struct btrfs_trans_handle *trans,
 	if (unlikely(block_rsv->size == 0))
 		goto try_reserve;
 again:
-	ret = block_rsv_use_bytes(block_rsv, blocksize);
+	ret = btrfs_block_rsv_use_bytes(block_rsv, blocksize);
 	if (!ret)
 		return block_rsv;
 
@@ -8312,7 +8309,7 @@ try_reserve:
 	 */
 	if (block_rsv->type != BTRFS_BLOCK_RSV_GLOBAL &&
 	    block_rsv->space_info == global_rsv->space_info) {
-		ret = block_rsv_use_bytes(global_rsv, blocksize);
+		ret = btrfs_block_rsv_use_bytes(global_rsv, blocksize);
 		if (!ret)
 			return global_rsv;
 	}
