@@ -494,14 +494,20 @@ config TCC_DISPLAY_HDMI_LVDS
 
 endmenu	
 
+config LOGO_PRESERVE_WITHOUT_FB_INIT
+       bool "Preserve boot logo from bootloader"
+       depends on FB_TCC && TCC_HDMI_DRIVER_V2_0 && ANDROID
+       default n
+
 config TCC_VIDEO_S_FEATURE
 	bool "Enable Telechips 'S' feature for VIDEO"
-	depends on FB && (ARCH_TCC899X || ARCH_TCC901X)
+	depends on FB && (ARCH_TCC899X || ARCH_TCC901X) && ANDROID
 	select TCC_VIQE_FOR_SUB_M2M
 	select VIOC_PIXEL_MAPPER
 	select TCC_PM_LUT_DRV
 	select TCC_VSYNC_DRV_CONTROL_LUT
 	select TCC_VSYNC_DRV_CONTROL_PIXEL_MAPPER
+	select LOGO_PRESERVE_WITHOUT_FB_INIT
 	default n
 	help
 	Enable Telechips 'S' feature for VIDEO

@@ -408,6 +408,61 @@ unsigned int tca_get_main_decompressor_num(void)
 }
 EXPORT_SYMBOL(tca_get_main_decompressor_num);
 
+void vioc_reset_rdma_on_display_path(int DispNum)
+{
+	int i;
+	int scnum;
+
+	struct fb_info *info;
+	struct tccfb_info *tccfb_info;
+	struct tcc_dp_device *dp_device;
+
+	do {
+		info = registered_fb[0];
+
+		if(info == NULL) {
+			break;
+		}
+		
+		tccfb_info = info->par;
+		if(tccfb_info == NULL) {
+			break;
+		}
+		
+		if(tccfb_info->pdata.Mdp_data.DispNum == DispNum) {
+			dp_device = &tccfb_info->pdata.Mdp_data;
+		}
+		else if(tccfb_info->pdata.Sdp_data.DispNum == DispNum) {
+			dp_device = &tccfb_info->pdata.Sdp_data;
+		} else {
+			break;
+		}
+		
+		for(i = 0; i < RDMA_MAX_NUM; i++) {
+			if(dp_device->rdma_info[i].virt_addr == NULL) {
+				continue;
+			}
+			scnum = VIOC_CONFIG_GetScaler_PluginToRDMA(dp_device->rdma_info[i].blk_num);
+			if(scnum >= VIOC_SCALER0) {
+				VIOC_CONFIG_PlugOut(scnum);
+				VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_CLEAR);
+
+				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
+				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d with Scaler-%d\n", 
+					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2), get_vioc_index(scnum));
+			} else {
+				printk(KERN_DEBUG "[DBG][FBIF] reset rdma_%d\n", 
+					i + (get_vioc_index(dp_device->ddc_info.blk_num) << 2));
+				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_RESET);
+				VIOC_CONFIG_SWReset(dp_device->rdma_info[i].blk_num, VIOC_CONFIG_CLEAR);
+			}	
+		}
+	} while(0);
+}
+EXPORT_SYMBOL(vioc_reset_rdma_on_display_path);
+
 #if defined(CONFIG_VIOC_RESET_FOR_UNDERRUN)
 /*
  * TODO: Change display device reset Function
@@ -937,18 +992,23 @@ static void tca_fb_wait_for_video_rdma_eofr(struct tcc_dp_device *pdp_data)
 			case 2:
 				video_rdma_irq_id = VIOC_INTR_RD8 + RDMA_VIDEO;
 				break;
+			default:
+				video_rdma_irq_id = 0;
+				break;
 		}
 
-		vioc_intr_clear(video_rdma_irq_id, (1 << VIOC_RDMA_INTR_EOFR));
-		do {
-			irq_rdma_status = vioc_intr_get_status(video_rdma_irq_id);
-			if(irq_rdma_status & (1 << VIOC_RDMA_INTR_EOFR)) {
-				break;
+		if(video_rdma_irq_id != 0) {
+			vioc_intr_clear(video_rdma_irq_id, (1 << VIOC_RDMA_INTR_EOFR));
+			do {
+				irq_rdma_status = vioc_intr_get_status(video_rdma_irq_id);
+				if(irq_rdma_status & (1 << VIOC_RDMA_INTR_EOFR)) {
+					break;
+				}
+				udelay(1);
+			} while(--retry_count);
+			if(retry_count == 0) {
+				pr_err("[ERR][VIOC_I] %s timeout\n", __func__);
 			}
-			udelay(1);
-		} while(--retry_count);
-		if(retry_count == 0) {
-			pr_err("[ERR][VIOC_I] %s timeout\n", __func__);
 		}
 	}
 }
@@ -1554,8 +1614,13 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 	// prevent display under-run
 	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_CLEAR);
+	#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
+	#else
+	vioc_reset_rdma_on_display_path(pDisplayInfo->DispNum);
+	/* !CONFIG_VIOC_DOLBY_VISION_EDR */
+	#endif
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_CLEAR);
 
@@ -1731,6 +1796,103 @@ void tca_vioc_displayblock_timing_set(unsigned int outDevice, struct tcc_dp_devi
 		mode->ni, width, height, pDisplayInfo->FbUpdateType);
 }
 
+#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
+int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device)
+{
+	int ret = -1;
+	unsigned int sc_num;
+        volatile void __iomem *pWMIX = dp_device->wmixer_info.virt_addr;
+
+	do {
+		if(dp_device == NULL) {
+			printk(KERN_ERR "[ERR][FB] %s dp_device is NULL\r\n", __func__);
+			break;
+		}
+		pWMIX = dp_device->wmixer_info.virt_addr;
+		if(pWMIX == NULL) {
+			printk(KERN_ERR "[ERR][FB] %s pWMIX is NULL\r\n", __func__);
+			break;
+		}
+		/* set wmix */
+		#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0x3ff);
+		#else
+		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
+		#endif
+
+		#if defined(CONFIG_TCC_VIOCMG)
+		if(get_vioc_index(dp_device->ddc_info.blk_num) == DD_MAIN)
+			viocmg_set_wmix_ovp(VIOCMG_CALLERID_FB, dp_device->wmixer_info.blk_num, viocmg_get_main_display_ovp());
+		else
+		#endif
+		{
+			VIOC_WMIX_SetOverlayPriority(pWMIX, 24);
+		}
+		VIOC_WMIX_SetUpdate(pWMIX);
+
+		if(dp_device->FbUpdateType != FB_ATTACH_UPDATE) {
+			#if defined(CONFIG_HDMI_FB_ROTATE_90) || defined(CONFIG_HDMI_FB_ROTATE_180) || defined(CONFIG_HDMI_FB_ROTATE_270)
+			dp_device->FbUpdateType = FB_SC_G2D_RDMA_UPDATE;
+			#else
+			#if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) || defined(CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV)
+			#if defined(CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV)
+			dp_device->FbUpdateType = FB_SC_RDMA_UPDATE;
+			/* CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV- */
+			#else 
+			dp_device->FbUpdateType = FB_SC_M2M_RDMA_UPDATE; /* YUV output */
+			/* !CONFIG_TCC_VIOC_DISP_PATH_INTERNAL_CS_YUV- */
+			#endif
+			/* CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV || CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV - */
+			#else
+			if(dp_device->FbUpdateType != FB_RDMA_UPDATE) {
+				dp_device->FbUpdateType = FB_SC_RDMA_UPDATE;
+			}
+			/* !(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV || CONFIG_TCC_COMPOSITE_COLOR_SPACE_YUV) - */
+			#endif
+			/* !(CONFIG_HDMI_FB_ROTATE_90 || CONFIG_HDMI_FB_ROTATE_180 || CONFIG_HDMI_FB_ROTATE_270) - */
+			#endif
+
+			// patch for stb presentation window.
+			if(dp_device->FbUpdateType == FB_SC_RDMA_UPDATE) {
+				if(dp_device->DispOrder == 0) {
+					dp_device->sc_num0 = AnD_FB_SC;
+				}
+				#if defined(CONFIG_COMPONENT_PRESENTATION_WINDOW_DISPLAY_RESIZE)
+				else if(dp_device->DispOrder == 1) {
+					dp_device->sc_num0 = VIOC_SCALER4;
+				}
+				#endif
+			}
+			if(dp_device->FbUpdateType == FB_SC_RDMA_UPDATE) {
+				sc_num = VIOC_CONFIG_GetScaler_PluginToRDMA(dp_device->rdma_info[RDMA_FB].blk_num);
+				if(sc_num  != dp_device->sc_num0) {
+					printk(KERN_INFO "[INFO][FBIF] %s scaler is mismatch 0x%x : 0x%x \r\n", __func__, sc_num, dp_device->sc_num0);
+					break;
+				}
+			} else {
+				sc_num = VIOC_CONFIG_GetScaler_PluginToRDMA(dp_device->rdma_info[RDMA_FB].blk_num);
+				if(sc_num  >= VIOC_SCALER0) {
+					printk(KERN_INFO "[INFO][FBIF] %s FbUpdateType is not Scaler but scaler 0x%x is connected\r\n",  __func__, sc_num);
+					break;
+				}
+			}
+		}
+
+		dp_device->FbPowerState = true;
+
+		#if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
+		if(vioc_v_dv_get_stage() == DV_OFF || (vioc_v_dv_get_stage() != DV_OFF && dp_device->DispNum != 0))
+		#endif
+		{
+			_tca_vioc_intr_onoff(ON, dp_device->ddc_info.irq_num, dp_device->DispNum);
+		}
+		ret = 0;
+	} while(0);
+
+	return ret;
+}
+#endif
+
 void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
 								struct tcc_dp_device *pDisplayInfo,
 								stLTIMING *pstTiming,
@@ -1814,22 +1976,16 @@ void tca_vioc_displayblock_ctrl_set(unsigned int outDevice,
         	VIOC_CONFIG_SWReset(pDisplayInfo->wmixer_info.blk_num, VIOC_CONFIG_CLEAR);
         }
 	// prevent display under-run
-	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset(pDisplayInfo->rdma_info[RDMA_FB].blk_num, VIOC_CONFIG_CLEAR);
+	vioc_reset_rdma_on_display_path(pDisplayInfo->DispNum);
+	
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(pDisplayInfo->wdma_info.blk_num, VIOC_CONFIG_CLEAR);
 
-        #if 0//defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV) : pjj delete please
-	if(output_starter_state || hdmi_get_hdmimode() == DVI)
-		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
-	else
-		VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x80, 0x80, 0x00);
-        #else
+
 	#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0x3ff);
 	#else
 	VIOC_WMIX_SetBGColor(pWMIX, 0x00, 0x00, 0x00, 0xff);
-	#endif
         #endif
 
         #if defined(CONFIG_TCC_VIOCMG)

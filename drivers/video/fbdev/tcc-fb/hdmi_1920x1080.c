@@ -42,11 +42,7 @@ static int hdmi1920x1080_panel_init(struct lcd_panel *panel, struct tcc_dp_devic
 {
 	fb_pdata->FbPowerState = true;
 
-#ifdef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
-	fb_pdata->FbUpdateType = FB_SC_RDMA_UPDATE;
-#else
 	fb_pdata->FbUpdateType = FB_RDMA_UPDATE;
-#endif
 	fb_pdata->DispDeviceType = TCC_OUTPUT_HDMI;
 	return 0;
 }

@@ -41,10 +41,6 @@ config LOGO_TCC_1920X1080_CLUT224
 	depends on ANDROID
 	default n
 
-config LOGO_PRESERVE_WITHOUT_FB_INIT
-       bool "Preserve boot logo from bootloader"
-       default n
-
 config LOGO_BLACKFIN_VGA16
 	bool "16-colour Blackfin Processor Linux logo"
 	depends on BLACKFIN

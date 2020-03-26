@@ -91,15 +91,15 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/tca_lcdc.h>
 #include <video/tcc/vioc_rdma.h>
+#include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_lut.h>
 #include <video/tcc/tcc_wmixer_ioctrl.h>
 #include <video/tcc/vioc_outcfg.h>
 #include <video/tcc/vioc_ddicfg.h>	// is_VIOC_REMAP
-
 #include <video/tcc/tca_display_config.h>
-
+#include <video/tcc/vioc_global.h>
 #ifdef TCC_VIDEO_DISPLAY_DEINTERLACE_MODE
 #include "tcc_vioc_viqe_interface.h"
 #include "viqe.h"
@@ -144,8 +144,12 @@ extern void tcc_vout_hdmi_start( unsigned int type );
 extern void hdmi_set_activate_callback(void(*)(int, int), int, int);
 #endif // CONFIG_TCC_HDMI_DRIVER_V2_0
 
-extern void tcafb_activate_var(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
+#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
+static unsigned int hdmi_base_address = 0;
+extern int tca_vioc_displayblock_pre_ctrl_set(struct tcc_dp_device *dp_device);
+#endif
 
+extern void tcafb_activate_var(struct tccfb_info *fbi,  struct fb_var_screeninfo *var);
 /* Debugging stuff */
 static int debug = 0;
 #define dprintk(msg...)	if (debug) { printk("[DBG][FB] " msg); }
@@ -441,80 +445,86 @@ static void send_vsync_event(struct work_struct *work)
 
 void tccfb_extoutput_activate(int fb, int stage)
 {
-    unsigned int BaseAddr;
+	unsigned int BaseAddr = 0;
 
 	struct fb_info *info = registered_fb[fb];
-    struct tccfb_info *ptccfb_info = info->par;
-    struct tcc_dp_device *pdp_data = NULL;
+	struct tccfb_info *ptccfb_info = info->par;
+	struct tcc_dp_device *pdp_data = NULL;
 
-    if(ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-        pdp_data = &ptccfb_info->pdata.Mdp_data;
-    else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
-        pdp_data = &ptccfb_info->pdata.Sdp_data;
-    else {
+	if(ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
+		pdp_data = &ptccfb_info->pdata.Mdp_data;
+	else if(ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
+		pdp_data = &ptccfb_info->pdata.Sdp_data;
+	else {
 		if (stage == STAGE_OUTPUTSTARTER) {
 			pdp_data = &ptccfb_info->pdata.Mdp_data;
 			pr_info("[INF][FB] tccfb_extoutput_activate : Output(%d)\n", ptccfb_info->pdata.Mdp_data.DispDeviceType);
 		} else {
 			pr_err("[INF][FB] tccfb_extoutput_activate : can't find HDMI voic display block \n");
-		}
-    }
+			}
+	}
 
 	if (pdp_data == NULL) {
 		pr_err("[ERR][FB] %s: pdp_data is null\n", __func__);
 		return;
 	}
 
-#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
+	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	if(pdp_data->DispDeviceType == TCC_OUTPUT_HDMI) {
 		tca_edr_path_configure();
 	}
-#endif
+	#endif
 
-    if(pdp_data && pdp_data->FbPowerState) {
+    	if(pdp_data != NULL && pdp_data->FbPowerState) {
+		if(stage == STAGE_OUTPUTSTARTER) {
+			#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
+			if(hdmi_base_address != 0) {
+				BaseAddr = hdmi_base_address;
+				pdp_data->FbPowerState = 0;
+				printk(KERN_INFO "[INF][FB] Load bootlogo from VIQE memory at 0x%x\r\n", hdmi_base_address);
+			} else
+			#endif
+			BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
+			tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
 
-        if(stage == STAGE_OUTPUTSTARTER) {
-            BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
-            tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
+			#if defined(TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
+			tcc_vsync_reset_all();
+			#endif
+		}
+		else {
+			#if defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
+			BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
+			tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
+			#else
+			BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres * ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
+			if((pdp_data->FbBaseAddr != (unsigned int)0) && !(pdp_data->DispOrder == DD_MAIN))
+				tca_fb_activate_var(pdp_data->FbBaseAddr, &ptccfb_info->fb->var, pdp_data);
+			else
+				tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
+			#endif//
 
-            #if defined(TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
-            tcc_vsync_reset_all();
-            #endif
-        }
-        else {
-    #if defined(CONFIG_HWCOMPOSER_OVER_1_1_FOR_MID)
-            	BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres *  ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
-            tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
-    #else
-            BaseAddr = ptccfb_info->map_dma + ptccfb_info->fb->var.xres * ptccfb_info->fb->var.yoffset * ( ptccfb_info->fb->var.bits_per_pixel/8);
-            if((pdp_data->FbBaseAddr != (unsigned int)0) && !(pdp_data->DispOrder == DD_MAIN))
-                tca_fb_activate_var(pdp_data->FbBaseAddr, &ptccfb_info->fb->var, pdp_data);
-            else
-                tca_fb_activate_var(BaseAddr, &ptccfb_info->fb->var, pdp_data);
-    #endif//
-
-    #ifdef TCC_VIDEO_DISPLAY_BY_VSYNC_INT
-            //Disable video path of main display.
-            pdp_data = &ptccfb_info->pdata.Mdp_data;
-		#ifdef CONFIG_ANDROID // For Video Display using TCC_LCDC_HDMI_DISPLAY
-            tcc_vsync_hdmi_start(pdp_data, &lcd_video_started);
-    	#else
+			#ifdef TCC_VIDEO_DISPLAY_BY_VSYNC_INT
+			//Disable video path of main display.
+			pdp_data = &ptccfb_info->pdata.Mdp_data;
+			#ifdef CONFIG_ANDROID // For Video Display using TCC_LCDC_HDMI_DISPLAY
+			tcc_vsync_hdmi_start(pdp_data, &lcd_video_started);
+			#else
 			#ifdef CONFIG_VIDEO_TCC_VOUT
-            if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) != TCC_VOUT_RUNNING)
+			if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) != TCC_VOUT_RUNNING)
 			#endif
 			{
-                if(tcc_vsync_isVsyncRunning(VSYNC_MAIN) || tcc_vsync_isVsyncRunning(VSYNC_SUB0))
-	                tcc_vsync_hdmi_start(pdp_data, &lcd_video_started);
-            }
-        #endif // CONFIG_ANDROID
-    #endif // TCC_VIDEO_DISPLAY_BY_VSYNC_INT
+				if(tcc_vsync_isVsyncRunning(VSYNC_MAIN) || tcc_vsync_isVsyncRunning(VSYNC_SUB0))
+				tcc_vsync_hdmi_start(pdp_data, &lcd_video_started);
+			}
+			#endif // CONFIG_ANDROID
+			#endif // TCC_VIDEO_DISPLAY_BY_VSYNC_INT
 
-    #ifdef CONFIG_VOUT_USE_VSYNC_INT
-            if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) == TCC_VOUT_RUNNING)
-                tcc_vout_hdmi_start(pdp_data->ddc_info.blk_num);
-    #endif // CONFIG_VOUT_USE_VSYNC_INT
-        }
-    }
+			#ifdef CONFIG_VOUT_USE_VSYNC_INT
+			if(tcc_vout_get_status(pdp_data->ddc_info.blk_num) == TCC_VOUT_RUNNING)
+				tcc_vout_hdmi_start(pdp_data->ddc_info.blk_num);
+			#endif // CONFIG_VOUT_USE_VSYNC_INT
+		}
+	}
 }
 EXPORT_SYMBOL(tccfb_extoutput_activate);
 
@@ -524,10 +534,6 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 	struct tccfb_info *ptccfb_info =NULL;
 	struct tcc_dp_device *pdp_data =NULL;
         int skip_display_device = 0;
-
-        #if defined(CONFIG_TCC_HDMI_DRIVER_V2_0)
-        unsigned int vioc_clock_value;
-        #endif
 
 	info = registered_fb[0];
 	ptccfb_info = info->par;
@@ -552,10 +558,21 @@ void tccfb_output_starter(char output_type, char lcdc_num, stLTIMING *pstTiming,
 			pdp_data->DispDeviceType = TCC_OUTPUT_HDMI;
 			pdp_data->FbUpdateType = FB_SC_RDMA_UPDATE;
                         tca_vioc_displayblock_powerOn(pdp_data, skip_display_device);
-                        if(!skip_display_device) {
-                                // prevent under-run
+
+			if(!skip_display_device) {
+				// prevent under-run
                                 tca_vioc_displayblock_disable(pdp_data);
-                        }
+			}
+
+			#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
+			if(skip_display_device) {
+				if(tca_vioc_displayblock_pre_ctrl_set(pdp_data) == 0) {
+					printk(KERN_INFO "[INF][FB] %s skip because display block status is same..\r\n", __func__);
+					break;
+				}
+			}
+			#endif
+			printk(KERN_INFO "[INF][FB] %s set display block \r\n", __func__);
 			tca_vioc_displayblock_ctrl_set(VIOC_OUTCFG_HDMI, pdp_data, pstTiming, pstCtrl);
 			break;
 
@@ -2749,13 +2766,47 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 #endif
 
 	if (fbi->map_cpu) {
+		unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output, unsigned int Layer);
+
 		/* prevent initial garbage on screen */
-#if defined(CONFIG_TCC_VIDEO_S_FEATURE)
-		/* S fegture does not initialize framebuffer to black screen or kernel logo */
-		printk(KERN_ERR "[DEBUG][VIOCFB] keep bootlogo from 0x40000000 (doen't clear mem)\r\n");
-#else
-#ifndef CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT
-#if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
+		#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
+		pmap_t pmap;
+		int scnum;
+		volatile void __iomem *pSC = NULL;
+		volatile void __iomem *pWDMA = NULL;
+		
+		pmap_get_info("viqe", &pmap);
+		hdmi_base_address = (unsigned int)pmap.base;
+		scnum = tca_get_scaler_num(TCC_OUTPUT_HDMI, RDMA_VIDEO);
+
+		pSC = VIOC_SC_GetAddress(scnum);
+		pWDMA = VIOC_WDMA_GetAddress(fbi->pdata.Mdp_data.DispNum);
+		if(hdmi_base_address != 0 && pWDMA != NULL && pSC != NULL) {
+			VIOC_CONFIG_PlugOut(scnum);
+			VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_CLEAR);
+
+			VIOC_SC_SetBypass (pSC, OFF);
+			VIOC_SC_SetDstSize (pSC, fbi->fb->var.xres, fbi->fb->var.yres);
+			VIOC_SC_SetOutSize (pSC, fbi->fb->var.xres, fbi->fb->var.yres);
+			VIOC_CONFIG_PlugIn(scnum, VIOC_WDMA | get_vioc_index(fbi->pdata.Mdp_data.DispNum));
+			
+			VIOC_WDMA_SetImageFormat(pWDMA, (fbi->fb->var.bits_per_pixel==32)?TCC_LCDC_IMG_FMT_RGB888:TCC_LCDC_IMG_FMT_RGB565);
+			VIOC_WDMA_SetImageSize(pWDMA, fbi->fb->var.xres, fbi->fb->var.yres);
+			VIOC_WDMA_SetImageOffset(pWDMA, (fbi->fb->var.bits_per_pixel==32)?TCC_LCDC_IMG_FMT_RGB888:TCC_LCDC_IMG_FMT_RGB565, fbi->fb->var.xres);
+			VIOC_WDMA_SetImageBase(pWDMA, hdmi_base_address, 0, 0);
+			VIOC_SC_SetUpdate (pSC);
+			VIOC_WDMA_SetImageEnable(pWDMA, 0);
+			mdelay(50);
+			VIOC_CONFIG_PlugOut(scnum);
+
+			printk(KERN_INFO "[INF][FB] Capture bootlogo to VIQE memory at 0x%x\r\n", hdmi_base_address);
+		} else {
+			printk(KERN_INFO "[INF][FB] SKIP Capture bootlogo to VIQE memory\r\n");
+		}
+		/* CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT */
+		#else
+		#if !defined(CONFIG_LOGO) && defined(CONFIG_PLATFORM_AVN) && !defined(CONFIG_ANDROID)
 		volatile void __iomem * pWDMA;
 		pWDMA = VIOC_WDMA_GetAddress(fbi->pdata.Mdp_data.DispNum);
 		VIOC_WDMA_SetImageFormat(pWDMA, (fbi->fb->var.bits_per_pixel==32)?TCC_LCDC_IMG_FMT_RGB888:TCC_LCDC_IMG_FMT_RGB565);
@@ -2764,12 +2815,14 @@ static int __init tccfb_map_video_memory(struct tccfb_info *fbi, int plane)
 		VIOC_WDMA_SetImageBase(pWDMA, (unsigned int)fbi->map_dma, 0, 0);
 		VIOC_WDMA_SetImageEnable(pWDMA, 0);
 		dprintk("%s: keep bootlogo (doen't clear mem)\n", __func__);
-#else
+		/* !CONFIG_LOGO && CONFIG_PLATFORM_AVN && !CONFIG_ANDROID */
+		#else
 		memset_io(fbi->map_cpu, 0x00, fbi->map_size);
 		dprintk("%s: clear fb mem\n", __func__);
-#endif
-#endif
-#endif // CONFIG_TCC_VIDEO_S_FEATURE
+		/* !(!CONFIG_LOGO && CONFIG_PLATFORM_AVN && !CONFIG_ANDROID) */
+		#endif
+		/* !CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT */
+		#endif
 		fbi->screen_dma		= fbi->map_dma;
 		fbi->fb->screen_base	= fbi->map_cpu;
 		fbi->fb->fix.smem_start  = fbi->screen_dma;
@@ -3097,7 +3150,9 @@ static int tccfb_probe(struct platform_device *pdev)
 #endif
 #ifdef CONFIG_ANDROID
 	#ifdef CONFIG_PLATFORM_STB
+	#if !defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
 	tcafb_activate_var(info, &fbinfo->var);
+	#endif
 	tccfb_set_par(fbinfo);
 	#endif
 #else	/* Linux */
