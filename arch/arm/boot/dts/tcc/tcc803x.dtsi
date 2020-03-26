@@ -3618,4 +3618,9 @@
 
 	/* ISDB-T */
 	tcc_isdbt_ctrl: tcc_isdbt_ctrl{};
+
+	boot_time: boot_time {
+		compatible = "telechips,boot_time";
+		status = "disabled";
+	};
 };

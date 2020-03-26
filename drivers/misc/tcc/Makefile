@@ -22,3 +22,5 @@ endif
 obj-y				+= tcc_dsp/
 
 obj-$(CONFIG_VIOC_CHROMA_INTERPOLATOR) += chromainterpolator_drv.o
+
+obj-$(CONFIG_BOOT_TIME) += boot_time.o
