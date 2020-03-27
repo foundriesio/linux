@@ -65,10 +65,135 @@ struct lut_drv_type {
 	#endif
 };
 
+enum {
+	EM_MAPPING_INDEX_RDMA00 = 0,   /*0x00 	VRDMA00 WMIX0 path */
+	EM_MAPPING_INDEX_RDMA01,       /*0x01	VRDMA01 WMIX0 path */
+	EM_MAPPING_INDEX_RDMA02,       /*0x02	VRDMA02 WMIX0 path */
+	EM_MAPPING_INDEX_RDMA03,       /*0x03	VRDMA03 WMIX0 path */
+	EM_MAPPING_INDEX_RDMA04,       /*0x04	GRDMA04 WMIX1 path */
+	EM_MAPPING_INDEX_RDMA05,       /*0x05	GRDMA05 WMIX1 path */
+	EM_MAPPING_INDEX_RDMA06,       /*0x06	VRDMA06 WMIX1 path */
+	EM_MAPPING_INDEX_RDMA07,       /*0x07	VRDMA07 WMIX1 path */
+	EM_MAPPING_INDEX_RDMA08,       /*0x08	GRDMA08 WMIX2 path */
+	EM_MAPPING_INDEX_RDMA09,       /*0x09	GRDMA09 WMIX2 path */
+	EM_MAPPING_INDEX_RDMA10 = 10,  /*0x0A	VRDMA10 WMIX2 path */
+	EM_MAPPING_INDEX_RDMA11,       /*0x0B	VRDMA11 WMIX2 path */
+	EM_MAPPING_INDEX_RDMA12,       /*0x0C	VRDMA12 WMIX3 path */
+	EM_MAPPING_INDEX_RDMA13,       /*0x0D	GRDMA13 WMIX3 path */
+	EM_MAPPING_INDEX_RDMA14,       /*0x0E	VRDMA14 WMIX4 path */
+	EM_MAPPING_INDEX_RDMA15,       /*0x0F	GRDMA15 WMIX4 path */
+	EM_MAPPING_INDEX_VIN00,        /*0x10	VIDEOIN0 WMIX5 path */
+	EM_MAPPING_INDEX_RDMA16,       /*0x11	GRDMA16 WMIX5 path */
+	EM_MAPPING_INDEX_VIN01,        /*0x12	VIDEOIN1 WMIX6 path */
+	EM_MAPPING_INDEX_RDMA17,       /*0x13	GRDMA17 WMIX6 path */
+	EM_MAPPING_INDEX_WDMA00 = 20,  /*0x14	WMIX0 VWDMA0 path */
+	EM_MAPPING_INDEX_WDMA01,       /*0x15	WMIX1 VWDMA1 path */
+	EM_MAPPING_INDEX_WDMA02,       /*0x16	WMIX2V WDMA2 path */
+	EM_MAPPING_INDEX_WDMA03,       /*0x17	WMIX3 VWDMA3 path */
+	EM_MAPPING_INDEX_WDMA04,       /*0x18	WMIX4 VWDMA4 path */
+	EM_MAPPING_INDEX_WDMA05,       /*0x19	WMIX5 VWDMA5 path */
+	EM_MAPPING_INDEX_WDMA06,       /*0x1A	WMIX5 VWDMA6 path */
+	EM_MAPPING_INDEX_WDMA07,       /*0x1B	WMIX6 VWDMA7 path */
+	EM_MAPPING_INDEX_WDMA08,       /*0x1C	WMIX6 VWDMA8 path */
+	EM_MAPPING_INDEX_MAX,
+};
+
 struct lut_drv_type *lut_api = NULL;
 
+static unsigned int lut_mapping_data[EM_MAPPING_INDEX_MAX];
+
+static void lut_drv_fill_mapping_table(void)
+{
+	#if defined(VIOC_RDMA00)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA00] = VIOC_RDMA00;
+	#endif
+	#if defined(VIOC_RDMA01)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA01] = VIOC_RDMA01;
+	#endif
+	#if defined(VIOC_RDMA02)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA02] = VIOC_RDMA02;
+	#endif
+	#if defined(VIOC_RDMA03)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA03] = VIOC_RDMA03;
+	#endif
+	#if defined(VIOC_RDMA04)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA04] = VIOC_RDMA04;
+	#endif
+	#if defined(VIOC_RDMA05)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA05] = VIOC_RDMA05;
+	#endif
+	#if defined(VIOC_RDMA06)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA06] = VIOC_RDMA06;
+	#endif
+	#if defined(VIOC_RDMA07)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA07] = VIOC_RDMA07;
+	#endif
+	#if defined(VIOC_RDMA08)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA08] = VIOC_RDMA08;
+	#endif
+	#if defined(VIOC_RDMA09)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA09] = VIOC_RDMA09;
+	#endif
+	#if defined(VIOC_RDMA10)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA10] = VIOC_RDMA10;
+	#endif
+	#if defined(VIOC_RDMA11)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA11] = VIOC_RDMA11;
+	#endif
+	#if defined(VIOC_RDMA12)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA12] = VIOC_RDMA12;
+	#endif
+	#if defined(VIOC_RDMA13)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA13] = VIOC_RDMA13;
+	#endif
+	#if defined(VIOC_RDMA14)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA14] = VIOC_RDMA14;
+	#endif
+	#if defined(VIOC_RDMA15)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA15] = VIOC_RDMA15;
+	#endif
+	#if defined(VIOC_VIN00)
+	lut_mapping_data[EM_MAPPING_INDEX_VIN00] = VIOC_VIN00;
+	#endif
+	#if defined(VIOC_RDMA16)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA16] = VIOC_RDMA16;
+	#endif
+	#if defined(VIOC_VIN01)
+	lut_mapping_data[EM_MAPPING_INDEX_VIN01] = VIOC_VIN01;
+	#endif
+	#if defined(VIOC_RDMA17)
+	lut_mapping_data[EM_MAPPING_INDEX_RDMA17] = VIOC_RDMA17;
+	#endif
+	#if defined(VIOC_WDMA00)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA00] = VIOC_WDMA00;
+	#endif
+	#if defined(VIOC_WDMA01)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA01] = VIOC_WDMA01;
+	#endif
+	#if defined(VIOC_WDMA02)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA02] = VIOC_WDMA02;
+	#endif
+	#if defined(VIOC_WDMA03)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA03] = VIOC_WDMA03;
+	#endif
+	#if defined(VIOC_WDMA04)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA04] = VIOC_WDMA04;
+	#endif
+	#if defined(VIOC_WDMA05)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA05] = VIOC_WDMA05;
+	#endif
+	#if defined(VIOC_WDMA06)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA06] = VIOC_WDMA06;
+	#endif
+	#if defined(VIOC_WDMA07)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA07] = VIOC_WDMA07;
+	#endif
+	#if defined(VIOC_WDMA08)
+	lut_mapping_data[EM_MAPPING_INDEX_WDMA08] = VIOC_WDMA08;
+	#endif
+}
+
 static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch);
-static int lut_drv_set_plugin_extension(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch);
 
 /* External APIs */
 /* if lut is not plugged then return value will be -1 */
@@ -103,17 +228,26 @@ int lut_drv_api_set_plugin(unsigned int lut_number, int plugin, int plug_in_ch)
 }
 EXPORT_SYMBOL(lut_drv_api_set_plugin);
 
-int lut_drv_api_set_plugin_extension(unsigned int lut_number, int plugin, int plug_in_ch)
+int lut_drv_api_set_plugin_with_vioc_type(unsigned int lut_number, int plugin, int plugComp)
 {
 	int ret = -1;
+	int mapping_index;
 	if(lut_api != NULL) {
-		ret = lut_drv_set_plugin_extension(lut_api, lut_number, plugin, plug_in_ch);
+		for(mapping_index = 0; mapping_index < EM_MAPPING_INDEX_MAX; mapping_index++) {
+			if(plugComp == lut_mapping_data[mapping_index]) {
+				break;
+			}
+		}
+
+		if(mapping_index < EM_MAPPING_INDEX_MAX) {
+			ret = lut_drv_set_plugin(lut_api, lut_number, plugin, mapping_index);
+		}
 	} else {
 		printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s may be lut driver does not probed\r\n", __func__);
 	}
 	return ret;
 }
-EXPORT_SYMBOL(lut_drv_api_set_plugin_extension);
+EXPORT_SYMBOL(lut_drv_api_set_plugin_with_vioc_type);
 
 /* Internal APIs */
 static unsigned int lut_get_real_lut_table_number(unsigned int input_lut_number)
@@ -156,10 +290,13 @@ static unsigned int lut_get_real_lut_table_number(unsigned int input_lut_number)
 	return lut_number;
 }
 
+/*
+ * This api plugin RDMA/WDMA/VIN to LUT
+ */
 static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch)
 {
 	int ret = -1;
-
+	unsigned int plugComp;
 	do {
 		if(lut == NULL) {
 			break;
@@ -186,55 +323,21 @@ static int lut_drv_set_plugin(struct lut_drv_type *lut, unsigned int lut_number,
 			#if TCC_LUT_DEBUG
 			printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
 			#endif
-			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, VIOC_RDMA + plug_in_ch) < 0) {
-				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s failed plugin lut_number(%d) and ch(%d)\r\n", 
-					__func__, VIOC_LUT + lut_number, plug_in_ch);
+
+			if(plug_in_ch >= EM_MAPPING_INDEX_MAX) {
+				printk(KERN_INFO "[INF]\x1b[1;38m[LUT]\x1b[0m %s (%d) is out of range on LUT\r\n", __func__, plug_in_ch);
 				break;
 			}
-			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
-		}
-		ret = 0;
-	}while(0);
-	return ret;
-}
 
-/*
- * This api plugin RDMA/WDMA/VIN to LUT
- * plugin_in_ch : VIOC_RDMA + num, VIOC_WDMA + num or VIOC_VIN + num
-*/
-static int lut_drv_set_plugin_extension(struct lut_drv_type *lut, unsigned int lut_number, int plugin, int plug_in_ch)
-{
-	int ret = -1;
+			plugComp = lut_mapping_data[plug_in_ch];
+			if(get_vioc_type(plugComp) == 0) {
+				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s does not support ch(%d)\r\n", __func__, plugComp);
+				break;
+			} 
 
-	do {
-		if(lut == NULL) {
-			break;
-		}
-		if(lut_number <= lut->dev_max) {
-			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
-							__func__, lut_number);
-			break;
-		}
-
-		if(lut_number > lut->vioc_max) {
-			printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s lut number %d is out of range\r\n",
-							__func__, lut_number);
-			break;
-		}
-
-		if(!plugin) {
-			#if TCC_LUT_DEBUG
-			printk(KERN_ERR "[INF]\x1b[1;38m[LUT]\x1b[0m %s disable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
-			#endif
-			tcc_set_lut_enable(VIOC_LUT + lut_number, 0);
-		}
-		else	{
-			#if TCC_LUT_DEBUG
-			printk(KERN_ERR "[INF]\x1b[1;38m[LUT]\x1b[0m %s enable lut_number(%d)\r\n", __func__, VIOC_LUT + lut_number);
-			#endif
-			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, plug_in_ch) < 0) {
+			if(tcc_set_lut_plugin(VIOC_LUT + lut_number, plugComp) < 0) {
 				printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s failed plugin lut_number(%d) and ch(%d)\r\n", 
-					__func__, VIOC_LUT + lut_number, plug_in_ch);
+					__func__, VIOC_LUT + lut_number, plugComp);
 				break;
 			}
 			tcc_set_lut_enable(VIOC_LUT + lut_number, 1);
@@ -429,20 +532,6 @@ static long lut_drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 					break;
 				}
 				ret = lut_drv_set_plugin(lut, lut_cmd.lut_number, lut_cmd.enable, lut_cmd.lut_plug_in_ch);
-			}
-			break;
-
-		case TCC_LUT_PLUG_IN_EXT:
-			{
-				struct VIOC_LUT_PLUG_IN_SET lut_cmd;
-
-				if(copy_from_user((void *)&lut_cmd, (const void *)arg, sizeof(lut_cmd)))
-					break;
-				if(lut_cmd.lut_number == (unsigned int)-1 ) {
-					printk(KERN_ERR "[ERR]\x1b[1;38m[LUT]\x1b[0m %s TCC_LUT_ONOFF invalid lut number[%d]\r\n", __func__, lut_cmd.lut_number);
-					break;
-				}
-				ret = lut_drv_set_plugin_extension(lut, lut_cmd.lut_number, lut_cmd.enable, lut_cmd.lut_plug_in_ch);
 			}
 			break;
 
@@ -726,6 +815,8 @@ static int lut_drv_probe(struct platform_device *pdev)
 	ret = misc_register(lut->misc);
 	if (ret)
 		goto err_misc_register;
+
+	lut_drv_fill_mapping_table();
 
 	platform_set_drvdata(pdev, lut);
 
