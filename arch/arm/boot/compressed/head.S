@@ -148,6 +148,34 @@ start:
 1:
  ARM_BE8(	setend	be		)	@ go BE8 if compiled for BE8
  AR_CLASS(	mrs	r9, cpsr	)
+
+#ifdef CONFIG_BOOT_TIME
+##########################boot time check########################
+ .arch_extension sec
+
+		push {r0-r4}
+
+		ldr	r0, =0x82007003
+		mov	r1,#0x0
+		push	{r4}
+		smc	#0
+		pop	{r4}
+
+		ldr	r2, =0x16600000
+
+		ldr     r3, =0x4a
+		str	r3,[r2]
+		ldr	r3, =0x59
+		str	r3,[r2]
+		ldr	r3, =0x50
+		str	r3,[r2]
+		ldr	r3, =0x0
+		str	r3,[r2]
+
+
+		pop	{r0-r4}
+#################################################################
+#endif
 #ifdef CONFIG_ARM_VIRT_EXT
 		bl	__hyp_stub_install	@ get into SVC mode, reversibly
 #endif

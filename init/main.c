@@ -95,6 +95,10 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
+#ifdef CONFIG_BOOT_TIME
+#include <linux/arm-smccc.h>
+#endif
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -894,9 +898,17 @@ static void __init do_initcall_level(int level)
 static void __init do_initcalls(void)
 {
 	int level;
+#ifdef CONFIG_BOOT_TIME
+	struct arm_smccc_res res;
+	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
+#endif
 
 	for (level = 0; level < ARRAY_SIZE(initcall_levels) - 1; level++)
 		do_initcall_level(level);
+
+#ifdef CONFIG_BOOT_TIME
+	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
+#endif
 }
 
 /*
@@ -995,6 +1007,11 @@ static inline void mark_readonly(void)
 static int __ref kernel_init(void *unused)
 {
 	int ret;
+#ifdef CONFIG_BOOT_TIME
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
+#endif
 
 	kernel_init_freeable();
 	/* need to finish all async __init code before freeing the memory */
@@ -1006,6 +1023,10 @@ static int __ref kernel_init(void *unused)
 	numa_default_policy();
 
 	rcu_end_inkernel_boot();
+
+#ifdef CONFIG_BOOT_TIME
+	arm_smccc_smc(0x82007003, 0, 0, 0, 0, 0, 0, 0, &res);
+#endif
 
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
