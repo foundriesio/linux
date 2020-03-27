@@ -1,3 +1,3 @@
 # The following upstream raspberrypi releases have been ported:
 [upstream-raspberrypi]:
-    rpi-5.4.y = fcbb4b5861f3 ("overlays: sc16ic750-i2c: Fix xtal parameter") [2020-03-09]
+    rpi-5.4.y = c0b739abbc13 ("drm/modes: parse_cmdline: Explicitly memset the passed in drm_cmdline_mode struct") [2020-03-27]
