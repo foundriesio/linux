@@ -25,6 +25,8 @@
 #include <linux/arm-smccc.h>
 #include <linux/proc_fs.h>
 
+//#include <linux/ioctl.h>
+
 #include <linux/uaccess.h> //copy_to_*
 #include <linux/slab.h> // kmalloc
 
@@ -33,18 +35,14 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 
-#define BOOT_STAMP_DESCRIPTION          0xF0000001
-#define BOOT_STAMP_DESCRIPTION_ALL      0xF0000002
-#define BOOT_TIME                       0xF0000003
-#define GET_BOOT_STAMP_NUM              0xF0000004
-#define GET_CURRENT_TIME_VAL		0xF0000005
-#define GET_INITCALL_DONE		0xF0000006
-
-#define TIMER_TC32MCNT_ADDR		0x14300094
-
 #define START_MP_INDEX			1
 
 static int start_mp = 0;
+const unsigned int *property_temp=0;
+unsigned int smc_time_val=0;
+unsigned int smc_time_num=0;
+
+static void __iomem *timer_tc32mcnt_addr = NULL;
 
 #if defined(CONFIG_TCC803X_CA7S)
 module_param(start_mp, int, 0644);
@@ -124,12 +122,21 @@ struct boot_time{
 
 };
 
+#define BOOT_TIME_IOC_MAGIC 'b'
+
+#define BOOT_STAMP_DESCRIPTION          _IOWR(BOOT_TIME_IOC_MAGIC, 1, struct boot_time)
+#define BOOT_STAMP_DESCRIPTION_ALL      _IOWR(BOOT_TIME_IOC_MAGIC, 2, struct boot_time)
+#define BOOT_TIME                       _IOWR(BOOT_TIME_IOC_MAGIC, 3, struct boot_time)
+#define GET_BOOT_STAMP_NUM              _IOR(BOOT_TIME_IOC_MAGIC, 4, struct boot_time)
+#define GET_CURRENT_TIME_VAL            _IOR(BOOT_TIME_IOC_MAGIC, 5, struct boot_time)
+#define GET_INITCALL_DONE               _IOR(BOOT_TIME_IOC_MAGIC, 6, struct boot_time)
+
+
 static long boot_time_ioctl(struct file *flip, unsigned int cmd, unsigned long arg){
 
 	int ret = -ENOTTY;
 	struct boot_time boot_time_data;
 	struct arm_smccc_res res;
-	unsigned int timer_tc32mcnt_addr=0;
 
 	switch(cmd){
 		case BOOT_STAMP_DESCRIPTION:
@@ -140,13 +147,13 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd, unsigned long a
 
 		case BOOT_TIME:
 			copy_from_user(&boot_time_data, (struct boot_time *)arg, sizeof(struct boot_time));
-			arm_smccc_smc(0x82007004, (unsigned long)boot_time_data.boot_stamp_num, 0, 0, 0, 0, 0, 0, &res);
+			arm_smccc_smc(smc_time_val, (unsigned long)boot_time_data.boot_stamp_num, 0, 0, 0, 0, 0, 0, &res);
 			boot_time_data.time_in_us=(uint32_t)res.a1;
 			copy_to_user((struct boot_time *)arg, &boot_time_data, sizeof(struct boot_time));
 			break;
 
 		case GET_BOOT_STAMP_NUM:
-			arm_smccc_smc(0x82007005, 0, 0, 0, 0, 0, 0, 0, &res);
+			arm_smccc_smc(smc_time_num, 0, 0, 0, 0, 0, 0, 0, &res);
 
 			boot_time_data.boot_stamp_desc_num = sizeof(boot_stamp_desc)/4;
 			boot_time_data.boot_stamp_time_num = res.a0;
@@ -156,12 +163,11 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd, unsigned long a
 			break;
 
 		case GET_CURRENT_TIME_VAL:
-                        timer_tc32mcnt_addr=ioremap(TIMER_TC32MCNT_ADDR, 0x4);
                         boot_time_data.current_time_val=readl(timer_tc32mcnt_addr);
 #if defined(CONFIG_TCC803X_CA7S)
                         boot_time_data.current_time_val+=start_mp;
 #else
-			arm_smccc_smc(0x82007004, (unsigned long)START_MP_INDEX, 0, 0, 0, 0, 0, 0, &res);
+			arm_smccc_smc(smc_time_val, (unsigned long)START_MP_INDEX, 0, 0, 0, 0, 0, 0, &res);
 			boot_time_data.current_time_val+=(uint32_t)res.a1;
 #endif
 
@@ -173,7 +179,7 @@ static long boot_time_ioctl(struct file *flip, unsigned int cmd, unsigned long a
 #if defined(CONFIG_TCC803x_CA7S)
 			boot_time_data.basic_setup_done_time+=start_mp;
 #else
-                        arm_smccc_smc(0x82007004, (unsigned long)START_MP_INDEX, 0, 0, 0, 0, 0, 0, &res);
+                        arm_smccc_smc(smc_time_val, (unsigned long)START_MP_INDEX, 0, 0, 0, 0, 0, 0, &res);
                         boot_time_data.basic_setup_done_time+=(uint32_t)res.a1;
 #endif
 
@@ -233,11 +239,17 @@ static int boot_time_probe(struct platform_device *pdev){
 
 	struct device *dev = &pdev->dev;
 	int error=0;
-  
+
 #if 0
 	error = sysfs_create_group(&pdev->dev.kobj, &boot_time_attr_group);
 #endif
-  
+
+	timer_tc32mcnt_addr = of_iomap(pdev->dev.of_node, 0);
+	property_temp = of_get_property(pdev->dev.of_node, "smc-time-val", NULL);
+	smc_time_val = be32_to_cpup(property_temp);
+	property_temp = of_get_property(pdev->dev.of_node, "smc-time-num", NULL);
+	smc_time_num = be32_to_cpup(property_temp);
+
 	if((alloc_chrdev_region(&boot_time_devt, 0, 1, "Boot_Time_Dev")) <0){
 		printk(KERN_INFO "Cannot allocate major number\n");
 		error=1;

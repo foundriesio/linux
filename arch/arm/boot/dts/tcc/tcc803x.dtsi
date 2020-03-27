@@ -3621,6 +3621,9 @@
 
 	boot_time: boot_time {
 		compatible = "telechips,boot_time";
+		reg = <0x14300094 0x4>;
+		smc-time-val = <0x82007004>;
+		smc-time-num = <0x82007005>;
 		status = "disabled";
 	};
 };
