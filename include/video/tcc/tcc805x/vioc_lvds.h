@@ -1121,4 +1121,6 @@ extern void VIOC_LVDS_WRAP_SetDataSwap(unsigned int ch, unsigned int set);
 extern void VIOC_LVDS_WRAP_SetMuxOutput(MUX_TYPE mux, unsigned int ch, unsigned int select,unsigned int enable);
 extern void VIOC_LVDS_WRAP_SetAccessCode(void);
 extern void VIOC_LVDS_WRAP_ResetPHY(unsigned int port, unsigned int reset);
+extern void VIOC_LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE]);
+extern void VIOC_LVDS_WRAP_SetSyncPolarity(unsigned int sync);
 #endif

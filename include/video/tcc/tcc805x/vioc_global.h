@@ -46,7 +46,7 @@
 #define VIOC_DISP1			(0x0101)
 #define VIOC_DISP2			(0x0102)
 #define VIOC_DISP3			(0x0103)
-#define VIOC_DISP_MAX			(0x0003)
+#define VIOC_DISP_MAX			(0x0004)
 
 /* RDMA : 0x02XX */
 #define VIOC_RDMA			(0x0200)
@@ -118,7 +118,7 @@
 #define VIOC_WDMA11			(0x070B)
 #define VIOC_WDMA12			(0x070C)
 #define VIOC_WDMA13			(0x070D)
-#define VIOC_WDMA_MAX			(0x000C)
+#define VIOC_WDMA_MAX			(0x000E)
 
 /* DEINTL_S : 0x08XX */
 #define VIOC_DEINTLS			(0x0800)
@@ -148,7 +148,7 @@
 #define VIOC_VIN61			(0x0A0D)
 #define VIOC_VIN70			(0x0A0E)
 #define VIOC_VIN71			(0x0A0F)
-#define VIOC_VIN_MAX			(0x000E)
+#define VIOC_VIN_MAX			(0x0010)
 
 /* LUT DEV : 0x0BXX */
 #define VIOC_LUT			(0x0B00)

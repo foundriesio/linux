@@ -38,6 +38,9 @@
 #define DDICFG_TYPE_HDMNI		(2)
 #define DDICFG_TYPE_NTSCPAL		(1)
 #define DDICFG_TYPE_VIOC		(0)
+/* for TCC805X */
+#define DDICFG_TYPE_DP_AXI		(3)
+#define DDICFG_TYPE_ISP_AXI		(2)
 
 /*
  * Register offset

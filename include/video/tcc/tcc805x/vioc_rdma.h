@@ -169,22 +169,6 @@
 #define RDMAOFFS_OFFSET0_MASK		(0xFFFF << RDMAOFFS_OFFSET0_SHIFT)
 
 /*
- * Misc. Register for Each Image
- *
-#define RDMAMISC_ISSUE_SHIFT		(17)		// Command Issue count
-#define RDMAMISC_R2YMD_SHIFT		(12)		// R2Y Converter Mode
-#define RDMAMISC_Y2RMD_SHIFT		(8)			// Y2R Converter Mode
-#define RDMAMISC_FMT10_SHIFT		(5)			// Data format type
-#define RDMAMISC_FMT_SHIFT			(0)			// Image format
-
-#define RDMAMISC_ISSUE_MASK			(0xFFF << RDMAMISC_ISSUE_SHIFT)
-#define RDMAMISC_R2YMD_MASK			(0x7 << RDMAMISC_R2YMD_SHIFT)
-#define RDMAMISC_Y2RMD_MASK			(0x7 << RDMAMISC_Y2RMD_SHIFT)
-#define RDMAMISC_FMT10_MASK			(0x7 << RDMAMISC_FMT10_SHIFT)
-#define RDMAMISC_FMT_MASK			(0x1F << RDMAMISC_FMT_SHIFT)
-*/
-
-/*
  * SCALE Registers for each Image
  */
 #define RDMASCALE_ISSUE_SHIFT       (20)        // Command Issue count

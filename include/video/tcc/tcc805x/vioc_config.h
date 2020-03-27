@@ -461,15 +461,15 @@
 #define CFG_MISC0_RD14_SHIFT				(31)	// SHOULD BE 0
 #define CFG_MISC0_RD12_SHIFT				(30)	// SHOULD BE 0
 #define CFG_MISC0_MIX60_SHIFT				(28)	// SHOULD BE 0
-#define CFG_MISC0_MIX50_SHIFT				(26)	// WMIX5 Path Control for 0��?th Input Channel
+#define CFG_MISC0_MIX50_SHIFT				(26)	// WMIX5 Path Control for 0'th Input Channel
 #define CFG_MISC0_MIX40_SHIFT				(24)	// SHOULD BE 0
-#define CFG_MISC0_MIX30_SHIFT				(22)	// WMIX3 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX23_SHIFT				(21)	// WMIX2 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX20_SHIFT				(20)	// WMIX2 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX13_SHIFT				(19)	// WMIX1 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX10_SHIFT				(18)	// WMIX1 Path Control for 0��?th Input Channel
-#define CFG_MISC0_MIX03_SHIFT				(17)	// WMIX0 Path Control for 3��?rd Input Channel
-#define CFG_MISC0_MIX00_SHIFT				(16)	// WMIX0 Path Control for 0��?th Input Channel
+#define CFG_MISC0_MIX30_SHIFT				(22)	// WMIX3 Path Control for 0'th Input Channel
+#define CFG_MISC0_MIX23_SHIFT				(21)	// WMIX2 Path Control for 3'rd Input Channel
+#define CFG_MISC0_MIX20_SHIFT				(20)	// WMIX2 Path Control for 0'th Input Channel
+#define CFG_MISC0_MIX13_SHIFT				(19)	// WMIX1 Path Control for 3'rd Input Channel
+#define CFG_MISC0_MIX10_SHIFT				(18)	// WMIX1 Path Control for 0'th Input Channel
+#define CFG_MISC0_MIX03_SHIFT				(17)	// WMIX0 Path Control for 3'rd Input Channel
+#define CFG_MISC0_MIX00_SHIFT				(16)	// WMIX0 Path Control for 0'th Input Channel
 #define CFG_MISC0_L3_EVS_SEL_SHIFT			(12)	// Select VS signal for Display Device Output Port 3
 #define CFG_MISC0_L2_EVS_SEL_SHIFT			(8)	// Select VS signal for Display Device Output Port 2
 #define CFG_MISC0_L1_EVS_SEL_SHIFT			(4)	// Select VS signal for Display Device Output Port 1
