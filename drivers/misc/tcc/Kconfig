@@ -52,6 +52,11 @@ config CLKOUT_TCC_SAMPLE
         help
                 Telechips clkout sample driver.
 
+config BOOT_TIME
+	default n
+	bool "TCC boot time driver"
+	help
+		TCC boot time driver
 
 source "drivers/misc/tcc/tcc_dsp/Kconfig"
 
