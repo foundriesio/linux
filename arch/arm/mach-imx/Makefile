@@ -93,6 +93,8 @@ obj-$(CONFIG_SOC_IMX53) += suspend-imx53.o
 AFLAGS_suspend-vf610.o :=-Wa,-march=armv7-a
 obj-$(CONFIG_SOC_VF610) += suspend-vf610.o
 endif
+AFLAGS_resume-imx6.o :=-Wa,-march=armv7-a
+obj-$(CONFIG_SOC_IMX6) += resume-imx6.o
 obj-$(CONFIG_SOC_IMX6) += pm-imx6.o
 obj-$(CONFIG_SOC_VF610) += pm-vf610.o
 
