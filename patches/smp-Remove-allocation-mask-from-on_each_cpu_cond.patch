@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2340,7 +2340,7 @@ static bool has_cpu_slab(int cpu, void *
+@@ -2338,7 +2338,7 @@ static bool has_cpu_slab(int cpu, void *
  
  static void flush_all(struct kmem_cache *s)
  {

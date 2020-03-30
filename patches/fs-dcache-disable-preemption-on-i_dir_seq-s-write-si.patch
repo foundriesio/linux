@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto retry;
 --- a/fs/inode.c
 +++ b/fs/inode.c
-@@ -156,7 +156,7 @@ int inode_init_always(struct super_block
+@@ -157,7 +157,7 @@ int inode_init_always(struct super_block
  	inode->i_bdev = NULL;
  	inode->i_cdev = NULL;
  	inode->i_link = NULL;
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -716,7 +716,7 @@ struct inode {
+@@ -717,7 +717,7 @@ struct inode {
  		struct block_device	*i_bdev;
  		struct cdev		*i_cdev;
  		char			*i_link;
