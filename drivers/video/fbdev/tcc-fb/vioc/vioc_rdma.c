@@ -624,13 +624,33 @@ unsigned int VIOC_RDMA_GetStatus(volatile void __iomem *reg)
 	return __raw_readl(reg + RDMASTAT);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt)
 {
 	unsigned long val;
 	val = (__raw_readl(reg + RDMAMISC) & ~(RDMAMISC_ISSUE_MASK));
 	val |= ((burst_length << 8) | issue_cnt) << RDMAMISC_ISSUE_SHIFT;
 	__raw_writel(val, reg + RDMAMISC);
+}
+#endif
+
+#if defined(CONFIG_ARCH_TCC803X)
+void VIOC_RDMA_SetIssue(volatile void __iomem *reg, unsigned int burst_length, unsigned int issue_cnt)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + RDMASCALE) & ~(RDMASCALE_ISSUE_MASK));
+	val |= ((burst_length << 8) | issue_cnt) << RDMASCALE_ISSUE_SHIFT;
+	__raw_writel(val, reg + RDMASCALE);
+}
+
+void VIOC_RDMA_SetImageScale(volatile void __iomem *reg, unsigned int scaleX, unsigned int scaleY)
+{
+	unsigned long val;
+	val = (__raw_readl(reg + RDMASCALE)) &
+		~(RDMASCALE_XSCALE_MASK | RDMASCALE_YSCALE_MASK);
+	val |= ((scaleX << RDMASCALE_XSCALE_SHIFT) |
+		(scaleY << RDMASCALE_YSCALE_SHIFT));
+	__raw_writel(val, reg + RDMASCALE);
 }
 #endif
 

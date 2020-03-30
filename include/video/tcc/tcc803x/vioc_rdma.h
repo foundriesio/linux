@@ -57,7 +57,7 @@
 #define	RDMABASE1			0x14
 #define	RDMABASE2			0x18
 #define RDMAOFFS			0x1C
-#define RDMAMISC			0x20
+#define RDMASCALE			0x20
 #define RDMAALPHA			0x24
 #define RDMASTAT			0x28
 #define	RDMAIRQMSK			0x2C
@@ -169,19 +169,15 @@
 #define RDMAOFFS_OFFSET0_MASK		(0xFFFF << RDMAOFFS_OFFSET0_SHIFT)
 
 /*
- * Misc. Register for Each Image
+ * SCALE Registers for each Image
  */
-#define RDMAMISC_ISSUE_SHIFT		(20)		// Command Issue count
-#define RDMAMISC_R2YMD_SHIFT		(12)		// R2Y Converter Mode
-#define RDMAMISC_Y2RMD_SHIFT		(8)			// Y2R Converter Mode
-#define RDMAMISC_FMT10_SHIFT		(5)			// Data format type
-#define RDMAMISC_FMT_SHIFT			(0)			// Image format
+#define RDMASCALE_ISSUE_SHIFT       (20)        // Command Issue count
+#define RDMASCALE_YSCALE_SHIFT      (16)        // Image Scaling in Vertical
+#define RDMASCALE_XSCALE_SHIFT      (0)         // Image Scaling in Horizontal
 
-#define RDMAMISC_ISSUE_MASK			(0xFFF << RDMAMISC_ISSUE_SHIFT)
-#define RDMAMISC_R2YMD_MASK			(0x7 << RDMAMISC_R2YMD_SHIFT)
-#define RDMAMISC_Y2RMD_MASK			(0x7 << RDMAMISC_Y2RMD_SHIFT)
-#define RDMAMISC_FMT10_MASK			(0x7 << RDMAMISC_FMT10_SHIFT)
-#define RDMAMISC_FMT_MASK			(0x1F << RDMAMISC_FMT_SHIFT)
+#define RDMASCALE_ISSUE_MASK        (0xFFF << RDMASCALE_ISSUE_SHIFT)
+#define RDMASCALE_YSCALE_MASK       (0x7 << RDMASCALE_YSCALE_SHIFT)
+#define RDMASCALE_XSCALE_MASK       (0x7 << RDMASCALE_XSCALE_SHIFT)
 
 /*
  * Alpha Information Register for Each Image
@@ -408,6 +404,7 @@ extern void VIOC_RDMA_GetImageSize(volatile void __iomem *reg, unsigned int *sw,
 extern void VIOC_RDMA_SetImageBase(volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
 extern void VIOC_RDMA_SetImageRBase(volatile void __iomem *reg, unsigned int nBase0, unsigned int nBase1, unsigned int nBase2);
 extern void VIOC_RDMA_SetImageOffset(volatile void __iomem *reg, unsigned int nOffset0, unsigned int nOffset1);
+extern void VIOC_RDMA_SetImageScale(volatile void __iomem *reg, unsigned int scaleX, unsigned int scaleY);
 extern void VIOC_RDMA_SetImageBfield(volatile void __iomem *reg, unsigned int bfield);
 extern void VIOC_RDMA_SetImageBFMD(volatile void __iomem *reg, unsigned int bfmd);
 extern void VIOC_RDMA_SetImageIntl (volatile void __iomem *reg, unsigned int intl_en);
