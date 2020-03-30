@@ -211,8 +211,6 @@
 			interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
 			micrel,led-mode = <0>;
 			reg = <7>;
-			rxc-dll-2ns = <1>;
-			txc-dll-2ns = <1>;
 		};
 	};
 };
