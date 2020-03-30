@@ -646,42 +646,6 @@ static int ksz9131_of_load_skew_values(struct phy_device *phydev,
 	return ksz9031_extended_write(phydev, OP_DATA, 2, reg, newval);
 }
 
-#define KSZ9131_RX_DLL_CTRL	0x4c
-#define KSZ9131_TX_DLL_CTRL	0x4d
-#define KSZ9131_DLL_CTRL_BYPASS	BIT(12)
-
-static int ksz9131_of_load_dll_skew(struct phy_device *phydev,
-				    struct device_node *of_node)
-{
-	int ret;
-	u16 tmp;
-	u32 val;
-
-	if (!of_property_read_u32(of_node, "rxc-dll-2ns", &val)) {
-		tmp = phy_read_mmd(phydev, 2, KSZ9131_RX_DLL_CTRL);
-		if (val == 0)
-			tmp |= KSZ9131_DLL_CTRL_BYPASS;
-		if (val == 1)
-			tmp &= ~KSZ9131_DLL_CTRL_BYPASS;
-		ret = phy_write_mmd(phydev, 2, KSZ9131_RX_DLL_CTRL, tmp);
-		if (ret < 0)
-			return ret;
-	}
-
-	if (!of_property_read_u32(of_node, "txc-dll-2ns", &val)) {
-		tmp = phy_read_mmd(phydev, 2, KSZ9131_TX_DLL_CTRL);
-		if (val == 0)
-			tmp |= KSZ9131_DLL_CTRL_BYPASS;
-		if (val == 1)
-			tmp &= ~KSZ9131_DLL_CTRL_BYPASS;
-		ret = phy_write_mmd(phydev, 2, KSZ9131_TX_DLL_CTRL, tmp);
-		if (ret < 0)
-			return ret;
-	}
-
-	return 0;
-}
-
 static int ksz9131_config_init(struct phy_device *phydev)
 {
 	const struct device *dev = &phydev->mdio.dev;
@@ -707,8 +671,6 @@ static int ksz9131_config_init(struct phy_device *phydev)
 
 	if (!of_node)
 		return 0;
-
-	ksz9131_of_load_dll_skew(phydev, of_node);
 
 	ret = ksz9131_of_load_skew_values(phydev, of_node,
 					  MII_KSZ9031RN_CLK_PAD_SKEW, 5,
