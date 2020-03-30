@@ -124,6 +124,11 @@ smp-Remove-allocation-mask-from-on_each_cpu_cond.patch
 # 20200224140726.1550689-1-bigeasy@linutronix.de
 drm-vmwgfx-Drop-preempt_disable-in-vmw_fifo_ping_hos.patch
 
+# 20200303202054.gsosv7fsx2ma3cic@linutronix.de
+mm-compaction-Really-limit-compact_unevictable_allow.patch
+# 20200319165536.ovi75tsr2seared4@linutronix.de
+mm-compaction-Disable-compact_unevictable_allowed-on.patch
+
 ############################################################
 # Ready for posting
 ############################################################
@@ -136,9 +141,6 @@ Use-CONFIG_PREEMPTION.patch
 0002-sched-swait-Add-swait_event_lock_irq.patch
 0003-workqueue-Use-swait-for-wq_manager_wait.patch
 0004-workqueue-Convert-the-locks-to-raw-type.patch
-
-# XXX
-mm-compaction-Disable-compact_unevictable_allowed-on.patch
 
 ############################################################
 # Needs to address review feedback
