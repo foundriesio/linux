@@ -5636,7 +5636,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
 		.rpc_message = &msg,
 		.callback_ops = &nfs4_setclientid_ops,
 		.callback_data = &setclientid,
-		.flags = RPC_TASK_TIMEOUT,
+		.flags = RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN,
 	};
 	int status;
 
@@ -5702,7 +5702,8 @@ int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
 	dprintk("NFS call  setclientid_confirm auth=%s, (client ID %llx)\n",
 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
 		clp->cl_clientid);
-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+	status = rpc_call_sync(clp->cl_rpcclient, &msg,
+			       RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN);
 	trace_nfs4_setclientid_confirm(clp, status);
 	dprintk("NFS reply setclientid_confirm: %d\n", status);
 	return status;
@@ -7238,7 +7239,7 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
 		NFS_SP4_MACH_CRED_SECINFO, &clnt, &msg);
 
 	status = nfs4_call_sync(clnt, NFS_SERVER(dir), &msg, &args.seq_args,
-				&res.seq_res, 0);
+				&res.seq_res, RPC_TASK_NO_ROUND_ROBIN);
 	dprintk("NFS reply  secinfo: %d\n", status);
 
 	if (cred)
@@ -7636,7 +7637,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
 		.rpc_client = clp->cl_rpcclient,
 		.callback_ops = &nfs4_exchange_id_call_ops,
 		.rpc_message = &msg,
-		.flags = RPC_TASK_TIMEOUT,
+		.flags = RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN,
 	};
 	struct nfs41_exchange_id_data *calldata;
 	struct rpc_task *task;
@@ -7799,7 +7800,8 @@ static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
 	};
 	int status;
 
-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+	status = rpc_call_sync(clp->cl_rpcclient, &msg,
+			       RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN);
 	trace_nfs4_destroy_clientid(clp, status);
 	if (status)
 		dprintk("NFS: Got error %d from the server %s on "
@@ -8080,7 +8082,8 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
 	nfs4_init_channel_attrs(&args, clp->cl_rpcclient);
 	args.flags = (SESSION4_PERSIST | SESSION4_BACK_CHAN);
 
-	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+	status = rpc_call_sync(session->clp->cl_rpcclient, &msg,
+			       RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN);
 	trace_nfs4_create_session(clp, status);
 
 	switch (status) {
@@ -8156,7 +8159,8 @@ int nfs4_proc_destroy_session(struct nfs4_session *session,
 	if (!test_and_clear_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
 		return 0;
 
-	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+	status = rpc_call_sync(session->clp->cl_rpcclient, &msg,
+			       RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN);
 	trace_nfs4_destroy_session(session->clp, status);
 
 	if (status)
@@ -8410,7 +8414,7 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
 		.rpc_client = clp->cl_rpcclient,
 		.rpc_message = &msg,
 		.callback_ops = &nfs4_reclaim_complete_call_ops,
-		.flags = RPC_TASK_ASYNC,
+		.flags = RPC_TASK_ASYNC | RPC_TASK_NO_ROUND_ROBIN,
 	};
 	int status = -ENOMEM;
 
@@ -8971,7 +8975,7 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
 
 	dprintk("--> %s\n", __func__);
 	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
-				&res.seq_res, 0);
+				&res.seq_res, RPC_TASK_NO_ROUND_ROBIN);
 	dprintk("<-- %s status=%d\n", __func__, status);
 
 	if (cred)
