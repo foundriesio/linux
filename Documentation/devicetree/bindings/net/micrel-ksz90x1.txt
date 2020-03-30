@@ -63,20 +63,7 @@ KSZ9131:
   step is 100ps. Unlike KSZ9031, the values represent picoseccond delays.
   A negative value can be assigned as rxc-skew-psec = <(-100)>;.
 
-  The KSZ9131 provides additional 2ns delay register for RXC and TXC signals
-  with the RX DLL and TX DLL Control Register. This is a self adjusting delay
-  locked loop that maintains 2ns of delay for either RXC or TXC register.
-
   Optional properties:
-
-      - rxc-dll-2ns : 1 to enable 2ns dll controlled delay on RXC
-                      0 to disable this delay.
-                      If omitted, register will not be touched. The
-                      delay is enabled by default by hardware.
-      - txc-dll-2ns : 1 to enable 2ns dll controlled delay on TXC
-                      0 to disable this delay.
-                      If omitted, register will not be touched. The
-                      delay is disabled by default by hardware.
 
     Range of the value -700 to 2400, default value 0:
 
