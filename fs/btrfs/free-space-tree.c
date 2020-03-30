@@ -23,6 +23,7 @@
 #include "locking.h"
 #include "free-space-tree.h"
 #include "transaction.h"
+#include "block-group.h"
 
 static int __add_block_group_free_space(struct btrfs_trans_handle *trans,
 					struct btrfs_fs_info *fs_info,

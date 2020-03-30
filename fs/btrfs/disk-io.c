@@ -52,6 +52,7 @@
 #include "compression.h"
 #include "tree-checker.h"
 #include "space-info.h"
+#include "block-group.h"
 
 #ifdef CONFIG_X86
 #include <asm/cpufeature.h>

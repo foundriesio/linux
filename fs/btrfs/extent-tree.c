@@ -42,6 +42,7 @@
 #include "space-info.h"
 #include "block-rsv.h"
 #include "delalloc-space.h"
+#include "block-group.h"
 
 #undef SCRAMBLE_DELAYED_REFS
 
@@ -8117,7 +8118,6 @@ btrfs_create_block_group_cache(struct btrfs_fs_info *fs_info,
 	cache->key.offset = size;
 	cache->key.type = BTRFS_BLOCK_GROUP_ITEM_KEY;
 
-	cache->sectorsize = fs_info->sectorsize;
 	cache->fs_info = fs_info;
 	cache->full_stripe_len = btrfs_full_stripe_len(fs_info,
 						       &fs_info->mapping_tree,
