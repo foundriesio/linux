@@ -27,13 +27,10 @@
 #include <linux/parser.h>
 #include <linux/magic.h>
 #include <linux/slab.h>
-#include <linux/srcu.h>
 
 #include "internal.h"
 
 #define DEBUGFS_DEFAULT_MODE	0700
-
-DEFINE_SRCU(debugfs_srcu);
 
 static struct vfsmount *debugfs_mount;
 static int debugfs_mount_count;
@@ -173,8 +170,17 @@ static int debugfs_show_options(struct seq_file *m, struct dentry *root)
 static void debugfs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
-	if (S_ISLNK(inode->i_mode))
+	if (S_ISLNK(inode->i_mode)) {
 		kfree(inode->i_link);
+	} else if (S_ISREG(inode->i_mode)) {
+		/*
+		 * kABI workaround uses ->i_link in place of ->d->fs_data
+		 * for regular files.
+		 */
+		void *fsd = __kabi_debugfs_d_fsdata(inode);
+		if (!((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT))
+			kfree(fsd);
+	}
 	free_inode_nonrcu(inode);
 }
 
@@ -190,6 +196,15 @@ static const struct super_operations debugfs_super_operations = {
 	.destroy_inode	= debugfs_destroy_inode,
 };
 
+static void debugfs_release_dentry(struct dentry *dentry)
+{
+	/*
+	 * Upstream does a kfree() on ->d_fsdata here. However,
+	 * for working around kABI, ->i_link is used instead.
+	 * The corresponding cleanup is found in debugfs_i_callback().
+	 */
+}
+
 static struct vfsmount *debugfs_automount(struct path *path)
 {
 	debugfs_automount_t f;
@@ -199,6 +214,7 @@ static struct vfsmount *debugfs_automount(struct path *path)
 
 static const struct dentry_operations debugfs_dops = {
 	.d_delete = always_delete_dentry,
+	.d_release = debugfs_release_dentry,
 	.d_automount = debugfs_automount,
 };
 
@@ -309,7 +325,10 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
 		parent = debugfs_mount->mnt_root;
 
 	inode_lock(d_inode(parent));
-	dentry = lookup_one_len(name, parent, strlen(name));
+	if (unlikely(IS_DEADDIR(d_inode(parent))))
+		dentry = ERR_PTR(-ENOENT);
+	else
+		dentry = lookup_one_len(name, parent, strlen(name));
 	if (!IS_ERR(dentry) && d_really_is_positive(dentry)) {
 		dput(dentry);
 		dentry = ERR_PTR(-EEXIST);
@@ -361,7 +380,9 @@ static struct dentry *__debugfs_create_file(const char *name, umode_t mode,
 	inode->i_private = data;
 
 	inode->i_fop = proxy_fops;
-	dentry->d_fsdata = (void *)real_fops;
+	dentry->d_fsdata = (void *)real_fops; /* Needed for kABI */
+	__kabi_debugfs_d_fsdata(inode) = (void *)((unsigned long)real_fops |
+				DEBUGFS_FSDATA_IS_REAL_FOPS_BIT);
 
 	d_instantiate(dentry, inode);
 	fsnotify_create(d_inode(dentry->d_parent), dentry);
@@ -425,15 +446,15 @@ EXPORT_SYMBOL_GPL(debugfs_create_file);
  * debugfs core.
  *
  * It is your responsibility to protect your struct file_operation
- * methods against file removals by means of debugfs_use_file_start()
- * and debugfs_use_file_finish(). ->open() is still protected by
+ * methods against file removals by means of debugfs_file_get()
+ * and debugfs_file_put(). ->open() is still protected by
  * debugfs though.
  *
  * Any struct file_operations defined by means of
  * DEFINE_DEBUGFS_ATTRIBUTE() is protected against file removals and
  * thus, may be used here.
  */
-struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
+struct dentry *__debugfs_create_file_unsafe(const char *name, umode_t mode,
 				   struct dentry *parent, void *data,
 				   const struct file_operations *fops)
 {
@@ -442,6 +463,45 @@ struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
 				fops ? &debugfs_open_proxy_file_operations :
 					&debugfs_noop_file_operations,
 				fops);
+}
+
+/*
+ * kABI compatibility wrapper: the original implementation from above
+ * corresponding 1:1 to upstream has been renamed.
+ */
+struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
+				   struct dentry *parent, void *data,
+				   const struct file_operations *fops)
+{
+	/*
+	 * This gets invoked from users outside of the debugfs core only.
+	 * Handle the case where users of the obsolete debugfs_use_file_start()
+	 * resp. debugfs_use_file_finish() (which are now nops) haven't been
+	 * converted to the new debugfs_file_get()/debugfs_file_put() API.
+	 * Protect their fops against file removal by wrapping them with a
+	 * debugfs_full_proxy_file_operations, i.e. simply forward this call
+	 * here to debugfs_create_file().
+	 * There are two cases:
+	 * 1.) The file_operations instance has been defined by means of the
+	 *     DEFINE_DEBUGFS_ATTRIBUTE() macro. In this case, all fops handlers
+	 *     are provided by the debugfs core itself and have been converted.
+	 *     This is the common case; in order to avoid the full proxy
+	 *     overhead, check for this and don't install the full proxy if
+	 *     positive.
+	 * 2.) All other cases, where the custom file_operation's handlers
+	 *     possibly implement their own file removal protection on the
+	 *     grounds of debugfs_use_file_start()/-_finish(). As their
+	 *     protection has become ineffective now, wrap them with
+	 *     the full proxy.
+	 */
+	if (fops && fops->read == debugfs_attr_read) {
+		/* This is safe, it's a DEFINE_DEBUGFS_ATTRIBUTE() fops. */
+		return __debugfs_create_file_unsafe(name, mode, parent, data,
+						    fops);
+	} else {
+		/* Not known to be safe, wrap it. */
+		return debugfs_create_file(name, mode, parent, data, fops);
+	}
 }
 EXPORT_SYMBOL_GPL(debugfs_create_file_unsafe);
 
@@ -618,58 +678,33 @@ struct dentry *debugfs_create_symlink(const char *name, struct dentry *parent,
 }
 EXPORT_SYMBOL_GPL(debugfs_create_symlink);
 
-static int __debugfs_remove(struct dentry *dentry, struct dentry *parent)
+static void __debugfs_file_removed(struct dentry *dentry)
 {
-	int ret = 0;
+	struct debugfs_fsdata *fsd;
 
-	if (simple_positive(dentry)) {
-		dget(dentry);
-		if (d_is_dir(dentry))
-			ret = simple_rmdir(d_inode(parent), dentry);
-		else
-			simple_unlink(d_inode(parent), dentry);
-		if (!ret)
-			d_delete(dentry);
-		dput(dentry);
-	}
-	return ret;
-}
-
-/**
- * debugfs_remove - removes a file or directory from the debugfs filesystem
- * @dentry: a pointer to a the dentry of the file or directory to be
- *          removed.  If this parameter is NULL or an error value, nothing
- *          will be done.
- *
- * This function removes a file or directory in debugfs that was previously
- * created with a call to another debugfs function (like
- * debugfs_create_file() or variants thereof.)
- *
- * This function is required to be called in order for the file to be
- * removed, no automatic cleanup of files will happen when a module is
- * removed, you are responsible here.
- */
-void debugfs_remove(struct dentry *dentry)
-{
-	struct dentry *parent;
-	int ret;
-
-	if (IS_ERR_OR_NULL(dentry))
+	/*
+	 * Paired with the closing smp_mb() implied by a successful
+	 * cmpxchg() in debugfs_file_get(): either
+	 * debugfs_file_get() must see a dead dentry or we must see a
+	 * debugfs_fsdata instance at ->d_fsdata here (or both).
+	 */
+	smp_mb();
+	fsd = READ_ONCE(kabi_debugfs_d_fsdata(dentry));
+	if ((unsigned long)fsd & DEBUGFS_FSDATA_IS_REAL_FOPS_BIT)
 		return;
-
-	parent = dentry->d_parent;
-	inode_lock(d_inode(parent));
-	ret = __debugfs_remove(dentry, parent);
-	inode_unlock(d_inode(parent));
-	if (!ret)
-		simple_release_fs(&debugfs_mount, &debugfs_mount_count);
-
-	synchronize_srcu(&debugfs_srcu);
+	if (!refcount_dec_and_test(&fsd->active_users))
+		wait_for_completion(&fsd->active_users_drained);
 }
-EXPORT_SYMBOL_GPL(debugfs_remove);
+
+static void remove_one(struct dentry *victim)
+{
+        if (d_is_reg(victim))
+		__debugfs_file_removed(victim);
+	simple_release_fs(&debugfs_mount, &debugfs_mount_count);
+}
 
 /**
- * debugfs_remove_recursive - recursively removes a directory
+ * debugfs_remove - recursively removes a directory
  * @dentry: a pointer to a the dentry of the directory to be removed.  If this
  *          parameter is NULL or an error value, nothing will be done.
  *
@@ -681,65 +716,21 @@ EXPORT_SYMBOL_GPL(debugfs_remove);
  * removed, no automatic cleanup of files will happen when a module is
  * removed, you are responsible here.
  */
-void debugfs_remove_recursive(struct dentry *dentry)
+void debugfs_remove(struct dentry *dentry)
 {
-	struct dentry *child, *parent;
-
 	if (IS_ERR_OR_NULL(dentry))
 		return;
 
-	parent = dentry;
- down:
-	inode_lock(d_inode(parent));
- loop:
-	/*
-	 * The parent->d_subdirs is protected by the d_lock. Outside that
-	 * lock, the child can be unlinked and set to be freed which can
-	 * use the d_u.d_child as the rcu head and corrupt this list.
-	 */
-	spin_lock(&parent->d_lock);
-	list_for_each_entry(child, &parent->d_subdirs, d_child) {
-		if (!simple_positive(child))
-			continue;
+	simple_pin_fs(&debug_fs_type, &debugfs_mount, &debugfs_mount_count);
+	simple_recursive_removal(dentry, remove_one);
+	simple_release_fs(&debugfs_mount, &debugfs_mount_count);
+}
+EXPORT_SYMBOL_GPL(debugfs_remove);
 
-		/* perhaps simple_empty(child) makes more sense */
-		if (!list_empty(&child->d_subdirs)) {
-			spin_unlock(&parent->d_lock);
-			inode_unlock(d_inode(parent));
-			parent = child;
-			goto down;
-		}
-
-		spin_unlock(&parent->d_lock);
-
-		if (!__debugfs_remove(child, parent))
-			simple_release_fs(&debugfs_mount, &debugfs_mount_count);
-
-		/*
-		 * The parent->d_lock protects agaist child from unlinking
-		 * from d_subdirs. When releasing the parent->d_lock we can
-		 * no longer trust that the next pointer is valid.
-		 * Restart the loop. We'll skip this one with the
-		 * simple_positive() check.
-		 */
-		goto loop;
-	}
-	spin_unlock(&parent->d_lock);
-
-	inode_unlock(d_inode(parent));
-	child = parent;
-	parent = parent->d_parent;
-	inode_lock(d_inode(parent));
-
-	if (child != dentry)
-		/* go up */
-		goto loop;
-
-	if (!__debugfs_remove(child, parent))
-		simple_release_fs(&debugfs_mount, &debugfs_mount_count);
-	inode_unlock(d_inode(parent));
-
-	synchronize_srcu(&debugfs_srcu);
+/* kABI compatibility wrapper */
+void debugfs_remove_recursive(struct dentry *dentry)
+{
+	debugfs_remove(dentry);
 }
 EXPORT_SYMBOL_GPL(debugfs_remove_recursive);
 
