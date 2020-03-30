@@ -133,6 +133,10 @@ struct tcc_i2c {
 #endif
 };
 
+static ssize_t tcc_i2c_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t tcc_i2c_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+DEVICE_ATTR(tcci2c, S_IRUGO | S_IWUSR, tcc_i2c_show, tcc_i2c_store);
+
 #ifdef DEBUG
 static void tcc_i2c_reg_dump(void __iomem *regs, void __iomem *port_cfg);
 static void tcc_i2c_reg_dump(void __iomem *regs, void __iomem *port_cfg)
@@ -768,6 +772,7 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, i2c);
+	device_create_file(&pdev->dev, &dev_attr_tcci2c);
 	return 0;
 
 err_clk:
@@ -799,6 +804,7 @@ static int tcc_i2c_remove(struct platform_device *pdev)
 {
 	struct tcc_i2c *i2c = platform_get_drvdata(pdev);
 	platform_set_drvdata(pdev, NULL);
+	device_remove_file(&pdev->dev, &dev_attr_tcci2c);
 
 	/* I2C clock Disable */
 	i2c_del_adapter(&(i2c->adap));
@@ -846,6 +852,34 @@ static SIMPLE_DEV_PM_OPS(tcc_i2c_pm, tcc_i2c_suspend, tcc_i2c_resume);
 #else
 #define TCC_I2C_PM NULL
 #endif
+
+static ssize_t tcc_i2c_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tcc_i2c *i2c = dev_get_drvdata(dev);
+	unsigned int port_value, port_shift, port_cfg, pcfg_offset = 0;
+
+	if(i2c->core < 4){
+		pcfg_offset = I2C_PORT_CFG0;
+		port_shift = i2c->core * 8;
+	}else{
+		pcfg_offset = I2C_PORT_CFG2;
+		port_shift =(i2c->core - 4) * 8;
+	}
+
+	port_cfg = i2c_readl(i2c->port_cfg + pcfg_offset);
+	port_value = (port_cfg >> port_shift) & 0xFF;
+
+	return sprintf(buf, "[DEBUG][I2C] channel %d, speed %d kHz, port %d \n",
+			i2c->core,
+			(i2c->i2c_clk_rate / 1000),
+			port_value);
+}
+
+static ssize_t tcc_i2c_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	/* TODO: change port or speed or interrupt mode */
+	return 0;
+}
 
 #ifdef CONFIG_OF
 static const struct of_device_id tcc_i2c_of_match[] = {
