@@ -452,6 +452,9 @@ static __initdata efi_config_table_type_t common_tables[] = {
 	{EFI_MEMORY_ATTRIBUTES_TABLE_GUID, "MEMATTR", &efi.mem_attr_table},
 	{LINUX_EFI_RANDOM_SEED_TABLE_GUID, "RNG", &efi.rng_seed},
 	{LINUX_EFI_MEMRESERVE_TABLE_GUID, "MEMRESERVE", &efi.mem_reserve},
+#ifdef CONFIG_EFI_RCI2_TABLE
+	{DELLEMC_EFI_RCI2_TABLE_GUID, NULL, &rci2_table_phys},
+#endif
 	{NULL_GUID, NULL, NULL},
 };
 
