@@ -46,7 +46,9 @@ struct bpf_prog_aux;
 /* Additional register mappings for converted user programs. */
 #define BPF_REG_A	BPF_REG_0
 #define BPF_REG_X	BPF_REG_7
-#define BPF_REG_TMP	BPF_REG_8
+#define BPF_REG_TMP	BPF_REG_2	/* scratch reg */
+#define BPF_REG_D	BPF_REG_8	/* data, callee-saved */
+#define BPF_REG_H	BPF_REG_9	/* hlen, callee-saved */
 
 /* Kernel hidden auxiliary/helper register. */
 #define BPF_REG_AX		MAX_BPF_REG
@@ -669,8 +671,11 @@ static inline int sk_filter(struct sock *sk, struct sk_buff *skb)
 	return sk_filter_trim_cap(sk, skb, 1);
 }
 
+int bpf_gen_ld_abs(const struct bpf_insn *orig, struct bpf_insn *insn_buf);
 struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err);
 void bpf_prog_free(struct bpf_prog *fp);
+
+bool bpf_opcode_in_insntable(u8 code);
 
 struct bpf_prog *bpf_prog_alloc(unsigned int size, gfp_t gfp_extra_flags);
 struct bpf_prog *bpf_prog_realloc(struct bpf_prog *fp_old, unsigned int size,
