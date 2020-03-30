@@ -251,7 +251,7 @@ void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se)
 	__raw_writel(val, reg + VIN_CTRL);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs)
 {
 	unsigned long val;

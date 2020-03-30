@@ -868,6 +868,45 @@ void VIOC_LVDS_WRAP_SetConfigure(unsigned int lr,
 	}
 }
 
+void VIOC_LVDS_WRAP_Set(unsigned int lvds_type, unsigned int val, unsigned select, unsigned int sel0[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE], unsigned int sel1[TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE])
+{
+	VIOC_LVDS_WRAP_SetAccessCode();
+	if(lvds_type) {
+		int idx;
+		VIOC_LVDS_WRAP_SetConfigure(0, 0, val);
+		for(idx=0;idx<TS_SWAP_CH_MAX;idx++){
+			VIOC_LVDS_WRAP_SetDataSwap(idx,idx);
+		}
+		VIOC_LVDS_WRAP_SetMuxOutput(DISP_MUX_TYPE, 0, select, 1);
+		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX0, TS_MUX_PATH_CORE, 1);
+		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX0, sel0);
+		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, TS_MUX_IDX1, TS_MUX_PATH_CORE, 1);
+		VIOC_LVDS_WRAP_SetDataArray(TS_MUX_IDX1, sel1);
+	}
+	else{
+		VIOC_LVDS_WRAP_SetMuxOutput(TS_MUX_TYPE, val, select, 1);
+		VIOC_LVDS_WRAP_SetDataArray(val, sel0);
+	}
+}
+
+void VIOC_LVDS_WRAP_SetSyncPolarity(unsigned int sync)
+{
+	volatile void __iomem *reg = (volatile void __iomem *)pLVDS_wrap_reg;
+	unsigned int val;
+
+	val = (readl(reg+SAL_1) &
+		~(SAL_HS_MASK | SAL_VS_MASK));
+	if(!(sync & 0x2)) {
+		val |= (0x1 << SAL_VS_SHIFT);
+	}
+
+	if(!(sync & 0x4)) {
+		val |= (0x1 << SAL_HS_SHIFT);
+	}
+
+	writel(val, reg + SAL_1);
+}
+
 /* VIOC_LVDS_WRAP_SetDataSwap
  * Set Tx splitter output data swap
  * ch : Tx splitter output channel(0, 1, 2, 3)

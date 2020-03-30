@@ -56,7 +56,7 @@ void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 /*
  * DISP.DALIGN.[SWAPBF, SWAPAF] register
  * =====================================
@@ -71,6 +71,7 @@ void VIOC_DISP_GetAlign(volatile void __iomem *reg, unsigned int *align)
  * TCC898X | bit[7:5]       | bit[4:2]
  * TCC899X | bit[7:5]       | bit[4:2]
  * TCC803X | bit[2:0]       | bit[5:3]
+ * TCC805X | bit[2:0]       | bit[5:3]
  */
 void VIOC_DISP_SetSwapbf(volatile void __iomem *reg, unsigned int swapbf)
 {
@@ -98,7 +99,7 @@ void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC803X)
 void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 {
 	unsigned long value;

@@ -95,11 +95,11 @@ void VIOC_WMIX_SetBGColor(volatile void __iomem *reg, unsigned int nBG0,
 			  unsigned int nBG3)
 {
 	unsigned long val;
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
-	val = (((nBG1 & 0xFFFF) << MBG_BG1_SHIFT) |
-	       ((nBG0 & 0xFFFF) << MBG_BG0_SHIFT) |
-		   ((nBG3 & 0xFFFF) << MBG_BG3_SHIFT) |
-	       ((nBG2 & 0xFFFF) << MBG_BG2_SHIFT));
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
+	val = (((nBG1 & 0xFF) << MBG_BG1_SHIFT) |
+	       ((nBG0 & 0xFF) << MBG_BG0_SHIFT) |
+		   ((nBG3 & 0xFF) << MBG_BG3_SHIFT) |
+	       ((nBG2 & 0xFF) << MBG_BG2_SHIFT));
 	__raw_writel(val, reg + MBG);
 	#else
 	val = (((nBG1 & 0xFFFF) << MBG0_BG1_SHIFT) |
@@ -140,7 +140,7 @@ void VIOC_WMIX_SetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 {
 	unsigned long val;
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	val = (((nKeyEn & 0x1) << MKEY0_KEN_SHIFT) |
 	       ((nKeyR & 0xFF) << MKEY0_KRYR_SHIFT) |
 		   ((nKeyG & 0xFF) << MKEY0_KEYG_SHIFT) |
@@ -175,7 +175,7 @@ void VIOC_WMIX_GetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 			    unsigned int *nKeyMaskR, unsigned int *nKeyMaskG,
 			    unsigned int *nKeyMaskB)
 {
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	*nKeyEn = ((__raw_readl(reg + (MKEY00 + (0x08 * nLayer))) &
 		    MKEY0_KEN_MASK) >>
 		   MKEY0_KEN_SHIFT);
@@ -309,7 +309,7 @@ void VIOC_WMIX_ALPHA_SetROPMode(volatile void __iomem *reg, unsigned int layer,
 				unsigned int mode)
 {
 	unsigned long val;
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	val = (__raw_readl(reg + (MROPC0 + (0x20 * layer))) &
 			~(MROPC_ROPMODE_MASK));
 	val |= ((mode & 0x1F) << MROPC_ROPMODE_SHIFT);
@@ -326,7 +326,7 @@ void VIOC_WMIX_ALPHA_SetAlphaSelection(volatile void __iomem *reg,
 				       unsigned int layer, unsigned int asel)
 {
 	unsigned long val;
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	val = (__raw_readl(reg + (MROPC0 + (0x20 * layer))) &
 			~(MROPC_ASEL_MASK));
 	val |= ((asel & 0x3) << MROPC_ASEL_SHIFT);
@@ -344,7 +344,7 @@ void VIOC_WMIX_ALPHA_SetAlphaValue(volatile void __iomem *reg,
 				   unsigned int alpha1)
 {
 	unsigned long val;
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	val = (__raw_readl(reg + (MROPC0 + (0x20 * layer))) &
 			~(MROPC_ALPHA1_MASK | MROPC_ALPHA0_MASK));
 	val |= (((alpha1 & 0xFFFF) << MROPC_ALPHA1_SHIFT) |
@@ -364,7 +364,7 @@ void VIOC_WMIX_ALPHA_SetROPPattern(volatile void __iomem *reg,
 				   unsigned int patG, unsigned int patB)
 {
 	unsigned long val;
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	val = (((patB & 0xFF) << MPAT_BLUE_SHIFT) |
 			((patG & 0xFF )<< MPAT_GREEN_SHIFT) |
 			((patR & 0xFF) << MPAT_RED_SHIFT));

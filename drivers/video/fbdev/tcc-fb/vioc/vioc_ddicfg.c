@@ -46,6 +46,7 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 		__raw_writel(val, reg + DDI_PWDN);
 		break;
 	#endif
+	#if !defined(CONFIG_ARCH_TCC805X)
 	case DDICFG_TYPE_HDMNI:
 		val = (__raw_readl(reg + DDI_PWDN) & ~(PWDN_HDMI_MASK));
 		val |= ((set & 0x1) << PWDN_HDMI_SHIFT);
@@ -62,6 +63,7 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 		val |= ((set & 0x1) << PWDN_MIPI_SHIFT);
 		__raw_writel(val, reg + DDI_PWDN);
 		break;
+	#endif
 	#endif
 	#ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 	case DDICFG_TYPE_DV:
@@ -119,6 +121,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 		__raw_writel(val, reg + SWRESET);
 		break;
 	#endif
+	#if !defined(CONFIG_ARCH_TCC805X)
 	case DDICFG_TYPE_HDMNI:
 		val = (__raw_readl(reg + SWRESET) & ~(SWRESET_HDMI_MASK));
 		val |= ((set & 0x1) << SWRESET_HDMI_SHIFT);
@@ -136,6 +139,18 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 		__raw_writel(val, reg+SWRESET);
 		break;
 	#endif
+	#else // CONFIG_ARCH_TCC805X
+	case DDICFG_TYPE_DP_AXI:
+		val = (__raw_readl(reg+SWRESET) & ~(SWRESET_DP_AXI_MASK));
+		val |= ((set & 0x1) << SWRESET_DP_AXI_SHIFT);
+		__raw_writel(val, reg+SWRESET);
+		break;
+	case DDICFG_TYPE_ISP_AXI:
+		val = (__raw_readl(reg+SWRESET) & ~(SWRESET_ISP_AXI_MASK));
+		val |= ((set & 0x1) << SWRESET_ISP_AXI_SHIFT);
+		__raw_writel(val, reg+SWRESET);
+		break;
+	#endif // !defined(CONFIG_ARCH_TCC805X)
 	#ifdef CONFIG_TCC_VIQE_MADI
 	case DDICFG_TYPE_MADI:
 		val = (__raw_readl(reg+SWRESET) & ~(SWRESET_MADI_MASK));
@@ -158,7 +173,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 	dprintk("type(%d) set(%d)\n", type, set);
 }
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
 {
         unsigned int val;
@@ -353,7 +368,7 @@ void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit)
 static void VIOC_DDICONFIG_TVOVENC_SetEnable(volatile void __iomem *reg,
 				      unsigned int enable)
 {
-	#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X))
+	#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X))
 	uint32_t val;
 
 	dprintk("%s(%d)\n", __func__, enable);
@@ -474,7 +489,7 @@ void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg, int path,
 }
 #endif
 
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X)
 void VIOC_DDICONFIG_MIPI_Reset_DPHY(volatile void __iomem *reg, unsigned int reset)
 {
     unsigned int val;
@@ -497,7 +512,7 @@ void VIOC_DDICONFIG_MIPI_Reset_GEN(volatile void __iomem *reg, unsigned int rese
 }
 #endif
 
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 /*
  * VIOC_REMAP (VIOC Register Address Remap Enable Register)
  */
