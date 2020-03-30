@@ -3,6 +3,7 @@
 [ ! -L 'arch/arm64/boot/dts/broadcom/bcm283x-rpi-lan7515.dtsi' ] && ln -sf '../../../../arm/boot/dts/bcm283x-rpi-lan7515.dtsi' 'arch/arm64/boot/dts/broadcom/bcm283x-rpi-lan7515.dtsi'
 [ ! -L 'arch/arm64/boot/dts/overlays' ] && ln -sf '../../../arm/boot/dts/overlays' 'arch/arm64/boot/dts/overlays'
 # Remove any files deleted from the orig.
+rm -f 'arch/x86/include/asm/dma-direct.h'
 rm -f 'drivers/crypto/hisilicon/sgl.h'
 rm -f 'drivers/gpu/drm/amd/display/dc/calcs/dcn_calc_math.h'
 rm -f 'drivers/staging/vc04_services/bcm2835-camera/mmal-common.h'
