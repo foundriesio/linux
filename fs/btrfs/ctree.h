@@ -2455,12 +2455,6 @@ static inline u64 btrfs_calc_trunc_metadata_size(struct btrfs_fs_info *fs_info,
 	return (u64)fs_info->nodesize * BTRFS_MAX_LEVEL * num_items;
 }
 
-void btrfs_dec_block_group_reservations(struct btrfs_fs_info *fs_info,
-					 const u64 start);
-void btrfs_wait_block_group_reservations(struct btrfs_block_group_cache *bg);
-bool btrfs_inc_nocow_writers(struct btrfs_fs_info *fs_info, u64 bytenr);
-void btrfs_dec_nocow_writers(struct btrfs_fs_info *fs_info, u64 bytenr);
-void btrfs_wait_nocow_writers(struct btrfs_block_group_cache *bg);
 int btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 			   struct btrfs_fs_info *fs_info, unsigned long count);
 int btrfs_async_run_delayed_refs(struct btrfs_fs_info *fs_info,
