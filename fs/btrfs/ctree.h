@@ -2764,7 +2764,6 @@ void btrfs_free_reserved_data_space_noquota(struct inode *inode, u64 start,
 					    u64 len);
 void btrfs_trans_release_metadata(struct btrfs_trans_handle *trans,
 				  struct btrfs_fs_info *fs_info);
-void btrfs_trans_release_chunk_metadata(struct btrfs_trans_handle *trans);
 int btrfs_subvolume_reserve_metadata(struct btrfs_root *root,
 				     struct btrfs_block_rsv *rsv,
 				     int nitems,
