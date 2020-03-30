@@ -695,7 +695,7 @@
 
 		reg = <0x123c0000 0x120 0x123c0200 0x5c>;
 		clocks = <&clk_peri PERI_MIPI_CSI>;
-		clock-frequency = <262500000>;
+		clock-frequency = <300000000>;
 
 	 };
 

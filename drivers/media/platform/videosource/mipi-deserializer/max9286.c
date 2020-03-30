@@ -308,7 +308,7 @@ videosource_t videosource_max9286 = {
 		.interlaced					= V4L2_DV_PROGRESSIVE,	//V4L2_DV_INTERLACED,
 		.polarities					= 0,					// V4L2_DV_VSYNC_POS_POL | V4L2_DV_HSYNC_POS_POL | V4L2_DV_PCLK_POS_POL,
 		.data_order					= ORDER_RGB,
-		.data_format				= FMT_YUV422_8BIT,		// data format
+		.data_format				= FMT_YUV422_16BIT,		// data format
 		.bit_per_pixel				= 8,					// bit per pixel
 		.gen_field_en				= OFF,
 		.de_active_low				= ACT_LOW,
@@ -336,7 +336,7 @@ videosource_t videosource_max9286 = {
 		.des_info.input_ch_num		= 4,
 #endif
 
-		.des_info.pixel_mode		= PIXEL_MODE_SINGLE,
+		.des_info.pixel_mode		= PIXEL_MODE_DUAL,
 		.des_info.interleave_mode	= INTERLEAVE_MODE_VC_DT,
 		.des_info.data_lane_num 	= 4,
 		.des_info.data_format		= DATA_FORMAT_YUV422_8BIT,
