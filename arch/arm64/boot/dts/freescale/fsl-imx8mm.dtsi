@@ -766,6 +766,7 @@
 		fsl,tuning-start-tap = <20>;
 		fsl,tuning-step= <2>;
 		bus-width = <4>;
+		max-frequency = <100000000>;
 		status = "disabled";
 	};
 
