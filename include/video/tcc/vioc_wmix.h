@@ -33,6 +33,10 @@
 #include "tcc803x/vioc_wmix.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC805X
+#include "tcc805x/vioc_wmix.h"
+#endif
+
 #ifdef CONFIG_ARCH_TCC897X
 #include "tcc897x/vioc_wmix.h"
 #endif

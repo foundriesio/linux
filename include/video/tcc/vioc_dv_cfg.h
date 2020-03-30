@@ -26,6 +26,10 @@
 #include "tcc898x/vioc_dv_cfg.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC805X
+#include "tcc805x/vioc_dv_cfg.h"
+#endif
+
 #ifdef CONFIG_ARCH_TCC899X
 #include "tcc899x/vioc_dv_cfg.h"
 #endif

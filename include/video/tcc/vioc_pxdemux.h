@@ -26,3 +26,6 @@
 #include "tcc803x/vioc_pxdemux.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC805X
+#include "tcc805x/vioc_pxdemux.h"
+#endif

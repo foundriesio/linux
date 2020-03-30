@@ -33,10 +33,6 @@
 #define DDICFG_TYPE_DV		(8)
 #endif
 
-#define DDICFG_TYPE_LVDS		(3)
-#define DDICFG_TYPE_MIPI		(4)
-#define DDICFG_TYPE_HDMNI		(2)
-#define DDICFG_TYPE_NTSCPAL		(1)
 #define DDICFG_TYPE_VIOC		(0)
 /* for TCC805X */
 #define DDICFG_TYPE_DP_AXI		(3)

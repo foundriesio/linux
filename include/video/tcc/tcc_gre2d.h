@@ -21,3 +21,6 @@
 #include "tcc803x/tcc_gre2d.h"
 #endif
 
+#ifdef CONFIG_ARCH_TCC805X
+#include "tcc805x/tcc_gre2d.h"
+#endif
