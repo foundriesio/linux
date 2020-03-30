@@ -31,6 +31,7 @@
 #include "inode-map.h"
 #include "volumes.h"
 #include "space-info.h"
+#include "delalloc-space.h"
 
 #define BITS_PER_BITMAP		(PAGE_SIZE * 8UL)
 #define MAX_CACHE_BYTES_PER_GIG	SZ_32K
