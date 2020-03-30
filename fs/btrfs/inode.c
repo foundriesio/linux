@@ -4517,8 +4517,7 @@ delete:
 				break;
 			}
 			if (be_nice) {
-				if (btrfs_should_throttle_delayed_refs(trans,
-								       fs_info))
+				if (btrfs_should_throttle_delayed_refs(trans))
 					should_throttle = 1;
 			}
 		}
