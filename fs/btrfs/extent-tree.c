@@ -40,6 +40,7 @@
 #include "sysfs.h"
 #include "qgroup.h"
 #include "space-info.h"
+#include "block-rsv.h"
 
 #undef SCRAMBLE_DELAYED_REFS
 
@@ -4797,7 +4798,7 @@ static u64 block_rsv_release_bytes(struct btrfs_fs_info *fs_info,
 
 int btrfs_block_rsv_migrate(struct btrfs_block_rsv *src,
 			    struct btrfs_block_rsv *dst, u64 num_bytes,
-			    int update_size)
+			    bool update_size)
 {
 	int ret;
 
@@ -4844,11 +4845,6 @@ void btrfs_free_block_rsv(struct btrfs_fs_info *fs_info,
 	if (!rsv)
 		return;
 	btrfs_block_rsv_release(fs_info, rsv, (u64)-1);
-	kfree(rsv);
-}
-
-void __btrfs_free_block_rsv(struct btrfs_block_rsv *rsv)
-{
 	kfree(rsv);
 }
 
