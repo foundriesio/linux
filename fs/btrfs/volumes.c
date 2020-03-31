@@ -2880,7 +2880,7 @@ int btrfs_remove_chunk(struct btrfs_trans_handle *trans,
 	}
 	map = em->map_lookup;
 	mutex_lock(&fs_info->chunk_mutex);
-	check_system_chunk(trans, fs_info, map->type);
+	check_system_chunk(trans, map->type);
 	mutex_unlock(&fs_info->chunk_mutex);
 
 	/*
@@ -3113,7 +3113,7 @@ static int btrfs_may_alloc_data_chunk(struct btrfs_fs_info *fs_info,
 			if (IS_ERR(trans))
 				return PTR_ERR(trans);
 
-			ret = btrfs_force_chunk_alloc(trans, fs_info,
+			ret = btrfs_force_chunk_alloc(trans,
 						      BTRFS_BLOCK_GROUP_DATA);
 			btrfs_end_transaction(trans);
 			if (ret < 0)
