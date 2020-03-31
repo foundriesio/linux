@@ -246,7 +246,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			}
 			break;
 		case SND_SOC_DAIFMT_DSP_B:
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X)  || defined(CONFIG_ARCH_TCC901X)
 			(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] DSP_B DAIFMT\n", i2s->blk_no);
 			if (i2s->tdm_mode == TRUE) {
 				if ((i2s->tdm_slot_width == 16) || (i2s->tdm_slot_width == 24)) {
@@ -366,7 +366,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 			if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 				i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, (TCC_DAI_MCLK_DIV)i2s->mclk_div, (TCC_DAI_BCLK_RATIO)i2s->bclk_ratio, i2s->tdm_mode);
 			} else
@@ -382,7 +382,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 			if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 				regs.dclkdiv = i2s->regs_backup.dclkdiv;
 			}
@@ -632,7 +632,7 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 		i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, (TCC_DAI_MCLK_DIV)i2s->mclk_div, (TCC_DAI_BCLK_RATIO)i2s->bclk_ratio, i2s->tdm_mode);
 	} else
@@ -672,7 +672,7 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 			if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 				regs.dclkdiv = i2s->regs_backup.dclkdiv;
 			}
@@ -1015,7 +1015,7 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 {
 	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_dai_get_drvdata(dai);
 	struct pinctrl *pinctrl;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t dclkdiv_backup = 0;
 #endif
 
@@ -1029,7 +1029,7 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 		dclkdiv_backup = i2s->regs_backup.dclkdiv;
 	}
@@ -1039,7 +1039,7 @@ static int tcc_i2s_dai_suspend(struct snd_soc_dai *dai)
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 		i2s->regs_backup.dclkdiv = dclkdiv_backup;
 	}
@@ -1164,7 +1164,7 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE || i2s->block_type == (uint32_t)DAI_BLOCK_9_1CH_TYPE) {
 		i2s->regs_backup.dclkdiv = tcc_dai_set_clk_mode(i2s->dai_reg, (TCC_DAI_MCLK_DIV)i2s->mclk_div, (TCC_DAI_BCLK_RATIO)i2s->bclk_ratio, i2s->tdm_mode);
 	} else
@@ -1181,6 +1181,9 @@ static void i2s_initialize(struct tcc_i2s_t *i2s)
 	tcc_dai_set_dao_path_sel(i2s->dai_reg, TCC_DAI_PATH_ADMA);
 
 	tcc_dai_set_audio_filter_enable(i2s->dai_reg, TRUE);
+#if defined(CONFIG_ARCH_TCC805X)
+	tcc_dai_set_audio_data_filter_enable(i2s->dai_reg, TRUE);
+#endif
 }
 
 static void set_default_configrations(struct tcc_i2s_t *i2s)

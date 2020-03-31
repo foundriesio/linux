@@ -452,7 +452,7 @@ static inline void tcc_dai_set_master_mode(void __iomem *base_addr, bool mclk_ma
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline uint32_t tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
 #else
 static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
@@ -529,7 +529,7 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 /** Workaround Code for TCC803X, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	return dclkdiv;
 #endif
 
@@ -576,6 +576,22 @@ static inline void tcc_dai_set_audio_filter_enable(void __iomem *base_addr, bool
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
+#if defined(CONFIG_ARCH_TCC805X)
+static inline void tcc_dai_set_audio_data_filter_enable(void __iomem *base_addr, bool enable)
+{
+	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
+
+	value &= ~DAMR_AUDIO_DATA_FILTER_MODE_Msk;
+
+	if (enable) {
+		value |= DAMR_AUDIO_DATA_FILTER_ENABLE;
+	} else {
+		value |= DAMR_AUDIO_DATA_FILTER_DISABLE;
+	}
+
+	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
+}
+#endif
 static inline void tcc_dai_set_dsp_tdm_frame_invert(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_MCCR0_OFFSET);

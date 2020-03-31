@@ -73,10 +73,21 @@
 #define TCC_ASRC_VOL_RAMP_GAIN3_OFFSET		(0x0B8) // RW
 #define TCC_ASRC_VOL_RAMP_UP_CFG3_OFFSET	(0x0BC) // RW
 
+#if defined(CONFIG_ARCH_TCC805X)
+#define TCC_ASRC_IRQ_RAW_STATUS0_OFFSET		(0x0C0) // R
+#define TCC_ASRC_IRQ_MASK_STATUS0_OFFSET	(0x0C4) // R
+#define TCC_ASRC_IRQ_CLEAR0_OFFSET			(0x0C4) // W
+#define TCC_ASRC_IRQ_ENABLE0_OFFSET			(0x0C8) // RW
+#define TCC_ASRC_IRQ_RAW_STATUS1_OFFSET		(0x0E0) // R
+#define TCC_ASRC_IRQ_MASK_STATUS1_OFFSET	(0x0E4) // R
+#define TCC_ASRC_IRQ_CLEAR1_OFFSET			(0x0E4) // W
+#define TCC_ASRC_IRQ_ENABLE1_OFFSET			(0x0E8) // RW
+#else
 #define TCC_ASRC_IRQ_RAW_STATUS_OFFSET		(0x0C0) // R
 #define TCC_ASRC_IRQ_MASK_STATUS_OFFSET		(0x0C4) // R
 #define TCC_ASRC_IRQ_CLEAR_OFFSET			(0x0C4) // W
 #define TCC_ASRC_IRQ_ENABLE_OFFSET			(0x0C8) // RW
+#endif
 
 #define TCC_ASRC_FIFO_IN0_CTRL_OFFSET		(0x100) // RW
 #define TCC_ASRC_FIFO_IN0_STATUS_OFFSET		(0x104) // R
@@ -103,6 +114,28 @@
 #define TCC_ASRC_FIFO_OUT3_STATUS_OFFSET	(0x13C) // R
 
 #define TCC_ASRC_FIFO_MISC_CTRL_OFFSET		(0x140) // RW
+
+#if defined(CONFIG_ARCH_TCC805X)
+#define TCC_ASRC_FIFO_IN0_CTRL1_OFFSET		(0x150) // RW
+#define TCC_ASRC_FIFO_IN1_CTRL1_OFFSET		(0x154) // RW
+#define TCC_ASRC_FIFO_IN2_CTRL1_OFFSET		(0x158) // RW
+#define TCC_ASRC_FIFO_IN3_CTRL1_OFFSET		(0x15C) // RW
+
+#define TCC_ASRC_FIFO_IN0_STATUS1_OFFSET	(0x160) // R
+#define TCC_ASRC_FIFO_IN1_STATUS1_OFFSET	(0x164) // R
+#define TCC_ASRC_FIFO_IN2_STATUS1_OFFSET	(0x168) // R
+#define TCC_ASRC_FIFO_IN3_STATUS1_OFFSET	(0x16C) // R
+
+#define TCC_ASRC_FIFO_OUT0_CTRL1_OFFSET		(0x170) // RW
+#define TCC_ASRC_FIFO_OUT1_CTRL1_OFFSET		(0x174) // RW
+#define TCC_ASRC_FIFO_OUT2_CTRL1_OFFSET		(0x178) // RW
+#define TCC_ASRC_FIFO_OUT3_CTRL1_OFFSET		(0x17C) // RW
+
+#define TCC_ASRC_FIFO_OUT0_STATUS1_OFFSET	(0x180) // R
+#define TCC_ASRC_FIFO_OUT1_STATUS1_OFFSET	(0x184) // R
+#define TCC_ASRC_FIFO_OUT2_STATUS1_OFFSET	(0x188) // R
+#define TCC_ASRC_FIFO_OUT3_STATUS1_OFFSET	(0x18C) // R
+#endif
 
 #define TCC_ASRC_FIFO_IN0_DATA_OFFSET		(0x200) // RW
 #define TCC_ASRC_FIFO_OUT0_DATA_OFFSET		(0x300) // RW
@@ -455,6 +488,10 @@ enum tcc_asrc_ramp_time_t {
 
 //FIFO IN/OUT 0/1/2/3 Control Register
 #define TCC_ASRC_FIFO_DMA_EN				(0x01<<31)
+#if defined(CONFIG_ARCH_TCC805X)
+#define TCC_ASRC_FIFO_SIZE_MASK				(0x07<<20)
+#define TCC_ASRC_FIFO_SIZE(x)				(((x)<<20) & TCC_ASRC_FIFO_SIZE_MASK)
+#endif
 #define TCC_ASRC_FIFO_FMT_MASK				(0x01<<16)
 #define TCC_ASRC_FIFO_FMT(x)				(((x)<<16) & TCC_ASRC_FIFO_FMT_MASK)
 #define TCC_ASRC_FIFO_THRESHOLD_MASK		(0x03<<8)
@@ -474,11 +511,34 @@ enum tcc_asrc_fifo_mode_t {
 	TCC_ASRC_FIFO_MODE_8CH = 3,
 };
 
+#if defined(CONFIG_ARCH_TCC805X)
+enum tcc_asrc_fifo_size_t {
+	TCC_ASRC_FIFO_SIZE_256WORD = 0,
+	TCC_ASRC_FIFO_SIZE_128WORD = 1,
+	TCC_ASRC_FIFO_SIZE_64WORD = 2,
+	TCC_ASRC_FIFO_SIZE_32WORD = 3,
+	TCC_ASRC_FIFO_SIZE_16WORD = 4,
+	TCC_ASRC_FIFO_SIZE_8WORD = 5,
+	TCC_ASRC_FIFO_SIZE_4WORD = 6,
+	TCC_ASRC_FIFO_SIZE_2WORD = 7,
+};
+#endif
+
 //FIFO IN/OUT 0/1/2/3 Status Register
 #define TCC_ASRC_FIFO_FULL					(0x01<<31)
 #define TCC_ASRC_FIFO_EMPTY					(0x01<<30)
 #define TCC_ASRC_FIFO_LEVEL					(0x0ffff<<0)
                                             
+#if defined(CONFIG_ARCH_TCC805X)
+//FIFO IN/OUT 0/1/2/3 Control1 Register
+#define TCC_ASRC_FIFO_RD_CNT_CLR			(0x01<<31)
+#define TCC_ASRC_FIFO_RD_CNT_THR_MASK		(0x7FFFFFFF)
+#define TCC_ASRC_FIFO_RD_CNT_THR(x)			(((x)<<0) & TCC_ASRC_FIFO_RD_CNT_THR_MASK)
+//FIFO IN/OUT 0/1/2/3 Status1 Register
+#define TCC_ASRC_FIFO_RD_CNT_CNT_MASK		(0x7FFFFFFF)
+#define TCC_ASRC_FIFO_RD_CNT_CNT(x)			(((x)<<0) & TCC_ASRC_FIFO_RD_CNT_CNT_MASK)
+#endif
+
 //FIFO MISC Control  Register               
 #define TCC_ASRC_DMA_ARB_ROUND_ROBIN		(0x01<<0)
 
@@ -523,8 +583,12 @@ struct asrc_reg_t {
 	uint32_t vol_ramp_up_cfg2;
 	uint32_t vol_ramp_up_cfg3;
 
+#if defined(CONFIG_ARCH_TCC805X)
+	uint32_t irq_enable0;
+	uint32_t irq_enable1;
+#else
 	uint32_t irq_enable;
-
+#endif
 	uint32_t fifo_in_ctrl0;
 	uint32_t fifo_in_ctrl1;
 	uint32_t fifo_in_ctrl2;
@@ -536,6 +600,18 @@ struct asrc_reg_t {
 	uint32_t fifo_out_ctrl3;
 
 	uint32_t fifo_misc_ctrl;
+#if defined(CONFIG_ARCH_TCC805X)
+	uint32_t fifo_in_ctrl1_0;
+	uint32_t fifo_in_ctrl1_1;
+	uint32_t fifo_in_ctrl1_2;
+	uint32_t fifo_in_ctrl1_3;
+
+	uint32_t fifo_out_ctrl1_0;
+	uint32_t fifo_out_ctrl1_1;
+	uint32_t fifo_out_ctrl1_2;
+	uint32_t fifo_out_ctrl1_3;
+
+#endif
 };
 
 void tcc_asrc_dump_regs(void __iomem *asrc_reg);
@@ -560,11 +636,20 @@ void tcc_asrc_set_volume_ramp_dn_time(void __iomem *asrc_reg, int asrc_ch, uint3
 void tcc_asrc_set_volume_ramp_up_time(void __iomem *asrc_reg, int asrc_ch, uint32_t time, uint32_t wait);
 
 void tcc_asrc_dma_arbitration(void __iomem *asrc_reg, uint32_t round_robin);
+#if defined(CONFIG_ARCH_TCC803X)
 void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
 		int asrc_ch,
 		enum tcc_asrc_fifo_fmt_t fmt,
 		enum tcc_asrc_fifo_mode_t mode,
 		uint32_t threshold);
+#else
+void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
+		int asrc_ch,
+		enum tcc_asrc_fifo_fmt_t fmt,
+		enum tcc_asrc_fifo_mode_t mode,
+		enum tcc_asrc_fifo_size_t size,
+		uint32_t threshold);
+#endif
 void tcc_asrc_fifo_out_config(void __iomem *asrc_reg,
 		int asrc_ch,
 		enum tcc_asrc_fifo_fmt_t fmt,

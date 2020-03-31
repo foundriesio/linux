@@ -78,10 +78,18 @@ void tcc_asrc_dump_regs(void __iomem *asrc_reg)
 	printk("RAMP_UP      3 : 0x%08x\n", readl(asrc_reg + TCC_ASRC_VOL_RAMP_UP_CFG3_OFFSET));
 	printk("RAMP_DN      3 : 0x%08x\n", readl(asrc_reg + TCC_ASRC_VOL_RAMP_DN_CFG3_OFFSET));
 
+#if defined(CONFIG_ARCH_TCC805X)
+	printk("IRQ_RAW_STATUS0 : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_RAW_STATUS0_OFFSET));
+	printk("IRQ_MASK_STATUS0: 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_MASK_STATUS0_OFFSET));
+	printk("IRQ_ENABLE0     : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_ENABLE0_OFFSET));
+	printk("IRQ_RAW_STATUS1 : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_RAW_STATUS1_OFFSET));
+	printk("IRQ_MASK_STATUS1: 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_MASK_STATUS1_OFFSET));
+	printk("IRQ_ENABLE1     : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_ENABLE1_OFFSET));
+#else
 	printk("IRQ_RAW_STATUS : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_RAW_STATUS_OFFSET));
 	printk("IRQ_MASK_STATUS: 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_MASK_STATUS_OFFSET));
 	printk("IRQ_ENABLE     : 0x%08x\n", readl(asrc_reg + TCC_ASRC_IRQ_ENABLE_OFFSET));
-
+#endif
 	printk("FIFO_IN_CTRL  0: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN0_CTRL_OFFSET));
 	printk("FIFO_IN_STATUS0: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN0_STATUS_OFFSET));
 	printk("FIFO_IN_CTRL  1: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN1_CTRL_OFFSET));
@@ -101,6 +109,26 @@ void tcc_asrc_dump_regs(void __iomem *asrc_reg)
 	printk("FIFO_OUT_STATUS3: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT3_STATUS_OFFSET));
 
 	printk("FIFO_MISC_CTRL : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_MISC_CTRL_OFFSET));
+
+#if defined(CONFIG_ARCH_TCC805X)
+	printk("FIFO_IN_CTRL1_0  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN0_CTRL1_OFFSET));
+	printk("FIFO_IN_CTRL1_1  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN1_CTRL1_OFFSET));
+	printk("FIFO_IN_CTRL1_2  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN2_CTRL1_OFFSET));
+	printk("FIFO_IN_CTRL1_3  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN3_CTRL1_OFFSET));
+	printk("FIFO_IN_STATUS1_0: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN0_STATUS1_OFFSET));
+	printk("FIFO_IN_STATUS1_1: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN1_STATUS1_OFFSET));
+	printk("FIFO_IN_STATUS1_2: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN2_STATUS1_OFFSET));
+	printk("FIFO_IN_STATUS1_3: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_IN3_STATUS1_OFFSET));
+
+	printk("FIFO_OUT_CTRL1_0  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT0_CTRL1_OFFSET));
+	printk("FIFO_OUT_CTRL1_1  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT1_CTRL1_OFFSET));
+	printk("FIFO_OUT_CTRL1_2  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT2_CTRL1_OFFSET));
+	printk("FIFO_OUT_CTRL1_3  : 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT3_CTRL1_OFFSET));
+	printk("FIFO_OUT_STATUS1_0: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT0_STATUS1_OFFSET));
+	printk("FIFO_OUT_STATUS1_1: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT1_STATUS1_OFFSET));
+	printk("FIFO_OUT_STATUS1_2: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT2_STATUS1_OFFSET));
+	printk("FIFO_OUT_STATUS1_3: 0x%08x\n", readl(asrc_reg + TCC_ASRC_FIFO_OUT3_STATUS1_OFFSET));
+#endif
 }
 
 
@@ -395,6 +423,7 @@ void tcc_asrc_dma_arbitration(void __iomem *asrc_reg, uint32_t round_robin)
 	writel(val, asrc_reg+TCC_ASRC_FIFO_MISC_CTRL_OFFSET);
 }
 
+#if defined(CONFIG_ARCH_TCC803X)
 void tcc_asrc_fifo_in_config(void __iomem *asrc_reg, 
 		int asrc_ch, 
 		enum tcc_asrc_fifo_fmt_t fmt, 
@@ -417,7 +446,32 @@ void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
 
 	writel(val, asrc_reg+offset);
 }
+#else
+void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
+		int asrc_ch,
+		enum tcc_asrc_fifo_fmt_t fmt,
+		enum tcc_asrc_fifo_mode_t mode,
+		enum tcc_asrc_fifo_size_t size,
+		uint32_t threshold)
+{
+	uint32_t val;
+	uint32_t offset;
 
+	offset = (asrc_ch == 0) ? TCC_ASRC_FIFO_IN0_CTRL_OFFSET :
+		(asrc_ch == 1) ? TCC_ASRC_FIFO_IN1_CTRL_OFFSET :
+		(asrc_ch == 2) ? TCC_ASRC_FIFO_IN2_CTRL_OFFSET : TCC_ASRC_FIFO_IN3_CTRL_OFFSET;
+
+	val = readl(asrc_reg+offset);
+
+	val &= ~(TCC_ASRC_FIFO_FMT_MASK|TCC_ASRC_FIFO_THRESHOLD_MASK|TCC_ASRC_FIFO_MODE_MASK);
+	val |= TCC_ASRC_FIFO_SIZE(size);
+	val |= TCC_ASRC_FIFO_MODE(mode);
+	val |= TCC_ASRC_FIFO_FMT(fmt);
+	val |= TCC_ASRC_FIFO_THRESHOLD(threshold);
+
+	writel(val, asrc_reg+offset);
+}
+#endif
 void tcc_asrc_fifo_out_config(void __iomem *asrc_reg, 
 		int asrc_ch, 
 		enum tcc_asrc_fifo_fmt_t fmt, 
@@ -698,8 +752,12 @@ void tcc_asrc_reg_backup(void __iomem *asrc_reg, struct asrc_reg_t *regs)
 	regs->vol_ramp_up_cfg2 = readl(asrc_reg + TCC_ASRC_VOL_RAMP_DN_CFG2_OFFSET);
 	regs->vol_ramp_up_cfg3 = readl(asrc_reg + TCC_ASRC_VOL_RAMP_DN_CFG3_OFFSET);
 
+#if defined(CONFIG_ARCH_TCC805X)
+	regs->irq_enable0       = readl(asrc_reg + TCC_ASRC_IRQ_ENABLE0_OFFSET);
+	regs->irq_enable1       = readl(asrc_reg + TCC_ASRC_IRQ_ENABLE1_OFFSET);
+#else
 	regs->irq_enable       = readl(asrc_reg + TCC_ASRC_IRQ_ENABLE_OFFSET);
-
+#endif
 	regs->fifo_in_ctrl0    = readl(asrc_reg + TCC_ASRC_FIFO_IN0_CTRL_OFFSET);
 	regs->fifo_in_ctrl1    = readl(asrc_reg + TCC_ASRC_FIFO_IN1_CTRL_OFFSET);
 	regs->fifo_in_ctrl2    = readl(asrc_reg + TCC_ASRC_FIFO_IN2_CTRL_OFFSET);
@@ -755,8 +813,12 @@ void tcc_asrc_reg_restore(void __iomem *asrc_reg, struct asrc_reg_t *regs)
 	writel(regs->vol_ramp_up_cfg2, asrc_reg + TCC_ASRC_VOL_RAMP_DN_CFG2_OFFSET);
 	writel(regs->vol_ramp_up_cfg3, asrc_reg + TCC_ASRC_VOL_RAMP_DN_CFG3_OFFSET);
 
+#if defined(CONFIG_ARCH_TCC805X)
+	writel(regs->irq_enable0     , asrc_reg + TCC_ASRC_IRQ_ENABLE0_OFFSET);
+	writel(regs->irq_enable1     , asrc_reg + TCC_ASRC_IRQ_ENABLE1_OFFSET);
+#else
 	writel(regs->irq_enable      , asrc_reg + TCC_ASRC_IRQ_ENABLE_OFFSET);
-
+#endif
 	writel(regs->fifo_in_ctrl0   , asrc_reg + TCC_ASRC_FIFO_IN0_CTRL_OFFSET);
 	writel(regs->fifo_in_ctrl1   , asrc_reg + TCC_ASRC_FIFO_IN1_CTRL_OFFSET);
 	writel(regs->fifo_in_ctrl2   , asrc_reg + TCC_ASRC_FIFO_IN2_CTRL_OFFSET);
