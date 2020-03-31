@@ -47,9 +47,6 @@
 #undef SCRAMBLE_DELAYED_REFS
 
 
-static int update_block_group(struct btrfs_trans_handle *trans,
-			      struct btrfs_fs_info *fs_info, u64 bytenr,
-			      u64 num_bytes, int alloc);
 static int __btrfs_free_extent(struct btrfs_trans_handle *trans,
 			       struct btrfs_fs_info *fs_info,
 				struct btrfs_delayed_ref_node *node, u64 parent,
@@ -71,10 +68,6 @@ static int alloc_reserved_tree_block(struct btrfs_trans_handle *trans,
 				     int level, struct btrfs_key *ins);
 static int find_next_key(struct btrfs_path *path, int level,
 			 struct btrfs_key *key);
-static int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
-				    u64 ram_bytes, u64 num_bytes, int delalloc);
-static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
-				     u64 num_bytes, int delalloc);
 
 static int block_group_bits(struct btrfs_block_group_cache *cache, u64 bits)
 {
@@ -3143,9 +3136,9 @@ void btrfs_trans_release_metadata(struct btrfs_trans_handle *trans,
 	trans->bytes_reserved = 0;
 }
 
-static int update_block_group(struct btrfs_trans_handle *trans,
-			      struct btrfs_fs_info *info, u64 bytenr,
-			      u64 num_bytes, int alloc)
+int btrfs_update_block_group(struct btrfs_trans_handle *trans,
+			     struct btrfs_fs_info *info, u64 bytenr,
+			     u64 num_bytes, int alloc)
 {
 	struct btrfs_block_group_cache *cache = NULL;
 	u64 total = num_bytes;
@@ -3446,8 +3439,8 @@ btrfs_inc_block_group_reservations(struct btrfs_block_group_cache *bg)
  * reservation and the block group has become read only we cannot make the
  * reservation and return -EAGAIN, otherwise this function always succeeds.
  */
-static int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
-				    u64 ram_bytes, u64 num_bytes, int delalloc)
+int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
+			     u64 ram_bytes, u64 num_bytes, int delalloc)
 {
 	struct btrfs_space_info *space_info = cache->space_info;
 	int ret = 0;
@@ -3485,11 +3478,10 @@ static int btrfs_add_reserved_bytes(struct btrfs_block_group_cache *cache,
  * reserve set to 0 in order to clear the reservation.
  */
 
-static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
-				     u64 num_bytes, int delalloc)
+void btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
+			       u64 num_bytes, int delalloc)
 {
 	struct btrfs_space_info *space_info = cache->space_info;
-	int ret = 0;
 
 	spin_lock(&space_info->lock);
 	spin_lock(&cache->lock);
@@ -3503,7 +3495,6 @@ static int btrfs_free_reserved_bytes(struct btrfs_block_group_cache *cache,
 		cache->delalloc_bytes -= num_bytes;
 	spin_unlock(&cache->lock);
 	spin_unlock(&space_info->lock);
-	return ret;
 }
 void btrfs_prepare_extent_commit(struct btrfs_fs_info *fs_info)
 {
@@ -3993,7 +3984,7 @@ static int __btrfs_free_extent(struct btrfs_trans_handle *trans,
 			goto out;
 		}
 
-		ret = update_block_group(trans, info, bytenr, num_bytes, 0);
+		ret = btrfs_update_block_group(trans, info, bytenr, num_bytes, 0);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -4917,7 +4908,7 @@ static int alloc_reserved_file_extent(struct btrfs_trans_handle *trans,
 	if (ret)
 		return ret;
 
-	ret = update_block_group(trans, fs_info, ins->objectid, ins->offset, 1);
+	ret = btrfs_update_block_group(trans, fs_info, ins->objectid, ins->offset, 1);
 	if (ret) { /* -ENOENT, logic error */
 		btrfs_err(fs_info, "update block group failed for %llu %llu",
 			ins->objectid, ins->offset);
@@ -4995,7 +4986,7 @@ static int alloc_reserved_tree_block(struct btrfs_trans_handle *trans,
 	if (ret)
 		return ret;
 
-	ret = update_block_group(trans, fs_info, ins->objectid,
+	ret = btrfs_update_block_group(trans, fs_info, ins->objectid,
 				 fs_info->nodesize, 1);
 	if (ret) { /* -ENOENT, logic error */
 		btrfs_err(fs_info, "update block group failed for %llu %llu",
