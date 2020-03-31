@@ -1517,8 +1517,6 @@ static int check_chunk_block_group_mappings(struct btrfs_fs_info *fs_info)
 	return ret;
 }
 
-extern u64 get_alloc_profile(struct btrfs_fs_info *fs_info, u64 orig_flags);
-
 int btrfs_read_block_groups(struct btrfs_fs_info *info)
 {
 	struct btrfs_path *path;
@@ -1669,7 +1667,7 @@ int btrfs_read_block_groups(struct btrfs_fs_info *info)
 	}
 
 	list_for_each_entry_rcu(space_info, &info->space_info, list) {
-		if (!(get_alloc_profile(info, space_info->flags) &
+		if (!(btrfs_get_alloc_profile(info, space_info->flags) &
 		      (BTRFS_BLOCK_GROUP_RAID10 |
 		       BTRFS_BLOCK_GROUP_RAID1 |
 		       BTRFS_BLOCK_GROUP_RAID5 |

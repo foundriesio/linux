@@ -200,7 +200,11 @@ static int can_overcommit(struct btrfs_root *root,
 	if (space_info->flags & BTRFS_BLOCK_GROUP_DATA)
 		return 0;
 
-	profile = btrfs_get_alloc_profile(root, 0);
+	if (space_info->flags & BTRFS_BLOCK_GROUP_METADATA)
+		profile = btrfs_metadata_alloc_profile(fs_info);
+	else
+		profile = btrfs_system_alloc_profile(fs_info);
+
 	used = btrfs_space_info_used(space_info, false);
 
 	/*
@@ -667,7 +671,8 @@ static int flush_space(struct btrfs_fs_info *fs_info,
 			ret = PTR_ERR(trans);
 			break;
 		}
-		ret = btrfs_chunk_alloc(trans, btrfs_get_alloc_profile(root, 0),
+		ret = btrfs_chunk_alloc(trans,
+				     btrfs_metadata_alloc_profile(fs_info),
 				     (state == ALLOC_CHUNK) ?
 				     CHUNK_ALLOC_NO_FORCE : CHUNK_ALLOC_FORCE);
 		btrfs_end_transaction(trans);
