@@ -353,6 +353,7 @@ static void nvme_mpath_set_live(struct nvme_ns *ns)
 		device_add_disk(&head->subsys->dev, head->disk);
 	}
 
+	synchronize_srcu(&ns->head->srcu);
 	kblockd_schedule_work(&ns->head->requeue_work);
 }
 
