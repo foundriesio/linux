@@ -335,7 +335,7 @@ err_pci:
 	dma_free_coherent(&obj->base.dev->pdev->dev,
 			  roundup_pow_of_two(obj->base.size),
 			  vaddr, dma);
-	return ERR_PTR(-ENOMEM);
+	return -ENOMEM;
 }
 
 static void __start_cpu_write(struct drm_i915_gem_object *obj)
