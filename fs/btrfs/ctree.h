@@ -2537,13 +2537,6 @@ int btrfs_make_block_group(struct btrfs_trans_handle *trans,
 			   u64 type, u64 chunk_objectid, u64 chunk_offset,
 			   u64 size);
 void btrfs_add_raid_kobjects(struct btrfs_fs_info *fs_info);
-struct btrfs_trans_handle *btrfs_start_trans_remove_block_group(
-				struct btrfs_fs_info *fs_info,
-				const u64 chunk_offset);
-int btrfs_remove_block_group(struct btrfs_trans_handle *trans,
-			     struct btrfs_fs_info *fs_info, u64 group_start,
-			     struct extent_map *em);
-void btrfs_delete_unused_bgs(struct btrfs_fs_info *fs_info);
 void btrfs_get_block_group_trimming(struct btrfs_block_group_cache *cache);
 void btrfs_put_block_group_trimming(struct btrfs_block_group_cache *cache);
 void btrfs_create_pending_block_groups(struct btrfs_trans_handle *trans,
