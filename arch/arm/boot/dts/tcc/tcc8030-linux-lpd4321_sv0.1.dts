@@ -215,6 +215,88 @@
 		leble = "TCC GPIO";
 		gpios = <&gpa 11 0>;
 	};
+
+#if 1//1:forISDBTApplication
+	tcc_vsync_drv {
+		compatible = "telechips,tcc_vsync";
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
+		status = "okay";
+	};
+
+	tcc_video_viqe {
+		compatible = "telechips,tcc_viqe";
+
+		tcc_viqe_viqe_common {
+			telechips,viqe,0 = <&vioc_viqe VIOC_VIQE0>;
+			telechips,viqe,1 = <&vioc_viqe VIOC_VIQE1>;
+			vioc_deintls = <VIOC_DEINTLS0>;
+			board_num=<1>;
+		};
+
+		tcc_video_viqe_lcd {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+		};
+
+		tcc_video_viqe_external {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA07>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_07>;
+		};
+
+		tcc_video_viqe_external_sub {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA06>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_06>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_06>;
+		};
+
+		tcc_video_main_m2m{
+			main_rdma_num_m2m = <VIOC_VIQE_RDMA_14>;
+			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA14>;
+		};
+
+		tcc_video_sub_m2m {
+			sub_rdma_num_m2m = <VIOC_VIQE_RDMA_12>;
+			telechips,sub_rdma,m2m = <&vioc_rdma VIOC_RDMA12>;
+		};
+
+		tcc_video_scaler_main_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA14>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER1>;
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX4>;
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA04>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_14>;
+			m2m_sc_settop_support = <1>;
+		};
+
+		tcc_video_scaler_sub_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA12>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER3>;
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX3>;
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA03>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_12>;
+			m2m_sc_settop_support = <1>;
+		};
+	};
+
+	wmixer_drv1: wmixer_drv@1 {
+		rdmas = <&vioc_rdma VIOC_RDMA12 VIOC_RDMA13>;
+		status = "okay";
+	};
+#endif
 };
 
 &ictc {
