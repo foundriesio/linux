@@ -640,7 +640,7 @@ struct change_mapping_params {
 	unsigned long aligned_end;
 };
 
-static int stop_machine_change_mapping(void *data)
+static int __meminit stop_machine_change_mapping(void *data)
 {
 	struct change_mapping_params *params =
 			(struct change_mapping_params *)data;
@@ -687,7 +687,7 @@ static void remove_pte_table(pte_t *pte_start, unsigned long addr,
 /*
  * clear the pte and potentially split the mapping helper
  */
-static void split_kernel_mapping(unsigned long addr, unsigned long end,
+static void __meminit split_kernel_mapping(unsigned long addr, unsigned long end,
 				unsigned long size, pte_t *pte)
 {
 	unsigned long mask = ~(size - 1);
@@ -780,7 +780,7 @@ static void remove_pud_table(pud_t *pud_start, unsigned long addr,
 	}
 }
 
-static void remove_pagetable(unsigned long start, unsigned long end)
+static void __meminit remove_pagetable(unsigned long start, unsigned long end)
 {
 	unsigned long addr, next;
 	pud_t *pud_base;
@@ -808,12 +808,12 @@ static void remove_pagetable(unsigned long start, unsigned long end)
 	radix__flush_tlb_kernel_range(start, end);
 }
 
-int __ref radix__create_section_mapping(unsigned long start, unsigned long end)
+int __meminit radix__create_section_mapping(unsigned long start, unsigned long end)
 {
 	return create_physical_mapping(__pa(start), __pa(end));
 }
 
-int radix__remove_section_mapping(unsigned long start, unsigned long end)
+int __meminit radix__remove_section_mapping(unsigned long start, unsigned long end)
 {
 	remove_pagetable(start, end);
 	return 0;
@@ -833,7 +833,7 @@ int __meminit radix__vmemmap_create_mapping(unsigned long start,
 }
 
 #ifdef CONFIG_MEMORY_HOTPLUG
-void radix__vmemmap_remove_mapping(unsigned long start, unsigned long page_size)
+void __meminit radix__vmemmap_remove_mapping(unsigned long start, unsigned long page_size)
 {
 	remove_pagetable(start, start + page_size);
 }
