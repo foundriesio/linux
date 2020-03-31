@@ -139,6 +139,10 @@
 	cpu-supply = <&vddcore>;
 };
 
+&crc1 {
+	status = "okay";
+};
+
 &dma1 {
 	sram = <&dma_pool>;
 };
