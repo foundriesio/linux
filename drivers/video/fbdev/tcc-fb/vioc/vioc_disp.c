@@ -99,7 +99,7 @@ void VIOC_DISP_GetSwapbf(volatile void __iomem *reg, unsigned int *swapbf)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 void VIOC_DISP_SetSwapaf(volatile void __iomem *reg, unsigned int swapaf)
 {
 	unsigned long value;

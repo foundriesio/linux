@@ -194,7 +194,7 @@ void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 }
 #endif
 
-
+#if !defined(CONFIG_ARCH_TCC805X)
 void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
 				    unsigned int enable)
 {
@@ -282,8 +282,9 @@ void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
 			<< HDMI_CTRL_RESET_LINK_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
-#endif
+#endif // //!defined(CONFIG_ARCH_TCC805X)
 
+#endif
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 				     enum dac_pwdn_status dac_status)
