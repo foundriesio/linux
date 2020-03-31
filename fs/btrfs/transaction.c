@@ -1188,7 +1188,7 @@ static noinline int commit_cowonly_roots(struct btrfs_trans_handle *trans,
 	if (ret)
 		return ret;
 
-	ret = btrfs_setup_space_cache(trans, fs_info);
+	ret = btrfs_setup_space_cache(trans);
 	if (ret)
 		return ret;
 
@@ -1216,7 +1216,7 @@ again:
 	}
 
 	while (!list_empty(dirty_bgs) || !list_empty(io_bgs)) {
-		ret = btrfs_write_dirty_block_groups(trans, fs_info);
+		ret = btrfs_write_dirty_block_groups(trans);
 		if (ret)
 			return ret;
 		ret = btrfs_run_delayed_refs(trans, fs_info, (unsigned long)-1);
@@ -2028,7 +2028,7 @@ int btrfs_commit_transaction(struct btrfs_trans_handle *trans)
 		mutex_unlock(&fs_info->ro_block_group_mutex);
 
 		if (run_it)
-			ret = btrfs_start_dirty_block_groups(trans, fs_info);
+			ret = btrfs_start_dirty_block_groups(trans);
 	}
 	if (ret) {
 		btrfs_end_transaction(trans);
