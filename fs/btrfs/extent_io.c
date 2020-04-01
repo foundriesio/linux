@@ -4130,8 +4130,7 @@ int extent_write_full_page(struct extent_io_tree *tree, struct page *page,
 }
 
 int extent_write_locked_range(struct extent_io_tree *tree, struct inode *inode,
-			      u64 start, u64 end, get_extent_t *get_extent,
-			      int mode)
+			      u64 start, u64 end, int mode)
 {
 	int ret = 0;
 	struct address_space *mapping = inode->i_mapping;
@@ -4142,7 +4141,7 @@ int extent_write_locked_range(struct extent_io_tree *tree, struct inode *inode,
 	struct extent_page_data epd = {
 		.bio = NULL,
 		.tree = tree,
-		.get_extent = get_extent,
+		.get_extent = btrfs_get_extent,
 		.extent_locked = 1,
 		.sync_io = mode == WB_SYNC_ALL,
 	};
