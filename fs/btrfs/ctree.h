@@ -2549,7 +2549,8 @@ enum btrfs_flush_state {
 	FLUSH_DELALLOC_WAIT	=	6,
 	ALLOC_CHUNK		=	7,
 	ALLOC_CHUNK_FORCE	=	8,
-	COMMIT_TRANS		=	9,
+	RUN_DELAYED_IPUTS	=	9,
+	COMMIT_TRANS		=	10,
 };
 
 void btrfs_trans_release_metadata(struct btrfs_trans_handle *trans,
