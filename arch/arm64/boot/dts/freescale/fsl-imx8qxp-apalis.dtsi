@@ -868,7 +868,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi0>;
 	cs-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
-/* Todo: measure with oscilloscope if cs-gpios or hardware gpio is better */
 };
 
 /* Apalis SPI2 */
@@ -879,7 +878,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpspi2>;
 	cs-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-/* Todo: measure with oscilloscope if cs-gpios or hardware gpio is better */
 };
 
 /* Apalis UART1 */
