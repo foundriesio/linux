@@ -146,7 +146,40 @@ static void add_extent_changeset(struct extent_state *state, unsigned bits,
 	BUG_ON(ret < 0);
 }
 
-static void flush_write_bio(struct extent_page_data *epd);
+static int __must_check submit_one_bio(struct bio *bio, int mirror_num,
+				       unsigned long bio_flags)
+{
+	blk_status_t ret = 0;
+	struct bio_vec *bvec = bio_last_bvec_all(bio);
+	struct page *page = bvec->bv_page;
+	struct extent_io_tree *tree = bio->bi_private;
+	u64 start;
+
+	start = page_offset(page) + bvec->bv_offset;
+
+	bio->bi_private = NULL;
+	bio_get(bio);
+
+	if (tree->ops)
+		ret = tree->ops->submit_bio_hook(page->mapping->host, bio,
+					   mirror_num, bio_flags, start);
+	else
+		btrfsic_submit_bio(bio);
+
+	bio_put(bio);
+	return blk_status_to_errno(ret);
+}
+
+static void flush_write_bio(struct extent_page_data *epd)
+{
+	if (epd->bio) {
+		int ret;
+
+		ret = submit_one_bio(epd->bio, 0, 0);
+		BUG_ON(ret < 0); /* -ENOMEM */
+		epd->bio = NULL;
+	}
+}
 
 static inline struct btrfs_fs_info *
 tree_fs_info(struct extent_io_tree *tree)
@@ -2762,30 +2795,6 @@ struct bio *btrfs_bio_clone_partial(struct bio *orig, gfp_t gfp_mask,
 	return bio;
 }
 
-static int __must_check submit_one_bio(struct bio *bio, int mirror_num,
-				       unsigned long bio_flags)
-{
-	blk_status_t ret = 0;
-	struct bio_vec *bvec = bio_last_bvec_all(bio);
-	struct page *page = bvec->bv_page;
-	struct extent_io_tree *tree = bio->bi_private;
-	u64 start;
-
-	start = page_offset(page) + bvec->bv_offset;
-
-	bio->bi_private = NULL;
-	bio_get(bio);
-
-	if (tree->ops)
-		ret = tree->ops->submit_bio_hook(page->mapping->host, bio,
-					   mirror_num, bio_flags, start);
-	else
-		btrfsic_submit_bio(bio);
-
-	bio_put(bio);
-	return blk_status_to_errno(ret);
-}
-
 static int merge_bio(struct extent_io_tree *tree, struct page *page,
 		     unsigned long offset, size_t size, struct bio *bio,
 		     unsigned long bio_flags)
@@ -4087,17 +4096,6 @@ retry:
 
 	btrfs_add_delayed_iput(inode);
 	return ret;
-}
-
-static void flush_write_bio(struct extent_page_data *epd)
-{
-	if (epd->bio) {
-		int ret;
-
-		ret = submit_one_bio(epd->bio, 0, 0);
-		BUG_ON(ret < 0); /* -ENOMEM */
-		epd->bio = NULL;
-	}
 }
 
 int extent_write_full_page(struct page *page, struct writeback_control *wbc)
