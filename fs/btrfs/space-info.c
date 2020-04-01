@@ -187,9 +187,7 @@ static int can_overcommit(struct btrfs_root *root,
 			  enum btrfs_reserve_flush_enum flush)
 {
 	struct btrfs_fs_info *fs_info = root->fs_info;
-	struct btrfs_block_rsv *global_rsv = &fs_info->global_block_rsv;
 	u64 profile;
-	u64 space_size;
 	u64 avail;
 	u64 used;
 	int factor;
@@ -203,21 +201,7 @@ static int can_overcommit(struct btrfs_root *root,
 	else
 		profile = btrfs_system_alloc_profile(fs_info);
 
-	used = btrfs_space_info_used(space_info, false);
-
-	/*
-	 * We only want to allow over committing if we have lots of actual space
-	 * free, but if we don't have enough space to handle the global reserve
-	 * space then we could end up having a real enospc problem when trying
-	 * to allocate a chunk or some other such important allocation.
-	 */
-	spin_lock(&global_rsv->lock);
-	space_size = calc_global_rsv_need_space(global_rsv);
-	spin_unlock(&global_rsv->lock);
-	if (used + space_size >= space_info->total_bytes)
-		return 0;
-
-	used += space_info->bytes_may_use;
+	used = btrfs_space_info_used(space_info, true);
 
 	spin_lock(&fs_info->free_chunk_lock);
 	avail = fs_info->free_chunk_space;
