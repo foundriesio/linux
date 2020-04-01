@@ -2717,9 +2717,6 @@ int btrfs_update_block_group(struct btrfs_trans_handle *trans,
 			spin_unlock(&cache->lock);
 			spin_unlock(&cache->space_info->lock);
 
-			trace_btrfs_space_reservation(info, "pinned",
-						      cache->space_info->flags,
-						      num_bytes, 1);
 			percpu_counter_add(&cache->space_info->total_bytes_pinned,
 					   num_bytes);
 			set_extent_dirty(info->pinned_extents,

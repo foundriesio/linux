@@ -3076,9 +3076,6 @@ static int unpin_extent_range(struct btrfs_fs_info *fs_info,
 		spin_lock(&cache->lock);
 		cache->pinned -= len;
 		btrfs_space_info_update_bytes_pinned(fs_info, space_info, -len);
-
-		trace_btrfs_space_reservation(fs_info, "pinned",
-					      space_info->flags, len, 0);
 		space_info->max_extent_size = 0;
 		percpu_counter_add(&space_info->total_bytes_pinned, -len);
 		if (cache->ro) {
@@ -3099,10 +3096,6 @@ static int unpin_extent_range(struct btrfs_fs_info *fs_info,
 						space_info, to_add);
 				if (global_rsv->reserved >= global_rsv->size)
 					global_rsv->full = 1;
-				trace_btrfs_space_reservation(fs_info,
-							      "space_info",
-							      space_info->flags,
-							      to_add, 1);
 				len -= to_add;
 			}
 			spin_unlock(&global_rsv->lock);
