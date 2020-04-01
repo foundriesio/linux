@@ -3893,7 +3893,69 @@ Error:
 
 	return ret;
 }
+
+int tcc_fb_swap_vpu_frame(struct tcc_dp_device *pdp_data,
+						WMIXER_INFO_TYPE *WmixerInfo,
+						struct tcc_lcdc_image_update *TempImage,
+						VSYNC_CH_TYPE type)
+{
+	int ret;
+	struct file *file;
+	unsigned int target_address;
+	unsigned int target_size;
+
+	if(tccvid_lastframe[type].pmapBuff.size == 0) {
+		ret = -1;
+		goto exit;
+	}
+
+	file = filp_open(WMIXER_PATH, O_RDWR, 0666);
+
+	msleep(33);
+
+	if (tccvid_lastframe[type].CurrImage.addr0 == tccvid_lastframe[type].pmapBuff.base ) {
+		target_address = tccvid_lastframe[type].pmapBuff.base + (tccvid_lastframe[type].pmapBuff.size / 2);
+	} else {
+		target_address = tccvid_lastframe[type].pmapBuff.base;
+	}
+	target_size = (tccvid_lastframe[type].pmapBuff.size / 2);
+
+	memcpy(TempImage, &tccvid_lastframe[type].CurrImage, sizeof(struct tcc_lcdc_image_update));
+
+	ret = tcc_move_video_frame_simple(file, TempImage, WmixerInfo, target_address, target_size, TempImage->fmt);
+	if (ret > 0) {
+		pr_info("[INF][FB] %s: id(%d) enable(%d/%d)\n", __func__,
+			TempImage->buffer_unique_id, TempImage->enable, tccvid_lastframe[type].CurrImage.enable);
+
+		if (pdp_data->FbPowerState) {
+			tca_scale_display_update(pdp_data, TempImage);
+		}
+
+		memcpy(&tccvid_lastframe[type].CurrImage, TempImage, sizeof(struct tcc_lcdc_image_update));
+
+		msleep(33);
+
+		pr_info("[INF][FB] %s: backup id(%d) \n",
+			__func__, tccvid_lastframe[type].CurrImage.buffer_unique_id);
+	} else {
+		pr_err("[ERR][FB] %s [%d] Error[%d] :: wmixer ctrl \n", __func__, type, ret);
+	}
+
+	ret = tccvid_lastframe[type].CurrImage.buffer_unique_id;
+
+exit:
+	if (file != NULL) {
+		filp_close(file, 0);
+	}
+	if(ret < 0) {
+		pr_err("[ERR][FB] %s: ret(%d)\n", __func__, ret);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(tcc_fb_swap_vpu_frame);
 #endif
+
 
 static int tcc_vsync_push_main_process(unsigned int cmd, tcc_video_disp *p, struct tcc_lcdc_image_update *input_image, struct tcc_dp_device *dp_device, VSYNC_CH_TYPE type)
 {

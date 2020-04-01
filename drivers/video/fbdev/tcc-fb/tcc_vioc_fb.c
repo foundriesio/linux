@@ -291,6 +291,12 @@ extern int vta_cmd_notify_change_status(const char *);
 extern void tca_fb_wait_for_vsync(struct tcc_dp_device *pdata);
 extern void tca_fb_vsync_activate(struct tcc_dp_device *pdata);
 
+extern int tcc_fb_swap_vpu_frame(struct tcc_dp_device *pdp_data,
+						WMIXER_INFO_TYPE *WmixerInfo,
+						struct tcc_lcdc_image_update *TempImage,
+						VSYNC_CH_TYPE type);
+
+
 #if defined(CONFIG_SYNC_FB)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 static void tcc_fd_fence_wait(struct sync_fence *fence)
@@ -1206,6 +1212,23 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				if (copy_from_user((void *)&ImageInfo, (const void *)arg, sizeof(struct tcc_lcdc_image_update))){
 					return -EFAULT;
 				}
+
+			#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
+				/* image_enable
+				 * 0: ImageInfo is 1st frame (start playing)
+				 * 1: Video is playing
+				 */
+				if (ptccfb_info->image_enable != 0) {
+					if (ptccfb_info->swap_buf_status == SWAP_BUF_START) {
+						if (ptccfb_info->swap_buf_id >= ImageInfo.buffer_unique_id) {
+							dprintk("0x%X (%d >= %d)\n", ptccfb_info->swap_buf_status, ptccfb_info->swap_buf_id, ImageInfo.buffer_unique_id);
+							return 0;
+						}
+					}
+				}
+				ptccfb_info->swap_buf_status = SWAP_BUF_END;
+				ptccfb_info->image_enable = ImageInfo.enable;
+			#endif
 
 				if(ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI)
 					pdp_data = &ptccfb_info->pdata.Mdp_data;
@@ -2252,6 +2275,63 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		}
 		break;
 
+	case TCC_LCDC_FB_SWAP_VPU_FRAME:
+		{
+		#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
+			int ret;
+			WMIXER_INFO_TYPE WmixerInfo;
+			struct tcc_lcdc_image_update *TempImage;
+			struct tcc_dp_device *pdp_data = NULL;
+
+			pr_info("[INF][FB] TCC_LCDC_FB_SWAP_VPU_FRAME idx(%d)\n", arg);
+
+			if (ptccfb_info->image_enable == 0) {
+				return 0;
+			}
+			if (ptccfb_info->swap_buf_status != SWAP_BUF_END) {
+				return 0;
+			}
+
+			if (ptccfb_info->pdata.Mdp_data.DispDeviceType == TCC_OUTPUT_HDMI
+				&& ptccfb_info->pdata.Mdp_data.FbPowerState)
+			{
+				pdp_data = &ptccfb_info->pdata.Mdp_data;
+			}
+			else if (ptccfb_info->pdata.Sdp_data.DispDeviceType == TCC_OUTPUT_HDMI
+				&& ptccfb_info->pdata.Sdp_data.FbPowerState)
+			{
+				pdp_data = &ptccfb_info->pdata.Sdp_data;
+			}
+			else
+			{
+				pr_warn("[WAN][FB] TCC_LCDC_FB_SWAP_VPU_FRAME (M:%d, S:%d)\n",
+					ptccfb_info->pdata.Mdp_data.DispDeviceType,
+					ptccfb_info->pdata.Sdp_data.DispDeviceType);
+				return -ENODEV;
+			}
+
+			TempImage = (struct tcc_lcdc_image_update *)kmalloc(sizeof(struct tcc_lcdc_image_update), GFP_KERNEL);
+			if (!TempImage) {
+				pr_err("[ERR][FB] TCC_LCDC_FB_SWAP_VPU_FRAME kmalloc\n");
+				return -EFAULT;
+			}
+
+			ret = tcc_fb_swap_vpu_frame(pdp_data, &WmixerInfo, TempImage, VSYNC_MAIN);
+
+			kfree((const void*)TempImage);
+
+			if (ret < 0) {
+				pr_err("[ERR][FB] TCC_LCDC_FB_SWAP_VPU_FRAME swap\n");
+				return -EFAULT;
+			}
+
+			ptccfb_info->swap_buf_id = ret;
+			ptccfb_info->swap_buf_status = SWAP_BUF_START;
+
+		#endif
+			break;
+		}
+
 	default:
 		dprintk("ioctl: Unknown [%d/0x%X]", cmd, cmd);
 		break;
@@ -3008,6 +3088,10 @@ static int tccfb_probe(struct platform_device *pdev)
 		info_reg->pdata.Mdp_data.FbPowerState = true;
 		info_reg->pdata.Mdp_data.FbUpdateType = FB_RDMA_UPDATE;
 		info_reg->pdata.Mdp_data.DispDeviceType = TCC_OUTPUT_LCD;
+
+		info_reg->image_enable = 0;
+		info_reg->swap_buf_id = 0;
+		info_reg->swap_buf_status = SWAP_BUF_END;
 
 		tccfb_check_var(&fbinfo_reg->var, fbinfo_reg);
 

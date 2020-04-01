@@ -204,7 +204,14 @@ struct tccfb_info {
 	
 	struct sw_sync_timeline *ext_timeline;
 	int ext_timeline_max;
-#endif//
+#endif
+
+	/* SWAP_BUFFER (for video seek) */
+	int image_enable;
+	int swap_buf_id;
+	int swap_buf_status;
+#define SWAP_BUF_START	(0xA0000001)
+#define SWAP_BUF_END	(0xB0000002)
 };
 
 struct tcc_fenc_reg_data {
