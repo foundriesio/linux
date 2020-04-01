@@ -418,13 +418,17 @@ static inline int virtqueue_add(struct virtqueue *_vq,
 
 unmap_release:
 	err_idx = i;
-	i = head;
+
+	if (indirect)
+		i = 0;
+	else
+		i = head;
 
 	for (n = 0; n < total_sg; n++) {
 		if (i == err_idx)
 			break;
 		vring_unmap_one(vq, &desc[i]);
-		i = virtio16_to_cpu(_vq->vdev, vq->vring.desc[i].next);
+		i = virtio16_to_cpu(_vq->vdev, desc[i].next);
 	}
 
 	if (indirect)

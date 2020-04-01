@@ -70,13 +70,6 @@ static phys_addr_t io_tlb_start, io_tlb_end;
 static unsigned long io_tlb_nslabs;
 
 /*
- * When the IOMMU overflows we return a fallback buffer. This sets the size.
- */
-static unsigned long io_tlb_overflow = 32*1024;
-
-static phys_addr_t io_tlb_overflow_buffer;
-
-/*
  * This is a free list describing the number of free entries available from
  * each index
  */
@@ -123,7 +116,6 @@ setup_io_tlb_npages(char *str)
 	return 0;
 }
 early_param("swiotlb", setup_io_tlb_npages);
-/* make io_tlb_overflow tunable too? */
 
 unsigned long swiotlb_nr_tbl(void)
 {
@@ -211,16 +203,10 @@ void __init swiotlb_update_mem_attributes(void)
 	bytes = PAGE_ALIGN(io_tlb_nslabs << IO_TLB_SHIFT);
 	swiotlb_set_mem_attributes(vaddr, bytes);
 	memset(vaddr, 0, bytes);
-
-	vaddr = phys_to_virt(io_tlb_overflow_buffer);
-	bytes = PAGE_ALIGN(io_tlb_overflow);
-	swiotlb_set_mem_attributes(vaddr, bytes);
-	memset(vaddr, 0, bytes);
 }
 
 int __init swiotlb_init_with_tbl(char *tlb, unsigned long nslabs, int verbose)
 {
-	void *v_overflow_buffer;
 	unsigned long i, bytes;
 
 	bytes = nslabs << IO_TLB_SHIFT;
@@ -228,17 +214,6 @@ int __init swiotlb_init_with_tbl(char *tlb, unsigned long nslabs, int verbose)
 	io_tlb_nslabs = nslabs;
 	io_tlb_start = __pa(tlb);
 	io_tlb_end = io_tlb_start + bytes;
-
-	/*
-	 * Get the overflow emergency buffer
-	 */
-	v_overflow_buffer = memblock_virt_alloc_low_nopanic(
-						PAGE_ALIGN(io_tlb_overflow),
-						PAGE_SIZE);
-	if (!v_overflow_buffer)
-		return -ENOMEM;
-
-	io_tlb_overflow_buffer = __pa(v_overflow_buffer);
 
 	/*
 	 * Allocate and initialize the free list array.  This array is used
@@ -347,7 +322,6 @@ int
 swiotlb_late_init_with_tbl(char *tlb, unsigned long nslabs)
 {
 	unsigned long i, bytes;
-	unsigned char *v_overflow_buffer;
 
 	bytes = nslabs << IO_TLB_SHIFT;
 
@@ -357,18 +331,6 @@ swiotlb_late_init_with_tbl(char *tlb, unsigned long nslabs)
 
 	swiotlb_set_mem_attributes(tlb, bytes);
 	memset(tlb, 0, bytes);
-
-	/*
-	 * Get the overflow emergency buffer
-	 */
-	v_overflow_buffer = (void *)__get_free_pages(GFP_DMA,
-						     get_order(io_tlb_overflow));
-	if (!v_overflow_buffer)
-		goto cleanup2;
-
-	swiotlb_set_mem_attributes(v_overflow_buffer, io_tlb_overflow);
-	memset(v_overflow_buffer, 0, io_tlb_overflow);
-	io_tlb_overflow_buffer = virt_to_phys(v_overflow_buffer);
 
 	/*
 	 * Allocate and initialize the free list array.  This array is used
@@ -406,10 +368,6 @@ cleanup4:
 	                                                 sizeof(int)));
 	io_tlb_list = NULL;
 cleanup3:
-	free_pages((unsigned long)v_overflow_buffer,
-		   get_order(io_tlb_overflow));
-	io_tlb_overflow_buffer = 0;
-cleanup2:
 	io_tlb_end = 0;
 	io_tlb_start = 0;
 	io_tlb_nslabs = 0;
@@ -423,8 +381,6 @@ void __init swiotlb_free(void)
 		return;
 
 	if (late_alloc) {
-		free_pages((unsigned long)phys_to_virt(io_tlb_overflow_buffer),
-			   get_order(io_tlb_overflow));
 		free_pages((unsigned long)io_tlb_orig_addr,
 			   get_order(io_tlb_nslabs * sizeof(phys_addr_t)));
 		free_pages((unsigned long)io_tlb_list, get_order(io_tlb_nslabs *
@@ -432,8 +388,6 @@ void __init swiotlb_free(void)
 		free_pages((unsigned long)phys_to_virt(io_tlb_start),
 			   get_order(io_tlb_nslabs << IO_TLB_SHIFT));
 	} else {
-		memblock_free_late(io_tlb_overflow_buffer,
-				   PAGE_ALIGN(io_tlb_overflow));
 		memblock_free_late(__pa(io_tlb_orig_addr),
 				   PAGE_ALIGN(io_tlb_nslabs * sizeof(phys_addr_t)));
 		memblock_free_late(__pa(io_tlb_list),
@@ -799,34 +753,6 @@ swiotlb_free_coherent(struct device *hwdev, size_t size, void *vaddr,
 }
 EXPORT_SYMBOL(swiotlb_free_coherent);
 
-static void
-swiotlb_full(struct device *dev, size_t size, enum dma_data_direction dir,
-	     int do_panic)
-{
-	if (swiotlb_force == SWIOTLB_NO_FORCE)
-		return;
-
-	/*
-	 * Ran out of IOMMU space for this operation. This is very bad.
-	 * Unfortunately the drivers cannot handle this operation properly.
-	 * unless they check for dma_mapping_error (most don't)
-	 * When the mapping is small enough return a static buffer to limit
-	 * the damage, or panic when the transfer is too big.
-	 */
-	dev_err_ratelimited(dev, "DMA: Out of SW-IOMMU space for %zu bytes\n",
-			    size);
-
-	if (size <= io_tlb_overflow || !do_panic)
-		return;
-
-	if (dir == DMA_BIDIRECTIONAL)
-		panic("DMA: Random memory could be DMA accessed\n");
-	if (dir == DMA_FROM_DEVICE)
-		panic("DMA: Random memory could be DMA written\n");
-	if (dir == DMA_TO_DEVICE)
-		panic("DMA: Random memory could be DMA read\n");
-}
-
 /*
  * Map a single buffer of the indicated size for DMA in streaming mode.  The
  * physical address to use is returned.
@@ -855,10 +781,8 @@ dma_addr_t swiotlb_map_page(struct device *dev, struct page *page,
 
 	/* Oh well, have to allocate and map a bounce buffer. */
 	map = map_single(dev, phys, size, dir, attrs);
-	if (map == SWIOTLB_MAP_ERROR) {
-		swiotlb_full(dev, size, dir, 1);
-		return swiotlb_phys_to_dma(dev, io_tlb_overflow_buffer);
-	}
+	if (map == SWIOTLB_MAP_ERROR)
+		return (dma_addr_t)SWIOTLB_MAP_ERROR;
 
 	dev_addr = swiotlb_phys_to_dma(dev, map);
 
@@ -869,7 +793,7 @@ dma_addr_t swiotlb_map_page(struct device *dev, struct page *page,
 	attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 	swiotlb_tbl_unmap_single(dev, map, size, dir, attrs);
 
-	return swiotlb_phys_to_dma(dev, io_tlb_overflow_buffer);
+	return (dma_addr_t)SWIOTLB_MAP_ERROR;
 }
 EXPORT_SYMBOL_GPL(swiotlb_map_page);
 
@@ -996,7 +920,6 @@ swiotlb_map_sg_attrs(struct device *hwdev, struct scatterlist *sgl, int nelems,
 			if (map == SWIOTLB_MAP_ERROR) {
 				/* Don't panic here, we expect map_sg users
 				   to do proper error handling. */
-				swiotlb_full(hwdev, sg->length, dir, 0);
 				attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 				swiotlb_unmap_sg_attrs(hwdev, sgl, i, dir,
 						       attrs);
@@ -1071,7 +994,7 @@ EXPORT_SYMBOL(swiotlb_sync_sg_for_device);
 int
 swiotlb_dma_mapping_error(struct device *hwdev, dma_addr_t dma_addr)
 {
-	return (dma_addr == swiotlb_phys_to_dma(hwdev, io_tlb_overflow_buffer));
+	return (dma_addr == (dma_addr_t)SWIOTLB_MAP_ERROR);
 }
 EXPORT_SYMBOL(swiotlb_dma_mapping_error);
 
