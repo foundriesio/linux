@@ -925,8 +925,10 @@ static blk_status_t __btree_submit_bio_done(struct inode *inode,
 	return ret;
 }
 
-static int check_async_write(unsigned long bio_flags)
+static int check_async_write(struct btrfs_inode *bi, unsigned long bio_flags)
 {
+	if (atomic_read(&bi->sync_writers))
+		return 0;
 	if (bio_flags & EXTENT_BIO_TREE_LOG)
 		return 0;
 #ifdef CONFIG_X86
@@ -941,7 +943,7 @@ static blk_status_t btree_submit_bio_hook(struct inode *inode, struct bio *bio,
 				 u64 bio_offset)
 {
 	struct btrfs_fs_info *fs_info = btrfs_sb(inode->i_sb);
-	int async = check_async_write(bio_flags);
+	int async = check_async_write(BTRFS_I(inode), bio_flags);
 	blk_status_t ret;
 
 	if (bio_op(bio) != REQ_OP_WRITE) {
