@@ -1010,6 +1010,7 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 	struct reserve_ticket ticket;
 	u64 used;
 	int ret = 0;
+	bool pending_tickets;
 
 	ASSERT(orig_bytes);
 	ASSERT(!current->journal_info || flush != BTRFS_RESERVE_FLUSH_ALL);
@@ -1017,26 +1018,23 @@ static int __reserve_metadata_bytes(struct btrfs_root *root,
 	spin_lock(&space_info->lock);
 	ret = -ENOSPC;
 	used = btrfs_space_info_used(space_info, true);
+	pending_tickets = !list_empty(&space_info->tickets) ||
+		!list_empty(&space_info->priority_tickets);
 
 	/*
 	 * If we have enough space then hooray, make our reservation and carry
 	 * on.  If not see if we can overcommit, and if we can, hooray carry on.
 	 * If not things get more complicated.
 	 */
-	if (used + orig_bytes <= space_info->total_bytes) {
-		btrfs_space_info_update_bytes_may_use(fs_info, space_info,
-						      orig_bytes);
-		trace_btrfs_space_reservation(fs_info, "space_info",
-					      space_info->flags, orig_bytes, 1);
-		ret = 0;
-	} else if (can_overcommit(root, space_info, orig_bytes, flush)) {
+	if (!pending_tickets &&
+	    ((used + orig_bytes <= space_info->total_bytes) ||
+	     can_overcommit(root, space_info, orig_bytes, flush))) {
 		btrfs_space_info_update_bytes_may_use(fs_info, space_info,
 						      orig_bytes);
 		trace_btrfs_space_reservation(fs_info, "space_info",
 					      space_info->flags, orig_bytes, 1);
 		ret = 0;
 	}
-
 	/*
 	 * If we couldn't make a reservation then setup our reservation ticket
 	 * and kick the async worker if it's not already running.
