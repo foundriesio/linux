@@ -166,53 +166,44 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 	return found;
 }
 
-static struct nvme_ns *__nvme_rr_next_path(struct nvme_ns_head *head, int node,
-					   struct nvme_ns *old)
+static struct nvme_ns *nvme_next_ns(struct nvme_ns_head *head,
+		struct nvme_ns *ns)
 {
-	struct nvme_ns *ns, *found = NULL;
-	bool try_nonoptimized = false;
+	ns = list_next_or_null_rcu(&head->list, &ns->siblings, struct nvme_ns,
+			siblings);
+	if (ns)
+		return ns;
+	return list_first_or_null_rcu(&head->list, struct nvme_ns, siblings);
+}
 
-	if (!old)
-		return NULL;
-retry:
-	ns = old;
-	do {
-		ns = list_next_or_null_rcu(&head->list, &ns->siblings,
-					   struct nvme_ns, siblings);
-		if (!ns) {
-			ns = list_first_or_null_rcu(&head->list, struct nvme_ns,
-						    siblings);
-			if (!ns)
-				return NULL;
+static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head,
+		int node, struct nvme_ns *old)
+{
+	struct nvme_ns *ns, *found, *fallback = NULL;
 
-			if (ns == old)
-				/*
-				 * The list consists of just one entry.
-				 * Sorry for the noise :-)
-				 */
-				return old;
-		}
-		if (!ns->disk || ns->ctrl->state != NVME_CTRL_LIVE ||
+	if (list_is_singular(&head->list))
+		return old;
+
+	for (ns = nvme_next_ns(head, old);
+	     ns != old;
+	     ns = nvme_next_ns(head, ns)) {
+		if (ns->ctrl->state != NVME_CTRL_LIVE ||
 		    test_bit(NVME_NS_ANA_PENDING, &ns->flags))
 			continue;
 
 		if (ns->ana_state == NVME_ANA_OPTIMIZED) {
 			found = ns;
-			break;
+			goto out;
 		}
-		if (try_nonoptimized &&
-		    ns->ana_state == NVME_ANA_NONOPTIMIZED) {
-			found = ns;
-			break;
-		}
-	} while (ns != old);
-
-	if (found)
-		rcu_assign_pointer(head->current_path[node], found);
-	else if (!try_nonoptimized) {
-		try_nonoptimized = true;
-		goto retry;
+		if (ns->ana_state == NVME_ANA_NONOPTIMIZED)
+			fallback = ns;
 	}
+
+	if (!fallback)
+		return NULL;
+	found = fallback;
+out:
+	rcu_assign_pointer(head->current_path[node], found);
 	return found;
 }
 
@@ -228,8 +219,8 @@ inline struct nvme_ns *nvme_find_path(struct nvme_ns_head *head)
 	struct nvme_ns *ns;
 
 	ns = srcu_dereference(head->current_path[node], &head->srcu);
-	if (READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_RR)
-		ns = __nvme_rr_next_path(head, node, ns);
+	if (READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_RR && ns)
+		ns = nvme_round_robin_path(head, node, ns);
 	if (unlikely(!ns || !nvme_path_is_optimized(ns)))
 		ns = __nvme_find_path(head, node);
 	return ns;
@@ -555,8 +546,8 @@ void nvme_mpath_stop(struct nvme_ctrl *ctrl)
 
 static const char *nvme_iopolicy_names[] = {
 	[NVME_IOPOLICY_UNKNOWN] = "unknown",
-	[NVME_IOPOLICY_NUMA] = "numa",
-	[NVME_IOPOLICY_RR] = "round-robin",
+	[NVME_IOPOLICY_NUMA]	= "numa",
+	[NVME_IOPOLICY_RR]	= "round-robin",
 };
 
 static ssize_t nvme_subsys_iopolicy_show(struct device *dev,
@@ -564,32 +555,26 @@ static ssize_t nvme_subsys_iopolicy_show(struct device *dev,
 {
 	struct nvme_subsystem *subsys =
 		container_of(dev, struct nvme_subsystem, dev);
-	int iopolicy = NVME_IOPOLICY_UNKNOWN;
 
-	if (iopolicy < ARRAY_SIZE(nvme_iopolicy_names))
-		iopolicy = READ_ONCE(subsys->iopolicy);
-	return sprintf(buf, "%s\n", nvme_iopolicy_names[iopolicy]);
+	return sprintf(buf, "%s\n",
+			nvme_iopolicy_names[READ_ONCE(subsys->iopolicy)]);
 }
 
 static ssize_t nvme_subsys_iopolicy_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	enum nvme_iopolicy iopolicy = NVME_IOPOLICY_UNKNOWN;
 	struct nvme_subsystem *subsys =
 		container_of(dev, struct nvme_subsystem, dev);
+	int i;
 
-	if (!strncmp(buf, nvme_iopolicy_names[NVME_IOPOLICY_NUMA],
-		     strlen(nvme_iopolicy_names[NVME_IOPOLICY_NUMA])))
-		iopolicy = NVME_IOPOLICY_NUMA;
-	else if (!strncmp(buf, nvme_iopolicy_names[NVME_IOPOLICY_RR],
-		     strlen(nvme_iopolicy_names[NVME_IOPOLICY_RR])))
-		iopolicy = NVME_IOPOLICY_RR;
+	for (i = 1; i < ARRAY_SIZE(nvme_iopolicy_names); i++) {
+		if (sysfs_streq(buf, nvme_iopolicy_names[i])) {
+			WRITE_ONCE(subsys->iopolicy, i);
+			return count;
+		}
+	}
 
-	if (iopolicy == NVME_IOPOLICY_UNKNOWN)
-		return -EINVAL;
-
-	WRITE_ONCE(subsys->iopolicy, iopolicy);
-	return count;
+	return -EINVAL;
 }
 SUBSYS_ATTR_RW(iopolicy, S_IRUGO | S_IWUSR,
 		      nvme_subsys_iopolicy_show, nvme_subsys_iopolicy_store);

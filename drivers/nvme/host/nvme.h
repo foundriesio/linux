@@ -249,13 +249,11 @@ struct nvme_ctrl {
 	struct nvmf_ctrl_options *opts;
 };
 
-#ifdef CONFIG_NVME_MULTIPATH
 enum nvme_iopolicy {
 	NVME_IOPOLICY_UNKNOWN,
 	NVME_IOPOLICY_NUMA,
 	NVME_IOPOLICY_RR,
 };
-#endif
 
 struct nvme_subsystem {
 	int			instance;
