@@ -1,29 +1,7 @@
+/* SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause) */
 /*
- * Copyright (c) 2018, Telechips Inc
- * Copyright (c) 2015-2016, Linaro Limited
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Copyright (c) 2019-2020, Telechips Inc
+ * Copyright (c) 2015-2019, Linaro Limited
  */
 #ifndef _OPTEE_MSG_H
 #define _OPTEE_MSG_H
@@ -293,17 +271,17 @@ struct optee_msg_arg {
 /*
  * Get build date of Trusted OS.
  */
-#define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1
+#define OPTEE_MSG_FUNCID_GET_OS_BUILDDATE	0xFFF1		// Added by Telechips
 
 /*
  * Allocate Dynamic Secure Media Path Area
  */
-#define OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	0xFFF3
+#define OPTEE_MSG_FUNCID_ALLOC_DYNAMIC_SMP	0xFFF3		// Added by Telechips
 
 /*
  * Release Dinamic Secure Media Path Area
  */
-#define OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	0xFFF4
+#define OPTEE_MSG_FUNCID_FREE_DYNAMIC_SMP	0xFFF4		// Added by Telechips
 
 /*
  * Do a secure call with struct optee_msg_arg as argument
@@ -445,6 +423,8 @@ struct optee_msg_arg {
 #define OPTEE_MSG_RPC_SHM_TYPE_APPL	0
 /* Memory only shared with non-secure kernel */
 #define OPTEE_MSG_RPC_SHM_TYPE_KERNEL	1
+/* Memory shared with non-secure kernel, but exported to userspace */
+#define OPTEE_MSG_RPC_SHM_TYPE_GLOBAL	2
 
 /*
  * Free shared memory previously allocated with OPTEE_MSG_RPC_CMD_SHM_ALLOC
@@ -469,6 +449,6 @@ struct optee_msg_arg {
 /*
  * Print TEE Log message at REE Kernel layer.
  */
-#define OPTEE_MSG_RPC_CMD_PRINT		254
+#define OPTEE_MSG_RPC_CMD_PRINT		254		// Added by Telechips
 
 #endif /* _OPTEE_MSG_H */

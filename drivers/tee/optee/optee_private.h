@@ -1,16 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, Telechips Inc
+ * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015, Linaro Limited
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
 
 #ifndef OPTEE_PRIVATE_H
@@ -30,6 +21,7 @@
 #define TEEC_ERROR_BAD_PARAMETERS	0xFFFF0006
 #define TEEC_ERROR_COMMUNICATION	0xFFFF000E
 #define TEEC_ERROR_OUT_OF_MEMORY	0xFFFF000C
+#define TEEC_ERROR_SHORT_BUFFER		0xFFFF0010
 
 #define TEEC_ORIGIN_COMMS		0x00000002
 
@@ -99,7 +91,9 @@ struct optee {
 	struct tee_shm_pool *pool;
 	void *memremaped_shm;
 	u32 sec_caps;
+#ifdef CONFIG_ARCH_TCC
 	struct tee_ioctl_version_tcc *ver;
+#endif
 };
 
 struct optee_session {
@@ -126,8 +120,8 @@ struct optee_rpc_param {
 
 /* Holds context that is preserved during one STD call */
 struct optee_call_ctx {
-	/* information about page array used in last allocation */
-	void *pages_array;
+	/* information about pages list used in last allocation */
+	void *pages_list;
 	size_t num_entries;
 };
 
@@ -165,11 +159,13 @@ void optee_enable_shm_cache(struct optee *optee);
 void optee_disable_shm_cache(struct optee *optee);
 
 int optee_shm_register(struct tee_context *ctx, struct tee_shm *shm,
-		       struct page **pages, size_t num_pages);
+		       struct page **pages, size_t num_pages,
+		       unsigned long start);
 int optee_shm_unregister(struct tee_context *ctx, struct tee_shm *shm);
 
 int optee_shm_register_supp(struct tee_context *ctx, struct tee_shm *shm,
-			    struct page **pages, size_t num_pages);
+			    struct page **pages, size_t num_pages,
+			    unsigned long start);
 int optee_shm_unregister_supp(struct tee_context *ctx, struct tee_shm *shm);
 
 int optee_from_msg_param(struct tee_param *params, size_t num_params,
@@ -177,9 +173,12 @@ int optee_from_msg_param(struct tee_param *params, size_t num_params,
 int optee_to_msg_param(struct optee_msg_param *msg_params, size_t num_params,
 		       const struct tee_param *params);
 
-u64 *optee_allocate_pages_array(size_t num_entries);
-void optee_free_pages_array(void *array, size_t num_entries);
-void optee_fill_pages_list(u64 *dst, struct page **pages, size_t num_pages);
+u64 *optee_allocate_pages_list(size_t num_entries);
+void optee_free_pages_list(void *array, size_t num_entries);
+void optee_fill_pages_list(u64 *dst, struct page **pages, int num_pages,
+			   size_t page_offset);
+
+int optee_enumerate_devices(void);
 
 /*
  * Small helpers

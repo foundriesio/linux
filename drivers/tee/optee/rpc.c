@@ -1,16 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2019, Telechips Inc
+ * Copyright (c) 2019-2020, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -20,12 +11,14 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
-#include <linux/sched.h>
-#include <linux/sched/signal.h>
 #include "optee_bench.h"
 #include "optee_private.h"
 #include "optee_smc.h"
+
+#ifdef CONFIG_ARCH_TCC
+#include <linux/sched/signal.h>
 #include "../tee_trace.h"
+#endif
 
 struct wq_entry {
 	struct list_head link;
@@ -54,7 +47,7 @@ static void handle_rpc_func_cmd_get_time(struct optee_msg_arg *arg)
 			OPTEE_MSG_ATTR_TYPE_VALUE_OUTPUT)
 		goto bad;
 
-	getnstimeofday64(&ts);
+	ktime_get_real_ts64(&ts);
 	arg->params[0].u.value.a = ts.tv_sec;
 	arg->params[0].u.value.b = ts.tv_nsec;
 
@@ -147,10 +140,15 @@ static void handle_rpc_func_cmd_wait(struct optee_msg_arg *arg)
 	msec_to_wait = arg->params[0].u.value.a;
 
 	/* Go to interruptible sleep */
+#ifdef CONFIG_ARCH_TCC
 	if (msleep_interruptible(msec_to_wait))
 		arg->ret = TEEC_ERROR_CANCEL;
 	else
-		arg->ret = TEEC_SUCCESS;
+#else
+	msleep_interruptible(msec_to_wait);
+#endif
+
+	arg->ret = TEEC_SUCCESS;
 	return;
 bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
@@ -236,7 +234,11 @@ static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 		shm = cmd_alloc_suppl(ctx, sz);
 		break;
 	case OPTEE_MSG_RPC_SHM_TYPE_KERNEL:
-		//shm = tee_shm_alloc(ctx, sz, TEE_SHM_MAPPED);
+#ifndef CONFIG_ARCH_TCC
+		shm = tee_shm_alloc(ctx, sz, TEE_SHM_MAPPED);
+		break;
+#endif
+	case OPTEE_MSG_RPC_SHM_TYPE_GLOBAL:
 		shm = tee_shm_alloc(ctx, sz, TEE_SHM_MAPPED | TEE_SHM_DMA_BUF);
 		break;
 	default:
@@ -258,7 +260,7 @@ static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 
 	if (tee_shm_is_registered(shm)) {
 		struct page **pages;
-		u64 *pages_array;
+		u64 *pages_list;
 		size_t page_num;
 
 		pages = tee_shm_get_pages(shm, &page_num);
@@ -267,24 +269,29 @@ static void handle_rpc_func_cmd_shm_alloc(struct tee_context *ctx,
 			goto bad;
 		}
 
-		pages_array = optee_allocate_pages_array(page_num);
-		if (!pages_array) {
+		pages_list = optee_allocate_pages_list(page_num);
+		if (!pages_list) {
 			arg->ret = TEEC_ERROR_OUT_OF_MEMORY;
 			goto bad;
 		}
 
-		call_ctx->pages_array = pages_array;
+		call_ctx->pages_list = pages_list;
 		call_ctx->num_entries = page_num;
 
-		arg->params[0].attr =  OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT |
-				       OPTEE_MSG_ATTR_NONCONTIG;
-		arg->params[0].u.tmem.buf_ptr = virt_to_phys(pages_array) +
-						tee_shm_get_page_offset(shm);
-
+		arg->params[0].attr = OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT |
+				      OPTEE_MSG_ATTR_NONCONTIG;
+		/*
+		 * In the least bits of u.tmem.buf_ptr we store buffer offset
+		 * from 4k page, as described in OP-TEE ABI.
+		 */
+		arg->params[0].u.tmem.buf_ptr = virt_to_phys(pages_list) |
+			(tee_shm_get_page_offset(shm) &
+			 (OPTEE_MSG_NONCONTIG_PAGE_SIZE - 1));
 		arg->params[0].u.tmem.size = tee_shm_get_size(shm);
 		arg->params[0].u.tmem.shm_ref = (unsigned long)shm;
 
-		optee_fill_pages_list(pages_array, pages, page_num);
+		optee_fill_pages_list(pages_list, pages, page_num,
+				      tee_shm_get_page_offset(shm));
 	} else {
 		arg->params[0].attr = OPTEE_MSG_ATTR_TYPE_TMEM_OUTPUT;
 		arg->params[0].u.tmem.buf_ptr = pa;
@@ -342,12 +349,28 @@ static void handle_rpc_func_cmd_shm_free(struct tee_context *ctx,
 		cmd_free_suppl(ctx, shm);
 		break;
 	case OPTEE_MSG_RPC_SHM_TYPE_KERNEL:
+	case OPTEE_MSG_RPC_SHM_TYPE_GLOBAL:
 		tee_shm_free(shm);
 		break;
 	default:
 		arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 	}
 	arg->ret = TEEC_SUCCESS;
+}
+
+static void free_pages_list(struct optee_call_ctx *call_ctx)
+{
+	if (call_ctx->pages_list) {
+		optee_free_pages_list(call_ctx->pages_list,
+				      call_ctx->num_entries);
+		call_ctx->pages_list = NULL;
+		call_ctx->num_entries = 0;
+	}
+}
+
+void optee_rpc_finalize_call(struct optee_call_ctx *call_ctx)
+{
+	free_pages_list(call_ctx);
 }
 
 static void handle_rpc_func_cmd_bm_reg(struct optee_msg_arg *arg)
@@ -394,21 +417,7 @@ bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 }
 
-static void free_page_array(struct optee_call_ctx *call_ctx)
-{
-	if (call_ctx->pages_array) {
-		optee_free_pages_array(call_ctx->pages_array,
-				       call_ctx->num_entries);
-		call_ctx->pages_array = NULL;
-		call_ctx->num_entries = 0;
-	}
-}
-
-void optee_rpc_finalize_call(struct optee_call_ctx *call_ctx)
-{
-	free_page_array(call_ctx);
-}
-
+#ifdef CONFIG_ARCH_TCC
 static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
 {
 	struct tee_shm *shm = NULL;
@@ -427,6 +436,7 @@ static void handle_rpc_func_cmd_print(struct optee_msg_arg *arg)
 bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
 }
+#endif
 
 static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 				struct tee_shm *shm,
@@ -451,7 +461,7 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		handle_rpc_func_cmd_wait(arg);
 		break;
 	case OPTEE_MSG_RPC_CMD_SHM_ALLOC:
-		free_page_array(call_ctx);
+		free_pages_list(call_ctx);
 		handle_rpc_func_cmd_shm_alloc(ctx, arg, call_ctx);
 		break;
 	case OPTEE_MSG_RPC_CMD_SHM_FREE:
@@ -460,12 +470,10 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 	case OPTEE_MSG_RPC_CMD_BENCH_REG:
 		handle_rpc_func_cmd_bm_reg(arg);
 		break;
+#ifdef CONFIG_ARCH_TCC
 	case OPTEE_MSG_RPC_CMD_PRINT:
-		if (optee->ver == NULL) {
-			arg->ret = TEEC_SUCCESS;
-		}
-		else
-			handle_rpc_func_cmd_print(arg);
+		handle_rpc_func_cmd_print(arg);
+#endif
 		break;
 	default:
 		handle_rpc_supp_cmd(ctx, arg);
@@ -513,8 +521,10 @@ void optee_handle_rpc(struct tee_context *ctx, struct optee_rpc_param *param,
 		 * performed to let Linux take the interrupt through the normal
 		 * vector.
 		 */
+#ifdef CONFIG_ARCH_TCC
 		if (fatal_signal_pending(current))
 			param->a5 = TEEC_ERROR_CANCEL;
+#endif
 		break;
 	case OPTEE_SMC_RPC_FUNC_CMD:
 		shm = reg_pair_to_ptr(param->a1, param->a2);

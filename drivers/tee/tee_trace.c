@@ -1,4 +1,8 @@
-
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (c) 2019-2020, Telechips Inc
+ */
+ 
 #include <linux/module.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
@@ -74,12 +78,16 @@ int tee_trace_get_log(uint64_t __user addr, uint64_t size)
 
 static int __init tee_trace_init(void)
 {
-	trace = kmalloc(sizeof(struct tee_trace_data), GFP_KERNEL);
-	if (!trace)
+	static struct tee_trace_data *data;
+	if (trace)
+		return 0;
+	
+	data = kmalloc(sizeof(struct tee_trace_data), GFP_KERNEL);
+	if (!data)
 		return -ENOMEM;
 
-	memset(trace, 0x0, sizeof(struct tee_trace_data));
-
+	memset(data, 0x0, sizeof(struct tee_trace_data));
+	trace = data;
 	return 0;
 }
 
