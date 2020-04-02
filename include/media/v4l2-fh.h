@@ -41,6 +41,7 @@ struct v4l2_ctrl_handler;
  * @available: list of events waiting to be dequeued
  * @navailable: number of available events at @available list
  * @sequence: event sequence number
+ *
  * @m2m_ctx: pointer to &struct v4l2_m2m_ctx
  */
 struct v4l2_fh {
@@ -60,6 +61,8 @@ struct v4l2_fh {
 	struct v4l2_m2m_ctx	*m2m_ctx;
 #endif
 };
+
+extern struct mutex v4l2_fh_subscribe_lock;
 
 /**
  * v4l2_fh_init - Initialise the file handle.
