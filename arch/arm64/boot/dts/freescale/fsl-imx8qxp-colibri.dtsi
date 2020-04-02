@@ -329,13 +329,35 @@
 	clock-frequency = <100000>;
 };
 
-/* MIPI CSI accessible on FFC (X3) */
+/* On-module MIPI CSI I2C accessible on FFC (X3) */
 &i2c0_mipi_lvds1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_mipi_lvds1>;
+	status = "okay";
+
+	ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		clocks = <&clk IMX8QXP_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <0>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_csi_ctl>;
+		pwn-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
+		reg = <0x3c>;
+		rst-gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;
+
+		port {
+			ov5640_mipi_ep: endpoint {
+				remote-endpoint = <&mipi_csi0_ep>;
+			};
+		};
+	};
 };
 
 /* Colibri I2C */
@@ -854,6 +876,47 @@
 	};
 };
 
+&isi_0 {
+	interface = <2 0 2>;
+	/**
+	 * interface = <Input MIPI_VCx Output>
+	 * Input:  	0-DC0, 1-DC1, 2-MIPI CSI0, 3-MIPI CSI1, 4-HDMI, 5-MEM, INPUT: 6-PARALLEL CSI
+	 * MIPI_VCx:    0-VC0, 1-VC1, 2-VC2, 3-VC3, MIPI CSI only
+	 * Output: 	0-DC0, 1-DC1, 2-MEM
+	 */
+	status = "okay";
+};
+
+&isi_1 {
+	interface = <6 0 2>;
+	parallel_csi;
+	status = "disabled";
+};
+
+&isi_2 {
+	status = "disabled";
+};
+
+&isi_3 {
+	status = "disabled";
+};
+
+&isi_4 {
+	status = "disabled";
+};
+
+&isi_5 {
+	status = "disabled";
+};
+
+&isi_6 {
+	status = "disabled";
+};
+
+&isi_7 {
+	status = "disabled";
+};
+
 /* Colibri SPI */
 &lpspi2 {
 	#address-cells = <1>;
@@ -887,6 +950,15 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	/delete-property/virtual-channel;
+	status = "okay";
+
+	port@0 {
+		reg = <0>;
+		mipi_csi0_ep: endpoint {
+			remote-endpoint = <&ov5640_mipi_ep>;
+			data-lanes = <1 2>;
+		};
+	};
 };
 
 &mipi_dsi1 {
