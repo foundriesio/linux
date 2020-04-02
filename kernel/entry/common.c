@@ -110,17 +110,6 @@ static __always_inline long
 __syscall_enter_from_user_work(struct pt_regs *regs, long syscall)
 {
 	unsigned long work = READ_ONCE(current_thread_info()->syscall_work);
-	int ret;
-
-	/*
-	 * Pipeline the syscall to the companion core if the current
-	 * task wants this. Compiled out if not dovetailing.
-	 */
-	ret = pipeline_syscall(syscall, regs);
-	if (ret > 0)	/* out-of-band, bail out. */
-		return EXIT_SYSCALL_OOB;
-	if (ret < 0)		/* in-band, tail work only. */
-		return EXIT_SYSCALL_TAIL;
 
 	if (work & SYSCALL_WORK_ENTER)
 		syscall = syscall_trace_enter(regs, syscall, work);
@@ -163,7 +152,7 @@ static __always_inline void __exit_to_user_mode(void)
 	lockdep_hardirqs_on_prepare();
 	instrumentation_end();
 
-	user_enter_irqoff();
+	user_enter_irqoff();`
 	arch_exit_to_user_mode();
 	lockdep_hardirqs_on(CALLER_ADDR0);
 	if (running_inband())
@@ -240,19 +229,6 @@ static unsigned long exit_to_user_mode_loop(struct pt_regs *regs,
 	return ti_work;
 }
 
-static inline bool do_retuser(unsigned long ti_work)
-{
-	if (dovetailing() && (ti_work & _TIF_RETUSER)) {
-		hard_local_irq_enable();
-		inband_retuser_notify();
-		hard_local_irq_disable();
-		/* RETUSER might have switched oob */
-		return running_inband();
-	}
-
-	return false;
-}
-
 static void exit_to_user_mode_prepare(struct pt_regs *regs)
 {
 	unsigned long ti_work = READ_ONCE(current_thread_info()->flags);
@@ -260,8 +236,6 @@ static void exit_to_user_mode_prepare(struct pt_regs *regs)
 	check_hard_irqs_disabled();
 
 	lockdep_assert_irqs_disabled();
-again:
-	ti_work = READ_ONCE(current_thread_info()->flags);
 
 	/* Flush pending rcuog wakeup before the last need_resched() check */
 	tick_nohz_user_enter_prepare();
@@ -270,9 +244,6 @@ again:
 		ti_work = exit_to_user_mode_loop(regs, ti_work);
 
 	arch_exit_to_user_mode_prepare(regs, ti_work);
-
-	if (do_retuser(ti_work))
-		goto again;
 
 	/* Ensure that the address limit is intact and no locks are held */
 	addr_limit_user_check();
@@ -321,24 +292,6 @@ static void syscall_exit_work(struct pt_regs *regs, unsigned long work)
 		arch_syscall_exit_tracehook(regs, step);
 }
 
-static inline bool syscall_has_exit_work(struct pt_regs *regs,
-					unsigned long work)
-{
-	/*
-	 * Dovetail: if this does not look like an in-band syscall, it
-	 * has to belong to the companion core. Typically,
-	 * __OOB_SYSCALL_BIT would be set in this value. Skip the
-	 * work for those syscalls.
-	 */
-	if (unlikely(work & SYSCALL_WORK_EXIT)) {
-		if (!irqs_pipelined())
-			return true;
-		return syscall_get_nr(current, regs) < NR_syscalls;
-	}
-
-	return false;
-}
-
 /*
  * Syscall specific exit to user mode preparation. Runs with interrupts
  * enabled.
@@ -362,7 +315,7 @@ static void syscall_exit_to_user_mode_prepare(struct pt_regs *regs)
 	 * enabled, we want to run them exactly once per syscall exit with
 	 * interrupts enabled.
 	 */
-	if (syscall_has_exit_work(regs, work))
+	if (unlikely(work & SYSCALL_WORK_EXIT))
 		syscall_exit_work(regs, work);
 }
 
