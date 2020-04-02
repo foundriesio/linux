@@ -44,5 +44,6 @@
 	non-removable;
 	vmmc-supply = <&reg_module_3v3>;
 	wakeup-source;
+	wifi-host;
 	status = "okay";
 };
