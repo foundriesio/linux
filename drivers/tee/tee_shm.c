@@ -1,17 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2018-2020, Telechips Inc.
  * Copyright (c) 2015-2016, Linaro Limited
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
-#include <linux/version.h>
 #include <linux/device.h>
 #include <linux/dma-buf.h>
 #include <linux/fdtable.h>
@@ -19,8 +10,12 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
-#include <linux/module.h>
 #include "tee_private.h"
+
+#ifdef CONFIG_ARCH_TCC
+#include <linux/version.h>
+#include <linux/module.h>
+#endif
 
 /* extra references appended to shm object for registered shared memory */
 struct tee_shm_dmabuf_ref {
@@ -65,7 +60,10 @@ static void tee_shm_release(struct tee_shm *shm)
 			dev_err(teedev->dev.parent,
 				"unregister shm %p failed: %d", shm, rc);
 
-		if (!(shm->flags & TEE_SHM_REGISTER_KERN)) {
+#ifdef CONFIG_ARCH_TCC
+		if (!(shm->flags & TEE_SHM_REGISTER_KERN))
+#endif
+		{
 			for (n = 0; n < shm->num_pages; n++)
 				put_page(shm->pages[n]);
 		}
@@ -77,7 +75,6 @@ static void tee_shm_release(struct tee_shm *shm)
 		teedev_ctx_put(shm->ctx);
 
 	kfree(shm);
-
 	tee_device_put(teedev);
 }
 
@@ -100,10 +97,12 @@ static void tee_shm_op_release(struct dma_buf *dmabuf)
 	tee_shm_release(shm);
 }
 
+#ifdef CONFIG_ARCH_TCC
 static void *tee_shm_op_map_atomic(struct dma_buf *dmabuf, unsigned long pgnum)
 {
 	return NULL;
 }
+#endif
 
 static void *tee_shm_op_map(struct dma_buf *dmabuf, unsigned long pgnum)
 {
@@ -137,6 +136,7 @@ static const struct dma_buf_ops tee_shm_dma_buf_ops = {
 	.mmap = tee_shm_op_mmap,
 };
 
+#ifdef CONFIG_ARCH_TCC
 /**
  * tee_shm_sdp_register() - Register sdp shared memory
  * @ctx:	Context that allocates the shared memory
@@ -217,10 +217,11 @@ err_dev_put:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tee_shm_sdp_register);
+#endif
 
-struct tee_shm *__tee_shm_alloc(struct tee_context *ctx,
-				struct tee_device *teedev,
-				size_t size, u32 flags)
+static struct tee_shm *__tee_shm_alloc(struct tee_context *ctx,
+				       struct tee_device *teedev,
+				       size_t size, u32 flags)
 {
 	struct tee_shm_pool_mgr *poolm = NULL;
 	struct tee_shm *shm;
@@ -340,6 +341,7 @@ struct tee_shm *tee_shm_priv_alloc(struct tee_device *teedev, size_t size)
 }
 EXPORT_SYMBOL_GPL(tee_shm_priv_alloc);
 
+#ifdef CONFIG_ARCH_TCC
 struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long addr,
 										  size_t length, u32 flags)
 {
@@ -408,7 +410,7 @@ struct tee_shm *tee_shm_register_for_kern(struct tee_context *ctx, unsigned long
 
 	shm->num_pages = num_pages;
 	rc = teedev->desc->ops->shm_register(ctx, shm, shm->pages,
-					     shm->num_pages);
+					     shm->num_pages, start);
 	if (rc) {
 		dev_err(teedev->dev.parent, "register shm failed, rc = %d", rc);
 		ret = ERR_PTR(rc);
@@ -435,6 +437,7 @@ err:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tee_shm_register_for_kern);
+#endif
 
 struct tee_shm *tee_shm_register(struct tee_context *ctx, unsigned long addr,
 				 size_t length, u32 flags)
@@ -447,20 +450,16 @@ struct tee_shm *tee_shm_register(struct tee_context *ctx, unsigned long addr,
 	int num_pages;
 	unsigned long start;
 
-	if (flags != req_flags) {
-		dev_err(teedev->dev.parent, "invliad shm flags %#x", flags);
-		return ERR_PTR(-EINVAL);
-	}
+	if (flags != req_flags)
+		return ERR_PTR(-ENOTSUPP);
 
 	if (!tee_device_get(teedev))
 		return ERR_PTR(-EINVAL);
 
 	if (!teedev->desc->ops->shm_register ||
 	    !teedev->desc->ops->shm_unregister) {
-		dev_err(teedev->dev.parent,
-			"register shared memory unspported by device");
 		tee_device_put(teedev);
-		return ERR_PTR(-EINVAL);
+		return ERR_PTR(-ENOTSUPP);
 	}
 
 	teedev_ctx_get(ctx);
@@ -475,21 +474,24 @@ struct tee_shm *tee_shm_register(struct tee_context *ctx, unsigned long addr,
 	shm->teedev = teedev;
 	shm->ctx = ctx;
 	shm->id = -1;
+#ifndef CONFIG_ARCH_TCC
+	addr = untagged_addr(addr);
+#endif
 	start = rounddown(addr, PAGE_SIZE);
 	shm->offset = addr - start;
 	shm->size = length;
 	num_pages = (roundup(addr + length, PAGE_SIZE) - start) / PAGE_SIZE;
-	shm->pages = kcalloc(num_pages, sizeof(struct page), GFP_KERNEL);
+	shm->pages = kcalloc(num_pages, sizeof(*shm->pages), GFP_KERNEL);
 	if (!shm->pages) {
 		ret = ERR_PTR(-ENOMEM);
 		goto err;
 	}
 
-	rc = get_user_pages_fast(start, num_pages, 1, shm->pages);
+	rc = get_user_pages_fast(start, num_pages, FOLL_WRITE, shm->pages);
 	if (rc > 0)
 		shm->num_pages = rc;
 	if (rc != num_pages) {
-		if (rc > 0)
+		if (rc >= 0)
 			rc = -ENOMEM;
 		ret = ERR_PTR(rc);
 		goto err;
@@ -499,8 +501,13 @@ struct tee_shm *tee_shm_register(struct tee_context *ctx, unsigned long addr,
 	shm->id = idr_alloc(&teedev->idr, shm, 1, 0, GFP_KERNEL);
 	mutex_unlock(&teedev->mutex);
 
+	if (shm->id < 0) {
+		ret = ERR_PTR(shm->id);
+		goto err;
+	}
+
 	rc = teedev->desc->ops->shm_register(ctx, shm, shm->pages,
-					     shm->num_pages);
+					     shm->num_pages, start);
 	if (rc) {
 		ret = ERR_PTR(rc);
 		goto err;
@@ -536,9 +543,11 @@ err:
 			idr_remove(&teedev->idr, shm->id);
 			mutex_unlock(&teedev->mutex);
 		}
-		for (n = 0; n < shm->num_pages; n++)
-			put_page(shm->pages[n]);
-		kfree(shm->pages);
+		if (shm->pages) {
+			for (n = 0; n < shm->num_pages; n++)
+				put_page(shm->pages[n]);
+			kfree(shm->pages);
+		}
 	}
 	kfree(shm);
 	teedev_ctx_put(ctx);
@@ -656,9 +665,10 @@ int tee_shm_get_fd(struct tee_shm *shm)
 	if (!(shm->flags & TEE_SHM_DMA_BUF))
 		return -EINVAL;
 
+	get_dma_buf(shm->dmabuf);
 	fd = dma_buf_fd(shm->dmabuf, O_CLOEXEC);
-	if (fd >= 0)
-		get_dma_buf(shm->dmabuf);
+	if (fd < 0)
+		dma_buf_put(shm->dmabuf);
 	return fd;
 }
 

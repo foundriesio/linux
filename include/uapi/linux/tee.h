@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Telechips Inc
+ * Copyright (c) 2018-2020, Telechips Inc
  * Copyright (c) 2015-2016, Linaro Limited
  * All rights reserved.
  *
@@ -146,97 +146,6 @@ struct tee_ioctl_shm_register_fd_data {
  */
 #define TEE_IOC_SHM_REGISTER_FD	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 8, \
 				     struct tee_ioctl_shm_register_fd_data)
-
-/**
- * struct tee_ioctl_shm_register_data - Shared memory register argument
- * @addr:      [in] Start address of shared memory to register
- * @length:    [in/out] Length of shared memory to register
- * @flags:     [in/out] Flags to/from registration.
- * @id:                [out] Identifier of the shared memory
- *
- * The flags field should currently be zero as input. Updated by the call
- * with actual flags as defined by TEE_IOCTL_SHM_* above.
- * This structure is used as argument for TEE_IOC_SHM_REGISTER below.
- */
-struct tee_ioctl_shm_register_data {
-	__u64 addr;
-	__u64 length;
-	__u32 flags;
-	__s32 id;
-};
-
-/**
- * TEE_IOC_SHM_REGISTER - Register shared memory argument
- *
- * Registers shared memory between the user space process and secure OS.
- *
- * Returns a file descriptor on success or < 0 on failure
- *
- * The shared memory is unregisterred when the descriptor is closed.
- */
-#define TEE_IOC_SHM_REGISTER   _IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 9, \
-				     struct tee_ioctl_shm_register_data)
-
-/**
- * TEE_IOC_SHM_REGISTER_SDP - register sdp shared memory
- */
-#define TEE_IOC_SHM_REGISTER_SDP	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
-						struct tee_ioctl_shm_register_data)
-
-/**
- * struct tee_ioctl_version_tcc - send sdk version to kernel
- * @major:	[in] Major revision
- * @minor:	[in] Minor revision
- * @rev0:	[in] reserved0
- * @rev1:	[in] reserved1
- */
-struct tee_ioctl_version_tcc {
-	__u32 major;
-	__u32 minor;
-	__u32 tcc_rev;
-	__u64 date;
-};
-
-/**
- * TEE_IOC_CALIB_VERSION - calib libranry version
- */
-#define TEE_IOC_OS_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 21, \
-				     struct tee_ioctl_version_tcc)
-
-/**
- * TEE_IOC_SUPP_VERSION - tee supplicant version
- */
-#define TEE_IOC_SUPP_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 22, \
-				     struct tee_ioctl_version_tcc)
-
-/**
- * TEE_IOC_CLIENT_VERSION - tee client library version
- */
-#define TEE_IOC_CLIENT_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 23, \
-					     struct tee_ioctl_version_tcc)
-
-/**
- * TEE_IOC_CALIB_VERSION - calib libranry version
- */
-#define TEE_IOC_CALIB_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 24, \
-				     struct tee_ioctl_version_tcc)
-
-/**
- * struct tee_ioctl_trace_log
- * @addr:	[in] dumpped trace base
- * @size:	[in] dumpped trace size
- */
-struct tee_ioctl_trace_log {
-	__u64 addr;
-	__u64 size;
-};
-
-/**
- * TEE_IOC_GET_TRACE_LOG
- */
-#define TEE_IOC_GET_TRACE_LOG	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
-				     struct tee_ioctl_trace_log)
-
 
 /**
  * struct tee_ioctl_buf_data - Variable sized buffer
@@ -466,7 +375,92 @@ struct tee_iocl_supp_send_arg {
  * @addr:      [in] Start address of shared memory to register
  * @length:    [in/out] Length of shared memory to register
  * @flags:     [in/out] Flags to/from registration.
+ * @id:                [out] Identifier of the shared memory
  *
+ * The flags field should currently be zero as input. Updated by the call
+ * with actual flags as defined by TEE_IOCTL_SHM_* above.
+ * This structure is used as argument for TEE_IOC_SHM_REGISTER below.
+ */
+struct tee_ioctl_shm_register_data {
+	__u64 addr;
+	__u64 length;
+	__u32 flags;
+	__s32 id;
+};
+
+/**
+ * TEE_IOC_SHM_REGISTER - Register shared memory argument
+ *
+ * Registers shared memory between the user space process and secure OS.
+ *
+ * Returns a file descriptor on success or < 0 on failure
+ *
+ * The shared memory is unregisterred when the descriptor is closed.
+ */
+#define TEE_IOC_SHM_REGISTER   _IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 9, \
+				     struct tee_ioctl_shm_register_data)
+
+/**
+ * TEE_IOC_SHM_REGISTER_SDP - register sdp shared memory
+ */
+#define TEE_IOC_SHM_REGISTER_SDP	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 20, \
+						struct tee_ioctl_shm_register_data)
+
+/**
+ * struct tee_ioctl_version_tcc - send sdk version to kernel
+ * @major:	[in] Major revision
+ * @minor:	[in] Minor revision
+ * @rev0:	[in] reserved0
+ * @rev1:	[in] reserved1
+ */
+struct tee_ioctl_version_tcc {
+	__u32 major;
+	__u32 minor;
+	__u32 tcc_rev;
+	__u64 date;
+};
+
+/**
+ * TEE_IOC_CALIB_VERSION - calib libranry version
+ */
+#define TEE_IOC_OS_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 21, \
+				     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_SUPP_VERSION - tee supplicant version
+ */
+#define TEE_IOC_SUPP_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 22, \
+				     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_CLIENT_VERSION - tee client library version
+ */
+#define TEE_IOC_CLIENT_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 23, \
+					     struct tee_ioctl_version_tcc)
+
+/**
+ * TEE_IOC_CALIB_VERSION - calib libranry version
+ */
+#define TEE_IOC_CALIB_VERSION	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 24, \
+				     struct tee_ioctl_version_tcc)
+
+/**
+ * struct tee_ioctl_trace_log
+ * @addr:	[in] dumpped trace base
+ * @size:	[in] dumpped trace size
+ */
+struct tee_ioctl_trace_log {
+	__u64 addr;
+	__u64 size;
+};
+
+/**
+ * TEE_IOC_GET_TRACE_LOG
+ */
+#define TEE_IOC_GET_TRACE_LOG	_IOWR(TEE_IOC_MAGIC, TEE_IOC_BASE + 25, \
+				     struct tee_ioctl_trace_log)
+
+/*
  * Five syscalls are used when communicating with the TEE driver.
  * open(): opens the device associated with the driver
  * ioctl(): as described above operating on the file descriptor from open()
