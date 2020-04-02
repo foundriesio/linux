@@ -1213,7 +1213,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 					return -EFAULT;
 				}
 
-			#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
+			#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME) && defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
 				/* image_enable
 				 * 0: ImageInfo is 1st frame (start playing)
 				 * 1: Video is playing
@@ -2277,7 +2277,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 	case TCC_LCDC_FB_SWAP_VPU_FRAME:
 		{
-		#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME)
+		#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME) && defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
 			int ret;
 			WMIXER_INFO_TYPE WmixerInfo;
 			struct tcc_lcdc_image_update *TempImage;
