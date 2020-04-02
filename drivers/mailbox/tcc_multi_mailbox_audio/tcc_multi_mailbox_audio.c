@@ -472,20 +472,21 @@ static void tcc_mbox_audio_rx_work(struct kthread_work *work)
 	struct mbox_audio_cmd_t *audio_msg = NULL;
 	struct mbox_audio_cmd_t *audio_msg_tmp = NULL;
 
-    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : work start of %d ++ \n", __FUNCTION__, rx->handle);
+	unsigned long flags;
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : work start of %d ++ \n", __FUNCTION__, rx->handle);
 
-    spin_lock_irq(&rx->lock);
-    list_for_each_entry_safe(audio_msg, audio_msg_tmp, &rx->list, list) {
-        //handle processing cmd message
-    	if(rx->handler) {
-			spin_unlock_irq(&rx->lock);
-    		rx->handler((void *)audio_msg->adev, &audio_msg->mbox_data, rx->handle);
-		    spin_lock_irq(&rx->lock);
-    	}
-    	list_del_init(&audio_msg->list);
-    	kfree(audio_msg); //in here, audio command msg free
-    }
-    spin_unlock_irq(&rx->lock);
+	spin_lock_irqsave(&rx->lock, flags);
+	list_for_each_entry_safe(audio_msg, audio_msg_tmp, &rx->list, list) {
+		//handle processing cmd message
+		if(rx->handler) {
+			spin_unlock_irqrestore(&rx->lock, flags);
+			rx->handler((void *)audio_msg->adev, &audio_msg->mbox_data, rx->handle);
+			spin_lock_irqsave(&rx->lock, flags);
+		}
+		list_del_init(&audio_msg->list);
+		kfree(audio_msg); //in here, audio command msg free
+	}
+	spin_unlock_irqrestore(&rx->lock, flags);
 
 	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : work end -- list_empty = %d\n", __FUNCTION__, list_empty(&rx->list) );
 
@@ -497,17 +498,40 @@ static void tcc_mbox_audio_rx_work(struct kthread_work *work)
  ******************************************************************************/
 static void tcc_mbox_audio_message_received(struct mbox_client *client, void *message)
 {
-	struct platform_device *pdev = to_platform_device(client->dev);
-	struct mbox_audio_device *audio_dev = platform_get_drvdata(pdev);
-	struct tcc_mbox_data *mbox_data = (struct tcc_mbox_data *)message;
+	struct platform_device *pdev = NULL;//to_platform_device(client->dev);
+	struct mbox_audio_device *audio_dev = NULL;//platform_get_drvdata(pdev);
+	struct tcc_mbox_data *mbox_data = NULL;//(struct tcc_mbox_data *)message;
 	struct mbox_audio_cmd_t *audio_msg;
 	int rx_queue_handle;
+	unsigned long flags;
 
 	int i;
 
 	unsigned short cmd_type;
 
-    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received start++\n", __FUNCTION__);
+	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received start++\n", __FUNCTION__);
+	if (client == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : client is NULL.\n", __FUNCTION__);
+		return;
+	}
+
+	if (client->dev == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : client->dev is NULL.\n", __FUNCTION__);
+		return;
+	}
+
+	if (message == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : message is NULL.\n", __FUNCTION__);
+		return;
+	}
+
+	pdev = to_platform_device(client->dev);
+	if (pdev == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : pdev is NULL.\n", __FUNCTION__);
+		return;
+	}
+	audio_dev = platform_get_drvdata(pdev);
+	mbox_data = (struct tcc_mbox_data *)message;
 
 	if (audio_dev == NULL) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot get audio mbox device...\n", __FUNCTION__);
@@ -527,7 +551,7 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 		return;
 	}
 
-    //init & fill mbox_audio_cmd_t
+	//init & fill mbox_audio_cmd_t
 	INIT_LIST_HEAD(&audio_msg->list);
 
 	audio_msg->adev = audio_dev;
@@ -538,25 +562,49 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	//TODO : delete if we do not need mbox_data->data
 	memcpy(audio_msg->mbox_data.data, mbox_data->data, mbox_data->data_len*sizeof(unsigned int));
 
-    cmd_type = (mbox_data->cmd[0] >> 16) & 0x00FF;
+	cmd_type = (mbox_data->cmd[0] >> 16) & 0x00FF;
 
 	//choose the queue to process command
 	if (cmd_type >= MBOX_AUDIO_CMD_TYPE_PCM && cmd_type <= MBOX_AUDIO_CMD_TYPE_EFFECT) {
 	    rx_queue_handle = RX_QUEUE_FOR_COMMAND;
-	} else if (cmd_type >= 0) {
+	} else if (cmd_type >= 0 && cmd_type <= MBOX_AUDIO_CMD_TYPE_POSITION_MAX) {
 	    rx_queue_handle = cmd_type;
 	} else {
 	    printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : invalid cmd type.. forcibly use RX_QUEUE_FOR_COMMAND.\n", __FUNCTION__);
 	    rx_queue_handle = RX_QUEUE_FOR_COMMAND;
 	}
 
-    //add audio command to queue
-    spin_lock_irq(&audio_dev->rx[rx_queue_handle].lock);
-	list_add_tail(&audio_msg->list, &audio_dev->rx[rx_queue_handle].list);
-	spin_unlock_irq(&audio_dev->rx[rx_queue_handle].lock);
 
-    //run worker thread to process command at queue
-    kthread_queue_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
+	if (&audio_dev->rx[rx_queue_handle] == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx is NULL for rx[%d].\n", __FUNCTION__, rx_queue_handle);
+		if (audio_msg != NULL) {
+			kfree(audio_msg);
+		}
+		return;
+	}
+
+	if (&audio_dev->rx[rx_queue_handle].lock == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx[%d].lock is NULL.\n", __FUNCTION__, rx_queue_handle);
+		if (audio_msg != NULL) {
+			kfree(audio_msg);
+		}
+		return;
+	}
+
+	if (&audio_dev->rx[rx_queue_handle].list == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx[%d].list is NULL.\n", __FUNCTION__, rx_queue_handle);
+		if (audio_msg != NULL) {
+			kfree(audio_msg);
+		}
+		return;
+	}
+
+	spin_lock_irqsave (&audio_dev->rx[rx_queue_handle].lock, flags);
+	list_add_tail(&audio_msg->list, &audio_dev->rx[rx_queue_handle].list);
+	spin_unlock_irqrestore(&audio_dev->rx[rx_queue_handle].lock, flags);
+
+	//run worker thread to process command at queue
+	kthread_queue_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
 
 	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received end--\n", __FUNCTION__);
 
