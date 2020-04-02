@@ -292,7 +292,7 @@ static int tcc_mbox_audio_user_queue_reset(struct mbox_audio_user_queue_t *user_
  *   - received requests and reply about that if received usage is MBOX_AUDIO_USAGE_REQUEST
  *    (actually, a53 does not receive this message a53 is just a requester.)
  **********************************************************************************************************/
-static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsigned short usage, unsigned short cmd_type, unsigned int *msg, unsigned short msg_size)
+static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsigned short usage, unsigned short cmd_type, unsigned short tx_instance, unsigned int *msg, unsigned short msg_size)
 {
     struct mbox_audio_cmd_t *audio_usr_msg;
     int user_queue_size = 0, i = 0;
@@ -337,7 +337,7 @@ static int tcc_mbox_audio_set_message(struct mbox_audio_device *audio_dev, unsig
 
         audio_usr_msg->mbox_data.cmd[0] = ((usage << 24) & 0xFF000000) |
                     ((cmd_type << 16) & 0x00FF0000) |
-                    ((0x00 << 8) & 0x0000FF00) |
+                    ((tx_instance << 8) & 0x0000FF00) |
                     (msg_size & 0x000000FF);
 
         memcpy(&(audio_usr_msg->mbox_data.cmd[AUDIO_MBOX_HEADER_SIZE]), msg, sizeof(unsigned int) * msg_size);
@@ -442,12 +442,12 @@ static void tcc_audio_mbox_rx_cmd_handler(void *device_info, struct tcc_mbox_dat
 	switch (usage) {
 	case MBOX_AUDIO_USAGE_SET :
 	//1. set : set code/pcm/effect data
-	    tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, msg, msg_size);
+	    tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, tx_instance, msg, msg_size);
 		return;
     case MBOX_AUDIO_USAGE_REQUEST :
 	//2. request : get code/pcm/effect data -> send reply with data
 	//note. a53 do not receive this usage, because a7s do not send request (see tcc_mbox_audio_send_command())
-        tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, msg, msg_size);
+        tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, tx_instance, msg, msg_size);
 		return;
 	case MBOX_AUDIO_USAGE_REPLY :
 	//3. reply : get relied data -> tx wakeup
@@ -872,78 +872,97 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 	case IOCTL_MBOX_AUDIO_CONTROL:
 	    header->usage = (mbox_audio_msg.data[0] >> 24) & 0x00FF;
 	    header->cmd_type = (mbox_audio_msg.data[0] >> 16) & 0x00FF;
+	    header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
 		break;
 	case IOCTL_MBOX_AUDIO_PCM_SET_CONTROL:
 	    header->usage = MBOX_AUDIO_USAGE_SET;
 		header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+		header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_PCM_REPLY_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_REPLY;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+	    header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
 		break;
 	case IOCTL_MBOX_AUDIO_PCM_GET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_REQUEST;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_CODEC_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_CODEC_REPLY_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_REPLY;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+	    header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
 		break;
     case IOCTL_MBOX_AUDIO_CODEC_GET_CONTROL:
 	    header->usage = MBOX_AUDIO_USAGE_REQUEST;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_EFFECT_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_EFFECT_REPLY_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_REPLY;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+	    header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
 		break;
 	case IOCTL_MBOX_AUDIO_EFFECT_GET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_REQUEST;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_0_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_0;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_1_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_1;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_2_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_2;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_3_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_3;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_4_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_4;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_5_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_5;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_6_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_6;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_7_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_7;
+	    header->tx_instance = 0;
 		break;
 	case IOCTL_MBOX_AUDIO_POSITION_8_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_8;
+	    header->tx_instance = 0;
 		break;
 	default:
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Invalid command (%d)\n", __FUNCTION__, cmd);
