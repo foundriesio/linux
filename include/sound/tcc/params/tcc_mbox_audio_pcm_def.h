@@ -78,6 +78,30 @@
 /*                       value to set , if using MBOX_AUDIO_USAGE_REQUEST, do not use it */
 /*                       reply value is set here */
 
+/* example 8 : for setting chime type & repeat num */
+/* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (2) ; 8bit | 8bit | 8bit | 8bit */
+/* unsigned int cmd[1] = PCM_CHIME_TYPE */
+/* unsigned int cmd[2] = chime index to set type (0 or 1 : CHIME_IDX_DOOR or CHIME_IDX_TRUNK */
+/* unsigned int cmd[3] = chime type | repeat num ; 16bit | 16bit */
+/*                       value to set , if using MBOX_AUDIO_USAGE_REQUEST, do not use it */
+/*                       reply value is set here */
+
+/* example 9 : for setting input source type */
+/* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (2) ; 8bit | 8bit | 8bit | 8bit */
+/* unsigned int cmd[1] = PCM_INPUT_SOURCE */
+/* unsigned int cmd[2] = PCM_VALUE_DEVICE_0_1 */
+/* unsigned int cmd[3] = PCM_VALUE_DIRECTION_TX */
+/* unsigned int cmd[4] = integer (PCM_VALUE_INPUT_SOURCE_USB_MEDIA..)*/
+/*                       value to set , if using MBOX_AUDIO_USAGE_REQUEST, do not use it */
+/*                       reply value is set here */
+
+/* example 10 : for setting mute ramp time */
+/* unsigned int cmd[0] = usage | cmd_type | tx instance num | msg_size (2) ; 8bit | 8bit | 8bit | 8bit */
+/* unsigned int cmd[1] = PCM_MUTE_RAMP_TIME */
+/* unsigned int cmd[2] = PCM_VALUE_DEVICE_0_1 */
+/* unsigned int cmd[3] = PCM_VALUE_DIRECTION_TX */
+/* unsigned int cmd[4] = integer (ramp time in ms. It is an approximation due to be calculated by integer). Getting is not supported */
+
 
 /*************** PCM Playback Control ****************/
 #define AUDIO_MBOX_PCM_ACTION_MESSAGE_SIZE       5
@@ -89,9 +113,21 @@
 #define AUDIO_MBOX_PCM_MUX_SET_MESSAGE_SIZE      4
 #define AUDIO_MBOX_PCM_MUX_GET_MESSAGE_SIZE      3
 
+/*************** Chime Type Set/Get *****************/
+#define AUDIO_MBOX_PCM_CHIME_TYPE_SET_MESSAGE_SIZE      3
+#define AUDIO_MBOX_PCM_CHIME_TYPE_GET_MESSAGE_SIZE      2
+
+/*************** Chime Type Set/Get *****************/
+#define AUDIO_MBOX_PCM_INPUT_SOURCE_SET_MESSAGE_SIZE      4
+#define AUDIO_MBOX_PCM_INPUT_SOURCE_GET_MESSAGE_SIZE      3
+
+
 /*************** TCC PCM Volume, TCC Fade/Balance Control ****************/
 #define AUDIO_MBOX_PCM_VOLUME_SET_MESSAGE_SIZE   4
 #define AUDIO_MBOX_PCM_VOLUME_GET_MESSAGE_SIZE   3
+
+#define AUDIO_MBOX_PCM_MUTE_RAMP_SET_MESSAGE_SIZE   4
+//#define AUDIO_MBOX_PCM_MUTE_RAMP_GET_MESSAGE_SIZE   3 //not support get ramp time
 
 #define AUDIO_MBOX_PCM_FADE_SET_MESSAGE_SIZE     2
 #define AUDIO_MBOX_PCM_FADE_GET_MESSAGE_SIZE     1
@@ -106,6 +142,9 @@ enum pcm_command_id {
     PCM_VOLUME                             , // to send tcc volume command at each pcm device
     PCM_FADER                              , // to send tcc fade/balance for mixed tx pcm
     PCM_MUX                                , // to send mux switching to playback
+    PCM_CHIME_TYPE                         , // to send tcc chime type at each chime index
+    PCM_INPUT_SOURCE                       , // (Not official) to send which input source is played
+    PCM_MUTE_RAMP_TIME                     , // (Not official) to send ramp time in ms for mute/unmute (calculated as an approximation)
 };
 
 enum pcm_value_action {
@@ -151,6 +190,61 @@ enum pcm_value_mux_source_type {
     PCM_VALUE_MUX_SOURCE_INTERNAL_1         ,
     PCM_VALUE_MUX_SOURCE_NUM                ,
 };
+
+enum pcm_value_chime_type {
+    PCM_VALUE_CHIME_TYPE_0 = 0              ,
+    PCM_VALUE_CHIME_TYPE_1                  ,
+    PCM_VALUE_CHIME_TYPE_2                  ,
+    PCM_VALUE_CHIME_TYPE_3                  ,
+    PCM_VALUE_CHIME_TYPE_4                  ,
+    PCM_VALUE_CHIME_TYPE_5                  ,
+    PCM_VALUE_CHIME_TYPE_6                  ,
+    PCM_VALUE_CHIME_TYPE_7                  ,
+    PCM_VALUE_CHIME_TYPE_NO_SOUND           ,
+    PCM_VALUE_CHIME_TYPE_NUM                ,
+};
+
+enum pcm_value_input_source {
+    PCM_VALUE_INPUT_SOURCE_NONE = -1                ,
+    PCM_VALUE_INPUT_SOURCE_USB_AUDIO = 0            ,
+    PCM_VALUE_INPUT_SOURCE_BLUETOOTH_AUDIO          ,
+    PCM_VALUE_INPUT_SOURCE_FM_TUNER                 ,
+    PCM_VALUE_INPUT_SOURCE_AM_TUNER                 ,
+    PCM_VALUE_INPUT_SOURCE_SDR                      ,
+    PCM_VALUE_INPUT_SOURCE_SXM                      ,
+    PCM_VALUE_INPUT_SOURCE_DAB                      ,
+    PCM_VALUE_INPUT_SOURCE_AUX_AUDIO                ,
+    PCM_VALUE_INPUT_SOURCE_CARPLAY_AUDIO            ,
+    PCM_VALUE_INPUT_SOURCE_NAVIGATION               ,
+    PCM_VALUE_INPUT_SOURCE_CARPLAY_ALT              ,
+    PCM_VALUE_INPUT_SOURCE_BLUETOOTH_CALL           ,
+    PCM_VALUE_INPUT_SOURCE_CARPLAY_CALL             ,
+    PCM_VALUE_INPUT_SOURCE_LTE_CALL                 ,
+    PCM_VALUE_INPUT_SOURCE_VOICE_RECOGNITION        ,
+    PCM_VALUE_INPUT_SOURCE_SYSTEM                   ,
+    PCM_VALUE_INPUT_SOURCE_CHIME1                   ,
+    PCM_VALUE_INPUT_SOURCE_CHIME2                   ,
+    PCM_VALUE_INPUT_SOURCE_CHIME3                   ,
+    PCM_VALUE_INPUT_SOURCE_CHIME4                   ,
+    PCM_VALUE_INPUT_SOURCE_CHIME5                   ,
+    PCM_VALUE_INPUT_SOURCE_WELCOME_AUDIO            ,
+    PCM_VALUE_INPUT_SOURCE_MIC1                     ,
+    PCM_VALUE_INPUT_SOURCE_MIC2                     ,
+    PCM_VALUE_INPUT_SOURCE_MIC3                     ,
+    PCM_VALUE_INPUT_SOURCE_MIC4                     ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM1                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM2                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM3                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM4                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM5                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM6                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM7                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM8                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM9                  ,
+    PCM_VALUE_INPUT_SOURCE_CUSTOM10                 ,
+    PCM_VALUE_INPUT_SOURCE_NUM                      ,
+};
+
 
 
 // sync with volctrl_mode_t in tcc volume solution
