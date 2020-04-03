@@ -1381,11 +1381,31 @@
 				   <GIC_SPI 31 0>;
 	};
 
+	/* A53 <-> M4 */
 	cmbox: mbox@19000000 {
-		compatible = "telechips,mailbox";
+		compatible = "telechips,multichannel-mailbox";
 		reg = <0x19000000 0x100>;
 		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_LOW>;
 		#mbox-cells = <1>;
+		max-channel = <1>;
+	};
+
+	multi-ipc-m4 {
+		compatible = "telechips,multi-ipc-m4";
+		mbox-names = "multi-ipc-m4";
+		mboxes = <&cmbox 0>;
+	};
+
+	multi-ipc-a7 {
+		compatible = "telechips,multi-ipc-a7";
+		mbox-names = "multi-ipc-a7";
+		mboxes = <&mbox1 TCC_MBOX1_CH_HSM>;
+	};
+
+	multi-ipc-r5 {
+		compatible = "telechips,multi-ipc-r5";
+		mbox-names = "multi-ipc-r5";
+		mboxes = <&mbox0 TCC_MBOX0_CH_HSM>;
 	};
 
 	/* A53 <-> R5 */
@@ -2598,6 +2618,11 @@
 		compatible = "telechips,tcc-hsm";
 		status = "okay";
 	};
+
+	tcc_thsm@0 {
+		compatible = "telechips,tcc-thsm";
+		status = "okay";
+	};
 /*
 	hsic: hsic@11c00000 {
 	    compatible = "telechips,tcc-hsic";
@@ -3463,13 +3488,6 @@
 		//reg = <0x14400000 0x1A0 0x1440001c 0x4>;
 		status = "okay";
 	};
-
-	sp { 
-		compatible = "telechips,sp";
-		reg = <0x19080000 0x10000 0x19100000 0x32>;
-		mbox-names = "sp-mbox";
-		mboxes = <&cmbox 0>;
-	}; 
 
 	firmware {
 		optee {
