@@ -28,6 +28,7 @@
 	pinctrl-1 = <&pinctrl_usdhc3_100mhz>, <&pinctrl_wifi_ctrl>;
 	pinctrl-2 = <&pinctrl_usdhc3_200mhz>, <&pinctrl_wifi_ctrl>;
 	vmmc-supply = <&reg_wifi_en>;
+	wifi-host;
 	status = "okay";
 };
 
