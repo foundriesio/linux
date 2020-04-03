@@ -286,84 +286,6 @@ static void tcc_dmx_ts_cc_check(unsigned char *buf)
 }
 #endif //#ifdef TS_PACKET_CHK_MODE
 
-#ifdef TS_SECTION_CHK_MODE
-static void hexdump(unsigned char *addr, unsigned int len)
-{
-	unsigned char *s = addr, *endPtr = (unsigned char *)((unsigned int)addr + len);
-	unsigned int i, remainder = len % 16;
-	unsigned char ucPrintBuffer[128] = {
-		0,
-	};
-	unsigned char ucWholePrintBuffer[1024] = {
-		0,
-	};
-
-	sprintf(ucPrintBuffer, "\n Offset        Hex Value         Ascii value\n");
-	strcat(ucWholePrintBuffer, ucPrintBuffer);
-
-	// print out 16 byte blocks.
-	while (s + 16 <= endPtr) {
-		// offset ì¶œë ¥.
-		sprintf(ucPrintBuffer, "0x%08lx  ", (long)(s - addr));
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-		// 16 bytes ?¨ìœ„ë¡??´ìš© ì¶œë ¥.
-		for (i = 0; i < 16; i++) {
-			sprintf(ucPrintBuffer, "%02x ", s[i]);
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-		sprintf(ucPrintBuffer, " ");
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-
-		for (i = 0; i < 16; i++) {
-			if (s[i] >= 32 && s[i] <= 125)
-				sprintf(ucPrintBuffer, "%c", s[i]);
-			else
-				sprintf(ucPrintBuffer, ".");
-
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-		s += 16;
-		sprintf(ucPrintBuffer, "\n");
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-	}
-
-	// Print out remainder.
-	if (remainder) {
-		// offset ì¶œë ¥.
-		sprintf(ucPrintBuffer, "0x%08lx  ", (long)(s - addr));
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-
-		// 16 bytes ?¨ìœ„ë¡?ì¶œë ¥?˜ê³  ?¨ì? ê²?ì¶œë ¥.
-		for (i = 0; i < remainder; i++) {
-			sprintf(ucPrintBuffer, "%02x ", s[i]);
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-		for (i = 0; i < (16 - remainder); i++) {
-			sprintf(ucPrintBuffer, "   ");
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-
-		sprintf(ucPrintBuffer, " ");
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-		for (i = 0; i < remainder; i++) {
-			if (s[i] >= 32 && s[i] <= 125)
-				sprintf(ucPrintBuffer, "%c", s[i]);
-			else
-				sprintf(ucPrintBuffer, ".");
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-		for (i = 0; i < (16 - remainder); i++) {
-			sprintf(ucPrintBuffer, " ");
-			strcat(ucWholePrintBuffer, ucPrintBuffer);
-		}
-		sprintf(ucPrintBuffer, "\n");
-		strcat(ucWholePrintBuffer, ucPrintBuffer);
-	}
-	printk("%s", ucWholePrintBuffer);
-	return;
-}
-#endif
-
 #define DVR_FEED(f)                                            \
 	(((f)->type == DMX_TYPE_TS) && ((f)->feed.ts.is_filtering) \
 	 && (((f)->ts_type & (TS_PACKET | TS_DEMUX)) == TS_PACKET))
@@ -552,7 +474,7 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
                      if(crc_err)
                      {
                         eprintk("[ERROR][HWDMX] [check section]should be checked crc result! : hwdemux:size[%d]crc_result[%d]\n", size, crc_err);
-                        hexdump(p, 32);
+						print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p, 32);
                      }
 #endif
 					// check section_syntax_indicator
@@ -574,7 +496,7 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 						if (demux->check_crc32(feed, p, size)) {
 							crc_err = 1;
 #ifdef TS_SECTION_CHK_MODE
-							hexdump(p, 64);
+							print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p, 64);
 							eprintk(
 								"[ERROR][HWDMX] [check section] section crc checking error !.section size[%d]crc_result[%d]\n",
 								size, crc_err);
@@ -592,8 +514,8 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 							eprintk(
 								"[ERROR][HWDMX] [check section] section size mismatch!-[%d][%d]\n",
 								secsize, size);
-							hexdump(p, 64);
-							hexdump(p + size - 64, 64);
+							print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p, 64);
+							print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p + size - 64, 64);
 						}
 						if (feed->feed.sec.check_crc && section_syntax_indicator) {
 							feed->feed.sec.crc_val = ~0;
@@ -606,8 +528,8 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 									secfilter->filter_value[0], secfilter->filter_value[1],
 									secfilter->filter_value[2], secfilter->filter_value[3],
 									secfilter->filter_value[4], secfilter->filter_value[5]);
-								hexdump(p, 64);
-								hexdump(p + size - 64, 64);
+								print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p, 64);
+								print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p + size - 64, 64);
 							}
 						}
 
@@ -631,7 +553,7 @@ int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int d
 								secfilter->filter_value[0], secfilter->filter_value[1],
 								secfilter->filter_value[2], secfilter->filter_value[3],
 								secfilter->filter_value[4], secfilter->filter_value[5]);
-							hexdump(p, 64);
+							print_hex_dump_bytes("PKT: ", DUMP_PREFIX_ADDRESS, p, 64);
 						}
 #endif
 						feed->cb.sec(p, size, NULL, 0, secfilter);
