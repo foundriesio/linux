@@ -812,6 +812,36 @@
 		status		= "okay";
 	};
 
+	cmbox: mbox@19020000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x19020000 0x100>;
+		interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_LOW>;
+		#mbox-cells = <1>;
+		max-channel = <1>;
+	};
+
+	sp-mbox-m4 {
+		compatible = "telechips,sp-multi-m4";
+		mbox-names = "sp-mbox-m4";
+		mboxes = <&cmbox 0>;
+	};
+
+	sp-mbox-a53 {
+		compatible = "telechips,sp-multi-a53";
+		mbox-names = "sp-mbox-a53";
+		mboxes = <&mbox1 TCC_MBOX1_CH_HSM>;
+	};
+
+	hsm@0 {
+		compatible = "telechips,tcc-hsm";
+		status = "okay";
+	};
+
+	thsm@0 {
+		compatible = "telechips,tcc-thsm";
+		status = "okay";
+	};
+
 	/* A7S <-> R5 */
 	mbox0: mbox@0x1BA30000 {
 		compatible = "telechips,multichannel-mailbox";
