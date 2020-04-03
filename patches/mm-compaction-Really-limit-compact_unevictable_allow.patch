@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -1493,7 +1493,7 @@ static struct ctl_table vm_table[] = {
+@@ -1484,7 +1484,7 @@ static struct ctl_table vm_table[] = {
  		.data		= &sysctl_compact_unevictable_allowed,
  		.maxlen		= sizeof(int),
  		.mode		= 0644,

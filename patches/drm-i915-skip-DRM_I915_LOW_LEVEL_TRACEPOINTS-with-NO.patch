@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/i915_trace.h
 +++ b/drivers/gpu/drm/i915/i915_trace.h
-@@ -725,7 +725,7 @@ DEFINE_EVENT(i915_request, i915_request_
+@@ -720,7 +720,7 @@ DEFINE_EVENT(i915_request, i915_request_
  	    TP_ARGS(rq)
  );
  

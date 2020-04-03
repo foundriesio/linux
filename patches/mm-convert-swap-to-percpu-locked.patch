@@ -11,9 +11,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
  include/linux/swap.h |    2 ++
  mm/compaction.c      |    6 ++++--
- mm/page_alloc.c      |    3 ++-
+ mm/page_alloc.c      |    4 ++--
  mm/swap.c            |   38 ++++++++++++++++++++++----------------
- 4 files changed, 30 insertions(+), 19 deletions(-)
+ 4 files changed, 30 insertions(+), 20 deletions(-)
 
 --- a/include/linux/swap.h
 +++ b/include/linux/swap.h
@@ -52,17 +52,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -7676,8 +7676,9 @@ void __init free_area_init(unsigned long
+@@ -2902,9 +2902,9 @@ static void drain_local_pages_wq(struct
+ 	 * cpu which is allright but we also have to make sure to not move to
+ 	 * a different one.
+ 	 */
+-	preempt_disable();
++	migrate_disable();
+ 	drain_local_pages(drain->zone);
+-	preempt_enable();
++	migrate_enable();
+ }
  
- static int page_alloc_cpu_dead(unsigned int cpu)
- {
--
-+	local_lock_irq_on(swapvec_lock, cpu);
- 	lru_add_drain_cpu(cpu);
-+	local_unlock_irq_on(swapvec_lock, cpu);
- 	drain_pages(cpu);
- 
- 	/*
+ /*
 --- a/mm/swap.c
 +++ b/mm/swap.c
 @@ -33,6 +33,7 @@
@@ -130,7 +131,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /*
-@@ -399,12 +403,12 @@ EXPORT_SYMBOL(mark_page_accessed);
+@@ -404,12 +408,12 @@ EXPORT_SYMBOL(mark_page_accessed);
  
  static void __lru_cache_add(struct page *page)
  {
@@ -145,7 +146,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /**
-@@ -598,9 +602,9 @@ void lru_add_drain_cpu(int cpu)
+@@ -603,9 +607,9 @@ void lru_add_drain_cpu(int cpu)
  		unsigned long flags;
  
  		/* No harm done if a racing interrupt already did this */
@@ -157,7 +158,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	pvec = &per_cpu(lru_deactivate_file_pvecs, cpu);
-@@ -636,11 +640,12 @@ void deactivate_file_page(struct page *p
+@@ -641,11 +645,12 @@ void deactivate_file_page(struct page *p
  		return;
  
  	if (likely(get_page_unless_zero(page))) {
@@ -172,7 +173,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  }
  
-@@ -675,19 +680,20 @@ void mark_page_lazyfree(struct page *pag
+@@ -680,19 +685,20 @@ void mark_page_lazyfree(struct page *pag
  {
  	if (PageLRU(page) && PageAnon(page) && PageSwapBacked(page) &&
  	    !PageSwapCache(page) && !PageUnevictable(page)) {

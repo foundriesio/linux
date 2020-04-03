@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +}									\
 +static struct irq_work _##name##_wake_work = {				\
 +	.func = _##name##_wake_work_func,				\
-+	.flags = IRQ_WORK_LAZY,						\
++	.flags = ATOMIC_INIT(IRQ_WORK_LAZY),				\
 +};									\
  static struct printk_ringbuffer name = {				\
  	.buffer = &_##name##_buffer[0],					\

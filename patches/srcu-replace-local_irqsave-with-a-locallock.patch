@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	local_lock_irqsave(sp_llock, flags);
  	sdp = this_cpu_ptr(ssp->sda);
  	spin_lock_rcu_node(sdp);
- 	rcu_segcblist_enqueue(&sdp->srcu_cblist, rhp, false);
+ 	rcu_segcblist_enqueue(&sdp->srcu_cblist, rhp);
 @@ -867,7 +869,8 @@ static void __call_srcu(struct srcu_stru
  		sdp->srcu_gp_seq_needed_exp = s;
  		needexp = true;

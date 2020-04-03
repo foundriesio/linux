@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -154,6 +154,7 @@ struct console {
+@@ -153,6 +153,7 @@ struct console {
  	short	index;
  	int	cflag;
  	unsigned long printk_seq;

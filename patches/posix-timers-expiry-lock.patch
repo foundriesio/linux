@@ -113,9 +113,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			 * We need to handle case when timer was or is in the
  			 * middle of firing. In other cases we already freed
 @@ -1553,6 +1578,7 @@ const struct k_clock clock_posix_cpu = {
- 	.timer_del	= posix_cpu_timer_del,
- 	.timer_get	= posix_cpu_timer_get,
- 	.timer_rearm	= posix_cpu_timer_rearm,
+ 	.timer_del		= posix_cpu_timer_del,
+ 	.timer_get		= posix_cpu_timer_get,
+ 	.timer_rearm		= posix_cpu_timer_rearm,
 +	.timer_wait_running	= posix_cpu_wait_running,
  };
  

@@ -8,12 +8,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 [bigeasy: factor out everything except the kcalloc() workaorund ]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- mm/slub.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+ mm/slub.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -3755,6 +3755,11 @@ static void list_slab_objects(struct kme
+@@ -3775,6 +3775,11 @@ static void list_slab_objects(struct kme
  							const char *text)
  {
  #ifdef CONFIG_SLUB_DEBUG
@@ -24,15 +24,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
  	void *addr = page_address(page);
  	void *p;
- 	unsigned long *map = bitmap_zalloc(page->objects, GFP_ATOMIC);
-@@ -3774,8 +3779,10 @@ static void list_slab_objects(struct kme
+ 	unsigned long *map;
+@@ -3794,6 +3799,7 @@ static void list_slab_objects(struct kme
+ 
  	slab_unlock(page);
- 	bitmap_free(map);
  #endif
 +#endif
  }
  
-+
  /*
-  * Attempt to free all partial slabs on a node.
-  * This is called from __kmem_cache_shutdown(). We must take list_lock

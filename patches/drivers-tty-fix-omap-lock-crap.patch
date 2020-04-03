@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/drivers/tty/serial/omap-serial.c
 +++ b/drivers/tty/serial/omap-serial.c
-@@ -1307,13 +1307,10 @@ serial_omap_console_write(struct console
+@@ -1306,13 +1306,10 @@ serial_omap_console_write(struct console
  
  	pm_runtime_get_sync(up->dev);
  
@@ -30,7 +30,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * First save the IER then disable the interrupts
-@@ -1342,8 +1339,7 @@ serial_omap_console_write(struct console
+@@ -1341,8 +1338,7 @@ serial_omap_console_write(struct console
  	pm_runtime_mark_last_busy(up->dev);
  	pm_runtime_put_autosuspend(up->dev);
  	if (locked)

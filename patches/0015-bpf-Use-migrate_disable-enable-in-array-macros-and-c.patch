@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/bpf.h
 +++ b/include/linux/bpf.h
-@@ -541,7 +541,7 @@ int bpf_prog_array_copy(struct bpf_prog_
+@@ -886,7 +886,7 @@ int bpf_prog_array_copy(struct bpf_prog_
  		struct bpf_prog *_prog;			\
  		struct bpf_prog_array *_array;		\
  		u32 _ret = 1;				\
@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		rcu_read_lock();			\
  		_array = rcu_dereference(array);	\
  		if (unlikely(check_non_null && !_array))\
-@@ -554,7 +554,7 @@ int bpf_prog_array_copy(struct bpf_prog_
+@@ -899,7 +899,7 @@ int bpf_prog_array_copy(struct bpf_prog_
  		}					\
  _out:							\
  		rcu_read_unlock();			\
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		_ret;					\
  	 })
  
-@@ -588,7 +588,7 @@ int bpf_prog_array_copy(struct bpf_prog_
+@@ -933,7 +933,7 @@ int bpf_prog_array_copy(struct bpf_prog_
  		u32 ret;				\
  		u32 _ret = 1;				\
  		u32 _cn = 0;				\
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		rcu_read_lock();			\
  		_array = rcu_dereference(array);	\
  		_item = &_array->items[0];		\
-@@ -600,7 +600,7 @@ int bpf_prog_array_copy(struct bpf_prog_
+@@ -945,7 +945,7 @@ int bpf_prog_array_copy(struct bpf_prog_
  			_item++;			\
  		}					\
  		rcu_read_unlock();			\
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		else					\
 --- a/include/linux/filter.h
 +++ b/include/linux/filter.h
-@@ -669,6 +669,7 @@ static inline u8 *bpf_skb_cb(struct sk_b
+@@ -677,6 +677,7 @@ static inline u8 *bpf_skb_cb(struct sk_b
  	return qdisc_skb_cb(skb)->data;
  }
  
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline u32 __bpf_prog_run_save_cb(const struct bpf_prog *prog,
  					 struct sk_buff *skb)
  {
-@@ -694,9 +695,9 @@ static inline u32 bpf_prog_run_save_cb(c
+@@ -702,9 +703,9 @@ static inline u32 bpf_prog_run_save_cb(c
  {
  	u32 res;
  

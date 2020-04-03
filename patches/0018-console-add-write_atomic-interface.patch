@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -145,6 +145,7 @@ static inline int con_debug_leave(void)
+@@ -144,6 +144,7 @@ static inline int con_debug_leave(void)
  struct console {
  	char	name[16];
  	void	(*write)(struct console *, const char *, unsigned);
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int	(*read)(struct console *, char *, unsigned);
  	struct tty_driver *(*device)(struct console *, int *);
  	void	(*unblank)(void);
-@@ -236,4 +237,7 @@ extern void console_init(void);
+@@ -234,4 +235,7 @@ extern void console_init(void);
  void dummycon_register_output_notifier(struct notifier_block *nb);
  void dummycon_unregister_output_notifier(struct notifier_block *nb);
  

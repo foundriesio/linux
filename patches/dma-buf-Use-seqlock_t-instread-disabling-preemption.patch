@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		rcu_read_unlock();
  		goto retry;
  	}
-@@ -1190,12 +1190,12 @@ static int dma_buf_debug_show(struct seq
+@@ -1197,12 +1197,12 @@ static int dma_buf_debug_show(struct seq
  
  		robj = buf_obj->resv;
  		while (true) {
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
 --- a/drivers/dma-buf/dma-resv.c
 +++ b/drivers/dma-buf/dma-resv.c
-@@ -49,12 +49,6 @@
+@@ -50,12 +50,6 @@
  DEFINE_WD_CLASS(reservation_ww_class);
  EXPORT_SYMBOL(reservation_ww_class);
  
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * dma_resv_list_alloc - allocate fence list
   * @shared_max: number of fences we need space for
-@@ -103,8 +97,7 @@ void dma_resv_init(struct dma_resv *obj)
+@@ -135,8 +129,7 @@ void dma_resv_init(struct dma_resv *obj)
  {
  	ww_mutex_init(&obj->lock, &reservation_ww_class);
  
@@ -78,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	RCU_INIT_POINTER(obj->fence, NULL);
  	RCU_INIT_POINTER(obj->fence_excl, NULL);
  }
-@@ -234,8 +227,7 @@ void dma_resv_add_shared_fence(struct dm
+@@ -266,8 +259,7 @@ void dma_resv_add_shared_fence(struct dm
  	fobj = dma_resv_get_list(obj);
  	count = fobj->shared_count;
  
@@ -88,7 +88,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for (i = 0; i < count; ++i) {
  
-@@ -255,8 +247,7 @@ void dma_resv_add_shared_fence(struct dm
+@@ -287,8 +279,7 @@ void dma_resv_add_shared_fence(struct dm
  	/* pointer update must be visible before we extend the shared_count */
  	smp_store_mb(fobj->shared_count, count);
  
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	dma_fence_put(old);
  }
  EXPORT_SYMBOL(dma_resv_add_shared_fence);
-@@ -283,14 +274,12 @@ void dma_resv_add_excl_fence(struct dma_
+@@ -315,14 +306,12 @@ void dma_resv_add_excl_fence(struct dma_
  	if (fence)
  		dma_fence_get(fence);
  
@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* inplace update, no shared fences */
  	while (i--)
-@@ -368,13 +357,11 @@ int dma_resv_copy_fences(struct dma_resv
+@@ -400,13 +389,11 @@ int dma_resv_copy_fences(struct dma_resv
  	src_list = dma_resv_get_list(dst);
  	old = dma_resv_get_excl(dst);
  
@@ -133,7 +133,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	dma_resv_list_free(src_list);
  	dma_fence_put(old);
-@@ -414,7 +401,7 @@ int dma_resv_get_fences_rcu(struct dma_r
+@@ -446,7 +433,7 @@ int dma_resv_get_fences_rcu(struct dma_r
  		shared_count = i = 0;
  
  		rcu_read_lock();
@@ -142,7 +142,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		fence_excl = rcu_dereference(obj->fence_excl);
  		if (fence_excl && !dma_fence_get_rcu(fence_excl))
-@@ -456,7 +443,7 @@ int dma_resv_get_fences_rcu(struct dma_r
+@@ -488,7 +475,7 @@ int dma_resv_get_fences_rcu(struct dma_r
  			}
  		}
  
@@ -151,7 +151,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			while (i--)
  				dma_fence_put(shared[i]);
  			dma_fence_put(fence_excl);
-@@ -507,7 +494,7 @@ long dma_resv_wait_timeout_rcu(struct dm
+@@ -539,7 +526,7 @@ long dma_resv_wait_timeout_rcu(struct dm
  
  retry:
  	shared_count = 0;
@@ -160,7 +160,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	rcu_read_lock();
  	i = -1;
  
-@@ -553,7 +540,7 @@ long dma_resv_wait_timeout_rcu(struct dm
+@@ -585,7 +572,7 @@ long dma_resv_wait_timeout_rcu(struct dm
  
  	rcu_read_unlock();
  	if (fence) {
@@ -169,7 +169,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			dma_fence_put(fence);
  			goto retry;
  		}
-@@ -607,7 +594,7 @@ bool dma_resv_test_signaled_rcu(struct d
+@@ -639,7 +626,7 @@ bool dma_resv_test_signaled_rcu(struct d
  retry:
  	ret = true;
  	shared_count = 0;
@@ -178,7 +178,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (test_all) {
  		unsigned i;
-@@ -627,7 +614,7 @@ bool dma_resv_test_signaled_rcu(struct d
+@@ -659,7 +646,7 @@ bool dma_resv_test_signaled_rcu(struct d
  				break;
  		}
  
@@ -187,7 +187,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			goto retry;
  	}
  
-@@ -639,7 +626,7 @@ bool dma_resv_test_signaled_rcu(struct d
+@@ -671,7 +658,7 @@ bool dma_resv_test_signaled_rcu(struct d
  			if (ret < 0)
  				goto retry;
  
@@ -198,7 +198,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
 --- a/drivers/gpu/drm/amd/amdgpu/amdgpu_amdkfd_gpuvm.c
 +++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_amdkfd_gpuvm.c
-@@ -252,11 +252,9 @@ static int amdgpu_amdkfd_remove_eviction
+@@ -257,11 +257,9 @@ static int amdgpu_amdkfd_remove_eviction
  	new->shared_count = k;
  
  	/* Install the new fence list, seqcount provides the barriers */

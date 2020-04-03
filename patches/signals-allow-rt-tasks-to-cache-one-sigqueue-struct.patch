@@ -8,21 +8,20 @@ task struct.
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- include/linux/sched.h  |    2 +
+ include/linux/sched.h  |    1 
  include/linux/signal.h |    1 
  kernel/exit.c          |    2 -
  kernel/fork.c          |    1 
  kernel/signal.c        |   69 ++++++++++++++++++++++++++++++++++++++++++++++---
- 5 files changed, 70 insertions(+), 5 deletions(-)
+ 5 files changed, 69 insertions(+), 5 deletions(-)
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -935,6 +935,8 @@ struct task_struct {
+@@ -940,6 +940,7 @@ struct task_struct {
  	/* Signal handlers: */
  	struct signal_struct		*signal;
- 	struct sighand_struct		*sighand;
+ 	struct sighand_struct __rcu		*sighand;
 +	struct sigqueue			*sigqueue_cache;
-+
  	sigset_t			blocked;
  	sigset_t			real_blocked;
  	/* Restored if set_restore_sigmask() was used: */
@@ -49,7 +48,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1924,6 +1924,7 @@ static __latent_entropy struct task_stru
+@@ -1997,6 +1997,7 @@ static __latent_entropy struct task_stru
  	spin_lock_init(&p->alloc_lock);
  
  	init_sigpending(&p->pending);

@@ -42,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/filter.h
 +++ b/include/linux/filter.h
-@@ -709,9 +709,7 @@ static inline u32 bpf_prog_run_clear_cb(
+@@ -717,9 +717,7 @@ static inline u32 bpf_prog_run_clear_cb(
  	if (unlikely(prog->cb_access))
  		memset(cb_data, 0, BPF_SKB_CB_LEN);
  
@@ -55,7 +55,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/seccomp.c
 +++ b/kernel/seccomp.c
-@@ -267,16 +267,14 @@ static u32 seccomp_run_filters(const str
+@@ -268,16 +268,14 @@ static u32 seccomp_run_filters(const str
  	 * All filters in the list are evaluated and the lowest BPF return
  	 * value always takes priority (ignoring the DATA).
  	 */
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* CONFIG_SECCOMP_FILTER */
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
-@@ -844,9 +844,7 @@ bool bpf_flow_dissect(struct bpf_prog *p
+@@ -920,9 +920,7 @@ bool bpf_flow_dissect(struct bpf_prog *p
  		     (int)FLOW_DISSECTOR_F_STOP_AT_ENCAP);
  	flow_keys->flags = flags;
  

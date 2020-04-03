@@ -20,8 +20,8 @@ Signed-off-by: David S. Miller <davem@davemloft.net>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/bpf/stackmap.c |   17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ kernel/bpf/stackmap.c |   18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
 --- a/kernel/bpf/stackmap.c
 +++ b/kernel/bpf/stackmap.c
@@ -35,18 +35,19 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	work = container_of(entry, struct stack_map_irq_work, irq_work);
  	up_read_non_owner(work->sem);
  	work->sem = NULL;
-@@ -288,10 +291,18 @@ static void stack_map_get_build_id_offse
+@@ -288,10 +291,19 @@ static void stack_map_get_build_id_offse
  	struct stack_map_irq_work *work = NULL;
  
  	if (irqs_disabled()) {
 -		work = this_cpu_ptr(&up_read_work);
--		if (work->irq_work.flags & IRQ_WORK_BUSY)
+-		if (atomic_read(&work->irq_work.flags) & IRQ_WORK_BUSY)
 -			/* cannot queue more up_read, fallback */
 +		if (!IS_ENABLED(CONFIG_PREEMPT_RT)) {
 +			work = this_cpu_ptr(&up_read_work);
-+			if (work->irq_work.flags & IRQ_WORK_BUSY)
++			if (atomic_read(&work->irq_work.flags) & IRQ_WORK_BUSY) {
 +				/* cannot queue more up_read, fallback */
 +				irq_work_busy = true;
++			}
 +		} else {
 +			/*
 +			 * PREEMPT_RT does not allow to trylock mmap sem in

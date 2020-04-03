@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -100,8 +100,10 @@ struct rcu_state rcu_state = {
+@@ -100,8 +100,10 @@ static struct rcu_state rcu_state = {
  static bool dump_tree;
  module_param(dump_tree, bool, 0444);
  /* By default, use RCU_SOFTIRQ instead of rcuc kthreads. */

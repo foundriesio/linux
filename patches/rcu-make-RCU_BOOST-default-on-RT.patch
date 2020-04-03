@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/rcu/Kconfig
 +++ b/kernel/rcu/Kconfig
-@@ -161,8 +161,8 @@ config RCU_FAST_NO_HZ
+@@ -162,8 +162,8 @@ config RCU_FAST_NO_HZ
  
  config RCU_BOOST
  	bool "Enable RCU priority boosting"

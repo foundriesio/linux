@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/kernel.h
 +++ b/include/linux/kernel.h
-@@ -271,6 +271,13 @@ extern void __cant_sleep(const char *fil
+@@ -257,6 +257,13 @@ extern void __cant_sleep(const char *fil
  
  #define might_sleep_if(cond) do { if (cond) might_sleep(); } while (0)
  

@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/tty/serial/8250/8250_fsl.c
 +++ b/drivers/tty/serial/8250/8250_fsl.c
-@@ -57,9 +57,18 @@ int fsl8250_handle_irq(struct uart_port
+@@ -53,9 +53,18 @@ int fsl8250_handle_irq(struct uart_port
  
  	/* Stop processing interrupts on input overrun */
  	if ((orig_lsr & UART_LSR_OE) && (up->overrun_backoff_time_ms > 0)) {

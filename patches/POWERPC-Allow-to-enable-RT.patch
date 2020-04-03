@@ -11,7 +11,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
-@@ -144,6 +144,7 @@ config PPC
+@@ -140,6 +140,7 @@ config PPC
  	select ARCH_MIGHT_HAVE_PC_SERIO
  	select ARCH_OPTIONAL_KERNEL_RWX		if ARCH_HAS_STRICT_KERNEL_RWX
  	select ARCH_SUPPORTS_ATOMIC_RMW

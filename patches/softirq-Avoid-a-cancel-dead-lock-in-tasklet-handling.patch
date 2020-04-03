@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -626,7 +626,10 @@ static inline void tasklet_unlock(struct
+@@ -638,7 +638,10 @@ static inline void tasklet_unlock(struct
  
  static inline void tasklet_unlock_wait(struct tasklet_struct *t)
  {

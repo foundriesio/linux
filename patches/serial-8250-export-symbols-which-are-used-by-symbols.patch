@@ -10,7 +10,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/tty/serial/8250/8250_port.c
 +++ b/drivers/tty/serial/8250/8250_port.c
-@@ -2025,6 +2025,7 @@ void clear_ier(struct uart_8250_port *up
+@@ -2024,6 +2024,7 @@ void clear_ier(struct uart_8250_port *up
  	}
  	console_atomic_unlock(flags);
  }
@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  void restore_ier(struct uart_8250_port *up)
  {
-@@ -2036,6 +2037,7 @@ void restore_ier(struct uart_8250_port *
+@@ -2035,6 +2036,7 @@ void restore_ier(struct uart_8250_port *
  		serial_port_out(port, UART_IER, atomic_read(&ier_value));
  	console_atomic_unlock(flags);
  }

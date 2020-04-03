@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/bpf/verifier.c
 +++ b/kernel/bpf/verifier.c
-@@ -7899,16 +7899,21 @@ static int check_map_prog_compatibility(
+@@ -8145,16 +8145,21 @@ static int check_map_prog_compatibility(
  	 * of the memory allocator or at a place where a recursion into the
  	 * memory allocator would see inconsistent state.
  	 *

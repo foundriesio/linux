@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/trace/bpf_trace.c
 +++ b/kernel/trace/bpf_trace.c
-@@ -1329,10 +1329,9 @@ void bpf_put_raw_tracepoint(struct bpf_r
+@@ -1475,10 +1475,9 @@ void bpf_put_raw_tracepoint(struct bpf_r
  static __always_inline
  void __bpf_trace_run(struct bpf_prog *prog, u64 *args)
  {

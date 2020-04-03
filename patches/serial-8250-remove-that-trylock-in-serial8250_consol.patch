@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/tty/serial/8250/8250_port.c
 +++ b/drivers/tty/serial/8250/8250_port.c
-@@ -3191,17 +3191,9 @@ void serial8250_console_write_atomic(str
+@@ -3177,17 +3177,9 @@ void serial8250_console_write_atomic(str
  {
  	struct uart_port *port = &up->port;
  	unsigned int flags;
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	touch_nmi_watchdog();
  
  	clear_ier(up);
-@@ -3216,9 +3208,6 @@ void serial8250_console_write_atomic(str
+@@ -3202,9 +3194,6 @@ void serial8250_console_write_atomic(str
  	wait_for_xmitr(up, BOTH_EMPTY);
  	restore_ier(up);
  

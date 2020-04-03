@@ -18,7 +18,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/x86/crypto/aesni-intel_glue.c
 +++ b/arch/x86/crypto/aesni-intel_glue.c
-@@ -387,14 +387,14 @@ static int ecb_encrypt(struct skcipher_r
+@@ -382,14 +382,14 @@ static int ecb_encrypt(struct skcipher_r
  
  	err = skcipher_walk_virt(&walk, req, true);
  
@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return err;
  }
-@@ -409,14 +409,14 @@ static int ecb_decrypt(struct skcipher_r
+@@ -404,14 +404,14 @@ static int ecb_decrypt(struct skcipher_r
  
  	err = skcipher_walk_virt(&walk, req, true);
  
@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return err;
  }
-@@ -431,14 +431,14 @@ static int cbc_encrypt(struct skcipher_r
+@@ -426,14 +426,14 @@ static int cbc_encrypt(struct skcipher_r
  
  	err = skcipher_walk_virt(&walk, req, true);
  
@@ -69,7 +69,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return err;
  }
-@@ -453,14 +453,14 @@ static int cbc_decrypt(struct skcipher_r
+@@ -448,14 +448,14 @@ static int cbc_decrypt(struct skcipher_r
  
  	err = skcipher_walk_virt(&walk, req, true);
  
@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return err;
  }
-@@ -510,18 +510,20 @@ static int ctr_crypt(struct skcipher_req
+@@ -505,18 +505,20 @@ static int ctr_crypt(struct skcipher_req
  
  	err = skcipher_walk_virt(&walk, req, true);
  

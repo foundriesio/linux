@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 @@ -130,20 +131,12 @@ static inline void percpu_rwsem_release(
  					bool read, unsigned long ip)
  {
- 	lock_release(&sem->dep_map, 1, ip);
+ 	lock_release(&sem->dep_map, ip);
 -#ifdef CONFIG_RWSEM_SPIN_ON_OWNER
 -	if (!read)
 -		atomic_long_set(&sem->rw_sem.owner, RWSEM_OWNER_UNKNOWN);

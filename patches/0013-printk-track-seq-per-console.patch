@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -153,6 +153,7 @@ struct console {
+@@ -152,6 +152,7 @@ struct console {
  	short	flags;
  	short	index;
  	int	cflag;

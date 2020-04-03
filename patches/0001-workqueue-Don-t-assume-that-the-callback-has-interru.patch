@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -1614,9 +1614,11 @@ EXPORT_SYMBOL_GPL(queue_work_node);
+@@ -1608,9 +1608,11 @@ EXPORT_SYMBOL_GPL(queue_work_node);
  void delayed_work_timer_fn(struct timer_list *t)
  {
  	struct delayed_work *dwork = from_timer(dwork, t, timer);

@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		 * Take the lock and let the writer proceed (i.e. evtl
 +		 * boost it), otherwise we could loop here forever.
 +		 */
-+		spin_unlock_wait(&sl->lock);
++		rt_spin_lock_unlock(&sl->lock);
 +		goto repeat;
 +	}
 +	smp_rmb();

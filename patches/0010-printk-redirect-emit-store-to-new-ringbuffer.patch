@@ -241,7 +241,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	/* Owner will clear console_waiter on hand off */
 -	while (READ_ONCE(console_waiter))
 -		cpu_relax();
--	spin_release(&console_owner_dep_map, 1, _THIS_IP_);
+-	spin_release(&console_owner_dep_map, _THIS_IP_);
 -
 -	printk_safe_exit_irqrestore(flags);
 -	/*

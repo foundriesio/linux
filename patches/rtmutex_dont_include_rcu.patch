@@ -175,6 +175,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -} while (0)
 -
 -/**
-  * rcu_swap_protected() - swap an RCU and a regular pointer
-  * @rcu_ptr: RCU pointer
+  * rcu_replace_pointer() - replace an RCU pointer, returning its old value
+  * @rcu_ptr: RCU pointer, whose old value is returned
   * @ptr: regular pointer

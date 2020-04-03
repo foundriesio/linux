@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/bpf/verifier.c
 +++ b/kernel/bpf/verifier.c
-@@ -7874,26 +7874,43 @@ static bool is_tracing_prog_type(enum bp
+@@ -8120,26 +8120,43 @@ static bool is_tracing_prog_type(enum bp
  	}
  }
  

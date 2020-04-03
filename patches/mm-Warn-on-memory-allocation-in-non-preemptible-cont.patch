@@ -21,7 +21,7 @@ Reviewed-by: Daniel Bristot de Oliveira <bristot@redhat.com>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2687,6 +2687,9 @@ static __always_inline void *slab_alloc_
+@@ -2707,6 +2707,9 @@ static __always_inline void *slab_alloc_
  	struct page *page;
  	unsigned long tid;
  
@@ -31,7 +31,7 @@ Reviewed-by: Daniel Bristot de Oliveira <bristot@redhat.com>
  	s = slab_pre_alloc_hook(s, gfpflags);
  	if (!s)
  		return NULL;
-@@ -3148,6 +3151,9 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3168,6 +3171,9 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	struct kmem_cache_cpu *c;
  	int i;
  

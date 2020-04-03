@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  
  #ifdef CONFIG_PRINTK
-@@ -1493,7 +1498,7 @@ static struct ctl_table vm_table[] = {
+@@ -1484,7 +1489,7 @@ static struct ctl_table vm_table[] = {
  		.data		= &sysctl_compact_unevictable_allowed,
  		.maxlen		= sizeof(int),
  		.mode		= 0644,
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		.extra1		= SYSCTL_ZERO,
  		.extra2		= SYSCTL_ONE,
  	},
-@@ -2581,6 +2586,28 @@ int proc_dointvec(struct ctl_table *tabl
+@@ -2572,6 +2577,28 @@ int proc_dointvec(struct ctl_table *tabl
  	return do_proc_dointvec(table, write, buffer, lenp, ppos, NULL, NULL);
  }
  
