@@ -22,6 +22,7 @@
 #include "../disk-io.h"
 #include "../free-space-tree.h"
 #include "../transaction.h"
+#include "../block-group.h"
 
 struct free_space_extent {
 	u64 start;
@@ -81,7 +82,7 @@ static int __check_free_space_extents(struct btrfs_trans_handle *trans,
 					i++;
 				}
 				prev_bit = bit;
-				offset += cache->sectorsize;
+				offset += fs_info->sectorsize;
 			}
 		}
 		if (prev_bit == 1) {

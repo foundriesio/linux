@@ -42,6 +42,7 @@
 #include "volumes.h"
 #include "qgroup.h"
 #include "compression.h"
+#include "delalloc-space.h"
 
 static struct kmem_cache *btrfs_inode_defrag_cachep;
 /*
@@ -926,8 +927,7 @@ next_slot:
 						root->root_key.objectid,
 						new_key.objectid,
 						start - extent_offset);
-				ret = btrfs_inc_extent_ref(trans, fs_info,
-						&ref);
+				ret = btrfs_inc_extent_ref(trans, root, &ref);
 				BUG_ON(ret); /* -ENOMEM */
 			}
 			key.offset = start;
@@ -1011,11 +1011,10 @@ delete_extent_item:
 						BTRFS_DROP_DELAYED_REF,
 						disk_bytenr, num_bytes, 0);
 				btrfs_init_data_ref(&ref,
-						root->root_key.objectid,
+ 						root->root_key.objectid,
 						key.objectid,
 						key.offset - extent_offset);
-				ret = btrfs_free_extent(trans, fs_info,
-						&ref);
+				ret = btrfs_free_extent(trans, root, &ref);
 				BUG_ON(ret); /* -ENOMEM */
 				inode_sub_bytes(inode,
 						extent_end - key.offset);
@@ -1310,7 +1309,7 @@ again:
 				       num_bytes, 0);
 		btrfs_init_data_ref(&ref, root->root_key.objectid, ino,
 				    orig_offset);
-		ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+		ret = btrfs_inc_extent_ref(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -1345,7 +1344,7 @@ again:
 		extent_end = other_end;
 		del_slot = path->slots[0] + 1;
 		del_nr++;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -1363,7 +1362,7 @@ again:
 		key.offset = other_start;
 		del_slot = path->slots[0];
 		del_nr++;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			goto out;
@@ -2525,7 +2524,7 @@ static int btrfs_punch_hole(struct inode *inode, loff_t offset, loff_t len)
 	u64 tail_len;
 	u64 orig_start = offset;
 	u64 cur_offset;
-	u64 min_size = btrfs_calc_trans_metadata_size(fs_info, 1);
+	u64 min_size = btrfs_calc_insert_metadata_size(fs_info, 1);
 	u64 drop_end;
 	int ret = 0;
 	int err = 0;
@@ -2643,7 +2642,7 @@ static int btrfs_punch_hole(struct inode *inode, loff_t offset, loff_t len)
 		ret = -ENOMEM;
 		goto out_free;
 	}
-	rsv->size = btrfs_calc_trans_metadata_size(fs_info, 1);
+	rsv->size = btrfs_calc_insert_metadata_size(fs_info, 1);
 	rsv->failfast = 1;
 
 	/*
