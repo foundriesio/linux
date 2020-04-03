@@ -20,6 +20,36 @@ module_param(multipath, bool, 0444);
 MODULE_PARM_DESC(multipath,
 	"native support for multiple controllers per subsystem (default: off)");
 
+void nvme_mpath_unfreeze(struct nvme_subsystem *subsys)
+{
+	struct nvme_ns_head *h;
+
+	lockdep_assert_held(&subsys->lock);
+	list_for_each_entry(h, &subsys->nsheads, entry)
+		if (h->disk)
+			blk_mq_unfreeze_queue(h->disk->queue);
+}
+
+void nvme_mpath_wait_freeze(struct nvme_subsystem *subsys)
+{
+	struct nvme_ns_head *h;
+
+	lockdep_assert_held(&subsys->lock);
+	list_for_each_entry(h, &subsys->nsheads, entry)
+		if (h->disk)
+			blk_mq_freeze_queue_wait(h->disk->queue);
+}
+
+void nvme_mpath_start_freeze(struct nvme_subsystem *subsys)
+{
+	struct nvme_ns_head *h;
+
+	lockdep_assert_held(&subsys->lock);
+	list_for_each_entry(h, &subsys->nsheads, entry)
+		if (h->disk)
+			blk_freeze_queue_start(h->disk->queue);
+}
+
 /*
  * If multipathing is enabled we need to always use the subsystem instance
  * number for numbering our devices to avoid conflicts between subsystems that
@@ -112,18 +142,43 @@ static const char *nvme_ana_state_names[] = {
 	[NVME_ANA_CHANGE]		= "change",
 };
 
-void nvme_mpath_clear_current_path(struct nvme_ns *ns)
+bool nvme_mpath_clear_current_path(struct nvme_ns *ns)
 {
 	struct nvme_ns_head *head = ns->head;
+	bool changed = false;
 	int node;
 
 	if (!head)
-		return;
+		goto out;
 
 	for_each_node(node) {
-		if (ns == rcu_access_pointer(head->current_path[node]))
+		if (ns == rcu_access_pointer(head->current_path[node])) {
 			rcu_assign_pointer(head->current_path[node], NULL);
+			changed = true;
+		}
 	}
+out:
+	return changed;
+}
+
+void nvme_mpath_clear_ctrl_paths(struct nvme_ctrl *ctrl)
+{
+	struct nvme_ns *ns;
+
+	mutex_lock(&ctrl->scan_lock);
+	down_read(&ctrl->namespaces_rwsem);
+	list_for_each_entry(ns, &ctrl->namespaces, list)
+		if (nvme_mpath_clear_current_path(ns))
+			kblockd_schedule_work(&ns->head->requeue_work);
+	up_read(&ctrl->namespaces_rwsem);
+	mutex_unlock(&ctrl->scan_lock);
+}
+
+static bool nvme_path_is_disabled(struct nvme_ns *ns)
+{
+	return ns->ctrl->state != NVME_CTRL_LIVE ||
+		test_bit(NVME_NS_ANA_PENDING, &ns->flags) ||
+		test_bit(NVME_NS_REMOVING, &ns->flags);
 }
 
 static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
@@ -132,8 +187,7 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 	struct nvme_ns *found = NULL, *fallback = NULL, *ns;
 
 	list_for_each_entry_rcu(ns, &head->list, siblings) {
-		if (ns->ctrl->state != NVME_CTRL_LIVE ||
-		    test_bit(NVME_NS_ANA_PENDING, &ns->flags))
+		if (nvme_path_is_disabled(ns))
 			continue;
 
 		if (READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_NUMA)
@@ -166,53 +220,46 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 	return found;
 }
 
-static struct nvme_ns *__nvme_rr_next_path(struct nvme_ns_head *head, int node,
-					   struct nvme_ns *old)
+static struct nvme_ns *nvme_next_ns(struct nvme_ns_head *head,
+		struct nvme_ns *ns)
 {
-	struct nvme_ns *ns, *found = NULL;
-	bool try_nonoptimized = false;
+	ns = list_next_or_null_rcu(&head->list, &ns->siblings, struct nvme_ns,
+			siblings);
+	if (ns)
+		return ns;
+	return list_first_or_null_rcu(&head->list, struct nvme_ns, siblings);
+}
 
-	if (!old)
-		return NULL;
-retry:
-	ns = old;
-	do {
-		ns = list_next_or_null_rcu(&head->list, &ns->siblings,
-					   struct nvme_ns, siblings);
-		if (!ns) {
-			ns = list_first_or_null_rcu(&head->list, struct nvme_ns,
-						    siblings);
-			if (!ns)
-				return NULL;
+static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head,
+		int node, struct nvme_ns *old)
+{
+	struct nvme_ns *ns, *found, *fallback = NULL;
 
-			if (ns == old)
-				/*
-				 * The list consists of just one entry.
-				 * Sorry for the noise :-)
-				 */
-				return old;
-		}
-		if (!ns->disk || ns->ctrl->state != NVME_CTRL_LIVE ||
-		    test_bit(NVME_NS_ANA_PENDING, &ns->flags))
+	if (list_is_singular(&head->list)) {
+		if (nvme_path_is_disabled(old))
+			return NULL;
+		return old;
+	}
+
+	for (ns = nvme_next_ns(head, old);
+	     ns != old;
+	     ns = nvme_next_ns(head, ns)) {
+		if (nvme_path_is_disabled(ns))
 			continue;
 
 		if (ns->ana_state == NVME_ANA_OPTIMIZED) {
 			found = ns;
-			break;
+			goto out;
 		}
-		if (try_nonoptimized &&
-		    ns->ana_state == NVME_ANA_NONOPTIMIZED) {
-			found = ns;
-			break;
-		}
-	} while (ns != old);
-
-	if (found)
-		rcu_assign_pointer(head->current_path[node], found);
-	else if (!try_nonoptimized) {
-		try_nonoptimized = true;
-		goto retry;
+		if (ns->ana_state == NVME_ANA_NONOPTIMIZED)
+			fallback = ns;
 	}
+
+	if (!fallback)
+		return NULL;
+	found = fallback;
+out:
+	rcu_assign_pointer(head->current_path[node], found);
 	return found;
 }
 
@@ -228,11 +275,29 @@ inline struct nvme_ns *nvme_find_path(struct nvme_ns_head *head)
 	struct nvme_ns *ns;
 
 	ns = srcu_dereference(head->current_path[node], &head->srcu);
-	if (READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_RR)
-		ns = __nvme_rr_next_path(head, node, ns);
+	if (READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_RR && ns)
+		ns = nvme_round_robin_path(head, node, ns);
 	if (unlikely(!ns || !nvme_path_is_optimized(ns)))
 		ns = __nvme_find_path(head, node);
 	return ns;
+}
+
+static bool nvme_available_path(struct nvme_ns_head *head)
+{
+	struct nvme_ns *ns;
+
+	list_for_each_entry_rcu(ns, &head->list, siblings) {
+		switch (ns->ctrl->state) {
+		case NVME_CTRL_LIVE:
+		case NVME_CTRL_RESETTING:
+		case NVME_CTRL_CONNECTING:
+			/* fallthru */
+			return true;
+		default:
+			break;
+		}
+	}
+	return false;
 }
 
 static blk_qc_t nvme_ns_head_make_request(struct request_queue *q,
@@ -261,14 +326,14 @@ static blk_qc_t nvme_ns_head_make_request(struct request_queue *q,
 				      disk_devt(ns->head->disk),
 				      bio->bi_iter.bi_sector);
 		ret = direct_make_request(bio);
-	} else if (!list_empty_careful(&head->list)) {
-		dev_warn_ratelimited(dev, "no path available - requeuing I/O\n");
+	} else if (nvme_available_path(head)) {
+		dev_warn_ratelimited(dev, "no usable path - requeuing I/O\n");
 
 		spin_lock_irq(&head->requeue_lock);
 		bio_list_add(&head->requeue_list, bio);
 		spin_unlock_irq(&head->requeue_lock);
 	} else {
-		dev_warn_ratelimited(dev, "no path - failing I/O\n");
+		dev_warn_ratelimited(dev, "no available path - failing I/O\n");
 
 		bio->bi_status = BLK_STS_IOERR;
 		bio_endio(bio);
@@ -487,14 +552,13 @@ static int nvme_update_ana_state(struct nvme_ctrl *ctrl,
 	return 0;
 }
 
-static int nvme_read_ana_log(struct nvme_ctrl *ctrl, bool groups_only)
+static int nvme_read_ana_log(struct nvme_ctrl *ctrl)
 {
 	u32 nr_change_groups = 0;
 	int error;
 
 	mutex_lock(&ctrl->ana_lock);
-	error = nvme_get_log(ctrl, NVME_NSID_ALL, NVME_LOG_ANA,
-			groups_only ? NVME_ANA_LOG_RGO : 0,
+	error = nvme_get_log(ctrl, NVME_NSID_ALL, NVME_LOG_ANA, 0,
 			ctrl->ana_log_buf, ctrl->ana_log_size, 0);
 	if (error) {
 		dev_warn(ctrl->device, "Failed to get ANA log: %d\n", error);
@@ -530,7 +594,7 @@ static void nvme_ana_work(struct work_struct *work)
 {
 	struct nvme_ctrl *ctrl = container_of(work, struct nvme_ctrl, ana_work);
 
-	nvme_read_ana_log(ctrl, false);
+	nvme_read_ana_log(ctrl);
 }
 
 static void nvme_anatt_timeout(struct timer_list *t)
@@ -555,8 +619,8 @@ void nvme_mpath_stop(struct nvme_ctrl *ctrl)
 
 static const char *nvme_iopolicy_names[] = {
 	[NVME_IOPOLICY_UNKNOWN] = "unknown",
-	[NVME_IOPOLICY_NUMA] = "numa",
-	[NVME_IOPOLICY_RR] = "round-robin",
+	[NVME_IOPOLICY_NUMA]	= "numa",
+	[NVME_IOPOLICY_RR]	= "round-robin",
 };
 
 static ssize_t nvme_subsys_iopolicy_show(struct device *dev,
@@ -564,32 +628,26 @@ static ssize_t nvme_subsys_iopolicy_show(struct device *dev,
 {
 	struct nvme_subsystem *subsys =
 		container_of(dev, struct nvme_subsystem, dev);
-	int iopolicy = NVME_IOPOLICY_UNKNOWN;
 
-	if (iopolicy < ARRAY_SIZE(nvme_iopolicy_names))
-		iopolicy = READ_ONCE(subsys->iopolicy);
-	return sprintf(buf, "%s\n", nvme_iopolicy_names[iopolicy]);
+	return sprintf(buf, "%s\n",
+			nvme_iopolicy_names[READ_ONCE(subsys->iopolicy)]);
 }
 
 static ssize_t nvme_subsys_iopolicy_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	enum nvme_iopolicy iopolicy = NVME_IOPOLICY_UNKNOWN;
 	struct nvme_subsystem *subsys =
 		container_of(dev, struct nvme_subsystem, dev);
+	int i;
 
-	if (!strncmp(buf, nvme_iopolicy_names[NVME_IOPOLICY_NUMA],
-		     strlen(nvme_iopolicy_names[NVME_IOPOLICY_NUMA])))
-		iopolicy = NVME_IOPOLICY_NUMA;
-	else if (!strncmp(buf, nvme_iopolicy_names[NVME_IOPOLICY_RR],
-		     strlen(nvme_iopolicy_names[NVME_IOPOLICY_RR])))
-		iopolicy = NVME_IOPOLICY_RR;
+	for (i = 1; i < ARRAY_SIZE(nvme_iopolicy_names); i++) {
+		if (sysfs_streq(buf, nvme_iopolicy_names[i])) {
+			WRITE_ONCE(subsys->iopolicy, i);
+			return count;
+		}
+	}
 
-	if (iopolicy == NVME_IOPOLICY_UNKNOWN)
-		return -EINVAL;
-
-	WRITE_ONCE(subsys->iopolicy, iopolicy);
-	return count;
+	return -EINVAL;
 }
 SUBSYS_ATTR_RW(iopolicy, S_IRUGO | S_IWUSR,
 		      nvme_subsys_iopolicy_show, nvme_subsys_iopolicy_store);
@@ -687,7 +745,7 @@ int nvme_mpath_init(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
 		goto out;
 	}
 
-	error = nvme_read_ana_log(ctrl, true);
+	error = nvme_read_ana_log(ctrl);
 	if (error)
 		goto out_free_ana_log_buf;
 	return 0;
