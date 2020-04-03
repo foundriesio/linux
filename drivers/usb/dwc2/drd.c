@@ -25,6 +25,8 @@ static void dwc2_ovr_init(struct dwc2_hsotg *hsotg)
 	gotgctl &= ~(GOTGCTL_BVALOVAL | GOTGCTL_AVALOVAL | GOTGCTL_VBVALOVAL);
 	dwc2_writel(hsotg, gotgctl, GOTGCTL);
 
+	dwc2_force_mode(hsotg, false);
+
 	spin_unlock_irqrestore(&hsotg->lock, flags);
 }
 
