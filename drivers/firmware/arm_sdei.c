@@ -278,13 +278,12 @@ static struct sdei_event *sdei_event_create(u32 event_num,
 	return event;
 }
 
-static void sdei_event_destroy(struct sdei_event *event)
+static void sdei_event_destroy_llocked(struct sdei_event *event)
 {
 	lockdep_assert_held(&sdei_events_lock);
+	lockdep_assert_held(&sdei_list_lock);
 
-	spin_lock(&sdei_list_lock);
 	list_del(&event->list);
-	spin_unlock(&sdei_list_lock);
 
 	if (event->type == SDEI_EVENT_TYPE_SHARED)
 		kfree(event->registered);
@@ -292,6 +291,13 @@ static void sdei_event_destroy(struct sdei_event *event)
 		free_percpu(event->private_registered);
 
 	kfree(event);
+}
+
+static void sdei_event_destroy(struct sdei_event *event)
+{
+	spin_lock(&sdei_list_lock);
+	sdei_event_destroy_llocked(event);
+	spin_unlock(&sdei_list_lock);
 }
 
 static int sdei_api_get_version(u64 *version)
@@ -489,11 +495,6 @@ static int _sdei_event_unregister(struct sdei_event *event)
 {
 	lockdep_assert_held(&sdei_events_lock);
 
-	spin_lock(&sdei_list_lock);
-	event->reregister = false;
-	event->reenable = false;
-	spin_unlock(&sdei_list_lock);
-
 	if (event->type == SDEI_EVENT_TYPE_SHARED)
 		return sdei_api_event_unregister(event->event_num);
 
@@ -515,6 +516,11 @@ int sdei_event_unregister(u32 event_num)
 			err = -ENOENT;
 			break;
 		}
+
+		spin_lock(&sdei_list_lock);
+		event->reregister = false;
+		event->reenable = false;
+		spin_unlock(&sdei_list_lock);
 
 		err = _sdei_event_unregister(event);
 		if (err)
@@ -583,26 +589,15 @@ static int _sdei_event_register(struct sdei_event *event)
 
 	lockdep_assert_held(&sdei_events_lock);
 
-	spin_lock(&sdei_list_lock);
-	event->reregister = true;
-	spin_unlock(&sdei_list_lock);
-
 	if (event->type == SDEI_EVENT_TYPE_SHARED)
 		return sdei_api_event_register(event->event_num,
 					       sdei_entry_point,
 					       event->registered,
 					       SDEI_EVENT_REGISTER_RM_ANY, 0);
 
-
 	err = sdei_do_cross_call(_local_event_register, event);
-	if (err) {
-		spin_lock(&sdei_list_lock);
-		event->reregister = false;
-		event->reenable = false;
-		spin_unlock(&sdei_list_lock);
-
+	if (err)
 		sdei_do_cross_call(_local_event_unregister, event);
-	}
 
 	return err;
 }
@@ -630,8 +625,17 @@ int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
 			break;
 		}
 
+		spin_lock(&sdei_list_lock);
+		event->reregister = true;
+		spin_unlock(&sdei_list_lock);
+
 		err = _sdei_event_register(event);
 		if (err) {
+			spin_lock(&sdei_list_lock);
+			event->reregister = false;
+			event->reenable = false;
+			spin_unlock(&sdei_list_lock);
+
 			sdei_event_destroy(event);
 			pr_warn("Failed to register event %u: %d\n", event_num,
 				err);
@@ -643,16 +647,17 @@ int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
 }
 EXPORT_SYMBOL(sdei_event_register);
 
-static int sdei_reregister_event(struct sdei_event *event)
+static int sdei_reregister_event_llocked(struct sdei_event *event)
 {
 	int err;
 
 	lockdep_assert_held(&sdei_events_lock);
+	lockdep_assert_held(&sdei_list_lock);
 
 	err = _sdei_event_register(event);
 	if (err) {
 		pr_err("Failed to re-register event %u\n", event->event_num);
-		sdei_event_destroy(event);
+		sdei_event_destroy_llocked(event);
 		return err;
 	}
 
@@ -681,7 +686,7 @@ static int sdei_reregister_shared(void)
 			continue;
 
 		if (event->reregister) {
-			err = sdei_reregister_event(event);
+			err = sdei_reregister_event_llocked(event);
 			if (err)
 				break;
 		}
