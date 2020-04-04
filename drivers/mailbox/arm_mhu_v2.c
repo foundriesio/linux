@@ -152,13 +152,13 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 	tx_base = of_iomap((struct device_node *)np, 0);
 	if (!tx_base) {
 		dev_err(dev, "failed to map tx registers\n");
-		iounmap(rx_base);
 		return -ENOMEM;
 	}
 
 	rx_base = of_iomap((struct device_node *)np, 1);
 	if (!rx_base) {
 		dev_err(dev, "failed to map rx registers\n");
+		iounmap(tx_base);
 		return -ENOMEM;
 	}
 
