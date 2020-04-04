@@ -90,7 +90,7 @@ static struct rpmsg_endpoint *arm_create_ept(struct rpmsg_device *rpdev,
 	channel->mbox = mbox_request_channel_byname(&channel->cl, chinfo.name);
 	if (IS_ERR_OR_NULL(channel->mbox)) {
 		printk("RPMsg ARM: Cannot get channel by name: '%s'\n", chinfo.name);
-		return -1;
+		return NULL;
 	}
 
 	return &channel->ept;
