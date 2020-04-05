@@ -718,6 +718,7 @@ static int stm32_usart_startup(struct uart_port *port)
 {
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	struct stm32_usart_config *cfg = &stm32_port->info->cfg;
 	const char *name = to_platform_device(port->dev)->name;
 	struct dma_async_tx_descriptor *desc = NULL;
 	dma_cookie_t cookie;
@@ -764,7 +765,7 @@ static int stm32_usart_startup(struct uart_port *port)
 	}
 
 	/* RX enabling */
-	val = stm32_port->cr1_irq | USART_CR1_RE;
+	val = stm32_port->cr1_irq | USART_CR1_RE | BIT(cfg->uart_enable_bit);
 	stm32_usart_set_bits(port, ofs->cr1, val);
 
 	return 0;
