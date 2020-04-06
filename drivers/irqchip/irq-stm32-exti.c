@@ -203,6 +203,7 @@ static const struct stm32_desc_irq stm32mp1_desc_irq[] = {
 	{ .exti = 33, .irq_parent = 83, .chip = &stm32_exti_h_chip_direct },
 	{ .exti = 43, .irq_parent = 75, .chip = &stm32_exti_h_chip_direct },
 	{ .exti = 44, .irq_parent = 98, .chip = &stm32_exti_h_chip_direct },
+	{ .exti = 47, .irq_parent = 93, .chip = &stm32_exti_h_chip_direct },
 	{ .exti = 54, .irq_parent = 135, .chip = &stm32_exti_h_chip_direct },
 	{ .exti = 61, .irq_parent = 100, .chip = &stm32_exti_h_chip_direct },
 	{ .exti = 65, .irq_parent = 144, .chip = &stm32_exti_h_chip },
