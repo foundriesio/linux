@@ -7,6 +7,10 @@
 #include <dt-bindings/input/input.h>
 
 / {
+	aliases {
+		ethernet0 = &ethernet0;
+	};
+
 	clocks {
 		clk_ext_camera: clk-ext-camera {
 			#clock-cells = <0>;
@@ -138,6 +142,8 @@
 	phy-mode = "rgmii-id";
 	max-speed = <1000>;
 	phy-handle = <&phy0>;
+	nvmem-cells = <&ethernet_mac_address>;
+	nvmem-cell-names = "mac-address";
 
 	mdio0 {
 		#address-cells = <1>;
