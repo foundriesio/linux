@@ -239,25 +239,7 @@ static struct platform_driver hwdmx_drv = {
 		},
 };
 
-static int __init hwdmx_drv_init(void)
-{
-	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
-
-	platform_driver_register(&hwdmx_drv);
-
-	return 0;
-}
-
-static void __exit hwdmx_drv_exit(void)
-{
-	platform_driver_unregister(&hwdmx_drv);
-
-	dprintk("[DEBUG][HWDMX] %s\n", __FUNCTION__);
-}
-
-module_init(hwdmx_drv_init);
-module_exit(hwdmx_drv_exit);
-
+module_platform_driver(hwdmx_drv);
 MODULE_DESCRIPTION("Hardware Demux Driver");
 MODULE_AUTHOR("Telechips");
 MODULE_LICENSE("GPL");

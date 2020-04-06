@@ -96,6 +96,8 @@ static tcc_dmx_inst_t *gInst[] = {[0 ...(MAX_INST - 1)] = NULL};
 static ts_packet_chk_info_t *ts_packet_chk_info = NULL;
 #endif // TS_PACKET_CHK_MODE
 
+static tcc_dmx_smpcb smpcb[MAX_INST];
+
 /*****************************************************************************
  * External Functions
  ******************************************************************************/
@@ -361,6 +363,18 @@ int tcc_dmx_can_write(int devid)
 	return 1;
 }
 
+void tcc_dmx_set_smpcb(int devid, tcc_dmx_smpcb cb)
+{
+	smpcb[devid] = cb;
+}
+EXPORT_SYMBOL(tcc_dmx_set_smpcb);
+
+void tcc_dmx_unset_smpcb(int devid)
+{
+	smpcb[devid] = NULL;
+}
+EXPORT_SYMBOL(tcc_dmx_unset_smpcb);
+
 int tcc_dmx_ts_callback(char *p1, int p1_size, char *p2, int p2_size, int devid)
 {
 	struct dvb_demux *demux;
@@ -416,6 +430,10 @@ int tcc_dmx_ts_callback(char *p1, int p1_size, char *p2, int p2_size, int devid)
 				}
 			}
 		}
+	}
+
+	if (smpcb[devid] != NULL) {
+		smpcb[devid](devid, (uintptr_t)p1, p1_size, (uintptr_t)p2, p2_size);
 	}
 	return 0;
 }
