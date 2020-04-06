@@ -27,8 +27,7 @@
 #define DLYB_CFGR_LNG_MASK	GENMASK(27, 16)
 #define DLYB_CFGR_LNGF		BIT(31)
 
-#define DLYB_NB_DELAY		11
-#define DLYB_CFGR_SEL_MAX	(DLYB_NB_DELAY + 1)
+#define DLYB_CFGR_SEL_MAX	12
 #define DLYB_CFGR_UNIT_MAX	127
 
 struct sdmmc_lli_desc {
@@ -399,7 +398,7 @@ static int sdmmc_dlyb_lng_tuning(struct mmci_host *host)
 		}
 
 		lng = FIELD_GET(DLYB_CFGR_LNG_MASK, cfgr);
-		if (lng < BIT(DLYB_NB_DELAY) && lng > 0)
+		if (lng < (BIT(11) | BIT(10)) && (lng & ~BIT(11)) > 0)
 			break;
 	}
 
@@ -407,7 +406,7 @@ static int sdmmc_dlyb_lng_tuning(struct mmci_host *host)
 		return -EINVAL;
 
 	dlyb->unit = i;
-	dlyb->max = __fls(lng);
+	dlyb->max = __fls(lng & ~BIT(11));
 
 	return 0;
 }
