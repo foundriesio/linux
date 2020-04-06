@@ -42,6 +42,8 @@
 #include "dev-replace.h"
 #include "sysfs.h"
 #include "tree-checker.h"
+#include "space-info.h"
+#include "block-group.h"
 
 const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 	[BTRFS_RAID_RAID10] = {
@@ -52,6 +54,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 1,
 		.devs_increment	= 2,
 		.ncopies	= 2,
+		.bg_flag	= BTRFS_BLOCK_GROUP_RAID10,
 	},
 	[BTRFS_RAID_RAID1] = {
 		.sub_stripes	= 1,
@@ -61,6 +64,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 1,
 		.devs_increment	= 2,
 		.ncopies	= 2,
+		.bg_flag	= BTRFS_BLOCK_GROUP_RAID1,
 	},
 	[BTRFS_RAID_DUP] = {
 		.sub_stripes	= 1,
@@ -70,6 +74,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 0,
 		.devs_increment	= 1,
 		.ncopies	= 2,
+		.bg_flag	= BTRFS_BLOCK_GROUP_DUP,
 	},
 	[BTRFS_RAID_RAID0] = {
 		.sub_stripes	= 1,
@@ -79,6 +84,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 0,
 		.devs_increment	= 1,
 		.ncopies	= 1,
+		.bg_flag	= BTRFS_BLOCK_GROUP_RAID0,
 	},
 	[BTRFS_RAID_SINGLE] = {
 		.sub_stripes	= 1,
@@ -88,6 +94,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 0,
 		.devs_increment	= 1,
 		.ncopies	= 1,
+		.bg_flag	= 0,
 	},
 	[BTRFS_RAID_RAID5] = {
 		.sub_stripes	= 1,
@@ -97,6 +104,7 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 1,
 		.devs_increment	= 1,
 		.ncopies	= 2,
+		.bg_flag	= BTRFS_BLOCK_GROUP_RAID5,
 	},
 	[BTRFS_RAID_RAID6] = {
 		.sub_stripes	= 1,
@@ -106,17 +114,8 @@ const struct btrfs_raid_attr btrfs_raid_array[BTRFS_NR_RAID_TYPES] = {
 		.tolerated_failures = 2,
 		.devs_increment	= 1,
 		.ncopies	= 3,
+		.bg_flag	= BTRFS_BLOCK_GROUP_RAID6,
 	},
-};
-
-const u64 btrfs_raid_group[BTRFS_NR_RAID_TYPES] = {
-	[BTRFS_RAID_RAID10] = BTRFS_BLOCK_GROUP_RAID10,
-	[BTRFS_RAID_RAID1]  = BTRFS_BLOCK_GROUP_RAID1,
-	[BTRFS_RAID_DUP]    = BTRFS_BLOCK_GROUP_DUP,
-	[BTRFS_RAID_RAID0]  = BTRFS_BLOCK_GROUP_RAID0,
-	[BTRFS_RAID_SINGLE] = 0,
-	[BTRFS_RAID_RAID5]  = BTRFS_BLOCK_GROUP_RAID5,
-	[BTRFS_RAID_RAID6]  = BTRFS_BLOCK_GROUP_RAID6,
 };
 
 /*
@@ -1832,7 +1831,7 @@ static int btrfs_check_raid_min_devices(struct btrfs_fs_info *fs_info,
 	} while (read_seqretry(&fs_info->profiles_lock, seq));
 
 	for (i = 0; i < BTRFS_NR_RAID_TYPES; i++) {
-		if (!(all_avail & btrfs_raid_group[i]))
+		if (!(all_avail & btrfs_raid_array[i].bg_flag))
 			continue;
 
 		if (num_devices < btrfs_raid_array[i].devs_min) {
@@ -2881,7 +2880,7 @@ int btrfs_remove_chunk(struct btrfs_trans_handle *trans,
 	}
 	map = em->map_lookup;
 	mutex_lock(&fs_info->chunk_mutex);
-	check_system_chunk(trans, fs_info, map->type);
+	check_system_chunk(trans, map->type);
 	mutex_unlock(&fs_info->chunk_mutex);
 
 	/*
@@ -2940,7 +2939,7 @@ int btrfs_remove_chunk(struct btrfs_trans_handle *trans,
 		}
 	}
 
-	ret = btrfs_remove_block_group(trans, fs_info, chunk_offset, em);
+	ret = btrfs_remove_block_group(trans, chunk_offset, em);
 	if (ret) {
 		btrfs_abort_transaction(trans, ret);
 		goto out;
@@ -3114,7 +3113,7 @@ static int btrfs_may_alloc_data_chunk(struct btrfs_fs_info *fs_info,
 			if (IS_ERR(trans))
 				return PTR_ERR(trans);
 
-			ret = btrfs_force_chunk_alloc(trans, fs_info,
+			ret = btrfs_force_chunk_alloc(trans,
 						      BTRFS_BLOCK_GROUP_DATA);
 			btrfs_end_transaction(trans);
 			if (ret < 0)
@@ -5124,20 +5123,19 @@ int btrfs_alloc_chunk(struct btrfs_trans_handle *trans,
 static noinline int init_first_rw_device(struct btrfs_trans_handle *trans,
 					 struct btrfs_fs_info *fs_info)
 {
-	struct btrfs_root *extent_root = fs_info->extent_root;
 	u64 chunk_offset;
 	u64 sys_chunk_offset;
 	u64 alloc_profile;
 	int ret;
 
 	chunk_offset = find_next_chunk(fs_info);
-	alloc_profile = btrfs_get_alloc_profile(extent_root, 0);
+	alloc_profile = btrfs_metadata_alloc_profile(fs_info);
 	ret = __btrfs_alloc_chunk(trans, chunk_offset, alloc_profile);
 	if (ret)
 		return ret;
 
 	sys_chunk_offset = find_next_chunk(fs_info);
-	alloc_profile = btrfs_get_alloc_profile(fs_info->chunk_root, 0);
+	alloc_profile = btrfs_system_alloc_profile(fs_info);
 	ret = __btrfs_alloc_chunk(trans, sys_chunk_offset, alloc_profile);
 	return ret;
 }
@@ -7302,6 +7300,17 @@ void btrfs_reset_fs_info_ptr(struct btrfs_fs_info *fs_info)
 		fs_devices->fs_info = NULL;
 		fs_devices = fs_devices->seed;
 	}
+}
+
+/*
+ * Multiplicity factor for simple profiles: DUP, RAID1-like and RAID10.
+ */
+int btrfs_bg_type_to_factor(u64 flags)
+{
+	if (flags & (BTRFS_BLOCK_GROUP_DUP | BTRFS_BLOCK_GROUP_RAID1 |
+		     BTRFS_BLOCK_GROUP_RAID10))
+		return 2;
+	return 1;
 }
 
 

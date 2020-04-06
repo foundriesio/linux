@@ -59,7 +59,9 @@
 #include "dev-replace.h"
 #include "free-space-cache.h"
 #include "backref.h"
+#include "space-info.h"
 #include "tests/btrfs-tests.h"
+#include "block-group.h"
 
 #include "qgroup.h"
 #include "backref.h"
@@ -1945,7 +1947,6 @@ static inline void btrfs_descending_sort_devices(
 static int btrfs_calc_avail_data_space(struct btrfs_fs_info *fs_info,
 				       u64 *free_bytes)
 {
-	struct btrfs_root *root = fs_info->tree_root;
 	struct btrfs_device_info *devices_info;
 	struct btrfs_fs_devices *fs_devices = fs_info->fs_devices;
 	struct btrfs_device *device;
@@ -1979,7 +1980,7 @@ static int btrfs_calc_avail_data_space(struct btrfs_fs_info *fs_info,
 		return -ENOMEM;
 
 	/* calc min stripe number for data space allocation */
-	type = btrfs_get_alloc_profile(root, 1);
+	type = btrfs_data_alloc_profile(fs_info);
 	if (type & BTRFS_BLOCK_GROUP_RAID0) {
 		min_stripes = 2;
 		num_stripes = nr_devices;
@@ -2138,14 +2139,9 @@ static int btrfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 				btrfs_account_ro_block_groups_free_space(found);
 
 			for (i = 0; i < BTRFS_NR_RAID_TYPES; i++) {
-				if (!list_empty(&found->block_groups[i])) {
-					switch (i) {
-					case BTRFS_RAID_DUP:
-					case BTRFS_RAID_RAID1:
-					case BTRFS_RAID_RAID10:
-						factor = 2;
-					}
-				}
+				if (!list_empty(&found->block_groups[i]))
+					factor = btrfs_bg_type_to_factor(
+						btrfs_raid_array[i].bg_flag);
 			}
 		}
 
