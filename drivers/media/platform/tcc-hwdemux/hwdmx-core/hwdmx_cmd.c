@@ -21,7 +21,7 @@
 #include "hwdmx_cmd.h"
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/mailbox/tcc_multi_ipc.h>
+#include <linux/mailbox/tcc_sp_ipc.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
@@ -35,30 +35,30 @@
 // clang-format off
 /* HWDMX command range: 0x000 ~ 0xFFF*/
 #define MAGIC_NUM						0	// for HWDMX
-#define HWDMX_START_CMD					MULTI_IPC_CMD(MAGIC_NUM, 0x001)
-#define HWDMX_STOP_CMD					MULTI_IPC_CMD(MAGIC_NUM, 0x002)
-#define HWDMX_ADD_FILTER_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x003)
-#define HWDMX_DELETE_FILTER_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x004)
-#define HWDMX_GET_STC_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x005)
-#define HWDMX_SET_PCRPID_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x006)
-#define HWDMX_GET_VERSION_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x007)
-#define HWDMX_INPUT_STREAM_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x008)
-#define HWDMX_CHANGE_INTERFACE_CMD		MULTI_IPC_CMD(MAGIC_NUM, 0x009)
-#define HWDMX_SET_MODE_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x00A)
-#define HWDMX_SET_KEY_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x00B)
-#define HWDMX_SET_IV_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x00C)
-#define HWDMX_SET_DATA_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x00D)
-#define HWDMX_SET_RUN_CMD				MULTI_IPC_CMD(MAGIC_NUM, 0x00E)
-#define HWDMX_SET_KDFDATA_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x00F)
-#define HWDMX_SET_KLDATA_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x010)
-#define HWDMX_GET_KLNRESP_CMD			MULTI_IPC_CMD(MAGIC_NUM, 0x011)
-#define HWDMX_SET_MODE_ADDPID_CMD		MULTI_IPC_CMD(MAGIC_NUM, 0x012)
+#define HWDMX_START_CMD					SP_CMD(MAGIC_NUM, 0x001)
+#define HWDMX_STOP_CMD					SP_CMD(MAGIC_NUM, 0x002)
+#define HWDMX_ADD_FILTER_CMD			SP_CMD(MAGIC_NUM, 0x003)
+#define HWDMX_DELETE_FILTER_CMD			SP_CMD(MAGIC_NUM, 0x004)
+#define HWDMX_GET_STC_CMD				SP_CMD(MAGIC_NUM, 0x005)
+#define HWDMX_SET_PCRPID_CMD			SP_CMD(MAGIC_NUM, 0x006)
+#define HWDMX_GET_VERSION_CMD			SP_CMD(MAGIC_NUM, 0x007)
+#define HWDMX_INPUT_STREAM_CMD			SP_CMD(MAGIC_NUM, 0x008)
+#define HWDMX_CHANGE_INTERFACE_CMD		SP_CMD(MAGIC_NUM, 0x009)
+#define HWDMX_SET_MODE_CMD				SP_CMD(MAGIC_NUM, 0x00A)
+#define HWDMX_SET_KEY_CMD				SP_CMD(MAGIC_NUM, 0x00B)
+#define HWDMX_SET_IV_CMD				SP_CMD(MAGIC_NUM, 0x00C)
+#define HWDMX_SET_DATA_CMD				SP_CMD(MAGIC_NUM, 0x00D)
+#define HWDMX_SET_RUN_CMD				SP_CMD(MAGIC_NUM, 0x00E)
+#define HWDMX_SET_KDFDATA_CMD			SP_CMD(MAGIC_NUM, 0x00F)
+#define HWDMX_SET_KLDATA_CMD			SP_CMD(MAGIC_NUM, 0x010)
+#define HWDMX_GET_KLNRESP_CMD			SP_CMD(MAGIC_NUM, 0x011)
+#define HWDMX_SET_MODE_ADDPID_CMD		SP_CMD(MAGIC_NUM, 0x012)
 /* Up to 16 of events can be assigned. */
-#define HWDMX_WBUF_UPDATED_EVT			MULTI_IPC_EVENT(MAGIC_NUM, 1)
-#define HWDMX_STC_RECV_EVT				MULTI_IPC_EVENT(MAGIC_NUM, 2)
-#define HWDMX_RBUF_EMPTY_EVT			MULTI_IPC_EVENT(MAGIC_NUM, 3)
+#define HWDMX_WBUF_UPDATED_EVT			SP_EVENT(MAGIC_NUM, 1)
+#define HWDMX_STC_RECV_EVT				SP_EVENT(MAGIC_NUM, 2)
+#define HWDMX_RBUF_EMPTY_EVT			SP_EVENT(MAGIC_NUM, 3)
 /* ... */
-#define HWDMX_DEBUG_DATA_EVT			MULTI_IPC_EVENT(MAGIC_NUM, 16)
+#define HWDMX_DEBUG_DATA_EVT			SP_EVENT(MAGIC_NUM, 16)
 // clang-format on
 
 #define STC_INTERVAL 1000    // Every 1000ms, CM notifiy STC time to A9
@@ -198,7 +198,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 
 void hwdmx_set_evt_handler(void)
 {
-	multi_set_callback(hwdmx_evt_handler);
+	sp_set_callback(hwdmx_evt_handler);
 }
 
 void hwdmx_set_interface_cmd(int iDMXID, int mode)
@@ -220,8 +220,7 @@ void hwdmx_set_interface_cmd(int iDMXID, int mode)
 				mbox_data[0] = i;
 				mbox_data[1] = tsif;
 				mbox_data[2] = 0;
-				multi_sendrecv_cmd(
-					MBOX_DEV_M4, HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
+				sp_sendrecv_cmd(HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
 			}
 		}
 	} else if (iDMXID < 8) {
@@ -230,8 +229,7 @@ void hwdmx_set_interface_cmd(int iDMXID, int mode)
 			mbox_data[0] = iDMXID;
 			mbox_data[1] = tsif;
 			mbox_data[2] = 0;
-			multi_sendrecv_cmd(
-				MBOX_DEV_M4, HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
+			sp_sendrecv_cmd(HWDMX_CHANGE_INTERFACE_CMD, mbox_data, sizeof(mbox_data), NULL, 0);
 		}
 	}
 }
@@ -261,7 +259,7 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 		h->port_cfg.tsif_port);
 
 	if (session_cnt == 0) {
-		multi_set_callback(hwdmx_evt_handler);
+		sp_set_callback(hwdmx_evt_handler);
 	}
 
 	switch (h->working_mode) {
@@ -292,9 +290,8 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	mbox_data[9] = h->port_cfg.tsif_port;
 	mbox_data[10] = 0x2; // HW1
 	mbox_data[11] = 0;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_START_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_START_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -327,9 +324,8 @@ int hwdmx_stop_cmd(struct tcc_tsif_handle *h)
 	}
 
 	mbox_data = (int)h->dmx_id;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_STOP_CMD, &mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_STOP_CMD, &mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -365,9 +361,8 @@ int hwdmx_set_pcrpid_cmd(struct tcc_tsif_handle *h, unsigned int pid)
 	mbox_data[1] = pid;
 	mbox_data[2] = STC_INTERVAL & 0xffff;
 	mbox_data[3] = PCRUPDATE_RES_MS;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_PCRPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_PCRPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -397,7 +392,7 @@ long long hwdmx_get_stc(struct tcc_tsif_handle *h)
 	mbox_data[1] = STC_INTERVAL;
 	mbox_data[2] = 0;
 	mbox_data[3] = 0;
-	multi_sendrecv_cmd(MBOX_DEV_M4, HWDMX_GET_STC_CMD, mbox_data, mbox_data, sizeof(mbox_data));
+	sp_sendrecv_cmd(HWDMX_GET_STC_CMD, mbox_data, mbox_data, sizeof(mbox_data));
 	stc = *(long long *)(mbox_data + 2);
 
 	return stc;
@@ -441,16 +436,14 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *feed
 			"FltMode: ", DUMP_PREFIX_ADDRESS, feed->f_mode, feed->f_size);
 		pr_info("[INFO][HWDMX] %s:%d mbox_size: %d\n", __func__, __LINE__, 20 + feed->f_size * 3);
 #endif
-		rsize = multi_sendrecv_cmd(
-			MBOX_DEV_M4, HWDMX_ADD_FILTER_CMD, mbox_data, 20 + feed->f_size * 3, &mbox_result,
-			sizeof(mbox_result));
+		rsize = sp_sendrecv_cmd(
+			HWDMX_ADD_FILTER_CMD, mbox_data, 20 + feed->f_size * 3, &mbox_result, sizeof(mbox_result));
 		break;
 
 	case TS:
 	case PES:
-		rsize = multi_sendrecv_cmd(
-			MBOX_DEV_M4, HWDMX_ADD_FILTER_CMD, mbox_data, sizeof(int) * 3, &mbox_result,
-			sizeof(mbox_result));
+		rsize = sp_sendrecv_cmd(
+			HWDMX_ADD_FILTER_CMD, mbox_data, sizeof(int) * 3, &mbox_result, sizeof(mbox_result));
 		break;
 
 	default:
@@ -493,9 +486,8 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h, struct tcc_tsif_filter *f
 	mbox_data[1] = fid;
 	mbox_data[2] = feed->f_type;
 	mbox_data[3] = feed->f_pid;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_DELETE_FILTER_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_DELETE_FILTER_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -532,9 +524,8 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr, unsigned 
 	mbox_data[0] = dmx_id;
 	mbox_data[1] = phy_addr;
 	mbox_data[2] = size;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_INPUT_STREAM_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_INPUT_STREAM_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -572,10 +563,9 @@ int hwdmx_set_cipher_dec_pid_cmd(struct tcc_tsif_handle *h,
 	mbox_data[2] = delete_option;
 	if(numOfPids>0)
 		memcpy(mbox_data + 3, (unsigned char *)pids, numOfPids*2);
-
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	
+	rsize = sp_sendrecv_cmd(
+			HWDMX_SET_MODE_ADDPID_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -607,9 +597,8 @@ int hwdmx_set_algo_cmd(struct tcc_tsif_handle *h, int algo,
 	if(numOfPids>0)
 		memcpy(mbox_data + 6, (unsigned char *)pids, numOfPids*2);
 
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -638,9 +627,8 @@ int hwdmx_set_key_cmd(struct tcc_tsif_handle *h, int keytype, int keymode, int s
 	mbox_data[3] = keymode;
 	memcpy(mbox_data + 4, key, size);
 
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_KEY_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_KEY_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -667,9 +655,8 @@ int hwdmx_set_iv_cmd(struct tcc_tsif_handle *h, int ividx, int size, void *iv)
 	mbox_data[1] = ividx;
 	mbox_data[2] = size;
 	memcpy(mbox_data + 3, iv, size);
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_IV_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_IV_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -712,9 +699,8 @@ int hwdmx_set_data_cmd(
 	mbox_data[1] = (int)srcaddr;
 	mbox_data[2] = (int)destaddr;
 	mbox_data[3] = srclen;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_DATA_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_DATA_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
@@ -742,9 +728,8 @@ int hwdmx_run_cipher_cmd(int dmxid, int encmode, int cwsel, int klidx, int keymo
 	mbox_data[2] = cwsel;
 	mbox_data[3] = klidx;
 	mbox_data[4] = keymode;
-	rsize = multi_sendrecv_cmd(
-		MBOX_DEV_M4, HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
+	rsize = sp_sendrecv_cmd(
+		HWDMX_SET_MODE_CMD, mbox_data, sizeof(mbox_data), &mbox_result, sizeof(mbox_result));
 	if (rsize < 0) {
 		pr_err("[ERROR][HWDMX] [%s:%d] sp_sendrecv_cmd error\n", __func__, __LINE__);
 		result = -EBADR;
