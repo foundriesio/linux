@@ -735,8 +735,7 @@ static noinline int replay_one_extent(struct btrfs_trans_handle *trans,
 				btrfs_init_data_ref(&ref,
 						root->root_key.objectid,
 						key->objectid, offset);
-				ret = btrfs_inc_extent_ref(trans, fs_info,
-						&ref);
+				ret = btrfs_inc_extent_ref(trans, root, &ref);
 				if (ret)
 					goto out;
 			} else {
@@ -3028,7 +3027,7 @@ static inline void btrfs_remove_log_ctx(struct btrfs_root *root,
 	mutex_unlock(&root->log_mutex);
 }
 
-/* 
+/*
  * Invoked in log mutex context, or be sure there is no other task which
  * can access the list.
  */

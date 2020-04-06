@@ -158,7 +158,7 @@ struct extent_buffer *btrfs_lock_root_node(struct btrfs_root *root)
  * tree until you end up with a lock on the root.  A locked buffer
  * is returned, with a reference held.
  */
-static struct extent_buffer *btrfs_read_lock_root_node(struct btrfs_root *root)
+struct extent_buffer *btrfs_read_lock_root_node(struct btrfs_root *root)
 {
 	struct extent_buffer *eb;
 
@@ -1545,6 +1545,10 @@ noinline int btrfs_cow_block(struct btrfs_trans_handle *trans,
 	struct btrfs_fs_info *fs_info = root->fs_info;
 	u64 search_start;
 	int ret;
+
+	if (test_bit(BTRFS_ROOT_DELETING, &root->state))
+		btrfs_err(fs_info,
+			"COW'ing blocks on a fs root that's being dropped");
 
 	if (trans->transaction != fs_info->running_transaction)
 		WARN(1, KERN_CRIT "trans %llu running %llu\n",
@@ -5707,7 +5711,7 @@ int btrfs_find_next_key(struct btrfs_root *root, struct btrfs_path *path,
 	int slot;
 	struct extent_buffer *c;
 
-	WARN_ON(!path->keep_locks);
+	WARN_ON(!path->keep_locks && !path->skip_locking);
 	while (level < BTRFS_MAX_LEVEL) {
 		if (!path->nodes[level])
 			return 1;
@@ -5723,7 +5727,7 @@ next:
 			    !path->nodes[level + 1])
 				return 1;
 
-			if (path->locks[level + 1]) {
+			if (path->locks[level + 1] || path->skip_locking) {
 				level++;
 				continue;
 			}
