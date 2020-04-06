@@ -1,0 +1,6 @@
+config TCC_THSM
+	tristate "TCC THSM"
+	default n
+	depends on PLATFORM_AVN
+	help
+		Support to THSM based on CA7,R5, <-> CA53 communication
