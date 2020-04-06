@@ -42,10 +42,14 @@ typedef struct tcc_dmx_inst_t
 	tcc_dmx_priv_t *dmx;
 } tcc_dmx_inst_t;
 
+typedef void (*tcc_dmx_smpcb)(int, uintptr_t, int, uintptr_t, int);
+
 int tcc_dmx_init(tcc_dmx_inst_t *dxb_demux);
 int tcc_dmx_deinit(tcc_dmx_inst_t *dxb_demux);
 
 int tcc_dmx_can_write(int devid);
+void tcc_dmx_set_smpcb(int devid, tcc_dmx_smpcb cb);
+void tcc_dmx_unset_smpcb(int devid);
 int tcc_dmx_ts_callback(char *p1, int p1_size, char *p2, int p2_size, int devid);
 int tcc_dmx_sec_callback(unsigned int fid, int crc_err, char *p, int size, int devid);
 
