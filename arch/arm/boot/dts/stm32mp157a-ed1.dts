@@ -26,8 +26,13 @@
 	};
 
 	reserved-memory {
-		gpu_reserved: gpu@f8000000 {
-			reg = <0xf8000000 0x8000000>;
+		gpu_reserved: gpu@f6000000 {
+			reg = <0xf6000000 0x8000000>;
+			no-map;
+		};
+
+		optee_memory: optee@fe000000 {
+			reg = <0xfe000000 0x02000000>;
 			no-map;
 		};
 	};
@@ -39,5 +44,9 @@
 
 &gpu {
 	contiguous-area = <&gpu_reserved>;
+	status = "okay";
+};
+
+&optee {
 	status = "okay";
 };

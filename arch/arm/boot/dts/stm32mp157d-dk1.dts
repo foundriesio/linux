@@ -27,9 +27,18 @@
 	};
 
 	reserved-memory {
-		gpu_reserved: gpu@dc000000 {
-			reg = <0xdc000000 0x4000000>;
+		gpu_reserved: gpu@da000000 {
+			reg = <0xda000000 0x4000000>;
+			no-map;
+		};
+
+		optee_memory: optee@0xde000000 {
+			reg = <0xde000000 0x02000000>;
 			no-map;
 		};
 	};
+};
+
+&optee {
+	status = "okay";
 };
