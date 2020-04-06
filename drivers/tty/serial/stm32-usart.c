@@ -165,6 +165,17 @@ static int stm32_usart_init_rs485(struct uart_port *port,
 	return uart_get_rs485_mode(port);
 }
 
+static bool stm32_usart_rx_dma_enabled(struct uart_port *port)
+{
+	struct stm32_port *stm32_port = to_stm32_port(port);
+	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+
+	if (!stm32_port->rx_ch)
+		return false;
+
+	return !!(readl_relaxed(port->membase + ofs->cr3) & USART_CR3_DMAR);
+}
+
 /*
  * Return true when data is pending (in pio mode), and false when no data is
  * pending.
@@ -181,7 +192,7 @@ static bool stm32_usart_pending_rx_pio(struct uart_port *port, u32 *sr)
 		 * Get all pending characters from the RDR or the FIFO when
 		 * using interrupts
 		 */
-		if (!stm32_port->rx_ch)
+		if (!stm32_usart_rx_dma_enabled(port))
 			return true;
 
 		/* Handle only RX data errors when using DMA */
@@ -318,7 +329,7 @@ static void stm32_usart_receive_chars(struct uart_port *port, bool threaded)
 	else
 		spin_lock(&port->lock);
 
-	if (stm32_port->rx_ch) {
+	if (stm32_usart_rx_dma_enabled(port)) {
 		stm32_port->status =
 			dmaengine_tx_status(stm32_port->rx_ch,
 					    stm32_port->rx_ch->cookie,
@@ -573,8 +584,8 @@ static irqreturn_t stm32_usart_interrupt(int irq, void *ptr)
 	 * DMA request line has been masked by HW and rx data are stacking in
 	 * FIFO.
 	 */
-	if (((sr & USART_SR_RXNE) && !stm32_port->rx_ch) ||
-	    ((sr & USART_SR_ERR_MASK) && stm32_port->rx_ch))
+	if (((sr & USART_SR_RXNE) && !stm32_usart_rx_dma_enabled(port)) ||
+	    ((sr & USART_SR_ERR_MASK) && stm32_usart_rx_dma_enabled(port)))
 		stm32_usart_receive_chars(port, false);
 
 	if ((sr & USART_SR_TXE) && !(stm32_port->tx_ch)) {
@@ -583,7 +594,7 @@ static irqreturn_t stm32_usart_interrupt(int irq, void *ptr)
 		spin_unlock(&port->lock);
 	}
 
-	if (stm32_port->rx_ch)
+	if (stm32_usart_rx_dma_enabled(port))
 		return IRQ_WAKE_THREAD;
 	else
 		return IRQ_HANDLED;
@@ -930,9 +941,12 @@ static void stm32_usart_set_termios(struct uart_port *port,
 		stm32_port->cr1_irq = USART_CR1_RTOIE;
 		writel_relaxed(bits, port->membase + ofs->rtor);
 		cr2 |= USART_CR2_RTOEN;
-		/* Not using dma, enable fifo threshold irq */
-		if (!stm32_port->rx_ch)
-			stm32_port->cr3_irq =  USART_CR3_RXFTIE;
+		/*
+		 * Enable fifo threshold irq in two cases, either when there
+		 * is no DMA, or when wake up over usart, from low power
+		 * state until the DMA gets re-enabled by resume.
+		 */
+		stm32_port->cr3_irq =  USART_CR3_RXFTIE;
 	}
 
 	cr1 |= stm32_port->cr1_irq;
