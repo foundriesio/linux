@@ -100,4 +100,7 @@ obj-$(CONFIG_PLATFORM_HWDEMUX) += tcc-hwdemux/hwdmx-core/
 
 obj-$(CONFIG_HWDEMUX_ADAPTOR) += tcc-hwdemux/hwdmx-drv/
 
+obj-$(CONFIG_TCC_SMP) += tcc-smp/
+
 obj-$(CONFIG_ISDBT_CONTROL) += tcc-hwdemux/isdbt-ctrl/
+
