@@ -3316,6 +3316,7 @@ snd-soc-iqaudio-codec
 snd-soc-iqaudio-dac
 snd-soc-justboom-both
 snd-soc-justboom-dac
+snd-soc-ma120x0p
 snd-soc-max9759
 snd-soc-max98088
 snd-soc-max98357a
