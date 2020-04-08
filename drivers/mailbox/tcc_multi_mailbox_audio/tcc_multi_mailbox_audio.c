@@ -105,6 +105,7 @@ static unsigned short tcc_mbox_audio_get_available_tx_instance(struct mbox_audio
 
     for (i = 0; i < TX_MAX_REPLY_COUNT; i++) {
 		if (audio_dev->tx[i].reserved == 0) {
+		    audio_dev->tx[i].reserved = 1;
 			break;
 		}
 		instance_num++;
@@ -158,35 +159,32 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 
     if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
 		// for a53 : set the area of replied data
+		mutex_lock(&audio_dev->lock);
 		tx_instance = tcc_mbox_audio_get_available_tx_instance(audio_dev);
+		mutex_unlock(&audio_dev->lock);
 		if (tx_instance < TX_MAX_REPLY_COUNT) {
 			header->tx_instance = tx_instance;
 			tx = &(audio_dev->tx[tx_instance]);
-            spin_lock(&tx->lock);
-			tx->reserved = 1;
-  		    tx->reply.updated = 0;
+			tx->reply.updated = 0;
 			atomic_set(&tx->wakeup, 0);
-            spin_unlock(&tx->lock);
 		} else {
 			header->tx_instance = 99; //tmp value, noti the error instance to sender
 			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : there is no available tx instance to reply.\n", __FUNCTION__);
 			return -EINVAL;
 		}
-    }
-
-    //packing mbox data
-    mbox_data = kzalloc(sizeof(struct tcc_mbox_data), GFP_KERNEL);
-    if (mbox_data == NULL) {
-        printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc mbox_data\n", __FUNCTION__);
-	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
-		spin_lock(&tx->lock);
-  		atomic_set(&tx->wakeup, 0);
-  		tx->reserved = 0;
-  		tx->reply.updated = 0;
-                spin_unlock(&tx->lock);
 	}
-        return -ENOMEM;
-    }
+
+	//packing mbox data
+	mbox_data = kzalloc(sizeof(struct tcc_mbox_data), GFP_KERNEL);
+	if (mbox_data == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc mbox_data\n", __FUNCTION__);
+		if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+			atomic_set(&tx->wakeup, 0);
+			tx->reply.updated = 0;
+			tx->reserved = 0;
+		}
+		return -ENOMEM;
+	}
 
 	mbox_data->cmd[0] = ((header->usage << 24) & 0xFF000000) | 
 		((header->cmd_type << 16) & 0x00FF0000) | 
@@ -202,11 +200,9 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 	if (tcc_mbox_audio_send_message_to_channel(audio_dev, mbox_data) < 0) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : send failed.\n", __FUNCTION__);
 		if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
-            spin_lock(&tx->lock);
-  		    atomic_set(&tx->wakeup, 0);
-  		    tx->reserved = 0; //need mutex?
-  		    tx->reply.updated = 0;
-            spin_unlock(&tx->lock);
+			atomic_set(&tx->wakeup, 0);
+			tx->reply.updated = 0;
+			tx->reserved = 0;
 		}
 		kfree(mbox_data);
 		return -EIO;
@@ -218,35 +214,32 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
 		if (wait_event_interruptible_timeout(tx->wait, atomic_read(&tx->wakeup), CMD_TIMEOUT) <= 0) {
 			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : timeout error to get reply message.\n", __FUNCTION__);
-            spin_lock(&tx->lock);
+
 			atomic_set(&tx->wakeup, 0);
-			tx->reserved = 0; //need mutex?
 			tx->reply.updated = 0;
-            spin_unlock(&tx->lock);
+			tx->reserved = 0;
 			return -EBUSY;
 		}
 
 		//after getting data from mbox
-        if (tx->reply.updated == 1) {
-			printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received reply data from tx = %d, type = 0x%04x, msg_size = %d, msg[0] = 0x%08x\n", 
+		if (tx->reply.updated == 1) {
+			printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received reply data from tx = %d, type = 0x%04x, msg_size = %d, msg[0] = 0x%08x\n",
 				__FUNCTION__, tx_instance, tx->reply.cmd_type, tx->reply.msg_size, tx->reply.msg[0]);
-            //reply should be alloc in caller previously!!
-            //TODO : determine the way 1. memcpy to caller's reply variable or 2. caller use audio_dev->tx.reply directly (no need memcpy)
+			//reply should be alloc in caller previously!!
+			//TODO : determine the way 1. memcpy to caller's reply variable or 2. caller use audio_dev->tx.reply directly (no need memcpy)
 			reply->cmd_type = tx->reply.cmd_type;
 			reply->msg_size = tx->reply.msg_size;
 			memcpy(reply->msg, tx->reply.msg, sizeof(unsigned int) * tx->reply.msg_size);
 			ret = tx_instance;
-        } else { //Do not need....
-            printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : reply get data. but no updated.\n", __FUNCTION__);
+		} else { //Do not need....
+			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : reply get data. but no updated.\n", __FUNCTION__);
 			ret = -EINVAL;
-        }
+		}
 
-        //init tx after use it.
-        spin_lock(&tx->lock);
-        atomic_set(&tx->wakeup, 0);
-        tx->reserved = 0;
-        tx->reply.updated = 0;
-        spin_unlock(&tx->lock);
+		//init tx after use it.
+		atomic_set(&tx->wakeup, 0);
+		tx->reply.updated = 0;
+		tx->reserved = 0;
 
 		return ret;
 	}
@@ -672,7 +665,6 @@ static long tcc_mbox_audio_rx_init(struct mbox_audio_rx_t *rx, const char *name,
 static int tcc_mbox_audio_tx_init(struct mbox_audio_tx_t *tx, int num)
 {
     INIT_LIST_HEAD(&tx->list);
-	spin_lock_init(&tx->lock);
 
     atomic_set(&tx->seq, 0);
 	atomic_set(&tx->wakeup, 0);

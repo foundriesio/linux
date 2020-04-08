@@ -88,7 +88,6 @@ struct mbox_audio_client_t {
 
 // tx for reply processing
 struct mbox_audio_tx_t {
-	spinlock_t lock;
 	struct list_head list;
 	atomic_t seq;
 	atomic_t wakeup;
