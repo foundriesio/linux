@@ -9,7 +9,8 @@
 #include "stm32mp15xa.dtsi"
 #include "stm32mp15-pinctrl.dtsi"
 #include "stm32mp15xxaa-pinctrl.dtsi"
-#include "stm32mp157c-m4-srm.dtsi"
+#include "stm32mp157-m4-srm.dtsi"
+#include "stm32mp157-m4-srm-pinctrl.dtsi"
 #include "stm32mp15xx-edx.dtsi"
 
 / {

@@ -4,7 +4,8 @@
  * Author: Alexandre Torgue <alexandre.torgue@st.com> for STMicroelectronics.
  */
 
-#include "stm32mp157c-m4-srm.dtsi"
+#include "stm32mp157-m4-srm.dtsi"
+#include "stm32mp157-m4-srm-pinctrl.dtsi"
 #include <dt-bindings/mfd/st,stpmic1.h>
 
 / {
