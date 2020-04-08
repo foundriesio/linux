@@ -1034,6 +1034,10 @@ config SPI_SPIDEV
 	  Note that this application programming interface is EXPERIMENTAL
 	  and hence SUBJECT TO CHANGE WITHOUT NOTICE while it stabilizes.
 
+config SPI_SPIDEV_OOB
+        bool "Enable out-of-band SPI transactions"
+	depends on SPI_SPIDEV && EVL
+
 config SPI_LOOPBACK_TEST
 	tristate "spi loopback test framework support"
 	depends on m
