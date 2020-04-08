@@ -754,18 +754,19 @@ static int stm32_dma_mdma_flush_remaining(struct stm32_dma_chan *chan)
 	u32 residue, remain, len, dma_scr;
 	int ret;
 
+	residue = stm32_dma_get_remaining_bytes(chan);
+	if (!residue)
+		return 0;
+
 	dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(chan->id));
 	if (!(dma_scr & STM32_DMA_SCR_EN))
 		return -EPERM;
 
 	sg_req = &chan->desc->sg_req[chan->next_sg - 1];
-
-	residue = stm32_dma_get_remaining_bytes(chan);
 	len = sg_dma_len(&sg_req->stm32_sgl_req);
 	remain = len % mchan->sram_period;
 
-	if (residue > 0 && len > mchan->sram_period &&
-	    ((len % mchan->sram_period) != 0)) {
+	if (len > mchan->sram_period && ((len % mchan->sram_period) != 0)) {
 		unsigned long dma_sync_wait_timeout =
 			jiffies + msecs_to_jiffies(5000);
 
