@@ -1,47 +1,21 @@
 /*
- * linux/drivers/video/skeletonfb.c -- Skeleton for a frame buffer device
+ * Copyright (C) 2008-2019 Telechips Inc.
  *
- *  Modified to new api Jan 2001 by James Simmons (jsimmons@transvirtual.com)
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- *  Created 28 Dec 1997 by Geert Uytterhoeven
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *
- *  I have started rewriting this driver as a example of the upcoming new API
- *  The primary goal is to remove the console code from fbdev and place it
- *  into fbcon.c. This reduces the code and makes writing a new fbdev driver
- *  easy since the author doesn't need to worry about console internals. It
- *  also allows the ability to run fbdev without a console/tty system on top 
- *  of it. 
- *
- *  First the roles of struct fb_info and struct display have changed. Struct
- *  display will go away. The way the new framebuffer console code will
- *  work is that it will act to translate data about the tty/console in 
- *  struct vc_data to data in a device independent way in struct fb_info. Then
- *  various functions in struct fb_ops will be called to store the device 
- *  dependent state in the par field in struct fb_info and to change the 
- *  hardware to that state. This allows a very clean separation of the fbdev
- *  layer from the console layer. It also allows one to use fbdev on its own
- *  which is a bounus for embedded devices. The reason this approach works is  
- *  for each framebuffer device when used as a tty/console device is allocated
- *  a set of virtual terminals to it. Only one virtual terminal can be active 
- *  per framebuffer device. We already have all the data we need in struct 
- *  vc_data so why store a bunch of colormaps and other fbdev specific data
- *  per virtual terminal. 
- *
- *  As you can see doing this makes the con parameter pretty much useless
- *  for struct fb_ops functions, as it should be. Also having struct  
- *  fb_var_screeninfo and other data in fb_info pretty much eliminates the 
- *  need for get_fix and get_var. Once all drivers use the fix, var, and cmap
- *  fbcon can be written around these fields. This will also eliminate the
- *  need to regenerate struct fb_var_screeninfo, struct fb_fix_screeninfo
- *  struct fb_cmap every time get_var, get_fix, get_cmap functions are called
- *  as many drivers do now. 
- *
- *  This file is subject to the terms and conditions of the GNU General Public
- *  License. See the file COPYING in the main directory of this archive for
- *  more details.
-_int*/
-
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
