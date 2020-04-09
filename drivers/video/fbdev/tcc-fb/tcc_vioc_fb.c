@@ -1214,18 +1214,27 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				}
 
 			#if defined(CONFIG_VIDEO_DISPLAY_SWAP_VPU_FRAME) && defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
-				/* image_enable
-				 * 0: ImageInfo is 1st frame (start playing)
-				 * 1: Video is playing
+				/* ImageInfo.enable
+				 *  0: stop playing
+				 *  1: Video is playing
 				 */
-				if (ptccfb_info->image_enable != 0) {
-					if (ptccfb_info->swap_buf_status == SWAP_BUF_START) {
-						if (ptccfb_info->swap_buf_id >= ImageInfo.buffer_unique_id) {
-							dprintk("0x%X (%d >= %d)\n", ptccfb_info->swap_buf_status, ptccfb_info->swap_buf_id, ImageInfo.buffer_unique_id);
-							return 0;
+				if (ImageInfo.enable != 0) {
+					/* ptccfb_info->image_enable
+					 *  0: ImageInfo is 1st frame (start playing)
+					 *  1: Video is playing
+					 */
+					if (ptccfb_info->image_enable != 0) {
+						if (ptccfb_info->swap_buf_status == SWAP_BUF_START) {
+							if (ptccfb_info->swap_buf_id >= ImageInfo.buffer_unique_id) {
+								dprintk("0x%X (%d >= %d)\n", ptccfb_info->swap_buf_status, ptccfb_info->swap_buf_id, ImageInfo.buffer_unique_id);
+								return 0;
+							}
 						}
 					}
+				} else {
+					ptccfb_info->swap_buf_id = 0;
 				}
+
 				ptccfb_info->swap_buf_status = SWAP_BUF_END;
 				ptccfb_info->image_enable = ImageInfo.enable;
 			#endif
