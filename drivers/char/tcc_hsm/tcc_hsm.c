@@ -40,6 +40,7 @@
 #include <linux/miscdevice.h>
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
+#include <linux/mailbox/tcc_multi_ipc.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif
@@ -103,14 +104,13 @@ static long tcc_hsm_ioctl_get_version(unsigned long arg)
     struct tcc_hsm_ioctl_version_param param;
     long ret = -EFAULT;
 
-    ret = tcc_hsm_sp_cmd_get_version(&param.major, &param.minor);
-    if(ret != 0)
-    {
-        eprintk("[%s:%d] failed to get version from SP\n", __func__, __LINE__);
-        return ret;
-    }
+	ret = tcc_hsm_sp_cmd_get_version(MBOX_DEV_M4, &param.major, &param.minor);
+	if (ret != 0) {
+		eprintk("[%s:%d] failed to get version from SP\n", __func__, __LINE__);
+		return ret;
+	}
 
-    if(copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
+	if(copy_to_user((void *)arg, (void *)&param, sizeof(param))) {
         eprintk("[%s:%d] copy_to_user failed\n", __func__, __LINE__);
         return -EFAULT;
     }
@@ -128,10 +128,10 @@ static long tcc_hsm_ioctl_set_mode(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_set_mode( \
-	        param.keyIndex, param.algorithm, param.opMode, param.residual, param.sMsg);
+	ret = tcc_hsm_sp_cmd_set_mode(
+		MBOX_DEV_M4, param.keyIndex, param.algorithm, param.opMode, param.residual, param.sMsg);
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_set_key(unsigned long arg)
@@ -155,10 +155,10 @@ static long tcc_hsm_ioctl_set_key(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_set_key( \
-            param.keyIndex, param.keyType, param.keyMode, key, param.keySize);
+	ret = tcc_hsm_sp_cmd_set_key(
+		MBOX_DEV_M4, param.keyIndex, param.keyType, param.keyMode, key, param.keySize);
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_set_iv(unsigned long arg)
@@ -182,9 +182,9 @@ static long tcc_hsm_ioctl_set_iv(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_set_iv(param.keyIndex, iv, param.ivSize);
+	ret = tcc_hsm_sp_cmd_set_iv(MBOX_DEV_M4, param.keyIndex, iv, param.ivSize);
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_set_kldata(unsigned long arg)
@@ -208,9 +208,10 @@ static long tcc_hsm_ioctl_set_kldata(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_set_kldata(param.keyIndex, (uintptr_t *)&klData, sizeof(klData));
+	ret = tcc_hsm_sp_cmd_set_kldata(
+		MBOX_DEV_M4, param.keyIndex, (uintptr_t *)&klData, sizeof(klData));
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_run_cipher(unsigned long arg)
@@ -234,16 +235,16 @@ static long tcc_hsm_ioctl_run_cipher(unsigned long arg)
         dma_buf->srcVir[8], dma_buf->srcVir[9], dma_buf->srcVir[10], dma_buf->srcVir[11], 
         dma_buf->srcVir[12], dma_buf->srcVir[13], dma_buf->srcVir[14], dma_buf->srcVir[15]);
 */
-    ret = tcc_hsm_sp_cmd_run_cipher_by_dma( \
-        param.keyIndex, (uint32_t)dma_buf->srcPhy, (uint32_t)dma_buf->dstPhy, param.srcSize,  \
-        param.enc, param.cwSel, param.klIndex, param.keyMode);
+	ret = tcc_hsm_sp_cmd_run_cipher_by_dma(
+		MBOX_DEV_M4, param.keyIndex, (uint32_t)dma_buf->srcPhy, (uint32_t)dma_buf->dstPhy,
+		param.srcSize, param.enc, param.cwSel, param.klIndex, param.keyMode);
 
-    dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.srcSize, DMA_FROM_DEVICE);
-        
-    if(copy_to_user(param.dstAddr, (const uint8_t *)dma_buf->dstVir, param.srcSize)) {
-        eprintk("[%s] copy_to_user failed\n", __func__);
-        return ret;
-    }
+	dma_sync_single_for_cpu(dma_buf->dev, dma_buf->dstPhy, param.srcSize, DMA_FROM_DEVICE);
+
+	if (copy_to_user(param.dstAddr, (const uint8_t *)dma_buf->dstVir, param.srcSize)) {
+		eprintk("[%s] copy_to_user failed\n", __func__);
+		return ret;
+	}
 
     return ret;
 }
@@ -258,11 +259,11 @@ static long tcc_hsm_ioctl_run_cipher_by_dma(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_run_cipher_by_dma( \
-        param.keyIndex, (uint32_t)param.srcAddr, (uint32_t)param.dstAddr, param.srcSize,  \
-        param.enc, param.cwSel, param.klIndex, param.keyMode);
+	ret = tcc_hsm_sp_cmd_run_cipher_by_dma(
+		MBOX_DEV_M4, param.keyIndex, (uint32_t)param.srcAddr, (uint32_t)param.dstAddr,
+		param.srcSize, param.enc, param.cwSel, param.klIndex, param.keyMode);
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_write_otp(unsigned long arg)
@@ -280,9 +281,9 @@ static long tcc_hsm_ioctl_write_otp(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_write_otp(param.addr, dma_buf->srcVir, param.size);
+	ret = tcc_hsm_sp_cmd_write_otp(MBOX_DEV_M4, param.addr, dma_buf->srcVir, param.size);
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl_get_rng(unsigned long arg)
@@ -300,14 +301,14 @@ static long tcc_hsm_ioctl_get_rng(unsigned long arg)
         return ret;
     }
 
-    ret = tcc_hsm_sp_cmd_get_rand(dma_buf->dstVir, param.size);
+	ret = tcc_hsm_sp_cmd_get_rand(MBOX_DEV_M4, dma_buf->dstVir, param.size);
 
-    if(copy_to_user(param.rng, (const uint8_t *)dma_buf->dstVir, param.size)) {
-        eprintk("[%s] copy_to_user failed\n", __func__);
-        return ret;
-    }
+	if (copy_to_user(param.rng, (const uint8_t *)dma_buf->dstVir, param.size)) {
+		eprintk("[%s] copy_to_user failed\n", __func__);
+		return ret;
+	}
 
-    return ret;
+	return ret;
 }
 
 static long tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
