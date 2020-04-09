@@ -203,6 +203,9 @@ struct scsi_device {
 	struct work_struct event_work;
 
 	unsigned int max_device_blocked; /* what device_blocked counts down from  */
+
+	bool offline_already;		/* Device offline message logged */
+
 #define SCSI_DEFAULT_DEVICE_BLOCKED	3
 
 	atomic_t iorequest_cnt;
