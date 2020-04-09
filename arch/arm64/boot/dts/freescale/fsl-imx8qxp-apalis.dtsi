@@ -163,19 +163,19 @@
 };
 
 /* Apalis CAN1 */
-&flexcan1 {
-	/* define the following property to disable CAN-FD mode */
-	/* disable-fd-mode; */
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_flexcan1>;
-};
-
-/* Apalis CAN2 */
 &flexcan2 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan2>;
+};
+
+/* Apalis CAN2 */
+&flexcan3 {
+	/* define the following property to disable CAN-FD mode */
+	/* disable-fd-mode; */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan3>;
 };
 
 /* On-module I2C */
@@ -355,7 +355,7 @@
 		};
 
 		/* Apalis CAN1 */
-		pinctrl_flexcan1: flexcan0grp {
+		pinctrl_flexcan2: flexcan2grp {
 			fsl,pins = <
 				SC_P_FLEXCAN1_TX_ADMA_FLEXCAN1_TX		0x21		/* MXM3 14 */
 				SC_P_FLEXCAN1_RX_ADMA_FLEXCAN1_RX		0x21		/* MXM3 12 */
@@ -363,7 +363,7 @@
 		};
 
 		/* Apalis CAN2 */
-		pinctrl_flexcan2: flexcan1grp {
+		pinctrl_flexcan3: flexcan3grp {
 			fsl,pins = <
 				SC_P_FLEXCAN2_TX_ADMA_FLEXCAN2_TX		0x21		/* MXM3 18 */
 				SC_P_FLEXCAN2_RX_ADMA_FLEXCAN2_RX		0x21		/* MXM3 16 */

@@ -121,14 +121,14 @@
 };
 
 /* Apalis CAN1 */
-&flexcan1 {
+&flexcan2 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
 	status = "okay";
 };
 
 /* Apalis CAN2 */
-&flexcan2 {
+&flexcan3 {
 	/* define the following property to disable CAN-FD mode */
 	/* disable-fd-mode; */
 	status = "okay";
