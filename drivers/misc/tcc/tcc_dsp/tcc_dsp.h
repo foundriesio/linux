@@ -2,7 +2,6 @@
 #define _TCC_DSP_H_
 
 #include <asm/ioctl.h>
-#include "AM3DZirene.h"
 
 #define CMD_TYPE    0x00010000
 #define INFO_TYPE   0x00020000
@@ -35,16 +34,16 @@ struct tcc_control_param_t {
 } __attribute__((packed));
 
 struct tcc_am3d_param_t {
-	AM3D_INT32	eEffect;//eZirene_Effect 
-	AM3D_INT32	eParm;
-	AM3D_INT32	eChannelMask;
-	AM3D_INT32	iValue;
-	AM3D_INT32	retStatus; //eZireneStatus  
+	int32_t	eEffect;//eZirene_Effect 
+	int32_t	eParm;
+	int32_t	eChannelMask;
+	int32_t	iValue;
+	int32_t	retStatus; //eZireneStatus  
 } __attribute__((packed));
 
 #define PARAM_TBL_MAX	(10)
 struct tcc_am3d_param_tbl_t {
-	AM3D_INT32 iNumOfParameters;
+	int32_t iNumOfParameters;
 	struct tcc_am3d_param_t tbl[PARAM_TBL_MAX];
 } __attribute__((packed));
 
