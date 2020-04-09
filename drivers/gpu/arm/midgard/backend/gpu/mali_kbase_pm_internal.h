@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2019 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -142,13 +142,12 @@ void kbase_pm_clock_on(struct kbase_device *kbdev, bool is_resume);
  *
  * @kbdev:      The kbase device structure for the device (must be a valid
  *              pointer)
- * @is_suspend: true if clock off due to suspend, false otherwise
  *
  * Return: true  if clock was turned off, or
  *         false if clock can not be turned off due to pending page/bus fault
  *               workers. Caller must flush MMU workqueues and retry
  */
-bool kbase_pm_clock_off(struct kbase_device *kbdev, bool is_suspend);
+bool kbase_pm_clock_off(struct kbase_device *kbdev);
 
 /**
  * kbase_pm_enable_interrupts - Enable interrupts on the device.
@@ -219,6 +218,11 @@ void kbase_pm_reset_done(struct kbase_device *kbdev);
  * Unlike kbase_pm_update_state(), the caller must not hold hwaccess_lock,
  * because this function will take that lock itself.
  *
+ * NOTE: This may not wait until the correct state is reached if there is a
+ * power off in progress. To correctly wait for the desired state the caller
+ * must ensure that this is not the case by, for example, calling
+ * kbase_pm_wait_for_poweroff_complete()
+ *
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
  */
 void kbase_pm_wait_for_desired_state(struct kbase_device *kbdev);
@@ -240,9 +244,23 @@ void kbase_pm_wait_for_desired_state(struct kbase_device *kbdev);
 void kbase_pm_wait_for_l2_powered(struct kbase_device *kbdev);
 
 /**
+ * kbase_pm_update_dynamic_cores_onoff - Update the L2 and shader power state
+ *                                       machines after changing shader core
+ *                                       availability
+ *
+ * It can be called in any status, so need to check the l2 and shader core
+ * power status in this function or it will break shader/l2 state machine
+ *
+ * Caller must hold hwaccess_lock
+ *
+ * @kbdev: The kbase device structure for the device (must be a valid pointer)
+ */
+void kbase_pm_update_dynamic_cores_onoff(struct kbase_device *kbdev);
+
+/**
  * kbase_pm_update_cores_state_nolock - Variant of kbase_pm_update_cores_state()
  *                                      where the caller must hold
- *                                      kbase_device.pm.power_change_lock
+ *                                      kbase_device.hwaccess_lock
  *
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
  */
@@ -482,10 +500,8 @@ void kbase_pm_do_poweron(struct kbase_device *kbdev, bool is_resume);
  *
  * @kbdev:      The kbase device structure for the device (must be a valid
  *              pointer)
- * @is_suspend: true if power off due to suspend,
- *              false otherwise
  */
-void kbase_pm_do_poweroff(struct kbase_device *kbdev, bool is_suspend);
+void kbase_pm_do_poweroff(struct kbase_device *kbdev);
 
 #if defined(CONFIG_MALI_DEVFREQ) || defined(CONFIG_MALI_MIDGARD_DVFS)
 void kbase_pm_get_dvfs_metrics(struct kbase_device *kbdev,
@@ -609,16 +625,61 @@ void kbase_pm_protected_override_disable(struct kbase_device *kbdev);
  */
 void kbase_pm_protected_l2_override(struct kbase_device *kbdev, bool override);
 
+/**
+ * kbase_pm_protected_entry_override_enable - Enable the protected mode entry
+ *                                            override
+ * @kbdev: Device pointer
+ *
+ * Initiate a GPU reset and enable the protected mode entry override flag if
+ * l2_always_on WA is enabled and platform is fully coherent. If the GPU
+ * reset is already ongoing then protected mode entry override flag will not
+ * be enabled and function will have to be called again.
+ *
+ * When protected mode entry override flag is enabled to power down L2 via GPU
+ * reset, the GPU reset handling behavior gets changed. For example call to
+ * kbase_backend_reset() is skipped, Hw counters are not re-enabled and L2
+ * isn't powered up again post reset.
+ * This is needed only as a workaround for a Hw issue where explicit power down
+ * of L2 causes a glitch. For entering protected mode on fully coherent
+ * platforms L2 needs to be powered down to switch to IO coherency mode, so to
+ * avoid the glitch GPU reset is used to power down L2. Hence, this function
+ * does nothing on systems where the glitch issue isn't present.
+ *
+ * Caller must hold hwaccess_lock. Should be only called during the transition
+ * to enter protected mode.
+ *
+ * Return: -EAGAIN if a GPU reset was required for the glitch workaround but
+ * was already ongoing, otherwise 0.
+ */
+int kbase_pm_protected_entry_override_enable(struct kbase_device *kbdev);
+
+/**
+ * kbase_pm_protected_entry_override_disable - Disable the protected mode entry
+ *                                             override
+ * @kbdev: Device pointer
+ *
+ * This shall be called once L2 has powered down and switch to IO coherency
+ * mode has been made. As with kbase_pm_protected_entry_override_enable(),
+ * this function does nothing on systems where the glitch issue isn't present.
+ *
+ * Caller must hold hwaccess_lock. Should be only called during the transition
+ * to enter protected mode.
+ */
+void kbase_pm_protected_entry_override_disable(struct kbase_device *kbdev);
+
 /* If true, the driver should explicitly control corestack power management,
  * instead of relying on the Power Domain Controller.
  */
 extern bool corestack_driver_control;
 
-/* If true, disable powering-down of individual cores, and just power-down at
- * the top-level using platform-specific code.
- * If false, use the expected behaviour of controlling the individual cores
- * from within the driver.
+/**
+ * kbase_pm_is_l2_desired - Check whether l2 is desired
+ *
+ * @kbdev: Device pointer
+ *
+ * This shall be called to check whether l2 is needed to power on
+ *
+ * Return: true if l2 need to power on
  */
-extern bool platform_power_down_only;
-
+bool kbase_pm_is_l2_desired(struct kbase_device *kbdev);
 #endif /* _KBASE_BACKEND_PM_INTERNAL_H_ */
