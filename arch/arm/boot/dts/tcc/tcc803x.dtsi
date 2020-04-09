@@ -1381,8 +1381,8 @@
 				   <GIC_SPI 31 0>;
 	};
 
-	/* A53 <-> M4 */
-	cmbox: mbox@19000000 {
+	/* A53 <-> M4, A7, R5 */
+	multi_ipc: mbox@19000000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x19000000 0x100>;
 		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_LOW>;
@@ -1393,7 +1393,7 @@
 	multi-ipc-m4 {
 		compatible = "telechips,multi-ipc-m4";
 		mbox-names = "multi-ipc-m4";
-		mboxes = <&cmbox 0>;
+		mboxes = <&multi_ipc 0>;
 	};
 
 	multi-ipc-a7 {

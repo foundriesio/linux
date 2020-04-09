@@ -40,18 +40,21 @@
 
 int32_t tcc_hsm_sp_cmd_start(void);
 int32_t tcc_hsm_sp_cmd_stop(void);
-int32_t tcc_hsm_sp_cmd_get_version(uint32_t *major, uint32_t *minor);
-int32_t tcc_hsm_sp_cmd_set_mode( \
-    uint32_t keyIndex, uint32_t algorithm, uint32_t opMode, uint32_t residual, uint32_t sMsg);
-int32_t tcc_hsm_sp_cmd_set_key( \
-    uint32_t keyIndex, uint32_t keyType, uint32_t keyMode, uint8_t *key, uint32_t keySize);
-int32_t tcc_hsm_sp_cmd_set_iv(uint32_t keyIndex, uint8_t *iv, uint32_t ivSize);
-int32_t tcc_hsm_sp_cmd_set_kldata( \
-    uint32_t keyIndex, uintptr_t *klData, uint32_t klDataSize);
-int32_t tcc_hsm_sp_cmd_run_cipher_by_dma( \
-    uint32_t keyIndex, uint32_t srcAddr,  uint32_t dstAddr, uint32_t srcSize, \
-    uint32_t enc, uint32_t swSel, uint32_t klIndex, uint32_t keyMode);
-int32_t tcc_hsm_sp_cmd_write_otp(uint32_t otpAddr, uint8_t *otpBuf, uint32_t otpSize);
-int32_t tcc_hsm_sp_cmd_get_rand(uint8_t *rng, int32_t rngSize);
+int32_t tcc_hsm_sp_cmd_get_version(uint32_t device_id, uint32_t *major, uint32_t *minor);
+int32_t tcc_hsm_sp_cmd_set_mode(
+	uint32_t device_id, uint32_t keyIndex, uint32_t algorithm, uint32_t opMode, uint32_t residual,
+	uint32_t sMsg);
+int32_t tcc_hsm_sp_cmd_set_key(
+	uint32_t device_id, uint32_t keyIndex, uint32_t keyType, uint32_t keyMode, uint8_t *key,
+	uint32_t keySize);
+int32_t tcc_hsm_sp_cmd_set_iv(uint32_t device_id, uint32_t keyIndex, uint8_t *iv, uint32_t ivSize);
+int32_t tcc_hsm_sp_cmd_set_kldata(
+	uint32_t device_id, uint32_t keyIndex, uintptr_t *klData, uint32_t klDataSize);
+int32_t tcc_hsm_sp_cmd_run_cipher_by_dma(
+	uint32_t device_id, uint32_t keyIndex, uint32_t srcAddr, uint32_t dstAddr, uint32_t srcSize,
+	uint32_t enc, uint32_t swSel, uint32_t klIndex, uint32_t keyMode);
+int32_t
+tcc_hsm_sp_cmd_write_otp(uint32_t device_id, uint32_t otpAddr, uint8_t *otpBuf, uint32_t otpSize);
+int32_t tcc_hsm_sp_cmd_get_rand(uint32_t device_id, uint8_t *rng, int32_t rngSize);
 
 #endif /*_TCC_HSM_SP_CMD_H_*/
