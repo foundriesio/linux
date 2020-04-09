@@ -194,6 +194,9 @@ struct scsi_device {
 	unsigned broken_fua:1;		/* Don't set FUA bit */
 	unsigned lun_in_cdb:1;		/* Store LUN bits in CDB[1] */
 	unsigned unmap_limit_for_ws:1;	/* Use the UNMAP limit for WRITE SAME */
+#ifndef __GENKSYMS__
+	unsigned offline_already:1;	/* Device offline message logged */
+#endif
 
 	atomic_t disk_events_disable_depth; /* disable depth for disk events */
 
@@ -203,8 +206,6 @@ struct scsi_device {
 	struct work_struct event_work;
 
 	unsigned int max_device_blocked; /* what device_blocked counts down from  */
-
-	bool offline_already;		/* Device offline message logged */
 
 #define SCSI_DEFAULT_DEVICE_BLOCKED	3
 
