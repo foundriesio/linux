@@ -21,6 +21,19 @@
 #define PMU_TSADC_STOP_SHIFT	0
 #define PMU_TSADC_PWREN_SHIFT	16
 
+/*
+ * TCC 803x ADC Register
+ */
+#define ADCCMD	0x00
+#define ADCIRQ	0x04
+#define ADCCTRL	0x08
+#define ADCDATA0 0x80
+#define ADC_CLK_OUT_EN (1<<30)
+#define ADC_CLK_DIV_EN (1<<29)
+
+/*
+ * TCC ADC Register
+ */
 #define ADCCON_REG	0x00
 #define ADCTSC_REG	0x04
 #define ADCDLY_REG	0x08
@@ -65,7 +78,9 @@
 #define ADCINTEOC_CLR		(1<<0)
 #define ADCINTWKU_CLR		(1<<0)
 
-#define GENERAL_ADC 1
+#if defined(CONFIG_ARCH_TCC899X)
+#define GENERAL_ADC
+#endif
 enum {
 	ADC_CH0 = 0,
 	ADC_CH1,
@@ -73,21 +88,17 @@ enum {
 	ADC_CH3,
 	ADC_CH4,
 	ADC_CH5,
-#if defined(GENERAL_ADC)
-	ADC_CH6,
+	ADC_TOUCHSCREEN = 6,
+	ADC_CH6 = 6,
 	ADC_CH7,
 	ADC_CH8,
 	ADC_CH9,
-#else
-	ADC_TOUCHSCREEN,
-#endif
-	ADC_CH10= 10,
+	ADC_CH10,
 	ADC_CH11,
 	ADC_CH12,
 	ADC_CH13,
 	ADC_CH14,
 	ADC_CH15,
-	ADC_CH_MAX = ADC_CH15,
 };
 
 struct tcc_adc_client {
