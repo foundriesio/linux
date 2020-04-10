@@ -56,9 +56,7 @@
  * distinguished by cmd[15:12], i.e. magic number.*/
 #define IS_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 != (((cmd)&0xF000) >> 12)))
 
-#define DEBUG_TCC_MULTI_IPC
-
-#define DEBUG_TCC_MULTI_IPC
+//#define DEBUG_TCC_MULTI_IPC
 #ifdef DEBUG_TCC_MULTI_IPC
 #undef dprintk
 #define dprintk(msg...) printk("[DEBUG][MULTI-IPC]" msg);
