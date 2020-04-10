@@ -1,28 +1,21 @@
-/*!
-* TCC Version 1.0
-* Copyright (c) Telechips Inc.
-* All rights reserved
-*  \file        hdmi_1920x720_adv7613.c
-*  \brief       HDMI TX controller driver
-*  \details
-*  \version     1.0
-*  \date        2014-2015
-*  \copyright
-This source code contains confidential information of Telechips.
-Any unauthorized use without a written  permission  of Telechips including not
-limited to re-distribution in source  or binary  form  is strictly prohibited.
-This source  code is  provided "AS IS"and nothing contained in this source
-code  shall  constitute any express  or implied warranty of any kind, including
-without limitation, any warranty of merchantability, fitness for a   particular
-purpose or non-infringement  of  any  patent,  copyright  or  other third party
-intellectual property right. No warranty is made, express or implied, regarding
-the information's accuracy, completeness, or performance.
-In no event shall Telechips be liable for any claim, damages or other liability
-arising from, out of or in connection with this source  code or the  use in the
-source code.
-This source code is provided subject  to the  terms of a Mutual  Non-Disclosure
-Agreement between Telechips and Company.
-*/
+/*
+ * Copyright (C) 2008-2019 Telechips Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see the file COPYING, or write
+ * to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 #include <linux/errno.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
