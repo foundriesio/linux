@@ -3437,45 +3437,11 @@
 		memory-region = <&reserved_dw_esm>;
 	};
 
-	/*mtadc0@16053000 {
-		compatible = "telechips,mtadc";
-		reg = <0x16053000 0x100 0x1440006C 0x4>;
-		clocks = <&clk_peri PERI_ADC0 &clk_io IOBUS_ADC &clk_isoip_top ISOIP_TOP_TSADC0>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
+	adc@1b700000 {
+		compatible = "telechips,tcc803x-adc";
+		reg = <0x1b700000 0xAC 0x1b931074 0x4>;
+		status = "disabled";
 	};
-
-	mtadc1@16053000 {
-		compatible = "telechips,mtadc";
-		reg = <0x16053000 0x100 0x1440006C 0x4>;
-		clocks = <&clk_peri PERI_ADC1 &clk_io IOBUS_ADC &clk_isoip_top ISOIP_TOP_TSADC1>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
-	};
-
-	adc@16050000 {
-		compatible = "telechips,adc";
-		reg = <0x16050000 0x24 0x1440000C 0x4>;
-		clocks = <&clk_peri PERI_TSADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC0>;
-		clock-frequency = <12000000>;
-		ckin-frequency  = <1000000>;
-		adc-12bit-resolution;
-		adc-delay = <150>;
-		status = "okay";
-	};
-
-	tsadc@16050000 {    [> ADC Touch Screen <]
-		compatible = "telechips,tsadc";
-		reg = <16050000 0x24 0x1440000C 0x4>;
-		int-gpios = <&gpadc 6 0>;
-		status = "okay";
-	};*/
 
 	tcc_dsp: tcc_dsp@0 {
 		compatible = "telechips,tcc_dsp";
