@@ -47,7 +47,9 @@ static const struct kbase_ipa_model_ops *kbase_ipa_all_model_ops[] = {
 	&kbase_g52_ipa_model_ops,
 	&kbase_g52_r1_ipa_model_ops,
 	&kbase_g51_ipa_model_ops,
-	&kbase_g77_ipa_model_ops
+	&kbase_g77_ipa_model_ops,
+	&kbase_tnax_ipa_model_ops,
+	&kbase_tbex_ipa_model_ops
 };
 
 int kbase_ipa_model_recalculate(struct kbase_ipa_model *model)
@@ -91,35 +93,36 @@ const char *kbase_ipa_model_name_from_id(u32 gpu_id)
 	const u32 prod_id = (gpu_id & GPU_ID_VERSION_PRODUCT_ID) >>
 			GPU_ID_VERSION_PRODUCT_ID_SHIFT;
 
-	if (GPU_ID_IS_NEW_FORMAT(prod_id)) {
-		switch (GPU_ID2_MODEL_MATCH_VALUE(prod_id)) {
-		case GPU_ID2_PRODUCT_TMIX:
-			return "mali-g71-power-model";
-		case GPU_ID2_PRODUCT_THEX:
-			return "mali-g72-power-model";
-		case GPU_ID2_PRODUCT_TNOX:
-			return "mali-g76-power-model";
-		case GPU_ID2_PRODUCT_TSIX:
-			return "mali-g51-power-model";
-		case GPU_ID2_PRODUCT_TGOX:
-			if ((gpu_id & GPU_ID2_VERSION_MAJOR) ==
-					(0 << GPU_ID2_VERSION_MAJOR_SHIFT))
-				/* g52 aliased to g76 power-model's ops */
-				return "mali-g52-power-model";
-			else
-				return "mali-g52_r1-power-model";
-		case GPU_ID2_PRODUCT_TTRX:
-			return "mali-g77-power-model";
-		default:
-			return KBASE_IPA_FALLBACK_MODEL_NAME;
-		}
+	switch (GPU_ID2_MODEL_MATCH_VALUE(prod_id)) {
+	case GPU_ID2_PRODUCT_TMIX:
+		return "mali-g71-power-model";
+	case GPU_ID2_PRODUCT_THEX:
+		return "mali-g72-power-model";
+	case GPU_ID2_PRODUCT_TNOX:
+		return "mali-g76-power-model";
+	case GPU_ID2_PRODUCT_TSIX:
+		return "mali-g51-power-model";
+	case GPU_ID2_PRODUCT_TGOX:
+		if ((gpu_id & GPU_ID2_VERSION_MAJOR) ==
+				(0 << GPU_ID2_VERSION_MAJOR_SHIFT))
+			/* g52 aliased to g76 power-model's ops */
+			return "mali-g52-power-model";
+		else
+			return "mali-g52_r1-power-model";
+	case GPU_ID2_PRODUCT_TNAX:
+		return "mali-tnax-power-model";
+	case GPU_ID2_PRODUCT_TTRX:
+		return "mali-g77-power-model";
+	case GPU_ID2_PRODUCT_TBEX:
+		return "mali-tbex-power-model";
+	default:
+		return KBASE_IPA_FALLBACK_MODEL_NAME;
 	}
-
-	return KBASE_IPA_FALLBACK_MODEL_NAME;
 }
 KBASE_EXPORT_TEST_API(kbase_ipa_model_name_from_id);
 
-static struct device_node *get_model_dt_node(struct kbase_ipa_model *model)
+static struct device_node *get_model_dt_node(struct kbase_ipa_model *model,
+					     bool dt_required)
 {
 	struct device_node *model_dt_node;
 	char compat_string[64];
@@ -134,9 +137,10 @@ static struct device_node *get_model_dt_node(struct kbase_ipa_model *model)
 	model_dt_node = of_find_compatible_node(model->kbdev->dev->of_node,
 						NULL, compat_string);
 	if (!model_dt_node && !model->missing_dt_node_warning) {
-		dev_warn(model->kbdev->dev,
-			 "Couldn't find power_model DT node matching \'%s\'\n",
-			 compat_string);
+		if (dt_required)
+			dev_warn(model->kbdev->dev,
+			"Couldn't find power_model DT node matching \'%s\'\n",
+			compat_string);
 		model->missing_dt_node_warning = true;
 	}
 
@@ -148,7 +152,8 @@ int kbase_ipa_model_add_param_s32(struct kbase_ipa_model *model,
 				  size_t num_elems, bool dt_required)
 {
 	int err, i;
-	struct device_node *model_dt_node = get_model_dt_node(model);
+	struct device_node *model_dt_node = get_model_dt_node(model,
+								dt_required);
 	char *origin;
 
 	err = of_property_read_u32_array(model_dt_node, name, addr, num_elems);
@@ -197,7 +202,8 @@ int kbase_ipa_model_add_param_string(struct kbase_ipa_model *model,
 				     size_t size, bool dt_required)
 {
 	int err;
-	struct device_node *model_dt_node = get_model_dt_node(model);
+	struct device_node *model_dt_node = get_model_dt_node(model,
+								dt_required);
 	const char *string_prop_value;
 	char *origin;
 
