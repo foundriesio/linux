@@ -100,3 +100,12 @@ config SCSI_UFS_QCOM
 
 	  Select this if you have UFS controller on QCOM chipset.
 	  If unsure, say N.
+
+config SCSI_UFS_TCC
+	tristate "Telechips UFS controller platform driver"
+	depends on SCSI_UFSHCD_PLATFORM
+	help
+	  This selects the Telechips UFS host controller support.
+
+	  If unsure, say N.
+
