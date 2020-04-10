@@ -4,7 +4,7 @@
 #include <linux/ktime.h>
 #include <uapi/linux/futex.h>
 
-struct inode;
+ struct inode;
 struct mm_struct;
 struct task_struct;
 
