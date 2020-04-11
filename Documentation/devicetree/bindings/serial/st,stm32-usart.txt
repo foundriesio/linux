@@ -19,7 +19,7 @@ Optional properties:
 - pinctrl-n: Phandle(s) pointing to pin configuration nodes.
   For Pinctrl properties see ../pinctrl/pinctrl-bindings.txt
 - uart-has-rtscts: See description in serial.txt binding.
-- rs485-rts-delay, rs485-rx-during-tx, rs485-rts-active-low,
+- rs485-rts-delay, rs485-rts-delay-ns, rs485-rx-during-tx, rs485-rts-active-low,
   linux,rs485-enabled-at-boot-time: See rs485.txt.
 - dmas: Phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
