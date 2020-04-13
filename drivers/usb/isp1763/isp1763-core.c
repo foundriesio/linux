@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Driver for the NXP ISP1763 chip
+ * Driver for the ST ISP1763 chip
  *
  * Largely based on isp1760 driver by:
  * Sebastian Siewior <bigeasy@linutronix.de>
  * Arvid Brodin <arvid.brodin@enea.com>
  *
- * And based on the patch posted by:
+ * And on the patch posted by:
  * Richard Retanubun <richardretanubun@ruggedcom.com>
  *
  */
@@ -25,7 +25,7 @@
 
 static void isp1763_init_core(struct isp1763_device *isp)
 {
-	u16 hwmode;
+	u16 scratch, hwmode;
 
 	/* Low-level chip reset */
 	if (isp->rst_gpio) {
@@ -33,6 +33,13 @@ static void isp1763_init_core(struct isp1763_device *isp)
 		msleep(50);
 		gpiod_set_value_cansleep(isp->rst_gpio, 0);
 	}
+
+	/* Read Chip ID register a few times to stabilize the host
+	 * controller access */
+	scratch = isp1763_read16(isp->regs, HC_CHIP_ID_REG);
+	mdelay(20);
+	scratch = isp1763_read16(isp->regs, HC_CHIP_ID_REG);
+	scratch = isp1763_read16(isp->regs, HC_CHIP_ID_REG);
 
 	/*
 	 * Reset the host controller, including the CPU interface
@@ -113,6 +120,6 @@ void isp1763_unregister(struct device *dev)
 	isp1763_hcd_unregister(&isp->hcd);
 }
 
-MODULE_DESCRIPTION("ISP1763 USB host-controller from ST-Ericsson");
+MODULE_DESCRIPTION("ISP1763 USB host-controller from ST");
 MODULE_AUTHOR("Richard Retanubun <richardretanubun@ruggedcom.com>");
 MODULE_LICENSE("GPL v2");

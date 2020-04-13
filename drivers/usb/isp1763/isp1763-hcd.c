@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Driver for the NXP ISP1763 chip
+ * Driver for the ST ISP1763 chip
  *
  * Largely based on isp1760 driver by:
  * Sebastian Siewior <bigeasy@linutronix.de>
  * Arvid Brodin <arvid.brodin@enea.com>
  *
- * And based on the patch posted by:
+ * And on the patch posted by:
  * Richard Retanubun <richardretanubun@ruggedcom.com>
  *
  */
@@ -86,7 +86,7 @@ struct ptd {
 #define TO_DW2_RL(x)			((x) << 25)
 #define FROM_DW2_RL(x)			(((x) >> 25) & 0xf)
 /* DW3 */
-#define FROM_DW3_NRBYTESTRANSFERRED(x)		((x) & 0x7fff)
+#define FROM_DW3_NRBYTESTRANSFERRED(x)		((x) & 0x3fff)
 #define FROM_DW3_SCS_NRBYTESTRANSFERRED(x)	((x) & 0x07ff)
 #define TO_DW3_NAKCOUNT(x)		((x) << 19)
 #define FROM_DW3_NAKCOUNT(x)		(((x) >> 19) & 0xf)
@@ -110,12 +110,9 @@ struct ptd {
 #define IN_PID		(1)
 #define OUT_PID		(0)
 
-/* FIXME!: Does this apply to isp1763? ST-Ericsson believes no */
-/* Set these to HW defaults of ZERO? */
-/* Errata 1 */
-#define RL_COUNTER	(0) /* isp1760 (0) */
-#define NAK_COUNTER	(0) /* isp1760 (0) */
-#define ERR_COUNTER	(2) /* isp1760 (2) */
+#define RL_COUNTER	(0)
+#define NAK_COUNTER	(0)
+#define ERR_COUNTER	(3)
 
 struct isp1763_qtd {
 	u8 packet_type;
@@ -290,14 +287,7 @@ static void ptd_write(void __iomem *base, u16 ptd_offset, u16 slot,
 	ptd.dw6 = cpu_to_le32(temp_ptd->dw6);
 	ptd.dw7 = cpu_to_le32(temp_ptd->dw7);
 
-	isp1763_write_mem(base, (u16)(offset + sizeof(ptd.dw0)),
-				(u16 *)&(ptd.dw1), 7*sizeof(ptd.dw1));
-
-	/* Make sure dw0 gets written last (after other dw's and after payload)
-	   since it contains the enable bit */
-	wmb();
-
-	isp1763_write_mem(base, offset, (u16 *)&(ptd.dw0), sizeof(ptd.dw0));
+	isp1763_write_mem(base, offset, (u16 *)&(ptd.dw0), 8*sizeof(ptd.dw0));
 }
 
 /* memory management of the 20kb payload on the chip from 0x1000 to 0x5fff */
@@ -462,23 +452,9 @@ static int isp1763_hc_setup(struct usb_hcd *hcd)
 {
 	struct isp1763_hcd *priv = hcd_to_priv(hcd);
 	int result;
-	u16 scratch, hwmode, swreset;
+	u16 scratch, hwmode;
 
-	/* Programming manual - Host controller register initialization step 1:
-	 *
-	 * Read the Chip ID register a few times to stabilize the host
-	 * controller access. Delays were added before and after the dummy reads
-	 * to allow the bus to settle. 2x the specified delays are used because
-	 * the spec value works marginally.
-	 */
-	mdelay(10); /* Delay for: reset to first dummy read operation */
-	/* Dummy read(s) to stabilize host controller access */
-	scratch = reg_read16(hcd->regs, HC_CHIP_ID_REG);
-	scratch = reg_read16(hcd->regs, HC_CHIP_ID_REG);
-	scratch = reg_read16(hcd->regs, HC_CHIP_ID_REG);
-	mdelay(20); /* 2x Delay for: dummy read to first valid read operation */
-
-	/* Write a test patten into the scratch register and reread it */
+	/* Write a test pattern into the scratch register and reread it */
 	reg_write16(hcd->regs, HC_SCRATCH_REG, 0xabcd);
 	ndelay(100); /* Delay between back-to-back write and read access */
 	scratch = reg_read16(hcd->regs, HC_SCRATCH_REG);
@@ -487,32 +463,22 @@ static int isp1763_hc_setup(struct usb_hcd *hcd)
 		return -ENODEV;
 	}
 
-	/*
-	 * The RESET_HC bit in the SW_RESET register is supposed to reset the
-	 * host controller without touching the CPU interface registers, but at
-	 * least on the ISP1763 it seems to behave as the RESET_ALL bit and
-	 * reset the whole device. We thus can't use it here, so let's reset
-	 * the host controller through the EHCI USB Command register. The device
-	 * has been reset in core code anyway, so this shouldn't matter.
-	 */
-	reg_write16(hcd->regs, HC_BUFFER_STATUS_REG, 0);
-	reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
-	reg_write16(hcd->regs, HC_INT_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
-	reg_write16(hcd->regs, HC_ISO_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
-	ndelay(100);
+	/* Save hwmode so it can be set after reset */
+	hwmode = reg_read16(hcd->regs, HC_HW_MODE_CTRL);
 
+	/* Reset host controller  */
+	reg_write16(hcd->regs, HC_RESET_REG, SW_RESET_RESET_HC);
+	msleep(100);
+
+	/* Reset ATX controller */
+	reg_write16(hcd->regs, HC_RESET_REG, SW_RESET_RESET_ATX);
+	mdelay(10);
+	reg_write16(hcd->regs, HC_RESET_REG, 0);
+
+	/* Reset HC via USB command */
 	result = ehci_reset(hcd);
 	if (result)
-		return result;
-
-	/* Step 11 passed */
-
-	/* ATL reset */
-	hwmode = reg_read16(hcd->regs, HC_HW_MODE_CTRL);
-	swreset = reg_read16(hcd->regs, HC_RESET_REG);
-	reg_write16(hcd->regs, HC_RESET_REG, swreset | SW_RESET_RESET_ATX);
-	mdelay(10);
-	reg_write16(hcd->regs, HC_RESET_REG, swreset);
+		dev_err(hcd->self.controller, "Unable to reset EHCI.\n");
 
 	/*
 	 * Re-initialize hwmode after reset, After SWRESET sequence above
@@ -529,21 +495,8 @@ static int isp1763_hc_setup(struct usb_hcd *hcd)
 	dev_dbg(hcd->self.controller, "hwmode: 0x%04X\n",
 			reg_read16(hcd->regs, HC_HW_MODE_CTRL));
 
-	reg_write16(hcd->regs, HC_INTERRUPT_REG, INTERRUPT_ENABLE_MASK);
-	reg_write16(hcd->regs, HC_INTERRUPT_ENABLE, INTERRUPT_ENABLE_MASK);
-
-	/* Ref: isp1763 programming manual:
-	 * 12. Set OTG_DISABLE (bit 10) by writing to the OTG Control register
-	 * (set: E4h) and clear SW_SEL_HC_DC (bit 7) by writing to the OTG
-	 * Control register (clear: E6h) to configure PORT1 in host mode.
-	 *
-	 * 13. Clear HC_2_DIS (bit 15) in the OTG Control register (clear: E6h)
-	 * to configure PORT2 in host mode.
-	 */
-	reg_write16(hcd->regs, HW_OTG_CTRL_SET, HW_OTG_CTRL_OTG_DIS);
-	reg_write16(hcd->regs, HW_OTG_CTRL_CLR, HW_OTG_CTRL_SW_SEL_HC_DC);
-	reg_write16(hcd->regs, HW_OTG_CTRL_CLR, HW_OTG_CTRL_HC_2_DIS);
-	mdelay(10);
+	/* Lock interface */
+	reg_write16(hcd->regs, HC_HW_MODE_CTRL, hwmode | HW_INTF_LOCK);
 
 	/* This chip does not have HCSPARAMS register, use a hardcoded value. */
 	priv->hcs_params = HCS_HARDCODE;
@@ -658,7 +611,7 @@ static void transform_add_int(struct isp1763_qh *qh,
 	u32 period;
 
 	/*
-	 * Most of this is guessing. ISP1761 datasheet is quite unclear, and
+	 * Most of this is guessing. ISP1763 datasheet is quite unclear, and
 	 * the algorithm from the original Philips driver code, which was
 	 * pretty much used in this driver before as well, is quite horrendous
 	 * and, i believe, incorrect. The code below follows the datasheet and
@@ -782,11 +735,15 @@ static void start_bus_transfer(struct usb_hcd *hcd, u16 ptd_offset, int slot,
 	/* Make sure done map has not triggered from some unlinked transfer */
 	if (ptd_offset == ATL_PTD_OFFSET) {
 		skip_map = reg_read16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG);
+		reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG,
+						skip_map | (1 << slot));
 		priv->atl_done_map |= reg_read16(hcd->regs,
 						HC_ATL_PTD_DONEMAP_REG);
 		priv->atl_done_map &= ~(1 << slot);
 	} else {
 		skip_map = reg_read16(hcd->regs, HC_INT_PTD_SKIPMAP_REG);
+		reg_write16(hcd->regs, HC_INT_PTD_SKIPMAP_REG,
+						skip_map | (1 << slot));
 		priv->int_done_map |= reg_read16(hcd->regs,
 						HC_INT_PTD_DONEMAP_REG);
 		priv->int_done_map &= ~(1 << slot);
@@ -800,15 +757,11 @@ static void start_bus_transfer(struct usb_hcd *hcd, u16 ptd_offset, int slot,
 	slots[slot].qh = qh;
 	ptd_write(hcd->regs, ptd_offset, slot, ptd);
 
-	if (ptd_offset == ATL_PTD_OFFSET) {
-		/* HACK: set skip to 0x0 otherwise HW is unable to process
-		 * PTD (never receives interrupt and status remains active)
-		 */
-		//reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, skip_map);
-		reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, 0x0);
-	} else {
+	if (ptd_offset == ATL_PTD_OFFSET)
+		reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, skip_map);
+	else
 		reg_write16(hcd->regs, HC_INT_PTD_SKIPMAP_REG, skip_map);
-	}
+
 }
 
 static int is_short_bulk(struct isp1763_qtd *qtd)
@@ -1038,7 +991,7 @@ static int check_int_transfer(struct usb_hcd *hcd, struct ptd *ptd,
 	dw4 = ptd->dw4;
 	dw4 >>= 8;
 
-	/* FIXME: ISP1761 datasheet does not say what to do with these. Do we
+	/* FIXME: ISP1763 datasheet does not say what to do with these. Do we
 	   need to handle these errors? Is it done in hardware? */
 
 	if (ptd->dw3 & DW3_HALT_BIT) {
@@ -1129,7 +1082,7 @@ static void handle_done_ptds(struct usb_hcd *hcd)
 	u32 ptd_offset;
 	struct isp1763_qtd *qtd;
 	u16 modified;
-	int skip_map;
+	u16 skip_map;
 
 	skip_map = reg_read16(hcd->regs, HC_INT_PTD_SKIPMAP_REG);
 	priv->int_done_map &= ~skip_map;
@@ -1284,80 +1237,55 @@ leave:
 	return irqret;
 }
 
-/*
- * Workaround for problem described in chip errata 2:
- *
- * Sometimes interrupts are not generated when ATL (not INT?) completion occurs.
- * One solution suggested in the errata is to use SOF interrupts _instead_of_
- * ATL done interrupts (the "instead of" might be important since it seems
- * enabling ATL interrupts also causes the chip to sometimes - rarely - "forget"
- * to set the PTD's done bit in addition to not generating an interrupt!).
- *
- * So if we use SOF + ATL interrupts, we sometimes get stale PTDs since their
- * done bit is not being set. This is bad - it blocks the endpoint until reboot.
- *
- * If we use SOF interrupts only, we get latency between ptd completion and the
- * actual handling. This is very noticeable in testusb runs which takes several
- * minutes longer without ATL interrupts.
- *
- * A better solution is to run the code below every SLOT_CHECK_PERIOD ms. If it
- * finds active ATL slots which are older than SLOT_TIMEOUT ms, it checks the
- * slot's ACTIVE and VALID bits. If these are not set, the ptd is considered
- * completed and its done map bit is set.
- *
- * The values of SLOT_TIMEOUT and SLOT_CHECK_PERIOD have been arbitrarily chosen
- * not to cause too much lag when this HW bug occurs, while still hopefully
- * ensuring that the check does not falsely trigger.
- */
-#define SLOT_TIMEOUT 300
-#define SLOT_CHECK_PERIOD 200
-static struct timer_list errata2_timer;
-static struct usb_hcd *errata2_timer_hcd;
-
-static void errata2_function(struct timer_list *unused)
-{
-	struct usb_hcd *hcd = errata2_timer_hcd;
-	struct isp1763_hcd *priv = hcd_to_priv(hcd);
-	u16 slot;
-	struct ptd ptd;
-	unsigned long spinflags;
-
-	spin_lock_irqsave(&priv->lock, spinflags);
-
-	for (slot = 0; slot < NUM_OF_PTD; slot++)
-		if (priv->atl_slots[slot].qh && time_after(jiffies,
-					priv->atl_slots[slot].timestamp +
-					msecs_to_jiffies(SLOT_TIMEOUT))) {
-			ptd_read(hcd->regs, ATL_PTD_OFFSET, slot, &ptd);
-			if (!FROM_DW0_VALID(ptd.dw0) &&
-					!FROM_DW3_ACTIVE(ptd.dw3)) {
-				priv->atl_done_map |= 1 << slot;
-			} else {
-				dev_info(hcd->self.controller,
-					"ATL slot %d ptd.dw0 still active\n",
-					slot);
-			}
-		}
-
-	if (priv->atl_done_map)
-		handle_done_ptds(hcd);
-
-	spin_unlock_irqrestore(&priv->lock, spinflags);
-
-	errata2_timer.expires = jiffies + msecs_to_jiffies(SLOT_CHECK_PERIOD);
-	add_timer(&errata2_timer);
-}
-
 static int isp1763_run(struct usb_hcd *hcd)
 {
 	int retval;
-	u32 temp;
 	u32 command;
 	u32 chipid;
+	u16 hwmode;
 
 	hcd->uses_new_polling = 1;
-
 	hcd->state = HC_STATE_RUNNING;
+
+	/* Probe and print chip ID */
+	chipid = reg_read32(hcd->regs, HC_CHIP_ID_REG);
+	dev_info(hcd->self.controller, "USB ISP %04x HW rev. %d started\n",
+			((chipid & 0xffff00) >> 8), (chipid & 0xff));
+
+	/* Disable all the buffers */
+	reg_write16(hcd->regs, HC_BUFFER_STATUS_REG, 0);
+	/* Skip all the transfers */
+	reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
+	reg_write16(hcd->regs, HC_INT_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
+	reg_write16(hcd->regs, HC_ISO_PTD_SKIPMAP_REG, NO_TRANSFER_ACTIVE);
+	ndelay(100);
+	/* Clear done map */
+	reg_write16(hcd->regs, HC_ATL_PTD_DONEMAP_REG, 0);
+	reg_write16(hcd->regs, HC_INT_PTD_DONEMAP_REG, 0);
+	reg_write16(hcd->regs, HC_ISO_PTD_DONEMAP_REG, 0);
+
+	/*
+	 * Set OTG/Host mode (isp1763 programming manual)
+	 *
+	 * 12. Set OTG_DISABLE (bit 10) by writing to the OTG Control register
+	 * (set: E4h) and clear SW_SEL_HC_DC (bit 7) by writing to the OTG
+	 * Control register (clear: E6h) to configure PORT1 in host mode.
+	 *
+	 * 13. Clear HC_2_DIS (bit 15) in the OTG Control register (clear: E6h)
+	 * to configure PORT2 in host mode.
+	 */
+	reg_write16(hcd->regs, HW_OTG_CTRL_SET, HW_OTG_CTRL_OTG_DIS);
+	reg_write16(hcd->regs, HW_OTG_CTRL_CLR, HW_OTG_CTRL_SW_SEL_HC_DC);
+	reg_write16(hcd->regs, HW_OTG_CTRL_CLR, HW_OTG_CTRL_HC_2_DIS);
+	mdelay(10);
+
+	/* Enable required interrupts */
+	reg_write16(hcd->regs, HC_INTERRUPT_REG, INTERRUPT_ENABLE_MASK);
+	reg_write16(hcd->regs, HC_INTERRUPT_ENABLE, INTERRUPT_ENABLE_MASK);
+
+	/* Enable global interrupts */
+	hwmode = reg_read16(hcd->regs, HC_HW_MODE_CTRL);
+	reg_write16(hcd->regs, HC_HW_MODE_CTRL, hwmode | HW_GLOBAL_INTR_EN);
 
 	/* Set PTD interrupt AND & OR maps */
 	reg_write16(hcd->regs, HC_ATL_IRQ_MASK_AND_REG, 0);
@@ -1366,11 +1294,16 @@ static int isp1763_run(struct usb_hcd *hcd)
 	reg_write16(hcd->regs, HC_INT_IRQ_MASK_OR_REG, 0xffff);
 	reg_write16(hcd->regs, HC_ISO_IRQ_MASK_AND_REG, 0);
 	reg_write16(hcd->regs, HC_ISO_IRQ_MASK_OR_REG, 0xffff);
-	/* step 23 passed */
 
-	temp = reg_read16(hcd->regs, HC_HW_MODE_CTRL);
-	reg_write16(hcd->regs, HC_HW_MODE_CTRL, temp | HW_GLOBAL_INTR_EN);
+	/* Setup registers controlling PTD processing */
+	reg_write16(hcd->regs, HC_ISO_PTD_LASTPTD_REG, 0x0001);
+	reg_write16(hcd->regs, HC_INT_PTD_LASTPTD_REG, 0x8000);
+	reg_write16(hcd->regs, HC_ATL_PTD_LASTPTD_REG, 0x8000);
 
+	reg_write16(hcd->regs, HC_BUFFER_STATUS_REG,
+						ATL_BUF_FILL | INT_BUF_FILL);
+
+	/* Run the controller */
 	command = reg_read32(hcd->regs, HC_USBCMD);
 	command &= ~(CMD_LRESET|CMD_RESET);
 	command |= CMD_RUN;
@@ -1381,44 +1314,16 @@ static int isp1763_run(struct usb_hcd *hcd)
 		return retval;
 
 	/*
-	 * XXX
 	 * Spec says to write FLAG_CF as last config action, priv code grabs
 	 * the semaphore while doing so.
 	 */
 	down_write(&ehci_cf_port_reset_rwsem);
 	reg_write32(hcd->regs, HC_CONFIGFLAG, FLAG_CF);
-
 	retval = handshake(hcd, HC_CONFIGFLAG, FLAG_CF, FLAG_CF, 250 * 1000);
 	up_write(&ehci_cf_port_reset_rwsem);
 	if (retval)
 		return retval;
 
-	errata2_timer_hcd = hcd;
-	timer_setup(&errata2_timer, errata2_function, 0);
-	errata2_timer.expires = jiffies + msecs_to_jiffies(SLOT_CHECK_PERIOD);
-	add_timer(&errata2_timer);
-
-	chipid = reg_read32(hcd->regs, HC_CHIP_ID_REG);
-	dev_info(hcd->self.controller, "USB ISP %04x HW rev. %d started\n",
-			((chipid & 0xffff00) >> 8), (chipid & 0xff));
-
-	/* PTD Register Init Part 2, Step 28 */
-
-	/* Setup registers controlling PTD checking */
-	reg_write16(hcd->regs, HC_ATL_PTD_LASTPTD_REG, 0x8000);
-	reg_write16(hcd->regs, HC_INT_PTD_LASTPTD_REG, 0x8000);
-	reg_write16(hcd->regs, HC_ISO_PTD_LASTPTD_REG, 0x0001);
-	reg_write16(hcd->regs, HC_ATL_PTD_SKIPMAP_REG, 0xffff);
-	reg_write16(hcd->regs, HC_INT_PTD_SKIPMAP_REG, 0xffff);
-	reg_write16(hcd->regs, HC_ISO_PTD_SKIPMAP_REG, 0xffff);
-	reg_write16(hcd->regs, HC_BUFFER_STATUS_REG,
-						ATL_BUF_FILL | INT_BUF_FILL);
-	ndelay(100);
-
-	/* GRR this is run-once init(), being done every time the HC starts.
-	 * So long as they're part of class devices, we can't do it init()
-	 * since the class device isn't created that early.
-	 */
 	return 0;
 }
 
@@ -2168,8 +2073,6 @@ static void isp1763_stop(struct usb_hcd *hcd)
 {
 	struct isp1763_hcd *priv = hcd_to_priv(hcd);
 	u16 temp;
-
-	del_timer(&errata2_timer);
 
 	isp1763_hub_control(hcd, ClearPortFeature, USB_PORT_FEAT_POWER,	1,
 			NULL, 0);

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 config USB_ISP1763
-	tristate "NXP ISP 1763 support"
+	tristate "ST ISP 1763 support"
 	depends on USB
 	help
 	  Say Y or M here if your system as an ISP1763 USB host controller
@@ -9,9 +9,7 @@ config USB_ISP1763
 
 	  This driver does not support isochronous transfers or OTG.
 	  This USB controller is usually attached to a non-DMA-Master
-	  capable bus. NXP's eval kit brings this chip on PCI card
-	  where the chip itself is behind a PLB to simulate such
-	  a bus.
+	  capable bus.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called isp1763.
