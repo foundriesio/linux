@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Driver for the NXP ISP1763 chip
+ * Driver for the ST ISP1763 chip
  *
  * Copyright 2014 Laurent Pinchart
  * Copyright 2007 Sebastian Siewior
+ * Copyright 2013 Richard Retanubu
  *
  */
 

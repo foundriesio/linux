@@ -10,7 +10,7 @@
  * Sebastian Siewior <bigeasy@linutronix.de>
  * Arvid Brodin <arvid.brodin@enea.com>
  *
- * And based on the patch posted by:
+ * And on the patch posted by:
  * Richard Retanubun <richardretanubun@ruggedcom.com>
  *
  */
@@ -104,7 +104,7 @@ static int isp1763_plat_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_OF
 static const struct of_device_id isp1763_of_match[] = {
-	{ .compatible = "nxp,usb-isp1763", },
+	{ .compatible = "st,usb-isp1763", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, isp1763_of_match);
