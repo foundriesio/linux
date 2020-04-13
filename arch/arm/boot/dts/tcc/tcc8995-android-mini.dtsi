@@ -299,14 +299,22 @@
 
 &audio_chmux {
 	compatible = "telechips,audio-chmux-899x";
-	dai = <99 99>; // i2s0(x) i2s1(x)
+	dai = <0 99>; // i2s0(x) i2s1(x)
 	cdif = <99 99>; // cdif0(x) cdif1(x)
 	spdif = <99 99>; // spdif0(x) spdif1(x)
 	status = "okay";
 };
 
+&i2s0 {
+	status = "okay";
+};
+
 &i2s1 {
 	pinctrl-names = "default";
+	status = "okay";
+};
+
+&adma0 {
 	status = "okay";
 };
 
@@ -329,6 +337,18 @@
 		bclk_ratio = <64>; // 32,48,64fs
 		pcm = <&adma1>;
 		dai = <&i2s1>;
+	};
+
+	telechips,dai-link@1 {
+		stream-name="I2S_0_HDMI_PATHTRU";
+
+		codec,format = "i2s"; // i2s, left_j, right_j
+		codec,continuous-clock;
+
+		mclk_div = <4>; // 4,6,8,16
+		bclk_ratio = <64>; // 32,48,64fs
+		pcm = <&adma0>;
+		dai = <&i2s0>;
 	};
 };
 
