@@ -315,10 +315,6 @@
 	};
 };
 
-&hdmi_audio {
-	status = "okay";
-};
-
 &hdmi_cec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi_cec>;
