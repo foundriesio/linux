@@ -191,9 +191,7 @@ static bool is_amazon_graviton(void)
 	if (ACPI_FAILURE(status) || !madt)
                return ret;
 
-	ret = (!memcmp(madt->header.oem_id, "AMAZON", ACPI_OEM_ID_SIZE) &&
-		!memcmp(madt->header.oem_table_id, "GRAVITON",
-						ACPI_OEM_TABLE_ID_SIZE));
+	ret = !memcmp(madt->header.oem_id, "AMAZON", ACPI_OEM_ID_SIZE);
 
 	acpi_put_table((struct acpi_table_header *)madt);
 
