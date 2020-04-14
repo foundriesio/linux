@@ -1495,13 +1495,6 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, master);
 
-	ret = devm_spi_register_master(dev, master);
-	if(ret) {
-		dev_err(dev,
-			"[ERROR][SPI] No SPI IRQ Number.\n");
-		goto exit_tx_dma_free;
-	}
-
 	/* Enable clock */
 	ret = clk_prepare_enable(pd->hclk);
 	if(ret) {
@@ -1523,6 +1516,13 @@ static int tcc_spi_probe(struct platform_device *pdev)
 
 	/* Set port configuration */
 	tcc_spi_set_port(tccspi);
+
+	ret = devm_spi_register_master(dev, master);
+	if(ret) {
+		dev_err(dev,
+			"[ERROR][SPI] No SPI IRQ Number.\n");
+		goto exit_tx_dma_free;
+	}
 
 #ifdef TCC_USE_GFB_PORT
 	dev_info(dev, "[INFO][SPI] TCC SPI Master [%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
