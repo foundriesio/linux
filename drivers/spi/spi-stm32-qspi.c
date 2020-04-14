@@ -433,16 +433,16 @@ static int stm32_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	struct stm32_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
 	int ret;
 
-	mutex_lock(&qspi->lock);
 	ret = pm_runtime_get_sync(qspi->dev);
 	if (ret < 0)
 		return ret;
 
+	mutex_lock(&qspi->lock);
 	ret = stm32_qspi_send(mem, op);
+	mutex_unlock(&qspi->lock);
 
 	pm_runtime_mark_last_busy(qspi->dev);
 	pm_runtime_put_autosuspend(qspi->dev);
-	mutex_unlock(&qspi->lock);
 
 	return ret;
 }
