@@ -73,6 +73,13 @@ struct lcd_context {
 	const struct lcd_driver_data *driver_data;
 	struct drm_encoder *encoder;
 	struct tcc_drm_clk		dp_clk;
+
+	/*
+	 * keep_logo
+	 * If this flag is set to 1, DRM driver skips process that fills its plane with block color
+	 * when it is binded. In other words, If so any Logo image was displayed on screen at booting time,
+	 * it will is keep dislayed on screen until the DRM application is executed. */
+	int 				keep_logo;
 };
 
 static const struct of_device_id lcd_driver_dt_match[] = {
@@ -252,6 +259,11 @@ static void lcd_update_plane(struct tcc_drm_crtc *crtc,
 	/* TCC specific structure */
 	void __iomem *pWMIX;
 	void __iomem *pRDMA;
+
+	if(ctx->keep_logo) {
+		ctx->keep_logo = 0;
+		return;
+	}
 
 	if (ctx->suspended)
 		return;
@@ -592,6 +604,10 @@ static int lcd_probe(struct platform_device *pdev)
 	ret = component_add(dev, &lcd_component_ops);
 	if (ret)
 		goto err_disable_pm_runtime;
+	
+	#if defined(CONFIG_DRM_TCC_KEEP_LOGO)
+	ctx->keep_logo = 1;
+	#endif
 
 	return ret;
 

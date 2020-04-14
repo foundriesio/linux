@@ -17,6 +17,13 @@ config DRM_TCC_LCD
 	help
 	  Choose this option if you want to use LCD/LVDS I/F for DRM.
 
+config DRM_TCC_KEEP_LOGO
+        bool "DRM TCC KEEP LOGO"
+        default n
+        depends on DRM_TCC_LCD
+        help
+          If this config is selected to y, DRM driver skips process that fills its plane with block color when it is binded.
+
 config DRM_TCC_EXT
         bool "TCC Extended LCD type"
         depends on DRM_TCC_LCD
