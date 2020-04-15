@@ -104,6 +104,12 @@ static struct instruction *next_insn_same_func(struct objtool_file *file,
 	for (insn = next_insn_same_sec(file, insn); insn;		\
 	     insn = next_insn_same_sec(file, insn))
 
+static bool is_static_jump(struct instruction *insn)
+{
+	return insn->type == INSN_JUMP_CONDITIONAL ||
+	       insn->type == INSN_JUMP_UNCONDITIONAL;
+}
+
 /*
  * Check if the function has been manually whitelisted with the
  * STACK_FRAME_NON_STANDARD macro, or if it should be automatically whitelisted
@@ -495,8 +501,7 @@ static int add_jump_destinations(struct objtool_file *file)
 	unsigned long dest_off;
 
 	for_each_insn(file, insn) {
-		if (insn->type != INSN_JUMP_CONDITIONAL &&
-		    insn->type != INSN_JUMP_UNCONDITIONAL)
+		if (!is_static_jump(insn))
 			continue;
 
 		if (insn->ignore)
@@ -695,8 +700,7 @@ static int handle_group_alt(struct objtool_file *file,
 
 		insn->ignore = orig_insn->ignore_alts;
 
-		if (insn->type != INSN_JUMP_CONDITIONAL &&
-		    insn->type != INSN_JUMP_UNCONDITIONAL)
+		if (!is_static_jump(insn))
 			continue;
 
 		if (!insn->immediate)
