@@ -301,6 +301,7 @@ static int stm32_crc_probe(struct platform_device *pdev)
 
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_active(dev);
+	pm_runtime_irq_safe(dev);
 	pm_runtime_enable(dev);
 
 	platform_set_drvdata(pdev, crc);
@@ -355,11 +356,39 @@ static int stm32_crc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
+static int stm32_crc_suspend(struct device *dev)
+{
+	struct stm32_crc *crc = dev_get_drvdata(dev);
+	int ret;
+
+	ret = pm_runtime_force_suspend(dev);
+	if (ret)
+		return ret;
+
+	clk_unprepare(crc->clk);
+
+	return 0;
+}
+
+static int stm32_crc_resume(struct device *dev)
+{
+	struct stm32_crc *crc = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_prepare(crc->clk);
+	if (ret) {
+		dev_err(crc->dev, "Failed to prepare clock\n");
+		return ret;
+	}
+
+	return pm_runtime_force_resume(dev);
+}
+
 static int stm32_crc_runtime_suspend(struct device *dev)
 {
 	struct stm32_crc *crc = dev_get_drvdata(dev);
 
-	clk_disable_unprepare(crc->clk);
+	clk_disable(crc->clk);
 
 	return 0;
 }
@@ -369,9 +398,9 @@ static int stm32_crc_runtime_resume(struct device *dev)
 	struct stm32_crc *crc = dev_get_drvdata(dev);
 	int ret;
 
-	ret = clk_prepare_enable(crc->clk);
+	ret = clk_enable(crc->clk);
 	if (ret) {
-		dev_err(crc->dev, "Failed to prepare_enable clock\n");
+		dev_err(crc->dev, "Failed to enable clock\n");
 		return ret;
 	}
 
@@ -380,8 +409,8 @@ static int stm32_crc_runtime_resume(struct device *dev)
 #endif
 
 static const struct dev_pm_ops stm32_crc_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
+	SET_SYSTEM_SLEEP_PM_OPS(stm32_crc_suspend,
+				stm32_crc_resume)
 	SET_RUNTIME_PM_OPS(stm32_crc_runtime_suspend,
 			   stm32_crc_runtime_resume, NULL)
 };
