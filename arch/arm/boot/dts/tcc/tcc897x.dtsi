@@ -10,6 +10,7 @@
 #include <dt-bindings/soc/tcc897x-pm.h>
 #include <dt-bindings/display/tcc897x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
+#include <dt-bindings/input/input.h>
 
 #include "tcc-pmap-common.dtsi"
 
@@ -31,6 +32,7 @@
 	};
 
 	aliases {
+		adc = &adc;
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -1397,7 +1399,7 @@
 		status = "disabled";
 	};
 
-	adc@76064000 {
+	adc: adc@76064000 {
 		compatible = "telechips,adc";
 		reg = <0x76064000 0x24 0x7440000C 0x4>;
 		clocks = <&clk_peri PERI_ADC &clk_io IOBUS_TSADC &clk_isoip_top ISOIP_TOP_TSADC>;
@@ -1405,6 +1407,7 @@
 		ckin-frequency  = <1000000>;
 		adc-12bit-resolution;
 		adc-delay = <150>;
+		#io-channel-cells = <1>;
 		status = "okay";
 	};
 

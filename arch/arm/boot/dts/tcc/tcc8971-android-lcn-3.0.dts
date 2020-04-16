@@ -777,12 +777,6 @@
 	adc@76064000 {
 		status = "okay";
 	};
-
-	tcckey@76064000 {
-		compatible = "telechips,tcckey";
-		reg = <0x76064000 0x24>;
-		status = "okay";
-	};
 };
 
 /* console */

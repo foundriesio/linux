@@ -12,6 +12,7 @@
 #include <dt-bindings/display/tcc899x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
 
 #include "tcc-pmap-common.dtsi"
 
@@ -33,6 +34,7 @@
 	};
 
 	aliases {
+		adc = &adc;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
 		i2c2 = &i2c2;
@@ -2695,6 +2697,7 @@
 		adc-12bit-resolution;
 		adc-delay = <150>;
 		adc-board-ver = <8>;
+		#io-channel-cells = <1>;
 		status = "disabled";
 	};
 

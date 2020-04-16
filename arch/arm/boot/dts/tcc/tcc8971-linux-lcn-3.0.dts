@@ -897,12 +897,6 @@
 		status = "okay";
 	};*/
 
-	/*tcckey@76064000 {
-		compatible = "telechips,tcckey";
-		reg = <0x76064000 0x24>;
-		status = "okay";
-	};*/
-
 	gpio_keys_polled {
 		compatible = "gpio-keys-polled";
 		#address-cells = <1>;

@@ -12,7 +12,7 @@
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc_mbox_ch.h>
-
+#include <dt-bindings/input/input.h>
 #include "tcc-pmap-common.dtsi"
 
 / {
@@ -37,6 +37,7 @@
 	};
 
 	aliases: aliases {
+		adc = &adc;
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -3437,9 +3438,10 @@
 		memory-region = <&reserved_dw_esm>;
 	};
 
-	adc@1b700000 {
+	adc: adc@1b700000 {
 		compatible = "telechips,tcc803x-adc";
 		reg = <0x1b700000 0xAC 0x1b931074 0x4>;
+		#io-channel-cells = <1>;
 		status = "disabled";
 	};
 
@@ -3517,8 +3519,6 @@
 	};
 
 	auth_cp: auth-cp {};
-
-	tcckey: tcckey@16050000 {};
 
 	smartcard: smartcard {};
 

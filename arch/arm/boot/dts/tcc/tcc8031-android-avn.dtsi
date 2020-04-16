@@ -770,11 +770,6 @@
 	status = "okay";
 };
 
-&tcckey {
-	compatible = "telechips,tcckey";
-	status = "okay";
-};
-
 &smartcard {
 	compatible = "telechips,pl131-smartcard";
 	reg = <0x16601000 0xFFF 0x16684000 0x10>;                //smartcard #0,
