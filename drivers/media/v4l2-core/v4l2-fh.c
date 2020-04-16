@@ -26,6 +26,9 @@
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mc.h>
 
+/* FIXME: converted to a global lock due to kABI compatibility */
+DEFINE_MUTEX(v4l2_fh_subscribe_lock);
+
 void v4l2_fh_init(struct v4l2_fh *fh, struct video_device *vdev)
 {
 	fh->vdev = vdev;

@@ -205,7 +205,7 @@ struct kfd_process *kfd_create_process(struct file *filep)
 {
 	struct kfd_process *process;
 	struct task_struct *thread = current;
-	int ret;
+       int ret;
 
 	if (!thread->mm)
 		return ERR_PTR(-EINVAL);
@@ -223,9 +223,9 @@ struct kfd_process *kfd_create_process(struct file *filep)
 
 	/* A prior open of /dev/kfd could have already created the process. */
 	process = find_process(thread);
-	if (process)
+	if (process) {
 		pr_debug("Process already found\n");
-	else {
+	} else {
 		process = create_process(thread);
 		if (IS_ERR(process))
 			goto out;
@@ -236,7 +236,6 @@ struct kfd_process *kfd_create_process(struct file *filep)
 			goto out;
 		}
 	}
-
 out:
 	mutex_unlock(&kfd_processes_mutex);
 

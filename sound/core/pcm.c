@@ -1081,7 +1081,7 @@ static ssize_t show_pcm_class(struct device *dev,
 		str = "none";
 	else
 		str = strs[pcm->dev_class];
-        return snprintf(buf, PAGE_SIZE, "%s\n", str);
+	return sprintf(buf, "%s\n", str);
 }
 
 static DEVICE_ATTR(pcm_class, S_IRUGO, show_pcm_class, NULL);

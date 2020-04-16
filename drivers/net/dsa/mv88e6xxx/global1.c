@@ -277,6 +277,11 @@ int mv88e6390_g1_set_egress_port(struct mv88e6xxx_chip *chip, int port)
 
 int mv88e6390_g1_set_cpu_port(struct mv88e6xxx_chip *chip, int port)
 {
+	/* Use the default high priority for management frames sent to
+	 * the CPU.
+	 */
+	port |= MV88E6390_G1_MONITOR_MGMT_CTL_PTR_CPU_DEST_MGMTPRI;
+
 	return mv88e6390_g1_monitor_write(chip, GLOBAL_MONITOR_CONTROL_CPU_DEST,
 					  port);
 }

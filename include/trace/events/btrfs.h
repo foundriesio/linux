@@ -27,6 +27,7 @@ struct __btrfs_workqueue;
 struct btrfs_qgroup_extent_record;
 struct btrfs_qgroup;
 struct prelim_ref;
+struct btrfs_space_info;
 
 #define show_ref_type(type)						\
 	__print_symbolic(type,						\
@@ -662,7 +663,7 @@ TRACE_EVENT(btrfs_add_block_group,
 		{ BTRFS_DROP_DELAYED_REF,   "DROP_DELAYED_REF" },	\
 		{ BTRFS_ADD_DELAYED_EXTENT, "ADD_DELAYED_EXTENT" }, 	\
 		{ BTRFS_UPDATE_DELAYED_HEAD, "UPDATE_DELAYED_HEAD" })
-			
+
 
 DECLARE_EVENT_CLASS(btrfs_delayed_tree_ref,
 
@@ -676,7 +677,7 @@ DECLARE_EVENT_CLASS(btrfs_delayed_tree_ref,
 	TP_STRUCT__entry_btrfs(
 		__field(	u64,  bytenr		)
 		__field(	u64,  num_bytes		)
-		__field(	int,  action		) 
+		__field(	int,  action		)
 		__field(	u64,  parent		)
 		__field(	u64,  ref_root		)
 		__field(	int,  level		)
@@ -739,7 +740,7 @@ DECLARE_EVENT_CLASS(btrfs_delayed_data_ref,
 	TP_STRUCT__entry_btrfs(
 		__field(	u64,  bytenr		)
 		__field(	u64,  num_bytes		)
-		__field(	int,  action		) 
+		__field(	int,  action		)
 		__field(	u64,  parent		)
 		__field(	u64,  ref_root		)
 		__field(	u64,  owner		)
@@ -805,7 +806,7 @@ DECLARE_EVENT_CLASS(btrfs_delayed_ref_head,
 	TP_STRUCT__entry_btrfs(
 		__field(	u64,  bytenr		)
 		__field(	u64,  num_bytes		)
-		__field(	int,  action		) 
+		__field(	int,  action		)
 		__field(	int,  is_data		)
 	),
 
@@ -1008,21 +1009,24 @@ TRACE_EVENT(btrfs_trigger_flush,
 		{ FLUSH_DELAYED_ITEMS,		"FLUSH_DELAYED_ITEMS"},		\
 		{ FLUSH_DELALLOC,		"FLUSH_DELALLOC"},		\
 		{ FLUSH_DELALLOC_WAIT,		"FLUSH_DELALLOC_WAIT"},		\
+		{ FLUSH_DELAYED_REFS_NR,	"FLUSH_DELAYED_REFS_NR"},	\
+		{ FLUSH_DELAYED_REFS,		"FLUSH_ELAYED_REFS"},		\
 		{ ALLOC_CHUNK,			"ALLOC_CHUNK"},			\
+		{ ALLOC_CHUNK_FORCE,		"ALLOC_CHUNK_FORCE"},		\
+		{ RUN_DELAYED_IPUTS,		"RUN_DELAYED_IPUTS"},		\
 		{ COMMIT_TRANS,			"COMMIT_TRANS"})
 
 TRACE_EVENT(btrfs_flush_space,
 
 	TP_PROTO(const struct btrfs_fs_info *fs_info, u64 flags, u64 num_bytes,
-		 u64 orig_bytes, int state, int ret),
+		 int state, int ret),
 
-	TP_ARGS(fs_info, flags, num_bytes, orig_bytes, state, ret),
+	TP_ARGS(fs_info, flags, num_bytes, state, ret),
 
 	TP_STRUCT__entry(
 		__array(	u8,	fsid,	BTRFS_UUID_SIZE	)
 		__field(	u64,	flags			)
 		__field(	u64,	num_bytes		)
-		__field(	u64,	orig_bytes		)
 		__field(	int,	state			)
 		__field(	int,	ret			)
 	),
@@ -1031,19 +1035,17 @@ TRACE_EVENT(btrfs_flush_space,
 		memcpy(__entry->fsid, fs_info->fs_devices->fsid, BTRFS_UUID_SIZE);
 		__entry->flags		=	flags;
 		__entry->num_bytes	=	num_bytes;
-		__entry->orig_bytes	=	orig_bytes;
 		__entry->state		=	state;
 		__entry->ret		=	ret;
 	),
 
-	TP_printk("%pU: state=%d(%s) flags=%llu(%s) num_bytes=%llu "
-		  "orig_bytes=%llu ret=%d", __entry->fsid, __entry->state,
+	TP_printk("%pU: state=%d(%s) flags=%llu(%s) num_bytes=%llu ret=%d",
+		  __entry->fsid, __entry->state,
 		  show_flush_state(__entry->state),
 		  (unsigned long long)__entry->flags,
 		  __print_flags((unsigned long)__entry->flags, "|",
 				BTRFS_GROUP_FLAGS),
-		  (unsigned long long)__entry->num_bytes,
-		  (unsigned long long)__entry->orig_bytes, __entry->ret)
+		  (unsigned long long)__entry->num_bytes, __entry->ret)
 );
 
 DECLARE_EVENT_CLASS(btrfs__reserved_extent,
@@ -1800,6 +1802,46 @@ TRACE_EVENT(btrfs_inode_mod_outstanding_extents,
 			show_root_type(__entry->root_objectid),
 			(unsigned long long)__entry->ino, __entry->mod)
 );
+
+DECLARE_EVENT_CLASS(btrfs__space_info_update,
+
+	TP_PROTO(struct btrfs_fs_info *fs_info,
+		 struct btrfs_space_info *sinfo, u64 old, s64 diff),
+
+	TP_ARGS(fs_info, sinfo, old, diff),
+
+	TP_STRUCT__entry_btrfs(
+		__field(	u64,	type		)
+		__field(	u64,	old		)
+		__field(	s64,	diff		)
+	),
+
+	TP_fast_assign_btrfs(fs_info,
+		__entry->type	= sinfo->flags;
+		__entry->old	= old;
+		__entry->diff	= diff;
+	),
+	TP_printk_btrfs("type=%s old=%llu diff=%lld",
+		__print_flags(__entry->type, "|", BTRFS_GROUP_FLAGS),
+		__entry->old, __entry->diff)
+);
+
+DEFINE_EVENT(btrfs__space_info_update, update_bytes_may_use,
+
+	TP_PROTO(struct btrfs_fs_info *fs_info,
+		 struct btrfs_space_info *sinfo, u64 old, s64 diff),
+
+	TP_ARGS(fs_info, sinfo, old, diff)
+);
+
+DEFINE_EVENT(btrfs__space_info_update, update_bytes_pinned,
+
+	TP_PROTO(struct btrfs_fs_info *fs_info,
+		 struct btrfs_space_info *sinfo, u64 old, s64 diff),
+
+	TP_ARGS(fs_info, sinfo, old, diff)
+);
+
 #endif /* _TRACE_BTRFS_H */
 
 /* This part must be outside protection */

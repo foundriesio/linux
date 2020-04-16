@@ -50,9 +50,12 @@ void __trace_note_message(struct blk_trace *, struct blkcg *blkcg, const char *f
  **/
 #define blk_add_cgroup_trace_msg(q, cg, fmt, ...)			\
 	do {								\
-		struct blk_trace *bt = (q)->blk_trace;			\
+		struct blk_trace *bt;					\
+		rcu_read_lock();					\
+		bt = rcu_dereference((q)->blk_trace);			\
 		if (unlikely(bt))					\
 			__trace_note_message(bt, cg, fmt, ##__VA_ARGS__);\
+		rcu_read_unlock();					\
 	} while (0)
 #define blk_add_trace_msg(q, fmt, ...)					\
 	blk_add_cgroup_trace_msg(q, NULL, fmt, ##__VA_ARGS__)
@@ -60,10 +63,14 @@ void __trace_note_message(struct blk_trace *, struct blkcg *blkcg, const char *f
 
 static inline bool blk_trace_note_message_enabled(struct request_queue *q)
 {
-	struct blk_trace *bt = q->blk_trace;
-	if (likely(!bt))
-		return false;
-	return bt->act_mask & BLK_TC_NOTIFY;
+	struct blk_trace *bt;
+	bool ret;
+
+	rcu_read_lock();
+	bt = rcu_dereference(q->blk_trace);
+	ret = bt && (bt->act_mask & BLK_TC_NOTIFY);
+	rcu_read_unlock();
+	return ret;
 }
 
 extern void blk_add_driver_data(struct request_queue *q, struct request *rq,

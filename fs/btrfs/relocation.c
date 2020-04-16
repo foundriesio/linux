@@ -33,6 +33,8 @@
 #include "inode-map.h"
 #include "qgroup.h"
 #include "print-tree.h"
+#include "delalloc-space.h"
+#include "block-group.h"
 
 /*
  * backref_node, mapping_node and tree_block start with this
@@ -1798,7 +1800,7 @@ int replace_file_extents(struct btrfs_trans_handle *trans,
 		ref.real_root = root->root_key.objectid;
 		btrfs_init_data_ref(&ref, btrfs_header_owner(leaf),
 				    key.objectid, key.offset);
-		ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+		ret = btrfs_inc_extent_ref(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			break;
@@ -1809,7 +1811,7 @@ int replace_file_extents(struct btrfs_trans_handle *trans,
 		ref.real_root = root->root_key.objectid;
 		btrfs_init_data_ref(&ref, btrfs_header_owner(leaf),
 				    key.objectid, key.offset);
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, root, &ref);
 		if (ret) {
 			btrfs_abort_transaction(trans, ret);
 			break;
@@ -2014,27 +2016,27 @@ again:
 				       blocksize, path->nodes[level]->start);
 		ref.skip_qgroup = true;
 		btrfs_init_tree_ref(&ref, level - 1, src->root_key.objectid);
-		ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+		ret = btrfs_inc_extent_ref(trans, src, &ref);
 		BUG_ON(ret);
 		btrfs_init_generic_ref(&ref, BTRFS_ADD_DELAYED_REF, new_bytenr,
 				       blocksize, 0);
 		ref.skip_qgroup = true;
 		btrfs_init_tree_ref(&ref, level - 1, dest->root_key.objectid);
-		ret = btrfs_inc_extent_ref(trans, fs_info, &ref);
+		ret = btrfs_inc_extent_ref(trans, dest, &ref);
 		BUG_ON(ret);
 
 		btrfs_init_generic_ref(&ref, BTRFS_DROP_DELAYED_REF, new_bytenr,
 				       blocksize, path->nodes[level]->start);
 		btrfs_init_tree_ref(&ref, level - 1, src->root_key.objectid);
 		ref.skip_qgroup = true;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, src, &ref);
 		BUG_ON(ret);
 
 		btrfs_init_generic_ref(&ref, BTRFS_DROP_DELAYED_REF, old_bytenr,
 				       blocksize, 0);
 		btrfs_init_tree_ref(&ref, level - 1, dest->root_key.objectid);
 		ref.skip_qgroup = true;
-		ret = btrfs_free_extent(trans, fs_info, &ref);
+		ret = btrfs_free_extent(trans, dest, &ref);
 		BUG_ON(ret);
 
 		btrfs_unlock_up_safe(path, 0);
@@ -2944,8 +2946,7 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 			ref.real_root = root->root_key.objectid;
 			btrfs_init_tree_ref(&ref, node->level,
 					    btrfs_header_owner(upper->eb));
-			ret = btrfs_inc_extent_ref(trans, root->fs_info,
-						&ref);
+			ret = btrfs_inc_extent_ref(trans, root, &ref);
 			BUG_ON(ret);
 
 			ret = btrfs_drop_subtree(trans, root, eb, upper->eb);
@@ -4290,8 +4291,7 @@ restart:
 		}
 	}
 	if (trans && progress && err == -ENOSPC) {
-		ret = btrfs_force_chunk_alloc(trans, fs_info,
-					      rc->block_group->flags);
+		ret = btrfs_force_chunk_alloc(trans, rc->block_group->flags);
 		if (ret == 1) {
 			err = 0;
 			progress = 0;
@@ -4511,7 +4511,7 @@ int btrfs_relocate_block_group(struct btrfs_fs_info *fs_info, u64 group_start)
 	rc->extent_root = extent_root;
 	rc->block_group = bg;
 
-	ret = btrfs_inc_block_group_ro(fs_info, rc->block_group);
+	ret = btrfs_inc_block_group_ro(rc->block_group);
 	if (ret) {
 		err = ret;
 		goto out;
@@ -4556,27 +4556,36 @@ int btrfs_relocate_block_group(struct btrfs_fs_info *fs_info, u64 group_start)
 		mutex_lock(&fs_info->cleaner_mutex);
 		ret = relocate_block_group(rc);
 		mutex_unlock(&fs_info->cleaner_mutex);
-		if (ret < 0) {
+		if (ret < 0)
 			err = ret;
-			goto out;
+
+		/*
+		 * We may have gotten ENOSPC after we already dirtied some
+		 * extents.  If writeout happens while we're relocating a
+		 * different block group we could end up hitting the
+		 * BUG_ON(rc->stage == UPDATE_DATA_PTRS) in
+		 * btrfs_reloc_cow_block.  Make sure we write everything out
+		 * properly so we don't trip over this problem, and then break
+		 * out of the loop if we hit an error.
+		 */
+		if (rc->stage == MOVE_DATA_EXTENTS && rc->found_file_extent) {
+			ret = btrfs_wait_ordered_range(rc->data_inode, 0,
+						       (u64)-1);
+			if (ret)
+				err = ret;
+			invalidate_mapping_pages(rc->data_inode->i_mapping,
+						 0, -1);
+			rc->stage = UPDATE_DATA_PTRS;
 		}
+
+		if (err < 0)
+			goto out;
 
 		if (rc->extents_found == 0)
 			break;
 
 		btrfs_info(fs_info, "found %llu extents", rc->extents_found);
 
-		if (rc->stage == MOVE_DATA_EXTENTS && rc->found_file_extent) {
-			ret = btrfs_wait_ordered_range(rc->data_inode, 0,
-						       (u64)-1);
-			if (ret) {
-				err = ret;
-				goto out;
-			}
-			invalidate_mapping_pages(rc->data_inode->i_mapping,
-						 0, -1);
-			rc->stage = UPDATE_DATA_PTRS;
-		}
 	}
 
 	WARN_ON(rc->block_group->pinned > 0);

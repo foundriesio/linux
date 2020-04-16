@@ -30,6 +30,7 @@
 #include "check-integrity.h"
 #include "rcu-string.h"
 #include "raid56.h"
+#include "block-group.h"
 
 /*
  * This is only the first step towards a full-features scrub. It reads all
@@ -3847,7 +3848,7 @@ int scrub_enumerate_chunks(struct scrub_ctx *sctx,
 		 * -> btrfs_scrub_pause()
 		 */
 		scrub_pause_on(fs_info);
-		ret = btrfs_inc_block_group_ro(fs_info, cache);
+		ret = btrfs_inc_block_group_ro(cache);
 
 		if (ret == 0) {
 			ro_set = 1;
