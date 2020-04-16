@@ -37,7 +37,7 @@ ENTRY(startup_xen)
 #ifdef CONFIG_X86_64
 	mov initial_stack(%rip), %rsp
 #else
-	mov pa(initial_stack), %esp
+	mov initial_stack, %esp
 #endif
 
 #ifdef CONFIG_X86_64
