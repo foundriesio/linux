@@ -308,7 +308,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int printk_kthread_func(void *data)
  {
  	struct prb_iterator iter;
-@@ -2860,22 +2742,9 @@ static int __init init_printk_kthread(vo
+@@ -2861,22 +2743,9 @@ static int __init init_printk_kthread(vo
  }
  late_initcall(init_printk_kthread);
  

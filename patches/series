@@ -26,6 +26,7 @@ time-sched_clock-Expire-timer-in-hardirq-context.patch
 0007-printk-rb-add-functionality-required-by-printk.patch
 0008-printk-add-ring-buffer-and-kthread.patch
 0009-printk-remove-exclusive-console-hack.patch
+printk-console-must-not-schedule-for-drivers.patch
 0010-printk-redirect-emit-store-to-new-ringbuffer.patch
 0011-printk_safe-remove-printk-safe-code.patch
 0012-printk-minimize-console-locking-implementation.patch
@@ -198,6 +199,7 @@ list_bl.h-make-list-head-locking-RT-safe.patch
 # Check .... (these are needed due to the previous list_bl change)
 fscache-initialize-cookie-hash-table-raw-spinlocks.patch
 fs-dcache-bring-back-explicit-INIT_HLIST_BL_HEAD-in.patch
+fs-dcache-Include-swait.h-header.patch
 fs-dcache-use-swait_queue-instead-of-waitqueue.patch
 ############################################################
 
@@ -392,6 +394,7 @@ net-dev-always-take-qdisc-s-busylock-in-__dev_xmit_s.patch
 # irqwork
 # Revisit
 irqwork-push_most_work_into_softirq_context.patch
+time-Properly-initialize-nohz_full_kick_work.patch
 
 # crypto drivers
 # Revisit
@@ -503,6 +506,7 @@ tpm_tis-fix-stall-after-iowrite-s.patch
 
 # Postpone
 signals-allow-rt-tasks-to-cache-one-sigqueue-struct.patch
+signal-Prevent-double-free-of-user-struct.patch
 genirq-disable-irqpoll-on-rt.patch
 
 # SYSFS - RT indicator
