@@ -21,7 +21,7 @@
 #include "hwdmx_cmd.h"
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/mailbox/tcc_multi_ipc.h>
+#include <linux/mailbox/tcc_sec_ipc.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
