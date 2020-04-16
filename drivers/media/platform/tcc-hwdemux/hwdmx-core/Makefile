@@ -1,6 +1,6 @@
 obj-$(CONFIG_PLATFORM_HWDEMUX) += tcc_hwdmx.o
 
-ifeq ($(CONFIG_TCC_MULTI_IPC),y)
+ifeq ($(CONFIG_TCC_SEC_IPC),y)
 tcc_hwdmx-objs += hwdmx_sec_cmd.o
 else
 tcc_hwdmx-objs += hwdmx_cmd.o

@@ -1383,7 +1383,7 @@
 	};
 
 	/* A53 <-> M4, A7, R5 */
-	multi_ipc: mbox@19000000 {
+	sec_ipc: mbox@19000000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x19000000 0x100>;
 		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_LOW>;
@@ -1391,21 +1391,21 @@
 		max-channel = <1>;
 	};
 
-	multi-ipc-m4 {
-		compatible = "telechips,multi-ipc-m4";
-		mbox-names = "multi-ipc-m4";
-		mboxes = <&multi_ipc 0>;
+	sec-ipc-m4 {
+		compatible = "telechips,sec-ipc-m4";
+		mbox-names = "sec-ipc-m4";
+		mboxes = <&sec_ipc 0>;
 	};
 
-	multi-ipc-a7 {
-		compatible = "telechips,multi-ipc-a7";
-		mbox-names = "multi-ipc-a7";
+	sec-ipc-a7 {
+		compatible = "telechips,sec-ipc-a7";
+		mbox-names = "sec-ipc-a7";
 		mboxes = <&mbox1 TCC_MBOX1_CH_HSM>;
 	};
 
-	multi-ipc-r5 {
-		compatible = "telechips,multi-ipc-r5";
-		mbox-names = "multi-ipc-r5";
+	sec-ipc-r5 {
+		compatible = "telechips,sec-ipc-r5";
+		mbox-names = "sec-ipc-r5";
 		mboxes = <&mbox0 TCC_MBOX0_CH_HSM>;
 	};
 
