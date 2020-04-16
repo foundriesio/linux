@@ -63,7 +63,7 @@ int32_t tcc_hsm_sp_cmd_get_version(uint32_t device_id, uint32_t *major, uint32_t
 	int32_t mbox_result_size = 0;
 	int32_t result = 0;
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_GET_VERSION, mbox_data, sizeof(mbox_data), mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -100,7 +100,7 @@ int32_t tcc_hsm_sp_cmd_set_mode(
 	mbox_data[3] = residual;
 	mbox_data[4] = sMsg;
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_SET_MODE, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -137,7 +137,7 @@ int32_t tcc_hsm_sp_cmd_set_key(
         memcpy(&mbox_data[4], key, keySize);
     }
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_SET_KEY, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -171,7 +171,7 @@ int32_t tcc_hsm_sp_cmd_set_iv(uint32_t device_id, uint32_t keyIndex, uint8_t *iv
         memcpy(&mbox_data[3], iv, ivSize);
     }
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_SET_IV, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -205,7 +205,7 @@ int32_t tcc_hsm_sp_cmd_set_kldata(
         memcpy(&mbox_data[2], klData, klDataSize);
     }
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_SET_KLDATA, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -246,7 +246,7 @@ int32_t tcc_hsm_sp_cmd_run_cipher_by_dma(
 	mbox_data[10] = 0;
 	mbox_data[11] = 0;
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_RUN_CIPHER_BY_DMA, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -278,7 +278,7 @@ tcc_hsm_sp_cmd_write_otp(uint32_t device_id, uint32_t otpAddr, uint8_t *otpBuf, 
 
 	memcpy(&mbox_data[2], otpBuf, otpSize);
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_WRITE_OTP, mbox_data, sizeof(mbox_data), &mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {
@@ -306,7 +306,7 @@ int32_t tcc_hsm_sp_cmd_get_rand(uint32_t device_id, uint8_t *rng, int32_t rngSiz
 
 	mbox_data = rngSize;
 
-	mbox_result_size = multi_sendrecv_cmd(
+	mbox_result_size = sec_sendrecv_cmd(
 		device_id, TCCHSM_CMD_GET_RNG, &mbox_data, sizeof(mbox_data), mbox_result,
 		sizeof(mbox_result));
 	if (mbox_result_size < 0) {

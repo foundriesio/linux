@@ -13,15 +13,15 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef INCLUDED_MULTI_DRV
-#define INCLUDED_MULTI_DRV
+#ifndef INCLUDED_SEC_DRV
+#define INCLUDED_SEC_DRV
 
 #include <linux/types.h>
 
 /**
  * Syntatic structure used for commnication with A53 <-> M4, A7, R5.
  */
-struct multi_segment
+struct sec_segment
 {
 	int cmd;                /**< Multi ipc command */
 	uint64_t data_addr;     /**< Data to send */
@@ -40,7 +40,7 @@ typedef enum _mbox_dev {
 	MBOX_DEV_MAX
 } mbox_dev;
 
-struct multi_evt
+struct sec_evt
 {
 	uint32_t event;
 	unsigned int device_id;
@@ -56,25 +56,25 @@ struct multi_evt
  */
 
 // clang-format off
-#define MULTI_IOCTL_MAGIC 'S'
+#define SEC_IOCTL_MAGIC 'S'
 
 /** Only used during SP firmware development. */
-#define MULTI_RESET				_IO(MULTI_IOCTL_MAGIC, 0)
+#define SEC_RESET				_IO(SEC_IOCTL_MAGIC, 0)
 
 /** Sends and receives #sp_segment to SP. */
-#define MULTI_SENDRECV_CMD			_IOWR(MULTI_IOCTL_MAGIC, 1, struct multi_segment)
+#define SEC_SENDRECV_CMD			_IOWR(SEC_IOCTL_MAGIC, 1, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define MULTI_GET_EVENTS			_IOR(MULTI_IOCTL_MAGIC, 2, struct multi_segment)
+#define SEC_GET_EVENTS			_IOR(SEC_IOCTL_MAGIC, 2, struct sec_segment)
 
 /** Subscribes an event to be notified. */
-#define MULTI_SUBSCRIBE_EVENT		_IOW(MULTI_IOCTL_MAGIC, 3, struct multi_segment)
+#define SEC_SUBSCRIBE_EVENT		_IOW(SEC_IOCTL_MAGIC, 3, struct sec_segment)
 
 /** Unsubscribes an event to be notified. */
-#define MULTI_UNSUBSCRIBE_EVENT	_IOW(MULTI_IOCTL_MAGIC, 4, struct multi_segment)
+#define SEC_UNSUBSCRIBE_EVENT	_IOW(SEC_IOCTL_MAGIC, 4, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
-#define MULTI_GET_EVT_INFO			_IOR(MULTI_IOCTL_MAGIC, 5, struct multi_segment)
+#define SEC_GET_EVT_INFO			_IOR(SEC_IOCTL_MAGIC, 5, struct sec_segment)
 // clang-format on
 
 /**
@@ -87,7 +87,7 @@ struct multi_evt
  * - Cisco Magic number: 2, e.g. 0x2000 ~ 0x2FFF
  * - VMX Magic number: 3, e.g. 0x3000 ~ 0x3FFF
  */
-#define MULTI_IPC_CMD(magic_num, cmd) (((magic_num & 0xF) << 12) | (cmd & 0xFFF))
+#define SEC_IPC_CMD(magic_num, cmd) (((magic_num & 0xF) << 12) | (cmd & 0xFFF))
 #define THSM_EVENT(magic_num, event) ((event << 16) | ((magic_num & 0xF) << 8))
 
 /**
@@ -99,13 +99,12 @@ struct multi_evt
  * - HWDMX_RESERVED16	\#define HWDMX_RESERVED16 SP_EVENT(magic_num, 16)
  * @attention Up to 16 of events can be assigned.
  */
-#define MULTI_IPC_EVENT(magic_num, event) ((1 << (event + 15)) | ((magic_num & 0xF) << 12))
+#define SEC_IPC_EVENT(magic_num, event) ((1 << (event + 15)) | ((magic_num & 0xF) << 12))
 
-void multi_set_callback(int (*dmx_callback)(int cmd, void *rdata, int size));
-int multi_sendrecv_cmd(
-	unsigned int device_id, int cmd, void *data, int size, void *rdata, int rsize);
-int multi_send_cmd(int cmd, void *data, int size, int device_id);
+void sec_set_callback(int (*dmx_callback)(int cmd, void *rdata, int size));
+int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void *rdata, int rsize);
+int sec_send_cmd(int cmd, void *data, int size, int device_id);
 
 /** @} */
 
-#endif /* INCLUDED_MULTI_DRV */
+#endif /* INCLUDED_SEC_DRV */

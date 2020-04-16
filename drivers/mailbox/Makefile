@@ -45,7 +45,7 @@ obj-$(CONFIG_TCC_MAILBOX_AUDIO) += tcc_mailbox_audio/
 
 obj-$(CONFIG_TCC_SECURE_PROCESSOR)	+= tcc_sp_ipc.o
 
-obj-$(CONFIG_TCC_MULTI_IPC)	+= tcc_sec_ipc.o
+obj-$(CONFIG_TCC_SEC_IPC)	+= tcc_sec_ipc.o
 
 obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc_multi_mbox_dev.o
 

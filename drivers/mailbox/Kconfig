@@ -211,14 +211,14 @@ config TCC_MAILBOX_HLC
 	depends on TCC_MULTI_MAILBOX
 	default n
 
-config TCC_MULTI_IPC
-	tristate "Telechips multimbox ipc interface"
+config TCC_SEC_IPC
+	tristate "Telechips security ipc interface"
 	depends on TCC_MULTI_MAILBOX
 	default n
 	help
-	  Say Y here if you want Telechips ipc for multiMbox,
-	  using ARM series to be accessible as /dev/multi-ipc device.
-	   
+	  Say Y here if you want Telechips secure ipc,
+	  using ARM series to be accessible as /dev/sec-ipc device.
+
 config TCC_MAILBOX_SUSPEND
 	tristate "Telechips suspend Mailbox"
 	depends on OF
