@@ -1,7 +1,7 @@
 obj-$(CONFIG_PLATFORM_HWDEMUX) += tcc_hwdmx.o
 
 ifeq ($(CONFIG_TCC_MULTI_IPC),y)
-tcc_hwdmx-objs += hwdmx_multi_cmd.o
+tcc_hwdmx-objs += hwdmx_sec_cmd.o
 else
 tcc_hwdmx-objs += hwdmx_cmd.o
 endif

@@ -13,7 +13,7 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include <linux/mailbox/tcc_multi_ipc.h>
+#include <linux/mailbox/tcc_sec_ipc.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>

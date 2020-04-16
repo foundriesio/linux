@@ -40,7 +40,7 @@
 #include <linux/miscdevice.h>
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
-#include <linux/mailbox/tcc_multi_ipc.h>
+#include <linux/mailbox/tcc_sec_ipc.h>
 #ifdef CONFIG_PM
 #include <linux/pm.h>
 #endif
