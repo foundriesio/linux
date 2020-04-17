@@ -260,31 +260,46 @@ static ssize_t qeth_l3_dev_hsuid_store(struct device *dev,
 {
 	struct qeth_card *card = dev_get_drvdata(dev);
 	struct qeth_ipaddr *addr;
+	int rc = 0;
 	char *tmp;
-	int rc, i;
+	int i;
 
 	if (!card)
 		return -EINVAL;
 
 	if (card->info.type != QETH_CARD_TYPE_IQD)
 		return -EPERM;
+
+	mutex_lock(&card->conf_mutex);
 	if (card->state != CARD_STATE_DOWN &&
-	    card->state != CARD_STATE_RECOVER)
-		return -EPERM;
-	if (card->options.sniffer)
-		return -EPERM;
-	if (card->options.cq == QETH_CQ_NOTAVAILABLE)
-		return -EPERM;
+	    card->state != CARD_STATE_RECOVER) {
+		rc = -EPERM;
+		goto out;
+	}
+
+	if (card->options.sniffer) {
+		rc = -EPERM;
+		goto out;
+	}
+
+	if (card->options.cq == QETH_CQ_NOTAVAILABLE) {
+		rc = -EPERM;
+		goto out;
+	}
 
 	tmp = strsep((char **)&buf, "\n");
-	if (strlen(tmp) > 8)
-		return -EINVAL;
+	if (strlen(tmp) > 8) {
+		rc = -EINVAL;
+		goto out;
+	}
 
 	if (card->options.hsuid[0]) {
 		/* delete old ip address */
 		addr = qeth_l3_get_addr_buffer(QETH_PROT_IPV6);
-		if (!addr)
-			return -ENOMEM;
+		if (!addr) {
+			rc = -ENOMEM;
+			goto out;
+		}
 
 		addr->u.a6.addr.s6_addr32[0] = cpu_to_be32(0xfe800000);
 		addr->u.a6.addr.s6_addr32[1] = 0x00000000;
@@ -306,11 +321,13 @@ static ssize_t qeth_l3_dev_hsuid_store(struct device *dev,
 		if (card->dev)
 			memcpy(card->dev->perm_addr, card->options.hsuid, 9);
 		qeth_configure_cq(card, QETH_CQ_DISABLED);
-		return count;
+		goto out;
 	}
 
-	if (qeth_configure_cq(card, QETH_CQ_ENABLED))
-		return -EPERM;
+	if (qeth_configure_cq(card, QETH_CQ_ENABLED)) {
+		rc = -EPERM;
+		goto out;
+	}
 
 	snprintf(card->options.hsuid, sizeof(card->options.hsuid),
 		 "%-8s", tmp);
@@ -326,14 +343,18 @@ static ssize_t qeth_l3_dev_hsuid_store(struct device *dev,
 			addr->u.a6.addr.s6_addr[i] = card->options.hsuid[i - 8];
 		addr->u.a6.pfxlen = 0;
 		addr->type = QETH_IP_TYPE_NORMAL;
-	} else
-		return -ENOMEM;
+	} else {
+		rc = -ENOMEM;
+		goto out;
+	}
 
 	spin_lock_bh(&card->ip_lock);
 	rc = qeth_l3_add_ip(card, addr);
 	spin_unlock_bh(&card->ip_lock);
 	kfree(addr);
 
+out:
+	mutex_unlock(&card->conf_mutex);
 	return rc ? rc : count;
 }
 
