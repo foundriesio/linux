@@ -1904,6 +1904,7 @@ static void qeth_l3_stop_card(struct qeth_card *card, int recovery_mode)
 	if (card->state == CARD_STATE_HARDSETUP) {
 		qeth_clear_qdio_buffers(card);
 		qeth_clear_working_pool_list(card);
+		cancel_delayed_work_sync(&card->buffer_reclaim_work);
 		card->state = CARD_STATE_DOWN;
 	}
 	if (card->state == CARD_STATE_DOWN) {

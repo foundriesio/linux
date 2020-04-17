@@ -2593,7 +2593,6 @@ static void qeth_free_qdio_buffers(struct qeth_card *card)
 		return;
 
 	qeth_free_cq(card);
-	cancel_delayed_work_sync(&card->buffer_reclaim_work);
 	for (j = 0; j < QDIO_MAX_BUFFERS_PER_Q; ++j) {
 		if (card->qdio.in_q->bufs[j].rx_skb)
 			dev_kfree_skb_any(card->qdio.in_q->bufs[j].rx_skb);
