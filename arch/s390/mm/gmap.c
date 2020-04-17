@@ -2198,10 +2198,10 @@ int s390_enable_skey(void)
 
 	mm->context.use_skey = 1;
 	for (vma = mm->mmap; vma; vma = vma->vm_next) {
-		if (ksm_madvise(vma, vma->vm_start, vma->vm_end,
-				MADV_UNMERGEABLE, &vma->vm_flags)) {
+		rc = ksm_madvise(vma, vma->vm_start, vma->vm_end,
+				 MADV_UNMERGEABLE, &vma->vm_flags);
+		if (rc) {
 			mm->context.use_skey = 0;
-			rc = -ENOMEM;
 			goto out_up;
 		}
 	}
