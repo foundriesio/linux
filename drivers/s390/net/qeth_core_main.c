@@ -5301,7 +5301,7 @@ struct sk_buff *qeth_core_get_next_skb(struct qeth_card *card,
 		return NULL;
 	}
 
-	if (((skb_len >= card->options.rx_sg_cb) &&
+	if (((skb_len > card->options.rx_sg_cb) &&
 	     (!(card->info.type == QETH_CARD_TYPE_OSN)) &&
 	     (!atomic_read(&card->force_alloc_skb))) ||
 	    (card->options.cq == QETH_CQ_ENABLED))
