@@ -49,6 +49,19 @@ typedef enum
 	DRM_OFF
 }HDMI_DRM_MODE;
 
+#if defined(CONFIG_VSYNC_DRV_ALWAYS_ACCEPT_START_VSYNC)
+typedef enum {
+	EM_VSYNC_DISABLED = 0,
+	EM_VSYNC_PREPARE,
+	EM_VSYNC_RUNNING
+}VSYNC_RUN_STATUS;
+#else
+typedef enum {
+	EM_VSYNC_DISABLED = 0,
+	EM_VSYNC_RUNNING
+}VSYNC_RUN_STATUS;
+#endif
+
 typedef struct{
 	int readIdx ;
 	int writeIdx ;
