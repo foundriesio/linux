@@ -32,20 +32,23 @@ static int stm32_cpufreq_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to get cpu0 device\n");
 		return -ENODEV;
 	}
+
+	/* Get chip info */
+	ret = nvmem_cell_read_u8(cpu_dev, "part_number", &part_number);
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Failed to get chip info: %d\n",
+				ret);
+		return ret;
+	}
+
+	supported_hw = BIT((part_number & 0x80) >> 7);
+
 	opp_node = dev_pm_opp_of_get_opp_desc_node(cpu_dev);
 	if (!opp_node) {
 		dev_err(&pdev->dev, "OPP-v2 not supported\n");
 		return -ENODEV;
 	}
-
-	/* Get chip info */
-	ret = nvmem_cell_read_u8(cpu_dev, "part_number", &part_number);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to get chip info: %d\n", ret);
-		return ret;
-	}
-
-	supported_hw = BIT((part_number & 0x80) >> 7);
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
