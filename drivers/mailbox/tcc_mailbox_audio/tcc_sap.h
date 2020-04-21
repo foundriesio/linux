@@ -1,18 +1,19 @@
-/*
- * Copyright (C) 2016 Telechips
+/****************************************************************************
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Copyright (C) 2018 Telechips Inc.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
 #ifndef __TCC_SAP_H__
 #define __TCC_SAP_H__
@@ -65,144 +66,7 @@ enum {
     COMP_TYPE_MAX = 0x7FFFFFFF
 };
 
-typedef union union_audio_codec_t {
-    //! Data structure for AAC/BSAC decoding
-    struct {
-        //!     AAC Object type : (2 : AAC_LC, 4: LTP, 5: SBR, 22: BSAC, ...)
-        int m_iAACObjectType;
-        //!     AAC Stream Header type : ( 0 : RAW-AAC, 1: ADTS, 2: ADIF)
-        int m_iAACHeaderType;
-        //!     upsampling flag ( 0 : disable, 1: enable)
-        //!     only, if( ( m_iAACForceUpsampling == 1 ) && ( samplerate <= 24000 ) ), then out_samplerate = samplerate*2
-        int m_iAACForceUpsampling;
-        //!		upmix (mono to stereo) flag (0 : disable, 1: enable)
-        //!     only, if( ( m_iAACForceUpmix == 1 ) && ( channel == mono ) ), then out_channel = 2;
-        int m_iAACForceUpmix;
-        //!		Dynamic Range Control
-        //!		Dynamic Range Control, Enable Dynamic Range Control (0 : disable (default), 1: enable)
-        int m_iEnableDRC;
-        //!		Dynamic Range Control, Scaling factor for boosting gain value, range: 0 (not apply) ~ 127 (fully apply)
-        int m_iDrcBoostFactor;
-        //!		Dynamic Range Control, Scaling factor for cutting gain value, range: 0 (not apply) ~ 127 (fully apply)
-        int m_iDrcCutFactor;
-        //!		Dynamic Range Control, Target reference level, range: 0 (full scale) ~ 127 (31.75 dB below full-scale)
-        int m_iDrcReferenceLevel;
-        //!		Dynamic Range Control, Enable DVB specific heavy compression (aka RF mode), (0 : disable (default), 1: enable)
-        int m_iDrcHeavyCompression;
-        //!		ChannelMasking
-        //!		bit:  8    7    6    5    4    3    2    1    0
-        //!		ch : RR | LR | CS | LFE | RS | LS | CF | RF | LF
-        int m_uiChannelMasking;
-        //!		Disable HE-AAC Decoding (Decodig AAC only): 0 (enable HE-AAC Decoding (default), 1 (disable HE-AAC Decoding)
-        int m_uiDisableHEAACDecoding;
-        //!		RESERVED
-        int reserved[32 - 11];
-    } m_unAAC;
-
-    //! Data structure for DTS decoding. These are used by application layer
-    struct {
-        //!		Specifies the speaker out configuration(1~8)
-        int m_iDTSSetOutCh;
-        //!		set	interleaving mode for output PCM  (interleaving(1)/non-onterleaving(0))
-        int m_iDTSInterleavingFlag;
-        //!		Instructs the decoder to use the specified value as the target sample rate for sub audio(8000,12000..)
-        int m_iDTSUpSampleRate;
-        //!		Instruct the decoder to use the specified percentage for dynamic range control(default(0), 0~100)
-        int m_iDTSDrcPercent;
-        //!		Instruct the decoder to use the LFE mixing (No LFE mixing(0), LFE mixing(1))
-        int m_iDTSLFEMix;
-        //!		Has secondary audio		[only DTS-M6 library]
-        int m_iHasSecondary;
-        //!		Disable Resync event	[only DTS-M6 library]
-        int m_iNoResyncMode;
-        //!		additional input setting
-        //void *pExtra;
-        unsigned int pExtra; // 32bit address for ca7
-
-        //!		reserved for future needs
-        int reserved[32 - 8];
-    } m_unDTS;
-
-    //! Data structure for MP2 decoding
-    struct {
-        //!		DAB mode select ( 0: OFF,  1: ON)
-        int m_iDABMode;
-        //!		reserved for future needs
-        int reserved[32 - 1];
-    } m_unMP2;
-
-    //! Data structure for DDPDec decoding
-    struct {
-        //!		DDP stream buffer size in words
-        int m_iDDPStreamBufNwords;
-        //!     floating point value of gain
-        //char *m_pcMixdataTextbuf;
-        unsigned int m_pcMixdataTextbuf; // 32 bit address
-        //!     dynamic range disable
-        int m_iMixdataTextNsize;
-        //!     dynamic range compression mode
-        int m_iCompMode;
-        //!     output LFE channel present
-        int m_iOutLfe;
-        //!		output channel configuration
-        int m_iOutChanConfig;
-        //!		PCM scale factor
-        int m_iPcmScale;
-        //!		stereo output mode
-        int m_iStereMode;
-        //!		dual mono reproduction mode
-        int m_iDualMode;
-        //!		dynamic range compression cut scale factor
-        int m_iDynScaleHigh;
-        //! 	dynamic range compression boost scale factor
-        int m_iDynScaleLow;
-        //!		Karaoke capable mode
-        int m_iKMode;
-        //!		Frame debug flags
-        int m_iFrmDebugFlags;
-        //!		Decode debug flags
-        int m_iDecDebugFlags;
-        //!		number of output channels set by user
-        int m_iNumOutChannels;
-        //!		mix meta data write flag
-        int m_imixdataout;
-        //!		[only DDP Converter library]
-        //!		not detect error
-        int m_iQuitOnErr;
-        //!		[only DDP Converter library]
-        //!		use SRC mode
-        int m_iSRCMode;
-        //!		[only DDP Converter library]
-        //!		out stream mode, (0:default(PCM/DD both out), 1:DD stream don't out, 2:PCM data don't out)
-        int m_iOutPutMode;
-        //!		running mode        (0:DECODE_ONLY, 1:CONVERT_ONLY, 2:DECODE_CONVERT)
-        int m_iRunningMode;
-        //!		User Setting value for DRC
-        int m_fUseDRCSetting;
-        int m_iUserDRCMode;
-        int m_iUserDRCHigh;
-        int m_iUserDRCLow;
-        //!		User Setting value for StereoMode
-        int m_fUseStereoMode;
-        //!		reserved for future needs
-        int reserved[32 - 25];
-
-    } m_unDDPDec;
-
-    //! Data structure for MPEG Audio Layer 3/2/1 decoding
-    struct {
-        //!		Layer type given by parser (3 or 2 or 1)
-        int m_iLayer;
-        //!		DAB mode selection for layer 2 decoding ( 0: OFF,  1: ON)
-        int m_iDABMode;
-        //!		Enable only one specific layer decoding ( 0: enables decoding all layers, n(=1,2,3): enables decoding layer n only)
-        int m_iEnableLayer;
-
-        //!		reserved for future needs
-        int reserved[32 - 3];
-    } m_unMP321Dec;
-
-} union_audio_codec_t;
+typedef unsigned int union_audio_codec_t[32];
 
 enum {
     FILTER_MODE,  // codec dec/enc mode
