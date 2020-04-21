@@ -335,6 +335,10 @@ config LCD_TM123XDHP90
 	bool "TIANMA 1920 * 720 TFT Module SFT"
 	depends on FB_TCC && ARCH_TCC803X
 
+config LCD_PVLBJT020
+	bool "BOEVX PVLBJT020 1920 * 720 TFT Module SFT"
+	depends on FB_TCC && ARCH_TCC805X
+
 endmenu
 
 menu "TCC Extend Display"

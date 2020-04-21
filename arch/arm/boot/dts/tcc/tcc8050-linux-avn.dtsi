@@ -226,13 +226,6 @@
 		physSize = <0x80000000>; /*  DRAM size (0x40000000 = 1GB, 0x80000000 = 2GB) */
 		};
 
-	hdmi_tx_20@12400000 {
-		hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
-		hdmi_phy_type = <0>;
-
-		/* Source Product Description */
-		product_description = "TCC8050_avn";
-	};
 	i2c@16300000 {
 		status = "okay";
 		port-mux = <12>;

@@ -3307,70 +3307,6 @@
 		status = "okay";
 	};
 
-	hdmi_tx_20: hdmi_tx_20@12400000 {
-		compatible = "telechips,dw-hdmi-tx";
-		/* Register */
-		reg = <0x12400000 0x20000 0x12440000 0x1000 0x12480000 0x1000 0x163C0000 0x10 0x16051000 0x100>;
-		reg-names = "hdmi_link", "hdcp_2.2", "hdmi_phy", "i2c_port_cfg", "iobus_configure";
-		/* Interrupt */
-		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "hdmi_link", "hdcp_2.2", "hdmi_cec";
-		/* Clocks */
-		/*clocks = <&clk_peri PERI_HDMI_CORE>,
-				<&clk_peri PERI_HDMI_AUDIO>,
-				<&clk_peri PERI_HDMI_PCLK>,
-				<&clk_peri PERI_HDMI_CEC>,
-				<&clk_peri PERI_HDMI_HDCP14>,
-				<&clk_peri PERI_HDMI_HDCP22>,
-				<&clk_ddi DDIBUS_HDMI>,
-				<&clk_isoip_ddi ISOIP_DDB_HDMI>,
-				<&clk_ddi DDIBUS_VIOC>;
-		clock-names = "hdmi_ref_clk",
-				"hdmi_spdif_clk",
-				"hdmi_apb_clk",
-				"hdmi_cec",
-				"hdmi_hdcp14",
-				"hdmi_hdcp22",
-				"hdmi_ddibus",
-				"hdmi_isoip_ddibus",
-				"ddi_bus";
-		clock-frequency = <50000000>;*/
-		/* Pinctrl and gpio */
-		pinctrl-names = "default";
-		pinctrl-0 = <&hdmi_hpd>;
-		gpios = <&gpc 14 0>;
-
-		/* DDC */
-		hdmi_i2c_port_disable = <1>;
-		hdmi_i2c_port_mapping = <0xc 0xff 0x1d>; /* offset mask value */
-
-		/* Source Product Description */
-		vendor_name = "TCC";
-		product_description = "TCC8050";
-		source_information = <1>; /* Digital STB */
-
-		audio_if_selection_ofst = <0x58>;
-		audio_rx_tx_chmux = <0x98>;
-
-		/* fixed video identification code 16: 1920x1080p 60Hz */
-		fixd_video_id_code = <16>;
-
-		verbose = <0>; // 0 disable, 1 basic, 2 io
-		status = "okay";
-	};
-
-	hdmi_hdcp: hdmi_hdcp@12440000 {
-		compatible = "telechips,dw-hdcp";
-		reg = <0x12400000 0x20000 0x12440000 0x1000 0x163C0000 0x10>;
-		reg-names = "hdmi_link", "hdcp_2.2", "i2c_port_cfg";
-		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "hdmi_link", "hdcp_2.2";
-		memory-region = <&reserved_dw_esm>;
-	};
-
 	/*mtadc0@16053000 {
 		compatible = "telechips,mtadc";
 		reg = <0x16053000 0x100 0x1440006C 0x4>;
@@ -3509,7 +3445,7 @@
 
 	switch_reverse: switch_reverse {};
 
-	tm123xdhp90: tm123xdhp90 {};
+	pvlbjt020: pvlbjt020 {};
 
 	ictc: ictc {
 		compatible = "telechips,ictc";

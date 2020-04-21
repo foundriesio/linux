@@ -205,15 +205,6 @@
 	};
 };
 
-&hdmi_tx_20 {
-	hdmi_ref_src_clock = <0>; // 0 XIN, 1 X-TAL, 2 PERI, 3, PMU XIN
-	hdmi_phy_type = <0>;
-
-	/* Source Product Description */
-	product_description = "TCC8050_avn";
-};
-
-
 &i2c0 {
 	status = "okay";
 	port-mux = <12>;
