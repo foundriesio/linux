@@ -21,6 +21,10 @@
 
 #include "tcc_video_private.h"
 
+#ifndef ALIGNED_BUFF
+#define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
+#endif
+
 #define PRESENTATION_LIMIT_RESOLUTION   (1024*600)
 
 #define TCCFB_IOCTL_MAGIC               'f'
