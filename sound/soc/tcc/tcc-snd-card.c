@@ -32,6 +32,7 @@
 #define KCONTROL_HDR		"Device"
 
 struct tcc_dai_info_t {
+	struct snd_soc_dai *dai;
 	int32_t mclk_div;
 	uint32_t bclk_ratio;
 	int32_t tdm_slots;
@@ -54,6 +55,7 @@ static inline int get_device_num_from_control_name(const unsigned char *str)
 	long device = 0;
 
 	int32_t s_size = (int32_t)sizeof(KCONTROL_HDR);
+	int ret=0;
 
 	//if(s_size != 0u ) { //always not  0
 		s_size--;
@@ -62,7 +64,10 @@ static inline int get_device_num_from_control_name(const unsigned char *str)
 	str_tmp = kstrdup(str, GFP_KERNEL);
 	str_dev = strsep(&str_tmp, sep);
 	if (str_dev != NULL) {
-		(void) kstrtol(&str_dev[s_size], 10, &device);
+		ret = kstrtol(&str_dev[s_size], 10, &device);
+		if(ret < 0 ) {
+			(void) printk(KERN_ERR "[ERROR][SOUND_CARD] amixer %s failed\n", __func__);
+		}
 	}
 
 	return (int) device;
@@ -124,6 +129,21 @@ static struct snd_soc_ops tcc_snd_card_ops = {
 	.startup = tcc_snd_card_startup,
 };
 
+static bool dai_is_active(struct snd_soc_dai *dai, unsigned char *kcontrol_name, unsigned int card_id, unsigned int dev_id)
+{
+	char dev_name[6]={0,};
+	bool is_active = FALSE;
+	is_active = (dai->active != 0)? TRUE : FALSE;
+
+	sprintf(dev_name, "hw:%x,%x", card_id, dev_id);
+	if(is_active) {
+		(void) printk(KERN_ERR "[ERROR] %s doesn't change while %s is activated. Please stop playback/capture of %s.", kcontrol_name, dev_name, dev_name);
+	}
+
+	return is_active;
+}
+
+
 static int get_tdm_width(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_card *card = (struct snd_soc_card*)snd_kcontrol_chip(kcontrol);
@@ -152,11 +172,14 @@ static int set_tdm_width(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value
 		return -EINVAL;
 	}
 
-	dai_info->tdm_width = (ucontrol->value.integer.value[0] == 0) ? 16 :
-						  (ucontrol->value.integer.value[0] == 1) ? 24 : 32;
+	if(dai_is_active(dai_info->dai, kcontrol->id.name, card->snd_card->number, device) == TRUE) {
+		return -EINVAL;
+	} else {
+		dai_info->tdm_width = (ucontrol->value.integer.value[0] == 0) ? 16 :
+			(ucontrol->value.integer.value[0] == 1) ? 24 : 32;
 
-	dai_info->is_updated = TRUE;
-
+		dai_info->is_updated = TRUE;
+	}
 	return 0;
 }
 
@@ -200,12 +223,16 @@ static int set_tdm_slots(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value
 		return -EINVAL;
 	}
 
-	dai_info->tdm_slots = (ucontrol->value.integer.value[0] == 0) ? 0 :
-						  (ucontrol->value.integer.value[0] == 1) ? 2 :
-						  (ucontrol->value.integer.value[0] == 2) ? 4 : 
-						  (ucontrol->value.integer.value[0] == 3) ? 6 : 8;
+	if(dai_is_active(dai_info->dai, kcontrol->id.name, card->snd_card->number, device) == TRUE) {
+		return -EINVAL;
+	} else {
+		dai_info->tdm_slots = (ucontrol->value.integer.value[0] == 0) ? 0 :
+			(ucontrol->value.integer.value[0] == 1) ? 2 :
+			(ucontrol->value.integer.value[0] == 2) ? 4 :
+			(ucontrol->value.integer.value[0] == 3) ? 6 : 8;
 
-	dai_info->is_updated = TRUE;
+		dai_info->is_updated = TRUE;
+	}
 
 	return 0;
 }
@@ -247,21 +274,25 @@ static int set_dai_clkinv(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 	struct snd_soc_card *card = (struct snd_soc_card*)snd_kcontrol_chip(kcontrol);
 	struct tcc_card_info_t *card_info = (struct tcc_card_info_t*)snd_soc_card_get_drvdata(card);
 	int device = get_device_num_from_control_name(kcontrol->id.name);
+	struct tcc_dai_info_t *dai_info = &card_info->dai_info[device];
 	uint32_t format;
 
 	if (device > card->num_rtd) {
 		return -EINVAL;
 	}
 
-	format = (ucontrol->value.integer.value[0] == 0) ? (uint32_t)SND_SOC_DAIFMT_NB_NF :
-		 (ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_NB_IF :
-		 (ucontrol->value.integer.value[0] == 2) ? (uint32_t)SND_SOC_DAIFMT_IB_NF : (uint32_t)SND_SOC_DAIFMT_IB_IF;
+	if(dai_is_active(dai_info->dai, kcontrol->id.name, card->snd_card->number, device) == TRUE) {
+		return -EINVAL;
+	} else {
+		format = (ucontrol->value.integer.value[0] == 0) ? (uint32_t)SND_SOC_DAIFMT_NB_NF :
+			(ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_NB_IF :
+			(ucontrol->value.integer.value[0] == 2) ? (uint32_t)SND_SOC_DAIFMT_IB_NF : (uint32_t)SND_SOC_DAIFMT_IB_IF;
 
-	card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_INV_MASK;
-	card_info->dai_info[device].dai_fmt |= format;
+		card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_INV_MASK;
+		card_info->dai_info[device].dai_fmt |= format;
 
-	card_info->dai_info[device].is_updated = TRUE;
-
+		card_info->dai_info[device].is_updated = TRUE;
+	}
 	return 0;
 }
 
@@ -304,22 +335,26 @@ static int set_dai_format(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_valu
 	struct snd_soc_card *card = (struct snd_soc_card*)snd_kcontrol_chip(kcontrol);
 	struct tcc_card_info_t *card_info = (struct tcc_card_info_t*)snd_soc_card_get_drvdata(card);
 	int device = get_device_num_from_control_name(kcontrol->id.name);
+	struct tcc_dai_info_t *dai_info = &card_info->dai_info[device];
 	uint32_t format;
 
 	if (device > card->num_rtd) {
 		return -EINVAL;
 	}
 
-	format = (ucontrol->value.integer.value[0] == 4) ? (uint32_t)SND_SOC_DAIFMT_DSP_B :
-		 (ucontrol->value.integer.value[0] == 3) ? (uint32_t)SND_SOC_DAIFMT_DSP_A :
-		 (ucontrol->value.integer.value[0] == 2) ? (uint32_t)SND_SOC_DAIFMT_RIGHT_J :
-		 (ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_LEFT_J : (uint32_t)SND_SOC_DAIFMT_I2S;
+	if(dai_is_active(dai_info->dai, kcontrol->id.name, card->snd_card->number, device) == TRUE) {
+		return -EINVAL;
+	} else {
+		format = (ucontrol->value.integer.value[0] == 4) ? (uint32_t)SND_SOC_DAIFMT_DSP_B :
+			(ucontrol->value.integer.value[0] == 3) ? (uint32_t)SND_SOC_DAIFMT_DSP_A :
+			(ucontrol->value.integer.value[0] == 2) ? (uint32_t)SND_SOC_DAIFMT_RIGHT_J :
+			(ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_LEFT_J : (uint32_t)SND_SOC_DAIFMT_I2S;
 
-	card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_FORMAT_MASK;
-	card_info->dai_info[device].dai_fmt |= format;
+		card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_FORMAT_MASK;
+		card_info->dai_info[device].dai_fmt |= format;
 
-	card_info->dai_info[device].is_updated = TRUE;
-
+		card_info->dai_info[device].is_updated = TRUE;
+	}
 	return 0;
 }
 
@@ -358,23 +393,27 @@ static int set_continous_clk_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_
 	struct snd_soc_card *card = (struct snd_soc_card*)snd_kcontrol_chip(kcontrol);
 	struct tcc_card_info_t *card_info = (struct tcc_card_info_t*)snd_soc_card_get_drvdata(card);
 	int device = get_device_num_from_control_name(kcontrol->id.name);
+	struct tcc_dai_info_t *dai_info = &card_info->dai_info[device];
 	uint32_t format;
 
 	if (device > card->num_rtd) {
 		return -EINVAL;
 	}
 
-	format = (ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_CONT : (uint32_t)SND_SOC_DAIFMT_GATED;
+	if(dai_is_active(dai_info->dai, kcontrol->id.name, card->snd_card->number, device) == TRUE) {
+		return -EINVAL;
+	} else {
+		format = (ucontrol->value.integer.value[0] == 1) ? (uint32_t)SND_SOC_DAIFMT_CONT : (uint32_t)SND_SOC_DAIFMT_GATED;
 
-	card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_CLOCK_MASK;
-	card_info->dai_info[device].dai_fmt |= format;
+		card_info->dai_info[device].dai_fmt &= ~(uint32_t)SND_SOC_DAIFMT_CLOCK_MASK;
+		card_info->dai_info[device].dai_fmt |= format;
 
-	card_info->dai_info[device].is_updated = TRUE;
-
+		card_info->dai_info[device].is_updated = TRUE;
+	}
 	return 0;
 }
 
-static const struct snd_kcontrol_new tcc_snd_controls[] = {
+static const struct snd_kcontrol_new tcc_snd_i2s_controls[] = {
 	SOC_ENUM_EXT(("DAI FORMAT"),     (dai_format_enum[0]), (get_dai_format), (set_dai_format)),
 	SOC_ENUM_EXT(("DAI CLKINV"),     (dai_clkinv_enum[0]), (get_dai_clkinv), (set_dai_clkinv)),
 	SOC_ENUM_EXT(("TDM Slots"),      (tdm_slots_enum[0]),  (get_tdm_slots),  (set_tdm_slots)),
@@ -406,7 +445,8 @@ static int tcc_snd_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (dai_info->bclk_ratio != 0u) {
 		(void) snd_soc_dai_set_bclk_ratio(cpu_dai, dai_info->bclk_ratio);
 	}
-	
+
+	dai_info->dai = cpu_dai;
 	return 0;
 }
 
@@ -600,65 +640,62 @@ error_1:
 static int tcc_snd_card_kcontrol_init(struct snd_soc_card *card)
 {
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
-	int32_t num_controls, num_links_no_tsnd=0, offset_no_tsnd=0;
+	int32_t num_controls=0, num_links_i2s=0;
 	struct snd_kcontrol_new *controls;
-	int not_failed_name_count;
+	int not_failed_name_count=0, offset_controls=0;
 	int i, j;
 	ssize_t alloc_size;
 
-	for (i=0; i<card_info->num_links; i++) { 
-		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
-			//This is for T-sound device
-			//(void) printk(KERN_WARNING "[WARN][SOUND_CARD] T-sound dev-%d\n", i);
-			continue;
+	for (i=0; i<card_info->num_links; i++) {
+		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "i2s")) == 0) {
+			num_links_i2s++;
 		}
-		num_links_no_tsnd ++;
 	}
-	num_controls = (int32_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls) * (int32_t) num_links_no_tsnd;
+	num_controls = (int32_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_i2s_controls) * (int32_t) num_links_i2s;
 
-	alloc_size = (ssize_t) sizeof(struct snd_kcontrol_new) * num_controls;
-	controls = kzalloc((size_t) alloc_size, GFP_KERNEL);
+	if(num_controls > 0) {
+		alloc_size = (ssize_t) sizeof(struct snd_kcontrol_new) * num_controls;
+		controls = kzalloc((size_t) alloc_size, GFP_KERNEL);
+	} else {
+		(void) printk(KERN_DEBUG "[DEBUG][SOUND_CARD] There is no amixer controls\n");
+		goto end_tcc_snd_card_kcontrol_init;
+	}
 
 	if (controls == NULL) {
 		(void) printk(KERN_ERR "[ERROR][SOUND_CARD] amixer controls allocation failed\n");
 		return -ENOMEM;
 	}
 
-	alloc_size = (ssize_t) sizeof(struct snd_kcontrol_new)* (ssize_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls);
-	for (i=0; i<card_info->num_links; i++) { 
-	
-		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "vi2s")) == 0) {
-			continue;
-		}
-		
-		if(offset_no_tsnd > num_links_no_tsnd) {
-			(void) printk(KERN_ERR "[ERROR][SOUND_CARD] num_links_no_tsnd counter is wrong : num_links_no_tsnd=%d, offset_no_tsnd=%d\n", num_links_no_tsnd, offset_no_tsnd);
-			not_failed_name_count = (int)(offset_no_tsnd*TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls));
+	for (i=0; i<card_info->num_links; i++) {
+		if(offset_controls > num_controls) {
+			(void) printk(KERN_ERR "[ERROR] counter is wrong : num_controls=%d, offset_controls=%d\n", num_controls, offset_controls);
+			not_failed_name_count = num_controls;
 			goto error1;
 		}
 
-		(void) memcpy(&controls[(offset_no_tsnd*(int32_t)TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls))],
-				tcc_snd_controls,
-				(size_t) alloc_size);
+		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "i2s")) == 0) {
+			alloc_size = ((ssize_t) sizeof(struct snd_kcontrol_new)) * ((ssize_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_i2s_controls));
+			(void) memcpy(&controls[offset_controls], tcc_snd_i2s_controls,(size_t) alloc_size);
 
-		for (j=0; j<TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls); j++) {
-			char tmp_name[255];
-			int offset_controls=(int)(offset_no_tsnd*TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls));
+			for (j=0; j < (int32_t)TCC_AUDIO_ARRAY_SIZE(tcc_snd_i2s_controls); j++) {
+				char tmp_name[255];
 
-			(void) sprintf(tmp_name, KCONTROL_HDR"%d %s", i, controls[offset_controls+j].name);
+				(void) sprintf(tmp_name, KCONTROL_HDR"%d %s", i, controls[offset_controls+j].name);
+				controls[offset_controls+j].name = kstrdup(tmp_name, GFP_KERNEL);
 
-			controls[offset_controls+j].name = kstrdup(tmp_name, GFP_KERNEL);
-
-			if (controls[offset_controls+j].name == NULL) {
-				(void) printk(KERN_ERR "[ERROR][SOUND_CARD] amixer controls name allocation failed : %d\n", (offset_controls + j));
-				not_failed_name_count = offset_controls + j;
-				goto error1;
+				if (controls[offset_controls+j].name == NULL) {
+					(void) printk(KERN_ERR "amixer controls name allocation failed : %d\n", i);
+					not_failed_name_count = offset_controls+j;
+					goto error1;
+				}
 			}
+			offset_controls += ((ssize_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_i2s_controls));
 		}
-		offset_no_tsnd ++;
 	}
 
 	card->controls = controls;
+
+end_tcc_snd_card_kcontrol_init:
 	card->num_controls = num_controls;
 
 	return 0;
@@ -713,8 +750,16 @@ static int tcc_snd_card_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
-	int32_t num_controls = (int32_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_controls) * card_info->num_links;
+	int32_t num_controls=0, num_links_i2s=0;
 	int i;
+
+	for (i=0; i<card_info->num_links; i++) {
+		if((strcmp(card_info->dai_link[i].cpu_of_node->name, "i2s")) == 0) {
+			num_links_i2s++;
+		}
+	}
+	num_controls = (int32_t) TCC_AUDIO_ARRAY_SIZE(tcc_snd_i2s_controls) * num_links_i2s;
+
 
 	(void) snd_soc_unregister_card(card);
 

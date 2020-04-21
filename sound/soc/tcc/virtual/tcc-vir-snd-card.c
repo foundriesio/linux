@@ -27,7 +27,7 @@
 #define DRIVER_NAME			("tcc-vir-snd-card")
 #define DAI_LINK_MAX		(10)
 #define KCONTROL_HDR		"Device"
-#define EH_MD 0
+
 struct tcc_vir_card_info_t {
 	uint32_t num_links;
 	struct snd_soc_dai_link *dai_link;
