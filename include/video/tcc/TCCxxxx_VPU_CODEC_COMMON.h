@@ -114,9 +114,9 @@ typedef unsigned long codec_addr_t;     //!< address - 32 bit
 #define COMP_U 1
 #define COMP_V 2
 
-
+#ifndef ALIGNED_BUFF
 #define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
-
+#endif
 
 //------------------------------------------------------------------------------
 // Definition of decoding process

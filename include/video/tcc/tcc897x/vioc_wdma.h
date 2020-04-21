@@ -326,8 +326,6 @@ typedef struct
 										| WDMAIRQSTS_ST_EOF_MASK)
 
 
-#define ALIGNED_BUFF(buf, mul) ( ( (unsigned int)buf + (mul-1) ) & ~(mul-1) )
-
 /* Interface APIs. */
 extern void VIOC_WDMA_SetImageEnable(volatile void __iomem *reg, unsigned int nContinuous);
 extern void VIOC_WDMA_SetImageDisable(volatile void __iomem *reg);
