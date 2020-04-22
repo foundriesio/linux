@@ -148,6 +148,7 @@ struct stm32_usbphyc {
 	int nphys;
 	struct regulator *vdda1v1;
 	struct regulator *vdda1v8;
+	atomic_t n_pll_cons;
 	struct clk_hw clk48_hw;
 	int switch_setup;
 };
@@ -256,28 +257,10 @@ static int stm32_usbphyc_pll_init(struct stm32_usbphyc *usbphyc)
 	return 0;
 }
 
-static bool stm32_usbphyc_has_one_pll_consumer(struct stm32_usbphyc *usbphyc)
-{
-	int i;
-
-	for (i = 0; i < usbphyc->nphys; i++)
-		if (usbphyc->phys[i]->active)
-			return true;
-
-	if (clk_hw_is_enabled(&usbphyc->clk48_hw))
-		return true;
-
-	return false;
-}
-
-static int stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
+static int __stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
 {
 	void __iomem *pll_reg = usbphyc->base + STM32_USBPHYC_PLL;
 	u32 pllen;
-
-	/* Check if a phy port is still active or clk48 in use */
-	if (stm32_usbphyc_has_one_pll_consumer(usbphyc))
-		return 0;
 
 	stm32_usbphyc_clr_bits(pll_reg, PLLEN);
 
@@ -288,25 +271,43 @@ static int stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
 	return stm32_usbphyc_regulators_disable(usbphyc);
 }
 
+static int stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
+{
+	/* Check if a phy port is still active or clk48 in use */
+	if (atomic_dec_return(&usbphyc->n_pll_cons) > 0)
+		return 0;
+
+	return __stm32_usbphyc_pll_disable(usbphyc);
+}
+
 static int stm32_usbphyc_pll_enable(struct stm32_usbphyc *usbphyc)
 {
 	void __iomem *pll_reg = usbphyc->base + STM32_USBPHYC_PLL;
 	bool pllen = readl_relaxed(pll_reg) & PLLEN;
 	int ret;
 
-	/* Check if a phy port or clk48 enable has configured the pll */
-	if (pllen && stm32_usbphyc_has_one_pll_consumer(usbphyc))
+	/*
+	 * Check if a phy port or clk48 prepare has configured the pll
+	 * and ensure the PLL is enabled
+	 */
+	if(atomic_inc_return(&usbphyc->n_pll_cons) > 1 && pllen)
 		return 0;
 
 	if (pllen) {
-		ret = stm32_usbphyc_pll_disable(usbphyc);
+		/*
+		 * PLL shouldn't be enabled without known consumer,
+		 * disable it and reinit n_pll_cons
+		 */
+		dev_warn(usbphyc->dev, "PLL enabled without known consumers\n");
+
+		ret = __stm32_usbphyc_pll_disable(usbphyc);
 		if (ret)
 			return ret;
 	}
 
 	ret = stm32_usbphyc_regulators_enable(usbphyc);
 	if (ret)
-		return ret;
+		goto dec_n_pll_cons;
 
 	ret = stm32_usbphyc_pll_init(usbphyc);
 	if (ret)
@@ -317,7 +318,12 @@ static int stm32_usbphyc_pll_enable(struct stm32_usbphyc *usbphyc)
 	return 0;
 
 reg_disable:
-	return stm32_usbphyc_regulators_disable(usbphyc);
+	stm32_usbphyc_regulators_disable(usbphyc);
+
+dec_n_pll_cons:
+	atomic_dec(&usbphyc->n_pll_cons);
+
+	return ret;
 }
 
 static int stm32_usbphyc_phy_init(struct phy *phy)
