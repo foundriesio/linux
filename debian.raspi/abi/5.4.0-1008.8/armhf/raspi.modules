@@ -1449,6 +1449,7 @@ i2c-algo-bit
 i2c-algo-pca
 i2c-arb-gpio-challenge
 i2c-bcm2708
+i2c-brcmstb
 i2c-cbus-gpio
 i2c-cros-ec-tunnel
 i2c-demux-pinctrl
