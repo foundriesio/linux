@@ -163,6 +163,8 @@ struct usb_phy {
 	/* enable/disable phy status */
 	int (*set_phy_state)(struct usb_phy *phy, int state);
 	void (*set_phy_mux_sel)(struct usb_phy *phy, int is_mux);
+	/* For PMIC gpio, Need to configuration after da9063 intializing */
+	int (*set_vbus_resource)(struct usb_phy *phy);
 #if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
 	/* USB HS DC voltage level adjustment function */
 	int (*get_dc_voltage_level)(struct usb_phy *phy);
@@ -179,8 +181,6 @@ struct usb_phy {
 	void (*bit_set_phy)(void __iomem *base, u32 offset, u32 value);
 	void (*bit_clear_phy)(void __iomem *base, u32 offset, u32 value);
 #if defined (CONFIG_ARCH_TCC803X) || defined (CONFIG_ARCH_TCC899X) 
-	/* For PMIC gpio, Need to configuration after da9063 intializing */
-	int (*set_vbus_resource)(struct usb_phy *phy);
 	unsigned int (*read_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address);
 	void (*read_ss_u30phy_reg_all)(struct usb_phy *phy);
 	unsigned int (*write_ss_u30phy_reg)(struct usb_phy *phy, unsigned int address, unsigned int write_data);	

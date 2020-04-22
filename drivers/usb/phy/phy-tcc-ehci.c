@@ -7,6 +7,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/of_gpio.h>
+#include <dt-bindings/gpio/gpio.h>
 //#include <plat/globals.h>
 //#include <linux/err.h>
 //#include <linux/of_device.h>
@@ -31,8 +32,8 @@ struct tcc_ehci_device {
 	struct clk 		*isol;
 	int 			mux_port;
 
-	int vbus_gpio;
-	int vbus_status;
+	int             vbus_gpio_num;
+	unsigned long   vbus_gpio_flag;
 #if defined (CONFIG_TCC_BC_12)
 	int irq;
 	//struct task_struct *chg_det_thread;
@@ -88,31 +89,46 @@ static int tcc_ehci_phy_isolation(struct usb_phy *phy, int on_off)
 static int tcc_ehci_vbus_set(struct usb_phy *phy, int on_off)
 {
 	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
+	struct device *dev = phy_dev->dev;
 	int retval = 0;
 
-	if (!phy_dev->vbus_gpio) {
-		printk("[INFO][USB] ehci vbus ctrl disabled.\n");
-		return -1;
+	/*
+	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
+	 * is declared in the device tree.
+	 */
+	if (!of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
+		dev_err(dev, "[ERROR][USB] vbus-ctrl-able property is not declared in device tree.\n");
+		return -ENODEV;
 	}
 
-	retval = gpio_request(phy_dev->vbus_gpio, "vbus_gpio_phy");
-	if(retval) {
-		dev_err(phy->dev, "[ERROR][USB] can't requeest vbus gpio\n");
+	/* Check if the GPIO pin number is within the valid range(0 to 511). */
+	if (!gpio_is_valid(phy_dev->vbus_gpio_num)) {
+		dev_err(dev, "[ERROR][USB] VBus GPIO pin number is not valid number, errno %d.\n", phy_dev->vbus_gpio_num);
+		return phy_dev->vbus_gpio_num;
+	}
+
+	/* Request a single VBus GPIO with initial configuration. */
+	retval = gpio_request_one(phy_dev->vbus_gpio_num, phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
+
+	if (retval) {
+		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n", retval);
 		return retval;
 	}
 
-	retval = gpio_direction_output(phy_dev->vbus_gpio, on_off);
-	if(retval) {
-		dev_err(phy_dev->dev, "[ERROR][USB] can't enable vbus (gpio ctrl err)\n");
+	/*
+	 * Set the direction of the VBus GPIO passed through the phy_dev structure
+	 * to output.
+	 */
+	retval = gpiod_direction_output(gpio_to_desc(phy_dev->vbus_gpio_num), on_off);
+
+	if (retval) {
+		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output errno %d.\n", retval);
 		return retval;
 	}
 
-	gpio_free(phy_dev->vbus_gpio);
+	gpio_free(phy_dev->vbus_gpio_num);
 
-	phy_dev->vbus_status = on_off;
-	
 	return retval;
-	
 }
 
 #if defined (CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT)
@@ -349,50 +365,72 @@ static void tcc_ehci_phy_mux_sel(struct usb_phy *phy, int is_mux)
 	}
 }
 
-#ifdef CONFIG_ARCH_TCC803X
 static int tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 {
 	struct tcc_ehci_device *phy_dev = container_of(phy, struct tcc_ehci_device, phy);
 	struct device *dev = phy_dev->dev;
-	//===============================================
-	// Check vbus enable pin	
-	//===============================================
+	unsigned int gpio_flag;
+
+	/*
+	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
+	 * is declared in the device tree.
+	 */
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
-		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
-		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
-			return -ENODEV;
+		/*
+		 * Get the GPIO pin number and GPIO flag declared in the "vbus-gpio"
+		 * property for the USB PHY driver node.
+		 */
+		phy_dev->vbus_gpio_num = of_get_named_gpio_flags(dev->of_node, "vbus-gpio", 0, &gpio_flag);
+
+		/* Check if the GPIO pin number is within the valid range(0 to 511). */
+		if (gpio_is_valid(phy_dev->vbus_gpio_num)) {
+			/*
+			 * The GPIO pin number and GPIO flag are declared in the
+			 * "vbus-gpio" property for the USB PHY driver node, as in the
+			 * example below.
+			 *
+			 * e.g.)
+			 *     dwc_otg_phy@11DA0100 {
+			 *         ...
+			 *         vbus-gpio = <&gpa 27 0>;
+			 *
+			 * The 3rd argument of the "vbus-gpio" property, which means the
+			 * GPIO flag, is declared as default 0 or GPIO_ACTIVE_HIGH for the
+			 * TCC USB PHY driver. However, depending on the hardware
+			 * configuration, it can be declared as 1 or GPIO_ACTIVE_LOW. If
+			 * so, the value of GPIOF_ACTIVE_LOW is stored in the phy_dev
+			 * structure so that it can be used in the set_vbus(). The reason
+			 * for saving GPIOF_ACTIVE_LOW rather than GPIO_ACTIVE_LOW in the
+			 * phy_dev structure is that the gpio_request_one() used in the
+			 * set_vbus() is a legacy GPIO function using the value defined
+			 * in linux/gpio.h.
+			 */
+			if (gpio_flag == GPIO_ACTIVE_LOW) {
+				phy_dev->vbus_gpio_flag = GPIOF_ACTIVE_LOW;
+			}
+
+			dev_dbg(dev, "[DEBUG][USB] VBus GPIO pin number is %d\n", phy_dev->vbus_gpio_num);
+			dev_dbg(dev, "[DEBUG][USB] VBus GPIO flag is %s\n", (gpio_flag ? "active low(=1)" : "active high(=0)"));
+		} else {
+			dev_err(dev, "[ERROR][USB] VBus GPIO pin number is not valid number, errno %d.\n", phy_dev->vbus_gpio_num);
+			return phy_dev->vbus_gpio_num;
 		}
 	} else {
-		phy_dev->vbus_gpio = 0;	// can not control vbus
+		dev_info(dev, "[INFO][USB] vbus-ctrl-able property is not declared in device tree.\n");
 	}
 
 	return 0;
 }
-#endif
+
 static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_dev)
 {
+	int retval = 0;
+
 	phy_dev->phy.otg = devm_kzalloc(dev, sizeof(*phy_dev->phy.otg),	GFP_KERNEL);
 	if (!phy_dev->phy.otg)
 		return -ENOMEM;
 
 	phy_dev->mux_port = of_find_property(dev->of_node, "mux_port", 0)?1:0;
-#ifndef CONFIG_ARCH_TCC803X
-	//===============================================
-	// Check vbus enable pin	
-	//===============================================
-	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0)) {
-		phy_dev->vbus_gpio = of_get_named_gpio(dev->of_node, "vbus-gpio", 0);
-		if(!gpio_is_valid(phy_dev->vbus_gpio)) {
-			dev_err(dev, "[ERROR][USB] can't find dev of node: vbus gpio\n");
-			return -ENODEV;
-		}
-	} else {
-		phy_dev->vbus_gpio = 0;	// can not control vbus
-	}
-#else
-	phy_dev->vbus_gpio = 1;
-#endif
 
 	// HCLK
 	phy_dev->hclk = of_clk_get(dev->of_node, 0);
@@ -414,12 +452,8 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 	phy_dev->phy.set_phy_isol	= tcc_ehci_phy_isolation;
 	phy_dev->phy.set_phy_state 	= tcc_ehci_phy_state_set;
 	phy_dev->phy.set_phy_mux_sel = tcc_ehci_phy_mux_sel;
-#ifdef CONFIG_ARCH_TCC803X
 	phy_dev->phy.set_vbus_resource	= tcc_ehci_phy_set_vbus_resource;
-#endif
-	if (phy_dev->vbus_gpio)
-		phy_dev->phy.set_vbus		= tcc_ehci_vbus_set;
-
+	phy_dev->phy.set_vbus			= tcc_ehci_vbus_set;
 	phy_dev->phy.get_base			= tcc_ehci_get_base;
 #ifdef CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT		/* 017.02.24 */
 	phy_dev->phy.get_dc_voltage_level = tcc_ehci_get_dc_level;
@@ -431,7 +465,10 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 
 	phy_dev->phy.otg->usb_phy		= &phy_dev->phy;
 
-	return 0;
+#if !defined(CONFIG_ARCH_TCC803X)
+	retval = tcc_ehci_phy_set_vbus_resource(&phy_dev->phy);
+#endif
+	return retval;
 }
 
 static int tcc_ehci_phy_probe(struct platform_device *pdev)

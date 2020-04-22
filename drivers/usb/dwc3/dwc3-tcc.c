@@ -874,7 +874,7 @@ int dwc3_tcc_vbus_ctrl(struct dwc3_tcc *tcc, int on_off)
 		tcc->vbus_status = OFF;
 	}
 */
-	if ( !phy || !phy->set_vbus ) {
+	if (!phy) {
 		printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 
