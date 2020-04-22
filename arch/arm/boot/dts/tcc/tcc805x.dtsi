@@ -1939,6 +1939,7 @@
 		#pwm-cells = <2>;
 		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM>;
 		status = "okay";
+		clock-frequency = <400000000>;
 	};
 
 	uart0: serial@16600000 {
