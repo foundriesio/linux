@@ -73,7 +73,7 @@
 #define TCC_ASRC_VOL_RAMP_GAIN3_OFFSET		(0x0B8) // RW
 #define TCC_ASRC_VOL_RAMP_UP_CFG3_OFFSET	(0x0BC) // RW
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 #define TCC_ASRC_IRQ_RAW_STATUS0_OFFSET		(0x0C0) // R
 #define TCC_ASRC_IRQ_MASK_STATUS0_OFFSET	(0x0C4) // R
 #define TCC_ASRC_IRQ_CLEAR0_OFFSET			(0x0C4) // W
@@ -115,7 +115,7 @@
 
 #define TCC_ASRC_FIFO_MISC_CTRL_OFFSET		(0x140) // RW
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 #define TCC_ASRC_FIFO_IN0_CTRL1_OFFSET		(0x150) // RW
 #define TCC_ASRC_FIFO_IN1_CTRL1_OFFSET		(0x154) // RW
 #define TCC_ASRC_FIFO_IN2_CTRL1_OFFSET		(0x158) // RW
@@ -488,7 +488,7 @@ enum tcc_asrc_ramp_time_t {
 
 //FIFO IN/OUT 0/1/2/3 Control Register
 #define TCC_ASRC_FIFO_DMA_EN				(0x01<<31)
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 #define TCC_ASRC_FIFO_SIZE_MASK				(0x07<<20)
 #define TCC_ASRC_FIFO_SIZE(x)				(((x)<<20) & TCC_ASRC_FIFO_SIZE_MASK)
 #endif
@@ -511,7 +511,7 @@ enum tcc_asrc_fifo_mode_t {
 	TCC_ASRC_FIFO_MODE_8CH = 3,
 };
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 enum tcc_asrc_fifo_size_t {
 	TCC_ASRC_FIFO_SIZE_256WORD = 0,
 	TCC_ASRC_FIFO_SIZE_128WORD = 1,
@@ -529,7 +529,7 @@ enum tcc_asrc_fifo_size_t {
 #define TCC_ASRC_FIFO_EMPTY					(0x01<<30)
 #define TCC_ASRC_FIFO_LEVEL					(0x0ffff<<0)
                                             
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 //FIFO IN/OUT 0/1/2/3 Control1 Register
 #define TCC_ASRC_FIFO_RD_CNT_CLR			(0x01<<31)
 #define TCC_ASRC_FIFO_RD_CNT_THR_MASK		(0x7FFFFFFF)
@@ -583,7 +583,7 @@ struct asrc_reg_t {
 	uint32_t vol_ramp_up_cfg2;
 	uint32_t vol_ramp_up_cfg3;
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	uint32_t irq_enable0;
 	uint32_t irq_enable1;
 #else
@@ -600,7 +600,7 @@ struct asrc_reg_t {
 	uint32_t fifo_out_ctrl3;
 
 	uint32_t fifo_misc_ctrl;
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	uint32_t fifo_in_ctrl1_0;
 	uint32_t fifo_in_ctrl1_1;
 	uint32_t fifo_in_ctrl1_2;
@@ -636,18 +636,18 @@ void tcc_asrc_set_volume_ramp_dn_time(void __iomem *asrc_reg, int asrc_ch, uint3
 void tcc_asrc_set_volume_ramp_up_time(void __iomem *asrc_reg, int asrc_ch, uint32_t time, uint32_t wait);
 
 void tcc_asrc_dma_arbitration(void __iomem *asrc_reg, uint32_t round_robin);
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
 		int asrc_ch,
 		enum tcc_asrc_fifo_fmt_t fmt,
 		enum tcc_asrc_fifo_mode_t mode,
+		enum tcc_asrc_fifo_size_t size,
 		uint32_t threshold);
 #else
 void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
 		int asrc_ch,
 		enum tcc_asrc_fifo_fmt_t fmt,
 		enum tcc_asrc_fifo_mode_t mode,
-		enum tcc_asrc_fifo_size_t size,
 		uint32_t threshold);
 #endif
 void tcc_asrc_fifo_out_config(void __iomem *asrc_reg,

@@ -64,7 +64,7 @@ static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int32_t id, 
 	}
 }
 
-#elif defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#elif defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 
 #if defined(CONFIG_ARCH_TCC803X)
 #define IOBUSCFG_DAI_71CH_PORT_MAX		(3)

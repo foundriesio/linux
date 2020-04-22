@@ -206,7 +206,7 @@ static void __tcc_asrc_m2m_sync_setup(void __iomem *asrc_reg,
 		uint32_t ratio_shift22)
 {
 	enum tcc_asrc_component_t asrc_comp;
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	enum tcc_asrc_fifo_size_t tx_size = TCC_ASRC_FIFO_SIZE_256WORD;
 #endif
 	asrc_comp = (asrc_pair == 0) ? TCC_ASRC0 :
@@ -226,10 +226,10 @@ static void __tcc_asrc_m2m_sync_setup(void __iomem *asrc_reg,
 	tcc_asrc_set_inport_timing(asrc_reg, asrc_pair, IP_OP_TIMING_ASRC_REQUEST);
 	tcc_asrc_set_outport_timing(asrc_reg, asrc_pair, IP_OP_TIMING_ASRC_REQUEST);
 
-#if defined(CONFIG_ARCH_TCC803X)
-	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, tx_fmt, tx_mode, 0);
-#else
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, tx_fmt, tx_mode, tx_size, 0);
+#else
+	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, tx_fmt, tx_mode, 0);
 #endif
 	tcc_asrc_fifo_out_config(asrc_reg, asrc_pair, rx_fmt, rx_mode, 0);
 
@@ -291,7 +291,7 @@ static void __tcc_asrc_m2p_setup(void __iomem *asrc_reg,
 	enum tcc_asrc_clksel_t op_clksel, aux_sel, ip_clksel;
 	enum tcc_asrc_fifo_fmt_t fifo_fmt; 
 	enum tcc_asrc_fifo_mode_t fifo_mode;
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	enum tcc_asrc_fifo_size_t fifo_size = TCC_ASRC_FIFO_SIZE_256WORD;
 #endif
 	asrc_mode = (sync_mode == TCC_ASRC_ASYNC_MODE) ? TCC_ASRC_MODE_ASYNC : TCC_ASRC_MODE_SYNC;
@@ -342,10 +342,10 @@ static void __tcc_asrc_m2p_setup(void __iomem *asrc_reg,
 
 	tcc_asrc_set_outport_clksel(asrc_reg, asrc_pair, op_clksel);
 	//tcc_asrc_set_outport_route(asrc_reg, peri_target, op_route);
-#if defined(CONFIG_ARCH_TCC803X)
-	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, fifo_fmt, fifo_mode, 0);
-#else
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, fifo_fmt, fifo_mode, fifo_size, 0);
+#else
+	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, fifo_fmt, fifo_mode, 0);
 #endif
 
 	tcc_asrc_set_outport_format(asrc_reg, peri_target, TCC_ASRC_FMT_NO_CHANGE, 0);

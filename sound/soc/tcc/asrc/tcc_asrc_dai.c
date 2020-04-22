@@ -211,7 +211,7 @@ static struct snd_soc_dai_ops tcc_asrc_ops = {
 	.trigger    = tcc_asrc_dai_trigger,
 };
 
-#if !defined(CONFIG_ARCH_TCC802X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 
 static int asrc_vol_ramp_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
@@ -390,7 +390,7 @@ MCAUDIO_MUX_FUNC(3);
 
 
 static const struct snd_kcontrol_new tcc_asrc_snd_controls[] = {
-#if !defined(CONFIG_ARCH_TCC802X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	SOC_SINGLE_EXT_TLV("ASRC Pair0 Volume Ramp Gain", 0, 0, RAMP_VOL_MAX_STEP, 1,
 		asrc_vol_ramp_get, asrc_vol_ramp_put, asrc_vol_ramp_tlv),
 	SOC_SINGLE_EXT_TLV("ASRC Pair1 Volume Ramp Gain", 1, 0, RAMP_VOL_MAX_STEP, 1,

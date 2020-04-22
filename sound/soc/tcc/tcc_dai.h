@@ -40,7 +40,7 @@ typedef enum {
 	TCC_DAI_MCLK_TO_BCLK_DIV_6  = 6,
 	TCC_DAI_MCLK_TO_BCLK_DIV_8  = 8,
 	TCC_DAI_MCLK_TO_BCLK_DIV_16 = 16,
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	TCC_DAI_MCLK_TO_BCLK_DIV_24 = 24,
 	TCC_DAI_MCLK_TO_BCLK_DIV_32 = 32,
 	TCC_DAI_MCLK_TO_BCLK_DIV_48 = 48,
@@ -51,7 +51,10 @@ typedef enum {
 typedef enum {
 	TCC_DAI_BCLK_RATIO_32 = 32u,
 	TCC_DAI_BCLK_RATIO_48 = 48u,
-	TCC_DAI_BCLK_RATIO_64 = 64u
+	TCC_DAI_BCLK_RATIO_64 = 64u,
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	TCC_DAI_BCLK_RATIO_512 = 512u
+#endif
 } TCC_DAI_BCLK_RATIO;
 
 typedef enum {
@@ -81,7 +84,7 @@ static inline void tcc_dai_dump(void __iomem *base_addr)
 	(void) printk("MCCR0: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR0_OFFSET));
 	(void) printk("MCCR1: 0x%08x\n", readl(base_addr+TCC_DAI_MCCR1_OFFSET));
 	(void) printk("DRMR : 0x%08x\n", readl(base_addr+TCC_DAI_DRMR_OFFSET));
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	(void) printk("DCLKDIV : 0x%08x\n", readl(base_addr+TCC_DAI_DCLKDIV_OFFSET));
 #endif
 }
@@ -470,24 +473,24 @@ static inline void tcc_dai_set_master_mode(void __iomem *base_addr, bool mclk_ma
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
-/** Workaround Code for TCC803X, TCC805X, TCC899X and TCC901X **/
+/** Workaround Code for TCC803X, TCC805X, TCC806x, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline uint32_t tcc_dai_get_mclk_div(void __iomem *base_addr, uint32_t backup_dclkdiv, bool tdm_mode, bool workaround)
 #else
 static inline uint32_t tcc_dai_get_mclk_div(void __iomem *base_addr, bool tdm_bool)
 #endif
 {
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t dclkdiv = readl(base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #else
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 #endif
 	uint32_t mclk_div = 0, ret = 0;
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	if (workaround == TRUE) {
 		dclkdiv = backup_dclkdiv;
 	}
@@ -517,16 +520,16 @@ static inline uint32_t tcc_dai_get_mclk_div(void __iomem *base_addr, bool tdm_bo
 	return ret;
 }
 
-/** Workaround Code for TCC803X, TCC805X, TCC899X and TCC901X **/
+/** Workaround Code for TCC803X, TCC805X, TCC806x, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline uint32_t tcc_dai_get_bclk_ratio(void __iomem *base_addr, uint32_t backup_dclkdiv, bool tdm_mode, bool workaround)
 #else
 static inline uint32_t tcc_dai_get_bclk_ratio(void __iomem *base_addr, bool tdm_bool)
 #endif
 {
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t dclkdiv = readl(base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #else
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
@@ -534,14 +537,19 @@ static inline uint32_t tcc_dai_get_bclk_ratio(void __iomem *base_addr, bool tdm_
 	uint32_t bclk_ratio = 0, ret = 0;
 
 	if (tdm_mode == FALSE) {
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		if (workaround == TRUE) {
 			dclkdiv = backup_dclkdiv;
 		}
 
 		bclk_ratio = dclkdiv & DCLKDIV_DAI_FRAME_CLK_DIV_Msk;
 		ret = (bclk_ratio == DCLKDIV_DAI_FRAME_CLK_DIV_32) ? TCC_DAI_BCLK_RATIO_32 :
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+			(bclk_ratio == DCLKDIV_DAI_FRAME_CLK_DIV_48) ? TCC_DAI_BCLK_RATIO_48 :
+			(bclk_ratio == DCLKDIV_DAI_FRAME_CLK_DIV_64) ? TCC_DAI_BCLK_RATIO_64 : TCC_DAI_BCLK_RATIO_512;
+#else
 			(bclk_ratio == DCLKDIV_DAI_FRAME_CLK_DIV_48) ? TCC_DAI_BCLK_RATIO_48 : TCC_DAI_BCLK_RATIO_64;
+#endif
 #else
 		bclk_ratio = damr & DAMR_DAI_FRAME_CLK_DIV_Msk;
 		ret = (bclk_ratio == DAMR_DAI_FRAME_CLK_DIV_32) ? TCC_DAI_BCLK_RATIO_32 :
@@ -551,23 +559,23 @@ static inline uint32_t tcc_dai_get_bclk_ratio(void __iomem *base_addr, bool tdm_
 	return ret;
 }
 
-/** Workaround Code for TCC803X, TCC805X, TCC899X and TCC901X **/
+/** Workaround Code for TCC803X, TCC805X, TCC806x, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline uint32_t tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
 #else
 static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DIV mclk_div, TCC_DAI_BCLK_RATIO bclk_ratio, bool tdm_mode)
 #endif
 {
 	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	uint32_t dclkdiv= readl(base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #else
 	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
 #endif
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	dclkdiv &= ~(DCLKDIV_DAI_BIT_CLK_DIV_Msk
 			   | DCLKDIV_DAI_FRAME_CLK_DIV_Msk);
 #else
@@ -578,7 +586,7 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 	mccr0 &= ~MCCR0_TDM_BIT_CLK_DIV_Msk;
 
 	if (tdm_mode) {
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		dclkdiv |= DCLKDIV_DAI_FRAME_CLK_DIV_X; // xfs->fs
 		dclkdiv |= (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_4) ? DCLKDIV_DAI_BIT_CLK_DIV_4 :
 				   (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_6) ? DCLKDIV_DAI_BIT_CLK_DIV_6 :
@@ -598,7 +606,7 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 				 (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_2) ? MCCR0_TDM_BIT_CLK_DIV_2 :
 				 											MCCR0_TDM_BIT_CLK_DIV_DISABLE;
 	} else {
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 		dclkdiv |= (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_4) ? DCLKDIV_DAI_BIT_CLK_DIV_4 :
 				   (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_6) ? DCLKDIV_DAI_BIT_CLK_DIV_6 :
 				   (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_8) ? DCLKDIV_DAI_BIT_CLK_DIV_8 :
@@ -608,7 +616,12 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 				   (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_48) ? DCLKDIV_DAI_BIT_CLK_DIV_48 : DCLKDIV_DAI_BIT_CLK_DIV_64;
 
 		dclkdiv |= (bclk_ratio == TCC_DAI_BCLK_RATIO_32) ? DCLKDIV_DAI_FRAME_CLK_DIV_32 :
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+				   (bclk_ratio == TCC_DAI_BCLK_RATIO_48) ? DCLKDIV_DAI_FRAME_CLK_DIV_48 :
+				   (bclk_ratio == TCC_DAI_BCLK_RATIO_64) ? DCLKDIV_DAI_FRAME_CLK_DIV_64 : DCLKDIV_DAI_FRAME_CLK_DIV_512;
+#else
 				   (bclk_ratio == TCC_DAI_BCLK_RATIO_48) ? DCLKDIV_DAI_FRAME_CLK_DIV_48 : DCLKDIV_DAI_FRAME_CLK_DIV_64;
+#endif
 #else
 		damr |= (mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_4) ? DAMR_DAI_BIT_CLK_DIV_4 :
 				(mclk_div == TCC_DAI_MCLK_TO_BCLK_DIV_6) ? DAMR_DAI_BIT_CLK_DIV_6 :
@@ -621,17 +634,17 @@ static inline void tcc_dai_set_clk_mode(void __iomem *base_addr, TCC_DAI_MCLK_DI
 		mccr0 |= MCCR0_TDM_BIT_CLK_DIV_DISABLE;
 	}
 
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	dai_writel(dclkdiv, base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #else
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 #endif
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 
-/** Workaround Code for TCC803X, TCC805X, TCC899X and TCC901X **/
+/** Workaround Code for TCC803X, TCC805X, TCC806x, TCC899X and TCC901X **/
 /** Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54) **/
 /** So, we should always restore DCLKDIV value while write that value to register **/
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	return dclkdiv;
 #endif
 
@@ -678,7 +691,7 @@ static inline void tcc_dai_set_audio_filter_enable(void __iomem *base_addr, bool
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 static inline void tcc_dai_set_audio_data_filter_enable(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_DAI_DAMR_OFFSET);
@@ -836,7 +849,7 @@ static inline void tcc_dai_reg_backup(void __iomem *base_addr, struct dai_reg_t 
 	regs->mccr1   = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
 	regs->davc    = readl(base_addr + TCC_DAI_DAVC_OFFSET);
 	regs->drmr    = readl(base_addr + TCC_DAI_DRMR_OFFSET);
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	regs->dclkdiv = readl(base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #endif
 }
@@ -848,7 +861,7 @@ static inline void tcc_dai_reg_restore(void __iomem *base_addr, struct dai_reg_t
 	dai_writel(regs->mccr1,   base_addr + TCC_DAI_MCCR1_OFFSET);
 	dai_writel(regs->davc,    base_addr + TCC_DAI_DAVC_OFFSET);
 	dai_writel(regs->drmr,    base_addr + TCC_DAI_DRMR_OFFSET);
-#if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 	dai_writel(regs->dclkdiv, base_addr + TCC_DAI_DCLKDIV_OFFSET);
 #endif
 }
