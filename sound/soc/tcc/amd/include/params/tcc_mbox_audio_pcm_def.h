@@ -127,7 +127,11 @@
 #define AUDIO_MBOX_PCM_VOLUME_GET_MESSAGE_SIZE   3
 
 #define AUDIO_MBOX_PCM_MUTE_RAMP_SET_MESSAGE_SIZE   4
-//#define AUDIO_MBOX_PCM_MUTE_RAMP_GET_MESSAGE_SIZE   3 //not support get ramp time
+#define AUDIO_MBOX_PCM_MUTE_RAMP_GET_MESSAGE_SIZE   3
+
+#define AUDIO_MBOX_PCM_VOLUME_RAMP_SET_MESSAGE_SIZE   4
+#define AUDIO_MBOX_PCM_VOLUME_RAMP_GET_MESSAGE_SIZE   3
+
 
 #define AUDIO_MBOX_PCM_FADE_SET_MESSAGE_SIZE     2
 #define AUDIO_MBOX_PCM_FADE_GET_MESSAGE_SIZE     1
@@ -145,6 +149,7 @@ enum pcm_command_id {
     PCM_CHIME_TYPE                         , // to send tcc chime type at each chime index
     PCM_INPUT_SOURCE                       , // (Not official) to send which input source is played
     PCM_MUTE_RAMP_TIME                     , // (Not official) to send ramp time in ms for mute/unmute (calculated as an approximation)
+    PCM_VOLUME_RAMP_TIME                   , // (Not official) to send ramp time in ms when changing volume (calculated as an approximation)
 };
 
 enum pcm_value_action {

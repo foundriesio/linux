@@ -478,6 +478,11 @@ obj-$(CONFIG_SND_SOC_WM9713)	+= snd-soc-wm9713.o
 obj-$(CONFIG_SND_SOC_WM_ADSP)	+= snd-soc-wm-adsp.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_ZX_AUD96P22) += snd-soc-zx-aud96p22.o
+ifneq ($(CONFIG_TCC_MULTI_MAILBOX_AUDIO),)
+EXTRA_CFLAGS += -Isound/soc/tcc/amd/include \
+				-Isound/soc/tcc/amd/include/params \
+				-Isound/soc/tcc/amd/include/utils
+endif
 obj-$(CONFIG_SND_SOC_AK4601_VIRTUAL)	+= snd-soc-ak4601-virtual.o
 
 # Amp

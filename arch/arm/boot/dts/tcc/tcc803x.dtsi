@@ -2495,7 +2495,17 @@
 		mbox-names ="audio-mbox-a53";
 		mboxes = <&mbox1 TCC_MBOX1_CH_SND>;
 		status = "disabled";
+	};	
+	
+	/* audio_mailbox (TSND) for R5. */
+	audio_mbox1: audio_mbox@1 {
+		compatible = "telechips,mailbox-audio-r5";
+		device-name ="audio-mbox-dev-r5";
+		mbox-names ="audio-mbox-r5";
+		mboxes = <&mbox0 TCC_MBOX0_CH_SND>;
+		status = "disabled";
 	};
+
 	/*tcc_sfmc: tcc_sfmc@1B000000 {
 		compatible = "telechips,tcc_sfmc";
 		reg = <0x1b000000 0xA00>, <0xC0000000 0x400000>, <0x1BFF1100 0x20>;

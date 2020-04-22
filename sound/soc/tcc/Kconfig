@@ -34,5 +34,5 @@ config SND_SOC_TCC_ASRC_M2M_PCM
 	default n
 
 source "sound/soc/tcc/virtual/Kconfig"
-
+source "sound/soc/tcc/amd/Kconfig"
 endmenu

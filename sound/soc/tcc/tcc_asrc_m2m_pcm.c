@@ -351,7 +351,10 @@ list_delete_all:
 static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_audio_dev, struct snd_pcm_substream *substream, int cmd)
 {
     struct mbox_audio_data_header_t mbox_header;
-
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5	
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tcc_asrc_m2m_pcm *asrc_m2m_pcm = (struct tcc_asrc_m2m_pcm *)snd_soc_platform_get_drvdata(rtd->platform); //Added for R5
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
     const struct snd_pcm *pcm;
     unsigned int device, action_value;
 
@@ -393,7 +396,12 @@ static int tcc_asrc_m2m_pcm_set_action_to_mbox(struct mbox_audio_device *mbox_au
     mbox_msg[4] = PCM_VALUE_MUX_SOURCE_MAIN;
 
     tcc_mbox_audio_send_message(mbox_audio_dev, &mbox_header, mbox_msg, NULL);
-
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5	
+	if(asrc_m2m_pcm->mbox_audio_dev_r5 != NULL) {
+	    mbox_header.usage = MBOX_AUDIO_USAGE_SET_R5;
+		tcc_mbox_audio_send_message(asrc_m2m_pcm->mbox_audio_dev_r5, &mbox_header, mbox_msg, NULL); 
+	}
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
     printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] mbox message : device = 0x%02x, action = 0x%01x\n", __func__, mbox_msg[1], mbox_msg[2]);
 
     return 0;
@@ -440,6 +448,12 @@ static int tcc_asrc_m2m_pcm_set_hw_params_to_mbox(struct tcc_asrc_m2m_pcm *asrc_
     mbox_msg[4] = (stream == SNDRV_PCM_STREAM_PLAYBACK) ? asrc_m2m_pcm->playback->middle->buffer_bytes : asrc_m2m_pcm->capture->middle->buffer_bytes;
 
     tcc_mbox_audio_send_message(asrc_m2m_pcm->mbox_audio_dev, &mbox_header, mbox_msg, NULL);
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5	
+	if(asrc_m2m_pcm->mbox_audio_dev_r5 != NULL) {
+	    mbox_header.usage = MBOX_AUDIO_USAGE_SET_R5;
+		tcc_mbox_audio_send_message(asrc_m2m_pcm->mbox_audio_dev_r5, &mbox_header, mbox_msg, NULL);
+	}
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 
     printk(KERN_DEBUG "[DEBUG][T-sound_PCM][%s] mbox message : device = 0x%02x, tx_rx = 0x%01x, buffer address = 0x%x, buffer size = %u\n", __func__, mbox_msg[1], mbox_msg[2], mbox_msg[3], mbox_msg[4]);
 
@@ -2590,6 +2604,13 @@ static int tcc_asrc_m2m_pcm_probe(struct platform_device *pdev)
 		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s] ERROR!! mbox_audio_dev is NULL!\n", asrc_m2m_pcm->dev_id, __func__);
 		goto error_mailbox;
     }
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+    asrc_m2m_pcm->mbox_audio_dev_r5 = get_tcc_mbox_audio_device_r5();
+    if (asrc_m2m_pcm->mbox_audio_dev_r5 == NULL) {
+		printk(KERN_DEBUG "[DEBUG][T-sound_PCM-%d][%s] ERROR!! mbox_audio_dev_r5 is NULL!\n", asrc_m2m_pcm->dev_id, __func__);
+		goto error_mailbox;
+    }
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 #endif
 
 	platform_set_drvdata(pdev, asrc_m2m_pcm);

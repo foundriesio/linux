@@ -51,10 +51,10 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 
-#include <sound/tcc/tcc_mbox_audio_ioctl.h>
-#include <sound/tcc/utils/tcc_mbox_audio_utils.h>
-#include <sound/tcc/tcc_multi_mailbox_audio.h>
-#include <sound/tcc/params/tcc_mbox_audio_pcm_def.h>
+#include <tcc_mbox_audio_ioctl.h>
+#include <utils/tcc_mbox_audio_utils.h>
+#include <tcc_multi_mailbox_audio.h>
+#include <params/tcc_mbox_audio_pcm_def.h>
 
 #define MBOX_AUDIO_DEV_NAME        "mailbox-audio"
 #define MBOX_AUDIO_DEV_MINOR       0
@@ -64,8 +64,8 @@
 
 #define CMD_TIMEOUT		        			msecs_to_jiffies(1000)
 
-#define AUDIO_MBOX_FOR_A53					0
-#define AUDIO_MBOX_FOR_A7S					1
+#define AUDIO_MBOX_CH0					0
+#define AUDIO_MBOX_CH1					1
 
 #ifndef CONFIG_OF
 static struct mbox_audio_device *global_audio_dev;
@@ -74,6 +74,15 @@ struct mbox_audio_device *get_global_audio_dev(void)
 {
     return global_audio_dev;
 }
+
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+static struct mbox_audio_device *global_audio_dev_r5;
+
+struct mbox_audio_device *get_global_audio_dev_r5(void)
+{
+    return global_audio_dev_r5;
+}
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 #endif
 
 /*****************************************************************************
@@ -151,13 +160,20 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : msg_size exceed (cmd_type = 0x%04x).\n", __FUNCTION__, header->cmd_type);
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	if (((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5)) && reply == NULL) {
+#else
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST && reply == NULL) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : if use MBOX_AUDIO_USAGE_REQUEST, reply must not NULL", __FUNCTION__);
 		return -EINVAL; 
 	}
 
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+    if ((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5)) {
+#else
     if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 		// for a53 : set the area of replied data
 		mutex_lock(&audio_dev->lock);
 		tx_instance = tcc_mbox_audio_get_available_tx_instance(audio_dev);
@@ -178,7 +194,11 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 	mbox_data = kzalloc(sizeof(struct tcc_mbox_data), GFP_KERNEL);
 	if (mbox_data == NULL) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc mbox_data\n", __FUNCTION__);
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+		if ((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5)) {
+#else
 		if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 			atomic_set(&tx->wakeup, 0);
 			tx->reply.updated = 0;
 			tx->reserved = 0;
@@ -199,7 +219,11 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 
 	if (tcc_mbox_audio_send_message_to_channel(audio_dev, mbox_data) < 0) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : send failed.\n", __FUNCTION__);
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+		if ((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5)) {
+#else
 		if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 			atomic_set(&tx->wakeup, 0);
 			tx->reply.updated = 0;
 			tx->reserved = 0;
@@ -211,7 +235,11 @@ int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox
 	kfree(mbox_data);
 
     //wait reply with tx if need
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	if ((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5)) {
+#else
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 		if (wait_event_interruptible_timeout(tx->wait, atomic_read(&tx->wakeup), CMD_TIMEOUT) <= 0) {
 			printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : timeout error to get reply message.\n", __FUNCTION__);
 
@@ -434,15 +462,24 @@ static void tcc_audio_mbox_rx_cmd_handler(void *device_info, struct tcc_mbox_dat
 	// 2. process in callback thread : faster than worker thread but may affected to the processing of  pcm position data...
 	switch (usage) {
 	case MBOX_AUDIO_USAGE_SET :
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	case MBOX_AUDIO_USAGE_SET_R5 :
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 	//1. set : set code/pcm/effect data
 	    tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, tx_instance, msg, msg_size);
 		return;
     case MBOX_AUDIO_USAGE_REQUEST :
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	case MBOX_AUDIO_USAGE_REQUEST_R5 :
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 	//2. request : get code/pcm/effect data -> send reply with data
 	//note. a53 do not receive this usage, because a7s do not send request (see tcc_mbox_audio_send_command())
         tcc_mbox_audio_set_message(audio_dev, usage, cmd_type, tx_instance, msg, msg_size);
 		return;
 	case MBOX_AUDIO_USAGE_REPLY :
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	case MBOX_AUDIO_USAGE_REPLY_R5 :
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 	//3. reply : get relied data -> tx wakeup
 	//note. a7s do not receive this usage, because a7s do not send request
 	    result = tcc_mbox_audio_process_replied_message(audio_dev, cmd_type, msg, msg_size, tx_instance);
@@ -567,31 +604,22 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	    rx_queue_handle = RX_QUEUE_FOR_COMMAND;
 	}
 
-
 	if (&audio_dev->rx[rx_queue_handle] == NULL) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx is NULL for rx[%d].\n", __FUNCTION__, rx_queue_handle);
-		if (audio_msg != NULL) {
-			kfree(audio_msg);
-		}
-		return;
+		goto mbox_audio_message_received_error;
 	}
 
 	if (&audio_dev->rx[rx_queue_handle].lock == NULL) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx[%d].lock is NULL.\n", __FUNCTION__, rx_queue_handle);
-		if (audio_msg != NULL) {
-			kfree(audio_msg);
-		}
-		return;
+		goto mbox_audio_message_received_error;
 	}
 
 	if (&audio_dev->rx[rx_queue_handle].list == NULL) {
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : audio_dev->rx[%d].list is NULL.\n", __FUNCTION__, rx_queue_handle);
-		if (audio_msg != NULL) {
-			kfree(audio_msg);
-		}
-		return;
+		goto mbox_audio_message_received_error;
 	}
-
+	
+	//add audio command to queue
 	spin_lock_irqsave (&audio_dev->rx[rx_queue_handle].lock, flags);
 	list_add_tail(&audio_msg->list, &audio_dev->rx[rx_queue_handle].list);
 	spin_unlock_irqrestore(&audio_dev->rx[rx_queue_handle].lock, flags);
@@ -600,8 +628,11 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	kthread_queue_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
 
 	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received end--\n", __FUNCTION__);
-
-
+	return;
+mbox_audio_message_received_error:
+	if (audio_msg != NULL) {
+		kfree(audio_msg);
+	}
 }
 
 /*****************************************************************************
@@ -911,6 +942,58 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
 	    header->tx_instance = 0;
 		break;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	case IOCTL_MBOX_AUDIO_CONTROL_R5:
+	    header->usage = (mbox_audio_msg.data[0] >> 24) & 0x00FF;
+	    header->cmd_type = (mbox_audio_msg.data[0] >> 16) & 0x00FF;
+	    header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
+		break;
+	case IOCTL_MBOX_AUDIO_PCM_SET_CONTROL_R5:
+	    header->usage = MBOX_AUDIO_USAGE_SET_R5;
+		header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+		header->tx_instance = 0;
+		break;
+	case IOCTL_MBOX_AUDIO_PCM_REPLY_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_REPLY_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+		header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
+		break;
+	case IOCTL_MBOX_AUDIO_PCM_GET_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_REQUEST_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_PCM;
+		header->tx_instance = 0;
+		break;
+	case IOCTL_MBOX_AUDIO_CODEC_SET_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_SET_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+		header->tx_instance = 0;
+		break;
+   	case IOCTL_MBOX_AUDIO_CODEC_REPLY_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_REPLY;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+		header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
+		break;
+	case IOCTL_MBOX_AUDIO_CODEC_GET_CONTROL_R5:
+	    header->usage = MBOX_AUDIO_USAGE_REQUEST_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_CODEC;
+		header->tx_instance = 0;
+		break;
+	case IOCTL_MBOX_AUDIO_EFFECT_SET_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_SET_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+		header->tx_instance = 0;
+		break;
+	case IOCTL_MBOX_AUDIO_EFFECT_REPLY_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_REPLY_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+		header->tx_instance = (mbox_audio_msg.data[0] >> 8) & 0x00FF;
+		break;		
+	case IOCTL_MBOX_AUDIO_EFFECT_GET_CONTROL_R5:
+		header->usage = MBOX_AUDIO_USAGE_REQUEST_R5;
+	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_EFFECT;
+	    header->tx_instance = 0;
+		break;		
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 	case IOCTL_MBOX_AUDIO_POSITION_0_SET_CONTROL:
 		header->usage = MBOX_AUDIO_USAGE_SET;
 	    header->cmd_type = MBOX_AUDIO_CMD_TYPE_POSITION_0;
@@ -962,8 +1045,11 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
 		goto err_cmd;
 	}
     header->msg_size = mbox_audio_msg.data[0] & 0x00FF;
-    
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	if ((header->usage == MBOX_AUDIO_USAGE_REQUEST) || (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5))  {
+#else   
 	if (header->usage == MBOX_AUDIO_USAGE_REQUEST) {
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
             reply_data = kzalloc(sizeof(struct mbox_audio_tx_reply_data_t), GFP_KERNEL);
             if (reply_data == NULL) {
                 printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Cannot alloc reply_data for request.\n", __FUNCTION__);
@@ -978,6 +1064,11 @@ static long tcc_mbox_audio_ioctl(struct file * filp, unsigned int cmd, unsigned 
                     ((reply_data->cmd_type << 16) & 0x00FF0000) |
                     ((0x00 << 8) & 0x0000FF00) |
                     (reply_data->msg_size & 0x000000FF);
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+				if (header->usage == MBOX_AUDIO_USAGE_REQUEST_R5) {
+					mbox_audio_msg.data[0] |= ((MBOX_AUDIO_USAGE_REPLY_R5 << 24) & 0xFF000000);
+				} 	
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 
                 memcpy(&(mbox_audio_msg.data[AUDIO_MBOX_HEADER_SIZE]), reply_data->msg, sizeof(unsigned int) * reply_data->msg_size);
 
@@ -1021,7 +1112,6 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 	struct mbox_audio_device *audio_dev = NULL;
 
 	char rx_name[20];
-	const char *device_name = "audio-mbox-dev-a53";
 	int i;
 
 	audio_dev = devm_kzalloc(&pdev->dev, sizeof(struct mbox_audio_device), GFP_KERNEL);
@@ -1040,10 +1130,14 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 	of_property_read_string(pdev->dev.of_node,"device-name", &audio_dev->dev_name);
 	of_property_read_string(pdev->dev.of_node,"mbox-names", &audio_dev->mbox_name);
 
-	if (strncmp(audio_dev->dev_name, device_name, strlen(device_name)) == 0) {
-		audio_dev->chip_id = AUDIO_MBOX_FOR_A53;
+	if(of_device_is_compatible(pdev->dev.of_node, "telechips,mailbox-audio"))
+	{
+		audio_dev->chip_id = AUDIO_MBOX_CH1;
+	} else if (of_device_is_compatible(pdev->dev.of_node, "telechips,mailbox-audio-r5"))
+	{
+		audio_dev->chip_id = AUDIO_MBOX_CH0;
 	} else {
-	    audio_dev->chip_id = AUDIO_MBOX_FOR_A7S;
+		audio_dev->chip_id = AUDIO_MBOX_CH1; 
 	}
 
     //create and register character device
@@ -1116,9 +1210,14 @@ static int multi_mbox_audio_probe(struct platform_device *pdev) {
 
 	tcc_mbox_audio_user_queue_init(&audio_dev->user_queue);
 
-#ifndef CONFIG_OF	
+#ifndef CONFIG_OF
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	if (audio_dev->chip_id == AUDIO_MBOX_CH0)
+		global_audio_dev_r5 = audio_dev;
+	else
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 	global_audio_dev = audio_dev;
-    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : global_audio_dev dev_name:%s, mbox_name:%s, dev_num:%d\n", __FUNCTION__, global_audio_dev->dev_name, global_audio_dev->mbox_name, global_audio_dev->dev_num);
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : audio_dev dev_name:%s, mbox_name:%s, dev_num:%d\n", __FUNCTION__, audio_dev->dev_name, audio_dev->mbox_name, audio_dev->dev_num);
 #endif
 
 	audio_dev->mbox_audio_ready = DRV_STATUS_READY;
@@ -1178,7 +1277,10 @@ int multi_mbox_audio_resume(struct platform_device *pdev)
 
 #ifdef CONFIG_OF
 static const struct of_device_id multi_mbox_audio_match[] = {
-    { .compatible = "telechips,mailbox-audio" },
+	{ .compatible = "telechips,mailbox-audio" },
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+    { .compatible = "telechips,mailbox-audio-r5" },
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
     {},
 };
 MODULE_DEVICE_TABLE(of, multi_mbox_audio_match);
@@ -1189,7 +1291,7 @@ static struct platform_driver multi_mbox_audio_driver = {
         .name = MBOX_AUDIO_DEV_NAME,
 		.owner	= THIS_MODULE,
 #ifdef CONFIG_OF
-        .of_match_table = multi_mbox_audio_match,
+        .of_match_table = of_match_ptr(multi_mbox_audio_match),
 #endif
     },
     .probe  = multi_mbox_audio_probe,

@@ -18,9 +18,9 @@
 #ifndef _AK4601_VIR_H
 #define _AK4601_VIR_H
 
-#include <sound/tcc/params/tcc_mbox_audio_params.h>
-#include <sound/tcc/params/tcc_mbox_ak4601_codec_def.h>
-#include <sound/tcc/utils/tcc_mbox_audio_utils.h>
+#include <tcc_mbox_audio_params.h>
+#include <tcc_mbox_ak4601_codec_def.h>
+#include <tcc_mbox_audio_utils.h>
 
 //#define USE_INTERNEL_BACKUP_DATA
 

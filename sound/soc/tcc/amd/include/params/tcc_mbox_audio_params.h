@@ -38,10 +38,13 @@
 
 /** usage type **/
 enum {
-    MBOX_AUDIO_USAGE_SET = 0x0000,              // to set data or send command to the other chip through mailbox
-	MBOX_AUDIO_USAGE_REQUEST = 0x0010,          // to get data from the other chip (a53) or restored data (a7s)
-	MBOX_AUDIO_USAGE_REPLY = 0x0020,            // only used in audio mbox driver
-	MBOX_AUDIO_USAGE_MAX = MBOX_AUDIO_USAGE_REPLY,
+    MBOX_AUDIO_USAGE_SET		= 0x0000,		// to set data or send command to the other chip through mailbox
+    MBOX_AUDIO_USAGE_SET_R5		= 0x0001,		// to set data or send command to the other chip through mailbox
+	MBOX_AUDIO_USAGE_REQUEST	= 0x0010,		// to get data from the other chip (a53) or restored data (a7s)
+	MBOX_AUDIO_USAGE_REQUEST_R5 = 0x0011,		// to get data from the other chip (a53) or restored data (a7s)
+	MBOX_AUDIO_USAGE_REPLY		= 0x0020,		// only used in audio mbox driver
+	MBOX_AUDIO_USAGE_REPLY_R5	= 0x0021,		// only used in audio mbox driver	
+	MBOX_AUDIO_USAGE_MAX = MBOX_AUDIO_USAGE_REPLY_R5,
 };
 
 /** command type **/

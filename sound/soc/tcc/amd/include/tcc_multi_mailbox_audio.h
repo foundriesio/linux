@@ -26,7 +26,7 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 
-#include <sound/tcc/params/tcc_mbox_audio_params.h>
+#include <tcc_mbox_audio_params.h>
 
 
 //We should consider the number of queue (and worker thread)
@@ -159,5 +159,6 @@ struct mbox_audio_device {
 
 struct mbox_audio_device *get_global_audio_dev(void);
 int tcc_mbox_audio_send_command(struct mbox_audio_device *audio_dev, struct mbox_audio_data_header_t *header, unsigned int *msg, struct mbox_audio_tx_reply_data_t *reply);
+int tcc_mbox_audio_send_command_r5(struct mbox_audio_device *audio_dev, struct mbox_audio_data_header_t *header, unsigned int *msg, struct mbox_audio_tx_reply_data_t *reply);
 #endif//_TCC_MULTI_MAILBOX_AUDIO_H_
 
