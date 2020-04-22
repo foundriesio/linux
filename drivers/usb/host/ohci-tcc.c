@@ -311,11 +311,24 @@ static int usb_hcd_tcc_probe(const struct hc_driver *driver, struct platform_dev
 
 	/* Parsing the device table */
 	retval = tcc_ohci_parse_dt(pdev, tcc_ohci);
-	if(retval != 0){
-		if(retval != -1)
-			printk(KERN_ERR "[ERROR][USB] ochi-tcc: Device table parsing failed\n");
-		retval = -EIO;
+	/*
+	 * If the value of the ehci_phy_set variable is -EPROBE_DEFER,
+	 * ehci_tcc_drv_probe() in ehci-tcc.c failed because the VBus GPIO pin
+	 * number is set to an invalid number. In such a case, the
+	 * usb_hcd_tcc_probe() in this ohci-tcc.c also fails.
+	 */
+	if (ehci_phy_set == -EPROBE_DEFER) {
+		printk(KERN_ERR "[ERROR][USB] The tcc-ohci probe will also fail because the VBus GPIO pin number for ehci_phy is not valid.\n");
+		retval = -EPROBE_DEFER;
 		goto err0;
+	} else {
+		if (retval != 0) {
+			if (retval != -1) {
+				dev_err(&pdev->dev, "[ERROR][USB] Device table parsing failed.\n");
+			}
+			retval = -EIO;
+			goto err0;
+		}
 	}
 	
 	irq = platform_get_irq(pdev, 0);

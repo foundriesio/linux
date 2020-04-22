@@ -388,7 +388,7 @@ int tcc_otg_vbus_ctrl(dwc_otg_device_t *otg_dev, int on_off)
 		return -1;
 	}
 
-	if ( !phy || !phy->set_vbus ) {
+	if (!phy) {
 		printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
@@ -1164,12 +1164,7 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 #ifdef CONFIG_TCC_DWC_OTG_HOST_MUX		/* 017.02.28 */
 	if (of_find_property(pdev->dev.of_node, "telechips,mhst_phy", 0)) {
 		dwc_otg_device->mhst_phy = devm_usb_get_phy_by_phandle(&pdev->dev, "telechips,mhst_phy", 0);
-#ifdef CONFIG_ARCH_TCC803X
-		err = dwc_otg_device->mhst_phy->set_vbus_resource(dwc_otg_device->mhst_phy);
-		if (err) {
-			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
-		}
-#endif 
+
 		if (IS_ERR(dwc_otg_device->mhst_phy)) {
 			dwc_otg_device->mhst_phy = NULL;
 			printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
@@ -1181,14 +1176,16 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 		dwc_otg_device->dwc_otg_phy = devm_usb_get_phy_by_phandle(&pdev->dev, "telechips,dwc_otg_phy", 0);
 #ifdef CONFIG_ARCH_TCC803X
 		err = dwc_otg_device->dwc_otg_phy->set_vbus_resource(dwc_otg_device->dwc_otg_phy);
-		if (err) {
-			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
-		}
 #endif 
-		if (IS_ERR(dwc_otg_device->dwc_otg_phy)){
+		if (IS_ERR(dwc_otg_device->dwc_otg_phy)) {
+			if (PTR_ERR(dwc_otg_device->dwc_otg_phy) == -EPROBE_DEFER) {
+				err = -EPROBE_DEFER;
+			} else {
+				printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
+				err = -1;
+			}
 			dwc_otg_device->dwc_otg_phy = NULL;
-			printk("[INFO][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
-			return -1;
+			return err;
 		}
 	}
 
