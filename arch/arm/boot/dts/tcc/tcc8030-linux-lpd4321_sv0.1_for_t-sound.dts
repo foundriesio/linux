@@ -99,8 +99,14 @@
 
 	};
 	*/
-
+	
+	/* audio_mailbox (TSND) for A53. */
 	audio_mbox@0 {
+		status = "okay";
+	};
+
+	/* audio_mailbox (TSND) for R5. */	
+	audio_mbox@1 {
 		status = "okay";
 	};
 

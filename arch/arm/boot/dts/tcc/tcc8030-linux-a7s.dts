@@ -921,6 +921,15 @@
 		status = "disabled";
 	};
 
+	/* audio_mailbox (TSND) for R5 */
+	audio_mbox1: audio_mbox@1 {
+		compatible = "telechips,mailbox-audio-r5";
+		device-name ="audio-mbox-dev-r5";
+		mbox-names ="audio-mbox-r5";
+		mboxes = <&mbox0 TCC_MBOX0_CH_SND>;
+		status = "disabled";
+	};
+
 	adma0: adma@16100000 {
 		compatible = "telechips,adma";
 		reg = <0x16100000 0x200>;

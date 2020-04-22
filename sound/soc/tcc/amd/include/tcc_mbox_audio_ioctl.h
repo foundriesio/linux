@@ -61,5 +61,23 @@ struct tcc_mbox_audio_msg
 //if app makes header directly, use below ioctl
 #define IOCTL_MBOX_AUDIO_CONTROL	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x62, struct tcc_mbox_audio_msg) 
 
+/*****************************************************************************
+* ioctls for R5 mbox
+******************************************************************************/
+#define IOCTL_MBOX_AUDIO_PCM_SET_CONTROL_R5    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x70, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_PCM_GET_CONTROL_R5    _IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x71, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_PCM_REPLY_CONTROL_R5    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x72, struct tcc_mbox_audio_msg)
+
+#define IOCTL_MBOX_AUDIO_CODEC_SET_CONTROL_R5	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x73, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_CODEC_GET_CONTROL_R5	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x74, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_CODEC_REPLY_CONTROL_R5    _IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x75, struct tcc_mbox_audio_msg)
+
+#define IOCTL_MBOX_AUDIO_EFFECT_SET_CONTROL_R5	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x76, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_EFFECT_GET_CONTROL_R5	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x77, struct tcc_mbox_audio_msg)
+#define IOCTL_MBOX_AUDIO_EFFECT_REPLY_CONTROL_R5	_IOW(IOCTL_MBOX_AUDIO_MAGIC, 0x78, struct tcc_mbox_audio_msg)
+
+//if app makes header directly, use below ioctl
+#define IOCTL_MBOX_AUDIO_CONTROL_R5	_IOWR(IOCTL_MBOX_AUDIO_MAGIC, 0x82, struct tcc_mbox_audio_msg) 
+
 #endif//_TCC_MBOX_AUDIO_IOCTL_H_
 

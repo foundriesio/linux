@@ -1,0 +1,9 @@
+config TCC_MULTI_MAILBOX_AUDIO
+	tristate "Telechips Mailbox Audio Client for T-Sound"
+	depends on TCC_MULTI_MAILBOX
+	default n
+
+config TCC_MULTI_MAILBOX_AUDIO_R5
+	tristate "Telechips Mailbox Audio Client for T-Sound(R5)"
+	depends on TCC_MULTI_MAILBOX_AUDIO
+	default n

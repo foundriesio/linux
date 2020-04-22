@@ -22,7 +22,7 @@
 #include <linux/of_irq.h>
 #endif
 
-#include <sound/tcc/utils/tcc_mbox_audio_utils.h>
+#include <tcc_mbox_audio_utils.h>
 
 /*****************************************************************************
  * APIs for get driver data
@@ -53,6 +53,36 @@ struct mbox_audio_device *get_tcc_mbox_audio_device(void)
 #endif
 }
 EXPORT_SYMBOL(get_tcc_mbox_audio_device);
+
+/*****************************************************************************
+ * APIs for get driver data for R5
+ *****************************************************************************/
+struct mbox_audio_device *get_tcc_mbox_audio_device_r5(void)
+{
+#ifdef CONFIG_OF
+    struct platform_device *pdev;
+	struct device_node *of_node_mbox_audio;
+
+	of_node_mbox_audio = of_find_compatible_node(NULL, NULL, "telechips,mailbox-audio-r5");
+    if ((pdev = of_find_device_by_node(of_node_mbox_audio)) == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : fail to get platform device for r5 from node.\n", __FUNCTION__);
+		return NULL;
+    }
+
+	return platform_get_drvdata(pdev);
+#else
+    struct mbox_audio_device *mbox_audio = get_global_audio_dev_r5();
+    if (mbox_audio == NULL) {
+		printk(KERN_ERR "[ERROR][MBOX_AUDIO_UTILS] %s : global_audio_dev_r5 is null!!\n", __FUNCTION__);
+		return NULL;
+    }
+    
+    printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO_UTILS] %s, get mbox audio device for r5\n", __FUNCTION__);
+	
+	return mbox_audio;
+#endif
+}
+EXPORT_SYMBOL(get_tcc_mbox_audio_device_r5);
 
 int tcc_mbox_audio_send_message(struct mbox_audio_device *audio_dev, struct mbox_audio_data_header_t *header, unsigned int *msg, struct mbox_audio_tx_reply_data_t *reply)
 {

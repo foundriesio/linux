@@ -62,10 +62,16 @@
 		};
 	};
 
+	/* audio_mailbox (TSND) for A7S */
 	audio_mbox@0 {
 		status = "okay";
 	};
-
+	
+	/* audio_mailbox (TSND) for R5 */
+	audio_mbox@1 {
+		status = "okay";
+	};
+	
 	i2s@16101000 {
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0 &m1dai3_dao1 &m1dai3_dai1>;

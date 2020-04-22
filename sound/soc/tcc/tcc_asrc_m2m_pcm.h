@@ -22,8 +22,8 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
-#include <sound/tcc/params/tcc_mbox_audio_pcm_def.h>
-#include <sound/tcc/utils/tcc_mbox_audio_utils.h>
+#include <tcc_mbox_audio_pcm_def.h>
+#include <tcc_mbox_audio_utils.h>
 #endif
 
 #include "tcc_adma.h"
@@ -175,6 +175,9 @@ struct tcc_asrc_m2m_pcm {
 	struct asrc_m2m_pcm_stream *capture;
 #ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO
 	struct mbox_audio_device *mbox_audio_dev;
+#ifdef CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
+	struct mbox_audio_device *mbox_audio_dev_r5; //Added for AMD R5
+#endif//CONFIG_TCC_MULTI_MAILBOX_AUDIO_R5
 #endif
 #ifdef FOOTPRINT_LINKED_LIST
 	List *asrc_footprint;	//for playback

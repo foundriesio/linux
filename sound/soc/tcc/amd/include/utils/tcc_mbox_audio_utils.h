@@ -17,13 +17,13 @@
 #ifndef _TCC_MBOX_AUDIO_UTILS_H_
 #define _TCC_MBOX_AUDIO_UTILS_H_
 
-#include <sound/tcc/tcc_multi_mailbox_audio.h>
+#include <tcc_multi_mailbox_audio.h>
 
 /*****************************************************************************
 * APIs for audio driver
 ******************************************************************************/
 struct mbox_audio_device *get_tcc_mbox_audio_device(void);
-
+struct mbox_audio_device *get_tcc_mbox_audio_device_r5(void);
 // client must set "set_callback" to receive data to set params
 // return cmd_type to used by client
 struct mbox_audio_device *tcc_mbox_audio_register_set_kernel_callback(void *client_data, void *set_callback, unsigned short cmd_type);

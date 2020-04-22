@@ -47,6 +47,7 @@
 
 #define eprintk(msg...)    printk(KERN_ERR LOG_TAG  msg);
 
+//#define SEND_CMD_TO_R5_CODEC //Enable for R5 mbox, disable for A7S mbox
 
 /* AK4601 Codec Private Data */
 struct ak4601_priv {
@@ -1144,7 +1145,11 @@ static int ak4601_vir_codec_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ak4601);
 
 	ak4601->pdev = pdev;
+#ifndef SEND_CMD_TO_R5_CODEC
 	ak4601->mbox_audio_dev = get_tcc_mbox_audio_device();
+#else
+	ak4601->mbox_audio_dev = get_tcc_mbox_audio_device_r5();//Added for R5
+#endif
 
 	dprintk("[%s] global_audio_dev dev_name:%s, mbox_name:%s, dev_num:%d\n", __FUNCTION__, ak4601->mbox_audio_dev->dev_name, ak4601->mbox_audio_dev->mbox_name, ak4601->mbox_audio_dev->dev_num);
 
