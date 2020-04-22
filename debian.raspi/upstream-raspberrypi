@@ -1,3 +1,3 @@
 # The following upstream raspberrypi releases have been ported:
 [upstream-raspberrypi]:
-    rpi-5.4.y = dc11cb9f8901 ("Add upstream and upstream-pi4 to overlay_map") [2020-04-07]
+    rpi-5.4.y = a142142bdf77 ("Revert "firmware: raspberrypi: register clk device"") [2020-04-22]
