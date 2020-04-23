@@ -265,7 +265,7 @@ static int __stm32_usbphyc_pll_disable(struct stm32_usbphyc *usbphyc)
 	stm32_usbphyc_clr_bits(pll_reg, PLLEN);
 
 	/* Wait for minimum width of powerdown pulse (ENABLE = Low) */
-	if (readl_poll_timeout(pll_reg, pllen, !(pllen & PLLEN), 5, 50))
+	if (readl_relaxed_poll_timeout(pll_reg, pllen, !(pllen & PLLEN), 5, 50))
 		dev_err(usbphyc->dev, "PLL not reset\n");
 
 	return stm32_usbphyc_regulators_disable(usbphyc);
@@ -342,10 +342,9 @@ static int stm32_usbphyc_phy_init(struct phy *phy)
 
 	/* Check that PLL Lock input to PHY is High */
 	writel_relaxed(monsel, usbphyc->base + reg_mon);
-	monout = readl_relaxed(usbphyc->base + reg_mon) & STM32_USBPHYC_MON_OUT;
-	ret = readl_poll_timeout(usbphyc->base + reg_mon, monout,
-				 (monout & STM32_USBPHYC_MON_OUT_LOCKP),
-				 100, 1000);
+	ret = readl_relaxed_poll_timeout(usbphyc->base + reg_mon, monout,
+					 monout & STM32_USBPHYC_MON_OUT_LOCKP,
+					 100, 1000);
 	if (ret) {
 		dev_err(usbphyc->dev, "PLL Lock input to PHY is Low (val=%x)\n",
 			(u32)(monout & STM32_USBPHYC_MON_OUT));
@@ -638,8 +637,8 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 	 * Wait for minimum width of powerdown pulse (ENABLE = Low):
 	 * we have to ensure the PLL is disabled before phys initialization.
 	 */
-	if (readl_poll_timeout(usbphyc->base + STM32_USBPHYC_PLL,
-			       pllen, !(pllen & PLLEN), 5, 50)) {
+	if (readl_relaxed_poll_timeout(usbphyc->base + STM32_USBPHYC_PLL,
+				       pllen, !(pllen & PLLEN), 5, 50)) {
 		dev_warn(usbphyc->dev, "PLL not reset\n");
 		ret = -EPROBE_DEFER;
 		goto clk_disable;
