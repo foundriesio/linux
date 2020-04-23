@@ -235,6 +235,15 @@ config STM32_RPROC
 
 	  This can be either built-in or a loadable module.
 
+
+config TEE_REMOTEPROC
+	tristate "trusted firmware Support by a Trusted Application"
+	depends on OPTEE
+	help
+	  Support for trusted remote processors firmware. The firmware
+	  authentication and/or decryption are managed by a trusted application.
+	  This can be either built-in or a loadable module.
+
 endif # REMOTEPROC
 
 endmenu
