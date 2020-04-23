@@ -283,6 +283,8 @@ struct sock *__inet_lookup_established(struct net *net,
 
 begin:
 	sk_nulls_for_each_rcu(sk, node, &head->chain) {
+		if (unlikely(!node))
+			goto begin;
 		if (sk->sk_hash != hash)
 			continue;
 		if (likely(INET_MATCH(sk, net, acookie,
