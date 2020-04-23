@@ -47,6 +47,7 @@
 
 #include <linux/cdev.h>
 #include <asm/atomic.h>
+#include <linux/version.h>
 
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
@@ -625,7 +626,11 @@ static void tcc_mbox_audio_message_received(struct mbox_client *client, void *me
 	spin_unlock_irqrestore(&audio_dev->rx[rx_queue_handle].lock, flags);
 
 	//run worker thread to process command at queue
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	queue_kthread_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
+#else
 	kthread_queue_work(&audio_dev->rx[rx_queue_handle].kworker, &audio_dev->rx[rx_queue_handle].work);
+#endif
 
 	printk(KERN_DEBUG "[DEBUG][MBOX_AUDIO] %s : received end--\n", __FUNCTION__);
 	return;
@@ -676,8 +681,12 @@ static long tcc_mbox_audio_rx_init(struct mbox_audio_rx_t *rx, const char *name,
 	rx->handler = tcc_audio_mbox_rx_cmd_handler;
 
 	atomic_set(&rx->seq, 0);
-
+	
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	init_kthread_worker(&rx->kworker);
+#else
 	kthread_init_worker(&rx->kworker);
+#endif
 
 	rx->task = kthread_run(kthread_worker_fn, &rx->kworker, name);
 
@@ -687,9 +696,12 @@ static long tcc_mbox_audio_rx_init(struct mbox_audio_rx_t *rx, const char *name,
 		printk(KERN_ERR "[ERROR][MBOX_AUDIO] %s : Fail to kthread_run(%ld) \n", __FUNCTION__, PTR_ERR(rx->task));
 		return PTR_ERR(rx->task);
 	}
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	init_kthread_work(&rx->work, tcc_mbox_audio_rx_work);
+#else
 	kthread_init_work(&rx->work, tcc_mbox_audio_rx_work);
-	
+#endif
+
 	return 0;
 }
 
