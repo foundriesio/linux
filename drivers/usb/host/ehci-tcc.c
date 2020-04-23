@@ -431,7 +431,7 @@ int tcc_ehci_vbus_ctrl(struct tcc_ehci_hcd *tcc_ehci, int on_off)
 		return -1;
 	}
 
-	if (!phy || !phy->set_vbus) {
+	if (!phy) {
 		printk("[INFO][USB] [%s:%d]Phy driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
@@ -558,10 +558,24 @@ static int ehci_tcc_drv_probe(struct platform_device *pdev)
 
 	/* Parsing the device table */
 	retval = tcc_ehci_parse_dt(pdev, tcc_ehci);
-	if(retval != 0){
-		if(retval != -1)
-			printk(KERN_ERR "[ERROR][USB] ehci-tcc: Device table parsing failed\n");
-		retval = -EIO;
+	if (retval != 0) {
+		/*
+		 * If the return value of tcc_ehci_parse_dt() is -EPROBE_DEFER, the
+		 * VBus GPIO number is set to an invalid number in set_vbus_resource()
+		 * called in tcc_ehci_parse_dt(). In such a case, set the value of the
+		 * ehci_phy_set variable to -EPROBE_DEFER and usb_hcd_tcc_probe() in
+		 * ohci-tcc.c check the value of the ehci_phy_set variable. If the
+		 * value of the ehci_phy_set variable is -EPROBE_DEFER, the
+		 * usb_hcd_tcc_probe() also fails.
+		 */
+		if (retval == -EPROBE_DEFER) {
+			ehci_phy_set = -EPROBE_DEFER;
+		} else if (retval == -1) {
+			retval = -EIO;
+		} else {
+			dev_err(&pdev->dev, "[ERROR][USB] Device table parsing failed.\n");
+			retval = -EIO;
+		}
 		goto fail_create_hcd;
 	}
 
@@ -726,13 +740,15 @@ static int tcc_ehci_parse_dt(struct platform_device *pdev, struct tcc_ehci_hcd *
 		tcc_ehci->transceiver = devm_usb_get_phy_by_phandle(&pdev->dev, "telechips,ehci_phy", 0);
 #ifdef CONFIG_ARCH_TCC803X
 		err = tcc_ehci->transceiver->set_vbus_resource(tcc_ehci->transceiver);
-		if (err) {
-			dev_err(&pdev->dev, "[ERROR][USB] failed to set a vbus resource\n");
-		}
 #endif 
 		if (IS_ERR(tcc_ehci->transceiver)) {
+			if (PTR_ERR(tcc_ehci->transceiver) == -EPROBE_DEFER) {
+				err = -EPROBE_DEFER;
+			} else {
+				err = -ENODEV;
+			}
 			tcc_ehci->transceiver = NULL;
-			return -ENODEV;
+			return err;
 		}
 		tcc_ehci->phy_regs = tcc_ehci->transceiver->base;
 	}

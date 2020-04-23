@@ -189,7 +189,7 @@ int dwc2_tcc_vbus_ctrl(struct dwc2_hsotg *hsotg, int on_off)
 		dev_warn(hsotg->dev, "[WARN][USB] dwc_otg vbus ctrl disable.\n");
 		return -1;
 	}
-	if (!phy || !phy->set_vbus) {
+	if (!phy) {
 		dev_err(hsotg->dev, "[ERROR][USB] [%s:%d]PHY driver is needed\n", __func__, __LINE__);
 		return -1;
 	}
@@ -795,7 +795,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 #ifdef CONFIG_ARCH_TCC803X
 		ret = hsotg->uphy->set_vbus_resource(hsotg->uphy);
 		if (ret) {
-			dev_err(hsotg->dev, "[ERROR][USB] failed to set a vbus resource\n");
+			return ret;
 		}
 #endif 
 #endif
@@ -818,13 +818,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	}
 #ifdef CONFIG_USB_DWC2_TCC_MUX
 	hsotg->mhst_uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "telechips,mhst_phy", 0);
-#ifdef CONFIG_ARCH_TCC803X
-	ret = hsotg->mhst_uphy->set_vbus_resource(hsotg->mhst_uphy);
-	if (ret) {
-		dev_err(hsotg->dev, "[ERROR][USB] failed to set a vbus resource\n");
-		return ret;
-	}
-#endif 
+
 	if (IS_ERR(hsotg->mhst_uphy)) {
 		dev_warn(hsotg->dev, "[WARN][USB] [dwc2]hsotg->mhst_uphy is NULL %s\n", __func__);
 		ret = PTR_ERR(hsotg->uphy);
@@ -1077,8 +1071,10 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 #endif
 	retval = dwc2_lowlevel_hw_init(hsotg);
-	if (retval)
+	if (retval) {
+		dev_err(hsotg->dev, "[ERROR][USB] dwc2_lowlevel_hw_init() failed, errno %d.\n", retval);
 		return retval;
+	}
 	
 	spin_lock_init(&hsotg->lock);
 
