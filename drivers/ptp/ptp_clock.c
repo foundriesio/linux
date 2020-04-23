@@ -176,13 +176,14 @@ static struct posix_clock_operations ptp_clock_ops = {
 
 static void ptp_clock_release(struct device *dev)
 {
-	struct ptp_clock *ptp = container_of(dev, struct ptp_clock, dev);
+	struct ptp_clock *ptp = dev_get_drvdata(dev);
 
 	ptp_cleanup_pin_groups(ptp);
 	mutex_destroy(&ptp->tsevq_mux);
 	mutex_destroy(&ptp->pincfg_mux);
 	ida_simple_remove(&ptp_clocks_map, ptp->index);
 	kfree(ptp);
+	kfree(dev);
 }
 
 /* public interface */
@@ -236,18 +237,23 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 		}
 	}
 
+	ptp->dev = kzalloc(sizeof(*ptp->dev), GFP_KERNEL);
+	if (!ptp->dev) {
+		err = -ENOMEM;
+		goto no_clock;
+	}
 	/* Initialize a new device of our class in our clock structure. */
-	device_initialize(&ptp->dev);
-	ptp->dev.devt = ptp->devid;
-	ptp->dev.class = ptp_class;
-	ptp->dev.parent = parent;
-	ptp->dev.groups = ptp->pin_attr_groups;
-	ptp->dev.release = ptp_clock_release;
-	dev_set_drvdata(&ptp->dev, ptp);
-	dev_set_name(&ptp->dev, "ptp%d", ptp->index);
+	device_initialize(ptp->dev);
+	ptp->dev->devt = ptp->devid;
+	ptp->dev->class = ptp_class;
+	ptp->dev->parent = parent;
+	ptp->dev->groups = ptp->pin_attr_groups;
+	ptp->dev->release = ptp_clock_release;
+	dev_set_drvdata(ptp->dev, ptp);
+	dev_set_name(ptp->dev, "ptp%d", ptp->index);
 
 	/* Create a posix clock and link it to the device. */
-	err = posix_clock_register(&ptp->clock, &ptp->dev);
+	err = posix_clock_register(&ptp->clock, ptp->dev);
 	if (err) {
 		pr_err("failed to create posix clock\n");
 		goto no_clock;
@@ -256,6 +262,7 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	return ptp;
 
 no_clock:
+	kfree(ptp->dev);
 	if (ptp->pps_source)
 		pps_unregister_source(ptp->pps_source);
 no_pps:

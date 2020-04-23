@@ -120,9 +120,19 @@ struct posix_clock_operations {
 struct posix_clock {
 	struct posix_clock_operations ops;
 	struct cdev cdev;
-	struct device *dev;
+#ifdef __GENKSYMS__
+	struct kref kref;
+#else
+	union {
+		struct kref kref;
+		struct device *dev;
+	};
+#endif
 	struct rw_semaphore rwsem;
 	bool zombie;
+#ifdef __GENKSYMS__
+	void (*release)(struct posix_clock *clk); /* placeholder */
+#endif
 };
 
 /**
