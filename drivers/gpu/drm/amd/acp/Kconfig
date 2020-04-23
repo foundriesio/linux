@@ -1,4 +1,5 @@
 menu "ACP (Audio CoProcessor) Configuration"
+	depends on DRM_AMDGPU
 
 config DRM_AMD_ACP
        bool "Enable AMD Audio CoProcessor IP support"
