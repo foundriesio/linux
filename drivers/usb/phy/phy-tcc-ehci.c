@@ -233,7 +233,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	clk_reset(ehci_phy_dev->hclk, 1);
 
 	// Reset PHY Registers
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	writel(0x83000025, &ehci_pcfg->pcfg0);
 	if (ehci_phy_dev->mux_port) {
 		writel(0xE31C243A, &ehci_pcfg->pcfg1);	// EHCI MUX Host PHY Configuration
@@ -248,7 +248,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 		writel(0x0334D175, &ehci_pcfg->pcfg1);	// EHCI PHY Configuration
 	}
 	#endif
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	writel(0x00000000, &ehci_pcfg->pcfg2);
 	#else
 	writel(0x00000004, &ehci_pcfg->pcfg2);
@@ -262,12 +262,12 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Set the Core Reset
 	writel(readl(&ehci_pcfg->lcfg0) & 0xCFFFFFFF, &ehci_pcfg->lcfg0);
 
-	#if defined(CONFIG_ARCH_TCC803X)	
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	// Clear SIDDQ
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0);
 	#endif
 
-	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 	// Wait 30 usec
 	udelay(30);
 	#else
@@ -277,7 +277,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 
 	// Release POR
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<31), &ehci_pcfg->pcfg0);
-	#ifndef CONFIG_ARCH_TCC803X
+	#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 	// Clear SIDDQ
 	writel(readl(&ehci_pcfg->pcfg0) & ~(1<<24), &ehci_pcfg->pcfg0); //moved it before Release POR for stability
 	#endif
@@ -291,7 +291,7 @@ int tcc_ehci_phy_init(struct usb_phy *phy)
 	// Wait Phy Valid Interrupt
 	i = 0;
 	while (i < 10000) {
-	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		if ((readl(&ehci_pcfg->pcfg4) & (1<<27))) break;
 	#else
 		if ((readl(&ehci_pcfg->pcfg0) & (1<<21))) break;
@@ -465,7 +465,7 @@ static int tcc_ehci_create_phy(struct device *dev, struct tcc_ehci_device *phy_d
 
 	phy_dev->phy.otg->usb_phy		= &phy_dev->phy;
 
-#if !defined(CONFIG_ARCH_TCC803X)
+#if !(defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X))
 	retval = tcc_ehci_phy_set_vbus_resource(&phy_dev->phy);
 #endif
 	return retval;

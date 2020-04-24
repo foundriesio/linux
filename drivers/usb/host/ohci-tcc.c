@@ -488,7 +488,7 @@ static int ohci_tcc_start(struct usb_hcd *hcd)
 
 #ifdef	CONFIG_PM
 /*-------------------------------------------------------------------------*/
-#if !defined (CONFIG_ARCH_TCC896X) && !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC899X) && !defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X)
+#if !defined (CONFIG_ARCH_TCC896X) && !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC899X) && !defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X) && !defined(CONFIG_ARCH_TCC805X)
 static void tcc_ohci_PHY_cfg(struct device *dev)
 {
 	//PUSB20PHYCFG	pUSB20PHYCFG =
@@ -549,7 +549,7 @@ static int tcc_ohci_suspend(struct device *dev)
 
 	hcd->state = HC_STATE_SUSPENDED;
 */
-	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 
 	#else
 	tcc_ohci_phy_ctrl(tcc_ohci, OFF);
@@ -567,13 +567,13 @@ static int tcc_ohci_resume(struct device *dev)
 	struct usb_hcd *hcd = tcc_ohci->hcd;
 	struct ohci_hcd *ohci = hcd_to_ohci(hcd);
 
-	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+	#if defined(CONFIG_ARCH_TCC896X) || defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 
 	#else
 	tcc_ohci_phy_ctrl(tcc_ohci, ON);
 	tcc_ohci_vbus_ctrl(tcc_ohci, ON);
 	tcc_ohci_clk_ctrl(tcc_ohci, ON);
-	#if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC899X) && defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X)
+	#if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC899X) && defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X) && defined(CONFIG_ARCH_TCC805X)
 	tcc_ohci_PHY_cfg(dev);
 	#endif
 	#endif

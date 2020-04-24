@@ -42,7 +42,7 @@ struct tcc_dwc3_device {
 	struct device	*dev;
 	void __iomem	*base;
 	void __iomem	*h_base;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC805X)
 	void __iomem	*ref_base;
 #endif
 	struct usb_phy 	phy;
@@ -76,7 +76,7 @@ typedef struct _USBPHYCFG
     volatile unsigned int       U30_SWUTMI;             //   0x3C  USB 3.0 UTMI Software Control Register
 } USBPHYCFG, *PUSBPHYCFG;
 
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 typedef struct _USBSSPHYCFG
 {
     volatile unsigned int       U30_CLKMASK;            // 0x0   USB 3.0 Clock Mask Register
@@ -459,7 +459,7 @@ unsigned int dwc3_tcc_write_u30phy_reg(struct usb_phy *phy, unsigned int address
 }
 
 //After Rev_1
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 unsigned int dwc3_tcc_read_ss_u30phy_reg(struct usb_phy *phy, unsigned int address)
 {
     struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
@@ -621,7 +621,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		dwc3_tcc898x_swreset(USBPHYCFG, ON);
 		mdelay(1);
 		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		//dwc3_tcc899x_swreset(tcc, ON);
 		//mdelay(1);
 		//dwc3_tcc899x_swreset(tcc, OFF);
@@ -656,12 +656,12 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 		//======================================================
 #if defined(CONFIG_ARCH_TCC898X)		/* 016.09.30 */
 		USBPHYCFG->U30_PCFG0 	= (system_rev >= 2)?0x40306228:0x20306228;
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		writel(0x03204208, &USBPHYCFG->U30_PCFG0);
 #else
 		USBPHYCFG->U30_PCFG0 	= 0x20306228;
 #endif /* CONFIG_ARCH_TCC898X */
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		writel(0x00000000, &USBPHYCFG->U30_PCFG1);
 		writel(0x919E1A04, &USBPHYCFG->U30_PCFG2);
 		#if defined(CONFIG_ARCH_TCC899X)
@@ -708,7 +708,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 		// Link global Reset
 		USBPHYCFG->U30_LCFG &= ~(Hw31); // CoreRSTN (Cold Reset), active low
-		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		//dwc3_tcc899x_swreset(tcc, ON);
 		// Link global Reset
 		writel((readl(&USBPHYCFG->U30_LCFG) & ~Hw31), &USBPHYCFG->U30_LCFG); // CoreRSTN (Cold Reset), active low
@@ -745,7 +745,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 
 		// Release Reset Link global
 		USBPHYCFG->U30_LCFG |= (Hw31);
-#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		if (!strncmp("high", maximum_speed, 4)) {
 			// USB20 Only Mode
 			writel((readl(&USBPHYCFG->U30_LCFG) | Hw28), &USBPHYCFG->U30_LCFG); // enable usb20mode -> removed in DWC_usb3 2.60a, but use as interrupt
@@ -926,7 +926,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 #endif
 		#if defined(CONFIG_ARCH_TCC898X)
 		dwc3_tcc898x_swreset(USBPHYCFG, OFF);
-		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X)
+		#elif defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 		//dwc3_tcc899x_swreset(tcc, OFF);
 		//msleep(10);
 		#endif
@@ -968,7 +968,7 @@ int dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int on_off)
 	return 0;
 }
 
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 {
 	struct tcc_dwc3_device *dwc3_phy_dev = container_of(phy, struct tcc_dwc3_device, phy);
@@ -1161,7 +1161,7 @@ int dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int on_off)
 #endif
 static int tcc_dwc3_init_phy(struct usb_phy *phy)
 {
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	if(system_rev == 0)
 		return dwc3_tcc_phy_ctrl_native(phy, ON);
 	else
@@ -1273,7 +1273,7 @@ static int tcc_dwc3_create_phy(struct device *dev, struct tcc_dwc3_device *phy_d
 	phy_dev->phy.init 			= tcc_dwc3_init_phy;
 	phy_dev->phy.set_suspend	= tcc_dwc3_suspend_phy;
 	phy_dev->phy.shutdown		= tcc_dwc3_shutdown_phy;
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	phy_dev->phy.set_phy_state	= dwc3_tcc_ss_phy_ctrl_native;
 #else
 	phy_dev->phy.set_phy_state	= dwc3_tcc_phy_ctrl_native;
@@ -1356,7 +1356,7 @@ static int tcc_dwc3_phy_probe(struct platform_device *pdev)
 	INIT_WORK(&phy_dev->dwc3_work, tcc_dwc3_set_cdp);
 #endif
 
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	phy_dev->ref_base = (void __iomem*)ioremap_nocache(pdev->resource[1].start, pdev->resource[1].end - pdev->resource[1].start+1);
 	phy_dev->phy.ref_base = phy_dev->ref_base;
 #endif

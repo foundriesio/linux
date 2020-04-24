@@ -792,7 +792,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 #else
 		hsotg->uphy = devm_usb_get_phy_by_phandle(hsotg->dev, "phy", 0);
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		ret = hsotg->uphy->set_vbus_resource(hsotg->uphy);
 		if (ret) {
 			return ret;
