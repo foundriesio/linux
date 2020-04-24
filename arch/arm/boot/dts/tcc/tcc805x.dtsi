@@ -2246,7 +2246,7 @@
 		dmas = <&dma0 0 3 &dma0 1 9>;
 		dma-names = "tx", "rx";
 	};
-/*
+
 	gpsb4: gpsb4@16940000 {
 		compatible = "telechips,tcc805x-spi";
 		reg = <0x16940000 0x38 0x16960000 0x20>;
@@ -2272,7 +2272,6 @@
 		dmas = <&dma0 0 5 &dma0 1 11>;
 		dma-names = "tx", "rx";
 	};
-*/
 
 	audio_chmux: audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-805x";

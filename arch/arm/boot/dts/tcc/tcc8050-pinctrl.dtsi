@@ -628,246 +628,353 @@
 	gpsb0_bus: gpsb0_bus {
 		telechips,pins = "gpsd0-11", "gpsd0-12", "gpsd0-14", "gpsd0-13";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb1_bus: gpsb1_bus {
 		telechips,pins = "gpsd1-0", "gpsd1-1", "gpsd1-3", "gpsd1-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb2_bus: gpsb2_bus {
 		telechips,pins = "gpsd1-6", "gpsd1-7", "gpsd1-9", "gpsd1-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb3_bus: gpsb3_bus {
 		telechips,pins = "gpsd2-0", "gpsd2-1", "gpsd2-3", "gpsd2-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb4_bus: gpsb4_bus {
 		telechips,pins = "gpsd2-6", "gpsd2-7", "gpsd2-9", "gpsd2-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb5_bus: gpsb5_bus {
 		telechips,pins = "gpa-0", "gpa-1", "gpa-3", "gpa-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb6_bus: gpsb6_bus {
 		telechips,pins = "gpa-6", "gpa-7", "gpa-9", "gpa-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb6_bus_idle: gpsb6_bus_idle {
 		telechips,pins = "gpa-6", "gpa-7", "gpa-9", "gpa-8";
 		telechips,pin-function = <0>;
+		telechips,input_buffer_enable;
 		telechips,output-low;
 	};
 
 	gpsb6_bus_spi: gpsb6_bus_spi {
 		telechips,pins = "gpa-6", "gpa-7", "gpa-9", "gpa-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb6_bus_tsif: gpsb6_bus_tsif {
 		telechips,pins = "gpa-6", "gpa-7", "gpa-9", "gpa-8";
 		telechips,pin-function = <6>;
-		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb7_bus: gpsb7_bus {
 		telechips,pins = "gpa-12", "gpa-13", "gpa-15", "gpa-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb7_bus_idle: gpsb7_bus_idle {
 		telechips,pins = "gpa-12", "gpa-13", "gpa-15", "gpa-14";
 		telechips,pin-function = <0>;
 		telechips,output-low;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb7_bus_spi: gpsb7_bus_spi {
 		telechips,pins = "gpa-12", "gpa-13", "gpa-15", "gpa-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb7_bus_tsif: gpsb7_bus_tsif {
 		telechips,pins = "gpa-12", "gpa-13", "gpa-15", "gpa-14";
 		telechips,pin-function = <6>;
-		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb8_bus: gpsb8_bus {
 		telechips,pins = "gpa-18", "gpa-19", "gpa-21", "gpa-20";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb9_bus: gpsb9_bus {
 		telechips,pins = "gpa-24", "gpa-25", "gpa-27", "gpa-26";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb10_bus: gpsb10_bus {
 		telechips,pins = "gpb-0", "gpb-1", "gpb-3", "gpb-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb11_bus: gpsb11_bus {
 		telechips,pins = "gpb-6", "gpb-7", "gpb-9", "gpb-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb12_bus: gpsb12_bus {
 		telechips,pins = "gpb-12", "gpb-13", "gpb-15", "gpb-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb13_bus: gpsb13_bus {
 		telechips,pins = "gpb-19", "gpb-20", "gpb-22", "gpb-21";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb14_bus: gpsb14_bus {
 		telechips,pins = "gpb-25", "gpb-26", "gpb-28", "gpb-27";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb15_bus: gpsb15_bus {
 		telechips,pins = "gpc-0", "gpc-1", "gpc-3", "gpc-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb15_bus_idle: gpsb15_bus_idle {
 		telechips,pins = "gpc-0", "gpc-1", "gpc-3", "gpc-2";
 		telechips,pin-function = <0>;
 		telechips,output-low;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb15_bus_spi: gpsb15_bus_spi {
 		telechips,pins = "gpc-0", "gpc-1", "gpc-3", "gpc-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb15_bus_tsif: gpsb15_bus_tsif {
 		telechips,pins = "gpc-0", "gpc-1", "gpc-3", "gpc-2";
 		telechips,pin-function = <6>;
-		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb16_bus: gpsb16_bus {
 		telechips,pins = "gpc-4", "gpc-5", "gpc-7", "gpc-6";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb16_bus_idle: gpsb16_bus_idle {
 		telechips,pins = "gpc-4", "gpc-5", "gpc-7", "gpc-6";
 		telechips,pin-function = <0>;
 		telechips,output-low;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb16_bus_spi: gpsb16_bus_spi {
 		telechips,pins = "gpc-4", "gpc-5", "gpc-7", "gpc-6";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb16_bus_tsif: gpsb16_bus_tsif {
 		telechips,pins = "gpc-4", "gpc-5", "gpc-7", "gpc-6";
 		telechips,pin-function = <6>;
-		telechips,input-enable;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb17_bus: gpsb17_bus {
 		telechips,pins = "gpc-12", "gpc-13", "gpc-15", "gpc-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb18_bus: gpsb18_bus {
 		telechips,pins = "gpc-16", "gpc-17", "gpc-19", "gpc-18";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb19_bus: gpsb19_bus {
 		telechips,pins = "gpc-20", "gpc-21", "gpc-23", "gpc-22";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb20_bus: gpsb20_bus {
 		telechips,pins = "gpc-26", "gpc-27", "gpc-29", "gpc-28";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb21_bus: gpsb21_bus {
 		telechips,pins = "gpg-0", "gpg-1", "gpg-3", "gpg-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb22_bus: gpsb22_bus {
 		telechips,pins = "gpg-7", "gpg-8", "gpg-10", "gpg-9";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb22_bus_idle: gpsb22_bus_idle {
 		telechips,pins = "gpg-7", "gpg-8", "gpg-10", "gpg-9";
 		telechips,pin-function = <0>;
 		telechips,output-low;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb22_bus_spi: gpsb22_bus_spi {
 		telechips,pins = "gpg-7", "gpg-8", "gpg-10", "gpg-9";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb23_bus: gpsb23_bus {
 		telechips,pins = "gpe-5", "gpe-6", "gpe-8", "gpe-7";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb24_bus: gpsb24_bus {
 		telechips,pins = "gpe-11", "gpe-12", "gpe-14", "gpe-13";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb25_bus: gpsb25_bus {
 		telechips,pins = "gpe-16", "gpe-17", "gpe-19", "gpe-18";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb26_bus: gpsb26_bus {
 		telechips,pins = "gph-4", "gph-5", "gph-7", "gph-6";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb27_bus: gpsb27_bus {
 		telechips,pins = "gpma-0", "gpma-1", "gpma-3", "gpma-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb28_bus: gpsb28_bus {
 		telechips,pins = "gpma-6", "gpma-7", "gpma-9", "gpma-8";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
-/*
-	// gpma-15 is being used for the reverse gear.
+	gpsb28_bus: gpsb28_bus {
+		telechips,pins = "gpma-6", "gpma-7", "gpma-9", "gpma-8";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
 	gpsb29_bus: gpsb29_bus {
 		telechips,pins = "gpma-12", "gpma-13", "gpma-15", "gpma-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
-*/
+
 	gpsb30_bus: gpsb30_bus {
 		telechips,pins = "gpma-18", "gpma-19", "gpma-21", "gpma-20";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb31_bus: gpsb31_bus {
 		telechips,pins = "gpma-24", "gpma-25", "gpma-27", "gpma-26";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	gpsb32_bus: gpsb32_bus {
-		telechips,pins = "gph-0", "gph-1", "gph-3", "gph-2";
+		telechips,pins = "gpmb-0", "gpmb-1", "gpmb-3", "gpmb-2";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb33_bus: gpsb33_bus {
+		telechips,pins = "gpmb-6", "gpmb-7", "gpmb-9", "gpmb-8";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb34_bus: gpsb34_bus {
+		telechips,pins = "gpmb-12", "gpmb-13", "gpmb-15", "gpmb-14";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb35_bus: gpsb35_bus {
+		telechips,pins = "gpmb-18", "gpmb-19", "gpmb-21", "gpmb-20";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb36_bus: gpsb36_bus {
+		telechips,pins = "gpmb-24", "gpmb-25", "gpmb-27", "gpmb-26";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb37_bus: gpsb37_bus {
+		telechips,pins = "gpmc-0", "gpmc-1", "gpmc-3", "gpmc-2";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb38_bus: gpsb38_bus {
+		telechips,pins = "gpmc-6", "gpmc-7", "gpmc-9", "gpmc-8";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb39_bus: gpsb39_bus {
+		telechips,pins = "gpmc-12", "gpmc-13", "gpmc-15", "gpmc-14";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb40_bus: gpsb40_bus {
+		telechips,pins = "gpmc-18", "gpmc-19", "gpmc-20", "gpmc-21";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb41_bus: gpsb41_bus {
+		telechips,pins = "gpmd-0", "gpmd-1", "gpmd-3", "gpmd-2";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	gpsb42_bus: gpsb42_bus {
+		telechips,pins = "gpmd-12", "gpmd-13", "gpmd-15", "gpmd-14";
+		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
 	};
 
 	ts0_idle: ts0_idle {

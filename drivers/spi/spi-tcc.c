@@ -1691,6 +1691,7 @@ static const struct dev_pm_ops tcc_spi_pmops = {
 #ifdef CONFIG_OF
 static struct of_device_id tcc_spi_of_match[] = {
 	{ .compatible = "telechips,tcc-spi" },
+	{ .compatible = "telechips,tcc805x-spi" },
 	{ .compatible = "telechips,tcc803x-spi" },
 	{ .compatible = "telechips,tcc897x-spi" },
 	{ .compatible = "telechips,tcc899x-spi" },
