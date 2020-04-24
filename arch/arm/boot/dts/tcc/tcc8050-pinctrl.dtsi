@@ -528,6 +528,83 @@
 		telechips,pull-disable;
 	};
 
+	i2c29_bus: i2c29_bus {
+		telechips,pins = "gpmb-4", "gpmb-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c30_bus: i2c30_bus {
+		telechips,pins = "gpmb-10", "gpmb-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c31_bus: i2c31_bus {
+		telechips,pins = "gpmb-16", "gpmb-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c32_bus: i2c32_bus {
+		telechips,pins = "gpmb-22", "gpmb-23";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c33_bus: i2c33_bus {
+		telechips,pins = "gpmb-26", "gpmb-27";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c34_bus: i2c34_bus {
+		telechips,pins = "gpmb-30", "gpmb-31";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c35_bus: i2c35_bus {
+		telechips,pins = "gpmc-4", "gpmc-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c36_bus: i2c36_bus {
+		telechips,pins = "gpmc-10", "gpmc-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c37_bus: i2c37_bus {
+		telechips,pins = "gpmc-16", "gpmc-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c38_bus: i2c38_bus {
+		telechips,pins = "gpmc-21", "gpmc-22";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
+	i2c39_bus: i2c39_bus {
+		telechips,pins = "gpmc-28", "gpmc-29";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,pull-disable;
+	};
+
 	hdmi_cec: hdmi_cec {
 		telechips,pins = "gpc-15";
 		telechips,pin-function = <1>;
