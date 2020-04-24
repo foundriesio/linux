@@ -1,0 +1,5 @@
+config POWERVR_RK3368
+	bool "PowerVR ROCKCHIP support"
+	default y
+	depends on POWERVR_ROGUE
+	depends on ARCH_ROCKCHIP

@@ -1,0 +1,5 @@
+config POWERVR_SUNXI
+	bool "PowerVR SUNXI support"
+	default y
+	depends on POWERVR_ROGUE
+	depends on ARCH_SUN9I
