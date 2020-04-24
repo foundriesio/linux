@@ -573,6 +573,7 @@ static void _mlx5_rdma_netdev_free(struct net_device *netdev)
 	}
 }
 
+/* keep function to make kabi happy */
 struct net_device *mlx5_rdma_netdev_alloc(struct mlx5_core_dev *mdev,
 					  struct ib_device *ibdev,
 					  const char *name,
@@ -635,9 +636,7 @@ struct net_device *mlx5_rdma_netdev_alloc(struct mlx5_core_dev *mdev,
 
 	profile->init(mdev, netdev, profile, ipriv);
 
-	err = mlx5e_attach_netdev(epriv);
-	if (err)
-		goto detach;
+	mlx5e_attach_netdev(epriv);
 	netif_carrier_off(netdev);
 
 	/* set rdma_netdev func pointers */
@@ -653,11 +652,6 @@ struct net_device *mlx5_rdma_netdev_alloc(struct mlx5_core_dev *mdev,
 
 	return netdev;
 
-detach:
-	profile->cleanup(epriv);
-	if (ipriv->sub_interface)
-		return NULL;
-	mlx5e_destroy_mdev_resources(mdev);
 destroy_ht:
 	mlx5i_pkey_qpn_ht_cleanup(netdev);
 destroy_wq:
@@ -675,3 +669,104 @@ void mlx5_rdma_netdev_free(struct net_device *netdev)
 	/* nothing to do here */
 }
 EXPORT_SYMBOL(mlx5_rdma_netdev_free);
+
+static bool mlx5_is_sub_interface(struct mlx5_core_dev *mdev)
+{
+	return mdev->mlx5e_res.pdn != 0;
+}
+
+static const struct mlx5e_profile *mlx5_get_profile(struct mlx5_core_dev *mdev)
+{
+	if (mlx5_is_sub_interface(mdev))
+		return mlx5i_pkey_get_profile();
+	return &mlx5i_nic_profile;
+}
+
+static int mlx5_rdma_setup_rn(struct ib_device *ibdev, u8 port_num,
+			      struct net_device *netdev, void *param)
+{
+	struct mlx5_core_dev *mdev = (struct mlx5_core_dev *)param;
+	const struct mlx5e_profile *prof = mlx5_get_profile(mdev);
+	struct mlx5i_priv *ipriv;
+	struct mlx5e_priv *epriv;
+	struct rdma_netdev *rn;
+	int err;
+
+	ipriv = netdev_priv(netdev);
+	epriv = mlx5i_epriv(netdev);
+
+	epriv->wq = create_singlethread_workqueue("mlx5i");
+	if (!epriv->wq)
+		return -ENOMEM;
+
+	ipriv->sub_interface = mlx5_is_sub_interface(mdev);
+	if (!ipriv->sub_interface) {
+		err = mlx5i_pkey_qpn_ht_init(netdev);
+		if (err) {
+			mlx5_core_warn(mdev, "allocate qpn_to_netdev ht failed\n");
+			goto destroy_wq;
+		}
+
+		/* This should only be called once per mdev */
+		err = mlx5e_create_mdev_resources(mdev);
+		if (err)
+			goto destroy_ht;
+	}
+
+	prof->init(mdev, netdev, prof, ipriv);
+
+	err = mlx5e_attach_netdev(epriv);
+	if (err)
+		goto detach;
+	netif_carrier_off(netdev);
+
+	/* set rdma_netdev func pointers */
+	rn = &ipriv->rn;
+	rn->hca  = ibdev;
+	rn->send = mlx5i_xmit;
+	rn->attach_mcast = mlx5i_attach_mcast;
+	rn->detach_mcast = mlx5i_detach_mcast;
+	rn->set_id = mlx5i_set_pkey_index;
+
+	netdev->priv_destructor = mlx5_rdma_netdev_free;
+	netdev->needs_free_netdev = 1;
+
+	return 0;
+
+detach:
+	prof->cleanup(epriv);
+	if (ipriv->sub_interface)
+		return err;
+	mlx5e_destroy_mdev_resources(mdev);
+destroy_ht:
+	mlx5i_pkey_qpn_ht_cleanup(netdev);
+destroy_wq:
+	destroy_workqueue(epriv->wq);
+	return err;
+}
+
+int mlx5_rdma_rn_get_params(struct mlx5_core_dev *mdev,
+			    struct ib_device *device,
+			    struct rdma_netdev_alloc_params *params)
+{
+	int nch;
+	int rc;
+
+	rc = mlx5i_check_required_hca_cap(mdev);
+	if (rc)
+		return rc;
+
+	nch = mlx5_get_profile(mdev)->max_nch(mdev);
+
+	*params = (struct rdma_netdev_alloc_params){
+		.sizeof_priv = sizeof(struct mlx5i_priv) +
+			       sizeof(struct mlx5e_priv),
+		.txqs = nch * MLX5E_MAX_NUM_TC,
+		.rxqs = nch,
+		.param = mdev,
+		.initialize_rdma_netdev = mlx5_rdma_setup_rn,
+	};
+
+	return 0;
+}
+EXPORT_SYMBOL(mlx5_rdma_rn_get_params);
