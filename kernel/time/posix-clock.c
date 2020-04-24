@@ -148,6 +148,13 @@ static long posix_clock_compat_ioctl(struct file *fp,
 }
 #endif
 
+static struct device *get_clock_dev(struct posix_clock *clk)
+{
+	if (!clk->cdev.kobj.parent)
+		return NULL;
+	return kobj_to_dev(clk->cdev.kobj.parent);
+}
+
 static int posix_clock_open(struct inode *inode, struct file *fp)
 {
 	int err;
@@ -166,7 +173,7 @@ static int posix_clock_open(struct inode *inode, struct file *fp)
 		err = 0;
 
 	if (!err) {
-		get_device(clk->dev);
+		get_device(get_clock_dev(clk));
 		fp->private_data = clk;
 	}
 out:
@@ -182,7 +189,7 @@ static int posix_clock_release(struct inode *inode, struct file *fp)
 	if (clk->ops.release)
 		err = clk->ops.release(clk);
 
-	put_device(clk->dev);
+	put_device(get_clock_dev(clk));
 
 	fp->private_data = NULL;
 
@@ -204,35 +211,51 @@ static const struct file_operations posix_clock_file_operations = {
 #endif
 };
 
-int posix_clock_register(struct posix_clock *clk, struct device *dev)
+/* XXX modified version due to kABI compatibility XXX */
+int __posix_clock_register(struct posix_clock *clk, dev_t devid,
+			   struct device *dev)
 {
 	int err;
 
+	kref_init(&clk->kref);
 	init_rwsem(&clk->rwsem);
 
 	cdev_init(&clk->cdev, &posix_clock_file_operations);
-	err = cdev_device_add(&clk->cdev, dev);
+	if (dev)
+		err = cdev_device_add(&clk->cdev, dev);
+	else
+		err = cdev_add(&clk->cdev, devid, 1);
 	if (err) {
 		pr_err("%s unable to add device %d:%d\n",
-			dev_name(dev), MAJOR(dev->devt), MINOR(dev->devt));
+		       dev_name(dev), MAJOR(dev->devt), MINOR(dev->devt));
 		return err;
 	}
 	clk->cdev.owner = clk->ops.owner;
-	clk->dev = dev;
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(__posix_clock_register);
+
+int posix_clock_register(struct posix_clock *clk, dev_t devid)
+{
+	return __posix_clock_register(clk, devid, NULL);
 }
 EXPORT_SYMBOL_GPL(posix_clock_register);
 
 void posix_clock_unregister(struct posix_clock *clk)
 {
-	cdev_device_del(&clk->cdev, clk->dev);
+	struct device *dev = get_clock_dev(clk);
+
+	if (dev)
+		cdev_device_del(&clk->cdev, dev);
+	else
+		cdev_del(&clk->cdev);
 
 	down_write(&clk->rwsem);
 	clk->zombie = true;
 	up_write(&clk->rwsem);
 
-	put_device(clk->dev);
+	put_device(dev);
 }
 EXPORT_SYMBOL_GPL(posix_clock_unregister);
 

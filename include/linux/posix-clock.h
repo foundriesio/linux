@@ -120,23 +120,14 @@ struct posix_clock_operations {
 struct posix_clock {
 	struct posix_clock_operations ops;
 	struct cdev cdev;
-#ifdef __GENKSYMS__
-	struct kref kref;
-#else
-	union {
-		struct kref kref;
-		struct device *dev;
-	};
-#endif
+	struct kref kref;	/* XXX not really used, just for kABI */
 	struct rw_semaphore rwsem;
 	bool zombie;
-#ifdef __GENKSYMS__
-	void (*release)(struct posix_clock *clk); /* placeholder */
-#endif
+	void (*release)(struct posix_clock *clk);	/* just for kABI */
 };
 
 /**
- * posix_clock_register() - register a new clock
+ * __posix_clock_register() - register a new clock
  * @clk:   Pointer to the clock. Caller must provide 'ops' field
  * @dev:   Pointer to the initialized device. Caller must provide
  *         'release' field
@@ -148,7 +139,9 @@ struct posix_clock {
  *
  * Returns zero on success, non-zero otherwise.
  */
-int posix_clock_register(struct posix_clock *clk, struct device *dev);
+int __posix_clock_register(struct posix_clock *clk, dev_t devid,
+			   struct device *dev);
+int posix_clock_register(struct posix_clock *clk, dev_t devid);
 
 /**
  * posix_clock_unregister() - unregister a clock

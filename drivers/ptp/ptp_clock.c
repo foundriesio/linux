@@ -253,7 +253,7 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	dev_set_name(ptp->dev, "ptp%d", ptp->index);
 
 	/* Create a posix clock and link it to the device. */
-	err = posix_clock_register(&ptp->clock, ptp->dev);
+	err = __posix_clock_register(&ptp->clock, 0, ptp->dev);
 	if (err) {
 		pr_err("failed to create posix clock\n");
 		goto no_clock;
