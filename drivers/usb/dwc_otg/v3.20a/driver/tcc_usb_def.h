@@ -59,6 +59,8 @@
 #define SIGN_CHIPSET			'T','C','C','8','0','3','X','_'
 #elif defined(CONFIG_ARCH_TCC901X)
 #define SIGN_CHIPSET			'T','C','C','9','0','1','X','_'
+#elif defined(CONFIG_ARCH_TCC805X)
+#define SIGN_CHIPSET			'T','C','C','8','0','5','X','_'
 #else
 #error
 #endif

@@ -1174,7 +1174,7 @@ static int dwc_otg_device_parse_dt(struct platform_device *pdev, struct dwc_otg_
 #endif /* CONFIG_TCC_DWC_OTG_HOST_MUX */
 	if (of_find_property(pdev->dev.of_node, "telechips,dwc_otg_phy", 0)) {
 		dwc_otg_device->dwc_otg_phy = devm_usb_get_phy_by_phandle(&pdev->dev, "telechips,dwc_otg_phy", 0);
-#ifdef CONFIG_ARCH_TCC803X
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		err = dwc_otg_device->dwc_otg_phy->set_vbus_resource(dwc_otg_device->dwc_otg_phy);
 #endif 
 		if (IS_ERR(dwc_otg_device->dwc_otg_phy)) {
