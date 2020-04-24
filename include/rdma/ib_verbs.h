@@ -2314,6 +2314,7 @@ struct ib_device {
 	 * Driver implementing alloc_rdma_netdev or rdma_netdev_get_params
 	 * must return -EOPNOTSUPP if it doesn't support the specified type.
 	 */
+#ifdef __GENKSYMS__
 	struct net_device *(*alloc_rdma_netdev)(
 					struct ib_device *device,
 					u8 port_num,
@@ -2321,10 +2322,21 @@ struct ib_device {
 					const char *name,
 					unsigned char name_assign_type,
 					void (*setup)(struct net_device *));
+#else
+	union {
+		struct net_device *(*alloc_rdma_netdev)(
+					struct ib_device *device,
+					u8 port_num,
+					enum rdma_netdev_t type,
+					const char *name,
+					unsigned char name_assign_type,
+					void (*setup)(struct net_device *));
 
-	int (*rdma_netdev_get_params)(struct ib_device *device, u8 port_num,
+		int (*rdma_netdev_get_params)(struct ib_device *device, u8 port_num,
 				      enum rdma_netdev_t type,
 				      struct rdma_netdev_alloc_params *params);
+	};
+#endif
 
 	struct module               *owner;
 	struct device                dev;
@@ -2345,6 +2357,9 @@ struct ib_device {
 	__be64			     node_guid;
 	u32			     local_dma_lkey;
 	u16                          is_switch:1;
+#ifndef __GENKSYMS__
+	u16                          has_rdma_netdev_get_params:1;
+#endif
 	u8                           node_type;
 	u8                           phys_port_cnt;
 	struct ib_device_attr        attrs;

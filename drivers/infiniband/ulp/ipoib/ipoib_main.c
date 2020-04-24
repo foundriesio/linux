@@ -2415,7 +2415,7 @@ static struct net_device *ipoib_add_port(const char *format,
 		return ERR_PTR(result);
 	}
 
-	if (hca->rdma_netdev_get_params) {
+	if (hca->has_rdma_netdev_get_params) {
 		int rc = hca->rdma_netdev_get_params(hca, port,
 						     RDMA_NETDEV_IPOIB,
 						     &params);

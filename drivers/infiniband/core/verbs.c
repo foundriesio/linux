@@ -2278,7 +2278,7 @@ struct net_device *rdma_alloc_netdev(struct ib_device *device, u8 port_num,
 	struct net_device *netdev;
 	int rc;
 
-	if (!device->rdma_netdev_get_params)
+	if (!device->has_rdma_netdev_get_params)
 		return ERR_PTR(-EOPNOTSUPP);
 
 	rc = device->rdma_netdev_get_params(device, port_num, type, &params);
@@ -2303,7 +2303,7 @@ int rdma_init_netdev(struct ib_device *device, u8 port_num,
 	struct rdma_netdev_alloc_params params;
 	int rc;
 
-	if (!device->rdma_netdev_get_params)
+	if (!device->has_rdma_netdev_get_params)
 		return -EOPNOTSUPP;
 
 	rc = device->rdma_netdev_get_params(device, port_num, type, &params);

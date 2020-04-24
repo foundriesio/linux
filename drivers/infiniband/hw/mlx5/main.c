@@ -4014,8 +4014,10 @@ static void *mlx5_ib_add(struct mlx5_core_dev *mdev)
 	dev->ib_dev.get_vector_affinity	= mlx5_ib_get_vector_affinity;
 	if (MLX5_CAP_GEN(mdev, ipoib_enhanced_offloads) &&
 	    ipoib_enhanced &&
-	    IS_ENABLED(CONFIG_MLX5_CORE_IPOIB))
+	    IS_ENABLED(CONFIG_MLX5_CORE_IPOIB)) {
 		dev->ib_dev.rdma_netdev_get_params = mlx5_ib_rn_get_params;
+		dev->ib_dev.has_rdma_netdev_get_params = 1;
+	}
 
 	if (mlx5_core_is_pf(mdev)) {
 		dev->ib_dev.get_vf_config	= mlx5_ib_get_vf_config;
