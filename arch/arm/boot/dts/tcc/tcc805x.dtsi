@@ -2547,45 +2547,13 @@
 		clock-names = "gmac-pclk", "hsio-clk", "ptp-pclk", "gmac-hclk";
 	};
 
-    dwc3_phy: dwc3_phy@11D90000 {
-        compatible = "telechips,tcc_dwc3_phy";
-        reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
-		 interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
-	/*clocks = <&clk_isoip_top ISOIP_TOP_U30>;*/
-        status = "disabled";
-    };
-
-    dwc3: dwc3_platform {
-        compatible = "telechips,tcc-dwc3";
-        clocks = <&clk_fbus FBUS_HSIO>;
-        telechips,dwc3_phy = <&dwc3_phy>;
-        #address-cells = <1>;
-        #size-cells = <1>;
-        ranges;
-		status = "disabled";
-		//tpl-support;
-
-        dwc3 {
-            compatible = "snps,dwc3";
-            reg = <0x11B00000 0xCFFF>;
-            interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
-            telechips,dwc3_phy = <&dwc3_phy>;
-        };
-    };
-
-	trng@11DB0100 {
-		compatible = "telechips,tcc-rng";
-		status = "okay";
-	};
-
 	ehci_phy: ehci_phy@11DA0010 {
-		 compatible = "telechips,tcc_ehci_phy";
-		 reg = <0x11DA0010 0x30>;
-		 interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
-		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		 clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
+		compatible = "telechips,tcc_ehci_phy";
+		reg = <0x11DA0010 0x30>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		resets = <&hsiobus_rst HSIOBUS_USB20H>;
-		 status = "disabled";
+		status = "disabled";
 	};
 
 	ehci: ehci@11A00000 {
@@ -2595,7 +2563,6 @@
 		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		telechips,ehci_phy = <&ehci_phy>;
 		status = "disabled";
-		//tpl-support;
 	};
 
 	ohci: ohci@11A80000 {
@@ -2604,27 +2571,24 @@
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		status = "disabled";
-		//tpl-support;
 	};
 
 	dwc_otg_phy: dwc_otg_phy@11DA0100 {
-		 compatible = "telechips,tcc_dwc_otg_phy";
-		 reg = <0x11DA0100 0x30>;
-		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		 clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
+		compatible = "telechips,tcc_dwc_otg_phy";
+		reg = <0x11DA0100 0x30>;
+		clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
 		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
-		 status = "disabled";
+		status = "disabled";
 	};
 
 	mhst_phy: mux_host_phy@11DA00DC {
-		 compatible = "telechips,tcc_ehci_phy";
-		 reg = <0x11DA00DC 0x20>;
-		 interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
-		 /* otg_hclk=0xe0+0, otg_phy=0x10+9*/
-		 clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
+		compatible = "telechips,tcc_ehci_phy";
+		reg = <0x11DA00DC 0x20>;
+		interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
 		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
-		 mux_port;
-		 status = "disabled";
+		mux_port;
+		status = "disabled";
 	};
 
 	dwc_otg: dwc_otg@11980000 {
@@ -2637,6 +2601,36 @@
 		phy-names = "usb2-phy";
 		telechips,mhst_phy = <&mhst_phy>;
 		status= "disabled";
+	};
+
+	dwc3_phy: dwc3_phy@11D90000 {
+		compatible = "telechips,tcc_dwc3_phy";
+		reg = <0x11D90000 0x48 0x11DA00EC 0x4>;
+		interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
+	/*	clocks = <&clk_isoip_top ISOIP_TOP_U30>;*/
+		status = "disabled";
+	};
+
+	dwc3: dwc3_platform {
+		compatible = "telechips,tcc-dwc3";
+		clocks = <&clk_fbus FBUS_HSIO>;
+		telechips,dwc3_phy = <&dwc3_phy>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		status = "disabled";
+
+		dwc3 {
+			compatible = "snps,dwc3";
+			reg = <0x11B00000 0xCFFF>;
+			interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
+			telechips,dwc3_phy = <&dwc3_phy>;
+		};
+	};
+
+	trng@11DB0100 {
+		compatible = "telechips,tcc-rng";
+		status = "okay";
 	};
 
 	tcc_cipher: tcc_cipher@11DC0000 {

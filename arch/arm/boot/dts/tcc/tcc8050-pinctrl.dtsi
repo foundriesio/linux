@@ -103,6 +103,9 @@
 		reg = <0x6C0 0 30>;
 	};
 
+	gpmc: gpmc {
+	};
+
 	gpsd0: gpsd0 {
 		gpio-controller;
 		#gpio-cells = <2>;

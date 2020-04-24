@@ -39,38 +39,17 @@
 };
 */
 
-/* USB 3.0 DRD */
-&dwc3_phy {
-	status = "okay";
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 29 0>;
-};
-&dwc3 {
-	status = "okay";
-	//usb3en-ctrl-able;
-	//usb3en-gpio = <&gpc 20 0>;
-	//vbus-source-ctrl;
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 29 0>;
-	//pinctrl-names = "default";
-	//vdd_dwc-supply = <&vdd_v5p0_reg>;
-};
-
-/* USB 2.0 OTG */
+/* USB 2.0 Host */
 &ehci_phy {
 	status = "okay";
 	vbus-ctrl-able;
-	vbus-gpio = <&gpa 28 0>;
+	vbus-gpio = <&gpmc 7 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &ehci {
 	status = "okay";
 	hcd_id = <0>;
 	phy-type = <1>;	    //pico phy = 1, nano phy = 0
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 28 0>;
-
-	//sq_level_ctl;
 	TXVRT = <0xB>;
 	TXRISET = <0x3>;
 	TXAT = <0x1>;
@@ -78,31 +57,35 @@
 
 &ohci {
 	status = "okay";
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 28 0>;
 };
 
+/* USB 2.0 DRD */
 &dwc_otg_phy {
 	status = "okay";
-
 	vbus-ctrl-able;
-	vbus-gpio = <&gpa 27 0>;
+	vbus-gpio = <&gpmc 6 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
 };
 
 &mhst_phy {
 	status = "okay";
-
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 27 0>;
 };
 
 &dwc_otg {
 	status = "okay";
 	phy-type = <1>;     //pico phy = 1, nano phy = 0
-
-	vbus-ctrl-able;
-	vbus-gpio = <&gpa 27 0>;
 };
+
+/* USB 3.0 DRD */
+&dwc3_phy {
+	status = "okay";
+	vbus-ctrl-able;
+	vbus-gpio = <&gpmc 8 0>; /* 0 : GPIO_ACTIVE_HIGH, 1 : GPIO_ACTIVE_LOW */
+};
+
+&dwc3 {
+	status = "okay";
+};
+
 /*
 &hsic {
 	status = "okay";
