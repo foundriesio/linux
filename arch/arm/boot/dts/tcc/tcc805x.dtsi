@@ -203,6 +203,99 @@
 			     <GIC_SPI 168 IRQ_TYPE_LEVEL_LOW>;
 	};
 
+	smmu_gbus: smmu@13600000 {
+		compatible = "arm,mmu-500";
+		reg = <0x13600000 0x20000>;
+		status = "disabled";
+		#global-interrupt = <6>;
+		interrupt-parent = <&gic>;
+		interrups = <0 240 IRQ_TYPE_LEVEL_HIGH>, /* combined secure interrupt */
+			    <0 241 IRQ_TYPE_LEVEL_HIGH>, /* combined non-secure interrupt */
+			    <0 242 IRQ_TYPE_LEVEL_HIGH>, /* global secure interrupt */
+			    <0 243 IRQ_TYPE_LEVEL_HIGH>, /* global non-secure interrupt */
+			    <0 244 IRQ_TYPE_LEVEL_HIGH>, /* performance counter interrupt 0 */
+			    <0 245 IRQ_TYPE_LEVEL_HIGH>, /* performance counter interrupt 1 */
+			/* per context interrupts 0 - 7 */
+			    <0 246 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 247 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 248 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 249 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 250 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 251 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 252 IRQ_TYPE_LEVEL_HIGH>,
+			    <0 253 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <1>;
+	};
+
+	smmu_vbus: smmu@13700000 {
+		compatible = "arm,mmu-500";
+		reg = <0x13700000 0x20000>;
+		status = "disabled";
+		#global-interrupt = <6>;
+		interrupt-parent = <&gic>;
+		interrupts = <0 254 IRQ_TYPE_LEVEL_HIGH>, /* combined secure interrupt */
+			     <0 255 IRQ_TYPE_LEVEL_HIGH>, /* combined non-secure interrupt */
+			     <0 256 IRQ_TYPE_LEVEL_HIGH>, /* global secure interrupt */
+			     <0 257 IRQ_TYPE_LEVEL_HIGH>, /* global non-secure interrupt */
+			     <0 258 IRQ_TYPE_LEVEL_HIGH>, /* performance counter interrupt 0 */
+			     <0 259 IRQ_TYPE_LEVEL_HIGH>, /* performacne counter interrupt 1 */
+			/* per context interrupts 0 - 7 */
+			     <0 260 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 261 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 262 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 263 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 264 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 265 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 266 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 267 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <1>;
+	};
+
+	smmu_dbus: smmu@13800000 {
+		compatible = "arm,mmu-500";
+		reg = <0x13800000 0x20000>;
+		status = "disabled";
+		#global-interrupt = <6>;
+		interrupt-parent = <&gic>;
+		interrupts = <0 268 IRQ_TYPE_LEVEL_HIGH>, /* combined secure interrupt */
+			     <0 269 IRQ_TYPE_LEVEL_HIGH>, /* combined non-secure interrupt */
+			     <0 270 IRQ_TYPE_LEVEL_HIGH>, /* global secure interrupt */
+			     <0 271 IRQ_TYPE_LEVEL_HIGH>, /* global non-secure interrupt */
+			     <0 272 IRQ_TYPE_LEVEL_HIGH>, /* performance counter interrupt 0 */
+			     <0 273 IRQ_TYPE_LEVEL_HIGH>, /* performacne counter interrupt 1 */
+			/* per context interrupts 0 - 7 */
+			     <0 274 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 275 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 276 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 277 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 278 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 279 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 280 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 281 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <1>;
+	};
+
+	smmu_pcie: smmu@13900000 {
+		compatible = "arm,mmu-500";
+		reg = <0x13900000 0x20000>;
+		status = "disabled";
+		#global-interrupt = <5>;
+		interrupt-parent = <&gic>;
+		interrupts = <0 282 IRQ_TYPE_LEVEL_HIGH>, /* combined secure interrupt */
+			     <0 283 IRQ_TYPE_LEVEL_HIGH>, /* combined non-secure interrupt */
+			     <0 284 IRQ_TYPE_LEVEL_HIGH>, /* global secure interrupt */
+			     <0 285 IRQ_TYPE_LEVEL_HIGH>, /* global non-secure interrupt */
+			     <0 286 IRQ_TYPE_LEVEL_HIGH>, /* performance counter interrupt */
+			/* per context interrupts 0 - 5 */
+			     <0 287 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 288 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 289 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 290 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 291 IRQ_TYPE_LEVEL_HIGH>,
+			     <0 292 IRQ_TYPE_LEVEL_HIGH>;
+		#iommu-cells = <1>;
+	};
+
 	reserved-memory {
 		#address-cells = <1>;
 		#size-cells = <1>;
