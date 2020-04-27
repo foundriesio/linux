@@ -58,6 +58,7 @@
 		i2s4 = &i2s4;
 		i2s5 = &i2s5;
 		i2s6 = &i2s6;
+		i2s7 = &i2s7;
 		spdif0 = &spdif0;
 		spdif1 = &spdif1;
 		spdif2 = &spdif2;
@@ -72,6 +73,7 @@
 		adma4  = &adma4;
 		adma5  = &adma5;
 		adma6  = &adma6;
+		adma7  = &adma7;
 		dma0 = &dma0;
 		dma1 = &dma1;
 		dma2 = &dma2;
@@ -2271,7 +2273,7 @@
 	adma3: adma@16200000 {
 		compatible = "telechips,adma";
 		reg = <0x16200000 0x200>;
-	/*	clocks = <&clk_io IOBUS_SR_ADMA0>;*/
+		clocks = <&clk_io IOBUS_ADMA3>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
@@ -2280,7 +2282,7 @@
 	adma4: adma@16A00000 {
 		compatible = "telechips,adma";
 		reg = <0x16A00000 0x200>;
-	/*	clocks = <&clk_io IOBUS_SR_ADMA1>;*/
+		clocks = <&clk_io IOBUS_ADMA4>;
 		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
@@ -2289,7 +2291,7 @@
 	adma5: adma@16B00000 {
 		compatible = "telechips,adma";
 		reg = <0x16B00000 0x200>;
-	/*	clocks = <&clk_io IOBUS_SR_ADMA2>;*/
+		clocks = <&clk_io IOBUS_ADMA5>;
 		interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
@@ -2298,8 +2300,17 @@
 	adma6: adma@16C00000 {
 		compatible = "telechips,adma";
 		reg = <0x16C00000 0x200>;
-	/*	clocks = <&clk_io IOBUS_SR_ADMA3>;*/
+		clocks = <&clk_io IOBUS_ADMA6>;
 		interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>;
+		have-hopcnt-clear = <1>;
+		adrcnt-mode = <1>;
+	};
+
+	adma7: adma@16400000 {
+		compatible = "telechips,adma";
+		reg = <0x16C00000 0x200>;
+		clocks = <&clk_io IOBUS_ADMA7>;
+		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2310,7 +2321,8 @@
 		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0 &clk_peri PERI_MFLT0_DAI>;
 		clock-frequency = <11289600>;	// 44100*256
 		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma0>;
 		status = "disabled";
@@ -2322,7 +2334,8 @@
 		clocks = <&clk_peri PERI_MDAI1 &clk_io IOBUS_DAI1 &clk_peri PERI_MFLT1_DAI>;
 		clock-frequency = <11289600>;
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma1>;
 		status = "disabled";
@@ -2334,7 +2347,8 @@
 		clocks = <&clk_peri PERI_MDAI2 &clk_io IOBUS_DAI2 &clk_peri PERI_MFLT2_DAI>;
 		clock-frequency = <11289600>;	// 44100*256
 		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma2>;
 		status = "disabled";
@@ -2343,10 +2357,11 @@
 	i2s3: i2s@16201000 {
 		compatible = "telechips,i2s";
 		reg = <0x16201000 0x50 0x16200080 0x8>;
-	/*	clocks = <&clk_peri PERI_SRCH0_CORE &clk_io IOBUS_SR_DAI0 &clk_peri PERI_SRCH0_FILTER>;*/
+		clocks = <&clk_peri PERI_SRCH0_CORE &clk_io IOBUS_DAI3 &clk_peri PERI_SRCH0_FILTER>;
 		clock-frequency = <11289600>;
 		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma3>;
 		status = "disabled";
@@ -2355,10 +2370,11 @@
 	i2s4: i2s@16A01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16A01000 0x50 0x16A00080 0x8>;
-	/*	clocks = <&clk_peri PERI_SRCH1_CORE &clk_io IOBUS_SR_DAI1 &clk_peri PERI_SRCH1_FILTER>;*/
+		clocks = <&clk_peri PERI_SRCH1_CORE &clk_io IOBUS_DAI4 &clk_peri PERI_SRCH1_FILTER>;
 		clock-frequency = <11289600>;
 		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma4>;
 		status = "disabled";
@@ -2367,10 +2383,11 @@
 	i2s5: i2s@16B01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16B01000 0x50 0x16B00080 0x8>;
-	/*	clocks = <&clk_peri PERI_SRCH2_CORE &clk_io IOBUS_SR_DAI2 &clk_peri PERI_SRCH2_FILTER>;*/
+		clocks = <&clk_peri PERI_SRCH2_CORE &clk_io IOBUS_DAI5 &clk_peri PERI_SRCH2_FILTER>;
 		clock-frequency = <11289600>;
 		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma5>;
 		status = "disabled";
@@ -2379,14 +2396,28 @@
 	i2s6: i2s@16C01000 {
 		compatible = "telechips,i2s";
 		reg = <0x16C01000 0x50 0x16C00080 0x8>;
-	/*	clocks = <&clk_peri PERI_SRCH3_CORE &clk_io IOBUS_SR_DAI3 &clk_peri PERI_SRCH3_FILTER>;*/
+		clocks = <&clk_peri PERI_SRCH3_CORE &clk_io IOBUS_DAI6 &clk_peri PERI_SRCH3_FILTER>;
 		clock-frequency = <11289600>;
 		interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
-		have-fifo-clear=<1>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
 		adma = <&adma6>;
 		status = "disabled";
 	};
+
+	i2s7: i2s@16401000 {
+		compatible = "telechips,i2s";
+		reg = <0x16401000 0x50 0x16400080 0x8>;
+		clocks = <&clk_peri PERI_MDAI3 &clk_io IOBUS_DAI7 &clk_peri PERI_MFLT3_DAI>;
+		clock-frequency = <11289600>;	// 44100*256
+		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
+		have-fifo-clear = <1>;
+		audio-filter = <3>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		block-type = <1>; // 0: Stereo 1: 7.1CH
+		adma = <&adma7>;
+		status = "disabled";
+	  };
 
 	spdif0: spdif@16102000 {
 		compatible = "telechips,spdif";
@@ -2419,7 +2450,7 @@
 	spdif3: spdif@16202000 {
 		compatible = "telechips,spdif";
 		reg = <0x16202000 0x1000>;
-	/*	clocks = <&clk_peri PERI_SRCH0_SPDIF &clk_io IOBUS_SR_SPDIF0>;*/
+		clocks = <&clk_peri PERI_SRCH0_SPDIF &clk_io IOBUS_SPDIF3>;
 		clock-frequency = <44100>;
 		adma = <&adma3>;
 		status = "disabled";
@@ -2428,7 +2459,7 @@
 	spdif4: spdif@16A02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16A02000 0x1000>;
-	/*	clocks = <&clk_peri PERI_SRCH1_SPDIF &clk_io IOBUS_SR_SPDIF1>;*/
+		clocks = <&clk_peri PERI_SRCH1_SPDIF &clk_io IOBUS_SPDIF4>;
 		clock-frequency = <44100>;
 		adma = <&adma4>;
 		status = "disabled";
@@ -2437,7 +2468,7 @@
 	spdif5: spdif@16B02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16B02000 0x1000>;
-	/*	clocks = <&clk_peri PERI_SRCH2_SPDIF &clk_io IOBUS_SR_SPDIF2>;*/
+		clocks = <&clk_peri PERI_SRCH2_SPDIF &clk_io IOBUS_SPDIF5>;
 		clock-frequency = <44100>;
 		adma = <&adma5>;
 		status = "disabled";
@@ -2447,7 +2478,7 @@
 	spdif6: spdif@16C02000 {
 		compatible = "telechips,spdif";
 		reg = <0x16C02000 0x1000>;
-	/*	clocks = <&clk_peri PERI_SRCH3_SPDIF &clk_io IOBUS_SR_SPDIF3>;*/
+		clocks = <&clk_peri PERI_SRCH3_SPDIF &clk_io IOBUS_SPDIF6>;
 		clock-frequency = <44100>;
 		adma = <&adma6>;
 		status = "disabled";
