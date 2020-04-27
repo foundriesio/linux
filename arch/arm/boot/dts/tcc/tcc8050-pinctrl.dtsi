@@ -23,22 +23,10 @@
 		reg = <0x80 0 30>;
 	};
 
-	gpd: gpd {
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0xc0 0 22>;
-	};
-
 	gpe: gpe {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x100 0 20>;
-	};
-
-	gpf: gpf {
-		gpio-controller;
-		#gpio-cells = <2>;
-		reg = <0x140 0 32>;
 	};
 
 	gpg: gpg {
@@ -65,7 +53,16 @@
 		reg = <0x6C0 0 30>;
 	};
 
+	gpmb: gpmb {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x700 0 32>;
+	};
+
 	gpmc: gpmc {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x740 0 30>;
 	};
 
 	gpsd0: gpsd0 {
