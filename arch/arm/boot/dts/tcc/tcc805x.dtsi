@@ -40,6 +40,9 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
+		serial5 = &uart5;
+		serial6 = &uart6;
+		serial7 = &uart7;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
 		i2c2 = &i2c2;
@@ -82,6 +85,10 @@
 		udma1 = &udma1;
 		udma2 = &udma2;
 		udma3 = &udma3;
+		udma4 = &udma4;
+		udma5 = &udma5;
+		udma6 = &udma6;
+		udma7 = &udma7;
 		wmixer-drv0 = &wmixer_drv0;
 		wmixer-drv1 = &wmixer_drv1;
 		scaler-drv1 = &scaler_drv1;
@@ -1808,37 +1815,69 @@
 		//access-control = <&dma3_ac>;
 	};
 
-	udma0_ac: access_control@16684020 {
-		reg = <16684020 0x20>;
+	udma0_ac: access_control@16689020 {
+		reg = <16689020 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
 		access-control1 = <0x00000000 0x00000000>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
 
-	udma1_ac: access_control@16684040 {
-		reg = <16684040 0x20>;
+	udma1_ac: access_control@16689040 {
+		reg = <16689040 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
 		access-control1 = <0x00000000 0x00000000>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
 
-	udma2_ac: access_control@16684060 {
-		reg = <16684060 0x20>;
+	udma2_ac: access_control@16689060 {
+		reg = <16689060 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
 		access-control1 = <0x00000000 0x00000000>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
 
-	udma3_ac: access_control@16684080 {
-		reg = <16684080 0x20>;
+	udma3_ac: access_control@16689080 {
+		reg = <16689080 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
 		access-control1 = <0x00000000 0x00000000>;
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
+
+        udma4_ac: access_control@166890A0 {
+                reg = <166890A0 0x20>;
+                access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+                access-control1 = <0x00000000 0x00000000>;
+                access-control2 = <0x00000000 0x00000000>;
+                access-control3 = <0x00000000 0x00000000>;
+        };
+
+        udma5_ac: access_control@166890C0 {
+                reg = <166890C0 0x20>;
+                access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+                access-control1 = <0x00000000 0x00000000>;
+                access-control2 = <0x00000000 0x00000000>;
+                access-control3 = <0x00000000 0x00000000>;
+        };
+
+        udma6_ac: access_control@166890E0 {
+                reg = <166890E0 0x20>;
+                access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+                access-control1 = <0x00000000 0x00000000>;
+                access-control2 = <0x00000000 0x00000000>;
+                access-control3 = <0x00000000 0x00000000>;
+        };
+
+        udma7_ac: access_control@16689100 {
+                reg = <16689100 0x20>;
+                access-control0 = <0x20000000 0xC0000000>; /* DRAM */
+                access-control1 = <0x00000000 0x00000000>;
+                access-control2 = <0x00000000 0x00000000>;
+                access-control3 = <0x00000000 0x00000000>;
+        };
 
 	udma0: udma@16680000 {
 		compatible = "arm,pl081", "arm,primecell";
@@ -1912,6 +1951,78 @@
 		access-control = <&udma3_ac>;
 	};
 
+        udma4: udma@16684000 {
+                compatible = "arm,pl081", "arm,primecell";
+                reg = <0x16684000 0x1000>;
+                interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
+                //dma-channels = <2>;
+                //dma-requests = <32>;
+                channel-priority = <0>;
+                clocks = <&clk_io IOBUS_UDMA4>;
+                clock-names = "apb_pclk";
+                lli-bus-interface-ahb1;
+                lli-bus-interface-ahb2;
+                mem-bus-interface-ahb2;
+                memcpy-burst-size = <256>;
+                memcpy-bus-width = <32>;
+                #dma-cells = <2>;
+                access-control = <&udma4_ac>;
+        };
+
+        udma5: udma@16685000 {
+                compatible = "arm,pl081", "arm,primecell";
+                reg = <0x16685000 0x1000>;
+                interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+                //dma-channels = <2>;
+                //dma-requests = <32>;
+                channel-priority = <0>;
+                clocks = <&clk_io IOBUS_UDMA5>;
+                clock-names = "apb_pclk";
+                lli-bus-interface-ahb1;
+                lli-bus-interface-ahb2;
+                mem-bus-interface-ahb2;
+                memcpy-burst-size = <256>;
+                memcpy-bus-width = <32>;
+                #dma-cells = <2>;
+                access-control = <&udma5_ac>;
+        };
+
+        udma6: udma@16686000 {
+                compatible = "arm,pl081", "arm,primecell";
+                reg = <0x16686000 0x1000>;
+                interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+                //dma-channels = <2>;
+                //dma-requests = <32>;
+                channel-priority = <0>;
+                clocks = <&clk_io IOBUS_UDMA6>;
+                clock-names = "apb_pclk";
+                lli-bus-interface-ahb1;
+                lli-bus-interface-ahb2;
+                mem-bus-interface-ahb2;
+                memcpy-burst-size = <256>;
+                memcpy-bus-width = <32>;
+                #dma-cells = <2>;
+                access-control = <&udma6_ac>;
+        };
+
+        udma7: udma@16687000 {
+                compatible = "arm,pl081", "arm,primecell";
+                reg = <0x16687000 0x1000>;
+                interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
+                //dma-channels = <2>;
+                //dma-requests = <32>;
+                channel-priority = <0>;
+                clocks = <&clk_io IOBUS_UDMA7>;
+                clock-names = "apb_pclk";
+                lli-bus-interface-ahb1;
+                lli-bus-interface-ahb2;
+                mem-bus-interface-ahb2;
+                memcpy-burst-size = <256>;
+                memcpy-bus-width = <32>;
+                #dma-cells = <2>;
+                access-control = <&udma7_ac>;
+        };
+
 	pwm:pwm@16030000 { /* pwm */
 		compatible = "telechips,pwm";
 		reg = <0x16030000 0x90 0x1605104C 0x4 0x16051094 0x4>;
@@ -1971,6 +2082,36 @@
 		clock-names = "uartclk", "apb_pclk";
 		status = "disabled";
 	};
+
+        uart5: serial@16650000 {
+                compatible = "arm,pl011", "arm,primecell";
+                reg = <0x16650000 0x1000>;
+                arm,primecell-periphid = <0x001feff7>;
+                interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_UART5>, <&clk_io IOBUS_UART5>;
+                clock-names = "uartclk", "apb_pclk";
+                status = "disabled";
+        };
+
+        uart6: serial@16660000 {
+                compatible = "arm,pl011", "arm,primecell";
+                reg = <0x16660000 0x1000>;
+                arm,primecell-periphid = <0x001feff7>;
+                interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_UART6>, <&clk_io IOBUS_UART6>;
+                clock-names = "uartclk", "apb_pclk";
+                status = "disabled";
+        };
+
+        uart7: serial@16670000 {
+                compatible = "arm,pl011", "arm,primecell";
+                reg = <0x16670000 0x1000>;
+                arm,primecell-periphid = <0x001feff7>;
+                interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_UART7>, <&clk_io IOBUS_UART7>;
+                clock-names = "uartclk", "apb_pclk";
+                status = "disabled";
+        };
 
 	pcie: pcie@11800000 {
 		compatible = "telechips,pcie", "snps,dw-pcie";
