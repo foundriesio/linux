@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC8050 SoC
+ * Device tree for Telechips TCC8053 SoC
  */
 
 #include "tcc805x.dtsi"
-#include "tcc8050-pinctrl.dtsi"
+#include "tcc8053-pinctrl.dtsi"
 
 / {
 	cpus {

@@ -11,7 +11,11 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc_mbox_ch.h>
 
+#if defined(CONFIG_TCC805X_CA53Q)
+#include "tcc-pmap-805x-subcore-a53q.dtsi"
+#else
 #include "tcc-pmap-common.dtsi"
+#endif
 
 / {
 	compatible = "telechips,tcc805x";
@@ -28,10 +32,6 @@
 		#size-cells = <2>;
 		device_type = "memory";
 		reg = <0x0 0x20000000 0x0 0x80000000>;
-	};
-
-	sram-memory {
-		reg = <0xF0000000 0x00040000>;
 	};
 
 	aliases: aliases {
@@ -118,75 +118,6 @@
 	psci {
 		compatible = "arm,psci-0.2";
 		method = "smc";
-	};
-
-	cpus {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		cpu@0 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a72";
-			reg = <0x0>;
-			enable-method = "psci";
-			cpu-idle-states = <&CPU_SLEEP_0_0>;
-			operating-points = <
-				/* kHz    uV */
-				/*1302000 1200000*/
-				/*1226000 1150000*/
-				1150000 1100000
-				/*1074000 1050000*/
-				998000 1100000
-				908000 1100000
-			>;
-
-			clocks = <&clk_fbus FBUS_CPU0>;
-			clock-names = "cpu0";
-			clock-latency = <300000>;
-		};
-		cpu@1 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a72";
-			reg = <0x1>;
-			enable-method = "psci";
-		};
-		cpu@2 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a72";
-			reg = <0x2>;
-			enable-method = "psci";
-		};
-		cpu@3 {
-			device_type = "cpu";
-			compatible = "arm,cortex-a72";
-			reg = <0x3>;
-			enable-method = "psci";
-		};
-
-		idle-states {
-			entry-method = "arm,psci";
-
-			CPU_SLEEP_0_0: cpu-sleep-0-0 {
-				compatible = "arm,idle-state";
-				local-timer-stop;
-				arm,psci-suspend-param = <0x0010000>;
-				entry-latency-us = <250>;
-				exit-latency-us = <500>;
-				min-residency-us = <950>;
-			};
-		};
-	};
-
-	gic: interrupt-controller@17301000 {
-		compatible = "arm,gic-400", "telechips,tcc805x-vpic";
-		#interrupt-cells = <3>;
-		#address-cells = <0>;
-		interrupt-controller;
-		reg = <0x17301000 0x1000>,
-		      <0x17302000 0x1000>,
-		      <0x17304000 0x2000>,
-		      <0x17306000 0x2000>,
-		      <0x14100000 0x260>;
 	};
 
 	timer {
@@ -792,10 +723,8 @@
 
 	tcc_pm {
 		compatible = "telechips,pm";
-		reg = < 0x16400000 0x000100  /* nfc*/
-			0x16430000 0x000030  /* edi*/
-			0x16600000 0x000050  /* uart0*/
-			0x16684000 0x000010  /* uart config*/
+		reg = <	0x16600000 0x000050  /* uart0*/
+			0x16689000 0x000010  /* uart config*/
 			0x14200000 0x000700>;  /* gpio*/
 		suspend_mode = <0>;	/* 0:sleep, 1:shutdown, 2:wfi */
 	};
@@ -1298,8 +1227,8 @@
 		};
 	};
 
-	vpic@14100000 {
-		compatible = "telechips,vpic";
+	pic@14100000 {
+		compatible = "telechips,pic";
 		reg = <0x14100000 0x0300
 		       0x14600000 0x0020>;
 	};
@@ -2137,14 +2066,6 @@
 	vqmmc_sdio: vqmmc_sdio {};
 
 	sdhc1_pwrseq: sdhc1_pwrseq {};
-
-	nand: nand@16400000 {
-		compatible = "telechips,nand-v8";
-		reg = <0x16400000 0x13ff>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
-		status = "disabled";
-	};
 
 	gpsb0: gpsb0@16900000 {
 		compatible = "telechips,tcc805x-spi";

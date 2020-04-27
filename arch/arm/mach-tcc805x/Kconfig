@@ -29,3 +29,9 @@ menuconfig ARCH_TCC805X
 	select SOC_TCC
 	select MIGHT_HAVE_PCI
 	select PCI_DOMAINS if PCI
+
+config TCC805X_CA53Q
+        bool "Build for TCC805X Cortex-A53 Subcore"
+        depends on ARCH_TCC805X
+        help
+          Select this option building a kernel for TCC805X Cortex-A53 Subcore.

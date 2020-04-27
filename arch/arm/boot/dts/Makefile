@@ -1094,7 +1094,10 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc/tcc9010-android-lpd4321-v0.1.dtb \
 	tcc/tcc9010-android-mini-tcm3840-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC805X) += \
-	tcc/tcc8050-android-board-xxx.dtb
+	tcc/tcc8050-android-board-xxx.dtb \
+	tcc/tcc8053-android-board-xxx.dtb \
+	tcc/tcc8059-android-board-xxx.dtb \
+	tcc/tcc8060-android-board-xxx.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc/tcc8990-linux-lpd4322-v0.1.dtb \
@@ -1123,7 +1126,11 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 endif
 
 dtb-$(CONFIG_ARCH_TCC805X) += \
-	tcc/tcc8050-linux-board-xxx.dtb
+	tcc/tcc8050-linux-board-xxx.dtb \
+	tcc/tcc8053-linux-board-xxx.dtb \
+	tcc/tcc8059-linux-board-xxx.dtb \
+	tcc/tcc8060-linux-board-xxx.dtb \
+	tcc/tcc805x-subcore-verification.dtb
 
 ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
 dtb-y += \
@@ -1157,7 +1164,10 @@ dtb-y += \
 	tcc/tcc8050-soc.dtb
 
 dtbo-y += \
-	tcc/overlay-tcc8050-android-board-xxx.dtbo
+	tcc/overlay-tcc8050-android-board-xxx.dtbo \
+	tcc/overlay-tcc8053-android-board-xxx.dtbo \
+	tcc/overlay-tcc8059-android-board-xxx.dtbo \
+	tcc/overlay-tcc8060-android-board-xxx.dtbo
 endif
 
 dtstree		:= $(srctree)/$(src)

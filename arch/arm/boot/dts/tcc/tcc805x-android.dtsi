@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
+ * Copyright (C) Telechips Inc.
  * Device tree for Telechips TCC805x Android platform
- *
- * Copyright (C) 2020 Telechips Inc.
  */
 
 &firmware_android {

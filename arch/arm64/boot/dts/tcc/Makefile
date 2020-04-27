@@ -16,7 +16,10 @@ endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-android-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC805X) += \
-	tcc8050-android-board-xxx.dtb
+	tcc8050-android-board-xxx.dtb \
+	tcc8053-android-board-xxx.dtb \
+	tcc8059-android-board-xxx.dtb \
+	tcc8060-android-board-xxx.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
 	tcc8990-linux-lpd4322-v0.1.dtb \
@@ -35,7 +38,11 @@ endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-linux-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC805X) += \
-	tcc8050-linux-board-xxx.dtb
+	tcc8050-linux-board-xxx.dtb \
+	tcc8053-linux-board-xxx.dtb \
+	tcc8059-linux-board-xxx.dtb \
+	tcc8060-linux-board-xxx.dtb \
+	tcc805x-subcore-verification.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -51,7 +58,10 @@ dtb-y += \
 	tcc8050-soc.dtb
 
 dtbo-y += \
-	overlay-tcc8050-android-board-xxx.dtbo
+	overlay-tcc8050-android-board-xxx.dtbo \
+	overlay-tcc8053-android-board-xxx.dtbo \
+	overlay-tcc8059-android-board-xxx.dtbo \
+	overlay-tcc8060-android-board-xxx.dtbo
 endif
 
 always         := $(dtb-y)

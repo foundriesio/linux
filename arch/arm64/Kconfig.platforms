@@ -344,6 +344,12 @@ config ARCH_TCC805X
 	help
 	  This enables support for Telechips TCC805x SoC family
 
+config TCC805X_CA53Q
+	bool "Build for TCC805X Cortex-A53 Subcore"
+	depends on ARCH_TCC805X
+	help
+	  Select this option building a kernel for TCC805X Cortex-A53 Subcore.
+
 config ARCH_TCC803X
 	bool "ARMv8 based Telechips TCC803x"
 	select ARM_GIC

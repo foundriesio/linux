@@ -4,13 +4,16 @@
  * Device tree for Telechips TCC8050 AVN board
  */
 
-#ifndef DT_OVERLAY
 /dts-v1/;
-#endif
 
-#include "tcc8050-android-avn.dtsi"
-
+#include "tcc805x-subcore-a53q.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart9_data>;
+	status = "okay";
 };

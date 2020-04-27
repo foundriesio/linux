@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC8050 board
+ * Device tree for Telechips TCC8060 board
  */
 
 #ifndef DT_OVERLAY
-#include "tcc8050.dtsi"
+#include "tcc8060.dtsi"
 #endif
 
 #include "tcc805x-android.dtsi"
 
 / {
-	model = "Telechips TCC8050 Evaluation Board for AVN";
-	compatible = "telechips,tcc8050", "telechips,tcc805x";
+	model = "Telechips TCC8060 Evaluation Board for AVN";
+	compatible = "telechips,tcc8060", "telechips,tcc805x";
 };
 
 &aliases {
@@ -515,7 +515,7 @@
 
 &sound {
 	compatible = "telechips,asrc-card";
-	card-name = "TCC8050 EVM Card";
+	card-name = "TCC8060 EVM Card";
 	status = "okay";
 
 	asrc = <&asrc0>;
@@ -541,7 +541,7 @@
 
 &sound {
 	compatible = "telechips,snd-card";
-	card-name = "TCC8050 EVM Card";
+	card-name = "TCC8060 EVM Card";
 	status = "okay";
 
 	telechips,dai-link@0 {

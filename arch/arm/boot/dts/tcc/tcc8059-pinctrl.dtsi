@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC8050 pinctrl
+ * Device tree for Telechips TCC8059 pinctrl
  */
 
 &pinctrl {
@@ -1603,7 +1603,6 @@
 	telechips,output-low = <0>;
     };
 
-
 /*****************************************************
 * Multi DAI Port_3 m1:multi, dai3:port3
 ******************************************************/
@@ -1725,130 +1724,6 @@
 
     m1dai3_dai3_idle: m1dai3_dai3_idle{
         telechips,pins = "gpe-10";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-/*****************************************************
-* Multi DAI Port_4 m1:multi, dai4:port4
-******************************************************/
-
-    m1dai4_mclk: m1dai4_mclk{
-        telechips,pins = "gpma-12";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_mclk_idle: m1dai4_mclk_idle{
-        telechips,pins = "gpma-12";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_bclk: m1dai4_bclk{
-        telechips,pins = "gpma-13";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_bclk_idle: m1dai4_bclk_idle{
-        telechips,pins = "gpma-13";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_lrck: m1dai4_lrck{
-        telechips,pins = "gpma-14";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_lrck_idle: m1dai4_lrck_idle{
-        telechips,pins = "gpma-14";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dao0: m1dai4_dao0{
-        telechips,pins = "gpma-15";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dao0_idle: m1dai4_dao0_idle{
-        telechips,pins = "gpma-15";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dai0: m1dai4_dai0{
-        telechips,pins = "gpma-16";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dai0_idle: m1dai4_dai0_idle{
-        telechips,pins = "gpma-16";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dao1: m1dai4_dao1{
-        telechips,pins = "gpma-17";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dao1_idle: m1dai4_dao1_idle{
-        telechips,pins = "gpma-17";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dai1: m1dai4_dai1{
-        telechips,pins = "gpma-18";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dai1_idle: m1dai4_dai1_idle{
-        telechips,pins = "gpma-18";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dao2: m1dai4_dao2{
-        telechips,pins = "gpma-19";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dao2_idle: m1dai4_dao2_idle{
-        telechips,pins = "gpma-19";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dai2: m1dai4_dai2{
-        telechips,pins = "gpma-20";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dai2_idle: m1dai4_dai2_idle{
-        telechips,pins = "gpma-20";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dao3: m1dai4_dao3{
-        telechips,pins = "gpma-21";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dao3_idle: m1dai4_dao3_idle{
-        telechips,pins = "gpma-21";
-        telechips,pin-function = <0>;
-	telechips,output-low = <0>;
-    };
-
-    m1dai4_dai3: m1dai4_dai3{
-        telechips,pins = "gpma-22";
-        telechips,pin-function = <1>;
-    };
-
-    m1dai4_dai3_idle: m1dai4_dai3_idle{
-        telechips,pins = "gpma-22";
         telechips,pin-function = <0>;
 	telechips,output-low = <0>;
     };
