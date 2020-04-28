@@ -123,6 +123,10 @@ struct xdbc_ring {
 	u32			cycle_state;
 };
 
+/* restored for kABI */
+#define XDBC_EPID_OUT		2
+#define XDBC_EPID_IN		3
+
 /*
  * These are the "Endpoint ID" (also known as "Context Index") values for the
  * OUT Transfer Ring and the IN Transfer Ring of a Debug Capability Context data
@@ -135,8 +139,8 @@ struct xdbc_ring {
  * Luckily the values from Intel don't overlap with those from AMD, so we can
  * just test for both.
  */
-#define XDBC_EPID_OUT		0
-#define XDBC_EPID_IN		1
+#define XDBC_EPID_OUT_AMD	0
+#define XDBC_EPID_IN_AMD	1
 #define XDBC_EPID_OUT_INTEL	2
 #define XDBC_EPID_IN_INTEL	3
 
