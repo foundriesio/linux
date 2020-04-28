@@ -1,22 +1,7 @@
-/****************************************************************************
- * drivers/watchdog/tcc_wdt.c
- *
- * Watchdog driver for Telechips chip
- *
- * Copyright (C) 2018 Telechips Inc.
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ *	Copyright (C) Telechips Inc.
+ */
 
 #include <linux/bitops.h>
 #include <linux/of.h>
@@ -36,7 +21,7 @@
 #include <soc/tcc/tcc-sip.h>
 #include <soc/tcc/timer.h>
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 #define WDT_SIP
 #endif
 
@@ -210,6 +195,31 @@ static int tcc_wdt_set_pretimeout(struct watchdog_device *wdd, unsigned int pret
 	return 0;
 }
 
+static void tcc_wdt_set_kicktime(struct watchdog_device *wdd, unsigned int kicktime)
+{
+	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
+	unsigned long kick_cnt = 0;
+#ifdef WDT_SIP
+	struct arm_smccc_res res;
+
+	memset(&res, 0x0, sizeof(res));
+#else
+	struct device_node *np = tcc_wdd->wdd_timer.dev->of_node;
+#endif
+	kick_cnt = kicktime * tcc_wdd->pmu.rate;
+
+#ifdef WDT_SIP
+	arm_smccc_smc( SIP_WATCHDOG_SETUP_IRQCNT,
+			0, 0, 0,
+			kick_cnt,
+			0, 0, 0,
+			&res );
+#else
+	tcc_wdt_set_pretimeout(wdd, kicktime);
+#endif
+	return;
+}
+
 static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout)
 {
 	struct tcc_watchdog_device *tcc_wdd = tcc_wdt_get_device(wdd);
@@ -246,7 +256,9 @@ static int tcc_wdt_set_timeout(struct watchdog_device *wdd, unsigned int timeout
 #endif
 	wdd->timeout = timeout;
 
-	tcc_wdt_set_pretimeout(wdd,wdd->pretimeout);
+//	tcc_wdt_set_pretimeout(wdd,wdd->pretimeout);
+
+	tcc_wdt_set_kicktime(wdd, wdd->pretimeout);
 
 	pr_info("[%s][%s][%s] Setting watchdog timeout to %dsec\n", TCC_WDT_INFO, TCC_WATCHDOG_MODULE, TCC_SUBCATEGORY, wdd->timeout);
 
@@ -314,7 +326,7 @@ static int tcc_wdt_start(struct watchdog_device *wdd)
 #ifdef WDT_SIP
 	arm_smccc_smc( SIP_WATCHDOG_START,
 			0,
-#if defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 			(EN_BIT(WDT_PMU_EN)),
 #else
 			(EN_BIT(WDT_PMU_EN)|EN_BIT(WDT_PMU_RESET)),
@@ -433,6 +445,8 @@ static const struct watchdog_info tcc_wdt_info = {
 		"TCC899X Watchdog",
 #elif defined(CONFIG_ARCH_TCC901X)
 		"TCC901X Watchdog",
+#elif defined(CONFIG_ARCH_TCC805X)
+		"TCC805X Watchdog",
 #else
 		"Telechips Watchdog",
 #endif
