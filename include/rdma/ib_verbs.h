@@ -2017,7 +2017,11 @@ struct rdma_netdev {
 	struct ib_device  *hca;
 	u8                 port_num;
 
-	/* cleanup function must be specified */
+	/*
+	 * cleanup function must be specified.
+	 * FIXME: This is only used for OPA_VNIC and that usage should be
+	 * removed too.
+	 */
 	void (*free_rdma_netdev)(struct net_device *netdev);
 
 	/* control functions */
@@ -2031,6 +2035,16 @@ struct rdma_netdev {
 			    int set_qkey, u32 qkey);
 	int (*detach_mcast)(struct net_device *dev, struct ib_device *hca,
 			    union ib_gid *gid, u16 mlid);
+};
+
+struct rdma_netdev_alloc_params {
+	size_t sizeof_priv;
+	unsigned int txqs;
+	unsigned int rxqs;
+	void *param;
+
+	int (*initialize_rdma_netdev)(struct ib_device *device, u8 port_num,
+				      struct net_device *netdev, void *param);
 };
 
 struct ib_port_pkey_list {
@@ -2297,9 +2311,10 @@ struct ib_device {
 	/**
 	 * rdma netdev operation
 	 *
-	 * Driver implementing alloc_rdma_netdev must return -EOPNOTSUPP if it
-	 * doesn't support the specified rdma netdev type.
+	 * Driver implementing alloc_rdma_netdev or rdma_netdev_get_params
+	 * must return -EOPNOTSUPP if it doesn't support the specified type.
 	 */
+#ifdef __GENKSYMS__
 	struct net_device *(*alloc_rdma_netdev)(
 					struct ib_device *device,
 					u8 port_num,
@@ -2307,6 +2322,21 @@ struct ib_device {
 					const char *name,
 					unsigned char name_assign_type,
 					void (*setup)(struct net_device *));
+#else
+	union {
+		struct net_device *(*alloc_rdma_netdev)(
+					struct ib_device *device,
+					u8 port_num,
+					enum rdma_netdev_t type,
+					const char *name,
+					unsigned char name_assign_type,
+					void (*setup)(struct net_device *));
+
+		int (*rdma_netdev_get_params)(struct ib_device *device, u8 port_num,
+				      enum rdma_netdev_t type,
+				      struct rdma_netdev_alloc_params *params);
+	};
+#endif
 
 	struct module               *owner;
 	struct device                dev;
@@ -2327,6 +2357,9 @@ struct ib_device {
 	__be64			     node_guid;
 	u32			     local_dma_lkey;
 	u16                          is_switch:1;
+#ifndef __GENKSYMS__
+	u16                          has_rdma_netdev_get_params:1;
+#endif
 	u8                           node_type;
 	u8                           phys_port_cnt;
 	struct ib_device_attr        attrs;
@@ -3843,5 +3876,16 @@ ib_get_vector_affinity(struct ib_device *device, int comp_vector)
 	return device->get_vector_affinity(device, comp_vector);
 
 }
+
+struct net_device *rdma_alloc_netdev(struct ib_device *device, u8 port_num,
+				     enum rdma_netdev_t type, const char *name,
+				     unsigned char name_assign_type,
+				     void (*setup)(struct net_device *));
+
+int rdma_init_netdev(struct ib_device *device, u8 port_num,
+		     enum rdma_netdev_t type, const char *name,
+		     unsigned char name_assign_type,
+		     void (*setup)(struct net_device *),
+		     struct net_device *netdev);
 
 #endif /* IB_VERBS_H */
