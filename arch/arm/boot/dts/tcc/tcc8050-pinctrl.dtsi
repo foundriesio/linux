@@ -65,6 +65,12 @@
 		reg = <0x740 0 30>;
 	};
 
+	gpmd: gpmd {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x780 0 16>;
+	};
+
 	gpsd0: gpsd0 {
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -81,47 +87,6 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x600 0 10>;
-	};
-
-	nand_databus8: nand_databus8 {
-		telechips,pins = "gpa-0", "gpa-1", "gpa-2", "gpa-3",
-				 "gpa-4", "gpa-5", "gpa-6", "gpa-7";
-		telechips,pin-function = <1>;
-	};
-
-	nand_cle: nand_cle {
-		telechips,pins = "gpa-8";
-		telechips,pin-function = <1>;
-	};
-
-	nand_ale: nand_ale {
-		telechips,pins = "gpa-9";
-		telechips,pin-function = <1>;
-	};
-
-	nand_oe: nand_oe {
-		telechips,pins = "gpa-10";
-		telechips,pin-function = <1>;
-	};
-
-	nand_we: nand_we {
-		telechips,pins = "gpa-11";
-		telechips,pin-function = <1>;
-	};
-
-	nand_cs0: nand_cs0 {
-		telechips,pins = "gpa-12";
-		telechips,pin-function = <1>;
-	};
-
-	nand_rdy: nand_rdy {
-		telechips,pins = "gpa-16";
-		telechips,pin-function = <1>;
-	};
-
-	nand_wp: nand_wp {
-		telechips,pins = "gpa-15";
-		telechips,pin-function = <1>;
 	};
 
 	/* GPIO SD0 */
