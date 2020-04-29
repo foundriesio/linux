@@ -312,6 +312,7 @@
 #define VIDEOBUS_CODA_CORE      2
 #define VIDEOBUS_HEVC_BUS       3
 #define VIDEOBUS_HEVC_CORE      4
+#define VIDEOBUS_HEVC_ENCODER	5
 #define VIDEOBUS_MAX            6
 
 /* High-Speed I/O Bus pwdn/swreset */

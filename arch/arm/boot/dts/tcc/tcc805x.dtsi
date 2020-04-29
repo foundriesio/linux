@@ -1222,17 +1222,18 @@
 			clock-indices =
 				<VIDEOBUS_JPEG>, <VIDEOBUS_CODA_BUS>,
 				<VIDEOBUS_CODA_CORE>, <VIDEOBUS_HEVC_BUS>,
-				<VIDEOBUS_HEVC_CORE>;
+				<VIDEOBUS_HEVC_CORE>, <VIDEOBUS_HEVC_ENCODER>;
 			clock-output-names =
 				"videobus_jpeg", "videobus_coda_bus",
 				"videobus_coda_core", "videobus_hevc_bus",
-				"videobus_hevc_core";
+				"videobus_hevc_core", "videobus_hevc_encoder";
 			telechips,clock-flags =
 				<CLK_IGNORE_UNUSED>,	/* VIDEOBUS_JPEG */
 				<CLK_IGNORE_UNUSED>,	/* VIDEOBUS_CODA_BUS */
 				<CLK_IGNORE_UNUSED>,	/* VIDEOBUS_CODA_CORE */
 				<CLK_IGNORE_UNUSED>,	/* VIDEOBUS_HEVC_BUS */
-				<CLK_IGNORE_UNUSED>;	/* VIDEOBUS_HEVC_CORE */
+				<CLK_IGNORE_UNUSED>,	/* VIDEOBUS_HEVC_CORE */
+				<CLK_IGNORE_UNUSED>;	/* VIDEOBUS_HEVC_ENCODER */
 		};
 	};
 
