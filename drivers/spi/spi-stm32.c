@@ -598,11 +598,8 @@ static int stm32_spi_setup(struct spi_device *spi_dev)
 {
 	int ret = 0;
 
-	if (!gpio_is_valid(spi_dev->cs_gpio)) {
-		dev_err(&spi_dev->dev, "%d is not a valid gpio\n",
-			spi_dev->cs_gpio);
-		return -EINVAL;
-	}
+	if (!gpio_is_valid(spi_dev->cs_gpio))
+		return 0;
 
 	dev_dbg(&spi_dev->dev, "%s: set gpio%d output %s\n", __func__,
 		spi_dev->cs_gpio,
