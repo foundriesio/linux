@@ -7128,10 +7128,10 @@ static void valleyview_setup_pctx(struct drm_i915_private *dev_priv)
 		goto out;
 	}
 
-	GEM_BUG_ON(range_overflows_t(u64,
-				     dev_priv->dsm.start,
-				     pctx->stolen->start,
-				     U32_MAX));
+	GEM_BUG_ON(range_overflows_end_t(u64,
+					 dev_priv->dsm.start,
+					 pctx->stolen->start,
+					 U32_MAX));
 	pctx_paddr = dev_priv->dsm.start + pctx->stolen->start;
 	I915_WRITE(VLV_PCBR, pctx_paddr);
 
@@ -8120,7 +8120,7 @@ static void __intel_disable_rc6(struct drm_i915_private *dev_priv)
 	else if (INTEL_GEN(dev_priv) >= 6)
 		gen6_disable_rc6(dev_priv);
 }
- 
+
 static void intel_disable_rc6(struct drm_i915_private *dev_priv)
 {
 	mutex_lock(&dev_priv->pcu_lock);
@@ -8128,7 +8128,7 @@ static void intel_disable_rc6(struct drm_i915_private *dev_priv)
 	dev_priv->gt_pm.rc6.enabled = false;
 	mutex_unlock(&dev_priv->pcu_lock);
 }
- 
+
 static void intel_disable_rps(struct drm_i915_private *dev_priv)
 {
 	if (INTEL_GEN(dev_priv) >= 9)
@@ -8152,7 +8152,7 @@ void intel_disable_gt_powersave(struct drm_i915_private *dev_priv)
 	intel_disable_rps(dev_priv);
 	if (HAS_LLC(dev_priv))
 		intel_disable_llc_pstate(dev_priv);
- 
+
 	dev_priv->gt_pm.rps.enabled = false;
 
 	mutex_unlock(&dev_priv->pcu_lock);
