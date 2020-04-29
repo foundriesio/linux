@@ -958,10 +958,7 @@ static struct rela *find_switch_table(struct objtool_file *file,
 	 * it.
 	 */
 	for (;
-	     &insn->list != &file->insn_list &&
-	     insn->sec == func->sec &&
-	     insn->offset >= func->offset;
-
+	     &insn->list != &file->insn_list && insn->func && insn->func->pfunc == func;
 	     insn = insn->first_jump_src ?: list_prev_entry(insn, list)) {
 
 		if (insn != orig_insn && insn->type == INSN_JUMP_DYNAMIC)
@@ -1895,8 +1892,8 @@ static int validate_branch(struct objtool_file *file, struct instruction *first,
 			}
 
 			if (state.bp_scratch) {
-				WARN("%s uses BP as a scratch register",
-				     insn->func->name);
+				WARN_FUNC("BP used as a scratch register",
+					  insn->sec, insn->offset);
 				return 1;
 			}
 
