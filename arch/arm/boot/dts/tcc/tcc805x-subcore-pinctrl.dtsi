@@ -406,6 +406,7 @@
 		telechips,pull-disable;
 	};
 
+	/*
 	i2c22_bus: i2c22_bus {
 		telechips,pins = "gph-4", "gph-5";
 		telechips,pin-function = <9>;
@@ -419,6 +420,7 @@
 		telechips,input_buffer_enable;
 		telechips,pull-disable;
 	};
+	*/
 
 	i2c24_bus: i2c24_bus {
 		telechips,pins = "gpma-4", "gpma-5";
@@ -794,11 +796,13 @@
 		telechips,input_buffer_enable;
 	};
 
+	/*
 	gpsb26_bus: gpsb26_bus {
 		telechips,pins = "gph-4", "gph-5", "gph-7", "gph-6";
 		telechips,pin-function = <6>;
 		telechips,input_buffer_enable;
 	};
+	*/
 
 	gpsb27_bus: gpsb27_bus {
 		telechips,pins = "gpma-0", "gpma-1", "gpma-3", "gpma-2";
@@ -1158,16 +1162,23 @@
 		telechips,pin-function = <7>;
 	};
 
+	uart28_data: uart28_data {
+		telechips,pins = "gph-4", "gph-5";
+		telechips,pin-function = <7>;
+	};
+
 	smartcard_bus: smartcard_bus {
 		telechips,pins = "gpb-4", "gpb-5";
 		telechips,pin-function = <15>;
 	};
 
+	/*
 	sfmc_databus8: sfmc_databus8 {
 		telechips,pins = "gph-0", "gph-1", "gph-2", "gph-3",
 		                 "gph-4", "gph-5", "gph-6", "gph-7";
 		telechips,pin-function = <1>;
 	};
+	*/
 
 	sfmc_databus4: sfmc_databus4 {
 		telechips,pins = "gph-0", "gph-1", "gph-2", "gph-3";
@@ -2479,7 +2490,7 @@
 	};
 
 	ictc_f_in: ictc_f_in {
-		telechips,pins = "gph-5";
+		//telechips,pins = "gph-5";
 		telechips,pin-function = <0>;
 		telechips,input-enable;
 	};
