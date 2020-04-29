@@ -755,3 +755,34 @@
 	dma-names = "tx", "rx";
 	status = "okay";
 };
+
+&ictc {
+        status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&ictc_f_in>;
+        f-in-gpio = <&gph 5 0>;
+        //f-in-rtc-wkup;
+        r-edge = <100>;
+        f-edge = <100>;
+        edge-matching-value = <100>;
+        time-out = <0>;
+        duty-rounding-value = <0x0ffffff0>;
+        prd-rounding-value = <0x0fffffff0>;
+        flt-f-mode = <0x3>;
+        flt-r-mode = <0x3>;
+        cmp-err-sel = <0>;
+        abs-sel = <1>;
+        edge-sel = <0>;
+        tck-pol = <0>;
+        tck-sel = <0>;
+        lock-en = <0>;
+        //r-edge-int
+        //f-edge-int;
+        //df-cnt-full-int
+        f-chg-int;
+        //d-chg-int;
+        //e-cnt-full-int;
+        //to-cnt-full-int;
+        //nf-ed-cnt-full-int;
+        //time-stamp-cnt;
+};
