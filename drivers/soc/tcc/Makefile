@@ -3,8 +3,9 @@
 #
 
 ifeq ($(CONFIG_ARCH_TCC897X),y)
+#none
 else
-obj-y	+= suspend.o
+obj-y	+= suspend.o chip_info.o
 endif
 
 obj-y	+= timer.o
@@ -18,6 +19,3 @@ obj-$(CONFIG_ARCH_TCC803X)	+= pm-tcc803x.o
 obj-$(CONFIG_ARCH_TCC901X)	+= pm-tcc901x.o
 #obj-$(CONFIG_TCC_MICOM)		+= micom_devices.o
 
-obj-$(CONFIG_ARCH_TCC899X)	+= chip_info.o
-obj-$(CONFIG_ARCH_TCC803X)	+= chip_info.o
-obj-$(CONFIG_ARCH_TCC901X)	+= chip_info.o
