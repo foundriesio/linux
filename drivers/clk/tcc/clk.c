@@ -33,7 +33,6 @@ struct tcc_clk {
 	struct clk_hw hw;
 	struct clk_ops *ops;
 	int id;
-	int clk_src;
 	struct list_head list;
 };
 
@@ -49,7 +48,7 @@ static struct tcc_ckc_ops *ckc_ops = NULL;
 #endif
 
 #ifdef CONFIG_DEBUG_FS
-static int tcc_debugfs_clk_enabled(void *data, u64 *val)
+static int tcc_debugfs_clk_enable_show(void *data, u64 *val)
 {
 	struct tcc_clk *tcc = (struct tcc_clk *) data;
 
@@ -59,17 +58,19 @@ static int tcc_debugfs_clk_enabled(void *data, u64 *val)
 	*val = tcc->ops->is_enabled(&tcc->hw);
 	return 0;
 }
-DEFINE_DEBUGFS_ATTRIBUTE(tcc_clk_enabled_fops, tcc_debugfs_clk_enabled,
-		NULL, "%llu\n");
-
-static int debugfs_clk_src_get(void *data, u64 *val)
+static int tcc_debugfs_clk_enable_store(void *data, u64 val)
 {
 	struct tcc_clk *tcc = (struct tcc_clk *) data;
+	int ret = 0;
 
-	*val = tcc->clk_src;
-	return 0;
+	if (val == 0)
+		clk_disable_unprepare(tcc->hw.clk);
+	else
+		ret = clk_prepare_enable(tcc->hw.clk);
+	return ret;
 }
-DEFINE_DEBUGFS_ATTRIBUTE(clk_src_fops, debugfs_clk_src_get, NULL, "%llu\n");
+DEFINE_DEBUGFS_ATTRIBUTE(tcc_clk_enable_fops, tcc_debugfs_clk_enable_show,
+		tcc_debugfs_clk_enable_store, "%llu\n");
 #endif
 
 static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
@@ -77,11 +78,8 @@ static int tcc_clk_debug_init(struct clk_hw *hw, struct dentry *dentry)
 #ifdef CONFIG_DEBUG_FS
 	struct tcc_clk *tcc = to_tcc_clk(hw);
 
-	clk_debugfs_add_file(hw, "clk_enabled", S_IRUGO, tcc,
-			&tcc_clk_enabled_fops);
-
-	clk_debugfs_add_file(hw, "clk_source", S_IRUGO, tcc,
-			&clk_src_fops);
+	clk_debugfs_add_file(hw, "clk_enable", S_IRUGO, tcc,
+			&tcc_clk_enable_fops);
 	return 0;
 #else
 	return 0;
@@ -423,6 +421,60 @@ static int tcc_peri_is_enabled(struct clk_hw *hw)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+static int debugfs_peri_clk_src_get(void *data, u64 *val)
+{
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = (struct tcc_clk *) data;
+
+	if (ckc_ops != NULL) {
+		// TODO
+	} else {
+		arm_smccc_smc(SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+				&res);
+		*val = res.a1;
+	}
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(tcc_peri_clk_src_fops, debugfs_peri_clk_src_get,
+		NULL, "%llu\n");
+
+static int debugfs_peri_clk_div_get(void *data, u64 *val)
+{
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = (struct tcc_clk *) data;
+
+	if (ckc_ops != NULL) {
+		// TODO
+	} else {
+		arm_smccc_smc(SIP_CLK_GET_PCLKCTRL, tcc->id, 0, 0, 0, 0, 0, 0,
+				&res);
+		*val = res.a2;
+	}
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(tcc_peri_clk_div_fops, debugfs_peri_clk_div_get,
+		NULL, "%llu\n");
+#endif
+
+static int tcc_peri_debug_init(struct clk_hw *hw, struct dentry *dentry)
+{
+#ifdef CONFIG_DEBUG_FS
+	struct tcc_clk *tcc = to_tcc_clk(hw);
+
+	clk_debugfs_add_file(hw, "clk_src", S_IRUGO, tcc,
+			&tcc_peri_clk_src_fops);
+	clk_debugfs_add_file(hw, "clk_div", S_IRUGO, tcc,
+			&tcc_peri_clk_div_fops);
+
+	return tcc_clk_debug_init(hw, dentry);
+#else
+	return 0;
+#endif
+}
+
+
+
 static struct clk_ops tcc_peri_ops = {
 	.enable		= tcc_peri_enable,
 	.disable	= tcc_peri_disable,
@@ -430,7 +482,7 @@ static struct clk_ops tcc_peri_ops = {
 	.round_rate	= tcc_round_rate,
 	.set_rate	= tcc_peri_set_rate,
 	.is_enabled	= tcc_peri_is_enabled,
-	.debug_init	= tcc_clk_debug_init,
+	.debug_init	= tcc_peri_debug_init,
 };
 
 static void __init tcc_peri_init(struct device_node *np)
