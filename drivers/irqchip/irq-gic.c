@@ -1548,7 +1548,7 @@ gic_of_init(struct device_node *node, struct device_node *parent)
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_ARCH_TCC
+#if 0//def CONFIG_ARCH_TCC
 	if (of_device_is_compatible(node, "telechips,tcc802x-vpic")) {
 		pic_base = of_iomap(node, 2);
 	} else if (of_device_is_compatible(node, "telechips,tcc803x-vpic")) {
