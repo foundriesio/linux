@@ -450,6 +450,12 @@ static int msm8916_wcd_digital_enable_dmic(struct snd_soc_dapm_widget *w,
 			break;
 		}
 		break;
+	case SND_SOC_DAPM_POST_PMD:
+		snd_soc_update_bits(codec, LPASS_CDC_CLK_RX_RESET_CTL,
+				    1 << w->shift, 1 << w->shift);
+		snd_soc_update_bits(codec, LPASS_CDC_CLK_RX_RESET_CTL,
+				    1 << w->shift, 0x0);
+		break;
 	}
 
 	return 0;
