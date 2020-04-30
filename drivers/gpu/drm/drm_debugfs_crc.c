@@ -345,7 +345,7 @@ int drm_debugfs_crtc_crc_add(struct drm_crtc *crtc)
 	if (!crc_ent)
 		return -ENOMEM;
 
-	ent = debugfs_create_file("control", S_IRUGO, crc_ent, crtc,
+	ent = debugfs_create_file("control", S_IRUGO | S_IWUSR, crc_ent, crtc,
 				  &drm_crtc_crc_control_fops);
 	if (!ent)
 		goto error;
