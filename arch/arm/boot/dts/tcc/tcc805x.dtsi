@@ -2373,7 +2373,7 @@
 
 	adma7: adma@16400000 {
 		compatible = "telechips,adma";
-		reg = <0x16C00000 0x200>;
+		reg = <0x16400000 0x200>;
 		clocks = <&clk_io IOBUS_ADMA7>;
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
 		have-hopcnt-clear = <1>;
