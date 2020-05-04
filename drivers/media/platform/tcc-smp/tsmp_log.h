@@ -73,7 +73,7 @@
 	} while (0)
 
 /* logging */
-#if NDEBUG
+#ifdef NDEBUG
 #define _TLOG(...) _NLOG(__VA_ARGS__)
 #endif
 

@@ -17,17 +17,35 @@
 #define INCLUDED_TSMP_IOCTL
 
 /**
+ * @addtogroup tsmp
+ * @{
+ * @file tsmp_ioctl.h
+ */
+
+/**
  * This structure contains ring buffer information. To give buffer information
  * off1 and off1_size are normally enough. However, when data resides across
  * the start/end point of the ring buffer, off2 and off2_size are provided
  * as well as off1 and off1_size.
  */
-struct ringbuf_info
+struct tsmp_ringbuf_info
 {
 	uintptr_t off1; /**< Pointer to a ring buffer offset1 */
 	uintptr_t off2; /**< Pointer to a ring buffer offset2 */
 	int off1_size;
 	int off2_size;
+};
+
+enum tsmp_pid_type
+{
+	AUDIO_TYPE = 0,
+	VIDEO_TYPE,
+};
+
+struct tsmp_pid_info
+{
+	enum tsmp_pid_type type;
+	uint16_t pid;
 };
 
 /* clang-format off */
@@ -37,7 +55,8 @@ struct ringbuf_info
 #define TSMP_IOCTL_MAGIC 'T'
 
 /** Gets an event information after being notified */
-#define TSMP_GET_BUF_INFO		_IOR(TSMP_IOCTL_MAGIC, 1, struct ringbuf_info)
+#define TSMP_GET_BUF_INFO		_IOR(TSMP_IOCTL_MAGIC, 1, struct tsmp_ringbuf_info)
+#define TSMP_SET_PID_INFO		_IOW(TSMP_IOCTL_MAGIC, 2, struct tsmp_pid_info)
 /* clang-format on */
 
 #endif /* INCLUDED_TSMP_IOCTL */
