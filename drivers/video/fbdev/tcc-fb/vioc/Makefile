@@ -8,7 +8,7 @@ obj-$(CONFIG_ARCH_TCC) += vioc_config.o vioc_disp.o vioc_outcfg.o
 obj-$(CONFIG_VIOC_DOLBY_VISION_EDR) += vioc_v_dv.o
 obj-$(CONFIG_ARCH_TCC) += tccfb_address.o
 obj-$(CONFIG_ARCH_TCC898X) += vioc_dtrc.o vioc_extra.o
-obj-$(CONFIG_ARCH_TCC803X) += vioc_pxdemux.o vioc_lvds.o
+obj-$(CONFIG_ARCH_TCC805X) += vioc_pxdemux.o vioc_lvds.o
 obj-$(CONFIG_ARCH_TCC897X) += vioc_lvds_t.o
 #obj-$(CONFIG_ARCH_TCC898X) += vioc_power.o
 

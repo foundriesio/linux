@@ -333,6 +333,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	tm123xdhp90_panel.dev = &pdev->dev;
 
 	np = of_parse_phandle(pdev->dev.of_node, "lvds0", 0);
+/* redundant
 	lvds_tm123xdhp90.clk = of_clk_get(np, 0);
 	if(IS_ERR(lvds_tm123xdhp90.clk)){
 		pr_err("[ERR][LCD] %s[%d]: failed to get lvds clock \n", __func__, __LINE__);
@@ -343,6 +344,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	of_property_read_u32(np, "phy-frequency", &value);
 	clk_set_rate(lvds_tm123xdhp90.clk, value);
 	clk_prepare_enable(lvds_tm123xdhp90.clk);
+*/
 	of_property_read_u32(pdev->dev.of_node, "second-display", &second_display);
 #ifdef CONFIG_FB_VIOC
         tccfb_register_panel(&tm123xdhp90_panel);
@@ -360,7 +362,7 @@ static int tm123xdhp90_probe(struct platform_device *pdev)
 	}
 	pr_info("%s lvds - sub_port: %d\n", __func__, lvds_tm123xdhp90.sub_port);
 
-	if(of_property_read_u32_index(pdev->dev.of_node, "mux_select", 1, &lvds_tm123xdhp90.lcdc_select) < 0) {
+	if(of_property_read_u32_index(pdev->dev.of_node, "mux_select", 0, &lvds_tm123xdhp90.lcdc_select) < 0) {
 		pr_err("[ERR][LCD] %s[%d]: the property does not exist \n", __func__, __LINE__);
 		return -ENODEV;
 	}

@@ -13,4 +13,21 @@
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */
+	tm123xdhp90 {
+		compatible = "telechips,lvds-tm123xdhp90";
+		status = "okay";
+		lvds0 = <&lvds_phy>;
+		power-on-gpios = <&gpb 17 0>;   // LCD_ON
+		reset-gpios = <&gpb 18 0>;    // LCD_RST
+		/*
+			 display-on-gpios = ;    // LCD_DISP
+			 lvds-stby-gpios = ;   // LCD_DE = LVDS_STBY in LVDS
+			 lvds-power-gpios = ;    // LVDS_EN
+			 lvds-power-gpios1 = ;   // V_5V0_EN
+		 */
+		mode = <1>;   /* 0: single 1: dual */
+		ports = <2 3>;
+		mux-select = <0>;
+	};
+
 };
