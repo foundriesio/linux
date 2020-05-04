@@ -18,7 +18,7 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-android-board-xxx.dtb \
 	tcc8053-android-board-xxx.dtb \
-	tcc8059-android-board-xxx.dtb \
+	tcc8059-android-lpd4x321_sv0.1.dtb \
 	tcc8060-android-board-xxx.dtb
 else
 dtb-$(CONFIG_ARCH_TCC899X) += \
@@ -40,7 +40,7 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8050-linux-board-xxx.dtb \
 	tcc8053-linux-board-xxx.dtb \
-	tcc8059-linux-board-xxx.dtb \
+	tcc8059-linux-lpd4x321_sv0.1.dtb \
 	tcc8060-linux-board-xxx.dtb \
 	tcc805x-subcore-verification.dtb
 endif
@@ -60,7 +60,7 @@ dtb-y += \
 dtbo-y += \
 	overlay-tcc8050-android-board-xxx.dtbo \
 	overlay-tcc8053-android-board-xxx.dtbo \
-	overlay-tcc8059-android-board-xxx.dtbo \
+	overlay-tcc8059-android-lpd4x321_sv0.1.dtbo \
 	overlay-tcc8060-android-board-xxx.dtbo
 endif
 
