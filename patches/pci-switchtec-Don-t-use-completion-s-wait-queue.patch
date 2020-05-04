@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	kref_get(&stuser->kref);
  	stuser->read_len = sizeof(stuser->data);
  	stuser_set_state(stuser, MRPC_QUEUED);
--	init_completion(&stuser->comp);
+-	reinit_completion(&stuser->comp);
 +	stuser->cmd_done = false;
  	list_add_tail(&stuser->list, &stdev->mrpc_queue);
  
