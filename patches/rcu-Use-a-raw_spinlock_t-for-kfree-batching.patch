@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  }
  
-@@ -3768,7 +3768,7 @@ static void __init kfree_rcu_batch_init(
+@@ -3780,7 +3780,7 @@ static void __init kfree_rcu_batch_init(
  	for_each_possible_cpu(cpu) {
  		struct kfree_rcu_cpu *krcp = per_cpu_ptr(&krc, cpu);
  

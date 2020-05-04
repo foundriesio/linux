@@ -27,7 +27,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #include "blk.h"
  
-@@ -115,7 +116,7 @@ static void ioc_release_fn(struct work_s
+@@ -116,7 +117,7 @@ static void ioc_release_fn(struct work_s
  			spin_unlock(&q->queue_lock);
  		} else {
  			spin_unlock_irqrestore(&ioc->lock, flags);

@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_SMP
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2519,6 +2519,8 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2514,6 +2514,8 @@ try_to_wake_up(struct task_struct *p, un
  	int cpu, success = 0;
  
  	preempt_disable();
@@ -45,7 +45,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (p == current) {
  		/*
  		 * We're waking current, this means 'p->on_rq' and 'task_cpu(p)
-@@ -2541,7 +2543,7 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2536,7 +2538,7 @@ try_to_wake_up(struct task_struct *p, un
  		trace_sched_wakeup(p);
  		goto out;
  	}
@@ -54,7 +54,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * If we are going to wake up a thread waiting for CONDITION we
  	 * need to ensure that CONDITION=1 done by the caller can not be
-@@ -2550,8 +2552,27 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2545,8 +2547,27 @@ try_to_wake_up(struct task_struct *p, un
  	 */
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
  	smp_mb__after_spinlock();
@@ -84,7 +84,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	trace_sched_waking(p);
  
-@@ -2643,9 +2664,12 @@ try_to_wake_up(struct task_struct *p, un
+@@ -2638,9 +2659,12 @@ try_to_wake_up(struct task_struct *p, un
  	ttwu_queue(p, cpu, wake_flags);
  unlock:
  	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_enable();
  
  	return success;
-@@ -2668,6 +2692,18 @@ int wake_up_process(struct task_struct *
+@@ -2663,6 +2687,18 @@ int wake_up_process(struct task_struct *
  }
  EXPORT_SYMBOL(wake_up_process);
  
@@ -118,7 +118,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return try_to_wake_up(p, state, 0);
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1644,6 +1644,7 @@ static inline int task_on_rq_migrating(s
+@@ -1650,6 +1650,7 @@ static inline int task_on_rq_migrating(s
  #define WF_SYNC			0x01		/* Waker goes to sleep after wakeup */
  #define WF_FORK			0x02		/* Child wakeup after fork */
  #define WF_MIGRATED		0x4		/* Internal use, task got migrated */
