@@ -1229,7 +1229,9 @@ static inline bool arch_needs_pgtable_deposit(void)
 
 static inline pmd_t pmd_mkdevmap(pmd_t pmd)
 {
-	return __pmd(pmd_val(pmd) | (_PAGE_PTE | _PAGE_DEVMAP));
+	if (radix_enabled())
+		return radix__pmd_mkdevmap(pmd);
+	return hash__pmd_mkdevmap(pmd);
 }
 
 static inline int pmd_devmap(pmd_t pmd)

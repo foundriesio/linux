@@ -104,6 +104,12 @@ static struct instruction *next_insn_same_func(struct objtool_file *file,
 	for (insn = next_insn_same_sec(file, insn); insn;		\
 	     insn = next_insn_same_sec(file, insn))
 
+static bool is_static_jump(struct instruction *insn)
+{
+	return insn->type == INSN_JUMP_CONDITIONAL ||
+	       insn->type == INSN_JUMP_UNCONDITIONAL;
+}
+
 /*
  * Check if the function has been manually whitelisted with the
  * STACK_FRAME_NON_STANDARD macro, or if it should be automatically whitelisted
@@ -495,8 +501,7 @@ static int add_jump_destinations(struct objtool_file *file)
 	unsigned long dest_off;
 
 	for_each_insn(file, insn) {
-		if (insn->type != INSN_JUMP_CONDITIONAL &&
-		    insn->type != INSN_JUMP_UNCONDITIONAL)
+		if (!is_static_jump(insn))
 			continue;
 
 		if (insn->ignore)
@@ -695,8 +700,28 @@ static int handle_group_alt(struct objtool_file *file,
 
 		insn->ignore = orig_insn->ignore_alts;
 
-		if (insn->type != INSN_JUMP_CONDITIONAL &&
-		    insn->type != INSN_JUMP_UNCONDITIONAL)
+		/*
+		 * Since alternative replacement code is copy/pasted by the
+		 * kernel after applying relocations, generally such code can't
+		 * have relative-address relocation references to outside the
+		 * .altinstr_replacement section, unless the arch's
+		 * alternatives code can adjust the relative offsets
+		 * accordingly.
+		 *
+		 * The x86 alternatives code adjusts the offsets only when it
+		 * encounters a branch instruction at the very beginning of the
+		 * replacement group.
+		 */
+		if ((insn->offset != special_alt->new_off ||
+		    (insn->type != INSN_CALL && !is_static_jump(insn))) &&
+		    find_rela_by_dest_range(insn->sec, insn->offset, insn->len)) {
+
+			WARN_FUNC("unsupported relocation in alternatives section",
+				  insn->sec, insn->offset);
+			return -1;
+		}
+
+		if (!is_static_jump(insn))
 			continue;
 
 		if (!insn->immediate)
@@ -933,10 +958,7 @@ static struct rela *find_switch_table(struct objtool_file *file,
 	 * it.
 	 */
 	for (;
-	     &insn->list != &file->insn_list &&
-	     insn->sec == func->sec &&
-	     insn->offset >= func->offset;
-
+	     &insn->list != &file->insn_list && insn->func && insn->func->pfunc == func;
 	     insn = insn->first_jump_src ?: list_prev_entry(insn, list)) {
 
 		if (insn != orig_insn && insn->type == INSN_JUMP_DYNAMIC)
@@ -1870,8 +1892,8 @@ static int validate_branch(struct objtool_file *file, struct instruction *first,
 			}
 
 			if (state.bp_scratch) {
-				WARN("%s uses BP as a scratch register",
-				     insn->func->name);
+				WARN_FUNC("BP used as a scratch register",
+					  insn->sec, insn->offset);
 				return 1;
 			}
 

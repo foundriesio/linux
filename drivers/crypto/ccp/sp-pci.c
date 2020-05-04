@@ -149,6 +149,14 @@ static struct sp_device *psp_get_master(void)
 	return sp_dev_master;
 }
 
+static void psp_clear_master(struct sp_device *sp)
+{
+	if (sp == sp_dev_master) {
+		sp_dev_master = NULL;
+		dev_dbg(sp->dev, "Cleared sp_dev_master\n");
+	}
+}
+
 static int sp_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct sp_device *sp;
@@ -209,6 +217,7 @@ static int sp_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pci_set_master(pdev);
 	sp->set_psp_master_device = psp_set_master;
 	sp->get_psp_master_device = psp_get_master;
+	sp->clear_psp_master_device = psp_clear_master;
 
 	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(48));
 	if (ret) {
