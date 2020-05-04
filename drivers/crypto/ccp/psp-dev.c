@@ -953,6 +953,9 @@ void psp_dev_destroy(struct sp_device *sp)
 		kref_put(&misc_dev->refcount, sev_exit);
 
 	sp_free_psp_irq(sp, psp);
+
+	if (sp->clear_psp_master_device)
+		sp->clear_psp_master_device(sp);
 }
 
 int sev_issue_cmd_external_user(struct file *filep, unsigned int cmd,
