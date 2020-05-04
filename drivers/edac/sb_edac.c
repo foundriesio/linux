@@ -3320,7 +3320,7 @@ fail0:
 }
 
 #define ICPU(model, table) \
-	{ X86_VENDOR_INTEL, 6, model, 0, (unsigned long)&table }
+	{ X86_VENDOR_INTEL, 6, model, X86_STEPPING_ANY, 0, (unsigned long)&table }
 
 static const struct x86_cpu_id sbridge_cpuids[] = {
 	ICPU(INTEL_FAM6_SANDYBRIDGE_X,	  pci_dev_descr_sbridge_table),

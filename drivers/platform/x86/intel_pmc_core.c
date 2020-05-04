@@ -37,7 +37,7 @@
 #include "intel_pmc_core.h"
 
 #define ICPU(model, data) \
-	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_MWAIT, (kernel_ulong_t)data }
+	{ X86_VENDOR_INTEL, 6, model, X86_STEPPING_ANY, X86_FEATURE_MWAIT, (kernel_ulong_t)data }
 
 static struct pmc_dev pmc;
 
