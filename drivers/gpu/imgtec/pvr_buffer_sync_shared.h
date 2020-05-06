@@ -1,8 +1,8 @@
 /*************************************************************************/ /*!
-@File           pvrversion.h
-@Title          PowerVR version numbers and strings.
+@File
+@Title          PVR buffer sync shared
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@Description    Version numbers and strings for PowerVR components.
+@Description    Shared definitions between client and server
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -41,32 +41,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef PVRVERSION_H
-#define PVRVERSION_H
+#ifndef PVR_BUFFER_SYNC_SHARED_H
+#define PVR_BUFFER_SYNC_SHARED_H
 
-#define PVRVERSION_MAJ               1U
-#define PVRVERSION_MIN               13U
+#define PVR_BUFFER_FLAG_READ		(1 << 0)
+#define PVR_BUFFER_FLAG_WRITE		(1 << 1)
+#define PVR_BUFFER_FLAG_MASK		(PVR_BUFFER_FLAG_READ | \
+									 PVR_BUFFER_FLAG_WRITE)
 
-#define PVRVERSION_FAMILY           "rogueddk"
-#define PVRVERSION_BRANCHNAME       "MAIN"
-#define PVRVERSION_BUILD             5665763
-#if defined(CONFIG_ANDROID)     //TCC
-#define PVRVERSION_BSCONTROL        "Rogue_DDK_Android"
-#define PVRVERSION_STRING           "Rogue_DDK_Android rogueddk MAIN@5665763"
-#else
-#define PVRVERSION_BSCONTROL        "Rogue_DDK_Linux_WS"
-#define PVRVERSION_STRING           "Rogue_DDK_Linux_WS rogueddk MAIN@5665763"
-#endif
-#define PVRVERSION_STRING_SHORT     "1.13@5665763 (MAIN)"
-
-#define COPYRIGHT_TXT               "Copyright (c) Imagination Technologies Ltd. All Rights Reserved."
-
-#define PVRVERSION_BUILD_HI          566
-#define PVRVERSION_BUILD_LO          5763
-#define PVRVERSION_STRING_NUMERIC   "1.13.566.5763"
-
-#define PVRVERSION_PACK(MAJOR,MINOR) (((IMG_UINT32)((IMG_UINT32)(MAJOR) & 0xFFFFU) << 16U) | (((MINOR) & 0xFFFFU) << 0U))
-#define PVRVERSION_UNPACK_MAJ(VERSION) (((VERSION) >> 16U) & 0xFFFFU)
-#define PVRVERSION_UNPACK_MIN(VERSION) (((VERSION) >> 0U) & 0xFFFFU)
-
-#endif /* PVRVERSION_H */
+#endif /* PVR_BUFFER_SYNC_SHARED_H */

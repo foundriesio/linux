@@ -157,7 +157,12 @@ ccflags-$(CONFIG_POWERVR_ROGUE_RESOURCE_INFO) += -DPVRSRV_ENABLE_GPU_MEMORY_INFO
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_DEVICEMEM_HISTORY) += devicemem_history_server.o
 
 # GPU tracing in systrace
+# TCC
+ifeq ($(CONFIG_ANDROID),y)
 pvrsrvkm-$(CONFIG_FTRACE) += pvr_gputrace.o
+else
+pvrsrvkm-y += pvr_gputrace.o
+endif
 
 # Event tracing
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o
@@ -183,6 +188,13 @@ pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += pdump_mmu.o
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += pdump_physmem.o
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += srvinit_pdump.o
 ccflags-$(CONFIG_POWERVR_ROGUE_PDUMP) += -DPDUMP=1
+
+# Linux synchronisation
+ifeq ($(SUPPORT_BUFFER_SYNC),1)
+ pvrsrvkm-y += \
+  ../pvr_buffer_sync.o \
+  ../pvr_fence.o
+endif
 
 # Android native synchronisation
 ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)
