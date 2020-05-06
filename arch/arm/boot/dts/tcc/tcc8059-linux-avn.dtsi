@@ -329,6 +329,16 @@
 		port-mux = <11>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
+
+		mxt_touch@4a {
+			compatible = "atmel,maxtouch";
+			reg = <0x4a>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc_default>;
+			irq-gpios = <&gpsd1 9 0x0>;
+			reset-gpios = <&gpb 16 0x0>;
+		};
+
 	};
 
 	gpsb0@16900000 {
