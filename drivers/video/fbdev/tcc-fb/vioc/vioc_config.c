@@ -1133,7 +1133,7 @@ int VIOC_CONFIG_WMIXPath(unsigned int component_num, unsigned int mode)
 	return -1;
 }
 
-#if defined(CONFIG_VIOC_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X)
 void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 {
 	/* reset - 0: Normal , 	1:  Mixing PATH reset */
@@ -1217,9 +1217,8 @@ void VIOC_CONFIG_WMIXPathReset(unsigned int component_num, unsigned int mode)
 				value |= 1<<shift_mix_path;
 			__raw_writel(value, config_reg + CFG_WMIX_PATH_SWR_OFFSET);
 		}
-
-		return 0;
-
+	}
+	return 0;
 }
 #endif
 
