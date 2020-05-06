@@ -1337,7 +1337,7 @@
 
 	pinctrl: pinctrl@14200000 {
 		compatible = "telechips,tcc805x-pinctrl";
-		reg = <0x14200000 0x7C0 0x1B935000 0xA30>;	/* gpio, pmgpio */
+		reg = <0x14200000 0x7C0 0x1B937000 0xA30>;	/* gpio, pmgpio */
 		gpio-controller;
 		#address-cells = <1>;
 		#size-cells = <0>;

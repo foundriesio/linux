@@ -383,11 +383,7 @@ static void tcc_pin_to_reg(struct tcc_pinctrl *pctl, unsigned pin,
 	while (pin >= bank->base && (bank->base + bank->npins - 1) < pin)
 		++bank;
 
-	if(!strcmp("gpk", bank->name) ||
-			!strcmp("gpma", bank->name) ||
-			!strcmp("gpmb", bank->name) ||
-			!strcmp("gpmc", bank->name) ||
-			!strcmp("gpmd", bank->name)){
+	if(!strcmp("gpk", bank->name)){
 		*reg = pctl->pmgpio_base;
 		*offset = pin - bank->base;
 	}
