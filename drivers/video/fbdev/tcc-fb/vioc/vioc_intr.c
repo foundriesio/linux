@@ -50,7 +50,16 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
+		if(id == VIOC_INTR_DEV3)
+			sub_id = VIOC_INTR_DEV3 - VIOC_INTR_DISP_OFFSET;
+		else
+			sub_id = id - VIOC_INTR_DEV0;
+
+		reg = VIOC_DISP_GetAddress(sub_id);
+		__raw_writel((__raw_readl(reg + DIM) &
+			      ~(mask & VIOC_DISP_INT_MASK)),
+			     reg + DIM);
+		break;
 #endif
 #endif
 		sub_id = id - VIOC_INTR_DEV0;
@@ -197,7 +206,18 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
+		if(id == VIOC_INTR_DEV3)
+			sub_id = VIOC_INTR_DEV3 - VIOC_INTR_DISP_OFFSET;
+		else
+			sub_id = id - VIOC_INTR_DEV0;
+
+		reg = VIOC_DISP_GetAddress(sub_id) + DIM;
+		__raw_writel(__raw_readl(reg) | (mask & VIOC_DISP_INT_MASK),
+			     reg);
+		if ((__raw_readl(reg) & VIOC_DISP_INT_MASK) !=
+		    VIOC_DISP_INT_MASK)
+			do_irq_mask = 0;
+		break;
 #endif
 #endif
 		sub_id = id - VIOC_INTR_DEV0;
@@ -323,9 +343,7 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 unsigned int vioc_intr_get_status(int id)
 {
 	volatile void __iomem *reg;
-#ifdef CONFIG_ARCH_TCC805X
-	unsigned int sub_id;
-#endif
+
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return 0;
 
@@ -336,8 +354,11 @@ unsigned int vioc_intr_get_status(int id)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
-		reg = VIOC_DISP_GetAddress(sub_id) + DSTATUS;
+		if(id == VIOC_INTR_DEV3)
+			id -= VIOC_INTR_DISP_OFFSET;
+		reg = VIOC_DISP_GetAddress(id) + DSTATUS;
+
+		return (__raw_readl(reg) & VIOC_DISP_INT_MASK);
 #endif
 #endif
 		reg = VIOC_DISP_GetAddress(id) + DSTATUS;
@@ -428,9 +449,7 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 bool is_vioc_intr_activatied(int id, unsigned mask)
 {
 	volatile void __iomem *reg;
-#ifdef CONFIG_ARCH_TCC805X
-	unsigned int sub_id;
-#endif
+
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return false;
 
@@ -441,8 +460,14 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
-		reg = VIOC_DISP_GetAddress(sub_id);
+		if(id == VIOC_INTR_DEV3)
+			id -= VIOC_INTR_DISP_OFFSET;
+
+		reg = VIOC_DISP_GetAddress(id);
+		if (__raw_readl(reg + DSTATUS) &
+		    (mask & VIOC_DISP_INT_MASK))
+			return true;
+		return false;
 #endif
 #endif
 		reg = VIOC_DISP_GetAddress(id);
@@ -505,9 +530,7 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 bool is_vioc_intr_unmasked(int id, unsigned mask)
 {
 	volatile void __iomem *reg;
-#ifdef CONFIG_ARCH_TCC805X
-	unsigned int sub_id;
-#endif
+
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return false;
 
@@ -518,8 +541,13 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
-		reg = VIOC_DISP_GetAddress(sub_id);
+		if(id == VIOC_INTR_DEV3)
+			id -= VIOC_INTR_DISP_OFFSET;
+
+		reg = VIOC_DISP_GetAddress(id);
+		if (__raw_readl(reg + DIM) & (mask & VIOC_DISP_INT_MASK))
+			return true;
+		return false;
 #endif
 #endif
 		reg = VIOC_DISP_GetAddress(id);
@@ -581,9 +609,7 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 int vioc_intr_clear(int id, unsigned mask)
 {
 	volatile void __iomem *reg;
-#ifdef CONFIG_ARCH_TCC805X
-	unsigned int sub_id;
-#endif
+
 	if ((id < 0) || (id > VIOC_INTR_NUM))
 		return -1;
 
@@ -594,8 +620,12 @@ int vioc_intr_clear(int id, unsigned mask)
 	case VIOC_INTR_DEV2:
 #ifdef CONFIG_ARCH_TCC805X
 	case VIOC_INTR_DEV3:
-		sub_id = id - VIOC_INTR_DISP_OFFSET - VIOC_INTR_DEV0;
-		reg = VIOC_DISP_GetAddress(sub_id);
+		if(id == VIOC_INTR_DEV3)
+			id -= VIOC_INTR_DISP_OFFSET;
+
+		reg = VIOC_DISP_GetAddress(id);
+		__raw_writel((mask & VIOC_DISP_INT_MASK), reg + DSTATUS);
+		break;
 #endif
 #endif
 		reg = VIOC_DISP_GetAddress(id);
