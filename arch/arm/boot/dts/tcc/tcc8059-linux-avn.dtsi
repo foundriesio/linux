@@ -235,6 +235,33 @@
 				};
 			};
 		}; /* pmic da9062 */
+/*
+        pmic@69 {
+          compatible = "mps,mpq7920";
+          reg = <0x69>;
+
+          mps,switch-freq = <1>;
+          mps,buck-softstart = /bits/ 8 <1 2 1 3>;
+          mps,buck-ovp = /bits/ 8 <1 0 1 1>;
+
+          regulators {
+            buck1 {
+             regulator-name = "buck1";
+             regulator-min-microvolt = <400000>;
+             regulator-max-microvolt = <3587500>;
+             regulator-min-microamp  = <460000>;
+             regulator-max-microamp  = <7600000>;
+             regulator-boot-on;
+            };
+
+            ldo2 {
+             regulator-name = "ldo2";
+             regulator-min-microvolt = <650000>;
+             regulator-max-microvolt = <3587500>;
+            };
+          };
+        }; /* pmic mpq7920 */
+*/
 
 		videosource0: videodecoder_isl79988 {
 			compatible	= "intersil,isl79988";
