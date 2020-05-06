@@ -830,9 +830,9 @@ EXPORT_SYMBOL_GPL(sev_guest_df_flush);
 
 static void sev_exit(struct kref *ref)
 {
-	struct sev_misc_dev *misc_dev = container_of(ref, struct sev_misc_dev, refcount);
-
 	misc_deregister(&misc_dev->misc);
+	kfree(misc_dev);
+	misc_dev = NULL;
 }
 
 static int sev_misc_init(struct psp_device *psp)
@@ -850,7 +850,7 @@ static int sev_misc_init(struct psp_device *psp)
 	if (!misc_dev) {
 		struct miscdevice *misc;
 
-		misc_dev = devm_kzalloc(dev, sizeof(*misc_dev), GFP_KERNEL);
+		misc_dev = kzalloc(sizeof(*misc_dev), GFP_KERNEL);
 		if (!misc_dev)
 			return -ENOMEM;
 
@@ -954,6 +954,9 @@ void psp_dev_destroy(struct sp_device *sp)
 		kref_put(&misc_dev->refcount, sev_exit);
 
 	sp_free_psp_irq(sp, psp);
+
+	if (sp->clear_psp_master_device)
+		sp->clear_psp_master_device(sp);
 }
 
 int sev_issue_cmd_external_user(struct file *filep, unsigned int cmd,
