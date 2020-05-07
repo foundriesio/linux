@@ -756,7 +756,7 @@ static const struct x86_cpu_id rapl_cpu_match[] __initconst = {
 
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_HASWELL,	hsw_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_HASWELL_X,    hsw_rapl_init),
-	X86_RAPL_MODEL_MATCH(INTEL_FAM6_HASWELL_ULT,  hsw_rapl_init),
+	X86_RAPL_MODEL_MATCH(INTEL_FAM6_HASWELL_L,	hsw_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_HASWELL_GT3E, hsw_rapl_init),
 
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_BROADWELL,	  hsw_rapl_init),
@@ -767,11 +767,11 @@ static const struct x86_cpu_id rapl_cpu_match[] __initconst = {
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_XEON_PHI_KNL, knl_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_XEON_PHI_KNM, knl_rapl_init),
 
-	X86_RAPL_MODEL_MATCH(INTEL_FAM6_SKYLAKE_MOBILE,  skl_rapl_init),
+	X86_RAPL_MODEL_MATCH(INTEL_FAM6_SKYLAKE_L,	skl_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_SKYLAKE,	 skl_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_SKYLAKE_X,	 hsx_rapl_init),
 
-	X86_RAPL_MODEL_MATCH(INTEL_FAM6_KABYLAKE_MOBILE,  skl_rapl_init),
+	X86_RAPL_MODEL_MATCH(INTEL_FAM6_KABYLAKE_L,	skl_rapl_init),
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_KABYLAKE,	  skl_rapl_init),
 
 	X86_RAPL_MODEL_MATCH(INTEL_FAM6_ATOM_GOLDMONT, hsw_rapl_init),

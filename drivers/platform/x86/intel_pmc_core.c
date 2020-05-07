@@ -480,11 +480,11 @@ static inline void pmc_core_dbgfs_unregister(struct pmc_dev *pmcdev)
 #endif /* CONFIG_DEBUG_FS */
 
 static const struct x86_cpu_id intel_pmc_core_ids[] = {
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE_MOBILE, X86_FEATURE_MWAIT,
+	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE_L, X86_FEATURE_MWAIT,
 		(kernel_ulong_t)NULL},
 	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE, X86_FEATURE_MWAIT,
 		(kernel_ulong_t)NULL},
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_KABYLAKE_MOBILE, X86_FEATURE_MWAIT,
+	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_KABYLAKE_L, X86_FEATURE_MWAIT,
 		(kernel_ulong_t)NULL},
 	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_KABYLAKE, X86_FEATURE_MWAIT,
 		(kernel_ulong_t)NULL},
