@@ -125,17 +125,23 @@
 };
 
 &thermal {
-	compatible = "telechips,tcc-thermal";
-	reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4>;
-	status = "okay";
+		compatible = "telechips,tcc-thermal";
+		reg = <0x14700000 0x4 0x14700030 0x4 0x14200290 0x4 0x1420029C 0x4
+		0x14200298 0x4
+		0x1470000C 0x4
+		0x14700010 0x4>;
 
-	throttle_count = <5>;
-	throttle_active_count = <0>;
-	throttle_passive_count = <5>;
+		status = "okay";
 
-	cal_type = "TYPE_ONE_POINT_TRIMMING";
-	polling-delay-idle = <0>;
-	polling-delay-passive = <0>;
+                throttle_count = <5>;
+                throttle_active_count = <0>;
+                throttle_passive_count = <5>;
+                interrupts = <GIC_SPI 40 0>;
+                cal_type = "TYPE_ONE_POINT_TRIMMING";
+                polling-delay-idle = <0>;
+                polling-delay-passive = <0>;
+
+                threshold_temp = <85>;
 
 	throttle_table {
 		throttle_tab_0 {

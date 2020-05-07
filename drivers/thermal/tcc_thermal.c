@@ -30,6 +30,7 @@
 #include <linux/cpu_cooling.h>
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
+#include "tcc_thermal.h"
 
 #define CS_POLICY_CORE          0
 #define CLUST0_POLICY_CORE      0
@@ -49,10 +50,18 @@
 #define IDLE_INTERVAL           60000
 #define MCELSIUS                1000
 
+
+#if defined(CONFIG_ARCH_TCC805X)
 #define MIN_TEMP                -40
 #define MAX_TEMP                125
 #define MIN_TEMP_CODE           0x248
 #define MAX_TEMP_CODE           0xC7C
+#else
+#define MIN_TEMP                15
+#define MAX_TEMP                125
+#define MIN_TEMP_CODE           0x00011111
+#define MAX_TEMP_CODE           0x10010010
+#endif
 
 #define DEBUG
 
@@ -146,33 +155,25 @@ struct tcc_thermal_data {
     void __iomem *threshold_up_data5;
     void __iomem *threshold_down_data5;
     void __iomem *interrupt_clear;
+    void __iomem *interrupt_mask;
+    int probe_num;
 #else
     void __iomem *temp_code;
-    void __iomem *temp_code2;
     void __iomem *control;
+    void __iomem *vref_sel;
+    void __iomem *slop_sel;
     void __iomem *ecid_conf;
     void __iomem *ecid_user0_reg1;
-    void __iomem *irq_pol;
-    void __iomem *irq_status;
-    void __iomem *threshold_reg;
+    void __iomem *ecid_user0_reg0;
 #endif
 #if defined(CONFIG_ARCH_TCC898X) 
     struct clk *tsen_power;
 #endif
     int temp_trim1;
     int temp_trim2;
+    int vref_trim;
+    int slop_trim;
     int irq;
-    int probe_num;
-};
-
-struct tcc_thermal_zone {
-    enum thermal_device_mode mode;
-    struct thermal_zone_device *therm_dev;
-    struct thermal_cooling_device *cool_dev[5];
-    unsigned int cool_dev_size;
-    struct platform_device *tcc_dev;
-    struct thermal_sensor_conf *sensor_conf;
-    bool bind;
 };
 
 #ifdef CONFIG_ARM_TCC_MP_CPUFREQ
@@ -184,9 +185,7 @@ static u32 delay_passive = 0;
 
 static void tcc_unregister_thermal(void);
 static int tcc_register_thermal(struct thermal_sensor_conf *sensor_conf);
-static struct tcc_thermal_zone *thermal_zone;
-
-
+struct tcc_thermal_zone *thermal_zone;
 
 #ifdef CONFIG_ARM_TCC_MP_CPUFREQ
 static void __init init_mp_cpumask_set(void)
@@ -204,7 +203,7 @@ static void __init init_mp_cpumask_set(void)
 	 }
 }
 #endif
-
+#if defined(CONFIG_ARCH_TCC805X)
 static int temp_to_code(struct cal_thermal_data *data, int temp)
 {
      /*Always apply two point calibration*/
@@ -249,23 +248,87 @@ static int code_to_temp(struct cal_thermal_data *data, int temp_code)
     return temp;
 }
 
+#else
+static int temp_to_code(struct cal_thermal_data *data, int temp)
+{
+    int temp_code;
+
+    switch (data->cal_type) {
+        case TYPE_TWO_POINT_TRIMMING:
+            temp_code = (temp - 25)*(data->temp_error2 - data->temp_error1) /
+                    (85 - 25) + data->temp_error1;
+            break;
+        case TYPE_ONE_POINT_TRIMMING:
+            temp_code = temp + data->temp_error1 - 25;
+            break;
+        case TYPE_NONE:
+            temp_code = temp + 21;
+            break;
+        default:
+            temp_code = temp;
+            break;
+    }
+
+    if(temp > MAX_TEMP)
+        temp_code = MAX_TEMP_CODE;
+    else if (temp < MIN_TEMP)
+        temp_code = MIN_TEMP_CODE;
+
+    return temp_code;
+}
+
+static int code_to_temp(struct cal_thermal_data *data, int temp_code)
+{
+    int temp;
+
+    switch (data->cal_type) {
+        case TYPE_TWO_POINT_TRIMMING:
+            temp = (temp_code - data->temp_error1) * (85 - 25) /
+                (data->temp_error2 - data->temp_error1) + 25;
+            break;
+        case TYPE_ONE_POINT_TRIMMING:
+            temp = temp_code - data->temp_error1 + 25;
+            break;
+        case TYPE_NONE:
+            temp = (int)temp_code - 21;
+            break;
+        default:
+            temp = temp_code;
+            break;
+    }
+
+    if(temp > MAX_TEMP)
+        temp = MAX_TEMP;
+    else if (temp < MIN_TEMP)
+        temp = MIN_TEMP;
+
+    return temp;
+}
+
+#endif
+
+
 static int tcc_thermal_read(struct tcc_thermal_data *data)
 {
     u8 code_temp;
     int celsius_temp;
     int tag;
     mutex_lock(&data->lock);
+#if defined(CONFIG_ARCH_TCC805X)
     tag = data->probe_num;
-//test by kim
     switch(tag){
-	case 0 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code0); break;
-	case 1 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code1); break;
-	case 2 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code2); break;
-	case 3 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code3); break;
-	case 4 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code4); break;
-	case 5 : printk("Selected probe number: %d\n", tag); code_temp = readl_relaxed(data->temp_code5); break;
-	default : printk("Selected probe number: 0\n"); code_temp = readl_relaxed(data->temp_code0); break;
+	case 0 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code0)); printk("reading temp data : %d\n", celsius_temp); break;
+	case 1 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code1)); printk("reading temp data : %d\n", celsius_temp); break;
+	case 2 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code2)); printk("reading temp data : %d\n", celsius_temp); break;
+	case 3 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code3)); printk("reading temp data : %d\n", celsius_temp); break;
+	case 4 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code4)); printk("reading temp data : %d\n", celsius_temp); break;
+	case 5 : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code5)); printk("reading temp data : %d\n", celsius_temp); break;
+	default : printk("Selected probe number: %d\n", tag); celsius_temp = code_to_temp(data->cal_data, readl_relaxed(data->temp_code0)); printk("reading temp data : %d\n", celsius_temp); break;
     }
+#else
+
+    code_temp = readl_relaxed(data->temp_code);
+
     if( code_temp < THERMAL_MIN_DATA || code_temp > THERMAL_MAX_DATA)
     {
         printk(KERN_ERR "[ERROR][T-SENSOR] Wrong thermal data received\n");
@@ -273,11 +336,12 @@ static int tcc_thermal_read(struct tcc_thermal_data *data)
     }
     celsius_temp = code_to_temp(data->cal_data, code_temp);
 
+#endif
     mutex_unlock(&data->lock);
 
     return celsius_temp;
 }
-
+#if defined(CONFIG_ARCH_TCC805X)
 static ssize_t cpu_temp_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
     struct tcc_thermal_data *data = dev_get_drvdata(dev);
@@ -317,7 +381,7 @@ static ssize_t temp_mode_write(struct device *dev, struct device_attribute *attr
 	else {
 		writel(0, data->enable);
 		control_data = readl_relaxed(data->control);
-		writel((control_data | value), data->control);
+		writel(((control_data & ~(0x1)) | value), data->control);
 		writel(1, data->enable);
 	}
     }
@@ -331,9 +395,9 @@ static ssize_t temp_irq_en_read(struct device *dev, struct device_attribute *att
     struct tcc_thermal_data *data = dev_get_drvdata(dev);
     int celsius_temp, i=0;
     int probe[6]={0,};
-    celsius_temp = (readl_relaxed(data->interrupt_enable) & 0x3F);
+    celsius_temp = (readl_relaxed(data->interrupt_enable) & 0x777777);
     for(i=0; i<6; i++){
-	probe[i] = (celsius_temp >> i) & 0x1;
+	probe[i] = (celsius_temp >> i) & 0x7;
     }
     printk("RP4: %d, RP3: %d, RP2: %d, RP1: %d, RP0: %d, MP: %d \n", probe[5], probe[4], probe[3], probe[2], probe[1], probe[0]);
     return sprintf(buf, "%d",celsius_temp);
@@ -343,13 +407,13 @@ static ssize_t temp_irq_en_write(struct device *dev, struct device_attribute *at
 {
     struct tcc_thermal_data *data = dev_get_drvdata(dev);
     int value= 0;
-    if(kstrtoint(buf, 10, &value)) return -EINVAL;
+    if(kstrtoint(buf, 16, &value)) return -EINVAL;
     else {
-	if(value > 0x3F){ printk("[TSENSOR] IRQ Enable setting fail \n"); return 0; }
+	if(value > 0x777777){ printk("[TSENSOR] IRQ Enable setting fail \n"); return 0; }
 	else {
 		writel(0, data->enable);
 		writel(0, data->interrupt_enable);
-		writel(0x3F, data->interrupt_clear);
+		writel(0x777777, data->interrupt_clear);
 		writel(value, data->interrupt_enable);
 		writel(1, data->enable);
 	}
@@ -391,53 +455,19 @@ static irqreturn_t tcc_thermal_irq(int irq, void *dev)
 {
         struct tcc_thermal_data *data = dev;
 
-        int reg, probe_check;
+        int reg;
         /*For print irq message for test. If need to change CPU frequency depending on CPU temperature, modify this function.*/
         reg = readl(data->interrupt_status);
-        probe_check=((reg >> 20) & 0x7);
-        if(probe_check==0x4) { printk("Probe4 Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Probe4 High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Probe4 Cpature irq occur\n"); }
-        else {}
-
-        probe_check=((reg >> 16) & 0x7);
-        if(probe_check==0x4) { printk("Probe3 Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Probe3 High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Probe3 Cpature irq occur\n"); }
-        else {}
-
-        probe_check=((reg >> 12) & 0x7);
-        if(probe_check==0x4) { printk("Probe2 Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Probe2 High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Probe2 Cpature irq occur\n"); }
-        else {}
-
-        probe_check=((reg >> 8) & 0x7);
-        if(probe_check==0x4) { printk("Probe1 Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Probe1 High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Probe1 Cpature irq occur\n"); }
-        else {}
-
-        probe_check=((reg >> 4) & 0x7);
-        if(probe_check==0x4) { printk("Probe0 Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Probe0 High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Probe0 Cpature irq occur\n"); }
-        else {}
-
-        probe_check=((reg) & 0x7);
-        if(probe_check==0x4) { printk("Main Probe Low temperature irq occur\n"); }
-        else if(probe_check==0x2) { printk("Main Probe High temperature irq occur\n"); }
-        else if(probe_check==0x1) { printk("Main Probe Cpature irq occur\n"); }
-        else {}
+		printk("irq occur 0x%x\n",reg);
 
 	writel((1 << 20) | (1 << 16) | (1 << 12) | (1 << 8) | (1 << 4) | 1, data->interrupt_clear); // clear irq
         return IRQ_HANDLED;
 }
-
-
+#endif
 static int tcc_thermal_init(const struct tcc_thermal_data *data)
 {
     u32 v_temp;
+	#if defined(CONFIG_ARCH_TCC805X)
     u32 threshold_low_temp;
     u32 threshold_high_temp;
 
@@ -470,8 +500,16 @@ static int tcc_thermal_init(const struct tcc_thermal_data *data)
 
     writel(0, data->interrupt_enable); // Default interrupt disable
 
-    writel((1 << 20 | 1 << 16 | 1 << 12 | 1 << 8 | 1 << 4 | 1), data->interrupt_clear); // All interrupt clear
-    
+    writel((7 << 20 | 7 << 16 | 7 << 12 | 7 << 8 | 7 << 4 | 7), data->interrupt_clear); // All interrupt clear
+
+    writel(0x111111, data->interrupt_mask); // interrupt masking
+    v_temp = readl_relaxed(data->interrupt_mask);
+    printk("[T-SENSOR] IRQ Masking - 0x%x\n",v_temp);
+
+    v_temp = 0;
+
+    writel(1, data->interrupt_enable); // Default interrupt disable
+
     v_temp = readl_relaxed(data->control);
 
     v_temp |= 0x1; // Default mode : Continuous mode
@@ -479,6 +517,29 @@ static int tcc_thermal_init(const struct tcc_thermal_data *data)
     writel(v_temp, data->control);
 
     writel(1, data->enable);
+	#else
+
+    v_temp = readl_relaxed(data->control);
+
+    v_temp |= 0x3;
+
+    writel(v_temp, data->control);
+
+    // write VREF and SLOPE if ecid value is valid
+    // if value is not valid, use default setting.
+    v_temp = data->vref_trim;
+    if (v_temp)
+	    writel(v_temp, data->vref_sel);
+    v_temp = data->slop_trim;
+    if (v_temp)
+	    writel(v_temp, data->slop_sel);
+
+    v_temp = readl_relaxed(data->control);
+
+    v_temp = readl_relaxed(data->temp_code);
+
+    return 0;
+	#endif
 
     return 0;
 }
@@ -514,10 +575,11 @@ static int tcc_get_temp(struct thermal_zone_device *thermal,
         printk(KERN_ERR "[ERROR][T-SENSOR] Temperature sensor not initialised\n");
         return -EINVAL;
     }
+        printk("[T-SENSOR] Temperature sensor - temperature is called\n");
     data = thermal_zone->sensor_conf->private_data;
     *temp = thermal_zone->sensor_conf->read_temperature(data);
     *temp = *temp * MCELSIUS;
-
+    thermal_zone->result_of_thermal_read=*temp;
     return 0;
 }
 
@@ -1036,12 +1098,12 @@ static inline struct  tcc_thermal_platform_data *tcc_thermal_parse_dt(
         pdata->cal_type = TYPE_NONE;
 
 #if defined(CONFIG_ARCH_TCC805X)
-    if(of_property_read_u32(np, "threshold_low_temp", &pdata->threshold_low_temp))
+    if(of_property_read_s32(np, "threshold_low_temp", &pdata->threshold_low_temp))
     {
             pr_err("failed to get threshold_low_temp\n");
             goto err_parse_dt;
     }
-    if(of_property_read_u32(np, "threshold_high_temp", &pdata->threshold_high_temp))
+    if(of_property_read_s32(np, "threshold_high_temp", &pdata->threshold_high_temp))
     {
             pr_err("failed to get threshold_high_temp\n");
             goto err_parse_dt;
@@ -1061,6 +1123,7 @@ err_parse_dt:
     return NULL;
 }
 
+	#if defined(CONFIG_ARCH_TCC805X)
 static DEVICE_ATTR(main_temp, 0644, cpu_temp_read, NULL);
 static DEVICE_ATTR(probe0_temp, 0644, cpu_temp_read, NULL);
 static DEVICE_ATTR(probe1_temp, 0644, cpu_temp_read, NULL);
@@ -1100,6 +1163,7 @@ static struct attribute_group temp_con_attr_group = {
         .name   = NULL,
         .attrs  = temp_con_entries,
 };
+#endif
 
 static int tcc_thermal_probe(struct platform_device *pdev)
 {
@@ -1135,7 +1199,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to allocate cal thermal data structure\n");
         return -ENOMEM;
     }
-
+#if defined(CONFIG_ARCH_TCC805X)
     if (use_dt)
         data->enable = of_iomap(use_dt, 0);
     else
@@ -1458,6 +1522,104 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     if (IS_ERR(data->interrupt_clear))
         return PTR_ERR(data->interrupt_clear);
 
+    if (use_dt)
+        data->interrupt_mask = of_iomap(use_dt, 26);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+        }
+        data->interrupt_mask = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+    if (IS_ERR(data->interrupt_mask))
+        return PTR_ERR(data->interrupt_mask);
+
+#else
+    if (use_dt)
+        data->control = of_iomap(use_dt, 0);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+        if (!data->res) {
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
+            return -ENODEV;
+        }
+        data->control = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+    if (IS_ERR(data->control))
+        return PTR_ERR(data->control);
+
+    if (use_dt)
+        data->temp_code = of_iomap(use_dt, 1);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
+            return -ENODEV;
+        }
+        data->temp_code = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+    if (IS_ERR(data->temp_code))
+        return PTR_ERR(data->temp_code);
+
+
+    if (use_dt)
+        data->ecid_conf = of_iomap(use_dt, 2);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
+        }
+        data->ecid_conf = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+
+    if (use_dt)
+        data->ecid_user0_reg1 = of_iomap(use_dt, 3);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to get thermal platform resource\n");
+        }
+        data->ecid_user0_reg1 = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+
+    if (use_dt)
+        data->ecid_user0_reg0 = of_iomap(use_dt, 4);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+        }
+        data->ecid_user0_reg0 = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+
+    if (use_dt)
+        data->slop_sel = of_iomap(use_dt, 5);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+        }
+        data->slop_sel = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+
+    if (use_dt)
+        data->vref_sel = of_iomap(use_dt, 6);
+    else
+    {
+        data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+        if (!data->res) {
+            dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
+        }
+        data->vref_sel = devm_ioremap_resource(&pdev->dev, data->res);
+    }
+#endif
 #if defined(CONFIG_ARCH_TCC898X) 
     data->tsen_power = of_clk_get(pdev->dev.of_node, 0);
     if(data->tsen_power)
@@ -1469,8 +1631,11 @@ static int tcc_thermal_probe(struct platform_device *pdev)
     platform_set_drvdata(pdev, data);
     mutex_init(&data->lock);
     data->pdata = pdata;
+	#if defined(CONFIG_ARCH_TCC805X)
     tcc_thermal_get_otp(pdev);
-
+	#else
+	tcc_thermal_get_efuse(pdev);
+	#endif
     (&tcc_sensor_conf)->private_data = data;
 
     tcc_sensor_conf.trip_data.trip_count = pdata->freq_tab_count;
@@ -1510,7 +1675,7 @@ static int tcc_thermal_probe(struct platform_device *pdev)
         return ret;
     }
 
-#if 0 // if thermal interrupt is used.
+#if 1 // if thermal interrupt is used.
 
     data->irq = platform_get_irq(pdev, 0);
     if (data->irq <= 0)
@@ -1537,10 +1702,10 @@ static int tcc_thermal_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "[ERROR][T-SENSOR]Failed to register tcc_thermal\n");
         goto err_thermal;
     }
-
+	#if defined(CONFIG_ARCH_TCC805X)
     ret = sysfs_create_group(&pdev->dev.kobj, &main_temp_attr_group);
     ret = sysfs_create_group(&pdev->dev.kobj, &temp_con_attr_group);
-
+	#endif
     printk(KERN_INFO "[INFO][T-SENSOR] TCC thermal zone is registered\n");
     return 0;
 

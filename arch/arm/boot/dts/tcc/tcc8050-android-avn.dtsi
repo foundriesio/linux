@@ -111,7 +111,8 @@
                       <0x14700068 0x4 0x1470006C 0x4>, // 19, 20:Threshold Data register(Probe2)
                       <0x14700070 0x4 0x14700074 0x4>, // 21, 22:Threshold Data register(Probe3)
                       <0x14700078 0x4 0x1470007C 0x4>, // 23, 24:Threshold Data register(Probe4)
-                      <0x14700044 0x4>; //25:Interrupt Clear register
+                      <0x14700044 0x4>, //25:Interrupt Clear register
+		      <0x1470002C 0x4>; //26:Interrupt Mask register
 
                 status = "okay";
 
