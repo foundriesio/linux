@@ -1150,11 +1150,11 @@ static const struct x86_cpu_id rapl_ids[] __initconst = {
 
 	RAPL_CPU(INTEL_FAM6_HASWELL,		rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_HASWELL_L,		rapl_defaults_core),
-	RAPL_CPU(INTEL_FAM6_HASWELL_GT3E,	rapl_defaults_core),
+	RAPL_CPU(INTEL_FAM6_HASWELL_G,		rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_HASWELL_X,		rapl_defaults_hsw_server),
 
 	RAPL_CPU(INTEL_FAM6_BROADWELL,		rapl_defaults_core),
-	RAPL_CPU(INTEL_FAM6_BROADWELL_GT3E,	rapl_defaults_core),
+	RAPL_CPU(INTEL_FAM6_BROADWELL_G,	rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_BROADWELL_XEON_D,	rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_BROADWELL_X,	rapl_defaults_hsw_server),
 
