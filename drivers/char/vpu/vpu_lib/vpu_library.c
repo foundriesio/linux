@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 /*
  * drivers/vpu_new/vpu_lib.c
  *

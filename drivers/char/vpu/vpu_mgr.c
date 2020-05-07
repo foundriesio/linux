@@ -77,7 +77,7 @@ typedef struct wait_list_entry{
 }wait_list_entry_t;
 
 static wait_list_entry_t wait_entry_info;
-static unsigned int use_wait_list = 0;
+static unsigned int use_wait_list = 1;
 #define IsUseWaitList() (unsigned int)use_wait_list
 extern void vmgr_waitlist_init_pending(int type, int force_clear);
 #endif
@@ -878,6 +878,9 @@ static int _vmgr_cmd_open(char *str)
 	        //return -ENOMEM;
     	}
 		cntInt_vpu = 0;
+		#ifdef DEBUG_VPU_K
+		cntwk_vpu = 0;
+		#endif
     }
     atomic_inc(&vmgr_data.dev_opened);
 
@@ -905,7 +908,7 @@ static int _vmgr_cmd_release(char *str)
 			vmgr_data.external_proc = 1;
 			_vmgr_external_all_close(200);
 			vmgr_data.external_proc = 0;
-			_vmgr_wait_process(200);
+			//_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
 		}
 		vmgr_data.bVpu_already_proc_force_closed = false;
     #endif
@@ -1228,7 +1231,7 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				vmgr_data.external_proc = 1;
 				_vmgr_external_all_close(200);
 				vmgr_data.external_proc = 0;
-				_vmgr_wait_process(200);
+				//_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
 				vmgr_data.bVpu_already_proc_force_closed = true;
 			}
         }
@@ -1302,10 +1305,12 @@ static irqreturn_t _vmgr_isr_handler(int irq, void *dev_id)
     atomic_inc(&vmgr_data.oper_intr);
 //    spin_unlock_irqrestore(&(vmgr_data.oper_lock), flags);
 
-    wake_up_interruptible(&(vmgr_data.oper_wq));
-	#ifdef DEBUG_VPU_K
+#ifdef DEBUG_VPU_K
 	cntwk_vpu++;
-	#endif
+#endif
+
+    wake_up_interruptible(&(vmgr_data.oper_wq));
+
     return IRQ_HANDLED;
 }
 
@@ -1471,8 +1476,13 @@ void vmgr_waitlist_init_pending(int type, int force_clear)
 {	
 	if (IsUseWaitList()) {
 		if((wait_entry_info.type == type) || force_clear){
-			wait_entry_info.wait_dec_status = 0;		
-			printk("@@@@@@ =====> [%d] end waiting with closing VPU\n", type);
+			wait_entry_info.wait_dec_status = 0;
+			printk(
+				"@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
+				wait_entry_info.type,
+				type,
+				force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
+			);
 		}
 	}
 }

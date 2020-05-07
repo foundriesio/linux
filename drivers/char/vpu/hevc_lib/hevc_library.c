@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 /*
  * drivers/char/hevc/lib/hevc_lib.c
  *

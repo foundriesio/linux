@@ -278,5 +278,5 @@ typedef struct _vpu_encoder_data{
     VpuList_t venc_list[LIST_MAX];
 } vpu_encoder_data;
 #endif
-#endif
 
+#endif //_VPU_COMM_H_

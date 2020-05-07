@@ -559,7 +559,7 @@ static int _vmgr_4k_d2_internal_handler(unsigned int reason)
     unsigned long flags;
     unsigned int vint_reason = 0;
 	int oper_inst = 0, cnt = 0;
-    int timeout = 200;
+    int timeout = 500;
 
     if(vmgr_4k_d2_data.check_interrupt_detection)
     {
@@ -1130,6 +1130,9 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 	    }
 
 		cntInt_4kd2 = 0;
+		#ifdef DEBUG_VPU_4K_D2_K
+		cntwk_4kd2 = 0;
+		#endif
     }
     atomic_inc(&vmgr_4k_d2_data.dev_opened);
 
@@ -1157,7 +1160,7 @@ static int _vmgr_4k_d2_cmd_release(char *str)
 			vmgr_4k_d2_data.external_proc = 1;
 			_vmgr_4k_d2_external_all_close(200);
 			vmgr_4k_d2_data.external_proc = 0;
-			_vmgr_4k_d2_wait_process(200);
+			//_vmgr_4k_d2_wait_process(200); //[2020.02.24] removed 200 ms wait function while 4k d2 is closing (waiting time can be longer than poll time of omx)
 		}
 		vmgr_4k_d2_data.bVpu_already_proc_force_closed = false;
 #endif
@@ -1348,7 +1351,7 @@ static long _vmgr_4k_d2_ioctl(struct file *file, unsigned int cmd, unsigned long
 				vmgr_4k_d2_data.external_proc = 1;
 				_vmgr_4k_d2_external_all_close(200);
 				vmgr_4k_d2_data.external_proc = 0;
-				_vmgr_4k_d2_wait_process(200);
+				//_vmgr_4k_d2_wait_process(200); //[2020.02.24] removed 200 ms wait function while 4k d2 is closing (waiting time can be longer than poll time of omx)
 				vmgr_4k_d2_data.bVpu_already_proc_force_closed = true;
 			}
 		}
