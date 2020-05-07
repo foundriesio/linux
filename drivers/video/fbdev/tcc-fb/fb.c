@@ -79,6 +79,7 @@
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_rdma.h>
+#include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_disp.h>
 #include <video/tcc/vioc_config.h>
@@ -111,11 +112,13 @@ struct fb_dp_device {
 	unsigned int FbDeviceType;
 	unsigned int FbUpdateType;
 	unsigned int FbLayerOrder;
-	struct clk *vioc_clock;		//vioc blcok clock
-	struct clk *ddc_clock;		//display blcok clock
+	unsigned int FbWdmaPath;		/* 0: Display device path, 1: Wdma path */
+	struct clk *vioc_clock;			//vioc blcok clock
+	struct clk *ddc_clock;			//display blcok clock
 	struct fb_vioc_block ddc_info;		// display controller address
-	struct fb_vioc_block wmixer_info;		// wmixer address
-	struct fb_vioc_block scaler_info;		// scaler address
+	struct fb_vioc_block wdma_info;		// display controller address
+	struct fb_vioc_block wmixer_info;	// wmixer address
+	struct fb_vioc_block scaler_info;	// scaler address
 	struct fb_vioc_block rdma_info;		// rdma address
 	struct fb_region region;
 	struct file *filp;
@@ -368,42 +371,64 @@ static void fbX_vsync_activate(struct fb_info *info)
 
 static int fbX_prepare_m2m(struct fb_info *info)
 {
-	struct fbX_par *par = info->par;
+	struct fbX_par *par;
 	pmap_t pmap;
 	char *name = NULL;
-	int ret = 0;
+	int ret = -ENODEV;
 
-	if(par->pdata.filp == NULL) {
+	do {
+		if(info == NULL) {
+			pr_err("%s parameter is NULL\r\n", __func__);
+			break;
+		}
+
+		par = info->par;
+		if(par->pdata.filp != NULL) {
+			/* Already opend */
+			ret = 0;
+			break;
+		}
+
 		if(par->pdata.FbUpdateType == FBX_ATTACH_UPDATE)
 			name = kasprintf(GFP_KERNEL,"/dev/attach%d", get_vioc_index(par->pdata.ddc_info.blk_num));
 		else
-			name = kasprintf(GFP_KERNEL,"/dev/scaler%d", get_vioc_index(par->pdata.ddc_info.blk_num));
+			name = kasprintf(GFP_KERNEL,"/dev/scaler%d", get_vioc_index(par->pdata.scaler_info.blk_num));
+		if(name == NULL) {
+			pr_err("%s out of memory at line(%d)\r\n", __func__, __LINE__);
+			break;
+		}
 		par->pdata.filp = filp_open(name, O_RDWR, 666);
+		kfree(name); name = NULL;
+
 		if (IS_ERR(par->pdata.filp)) {
-			pr_err("[ERR][FBX] error in %s: can not open misc device(%s) \n", __func__, name);
-			ret = -ENODEV;
-			goto err_prepare_m2m;
+			pr_err("error in %s: can not open misc device(%s) \n", __func__, name);
+			break;
 		}
 
 		if(par->pdata.FbUpdateType == FBX_ATTACH_UPDATE)
 			name = kasprintf(GFP_KERNEL,"fb%d_video", info->node);
 		else
-			name = kasprintf(GFP_KERNEL,"fb_scaler%d", get_vioc_index(par->pdata.ddc_info.blk_num));
+			name = kasprintf(GFP_KERNEL,"fb_scaler%d", get_vioc_index(par->pdata.scaler_info.blk_num));
+		if(name == NULL) {
+			pr_err("%s out of memory at line(%d)\r\n", __func__, __LINE__);
+			break;
+		}
 		pmap_get_info((const char *)name, &pmap);
+		kfree(name); name = NULL;
 		if(pmap.size > (info->var.xres * info->var.yres_virtual * (info->var.bits_per_pixel/8))) {
 			unsigned int buf_offset = (info->var.xres * info->var.yres * (info->var.bits_per_pixel/8));
 			unsigned int idx = 0;
 			for(idx = 0; idx < ATTACH_BUF_NUM; idx++) {
 				par->pdata.dst_addr[idx] = (pmap.base + (buf_offset * idx));
-				pr_info("[INF][FBX] Buf%d: 0x%08x\n", idx, par->pdata.dst_addr[idx]);
+				pr_info("Buf%d: 0x%08x\n", idx, par->pdata.dst_addr[idx]);
 			}
+			ret = 0;
 		} else {
-			pr_err("[ERR][FBX] error in %s: pmap size are not enough(%d)\n", __func__, pmap.size);
+			pr_err("error in %s: pmap size are not enough(%d)\n", __func__, pmap.size);
 			ret = -ENODEV;
 		}
-	}
+	}while(0);
 
-err_prepare_m2m:
 	return ret;
 }
 
@@ -506,11 +531,25 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 {
 	unsigned int width, height, format, channel;
 
-	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
+	if(par->pdata.FbWdmaPath  == 0) {
+		VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
+	} else {
+		/* WDMA Path */
+		width = var->xres;
+		height = var->yres;
+	}
+
 	if((width == 0) || (height == 0)) {
 		pr_err("[ERR][FBX] error in %s: vioc invalid status (%dx%d)\n",
 			__func__, width, height);
 		return;
+	}
+
+	if(par->pdata.FbWdmaPath == 1 && par->pdata.wdma_info.virt_addr != NULL) {
+		if(!VIOC_WDMA_IsImageEnable(par->pdata.wdma_info.virt_addr)) {
+			/* WDMA Path is not Ready */
+			return;
+		}
 	}
 
 	switch(var->bits_per_pixel) {
@@ -550,11 +589,15 @@ static void fbX_activate_var(unsigned int dma_addr, struct fb_var_screeninfo *va
 	VIOC_RDMA_SetImageY2REnable(par->pdata.rdma_info.virt_addr, 0);
 	VIOC_RDMA_SetImageR2YEnable(par->pdata.rdma_info.virt_addr, 0);
 
-	channel =
+
+	/* Display Device Path */
+	if(par->pdata.FbWdmaPath  == 0) {
+		channel =
 		get_vioc_index(par->pdata.rdma_info.blk_num) - (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
-	VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, par->pdata.region.x, par->pdata.region.y);
-	VIOC_WMIX_SetChromaKey(par->pdata.wmixer_info.virt_addr, channel, 1, 0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
-	VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
+		VIOC_WMIX_SetPosition(par->pdata.wmixer_info.virt_addr, channel, par->pdata.region.x, par->pdata.region.y);
+		VIOC_WMIX_SetChromaKey(par->pdata.wmixer_info.virt_addr, channel, 1, 0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
+		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
+	}
 
 	if(par->pdata.scaler_info.virt_addr) {
 		VIOC_SC_SetBypass(par->pdata.scaler_info.virt_addr, 0);
@@ -780,22 +823,22 @@ static void dmabuf_release(struct dma_buf *buf)
 {
 }
 
-static void *dmabuf_kmap(struct dma_buf *buf, unsigned long page)
+static void *dmabuf_map(struct dma_buf *buf, unsigned long page)
 {
 	struct fb_info *priv = buf->priv;
 	return priv->screen_base + page;
 }
 
-static void dmabuf_kunmap(struct dma_buf *buf, unsigned long page, void *vaddr)
+static void dmabuf_unmap(struct dma_buf *buf, unsigned long page, void *vaddr)
 {
 }
 
-static void *dmabuf_kmap_atomic(struct dma_buf *buf, unsigned long page)
+static void *dmabuf_map_atomic(struct dma_buf *buf, unsigned long page)
 {
 	return NULL;
 }
 
-static void dmabuf_kunmap_atomic(struct dma_buf *buf, unsigned long page,
+static void dmabuf_unmap_atomic(struct dma_buf *buf, unsigned long page,
 				 void *vaddr)
 {
 }
@@ -808,7 +851,7 @@ static void dmabuf_vm_close(struct vm_area_struct *vma)
 {
 }
 
-static int dmabuf_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+static int dmabuf_vm_fault(struct vm_fault *vmf)
 {
 	return 0;
 }
@@ -848,16 +891,16 @@ static const struct dma_buf_ops dmabuf_ops = {
 	.map_dma_buf = dmabuf_map_dma_buf,
 	.unmap_dma_buf = dmabuf_unmap_dma_buf,
 	.release = dmabuf_release,
-	.kmap_atomic = dmabuf_kmap_atomic,
-	.kunmap_atomic = dmabuf_kunmap_atomic,
-	.kmap = dmabuf_kmap,
-	.kunmap = dmabuf_kunmap,
+	.map_atomic = dmabuf_map_atomic,
+	.unmap_atomic = dmabuf_unmap_atomic,
+	.map = dmabuf_map,
+	.unmap = dmabuf_unmap,
 	.mmap = dmabuf_mmap,
 	.vmap = dmabuf_vmap,
 	.vunmap = dmabuf_vunmap,
 };
 
-struct dma_buf* tccfb_dmabuf_export(struct fb_info *info)
+struct dma_buf* new_tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
@@ -891,7 +934,7 @@ static struct fb_ops fb_ops = {
 	.fb_imageblit	= cfb_imageblit,
 	.fb_pan_display	= fbX_pan_display,
 #ifdef CONFIG_DMA_SHARED_BUFFER
-	.fb_dmabuf_export = tccfb_dmabuf_export,
+	.fb_dmabuf_export = new_tccfb_dmabuf_export,
 #endif
 };
 
@@ -1021,8 +1064,16 @@ static int fb_dt_parse_data(struct fb_info *info)
 	int ret = 0, index;
 	struct fbX_par *par = info->par;
 	struct device_node *np = NULL;
+	int property_idx = 1;
 
-	if(info->dev->of_node) {
+	#ifdef CONFIG_FB_NEW_DISP1
+	if(!strcmp("/fb0",of_node_full_name(info->dev->of_node))){
+		printk("%s fb0 disp1 support\n",__func__);
+		property_idx = 2;
+	}
+	#endif
+
+	if(info->dev->of_node != NULL) {
 		if(of_property_read_u32(info->dev->of_node, "xres", &info->var.xres)) {
 			pr_err("[ERR][FBX] error in %s: can nod find xres \n", __func__);
 			ret = -ENODEV;
@@ -1077,40 +1128,57 @@ static int fb_dt_parse_data(struct fb_info *info)
 		}
 
 		np = of_parse_phandle(info->dev->of_node, "telechips,disp", 0);
-		if(!np) {
-			pr_err("[ERR][FBX] error in %s: can not find telechips,disp \n", __func__);
-			ret = - ENODEV;
-			goto err_dt_parse;
+		if(np != NULL) {
+			of_property_read_u32_index(info->dev->of_node, "telechips,disp", property_idx, &par->pdata.ddc_info.blk_num);
+			par->pdata.ddc_info.virt_addr =
+				VIOC_DISP_GetAddress(par->pdata.ddc_info.blk_num);
+			if(par->pdata.FbUpdateType != FBX_OVERLAY_UPDATE) {
+				par->pdata.ddc_info.irq_num =
+					irq_of_parse_and_map(np, get_vioc_index(par->pdata.ddc_info.blk_num));
+			}
+			par->pdata.vioc_clock = of_clk_get_by_name(np, "ddi-clk");
+			BUG_ON(par->pdata.vioc_clock == NULL);
+			par->pdata.FbWdmaPath = 0;
+		}else {
+			np = of_parse_phandle(info->dev->of_node, "telechips,wdma", 0);
+			if(np == NULL) {
+				pr_err("[ERR][FBX] error in %s: can not find telechips,wdma \n", __func__);
+				ret = - ENODEV;
+				goto err_dt_parse;
+			}
+
+			if(par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
+				pr_err("[ERR][FBX] error in %s: can not support update type [%d]\n", __func__, par->pdata.FbUpdateType);
+				ret = - ENODEV;
+				goto err_dt_parse;
+			}
+
+			of_property_read_u32_index(info->dev->of_node, "telechips,wdma", 1, &par->pdata.wdma_info.blk_num);
+			par->pdata.wdma_info.virt_addr =
+				VIOC_WDMA_GetAddress(par->pdata.wdma_info.blk_num);
+			par->pdata.vioc_clock = of_clk_get_by_name(info->dev->of_node, "ddi-clk");
+			BUG_ON(par->pdata.vioc_clock == NULL);
+			par->pdata.FbWdmaPath = 1;
+			property_idx = 1;
 		}
 
-		of_property_read_u32_index(info->dev->of_node, "telechips,disp", 1, &par->pdata.ddc_info.blk_num);
-		par->pdata.ddc_info.virt_addr =
-			VIOC_DISP_GetAddress(par->pdata.ddc_info.blk_num);
-		if(par->pdata.FbUpdateType != FBX_OVERLAY_UPDATE) {
-			par->pdata.ddc_info.irq_num =
-				irq_of_parse_and_map(np, get_vioc_index(par->pdata.ddc_info.blk_num));
+		if(par->pdata.ddc_info.virt_addr != NULL) {
+			switch(par->pdata.ddc_info.blk_num) {
+			case VIOC_DISP0 :
+				par->pdata.ddc_clock = of_clk_get_by_name(np, "disp0-clk");
+				break;
+			case VIOC_DISP1 :
+				par->pdata.ddc_clock = of_clk_get_by_name(np, "disp1-clk");
+				break;
+			case VIOC_DISP2 :
+				par->pdata.ddc_clock = of_clk_get_by_name(np, "disp2-clk");
+			default:
+				pr_err("[ERR][FBX] error in %s: can not get ddc clock \n", __func__);
+				par->pdata.ddc_clock = NULL;
+				break;
+			}
+			BUG_ON(par->pdata.ddc_clock == NULL);
 		}
-		par->pdata.vioc_clock = of_clk_get_by_name(np, "ddi-clk");
-		BUG_ON(par->pdata.vioc_clock == NULL);
-
-		switch(par->pdata.ddc_info.blk_num) {
-		case VIOC_DISP0 :
-			par->pdata.ddc_clock = of_clk_get_by_name(np, "disp0-clk");
-			break;
-		case VIOC_DISP1 :
-			par->pdata.ddc_clock = of_clk_get_by_name(np, "disp1-clk");
-			break;
-		#ifdef CONFIG_ARCH_TCC803X
-		case VIOC_DISP2 :
-			par->pdata.ddc_clock = of_clk_get_by_name(np, "disp2-clk");
-			break;
-		#endif
-		default:
-			pr_err("[ERR][FBX] error in %s: can not get ddc clock \n", __func__);
-			par->pdata.ddc_clock = NULL;
-			break;
-		}
-		BUG_ON(par->pdata.ddc_clock == NULL);
 
 		np = of_parse_phandle(info->dev->of_node, "telechips,rdma", 0);
 		if(!np) {
@@ -1118,7 +1186,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
-		of_property_read_u32_index(info->dev->of_node, "telechips,rdma", 1, &par->pdata.rdma_info.blk_num);
+		of_property_read_u32_index(info->dev->of_node, "telechips,rdma", property_idx, &par->pdata.rdma_info.blk_num);
 		par->pdata.rdma_info.virt_addr =
 			VIOC_RDMA_GetAddress(get_vioc_index(par->pdata.rdma_info.blk_num));
 		if(par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
@@ -1132,14 +1200,18 @@ static int fb_dt_parse_data(struct fb_info *info)
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
-		of_property_read_u32_index(info->dev->of_node, "telechips,wmixer", 1, &par->pdata.wmixer_info.blk_num);
+		of_property_read_u32_index(info->dev->of_node, "telechips,wmixer", property_idx, &par->pdata.wmixer_info.blk_num);
 		par->pdata.wmixer_info.virt_addr =
 			VIOC_WMIX_GetAddress(get_vioc_index(par->pdata.wmixer_info.blk_num));
 		VIOC_WMIX_GetOverlayPriority(par->pdata.wmixer_info.virt_addr, &par->pdata.FbLayerOrder);
-
+#if defined(CONFIG_FB_NEW_HALFDISPLAY_SUPPORT)
 		np = of_parse_phandle(info->dev->of_node, "telechips,scaler", 0);
+#else
+		np = NULL;
+#endif
+
 		if(np) {
-			of_property_read_u32_index(info->dev->of_node, "telechips,scaler", 1, &par->pdata.scaler_info.blk_num);
+			of_property_read_u32_index(info->dev->of_node, "telechips,scaler", property_idx, &par->pdata.scaler_info.blk_num);
 			par->pdata.scaler_info.virt_addr =
 				VIOC_SC_GetAddress(get_vioc_index(par->pdata.scaler_info.blk_num));
 		} else
@@ -1147,7 +1219,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		np = of_find_node_by_name(info->dev->of_node, "fbx_region");
 		if(!np)
-			pr_err("[ERR][FBX] error in %s: can not find fbx_region \n", __func__);
+			pr_warn("[WAN][FBX] error in %s: can not find fbx_region \n", __func__);
 
 		if(np) {
 			if(of_property_read_u32(np, "x", &par->pdata.region.x)) {
@@ -1179,8 +1251,12 @@ static int fb_dt_parse_data(struct fb_info *info)
 			par->pdata.region.height = info->var.yres;
 		}
 
-		clk_prepare_enable(par->pdata.vioc_clock);
-		clk_prepare_enable(par->pdata.ddc_clock);
+		if(!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
+			clk_prepare_enable(par->pdata.vioc_clock);
+		}
+		if(!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
+			clk_prepare_enable(par->pdata.ddc_clock);
+		}
 
 		par->pdata.FbPowerState = 1;
 	}
@@ -1348,8 +1424,12 @@ static int fbX_remove(struct platform_device *pdev)
 		atomic_set(&fb_waitq[info->node].state, 0);
 
 		fb_unmap_video_memory(info);
-		clk_put(par->pdata.vioc_clock);
-		clk_put(par->pdata.ddc_clock);
+		if(!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
+			clk_put(par->pdata.vioc_clock);
+		}
+		if(!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
+			clk_put(par->pdata.ddc_clock);
+		}
 
 		unregister_framebuffer(info);
 		framebuffer_release(info);
