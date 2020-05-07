@@ -1080,19 +1080,19 @@ static const struct x86_cpu_id intel_idle_ids[] __initconst = {
 	ICPU(INTEL_FAM6_ATOM_AIRMONT,		idle_cpu_cht),
 	ICPU(INTEL_FAM6_IVYBRIDGE,		idle_cpu_ivb),
 	ICPU(INTEL_FAM6_IVYBRIDGE_X,		idle_cpu_ivt),
-	ICPU(INTEL_FAM6_HASWELL_CORE,		idle_cpu_hsw),
+	ICPU(INTEL_FAM6_HASWELL,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_HASWELL_X,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_HASWELL_ULT,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_HASWELL_GT3E,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_ATOM_SILVERMONT_X,	idle_cpu_avn),
-	ICPU(INTEL_FAM6_BROADWELL_CORE,		idle_cpu_bdw),
+	ICPU(INTEL_FAM6_BROADWELL,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_BROADWELL_GT3E,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_BROADWELL_X,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_BROADWELL_XEON_D,	idle_cpu_bdw),
 	ICPU(INTEL_FAM6_SKYLAKE_MOBILE,		idle_cpu_skl),
-	ICPU(INTEL_FAM6_SKYLAKE_DESKTOP,	idle_cpu_skl),
+	ICPU(INTEL_FAM6_SKYLAKE,		idle_cpu_skl),
 	ICPU(INTEL_FAM6_KABYLAKE_MOBILE,	idle_cpu_skl),
-	ICPU(INTEL_FAM6_KABYLAKE_DESKTOP,	idle_cpu_skl),
+	ICPU(INTEL_FAM6_KABYLAKE,		idle_cpu_skl),
 	ICPU(INTEL_FAM6_SKYLAKE_X,		idle_cpu_skx),
 	ICPU(INTEL_FAM6_XEON_PHI_KNL,		idle_cpu_knl),
 	ICPU(INTEL_FAM6_XEON_PHI_KNM,		idle_cpu_knl),
@@ -1314,7 +1314,7 @@ static void intel_idle_state_table_update(void)
 	case INTEL_FAM6_ATOM_GOLDMONT_PLUS:
 		bxt_idle_state_table_update();
 		break;
-	case INTEL_FAM6_SKYLAKE_DESKTOP:
+	case INTEL_FAM6_SKYLAKE:
 		sklh_idle_state_table_update();
 		break;
 	}
