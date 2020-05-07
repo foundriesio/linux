@@ -189,6 +189,13 @@ pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += pdump_physmem.o
 pvrsrvkm-$(CONFIG_POWERVR_ROGUE_PDUMP) += srvinit_pdump.o
 ccflags-$(CONFIG_POWERVR_ROGUE_PDUMP) += -DPDUMP=1
 
+ifeq ($(SUPPORT_DISPLAY_CLASS),1)
+pvrsrvkm-y += \
+ dc_server.o \
+ scp.o
+endif
+
+
 # Linux synchronisation
 ifeq ($(SUPPORT_BUFFER_SYNC),1)
  pvrsrvkm-y += \
@@ -206,6 +213,13 @@ ifeq ($(SUPPORT_DMA_FENCE),1)
   ../pvr_fence.o
 else
  pvrsrvkm-y += ../pvr_sync2.o
+endif
+else
+ifeq ($(SUPPORT_FALLBACK_FENCE_SYNC),1)
+ pvrsrvkm-y += \
+ ../sync_fallback_server.o \
+ ossecure_export.o \
+ $(PVR_ARCH)/generated/syncfallback_bridge/server_syncfallback_bridge.o
 endif
 endif
 
@@ -253,4 +267,8 @@ pvrsrvkm-$(CONFIG_DMA_SHARED_BUFFER) += $(PVR_ARCH)/generated/dmabuf_bridge/serv
 ifeq ($(PVR_ARCH),rogue)
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxtq_bridge/server_rgxtq_bridge.o
 pvrsrvkm-y += $(PVR_ARCH)/generated/rgxbreakpoint_bridge/server_rgxbreakpoint_bridge.o
+endif
+
+ifeq ($(SUPPORT_DISPLAY_CLASS),1)
+pvrsrvkm-y += $(PVR_ARCH)/generated/dc_bridge/server_dc_bridge.o
 endif
