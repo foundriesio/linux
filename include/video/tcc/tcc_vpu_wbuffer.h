@@ -60,6 +60,10 @@
 #include <video/tcc/TCC_VPU_4K_D2_CODEC.h>
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h>
+#endif
+
 #ifndef _VPU_WBUFFER_H_
 #define _VPU_WBUFFER_H_
 

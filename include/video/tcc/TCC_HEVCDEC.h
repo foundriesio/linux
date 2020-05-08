@@ -28,6 +28,7 @@
  * \file
  *		TCC_HEVCDEC.h
  * \date
+ *		2020/02/06
  *		2018/11/13
  *		2018/04/02
  *		2018/03/22
@@ -37,6 +38,7 @@
  * \brief
  *		main api
  * \version
+ *		3.03.0.00(2020/02/06) : Added sleep (m_Usleep) callback and Forcely escape (TCC_HEVC_DEC_ESC, TCC_HEVC_DEC_EXT) funtions on API
  *		3.02.0.00(2018/11/13)
  *		3.01.0.00(2018/04/02)
  *		3.00.0.00(2018/03/22)
@@ -452,6 +454,7 @@ typedef struct hevc_dec_init_t
     void  (*m_Iounmap ) ( void* );
     unsigned int (*m_reg_read)(void *, unsigned int);
     void (*m_reg_write)(void *, unsigned int, unsigned int);
+	void (*m_Usleep)(unsigned int, unsigned int);
 #else
     unsigned long long cb_dummy_memcpy;
     unsigned long long cb_dummy_memset;
@@ -462,7 +465,7 @@ typedef struct hevc_dec_init_t
     unsigned long long cb_dummy_reg_write;
 #endif
 
-    unsigned int m_Reserved[32];        //! Reserved.   // TEST_FW_WRITING
+	unsigned int m_Reserved[31];		//! Reserved.	// TEST_FW_WRITING
 } hevc_dec_init_t;
 
 typedef struct hevc_dec_input_t
@@ -595,6 +598,12 @@ typedef struct hevc_dec_output_t
  */
 codec_result_t
 TCC_HEVC_DEC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+
+codec_result_t
+TCC_HEVC_DEC_ESC( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
+
+codec_result_t
+TCC_HEVC_DEC_EXT( int Op, codec_handle_t* pHandle, void* pParam1, void* pParam2 );
 
 #endif
 #endif//_TCC_HEVC_DEC_H_
