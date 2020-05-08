@@ -28,23 +28,17 @@ struct sec_segment
 	int size;               /**< Size of data */
 	uint64_t rdata_addr;    /**< Data to receive */
 	int rsize;              /**< Size of rdata */
-	unsigned int device_id; /**< Type A53 or A7 or R5 or M4  */
+	unsigned int device_id; /**< Type A53, A7, R5, M4  */
 };
 
 /** Mailbox driver instance. */
 typedef enum _mbox_dev {
 	MBOX_DEV_M4 = 0,
 	MBOX_DEV_A7,
-	MBOX_DEV_A53,
 	MBOX_DEV_R5,
+	MBOX_DEV_A53,
 	MBOX_DEV_MAX
 } mbox_dev;
-
-struct sec_evt
-{
-	uint32_t event;
-	unsigned int device_id;
-};
 
 /**
  * @defgroup spdrv Multi IPC Device Driver
@@ -62,16 +56,10 @@ struct sec_evt
 #define SEC_RESET				_IO(SEC_IOCTL_MAGIC, 0)
 
 /** Sends and receives #sp_segment to SP. */
-#define SEC_SENDRECV_CMD			_IOWR(SEC_IOCTL_MAGIC, 1, struct sec_segment)
+#define SEC_SEND_CMD			_IOWR(SEC_IOCTL_MAGIC, 1, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
 #define SEC_GET_EVENTS			_IOR(SEC_IOCTL_MAGIC, 2, struct sec_segment)
-
-/** Subscribes an event to be notified. */
-#define SEC_SUBSCRIBE_EVENT		_IOW(SEC_IOCTL_MAGIC, 3, struct sec_segment)
-
-/** Unsubscribes an event to be notified. */
-#define SEC_UNSUBSCRIBE_EVENT	_IOW(SEC_IOCTL_MAGIC, 4, struct sec_segment)
 
 /** Gets an event when poll operation is awaken. */
 #define SEC_GET_EVT_INFO			_IOR(SEC_IOCTL_MAGIC, 5, struct sec_segment)
@@ -88,7 +76,6 @@ struct sec_evt
  * - VMX Magic number: 3, e.g. 0x3000 ~ 0x3FFF
  */
 #define SEC_IPC_CMD(magic_num, cmd) (((magic_num & 0xF) << 12) | (cmd & 0xFFF))
-#define THSM_EVENT(magic_num, event) ((event << 16) | ((magic_num & 0xF) << 8))
 
 /**
  * This macro makes an event that SP firmware notifies. The event comes
@@ -103,7 +90,6 @@ struct sec_evt
 
 void sec_set_callback(int (*dmx_callback)(int cmd, void *rdata, int size));
 int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void *rdata, int rsize);
-int sec_send_cmd(int cmd, void *data, int size, int device_id);
 
 /** @} */
 

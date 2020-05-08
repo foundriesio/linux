@@ -17,27 +17,44 @@
 #define _TCC_THSM_H_
 
 #define TCCTHSM_DEVICE_NAME "tcc_thsm"
+#define TCCTHSM_RNG_MAX 16
 
 enum tcc_thsm_ioctl_cmd
 {
+	TCCTHSM_IOCTL_INIT,
+	TCCTHSM_IOCTL_FINALIZE,
 	TCCTHSM_IOCTL_GET_VERSION,
-	TCCTHSM_IOCTL_START,
-	TCCTHSM_IOCTL_STOP,
 	TCCTHSM_IOCTL_SET_MODE,
 	TCCTHSM_IOCTL_SET_KEY,
-	TCCTHSM_IOCTL_SET_IV,
-	TCCTHSM_IOCTL_SET_KLDATA,
+	TCCTHSM_IOCTL_SET_KEY_FROM_STORAGE,
+	TCCTHSM_IOCTL_SET_KEY_FROM_OTP,
+	TCCTHSM_IOCTL_FREE_MODE,
+	TCCTHSM_IOCTL_SET_IV_SYMMETRIC,
 	TCCTHSM_IOCTL_RUN_CIPHER,
 	TCCTHSM_IOCTL_RUN_CIPHER_BY_DMA,
+	TCCTHSM_IOCTL_RUN_DIGEST,
+	TCCTHSM_IOCTL_RUN_DIGEST_BY_DMA,
+	TCCTHSM_IOCTL_SET_IV_MAC,
+	TCCTHSM_IOCTL_COMPUTE_MAC,
+	TCCTHSM_IOCTL_COMPUTE_MAC_BY_DMA,
+	TCCTHSM_IOCTL_COMPARE_MAC,
+	TCCTHSM_IOCTL_COMPARE_MAC_BY_DMA,
+	TCCTHSM_IOCTL_GET_RAND,
+	TCCTHSM_IOCTL_GEN_KEY_SS,
+	TCCTHSM_IOCTL_DEL_KEY_SS,
+	TCCTHSM_IOCTL_WRITE_KEY_SS,
 	TCCTHSM_IOCTL_WRITE_OTP,
-	TCCTHSM_IOCTL_GET_RNG,
-	TCCTHSM_IOCTL_MAX
+	TCCTHSM_IOCTL_WRITE_OTP_IMAGE,
+	TCCTHSM_IOCTL_ASYMMETRIC_ENC_DEC,
+	TCCTHSM_IOCTL_ASYMMETRIC_ENC_DEC_BY_DMA,
+	TCCTHSM_IOCTL_ASYMMETRIC_SIGN,
+	TCCTHSM_IOCTL_ASYMMETRIC_VERIFY
 };
 
-struct tcc_thsm_ioctl_version_param
+enum tcc_thsm_ioctl_cipher_cw_sel
 {
-	uint32_t major;
-	uint32_t minor;
+	TCKL = 0,
+	CPU_Key = 1,
 };
 
 enum tcc_thsm_ioctl_cipher_algo
@@ -59,15 +76,6 @@ enum tcc_thsm_ioctl_cipher_op_mode
 	CTR_64 = 5,
 };
 
-struct tcc_thsm_ioctl_set_mode_param
-{
-	uint32_t keyIndex;
-	uint32_t algorithm;
-	uint32_t opMode;
-	uint32_t residual;
-	uint32_t sMsg;
-};
-
 enum tcc_thsm_ioctl_cipher_key_type
 {
 	CORE_Key = 0,
@@ -83,80 +91,209 @@ enum tcc_thsm_ioctl_cipher_key_mode
 	TS_SCRAMBLED_WITH_ODDKEY
 };
 
+struct tcc_thsm_ioctl_version_param
+{
+	uint32_t major;
+	uint32_t minor;
+};
+
+struct tcc_thsm_ioctl_set_mode_param
+{
+	uint32_t key_index;
+	uint32_t algorithm;
+	uint32_t op_mode;
+	uint32_t key_size;
+};
+
 struct tcc_thsm_ioctl_set_key_param
 {
-	uint32_t keyIndex;
-	uint32_t keyType;
-	uint32_t keyMode;
-	uint32_t keySize;
-	uint8_t *key;
+	uint32_t key_index;
+	uint32_t *key1;
+	uint32_t key1_size;
+	uint32_t *key2;
+	uint32_t key2_size;
+	uint32_t *key3;
+	uint32_t key3_size;
+};
+
+struct tcc_thsm_ioctl_set_key_storage_param
+{
+	uint32_t key_index;
+	uint8_t *obj_id;
+	uint32_t obj_id_len;
+};
+
+struct tcc_thsm_ioctl_set_key_otp_param
+{
+	uint32_t key_index;
+	uint32_t otp_addr;
+	uint32_t key_size;
 };
 
 struct tcc_thsm_ioctl_set_iv_param
 {
-	uint32_t keyIndex;
-	uint32_t ivSize;
-	uint8_t *iv;
+	uint32_t key_index;
+	uint32_t *iv;
+	uint32_t iv_size;
 };
 
-struct tcc_thsm_kldata
+struct tcc_thsm_ioctl_cipher_param
 {
-	uint32_t klIndex;
-	uint32_t nonceUsed;
-	uint8_t Din1[16];
-	uint8_t Din2[16];
-	uint8_t Din3[16];
-	uint8_t Din4[16];
-	uint8_t Din5[16];
-	uint8_t Din6[16];
-	uint8_t Din7[16];
-	uint8_t Din8[16];
-	uint8_t nonce[16];
-	uint8_t nonceResp[16];
+	uint32_t key_index;
+	uint8_t *src_addr;
+	uint32_t src_size;
+	uint8_t *dst_addr;
+	uint32_t *dst_size;
+	uint32_t flag;
 };
 
-struct tcc_thsm_ioctl_set_kldata_param
+struct tcc_thsm_ioctl_cipher_dma_param
 {
-	uint32_t keyIndex;
-	struct tcc_thsm_kldata *klData;
+	uint32_t key_index;
+	uint32_t src_addr;
+	uint32_t src_size;
+	uint32_t dst_addr;
+	uint32_t *dst_size;
+	uint32_t flag;
 };
 
-enum tcc_thsm_ioctl_cipher_enc
+struct tcc_thsm_ioctl_run_digest_param
 {
-	DECRYPTION = 0,
-	ENCRYPTION = 1,
+	uint32_t key_index;
+	uint8_t *chunk;
+	uint32_t chunk_len;
+	uint8_t *hash;
+	uint32_t *hash_len;
+	uint32_t flag;
 };
 
-enum tcc_thsm_ioctl_cipher_cw_sel
+struct tcc_thsm_ioctl_run_digest_dma_param
 {
-	TCKL = 0,
-	CPU_Key = 1,
+	uint32_t key_index;
+	uint32_t chunk_addr;
+	uint32_t chunk_len;
+	uint8_t *hash;
+	uint32_t *hash_len;
+	uint32_t flag;
 };
 
-struct tcc_thsm_ioctl_run_cipher_param
+struct tcc_thsm_ioctl_compute_mac_param
 {
-	uint32_t keyIndex;
-	uint8_t *srcAddr;
-	uint8_t *dstAddr;
-	uint32_t srcSize;
-	uint32_t enc;
-	uint32_t cwSel;
-	uint32_t klIndex;
-	uint32_t keyMode;
+	uint32_t key_index;
+	uint8_t *message;
+	uint32_t message_len;
+	uint8_t *mac;
+	uint32_t *mac_len;
+	uint32_t flag;
+};
+
+struct tcc_thsm_ioctl_compute_mac_dma_param
+{
+	uint32_t key_index;
+	uint32_t message_addr;
+	uint32_t message_len;
+	uint8_t *mac;
+	uint32_t *mac_len;
+	uint32_t flag;
+};
+
+struct tcc_thsm_ioctl_compare_mac_param
+{
+	uint32_t key_index;
+	uint8_t *message;
+	uint32_t message_len;
+	uint8_t *mac;
+	uint32_t mac_len;
+	uint32_t flag;
+};
+
+struct tcc_thsm_ioctl_compare_mac_dma_param
+{
+	uint32_t key_index;
+	uint32_t message_addr;
+	uint32_t message_len;
+	uint8_t *mac;
+	uint32_t mac_len;
+	uint32_t flag;
+};
+
+struct tcc_thsm_ioctl_rng_param
+{
+	uint32_t *rng;
+	uint32_t size;
+};
+
+struct tcc_thsm_ioctl_gen_key_param
+{
+	uint8_t *obj_id;
+	uint32_t obj_len;
+	uint32_t algorithm;
+	uint32_t key_size;
+};
+
+struct tcc_thsm_ioctl_del_key_param
+{
+	uint8_t *obj_id;
+	uint32_t obj_len;
+};
+
+struct tcc_thsm_ioctl_write_key_param
+{
+	uint8_t *obj_id;
+	uint32_t obj_len;
+	uint8_t *buffer;
+	uint32_t size;
 };
 
 struct tcc_thsm_ioctl_otp_param
 {
-	uint32_t addr;
+	uint32_t otp_addr;
 	uint8_t *buf;
 	uint32_t size;
 };
 
-#define TCCTHSM_RNG_MAX 16
-struct tcc_thsm_ioctl_rng_param
+struct tcc_thsm_ioctl_otpimage_param
 {
-	uint8_t *rng;
+	uint32_t otp_addr;
 	uint32_t size;
+};
+
+struct tcc_thsm_ioctl_asym_enc_dec_param
+{
+	uint32_t key_index;
+	uint8_t *src_addr;
+	uint32_t src_size;
+	uint8_t *dst_addr;
+	uint32_t *dst_size;
+	uint32_t enc;
+};
+
+struct tcc_thsm_ioctl_asym_enc_dec_dma_param
+{
+	uint32_t key_index;
+	uint32_t src_addr;
+	uint32_t src_size;
+	uint32_t dst_addr;
+	uint32_t *dst_size;
+	uint32_t enc;
+};
+
+struct tcc_thsm_ioctl_asym_sign_digest_param
+{
+	uint32_t key_index;
+	uint8_t *dig;
+	uint32_t dig_size;
+	uint8_t *sig;
+	uint32_t *sig_size;
+};
+
+struct tcc_thsm_ioctl_asym_verify_digest_param
+{
+	uint32_t key_index;
+	uint8_t *dig;
+	uint32_t dig_size;
+	uint8_t *sig;
+	uint32_t sig_size;
 };
 
 #endif /*_TCC_THSM_H_*/

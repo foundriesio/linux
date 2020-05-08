@@ -23,6 +23,10 @@
  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define NDEBUG
+#define TLOG_LEVEL TLOG_DEBUG
+#include "tcc_thsm_log.h"
+
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/mailbox/mailbox-tcc.h>
@@ -39,308 +43,732 @@
 
 #include "tcc_thsm_cmd.h"
 
-/****************************************************************************
-  DEFINITiON
- ****************************************************************************/
-#define DEBUG_TCC_THSM_CMD
-#ifdef DEBUG_TCC_THSM_CMD
-#undef dprintk
-#define dprintk(msg...) printk(KERN_DEBUG "[DEBUG][TCCTHSM] " msg);
-#undef eprintk
-#define eprintk(msg...) printk(KERN_ERR "[ERROR][TCCTHSM] " msg);
-#else
-#undef dprintk
-#define dprintk(msg...)
-#undef eprintk
-#define eprintk(msg...) // printk(KERN_ERR "[ERROR][TCCTHSM] " msg);
-#endif
+int32_t tcc_thsm_cmd_init(uint32_t device_id)
+{
+	int32_t rdata = 0;
+	int32_t rdata_size = 0;
+	int32_t result = -1;
+
+	rdata_size = sec_sendrecv_cmd(device_id, TCCTHSM_EVT_INIT, NULL, 0, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+	result = rdata;
+	if (result != 0) {
+		ELOG("error: %d\n", result);
+		return -EBADR;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_finalize(uint32_t device_id)
+{
+	int32_t rdata = 0;
+	int32_t rdata_size = 0;
+	int32_t result = -1;
+
+	rdata_size = sec_sendrecv_cmd(device_id, TCCTHSM_EVT_FINALIZE, NULL, 0, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+	result = rdata;
+	if (result != 0) {
+		ELOG("error: %d\n", result);
+		return -EBADR;
+	}
+
+	return result;
+}
 
 int32_t tcc_thsm_cmd_get_version(uint32_t device_id, uint32_t *major, uint32_t *minor)
 {
-	int32_t mbox_data[2] = {
-		0,
-	};
-	int32_t mbox_result[3] = {
-		0,
-	};
-	int32_t mbox_result_size = 0;
+	int32_t rdata[4] = {0};
+	int32_t rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_GET_VERSION, mbox_data, sizeof(mbox_data), mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_GET_VERSION, NULL, 0, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	result = mbox_result[0];
+	result = rdata[0];
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		ELOG("error: %d\n", result);
+		return result;
 	}
 
-	*major = mbox_result[1];
-	*minor = mbox_result[2];
+	rdata_size = rdata[1];
+	if (rdata_size == (sizeof(uint32_t) * 2)) {
+		*major = rdata[2];
+		*minor = rdata[3];
+	} else {
+		ELOG("Wrong data size = %d\n", rdata_size);
+		return -EBADR;
+	}
 
-out:
 	return result;
 }
 
 int32_t tcc_thsm_cmd_set_mode(
-	uint32_t device_id, uint32_t keyIndex, uint32_t algorithm, uint32_t opMode, uint32_t residual,
-	uint32_t sMsg)
+	uint32_t device_id, uint32_t key_index, uint32_t algorithm, uint32_t op_mode, uint32_t key_size)
 {
-	int32_t mbox_data[5] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[4] = {0};
+	int32_t data_size = 0;
+	int32_t rdata = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = keyIndex;
-	mbox_data[1] = algorithm;
-	mbox_data[2] = opMode;
-	mbox_data[3] = residual;
-	mbox_data[4] = sMsg;
+	data[0] = key_index;
+	data[1] = algorithm;
+	data[2] = op_mode;
+	data[3] = key_size;
+	data_size = (sizeof(int32_t) * 4);
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_SET_MODE, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_SET_MODE, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	result = mbox_result;
+	result = rdata;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		ELOG("Error: %d\n", result);
+		return result;
 	}
 
-out:
 	return result;
 }
 
 int32_t tcc_thsm_cmd_set_key(
-	uint32_t device_id, uint32_t keyIndex, uint32_t keyType, uint32_t keyMode, uint8_t *key,
-	uint32_t keySize)
+	uint32_t device_id, uint32_t key_index, uint32_t *key1, uint32_t key1_size, uint32_t *key2,
+	uint32_t key2_size, uint32_t *key3, uint32_t key3_size)
 {
-	int32_t mbox_data[12] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[128] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = keyIndex;
-	mbox_data[1] = keyType;
-	mbox_data[2] = keyMode;
-	mbox_data[3] = keySize;
+	data[0] = key_index;
+	data[1] = key1_size;
+	data[2] = key2_size;
+	data[3] = key3_size;
+	if (NULL != key1 && key1_size > 0) {
+		memcpy(&data[3], key1, key1_size);
+	}
+	if (NULL != key2 && key2_size > 0) {
+		memcpy(&data[3 + key1_size], key2, key2_size);
+	}
+	if (NULL != key3 && key3_size > 0) {
+		memcpy(&data[3 + key1_size + key2_size], key3, key3_size);
+	}
+	data_size = (sizeof(uint32_t) * 4) + key1_size + key2_size + key3_size;
 
-	if (key != NULL) {
-		memcpy(&mbox_data[4], key, keySize);
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_SET_KEY, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_SET_KEY, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
-	}
-
-	result = mbox_result;
+	result = rdata;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		ELOG("Error: %d\n", result);
+		return result;
 	}
 
-out:
 	return result;
 }
 
-int32_t tcc_thsm_cmd_set_iv(uint32_t device_id, uint32_t keyIndex, uint8_t *iv, uint32_t ivSize)
+int32_t tcc_thsm_cmd_set_key_from_storage(
+	uint32_t device_id, uint32_t key_index, uint8_t *obj_id, uint32_t obj_id_len)
 {
-	int32_t mbox_data[11] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[64] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = keyIndex;
-	mbox_data[1] = 1;
-	mbox_data[2] = ivSize;
+	data[0] = key_index;
+	data[1] = obj_id_len;
+	if (obj_id != NULL && obj_id_len > 0) {
+		memcpy((uint8_t *)&data[2], obj_id, obj_id_len);
+	}
+	data_size = (sizeof(uint32_t) * 2) + obj_id_len;
 
-	if (iv != NULL) {
-		memcpy(&mbox_data[3], iv, ivSize);
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_SET_KEY_FROM_STORAGE, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_SET_IV, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
-	}
-
-	result = mbox_result;
+	result = rdata;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		ELOG("Error: %d\n", result);
+		return result;
 	}
 
-out:
 	return result;
 }
 
-int32_t tcc_thsm_cmd_set_kldata(
-	uint32_t device_id, uint32_t keyIndex, uintptr_t *klData, uint32_t klDataSize)
+int32_t tcc_thsm_cmd_set_key_from_otp(
+	uint32_t device_id, uint32_t key_index, uint32_t otp_addr, uint32_t key_size)
 {
-	int32_t mbox_data[50] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[64] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = keyIndex;
-	mbox_data[1] = klDataSize;
+	data[0] = key_index;
+	data[1] = otp_addr;
+	data[2] = key_size;
+	data_size = (sizeof(uint32_t) * 3);
 
-	if (klData != NULL) {
-		memcpy(&mbox_data[2], klData, klDataSize);
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_SET_KEY_FROM_OTP, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_SET_KLDATA, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
-	}
-
-	result = mbox_result;
+	result = rdata;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		ELOG("Error: %d\n", result);
+		return result;
 	}
 
-out:
+	return result;
+}
+
+int32_t tcc_thsm_cmd_free_mode(uint32_t device_id, uint32_t key_index)
+{
+	uint32_t data;
+	int32_t data_size = 0;
+	int32_t rdata = 0;
+	int32_t rdata_size = 0;
+	int32_t result = 0;
+
+	data = key_index;
+	data_size = sizeof(uint32_t);
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_FREE_MODE, &data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		ELOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_set_iv_symmetric(
+	uint32_t device_id, uint32_t key_index, uint32_t *iv, uint32_t iv_size)
+{
+	uint32_t data[32] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = key_index;
+	data[1] = iv_size;
+	data_size = (sizeof(uint32_t) * 2) + iv_size;
+
+	if (iv != NULL && iv_size > 0) {
+		memcpy(&data[2], iv, iv_size);
+	}
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_SET_IV_SYMMETRIC, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
 	return result;
 }
 
 int32_t tcc_thsm_cmd_run_cipher_by_dma(
-	uint32_t device_id, uint32_t keyIndex, uint32_t srcAddr, uint32_t dstAddr, uint32_t srcSize,
-	uint32_t enc, uint32_t cwSel, uint32_t klIndex, uint32_t keyMode)
+	uint32_t device_id, uint32_t key_index, uint32_t src_addr, uint32_t src_size, uint32_t dst_addr,
+	uint32_t *dst_size, uint32_t flag)
 {
-	int32_t mbox_data[12] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[6] = {0};
+	int32_t rdata[2] = {0};
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = keyIndex;
-	mbox_data[1] = srcAddr;
-	mbox_data[2] = dstAddr;
-	mbox_data[3] = srcSize;
-	mbox_data[4] = 0;
-	mbox_data[5] = 0;
-	mbox_data[6] = enc;
-	mbox_data[7] = cwSel;
-	mbox_data[8] = klIndex;
-	mbox_data[9] = keyMode;
-	mbox_data[10] = 0;
-	mbox_data[11] = 0;
+	data[0] = key_index;
+	data[1] = flag;
+	data[2] = src_addr;
+	data[3] = src_size;
+	data[4] = dst_addr;
+	data_size = (sizeof(uint32_t) * 5);
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_RUN_CIPHER_BY_DMA, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_RUN_CIPHER_BY_DMA, data, data_size, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	result = mbox_result;
+	result = rdata[0];
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+	*dst_size = rdata[1];
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_run_digest_by_dma(
+	uint32_t device_id, uint32_t key_index, uint32_t chunk_addr, uint32_t chunk_len, uint8_t *hash,
+	uint32_t *hash_len, uint32_t flag)
+{
+	uint32_t data[8] = {0};
+	int32_t rdata[32] = {0};
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = key_index;
+	data[1] = flag;
+	data[2] = chunk_addr;
+	data[3] = chunk_len;
+
+	data_size = (sizeof(uint32_t) * 4);
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_RUN_DIGEST_BY_DMA, data, data_size, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-out:
+	result = rdata[0];
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+	*hash_len = rdata[1];
+	if (*hash_len > 0) {
+		memcpy(hash, (uint8_t *)&data[2], *hash_len);
+	}
+
 	return result;
 }
 
 int32_t
-tcc_thsm_cmd_write_otp(uint32_t device_id, uint32_t otpAddr, uint8_t *otpBuf, uint32_t otpSize)
+tcc_thsm_cmd_set_iv_mac(uint32_t device_id, uint32_t key_index, uint32_t *iv, uint32_t iv_size)
 {
-	int32_t mbox_data[32] = {
-		0,
-	};
-	int32_t mbox_result = 0;
-	int32_t mbox_result_size = 0;
+	uint32_t data[32] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data[0] = otpAddr;
-	mbox_data[1] = otpSize;
-
-	memcpy(&mbox_data[2], otpBuf, otpSize);
-
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_WRITE_OTP, mbox_data, sizeof(mbox_data), &mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
+	data[0] = key_index;
+	data[1] = iv_size;
+	if (iv != NULL && iv_size > 0) {
+		memcpy(&data[2], iv, iv_size);
 	}
 
-	result = mbox_result;
+	data_size = (sizeof(uint32_t) * 2) + iv_size;
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_SET_IV_MAC, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		DLOG("Error: %d\n", result);
+		return result;
 	}
 
-out:
 	return result;
 }
 
-int32_t tcc_thsm_cmd_get_rand(uint32_t device_id, uint8_t *rng, int32_t rngSize)
+int32_t tcc_thsm_cmd_compute_mac_by_dma(
+	uint32_t device_id, uint32_t key_index, uint32_t message, uint32_t message_len, uint8_t *mac,
+	uint32_t *mac_len, uint32_t flag)
 {
-	int32_t mbox_data = 0;
-	int32_t mbox_result[16] = {
-		0,
-	};
-	int32_t mbox_result_size = 0;
+	uint32_t data[8] = {0};
+	int32_t rdata[2] = {0};
+	int32_t data_size = 0, rdata_size = 0;
 	int32_t result = 0;
 
-	mbox_data = rngSize;
+	data[0] = key_index;
+	data[1] = flag;
+	data[2] = message;
+	data[3] = message_len;
 
-	mbox_result_size = sec_sendrecv_cmd(
-		device_id, TCCTHSM_EVT_GET_RNG, &mbox_data, sizeof(mbox_data), mbox_result,
-		sizeof(mbox_result));
-	if (mbox_result_size < 0) {
-		dprintk("[%s:%d] sec_sendrecv_cmd error(%d)\n", __func__, __LINE__, mbox_result_size);
-		result = -EBADR;
-		goto out;
+	data_size = (sizeof(uint32_t) * 4);
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_COMPUTE_MAC_BY_DMA, data, data_size, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
 	}
 
-	result = mbox_result[0];
+	result = rdata[0];
 	if (result != 0) {
-		dprintk("[%s:%d] SP returned an error: %d\n", __func__, __LINE__, result);
-		goto out;
+		DLOG("Error: %d\n", result);
+		return result;
 	}
 
-	rngSize = mbox_result[1];
-	memcpy(rng, &mbox_result[2], rngSize);
+	*mac_len = rdata[1];
+	if (*mac_len > 0) {
+		memcpy(mac, (uint8_t *)&data[2], *mac_len);
+	}
+	return result;
+}
 
-out:
+int32_t tcc_thsm_cmd_compare_mac_by_dma(
+	uint32_t device_id, uint32_t key_index, uint32_t message, uint32_t message_len, uint8_t *mac,
+	uint32_t mac_len, uint32_t flag)
+{
+	uint32_t data[32] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = key_index;
+	data[1] = flag;
+	data[2] = message;
+	data[3] = message_len;
+	data[4] = mac_len;
+	memcpy((uint8_t *)&data[5], mac, mac_len);
+
+	data_size = (sizeof(uint32_t) * 5) + mac_len;
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_COMPARE_MAC_BY_DMA, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_get_rand(uint32_t device_id, uint32_t *rng, uint32_t rng_size)
+{
+	uint32_t data = 0;
+	int32_t rdata[16] = {0};
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data = rng_size;
+
+	data_size = sizeof(uint32_t);
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_GET_RAND, &data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata[0];
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	rng_size = rdata[1];
+	if (rng_size > 0) {
+		memcpy(rng, &rdata[2], rng_size);
+	} else {
+		ELOG("Wrong read data size = %d\n", rng_size);
+		return -EBADR;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_gen_key_ss(
+	uint32_t device_id, uint8_t *obj_id, uint32_t obj_len, uint32_t algorithm, uint32_t key_size)
+{
+	uint32_t data[64] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = algorithm;
+	data[1] = key_size;
+	data[2] = obj_len;
+	data_size = (sizeof(uint32_t) * 3) + obj_len;
+
+	if (obj_id != NULL && obj_len > 0) {
+		memcpy((uint8_t *)&data[3], obj_id, obj_len);
+	}
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_GEN_KEY_SS, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_del_key_ss(uint32_t device_id, uint8_t *obj_id, uint32_t obj_len)
+{
+	uint32_t data[64] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = obj_len;
+	if (obj_id != NULL && obj_len > 0) {
+		memcpy((uint8_t *)&data[1], obj_id, obj_len);
+	}
+
+	data_size = sizeof(uint32_t) + obj_len;
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_GEN_KEY_SS, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_write_key_ss(
+	uint32_t device_id, uint8_t *obj_id, uint32_t obj_len, uint8_t *buffer, uint32_t buffer_size)
+{
+	uint32_t data[128] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0, offset = 0, obj_len_align = 0;
+
+	obj_len_align = ((obj_len + 3) / sizeof(uint32_t)) * 4;
+	data[0] = obj_len;
+	data[1] = buffer_size;
+
+	data_size = (sizeof(uint32_t) * 2) + obj_len_align + buffer_size;
+
+	if (obj_id != NULL && obj_len > 0 && buffer_size > 0) {
+		memcpy((uint8_t *)&data[2], obj_id, obj_len);
+		offset = ((obj_len + 3) / sizeof(uint32_t));
+		memcpy((uint8_t *)&data[2 + offset], buffer, buffer_size);
+	}
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_WRITE_KEY_SS, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t
+tcc_thsm_cmd_write_otp(uint32_t device_id, uint32_t otp_addr, uint8_t *otp_buf, uint32_t otp_size)
+{
+	uint32_t data[32] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = otp_addr;
+	data[1] = otp_size;
+	data_size = (sizeof(uint32_t) * 2) + otp_size;
+
+	if (otp_buf != NULL && otp_size > 0) {
+		memcpy((uint8_t *)&data[2], otp_buf, otp_size);
+	}
+
+	rdata_size =
+		sec_sendrecv_cmd(device_id, TCCTHSM_EVT_WRITE_OTP, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_write_otpimage(uint32_t device_id, uint32_t otp_addr, uint32_t otp_size)
+{
+	uint32_t data[2] = {0};
+	int32_t rdata = 0;
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = otp_addr;
+	data[1] = otp_size;
+	data_size = (sizeof(uint32_t) * 2);
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_WRITE_OTP_IMAGE, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_asym_enc_dec_by_dma(
+	uint32_t device_id, uint32_t key_index, uint32_t src_addr, uint32_t src_size, uint32_t dst_addr,
+	uint32_t *dst_size, uint32_t enc)
+{
+	uint32_t data[8] = {0};
+	int32_t rdata[2] = {0};
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0, cmd = 0;
+	;
+
+	if (enc == ENCRYPTION) {
+		cmd = TCCTHSM_EVT_ASYMMETRIC_ENC_BY_DMA;
+	} else {
+		cmd = TCCTHSM_EVT_ASYMMETRIC_DEC_BY_DMA;
+	}
+	data[0] = key_index;
+	data[1] = src_addr;
+	data[2] = src_size;
+	data[3] = dst_addr;
+	data_size = (sizeof(uint32_t) * 4);
+
+	rdata_size = sec_sendrecv_cmd(device_id, cmd, data, data_size, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata[0];
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
+	*dst_size = rdata[1];
+	return result;
+}
+
+int32_t tcc_thsm_cmd_asym_sign_digest(
+	uint32_t device_id, uint32_t key_index, uint8_t *dig, uint32_t dig_size, uint8_t *sig,
+	uint32_t *sig_size)
+{
+	uint8_t data[512] = {0};
+	int32_t rdata[128] = {0};
+	int32_t data_size = 0, rdata_size = 0;
+	int32_t result = 0;
+
+	data[0] = key_index;
+	data[1] = dig_size;
+	if (dig != NULL && dig_size > 0) {
+		memcpy((uint8_t *)&data[2], dig, dig_size);
+	}
+
+	data_size = (sizeof(uint32_t) * 2) + dig_size;
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_ASYMMETRIC_SIGN, data, data_size, rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata[0];
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	} else {
+		*sig_size = rdata[1];
+		if (*sig_size > 0) {
+			memcpy(sig, (uint8_t *)&rdata[2], *sig_size);
+		}
+	}
+
+	return result;
+}
+
+int32_t tcc_thsm_cmd_asym_verify_digest(
+	uint32_t device_id, uint32_t key_index, uint8_t *dig, uint32_t dig_size, uint8_t *sig,
+	uint32_t sig_size)
+{
+	uint32_t data[128] = {0};
+	int32_t rdata = 0, offset = 0;
+	int32_t data_size = 0, rdata_size = 0, dig_size_align = 0;
+	int32_t result = 0;
+
+	dig_size_align = ((dig_size + 3) / sizeof(uint32_t)) * 4;
+	data[0] = key_index;
+	data[1] = dig_size;
+	data[2] = sig_size;
+	memcpy((uint8_t *)&data[3], dig, dig_size);
+	offset = ((dig_size + 3) / sizeof(uint32_t));
+	memcpy((uint8_t *)&data[3 + offset], sig, sig_size);
+
+	data_size = (sizeof(uint32_t) * 3) + dig_size_align + sig_size;
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, TCCTHSM_EVT_ASYMMETRIC_VERIFY, data, data_size, &rdata, sizeof(rdata));
+	if (rdata_size < 0) {
+		DLOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	result = rdata;
+	if (result != 0) {
+		DLOG("Error: %d\n", result);
+		return result;
+	}
+
 	return result;
 }

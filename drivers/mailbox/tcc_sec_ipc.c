@@ -13,6 +13,10 @@
  * Suite 330, Boston, MA 02111-1307 USA
  */
 
+#define NDEBUG
+#define TLOG_LEVEL TLOG_DEBUG
+#include "tcc_sec_ipc_log.h"
+
 #include <linux/mailbox/tcc_sec_ipc.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -46,28 +50,13 @@
 
 /** Returns a demux event from a mailbox command. The demux event can be
  * distinguished by cmd[15:12], i.e. magic number 0 for demux event.*/
-#define IS_DMX_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 == (((cmd)&0xFF00) >> 8)))
-
-/** Returns hsm event from a mailbox command. The event can be
- * distinguished by cmd[15:12], i.e. magic number.*/
-#define IS_HSM_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 != (((cmd)&0x0F00) >> 8)))
+#define IS_DMX_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 == (((cmd)&0xF000) >> 12)))
 
 /** Returns an event from a mailbox command. The event can be
- * distinguished by cmd[15:12], i.e. magic number.*/
-#define IS_EVENT(cmd) (((cmd)&0xFFFF0000) && (0 != (((cmd)&0xF000) >> 12)))
-
-//#define DEBUG_TCC_SEC_IPC
-#ifdef DEBUG_TCC_SEC_IPC
-#undef dprintk
-#define dprintk(msg...) printk("[DEBUG][SEC-IPC]" msg);
-#undef eprintk
-#define eprintk(msg...) printk("[ERROR][SEC-IPC]" msg);
-#else
-#undef dprintk
-#define dprintk(msg...)
-#undef eprintk
-#define eprintk(msg...) printk("[ERROR][SEC-IPC]" msg);
-#endif
+ * distinguished by cmd[15:12], magic number of THSM is 5
+ * */
+#define IS_THSM_EVENT(cmd) (5 == (((cmd)&0xF000) >> 12))
+#define HSM_EVENT_FLAG(cmd) (1 << cmd)
 
 static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
@@ -78,14 +67,6 @@ static const struct of_device_id sec_ipc_dt_id[] = {
 };
 MODULE_DEVICE_TABLE(of, sec_ipc_dt_id);
 
-/**
- * @todo data size should be increased if necessary
- */
-struct event_info
-{
-	uint32_t data[2];
-	int len;
-};
 static struct sec_device
 {
 	struct tcc_mbox_msg mbox_rmsg;
@@ -95,10 +76,7 @@ static struct sec_device
 	struct class *class;
 	int mbox_received;
 	struct mbox_chan *mbox_ch;
-	struct protected_buffer_t *pbuff;
-	uint32_t event_mask;
 	uint32_t recv_event;
-	struct event_info event_info[16]; // Up to 16 of events can be assigned.
 	unsigned char *vaddr;             // Holds a virtual address to DMA.
 	dma_addr_t paddr;                 // Holds a physical address to DMA.
 };
@@ -110,19 +88,8 @@ static DECLARE_WAIT_QUEUE_HEAD(waitq);
 static DECLARE_WAIT_QUEUE_HEAD(event_waitq);
 
 static DEFINE_MUTEX(mutex);
+static DEFINE_MUTEX(mutex_recv);
 static uint32_t recv_event;
-
-/*Up to 16 of events can be assigned. */
-
-/**
- * Holds a virtual address to DMA.
- */
-static unsigned char *vaddr;
-
-/**
- * Holds a physical address to DMA.
- */
-static dma_addr_t paddr;
 
 /**
  * Used to upload SP firmware to memory.
@@ -138,29 +105,7 @@ static void __iomem *codebase;
  * */
 static void __iomem *cfgbase;
 
-/**
- * This function converts an event to index to referece event_info.
- * @param event SP event made by #SP_EVENT macro
- * @return On success, the index is returned. On failure, -1 is returned.
- */
-static int sec_event_idx(uint32_t event)
-{
-	int idx = 0;
-	event >>= 16;
-
-	idx = 0;
-	while (idx < 16 && (event & 0x1) == 0) {
-		event >>= 1;
-		idx++;
-	}
-	if (idx == 16) {
-		return -1;
-	}
-
-	return idx;
-}
-
-static int set_sec_device(int device_id, struct sec_device *sec_dev)
+static int sec_set_device(int device_id, struct sec_device *sec_dev)
 {
 	if (device_id == MBOX_DEV_M4) {
 		sec_device[MBOX_DEV_M4] = sec_dev;
@@ -177,7 +122,7 @@ static int set_sec_device(int device_id, struct sec_device *sec_dev)
 	return 0;
 }
 
-static struct sec_device *get_sec_device(int device_id)
+static struct sec_device *sec_get_device(int device_id)
 {
 	if (device_id == MBOX_DEV_M4) {
 		return sec_device[MBOX_DEV_M4];
@@ -192,7 +137,7 @@ static struct sec_device *get_sec_device(int device_id)
 	}
 }
 
-static int get_device_id(const char *dev_name)
+static int sec_get_device_id(const char *dev_name)
 {
 	if (!strcmp(dev_name, "sec-ipc-m4")) {
 		return MBOX_DEV_M4;
@@ -227,22 +172,22 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	unsigned int data_size = 0;
 	struct sec_device *sec_dev = NULL;
 
-	sec_dev = get_sec_device(device_id);
+	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
+		ELOG("Can't find device\n");
 		return -EINVAL;
 	}
 
 	if (size < 0 || MBOX_DMA_SIZE < size) {
-		eprintk("size is %d\n", size);
+		ELOG("size is %d\n", size);
 		return -EINVAL;
 	}
 	if (rsize < 0 || MBOX_DMA_SIZE < rsize) {
-		eprintk("rsize is %d\n", size);
+		ELOG("rsize is %d\n", size);
 		return -EINVAL;
 	}
 	if (!sec_dev->mbox_ch) {
-		eprintk("Channel cannot do Tx\n");
+		ELOG("Channel cannot do Tx\n");
 		return -EINVAL;
 	}
 	mutex_lock(&mutex);
@@ -256,7 +201,7 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	if (size <= TCC_MBOX_MAX_MSG) {
 		memcpy(mbox_data.data, data, size);
 		mbox_data.cmd[2] = DATA_MBOX;
-		dprintk("cmd %X, size %d\n", cmd, size);
+		DLOG("cmd %X, size %d\n", cmd, size);
 		// print_hex_dump_bytes("Sending message: ", DUMP_PREFIX_ADDRESS, mbox_msg.message, size);
 	} else if (TCC_MBOX_MAX_MSG < size) {
 		memcpy(sec_dev->vaddr, data, size);
@@ -268,14 +213,14 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	mbox_result = mbox_send_message(sec_dev->mbox_ch, &(mbox_data));
 	mbox_client_txdone(sec_dev->mbox_ch, 0);
 	if (mbox_result < 0) {
-		eprintk("Failed to send message via mailbox\n");
+		ELOG("Failed to send message via mailbox\n");
 		result = -EINVAL;
 		goto out;
 	}
 	// Awaiting mbox_msg_received to be called.
 	result = wait_event_timeout(waitq, sec_dev->mbox_received == 1, CMD_TIMEOUT);
 	if (result == 0 && (sec_dev->mbox_received != 1)) {
-		eprintk("%s: Cmd: %d Timeout\n", __func__, cmd);
+		ELOG("Cmd: %d Timeout\n", cmd);
 		result = -EINVAL;
 		goto out;
 	}
@@ -288,9 +233,9 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	}
 	if (sec_dev->mbox_rmsg.msg_len > rsize) {
 		result = -EPERM;
-		eprintk(
-			"%s: received msg size(0x%x) is larger than rsize(0x%x)\n", __func__,
-			sec_dev->mbox_rmsg.msg_len, rsize);
+		ELOG(
+			"received msg size(0x%x) is larger than rsize(0x%x)\n", sec_dev->mbox_rmsg.msg_len,
+			rsize);
 		goto out;
 	}
 	// Copy received data
@@ -299,10 +244,9 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 	} else {
 		memcpy(rdata, sec_dev->vaddr, sec_dev->mbox_rmsg.msg_len);
 	}
-	// print_hex_dump_bytes("Received: ", DUMP_PREFIX_ADDRESS, mbox_rmsg.message, size);
 	result = sec_dev->mbox_rmsg.msg_len;
 out:
-	dprintk("%s:%d End result=%d\n", __func__, __LINE__, result);
+	DLOG("End result=%d\n", result);
 	mutex_unlock(&mutex);
 	return result;
 }
@@ -341,7 +285,7 @@ static int sec_reset_ioctl(unsigned long arg)
 	msleep(1000);
 	reg = readl_relaxed(cfgbase + 0x18);
 	if (copy_from_user(codebase, (void *)arg, 0x10000) != 0) {
-		eprintk("%s: copy_from_user failed.\n", __func__);
+		ELOG("copy_from_user failed.\n");
 		return -EFAULT;
 	}
 	writel_relaxed(reg & ~(0x6), cfgbase + 0x18); // SP Reset
@@ -349,178 +293,76 @@ static int sec_reset_ioctl(unsigned long arg)
 	return ret;
 }
 
-/**
- *
- */
-static int sec_sendrecv_cmd_ioctl(unsigned long arg)
+static int sec_send_cmd_ioctl(unsigned long arg)
 {
-	struct sec_segment segment_kern, segment_user;
-	int result = 0, readCnt;
-	static uint8_t *long_data = NULL; /* Do not change the initial value */
+	struct tcc_mbox_data mbox_data = {0};
+	int result = 0, mbox_result = 0;
+	unsigned int data_size = 0;
+	struct sec_device *sec_dev = NULL;
+	struct sec_segment segment;
 
 	// Copy data from user space to kernel space
-	result = copy_from_user(&segment_kern, (void *)arg, sizeof(struct sec_segment));
+	result = copy_from_user(&segment, (void *)arg, sizeof(struct sec_segment));
 	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
+		ELOG("copy_from_user failed: %d\n", result);
 		return result;
 	}
 
-	if (segment_kern.size < 0 || MBOX_DMA_SIZE < segment_kern.size) {
-		eprintk("%s: size is %d\n", __func__, segment_kern.size);
+	if (segment.size < 0 || MBOX_DMA_SIZE < segment.size) {
+		ELOG("size is %d\n", segment.size);
 		return -EINVAL;
 	}
 
-	if (segment_kern.rsize < 0 || MBOX_DMA_SIZE < segment_kern.rsize) {
-		eprintk("%s: rsize is %d\n", __func__, segment_kern.size);
+	sec_dev = sec_get_device(segment.device_id);
+	if (sec_dev == NULL) {
+		ELOG("Can't find device\n");
 		return -EINVAL;
 	}
 
-	segment_user = segment_kern;
-
-	/* Why do we use kmalloc instead of copying to DMA space used by
-	 * sec_sendrecv_cmd? sec_sendrecv_cmd assures thread-safe. If we copy
-	 * data to DMA here, it will ruin thread-safe. */
-	if (!long_data) {
-		long_data = kmalloc(MBOX_DMA_SIZE, GFP_KERNEL);
-		if (long_data == NULL) {
-			eprintk("%s:%d kmalloc failed\n", __func__, __LINE__);
-			return -ENOMEM;
-		}
+	if (!sec_dev->mbox_ch) {
+		ELOG("Channel cannot do Tx\n");
+		return -EINVAL;
 	}
-
-	result = copy_from_user(long_data, (void *)segment_kern.data_addr, segment_kern.size);
-	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
-		result = -EFAULT;
-		goto out;
+	data_size = segment.size;
+	mbox_data.cmd[0] = 0; // To be handled by a normal command
+	mbox_data.cmd[1] = (unsigned int *)sec_dev->paddr;
+	mbox_data.cmd[3] = data_size;
+	mbox_data.data_len = ((data_size + 3) / sizeof(unsigned int));
+	// size 0 is included on purpose to send a command without data
+	if (data_size <= TCC_MBOX_MAX_MSG) {
+		memcpy(mbox_data.data, segment.data_addr, data_size);
+		mbox_data.cmd[2] = DATA_MBOX;
+		DLOG("cmd=0x%X, data size=0x%x\n", segment.cmd, data_size);
+	} else if (TCC_MBOX_MAX_MSG < data_size) {
+		memcpy(sec_dev->vaddr, segment.data_addr, data_size);
+		mbox_data.cmd[2] = DMA;
 	}
-	/* Use int64_t conversion to support 32/64bit application */
-	segment_kern.data_addr = segment_kern.rdata_addr = (uint64_t)long_data;
-
-	// Send to SP and receive data from SP if available
-	readCnt = sec_sendrecv_cmd(
-		MBOX_DEV_A53, segment_kern.cmd, (void *)segment_kern.data_addr, segment_kern.size,
-		(void *)segment_kern.rdata_addr, segment_kern.rsize);
-	if (readCnt < 0) {
-		eprintk("%s: Failed to send message\n", __func__);
-		result = readCnt;
-		goto out;
-	}
-	// Disclaimer: segment_kern.data_addr is invalid from here because
-	//  segment_kern.data_addr and segment_kern.rdata_addr share the same address,
-	//  and segment_kern.rdata_addr is written by sec_sendrecv_cmd.
-
-	// Copy received data to user space
-	if (readCnt > segment_kern.rsize) {
-		eprintk("%s:%d read buffer is small !!!-%d\n", __func__, __LINE__, readCnt);
-		result = -ENOMEM;
-		goto out;
-	}
-
-	result =
-		copy_to_user((void *)segment_user.rdata_addr, (void *)segment_kern.rdata_addr, readCnt);
-	if (result != 0) {
-		eprintk("%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
-		goto out;
-	}
-
-	segment_user.rsize = readCnt;
-	result = copy_to_user((void *)arg, &segment_user, sizeof(struct sec_segment));
-	if (result != 0) {
-		eprintk("%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
+	DLOG(
+		"SEND cmd[0]=0x%x dma addr=0x%x dma type=0x%x data_len=0x%x\n", mbox_data.cmd[0],
+		mbox_data.cmd[1], mbox_data.cmd[2], mbox_data.data_len);
+	// Init condition to wait
+	sec_dev->mbox_received = 0;
+	mbox_result = mbox_send_message(sec_dev->mbox_ch, &(mbox_data));
+	mbox_client_txdone(sec_dev->mbox_ch, 0);
+	if (mbox_result < 0) {
+		ELOG("Failed to send message via mailbox\n");
+		result = -EINVAL;
 		goto out;
 	}
 
 out:
-	// kfree(long_data);
-	return result;
-}
-
-static int sec_subscribe_evt_ioctl(unsigned long arg)
-{
-	int result = 0;
-	uint32_t event = 0;
-	struct sec_evt sec_event = {
-		0,
-	};
-	struct sec_device *sec_dev = NULL;
-
-	// Copy data from user space to kernel space
-	result = copy_from_user(&sec_event, (void *)arg, sizeof(struct sec_evt));
-	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
-		return result;
-	}
-	sec_dev = get_sec_device(sec_event.device_id);
-	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	event = (uint32_t)(sec_event.event & 0xFFFFFFFF);
-	sec_dev->event_mask |= event;
-	dprintk("event_mask: %d, event: %d\n", sec_dev->event_mask, event);
-
-	return result;
-}
-
-static int sec_unsubscribe_evt_ioctl(unsigned long arg)
-{
-	int result = 0;
-	uint32_t event = 0;
-	struct sec_evt sec_event = {
-		0,
-	};
-	struct sec_device *sec_dev = NULL;
-
-	// Copy data from user space to kernel space
-	result = copy_from_user(&sec_event, (void *)arg, sizeof(struct sec_evt));
-	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
-		return result;
-	}
-	sec_dev = get_sec_device(sec_event.device_id);
-	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-	event = (uint32_t)(arg & 0xFFFFFFFF);
-	sec_dev->event_mask &= ~event;
-	dprintk("event_mask: %d, event: %d\n", sec_dev->event_mask, event);
-
 	return result;
 }
 
 static int sec_get_evt_ioctl(unsigned long arg)
 {
-	int result = 0;
-	struct sec_evt sec_event = {
-		0,
-	};
-	struct sec_device *sec_dev = NULL;
+	int result = -1;
 
-	// Copy data from user space to kernel space
-	result = copy_from_user(&sec_event, (void *)arg, sizeof(struct sec_evt));
+	result = copy_to_user((void *)arg, &recv_event, sizeof(uint32_t));
 	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
-		return result;
+		ELOG("copy_to_user failed: %d\n", result);
 	}
-
-	sec_dev = get_sec_device(sec_event.device_id);
-	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-	sec_event.event = sec_dev->recv_event;
-	result = copy_to_user((void *)arg, &sec_event, sizeof(struct sec_evt));
-	if (result != 0) {
-		eprintk("%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
-	}
-	dprintk("recv_event: %d\n", sec_dev->recv_event);
-
-	sec_dev->recv_event = 0;
-	recv_event = 0;
-
+	DLOG("recv_event: %d\n", recv_event);
 	return result;
 }
 
@@ -533,40 +375,41 @@ static int sec_get_evt_info_ioctl(unsigned long arg)
 
 	result = copy_from_user(&segment_user, (void *)arg, sizeof(struct sec_segment));
 	if (result != 0) {
-		eprintk("%s:%d copy_from_user failed: %d\n", __func__, __LINE__, result);
+		ELOG("copy_from_user failed: %d\n", result);
 		return result;
 	}
 
-	sec_dev = get_sec_device(segment_user.device_id);
+	sec_dev = sec_get_device(segment_user.device_id);
 	if (sec_dev == NULL) {
-		eprintk("Can't find device\n", __func__, __LINE__);
+		ELOG("Can't find device\n");
 		return -EINVAL;
 	}
 
-	idx = sec_event_idx(segment_user.cmd);
-	if (idx == -1) {
-		eprintk("%s:%d event is wrong: %d\n", __func__, __LINE__, event);
-		result = -1;
-		return result;
+	/* Send received data */
+	if (sec_dev->mbox_rmsg.trans_type == DATA_MBOX) {
+		result = copy_to_user(
+			(void *)segment_user.rdata_addr, (void *)&sec_dev->mbox_rmsg.message,
+			sec_dev->mbox_rmsg.msg_len);
+	} else {
+		result = copy_to_user(
+			(void *)segment_user.rdata_addr, (void *)&sec_dev->vaddr, sec_dev->mbox_rmsg.msg_len);
 	}
-
-	result = copy_to_user(
-		(void *)segment_user.rdata_addr, (void *)&sec_dev->event_info[idx].data,
-		sec_dev->event_info[idx].len);
 	if (result != 0) {
-		eprintk("%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
+		ELOG("copy_to_user failed: %d\n", result);
 		return result;
 	}
-	segment_user.rsize = sec_dev->event_info[idx].len;
 
+	/* Send cmd and rsize */
+	segment_user.cmd = sec_dev->mbox_rmsg.cmd;
+	segment_user.rsize = sec_dev->mbox_rmsg.msg_len;
 	result = copy_to_user((void *)arg, &segment_user, sizeof(struct sec_segment));
 	if (result != 0) {
-		eprintk("%s:%d copy_to_user failed: %d\n", __func__, __LINE__, result);
+		ELOG("copy_to_user failed: %d\n", result);
 		return result;
 	}
-
-	memset(sec_dev->event_info[idx].data, 0, sec_dev->event_info[idx].len);
-	sec_dev->event_info[idx].len = 0;
+	recv_event &= ~(HSM_EVENT_FLAG(segment_user.device_id));
+	memset(sec_dev->mbox_rmsg.message, 0, sec_dev->mbox_rmsg.msg_len);
+	sec_dev->mbox_rmsg.msg_len = 0;
 
 	return result;
 }
@@ -580,16 +423,8 @@ static long sec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		result = sec_reset_ioctl(arg);
 		break;
 
-	case SEC_SENDRECV_CMD:
-		result = sec_sendrecv_cmd_ioctl(arg);
-		break;
-
-	case SEC_SUBSCRIBE_EVENT:
-		result = sec_subscribe_evt_ioctl(arg);
-		break;
-
-	case SEC_UNSUBSCRIBE_EVENT:
-		result = sec_unsubscribe_evt_ioctl(arg);
+	case SEC_SEND_CMD:
+		result = sec_send_cmd_ioctl(arg);
 		break;
 
 	case SEC_GET_EVENTS:
@@ -601,7 +436,7 @@ static long sec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		eprintk("%s:%d ioctl failed: %d\n", __func__, __LINE__, cmd);
+		ELOG("ioctl failed: %d\n", cmd);
 		result = -EINVAL;
 		break;
 	}
@@ -611,7 +446,6 @@ static long sec_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static unsigned int sec_poll(struct file *filp, poll_table *wait)
 {
-	struct sec_device *sec_dev = NULL;
 	poll_wait(filp, &event_waitq, wait);
 
 	if (recv_event != 0) {
@@ -621,7 +455,7 @@ static unsigned int sec_poll(struct file *filp, poll_table *wait)
 	}
 }
 
-int sec_send_cmd(int cmd, void *data, int size, int device_id)
+static int sec_send_cmd(int cmd, void *data, int size, int device_id)
 {
 	struct tcc_mbox_data mbox_data = {
 		0,
@@ -630,20 +464,20 @@ int sec_send_cmd(int cmd, void *data, int size, int device_id)
 	unsigned int data_size = 0;
 	struct sec_device *sec_dev = NULL;
 
-	sec_dev = get_sec_device(device_id);
+	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
+		ELOG("Can't find device\n");
 		return -EINVAL;
 	}
 	if (size < 0 || MBOX_DMA_SIZE < size) {
-		eprintk("size is %d\n", size);
+		ELOG("size is %d\n", size);
 		return -EINVAL;
 	}
 	if (!sec_dev->mbox_ch) {
-		eprintk("Channel cannot do Tx\n");
+		ELOG("Channel cannot do Tx\n");
 		return -EINVAL;
 	}
-	mutex_lock(&mutex);
+
 	mbox_data.cmd[0] = cmd;
 	mbox_data.cmd[1] = (unsigned int *)sec_dev->paddr;
 	mbox_data.cmd[3] = size;
@@ -653,12 +487,11 @@ int sec_send_cmd(int cmd, void *data, int size, int device_id)
 	if (size <= TCC_MBOX_MAX_MSG) {
 		memcpy(mbox_data.data, data, size);
 		mbox_data.cmd[2] = DATA_MBOX;
-		dprintk("cmd %X, size %d\n", cmd, size);
 	} else if (TCC_MBOX_MAX_MSG < size) {
 		memcpy(sec_dev->vaddr, data, size);
 		mbox_data.cmd[2] = DMA;
 	}
-	dprintk(
+	DLOG(
 		"SEND cmd[0]=0x%x cmd[1]=0x%x cmd[2]=0x%x len=0x%x\n", mbox_data.cmd[0], mbox_data.cmd[1],
 		mbox_data.cmd[2], mbox_data.data_len);
 	// Init condition to wait
@@ -666,16 +499,15 @@ int sec_send_cmd(int cmd, void *data, int size, int device_id)
 	mbox_result = mbox_send_message(sec_dev->mbox_ch, &(mbox_data));
 	mbox_client_txdone(sec_dev->mbox_ch, 0);
 	if (mbox_result < 0) {
-		eprintk("Failed to send message via mailbox\n");
+		ELOG("Failed to send message via mailbox\n");
 		result = -EINVAL;
 		goto out;
 	}
 
 out:
-	mutex_unlock(&mutex);
 	return result;
 }
-#ifdef DEBUG_TCC_SEC_IPC
+
 static void test_send_mbox(int cmd)
 {
 	int device_id = MBOX_DEV_R5;
@@ -686,20 +518,23 @@ static void test_send_mbox(int cmd)
 	cmd = cmd & 0xFFFF;
 	sec_send_cmd(cmd, buffer, sizeof(buffer), device_id);
 }
-#endif
 
 /**
  * This function is atomic.
  */
 static void sec_msg_received(struct mbox_client *client, void *message)
 {
+	mutex_lock(&mutex_recv);
+
 	struct tcc_mbox_data *mbox_data = (struct tcc_mbox_data *)message;
 	struct sec_device *sec_dev = NULL;
 	int msg_len = -1, cmd = -1, trans_type = -1, dma_addr = -1;
+	int device_id = -1;
 
-	sec_dev = get_sec_device(get_device_id(client->dev->init_name));
+	device_id = sec_get_device_id(client->dev->init_name);
+	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
-		eprintk("[%s:%d]Can't find device\n", __func__, __LINE__);
+		ELOG("Can't find device\n");
 		return;
 	}
 
@@ -709,28 +544,22 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 	trans_type = mbox_data->cmd[2];
 	msg_len = mbox_data->cmd[3];
 
-	dprintk(
-		"RECEIVE cmd[0]=0x%x cmd[1]=0x%x cmd[2]=0x%x cmd[3]=0x%x len=0x%x\n", mbox_data->cmd[0],
-		mbox_data->cmd[1], mbox_data->cmd[2], mbox_data->cmd[3], mbox_data->data_len);
-
 	if (IS_DMX_EVENT(cmd)) { /* Demux event */
 		if (dmx_callback != NULL) {
 			dmx_callback(cmd, mbox_data->data, msg_len);
 		}
-	} else if (IS_HSM_EVENT(cmd)) {
-	/*TODO : Handle the event through the demon. */
-#ifdef DEBUG_TCC_SEC_IPC
-		test_send_mbox(cmd);
-#endif
-	} else if (IS_EVENT(cmd)) { /* Event */
-		if (sec_dev->event_mask & cmd) {
-			int idx = sec_event_idx(cmd);
-			sec_dev->recv_event |= cmd;
-			recv_event = 1;
-			memcpy(sec_dev->event_info[idx].data, mbox_data->data, msg_len);
-			sec_dev->event_info[idx].len = msg_len;
-			wake_up(&event_waitq);
-		}
+	} else if (IS_THSM_EVENT(cmd)) {
+		if (trans_type == DATA_MBOX)
+			memcpy(sec_dev->mbox_rmsg.message, mbox_data->data, msg_len);
+		else
+			sec_dev->mbox_rmsg.dma_addr = dma_addr;
+
+		sec_dev->mbox_rmsg.trans_type = trans_type;
+		sec_dev->mbox_rmsg.msg_len = msg_len;
+		sec_dev->mbox_rmsg.cmd = _IOC_NR(cmd);
+		recv_event |= HSM_EVENT_FLAG(device_id);
+		wake_up(&event_waitq);
+		// test_send_mbox(cmd);
 	} else { /* For normal SP commands */
 		if (trans_type == DATA_MBOX)
 			memcpy(sec_dev->mbox_rmsg.message, mbox_data->data, msg_len);
@@ -741,14 +570,14 @@ static void sec_msg_received(struct mbox_client *client, void *message)
 		sec_dev->mbox_received = 1;
 		wake_up(&waitq);
 	}
+
+	mutex_unlock(&mutex_recv);
 }
 
 static void sec_msg_sent(struct mbox_client *client, void *message, int r)
 {
 	if (r) {
-		dprintk("Message could not be sent: %d\n", r);
-	} else {
-		dprintk("Message sent\n");
+		ELOG("Message could not be sent: %d\n", r);
 	}
 }
 
@@ -771,7 +600,7 @@ static struct mbox_chan *sec_request_channel(struct platform_device *pdev, const
 
 	channel = mbox_request_channel_byname(client, name);
 	if (IS_ERR(channel)) {
-		eprintk("Failed to request %s channel\n", name);
+		ELOG("Failed to request %s channel\n", name);
 		return NULL;
 	}
 
@@ -795,12 +624,12 @@ static int sec_probe(struct platform_device *pdev)
 
 	sec_dev = devm_kzalloc(&pdev->dev, sizeof(struct sec_device), GFP_KERNEL);
 	if (!sec_dev) {
-		eprintk("%s : Cannot alloc sec device..\n", __FUNCTION__);
+		ELOG("Cannot alloc sec device..\n");
 		return -ENOMEM;
 	}
 	result = alloc_chrdev_region(&sec_dev->devnum, 0, 1, DEVICE_NAME);
 	if (result) {
-		eprintk("alloc_chrdev_region error %d\n", result);
+		ELOG("alloc_chrdev_region error %d\n", result);
 		return result;
 	}
 
@@ -808,37 +637,37 @@ static int sec_probe(struct platform_device *pdev)
 	sec_dev->cdev.owner = THIS_MODULE;
 	result = cdev_add(&sec_dev->cdev, sec_dev->devnum, 1);
 	if (result) {
-		eprintk("cdev_add error %d\n", result);
+		ELOG("cdev_add error %d\n", result);
 		goto cdev_add_error;
 	}
 
 	sec_dev->class = class_create(THIS_MODULE, pdev->name);
 	if (IS_ERR(sec_dev->class)) {
 		result = PTR_ERR(sec_dev->class);
-		eprintk("class_create error %d\n", result);
+		ELOG("class_create error %d\n", result);
 		goto class_create_error;
 	}
 
 	sec_dev->device = device_create(sec_dev->class, &pdev->dev, sec_dev->devnum, NULL, DEVICE_NAME);
 	if (IS_ERR(sec_dev->device)) {
 		result = PTR_ERR(sec_dev->device);
-		eprintk("device_create error %d\n", result);
+		ELOG("device_create error %d\n", result);
 		goto device_create_error;
 	}
 	sec_dev->mbox_ch = sec_request_channel(pdev, pdev->name);
 	if (sec_dev->mbox_ch == NULL) {
 		result = -EPROBE_DEFER;
-		eprintk("sec_request_channel error: %d\n", result);
+		ELOG("sec_request_channel error: %d\n", result);
 		goto mbox_request_channel_error;
 	}
 
 	codebase = of_iomap(pdev->dev.of_node, 0);
 	cfgbase = of_iomap(pdev->dev.of_node, 1);
-	dprintk("%s: code(%p) cfg(%p)\n", __func__, codebase, cfgbase);
+	DLOG("code(%p) cfg(%p)\n", codebase, cfgbase);
 
 	of_dma_configure(sec_dev->device, NULL);
 	if (dma_set_coherent_mask(sec_dev->device, DMA_BIT_MASK(32))) {
-		eprintk("DMA mask set fail\n");
+		ELOG("DMA mask set fail\n");
 		result = -EINVAL;
 		goto dma_alloc_error;
 	}
@@ -847,15 +676,15 @@ static int sec_probe(struct platform_device *pdev)
 		dma_alloc_writecombine(sec_dev->device, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
 	if (sec_dev->vaddr == NULL) {
 		result = PTR_ERR(sec_dev->vaddr);
-		eprintk("DMA alloc fail: %d\n", result);
+		ELOG("DMA alloc fail: %d\n", result);
 		result = -ENOMEM;
 		goto dma_alloc_error;
 	}
-	result = set_sec_device(get_device_id(pdev->name), sec_dev);
+	result = sec_set_device(sec_get_device_id(pdev->name), sec_dev);
 	if (result != 0) {
-		eprintk("Can't find device name %s %d\n", pdev->name, result);
+		ELOG("Can't find device name %s %d\n", pdev->name, result);
 	}
-	dprintk("Successfully probe registered %s\n", pdev->name);
+	DLOG("Successfully probe registered %s\n", pdev->name);
 	return result;
 
 dma_alloc_error:
@@ -879,7 +708,7 @@ cdev_add_error:
 static int sec_remove(struct platform_device *pdev)
 {
 	struct sec_device *sec_dev = NULL;
-	sec_dev = get_sec_device(get_device_id(pdev->name));
+	sec_dev = sec_get_device(sec_get_device_id(pdev->name));
 
 	dma_free_writecombine(sec_dev->device, MBOX_DMA_SIZE, sec_dev->vaddr, sec_dev->paddr);
 	mbox_free_channel(sec_dev->mbox_ch);
