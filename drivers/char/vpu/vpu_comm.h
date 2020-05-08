@@ -61,6 +61,11 @@
 #include <video/tcc/tcc_vp9_ioctl.h>
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h>
+#include <video/tcc/tcc_vpu_hevc_enc_ioctl.h>
+#endif
+
 //In case of kernel operation (open/close in the kernel level) like TMS, open/close works asynchronosly.
 //#define USE_DEV_OPEN_CLOSE_IOCTL
 

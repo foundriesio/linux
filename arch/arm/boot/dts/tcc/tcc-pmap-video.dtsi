@@ -121,6 +121,9 @@
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 #include "../../../../../include/video/tcc/TCC_VPU_4K_D2_CODEC.h"
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include "../../../../../include/video/tcc/TCC_VPU_HEVC_ENC_CODEC.h"
+#endif
 
 #define NUM_OF_MAIN_INSTANCE            (INST_1ST_USE + INST_2ND_USE)
 #define NUM_OF_SUB_INSTANCE             (INST_3RD_USE + INST_4TH_USE)
