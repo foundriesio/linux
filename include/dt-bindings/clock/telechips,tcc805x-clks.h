@@ -15,25 +15,25 @@
 #define FBUS_CMBUS		3	// CLKCTRL3 (Cortex-M4)
 #define FBUS_HSIO		6	// CLKCTRL6
 #define FBUS_SMU		7	// CLKCTRL7
-#define FBUS_GPU		8	// CLKCTRL8
 #define FBUS_DDI		9	// CLKCTRL9
-#define FBUS_G2D		10	// CLKCTRL10
 #define FBUS_IO			11	// CLKCTRL11
 #define FBUS_HSM		16
 #define	FBUS_PCIe0		17
 #define	FBUS_PCIe1		18
 
-#define	FBUS_VBUS		19	// Dedicated Video Bus Clock
-#define	FBUS_CODA		20	// Video CODA CCLK clock
-#define FBUS_CHEVCDEC		21	// Video CHEVC Clock(WAVE512 CCLK)
-#define FBUS_BHEVCDEC		22	// Video BHEVC Clock(WAVE512 BCLK)
-#define	FBUS_CHEVCENC		23	// Video CHEVC Clock(WAVE420L CCLK)
-#define	FBUS_BHEVCENC		24	// Video BHEVC Clock(WAVE420L BCLK)
-#define	FBUS_MEM		25	// Dedicated Memory Bus core clock
-#define	FBUS_MEM_SUB		26	// Memory Bus sub-system clock
-#define	FBUS_MEM_PHY_USER	27	// LPDDR4X User clock
-#define	FBUS_MEM_PHY_PERI	28	// LPDDR4X Peripheral clock
-#define FBUS_MAX		29
+#define FBUS_GPU		19
+#define FBUS_G2D		20
+#define	FBUS_VBUS		21	// Dedicated Video Bus Clock
+#define	FBUS_CODA		22	// Video CODA CCLK clock
+#define FBUS_CHEVCDEC		23	// Video CHEVC Clock(WAVE512 CCLK)
+#define FBUS_BHEVCDEC		24	// Video BHEVC Clock(WAVE512 BCLK)
+#define	FBUS_CHEVCENC		25	// Video CHEVC Clock(WAVE420L CCLK)
+#define	FBUS_BHEVCENC		26	// Video BHEVC Clock(WAVE420L BCLK)
+#define	FBUS_MEM		27	// Dedicated Memory Bus core clock
+#define	FBUS_MEM_SUB		28	// Memory Bus sub-system clock
+#define	FBUS_MEM_PHY_USER	29	// LPDDR4X User clock
+#define	FBUS_MEM_PHY_PERI	30	// LPDDR4X Peripheral clock
+#define FBUS_MAX		31
 
 #define CKC_REG_OFFSET(A)	((A)/4)
 
