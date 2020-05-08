@@ -47,6 +47,10 @@ ifdef CONFIG_ARCH_TCC901X
 vpu-y += smp_driver.o	###__FXXX__
 endif
 
+ifdef CONFIG_ARCH_TCC805X
+vpu-y += smp_driver.o	###__FXXX__
+endif
+
 vpu-y += vpu_mgr.o vpu_buffer.o vpu_mem.o vpu_etc.o
 vpu-y += vpu_mgr_sys.o
 vpu-y += vpu_devices.o
