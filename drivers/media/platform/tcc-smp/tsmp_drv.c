@@ -14,7 +14,7 @@
  */
 
 //#define NDEBUG
-#define TLOG_LEVEL TLOG_DEBUG
+//#define TLOG_LEVEL TLOG_DEBUG
 #include "tsmp_log.h"
 
 #include <linux/platform_data/media/tsmp_ioctl.h>
@@ -42,7 +42,9 @@ struct tsmp_dev
 	struct mutex mutex;
 	int revent_mask;
 	int open;
-	struct ringbuf_info buf_info;
+	struct tsmp_ringbuf_info buf_info;
+	uint16_t video_pid;
+	uint16_t audio_pid;
 };
 
 static dev_t dev_num;
@@ -61,7 +63,7 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 	mutex_unlock(&tsmp_dev[dmxch].mutex);
 }
 
-static int tsmp_get_buf_info_ioctl(struct file *filp, struct ringbuf_info *buf_info)
+static int tsmp_get_buf_info_ioctl(struct file *filp, struct tsmp_ringbuf_info *buf_info)
 {
 	int ret = -1;
 	struct tsmp_dev *dev = filp->private_data;
@@ -76,9 +78,9 @@ static int tsmp_get_buf_info_ioctl(struct file *filp, struct ringbuf_info *buf_i
 		return ret;
 	}
 
-	ILOG("off1: %p, off1_size: %d\n", dev->buf_info.off1, dev->buf_info.off1_size);
-	ILOG("off2: %p, off2_size: %d\n", dev->buf_info.off2, dev->buf_info.off2_size);
-	ret = copy_to_user(buf_info, &dev->buf_info, sizeof(struct ringbuf_info));
+	ILOG("off1: %u, off1_size: %d\n", (unsigned int)dev->buf_info.off1, dev->buf_info.off1_size);
+	ILOG("off2: %u, off2_size: %d\n", (unsigned int)dev->buf_info.off2, dev->buf_info.off2_size);
+	ret = copy_to_user(buf_info, &dev->buf_info, sizeof(struct tsmp_ringbuf_info));
 	if (unlikely(ret != 0)) {
 		ELOG("copy_to_user failed: %d\n", ret);
 		goto err_copy_to_user;
@@ -92,13 +94,48 @@ err_copy_to_user:
 	return ret;
 }
 
+static int tsmp_set_pid_info_ioctl(struct file *filp, struct tsmp_pid_info *arg)
+{
+	int ret = -1;
+	struct tsmp_pid_info pid_info;
+	struct tsmp_dev *dev = filp->private_data;
+
+	if (IS_ERR(arg)) {
+		return PTR_ERR(arg);
+	}
+
+	ret = copy_from_user(&pid_info, arg, sizeof(pid_info));
+	if (unlikely(ret != 0)) {
+		ELOG("copy_from_user failed: %d\n", ret);
+		return ret;
+	}
+
+	switch (pid_info.type) {
+	case AUDIO_TYPE:
+		dev->audio_pid = pid_info.pid;
+		break;
+
+	case VIDEO_TYPE:
+		dev->video_pid = pid_info.pid;
+		break;
+	}
+
+	ret = 0;
+	TRACE;
+	return ret;
+}
+
 static long tsmp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = -ENOTTY;
 
 	switch (cmd) {
 	case TSMP_GET_BUF_INFO:
-		ret = tsmp_get_buf_info_ioctl(filp, (struct ringbuf_info *)arg);
+		ret = tsmp_get_buf_info_ioctl(filp, (struct tsmp_ringbuf_info *)arg);
+		break;
+
+	case TSMP_SET_PID_INFO:
+		ret = tsmp_set_pid_info_ioctl(filp, (struct tsmp_pid_info *)arg);
 		break;
 
 	default:
@@ -146,8 +183,9 @@ static int tsmp_open(struct inode *inode, struct file *file)
 
 	/*******************************************/
 
-	/* This is where TA Close Session is called */
 	tcc_dmx_set_smpcb(iminor(inode), tsmp_callback);
+	dev->audio_pid = 0x1FFF;
+	dev->video_pid = 0x1FFF;
 	dev->open = 1;
 
 	ret = 0;
