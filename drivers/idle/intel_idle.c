@@ -1070,7 +1070,7 @@ static const struct x86_cpu_id intel_idle_ids[] __initconst = {
 	ICPU(INTEL_FAM6_WESTMERE_EP,		idle_cpu_nehalem),
 	ICPU(INTEL_FAM6_NEHALEM_EX,		idle_cpu_nehalem),
 	ICPU(INTEL_FAM6_ATOM_BONNELL,		idle_cpu_atom),
-	ICPU(INTEL_FAM6_ATOM_BONNELL_MID,		idle_cpu_lincroft),
+	ICPU(INTEL_FAM6_ATOM_BONNELL_MID,	idle_cpu_lincroft),
 	ICPU(INTEL_FAM6_WESTMERE_EX,		idle_cpu_nehalem),
 	ICPU(INTEL_FAM6_SANDYBRIDGE,		idle_cpu_snb),
 	ICPU(INTEL_FAM6_SANDYBRIDGE_X,		idle_cpu_snb),
@@ -1084,11 +1084,11 @@ static const struct x86_cpu_id intel_idle_ids[] __initconst = {
 	ICPU(INTEL_FAM6_HASWELL_X,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_HASWELL_L,		idle_cpu_hsw),
 	ICPU(INTEL_FAM6_HASWELL_G,		idle_cpu_hsw),
-	ICPU(INTEL_FAM6_ATOM_SILVERMONT_X,	idle_cpu_avn),
+	ICPU(INTEL_FAM6_ATOM_SILVERMONT_D,	idle_cpu_avn),
 	ICPU(INTEL_FAM6_BROADWELL,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_BROADWELL_G,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_BROADWELL_X,		idle_cpu_bdw),
-	ICPU(INTEL_FAM6_BROADWELL_XEON_D,	idle_cpu_bdw),
+	ICPU(INTEL_FAM6_BROADWELL_D,		idle_cpu_bdw),
 	ICPU(INTEL_FAM6_SKYLAKE_L,		idle_cpu_skl),
 	ICPU(INTEL_FAM6_SKYLAKE,		idle_cpu_skl),
 	ICPU(INTEL_FAM6_KABYLAKE_L,		idle_cpu_skl),
@@ -1098,8 +1098,8 @@ static const struct x86_cpu_id intel_idle_ids[] __initconst = {
 	ICPU(INTEL_FAM6_XEON_PHI_KNM,		idle_cpu_knl),
 	ICPU(INTEL_FAM6_ATOM_GOLDMONT,		idle_cpu_bxt),
 	ICPU(INTEL_FAM6_ATOM_GOLDMONT_PLUS,	idle_cpu_bxt),
-	ICPU(INTEL_FAM6_ATOM_GOLDMONT_X,	idle_cpu_dnv),
-	ICPU(INTEL_FAM6_ATOM_TREMONT_X,		idle_cpu_dnv),
+	ICPU(INTEL_FAM6_ATOM_GOLDMONT_D,	idle_cpu_dnv),
+	ICPU(INTEL_FAM6_ATOM_TREMONT_D,		idle_cpu_dnv),
 	{}
 };
 

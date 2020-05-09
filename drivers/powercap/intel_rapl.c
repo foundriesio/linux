@@ -1155,7 +1155,7 @@ static const struct x86_cpu_id rapl_ids[] __initconst = {
 
 	RAPL_CPU(INTEL_FAM6_BROADWELL,		rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_BROADWELL_G,	rapl_defaults_core),
-	RAPL_CPU(INTEL_FAM6_BROADWELL_XEON_D,	rapl_defaults_core),
+	RAPL_CPU(INTEL_FAM6_BROADWELL_D,	rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_BROADWELL_X,	rapl_defaults_hsw_server),
 
 	RAPL_CPU(INTEL_FAM6_SKYLAKE,		rapl_defaults_core),
@@ -1170,8 +1170,8 @@ static const struct x86_cpu_id rapl_ids[] __initconst = {
 	RAPL_CPU(INTEL_FAM6_ATOM_AIRMONT_MID,	rapl_defaults_ann),
 	RAPL_CPU(INTEL_FAM6_ATOM_GOLDMONT,	rapl_defaults_core),
 	RAPL_CPU(INTEL_FAM6_ATOM_GOLDMONT_PLUS,	rapl_defaults_core),
-	RAPL_CPU(INTEL_FAM6_ATOM_GOLDMONT_X,	rapl_defaults_core),
-	RAPL_CPU(INTEL_FAM6_ATOM_TREMONT_X,	rapl_defaults_core),
+	RAPL_CPU(INTEL_FAM6_ATOM_GOLDMONT_D,	rapl_defaults_core),
+	RAPL_CPU(INTEL_FAM6_ATOM_TREMONT_D,	rapl_defaults_core),
 
 	RAPL_CPU(INTEL_FAM6_XEON_PHI_KNL,	rapl_defaults_hsw_server),
 	RAPL_CPU(INTEL_FAM6_XEON_PHI_KNM,	rapl_defaults_hsw_server),
