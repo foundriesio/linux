@@ -4601,6 +4601,11 @@ int btrfs_relocate_block_group(struct btrfs_fs_info *fs_info, u64 group_start)
 						 0, -1);
 			rc->stage = UPDATE_DATA_PTRS;
 		}
+
+		if (btrfs_should_cancel_balance(fs_info)) {
+			err = -ECANCELED;
+			goto out;
+		}
 	}
 
 	WARN_ON(rc->block_group->pinned > 0);
