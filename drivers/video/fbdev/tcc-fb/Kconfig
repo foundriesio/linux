@@ -199,7 +199,7 @@ config TCC_VSYNC_DRV_CONTROL_LUT
 
 config TCC_VIQE_FOR_SUB_M2M
 	bool "Support VIQE1 for SUB_M2M"
-	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X
+	depends on ARCH_TCC898X || ARCH_TCC899X || ARCH_TCC803X || ARCH_TCC901X || ARCH_TCC805X
 	default n
 	help
 	 Choose this option if you want to use VIQE1 block for sub m2m

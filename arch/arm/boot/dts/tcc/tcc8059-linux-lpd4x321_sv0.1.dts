@@ -10,7 +10,7 @@
 
 #include "tcc8059-linux-avn.dtsi"
 
-/ {
+/ {	//ttest
 	/* Describe here after remove this statement if you have something to be override. */
 	tm123xdhp90 {
 		compatible = "telechips,lvds-tm123xdhp90";
@@ -27,6 +27,90 @@
 		mode = <1>;   /* 0: single 1: dual */
 		ports = <2 3>;
 		mux-select = <0>;
+	};
+
+	tcc-drm-lcd {
+	        compatible = "telechips,tcc-drm-lcd";
+	        display-port-num = <0>;
+	        reg = <0x12000000 0x100 0x12000400 0x100 0x12001800 0x100>,
+				/* VIOC_REMAP */
+				  <0x12000000 0x100 0x12004000 0x100 0x12018000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-ext {
+	        compatible = "telechips,tcc-drm-ext";
+	        display-port-num = <1>;
+	        reg = <0x12000100 0x100 0x12000800 0x100 0x12001900 0x100>,
+				/* VIOC_REMAP */
+				  <0x12001000 0x100 0x12008000 0x100 0x12019000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD1>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing1>;
+			timing1: timing {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+			};
+		};
+	};
+
+	tcc-drm-third {
+	        compatible = "telechips,tcc-drm-third";
+	        display-port-num = <2>;
+	        reg = <0x12000200 0x100 0x12000C00 0x100 0x12001A00 0x100>,
+				/* VIOC_REMAP */
+				  <0x12002000 0x100 0x1200C000 0x100 0x1201A000 0x100>;
+	        reg-names = "ddc", "rdma", "wmix";
+	        interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+	        interrupt-names = "vsync";
+	        clock-names = "ddibus_vioc", "peri_lcd";
+	        clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD2>;
+	        status = "okay";
+		display-timings {
+			native-mode = <&timing2>;
+			timing2: timing {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hfront-porch = <147>;
+				hback-porch = <147>;
+				hsync-len = <19>;
+				vback-porch = <10>;
+				vfront-porch = <25>;
+				vsync-len = <2>;
+			};
+		};
 	};
 
 	vqmmc_emmc: vqmmc_emmc {
@@ -56,6 +140,91 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
+	};
+
+	tcc_vsync {
+		compatible = "telechips,tcc_vsync";
+		display-vioc0 = <&vioc_disp VIOC_DISP0>;
+		display-vioc1 = <&vioc_disp VIOC_DISP1>;
+		status = "okay";
+	};
+
+	tcc_viqe {
+		compatible = "telechips,tcc_viqe";
+		status ="okay";
+		tcc_viqe_viqe_common {
+			board_num=<1>;
+		};
+	};
+
+	tcc_vsync: tcc_vsync_drv {};
+
+	tcc_viqe: tcc_video_viqe {
+		compatible = "telechips,tcc_viqe";
+
+		tcc_viqe_viqe_common {
+			telechips,viqe,0 = <&vioc_viqe VIOC_VIQE0>;
+			telechips,viqe,1 = <&vioc_viqe VIOC_VIQE1>;
+			vioc_deintls = <VIOC_DEINTLS0>;
+			board_num=<0>;
+		};
+
+		tcc_video_viqe_lcd {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX1>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA07>;
+			telechips,disp = <&vioc_disp VIOC_DISP1>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_07>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_07>;
+		};
+
+		tcc_video_viqe_external {
+			telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+			telechips,rdma,60 = <&vioc_rdma VIOC_RDMA03>;
+			telechips,disp = <&vioc_disp VIOC_DISP0>;
+			telechips,sc = <&vioc_scaler VIOC_SCALER1>;
+			viqe_rdma_num_60 = <VIOC_VIQE_RDMA_03>;
+			sc_rdma_num_60 = <VIOC_SC_RDMA_03>;
+		};
+
+	        tcc_video_viqe_external_sub {
+	            telechips,wmixer = <&vioc_wmix VIOC_WMIX0>;
+	            telechips,rdma,60 = <&vioc_rdma VIOC_RDMA02>;
+	            telechips,disp = <&vioc_disp VIOC_DISP0>;
+	            telechips,sc = <&vioc_scaler VIOC_SCALER3>;
+	            viqe_rdma_num_60 = <VIOC_VIQE_RDMA_02>;
+	            sc_rdma_num_60 = <VIOC_SC_RDMA_02>;
+	        };
+
+		tcc_video_main_m2m{
+			main_rdma_num_m2m = <VIOC_VIQE_RDMA_16>;
+			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA16>;
+		};
+
+		tcc_video_sub_m2m {
+			sub_rdma_num_m2m = <VIOC_VIQE_RDMA_07>;
+			telechips,sub_rdma,m2m = <&vioc_rdma VIOC_RDMA07>;
+		};
+
+		tcc_video_scaler_main_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA16>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER1>;	/* id:1, path:17 */
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX5>;	/* id:5, path:6 */
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA06>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_16>;
+			m2m_sc_settop_support = <1>;
+		};
+
+		tcc_video_scaler_sub_m2m {
+			clocks = <&clk_ddi DDIBUS_VIOC>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA07>;
+			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER3>;	/* id:3, path:7 */
+			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX1>;	/* id:1, path:3 */
+			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA01>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_07>;
+			m2m_sc_settop_support = <1>;
+		};
 	};
 };
 

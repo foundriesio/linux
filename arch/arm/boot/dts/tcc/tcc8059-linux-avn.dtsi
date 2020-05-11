@@ -171,12 +171,9 @@
 		status = "okay";
 	};
 
-	overlaymixer:overlaymixer@1A100000 {
+	graphic2d:graphic2d@1A400000 {
 		status ="okay";
-		contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */
-		baseAddress = <0x20000000>;
-		physSize = <0x80000000>; /*  DRAM size (0x40000000 = 1GB, 0x80000000 = 2GB) */
-		};
+	};
 
 	i2c@16300000 {
 		status = "okay";

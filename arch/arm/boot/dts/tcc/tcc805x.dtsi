@@ -1708,7 +1708,7 @@
                 };
 	};
 
-	overlaymixer: overlaymixer@1A100000 {};
+	// overlaymixer: overlaymixer@1A100000 {};
 	/*overlaymixer: overlaymixer@1A100000 {
 		compatible = "vivante.gc";
 		reg = <0x1A100000 0x1000>;
@@ -1717,13 +1717,13 @@
 		status ="disabled";
 	};*/
 
-	/*graphic2d:graphic2d@1A400000 {
+	graphic2d:graphic2d@1A400000 {
 		compatible = "telechips,graphic.2d";
 		reg = <0x1A400000 0x1000>;
 		interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
 		clocks =<&clk_fbus FBUS_G2D>;
 		status ="disabled";
-	};*/
+	};
 	/*
 	 * I/O Bus Block
 	 */
