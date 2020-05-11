@@ -80,6 +80,13 @@
 
 /* SD slot */
 &sdhc1 {
+#ifdef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
+	/*
+	 * In order to reduce boot time,
+	 * we use the driver as module not built-in.
+	 */
+	compatible = "telechips,tcc805x-sdhci,module-only";
+#endif
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4 &sd1_bus4_wp_cd>;
