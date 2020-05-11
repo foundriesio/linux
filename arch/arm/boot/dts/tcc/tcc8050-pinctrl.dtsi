@@ -247,8 +247,8 @@
 	};
 
 	out0_clk: out0_clk {
-		telechips,pins = "gpsd2-7";
-		telechips,pin-function = <11>;
+		telechips,pins = "gpmb-17";
+		telechips,pin-function = <6>;
 		telechips,drive-strength = <3>;
 	}; // ext32.768 clock
 

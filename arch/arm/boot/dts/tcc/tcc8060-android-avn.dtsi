@@ -643,63 +643,6 @@
 	/* cp_reset-gpio = <&gpk 11 0>; */
 };
 
-/* eMMC */
-&vqmmc_emmc {
-	compatible = "regulator-fixed";
-	regulator-name = "vqmmc_emmc";
-	regulator-min-microvolt = <1800000>;
-	regulator-max-microvolt = <1800000>;
-	regulator-always-on;
-};
-
-&sdhc0 {
-	status = "okay";
-	bus-width = <8>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sd0_clk &sd0_cmd &sd0_bus8>;
-
-	non-removable;
-	keep-power-in-suspend;
-	disable-wp;
-	cap-mmc-hw-reset;
-	mmc-ddr-1_8v;
-
-	tcc-mmc-reset = <&gpsd0 14 0>;
-
-	vqmmc-supply = <&vqmmc_emmc>;
-};
-
-/* SD CARD */
-&sdhc1 {
-	status = "okay";
-#ifndef CONFIG_MMC_SDHCI_TCC_MODULE_ONLY
-	compatible = "telechips,tcc-sdhci";
-#else
-	/*
-	 * In order to reduce boot time,
-	 * we use the driver as module not built-in.
-	 */
-	compatible = "telechips,tcc805x-sdhci,module-only";
-#endif
-	controller-id = <1>;
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4 &sd1_bus4_wp_cd>;
-};
-
-/* SDIO */
-&sdhc2 {
-	status = "okay";
-	bus-width = <4>;
-	max-frequency = <200000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sd2_clk &sd2_cmd &sd2_bus4 &out0_clk>;
-	clocks = <&clk_peri PERI_SDMMC2 &clk_io IOBUS_SDMMC2>;
-	clock-names = "mmc_fclk", "mmc_hclk";
-};
-
 /* bluetooth */
 &tcc_bluetooth {
 	compatible = "telechips, tcc_bluetooth";
