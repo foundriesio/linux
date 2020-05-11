@@ -703,7 +703,7 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	unsigned int	interlaced			= !!(vs_info->interlaced & V4L2_DV_INTERLACED);
 	unsigned int	width				= vs_info->width;
 	unsigned int	height				= vs_info->height >> interlaced;
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int	se					= vs_info->se;
 	unsigned int	fvs 				= vs_info->fvs;
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -720,7 +720,7 @@ int tccvin_set_vin(tccvin_dev_t * vdev) {
 	VIOC_VIN_SetImageCropOffset(pVIN, 0, 0);
 	VIOC_VIN_SetY2RMode(pVIN, 2);
 
-#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	VIOC_VIN_SetSEEnable(pVIN, se);
 	VIOC_VIN_SetFlushBufferEnable(pVIN, fvs);
 #endif//defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
@@ -1409,7 +1409,7 @@ int tccvin_request_irq(tccvin_dev_t * vdev) {
 		vdev->cif.vioc_intr.id   = -1;
 		vdev->cif.vioc_intr.bits = -1;
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_ARCH_TCC803X  || defined(CONFIG_ARCH_TCC805X)
 		if(vdev->cif.vioc_path.wdma < VIOC_WDMA09)
 			vdev->cif.vioc_intr.id		= VIOC_INTR_WD0 + get_vioc_index(vdev->cif.vioc_path.wdma);
 		else

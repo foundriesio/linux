@@ -1,7 +1,5 @@
 obj-$(CONFIG_ARCH_TCC) += vioc_rdma.o vioc_wdma.o vioc_wmix.o
-obj-$(CONFIG_ARCH_TCC897X) += vioc_vin.o
-obj-$(CONFIG_ARCH_TCC899X) += vioc_vin.o
-obj-$(CONFIG_ARCH_TCC803X) += vioc_vin.o
+obj-$(CONFIG_ARCH_TCC) += vioc_vin.o
 obj-$(CONFIG_ARCH_TCC) += vioc_scaler.o vioc_viqe.o vioc_lut.o
 obj-$(CONFIG_ARCH_TCC) += vioc_intr.o vioc_fifo.o vioc_ddicfg.o vioc_deintls.o
 obj-$(CONFIG_ARCH_TCC) += vioc_config.o vioc_disp.o vioc_outcfg.o
