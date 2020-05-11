@@ -30,7 +30,7 @@
 
 #include "videosource_common.h"
 #include "videosource_if.h"
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 #include "mipi-csi2/mipi-csi2.h"
 #endif//CONFIG_ARCH_TCC803X
 
@@ -66,7 +66,7 @@ struct tcc_pinctrl {
 	unsigned int nfunctions;
 };
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 volatile void __iomem *  ddicfg_base;
 struct clk * 	 mipi_csi2_clk;
 unsigned int 	 mipi_csi2_frequency;
@@ -107,7 +107,7 @@ const static struct v4l2_fmtdesc videosource_format[] = {
 };
 #define NUM_CAPTURE_FORMATS ARRAY_SIZE(videosource_format)
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 static irqreturn_t videosource_if_mipi_csi2_isr(int irq, void * client_data) {
 	unsigned int intr_status0 = 0, intr_status1 = 0, intr_mask0 = 0, intr_mask1 = 0;
 	unsigned int idx = 0;
@@ -228,7 +228,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 		vdev->gpio.pwd_port = of_get_named_gpio_flags(videosource_node, "pwd-gpios", 0, &vdev->gpio.pwd_value);
 		vdev->gpio.rst_port = of_get_named_gpio_flags(videosource_node, "rst-gpios", 0, &vdev->gpio.rst_value);
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			// interrupt pin
 			vdev->gpio.intb_port = of_get_named_gpio_flags(videosource_node, "intb-gpios", 0, &vdev->gpio.intb_value);
@@ -236,6 +236,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 			// mipi-csi2
 			node = of_find_compatible_node(NULL, NULL, "telechips,mipi_csi2");
 			if(node) {
+#ifdef CONFIG_ARCH_TCC803X
 				// Configure the MIPI clock
 				mipi_csi2_clk = of_clk_get(node, 0);
 				if(IS_ERR(mipi_csi2_clk)) {
@@ -251,11 +252,15 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 						clk_prepare_enable(mipi_csi2_clk);
 					}
 				}
-
+				log("%s mipi clock : %d Hz\n", __func__, mipi_csi2_frequency);
+#elif defined CONFIG_ARCH_TCC805X
+				if (!(MIPI_WRAP_Set_CKC())) {
+					pr_err("%s - fail  mipi wrap clock setting \n", __func__);
+				}
+#endif
 				vdev->format.des_info.csi2_irq = irq_of_parse_and_map(node, 0);
 				vdev->format.des_info.gdb_irq = irq_of_parse_and_map(node, 1);
 
-				log("%s mipi clock : %d Hz\n", __func__, mipi_csi2_frequency);
 				log("csi2 irq num : %d, Generic data buffer irq num : %d\n", \
 					vdev->format.des_info.csi2_irq, vdev->format.des_info.gdb_irq);
 			} else {
@@ -303,7 +308,7 @@ int videosource_request_gpio(videosource_t * vdev) {
 		gpio_request(vdev->gpio.rst_port, "camera reset");
 		gpio_direction_output(vdev->gpio.rst_port, vdev->gpio.rst_value);
 	}
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 	if(0 < vdev->gpio.intb_port) {
 		log("intb: port = %3d, curr val = %d \n",	\
 			vdev->gpio.intb_port, gpio_get_value(vdev->gpio.intb_port));
@@ -320,7 +325,7 @@ int videosource_free_gpio(videosource_t * vdev) {
 	FUNCTION_IN
 
 	// free port gpios
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 	if(0 < vdev->gpio.intb_port)	gpio_free(vdev->gpio.intb_port);
 #endif//CONFIG_ARCH_TCC803X
 	if(0 < vdev->gpio.pwr_port)		gpio_free(vdev->gpio.pwr_port);
@@ -331,17 +336,33 @@ int videosource_free_gpio(videosource_t * vdev) {
 	return 0;
 }
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_format_t * format, unsigned int onOff) {
 	unsigned int idx = 0;
 
 	if(onOff) {
+#ifdef CONFIG_ARCH_TCC803X
 		// S/W reset D-PHY
 		VIOC_DDICONFIG_MIPI_Reset_DPHY(ddicfg_base, 0);
 
 		// S/W reset Generic buffer interface
 		VIOC_DDICONFIG_MIPI_Reset_GEN(ddicfg_base, 0);
+#elif defined CONFIG_ARCH_TCC805X
+		MIPI_WRAP_Set_Reset_DPHY(0, 0);
+		MIPI_WRAP_Set_Reset_GEN(0, 0);
 
+		MIPI_WRAP_Set_Output_Mux(0, 0, 1);
+		MIPI_WRAP_Set_Output_Mux(0, 1, 1);
+		MIPI_WRAP_Set_Output_Mux(0, 2, 1);
+		MIPI_WRAP_Set_Output_Mux(0, 3, 1);
+
+
+		MIPI_WRAP_Set_Output_Mux(1, 0, 1);
+		MIPI_WRAP_Set_Output_Mux(1, 1, 1);
+		MIPI_WRAP_Set_Output_Mux(1, 2, 1);
+		MIPI_WRAP_Set_Output_Mux(1, 3, 1);
+
+#endif
 		// S/W reset CSI2
 		MIPI_CSIS_Set_CSIS_Reset(1);
 
@@ -397,12 +418,16 @@ int videosource_if_init_mipi_csi2_interface(videosource_t * vdev, videosource_fo
 
 		// S/W reset CSI2
 		MIPI_CSIS_Set_CSIS_Reset(1);
-
+#ifdef CONFIG_ARCH_TCC803X
 		// S/W reset D-PHY
 		VIOC_DDICONFIG_MIPI_Reset_DPHY(ddicfg_base, 1);
 
 		// S/W reset Generic buffer interface
 		VIOC_DDICONFIG_MIPI_Reset_GEN(ddicfg_base, 1);
+#elif defined CONFIG_ARCH_TCC805X
+		MIPI_WRAP_Set_Reset_DPHY(0, 1);
+		MIPI_WRAP_Set_Reset_GEN(0, 1);
+#endif
 	}
 
 	return 0;
@@ -459,7 +484,7 @@ int videosource_set_port(videosource_t * vdev, int enable) {
 
 	FUNCTION_IN
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 	if(vdev->type != VIDEOSOURCE_TYPE_MIPI)
 #endif//CONFIG_ARCH_TCC803X
 	{
@@ -611,7 +636,7 @@ int videosource_if_initialize(videosource_t * vdev) {
 		// set videosource in init mode
 		videosource_if_change_mode(vdev, MODE_INIT);
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			// init remote serializer
 			videosource_if_change_mode(vdev, MODE_SERDES_REMOTE_SER);
@@ -635,7 +660,7 @@ int videosource_if_initialize(videosource_t * vdev) {
 		} else {
 #endif//CONFIG_ARCH_TCC803X
 			videosource_if_check_status(vdev);
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 		}
 #endif//CONFIG_ARCH_TCC803X
 	} else {
@@ -652,7 +677,7 @@ int videosource_if_deinitialize(videosource_t * vdev) {
 	FUNCTION_IN
 
 	if(vdev->enabled == ENABLE) {
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 		if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 			videosource_if_init_mipi_csi2_interface(vdev, &vdev->format, OFF);
 
@@ -842,7 +867,7 @@ int videosource_if_remove(videosource_t * vdev) {
 	// unregister the charactor device region
 	unregister_chrdev_region(vdev->cdev_region, 1);
 
-#ifdef CONFIG_ARCH_TCC803X
+#ifdef CONFIG_MIPI_CSI_2
 	if(vdev->type == VIDEOSOURCE_TYPE_MIPI) {
 		clk_disable(mipi_csi2_clk);
 	}

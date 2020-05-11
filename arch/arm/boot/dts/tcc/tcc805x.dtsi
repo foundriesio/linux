@@ -2933,11 +2933,13 @@
 	mipi_csi2:mipi_csi@123c0000{
 		compatible = "telechips,mipi_csi2";
 
-		reg = <0x123c0000 0x120 0x123c0200 0x5c>;
-	/*	clocks = <&clk_peri PERI_MIPI_CSI>;
-		clock-frequency = <262500000>;	*/
-		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>, 	// MIPI0 interrupt
-				   <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;	// MIPI1 interrupt
+		reg =	<0x1bc00800 0x120 /* csi0_base */
+			0x1bc00a00 0x5c /* gdb0_base */
+			0x1bc00000 0x14 /* ckc_base */
+			0x1bc00400 0x120 /* cfg_base */
+			>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>, 	// MIPI0 interrupt
+				   <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;	// MIPI1 interrupt
 	 };
 /*
 	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200{
