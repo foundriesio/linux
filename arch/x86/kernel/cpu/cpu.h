@@ -68,6 +68,7 @@ extern int detect_extended_topology(struct cpuinfo_x86 *c);
 extern int detect_ht_early(struct cpuinfo_x86 *c);
 extern void init_hygon_cacheinfo(struct cpuinfo_x86 *c);
 void cacheinfo_hygon_init_llc_id(struct cpuinfo_x86 *c, int cpu, u8 node_id);
+extern void update_srbds_msr(void);
 
 extern u64 x86_read_arch_cap_msr(void);
 
