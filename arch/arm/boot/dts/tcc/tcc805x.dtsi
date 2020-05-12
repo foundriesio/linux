@@ -1708,7 +1708,7 @@
                 };
 	};
 
-	// overlaymixer: overlaymixer@1A100000 {};
+	overlaymixer: overlaymixer@1A100000 {};
 	/*overlaymixer: overlaymixer@1A100000 {
 		compatible = "vivante.gc";
 		reg = <0x1A100000 0x1000>;
