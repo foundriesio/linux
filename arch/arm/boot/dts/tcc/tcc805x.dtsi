@@ -3200,11 +3200,22 @@
 		reset-names = "xoda_bus", "xoda_core";
 	};
 
+	/*
 	hevc_dev_mgr {
 		compatible = "telechips,hevc_dev_mgr";
 		reg = <0x15200000 0xA000>;
 		interrupts = <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVCENC &clk_fbus FBUS_BHEVCENC &clk_fbus FBUS_CHEVCDEC &clk_fbus FBUS_BHEVCDEC &clk_vpu VIDEOBUS_HEVC_BUS &clk_vpu VIDEOBUS_HEVC_CORE>;
+		resets = <&vpubus_rst VIDEOBUS_HEVC_BUS>, <&vpubus_rst VIDEOBUS_HEVC_CORE>;
+		reset-names = "hevc_bus", "hevc_core";
+	};
+	*/
+
+	vpu_4k_d2_dev_mgr {
+		compatible = "telechips,vpu_4k_d2_dev_mgr";
+		reg = <0x15200000 0xA000>;
+		interrupts = <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_fbus FBUS_VBUS &clk_fbus FBUS_CHEVCDEC &clk_fbus FBUS_BHEVCDEC &clk_vpu VIDEOBUS_HEVC_BUS &clk_vpu VIDEOBUS_HEVC_CORE>;
 		resets = <&vpubus_rst VIDEOBUS_HEVC_BUS>, <&vpubus_rst VIDEOBUS_HEVC_CORE>;
 		reset-names = "hevc_bus", "hevc_core";
 	};
