@@ -89,7 +89,8 @@ enum {
 	VIOC_INTR_VIN7   = 79,
 	VIOC_INTR_SC6    = 80,
 	VIOC_INTR_SC7    = 81,
-	VIOC_INTR_NUM    = VIOC_INTR_SC7
+	VIOC_INTR_WD13    = 82,
+	VIOC_INTR_NUM    = VIOC_INTR_WD13
 };
 
 /* VIOC DEV0/1/2 irqs */
@@ -136,6 +137,7 @@ enum vioc_wdma_intr_src {
 #define VIOC_WDMA_INT_MASK	((1<<VIOC_WDMA_INTR_MAX)-1)
 
 #define VIOC_INTR_WD_OFFSET (VIOC_INTR_WD9 - (VIOC_INTR_WD8 + 1))
+#define VIOC_INTR_WD_OFFSET2 (VIOC_INTR_WD13 - (VIOC_INTR_WD12 + 1)) // for WDMA13
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 /* VIOC V_DV irqs */
