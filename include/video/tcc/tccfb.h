@@ -208,7 +208,7 @@ struct tccfb_info {
 
 	/* SWAP_BUFFER (for video seek) */
 	int image_enable;
-	int swap_buf_id;
+	unsigned int swap_buf_id;
 	int swap_buf_status;
 #define SWAP_BUF_START	(0xA0000001)
 #define SWAP_BUF_END	(0xB0000002)

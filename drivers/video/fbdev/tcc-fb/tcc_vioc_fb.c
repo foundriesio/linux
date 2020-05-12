@@ -2334,7 +2334,8 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				return -EFAULT;
 			}
 
-			ptccfb_info->swap_buf_id = ret;
+			//ptccfb_info->swap_buf_id = ret;
+			ptccfb_info->swap_buf_id = arg;
 			ptccfb_info->swap_buf_status = SWAP_BUF_START;
 
 		#endif
