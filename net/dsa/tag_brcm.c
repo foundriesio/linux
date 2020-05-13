@@ -129,6 +129,8 @@ static struct sk_buff *brcm_tag_rcv(struct sk_buff *skb, struct net_device *dev,
 	/* Remove Broadcom tag and update checksum */
 	skb_pull_rcsum(skb, BRCM_TAG_LEN);
 
+	skb->offload_fwd_mark = 1;
+
 	/* Move the Ethernet DA and SA */
 	memmove(skb->data - ETH_HLEN,
 		skb->data - ETH_HLEN - BRCM_TAG_LEN,
