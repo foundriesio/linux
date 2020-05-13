@@ -34,8 +34,7 @@
 #include <linux/pci_ids.h>
 #include <linux/pci.h>
 
-#include "../w1.h"
-#include "../w1_int.h"
+#include <linux/w1.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Evgeniy Polyakov <zbr@ioremap.net>");
