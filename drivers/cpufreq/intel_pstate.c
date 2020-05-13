@@ -2121,13 +2121,13 @@ static int intel_pstate_init_cpu(unsigned int cpunum)
 	if (hwp_active) {
 		const struct x86_cpu_id *id;
 
-		id = x86_match_cpu(intel_pstate_cpu_ee_disable_ids);
+		id = x86_match_cpu_stp(intel_pstate_cpu_ee_disable_ids);
 		if (id)
 			intel_pstate_disable_ee(cpunum);
 
 		intel_pstate_hwp_enable(cpu);
 
-		id = x86_match_cpu(intel_pstate_hwp_boost_ids);
+		id = x86_match_cpu_stp(intel_pstate_hwp_boost_ids);
 		if (id && intel_pstate_acpi_pm_profile_server())
 			hwp_boost = true;
 	} else if (pid_in_use()) {
@@ -2716,7 +2716,7 @@ static bool __init intel_pstate_platform_pwr_mgmt_exists(void)
 	u64 misc_pwr;
 	int idx;
 
-	id = x86_match_cpu(intel_pstate_cpu_oob_ids);
+	id = x86_match_cpu_stp(intel_pstate_cpu_oob_ids);
 	if (id) {
 		rdmsrl(MSR_MISC_PWR_MGMT, misc_pwr);
 		if ( misc_pwr & (1 << 8))
@@ -2779,7 +2779,7 @@ static int __init intel_pstate_init(void)
 	if (no_load)
 		return -ENODEV;
 
-	id = x86_match_cpu(hwp_support_ids);
+	id = x86_match_cpu_stp(hwp_support_ids);
 	if (id) {
 		copy_cpu_funcs(&core_funcs);
 		if (no_hwp) {
@@ -2791,7 +2791,7 @@ static int __init intel_pstate_init(void)
 			goto hwp_cpu_matched;
 		}
 	} else {
-		id = x86_match_cpu(intel_pstate_cpu_ids);
+		id = x86_match_cpu_stp(intel_pstate_cpu_ids);
 		if (!id)
 			return -ENODEV;
 

@@ -53,7 +53,7 @@ static int __init intel_soc_thermal_init(void)
 	int err = 0;
 	const struct x86_cpu_id *match_cpu;
 
-	match_cpu = x86_match_cpu(soc_thermal_ids);
+	match_cpu = x86_match_cpu_stp(soc_thermal_ids);
 	if (!match_cpu)
 		return -ENODEV;
 

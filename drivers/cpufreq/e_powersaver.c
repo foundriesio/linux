@@ -400,7 +400,7 @@ MODULE_DEVICE_TABLE(x86cpu, eps_cpu_id);
 
 static int __init eps_init(void)
 {
-	if (!x86_match_cpu(eps_cpu_id) || boot_cpu_data.x86_model < 10)
+	if (!x86_match_cpu_stp(eps_cpu_id) || boot_cpu_data.x86_model < 10)
 		return -ENODEV;
 	if (cpufreq_register_driver(&eps_driver))
 		return -EINVAL;

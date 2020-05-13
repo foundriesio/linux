@@ -1113,7 +1113,7 @@ static int __init intel_idle_probe(void)
 		return -EPERM;
 	}
 
-	id = x86_match_cpu(intel_idle_ids);
+	id = x86_match_cpu_stp(intel_idle_ids);
 	if (!id) {
 		if (boot_cpu_data.x86_vendor == X86_VENDOR_INTEL &&
 		    boot_cpu_data.x86 == 6)

@@ -776,7 +776,7 @@ static int __init rapl_pmu_init(void)
 	bool apply_quirk;
 	int ret;
 
-	id = x86_match_cpu(rapl_cpu_match);
+	id = x86_match_cpu_stp(rapl_cpu_match);
 	if (!id)
 		return -ENODEV;
 

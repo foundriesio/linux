@@ -439,7 +439,7 @@ static int __init intel_quark_thermal_init(void)
 {
 	int err = 0;
 
-	if (!x86_match_cpu(qrk_thermal_ids) || !iosf_mbi_available())
+	if (!x86_match_cpu_stp(qrk_thermal_ids) || !iosf_mbi_available())
 		return -ENODEV;
 
 	soc_dts = alloc_soc_dts();

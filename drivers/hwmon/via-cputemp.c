@@ -293,7 +293,7 @@ static int __init via_cputemp_init(void)
 {
 	int err;
 
-	if (!x86_match_cpu(cputemp_ids))
+	if (!x86_match_cpu_stp(cputemp_ids))
 		return -ENODEV;
 
 	err = platform_driver_register(&via_cputemp_driver);

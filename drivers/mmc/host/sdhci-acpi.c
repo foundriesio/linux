@@ -132,7 +132,7 @@ static bool sdhci_acpi_byt(void)
 		{}
 	};
 
-	return x86_match_cpu(byt);
+	return x86_match_cpu_stp(byt);
 }
 
 static bool sdhci_acpi_cht(void)
@@ -142,7 +142,7 @@ static bool sdhci_acpi_cht(void)
 		{}
 	};
 
-	return x86_match_cpu(cht);
+	return x86_match_cpu_stp(cht);
 }
 
 #define BYT_IOSF_SCCEP			0x63

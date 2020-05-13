@@ -119,7 +119,7 @@ static int check_powernow(void)
 	struct cpuinfo_x86 *c = &cpu_data(0);
 	unsigned int maxei, eax, ebx, ecx, edx;
 
-	if (!x86_match_cpu(powernow_k7_cpuids))
+	if (!x86_match_cpu_stp(powernow_k7_cpuids))
 		return 0;
 
 	/* Get maximum capabilities */

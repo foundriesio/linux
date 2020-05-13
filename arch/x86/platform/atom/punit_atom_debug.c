@@ -166,7 +166,7 @@ static int __init punit_atom_debug_init(void)
 	const struct x86_cpu_id *id;
 	int ret;
 
-	id = x86_match_cpu(intel_punit_cpu_ids);
+	id = x86_match_cpu_stp(intel_punit_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

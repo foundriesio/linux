@@ -542,7 +542,7 @@ static const struct x86_cpu_id centrino_ids[] = {
  */
 static int __init centrino_init(void)
 {
-	if (!x86_match_cpu(centrino_ids))
+	if (!x86_match_cpu_stp(centrino_ids))
 		return -ENODEV;
 	return cpufreq_register_driver(&centrino_driver);
 }

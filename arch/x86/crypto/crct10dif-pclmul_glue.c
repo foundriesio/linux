@@ -126,7 +126,7 @@ MODULE_DEVICE_TABLE(x86cpu, crct10dif_cpu_id);
 
 static int __init crct10dif_intel_mod_init(void)
 {
-	if (!x86_match_cpu(crct10dif_cpu_id))
+	if (!x86_match_cpu_stp(crct10dif_cpu_id))
 		return -ENODEV;
 
 	return crypto_register_shash(&alg);

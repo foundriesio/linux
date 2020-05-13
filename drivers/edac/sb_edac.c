@@ -3412,7 +3412,7 @@ static int __init sbridge_init(void)
 	if (owner && strncmp(owner, EDAC_MOD_STR, sizeof(EDAC_MOD_STR)))
 		return -EBUSY;
 
-	id = x86_match_cpu(sbridge_cpuids);
+	id = x86_match_cpu_stp(sbridge_cpuids);
 	if (!id)
 		return -ENODEV;
 

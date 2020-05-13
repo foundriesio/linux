@@ -140,7 +140,7 @@ static int int0002_probe(struct platform_device *pdev)
 	int irq, ret;
 
 	/* Menlow has a different INT0002 device? <sigh> */
-	cpu_id = x86_match_cpu(int0002_cpu_ids);
+	cpu_id = x86_match_cpu_stp(int0002_cpu_ids);
 	if (!cpu_id)
 		return -ENODEV;
 

@@ -251,7 +251,7 @@ static int is_byt_cr(struct device *dev, bool *bytcr)
 		};
 		u32 bios_status;
 
-		if (!x86_match_cpu(cpu_ids) || !iosf_mbi_available()) {
+		if (!x86_match_cpu_stp(cpu_ids) || !iosf_mbi_available()) {
 			/* bail silently */
 			return status;
 		}

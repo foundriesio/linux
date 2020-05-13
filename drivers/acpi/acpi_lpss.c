@@ -1016,7 +1016,7 @@ void __init acpi_lpss_init(void)
 	if (ret)
 		return;
 
-	id = x86_match_cpu(lpss_cpu_ids);
+	id = x86_match_cpu_stp(lpss_cpu_ids);
 	if (id)
 		lpss_quirks |= LPSS_QUIRK_ALWAYS_POWER_ON;
 

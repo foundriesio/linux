@@ -495,7 +495,7 @@ static int pmc_core_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	const struct pmc_reg_map *map = (struct pmc_reg_map *)id->driver_data;
 	int err;
 
-	cpu_id = x86_match_cpu(intel_pmc_core_ids);
+	cpu_id = x86_match_cpu_stp(intel_pmc_core_ids);
 	if (!cpu_id) {
 		dev_dbg(&dev->dev, "PMC Core: cpuid mismatch.\n");
 		return -EINVAL;

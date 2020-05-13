@@ -299,7 +299,7 @@ MODULE_DEVICE_TABLE(x86cpu, longrun_ids);
  */
 static int __init longrun_init(void)
 {
-	if (!x86_match_cpu(longrun_ids))
+	if (!x86_match_cpu_stp(longrun_ids))
 		return -ENODEV;
 	return cpufreq_register_driver(&longrun_driver);
 }

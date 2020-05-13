@@ -918,7 +918,7 @@ static int __init longhaul_init(void)
 {
 	struct cpuinfo_x86 *c = &cpu_data(0);
 
-	if (!x86_match_cpu(longhaul_id))
+	if (!x86_match_cpu_stp(longhaul_id))
 		return -ENODEV;
 
 	if (!enable) {

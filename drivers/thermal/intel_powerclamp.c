@@ -674,7 +674,7 @@ MODULE_DEVICE_TABLE(x86cpu, intel_powerclamp_ids);
 static int __init powerclamp_probe(void)
 {
 
-	if (!x86_match_cpu(intel_powerclamp_ids)) {
+	if (!x86_match_cpu_stp(intel_powerclamp_ids)) {
 		pr_err("CPU does not support MWAIT");
 		return -ENODEV;
 	}

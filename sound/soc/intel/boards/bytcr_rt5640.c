@@ -746,7 +746,7 @@ static bool is_valleyview(void)
 		{}
 	};
 
-	if (!x86_match_cpu(cpu_ids))
+	if (!x86_match_cpu_stp(cpu_ids))
 		return false;
 	return true;
 }

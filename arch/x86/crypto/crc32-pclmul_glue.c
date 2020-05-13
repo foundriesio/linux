@@ -180,7 +180,7 @@ MODULE_DEVICE_TABLE(x86cpu, crc32pclmul_cpu_id);
 static int __init crc32_pclmul_mod_init(void)
 {
 
-	if (!x86_match_cpu(crc32pclmul_cpu_id)) {
+	if (!x86_match_cpu_stp(crc32pclmul_cpu_id)) {
 		pr_info("PCLMULQDQ-NI instructions are not detected.\n");
 		return -ENODEV;
 	}

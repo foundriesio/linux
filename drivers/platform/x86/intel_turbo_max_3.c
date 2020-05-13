@@ -131,7 +131,7 @@ static int __init itmt_legacy_init(void)
 	const struct x86_cpu_id *id;
 	int ret;
 
-	id = x86_match_cpu(itmt_legacy_cpu_ids);
+	id = x86_match_cpu_stp(itmt_legacy_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

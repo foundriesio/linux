@@ -273,7 +273,7 @@ MODULE_DEVICE_TABLE(x86cpu, powernow_k6_ids);
  */
 static int __init powernow_k6_init(void)
 {
-	if (!x86_match_cpu(powernow_k6_ids))
+	if (!x86_match_cpu_stp(powernow_k6_ids))
 		return -ENODEV;
 
 	if (!request_region(POWERNOW_IOPORT, 16, "PowerNow!")) {

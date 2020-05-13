@@ -333,7 +333,7 @@ static const struct x86_cpu_id ss_smi_ids[] = {
  */
 static int __init speedstep_init(void)
 {
-	if (!x86_match_cpu(ss_smi_ids))
+	if (!x86_match_cpu_stp(ss_smi_ids))
 		return -ENODEV;
 
 	/* detect processor */

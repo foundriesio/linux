@@ -1199,7 +1199,7 @@ static int powernowk8_init(void)
 		return -ENODEV;
 	}
 
-	if (!x86_match_cpu(powernow_k8_ids))
+	if (!x86_match_cpu_stp(powernow_k8_ids))
 		return -ENODEV;
 
 	get_online_cpus();

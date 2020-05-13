@@ -1544,7 +1544,7 @@ static int __init rapl_init(void)
 	const struct x86_cpu_id *id;
 	int ret;
 
-	id = x86_match_cpu(rapl_ids);
+	id = x86_match_cpu_stp(rapl_ids);
 	if (!id) {
 		pr_err("driver does not support CPU family %d model %d\n",
 			boot_cpu_data.x86, boot_cpu_data.x86_model);

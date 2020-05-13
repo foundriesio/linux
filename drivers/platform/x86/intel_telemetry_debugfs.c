@@ -938,7 +938,7 @@ static int __init telemetry_debugfs_init(void)
 	struct dentry *f;
 
 	/* Only APL supported for now */
-	id = x86_match_cpu(telemetry_debugfs_cpu_ids);
+	id = x86_match_cpu_stp(telemetry_debugfs_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

@@ -109,7 +109,7 @@ bool acpi_device_always_present(struct acpi_device *adev)
 		    strcmp(adev->pnp.unique_id, always_present_ids[i].uid))
 			continue;
 
-		if (!x86_match_cpu(always_present_ids[i].cpu_ids))
+		if (!x86_match_cpu_stp(always_present_ids[i].cpu_ids))
 			continue;
 
 		if (always_present_ids[i].dmi_ids[0].matches[0].slot &&

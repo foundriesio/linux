@@ -1098,7 +1098,7 @@ static int telemetry_pltdrv_probe(struct platform_device *pdev)
 	const struct x86_cpu_id *id;
 	int size, ret = -ENOMEM;
 
-	id = x86_match_cpu(telemetry_cpu_ids);
+	id = x86_match_cpu_stp(telemetry_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

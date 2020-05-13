@@ -211,7 +211,7 @@ MODULE_DEVICE_TABLE(x86cpu, elan_id);
 
 static int __init elanfreq_init(void)
 {
-	if (!x86_match_cpu(elan_id))
+	if (!x86_match_cpu_stp(elan_id))
 		return -ENODEV;
 	return cpufreq_register_driver(&elanfreq_driver);
 }

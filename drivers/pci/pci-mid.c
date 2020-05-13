@@ -78,7 +78,7 @@ static int __init mid_pci_init(void)
 {
 	const struct x86_cpu_id *id;
 
-	id = x86_match_cpu(lpss_cpu_ids);
+	id = x86_match_cpu_stp(lpss_cpu_ids);
 	if (id)
 		pci_set_platform_pm(&mid_pci_platform_pm);
 	return 0;

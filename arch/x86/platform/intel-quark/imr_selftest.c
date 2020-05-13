@@ -113,7 +113,7 @@ static const struct x86_cpu_id imr_ids[] __initconst = {
  */
 static int __init imr_self_test_init(void)
 {
-	if (x86_match_cpu(imr_ids))
+	if (x86_match_cpu_stp(imr_ids))
 		imr_self_test();
 	return 0;
 }

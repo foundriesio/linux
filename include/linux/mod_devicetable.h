@@ -587,11 +587,21 @@ struct mips_cdmm_device_id {
  * Although gcc seems to ignore this error, clang fails without this define.
  */
 #define x86cpu_device_id x86_cpu_id
+struct x86_cpu_id_legacy {
+	__u16 vendor;
+	__u16 family;
+	__u16 model;
+	__u16 feature;	/* bit index */
+	kernel_ulong_t driver_data;
+};
+
 struct x86_cpu_id {
 	__u16 vendor;
 	__u16 family;
 	__u16 model;
+#ifndef __GENKSYMS__
 	__u16 steppings;
+#endif
 	__u16 feature;	/* bit index */
 	kernel_ulong_t driver_data;
 };

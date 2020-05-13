@@ -107,7 +107,7 @@ static int __init sc520_freq_init(void)
 {
 	int err;
 
-	if (!x86_match_cpu(sc520_ids))
+	if (!x86_match_cpu_stp(sc520_ids))
 		return -ENODEV;
 
 	cpuctl = ioremap((unsigned long)(MMCR_BASE + OFFS_CPUCTL), 1);

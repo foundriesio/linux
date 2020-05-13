@@ -499,7 +499,7 @@ static bool match_llc(struct cpuinfo_x86 *c, struct cpuinfo_x86 *o)
 	 * means 'c' does not share the LLC of 'o'. This will be
 	 * reflected to userspace.
 	 */
-	if (!topology_same_node(c, o) && x86_match_cpu(snc_cpu))
+	if (!topology_same_node(c, o) && x86_match_cpu_stp(snc_cpu))
 		return false;
 
 	return topology_sane(c, o, "llc");

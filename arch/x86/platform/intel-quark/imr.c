@@ -601,7 +601,7 @@ static int __init imr_init(void)
 	struct imr_device *idev = &imr_dev;
 	int ret;
 
-	if (!x86_match_cpu(imr_ids) || !iosf_mbi_available())
+	if (!x86_match_cpu_stp(imr_ids) || !iosf_mbi_available())
 		return -ENODEV;
 
 	idev->max_imr = QUARK_X1000_IMR_MAX;

@@ -335,7 +335,7 @@ static int __init ghash_pclmulqdqni_mod_init(void)
 {
 	int err;
 
-	if (!x86_match_cpu(pcmul_cpu_id))
+	if (!x86_match_cpu_stp(pcmul_cpu_id))
 		return -ENODEV;
 
 	err = crypto_register_shash(&ghash_alg);

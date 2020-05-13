@@ -1347,7 +1347,7 @@ static int __init intel_uncore_init(void)
 	struct intel_uncore_init_fun *uncore_init;
 	int pret = 0, cret = 0, ret;
 
-	id = x86_match_cpu(intel_uncore_match);
+	id = x86_match_cpu_stp(intel_uncore_match);
 	if (!id)
 		return -ENODEV;
 

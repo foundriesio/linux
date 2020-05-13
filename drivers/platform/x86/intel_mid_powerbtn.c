@@ -135,7 +135,7 @@ static int mid_pb_probe(struct platform_device *pdev)
 	int irq = platform_get_irq(pdev, 0);
 	int error;
 
-	id = x86_match_cpu(mid_pb_cpu_ids);
+	id = x86_match_cpu_stp(mid_pb_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

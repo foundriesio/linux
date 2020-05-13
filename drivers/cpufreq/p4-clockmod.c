@@ -252,7 +252,7 @@ static int __init cpufreq_p4_init(void)
 	 * THERM_CONTROL is architectural for IA32 now, so
 	 * we can rely on the capability checks
 	 */
-	if (!x86_match_cpu(cpufreq_p4_id) || !boot_cpu_has(X86_FEATURE_ACPI))
+	if (!x86_match_cpu_stp(cpufreq_p4_id) || !boot_cpu_has(X86_FEATURE_ACPI))
 		return -ENODEV;
 
 	ret = cpufreq_register_driver(&p4clockmod_driver);

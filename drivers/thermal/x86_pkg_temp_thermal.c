@@ -514,7 +514,7 @@ static int __init pkg_temp_thermal_init(void)
 {
 	int ret;
 
-	if (!x86_match_cpu(pkg_temp_thermal_ids))
+	if (!x86_match_cpu_stp(pkg_temp_thermal_ids))
 		return -ENODEV;
 
 	max_id = topology_max_packages() * topology_max_die_per_package();

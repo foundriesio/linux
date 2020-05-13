@@ -653,7 +653,7 @@ static int __init cstate_pmu_init(void)
 	if (boot_cpu_has(X86_FEATURE_HYPERVISOR))
 		return -ENODEV;
 
-	id = x86_match_cpu(intel_cstates_match);
+	id = x86_match_cpu_stp(intel_cstates_match);
 	if (!id)
 		return -ENODEV;
 

@@ -1104,7 +1104,7 @@ static int __init aesni_init(void)
 	int err;
 	int i;
 
-	if (!x86_match_cpu(aesni_cpu_id))
+	if (!x86_match_cpu_stp(aesni_cpu_id))
 		return -ENODEV;
 #ifdef CONFIG_X86_64
 #ifdef CONFIG_AS_AVX2
