@@ -233,7 +233,7 @@
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
 		 */
-#ifdef CONFIG_PMAP_CA7S
+#if defined(CONFIG_PMAP_SUBCORE)
 		pmap_a7s_avm: a7s_avm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "a7s_avm";
@@ -242,7 +242,7 @@
 			no-map;
 		};
 
-#ifdef CONFIG_TCC_CORE_RESET
+#if defined(CONFIG_TCC_CORE_RESET)
 		a7s_avm_backup {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "a7s_avm_backup";

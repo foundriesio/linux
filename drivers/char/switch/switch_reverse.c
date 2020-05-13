@@ -127,20 +127,20 @@ int tccvin_switchmanager_monitor_thread(void * data) {
 #endif//ON_OFF_TEST
 
 int switch_reverse_check_state(void) {
-#ifndef CONFIG_PMAP_CA7S
+#if !defined(CONFIG_PMAP_SUBCORE)
 	struct switch_reverse_data * data = pdata;
 	int gear_value = -1;
-#endif//CONFIG_PMAP_CA7S
+#endif//CONFIG_PMAP_SUBCORE
 	int ret = -1;
 
-#ifndef CONFIG_PMAP_CA7S
+#if !defined(CONFIG_PMAP_SUBCORE)
 	gear_value = !!gpio_get_value(data->switch_gpio);
 	ret = (gear_value == data->switch_active);
 	atomic_set(&switch_reverse_attr, ret);
 	dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
 
 	switch_reverse_set_state(ret);
-#endif//CONFIG_PMAP_CA7S
+#endif//CONFIG_PMAP_SUBCORE
 
 	ret = switch_reverse_get_state();
 #ifdef ON_OFF_TEST

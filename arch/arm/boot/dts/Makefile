@@ -1130,7 +1130,7 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8053-linux-board-xxx.dtb \
 	tcc/tcc8059-linux-lpd4x321_sv0.1.dtb \
 	tcc/tcc8060-linux-board-xxx.dtb \
-	tcc/tcc805x-subcore-verification.dtb
+	tcc/tcc8059-linux-subcore-a53q.dtb
 
 ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
 dtb-y += \

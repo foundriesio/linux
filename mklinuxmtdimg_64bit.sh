@@ -18,7 +18,20 @@ ARCH=${ARCH#CONFIG_ARCH_}
 ARCH=${ARCH%=y}
 
 TCC_TARGET=$ARCH
-BASE_ADDR="0x20000000"
+
+case $TCC_TARGET in
+	TCC805X)
+		if [ -z `grep CONFIG_TCC805X_CA53Q=y .config` ]; then
+			BASE_ADDR="0x20000000"
+		else
+			BASE_ADDR="0x70000000"
+		fi
+		;;
+	*)
+		BASE_ADDR="0x20000000"
+		;;
+esac
+
 KERNEL_OFFSET=0x80000
 
 if [ -z `grep CONFIG_SERIAL_AMBA_PL011=y .config` ]; then

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
- * Copyright (C) 2020 Telechips Inc.
+ * Copyright (C) Telechips Inc.
+ * Device tree for Telechips TCC805x Android platform
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -243,38 +244,16 @@
 		#size-cells = <1>;
 		ranges;
 
-#if defined(CONFIG_TCC_CORE_RESET) && !defined(CONFIG_TCC805X_CA7S)
-		u_boot {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "u-boot";
-			alloc-ranges = <0x30000000 0x200000>;
-			size = <0x200000>; /* CONFIG_TCC_U_BOOT_LEN in U-Boot */
-			no-map;
-		};
-
-		save_dram_size {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "save_dram_size";
-			alloc-ranges = <0x30f80000 0x1000>;
-			size = <0x1000>;
-			no-map;
-		};
-#endif
-
-		/*-----------------------------------------------------------
-		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
-		 *-----------------------------------------------------------
-		 */
-/* TODO: Naming
-#ifdef CONFIG_PMAP_CA7S
+#if defined(CONFIG_PMAP_SUBCORE)
 		pmap_a53_avm: a53_avm {
 			compatible = "telechips,pmap";
-			telechips,pmap-name = "a53_avm";
-			alloc-ranges = <0x80000000 0x20000000>;
-			size = <0x20000000>;
+			telechips,pmap-name = "subcore kernel";
+			alloc-ranges = <0x60000000 0x30000000>;
+			size = <0x30000000>;
 			no-map;
 		};
 
+/*
 #ifdef CONFIG_TCC_CORE_RESET
 		a53_avm_backup {
 			compatible = "telechips,pmap";
@@ -284,8 +263,12 @@
 			no-map;
 		};
 #endif
-#endif
 */
+#endif
+		/*-----------------------------------------------------------
+		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
+		 *-----------------------------------------------------------
+		 */
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_video";

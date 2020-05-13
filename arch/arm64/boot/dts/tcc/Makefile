@@ -42,7 +42,7 @@ dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc8053-linux-board-xxx.dtb \
 	tcc8059-linux-lpd4x321_sv0.1.dtb \
 	tcc8060-linux-board-xxx.dtb \
-	tcc805x-subcore-verification.dtb
+	tcc8059-linux-subcore-a53q.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
