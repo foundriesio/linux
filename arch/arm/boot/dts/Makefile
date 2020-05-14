@@ -1123,14 +1123,18 @@ endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc/tcc9010-linux-lpd4321-v0.1.dtb \
 	tcc/tcc9010-linux-mini-tcm3840-lpd4321-v0.1.dtb
-endif
 
+ifeq ($(CONFIG_TCC805X_CA53Q),y)
+dtb-$(CONFIG_ARCH_TCC805X) += \
+	tcc/tcc8059-linux-subcore-a53q.dtb
+else
 dtb-$(CONFIG_ARCH_TCC805X) += \
 	tcc/tcc8050-linux-board-xxx.dtb \
 	tcc/tcc8053-linux-board-xxx.dtb \
 	tcc/tcc8059-linux-lpd4x321_sv0.1.dtb \
-	tcc/tcc8060-linux-board-xxx.dtb \
-	tcc/tcc8059-linux-subcore-a53q.dtb
+	tcc/tcc8060-linux-board-xxx.dtb
+endif
+endif
 
 ifeq ($(CONFIG_BUILD_ARM_DT_OVERLAY),y)
 dtb-y += \
