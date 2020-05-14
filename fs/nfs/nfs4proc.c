@@ -1351,8 +1351,6 @@ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode,
 		return 0;
 	if ((delegation->type & fmode) != fmode)
 		return 0;
-	if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
-		return 0;
 	switch (claim) {
 	case NFS4_OPEN_CLAIM_NULL:
 	case NFS4_OPEN_CLAIM_FH:
@@ -1713,7 +1711,6 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
 static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
 {
 	struct nfs4_state *state = opendata->state;
-	struct nfs_inode *nfsi = NFS_I(state->inode);
 	struct nfs_delegation *delegation;
 	int open_mode = opendata->o_arg.open_flags;
 	fmode_t fmode = opendata->o_arg.fmode;
@@ -1730,7 +1727,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
 		}
 		spin_unlock(&state->owner->so_lock);
 		rcu_read_lock();
-		delegation = rcu_dereference(nfsi->delegation);
+		delegation = nfs4_get_valid_delegation(state->inode);
 		if (!can_open_delegated(delegation, fmode, claim)) {
 			rcu_read_unlock();
 			break;
@@ -2220,7 +2217,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
 					data->o_arg.open_flags, claim))
 			goto out_no_action;
 		rcu_read_lock();
-		delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
+		delegation = nfs4_get_valid_delegation(data->state->inode);
 		if (can_open_delegated(delegation, data->o_arg.fmode, claim))
 			goto unlock_no_action;
 		rcu_read_unlock();
@@ -2986,6 +2983,11 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
 		 * on Page 181 of RFC3530.
 		 */
 		if (status == -NFS4ERR_BAD_STATEID) {
+			exception.retry = 1;
+			continue;
+		}
+		if (status == -NFS4ERR_EXPIRED) {
+			nfs4_schedule_lease_recovery(server->nfs_client);
 			exception.retry = 1;
 			continue;
 		}
@@ -4620,16 +4622,13 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
 static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
 {
 	struct nfs4_exception exception = { };
-	unsigned long now = jiffies;
 	int err;
 
 	do {
 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
 		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
 		if (err == 0) {
-			nfs4_set_lease_period(server->nfs_client,
-					fsinfo->lease_time * HZ,
-					now);
+			nfs4_set_lease_period(server->nfs_client, fsinfo->lease_time * HZ);
 			break;
 		}
 		err = nfs4_handle_exception(server, err, &exception);
@@ -5638,6 +5637,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
 		.callback_data = &setclientid,
 		.flags = RPC_TASK_TIMEOUT | RPC_TASK_NO_ROUND_ROBIN,
 	};
+	unsigned long now = jiffies;
 	int status;
 
 	/* nfs_client_id4 */
@@ -5670,10 +5670,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
 	}
 	status = task->tk_status;
 	if (setclientid.sc_cred) {
+		kfree(clp->cl_acceptor);
 		clp->cl_acceptor = rpcauth_stringify_acceptor(setclientid.sc_cred);
 		put_rpccred(setclientid.sc_cred);
 	}
 	rpc_put_task(task);
+
+	if (status == 0)
+		do_renew_lease(clp, now);
 out:
 	trace_nfs4_setclientid(clp, status);
 	dprintk("NFS reply setclientid: %d\n", status);
@@ -5815,8 +5819,10 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
 
 	d_data = (struct nfs4_delegreturndata *)data;
 
-	if (!d_data->lr.roc && nfs4_wait_on_layoutreturn(d_data->inode, task))
+	if (!d_data->lr.roc && nfs4_wait_on_layoutreturn(d_data->inode, task)) {
+		nfs4_sequence_done(task, &d_data->res.seq_res);
 		return;
+	}
 
 	nfs4_setup_sequence(d_data->res.server->nfs_client,
 			&d_data->args.seq_args,
@@ -7641,6 +7647,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
 	};
 	struct nfs41_exchange_id_data *calldata;
 	struct rpc_task *task;
+	unsigned long now = jiffies;
+
 	int status;
 
 	if (!atomic_inc_not_zero(&clp->cl_count))
@@ -7715,6 +7723,9 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
 	status = calldata->rpc_status;
 
 	rpc_put_task(task);
+
+	if (status == 0)
+		do_renew_lease(clp, now);
 out:
 	return status;
 

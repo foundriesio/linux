@@ -792,6 +792,7 @@ static int ccp5_init(struct ccp_device *ccp)
 		if (!dma_pool) {
 			dev_err(dev, "unable to allocate dma pool\n");
 			ret = -ENOMEM;
+			goto e_pool;
 		}
 
 		cmd_q = &ccp->cmd_q[ccp->cmd_q_count];
@@ -805,7 +806,7 @@ static int ccp5_init(struct ccp_device *ccp)
 		/* Page alignment satisfies our needs for N <= 128 */
 		BUILD_BUG_ON(COMMANDS_PER_QUEUE > 128);
 		cmd_q->qsize = Q_SIZE(Q_DESC_SIZE);
-		cmd_q->qbase = dma_zalloc_coherent(dev, cmd_q->qsize,
+		cmd_q->qbase = dmam_alloc_coherent(dev, cmd_q->qsize,
 						   &cmd_q->qbase_dma,
 						   GFP_KERNEL);
 		if (!cmd_q->qbase) {
@@ -978,7 +979,6 @@ e_pool:
 
 static void ccp5_destroy(struct ccp_device *ccp)
 {
-	struct device *dev = ccp->dev;
 	struct ccp_cmd_queue *cmd_q;
 	struct ccp_cmd *cmd;
 	unsigned int i;
@@ -1012,12 +1012,6 @@ static void ccp5_destroy(struct ccp_device *ccp)
 			kthread_stop(ccp->cmd_q[i].kthread);
 
 	sp_free_ccp_irq(ccp->sp, ccp);
-
-	for (i = 0; i < ccp->cmd_q_count; i++) {
-		cmd_q = &ccp->cmd_q[i];
-		dma_free_coherent(dev, cmd_q->qsize, cmd_q->qbase,
-				  cmd_q->qbase_dma);
-	}
 
 	/* Flush the cmd and backlog queue */
 	while (!list_empty(&ccp->cmd)) {
