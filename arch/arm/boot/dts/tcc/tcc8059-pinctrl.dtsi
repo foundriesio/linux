@@ -102,6 +102,13 @@
 		telechips,drive-strength = <3>;
 	};
 
+	sd0_strb: sd0_strb {
+		telechips,pins = "gpsd0-10";
+		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
+		telechips,pull-disable;
+	};
+
 	sd0_bus1: sd0_bus1 {
 		telechips,pins = "gpsd0-2";
 		telechips,pin-function = <1>;

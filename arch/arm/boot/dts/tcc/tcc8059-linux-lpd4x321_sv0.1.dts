@@ -233,7 +233,7 @@
 	status = "okay";
 	bus-width = <8>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&sd0_clk &sd0_cmd &sd0_bus8>;
+	pinctrl-0 = <&sd0_clk &sd0_cmd &sd0_bus8 &sd0_strb>;
 
 	sdhci-caps-mask = <0x7 0x0>;
 
@@ -241,6 +241,11 @@
 	keep-power-in-suspend;
 	disable-wp;
 	cap-mmc-hw-reset;
+
+	mmc-hs400-1_8v;
+	tcc-mmc-taps = <0xF 0xF 0xF 0xF>;
+	tcc-mmc-hs400-pos-tap = <0x6>;
+	tcc-mmc-hs400-neg-tap = <0xB>;
 
 	tcc-mmc-reset = <&gpsd0 14 0>;
 
