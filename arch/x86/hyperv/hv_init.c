@@ -30,6 +30,7 @@
 #include <linux/clockchips.h>
 #include <linux/hyperv.h>
 #include <linux/slab.h>
+#include <linux/kernel.h>
 #include <linux/cpuhotplug.h>
 
 #ifdef CONFIG_HYPERV_TSCPAGE
@@ -434,6 +435,11 @@ void hyperv_report_panic(struct pt_regs *regs, long err)
 {
 	static bool panic_reported;
 	u64 guest_id;
+	bool in_die = !!(err & (1 << 10));
+	err = err & ~(1 << 10);
+
+	if (in_die && !panic_on_oops)
+		return;
 
 	/*
 	 * We prefer to report panic on 'die' chain as we have proper
