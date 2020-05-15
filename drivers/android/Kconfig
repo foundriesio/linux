@@ -43,11 +43,20 @@ config ANDROID_BINDER_IPC_SELFTEST
 	  alignments.
 
 config ANDROID_AB_UPDATE
-   bool "Android A/B Update"
-   depends on ARCH_TCC803X
-   ---help---
+    bool "Android A/B Update"
+    depends on ARCH_TCC803X
+    default n
+    ---help---
       If enabled, supports Android A/B update feature. This
       allows devicetree early mount for vendor partition subject to A/B.
+
+config ANDROID_DYNAMIC_PARTITION
+    bool "Android Dynamic Partition"
+    depends on ARCH_TCC803X
+    default n
+    ---help---
+      If enabled, supports Android dynamic partition feature. This
+      doesn't allows devicetree early mount for system and vendor partition.
 
 endif # if ANDROID
 
