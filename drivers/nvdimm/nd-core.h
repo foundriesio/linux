@@ -25,11 +25,17 @@ extern struct workqueue_struct *nvdimm_wq;
 
 struct nvdimm_bus {
 	struct nvdimm_bus_descriptor *nd_desc;
+#ifdef __GENKSYMS__
+	wait_queue_head_t probe_wait;
+#else
 	wait_queue_head_t wait;
+#endif
 	struct list_head list;
 	struct device dev;
 	int id, probe_active;
+#ifndef __GENKSYMS__
 	atomic_t ioctl_active;
+#endif
 	struct list_head mapping_list;
 	struct mutex reconfig_mutex;
 	struct badrange badrange;
