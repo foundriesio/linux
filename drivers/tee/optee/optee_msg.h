@@ -419,12 +419,15 @@ struct optee_msg_arg {
  *					as in param[n-1].u.tmem.shm_ref)
  */
 #define OPTEE_MSG_RPC_CMD_SHM_ALLOC	6
+#define OPTEE_MSG_RPC_CMD_ALLOC_PRINT_BUFFER 20
 /* Memory that can be shared with a non-secure user space application */
 #define OPTEE_MSG_RPC_SHM_TYPE_APPL	0
 /* Memory only shared with non-secure kernel */
 #define OPTEE_MSG_RPC_SHM_TYPE_KERNEL	1
 /* Memory shared with non-secure kernel, but exported to userspace */
 #define OPTEE_MSG_RPC_SHM_TYPE_GLOBAL	2
+/* Memory for shared trace buffer between tee supplicant and TEE */
+#define OPTEE_MSG_RPC_SHM_TYPE_APPL_PRINT_BUF  3
 
 /*
  * Free shared memory previously allocated with OPTEE_MSG_RPC_CMD_SHM_ALLOC
