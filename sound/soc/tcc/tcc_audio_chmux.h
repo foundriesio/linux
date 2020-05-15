@@ -75,40 +75,26 @@ static inline void iobuscfg_spdif_chmux(void __iomem *iobuscfg_reg, int32_t id, 
 #define IOBUSCFG_SPDIF_71CH_PORT_MAX	(6)
 #define IOBUSCFG_SPDIF_SRCH_PORT_MAX	(6)
 
+#if defined(CONFIG_ARCH_TCC803X)
 static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {
 	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_DAI_71CH_CHMUX :
 					  (id == 1) ? IOBUS_CFG_DAI_71CH_CHMUX :
-#if defined(CONFIG_ARCH_TCC803X)
 					  (id == 2) ? IOBUS_CFG_DAI_71CH_CHMUX : IOBUS_CFG_DAI_SRCH_CHMUX;
-#else
-					  (id == 2) ? IOBUS_CFG_DAI_71CH_CHMUX :
-					  (id == 7) ? IOBUS_CFG_DAI_71CH_CHMUX : IOBUS_CFG_DAI_SRCH_CHMUX;
-#endif
 
 	uint32_t pos = (id == 0) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos :
 				   (id == 1) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos :
 				   (id == 2) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos :
 				   (id == 3) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos :
 				   (id == 4) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Pos :
-#if defined(CONFIG_ARCH_TCC803X)
 				   (id == 5) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Pos : (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Pos;
-#else
-				   (id == 5) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Pos :
-				   (id == 6) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Pos : (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Pos;
-#endif
 
 	uint32_t mask = (id == 0) ? IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Msk :
 					(id == 1) ? IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Msk :
 					(id == 2) ? IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Msk :
 					(id == 3) ? IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Msk :
 					(id == 4) ? IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Msk :
-#if defined(CONFIG_ARCH_TCC803X)
 					(id == 5) ? IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Msk : IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Msk;
-#else
-					(id == 5) ? IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Msk :
-					(id == 6) ? IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Msk : IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Msk;
-#endif
 
 	uint32_t value;
 
@@ -124,6 +110,45 @@ static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int32_t id, ui
 
 	chmux_writel(value, iobuscfg_reg + offset);
 }
+#else
+static inline void iobuscfg_dai_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
+{
+	ptrdiff_t offset = (id == 0) ? IOBUS_CFG_DAI_71CH_CHMUX :
+					  (id == 1) ? IOBUS_CFG_DAI_71CH_CHMUX :
+					  (id == 2) ? IOBUS_CFG_DAI_71CH_CHMUX :
+					  (id == 7) ? IOBUS_CFG_DAI_71CH_CHMUX : IOBUS_CFG_DAI_SRCH_CHMUX;
+
+	uint32_t pos = (id == 0) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Pos :
+				   (id == 1) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Pos :
+				   (id == 2) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Pos :
+				   (id == 3) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Pos :
+				   (id == 4) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Pos :
+				   (id == 5) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Pos :
+				   (id == 6) ? (uint32_t)IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Pos : (uint32_t)IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Pos;
+
+	uint32_t mask = (id == 0) ? IOBUS_CFG_DAI_CHMUX_71CH_0_SEL_Msk :
+					(id == 1) ? IOBUS_CFG_DAI_CHMUX_71CH_1_SEL_Msk :
+					(id == 2) ? IOBUS_CFG_DAI_CHMUX_71CH_2_SEL_Msk :
+					(id == 3) ? IOBUS_CFG_DAI_CHMUX_SRCH_0_SEL_Msk :
+					(id == 4) ? IOBUS_CFG_DAI_CHMUX_SRCH_1_SEL_Msk :
+					(id == 5) ? IOBUS_CFG_DAI_CHMUX_SRCH_2_SEL_Msk :
+					(id == 6) ? IOBUS_CFG_DAI_CHMUX_SRCH_3_SEL_Msk : IOBUS_CFG_DAI_CHMUX_71CH_3_SEL_Msk;
+
+	uint32_t value;
+
+	if (id > 7)
+		return;
+
+	value = readl(iobuscfg_reg + offset);
+	value &= ~mask;
+
+	if ((((id < 3) || (id == 7)) && (port <= (uint32_t) IOBUSCFG_DAI_71CH_PORT_MAX)) ||
+		((id >= 3) && (id != 7) && (port <= (uint32_t) IOBUSCFG_DAI_SRCH_PORT_MAX)))
+		value |= (((uint32_t)1 << port) << pos);
+
+	chmux_writel(value, iobuscfg_reg + offset);
+}
+#endif
 
 static inline void iobuscfg_cdif_chmux(void __iomem *iobuscfg_reg, int32_t id, uint32_t port)
 {

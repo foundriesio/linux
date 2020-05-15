@@ -496,7 +496,7 @@
 
 	audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-805x";
-		dai = <3 0 1 0 1 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x)
+		dai = <3 0 1 0 1 99 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x) i2s7(x)
 		spdif = <2 99 99 3 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
 		status = "okay";
 	};
