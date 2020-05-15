@@ -39,8 +39,6 @@
 #include "scsi_priv.h"
 #include "scsi_logging.h"
 
-#define  SCSI_INLINE_SG_CNT  2
-
 static struct kmem_cache *scsi_sdb_cache;
 static struct kmem_cache *scsi_sense_cache;
 static struct kmem_cache *scsi_sense_isadma_cache;
@@ -1956,9 +1954,9 @@ static inline blk_status_t prep_to_mq(int ret)
 }
 
 /* Size in bytes of the sg-list stored in the scsi-mq command-private data. */
-static unsigned int scsi_mq_inline_sgl_size(struct Scsi_Host *shost)
+static unsigned int scsi_mq_sgl_size(struct Scsi_Host *shost)
 {
-	return min_t(unsigned int, shost->sg_tablesize, SCSI_INLINE_SG_CNT) *
+	return min_t(unsigned int, shost->sg_tablesize, SG_CHUNK_SIZE) *
 		sizeof(struct scatterlist);
 }
 
@@ -2145,7 +2143,7 @@ static int scsi_mq_init_request(struct blk_mq_tag_set *set, struct request *rq,
 	if (scsi_host_get_prot(shost)) {
 		sg = (void *)cmd + sizeof(struct scsi_cmnd) +
 			shost->hostt->cmd_size;
-		cmd->prot_sdb = (void *)sg + scsi_mq_inline_sgl_size(shost);
+		cmd->prot_sdb = (void *)sg + scsi_mq_sgl_size(shost);
 	}
 
 	return 0;
@@ -2311,8 +2309,7 @@ int scsi_mq_setup_tags(struct Scsi_Host *shost)
 {
 	unsigned int cmd_size, sgl_size;
 
-	sgl_size = max_t(unsigned int, sizeof(struct scatterlist),
-				scsi_mq_inline_sgl_size(shost));
+	sgl_size = scsi_mq_sgl_size(shost);
 	cmd_size = sizeof(struct scsi_cmnd) + shost->hostt->cmd_size + sgl_size;
 	if (scsi_host_get_prot(shost))
 		cmd_size += sizeof(struct scsi_data_buffer) + sgl_size;
