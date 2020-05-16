@@ -32,8 +32,8 @@ struct sun6i_dsi {
 	struct sun6i_dphy	*dphy;
 
 	struct device		*dev;
-	struct sun4i_drv	*drv;
 	struct mipi_dsi_device	*device;
+	struct drm_device	*drm;
 	struct drm_panel	*panel;
 };
 
