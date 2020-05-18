@@ -893,15 +893,21 @@ int vt_ioctl(struct tty_struct *tty,
 		}
 		    
 		for (i = 0; i < MAX_NR_CONSOLES; i++) {
+			struct vc_data *vcp;
+
 			if (!vc_cons[i].d)
 				continue;
 			console_lock();
-			if (vlin)
-				vc_cons[i].d->vc_scan_lines = vlin;
-			if (clin)
-				vc_cons[i].d->vc_font.height = clin;
-			vc_cons[i].d->vc_resize_user = 1;
-			vc_resize(vc_cons[i].d, cc, ll);
+			vcp = vc_cons[i].d;
+
+			if (vcp) {
+				if (vlin)
+					vc_cons[i].d->vc_scan_lines = vlin;
+				if (clin)
+					vc_cons[i].d->vc_font.height = clin;
+				vc_cons[i].d->vc_resize_user = 1;
+				vc_resize(vc_cons[i].d, cc, ll);
+			}
 			console_unlock();
 		}
 		break;
