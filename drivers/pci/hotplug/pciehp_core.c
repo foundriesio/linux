@@ -214,6 +214,9 @@ static void check_for_broken_active_bit(struct controller *ctrl)
 	if (!product_name)
 		return;
 
+	if (ctrl->pcie->port->vendor != 0x10b5 && ctrl->pcie->port->vendor != 0x8086)
+		return;
+
 	if (	strstr(product_name, "PRIMEQUEST 2400E3") ||
 		strstr(product_name, "PRIMEQUEST 2400L3") ||
 		strstr(product_name, "PRIMEQUEST 2800E3") ||
