@@ -93,7 +93,7 @@ endchoice
 
 choice
 	prompt "Instance count of Decoder"
-	default VDEC_MAX_CNT_1
+	default VDEC_MAX_CNT_5
 	help
 	  max instance count for decoder
 
@@ -122,7 +122,7 @@ endchoice
 choice
 	prompt "Instance count of Encoder"
 	depends on (SUPPORT_TCC_JPU || ARCH_TCC893X || ARCH_TCC896X || ARCH_TCC898X || ARCH_TCC803X || ARCH_TCC805X)
-	default VENC_MAX_CNT_1
+	default VENC_MAX_CNT_4
 	help
 	  max instance count for encoder
 
