@@ -58,7 +58,6 @@ static inline bool vt_busy(int i)
 
 	return false;
 }
-
 /*
  * Console (vt and kd) routines, as defined by USL SVR4 manual, and by
  * experimentation and study of X386 SYSV handling.
