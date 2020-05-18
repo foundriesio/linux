@@ -351,6 +351,8 @@ int hash__has_transparent_hugepage(void)
 
 	return 1;
 }
+EXPORT_SYMBOL_GPL(hash__has_transparent_hugepage);
+
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
 
 #ifdef CONFIG_STRICT_KERNEL_RWX
