@@ -41,6 +41,7 @@ void VIOC_WMIX_SetOverlayPriority(volatile void __iomem *reg,
 	val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
 	__raw_writel(val, reg + MCTRL);
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetOverlayPriority);
 
 void VIOC_WMIX_GetOverlayPriority(volatile void __iomem *reg,
 				  unsigned int *nOverlayPriority)
@@ -49,6 +50,7 @@ void VIOC_WMIX_GetOverlayPriority(volatile void __iomem *reg,
 	*nOverlayPriority = ((__raw_readl(reg + MCTRL) & MCTRL_OVP_MASK) >>
 			     MCTRL_OVP_SHIFT);
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetOverlayPriority);
 
 void VIOC_WMIX_SetUpdate(volatile void __iomem *reg)
 {
@@ -62,6 +64,8 @@ void VIOC_WMIX_SetUpdate(volatile void __iomem *reg)
 	val |= (0x1 << MCTRL_UPD_SHIFT);
 	__raw_writel(val, reg + MCTRL);
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetUpdate);
+
 
 void VIOC_WMIX_SetSize(volatile void __iomem *reg, unsigned int nWidth,
 		       unsigned int nHeight)
@@ -71,6 +75,8 @@ void VIOC_WMIX_SetSize(volatile void __iomem *reg, unsigned int nWidth,
 	       ((nWidth & 0x1FFF) << MSIZE_WIDTH_SHIFT));
 	__raw_writel(val, reg + MSIZE);
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetSize);
+
 
 void VIOC_WMIX_GetSize(volatile void __iomem *reg, unsigned int *nWidth,
 		       unsigned int *nHeight)
@@ -89,6 +95,8 @@ void VIOC_WMIX_GetSize(volatile void __iomem *reg, unsigned int *nWidth,
 			    MSIZE_HEIGHT_SHIFT);
 	}
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetSize);
+
 
 void VIOC_WMIX_SetBGColor(volatile void __iomem *reg, unsigned int nBG0,
 			  unsigned int nBG1, unsigned int nBG2,
@@ -111,6 +119,7 @@ void VIOC_WMIX_SetBGColor(volatile void __iomem *reg, unsigned int nBG0,
 	__raw_writel(val, reg + MBG1);
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetBGColor);
 
 void VIOC_WMIX_SetPosition(volatile void __iomem *reg, unsigned int nChannel,
 			   unsigned int nX, unsigned int nY)
@@ -120,6 +129,7 @@ void VIOC_WMIX_SetPosition(volatile void __iomem *reg, unsigned int nChannel,
 	       ((nX & 0x1FFF) << MPOS_XPOS_SHIFT));
 	__raw_writel(val, reg + (MPOS0 + (0x4 * nChannel)));
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetPosition);
 
 void VIOC_WMIX_GetPosition(volatile void __iomem *reg, unsigned int nChannel,
 			   unsigned int *nX, unsigned int *nY)
@@ -131,6 +141,7 @@ void VIOC_WMIX_GetPosition(volatile void __iomem *reg, unsigned int nChannel,
 		MPOS_YPOS_MASK) >>
 	       MPOS_YPOS_SHIFT);
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetPosition);
 
 void VIOC_WMIX_SetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 			    unsigned int nKeyEn, unsigned int nKeyR,
@@ -168,6 +179,8 @@ void VIOC_WMIX_SetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 	__raw_writel(val, reg + (MKEY03 + (0x10 * nLayer)));
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetChromaKey);
+
 
 void VIOC_WMIX_GetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 			    unsigned int *nKeyEn, unsigned int *nKeyR,
@@ -222,6 +235,7 @@ void VIOC_WMIX_GetChromaKey(volatile void __iomem *reg, unsigned int nLayer,
 		      MKEY3_MKEYB_SHIFT);
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetChromaKey);
 
 void VIOC_WMIX_ALPHA_SetAlphaValueControl(volatile void __iomem *reg,
 					  unsigned int layer,
@@ -264,6 +278,7 @@ void VIOC_WMIX_ALPHA_SetAlphaValueControl(volatile void __iomem *reg,
 		break;
 	}
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaValueControl);
 
 void VIOC_WMIX_ALPHA_SetColorControl(volatile void __iomem *reg,
 				     unsigned int layer, unsigned int region,
@@ -304,6 +319,7 @@ void VIOC_WMIX_ALPHA_SetColorControl(volatile void __iomem *reg,
 		break;
 	}
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetColorControl);
 
 void VIOC_WMIX_ALPHA_SetROPMode(volatile void __iomem *reg, unsigned int layer,
 				unsigned int mode)
@@ -321,6 +337,8 @@ void VIOC_WMIX_ALPHA_SetROPMode(volatile void __iomem *reg, unsigned int layer,
 	__raw_writel(val, reg + (MROPC00 + (0x20 * layer)));
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetROPMode);
+
 
 void VIOC_WMIX_ALPHA_SetAlphaSelection(volatile void __iomem *reg,
 				       unsigned int layer, unsigned int asel)
@@ -338,6 +356,7 @@ void VIOC_WMIX_ALPHA_SetAlphaSelection(volatile void __iomem *reg,
 	__raw_writel(val, reg + (MROPC00 + (0x20 * layer)));
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaSelection);
 
 void VIOC_WMIX_ALPHA_SetAlphaValue(volatile void __iomem *reg,
 				   unsigned int layer, unsigned int alpha0,
@@ -358,6 +377,8 @@ void VIOC_WMIX_ALPHA_SetAlphaValue(volatile void __iomem *reg,
 	__raw_writel(val, reg + (MROPC01 + (0x20 * layer)));
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetAlphaValue);
+
 
 void VIOC_WMIX_ALPHA_SetROPPattern(volatile void __iomem *reg,
 				   unsigned int layer, unsigned int patR,
@@ -377,16 +398,19 @@ void VIOC_WMIX_ALPHA_SetROPPattern(volatile void __iomem *reg,
 		     reg + (MPAT00 + (0x20 * layer)));
 	#endif
 }
+EXPORT_SYMBOL(VIOC_WMIX_ALPHA_SetROPPattern);
 
 void VIOC_WMIX_SetInterruptMask(volatile void __iomem *reg, unsigned int nMask)
 {
 	__raw_writel(nMask, reg + MIRQMSK);
 }
+EXPORT_SYMBOL(VIOC_WMIX_SetInterruptMask);
 
 unsigned int VIOC_WMIX_GetStatus(volatile void __iomem *reg)
 {
 	return __raw_readl(reg + MSTS);
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetStatus);
 
 void VIOC_WMIX_DUMP(volatile void __iomem *reg, unsigned int vioc_id)
 {
@@ -417,6 +441,7 @@ err:
 	pr_err("[ERR][WMIX] %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
 	return;
 }
+EXPORT_SYMBOL(VIOC_WMIX_DUMP);
 
 volatile void __iomem *VIOC_WMIX_GetAddress(unsigned int vioc_id)
 {
@@ -435,6 +460,8 @@ err:
 	pr_err("[ERR][WMIX] %s Num:%d max:%d \n", __func__, Num, VIOC_WMIX_MAX);
 	return NULL;
 }
+EXPORT_SYMBOL(VIOC_WMIX_GetAddress);
+
 
 static int __init vioc_wmixer_init(void)
 {
