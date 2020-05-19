@@ -204,6 +204,7 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 
 	return 0;
 }
+EXPORT_SYMBOL(vioc_intr_enable);
 
 int vioc_intr_disable(int irq, int id, unsigned mask)
 {
@@ -368,6 +369,7 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 
 	return 0;
 }
+EXPORT_SYMBOL(vioc_intr_disable);
 
 unsigned int vioc_intr_get_status(int id)
 {
@@ -444,6 +446,7 @@ unsigned int vioc_intr_get_status(int id)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(vioc_intr_get_status);
 
 bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 {
@@ -480,6 +483,7 @@ bool check_vioc_irq_status(volatile void __iomem *reg, int id)
 		return true;
 	return false;
 }
+EXPORT_SYMBOL(check_vioc_irq_status);
 
 bool is_vioc_intr_activatied(int id, unsigned mask)
 {
@@ -569,6 +573,7 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 	}
 	return false;
 }
+EXPORT_SYMBOL(is_vioc_intr_activatied);
 
 bool is_vioc_intr_unmasked(int id, unsigned mask)
 {
@@ -656,6 +661,7 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 	}
 	return false;
 }
+EXPORT_SYMBOL(is_vioc_intr_unmasked);
 
 int vioc_intr_clear(int id, unsigned mask)
 {
@@ -738,6 +744,7 @@ int vioc_intr_clear(int id, unsigned mask)
 
 	return 0;
 }
+EXPORT_SYMBOL(vioc_intr_clear);
 
 void vioc_intr_initialize(void)
 {
@@ -797,6 +804,7 @@ void vioc_intr_initialize(void)
 #endif
 
 }
+EXPORT_SYMBOL(vioc_intr_initialize);
 
 static int __init vioc_intr_init(void)
 {
