@@ -103,6 +103,8 @@ void VIOC_DDICONFIG_SetPWDN(volatile void __iomem *reg, unsigned int type,
 
 	dprintk("type(%d) set(%d)\n", type, set);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_SetPWDN);
+
 
 void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 			       unsigned int set)
@@ -172,6 +174,7 @@ void VIOC_DDICONFIG_SetSWRESET(volatile void __iomem *reg, unsigned int type,
 
 	dprintk("type(%d) set(%d)\n", type, set);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_SetSWRESET);
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
 int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
@@ -182,6 +185,7 @@ int VIOC_DDICONFIG_GetPeriClock(volatile void __iomem *reg, unsigned int num)
         val >>= (PWDN_L0S_SHIFT + num);
         return (val & 1)?1:0;
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_GetPeriClock);
 
 void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 				 unsigned int set)
@@ -192,6 +196,7 @@ void VIOC_DDICONFIG_SetPeriClock(volatile void __iomem *reg, unsigned int num,
 	val |= ((set & 0x1) << (PWDN_L0S_SHIFT + num));
 	__raw_writel(val, reg + DDI_PWDN);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_SetPeriClock);
 #endif
 
 #if !defined(CONFIG_ARCH_TCC805X)
@@ -204,6 +209,7 @@ void VIOC_DDICONFIG_Set_hdmi_enable(volatile void __iomem *reg,
 		<< HDMI_CTRL_EN_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_Set_hdmi_enable);
 
 void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable)
 {
@@ -213,6 +219,7 @@ void VIOC_DDICONFIG_Set_prng(volatile void __iomem *reg, unsigned int enable)
 		<< HDMI_CTRL_PRNG_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_Set_prng);
 
 void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg,
 				 unsigned int ref_clock)
@@ -222,6 +229,7 @@ void VIOC_DDICONFIG_Set_refclock(volatile void __iomem *reg,
 	val |= (ref_clock & HDMI_CTRL_REF_MASK);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_Set_refclock);
 
 #if defined(HDMI_CTRL_PLL_SEL_MASK)
 void VIOC_DDICONFIG_Set_pll_sel(volatile void __iomem *reg,
@@ -232,6 +240,7 @@ void VIOC_DDICONFIG_Set_pll_sel(volatile void __iomem *reg,
 	val |= (pll_sel & HDMI_CTRL_PLL_SEL_MASK);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_Set_pll_sel);
 #endif
 
 #if defined(HDMI_CTRL_PHY_ST_MASK)
@@ -246,6 +255,7 @@ int VIOC_DDICONFIG_get_phy_status(volatile void __iomem *reg, unsigned int phy_m
 
         return status;
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_get_phy_status);
 #endif
 
 #if defined(HDMI_CTRL_TB_MASK)
@@ -256,6 +266,7 @@ void VIOC_DDICONFIG_Set_tmds_bit_order(volatile void __iomem *reg, unsigned int 
         val |= (bit_order & HDMI_CTRL_TB_MASK);
         __raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_Set_tmds_bit_order);
 #endif
 
 #if defined(HDMI_CTRL_RESET_PHY_MASK)
@@ -269,6 +280,7 @@ void VIOC_DDICONFIG_reset_hdmi_phy(volatile void __iomem *reg,
 			<< HDMI_CTRL_RESET_PHY_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_reset_hdmi_phy);
 #endif
 
 #if defined(HDMI_CTRL_RESET_LINK_MASK)
@@ -282,6 +294,7 @@ void VIOC_DDICONFIG_reset_hdmi_link(volatile void __iomem *reg,
 			<< HDMI_CTRL_RESET_LINK_SHIFT);
 	__raw_writel(val, reg + HDMI_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_reset_hdmi_link);
 #endif // //!defined(CONFIG_ARCH_TCC805X)
 
 #endif
@@ -307,6 +320,7 @@ void VIOC_DDICONFIG_DAC_PWDN_Control(volatile void __iomem *reg,
 
 	__raw_writel(val, reg + DAC_CONFIG);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_DAC_PWDN_Control);
 #endif
 
 /*
@@ -365,6 +379,7 @@ void VIOC_DDICONFIG_BVOVENC_Reset_ctrl(int reset_bit)
 
 	dprintk("%s(0x%x)\n", __func__, reset_bit);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_BVOVENC_Reset_ctrl);
 #else
 static void VIOC_DDICONFIG_TVOVENC_SetEnable(volatile void __iomem *reg,
 				      unsigned int enable)
@@ -415,6 +430,7 @@ void VIOC_DDICONFIG_NTSCPAL_SetEnable(volatile void __iomem *reg,
 	VIOC_DDICONFIG_TVOVENC_SetEnable(reg, enable);		// 2nd: enable tvo
 	#endif
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_NTSCPAL_SetEnable);
 
 
 #if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC897X)
@@ -427,6 +443,7 @@ void VIOC_DDICONFIG_LVDS_SetEnable(volatile void __iomem *reg,
 		val |= (0x1 << LVDS_CTRL_EN_SHIFT);
 	__raw_writel(val, reg + LVDS_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetEnable);
 
 void VIOC_DDICONFIG_LVDS_SetReset(volatile void __iomem *reg,
 				  unsigned int reset)
@@ -437,6 +454,7 @@ void VIOC_DDICONFIG_LVDS_SetReset(volatile void __iomem *reg,
 		val |= (0x1 << LVDS_CTRL_RST_SHIFT);
 	__raw_writel(val, reg + LVDS_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetReset);
 
 void VIOC_DDICONFIG_LVDS_SetPort(volatile void __iomem *reg,
 				 unsigned int select)
@@ -446,6 +464,7 @@ void VIOC_DDICONFIG_LVDS_SetPort(volatile void __iomem *reg,
 	val |= ((select & 0x3) << LVDS_CTRL_SEL_SHIFT);
 	__raw_writel(val, reg + LVDS_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPort);
 
 void VIOC_DDICONFIG_LVDS_SetPLL(volatile void __iomem *reg, unsigned int vsel,
 				unsigned int p, unsigned int m, unsigned int s,
@@ -462,6 +481,8 @@ void VIOC_DDICONFIG_LVDS_SetPLL(volatile void __iomem *reg, unsigned int vsel,
 		((tc & 0x7) << LVDS_CTRL_TC_SHIFT));
 	__raw_writel(val, reg + LVDS_CTRL);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPLL);
+
 
 void VIOC_DDICONFIG_LVDS_SetConnectivity(volatile void __iomem *reg,
 					 unsigned int voc, unsigned int cms,
@@ -477,6 +498,7 @@ void VIOC_DDICONFIG_LVDS_SetConnectivity(volatile void __iomem *reg,
 		((lc & 0x1) << LVDS_MISC1_LC_SHIFT));
 	__raw_writel(val, reg + LVDS_MISC1);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetConnectivity);
 
 void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg, int path,
 				 unsigned int bit)
@@ -488,6 +510,7 @@ void VIOC_DDICONFIG_LVDS_SetPath(volatile void __iomem *reg, int path,
 
 	__raw_writel((bit & 0xFFFFFFFF), reg + (LVDS_TXO_SEL0 + (0x4 * path)));
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_LVDS_SetPath);
 #endif
 
 #if defined(CONFIG_ARCH_TCC803X)
@@ -501,6 +524,7 @@ void VIOC_DDICONFIG_MIPI_Reset_DPHY(volatile void __iomem *reg, unsigned int res
         val |= (0x1 << MIPI_CFG_S_RESETN_SHIFT);
     __raw_writel(val, reg + MIPI_CFG);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_MIPI_Reset_DPHY);
 
 void VIOC_DDICONFIG_MIPI_Reset_GEN(volatile void __iomem *reg, unsigned int reset)
 {
@@ -511,6 +535,7 @@ void VIOC_DDICONFIG_MIPI_Reset_GEN(volatile void __iomem *reg, unsigned int rese
         val |= ((0x1 << MIPI_CFG_GEN_PX_RST_SHIFT) | (0x1 << MIPI_CFG_GEN_APB_RST_SHIFT));
     __raw_writel(val, reg + MIPI_CFG);
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_MIPI_Reset_GEN);
 #endif
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -535,6 +560,7 @@ int VIOC_DDICONFIG_GetViocRemap(void)
 
 	return val;
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_GetViocRemap);
 
 int VIOC_DDICONFIG_SetViocRemap(int enable)
 {
@@ -547,6 +573,7 @@ int VIOC_DDICONFIG_SetViocRemap(int enable)
 
 	return val;
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_SetViocRemap);
 #endif
 
 void VIOC_DDICONFIG_DUMP(void)
@@ -563,6 +590,7 @@ void VIOC_DDICONFIG_DUMP(void)
 		cnt += 0x10;
 	}
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_DUMP);
 
 volatile void __iomem *VIOC_DDICONFIG_GetAddress(void)
 {
@@ -571,6 +599,7 @@ volatile void __iomem *VIOC_DDICONFIG_GetAddress(void)
 
 	return pDDICFG_reg;
 }
+EXPORT_SYMBOL(VIOC_DDICONFIG_GetAddress);
 
 static int __init vioc_ddicfg_init(void)
 {
