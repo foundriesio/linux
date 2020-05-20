@@ -622,13 +622,8 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
 	struct sun6i_dsi *dsi = encoder_to_sun6i_dsi(encoder);
 	struct mipi_dsi_device *device = dsi->device;
 	u16 delay;
-	int err;
 
 	DRM_DEBUG_DRIVER("Enabling DSI output\n");
-
-	err = regulator_enable(dsi->regulator);
-	if (err)
-		dev_warn(dsi->dev, "failed to enable VCC-DSI supply: %d\n", err);
 
 	reset_control_deassert(dsi->reset);
 	clk_prepare_enable(dsi->mod_clk);
@@ -704,7 +699,6 @@ static void sun6i_dsi_encoder_disable(struct drm_encoder *encoder)
 
 	clk_disable_unprepare(dsi->mod_clk);
 	reset_control_assert(dsi->reset);
-	regulator_disable(dsi->regulator);
 }
 
 static int sun6i_dsi_get_modes(struct drm_connector *connector)

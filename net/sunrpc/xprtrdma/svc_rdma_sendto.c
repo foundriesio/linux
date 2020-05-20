@@ -310,15 +310,17 @@ int svc_rdma_send(struct svcxprt_rdma *rdma, struct ib_send_wr *wr)
 		}
 
 		svc_xprt_get(&rdma->sc_xprt);
+		trace_svcrdma_post_send(wr);
 		ret = ib_post_send(rdma->sc_qp, wr, NULL);
-		trace_svcrdma_post_send(wr, ret);
-		if (ret) {
-			set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
-			svc_xprt_put(&rdma->sc_xprt);
-			wake_up(&rdma->sc_send_wait);
-		}
-		break;
+		if (ret)
+			break;
+		return 0;
 	}
+
+	trace_svcrdma_sq_post_err(rdma, ret);
+	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+	svc_xprt_put(&rdma->sc_xprt);
+	wake_up(&rdma->sc_send_wait);
 	return ret;
 }
 
@@ -813,7 +815,6 @@ static int svc_rdma_send_error_msg(struct svcxprt_rdma *rdma,
 				   struct svc_rqst *rqstp)
 {
 	__be32 *p;
-	int ret;
 
 	p = ctxt->sc_xprt_buf;
 	trace_svcrdma_err_chunk(*p);
@@ -825,13 +826,7 @@ static int svc_rdma_send_error_msg(struct svcxprt_rdma *rdma,
 	svc_rdma_save_io_pages(rqstp, ctxt);
 
 	ctxt->sc_send_wr.opcode = IB_WR_SEND;
-	ret = svc_rdma_send(rdma, &ctxt->sc_send_wr);
-	if (ret) {
-		svc_rdma_send_ctxt_put(rdma, ctxt);
-		return ret;
-	}
-
-	return 0;
+	return svc_rdma_send(rdma, &ctxt->sc_send_wr);
 }
 
 void svc_rdma_prep_reply_hdr(struct svc_rqst *rqstp)

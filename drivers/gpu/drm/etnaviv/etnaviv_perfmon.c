@@ -4,6 +4,7 @@
  * Copyright (C) 2017 Zodiac Inflight Innovations
  */
 
+#include "common.xml.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_perfmon.h"
 #include "state_hi.xml.h"
