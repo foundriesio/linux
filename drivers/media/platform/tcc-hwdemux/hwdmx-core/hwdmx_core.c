@@ -22,10 +22,17 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
+#include <linux/io.h>
+#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include "hwdmx.h"
 #include "hwdmx_core.h"
 #include "tcc_hwdemux_tsif_rx.h"
+#include "HWDemux_bin.h"
+#if defined(CONFIG_ARCH_TCC805X)
+#define USE_HW_FW
+HWDMX_HANDLE hHWDMX;
+#endif
 
 #define HWDMX_DEV_NAME "tcc_hwdmx"
 #define HWDMX_RD_BUF_SIZE (256 * 1024)
@@ -227,9 +234,91 @@ static struct file_operations fops = {
 	.unlocked_ioctl = hwdmx_ioctl,
 };
 
+#if defined(USE_HW_FW)
+static void hwdmx_unload_fw(void)
+{
+    volatile PCM_TSD_CFG pTSDCfg = (volatile PCM_TSD_CFG) hHWDMX.cfg_base;
+    BITSET(pTSDCfg->CM_RESET.nREG, Hw1|Hw2); //m4 no reset
+}
+
+static void hwdmx_load_fw(const char* fw_data, int fw_size)
+{
+	volatile unsigned int * pCodeMem = (volatile unsigned int *) hHWDMX.code_base;
+	volatile PCM_TSD_CFG pTSDCfg = (volatile PCM_TSD_CFG) hHWDMX.cfg_base;
+
+    BITCSET(pTSDCfg->REMAP0.nREG, 0xFFFFFFFF, 0x00234561);
+    BITCSET(pTSDCfg->REMAP1.nREG, 0xFFFFFFFF, 0x89ABCDEF);
+
+    hwdmx_unload_fw();
+    if (fw_data && fw_size > 0) {
+        memcpy((void *)pCodeMem, (void *)fw_data, fw_size);
+    } else {
+        printk("Hwdemux firmware copy failed\n");
+    }
+
+    BITCLR(pTSDCfg->CM_RESET.nREG, Hw1|Hw2); //m4 reset
+}
+
+int hwdmx_parse_device_tree(struct platform_device * pdev) {
+	struct device_node	* main_node	= pdev->dev.of_node;
+	int idxReg = 0;
+	int ret = 0;
+
+	idxReg = of_property_match_string(main_node, "reg-names", "mbox_0");
+	if(0 <= idxReg) {
+		hHWDMX.mbox0_base = (void __iomem *)of_iomap(main_node, idxReg);
+	} else {
+		ret = -ENXIO;
+		goto goto_return;
+	}
+
+	idxReg = of_property_match_string(main_node, "reg-names", "mbox_1");
+	if(0 <= idxReg) {
+		hHWDMX.mbox1_base = (void __iomem *)of_iomap(main_node, idxReg);
+	} else {
+		ret = -ENXIO;
+		goto goto_return;
+	}
+
+	idxReg = of_property_match_string(main_node, "reg-names", "code_mem");
+	if(0 <= idxReg) {
+		hHWDMX.code_base = (void __iomem *)of_iomap(main_node, idxReg);
+	} else {
+		ret = -ENXIO;
+		goto goto_return;
+	}
+
+	idxReg = of_property_match_string(main_node, "reg-names", "data_mem");
+	if(0 <= idxReg) {
+		hHWDMX.data_base = (void __iomem *)of_iomap(main_node, idxReg);
+	} else {
+		ret = -ENXIO;
+		goto goto_return;
+	}
+
+	idxReg = of_property_match_string(main_node, "reg-names", "config");
+	if(0 <= idxReg) {
+		hHWDMX.cfg_base = (void __iomem *)of_iomap(main_node, idxReg);
+	} else {
+		ret = -ENXIO;
+		goto goto_return;
+        }
+
+	printk("HWDMX - CODE(0x%08x), MBOX0(0x%08x), MBOX1(0x%08x), CFG(0x%08x)\n",
+		(unsigned int)hHWDMX.code_base, (unsigned int)hHWDMX.mbox0_base, (unsigned int)hHWDMX.mbox1_base, (unsigned int)hHWDMX.cfg_base);
+
+goto_return:
+	return ret;
+}
+#endif
+
 static int hwdmx_probe(struct platform_device *pdev)
 {
 	int retval;
+#if defined(USE_HW_FW)
+	const char *fw_data = NULL;
+	unsigned int fw_size = 0;
+#endif
 
 	printk("%s\n", __FUNCTION__);
 
@@ -249,6 +338,22 @@ static int hwdmx_probe(struct platform_device *pdev)
 		retval = -ENOMEM;
 		goto dma_alloc_fail;
 	}
+
+
+#if defined(USE_HW_FW)
+	// Parse the device tree
+	hwdmx_parse_device_tree(pdev);
+
+	// Load firmware
+	fw_data = HWDemux_bin;
+	fw_size = sizeof(HWDemux_bin);
+	if(fw_data && fw_size){
+		printk("hwdemux fw size:%d\n", fw_size);
+		hwdmx_load_fw(fw_data, fw_size);
+	}else{
+		printk("hwdemux fw is null\n");
+	}
+#endif
 
 	hwdmx_set_evt_handler();
 
@@ -272,6 +377,9 @@ static int hwdmx_remove(struct platform_device *pdev)
 	}
 	class_destroy(class);
 	unregister_chrdev(majornum, HWDMX_DEV_NAME);
+#if defined(USE_HW_FW
+	hwdmx_unload_fw();
+#endif
 	tcc_hwdmx_tsif_rx_deinit(&pdev->dev);
 	return 0;
 }
