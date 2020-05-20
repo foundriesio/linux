@@ -1456,7 +1456,7 @@ void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 		break;
 
 	case get_vioc_type(VIOC_WDMA):
-#if !defined(CONFIG_ARCH_TCC803X) || !defined(CONFIG_ARCH_TCC805X)
+#if !defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC805X)
 		value = (__raw_readl(reg + PWR_BLK_SWR1_OFFSET) &
 			 ~(PWR_BLK_SWR1_WDMA_MASK));
 		value |= (mode << (PWR_BLK_SWR1_WDMA_SHIFT +
