@@ -1525,8 +1525,6 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 
 		if (!nfs_need_update_open_stateid(state, stateid))
 			return;
-		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
-			break;
 		if (status)
 			break;
 		/* Rely on seqids for serialisation with NFSv4.0 */
@@ -1534,6 +1532,8 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 			break;
 
 		prepare_to_wait(wq_head, &wbq_entry.wq_entry, TASK_KILLABLE);
+		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
+			break;
 		/*
 		 * Ensure we process the state changes in the same order
 		 * in which the server processed them by delaying the
@@ -1554,6 +1554,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
 		spin_lock(&state->owner->so_lock);
 		write_seqlock(&state->seqlock);
 	}
+	finish_wait(wq_head, &wbq_entry.wq_entry);
 
 	if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
 		nfs4_stateid_copy(freeme, &state->open_stateid);
