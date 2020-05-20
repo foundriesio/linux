@@ -35,7 +35,8 @@
 #define SGTL5000_DAP_REG_OFFSET	0x0100
 #define SGTL5000_MAX_REG_OFFSET	0x013A
 
-/* The Manual recommends a VAG ramp delay 200-400 ms.
+/*
+ * The Manual recommends a VAG ramp delay 200-400 ms.
  * For Toradex SoM Apalis TK1 v1.2A the optimal up/down delay is 500 ms.
  * For Toradex SoM Apalis iMX6D/Q v1.1B the optimal delay
  * is 600 ms for ramp up and 500 ms ramp down.
@@ -119,10 +120,11 @@ enum  {
 	I2S_LRCLK_STRENGTH_HIGH,
 };
 
-struct sgtl5000_mute_state {
-	u16 hp_event;
-	u16 adc_event;
-	u16 dac_event;
+enum {
+	HP_POWER_EVENT,
+	DAC_POWER_EVENT,
+	ADC_POWER_EVENT,
+	LAST_POWER_EVENT = ADC_POWER_EVENT
 };
 
 /* sgtl5000 private structure in codec */
@@ -138,99 +140,112 @@ struct sgtl5000_priv {
 	u8 micbias_resistor;
 	u8 micbias_voltage;
 	u8 lrclk_strength;
-	struct sgtl5000_mute_state mute_state;
+	u16 mute_state[LAST_POWER_EVENT + 1];
 };
 
-enum vag_switch_sources {
-	HP_POWER_EVENT,
-	DAC_POWER_EVENT,
-	ADC_POWER_EVENT
-};
-
-static inline int hp_sel_input(struct snd_soc_codec *codec)
+static inline int hp_sel_input(struct snd_soc_component *component)
 {
-	return (snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL) &
-		SGTL5000_HP_SEL_MASK) >> SGTL5000_HP_SEL_SHIFT;
+	unsigned int ana_reg = 0;
+
+	snd_soc_component_read(component, SGTL5000_CHIP_ANA_CTRL, &ana_reg);
+
+	return (ana_reg & SGTL5000_HP_SEL_MASK) >> SGTL5000_HP_SEL_SHIFT;
 }
 
-static inline u16 mute_output(struct snd_soc_codec *codec, u16 mute_mask)
+static inline u16 mute_output(struct snd_soc_component *component,
+			      u16 mute_mask)
 {
-	u16 mute_reg = snd_soc_read(codec, SGTL5000_CHIP_ANA_CTRL);
+	unsigned int mute_reg = 0;
 
-	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL,
+	snd_soc_component_read(component, SGTL5000_CHIP_ANA_CTRL, &mute_reg);
+
+	snd_soc_component_update_bits(component, SGTL5000_CHIP_ANA_CTRL,
 			    mute_mask, mute_mask);
 	return mute_reg;
 }
 
-static inline void restore_output(struct snd_soc_codec *codec, u16 mute_mask,
-	u16 mute_reg)
+static inline void restore_output(struct snd_soc_component *component,
+				  u16 mute_mask, u16 mute_reg)
 {
-	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_CTRL,
+	snd_soc_component_update_bits(component, SGTL5000_CHIP_ANA_CTRL,
 		mute_mask, mute_reg);
 }
 
-static void vag_power_on(struct snd_soc_codec *codec,
-	enum vag_switch_sources source)
+static void vag_power_on(struct snd_soc_component *component, u32 source)
 {
-	if (snd_soc_read(codec, SGTL5000_CHIP_ANA_POWER) &
-	    SGTL5000_VAG_POWERUP)
+	unsigned int ana_reg = 0;
+
+	snd_soc_component_read(component, SGTL5000_CHIP_ANA_POWER, &ana_reg);
+
+	if (ana_reg & SGTL5000_VAG_POWERUP)
 		return;
 
-	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
+	snd_soc_component_update_bits(component, SGTL5000_CHIP_ANA_POWER,
 			    SGTL5000_VAG_POWERUP, SGTL5000_VAG_POWERUP);
 
 	/* When VAG powering on to get local loop from Line-In, the sleep
 	 * is required to avoid loud pop.
 	 */
-	if (hp_sel_input(codec) == SGTL5000_HP_SEL_LINE_IN &&
+	if (hp_sel_input(component) == SGTL5000_HP_SEL_LINE_IN &&
 	    source == HP_POWER_EVENT)
 		msleep(SGTL5000_VAG_POWERUP_DELAY);
 }
 
-static int vag_power_consumers(struct snd_soc_codec *codec,
-	enum vag_switch_sources source)
+static int vag_power_consumers(struct snd_soc_component *component,
+			       u16 ana_pwr_reg, u32 source)
 {
-	u16 ana_pwr = snd_soc_read(codec, SGTL5000_CHIP_ANA_POWER);
 	int consumers = 0;
 
-	/* dac/adc consumers - unconditional */
-	if (ana_pwr & SGTL5000_DAC_POWERUP)
+	/* count dac/adc consumers unconditional */
+	if (ana_pwr_reg & SGTL5000_DAC_POWERUP)
 		consumers++;
-	if (ana_pwr & SGTL5000_ADC_POWERUP)
+	if (ana_pwr_reg & SGTL5000_ADC_POWERUP)
 		consumers++;
 
+	/*
+	 * If the event comes from HP and Line-In is selected,
+	 * current action is 'DAC to be powered down'.
+	 * As HP_POWERUP is not set when HP muxed to line-in,
+	 * we need to keep VAG power ON.
+	 */
 	if (source == HP_POWER_EVENT) {
-		if (hp_sel_input(codec) == SGTL5000_HP_SEL_LINE_IN)
+		if (hp_sel_input(component) == SGTL5000_HP_SEL_LINE_IN)
 			consumers++;
 	} else {
-		if (ana_pwr & SGTL5000_HP_POWERUP)
+		if (ana_pwr_reg & SGTL5000_HP_POWERUP)
 			consumers++;
 	}
 
 	return consumers;
 }
 
-static void vag_power_off(struct snd_soc_codec *codec,
-	enum vag_switch_sources source)
+static void vag_power_off(struct snd_soc_component *component, u32 source)
 {
-	u16 ana_pwr = snd_soc_read(codec, SGTL5000_CHIP_ANA_POWER);
+	unsigned int ana_pwr = SGTL5000_VAG_POWERUP;
+
+	snd_soc_component_read(component, SGTL5000_CHIP_ANA_POWER, &ana_pwr);
 
 	if (!(ana_pwr & SGTL5000_VAG_POWERUP))
 		return;
 
 	/*
+	 * This function calls when any of VAG power consumers is disappearing.
+	 * Thus, if there is more than one consumer at the moment, as minimum
+	 * one consumer will definitely stay after the end of the current
+	 * event.
 	 * Don't clear VAG_POWERUP if 2 or more consumers of VAG present:
 	 * - LINE_IN (for HP events) / HP (for DAC/ADC events)
 	 * - DAC
 	 * - ADC
+	 * (the current consumer is disappearing right now)
 	 */
-	if (vag_power_consumers(codec, source) >= 2)
+	if (vag_power_consumers(component, ana_pwr, source) >= 2)
 		return;
 
-	snd_soc_update_bits(codec, SGTL5000_CHIP_ANA_POWER,
+	snd_soc_component_update_bits(component, SGTL5000_CHIP_ANA_POWER,
 		SGTL5000_VAG_POWERUP, 0);
 	/* In power down case, we need wait 400-1000 ms
-	 * when vag fully ramped down.
+	 * when VAG fully ramped down.
 	 * As longer we wait, as smaller pop we've got.
 	 */
 	msleep(SGTL5000_VAG_POWERDOWN_DELAY);
@@ -267,27 +282,52 @@ static int mic_bias_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static void vag_and_mute_control(struct snd_soc_codec *codec, int event,
-	enum vag_switch_sources event_source, u16 mute_mask, u16 *mute_reg)
+static int vag_and_mute_control(struct snd_soc_component *component,
+				 int event, int event_source)
 {
+	static const u16 mute_mask[] = {
+		/*
+		 * Mask for HP_POWER_EVENT.
+		 * Muxing Headphones have to be wrapped with mute/unmute
+		 * headphones only.
+		 */
+		SGTL5000_HP_MUTE,
+		/*
+		 * Masks for DAC_POWER_EVENT/ADC_POWER_EVENT.
+		 * Muxing DAC or ADC block have to be wrapped with mute/unmute
+		 * both headphones and line-out.
+		 */
+		SGTL5000_OUTPUTS_MUTE,
+		SGTL5000_OUTPUTS_MUTE
+	};
+
+	struct sgtl5000_priv *sgtl5000 =
+		snd_soc_component_get_drvdata(component);
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		*mute_reg = mute_output(codec, mute_mask);
+		sgtl5000->mute_state[event_source] =
+			mute_output(component, mute_mask[event_source]);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		vag_power_on(codec, event_source);
-		restore_output(codec, mute_mask, *mute_reg);
+		vag_power_on(component, event_source);
+		restore_output(component, mute_mask[event_source],
+			       sgtl5000->mute_state[event_source]);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		*mute_reg = mute_output(codec, mute_mask);
-		vag_power_off(codec, event_source);
+		sgtl5000->mute_state[event_source] =
+			mute_output(component, mute_mask[event_source]);
+		vag_power_off(component, event_source);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		restore_output(codec, mute_mask, *mute_reg);
+		restore_output(component, mute_mask[event_source],
+			       sgtl5000->mute_state[event_source]);
 		break;
 	default:
 		break;
 	}
+
+	return 0;
 }
 
 /*
@@ -297,13 +337,10 @@ static void vag_and_mute_control(struct snd_soc_codec *codec, int event,
 static int headphone_pga_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
 
-	vag_and_mute_control(codec, event, HP_POWER_EVENT, SGTL5000_HP_MUTE,
-		&sgtl5000->mute_state.hp_event);
-
-	return 0;
+	return vag_and_mute_control(component, event, HP_POWER_EVENT);
 }
 
 /* As manual describes, ADC/DAC powering up/down requires
@@ -313,25 +350,19 @@ static int headphone_pga_event(struct snd_soc_dapm_widget *w,
 static int adc_updown_depop(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
 
-	vag_and_mute_control(codec, event, ADC_POWER_EVENT,
-		SGTL5000_OUTPUTS_MUTE, &sgtl5000->mute_state.adc_event);
-
-	return 0;
+	return vag_and_mute_control(component, event, ADC_POWER_EVENT);
 }
 
 static int dac_updown_depop(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct sgtl5000_priv *sgtl5000 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_component *component =
+		snd_soc_dapm_to_component(w->dapm);
 
-	vag_and_mute_control(codec, event, DAC_POWER_EVENT,
-		SGTL5000_OUTPUTS_MUTE, &sgtl5000->mute_state.dac_event);
-
-	return 0;
+	return vag_and_mute_control(component, event, DAC_POWER_EVENT);
 }
 
 /* input sources for ADC */
@@ -369,12 +400,11 @@ static const struct snd_soc_dapm_widget sgtl5000_dapm_widgets[] = {
 			    mic_bias_event,
 			    SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
-	SND_SOC_DAPM_PGA_E("HP", SGTL5000_CHIP_ANA_POWER,
-		SGTL5000_HP_POWERUP_SHIFT, 0, NULL, 0,
-		headphone_pga_event,
-		SND_SOC_DAPM_PRE_POST_PMU | SND_SOC_DAPM_PRE_POST_PMD),
-	SND_SOC_DAPM_PGA("LO", SGTL5000_CHIP_ANA_POWER,
-		SGTL5000_LINE_OUT_POWERUP_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_PGA_E("HP", SGTL5000_CHIP_ANA_POWER, 4, 0, NULL, 0,
+			   headphone_pga_event,
+			   SND_SOC_DAPM_PRE_POST_PMU |
+			   SND_SOC_DAPM_PRE_POST_PMD),
+	SND_SOC_DAPM_PGA("LO", SGTL5000_CHIP_ANA_POWER, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_MUX("Capture Mux", SND_SOC_NOPM, 0, 0, &adc_mux),
 	SND_SOC_DAPM_MUX("Headphone Mux", SND_SOC_NOPM, 0, 0, &dac_mux),
@@ -389,12 +419,12 @@ static const struct snd_soc_dapm_widget sgtl5000_dapm_widgets[] = {
 				0, SGTL5000_CHIP_DIG_POWER,
 				1, 0),
 
-	SND_SOC_DAPM_ADC_E("ADC", "Capture", SGTL5000_CHIP_ANA_POWER,
-		SGTL5000_ADC_POWERUP_SHIFT, 0, adc_updown_depop,
-		SND_SOC_DAPM_PRE_POST_PMU | SND_SOC_DAPM_PRE_POST_PMD),
-	SND_SOC_DAPM_DAC_E("DAC", "Playback", SGTL5000_CHIP_ANA_POWER,
-		SGTL5000_DAC_POWERUP_SHIFT, 0, dac_updown_depop,
-		SND_SOC_DAPM_PRE_POST_PMU | SND_SOC_DAPM_PRE_POST_PMD),
+	SND_SOC_DAPM_ADC_E("ADC", "Capture", SGTL5000_CHIP_ANA_POWER, 1, 0,
+			   adc_updown_depop, SND_SOC_DAPM_PRE_POST_PMU |
+			   SND_SOC_DAPM_PRE_POST_PMD),
+	SND_SOC_DAPM_DAC_E("DAC", "Playback", SGTL5000_CHIP_ANA_POWER, 3, 0,
+			   dac_updown_depop, SND_SOC_DAPM_PRE_POST_PMU |
+			   SND_SOC_DAPM_PRE_POST_PMD),
 };
 
 /* routes for sgtl5000 */
@@ -1156,7 +1186,8 @@ static int sgtl5000_set_power_regs(struct snd_soc_codec *codec)
 		ana_pwr |= SGTL5000_VDDC_CHRGPMP_POWERUP;
 	} else {
 		ana_pwr &= ~SGTL5000_VDDC_CHRGPMP_POWERUP;
-		/* if vddio == vdda the source of charge pump should be
+		/*
+		 * if vddio == vdda the source of charge pump should be
 		 * assigned manually to VDDIO
 		 */
 		if (vddio == vdda) {
@@ -1211,7 +1242,7 @@ static int sgtl5000_set_power_regs(struct snd_soc_codec *codec)
 	 * Searching for a suitable index solving this formula:
 	 * idx = 40 * log10(vag_val / lo_cagcntrl) + 15
 	 */
-	vol_quot = (vag * 100) / lo_vag;
+	vol_quot = lo_vag ? (vag * 100) / lo_vag : 0;
 	lo_vol = 0;
 	for (i = 0; i < ARRAY_SIZE(vol_quot_table); i++) {
 		if (vol_quot >= vol_quot_table[i])

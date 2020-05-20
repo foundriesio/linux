@@ -203,7 +203,6 @@ static inline bool imx_gpc_enet_wakeup_enabled(void) { return false; }
 #endif
 
 #ifdef CONFIG_SUSPEND
-void v7_cpu_resume(void);
 void ca7_cpu_resume(void);
 void imx53_suspend(void __iomem *ocram_vbase);
 extern const u32 imx53_suspend_sz;
@@ -212,7 +211,6 @@ void imx6_suspend(void __iomem *ocram_vbase);
 void imx7_suspend(void __iomem *ocram_vbase);
 void imx7ulp_suspend(void __iomem *ocram_vbase);
 #else
-static inline void v7_cpu_resume(void) {}
 static inline void ca7_cpu_resume(void) {}
 static inline void imx53_suspend(void __iomem *ocram_vbase) {}
 static const u32 imx53_suspend_sz;
@@ -222,6 +220,8 @@ static inline void imx7_suspend(void __iomem *ocram_vbase) {}
 static inline void imx7ulp_suspend(void __iomem *ocram_vbase) {}
 #endif
 void pm_shutdown_notify_m4(void);
+
+void v7_cpu_resume(void);
 
 void imx6_pm_ccm_init(const char *ccm_compat);
 void imx6q_pm_init(void);
