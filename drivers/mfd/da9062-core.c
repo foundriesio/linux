@@ -820,7 +820,7 @@ static int da9062_i2c_probe(struct i2c_client *i2c,
 {
 	struct da9062 *chip;
 	const struct of_device_id *match;
-	unsigned int irq_base;
+	unsigned int irq_base = 0;
 	const struct mfd_cell *cell;
 	const struct regmap_irq_chip *irq_chip;
 	const struct regmap_config *config;
@@ -844,10 +844,12 @@ static int da9062_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(i2c, chip);
 	chip->dev = &i2c->dev;
 
+#ifndef CONFIG_ARCH_TCC
 	if (!i2c->irq) {
 		dev_err(chip->dev, "No IRQ configured\n");
 		return -EINVAL;
 	}
+#endif
 
 	switch (chip->chip_type) {
 	case COMPAT_TYPE_DA9061:
@@ -883,6 +885,7 @@ static int da9062_i2c_probe(struct i2c_client *i2c,
 	if (ret)
 		return ret;
 
+#ifndef CONFIG_ARCH_TCC
 	ret = regmap_add_irq_chip(chip->regmap, i2c->irq,
 			IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_SHARED,
 			-1, irq_chip,
@@ -894,7 +897,7 @@ static int da9062_i2c_probe(struct i2c_client *i2c,
 	}
 
 	irq_base = regmap_irq_chip_get_base(chip->regmap_irq);
-
+#endif
 	ret = mfd_add_devices(chip->dev, PLATFORM_DEVID_NONE, cell,
 			      cell_num, NULL, irq_base,
 			      NULL);
@@ -912,7 +915,9 @@ static int da9062_i2c_remove(struct i2c_client *i2c)
 	struct da9062 *chip = i2c_get_clientdata(i2c);
 
 	mfd_remove_devices(chip->dev);
+	#ifndef CONFIG_ARCH_TCC
 	regmap_del_irq_chip(i2c->irq, chip->regmap_irq);
+	#endif
 
 	return 0;
 }
