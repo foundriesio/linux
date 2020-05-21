@@ -88,6 +88,14 @@ typedef enum {
 } vputype, E_VPU_TYPE;
 
 typedef enum {
+    VPU_HEVC_ENC = 5,
+    VPU_HEVC_ENC_EXT,
+    VPU_HEVC_ENC_EXT2,
+    VPU_HEVC_ENC_EXT3,
+    VPU_HEVC_ENC_MAX
+} vpu_hevc_enc_type, E_VPU_HEVC_ENC_TYPE;
+
+typedef enum {
     DEC_WITH_ENC,
     DEC_ONLY // memory will be allocaed without regarding encoder!!
 } Open_Type;

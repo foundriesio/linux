@@ -11,7 +11,7 @@ if TCC_VPU_DRV
 config SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
     bool "support HEVC encoder using WAVE420L"
     depends on (ARCH_TCC805X)
-    default n
+    default y
         help
         Enable HEVC codec using WAVE420L.
 

@@ -34,6 +34,7 @@
 
 #include "vpu_buffer.h"
 #include "vpu_mgr.h"
+#include "vpu_hevc_enc_mgr.h"
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
@@ -190,25 +191,18 @@ static void _vpu_hevc_enc_force_close(vpu_encoder_data *vdata)
 	VpuList_t *cmd_list = &vdata->venc_list[vdata->list_idx];
 	vdata->list_idx = (vdata->list_idx+1)%LIST_MAX;
 
-	if(vmgr_hevc_enc_get_close(vdata->gsEncType) < 0)
+	if(!vmgr_hevc_enc_get_close(vdata->gsEncType) && vmgr_hevc_enc_get_alive())
 	{
-		_DBG(DEBUG_ENC_ERROR, " %d is the unknown type.", vdata->gsEncType);
-	}
-	else
-	{
-		if(!vmgr_hevc_enc_get_close(vdata->gsEncType) && vmgr_hevc_enc_get_alive())
+		int max_count = 100;
+
+		vmgr_hevc_enc_process_ex(cmd_list, vdata->gsEncType, VPU_ENC_CLOSE, &ret);
+		while(!vmgr_hevc_enc_get_close(vdata->gsEncType))
 		{
-			int max_count = 100;
+			max_count--;
+			msleep(20);
 
-			vmgr_hevc_enc_process_ex(cmd_list, vdata->gsEncType, VPU_ENC_CLOSE, &ret);
-			while(!vmgr_hevc_enc_get_close(vdata->gsEncType))
-			{
-				max_count--;
-				msleep(20);
-
-				if(max_count <= 0)
-					break;
-			}
+			if(max_count <= 0)
+				break;
 		}
 	}
 }

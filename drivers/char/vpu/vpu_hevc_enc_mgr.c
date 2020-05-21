@@ -177,17 +177,12 @@ int vmgr_hevc_enc_get_alive(void)
 
 int vmgr_hevc_enc_get_close(vputype type)
 {
-	if(type < VPU_HEVC_ENC_MIN)
-	{
-		_DBG(DEBUG_ENC_ERROR, " %d is the unknown type.", type);
-		return -1;
-	}
 	return vmgr_hevc_enc_data.closed[type];
 }
 
 int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 {
-	if(vmgr_hevc_enc_get_close(type) < 0 || vmgr_hevc_enc_get_close(type) == value)
+	if(vmgr_hevc_enc_get_close(type) == value)
 	{
 		_DBG(DEBUG_ENC_ERROR, " %d was already set to %d or the unkown type.", type, value);
 		return -1;
@@ -209,22 +204,22 @@ static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_HEVC_ENC, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT2, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT3, 1, bfreemem);
 #endif
 }
 
 int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 {
-    if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0 || vmgr_hevc_enc_get_close(type) < 0)
+    if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
     {
         return 0;
     }
@@ -271,7 +266,7 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 	int max_count = 0;
 	int ret;
 
-	for(type = 0; type < VPU_MAX; type++)
+	for(type = VPU_HEVC_ENC; type < VPU_HEVC_ENC_MAX; type++)
 	{
 		if(_vmgr_hevc_enc_proc_exit_by_external(&vmgr_hevc_enc_data.vList[type], &ret, type)) {
 			max_count = wait_ms/10;
@@ -309,7 +304,7 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		}
 		vmgr_hevc_enc_data.bVpu_already_proc_force_closed = false;
 
-		for(type=VPU_ENC; type<VPU_MAX; type++)
+		for(type=VPU_HEVC_ENC; type<VPU_HEVC_ENC_MAX; type++)
 		{
 			if( vmgr_hevc_enc_data.closed[type] == 0 )
 			{
@@ -344,10 +339,10 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
-		vmgr_hevc_enc_get_close(VPU_ENC),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-		vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+		vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
+		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
+		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
+		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
 		);
 
 	return 0;
@@ -465,7 +460,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 
-	if (type >= VPU_HEVC_ENC_MIN)
+	if (type <= VPU_HEVC_ENC_MAX)
 	{
 		if (cmd != VPU_ENC_INIT)
 		{
@@ -694,7 +689,7 @@ static int _vmgr_hevc_enc_operation(void)
 			vmgr_hevc_enc_data.cmd_queued
 			);
 
-		if((oper_data->type >= VPU_ENC && oper_data->type < VPU_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		if((oper_data->type >= VPU_HEVC_ENC && oper_data->type < VPU_HEVC_ENC_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
 		{
 			*(oper_data->vpu_result) |= RET3;
 			*(oper_data->vpu_result) = _vmgr_hevc_enc_process(oper_data->type,
@@ -826,7 +821,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if (info.type >= VPU_ENC && info.isSWCodec)
+						if (info.type >= VPU_HEVC_ENC && info.isSWCodec)
 						{
 							vmgr_hevc_enc_data.clk_limitation = 0;
 							_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
@@ -841,7 +836,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if (info.type >= VPU_ENC && info.isSWCodec)
+						if (info.type >= VPU_HEVC_ENC && info.isSWCodec)
 						{
 							vmgr_hevc_enc_data.clk_limitation = 0;
 							_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
@@ -864,7 +859,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if(type > VPU_MAX)
+						if(type > VPU_HEVC_ENC_MAX)
 							type = VPU_DEC;
 
 						freemem_sz = vmem_get_freemem_size(type);
@@ -882,7 +877,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if(type > VPU_MAX)
+						if(type > VPU_HEVC_ENC_MAX)
 							type = VPU_DEC;
 
 						freemem_sz = vmem_get_freemem_size(type);
@@ -984,14 +979,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 				if(ret == 0)
 				{
-					if (type < VPU_ENC)
-					{
-						vdec_check_instance_available(&nAvailable_Instance);
-					}
-					else
-					{
-						venc_check_instance_available(&nAvailable_Instance);
-					}
+					vdec_check_instance_available(&nAvailable_Instance);
 
 					if(cmd == VPU_CHECK_INSTANCE_AVAILABLE_KERNEL)
 					{
@@ -1032,14 +1020,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 				if(ret == 0)
 				{
-					if(iInst.type == VPU_ENC) // Jun 202000506 - looks like 1 instance for venc, will investigate it in detail later
-					{
-						venc_get_instance(&iInst.nInstance);
-					}
-					else
-					{
-						vdec_get_instance(&iInst.nInstance);
-					}
+					vdec_get_instance(&iInst.nInstance);
 
 					if(cmd == VPU_GET_INSTANCE_IDX_KERNEL)
 					{
@@ -1078,14 +1059,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 				if(ret == 0)
 				{
-					if(iInst.type == VPU_ENC)
-					{
-						venc_clear_instance(iInst.nInstance);
-					}
-					else
-					{
-						vdec_clear_instance(iInst.nInstance);
-					}
+					venc_clear_instance(iInst.nInstance);
 				}
 			}
 			break;
@@ -1189,7 +1163,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 }
 
 #ifdef CONFIG_COMPAT
-static long _vmgr_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long _vmgr_hevc_enc_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	return _vmgr_hevc_enc_ioctl(file, cmd, (unsigned long) compat_ptr(arg) );
 }
@@ -1251,7 +1225,7 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	_DBG(DEBUG_ENC_PROBE, "vmgr_hevc_enc_probe() enter");
 
 	memset(&vmgr_hevc_enc_data, 0, sizeof(mgr_data_t) );
-	for(type=VPU_ENC; type<VPU_MAX; type++)
+	for(type=VPU_HEVC_ENC; type<VPU_HEVC_ENC_MAX; type++)
 	{
 		vmgr_hevc_enc_data.closed[type] = 1;
 	}
@@ -1369,10 +1343,10 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 	{
 		printk("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d)\n",
-			vmgr_hevc_enc_get_close(VPU_ENC),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
 			);
 
 		_vmgr_hevc_enc_external_all_close(200);
@@ -1383,10 +1357,10 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_hevc_enc_disable_clock(0);
 		}
 		printk("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d)\n",
-			vmgr_hevc_enc_get_close(VPU_ENC),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
+			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
 			);
 	}
 
