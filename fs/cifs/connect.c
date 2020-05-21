@@ -21,6 +21,7 @@
 #include <linux/fs.h>
 #include <linux/net.h>
 #include <linux/string.h>
+#include <linux/sched/mm.h>
 #include <linux/sched/signal.h>
 #include <linux/list.h>
 #include <linux/wait.h>
@@ -369,8 +370,10 @@ static int reconn_set_ipaddr(struct TCP_Server_Info *server)
 		return rc;
 	}
 
+	spin_lock(&cifs_tcp_ses_lock);
 	rc = cifs_convert_address((struct sockaddr *)&server->dstaddr, ipaddr,
 				  strlen(ipaddr));
+	spin_unlock(&cifs_tcp_ses_lock);
 	kfree(ipaddr);
 
 	return !rc ? -1 : 0;
@@ -1109,8 +1112,9 @@ cifs_demultiplex_thread(void *p)
 	struct task_struct *task_to_wake = NULL;
 	struct mid_q_entry *mids[MAX_COMPOUND];
 	char *bufs[MAX_COMPOUND];
+	unsigned int noreclaim_flag;
 
-	current->flags |= PF_MEMALLOC;
+	noreclaim_flag = memalloc_noreclaim_save();
 	cifs_dbg(FYI, "Demultiplex PID: %d\n", task_pid_nr(current));
 
 	length = atomic_inc_return(&tcpSesAllocCount);
@@ -1264,6 +1268,7 @@ next_pdu:
 		set_current_state(TASK_RUNNING);
 	}
 
+	memalloc_noreclaim_restore(noreclaim_flag);
 	module_put_and_exit(0);
 }
 
@@ -1466,8 +1471,8 @@ cifs_parse_smb_version(char *value, struct smb_vol *vol, bool is_smb3)
 			cifs_dbg(VFS, "vers=1.0 (cifs) not permitted when mounting with smb3\n");
 			return 1;
 		}
-		printk_once(KERN_WARNING "Use of the less secure dialect "
-			   "vers=1.0 is not recommended unless required for "
+		cifs_dbg(VFS, "Use of the less secure dialect vers=1.0 "
+			   "is not recommended unless required for "
 			   "access to very old servers\n");
 		vol->ops = &smb1_operations;
 		vol->vals = &smb1_values;
@@ -2440,11 +2445,12 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 		pr_notice("CIFS: ignoring forcegid mount option specified with no gid= option.\n");
 
 	if (got_version == false)
-		pr_warn("No dialect specified on mount. Default has changed to "
-			"a more secure dialect, SMB2.1 or later (e.g. SMB3), from CIFS "
-			"(SMB1). To use the less secure SMB1 dialect to access "
-			"old servers which do not support SMB3 (or SMB2.1) specify vers=1.0"
-			" on mount.\n");
+		pr_warn_once("No dialect specified on mount. Default has changed"
+			" to a more secure dialect, SMB2.1 or later (e.g. "
+			"SMB3.1.1), from CIFS (SMB1). To use the less secure "
+			"SMB1 dialect to access old servers which do not "
+			"support SMB3.1.1 (or even SMB3 or SMB2.1) specify "
+			"vers=1.0 on mount.\n");
 
 	kfree(mountdata_copy);
 	return 0;
@@ -3305,6 +3311,10 @@ cifs_find_tcon(struct cifs_ses *ses, struct smb_vol *volume_info)
 	spin_lock(&cifs_tcp_ses_lock);
 	list_for_each(tmp, &ses->tcon_list) {
 		tcon = list_entry(tmp, struct cifs_tcon, tcon_list);
+#ifdef CONFIG_CIFS_DFS_UPCALL
+		if (tcon->dfs_path)
+			continue;
+#endif
 		if (!match_tcon(tcon, volume_info))
 			continue;
 		++tcon->tc_count;
