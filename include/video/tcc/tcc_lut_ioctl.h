@@ -30,7 +30,8 @@ enum{
 	LUT_COMP0 = 3,
 	LUT_COMP1 = 4,
 	LUT_COMP2 = 5,
-	LUT_COMP3 = 6
+	LUT_COMP3 = 6,
+	LUT_DEV3 = 7,
 };
 
 
@@ -63,7 +64,7 @@ enum {
 
 struct VIOC_LUT_VALUE_SET
 {
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC805X)
 	unsigned int Gamma[256];	 //vioc componet : RGB ,  disp component : BGR
 #else
 	// 10bit RGB
