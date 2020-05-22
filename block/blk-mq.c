@@ -1891,10 +1891,11 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 
 	cookie = request_to_qc_t(data.hctx, rq);
 
+	blk_mq_bio_to_request(rq, bio);
+
 	plug = current->plug;
 	if (unlikely(is_flush_fua)) {
 		blk_mq_put_ctx(data.ctx);
-		blk_mq_bio_to_request(rq, bio);
 
 		/* bypass scheduler for flush rq */
 		blk_insert_flush(rq);
@@ -1903,7 +1904,6 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 		struct request *last = NULL;
 
 		blk_mq_put_ctx(data.ctx);
-		blk_mq_bio_to_request(rq, bio);
 
 		/*
 		 * @request_count may become stale because of schedule
@@ -1926,8 +1926,10 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 		}
 
 		list_add_tail(&rq->queuelist, &plug->mq_list);
+	} else if (q->elevator) {
+		blk_mq_put_ctx(data.ctx);
+		blk_mq_sched_insert_request(rq, false, true, true);
 	} else if (plug && !blk_queue_nomerges(q)) {
-		blk_mq_bio_to_request(rq, bio);
 
 		/*
 		 * We do limited plugging. If the bio can be merged, do that.
@@ -1950,14 +1952,12 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 			blk_mq_try_issue_directly(data.hctx, same_queue_rq,
 					&cookie);
 		}
-	} else if ((q->nr_hw_queues > 1 && is_sync) || (!q->elevator &&
-			!data.hctx->dispatch_busy)) {
+	} else if ((q->nr_hw_queues > 1 && is_sync) ||
+			!data.hctx->dispatch_busy) {
 		blk_mq_put_ctx(data.ctx);
-		blk_mq_bio_to_request(rq, bio);
 		blk_mq_try_issue_directly(data.hctx, rq, &cookie);
 	} else {
 		blk_mq_put_ctx(data.ctx);
-		blk_mq_bio_to_request(rq, bio);
 		blk_mq_sched_insert_request(rq, false, true, true);
 	}
 
