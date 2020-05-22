@@ -56,6 +56,10 @@
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9
 #include "vp9_mgr.h"
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include "vpu_hevc_enc_mgr.h"
+#endif
+
 #include <soc/tcc/pmap.h>
 
 #include <video/tcc/tcc_vpu_wbuffer.h>
@@ -110,6 +114,11 @@ extern int vp9mgr_opened(void);
 static MEM_ALLOC_INFO_t gsJpuWork_memInfo;
 extern int jmgr_opened(void);
 #endif
+
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+extern int vmgr_hevc_enc_opened(void);
+#endif
+
 
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 static MEM_ALLOC_INFO_t gsVpuEncSeqheader_memInfo[VPU_ENC_MAX_CNT];
@@ -1938,6 +1947,9 @@ int vmem_init(void)
 #endif
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
 			&& (vp9mgr_opened() == 0)
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		&& (vmgr_hevc_enc_opened() == 0)
 #endif
 		){
 			if(!atomic_read(&cntMem_Reference))

@@ -109,7 +109,7 @@
 
 
 // ENCODER on VPU
-#define INST_ENC_1ST_USE                (0)
+#define INST_ENC_1ST_USE                (1)
 #define INST_ENC_1ST_VIDEO_WIDTH        (1920)       // 16x alignment
 #define INST_ENC_1ST_VIDEO_HEIGHT       (1088)       // 16x alignment
 #define INST_ENC_1ST_MAX_FRAMEBUFFERS   (8)          // 8 :: fixed value. ask right engineer if you want to change it.

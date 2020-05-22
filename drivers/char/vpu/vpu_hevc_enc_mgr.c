@@ -1210,6 +1210,14 @@ static struct miscdevice _vmgr_hevc_enc_misc_device =
     &_vmgr_hevc_enc_fops,
 };
 
+int vmgr_hevc_enc_opened(void)
+{
+    if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
+        return 0;
+    return 1;
+}
+EXPORT_SYMBOL(vmgr_hevc_enc_opened);
+
 int vmgr_hevc_enc_probe(struct platform_device *pdev)
 {
 	int ret;
