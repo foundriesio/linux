@@ -38,14 +38,28 @@ struct tsmp_ringbuf_info
 
 enum tsmp_pid_type
 {
-	AUDIO_TYPE = 0,
-	VIDEO_TYPE,
+	TSMP_AUDIO_TYPE = 0,
+	TSMP_VIDEO_TYPE,
+	TSMP_SECTION_TYPE,
+	TSMP_PES_TYPE,
+	TSMP_TYPE_MAX,
+
+	TSMP_UNKNOWN_TYPE = TSMP_TYPE_MAX,
 };
 
 struct tsmp_pid_info
 {
 	enum tsmp_pid_type type;
 	uint16_t pid;
+};
+
+struct tsmp_depack_stream
+{
+	uintptr_t pBuffer;
+	int32_t nLength;
+	int64_t nTimestampMs;
+
+	struct tsmp_pid_info pid_info;
 };
 
 /* clang-format off */
@@ -55,8 +69,11 @@ struct tsmp_pid_info
 #define TSMP_IOCTL_MAGIC 'T'
 
 /** Gets an event information after being notified */
-#define TSMP_GET_BUF_INFO		_IOR(TSMP_IOCTL_MAGIC, 1, struct tsmp_ringbuf_info)
-#define TSMP_SET_PID_INFO		_IOW(TSMP_IOCTL_MAGIC, 2, struct tsmp_pid_info)
+#define TSMP_GET_BUF_INFO       _IOR(TSMP_IOCTL_MAGIC, 1, struct tsmp_ringbuf_info)
+#define TSMP_SET_PID_INFO       _IOW(TSMP_IOCTL_MAGIC, 2, struct tsmp_pid_info)
+
+#define TSMP_DEPACK_STREAM      _IOWR(TSMP_IOCTL_MAGIC, 3, struct tsmp_depack_stream)
+
 /* clang-format on */
 
 #endif /* INCLUDED_TSMP_IOCTL */

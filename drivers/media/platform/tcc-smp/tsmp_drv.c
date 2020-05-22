@@ -43,6 +43,7 @@ struct tsmp_dev
 	int revent_mask;
 	int open;
 	struct tsmp_ringbuf_info buf_info;
+	struct tsmp_depack_stream depack_out;
 	uint16_t video_pid;
 	uint16_t audio_pid;
 };
@@ -61,6 +62,44 @@ static void tsmp_callback(int dmxch, uintptr_t off1, int off1_size, uintptr_t of
 	tsmp_dev[dmxch].revent_mask |= TSMP_EVENT;
 	wake_up_interruptible(&tsmp_dev[dmxch].wait_queue);
 	mutex_unlock(&tsmp_dev[dmxch].mutex);
+}
+
+static int tsmp_depack_stream_ioctl(struct file *filp, struct tsmp_depack_stream *p_depack_stream)
+{
+	int ret = -1;
+	struct tsmp_dev *dev = filp->private_data;
+
+	if (IS_ERR(p_depack_stream)) {
+		return PTR_ERR(p_depack_stream);
+	}
+
+	ret = mutex_lock_interruptible(&dev->mutex);
+	if (unlikely(ret != 0)) {
+		ELOG("mutex_lock failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = copy_from_user(p_depack_stream, &dev->depack_out, sizeof(struct tsmp_depack_stream));
+	if (unlikely(ret != 0)) {
+		ELOG("copy_from_user failed: %d\n", ret);
+		return ret;
+	}
+
+	// [TODO] IMPLEMENT HERE !!
+
+	ret = copy_to_user(p_depack_stream, &dev->depack_out, sizeof(struct tsmp_depack_stream));
+	if (unlikely(ret != 0)) {
+		ELOG("copy_to_user failed: %d\n", ret);
+		goto err_copy_to_user;
+	}
+	dev->revent_mask = 0;
+
+	ret = 0;
+	TRACE;
+
+err_copy_to_user:
+	mutex_unlock(&dev->mutex);
+	return ret;
 }
 
 static int tsmp_get_buf_info_ioctl(struct file *filp, struct tsmp_ringbuf_info *buf_info)
@@ -111,11 +150,11 @@ static int tsmp_set_pid_info_ioctl(struct file *filp, struct tsmp_pid_info *arg)
 	}
 
 	switch (pid_info.type) {
-	case AUDIO_TYPE:
+	case TSMP_AUDIO_TYPE:
 		dev->audio_pid = pid_info.pid;
 		break;
 
-	case VIDEO_TYPE:
+	case TSMP_VIDEO_TYPE:
 		dev->video_pid = pid_info.pid;
 		break;
 	}
@@ -136,6 +175,10 @@ static long tsmp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case TSMP_SET_PID_INFO:
 		ret = tsmp_set_pid_info_ioctl(filp, (struct tsmp_pid_info *)arg);
+		break;
+
+	case TSMP_DEPACK_STREAM:
+		ret = tsmp_depack_stream_ioctl(filp, (struct tsmp_depack_stream *)arg);
 		break;
 
 	default:
