@@ -315,6 +315,7 @@ void hyperv_init(void);
 void hyperv_setup_mmu_ops(void);
 void hyper_alloc_mmu(void);
 void hyperv_report_panic(struct pt_regs *regs, long err);
+void hyperv_report_panic_msg(phys_addr_t pa, size_t size);
 bool hv_is_hypercall_page_setup(void);
 void hyperv_cleanup(void);
 #else /* CONFIG_HYPERV */
