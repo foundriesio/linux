@@ -905,6 +905,7 @@ static void ptys2ethtool_supported_advertised_port(struct ethtool_link_ksettings
 
 static void get_speed_duplex(struct net_device *netdev,
 			     u32 eth_proto_oper,
+			     u16 data_rate_oper,
 			     struct ethtool_link_ksettings *link_ksettings)
 {
 	u32 speed = SPEED_UNKNOWN;
@@ -915,7 +916,10 @@ static void get_speed_duplex(struct net_device *netdev,
 
 	speed = mlx5e_port_ptys2speed(eth_proto_oper);
 	if (!speed) {
-		speed = SPEED_UNKNOWN;
+		if (data_rate_oper)
+			speed = 100 * data_rate_oper;
+		else
+			speed = SPEED_UNKNOWN;
 		goto out;
 	}
 
@@ -1005,6 +1009,7 @@ static int mlx5e_get_link_ksettings(struct net_device *netdev,
 	struct mlx5e_priv *priv    = netdev_priv(netdev);
 	struct mlx5_core_dev *mdev = priv->mdev;
 	u32 out[MLX5_ST_SZ_DW(ptys_reg)] = {0};
+	u16 data_rate_oper;
 	u32 rx_pause = 0;
 	u32 tx_pause = 0;
 	u32 eth_proto_cap;
@@ -1030,6 +1035,7 @@ static int mlx5e_get_link_ksettings(struct net_device *netdev,
 	an_disable_admin = MLX5_GET(ptys_reg, out, an_disable_admin);
 	an_status        = MLX5_GET(ptys_reg, out, an_status);
 	connector_type   = MLX5_GET(ptys_reg, out, connector_type);
+	data_rate_oper	    = MLX5_GET(ptys_reg, out, data_rate_oper);
 
 	mlx5_query_port_pause(mdev, &rx_pause, &tx_pause);
 
@@ -1038,7 +1044,8 @@ static int mlx5e_get_link_ksettings(struct net_device *netdev,
 
 	get_supported(eth_proto_cap, link_ksettings);
 	get_advertising(eth_proto_admin, tx_pause, rx_pause, link_ksettings);
-	get_speed_duplex(netdev, eth_proto_oper, link_ksettings);
+	get_speed_duplex(priv->netdev, eth_proto_oper,
+			 data_rate_oper, link_ksettings);
 
 	eth_proto_oper = eth_proto_oper ? eth_proto_oper : eth_proto_cap;
 
