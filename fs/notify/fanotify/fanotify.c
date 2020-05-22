@@ -108,10 +108,13 @@ static bool fanotify_should_send_event(struct fsnotify_mark *inode_mark,
 	/*
 	 * If the event is for a child and this mark doesn't care about
 	 * events on a child, don't send it!
+	 * If the event is on dir and this mark doesn't care about
+	 * events on dir, don't send it!
 	 */
 	if (inode_mark &&
 	    (!(event_mask & FS_EVENT_ON_CHILD) ||
-	     (inode_mark->mask & FS_EVENT_ON_CHILD))) {
+	     (inode_mark->mask & FS_EVENT_ON_CHILD)) &&
+	    (!(event_mask & FS_ISDIR) || inode_mark->mask & FS_ISDIR)) {
 		marks_mask |= inode_mark->mask;
 		marks_ignored_mask |= inode_mark->ignored_mask;
 	}
@@ -119,8 +122,11 @@ static bool fanotify_should_send_event(struct fsnotify_mark *inode_mark,
 	/*
 	 * Mount marks don't care about event on children. Ignore them as
 	 * otherwise we could report some events twice. 
+	 * If the event is on dir and this mark doesn't care about
+	 * events on dir, don't send it!
 	 */
-	if (vfsmnt_mark && !(event_mask & FS_EVENT_ON_CHILD)) {
+	if (vfsmnt_mark && !(event_mask & FS_EVENT_ON_CHILD) &&
+	    (!(event_mask & FS_ISDIR) || vfsmnt_mark->mask & FS_ISDIR)) {
 		marks_mask |= vfsmnt_mark->mask;
 		marks_ignored_mask |= vfsmnt_mark->ignored_mask;
 	}
