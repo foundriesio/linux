@@ -567,6 +567,9 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 #ifdef CONFIG_SUPPORT_TCC_JPU
 					&& jmgr_get_close(VPU_DEC_EXT) && jmgr_get_close(VPU_ENC)
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+					&& vmgr_hevc_enc_get_close(VPU_HEVC_ENC)
+#endif
 				)
 				{
 					if(_vmem_check_allocation_available(0, request_size, type) < 0)
@@ -1740,6 +1743,9 @@ unsigned int vmem_get_free_memory(vputype type)
 #ifdef CONFIG_SUPPORT_TCC_JPU
 			&& jmgr_get_close(VPU_DEC_EXT) && jmgr_get_close(VPU_ENC)
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+			&& vmgr_hevc_enc_get_close(VPU_HEVC_ENC)
+#endif
 		)
 		{
 			szFreeMem = sz_remained_mem;
@@ -1949,7 +1955,7 @@ int vmem_init(void)
 			&& (vp9mgr_opened() == 0)
 #endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
-		&& (vmgr_hevc_enc_opened() == 0)
+			&& (vmgr_hevc_enc_opened() == 0)
 #endif
 		){
 			if(!atomic_read(&cntMem_Reference))
