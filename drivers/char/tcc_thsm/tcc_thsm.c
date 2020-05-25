@@ -119,7 +119,7 @@ static long tcc_thsm_ioctl_finalize(unsigned long arg)
 
 static long tcc_thsm_ioctl_get_version(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_version_param param;
+	struct tcc_thsm_ioctl_version_param param = {0};
 	long ret = -EFAULT;
 
 	ret = tcc_thsm_cmd_get_version(device_id, &param.major, &param.minor);
@@ -138,7 +138,7 @@ static long tcc_thsm_ioctl_get_version(unsigned long arg)
 
 static long tcc_thsm_ioctl_set_mode(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_mode_param param;
+	struct tcc_thsm_ioctl_set_mode_param param = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_set_mdoe_param *)arg, sizeof(param))) {
@@ -154,7 +154,7 @@ static long tcc_thsm_ioctl_set_mode(unsigned long arg)
 
 static long tcc_thsm_ioctl_set_key(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_key_param param;
+	struct tcc_thsm_ioctl_set_key_param param = {0};
 	uint32_t key1[32] = {0};
 	uint32_t key2[32] = {0};
 	uint32_t key3[32] = {0};
@@ -169,8 +169,7 @@ static long tcc_thsm_ioctl_set_key(unsigned long arg)
 		ELOG("param.key is null\n");
 		return ret;
 	}
-
-	if (copy_from_user(key1, param.key1, param.key1_size)) {
+	if (copy_from_user((void *)key1, (const void *)param.key1, param.key1_size)) {
 		ELOG("copy_from_user failed(%d)\n", param.key1_size);
 		return ret;
 	}
@@ -190,15 +189,15 @@ static long tcc_thsm_ioctl_set_key(unsigned long arg)
 	}
 
 	ret = tcc_thsm_cmd_set_key(
-		device_id, param.key_index, param.key1, param.key1_size, param.key2, param.key2_size,
-		param.key3, param.key3_size);
+		device_id, param.key_index, key1, param.key1_size, key2, param.key2_size, key3,
+		param.key3_size);
 
 	return ret;
 }
 
 static long tcc_thsm_ioctl_set_key_from_storage(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_key_storage_param param;
+	struct tcc_thsm_ioctl_set_key_storage_param param = {0};
 	uint8_t obj_id[32] = {
 		0,
 	};
@@ -227,7 +226,7 @@ static long tcc_thsm_ioctl_set_key_from_storage(unsigned long arg)
 
 static long tcc_thsm_ioctl_set_key_from_otp(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_key_otp_param param;
+	struct tcc_thsm_ioctl_set_key_otp_param param = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
@@ -254,17 +253,12 @@ static long tcc_thsm_ioctl_free_mode(unsigned long arg)
 
 static long tcc_thsm_ioctl_set_iv_symmetric(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_iv_param param;
+	struct tcc_thsm_ioctl_set_iv_param param = {0};
 	uint32_t iv[16] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_set_iv_param *)arg, sizeof(param))) {
 		ELOG("copy_from_user failed\n");
-		return ret;
-	}
-
-	if (param.iv == NULL) {
-		ELOG("param.iv is null\n");
 		return ret;
 	}
 
@@ -280,7 +274,7 @@ static long tcc_thsm_ioctl_set_iv_symmetric(unsigned long arg)
 
 static long tcc_thsm_ioctl_run_cipher(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_cipher_param param;
+	struct tcc_thsm_ioctl_cipher_param param = {0};
 	uint32_t dst_size = 0;
 	long ret = -EFAULT;
 
@@ -315,7 +309,7 @@ static long tcc_thsm_ioctl_run_cipher(unsigned long arg)
 
 static long tcc_thsm_ioctl_run_cipher_by_dma(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_cipher_dma_param param;
+	struct tcc_thsm_ioctl_cipher_dma_param param = {0};
 	uint32_t dst_size = 0;
 	long ret = -EFAULT;
 
@@ -339,9 +333,9 @@ static long tcc_thsm_ioctl_run_cipher_by_dma(unsigned long arg)
 
 static long tcc_thsm_ioctl_run_digest(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_run_digest_param param;
+	struct tcc_thsm_ioctl_run_digest_param param = {0};
 	uint32_t hash_len = 0;
-	uint8_t hash[32] = {0};
+	uint8_t hash[64] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
@@ -351,6 +345,11 @@ static long tcc_thsm_ioctl_run_digest(unsigned long arg)
 	}
 
 	if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.chunk, param.chunk_len)) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (copy_from_user(&hash_len, param.hash_len, sizeof(uint32_t))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -376,13 +375,18 @@ static long tcc_thsm_ioctl_run_digest(unsigned long arg)
 
 static long tcc_thsm_ioctl_run_digest_by_dma(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_run_digest_dma_param param;
+	struct tcc_thsm_ioctl_run_digest_dma_param param = {0};
 	uint32_t hash_len = 0;
 	uint8_t hash[32] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
 			&param, (const struct tcc_thsm_ioctl_run_digest_dma_param *)arg, sizeof(param))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (copy_from_user(&hash_len, param.hash_len, sizeof(uint32_t))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -406,7 +410,7 @@ static long tcc_thsm_ioctl_run_digest_by_dma(unsigned long arg)
 
 static long tcc_thsm_ioctl_set_iv_mac(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_set_iv_param param;
+	struct tcc_thsm_ioctl_set_iv_param param = {0};
 	uint32_t iv[16] = {0};
 	long ret = -EFAULT;
 
@@ -415,14 +419,11 @@ static long tcc_thsm_ioctl_set_iv_mac(unsigned long arg)
 		return ret;
 	}
 
-	if (param.iv == NULL) {
-		ELOG("param.iv is null\n");
-		return ret;
-	}
-
-	if (copy_from_user(iv, (const uint8_t *)param.iv, param.iv_size)) {
-		ELOG("copy_from_user failed(%d)\n", param.iv_size);
-		return ret;
+	if (param.iv_size > 0) {
+		if (copy_from_user(iv, (const uint8_t *)param.iv, param.iv_size)) {
+			ELOG("copy_from_user failed(%d)\n", param.iv_size);
+			return ret;
+		}
 	}
 
 	ret = tcc_thsm_cmd_set_iv_mac(device_id, param.key_index, iv, param.iv_size);
@@ -432,7 +433,7 @@ static long tcc_thsm_ioctl_set_iv_mac(unsigned long arg)
 
 static long tcc_thsm_ioctl_compute_mac(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_compute_mac_param param;
+	struct tcc_thsm_ioctl_compute_mac_param param = {0};
 	uint32_t mac_len = 0;
 	uint8_t mac[32] = {0};
 	long ret = -EFAULT;
@@ -444,6 +445,11 @@ static long tcc_thsm_ioctl_compute_mac(unsigned long arg)
 	}
 
 	if (copy_from_user(dma_buf->srcVir, (const uint8_t *)param.message, param.message_len)) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (copy_from_user(&mac_len, param.mac_len, sizeof(uint32_t))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -468,13 +474,18 @@ static long tcc_thsm_ioctl_compute_mac(unsigned long arg)
 
 static long tcc_thsm_ioctl_compute_mac_by_dma(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_compute_mac_dma_param param;
+	struct tcc_thsm_ioctl_compute_mac_dma_param param = {0};
 	uint32_t mac_len = 0;
 	uint8_t mac[32] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
 			&param, (const struct tcc_thsm_ioctl_compute_mac_dma_param *)arg, sizeof(param))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (copy_from_user(&mac_len, param.mac_len, sizeof(uint32_t))) {
 		ELOG("copy_from_user failed\n");
 		return ret;
 	}
@@ -497,8 +508,8 @@ static long tcc_thsm_ioctl_compute_mac_by_dma(unsigned long arg)
 
 static long tcc_thsm_ioctl_compare_mac(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_compare_mac_param param;
-	uint8_t mac[32] = {0};
+	struct tcc_thsm_ioctl_compare_mac_param param = {0};
+	uint8_t mac[64] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(
@@ -528,7 +539,7 @@ static long tcc_thsm_ioctl_compare_mac(unsigned long arg)
 
 static long tcc_thsm_ioctl_compare_mac_by_dma(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_compare_mac_dma_param param;
+	struct tcc_thsm_ioctl_compare_mac_dma_param param = {0};
 	uint8_t mac[32] = {0};
 	long ret = -EFAULT;
 
@@ -552,7 +563,7 @@ static long tcc_thsm_ioctl_compare_mac_by_dma(unsigned long arg)
 
 static long tcc_thsm_ioctl_get_rand(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_rng_param param;
+	struct tcc_thsm_ioctl_rng_param param = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_rng_param *)arg, sizeof(param))) {
@@ -577,8 +588,8 @@ static long tcc_thsm_ioctl_get_rand(unsigned long arg)
 
 static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_gen_key_param param;
-	uint8_t obj_id[32] = {0};
+	struct tcc_thsm_ioctl_gen_key_param param = {0};
+	int8_t obj_id[32] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_gen_key_param *)arg, sizeof(param))) {
@@ -591,7 +602,7 @@ static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 		return ret;
 	}
 
-	if (copy_from_user(obj_id, (const uint8_t *)param.obj_id, param.obj_len)) {
+	if (copy_from_user(obj_id, (const int8_t *)param.obj_id, param.obj_len)) {
 		ELOG("copy_from_user failed(%d)\n", param.obj_len);
 		return ret;
 	}
@@ -604,8 +615,8 @@ static long tcc_thsm_ioctl_gen_key_ss(unsigned long arg)
 
 static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_del_key_param param;
-	uint8_t obj_id[32] = {0};
+	struct tcc_thsm_ioctl_del_key_param param = {0};
+	int8_t obj_id[32] = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_del_key_param *)arg, sizeof(param))) {
@@ -618,7 +629,7 @@ static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 		return ret;
 	}
 
-	if (copy_from_user(obj_id, (const uint8_t *)param.obj_id, param.obj_len)) {
+	if (copy_from_user(obj_id, (const int8_t *)param.obj_id, param.obj_len)) {
 		ELOG("copy_from_user failed(%d)\n", param.obj_len);
 		return ret;
 	}
@@ -630,8 +641,8 @@ static long tcc_thsm_ioctl_del_key_ss(unsigned long arg)
 
 static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_write_key_param param;
-	uint8_t obj_id[32] = {0};
+	struct tcc_thsm_ioctl_write_key_param param = {0};
+	int8_t obj_id[32] = {0};
 	uint8_t buffer[128] = {0};
 	long ret = -EFAULT;
 
@@ -645,7 +656,7 @@ static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 		return ret;
 	}
 
-	if (copy_from_user(obj_id, (const uint8_t *)param.obj_id, param.obj_len)) {
+	if (copy_from_user(obj_id, (const int8_t *)param.obj_id, param.obj_len)) {
 		ELOG("copy_from_user failed(%d)\n", param.obj_len);
 		return ret;
 	}
@@ -662,7 +673,7 @@ static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 }
 static long tcc_thsm_ioctl_write_otp(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_otp_param param;
+	struct tcc_thsm_ioctl_otp_param param = {0};
 	uint8_t buffer[128] = {0};
 	long ret = -EFAULT;
 
@@ -683,7 +694,7 @@ static long tcc_thsm_ioctl_write_otp(unsigned long arg)
 
 static long tcc_thsm_ioctl_write_otpimage(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_otpimage_param param;
+	struct tcc_thsm_ioctl_otpimage_param param = {0};
 	long ret = -EFAULT;
 
 	if (copy_from_user(&param, (const struct tcc_thsm_ioctl_otpimage_param *)arg, sizeof(param))) {
@@ -698,7 +709,7 @@ static long tcc_thsm_ioctl_write_otpimage(unsigned long arg)
 
 static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_asym_enc_dec_param param;
+	struct tcc_thsm_ioctl_asym_enc_dec_param param = {0};
 	uint32_t dst_size = 0;
 	long ret = -EFAULT;
 
@@ -713,6 +724,10 @@ static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 		return ret;
 	}
 
+	if (copy_from_user(&dst_size, param.dst_size, sizeof(uint32_t))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
 	ret = tcc_thsm_cmd_asym_enc_dec_by_dma(
 		device_id, param.key_index, (uint32_t)dma_buf->srcPhy, param.src_size,
 		(uint32_t)dma_buf->dstPhy, &dst_size, param.enc);
@@ -723,7 +738,7 @@ static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 		ELOG("copy_to_user failed\n");
 		return -EFAULT;
 	}
-	if (copy_to_user(param.dst_size, &dst_size, sizeof(dst_size))) {
+	if (copy_to_user(param.dst_size, &dst_size, sizeof(uint32_t))) {
 		ELOG("copy_to_user failed\n");
 		return -EFAULT;
 	}
@@ -733,7 +748,7 @@ static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 
 static long tcc_thsm_ioctl_asym_enc_dec_by_dma(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_asym_enc_dec_dma_param param;
+	struct tcc_thsm_ioctl_asym_enc_dec_dma_param param = {0};
 	uint32_t dst_size = 0;
 	long ret = -EFAULT;
 
@@ -743,11 +758,16 @@ static long tcc_thsm_ioctl_asym_enc_dec_by_dma(unsigned long arg)
 		return ret;
 	}
 
+	if (copy_from_user(&dst_size, param.dst_size, sizeof(uint32_t))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
 	ret = tcc_thsm_cmd_asym_enc_dec_by_dma(
 		device_id, param.key_index, (uint32_t)param.src_addr, param.src_size,
 		(uint32_t)param.dst_addr, &dst_size, param.enc);
 
-	if (copy_to_user(param.dst_size, &dst_size, sizeof(dst_size))) {
+	if (copy_to_user(param.dst_size, &dst_size, sizeof(uint32_t))) {
 		ELOG("copy_to_user failed\n");
 		return -EFAULT;
 	}
@@ -757,7 +777,7 @@ static long tcc_thsm_ioctl_asym_enc_dec_by_dma(unsigned long arg)
 
 static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_asym_sign_digest_param param;
+	struct tcc_thsm_ioctl_asym_sign_digest_param param = {0};
 	uint8_t dig[512] = {0}, sig[128] = {0};
 	uint32_t sig_size = 0;
 	long ret = -EFAULT;
@@ -773,6 +793,11 @@ static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 		return ret;
 	}
 
+	if (copy_from_user(&sig_size, param.sig_size, sizeof(uint32_t))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
 	ret = tcc_thsm_cmd_asym_sign_digest(
 		device_id, param.key_index, dig, param.dig_size, sig, &sig_size);
 
@@ -780,7 +805,7 @@ static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 		ELOG("copy_to_user failed\n");
 		return -EFAULT;
 	}
-	if (copy_to_user(param.sig_size, &sig_size, sizeof(sig_size))) {
+	if (copy_to_user(param.sig_size, &sig_size, sizeof(uint32_t))) {
 		ELOG("copy_to_user failed\n");
 		return -EFAULT;
 	}
@@ -790,7 +815,7 @@ static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 
 static long tcc_thsm_ioctl_asym_verify_digest(unsigned long arg)
 {
-	struct tcc_thsm_ioctl_asym_verify_digest_param param;
+	struct tcc_thsm_ioctl_asym_verify_digest_param param = {0};
 	uint8_t dig[512] = {0}, sig[128] = {0};
 	long ret = -EFAULT;
 
