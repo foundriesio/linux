@@ -18,4 +18,4 @@
 
 #include "tcc-pmap-common.dtsi"
 
-#include "tcc8050-android-board-xxx.dts"
+#include "tcc8050-android-lpd4x322_sv0.1.dts"

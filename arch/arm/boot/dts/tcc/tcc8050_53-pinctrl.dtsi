@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC8053 pinctrl
+ * Device tree for Telechips TCC8050 pinctrl
  */
 
 &pinctrl {
@@ -526,7 +526,7 @@
 	};
 
 	i2c38_bus: i2c38_bus {
-		telechips,pins = "gpmc-21", "gpmc-22";
+		telechips,pins = "gpmc-22", "gpmc-23";
 		telechips,pin-function = <8>;
 		telechips,input_buffer_enable;
 		telechips,pull-disable;
@@ -537,23 +537,6 @@
 		telechips,pin-function = <8>;
 		telechips,input_buffer_enable;
 		telechips,pull-disable;
-	};
-
-	hdmi_cec: hdmi_cec {
-		telechips,pins = "gpc-15";
-		telechips,pin-function = <1>;
-		telechips,pull-enable;
-		telechips,pull-up;
-	};
-	hdmi_hpd: hdmi_hpd {
-		telechips,pins = "gpc-14";
-		telechips,pin-function = <1>;
-		telechips,pull-down;
-	};
-	hdmi_i2c: hdmi_i2c {
-		telechips,pins = "gpc-8", "gpc-9";
-		telechips,pin-function = <1>;
-		telechips,pull-up;
 	};
 
 	gpsb0_bus: gpsb0_bus {
@@ -1165,7 +1148,7 @@
 		telechips,pin-function = <7>;
 	};
 
-	smartcard_bus: smartcard_bus {
+	smartcard_bus: smartcard_bus { // TODO: Does TCC805x have smartcard...?
 		telechips,pins = "gpb-4", "gpb-5";
 		telechips,pin-function = <15>;
 	};
@@ -1187,7 +1170,7 @@
 	};
 
 	aux_detect_ma14: aux_detect_ma14{
-		 telechips,pins = "gpma-14";
+		 telechips,pins = "gpmd-13";
 		 telechips,pin-function = <0>;
 		 telechips,input-enable;
 		 telechips,no-pull;
@@ -1572,6 +1555,7 @@
 	telechips,output-low = <0>;
     };
 
+
 /*****************************************************
 * Multi DAI Port_3 m1:multi, dai3:port3
 ******************************************************/
@@ -1693,6 +1677,130 @@
 
     m1dai3_dai3_idle: m1dai3_dai3_idle{
         telechips,pins = "gpe-10";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+/*****************************************************
+* Multi DAI Port_4 m1:multi, dai4:port4
+******************************************************/
+
+    m1dai4_mclk: m1dai4_mclk{
+        telechips,pins = "gpmb-12";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_mclk_idle: m1dai4_mclk_idle{
+        telechips,pins = "gpmb-12";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_bclk: m1dai4_bclk{
+        telechips,pins = "gpmb-13";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_bclk_idle: m1dai4_bclk_idle{
+        telechips,pins = "gpmb-13";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_lrck: m1dai4_lrck{
+        telechips,pins = "gpmb-14";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_lrck_idle: m1dai4_lrck_idle{
+        telechips,pins = "gpmb-14";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dao0: m1dai4_dao0{
+        telechips,pins = "gpmb-15";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dao0_idle: m1dai4_dao0_idle{
+        telechips,pins = "gpmb-15";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dai0: m1dai4_dai0{
+        telechips,pins = "gpmb-16";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dai0_idle: m1dai4_dai0_idle{
+        telechips,pins = "gpmb-16";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dao1: m1dai4_dao1{
+        telechips,pins = "gpmb-17";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dao1_idle: m1dai4_dao1_idle{
+        telechips,pins = "gpmb-17";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dai1: m1dai4_dai1{
+        telechips,pins = "gpmb-18";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dai1_idle: m1dai4_dai1_idle{
+        telechips,pins = "gpmb-18";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dao2: m1dai4_dao2{
+        telechips,pins = "gpmb-19";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dao2_idle: m1dai4_dao2_idle{
+        telechips,pins = "gpmb-19";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dai2: m1dai4_dai2{
+        telechips,pins = "gpmb-20";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dai2_idle: m1dai4_dai2_idle{
+        telechips,pins = "gpmb-20";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dao3: m1dai4_dao3{
+        telechips,pins = "gpmb-21";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dao3_idle: m1dai4_dao3_idle{
+        telechips,pins = "gpmb-21";
+        telechips,pin-function = <0>;
+	telechips,output-low = <0>;
+    };
+
+    m1dai4_dai3: m1dai4_dai3{
+        telechips,pins = "gpmb-22";
+        telechips,pin-function = <1>;
+    };
+
+    m1dai4_dai3_idle: m1dai4_dai3_idle{
+        telechips,pins = "gpmb-22";
         telechips,pin-function = <0>;
 	telechips,output-low = <0>;
     };
@@ -2354,6 +2462,16 @@
 		telechips,drive-strength = <1>;
 	};
 
+	gmac1_rxrstn: gmac1_rxrstn{
+		telechips,pins = "gpb-26";
+		telechips,pin-function = <1>;
+	};
+
+	gmac1_txrstn: gmac1_txrstn {
+		telechips,pins = "gpb-27";
+		telechips,pin-function = <1>;
+	};
+
 	switch_reverse_ma15: switch_reverse_ma15 {
 		telechips,pins = "gpma-15";
 		telechips,pin-function = <0>;
@@ -2401,88 +2519,8 @@
 		telechips,no-pull;
 	};
 	pmic_irq: pmic_irq {
-		telechips,pins = "gpb-22";
+		telechips,pins = "gpmc-4";
 		telechips,pin-function = <0>;
-	};
-
-		lcd_lpxclk: lcd_lpxclk {
-		telechips,pins = "gpb-0";
-		telechips,pin-function = <1>;
-	};
-
-	lcd_lpxclk_idle: lcd_lpxclk_idle {
-		telechips,pins = "gpb-0";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
-	};
-
-	lcd_lhsync: lcd_lhsync {
-		telechips,pins = "gpb-1";
-		telechips,pin-function = <1>;
-	};
-
-	lcd_lhsync_idle: lcd_lhsync_idle {
-		telechips,pins = "gpb-1";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
-	};
-
-	lcd_lvsync: lcd_lvsync {
-		telechips,pins = "gpb-2";
-		telechips,pin-function = <1>;
-	};
-
-	lcd_lvsync_idle: lcd_lvsync_idle {
-		telechips,pins = "gpb-2";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
-	};
-
-	lcd_lacbias: lcd_lacbias {
-		telechips,pins = "gpb-19";
-		telechips,pin-function = <1>;
-	};
-
-	lcd_lacbias_idle: lcd_lacbias_idle {
-		telechips,pins = "gpb-19";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
-	};
-
-	lcd_lpd: lcd_lpd {
-		telechips,pins ="gpb-3", "gpb-4", "gpb-5", "gpb-6",
-		                "gpb-7", "gpb-8", "gpb-9", "gpb-10",
-		                "gpb-11", "gpb-12", "gpb-13", "gpb-14",
-		                "gpb-15", "gpb-16", "gpb-17", "gpb-18",
-		                "gpb-20", "gpb-21", "gpb-22", "gpb-23",
-		                "gpb-24", "gpb-25", "gpb-26", "gpb-27";
-		telechips,pin-function = <1>;
-	};
-
-	lcd_lpd_idle: lcd_lpd_idle {
-		telechips,pins ="gpb-3", "gpb-4", "gpb-5", "gpb-6",
-		                "gpb-7", "gpb-8", "gpb-9", "gpb-10",
-		                "gpb-11", "gpb-12", "gpb-13", "gpb-14",
-		                "gpb-15", "gpb-16", "gpb-17", "gpb-18",
-		                "gpb-20", "gpb-21", "gpb-22", "gpb-23",
-		                "gpb-24", "gpb-25", "gpb-26", "gpb-27";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
-	};
-
-	pwm_k_11: pwm_k_11 {
-		telechips,pins = "gpk-11";
-		telechips,pin-function = <15>;
-		telechips,drive-strength = <3>;
-		telechips,no-pull = <1>;
-		telechips,input_buffer_disable;
-		telechips,input-disable;
-	};
-
-	pwm_k_11_idle: pwm_k_11_idle {
-		telechips,pins = "gpk-11";
-		telechips,pin-function = <0>;
-		telechips,output-low = <0>;
 	};
 
 	ictc_f_in: ictc_f_in {

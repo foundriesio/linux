@@ -5,7 +5,7 @@
  */
 
 #include "tcc805x.dtsi"
-#include "tcc8053-pinctrl.dtsi"
+#include "tcc8050_53-pinctrl.dtsi"
 
 / {
 	cpus {
