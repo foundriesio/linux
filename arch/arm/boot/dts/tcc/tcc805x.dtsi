@@ -2165,7 +2165,7 @@
 		interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clk_peri PERI_SDMMC1 &clk_io IOBUS_SDMMC1>;
 		clock-names = "mmc_fclk", "mmc_hclk";
-		max-frequency = <50000000>;
+		max-frequency = <200000000>;
 		bus-width = <4>;
 		controller-id = <1>;
 		status = "disabled";
