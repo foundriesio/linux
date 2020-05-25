@@ -60,6 +60,8 @@ void gserial_free_line(unsigned char port_line);
 /* connect/disconnect is handled by individual functions */
 int gserial_connect(struct gserial *, u8 port_num);
 void gserial_disconnect(struct gserial *);
+void gserial_suspend(struct gserial *p);
+void gserial_resume(struct gserial *p);
 
 /* functions are bound to configurations by a config or gadget driver */
 int gser_bind_config(struct usb_configuration *c, u8 port_num);
