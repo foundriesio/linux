@@ -96,10 +96,10 @@ int32_t tcc_thsm_cmd_compare_mac_by_dma(
 	uint32_t mac_len, uint32_t flag);
 int32_t tcc_thsm_cmd_get_rand(uint32_t device_id, uint32_t *rng, uint32_t rng_size);
 int32_t tcc_thsm_cmd_gen_key_ss(
-	uint32_t device_id, uint8_t *obj_id, uint32_t obj_len, uint32_t algorithm, uint32_t key_size);
-int32_t tcc_thsm_cmd_del_key_ss(uint32_t device_id, uint8_t *obj_id, uint32_t obj_len);
+	uint32_t device_id, int8_t *obj_id, uint32_t obj_len, uint32_t algorithm, uint32_t key_size);
+int32_t tcc_thsm_cmd_del_key_ss(uint32_t device_id, int8_t *obj_id, uint32_t obj_len);
 int32_t tcc_thsm_cmd_write_key_ss(
-	uint32_t device_id, uint8_t *obj_id, uint32_t obj_len, uint8_t *buffer, uint32_t buffer_size);
+	uint32_t device_id, int8_t *obj_id, uint32_t obj_len, uint8_t *buffer, uint32_t buffer_size);
 int32_t
 tcc_thsm_cmd_write_otp(uint32_t device_id, uint32_t otp_addr, uint8_t *otp_buf, uint32_t otp_size);
 int32_t tcc_thsm_cmd_write_otpimage(uint32_t device_id, uint32_t otp_addr, uint32_t otp_size);
