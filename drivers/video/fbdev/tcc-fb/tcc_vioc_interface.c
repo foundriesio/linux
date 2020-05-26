@@ -258,6 +258,8 @@ static tcc_display_resize resize_data;
 static tcc_display_divide divide_data;
 static tcc_display_resize output_attach_resize_data;
 
+extern unsigned int vsync_rdma_off;
+
 
 extern void tca_lcdc_interrupt_onoff(char onoff, char lcdc);
 
@@ -5106,6 +5108,11 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 		#if !defined(CONFIG_VIOC_DOLBY_VISION_EDR) && defined(CONFIG_VIOC_DOLBY_VISION_CERTIFICATION_TEST_UI)
 		VIOC_RDMA_PreventEnable_for_UI(1, 1);
 		#endif
+
+		{
+			volatile void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(VIOC_MC0);
+			VIOC_MC_Start_OnOff(HwVIOC_MC, !vsync_rdma_off);
+		}
 	}
 	else
 	#endif//
@@ -5242,7 +5249,13 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 				tca_fb_wait_for_video_rdma_eofr(pdp_data);
 		}
 		#endif
-		VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+
+		if (vsync_rdma_off == 0) {
+			VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+		} else {
+			VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+		}
+
 		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
 		if(process_lut_plugin) {
 			vsync_process_lastframe_plugin_lut();

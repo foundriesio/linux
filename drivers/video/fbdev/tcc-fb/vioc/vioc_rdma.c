@@ -164,7 +164,7 @@ void VIOC_RDMA_SetImageDisable(volatile void __iomem *reg)
 
 	/* Check RDMA is enabled */
 	if (!(__raw_readl(reg + RDMACTRL) & RDMACTRL_IEN_MASK)){
-		pr_info("[INF][RDMA] enabled\n");
+		//pr_info("[INF][RDMA] enabled\n");
 		return;
 	}
 
