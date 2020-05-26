@@ -469,7 +469,7 @@
 			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
 			telechips,pmap-shared = <&pmap_viqe0>;
 			telechips,pmap-shared-size = <0x0 PMAP_SIZE_JPEG_HEADER>;
-			telechips,pmap-offset = <0x0>;
+			telechips,pmap-offset = <0x0 0x0>;
 			size = <0x0 0x0>;
 			no-map;
 		};
@@ -480,7 +480,7 @@
 			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
 			telechips,pmap-shared = <&pmap_jpeg_header>;
 			telechips,pmap-shared-size = <0x0 PMAP_SIZE_JPEG_STREAM>;
-			telechips,pmap-offset = <PMAP_SIZE_JPEG_HEADER>;
+			telechips,pmap-offset = <0x0 PMAP_SIZE_JPEG_HEADER>;
 			size = <0x0 0x0>;
 			no-map;
 		};
@@ -491,7 +491,7 @@
 			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
 			telechips,pmap-shared = <&pmap_jpeg_stream>;
 			telechips,pmap-shared-size = <0x0 PMAP_SIZE_JPEG_RAW>;
-			telechips,pmap-offset = <PMAP_SIZE_JPEG_STREAM>;
+			telechips,pmap-offset = <0x0 PMAP_SIZE_JPEG_STREAM>;
 			size = <0x0 0x0>;
 			no-map;
 		};
@@ -652,7 +652,7 @@
 			alloc-ranges = <0x0 RESERVED_MEM_BASE 0x0 RESERVED_MEM_SIZE>;
 			telechips,pmap-shared = <&pmap_video>;
 			telechips,pmap-shared-size = <0x0 PMAP_SIZE_ENC>;
-			telechips,pmap-offset = <VIDEO_MAIN_SIZE>;
+			telechips,pmap-offset = <0x0 VIDEO_MAIN_SIZE>;
 			size = <0x0 0x0>;
 			no-map;
 		};
