@@ -501,7 +501,7 @@
 
 	sound@0 {
 		compatible = "telechips,asrc-card";
-		card-name = "TCC8059 EVM Card";
+		card-name = "TCC805x EVM Card";
 		status = "okay";
 
 		asrc = <&asrc0>;
@@ -527,7 +527,7 @@
 
 	sound@0 {
 		compatible = "telechips,snd-card";
-		card-name = "TCC8059 EVM Card";
+		card-name = "TCC805x EVM Card";
 		status = "okay";
 
 		telechips,dai-link@0 {

@@ -275,9 +275,9 @@
 		ak4601: ak4601@10 {
 			compatible = "akm,ak4601";
 			ak4601,pdn-gpio = <&gpe 14 0>;
-			//mute-gpios = <&gpe 15 0>;     //CODEC_MUTE    0: active high, 1: active low
-			mute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
-			stanby-gpios = <&gpma 2 0>;     //AMP_STBY      0: active high, 1: active low
+			mute-gpios = <&gpe 15 0>;     //CODEC_MUTE    0: active high, 1: active low
+			//mute-gpios = <&gpma 1 1>;       //AMP_MUTE      0: active high, 1: active low
+			//stanby-gpios = <&gpma 2 0>;     //AMP_STBY      0: active high, 1: active low
 			reg = <0x10>;
 		};
 	};
@@ -379,7 +379,7 @@
 	};
 
 	/* sdr */
-	i2s@16801000 {
+	i2s@16101000 {
 		compatible = "telechips,sdr";
 		dev-name = "tcc-iq01";
 		pinctrl-names = "default", "idle";
@@ -409,24 +409,24 @@
 
 	audio_chmux@16051000{
 		compatible = "telechips,audio-chmux-805x";
-		dai = <3 0 1 0 1 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x)
-		spdif = <2 99 99 3 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
+		dai = <1 0 3 0 1 99 99 99>;	// i2s0(x) i2s1(x) i2s2(x) i2s3(x) i2s4(x) i2s5(x) i2s6(x) i2s7(x)
+		spdif = <99 99 2 3 99 99 99>;	// spdif0(x) spdif1(x) spdif2(x) spdif3(x) spdif4(x) spdif5(x) spdif6(x)
 		status = "okay";
 	};
 
-	adma@16100000 {
+	adma@16100000 { //SDR iq01
+		status = "disabled";
+	};
+
+	adma@16700000 {	//SDR iq23
+		status = "disabled";
+	};
+
+	adma@16800000 {	//Main Audio, SPDIF TX
 		status = "okay";
 	};
 
-	adma@16700000 {
-		status = "disabled";
-	};
-
-	adma@16800000 {
-		status = "disabled";
-	};
-
-	adma@16200000 {
+	adma@16200000 {	//BT, SPDIF RX
 		status = "okay";
 	};
 
@@ -434,7 +434,7 @@
 		status = "disabled";
 	};
 
-	i2s@16101000 {
+	i2s@16801000 {	//Main Audio
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
 		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
@@ -442,7 +442,7 @@
 
 	};
 
-	i2s@16201000 {
+	i2s@16201000 {	//BT
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
 		pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle &m0dai0_dao0_idle &m0dai0_dai0_idle>;
@@ -451,7 +451,7 @@
 	};
 
 
-	spdif@16102000 {
+	spdif@16802000 {
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&spdif2_tx>;
 		pinctrl-1 = <&spdif2_tx_idle>;
@@ -475,7 +475,7 @@
 
 	sound@0 {
 		compatible = "telechips,asrc-card";
-		card-name = "TCC8053 EVM Card";
+		card-name = "TCC805x EVM Card";
 		status = "okay";
 
 		asrc = <&asrc0>;
@@ -501,7 +501,7 @@
 
 	sound@0 {
 		compatible = "telechips,snd-card";
-		card-name = "TCC8053 EVM Card";
+		card-name = "TCC805x EVM Card";
 		status = "okay";
 
 		telechips,dai-link@0 {
@@ -510,16 +510,16 @@
 			codec,continuous-clock;
 			mclk_div = <16>; // 4,6,8,16
 			bclk_ratio = <64>; // 32,48,64fs
-			pcm = <&adma0>;
-			dai = <&i2s0>;
+			pcm = <&adma2>;
+			dai = <&i2s2>;
 			codec = <&ak4601>;
 			codec,dai-name = "ak4601-aif1";
 		};
 
 		telechips,dai-link@1 {
 			stream-name="SPDIF_0_TX";
-			pcm = <&adma0>;
-			dai = <&spdif0>;
+			pcm = <&adma2>;
+			dai = <&spdif2>;
 			playback-only;
 		};
 
