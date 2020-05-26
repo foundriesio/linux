@@ -42,11 +42,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-/* General TODO:
- * - check if OSAcquireBridgeLock/OSReleaseridgeLock is still necessary?
- * - can the deferred freeing made simpler now?
- * - remove pool (after timeline moved to DevVars)? */
-
 #include "pvr_drv.h"
 #include "pvr_fd_sync_kernel.h"
 #include "services_kernel_client.h"
@@ -172,7 +167,6 @@ enum {
 /* Services client sync prim wrapper. This is used to hold debug information
  * and make it possible to cache unused syncs.
  */
-/* TODO: this needs to go */
 struct pvr_sync_native_sync_prim {
 	/* List for the sync pool support. */
 	struct list_head list;

@@ -298,7 +298,8 @@ PVRSRVBridgeRGXDestroyHWRTDataSet(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRGXDestroyHWRTDataSetOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRGXDestroyHWRTDataSet: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRGXDestroyHWRTDataSetOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -447,7 +448,8 @@ PVRSRVBridgeRGXDestroyZSBuffer(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRGXDestroyZSBufferOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRGXDestroyZSBuffer: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRGXDestroyZSBufferOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -569,7 +571,8 @@ PVRSRVBridgeRGXUnpopulateZSBuffer(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRGXUnpopulateZSBufferOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRGXUnpopulateZSBuffer: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRGXUnpopulateZSBufferOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -592,6 +595,8 @@ PVRSRVBridgeRGXCreateFreeList(IMG_UINT32 ui32DispatchTableEntry,
 			      psRGXCreateFreeListOUT,
 			      CONNECTION_DATA * psConnection)
 {
+	IMG_HANDLE hMemCtxPrivData = psRGXCreateFreeListIN->hMemCtxPrivData;
+	IMG_HANDLE hMemCtxPrivDataInt = NULL;
 	IMG_HANDLE hsGlobalFreeList = psRGXCreateFreeListIN->hsGlobalFreeList;
 	RGX_FREELIST *pssGlobalFreeListInt = NULL;
 	IMG_HANDLE hsFreeListPMR = psRGXCreateFreeListIN->hsFreeListPMR;
@@ -603,6 +608,19 @@ PVRSRVBridgeRGXCreateFreeList(IMG_UINT32 ui32DispatchTableEntry,
 
 	/* Lock over handle lookup. */
 	LockHandle(psConnection->psHandleBase);
+
+	/* Look up the address from the handle */
+	psRGXCreateFreeListOUT->eError =
+	    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
+				       (void **)&hMemCtxPrivDataInt,
+				       hMemCtxPrivData,
+				       PVRSRV_HANDLE_TYPE_DEV_PRIV_DATA,
+				       IMG_TRUE);
+	if (unlikely(psRGXCreateFreeListOUT->eError != PVRSRV_OK))
+	{
+		UnlockHandle(psConnection->psHandleBase);
+		goto RGXCreateFreeList_exit;
+	}
 
 	if (psRGXCreateFreeListIN->hsGlobalFreeList)
 	{
@@ -650,6 +668,7 @@ PVRSRVBridgeRGXCreateFreeList(IMG_UINT32 ui32DispatchTableEntry,
 
 	psRGXCreateFreeListOUT->eError =
 	    RGXCreateFreeList(psConnection, OSGetDevNode(psConnection),
+			      hMemCtxPrivDataInt,
 			      psRGXCreateFreeListIN->ui32MaxFLPages,
 			      psRGXCreateFreeListIN->ui32InitFLPages,
 			      psRGXCreateFreeListIN->ui32GrowFLPages,
@@ -693,6 +712,14 @@ RGXCreateFreeList_exit:
 
 	/* Lock over handle lookup cleanup. */
 	LockHandle(psConnection->psHandleBase);
+
+	/* Unreference the previously looked up handle */
+	if (hMemCtxPrivDataInt)
+	{
+		PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
+					    hMemCtxPrivData,
+					    PVRSRV_HANDLE_TYPE_DEV_PRIV_DATA);
+	}
 
 	if (psRGXCreateFreeListIN->hsGlobalFreeList)
 	{
@@ -758,7 +785,8 @@ PVRSRVBridgeRGXDestroyFreeList(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRGXDestroyFreeListOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRGXDestroyFreeList: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRGXDestroyFreeListOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -991,7 +1019,8 @@ PVRSRVBridgeRGXDestroyRenderContext(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRGXDestroyRenderContextOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRGXDestroyRenderContext: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRGXDestroyRenderContextOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -1005,1321 +1034,6 @@ RGXDestroyRenderContext_exit:
 
 	return 0;
 }
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-static IMG_INT
-PVRSRVBridgeRGXKickTA3D(IMG_UINT32 ui32DispatchTableEntry,
-			PVRSRV_BRIDGE_IN_RGXKICKTA3D * psRGXKickTA3DIN,
-			PVRSRV_BRIDGE_OUT_RGXKICKTA3D * psRGXKickTA3DOUT,
-			CONNECTION_DATA * psConnection)
-{
-	IMG_HANDLE hRenderContext = psRGXKickTA3DIN->hRenderContext;
-	RGX_SERVER_RENDER_CONTEXT *psRenderContextInt = NULL;
-	SYNC_PRIMITIVE_BLOCK **psClientTAFenceSyncPrimBlockInt = NULL;
-	IMG_HANDLE *hClientTAFenceSyncPrimBlockInt2 = NULL;
-	IMG_UINT32 *ui32ClientTAFenceSyncOffsetInt = NULL;
-	IMG_UINT32 *ui32ClientTAFenceValueInt = NULL;
-	SYNC_PRIMITIVE_BLOCK **psClientTAUpdateSyncPrimBlockInt = NULL;
-	IMG_HANDLE *hClientTAUpdateSyncPrimBlockInt2 = NULL;
-	IMG_UINT32 *ui32ClientTAUpdateSyncOffsetInt = NULL;
-	IMG_UINT32 *ui32ClientTAUpdateValueInt = NULL;
-	IMG_UINT32 *ui32ServerTASyncFlagsInt = NULL;
-	SERVER_SYNC_PRIMITIVE **psServerTASyncsInt = NULL;
-	IMG_HANDLE *hServerTASyncsInt2 = NULL;
-	SYNC_PRIMITIVE_BLOCK **psClient3DFenceSyncPrimBlockInt = NULL;
-	IMG_HANDLE *hClient3DFenceSyncPrimBlockInt2 = NULL;
-	IMG_UINT32 *ui32Client3DFenceSyncOffsetInt = NULL;
-	IMG_UINT32 *ui32Client3DFenceValueInt = NULL;
-	SYNC_PRIMITIVE_BLOCK **psClient3DUpdateSyncPrimBlockInt = NULL;
-	IMG_HANDLE *hClient3DUpdateSyncPrimBlockInt2 = NULL;
-	IMG_UINT32 *ui32Client3DUpdateSyncOffsetInt = NULL;
-	IMG_UINT32 *ui32Client3DUpdateValueInt = NULL;
-	IMG_UINT32 *ui32Server3DSyncFlagsInt = NULL;
-	SERVER_SYNC_PRIMITIVE **psServer3DSyncsInt = NULL;
-	IMG_HANDLE *hServer3DSyncsInt2 = NULL;
-	IMG_HANDLE hPRFenceUFOSyncPrimBlock =
-	    psRGXKickTA3DIN->hPRFenceUFOSyncPrimBlock;
-	SYNC_PRIMITIVE_BLOCK *psPRFenceUFOSyncPrimBlockInt = NULL;
-	IMG_CHAR *uiUpdateFenceNameInt = NULL;
-	IMG_CHAR *uiUpdateFenceName3DInt = NULL;
-	IMG_BYTE *psTACmdInt = NULL;
-	IMG_BYTE *ps3DPRCmdInt = NULL;
-	IMG_BYTE *ps3DCmdInt = NULL;
-	IMG_HANDLE hKMHWRTDataSet = psRGXKickTA3DIN->hKMHWRTDataSet;
-	RGX_KM_HW_RT_DATASET *psKMHWRTDataSetInt = NULL;
-	IMG_HANDLE hZSBuffer = psRGXKickTA3DIN->hZSBuffer;
-	RGX_ZSBUFFER_DATA *psZSBufferInt = NULL;
-	IMG_HANDLE hMSAAScratchBuffer = psRGXKickTA3DIN->hMSAAScratchBuffer;
-	RGX_ZSBUFFER_DATA *psMSAAScratchBufferInt = NULL;
-	IMG_UINT32 *ui32SyncPMRFlagsInt = NULL;
-	PMR **psSyncPMRsInt = NULL;
-	IMG_HANDLE *hSyncPMRsInt2 = NULL;
-
-	IMG_UINT32 ui32NextOffset = 0;
-	IMG_BYTE *pArrayArgsBuffer = NULL;
-#if !defined(INTEGRITY_OS)
-	IMG_BOOL bHaveEnoughSpace = IMG_FALSE;
-#endif
-
-	IMG_UINT32 ui32BufferSize =
-	    (psRGXKickTA3DIN->ui32ClientTAFenceCount *
-	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
-	    (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
-	    (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32ServerTASyncPrims *
-	     sizeof(SERVER_SYNC_PRIMITIVE *)) +
-	    (psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3DIN->ui32Client3DFenceCount *
-	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
-	    (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32Client3DUpdateCount *
-	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
-	    (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32Server3DSyncPrims *
-	     sizeof(SERVER_SYNC_PRIMITIVE *)) +
-	    (psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_HANDLE)) +
-	    (PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR)) +
-	    (PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR)) +
-	    (psRGXKickTA3DIN->ui32TACmdSize * sizeof(IMG_BYTE)) +
-	    (psRGXKickTA3DIN->ui323DPRCmdSize * sizeof(IMG_BYTE)) +
-	    (psRGXKickTA3DIN->ui323DCmdSize * sizeof(IMG_BYTE)) +
-	    (psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(PMR *)) +
-	    (psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_HANDLE)) + 0;
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32ClientTAFenceCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32ClientTAUpdateCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32ServerTASyncPrims > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32Client3DFenceCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32Client3DUpdateCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32Server3DSyncPrims > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui32TACmdSize >
-	     RGXFWIF_DM_INDEPENDENT_KICK_CMD_SIZE))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui323DPRCmdSize >
-	     RGXFWIF_DM_INDEPENDENT_KICK_CMD_SIZE))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3DIN->ui323DCmdSize >
-	     RGXFWIF_DM_INDEPENDENT_KICK_CMD_SIZE))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (unlikely(psRGXKickTA3DIN->ui32SyncPMRCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3DOUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D_exit;
-	}
-
-	if (ui32BufferSize != 0)
-	{
-#if !defined(INTEGRITY_OS)
-		/* Try to use remainder of input buffer for copies if possible, word-aligned for safety. */
-		IMG_UINT32 ui32InBufferOffset =
-		    PVR_ALIGN(sizeof(*psRGXKickTA3DIN), sizeof(unsigned long));
-		IMG_UINT32 ui32InBufferExcessSize =
-		    ui32InBufferOffset >=
-		    PVRSRV_MAX_BRIDGE_IN_SIZE ? 0 : PVRSRV_MAX_BRIDGE_IN_SIZE -
-		    ui32InBufferOffset;
-
-		bHaveEnoughSpace = ui32BufferSize <= ui32InBufferExcessSize;
-		if (bHaveEnoughSpace)
-		{
-			IMG_BYTE *pInputBuffer =
-			    (IMG_BYTE *) (void *)psRGXKickTA3DIN;
-
-			pArrayArgsBuffer = &pInputBuffer[ui32InBufferOffset];
-		}
-		else
-#endif
-		{
-			pArrayArgsBuffer = OSAllocMemNoStats(ui32BufferSize);
-
-			if (!pArrayArgsBuffer)
-			{
-				psRGXKickTA3DOUT->eError =
-				    PVRSRV_ERROR_OUT_OF_MEMORY;
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount != 0)
-	{
-		psClientTAFenceSyncPrimBlockInt =
-		    (SYNC_PRIMITIVE_BLOCK **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							      ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		    sizeof(SYNC_PRIMITIVE_BLOCK *);
-		hClientTAFenceSyncPrimBlockInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		    sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hClientTAFenceSyncPrimBlockInt2,
-		     (const void __user *)psRGXKickTA3DIN->
-		     phClientTAFenceSyncPrimBlock,
-		     psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount != 0)
-	{
-		ui32ClientTAFenceSyncOffsetInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32ClientTAFenceSyncOffsetInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32ClientTAFenceSyncOffset,
-		     psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount != 0)
-	{
-		ui32ClientTAFenceValueInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32ClientTAFenceValueInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32ClientTAFenceValue,
-		     psRGXKickTA3DIN->ui32ClientTAFenceCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount != 0)
-	{
-		psClientTAUpdateSyncPrimBlockInt =
-		    (SYNC_PRIMITIVE_BLOCK **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							      ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		    sizeof(SYNC_PRIMITIVE_BLOCK *);
-		hClientTAUpdateSyncPrimBlockInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		    sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hClientTAUpdateSyncPrimBlockInt2,
-		     (const void __user *)psRGXKickTA3DIN->
-		     phClientTAUpdateSyncPrimBlock,
-		     psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount != 0)
-	{
-		ui32ClientTAUpdateSyncOffsetInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32ClientTAUpdateSyncOffsetInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32ClientTAUpdateSyncOffset,
-		     psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount != 0)
-	{
-		ui32ClientTAUpdateValueInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32ClientTAUpdateValueInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32ClientTAUpdateValue,
-		     psRGXKickTA3DIN->ui32ClientTAUpdateCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ServerTASyncPrims != 0)
-	{
-		ui32ServerTASyncFlagsInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32ServerTASyncFlagsInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32ServerTASyncFlags,
-		     psRGXKickTA3DIN->ui32ServerTASyncPrims *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32ServerTASyncPrims != 0)
-	{
-		psServerTASyncsInt =
-		    (SERVER_SYNC_PRIMITIVE **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							       ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ServerTASyncPrims *
-		    sizeof(SERVER_SYNC_PRIMITIVE *);
-		hServerTASyncsInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32ServerTASyncPrims * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hServerTASyncsInt2,
-		     (const void __user *)psRGXKickTA3DIN->phServerTASyncs,
-		     psRGXKickTA3DIN->ui32ServerTASyncPrims *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount != 0)
-	{
-		psClient3DFenceSyncPrimBlockInt =
-		    (SYNC_PRIMITIVE_BLOCK **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							      ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DFenceCount *
-		    sizeof(SYNC_PRIMITIVE_BLOCK *);
-		hClient3DFenceSyncPrimBlockInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DFenceCount *
-		    sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hClient3DFenceSyncPrimBlockInt2,
-		     (const void __user *)psRGXKickTA3DIN->
-		     phClient3DFenceSyncPrimBlock,
-		     psRGXKickTA3DIN->ui32Client3DFenceCount *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount != 0)
-	{
-		ui32Client3DFenceSyncOffsetInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DFenceSyncOffsetInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32Client3DFenceSyncOffset,
-		     psRGXKickTA3DIN->ui32Client3DFenceCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount != 0)
-	{
-		ui32Client3DFenceValueInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DFenceValueInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32Client3DFenceValue,
-		     psRGXKickTA3DIN->ui32Client3DFenceCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount != 0)
-	{
-		psClient3DUpdateSyncPrimBlockInt =
-		    (SYNC_PRIMITIVE_BLOCK **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							      ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		    sizeof(SYNC_PRIMITIVE_BLOCK *);
-		hClient3DUpdateSyncPrimBlockInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		    sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hClient3DUpdateSyncPrimBlockInt2,
-		     (const void __user *)psRGXKickTA3DIN->
-		     phClient3DUpdateSyncPrimBlock,
-		     psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount != 0)
-	{
-		ui32Client3DUpdateSyncOffsetInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DUpdateSyncOffsetInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32Client3DUpdateSyncOffset,
-		     psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount != 0)
-	{
-		ui32Client3DUpdateValueInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Client3DUpdateCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DUpdateValueInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32Client3DUpdateValue,
-		     psRGXKickTA3DIN->ui32Client3DUpdateCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Server3DSyncPrims != 0)
-	{
-		ui32Server3DSyncFlagsInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Server3DSyncFlagsInt,
-		     (const void __user *)psRGXKickTA3DIN->
-		     pui32Server3DSyncFlags,
-		     psRGXKickTA3DIN->ui32Server3DSyncPrims *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32Server3DSyncPrims != 0)
-	{
-		psServer3DSyncsInt =
-		    (SERVER_SYNC_PRIMITIVE **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							       ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Server3DSyncPrims *
-		    sizeof(SERVER_SYNC_PRIMITIVE *);
-		hServer3DSyncsInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32Server3DSyncPrims * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hServer3DSyncsInt2,
-		     (const void __user *)psRGXKickTA3DIN->phServer3DSyncs,
-		     psRGXKickTA3DIN->ui32Server3DSyncPrims *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-
-	{
-		uiUpdateFenceNameInt =
-		    (IMG_CHAR *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						 ui32NextOffset);
-		ui32NextOffset += PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR);
-	}
-
-	/* Copy the data over */
-	if (PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, uiUpdateFenceNameInt,
-		     (const void __user *)psRGXKickTA3DIN->puiUpdateFenceName,
-		     PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-		((IMG_CHAR *)
-		 uiUpdateFenceNameInt)[(PVRSRV_SYNC_NAME_LENGTH *
-					sizeof(IMG_CHAR)) - 1] = '\0';
-	}
-
-	{
-		uiUpdateFenceName3DInt =
-		    (IMG_CHAR *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						 ui32NextOffset);
-		ui32NextOffset += PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR);
-	}
-
-	/* Copy the data over */
-	if (PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, uiUpdateFenceName3DInt,
-		     (const void __user *)psRGXKickTA3DIN->puiUpdateFenceName3D,
-		     PVRSRV_SYNC_NAME_LENGTH * sizeof(IMG_CHAR)) != PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-		((IMG_CHAR *)
-		 uiUpdateFenceName3DInt)[(PVRSRV_SYNC_NAME_LENGTH *
-					  sizeof(IMG_CHAR)) - 1] = '\0';
-	}
-	if (psRGXKickTA3DIN->ui32TACmdSize != 0)
-	{
-		psTACmdInt =
-		    (IMG_BYTE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						 ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32TACmdSize * sizeof(IMG_BYTE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32TACmdSize * sizeof(IMG_BYTE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, psTACmdInt,
-		     (const void __user *)psRGXKickTA3DIN->psTACmd,
-		     psRGXKickTA3DIN->ui32TACmdSize * sizeof(IMG_BYTE)) !=
-		    PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui323DPRCmdSize != 0)
-	{
-		ps3DPRCmdInt =
-		    (IMG_BYTE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						 ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui323DPRCmdSize * sizeof(IMG_BYTE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui323DPRCmdSize * sizeof(IMG_BYTE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ps3DPRCmdInt,
-		     (const void __user *)psRGXKickTA3DIN->ps3DPRCmd,
-		     psRGXKickTA3DIN->ui323DPRCmdSize * sizeof(IMG_BYTE)) !=
-		    PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui323DCmdSize != 0)
-	{
-		ps3DCmdInt =
-		    (IMG_BYTE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						 ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui323DCmdSize * sizeof(IMG_BYTE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui323DCmdSize * sizeof(IMG_BYTE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ps3DCmdInt,
-		     (const void __user *)psRGXKickTA3DIN->ps3DCmd,
-		     psRGXKickTA3DIN->ui323DCmdSize * sizeof(IMG_BYTE)) !=
-		    PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32SyncPMRCount != 0)
-	{
-		ui32SyncPMRFlagsInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32SyncPMRFlagsInt,
-		     (const void __user *)psRGXKickTA3DIN->pui32SyncPMRFlags,
-		     psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_UINT32)) !=
-		    PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-	if (psRGXKickTA3DIN->ui32SyncPMRCount != 0)
-	{
-		psSyncPMRsInt =
-		    (PMR **) IMG_OFFSET_ADDR(pArrayArgsBuffer, ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(PMR *);
-		hSyncPMRsInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hSyncPMRsInt2,
-		     (const void __user *)psRGXKickTA3DIN->phSyncPMRs,
-		     psRGXKickTA3DIN->ui32SyncPMRCount * sizeof(IMG_HANDLE)) !=
-		    PVRSRV_OK)
-		{
-			psRGXKickTA3DOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D_exit;
-		}
-	}
-
-	/* Lock over handle lookup. */
-	LockHandle(psConnection->psHandleBase);
-
-	/* Look up the address from the handle */
-	psRGXKickTA3DOUT->eError =
-	    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
-				       (void **)&psRenderContextInt,
-				       hRenderContext,
-				       PVRSRV_HANDLE_TYPE_RGX_SERVER_RENDER_CONTEXT,
-				       IMG_TRUE);
-	if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-	{
-		UnlockHandle(psConnection->psHandleBase);
-		goto RGXKickTA3D_exit;
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ClientTAFenceCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psClientTAFenceSyncPrimBlockInt
-						       [i],
-						       hClientTAFenceSyncPrimBlockInt2
-						       [i],
-						       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ClientTAUpdateCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psClientTAUpdateSyncPrimBlockInt
-						       [i],
-						       hClientTAUpdateSyncPrimBlockInt2
-						       [i],
-						       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ServerTASyncPrims; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psServerTASyncsInt[i],
-						       hServerTASyncsInt2[i],
-						       PVRSRV_HANDLE_TYPE_SERVER_SYNC_PRIMITIVE,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Client3DFenceCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psClient3DFenceSyncPrimBlockInt
-						       [i],
-						       hClient3DFenceSyncPrimBlockInt2
-						       [i],
-						       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Client3DUpdateCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psClient3DUpdateSyncPrimBlockInt
-						       [i],
-						       hClient3DUpdateSyncPrimBlockInt2
-						       [i],
-						       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Server3DSyncPrims; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psServer3DSyncsInt[i],
-						       hServer3DSyncsInt2[i],
-						       PVRSRV_HANDLE_TYPE_SERVER_SYNC_PRIMITIVE,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-
-	/* Look up the address from the handle */
-	psRGXKickTA3DOUT->eError =
-	    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
-				       (void **)&psPRFenceUFOSyncPrimBlockInt,
-				       hPRFenceUFOSyncPrimBlock,
-				       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-				       IMG_TRUE);
-	if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-	{
-		UnlockHandle(psConnection->psHandleBase);
-		goto RGXKickTA3D_exit;
-	}
-
-	if (psRGXKickTA3DIN->hKMHWRTDataSet)
-	{
-		/* Look up the address from the handle */
-		psRGXKickTA3DOUT->eError =
-		    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
-					       (void **)&psKMHWRTDataSetInt,
-					       hKMHWRTDataSet,
-					       PVRSRV_HANDLE_TYPE_RGX_KM_HW_RT_DATASET,
-					       IMG_TRUE);
-		if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-		{
-			UnlockHandle(psConnection->psHandleBase);
-			goto RGXKickTA3D_exit;
-		}
-	}
-
-	if (psRGXKickTA3DIN->hZSBuffer)
-	{
-		/* Look up the address from the handle */
-		psRGXKickTA3DOUT->eError =
-		    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
-					       (void **)&psZSBufferInt,
-					       hZSBuffer,
-					       PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER,
-					       IMG_TRUE);
-		if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-		{
-			UnlockHandle(psConnection->psHandleBase);
-			goto RGXKickTA3D_exit;
-		}
-	}
-
-	if (psRGXKickTA3DIN->hMSAAScratchBuffer)
-	{
-		/* Look up the address from the handle */
-		psRGXKickTA3DOUT->eError =
-		    PVRSRVLookupHandleUnlocked(psConnection->psHandleBase,
-					       (void **)&psMSAAScratchBufferInt,
-					       hMSAAScratchBuffer,
-					       PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER,
-					       IMG_TRUE);
-		if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-		{
-			UnlockHandle(psConnection->psHandleBase);
-			goto RGXKickTA3D_exit;
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32SyncPMRCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3DOUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psSyncPMRsInt[i],
-						       hSyncPMRsInt2[i],
-						       PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3DOUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D_exit;
-			}
-		}
-	}
-	/* Release now we have looked up handles. */
-	UnlockHandle(psConnection->psHandleBase);
-
-	psRGXKickTA3DOUT->eError =
-	    PVRSRVRGXKickTA3DKM(psRenderContextInt,
-				psRGXKickTA3DIN->ui32ClientCacheOpSeqNum,
-				psRGXKickTA3DIN->ui32ClientTAFenceCount,
-				psClientTAFenceSyncPrimBlockInt,
-				ui32ClientTAFenceSyncOffsetInt,
-				ui32ClientTAFenceValueInt,
-				psRGXKickTA3DIN->ui32ClientTAUpdateCount,
-				psClientTAUpdateSyncPrimBlockInt,
-				ui32ClientTAUpdateSyncOffsetInt,
-				ui32ClientTAUpdateValueInt,
-				psRGXKickTA3DIN->ui32ServerTASyncPrims,
-				ui32ServerTASyncFlagsInt,
-				psServerTASyncsInt,
-				psRGXKickTA3DIN->ui32Client3DFenceCount,
-				psClient3DFenceSyncPrimBlockInt,
-				ui32Client3DFenceSyncOffsetInt,
-				ui32Client3DFenceValueInt,
-				psRGXKickTA3DIN->ui32Client3DUpdateCount,
-				psClient3DUpdateSyncPrimBlockInt,
-				ui32Client3DUpdateSyncOffsetInt,
-				ui32Client3DUpdateValueInt,
-				psRGXKickTA3DIN->ui32Server3DSyncPrims,
-				ui32Server3DSyncFlagsInt,
-				psServer3DSyncsInt,
-				psPRFenceUFOSyncPrimBlockInt,
-				psRGXKickTA3DIN->ui32FRFenceUFOSyncOffset,
-				psRGXKickTA3DIN->ui32FRFenceValue,
-				psRGXKickTA3DIN->hCheckFence,
-				psRGXKickTA3DIN->hUpdateTimeline,
-				&psRGXKickTA3DOUT->hUpdateFence,
-				uiUpdateFenceNameInt,
-				psRGXKickTA3DIN->hCheckFence3D,
-				psRGXKickTA3DIN->hUpdateTimeline3D,
-				&psRGXKickTA3DOUT->hUpdateFence3D,
-				uiUpdateFenceName3DInt,
-				psRGXKickTA3DIN->ui32TACmdSize,
-				psTACmdInt,
-				psRGXKickTA3DIN->ui323DPRCmdSize,
-				ps3DPRCmdInt,
-				psRGXKickTA3DIN->ui323DCmdSize,
-				ps3DCmdInt,
-				psRGXKickTA3DIN->ui32ExtJobRef,
-				psRGXKickTA3DIN->bbKickTA,
-				psRGXKickTA3DIN->bbKickPR,
-				psRGXKickTA3DIN->bbKick3D,
-				psRGXKickTA3DIN->bbAbort,
-				psRGXKickTA3DIN->ui32PDumpFlags,
-				psKMHWRTDataSetInt,
-				psZSBufferInt,
-				psMSAAScratchBufferInt,
-				psRGXKickTA3DIN->ui32SyncPMRCount,
-				ui32SyncPMRFlagsInt,
-				psSyncPMRsInt,
-				psRGXKickTA3DIN->ui32RenderTargetSize,
-				psRGXKickTA3DIN->ui32NumberOfDrawCalls,
-				psRGXKickTA3DIN->ui32NumberOfIndices,
-				psRGXKickTA3DIN->ui32NumberOfMRTs,
-				psRGXKickTA3DIN->ui64Deadline);
-
-RGXKickTA3D_exit:
-
-	/* Lock over handle lookup cleanup. */
-	LockHandle(psConnection->psHandleBase);
-
-	/* Unreference the previously looked up handle */
-	if (psRenderContextInt)
-	{
-		PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
-					    hRenderContext,
-					    PVRSRV_HANDLE_TYPE_RGX_SERVER_RENDER_CONTEXT);
-	}
-
-	if (hClientTAFenceSyncPrimBlockInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ClientTAFenceCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hClientTAFenceSyncPrimBlockInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hClientTAFenceSyncPrimBlockInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-			}
-		}
-	}
-
-	if (hClientTAUpdateSyncPrimBlockInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ClientTAUpdateCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hClientTAUpdateSyncPrimBlockInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hClientTAUpdateSyncPrimBlockInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-			}
-		}
-	}
-
-	if (hServerTASyncsInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32ServerTASyncPrims; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hServerTASyncsInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hServerTASyncsInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SERVER_SYNC_PRIMITIVE);
-			}
-		}
-	}
-
-	if (hClient3DFenceSyncPrimBlockInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Client3DFenceCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hClient3DFenceSyncPrimBlockInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hClient3DFenceSyncPrimBlockInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-			}
-		}
-	}
-
-	if (hClient3DUpdateSyncPrimBlockInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Client3DUpdateCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hClient3DUpdateSyncPrimBlockInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hClient3DUpdateSyncPrimBlockInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-			}
-		}
-	}
-
-	if (hServer3DSyncsInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32Server3DSyncPrims; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hServer3DSyncsInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hServer3DSyncsInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SERVER_SYNC_PRIMITIVE);
-			}
-		}
-	}
-
-	/* Unreference the previously looked up handle */
-	if (psPRFenceUFOSyncPrimBlockInt)
-	{
-		PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
-					    hPRFenceUFOSyncPrimBlock,
-					    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-	}
-
-	if (psRGXKickTA3DIN->hKMHWRTDataSet)
-	{
-
-		/* Unreference the previously looked up handle */
-		if (psKMHWRTDataSetInt)
-		{
-			PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
-						    hKMHWRTDataSet,
-						    PVRSRV_HANDLE_TYPE_RGX_KM_HW_RT_DATASET);
-		}
-	}
-
-	if (psRGXKickTA3DIN->hZSBuffer)
-	{
-
-		/* Unreference the previously looked up handle */
-		if (psZSBufferInt)
-		{
-			PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
-						    hZSBuffer,
-						    PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER);
-		}
-	}
-
-	if (psRGXKickTA3DIN->hMSAAScratchBuffer)
-	{
-
-		/* Unreference the previously looked up handle */
-		if (psMSAAScratchBufferInt)
-		{
-			PVRSRVReleaseHandleUnlocked(psConnection->psHandleBase,
-						    hMSAAScratchBuffer,
-						    PVRSRV_HANDLE_TYPE_RGX_FWIF_ZSBUFFER);
-		}
-	}
-
-	if (hSyncPMRsInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3DIN->ui32SyncPMRCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hSyncPMRsInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hSyncPMRsInt2[i],
-							    PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
-			}
-		}
-	}
-	/* Release now we have cleaned up look up handles. */
-	UnlockHandle(psConnection->psHandleBase);
-
-	/* Allocated space should be equal to the last updated offset */
-	PVR_ASSERT(ui32BufferSize == ui32NextOffset);
-
-#if defined(INTEGRITY_OS)
-	if (pArrayArgsBuffer)
-#else
-	if (!bHaveEnoughSpace && pArrayArgsBuffer)
-#endif
-		OSFreeMemNoStats(pArrayArgsBuffer);
-
-	return 0;
-}
-
-#else
-#define PVRSRVBridgeRGXKickTA3D NULL
-#endif
 
 static IMG_INT
 PVRSRVBridgeRGXSetRenderContextPriority(IMG_UINT32 ui32DispatchTableEntry,
@@ -2485,7 +1199,6 @@ RGXRenderContextStalled_exit:
 	return 0;
 }
 
-#if !defined(SUPPORT_SERVER_SYNC_IMPL)
 static IMG_INT
 PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 			 PVRSRV_BRIDGE_IN_RGXKICKTA3D2 * psRGXKickTA3D2IN,
@@ -2502,10 +1215,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 	IMG_HANDLE *hClientTAUpdateSyncPrimBlockInt2 = NULL;
 	IMG_UINT32 *ui32ClientTAUpdateSyncOffsetInt = NULL;
 	IMG_UINT32 *ui32ClientTAUpdateValueInt = NULL;
-	SYNC_PRIMITIVE_BLOCK **psClient3DFenceSyncPrimBlockInt = NULL;
-	IMG_HANDLE *hClient3DFenceSyncPrimBlockInt2 = NULL;
-	IMG_UINT32 *ui32Client3DFenceSyncOffsetInt = NULL;
-	IMG_UINT32 *ui32Client3DFenceValueInt = NULL;
 	SYNC_PRIMITIVE_BLOCK **psClient3DUpdateSyncPrimBlockInt = NULL;
 	IMG_HANDLE *hClient3DUpdateSyncPrimBlockInt2 = NULL;
 	IMG_UINT32 *ui32Client3DUpdateSyncOffsetInt = NULL;
@@ -2545,11 +1254,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 	    (psRGXKickTA3D2IN->ui32ClientTAUpdateCount * sizeof(IMG_HANDLE)) +
 	    (psRGXKickTA3D2IN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32)) +
 	    (psRGXKickTA3D2IN->ui32ClientTAUpdateCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3D2IN->ui32Client3DFenceCount *
-	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
-	    (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_HANDLE)) +
-	    (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_UINT32)) +
-	    (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_UINT32)) +
 	    (psRGXKickTA3D2IN->ui32Client3DUpdateCount *
 	     sizeof(SYNC_PRIMITIVE_BLOCK *)) +
 	    (psRGXKickTA3D2IN->ui32Client3DUpdateCount * sizeof(IMG_HANDLE)) +
@@ -2574,14 +1278,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 
 	if (unlikely
 	    (psRGXKickTA3D2IN->ui32ClientTAUpdateCount > PVRSRV_MAX_SYNC_PRIMS))
-	{
-		psRGXKickTA3D2OUT->eError =
-		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
-		goto RGXKickTA3D2_exit;
-	}
-
-	if (unlikely
-	    (psRGXKickTA3D2IN->ui32Client3DFenceCount > PVRSRV_MAX_SYNC_PRIMS))
 	{
 		psRGXKickTA3D2OUT->eError =
 		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
@@ -2819,87 +1515,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 		     (const void __user *)psRGXKickTA3D2IN->
 		     pui32ClientTAUpdateValue,
 		     psRGXKickTA3D2IN->ui32ClientTAUpdateCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3D2OUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D2_exit;
-		}
-	}
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount != 0)
-	{
-		psClient3DFenceSyncPrimBlockInt =
-		    (SYNC_PRIMITIVE_BLOCK **) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-							      ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		    sizeof(SYNC_PRIMITIVE_BLOCK *);
-		hClient3DFenceSyncPrimBlockInt2 =
-		    (IMG_HANDLE *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		    sizeof(IMG_HANDLE);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_HANDLE) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, hClient3DFenceSyncPrimBlockInt2,
-		     (const void __user *)psRGXKickTA3D2IN->
-		     phClient3DFenceSyncPrimBlock,
-		     psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		     sizeof(IMG_HANDLE)) != PVRSRV_OK)
-		{
-			psRGXKickTA3D2OUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D2_exit;
-		}
-	}
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount != 0)
-	{
-		ui32Client3DFenceSyncOffsetInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DFenceSyncOffsetInt,
-		     (const void __user *)psRGXKickTA3D2IN->
-		     pui32Client3DFenceSyncOffset,
-		     psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		     sizeof(IMG_UINT32)) != PVRSRV_OK)
-		{
-			psRGXKickTA3D2OUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-			goto RGXKickTA3D2_exit;
-		}
-	}
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount != 0)
-	{
-		ui32Client3DFenceValueInt =
-		    (IMG_UINT32 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
-						   ui32NextOffset);
-		ui32NextOffset +=
-		    psRGXKickTA3D2IN->ui32Client3DFenceCount *
-		    sizeof(IMG_UINT32);
-	}
-
-	/* Copy the data over */
-	if (psRGXKickTA3D2IN->ui32Client3DFenceCount * sizeof(IMG_UINT32) > 0)
-	{
-		if (OSCopyFromUser
-		    (NULL, ui32Client3DFenceValueInt,
-		     (const void __user *)psRGXKickTA3D2IN->
-		     pui32Client3DFenceValue,
-		     psRGXKickTA3D2IN->ui32Client3DFenceCount *
 		     sizeof(IMG_UINT32)) != PVRSRV_OK)
 		{
 			psRGXKickTA3D2OUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
@@ -3224,30 +1839,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 	{
 		IMG_UINT32 i;
 
-		for (i = 0; i < psRGXKickTA3D2IN->ui32Client3DFenceCount; i++)
-		{
-			/* Look up the address from the handle */
-			psRGXKickTA3D2OUT->eError =
-			    PVRSRVLookupHandleUnlocked(psConnection->
-						       psHandleBase,
-						       (void **)
-						       &psClient3DFenceSyncPrimBlockInt
-						       [i],
-						       hClient3DFenceSyncPrimBlockInt2
-						       [i],
-						       PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK,
-						       IMG_TRUE);
-			if (unlikely(psRGXKickTA3D2OUT->eError != PVRSRV_OK))
-			{
-				UnlockHandle(psConnection->psHandleBase);
-				goto RGXKickTA3D2_exit;
-			}
-		}
-	}
-
-	{
-		IMG_UINT32 i;
-
 		for (i = 0; i < psRGXKickTA3D2IN->ui32Client3DUpdateCount; i++)
 		{
 			/* Look up the address from the handle */
@@ -3365,10 +1956,6 @@ PVRSRVBridgeRGXKickTA3D2(IMG_UINT32 ui32DispatchTableEntry,
 				psClientTAUpdateSyncPrimBlockInt,
 				ui32ClientTAUpdateSyncOffsetInt,
 				ui32ClientTAUpdateValueInt,
-				psRGXKickTA3D2IN->ui32Client3DFenceCount,
-				psClient3DFenceSyncPrimBlockInt,
-				ui32Client3DFenceSyncOffsetInt,
-				ui32Client3DFenceValueInt,
 				psRGXKickTA3D2IN->ui32Client3DUpdateCount,
 				psClient3DUpdateSyncPrimBlockInt,
 				ui32Client3DUpdateSyncOffsetInt,
@@ -3453,25 +2040,6 @@ RGXKickTA3D2_exit:
 				PVRSRVReleaseHandleUnlocked(psConnection->
 							    psHandleBase,
 							    hClientTAUpdateSyncPrimBlockInt2
-							    [i],
-							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
-			}
-		}
-	}
-
-	if (hClient3DFenceSyncPrimBlockInt2)
-	{
-		IMG_UINT32 i;
-
-		for (i = 0; i < psRGXKickTA3D2IN->ui32Client3DFenceCount; i++)
-		{
-
-			/* Unreference the previously looked up handle */
-			if (hClient3DFenceSyncPrimBlockInt2[i])
-			{
-				PVRSRVReleaseHandleUnlocked(psConnection->
-							    psHandleBase,
-							    hClient3DFenceSyncPrimBlockInt2
 							    [i],
 							    PVRSRV_HANDLE_TYPE_SYNC_PRIMITIVE_BLOCK);
 			}
@@ -3573,10 +2141,6 @@ RGXKickTA3D2_exit:
 
 	return 0;
 }
-
-#else
-#define PVRSRVBridgeRGXKickTA3D2 NULL
-#endif
 
 static IMG_INT
 PVRSRVBridgeRGXSetRenderContextProperty(IMG_UINT32 ui32DispatchTableEntry,
@@ -3689,10 +2253,6 @@ PVRSRV_ERROR InitRGXTA3DBridge(void)
 			      PVRSRVBridgeRGXDestroyRenderContext, NULL);
 
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXTA3D,
-			      PVRSRV_BRIDGE_RGXTA3D_RGXKICKTA3D,
-			      PVRSRVBridgeRGXKickTA3D, NULL);
-
-	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXTA3D,
 			      PVRSRV_BRIDGE_RGXTA3D_RGXSETRENDERCONTEXTPRIORITY,
 			      PVRSRVBridgeRGXSetRenderContextPriority, NULL);
 
@@ -3751,9 +2311,6 @@ PVRSRV_ERROR DeinitRGXTA3DBridge(void)
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_RGXTA3D,
 				PVRSRV_BRIDGE_RGXTA3D_RGXDESTROYRENDERCONTEXT);
-
-	UnsetDispatchTableEntry(PVRSRV_BRIDGE_RGXTA3D,
-				PVRSRV_BRIDGE_RGXTA3D_RGXKICKTA3D);
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_RGXTA3D,
 				PVRSRV_BRIDGE_RGXTA3D_RGXSETRENDERCONTEXTPRIORITY);

@@ -875,7 +875,8 @@ PVRSRV_ERROR DevmemImportStructDevMap(DEVMEM_HEAP *psHeap,
 							psHeap->sBaseAddress.uiAddr + psHeap->uiReservedRegionSize)
 					{
 						break;
-					}else
+					}
+					else
 					{
 						/* Allocate requested VM range */
 						eError = DevmemReserveVARange(psHeap,
@@ -930,34 +931,44 @@ PVRSRV_ERROR DevmemImportStructDevMap(DEVMEM_HEAP *psHeap,
 			sBase.uiAddr = uiAllocatedAddr;
 		}
 
-		/* Setup page tables for the allocated VM space */
-		eError = BridgeDevmemIntReserveRange(GetBridgeHandle(psHeap->psCtx->hDevConnection),
-				psHeap->hDevMemServerHeap,
-				sBase,
-				uiAllocatedSize,
-				&hReservation);
-		PVR_GOTO_IF_ERROR(eError, failReserve);
-
-		if (bMap)
+		if (psHeap->bPremapped)
 		{
-			DEVMEM_FLAGS_T uiMapFlags;
-
-			uiMapFlags = psImport->uiFlags & PVRSRV_MEMALLOCFLAGS_PERMAPPINGFLAGSMASK;
-
-			/* Actually map the PMR to allocated VM space */
-			eError = BridgeDevmemIntMapPMR(GetBridgeHandle(psHeap->psCtx->hDevConnection),
+			/* no virtual address reservation and mapping are required for memory that's already mapped */
+			psDeviceImport->hReservation = LACK_OF_RESERVATION_POISON;
+			psDeviceImport->hMapping = LACK_OF_MAPPING_POISON;
+		}
+		else
+		{
+			/* Setup page tables for the allocated VM space */
+			eError = BridgeDevmemIntReserveRange(GetBridgeHandle(psHeap->psCtx->hDevConnection),
 					psHeap->hDevMemServerHeap,
-					hReservation,
-					psImport->hPMR,
-					uiMapFlags,
-					&psDeviceImport->hMapping);
-			PVR_GOTO_IF_ERROR(eError, failMap);
+					sBase,
+					uiAllocatedSize,
+					&hReservation);
+			PVR_GOTO_IF_ERROR(eError, failReserve);
 
-			psDeviceImport->bMapped = IMG_TRUE;
+			if (bMap)
+			{
+				DEVMEM_FLAGS_T uiMapFlags;
+
+				uiMapFlags = psImport->uiFlags & PVRSRV_MEMALLOCFLAGS_PERMAPPINGFLAGSMASK;
+
+				/* Actually map the PMR to allocated VM space */
+				eError = BridgeDevmemIntMapPMR(GetBridgeHandle(psHeap->psCtx->hDevConnection),
+						psHeap->hDevMemServerHeap,
+						hReservation,
+						psImport->hPMR,
+						uiMapFlags,
+						&psDeviceImport->hMapping);
+				PVR_GOTO_IF_ERROR(eError, failMap);
+
+				psDeviceImport->bMapped = IMG_TRUE;
+			}
+
+			psDeviceImport->hReservation = hReservation;
 		}
 
 		/* Setup device mapping specific parts of the mapping info */
-		psDeviceImport->hReservation = hReservation;
 		psDeviceImport->sDevVAddr.uiAddr = uiAllocatedAddr;
 		psDeviceImport->psHeap = psHeap;
 	}
@@ -977,8 +988,11 @@ PVRSRV_ERROR DevmemImportStructDevMap(DEVMEM_HEAP *psHeap,
 	return PVRSRV_OK;
 
 failMap:
-	BridgeDevmemIntUnreserveRange(GetBridgeHandle(psHeap->psCtx->hDevConnection),
-			hReservation);
+	if (!psHeap->bPremapped)
+	{
+		BridgeDevmemIntUnreserveRange(GetBridgeHandle(psHeap->psCtx->hDevConnection),
+				hReservation);
+	}
 failReserve:
 	if (ui64OptionalMapAddress == 0)
 	{
@@ -1020,30 +1034,31 @@ IMG_BOOL DevmemImportStructDevUnmap(DEVMEM_IMPORT *psImport)
 	{
 		DEVMEM_HEAP *psHeap = psDeviceImport->psHeap;
 
-		if (psDeviceImport->bMapped)
+		if (!psHeap->bPremapped)
 		{
-			eError = BridgeDevmemIntUnmapPMR(GetBridgeHandle(psImport->hDevConnection),
-					psDeviceImport->hMapping);
+			if (psDeviceImport->bMapped)
+			{
+				eError = BridgeDevmemIntUnmapPMR(GetBridgeHandle(psImport->hDevConnection),
+						psDeviceImport->hMapping);
+				PVR_ASSERT(eError == PVRSRV_OK);
+			}
+
+			eError = BridgeDevmemIntUnreserveRange(GetBridgeHandle(psImport->hDevConnection),
+					psDeviceImport->hReservation);
 			PVR_ASSERT(eError == PVRSRV_OK);
 		}
-
-		eError = BridgeDevmemIntUnreserveRange(GetBridgeHandle(psImport->hDevConnection),
-				psDeviceImport->hReservation);
-		PVR_ASSERT(eError == PVRSRV_OK);
 
 		psDeviceImport->bMapped = IMG_FALSE;
 		psDeviceImport->hMapping = LACK_OF_MAPPING_POISON;
 		psDeviceImport->hReservation = LACK_OF_RESERVATION_POISON;
 
-		if (psHeap->ui32HeapManagerFlags & DEVMEM_HEAP_MANAGER_RA)
+		/* DEVMEM_HEAP_MANAGER_RA can also come from a dual managed heap in which case,
+		   we need to check if the allocated VA falls within RA managed range */
+		if ((psHeap->ui32HeapManagerFlags & DEVMEM_HEAP_MANAGER_RA) &&
+		    psDeviceImport->sDevVAddr.uiAddr >= (psHeap->sBaseAddress.uiAddr + psHeap->uiReservedRegionSize) &&
+		    psDeviceImport->sDevVAddr.uiAddr < (psHeap->sBaseAddress.uiAddr + psHeap->uiSize))
 		{
-			/* DEVMEM_HEAP_MANAGER_RA can also come from a dual managed heap in which case,
-			   we need to check if the allocated VA falls within RA managed range */
-			if (RA_IsAllocationValid(psHeap->psQuantizedVMRA, psDeviceImport->sDevVAddr.uiAddr))
-			{
-				RA_Free(psHeap->psQuantizedVMRA,
-						psDeviceImport->sDevVAddr.uiAddr);
-			}
+			RA_Free(psHeap->psQuantizedVMRA, psDeviceImport->sDevVAddr.uiAddr);
 		}
 
 		if (PVRSRV_CHECK_SVM_ALLOC(psImport->uiFlags))

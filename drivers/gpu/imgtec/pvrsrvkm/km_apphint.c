@@ -41,7 +41,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#include "pvr_debugfs.h"
+#include "di_server.h"
 #include "pvr_uaccess.h"
 #include <linux/moduleparam.h>
 #include <linux/workqueue.h>
@@ -259,12 +259,12 @@ static const struct apphint_class_state class_state[] = {
 static struct apphint_state
 {
 	struct workqueue_struct *workqueue;
-	PPVR_DEBUGFS_DIR_DATA debugfs_device_rootdir[APPHINT_DEVICES_MAX];
-	PPVR_DEBUGFS_ENTRY_DATA debugfs_device_entry[APPHINT_DEVICES_MAX][APPHINT_DEBUGFS_DEVICE_ID_MAX];
-	PPVR_DEBUGFS_DIR_DATA debugfs_rootdir;
-	PPVR_DEBUGFS_ENTRY_DATA debugfs_entry[APPHINT_DEBUGFS_ID_MAX];
-	PPVR_DEBUGFS_DIR_DATA buildvar_rootdir;
-	PPVR_DEBUGFS_ENTRY_DATA buildvar_entry[APPHINT_BUILDVAR_ID_MAX];
+	DI_GROUP *debugfs_device_rootdir[APPHINT_DEVICES_MAX];
+	DI_ENTRY *debugfs_device_entry[APPHINT_DEVICES_MAX][APPHINT_DEBUGFS_DEVICE_ID_MAX];
+	DI_GROUP *debugfs_rootdir;
+	DI_ENTRY *debugfs_entry[APPHINT_DEBUGFS_ID_MAX];
+	DI_GROUP *buildvar_rootdir;
+	DI_ENTRY *buildvar_entry[APPHINT_BUILDVAR_ID_MAX];
 
 	int num_devices;
 	PVRSRV_DEVICE_NODE *devices[APPHINT_DEVICES_MAX];
@@ -813,7 +813,7 @@ static const struct kernel_param_ops apphint_kparam_fops = {
 *******************************************************************************
  Debugfs get (seq file) operations - supporting functions
 ******************************************************************************/
-static void *apphint_seq_start(struct seq_file *s, loff_t *pos)
+static void *apphint_di_start(OSDI_IMPL_ENTRY *s, IMG_UINT64 *pos)
 {
 	if (*pos == 0) {
 		/* We want only one entry in the sequence, one call to show() */
@@ -825,13 +825,13 @@ static void *apphint_seq_start(struct seq_file *s, loff_t *pos)
 	return NULL;
 }
 
-static void apphint_seq_stop(struct seq_file *s, void *v)
+static void apphint_di_stop(OSDI_IMPL_ENTRY *s, void *v)
 {
 	PVR_UNREFERENCED_PARAMETER(s);
 	PVR_UNREFERENCED_PARAMETER(v);
 }
 
-static void *apphint_seq_next(struct seq_file *s, void *v, loff_t *pos)
+static void *apphint_di_next(OSDI_IMPL_ENTRY *s, void *v, IMG_UINT64 *pos)
 {
 	PVR_UNREFERENCED_PARAMETER(s);
 	PVR_UNREFERENCED_PARAMETER(v);
@@ -839,14 +839,15 @@ static void *apphint_seq_next(struct seq_file *s, void *v, loff_t *pos)
 	return NULL;
 }
 
-static int apphint_seq_show(struct seq_file *s, void *v)
+static int apphint_di_show(OSDI_IMPL_ENTRY *s, void *v)
 {
 	IMG_CHAR km_buffer[APPHINT_BUFFER_SIZE];
 	int result;
+	void *private = DIGetPrivData(s);
 
 	PVR_UNREFERENCED_PARAMETER(v);
 
-	result = apphint_write(km_buffer, APPHINT_BUFFER_SIZE, s->private);
+	result = apphint_write(km_buffer, APPHINT_BUFFER_SIZE, private);
 	if (result < 0) {
 		PVR_DPF((PVR_DBG_ERROR, "%s: failure", __func__));
 	} else {
@@ -854,31 +855,23 @@ static int apphint_seq_show(struct seq_file *s, void *v)
 		result += snprintf(km_buffer + result,
 				APPHINT_BUFFER_SIZE - result,
 				"\n");
-		seq_puts(s, km_buffer);
+		DIPuts(s, km_buffer);
 	}
 
 	/* have to return 0 to see output */
 	return (result < 0) ? result : 0;
 }
 
-static const struct seq_operations apphint_seq_fops = {
-	.start = apphint_seq_start,
-	.stop  = apphint_seq_stop,
-	.next  = apphint_seq_next,
-	.show  = apphint_seq_show,
-};
-
 /*
 *******************************************************************************
  Debugfs supporting functions
 ******************************************************************************/
+
 /**
  * apphint_set - Handle a debugfs value update
  */
-static ssize_t apphint_set(const char __user *buffer,
-			    size_t count,
-			    loff_t *ppos,
-			    void *data)
+static IMG_INT64 apphint_set(const IMG_CHAR *buffer, IMG_UINT64 count,
+                             IMG_UINT64 *ppos, void *data)
 {
 	APPHINT_ID id;
 	union apphint_value value;
@@ -890,18 +883,14 @@ static ssize_t apphint_set(const char __user *buffer,
 		return -EIO;
 
 	if (count >= APPHINT_BUFFER_SIZE) {
-		PVR_DPF((PVR_DBG_ERROR, "%s: String too long (%zd)",
+		PVR_DPF((PVR_DBG_ERROR, "%s: String too long (%" IMG_INT64_FMTSPECd ")",
 			__func__, count));
 		result = -EINVAL;
 		goto err_exit;
 	}
 
-	if (pvr_copy_from_user(km_buffer, buffer, count)) {
-		PVR_DPF((PVR_DBG_ERROR, "%s: Copy of user data failed",
-			__func__));
-		result = -EFAULT;
-		goto err_exit;
-	}
+	/* apphint_read() modifies the buffer so we need to copy it */
+	memcpy(km_buffer, buffer, count);
 	km_buffer[count] = '\0';
 
 	get_apphint_id_from_action_addr(action, &id);
@@ -921,12 +910,18 @@ static int apphint_debugfs_init(const char *sub_dir,
 		int device_num,
 		unsigned init_data_size,
 		const struct apphint_init_data *init_data,
-		PPVR_DEBUGFS_DIR_DATA parentdir,
-		PPVR_DEBUGFS_DIR_DATA *rootdir, PPVR_DEBUGFS_ENTRY_DATA *entry)
+		DI_GROUP *parentdir,
+		DI_GROUP **rootdir,
+		DI_ENTRY *entry[])
 {
-	int result = 0;
+	PVRSRV_ERROR result;
 	unsigned i;
 	int device_value_offset = device_num * APPHINT_DEBUGFS_DEVICE_ID_MAX;
+	const DI_ITERATOR_CB iterator = {
+		.pfnStart = apphint_di_start, .pfnStop  = apphint_di_stop,
+		.pfnNext  = apphint_di_next, .pfnShow  = apphint_di_show,
+		.pfnWrite = apphint_set
+	};
 
 	if (*rootdir) {
 		PVR_DPF((PVR_DBG_WARNING,
@@ -935,8 +930,7 @@ static int apphint_debugfs_init(const char *sub_dir,
 		goto err_exit;
 	}
 
-	result = PVRDebugFSCreateEntryDir(sub_dir, parentdir,
-					  rootdir);
+	result = DICreateGroup(sub_dir, parentdir, rootdir);
 	if (result < 0) {
 		PVR_DPF((PVR_DBG_WARNING,
 			"Failed to create \"%s\" DebugFS directory.", sub_dir));
@@ -947,19 +941,20 @@ static int apphint_debugfs_init(const char *sub_dir,
 		if (!class_state[init_data[i].class].enabled)
 			continue;
 
-		result = PVRDebugFSCreateFile(init_data[i].name,
+		result = DICreateEntry(init_data[i].name,
 				*rootdir,
-				&apphint_seq_fops,
-				apphint_set,
-				NULL,
+				&iterator,
 				(void *) &apphint.val[init_data[i].id + device_value_offset],
+				DI_ENTRY_TYPE_GENERIC,
 				&entry[i]);
-		if (result < 0) {
+		if (result != PVRSRV_OK) {
 			PVR_DPF((PVR_DBG_WARNING,
 				"Failed to create \"%s/%s\" DebugFS entry.",
 				sub_dir, init_data[i].name));
 		}
 	}
+
+	return 0;
 
 err_exit:
 	return result;
@@ -969,18 +964,19 @@ err_exit:
  * apphint_debugfs_deinit- destroy the debugfs entries
  */
 static void apphint_debugfs_deinit(unsigned num_entries,
-		PPVR_DEBUGFS_DIR_DATA *rootdir, PPVR_DEBUGFS_ENTRY_DATA *entry)
+		DI_GROUP **rootdir,
+		DI_ENTRY *entry[])
 {
 	unsigned i;
 
 	for (i = 0; i < num_entries; i++) {
 		if (entry[i]) {
-			PVRDebugFSRemoveFile(&entry[i]);
+			DIDestroyEntry(entry[i]);
 		}
 	}
 
 	if (*rootdir) {
-		PVRDebugFSRemoveEntryDir(rootdir);
+		DIDestroyGroup(*rootdir);
 		*rootdir = NULL;
 	}
 }

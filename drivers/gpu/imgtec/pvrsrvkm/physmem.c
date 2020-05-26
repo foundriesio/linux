@@ -98,10 +98,10 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 	psMemHandle = hMemHandle;
 
 	/* Allocate the pages */
-	eError = psDevNode->pfnDevPxAlloc(psDevNode,
-	                                  TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
-	                                  psMemHandle,
-	                                  &sDevPhysAddr_int);
+	eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
+	                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
+	                                                 psMemHandle,
+	                                                 &sDevPhysAddr_int);
 	PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:1");
 
 	/* Check to see if the page allocator returned pages with our desired
@@ -111,13 +111,13 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 	if (ui32Log2Align && (sDevPhysAddr_int.uiAddr & uiMask))
 	{
 		/* use over allocation instead */
-		psDevNode->pfnDevPxFree(psDevNode, psMemHandle);
+		psDevNode->sDevMMUPxSetup.pfnDevPxFree(psDevNode, psMemHandle);
 
 		ui32MemSize += (IMG_UINT32) uiMask;
-		eError = psDevNode->pfnDevPxAlloc(psDevNode,
-		                                  TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
-		                                  psMemHandle,
-		                                  &sDevPhysAddr_int);
+		eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
+		                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
+		                                                 psMemHandle,
+		                                                 &sDevPhysAddr_int);
 		PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:2");
 
 		sDevPhysAddr_int.uiAddr += uiMask;
@@ -145,15 +145,15 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 	if (bInitPage)
 	{
 		/*Map the page to the CPU VA space */
-		eError = psDevNode->pfnDevPxMap(psDevNode,
-		                                psMemHandle,
-		                                ui32MemSize,
-		                                &sDevPhysAddr_int,
-		                                &pvCpuVAddr);
+		eError = psDevNode->sDevMMUPxSetup.pfnDevPxMap(psDevNode,
+		                                               psMemHandle,
+		                                               ui32MemSize,
+		                                               &sDevPhysAddr_int,
+		                                               &pvCpuVAddr);
 		if (PVRSRV_OK != eError)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "Unable to map the allocated page"));
-			psDevNode->pfnDevPxFree(psDevNode, psMemHandle);
+			psDevNode->sDevMMUPxSetup.pfnDevPxFree(psDevNode, psMemHandle);
 			return eError;
 		}
 
@@ -161,15 +161,15 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 		OSDeviceMemSet(pvCpuVAddr, u8Value, ui32MemSize);
 
 		/*Map the page to the CPU VA space */
-		eError = psDevNode->pfnDevPxClean(psDevNode,
-		                                  psMemHandle,
-		                                  0,
-		                                  ui32MemSize);
+		eError = psDevNode->sDevMMUPxSetup.pfnDevPxClean(psDevNode,
+		                                                 psMemHandle,
+		                                                 0,
+		                                                 ui32MemSize);
 		if (PVRSRV_OK != eError)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "Unable to clean the allocated page"));
-			psDevNode->pfnDevPxUnMap(psDevNode, psMemHandle, pvCpuVAddr);
-			psDevNode->pfnDevPxFree(psDevNode, psMemHandle);
+			psDevNode->sDevMMUPxSetup.pfnDevPxUnMap(psDevNode, psMemHandle, pvCpuVAddr);
+			psDevNode->sDevMMUPxSetup.pfnDevPxFree(psDevNode, psMemHandle);
 			return eError;
 		}
 
@@ -225,9 +225,9 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 #endif
 
 		/* Unmap the page */
-		psDevNode->pfnDevPxUnMap(psDevNode,
-		                         psMemHandle,
-		                         pvCpuVAddr);
+		psDevNode->sDevMMUPxSetup.pfnDevPxUnMap(psDevNode,
+		                                        psMemHandle,
+		                                        pvCpuVAddr);
 	}
 
 	return PVRSRV_OK;
@@ -242,7 +242,7 @@ void DevPhysMemFree(PVRSRV_DEVICE_NODE *psDevNode,
 	PG_HANDLE *psMemHandle;
 
 	psMemHandle = hMemHandle;
-	psDevNode->pfnDevPxFree(psDevNode, psMemHandle);
+	psDevNode->sDevMMUPxSetup.pfnDevPxFree(psDevNode, psMemHandle);
 #if defined(PDUMP)
 	if (NULL != hPDUMPMemHandle)
 	{
@@ -424,20 +424,7 @@ PhysmemNewRamBackedPMR(CONNECTION_DATA *psConnection,
 	/* Lookup the requested physheap index to use for this PMR allocation */
 	if (PVRSRV_CHECK_FW_LOCAL(uiFlags))
 	{
-		if ((PVRSRV_FW_ALLOC_TYPE(uiFlags) == FW_ALLOC_RAW) &&
-			(PVRSRV_FW_RAW_ALLOC_OSID(uiFlags) > RGXFW_HOST_OS))
-		{
-			ePhysHeapIdx = PVRSRV_DEVICE_PHYS_HEAP_FW_GUEST;
-			if (! PVRSRV_VZ_MODE_IS(HOST))
-			{
-				/* Guest or Native drivers should not do this */
-				return PVRSRV_ERROR_INTERNAL_ERROR;
-			}
-		}
-		else
-		{
-			ePhysHeapIdx = PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL;
-		}
+		ePhysHeapIdx = PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL;
 	}
 	else if (PVRSRV_CHECK_CPU_LOCAL(uiFlags))
 	{

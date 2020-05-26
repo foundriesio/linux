@@ -124,198 +124,181 @@ _GetShaderFileName(PVRSRV_DEVICE_NODE * psDeviceNode,
 }
 
 PVRSRV_ERROR
-PVRSRVTQLoadShaders(CONNECTION_DATA     * psConnection,
-					PVRSRV_DEVICE_NODE  * psDeviceNode,
-					PMR                ** ppsCLIPMRMem,
-					PMR                ** ppsUSCPMRMem)
+PVRSRVTQLoadShaders(PVRSRV_DEVICE_NODE * psDeviceNode)
 {
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 	OS_FW_IMAGE        *psShaderFW;
+	RGX_SHADER_HEADER   sHeader;
+	IMG_UINT32          ui32MappingTable = 0;
+	IMG_UINT32          ui32NumPages;
+	IMG_CHAR            aszShaderFilenameStr[RGX_SHADER_FILENAME_MAX_SIZE];
+	IMG_CHAR            aszShaderpFilenameStr[RGX_SHADER_FILENAME_MAX_SIZE];
+	size_t              uiNumBytes;
 	PVRSRV_ERROR        eError;
 
-	OSLockAcquire(psDevInfo->hTQSharedMemLock);
+	_GetShaderFileName(psDeviceNode, aszShaderFilenameStr, aszShaderpFilenameStr);
 
-	if (psDevInfo->ui32TQSharedMemRefCount == 0U)
+	psShaderFW = OSLoadFirmware(psDeviceNode, aszShaderFilenameStr, NULL);
+
+	if (psShaderFW == NULL)
 	{
-		RGX_SHADER_HEADER   sHeader;
-		IMG_UINT32          ui32MappingTable = 0;
-		IMG_UINT32          ui32NumPages;
-		IMG_CHAR            aszShaderFilenameStr[RGX_SHADER_FILENAME_MAX_SIZE];
-		IMG_CHAR            aszShaderpFilenameStr[RGX_SHADER_FILENAME_MAX_SIZE];
-		size_t              uiNumBytes;
-
-		_GetShaderFileName(psDeviceNode, aszShaderFilenameStr, aszShaderpFilenameStr);
-
-		psShaderFW = OSLoadFirmware(psDeviceNode, aszShaderFilenameStr, NULL);
-
+		psShaderFW = OSLoadFirmware(psDeviceNode, aszShaderpFilenameStr, NULL);
 		if (psShaderFW == NULL)
 		{
-			psShaderFW = OSLoadFirmware(psDeviceNode, aszShaderpFilenameStr, NULL);
-			if (psShaderFW == NULL)
-			{
-				PVR_DPF((PVR_DBG_ERROR, "%s: Failed to load shader binary file %s",
-						__func__,
-						aszShaderpFilenameStr));
-				eError = PVRSRV_ERROR_UNABLE_TO_FIND_RESOURCE ;
-				goto failed_lock;
-			}
-		}
-
-		RGXShaderReadHeader(psShaderFW, &sHeader);
-
-		ui32NumPages = (sHeader.ui32SizeFragment / RGX_BIF_PM_PHYSICAL_PAGE_SIZE) + 1;
-
-		PDUMPCOMMENT("Allocate TDM USC PMR Block (Pages %08X)", ui32NumPages);
-
-		eError = PhysmemNewRamBackedPMR(psConnection,
-										psDeviceNode,
-										ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-										ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-										1,
-										1,
-										&ui32MappingTable,
-										RGX_BIF_PM_PHYSICAL_PAGE_ALIGNSHIFT,
-										PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE
-										| PVRSRV_MEMALLOCFLAG_GPU_READABLE
-										| PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT,
-										(OSStringLength("tquscpmr") + 1),
-										"tquscpmr",
-										PVR_SYS_ALLOC_PID,
-										ppsUSCPMRMem,
-										PDUMP_NONE);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from PhysmemNewRamBackedPMR (%s)",
+			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to load shader binary file %s",
 					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_firmware;
+					 aszShaderpFilenameStr));
+			eError = PVRSRV_ERROR_UNABLE_TO_FIND_RESOURCE ;
+			goto failed_init;
 		}
-
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-		eError = RIWritePMREntryWithOwnerKM(*ppsUSCPMRMem, PVR_SYS_ALLOC_PID);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from RIWritePMREntryWithOwnerKM (%s)",
-					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_uscpmr;
-		}
-#endif
-
-		eError = PMR_WriteBytes(*ppsUSCPMRMem, 0, RGXShaderUSCMem(psShaderFW), RGXShaderUSCMemSize(psShaderFW), &uiNumBytes);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from PMR_WriteBytes (%s)",
-					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_uscpmr;
-		}
-
-		ui32NumPages = (sHeader.ui32SizeClientMem / RGX_BIF_PM_PHYSICAL_PAGE_SIZE) + 1;
-
-		PDUMPCOMMENT("Allocate TDM Client PMR Block (Pages %08X)", ui32NumPages);
-
-		eError = PhysmemNewRamBackedPMR(psConnection,
-										psDeviceNode,
-										ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-										ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
-										1,
-										1,
-										&ui32MappingTable,
-										RGX_BIF_PM_PHYSICAL_PAGE_ALIGNSHIFT,
-										PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE
-										| PVRSRV_MEMALLOCFLAG_CPU_READABLE
-										| PVRSRV_MEMALLOCFLAG_CPU_CACHE_INCOHERENT,
-										(OSStringLength("tqclipmr") + 1),
-										"tqclipmr",
-										PVR_SYS_ALLOC_PID,
-										ppsCLIPMRMem,
-										PDUMP_NONE);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from PhysmemNewRamBackedPMR (%s)",
-					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_uscpmr;
-		}
-
-#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
-		eError = RIWritePMREntryWithOwnerKM(*ppsCLIPMRMem, PVR_SYS_ALLOC_PID);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from RIWritePMREntryWithOwnerKM (%s)",
-					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_clipmr;
-		}
-#endif
-
-		eError = PMR_WriteBytes(*ppsCLIPMRMem, 0, RGXShaderCLIMem(psShaderFW), RGXShaderCLIMemSize(psShaderFW), &uiNumBytes);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_LOG(("%s: Unexpected error from PMR_WriteBytes (%s)",
-					 __func__,
-					 PVRSRVGetErrorString(eError)));
-			goto failed_clipmr;
-		}
-
-		OSUnloadFirmware(psShaderFW);
-
-		psDevInfo->hTQUSCSharedMem = *ppsUSCPMRMem;
-		psDevInfo->hTQCLISharedMem = *ppsCLIPMRMem;
 	}
-	else
+
+	RGXShaderReadHeader(psShaderFW, &sHeader);
+
+	ui32NumPages = (sHeader.ui32SizeFragment / RGX_BIF_PM_PHYSICAL_PAGE_SIZE) + 1;
+
+	PDUMPCOMMENT("Allocate TDM USC PMR Block (Pages %08X)", ui32NumPages);
+
+	eError = PhysmemNewRamBackedPMR(NULL,
+									psDeviceNode,
+									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									1,
+									1,
+									&ui32MappingTable,
+									RGX_BIF_PM_PHYSICAL_PAGE_ALIGNSHIFT,
+									PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE
+									| PVRSRV_MEMALLOCFLAG_GPU_READABLE
+									| PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT,
+									sizeof("tquscpmr"),
+									"tquscpmr",
+									PVR_SYS_ALLOC_PID,
+									(PMR**)&psDevInfo->hTQUSCSharedMem,
+									PDUMP_NONE);
+	if (eError != PVRSRV_OK)
 	{
-		PMRRefPMR(psDevInfo->hTQUSCSharedMem);
-		PMRRefPMR(psDevInfo->hTQCLISharedMem);
-		*ppsUSCPMRMem = psDevInfo->hTQUSCSharedMem;
-		*ppsCLIPMRMem = psDevInfo->hTQCLISharedMem;
+		PVR_LOG(("%s: Unexpected error from PhysmemNewRamBackedPMR (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_firmware;
 	}
+
+#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
+	eError = RIWritePMREntryWithOwnerKM(psDevInfo->hTQUSCSharedMem, PVR_SYS_ALLOC_PID);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG(("%s: Unexpected error from RIWritePMREntryWithOwnerKM (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_uscpmr;
+	}
+#endif
+
+	eError = PMR_WriteBytes(psDevInfo->hTQUSCSharedMem, 0, RGXShaderUSCMem(psShaderFW), RGXShaderUSCMemSize(psShaderFW), &uiNumBytes);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG(("%s: Unexpected error from PMR_WriteBytes (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_uscpmr;
+	}
+
+	ui32NumPages = (sHeader.ui32SizeClientMem / RGX_BIF_PM_PHYSICAL_PAGE_SIZE) + 1;
+
+	PDUMPCOMMENT("Allocate TDM Client PMR Block (Pages %08X)", ui32NumPages);
+
+	eError = PhysmemNewRamBackedPMR(NULL,
+									psDeviceNode,
+									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									ui32NumPages * RGX_BIF_PM_PHYSICAL_PAGE_SIZE,
+									1,
+									1,
+									&ui32MappingTable,
+									RGX_BIF_PM_PHYSICAL_PAGE_ALIGNSHIFT,
+									PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE
+									| PVRSRV_MEMALLOCFLAG_CPU_READABLE
+									| PVRSRV_MEMALLOCFLAG_CPU_CACHE_INCOHERENT,
+									sizeof("tqclipmr"),
+									"tqclipmr",
+									PVR_SYS_ALLOC_PID,
+									(PMR**)&psDevInfo->hTQCLISharedMem,
+									PDUMP_NONE);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG(("%s: Unexpected error from PhysmemNewRamBackedPMR (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_uscpmr;
+	}
+
+#if defined(PVRSRV_ENABLE_GPU_MEMORY_INFO)
+	eError = RIWritePMREntryWithOwnerKM(psDevInfo->hTQCLISharedMem, PVR_SYS_ALLOC_PID);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG(("%s: Unexpected error from RIWritePMREntryWithOwnerKM (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_clipmr;
+	}
+#endif
+
+	eError = PMR_WriteBytes(psDevInfo->hTQCLISharedMem, 0, RGXShaderCLIMem(psShaderFW), RGXShaderCLIMemSize(psShaderFW), &uiNumBytes);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_LOG(("%s: Unexpected error from PMR_WriteBytes (%s)",
+				 __func__,
+				 PVRSRVGetErrorString(eError)));
+		goto failed_clipmr;
+	}
+
+	OSUnloadFirmware(psShaderFW);
 
 	PVR_ASSERT(psDevInfo->hTQUSCSharedMem != NULL);
 	PVR_ASSERT(psDevInfo->hTQCLISharedMem != NULL);
 
-	/* Increase reference for each memory. They are deallocated
-	   by separate function calls. */
-	psDevInfo->ui32TQSharedMemRefCount += 2;
-
-	OSLockRelease(psDevInfo->hTQSharedMemLock);
-
 	return PVRSRV_OK;
 
 failed_clipmr:
-	PMRUnrefPMR(*ppsCLIPMRMem);
+	PMRUnrefPMR(psDevInfo->hTQCLISharedMem);
 failed_uscpmr:
-	PMRUnrefPMR(*ppsUSCPMRMem);
+	PMRUnrefPMR(psDevInfo->hTQUSCSharedMem);
 failed_firmware:
 	OSUnloadFirmware(psShaderFW);
-failed_lock:
-	OSLockRelease(psDevInfo->hTQSharedMemLock);
-
+failed_init:
 	return eError;
 }
 
+void
+PVRSRVTQAcquireShaders(PVRSRV_DEVICE_NODE  * psDeviceNode,
+					   PMR                ** ppsCLIPMRMem,
+					   PMR                ** ppsUSCPMRMem)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
+
+	PVR_ASSERT(psDevInfo->hTQUSCSharedMem != NULL);
+	PVR_ASSERT(psDevInfo->hTQCLISharedMem != NULL);
+
+	*ppsUSCPMRMem = psDevInfo->hTQUSCSharedMem;
+	*ppsCLIPMRMem = psDevInfo->hTQCLISharedMem;
+}
+
 PVRSRV_ERROR
-PVRSRVTQUnloadShaders(PVRSRV_DEVICE_NODE * psDeviceNode,
-					  PMR                * psPMRMem)
+PVRSRVTQUnloadShaders(PVRSRV_DEVICE_NODE * psDeviceNode)
 {
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 	PVRSRV_ERROR eError;
 
-	OSLockAcquire(psDevInfo->hTQSharedMemLock);
-
-	eError = PMRUnrefPMR(psPMRMem);
+	eError = PMRUnrefPMR(psDevInfo->hTQUSCSharedMem);
 	if (eError != PVRSRV_OK)
 	{
-		OSLockRelease(psDevInfo->hTQSharedMemLock);
 		return eError;
 	}
 
-	PVR_ASSERT(psDevInfo->ui32TQSharedMemRefCount > 0U);
-
-	--psDevInfo->ui32TQSharedMemRefCount;
-
-	OSLockRelease(psDevInfo->hTQSharedMemLock);
+	eError = PMRUnrefPMR(psDevInfo->hTQCLISharedMem);
+	if (eError != PVRSRV_OK)
+	{
+		return eError;
+	}
 
 	return PVRSRV_OK;
 }

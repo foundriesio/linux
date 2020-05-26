@@ -1005,7 +1005,7 @@ static PVRSRV_ERROR RGXHWPerfCtrlHostBuffer(const PVRSRV_DEVICE_NODE *psDeviceNo
 		PVR_LOG(("HWPerfHost deferred events buffer high-watermark / size: (%u / %u)",
 				psDevice->ui32DEHighWatermark, HWPERF_HOST_MAX_DEFERRED_PACKETS));
 
-		PVR_LOG(("HWPerfHost deferred event retries: WaitForAtomicCtxPktHighWatermark(%u) "\
+		PVR_LOG(("HWPerfHost deferred event retries: WaitForAtomicCtxPktHighWatermark(%u) "
 				"WaitForRightOrdPktHighWatermark(%u)",
 				psDevice->ui32WaitForAtomicCtxPktHighWatermark,
 				psDevice->ui32WaitForRightOrdPktHighWatermark));
@@ -1702,7 +1702,7 @@ PVRSRV_ERROR RGXHWPerfHostInitOnDemandResources(PVRSRV_RGXDEV_INFO *psRgxDevInfo
 	                                              * HWPERF_HOST_DEFERRED_UFO_PACKET_SIZE);
 	if (NULL == psRgxDevInfo->pui8DeferredEvents)
 	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: OUT OF MEMORY. Could not allocate memory for "\
+		PVR_DPF((PVR_DBG_ERROR, "%s: OUT OF MEMORY. Could not allocate memory for "
 				"HWPerfHost deferred events array", __func__));
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
 		goto err_alloc_deferred_events;
@@ -1875,7 +1875,7 @@ static inline IMG_BOOL _WriteHWPerfStream(PVRSRV_RGXDEV_INFO *psRgxDevInfo,
                                           RGX_HWPERF_V2_PACKET_HDR *psHeader)
 {
 	PVRSRV_ERROR eError = TLStreamWrite(psRgxDevInfo->hHWPerfHostStream,
-	                                    (IMG_UINT8*) psHeader, psHeader->ui32Size);
+	                                    IMG_OFFSET_ADDR(psHeader, 0), psHeader->ui32Size);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_MESSAGE, "%s: Could not write packet in %s buffer"
@@ -2092,7 +2092,7 @@ static inline void _SetupHostPacketHeader(PVRSRV_RGXDEV_INFO *psRgxDevInfo,
                                           IMG_UINT32 ui32Ordinal,
                                           IMG_UINT64 ui64Timestamp)
 {
-	RGX_HWPERF_V2_PACKET_HDR *psHeader = (RGX_HWPERF_V2_PACKET_HDR *) pui8Dest;
+	RGX_HWPERF_V2_PACKET_HDR *psHeader = (RGX_HWPERF_V2_PACKET_HDR *) ((void *)pui8Dest);
 
 	PVR_ASSERT(ui32Size<=RGX_HWPERF_MAX_PACKET_SIZE);
 
@@ -2119,7 +2119,7 @@ static inline void _SetupHostEnqPacketData(IMG_UINT8 *pui8Dest,
                                            IMG_UINT64 ui64CycleEstimate)
 {
 	RGX_HWPERF_HOST_ENQ_DATA *psData = (RGX_HWPERF_HOST_ENQ_DATA *)
-					(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	psData->ui32EnqType = eEnqType;
 	psData->ui32PID = ui32Pid;
 	psData->ui32ExtJobRef = ui32ExtJobRef;
@@ -2220,7 +2220,7 @@ static inline void _SetupHostUfoPacketData(IMG_UINT8 *pui8Dest,
                                            RGX_HWPERF_UFO_DATA_ELEMENT *psUFOData)
 {
 	RGX_HWPERF_HOST_UFO_DATA *psData = (RGX_HWPERF_HOST_UFO_DATA *)
-					(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	RGX_HWPERF_UFO_DATA_ELEMENT *puData = (RGX_HWPERF_UFO_DATA_ELEMENT *)
 					 psData->aui32StreamData;
 
@@ -2240,7 +2240,7 @@ static inline void _SetupHostUfoPacketData(IMG_UINT8 *pui8Dest,
 					psUFOData->sCheckSuccess.ui32Value;
 
 			puData = (RGX_HWPERF_UFO_DATA_ELEMENT *)
-							(((IMG_BYTE *) puData) + sizeof(puData->sCheckSuccess));
+							IMG_OFFSET_ADDR(puData, sizeof(puData->sCheckSuccess));
 			break;
 		case RGX_HWPERF_UFO_EV_CHECK_FAIL:
 		case RGX_HWPERF_UFO_EV_PRCHECK_FAIL:
@@ -2252,7 +2252,7 @@ static inline void _SetupHostUfoPacketData(IMG_UINT8 *pui8Dest,
 					psUFOData->sCheckFail.ui32Required;
 
 			puData = (RGX_HWPERF_UFO_DATA_ELEMENT *)
-						(((IMG_BYTE *) puData) + sizeof(puData->sCheckFail));
+						IMG_OFFSET_ADDR(puData, sizeof(puData->sCheckFail));
 			break;
 		case RGX_HWPERF_UFO_EV_UPDATE:
 			puData->sUpdate.ui32FWAddr =
@@ -2263,7 +2263,7 @@ static inline void _SetupHostUfoPacketData(IMG_UINT8 *pui8Dest,
 					psUFOData->sUpdate.ui32NewValue;
 
 			puData = (RGX_HWPERF_UFO_DATA_ELEMENT *)
-						(((IMG_BYTE *) puData) + sizeof(puData->sUpdate));
+						IMG_OFFSET_ADDR(puData, sizeof(puData->sUpdate));
 			break;
 		default:
 			// unknown type - this should never happen
@@ -2391,7 +2391,7 @@ static inline void _SetupHostAllocPacketData(IMG_UINT8 *pui8Dest,
                                              IMG_UINT32 ui32NameSize)
 {
 	RGX_HWPERF_HOST_ALLOC_DATA *psData = (RGX_HWPERF_HOST_ALLOC_DATA *)
-					(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 
 	IMG_CHAR *acName = NULL;
 
@@ -2483,7 +2483,7 @@ static inline void _SetupHostFreePacketData(IMG_UINT8 *pui8Dest,
                                             IMG_UINT32 ui32FWAddr)
 {
 	RGX_HWPERF_HOST_FREE_DATA *psData = (RGX_HWPERF_HOST_FREE_DATA *)
-					(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 
 	psData->ui32FreeType = eFreeType;
 
@@ -2670,7 +2670,7 @@ cleanup:
 static inline void _SetupHostClkSyncPacketData(PVRSRV_RGXDEV_INFO *psRgxDevInfo, IMG_UINT8 *pui8Dest)
 {
 	RGX_HWPERF_HOST_CLK_SYNC_DATA *psData = (RGX_HWPERF_HOST_CLK_SYNC_DATA *)
-					(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+					IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	RGXFWIF_GPU_UTIL_FWCB *psGpuUtilFWCB = psRgxDevInfo->psRGXFWIfGpuUtilFWCb;
 	IMG_UINT32 ui32CurrIdx =
 			RGXFWIF_TIME_CORR_CURR_INDEX(psGpuUtilFWCB->ui32TimeCorrSeqCount);
@@ -2743,7 +2743,7 @@ static inline void _SetupHostDeviceInfoPacketData(RGX_HWPERF_DEV_INFO_EV eEvType
 												  PVRSRV_DEVICE_HEALTH_REASON eDeviceHealthReason,
 												  IMG_UINT8 *pui8Dest)
 {
-	RGX_HWPERF_HOST_DEV_INFO_DATA *psData = (RGX_HWPERF_HOST_DEV_INFO_DATA *)(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+	RGX_HWPERF_HOST_DEV_INFO_DATA *psData = (RGX_HWPERF_HOST_DEV_INFO_DATA *)IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	psData->eEvType = eEvType;
 
 	switch (eEvType)
@@ -2816,7 +2816,7 @@ static inline void _SetupHostInfoPacketData(RGX_HWPERF_INFO_EV eEvType,
 												  IMG_UINT8 *pui8Dest)
 {
 	IMG_INT i;
-	RGX_HWPERF_HOST_INFO_DATA *psData = (RGX_HWPERF_HOST_INFO_DATA *)(pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+	RGX_HWPERF_HOST_INFO_DATA *psData = (RGX_HWPERF_HOST_INFO_DATA *)IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 	psData->eEvType = eEvType;
 
 	switch (eEvType)
@@ -2939,7 +2939,7 @@ _SetupHostFenceWaitPacketData(IMG_UINT8 *pui8Dest,
                               IMG_UINT32 ui32Data)
 {
 	RGX_HWPERF_HOST_SYNC_FENCE_WAIT_DATA *psData = (RGX_HWPERF_HOST_SYNC_FENCE_WAIT_DATA *)
-	                (pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+	                IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 
 	psData->eType = eWaitType;
 	psData->uiPID = uiPID;
@@ -3008,7 +3008,7 @@ _SetupHostSWTimelineAdvPacketData(IMG_UINT8 *pui8Dest,
 
 {
 	RGX_HWPERF_HOST_SYNC_SW_TL_ADV_DATA *psData = (RGX_HWPERF_HOST_SYNC_SW_TL_ADV_DATA *)
-	                (pui8Dest + sizeof(RGX_HWPERF_V2_PACKET_HDR));
+	                IMG_OFFSET_ADDR(pui8Dest, sizeof(RGX_HWPERF_V2_PACKET_HDR));
 
 	psData->uiPID = uiPID;
 	psData->hTimeline = hSWTimeline;
@@ -3507,7 +3507,7 @@ PVRSRV_ERROR RGXHWPerfAcquireEvents(
 	pDataDest = psDevData->pHwpBuf[eStreamId];
 	psHDRptr = GET_PACKET_HDR(psDevData->pTlBufPos[eStreamId]);
 	psDevData->pTlBufRead[eStreamId] = psDevData->pTlBufPos[eStreamId];
-	while ( psHDRptr < (PVRSRVTL_PPACKETHDR)pBufferEnd )
+	while (psHDRptr < (PVRSRVTL_PPACKETHDR)((void *)pBufferEnd))
 	{
 		ui16TlType = GET_PACKET_TYPE(psHDRptr);
 		if (ui16TlType == PVRSRVTL_PACKETTYPE_DATA)
@@ -3544,14 +3544,14 @@ PVRSRV_ERROR RGXHWPerfAcquireEvents(
 		/* Update loop variable to the next packet and increment counts */
 		psHDRptr = GET_NEXT_PACKET_ADDR(psHDRptr);
 		/* Updated to keep track of the next packet to be read. */
-		psDevData->pTlBufRead[eStreamId] = (IMG_PBYTE) psHDRptr;
+		psDevData->pTlBufRead[eStreamId] = (IMG_PBYTE) ((void *)psHDRptr);
 		ui32TlPackets++;
 	}
 
 	PVR_DPF((PVR_DBG_VERBOSE, "RGXHWPerfAcquireEvents: TL Packets processed %03d", ui32TlPackets));
 
 	psDevData->bRelease[eStreamId] = IMG_FALSE;
-	if (psHDRptr >= (PVRSRVTL_PPACKETHDR) pBufferEnd)
+	if (psHDRptr >= (PVRSRVTL_PPACKETHDR)((void *)pBufferEnd))
 	{
 		psDevData->bRelease[eStreamId] = IMG_TRUE;
 	}

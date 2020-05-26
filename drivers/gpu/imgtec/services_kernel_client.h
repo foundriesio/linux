@@ -97,11 +97,7 @@ enum PVRSRV_ERROR PVRSRVUnregisterCmdCompleteNotify(void *hNotify);
 void PVRSRVCheckStatus(void *hCmdCompCallerHandle);
 
 #define DEBUG_REQUEST_DC               0
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-#define DEBUG_REQUEST_SERVERSYNC       1
-#else
 #define DEBUG_REQUEST_SYNCTRACKING     1
-#endif
 #define DEBUG_REQUEST_SYS              2
 #define DEBUG_REQUEST_ANDROIDSYNC      3
 #define DEBUG_REQUEST_LINUXFENCE       4
@@ -155,8 +151,6 @@ enum PVRSRV_ERROR SyncPrimFree(struct PVRSRV_CLIENT_SYNC_PRIM *psSync);
 enum PVRSRV_ERROR SyncPrimGetFirmwareAddr(
 	struct PVRSRV_CLIENT_SYNC_PRIM *psSync,
 	__u32 *sync_addr);
-enum PVRSRV_ERROR SyncPrimSet(struct PVRSRV_CLIENT_SYNC_PRIM *psSync,
-	__u32 ui32Value);
 
 /* osfunc.h */
 enum PVRSRV_ERROR OSEventObjectWait(void *hOSEventKM);
@@ -167,10 +161,10 @@ __u32 OSStringUINT32ToStr(char *pszBuf, size_t uSize, __u32 ui32Num);
 
 /* srvkm.h */
 
-enum PVRSRV_ERROR PVRSRVDeviceCreate(void *pvOSDevice,
+enum PVRSRV_ERROR PVRSRVCommonDeviceCreate(void *pvOSDevice,
 	int i32UMIdentifier,
 	struct _PVRSRV_DEVICE_NODE_ **ppsDeviceNode);
-enum PVRSRV_ERROR PVRSRVDeviceDestroy(
+enum PVRSRV_ERROR PVRSRVCommonDeviceDestroy(
 	struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
 const char *PVRSRVGetErrorString(enum PVRSRV_ERROR eError);
 

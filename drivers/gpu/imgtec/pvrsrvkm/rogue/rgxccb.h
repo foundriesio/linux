@@ -133,12 +133,6 @@ typedef struct _RGX_CCB_CMD_HELPER_DATA_ {
 	IMG_UINT32					ui32ClientUpdateCount;
 	PRGXFWIF_UFO_ADDR			*pauiUpdateUFOAddress;
 	IMG_UINT32					*paui32UpdateValue;
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-	IMG_UINT32					ui32ServerSyncCount;
-	IMG_UINT32					*paui32ServerSyncFlags;
-	IMG_UINT32					ui32ServerSyncFlagMask;
-	SERVER_SYNC_PRIMITIVE		**papsServerSyncs;
-#endif
 	RGXFWIF_CCB_CMD_TYPE		eType;
 	IMG_UINT32					ui32CmdSize;
 	IMG_UINT8					*pui8DMCmd;
@@ -267,11 +261,6 @@ PVRSRV_ERROR RGXSetCCBFlags(RGX_CLIENT_CCB *psClientCCB,
 
 void RGXCmdHelperInitCmdCCB_CommandSize(IMG_UINT32 ui32ClientFenceCount,
                                         IMG_UINT32 ui32ClientUpdateCount,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                                        IMG_UINT32 ui32ServerSyncCount,
-                                        IMG_UINT32 *paui32ServerSyncFlags,
-                                        IMG_UINT32 ui32ServerSyncFlagMask,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                                         IMG_UINT32 ui32CmdSize,
                                         RGX_CCB_CMD_HELPER_DATA *psCmdHelperData);
 
@@ -282,12 +271,6 @@ void RGXCmdHelperInitCmdCCB_OtherData(RGX_CLIENT_CCB *psClientCCB,
                                       IMG_UINT32 ui32ClientUpdateCount,
                                       PRGXFWIF_UFO_ADDR *pauiUpdateUFOAddress,
                                       IMG_UINT32 *paui32UpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                                      IMG_UINT32 ui32ServerSyncCount,
-                                      IMG_UINT32 *paui32ServerSyncFlags,
-                                      IMG_UINT32 ui32ServerSyncFlagMask,
-                                      SERVER_SYNC_PRIMITIVE **papsServerSyncs,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                                       IMG_UINT32 ui32CmdSize,
                                       IMG_PBYTE pui8DMCmd,
                                       RGXFWIF_CCB_CMD_TYPE eType,
@@ -306,12 +289,6 @@ void RGXCmdHelperInitCmdCCB(RGX_CLIENT_CCB            *psClientCCB,
                             IMG_UINT32                ui32ClientUpdateCount,
                             PRGXFWIF_UFO_ADDR         *pauiUpdateUFOAddress,
                             IMG_UINT32                *paui32UpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                            IMG_UINT32                ui32ServerSyncCount,
-                            IMG_UINT32                *paui32ServerSyncFlags,
-                            IMG_UINT32                ui32ServerSyncFlagMask,
-                            SERVER_SYNC_PRIMITIVE     **papsServerSyncs,
-#endif /* SUPPORT_SERVER_SYNC_IMPL */
                             IMG_UINT32                ui32CmdSize,
                             IMG_PBYTE                 pui8DMCmd,
                             RGXFWIF_CCB_CMD_TYPE      eType,

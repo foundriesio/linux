@@ -127,6 +127,50 @@ static void RGXInitMetaProcWrapper(const void *hPrivate)
 /*!
 *******************************************************************************
 
+ @Function      RGXInitRiscvProcWrapper
+
+ @Description   Configures the hardware wrapper of the RISCV processor
+
+ @Input         hPrivate  : Implementation specific data
+
+ @Return        void
+
+******************************************************************************/
+static void RGXInitRiscvProcWrapper(const void *hPrivate)
+{
+	IMG_DEV_VIRTADDR sTmp;
+
+	RGXCommentLog(hPrivate, "RGXStart: Configure RISCV wrapper");
+
+	RGXCommentLog(hPrivate, "RGXStart: Write boot code remap");
+	RGXAcquireBootCodeAddr(hPrivate, &sTmp);
+	RGXWriteReg64(hPrivate,
+	              RGXRISCVFW_BOOTLDR_CODE_REMAP,
+	              sTmp.uiAddr |
+	              (IMG_UINT64) (RGX_FIRMWARE_RAW_HEAP_SIZE >> TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_ALIGN)
+	                << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_SHIFT |
+	              (IMG_UINT64) MMU_CONTEXT_MAPPING_FWPRIV << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_MMU_CONTEXT_SHIFT |
+	              TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_FETCH_EN);
+
+	RGXCommentLog(hPrivate, "RGXStart: Write boot data remap");
+	RGXAcquireBootDataAddr(hPrivate, &sTmp);
+	RGXWriteReg64(hPrivate,
+	              RGXRISCVFW_BOOTLDR_DATA_REMAP,
+	              sTmp.uiAddr |
+	              (IMG_UINT64) (RGX_FIRMWARE_RAW_HEAP_SIZE >> TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_ALIGN)
+	                << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_SHIFT |
+	              (IMG_UINT64) MMU_CONTEXT_MAPPING_FWPRIV << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_MMU_CONTEXT_SHIFT |
+	              TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_LOAD_STORE_EN);
+
+	/* Garten IDLE bit controlled by RISCV */
+	RGXCommentLog(hPrivate, "RGXStart: Set GARTEN_IDLE type to RISCV");
+	RGXWriteReg64(hPrivate, RGX_CR_MTS_GARTEN_WRAPPER_CONFIG, RGX_CR_MTS_GARTEN_WRAPPER_CONFIG_IDLE_CTRL_META);
+}
+
+
+/*!
+*******************************************************************************
+
  @Function      RGXInitBIF
 
  @Description   Initialise RGX BIF
@@ -156,7 +200,7 @@ static void RGXInitBIF(const void *hPrivate)
 
 
 	/* Set the mapping context */
-	RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, META_MMU_CONTEXT_MAPPING_FWPRIV);
+	RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, MMU_CONTEXT_MAPPING_FWPRIV);
 	(void)RGXReadReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT); /* Fence write */
 
 	/* Write the cat-base address */
@@ -166,9 +210,9 @@ static void RGXInitBIF(const void *hPrivate)
 	                      RGX_CR_MMU_CBASE_MAPPING_BASE_ADDR_SHIFT,
 	                      uiPCAddr);
 
-#if (META_MMU_CONTEXT_MAPPING_FWIF != META_MMU_CONTEXT_MAPPING_FWPRIV)
+#if (MMU_CONTEXT_MAPPING_FWIF != MMU_CONTEXT_MAPPING_FWPRIV)
 	/* Set-up different MMU ID mapping to the same PC used above */
-	RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, META_MMU_CONTEXT_MAPPING_FWIF);
+	RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, MMU_CONTEXT_MAPPING_FWIF);
 	(void)RGXReadReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT); /* Fence write */
 
 	RGXWriteKernelMMUPC32(hPrivate,
@@ -284,7 +328,7 @@ static void RGXSPUSoftResetDeAssert(const void *hPrivate)
 	RGXMercerSoftResetSet(hPrivate, 0);
 }
 
-static void RGXResetSequence(const void *hPrivate)
+static void RGXResetSequence(const void *hPrivate, const IMG_CHAR *pcRGXFW_PROCESSOR)
 {
 	/* Set RGX in soft-reset */
 	RGXCommentLog(hPrivate, "RGXStart: soft reset assert step 1");
@@ -300,8 +344,8 @@ static void RGXResetSequence(const void *hPrivate)
 
 	(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
 
-	/* Take everything out of reset but META */
-	RGXCommentLog(hPrivate, "RGXStart: soft reset de-assert step 1 excluding %s", RGXFW_PROCESSOR_META);
+	/* Take everything out of reset but the FW processor */
+	RGXCommentLog(hPrivate, "RGXStart: soft reset de-assert step 1 excluding %s", pcRGXFW_PROCESSOR);
 	RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_SOFT_RESET_EXTRA | RGX_CR_SOFT_RESET_GARTEN_EN);
 
 	(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
@@ -310,7 +354,7 @@ static void RGXResetSequence(const void *hPrivate)
 
 	(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
 
-	RGXCommentLog(hPrivate, "RGXStart: soft reset de-assert step 2 excluding %s", RGXFW_PROCESSOR_META);
+	RGXCommentLog(hPrivate, "RGXStart: soft reset de-assert step 2 excluding %s", pcRGXFW_PROCESSOR);
 	RGXSPUSoftResetDeAssert(hPrivate);
 
 	(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
@@ -318,7 +362,7 @@ static void RGXResetSequence(const void *hPrivate)
 
 static void DeassertMetaReset(const void *hPrivate)
 {
-	/* Need to wait for at least 16 cycles before taking META/MIPS out of reset ... */
+	/* Need to wait for at least 16 cycles before taking the FW processor out of reset ... */
 	RGXWaitCycles(hPrivate, 32, 3);
 
 	RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, 0x0);
@@ -375,7 +419,13 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	IMG_CHAR *pcRGXFW_PROCESSOR;
 	IMG_BOOL bMetaFW = IMG_FALSE;
 
-	if (RGX_DEVICE_HAS_FEATURE_VALUE(hPrivate, META))
+	if (RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR))
+	{
+		pcRGXFW_PROCESSOR = RGXFW_PROCESSOR_RISCV;
+		bMetaFW = IMG_FALSE;
+		bDoFWSlaveBoot = IMG_FALSE;
+	}
+	else
 	{
 		pcRGXFW_PROCESSOR = RGXFW_PROCESSOR_META;
 		bMetaFW = IMG_TRUE;
@@ -422,11 +472,10 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 
 	/*!
 	 * Start series8 FW init sequence
-	 * (META only -- nothing to do for BIF/SLC)
 	 */
-	RGXResetSequence(hPrivate);
+	RGXResetSequence(hPrivate, pcRGXFW_PROCESSOR);
 
-	if (RGX_DEVICE_GET_FEATURE_VALUE(hPrivate, ECC_RAMS) > 0)
+	if (bMetaFW && RGX_DEVICE_GET_FEATURE_VALUE(hPrivate, ECC_RAMS) > 0)
 	{
 		RGXCommentLog(hPrivate, "RGXStart: Init Jones ECC RAM");
 		eError = InitJonesECCRAM(hPrivate);
@@ -459,6 +508,10 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	{
 		RGXInitMetaProcWrapper(hPrivate);
 	}
+	else
+	{
+		RGXInitRiscvProcWrapper(hPrivate);
+	}
 
 	if (RGX_GET_FEATURE_VALUE(psDevInfo, MMU_VERSION) >= 4)
 	{
@@ -472,7 +525,7 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	 */
 	RGXInitBIF(hPrivate);
 
-	RGXCommentLog(hPrivate, "RGXStart: Take %s out of reset", RGXFW_PROCESSOR_META);
+	RGXCommentLog(hPrivate, "RGXStart: Take %s out of reset", pcRGXFW_PROCESSOR);
 	DeassertMetaReset(hPrivate);
 
 	if (bMetaFW)
@@ -494,6 +547,8 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	else
 	{
 		RGXCommentLog(hPrivate, "RGXStart: RGX Firmware Master boot Start");
+		RGXWriteReg32(hPrivate, TMP_RGX_CR_FWCORE_BOOT, 1);
+		RGXWaitCycles(hPrivate, 32, 3);
 	}
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(SUPPORT_SECURITY_VALIDATION)
@@ -529,6 +584,7 @@ PVRSRV_ERROR RGXStop(const void *hPrivate)
 #if !defined(RGX_CR_POWER_EVENT)
 #define RGX_CR_POWER_EVENT                                (0x0038U)
 #define RGX_CR_POWER_EVENT_DOMAIN_SPU0_SHIFT              (9U)
+#define RGX_CR_POWER_EVENT_DOMAIN_CLUSTER0_SHIFT          (8U)
 #define RGX_CR_POWER_EVENT_TYPE_SHIFT                     (0U)
 #define RGX_CR_POWER_EVENT_TYPE_POWER_DOWN                (0x00000000U)
 #define RGX_CR_POWER_EVENT_REQ_EN                         (0x00000002U)
@@ -537,8 +593,17 @@ PVRSRV_ERROR RGXStop(const void *hPrivate)
 	/* Power off any enabled SPUs */
 	{
 		IMG_UINT32 ui32SPUOffMask = (1 << RGX_DEVICE_GET_FEATURE_VALUE(hPrivate, NUM_SPU)) -1;
-		IMG_UINT32 ui32RegVal =  (ui32SPUOffMask << RGX_CR_POWER_EVENT_DOMAIN_SPU0_SHIFT) |
-					  RGX_CR_POWER_EVENT_TYPE_POWER_DOWN;
+		IMG_UINT32 ui32RegVal;
+		if (RGX_DEVICE_GET_FEATURE_VALUE(hPrivate, POWER_ISLAND_VERSION) == 2)
+		{
+			ui32RegVal =  (ui32SPUOffMask << RGX_CR_POWER_EVENT_DOMAIN_CLUSTER0_SHIFT) |
+			              RGX_CR_POWER_EVENT_TYPE_POWER_DOWN;
+		}
+		else
+		{
+			ui32RegVal =  (ui32SPUOffMask << RGX_CR_POWER_EVENT_DOMAIN_SPU0_SHIFT) |
+		                  RGX_CR_POWER_EVENT_TYPE_POWER_DOWN;
+		}
 
 		RGXWriteReg32(hPrivate,
 		              RGX_CR_POWER_EVENT,

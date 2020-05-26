@@ -269,6 +269,14 @@ PVRSRV_ERROR PDumpWriteVarSHRValueOp(const IMG_CHAR *pszInternalVariable,
                                      const IMG_UINT64 ui64Value,
                                      const IMG_UINT32 ui32PDumpFlags);
 
+PVRSRV_ERROR PDumpWriteVarORVarOp(const IMG_CHAR *pszInternalVar,
+                                  const IMG_CHAR *pszInternalVar2,
+                                  const IMG_UINT32 ui32PDumpFlags);
+
+PVRSRV_ERROR PDumpWriteVarANDVarOp(const IMG_CHAR *pszInternalVar,
+                                   const IMG_CHAR *pszInternalVar2,
+                                   const IMG_UINT32 ui32PDumpFlags);
+
 PVRSRV_ERROR PDumpInternalVarToReg32(IMG_CHAR *pszPDumpRegName,
                                      IMG_UINT32 ui32Reg,
                                      IMG_CHAR *pszInternalVar,
@@ -500,9 +508,27 @@ PVRSRV_ERROR PDumpTRG(IMG_CHAR *pszMemSpace,
 
 void PDumpLock(void);
 void PDumpUnlock(void);
+
+PVRSRV_ERROR PDumpRegCondStr(IMG_CHAR            **ppszPDumpCond,
+                             IMG_CHAR            *pszPDumpRegName,
+                             IMG_UINT32          ui32RegAddr,
+                             IMG_UINT32          ui32RegValue,
+                             IMG_UINT32          ui32Mask,
+                             IMG_UINT32          ui32Flags,
+                             PDUMP_POLL_OPERATOR eOperator);
+
+PVRSRV_ERROR PDumpInternalValCondStr(IMG_CHAR            **ppszPDumpCond,
+                                     IMG_CHAR            *pszInternalVar,
+                                     IMG_UINT32          ui32RegValue,
+                                     IMG_UINT32          ui32Mask,
+                                     IMG_UINT32          ui32Flags,
+                                     PDUMP_POLL_OPERATOR eOperator);
+
 PVRSRV_ERROR PDumpIfKM(IMG_CHAR *pszPDumpCond, IMG_UINT32 ui32PDumpFlags);
 PVRSRV_ERROR PDumpElseKM(IMG_CHAR *pszPDumpCond, IMG_UINT32 ui32PDumpFlags);
 PVRSRV_ERROR PDumpFiKM(IMG_CHAR *pszPDumpCond, IMG_UINT32 ui32PDumpFlags);
+PVRSRV_ERROR PDumpStartDoLoopKM(IMG_UINT32 ui32PDumpFlags);
+PVRSRV_ERROR PDumpEndDoWhileLoopKM(IMG_CHAR *pszPDumpWhileCond, IMG_UINT32 ui32PDumpFlags);
 PVRSRV_ERROR PDumpCOMCommand(IMG_UINT32 ui32PDumpFlags, const IMG_CHAR *pszPDump);
 
 void PDumpPowerTransitionStart(void);

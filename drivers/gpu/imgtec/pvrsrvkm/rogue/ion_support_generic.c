@@ -159,15 +159,4 @@ void IonDeinit(void)
 	kfree(g_apsIonHeaps);
 	ion_device_destroy(g_psIonDev);
 }
-#else	/* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)) */
-PVRSRV_ERROR IonInit(void *pvPrivateData)
-{
-	(void) pvPrivateData;
-
-	return PVRSRV_OK;
-}
-
-void IonDeinit(void)
-{
-}
-#endif	/* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)) */
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)) */

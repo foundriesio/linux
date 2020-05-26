@@ -73,7 +73,7 @@ typedef struct DLLIST_NODE_
 	Static initialiser
 */
 #define DECLARE_DLLIST(n) \
-DLLIST_NODE n = {&n, &n}
+DLLIST_NODE (n) = {&(n), &(n)}
 
 
 /*************************************************************************/ /*!
@@ -318,14 +318,14 @@ void dllist_insert_list_at_head(PDLLIST_NODE psOutHead, PDLLIST_NODE psInHead)
 */
 /*****************************************************************************/
 #define dllist_foreach_node(list_head, node, next)						\
-	for (node = (list_head)->psNextNode, next = (node)->psNextNode;		\
-		 node != (list_head);											\
-		 node = next, next = (node)->psNextNode)
+	for ((node) = (list_head)->psNextNode, (next) = (node)->psNextNode;		\
+		 (node) != (list_head);											\
+		 (node) = (next), (next) = (node)->psNextNode)
 
 #define dllist_foreach_node_backwards(list_head, node, prev)			\
-	for (node = (list_head)->psPrevNode, prev = (node)->psPrevNode;		\
-		 node != (list_head);											\
-		 node = prev, prev = (node)->psPrevNode)
+	for ((node) = (list_head)->psPrevNode, (prev) = (node)->psPrevNode;		\
+		 (node) != (list_head);											\
+		 (node) = (prev), (prev) = (node)->psPrevNode)
 
 
 /*************************************************************************/ /*!

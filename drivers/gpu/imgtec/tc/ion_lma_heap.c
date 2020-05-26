@@ -194,7 +194,6 @@ static void ion_lma_heap_unmap_dma(struct ion_heap *heap,
 }
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 static int ion_lma_heap_map_user(struct ion_heap *mapper,
 				 struct ion_buffer *buffer,
 				 struct vm_area_struct *vma)
@@ -252,7 +251,6 @@ static void ion_lma_heap_unmap_kernel(struct ion_heap *heap,
 {
 	iounmap(buffer->vaddr);
 }
-#endif
 
 static struct ion_heap_ops lma_heap_ops = {
 	.allocate = ion_lma_heap_allocate,
@@ -264,14 +262,9 @@ static struct ion_heap_ops lma_heap_ops = {
 	.map_dma = ion_lma_heap_map_dma,
 	.unmap_dma = ion_lma_heap_unmap_dma,
 #endif
-	/* Kernel 5.4 removed some heap operations as there are default
-	 * dma_buf operations.
-	 */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 	.map_user = ion_lma_heap_map_user,
 	.map_kernel = ion_lma_heap_map_kernel,
 	.unmap_kernel = ion_lma_heap_unmap_kernel,
-#endif
 };
 
 struct ion_heap *ion_lma_heap_create(struct ion_platform_heap *heap_data,

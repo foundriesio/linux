@@ -310,30 +310,18 @@ PVRSRV_ERROR PhysmemInitFWDedicatedMem(PVRSRV_DEVICE_NODE *psDeviceNode,
 	PhysHeapRegionGetSize(psDeviceNode->psDedicatedFWMemHeap, 0, &ui64Size);
 	PhysHeapRegionGetDevPAddr(psDeviceNode->psDedicatedFWMemHeap, 0, &sDevPAddr);
 
-	psDeviceNode->psDedicatedFWMemArena =
-		RA_Create("Dedicated_FW_mem",
-				  OSGetPageShift(),
-				  RA_LOCKCLASS_0,
-				  NULL, NULL, NULL,
-				  IMG_FALSE);
-	PVR_LOG_GOTO_IF_NOMEM(psDeviceNode->psDedicatedFWMemArena, eError, errorOnRACreate);
-
-	if (!RA_Add(psDeviceNode->psDedicatedFWMemArena,
-				(RA_BASE_T)sDevPAddr.uiAddr,
-				(RA_LENGTH_T)ui64Size,
-				0, NULL))
-	{
-		PVR_DPF((PVR_DBG_ERROR,
-				 "%s: Failed to add memory to dedicated FW memory arena",
-				 __func__));
-		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-		goto errorOnRAAdd;
-	}
+	eError = PVRSRVCreateRegionRA(psDevConfig,
+								  &psDeviceNode->psDedicatedFWMemArena,
+								  NULL,
+								  0,
+								  sDevPAddr.uiAddr,
+								  ui64Size,
+								  0,
+								  "Dedicated Fw Mem");
+	PVR_LOG_GOTO_IF_ERROR(eError, "CreateRegionRA(DedicatedFwMem)", errorOnRACreate);
 
 	return PVRSRV_OK;
 
-errorOnRAAdd:
-	RA_Delete(psDeviceNode->psDedicatedFWMemArena);
 errorOnRACreate:
 errorOnValidatePhysHeap:
 	PhysHeapRelease(psDeviceNode->psDedicatedFWMemHeap);

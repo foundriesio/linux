@@ -68,7 +68,7 @@ extern "C" {
 	#include <linux/version.h>
 	#include <linux/types.h>
 	#include "kernel_types.h"
-#elif defined(LINUX) || defined(__METAG) || defined(__QNXNTO__) || defined(INTEGRITY_OS)
+#elif defined(LINUX) || defined(__METAG) || defined(__QNXNTO__) || defined(INTEGRITY_OS) || defined(__riscv)
 	#include <stddef.h>			/* NULL */
 	#include <stdint.h>
 	#include <inttypes.h>		/* intX_t/uintX_t, format specifiers */

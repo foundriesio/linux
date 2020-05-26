@@ -5,7 +5,8 @@
 @Description    This file defines the OS interface through which the RGX
                 device initialisation code in the kernel/server will obtain
                 the RGX firmware binary image. The API is used during the
-                initialisation of an RGX device via the PVRSRVDeviceInitialise()
+                initialisation of an RGX device via the
+                PVRSRVCommonDeviceInitialise()
                 call sequence.
 @License        Dual MIT/GPLv2
 
@@ -53,12 +54,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "device.h"
 
 /*! Opaque type handle defined and known to the OS layer implementation of this
- * fwload.h OS API. This private data is allocated in the implementation
- * of OSLoadFirmware() and contains whatever data and information needed to
- * be able to acquire and return the firmware binary image to the Services
+ * fwload.h OS API. This private data is allocated in the implementation of
+ * OSLoadFirmware() and contains whatever data and information needed to be
+ * able to acquire and return the firmware binary image to the Services
  * kernel/server during initialisation.
- * It is no longer required and may be freed when OSUnloadFirmware()
- * is called.
+ * It is no longer required and may be freed when OSUnloadFirmware() is called.
  */
 typedef struct OS_FW_IMAGE_t OS_FW_IMAGE;
 
@@ -70,18 +70,18 @@ bool OSVerifyFirmware(const OS_FW_IMAGE* psFWImage);
 
 /*************************************************************************/ /*!
 @Function     OSLoadFirmware
-@Description  The OS implementation must load or acquire the
-              firmware (FW) image binary needed by the driver stack.
-              A handle to the common layer device node is given
-              to identify which device instance in the system is being
-              initialised. The BVNC string is also supplied so that the
-              implementation knows which FW image to retrieve
-              since each FW image only supports one GPU type/revision.
+@Description  The OS implementation must load or acquire the firmware (FW)
+              image binary needed by the driver stack.
+              A handle to the common layer device node is given to identify
+              which device instance in the system is being initialised. The
+              BVNC string is also supplied so that the implementation knows
+              which FW image to retrieve since each FW image only supports one
+              GPU type/revision.
               The calling server code supports multiple GPU types and revisions
               and will detect the specific GPU type and revision before calling
               this API. It will also have runtime configuration of the VZ mode,
-              hence this API must be able to retrieve different FW binary images
-              based on the pszBVNCString given. The purpose of the end
+              hence this API must be able to retrieve different FW binary
+              images based on the pszBVNCString given. The purpose of the end
               platform/system is key to understand which FW images must be
               available to the kernel server.
               On exit the implementation must return a pointer to some private
@@ -95,10 +95,10 @@ bool OSVerifyFirmware(const OS_FW_IMAGE* psFWImage);
               by the pszBVpNCString parameter. If this is not available then it
               should drop back to retrieving the FW identified by the
               pszBVNCString parameter. The fields in the string are:
-                B, V, N, C are all unsigned integer identifying type/revision,
+                B, V, N, C are all unsigned integer identifying type/revision.
                 [.signed] is present when RGX_FW_SIGNED=1 is defined in the
-                  server build,
-                [p] is present for provisional GPU configurations (pre-silicon),
+                  server build.
+                [p] denotes a provisional (pre-silicon) GPU configuration.
                 [.vz] is present when the kernel server is loaded on the HOST
                   of a virtualised platform. See the DriverMode server
                   AppHint for details.
@@ -106,8 +106,9 @@ bool OSVerifyFirmware(const OS_FW_IMAGE* psFWImage);
 @Input        psDeviceNode       Device instance identifier.
 @Input        pszBVNCString      Identifier string of the FW image to
                                  be loaded/acquired in production driver.
-@Input        pfnVerifyFirmware  Callback which checks validity of firmware image.
-@Return       OS_FW_IMAGE*       Ptr to private data on success, NULL otherwise.
+@Input        pfnVerifyFirmware  Callback which checks validity of FW image.
+@Return       OS_FW_IMAGE*       Ptr to private data on success,
+                                 NULL otherwise.
 */ /**************************************************************************/
 OS_FW_IMAGE* OSLoadFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
                        const IMG_CHAR *pszBVNCString,
@@ -118,16 +119,16 @@ OS_FW_IMAGE* OSLoadFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 @Description  This function returns a pointer to the start of the FW image
               binary data held in memory. It must remain valid until
               OSUnloadFirmware() is called.
-@Input        psRGXFW  Private data opaque handle
-@Return       void*    Ptr to FW binary image to start on GPU.
+@Input        psFWImage  Private data opaque handle
+@Return       void*      Ptr to FW binary image to start on GPU.
 */ /**************************************************************************/
 const void* OSFirmwareData(OS_FW_IMAGE *psFWImage);
 
 /*************************************************************************/ /*!
 @Function     OSFirmwareSize
 @Description  This function returns the size of the FW image binary data.
-@Input        psRGXFW  Private data opaque handle
-@Return       size_t   Size in bytes of the firmware binary image
+@Input        psFWImage  Private data opaque handle
+@Return       size_t     Size in bytes of the firmware binary image
 */ /**************************************************************************/
 size_t OSFirmwareSize(OS_FW_IMAGE *psFWImage);
 
@@ -136,7 +137,7 @@ size_t OSFirmwareSize(OS_FW_IMAGE *psFWImage);
 @Description  This is called when the server has completed firmware
               initialisation and no longer needs the private data, possibly
               allocated by OSLoadFirmware().
-@Input        psRGXFW  Private data opaque handle
+@Input        psFWImage  Private data opaque handle
 */ /**************************************************************************/
 void OSUnloadFirmware(OS_FW_IMAGE *psFWImage);
 

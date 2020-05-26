@@ -2194,10 +2194,30 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 
 #if !defined(NO_HARDWARE)
+	/* Determine the type virtualisation support used */
+#if defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED > 1)
+	if (!PVRSRV_VZ_MODE_IS(NATIVE))
+	{
+#if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
+#if defined(SUPPORT_AUTOVZ)
+#if defined(SUPPORT_AUTOVZ_HW_REGS)
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with HW register support");
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with shared memory");
+#endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with static Fw heap allocation");
+#endif /* defined(SUPPORT_AUTOVZ) */
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with dynamic Fw heap allocation");
+#endif /* defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) */
+	}
+#endif /* (RGX_NUM_OS_SUPPORTED > 1) */
+
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1))
 	{
-		RGXFWIF_CONNECTION_FW_STATE eFwState = KM_GET_FW_CONNECTION();
-		RGXFWIF_CONNECTION_OS_STATE eOsState = KM_GET_OS_CONNECTION();
+		RGXFWIF_CONNECTION_FW_STATE eFwState = KM_GET_FW_CONNECTION(psDevInfo);
+		RGXFWIF_CONNECTION_OS_STATE eOsState = KM_GET_OS_CONNECTION(psDevInfo);
 
 		PVR_DUMPDEBUG_LOG("RGX firmware connection state: %s (Fw=%s; OS=%s)",
 						  ((eFwState == RGXFW_CONNECTION_FW_ACTIVE) && (eOsState == RGXFW_CONNECTION_OS_ACTIVE)) ? ("UP") : ("DOWN"),
@@ -2207,6 +2227,16 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 #endif
 
+#if defined(SUPPORT_AUTOVZ) && defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED > 1)
+	if (!PVRSRV_VZ_MODE_IS(NATIVE))
+	{
+		IMG_UINT32 ui32FwAliveTS = KM_GET_FW_ALIVE_TOKEN(psDevInfo);
+		IMG_UINT32 ui32OsAliveTS = KM_GET_OS_ALIVE_TOKEN(psDevInfo);
+
+		PVR_DUMPDEBUG_LOG("RGX virtualisation watchdog timestamps (in GPU timer ticks): Fw=%u; OS=%u; diff(FW, OS) = %u",
+						  ui32FwAliveTS, ui32OsAliveTS, ui32FwAliveTS - ui32OsAliveTS);
+	}
+#endif
 #endif /* !defined(NO_HARDWARE) */
 
 	if (!PVRSRV_VZ_MODE_IS(GUEST))
@@ -2721,7 +2751,7 @@ void RGXDumpFirmwareTrace(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 }
 
-#if defined(SUPPORT_POWMON_COMPONENT)
+#if defined(SUPPORT_POWER_VALIDATION_VIA_DEBUGFS)
 void RGXDumpPowerMonitoring(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 				void *pvDumpDebugFile,
 				PVRSRV_RGXDEV_INFO  *psDevInfo)

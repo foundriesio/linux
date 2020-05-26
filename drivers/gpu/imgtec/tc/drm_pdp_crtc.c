@@ -794,9 +794,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			pdp_crtc->pll_reg_phys_base = regs->start;
 			pdp_crtc->pll_reg_size = resource_size(regs);
 
-			pdp_crtc->pll_reg =
-				ioremap_nocache(pdp_crtc->pll_reg_phys_base,
-						pdp_crtc->pll_reg_size);
+			pdp_crtc->pll_reg = ioremap(pdp_crtc->pll_reg_phys_base,
+						    pdp_crtc->pll_reg_size);
 			if (!pdp_crtc->pll_reg) {
 				DRM_ERROR("failed to map pll registers\n");
 				err = -ENOMEM;
@@ -825,8 +824,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			}
 
 			pdp_crtc->pdp_bif_reg =
-				ioremap_nocache(pdp_crtc->pdp_bif_reg_phys_base,
-						pdp_crtc->pdp_bif_reg_size);
+				ioremap(pdp_crtc->pdp_bif_reg_phys_base,
+					pdp_crtc->pdp_bif_reg_size);
 			if (!pdp_crtc->pdp_bif_reg) {
 				DRM_ERROR("failed to map pdp-bif registers\n");
 				err = -ENOMEM;
@@ -849,7 +848,7 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 			pdp_crtc->odn_core_size = resource_size(regs);
 
 			pdp_crtc->odn_core_reg
-				= ioremap_nocache(pdp_crtc->odn_core_phys_base,
+				= ioremap(pdp_crtc->odn_core_phys_base,
 					  pdp_crtc->odn_core_size);
 			if (!pdp_crtc->odn_core_reg) {
 				DRM_ERROR("failed to map pdp reset register\n");
@@ -875,8 +874,8 @@ struct drm_crtc *pdp_crtc_create(struct drm_device *dev, uint32_t number,
 		goto err_crtc_free;
 	}
 
-	pdp_crtc->pdp_reg = ioremap_nocache(pdp_crtc->pdp_reg_phys_base,
-							pdp_crtc->pdp_reg_size);
+	pdp_crtc->pdp_reg = ioremap(pdp_crtc->pdp_reg_phys_base,
+				    pdp_crtc->pdp_reg_size);
 	if (!pdp_crtc->pdp_reg) {
 		DRM_ERROR("failed to map pdp registers\n");
 		err = -ENOMEM;

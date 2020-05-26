@@ -587,6 +587,11 @@ _FreeListInsert(RA_ARENA *pArena, BT *pBT)
 	PVR_ASSERT(pArena->per_flags_buckets != NULL);
 	PVR_ASSERT(pArena->per_flags_buckets->buckets != NULL);
 
+	/* Handle NULL values for RELEASE builds and/or disabled ASSERT DEBUG builds */
+	if (unlikely((pArena->per_flags_buckets == NULL) || (pArena->per_flags_buckets->buckets == NULL)))
+	{
+		return;
+	}
 	pBT->next_free = pArena->per_flags_buckets->buckets[uIndex];
 	if (pBT->next_free != NULL)
 	{
@@ -633,6 +638,13 @@ _FreeListRemove(RA_ARENA *pArena, BT *pBT)
 		   (otherwise how could there be a segment with these flags */
 		PVR_ASSERT(pArena->per_flags_buckets != NULL);
 		PVR_ASSERT(pArena->per_flags_buckets->buckets != NULL);
+
+		/* Handle unlikely NULL values for RELEASE or ASSERT-disabled builds */
+		if (unlikely((pArena->per_flags_buckets == NULL) || (pArena->per_flags_buckets->buckets == NULL)))
+		{
+			pBT->type = btt_live;
+			return;
+		}
 
 		pArena->per_flags_buckets->buckets[uIndex] = pBT->next_free;
 #if defined(PVR_CTZLL)
@@ -1359,7 +1371,6 @@ static BT *RA_Find_BT_VARange(RA_ARENA *pArena,
 	BT *pBT = pArena->pHeadSegment;
 	IMG_UINT32 uIndex;
 
-	/*TODO: align the size first before the search commence */
 	uIndex = pvr_log2 (uRequestSize);
 
 	/* Find the splay node associated with these import flags */
@@ -1532,20 +1543,6 @@ RA_Alloc_Range(RA_ARENA *pArena,
 
 	return PVRSRV_OK;
 }
-
-/*************************************************************************/ /*!
-@Function       RA_IsAllocationValid
-@Description    To check if a resource segment is currently live/allocated
-                by this RA
-@Input          pArena     The arena the segment was originally allocated from.
-@Input          base       The base of the resource span to check.
-*/ /**************************************************************************/
-IMG_INTERNAL IMG_BOOL
-RA_IsAllocationValid(const RA_ARENA *pArena, RA_BASE_T base)
-{
-	return HASH_Retrieve_Extended(pArena->pSegmentHash, &base);
-}
-
 
 /*************************************************************************/ /*!
 @Function       RA_Free

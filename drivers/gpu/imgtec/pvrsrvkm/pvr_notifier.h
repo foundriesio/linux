@@ -118,11 +118,7 @@ Debug Notifier Interface
 */ /**************************************************************************/
 
 #define DEBUG_REQUEST_DC                0
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-#define DEBUG_REQUEST_SERVERSYNC        1
-#else
 #define DEBUG_REQUEST_SYNCTRACKING      1
-#endif
 #define DEBUG_REQUEST_SYS               2
 #define DEBUG_REQUEST_ANDROIDSYNC       3
 #define DEBUG_REQUEST_LINUXFENCE        4

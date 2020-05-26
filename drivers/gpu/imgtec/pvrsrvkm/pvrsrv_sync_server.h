@@ -93,7 +93,6 @@ static inline IMG_BOOL SyncIsFenceObjValid(const SYNC_FENCE_OBJ *psSFO)
 	return psSFO->pvFenceObj != NULL;
 }
 
-#if defined(PVR_USE_FENCE_SYNC_MODEL)
 
 /* Mapping of each required function to its appropriate sync-implementation function */
 #if defined(SUPPORT_FALLBACK_FENCE_SYNC)
@@ -274,6 +273,5 @@ SyncSWDumpTimeline(const SYNC_TIMELINE_OBJ *psSWTimelineObj,
 	return SyncSWDumpTimeline_(psSWTimelineObj->pvTlObj, pfnDumpDebugPrintf, pvDumpDebugFile);
 }
 
-#endif /* PVR_USE_FENCE_SYNC_MODEL */
 
 #endif /* _PVRSRV_SYNC_SERVER_H_ */

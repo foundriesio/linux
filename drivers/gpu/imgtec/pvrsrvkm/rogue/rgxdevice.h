@@ -67,11 +67,11 @@ typedef struct {
  ******************************************************************************
  * Device state flags
  *****************************************************************************/
-#define RGXKM_DEVICE_STATE_ZERO_FREELIST            (0x1) /*!< Zeroing the physical pages of reconstructed free lists */
-#define RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN    (0x2) /*!< Used to disable the Devices Watchdog logging */
-#define RGXKM_DEVICE_STATE_DUST_REQUEST_INJECT_EN   (0x4) /*!< Used for validation to inject dust requests every TA/3D kick */
-#define RGXKM_DEVICE_STATE_CCB_GROW_EN              (0x8) /*!< Used to indicate CCB grow is permitted */
-#define RGXKM_DEVICE_STATE_MASK                     (0xF)
+#define RGXKM_DEVICE_STATE_ZERO_FREELIST               (0x1) /*!< Zeroing the physical pages of reconstructed free lists */
+#define RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN       (0x2) /*!< Used to disable the Devices Watchdog logging */
+#define RGXKM_DEVICE_STATE_GPU_UNITS_POWER_CHANGE_EN   (0x4) /*!< Used for validation to inject dust requests every TA/3D kick */
+#define RGXKM_DEVICE_STATE_CCB_GROW_EN                 (0x8) /*!< Used to indicate CCB grow is permitted */
+#define RGXKM_DEVICE_STATE_MASK                        (0xF)
 
 /*!
  ******************************************************************************
@@ -700,8 +700,6 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 
 	IMG_HANDLE				hTQCLISharedMem;		/*!< TQ Client Shared Mem PMR */
 	IMG_HANDLE				hTQUSCSharedMem;		/*!< TQ USC Shared Mem PMR */
-	POS_LOCK				hTQSharedMemLock;		/*!< Lock protecting TQ Shared memory PMRs and the ref count */
-	IMG_UINT32				ui32TQSharedMemRefCount;/*!< TQ Shared Mem ref count */
 
 #if defined(SUPPORT_VALIDATION)
 	IMG_UINT32				ui32TestSLRInterval; /* Don't enqueue an update sync checkpoint every nth kick */

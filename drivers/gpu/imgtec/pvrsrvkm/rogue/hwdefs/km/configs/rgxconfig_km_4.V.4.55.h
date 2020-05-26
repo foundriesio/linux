@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RGXCONFIG_KM_4_V_4_55_H
 #define RGXCONFIG_KM_4_V_4_55_H
 
-/* Automatically generated file (11/02/2020 09:01:02): Do not edit manually */
+/* Automatically generated file (30/03/2020 09:01:02): Do not edit manually */
 
 #define RGX_BNC_KM_B 4
 #define RGX_BNC_KM_N 4
@@ -75,6 +75,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_FEATURE_COMPUTE_OVERLAP
 #define RGX_FEATURE_NUM_RASTER_PIPES (1U)
 #define RGX_FEATURE_BIF_TILING
+#define RGX_FEATURE_LAYOUT_MARS (0U)
 
 
 #endif /* RGXCONFIG_4_V_4_55_H */

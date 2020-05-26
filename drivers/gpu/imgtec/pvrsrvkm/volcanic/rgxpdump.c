@@ -48,14 +48,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdumpdesc.h"
 
 /*
- * There are two different set of functions one for META and one for MIPS
+ * There are two different set of functions one for META/RISCV and one for MIPS
  * because the Pdump player does not implement the support for
  * the MIPS MMU yet. So for MIPS builds we cannot use DevmemPDumpSaveToFileVirtual,
  * we have to use DevmemPDumpSaveToFile instead.
  */
-static PVRSRV_ERROR _MetaDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
-                                               PVRSRV_DEVICE_NODE *psDeviceNode,
-                                               IMG_UINT32 ui32PDumpFlags)
+static PVRSRV_ERROR _FWDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
+                                             PVRSRV_DEVICE_NODE *psDeviceNode,
+                                             IMG_UINT32 ui32PDumpFlags)
 {
 	PVRSRV_RGXDEV_INFO	*psDevInfo = psDeviceNode->pvDevice;
 
@@ -114,9 +114,9 @@ static PVRSRV_ERROR _MetaDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
 
 	return PVRSRV_OK;
 }
-static PVRSRV_ERROR _MetaDumpTraceBufferKM(CONNECTION_DATA * psConnection,
-									  PVRSRV_DEVICE_NODE	*psDeviceNode,
-									  IMG_UINT32			ui32PDumpFlags)
+static PVRSRV_ERROR _FWDumpTraceBufferKM(CONNECTION_DATA * psConnection,
+										 PVRSRV_DEVICE_NODE	*psDeviceNode,
+										 IMG_UINT32			ui32PDumpFlags)
 {
 	PVRSRV_RGXDEV_INFO	*psDevInfo = psDeviceNode->pvDevice;
 	IMG_UINT32	ui32ThreadNum, ui32Size, ui32OutFileOffset;
@@ -129,10 +129,18 @@ static PVRSRV_ERROR _MetaDumpTraceBufferKM(CONNECTION_DATA * psConnection,
 	PDumpCommentWithFlags(ui32PDumpFlags, "** Dump trace buffers");
 	for (ui32ThreadNum = 0, ui32OutFileOffset = 0; ui32ThreadNum < RGXFW_THREAD_NUM; ui32ThreadNum++)
 	{
+		/*
+		 * Some compilers cannot cope with the use of offsetof() below - the specific problem being the use of
+		 * a non-const variable in the expression, which it needs to be const. Typical compiler error produced is
+		 * "expression must have a constant value".
+		 */
+		const IMG_DEVMEM_OFFSET_T uiTraceBufThreadNumOff
+		= (IMG_DEVMEM_OFFSET_T)(uintptr_t)&(((RGXFWIF_TRACEBUF *)0)->sTraceBuf[ui32ThreadNum]);
+
 		/* ui32TracePointer tracepointer */
 		ui32Size = sizeof(IMG_UINT32);
 		DevmemPDumpSaveToFileVirtual(psDevInfo->psRGXFWIfTraceBufCtlMemDesc,
-								offsetof(RGXFWIF_TRACEBUF, sTraceBuf[ui32ThreadNum]),
+								uiTraceBufThreadNumOff,
 								ui32Size,
 								"out.trace",
 								ui32OutFileOffset,
@@ -202,12 +210,11 @@ PVRSRV_ERROR PVRSRVPDumpSignatureBufferKM(CONNECTION_DATA * psConnection,
                                           PVRSRV_DEVICE_NODE	*psDeviceNode,
                                           IMG_UINT32			ui32PDumpFlags)
 {
-	if ((psDeviceNode->pfnCheckDeviceFeature) &&
-		 PVRSRV_GET_DEVICE_FEATURE_VALUE(psDeviceNode, META) > 0)
+	if (psDeviceNode->pfnCheckDeviceFeature)
 	{
-		return _MetaDumpSignatureBufferKM(psConnection,
-										  psDeviceNode,
-										  ui32PDumpFlags);
+		return _FWDumpSignatureBufferKM(psConnection,
+										psDeviceNode,
+										ui32PDumpFlags);
 	}
 
 	return PVRSRV_OK;
@@ -254,20 +261,46 @@ PVRSRV_ERROR PVRSRVPDumpCRCSignatureCheckKM(CONNECTION_DATA * psConnection,
 	}
 	else if (psDevInfo->ui32ValidationFlags & RGX_VAL_SIG_CHECK_ERR_EN)
 	{
-		PDUMPCOMMENT("Verify FBCDC Signature: mismatch required");
-		eError = PDUMPREGPOL(RGX_PDUMPREG_NAME,
-		                     RGX_CR_FBCDC_STATUS,
-		                     0,
-		                     0xFFFFFFFF,
-		                     ui32PDumpFlags,
-		                     PDUMP_POLL_OPERATOR_NOTEQUAL);
+		static char pszVar1[] = ":SYSMEM:$2";
+		static char pszVar2[] = ":SYSMEM:$3";
+		char *pszLoopCondition;
 
-		eError = PDUMPREGPOL(RGX_PDUMPREG_NAME,
-		                     RGX_CR_FBCDC_SIGNATURE_STATUS,
+		/*
+		 * Do:
+		 *  v1 = [RGX_CR_FBCDC_STATUS]
+		 *  v2 = [RGX_CR_FBCDC_SIGNATURE_STATUS]
+		 * While (v1 OR v2) == 0
+		 */
+		PDUMPCOMMENT("Verify FBCDC Signature: mismatch required");
+		eError = PDumpInternalValCondStr(&pszLoopCondition,
+		                     pszVar1,
 		                     0,
 		                     0xFFFFFFFF,
 		                     ui32PDumpFlags,
-		                     PDUMP_POLL_OPERATOR_NOTEQUAL);
+		                     PDUMP_POLL_OPERATOR_EQUAL);
+
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_WARNING, "%s: Unable to write pdump verification sequence (%d)", __func__, eError));
+		}
+		else
+		{
+			eError = PDumpStartDoLoopKM(ui32PDumpFlags);
+
+			eError = PDumpRegRead32ToInternalVar(RGX_PDUMPREG_NAME,
+								 RGX_CR_FBCDC_STATUS,
+								 pszVar1,
+								 ui32PDumpFlags);
+
+			eError = PDumpRegRead32ToInternalVar(RGX_PDUMPREG_NAME,
+								 RGX_CR_FBCDC_SIGNATURE_STATUS,
+								 pszVar2,
+								 ui32PDumpFlags);
+
+			eError = PDumpWriteVarORVarOp(pszVar1, pszVar2, ui32PDumpFlags);
+			eError = PDumpEndDoWhileLoopKM(pszLoopCondition, ui32PDumpFlags);
+			OSFreeMem(pszLoopCondition);
+		}
 	}
 #endif /* SUPPORT_FBCDC_SIGNATURE_CHECK */
 
@@ -327,10 +360,9 @@ PVRSRV_ERROR PVRSRVPDumpTraceBufferKM(CONNECTION_DATA *psConnection,
                                       PVRSRV_DEVICE_NODE *psDeviceNode,
                                       IMG_UINT32 ui32PDumpFlags)
 {
-	if ((psDeviceNode->pfnCheckDeviceFeature) &&
-		 PVRSRV_GET_DEVICE_FEATURE_VALUE(psDeviceNode, META) > 0)
+	if (psDeviceNode->pfnCheckDeviceFeature)
 	{
-		return _MetaDumpTraceBufferKM(psConnection, psDeviceNode, ui32PDumpFlags);
+		return _FWDumpTraceBufferKM(psConnection, psDeviceNode, ui32PDumpFlags);
 	}
 
 	return PVRSRV_OK;
@@ -363,7 +395,7 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 
 	memset(abyPDumpDesc, 0, IMAGE_HEADER_SIZE);
 
-	pui32Word = (IMG_PUINT32) &(abyPDumpDesc[0]);
+	pui32Word = IMG_OFFSET_ADDR(abyPDumpDesc, 0);
 	pui32Word[0] = (IMAGE_HEADER_TYPE << HEADER_WORD0_TYPE_SHIFT);
 	pui32Word[1] = (IMAGE_HEADER_SIZE << HEADER_WORD1_SIZE_SHIFT) |
 				   (IMAGE_HEADER_VERSION << HEADER_WORD1_VERSION_SHIFT);
@@ -403,15 +435,15 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 	case IMG_FB_COMPRESSION_NONE:
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_8x8:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_8x8:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_8x8:
 		pui32Word[8] |= IMAGE_HEADER_WORD8_FBCTYPE_8X8;
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_16x4:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_16x4:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_16x4:
 		pui32Word[8] |= IMAGE_HEADER_WORD8_FBCTYPE_16x4;
 		break;
 	case IMG_FB_COMPRESSION_DIRECT_32x2:
-	case IMG_FB_COMPRESSION_DIRECT_LOSSY_32x2:
+	case IMG_FB_COMPRESSION_DIRECT_LOSSY50_32x2:
 		/* Services Client guards against unsupported FEATURE_FB_CDC_32x2.
 		   We should never pass through the UM|KM bridge on cores lacking the feature.
 		*/
@@ -430,9 +462,9 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 		{
 			pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V4;
 
-			if (eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_8x8  ||
-				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_16x4 ||
-				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY_32x2)
+			if (eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_8x8  ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_16x4 ||
+				eFBCompression == IMG_FB_COMPRESSION_DIRECT_LOSSY50_32x2)
 			{
 				pui32Word[9] |= IMAGE_HEADER_WORD9_LOSSY_ON;
 			}
@@ -446,11 +478,11 @@ PVRSRV_ERROR RGXPDumpPrepareOutputImageDescriptorHdr(PVRSRV_DEVICE_NODE *psDevic
 
 			if (bIsFBC31)
 			{
-				pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3_1;
+				pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3_1_LAYOUT2;
 			}
 			else
 			{
-				pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3;
+				pui32Word[9] |= IMAGE_HEADER_WORD9_FBCCOMPAT_V3_0_LAYOUT2;
 			}
 		}
 
@@ -481,7 +513,7 @@ PVRSRV_ERROR RGXPDumpPrepareOutputDataDescriptorHdr(PVRSRV_DEVICE_NODE *psDevice
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-	pui32Word = (IMG_PUINT32) pbyPDumpDataHdr;
+	pui32Word = IMG_OFFSET_ADDR(pbyPDumpDataHdr, 0);
 
 	if (ui32HeaderType == DATA_HEADER_TYPE)
 	{

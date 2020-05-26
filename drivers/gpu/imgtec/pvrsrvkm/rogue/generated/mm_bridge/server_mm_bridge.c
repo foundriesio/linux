@@ -204,7 +204,8 @@ PMRExportPMR_exit:
 			     && (eError != PVRSRV_ERROR_RETRY)))
 			{
 				PVR_DPF((PVR_DBG_ERROR,
-					 "PVRSRVBridgePMRExportPMR: %s",
+					 "%s: %s",
+					 __func__,
 					 PVRSRVGetErrorString(eError)));
 			}
 			/* Releasing the handle should free/destroy/release the resource.
@@ -234,7 +235,8 @@ PMRExportPMR_exit:
 			    && (eError != PVRSRV_ERROR_RETRY))
 			{
 				PVR_DPF((PVR_DBG_ERROR,
-					 "PVRSRVBridgePMRExportPMR: %s",
+					 "%s: %s",
+					 __func__,
 					 PVRSRVGetErrorString(eError)));
 			}
 			/* Releasing the handle should free/destroy/release the resource.
@@ -283,7 +285,8 @@ PVRSRVBridgePMRUnexportPMR(IMG_UINT32 ui32DispatchTableEntry,
 	if (unlikely(psPMRUnexportPMROUT->eError != PVRSRV_OK))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnexportPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnexportPMROUT->eError)));
 	}
 	PVR_ASSERT(psPMRUnexportPMROUT->eError == PVRSRV_OK);
@@ -307,7 +310,8 @@ PVRSRVBridgePMRUnexportPMR(IMG_UINT32 ui32DispatchTableEntry,
 	if (unlikely(psPMRUnexportPMROUT->eError != PVRSRV_OK))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnexportPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnexportPMROUT->eError)));
 	}
 	PVR_ASSERT(psPMRUnexportPMROUT->eError == PVRSRV_OK);
@@ -321,7 +325,8 @@ PVRSRVBridgePMRUnexportPMR(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psPMRUnexportPMROUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnexportPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnexportPMROUT->eError)));
 	}
 	PVR_ASSERT((psPMRUnexportPMROUT->eError == PVRSRV_OK) ||
@@ -342,7 +347,8 @@ PVRSRVBridgePMRUnexportPMR(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psPMRUnexportPMROUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnexportPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnexportPMROUT->eError)));
 		UnlockHandle(KERNEL_HANDLE_BASE);
 		goto PMRUnexportPMR_exit;
@@ -515,7 +521,8 @@ PVRSRVBridgePMRUnmakeLocalImportHandle(IMG_UINT32 ui32DispatchTableEntry,
 		 PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnmakeLocalImportHandle: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnmakeLocalImportHandleOUT->
 					      eError)));
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -723,7 +730,8 @@ PVRSRVBridgePMRUnrefPMR(IMG_UINT32 ui32DispatchTableEntry,
 		     (psPMRUnrefPMROUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnrefPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnrefPMROUT->eError)));
 		UnlockHandle(psConnection->psHandleBase);
 		goto PMRUnrefPMR_exit;
@@ -759,7 +767,8 @@ PVRSRVBridgePMRUnrefUnlockPMR(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psPMRUnrefUnlockPMROUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgePMRUnrefUnlockPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psPMRUnrefUnlockPMROUT->eError)));
 		UnlockHandle(psConnection->psHandleBase);
 		goto PMRUnrefUnlockPMR_exit;
@@ -1503,7 +1512,8 @@ DevmemIntCtxCreate_exit:
 			     && (eError != PVRSRV_ERROR_RETRY)))
 			{
 				PVR_DPF((PVR_DBG_ERROR,
-					 "PVRSRVBridgeDevmemIntCtxCreate: %s",
+					 "%s: %s",
+					 __func__,
 					 PVRSRVGetErrorString(eError)));
 			}
 			/* Releasing the handle should free/destroy/release the resource.
@@ -1550,7 +1560,8 @@ PVRSRVBridgeDevmemIntCtxDestroy(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psDevmemIntCtxDestroyOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeDevmemIntCtxDestroy: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psDevmemIntCtxDestroyOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -1676,7 +1687,8 @@ PVRSRVBridgeDevmemIntHeapDestroy(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psDevmemIntHeapDestroyOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeDevmemIntHeapDestroy: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psDevmemIntHeapDestroyOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -1845,7 +1857,8 @@ PVRSRVBridgeDevmemIntUnmapPMR(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psDevmemIntUnmapPMROUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeDevmemIntUnmapPMR: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psDevmemIntUnmapPMROUT->eError)));
 		UnlockHandle(psConnection->psHandleBase);
 		goto DevmemIntUnmapPMR_exit;
@@ -1970,7 +1983,8 @@ PVRSRVBridgeDevmemIntUnreserveRange(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psDevmemIntUnreserveRangeOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeDevmemIntUnreserveRange: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psDevmemIntUnreserveRangeOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);

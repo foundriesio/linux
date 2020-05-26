@@ -180,7 +180,8 @@ PVRSRVBridgeReleaseGlobalEventObject(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psReleaseGlobalEventObjectOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeReleaseGlobalEventObject: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psReleaseGlobalEventObjectOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -350,7 +351,8 @@ PVRSRVBridgeEventObjectClose(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psEventObjectCloseOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeEventObjectClose: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psEventObjectCloseOUT->eError)));
 		UnlockHandle(psConnection->psHandleBase);
 		goto EventObjectClose_exit;
@@ -531,6 +533,116 @@ PVRSRVBridgeGetDeviceStatus(IMG_UINT32 ui32DispatchTableEntry,
 	psGetDeviceStatusOUT->eError =
 	    PVRSRVGetDeviceStatusKM(psConnection, OSGetDevNode(psConnection),
 				    &psGetDeviceStatusOUT->ui32DeviceSatus);
+
+	return 0;
+}
+
+static IMG_INT
+PVRSRVBridgeGetMultiCoreInfo(IMG_UINT32 ui32DispatchTableEntry,
+			     PVRSRV_BRIDGE_IN_GETMULTICOREINFO *
+			     psGetMultiCoreInfoIN,
+			     PVRSRV_BRIDGE_OUT_GETMULTICOREINFO *
+			     psGetMultiCoreInfoOUT,
+			     CONNECTION_DATA * psConnection)
+{
+	IMG_UINT64 *pui64CapsInt = NULL;
+
+	IMG_UINT32 ui32NextOffset = 0;
+	IMG_BYTE *pArrayArgsBuffer = NULL;
+#if !defined(INTEGRITY_OS)
+	IMG_BOOL bHaveEnoughSpace = IMG_FALSE;
+#endif
+
+	IMG_UINT32 ui32BufferSize =
+	    (psGetMultiCoreInfoIN->ui32CapsSize * sizeof(IMG_UINT64)) + 0;
+
+	if (psGetMultiCoreInfoIN->ui32CapsSize > 8)
+	{
+		psGetMultiCoreInfoOUT->eError =
+		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
+		goto GetMultiCoreInfo_exit;
+	}
+
+	psGetMultiCoreInfoOUT->pui64Caps = psGetMultiCoreInfoIN->pui64Caps;
+
+	if (ui32BufferSize != 0)
+	{
+#if !defined(INTEGRITY_OS)
+		/* Try to use remainder of input buffer for copies if possible, word-aligned for safety. */
+		IMG_UINT32 ui32InBufferOffset =
+		    PVR_ALIGN(sizeof(*psGetMultiCoreInfoIN),
+			      sizeof(unsigned long));
+		IMG_UINT32 ui32InBufferExcessSize =
+		    ui32InBufferOffset >=
+		    PVRSRV_MAX_BRIDGE_IN_SIZE ? 0 : PVRSRV_MAX_BRIDGE_IN_SIZE -
+		    ui32InBufferOffset;
+
+		bHaveEnoughSpace = ui32BufferSize <= ui32InBufferExcessSize;
+		if (bHaveEnoughSpace)
+		{
+			IMG_BYTE *pInputBuffer =
+			    (IMG_BYTE *) (void *)psGetMultiCoreInfoIN;
+
+			pArrayArgsBuffer = &pInputBuffer[ui32InBufferOffset];
+		}
+		else
+#endif
+		{
+			pArrayArgsBuffer = OSAllocMemNoStats(ui32BufferSize);
+
+			if (!pArrayArgsBuffer)
+			{
+				psGetMultiCoreInfoOUT->eError =
+				    PVRSRV_ERROR_OUT_OF_MEMORY;
+				goto GetMultiCoreInfo_exit;
+			}
+		}
+	}
+
+	if (psGetMultiCoreInfoIN->ui32CapsSize != 0)
+	{
+		pui64CapsInt =
+		    (IMG_UINT64 *) IMG_OFFSET_ADDR(pArrayArgsBuffer,
+						   ui32NextOffset);
+		ui32NextOffset +=
+		    psGetMultiCoreInfoIN->ui32CapsSize * sizeof(IMG_UINT64);
+	}
+
+	psGetMultiCoreInfoOUT->eError =
+	    PVRSRVGetMultiCoreInfoKM(psConnection, OSGetDevNode(psConnection),
+				     psGetMultiCoreInfoIN->ui32CapsSize,
+				     &psGetMultiCoreInfoOUT->ui32NumCores,
+				     pui64CapsInt);
+
+	/* If dest ptr is non-null and we have data to copy */
+	if ((pui64CapsInt) &&
+	    ((psGetMultiCoreInfoIN->ui32CapsSize * sizeof(IMG_UINT64)) > 0))
+	{
+		if (unlikely
+		    (OSCopyToUser
+		     (NULL, (void __user *)psGetMultiCoreInfoOUT->pui64Caps,
+		      pui64CapsInt,
+		      (psGetMultiCoreInfoIN->ui32CapsSize *
+		       sizeof(IMG_UINT64))) != PVRSRV_OK))
+		{
+			psGetMultiCoreInfoOUT->eError =
+			    PVRSRV_ERROR_INVALID_PARAMS;
+
+			goto GetMultiCoreInfo_exit;
+		}
+	}
+
+GetMultiCoreInfo_exit:
+
+	/* Allocated space should be equal to the last updated offset */
+	PVR_ASSERT(ui32BufferSize == ui32NextOffset);
+
+#if defined(INTEGRITY_OS)
+	if (pArrayArgsBuffer)
+#else
+	if (!bHaveEnoughSpace && pArrayArgsBuffer)
+#endif
+		OSFreeMemNoStats(pArrayArgsBuffer);
 
 	return 0;
 }
@@ -778,7 +890,8 @@ PVRSRVBridgeReleaseInfoPage(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psReleaseInfoPageOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeReleaseInfoPage: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psReleaseInfoPageOUT->eError)));
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
 		goto ReleaseInfoPage_exit;
@@ -854,6 +967,10 @@ PVRSRV_ERROR InitSRVCOREBridge(void)
 			      PVRSRVBridgeGetDeviceStatus, NULL);
 
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SRVCORE,
+			      PVRSRV_BRIDGE_SRVCORE_GETMULTICOREINFO,
+			      PVRSRVBridgeGetMultiCoreInfo, NULL);
+
+	SetDispatchTableEntry(PVRSRV_BRIDGE_SRVCORE,
 			      PVRSRV_BRIDGE_SRVCORE_EVENTOBJECTWAITTIMEOUT,
 			      PVRSRVBridgeEventObjectWaitTimeout, NULL);
 
@@ -913,6 +1030,9 @@ PVRSRV_ERROR DeinitSRVCOREBridge(void)
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_SRVCORE,
 				PVRSRV_BRIDGE_SRVCORE_GETDEVICESTATUS);
+
+	UnsetDispatchTableEntry(PVRSRV_BRIDGE_SRVCORE,
+				PVRSRV_BRIDGE_SRVCORE_GETMULTICOREINFO);
 
 	UnsetDispatchTableEntry(PVRSRV_BRIDGE_SRVCORE,
 				PVRSRV_BRIDGE_SRVCORE_EVENTOBJECTWAITTIMEOUT);

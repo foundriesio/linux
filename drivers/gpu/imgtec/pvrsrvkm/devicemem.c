@@ -98,7 +98,7 @@ extern PVRSRV_ERROR RIDumpAllKM(void);
 #if defined(__KERNEL__)
 /* Derive the virtual from the hPMR */
 static
-IMG_UINT64 _GuestFWHeapVA(PMR *psPMR, PVRSRV_DEVICE_NODE *psDevNode)
+IMG_UINT64 _GetPremappedVA(PMR *psPMR, PVRSRV_DEVICE_NODE *psDevNode)
 {
 	PVRSRV_ERROR eError;
 	IMG_UINT64 ui64OptionalMapAddress = DEVICEMEM_UTILS_NO_ADDRESS;
@@ -127,19 +127,19 @@ IMG_UINT64 _GuestFWHeapVA(PMR *psPMR, PVRSRV_DEVICE_NODE *psDevNode)
 	eError = PMR_DevPhysAddr(psPMR, OSGetPageShift(), 1, 0, &sDevAddr, &bValid);
 	if (eError != PVRSRV_OK)
 	{
-		PVR_LOG_IF_ERROR(eError, "_GuestFWHeapVA: PMR_DevPhysAddr");
+		PVR_LOG_IF_ERROR(eError, "PMR_DevPhysAddr");
 		eError = PMRUnlockSysPhysAddresses(psPMR);
-		PVR_LOG_IF_ERROR(eError, "_GuestFWHeapVA: PMRUnlockSysPhysAddr");
+		PVR_LOG_IF_ERROR(eError, "PMRUnlockSysPhysAddr");
 		goto fail;
 	}
 
 	eError = PMRUnlockSysPhysAddresses(psPMR);
-	PVR_LOG_IF_ERROR(eError, "_GuestFWHeapVA: PMRUnlockSysPhysAddr");
+	PVR_LOG_IF_ERROR(eError, "PMRUnlockSysPhysAddr");
 
 	ui64OptionalMapAddress = RGX_FIRMWARE_RAW_HEAP_BASE | (sDevAddr.uiAddr - sHeapAddr.uiAddr);
 
-	PVR_DPF((PVR_DBG_ALLOC, "%s: RGX_FIRMWARE_RAW_HEAP_BASE = 0x%"IMG_UINT64_FMTSPECx" sDevAddr.uiAddr = 0x%"IMG_UINT64_FMTSPECx" sHeapAddr.uiAddr = 0x%"IMG_UINT64_FMTSPECx" => ui64OptionalMapAddress = 0x%"IMG_UINT64_FMTSPECx,
-	         __func__, (IMG_UINT64) RGX_FIRMWARE_RAW_HEAP_BASE, sDevAddr.uiAddr, sHeapAddr.uiAddr, ui64OptionalMapAddress));
+	PVR_DPF((PVR_DBG_ALLOC, "%s: sDevAddr.uiAddr = 0x%"IMG_UINT64_FMTSPECx" sHeapAddr.uiAddr = 0x%"IMG_UINT64_FMTSPECx" => ui64OptionalMapAddress = 0x%"IMG_UINT64_FMTSPECx,
+	         __func__, sDevAddr.uiAddr, sHeapAddr.uiAddr, ui64OptionalMapAddress));
 fail:
 	return ui64OptionalMapAddress;
 }
@@ -332,11 +332,13 @@ DeviceMemChangeSparse(DEVMEM_MEMDESC *psMemDesc,
 		goto e0;
 	}
 
+#if !defined(FIX_HW_BRN_65273)
 	if ((uiSparseFlags & SPARSE_RESIZE_BOTH) && (0 == sDevVAddr.uiAddr))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Invalid Device Virtual Map", __func__));
 		goto e0;
 	}
+#endif
 
 	if ((uiSparseFlags & SPARSE_MAP_CPU_ADDR) && (NULL == pvCpuVAddr))
 	{
@@ -530,16 +532,9 @@ SubAllocImportAlloc(RA_PERARENA_HANDLE hArena,
 #endif
 
 #if defined(__KERNEL__)
+	if (psHeap->bPremapped)
 	{
-		PVRSRV_DEVICE_NODE *psDevNode = (PVRSRV_DEVICE_NODE *)psHeap->psCtx->hDevConnection;
-		PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO *)psDevNode->pvDevice;
-
-		if (((psHeap == psDevInfo->psFirmwareMainHeap) ||
-		    (psHeap == psDevInfo->psFirmwareConfigHeap)) &&
-		    PVRSRV_VZ_MODE_IS(GUEST))
-		{
-			ui64OptionalMapAddress = _GuestFWHeapVA(psImport->hPMR, psDevNode);
-		}
+		ui64OptionalMapAddress = _GetPremappedVA(psImport->hPMR, psHeap->psCtx->hDevConnection);
 	}
 #endif
 
@@ -1034,6 +1029,7 @@ DevmemCreateHeap(DEVMEM_CONTEXT *psCtx,
 	psHeap->uiSize = uiLength;
 	psHeap->uiReservedRegionSize = uiReservedRegionLength;
 	psHeap->sBaseAddress = sBaseAddress;
+	psHeap->bPremapped = false;
 	OSAtomicWrite(&psHeap->hImportCount, 0);
 
 	OSSNPrintf(aszBuf, sizeof(aszBuf),
@@ -1065,7 +1061,6 @@ DevmemCreateHeap(DEVMEM_CONTEXT *psCtx,
 #else
 	PVR_UNREFERENCED_PARAMETER(uiHeapBlueprintID);
 #endif
-
 
 	psHeap->psSubAllocRA = RA_Create(psHeap->pszSubAllocRAName,
 			/* Subsequent imports: */
@@ -2291,16 +2286,9 @@ DevmemMapToDevice(DEVMEM_MEMDESC *psMemDesc,
 	DevmemMemDescAcquire(psMemDesc);
 
 #if defined(__KERNEL__)
+	if (psHeap->bPremapped)
 	{
-		PVRSRV_DEVICE_NODE *psDevNode = (PVRSRV_DEVICE_NODE *)psHeap->psCtx->hDevConnection;
-		PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO *)psDevNode->pvDevice;
-
-		if (((psHeap == psDevInfo->psFirmwareMainHeap) ||
-		     (psHeap == psDevInfo->psFirmwareConfigHeap)) &&
-		     PVRSRV_VZ_MODE_IS(GUEST))
-		{
-			ui64OptionalMapAddress = _GuestFWHeapVA(psImport->hPMR, psDevNode);
-		}
+		ui64OptionalMapAddress = _GetPremappedVA(psImport->hPMR, psHeap->psCtx->hDevConnection);
 	}
 #endif
 
@@ -2981,3 +2969,9 @@ RegisterDevmemPFNotify(DEVMEM_CONTEXT *psContext,
 	return eError;
 }
 #endif /* !__KERNEL__ */
+
+IMG_INTERNAL void
+DevmemHeapSetPremapStatus(DEVMEM_HEAP *psHeap, IMG_BOOL IsPremapped)
+{
+	psHeap->bPremapped = IsPremapped;
+}

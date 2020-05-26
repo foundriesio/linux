@@ -204,6 +204,35 @@ typedef enum _PVRSRV_DEVICE_DEBUG_DUMP_STATUS_
 	PVRSRV_DEVICE_DEBUG_DUMP_CAPTURE
 } PVRSRV_DEVICE_DEBUG_DUMP_STATUS;
 
+typedef struct _MMU_PX_SETUP_
+{
+#if defined(SUPPORT_GPUVIRT_VALIDATION)
+	PVRSRV_ERROR (*pfnDevPxAllocGPV)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
+									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr, IMG_UINT32 ui32OSid);
+#endif
+	PVRSRV_ERROR (*pfnDevPxAlloc)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
+									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr);
+
+	void (*pfnDevPxFree)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, PG_HANDLE *psMemHandle);
+
+	PVRSRV_ERROR (*pfnDevPxMap)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, PG_HANDLE *pshMemHandle,
+								size_t uiSize, IMG_DEV_PHYADDR *psDevPAddr,
+								void **pvPtr);
+
+	void (*pfnDevPxUnMap)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
+						  PG_HANDLE *psMemHandle, void *pvPtr);
+
+	PVRSRV_ERROR (*pfnDevPxClean)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
+								PG_HANDLE *pshMemHandle,
+								IMG_UINT32 uiOffset,
+								IMG_UINT32 uiLength);
+
+	IMG_UINT32 uiMMUPxLog2AllocGran;
+
+	RA_ARENA *psPxRA;
+} MMU_PX_SETUP;
+
+
 typedef PVRSRV_ERROR (*FN_CREATERAMBACKEDPMR)(struct _CONNECTION_DATA_ *psConnection,
                                               struct _PVRSRV_DEVICE_NODE_ *psDevNode,
                                               IMG_DEVMEM_SIZE_T uiSize,
@@ -236,6 +265,8 @@ typedef struct _PVRSRV_DEVICE_NODE_
 	/* Device specific MMU firmware attributes, used only in some devices */
 	MMU_DEVICEATTRIBS      *psFirmwareMMUDevAttrs;
 
+	MMU_PX_SETUP           sDevMMUPxSetup;
+
 	/* lock for power state transitions */
 	POS_LOCK				hPowerLock;
 	IMG_PID                 uiPwrLockOwnerPID; /* Only valid between lock and corresponding unlock
@@ -251,27 +282,6 @@ typedef struct _PVRSRV_DEVICE_NODE_
 
 	FN_CREATERAMBACKEDPMR pfnCreateRamBackedPMR[PVRSRV_DEVICE_PHYS_HEAP_LAST];
 
-#if defined(SUPPORT_GPUVIRT_VALIDATION)
-	PVRSRV_ERROR (*pfnDevPxAllocGPV)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
-									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr, IMG_UINT32 ui32OSid);
-#endif
-	PVRSRV_ERROR (*pfnDevPxAlloc)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
-									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr);
-
-	void (*pfnDevPxFree)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, PG_HANDLE *psMemHandle);
-
-	PVRSRV_ERROR (*pfnDevPxMap)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, PG_HANDLE *pshMemHandle,
-								size_t uiSize, IMG_DEV_PHYADDR *psDevPAddr,
-								void **pvPtr);
-
-	void (*pfnDevPxUnMap)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
-						  PG_HANDLE *psMemHandle, void *pvPtr);
-
-	PVRSRV_ERROR (*pfnDevPxClean)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
-								PG_HANDLE *pshMemHandle,
-								IMG_UINT32 uiOffset,
-								IMG_UINT32 uiLength);
-
 	PVRSRV_ERROR (*pfnDevSLCFlushRange)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
 										MMU_CONTEXT *psMMUContext,
 										IMG_DEV_VIRTADDR sDevVAddr,
@@ -285,8 +295,6 @@ typedef struct _PVRSRV_DEVICE_NODE_
 	PVRSRV_ERROR (*pfnValidateOrTweakPhysAddrs)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
 												MMU_DEVICEATTRIBS *psDevAttrs,
 												IMG_UINT64 *pui64Addr);
-
-	IMG_UINT32 uiMMUPxLog2AllocGran;
 
 	void (*pfnMMUCacheInvalidate)(struct _PVRSRV_DEVICE_NODE_ *psDevNode,
 								  MMU_CONTEXT *psMMUContext,
@@ -325,6 +333,9 @@ typedef struct _PVRSRV_DEVICE_NODE_
 
 	IMG_INT32	(*pfnGetDeviceFeatureValue)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, enum _RGX_FEATURE_WITH_VALUE_INDEX_ eFeatureIndex);
 
+    PVRSRV_ERROR (*pfnGetMultiCoreInfo)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, IMG_UINT32 ui32CapsSize,
+                                        IMG_UINT32 *pui32NumCores, IMG_UINT64 *pui64Caps);
+
 	IMG_BOOL (*pfnHasFBCDCVersion31)(struct _PVRSRV_DEVICE_NODE_ *psDevNode);
 
 	MMU_DEVICEATTRIBS* (*pfnGetMMUDeviceAttributes)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, IMG_BOOL bKernelMemoryCtx);
@@ -340,6 +351,9 @@ typedef struct _PVRSRV_DEVICE_NODE_
 
 	/* device post-finalise compatibility check */
 	PVRSRV_ERROR			(*pfnInitDeviceCompatCheck) (struct _PVRSRV_DEVICE_NODE_*);
+
+	/* initialise device-specific physheaps */
+	PVRSRV_ERROR			(*pfnPhysMemDeviceHeapsInit) (struct _PVRSRV_DEVICE_NODE_ *);
 
 	/* information about the device's address space and heaps */
 	DEVICE_MEMORY_INFO		sDevMemoryInfo;
@@ -400,6 +414,10 @@ typedef struct _PVRSRV_DEVICE_NODE_
 #if defined(SUPPORT_DEDICATED_FW_MEMORY)
 	PHYS_HEAP				*psDedicatedFWMemHeap;
 	RA_ARENA				*psDedicatedFWMemArena;
+#endif
+
+#if defined(SUPPORT_AUTOVZ)
+	RA_ARENA				*psFwMMUReservedMemArena;
 #endif
 
 	struct _PVRSRV_DEVICE_NODE_	*psNext;
@@ -496,6 +514,10 @@ typedef struct _PVRSRV_DEVICE_NODE_
 
 	POS_LOCK                hConnectionsLock;    /*!< Lock protecting sConnections */
 	DLLIST_NODE             sConnections;        /*!< The list of currently active connection objects for this device node */
+#if defined(PVRSRV_DEBUG_LISR_EXECUTION)
+	IMG_UINT64              ui64nLISR;           /*!< Number of LISR calls seen */
+	IMG_UINT64              ui64nMISR;           /*!< Number of MISR calls made */
+#endif
 } PVRSRV_DEVICE_NODE;
 
 /*

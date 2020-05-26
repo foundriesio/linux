@@ -116,10 +116,12 @@ static void PVRDmaBufOpsRelease(struct dma_buf *psDmaBuf)
 	PMRUnrefPMR(psPMR);
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
 static void *PVRDmaBufOpsKMap(struct dma_buf *psDmaBuf, unsigned long uiPageNum)
 {
 	return ERR_PTR(-ENOSYS);
 }
+#endif
 
 static int PVRDmaBufOpsMMap(struct dma_buf *psDmaBuf, struct vm_area_struct *psVMA)
 {
@@ -137,7 +139,9 @@ static const struct dma_buf_ops sPVRDmaBufOps =
 	!((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)) && (defined(CHROMIUMOS_KERNEL))))
 	.map_atomic    = PVRDmaBufOpsKMap,
 #endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
 	.map           = PVRDmaBufOpsKMap,
+#endif
 #else
 	.kmap_atomic   = PVRDmaBufOpsKMap,
 	.kmap          = PVRDmaBufOpsKMap,
@@ -238,7 +242,10 @@ static PVRSRV_ERROR PMRFinalizeDmaBuf(PMR_IMPL_PRIVDATA pvPriv)
 	if (psPrivData->bPoisonOnFree)
 	{
 		void *pvKernAddr;
-		int i, err;
+		int err;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
+		int i;
+#endif
 
 		err = dma_buf_begin_cpu_access(psDmaBuf, DMA_FROM_DEVICE);
 		if (err)
@@ -250,6 +257,21 @@ static PVRSRV_ERROR PMRFinalizeDmaBuf(PMR_IMPL_PRIVDATA pvPriv)
 			goto exit;
 		}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0))
+		pvKernAddr = dma_buf_vmap(psDmaBuf);
+		if (!pvKernAddr)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					 "%s: Failed to poison allocation before free",
+					 __func__));
+			PVR_ASSERT(IMG_FALSE);
+			goto exit_end_access;
+		}
+
+		memset(pvKernAddr, PVRSRV_POISON_ON_FREE_VALUE, psDmaBuf->size);
+
+		dma_buf_vunmap(psDmaBuf, pvKernAddr);
+#else
 		for (i = 0; i < psDmaBuf->size / PAGE_SIZE; i++)
 		{
 			pvKernAddr = dma_buf_kmap(psDmaBuf, i);
@@ -266,6 +288,7 @@ static PVRSRV_ERROR PMRFinalizeDmaBuf(PMR_IMPL_PRIVDATA pvPriv)
 
 			dma_buf_kunmap(psDmaBuf, i, pvKernAddr);
 		}
+#endif
 
 exit_end_access:
 		do {
@@ -527,7 +550,10 @@ PhysmemCreateNewDmaBufBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
 	if (bZeroOnAlloc || bPoisonOnAlloc)
 	{
 		void *pvKernAddr;
-		int i, err;
+		int err;
+#if (LINUX_VERSION_CODE <KERNEL_VERSION(5, 6, 0))
+		int i;
+#endif
 
 		err = dma_buf_begin_cpu_access(psDmaBuf, DMA_FROM_DEVICE);
 		if (err)
@@ -536,6 +562,33 @@ PhysmemCreateNewDmaBufBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
 			goto errFreePhysAddr;
 		}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0))
+		pvKernAddr = dma_buf_vmap(psDmaBuf);
+		if (!pvKernAddr)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					 "%s: Failed to map buffer for %s)",
+					 __func__, bZeroOnAlloc ? "zeroing" : "poisoning"));
+			eError = PVRSRV_ERROR_PMR_NO_KERNEL_MAPPING;
+
+			do {
+				err = dma_buf_end_cpu_access(psDmaBuf, DMA_TO_DEVICE);
+			} while (err == -EAGAIN || err == -EINTR);
+
+			goto errFreePhysAddr;
+		}
+
+		if (bZeroOnAlloc)
+		{
+			memset(pvKernAddr, 0, psDmaBuf->size);
+		}
+		else
+		{
+			memset(pvKernAddr, PVRSRV_POISON_ON_ALLOC_VALUE, psDmaBuf->size);
+		}
+
+		dma_buf_vunmap(psDmaBuf, pvKernAddr);
+#else
 		for (i = 0; i < psDmaBuf->size / PAGE_SIZE; i++)
 		{
 			pvKernAddr = dma_buf_kmap(psDmaBuf, i);
@@ -565,6 +618,7 @@ PhysmemCreateNewDmaBufBackedPMR(PVRSRV_DEVICE_NODE *psDevNode,
 
 			dma_buf_kunmap(psDmaBuf, i, pvKernAddr);
 		}
+#endif
 
 		do {
 			err = dma_buf_end_cpu_access(psDmaBuf, DMA_TO_DEVICE);

@@ -52,7 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "connection_server.h"
 #include "syscommon.h"
 #include "pvr_debug.h"
-#include "pvr_debugfs.h"
+#include "di_server.h"
 #include "private_data.h"
 #include "linkage.h"
 #include "pmr.h"
@@ -99,15 +99,6 @@ PVRSRV_ERROR DeinitDMABUFBridge(void);
  */
 static DEFINE_MUTEX(g_sMMapMutex);
 
-#if defined(DEBUG_BRIDGE_KM)
-static PPVR_DEBUGFS_ENTRY_DATA gpsPVRDebugFSBridgeStatsEntry;
-static struct seq_operations gsBridgeStatsReadOps;
-static ssize_t BridgeStatsWrite(const char __user *pszBuffer,
-								size_t uiCount,
-								loff_t *puiPosition,
-								void *pvData);
-#endif
-
 #define _DRIVER_SUSPENDED 1
 #define _DRIVER_NOT_SUSPENDED 0
 static ATOMIC_T g_iDriverSuspended;
@@ -115,113 +106,48 @@ static ATOMIC_T g_iNumActiveDriverThreads;
 static ATOMIC_T g_iNumActiveKernelThreads;
 static IMG_HANDLE g_hDriverThreadEventObject;
 
-PVRSRV_ERROR OSPlatformBridgeInit(void)
-{
-	PVRSRV_ERROR eError;
-
-	eError = InitDMABUFBridge();
-	PVR_LOG_IF_ERROR(eError, "InitDMABUFBridge");
-
-	OSAtomicWrite(&g_iDriverSuspended, _DRIVER_NOT_SUSPENDED);
-	OSAtomicWrite(&g_iNumActiveDriverThreads, 0);
-	OSAtomicWrite(&g_iNumActiveKernelThreads, 0);
-
-	eError = OSEventObjectCreate("Global driver thread event object",
-	                             &g_hDriverThreadEventObject);
-	PVR_LOG_GOTO_IF_ERROR(eError, "OSEventObjectCreate", error_);
-
 #if defined(DEBUG_BRIDGE_KM)
-	{
-		IMG_INT iResult;
-		iResult = PVRDebugFSCreateFile("bridge_stats",
-					NULL,
-					&gsBridgeStatsReadOps,
-					BridgeStatsWrite,
-					NULL,
-					&g_BridgeDispatchTable[0],
-					&gpsPVRDebugFSBridgeStatsEntry);
-		if (iResult != 0)
-		{
-			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-			goto error_;
-		}
-	}
-#endif
+static DI_ENTRY *gpsDIBridgeStatsEntry;
 
-	return PVRSRV_OK;
-
-error_:
-	if (g_hDriverThreadEventObject) {
-		OSEventObjectDestroy(g_hDriverThreadEventObject);
-		g_hDriverThreadEventObject = NULL;
-	}
-
-	return eError;
-}
-
-PVRSRV_ERROR OSPlatformBridgeDeInit(void)
+static void *BridgeStatsDIStart(OSDI_IMPL_ENTRY *psEntry, IMG_UINT64 *pui64Pos)
 {
-	PVRSRV_ERROR eError;
-
-#if defined(DEBUG_BRIDGE_KM)
-	if (gpsPVRDebugFSBridgeStatsEntry != NULL)
-	{
-		PVRDebugFSRemoveFile(&gpsPVRDebugFSBridgeStatsEntry);
-	}
-#endif
-
-	eError = DeinitDMABUFBridge();
-	PVR_LOG_RETURN_IF_ERROR(eError, "DeinitDMABUFBridge");
-
-	if (g_hDriverThreadEventObject != NULL) {
-		OSEventObjectDestroy(g_hDriverThreadEventObject);
-		g_hDriverThreadEventObject = NULL;
-	}
-
-	return eError;
-}
-
-#if defined(DEBUG_BRIDGE_KM)
-static void *BridgeStatsSeqStart(struct seq_file *psSeqFile, loff_t *puiPosition)
-{
-	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psDispatchTable = (PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *)psSeqFile->private;
+	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psDispatchTable = DIGetPrivData(psEntry);
 
 	BridgeGlobalStatsLock();
 
-	if (psDispatchTable == NULL || (*puiPosition) > BRIDGE_DISPATCH_TABLE_ENTRY_COUNT)
+	if (psDispatchTable == NULL || *pui64Pos > BRIDGE_DISPATCH_TABLE_ENTRY_COUNT)
 	{
 		return NULL;
 	}
 
-	if ((*puiPosition) == 0)
+	if (*pui64Pos == 0)
 	{
-		return SEQ_START_TOKEN;
+		return DI_START_TOKEN;
 	}
 
-	return &(psDispatchTable[(*puiPosition) - 1]);
+	return &(psDispatchTable[*pui64Pos - 1]);
 }
 
-static void BridgeStatsSeqStop(struct seq_file *psSeqFile, void *pvData)
+static void BridgeStatsDIStop(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	PVR_UNREFERENCED_PARAMETER(psSeqFile);
+	PVR_UNREFERENCED_PARAMETER(psEntry);
 	PVR_UNREFERENCED_PARAMETER(pvData);
 
 	BridgeGlobalStatsUnlock();
 }
 
-static void *BridgeStatsSeqNext(struct seq_file *psSeqFile,
-			       void *pvData,
-			       loff_t *puiPosition)
+static void *BridgeStatsDINext(OSDI_IMPL_ENTRY *psEntry, void *pvData,
+                               IMG_UINT64 *pui64Pos)
 {
-	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psDispatchTable = (PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *)psSeqFile->private;
-	loff_t uiItemAskedFor = *puiPosition; /* puiPosition on entry is the index to return */
+	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psDispatchTable = DIGetPrivData(psEntry);
+	IMG_UINT64 uiItemAskedFor = *pui64Pos; /* pui64Pos on entry is the index to return */
 
 	PVR_UNREFERENCED_PARAMETER(pvData);
 
 	/* Is the item asked for (starts at 0) a valid table index? */
 	if (uiItemAskedFor < BRIDGE_DISPATCH_TABLE_ENTRY_COUNT)
 	{
-		(*puiPosition)++; /* on exit it is the next seq index to ask for */
+		(*pui64Pos)++; /* on exit it is the next DI index to ask for */
 		return &(psDispatchTable[uiItemAskedFor]);
 	}
 
@@ -229,76 +155,61 @@ static void *BridgeStatsSeqNext(struct seq_file *psSeqFile,
 	return NULL;
 }
 
-static int BridgeStatsSeqShow(struct seq_file *psSeqFile, void *pvData)
+static int BridgeStatsDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	if (pvData == SEQ_START_TOKEN)
+	if (pvData == DI_START_TOKEN)
 	{
-		seq_printf(psSeqFile,
-			   "Total ioctl call count = %u\n"
-			   "Total number of bytes copied via copy_from_user = %u\n"
-			   "Total number of bytes copied via copy_to_user = %u\n"
-			   "Total number of bytes copied via copy_*_user = %u\n\n"
-			   "%3s: %-60s | %-48s | %10s | %20s | %20s | %20s | %20s\n",
-			   g_BridgeGlobalStats.ui32IOCTLCount,
-			   g_BridgeGlobalStats.ui32TotalCopyFromUserBytes,
-			   g_BridgeGlobalStats.ui32TotalCopyToUserBytes,
-			   g_BridgeGlobalStats.ui32TotalCopyFromUserBytes + g_BridgeGlobalStats.ui32TotalCopyToUserBytes,
-			   "#",
-			   "Bridge Name",
-			   "Wrapper Function",
-			   "Call Count",
-			   "copy_from_user (B)",
-			   "copy_to_user (B)",
-			   "Total Time (us)",
-			   "Max Time (us)");
+		DIPrintf(psEntry,
+		         "Total ioctl call count = %u\n"
+		         "Total number of bytes copied via copy_from_user = %u\n"
+		         "Total number of bytes copied via copy_to_user = %u\n"
+		         "Total number of bytes copied via copy_*_user = %u\n\n"
+		         "%3s: %-60s | %-48s | %10s | %20s | %20s | %20s | %20s\n",
+		         g_BridgeGlobalStats.ui32IOCTLCount,
+		         g_BridgeGlobalStats.ui32TotalCopyFromUserBytes,
+		         g_BridgeGlobalStats.ui32TotalCopyToUserBytes,
+		         g_BridgeGlobalStats.ui32TotalCopyFromUserBytes +
+		             g_BridgeGlobalStats.ui32TotalCopyToUserBytes,
+		         "#",
+		         "Bridge Name",
+		         "Wrapper Function",
+		         "Call Count",
+		         "copy_from_user (B)",
+		         "copy_to_user (B)",
+		         "Total Time (us)",
+		         "Max Time (us)");
 	}
 	else if (pvData != NULL)
 	{
-		PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psEntry = (PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *)pvData;
+		PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psTableEntry = pvData;
 		IMG_UINT32 ui32Remainder;
 
-		seq_printf(psSeqFile,
-			   "%3d: %-60s   %-48s   %-10u   %-20u   %-20u   %-20" IMG_UINT64_FMTSPEC "   %-20" IMG_UINT64_FMTSPEC "\n",
-			   (IMG_UINT32)(((size_t)psEntry-(size_t)g_BridgeDispatchTable)/sizeof(*g_BridgeDispatchTable)),
-			   psEntry->pszIOCName,
-			   (psEntry->pfFunction != NULL) ? psEntry->pszFunctionName : "(null)",
-			   psEntry->ui32CallCount,
-			   psEntry->ui32CopyFromUserTotalBytes,
-			   psEntry->ui32CopyToUserTotalBytes,
-			   OSDivide64r64(psEntry->ui64TotalTimeNS, 1000, &ui32Remainder),
-			   OSDivide64r64(psEntry->ui64MaxTimeNS, 1000, &ui32Remainder));
+		DIPrintf(psEntry,
+		         "%3d: %-60s   %-48s   %-10u   %-20u   %-20u   %-20" IMG_UINT64_FMTSPEC "   %-20" IMG_UINT64_FMTSPEC "\n",
+		         (IMG_UINT32)(((size_t)psTableEntry-(size_t)g_BridgeDispatchTable)/sizeof(*g_BridgeDispatchTable)),
+		         psTableEntry->pszIOCName,
+		         (psTableEntry->pfFunction != NULL) ? psTableEntry->pszFunctionName : "(null)",
+		         psTableEntry->ui32CallCount,
+		         psTableEntry->ui32CopyFromUserTotalBytes,
+		         psTableEntry->ui32CopyToUserTotalBytes,
+		         OSDivide64r64(psTableEntry->ui64TotalTimeNS, 1000, &ui32Remainder),
+		         OSDivide64r64(psTableEntry->ui64MaxTimeNS, 1000, &ui32Remainder));
 	}
 
 	return 0;
 }
 
-static struct seq_operations gsBridgeStatsReadOps =
-{
-	.start = BridgeStatsSeqStart,
-	.stop = BridgeStatsSeqStop,
-	.next = BridgeStatsSeqNext,
-	.show = BridgeStatsSeqShow,
-};
-
-static ssize_t BridgeStatsWrite(const char __user *pszBuffer,
-								size_t uiCount,
-								loff_t *puiPosition,
-								void *pvData)
+static IMG_INT64 BridgeStatsWrite(const IMG_CHAR *pcBuffer,
+                                  IMG_UINT64 ui64Count, IMG_UINT64 *pui64Pos,
+                                  void *pvData)
 {
 	IMG_UINT32 i;
-	/* We only care if a '0' is written to the file, if so we reset results. */
-	char buf[1];
-	ssize_t iResult = simple_write_to_buffer(&buf[0], sizeof(buf), puiPosition, pszBuffer, uiCount);
 
-	if (iResult < 0)
-	{
-		return iResult;
-	}
-
-	if (iResult == 0 || buf[0] != '0')
-	{
-		return -EINVAL;
-	}
+	PVR_RETURN_IF_FALSE(pcBuffer != NULL, -EIO);
+	PVR_RETURN_IF_FALSE(pui64Pos != NULL && *pui64Pos == 0, -EIO);
+	PVR_RETURN_IF_FALSE(ui64Count == 2, -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[0] == '0', -EINVAL);
+	PVR_RETURN_IF_FALSE(pcBuffer[ui64Count - 1] == '\n', -EINVAL);
 
 	/* Reset stats. */
 
@@ -319,10 +230,76 @@ static ssize_t BridgeStatsWrite(const char __user *pszBuffer,
 
 	BridgeGlobalStatsUnlock();
 
-	return uiCount;
+	return ui64Count;
 }
 
 #endif /* defined(DEBUG_BRIDGE_KM) */
+
+PVRSRV_ERROR OSPlatformBridgeInit(void)
+{
+	PVRSRV_ERROR eError;
+
+	eError = InitDMABUFBridge();
+	PVR_LOG_IF_ERROR(eError, "InitDMABUFBridge");
+
+	OSAtomicWrite(&g_iDriverSuspended, _DRIVER_NOT_SUSPENDED);
+	OSAtomicWrite(&g_iNumActiveDriverThreads, 0);
+	OSAtomicWrite(&g_iNumActiveKernelThreads, 0);
+
+	eError = OSEventObjectCreate("Global driver thread event object",
+	                             &g_hDriverThreadEventObject);
+	PVR_LOG_GOTO_IF_ERROR(eError, "OSEventObjectCreate", error_);
+
+#if defined(DEBUG_BRIDGE_KM)
+	{
+		DI_ITERATOR_CB sIter = {
+			.pfnStart = BridgeStatsDIStart,
+			.pfnStop = BridgeStatsDIStop,
+			.pfnNext = BridgeStatsDINext,
+			.pfnShow = BridgeStatsDIShow,
+			.pfnWrite = BridgeStatsWrite
+		};
+
+		eError = DICreateEntry("bridge_stats", NULL, &sIter,
+		                       &g_BridgeDispatchTable[0],
+		                       DI_ENTRY_TYPE_GENERIC,
+		                       &gpsDIBridgeStatsEntry);
+		PVR_LOG_GOTO_IF_ERROR(eError, "DICreateEntry", error_);
+	}
+#endif
+
+	return PVRSRV_OK;
+
+error_:
+	if (g_hDriverThreadEventObject) {
+		OSEventObjectDestroy(g_hDriverThreadEventObject);
+		g_hDriverThreadEventObject = NULL;
+	}
+
+	return eError;
+}
+
+PVRSRV_ERROR OSPlatformBridgeDeInit(void)
+{
+	PVRSRV_ERROR eError;
+
+#if defined(DEBUG_BRIDGE_KM)
+	if (gpsDIBridgeStatsEntry != NULL)
+	{
+		DIDestroyEntry(gpsDIBridgeStatsEntry);
+	}
+#endif
+
+	eError = DeinitDMABUFBridge();
+	PVR_LOG_RETURN_IF_ERROR(eError, "DeinitDMABUFBridge");
+
+	if (g_hDriverThreadEventObject != NULL) {
+		OSEventObjectDestroy(g_hDriverThreadEventObject);
+		g_hDriverThreadEventObject = NULL;
+	}
+
+	return eError;
+}
 
 PVRSRV_ERROR LinuxBridgeBlockClientsAccess(IMG_BOOL bShutdown)
 {

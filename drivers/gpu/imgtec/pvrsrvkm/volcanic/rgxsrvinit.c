@@ -102,17 +102,17 @@ RGX_CNT_BLK_TYPE_MODEL_INDIRECT_LIST
 
 #define	HW_PERF_FILTER_DEFAULT         0x00000000 /* Default to no HWPerf */
 #define HW_PERF_FILTER_DEFAULT_ALL_ON  0xFFFFFFFF /* All events */
-#define AVAIL_SPU_MASK_DEFAULT         0xFFFFFFFF
+#define AVAIL_POW_UNITS_MASK_DEFAULT   0xFFFFFFFF
 
 #if defined(SUPPORT_VALIDATION)
 #include "pvrsrv_apphint.h"
 #endif
 
+#include "os_srvinit_param.h"
+
 #if defined(LINUX)
 #include "km_apphint.h"
-#include "os_srvinit_param.h"
 #else
-#include "srvinit_param.h"
 /*!
 *******************************************************************************
  * AppHint mnemonic data type helper tables
@@ -173,9 +173,9 @@ typedef struct _RGX_SRVINIT_APPHINTS_
 	IMG_UINT32 ui32KillingCtl;
 	IMG_BOOL   bValidateIrq;
 	IMG_BOOL   bValidateSOCUSCTimer;
-	IMG_UINT32 ui32AvailableSPUMask;
-	IMG_BOOL   bInjectSPUPowerStateMaskChange;
-	IMG_BOOL   bEnableSPUPowerStateMaskChange;
+	IMG_UINT32 ui32AvailablePowUnitsMask;
+	IMG_BOOL   bInjectPowUnitsStateMaskChange;
+	IMG_BOOL   bEnablePowUnitsStateMaskChange;
 	IMG_UINT32 ui32FBCDCVersionOverride;
 	IMG_UINT32 aui32TPUTrilinearFracMask[RGXFWIF_TPU_DM_LAST];
 	IMG_UINT32 aui32USRMNumRegions[RGXFWIF_USRM_DM_LAST];
@@ -395,9 +395,9 @@ static INLINE void GetApphints(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_SRVINIT_APPHIN
 	SrvInitParamGetUINT32(pvParamState, KillingCtl, psHints->ui32KillingCtl);
 	SrvInitParamGetBOOL(pvParamState,   ValidateIrq, psHints->bValidateIrq);
 	SrvInitParamGetBOOL(pvParamState,   ValidateSOCUSCTimer, psHints->bValidateSOCUSCTimer);
-	SrvInitParamGetUINT32(pvParamState, HWValAvailableSPUMask, psHints->ui32AvailableSPUMask);
-	SrvInitParamGetBOOL(pvParamState,   HWValInjectSPUPowerStateMask, psHints->bInjectSPUPowerStateMaskChange);
-	SrvInitParamGetBOOL(pvParamState,   HWValEnableSPUPowerMaskChange, psHints->bEnableSPUPowerStateMaskChange);
+	SrvInitParamGetUINT32(pvParamState, HWValAvailableSPUMask, psHints->ui32AvailablePowUnitsMask);
+	SrvInitParamGetBOOL(pvParamState,   GPUUnitsPowerChange, psHints->bInjectPowUnitsStateMaskChange);
+	SrvInitParamGetBOOL(pvParamState,   HWValEnableSPUPowerMaskChange, psHints->bEnablePowUnitsStateMaskChange);
 	SrvInitParamGetUINT32(pvParamState, FBCDCVersionOverride, psHints->ui32FBCDCVersionOverride);
 
 	/* Apphints for Unified Store virtual partitioning. */
@@ -528,7 +528,7 @@ static INLINE void GetFWConfigFlags(PVRSRV_DEVICE_NODE *psDeviceNode,
 		ui32FWConfigFlags |= (psHints->ui32FWContextSwitchProfile << RGXFWIF_INICFG_CTXSWITCH_PROFILE_SHIFT) & RGXFWIF_INICFG_CTXSWITCH_PROFILE_MASK;
 
 #if defined(SUPPORT_VALIDATION)
-		ui32FWConfigFlags |= psHints->bEnableSPUPowerStateMaskChange ? RGXFWIF_INICFG_SPU_POWER_STATE_MASK_CHANGE_EN : 0;
+		ui32FWConfigFlags |= psHints->bEnablePowUnitsStateMaskChange ? RGXFWIF_INICFG_SPU_POWER_STATE_MASK_CHANGE_EN : 0;
 		ui32FWConfigFlags |= psHints->bValidateSOCUSCTimer ? RGXFWIF_INICFG_VALIDATE_SOCUSC_TIMER : 0;
 
 		if ((ui32FWConfigFlags & RGXFWIF_INICFG_VALIDATE_SOCUSC_TIMER) &&
@@ -609,7 +609,7 @@ static INLINE void InitDeviceFlags(RGX_SRVINIT_APPHINTS *psHints,
 	IMG_UINT32 ui32DeviceFlags = 0;
 
 #if defined(SUPPORT_VALIDATION)
-	ui32DeviceFlags |= psHints->bInjectSPUPowerStateMaskChange? RGXKM_DEVICE_STATE_INJECT_SPU_POWER_STATE_MASK_CHANGE_EN : 0;
+	ui32DeviceFlags |= psHints->bInjectPowUnitsStateMaskChange? RGXKM_DEVICE_STATE_GPU_UNITS_POWER_CHANGE_EN : 0;
 #endif
 	ui32DeviceFlags |= psHints->bZeroFreelist ? RGXKM_DEVICE_STATE_ZERO_FREELIST : 0;
 	ui32DeviceFlags |= psHints->bDisableFEDLogging ? RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN : 0;
@@ -640,6 +640,7 @@ static PVRSRV_ERROR RGXTDProcessFWImage(PVRSRV_DEVICE_NODE *psDeviceNode,
                                         RGX_FW_BOOT_PARAMS *puFWParams)
 {
 	PVRSRV_DEVICE_CONFIG *psDevConfig = psDeviceNode->psDevConfig;
+	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 	PVRSRV_TD_FW_PARAMS sTDFWParams;
 	PVRSRV_ERROR eError;
 
@@ -652,14 +653,17 @@ static PVRSRV_ERROR RGXTDProcessFWImage(PVRSRV_DEVICE_NODE *psDeviceNode,
 	sTDFWParams.pvFirmware       = OSFirmwareData(psRGXFW);
 	sTDFWParams.ui32FirmwareSize = OSFirmwareSize(psRGXFW);
 
-	sTDFWParams.uFWP.sMeta.sFWCodeDevVAddr        = puFWParams->sMeta.sFWCodeDevVAddr;
-	sTDFWParams.uFWP.sMeta.sFWDataDevVAddr        = puFWParams->sMeta.sFWDataDevVAddr;
-	sTDFWParams.uFWP.sMeta.sFWCorememCodeDevVAddr = puFWParams->sMeta.sFWCorememCodeDevVAddr;
-	sTDFWParams.uFWP.sMeta.sFWCorememCodeFWAddr   = puFWParams->sMeta.sFWCorememCodeFWAddr;
-	sTDFWParams.uFWP.sMeta.uiFWCorememCodeSize    = puFWParams->sMeta.uiFWCorememCodeSize;
-	sTDFWParams.uFWP.sMeta.sFWCorememDataDevVAddr = puFWParams->sMeta.sFWCorememDataDevVAddr;
-	sTDFWParams.uFWP.sMeta.sFWCorememDataFWAddr   = puFWParams->sMeta.sFWCorememDataFWAddr;
-	sTDFWParams.uFWP.sMeta.ui32NumThreads         = puFWParams->sMeta.ui32NumThreads;
+	if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
+	{
+		sTDFWParams.uFWP.sMeta.sFWCodeDevVAddr        = puFWParams->sMeta.sFWCodeDevVAddr;
+		sTDFWParams.uFWP.sMeta.sFWDataDevVAddr        = puFWParams->sMeta.sFWDataDevVAddr;
+		sTDFWParams.uFWP.sMeta.sFWCorememCodeDevVAddr = puFWParams->sMeta.sFWCorememCodeDevVAddr;
+		sTDFWParams.uFWP.sMeta.sFWCorememCodeFWAddr   = puFWParams->sMeta.sFWCorememCodeFWAddr;
+		sTDFWParams.uFWP.sMeta.uiFWCorememCodeSize    = puFWParams->sMeta.uiFWCorememCodeSize;
+		sTDFWParams.uFWP.sMeta.sFWCorememDataDevVAddr = puFWParams->sMeta.sFWCorememDataDevVAddr;
+		sTDFWParams.uFWP.sMeta.sFWCorememDataFWAddr   = puFWParams->sMeta.sFWCorememDataFWAddr;
+		sTDFWParams.uFWP.sMeta.ui32NumThreads         = puFWParams->sMeta.ui32NumThreads;
+	}
 
 	eError = psDevConfig->pfnTDSendFWImage(psDevConfig->hSysData, &sTDFWParams);
 
@@ -823,18 +827,31 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 	 * Prepare FW boot parameters
 	 */
 
-	uFWParams.sMeta.sFWCodeDevVAddr =  psDevInfo->sFWCodeDevVAddrBase;
-	uFWParams.sMeta.sFWDataDevVAddr =  psDevInfo->sFWDataDevVAddrBase;
-	uFWParams.sMeta.sFWCorememCodeDevVAddr =  psDevInfo->sFWCorememCodeDevVAddrBase;
-	uFWParams.sMeta.sFWCorememCodeFWAddr = psDevInfo->sFWCorememCodeFWAddr;
-	uFWParams.sMeta.uiFWCorememCodeSize = uiFWCorememCodeAllocSize;
-	uFWParams.sMeta.sFWCorememDataDevVAddr = psDevInfo->sFWCorememDataStoreDevVAddrBase;
-	uFWParams.sMeta.sFWCorememDataFWAddr = psDevInfo->sFWCorememDataStoreFWAddr;
+	if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
+	{
+		uFWParams.sMeta.sFWCodeDevVAddr =  psDevInfo->sFWCodeDevVAddrBase;
+		uFWParams.sMeta.sFWDataDevVAddr =  psDevInfo->sFWDataDevVAddrBase;
+		uFWParams.sMeta.sFWCorememCodeDevVAddr =  psDevInfo->sFWCorememCodeDevVAddrBase;
+		uFWParams.sMeta.sFWCorememCodeFWAddr = psDevInfo->sFWCorememCodeFWAddr;
+		uFWParams.sMeta.uiFWCorememCodeSize = uiFWCorememCodeAllocSize;
+		uFWParams.sMeta.sFWCorememDataDevVAddr = psDevInfo->sFWCorememDataStoreDevVAddrBase;
+		uFWParams.sMeta.sFWCorememDataFWAddr = psDevInfo->sFWCorememDataStoreFWAddr;
 #if defined(RGXFW_META_SUPPORT_2ND_THREAD)
-	uFWParams.sMeta.ui32NumThreads = 2,
+		uFWParams.sMeta.ui32NumThreads = 2;
 #else
-	uFWParams.sMeta.ui32NumThreads = 1;
+		uFWParams.sMeta.ui32NumThreads = 1;
 #endif
+	}
+	else
+	{
+		uFWParams.sRISCV.sFWCorememCodeDevVAddr = psDevInfo->sFWCorememCodeDevVAddrBase;
+		uFWParams.sRISCV.sFWCorememCodeFWAddr   = psDevInfo->sFWCorememCodeFWAddr;
+		uFWParams.sRISCV.uiFWCorememCodeSize    = uiFWCorememCodeAllocSize;
+
+		uFWParams.sRISCV.sFWCorememDataDevVAddr = psDevInfo->sFWCorememDataStoreDevVAddrBase;
+		uFWParams.sRISCV.sFWCorememDataFWAddr   = psDevInfo->sFWCorememDataStoreFWAddr;
+		uFWParams.sRISCV.uiFWCorememDataSize    = uiFWCorememDataAllocSize;
+	}
 
 
 	/*
@@ -1282,7 +1299,7 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	RGX_SRVINIT_APPHINTS sApphints = {0};
 	IMG_UINT32 ui32FWConfigFlags, ui32FWConfigFlagsExt, ui32FwOsCfgFlags;
 	IMG_UINT32 ui32DeviceFlags;
-	IMG_UINT32 ui32AvailableSPUMask;
+	IMG_UINT32 ui32AvailablePowUnitsMask;
 
 	PVRSRV_RGXDEV_INFO *psDevInfo = (PVRSRV_RGXDEV_INFO *)psDeviceNode->pvDevice;
 
@@ -1353,9 +1370,9 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	GetFWConfigFlags(psDeviceNode, &sApphints, &ui32FWConfigFlags, &ui32FWConfigFlagsExt, &ui32FwOsCfgFlags);
 
 #if defined(SUPPORT_VALIDATION)
-	ui32AvailableSPUMask = sApphints.ui32AvailableSPUMask;
+	ui32AvailablePowUnitsMask = sApphints.ui32AvailablePowUnitsMask;
 #else
-	ui32AvailableSPUMask = AVAIL_SPU_MASK_DEFAULT;
+	ui32AvailablePowUnitsMask = AVAIL_POW_UNITS_MASK_DEFAULT;
 #endif
 
 	eError = RGXInitFirmware(psDeviceNode,
@@ -1384,7 +1401,7 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	                         sApphints.eRGXRDPowerIslandConf,
 	                         sApphints.eFirmwarePerf,
 	                         ui32FWConfigFlagsExt,
-	                         ui32AvailableSPUMask,
+	                         ui32AvailablePowUnitsMask,
 	                         ui32FwOsCfgFlags);
 
 	if (eError != PVRSRV_OK)
@@ -1413,7 +1430,7 @@ PVRSRV_ERROR RGXInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 	                         sApphints.ui32HWPerfHostBufSize,
 	                         sApphints.ui32HWPerfHostFilter,
 	                         sApphints.eRGXActivePMConf,
-	                         ui32AvailableSPUMask);
+	                         ui32AvailablePowUnitsMask);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,

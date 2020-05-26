@@ -83,7 +83,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "allocmem.h"
 #include "devicemem_server_utils.h"
-#include "pvr_debugfs.h"
 #include "event.h"
 #include "linkage.h"
 #include "pvr_uaccess.h"
@@ -118,6 +117,12 @@ typedef struct {
 	PFN_THREAD_DEBUG_DUMP pfnDebugDumpCB;
 	DLLIST_NODE sNode;
 } OSThreadData;
+
+void OSSuspendTaskInterruptible(void)
+{
+	set_current_state(TASK_INTERRUPTIBLE);
+	schedule();
+}
 
 static DLLIST_NODE gsThreadListHead;
 
@@ -597,6 +602,15 @@ PVRSRV_ERROR OSClockMonotonicus64(IMG_UINT64 *pui64Time)
 	return PVRSRV_OK;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0))
+IMG_UINT64 OSClockMonotonicRawns64(void)
+{
+	struct timespec64 ts;
+
+	ktime_get_raw_ts64(&ts);
+	return ts.tv_sec * 1000000000 + ts.tv_nsec;
+}
+#else
 IMG_UINT64 OSClockMonotonicRawns64(void)
 {
 	struct timespec ts;
@@ -604,6 +618,7 @@ IMG_UINT64 OSClockMonotonicRawns64(void)
 	getrawmonotonic(&ts);
 	return (IMG_UINT64) ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+#endif
 
 IMG_UINT64 OSClockMonotonicRawus64(void)
 {
@@ -1022,13 +1037,13 @@ OSMapPhysToLin(IMG_CPU_PHYADDR BasePAddr,
 	switch (ui32MappingFlags)
 	{
 		case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED:
-			pvLinAddr = (void __iomem *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
+			pvLinAddr = (void __iomem *)ioremap(BasePAddr.uiAddr, ui32Bytes);
 			break;
 		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
 #if defined(CONFIG_X86) || defined(CONFIG_ARM) || defined(CONFIG_ARM64)
 			pvLinAddr = (void __iomem *)ioremap_wc(BasePAddr.uiAddr, ui32Bytes);
 #else
-			pvLinAddr = (void __iomem *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
+			pvLinAddr = (void __iomem *)ioremap(BasePAddr.uiAddr, ui32Bytes);
 #endif
 			break;
 		case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
@@ -1478,114 +1493,6 @@ void OSDumpStack(void)
 {
 	dump_stack();
 }
-
-
-/*************************************************************************/ /*!
-@Function		OSCreateStatisticEntry
-@Description	Create a statistic entry in the specified folder.
-@Input			pszName		   String containing the name for the entry.
-@Input			pvFolder	   Reference from OSCreateStatisticFolder() of the
-							   folder to create the entry in, or NULL for the
-							   root.
-@Input			pfnStatsPrint  Pointer to function that can be used to print
-							   the values of all the statistics.
-@Input			pvData		   OS specific reference that can be used by
-							   pfnGetElement.
-@Return			Pointer void reference to the entry created, which can be
-				passed to OSRemoveStatisticEntry() to remove the entry.
-*/ /**************************************************************************/
-void *OSCreateStatisticEntry(const IMG_CHAR* pszName, void *pvFolder,
-							 OS_STATS_PRINT_FUNC* pfnStatsPrint,
-							 void *pvData)
-{
-	PPVR_DEBUGFS_ENTRY_DATA psNewFile;
-	int iResult;
-
-	iResult = PVRDebugFSCreateFile( pszName,
-					(PPVR_DEBUGFS_DIR_DATA)pvFolder,
-					NULL,
-					NULL,
-					pfnStatsPrint,
-					pvData,
-					&psNewFile );
-
-	return (iResult != 0) ? NULL : psNewFile;
-
-} /* OSCreateStatisticEntry */
-
-
-/*************************************************************************/ /*!
-@Function		OSRemoveStatisticEntry
-@Description	Removes a statistic entry.
-@Input			ppvEntry  Double Pointer void reference to the entry created by
-						  OSCreateStatisticEntry().
-*/ /**************************************************************************/
-void OSRemoveStatisticEntry(void **ppvEntry)
-{
-	PPVR_DEBUGFS_ENTRY_DATA psStatEntry = (PPVR_DEBUGFS_ENTRY_DATA)(*ppvEntry);
-	PVRDebugFSRemoveFile(&psStatEntry);
-	*ppvEntry = psStatEntry;
-} /* OSRemoveStatisticEntry */
-
-#if defined(PVRSRV_ENABLE_MEMTRACK_STATS_FILE)
-void *OSCreateRawStatisticEntry(const IMG_CHAR *pszFileName, void *pvParentDir,
-                                OS_STATS_PRINT_FUNC *pfStatsPrint)
-{
-	PPVR_DEBUGFS_ENTRY_DATA psNewFile;
-	int iResult;
-
-	iResult = PVRDebugFSCreateFile( pszFileName,
-					pvParentDir,
-					NULL,
-					NULL,
-					pfStatsPrint,
-					NULL,
-					&psNewFile );
-
-	return (iResult != 0) ? NULL : psNewFile;
-}
-
-void OSRemoveRawStatisticEntry(void **ppvEntry)
-{
-	PPVR_DEBUGFS_ENTRY_DATA psStatEntry = (PPVR_DEBUGFS_ENTRY_DATA)(*ppvEntry);
-	PVRDebugFSRemoveFile(&psStatEntry);
-	*ppvEntry = psStatEntry;
-}
-#endif
-
-/*************************************************************************/ /*!
-@Function		OSCreateStatisticFolder
-@Description	Create a statistic folder to hold statistic entries.
-@Input			pszName   String containing the name for the folder.
-@Input			pvFolder  Reference from OSCreateStatisticFolder() of the folder
-						  to create the folder in, or NULL for the root.
-@Return			Pointer void reference to the folder created, which can be
-				passed to OSRemoveStatisticFolder() to remove the folder.
-*/ /**************************************************************************/
-void *OSCreateStatisticFolder(const IMG_CHAR *pszName, void *pvFolder)
-{
-	PPVR_DEBUGFS_DIR_DATA psNewStatFolder = NULL;
-	int iResult;
-
-	iResult = PVRDebugFSCreateEntryDir(pszName, (PPVR_DEBUGFS_DIR_DATA)pvFolder, &psNewStatFolder);
-	return (iResult == 0) ? (void *)psNewStatFolder : NULL;
-} /* OSCreateStatisticFolder */
-
-
-/*************************************************************************/ /*!
-@Function		OSRemoveStatisticFolder
-@Description	Removes a statistic folder.
-@Input          ppvFolder  Reference from OSCreateStatisticFolder() of the
-                           folder that should be removed.
-                           This needs to be double pointer because it has to
-                           be NULLed right after memory is freed to avoid
-                           possible races and use-after-free situations.
-*/ /**************************************************************************/
-void OSRemoveStatisticFolder(void **ppvFolder)
-{
-	PVRDebugFSRemoveEntryDir((PPVR_DEBUGFS_DIR_DATA *)ppvFolder);
-} /* OSRemoveStatisticFolder */
-
 
 PVRSRV_ERROR OSChangeSparseMemCPUAddrMap(void **psPageArray,
                                          IMG_UINT64 sCpuVAddrBase,

@@ -166,14 +166,16 @@ static void _RGXBvncDumpParsedConfig(PVRSRV_DEVICE_NODE *psDeviceNode)
 }
 #endif
 
-static void _RGXBvncParseFeatureValues(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT64 ui64PackedValues)
+static void _RGXBvncParseFeatureValues(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT64 *pui64Cfg)
 {
 	IMG_UINT32 ui32Index;
 
 	/* Read the feature values for the runtime BVNC */
 	for (ui32Index = 0; ui32Index < RGX_FEATURE_WITH_VALUES_MAX_IDX; ui32Index++)
 	{
-		IMG_UINT16	ui16ValueIndex = (ui64PackedValues & aui64FeaturesWithValuesBitMasks[ui32Index]) >> aui16FeaturesWithValuesBitPositions[ui32Index];
+		IMG_UINT16 bitPosition = aui16FeaturesWithValuesBitPositions[ui32Index];
+		IMG_UINT64 ui64PackedValues = pui64Cfg[2 + bitPosition / 64];
+		IMG_UINT16 ui16ValueIndex = (ui64PackedValues & aui64FeaturesWithValuesBitMasks[ui32Index]) >> (bitPosition % 64);
 
 		if (ui16ValueIndex < gaFeaturesValuesMaxIndexes[ui32Index])
 		{
@@ -347,12 +349,13 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 	IMG_UINT64 ui64BVNC=0;
 	IMG_UINT32 B=0, V=0, N=0, C=0;
 	IMG_UINT64 *pui64Cfg = NULL;
+	IMG_UINT32 ui32Cores = 1U;
 
 	/* Check for load time RGX BVNC parameter */
 	eError = _RGXBvncParseList(&B,&V,&N,&C, ui32RGXDevCnt);
 	if (PVRSRV_OK == eError)
 	{
-		PVR_LOG(("Read BVNC " RGX_BVNC_STR_FMTSPEC \
+		PVR_LOG(("Read BVNC " RGX_BVNC_STR_FMTSPEC
 				" from driver load parameter", B, V, N, C));
 
 		/* Extract the BVNC config from the Features table */
@@ -427,8 +430,14 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 			C = (ui32CoreID & ~RGX_CR_CORE_ID_CONFIG_C_CLRMSK) >>
 													RGX_CR_CORE_ID_CONFIG_C_SHIFT;
 		}
-		PVR_LOG(("Read BVNC " RGX_BVNC_STR_FMTSPEC \
-				" from HW device registers",	B, V, N, C));
+		PVR_LOG(("Read BVNC " RGX_BVNC_STR_FMTSPEC
+				" from HW device registers", B, V, N, C));
+
+		if (!PVRSRV_VZ_MODE_IS(GUEST))
+		{
+			/* Read the number of cores in the system in a multicore implementation*/
+			ui32Cores = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_MULTICORE_SYSTEM);
+		}
 
 		/* Power-down the device */
 		if (psDeviceNode->psDevConfig->pfnPrePowerState)
@@ -503,13 +512,13 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: BVNC Feature found config: 0x%016"
 	    IMG_UINT64_FMTSPECx " 0x%016" IMG_UINT64_FMTSPECx " 0x%016"
-	    IMG_UINT64_FMTSPECx "\n",__func__, pui64Cfg[0], pui64Cfg[1],
-	    pui64Cfg[2]));
+	    IMG_UINT64_FMTSPECx " 0x%016" IMG_UINT64_FMTSPECx "\n", __func__,
+	    pui64Cfg[0], pui64Cfg[1], pui64Cfg[2], pui64Cfg[3]));
 
 	/* Parsing feature config depends on available features on the core
 	 * hence this parsing should always follow the above feature assignment */
 	psDevInfo->sDevFeatureCfg.ui64Features = pui64Cfg[1];
-	_RGXBvncParseFeatureValues(psDevInfo, pui64Cfg[2]);
+	_RGXBvncParseFeatureValues(psDevInfo, pui64Cfg);
 
 	/* Add 'V' to the packed BVNC value to get the BVNC ERN and BRN config. */
 	ui64BVNC = BVNC_PACK(B,V,N,C);
@@ -517,7 +526,7 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 	if (NULL == pui64Cfg)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: BVNC ERN/BRN lookup failed. "
-		    "Unsupported BVNC: 0x%016" IMG_UINT64_FMTSPECx,	__func__, ui64BVNC));
+		    "Unsupported BVNC: 0x%016" IMG_UINT64_FMTSPECx, __func__, ui64BVNC));
 		psDevInfo->sDevFeatureCfg.ui64ErnsBrns = 0;
 		return PVRSRV_ERROR_BVNC_UNSUPPORTED;
 	}
@@ -532,8 +541,27 @@ PVRSRV_ERROR RGXBvncInitialiseConfiguration(PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDevInfo->sDevFeatureCfg.ui32C = C;
 
 	/* Message to confirm configuration look up was a success */
-	PVR_LOG(("RGX Device registered with BVNC " RGX_BVNC_STR_FMTSPEC, \
-			B, V, N, C));
+	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, GPU_MULTICORE_SUPPORT))
+	{
+#if defined(NO_HARDWARE)
+		{
+			PVR_UNREFERENCED_PARAMETER(ui32Cores);
+			PVR_LOG(("RGX Device registered with BVNC " RGX_BVNC_STR_FMTSPEC,
+					B, V, N, C));
+		}
+#else
+		{
+			PVR_LOG(("RGX Device registered BVNC " RGX_BVNC_STR_FMTSPEC
+					" with %u %s in the system", B ,V ,N ,C, ui32Cores ,
+					((ui32Cores == 1U)?"core":"cores")));
+		}
+#endif
+	}
+	else
+	{
+		PVR_LOG(("RGX Device registered with BVNC " RGX_BVNC_STR_FMTSPEC,
+					B, V, N, C));
+	}
 
 	ui32RGXDevCnt++;
 
@@ -598,7 +626,7 @@ PVRSRV_ERROR RGXVerifyBVNC(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_UINT64 ui64Give
 	PDUMPCOMMENT("PDUMP VERIFY CORE_ID registers for all OSIDs\n");
 
 	/* construct the value to match against */
-	if ((ui64GivenBVNC | ui64CoreIdMask) == 0)  /* both zero means use configured DDK value */
+	if ((ui64GivenBVNC | ui64CoreIdMask) == 0) /* both zero means use configured DDK value */
 	{
 		ui64MatchBVNC = rgx_bvnc_pack(psDevInfo->sDevFeatureCfg.ui32B,
 									psDevInfo->sDevFeatureCfg.ui32V,

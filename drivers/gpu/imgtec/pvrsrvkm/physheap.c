@@ -218,6 +218,7 @@ void PhysHeapRelease(PHYS_HEAP *psPhysHeap)
 
 PHYS_HEAP_TYPE PhysHeapGetType(PHYS_HEAP *psPhysHeap)
 {
+	PVR_ASSERT(psPhysHeap->eType != PHYS_HEAP_TYPE_UNKNOWN);
 	return psPhysHeap->eType;
 }
 

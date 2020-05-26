@@ -505,7 +505,7 @@ static PVRSRV_ERROR _ValidateFWImageForMIPS(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugP
 		goto cleanup_initfw;
 	}
 
-	eError = ProcessELFCommandStream(&sLayerParams, pbRGXFirmware, pui32HostFWCode, NULL);
+	eError = ProcessELFCommandStream(&sLayerParams, pbRGXFirmware, pui32HostFWCode, NULL, NULL, NULL);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed in parsing FW image file.", __func__));
@@ -1143,7 +1143,7 @@ static void _RGXDecodeBIFReqTags(PVRSRV_RGXDEV_INFO	*psDevInfo,
 		}
 		case 0x3:
 		{
-			if (!RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+			if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
 			{
 					pszTagID = "META";
 					switch (ui32TagSB)
@@ -3918,10 +3918,31 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 
 #if !defined(NO_HARDWARE)
+	/* Determine the type virtualisation support used */
+#if defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED > 1)
+	if (!PVRSRV_VZ_MODE_IS(NATIVE))
+	{
+#if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS)
+#if defined(SUPPORT_AUTOVZ)
+#if defined(SUPPORT_AUTOVZ_HW_REGS)
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with HW register support");
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Auto-VZ with shared memory");
+#endif /* defined(SUPPORT_AUTOVZ_HW_REGS) */
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with static Fw heap allocation");
+#endif /* defined(SUPPORT_AUTOVZ) */
+#else
+		PVR_DUMPDEBUG_LOG("RGX Virtualisation type: Hypervisor-assisted with dynamic Fw heap allocation");
+#endif /* defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) */
+	}
+#endif /* (RGX_NUM_OS_SUPPORTED > 1) */
+
+
 #if defined(RGX_VZ_STATIC_CARVEOUT_FW_HEAPS) || (defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED == 1))
 	{
-		RGXFWIF_CONNECTION_FW_STATE eFwState = KM_GET_FW_CONNECTION();
-		RGXFWIF_CONNECTION_OS_STATE eOsState = KM_GET_OS_CONNECTION();
+		RGXFWIF_CONNECTION_FW_STATE eFwState = KM_GET_FW_CONNECTION(psDevInfo);
+		RGXFWIF_CONNECTION_OS_STATE eOsState = KM_GET_OS_CONNECTION(psDevInfo);
 
 		PVR_DUMPDEBUG_LOG("RGX firmware connection state: %s (Fw=%s; OS=%s)",
 						  ((eFwState == RGXFW_CONNECTION_FW_ACTIVE) && (eOsState == RGXFW_CONNECTION_OS_ACTIVE)) ? ("UP") : ("DOWN"),
@@ -3931,6 +3952,16 @@ void RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 #endif
 
+#if defined(SUPPORT_AUTOVZ) && defined(RGX_NUM_OS_SUPPORTED) && (RGX_NUM_OS_SUPPORTED > 1)
+	if (!PVRSRV_VZ_MODE_IS(NATIVE))
+	{
+		IMG_UINT32 ui32FwAliveTS = KM_GET_FW_ALIVE_TOKEN(psDevInfo);
+		IMG_UINT32 ui32OsAliveTS = KM_GET_OS_ALIVE_TOKEN(psDevInfo);
+
+		PVR_DUMPDEBUG_LOG("RGX virtualisation watchdog timestamps (in GPU timer ticks): Fw=%u; OS=%u; diff(FW, OS) = %u",
+						  ui32FwAliveTS, ui32OsAliveTS, ui32FwAliveTS - ui32OsAliveTS);
+	}
+#endif
 #endif /* !defined(NO_HARDWARE) */
 
 	if (!PVRSRV_VZ_MODE_IS(GUEST))
@@ -4422,6 +4453,70 @@ void RGXDumpFirmwareTrace(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 }
 
+#if defined(SUPPORT_POWER_VALIDATION_VIA_DEBUGFS)
+void RGXDumpPowerMonitoring(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+				void *pvDumpDebugFile,
+				PVRSRV_RGXDEV_INFO  *psDevInfo)
+{
+	RGXFWIF_SYSDATA  *psFwSysData = psDevInfo->psRGXFWIfFwSysData;
+
+	/* Print the power monitoring counters... */
+	if (psFwSysData != NULL)
+	{
+		IMG_UINT32  *pui32TraceBuf = psFwSysData->sPowerMonBuf.pui32TraceBuffer;
+		IMG_UINT32  ui32TracePtr  = 0; //psFwSysData->sPowerMonBuf.ui32TracePointer;
+		IMG_UINT32  ui32PowerMonBufSizeInDWords = psFwSysData->ui32PowerMonBufSizeInDWords;
+		IMG_UINT32  ui32Count     = 0;
+		IMG_UINT64  ui64Timestamp;
+
+		if (pui32TraceBuf == NULL)
+		{
+			/* power monitoring buffer not yet allocated */
+			return;
+		}
+
+		if (pui32TraceBuf[ui32TracePtr] != RGX_CR_TIMER)
+		{
+			PVR_DPF((PVR_DBG_WARNING, "Power monitoring data not available."));
+			return;
+		}
+		ui64Timestamp = (IMG_UINT64)(pui32TraceBuf[(ui32TracePtr + 1) % ui32PowerMonBufSizeInDWords]) << 32 |
+						(IMG_UINT64)(pui32TraceBuf[(ui32TracePtr + 2) % ui32PowerMonBufSizeInDWords]);
+
+		/* Update the trace pointer... */
+		ui32TracePtr = (ui32TracePtr + 3) % ui32PowerMonBufSizeInDWords;
+		ui32Count    = (ui32Count    + 3);
+
+		PVR_DPF((PVR_DBG_WARNING, "Dumping power monitoring buffer: CPUVAddr = %p, pointer = 0x%x, size = 0x%x",
+				 pui32TraceBuf,
+				 ui32TracePtr,
+				 ui32PowerMonBufSizeInDWords));
+
+		while (ui32Count < ui32PowerMonBufSizeInDWords)
+		{
+			/* power monitoring data is (register, value) dword pairs */
+			PVR_DUMPDEBUG_LOG("%" IMG_UINT64_FMTSPEC ":POWMON  0x%08x 0x%08x  0x%08x 0x%08x",
+							  ui64Timestamp,
+							  pui32TraceBuf[(ui32TracePtr + 0) % ui32PowerMonBufSizeInDWords],
+							  pui32TraceBuf[(ui32TracePtr + 1) % ui32PowerMonBufSizeInDWords],
+							  pui32TraceBuf[(ui32TracePtr + 2) % ui32PowerMonBufSizeInDWords],
+							  pui32TraceBuf[(ui32TracePtr + 3) % ui32PowerMonBufSizeInDWords]);
+
+			if (pui32TraceBuf[(ui32TracePtr + 0) % ui32PowerMonBufSizeInDWords] == RGXFWIF_TIMEDIFF_ID ||
+				pui32TraceBuf[(ui32TracePtr + 2) % ui32PowerMonBufSizeInDWords] == RGXFWIF_TIMEDIFF_ID)
+			{
+				/* end of buffer */
+				break;
+			}
+
+			/* Update the trace pointer... */
+			ui32TracePtr = (ui32TracePtr + 4) % ui32PowerMonBufSizeInDWords;
+			ui32Count    = (ui32Count    + 4);
+		}
+	}
+}
+#endif
+
 static const IMG_CHAR *_RGXGetDebugDevStateString(PVRSRV_DEVICE_STATE eDevState)
 {
 	switch (eDevState)
@@ -4661,6 +4756,26 @@ PVRSRV_ERROR RGXDumpRGXRegisters(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		DDLOG32(SLC3_IDLE);
 		DDLOG64(SLC3_STATUS);
 		DDLOG32(SLC3_FAULT_STOP_STATUS);
+	}
+
+	if (PVRSRV_GET_DEVICE_FEATURE_VALUE(psDevInfo->psDeviceNode, LAYOUT_MARS) > 0)
+	{
+		DDLOG32(SCRATCH0);
+		DDLOG32(SCRATCH1);
+		DDLOG32(SCRATCH2);
+		DDLOG32(SCRATCH3);
+		DDLOG32(SCRATCH4);
+		DDLOG32(SCRATCH5);
+		DDLOG32(SCRATCH6);
+		DDLOG32(SCRATCH7);
+		DDLOG32(SCRATCH8);
+		DDLOG32(SCRATCH9);
+		DDLOG32(SCRATCH10);
+		DDLOG32(SCRATCH11);
+		DDLOG32(SCRATCH12);
+		DDLOG32(SCRATCH13);
+		DDLOG32(SCRATCH14);
+		DDLOG32(SCRATCH15);
 	}
 
 	if (ui32Meta)

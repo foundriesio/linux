@@ -147,7 +147,7 @@ APPHINT_LIST_ALL
 typedef struct _RGX_SRVINIT_APPHINTS_
 {
 	IMG_UINT32 ui32DriverMode;
-	IMG_BOOL   bDustRequestInject;
+	IMG_BOOL   bGPUUnitsPowerChange;
 	IMG_BOOL   bEnableSignatureChecks;
 	IMG_UINT32 ui32SignatureChecksBufSize;
 
@@ -333,7 +333,7 @@ static INLINE void GetApphints(PVRSRV_RGXDEV_INFO *psDevInfo, RGX_SRVINIT_APPHIN
 	 * NB AppHints initialised to a default value via SrvInitParamInit* macros above
 	 */
 	SrvInitParamGetUINT32(pvParamState,   DriverMode, psHints->ui32DriverMode);
-	SrvInitParamGetBOOL(pvParamState,     DustRequestInject, psHints->bDustRequestInject);
+	SrvInitParamGetBOOL(pvParamState,     GPUUnitsPowerChange, psHints->bGPUUnitsPowerChange);
 	SrvInitParamGetBOOL(pvParamState,     EnableSignatureChecks, psHints->bEnableSignatureChecks);
 	SrvInitParamGetUINT32(pvParamState,   SignatureChecksBufSize, psHints->ui32SignatureChecksBufSize);
 
@@ -614,7 +614,7 @@ static INLINE void InitDeviceFlags(RGX_SRVINIT_APPHINTS *psHints,
 {
 	IMG_UINT32 ui32DeviceFlags = 0;
 
-	ui32DeviceFlags |= psHints->bDustRequestInject? RGXKM_DEVICE_STATE_DUST_REQUEST_INJECT_EN : 0;
+	ui32DeviceFlags |= psHints->bGPUUnitsPowerChange ? RGXKM_DEVICE_STATE_GPU_UNITS_POWER_CHANGE_EN : 0;
 	ui32DeviceFlags |= psHints->bZeroFreelist ? RGXKM_DEVICE_STATE_ZERO_FREELIST : 0;
 	ui32DeviceFlags |= psHints->bDisableFEDLogging ? RGXKM_DEVICE_STATE_DISABLE_DW_LOGGING_EN : 0;
 #if defined(PVRSRV_ENABLE_CCCB_GROW)
@@ -660,7 +660,7 @@ static PVRSRV_ERROR RGXTDProcessFWImage(PVRSRV_DEVICE_NODE *psDeviceNode,
 	sTDFWParams.pvFirmware       = OSFirmwareData(psRGXFW);
 	sTDFWParams.ui32FirmwareSize = OSFirmwareSize(psRGXFW);
 
-	if (!RGX_DEVICE_HAS_FEATURE(&sLayerParams, MIPS))
+	if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
 	{
 		sTDFWParams.uFWP.sMeta.sFWCodeDevVAddr        = puFWParams->sMeta.sFWCodeDevVAddr;
 		sTDFWParams.uFWP.sMeta.sFWDataDevVAddr        = puFWParams->sMeta.sFWDataDevVAddr;
@@ -671,7 +671,7 @@ static PVRSRV_ERROR RGXTDProcessFWImage(PVRSRV_DEVICE_NODE *psDeviceNode,
 		sTDFWParams.uFWP.sMeta.sFWCorememDataFWAddr   = puFWParams->sMeta.sFWCorememDataFWAddr;
 		sTDFWParams.uFWP.sMeta.ui32NumThreads         = puFWParams->sMeta.ui32NumThreads;
 	}
-	else
+	else if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
 	{
 		IMG_UINT32 i;
 
@@ -798,6 +798,7 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(NO_HARDWARE) && !defined(SUPPORT_SECURITY_VALIDATION)
 	IMG_BOOL bUseSecureFWData = RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META) ||
+	                            RGX_IS_FEATURE_SUPPORTED(psDevInfo, RISCV_FW_PROCESSOR) ||
 	                            (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS) &&
 	                             RGX_GET_FEATURE_VALUE(psDevInfo, PHYS_BUS_WIDTH) > 32);
 #endif
@@ -916,7 +917,7 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 	 * Prepare FW boot parameters
 	 */
 
-	if (RGX_DEVICE_HAS_FEATURE(&sLayerParams, MIPS))
+	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
 	{
 		eError = RGXAcquireMipsBootldrData(psDeviceNode, &uFWParams);
 
@@ -928,7 +929,7 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 			goto release_fw_allocations;
 		}
 	}
-	else
+	else if (RGX_IS_FEATURE_VALUE_SUPPORTED(psDevInfo, META))
 	{
 		uFWParams.sMeta.sFWCodeDevVAddr = psDevInfo->sFWCodeDevVAddrBase;
 		uFWParams.sMeta.sFWDataDevVAddr = psDevInfo->sFWDataDevVAddrBase;
@@ -942,6 +943,16 @@ static PVRSRV_ERROR InitFirmware(PVRSRV_DEVICE_NODE *psDeviceNode,
 #else
 		uFWParams.sMeta.ui32NumThreads = 1;
 #endif
+	}
+	else
+	{
+		uFWParams.sRISCV.sFWCorememCodeDevVAddr = psDevInfo->sFWCorememCodeDevVAddrBase;
+		uFWParams.sRISCV.sFWCorememCodeFWAddr   = psDevInfo->sFWCorememCodeFWAddr;
+		uFWParams.sRISCV.uiFWCorememCodeSize    = uiFWCorememCodeAllocSize;
+
+		uFWParams.sRISCV.sFWCorememDataDevVAddr = psDevInfo->sFWCorememDataStoreDevVAddrBase;
+		uFWParams.sRISCV.sFWCorememDataFWAddr   = psDevInfo->sFWCorememDataStoreFWAddr;
+		uFWParams.sRISCV.uiFWCorememDataSize    = uiFWCorememDataAllocSize;
 	}
 
 

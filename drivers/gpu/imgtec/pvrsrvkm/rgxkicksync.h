@@ -110,23 +110,11 @@ PVRSRV_ERROR PVRSRVRGXSetKickSyncContextPropertyKM(RGX_SERVER_KICKSYNC_CONTEXT *
 */ /**************************************************************************/
 PVRSRV_ERROR
 PVRSRVRGXKickSyncKM(RGX_SERVER_KICKSYNC_CONTEXT * psKicksyncContext,
-
                     IMG_UINT32                    ui32ClientCacheOpSeqNum,
-
-                    IMG_UINT32                    ui32ClientFenceCount,
-                    SYNC_PRIMITIVE_BLOCK       ** pauiClientFenceUFOSyncPrimBlock,
-                    IMG_UINT32                  * paui32ClientFenceSyncOffset,
-                    IMG_UINT32                  * paui32ClientFenceValue,
-
                     IMG_UINT32                    ui32ClientUpdateCount,
-                    SYNC_PRIMITIVE_BLOCK       ** pauiClientUpdateUFOSyncPrimBlock,
-                    IMG_UINT32                  * paui32ClientUpdateSyncOffset,
+                    SYNC_PRIMITIVE_BLOCK       ** pauiClientUpdateUFODevVarBlock,
+                    IMG_UINT32                  * paui32ClientUpdateDevVarOffset,
                     IMG_UINT32                  * paui32ClientUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-                    IMG_UINT32                    ui32ServerSyncPrims,
-                    IMG_UINT32                  * paui32ServerSyncFlags,
-                    SERVER_SYNC_PRIMITIVE      ** pasServerSyncs,
-#endif
                     PVRSRV_FENCE                  iCheckFence,
                     PVRSRV_TIMELINE               iUpdateTimeline,
                     PVRSRV_FENCE                * piUpdateFence,

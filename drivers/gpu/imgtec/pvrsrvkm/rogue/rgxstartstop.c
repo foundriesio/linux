@@ -51,9 +51,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(SUPPORT_SHARED_SLC)
 #include "rgxapi_km.h"
-#include "rgxdevice.h"
 #endif
 
+#include "rgxdevice.h"
 #include "km/rgxdefs_km.h"
 
 #define SOC_FEATURE_STRICT_SAME_ADDRESS_WRITE_ORDERING
@@ -206,7 +206,7 @@ static void RGXInitMetaProcWrapper(const void *hPrivate)
 	{
 		/* Set PC = 0 for fences */
 		ui64GartenConfig &= RGX_CR_MTS_GARTEN_WRAPPER_CONFIG__S7_TOP__FENCE_PC_BASE_CLRMSK;
-		ui64GartenConfig |= (IMG_UINT64)META_MMU_CONTEXT_MAPPING_FWPRIV
+		ui64GartenConfig |= (IMG_UINT64)MMU_CONTEXT_MAPPING_FWPRIV
 		                    << RGX_CR_MTS_GARTEN_WRAPPER_CONFIG__S7_TOP__FENCE_PC_BASE_SHIFT;
 
 	}
@@ -214,7 +214,7 @@ static void RGXInitMetaProcWrapper(const void *hPrivate)
 	{
 		/* Set PC = 0 for fences */
 		ui64GartenConfig &= RGX_CR_MTS_GARTEN_WRAPPER_CONFIG_FENCE_PC_BASE_CLRMSK;
-		ui64GartenConfig |= (IMG_UINT64)META_MMU_CONTEXT_MAPPING_FWPRIV
+		ui64GartenConfig |= (IMG_UINT64)MMU_CONTEXT_MAPPING_FWPRIV
 		                    << RGX_CR_MTS_GARTEN_WRAPPER_CONFIG_FENCE_PC_BASE_SHIFT;
 
 		/* Set SLC DM=META */
@@ -404,6 +404,50 @@ static void RGXInitMipsProcWrapper(const void *hPrivate)
 
 	/* Turn on the EJTAG probe (only useful driver live) */
 	RGXWriteReg32(hPrivate, RGX_CR_MIPS_DEBUG_CONFIG, 0);
+}
+
+
+/*!
+*******************************************************************************
+
+ @Function      RGXInitRiscvProcWrapper
+
+ @Description   Configures the hardware wrapper of the RISCV processor
+
+ @Input         hPrivate  : Implementation specific data
+
+ @Return        void
+
+******************************************************************************/
+static void RGXInitRiscvProcWrapper(const void *hPrivate)
+{
+	IMG_DEV_VIRTADDR sTmp;
+
+	RGXCommentLog(hPrivate, "RGXStart: Configure RISCV wrapper");
+
+	RGXCommentLog(hPrivate, "RGXStart: Write boot code remap");
+	RGXAcquireBootCodeAddr(hPrivate, &sTmp);
+	RGXWriteReg64(hPrivate,
+	              RGXRISCVFW_BOOTLDR_CODE_REMAP,
+	              sTmp.uiAddr |
+	              (IMG_UINT64) (RGX_FIRMWARE_RAW_HEAP_SIZE >> TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_ALIGN)
+	                << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_SHIFT |
+	              (IMG_UINT64) MMU_CONTEXT_MAPPING_FWPRIV << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_MMU_CONTEXT_SHIFT |
+	              TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_FETCH_EN);
+
+	RGXCommentLog(hPrivate, "RGXStart: Write boot data remap");
+	RGXAcquireBootDataAddr(hPrivate, &sTmp);
+	RGXWriteReg64(hPrivate,
+	              RGXRISCVFW_BOOTLDR_DATA_REMAP,
+	              sTmp.uiAddr |
+	              (IMG_UINT64) (RGX_FIRMWARE_RAW_HEAP_SIZE >> TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_ALIGN)
+	                << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_REGION_SIZE_SHIFT |
+	              (IMG_UINT64) MMU_CONTEXT_MAPPING_FWPRIV << TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_MMU_CONTEXT_SHIFT |
+	              TMP_RGX_CR_FWCORE_ADDR_REMAP0_CONFIG_LOAD_STORE_EN);
+
+	/* Garten IDLE bit controlled by RISCV */
+	RGXCommentLog(hPrivate, "RGXStart: Set GARTEN_IDLE type to RISCV");
+	RGXWriteReg64(hPrivate, RGX_CR_MTS_GARTEN_WRAPPER_CONFIG, RGX_CR_MTS_GARTEN_WRAPPER_CONFIG_IDLE_CTRL_META);
 }
 
 
@@ -604,6 +648,20 @@ static void RGXInitBIF(const void *hPrivate)
 			                      >> RGX_CR_BIF_CAT_BASE0_ADDR_ALIGNSHIFT)
 			                      << RGX_CR_BIF_CAT_BASE0_ADDR_SHIFT)
 			                      & ~RGX_CR_BIF_CAT_BASE0_ADDR_CLRMSK);
+
+			if (RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR))
+			{
+				/* Keep catbase registers in sync */
+				RGXWriteKernelMMUPC64(hPrivate,
+				                      TMP_RGX_CR_FWCORE_MEM_CAT_BASE0,
+				                      TMP_RGX_CR_FWCORE_MEM_CAT_BASE0_ADDR_ALIGNSHIFT,
+				                      TMP_RGX_CR_FWCORE_MEM_CAT_BASE0_ADDR_SHIFT,
+				                      ((sPCAddr.uiAddr
+				                      >> TMP_RGX_CR_FWCORE_MEM_CAT_BASE0_ADDR_ALIGNSHIFT)
+				                      << TMP_RGX_CR_FWCORE_MEM_CAT_BASE0_ADDR_SHIFT)
+				                      & ~TMP_RGX_CR_FWCORE_MEM_CAT_BASE0_ADDR_CLRMSK);
+			}
+
 			/*
 			 * Trusted Firmware boot
 			 */
@@ -620,7 +678,7 @@ static void RGXInitBIF(const void *hPrivate)
 			            & ~RGX_CR_MMU_CBASE_MAPPING_BASE_ADDR_CLRMSK);
 
 			/* Set the mapping context */
-			RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, META_MMU_CONTEXT_MAPPING_FWPRIV);
+			RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, MMU_CONTEXT_MAPPING_FWPRIV);
 			(void)RGXReadReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT); /* Fence write */
 
 			/* Write the cat-base address */
@@ -630,9 +688,9 @@ static void RGXInitBIF(const void *hPrivate)
 			                      RGX_CR_MMU_CBASE_MAPPING_BASE_ADDR_SHIFT,
 			                      uiPCAddr);
 
-#if (META_MMU_CONTEXT_MAPPING_FWIF != META_MMU_CONTEXT_MAPPING_FWPRIV)
+#if (MMU_CONTEXT_MAPPING_FWIF != MMU_CONTEXT_MAPPING_FWPRIV)
 			/* Set-up different MMU ID mapping to the same PC used above */
-			RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, META_MMU_CONTEXT_MAPPING_FWIF);
+			RGXWriteReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT, MMU_CONTEXT_MAPPING_FWIF);
 			(void)RGXReadReg32(hPrivate, RGX_CR_MMU_CBASE_MAPPING_CONTEXT); /* Fence write */
 
 			RGXWriteKernelMMUPC32(hPrivate,
@@ -723,6 +781,12 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 		bMetaFW = IMG_FALSE;
 		bDoFWSlaveBoot = IMG_FALSE;
 	}
+	else if (RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR))
+	{
+		pcRGXFW_PROCESSOR = RGXFW_PROCESSOR_RISCV;
+		bMetaFW = IMG_FALSE;
+		bDoFWSlaveBoot = IMG_FALSE;
+	}
 	else
 	{
 		pcRGXFW_PROCESSOR = RGXFW_PROCESSOR_META;
@@ -766,7 +830,7 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 		(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
 		(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET2);
 
-		/* Take everything out of reset but META/MIPS */
+		/* Take everything out of reset but the FW processor */
 		RGXCommentLog(hPrivate, "RGXStart: soft reset de-assert step 1 excluding %s", pcRGXFW_PROCESSOR);
 		RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_S7_SOFT_RESET_DUSTS | RGX_CR_SOFT_RESET_GARTEN_EN);
 		RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET2, 0x0);
@@ -794,7 +858,7 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 
 		(void) RGXReadReg64(hPrivate, RGX_CR_SOFT_RESET);
 
-		/* Take everything out of reset but META/MIPS */
+		/* Take everything out of reset but the FW processor */
 		RGXCommentLog(hPrivate, "RGXStart: Take everything out of reset but %s", pcRGXFW_PROCESSOR);
 		RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, RGX_CR_SOFT_RESET_GARTEN_EN);
 
@@ -835,6 +899,10 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	{
 		RGXInitMetaProcWrapper(hPrivate);
 	}
+	else if (RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR))
+	{
+		RGXInitRiscvProcWrapper(hPrivate);
+	}
 	else
 	{
 		RGXInitMipsProcWrapper(hPrivate);
@@ -853,7 +921,7 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 
 	RGXCommentLog(hPrivate, "RGXStart: Take %s out of reset", pcRGXFW_PROCESSOR);
 
-	/* Need to wait for at least 16 cycles before taking META/MIPS out of reset ... */
+	/* Need to wait for at least 16 cycles before taking the FW processor out of reset ... */
 	RGXWaitCycles(hPrivate, 32, 3);
 
 	RGXWriteReg64(hPrivate, RGX_CR_SOFT_RESET, 0x0);
@@ -874,6 +942,12 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	else
 	{
 		RGXCommentLog(hPrivate, "RGXStart: RGX Firmware Master boot Start");
+
+		if (RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR))
+		{
+			RGXWriteReg32(hPrivate, TMP_RGX_CR_FWCORE_BOOT, 1);
+			RGXWaitCycles(hPrivate, 32, 3);
+		}
 	}
 
 #if defined(SUPPORT_TRUSTED_DEVICE) && !defined(SUPPORT_SECURITY_VALIDATION)
@@ -885,32 +959,34 @@ PVRSRV_ERROR RGXStart(const void *hPrivate)
 	return eError;
 }
 
-static INLINE void ClearIRQStatusRegister(const void *hPrivate, IMG_BOOL bMetaFW)
+PVRSRV_ERROR RGXStop(const void *hPrivate)
 {
-	IMG_UINT32 ui32IRQClearReg;
-	IMG_UINT32 ui32IRQClearMask;
+	IMG_BOOL bMipsFW = RGX_DEVICE_HAS_FEATURE(hPrivate, MIPS);
+	IMG_BOOL bRiscvFW = RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR);
+	IMG_BOOL bMetaFW = !bMipsFW && !bRiscvFW;
+	PVRSRV_ERROR eError;
+	RGX_LAYER_PARAMS *psParams;
+	PVRSRV_RGXDEV_INFO *psDevInfo;
+	PVR_ASSERT(hPrivate != NULL);
+	psParams = (RGX_LAYER_PARAMS*)hPrivate;
+	psDevInfo = psParams->psDevInfo;
 
 	if (bMetaFW)
 	{
-		ui32IRQClearReg = RGX_CR_META_SP_MSLVIRQSTATUS;
-		ui32IRQClearMask = RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_CLRMSK;
+		RGXWriteReg32(hPrivate,
+		              RGX_CR_META_SP_MSLVIRQSTATUS,
+		              RGX_CR_META_SP_MSLVIRQSTATUS_TRIGVECT2_CLRMSK);
+	}
+	else if (bMipsFW)
+	{
+		RGXWriteReg32(hPrivate,
+		              RGX_CR_MIPS_WRAPPER_IRQ_CLEAR,
+		              RGX_CR_MIPS_WRAPPER_IRQ_CLEAR_EVENT_EN);
 	}
 	else
 	{
-		ui32IRQClearReg = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR;
-		ui32IRQClearMask = RGX_CR_MIPS_WRAPPER_IRQ_CLEAR_EVENT_EN;
+		/* Do nothing */
 	}
-
-	RGXWriteReg32(hPrivate, ui32IRQClearReg, ui32IRQClearMask);
-
-}
-
-PVRSRV_ERROR RGXStop(const void *hPrivate)
-{
-	IMG_BOOL bMetaFW = !RGX_DEVICE_HAS_FEATURE(hPrivate, MIPS);
-	PVRSRV_ERROR eError;
-
-	ClearIRQStatusRegister(hPrivate, bMetaFW);
 
 	/* Wait for Sidekick/Jones to signal IDLE except for the Garten Wrapper */
 	if (!RGX_DEVICE_HAS_FEATURE(hPrivate, S7_TOP_INFRASTRUCTURE))
@@ -1128,11 +1204,25 @@ PVRSRV_ERROR RGXStop(const void *hPrivate)
 	}
 	else
 	{
-		eError = RGXPollReg32(hPrivate,
-		                      RGX_CR_SIDEKICK_IDLE,
-		                      RGX_CR_SIDEKICK_IDLE_GARTEN_EN,
-		                      RGX_CR_SIDEKICK_IDLE_GARTEN_EN);
-		if (eError != PVRSRV_OK) return eError;
+		if (PVRSRV_GET_DEVICE_FEATURE_VALUE(psDevInfo->psDeviceNode, LAYOUT_MARS) > 0)
+		{
+			/* As FW has been separated from SIDEKICK to the new MARS domain,
+			 * checking for CPU & System Arbiter idle bits( SOCIF will never be Idle if
+			 * Host polling on this register) */
+			eError = RGXPollReg32(hPrivate,
+					RGX_CR_MARS_IDLE,
+					RGX_CR_MARS_IDLE_CPU_EN | RGX_CR_MARS_IDLE_MH_SYSARB0_EN,
+					RGX_CR_MARS_IDLE_CPU_EN | RGX_CR_MARS_IDLE_MH_SYSARB0_EN);
+			if (eError != PVRSRV_OK) return eError;
+		}
+		else
+		{
+			eError = RGXPollReg32(hPrivate,
+					RGX_CR_SIDEKICK_IDLE,
+					RGX_CR_SIDEKICK_IDLE_GARTEN_EN,
+					RGX_CR_SIDEKICK_IDLE_GARTEN_EN);
+			if (eError != PVRSRV_OK) return eError;
+		}
 	}
 
 	return eError;

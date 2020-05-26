@@ -49,19 +49,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct _PVRSRV_DEVICE_NODE_;
 struct drm_file;
 
-int PVRSRVCommonDriverInit(void);
-void PVRSRVCommonDriverDeinit(void);
+int PVRSRVDriverInit(void);
+void PVRSRVDriverDeinit(void);
 
-int PVRSRVCommonDeviceInit(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
-void PVRSRVCommonDeviceDeinit(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+int PVRSRVDeviceInit(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+void PVRSRVDeviceDeinit(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
 
-void PVRSRVCommonDeviceShutdown(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
-int PVRSRVCommonDeviceSuspend(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
-int PVRSRVCommonDeviceResume(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+void PVRSRVDeviceShutdown(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+int PVRSRVDeviceSuspend(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
+int PVRSRVDeviceResume(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode);
 
-int PVRSRVCommonDeviceOpen(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode,
+int PVRSRVDeviceOpen(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode,
 						   struct drm_file *psDRMFile);
-void PVRSRVCommonDeviceRelease(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode,
+void PVRSRVDeviceRelease(struct _PVRSRV_DEVICE_NODE_ *psDeviceNode,
 							   struct drm_file *psDRMFile);
 
 #endif /* _MODULE_COMMON_H_ */

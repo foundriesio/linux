@@ -71,22 +71,9 @@ StubVMMUnmapDevPhysHeap(IMG_UINT32 ui32FuncID,
 	return PVRSRV_ERROR_NOT_IMPLEMENTED;
 }
 
-static PVRSRV_ERROR
-StubVMMGetDevPhysHeapAddrSize(PVRSRV_DEVICE_CONFIG *psDevConfig,
-							  PVRSRV_DEVICE_PHYS_HEAP eHeapType,
-							  IMG_UINT64 *pui64Size,
-							  IMG_UINT64 *pui64Addr)
-{
-	*pui64Size = 0;
-	*pui64Addr = 0;
-	PVR_UNREFERENCED_PARAMETER(psDevConfig);
-	PVR_UNREFERENCED_PARAMETER(eHeapType);
-	return PVRSRV_OK;
-}
-
 static VMM_PVZ_CONNECTION gsStubVmmPvz =
 {
-	.sHostFuncTab = {
+	.sClientFuncTab = {
 		/* pfnMapDevPhysHeap */
 		&StubVMMMapDevPhysHeap,
 
@@ -94,17 +81,12 @@ static VMM_PVZ_CONNECTION gsStubVmmPvz =
 		&StubVMMUnmapDevPhysHeap
 	},
 
-	.sGuestFuncTab = {
+	.sServerFuncTab = {
 		/* pfnMapDevPhysHeap */
 		&PvzServerMapDevPhysHeap,
 
 		/* pfnUnmapDevPhysHeap */
 		&PvzServerUnmapDevPhysHeap
-	},
-
-	.sConfigFuncTab = {
-		/* pfnGetDevPhysHeapAddrSize */
-		&StubVMMGetDevPhysHeapAddrSize
 	},
 
 	.sVmmFuncTab = {
@@ -124,7 +106,7 @@ PVRSRV_ERROR VMMCreatePvzConnection(VMM_PVZ_CONNECTION **psPvzConnection)
 	PVR_LOG_RETURN_IF_FALSE((NULL != psPvzConnection), "VMMCreatePvzConnection", PVRSRV_ERROR_INVALID_PARAMS);
 	*psPvzConnection = &gsStubVmmPvz;
 	PVR_DPF((PVR_DBG_ERROR, "Using a stub VM manager type, no runtime VZ support"));
-	return PVRSRV_ERROR_NOT_IMPLEMENTED;
+	return PVRSRV_OK;
 }
 
 void VMMDestroyPvzConnection(VMM_PVZ_CONNECTION *psPvzConnection)

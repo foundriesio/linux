@@ -200,7 +200,8 @@ PVRSRVBridgeDevmemIntUnexportCtx(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psDevmemIntUnexportCtxOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeDevmemIntUnexportCtx: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psDevmemIntUnexportCtxOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);
@@ -326,7 +327,8 @@ DevmemIntAcquireRemoteCtx_exit:
 			     && (eError != PVRSRV_ERROR_RETRY)))
 			{
 				PVR_DPF((PVR_DBG_ERROR,
-					 "PVRSRVBridgeDevmemIntAcquireRemoteCtx: %s",
+					 "%s: %s",
+					 __func__,
 					 PVRSRVGetErrorString(eError)));
 			}
 			/* Releasing the handle should free/destroy/release the resource.

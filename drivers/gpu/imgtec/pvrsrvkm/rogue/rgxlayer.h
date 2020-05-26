@@ -69,6 +69,7 @@ extern "C" {
 #include "rgx_fwif_shared.h" /* includes rgx_common.h and mem_types.h */
 #include "rgx_meta.h"
 #include "rgx_mips.h"
+#include "rgx_riscv.h"
 
 #include "rgxdefs_km.h"
 /* includes:
@@ -746,6 +747,36 @@ IMG_UINT32 RGXGetDevicePhysBusWidth(const void *hPrivate);
 
 ******************************************************************************/
 IMG_BOOL RGXDevicePA0IsValid(const void *hPrivate);
+
+/*!
+*******************************************************************************
+
+ @Function        RGXAcquireBootCodeAddr
+
+ @Description     Acquire the device virtual address of the RISCV boot code
+
+ @Input           hPrivate         : Implementation specific data
+ @Output          psBootCodeAddr   : Boot code base address
+
+ @Return          void
+
+******************************************************************************/
+void RGXAcquireBootCodeAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootCodeAddr);
+
+/*!
+*******************************************************************************
+
+ @Function        RGXAcquireBootDataAddr
+
+ @Description     Acquire the device virtual address of the RISCV boot data
+
+ @Input           hPrivate         : Implementation specific data
+ @Output          psBootDataAddr   : Boot data base address
+
+ @Return          void
+
+******************************************************************************/
+void RGXAcquireBootDataAddr(const void *hPrivate, IMG_DEV_VIRTADDR *psBootDataAddr);
 
 #if defined(__cplusplus)
 }

@@ -102,7 +102,11 @@ _HTBLog(IMG_HANDLE hSrvHandle, IMG_UINT32 PID, IMG_UINT64 ui64TimeStampus,
 #if defined(__KERNEL__)
 	IMG_UINT32 i;
 	IMG_UINT32 ui32NumArgs = HTB_SF_PARAMNUM(SF);
+#if defined(__KLOCWORK__)
+	IMG_UINT32 aui32Args[HTB_LOG_MAX_PARAMS + 1];	// Prevent KW False-positive
+#else
 	IMG_UINT32 aui32Args[HTB_LOG_MAX_PARAMS];
+#endif
 
 	PVR_ASSERT(ui32NumArgs <= HTB_LOG_MAX_PARAMS);
 	ui32NumArgs = (ui32NumArgs>HTB_LOG_MAX_PARAMS) ?

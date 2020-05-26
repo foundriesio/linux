@@ -89,7 +89,8 @@ PVRSRVBridgeSyncRecordRemoveByHandle(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psSyncRecordRemoveByHandleOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeSyncRecordRemoveByHandle: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psSyncRecordRemoveByHandleOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);

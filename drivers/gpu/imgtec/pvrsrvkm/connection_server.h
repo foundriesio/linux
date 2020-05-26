@@ -108,8 +108,8 @@ typedef struct _CONNECTION_DATA_
 
 #include "osconnection_server.h"
 
-PVRSRV_ERROR PVRSRVConnectionConnect(void **ppvPrivData, void *pvOSData);
-void PVRSRVConnectionDisconnect(void *pvPrivData);
+PVRSRV_ERROR PVRSRVCommonConnectionConnect(void **ppvPrivData, void *pvOSData);
+void PVRSRVCommonConnectionDisconnect(void *pvPrivData);
 
 IMG_PID PVRSRVGetPurgeConnectionPid(void);
 

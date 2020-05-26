@@ -53,6 +53,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void SysInitVirtInitialization(IMG_UINT32 aui32OSidMin[GPUVIRT_VALIDATION_NUM_REGIONS][GPUVIRT_VALIDATION_NUM_OS],
                          IMG_UINT32 aui32OSidMax[GPUVIRT_VALIDATION_NUM_REGIONS][GPUVIRT_VALIDATION_NUM_OS]);
 
+#if defined(SUPPORT_GPUVIRT_VALIDATION) && defined(EMULATOR)
+/* functions only used on rogue, but header defining them is common */
+void SysSetAxiProtOSid(IMG_UINT32 ui32OSid, IMG_BOOL bState);
+void SysSetTrustedDeviceAceEnabled(void);
+#endif
 #endif /* defined(SUPPORT_GPUVIRT_VALIDATION) */
 
 #endif /* !defined(__SYSVALIDATION_H__) */

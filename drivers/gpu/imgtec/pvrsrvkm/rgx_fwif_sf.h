@@ -77,7 +77,7 @@ enum RGXFW_LOG_SFGROUPS {
 #undef X
 };
 
-#define IMG_SF_STRING_MAX_SIZE 256
+#define IMG_SF_STRING_MAX_SIZE 256U
 
 typedef struct {
 	IMG_UINT32 ui32Id;
@@ -175,7 +175,7 @@ X( 70, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_REGTIMES, "Register access cycles: read: 
 X( 71, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_REGCONFIG_ADD, "Register configuration added. Address: 0x%x Value: 0x%x%x", 3) \
 X( 72, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_REGCONFIG_SET, "Register configuration applied to type %d. (0:pow on, 1:Rascal/dust init, 2-5: TA,3D,CDM,TLA, 6:All)", 1) \
 X( 73, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_TPC_FLUSH, "Perform TPC flush.", 0) \
-X( 74, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_HWR_HIT_LOCKUP, "GPU has locked up (see HWR logs for more info)", 0) \
+X( 74, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_HWR_HIT_LOCKUP_DEPRECATED, "GPU has locked up (see HWR logs for more info)", 0) \
 X( 75, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_HWR_HIT_OUTOFTIME, "HWR has been triggered - GPU has overrun its deadline (see HWR logs)", 0) \
 X( 76, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_HWR_HIT_POLLFAILURE, "HWR has been triggered - GPU has failed a poll (see HWR logs)", 0) \
 X( 77, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_DOPPLER_OOM_DEPRECATED, "Doppler out of memory event for FC %u", 1) \
@@ -296,6 +296,7 @@ X(193, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_INVALID_COUNTER, "Block 0x%x / Counter 0x
 X(194, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_ECC_FAULT, "ECC fault GPU=0x%08x FW=0x%08x", 2) \
 X(195, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_PROCESS_XPU_EVENT, "Processing XPU event on DM = %d", 1) \
 X(196, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_VZ_WDG_TRIGGER, "OSid %u failed to respond to the virtualisation watchdog in time. Timestamp of its last input = %u", 2) \
+X(197, RGXFW_GROUP_MAIN, RGXFW_SF_MAIN_HWR_HIT_LOCKUP, "GPU-%d has locked up (see HWR logs for more info)", 1) \
 \
 X(  1, RGXFW_GROUP_MTS, RGXFW_SF_MTS_BG_KICK_DEPRECATED, "Bg Task DM = %u, counted = %d", 2) \
 X(  2, RGXFW_GROUP_MTS, RGXFW_SF_MTS_BG_COMPLETE_DEPRECATED, "Bg Task complete DM = %u", 1) \
@@ -424,6 +425,8 @@ X( 20, RGXFW_GROUP_MISC, RGXFW_SF_MISC_SR_BUFFER_RENDERED, "SR: Strip Render com
 X( 21, RGXFW_GROUP_MISC, RGXFW_SF_MISC_SR_BUFFER_FAULT, "SR: Strip Render fault (buffer %d)", 1) \
 X( 22, RGXFW_GROUP_MISC, RGXFW_SF_MISC_TRP_STATE, "TRP state: %d", 1) \
 X( 23, RGXFW_GROUP_MISC, RGXFW_SF_MISC_TRP_FAILURE, "TRP failure: %d", 1) \
+X( 24, RGXFW_GROUP_MISC, RGXFW_SF_MISC_SW_TRP_STATE, "SW TRP State: %d", 1) \
+X( 25, RGXFW_GROUP_MISC, RGXFW_SF_MISC_SW_TRP_FAILURE, "SW TRP failure: %d", 1) \
 \
 X(  1, RGXFW_GROUP_PM, RGXFW_SF_PM_AMLIST, "ALIST%d SP = %u, MLIST%d SP = %u (VCE 0x%08x%08x, TE 0x%08x%08x, ALIST 0x%08x%08x)", 10) \
 X(  2, RGXFW_GROUP_PM, RGXFW_SF_PM_UFL_SHARED_DEPRECATED, "Is TA: %d, finished: %d on HW %u (HWRTData = 0x%08x, MemCtx = 0x%08x). FL different between TA/3D: global:%d, local:%d, mmu:%d", 8) \
@@ -453,6 +456,7 @@ X( 25, RGXFW_GROUP_PM, RGXFW_SF_PM_ATTEMPT_FL_GROW, "Attempt FL grow for FL: 0x%
 X( 26, RGXFW_GROUP_PM, RGXFW_SF_PM_DEFER_FL_GROW, "Deferring FL grow for non-loaded FL: 0x%08x, new dev address: 0x%02x%08x, new page count: %u, new ready count: %u", 5) \
 X( 27, RGXFW_GROUP_PM, RGXFW_SF_PM_UFL_SHARED_ALBIORIX, "Is GEOM: %d, finished: %d (HWRTData = 0x%08x, MemCtx = 0x%08x)", 4) \
 X( 28, RGXFW_GROUP_PM, RGXFW_SF_PM_3D_TIMEOUT, "3D Timeout Now for FWCtx 0x%08.8x", 1) \
+X( 29, RGXFW_GROUP_PM, RGXFW_SF_PM_RECYCLE, "GEOM PM Recycle for FWCtx 0x%08.8x", 1) \
 \
 X(  1, RGXFW_GROUP_RPM, RGXFW_SF_RPM_GLL_DYNAMIC_STATUS_DEPRECATED, "Global link list dynamic page count: vertex 0x%x, varying 0x%x, node 0x%x", 3) \
 X(  2, RGXFW_GROUP_RPM, RGXFW_SF_RPM_GLL_STATIC_STATUS_DEPRECATED, "Global link list static page count: vertex 0x%x, varying 0x%x, node 0x%x", 3) \
@@ -640,6 +644,7 @@ X( 64, RGXFW_GROUP_POW, RGXFW_SF_POW_INVALID_SPU_POWER_MASK, "Invalid SPU power 
 X( 65, RGXFW_GROUP_POW, RGXFW_SF_POW_CLKDIV_UPDATE, "Proactive DVFS: Send OPP %u with clock divider value %u", 2) \
 X( 66, RGXFW_GROUP_POW, RGXFW_SF_POW_POWMON_PERF_MODE, "PPA block started in perf validation mode.", 0) \
 X( 67, RGXFW_GROUP_POW, RGXFW_SF_POW_POWMON_RESET, "Reset PPA block state %u (1=reset, 0=recalculate).", 1) \
+X( 68, RGXFW_GROUP_POW, RGXFW_SF_POW_POWCTRL_ABORT_WITH_CORE, "Power controller returned ABORT for Core-%d last request so retrying.", 1) \
 \
 X(  1, RGXFW_GROUP_HWR, RGXFW_SF_HWR_LOCKUP_DEPRECATED, "Lockup detected on DM%d, FWCtx: 0x%08.8x", 2) \
 X(  2, RGXFW_GROUP_HWR, RGXFW_SF_HWR_RESET_FW_DEPRECATED, "Reset fw state for DM%d, FWCtx: 0x%08.8x, MemCtx: 0x%08.8x", 3) \
@@ -671,7 +676,7 @@ X( 27, RGXFW_GROUP_HWR, RGXFW_SF_HWR_NEEDS_RECONSTRUCTION, "Analysis: Need freel
 X( 28, RGXFW_GROUP_HWR, RGXFW_SF_HWR_NEEDS_SKIP, "Analysis DM%u: Lockup FWCtx: 0x%08.8x. Need to skip to next command", 2) \
 X( 29, RGXFW_GROUP_HWR, RGXFW_SF_HWR_NEEDS_SKIP_OOM_TA, "Analysis DM%u: Lockup while TA is OOM FWCtx: 0x%08.8x. Need to skip to next command", 2) \
 X( 30, RGXFW_GROUP_HWR, RGXFW_SF_HWR_NEEDS_PR_CLEANUP, "Analysis DM%u: Lockup while partial render FWCtx: 0x%08.8x. Need PR cleanup", 2) \
-X( 31, RGXFW_GROUP_HWR, RGXFW_SF_HWR_SET_LOCKUP, "GPU has locked up", 0) \
+X( 31, RGXFW_GROUP_HWR, RGXFW_SF_HWR_SET_LOCKUP_DEPRECATED2, "GPU has locked up", 0) \
 X( 32, RGXFW_GROUP_HWR, RGXFW_SF_HWR_READY, "DM%u ready for HWR", 1) \
 X( 33, RGXFW_GROUP_HWR, RGXFW_SF_HWR_DM_UPDATE_RECOVERY, "Recovery DM%u: Updated Recovery counter. New R-Flags=0x%08x", 2) \
 X( 34, RGXFW_GROUP_HWR, RGXFW_SF_HWR_BRN37729_DEPRECATED2, "Analysis: BRN37729 detected, reset TA and re-kicked 0x%08x)", 1) \
@@ -716,6 +721,7 @@ X( 72, RGXFW_GROUP_HWR, RGXFW_SF_HWR_END_LONG_HW_POLL, "End long HW poll (result
 X( 73, RGXFW_GROUP_HWR, RGXFW_SF_HWR_DEADLINE_CHECK, "DM%u has taken %d ticks and deadline is %d ticks", 3) \
 X( 74, RGXFW_GROUP_HWR, RGXFW_SF_HWR_WATCHDOG_CHECK, "USC Watchdog result for DM%u is HWRNeeded=%u Status=%u USCs={0x%x} with HWRChecksToGo=%u", 5) \
 X( 75, RGXFW_GROUP_HWR, RGXFW_SF_HWR_FL_RECON_NEEDED, "Reconstruction needed for freelist 0x%x (ID=%d) OSid: %d type: %d (0:local,1:global) phase: %d (0:TA, 1:3D) on HW context %u", 6) \
+X( 76, RGXFW_GROUP_HWR, RGXFW_SF_HWR_SET_LOCKUP, "GPU-%d has locked up", 1) \
 \
 X(  1, RGXFW_GROUP_HWP, RGXFW_SF_HWP_I_CFGBLK, "Block 0x%x mapped to Config Idx %u", 2) \
 X(  2, RGXFW_GROUP_HWP, RGXFW_SF_HWP_I_OMTBLK, "Block 0x%x omitted from event - not enabled in HW", 1) \

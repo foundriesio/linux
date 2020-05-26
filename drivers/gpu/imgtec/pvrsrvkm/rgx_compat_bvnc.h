@@ -79,7 +79,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	((((N) >> 24)  & 0xff)   \
 	 | (((N) >> 8) & 0xff00) \
 	 | ((N)           << 24) \
-	 | (((N & 0xff00) << 8)))
+	 | ((((N) & 0xff00) << 8)))
 #define RGX_INT32_FROM_BE(N) RGX_INT32_TO_BE(N)
 #endif
 

@@ -259,7 +259,7 @@ static void RGXFWConfigureSegMMU(const void       *hPrivate,
 			IMG_UINT32 ui32SegId = RGXFW_SEGMMU_DATA_ID;
 
 			ui64SegOutAddr = (psFWDataDevVAddrBase->uiAddr |
-			                  RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(META_MMU_CONTEXT_MAPPING_FWPRIV)) +
+			                  RGXFW_SEGMMU_OUTADDR_TOP_VIVT_SLC_CACHED(MMU_CONTEXT_MAPPING_FWPRIV)) +
 			                  asRGXFWLayoutTable[i].ui32AllocOffset;
 
 			RGXFWConfigureSegID(hPrivate,
@@ -631,6 +631,79 @@ NextBlock:
 	return PVRSRV_OK;
 }
 
+/*!
+*******************************************************************************
+
+ @Function      ProcessELFCommandStream
+
+ @Description   Process a file in .ELF format copying code and data sections
+                into their final location
+
+ @Input         hPrivate                 : Implementation specific data
+ @Input         pbELF                    : Pointer to FW blob
+ @Input         pvHostFWCodeAddr         : Pointer to FW code
+ @Input         pvHostFWDataAddr         : Pointer to FW data
+ @Input         pvHostFWCorememCodeAddr  : Pointer to FW coremem code
+ @Input         pvHostFWCorememDataAddr  : Pointer to FW coremem data
+
+ @Return        PVRSRV_ERROR
+
+******************************************************************************/
+PVRSRV_ERROR ProcessELFCommandStream(const void *hPrivate,
+                                     const IMG_BYTE *pbELF,
+                                     void *pvHostFWCodeAddr,
+                                     void *pvHostFWDataAddr,
+                                     void* pvHostFWCorememCodeAddr,
+                                     void* pvHostFWCorememDataAddr)
+{
+	IMG_UINT32 ui32Entry;
+	IMG_ELF_HDR *psHeader = (IMG_ELF_HDR *)pbELF;
+	IMG_ELF_PROGRAM_HDR *psProgramHeader =
+	    (IMG_ELF_PROGRAM_HDR *)(pbELF + psHeader->ui32Ephoff);
+	PVRSRV_ERROR eError;
+
+	for (ui32Entry = 0; ui32Entry < psHeader->ui32Ephnum; ui32Entry++, psProgramHeader++)
+	{
+		void *pvWriteAddr;
+
+		/* Only consider loadable entries in the ELF segment table */
+		if (psProgramHeader->ui32Ptype != ELF_PT_LOAD) continue;
+
+		eError = FindMMUSegment(psProgramHeader->ui32Pvaddr,
+		                        pvHostFWCodeAddr,
+		                        pvHostFWDataAddr,
+		                        pvHostFWCorememCodeAddr,
+		                        pvHostFWCorememDataAddr,
+		                        &pvWriteAddr);
+
+		if (eError != PVRSRV_OK)
+		{
+			RGXErrorLog(hPrivate,
+			            "%s: Addr 0x%x (size: %d) not found in any segment",__func__,
+			            psProgramHeader->ui32Pvaddr,
+			            psProgramHeader->ui32Pfilesz);
+			return eError;
+		}
+
+		/* Write to FW allocation only if available */
+		if (pvWriteAddr)
+		{
+			RGXMemCopy(hPrivate,
+			           pvWriteAddr,
+			           (IMG_PBYTE)(pbELF + psProgramHeader->ui32Poffset),
+			           psProgramHeader->ui32Pfilesz);
+
+			RGXMemSet(hPrivate,
+			          (IMG_PBYTE)pvWriteAddr + psProgramHeader->ui32Pfilesz,
+			          0,
+			          psProgramHeader->ui32Pmemsz - psProgramHeader->ui32Pfilesz);
+		}
+	}
+
+	return PVRSRV_OK;
+}
+
+
 IMG_UINT32 RGXGetFWImageSectionOffset(const void *hPrivate, RGX_FW_SECTION_ID eId)
 {
 	RGX_FW_LAYOUT_ENTRY *psEntry = GetTableEntry(hPrivate, eId);
@@ -800,87 +873,120 @@ PVRSRV_ERROR RGXProcessFWImage(const void *hPrivate,
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	IMG_UINT32 *pui32BootConf = NULL;
+	IMG_BOOL bRISCV = RGX_DEVICE_HAS_FEATURE(hPrivate, RISCV_FW_PROCESSOR);
+	IMG_BOOL bMETA = !bRISCV;
 
-	/* Skip bootloader configuration if a pointer to the FW code
-	 * allocation is not available
-	 */
-	if (pvFWCode)
+	if (bMETA)
 	{
-		/* This variable points to the bootloader code which is mostly
-		 * a sequence of <register address,register value> pairs
+		/* Skip bootloader configuration if a pointer to the FW code
+		 * allocation is not available
 		 */
-		pui32BootConf = ((IMG_UINT32*) pvFWCode) + RGXFW_BOOTLDR_CONF_OFFSET;
+		if (pvFWCode)
+		{
+			/* This variable points to the bootloader code which is mostly
+			 * a sequence of <register address,register value> pairs
+			 */
+			pui32BootConf = ((IMG_UINT32*) pvFWCode) + RGXFW_BOOTLDR_CONF_OFFSET;
 
-		/* Slave port and JTAG accesses are privileged */
-		*pui32BootConf++ = META_CR_SYSC_JTAG_THREAD;
-		*pui32BootConf++ = META_CR_SYSC_JTAG_THREAD_PRIV_EN;
+			/* Slave port and JTAG accesses are privileged */
+			*pui32BootConf++ = META_CR_SYSC_JTAG_THREAD;
+			*pui32BootConf++ = META_CR_SYSC_JTAG_THREAD_PRIV_EN;
 
-		RGXFWConfigureSegMMU(hPrivate,
-		                     &puFWParams->sMeta.sFWCodeDevVAddr,
-		                     &puFWParams->sMeta.sFWDataDevVAddr,
-		                     &pui32BootConf);
+			RGXFWConfigureSegMMU(hPrivate,
+			                     &puFWParams->sMeta.sFWCodeDevVAddr,
+			                     &puFWParams->sMeta.sFWDataDevVAddr,
+			                     &pui32BootConf);
+		}
+
+		/* Process FW image data stream */
+		eError = ProcessLDRCommandStream(hPrivate,
+		                                 pbRGXFirmware,
+		                                 pvFWCode,
+		                                 pvFWData,
+		                                 pvFWCorememCode,
+		                                 pvFWCorememData,
+		                                 &pui32BootConf);
+		if (eError != PVRSRV_OK)
+		{
+			RGXErrorLog(hPrivate, "RGXProcessFWImage: Processing FW image failed (%d)", eError);
+			return eError;
+		}
+
+
+		/* Skip bootloader configuration if a pointer to the FW code
+		 * allocation is not available
+		 */
+		if (pvFWCode)
+		{
+			IMG_UINT32 ui32NumThreads   = puFWParams->sMeta.ui32NumThreads;
+
+			if ((ui32NumThreads == 0) || (ui32NumThreads > 2))
+			{
+				RGXErrorLog(hPrivate,
+				            "ProcessFWImage: Wrong Meta threads configuration, using one thread only");
+
+				ui32NumThreads = 1;
+			}
+
+			RGXFWConfigureMetaCaches(hPrivate,
+			                         ui32NumThreads,
+			                         &pui32BootConf);
+
+			/* Signal the end of the conf sequence */
+			*pui32BootConf++ = 0x0;
+			*pui32BootConf++ = 0x0;
+
+			if (puFWParams->sMeta.uiFWCorememCodeSize && (puFWParams->sMeta.sFWCorememCodeFWAddr.ui32Addr != 0))
+			{
+				*pui32BootConf++ = puFWParams->sMeta.sFWCorememCodeFWAddr.ui32Addr;
+				*pui32BootConf++ = puFWParams->sMeta.uiFWCorememCodeSize;
+			}
+			else
+			{
+				*pui32BootConf++ = 0;
+				*pui32BootConf++ = 0;
+			}
+
+			if (RGX_DEVICE_HAS_FEATURE(hPrivate, META_DMA))
+			{
+				*pui32BootConf++ = (IMG_UINT32) (puFWParams->sMeta.sFWCorememCodeDevVAddr.uiAddr >> 32);
+				*pui32BootConf++ = (IMG_UINT32) puFWParams->sMeta.sFWCorememCodeDevVAddr.uiAddr;
+			}
+			else
+			{
+				*pui32BootConf++ = 0;
+				*pui32BootConf++ = 0;
+			}
+		}
 	}
-
-	/* Process FW image data stream */
-	eError = ProcessLDRCommandStream(hPrivate,
-	                                 pbRGXFirmware,
-	                                 pvFWCode,
-	                                 pvFWData,
-	                                 pvFWCorememCode,
-	                                 pvFWCorememData,
-	                                 &pui32BootConf);
-	if (eError != PVRSRV_OK)
+	else
 	{
-		RGXErrorLog(hPrivate, "RGXProcessFWImage: Processing FW image failed (%d)", eError);
-		return eError;
-	}
-
-
-	/* Skip bootloader configuration if a pointer to the FW code
-	 * allocation is not available
-	 */
-	if (pvFWCode)
-	{
-		IMG_UINT32 ui32NumThreads   = puFWParams->sMeta.ui32NumThreads;
-
-		if ((ui32NumThreads == 0) || (ui32NumThreads > 2))
+		/* Process FW image data stream */
+		eError = ProcessELFCommandStream(hPrivate,
+		                                 pbRGXFirmware,
+		                                 pvFWCode,
+		                                 pvFWData,
+		                                 pvFWCorememCode,
+		                                 pvFWCorememData);
+		if (eError != PVRSRV_OK)
 		{
-			RGXErrorLog(hPrivate,
-			            "ProcessFWImage: Wrong Meta threads configuration, using one thread only");
-
-			ui32NumThreads = 1;
+			RGXErrorLog(hPrivate, "RGXProcessFWImage: Processing FW image failed (%d)", eError);
+			return eError;
 		}
 
-		RGXFWConfigureMetaCaches(hPrivate,
-		                         ui32NumThreads,
-		                         &pui32BootConf);
-
-		/* Signal the end of the conf sequence */
-		*pui32BootConf++ = 0x0;
-		*pui32BootConf++ = 0x0;
-
-		if (puFWParams->sMeta.uiFWCorememCodeSize && (puFWParams->sMeta.sFWCorememCodeFWAddr.ui32Addr != 0))
+		if (pvFWData)
 		{
-			*pui32BootConf++ = puFWParams->sMeta.sFWCorememCodeFWAddr.ui32Addr;
-			*pui32BootConf++ = puFWParams->sMeta.uiFWCorememCodeSize;
-		}
-		else
-		{
-			*pui32BootConf++ = 0;
-			*pui32BootConf++ = 0;
-		}
+			RGXRISCVFW_BOOT_DATA *psBootData = (RGXRISCVFW_BOOT_DATA*)
+				IMG_OFFSET_ADDR(pvFWData, RGXRISCVFW_BOOTLDR_CONF_OFFSET);
 
-		if (RGX_DEVICE_HAS_FEATURE(hPrivate, META_DMA))
-		{
-			*pui32BootConf++ = (IMG_UINT32) (puFWParams->sMeta.sFWCorememCodeDevVAddr.uiAddr >> 32);
-			*pui32BootConf++ = (IMG_UINT32) puFWParams->sMeta.sFWCorememCodeDevVAddr.uiAddr;
-		}
-		else
-		{
-			*pui32BootConf++ = 0;
-			*pui32BootConf++ = 0;
-		}
+			psBootData->ui64CorememCodeDevVAddr = puFWParams->sRISCV.sFWCorememCodeDevVAddr.uiAddr;
+			psBootData->ui32CorememCodeFWAddr   = puFWParams->sRISCV.sFWCorememCodeFWAddr.ui32Addr;
+			psBootData->ui32CorememCodeSize     = puFWParams->sRISCV.uiFWCorememCodeSize;
 
+			psBootData->ui64CorememDataDevVAddr = puFWParams->sRISCV.sFWCorememDataDevVAddr.uiAddr;
+			psBootData->ui32CorememDataFWAddr   = puFWParams->sRISCV.sFWCorememDataFWAddr.ui32Addr;
+			psBootData->ui32CorememDataSize     = puFWParams->sRISCV.uiFWCorememDataSize;
+		}
 	}
 
 	return eError;

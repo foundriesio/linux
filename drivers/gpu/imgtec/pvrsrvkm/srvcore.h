@@ -198,6 +198,12 @@ PVRSRV_ERROR PVRSRVGetDeviceStatusKM(CONNECTION_DATA *psConnection,
                                      PVRSRV_DEVICE_NODE *psDeviceNode,
                                      IMG_UINT32 *pui32DeviceStatus);
 
+PVRSRV_ERROR PVRSRVGetMultiCoreInfoKM(CONNECTION_DATA *psConnection,
+                                     PVRSRV_DEVICE_NODE *psDeviceNode,
+                                     IMG_UINT32 ui32CapsSize,
+                                     IMG_UINT32 *pui32NumCores,
+                                     IMG_UINT64 *pui64Caps);
+
 PVRSRV_ERROR PVRSRVFindProcessMemStatsKM(IMG_PID pid,
                                          IMG_UINT32 ui32ArrSize,
                                          IMG_BOOL bAllProcessStats,

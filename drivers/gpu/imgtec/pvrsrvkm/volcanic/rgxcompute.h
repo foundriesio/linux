@@ -109,19 +109,10 @@ PVRSRV_ERROR PVRSRVRGXDestroyComputeContextKM(RGX_SERVER_COMPUTE_CONTEXT *psComp
 ******************************************************************************/
 PVRSRV_ERROR PVRSRVRGXKickCDMKM(RGX_SERVER_COMPUTE_CONTEXT	*psComputeContext,
 								IMG_UINT32					ui32ClientCacheOpSeqNum,
-								IMG_UINT32					ui32ClientFenceCount,
-								SYNC_PRIMITIVE_BLOCK		**pauiClientFenceUFOSyncPrimBlock,
-								IMG_UINT32					*paui32ClientFenceSyncOffset,
-								IMG_UINT32					*paui32ClientFenceValue,
 								IMG_UINT32					ui32ClientUpdateCount,
-								SYNC_PRIMITIVE_BLOCK		**pauiClientUpdateUFOSyncPrimBlock,
+								SYNC_PRIMITIVE_BLOCK		**pauiClientUpdateUFODevVarBlock,
 								IMG_UINT32					*paui32ClientUpdateSyncOffset,
 								IMG_UINT32					*paui32ClientUpdateValue,
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-								IMG_UINT32					ui32ServerSyncPrims,
-								IMG_UINT32					*paui32ServerSyncFlags,
-								SERVER_SYNC_PRIMITIVE		**pasServerSyncs,
-#endif
 								PVRSRV_FENCE				iCheckFence,
 								PVRSRV_TIMELINE				iUpdateTimeline,
 								PVRSRV_FENCE				*piUpdateFence,

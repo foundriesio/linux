@@ -514,7 +514,8 @@ PVRSRVBridgeRIDeleteMEMDESCEntry(IMG_UINT32 ui32DispatchTableEntry,
 	     && (psRIDeleteMEMDESCEntryOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeRIDeleteMEMDESCEntry: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psRIDeleteMEMDESCEntryOUT->
 					      eError)));
 		UnlockHandle(psConnection->psHandleBase);

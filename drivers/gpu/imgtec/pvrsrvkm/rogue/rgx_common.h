@@ -158,10 +158,10 @@ typedef enum _RGX_KICK_TYPE_DM_
  */
 #define RGX_RI_FORMAT_DM_ANNOTATION(annotation, dmTag, clientAPI) do         \
 	{                                                                        \
-		annotation[0] = dmTag;                                               \
-		annotation[1] = clientAPI;                                           \
-		annotation[2] = '\0';                                                \
-	} while (0)
+		(annotation)[0] = (dmTag);                                           \
+		(annotation)[1] = (clientAPI);                                       \
+		(annotation)[2] = '\0';                                              \
+	} while (false)
 
 /*!
  ******************************************************************************

@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "tlstream.h"
 #include "tlclient.h"
 #include "pvrsrv_tlcommon.h"
-#include "pvr_debugfs.h"
+#include "di_server.h"
 #include "img_types.h"
 #include "img_defs.h"
 #include "pvrsrv_error.h"
@@ -56,13 +56,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_notifier.h"
 #include "pvrsrv.h"
 #include "htb_debug.h"
-#include "kernel_compatibility.h"
 
 // Global data handles for buffer manipulation and processing
 typedef struct
 {
-	PPVR_DEBUGFS_ENTRY_DATA psDumpHostDebugFSEntry;	/* debugFS entry hook */
-	IMG_HANDLE hStream;                 /* Stream handle for debugFS use */
+	DI_ENTRY *psDumpHostDiEntry;  /* debug info entry */
+	IMG_HANDLE hStream;          /* Stream handle for debugFS use */
 } HTB_DBG_INFO;
 
 static HTB_DBG_INFO g_sHTBData;
@@ -70,43 +69,29 @@ static HTB_DBG_INFO g_sHTBData;
 // Enable for extra debug level
 //#define HTB_CHATTY	1
 
+typedef void (DI_PRINTF)(const OSDI_IMPL_ENTRY *, const IMG_CHAR *, ...);
+
 /******************************************************************************
  * debugFS display routines
  *****************************************************************************/
-static int HTBDumpBuffer(DUMPDEBUG_PRINTF_FUNC *, void *, void *);
-static void _HBTraceSeqPrintf(void *, const IMG_CHAR *, ...);
-static int _DebugHBTraceSeqShow(struct seq_file *, void *);
-static void *_DebugHBTraceSeqStart(struct seq_file *, loff_t *);
-static void _DebugHBTraceSeqStop(struct seq_file *, void *);
-static void *_DebugHBTraceSeqNext(struct seq_file *, void *, loff_t *);
+static int HTBDumpBuffer(DI_PRINTF, OSDI_IMPL_ENTRY *, void *);
 
-static void _HBTraceSeqPrintf(void *pvDumpDebugFile,
-                              const IMG_CHAR *pszFormat, ...)
-{
-	struct seq_file *psSeqFile = (struct seq_file *)pvDumpDebugFile;
-	va_list         ArgList;
-
-	va_start(ArgList, pszFormat);
-	seq_vprintf(psSeqFile, pszFormat, ArgList);
-	va_end(ArgList);
-}
-
-static int _DebugHBTraceSeqShow(struct seq_file *psSeqFile, void *pvData)
+static int _DebugHBTraceDIShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
 	int	retVal;
 
-	PVR_ASSERT(NULL != psSeqFile);
+	PVR_ASSERT(psEntry != NULL);
 
-	/* psSeqFile should never be NULL */
-	if (psSeqFile == NULL)
+	/* psEntry should never be NULL */
+	if (psEntry == NULL)
 	{
 		return -1;
 	}
 
 	/*
 	 * Ensure that we have a valid address to use to dump info from. If NULL we
-	 * return a failure code to terminate the seq_read() call. pvData is either
-	 * SEQ_START_TOKEN (for the initial call) or an HTB buffer address for
+	 * return a failure code to terminate the DI read call. pvData is either
+	 * DI_START_TOKEN (for the initial call) or an HTB buffer address for
 	 * subsequent calls [returned from the NEXT function].
 	 */
 	if (pvData == NULL)
@@ -114,7 +99,7 @@ static int _DebugHBTraceSeqShow(struct seq_file *psSeqFile, void *pvData)
 		return -1;
 	}
 
-	retVal = HTBDumpBuffer(_HBTraceSeqPrintf, psSeqFile, pvData);
+	retVal = HTBDumpBuffer(DIPrintf, psEntry, pvData);
 
 #ifdef HTB_CHATTY
 	PVR_DPF((PVR_DBG_WARNING, "%s: Returning %d", __func__, retVal));
@@ -356,7 +341,7 @@ static IMG_PBYTE HTB_GetNextMessage(HTB_Sentinel_t *pSentinel)
  *
  * Input:
  *	pSentinel
- *	puiPosition			Offset within the debugFS file
+ *	pui64Pos			Offset within the debugFS file
  *
  * Output:
  *	pSentinel->pCurr	Set to reference the first valid non-NULL message within
@@ -369,10 +354,12 @@ static IMG_PBYTE HTB_GetNextMessage(HTB_Sentinel_t *pSentinel)
  *	HTB TL stream will be updated to bypass any zero-length PAD messages before
  *	the first non-NULL message (if any).
  */
-static void HTB_GetFirstMessage(HTB_Sentinel_t *, loff_t *);
-static void HTB_GetFirstMessage(HTB_Sentinel_t *pSentinel, loff_t *puiPosition)
+static void HTB_GetFirstMessage(HTB_Sentinel_t *, IMG_UINT64 *);
+static void HTB_GetFirstMessage(HTB_Sentinel_t *pSentinel, IMG_UINT64 *pui64Pos)
 {
 	PVRSRV_ERROR	eError;
+
+	PVR_UNREFERENCED_PARAMETER(pui64Pos);
 
 	if (pSentinel == NULL)
 		return;
@@ -417,25 +404,33 @@ static void HTB_GetFirstMessage(HTB_Sentinel_t *pSentinel, loff_t *puiPosition)
 }
 
 /*
- * _DebugHBTraceSeqStart:
+ * _DebugHBTraceDIStart:
  *
  * Returns the address to use for subsequent 'Show', 'Next', 'Stop' file ops.
- * Return SEQ_START_TOKEN for the very first call and allocate a sentinel for
+ * Return DI_START_TOKEN for the very first call and allocate a sentinel for
  * use by the 'Show' routine and its helpers.
- * This is stored in the psSeqFile->private hook field.
+ * This is stored in the psEntry's private hook field.
  *
  * We obtain access to the TLstream associated with the HTB. If this doesn't
  * exist (because no pvrdebug capture trace has been set) we simply return with
- * a NULL value which will stop the seq_file traversal.
+ * a NULL value which will stop the DI traversal.
  */
-static void *_DebugHBTraceSeqStart(struct seq_file *psSeqFile,
-                                   loff_t *puiPosition)
+static void *_DebugHBTraceDIStart(OSDI_IMPL_ENTRY *psEntry,
+                                  IMG_UINT64 *pui64Pos)
 {
-	HTB_Sentinel_t	*pSentinel = (HTB_Sentinel_t *)psSeqFile->private;
+	HTB_Sentinel_t	*pSentinel = DIGetPrivData(psEntry);
 	PVRSRV_ERROR	eError;
 	IMG_UINT32		uiTLMode;
 	void			*retVal;
 	IMG_HANDLE		hStream;
+
+	/* Check to see if the HTB stream has been configured yet. If not, there is
+	 * nothing to display so we just return NULL to stop the stream access.
+	 */
+	if (!HTBIsConfigured())
+	{
+		return NULL;
+	}
 
 	/* Open the stream in non-blocking mode so that we can determine if there
 	 * is no data to consume. Also disable the producer callback (if any) and
@@ -462,7 +457,7 @@ static void *_DebugHBTraceSeqStart(struct seq_file *psSeqFile,
 		PVR_DPF((PVR_DBG_WARNING, "%s: Stream handle %p already exists for %s",
 		    __func__, g_sHTBData.hStream, HTB_STREAM_NAME));
 #endif
-		return ERR_PTR(-EBUSY);
+		return NULL;
 	}
 	else if (PVRSRV_OK != eError)
 	{
@@ -483,28 +478,28 @@ static void *_DebugHBTraceSeqStart(struct seq_file *psSeqFile,
 
 	/*
 	 * Ensure we have our debug-specific data store allocated and hooked from
-	 * our seq_file private data.
+	 * our DI entry private data.
 	 * If the allocation fails we can safely return NULL which will stop
-	 * further calls from the seq_file routines (NULL return from START or NEXT
+	 * further calls from the DI routines (NULL return from START or NEXT
 	 * means we have no (more) data to process)
 	 */
 	if (pSentinel == NULL)
 	{
 		pSentinel = (HTB_Sentinel_t *)OSAllocZMem(sizeof(HTB_Sentinel_t));
-		psSeqFile->private = pSentinel;
+		DISetPrivData(psEntry, pSentinel);
 	}
 
 	/*
 	 * Find the first message location within pSentinel->pBuf
-	 * => for SEQ_START_TOKEN we must issue our first ACQUIRE, also for the
+	 * => for DI_START_TOKEN we must issue our first ACQUIRE, also for the
 	 * subsequent re-START calls (if any).
 	 */
 
-	HTB_GetFirstMessage(pSentinel, puiPosition);
+	HTB_GetFirstMessage(pSentinel, pui64Pos);
 
-	if (*puiPosition == 0)
+	if (*pui64Pos == 0)
 	{
-		retVal = SEQ_START_TOKEN;
+		retVal = DI_START_TOKEN;
 	}
 	else
 	{
@@ -528,14 +523,14 @@ static void *_DebugHBTraceSeqStart(struct seq_file *psSeqFile,
 }
 
 /*
- * _DebugTBTraceSeqStop:
+ * _DebugTBTraceDIStop:
  *
  * Stop processing data collection and release any previously allocated private
  * data structure if we have exhausted the previously filled data buffers.
  */
-static void _DebugHBTraceSeqStop(struct seq_file *psSeqFile, void *pvData)
+static void _DebugHBTraceDIStop(OSDI_IMPL_ENTRY *psEntry, void *pvData)
 {
-	HTB_Sentinel_t	*pSentinel = (HTB_Sentinel_t *)psSeqFile->private;
+	HTB_Sentinel_t	*pSentinel = DIGetPrivData(psEntry);
 	IMG_UINT32		uiMsgLen;
 
 	if (NULL == pSentinel)
@@ -548,7 +543,7 @@ static void _DebugHBTraceSeqStop(struct seq_file *psSeqFile, void *pvData)
 #endif	/* HTB_CHATTY */
 
 	/* If we get here the handle should never be NULL because
-	 * _DebugHBTraceSeqStart() shouldn't allow that. */
+	 * _DebugHBTraceDIStart() shouldn't allow that. */
 	if (g_sHTBData.hStream != NULL)
 	{
 		PVRSRV_ERROR eError;
@@ -578,46 +573,45 @@ static void _DebugHBTraceSeqStop(struct seq_file *psSeqFile, void *pvData)
 
 	if (pSentinel != NULL)
 	{
-		psSeqFile->private = NULL;
+		DISetPrivData(psEntry, NULL);
 		OSFreeMem(pSentinel);
 	}
 }
 
 
 /*
- * _DebugHBTraceSeqNext:
+ * _DebugHBTraceDINext:
  *
  * This is where we release any acquired data which has been processed by the
- * SeqShow routine. If we have encountered a seq_file overflow we stop
+ * DIShow routine. If we have encountered a DI entry overflow we stop
  * processing and return NULL. Otherwise we release the message that we
  * previously processed and simply update our position pointer to the next
  * valid HTB message (if any)
  */
-static void *_DebugHBTraceSeqNext(struct seq_file *psSeqFile,
-                                  void *pvData,
-                                  loff_t *puiPosition)
+static void *_DebugHBTraceDINext(OSDI_IMPL_ENTRY *psEntry, void *pvPriv,
+                                 IMG_UINT64 *pui64Pos)
 {
-	loff_t			curPos;
-	HTB_Sentinel_t	*pSentinel = (HTB_Sentinel_t *)psSeqFile->private;
+	IMG_UINT64		ui64CurPos;
+	HTB_Sentinel_t	*pSentinel = DIGetPrivData(psEntry);
 	PVRSRV_ERROR	eError;
 
-	PVR_UNREFERENCED_PARAMETER(pvData);
+	PVR_UNREFERENCED_PARAMETER(pvPriv);
 
-	if (puiPosition)
+	if (pui64Pos)
 	{
-		curPos = *puiPosition;
-		*puiPosition = curPos+1;
+		ui64CurPos = *pui64Pos;
+		*pui64Pos = ui64CurPos+1;
 	}
 
 	/*
 	 * Determine if we've had an overflow on the previous 'Show' call. If so
 	 * we leave the previously acquired data in the queue (by releasing 0 bytes)
-	 * and return NULL to end this seq_read() iteration.
+	 * and return NULL to end this DI entry iteration.
 	 * If we have not overflowed we simply get the next HTB message and use that
 	 * for our display purposes
 	 */
 
-	if (seq_has_overflowed(psSeqFile))
+	if (DIHasOverflowed(psEntry))
 	{
 		(void)TLClientReleaseDataLess(DIRECT_BRIDGE_HANDLE, g_sHTBData.hStream, 0);
 
@@ -672,14 +666,6 @@ static void *_DebugHBTraceSeqNext(struct seq_file *psSeqFile,
 
 	return pSentinel->pCurr;
 }
-
-static const struct seq_operations gsHTBReadOps = {
-	.start = _DebugHBTraceSeqStart,
-	.stop  = _DebugHBTraceSeqStop,
-	.next  = _DebugHBTraceSeqNext,
-	.show  = _DebugHBTraceSeqShow,
-};
-
 
 /******************************************************************************
  * HTB Dumping routines and definitions
@@ -826,7 +812,7 @@ static IMG_UINT32 idToLogIdx(IMG_UINT32 ui32CheckData)
  *
  *	Input
  *		pSentinel reference to newly read data and pending completion data
- *		          from a previous invocation [handle seq_file buffer overflow]
+ *		          from a previous invocation [handle DI entry buffer overflow]
  *		 -> pBuf         reference to raw data that we are to parse
  *		 -> uiBufLen     total number of bytes of data available
  *		 -> pCurr        start of message to decode
@@ -837,15 +823,15 @@ static IMG_UINT32 idToLogIdx(IMG_UINT32 ui32CheckData)
  * Output
  *		pSentinel
  *		 -> uiMsgLen	length of the decoded message which will be freed to
- *						the system on successful completion of the seq_file
- *						update via _DebugHBTraceSeqNext(),
+ *						the system on successful completion of the DI entry
+ *						update via _DebugHBTraceDINext(),
  * Return Value
  *		0				successful decode
  *		-1				unsuccessful decode
  */
 static int
-DecodeHTB(HTB_Sentinel_t *pSentinel,
-	void *pvDumpDebugFile, DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf)
+DecodeHTB(HTB_Sentinel_t *pSentinel, OSDI_IMPL_ENTRY *pvDumpDebugFile,
+          DI_PRINTF pfnDumpDebugPrintf)
 {
 	IMG_UINT32	ui32Data, ui32LogIdx, ui32ArgsCur;
 	IMG_CHAR	*pszFmt = NULL;
@@ -1165,26 +1151,24 @@ DecodeHTB(HTB_Sentinel_t *pSentinel,
  * In case of overflow or an error we return -1 otherwise 0
  *
  * Input:
- *  pfnDumpDebugPrintf  output routine to display data
- *  pvDumpDebugFile     seq_file handle (from kernel seq_read() call)
+ *  pfnPrintf           output routine to display data
+ *  psEntry             handle to debug frontend
  *  pvData              data address to start dumping from
  *                      (set by Start() / Next())
  */
-static int HTBDumpBuffer(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
-                          void *pvDumpDebugFile,
-                          void *pvData)
+static int HTBDumpBuffer(DI_PRINTF pfnPrintf, OSDI_IMPL_ENTRY *psEntry,
+                         void *pvData)
 {
-	struct seq_file *psSeqFile = (struct seq_file *)pvDumpDebugFile;
-	HTB_Sentinel_t  *pSentinel = (HTB_Sentinel_t *)psSeqFile->private;
+	HTB_Sentinel_t *pSentinel = DIGetPrivData(psEntry);
 
 	PVR_ASSERT(NULL != pvData);
 
-	if (pvData == SEQ_START_TOKEN)
+	if (pvData == DI_START_TOKEN)
 	{
 		if (pSentinel->pCurr == NULL)
 		{
 #ifdef HTB_CHATTY
-			PVR_DPF((PVR_DBG_WARNING, "%s: SEQ_START_TOKEN, Empty buffer",
+			PVR_DPF((PVR_DBG_WARNING, "%s: DI_START_TOKEN, Empty buffer",
 				__func__));
 #endif	/* HTB_CHATTY */
 			return 0;
@@ -1192,8 +1176,8 @@ static int HTBDumpBuffer(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		PVR_ASSERT(pSentinel->pCurr != NULL);
 
 		/* Display a Header as we have data to process */
-		seq_printf(psSeqFile, "%-20s:%-5s-%s  %s\n",
-			"Timestamp", "PID", "Group>", "Log Entry");
+		pfnPrintf(psEntry, "%-20s:%-5s-%s  %s\n", "Timestamp", "PID", "Group>",
+		         "Log Entry");
 	}
 	else
 	{
@@ -1203,7 +1187,7 @@ static int HTBDumpBuffer(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		}
 	}
 
-	return DecodeHTB(pSentinel, pvDumpDebugFile, pfnDumpDebugPrintf);
+	return DecodeHTB(pSentinel, psEntry, pfnPrintf);
 }
 
 
@@ -1211,39 +1195,44 @@ static int HTBDumpBuffer(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
  * External Entry Point routines ...
  *****************************************************************************/
 /*************************************************************************/ /*!
- @Function     HTB_CreateFSEntry
+ @Function     HTB_CreateDIEntry
 
  @Description  Create the debugFS entry-point for the host-trace-buffer
 
  @Returns      eError          internal error code, PVRSRV_OK on success
 
  */ /*************************************************************************/
-PVRSRV_ERROR HTB_CreateFSEntry(void)
+PVRSRV_ERROR HTB_CreateDIEntry(void)
 {
 	PVRSRV_ERROR eError;
 
-	eError = PVRDebugFSCreateFile("host_trace", NULL,
-				      &gsHTBReadOps,
-				      NULL, NULL, NULL,
-				      &g_sHTBData.psDumpHostDebugFSEntry);
+	DI_ITERATOR_CB sIterator = {
+		.pfnStart = _DebugHBTraceDIStart,
+		.pfnStop  = _DebugHBTraceDIStop,
+		.pfnNext  = _DebugHBTraceDINext,
+		.pfnShow  = _DebugHBTraceDIShow,
+	};
 
-	PVR_LOG_RETURN_IF_ERROR(eError, "PVRDebugFSCreateEntry");
+	eError = DICreateEntry("host_trace", NULL, &sIterator, NULL,
+	                       DI_ENTRY_TYPE_GENERIC, &g_sHTBData.psDumpHostDiEntry);
+	PVR_LOG_RETURN_IF_ERROR(eError, "DICreateEntry");
 
 	return eError;
 }
 
 
 /*************************************************************************/ /*!
- @Function     HTB_DestroyFSEntry
+ @Function     HTB_DestroyDIEntry
 
  @Description  Destroy the debugFS entry-point created by earlier
-               HTB_CreateFSEntry() call.
+               HTB_CreateDIEntry() call.
 */ /**************************************************************************/
-void HTB_DestroyFSEntry(void)
+void HTB_DestroyDIEntry(void)
 {
-	if (g_sHTBData.psDumpHostDebugFSEntry)
+	if (g_sHTBData.psDumpHostDiEntry)
 	{
-		PVRDebugFSRemoveFile(&g_sHTBData.psDumpHostDebugFSEntry);
+		DIDestroyEntry(g_sHTBData.psDumpHostDiEntry);
+		g_sHTBData.psDumpHostDiEntry = NULL;
 	}
 }
 

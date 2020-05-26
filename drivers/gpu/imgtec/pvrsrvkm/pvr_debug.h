@@ -448,8 +448,8 @@ IMG_EXPORT void IMG_CALLCONV PVRSRVDebugPrintfDumpCCB(void);
 
 #endif /* defined(PVRSRV_NEED_PVR_DPF) */
 
-#define __PVR_DPF_FUNC(lvl, message, ...) PVR_DPF((lvl, "%s: " message, __func__, ##__VA_ARGS__))
-#define PVR_DPF_FUNC(x) __PVR_DPF_FUNC x
+#define PVR_DPF_FUNC__(lvl, message, ...) PVR_DPF((lvl, "%s: " message, __func__, ##__VA_ARGS__))
+#define PVR_DPF_FUNC(x) PVR_DPF_FUNC__ x
 
 /* Note: Use only when a log message due to the error absolutely should not
  *       be printed. Otherwise use PVR_LOG_RETURN_IF_ERROR macro.

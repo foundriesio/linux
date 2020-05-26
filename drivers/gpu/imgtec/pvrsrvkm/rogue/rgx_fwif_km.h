@@ -304,6 +304,10 @@ typedef struct
 	IMG_UINT32                 aui32CrPollCount[RGXFW_THREAD_NUM];
 	IMG_UINT64 RGXFW_ALIGN     ui64StartIdleTime;
 #if defined(SUPPORT_POWMON_COMPONENT)
+#if defined(SUPPORT_POWER_VALIDATION_VIA_DEBUGFS)
+	RGXFWIF_TRACEBUF_SPACE     sPowerMonBuf;
+	IMG_UINT32                 ui32PowerMonBufSizeInDWords;
+#endif
 	IMG_UINT32                 ui32PowMonEstimate;                    /*!< Non-volatile power monitoring results:
 	                                                                   * static power (by default)
 	                                                                   * energy count (PVR_POWER_MONITOR_DYNAMIC_ENERGY) */
@@ -351,11 +355,11 @@ typedef struct
 /* Debug-info sub-fields */
 /* Bit 0: RGX_CR_EVENT_STATUS_MMU_PAGE_FAULT bit from RGX_CR_EVENT_STATUS register */
 #define RGXFWT_DEBUG_INFO_MMU_PAGE_FAULT_SHIFT        (0U)
-#define RGXFWT_DEBUG_INFO_MMU_PAGE_FAULT_SET          (IMG_UINT16_C(1) << RGXFWT_DEBUG_INFO_MMU_PAGE_FAULT_SHIFT)
+#define RGXFWT_DEBUG_INFO_MMU_PAGE_FAULT_SET          (1U << RGXFWT_DEBUG_INFO_MMU_PAGE_FAULT_SHIFT)
 
 /* Bit 1: RGX_CR_BIF_MMU_ENTRY_PENDING bit from RGX_CR_BIF_MMU_ENTRY register */
 #define RGXFWT_DEBUG_INFO_MMU_ENTRY_PENDING_SHIFT     (1U)
-#define RGXFWT_DEBUG_INFO_MMU_ENTRY_PENDING_SET       (IMG_UINT16_C(1) << RGXFWT_DEBUG_INFO_MMU_ENTRY_PENDING_SHIFT)
+#define RGXFWT_DEBUG_INFO_MMU_ENTRY_PENDING_SET       (1U << RGXFWT_DEBUG_INFO_MMU_ENTRY_PENDING_SHIFT)
 
 /* Bit 2-15: Unused bits */
 
@@ -392,14 +396,14 @@ typedef enum
 	RGX_HWRTYPE_MIPSTLBFAULT   = 8,
 } RGX_HWRTYPE;
 
-#define RGXFWIF_HWRTYPE_BIF_BANK_GET(eHWRType) ((eHWRType == RGX_HWRTYPE_BIF0FAULT) ? 0 : 1)
+#define RGXFWIF_HWRTYPE_BIF_BANK_GET(eHWRType) (((eHWRType) == RGX_HWRTYPE_BIF0FAULT) ? 0 : 1)
 
-#define RGXFWIF_HWRTYPE_PAGE_FAULT_GET(eHWRType) (((eHWRType == RGX_HWRTYPE_BIF0FAULT)      ||       \
-                                                   (eHWRType == RGX_HWRTYPE_BIF1FAULT)      ||       \
-                                                   (eHWRType == RGX_HWRTYPE_TEXASBIF0FAULT) ||       \
-                                                   (eHWRType == RGX_HWRTYPE_MMUFAULT)       ||       \
-                                                   (eHWRType == RGX_HWRTYPE_MMUMETAFAULT)   ||       \
-                                                   (eHWRType == RGX_HWRTYPE_MIPSTLBFAULT)) ? true : false)
+#define RGXFWIF_HWRTYPE_PAGE_FAULT_GET(eHWRType) ((((eHWRType) == RGX_HWRTYPE_BIF0FAULT)      ||       \
+                                                   ((eHWRType) == RGX_HWRTYPE_BIF1FAULT)      ||       \
+                                                   ((eHWRType) == RGX_HWRTYPE_TEXASBIF0FAULT) ||       \
+                                                   ((eHWRType) == RGX_HWRTYPE_MMUFAULT)       ||       \
+                                                   ((eHWRType) == RGX_HWRTYPE_MMUMETAFAULT)   ||       \
+                                                   ((eHWRType) == RGX_HWRTYPE_MIPSTLBFAULT)) ? true : false)
 
 typedef struct
 {
@@ -681,8 +685,9 @@ typedef struct
 /*!
  * FW context state flags
  */
-#define RGXFWIF_CONTEXT_FLAGS_NEED_RESUME			(0x00000001U)
-#define RGXFWIF_CONTEXT_FLAGS_TDM_HEADER_STALE		(0x00000002U)
+#define RGXFWIF_CONTEXT_FLAGS_NEED_RESUME				(0x00000001U)
+#define RGXFWIF_CONTEXT_FLAGS_MC_NEED_RESUME_MASKFULL	(0x000000FFU)
+#define RGXFWIF_CONTEXT_FLAGS_TDM_HEADER_STALE			(0x00000100U)
 
 /*
  * Fast scale blit renders can be divided into smaller slices. The maximum
@@ -1501,7 +1506,7 @@ typedef struct
 } UNCACHED_ALIGN RGXFWIF_INIT_OPTIONS;
 
 #define RGXFWIF_COMPCHECKS_BVNC_DECLARE_AND_INIT(name) \
-	RGXFWIF_COMPCHECKS_BVNC name = { \
+	RGXFWIF_COMPCHECKS_BVNC (name) = { \
 		RGXFWIF_COMPCHECKS_LAYOUT_VERSION, \
 		0, \
 	}
@@ -1515,7 +1520,7 @@ typedef struct
 {
 	RGXFWIF_COMPCHECKS_BVNC		sHWBVNC;				/*!< hardware BVNC (from the RGX registers) */
 	RGXFWIF_COMPCHECKS_BVNC		sFWBVNC;				/*!< firmware BVNC */
-	IMG_UINT32					ui32FWProcessorVersion;	/*!< identifier of the MIPS/META version */
+	IMG_UINT32					ui32FWProcessorVersion;	/*!< identifier of the FW processor version */
 	IMG_UINT32					ui32DDKVersion;			/*!< software DDK version */
 	IMG_UINT32					ui32DDKBuild;			/*!< software DDK build no. */
 	IMG_UINT32					ui32BuildOptions;		/*!< build options bit-field */
@@ -1904,19 +1909,22 @@ typedef struct
 
 typedef struct
 {
-	IMG_DEV_VIRTADDR	RGXFW_ALIGN psFreeListDevVAddr;
-	IMG_UINT64			RGXFW_ALIGN ui64CurrentDevVAddr;
-	IMG_UINT32			ui32CurrentStackTop;
-	IMG_UINT32			ui32MaxPages;
-	IMG_UINT32			ui32GrowPages;
-	IMG_UINT32			ui32CurrentPages; /* HW pages */
-	IMG_UINT32			ui32AllocatedPageCount;
-	IMG_UINT32			ui32AllocatedMMUPageCount;
-	IMG_UINT32			ui32HWRCounter;
-	IMG_UINT32			ui32FreeListID;
-	IMG_BOOL			bGrowPending;
-	IMG_UINT32			ui32ReadyPages; /* Pages that should be used only when OOM is reached */
-	IMG_UINT32			ui32FreelistFlags; /* Compatibility and other flags */
+	IMG_DEV_VIRTADDR		RGXFW_ALIGN psFreeListDevVAddr;
+	IMG_UINT64				RGXFW_ALIGN ui64CurrentDevVAddr;
+	IMG_UINT32				ui32CurrentStackTop;
+	IMG_UINT32				ui32MaxPages;
+	IMG_UINT32				ui32GrowPages;
+	IMG_UINT32				ui32CurrentPages; /* HW pages */
+	IMG_UINT32				ui32AllocatedPageCount;
+	IMG_UINT32				ui32AllocatedMMUPageCount;
+#if defined(SUPPORT_SHADOW_FREELISTS)
+	IMG_UINT32				ui32HWRCounter;
+	PRGXFWIF_FWMEMCONTEXT	psFWMemContext;
+#endif
+	IMG_UINT32				ui32FreeListID;
+	IMG_BOOL				bGrowPending;
+	IMG_UINT32				ui32ReadyPages; /* Pages that should be used only when OOM is reached */
+	IMG_UINT32				ui32FreelistFlags; /* Compatibility and other flags */
 } UNCACHED_ALIGN RGXFWIF_FREELIST;
 
 
@@ -1985,7 +1993,7 @@ typedef struct
 
 	RGXFWIF_RTA_CTL						sRTACtl;
 
-	IMG_UINT32							ui32PPPScreen;
+	IMG_UINT32							ui32ScreenPixelMax;
 	IMG_UINT64							RGXFW_ALIGN ui64MultiSampleCtl;
 	IMG_UINT64							ui64FlippedMultiSampleCtl;
 	IMG_UINT32							ui32TPCStride;

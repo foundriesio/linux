@@ -110,7 +110,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		offsetof(RGXFWIF_FREELIST, sFreeListLastGrowDevVAddr),\
 		offsetof(RGXFWIF_FREELIST, ui32MaxPages),\
 		offsetof(RGXFWIF_FREELIST, ui32CurrentPages),\
-		offsetof(RGXFWIF_FREELIST, ui32HWRCounter),\
 									\
 		/* RGXFWIF_HWRTDATA checks */					\
 		sizeof(RGXFWIF_HWRTDATA), \

@@ -64,6 +64,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/thermal.h>
 #include "rgxdevice.h"
 
+#include <linux/dma-mapping.h>
 #if !defined(SUPPORT_LINUX_DVFS) && !defined(SUPPORT_PDVFS)
 typedef struct
 {
@@ -115,13 +116,13 @@ void TccSetFrequency(IMG_UINT32 ui32Frequency)
 		panic("oops");
 
 	old_freq = clk_get_rate(g_platform->gpu_clk);
-	old_volt = regulator_get_voltage(g_platform->gpu_reg);
+//	old_volt = regulator_get_voltage(g_platform->gpu_reg);
 
 	ret = clk_set_rate(g_platform->gpu_clk, ui32Frequency);
 	if (ret) {
 		PVR_DPF((PVR_DBG_ERROR, "failed to set gpu_clk rate: %d", ret));
-		if (old_volt > 0)
-			regulator_set_voltage(g_platform->gpu_reg, old_volt, INT_MAX);
+//		if (old_volt > 0)
+//			regulator_set_voltage(g_platform->gpu_reg, old_volt, INT_MAX);
 		return;
 	}
 }
@@ -393,6 +394,7 @@ void RgxTccUnInit(struct tcc_context *platform)
 
 struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 {
+	int ret = 0;
 	struct device *dev = (struct device *)psDevConfig->pvOSDevice;
 	struct tcc_context *platform;
 	RGX_DATA* psRGXData = (RGX_DATA*)psDevConfig->hDevData;
@@ -404,11 +406,12 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 	}
 
 	g_platform = platform;
+	dma_set_coherent_mask(dev,DMA_BIT_MASK(64));
 
 	if (!dev->dma_mask)
 		dev->dma_mask = &dev->coherent_dma_mask;
 
-	PVR_DPF((PVR_DBG_ERROR, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
+	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
 
 	platform->dev_config = psDevConfig;
 	platform->gpu_active = IMG_FALSE;
@@ -433,6 +436,7 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 		goto fail2;
 	}
 
+#if 0
 	platform->gpu_reg = devm_regulator_get_optional(dev, "9XTP_regulator");
 	if (IS_ERR_OR_NULL(platform->gpu_reg)) {
 		/*if (dev_pm_opp_of_add_table(dev)) {
@@ -442,22 +446,24 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 		PVR_DPF((PVR_DBG_ERROR, "RgxTccInit: devm_regulator_get_optional failed."));
 		goto fail5;
 	}
-
-	clk_set_rate(platform->gpu_clk, TCC_9XTP_DEFAULT_CLOCK * ONE_MHZ);
+#endif
+	ret = clk_set_rate(platform->gpu_clk, TCC_9XTP_DEFAULT_CLOCK * ONE_MHZ);
+	if (ret)
+		PVR_DPF((PVR_DBG_ERROR, "failed to set gpu_clk rate: %d", ret));
 
 	if (psRGXData && psRGXData->psRGXTimingInfo)
 	{
 		psRGXData->psRGXTimingInfo->ui32CoreClockSpeed = clk_get_rate(platform->gpu_clk);
 	}
 
-
+/*
 	(void) TccPrePowerState(platform,
 						   PVRSRV_DEV_POWER_STATE_ON,
 						   PVRSRV_DEV_POWER_STATE_DEFAULT,
 						   IMG_FALSE);
 
 	RgxResume(platform);
-
+*/
 	return platform;
 
 fail5:

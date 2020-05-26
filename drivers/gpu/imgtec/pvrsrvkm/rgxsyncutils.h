@@ -74,7 +74,7 @@ void _DebugSyncCheckpoints(PSYNC_CHECKPOINT *apsSyncCheckpoints,
 
 PVRSRV_ERROR RGXSyncAppendTimelineUpdate(IMG_UINT32 ui32FenceTimelineUpdateValue,
 										 SYNC_ADDR_LIST	*psSyncList,
-										 SYNC_ADDR_LIST	*psPRSyncList,	/* FIXME -- is this required? */
+										 SYNC_ADDR_LIST	*psPRSyncList,
 										 PVRSRV_CLIENT_SYNC_PRIM *psFenceTimelineUpdateSync,
 										 RGX_SYNC_DATA *psSyncData,
 										 IMG_BOOL bKick3D);

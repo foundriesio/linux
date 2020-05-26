@@ -200,41 +200,6 @@ SyncPrimServerGetStatus(IMG_UINT32 ui32SyncCount,
 						IMG_UINT32 *pui32CurrentOp,
 						IMG_UINT32 *pui32NextOp);
 
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-PVRSRV_ERROR
-SyncPrimServerQueueOp(PVRSRV_CLIENT_SYNC_PRIM_OP *psSyncOp);
-#endif
-
-PVRSRV_ERROR
-SyncPrimIsServerSync(PVRSRV_CLIENT_SYNC_PRIM *psSync, IMG_BOOL *pbServerSync);
-
-IMG_HANDLE
-SyncPrimGetServerHandle(PVRSRV_CLIENT_SYNC_PRIM *psSync);
-
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-PVRSRV_ERROR
-SyncPrimOpCreate(IMG_UINT32 ui32SyncCount,
-				 PVRSRV_CLIENT_SYNC_PRIM **papsSyncPrim,
-				 PSYNC_OP_COOKIE *ppsCookie);
-
-PVRSRV_ERROR
-SyncPrimOpTake(PSYNC_OP_COOKIE psCookie,
-			   IMG_UINT32 ui32SyncCount,
-			   PVRSRV_CLIENT_SYNC_PRIM_OP *pasSyncOp);
-
-PVRSRV_ERROR
-SyncPrimOpReady(PSYNC_OP_COOKIE psCookie,
-				IMG_BOOL *pbReady);
-
-PVRSRV_ERROR
-SyncPrimOpComplete(PSYNC_OP_COOKIE psCookie);
-
-IMG_INTERNAL
-PVRSRV_ERROR SyncPrimOpDestroy(PSYNC_OP_COOKIE psCookie);
-
-#endif
-
 #if defined(PDUMP)
 /*************************************************************************/ /*!
 @Function       SyncPrimPDump
@@ -286,26 +251,6 @@ SyncPrimPDumpPol(PVRSRV_CLIENT_SYNC_PRIM *psSync,
 				 IMG_UINT32 ui32Mask,
 				 PDUMP_POLL_OPERATOR eOperator,
 				 IMG_UINT32 ui32PDumpFlags);
-
-#if defined(SUPPORT_SERVER_SYNC_IMPL)
-/*************************************************************************/ /*!
-@Function       SyncPrimOpPDumpPol
-
-@Description    Do a PDump poll all the synchronisation primitives on this
-                Operation cookie.
-
-@Input          psCookie                Operation cookie
-
-@Input          ui32PDumpFlags          PDump flags
-
-@Return         None
-*/
-/*****************************************************************************/
-void
-SyncPrimOpPDumpPol(PSYNC_OP_COOKIE psCookie,
-				 PDUMP_POLL_OPERATOR eOperator,
-				 IMG_UINT32 ui32PDumpFlags);
-#endif
 
 /*************************************************************************/ /*!
 @Function       SyncPrimPDumpCBP

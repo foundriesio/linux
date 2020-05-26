@@ -209,7 +209,8 @@ TLOpenStream_exit:
 			     && (eError != PVRSRV_ERROR_RETRY)))
 			{
 				PVR_DPF((PVR_DBG_ERROR,
-					 "PVRSRVBridgeTLOpenStream: %s",
+					 "%s: %s",
+					 __func__,
 					 PVRSRVGetErrorString(eError)));
 			}
 			/* Releasing the handle should free/destroy/release the resource.
@@ -261,7 +262,8 @@ PVRSRVBridgeTLCloseStream(IMG_UINT32 ui32DispatchTableEntry,
 		     (psTLCloseStreamOUT->eError != PVRSRV_ERROR_RETRY)))
 	{
 		PVR_DPF((PVR_DBG_ERROR,
-			 "PVRSRVBridgeTLCloseStream: %s",
+			 "%s: %s",
+			 __func__,
 			 PVRSRVGetErrorString(psTLCloseStreamOUT->eError)));
 		UnlockHandle(psConnection->psHandleBase);
 		goto TLCloseStream_exit;

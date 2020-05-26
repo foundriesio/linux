@@ -166,13 +166,11 @@ PVRSRV_ERROR RGXInitHWPerfCounters(PVRSRV_DEVICE_NODE	*psDeviceNode);
  Registers the device with the system
 
  @Input:   psDeviceNode - device node
- @Output:  ppsDevInfo   - device info
 
  @Return   PVRSRV_ERROR
 
 ******************************************************************************/
-PVRSRV_ERROR RGXRegisterDevice(PVRSRV_DEVICE_NODE *psDeviceNode,
-                               PVRSRV_RGXDEV_INFO **ppsDevInfo);
+PVRSRV_ERROR RGXRegisterDevice(PVRSRV_DEVICE_NODE *psDeviceNode);
 
 /*!
 *******************************************************************************
