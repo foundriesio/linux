@@ -450,8 +450,11 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	 * reset value form registers.
 	 */
 	retval = dwc2_core_reset(hsotg, false);
-	if (retval)
+	if (retval) {
+		/* TEMPORARY WORKAROUND */
+		retval = -EPROBE_DEFER;
 		goto error;
+	}
 
 	/* Detect config values from hardware */
 	retval = dwc2_get_hwparams(hsotg);
