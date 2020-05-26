@@ -69,6 +69,12 @@
 #define	VIN_OFFS_INTL		(0x018)
 #define	VIN_CROP_SIZE		(0x01C)
 #define	VIN_CROP_OFFS		(0x020)
+#define	VIN_MON_CLR			(0x024)
+#define	VIN_MON_HS			(0x028)
+#define	VIN_MON_DE			(0x02C)
+#define	VIN_MON_LCNT		(0x030)
+#define	VIN_MON_VSCNT		(0x034)
+#define	VIN_MON_VSMAX		(0x038)
 #define	VIN_LUT_CTRL		(0x05C)
 #define	VIN_INT				(0x060)
 #define	VIN_LUT_C			(0x400)
@@ -207,6 +213,54 @@
 #define VIN_CROP_OFFS_OFS_WIDTH_MASK			(0xFFFF << VIN_CROP_OFFS_OFS_WIDTH_SHIFT)
 
 /*
+ * VIN Monitor Clear Register
+ */
+#define VIN_MON_CLR_CLR_SHIFT			(0)
+
+#define VIN_MON_CLR_CLR_MASK			(0x1 << VIN_MON_CLR_CLR_SHIFT)
+
+/*
+ * VIN Monitor for HSync Register
+ */
+#define VIN_MON_HS_MAX_SHIFT			(16)
+#define VIN_MON_HS_CNT_SHIFT			(0)
+
+#define VIN_MON_HS_MAX_MASK				(0xFFFF << VIN_MON_HS_MAX_SHIFT)
+#define VIN_MON_HS_CNT_MASK				(0xFFFF << VIN_MON_HS_CNT_SHIFT)
+
+/*
+ * VIN Monitor for DataEnable Register
+ */
+#define VIN_MON_DE_MAX_SHIFT			(16)
+#define VIN_MON_DE_CNT_SHIFT			(0)
+
+#define VIN_MON_DE_MAX_MASK				(0xFFFF << VIN_MON_DE_MAX_SHIFT)
+#define VIN_MON_DE_CNT_MASK				(0xFFFF << VIN_MON_DE_CNT_SHIFT)
+
+/*
+ * VIN Monitor for LineCounter Register
+ */
+#define VIN_MON_LCNT_MAX_SHIFT			(16)
+#define VIN_MON_LCNT_CNT_SHIFT			(0)
+
+#define VIN_MON_LCNT_MAX_MASK			(0xFFFF << VIN_MON_LCNT_MAX_SHIFT)
+#define VIN_MON_LCNT_CNT_MASK			(0xFFFF << VIN_MON_LCNT_CNT_SHIFT)
+
+/*
+ * VIN Monitor for Vertical Sync Counter Register
+ */
+#define VIN_MON_VSCNT_CNT_SHIFT			(0)
+
+#define VIN_MON_VSCNT_CNT_MASK			(0xFFFFFFFF << VIN_MON_VSCNT_CNT_SHIFT)
+
+/*
+ * VIN Monitor for Vertical Sync Max Register
+ */
+#define VIN_MON_VSCNT_MAX_SHIFT			(0)
+
+#define VIN_MON_VSCNT_MAX_MASK			(0xFFFFFFFF << VIN_MON_VSCNT_MAX_SHIFT)
+
+/*
  * VIN Look-up table control Register
  */
 #define VIN_LUT_CTRL_IND_SHIFT			(0)
@@ -335,6 +389,7 @@ extern void VIOC_VIN_SetSyncPolarity (volatile void __iomem *reg, unsigned int h
 extern void VIOC_VIN_SetCtrl (volatile void __iomem *reg, unsigned int conv_en, unsigned int hsde_connect_en, unsigned int vs_mask, unsigned int fmt, unsigned int data_order);
 extern void VIOC_VIN_SetInterlaceMode (volatile void __iomem *reg, unsigned int intl_en, unsigned int intpl_en);
 extern void VIOC_VIN_SetCaptureModeEnable(volatile void __iomem *reg, unsigned int cap_en);
+extern void VIOC_VIN_SetFrameSkipNumber(volatile void __iomem *reg, unsigned int skip);
 extern void VIOC_VIN_SetEnable (volatile void __iomem *reg, unsigned int vin_en);
 extern void VIOC_VIN_SetImageSize (volatile void __iomem *reg, unsigned int width, unsigned int height);
 extern void VIOC_VIN_SetImageOffset (volatile void __iomem *reg, unsigned int offs_width, unsigned int offs_height, unsigned int offs_height_intl);
@@ -352,6 +407,18 @@ extern void VIOC_VIN_SetDemuxClock(volatile void __iomem *reg, unsigned int mode
 extern void VIOC_VIN_SetDemuxEnable(volatile void __iomem *reg, unsigned int enable);
 extern void VIOC_VIN_SetSEEnable(volatile void __iomem *reg, unsigned int se);
 extern void VIOC_VIN_SetFlushBufferEnable(volatile void __iomem *reg, unsigned int fvs);
+extern void VIOC_VIN_SetIreqMask(volatile void __iomem *reg, unsigned int mask, unsigned int set);
+extern void VIOC_VIN_GetStatus(volatile void __iomem *reg, unsigned int *status);
+
+extern void VIOC_VIN_ClearAllMonitorCounters(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetHSyncMax(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetHSyncCounter(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetDataEnableMax(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetDataEnableCounter(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetLineCountMax(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetLineCountCounter(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetVSyncMax(volatile void __iomem *reg);
+extern unsigned int VIOC_VIN_GetVSyncCounter(volatile void __iomem *reg);
 
 extern volatile void __iomem* VIOC_VIN_GetAddress(unsigned int Num);
 #endif

@@ -21,6 +21,7 @@
 #include <video/tcc/tcc_types.h>
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/vioc_config.h>
+#include <video/tcc/vioc_vin.h>
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_wdma.h>
 #include <video/tcc/vioc_disp.h>
@@ -167,7 +168,39 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
         break;
 #endif
 #endif
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		sub_id = id - VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
 
+		/* clera irq status */
+		__raw_writel(__raw_readl(reg) | ((0x1 << 11) | (mask & VIOC_VIN_INT_MASK)), reg);
+
+		/* enable irq */
+		__raw_writel(__raw_readl(reg) | ((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
+//		printk("sub_id: %d, reg: 0x%p, vin interrupt: 0x%08x\n", sub_id, reg, __raw_readl(reg));
+        break;
+#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#ifdef defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+        sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
+//		printk("sub_id: %d\n", sub_id);
+
+		/* clera irq status */
+		__raw_writel(__raw_readl(reg) | ((0x1 << 11) | (mask & VIOC_VIN_INT_MASK)), reg);
+
+		/* enable irq */
+		__raw_writel(__raw_readl(reg) | ((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
+//		printk("sub_id: %d, reg: 0x%p, vin interrupt: 0x%08x\n", sub_id, reg, __raw_readl(reg));
+        break;
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)
@@ -331,6 +364,38 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 
 #endif
 #endif
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		sub_id = id - VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
+
+		/* disable irq */
+//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
+		__raw_writel(__raw_readl(reg) & ~((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
+//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
+//		if((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
+			do_irq_mask = 0;
+		break;
+#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#ifdef defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+		sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
+
+		/* disable irq */
+//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
+		__raw_writel(__raw_readl(reg) & ~((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
+//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
+//		if((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
+			do_irq_mask = 0;
+		break;
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 	if (do_irq_mask) {
@@ -570,6 +635,30 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 		return false;
 #endif
 #endif
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		id -= VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+//		printk("id: %d, __raw_readl(reg): 0x%08x, (mask<<16): 0x%08x\n", id, __raw_readl(reg), (mask<<16));
+		if (__raw_readl(reg) & ((mask << 16) & (VIOC_VIN_INT_MASK << 16)))
+			return true;
+		return false;
+#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#ifdef defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+//		printk("id: %d, __raw_readl(reg): 0x%08x, (mask<<16): 0x%08x\n", id, __raw_readl(reg), (mask<<16));
+		if (__raw_readl(reg) & ((mask << 16) & (VIOC_VIN_INT_MASK << 16)))
+			return true;
+		return false;
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return false;
 }

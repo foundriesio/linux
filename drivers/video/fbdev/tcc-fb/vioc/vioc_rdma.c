@@ -781,6 +781,14 @@ err:
 }
 EXPORT_SYMBOL(VIOC_RDMA_DUMP);
 
+unsigned int VIOC_RDMA_Get_CAddress(volatile void __iomem *reg)
+{
+    unsigned int value = 0;
+    value = __raw_readl(reg + RDMACADDR);
+
+    return value;
+}
+
 volatile void __iomem *VIOC_RDMA_GetAddress(unsigned int vioc_id)
 {
 	int Num = get_vioc_index(vioc_id);
