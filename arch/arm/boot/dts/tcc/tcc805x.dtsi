@@ -2768,13 +2768,15 @@
 		reg = <0x0 0x12000000 0x0 0x100>,
 		      <0x0 0x12000100 0x0 0x100>,
 		      <0x0 0x12000200 0x0 0x100>,
+		      <0x0 0x12000300 0x0 0x100>,
 			/* VIOC_REMAP */
 			  <0x0 0x12000000 0x0 0x100>,
 			  <0x0 0x12001000 0x0 0x100>,
-			  <0x0 0x12002000 0x0 0x100>;
-		interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>;
-		clock-names = "ddi-clk", "disp0-clk", "disp1-clk", "disp2-clk";
+			  <0x0 0x12002000 0x0 0x100>,
+			  <0x0 0x12003000 0x0 0x100>;
+		interrupts = <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI VIOC1_IRQI IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clk_ddi DDIBUS_VIOC>, <&clk_peri PERI_LCD0>, <&clk_peri PERI_LCD1>, <&clk_peri PERI_LCD2>, <&clk_peri PERI_LCD3>;
+		clock-names = "ddi-clk", "disp0-clk", "disp1-clk", "disp2-clk", "disp3-clk";
 	};
 
 	vioc_rdma:vioc_rdma@12000400{
