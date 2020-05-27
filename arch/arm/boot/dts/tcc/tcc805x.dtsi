@@ -2660,16 +2660,17 @@
 	};
 
 	dwc3: dwc3_platform {
-		#address-cells = <2>;
-		#size-cells = <2>;
 		compatible = "telechips,tcc-dwc3";
 		clocks = <&clk_fbus FBUS_HSIO>;
 		telechips,dwc3_phy = <&dwc3_phy>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 		status = "disabled";
 
 		dwc3 {
 			compatible = "snps,dwc3";
-			reg = <0x0 0x11B00000 0x0 0xCFFF>;
+			reg = <0x11B00000 0xCFFF>;
 			interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
 			telechips,dwc3_phy = <&dwc3_phy>;
 		};
