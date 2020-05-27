@@ -318,15 +318,29 @@ static int tcc_spi_set_clk(struct tcc_spi *tccspi, unsigned int clk, unsigned in
 /* Set SPI modes */
 static int tcc_spi_set_mode(struct tcc_spi *tccspi, unsigned int mode)
 {
-	if(mode & SPI_CPOL)
-		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
-	else
-		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
+	int slave = 0;
+	slave = spi_controller_is_slave(tccspi->master);
 
-	if(mode & SPI_CPHA)
-		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PWD | TCC_GPSB_MODE_PRD);
-	else
-		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PWD | TCC_GPSB_MODE_PRD);
+	if(slave){
+		/* slave mode */
+		if((mode == SPI_MODE_1) || (mode == SPI_MODE_2)){
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
+		}else{
+			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
+		}
+	}else{
+		/* master mode */
+		if(mode & SPI_CPOL){
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
+		}else{
+			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCK);
+		}
+		if(mode & SPI_CPHA){
+			TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PWD | TCC_GPSB_MODE_PRD);
+		}else{
+			TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PWD | TCC_GPSB_MODE_PRD);
+		}
+	}
 
 	if(mode & SPI_CS_HIGH)
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_PCS | TCC_GPSB_MODE_PCD);
@@ -375,9 +389,6 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 	/* Set operation mode (SPI compatible) */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_MD_MASK);
 
-	/* Set SPI master mode */
-	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_SLV);
-
 	if(tccspi->pd->ctf){
 		/* Set CTF Mode */
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_CTF);
@@ -385,6 +396,15 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 	/* Set Tx and Rx FIFO threshold for interrupt/DMA request */
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN, TCC_GPSB_INTEN_CFGRTH_MASK, TCC_GPSB_INTEN_CFGRTH(0));
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN, TCC_GPSB_INTEN_CFGWTH_MASK, TCC_GPSB_INTEN_CFGWTH(0));
+
+	if(spi_controller_is_slave(tccspi->master)){
+		/* Set SPI slave mode */
+		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_SLV);
+		TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN, TCC_GPSB_INTEN_CFGWTH_MASK, TCC_GPSB_INTEN_CFGWTH(7));
+	}else{
+		/* Set SPI master mode */
+		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_SLV);
+	}
 
 	/* Enable operation */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
@@ -594,7 +614,7 @@ static irqreturn_t tcc_spi_dma_irq(int irq, void *data)
 {
 	struct spi_master *master = data;
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
-	unsigned int dmaicr;
+	unsigned int dmaicr, status;
 
 	if(!tccspi) {
 		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null ! (irq: %d)\n", __func__, irq);
@@ -604,6 +624,13 @@ static irqreturn_t tcc_spi_dma_irq(int irq, void *data)
 	/* Check dma irq status*/
 	if(tcc_spi_check_dma_irq_status(tccspi)) {
 		return IRQ_NONE;
+	}
+
+	/* Check GPSB error flag status */
+	status = tcc_spi_readl(tccspi->base + TCC_GPSB_STAT);
+	if(status & 0x3E0){
+		dev_warn(tccspi->dev, "[WARN][SPI] [%s] Slave/FIFO error flag (status: 0x%08X)\n",
+				__func__, status);
 	}
 
 	/* Handle DMA done interrupt */
@@ -696,6 +723,7 @@ static void tcc_dma_engine_rx_callback(void *data)
 {
 	struct spi_master *master = data;
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
+	uint32_t status;
 
 	if(!tccspi)
 	{
@@ -704,6 +732,13 @@ static void tcc_dma_engine_rx_callback(void *data)
 	}
 
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s] gpsb channel %d \n", __func__, tccspi->pd->gpsb_channel);
+
+	/* Check GPSB error flag status */
+	status = tcc_spi_readl(tccspi->base + TCC_GPSB_STAT);
+	if(status & 0x3E0){
+		dev_warn(tccspi->dev, "[WARN][SPI] [%s] Slave/FIFO error flag (status: 0x%08X)\n",
+				__func__, status);
+	}
 
 	/* Stop dma operation */
 	tcc_spi_stop_dma(tccspi);
@@ -946,9 +981,9 @@ static int tcc_spi_dma_engine_probe(struct platform_device *pdev, struct tcc_spi
 }
 #endif
 
-/******* SPI Master API *******/
+/******* SPI API *******/
 
-/* SPI master setsup */
+/* SPI setsup */
 static int tcc_spi_setup(struct spi_device *spi)
 {
 	int status;
@@ -1058,7 +1093,7 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 			    struct spi_transfer *xfer)
 {
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
-	int status, timeout_ms;
+	int status, timeout_ms, is_slave;
 
 	if(!tccspi) {
 		printk(KERN_ERR "[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
@@ -1066,6 +1101,8 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 	}
 
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
+
+	is_slave = spi_controller_is_slave(tccspi->master);
 
 	if(!xfer) {
 		dev_err(tccspi->dev, "[ERROR][SPI] xfer is null\n");
@@ -1152,10 +1189,19 @@ static int tcc_spi_transfer_one(struct spi_master *master, struct spi_device *sp
 		timeout_ms += timeout_ms + 100; /* some tolerance */
 
 		/* Wait until transfer is finished */
-		ret = wait_for_completion_timeout(&tccspi->xfer_complete, msecs_to_jiffies(timeout_ms));
+		if(is_slave){
+			ret = wait_for_completion_interruptible(&tccspi->xfer_complete);
+			if(ret == 0){
+				ret = 1;
+			}
+		}else{
+			ret = wait_for_completion_timeout(&tccspi->xfer_complete, msecs_to_jiffies(timeout_ms));
+		}
+
 		if(!ret) {
 			dev_err(tccspi->dev,
-				"[ERROR][SPI] spi trasfer timeout (%d ms), err %d\n", timeout_ms, ret);
+				"[ERROR][SPI] [%s] spi interrupted or trasfer timeout (%d ms), err %d\n",
+							 __func__, timeout_ms, ret);
 			tcc_spi_regs_dump(tccspi);
 			status = -EIO;
 
@@ -1232,7 +1278,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	status = of_property_read_u32(np, "gpsb-id", &pd->id);
 	if(status != 0){
 		dev_err(dev,
-			"[ERROR][SPI] No SPI master id.\n");
+			"[ERROR][SPI] No SPI id.\n");
 		return NULL;
 	}
 
@@ -1251,7 +1297,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		(size_t)of_property_count_elems_of_size(np, "gpsb-port", sizeof(u32)));
 	if(status != 0){
 		dev_err(dev,
-			"[ERROR][SPI] No SPI master port info.\n");
+			"[ERROR][SPI] No SPI port info.\n");
 		return NULL;
 	}
 
@@ -1261,7 +1307,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	status = of_property_read_u32(np, "gpsb-port", &pd->port);
 	if(status != 0){
 		dev_err(dev,
-			"[ERROR][SPI] No SPI master port info.\n");
+			"[ERROR][SPI] No SPI port info.\n");
 		return NULL;
 	}
 	dev_info(dev, "[INFO][SPI] port %d\n", pd->port);
@@ -1290,7 +1336,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	pd->hclk = of_clk_get(np, 1);
 	if(IS_ERR(pd->pclk) || IS_ERR(pd->hclk)) {
 		dev_err(dev,
-			"[ERROR][SPI] No SPI master clock info.\n");
+			"[ERROR][SPI] No SPI clock info.\n");
 		return NULL;
 	}
 
@@ -1328,7 +1374,13 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	master = spi_alloc_master(dev, sizeof(struct tcc_spi));
+	/* allocate master or slave controller */
+	if(pd->is_slave){
+		master = spi_alloc_slave(dev, sizeof(struct tcc_spi));
+	}else{
+		master = spi_alloc_master(dev, sizeof(struct tcc_spi));
+	}
+
 	if(!master) {
 		dev_err(dev,
 			"[ERROR][SPI] SPI memory allocation failed.\n");
@@ -1525,7 +1577,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 	tcc_spi_set_port(tccspi);
 
 #ifdef TCC_USE_GFB_PORT
-	dev_info(dev, "[INFO][SPI] TCC SPI Master [%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d @%X][port: %d %d %d %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
@@ -1536,7 +1588,7 @@ static int tcc_spi_probe(struct platform_device *pdev)
 		tcc_spi_is_use_gdma(tccspi),
 		master->num_chipselect);
 #else
-	dev_info(dev, "[INFO][SPI] TCC SPI Master [%s] Id: %d [ch:%d @%X][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
+	dev_info(dev, "[INFO][SPI] TCC SPI [%s] Id: %d [ch:%d @%X][port: %d][irq: %d][CONTM: %d][gdma: %d][cs_num: %d]\n",
 		pd->name,
 		master->bus_num,
 		pd->gpsb_channel,
@@ -1691,6 +1743,7 @@ static const struct dev_pm_ops tcc_spi_pmops = {
 #ifdef CONFIG_OF
 static struct of_device_id tcc_spi_of_match[] = {
 	{ .compatible = "telechips,tcc-spi" },
+	{ .compatible = "telechips,tcc-spi-slave" },
 	{ .compatible = "telechips,tcc805x-spi" },
 	{ .compatible = "telechips,tcc803x-spi" },
 	{ .compatible = "telechips,tcc897x-spi" },
@@ -1715,5 +1768,5 @@ static struct platform_driver tcc_spidrv = {
 module_platform_driver(tcc_spidrv);
 
 MODULE_AUTHOR("Telechips Inc. linux@telechips.com");
-MODULE_DESCRIPTION("Telechips GPSB SPI Master Driver");
+MODULE_DESCRIPTION("Telechips GPSB SPI Driver");
 MODULE_LICENSE("GPL");

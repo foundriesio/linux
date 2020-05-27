@@ -206,7 +206,7 @@ struct tcc_spi_dma_buf {
 	size_t size;
 };
 
-/* TCC GPSB SPI Master Platform Data */
+/* TCC GPSB SPI Platform Data */
 struct tcc_spi_pl_data {
 	/* Bus id*/
 	unsigned int id;
@@ -216,6 +216,9 @@ struct tcc_spi_pl_data {
 
 	/* Driver name */
 	const char	*name;
+
+	/* SPI Master/Slave mode */
+	bool is_slave;
 
 	/* Port configuration */
 #ifdef TCC_USE_GFB_PORT
@@ -241,7 +244,7 @@ struct tcc_spi_pl_data {
 	bool ctf;
 };
 
-/* TCC GPSB SPI Master Data */
+/* TCC GPSB SPI Data */
 struct tcc_spi{
 	/* GPSB base phy address */
 	resource_size_t 	pbase;
