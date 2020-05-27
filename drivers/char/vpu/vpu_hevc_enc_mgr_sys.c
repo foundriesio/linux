@@ -11,24 +11,6 @@
 
 #include "vpu_hevc_enc_mgr_sys.h"
 
-/* Debugging info */
-#define DEBUG
-#define DEBUG_ENC_SEQUENCE		(1<<0)
-#define DEBUG_ENC_ERROR			(1<<1)
-#define DEBUG_ENC_INTERRUPT		(1<<2)
-#define DEBUG_ENC_PROBE			(1<<3)
-#define DEBUG_ENC_RSTCLK		(1<<4)
-#define DEBUG_ENC_THREAD		(1<<5)
-
-static unsigned int debug_mask = DEBUG_ENC_SEQUENCE;
-
-#ifdef DEBUG
-#define _DBG(x, fmt, args...) \
-	do { if (debug_mask & x) printk("[%s:%d] " fmt "\n", \
-							__func__, __LINE__, ##args); } while(0)
-#else
-#define _DBG(x, fmt, args...) do { } while(0)
-#endif
 
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *fbus_chevcenc_clk = NULL;

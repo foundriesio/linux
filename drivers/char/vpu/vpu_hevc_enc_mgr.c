@@ -24,24 +24,6 @@
 
 #include "vpu_hevc_enc_mgr_sys.h"
 
-/* Debugging info */
-#define DEBUG
-#define DEBUG_ENC_SEQUENCE		(1<<0)
-#define DEBUG_ENC_ERROR			(1<<1)
-#define DEBUG_ENC_INTERRUPT		(1<<2)
-#define DEBUG_ENC_PROBE			(1<<3)
-#define DEBUG_ENC_RSTCLK		(1<<4)
-#define DEBUG_ENC_THREAD		(1<<5)
-
-static unsigned int debug_mask = DEBUG_ENC_SEQUENCE;
-
-#ifdef DEBUG
-#define _DBG(x, fmt, args...) \
-	do { if (debug_mask & x) printk("[%s:%d] " fmt "\n", \
-							__func__, __LINE__, ##args); } while(0)
-#else
-#define _DBG(x, fmt, args...) do { } while(0)
-#endif
 
 static unsigned int cntInt_vpu_he = 0;
 
@@ -64,10 +46,13 @@ VpuList_t* vmgr_hevc_enc_list_manager(VpuList_t* args, unsigned int cmd)
 
 	mutex_lock(&vmgr_hevc_enc_data.comm_data.list_mutex);
 
-	if(data == NULL)
+	if(cmd == LIST_ADD || cmd == LIST_DEL)
 	{
-		_DBG(DEBUG_ENC_ERROR, "ADD :: data is null");
-		goto Error;
+		if(data == NULL)
+		{
+			_DBG(DEBUG_ENC_ERROR, "ADD :: data is null");
+			goto Error;
+		}
 	}
 
 	switch (cmd)
@@ -175,12 +160,12 @@ int vmgr_hevc_enc_get_alive(void)
 	return atomic_read(&vmgr_hevc_enc_data.dev_opened);
 }
 
-int vmgr_hevc_enc_get_close(vputype type)
+int vmgr_hevc_enc_get_close(vpu_hevc_enc_type type)
 {
 	return vmgr_hevc_enc_data.closed[type];
 }
 
-int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
+int vmgr_hevc_enc_set_close(vpu_hevc_enc_type type, int value, int bfreemem)
 {
 	if(vmgr_hevc_enc_get_close(type) == value)
 	{
@@ -217,7 +202,7 @@ static void _vmgr_hevc_enc_close_all(int bfreemem)
 #endif
 }
 
-int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
+int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vpu_hevc_enc_type type, int Op, int *result)
 {
     if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
     {
@@ -445,7 +430,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
     return ret_code;
 }
 
-static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* args)
+static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
@@ -759,7 +744,7 @@ static int _vmgr_hevc_enc_operation(void)
 
 static int _vmgr_hevc_enc_thread(void *kthread)
 {
-	_DBG(DEBUG_ENC_SEQUENCE, "enter");
+	_DBG(DEBUG_ENC_THREAD, "enter");
 
 	do {
 		if (vmgr_hevc_enc_list_manager(NULL, LIST_IS_EMPTY))
@@ -782,7 +767,7 @@ static int _vmgr_hevc_enc_thread(void *kthread)
 			{
 				VpuList_t *oper_data = NULL;
 
-				_DBG(DEBUG_ENC_SEQUENCE, "DEL for empty");
+				_DBG(DEBUG_ENC_THREAD, "DEL for empty");
 
 				oper_data = vmgr_hevc_enc_list_manager(NULL, LIST_GET_ENTRY);
 				if (oper_data)
@@ -793,7 +778,7 @@ static int _vmgr_hevc_enc_thread(void *kthread)
 		}
 	}while (!kthread_should_stop() );
 
-	_DBG(DEBUG_ENC_SEQUENCE, "finish");
+	_DBG(DEBUG_ENC_THREAD, "finish");
 
 	return 0;
 }
@@ -1246,6 +1231,11 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 #endif
 
 	vmgr_hevc_enc_data.irq = platform_get_irq(pdev, 0);
+	if (vmgr_hevc_enc_data.irq < 0) {
+		dev_err(&pdev->dev, "could not get IRQ");
+		return vmgr_hevc_enc_data.irq;
+	}
+
 	vmgr_hevc_enc_data.nOpened_Count = 0;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res)
@@ -1309,11 +1299,12 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
         return -EBUSY;
     }
 
-	//vmgr_hevc_enc_enable_clock(0);
-	//vmgr_hevc_enc_disable_clock(0);
+	vmgr_hevc_enc_enable_clock(0);
+	vmgr_hevc_enc_disable_clock(0);
 
     return 0;
-}
+
+}
 EXPORT_SYMBOL(vmgr_hevc_enc_probe);
 
 int vmgr_hevc_enc_remove(struct platform_device *pdev)
