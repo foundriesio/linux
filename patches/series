@@ -51,6 +51,7 @@ printk-kmsg_dump-remove-mutex-usage.patch
 printk-devkmsg-read-Return-EPIPE-when-the-first-mess.patch
 printk-handle-iterating-while-buffer-changing.patch
 printk-hack-out-emergency-loglevel-usage.patch
+printk-Force-a-line-break-on-pr_cont-n.patch
 serial-8250-only-atomic-lock-for-console.patch
 serial-8250-fsl-ingenic-mtk-fix-atomic-console.patch
 
@@ -258,7 +259,7 @@ mm-Don-t-warn-about-atomic-memory-allocations-during.patch
 mm-memcontrol-Don-t-call-schedule_work_on-in-preempt.patch
 mm-memcontrol-do_not_disable_irq.patch
 mm_zsmalloc_copy_with_get_cpu_var_and_locking.patch
-mm-zswap-Do-not-disable-preemption-in-zswap_frontswa.patch
+mm-zswap-Use-local-lock-to-protect-per-CPU-data.patch
 
 # RADIX TREE
 # Local lock use case ....

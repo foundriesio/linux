@@ -133,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {
  		struct napi_struct *n;
  
-@@ -10186,10 +10199,13 @@ static int dev_cpu_dead(unsigned int old
+@@ -10188,10 +10201,13 @@ static int dev_cpu_dead(unsigned int old
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
@@ -148,7 +148,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return 0;
  }
-@@ -10502,8 +10518,9 @@ static int __init net_dev_init(void)
+@@ -10504,8 +10520,9 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  

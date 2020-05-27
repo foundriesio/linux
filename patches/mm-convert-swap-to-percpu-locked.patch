@@ -52,7 +52,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			}
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -2902,9 +2902,9 @@ static void drain_local_pages_wq(struct
+@@ -2911,9 +2911,9 @@ static void drain_local_pages_wq(struct
  	 * cpu which is allright but we also have to make sure to not move to
  	 * a different one.
  	 */

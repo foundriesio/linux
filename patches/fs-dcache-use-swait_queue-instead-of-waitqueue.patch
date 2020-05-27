@@ -205,7 +205,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  extern struct dentry * d_exact_alias(struct dentry *, struct inode *);
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1611,7 +1611,7 @@ struct nfs_unlinkdata {
+@@ -1613,7 +1613,7 @@ struct nfs_unlinkdata {
  	struct nfs_removeargs args;
  	struct nfs_removeres res;
  	struct dentry *dentry;

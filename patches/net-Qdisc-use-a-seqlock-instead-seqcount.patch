@@ -160,7 +160,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (qdisc->flags & TCQ_F_NOLOCK)
  		spin_unlock(&qdisc->seqlock);
  }
-@@ -541,7 +556,7 @@ static inline spinlock_t *qdisc_root_sle
+@@ -542,7 +557,7 @@ static inline spinlock_t *qdisc_root_sle
  	return qdisc_lock(root);
  }
  

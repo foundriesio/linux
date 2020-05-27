@@ -93,7 +93,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #include <asm/mshyperv.h>
  #include <linux/delay.h>
-@@ -1233,6 +1234,8 @@ static void vmbus_isr(void)
+@@ -1247,6 +1248,8 @@ static void vmbus_isr(void)
  	void *page_addr = hv_cpu->synic_event_page;
  	struct hv_message *msg;
  	union hv_synic_event_flags *event;
@@ -102,7 +102,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	bool handled = false;
  
  	if (unlikely(page_addr == NULL))
-@@ -1277,7 +1280,7 @@ static void vmbus_isr(void)
+@@ -1291,7 +1294,7 @@ static void vmbus_isr(void)
  			tasklet_schedule(&hv_cpu->msg_dpc);
  	}
  

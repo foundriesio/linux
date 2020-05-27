@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		rcu_read_unlock();
  		goto retry;
  	}
-@@ -1197,12 +1197,12 @@ static int dma_buf_debug_show(struct seq
+@@ -1198,12 +1198,12 @@ static int dma_buf_debug_show(struct seq
  
  		robj = buf_obj->resv;
  		while (true) {

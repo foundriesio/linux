@@ -108,7 +108,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void free_one_page(struct zone *zone,
-@@ -2788,13 +2795,18 @@ void drain_zone_pages(struct zone *zone,
+@@ -2797,13 +2804,18 @@ void drain_zone_pages(struct zone *zone,
  {
  	unsigned long flags;
  	int to_drain, batch;
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  #endif
  
-@@ -2810,14 +2822,21 @@ static void drain_pages_zone(unsigned in
+@@ -2819,14 +2831,21 @@ static void drain_pages_zone(unsigned in
  	unsigned long flags;
  	struct per_cpu_pageset *pset;
  	struct per_cpu_pages *pcp;
@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -3045,7 +3064,10 @@ static void free_unref_page_commit(struc
+@@ -3054,7 +3073,10 @@ static void free_unref_page_commit(struc
  	pcp->count++;
  	if (pcp->count >= pcp->high) {
  		unsigned long batch = READ_ONCE(pcp->batch);
