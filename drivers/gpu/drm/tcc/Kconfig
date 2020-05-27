@@ -35,6 +35,15 @@ config DRM_TCC_VIDI
 	help
 	  Choose this option if you want to use TCC VIDI for DRM.
 
+config DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE
+	bool "All crtcs will be always alive"
+	depends on DRM_TCC_LCD || DRM_TCC_EXT || DRM_TCC_THIRD
+	help
+		Display Device on VIOC requiress at least one activated RDMA
+		Otherwise, Display Device becomes unstable status.
+		You should set CONFIG_DRM_TCC_CRTC_TO_BE_ALWAYS_ALIVE to prevent
+		Display Device becomes unstable status if there is no other solution.
+
 comment "Encoders and Bridges"
 
 config DRM_TCC_DPI
