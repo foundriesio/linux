@@ -182,11 +182,11 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 		__raw_writel(__raw_readl(reg) | ((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
 //		printk("sub_id: %d, reg: 0x%p, vin interrupt: 0x%08x\n", sub_id, reg, __raw_readl(reg));
         break;
-#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
 	case VIOC_INTR_VIN5:
 	case VIOC_INTR_VIN6:
-#ifdef defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
 #endif//defined(CONFIG_ARCH_TCC805X)
         sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
@@ -378,11 +378,11 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 //		if((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
 			do_irq_mask = 0;
 		break;
-#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
 	case VIOC_INTR_VIN5:
 	case VIOC_INTR_VIN6:
-#ifdef defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
 #endif//defined(CONFIG_ARCH_TCC805X)
 		sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
@@ -645,11 +645,11 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 		if (__raw_readl(reg) & ((mask << 16) & (VIOC_VIN_INT_MASK << 16)))
 			return true;
 		return false;
-#ifdef defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
 	case VIOC_INTR_VIN5:
 	case VIOC_INTR_VIN6:
-#ifdef defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
 #endif//defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
