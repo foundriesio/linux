@@ -47,7 +47,11 @@ obj-$(CONFIG_TCC_SECURE_PROCESSOR)	+= tcc_sp_ipc.o
 
 obj-$(CONFIG_TCC_SEC_IPC)	+= tcc_sec_ipc.o
 
-obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc_multi_mbox_dev.o
+ifeq ($(CONFIG_ARCH_TCC803X),y)
+obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc803x_multi_mailbox/
+else
+obj-$(CONFIG_TCC_MULTI_MAILBOX) += tcc805x_multi_mailbox/
+endif
 
 obj-$(CONFIG_TCC_MULTI_MAILBOX_AUDIO) += tcc_multi_mailbox_audio/
 
@@ -55,4 +59,3 @@ obj-$(CONFIG_TCC_MAILBOX_HLC) += tcc_mailbox_hlc.o
 
 obj-$(CONFIG_TCC_MAILBOX_SUSPEND) += tcc_mailbox_suspend/
 
-tcc_multi_mbox_dev-y := tcc_multi_mbox.o

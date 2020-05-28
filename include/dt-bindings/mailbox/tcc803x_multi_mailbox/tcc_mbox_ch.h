@@ -8,8 +8,7 @@
 #define TCC_MBOX0_CH_RESUME			(3)
 #define TCC_MBOX0_CH_SNOR_UPDATE	(4)
 #define TCC_MBOX0_CH_HLC			(5)
-#define TCC_MBOX0_CH_HSM (6)
-#define TCC_MBOX0_CH_MAX (7)
+#define TCC_MBOX0_CH_MAX			(6)
 
 /*  MBOX1 : A53 <-> A7S */
 #define TCC_MBOX1_CH_RESERVED		(0)
@@ -19,9 +18,8 @@
 #define TCC_MBOX1_CH_SWITCH			(4)
 #define TCC_MBOX1_CH_TOUCH			(5)
 #define TCC_MBOX1_CH_SCRSHARE		(6)
-#define TCC_MBOX1_CH_HSM (7)
-#define TCC_MBOX1_CH_MAX (8)
+#define TCC_MBOX1_CH_MAX			(7)
 
-#define TCC_MBOX_CH_LIMIT (8)
+#define TCC_MBOX_CH_LIMIT			(7)
 
 #endif

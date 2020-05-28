@@ -12,7 +12,7 @@
 #include <dt-bindings/display/tcc805x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/mailbox/tcc_mbox_ch.h>
+#include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
 
 #include "tcc-pmap-805x-subcore-a53q.dtsi"
@@ -701,6 +701,58 @@
                 clock-names = "uartclk", "apb_pclk";
                 status = "disabled";
         };
+
+	/* A53 <-> R5 */
+	micom_mbox: mbox@0x1BA30000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x1BA30000 0x100>;
+		interrupts = <GIC_SPI 444 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 445 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		max-channel = <TCC_MICOM_MBOX1_MAX>;
+	};
+	/* A53 <-> A72 */
+	cb_mbox: mbox@0x17B00000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x17B00000 0x100>;
+		interrupts = <GIC_SPI 365 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 366 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		max-channel = <TCC_CB_MBOX_MAX>;
+	};
+	/* micom_mbox test */
+	mbox_test0: mbox_test@0 {
+		 compatible = "telechips,mbox_test";
+		 device-name = "micom_mbox_test";
+		 mbox-names ="mbox_test";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_TEST>;
+		 mbox-id = TCC_MBOX_TEST_ID;
+	 };
+	/* cb_mbox test */
+	mbox_test1: mbox_test@1 {
+		 compatible = "telechips,mbox_test";
+		 device-name = "cb_mbox_test";
+		 mbox-names ="mbox_test";
+		 mboxes = <&cb_mbox TCC_CB_MBOX_TEST>;
+		 mbox-id = TCC_MBOX_TEST_ID;
+	 };
+	/* ipc for r5(micom) */
+	ipc0: tcc_ipc@0 {
+		 compatible = "telechips,tcc_ipc";
+		 device-name = "tcc_ipc_micom";
+		 mbox-names ="micom-ipc";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_IPC>;
+		 mbox-id = TCC_MBOX_IPC_ID;
+	 };
+
+	/* ipc for A72 */
+	ipc1: tcc_ipc@1 {
+		 compatible = "telechips,tcc_ipc";
+		 device-name = "tcc_ipc_ap";
+		 mbox-names ="ap-ipc";
+		 mboxes = <&cb_mbox TCC_CB_MBOX_IPC>;
+		 mbox-id = TCC_MBOX_IPC_ID;
+	 };
 };
 
 &pinctrl {

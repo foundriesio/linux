@@ -10,7 +10,7 @@
 #include <dt-bindings/display/tcc805x-vioc.h>
 #include <dt-bindings/power/telechips,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/mailbox/tcc_mbox_ch.h>
+#include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
 
 #if defined(CONFIG_TCC805X_CA53Q)
@@ -1355,58 +1355,51 @@
 		#mbox-cells = <1>;
 	};
 
-	/* A53 <-> R5 */
-	mbox0: mbox@0x1BA10000 {
+	/* A72 <-> R5 */
+	micom_mbox: mbox@0x1BA10000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x0 0x1BA10000 0x0 0x100>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH>;
 		#mbox-cells = <1>;
-		max-channel = <TCC_MBOX0_CH_MAX>;
+		max-channel = <TCC_MICOM_MBOX0_MAX>;
 	};
 
-	suspend_mbox0: suspend_mbox@0 {
-	   compatible = "telechips,mailbox-suspend";
-	   device-name = "suspend-mbox-dev-a72";
-	   mbox-names ="suspend-mbox-a72";
-	   mboxes = <&mbox0 TCC_MBOX0_CH_SUSPEND>;
-   };
-
-	suspend_mbox1: suspend_mbox@1 {
-	   compatible = "telechips,mailbox-resume";
-	   device-name = "resume-mbox-dev-a72";
-	   mbox-names ="resume-mbox-a72";
-	   mboxes = <&mbox0 TCC_MBOX0_CH_RESUME>;
-   };
-
-	hlc_mbox2: hlc_mbox@0 {
-	   compatible = "telechips,hlc-mbox";
-	   device-name = "hlc-mbox-dev-a72";
-	   mbox-names ="hlc-mbox-a72";
-	   mboxes = <&mbox0 TCC_MBOX0_CH_HLC>;
-   };
-
-
-	/* A53 <-> A7S */
-	mbox1: mbox@0x17A00000 {
+	/* A72 <-> A53 */
+	cb_mbox: mbox@0x17A00000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x0 0x17A00000 0x0 0x100>;
-		interrupts = <GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 363 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 364 IRQ_TYPE_LEVEL_HIGH>;
 		#mbox-cells = <1>;
-		max-channel = <TCC_MBOX1_CH_MAX>;
+		max-channel = <TCC_CB_MBOX_MAX>;
 	};
 
-	tctb: tcc_touch_bridge {
-	    compatible = "telechips,tcc_touch_bridge";
-	    mbox-names ="tb-mbox";
-	    mboxes = <&mbox1 TCC_MBOX1_CH_TOUCH>;
-	};
+	/* micom_mbox test */
+	mbox_test0: mbox_test@0 {
+		 compatible = "telechips,mbox_test";
+		 device-name = "micom_mbox_test";
+		 mbox-names ="mbox_test";
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_TEST>;
+		 mbox-id = TCC_MBOX_TEST_ID;
+	 };
+
+	/* cb_mbox test */
+	mbox_test1: mbox_test@1 {
+		 compatible = "telechips,mbox_test";
+		 device-name = "cb_mbox_test";
+		 mbox-names ="mbox_test";
+		 mboxes = <&cb_mbox TCC_CB_MBOX_TEST>;
+		 mbox-id = TCC_MBOX_TEST_ID;
+	 };
 
 	/* ipc for r5(micom) */
 	ipc0: tcc_ipc@0 {
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_micom";
 		 mbox-names ="micom-ipc";
-		 mboxes = <&mbox0 TCC_MBOX0_CH_IPC>;
+		 mboxes = <&micom_mbox TCC_MICOM_MBOX0_IPC>;
+		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
 
 	/* ipc for A7S */
@@ -1414,33 +1407,9 @@
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_ap";
 		 mbox-names ="ap-ipc";
-		 mboxes = <&mbox1 TCC_MBOX1_CH_IPC>;
+		 mboxes = <&cb_mbox TCC_CB_MBOX_IPC>;
+		 mbox-id = TCC_MBOX_IPC_ID;
 	 };
-
-        /* tcc_scrshare for A53 */
-        tcc_scrshare0: tcc_scrshare@0 {
-                compatible = "telechips,tcc_scrshare";
-                device-name ="tcc_scrshare_a72";
-                mbox-names ="a72-scrshare";
-                mboxes = <&mbox1 TCC_MBOX1_CH_SCRSHARE>;
-                status = "disabled";
-        };
-
-	/* vioc_mgr for A53 */
-	vioc_mgr0: vioc_mgr@0 {
-		compatible = "telechips,vioc_mgr";
-		device-name ="vioc_mgr_a72";
-		mbox-names ="a72-vioc";
-		mboxes = <&mbox1 TCC_MBOX1_CH_VIOC>;
-		status = "disabled";
-	};
-
-	/* snor updater driver*/
-	snor_updater: snor_updater {
-		compatible = "telechips,snor_updater";
-		mbox-names ="snor-update-mbox";
-		mboxes = <&mbox0 TCC_MBOX0_CH_SNOR_UPDATE>;
-	};
 
 	i2c0: i2c@16300000 {
 		compatible = "telechips,tcc805x-i2c";
@@ -2545,14 +2514,6 @@
 		status = "disabled";
 	};
 
-	/* audio_mailbox (TSND) for A53. */
-	audio_mbox0: audio_mbox@0 {
-		compatible = "telechips,mailbox-audio";
-		device-name ="audio-mbox-dev-a72";
-		mbox-names ="audio-mbox-a72";
-		mboxes = <&mbox1 TCC_MBOX1_CH_SND>;
-		status = "disabled";
-	};
 	/*tcc_sfmc: tcc_sfmc@1B000000 {
 		compatible = "telechips,tcc_sfmc";
 		reg = <0x0 0x1b000000 0x0 0xA00>,

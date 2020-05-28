@@ -47,19 +47,16 @@ IPC_INT32 ipc_send_open(struct ipc_device *ipc_dev)
 {
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
+	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
 
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_OPEN);
-	sendMsg.cmd[2] = 0;
-	sendMsg.cmd[3] = 0;
-	sendMsg.cmd[4] = 0;
-	sendMsg.cmd[5] = 0;
-	sendMsg.cmd[6] = 0;
 
 	sendMsg.data_len = 0;
 
 	ipc_dev->ipc_handler.openSeqID = sendMsg.cmd[0];
 	ipc_dev->ipc_handler.requestConnectTime = ipc_get_msec();
+
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
 	return ret;
 }
@@ -69,13 +66,10 @@ IPC_INT32 ipc_send_close(struct ipc_device *ipc_dev)
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
+	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_CLOSE);
-	sendMsg.cmd[2] = 0;
-	sendMsg.cmd[3] = 0;
-	sendMsg.cmd[4] = 0;
-	sendMsg.cmd[5] = 0;
-	sendMsg.cmd[6] = 0;
 
 	sendMsg.data_len = 0;
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);
@@ -90,13 +84,11 @@ IPC_INT32 ipc_send_write(struct ipc_device *ipc_dev, IPC_CHAR *ipc_data, IPC_UIN
 
 	if((size <= IPC_TXBUFFER_SIZE)&&(ipc_data != NULL))
 	{
+		memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
 		sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 		sendMsg.cmd[1] = ((IPC_UINT32)WRITE_CMD << (IPC_UINT32)16)|((IPC_UINT32)IPC_WRITE);
 		sendMsg.cmd[2] = size;	
-		sendMsg.cmd[3] = 0;
-		sendMsg.cmd[4] = 0;
-		sendMsg.cmd[5] = 0;
-		sendMsg.cmd[6] = 0;
 
 		memcpy((void *)&sendMsg.data ,(const void *)ipc_data, (size_t)size);
 		sendMsg.data_len = ((size + 3U)/4U);
@@ -125,13 +117,10 @@ IPC_INT32 ipc_send_ping(struct ipc_device *ipc_dev)
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
+	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
 	sendMsg.cmd[0] = get_sequential_ID(ipc_dev);
 	sendMsg.cmd[1] = ((IPC_UINT32)CTL_CMD << (IPC_UINT32)16U)|((IPC_UINT32)IPC_SEND_PING);
-	sendMsg.cmd[2] = 0;
-	sendMsg.cmd[3] = 0;
-	sendMsg.cmd[4] = 0;
-	sendMsg.cmd[5] = 0;
-	sendMsg.cmd[6] = 0;
 
 	sendMsg.data_len = 0;
 
@@ -155,13 +144,11 @@ IPC_INT32 ipc_send_ack(struct ipc_device *ipc_dev, IPC_UINT32 seqID, IpcCmdType 
 	IPC_INT32 ret = IPC_ERR_COMMON;
 	struct tcc_mbox_data sendMsg;
 
+	memset(&sendMsg, 0x00, sizeof(struct tcc_mbox_data));
+
 	sendMsg.cmd[0] = seqID;
 	sendMsg.cmd[1] = ((IPC_UINT32)cmdType << (IPC_UINT32)16U)|((IPC_UINT32)IPC_ACK);
 	sendMsg.cmd[2] = sourcCmd;
-	sendMsg.cmd[3] = 0;
-	sendMsg.cmd[4] = 0;
-	sendMsg.cmd[5] = 0;
-	sendMsg.cmd[6] = 0;
 
 	sendMsg.data_len = 0;
 	ret = ipc_mailbox_send(ipc_dev, &sendMsg);

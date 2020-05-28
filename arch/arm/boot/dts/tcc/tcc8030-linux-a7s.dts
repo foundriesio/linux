@@ -11,7 +11,7 @@
 #include <dt-bindings/clock/telechips,tcc803x-clks.h>
 #include <dt-bindings/display/tcc803x-vioc.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/mailbox/tcc_mbox_ch.h>
+#include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 
 #include "tcc-pmap-803x-linux-a7s.dtsi"
 

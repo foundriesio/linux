@@ -15,13 +15,13 @@
  * Suite 330, Boston, MA 02111-1307 USA
  ****************************************************************************/
 
-#ifndef TCC_MULTI_MBOX_H
-#define TCC_MULTI_MBOX_H
+#ifndef TCC805X_MULTI_MBOX_TEST_H
 
-#if defined(CONFIG_ARCH_TCC803X)
-	#include <linux/mailbox/tcc803x_multi_mailbox/tcc803x_multi_mbox.h>
-#elif defined(CONFIG_ARCH_TCC805X)
-	#include <linux/mailbox/tcc805x_multi_mailbox/tcc805x_multi_mbox.h>
-#endif
+#define TCC805X_MULTI_MBOX_TEST_H
+
+#define MBOX_TEST_MAGIC ('M')
+
+#define IOCTL_MBOX_TEST			(_IO(MBOX_TEST_MAGIC ,1))
+
 
 #endif
