@@ -204,7 +204,7 @@ static void __exit vpu_hevc_enc_dev_cleanup(void)
     platform_device_unregister(&vpu_hevc_enc_ext_device);
 #endif
 
-#if defined(CONFIG_HEVC_ENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
     platform_driver_unregister(&vpu_hevc_enc_driver);
     platform_device_unregister(&vpu_hevc_enc_device);
 #endif
@@ -236,7 +236,7 @@ static int vpu_hevc_enc_dev_init(void)
 	 * The maximum number of instances registered are 4.
 	 */
 
-#if defined(CONFIG_HEVC_ENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 	platform_device_register(&vpu_hevc_enc_device);
 	platform_driver_register(&vpu_hevc_enc_driver);
 #endif
