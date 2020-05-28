@@ -36,6 +36,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/pci.h>
+#include <linux/dmi.h>
 #include "pciehp.h"
 #include <linux/interrupt.h>
 #include <linux/time.h>
@@ -206,6 +207,23 @@ static void pciehp_check_presence(struct controller *ctrl)
 	up_read(&ctrl->reset_lock);
 }
 
+static void check_for_broken_active_bit(struct controller *ctrl)
+{
+	const char *product_name = dmi_get_system_info(DMI_PRODUCT_NAME);
+
+	if (!product_name)
+		return;
+
+	if (ctrl->pcie->port->vendor != 0x10b5 && ctrl->pcie->port->vendor != 0x8086)
+		return;
+
+	if (	strstr(product_name, "PRIMEQUEST 2400E3") ||
+		strstr(product_name, "PRIMEQUEST 2400L3") ||
+		strstr(product_name, "PRIMEQUEST 2800E3") ||
+		strstr(product_name, "PRIMEQUEST 2800L3"))
+			ctrl->always_heed_presense_bit = true;
+}
+
 static int pciehp_probe(struct pcie_device *dev)
 {
 	int rc;
@@ -228,6 +246,8 @@ static int pciehp_probe(struct pcie_device *dev)
 		return -ENODEV;
 	}
 	set_service_data(dev, ctrl);
+
+	check_for_broken_active_bit(ctrl);
 
 	/* Setup the slot information structures */
 	rc = init_slot(ctrl);

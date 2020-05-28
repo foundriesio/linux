@@ -300,6 +300,9 @@ static int __pciehp_enable_slot(struct controller *ctrl)
 {
 	u8 getstatus = 0;
 
+	if (ctrl->always_heed_presense_bit && !pciehp_card_present(ctrl))
+		return -ENODEV;
+
 	if (MRL_SENS(ctrl)) {
 		pciehp_get_latch_status(ctrl, &getstatus);
 		if (getstatus) {

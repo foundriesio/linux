@@ -914,8 +914,7 @@ ccp_run_aes_cmd(struct ccp_cmd_queue *cmd_q, struct ccp_cmd *cmd)
 		return -EINVAL;
 
 	if (((aes->mode == CCP_AES_MODE_ECB) ||
-	     (aes->mode == CCP_AES_MODE_CBC) ||
-	     (aes->mode == CCP_AES_MODE_CFB)) &&
+	     (aes->mode == CCP_AES_MODE_CBC)) &&
 	    (aes->src_len & (AES_BLOCK_SIZE - 1)))
 		return -EINVAL;
 
