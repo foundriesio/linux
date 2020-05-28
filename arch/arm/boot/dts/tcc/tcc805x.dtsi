@@ -247,23 +247,12 @@
 		pmap_a53_avm: a53_avm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "subcore kernel";
-			alloc-ranges = <0x0 0x60000000 0x0 0x30000000>;
-			size = <0x30000000>;
+			alloc-ranges = <0x0 0x68000000 0x0 0x28000000>;
+			size = <0x0 0x28000000>;
 			no-map;
 		};
+#endif
 
-/*
-#ifdef CONFIG_TCC_CORE_RESET
-		a53_avm_backup {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "a53_avm_backup";
-			alloc-ranges = <0xA0000000 0x10000000>;
-			size = <0x10000000>;
-			no-map;
-		};
-#endif
-*/
-#endif
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
