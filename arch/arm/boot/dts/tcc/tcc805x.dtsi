@@ -101,7 +101,6 @@
 		vout-drv0 = &vout_drv0;
 		vout-drv1 = &vout_drv1;
 		wdma-drv0 = &wdma_drv0;
-#ifdef CONFIG_VIDEO_TCCVIN
 		videoinput0 = &videoinput0;
 		videoinput1 = &videoinput1;
 		videoinput2 = &videoinput2;
@@ -109,7 +108,7 @@
 		videoinput4 = &videoinput4;
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
-#endif
+		videoinput7 = &videoinput7;
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
@@ -2978,18 +2977,18 @@
 			  <0x0 0x12050000 0x0 0x100>,
 			  <0x0 0x12051000 0x0 0x100>;
 	};
-	mipi_csi2:mipi_csi@123c0000{
-		compatible = "telechips,mipi_csi2";
 
-		reg = <0x0 0x1bc00800 0x0 0x120>, /* csi0_base */
-		      <0x0 0x1bc00a00 0x0 0x5c>, /* gdb0_base */
-		      <0x0 0x1bc00000 0x0 0x14>, /* ckc_base */
-		      <0x0 0x1bc00400 0x0 0x120>; /* cfg_base */
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>, 	// MIPI0 interrupt
-				   <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;	// MIPI1 interrupt
+	mipi_csi2:mipi_csi@123c0000 {
+		compatible = "telechips,mipi_csi2";
+		reg = <0x0 0x1bc00800 0x0 0x120>,	/* csi0_base */
+		      <0x0 0x1bc00a00 0x0 0x05c>,	/* gdb0_base */
+		      <0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
+		      <0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,		// MIPI0 interrupt
+			     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;		// MIPI1 interrupt
 	 };
 /*
-	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200{
+	mipi_generic_data_buffer:mipi_generic_data_buffer@123c0200 {
 		compatible = "telechips,mipi_generic_data_buffer";
 		reg = <0x0 0x123c0200 0x0 0x5c>;
 		clocks = <&clk_peri PERI_MIPI_CSI>;
@@ -3318,7 +3317,6 @@
 		status = "disabled";
 	};
 
-#ifdef CONFIG_VIDEO_TCCVIN
 	videoinput0: videoinput@0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
@@ -3361,7 +3359,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
 		wdma		= <&vioc_wdma		VIOC_WDMA03>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput3: videoinput@3 {
@@ -3376,7 +3374,7 @@
 		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
 		wdma		= <&vioc_wdma		VIOC_WDMA04>;
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
+		status		= "okay";
 	};
 
 	videoinput4: videoinput@4 {
@@ -3384,7 +3382,8 @@
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
-		status		= "disabled";
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
 	};
 
 	videoinput5: videoinput@5 {
@@ -3392,7 +3391,8 @@
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
-		status		= "disabled";
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
 	};
 
 	videoinput6: videoinput@6 {
@@ -3400,9 +3400,18 @@
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
-		status		= "disabled";
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
 	};
-#endif
+
+	videoinput7: videoinput@7 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN70>;
+		wdma		= <&vioc_wdma		VIOC_WDMA12>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "okay";
+	};
 
 	/*
 	 * Misc. Devices
@@ -3708,10 +3717,6 @@
 			};
 		};
 	};
-
-#ifdef CONFIG_VIDEO_VIDEOSOURCE
-	videosource: videosource {};
-#endif
 
 	switch_reverse: switch_reverse {};
 
