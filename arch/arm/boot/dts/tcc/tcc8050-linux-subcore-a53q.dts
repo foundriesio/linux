@@ -704,20 +704,98 @@
 };
 
 &pinctrl {
+	gpa: gpa {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x0 0 32>;
+	};
+
+	gpb: gpb {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x40 0 29>;
+	};
+
+	gpc: gpc {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x80 0 30>;
+	};
+
+	gpe: gpe {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x100 0 20>;
+	};
+
+	gpg: gpg {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x180 0 11>;
+	};
+
 	gph: gph {
 		gpio-controller;
 		#gpio-cells = <2>;
 		reg = <0x640 0 12>;
 	};
 
-	uart28_data: uart28_data {
-		telechips,pins = "gph-4", "gph-5";
+	gpk: gpk {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x800 0 19>;
+	};
+
+	gpma: gpma {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x6C0 0 30>;
+	};
+
+	gpmb: gpmb {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x700 0 32>;
+	};
+
+	gpmc: gpmc {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x740 0 30>;
+	};
+
+	gpmd: gpmd {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x780 0 16>;
+	};
+
+	gpsd0: gpsd0 {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x200 0 15>;
+	};
+
+	gpsd1: gpsd1 {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x240 0 11>;
+	};
+
+	gpsd2: gpsd2 {
+		gpio-controller;
+		#gpio-cells = <2>;
+		reg = <0x600 0 10>;
+	};
+
+	uart9_data: uart9_data {
+		telechips,pins = "gpa-24", "gpa-25";
 		telechips,pin-function = <7>;
 	};
 };
 
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart28_data>;
+	pinctrl-0 = <&uart9_data>;
 	status = "okay";
 };
