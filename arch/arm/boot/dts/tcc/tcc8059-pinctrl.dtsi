@@ -2366,7 +2366,7 @@
 	};
 
 	cam0_8bit_idle: cam0_8bit_idle {
-		telechips,pins = "gpa-0",
+		telechips,pins = "gpa-0",  "gpa-1",  "gpa-2",  "gpa-11",  "gpa-12",
 				 "gpa-3",  "gpa-4",  "gpa-5",  "gpa-6",  "gpa-7",  "gpa-8",  "gpa-9",  "gpa-10";
 		telechips,pin-function = <0>;
 		telechips,output-low;
@@ -2382,6 +2382,30 @@
 
 	cam0_clk: cam0_clk {
 		telechips,pins = "gpa-0";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+	};
+
+	cam0_hsync: cam0_hsync {
+		telechips,pins = "gpa-1";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+	};
+
+	cam0_vsync: cam0_vsync {
+		telechips,pins = "gpa-2";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+	};
+
+	cam0_fld: cam0_fld {
+		telechips,pins = "gpa-11";
+		telechips,pin-function = <3>;
+		telechips,drive-strength = <3>;
+	};
+
+	cam0_de: cam0_de {
+		telechips,pins = "gpa-12";
 		telechips,pin-function = <3>;
 		telechips,drive-strength = <3>;
 	};
