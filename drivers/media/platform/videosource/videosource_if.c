@@ -219,6 +219,7 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 	struct device_node	* node	= NULL;
 	int					ret		= 0;
 
+	vdev->format.cif_port = -1;
 	if(videosource_node) {
 		// get cif port
 		of_property_read_u32_index(videosource_node, "cifport", 0, &vdev->format.cif_port);
@@ -252,10 +253,10 @@ int videosource_parse_gpio_dt_data(videosource_t * vdev, struct device_node * vi
 						clk_prepare_enable(mipi_csi2_clk);
 					}
 				}
-				log("%s mipi clock : %d Hz\n", __func__, mipi_csi2_frequency);
+				logd("mipi clock: %d Hz\n", mipi_csi2_frequency);
 #elif defined CONFIG_ARCH_TCC805X
 				if (!(MIPI_WRAP_Set_CKC())) {
-					pr_err("%s - fail  mipi wrap clock setting \n", __func__);
+					loge("fail  mipi wrap clock setting \n");
 				}
 #endif
 				vdev->format.des_info.csi2_irq = irq_of_parse_and_map(node, 0);
@@ -796,10 +797,11 @@ int videosource_if_probe(videosource_t * vdev) {
 	}
 
 	// get the videosource's index from its alias
-	index = of_alias_get_id(vdev->client->dev.of_node, MODULE_NAME);
+	index = of_alias_get_id(vdev->client->dev.of_node, vdev->client->name);
 
 	// set the charactor device name
-	sprintf(name, "%s%d", MODULE_NAME, index);
+	sprintf(name, "%s%d", vdev->client->name, index);
+	log("videosource: \"%s\"\n", name);
 
 	// allocate a charactor device region
 	ret = alloc_chrdev_region(&vdev->cdev_region, 0, 1, name);

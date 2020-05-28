@@ -26,8 +26,6 @@
 #include <video/tcc/vioc_vin.h>
 #include <video/tcc/videosource_ioctl.h>
 
-#define MODULE_NAME		"videosource"
-
 enum type {
 	VIDEOSOURCE_TYPE_VIDEODECODER,
 	VIDEOSOURCE_TYPE_MIPI,

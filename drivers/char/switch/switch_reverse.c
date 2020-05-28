@@ -1,9 +1,19 @@
-/*
- *  drivers/char/switch/switch_reverse.c
+/****************************************************************************
  *
- * Copyright (C) Telechips, Inc.
+ * Copyright (C) 2010 Telechips Inc.
  *
-*/
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
+ * Suite 330, Boston, MA 02111-1307 USA
+ ****************************************************************************/
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -13,7 +23,10 @@
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>	/* msleep_interruptible */
+#ifdef CONFIG_OF
 #include <linux/of_gpio.h>
+#endif//CONFIG_OF
+
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
@@ -29,27 +42,59 @@ static int					debug = 0;
 #define SWITCH_IOCTL_CMD_DISABLE		0x11
 #define SWITCH_IOCTL_CMD_GET_STATE		0x50
 
-//#define ON_OFF_TEST
+static dev_t			switch_reverse_dev_region;
+static struct class		* switch_reverse_class;
+static struct cdev		switch_reverse_cdev;
 
-atomic_t switch_reverse_attr;
-atomic_t switch_reverse_attr_debug;
+atomic_t switch_reverse_type;
+atomic_t switch_reverse_status;
+atomic_t switch_reverse_loglevel;
+
+long switch_reverse_get_type(void) {
+	long	type = (long)atomic_read(&switch_reverse_type);
+	dlog("type: %ld\n", type);
+	return type;
+}
+
+void switch_reverse_set_type(long type) {
+	dlog("type: %ld\n", type);
+	atomic_set(&switch_reverse_type, type);
+}
+
+ssize_t switch_reverse_type_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	return sprintf(buf, "%ld\n", switch_reverse_get_type());
+}
+
+ssize_t switch_reverse_type_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+	unsigned long data;
+	int error = kstrtoul(buf, 10, &data);
+
+	if(error)
+		return error;
+
+	switch_reverse_set_type(data);
+
+	return count;
+}
+
+static DEVICE_ATTR(switch_reverse_type, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_type_show, switch_reverse_type_store);
 
 long switch_reverse_get_state(void) {
-	long	state = (long)atomic_read(&switch_reverse_attr);
+	long	state = (long)atomic_read(&switch_reverse_status);
 	dlog("state: %ld\n", state);
 	return state;
 }
 
 void switch_reverse_set_state(long state) {
 	dlog("state: %ld\n", state);
-	atomic_set(&switch_reverse_attr, state);
+	atomic_set(&switch_reverse_status, state);
 }
 
-ssize_t switch_reverse_attr_show(struct device * dev, struct device_attribute * attr, char * buf) {
+ssize_t switch_reverse_status_show(struct device * dev, struct device_attribute * attr, char * buf) {
 	return sprintf(buf, "%ld\n", switch_reverse_get_state());
 }
 
-ssize_t switch_reverse_attr_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+ssize_t switch_reverse_status_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
 	unsigned long data;
 	int error = kstrtoul(buf, 10, &data);
 	if(error)
@@ -60,30 +105,30 @@ ssize_t switch_reverse_attr_store(struct device * dev, struct device_attribute *
 	return count;
 }
 
-static DEVICE_ATTR(switch_reverse_attr, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_attr_show, switch_reverse_attr_store);
+static DEVICE_ATTR(switch_reverse_status, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_status_show, switch_reverse_status_store);
 
-ssize_t switch_reverse_attr_debug_show(struct device * dev, struct device_attribute * attr, char * buf) {
-	return sprintf(buf, "%d\n", atomic_read(&switch_reverse_attr_debug));
+ssize_t switch_reverse_loglevel_show(struct device * dev, struct device_attribute * attr, char * buf) {
+	return sprintf(buf, "%d\n", atomic_read(&switch_reverse_loglevel));
 }
 
-ssize_t switch_reverse_attr_debug_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
+ssize_t switch_reverse_loglevel_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t count) {
 	unsigned long data;
 	int error = kstrtoul(buf, 10, &data);
 	if(error)
 		return error;
 
-	atomic_set(&switch_reverse_attr_debug, data);
+	atomic_set(&switch_reverse_loglevel, data);
 	debug = data;
 
 	return count;
 }
 
-static DEVICE_ATTR(switch_reverse_attr_debug, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_attr_debug_show, switch_reverse_attr_debug_store);
+static DEVICE_ATTR(switch_reverse_loglevel, S_IRUGO|S_IWUSR|S_IWGRP, switch_reverse_loglevel_show, switch_reverse_loglevel_store);
 
 struct switch_reverse_data {
-	unsigned int		switch_gpio;
-	unsigned int		switch_active;
-	unsigned int		enabled;
+	int		switch_gpio;
+	int		switch_active;
+	int		enabled;
 };
 
 static struct switch_reverse_data * pdata;
@@ -94,59 +139,47 @@ int switch_reverse_is_enabled(void) {
 	return data->enabled;
 }
 
-#ifdef ON_OFF_TEST
-#include <linux/kthread.h>
-#include <linux/sched.h>
-#include <linux/mutex.h>
+int switch_reverse_check_state(void) {
+	long							type		= atomic_read(&switch_reverse_type);
+	struct switch_reverse_data		* data		= pdata;
+	int								gear_value	= -1;
+	int								ret			= -1;
 
-struct task_struct			* threadSwitching;
-struct mutex				switchmanager_lock;
-int							super_switch;
-
-int tccvin_switchmanager_monitor_thread(void * data) {
-	FUNCTION_IN
-
-	// switching
-	while(1) {
-		msleep(2000);
-
-		if(kthread_should_stop())
-			break;
-
-		mutex_lock(&switchmanager_lock);
-
-		super_switch ^= 1;
-		dlog("super_switch: %d\n", super_switch);
-
-		mutex_unlock(&switchmanager_lock);
+	if(type == 1) { // hw switch
+		if((data->switch_gpio != -1) && (data->switch_active != -1)) {
+			gear_value = !!gpio_get_value(data->switch_gpio);
+			ret = (gear_value == data->switch_active);
+			dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
+		} else {
+			log("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
+			ret = switch_reverse_get_state();
+		}
+	} else { // sw switch
+		ret = switch_reverse_get_state();
 	}
 
-	FUNCTION_OUT
-	return 0;
-}
-#endif//ON_OFF_TEST
+	switch(type) {
+	case 0:		// sw switch
+		ret = switch_reverse_get_state();
+		break;
 
-int switch_reverse_check_state(void) {
-#if !defined(CONFIG_PMAP_SUBCORE)
-	struct switch_reverse_data * data = pdata;
-	int gear_value = -1;
-#endif//CONFIG_PMAP_SUBCORE
-	int ret = -1;
+	case 1:		// hw switch
+		if((data->switch_gpio != -1) && (data->switch_active != -1)) {
+			gear_value = !!gpio_get_value(data->switch_gpio);
+			ret = (gear_value == data->switch_active);
+			dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
+		} else {
+			log("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
+			ret = switch_reverse_get_state();
+		}
+		break;
 
-#if !defined(CONFIG_PMAP_SUBCORE)
-	gear_value = !!gpio_get_value(data->switch_gpio);
-	ret = (gear_value == data->switch_active);
-	atomic_set(&switch_reverse_attr, ret);
-	dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
+	default:
+		log("ERRPR: switch type(%d) is WRONG\n", type);
+		break;
+	}
 
-	switch_reverse_set_state(ret);
-#endif//CONFIG_PMAP_SUBCORE
-
-	ret = switch_reverse_get_state();
-#ifdef ON_OFF_TEST
-	if(ret == 1)
-		ret = super_switch;
-#endif//ON_OFF_TEST
+	dlog("reverse switch status: %d\n", ret);
 
 	return ret;
 }
@@ -200,10 +233,6 @@ struct file_operations switch_reverse_fops = {
 	.release		= switch_reverse_release,
 };
 
-static dev_t			switch_reverse_dev_region;
-static struct class		* switch_reverse_class;
-static struct cdev		switch_reverse_cdev;
-
 int switch_reverse_probe(struct platform_device * pdev) {
 	struct switch_reverse_data	* data		= NULL;
 	struct pinctrl					* pinctrl	= NULL;
@@ -218,20 +247,20 @@ int switch_reverse_probe(struct platform_device * pdev) {
 		return ret;
 	}
 	
-	// Create the CM control class
+	// Create the Reverse Switch class
 	switch_reverse_class = class_create(THIS_MODULE, MODULE_NAME);
 	if(switch_reverse_class == NULL) {
 		log("ERROR: Create the \"%s\" class\n", MODULE_NAME);
 		goto goto_unregister_chrdev_region;
 	}
 
-	// Create the CM control device file system
+	// Create the Reverse Switch device file system
 	if(device_create(switch_reverse_class, NULL, switch_reverse_dev_region, NULL, MODULE_NAME) == NULL) {
 		log("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
 		goto goto_destroy_class;
 	}
 
-	// Register the CM control device as a charactor device
+	// Register the Reverse Switch device as a charactor device
 	cdev_init(&switch_reverse_cdev, &switch_reverse_fops);
 	ret = cdev_add(&switch_reverse_cdev, switch_reverse_dev_region, 1);
 	if(ret < 0) {
@@ -239,14 +268,14 @@ int switch_reverse_probe(struct platform_device * pdev) {
 		goto goto_destroy_device;
 	}
 
-	// Allocate memory for SwitchManager Platform Data.
+	// Allocate memory for Reverse Switch Platform Data.
 	data = kzalloc(sizeof(struct switch_reverse_data), GFP_KERNEL);
 	if(!data)
 		return -ENOMEM;
 
 	pdata = data;
 
-	// Set the SwitchManager Platform Data.
+	// Set the Reverse Switch Platform Data.
 	pdev->dev.platform_data	= data;
 
 	// pinctrl
@@ -256,40 +285,51 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	else
 		pinctrl_put(pinctrl);
 
-	data->switch_gpio	= of_get_named_gpio(pdev->dev.of_node, "switch-gpios", 0);
-
-	of_property_read_u32_index(pdev->dev.of_node, "switch-active", 0, &data->switch_active);
+	data->switch_gpio	= -1;
+	data->switch_active	= -1;
+	if(of_parse_phandle(pdev->dev.of_node, "switch-gpios", 0) != NULL) {
+		data->switch_gpio	= of_get_named_gpio(pdev->dev.of_node, "switch-gpios", 0);
+		of_property_read_u32_index(pdev->dev.of_node, "switch-active", 0, &data->switch_active);
+	} else {
+		log("\"switch-gpios\" node is not found.\n");
+	}
+	log("switch-gpios: %d, switch-active: %d\n", data->switch_gpio, data->switch_active);
 
 	data->enabled		= 0;	// disabled now
 
-	// Create the switch_reverse_attr sysfs
-	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr);
+	// Create the switch_reverse_type sysfs
+	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_type);
 	if(ret < 0)
-		log("failed create sysfs\r\n");
+		log("failed create sysfs, switch_reverse_type\r\n");
 
-	// Create the switch_reverse_attr_debug sysfs
-	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_attr_debug);
+	// Set switch_reverse_type as 1 if there is a hw switch node
+	if(data->switch_gpio != -1) {
+		switch_reverse_set_type(1);
+	}
+
+	// Create the switch_reverse_status sysfs
+	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_status);
 	if(ret < 0)
-		log("failed create sysfs: debug\r\n");
+		log("failed create sysfs, switch_reverse_status\r\n");
 
-#ifdef ON_OFF_TEST
-	mutex_init(&switchmanager_lock);
-	threadSwitching = kthread_run(tccvin_switchmanager_monitor_thread, (void *)data, "threadSwitching");
-#endif//ON_OFF_TEST
+	// Create the switch_reverse_loglevel sysfs
+	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_loglevel);
+	if(ret < 0)
+		log("failed create sysfs, switch_reverse_loglevel\r\n");
 
 	FUNCTION_OUT
 	return 0;
 
 //goto_unregister_cdev:
-//	// Unregister the CM control device
+//	// Unregister the Reverse Switch device
 //	cdev_del(&switch_reverse_cdev);
 
 goto_destroy_device:
-	// Destroy the CM control device file system
+	// Destroy the Reverse Switch device file system
 	device_destroy(switch_reverse_class, switch_reverse_dev_region);
 	
 goto_destroy_class:
-	// Destroy the CM control class
+	// Destroy the Reverse Switch class
 	class_destroy(switch_reverse_class);
 
 goto_unregister_chrdev_region:
@@ -303,13 +343,13 @@ goto_unregister_chrdev_region:
 int switch_reverse_remove(struct platform_device * pdev) {
 	FUNCTION_IN
 
-	// Unregister the CM control device
+	// Unregister the Reverse Switch device
 	cdev_del(&switch_reverse_cdev);
 
-	// Destroy the CM control device file system
+	// Destroy the Reverse Switch device file system
 	device_destroy(switch_reverse_class, switch_reverse_dev_region);
 
-	// Destroy the CM control class
+	// Destroy the Reverse Switch class
 	class_destroy(switch_reverse_class);
 
 	// Unregister the charactor device region
@@ -319,39 +359,23 @@ int switch_reverse_remove(struct platform_device * pdev) {
 	return 0;
 }
 
-int switch_reverse_suspend(struct platform_device * pdev, pm_message_t state) {
-	FUNCTION_IN
-
-	log("");
-
-	FUNCTION_OUT
-	return 0;
-}
-
-int switch_reverse_resume(struct platform_device * pdev) {
-	FUNCTION_IN
-
-	log("");
-
-	FUNCTION_OUT
-	return 0;
-}
-
+#ifdef CONFIG_OF
 const struct of_device_id switch_reverse_of_match[] = {
-        {.compatible = "telechips,switch_reverse", },
+        { .compatible = "telechips,switch_reverse", },
         { },
 };
 MODULE_DEVICE_TABLE(of, switch_reverse_of_match);
+#endif//CONFIG_OF
 
 struct platform_driver switch_reverse_driver = {
 	.probe		= switch_reverse_probe,
 	.remove		= switch_reverse_remove,
-	.suspend	= switch_reverse_suspend,
-	.resume		= switch_reverse_resume,
 	.driver		= {
 		.name			= MODULE_NAME,
 		.owner			= THIS_MODULE,
+#ifdef CONFIG_OF
 		.of_match_table = switch_reverse_of_match,
+#endif//CONFIG_OF
 	},
 };
 

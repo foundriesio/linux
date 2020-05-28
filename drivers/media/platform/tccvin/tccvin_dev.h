@@ -26,8 +26,8 @@
 #include <video/tcc/vioc_config.h>
 #include <video/tcc/vioc_rdma.h>
 #include <video/tcc/vioc_vin.h>
-#include <video/tcc/vioc_viqe.h>
 #include <video/tcc/vioc_deintls.h>
+#include <video/tcc/vioc_viqe.h>
 #include <video/tcc/vioc_scaler.h>
 #include <video/tcc/vioc_wmix.h>
 #include <video/tcc/vioc_wdma.h>
@@ -172,9 +172,11 @@ typedef struct tcc_dev {
 	struct mutex				tccvin_switchmanager_lock;
 
 	int							cam_streaming;
+
+	atomic_t					tccvin_attr_diagnostics;
 } tccvin_dev_t;
 
-extern int tccvin_create_attr_diagnostics(struct device * dev);
+extern int tccvin_create_attr_diagnostics(tccvin_dev_t * dev);
 extern int	tccvin_v4l2_init(tccvin_dev_t * vdev);
 extern int	tccvin_v4l2_deinit(tccvin_dev_t * vdev);
 extern void	tccvin_v4l2_querycap(tccvin_dev_t * vdev, struct v4l2_capability * cap);
