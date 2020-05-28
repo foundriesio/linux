@@ -45,6 +45,8 @@
 		videoinput5 = &videoinput5;
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
+		wmixer-drv1 = &wmixer_drv1;
+		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
 
 	cpus {
