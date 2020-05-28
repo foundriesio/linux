@@ -50,7 +50,7 @@ static void _vpu_hevc_enc_inter_add_list(vpu_encoder_data *vdata, int cmd, void*
 
     vdata->venc_list[vdata->list_idx].type          = vdata->gsEncType;
     vdata->venc_list[vdata->list_idx].cmd_type      = cmd;
-    vdata->venc_list[vdata->list_idx].handle        = vdata->gsVpuEncInit_Info.gsVpuEncHandle;
+    vdata->venc_list[vdata->list_idx].handle        = vdata->gsVpuHevcEncInit_Info.handle;
     vdata->venc_list[vdata->list_idx].args          = args;
     vdata->venc_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
     vdata->gsCommEncResult                          = RET0;
@@ -73,16 +73,16 @@ static void _vpu_hevc_enc_init_list(vpu_encoder_data *vdata)
     }
 }
 
-static int _vpu_hevc_enc_proc_init(vpu_encoder_data *vdata, VENC_INIT_t *arg)
+static int _vpu_hevc_enc_proc_init(vpu_encoder_data *vdata, VENC_HEVC_INIT_t *arg)
 {
     void *pArgs;
     dprintk("%s :: _vpu_hevc_enc_proc_init!! \n", vdata->misc->name);
 
     _vpu_hevc_enc_init_list(vdata);
 
-    if(copy_from_user(&vdata->gsVpuEncInit_Info, arg, sizeof(VENC_INIT_t)))
+    if(copy_from_user(&vdata->gsVpuHevcEncInit_Info, arg, sizeof(VENC_HEVC_INIT_t)))
         return -EFAULT;
-    pArgs = ( void *)&vdata->gsVpuEncInit_Info;
+    pArgs = ( void *)&vdata->gsVpuHevcEncInit_Info;
 
     _vpu_hevc_enc_inter_add_list(vdata, VPU_ENC_INIT, ( void *)pArgs);
 
@@ -94,54 +94,54 @@ static int _vpu_hevc_enc_proc_exit(vpu_encoder_data *vdata, void *arg)
     void *pArgs;
     dprintk("%s :: _vpu_hevc_enc_proc_exit!! \n", vdata->misc->name);
 
-    if(copy_from_user(&vdata->gsVpuEncInOut_Info, arg, sizeof(VENC_ENCODE_t)))
+    if(copy_from_user(&vdata->gsVpuHevcEncInOut_Info, arg, sizeof(VENC_HEVC_ENCODE_t)))
         return -EFAULT;
-    pArgs = ( void *)&vdata->gsVpuEncInOut_Info;
+    pArgs = ( void *)&vdata->gsVpuHevcEncInOut_Info;
 
     _vpu_hevc_enc_inter_add_list(vdata, VPU_ENC_CLOSE, ( void *)pArgs);
 
     return 0;
 }
 
-static int _vpu_hevc_enc_proc_put_header(vpu_encoder_data *vdata, VENC_PUT_HEADER_t *arg)
+static int _vpu_hevc_enc_proc_put_header(vpu_encoder_data *vdata, VENC_HEVC_PUT_HEADER_t *arg)
 {
     void *pArgs;
     dprintk("%s :: _vpu_hevc_enc_proc_put_header!! \n", vdata->misc->name);
 
-    if(copy_from_user(&vdata->gsVpuEncPutHeader_Info, arg, sizeof(VENC_PUT_HEADER_t)))
+    if(copy_from_user(&vdata->gsVpuHevcEncPutHeader_Info, arg, sizeof(VENC_HEVC_PUT_HEADER_t)))
         return -EFAULT;
-    pArgs = ( void *)&vdata->gsVpuEncPutHeader_Info;
+    pArgs = ( void *)&vdata->gsVpuHevcEncPutHeader_Info;
 
     _vpu_hevc_enc_inter_add_list(vdata, VPU_ENC_PUT_HEADER, ( void *)pArgs);
 
     return 0;
 }
 
-static int _vpu_hevc_enc_proc_reg_framebuffer(vpu_encoder_data *vdata, VENC_SET_BUFFER_t *arg)
+static int _vpu_hevc_enc_proc_reg_framebuffer(vpu_encoder_data *vdata, VENC_HEVC_SET_BUFFER_t *arg)
 {
     void *pArgs;
 
-    if(copy_from_user(&vdata->gsVpuEncBuffer_Info, arg, sizeof(VENC_SET_BUFFER_t)))
+    if(copy_from_user(&vdata->gsVpuHevcEncBuffer_Info, arg, sizeof(VENC_HEVC_SET_BUFFER_t)))
         return -EFAULT;
-    pArgs = ( void *)&vdata->gsVpuEncBuffer_Info;
+    pArgs = ( void *)&vdata->gsVpuHevcEncBuffer_Info;
 
-    detailk("_vpu_hevc_enc_proc_reg_framebuffer addr :: phy = 0x%x, virt = 0x%x!! \n", vdata->gsVpuEncBuffer_Info.gsVpuEncBuffer.m_FrameBufferStartAddr[0],
-                    vdata->gsVpuEncBuffer_Info.gsVpuEncBuffer.m_FrameBufferStartAddr[1]);
+    detailk("_vpu_hevc_enc_proc_reg_framebuffer addr :: phy = 0x%x, virt = 0x%x!! \n", vdata->gsVpuHevcEncBuffer_Info.encBuffer.m_FrameBufferStartAddr[0],
+                    vdata->gsVpuHevcEncBuffer_Info.encBuffer.m_FrameBufferStartAddr[1]);
 
     _vpu_hevc_enc_inter_add_list(vdata, VPU_ENC_REG_FRAME_BUFFER, ( void *)pArgs);
 
     return 0;
 }
 
-static int _vpu_hevc_enc_proc_encode(vpu_encoder_data *vdata, VENC_ENCODE_t *arg)
+static int _vpu_hevc_enc_proc_encode(vpu_encoder_data *vdata, VENC_HEVC_ENCODE_t *arg)
 {
     void *pArgs;
 
-    if(copy_from_user(&vdata->gsVpuEncInOut_Info, arg, sizeof(VENC_ENCODE_t)))
+    if(copy_from_user(&vdata->gsVpuHevcEncInOut_Info, arg, sizeof(VENC_HEVC_ENCODE_t)))
         return -EFAULT;
-    pArgs = ( void *)&vdata->gsVpuEncInOut_Info;
+    pArgs = ( void *)&vdata->gsVpuHevcEncInOut_Info;
 
-    detailk("_vpu_hevc_enc_proc_encode In !! handle = 0x%x, in_stream_size = 0x%x \n", vdata->gsVpuEncInit_Info.gsVpuEncHandle, vdata->gsVpuEncInOut_Info.gsVpuEncInput.m_iBitstreamBufferSize);
+    detailk("_vpu_hevc_enc_proc_encode In !! handle = 0x%x, in_stream_size = 0x%x \n", vdata->gsVpuHevcEncInit_Info.handle, vdata->gsVpuHevcEncInOut_Info.encInput.m_iBitstreamBufferSize);
 
     _vpu_hevc_enc_inter_add_list(vdata, VPU_ENC_ENCODE, ( void *)pArgs);
 
@@ -156,30 +156,30 @@ static int _vpu_hevc_enc_result_general(vpu_encoder_data *vdata, int *arg)
     return 0;
 }
 
-static int _vpu_hevc_enc_result_init(vpu_encoder_data *vdata, VENC_INIT_t *arg)
+static int _vpu_hevc_enc_result_init(vpu_encoder_data *vdata, VENC_HEVC_INIT_t *arg)
 {
-    vdata->gsVpuEncInit_Info.result = vdata->gsCommEncResult;
-    if (copy_to_user(arg, &vdata->gsVpuEncInit_Info, sizeof(VENC_INIT_t)))
+    vdata->gsVpuHevcEncInit_Info.result = vdata->gsCommEncResult;
+    if (copy_to_user(arg, &vdata->gsVpuHevcEncInit_Info, sizeof(VENC_HEVC_INIT_t)))
         return -EFAULT;
 
     return 0;
 }
 
-static int _vpu_hevc_enc_result_put_header(vpu_encoder_data *vdata, VENC_PUT_HEADER_t *arg)
+static int _vpu_hevc_enc_result_put_header(vpu_encoder_data *vdata, VENC_HEVC_PUT_HEADER_t *arg)
 {
-    vdata->gsVpuEncPutHeader_Info.result = vdata->gsCommEncResult;
-    if (copy_to_user(arg, &vdata->gsVpuEncPutHeader_Info, sizeof(VENC_PUT_HEADER_t)))
+    vdata->gsVpuHevcEncPutHeader_Info.result = vdata->gsCommEncResult;
+    if (copy_to_user(arg, &vdata->gsVpuHevcEncPutHeader_Info, sizeof(VENC_HEVC_PUT_HEADER_t)))
         return -EFAULT;
 
     return 0;
 }
 
-static int _vpu_hevc_enc_proc_encode_result(vpu_encoder_data *vdata, VENC_ENCODE_t *arg)
+static int _vpu_hevc_enc_proc_encode_result(vpu_encoder_data *vdata, VENC_HEVC_ENCODE_t *arg)
 {
-    detailk("%s :: _vpu_hevc_enc_proc_encode_result !! PicType[%d], Encoded_size[%d] \n", vdata->misc->name, vdata->gsVpuEncInOut_Info.gsVpuEncOutput.m_iPicType, vdata->gsVpuEncInOut_Info.gsVpuEncOutput.m_iBitstreamOutSize);
+    detailk("%s :: _vpu_hevc_enc_proc_encode_result !! PicType[%d], Encoded_size[%d] \n", vdata->misc->name, vdata->gsVpuHevcEncInOut_Info.encOutput.m_iPicType, vdata->gsVpuHevcEncInOut_Info.encOutput.m_iBitstreamOutSize);
 
-    vdata->gsVpuEncInOut_Info.result = vdata->gsCommEncResult;
-    if (copy_to_user(arg, &vdata->gsVpuEncInOut_Info, sizeof(VENC_ENCODE_t)))
+    vdata->gsVpuHevcEncInOut_Info.result = vdata->gsCommEncResult;
+    if (copy_to_user(arg, &vdata->gsVpuHevcEncInOut_Info, sizeof(VENC_HEVC_ENCODE_t)))
         return -EFAULT;
 
     return 0;
@@ -224,10 +224,10 @@ static int _vpu_hevc_enc_dev_init(vpu_encoder_data *vdata, void *arg)
     if(copy_from_user(&vdata->gsCodecType, arg, sizeof(int)))
         return -EFAULT;
 
-    memset(&vdata->gsVpuEncInit_Info, 0x00, sizeof(VENC_INIT_t));
-    memset(&vdata->gsVpuEncPutHeader_Info, 0x00, sizeof(VENC_PUT_HEADER_t));
-    memset(&vdata->gsVpuEncBuffer_Info, 0x00, sizeof(VENC_SET_BUFFER_t));
-    memset(&vdata->gsVpuEncInOut_Info, 0x00, sizeof(VENC_ENCODE_t));
+    memset(&vdata->gsVpuHevcEncInit_Info, 0x00, sizeof(VENC_HEVC_INIT_t));
+    memset(&vdata->gsVpuHevcEncPutHeader_Info, 0x00, sizeof(VENC_HEVC_PUT_HEADER_t));
+    memset(&vdata->gsVpuHevcEncBuffer_Info, 0x00, sizeof(VENC_HEVC_SET_BUFFER_t));
+    memset(&vdata->gsVpuHevcEncInOut_Info, 0x00, sizeof(VENC_HEVC_ENCODE_t));
 
     return 0;
 }
@@ -344,16 +344,16 @@ long vpu_hevc_enc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return _vpu_hevc_enc_dev_init(vdata, (void*)arg);
 
         case V_ENC_INIT:
-            return _vpu_hevc_enc_proc_init(vdata, (VENC_INIT_t *)arg);
+            return _vpu_hevc_enc_proc_init(vdata, (VENC_HEVC_INIT_t *)arg);
 
         case V_ENC_PUT_HEADER:
-            return _vpu_hevc_enc_proc_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
+            return _vpu_hevc_enc_proc_put_header(vdata, (VENC_HEVC_PUT_HEADER_t *)arg);
 
         case V_ENC_REG_FRAME_BUFFER:
-            return _vpu_hevc_enc_proc_reg_framebuffer(vdata, (VENC_SET_BUFFER_t *)arg);
+            return _vpu_hevc_enc_proc_reg_framebuffer(vdata, (VENC_HEVC_SET_BUFFER_t *)arg);
 
         case V_ENC_ENCODE:
-            return _vpu_hevc_enc_proc_encode(vdata, (VENC_ENCODE_t *)arg);
+            return _vpu_hevc_enc_proc_encode(vdata, (VENC_HEVC_ENCODE_t *)arg);
 
         case V_ENC_CLOSE:
             return _vpu_hevc_enc_proc_exit(vdata, (void *)arg);
@@ -396,13 +396,13 @@ long vpu_hevc_enc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             return _vpu_hevc_enc_result_general(vdata, (int *)arg);
 
         case V_ENC_INIT_RESULT:
-            return _vpu_hevc_enc_result_init(vdata, (VENC_INIT_t *)arg);
+            return _vpu_hevc_enc_result_init(vdata, (VENC_HEVC_INIT_t *)arg);
 
         case V_ENC_PUT_HEADER_RESULT:
-            return _vpu_hevc_enc_result_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
+            return _vpu_hevc_enc_result_put_header(vdata, (VENC_HEVC_PUT_HEADER_t *)arg);
 
         case V_ENC_ENCODE_RESULT:
-            return _vpu_hevc_enc_proc_encode_result(vdata, (VENC_ENCODE_t *)arg);
+            return _vpu_hevc_enc_proc_encode_result(vdata, (VENC_HEVC_ENCODE_t *)arg);
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 		case V_ENC_TRY_OPEN_DEV:

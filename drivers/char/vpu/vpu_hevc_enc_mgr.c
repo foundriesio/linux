@@ -464,21 +464,20 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 		{
 			case VPU_ENC_INIT:
 			{
-				VENC_INIT_t* arg = (VENC_INIT_t *) args;
+				VENC_HEVC_INIT_t* arg = (VENC_HEVC_INIT_t *) args;
 				vmgr_hevc_enc_data.handle[type] = 0x00;
-				vmgr_hevc_enc_data.szFrame_Len = arg->gsVpuEncInit.m_iPicWidth * arg->gsVpuEncInit.m_iPicHeight *3 / 2;
+				vmgr_hevc_enc_data.szFrame_Len = arg->encInit.m_iPicWidth * arg->encInit.m_iPicHeight *3 / 2;
 
-				arg->gsVpuEncInit.m_RegBaseVirtualAddr	= (codec_addr_t) vmgr_hevc_enc_data.base_addr;
-				arg->gsVpuEncInit.m_Memcpy				= (void* (*) ( void*, const void*, unsigned int, unsigned int )) vetc_memcpy;
-				arg->gsVpuEncInit.m_Memset				= (void (*) ( void*, int, unsigned int, unsigned int )) vetc_memset;
-				arg->gsVpuEncInit.m_Interrupt			= (int (*) ( void )) _vmgr_hevc_enc_internal_handler;
-				arg->gsVpuEncInit.m_Ioremap				= (void* (*) ( phys_addr_t, unsigned int )) vetc_ioremap;
-				arg->gsVpuEncInit.m_Iounmap				= (void (*) ( void* )) vetc_iounmap;
-				arg->gsVpuEncInit.m_reg_read			= (unsigned int (*)(void *, unsigned int)) vetc_reg_read;
-				arg->gsVpuEncInit.m_reg_write			= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
+				arg->encInit.m_RegBaseAddr[VA] = (codec_addr_t) vmgr_hevc_enc_data.base_addr;
+				arg->encInit.m_Memcpy		= (void* (*) ( void*, const void*, unsigned int, unsigned int )) vetc_memcpy;
+				arg->encInit.m_Memset		= (void (*) ( void*, int, unsigned int, unsigned int )) vetc_memset;
+				arg->encInit.m_Interrupt	= (int (*) ( void )) _vmgr_hevc_enc_internal_handler;
+				arg->encInit.m_Ioremap		= (void* (*) ( phys_addr_t, unsigned int )) vetc_ioremap;
+				arg->encInit.m_Iounmap		= (void (*) ( void* )) vetc_iounmap;
+				arg->encInit.m_reg_read		= (unsigned int (*)(void *, unsigned int)) vetc_reg_read;
+				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
 
-				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->gsVpuEncHandle), (void*)(&arg->gsVpuEncInit), (void*)(&arg->gsVpuEncInitialInfo));
-
+				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
 				if(ret != RETCODE_SUCCESS)
 				{
 					_DBG(DEBUG_ENC_ERROR, " :: Init Done with ret(0x%x)", ret);
@@ -488,11 +487,11 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 					}
 				}
 
-				if(ret != RETCODE_CODEC_EXIT && arg->gsVpuEncHandle != 0)
+				if(ret != RETCODE_CODEC_EXIT && arg->handle != 0)
 				{
-					vmgr_hevc_enc_data.handle[type] = arg->gsVpuEncHandle;
+					vmgr_hevc_enc_data.handle[type] = arg->handle;
 					vmgr_hevc_enc_set_close(type, 0, 0);
-					_DBG(DEBUG_ENC_SEQUENCE, "vmgr_hevc_enc_data.handle = 0x%x", arg->gsVpuEncHandle);
+					_DBG(DEBUG_ENC_SEQUENCE, "vmgr_hevc_enc_data.handle = 0x%x", arg->handle);
 				}
 				else
 				{
@@ -500,7 +499,7 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 					vmgr_hevc_enc_set_close(type, 0, 0);
 					vmgr_hevc_enc_set_close(type, 1, 1);
 				}
-				_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x) \n", arg->gsVpuEncHandle);
+				_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x) \n", arg->handle);
 				vmgr_hevc_enc_data.nDecode_Cmd = 0;
 			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
 				vmgr_hevc_enc_data.iTime[type].print_out_index = vmgr_hevc_enc_data.iTime[type].proc_base_cnt = 0;
@@ -512,63 +511,61 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 
 			case VPU_ENC_REG_FRAME_BUFFER:
 			{
-				VENC_SET_BUFFER_t *arg = (VENC_SET_BUFFER_t *) args;
-				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncBuffer), (void*)NULL);
+				VENC_HEVC_SET_BUFFER_t *arg = (VENC_HEVC_SET_BUFFER_t *) args;
+				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encBuffer), (void*)NULL);
 			}
 			break;
 
 			case VPU_ENC_PUT_HEADER:
 			{
-				VENC_PUT_HEADER_t *arg = (VENC_PUT_HEADER_t *) args;
+				VENC_HEVC_PUT_HEADER_t *arg = (VENC_HEVC_PUT_HEADER_t *) args;
 			#if !defined(VPU_C5)
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
 			#endif
-				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncHeader), (void*)NULL);
+				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encHeader), (void*)NULL);
 			}
 			break;
 
 			case VPU_ENC_ENCODE:
 			{
-				VENC_ENCODE_t *arg = (VENC_ENCODE_t *)args;
+				VENC_HEVC_ENCODE_t *arg = (VENC_HEVC_ENCODE_t *)args;
 			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
 				do_gettimeofday( &t1 );
 			#endif
-				_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d-%d-%d, 0x%x-%d \n",
+				_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d \n",
 						pHandle,
-						arg->gsVpuEncInput.m_PicYAddr,
-						arg->gsVpuEncInput.m_PicCbAddr,
-						arg->gsVpuEncInput.m_PicCrAddr,
-						arg->gsVpuEncInput.m_iForceIPicture,
-						arg->gsVpuEncInput.m_iSkipPicture,
-						arg->gsVpuEncInput.m_iQuantParam,
-						arg->gsVpuEncInput.m_iChangeRcParamFlag,
-						arg->gsVpuEncInput.m_iChangeTargetKbps,
-						arg->gsVpuEncInput.m_iChangeFrameRate,
-						arg->gsVpuEncInput.m_iChangeKeyInterval,
-						arg->gsVpuEncInput.m_iReportSliceInfoEnable,
-						arg->gsVpuEncInput.m_iReportSliceInfoEnable,
-						arg->gsVpuEncInput.m_BitstreamBufferAddr,
-						arg->gsVpuEncInput.m_iBitstreamBufferSize
+						arg->encInput.m_PicYAddr,
+						arg->encInput.m_PicCbAddr,
+						arg->encInput.m_PicCrAddr,
+						arg->encInput.m_iForceIPicture,
+						arg->encInput.m_iSkipPicture,
+						arg->encInput.m_iQuantParam,
+						arg->encInput.m_iChangeRcParamFlag,
+						arg->encInput.m_iChangeTargetKbps,
+						arg->encInput.m_iChangeFrameRate,
+						arg->encInput.m_iChangeKeyInterval,
+						arg->encInput.m_BitstreamBufferAddr,
+						arg->encInput.m_iBitstreamBufferSize
 						);
 
                 vmgr_hevc_enc_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->gsVpuEncInput), (void*)(&arg->gsVpuEncOutput));
+                ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encInput), (void*)(&arg->encOutput));
 
 			#if 0//def VPU_HEVC_ENC_REGISTER_DUMP
-				if(arg->gsVpuEncInput.m_iForceIPicture != 0)
-					printk("ForceIPicture = %d, 0x%x - 0x%x \n", arg->gsVpuEncInput.m_iForceIPicture, _vmgr_reg_read(0x194), _vmgr_reg_read(0x1C4));
+				if(arg->encInput.m_iForceIPicture != 0)
+					printk("ForceIPicture = %d, 0x%x - 0x%x \n", arg->encInput.m_iForceIPicture, _vmgr_reg_read(0x194), _vmgr_reg_read(0x1C4));
 			//#else
-				if(arg->gsVpuEncInput.m_iChangeRcParamFlag != 0 && (arg->gsVpuEncInput.m_iChangeTargetKbps != 0 || arg->gsVpuEncInput.m_iChangeFrameRate != 0))
+				if(arg->encInput.m_iChangeRcParamFlag != 0 && (arg->encInput.m_iChangeTargetKbps != 0 || arg->encInput.m_iChangeFrameRate != 0))
 				{
-					printk("Flag(%d) :: %d Kbps, %d fps => %d kbps, %d bit, %d Qp \n", arg->gsVpuEncInput.m_iChangeRcParamFlag,
-						arg->gsVpuEncInput.m_iChangeTargetKbps, arg->gsVpuEncInput.m_iChangeFrameRate, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
+					printk("Flag(%d) :: %d Kbps, %d fps => %d kbps, %d bit, %d Qp \n", arg->encInput.m_iChangeRcParamFlag,
+						arg->encInput.m_iChangeTargetKbps, arg->encInput.m_iChangeFrameRate, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
 						//vetc_dump_reg_all("after encode");
 				}
 				else
 				{
-					if(arg->gsVpuEncInput.m_iChangeTargetKbps != _vmgr_reg_read(0x128))
+					if(arg->encInput.m_iChangeTargetKbps != _vmgr_reg_read(0x128))
 					{
-						printk("%d Kbps => %d kbps, %d bit, %d Qp \n", arg->gsVpuEncInput.m_iChangeTargetKbps, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
+						printk("%d Kbps => %d kbps, %d bit, %d Qp \n", arg->encInput.m_iChangeTargetKbps, _vmgr_reg_read(0x128), _vmgr_reg_read(0x12C), _vmgr_reg_read(0x1D4));
 					}
 				}
 			#endif
@@ -576,7 +573,11 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
 				do_gettimeofday( &t2 );
 			#endif
-				_DBG(DEBUG_ENC_SEQUENCE, " out w/ [%d] !! PicType[%d], Encoded_size[%d]", ret, arg->gsVpuEncOutput.m_iPicType, arg->gsVpuEncOutput.m_iBitstreamOutSize);
+				_DBG(DEBUG_ENC_SEQUENCE, " out w/ [%d] !! PicType[%d], Encoded_size[%d]",
+					ret,
+					arg->encOutput.m_iPicType,
+					arg->encOutput.m_iBitstreamOutSize
+					);
 			}
 			break;
 

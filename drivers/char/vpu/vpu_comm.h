@@ -277,6 +277,13 @@ typedef struct _vpu_encoder_data{
     // JPU_GET_VERSION_t gsJpuEncVersion;
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    VENC_HEVC_INIT_t gsVpuHevcEncInit_Info;
+    VENC_HEVC_SET_BUFFER_t gsVpuHevcEncBuffer_Info;
+    VENC_HEVC_PUT_HEADER_t gsVpuHevcEncPutHeader_Info;
+    VENC_HEVC_ENCODE_t gsVpuHevcEncInOut_Info;
+#endif
+
     int gsCommEncResult;
     unsigned char list_idx;
 
