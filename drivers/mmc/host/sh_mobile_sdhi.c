@@ -561,6 +561,7 @@ static int sh_mobile_sdhi_probe(struct platform_device *pdev)
 	struct tmio_mmc_host *host;
 	struct resource *res;
 	int irq, ret, i;
+	u16 ver;
 	struct tmio_mmc_dma *dma_priv;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -671,6 +672,11 @@ static int sh_mobile_sdhi_probe(struct platform_device *pdev)
 	ret = tmio_mmc_host_probe(host, mmc_data);
 	if (ret < 0)
 		goto efree;
+
+	ver = sd_ctrl_read16(host, CTL_VERSION);
+	/* GEN2_SDR104 is first known SDHI to use 32bit block count */
+	if (ver < SDHI_VER_GEN2_SDR104 && mmc_data->max_blk_count > U16_MAX)
+		mmc_data->max_blk_count = U16_MAX;
 
 	/* Enable tuning iff we have an SCC and a supported mode */
 	if (of_data && of_data->scc_offset &&
