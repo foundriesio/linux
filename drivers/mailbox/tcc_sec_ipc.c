@@ -37,7 +37,7 @@
  * @addtogroup secdrv
  * @{
  * @file tcc_sec_ipc.c This file contains sec_ipc device driver,
- *	communicating with a53 <-> A7, R5, M4.
+ *	communicating with a72 <-> A53, R5, M4.
  */
 
 #define DEVICE_NAME "sec-ipc"
@@ -60,8 +60,8 @@
 
 static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
-	{.compatible = "telechips,sec-ipc-a7"},
 	{.compatible = "telechips,sec-ipc-a53"},
+	{.compatible = "telechips,sec-ipc-a72"},
 	{.compatible = "telechips,sec-ipc-r5"},
 	{},
 };
@@ -109,10 +109,10 @@ static int sec_set_device(int device_id, struct sec_device *sec_dev)
 {
 	if (device_id == MBOX_DEV_M4) {
 		sec_device[MBOX_DEV_M4] = sec_dev;
-	} else if (device_id == MBOX_DEV_A7) {
-		sec_device[MBOX_DEV_A7] = sec_dev;
 	} else if (device_id == MBOX_DEV_A53) {
 		sec_device[MBOX_DEV_A53] = sec_dev;
+	} else if (device_id == MBOX_DEV_A72) {
+		sec_device[MBOX_DEV_A72] = sec_dev;
 	} else if (device_id == MBOX_DEV_R5) {
 		sec_device[MBOX_DEV_R5] = sec_dev;
 	} else {
@@ -126,10 +126,10 @@ static struct sec_device *sec_get_device(int device_id)
 {
 	if (device_id == MBOX_DEV_M4) {
 		return sec_device[MBOX_DEV_M4];
-	} else if (device_id == MBOX_DEV_A7) {
-		return sec_device[MBOX_DEV_A7];
 	} else if (device_id == MBOX_DEV_A53) {
 		return sec_device[MBOX_DEV_A53];
+	} else if (device_id == MBOX_DEV_A72) {
+		return sec_device[MBOX_DEV_A72];
 	} else if (device_id == MBOX_DEV_R5) {
 		return sec_device[MBOX_DEV_R5];
 	} else {
@@ -141,10 +141,10 @@ static int sec_get_device_id(const char *dev_name)
 {
 	if (!strcmp(dev_name, "sec-ipc-m4")) {
 		return MBOX_DEV_M4;
-	} else if (!strcmp(dev_name, "sec-ipc-a7")) {
-		return MBOX_DEV_A7;
 	} else if (!strcmp(dev_name, "sec-ipc-a53")) {
 		return MBOX_DEV_A53;
+	} else if (!strcmp(dev_name, "sec-ipc-a72")) {
+		return MBOX_DEV_A72;
 	} else if (!strcmp(dev_name, "sec-ipc-r5")) {
 		return MBOX_DEV_R5;
 	} else {
