@@ -1006,7 +1006,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 				if(ret == 0)
 				{
-					vdec_get_instance(&iInst.nInstance);
+					venc_get_instance(&iInst.nInstance);
 
 					if(cmd == VPU_GET_INSTANCE_IDX_KERNEL)
 					{
@@ -1077,70 +1077,78 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 		case VPU_GET_RENDERED_FRAMEBUFFER:
 		case VPU_GET_RENDERED_FRAMEBUFFER_KERNEL:
-		{
-			if(cmd == VPU_GET_RENDERED_FRAMEBUFFER_KERNEL)
 			{
-				if(NULL == memcpy((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
+				if(cmd == VPU_GET_RENDERED_FRAMEBUFFER_KERNEL)
 				{
-					ret = -EFAULT;
-				}
-			}
-			else
-			{
-				if(copy_to_user((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
-				{
-					ret = -EFAULT;
+					if(NULL == memcpy((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
+					{
+						ret = -EFAULT;
+					}
 				}
 				else
 				{
-					_DBG(DEBUG_ENC_SEQUENCE, "get rendered buffer info: 0x%x ~ 0x%x",
-						vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
+					if(copy_to_user((void*)arg, &vmgr_hevc_enc_data.gsRender_fb_info, sizeof(VDEC_RENDERED_BUFFER_t) ) )
+					{
+						ret = -EFAULT;
+					}
+					else
+					{
+						_DBG(DEBUG_ENC_SEQUENCE, "get rendered buffer info: 0x%x ~ 0x%x",
+							vmgr_hevc_enc_data.gsRender_fb_info.start_addr_phy, vmgr_hevc_enc_data.gsRender_fb_info.size);
+					}
 				}
 			}
-		}
-		break;
+			break;
 
 		case VPU_TRY_FORCE_CLOSE:
 		case VPU_TRY_FORCE_CLOSE_KERNEL:
-		{
-			if(!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
 			{
-				vmgr_hevc_enc_data.external_proc = 1;
-				_vmgr_hevc_enc_external_all_close(200);
-				vmgr_hevc_enc_data.external_proc = 0;
-				vmgr_hevc_enc_data.bVpu_already_proc_force_closed = true;
+				if(!vmgr_hevc_enc_data.bVpu_already_proc_force_closed)
+				{
+					vmgr_hevc_enc_data.external_proc = 1;
+					_vmgr_hevc_enc_external_all_close(200);
+					vmgr_hevc_enc_data.external_proc = 0;
+					vmgr_hevc_enc_data.bVpu_already_proc_force_closed = true;
+				}
 			}
-		}
-		break;
+			break;
 
 		case VPU_TRY_CLK_RESTORE:
 		case VPU_TRY_CLK_RESTORE_KERNEL:
-		{
-			vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
-		}
-		break;
+			{
+				vmgr_hevc_enc_restore_clock(0, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+			}
+			break;
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 		case VPU_TRY_OPEN_DEV:
 		case VPU_TRY_OPEN_DEV_KERNEL:
-			_vmgr_hevc_enc_cmd_open("cmd");
+			{
+				_vmgr_hevc_enc_cmd_open("cmd");
+			}
 			break;
 
 		case VPU_TRY_CLOSE_DEV:
 		case VPU_TRY_CLOSE_DEV_KERNEL:
-			_vmgr_hevc_enc_cmd_release("cmd");
+			{
+				_vmgr_hevc_enc_cmd_release("cmd");
+			}
 			break;
 #endif
 
 		case VPU_TRY_HANGUP_RELEASE:
-			hangup_rel_count++;
-			printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
-		break;
+			{
+				hangup_rel_count++;
+				printk(" vpu ===> VPU_TRY_HANGUP_RELEASE %d'th\n", hangup_rel_count);
+			}
+			break;
 
 		default:
-			_DBG(DEBUG_ENC_ERROR, "Unsupported ioctl[%d]!!!", cmd);
-			ret = -EINVAL;
-		break;
+			{
+				_DBG(DEBUG_ENC_ERROR, "Unsupported ioctl[%d]!!!", cmd);
+				ret = -EINVAL;
+			}
+			break;
 	}
 
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.io_mutex);
