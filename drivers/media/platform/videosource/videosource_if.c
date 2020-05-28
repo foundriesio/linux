@@ -37,6 +37,8 @@
 #include "../../../pinctrl/core.h"
 #include "../../../pinctrl/tcc/pinctrl-tcc.h"
 
+#define MODULE_NAME		"videosource"
+
 #define NUM_OVERLAY_FORMATS 2
 
 struct tcc_pinctrl {
@@ -797,11 +799,10 @@ int videosource_if_probe(videosource_t * vdev) {
 	}
 
 	// get the videosource's index from its alias
-	index = of_alias_get_id(vdev->client->dev.of_node, vdev->client->name);
+	index = of_alias_get_id(vdev->client->dev.of_node, MODULE_NAME);
 
 	// set the charactor device name
-	sprintf(name, "%s%d", vdev->client->name, index);
-	log("videosource: \"%s\"\n", name);
+	sprintf(name, "%s%d", MODULE_NAME, index);
 
 	// allocate a charactor device region
 	ret = alloc_chrdev_region(&vdev->cdev_region, 0, 1, name);
