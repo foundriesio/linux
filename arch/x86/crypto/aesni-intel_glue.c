@@ -1077,7 +1077,7 @@ static struct aead_alg aesni_aead_algs[0];
 
 
 static const struct x86_cpu_id aesni_cpu_id[] = {
-	X86_FEATURE_MATCH(X86_FEATURE_AES),
+	X86_MATCH_FEATURE(X86_FEATURE_AES, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, aesni_cpu_id);
