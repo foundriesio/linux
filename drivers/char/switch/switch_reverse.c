@@ -30,13 +30,19 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 
-static int					debug = 0;
-#define log(fmt, ...)		printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__)
-#define dlog(fmt, ...)		do { if(debug) { printk(KERN_INFO "%s - " pr_fmt(fmt), __FUNCTION__, ##__VA_ARGS__); } } while(0)
-#define FUNCTION_IN			dlog("IN\n");
-#define FUNCTION_OUT		dlog("OUT\n");
+static int debug = 0;
 
-#define MODULE_NAME			"switch_gpio_reverse"
+#define MODULE_NAME "switch_gpio_reverse"
+
+#define logl(level, fmt, ...)	printk(level "[%s][%s] %s - " pr_fmt(fmt), #level + 5, MODULE_NAME, __FUNCTION__, ##__VA_ARGS__)
+#define log(fmt, ...)			logl(KERN_INFO, fmt, ##__VA_ARGS__)
+#define loge(fmt, ...)			logl(KERN_ERR, fmt, ##__VA_ARGS__)
+#define logw(fmt, ...)			logl(KERN_WARNING, fmt, ##__VA_ARGS__)
+#define logd(fmt, ...)			logl(KERN_DEBUG, fmt, ##__VA_ARGS__)
+#define dlog(fmt, ...)			do { if(debug) { logl(KERN_DEBUG, fmt, ##__VA_ARGS__); } } while(0)
+
+#define FUNCTION_IN				dlog("IN\n");
+#define FUNCTION_OUT			dlog("OUT\n");
 
 #define SWITCH_IOCTL_CMD_ENABLE			0x10
 #define SWITCH_IOCTL_CMD_DISABLE		0x11
@@ -151,7 +157,7 @@ int switch_reverse_check_state(void) {
 			ret = (gear_value == data->switch_active);
 			dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
 		} else {
-			log("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
+			loge("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
 			ret = switch_reverse_get_state();
 		}
 	} else { // sw switch
@@ -169,13 +175,13 @@ int switch_reverse_check_state(void) {
 			ret = (gear_value == data->switch_active);
 			dlog("gpio: %d, value: %d, active: %d, result: %d\n", data->switch_gpio, gear_value, data->switch_active, ret);
 		} else {
-			log("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
+			loge("HW Switch is not supported, gpio: %d, active: %d\n", data->switch_gpio, data->switch_active);
 			ret = switch_reverse_get_state();
 		}
 		break;
 
 	default:
-		log("ERRPR: switch type(%d) is WRONG\n", type);
+		loge("ERRPR: switch type(%d) is WRONG\n", type);
 		break;
 	}
 
@@ -204,14 +210,14 @@ long switch_reverse_ioctl(struct file * filp, unsigned int cmd, unsigned long ar
 		dlog("state: %d\n", state);
 
 		if((ret = copy_to_user((void *)arg, (const void *)&state, sizeof(state))) < 0) {
-			log("FAILED: copy_to_user\n");
+			loge("FAILED: copy_to_user\n");
 			ret = -1;
 			break;
 		}
 		break;
 
 	default:
-		log("FAILED: Unsupported command\n");
+		loge("FAILED: Unsupported command\n");
 		ret = -1;
 		break;
 	}
@@ -243,20 +249,20 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Allocate a charactor device region
 	ret = alloc_chrdev_region(&switch_reverse_dev_region, 0, 1, MODULE_NAME);
 	if(ret < 0) {
-		log("ERROR: Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
+		loge("ERROR: Allocate a charactor device region for the \"%s\"\n", MODULE_NAME);
 		return ret;
 	}
 	
 	// Create the Reverse Switch class
 	switch_reverse_class = class_create(THIS_MODULE, MODULE_NAME);
 	if(switch_reverse_class == NULL) {
-		log("ERROR: Create the \"%s\" class\n", MODULE_NAME);
+		loge("ERROR: Create the \"%s\" class\n", MODULE_NAME);
 		goto goto_unregister_chrdev_region;
 	}
 
 	// Create the Reverse Switch device file system
 	if(device_create(switch_reverse_class, NULL, switch_reverse_dev_region, NULL, MODULE_NAME) == NULL) {
-		log("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
+		loge("ERROR: Create the \"%s\" device file\n", MODULE_NAME);
 		goto goto_destroy_class;
 	}
 
@@ -264,7 +270,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	cdev_init(&switch_reverse_cdev, &switch_reverse_fops);
 	ret = cdev_add(&switch_reverse_cdev, switch_reverse_dev_region, 1);
 	if(ret < 0) {
-		log("ERROR: Register the \"%s\" device as a charactor device\n", MODULE_NAME);
+		loge("ERROR: Register the \"%s\" device as a charactor device\n", MODULE_NAME);
 		goto goto_destroy_device;
 	}
 
@@ -281,7 +287,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// pinctrl
 	pinctrl = pinctrl_get_select(&pdev->dev, "default");
 	if(IS_ERR(pinctrl))
-		log("%s: pinctrl select failed\n", MODULE_NAME);
+		loge("%s: pinctrl select failed\n", MODULE_NAME);
 	else
 		pinctrl_put(pinctrl);
 
@@ -291,7 +297,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 		data->switch_gpio	= of_get_named_gpio(pdev->dev.of_node, "switch-gpios", 0);
 		of_property_read_u32_index(pdev->dev.of_node, "switch-active", 0, &data->switch_active);
 	} else {
-		log("\"switch-gpios\" node is not found.\n");
+		loge("\"switch-gpios\" node is not found.\n");
 	}
 	log("switch-gpios: %d, switch-active: %d\n", data->switch_gpio, data->switch_active);
 
@@ -300,7 +306,7 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Create the switch_reverse_type sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_type);
 	if(ret < 0)
-		log("failed create sysfs, switch_reverse_type\r\n");
+		loge("failed create sysfs, switch_reverse_type\r\n");
 
 	// Set switch_reverse_type as 1 if there is a hw switch node
 	if(data->switch_gpio != -1) {
@@ -310,12 +316,12 @@ int switch_reverse_probe(struct platform_device * pdev) {
 	// Create the switch_reverse_status sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_status);
 	if(ret < 0)
-		log("failed create sysfs, switch_reverse_status\r\n");
+		loge("failed create sysfs, switch_reverse_status\r\n");
 
 	// Create the switch_reverse_loglevel sysfs
 	ret = device_create_file(&pdev->dev, &dev_attr_switch_reverse_loglevel);
 	if(ret < 0)
-		log("failed create sysfs, switch_reverse_loglevel\r\n");
+		loge("failed create sysfs, switch_reverse_loglevel\r\n");
 
 	FUNCTION_OUT
 	return 0;
