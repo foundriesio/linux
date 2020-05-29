@@ -1595,7 +1595,7 @@
 	rtc {
 		compatible = "telechips,rtc";
 		reg = <0x0 0x16480000 0x0 0x50>;
-		clocks = <&clk_io IOBUS_RTC /*&clk_isoip_top ISOIP_TOP_RTC*/>;
+		clocks = <&clk_io IOBUS_RTC>;
 		interrupts = <GIC_SPI 73 0>;
 	};
 
