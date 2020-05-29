@@ -158,6 +158,9 @@ static inline void vmbus_signal_eom(struct hv_message *msg, u32 old_msg_type)
 #define hv_get_synint_state(int_num, val) rdmsrl(int_num, val)
 #define hv_set_synint_state(int_num, val) wrmsrl(int_num, val)
 
+#define hv_get_crash_ctl(val) \
+	rdmsrl(HV_X64_MSR_CRASH_CTL, val)
+
 void hyperv_callback_vector(void);
 #ifdef CONFIG_TRACING
 #define trace_hyperv_callback_vector hyperv_callback_vector
@@ -315,6 +318,7 @@ void hyperv_init(void);
 void hyperv_setup_mmu_ops(void);
 void hyper_alloc_mmu(void);
 void hyperv_report_panic(struct pt_regs *regs, long err);
+void hyperv_report_panic_msg(phys_addr_t pa, size_t size);
 bool hv_is_hypercall_page_setup(void);
 void hyperv_cleanup(void);
 #else /* CONFIG_HYPERV */

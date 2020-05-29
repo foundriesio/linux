@@ -38,6 +38,8 @@
  * to MSRs with local APIC and TSC frequencies.
  */
 #define HV_X64_ACCESS_FREQUENCY_MSRS		(1 << 11)
+/* AccessTscInvariantControls privilege */
+#define HV_X64_ACCESS_TSC_INVARIANT		BIT(15)
 
 /*
  * Basic SynIC MSRs (HV_X64_MSR_SCONTROL through HV_X64_MSR_EOM
@@ -153,9 +155,10 @@
 #define HV_X64_EX_PROCESSOR_MASKS_RECOMMENDED	(1 << 11)
 
 /*
- * Crash notification flag.
+ * Crash notification flags.
  */
-#define HV_CRASH_CTL_CRASH_NOTIFY (1ULL << 63)
+#define HV_CRASH_CTL_CRASH_NOTIFY_MSG	BIT_ULL(62)
+#define HV_CRASH_CTL_CRASH_NOTIFY	BIT_ULL(63)
 
 /* MSR used to identify the guest OS. */
 #define HV_X64_MSR_GUEST_OS_ID			0x40000000
@@ -209,6 +212,9 @@
 #define HV_X64_MSR_SINT13			0x4000009D
 #define HV_X64_MSR_SINT14			0x4000009E
 #define HV_X64_MSR_SINT15			0x4000009F
+
+/* TSC invariant control */
+#define HV_X64_MSR_TSC_INVARIANT_CONTROL	0x40000118
 
 /*
  * Synthetic Timer MSRs. Four timers per vcpu.
