@@ -16,9 +16,9 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 
-#include "../w1.h"
-#include "../w1_int.h"
-#include "../w1_family.h"
+#include <linux/w1.h>
+
+#define W1_FAMILY_DS2413	0x3A
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Mariusz Bialonczyk <manio@skyboo.net>");

@@ -538,10 +538,19 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
 #endif
 
 __be32 nfsd4_clone_file_range(struct file *src, u64 src_pos, struct file *dst,
-		u64 dst_pos, u64 count)
+		u64 dst_pos, u64 count, bool sync)
 {
-	return nfserrno(vfs_clone_file_range(src, src_pos, dst, dst_pos,
-					     count));
+	int ret = vfs_clone_file_range(src, src_pos, dst, dst_pos,
+				       count);
+	if (ret)
+		return nfserrno(ret);
+	if (sync) {
+		loff_t dst_end = count ? dst_pos + count - 1 : LLONG_MAX;
+		int status = vfs_fsync_range(dst, dst_pos, dst_end, 0);
+		if (status < 0)
+			return nfserrno(status);
+	}
+	return 0;
 }
 
 ssize_t nfsd_copy_file_range(struct file *src, u64 src_pos, struct file *dst,

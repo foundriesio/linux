@@ -22,9 +22,9 @@
 
 #endif
 
-#include "../w1.h"
-#include "../w1_int.h"
-#include "../w1_family.h"
+#include <linux/w1.h>
+
+#define W1_EEPROM_DS2433	0x23
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Ben Gardner <bgardner@wabtec.com>");

@@ -30,6 +30,7 @@
 #include <linux/clockchips.h>
 #include <linux/hyperv.h>
 #include <linux/slab.h>
+#include <linux/kernel.h>
 #include <linux/cpuhotplug.h>
 
 #ifdef CONFIG_HYPERV_TSCPAGE
@@ -54,7 +55,7 @@ static u64 read_hv_clock_tsc(struct clocksource *arg)
 
 static struct clocksource hyperv_cs_tsc = {
 		.name		= "hyperv_clocksource_tsc_page",
-		.rating		= 400,
+		.rating		= 250,
 		.read		= read_hv_clock_tsc,
 		.mask		= CLOCKSOURCE_MASK(64),
 		.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
@@ -75,7 +76,7 @@ static u64 read_hv_clock_msr(struct clocksource *arg)
 
 static struct clocksource hyperv_cs_msr = {
 	.name		= "hyperv_clocksource_msr",
-	.rating		= 400,
+	.rating		= 250,
 	.read		= read_hv_clock_msr,
 	.mask		= CLOCKSOURCE_MASK(64),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
@@ -434,6 +435,11 @@ void hyperv_report_panic(struct pt_regs *regs, long err)
 {
 	static bool panic_reported;
 	u64 guest_id;
+	bool in_die = !!(err & (1 << 10));
+	err = err & ~(1 << 10);
+
+	if (in_die && !panic_on_oops)
+		return;
 
 	/*
 	 * We prefer to report panic on 'die' chain as we have proper
