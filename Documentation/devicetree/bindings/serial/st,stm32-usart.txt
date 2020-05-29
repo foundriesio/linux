@@ -19,6 +19,8 @@ Optional properties:
 - pinctrl-n: Phandle(s) pointing to pin configuration nodes.
   For Pinctrl properties see ../pinctrl/pinctrl-bindings.txt
 - uart-has-rtscts: See description in serial.txt binding.
+- cts-gpios: CTS gpios for flow control.
+- rts-gpios: RTS gpios for flow control.
 - rs485-rts-delay, rs485-rts-delay-ns, rs485-rx-during-tx, rs485-rts-active-low,
   linux,rs485-enabled-at-boot-time: See rs485.txt.
 - dmas: Phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
@@ -32,6 +34,12 @@ Optional properties:
   available with stm32h7 compatible.
   Valid values are 1, 2, 4, 8, 12, 14, 16. Default value is 8. If value is
   set to 1, TX FIFO threshold is disabled.
+
+Note for cts-gpios and rts-gpios:
+ - These properties can be used instead of 'uart-has-rtscts' or
+   'st,hw-flow-ctrl' (deprecated) for making use of any gpio pins for flow
+   control instead of dedicated pins. It should be noted that both CTS/RTS
+   and 'uart-has-rtscts' properties cannot co-exist in a design.
 
 Note for dma using:
 - "tx" dma can be used without any constraint since it uses single
