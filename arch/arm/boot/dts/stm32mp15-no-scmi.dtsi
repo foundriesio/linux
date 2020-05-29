@@ -96,6 +96,10 @@
 	clocks = <&rcc CEC_K>, <&clk_lse>;
 };
 
+&ddrperfm {
+	clocks = <&rcc DDRPERFM>, <&rcc PLL2_R>;
+};
+
 &dsi {
 	clocks = <&rcc DSI_K>, <&clk_hse>, <&rcc DSI_PX>;
 };
