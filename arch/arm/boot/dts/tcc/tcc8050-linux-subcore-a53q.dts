@@ -117,8 +117,7 @@
 		reg = <0x17C01000 0x1000>,
 		      <0x17C02000 0x1000>,
 		      <0x17C04000 0x2000>,
-		      <0x17C06000 0x2000>,
-		      <0x14100000 0x260>;
+		      <0x17C06000 0x2000>;
 	};
 
 	psci {
@@ -656,11 +655,16 @@
 			     <GIC_SPI 31 0>;
 	};
 
-	pic@14100000 {
-		compatible = "telechips,pic";
-		reg = <0x14100000 0x0300
-		       0x14600000 0x0020>;
-	};
+        tcc_pic: pic@14100000 {
+                compatible = "telechips,tcc805x-pic";
+                reg = <0x0 0x141000E0 0x0 0x0018>,  /* pol_0_base */
+                      <0x0 0x14600100 0x0 0x0024>,  /* pol_1_base */
+                      <0x0 0x14800040 0x0 0x003C>,  /* cmb_cm4_base */
+                      <0x0 0x14900040 0x0 0x003C>,  /* strgb_cm4_base */
+                      <0x0 0x0 0x0 0x0>;            /* ca7_irqo_en_base */
+                demarcation = <192>;
+                max_irq = <480>;
+        };
 
 	uart0: serial@16640000 {
 		compatible = "arm,pl011", "arm,primecell";

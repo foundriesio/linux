@@ -8,7 +8,7 @@ else
 obj-y	+= suspend.o chip_info.o
 endif
 
-obj-y	+= timer.o
+obj-y	+= timer.o irq-pic.o
 
 obj-$(CONFIG_PMAP)		+= pmap.o
 
