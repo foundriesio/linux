@@ -4615,7 +4615,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				if (copy_from_user((void *)&vsync_rdma_off, (const void *)arg, sizeof(unsigned int))) {
 					ret = -EFAULT;
 				}
-				pr_info("[INF][VSYNC] TCC_LCDC_VIDEO_RDMA_DISABLE(%d)\n", vsync_rdma_off);
+				pr_info("[INF][VSYNC] TCC_LCDC_VIDEO_RDMA_DISABLE(%d, ret = %d)\n", vsync_rdma_off, ret);
 				break;
 
 			default:

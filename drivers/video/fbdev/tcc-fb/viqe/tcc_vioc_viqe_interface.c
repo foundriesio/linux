@@ -188,6 +188,8 @@ extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, uns
 extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
 extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);
 
+extern unsigned int vsync_rdma_off;
+
 #if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
 extern unsigned char hdmi_get_hdmimode(void);
 #endif
@@ -2948,7 +2950,13 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 	// position
 	VIOC_WMIX_SetPosition(pViqe_60hz_info->pWMIXBase_60Hz, gLcdc_layer_60Hz,  input_image->offset_x, input_image->offset_y);
 	VIOC_WMIX_SetUpdate(pViqe_60hz_info->pWMIXBase_60Hz);
+
+	//VIOC_RDMA_SetImageEnable(pViqe_60hz_info->pRDMABase_60Hz);
+	if (vsync_rdma_off == 0) {
 	VIOC_RDMA_SetImageEnable(pViqe_60hz_info->pRDMABase_60Hz);
+	} else {
+		VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
+	}
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)
 	if(VIOC_CONFIG_DV_GET_EDR_PATH())
