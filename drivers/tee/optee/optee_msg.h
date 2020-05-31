@@ -441,4 +441,23 @@ struct optee_msg_arg {
  */
 #define OPTEE_MSG_RPC_CMD_SHM_FREE	7
 
+/*
+ * Access a device on an i2c bus
+ *
+ * [in]  param[0].u.value.a		mode: RD(0), WR(1)
+ * [in]  param[0].u.value.b		i2c adapter
+ * [in]  param[0].u.value.c		i2c chip
+ *
+ * [io]  param[1].u.tmem.buf_ptr	physical address
+ * [io]  param[1].u.tmem.size		transfer size in bytes
+ * [io]  param[1].u.tmem.shm_ref	shared memory reference
+ *
+ * [out]  param[0].u.value.a		bytes transferred
+ *
+ */
+#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER 8
+#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER_RD 0
+#define OPTEE_MSG_RPC_CMD_I2C_TRANSFER_WR 1
+
+
 #endif /* _OPTEE_MSG_H */

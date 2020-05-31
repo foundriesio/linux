@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
+#include <linux/i2c.h>
 #include "optee_private.h"
 #include "optee_smc.h"
 
@@ -53,6 +54,58 @@ static void handle_rpc_func_cmd_get_time(struct optee_msg_arg *arg)
 	arg->params[0].u.value.b = ts.tv_nsec;
 
 	arg->ret = TEEC_SUCCESS;
+	return;
+bad:
+	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
+}
+static void handle_rpc_func_cmd_i2c_transfer(struct tee_context *ctx,
+					     struct optee_msg_arg *arg)
+{
+	struct i2c_client client;
+	struct tee_shm *shm;
+	int i, ret;
+	char *buf;
+	uint32_t attr[] = {
+		OPTEE_MSG_ATTR_TYPE_VALUE_INPUT,
+		OPTEE_MSG_ATTR_TYPE_TMEM_INOUT,
+		OPTEE_MSG_ATTR_TYPE_VALUE_OUTPUT,
+	};
+
+	if (arg->num_params != ARRAY_SIZE(attr))
+		goto bad;
+
+	for (i = 0; i < ARRAY_SIZE(attr); i++)
+		if ((arg->params[i].attr & OPTEE_MSG_ATTR_TYPE_MASK) != attr[i])
+			goto bad;
+
+	shm = (struct tee_shm *)(unsigned long)arg->params[1].u.tmem.shm_ref;
+	buf = (char *)shm->kaddr;
+
+	client.addr = arg->params[0].u.value.c;
+	client.adapter = i2c_get_adapter(arg->params[0].u.value.b);
+	if (!client.adapter)
+		goto bad;
+
+	snprintf(client.name, I2C_NAME_SIZE, "i2c%d", client.adapter->nr);
+
+	switch (arg->params[0].u.value.a) {
+	case OPTEE_MSG_RPC_CMD_I2C_TRANSFER_RD:
+		ret = i2c_master_recv(&client, buf, arg->params[1].u.tmem.size);
+		break;
+	case OPTEE_MSG_RPC_CMD_I2C_TRANSFER_WR:
+		ret = i2c_master_send(&client, buf, arg->params[1].u.tmem.size);
+		break;
+	default:
+		goto bad;
+	}
+
+	if (ret >= 0) {
+		arg->params[2].u.value.a = ret;
+		arg->ret = TEEC_SUCCESS;
+	} else
+		arg->ret = TEEC_ERROR_COMMUNICATION;
+
+	i2c_put_adapter(client.adapter);
 	return;
 bad:
 	arg->ret = TEEC_ERROR_BAD_PARAMETERS;
@@ -390,6 +443,9 @@ static void handle_rpc_func_cmd(struct tee_context *ctx, struct optee *optee,
 		break;
 	case OPTEE_MSG_RPC_CMD_SHM_FREE:
 		handle_rpc_func_cmd_shm_free(ctx, arg);
+		break;
+	case OPTEE_MSG_RPC_CMD_I2C_TRANSFER:
+		handle_rpc_func_cmd_i2c_transfer(ctx, arg);
 		break;
 	default:
 		handle_rpc_supp_cmd(ctx, arg);
