@@ -253,7 +253,7 @@ static bool linear_make_request(struct mddev *mddev, struct bio *bio)
 	sector_t bio_sector = bio->bi_iter.bi_sector;
 
 	if (unlikely(bio->bi_opf & REQ_PREFLUSH)
-	    && md_flush_request(mddev, bio))
+	    && md_flush_request2(mddev, bio))
 		return true;
 
 	tmp_dev = which_dev(mddev, bio_sector);

@@ -1539,7 +1539,7 @@ static bool raid1_make_request(struct mddev *mddev, struct bio *bio)
 	sector_t sectors;
 
 	if (unlikely(bio->bi_opf & REQ_PREFLUSH)
-	    && md_flush_request(mddev, bio))
+	    && md_flush_request2(mddev, bio))
 		return true;
 
 	/*

@@ -1575,7 +1575,7 @@ static bool raid10_make_request(struct mddev *mddev, struct bio *bio)
 	int sectors = bio_sectors(bio);
 
 	if (unlikely(bio->bi_opf & REQ_PREFLUSH)
-	    && md_flush_request(mddev, bio))
+	    && md_flush_request2(mddev, bio))
 		return true;
 
 	if (!md_write_start(mddev, bio))
