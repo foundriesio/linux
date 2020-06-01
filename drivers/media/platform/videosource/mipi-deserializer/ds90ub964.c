@@ -244,7 +244,7 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 	while (!((list->reg == REG_TERM) && (list->val == VAL_TERM))) {
 #if 1
 		if(list->reg == 0xFF && list->val != 0xFF) {
-			mdelay(list->val);
+			msleep(list->val);
 			list++;
 		}
 		else {
@@ -285,7 +285,7 @@ static int write_regs(struct i2c_client * client, const struct videosource_reg *
 #if 0
 				if((unsigned int)list->reg == (unsigned int)0x90) {
 	//				logd("delay(1)\n");
-					mdelay(1);
+					msleep(1);
 				}
 #endif
 				err_cnt = 0;
@@ -588,10 +588,10 @@ static int open(videosource_gpio_t * gpio) {
 	FUNCTION_IN
 
 	sensor_port_disable(gpio->pwd_port);
-	mdelay(20);
+	msleep(20);
 
 	sensor_port_enable(gpio->pwd_port);
-	mdelay(20);
+	msleep(20);
 
 	FUNCTION_OUT
 	return ret;
@@ -604,7 +604,7 @@ static int close(videosource_gpio_t * gpio) {
 	sensor_port_disable(gpio->pwr_port);
 	sensor_port_disable(gpio->pwd_port);
 
-	mdelay(5);
+	msleep(5);
 
 	FUNCTION_OUT
 	return 0;
@@ -621,7 +621,7 @@ static int change_mode(struct i2c_client * client, int mode) {
 
 	ret = write_regs(client, videosource_reg_table_list[mode], mode);
 
-//	mdelay(10);
+//	msleep(10);
 #if 1
 	if(mode == MODE_SERDES_INTERRUPT)
 		process_interrupt(client);

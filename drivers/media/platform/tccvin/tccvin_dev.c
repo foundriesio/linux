@@ -1294,7 +1294,7 @@ int tccvin_start_stream(tccvin_dev_t * vdev) {
 
 	// set wdma
 	tccvin_set_wdma(vdev);
-	mdelay(16 * 3);	// wait for the 3 frames in case of viqe 3d mode (16ms * 3 frames)
+	msleep(16 * 3);	// wait for the 3 frames in case of viqe 3d mode (16ms * 3 frames)
 
 	if(vdev->v4l2.preview_method == PREVIEW_DD) {
 		// set rdma

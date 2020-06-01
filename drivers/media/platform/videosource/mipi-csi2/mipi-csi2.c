@@ -185,7 +185,7 @@ void MIPI_CSIS_Set_CSIS_Reset(unsigned int reset)
 			loge("fail reset \n");
 			break;
 		}
-		mdelay(1);
+		msleep(1);
 		count++;
 	}
 }
