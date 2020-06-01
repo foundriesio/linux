@@ -225,7 +225,7 @@ struct tcc_thsm_ioctl_rng_param
 
 struct tcc_thsm_ioctl_gen_key_param
 {
-	uint8_t *obj_id;
+	int8_t *obj_id;
 	uint32_t obj_len;
 	uint32_t algorithm;
 	uint32_t key_size;
@@ -233,13 +233,13 @@ struct tcc_thsm_ioctl_gen_key_param
 
 struct tcc_thsm_ioctl_del_key_param
 {
-	uint8_t *obj_id;
+	int8_t *obj_id;
 	uint32_t obj_len;
 };
 
 struct tcc_thsm_ioctl_write_key_param
 {
-	uint8_t *obj_id;
+	int8_t *obj_id;
 	uint32_t obj_len;
 	uint8_t *buffer;
 	uint32_t size;

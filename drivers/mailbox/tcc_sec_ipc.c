@@ -32,6 +32,7 @@
 #include <linux/of_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
+#include <linux/time.h>
 
 /**
  * @addtogroup secdrv
@@ -46,7 +47,7 @@
 #define MBOX_DMA_SIZE (1 * 1024 * 1024)
 
 /** Time to wait for SP to respond. */
-#define CMD_TIMEOUT msecs_to_jiffies(1000)
+#define CMD_TIMEOUT msecs_to_jiffies(10000)
 
 /** Returns a demux event from a mailbox command. The demux event can be
  * distinguished by cmd[15:12], i.e. magic number 0 for demux event.*/
@@ -57,6 +58,7 @@
  * */
 #define IS_THSM_EVENT(cmd) (5 == (((cmd)&0xF000) >> 12))
 #define HSM_EVENT_FLAG(cmd) (1 << cmd)
+#define DEBUG_TIME_MEASUREMENT 1
 
 static const struct of_device_id sec_ipc_dt_id[] = {
 	{.compatible = "telechips,sec-ipc-m4"},
@@ -165,12 +167,14 @@ static int sec_get_device_id(const char *dev_name)
  */
 int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void *rdata, int rsize)
 {
-	struct tcc_mbox_data mbox_data = {
-		0,
-	};
+	struct tcc_mbox_data mbox_data = {0};
 	int result = 0, mbox_result = 0;
 	unsigned int data_size = 0;
 	struct sec_device *sec_dev = NULL;
+#ifdef DEBUG_TIME_MEASUREMENT
+	struct timeval t1={0}, t2={0};
+	int time_gap_ms = 0;
+#endif
 
 	sec_dev = sec_get_device(device_id);
 	if (sec_dev == NULL) {
@@ -218,12 +222,21 @@ int sec_sendrecv_cmd(unsigned int device_id, int cmd, void *data, int size, void
 		goto out;
 	}
 	// Awaiting mbox_msg_received to be called.
+#ifdef DEBUG_TIME_MEASUREMENT
+	do_gettimeofday( &t1 );
+#endif
 	result = wait_event_timeout(waitq, sec_dev->mbox_received == 1, CMD_TIMEOUT);
 	if (result == 0 && (sec_dev->mbox_received != 1)) {
 		ELOG("Cmd: %d Timeout\n", cmd);
 		result = -EINVAL;
 		goto out;
 	}
+#ifdef DEBUG_TIME_MEASUREMENT
+	do_gettimeofday( &t2 );
+	time_gap_ms = ((t2.tv_sec - t1.tv_sec) * 1000) + ((t2.tv_usec - t1.tv_usec) / 1000);
+	DLOG("SendRecv gap time = %d ms\n", time_gap_ms)
+#endif
+
 	// mbox_rmsg.msg_len is set at this point by sec_msg_received
 
 	// Nothing to read
