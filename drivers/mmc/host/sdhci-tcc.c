@@ -1644,7 +1644,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	if(of_device_is_compatible(pdev->dev.of_node, "telechips,tcc803x-sdhci")) {
 		tcc->clk_dly_dbgfs = sdhci_tcc_register_debugfs_file(host, "clock_delay", S_IRUGO | S_IWUSR,
 				&sdhci_tcc_fops_clk_dly);
-		if(!tcc->clk_gating_dbgfs) {
+		if(!tcc->clk_dly_dbgfs) {
 			dev_err(&pdev->dev, "[ERROR][SDHC] failed to create clock_delay debugfs\n");
 		}
 	}
