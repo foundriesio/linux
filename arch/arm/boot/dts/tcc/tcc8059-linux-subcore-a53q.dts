@@ -1009,7 +1009,7 @@
 
 	fb0 {
 		compatible = "telechips,fb";
-		status = "okay";
+		status = "disabled";
 		memory-region = <&pmap_fb_video>;
 		xres = <1920>;
 		yres = <720>;
@@ -1034,7 +1034,7 @@
 	#if defined(CONFIG_OVERLAY_DPGL)
 	fb1 {
 		compatible = "telechips,fb";
-		status = "okay";
+		status = "disabled";
 		memory-region = <&pmap_fb1_video>;
 		xres = <1920>;
 		yres = <720>;
