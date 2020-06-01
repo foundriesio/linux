@@ -1371,13 +1371,13 @@
 	sec-ipc-a53 {
 		compatible = "telechips,sec-ipc-a53";
 		mbox-names = "sec-ipc-a53";
-		mboxes = <&mbox1 TCC_MBOX1_CH_HSM>;
+		mboxes = <&cb_mbox TCC_CB_MBOX_HSM>;
 	};
 
 	sec-ipc-r5 {
 		compatible = "telechips,sec-ipc-r5";
 		mbox-names = "sec-ipc-r5";
-		mboxes = <&mbox0 TCC_MBOX0_CH_HSM>;
+		mboxes = <&micom_mbox TCC_MICOM_MBOX0_HSM>;
 	};
 
 	/* A72 <-> R5 */

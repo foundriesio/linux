@@ -5,19 +5,22 @@
 #define TCC_CB_MBOX_RESERVED		(0)
 #define TCC_CB_MBOX_TEST			(1)
 #define TCC_CB_MBOX_IPC				(2)
-#define TCC_CB_MBOX_MAX				(3)
+#define TCC_CB_MBOX_HSM				(3)
+#define TCC_CB_MBOX_MAX				(4)
 
 /* MICOM MBOX0 : A72 <-> R5 */
 #define TCC_MICOM_MBOX0_RESERVED	(0)
 #define TCC_MICOM_MBOX0_TEST		(1)
 #define TCC_MICOM_MBOX0_IPC			(2)
-#define TCC_MICOM_MBOX0_MAX			(3)
+#define TCC_MICOM_MBOX0_HSM			(3)
+#define TCC_MICOM_MBOX0_MAX			(4)
 
 /* MICOM MBOX1 : A53 <-> R5 */
 #define TCC_MICOM_MBOX1_RESERVED	(0)
 #define TCC_MICOM_MBOX1_TEST		(1)
 #define TCC_MICOM_MBOX1_IPC			(2)
-#define TCC_MICOM_MBOX1_MAX			(3)
+#define TCC_MICOM_MBOX1_HSM			(3)
+#define TCC_MICOM_MBOX1_MAX			(4)
 
 /* HSM MBOX : A72 <-> HSM */
 #define TCC_HSM_MBOX0_RESERVED		(0)
