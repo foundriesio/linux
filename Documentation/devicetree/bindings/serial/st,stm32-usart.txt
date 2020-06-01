@@ -24,6 +24,14 @@ Optional properties:
 - dmas: Phandle(s) to DMA controller node(s). Refer to stm32-dma.txt
 - dma-names: "rx" and/or "tx"
 - wakeup-source: Bool flag to indicate this device has wakeup capabilities
+- st,rx-fifo-threshold-bytes: RX FIFO threshold configuration in bytes, only
+  available with stm32h7 compatible.
+  Valid values are 1, 2, 4, 8, 12, 14, 16. Default value is 8. If value is
+  set to 1, RX FIFO threshold is disabled.
+- st,tx-fifo-threshold-bytes: TX FIFO threshold configuration in bytes, only
+  available with stm32h7 compatible.
+  Valid values are 1, 2, 4, 8, 12, 14, 16. Default value is 8. If value is
+  set to 1, TX FIFO threshold is disabled.
 
 Note for dma using:
 - "tx" dma can be used without any constraint since it uses single
