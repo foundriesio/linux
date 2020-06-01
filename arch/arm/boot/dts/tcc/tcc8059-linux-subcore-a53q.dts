@@ -46,7 +46,7 @@
 		videoinput6 = &videoinput6;
 		videoinput7 = &videoinput7;
 		wmixer-drv1 = &wmixer_drv1;
-		tcc-overlay-drv1 = &tcc_overlay_drv1;
+//		tcc-overlay-drv1 = &tcc_overlay_drv1;
 	};
 
 	cpus {
@@ -1060,6 +1060,7 @@
 		status = "okay";
 	};
 
+/*
 	tcc_overlay_drv1: tcc_overlay_drv@1 {
 		compatible = "telechips,tcc_overlay";
 		fbdisplay-overlay = <1>;
@@ -1067,6 +1068,7 @@
 		wmixs = <&vioc_wmix VIOC_WMIX0 VIOC_WMIX1>;
 		status = "okay";
 	};
+*/
 
 	wmixer_drv1: wmixer_drv@1 {
 		compatible = "telechips,wmixer_drv";
