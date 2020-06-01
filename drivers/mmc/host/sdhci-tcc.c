@@ -124,7 +124,7 @@ static void sdhci_tcc803x_dumpregs(struct sdhci_host *host)
 		pr_debug("[DEBUG][SDHC] DELAYCON3: 0x%08x | DELAYCON4:  0x%08x\n",
 			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON3),
 			readl(tcc->chctrl_base + TCC_SDHC_DELAY_CON4));
-	} else {
+	} else if(tcc->version == 1) {
 		u32 ch = tcc->controller_id;
 
 		pr_debug("[DEBUG][SDHC] CAPARG1  : 0x%08x | CMDDLY:  0x%08x\n",
@@ -270,7 +270,7 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 
 	if(tcc->version == 0) {
 		ret = sdhci_tcc_parse_channel_configs(pdev, host);
-	} else {
+	} else if(tcc->version == 1) {
 		u32 taps[4] = {TCC803X_SDHC_CLKOUTDLY_DEF_TAP,
 			TCC803X_SDHC_CMDDLY_DEF_TAP,
 			TCC803X_SDHC_DATADLY_DEF_TAP,
@@ -304,6 +304,8 @@ static int sdhci_tcc803x_parse_channel_configs(struct platform_device *pdev, str
 		}
 
 		ret = 0;
+	} else {
+		dev_err(&pdev->dev, "[ERROR][SDHC] unsupported version 0x%x\n", tcc->version);
 	}
 
 	if (!of_property_read_u64(np, "tcc-force-caps", &tcc->force_caps)) {
@@ -463,7 +465,7 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON2);
 		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON3);
 		writel(vals, tcc->chctrl_base + TCC_SDHC_DELAY_CON4);
-	} else {
+	} else if(tcc->version == 1) {
 		vals = TCC_SDHC_TAPDLY_DEF;
 		vals &= ~TCC_SDHC_TAPDLY_OTAP_SEL_MASK;
 		vals |= TCC_SDHC_TAPDLY_OTAP_SEL(tcc->clk_out_tap);
@@ -505,6 +507,8 @@ static void sdhci_tcc803x_set_channel_configs(struct sdhci_host *host)
 			pr_debug("[DEBUG][SDHC] %d: set hs400 taps 0x%08x @0x%p\n",
 					ch, vals, tcc->chctrl_base + TCC803X_SDHC_CORE_CLK_REG2);
 		}
+	} else {
+		pr_err("[ERROR][SDHC] %d: unsupported version 0x%x\n", ch, tcc->version);
 	}
 
 	/* clear CD/WP regitser */
@@ -568,7 +572,7 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 
 	if(tcc->version == 0) {
 		ret = clk_set_rate(pltfm_host->clk, host->mmc->f_max);
-	} else {
+	} else if(tcc->version == 1){
 		if(!is_tcc803x_support_hs400(host)) {
 			unsigned int vals;
 
@@ -659,6 +663,9 @@ static int sdhci_tcc803x_set_core_clock(struct sdhci_host *host)
 			pr_debug("[DEBUG][SDHC] %d: set peri %uHz core %uHz div %d\n", ch,
 				pltfm_host->clock, host->mmc->f_max, div);
 		}
+	} else {
+		pr_err("[ERROR][SDHC] %d: unsupported version 0x%x\n", ch, tcc->version);
+		return -ENOTSUPP;
 	}
 
 	return ret;
@@ -671,11 +678,14 @@ unsigned int sdhci_tcc803x_clk_get_max_clock(struct sdhci_host *host)
 
 	if(tcc->version == 0) {
 		return sdhci_pltfm_clk_get_max_clock(host);
-	} else {
+	} else if(tcc->version == 1) {
 		if(is_tcc803x_support_hs400(host))
 			return host->mmc->f_max;
 		else
 			return sdhci_pltfm_clk_get_max_clock(host);
+	} else {
+		pr_err("[ERROR][SDHC] %d: unsupported version 0x%x\n", ch, tcc->version);
+		return -ENOTSUPP;
 	}
 
 	return -ENOTSUPP;
