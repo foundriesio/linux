@@ -678,15 +678,7 @@ static int sec_probe(struct platform_device *pdev)
 	cfgbase = of_iomap(pdev->dev.of_node, 1);
 	DLOG("code(%p) cfg(%p)\n", codebase, cfgbase);
 
-	of_dma_configure(sec_dev->device, NULL);
-	if (dma_set_coherent_mask(sec_dev->device, DMA_BIT_MASK(32))) {
-		ELOG("DMA mask set fail\n");
-		result = -EINVAL;
-		goto dma_alloc_error;
-	}
-
-	sec_dev->vaddr =
-		dma_alloc_writecombine(sec_dev->device, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
+	sec_dev->vaddr = dma_alloc_coherent(&pdev->dev, MBOX_DMA_SIZE, &sec_dev->paddr, GFP_KERNEL);
 	if (sec_dev->vaddr == NULL) {
 		result = PTR_ERR(sec_dev->vaddr);
 		ELOG("DMA alloc fail: %d\n", result);
