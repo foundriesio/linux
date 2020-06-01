@@ -168,20 +168,27 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
         break;
 #endif
 #endif
+	/*
+		VIN_INT[31]: Not Used
+		VIN_INT[19]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[18]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[17]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[16]: Enable interrupt if 1 / Disable interrupt if 0
+	 */
 	case VIOC_INTR_VIN0:
 	case VIOC_INTR_VIN1:
 	case VIOC_INTR_VIN2:
 	case VIOC_INTR_VIN3:
 		sub_id = id - VIOC_INTR_VIN0;
+
 		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
 
 		/* clera irq status */
-		__raw_writel(__raw_readl(reg) | ((0x1 << 11) | (mask & VIOC_VIN_INT_MASK)), reg);
+		__raw_writel((mask & VIOC_VIN_INT_MASK), reg);
 
 		/* enable irq */
-		__raw_writel(__raw_readl(reg) | ((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
-//		printk("sub_id: %d, reg: 0x%p, vin interrupt: 0x%08x\n", sub_id, reg, __raw_readl(reg));
-        break;
+		__raw_writel(__raw_readl(reg) | ((mask & VIOC_VIN_INT_MASK) << 16), reg);
+		break;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
 	case VIOC_INTR_VIN5:
@@ -190,16 +197,15 @@ int vioc_intr_enable(int irq, int id, unsigned mask)
 	case VIOC_INTR_VIN7:
 #endif//defined(CONFIG_ARCH_TCC805X)
         sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
+
 		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
-//		printk("sub_id: %d\n", sub_id);
 
 		/* clera irq status */
-		__raw_writel(__raw_readl(reg) | ((0x1 << 11) | (mask & VIOC_VIN_INT_MASK)), reg);
+		__raw_writel((mask & VIOC_VIN_INT_MASK), reg);
 
 		/* enable irq */
-		__raw_writel(__raw_readl(reg) | ((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
-//		printk("sub_id: %d, reg: 0x%p, vin interrupt: 0x%08x\n", sub_id, reg, __raw_readl(reg));
-        break;
+		__raw_writel(__raw_readl(reg) | ((mask & VIOC_VIN_INT_MASK) << 16), reg);
+		break;
 #endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
@@ -364,19 +370,22 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 
 #endif
 #endif
+	/*
+		VIN_INT[31]: Not Used
+		VIN_INT[19]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[18]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[17]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[16]: Enable interrupt if 1 / Disable interrupt if 0
+	 */
 	case VIOC_INTR_VIN0:
 	case VIOC_INTR_VIN1:
 	case VIOC_INTR_VIN2:
 	case VIOC_INTR_VIN3:
 		sub_id = id - VIOC_INTR_VIN0;
 		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
-
-		/* disable irq */
-//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
-		__raw_writel(__raw_readl(reg) & ~((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
-//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
-//		if((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
-			do_irq_mask = 0;
+		__raw_writel(__raw_readl(reg) & ~((mask & VIOC_VIN_INT_MASK) << 16), reg);
+//		if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
+//			do_irq_mask = 0;
 		break;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN4:
@@ -385,15 +394,10 @@ int vioc_intr_disable(int irq, int id, unsigned mask)
 #if defined(CONFIG_ARCH_TCC805X)
 	case VIOC_INTR_VIN7:
 #endif//defined(CONFIG_ARCH_TCC805X)
-		sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
-		reg = VIOC_VIN_GetAddress(sub_id * 2) + VIN_INT;
-
-		/* disable irq */
-//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
-		__raw_writel(__raw_readl(reg) & ~((0x1 << 31) | ((mask << 16) & (VIOC_VIN_INT_MASK << 16))), reg);
-//		printk("__raw_readl(reg): 0x%08x\n", __raw_readl(reg));
-//		if((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
-			do_irq_mask = 0;
+        sub_id = id - VIOC_INTR_VIN_OFFSET - VIOC_INTR_VIN0;
+		__raw_writel(__raw_readl(reg) & ~((mask & VIOC_VIN_INT_MASK) << 16), reg);
+//		if ((__raw_readl(reg) & VIOC_VIN_INT_MASK) != VIOC_VIN_INT_MASK)
+//			do_irq_mask = 0;
 		break;
 #endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
@@ -508,6 +512,24 @@ unsigned int vioc_intr_get_status(int id)
         return (__raw_readl(reg) & VIOC_WDMA_INT_MASK);
 #endif
 #endif
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		id -= VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		return (__raw_readl(reg) & VIOC_VIN_INT_MASK);
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#if defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		return (__raw_readl(reg) & VIOC_VIN_INT_MASK);
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return 0;
 }
@@ -641,8 +663,7 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 	case VIOC_INTR_VIN3:
 		id -= VIOC_INTR_VIN0;
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
-//		printk("id: %d, __raw_readl(reg): 0x%08x, (mask<<16): 0x%08x\n", id, __raw_readl(reg), (mask<<16));
-		if (__raw_readl(reg) & ((mask << 16) & (VIOC_VIN_INT_MASK << 16)))
+		if (__raw_readl(reg) & (mask & VIOC_VIN_INT_MASK))
 			return true;
 		return false;
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -654,8 +675,7 @@ bool is_vioc_intr_activatied(int id, unsigned mask)
 #endif//defined(CONFIG_ARCH_TCC805X)
 		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
 		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
-//		printk("id: %d, __raw_readl(reg): 0x%08x, (mask<<16): 0x%08x\n", id, __raw_readl(reg), (mask<<16));
-		if (__raw_readl(reg) & ((mask << 16) & (VIOC_VIN_INT_MASK << 16)))
+		if (__raw_readl(reg) & (mask & VIOC_VIN_INT_MASK))
 			return true;
 		return false;
 #endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
@@ -747,6 +767,35 @@ bool is_vioc_intr_unmasked(int id, unsigned mask)
 		return true;
 #endif
 #endif
+	/*
+		VIN_INT[31]: Not Used
+		VIN_INT[19]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[18]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[17]: Enable interrupt if 1 / Disable interrupt if 0
+		VIN_INT[16]: Enable interrupt if 1 / Disable interrupt if 0
+	 */
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		id -= VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		if (__raw_readl(reg) & ((mask & VIOC_VIN_INT_MASK) << 16))
+			return true;
+		return false;
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#if defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		if (__raw_readl(reg) & ((mask & VIOC_VIN_INT_MASK) << 16))
+			return true;
+		return false;
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 	return false;
 }
@@ -829,6 +878,26 @@ int vioc_intr_clear(int id, unsigned mask)
         break;
 #endif
 #endif
+	case VIOC_INTR_VIN0:
+	case VIOC_INTR_VIN1:
+	case VIOC_INTR_VIN2:
+	case VIOC_INTR_VIN3:
+		id -= VIOC_INTR_VIN0;
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		__raw_writel((mask & VIOC_VIN_INT_MASK), reg);
+		break;
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN4:
+	case VIOC_INTR_VIN5:
+	case VIOC_INTR_VIN6:
+#if defined(CONFIG_ARCH_TCC805X)
+	case VIOC_INTR_VIN7:
+#endif//defined(CONFIG_ARCH_TCC805X)
+		id -= (VIOC_INTR_VIN_OFFSET + VIOC_INTR_VIN0);
+		reg = VIOC_VIN_GetAddress(id * 2) + VIN_INT;
+		__raw_writel((mask & VIOC_VIN_INT_MASK), reg);
+		break;
+#endif//defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	}
 
 	return 0;
