@@ -188,7 +188,7 @@ extern void tccxxx_GetAddress(unsigned char format, unsigned int base_Yaddr, uns
 extern int TCC_VIQE_Scaler_Init_Buffer_M2M(void);
 extern void TCC_VIQE_Scaler_DeInit_Buffer_M2M(void);
 
-extern unsigned int vsync_rdma_off;
+extern unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 #if defined(CONFIG_TCC_OUTPUT_COLOR_SPACE_YUV)
 extern unsigned char hdmi_get_hdmimode(void);
@@ -2952,10 +2952,18 @@ void TCC_VIQE_DI_Run60Hz(struct tcc_lcdc_image_update *input_image, int reset_fr
 	VIOC_WMIX_SetUpdate(pViqe_60hz_info->pWMIXBase_60Hz);
 
 	//VIOC_RDMA_SetImageEnable(pViqe_60hz_info->pRDMABase_60Hz);
-	if (vsync_rdma_off == 0) {
-	VIOC_RDMA_SetImageEnable(pViqe_60hz_info->pRDMABase_60Hz);
-	} else {
-		VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
+	{
+		size_t vsync_type;
+		if (input_image->Lcdc_layer == RDMA_VIDEO) {
+			vsync_type = VSYNC_MAIN;
+		} else {
+			vsync_type = VSYNC_SUB0; // [FIXME] should consider CONFIG_USE_SUB_MULTI_FRAME
+		}
+		if (vsync_rdma_off[vsync_type] == 0) {
+			VIOC_RDMA_SetImageEnable(pViqe_60hz_info->pRDMABase_60Hz);
+		} else {
+			VIOC_RDMA_SetImageDisable(pViqe_60hz_info->pRDMABase_60Hz);
+		}
 	}
 
 #if defined(CONFIG_VIOC_DOLBY_VISION_EDR)

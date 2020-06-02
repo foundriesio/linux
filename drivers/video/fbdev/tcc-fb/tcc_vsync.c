@@ -201,7 +201,7 @@ static unsigned int LCD_LCDC_NUM;
 static char vsync_power_state;
 static int lcdc_interrupt_onoff = 0;
 static int video_display_disable_check = 0;
-unsigned int vsync_rdma_off;	// RDMA_VIDEO enable/disable
+unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 static int debug_v = 0;
 #define vprintk(msg...) if (debug_v) { printk("[DBG][VSYNC] " msg); }
@@ -4126,7 +4126,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 						goto TCC_VSYNC_OPEN_ERROR;
 					}
 
-					vsync_rdma_off = 0;
+					vsync_rdma_off[type] = 0;
 
 			TCC_VSYNC_OPEN_ERROR:
 					kfree((const void*)input_image);
@@ -4151,7 +4151,7 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 							ret = 0;
 						}
 					}
-					vsync_rdma_off = 0;
+					vsync_rdma_off[type] = 0;
 					tcc_vsync_end(p, keep_display);
 				}
 				break;
@@ -4612,10 +4612,10 @@ static long tcc_vsync_do_ioctl(unsigned int cmd, unsigned long arg, VSYNC_CH_TYP
 				break;
 
 			case TCC_LCDC_VIDEO_RDMA_DISABLE:
-				if (copy_from_user((void *)&vsync_rdma_off, (const void *)arg, sizeof(unsigned int))) {
+				if (copy_from_user((void *)&vsync_rdma_off[type], (const void *)arg, sizeof(unsigned int))) {
 					ret = -EFAULT;
 				}
-				pr_info("[INF][VSYNC] TCC_LCDC_VIDEO_RDMA_DISABLE(%d, ret = %d)\n", vsync_rdma_off, ret);
+				pr_info("[INF][VSYNC-%d] TCC_LCDC_VIDEO_RDMA_DISABLE(%d, ret = %d)\n", type, vsync_rdma_off[type], ret);
 				break;
 
 			default:

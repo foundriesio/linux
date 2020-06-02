@@ -258,7 +258,7 @@ static tcc_display_resize resize_data;
 static tcc_display_divide divide_data;
 static tcc_display_resize output_attach_resize_data;
 
-extern unsigned int vsync_rdma_off;
+extern unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 
 extern void tca_lcdc_interrupt_onoff(char onoff, char lcdc);
@@ -5111,7 +5111,13 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 
 		{
 			volatile void __iomem *HwVIOC_MC = VIOC_MC_GetAddress(VIOC_MC0);
-			VIOC_MC_Start_OnOff(HwVIOC_MC, !vsync_rdma_off);
+            size_t vsync_type;
+            if (ImageInfo->Lcdc_layer == RDMA_VIDEO) {
+                vsync_type = VSYNC_MAIN;
+            } else {
+                vsync_type = VSYNC_SUB0; // [FIXME] should consider CONFIG_USE_SUB_MULTI_FRAME
+            }
+			VIOC_MC_Start_OnOff(HwVIOC_MC, !vsync_rdma_off[vsync_type]);
 		}
 	}
 	else
@@ -5250,10 +5256,18 @@ static void tca_scale_display_update_internal(struct tcc_dp_device *pdp_data, st
 		}
 		#endif
 
-		if (vsync_rdma_off == 0) {
-			VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
-		} else {
-			VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+		{
+			size_t vsync_type;
+			if (ImageInfo->Lcdc_layer == RDMA_VIDEO) {
+				vsync_type = VSYNC_MAIN;
+			} else {
+				vsync_type = VSYNC_SUB0; // [FIXME] should consider CONFIG_USE_SUB_MULTI_FRAME
+			}
+			if (vsync_rdma_off[vsync_type] == 0) {
+				VIOC_RDMA_SetImageEnable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+			} else {
+				VIOC_RDMA_SetImageDisable(pdp_data->rdma_info[ImageInfo->Lcdc_layer].virt_addr);
+			}
 		}
 
 		#if defined(CONFIG_TCC_VSYNC_DRV_CONTROL_LUT)
