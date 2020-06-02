@@ -1279,7 +1279,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 	tcc = sdhci_pltfm_priv(pltfm_host);
 
 	tcc->soc_data = soc_data;
-	tcc->version = system_rev;
+	tcc->version =  (system_rev > 0) ? 1 : 0 ;
 	dev_dbg(&pdev->dev, "[DEBUG][SDHC] system version 0x%x\n", tcc->version);
 
 	if (of_property_read_u32(pdev->dev.of_node, "controller-id", &tcc->controller_id) < 0) {
