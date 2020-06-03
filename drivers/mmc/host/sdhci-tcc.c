@@ -507,10 +507,11 @@ static void sdhci_tcc_set_channel_configs_tap_v2(struct sdhci_host *host)
 
 	/* only channel 0 supports hs400 */
 	if(is_tcc_support_hs400(host)) {
-		vals = readl(tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG2);
-		vals &=  ~(TCC_SDHC_DQS_POS_DETECT_DLY(0xF) |
-				TCC_SDHC_DQS_NEG_DETECT_DLY(0xF));
-		vals |= TCC_SDHC_DQS_POS_DETECT_DLY(tcc->hs400_pos_tap) |
+		vals = 0x0001000F;
+		writel(vals, tcc->chctrl_base + TCC_SDHC_SD_DQS_DLY);
+
+		vals = (0x2 << 28) |
+			TCC_SDHC_DQS_POS_DETECT_DLY(tcc->hs400_pos_tap) |
 			TCC_SDHC_DQS_NEG_DETECT_DLY(tcc->hs400_neg_tap);
 		writel(vals, tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG2);
 		vals = readl(tcc->chctrl_base + TCC_SDHC_CORE_CLK_REG2);

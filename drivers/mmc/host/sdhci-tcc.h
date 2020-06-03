@@ -55,6 +55,8 @@
 #define TCC_SDHC_DQS_POS_DETECT_DLY(x)	((x & 0xF) << 4)
 #define TCC_SDHC_DQS_NEG_DETECT_DLY(x)	((x & 0xF) << 20)
 
+#define TCC_SDHC_SD_DQS_DLY		(0x114)
+
 #define TCC_SDHC_TX_CLKDLY_OFFSET(ch)		(0x10C - (ch * 0x50) + ((ch/2) * 0x4))
 #define TCC_SDHC_RX_CLKDLY_VAL_OFFSET(ch)	(0x128 - (ch * 0x48))
 /* (0x128 - (ch * 0x50) + (ch * 0x8)) */
