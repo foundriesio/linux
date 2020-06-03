@@ -22,8 +22,8 @@
 		//videosource2 = &videosource2;
 	};
 
-	pcie@11800000 {
-		reset-gpio = <&gpc 30 0>;
+	pcie@11000000 {
+		reset-gpio = <&gpsd0 11 0>;
 		//status = "okay";
 	};
 

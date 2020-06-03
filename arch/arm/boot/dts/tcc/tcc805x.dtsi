@@ -2096,34 +2096,34 @@
                 status = "disabled";
         };
 
-	pcie: pcie@11800000 {
-		compatible = "telechips,pcie", "snps,dw-pcie";
-		reg = <0x0 0x11800000 0x0 0x1000>,
-		      <0x0 0x11880000 0x0 0x1000>,
-		      <0x0 0x118a0000 0x0 0x1000>,
-		      <0x0 0x11700000 0x0 0x100000>;
-		reg-names = "dbi", "phy", "cfg", "config" , "byte_cfg";
-		interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
-/*		clocks = <&clk_peri PERI_PCIE_AUX>, <&clk_peri PERI_PCIE_APB>, <&clk_peri PERI_PCIE_PCS>, <&clk_peri PERI_PCIE_REF_EXT>,
-			 <&clk_fbus FBUS_HSIO>, <&clk_isoip_top ISOIP_TOP_PCIE>;
-		clock-names = "pcie_aux", "pcie_apb", "pcie_pcs" ,"pcie_ref_ext", "fbus_hsio", "pcie_phy";*/
-		resets = <&pmu_rst RESET_PCIE>;
-		#address-cells = <3>;
-		#size-cells = <2>;
-		device_type = "pci";
-		ranges = <0x81000000 0 0x00000000 0x0 0x11600000 0 0x00100000   /* downstream I/O */
-		          0x82000000 0 0x00000000 0x0 0x11000000 0 0x00600000>;   /* non-prefetchable memory */
-		//ranges = <0x82000000 0 0x00000000 0x11000000 0 0x00600000>;   /* non-prefetchable memory */
-		#interrupt-cells = <1>;
-		interrupt-map-mask = <0 0 0 0>;
-		interrupt-map = <0 0 0 0 &gic GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
-		num-lanes = <1>;
-		num-viewport = <4>;
-		using_ext_ref_clk = <1>;
-		for_si_test = <0>;
-		suspend_mode = <0>;
-		status = "disabled";
-	};
+        pcie: pcie@11000000 {
+                compatible = "telechips,pcie", "snps,dw-pcie";
+                reg = <0 0x11000000 0 0x410000
+                       0 0x11100000 0 0x10000
+                       0 0x11120000 0 0x10000
+                       /* 5 0x00000000 0 0x100000 */
+                       5 0x00700000 0 0x100000
+                       0 0x11110000 0 0x10000>;
+                reg-names = "dbi", "phy", "cfg", "config" , "clk_cfg";
+                interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clk_peri PERI_PCIE0_PHY_CR_CLK>, <&clk_fbus FBUS_PCIe0>;
+                clock-names = "pcie_phy", "fbus_pci0";
+                resets = <&pmu_rst RESET_PCIE>;
+                #address-cells = <3>;
+                #size-cells = <2>;
+                device_type = "pci";
+                ranges = <0x81000000 0 0x00000000 5 0x00600000 0 0x00100000  /* downstream I/O */
+                          0x82000000 0 0x00000000 5 0x0        0 0x00600000>;   /* non-prefetchable memory*/
+                #interrupt-cells = <1>;
+                interrupt-map-mask = <0 0 0 0>;
+                interrupt-map = <0 0 0 0 &gic GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+                num-lanes = <1>;
+                num-viewport = <4>;
+                using_ext_ref_clk = <0>;
+                for_si_test = <0>;
+		ref_clk_pms = <0x0504C80C>;
+                status = "disabled";
+        };
 
 	sdhc0: sdhc@1D2A0000 {
 		compatible = "telechips,tcc805x-sdhci";
