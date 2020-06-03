@@ -68,9 +68,11 @@ typedef enum {
 static inline void tcc_adma_dump(void __iomem *base_addr)
 {
 	ptrdiff_t offset;
+	uint32_t value;
 
 	for (offset=0; offset <= TCC_ADMA_RESET_OFFSET; offset+=4) {
-		printk("ADMA_REG(0x%03x) : 0x%08x\n", (uint32_t)offset, readl(base_addr+offset));
+		value = readl(base_addr+offset);
+		(void) printk("ADMA_REG(0x%03x) : 0x%08x\n", (uint32_t)offset, value);
 	}
 }
 
@@ -88,7 +90,7 @@ static inline void tcc_adma_rx_reset_enable(void __iomem *base_addr, bool enable
 	adma_writel(value, base_addr + TCC_ADMA_RESET_OFFSET);
 }
 
-#if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)
 static inline void tcc_adma_dai_rx_reset_enable(void __iomem *base_addr, bool enable)
 {
 	uint32_t value = readl(base_addr + TCC_ADMA_RESET_OFFSET);
@@ -134,18 +136,24 @@ static inline void tcc_adma_dai_rx_dma_enable(void __iomem *base_addr, bool enab
 
 static inline bool tcc_adma_dai_rx_dma_enable_check(void __iomem *base_addr)
 {
-	return (readl(base_addr + TCC_ADMA_CHCTRL_OFFSET) & ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk) ? true : false;
+	uint32_t int_status = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
+
+	if ((int_status & (ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk)) > (uint32_t) 0) {
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static inline bool tcc_adma_dai_rx_irq_check(void __iomem *base_addr)
 {
 	uint32_t int_status = readl(base_addr + TCC_ADMA_INTSTATUS_OFFSET);
 
-	if (int_status & (ADMA_ISTAT_DAI_RX_MASKED_Msk|ADMA_ISTAT_DAI_RX_Msk)) {
-		return true;
+	if ((int_status & (ADMA_ISTAT_DAI_RX_MASKED_Msk|ADMA_ISTAT_DAI_RX_Msk)) > (uint32_t) 0) {
+		return TRUE;
 	}
 
-	return false;
+	return FALSE;
 }
 
 static inline void tcc_adma_dai_rx_irq_clear(void __iomem *base_addr)
@@ -172,7 +180,7 @@ static inline void tcc_adma_set_dai_rx_dma_width(void __iomem *base_addr, TCC_AD
 	uint32_t value = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
 
 	value &= ~ADMA_CHCTRL_DAI_RXD_WIDTH_MODE_Msk;
-	value |= (width == TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_DAI_RXD_WIDTH_24BIT : ADMA_CHCTRL_DAI_RXD_WIDTH_16BIT;
+	value |= (width==TCC_ADMA_DATA_WIDTH_24) ? ADMA_CHCTRL_DAI_RXD_WIDTH_24BIT : ADMA_CHCTRL_DAI_RXD_WIDTH_16BIT;
 
 	adma_writel(value, base_addr + TCC_ADMA_CHCTRL_OFFSET);
 }
@@ -262,7 +270,7 @@ static inline void tcc_adma_dai_threshold(void __iomem *base_addr, uint32_t dai_
 
 	value = readl(base_addr + TCC_ADMA_RPTCTRL_OFFSET);
 	value &= ~ADMA_RPTCTRL_DAI_BUF_THRESHOLD_Msk;
-	value |= _VAL2FLD(ADMA_RPTCTRL_DAI_BUF_THRESHOLD, dai_buf_threshold);
+	value |= VAL2FLD(ADMA_RPTCTRL_DAI_BUF_THRESHOLD, dai_buf_threshold);
 
 	adma_writel(value, base_addr + TCC_ADMA_RPTCTRL_OFFSET);
 }
@@ -288,57 +296,37 @@ static inline int tcc_adma_set_rx_dma_params(void __iomem *base_addr,
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
 	uint32_t rxdaadrcnt;
 #endif
+	int buffer_bytes_tmp = buffer_bytes - 1;
+	int overall_size = (int32_t) wsize + (int32_t) bsize;
+	int rxdatcnt_tmp;
 
-	tcc_adma_dai_rx_dma_enable(base_addr, false);
+	tcc_adma_dai_rx_dma_enable(base_addr, FALSE);
 
-	if (buffer_bytes == 0) {
+	if (buffer_bytes == 0)
 		return -1;
-	}
 
 
 	if(radio_mode) {
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
-/*
-		if (adrcnt_mode) {
-		
-			uint32_t adrcnt = period_bytes;//buffer_bytes / (1<<wsize);
 
-			adrcnt = adrcnt * ports_num * 2;
-			rxdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt);
-			rxdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
-		} else {
-			rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
-			dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
-		
-			printk("Warning!! In Radio mode, address counter mode doesn't support.\nPlease modify device tree about &adma.\n");
-		}
-*/
-		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
-		dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
+		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
 #else
-		dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
+		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
 #endif
 	} else {
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
-/*		if (adrcnt_mode) {
-			uint32_t adrcnt = buffer_bytes / (1<<wsize);
 
-			adrcnt = (mono_mode) ? adrcnt * 2 : adrcnt;
-			rxdaadrcnt = _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, adrcnt);
-			rxdaadrcnt |= ADMA_ADRCNT_MODE_ADRCNT;
-		} else {
-			rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
-			dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
-		}
-*/
-		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | _VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffff);
-		dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
+		rxdaadrcnt = ADMA_ADRCNT_MODE_SMASK | VAL2FLD(ADMA_ADRCNT_ADDR_COUNT, 0x7fffffffU);
+		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
 #else
-		dma_buffer = _VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((buffer_bytes-1)>>4));
+		dma_buffer = VAL2FLD(ADMA_PARAM_ADDR_MASK, ~((uint32_t) (buffer_bytes_tmp)>>4));
 #endif
 	}
-	rxdaparam = dma_buffer | (1<<wsize);
-	rxdatcnt = ((period_bytes * ports_num) >> (wsize+bsize)) - 1;
+	rxdaparam = dma_buffer | ((uint32_t) 1 << (uint32_t) wsize);
+	rxdatcnt = (uint32_t) period_bytes >> (uint32_t) overall_size;
+	rxdatcnt_tmp = (int32_t) rxdatcnt - 1;
+	rxdatcnt = (uint32_t) rxdatcnt_tmp;
 	
 #if !defined(CONFIG_ARCH_TCC802X) && !defined(CONFIG_ARCH_TCC898X)
 	adma_writel(rxdaadrcnt, base_addr + TCC_ADMA_RXDAADRCNT_OFFSET);
@@ -348,7 +336,7 @@ static inline int tcc_adma_set_rx_dma_params(void __iomem *base_addr,
 
 	tcc_adma_set_dai_rx_lrmode(base_addr, mono_mode);
 	tcc_adma_set_dai_rx_transfer_size(base_addr, wsize, bsize);
-	tcc_adma_set_dai_rx_dma_repeat_enable(base_addr, true);
+	tcc_adma_set_dai_rx_dma_repeat_enable(base_addr, TRUE);
 
 	if(radio_mode == false) {
 		tcc_adma_set_dai_rx_dma_width(base_addr, data_width);
@@ -356,6 +344,7 @@ static inline int tcc_adma_set_rx_dma_params(void __iomem *base_addr,
 
 	return 0;
 }
+
 
 static inline int tcc_adma_set_rx_dma_addr(void __iomem *base_addr,
 	uint32_t dma_addr, uint32_t mono_dma_addr, bool mono_mode, bool radio_mode, uint32_t index)
@@ -416,7 +405,7 @@ static inline void tcc_adma_dai_rx_hopcnt_clear(void __iomem *base_addr)
 
 	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_CLEAR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 	adma_writel(addr, base_addr + TCC_ADMA_RXDADAR_OFFSET);
-	while((readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != 0);
+	while((readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET) & ADMA_COUNTER_CUR_COUNT_Msk) != (uint32_t)0);
 	adma_writel(value | ADMA_TRANSCTRL_HOP_COUNT_INCR_MODE, base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
