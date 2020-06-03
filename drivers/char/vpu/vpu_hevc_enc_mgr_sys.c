@@ -15,13 +15,12 @@
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *fbus_chevcenc_clk = NULL;
 static struct clk *fbus_bhevcenc_clk = NULL;
-//static struct clk *vbus_hevc_bus_clk = NULL;
-//static struct clk *vbus_hevc_core_clk = NULL; // for pwdn and vBus.
 
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
 #include <linux/reset.h>
-static struct reset_control *vbus_hevc_bus_reset = NULL;
-static struct reset_control *vbus_hevc_core_reset = NULL; // for pwdn and vBus.
+//static struct reset_control *vbus_hevc_bus_reset = NULL;
+//static struct reset_control *vbus_hevc_core_reset = NULL; // for pwdn and vBus.
+static struct reset_control *vbus_hevc_encoder = NULL;
 #endif
 
 extern int tccxxx_sync_player(int sync);

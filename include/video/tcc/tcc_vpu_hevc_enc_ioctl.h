@@ -14,7 +14,7 @@
 
 #include "tcc_video_common.h"
 
-#define VPU_HEVC_ENC_MIN (VPU_ENC)
+#define VPU_HEVC_ENC_MAX (VPU_MAX)
 
 typedef struct
 {

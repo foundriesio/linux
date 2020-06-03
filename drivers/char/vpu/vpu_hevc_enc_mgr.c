@@ -141,7 +141,7 @@ static int _vmgr_hevc_enc_cmd_open(char *str)
 		//vetc_reg_init(vmgr_hevc_enc_data.base_addr);
 		if(0 > (ret = vmem_init()))
 		{
-			_DBG(DEBUG_ENC_ERROR, "failed to allocate memory for VPU_HEVC_ENC!! %d", ret);
+			_DBG(DEBUG_ENC_ERROR, "failed to allocate memory for VPU_HEVC_ENC(WAVE420L)!! %d", ret);
 			//return -ENOMEM;
 		}
 
@@ -160,12 +160,12 @@ int vmgr_hevc_enc_get_alive(void)
 	return atomic_read(&vmgr_hevc_enc_data.dev_opened);
 }
 
-int vmgr_hevc_enc_get_close(vpu_hevc_enc_type type)
+int vmgr_hevc_enc_get_close(vputype type)
 {
 	return vmgr_hevc_enc_data.closed[type];
 }
 
-int vmgr_hevc_enc_set_close(vpu_hevc_enc_type type, int value, int bfreemem)
+int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 {
 	if(vmgr_hevc_enc_get_close(type) == value)
 	{
@@ -189,20 +189,20 @@ static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_HEVC_ENC, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT2, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
 #if defined(CONFIG_VENC_CNT_4)
-	vmgr_hevc_enc_set_close(VPU_HEVC_ENC_EXT3, 1, bfreemem);
+	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
 }
 
-int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vpu_hevc_enc_type type, int Op, int *result)
+int vmgr_hevc_enc_process_ex(VpuList_t *cmd_list, vputype type, int Op, int *result)
 {
     if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
     {
@@ -251,7 +251,7 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 	int max_count = 0;
 	int ret;
 
-	for(type = VPU_HEVC_ENC; type < VPU_HEVC_ENC_MAX; type++)
+	for(type = VPU_ENC; type < VPU_HEVC_ENC_MAX; type++)
 	{
 		if(_vmgr_hevc_enc_proc_exit_by_external(&vmgr_hevc_enc_data.vList[type], &ret, type)) {
 			max_count = wait_ms/10;
@@ -289,7 +289,7 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		}
 		vmgr_hevc_enc_data.bVpu_already_proc_force_closed = false;
 
-		for(type=VPU_HEVC_ENC; type<VPU_HEVC_ENC_MAX; type++)
+		for(type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
 		{
 			if( vmgr_hevc_enc_data.closed[type] == 0 )
 			{
@@ -324,10 +324,10 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
-		vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
-		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
-		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
-		vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
+		vmgr_hevc_enc_get_close(VPU_ENC),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
+		vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
 		);
 
 	return 0;
@@ -430,7 +430,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
     return ret_code;
 }
 
-static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle, void* args)
+static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
 #ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
@@ -441,7 +441,6 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
-#if !defined(VPU_D6)
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
 	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 
@@ -476,11 +475,31 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 				arg->encInit.m_Iounmap		= (void (*) ( void* )) vetc_iounmap;
 				arg->encInit.m_reg_read		= (unsigned int (*)(void *, unsigned int)) vetc_reg_read;
 				arg->encInit.m_reg_write	= (void (*)(void *, unsigned int, unsigned int)) vetc_reg_write;
+				arg->encInit.m_Usleep		= (void (*)(unsigned int, unsigned int))usleep_range;
+
+				_DBG(DEBUG_ENC_SEQUENCE, "@@ Enc :: Init In =>Memcpy(0x%px),Memset(0x%px),Interrupt(0x%px),remap(0x%px),unmap(0x%px),read(0x%px),write((0x%px))sleep(0x%px)|| workbuff 0x%px/0x%px, Reg: 0x%px/0x%px, format : %d, Stream(0x%px/0x%px, %d)\n",
+					arg->encInit.m_Memcpy,
+					arg->encInit.m_Memset,
+					arg->encInit.m_Interrupt,
+					arg->encInit.m_Ioremap,
+					arg->encInit.m_Iounmap,
+					arg->encInit.m_reg_read,
+					arg->encInit.m_reg_write,
+					arg->encInit.m_Usleep,
+					arg->encInit.m_BitWorkAddr[PA],
+					arg->encInit.m_BitWorkAddr[VA],
+					vmgr_hevc_enc_data.base_addr,
+					arg->encInit.m_RegBaseAddr[VA],
+					arg->encInit.m_iBitstreamFormat,
+					arg->encInit.m_BitstreamBufferAddr[PA],
+					arg->encInit.m_BitstreamBufferAddr[VA],
+					arg->encInit.m_iBitstreamBufferSize
+					);
 
 				ret = tcc_vpu_hevc_enc(cmd, (void*)(&arg->handle), (void*)(&arg->encInit), (void*)(&arg->encInitialInfo));
 				if(ret != RETCODE_SUCCESS)
 				{
-					_DBG(DEBUG_ENC_ERROR, " :: Init Done with ret(0x%x)", ret);
+					_DBG(DEBUG_ENC_ERROR, " :: Init failed with ret(0x%x)", ret);
 					if( ret != RETCODE_CODEC_EXIT )
 					{
 						vetc_dump_reg_all(vmgr_hevc_enc_data.base_addr, "Init error");
@@ -499,7 +518,7 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 					vmgr_hevc_enc_set_close(type, 0, 0);
 					vmgr_hevc_enc_set_close(type, 1, 1);
 				}
-				_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x) \n", arg->handle);
+				_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x)", arg->handle);
 				vmgr_hevc_enc_data.nDecode_Cmd = 0;
 			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
 				vmgr_hevc_enc_data.iTime[type].print_out_index = vmgr_hevc_enc_data.iTime[type].proc_base_cnt = 0;
@@ -512,6 +531,13 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 			case VPU_ENC_REG_FRAME_BUFFER:
 			{
 				VENC_HEVC_SET_BUFFER_t *arg = (VENC_HEVC_SET_BUFFER_t *) args;
+
+				_DBG(DEBUG_ENC_SEQUENCE, "HEnc-%d: Register a frame buffer w PA(0x%px)/VA(0x%px)",
+					type,
+					arg->encBuffer.m_FrameBufferStartAddr[0],
+					arg->encBuffer.m_FrameBufferStartAddr[1]
+					);
+
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encBuffer), (void*)NULL);
 			}
 			break;
@@ -519,9 +545,17 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 			case VPU_ENC_PUT_HEADER:
 			{
 				VENC_HEVC_PUT_HEADER_t *arg = (VENC_HEVC_PUT_HEADER_t *) args;
-			#if !defined(VPU_C5)
+
 				vmgr_hevc_enc_data.check_interrupt_detection = 1;
-			#endif
+
+				_DBG(DEBUG_ENC_SEQUENCE, "HEnc-%d: put an Enc header w type(%d),size(%d),PA(0x%px)/VA(0x%px)",
+					type,
+					arg->encHeader.m_iHeaderType,
+					arg->encHeader.m_iHeaderSize,
+					arg->encHeader.m_HeaderAddr[0],
+					arg->encHeader.m_HeaderAddr[1]
+					);
+
 				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encHeader), (void*)NULL);
 			}
 			break;
@@ -532,7 +566,7 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
 				do_gettimeofday( &t1 );
 			#endif
-				_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d \n",
+				_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d",
 						pHandle,
 						arg->encInput.m_PicYAddr,
 						arg->encInput.m_PicCbAddr,
@@ -548,8 +582,8 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 						arg->encInput.m_iBitstreamBufferSize
 						);
 
-                vmgr_hevc_enc_data.check_interrupt_detection = 1;
-                ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encInput), (void*)(&arg->encOutput));
+				vmgr_hevc_enc_data.check_interrupt_detection = 1;
+				ret = tcc_vpu_hevc_enc(cmd, (codec_handle_t*)&pHandle, (void*)(&arg->encInput), (void*)(&arg->encOutput));
 
 			#if 0//def VPU_HEVC_ENC_REGISTER_DUMP
 				if(arg->encInput.m_iForceIPicture != 0)
@@ -643,7 +677,6 @@ static int _vmgr_hevc_enc_process(vpu_hevc_enc_type type, int cmd, long pHandle,
 	}
 #endif
 #endif
-#endif
 
 	return ret;
 }
@@ -675,7 +708,7 @@ static int _vmgr_hevc_enc_operation(void)
 			vmgr_hevc_enc_data.cmd_queued
 			);
 
-		if((oper_data->type >= VPU_HEVC_ENC && oper_data->type < VPU_HEVC_ENC_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
+		if((oper_data->type >= VPU_ENC && oper_data->type < VPU_HEVC_ENC_MAX) && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
 		{
 			*(oper_data->vpu_result) |= RET3;
 			*(oper_data->vpu_result) = _vmgr_hevc_enc_process(oper_data->type,
@@ -689,7 +722,7 @@ static int _vmgr_hevc_enc_operation(void)
 				if(*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
 					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
 				{
-					_DBG(DEBUG_ENC_ERROR, "- out[0x%p] :: type = %u, vmgr_hevc_enc_data.handle = 0x%ld, cmd = 0x%d, frame_len %u",
+					_DBG(DEBUG_ENC_ERROR, "- out[0x%p] :: type = %u, vmgr_hevc_enc_data.handle = 0x%ld, cmd = %d, frame_len %u",
 							(void *)*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
 				}
 
@@ -807,7 +840,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if (info.type >= VPU_HEVC_ENC && info.isSWCodec)
+						if (info.type >= VPU_ENC && info.isSWCodec)
 						{
 							vmgr_hevc_enc_data.clk_limitation = 0;
 							_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
@@ -822,7 +855,7 @@ static long _vmgr_hevc_enc_ioctl(struct file *file, unsigned int cmd, unsigned l
 					}
 					else
 					{
-						if (info.type >= VPU_HEVC_ENC && info.isSWCodec)
+						if (info.type >= VPU_ENC && info.isSWCodec)
 						{
 							vmgr_hevc_enc_data.clk_limitation = 0;
 							_DBG(DEBUG_ENC_SEQUENCE, "The clock limitation for VPU HEVC ENC is released.");
@@ -1227,7 +1260,7 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	_DBG(DEBUG_ENC_PROBE, "vmgr_hevc_enc_probe() enter");
 
 	memset(&vmgr_hevc_enc_data, 0, sizeof(mgr_data_t) );
-	for(type=VPU_HEVC_ENC; type<VPU_HEVC_ENC_MAX; type++)
+	for(type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
 	{
 		vmgr_hevc_enc_data.closed[type] = 1;
 	}
@@ -1255,7 +1288,7 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	res->end += 1;
 
 	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%p], irq num [%d]",
+	_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], irq num [%d]",
 		res->start, vmgr_hevc_enc_data.base_addr, vmgr_hevc_enc_data.irq-32);
 
 	vmgr_hevc_enc_get_clock(pdev->dev.of_node);
@@ -1351,10 +1384,10 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) != 0)
 	{
 		printk("\n vpu hevc enc: suspend enter for ENC(%d/%d/%d/%d)\n",
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_ENC),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
 			);
 
 		_vmgr_hevc_enc_external_all_close(200);
@@ -1365,10 +1398,10 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 			vmgr_hevc_enc_disable_clock(0);
 		}
 		printk("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d)\n",
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT2),
-			vmgr_hevc_enc_get_close(VPU_HEVC_ENC_EXT3)
+			vmgr_hevc_enc_get_close(VPU_ENC),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT2),
+			vmgr_hevc_enc_get_close(VPU_ENC_EXT3)
 			);
 	}
 

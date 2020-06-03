@@ -41,8 +41,9 @@
 #define DEBUG_ENC_PROBE			(1<<3)
 #define DEBUG_ENC_RSTCLK		(1<<4)
 #define DEBUG_ENC_THREAD		(1<<5)
+#define DEBUG_ENC_INSTANCE		(1<<6)
 
-static unsigned int debug_mask = DEBUG_ENC_PROBE;
+static unsigned int debug_mask = DEBUG_ENC_SEQUENCE | DEBUG_ENC_PROBE | DEBUG_ENC_ERROR | DEBUG_ENC_INSTANCE;
 
 #ifdef DEBUG
 #define _DBG(x, fmt, args...) \

@@ -53,10 +53,14 @@
 #include "jpu_mgr.h"
 #endif
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+#include "vpu_hevc_enc_mgr.h"
+#endif
+
 #if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 
-#define dprintk(msg...) //printk( "TCC_VPU_ENC: " msg);
-#define detailk(msg...) //printk( "TCC_VPU_ENC: " msg);
+#define dprintk(msg...) printk( "TCC_VPU_ENC: " msg);
+#define detailk(msg...) printk( "TCC_VPU_ENC: " msg);
 #define err(msg...) printk("TCC_VPU_ENC[Err]: "msg);
 
 static struct mutex add_mutex;
@@ -71,6 +75,11 @@ static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
         vdata->venc_list[vdata->list_idx].handle    = vdata->gsJpuEncInit_Info.gsJpuEncHandle;
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+	if(vdata->gsCodecType == STD_HEVC_ENC)
+		vdata->venc_list[vdata->list_idx].handle	= vdata->gsVpuHevcEncInit_Info.handle;
+	else
+#endif
         vdata->venc_list[vdata->list_idx].handle    = vdata->gsVpuEncInit_Info.gsVpuEncHandle;
     vdata->venc_list[vdata->list_idx].args          = args;
     vdata->venc_list[vdata->list_idx].comm_data     = &vdata->vComm_data;
@@ -81,6 +90,11 @@ static void _venc_inter_add_list(vpu_encoder_data *vdata, int cmd, void* args)
     if(vdata->gsCodecType == STD_MJPG)
         jmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
     else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+	if(vdata->gsCodecType == STD_HEVC_ENC)
+		vmgr_hevc_enc_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
+	else
 #endif
         vmgr_list_manager(&vdata->venc_list[vdata->list_idx], LIST_ADD);
 
@@ -115,6 +129,15 @@ static int _venc_proc_init(vpu_encoder_data *vdata, VENC_INIT_t *arg)
     }
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    if(copy_from_user(&vdata->gsVpuHevcEncInit_Info, arg, sizeof(VENC_HEVC_INIT_t)))
+	        return -EFAULT;
+	    pArgs = ( void *)&vdata->gsVpuHevcEncInit_Info;
+    }
+    else
+#endif
     {
         if(copy_from_user(&vdata->gsVpuEncInit_Info, arg, sizeof(VENC_INIT_t)))
             return -EFAULT;
@@ -140,6 +163,15 @@ static int _venc_proc_exit(vpu_encoder_data *vdata, void *arg)
     }
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    if(copy_from_user(&vdata->gsVpuHevcEncInOut_Info, arg, sizeof(VENC_HEVC_ENCODE_t)))
+		return -EFAULT;
+	pArgs = ( void *)&vdata->gsVpuHevcEncInOut_Info;
+	}
+	else
+#endif
     {
         if(copy_from_user(&vdata->gsVpuEncInOut_Info, arg, sizeof(VENC_ENCODE_t)))
             return -EFAULT;
@@ -164,6 +196,15 @@ static int _venc_proc_put_header(vpu_encoder_data *vdata, VENC_PUT_HEADER_t *arg
     }
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    if(copy_from_user(&vdata->gsVpuHevcEncPutHeader_Info, arg, sizeof(VENC_HEVC_PUT_HEADER_t)))
+	        return -EFAULT;
+	    pArgs = ( void *)&vdata->gsVpuHevcEncPutHeader_Info;
+	}
+	else
+#endif
     {
         if(copy_from_user(&vdata->gsVpuEncPutHeader_Info, arg, sizeof(VENC_PUT_HEADER_t)))
             return -EFAULT;
@@ -185,6 +226,18 @@ static int _venc_proc_reg_framebuffer(vpu_encoder_data *vdata, VENC_SET_BUFFER_t
         err("%s :: jpu not support this !! \n", vdata->misc->name);return -0x999;
     }
     else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    if(copy_from_user(&vdata->gsVpuHevcEncBuffer_Info, arg, sizeof(VENC_HEVC_SET_BUFFER_t)))
+	        return -EFAULT;
+	    pArgs = ( void *)&vdata->gsVpuHevcEncBuffer_Info;
+
+	    detailk("_vpu_hevc_enc_proc_reg_framebuffer addr :: phy = 0x%x, virt = 0x%x!! \n", vdata->gsVpuHevcEncBuffer_Info.encBuffer.m_FrameBufferStartAddr[0],
+	                    vdata->gsVpuHevcEncBuffer_Info.encBuffer.m_FrameBufferStartAddr[1]);
+	}
+	else
 #endif
     {
         if(copy_from_user(&vdata->gsVpuEncBuffer_Info, arg, sizeof(VENC_SET_BUFFER_t)))
@@ -214,6 +267,17 @@ static int _venc_proc_encode(vpu_encoder_data *vdata, VENC_ENCODE_t *arg)
         detailk("_jpu_proc_decode In !! handle = 0x%x, in_stream_size = 0x%x \n", vdata->gsJpuEncInit_Info.gsJpuEncHandle, vdata->gsJpuEncInOut_Info.gsJpuEncInput.m_iBitstreamBufferSize);
     }
     else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    if(copy_from_user(&vdata->gsVpuHevcEncInOut_Info, arg, sizeof(VENC_HEVC_ENCODE_t)))
+	        return -EFAULT;
+	    pArgs = ( void *)&vdata->gsVpuHevcEncInOut_Info;
+
+	    detailk("_vpu_hevc_enc_proc_encode In !! handle = 0x%x, in_stream_size = 0x%x \n", vdata->gsVpuHevcEncInit_Info.handle, vdata->gsVpuHevcEncInOut_Info.encInput.m_iBitstreamBufferSize);
+	}
+	else
 #endif
     {
         if(copy_from_user(&vdata->gsVpuEncInOut_Info, arg, sizeof(VENC_ENCODE_t)))
@@ -247,6 +311,15 @@ static int _venc_result_init(vpu_encoder_data *vdata, VENC_INIT_t *arg)
     }
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    vdata->gsVpuHevcEncInit_Info.result = vdata->gsCommEncResult;
+	    if (copy_to_user(arg, &vdata->gsVpuHevcEncInit_Info, sizeof(VENC_HEVC_INIT_t)))
+	        return -EFAULT;
+	}
+	else
+#endif
     {
         vdata->gsVpuEncInit_Info.result = vdata->gsCommEncResult;
         if (copy_to_user(arg, &vdata->gsVpuEncInit_Info, sizeof(VENC_INIT_t)))
@@ -264,6 +337,15 @@ static int _venc_result_put_header(vpu_encoder_data *vdata, VENC_PUT_HEADER_t *a
         err("%s ::jpu not support this !! \n", vdata->misc->name);return -0x999;
     }
     else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    vdata->gsVpuHevcEncPutHeader_Info.result = vdata->gsCommEncResult;
+	    if (copy_to_user(arg, &vdata->gsVpuHevcEncPutHeader_Info, sizeof(VENC_HEVC_PUT_HEADER_t)))
+	        return -EFAULT;
+	}
+	else
 #endif
     {
         vdata->gsVpuEncPutHeader_Info.result = vdata->gsCommEncResult;
@@ -286,6 +368,17 @@ static int _venc_proc_encode_result(vpu_encoder_data *vdata, VENC_ENCODE_t *arg)
             return -EFAULT;
     }
     else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+	    detailk("%s :: _vpu_hevc_enc_proc_encode_result !! PicType[%d], Encoded_size[%d] \n", vdata->misc->name, vdata->gsVpuHevcEncInOut_Info.encOutput.m_iPicType, vdata->gsVpuHevcEncInOut_Info.encOutput.m_iBitstreamOutSize);
+
+	    vdata->gsVpuHevcEncInOut_Info.result = vdata->gsCommEncResult;
+	    if (copy_to_user(arg, &vdata->gsVpuHevcEncInOut_Info, sizeof(VENC_HEVC_ENCODE_t)))
+	        return -EFAULT;
+	}
+	else
 #endif
     {
         detailk("%s :: _venc_proc_encode_result !! PicType[%d], Encoded_size[%d] \n", vdata->misc->name, vdata->gsVpuEncInOut_Info.gsVpuEncOutput.m_iPicType, vdata->gsVpuEncInOut_Info.gsVpuEncOutput.m_iBitstreamOutSize);
@@ -323,6 +416,26 @@ static void _venc_force_close(vpu_encoder_data *vdata)
     }
     else
 #endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+    if(vdata->gsCodecType == STD_HEVC_ENC)
+    {
+		if(!vmgr_hevc_enc_get_close(vdata->gsEncType) && vmgr_hevc_enc_get_alive())
+		{
+			int max_count = 100;
+
+			vmgr_hevc_enc_process_ex(cmd_list, vdata->gsEncType, VPU_ENC_CLOSE, &ret);
+			while(!vmgr_hevc_enc_get_close(vdata->gsEncType))
+			{
+				max_count--;
+				msleep(20);
+
+				if(max_count <= 0)
+					break;
+			}
+		}
+	}
+	else
+#endif
     {
         if(!vmgr_get_close(vdata->gsEncType) && vmgr_get_alive()){
             int max_count = 100;
@@ -342,285 +455,320 @@ static void _venc_force_close(vpu_encoder_data *vdata)
 
 static int _vdev_init(vpu_encoder_data *vdata, void *arg)
 {
-    if(vdata->vComm_data.dev_opened > 1){
+	if(vdata->vComm_data.dev_opened > 1)
+	{
+#ifdef CONFIG_SUPPORT_TCC_JPU
+		if(vdata->gsCodecType == STD_MJPG)
+		{
+			err("Jpu(%s) has been already opened. Maybe there is exceptional stop!! Mgr(%d)/Enc(%d) \n", vdata->misc->name, jmgr_get_alive(), jmgr_get_close(vdata->gsEncType));
+		}
+		else
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		if(vdata->gsCodecType == STD_HEVC_ENC)
+		{
+			err("VPU HEVC ENC (%s) has been already opened. Maybe there is exceptional stop!! Mgr(%d)/Enc(%d) \n", vdata->misc->name, vmgr_hevc_enc_get_alive(), vmgr_hevc_enc_get_close(vdata->gsEncType));
+		}
+		else
+#endif
+		{
+			err("Vpu(%s) has been already opened. Maybe there is exceptional stop!! Mgr(%d)/Enc(%d) \n", vdata->misc->name, vmgr_get_alive(), vmgr_get_close(vdata->gsEncType));
+		}
+
+		_venc_force_close(vdata);
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-        if(vdata->gsCodecType == STD_MJPG)
-        {
-            err("Jpu(%s) has been already opened. Maybe there is exceptional stop!! Mgr(%d)/Enc(%d) \n", vdata->misc->name, jmgr_get_alive(), jmgr_get_close(vdata->gsEncType));
-        }
-        else
+		if(vdata->gsCodecType == STD_MJPG)
+			jmgr_set_close(vdata->gsEncType, 1, 1);
+		else
 #endif
-        {
-            err("Vpu(%s) has been already opened. Maybe there is exceptional stop!! Mgr(%d)/Enc(%d) \n", vdata->misc->name, vmgr_get_alive(), vmgr_get_close(vdata->gsEncType));
-        }
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		if(vdata->gsCodecType == STD_HEVC_ENC)
+			vmgr_hevc_enc_set_close(vdata->gsEncType, 1, 1);
+		else
+#endif
+			vmgr_set_close(vdata->gsEncType, 1, 1);
 
-        _venc_force_close(vdata);
+		vdata->vComm_data.dev_opened--;
+	}
+
+	vdata->gsCodecType = -1;
+	if(copy_from_user(&vdata->gsCodecType, arg, sizeof(int)))
+		return -EFAULT;
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-        if(vdata->gsCodecType == STD_MJPG)
-            jmgr_set_close(vdata->gsEncType, 1, 1);
-        else
+	if(vdata->gsCodecType == STD_MJPG)
+	{
+		memset(&vdata->gsJpuEncInit_Info, 0x00, sizeof(JENC_INIT_t));
+		//memset(&vdata->gsJpuEncSeqHeader_Info, 0x00, sizeof(JPU_SEQ_HEADER_t));
+		//memset(&vdata->gsJpuEncBuffer_Info, 0x00, sizeof(JPU_SET_BUFFER_t));
+		memset(&vdata->gsJpuEncInOut_Info, 0x00, sizeof(JPU_ENCODE_t));
+	}
+	else
 #endif
-            vmgr_set_close(vdata->gsEncType, 1, 1);
-
-        vdata->vComm_data.dev_opened--;
-    }
-
-    vdata->gsCodecType = -1;
-    if(copy_from_user(&vdata->gsCodecType, arg, sizeof(int)))
-        return -EFAULT;
-
-#ifdef CONFIG_SUPPORT_TCC_JPU
-    if(vdata->gsCodecType == STD_MJPG)
-    {
-        memset(&vdata->gsJpuEncInit_Info, 0x00, sizeof(JENC_INIT_t));
-        //memset(&vdata->gsJpuEncSeqHeader_Info, 0x00, sizeof(JPU_SEQ_HEADER_t));
-        //memset(&vdata->gsJpuEncBuffer_Info, 0x00, sizeof(JPU_SET_BUFFER_t));
-        memset(&vdata->gsJpuEncInOut_Info, 0x00, sizeof(JPU_ENCODE_t));
-    }
-    else
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+	if(vdata->gsCodecType == STD_HEVC_ENC)
+	{
+		memset(&vdata->gsVpuHevcEncInit_Info, 0x00, sizeof(VENC_HEVC_INIT_t));
+		memset(&vdata->gsVpuHevcEncPutHeader_Info, 0x00, sizeof(VENC_HEVC_PUT_HEADER_t));
+		memset(&vdata->gsVpuHevcEncBuffer_Info, 0x00, sizeof(VENC_HEVC_SET_BUFFER_t));
+		memset(&vdata->gsVpuHevcEncInOut_Info, 0x00, sizeof(VENC_HEVC_ENCODE_t));
+	}
+	else
 #endif
-    {
-        memset(&vdata->gsVpuEncInit_Info, 0x00, sizeof(VENC_INIT_t));
-        memset(&vdata->gsVpuEncPutHeader_Info, 0x00, sizeof(VENC_PUT_HEADER_t));
-        memset(&vdata->gsVpuEncBuffer_Info, 0x00, sizeof(VENC_SET_BUFFER_t));
-        memset(&vdata->gsVpuEncInOut_Info, 0x00, sizeof(VENC_ENCODE_t));
-    }
+	{
+		memset(&vdata->gsVpuEncInit_Info, 0x00, sizeof(VENC_INIT_t));
+		memset(&vdata->gsVpuEncPutHeader_Info, 0x00, sizeof(VENC_PUT_HEADER_t));
+		memset(&vdata->gsVpuEncBuffer_Info, 0x00, sizeof(VENC_SET_BUFFER_t));
+		memset(&vdata->gsVpuEncInOut_Info, 0x00, sizeof(VENC_ENCODE_t));
+	}
 
-    return 0;
+	return 0;
 }
 
 int venc_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-    struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-    vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
 #if defined(CONFIG_TCC_MEM)
-    if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
-        printk(KERN_ERR  "%s :: mmap: this address is not allowed \n", vdata->misc->name);
-        return -EAGAIN;
-    }
+	if(range_is_allowed(vma->vm_pgoff, vma->vm_end - vma->vm_start) < 0){
+		printk(KERN_ERR  "%s :: mmap: this address is not allowed \n", vdata->misc->name);
+		return -EAGAIN;
+	}
 #endif
 
-    vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
-    if(remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
-    {
-        printk("%s :: mmap :: remap_pfn_range failed\n", vdata->misc->name);
-        return -EAGAIN;
-    }
+	vma->vm_page_prot = vmem_get_pgprot(vma->vm_page_prot, vma->vm_pgoff);
+	if(remap_pfn_range(vma,vma->vm_start, vma->vm_pgoff , vma->vm_end - vma->vm_start, vma->vm_page_prot))
+	{
+		printk("%s :: mmap :: remap_pfn_range failed\n", vdata->misc->name);
+		return -EAGAIN;
+	}
 
-    vma->vm_ops     = NULL;
-    vma->vm_flags   |= VM_IO;
-    vma->vm_flags   |= VM_DONTEXPAND | VM_PFNMAP;
+	vma->vm_ops     = NULL;
+	vma->vm_flags   |= VM_IO;
+	vma->vm_flags   |= VM_DONTEXPAND | VM_PFNMAP;
 
-    return 0;
+	return 0;
 }
 
 
 unsigned int venc_poll(struct file *filp, poll_table *wait)
 {
-    struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-    vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    if (vdata == NULL){
-        return -EFAULT;
-    }
+	if(vdata == NULL)
+	{
+		return -EFAULT;
+	}
 
-    if (vdata->vComm_data.count > 0)
-    {
-        vdata->vComm_data.count--;
-        return POLLIN;
-    }
+	if(vdata->vComm_data.count > 0)
+	{
+		vdata->vComm_data.count--;
+		return POLLIN;
+	}
 
-    poll_wait(filp, &(vdata->vComm_data.wq), wait);
+	poll_wait(filp, &(vdata->vComm_data.wq), wait);
 
-    if (vdata->vComm_data.count > 0)
-    {
-        vdata->vComm_data.count--;
-        return POLLIN;
-    }
+	if (vdata->vComm_data.count > 0)
+	{
+		vdata->vComm_data.count--;
+		return POLLIN;
+	}
 
-    return 0;
+	return 0;
 }
 
 
 static int _venc_cmd_open(vpu_encoder_data *vdata, char *str)
 {
-    dprintk("======> %s :: _vdec_%s_open(%d)!! \n",, vdata->misc->name str, vdata->vComm_data.dev_opened);
+	dprintk("======> %s :: _venc_%s_open(%d) enter!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
-    if( vmem_get_free_memory(vdata->gsEncType) == 0 )
-    {
-        printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
-        return -ENOMEM;
-    }
+	if( vmem_get_free_memory(vdata->gsEncType) == 0 )
+	{
+		printk(KERN_WARNING "VPU %s: Couldn't open device because of no-reserved memory.\n", vdata->misc->name);
+		return -ENOMEM;
+	}
 
-    dprintk("======> %s :: _vdec_%s_open(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+	dprintk("======> %s :: _venc_%s_open(%d) out!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
-    if( vdata->vComm_data.dev_opened == 0 )
-        vdata->vComm_data.count = 0;
-    vdata->vComm_data.dev_opened++;
+	if( vdata->vComm_data.dev_opened == 0 )
+		vdata->vComm_data.count = 0;
+	vdata->vComm_data.dev_opened++;
 
-    return 0;
+	return 0;
 }
 
 static int _venc_cmd_release(vpu_encoder_data *vdata, char *str)
 {
-    detailk("======> %s :: _vdec_%s_release In(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+	detailk("======> %s :: _venc_%s_release In(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
-    if(vdata->vComm_data.dev_opened > 0)
-        vdata->vComm_data.dev_opened--;
+	if(vdata->vComm_data.dev_opened > 0)
+		vdata->vComm_data.dev_opened--;
 
-    if(vdata->vComm_data.dev_opened == 0)
-    {
-        venc_clear_instance(vdata->gsEncType-VPU_ENC);
-        _venc_force_close(vdata);
+	if(vdata->vComm_data.dev_opened == 0)
+	{
+		venc_clear_instance(vdata->gsEncType-VPU_ENC);
+
+		_venc_force_close(vdata);
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-        if(vdata->gsCodecType == STD_MJPG)
-            jmgr_set_close(vdata->gsEncType, 1, 1);
-        else
+		if(vdata->gsCodecType == STD_MJPG)
+			jmgr_set_close(vdata->gsEncType, 1, 1);
+		else
 #endif
-            vmgr_set_close(vdata->gsEncType, 1, 1);
-    }
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		if(vdata->gsCodecType == STD_HEVC_ENC)
+			vmgr_hevc_enc_set_close(vdata->gsEncType, 1, 1);
+		else
+#endif
+			vmgr_set_close(vdata->gsEncType, 1, 1);
+	}
 
-    printk("======> %s :: _vdec_%s_release Out(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+	printk("======> %s :: _venc_%s_release Out(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
-    return 0;
+	return 0;
 }
 
 long venc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-    vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
-    if(vmgr_get_alive() == 0
+	if(vmgr_get_alive() == 0
 #ifdef CONFIG_SUPPORT_TCC_JPU
-        && jmgr_get_alive() == 0
+		&& jmgr_get_alive() == 0
 #endif
-    )
-    {
-#if defined(CONFIG_SUPPORT_TCC_JPU)
-        err("This command(0x%x) for %s can't process because Mgr is not alive(v/j = %d/%d) !!!\n", cmd, vdata->misc->name, vmgr_get_alive(), jmgr_get_alive());
-#else
-        err("This command(0x%x) for %s can't process because of Mgr is not alive(%d) !!!\n", cmd, vdata->misc->name, vmgr_get_alive());
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		&& vmgr_hevc_enc_get_alive() == 0
 #endif
-        return -EPERM;;
-    }
+	)
+	{
+#ifdef CONFIG_SUPPORT_TCC_JPU
+		err("This command(0x%x) for %s can't process because jmgr is not alive(%d) !!!\n", cmd, vdata->misc->name, jmgr_get_alive());
+#endif
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+		err("This command(0x%x) for %s can't process because of vmgr_hevc_enc is not alive(%d) !!!\n", cmd, vdata->misc->name, vmgr_hevc_enc_get_alive());
+#endif
+		err("This command(0x%x) for %s can't process because of vmgr is not alive(%d) !!!\n", cmd, vdata->misc->name, vmgr_get_alive());
 
-    switch(cmd)
-    {
-        case DEVICE_INITIALIZE:
-            return _vdev_init(vdata, (void*)arg);
+		return -EPERM;
+	}
 
-        case V_ENC_INIT:
-            return _venc_proc_init(vdata, (VENC_INIT_t *)arg);
+	switch(cmd)
+	{
+		case DEVICE_INITIALIZE:
+			return _vdev_init(vdata, (void*)arg);
 
-        case V_ENC_PUT_HEADER:
-            return _venc_proc_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
+		case V_ENC_INIT:
+			return _venc_proc_init(vdata, (VENC_INIT_t *)arg);
 
-        case V_ENC_REG_FRAME_BUFFER:
-            return _venc_proc_reg_framebuffer(vdata, (VENC_SET_BUFFER_t *)arg);
+		case V_ENC_PUT_HEADER:
+			return _venc_proc_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
 
-        case V_ENC_ENCODE:
-            return _venc_proc_encode(vdata, (VENC_ENCODE_t *)arg);
+		case V_ENC_REG_FRAME_BUFFER:
+			return _venc_proc_reg_framebuffer(vdata, (VENC_SET_BUFFER_t *)arg);
 
-        case V_ENC_CLOSE:
-            return _venc_proc_exit(vdata, (void *)arg);
+		case V_ENC_ENCODE:
+			return _venc_proc_encode(vdata, (VENC_ENCODE_t *)arg);
 
-        case V_ENC_ALLOC_MEMORY:
-        {
-            int ret;
-            MEM_ALLOC_INFO_t alloc_info;
+		case V_ENC_CLOSE:
+			return _venc_proc_exit(vdata, (void *)arg);
 
-            if(copy_from_user(&alloc_info, (MEM_ALLOC_INFO_t*)arg, sizeof(MEM_ALLOC_INFO_t)))
-                return -EFAULT;
+		case V_ENC_ALLOC_MEMORY:
+		{
+			int ret;
+			MEM_ALLOC_INFO_t alloc_info;
 
-            ret = vmem_proc_alloc_memory(vdata->gsCodecType, &alloc_info, vdata->gsEncType);
+			if(copy_from_user(&alloc_info, (MEM_ALLOC_INFO_t*)arg, sizeof(MEM_ALLOC_INFO_t)))
+				return -EFAULT;
 
-            if (copy_to_user((MEM_ALLOC_INFO_t*)arg, &alloc_info, sizeof(MEM_ALLOC_INFO_t)))
-                return -EFAULT;
+			ret = vmem_proc_alloc_memory(vdata->gsCodecType, &alloc_info, vdata->gsEncType);
 
-            return ret;
-        }
-        break;
+			if (copy_to_user((MEM_ALLOC_INFO_t*)arg, &alloc_info, sizeof(MEM_ALLOC_INFO_t)))
+				return -EFAULT;
 
-        case V_ENC_FREE_MEMORY:
-        {
-            return vmem_proc_free_memory(vdata->gsEncType);
-        }
-        break;
+			return ret;
+		}
+		break;
 
-        case VPU_GET_FREEMEM_SIZE:
-        {
-            int szFreeMem = 0;
+		case V_ENC_FREE_MEMORY:
+		{
+			return vmem_proc_free_memory(vdata->gsEncType);
+		}
+		break;
 
-            szFreeMem = vmem_get_free_memory(vdata->gsEncType);
-            if (copy_to_user((unsigned int*)arg, &szFreeMem, sizeof(szFreeMem)))
-                return -EFAULT;
-            return 0;
-        }
-        break;
+		case VPU_GET_FREEMEM_SIZE:
+		{
+			int szFreeMem = 0;
 
-        case V_ENC_GENERAL_RESULT:
-            return _venc_result_general(vdata, (int *)arg);
+			szFreeMem = vmem_get_free_memory(vdata->gsEncType);
+			if (copy_to_user((unsigned int*)arg, &szFreeMem, sizeof(szFreeMem)))
+				return -EFAULT;
+			return 0;
+		}
+		break;
 
-        case V_ENC_INIT_RESULT:
-            return _venc_result_init(vdata, (VENC_INIT_t *)arg);
+		case V_ENC_GENERAL_RESULT:
+			return _venc_result_general(vdata, (int *)arg);
 
-        case V_ENC_PUT_HEADER_RESULT:
-            return _venc_result_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
+		case V_ENC_INIT_RESULT:
+			return _venc_result_init(vdata, (VENC_INIT_t *)arg);
 
-        case V_ENC_ENCODE_RESULT:
-            return _venc_proc_encode_result(vdata, (VENC_ENCODE_t *)arg);
+		case V_ENC_PUT_HEADER_RESULT:
+			return _venc_result_put_header(vdata, (VENC_PUT_HEADER_t *)arg);
+
+		case V_ENC_ENCODE_RESULT:
+			return _venc_proc_encode_result(vdata, (VENC_ENCODE_t *)arg);
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 		case V_ENC_TRY_OPEN_DEV:
-	            _venc_cmd_open(vdata, "cmd");
-		    break;
+			_venc_cmd_open(vdata, "cmd");
+			break;
 
 		case V_ENC_TRY_CLOSE_DEV:
-	            _venc_cmd_release(vdata, "cmd");
-		    break;
+			_venc_cmd_release(vdata, "cmd");
+			break;
 #endif
-        default:
-            err("[%s] Unsupported ioctl[%d]!!!\n", vdata->misc->name, cmd);
-            break;
-    }
+		default:
+			err("[%s] Unsupported ioctl[%d]!!!\n", vdata->misc->name, cmd);
+			break;
+	}
 
-    return 0;
+	return 0;
 }
 
 int venc_open(struct inode *inode, struct file *filp)
 {
-    struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-    vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 	vdata->vComm_data.dev_file_opened++;
 
 	dprintk("%s :: open Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
 #else
-    _venc_cmd_open(vdata, "file");
-#endif  
+	_venc_cmd_open(vdata, "file");
+#endif
 
-    return 0;
+	return 0;
 }
 
 int venc_release(struct inode *inode, struct file *filp)
 {
-    struct miscdevice *misc = (struct miscdevice *)filp->private_data;
-    vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
+	struct miscdevice *misc = (struct miscdevice *)filp->private_data;
+	vpu_encoder_data *vdata = dev_get_drvdata(misc->parent);
 
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
 	vdata->vComm_data.dev_file_opened--;
 
 	dprintk("%s :: release Out(%d)!! \n", vdata->misc->name, vdata->vComm_data.dev_file_opened);
 #else
-    _venc_cmd_release(vdata, "file");
+	_venc_cmd_release(vdata, "file");
 #endif  
 
-    return 0;
+	return 0;
 }
 
 static struct file_operations vdev_enc_fops = {
@@ -637,63 +785,63 @@ static struct file_operations vdev_enc_fops = {
 
 int venc_probe(struct platform_device *pdev)
 {
-    vpu_encoder_data *vdata;
-    int ret = -ENODEV;
+	vpu_encoder_data *vdata;
+	int ret = -ENODEV;
 
-    vdata = kzalloc(sizeof(vpu_encoder_data), GFP_KERNEL);
-    if (!vdata)
-        return -ENOMEM;
+	vdata = kzalloc(sizeof(vpu_encoder_data), GFP_KERNEL);
+	if (!vdata)
+		return -ENOMEM;
 
-    vdata->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
-    if (!vdata->misc){
-        ret = -ENOMEM;
-        goto err_misc_alloc;
-    }
+	vdata->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
+	if (!vdata->misc){
+		ret = -ENOMEM;
+		goto err_misc_alloc;
+	}
 
-    vdata->misc->minor = MISC_DYNAMIC_MINOR;
-    vdata->misc->fops = &vdev_enc_fops;
-    vdata->misc->name = pdev->name;
-    vdata->misc->parent = &pdev->dev;
+	vdata->misc->minor = MISC_DYNAMIC_MINOR;
+	vdata->misc->fops = &vdev_enc_fops;
+	vdata->misc->name = pdev->name;
+	vdata->misc->parent = &pdev->dev;
 
-    vdata->gsEncType = pdev->id;
-    memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
-    spin_lock_init(&(vdata->vComm_data.lock));
-    init_waitqueue_head(&(vdata->vComm_data.wq));
+	vdata->gsEncType = pdev->id;
+	memset(&vdata->vComm_data, 0, sizeof(vpu_comm_data_t));
+	spin_lock_init(&(vdata->vComm_data.lock));
+	init_waitqueue_head(&(vdata->vComm_data.wq));
 
 	if(pdev->id == 0)
-	    mutex_init(&add_mutex);
+		mutex_init(&add_mutex);
 
-    if (misc_register(vdata->misc))
-    {
-        printk(KERN_WARNING "VPU %s: Couldn't register device.\n", pdev->name);
-        ret = -EBUSY;
-        goto err_misc_register;
-    }
+	if (misc_register(vdata->misc))
+	{
+		printk(KERN_WARNING "VPU %s: Couldn't register device.\n", pdev->name);
+		ret = -EBUSY;
+		goto err_misc_register;
+	}
 
-    platform_set_drvdata(pdev, vdata);
-    pr_info("VPU %s Driver(id:%d) Initialized.\n", pdev->name, pdev->id);
+	platform_set_drvdata(pdev, vdata);
+	pr_info("VPU %s Driver(id:%d) Initialized.\n", pdev->name, pdev->id);
 
-    return 0;
+	return 0;
 
 err_misc_register:
-    kfree(vdata->misc);
+	kfree(vdata->misc);
 err_misc_alloc:
-    kfree(vdata);
+	kfree(vdata);
 
-    return ret;
+	return ret;
 }
 EXPORT_SYMBOL(venc_probe);
 
 int venc_remove(struct platform_device *pdev)
 {
-    vpu_encoder_data *vdata = (vpu_encoder_data *)platform_get_drvdata(pdev);
+	vpu_encoder_data *vdata = (vpu_encoder_data *)platform_get_drvdata(pdev);
 
-    misc_deregister(vdata->misc);
+	misc_deregister(vdata->misc);
 
-    kfree(vdata->misc);
-    kfree(vdata);
+	kfree(vdata->misc);
+	kfree(vdata);
 
-    return 0;
+	return 0;
 }
 EXPORT_SYMBOL(venc_remove);
 #endif

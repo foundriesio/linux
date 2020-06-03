@@ -71,146 +71,10 @@ static struct platform_driver vmgr_hevc_enc_driver = {
     },
 };
 
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || \
-	defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 
-extern int vpu_hevc_enc_probe(struct platform_device *pdev);
-extern int vpu_hevc_enc_remove(struct platform_device *pdev);
-
-static struct platform_device vpu_hevc_enc_device = {
-	.name	= VPU_HEVC_ENC_NAME,
-	.dev	= {},
-	.id 	= VPU_HEVC_ENC,
-};
-
-#ifdef CONFIG_OF
-static struct of_device_id vpu_hevc_enc_of_match[] = {
-		{ .compatible = "telechips,vpu_hevc_enc" },
-		{}
-};
-MODULE_DEVICE_TABLE(of, vpu_hevc_enc_of_match);
-#endif
-
-static struct platform_driver vpu_hevc_enc_driver = {
-	.probe			= vpu_hevc_enc_probe,
-	.remove 		= vpu_hevc_enc_remove,
-	.driver 		= {
-	.name			= VPU_HEVC_ENC_NAME,
-	.owner			= THIS_MODULE,
-#ifdef CONFIG_OF
-	.of_match_table = of_match_ptr(vpu_hevc_enc_of_match),
-#endif
-	},
-};
-#endif
-
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-static struct platform_device vpu_hevc_enc_ext_device = {
-    .name   = VPU_HEVC_ENC_EXT_NAME,
-    .dev    = {},
-    .id     = VPU_HEVC_ENC_EXT,
-};
-
-#ifdef CONFIG_OF
-static struct of_device_id vpu_hevc_enc_ext_of_match[] = {
-        { .compatible = "telechips,vpu_hevc_enc_ext" },
-        {}
-};
-MODULE_DEVICE_TABLE(of, vpu_hevc_enc_ext_of_match);
-#endif
-
-static struct platform_driver vpu_hevc_enc_ext_driver = {
-    .probe          = vpu_hevc_enc_probe,
-    .remove         = vpu_hevc_enc_remove,
-    .driver         = {
-    .name           = VPU_HEVC_ENC_EXT_NAME,
-    .owner          = THIS_MODULE,
-#ifdef CONFIG_OF
-    .of_match_table = of_match_ptr(vpu_hevc_enc_ext_of_match),
-#endif
-    },
-};
-#endif
-
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-static struct platform_device vpu_hevc_enc_ext2_device = {
-    .name   = VPU_HEVC_ENC_EXT2_NAME,
-    .dev    = {},
-    .id     = VPU_HEVC_ENC_EXT2,
-};
-
-#ifdef CONFIG_OF
-static struct of_device_id vpu_hevc_enc_ext2_of_match[] = {
-        { .compatible = "telechips,vpu_hevc_enc_ext2" },
-        {}
-};
-MODULE_DEVICE_TABLE(of, vpu_hevc_enc_ext2_of_match);
-#endif
-
-static struct platform_driver vpu_hevc_enc_ext2_driver = {
-    .probe          = vpu_hevc_enc_probe,
-    .remove         = vpu_hevc_enc_remove,
-    .driver         = {
-    .name           = VPU_HEVC_ENC_EXT2_NAME,
-    .owner          = THIS_MODULE,
-#ifdef CONFIG_OF
-    .of_match_table = of_match_ptr(vpu_hevc_enc_ext2_of_match),
-#endif
-    },
-};
-#endif
-
-#if defined(CONFIG_VENC_CNT_4)
-static struct platform_device vpu_hevc_enc_ext3_device = {
-    .name   = VPU_HEVC_ENC_EXT3_NAME,
-    .dev    = {},
-    .id     = VPU_HEVC_ENC_EXT3,
-};
-
-#ifdef CONFIG_OF
-static struct of_device_id vpu_hevc_enc_ext3_of_match[] = {
-        { .compatible = "telechips,vpu_hevc_enc_ext3" },
-        {}
-};
-MODULE_DEVICE_TABLE(of, vpu_hevc_enc_ext3_of_match);
-#endif
-
-static struct platform_driver vpu_hevc_enc_ext3_driver = {
-    .probe          = vpu_hevc_enc_probe,
-    .remove         = vpu_hevc_enc_remove,
-    .driver         = {
-    .name           = VPU_HEVC_ENC_EXT3_NAME,
-    .owner          = THIS_MODULE,
-#ifdef CONFIG_OF
-    .of_match_table = of_match_ptr(vpu_hevc_enc_ext3_of_match),
-#endif
-    },
-};
-#endif
-
-/////////////////////////////////////////////// Jun 20200428
 static void __exit vpu_hevc_enc_dev_cleanup(void)
 {
-#if defined(CONFIG_VENC_CNT_4)
-    platform_driver_unregister(&vpu_hevc_enc_ext3_driver);
-    platform_device_unregister(&vpu_hevc_enc_ext3_device);
-#endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-    platform_driver_unregister(&vpu_hevc_enc_ext2_driver);
-    platform_device_unregister(&vpu_hevc_enc_ext2_device);
-#endif
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-    platform_driver_unregister(&vpu_hevc_enc_ext_driver);
-    platform_device_unregister(&vpu_hevc_enc_ext_device);
-#endif
-
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-    platform_driver_unregister(&vpu_hevc_enc_driver);
-    platform_device_unregister(&vpu_hevc_enc_device);
-#endif
-
     platform_driver_unregister(&vmgr_hevc_enc_driver);
-    //platform_device_unregister(&vmgr_hevc_enc_device);
 }
 
 static int vpu_hevc_enc_dev_init(void)
@@ -225,34 +89,7 @@ static int vpu_hevc_enc_dev_init(void)
 	 * Register an encoder manager driver
 	 * Device is in device tree.
 	 */
-    //platform_device_register(&vmgr_hevc_enc_device);
     platform_driver_register(&vmgr_hevc_enc_driver);
-
-    //platform_device_register(&vmem_device);
-    //platform_driver_register(&vmem_driver);
-
-	/*
-	 * Register each encoder device and driver
-	 * The maximum number of instances registered are 4.
-	 */
-
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	platform_device_register(&vpu_hevc_enc_device);
-	platform_driver_register(&vpu_hevc_enc_driver);
-#endif
-
-#if defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	platform_device_register(&vpu_hevc_enc_ext_device);
-	platform_driver_register(&vpu_hevc_enc_ext_driver);
-#endif
-#if defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
-	platform_device_register(&vpu_hevc_enc_ext2_device);
-	platform_driver_register(&vpu_hevc_enc_ext2_driver);
-#endif
-#if defined(CONFIG_VENC_CNT_4)
-	platform_device_register(&vpu_hevc_enc_ext3_device);
-	platform_driver_register(&vpu_hevc_enc_ext3_driver);
-#endif
 
 	printk("============> VPU HEVC ENC device drivers out!! -------\n");
 	return 0;

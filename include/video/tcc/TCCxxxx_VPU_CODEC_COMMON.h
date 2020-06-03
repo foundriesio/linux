@@ -50,6 +50,7 @@
 #define STD_MVC         14 //!< DEC
 #define STD_HEVC        15 //!< DEC
 #define STD_VP9         16 //!< DEC
+#define STD_HEVC_ENC    17 //!< ENC : HEVC
 
 
 #define RETCODE_SUCCESS                     0
