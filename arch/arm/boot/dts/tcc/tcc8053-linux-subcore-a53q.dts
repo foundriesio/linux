@@ -37,6 +37,14 @@
 
 	aliases {
 		serial0 = &uart0;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c7;
 	};
 
 	cpus {
@@ -706,6 +714,118 @@
                 status = "disabled";
         };
 
+	i2c0: i2c@16300000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16300000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c1: i2c@16310000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16310000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c2: i2c@16320000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16320000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c3: i2c@16330000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16330000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c4: i2c@16340000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16340000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c5: i2c@16350000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16350000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c6: i2c@16360000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16360000 0x28>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
+	i2c7: i2c@16370000 {
+		compatible = "telechips,tcc805x-i2c";
+		reg = <0x16370000 0x100>,
+		      <0x163c0000 0x14>;
+		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7 &clk_fbus FBUS_IO>;
+		clock-frequency = <400000>;
+		port-mux = <0xFF>;	/* default value */
+		status = "disabled";
+		interrupt_mode = <0>;
+	};
+
 	/* A53 <-> R5 */
 	micom_mbox: mbox@0x1BA30000 {
 		compatible = "telechips,multichannel-mailbox";
@@ -848,10 +968,306 @@
 		telechips,pins = "gpa-24", "gpa-25";
 		telechips,pin-function = <7>;
 	};
+
+	i2c0_bus: i2c0_bus {
+		telechips,pins = "gpsd1-4", "gpsd1-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c1_bus: i2c1_bus {
+		telechips,pins = "gpsd2-2", "gpsd2-3";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c2_bus: i2c2_bus {
+		telechips,pins = "gpsd2-4", "gpsd2-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c3_bus: i2c3_bus {
+		telechips,pins = "gpa-4", "gpa-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c4_bus: i2c4_bus {
+		telechips,pins = "gpa-10", "gpa-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c5_bus: i2c5_bus {
+		telechips,pins = "gpa-16", "gpa-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c6_bus: i2c6_bus {
+		telechips,pins = "gpa-22", "gpa-23";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c7_bus: i2c7_bus {
+		telechips,pins = "gpa-28", "gpa-29";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c8_bus: i2c8_bus {
+		telechips,pins = "gpb-4", "gpb-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c9_bus: i2c9_bus {
+		telechips,pins = "gpb-10", "gpb-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c10_bus: i2c10_bus {
+		telechips,pins = "gpb-17", "gpb-18";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c11_bus: i2c11_bus {
+		telechips,pins = "gpb-19", "gpb-20";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c12_bus: i2c12_bus {
+		telechips,pins = "gpb-21", "gpb-22";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c13_bus: i2c13_bus {
+		telechips,pins = "gpb-23", "gpb-24";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c14_bus: i2c14_bus {
+		telechips,pins = "gpc-14", "gpc-15";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c15_bus: i2c15_bus {
+		telechips,pins = "gpc-20", "gpc-21";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c16_bus: i2c16_bus {
+		telechips,pins = "gpc-24", "gpc-25";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c17_bus: i2c17_bus {
+		telechips,pins = "gpc-28", "gpc-29";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c18_bus: i2c18_bus {
+		telechips,pins = "gpg-4", "gpg-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c19_bus: i2c19_bus {
+		telechips,pins = "gpe-3", "gpe-4";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c20_bus: i2c20_bus {
+		telechips,pins = "gpe-9", "gpe-10";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c21_bus: i2c21_bus {
+		telechips,pins = "gpe-14", "gpe-15";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c22_bus: i2c22_bus {
+		telechips,pins = "gph-4", "gph-5";
+		telechips,pin-function = <9>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c23_bus: i2c23_bus {
+		telechips,pins = "gph-6", "gph-7";
+		telechips,pin-function = <9>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c24_bus: i2c24_bus {
+		telechips,pins = "gpma-4", "gpma-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c25_bus: i2c25_bus {
+		telechips,pins = "gpma-10", "gpma-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c26_bus: i2c26_bus {
+		telechips,pins = "gpma-16", "gpma-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c27_bus: i2c27_bus {
+		telechips,pins = "gpma-22", "gpma-23";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c28_bus: i2c28_bus {
+		telechips,pins = "gpma-28", "gpma-29";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c29_bus: i2c29_bus {
+		telechips,pins = "gpmb-4", "gpmb-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c30_bus: i2c30_bus {
+		telechips,pins = "gpmb-10", "gpmb-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c31_bus: i2c31_bus {
+		telechips,pins = "gpmb-16", "gpmb-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c32_bus: i2c32_bus {
+		telechips,pins = "gpmb-22", "gpmb-23";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c33_bus: i2c33_bus {
+		telechips,pins = "gpmb-26", "gpmb-27";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c34_bus: i2c34_bus {
+		telechips,pins = "gpmb-30", "gpmb-31";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c35_bus: i2c35_bus {
+		telechips,pins = "gpmc-4", "gpmc-5";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c36_bus: i2c36_bus {
+		telechips,pins = "gpmc-10", "gpmc-11";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c37_bus: i2c37_bus {
+		telechips,pins = "gpmc-16", "gpmc-17";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c38_bus: i2c38_bus {
+		telechips,pins = "gpmc-22", "gpmc-23";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
+
+	i2c39_bus: i2c39_bus {
+		telechips,pins = "gpmc-28", "gpmc-29";
+		telechips,pin-function = <8>;
+		telechips,input_buffer_enable;
+		telechips,no-pull;
+	};
 };
 
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart9_data>;
 	status = "okay";
+};
+
+&i2c6 {
+	status = "okay";
+	port-mux = <37>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c37_bus>;
+
+};
+
+&i2c7 {
+	status = "okay";
+	port-mux = <12>; /* [0]SCL [1]SDA */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c12_bus>;
+
 };

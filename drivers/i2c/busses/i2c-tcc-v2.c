@@ -72,8 +72,9 @@ struct tcc_i2c {
 	int                     core;
 	unsigned int            i2c_clk_rate;
 	unsigned int            core_clk_rate;
-	struct clk              *pclk;
-	struct clk              *hclk;
+	struct clk              *pclk; /* I2C Peri */
+	struct clk              *hclk; /* I2C IO config*/
+	struct clk              *fclk; /* FBUS_IO */
 	struct i2c_msg          *msg;
 	unsigned int            msg_num;
 	unsigned int            msg_idx;
@@ -126,13 +127,27 @@ static inline void tcc_i2c_disable_irq(struct tcc_i2c *i2c)
 	i2c_writel(i2c_readl(i2c->regs+I2C_CMD) | 1, i2c->regs+I2C_CMD);
 }
 
-static void tcc_i2c_set_noise_filter(struct tcc_i2c *i2c)
+static int tcc_i2c_set_noise_filter(struct tcc_i2c *i2c)
 {
-	unsigned int temp;
+	unsigned int tr0_reg, fc_val;
+	unsigned long fbus_ioclk_Mhz;
 
-	temp = i2c_readl(i2c->regs + I2C_TR0);
-	temp |= ((i2c->noise_filter & 0x000001FF) << 20);
-	i2c_writel(temp, i2c->regs + I2C_TR0);
+	/* Calculate noise filter counter load value */
+	fbus_ioclk_Mhz = (clk_get_rate(i2c->fclk) / 1000000);
+	if(fbus_ioclk_Mhz <= 0){
+		dev_err(i2c->dev, "[ERROR][I2C] %s: FBUS_IO is lower than 1MHz, not enough!\n", __func__);
+		return -1;
+        }
+	fc_val = ((i2c->noise_filter * fbus_ioclk_Mhz) / 1000) + 2;
+
+	tr0_reg = i2c_readl(i2c->regs + I2C_TR0);
+	tr0_reg |= ((fc_val & 0x000001FF) << 20);
+	i2c_writel(tr0_reg, i2c->regs + I2C_TR0);
+
+	dev_dbg(i2c->dev,
+			"[DEBUG][I2C] %s: fbus_io clk: %ldMHz, noise filter load value %d\n",
+			__func__, fbus_ioclk_Mhz, fc_val);
+	return 0;
 }
 
 static irqreturn_t tcc_i2c_isr(int irq, void *dev_id)
@@ -219,9 +234,6 @@ static int tcc_i2c_message_start(struct tcc_i2c *i2c, struct i2c_msg *msg)
 		addr |= 1;
 	if (msg->flags & I2C_M_REV_DIR_ADDR)
 		addr ^= 1;
-
-	if (i2c->noise_filter)
-		tcc_i2c_set_noise_filter(i2c);
 
 	i2c_writel(addr, i2c->regs+I2C_TXR);
 	i2c_writel((1<<7)|(1<<4), i2c->regs+I2C_CMD);
@@ -349,7 +361,6 @@ static int tcc_i2c_access_arbitration(struct tcc_i2c *i2c, bool on)
 
 	/* request access perimission */
 	i2c_writel(1, i2c->regs + I2C_ACR);
-
 
 	/* Check status for permission */
 	while(!(i2c_readl(i2c->regs + I2C_ACR) & 0x10)){
@@ -524,8 +535,12 @@ static int tcc_i2c_set_port(struct tcc_i2c *i2c)
 static int tcc_i2c_init(struct tcc_i2c *i2c)
 {
 	unsigned int prescale, tmp;
+	unsigned long fbus_ioclk, peri_clk;
+	int ret, error_status = 0;
 	struct device_node *np = i2c->dev->of_node;
 
+	if (i2c->fclk == NULL)
+		i2c->fclk = of_clk_get(np, 2);
 	if (i2c->hclk == NULL)
 		i2c->hclk = of_clk_get(np, 1);
 	if (i2c->pclk == NULL)
@@ -539,10 +554,27 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 		dev_err(i2c->dev, "[ERROR][I2C] can't do i2c_pclk clock enable\n");
 		return -1;
 	}
+
 	clk_set_rate(i2c->pclk, i2c->core_clk_rate);
 
+	/* get permission of i2c 7 */
+	if(i2c->core == 7){
+		ret = tcc_i2c_access_arbitration(i2c, 1);
+		if(ret < 0){
+			return ret;
+		}
+	}
+
+	fbus_ioclk = clk_get_rate(i2c->fclk);
+	peri_clk = clk_get_rate(i2c->pclk);
+	if(fbus_ioclk < (peri_clk * 4)) {
+		dev_err(i2c->dev, "[ERROR][I2C] fbus io clk(%ldHz) is not enough.\n", fbus_ioclk);
+		error_status = -1;
+		goto err;
+	}
+
 	/* Set prescale */
-	prescale = (clk_get_rate(i2c->pclk) / (i2c->i2c_clk_rate * 5)) - 1;
+	prescale = (peri_clk / (i2c->i2c_clk_rate * 5)) - 1;
 	i2c_writel(prescale, i2c->regs+I2C_PRES);
 
 	/*
@@ -553,13 +585,18 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	tmp &= (~0x000000E0);
 	i2c_writel(tmp, i2c->regs+I2C_TR0);
 
-	if (i2c->use_pw) {
-		i2c_writel(0x00000000, i2c->regs+I2C_PRES);
-	}
+	/* set pwh, pwl */
 	i2c_writel(((i2c->pwh << 16) | (i2c->pwl)), i2c->regs+I2C_TR1);
 
-	dev_info(i2c->dev, "[INFO][I2C] pulse-width-high: %d\n", i2c->pwh);
-	dev_info(i2c->dev, "[INFO][I2C] pulse-width-low: %d\n", i2c->pwl);
+	dev_info(i2c->dev,
+		"[INFO][I2C] port %d, pulse-width-high: %d, pulse-width-low: %d \n",
+		i2c->port_mux, i2c->pwh, i2c->pwl);
+
+	ret = tcc_i2c_set_noise_filter(i2c);
+	if(ret < 0){
+		error_status = -1;
+		goto err;
+	}
 
 	/* Enable core, Disable interrupt, Set 8 bit mode */
 	i2c_writel((1<<7)|0, i2c->regs+I2C_CTRL);
@@ -570,7 +607,16 @@ static int tcc_i2c_init(struct tcc_i2c *i2c)
 	/* set port mux */
 	tcc_i2c_set_port(i2c);
 
-	return 0;
+err:
+	/* release permission of i2c 7 */
+	if(i2c->core == 7){
+		ret = tcc_i2c_access_arbitration(i2c, 0);
+		if(ret < 0){
+			return ret;
+		}
+	}
+
+	return (error_status < 0)? error_status : 0;
 }
 
 
@@ -583,19 +629,23 @@ static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 	if (of_property_read_u32(np, "clock-frequency", &i2c->i2c_clk_rate)){
 		i2c->i2c_clk_rate = 100000;
 	}
+
 	of_property_read_u32(np, "port-mux", &i2c->port_mux);
 
 	of_property_read_u32(np, "interrupt_mode", &i2c->interrupt_mode);
-	of_property_read_u32(np, "noise_filter", &i2c->noise_filter);
 
 
+	if (of_property_read_u32(np, "noise_filter", &i2c->noise_filter)){
+		i2c->noise_filter = 50;
+	}
+	if(i2c->noise_filter < 50){
+		dev_warn(i2c->dev, "[WARN][I2C] I2C must suppress noise of less than 50 ns.\n");
+		i2c->noise_filter = 50;
+	}
 	if (of_property_read_u32(np, "pulse-width-high", &i2c->pwh) ||
 			of_property_read_u32(np, "pulse-width-low", &i2c->pwl)) {
 		i2c->pwh = 2;
 		i2c->pwl = 3;
-		i2c->use_pw = 0;
-	} else {
-		i2c->use_pw = 1;
 	}
 }
 
@@ -649,8 +699,8 @@ static int tcc_i2c_probe(struct platform_device *pdev)
 	i2c->adap.retries = I2C_DEF_RETRIES;
 	i2c->dev = &(pdev->dev);
 	sprintf(i2c->adap.name, "%s", pdev->name);
-	dev_info(&pdev->dev, "[INFO][I2C] i2c: bus %d - sclk: %d kHz retry: %d irq mode: %d noise filter: %d\n",
-			i2c->core, (i2c->i2c_clk_rate/1000), i2c->adap.retries,
+	dev_info(&pdev->dev, "[INFO][I2C] sclk: %d kHz retry: %d irq mode: %d noise filter: %dns\n",
+			(i2c->i2c_clk_rate/1000), i2c->adap.retries,
 			i2c->interrupt_mode, i2c->noise_filter);
 	spin_lock_init(&i2c->lock);
 	init_waitqueue_head(&i2c->wait);

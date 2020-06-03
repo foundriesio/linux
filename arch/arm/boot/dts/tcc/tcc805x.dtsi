@@ -1443,7 +1443,7 @@
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M0 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1457,7 +1457,7 @@
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M1 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1471,7 +1471,7 @@
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M2 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1485,7 +1485,7 @@
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M3 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1499,7 +1499,7 @@
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4>;
+		clocks = <&clk_peri PERI_I2C0 &clk_io IOBUS_I2C_M4 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1513,7 +1513,7 @@
 		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5>;
+		clocks = <&clk_peri PERI_I2C1 &clk_io IOBUS_I2C_M5 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1527,7 +1527,7 @@
 		interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6>;
+		clocks = <&clk_peri PERI_I2C2 &clk_io IOBUS_I2C_M6 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
@@ -1541,7 +1541,7 @@
 		interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7>;
+		clocks = <&clk_peri PERI_I2C3 &clk_io IOBUS_I2C_M7 &clk_fbus FBUS_IO>;
 		clock-frequency = <400000>;
 		port-mux = <0xFF>;	/* default value */
 		status = "disabled";
