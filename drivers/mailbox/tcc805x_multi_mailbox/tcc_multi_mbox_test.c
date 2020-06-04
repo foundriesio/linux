@@ -30,12 +30,11 @@
 #include <linux/mailbox/tcc805x_multi_mailbox/tcc805x_multi_mbox_test.h>
 
 #define eprintk(dev, msg, ...)	((void)dev_err(dev, "[ERROR][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
-#define wprintk(dev, msg, ...)	((void)dev_err(dev, "[WARN][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
-#define iprintk(dev, msg, ...)	((void)dev_err(dev, "[INFO][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
-#define dprintk(dev, msg, ...)	((void)dev_err(dev, "[INFO][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
+#define wprintk(dev, msg, ...)	((void)dev_warn(dev, "[WARN][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
+#define iprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
+#define dprintk(dev, msg, ...)	((void)dev_info(dev, "[INFO][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
+#define test_printk(dev, msg, ...)	((void)dev_err(dev, "[INFO][MBOX_TEST]%s: " pr_fmt(msg), __FUNCTION__, ##__VA_ARGS__))
 
-#define FUNCTION_IN			(dlog("IN\n"))
-#define FUNCTION_OUT		(dlog("OUT\n"))
 
 #define MBOX_TEST_DEV_NAME        ("mbox_test")
 #define MBOX_TEST_DEV_MINOR       (0)
@@ -343,18 +342,18 @@ static void mbox_test_receive_ack_cmd(void *device_info, struct tcc_mbox_data  *
 
 		if(ret !=0)
 		{
-			eprintk(mbox_test_dev->dev,"send test error\n");
-			eprintk(mbox_test_dev->dev,"================================\n");
-			eprintk(mbox_test_dev->dev,"========== Send Data ==========\n");
+			test_printk(mbox_test_dev->dev,"send test error\n");
+			test_printk(mbox_test_dev->dev,"================================\n");
+			test_printk(mbox_test_dev->dev,"========== Send Data ==========\n");
 			print_mbox_msg(mbox_test_dev, &mbox_test_dev->send_msg);
 
-			eprintk(mbox_test_dev->dev,"\n\n================================\n");
-			eprintk(mbox_test_dev->dev,"========== ACK Data ==========\n");
+			test_printk(mbox_test_dev->dev,"\n\n================================\n");
+			test_printk(mbox_test_dev->dev,"========== ACK Data ==========\n");
 			print_mbox_msg(mbox_test_dev, pMsg);
 		}
 		else
 		{
-			iprintk(mbox_test_dev->dev,"send test ok\n");
+			test_printk(mbox_test_dev->dev,"========== send test ok ==========\n");
 		}
 	}
 }
@@ -366,13 +365,13 @@ static void print_mbox_msg(struct mbox_test_device *mbox_test_dev, struct tcc_mb
 		int i;
 		for(i=0;i<MBOX_CMD_FIFO_SIZE;i++)
 		{
-			eprintk(mbox_test_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
+			test_printk(mbox_test_dev->dev,"cmd[%d] = [0x%02x]\n", i, msg->cmd[i]);
 		}
 
 		dprintk(mbox_test_dev->dev,"data size (%d)\n", msg->data_len);
 		for(i=0; i<msg->data_len;i++)
 		{
-			eprintk(mbox_test_dev->dev,"data[%d] = [0x%02x]\n", i, msg->cmd[i]);
+			test_printk(mbox_test_dev->dev,"data[%d] = [0x%02x]\n", i, msg->cmd[i]);
 		}
 	}
 }
@@ -388,7 +387,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 		ret = 0;
 
 		/* test 1 */
-		iprintk(mbox_test_dev->dev,"Start Test 1\n");
+		test_printk(mbox_test_dev->dev,"Start Test 1\n");
 		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		ret = mbox_test_send_message(mbox_test_dev, &mbox_test_dev->send_msg);
@@ -399,7 +398,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 		mdelay(500);
 
 		/* test 2 */
-		iprintk(mbox_test_dev->dev,"Start Test 2\n");
+		test_printk(mbox_test_dev->dev,"\nStart Test 2\n");
 		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
@@ -415,7 +414,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 		mdelay(500);
 
 		/* test 3 */
-		iprintk(mbox_test_dev->dev,"Start Test 3\n");
+		test_printk(mbox_test_dev->dev,"\nStart Test 3\n");
 		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
@@ -433,7 +432,7 @@ static int mbox_test_loopback(struct mbox_test_device *mbox_test_dev)
 		mdelay(500);
 
 		/* test 4 */
-		iprintk(mbox_test_dev->dev,"Start Test 4\n");
+		test_printk(mbox_test_dev->dev,"\nStart Test 4\n");
 		memset(&mbox_test_dev->send_msg, 0x00, sizeof(struct tcc_mbox_data));
 		mbox_test_dev->send_msg.cmd[0] = MBOX_TEST_CMD_TX;
 		mbox_test_dev->send_msg.cmd[1] = 0xFFFFFFFF;
@@ -533,7 +532,7 @@ static int mbox_test_open(struct inode * inode, struct file * filp)
 {
 	struct mbox_test_device *mbox_test_dev = container_of(inode->i_cdev, struct mbox_test_device, cdev);
 
-	dprintk(mbox_test_dev->dev,"\n");
+	test_printk(mbox_test_dev->dev,"\n");
 
 	(void)mbox_test_loopback(mbox_test_dev);
 	return 0;
@@ -562,7 +561,7 @@ static long mbox_test_ioctl(struct file * filp, unsigned int cmd, unsigned long 
 					}
 					break;
 				default:
-					dprintk(mbox_test_dev->dev,"mbox_test_dev cmd error: unrecognized ioctl (0x%x)\n",cmd);
+					eprintk(mbox_test_dev->dev,"mbox_test_dev cmd error: unrecognized ioctl (0x%x)\n",cmd);
 					ret = -EINVAL;
 				break;
 			}

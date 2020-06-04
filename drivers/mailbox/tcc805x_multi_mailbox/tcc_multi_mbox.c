@@ -141,9 +141,9 @@ typedef char	MBOX_CHAR;
 struct mbox_header0{
 	union{
 		struct {
-			char idName[MBOX_ID1_LEN];
-			char cid[1];
 			char bsid[1];
+			char cid[1];
+			char idName[MBOX_ID1_LEN];
 			};
 		unsigned int cmd;
 	};
@@ -889,10 +889,10 @@ static int tcc_multich_mbox_startup(struct mbox_chan *chan)
 					chan_info->header0.cid[0] = CID_A72;
 					chan_info->header0.bsid[0] = BSID;
 
-					chan_info->header1.cmd = (((unsigned int)mbox_id[0]<<24)|
-											((unsigned int)mbox_id[1]<<16)|
-											((unsigned int)mbox_id[2]<<8)|
-											((unsigned int)mbox_id[3]));
+					chan_info->header1.cmd = (((unsigned int)mbox_id[0])|
+											((unsigned int)mbox_id[1]<<8)|
+											((unsigned int)mbox_id[2]<<16)|
+											((unsigned int)mbox_id[3]<<24));
 
 					chan_info->msg = devm_kzalloc(chan->mbox->dev, sizeof(struct tcc_mbox_data), GFP_KERNEL);
 					if (!chan_info->msg)
@@ -1108,7 +1108,7 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 						mbox_id[i] = mbox_list->header1.idName[i];
 					}
 					mbox_id[MBOX_ID0_LEN] = mbox_list->header0.idName[0];
-					mbox_id[MBOX_ID0_LEN+1] = mbox_list->header1.idName[1];
+					mbox_id[MBOX_ID0_LEN+1] = mbox_list->header0.idName[1];
 					iprintk(mdev->mbox.dev, "mbox ch(%d) is not registered : id(%s)\n", mbox_list->ch, mbox_id);
 					kfree(mbox_list);
 				}
