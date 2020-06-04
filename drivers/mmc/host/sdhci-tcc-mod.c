@@ -1195,14 +1195,9 @@ static const struct sdhci_ops sdhci_tcc805x_ops = {
 
 static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
 	.ops	= &sdhci_tcc_ops,
-	.quirks	= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
-		SDHCI_QUIRK_BROKEN_DMA |
-		SDHCI_QUIRK_BROKEN_ADMA,
+	.quirks	= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
-			SDHCI_QUIRK2_STOP_WITH_TC |
-			SDHCI_QUIRK2_BROKEN_HS200 |
-			SDHCI_QUIRK2_BROKEN_DDR50 |
-			SDHCI_QUIRK2_BROKEN_64_BIT_DMA,
+			SDHCI_QUIRK2_STOP_WITH_TC,
 };
 
 static const struct sdhci_pltfm_data sdhci_tcc803x_pdata = {
