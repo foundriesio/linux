@@ -1310,7 +1310,7 @@ static int s3c64xx_spi_runtime_resume(struct device *dev)
 	if (ret != 0)
 		goto err_disable_src_clk;
 
-	s3c64xx_spi_hwinit(sdd);
+	s3c64xx_spi_hwinit(sdd, sdd->port_id);
 
 	return 0;
 
