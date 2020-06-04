@@ -281,10 +281,7 @@ struct dentry *debugfs_lookup(const char *name, struct dentry *parent)
 	if (!parent)
 		parent = debugfs_mount->mnt_root;
 
-	inode_lock(d_inode(parent));
 	dentry = lookup_positive_unlocked(name, parent, strlen(name));
-	inode_unlock(d_inode(parent));
-
 	if (IS_ERR(dentry))
 		return NULL;
 	return dentry;
