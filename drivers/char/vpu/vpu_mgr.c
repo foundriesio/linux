@@ -1473,7 +1473,7 @@ Error:
 }
 
 void vmgr_waitlist_init_pending(int type, int force_clear)
-{	
+{
 	if (IsUseWaitList()) {
 		if((wait_entry_info.type == type) || force_clear){
 			wait_entry_info.wait_dec_status = 0;

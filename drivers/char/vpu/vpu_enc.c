@@ -23,6 +23,8 @@
  *
  */
 
+#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
+
 #include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/module.h>
@@ -56,8 +58,6 @@
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 #include "vpu_hevc_enc_mgr.h"
 #endif
-
-#if defined(CONFIG_VENC_CNT_1) || defined(CONFIG_VENC_CNT_2) || defined(CONFIG_VENC_CNT_3) || defined(CONFIG_VENC_CNT_4)
 
 #define dprintk(msg...) printk( "TCC_VPU_ENC: " msg);
 #define detailk(msg...) printk( "TCC_VPU_ENC: " msg);

@@ -275,10 +275,10 @@
 #define SIZE_SECURE_INBUF		0x00000000
 #endif
 #define SIZE_VIDEO_EXT			(VIDEO_SUB_SIZE)
-#define SIZE_VIDEO_EXT2		(VIDEO_SUB2_SIZE)
-#define PMAP_SIZE_ENC				(ENC_SIZE) // ahared mem in video pmap.
+#define SIZE_VIDEO_EXT2			(VIDEO_SUB2_SIZE)
+#define PMAP_SIZE_ENC			(ENC_SIZE) // ahared mem in video pmap.
 #define SIZE_VIDEO				(VIDEO_MAIN_SIZE + ENC_SIZE)
-#define SIZE_VIDEO_SW_EXTRA	VPU_SW_ACCESS_REGION_SIZE
+#define SIZE_VIDEO_SW_EXTRA		VPU_SW_ACCESS_REGION_SIZE
 
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef CONFIG_PMAP_TO_CMA
