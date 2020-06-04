@@ -27,7 +27,7 @@ case $TCC_TARGET in
 		if [ -z `grep CONFIG_TCC805X_CA53Q=y .config` ]; then
 			BASE_ADDR="0x20000000"
 		else
-			BASE_ADDR="0x70000000"
+			BASE_ADDR="0x40000000"
 		fi
 		;;
 	*)

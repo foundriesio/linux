@@ -247,8 +247,8 @@
 		pmap_a53_avm: a53_avm {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "subcore kernel";
-			alloc-ranges = <0x0 0x68000000 0x0 0x28000000>;
-			size = <0x0 0x28000000>;
+			alloc-ranges = <0x0 0x40000000 0x0 0x40000000>;
+			size = <0x0 0x40000000>;
 			no-map;
 		};
 #endif
