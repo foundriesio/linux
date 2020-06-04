@@ -19,7 +19,7 @@
 	aliases {
 		videosource0 = &videosource0;
 		videosource1 = &videosource1;
-		//videosource2 = &videosource2;
+//		videosource2 = &videosource2;
 	};
 
 	pcie@11000000 {
@@ -217,31 +217,6 @@
           };
         }; // pmic mpq7920
 */
-		videosource0: videodecoder_adv7182 {
-			compatible	= "analogdevices,adv7182";
-			pinctrl-names	= "idle", "active";
-			cifport		= <0>;
-			pinctrl-0	= <&cam0_8bit_idle>;
-			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-			rst-gpios	= <&gpb 14 1>;
-			reg		= <0x21>;	// 0x42 >> 1
-		};
-
-		videosource1: deserializer_max9286 {
-			compatible	= "maxim,max9286";
-			/* refer to CIFPORT0(0x12380008) of datasheet */
-			cifport		= <9>;
-			pwd-gpios	= <&gpg 5 1>;
-			intb-gpios	= <&gph 11 1>;
-			reg		= <0x48>;	// 0x90 >> 1
-		};
-/*
-		videosource2: deserializer_ds90ub964 {
-			compatible	= "ti,ds90ub964";
-			cifport		= <5>;
-			reg		= <0x30>;	// 0x60 >> 1
-		};
-*/
 	};
 
 	i2c@16310000 {
@@ -281,6 +256,39 @@
 			reset-gpios = <&gpb 16 0x0>;
 		};
 
+	};
+
+	i2c@16370000 {
+		status = "okay";
+		port-mux = <28>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c28_bus>;
+
+		videosource0: videodecoder_adv7182 {
+			compatible	= "analogdevices,adv7182";
+			pinctrl-names	= "idle", "active";
+			cifport		= <0>;
+			pinctrl-0	= <&cam0_8bit_idle>;
+			pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
+			rst-gpios	= <&gpb 14 1>;
+			reg		= <0x21>;	// 0x42 >> 1
+		};
+
+		videosource1: deserializer_max9286 {
+			compatible	= "maxim,max9286";
+			/* refer to CIFPORT0(0x12380008) of datasheet */
+			cifport		= <9>;
+			pwd-gpios	= <&gpg 5 1>;
+			intb-gpios	= <&gph 11 1>;
+			reg		= <0x48>;	// 0x90 >> 1
+		};
+/*
+		videosource2: deserializer_ds90ub964 {
+			compatible	= "ti,ds90ub964";
+			cifport		= <9>;
+			reg		= <0x30>;	// 0x60 >> 1
+		};
+*/
 	};
 
 	gpsb0@16900000 {
