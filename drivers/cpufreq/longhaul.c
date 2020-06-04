@@ -909,7 +909,7 @@ static struct cpufreq_driver longhaul_driver = {
 };
 
 static const struct x86_cpu_id longhaul_id[] = {
-	{ X86_VENDOR_CENTAUR, 6 },
+	X86_MATCH_VENDOR_FAM(CENTAUR, 6, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, longhaul_id);
@@ -918,7 +918,7 @@ static int __init longhaul_init(void)
 {
 	struct cpuinfo_x86 *c = &cpu_data(0);
 
-	if (!x86_match_cpu(longhaul_id))
+	if (!x86_match_cpu_stp(longhaul_id))
 		return -ENODEV;
 
 	if (!enable) {

@@ -64,11 +64,8 @@ static struct bt_sfi_data tng_bt_sfi_data __initdata = {
 	.setup	= tng_bt_sfi_setup,
 };
 
-#define ICPU(model, ddata)	\
-	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, (kernel_ulong_t)&ddata }
-
 static const struct x86_cpu_id bt_sfi_cpu_ids[] = {
-	ICPU(INTEL_FAM6_ATOM_SILVERMONT_MID, tng_bt_sfi_data),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SILVERMONT_MID,	&tng_bt_sfi_data),
 	{}
 };
 
@@ -80,7 +77,7 @@ static int __init bt_sfi_init(void)
 	struct bt_sfi_data *ddata;
 	int ret;
 
-	id = x86_match_cpu(bt_sfi_cpu_ids);
+	id = x86_match_cpu_stp(bt_sfi_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

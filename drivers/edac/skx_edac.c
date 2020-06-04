@@ -271,7 +271,7 @@ fail:
 }
 
 static const struct x86_cpu_id skx_cpuids[] = {
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE_X, 0, 0 },
+	X86_MATCH_INTEL_FAM6_MODEL(SKYLAKE_X,	NULL),
 	{ }
 };
 MODULE_DEVICE_TABLE(x86cpu, skx_cpuids);
@@ -1112,7 +1112,7 @@ static int __init skx_init(void)
 	if (owner && strncmp(owner, EDAC_MOD_STR, sizeof(EDAC_MOD_STR)))
 		return -EBUSY;
 
-	id = x86_match_cpu(skx_cpuids);
+	id = x86_match_cpu_stp(skx_cpuids);
 	if (!id)
 		return -ENODEV;
 

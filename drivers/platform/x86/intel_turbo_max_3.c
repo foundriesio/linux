@@ -121,10 +121,8 @@ static int itmt_legacy_cpu_online(unsigned int cpu)
 	return 0;
 }
 
-#define ICPU(model)     { X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, }
-
 static const struct x86_cpu_id itmt_legacy_cpu_ids[] = {
-	ICPU(INTEL_FAM6_BROADWELL_X),
+	X86_MATCH_INTEL_FAM6_MODEL(BROADWELL_X,	NULL),
 	{}
 };
 
@@ -133,7 +131,7 @@ static int __init itmt_legacy_init(void)
 	const struct x86_cpu_id *id;
 	int ret;
 
-	id = x86_match_cpu(itmt_legacy_cpu_ids);
+	id = x86_match_cpu_stp(itmt_legacy_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

@@ -109,7 +109,7 @@ static int check_fsb(unsigned int fsbspeed)
 }
 
 static const struct x86_cpu_id powernow_k7_cpuids[] = {
-	{ X86_VENDOR_AMD, 6, },
+	X86_MATCH_VENDOR_FAM(AMD, 6, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, powernow_k7_cpuids);
@@ -119,7 +119,7 @@ static int check_powernow(void)
 	struct cpuinfo_x86 *c = &cpu_data(0);
 	unsigned int maxei, eax, ebx, ecx, edx;
 
-	if (!x86_match_cpu(powernow_k7_cpuids))
+	if (!x86_match_cpu_stp(powernow_k7_cpuids))
 		return 0;
 
 	/* Get maximum capabilities */

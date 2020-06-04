@@ -487,7 +487,7 @@ static struct crypto_alg cbc_aes_alg = {
 };
 
 static struct x86_cpu_id padlock_cpu_id[] = {
-	X86_FEATURE_MATCH(X86_FEATURE_XCRYPT),
+	X86_MATCH_FEATURE(X86_FEATURE_XCRYPT, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, padlock_cpu_id);
@@ -497,7 +497,7 @@ static int __init padlock_init(void)
 	int ret;
 	struct cpuinfo_x86 *c = &cpu_data(0);
 
-	if (!x86_match_cpu(padlock_cpu_id))
+	if (!x86_match_cpu_stp(padlock_cpu_id))
 		return -ENODEV;
 
 	if (!boot_cpu_has(X86_FEATURE_XCRYPT_EN)) {

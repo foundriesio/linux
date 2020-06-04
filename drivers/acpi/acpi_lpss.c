@@ -306,11 +306,9 @@ static const struct lpss_device_desc bsw_spi_dev_desc = {
 	.setup = lpss_deassert_reset,
 };
 
-#define ICPU(model)	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, }
-
 static const struct x86_cpu_id lpss_cpu_ids[] = {
-	ICPU(INTEL_FAM6_ATOM_SILVERMONT),	/* Valleyview, Bay Trail */
-	ICPU(INTEL_FAM6_ATOM_AIRMONT),	/* Braswell, Cherry Trail */
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SILVERMONT,	NULL),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_AIRMONT,	NULL),
 	{}
 };
 
@@ -1018,7 +1016,7 @@ void __init acpi_lpss_init(void)
 	if (ret)
 		return;
 
-	id = x86_match_cpu(lpss_cpu_ids);
+	id = x86_match_cpu_stp(lpss_cpu_ids);
 	if (id)
 		lpss_quirks |= LPSS_QUIRK_ALWAYS_POWER_ON;
 

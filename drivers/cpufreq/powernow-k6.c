@@ -258,8 +258,8 @@ static struct cpufreq_driver powernow_k6_driver = {
 };
 
 static const struct x86_cpu_id powernow_k6_ids[] = {
-	{ X86_VENDOR_AMD, 5, 12 },
-	{ X86_VENDOR_AMD, 5, 13 },
+	X86_MATCH_VENDOR_FAM_MODEL(AMD, 5, 12, NULL),
+	X86_MATCH_VENDOR_FAM_MODEL(AMD, 5, 13, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, powernow_k6_ids);
@@ -273,7 +273,7 @@ MODULE_DEVICE_TABLE(x86cpu, powernow_k6_ids);
  */
 static int __init powernow_k6_init(void)
 {
-	if (!x86_match_cpu(powernow_k6_ids))
+	if (!x86_match_cpu_stp(powernow_k6_ids))
 		return -ENODEV;
 
 	if (!request_region(POWERNOW_IOPORT, 16, "PowerNow!")) {

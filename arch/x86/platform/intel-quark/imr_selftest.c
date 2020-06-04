@@ -102,7 +102,7 @@ static void __init imr_self_test(void)
 }
 
 static const struct x86_cpu_id imr_ids[] __initconst = {
-	{ X86_VENDOR_INTEL, 5, 9 },	/* Intel Quark SoC X1000. */
+	X86_MATCH_VENDOR_FAM_MODEL(INTEL, 5, INTEL_FAM5_QUARK_X1000, NULL),
 	{}
 };
 
@@ -113,7 +113,7 @@ static const struct x86_cpu_id imr_ids[] __initconst = {
  */
 static int __init imr_self_test_init(void)
 {
-	if (x86_match_cpu(imr_ids))
+	if (x86_match_cpu_stp(imr_ids))
 		imr_self_test();
 	return 0;
 }

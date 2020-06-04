@@ -326,7 +326,7 @@ static struct ahash_alg ghash_async_alg = {
 };
 
 static const struct x86_cpu_id pcmul_cpu_id[] = {
-	X86_FEATURE_MATCH(X86_FEATURE_PCLMULQDQ), /* Pickle-Mickle-Duck */
+	X86_MATCH_FEATURE(X86_FEATURE_PCLMULQDQ, NULL), /* Pickle-Mickle-Duck */
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, pcmul_cpu_id);
@@ -335,7 +335,7 @@ static int __init ghash_pclmulqdqni_mod_init(void)
 {
 	int err;
 
-	if (!x86_match_cpu(pcmul_cpu_id))
+	if (!x86_match_cpu_stp(pcmul_cpu_id))
 		return -ENODEV;
 
 	err = crypto_register_shash(&ghash_alg);
