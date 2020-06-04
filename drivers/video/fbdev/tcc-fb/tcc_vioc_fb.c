@@ -2038,7 +2038,7 @@ static int tccfb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 						#if 1
 						VIOC_RDMA_SetImageAlphaEnable(pdp_data->rdma_info[RDMA_FB].virt_addr, 1);
 						VIOC_RDMA_SetImageAlphaSelect(pdp_data->rdma_info[RDMA_FB].virt_addr, 0);
-                				#if defined(CONFIG_ARCH_TCC897X) || defined(CONFIG_ARCH_TCC803X)
+						#if defined(CONFIG_ARCH_TCC897X) /*|| defined(CONFIG_ARCH_TCC803X)*/
 						VIOC_RDMA_SetImageAlpha(pdp_data->rdma_info[RDMA_FB].virt_addr, 0xFFF, 0xFFF);
 						#else
 						VIOC_RDMA_SetImageAlpha(pdp_data->rdma_info[RDMA_FB].virt_addr, 0x0, 0x0);
