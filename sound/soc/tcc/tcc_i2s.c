@@ -95,6 +95,7 @@ struct tcc_i2s_t {
 	bool tdm_mode;
 	bool frame_invert; //for TDM I2S mode
 	bool tdm_late_mode;
+	bool tdm_pcm_mode;
 	bool is_updated;
 	int32_t tdm_slots;
 	int32_t tdm_slot_width;
@@ -139,6 +140,16 @@ static inline uint32_t calc_dsp_tdm_mclk(struct tcc_i2s_t *i2s, int32_t sample_r
 	return (uint32_t)ret;
 }
 
+static inline uint32_t calc_dsp_pcm_mclk(struct tcc_i2s_t *i2s, unsigned int sample_rate)
+{
+	int32_t ret;
+	sample_rate = (sample_rate == 44100) ? 44100 :
+				  (sample_rate == 22000) ? 22050 :
+				  (sample_rate == 11000) ? 11025 : sample_rate;
+
+	ret = sample_rate * i2s->mclk_div * 2 * i2s->tdm_slot_width;
+	return (uint32_t)ret;
+}
 
 static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
@@ -520,6 +531,8 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	int32_t sample_rate = (int32_t)params_rate(params);
 	uint32_t mclk;
 	int ret = 0;
+	int slots = 0, slot_width=0;
+	bool pcm_mode = 0;
 
 	TCC_DAI_FMT tcc_fmt;
 
@@ -553,6 +566,59 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 		goto hw_params_end;
 	}
 
+	if(i2s->tdm_pcm_mode) {
+		(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s PCM mode Enable \n", i2s->blk_no, __func__);
+
+		slots = channels;
+		slot_width = (format == SNDRV_PCM_FORMAT_S16_LE) ? 16 :
+			         (format == SNDRV_PCM_FORMAT_S24_LE) ? 24 : 32;
+
+		(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s - slot:%d, slot_width:%d\n", i2s->blk_no, __func__, slots, slot_width);
+
+		i2s->tdm_mode = ((slots != 0) && (slot_width != 0)) ? true : false;
+		i2s->tdm_slots = slots;
+		i2s->tdm_slot_width = slot_width;
+		i2s->dma_info.tdm_mode = i2s->tdm_mode;
+
+		if (i2s->tdm_mode == true) {
+			if ((i2s->tdm_slot_width == 16) || (i2s->tdm_slot_width == 24)) {
+				tcc_dai_set_dsp_pcm_mode(i2s->dai_reg, i2s->tdm_slot_width, false);
+			} else {
+				(void) printk(KERN_ERR "[ERROR][I2S-%d] DSP_A TDM supports only 16bit or 24bit slotwidth\n", i2s->blk_no);
+				ret = -ENOTSUPP;
+				goto hw_params_end;
+			}
+		} else {
+			(void) printk(KERN_ERR "[ERROR][I2S-%d] DSP_A supports only TDM Mode\n", i2s->blk_no);
+			ret = -ENOTSUPP;
+			goto hw_params_end;
+		}
+
+		tcc_dai_set_bitclk_polarity(i2s->dai_reg, false);
+		pcm_mode = true;
+	} else {
+		(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s PCM mode Disable \n", i2s->blk_no, __func__);
+
+		slots = 0;
+		slot_width = 0;
+
+		(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s - slot:%d, slot_width:%d\n", i2s->blk_no, __func__, slots, slot_width);
+
+		i2s->tdm_mode = ((slots != 0) && (slot_width != 0)) ? true : false;
+		i2s->tdm_slots = slots;
+		i2s->tdm_slot_width = slot_width;
+		i2s->dma_info.tdm_mode = i2s->tdm_mode;
+
+		tcc_dai_set_bitclk_polarity(i2s->dai_reg, true);
+		tcc_dai_set_i2s_mode(i2s->dai_reg);
+
+		pcm_mode = false;
+	}
+
+	/* Rx2Tx loopback Disable */
+	(void) printk(KERN_DEBUG "[DEBUG][I2S-%d] %s Rx2Tx mode Disable \n", i2s->blk_no, __func__);
+	tcc_dai_rx2tx_loopback_enable(i2s->dai_reg, false);
+
 	if(system_rev == 0u) { //ES
 		if ((i2s->tdm_mode == TRUE) && (dai->active > 1u)) {
 			(void) printk(KERN_ERR "[ERROR][I2S] TDM Mode supports only uni-direction");
@@ -574,7 +640,13 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 					ret = -EINVAL;
 					break;
 				}
-				mclk = calc_cirrus_tdm_mclk(i2s, sample_rate);
+				/* D-Audio tcc803x support */
+				if(pcm_mode == true) {
+					tcc_dai_set_dsp_tdm_mode_valid_data(i2s->dai_reg, channels, i2s->tdm_slot_width);
+					mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
+				}
+				else
+					mclk = calc_cirrus_tdm_mclk(i2s, sample_rate);
 				break;
 			case SND_SOC_DAIFMT_DSP_A:
 			case SND_SOC_DAIFMT_DSP_B:
@@ -620,7 +692,11 @@ static int tcc_i2s_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (i2s->tdm_mode == TRUE) {
-		tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
+	/* D-Audio tcc803x support */
+		if(pcm_mode == true)
+			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
+		else
+			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
 	} else  {
 		if (channels > 2) {
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
@@ -997,12 +1073,33 @@ static int set_tdm_late_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_
 	return 0;
 }
 
+static int get_tdm_pcm_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = (long)i2s->tdm_pcm_mode;
+
+	return 0;
+}
+
+static int set_tdm_pcm_mode(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_i2s_t *i2s = (struct tcc_i2s_t*)snd_soc_component_get_drvdata(component);
+
+	i2s->tdm_pcm_mode = (bool)ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new tcc_i2s_snd_controls[] = {
 	SOC_ENUM_EXT(("BCLK RATIO"), (bclk_ratio_enum[0]), (get_bclk_ratio), (set_bclk_ratio)),
 	SOC_ENUM_EXT(("MCLK DIV"),   (mclk_div_enum[0]),   (get_mclk_div),   (set_mclk_div)),
 	SOC_SINGLE_BOOL_EXT(("Tx to Rx Internal Loopback Mode"), (0), (get_tx2rx_loopback_mode), (set_tx2rx_loopback_mode)),
 	SOC_SINGLE_BOOL_EXT(("Rx to Tx Internal Loopback Mode"), (0), (get_rx2tx_loopback_mode),(set_rx2tx_loopback_mode)),
 	SOC_SINGLE_BOOL_EXT(("TDM Late Mode"), (0), (get_tdm_late_mode), (set_tdm_late_mode)),
+	SOC_SINGLE_BOOL_EXT(("TDM PCM Mode"), (0), (get_tdm_pcm_mode), (set_tdm_pcm_mode)),
 };
 
 static struct snd_soc_component_driver tcc_i2s_component_drv = {
@@ -1300,6 +1397,11 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		i2s->tdm_late_mode = FALSE;
 	}
 
+	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL)) {
+		i2s->tdm_pcm_mode = true;
+	} else {
+		i2s->tdm_pcm_mode = false;
+	}
 	return 0;
 }
 

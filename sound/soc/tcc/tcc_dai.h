@@ -398,6 +398,52 @@ static inline void tcc_dai_set_dsp_tdm_mode(void __iomem *base_addr, uint32_t sl
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
 }
 
+#define DSP_PCM_MODE_FRAME_LENGTH (32)
+
+static inline void tcc_dai_set_dsp_pcm_mode(void __iomem *base_addr, uint32_t slot_width, bool late)
+{
+	uint32_t damr = readl(base_addr + TCC_DAI_DAMR_OFFSET);
+	uint32_t mccr0 = readl(base_addr + TCC_DAI_MCCR0_OFFSET);
+
+	damr &= ~(DAMR_RX_JUSTIFIED_MODE_Msk
+			| DAMR_TX_JUSTIFIED_MODE_Msk
+			| DAMR_DAI_SYNC_MODE_Msk
+			| DAMR_DSP_MODE_Msk
+			| DAMR_DSP_WORD_LEN_Msk);
+
+	mccr0 &= ~(MCCR0_FRAME_SIZE_Msk
+			 | MCCR0_FRAME_CLK_DIV_Msk
+			 | MCCR0_TDM_MODE_Msk
+			 | MCCR0_CIRRUS_LATE_Msk
+			 | MCCR0_MODE_SELECT_Msk
+			 | MCCR0_FRAME_INVERT_Msk
+			 | MCCR0_FRAME_BEGIN_POSITION_Msk
+			 | MCCR0_FRAME_END_POSTION_Msk);
+
+	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
+	damr |= (slot_width == 24) ? (DAMR_DSP_WORD_LEN_24BIT) : (DAMR_DSP_WORD_LEN_16BIT);
+
+	mccr0 |= ((DSP_PCM_MODE_FRAME_LENGTH-1) << MCCR0_FRAME_SIZE_Pos);
+	mccr0 |= (0 << MCCR0_FRAME_END_POSTION_Pos);
+	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
+
+	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
+	if(system_rev == 0) { //ES
+		mccr0 |= MCCR0_TDM_MODE_1;
+		if(late == true)
+			mccr0 |= MCCR0_FRAME_BEGIN_MODE2; //DSP-B
+		else
+			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE; //DSP-A
+	} else {
+		mccr0 |= MCCR0_TDM_MODE_1;
+		if(late == true)
+			mccr0 |= MCCR0_MODE_SELECT_ENABLE; //DSP-B
+	}
+
+	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
+	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
+}
+
 static inline void tcc_dai_set_dsp_tdm_mode_valid_data(void __iomem *base_addr, int32_t channels, int32_t slot_width)
 {
 	uint32_t mccr1 = readl(base_addr + TCC_DAI_MCCR1_OFFSET);
