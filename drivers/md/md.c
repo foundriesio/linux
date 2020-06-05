@@ -377,12 +377,26 @@ check_suspended:
 }
 EXPORT_SYMBOL(md_handle_request);
 
+/*
+ * This is generic_start_io_acct without the inflight tracking.  Since
+ * we can't reliably call generic_end_io_acct, the inflight counter
+ * would also be unreliable and it's better to keep it at 0.
+ */
+void md_io_acct(struct mddev *mddev, int rw, unsigned int sectors)
+{
+	int cpu = part_stat_lock();
+	part_stat_inc(cpu, &mddev->gendisk->part0, ios[rw]);
+	part_stat_add(cpu, &mddev->gendisk->part0, sectors[rw], sectors);
+	part_stat_unlock();
+
+}
+EXPORT_SYMBOL_GPL(md_io_acct);
+
 static blk_qc_t md_make_request(struct request_queue *q, struct bio *bio)
 {
 	const int rw = bio_data_dir(bio);
 	struct mddev *mddev = q->queuedata;
 	unsigned int sectors;
-	int cpu;
 
 	if (unlikely(test_bit(MD_BROKEN, &mddev->flags)) && (rw == WRITE)) {
 		bio_io_error(bio);
@@ -411,11 +425,6 @@ static blk_qc_t md_make_request(struct request_queue *q, struct bio *bio)
 	bio->bi_opf &= ~REQ_NOMERGE;
 
 	md_handle_request(mddev, bio);
-
-	cpu = part_stat_lock();
-	part_stat_inc(cpu, &mddev->gendisk->part0, ios[rw]);
-	part_stat_add(cpu, &mddev->gendisk->part0, sectors[rw], sectors);
-	part_stat_unlock();
 
 	return BLK_QC_T_NONE;
 }
