@@ -269,7 +269,7 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 
 static int _vmgr_hevc_enc_cmd_release(char *str)
 {
-	_DBG(DEBUG_ENC_SEQUENCE, "======> _vmgr_hevc_enc_%s_release In!! %d'th \n", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release In!! %d'th \n", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
 
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) > 0)
 	{
@@ -316,11 +316,12 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 	}
 
 	vmgr_hevc_enc_hw_assert();
+	udelay(1000); //1ms
 	vmgr_hevc_enc_disable_clock(0);
 
 	vmgr_hevc_enc_data.nOpened_Count++;
 
-	_DBG(DEBUG_ENC_SEQUENCE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d) \n",
+	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d) \n",
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,
@@ -363,12 +364,16 @@ static int _vmgr_hevc_enc_release(struct inode *inode, struct file *filp)
 	printk("_vmgr_hevc_enc_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&vmgr_hevc_enc_data.dev_file_opened), vmgr_hevc_enc_data.nOpened_Count,
 					vmgr_hevc_enc_get_close(VPU_DEC), vmgr_hevc_enc_get_close(VPU_DEC_EXT), vmgr_hevc_enc_get_close(VPU_DEC_EXT2), vmgr_hevc_enc_get_close(VPU_DEC_EXT3), vmgr_hevc_enc_get_close(VPU_DEC_EXT4));
 #else
-    mutex_lock(&vmgr_hevc_enc_data.comm_data.file_mutex);
+	_DBG(DEBUG_ENC_CLOSE, "enter");
+
+	mutex_lock(&vmgr_hevc_enc_data.comm_data.file_mutex);
 	_vmgr_hevc_enc_cmd_release("file");
 	mutex_unlock(&vmgr_hevc_enc_data.comm_data.file_mutex);
+
+	_DBG(DEBUG_ENC_CLOSE, "out");
 #endif
 
-    return 0;
+	return 0;
 }
 
 static int _vmgr_hevc_enc_internal_handler(void)
@@ -1257,7 +1262,7 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	_DBG(DEBUG_ENC_PROBE, "vmgr_hevc_enc_probe() enter");
+	_DBG(DEBUG_ENC_PROBE, "enter");
 
 	memset(&vmgr_hevc_enc_data, 0, sizeof(mgr_data_t) );
 	for(type=VPU_ENC; type<VPU_HEVC_ENC_MAX; type++)
@@ -1288,8 +1293,8 @@ int vmgr_hevc_enc_probe(struct platform_device *pdev)
 	res->end += 1;
 
 	vmgr_hevc_enc_data.base_addr = devm_ioremap(&pdev->dev, res->start, res->end-res->start);
-	_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], irq num [%d]",
-		res->start, vmgr_hevc_enc_data.base_addr, vmgr_hevc_enc_data.irq-32);
+	_DBG(DEBUG_ENC_PROBE, "VPU-HEVC-ENC base address [0x%x -> 0x%px], resource size [%d], irq num [%d]",
+		res->start, vmgr_hevc_enc_data.base_addr, res->end-res->start, vmgr_hevc_enc_data.irq-32);
 
 	vmgr_hevc_enc_get_clock(pdev->dev.of_node);
 	vmgr_hevc_enc_get_reset(pdev->dev.of_node);
@@ -1351,6 +1356,8 @@ EXPORT_SYMBOL(vmgr_hevc_enc_probe);
 
 int vmgr_hevc_enc_remove(struct platform_device *pdev)
 {
+	_DBG(DEBUG_ENC_CLOSE, "enter");
+
 	misc_deregister(&_vmgr_hevc_enc_misc_device);
 
 	if(kidle_task)
@@ -1365,13 +1372,13 @@ int vmgr_hevc_enc_remove(struct platform_device *pdev)
 		vmgr_hevc_enc_data.irq_reged = 0;
 	}
 
-    vmgr_hevc_enc_put_clock();
-    vmgr_hevc_enc_put_reset();
-    vmem_deinit();
+	vmgr_hevc_enc_put_clock();
+	vmgr_hevc_enc_put_reset();
+	vmem_deinit();
 
-    printk("success :: thread stopped!! \n");
+	_DBG(DEBUG_ENC_CLOSE, "out :: thread stopped!!");
 
-    return 0;
+	return 0;
 }
 EXPORT_SYMBOL(vmgr_hevc_enc_remove);
 
@@ -1394,7 +1401,10 @@ int vmgr_hevc_enc_suspend(struct platform_device *pdev, pm_message_t state)
 
 		open_count = atomic_read(&vmgr_hevc_enc_data.dev_opened);
 
-		for (i = 0; i < open_count; i++) {
+		vmgr_hevc_enc_hw_assert();
+
+		for (i = 0; i < open_count; i++)
+		{
 			vmgr_hevc_enc_disable_clock(0);
 		}
 		printk("vpu hevc enc: suspend out for ENC(%d/%d/%d/%d)\n",
@@ -1422,6 +1432,9 @@ int vmgr_hevc_enc_resume(struct platform_device *pdev)
 		{
 			vmgr_hevc_enc_enable_clock(0);
 		}
+
+		vmgr_hevc_enc_hw_deassert();
+
 		printk("\n vpu: resume \n\n");
 	}
 
