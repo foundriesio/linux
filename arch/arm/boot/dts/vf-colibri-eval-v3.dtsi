@@ -101,10 +101,9 @@
 
 	mcp2515can: can@0 {
 		compatible = "microchip,mcp2515";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_can_int>;
 		reg = <0>;
 		clocks = <&clk16m>;
+		/* pinctrl is set in iomuxc from hoggrp-0 */
 		interrupt-parent = <&gpio1>;
 		interrupts = <11 GPIO_ACTIVE_LOW>;
 		spi-max-frequency = <10000000>;
@@ -205,12 +204,6 @@
 
 &iomuxc {
 	vf610-colibri {
-		pinctrl_can_int: can_int {
-			fsl,pins = <
-				VF610_PAD_PTB21__GPIO_43	0x22ed
-			>;
-		};
-
 		pinctrl_gpiokeys: gpiokeys {
 			fsl,pins = <
 				VF610_PAD_PTB19__GPIO_41	0x218d
