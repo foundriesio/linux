@@ -1268,7 +1268,7 @@ static int mirror_end_io(struct dm_target *ti, struct bio *bio,
 			 * mirror in-sync.
 			 */
 			DMERR_LIMIT("Mirror read failed.");
-			return -EIO;
+			return DM_ENDIO_DONE;
 		}
 
 		m = bio_record->m;
