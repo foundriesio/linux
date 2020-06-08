@@ -682,12 +682,12 @@ static unsigned int stm32_usart_get_mctrl(struct uart_port *port)
 	return mctrl_gpio_get(stm32_port->gpios, &ret);
 }
 
-static void stm32_enable_ms(struct uart_port *port)
+static void stm32_usart_enable_ms(struct uart_port *port)
 {
 	mctrl_gpio_enable_ms(to_stm32_port(port)->gpios);
 }
 
-static void stm32_disable_ms(struct uart_port *port)
+static void stm32_usart_disable_ms(struct uart_port *port)
 {
 	mctrl_gpio_disable_ms(to_stm32_port(port)->gpios);
 }
@@ -857,7 +857,7 @@ static void stm32_usart_shutdown(struct uart_port *port)
 	int ret;
 
 	/* Disable modem control interrupts */
-	stm32_disable_ms(port);
+	stm32_usart_disable_ms(port);
 
 	val = USART_CR1_TXEIE | USART_CR1_TE;
 	val |= stm32_port->cr1_irq | USART_CR1_RE;
@@ -1025,9 +1025,9 @@ static void stm32_usart_set_termios(struct uart_port *port,
 
 	/* Handle modem control interrupts */
 	if (UART_ENABLE_MS(port, termios->c_cflag))
-		stm32_enable_ms(port);
+		stm32_usart_enable_ms(port);
 	else
-		stm32_disable_ms(port);
+		stm32_usart_disable_ms(port);
 
 	usartdiv = DIV_ROUND_CLOSEST(port->uartclk, baud);
 
@@ -1175,7 +1175,7 @@ static const struct uart_ops stm32_uart_ops = {
 	.throttle	= stm32_usart_throttle,
 	.unthrottle	= stm32_usart_unthrottle,
 	.stop_rx	= stm32_usart_stop_rx,
-	.enable_ms	= stm32_enable_ms,
+	.enable_ms	= stm32_usart_enable_ms,
 	.break_ctl	= stm32_usart_break_ctl,
 	.startup	= stm32_usart_startup,
 	.shutdown	= stm32_usart_shutdown,
