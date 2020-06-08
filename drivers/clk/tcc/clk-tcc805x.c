@@ -199,7 +199,6 @@ static void tcc_clk_stop(struct seq_file *m, void *v)
 
 static int tcc_clk_show(struct seq_file *m, void *v)
 {
-#if 0
 	struct arm_smccc_res res;
 	unsigned int rate, enabled;
 
@@ -319,7 +318,6 @@ static int tcc_clk_show(struct seq_file *m, void *v)
 	enabled = res.a0;
 	seq_printf(m, "hevc_b_enc  : %10lu Hz %s\n", rate, enabled == 1?"":"(disabled)");
 
-#endif
 	return 0;
 
 }
