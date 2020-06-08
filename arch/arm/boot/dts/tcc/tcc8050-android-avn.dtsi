@@ -88,9 +88,9 @@
 	status = "disabled";
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&switch_reverse_ma15>;
+	pinctrl-0 = <&switch_reverse_mb23>;
 
-	switch-gpios = <&gpma 15 1>;
+	switch-gpios = <&gpmb 23 1>;
 	switch-active = <0>;
 };
 
