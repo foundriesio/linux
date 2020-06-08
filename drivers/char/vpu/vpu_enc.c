@@ -602,7 +602,7 @@ static int _venc_cmd_open(vpu_encoder_data *vdata, char *str)
 
 static int _venc_cmd_release(vpu_encoder_data *vdata, char *str)
 {
-	detailk("======> %s :: _venc_%s_release In(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
+	_DBG(DEBUG_ENC_CLOSE, "======> %s :: _venc_%s_release In(%d)!!", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 
 	if(vdata->vComm_data.dev_opened > 0)
 		vdata->vComm_data.dev_opened--;
@@ -626,8 +626,7 @@ static int _venc_cmd_release(vpu_encoder_data *vdata, char *str)
 			vmgr_set_close(vdata->gsEncType, 1, 1);
 	}
 
-	printk("======> %s :: _venc_%s_release Out(%d)!! \n", vdata->misc->name, str, vdata->vComm_data.dev_opened);
-
+	_DBG(DEBUG_ENC_CLOSE, "======> %s :: _venc_%s_release Out(%d)!!", vdata->misc->name, str, vdata->vComm_data.dev_opened);
 	return 0;
 }
 

@@ -26,32 +26,6 @@ static int cache_droped = 0;
 //#define USE_CLK_DYNAMIC_CTRL
 
 //////////////////////////////////////////////////////////////////////////////
-#ifdef VBUS_QOS_MATRIX_CTL
-inline void vbus_matrix(void)
-{
-    vetc_reg_write(0x15444100, 0x00, 0x0); // PRI Core0 read - port0
-    vetc_reg_write(0x15444100, 0x04, 0x0); // PRI Core0 write - port0
-
-    vetc_reg_write(0x15445100, 0x00, 0x3); // PROC read - port1
-    vetc_reg_write(0x15445100, 0x04, 0x3); // PROC read - port1
-
-    vetc_reg_write(0x15446100, 0x00, 0x2); // SDMA read - port2
-    vetc_reg_write(0x15446100, 0x04, 0x2); // SDMA read - port2
-
-    vetc_reg_write(0x15447100, 0x00, 0x0); // SECON Core0 read - port3
-    vetc_reg_write(0x15447100, 0x04, 0x0); // SECON Core0 read - port3
-
-    vetc_reg_write(0x15449100, 0x00, 0x1); // DMA read - port4
-    vetc_reg_write(0x15449100, 0x04, 0x1); // DMA read - port4
-
-    vetc_reg_write(0x1544A100, 0x00, 0x0); // PRI Core1 read - port5
-    vetc_reg_write(0x1544A100, 0x04, 0x0); // PRI Core1 read - port5
-
-    vetc_reg_write(0x1544B100, 0x00, 0x0); // SECON Core1 read - port6
-    vetc_reg_write(0x1544B100, 0x04, 0x0); // SECON Core1 read - port6
-}
-#endif
-
 void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 {
 	_DBG(DEBUG_ENC_RSTCLK, "@@ vmgr_hevc_enc_enable_clock");
@@ -64,10 +38,6 @@ void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 
 	if (fbus_vbus_clk && !vbus_no_ctrl)
 		clk_prepare_enable(fbus_vbus_clk);
-
-#ifdef VBUS_QOS_MATRIX_CTL
-	vbus_matrix();
-#endif
 }
 
 void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)

@@ -269,7 +269,7 @@ static int _vmgr_hevc_enc_external_all_close(int wait_ms)
 
 static int _vmgr_hevc_enc_cmd_release(char *str)
 {
-	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release In!! %d'th \n", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
+	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release In!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
 
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) > 0)
 	{
@@ -321,7 +321,7 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 
 	vmgr_hevc_enc_data.nOpened_Count++;
 
-	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d) \n",
+	_DBG(DEBUG_ENC_CLOSE, "======> _vmgr_hevc_enc_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d)",
 		str,
 		atomic_read(&vmgr_hevc_enc_data.dev_opened),
 		vmgr_hevc_enc_data.nOpened_Count,

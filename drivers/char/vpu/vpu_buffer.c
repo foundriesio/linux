@@ -64,11 +64,11 @@
 
 #include <video/tcc/tcc_vpu_wbuffer.h>
 
-#define dprintk(msg...)	printk( "TCC_VPU_MEM : " msg);
+#define dprintk(msg...)	//printk( "TCC_VPU_MEM : " msg);
 #define detailk(msg...) //printk( "TCC_VPU_MEM : " msg);
 #define err(msg...) printk("TCC_VPU_MEM [Err]: "msg);
 
-#define dprintk_mem(msg...)	printk("TCC_VPU_MEM : " msg);
+#define dprintk_mem(msg...)	//printk("TCC_VPU_MEM : " msg);
 #define detailk_mem_dec(msg...)	//printk( "TCC_VPU_MEM_dec : " msg);
 #if defined(CONFIG_VDEC_CNT_3) || defined(CONFIG_VDEC_CNT_4) || defined(CONFIG_VDEC_CNT_5)
 #define dtailk_mem_dec_ext23(msg...)	//printk( "TCC_VPU_MEM_dec_ext23 : " msg);
@@ -556,6 +556,9 @@ static phys_addr_t _vmem_request_phyaddr(unsigned int request_size, vputype type
 			else // only for 1st Decoder.
 			{
 				if( vmgr_get_close(VPU_DEC_EXT) && vmgr_get_close(VPU_ENC)
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+					&& vmgr_hevc_enc_get_close(VPU_ENC)
+#endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
 					&& vmgr_4k_d2_get_close(VPU_DEC_EXT) && vmgr_4k_d2_get_close(VPU_ENC)
 #endif
@@ -1792,6 +1795,9 @@ unsigned int vmem_get_free_memory(vputype type)
 	if( type == VPU_DEC )
 	{
 		if( vmgr_get_close(VPU_DEC_EXT) && vmgr_get_close(VPU_ENC)
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC // VPU HEVC ENC
+			&& vmgr_hevc_enc_get_close(VPU_ENC)
+#endif
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
 			&& vmgr_4k_d2_get_close(VPU_DEC_EXT) && vmgr_4k_d2_get_close(VPU_ENC)
 #endif

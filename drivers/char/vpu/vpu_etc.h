@@ -44,7 +44,7 @@
 #define DEBUG_ENC_INSTANCE		(1<<6)
 #define DEBUG_ENC_CLOSE			(1<<7)
 
-static unsigned int debug_mask = DEBUG_ENC_SEQUENCE | DEBUG_ENC_PROBE | DEBUG_ENC_ERROR | DEBUG_ENC_INSTANCE | DEBUG_ENC_CLOSE;
+static unsigned int debug_mask = DEBUG_ENC_SEQUENCE | DEBUG_ENC_PROBE | DEBUG_ENC_ERROR | DEBUG_ENC_INSTANCE | DEBUG_ENC_CLOSE | DEBUG_ENC_RSTCLK;
 
 #ifdef DEBUG
 #define _DBG(x, fmt, args...) \
