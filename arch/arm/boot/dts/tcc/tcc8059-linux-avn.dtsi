@@ -259,7 +259,7 @@
 	};
 
 	i2c@16370000 {
-		status = "okay";
+		status = "disabled";
 		port-mux = <28>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c28_bus>;
@@ -282,13 +282,12 @@
 			intb-gpios	= <&gph 11 1>;
 			reg		= <0x48>;	// 0x90 >> 1
 		};
-/*
-		videosource2: deserializer_ds90ub964 {
-			compatible	= "ti,ds90ub964";
-			cifport		= <9>;
-			reg		= <0x30>;	// 0x60 >> 1
-		};
-*/
+
+//		videosource2: deserializer_ds90ub964 {
+//			compatible	= "ti,ds90ub964";
+//			cifport		= <9>;
+//			reg		= <0x30>;	// 0x60 >> 1
+//		};
 	};
 
 	gpsb1@16910000 {
