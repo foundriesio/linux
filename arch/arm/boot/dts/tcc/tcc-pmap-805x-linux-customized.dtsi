@@ -12,11 +12,7 @@
 
 
 //for HEVC/VPU framebuffer_size Calculation
-#if defined(CONFIG_SUPPORT_TCC_HEVC_4K) || defined(CONFIG_SUPPORT_TCC_VP9_4K)
 #define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2)+((w*h*37)/100))*(f+10))))*use)
-#else
-#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x1400000 /*the rest except framebuffer, userdatabuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2)+((w*h*37)/100))*(f+7))))*use)
-#endif
 #define VPU_CAL_PROCBUFFER(use,w,h,f) (((0x400000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
 #define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) (((0x300000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(w*h*3/2) + ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
 #define VPU_HEVC_ENC_CAL_PROCBUFFER(use,w,h,f) (((0x00C0000 /*the rest except framebuffer, userdatabuffer and workbuffer*/)+(f*ARRAY_MBYTE(ALIGNED_BUF256(w)*ALIGNED_BUF64(h)*69/32+(20*1024))))*use) /*f=2*/
