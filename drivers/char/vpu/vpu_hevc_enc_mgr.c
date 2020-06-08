@@ -727,7 +727,7 @@ static int _vmgr_hevc_enc_operation(void)
 				if(*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM &&
 					*(oper_data->vpu_result) != RETCODE_INSUFFICIENT_BITSTREAM_BUF)
 				{
-					_DBG(DEBUG_ENC_ERROR, "- out[0x%p] :: type = %u, vmgr_hevc_enc_data.handle = 0x%ld, cmd = %d, frame_len %u",
+					_DBG(DEBUG_ENC_ERROR, "- out[0x%px] :: type = %u, vmgr_hevc_enc_data.handle = 0x%lx, cmd = %d, frame_len %u",
 							(void *)*(oper_data->vpu_result), oper_data->type, oper_data->handle, oper_data->cmd_type, vmgr_hevc_enc_data.szFrame_Len);
 				}
 
