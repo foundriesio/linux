@@ -201,7 +201,8 @@ static unsigned int LCD_LCDC_NUM;
 static char vsync_power_state;
 static int lcdc_interrupt_onoff = 0;
 static int video_display_disable_check = 0;
-unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
+
+extern unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 static int debug_v = 0;
 #define vprintk(msg...) if (debug_v) { printk("[DBG][VSYNC] " msg); }

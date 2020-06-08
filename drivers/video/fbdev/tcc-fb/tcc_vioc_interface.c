@@ -258,7 +258,7 @@ static tcc_display_resize resize_data;
 static tcc_display_divide divide_data;
 static tcc_display_resize output_attach_resize_data;
 
-extern unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
+unsigned int vsync_rdma_off[VSYNC_MAX];	// RDMA_VIDEO enable/disable
 
 
 extern void tca_lcdc_interrupt_onoff(char onoff, char lcdc);
