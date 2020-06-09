@@ -8320,7 +8320,8 @@ restart:
  *  * for kernel addresses: <start address>[/<size>]
  *  * for object files:     <start address>[/<size>]@</path/to/object/file>
  *
- * if <size> is not specified, the range is treated as a single address.
+ * if <size> is not specified or is zero, the range is treated as a single
+ * address; not valid for ACTION=="filter".
  */
 enum {
 	IF_ACT_NONE = -1,
@@ -8370,6 +8371,11 @@ perf_event_parse_addr_filter(struct perf_event *event, char *fstr,
 		return -ENOMEM;
 
 	while ((start = strsep(&fstr, " ,\n")) != NULL) {
+		static const enum perf_addr_filter_action_t actions[] = {
+			[IF_ACT_FILTER]	= PERF_ADDR_FILTER_ACTION_FILTER,
+			[IF_ACT_START]	= PERF_ADDR_FILTER_ACTION_START,
+			[IF_ACT_STOP]	= PERF_ADDR_FILTER_ACTION_STOP,
+		};
 		ret = -EINVAL;
 
 		if (!*start)
@@ -8386,12 +8392,11 @@ perf_event_parse_addr_filter(struct perf_event *event, char *fstr,
 		switch (token) {
 		case IF_ACT_FILTER:
 		case IF_ACT_START:
-			filter->filter = 1;
-
 		case IF_ACT_STOP:
 			if (state != IF_STATE_ACTION)
 				goto fail;
 
+			filter->action = actions[token];
 			state = IF_STATE_SOURCE;
 			break;
 
@@ -8404,15 +8409,12 @@ perf_event_parse_addr_filter(struct perf_event *event, char *fstr,
 			if (state != IF_STATE_SOURCE)
 				goto fail;
 
-			if (token == IF_SRC_FILE || token == IF_SRC_KERNEL)
-				filter->range = 1;
-
 			*args[0].to = 0;
 			ret = kstrtoul(args[0].from, 0, &filter->offset);
 			if (ret)
 				goto fail;
 
-			if (filter->range) {
+			if (token == IF_SRC_KERNEL || token == IF_SRC_FILE) {
 				*args[1].to = 0;
 				ret = kstrtoul(args[1].from, 0, &filter->size);
 				if (ret)
@@ -8420,7 +8422,7 @@ perf_event_parse_addr_filter(struct perf_event *event, char *fstr,
 			}
 
 			if (token == IF_SRC_FILE || token == IF_SRC_FILEADDR) {
-				int fpos = filter->range ? 2 : 1;
+				int fpos = token == IF_SRC_FILE ? 2 : 1;
 
 				filename = match_strdup(&args[fpos]);
 				if (!filename) {
@@ -8444,6 +8446,14 @@ perf_event_parse_addr_filter(struct perf_event *event, char *fstr,
 		if (state == IF_STATE_END) {
 			ret = -EINVAL;
 			if (kernel && event->attr.exclude_kernel)
+				goto fail;
+
+			/*
+			 * ACTION "filter" must have a non-zero length region
+			 * specified.
+			 */
+			if (filter->action == PERF_ADDR_FILTER_ACTION_FILTER &&
+			    !filter->size)
 				goto fail;
 
 			if (!kernel) {

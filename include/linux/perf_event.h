@@ -451,14 +451,19 @@ struct pmu {
 	int (*filter_match)		(struct perf_event *event); /* optional */
 };
 
+enum perf_addr_filter_action_t {
+	PERF_ADDR_FILTER_ACTION_STOP = 0,
+	PERF_ADDR_FILTER_ACTION_START,
+	PERF_ADDR_FILTER_ACTION_FILTER,
+};
+
 /**
  * struct perf_addr_filter - address range filter definition
  * @entry:	event's filter list linkage
  * @inode:	object file's inode for file-based filters
  * @offset:	filter range offset
- * @size:	filter range size
- * @range:	1: range, 0: address
- * @filter:	1: filter/start, 0: stop
+ * @size:	filter range size (size==0 means single address trigger)
+ * @action:	filter/start/stop
  *
  * This is a hardware-agnostic filter configuration as specified by the user.
  */
@@ -467,8 +472,7 @@ struct perf_addr_filter {
 	struct inode		*inode;
 	unsigned long		offset;
 	unsigned long		size;
-	unsigned int		range	: 1,
-				filter	: 1;
+	enum perf_addr_filter_action_t	action;
 };
 
 /**
