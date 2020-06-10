@@ -9,6 +9,8 @@
  *   Description: reset, clock and interrupt functions for TCC HEVC ENC
  */
 
+#ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
+
 #include "vpu_hevc_enc_mgr_sys.h"
 
 static struct clk *fbus_vbus_clk = NULL;
@@ -28,7 +30,7 @@ static int cache_droped = 0;
 //////////////////////////////////////////////////////////////////////////////
 void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 {
-	_DBG(DEBUG_ENC_RSTCLK, "@@ vmgr_hevc_enc_enable_clock");
+	_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_enable_clock");
 
 	if (fbus_bhevcenc_clk)
 		clk_prepare_enable(fbus_bhevcenc_clk);
@@ -42,7 +44,7 @@ void vmgr_hevc_enc_enable_clock(int vbus_no_ctrl)
 
 void vmgr_hevc_enc_disable_clock(int vbus_no_ctrl)
 {
-	_DBG(DEBUG_ENC_RSTCLK, "@@ vmgr_hevc_enc_disable_clock");
+	_DBG(DEBUG_RSTCLK, "@@ vmgr_hevc_enc_disable_clock");
 
 #if !defined(VBUS_CLK_ALWAYS_ON)
 	if(fbus_vbus_clk && !vbus_no_ctrl)
@@ -173,42 +175,6 @@ void vmgr_hevc_enc_change_clock(unsigned int width, unsigned int height)
 #endif
 }
 
-void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1 // unnecessary process: recommended by soc
-	int opened_count = opened_cnt;
-
-	_DBG(DEBUG_ENC_RSTCLK, "opened_cnt: %d", opened_cnt);
-
-	vmgr_hevc_enc_hw_assert();
-
-	udelay(1000); //1ms
-
-	while(opened_count)
-	{
-		vmgr_hevc_enc_disable_clock(vbus_no_ctrl);
-		if(opened_count > 0)
-			opened_count--;
-	}
-
-	udelay(1000); //1ms
-
-	opened_count = opened_cnt;
-	while(opened_count)
-	{
-		vmgr_hevc_enc_enable_clock(vbus_no_ctrl);
-		if(opened_count > 0)
-			opened_count--;
-	}
-
-	udelay(1000); //1ms
-
-	vmgr_hevc_enc_hw_deassert();
-#else
-	vmgr_hevc_enc_hw_reset();
-#endif
-}
-
 void vmgr_hevc_enc_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
@@ -224,7 +190,8 @@ void vmgr_hevc_enc_get_reset(struct device_node *node)
 void vmgr_hevc_enc_put_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if (vbus_hevc_encoder_rst) {
+	if (vbus_hevc_encoder_rst)
+	{
 		reset_control_put(vbus_hevc_encoder_rst);
 		vbus_hevc_encoder_rst = NULL;
 	}
@@ -243,37 +210,37 @@ int vmgr_hevc_enc_get_reset_register(void)
 void vmgr_hevc_enc_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	_DBG(DEBUG_ENC_RSTCLK, "enter");
+	_DBG(DEBUG_RSTCLK, "enter");
 
 	if(vbus_hevc_encoder_rst)
 	{
-		_DBG(DEBUG_ENC_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+		_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: assert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_assert(vbus_hevc_encoder_rst);
 	}
 
-	_DBG(DEBUG_ENC_RSTCLK, "out!! (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+	_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
 void vmgr_hevc_enc_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	_DBG(DEBUG_ENC_RSTCLK, "enter");
+	_DBG(DEBUG_RSTCLK, "enter");
 
 	if(vbus_hevc_encoder_rst)
 	{
-		_DBG(DEBUG_ENC_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+		_DBG(DEBUG_RSTCLK, "Video bus hevc encoder reset: deassert (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
 		reset_control_deassert(vbus_hevc_encoder_rst);
 	}
 
-	_DBG(DEBUG_ENC_RSTCLK, "vmgr_hevc_enc_hw_deassert out!! (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+	_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
 void vmgr_hevc_enc_hw_reset(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	_DBG(DEBUG_ENC_RSTCLK, "enter");
+	_DBG(DEBUG_RSTCLK, "enter");
 
 	udelay(1000); //1ms
 
@@ -285,10 +252,45 @@ void vmgr_hevc_enc_hw_reset(void)
 
 	udelay(1000); //1ms
 
-	_DBG(DEBUG_ENC_RSTCLK, "out (rsr:0x%x)\n", vmgr_hevc_enc_get_reset_register());
+	_DBG(DEBUG_RSTCLK, "out (rsr:0x%x)", vmgr_hevc_enc_get_reset_register());
 #endif
 }
 
+void vmgr_hevc_enc_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1 // unnecessary process: recommended by soc
+	int opened_count = opened_cnt;
+
+	_DBG(DEBUG_RSTCLK, "opened_cnt: %d", opened_cnt);
+
+	vmgr_hevc_enc_hw_assert();
+
+	udelay(1000); //1ms
+
+	while(opened_count)
+	{
+		vmgr_hevc_enc_disable_clock(vbus_no_ctrl);
+		if(opened_count > 0)
+			opened_count--;
+	}
+
+	udelay(1000); //1ms
+	
+	opened_count = opened_cnt;
+	while(opened_count)
+	{
+		vmgr_hevc_enc_enable_clock(vbus_no_ctrl);
+		if(opened_count > 0)
+			opened_count--;
+	}
+
+	udelay(1000); //1ms
+
+	vmgr_hevc_enc_hw_deassert();
+#else
+	vmgr_hevc_enc_hw_reset();
+#endif
+}
 
 void vmgr_hevc_enc_enable_irq(unsigned int irq)
 {
@@ -342,6 +344,8 @@ void vmgr_hevc_enc_init_variable(void)
 {
 	cache_droped = 0;
 }
+
+#endif //CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 
 MODULE_AUTHOR("Telechips.");
 MODULE_DESCRIPTION("TCC vpu hevc enc device driver");

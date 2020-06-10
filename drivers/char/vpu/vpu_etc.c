@@ -27,7 +27,16 @@
 #include <asm/io.h>
 
 #define vpu_writel writel
-#define vpu_readl  readl
+#define vpu_readl readl
+
+#ifdef DEBUG
+unsigned int debug_mask = DEBUG_ENC_SEQUENCE |
+					DEBUG_ENC_PROBE |
+					DEBUG_ENC_ERROR |
+					DEBUG_ENC_INSTANCE |
+					DEBUG_ENC_CLOSE |
+					DEBUG_RSTCLK;
+#endif
 
 extern int _vmem_is_cma_allocated_virt_region(unsigned int start_virtaddr, unsigned int length);
 

@@ -126,7 +126,6 @@ static int _vmgr_hevc_enc_cmd_open(char *str)
 	_DBG(DEBUG_ENC_SEQUENCE, "======> _vmgr_hevc_enc_%s_open enter!! %d'th", str, atomic_read(&vmgr_hevc_enc_data.dev_opened) );
 
 	vmgr_hevc_enc_enable_clock(0);
-	vmgr_hevc_enc_hw_reset();
 
 	if(atomic_read(&vmgr_hevc_enc_data.dev_opened) == 0)
 	{
@@ -137,6 +136,7 @@ static int _vmgr_hevc_enc_cmd_open(char *str)
 		vmgr_hevc_enc_data.clk_limitation = 1;
 		vmgr_hevc_enc_data.cmd_processing = 0;
 
+		vmgr_hevc_enc_hw_reset();
 		vmgr_hevc_enc_enable_irq(vmgr_hevc_enc_data.irq);
 		//vetc_reg_init(vmgr_hevc_enc_data.base_addr);
 		if(0 > (ret = vmem_init()))
@@ -313,10 +313,11 @@ static int _vmgr_hevc_enc_cmd_release(char *str)
 		vmgr_hevc_enc_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
 		vmem_deinit();
+
+		vmgr_hevc_enc_hw_assert();
+		udelay(1000); //1ms
 	}
 
-	vmgr_hevc_enc_hw_assert();
-	udelay(1000); //1ms
 	vmgr_hevc_enc_disable_clock(0);
 
 	vmgr_hevc_enc_data.nOpened_Count++;
@@ -438,7 +439,7 @@ static int _vmgr_hevc_enc_internal_handler(void)
 static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* args)
 {
 	int ret = 0;
-#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
+#ifdef CONFIG_VPU_TIME_MEASUREMENT
 	struct timeval t1, t2;
 	int time_gap_ms = 0;
 #endif
@@ -525,7 +526,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				}
 				_DBG(DEBUG_ENC_SEQUENCE, " :: Init Done Handle(0x%x)", arg->handle);
 				vmgr_hevc_enc_data.nDecode_Cmd = 0;
-			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
+			#ifdef CONFIG_VPU_TIME_MEASUREMENT
 				vmgr_hevc_enc_data.iTime[type].print_out_index = vmgr_hevc_enc_data.iTime[type].proc_base_cnt = 0;
 				vmgr_hevc_enc_data.iTime[type].accumulated_proc_time = vmgr_hevc_enc_data.iTime[type].accumulated_frame_cnt = 0;
 				vmgr_hevc_enc_data.iTime[type].proc_time_30frames = 0;
@@ -568,7 +569,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 			case VPU_ENC_ENCODE:
 			{
 				VENC_HEVC_ENCODE_t *arg = (VENC_HEVC_ENCODE_t *)args;
-			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
+			#ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday( &t1 );
 			#endif
 				_DBG(DEBUG_ENC_SEQUENCE, " enter w/ Handle(0x%x) :: 0x%x-0x%x-0x%x, %d-%d-%d, %d-%d-%d, %d, 0x%x-%d",
@@ -609,7 +610,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 				}
 			#endif
 				vmgr_hevc_enc_data.nDecode_Cmd++;
-			#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
+			#ifdef CONFIG_VPU_TIME_MEASUREMENT
 				do_gettimeofday( &t2 );
 			#endif
 				_DBG(DEBUG_ENC_SEQUENCE, " out w/ [%d] !! PicType[%d], Encoded_size[%d]",
@@ -639,7 +640,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle, void* arg
 		}
 	}
 
-#ifdef CONFIG_VPU_HEVC_ENC_TIME_MEASUREMENT
+#ifdef CONFIG_VPU_TIME_MEASUREMENT
 	time_gap_ms = vetc_GetTimediff_ms(t1, t2);
 
 	if (cmd == VPU_ENC_ENCODE)

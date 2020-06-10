@@ -39,20 +39,14 @@
 #define DEBUG_ENC_ERROR			(1<<1)
 #define DEBUG_ENC_INTERRUPT		(1<<2)
 #define DEBUG_ENC_PROBE			(1<<3)
-#define DEBUG_ENC_RSTCLK		(1<<4)
+#define DEBUG_RSTCLK			(1<<4)
 #define DEBUG_ENC_THREAD		(1<<5)
 #define DEBUG_ENC_INSTANCE		(1<<6)
 #define DEBUG_ENC_CLOSE			(1<<7)
 #define DEBUG_ENC_DETAIL		(1<<8)
 
-static unsigned int debug_mask = DEBUG_ENC_SEQUENCE |
-							DEBUG_ENC_PROBE |
-							DEBUG_ENC_ERROR |
-							DEBUG_ENC_INSTANCE |
-							DEBUG_ENC_CLOSE |
-							DEBUG_ENC_RSTCLK;
-
 #ifdef DEBUG
+extern unsigned int debug_mask;
 #define _DBG(x, fmt, args...) \
 	do { if (debug_mask & x) printk("[%s:%d] " fmt "\n", \
 							__func__, __LINE__, ##args); } while(0)

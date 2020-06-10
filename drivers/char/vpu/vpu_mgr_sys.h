@@ -59,7 +59,10 @@ extern void vmgr_restore_clock(int vbus_no_ctrl, int opened_cnt);
 
 extern void vmgr_get_reset(struct device_node *node);
 extern void vmgr_put_reset(void);
-extern void vmgr_hw_reset(int reset);
+extern int vmgr_get_reset_register(void);
+extern void vmgr_hw_assert(void);
+extern void vmgr_hw_deassert(void);
+extern void vmgr_hw_reset(void);
 
 extern void vmgr_enable_irq(unsigned int irq);
 extern void vmgr_disable_irq(unsigned int irq);

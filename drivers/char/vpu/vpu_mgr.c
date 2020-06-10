@@ -850,7 +850,7 @@ static int _vmgr_external_all_close(int wait_ms)
 
 static int _vmgr_cmd_open(char *str)
 {
-	int ret = 0;
+    int ret = 0;
 
     dprintk("======> _vmgr_%s_open In!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
 
@@ -869,33 +869,34 @@ static int _vmgr_cmd_open(char *str)
         vmgr_data.clk_limitation = 1;
         vmgr_data.cmd_processing = 0;
 
-		vmgr_hw_reset(0);
+        vmgr_hw_reset();
         vmgr_enable_irq(vmgr_data.irq);
         vetc_reg_init(vmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
-	    {
-	        err("failed to allocate memory for VPU!! %d \n", ret);
-	        //return -ENOMEM;
-    	}
-		cntInt_vpu = 0;
-		#ifdef DEBUG_VPU_K
-		cntwk_vpu = 0;
-		#endif
+        {
+            err("failed to allocate memory for VPU!! %d \n", ret);
+            //return -ENOMEM;
+        }
+        cntInt_vpu = 0;
+        #ifdef DEBUG_VPU_K
+        cntwk_vpu = 0;
+        #endif
     }
     atomic_inc(&vmgr_data.dev_opened);
 
-	dprintk("======> _vmgr_%s_open Out!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
-	
-	return 0;
+    dprintk("======> _vmgr_%s_open Out!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
+
+    return 0;
 }
 
 static int _vmgr_cmd_release(char *str)
 {
     dprintk("======> _vmgr_%s_release In!! %d'th \n", str, atomic_read(&vmgr_data.dev_opened));
 
-    if (atomic_read(&vmgr_data.dev_opened) > 0) {
+    if (atomic_read(&vmgr_data.dev_opened) > 0)
+    {
         atomic_dec(&vmgr_data.dev_opened);
-	}
+    }
 
     if (atomic_read(&vmgr_data.dev_opened) == 0)
     {
@@ -903,14 +904,14 @@ static int _vmgr_cmd_release(char *str)
         int type = 0, alive_cnt = 0;
 
     #if 1 // To close whole vpu instance when being killed process opened this.
-		if(!vmgr_data.bVpu_already_proc_force_closed)
-		{
-			vmgr_data.external_proc = 1;
-			_vmgr_external_all_close(200);
-			vmgr_data.external_proc = 0;
-			//_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
-		}
-		vmgr_data.bVpu_already_proc_force_closed = false;
+        if(!vmgr_data.bVpu_already_proc_force_closed)
+        {
+            vmgr_data.external_proc = 1;
+            _vmgr_external_all_close(200);
+            vmgr_data.external_proc = 0;
+            //_vmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while vpu is closing (waiting time can be longer than poll time of omx)
+        }
+        vmgr_data.bVpu_already_proc_force_closed = false;
     #endif
 
         for(type=0; type<VPU_MAX; type++) {
@@ -936,9 +937,10 @@ static int _vmgr_cmd_release(char *str)
         vmgr_disable_irq(vmgr_data.irq);
         vmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
-		vmem_deinit();
-		
-		vmgr_hw_reset(1);
+        vmem_deinit();
+
+        vmgr_hw_assert();
+        udelay(1000); //1ms
     }
 
     vmgr_disable_clock(0, 0);
@@ -948,7 +950,7 @@ static int _vmgr_cmd_release(char *str)
     printk("======> _vmgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&vmgr_data.dev_opened), vmgr_data.nOpened_Count,
                     vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4));
 
-	return 0;
+    return 0;
 }
 
 static unsigned int hangup_rel_count = 0;
@@ -1024,8 +1026,7 @@ static long _vmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
 
         case VPU_HW_RESET:
-			vmgr_hw_reset(1);
-			vmgr_hw_reset(0);
+            vmgr_hw_reset();
         break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1338,15 +1339,15 @@ static int _vmgr_open(struct inode *inode, struct file *filp)
 static int _vmgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_vmgr_release In!! %d'th\n", atomic_read(&vmgr_data.dev_file_opened));
-	atomic_dec(&vmgr_data.dev_file_opened);
-	vmgr_data.nOpened_Count++;
+    dprintk("_vmgr_release In!! %d'th\n", atomic_read(&vmgr_data.dev_file_opened));
+    atomic_dec(&vmgr_data.dev_file_opened);
+    vmgr_data.nOpened_Count++;
 
-	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&vmgr_data.dev_file_opened), vmgr_data.nOpened_Count,
-					vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4));
+    printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&vmgr_data.dev_file_opened), vmgr_data.nOpened_Count,
+        vmgr_get_close(VPU_DEC), vmgr_get_close(VPU_DEC_EXT), vmgr_get_close(VPU_DEC_EXT2), vmgr_get_close(VPU_DEC_EXT3), vmgr_get_close(VPU_DEC_EXT4));
 #else
     mutex_lock(&vmgr_data.comm_data.file_mutex);
-	_vmgr_cmd_release("file");
+    _vmgr_cmd_release("file");
     mutex_unlock(&vmgr_data.comm_data.file_mutex);
 #endif
 
@@ -1375,7 +1376,7 @@ VpuList_t* vmgr_list_manager(VpuList_t* args, unsigned int cmd)
         switch (cmd) {
             case LIST_ADD:
                 if (!args)
-				{
+                {
                     err("ADD :: data is null \n");
                     goto Error;
                 }
@@ -1474,17 +1475,18 @@ Error:
 
 void vmgr_waitlist_init_pending(int type, int force_clear)
 {
-	if (IsUseWaitList()) {
-		if((wait_entry_info.type == type) || force_clear){
-			wait_entry_info.wait_dec_status = 0;
-			printk(
-				"@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
-				wait_entry_info.type,
-				type,
-				force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
-			);
-		}
-	}
+    if (IsUseWaitList())
+    {
+        if((wait_entry_info.type == type) || force_clear)
+        {
+            wait_entry_info.wait_dec_status = 0;
+            printk("@@@@@@ =====> [wait_entry(%d) vs. type(%d)] end waiting with closing VPU (by %s)\n",
+                wait_entry_info.type,
+                type,
+                force_clear?"RETCODE_CODEC_EXIT":"VPU_DEC_CLOSE"
+            );
+        }
+    }
 }
 #endif
 
@@ -1498,11 +1500,12 @@ static int _vmgr_operation(void)
     int is_from_wait_list = 0;
 #endif
 
-    while ((!vmgr_list_manager(NULL, LIST_IS_EMPTY)) 
+    while ((!vmgr_list_manager(NULL, LIST_IS_EMPTY))
 #ifdef USE_WAIT_LIST
-			|| (!vmgr_waitlist_manager(NULL, LIST_IS_EMPTY))
+            || (!vmgr_waitlist_manager(NULL, LIST_IS_EMPTY))
 #endif
-	) {
+    )
+    {
         vmgr_data.cmd_processing = 1;
         oper_finished = 1;
 
@@ -1584,15 +1587,17 @@ static int _vmgr_operation(void)
                 }
 
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
-                	vmgr_restore_clock(0, atomic_read(&vmgr_data.dev_opened));
+                    vmgr_restore_clock(0, atomic_read(&vmgr_data.dev_opened));
                     _vmgr_close_all(1);
 
-				#ifdef USE_WAIT_LIST
-					vmgr_waitlist_init_pending(oper_data->type, 1);
-				#endif
+                #ifdef USE_WAIT_LIST
+                    vmgr_waitlist_init_pending(oper_data->type, 1);
+                #endif
                 }
             }
-        } else {
+        } 
+        else
+        {
             printk("_vmgr_operation: missed info or unknown command => type = 0x%x, cmd = 0x%x \n", oper_data->type, oper_data->cmd_type);
 
             *(oper_data->vpu_result) = RETCODE_FAILURE;

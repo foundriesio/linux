@@ -791,7 +791,7 @@ static int _hmgr_external_all_close(int wait_ms)
 
 static int _hmgr_cmd_open(char *str)
 {
-	int ret = 0;
+    int ret = 0;
 
     dprintk("======> _hmgr_%s_open In!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
 
@@ -810,20 +810,20 @@ static int _hmgr_cmd_open(char *str)
         hmgr_data.clk_limitation = 1;
         hmgr_data.cmd_processing = 0;
 
-		hmgr_hw_reset(0);
+        hmgr_hw_reset();
         hmgr_enable_irq(hmgr_data.irq);
         vetc_reg_init(hmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
-	    {
-	        err("failed to allocate memory for VPU!! %d \n", ret);
-	        //return -ENOMEM;
-	    }
+        {
+            err("failed to allocate memory for VPU!! %d \n", ret);
+            //return -ENOMEM;
+        }
     }
     atomic_inc(&hmgr_data.dev_opened);
 
-	dprintk("======> _hmgr_%s_open Out!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
-	
-	return 0;
+    dprintk("======> _hmgr_%s_open Out!! %d'th \n", str, atomic_read(&hmgr_data.dev_opened));
+
+    return 0;
 }
 
 static int _hmgr_cmd_release(char *str)
@@ -832,7 +832,7 @@ static int _hmgr_cmd_release(char *str)
 
     if(atomic_read(&hmgr_data.dev_opened) > 0) {
         atomic_dec(&hmgr_data.dev_opened);
-	}
+    }
 
     if(atomic_read(&hmgr_data.dev_opened) == 0)
     {
@@ -840,14 +840,14 @@ static int _hmgr_cmd_release(char *str)
         int type = 0, alive_cnt = 0;
 
 #if 1 // To close whole hevc instance when being killed process opened this.
-		if(!hmgr_data.bVpu_already_proc_force_closed)
-		{
-	        hmgr_data.external_proc = 1;
-	        _hmgr_external_all_close(200);
-	        hmgr_data.external_proc = 0;
-	        //_hmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while HEVC is closing (waiting time can be longer than poll time of omx)
-		}
-		hmgr_data.bVpu_already_proc_force_closed = false;
+        if(!hmgr_data.bVpu_already_proc_force_closed)
+        {
+            hmgr_data.external_proc = 1;
+            _hmgr_external_all_close(200);
+            hmgr_data.external_proc = 0;
+            //_hmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while HEVC is closing (waiting time can be longer than poll time of omx)
+        }
+        hmgr_data.bVpu_already_proc_force_closed = false;
 #endif
 
         for(type=0; type<HEVC_MAX; type++) {
@@ -873,8 +873,9 @@ static int _hmgr_cmd_release(char *str)
         hmgr_disable_irq(hmgr_data.irq);
         hmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
-		vmem_deinit();
-		hmgr_hw_reset(1);
+        vmem_deinit();
+        hmgr_hw_assert();
+        udelay(1000);
     }
 
     hmgr_disable_clock(0);
@@ -884,7 +885,7 @@ static int _hmgr_cmd_release(char *str)
     printk("======> _hmgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d) \n", str, atomic_read(&hmgr_data.dev_opened), hmgr_data.nOpened_Count,
                     hmgr_get_close(VPU_DEC), hmgr_get_close(VPU_DEC_EXT), hmgr_get_close(VPU_DEC_EXT2), hmgr_get_close(VPU_DEC_EXT3), hmgr_get_close(VPU_DEC_EXT4));
 
-	return 0;
+    return 0;
 }
 
 static long _hmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)

@@ -25,11 +25,6 @@
 
 #include "vpu_mgr_sys.h"
 
-#define dprintk(msg...) //printk( "TCC_VPU_MGR_SYS: " msg);
-#define detailk(msg...) //printk( "TCC_VPU_MGR_SYS: " msg);
-#define err(msg...) printk("TCC_VPU_MGR_SYS[Err]: "msg);
-#define info(msg...) printk("TCC_VPU_MGR_SYS[Info]: "msg);
-
 static struct clk *fbus_vbus_clk = NULL;
 static struct clk *fbus_xoda_clk = NULL;
 static struct clk *vbus_xoda_clk = NULL; // for pwdn and vBus.
@@ -60,7 +55,7 @@ void vmgr_enable_clock(int vbus_no_ctrl, int only_clk_ctrl)
     if (vbus_xoda_clk)
         clk_prepare_enable(vbus_xoda_clk);
 
-#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)) && defined(USE_TA_LOADING)
+#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
 	if(!only_clk_ctrl)
     {
         int ret = vpu_optee_open();
@@ -90,7 +85,7 @@ void vmgr_disable_clock(int vbus_no_ctrl, int only_clk_ctrl)
     if (fbus_vbus_clk && !vbus_no_ctrl)
         clk_disable_unprepare(fbus_vbus_clk);
 #endif
-#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X) || defined(CONFIG_ARCH_TCC805X)) && defined(USE_TA_LOADING)
+#if (defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC901X)) && defined(USE_TA_LOADING)
 	if(!only_clk_ctrl)
 	    vpu_optee_close();
 #endif
@@ -139,41 +134,13 @@ void vmgr_put_clock(void)
 #endif
 }
 
-void vmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
-{
-#if 1
-	int opened_count = opened_cnt;
-
-    vmgr_hw_reset(1);
-    while(opened_count)
-    {
-        vmgr_disable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-
-    //msleep(1);
-    opened_count = opened_cnt;
-    while(opened_count)
-    {
-        vmgr_enable_clock(vbus_no_ctrl, 0);
-        if(opened_count > 0)
-            opened_count--;
-    }
-	vmgr_hw_reset(0);
-#else
-    vmgr_hw_reset(1);
-	vmgr_hw_reset(0);
-#endif
-}
-
 void vmgr_get_reset(struct device_node *node)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
     if(node == NULL) {
         printk("device node is null\n");
     }
-	printk("############# vmgr_get_reset\n");
+    printk("############# vmgr_get_reset\n");
     vbus_xoda_reset = of_reset_control_get(node, "xoda_bus");
     BUG_ON(IS_ERR(vbus_xoda_reset));
 
@@ -196,31 +163,89 @@ void vmgr_put_reset(void)
 #endif
 }
 
-void vmgr_hw_reset(int reset)
+int vmgr_get_reset_register(void)
+{
+    return 0;
+}
+
+void vmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-	if(reset) {
-	    udelay(1000); //1ms
+    _DBG(DEBUG_RSTCLK, "enter");
 
-	    if (vbus_xoda_reset) {
-	        reset_control_assert(vbus_xoda_reset);
-	    }
-	    if (vbus_core_reset) {
-	        reset_control_assert(vbus_core_reset);
-	    }
-	}
-	else {
-	    udelay(1000); //1ms
+    if (vbus_xoda_reset)
+    {
+        reset_control_assert(vbus_xoda_reset);
+    }
 
-	    if (vbus_xoda_reset) {
-	        reset_control_deassert(vbus_xoda_reset);
-	    }
-	    if (vbus_core_reset) {
-	        reset_control_deassert(vbus_core_reset);
-	    }
+    if (vbus_core_reset)
+    {
+        reset_control_assert(vbus_core_reset);
+    }
 
-	    udelay(1000); //1ms
-	}
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+#endif
+}
+
+void vmgr_hw_deassert(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+    _DBG(DEBUG_RSTCLK, "enter");
+
+    if (vbus_xoda_reset) {
+        reset_control_deassert(vbus_xoda_reset);
+    }
+
+    if (vbus_core_reset) {
+        reset_control_deassert(vbus_core_reset);
+    }
+
+    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", vmgr_get_reset_register());
+#endif
+}
+
+void vmgr_hw_reset(void)
+{
+#if defined( VIDEO_IP_DIRECT_RESET_CTRL)
+
+    udelay(1000); //1ms
+
+    vmgr_hw_assert();
+
+    udelay(1000); //1ms
+
+    vmgr_hw_deassert();
+
+    udelay(1000); //1ms
+
+#endif
+}
+
+void vmgr_restore_clock(int vbus_no_ctrl, int opened_cnt)
+{
+#if 1
+    int opened_count = opened_cnt;
+
+    vmgr_hw_assert();
+    while(opened_count)
+    {
+        vmgr_disable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+
+    udelay(1000); //1ms
+
+    opened_count = opened_cnt;
+    while(opened_count)
+    {
+        vmgr_enable_clock(vbus_no_ctrl, 0);
+        if(opened_count > 0)
+            opened_count--;
+    }
+    vmgr_hw_deassert();
+#else
+    vmgr_hw_reset();
 #endif
 }
 

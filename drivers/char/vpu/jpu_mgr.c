@@ -919,7 +919,7 @@ static int _jmgr_cmd_open(char *str)
         jmgr_data.clk_limitation = 1;
         jmgr_data.cmd_processing = 0;
 
-		jmgr_hw_reset(0);
+        jmgr_hw_reset();
         jmgr_enable_irq(jmgr_data.irq);
         vetc_reg_init(jmgr_data.base_addr);
         if(0 > (ret = vmem_init()))
@@ -930,9 +930,9 @@ static int _jmgr_cmd_open(char *str)
     }
     atomic_inc(&jmgr_data.dev_opened);
 
-	dprintk("======> _jmgr_%s_open Out!! %d'th\n", str, atomic_read(&jmgr_data.dev_opened));
+    dprintk("======> _jmgr_%s_open Out!! %d'th\n", str, atomic_read(&jmgr_data.dev_opened));
 
-	return 0;
+    return 0;
 }
 
 static int _jmgr_cmd_release(char *str)
@@ -941,21 +941,21 @@ static int _jmgr_cmd_release(char *str)
 
     if(atomic_read(&jmgr_data.dev_opened) > 0) {
         atomic_dec(&jmgr_data.dev_opened);
-	}
+    }
     if(atomic_read(&jmgr_data.dev_opened) == 0)
     {
 //////////////////////////////////////
         int type = 0, alive_cnt = 0;
 
 #if 1 // To close whole jpu instance when being killed process opened this.
-		if(!jmgr_data.bVpu_already_proc_force_closed)
-		{
-	        jmgr_data.external_proc = 1;
-	        _jmgr_external_all_close(200);
-	        jmgr_data.external_proc = 0;
-	        //_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
-		}
-		jmgr_data.bVpu_already_proc_force_closed = false;
+        if(!jmgr_data.bVpu_already_proc_force_closed)
+        {
+            jmgr_data.external_proc = 1;
+            _jmgr_external_all_close(200);
+            jmgr_data.external_proc = 0;
+            //_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
+        }
+        jmgr_data.bVpu_already_proc_force_closed = false;
 #endif
 
         for(type=0; type<JPU_MAX; type++) {
@@ -981,9 +981,10 @@ static int _jmgr_cmd_release(char *str)
         jmgr_disable_irq(jmgr_data.irq);
         jmgr_BusPrioritySetting(BUS_FOR_NORMAL, 0);
 
-		vmem_deinit();
-		
-		jmgr_hw_reset(1);
+        vmem_deinit();
+
+        jmgr_hw_assert();
+        udelay(1000);
     }
 
     jmgr_disable_clock(0, 0);
@@ -993,7 +994,7 @@ static int _jmgr_cmd_release(char *str)
     printk("======> _jmgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d) \n", str, atomic_read(&jmgr_data.dev_opened), jmgr_data.nOpened_Count,
                     jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4));
 
-	return 0;
+    return 0;
 }
 
 static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -1048,8 +1049,7 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
         case VPU_HW_RESET:
-			jmgr_hw_reset(1);
-			jmgr_hw_reset(0);
+            jmgr_hw_reset();
             break;
 
         case VPU_SET_MEM_ALLOC_MODE:
@@ -1143,45 +1143,45 @@ static long _jmgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             break;
 
 
-		case VPU_TRY_FORCE_CLOSE:
-		case VPU_TRY_FORCE_CLOSE_KERNEL:
-		{
+        case VPU_TRY_FORCE_CLOSE:
+        case VPU_TRY_FORCE_CLOSE_KERNEL:
+        {
             //tcc_vpu_dec_esc(1, 0, 0, 0);
 
             if(!jmgr_data.bVpu_already_proc_force_closed)
-			{
-				jmgr_data.external_proc = 1;
-				_jmgr_external_all_close(200);
-		        jmgr_data.external_proc = 0;
-				//_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
-				jmgr_data.bVpu_already_proc_force_closed = true;
-			}
+            {
+                jmgr_data.external_proc = 1;
+                _jmgr_external_all_close(200);
+                jmgr_data.external_proc = 0;
+                //_jmgr_wait_process(200); //[2020.02.24] removed 200 ms wait function while JPU is closing (waiting time can be longer than poll time of omx)
+                jmgr_data.bVpu_already_proc_force_closed = true;
+            }
         }
-		break;
+        break;
 
-		case VPU_TRY_CLK_RESTORE:
-		case VPU_TRY_CLK_RESTORE_KERNEL:
-		{
-			jmgr_restore_clock(0, atomic_read(&jmgr_data.dev_opened));
-		}
-		break;
+        case VPU_TRY_CLK_RESTORE:
+        case VPU_TRY_CLK_RESTORE_KERNEL:
+        {
+            jmgr_restore_clock(0, atomic_read(&jmgr_data.dev_opened));
+        }
+        break;
 
-	#ifdef USE_DEV_OPEN_CLOSE_IOCTL
-		case VPU_TRY_OPEN_DEV:
-		case VPU_TRY_OPEN_DEV_KERNEL:
-			_jmgr_cmd_open("cmd");
-		break;
-			
-		case VPU_TRY_CLOSE_DEV:
-		case VPU_TRY_CLOSE_DEV_KERNEL:
-			_jmgr_cmd_release("cmd");
-		break;
-	#endif
+    #ifdef USE_DEV_OPEN_CLOSE_IOCTL
+        case VPU_TRY_OPEN_DEV:
+        case VPU_TRY_OPEN_DEV_KERNEL:
+            _jmgr_cmd_open("cmd");
+        break;
+
+        case VPU_TRY_CLOSE_DEV:
+        case VPU_TRY_CLOSE_DEV_KERNEL:
+            _jmgr_cmd_release("cmd");
+        break;
+    #endif
 
         default:
             err("Unsupported ioctl[%d]!!!\n", cmd);
             ret = -EINVAL;
-            break;
+        break;
     }
 
     mutex_unlock(&jmgr_data.comm_data.io_mutex);
@@ -1235,16 +1235,16 @@ static int _jmgr_open(struct inode *inode, struct file *filp)
 static int _jmgr_release(struct inode *inode, struct file *filp)
 {
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	dprintk("_jmgr_release In!! %d'th\n", atomic_read(&jmgr_data.dev_file_opened));
-	atomic_dec(&jmgr_data.dev_file_opened);
-	jmgr_data.nOpened_Count++;
+    dprintk("_jmgr_release In!! %d'th\n", atomic_read(&jmgr_data.dev_file_opened));
+    atomic_dec(&jmgr_data.dev_file_opened);
+    jmgr_data.nOpened_Count++;
 
-	printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&jmgr_data.dev_file_opened), jmgr_data.nOpened_Count,
-					jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4));
+    printk("_vmgr_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n", atomic_read(&jmgr_data.dev_file_opened), jmgr_data.nOpened_Count,
+        jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4));
 #else
     mutex_lock(&jmgr_data.comm_data.file_mutex);
-	_jmgr_cmd_release("file");
-	mutex_unlock(&jmgr_data.comm_data.file_mutex);
+    _jmgr_cmd_release("file");
+    mutex_unlock(&jmgr_data.comm_data.file_mutex);
 #endif
 
     return 0;
@@ -1271,18 +1271,18 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
 
         switch (cmd) {
             case LIST_ADD:
-	            if(!args)
-	            {
-	            err("ADD :: data is null \n");
-	            goto Error;
-	            }
+                if(!args)
+                {
+                    err("ADD :: data is null \n");
+                    goto Error;
+                }
 
-	            data = (VpuList_t*)args;
-	            *(data->vpu_result) |= RET1;
-	            list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
-				jmgr_data.cmd_queued++;
-	            jmgr_data.comm_data.thread_intr++;
-	            wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
+                data = (VpuList_t*)args;
+                *(data->vpu_result) |= RET1;
+                list_add_tail(&data->list, &jmgr_data.comm_data.main_list);
+                jmgr_data.cmd_queued++;
+                jmgr_data.comm_data.thread_intr++;
+                wake_up_interruptible(&(jmgr_data.comm_data.thread_wq));
                 break;
 
             case LIST_DEL:
@@ -1293,13 +1293,13 @@ VpuList_t* jmgr_list_manager(VpuList_t* args, unsigned int cmd)
                 }
                 data = (VpuList_t*)args;
                 list_del(&data->list);
-				jmgr_data.cmd_queued--;
+                jmgr_data.cmd_queued--;
                 break;
 
             case LIST_IS_EMPTY:
                 if(list_empty(&jmgr_data.comm_data.main_list)) {
                     ret =(VpuList_t*)0x1234;
-				}
+                }
                 break;
 
             case LIST_GET_ENTRY:
@@ -1341,7 +1341,7 @@ static int _jmgr_operation(void)
         dprintk("_jmgr_operation [%d] :: cmd = 0x%x, cmd_queued(%d) \n", oper_data->type, oper_data->cmd_type, jmgr_data.cmd_queued);
 
         if (oper_data->type < JPU_MAX && oper_data != NULL /*&& oper_data->comm_data != NULL*/)
-		{
+        {
             *(oper_data->vpu_result) |= RET3;
 
             *(oper_data->vpu_result) = _jmgr_process(oper_data->type, oper_data->cmd_type, oper_data->handle, oper_data->args);
@@ -1356,7 +1356,7 @@ static int _jmgr_operation(void)
                 }
 
                 if (*(oper_data->vpu_result) == RETCODE_CODEC_EXIT) {
-					jmgr_restore_clock(0, atomic_read(&jmgr_data.dev_opened));
+                    jmgr_restore_clock(0, atomic_read(&jmgr_data.dev_opened));
                     _jmgr_close_all(1);
                 }
             }
@@ -1373,7 +1373,7 @@ static int _jmgr_operation(void)
                 oper_data->comm_data->count += 1;
                 if(oper_data->comm_data->count != 1){
                     dprintk("poll wakeup count = %d :: type(0x%x) cmd(0x%x) \n",
-							oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
+                        oper_data->comm_data->count, oper_data->type, oper_data->cmd_type);
                 }
 
                 //spin_unlock_irqrestore(&(oper_data->comm_data->lock), flags);
@@ -1409,8 +1409,9 @@ static int _jmgr_thread(void *kthread)
 
             //wait_event_interruptible(jmgr_data.comm_data.thread_wq, jmgr_data.comm_data.thread_intr > 0);
             wait_event_interruptible_timeout(jmgr_data.comm_data.thread_wq,
-											 jmgr_data.comm_data.thread_intr > 0,
-											 msecs_to_jiffies(50));
+                    jmgr_data.comm_data.thread_intr > 0,
+                    msecs_to_jiffies(50)
+                    );
             jmgr_data.comm_data.thread_intr = 0;
         } else {
             if(atomic_read(&jmgr_data.dev_opened) || jmgr_data.external_proc){
@@ -1423,7 +1424,7 @@ static int _jmgr_thread(void *kthread)
                 oper_data = jmgr_list_manager(NULL, LIST_GET_ENTRY);
                 if(oper_data) {
                     jmgr_list_manager(oper_data, LIST_DEL);
-				}
+                }
             }
         }
     } while (!kthread_should_stop());
@@ -1492,9 +1493,9 @@ int jmgr_probe(struct platform_device *pdev)
     }
 
     jmgr_init_variable();
-	atomic_set(&jmgr_data.oper_intr, 0);
+    atomic_set(&jmgr_data.oper_intr, 0);
 #ifdef USE_DEV_OPEN_CLOSE_IOCTL
-	atomic_set(&jmgr_data.dev_file_opened, 0);
+    atomic_set(&jmgr_data.dev_file_opened, 0);
 #endif
 
     jmgr_data.irq = platform_get_irq(pdev, 0);
@@ -1510,7 +1511,7 @@ int jmgr_probe(struct platform_device *pdev)
     dprintk("============> JPU base address [0x%x -> 0x%p], irq num [%d] \n", res->start, jmgr_data.base_addr, jmgr_data.irq - 32);
 
     jmgr_get_clock(pdev->dev.of_node);
-	jmgr_get_reset(pdev->dev.of_node);
+    jmgr_get_reset(pdev->dev.of_node);
 
 //    spin_lock_init(&(jmgr_data.oper_lock));
 //  spin_lock_init(&(jmgr_data.comm_data.lock));
@@ -1578,7 +1579,7 @@ int jmgr_remove(struct platform_device *pdev)
     }
 
     jmgr_put_clock();
-	jmgr_put_reset();
+    jmgr_put_reset();
     vmem_deinit();
 
     printk("success :: jmgr thread stopped!! \n");
@@ -1595,7 +1596,7 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
     if(atomic_read(&jmgr_data.dev_opened) != 0)
     {
         printk("\n jpu: suspend In DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n",
-				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
+                jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
                 jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
 
         _jmgr_external_all_close(200);
@@ -1606,7 +1607,7 @@ int jmgr_suspend(struct platform_device *pdev, pm_message_t state)
             jmgr_disable_clock(0, 0);
         }
         printk("jpu: suspend Out DEC(%d/%d/%d/%d/%d), ENC(%d/%d/%d/%d) \n\n",
-				jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
+                jmgr_get_close(VPU_DEC), jmgr_get_close(VPU_DEC_EXT), jmgr_get_close(VPU_DEC_EXT2), jmgr_get_close(VPU_DEC_EXT3), jmgr_get_close(VPU_DEC_EXT4),
                 jmgr_get_close(VPU_ENC), jmgr_get_close(VPU_ENC_EXT), jmgr_get_close(VPU_ENC_EXT2), jmgr_get_close(VPU_ENC_EXT3));
     }
 
