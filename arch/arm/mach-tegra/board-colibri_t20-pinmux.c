@@ -382,5 +382,11 @@ int __init colibri_t20_pinmux_init(void)
 	gpio_request(TEGRA_GPIO_PT6, "GMI_WR_N on 93 RDnWR");
 	gpio_direction_output(TEGRA_GPIO_PT6, 0);
 
+#ifdef COLIBRI_T20_VI
+	/* un-reset ACA */
+	gpio_request(TEGRA_GPIO_PT4, "SODIMM 71 ACA NRESET");
+	gpio_direction_output(TEGRA_GPIO_PT4, 1);
+#endif
+
 	return 0;
 }
