@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/cgroup/rstat.c
 +++ b/kernel/cgroup/rstat.c
-@@ -160,8 +160,9 @@ static void cgroup_rstat_flush_locked(st
+@@ -150,8 +150,9 @@ static void cgroup_rstat_flush_locked(st
  		raw_spinlock_t *cpu_lock = per_cpu_ptr(&cgroup_rstat_cpu_lock,
  						       cpu);
  		struct cgroup *pos = NULL;
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		while ((pos = cgroup_rstat_cpu_pop_updated(pos, cgrp, cpu))) {
  			struct cgroup_subsys_state *css;
  
-@@ -173,7 +174,7 @@ static void cgroup_rstat_flush_locked(st
+@@ -163,7 +164,7 @@ static void cgroup_rstat_flush_locked(st
  				css->ss->css_rstat_flush(css, cpu);
  			rcu_read_unlock();
  		}

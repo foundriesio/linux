@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select ARCH_USE_CMPXCHG_LOCKREF
  	select HAVE_ARCH_SOFT_DIRTY
  	select MODULES_USE_ELF_RELA
-@@ -90,6 +89,7 @@ config X86
+@@ -91,6 +90,7 @@ config X86
  	select ARCH_SUPPORTS_ACPI
  	select ARCH_SUPPORTS_ATOMIC_RMW
  	select ARCH_SUPPORTS_NUMA_BALANCING	if X86_64

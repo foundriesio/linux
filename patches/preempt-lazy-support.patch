@@ -425,7 +425,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			return;
  		}
  		hrtick_start(rq, delta);
-@@ -6680,7 +6680,7 @@ static void check_preempt_wakeup(struct
+@@ -6686,7 +6686,7 @@ static void check_preempt_wakeup(struct
  	return;
  
  preempt:
@@ -434,7 +434,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Only set the backward buddy when the current task is still
  	 * on the rq. This can happen when a wakeup gets interleaved
-@@ -10379,7 +10379,7 @@ static void task_fork_fair(struct task_s
+@@ -10385,7 +10385,7 @@ static void task_fork_fair(struct task_s
  		 * 'current' within the tree based on its new key value.
  		 */
  		swap(curr->vruntime, se->vruntime);
@@ -443,7 +443,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	se->vruntime -= cfs_rq->min_vruntime;
-@@ -10406,7 +10406,7 @@ prio_changed_fair(struct rq *rq, struct
+@@ -10412,7 +10412,7 @@ prio_changed_fair(struct rq *rq, struct
  	 */
  	if (rq->curr == p) {
  		if (p->prio > oldprio)

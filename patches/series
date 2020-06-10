@@ -5,6 +5,9 @@
 ############################################################
 # UPSTREAM merged
 ############################################################
+workqueue-Use-rcuwait-for-wq_manager_wait.patch
+workqueue-Convert-the-pool-lock-and-wq_mayday_lock-t.patch
+Bluetooth-Acquire-sk_lock.slock-without-disabling-in.patch
 
 ############################################################
 # POSTED by others
@@ -124,12 +127,6 @@ Use-CONFIG_PREEMPTION.patch
 ############################################################
 
 sched-__set_cpus_allowed_ptr-Check-cpus_mask-not-cpu.patch
-
-# WORKQUEUE, delay
-0001-workqueue-Don-t-assume-that-the-callback-has-interru.patch
-0002-sched-swait-Add-swait_event_lock_irq.patch
-0003-workqueue-Use-swait-for-wq_manager_wait.patch
-0004-workqueue-Convert-the-locks-to-raw-type.patch
 
 ############################################################
 # Needs to address review feedback

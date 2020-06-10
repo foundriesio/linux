@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -134,8 +134,8 @@ config X86
+@@ -135,8 +135,8 @@ config X86
  	select HAVE_ALIGNED_STRUCT_PAGE		if SLUB
  	select HAVE_ARCH_AUDITSYSCALL
  	select HAVE_ARCH_HUGE_VMAP		if X86_64 || X86_PAE

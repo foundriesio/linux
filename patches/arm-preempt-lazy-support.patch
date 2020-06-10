@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -102,6 +102,7 @@ config ARM
+@@ -103,6 +103,7 @@ config ARM
  	select HAVE_PERF_EVENTS
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
    DEFINE(TI_CPU,		offsetof(struct thread_info, cpu));
 --- a/arch/arm/kernel/entry-armv.S
 +++ b/arch/arm/kernel/entry-armv.S
-@@ -213,11 +213,18 @@ ENDPROC(__dabt_svc)
+@@ -206,11 +206,18 @@ ENDPROC(__dabt_svc)
  
  #ifdef CONFIG_PREEMPTION
  	ldr	r8, [tsk, #TI_PREEMPT]		@ get preempt count
@@ -95,7 +95,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  	svc_exit r5, irq = 1			@ return from exception
-@@ -232,8 +239,14 @@ ENDPROC(__irq_svc)
+@@ -225,8 +232,14 @@ ENDPROC(__irq_svc)
  1:	bl	preempt_schedule_irq		@ irq en/disable is done inside
  	ldr	r0, [tsk, #TI_FLAGS]		@ get new tasks TI_FLAGS
  	tst	r0, #_TIF_NEED_RESCHED

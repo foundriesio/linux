@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif /* CONFIG_SECCOMP_FILTER */
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
-@@ -920,9 +920,7 @@ bool bpf_flow_dissect(struct bpf_prog *p
+@@ -936,9 +936,7 @@ bool bpf_flow_dissect(struct bpf_prog *p
  		     (int)FLOW_DISSECTOR_F_STOP_AT_ENCAP);
  	flow_keys->flags = flags;
  
