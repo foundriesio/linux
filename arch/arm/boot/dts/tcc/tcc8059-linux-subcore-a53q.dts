@@ -1176,19 +1176,18 @@
 		};
 	};
 
-/*
-	gpu0: gpu@0x10200000 {
-                compatible = "arm,mali-midgard";
+	/*
+	 * Graphic Bus Block
+	 */
+	gpu:gpu@0x10100000 {
+		compatible = "imagination,powerVR-9XTP";
 		status = "okay";
-                reg = <0x10200000 0x4000>;
-                interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-                interrupt-names = "JOB", "MMU", "GPU";
-                clocks = <&clk_fbus FBUS_GPU>;
-                clock-names = "mali_clk";
-        };
-*/
+		reg = <0x0 0x10100000 0x0 0x10000>;
+		interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "GPU";
+		clocks = <&clk_fbus FBUS_GPU>;
+		clock-names = "9XTP_clk";
+	};
 
 	fb0 {
 		compatible = "telechips,fb";
