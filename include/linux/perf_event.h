@@ -451,24 +451,28 @@ struct pmu {
 	int (*filter_match)		(struct perf_event *event); /* optional */
 };
 
+enum perf_addr_filter_action_t {
+	PERF_ADDR_FILTER_ACTION_STOP = 0,
+	PERF_ADDR_FILTER_ACTION_START,
+	PERF_ADDR_FILTER_ACTION_FILTER,
+};
+
 /**
  * struct perf_addr_filter - address range filter definition
  * @entry:	event's filter list linkage
  * @inode:	object file's inode for file-based filters
  * @offset:	filter range offset
- * @size:	filter range size
- * @range:	1: range, 0: address
- * @filter:	1: filter/start, 0: stop
+ * @size:	filter range size (size==0 means single address trigger)
+ * @action:	filter/start/stop
  *
  * This is a hardware-agnostic filter configuration as specified by the user.
  */
 struct perf_addr_filter {
 	struct list_head	entry;
-	struct inode		*inode;
+	struct path		path;
 	unsigned long		offset;
 	unsigned long		size;
-	unsigned int		range	: 1,
-				filter	: 1;
+	enum perf_addr_filter_action_t	action;
 };
 
 /**
@@ -485,6 +489,11 @@ struct perf_addr_filters_head {
 	struct list_head	list;
 	raw_spinlock_t		lock;
 	unsigned int		nr_file_filters;
+};
+
+struct perf_addr_filter_range {
+	unsigned long		start;
+	unsigned long		size;
 };
 
 /**
@@ -674,7 +683,11 @@ struct perf_event {
 	/* address range filters */
 	struct perf_addr_filters_head	addr_filters;
 	/* vma address array for file-based filders */
+#ifdef __GENKSYMS__
 	unsigned long			*addr_filters_offs;
+#else
+	struct perf_addr_filter_range	*addr_filter_ranges;
+#endif
 	unsigned long			addr_filters_gen;
 
 	void (*destroy)(struct perf_event *);
@@ -1007,6 +1020,19 @@ static inline bool is_sampling_event(struct perf_event *event)
 static inline int is_software_event(struct perf_event *event)
 {
 	return event->event_caps & PERF_EV_CAP_SOFTWARE;
+}
+
+/*
+ * Return 1 for event in sw context, 0 for event in hw context
+ */
+static inline int in_software_context(struct perf_event *event)
+{
+	return event->ctx->pmu->task_ctx_nr == perf_sw_context;
+}
+
+static inline int is_exclusive_pmu(struct pmu *pmu)
+{
+	return pmu->capabilities & PERF_PMU_CAP_EXCLUSIVE;
 }
 
 extern struct static_key perf_swevent_enabled[PERF_COUNT_SW_MAX];
