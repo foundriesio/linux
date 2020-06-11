@@ -1102,7 +1102,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	/* Set the irq affinity in order to handle the irq more stably */
 
-	unsigned int cpu = 0;
+	unsigned int cpu = 1;
 	retval = irq_set_affinity(hsotg->irq, cpumask_of(cpu));
 	if(retval) {
 		dev_err(hsotg->dev, "[ERROR][USB] failed to set the irq affinity irq %d cpu %d err %d\n",
