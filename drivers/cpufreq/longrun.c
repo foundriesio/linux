@@ -287,8 +287,7 @@ static struct cpufreq_driver longrun_driver = {
 };
 
 static const struct x86_cpu_id longrun_ids[] = {
-	{ X86_VENDOR_TRANSMETA, X86_FAMILY_ANY, X86_MODEL_ANY,
-	  X86_FEATURE_LONGRUN },
+	X86_MATCH_VENDOR_FEATURE(TRANSMETA, X86_FEATURE_LONGRUN, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, longrun_ids);
@@ -300,7 +299,7 @@ MODULE_DEVICE_TABLE(x86cpu, longrun_ids);
  */
 static int __init longrun_init(void)
 {
-	if (!x86_match_cpu(longrun_ids))
+	if (!x86_match_cpu_stp(longrun_ids))
 		return -ENODEV;
 	return cpufreq_register_driver(&longrun_driver);
 }

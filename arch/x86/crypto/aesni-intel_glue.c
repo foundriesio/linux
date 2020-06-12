@@ -1077,7 +1077,7 @@ static struct aead_alg aesni_aead_algs[0];
 
 
 static const struct x86_cpu_id aesni_cpu_id[] = {
-	X86_FEATURE_MATCH(X86_FEATURE_AES),
+	X86_MATCH_FEATURE(X86_FEATURE_AES, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, aesni_cpu_id);
@@ -1104,7 +1104,7 @@ static int __init aesni_init(void)
 	int err;
 	int i;
 
-	if (!x86_match_cpu(aesni_cpu_id))
+	if (!x86_match_cpu_stp(aesni_cpu_id))
 		return -ENODEV;
 #ifdef CONFIG_X86_64
 #ifdef CONFIG_AS_AVX2

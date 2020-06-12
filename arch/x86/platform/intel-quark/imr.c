@@ -587,7 +587,7 @@ static void __init imr_fixup_memmap(struct imr_device *idev)
 }
 
 static const struct x86_cpu_id imr_ids[] __initconst = {
-	{ X86_VENDOR_INTEL, 5, 9 },	/* Intel Quark SoC X1000. */
+	X86_MATCH_VENDOR_FAM_MODEL(INTEL, 5, INTEL_FAM5_QUARK_X1000, NULL),
 	{}
 };
 
@@ -601,7 +601,7 @@ static int __init imr_init(void)
 	struct imr_device *idev = &imr_dev;
 	int ret;
 
-	if (!x86_match_cpu(imr_ids) || !iosf_mbi_available())
+	if (!x86_match_cpu_stp(imr_ids) || !iosf_mbi_available())
 		return -ENODEV;
 
 	idev->max_imr = QUARK_X1000_IMR_MAX;

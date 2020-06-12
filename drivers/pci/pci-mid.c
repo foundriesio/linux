@@ -64,15 +64,13 @@ static const struct pci_platform_pm_ops mid_pci_platform_pm = {
 	.need_resume	= mid_pci_need_resume,
 };
 
-#define ICPU(model)	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, }
-
 /*
  * This table should be in sync with the one in
  * arch/x86/platform/intel-mid/pwr.c.
  */
 static const struct x86_cpu_id lpss_cpu_ids[] = {
-	ICPU(INTEL_FAM6_ATOM_SALTWELL_MID),
-	ICPU(INTEL_FAM6_ATOM_SILVERMONT_MID),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SALTWELL_MID, NULL),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SILVERMONT_MID, NULL),
 	{}
 };
 
@@ -80,7 +78,7 @@ static int __init mid_pci_init(void)
 {
 	const struct x86_cpu_id *id;
 
-	id = x86_match_cpu(lpss_cpu_ids);
+	id = x86_match_cpu_stp(lpss_cpu_ids);
 	if (id)
 		pci_set_platform_pm(&mid_pci_platform_pm);
 	return 0;

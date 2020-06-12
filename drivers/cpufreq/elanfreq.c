@@ -204,14 +204,14 @@ static struct cpufreq_driver elanfreq_driver = {
 };
 
 static const struct x86_cpu_id elan_id[] = {
-	{ X86_VENDOR_AMD, 4, 10, },
+	X86_MATCH_VENDOR_FAM_MODEL(AMD, 4, 10, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, elan_id);
 
 static int __init elanfreq_init(void)
 {
-	if (!x86_match_cpu(elan_id))
+	if (!x86_match_cpu_stp(elan_id))
 		return -ENODEV;
 	return cpufreq_register_driver(&elanfreq_driver);
 }

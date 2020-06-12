@@ -98,7 +98,7 @@ static struct cpufreq_driver sc520_freq_driver = {
 };
 
 static const struct x86_cpu_id sc520_ids[] = {
-	{ X86_VENDOR_AMD, 4, 9 },
+	X86_MATCH_VENDOR_FAM_MODEL(AMD, 4, 9, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, sc520_ids);
@@ -107,7 +107,7 @@ static int __init sc520_freq_init(void)
 {
 	int err;
 
-	if (!x86_match_cpu(sc520_ids))
+	if (!x86_match_cpu_stp(sc520_ids))
 		return -ENODEV;
 
 	cpuctl = ioremap((unsigned long)(MMCR_BASE + OFFS_CPUCTL), 1);

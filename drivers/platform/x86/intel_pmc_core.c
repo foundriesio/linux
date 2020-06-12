@@ -480,14 +480,10 @@ static inline void pmc_core_dbgfs_unregister(struct pmc_dev *pmcdev)
 #endif /* CONFIG_DEBUG_FS */
 
 static const struct x86_cpu_id intel_pmc_core_ids[] = {
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE_MOBILE, X86_FEATURE_MWAIT,
-		(kernel_ulong_t)NULL},
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_SKYLAKE_DESKTOP, X86_FEATURE_MWAIT,
-		(kernel_ulong_t)NULL},
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_KABYLAKE_MOBILE, X86_FEATURE_MWAIT,
-		(kernel_ulong_t)NULL},
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_KABYLAKE_DESKTOP, X86_FEATURE_MWAIT,
-		(kernel_ulong_t)NULL},
+	X86_MATCH_VENDOR_FAM_MODEL_FEATURE(INTEL, 6, INTEL_FAM6_SKYLAKE_L, X86_FEATURE_MWAIT, NULL),
+	X86_MATCH_VENDOR_FAM_MODEL_FEATURE(INTEL, 6, INTEL_FAM6_SKYLAKE, X86_FEATURE_MWAIT, NULL),
+	X86_MATCH_VENDOR_FAM_MODEL_FEATURE(INTEL, 6, INTEL_FAM6_KABYLAKE_L, X86_FEATURE_MWAIT, NULL),
+	X86_MATCH_VENDOR_FAM_MODEL_FEATURE(INTEL, 6, INTEL_FAM6_KABYLAKE, X86_FEATURE_MWAIT, NULL),
 	{}
 };
 
@@ -499,7 +495,7 @@ static int pmc_core_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	const struct pmc_reg_map *map = (struct pmc_reg_map *)id->driver_data;
 	int err;
 
-	cpu_id = x86_match_cpu(intel_pmc_core_ids);
+	cpu_id = x86_match_cpu_stp(intel_pmc_core_ids);
 	if (!cpu_id) {
 		dev_dbg(&dev->dev, "PMC Core: cpuid mismatch.\n");
 		return -EINVAL;

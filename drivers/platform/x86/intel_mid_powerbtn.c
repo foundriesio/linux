@@ -121,12 +121,9 @@ static struct mid_pb_ddata mrfld_ddata = {
 	.setup	= mrfld_setup,
 };
 
-#define ICPU(model, ddata)	\
-	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, (kernel_ulong_t)&ddata }
-
 static const struct x86_cpu_id mid_pb_cpu_ids[] = {
-	ICPU(INTEL_FAM6_ATOM_SALTWELL_MID,		mfld_ddata),
-	ICPU(INTEL_FAM6_ATOM_SILVERMONT_MID,	mrfld_ddata),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SALTWELL_MID,	&mfld_ddata),
+	X86_MATCH_INTEL_FAM6_MODEL(ATOM_SILVERMONT_MID,	&mrfld_ddata),
 	{}
 };
 
@@ -138,7 +135,7 @@ static int mid_pb_probe(struct platform_device *pdev)
 	int irq = platform_get_irq(pdev, 0);
 	int error;
 
-	id = x86_match_cpu(mid_pb_cpu_ids);
+	id = x86_match_cpu_stp(mid_pb_cpu_ids);
 	if (!id)
 		return -ENODEV;
 

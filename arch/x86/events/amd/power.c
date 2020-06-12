@@ -268,7 +268,7 @@ static int power_cpu_init(unsigned int cpu)
 }
 
 static const struct x86_cpu_id cpu_match[] = {
-	{ .vendor = X86_VENDOR_AMD, .family = 0x15 },
+	X86_MATCH_VENDOR_FAM(AMD, 0x15, NULL),
 	{},
 };
 
@@ -276,7 +276,7 @@ static int __init amd_power_pmu_init(void)
 {
 	int ret;
 
-	if (!x86_match_cpu(cpu_match))
+	if (!x86_match_cpu_stp(cpu_match))
 		return -ENODEV;
 
 	if (!boot_cpu_has(X86_FEATURE_ACC_POWER))

@@ -721,7 +721,7 @@ static int coretemp_cpu_offline(unsigned int cpu)
 	return 0;
 }
 static const struct x86_cpu_id __initconst coretemp_ids[] = {
-	{ X86_VENDOR_INTEL, X86_FAMILY_ANY, X86_MODEL_ANY, X86_FEATURE_DTHERM },
+	X86_MATCH_VENDOR_FEATURE(INTEL, X86_FEATURE_DTHERM, NULL),
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, coretemp_ids);
@@ -737,7 +737,7 @@ static int __init coretemp_init(void)
 	 * sensors. We check this bit only, all the early CPUs
 	 * without thermal sensors will be filtered out.
 	 */
-	if (!x86_match_cpu(coretemp_ids))
+	if (!x86_match_cpu_stp(coretemp_ids))
 		return -ENODEV;
 
 	max_zones = topology_max_packages() * topology_max_die_per_package();
