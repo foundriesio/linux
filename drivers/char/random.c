@@ -2167,11 +2167,11 @@ struct batched_entropy {
 
 /*
  * Get a random word for internal kernel use only. The quality of the random
- * number is either as good as RDRAND or as good as /dev/urandom, with the
- * goal of being quite fast and not depleting entropy. In order to ensure
+ * number is good as /dev/urandom, but there is no backtrack protection, with
+ * the goal of being quite fast and not depleting entropy. In order to ensure
  * that the randomness provided by this function is okay, the function
- * wait_for_random_bytes() should be called and return 0 at least once
- * at any point prior.
+ * wait_for_random_bytes() should be called and return 0 at least once at any
+ * point prior.
  */
 static DEFINE_PER_CPU(struct batched_entropy, batched_entropy_u64);
 static DEFINE_LOCAL_IRQ_LOCK(batched_entropy_u64_lock);
@@ -2179,15 +2179,6 @@ u64 get_random_u64(void)
 {
 	u64 ret;
 	struct batched_entropy *batch;
-
-#if BITS_PER_LONG == 64
-	if (arch_get_random_long((unsigned long *)&ret))
-		return ret;
-#else
-	if (arch_get_random_long((unsigned long *)&ret) &&
-	    arch_get_random_long((unsigned long *)&ret + 1))
-	    return ret;
-#endif
 
 	batch = &get_locked_var(batched_entropy_u64_lock, batched_entropy_u64);
 	if (batch->position % ARRAY_SIZE(batch->entropy_u64) == 0) {
@@ -2206,9 +2197,6 @@ u32 get_random_u32(void)
 {
 	u32 ret;
 	struct batched_entropy *batch;
-
-	if (arch_get_random_int(&ret))
-		return ret;
 
 	batch = &get_locked_var(batched_entropy_u32_lock, batched_entropy_u32);
 	if (batch->position % ARRAY_SIZE(batch->entropy_u32) == 0) {
