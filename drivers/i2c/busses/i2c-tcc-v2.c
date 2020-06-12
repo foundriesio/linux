@@ -219,6 +219,12 @@ static int wait_intr(struct tcc_i2c *i2c)
 		/* Clear a pending interrupt */
 		i2c_writel(i2c_readl(i2c->regs+I2C_CMD) | 1, i2c->regs+I2C_CMD);
 	}
+
+	if((i2c_readl(i2c->regs + I2C_SR) & (1<<5)) != 0) {
+		dev_err(i2c->dev, "[ERROR][I2C] arbitration lost (check sclk, sda status)\n");
+		return -EIO;
+	}
+
 	return 0;
 }
 
