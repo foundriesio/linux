@@ -30,11 +30,13 @@
  *
  */
 
+#define MAX_CARD_INTERFACES	16
+
 struct snd_usb_audio {
 	int index;
 	struct usb_device *dev;
 	struct snd_card *card;
-	struct usb_interface *pm_intf;
+	struct usb_interface *intf[MAX_CARD_INTERFACES];
 	u32 usb_id;
 	struct mutex mutex;
 	unsigned int system_suspend;
