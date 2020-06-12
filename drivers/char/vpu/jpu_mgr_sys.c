@@ -115,28 +115,28 @@ int jmgr_get_reset_register(void)
 void jmgr_hw_assert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if(vbus_jpeg_reset) 
     {
         reset_control_assert(vbus_jpeg_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
 #endif
 }
 
 void jmgr_hw_deassert(void)
 {
 #if defined( VIDEO_IP_DIRECT_RESET_CTRL)
-    _DBG(DEBUG_RSTCLK, "enter");
+    V_DBG(DEBUG_RSTCLK, "enter");
 
     if(vbus_jpeg_reset)
     {
         reset_control_deassert(vbus_jpeg_reset);
     }
 
-    _DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
+    V_DBG(DEBUG_RSTCLK, "out!! (rsr:0x%x)", jmgr_get_reset_register());
 #endif
 }
 

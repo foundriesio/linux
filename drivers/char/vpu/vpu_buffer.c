@@ -2219,7 +2219,7 @@ void venc_get_instance(int *nIdx)
 		else
 			err("failed to get new instance for encoder(%d) \n", nInstance);
 
-		_DBG(DEBUG_ENC_INSTANCE, "Instance is gotten #%d", nInstance);
+		V_DBG(DEBUG_ENC_INSTANCE, "Instance is gotten #%d", nInstance);
 
 		*nIdx = nInstance;
 	}
@@ -2249,7 +2249,7 @@ void venc_clear_instance(int nIdx)
 	mutex_lock(&mem_mutex);
 	{
 
-		_DBG(DEBUG_ENC_INSTANCE, "Instance is cleared #%d", nIdx);
+		V_DBG(DEBUG_ENC_INSTANCE, "Instance is cleared #%d", nIdx);
 
 		if(nIdx >= 0)
 			venc_used[nIdx] = 0;
