@@ -271,7 +271,9 @@ static struct sg_table *ion_map_dma_buf(struct dma_buf_attachment *attachment,
 {
 	struct ion_dma_buf_attachment *a = attachment->priv;
 	struct sg_table *table;
+#if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
 	struct ion_buffer *buffer = attachment->dmabuf;
+#endif
 
 	table = a->table;
 #if defined(CONFIG_ARCH_TCC805X) && defined(CONFIG_ANDROID)
